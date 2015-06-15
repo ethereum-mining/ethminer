@@ -1,27 +1,29 @@
 import QtQuick 2.0
-import QtQuick.Layouts 1.1
 
 Item
 {
 	property alias value: textinput.text
+	property alias readOnly: textinput.readOnly
 	id: editRoot
-	height: 20
-	width: 150
+	width: readOnly ? textinput.implicitWidth : 150
 
-	SourceSansProBold
-	{
-		id: boldFont
+	DebuggerPaneStyle {
+		id: dbgStyle
 	}
 
 	Rectangle {
 		anchors.fill: parent
 		radius: 4
 		TextInput {
+			anchors.verticalCenter: parent.verticalCenter
 			id: textinput
+			font.family: dbgStyle.general.basicFont
+			clip: true
+			selectByMouse: true
 			text: value
 			anchors.fill: parent
-			font.family: boldFont.name
-			clip: true
+			font.pointSize: dbgStyle.general.basicFontSize
+			color: dbgStyle.general.basicColor
 			MouseArea {
 				id: mouseArea
 				anchors.fill: parent

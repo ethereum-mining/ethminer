@@ -29,15 +29,16 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
 #include <libwebthree/WebThree.h>
-#if ETH_JSONRPC
+#if ETH_JSONRPC || !ETH_TRUE
 #include <libweb3jsonrpc/WebThreeStubServer.h>
+#include <libweb3jsonrpc/AccountHolder.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #endif
 #include "BuildInfo.h"
@@ -542,7 +543,7 @@ int main(int argc, char** argv)
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
-	std::string clientImplString = "NEthereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
+	std::string clientImplString = "N++eth/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
 	dev::WebThreeDirect web3(
 		clientImplString,
 		dbPath,
@@ -573,13 +574,13 @@ int main(int argc, char** argv)
 	if (c && mining)
 		c->startMining();
 
-#if ETH_JSONRPC
+#if ETH_JSONRPC || !ETH_TRUE
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<dev::eth::FixedAccountHolder>([&](){ return web3.ethereum(); }, vector<KeyPair>({us})), vector<KeyPair>({us})));
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
 	}
@@ -718,13 +719,33 @@ int main(int argc, char** argv)
 		else if (c && cmd == "setblockfees")
 		{
 			iss >> blockFees;
-			gasPricer->setRefBlockFees(u256(blockFees * 1000));
+			try
+			{
+				gasPricer->setRefBlockFees(u256(blockFees * 1000));
+			}
+			catch (Overflow const& _e)
+			{
+				cout << boost::diagnostic_information(_e);
+			}
+
 			cout << "Block fees: " << blockFees << endl;
 		}
 		else if (c && cmd == "setetherprice")
 		{
 			iss >> etherPrice;
-			gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
+			if (etherPrice == 0)
+				cout << "ether price cannot be set to zero" << endl;
+			else
+			{
+				try
+				{
+					gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
+				}
+				catch (Overflow const& _e)
+				{
+					cout << boost::diagnostic_information(_e);
+				}
+			}
 			cout << "ether Price: " << etherPrice << endl;
 		}
 		else if (c && cmd == "setpriority")
@@ -773,7 +794,7 @@ int main(int argc, char** argv)
 #else
 			jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", 4));
 #endif
-			jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
+			jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<dev::eth::FixedAccountHolder>([&](){ return web3.ethereum(); }, vector<KeyPair>({us})), vector<KeyPair>({us})));
 			jsonrpcServer->setIdentities({us});
 			jsonrpcServer->StartListening();
 		}

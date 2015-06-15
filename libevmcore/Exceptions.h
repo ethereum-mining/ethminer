@@ -28,11 +28,8 @@ namespace dev
 namespace eth
 {
 
-struct AssemblyException: virtual Exception {};
-struct InvalidDeposit: virtual AssemblyException {};
-struct InvalidOpcode: virtual AssemblyException {};
-struct OptimizerException: virtual AssemblyException {};
-struct StackTooDeepException: virtual OptimizerException {};
+DEV_SIMPLE_EXCEPTION(InvalidDeposit);
+DEV_SIMPLE_EXCEPTION(InvalidOpcode);
 
 }
 }

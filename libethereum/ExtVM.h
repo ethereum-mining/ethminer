@@ -39,8 +39,8 @@ class ExtVM: public ExtVMFace
 {
 public:
 	/// Full constructor.
-	ExtVM(State& _s, LastHashes const& _lh, Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, unsigned _depth = 0):
-		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code.toBytes(), _s.m_previousBlock, _s.m_currentBlock, _lh, _depth), m_s(_s), m_origCache(_s.m_cache)
+	ExtVM(State& _s, LastHashes const& _lh, Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, h256 const& _codeHash, unsigned _depth = 0):
+		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code.toBytes(), _codeHash, _s.m_previousBlock, _s.m_currentBlock, _lh, _depth), m_s(_s), m_origCache(_s.m_cache)
 	{
 		m_s.ensureCached(_myAddress, true, true);
 	}
@@ -58,7 +58,7 @@ public:
 	virtual h160 create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc const& _onOp = {}) override final;
 
 	/// Create a new message call. Leave _myAddressOverride as the default to use the present address as caller.
-	virtual bool call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256& io_gas, bytesRef _out, OnOpFunc const& _onOp = {}, Address _myAddressOverride = {}, Address _codeAddressOverride = {}) override final;
+	virtual bool call(CallParameters& _params) override final;
 
 	/// Read address's balance.
 	virtual u256 balance(Address _a) override final { return m_s.balance(_a); }
@@ -91,8 +91,8 @@ public:
 	State& state() const { return m_s; }
 
 private:
-	State& m_s;										///< A reference to the base state.
-	std::map<Address, Account> m_origCache;			///< The cache of the address states (i.e. the externalities) as-was prior to the execution.
+	State& m_s;											///< A reference to the base state.
+	std::unordered_map<Address, Account> m_origCache;	///< The cache of the address states (i.e. the externalities) as-was prior to the execution.
 };
 
 }

@@ -4,7 +4,6 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import Qt.labs.settings 1.0
-import QtGraphicalEffects 1.0
 import "js/Debugger.js" as Debugger
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 import "."
@@ -12,7 +11,6 @@ import "."
 Rectangle {
 	id: debugPanel
 
-	property alias transactionLog: transactionLog
 	property alias debugSlider: statesSlider
 	property alias solLocals: solLocals
 	property alias solStorage: solStorage
@@ -24,7 +22,7 @@ Rectangle {
 	signal debugExecuteLocation(string documentId, var location)
 	property string compilationErrorMessage
 	property bool assemblyMode: false
-
+	signal panelClosed
 	objectName: "debugPanel"
 	color: "#ededed"
 	clip: true
@@ -39,6 +37,11 @@ Rectangle {
 	{
 		Debugger.updateMode();
 		machineStates.updateHeight();
+	}
+
+	function setTr(tr)
+	{
+		trName.text = tr.label
 	}
 
 	function displayCompilationErrorIfAny()
@@ -62,7 +65,6 @@ Rectangle {
 		{
 			Debugger.init(data);
 			debugScrollArea.visible = true;
-			compilationErrorArea.visible = false;
 			machineStates.visible = true;
 		}
 		if (giveFocus)
@@ -98,95 +100,76 @@ Rectangle {
 
 	Settings {
 		id: splitSettings
-		property alias transactionLogHeight: transactionLog.height
 		property alias callStackHeight: callStackRect.height
 		property alias storageHeightSettings: storageRect.height
 		property alias memoryDumpHeightSettings: memoryRect.height
 		property alias callDataHeightSettings: callDataRect.height
-		property alias transactionLogVisible: transactionLog.visible
 		property alias solCallStackHeightSettings: solStackRect.height
 		property alias solStorageHeightSettings: solStorageRect.height
 		property alias solLocalsHeightSettings: solLocalsRect.height
 	}
 
-	Rectangle
-	{
-		visible: false;
-		id: compilationErrorArea
-		width: parent.width - 20
-		height: 600
-		color: "#ededed"
-		anchors.left: parent.left
-		anchors.top: parent.top
-		anchors.margins: 10
-		ColumnLayout
+	ColumnLayout {
+		id: debugScrollArea
+		anchors.fill: parent
+		//orientation: Qt.Vertical
+		spacing: 0
+		RowLayout
 		{
-			width: parent.width
-			anchors.top: parent.top
-			spacing: 15
+			Layout.preferredWidth: parent.width
+			Layout.preferredHeight: 30
 			Rectangle
 			{
-				height: 15
-				Button {
-					text: qsTr("Back to Debugger")
-					onClicked: {
-						debugScrollArea.visible = true;
-						compilationErrorArea.visible = false;
-						machineStates.visible = true;
-					}
+				Layout.preferredWidth: parent.width
+				Layout.preferredHeight: parent.height
+				color: "transparent"
+				Text {
+					anchors.centerIn: parent
+					text: qsTr("Current Transaction")
 				}
-			}
 
-			RowLayout
-			{
-				height: 100
-				ColumnLayout
+				Rectangle
 				{
-					Text {
-						color: "red"
-						id: errorLocation
+					anchors.left: parent.left
+					anchors.leftMargin: 10
+					width: 30
+					height: parent.height
+					color: "transparent"
+					anchors.verticalCenter: parent.verticalCenter
+					Image {
+						source: "qrc:/qml/img/leftarrow@2x.png"
+						width: parent.width
+						fillMode: Image.PreserveAspectFit
+						anchors.centerIn: parent
 					}
-					Text {
-						color: "#4a4a4a"
-						id: errorDetail
+					MouseArea
+					{
+						anchors.fill: parent
+						onClicked:
+						{
+							Debugger.init(null);
+							panelClosed()
+						}
 					}
-				}
-			}
-
-			Rectangle
-			{
-				width: parent.width - 6
-				height: 2
-				color: "#d0d0d0"
-			}
-
-			RowLayout
-			{
-				Text
-				{
-					color: "#4a4a4a"
-					id: errorLine
 				}
 			}
 		}
-	}
 
-	Splitter {
-		id: debugScrollArea
-		anchors.fill: parent
-		orientation: Qt.Vertical
-
-		TransactionLog {
-			id: transactionLog
-			Layout.fillWidth: true
-			Layout.minimumHeight: 130
-			height: 250
-			anchors.top: parent.top
-			anchors.left: parent.left
-			anchors.right: parent.right
-			anchors.leftMargin: machineStates.sideMargin
-			anchors.rightMargin: machineStates.sideMargin
-			anchors.topMargin: machineStates.sideMargin
+		RowLayout
+		{
+			Layout.preferredWidth: parent.width
+			Layout.preferredHeight: 30
+			Rectangle
+			{
+				Layout.preferredWidth: parent.width
+				Layout.preferredHeight: parent.height
+				color: "#2C79D3"
+				Text {
+					id: trName
+					color: "white"
+					anchors.centerIn: parent
+				}
+			}
 		}
 
 		ScrollView
@@ -211,8 +194,8 @@ Rectangle {
 				anchors.top: parent.top
 				anchors.topMargin: 15
 				anchors.left: parent.left;
-				anchors.leftMargin: machineStates.sideMargin 
-				width: debugScrollArea.width - machineStates.sideMargin * 2 - 20 ;
+				anchors.leftMargin: machineStates.sideMargin
+				width: debugScrollArea.width - machineStates.sideMargin * 2 - 20
 				spacing: machineStates.sideMargin
 
 				Rectangle {
@@ -230,32 +213,6 @@ Rectangle {
 							id: jumpButtons
 							spacing: 3
 							layoutDirection: Qt.LeftToRight
-
-							StepActionImage
-							{
-								id: playAction
-								enabledStateImg: "qrc:/qml/img/play_button.png"
-								disableStateImg: "qrc:/qml/img/play_button.png"
-								buttonLeft: true
-								onClicked: projectModel.stateListModel.runState(transactionLog.selectedStateIndex)
-								width: 23
-								buttonShortcut: "Ctrl+Shift+F8"
-								buttonTooltip: qsTr("Start Debugging")
-								visible: true
-								Layout.alignment: Qt.AlignLeft
-							}
-
-							StepActionImage
-							{
-								id: pauseAction
-								enabledStateImg: "qrc:/qml/img/stop_button2x.png"
-								disableStateImg: "qrc:/qml/img/stop_button2x.png"
-								onClicked: Debugger.init(null);
-								width: 23
-								buttonShortcut: "Ctrl+Shift+F9"
-								buttonTooltip: qsTr("Stop Debugging")
-								visible: true
-							}
 
 							StepActionImage
 							{
@@ -563,12 +520,12 @@ Rectangle {
 									}
 
 									Rectangle {
-									   id: separator
-									   width: parent.width;
-									   height: 1;
-									   color: "#cccccc"
-									   anchors.bottom: parent.bottom
-									 }
+										id: separator
+										width: parent.width;
+										height: 1;
+										color: "#cccccc"
+										anchors.bottom: parent.bottom
+									}
 								}
 							}
 						}
@@ -640,9 +597,6 @@ Rectangle {
 							onRowActivated: Debugger.displayFrame(index);
 						}
 					}
-
-
-
 
 					Rectangle
 					{

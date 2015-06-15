@@ -24,7 +24,7 @@
 #include <algorithm>
 #include <boost/range/adaptor/reversed.hpp>
 #include <libevmcore/Instruction.h>
-#include <libevmcore/Assembly.h>
+#include <libevmasm/Assembly.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/ExpressionCompiler.h>
 #include <libsolidity/CompilerUtils.h>
@@ -52,23 +52,36 @@ void Compiler::compileContract(ContractDefinition const& _contract,
 							   map<ContractDefinition const*, bytes const*> const& _contracts)
 {
 	m_context = CompilerContext(); // clear it just in case
-	initializeContext(_contract, _contracts);
-	appendFunctionSelector(_contract);
-	set<Declaration const*> functions = m_context.getFunctionsWithoutCode();
-	while (!functions.empty())
 	{
-		for (Declaration const* function: functions)
+		CompilerContext::LocationSetter locationSetterRunTime(m_context, _contract);
+		CompilerUtils(m_context).initialiseFreeMemoryPointer();
+		initializeContext(_contract, _contracts);
+		appendFunctionSelector(_contract);
+		set<Declaration const*> functions = m_context.getFunctionsWithoutCode();
+		while (!functions.empty())
 		{
-			m_context.setStackOffset(0);
-			function->accept(*this);
+			for (Declaration const* function: functions)
+			{
+				m_context.setStackOffset(0);
+				function->accept(*this);
+			}
+			functions = m_context.getFunctionsWithoutCode();
 		}
-		functions = m_context.getFunctionsWithoutCode();
 	}
 
 	// Swap the runtime context with the creation-time context
 	swap(m_context, m_runtimeContext);
+	CompilerContext::LocationSetter locationSetterCreationTime(m_context, _contract);
+	CompilerUtils(m_context).initialiseFreeMemoryPointer();
 	initializeContext(_contract, _contracts);
 	packIntoContractCreator(_contract, m_runtimeContext);
+	if (m_optimize)
+		m_context.optimise(m_optimizeRuns);
+}
+
+eth::AssemblyItem Compiler::getFunctionEntryLabel(FunctionDefinition const& _function) const
+{
+	return m_runtimeContext.getFunctionEntryLabelIfExists(_function);
 }
 
 void Compiler::initializeContext(ContractDefinition const& _contract,
@@ -90,7 +103,7 @@ void Compiler::packIntoContractCreator(ContractDefinition const& _contract, Comp
 			for (auto const& modifier: constructor->getModifiers())
 			{
 				auto baseContract = dynamic_cast<ContractDefinition const*>(
-					modifier->getName()->getReferencedDeclaration());
+					&modifier->getName()->getReferencedDeclaration());
 				if (baseContract)
 					if (m_baseArguments.count(baseContract->getConstructor()) == 0)
 						m_baseArguments[baseContract->getConstructor()] = &modifier->getArguments();
@@ -99,7 +112,7 @@ void Compiler::packIntoContractCreator(ContractDefinition const& _contract, Comp
 		for (ASTPointer<InheritanceSpecifier> const& base: contract->getBaseContracts())
 		{
 			ContractDefinition const* baseContract = dynamic_cast<ContractDefinition const*>(
-						base->getName()->getReferencedDeclaration());
+						&base->getName()->getReferencedDeclaration());
 			solAssert(baseContract, "");
 
 			if (m_baseArguments.count(baseContract->getConstructor()) == 0)
@@ -115,9 +128,11 @@ void Compiler::packIntoContractCreator(ContractDefinition const& _contract, Comp
 	else if (auto c = m_context.getNextConstructor(_contract))
 		appendBaseConstructor(*c);
 
-	eth::AssemblyItem sub = m_context.addSubroutine(_runtimeContext.getAssembly());
+	eth::AssemblyItem runtimeSub = m_context.addSubroutine(_runtimeContext.getAssembly());
+	solAssert(runtimeSub.data() < numeric_limits<size_t>::max(), "");
+	m_runtimeSub = size_t(runtimeSub.data());
 	// stack contains sub size
-	m_context << eth::Instruction::DUP1 << sub << u256(0) << eth::Instruction::CODECOPY;
+	m_context << eth::Instruction::DUP1 << runtimeSub << u256(0) << eth::Instruction::CODECOPY;
 	m_context << u256(0) << eth::Instruction::RETURN;
 
 	// note that we have to include the functions again because of absolute jump labels
@@ -169,6 +184,16 @@ void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 	map<FixedHash<4>, FunctionTypePointer> interfaceFunctions = _contract.getInterfaceFunctions();
 	map<FixedHash<4>, const eth::AssemblyItem> callDataUnpackerEntryPoints;
 
+	FunctionDefinition const* fallback = _contract.getFallbackFunction();
+	eth::AssemblyItem notFound = m_context.newTag();
+	// shortcut messages without data if we have many functions in order to be able to receive
+	// ether with constant gas
+	if (interfaceFunctions.size() > 5 || fallback)
+	{
+		m_context << eth::Instruction::CALLDATASIZE << eth::Instruction::ISZERO;
+		m_context.appendConditionalJumpTo(notFound);
+	}
+
 	// retrieve the function signature hash from the calldata
 	if (!interfaceFunctions.empty())
 		CompilerUtils(m_context).loadFromMemory(0, IntegerType(CompilerUtils::dataStartOffset * 8), true);
@@ -180,7 +205,10 @@ void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 		m_context << eth::dupInstruction(1) << u256(FixedHash<4>::Arith(it.first)) << eth::Instruction::EQ;
 		m_context.appendConditionalJumpTo(callDataUnpackerEntryPoints.at(it.first));
 	}
-	if (FunctionDefinition const* fallback = _contract.getFallbackFunction())
+	m_context.appendJumpTo(notFound);
+
+	m_context << notFound;
+	if (fallback)
 	{
 		eth::AssemblyItem returnTag = m_context.pushNewTag();
 		fallback->accept(*this);
@@ -206,51 +234,52 @@ void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 
 void Compiler::appendCalldataUnpacker(TypePointers const& _typeParameters, bool _fromMemory)
 {
-	// We do not check the calldata size, everything is zero-padded.
-	unsigned offset(CompilerUtils::dataStartOffset);
+	// We do not check the calldata size, everything is zero-paddedd
 
-	bigint parameterHeadEnd = offset;
-	for (TypePointer const& type: _typeParameters)
-		parameterHeadEnd += type->isDynamicallySized() ? 32 : type->getCalldataEncodedSize();
-	solAssert(parameterHeadEnd <= numeric_limits<unsigned>::max(), "Arguments too large.");
-
-	unsigned stackHeightOfPreviousDynamicArgument = 0;
-	ArrayType const* previousDynamicType = nullptr;
+	m_context << u256(CompilerUtils::dataStartOffset);
 	for (TypePointer const& type: _typeParameters)
 	{
-		switch (type->getCategory())
+		if (type->getCategory() == Type::Category::Array)
 		{
-		case Type::Category::Array:
-			if (type->isDynamicallySized())
+			auto const& arrayType = dynamic_cast<ArrayType const&>(*type);
+			if (arrayType.location() == ReferenceType::Location::CallData)
 			{
-				// put on stack: data_offset length
-				unsigned newStackHeight = m_context.getStackHeight();
-				if (previousDynamicType)
+				if (type->isDynamicallySized())
 				{
-					// Retrieve data start offset by adding length to start offset of previous dynamic type
-					unsigned stackDepth = m_context.getStackHeight() - stackHeightOfPreviousDynamicArgument;
-					solAssert(stackDepth <= 16, "Stack too deep.");
-					m_context << eth::dupInstruction(stackDepth) << eth::dupInstruction(stackDepth);
-					ArrayUtils(m_context).convertLengthToSize(*previousDynamicType, true);
+					// put on stack: data_pointer length
+					CompilerUtils(m_context).loadFromMemoryDynamic(IntegerType(256), !_fromMemory);
+					// stack: data_offset next_pointer
+					//@todo once we support nested arrays, this offset needs to be dynamic.
+					m_context << eth::Instruction::SWAP1 << u256(CompilerUtils::dataStartOffset);
 					m_context << eth::Instruction::ADD;
+					// stack: next_pointer data_pointer
+					// retrieve length
+					CompilerUtils(m_context).loadFromMemoryDynamic(IntegerType(256), !_fromMemory, true);
+					// stack: next_pointer length data_pointer
+					m_context << eth::Instruction::SWAP2;
 				}
 				else
-					m_context << u256(parameterHeadEnd);
-				stackHeightOfPreviousDynamicArgument = newStackHeight;
-				previousDynamicType = &dynamic_cast<ArrayType const&>(*type);
-				offset += CompilerUtils(m_context).loadFromMemory(offset, IntegerType(256), !_fromMemory);
+				{
+					// leave the pointer on the stack
+					m_context << eth::Instruction::DUP1;
+					m_context << u256(type->getCalldataEncodedSize()) << eth::Instruction::ADD;
+				}
 			}
 			else
 			{
-				m_context << u256(offset);
-				offset += type->getCalldataEncodedSize();
+				solAssert(arrayType.location() == ReferenceType::Location::Memory, "");
+				CompilerUtils(m_context).fetchFreeMemoryPointer();
+				CompilerUtils(m_context).storeInMemoryDynamic(*type);
+				CompilerUtils(m_context).storeFreeMemoryPointer();
 			}
-			break;
-		default:
+		}
+		else
+		{
 			solAssert(!type->isDynamicallySized(), "Unknown dynamically sized type: " + type->toString());
-			offset += CompilerUtils(m_context).loadFromMemory(offset, *type, !_fromMemory, true);
+			CompilerUtils(m_context).loadFromMemoryDynamic(*type, !_fromMemory, true);
 		}
 	}
+	m_context << eth::Instruction::POP;
 }
 
 void Compiler::appendReturnValuePacker(TypePointers const& _typeParameters)
@@ -269,7 +298,10 @@ void Compiler::appendReturnValuePacker(TypePointers const& _typeParameters)
 		stackDepth -= type->getSizeOnStack();
 	}
 	// note that the stack is not cleaned up here
-	m_context << u256(dataOffset) << u256(0) << eth::Instruction::RETURN;
+	if (dataOffset == 0)
+		m_context << eth::Instruction::STOP;
+	else
+		m_context << u256(dataOffset) << u256(0) << eth::Instruction::RETURN;
 }
 
 void Compiler::registerStateVariables(ContractDefinition const& _contract)
@@ -294,7 +326,6 @@ bool Compiler::visit(VariableDeclaration const& _variableDeclaration)
 	m_breakTags.clear();
 	m_continueTags.clear();
 
-	m_context << m_context.getFunctionEntryLabel(_variableDeclaration);
 	ExpressionCompiler(m_context, m_optimize).appendStateVariableAccessor(_variableDeclaration);
 
 	return false;
@@ -356,7 +387,7 @@ bool Compiler::visit(FunctionDefinition const& _function)
 		stackLayout.push_back(i);
 	stackLayout += vector<int>(c_localVariablesSize, -1);
 
-	solAssert(stackLayout.size() <= 17, "Stack too deep.");
+	solAssert(stackLayout.size() <= 17, "Stack too deep, try removing local variables.");
 	while (stackLayout.back() != int(stackLayout.size() - 1))
 		if (stackLayout.back() < 0)
 		{
@@ -387,12 +418,16 @@ bool Compiler::visit(IfStatement const& _ifStatement)
 	StackHeightChecker checker(m_context);
 	CompilerContext::LocationSetter locationSetter(m_context, _ifStatement);
 	compileExpression(_ifStatement.getCondition());
-	eth::AssemblyItem trueTag = m_context.appendConditionalJump();
-	if (_ifStatement.getFalseStatement())
-		_ifStatement.getFalseStatement()->accept(*this);
-	eth::AssemblyItem endTag = m_context.appendJumpToNew();
-	m_context << trueTag;
+	m_context << eth::Instruction::ISZERO;
+	eth::AssemblyItem falseTag = m_context.appendConditionalJump();
+	eth::AssemblyItem endTag = falseTag;
 	_ifStatement.getTrueStatement().accept(*this);
+	if (_ifStatement.getFalseStatement())
+	{
+		endTag = m_context.appendJumpToNew();
+		m_context << falseTag;
+		_ifStatement.getFalseStatement()->accept(*this);
+	}
 	m_context << endTag;
 
 	checker.check();
@@ -431,7 +466,8 @@ bool Compiler::visit(ForStatement const& _forStatement)
 	CompilerContext::LocationSetter locationSetter(m_context, _forStatement);
 	eth::AssemblyItem loopStart = m_context.newTag();
 	eth::AssemblyItem loopEnd = m_context.newTag();
-	m_continueTags.push_back(loopStart);
+	eth::AssemblyItem loopNext = m_context.newTag();
+	m_continueTags.push_back(loopNext);
 	m_breakTags.push_back(loopEnd);
 
 	if (_forStatement.getInitializationExpression())
@@ -448,6 +484,8 @@ bool Compiler::visit(ForStatement const& _forStatement)
 	}
 
 	_forStatement.getBody().accept(*this);
+
+	m_context << loopNext;
 
 	// for's loop expression if existing
 	if (_forStatement.getLoopExpression())
@@ -542,7 +580,7 @@ void Compiler::appendModifierOrFunctionCode()
 		ASTPointer<ModifierInvocation> const& modifierInvocation = m_currentFunction->getModifiers()[m_modifierDepth];
 
 		// constructor call should be excluded
-		if (dynamic_cast<ContractDefinition const*>(modifierInvocation->getName()->getReferencedDeclaration()))
+		if (dynamic_cast<ContractDefinition const*>(&modifierInvocation->getName()->getReferencedDeclaration()))
 		{
 			++m_modifierDepth;
 			appendModifierOrFunctionCode();

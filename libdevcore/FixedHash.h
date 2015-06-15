@@ -64,6 +64,9 @@ public:
 	/// Convert from the corresponding arithmetic type.
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
 
+	/// Convert from unsigned
+	explicit FixedHash(unsigned _u) { toBigEndian(_u, m_data); }
+
 	/// Explicitly construct, copying from a byte array.
 	explicit FixedHash(bytes const& _b, ConstructFromHashType _t = FailIfDifferent) { if (_b.size() == N) memcpy(m_data.data(), _b.data(), std::min<unsigned>(_b.size(), N)); else { m_data.fill(0); if (_t != FailIfDifferent) { auto c = std::min<unsigned>(_b.size(), N); for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _b[_t == AlignRight ? _b.size() - 1 - i : i]; } } }
 
@@ -80,7 +83,7 @@ public:
 	operator Arith() const { return fromBigEndian<Arith>(m_data); }
 
 	/// @returns true iff this is the empty hash.
-	explicit operator bool() const { return ((Arith)*this) != 0; }
+	explicit operator bool() const { return std::any_of(m_data.begin(), m_data.end(), [](byte _b) { return _b != 0; }); }
 
 	// The obvious comparison operators.
 	bool operator==(FixedHash const& _c) const { return m_data == _c.m_data; }
@@ -97,7 +100,7 @@ public:
 	FixedHash operator|(FixedHash const& _c) const { return FixedHash(*this) |= _c; }
 	FixedHash& operator&=(FixedHash const& _c) { for (unsigned i = 0; i < N; ++i) m_data[i] &= _c.m_data[i]; return *this; }
 	FixedHash operator&(FixedHash const& _c) const { return FixedHash(*this) &= _c; }
-	FixedHash& operator~() { for (unsigned i = 0; i < N; ++i) m_data[i] = ~m_data[i]; return *this; }
+	FixedHash operator~() const { FixedHash ret; for (unsigned i = 0; i < N; ++i) ret[i] = ~m_data[i]; return ret; }
 
 	/// @returns true if all bytes in @a _c are set in this object.
 	bool contains(FixedHash const& _c) const { return (*this & _c) == _c; }
@@ -109,6 +112,9 @@ public:
 
 	/// @returns an abridged version of the hash as a user-readable hex string.
 	std::string abridged() const { return toHex(ref().cropped(0, 4)) + "\342\200\246"; }
+
+	/// @returns the hash as a user-readable hex string.
+	std::string hex() const { return toHex(ref()); }
 
 	/// @returns a mutable byte vector_ref to the object's data.
 	bytesRef ref() { return bytesRef(m_data.data(), N); }
@@ -144,17 +150,10 @@ public:
 	/// @returns a random valued object.
 	static FixedHash random() { return random(s_fixedHashEngine); }
 
-	/// A generic std::hash compatible function object.
 	struct hash
 	{
 		/// Make a hash of the object's data.
-		size_t operator()(FixedHash const& value) const
-		{
-			size_t h = 0;
-			for (auto i: value.m_data)
-				h = (h << (5 - h)) + i;
-			return h;
-		}
+		size_t operator()(FixedHash const& _value) const { return boost::hash_range(_value.m_data.cbegin(), _value.m_data.cend()); }
 	};
 
 	template <unsigned P, unsigned M> inline FixedHash& shiftBloom(FixedHash<M> const& _h)
@@ -215,12 +214,8 @@ template<> inline bool FixedHash<32>::operator==(FixedHash<32> const& _other) co
 /// Fast std::hash compatible hash function object for h256.
 template<> inline size_t FixedHash<32>::hash::operator()(FixedHash<32> const& value) const
 {
-	const uint64_t*data = (const uint64_t*)value.data();
-	uint64_t hash = data[0];
-	hash ^= data[1];
-	hash ^= data[2];
-	hash ^= data[3];
-	return (size_t)hash;
+	uint64_t const* data = reinterpret_cast<uint64_t const*>(value.data());
+	return boost::hash_range(data, data + 4);
 }
 
 /// Stream I/O for the FixedHash class.
@@ -248,6 +243,8 @@ using h256s = std::vector<h256>;
 using h160s = std::vector<h160>;
 using h256Set = std::set<h256>;
 using h160Set = std::set<h160>;
+using h256Hash = std::unordered_set<h256>;
+using h160Hash = std::unordered_set<h160>;
 
 /// Convert the given value into h160 (160-bit unsigned integer) using the right 20 bytes.
 inline h160 right160(h256 const& _t)
@@ -265,6 +262,10 @@ inline h160 left160(h256 const& _t)
 	return ret;
 }
 
+h128 fromUUID(std::string const& _uuid);
+
+std::string toUUID(h128 const& _uuid);
+
 inline std::string toString(h256s const& _bs)
 {
 	std::ostringstream out;
@@ -279,6 +280,10 @@ inline std::string toString(h256s const& _bs)
 
 namespace std
 {
-	/// Forward std::hash<dev::h256> to dev::h256::hash.
+	/// Forward std::hash<dev::FixedHash> to dev::FixedHash::hash.
+	template<> struct hash<dev::h64>: dev::h64::hash {};
+	template<> struct hash<dev::h128>: dev::h128::hash {};
+	template<> struct hash<dev::h160>: dev::h160::hash {};
 	template<> struct hash<dev::h256>: dev::h256::hash {};
+	template<> struct hash<dev::h512>: dev::h512::hash {};
 }

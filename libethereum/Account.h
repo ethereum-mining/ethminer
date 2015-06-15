@@ -23,8 +23,8 @@
 
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/TrieDB.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/TrieDB.h>
+#include <libdevcore/SHA3.h>
 
 namespace dev
 {
@@ -134,8 +134,8 @@ public:
 	/// which encodes the base-state of the account's storage (upon which the storage is overlaid).
 	h256 baseRoot() const { assert(m_storageRoot); return m_storageRoot; }
 
-	/// @returns the storage overlay as a simple map.
-	std::map<u256, u256> const& storageOverlay() const { return m_storageOverlay; }
+	/// @returns the storage overlay as a simple hash map.
+	std::unordered_map<u256, u256> const& storageOverlay() const { return m_storageOverlay; }
 
 	/// Set a key/value pair in the account's storage. This actually goes into the overlay, for committing
 	/// to the trie later.
@@ -194,7 +194,7 @@ private:
 	h256 m_codeHash = EmptySHA3;
 
 	/// The map with is overlaid onto whatever storage is implied by the m_storageRoot in the trie.
-	std::map<u256, u256> m_storageOverlay;
+	std::unordered_map<u256, u256> m_storageOverlay;
 
 	/// The associated code for this account. The SHA3 of this should be equal to m_codeHash unless m_codeHash
 	/// equals c_contractConceptionCodeHash.

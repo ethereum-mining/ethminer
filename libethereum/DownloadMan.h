@@ -21,9 +21,9 @@
 
 #pragma once
 
-#include <map>
 #include <vector>
-#include <set>
+#include <unordered_set>
+#include <unordered_map>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libdevcore/RangeMask.h>
@@ -46,7 +46,7 @@ public:
 	~DownloadSub();
 
 	/// Finished last fetch - grab the next bunch of block hashes to download.
-	h256Set nextFetch(unsigned _n);
+	h256Hash nextFetch(unsigned _n);
 
 	/// Note that we've received a particular block. @returns true if we had asked for it but haven't received it yet.
 	bool noteBlock(h256 _hash);
@@ -71,8 +71,8 @@ private:
 	DownloadMan* m_man = nullptr;
 
 	mutable Mutex m_fetch;
-	h256Set m_remaining;
-	std::map<h256, unsigned> m_indices;
+	h256Hash m_remaining;
+	std::unordered_map<h256, unsigned> m_indices;
 	RangeMask<unsigned> m_asked;
 	RangeMask<unsigned> m_attempted;
 };
@@ -86,6 +86,13 @@ public:
 	{
 		for (auto i: m_subs)
 			i->m_man = nullptr;
+	}
+
+	void appendToChain(h256s const& _hashes)
+	{
+		WriteGuard l(m_lock);
+		m_chain.insert(m_chain.end(), _hashes.cbegin(), _hashes.cend());
+		m_blocksGot = RangeMask<unsigned>(0, m_chain.size());
 	}
 
 	void resetToChain(h256s const& _chain)
@@ -143,7 +150,8 @@ public:
 		return ret;
 	}
 
-	h256s chain() const { ReadGuard l(m_lock); return m_chain; }
+	size_t chainSize() const { ReadGuard l(m_lock); return m_chain.size(); }
+	size_t chainEmpty() const { ReadGuard l(m_lock); return m_chain.empty(); }
 	void foreachSub(std::function<void(DownloadSub const&)> const& _f) const { ReadGuard l(x_subs); for(auto i: m_subs) _f(*i); }
 	unsigned subCount() const { ReadGuard l(x_subs); return m_subs.size(); }
 	RangeMask<unsigned> blocksGot() const { ReadGuard l(m_lock); return m_blocksGot; }
@@ -154,9 +162,114 @@ private:
 	RangeMask<unsigned> m_blocksGot;
 
 	mutable SharedMutex x_subs;
-	std::set<DownloadSub*> m_subs;
+	std::unordered_set<DownloadSub*> m_subs;
+};
+
+
+class HashDownloadMan;
+
+class HashDownloadSub
+{
+	friend class HashDownloadMan;
+
+public:
+	HashDownloadSub(HashDownloadMan& _man);
+	~HashDownloadSub();
+
+	/// Finished last fetch - grab the next hash index to download
+	unsigned nextFetch(unsigned _n);
+
+	/// Note that we've received a particular hash range.
+	void noteHash(unsigned _index, unsigned count);
+
+	/// Nothing doing here.
+	void doneFetch() { resetFetch(); }
+
+	bool askedContains(unsigned _i) const { Guard l(m_fetch); return m_asked.contains(_i); }
+	RangeMask<unsigned> const& asked() const { return m_asked; }
+
+private:
+	void resetFetch();		// Called by DownloadMan when we need to reset the download.
+
+	HashDownloadMan* m_man = nullptr;
+	mutable Mutex m_fetch;
+	unsigned m_remaining;
+	RangeMask<unsigned> m_asked;
+};
+
+class HashDownloadMan
+{
+	friend class HashDownloadSub;
+
+public:
+	~HashDownloadMan()
+	{
+		for (auto i: m_subs)
+			i->m_man = nullptr;
+	}
+
+	void resetToRange(unsigned _start, unsigned _count)
+	{
+		{
+			ReadGuard l(x_subs);
+			for (auto i: m_subs)
+				i->resetFetch();
+		}
+		WriteGuard l(m_lock);
+		m_chainStart = _start;
+		m_chainCount = _count;
+		m_got += RangeMask<unsigned>(_start, _start + _count);
+		{
+			ReadGuard l(x_subs);
+			for (auto i: m_subs)
+				i->resetFetch();
+		}
+	}
+
+	void reset(unsigned _start)
+	{
+		WriteGuard l(m_lock);
+		m_chainStart = _start;
+		m_chainCount = 0;
+		m_got = RangeMask<unsigned>(_start, _start);
+	}
+
+	RangeMask<unsigned> taken(bool _desperate = false) const
+	{
+		ReadGuard l(m_lock);
+		auto ret = m_got;
+		if (!_desperate)
+		{
+			ReadGuard l(x_subs);
+			for (auto i: m_subs)
+				ret += i->m_asked;
+		}
+		return ret;
+	}
+
+	bool isComplete() const
+	{
+		ReadGuard l(m_lock);
+		return m_got.full();
+	}
+
+	size_t chainSize() const { ReadGuard l(m_lock); return m_chainCount; }
+	size_t chainEmpty() const { ReadGuard l(m_lock); return m_chainCount == 0; }
+	void foreachSub(std::function<void(HashDownloadSub const&)> const& _f) const { ReadGuard l(x_subs); for(auto i: m_subs) _f(*i); }
+	unsigned subCount() const { ReadGuard l(x_subs); return m_subs.size(); }
+	RangeMask<unsigned> hashesGot() const { ReadGuard l(m_lock); return m_got; }
+
+private:
+	mutable SharedMutex m_lock;
+	unsigned m_chainStart = 0;
+	unsigned m_chainCount = 0;
+	RangeMask<unsigned> m_got;
+
+	mutable SharedMutex x_subs;
+	std::unordered_set<HashDownloadSub*> m_subs;
 };
 
 }
 
 }
+

@@ -36,10 +36,10 @@
 namespace dev
 {
 class WebThreeNetworkFace;
-class AccountHolder;
 class KeyPair;
 namespace eth
 {
+class AccountHolder;
 struct TransactionSkeleton;
 class Interface;
 }
@@ -60,15 +60,13 @@ public:
 
 /**
  * @brief JSON-RPC api implementation
- * @todo filters should work on unsigned instead of int
- * unsigned are not supported in json-rpc-cpp and there are bugs with double in json-rpc-cpp version 0.2.1
  * @todo split these up according to subprotocol (eth, shh, db, p2p, web3) and make it /very/ clear about how to add other subprotocols.
  * @todo modularise everything so additional subprotocols don't need to change this file.
  */
 class WebThreeStubServerBase: public AbstractWebThreeStubServer
 {
 public:
-	WebThreeStubServerBase(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts);
+	WebThreeStubServerBase(jsonrpc::AbstractServerConnector& _conn, std::shared_ptr<dev::eth::AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _sshAccounts);
 
 	virtual std::string web3_sha3(std::string const& _param1);
 	virtual std::string web3_clientVersion() { return "C++ (ethereum-cpp)"; }
@@ -105,19 +103,27 @@ public:
 	virtual Json::Value eth_getCompilers();
 	virtual std::string eth_compileLLL(std::string const& _s);
 	virtual std::string eth_compileSerpent(std::string const& _s);
-	virtual std::string eth_compileSolidity(std::string const& _code);
+	virtual Json::Value eth_compileSolidity(std::string const& _code);
 	virtual std::string eth_newFilter(Json::Value const& _json);
-	virtual std::string eth_newBlockFilter(std::string const& _filter);
+	virtual std::string eth_newFilterEx(Json::Value const& _json);
+	virtual std::string eth_newBlockFilter();
+	virtual std::string eth_newPendingTransactionFilter();
 	virtual bool eth_uninstallFilter(std::string const& _filterId);
 	virtual Json::Value eth_getFilterChanges(std::string const& _filterId);
+	virtual Json::Value eth_getFilterChangesEx(std::string const& _filterId);
 	virtual Json::Value eth_getFilterLogs(std::string const& _filterId);
+	virtual Json::Value eth_getFilterLogsEx(std::string const& _filterId);
 	virtual Json::Value eth_getLogs(Json::Value const& _json);
 	virtual Json::Value eth_getWork();
 	virtual bool eth_submitWork(std::string const& _nonce, std::string const&, std::string const& _mixHash);
 	virtual std::string eth_register(std::string const& _address);
 	virtual bool eth_unregister(std::string const& _accountId);
 	virtual Json::Value eth_fetchQueuedTransactions(std::string const& _accountId);
-	
+	virtual std::string eth_signTransaction(Json::Value const& _transaction);
+	virtual Json::Value eth_inspectTransaction(std::string const& _rlp);
+	virtual bool eth_injectTransaction(std::string const& _rlp);
+	virtual bool eth_notePassword(std::string const&) { return false; }
+
 	virtual bool db_put(std::string const& _name, std::string const& _key, std::string const& _value);
 	virtual std::string db_get(std::string const& _name, std::string const& _key);
 
@@ -130,23 +136,46 @@ public:
 	virtual bool shh_uninstallFilter(std::string const& _filterId);
 	virtual Json::Value shh_getFilterChanges(std::string const& _filterId);
 	virtual Json::Value shh_getMessages(std::string const& _filterId);
-	
-	void setAccounts(std::vector<dev::KeyPair> const& _accounts);
+
+	virtual bool admin_web3_setVerbosity(int _v, std::string const& _session);
+	virtual bool admin_net_start(std::string const& _session);
+	virtual bool admin_net_stop(std::string const& _session);
+	virtual bool admin_net_connect(std::string const& _node, std::string const& _session);
+	virtual Json::Value admin_net_peers(std::string const& _session);
+
+	virtual bool admin_eth_setMining(bool _on, std::string const& _session);
+	virtual Json::Value admin_eth_blockQueueStatus(std::string const& _session) { (void)_session; return Json::Value(); }
+	virtual bool admin_eth_setAskPrice(std::string const& _wei, std::string const& _session) { (void)_wei; (void)_session; return false; }
+	virtual bool admin_eth_setBidPrice(std::string const& _wei, std::string const& _session) { (void)_wei; (void)_session; return false; }
+	virtual bool admin_eth_setReferencePrice(std::string const& _wei, std::string const& _session) { (void)_wei; (void)_session; return false; }
+	virtual bool admin_eth_setPriority(int _percent, std::string const& _session) { (void)_percent; (void)_session; return false; }
+	virtual Json::Value admin_eth_findBlock(std::string const& _blockHash, std::string const& _session) { (void)_blockHash; (void)_session; return Json::Value(); }
+	virtual std::string admin_eth_blockQueueFirstUnknown(std::string const& _session) { (void)_session; return ""; }
+	virtual bool admin_eth_blockQueueRetryUnknown(std::string const& _session) { (void)_session; return false; }
+	virtual Json::Value admin_eth_allAccounts(std::string const& _session) { (void)_session; return Json::Value(); }
+	virtual Json::Value admin_eth_newAccount(const Json::Value& _info, std::string const& _session) { (void)_info; (void)_session; return Json::Value(); }
+	virtual bool admin_eth_setSigningKey(std::string const& _uuidOrAddress, std::string const& _session) { (void)_uuidOrAddress; (void)_session; return false; }
+	virtual bool admin_eth_setMiningBenefactor(std::string const& _uuidOrAddress, std::string const& _session) { (void)_uuidOrAddress; (void)_session; return false; }
+	virtual Json::Value admin_eth_inspect(std::string const& _address, std::string const& _session) { (void)_address; (void)_session; return Json::Value(); }
+	virtual Json::Value admin_eth_reprocess(std::string const& _blockNumberOrHash, std::string const& _session) { (void)_blockNumberOrHash; (void)_session; return Json::Value(); }
+	virtual Json::Value admin_eth_vmTrace(std::string const& _blockNumberOrHash, std::string const& _txIndex, std::string const& _session) { (void)_blockNumberOrHash; (void)_txIndex; (void)_session; return Json::Value(); }
+	virtual Json::Value admin_eth_getReceiptByHashAndIndex(std::string const& _blockNumberOrHash, std::string const& _txIndex, std::string const& _session) { (void)_blockNumberOrHash; (void)_txIndex; (void)_session; return Json::Value(); }
+
 	void setIdentities(std::vector<dev::KeyPair> const& _ids);
-	std::map<dev::Public, dev::Secret> const& ids() const { return m_ids; }
+	std::map<dev::Public, dev::Secret> const& ids() const { return m_shhIds; }
 
 protected:
-	virtual void authenticate(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
+	virtual bool isAdmin(std::string const& _session) const { (void)_session; return false; }
 
-protected:
 	virtual dev::eth::Interface* client() = 0;
 	virtual std::shared_ptr<dev::shh::Interface> face() = 0;
 	virtual dev::WebThreeNetworkFace* network() = 0;
 	virtual dev::WebThreeStubDatabaseFace* db() = 0;
 
-	std::map<dev::Public, dev::Secret> m_ids;
+	std::shared_ptr<dev::eth::AccountHolder> m_ethAccounts;
+
+	std::map<dev::Public, dev::Secret> m_shhIds;
 	std::map<unsigned, dev::Public> m_shhWatches;
-	std::shared_ptr<dev::AccountHolder> m_accounts;
 };
 
 } //namespace dev

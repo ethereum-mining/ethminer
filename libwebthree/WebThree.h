@@ -73,6 +73,7 @@ public:
 
 	virtual bool haveNetwork() const = 0;
 
+	virtual p2p::NetworkPreferences const& networkPreferences() const = 0;
 	virtual void setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers) = 0;
 
 	virtual p2p::NodeId id() const = 0;
@@ -88,6 +89,8 @@ public:
 
 	/// Is network working? there may not be any peers yet.
 	virtual bool isNetworkStarted() const = 0;
+
+	std::string enode() const { return "enode://" + toHex(id().ref()) + "@" + (networkPreferences().publicIPAddress.empty() ? "127.0.0.1" : networkPreferences().publicIPAddress) + ":" + toString(networkPreferences().listenPort); }
 };
 
 
@@ -163,6 +166,8 @@ public:
 	void setIdealPeerCount(size_t _n) override;
 
 	bool haveNetwork() const override { return m_net.haveNetwork(); }
+
+	p2p::NetworkPreferences const& networkPreferences() const override;
 
 	void setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers = false) override;
 

@@ -29,7 +29,7 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-WhisperPeer::WhisperPeer(Session* _s, HostCapabilityFace* _h, unsigned _i): Capability(_s, _h, _i)
+WhisperPeer::WhisperPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, CapDesc const&): Capability(_s, _h, _i)
 {
 	RLPStream s;
 	sealAndSend(prep(s, StatusPacket, 1) << version());
@@ -66,10 +66,8 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 	}
 	case MessagesPacket:
 	{
-		unsigned n = 0;
 		for (auto i: _r)
-			if (n++)
-				host()->inject(Envelope(i), this);
+			host()->inject(Envelope(i), this);
 		break;
 	}
 	default:

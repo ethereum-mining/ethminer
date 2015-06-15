@@ -26,7 +26,7 @@
 #include "../test/JsonSpiritHeaders.h"
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libethereum/Client.h>
 using namespace std;
 using namespace dev;
@@ -43,7 +43,7 @@ void help()
 		<< "    -h,--help  Print this help message and exit." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 		<< "Input options:" << endl
-		<< "    -f,--format-prefix  Require all input formats to be prefixed e.g. 0x for hex, . for decimal, @ for binary." << endl
+		<< "    -f,--format-prefix  Require all input formats to be prefixed e.g. 0x for hex, + for decimal, ' for binary." << endl
 		<< "    -F,--no-format-prefix  Require no input format to be prefixed." << endl
 		<< "    -t,--typing  Require all arguments to be typed e.g. b32: (bytes32), u64: (uint64), b[]: (byte[]), i: (int256)." << endl
 		<< "    -T,--no-typing  Require no arguments to be typed." << endl

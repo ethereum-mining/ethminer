@@ -3,6 +3,7 @@ import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
 import QtQuick.Dialogs 1.1
+import Qt.labs.settings 1.0
 
 Item {
 	id: codeEditorView
@@ -73,6 +74,7 @@ Item {
 			});
 		}
 		editor.document = document;
+		editor.setFontSize(editorSettings.fontSize);
 		editor.sourceName = document.documentId;
 		editor.setText(data, document.syntaxMode);
 		editor.changeGeneration();
@@ -158,15 +160,34 @@ Item {
 		}
 	}
 
+	function setFontSize(size) {
+		if (size <= 10 || size >= 48)
+			return;
+		editorSettings.fontSize = size;
+		for (var i = 0; i < editors.count; i++)
+			editors.itemAt(i).item.setFontSize(size);
+	}
+
+	function displayGasEstimation(checked)
+	{
+		var editor = getEditor(currentDocumentId);
+		if (editor)
+			editor.displayGasEstimation(checked);
+	}
+
 	Component.onCompleted: projectModel.codeEditor = codeEditorView;
 
 	Connections {
 		target: codeModel
 		onCompilationError: {
-			sourceInError = _sourceName;
+			sourceInError = _firstErrorLoc.source;
 		}
 		onCompilationComplete: {
 			sourceInError = "";
+			var gasCosts = codeModel.gasCostByDocumentId(currentDocumentId);
+			var editor = getEditor(currentDocumentId);
+			if (editor)
+				editor.setGasCosts(gasCosts);
 		}
 	}
 
@@ -180,9 +201,12 @@ Item {
 			for (var i = 0; i < openDocCount; i++)
 			{
 				var doc = editorListModel.get(i);
-				var editor = editors.itemAt(i).item;
-				if (editor)
-					fileIo.writeFile(doc.path, editor.getText());
+				if (editors.itemAt(i))
+				{
+					var editor = editors.itemAt(i).item;
+					if (editor)
+						fileIo.writeFile(doc.path, editor.getText());
+				}
 			}
 		}
 
@@ -267,6 +291,7 @@ Item {
 						messageDialog.doc = editorListModel.get(index);
 						messageDialog.open();
 					}
+					loader.item.displayGasEstimation(gasEstimationAction.checked);
 				}
 			}
 			Component.onCompleted: {
@@ -305,6 +330,16 @@ Item {
 							break;
 						}
 				}
+
+				onDocumentRemoved: {
+					for (var i = 0; i < editorListModel.count; i++)
+						if (editorListModel.get(i).documentId === documentId)
+						{
+							editorListModel.remove(i);
+							openDocCount--;
+							break;
+						}
+				}
 			}
 
 			function loadIfNotLoaded () {
@@ -316,5 +351,24 @@ Item {
 	}
 	ListModel {
 		id: editorListModel
+	}
+
+	Action {
+		id: increaseFontSize
+		text: qsTr("Increase Font Size")
+		shortcut: "Ctrl+="
+		onTriggered: setFontSize(editorSettings.fontSize + 1)
+	}
+
+	Action {
+		id: decreaseFontSize
+		text: qsTr("Decrease Font Size")
+		shortcut: "Ctrl+-"
+		onTriggered: setFontSize(editorSettings.fontSize - 1)
+	}
+
+	Settings {
+		id: editorSettings
+		property int fontSize: 12;
 	}
 }

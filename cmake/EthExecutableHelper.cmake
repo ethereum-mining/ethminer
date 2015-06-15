@@ -94,6 +94,7 @@ macro(eth_install_executable EXECUTABLE)
 			
 		# This tool and next will inspect linked libraries in order to determine which dependencies are required
 		if (${CMAKE_CFG_INTDIR} STREQUAL ".")
+			# TODO: This should only happen for GUI application
 			set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/${EXECUTABLE}.app")
 		else ()
 			set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/\$ENV{CONFIGURATION}/${EXECUTABLE}.app")
@@ -126,8 +127,15 @@ macro(eth_install_executable EXECUTABLE)
 			eth_copy_dlls(${EXECUTABLE} ${dll})
 		endforeach(dll)
 
-		install( TARGETS ${EXECUTABLE} RUNTIME 
-			DESTINATION bin
+		install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Debug"
+			DESTINATION .
+			CONFIGURATIONS Debug
+			COMPONENT ${EXECUTABLE}
+		)
+
+		install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Release"
+			DESTINATION .
+			CONFIGURATIONS Release
 			COMPONENT ${EXECUTABLE}
 		)
 

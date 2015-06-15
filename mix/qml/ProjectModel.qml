@@ -48,6 +48,7 @@ Item {
 	property CodeEditorView codeEditor: null
 	property var unsavedFiles: []
 	property alias newProjectDialog: newProjectDialog
+	property string deployedState
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }

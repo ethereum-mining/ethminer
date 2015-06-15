@@ -44,7 +44,7 @@ static const h256 PendingChangedFilter = u256(0);
 static const h256 ChainChangedFilter = u256(1);
 
 static const LogEntry SpecialLogEntry = LogEntry(Address(), h256s(), bytes());
-static const LocalisedLogEntry InitialChange(SpecialLogEntry, 0);
+static const LocalisedLogEntry InitialChange(SpecialLogEntry);
 
 struct ClientWatch
 {
@@ -60,11 +60,11 @@ struct ClientWatch
 	mutable std::chrono::system_clock::time_point lastPoll = std::chrono::system_clock::now();
 };
 
-struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 7; };
+struct WatchChannel: public LogChannel { static const char* name(); static const int verbosity = 7; };
 #define cwatch LogOutputStream<WatchChannel, true>()
-struct WorkInChannel: public LogChannel { static const char* name() { return ">W>"; } static const int verbosity = 16; };
-struct WorkOutChannel: public LogChannel { static const char* name() { return "<W<"; } static const int verbosity = 16; };
-struct WorkChannel: public LogChannel { static const char* name() { return "-W-"; } static const int verbosity = 21; };
+struct WorkInChannel: public LogChannel { static const char* name(); static const int verbosity = 16; };
+struct WorkOutChannel: public LogChannel { static const char* name(); static const int verbosity = 16; };
+struct WorkChannel: public LogChannel { static const char* name(); static const int verbosity = 21; };
 #define cwork LogOutputStream<WorkChannel, true>()
 #define cworkin LogOutputStream<WorkInChannel, true>()
 #define cworkout LogOutputStream<WorkOutChannel, true>()
@@ -76,29 +76,35 @@ public:
 	virtual ~ClientBase() {}
 
 	/// Submits the given message-call transaction.
+	virtual void submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, u256 _nonce);
 	virtual void submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) override;
 
 	/// Submits a new contract-creation transaction.
 	/// @returns the new contract's address (assuming it all goes through).
 	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) override;
+	using Interface::submitTransaction;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock, FudgeFactor _ff = FudgeFactor::Strict) override;
+	virtual ExecutionResult call(Address const& _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) override;
+	using Interface::call;
 
 	/// Makes the given create. Nothing is recorded into the state.
-	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock, FudgeFactor _ff = FudgeFactor::Strict) override;
-	
+	virtual ExecutionResult create(Address const& _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) override;
+	using Interface::create;
+
 	using Interface::balanceAt;
 	using Interface::countAt;
 	using Interface::stateAt;
 	using Interface::codeAt;
+	using Interface::codeHashAt;
 	using Interface::storageAt;
 
 	virtual u256 balanceAt(Address _a, BlockNumber _block) const override;
 	virtual u256 countAt(Address _a, BlockNumber _block) const override;
 	virtual u256 stateAt(Address _a, u256 _l, BlockNumber _block) const override;
 	virtual bytes codeAt(Address _a, BlockNumber _block) const override;
-	virtual std::map<u256, u256> storageAt(Address _a, BlockNumber _block) const override;
+	virtual h256 codeHashAt(Address _a, BlockNumber _block) const override;
+	virtual std::unordered_map<u256, u256> storageAt(Address _a, BlockNumber _block) const override;
 
 	virtual LocalisedLogEntries logs(unsigned _watchId) const override;
 	virtual LocalisedLogEntries logs(LogFilter const& _filter) const override;
@@ -112,6 +118,7 @@ public:
 
 	virtual h256 hashFromNumber(BlockNumber _number) const override;
 	virtual BlockNumber numberFromHash(h256 _blockHash) const override;
+	virtual int compareBlockHashes(h256 _h1, h256 _h2) const override;
 	virtual BlockInfo blockInfo(h256 _hash) const override;
 	virtual BlockDetails blockDetails(h256 _hash) const override;
 	virtual Transaction transaction(h256 _transactionHash) const override;
@@ -127,7 +134,8 @@ public:
 	virtual Transactions pending() const override;
 	virtual h256s pendingHashes() const override;
 
-	void injectBlock(bytes const& _block);
+	virtual ImportResult injectTransaction(bytes const& _rlp) override { prepareForTransaction(); return m_tq.import(_rlp); }
+	virtual ImportResult injectBlock(bytes const& _block) override;
 
 	using Interface::diff;
 	virtual StateDiff diff(unsigned _txi, h256 _block) const override;
@@ -137,9 +145,6 @@ public:
 	virtual Addresses addresses(BlockNumber _block) const override;
 	virtual u256 gasLimitRemaining() const override;
 
-	/// Set the coinbase address
-	virtual void setAddress(Address _us) = 0;
-
 	/// Get the coinbase address
 	virtual Address address() const override;
 
@@ -148,6 +153,7 @@ public:
 	virtual void startMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::startMining")); }
 	virtual void stopMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::stopMining")); }
 	virtual bool isMining() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::isMining")); }
+	virtual bool wouldMine() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::wouldMine")); }
 	virtual uint64_t hashrate() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::hashrate")); }
 	virtual MiningProgress miningProgress() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::miningProgress")); }
 	virtual ProofOfWork::WorkPackage getWork() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::getWork")); }
@@ -169,9 +175,11 @@ protected:
 	TransactionQueue m_tq;							///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 
 	// filters
-	mutable Mutex x_filtersWatches;					///< Our lock.
-	std::map<h256, InstalledFilter> m_filters;		///< The dictionary of filters that are active.
-	std::map<unsigned, ClientWatch> m_watches;		///< Each and every watch - these reference a filter.
+	mutable Mutex x_filtersWatches;							///< Our lock.
+	std::unordered_map<h256, InstalledFilter> m_filters;	///< The dictionary of filters that are active.
+	std::unordered_map<h256, h256s> m_specialFilters = std::unordered_map<h256, std::vector<h256>>{{PendingChangedFilter, {}}, {ChainChangedFilter, {}}};
+															///< The dictionary of special filters and their additional data
+	std::map<unsigned, ClientWatch> m_watches;				///< Each and every watch - these reference a filter.
 };
 
 }}

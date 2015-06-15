@@ -40,10 +40,23 @@
 #include "HostCapability.h"
 #include "Network.h"
 #include "Peer.h"
-#include "RLPxFrameIO.h"
+#include "RLPXSocket.h"
+#include "RLPXFrameCoder.h"
 #include "Common.h"
 namespace ba = boost::asio;
 namespace bi = ba::ip;
+
+namespace std
+{
+template<> struct hash<pair<dev::p2p::NodeId, string>>
+{
+	size_t operator()(pair<dev::p2p::NodeId, string> const& _value) const
+	{
+		size_t ret = hash<dev::p2p::NodeId>()(_value.first);
+		return ret ^ (hash<string>()(_value.second) + 0x9e3779b9 + (ret << 6) + (ret >> 2));
+	}
+};
+}
 
 namespace dev
 {
@@ -64,6 +77,30 @@ private:
 	virtual void processEvent(NodeId const& _n, NodeTableEventType const& _e);
 
 	Host& m_host;
+};
+
+struct SubReputation
+{
+	bool isRude = false;
+	int utility = 0;
+};
+
+struct Reputation
+{
+	std::unordered_map<std::string, SubReputation> subs;
+};
+
+class ReputationManager
+{
+public:
+	ReputationManager();
+
+	void noteRude(Session const& _s, std::string const& _sub = std::string());
+	bool isRude(Session const& _s, std::string const& _sub = std::string()) const;
+
+private:
+	std::unordered_map<std::pair<p2p::NodeId, std::string>, Reputation> m_nodes;	///< Nodes that were impolite while syncing. We avoid syncing from these if possible.
+	SharedMutex mutable x_nodes;
 };
 
 /**
@@ -95,8 +132,11 @@ public:
 	/// Default host for current version of client.
 	static std::string pocHost();
 
+	static std::unordered_map<Public, std::string> const& pocHosts();
+
 	/// Register a peer-capability; all new peer connections will have this capability.
 	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; std::shared_ptr<T> ret(_t); m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = ret; return ret; }
+	template <class T> void addCapability(std::shared_ptr<T> const & _p, std::string const& _name, u256 const& _version) { m_capabilities[std::make_pair(_name, _version)] = _p; }
 
 	bool haveCapability(CapDesc const& _name) const { return m_capabilities.count(_name) != 0; }
 	CapDescs caps() const { CapDescs ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
@@ -135,6 +175,8 @@ public:
 	// TODO: P2P this should be combined with peers into a HostStat object of some kind; coalesce data, as it's only used for status information.
 	Peers getPeers() const { RecursiveGuard l(x_sessions); Peers ret; for (auto const& i: m_peers) ret.push_back(*i.second); return ret; }
 
+	NetworkPreferences const& networkPreferences() const { return m_netPrefs; }
+
 	void setNetworkPreferences(NetworkPreferences const& _p, bool _dropPeers = false) { m_dropPeers = _dropPeers; auto had = isStarted(); if (had) stop(); m_netPrefs = _p; if (had) start(); }
 
 	/// Start network. @threadsafe
@@ -147,13 +189,16 @@ public:
 	/// @returns if network has been started.
 	bool isStarted() const { return isWorking(); }
 
+	/// @returns our reputation manager.
+	ReputationManager& repMan() { return m_repMan; }
+
 	/// @returns if network is started and interactive.
 	bool haveNetwork() const { return m_run && !!m_nodeTable; }
 	
 	NodeId id() const { return m_alias.pub(); }
 
 	/// Validates and starts peer session, taking ownership of _io. Disconnects and returns false upon error.
-	void startPeerSession(Public const& _id, RLP const& _hello, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint);
+	void startPeerSession(Public const& _id, RLP const& _hello, RLPXFrameCoder* _io, std::shared_ptr<RLPXSocket> const& _s);
 
 protected:
 	void onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e);
@@ -162,6 +207,8 @@ protected:
 	void restoreNetwork(bytesConstRef _b);
 
 private:
+	enum PeerSlotRatio { Egress = 2, Ingress = 9 };
+	
 	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? !!m_sessions[_id].lock() : false; }
 	
 	/// Determines and sets m_tcpPublic to publicly advertised address.
@@ -169,6 +216,9 @@ private:
 
 	void connect(std::shared_ptr<Peer> const& _p);
 
+	/// Returns true if pending and connected peer count is less than maximum
+	bool peerSlotsAvailable(PeerSlotRatio _type) { Guard l(x_pendingNodeConns); return peerCount() + m_pendingPeerConns.size() < _type * m_idealPeerCount; }
+	
 	/// Ping the peers to update the latency information and disconnect peers which have timed out.
 	void keepAlivePeers();
 
@@ -220,7 +270,7 @@ private:
 	std::shared_ptr<NodeTable> m_nodeTable;									///< Node table (uses kademlia-like discovery).
 
 	/// Shared storage of Peer objects. Peers are created or destroyed on demand by the Host. Active sessions maintain a shared_ptr to a Peer;
-	std::map<NodeId, std::shared_ptr<Peer>> m_peers;
+	std::unordered_map<NodeId, std::shared_ptr<Peer>> m_peers;
 	
 	/// Peers we try to connect regardless of p2p network.
 	std::set<NodeId> m_requiredPeers;
@@ -228,13 +278,13 @@ private:
 
 	/// The nodes to which we are currently connected. Used by host to service peer requests and keepAlivePeers and for shutdown. (see run())
 	/// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
-	mutable std::map<NodeId, std::weak_ptr<Session>> m_sessions;
+	mutable std::unordered_map<NodeId, std::weak_ptr<Session>> m_sessions;
 	mutable RecursiveMutex x_sessions;
 	
 	std::list<std::weak_ptr<RLPXHandshake>> m_connecting;					///< Pending connections.
 	Mutex x_connecting;													///< Mutex for m_connecting.
 
-	unsigned m_idealPeerCount = 5;										///< Ideal number of peers to be connected to.
+	unsigned m_idealPeerCount = 11;										///< Ideal number of peers to be connected to.
 
 	std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;	///< Each of the capabilities we support.
 	
@@ -245,6 +295,8 @@ private:
 	std::chrono::steady_clock::time_point m_lastPing;						///< Time we sent the last ping to all peers.
 	bool m_accepting = false;
 	bool m_dropPeers = false;
+
+	ReputationManager m_repMan;
 };
 
 }

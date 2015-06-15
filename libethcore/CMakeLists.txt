@@ -24,15 +24,11 @@ set(EXECUTABLE ethcore)
 
 file(GLOB HEADERS "*.h")
 
-if(ETH_STATIC)
-	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
-else()
-	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
-endif()
+add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 target_link_libraries(${EXECUTABLE} ethash)
 target_link_libraries(${EXECUTABLE} devcrypto)
-target_link_libraries(${EXECUTABLE} devcore)
+#target_link_libraries(${EXECUTABLE} evmcore)
 
 if (ETHASHCL)
 	target_link_libraries(${EXECUTABLE} ethash-cl)

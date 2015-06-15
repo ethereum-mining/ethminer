@@ -23,15 +23,17 @@ set(ETH_SCRIPTS_DIR ${CMAKE_SOURCE_DIR}/cmake/scripts)
 # TODO use proper version of windows SDK (32 vs 64)
 # TODO make it possible to use older versions of windows SDK (7.0+ should also work)
 # TODO it windows SDK is NOT FOUND, throw ERROR
+# from https://github.com/rpavlik/cmake-modules/blob/master/FindWindowsSDK.cmake
 if (WIN32)
-	set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "C:/Program Files/Windows Kits/8.1/Lib/winv6.3/um/x86")
-	message(" - Found windows 8.1 SDK")
-	#set (CMAKE_PREFIX_PATH "C:/Program Files/Windows Kits/8.1/Lib/winv6.3/um/x64")
+	find_package(WINDOWSSDK REQUIRED)
+	message(" - WindowsSDK dirs: ${WINDOWSSDK_DIRS}")
+	set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${WINDOWSSDK_DIRS})
 endif()
 
 # homebrew installs qts in opt
 if (APPLE)
-	set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "/usr/local/opt/qt5")
+	set (CMAKE_PREFIX_PATH "/usr/local/opt/qt5" ${CMAKE_PREFIX_PATH})
+	set (CMAKE_PREFIX_PATH "/usr/local/opt/v8-315" ${CMAKE_PREFIX_PATH})
 endif()
 
 find_program(CTEST_COMMAND ctest)
@@ -46,6 +48,13 @@ message(" - CryptoPP lib   : ${CRYPTOPP_LIBRARIES}")
 find_package (LevelDB REQUIRED)
 message(" - LevelDB header: ${LEVELDB_INCLUDE_DIRS}")
 message(" - LevelDB lib: ${LEVELDB_LIBRARIES}")
+
+if (JSCONSOLE)
+	find_package (v8 REQUIRED)
+	message(" - v8 header: ${V8_INCLUDE_DIRS}")
+	message(" - v8 lib   : ${V8_LIBRARIES}")
+	add_definitions(-DETH_JSCONSOLE)
+endif()
 
 # TODO the Jsoncpp package does not yet check for correct version number
 find_package (Jsoncpp 0.60 REQUIRED)
@@ -149,6 +158,11 @@ if (GUI)
 	if (WIN32)
 		set (WINDEPLOYQT_APP ${Qt5Core_DIR}/../../../bin/windeployqt)
 		message(" - windeployqt path: ${WINDEPLOYQT_APP}")
+	endif()
+
+	if (APPLE)
+		find_program(ETH_APP_DMG appdmg)
+		message(" - appdmg location : ${ETH_APP_DMG}")
 	endif()
 
 	if (USENPM)

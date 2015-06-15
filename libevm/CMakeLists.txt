@@ -15,16 +15,15 @@ aux_source_directory(. SRC_LIST)
 # and windows is failing to build without that
 include_directories(BEFORE ..)
 include_directories(${Boost_INCLUDE_DIRS})
+if (EVMJIT)
+	include_directories(../evmjit/include)
+endif()
 
 set(EXECUTABLE evm)
 
 file(GLOB HEADERS "*.h")
 
-if (ETH_STATIC)
-	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
-else()
-	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
-endif()
+add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} devcrypto)

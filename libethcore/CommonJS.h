@@ -50,22 +50,12 @@ std::string prettyU256(u256 _n, bool _abridged = true);
 
 }
 
+
 // ethcore
 namespace dev
 {
 namespace eth
 {
-
-struct TransactionSkeleton
-{
-	bool creation = false;
-	Address from;
-	Address to;
-	u256 value;
-	bytes data;
-	u256 gas;
-	u256 gasPrice;
-};
 
 /// Convert to a block number, a bit like jsToInt, except that it correctly recognises "pending" and "latest".
 BlockNumber jsToBlockNumber(std::string const& _js);

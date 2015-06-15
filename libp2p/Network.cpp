@@ -111,7 +111,7 @@ std::set<bi::address> Network::getInterfaceAddresses()
 
 #endif
 
-	return std::move(addresses);
+	return addresses;
 }
 
 int Network::tcp4Listen(bi::tcp::acceptor& _acceptor, NetworkPreferences const& _netPrefs)
@@ -154,12 +154,12 @@ int Network::tcp4Listen(bi::tcp::acceptor& _acceptor, NetworkPreferences const& 
 			_acceptor.bind(endpoint);
 			_acceptor.listen();
 			retport = _acceptor.local_endpoint().port();
+			assert(retport == _netPrefs.listenPort);
 		}
 		catch (...)
 		{
 			clog(NetWarn) << "Couldn't start accepting connections on host. Failed to accept socket.\n" << boost::current_exception_diagnostic_information();
 		}
-		assert(retport == _netPrefs.listenPort);
 		return retport;
 	}
 	return retport;
@@ -226,9 +226,9 @@ bi::tcp::endpoint Network::resolveHost(string const& _addr)
 		boost::system::error_code ec;
 		// resolve returns an iterator (host can resolve to multiple addresses)
 		bi::tcp::resolver r(s_resolverIoService);
-		auto it = r.resolve({split[0], toString(port)}, ec);
+		auto it = r.resolve({bi::tcp::v4(), split[0], toString(port)}, ec);
 		if (ec)
-			clog(NetWarn) << "Error resolving host address " << _addr << ":" << ec.message();
+			clog(NetWarn) << "Error resolving host address..." << LogTag::Url << _addr << ":" << LogTag::Error << ec.message();
 		else
 			ep = *it;
 	}

@@ -73,7 +73,8 @@ public:
 
 	static std::string name();
 	static unsigned revision();
-	static void prep(BlockInfo const& _header);
+	static void prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
+	static void ensurePrecomputed(unsigned _number);
 	static bool verify(BlockInfo const& _header);
 	static bool preVerify(BlockInfo const& _header);
 	static WorkPackage package(BlockInfo const& _header);
@@ -84,11 +85,11 @@ public:
 	public:
 		CPUMiner(ConstructionInfo const& _ci): Miner(_ci), Worker("miner" + toString(index())) {}
 
-		static unsigned instances() { return std::thread::hardware_concurrency(); }
+		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : std::thread::hardware_concurrency(); }
 		static std::string platformInfo();
-		static void setDefaultPlatform(unsigned) {}
-		static void setDefaultDevice(unsigned) {}
-
+		static void listDevices() {}
+		static bool configureGPU(unsigned, unsigned, bool, unsigned, bool, boost::optional<uint64_t>) { return false; }
+		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency()); }
 	protected:
 		void kickOff() override
 		{
@@ -100,7 +101,7 @@ public:
 
 	private:
 		void workLoop() override;
-		static unsigned s_deviceId;
+		static unsigned s_numInstances;
 	};
 
 #if ETH_ETHASHCL || !ETH_TRUE
@@ -112,10 +113,19 @@ public:
 		GPUMiner(ConstructionInfo const& _ci);
 		~GPUMiner();
 
-		static unsigned instances() { return 1; }
+		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 		static std::string platformInfo();
-		static void setDefaultPlatform(unsigned _id) { s_platformId = _id; }
-		static void setDefaultDevice(unsigned _id) { s_deviceId = _id; }
+		static unsigned getNumDevices();
+		static void listDevices();
+		static bool configureGPU(
+			unsigned _platformId,
+			unsigned _deviceId,
+			bool _allowCPU,
+			unsigned _extraGPUMemory,
+			bool _forceSingleChunk,
+			boost::optional<uint64_t> _currentBlock
+		);
+		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
 
 	protected:
 		void kickOff() override;
@@ -133,6 +143,7 @@ public:
 		h256 m_minerSeed;		///< Last seed in m_miner
 		static unsigned s_platformId;
 		static unsigned s_deviceId;
+		static unsigned s_numInstances;
 	};
 #else
 	using GPUMiner = CPUMiner;

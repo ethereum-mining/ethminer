@@ -54,7 +54,6 @@ Method.prototype.extractCallback = function (args) {
     if (utils.isFunction(args[args.length - 1])) {
         return args.pop(); // modify the args array!
     }
-    return null;
 };
 
 /**
@@ -66,7 +65,7 @@ Method.prototype.extractCallback = function (args) {
  */
 Method.prototype.validateArgs = function (args) {
     if (args.length !== this.params) {
-        throw errors.InvalidNumberOfParams;
+        throw errors.InvalidNumberOfParams();
     }
 };
 
@@ -107,6 +106,7 @@ Method.prototype.formatOutput = function (result) {
  */
 Method.prototype.attachToObject = function (obj) {
     var func = this.send.bind(this);
+    func.request = this.request.bind(this);
     func.call = this.call; // that's ugly. filter.js uses it
     var name = this.name.split('.');
     if (name.length > 1) {
@@ -138,6 +138,19 @@ Method.prototype.toPayload = function (args) {
 };
 
 /**
+ * Should be called to create pure JSONRPC request which can be used in batch request
+ *
+ * @method request
+ * @param {...} params
+ * @return {Object} jsonrpc request
+ */
+Method.prototype.request = function () {
+    var payload = this.toPayload(Array.prototype.slice.call(arguments));
+    payload.format = this.formatOutput.bind(this);
+    return payload;
+};
+
+/**
  * Should send request to the API
  *
  * @method send
@@ -149,7 +162,7 @@ Method.prototype.send = function () {
     if (payload.callback) {
         var self = this;
         return RequestManager.getInstance().sendAsync(payload, function (err, result) {
-            payload.callback(null, self.formatOutput(result));
+            payload.callback(err, self.formatOutput(result));
         });
     }
     return this.formatOutput(RequestManager.getInstance().send(payload));
