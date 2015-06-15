@@ -246,6 +246,8 @@ static Json::Value toJsonEx(dev::eth::LocalisedLogEntries const& _es)
 
 		res.append(currentBlock);
 	}
+
+	return res;
 }
 
 static Json::Value toJson(dev::eth::LocalisedLogEntries const& _es)
