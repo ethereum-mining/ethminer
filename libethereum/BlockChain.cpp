@@ -700,7 +700,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 		else
 			fresh.push_back(h);
 	return ImportRoute{dead, fresh};
-};
+}
 
 void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
 {
