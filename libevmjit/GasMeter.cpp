@@ -217,7 +217,7 @@ void GasMeter::countExp(llvm::Value* _exponent)
 
 	// OPT: Can gas update be done in exp algorithm?
 	auto ctlz = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::ctlz, Type::Word);
-	auto lz256 = m_builder.CreateCall2(ctlz, _exponent, m_builder.getInt1(false));
+	auto lz256 = m_builder.CreateCall(ctlz, {_exponent, m_builder.getInt1(false)});
 	auto lz = m_builder.CreateTrunc(lz256, Type::Gas, "lz");
 	auto sigBits = m_builder.CreateSub(m_builder.getInt64(256), lz, "sigBits");
 	auto sigBytes = m_builder.CreateUDiv(m_builder.CreateAdd(sigBits, m_builder.getInt64(7)), m_builder.getInt64(8));
