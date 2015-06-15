@@ -388,6 +388,19 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 
 				o["callcreates"] = fev.exportCallCreates();
 				o["out"] = output.size() > 4096 ? "#" + toString(output.size()) : toHex(output, 2, HexPrefix::Add);
+
+				// compare expected output with post output
+				if (o.count("expectOut") > 0)
+				{
+					std::string warning = "Check State: Error! Unexpected output: " + o["out"].get_str() + " Expected: " + o["expectOut"].get_str();
+					if (Options::get().checkState)
+						BOOST_CHECK_MESSAGE((o["out"].get_str() == o["expectOut"].get_str()), warning);
+					else
+						BOOST_WARN_MESSAGE((o["out"].get_str() == o["expectOut"].get_str()), warning);
+
+					o.erase(o.find("expectOut"));
+				}
+
 				o["gas"] = toCompactHex(fev.gas, HexPrefix::Add, 1);
 				o["logs"] = exportLog(fev.sub.logs);
 			}

@@ -112,6 +112,7 @@ void interactiveHelp()
 		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." << endl
 		<< "    importconfig <path>  Import the config (.RLP) from the path provided." << endl
 		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
+		<< "    reprocess <block>  Reprocess a given block." << endl
 		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
 		<< "    exit  Exits the application." << endl;
@@ -128,6 +129,7 @@ void help()
 #if ETH_JSONRPC || !ETH_TRUE
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port <n>  Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
+		<< "    --admin <password>  Specify admin session key for JSON-RPC (default: auto-generated and printed at startup)." << endl
 #endif
 		<< "    -K,--kill  First kill the blockchain." << endl
 		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
@@ -290,6 +292,7 @@ int main(int argc, char** argv)
 #if ETH_JSONRPC
 	int jsonrpc = -1;
 #endif
+	string jsonAdmin;
 	bool upnp = true;
 	WithExisting killChain = WithExisting::Trust;
 	bool jit = false;
@@ -601,6 +604,8 @@ int main(int argc, char** argv)
 			jsonrpc = jsonrpc == -1 ? SensibleHttpPort : jsonrpc;
 		else if (arg == "--json-rpc-port" && i + 1 < argc)
 			jsonrpc = atoi(argv[++i]);
+		else if (arg == "--json-admin" && i + 1 < argc)
+			jsonAdmin = argv[++i];
 #endif
 #if ETH_JSCONSOLE
 		else if (arg == "--console")
@@ -683,7 +688,7 @@ int main(int argc, char** argv)
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
-	std::string clientImplString = "++eth/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
+	std::string clientImplString = "++eth/" + clientName + "v" + dev::Version + "-" + string(DEV_QUOTED(ETH_COMMIT_HASH)).substr(0, 8) + (ETH_CLEAN_REPO ? "" : "*") + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
 	dev::WebThreeDirect web3(
 		clientImplString,
 		dbPath,
@@ -810,14 +815,14 @@ int main(int argc, char** argv)
 
 	cout << "Transaction Signer: " << signingKey << endl;
 	cout << "Mining Benefactor: " << beneficiary << endl;
-	web3.startNetwork();
-	cout << "Node ID: " << web3.enode() << endl;
 
-	if (bootstrap)
-		for (auto const& i: Host::pocHosts())
-			web3.requirePeer(i.first, i.second);
-	if (remoteHost.size())
-		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
+	if (bootstrap || !remoteHost.empty())
+	{
+		web3.startNetwork();
+		cout << "Node ID: " << web3.enode() << endl;
+	}
+	else
+		cout << "Networking disabled. To start, use netstart or pass -b or a remote host." << endl;
 
 #if ETH_JSONRPC || !ETH_TRUE
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
@@ -825,10 +830,21 @@ int main(int argc, char** argv)
 	if (jsonrpc > -1)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager), vector<KeyPair>()));
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager), vector<KeyPair>(), keyManager));
 		jsonrpcServer->StartListening();
+		if (jsonAdmin.empty())
+			jsonAdmin = jsonrpcServer->newSession(SessionPermissions{true});
+		else
+			jsonrpcServer->addSession(jsonAdmin, SessionPermissions{true});
+		cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
 	}
 #endif
+
+	if (bootstrap)
+		for (auto const& i: Host::pocHosts())
+			web3.requirePeer(i.first, i.second);
+	if (!remoteHost.empty())
+		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
 
 	signal(SIGABRT, &sighandler);
 	signal(SIGTERM, &sighandler);
@@ -969,8 +985,13 @@ int main(int argc, char** argv)
 				if (jsonrpc < 0)
 					jsonrpc = SensibleHttpPort;
 				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager), vector<KeyPair>()));
+				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager));
 				jsonrpcServer->StartListening();
+				if (jsonAdmin.empty())
+					jsonAdmin = jsonrpcServer->newSession(SessionPermissions{true});
+				else
+					jsonrpcServer->addSession(jsonAdmin, SessionPermissions{true});
+				cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
 			}
 			else if (cmd == "jsonstop")
 			{
@@ -1505,6 +1526,22 @@ int main(int argc, char** argv)
 				cout << "RLP: " << RLP(rb) << endl;
 				cout << "Hex: " << toHex(rb) << endl;
 				cout << r << endl;
+			}
+			else if (c && cmd == "reprocess")
+			{
+				string block;
+				iss >> block;
+				h256 blockHash;
+				try
+				{
+					if (block.size() == 64 || block.size() == 66)
+						blockHash = h256(block);
+					else
+						blockHash = c->blockChain().numberHash(stoi(block));
+					c->state(blockHash);
+				}
+				catch (...)
+				{}
 			}
 			else if (c && cmd == "dumptrace")
 			{
