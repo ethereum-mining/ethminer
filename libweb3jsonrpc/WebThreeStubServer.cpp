@@ -35,6 +35,20 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+bool isHex(std::string const& _s)
+{
+	unsigned i = (_s.size() >= 2 && _s.substr(0, 2) == "0x") ? 2 : 0;
+	for (; i < _s.size(); ++i)
+		if (fromHex(_s[i], WhenError::DontThrow) == -1)
+			return false;
+	return true;
+}
+
+template <class T> bool isHash(std::string const& _hash)
+{
+	return (_hash.size() == T::size * 2 || (_hash.size() == T::size * 2 + 2 && _hash.substr(0, 2) == "0x")) && isHex(_hash);
+}
+
 WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, WebThreeDirect& _web3, shared_ptr<AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _shhAccounts, KeyManager& _keyMan, dev::eth::TrivialGasPricer& _gp):
 	WebThreeStubServerBase(_conn, _ethAccounts, _shhAccounts),
 	m_web3(_web3),
@@ -198,22 +212,16 @@ bool WebThreeStubServer::admin_eth_setMiningBenefactor(std::string const& _uuidO
 Json::Value WebThreeStubServer::admin_eth_inspect(std::string const& _address, std::string const& _session)
 {
 	ADMIN;
-	(void)_address;
-	return {};
-}
+	if (!isHash<Address>(_address))
+		throw jsonrpc::JsonRpcException("Invalid address given.");
 
-bool isHex(std::string const& _s)
-{
-	unsigned i = (_s.size() >= 2 && _s.substr(0, 2) == "0x") ? 2 : 0;
-	for (; i < _s.size(); ++i)
-		if (fromHex(_s[i], WhenError::DontThrow) == -1)
-			return false;
-	return true;
-}
-
-template <class T> bool isHash(std::string const& _hash)
-{
-	return (_hash.size() == T::size * 2 || (_hash.size() == T::size * 2 + 2 && _hash.substr(0, 2) == "0x")) && isHex(_hash);
+	Json::Value ret;
+	auto h = Address(fromHex(_address));
+	ret["storage"] = toJson(m_web3.ethereum()->storageAt(h, PendingBlock));
+	ret["balance"] = toJS(m_web3.ethereum()->balanceAt(h, PendingBlock));
+	ret["nonce"] = toJS(m_web3.ethereum()->countAt(h, PendingBlock));
+	ret["code"] = toJS(m_web3.ethereum()->codeAt(h, PendingBlock));
+	return ret;
 }
 
 h256 WebThreeStubServer::blockHash(std::string const& _blockNumberOrHash) const
