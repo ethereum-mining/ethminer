@@ -39,21 +39,26 @@ Item
 	{
 		accountRef.clear();
 		accountRef.append({"itemid": " - "});
-
-		if (subType === "contract" || subType === "address")
+        if (subType === "contract" || subType === "address")
 		{
 			var trCr = 0;
-			for (var k = 0; k < transactionsModel.count; k++)
-			{
-				if (k >= transactionIndex)
-					break;
-				var tr = transactionsModel.get(k);
-				if (tr.functionId === tr.contractId /*&& (dec[1] === tr.contractId || item.subType === "address")*/)
-				{
-					accountRef.append({ "itemid": tr.contractId + " - " + trCr, "value": "<" + tr.contractId + " - " + trCr + ">", "type": "contract" });
-					trCr++;
-				}
-			}
+            if (blockChainPanel)
+                for (var k = 0; k < blockChainPanel.model.blocks.length; k++)
+                {
+                    if (k > blockIndex)
+                        break;
+                    for (var i = 0; i < blockChainPanel.model.blocks[k].transactions.length; i++)
+                    {
+                        if (i > transactionIndex)
+                            break;
+                        var tr = blockChainPanel.model.blocks[k].transactions[i]
+                        if (tr.functionId === tr.contractId /*&& (dec[1] === tr.contractId || item.subType === "address")*/)
+                        {
+                            accountRef.append({ "itemid": tr.contractId + " - " + trCr, "value": "<" + tr.contractId + " - " + trCr + ">", "type": "contract" });
+                            trCr++;
+                        }
+                    }
+                }
 		}
 		if (subType === "address")
 		{
