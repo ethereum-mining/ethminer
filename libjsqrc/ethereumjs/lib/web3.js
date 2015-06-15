@@ -34,6 +34,7 @@ var Filter = require('./web3/filter');
 var utils = require('./utils/utils');
 var formatters = require('./web3/formatters');
 var RequestManager = require('./web3/requestmanager');
+var Method = require('./web3/method');
 var c = require('./utils/config');
 var Property = require('./web3/property');
 var Batch = require('./web3/batch');
@@ -157,6 +158,18 @@ setupMethods(web3.eth, eth.methods);
 setupProperties(web3.eth, eth.properties);
 setupMethods(web3.db, db.methods);
 setupMethods(web3.shh, shh.methods);
+
+web3.admin = {};
+web3.admin.setSessionKey = function(s) { web3.admin.sessionKey = s; };
+
+var blockQueueStatus = new Property({
+	name: 'blockQueueStatus',
+	call: 'admin_eth_blockQueueStatus',
+	params: 1,
+	inputFormatter: [function() { return web3.admin.sessionKey; }]
+});
+
+setupMethods(web3.admin, [blockQueueStatus]);
 
 module.exports = web3;
 
