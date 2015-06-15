@@ -31,10 +31,9 @@ using namespace dev::eth;
 
 OurWebThreeStubServer::OurWebThreeStubServer(
 	jsonrpc::AbstractServerConnector& _conn,
-	WebThreeDirect& _web3,
 	Main* _main
 ):
-	WebThreeStubServer(_conn, _web3, make_shared<OurAccountHolder>(_web3, _main), _main->owned().toVector().toStdVector()),
+	WebThreeStubServer(_conn, *_main->web3(), make_shared<OurAccountHolder>(_main), _main->owned().toVector().toStdVector(), _main->keyManager()),
 	m_main(_main)
 {
 }
@@ -46,12 +45,8 @@ string OurWebThreeStubServer::shh_newIdentity()
 	return toJS(kp.pub());
 }
 
-OurAccountHolder::OurAccountHolder(
-	WebThreeDirect& _web3,
-	Main* _main
-):
-	AccountHolder([=](){ return m_web3->ethereum(); }),
-	m_web3(&_web3),
+OurAccountHolder::OurAccountHolder(Main* _main):
+	AccountHolder([=](){ return _main->ethereum(); }),
 	m_main(_main)
 {
 	connect(_main, SIGNAL(poll()), this, SLOT(doValidations()));
@@ -135,7 +130,7 @@ void OurAccountHolder::doValidations()
 		else
 			// sign and submit.
 			if (Secret s = m_main->retrieveSecret(t.from))
-				m_web3->ethereum()->submitTransaction(s, t);
+				m_main->ethereum()->submitTransaction(s, t);
 	}
 }
 
@@ -155,7 +150,7 @@ bool OurAccountHolder::validateTransaction(TransactionSkeleton const& _t, bool _
 		return showCreationNotice(_t, _toProxy);
 	}
 
-	h256 contractCodeHash = m_web3->ethereum()->postState().codeHash(_t.to);
+	h256 contractCodeHash = m_main->ethereum()->postState().codeHash(_t.to);
 	if (contractCodeHash == EmptySHA3)
 	{
 		// recipient has no code - nothing special about this transaction, show basic value transfer info

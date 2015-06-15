@@ -122,6 +122,7 @@ public:
 	virtual std::string eth_signTransaction(Json::Value const& _transaction);
 	virtual Json::Value eth_inspectTransaction(std::string const& _rlp);
 	virtual bool eth_injectTransaction(std::string const& _rlp);
+	virtual bool eth_notePassword(std::string const&) { return false; }
 
 	virtual bool db_put(std::string const& _name, std::string const& _key, std::string const& _value);
 	virtual std::string db_get(std::string const& _name, std::string const& _key);
@@ -135,11 +136,37 @@ public:
 	virtual bool shh_uninstallFilter(std::string const& _filterId);
 	virtual Json::Value shh_getFilterChanges(std::string const& _filterId);
 	virtual Json::Value shh_getMessages(std::string const& _filterId);
-	
+
+	virtual bool admin_web3_setVerbosity(int _v, std::string const& _session);
+	virtual bool admin_net_start(std::string const& _session);
+	virtual bool admin_net_stop(std::string const& _session);
+	virtual bool admin_net_connect(std::string const& _node, std::string const& _session);
+	virtual Json::Value admin_net_peers(std::string const& _session);
+
+	virtual bool admin_eth_setMining(bool _on, std::string const& _session);
+	virtual Json::Value admin_eth_blockQueueStatus(std::string const& _session) { (void)_session; return Json::Value(); }
+	virtual bool admin_eth_setAskPrice(std::string const& _wei, std::string const& _session) { (void)_wei; (void)_session; return false; }
+	virtual bool admin_eth_setBidPrice(std::string const& _wei, std::string const& _session) { (void)_wei; (void)_session; return false; }
+	virtual bool admin_eth_setReferencePrice(std::string const& _wei, std::string const& _session) { (void)_wei; (void)_session; return false; }
+	virtual bool admin_eth_setPriority(int _percent, std::string const& _session) { (void)_percent; (void)_session; return false; }
+	virtual Json::Value admin_eth_findBlock(std::string const& _blockHash, std::string const& _session) { (void)_blockHash; (void)_session; return Json::Value(); }
+	virtual std::string admin_eth_blockQueueFirstUnknown(std::string const& _session) { (void)_session; return ""; }
+	virtual bool admin_eth_blockQueueRetryUnknown(std::string const& _session) { (void)_session; return false; }
+	virtual Json::Value admin_eth_allAccounts(std::string const& _session) { (void)_session; return Json::Value(); }
+	virtual Json::Value admin_eth_newAccount(const Json::Value& _info, std::string const& _session) { (void)_info; (void)_session; return Json::Value(); }
+	virtual bool admin_eth_setSigningKey(std::string const& _uuidOrAddress, std::string const& _session) { (void)_uuidOrAddress; (void)_session; return false; }
+	virtual bool admin_eth_setMiningBenefactor(std::string const& _uuidOrAddress, std::string const& _session) { (void)_uuidOrAddress; (void)_session; return false; }
+	virtual Json::Value admin_eth_inspect(std::string const& _address, std::string const& _session) { (void)_address; (void)_session; return Json::Value(); }
+	virtual Json::Value admin_eth_reprocess(std::string const& _blockNumberOrHash, std::string const& _session) { (void)_blockNumberOrHash; (void)_session; return Json::Value(); }
+	virtual Json::Value admin_eth_vmTrace(std::string const& _blockNumberOrHash, std::string const& _txIndex, std::string const& _session) { (void)_blockNumberOrHash; (void)_txIndex; (void)_session; return Json::Value(); }
+	virtual Json::Value admin_eth_getReceiptByHashAndIndex(std::string const& _blockNumberOrHash, std::string const& _txIndex, std::string const& _session) { (void)_blockNumberOrHash; (void)_txIndex; (void)_session; return Json::Value(); }
+
 	void setIdentities(std::vector<dev::KeyPair> const& _ids);
 	std::map<dev::Public, dev::Secret> const& ids() const { return m_shhIds; }
 
 protected:
+	virtual bool isAdmin(std::string const& _session) const { (void)_session; return false; }
+
 	virtual dev::eth::Interface* client() = 0;
 	virtual std::shared_ptr<dev::shh::Interface> face() = 0;
 	virtual dev::WebThreeNetworkFace* network() = 0;
