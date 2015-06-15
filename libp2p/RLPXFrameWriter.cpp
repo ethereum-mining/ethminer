@@ -59,7 +59,7 @@ size_t RLPXFrameWriter::drain(RLPXFrameCoder& _coder, unsigned _size, vector<byt
 		bool high = highPending && !swapQueues ? true : lowPending ? false : true;
 		QueueState &qs = high ? m_q.first : m_q.second;
 		size_t frameAllot = (!swapQueues && highPending && lowPending ? frameLen / 2 - (c_overhead + c_blockSize) > 0 ? frameLen / 2 : frameLen : frameLen) - c_overhead;
-		size_t offset;
+		size_t offset = 0;
 		while (frameAllot >= c_blockSize)
 		{
 			if (qs.writing == nullptr)
@@ -104,7 +104,7 @@ size_t RLPXFrameWriter::drain(RLPXFrameCoder& _coder, unsigned _size, vector<byt
 		if (payload.size())
 		{
 			if (qs.sequenced)
-				if (!offset)
+				if (offset == 0)
 					_coder.writeFrame(m_protocolType, qs.sequence, qs.writing->size(), &payload, payload);
 				else
 					_coder.writeFrame(m_protocolType, qs.sequence, &payload, payload);
