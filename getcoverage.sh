@@ -16,9 +16,9 @@ if which lcov >/dev/null; then
 	if which genhtml >/dev/null; then
 	lcov --directory $TESTETH --zerocounters
 	echo Running testeth...
-	$($CPP_ETHEREUM_PATH/build/test/testeth --all)
-	$($CPP_ETHEREUM_PATH/build/test/testeth -t StateTests --jit --all)
-	$($CPP_ETHEREUM_PATH/build/test/testeth -t VMTests --jit --all)
+	$CPP_ETHEREUM_PATH/build/test/testeth -t --all
+	$CPP_ETHEREUM_PATH/build/test/testeth -t StateTests --jit --all
+	$CPP_ETHEREUM_PATH/build/test/testeth -t VMTests --jit --all
 	echo Prepearing coverage info...
 	else
 	echo genhtml not found
