@@ -212,7 +212,7 @@ Main::Main(QWidget *parent) :
 	m_httpConnector.reset(new jsonrpc::HttpServer(SensibleHttpPort, "", "", dev::SensibleHttpThreads));
 	auto w3ss = new OurWebThreeStubServer(*m_httpConnector, this);
 	m_server.reset(w3ss);
-	auto sessionKey = w3ss->newSession({true});
+	auto sessionKey = w3ss->newSession(SessionPermissions{{Priviledge::Admin}});
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
@@ -1922,7 +1922,7 @@ void Main::on_clearPending_triggered()
 
 void Main::on_retryUnknown_triggered()
 {
-	ethereum()->retryUnkonwn();
+	ethereum()->retryUnknown();
 }
 
 void Main::on_killBlockchain_triggered()
@@ -1941,11 +1941,7 @@ void Main::on_net_triggered()
 {
 	ui->port->setEnabled(!ui->net->isChecked());
 	ui->clientName->setEnabled(!ui->net->isChecked());
-	string n = string("AlethZero/v") + dev::Version;
-	if (ui->clientName->text().size())
-		n += "/" + ui->clientName->text().toStdString();
-	n +=  "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM);
-	web3()->setClientVersion(n);
+	web3()->setClientVersion(WebThreeDirect::composeClientVersion("AlethZero", ui->clientName->text().toStdString()));
 	if (ui->net->isChecked())
 	{
 		web3()->setIdealPeerCount(ui->idealPeers->value());

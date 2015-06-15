@@ -296,7 +296,9 @@ ExecutionResult MixClient::execution(unsigned _index) const
 State MixClient::asOf(h256 const& _block) const
 {
 	ReadGuard l(x_state);
-	return State(m_stateDB, bc(), _block);
+	State ret(m_stateDB);
+	ret.populateFromChain(bc(), _block);
+	return ret;
 }
 
 void MixClient::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, bool _gasAuto)

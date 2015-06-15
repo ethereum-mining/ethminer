@@ -879,7 +879,9 @@ State Client::asOf(h256 const& _block) const
 {
 	try
 	{
-		return State(m_stateDB, bc(), _block);
+		State ret(m_stateDB);
+		ret.populateFromChain(bc(), _block);
+		return ret;
 	}
 	catch (Exception& ex)
 	{
@@ -896,12 +898,36 @@ void Client::prepareForTransaction()
 
 State Client::state(unsigned _txi, h256 _block) const
 {
-	return State(m_stateDB, m_bc, _block).fromPending(_txi);
+	try
+	{
+		State ret(m_stateDB);
+		ret.populateFromChain(m_bc, _block);
+		return ret.fromPending(_txi);
+	}
+	catch (Exception& ex)
+	{
+		ex << errinfo_block(bc().block(_block));
+		onBadBlock(ex);
+		return State();
+	}
 }
 
-eth::State Client::state(h256 _block) const
+State Client::state(h256 const& _block, PopulationStatistics* o_stats) const
 {
-	return State(m_stateDB, m_bc, _block);
+	try
+	{
+		State ret(m_stateDB);
+		PopulationStatistics s = ret.populateFromChain(m_bc, _block);
+		if (o_stats)
+			swap(s, *o_stats);
+		return ret;
+	}
+	catch (Exception& ex)
+	{
+		ex << errinfo_block(bc().block(_block));
+		onBadBlock(ex);
+		return State();
+	}
 }
 
 eth::State Client::state(unsigned _txi) const

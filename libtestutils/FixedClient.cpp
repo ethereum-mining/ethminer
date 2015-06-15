@@ -28,5 +28,7 @@ using namespace dev::test;
 eth::State FixedClient::asOf(h256 const& _h) const
 {
 	ReadGuard l(x_stateDB);
-	return State(m_state.db(), bc(), _h);
+	State ret(m_state.db());
+	ret.populateFromChain(bc(), _h);
+	return ret;
 }
