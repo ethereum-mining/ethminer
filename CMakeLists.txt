@@ -7,7 +7,7 @@ set(CMAKE_AUTOMOC OFF)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
 else()
-	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Wconversion -Wno-sign-conversion -Wno-unknown-pragmas")
+	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Wconversion -Wno-sign-conversion -Wno-unknown-pragmas ${CMAKE_CXX_FLAGS}")
 endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
@@ -32,6 +32,8 @@ else()
 	add_definitions(-D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS)
 	link_directories(/usr/lib/llvm-3.7/lib)
 endif()
+
+get_filename_component(EVMJIT_INCLUDE_DIR include ABSOLUTE)
 
 add_subdirectory(libevmjit)
 
