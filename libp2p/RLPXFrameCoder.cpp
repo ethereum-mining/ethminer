@@ -14,16 +14,14 @@
  You should have received a copy of the GNU General Public License
  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-/** @file RLPXFrameIO.cpp
+/** @file RLPXFrameCoder.cpp
  * @author Alex Leverington <nessence@gmail.com>
  * @date 2015
  */
 
-#include "RLPxFrameIO.h"
+#include "RLPXFrameCoder.h"
+
 #include <libdevcore/Assertions.h>
-#include "Host.h"
-#include "Session.h"
-#include "Peer.h"
 #include "RLPxHandshake.h"
 
 using namespace std;
@@ -31,7 +29,7 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace CryptoPP;
 
-RLPXFrameIO::RLPXFrameIO(RLPXHandshake const& _init): m_socket(_init.m_socket)
+RLPXFrameCoder::RLPXFrameCoder(RLPXHandshake const& _init)
 {
 	// we need:
 	// originated?
@@ -94,7 +92,7 @@ RLPXFrameIO::RLPXFrameIO(RLPXHandshake const& _init): m_socket(_init.m_socket)
 	m_ingressMac.Update(keyMaterial.data(), keyMaterial.size());
 }
 
-void RLPXFrameIO::writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes)
+void RLPXFrameCoder::writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes)
 {
 	// _packet = type || rlpList()
 
@@ -126,7 +124,7 @@ void RLPXFrameIO::writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes)
 	egressDigest().ref().copyTo(macRef);
 }
 
-bool RLPXFrameIO::authAndDecryptHeader(bytesRef io)
+bool RLPXFrameCoder::authAndDecryptHeader(bytesRef io)
 {
 	asserts(io.size() == h256::size);
 	updateIngressMACWithHeader(io);
@@ -138,7 +136,7 @@ bool RLPXFrameIO::authAndDecryptHeader(bytesRef io)
 	return true;
 }
 
-bool RLPXFrameIO::authAndDecryptFrame(bytesRef io)
+bool RLPXFrameCoder::authAndDecryptFrame(bytesRef io)
 {
 	bytesRef cipherText(io.cropped(0, io.size() - h128::size));
 	updateIngressMACWithFrame(cipherText);
@@ -149,7 +147,7 @@ bool RLPXFrameIO::authAndDecryptFrame(bytesRef io)
 	return true;
 }
 
-h128 RLPXFrameIO::egressDigest()
+h128 RLPXFrameCoder::egressDigest()
 {
 	SHA3_256 h(m_egressMac);
 	h128 digest;
@@ -157,7 +155,7 @@ h128 RLPXFrameIO::egressDigest()
 	return digest;
 }
 
-h128 RLPXFrameIO::ingressDigest()
+h128 RLPXFrameCoder::ingressDigest()
 {
 	SHA3_256 h(m_ingressMac);
 	h128 digest;
@@ -165,29 +163,29 @@ h128 RLPXFrameIO::ingressDigest()
 	return digest;
 }
 
-void RLPXFrameIO::updateEgressMACWithHeader(bytesConstRef _headerCipher)
+void RLPXFrameCoder::updateEgressMACWithHeader(bytesConstRef _headerCipher)
 {
 	updateMAC(m_egressMac, _headerCipher.cropped(0, 16));
 }
 
-void RLPXFrameIO::updateEgressMACWithFrame(bytesConstRef _cipher)
+void RLPXFrameCoder::updateEgressMACWithFrame(bytesConstRef _cipher)
 {
 	m_egressMac.Update(_cipher.data(), _cipher.size());
 	updateMAC(m_egressMac);
 }
 
-void RLPXFrameIO::updateIngressMACWithHeader(bytesConstRef _headerCipher)
+void RLPXFrameCoder::updateIngressMACWithHeader(bytesConstRef _headerCipher)
 {
 	updateMAC(m_ingressMac, _headerCipher.cropped(0, 16));
 }
 
-void RLPXFrameIO::updateIngressMACWithFrame(bytesConstRef _cipher)
+void RLPXFrameCoder::updateIngressMACWithFrame(bytesConstRef _cipher)
 {
 	m_ingressMac.Update(_cipher.data(), _cipher.size());
 	updateMAC(m_ingressMac);
 }
 
-void RLPXFrameIO::updateMAC(SHA3_256& _mac, bytesConstRef _seed)
+void RLPXFrameCoder::updateMAC(SHA3_256& _mac, bytesConstRef _seed)
 {
 	if (_seed.size() && _seed.size() != h128::size)
 		asserts(false);
