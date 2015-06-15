@@ -64,6 +64,13 @@ if (PROFILING AND (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_C
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lprofiler")
 endif ()
 
+if (PROFILING AND (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")))
+        set(CMAKE_CXX_FLAGS "-g --coverage ${CMAKE_CXX_FLAGS}")
+        set(CMAKE_C_FLAGS "-g --coverage ${CMAKE_C_FLAGS}")
+        set(CMAKE_SHARED_LINKER_FLAGS "--coverage ${CMAKE_SHARED_LINKER_FLAGS} -lprofiler")
+        set(CMAKE_EXE_LINKER_FLAGS "--coverage ${CMAKE_EXE_LINKER_FLAGS} -lprofiler")
+endif ()
+
 if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang"))
 	option(USE_LD_GOLD "Use GNU gold linker" ON)
 	if (USE_LD_GOLD)
