@@ -120,7 +120,7 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 		r["storage"] = storage;
 	}
 
-	if (returned)
+	if (returned || newContext)
 		r["depth"] = ext.depth;
 	if (newContext)
 		r["address"] = ext.myAddress.hex();
@@ -201,12 +201,12 @@ void Executive::initialize(Transaction const& _transaction)
 
 	// Avoid unaffordable transactions.
 	m_gasCost = (bigint)m_t.gas() * m_t.gasPrice();
-	m_totalCost = m_t.value() + m_gasCost;
-	if (m_s.balance(m_t.sender()) < m_totalCost)
+	bigint totalCost = m_t.value() + m_gasCost;
+	if (m_s.balance(m_t.sender()) < totalCost)
 	{
-		clog(ExecutiveWarnChannel) << "Not enough cash: Require >" << m_totalCost << " Got" << m_s.balance(m_t.sender()) << "for sender: " << m_t.sender();
+		clog(ExecutiveWarnChannel) << "Not enough cash: Require >" << totalCost << " Got" << m_s.balance(m_t.sender()) << "for sender: " << m_t.sender();
 		m_excepted = TransactionException::NotEnoughCash;
-		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(m_totalCost, (bigint)m_s.balance(m_t.sender())) << errinfo_comment(m_t.sender().abridged()));
+		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender())) << errinfo_comment(m_t.sender().abridged()));
 	}
 }
 

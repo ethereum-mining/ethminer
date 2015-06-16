@@ -54,9 +54,10 @@ class BlockQueue;
  * @warning None of this is thread-safe. You have been warned.
  * @doWork Syncs to peers and sends new blocks and transactions.
  */
-class EthereumHost: public p2p::HostCapability<EthereumPeer>, Worker
+class EthereumHost: public p2p::HostCapability<EthereumPeer>, Worker, HasInvariants
 {
 public:
+
 	/// Start server, but don't listen.
 	EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId);
 
@@ -70,7 +71,7 @@ public:
 	void reset();
 
 	DownloadMan const& downloadMan() const { return m_man; }
-	bool isSyncing() const { RecursiveGuard l(x_sync); return isSyncing_UNSAFE(); }
+	bool isSyncing() const;
 	bool isBanned(p2p::NodeId const& _id) const { return !!m_banned.count(_id); }
 
 	void noteNewTransactions() { m_newTransactions = true; }
@@ -87,16 +88,21 @@ public:
 	DownloadMan& downloadMan() { return m_man; }
 	HashDownloadMan& hashDownloadMan() { return m_hashMan; }
 	BlockChain const& chain() { return m_chain; }
-	HashChainStatus status();
+	SyncStatus status() const;
+	static char const* stateName(SyncState _s) { return s_stateNames[static_cast<int>(_s)]; }
 
 	static unsigned const c_oldProtocolVersion;
 
 private:
+	static char const* const s_stateNames[static_cast<int>(SyncState::Size)];
+
 	std::tuple<std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<p2p::Session>>> randomSelection(unsigned _percent = 25, std::function<bool(EthereumPeer*)> const& _allow = [](EthereumPeer const*){ return true; });
 
 	void foreachPeerPtr(std::function<void(std::shared_ptr<EthereumPeer>)> const& _f) const;
 	void foreachPeer(std::function<void(EthereumPeer*)> const& _f) const;
-	bool isSyncing_UNSAFE() const;
+	void resetSyncTo(h256 const& _h);
+	bool needHashes() const { return m_state == SyncState::HashesNegotiate || m_state == SyncState::HashesSingle || m_state == SyncState::HashesParallel; }
+	bool needBlocks() const { return m_state == SyncState::Blocks || m_state == SyncState::NewBlocks; }
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	void doWork();
@@ -125,11 +131,16 @@ private:
 	bool peerShouldGrabBlocks(EthereumPeer* _peer) const;
 	bool peerShouldGrabChain(EthereumPeer* _peer) const;
 	bool peerCanHelp(EthereumPeer* _peer) const;
+	unsigned estimateHashes();
 	void estimatePeerHashes(EthereumPeer* _peer);
+	void setState(SyncState _s);
+
+	bool invariants() const override;
 
 	BlockChain const& m_chain;
 	TransactionQueue& m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 	BlockQueue& m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
+	Handler m_bqRoomAvailable;
 
 	u256 m_networkId;
 
@@ -145,13 +156,13 @@ private:
 	bool m_newBlocks = false;
 
 	mutable RecursiveMutex x_sync;
-	bool m_needSyncHashes = true;				///< Indicates if need to downlad hashes
-	bool m_needSyncBlocks = true;				///< Indicates if we still need to download some blocks
-	h256 m_syncingLatestHash;					///< Latest block's hash, as of the current sync.
-	u256 m_syncingTotalDifficulty;				///< Latest block's total difficulty, as of the current sync.
-	h256s m_hashes;								///< List of hashes with unknown block numbers. Used for PV60 chain downloading and catching up to a particular unknown
-	unsigned m_estimatedHashes = 0;				///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
-	bool m_syncingV61 = false;					///< True if recent activity was over pv61+. Used for status reporting only.
+	SyncState m_state = SyncState::Idle;			///< Current sync state
+	SyncState m_lastActiveState = SyncState::Idle; 	///< Saved state before entering waiting queue mode
+	h256 m_syncingLatestHash;						///< Latest block's hash, as of the current sync.
+	u256 m_syncingTotalDifficulty;					///< Latest block's total difficulty, as of the current sync.
+	h256s m_hashes;									///< List of hashes with unknown block numbers. Used for PV60 chain downloading and catching up to a particular unknown
+	unsigned m_estimatedHashes = 0;					///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
+	bool m_continueSync = false;					///< True when the block queue has processed a block; we should restart grabbing blocks.
 };
 
 }

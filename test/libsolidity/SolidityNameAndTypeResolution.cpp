@@ -558,16 +558,6 @@ BOOST_AUTO_TEST_CASE(function_external_call_not_allowed_conversion)
 	BOOST_CHECK_THROW(parseTextAndResolveNames(text), TypeError);
 }
 
-// todo delete when implemented
-BOOST_AUTO_TEST_CASE(arrays_in_internal_functions)
-{
-	char const* text = R"(
-		contract Test {
-			function foo(address[] addresses) {}
-	})";
-	BOOST_CHECK_THROW(parseTextAndResolveNames(text), TypeError);
-}
-
 BOOST_AUTO_TEST_CASE(function_internal_allowed_conversion)
 {
 	char const* text = R"(
@@ -1579,7 +1569,6 @@ BOOST_AUTO_TEST_CASE(test_fromElementaryTypeName)
 	BOOST_CHECK(*Type::fromElementaryTypeName(Token::UInt256) == *make_shared<IntegerType>(256, IntegerType::Modifier::Unsigned));
 
 	BOOST_CHECK(*Type::fromElementaryTypeName(Token::Byte) == *make_shared<FixedBytesType>(1));
-	BOOST_CHECK(*Type::fromElementaryTypeName(Token::Bytes0) == *make_shared<FixedBytesType>(0));
 	BOOST_CHECK(*Type::fromElementaryTypeName(Token::Bytes1) == *make_shared<FixedBytesType>(1));
 	BOOST_CHECK(*Type::fromElementaryTypeName(Token::Bytes2) == *make_shared<FixedBytesType>(2));
 	BOOST_CHECK(*Type::fromElementaryTypeName(Token::Bytes3) == *make_shared<FixedBytesType>(3));
@@ -1664,16 +1653,6 @@ BOOST_AUTO_TEST_CASE(local_const_variable)
 			}
 	})";
 	BOOST_CHECK_THROW(parseTextAndResolveNames(text), ParserError);
-}
-
-BOOST_AUTO_TEST_CASE(bytes0_array)
-{
-	char const* text = R"(
-		contract Foo {
-			bytes0[] illegalArray;
-		}
-	)";
-	BOOST_CHECK_THROW(parseTextAndResolveNames(text), TypeError);
 }
 
 BOOST_AUTO_TEST_CASE(overloaded_function_cannot_resolve)
@@ -1908,6 +1887,93 @@ BOOST_AUTO_TEST_CASE(storage_location_local_variables)
 		}
 	)";
 	BOOST_CHECK_NO_THROW(parseTextAndResolveNames(sourceCode));
+}
+
+BOOST_AUTO_TEST_CASE(assignment_mem_to_local_storage_variable)
+{
+	char const* sourceCode = R"(
+		contract C {
+			uint[] data;
+			function f(uint[] x) {
+				var dataRef = data;
+				dataRef = x;
+			}
+		}
+	)";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(sourceCode), TypeError);
+}
+
+BOOST_AUTO_TEST_CASE(storage_assign_to_different_local_variable)
+{
+	char const* sourceCode = R"(
+		contract C {
+			uint[] data;
+			uint8[] otherData;
+			function f() {
+				uint8[] storage x = otherData;
+				uint[] storage y = data;
+				y = x;
+				// note that data = otherData works
+			}
+		}
+	)";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(sourceCode), TypeError);
+}
+
+BOOST_AUTO_TEST_CASE(assignment_mem_storage_variable_directly)
+{
+	char const* sourceCode = R"(
+		contract C {
+			uint[] data;
+			function f(uint[] x) {
+				data = x;
+			}
+		}
+	)";
+	BOOST_CHECK_NO_THROW(parseTextAndResolveNames(sourceCode));
+}
+
+BOOST_AUTO_TEST_CASE(function_argument_mem_to_storage)
+{
+	char const* sourceCode = R"(
+		contract C {
+			function f(uint[] storage x) private {
+			}
+			function g(uint[] x) {
+				f(x);
+			}
+		}
+	)";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(sourceCode), TypeError);
+}
+
+BOOST_AUTO_TEST_CASE(function_argument_storage_to_mem)
+{
+	char const* sourceCode = R"(
+		contract C {
+			function f(uint[] storage x) private {
+				g(x);
+			}
+			function g(uint[] x) {
+			}
+		}
+	)";
+	BOOST_CHECK_NO_THROW(parseTextAndResolveNames(sourceCode));
+}
+
+BOOST_AUTO_TEST_CASE(mem_array_assignment_changes_base_type)
+{
+	// Such an assignment is possible in storage, but not in memory
+	// (because it would incur an otherwise unnecessary copy).
+	// This requirement might be lifted, though.
+	char const* sourceCode = R"(
+		contract C {
+			function f(uint8[] memory x) private {
+				uint[] memory y = x;
+			}
+		}
+	)";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(sourceCode), TypeError);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

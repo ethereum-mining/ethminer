@@ -37,7 +37,7 @@ option(ETHKEY "Build the CLI key manager component" ON)
 option(SOLIDITY "Build the Solidity language components" ON)
 option(SERPENT "Build the Serpent language components" ON)
 option(TOOLS "Build the tools components" ON)
-option(NCURSES "Build the NCurses components" ON)
+option(NCURSES "Build the NCurses components" OFF)
 option(GUI "Build GUI components (AlethZero, Mix)" ON)
 option(TESTS "Build the tests." ON)
 option(EVMJIT "Build just-in-time compiler for EVM code (requires LLVM)" OFF)
@@ -222,7 +222,7 @@ elseif (BUNDLE STREQUAL "full")
 	set(SOLIDITY ON)
 	set(USENPM ON)
 	set(GUI ON)
-	set(NCURSES ${DECENT_PLATFORM})
+#	set(NCURSES ${DECENT_PLATFORM})
 	set(TOOLS ON)
 	set(TESTS ON)
 	set(FATDB ON)
@@ -249,7 +249,7 @@ elseif (BUNDLE STREQUAL "user")
 	set(SOLIDITY OFF)
 	set(USENPM OFF)
 	set(GUI ON)
-	set(NCURSES ${DECENT_PLATFORM})
+#	set(NCURSES ${DECENT_PLATFORM})
 	set(TOOLS ON)
 	set(TESTS OFF)
 elseif (BUNDLE STREQUAL "wallet")
@@ -430,9 +430,9 @@ if (TOOLS)
 
 endif()
 
-if (NCURSES)
-	add_subdirectory(neth)
-endif ()
+#if (NCURSES)
+#	add_subdirectory(neth)
+#endif ()
 
 if (GUI)
 
@@ -458,7 +458,7 @@ if (APPLE AND GUI)
 		-DAPP_DMG_EXE=${ETH_APP_DMG}
 		-DAPP_DMG_FILE=appdmg.json.in
 		-DAPP_DMG_ICON="alethzero/alethzero.icns"
-		-DAPP_DMG_BACKGROUND="bg.png"
+		-DAPP_DMG_BACKGROUND="install-folder-bg.png"
 		-DETH_BUILD_DIR="${CMAKE_BINARY_DIR}"
 		-DETH_MIX_APP="$<TARGET_FILE_DIR:mix>"
 		-DETH_ALETHZERO_APP="$<TARGET_FILE_DIR:AlethZero>"

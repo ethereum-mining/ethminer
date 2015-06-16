@@ -25,14 +25,14 @@ namespace dev
 namespace eth
 {
 
-#define ETH_SIMPLE_EXCEPTION_VM(X) struct X: virtual VMException { public X(): VMException(#X) {} };
 struct VMException: virtual Exception {};
-struct BreakPointHit: virtual VMException {};
-struct BadInstruction: virtual VMException {};
-struct BadJumpDestination: virtual VMException {};
-struct OutOfGas: virtual VMException {};
-struct OutOfStack: virtual VMException {};
-struct StackUnderflow: virtual VMException {};
+#define ETH_SIMPLE_EXCEPTION_VM(X) struct X: virtual VMException { const char* what() const noexcept override { return #X; } }
+ETH_SIMPLE_EXCEPTION_VM(BreakPointHit);
+ETH_SIMPLE_EXCEPTION_VM(BadInstruction);
+ETH_SIMPLE_EXCEPTION_VM(BadJumpDestination);
+ETH_SIMPLE_EXCEPTION_VM(OutOfGas);
+ETH_SIMPLE_EXCEPTION_VM(OutOfStack);
+ETH_SIMPLE_EXCEPTION_VM(StackUnderflow);
 
 /// EVM Virtual Machine interface
 class VMFace
