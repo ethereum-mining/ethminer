@@ -38,6 +38,8 @@ bool Peer::shouldReconnect() const
 	
 unsigned Peer::fallbackSeconds() const
 {
+	if (required)
+		return 5;
 	switch (m_lastDisconnect)
 	{
 	case BadProtocol:
