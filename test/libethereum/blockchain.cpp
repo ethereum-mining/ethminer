@@ -685,7 +685,7 @@ void overwriteBlockHeader(BlockInfo& _header, mObject& _blObj)
 			tmp.extraData = importByteArray(ho["extraData"].get_str());
 
 		// find new valid nonce
-		if (tmp != _header)
+		if (tmp != _header && tmp.difficulty)
 			mine(tmp);
 
 		if (ho.count("mixHash"))
