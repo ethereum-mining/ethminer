@@ -100,7 +100,7 @@ public:
 	FixedHash operator|(FixedHash const& _c) const { return FixedHash(*this) |= _c; }
 	FixedHash& operator&=(FixedHash const& _c) { for (unsigned i = 0; i < N; ++i) m_data[i] &= _c.m_data[i]; return *this; }
 	FixedHash operator&(FixedHash const& _c) const { return FixedHash(*this) &= _c; }
-	FixedHash& operator~() { for (unsigned i = 0; i < N; ++i) m_data[i] = ~m_data[i]; return *this; }
+	FixedHash operator~() const { FixedHash ret; for (unsigned i = 0; i < N; ++i) ret[i] = ~m_data[i]; return ret; }
 
 	/// @returns true if all bytes in @a _c are set in this object.
 	bool contains(FixedHash const& _c) const { return (*this & _c) == _c; }
@@ -158,16 +158,17 @@ public:
 
 	template <unsigned P, unsigned M> inline FixedHash& shiftBloom(FixedHash<M> const& _h)
 	{
-		return (*this |= _h.template bloom<P, N>());
+		return (*this |= _h.template bloomPart<P, N>());
 	}
 
 	template <unsigned P, unsigned M> inline bool containsBloom(FixedHash<M> const& _h)
 	{
-		return contains(_h.template bloom<P, N>());
+		return contains(_h.template bloomPart<P, N>());
 	}
 
-	template <unsigned P, unsigned M> inline FixedHash<M> bloom() const
+	template <unsigned P, unsigned M> inline FixedHash<M> bloomPart() const
 	{
+		static_assert((M & (M - 1)) == 0, "M must be power-of-two"); 
 		static const unsigned c_bloomBits = M * 8;
 		unsigned mask = c_bloomBits - 1;
 		unsigned bloomBytes = (dev::toLog2(c_bloomBits) + 7) / 8;

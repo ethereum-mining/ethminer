@@ -64,6 +64,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("eth_signTransaction", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_signTransactionI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_inspectTransaction", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_inspectTransactionI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_injectTransaction", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_injectTransactionI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_notePassword", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_notePasswordI);
             this->bindAndAddMethod(jsonrpc::Procedure("db_put", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::db_putI);
             this->bindAndAddMethod(jsonrpc::Procedure("db_get", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::db_getI);
             this->bindAndAddMethod(jsonrpc::Procedure("shh_post", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::shh_postI);
@@ -75,6 +76,28 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("shh_uninstallFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::shh_uninstallFilterI);
             this->bindAndAddMethod(jsonrpc::Procedure("shh_getFilterChanges", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::shh_getFilterChangesI);
             this->bindAndAddMethod(jsonrpc::Procedure("shh_getMessages", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::shh_getMessagesI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_web3_setVerbosity", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_INTEGER,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_web3_setVerbosityI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_net_start", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_net_startI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_net_stop", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_net_stopI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_net_connect", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_net_connectI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_net_peers", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_net_peersI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_blockQueueStatus", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_blockQueueStatusI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_setAskPrice", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_setAskPriceI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_setBidPrice", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_setBidPriceI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_setReferencePrice", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_setReferencePriceI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_setPriority", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_INTEGER,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_setPriorityI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_setMining", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_BOOLEAN,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_setMiningI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_findBlock", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_findBlockI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_blockQueueFirstUnknown", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_blockQueueFirstUnknownI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_blockQueueRetryUnknown", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_blockQueueRetryUnknownI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_allAccounts", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_allAccountsI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_newAccount", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_OBJECT,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_newAccountI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_setSigningKey", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_setSigningKeyI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_setMiningBenefactor", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_setMiningBenefactorI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_inspect", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_inspectI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_reprocess", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_reprocessI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_vmTrace", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_INTEGER,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_vmTraceI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_getReceiptByHashAndIndex", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_INTEGER,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_getReceiptByHashAndIndexI);
         }
 
         inline virtual void web3_sha3I(const Json::Value &request, Json::Value &response)
@@ -301,6 +324,10 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         {
             response = this->eth_injectTransaction(request[0u].asString());
         }
+        inline virtual void eth_notePasswordI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->eth_notePassword(request[0u].asString());
+        }
         inline virtual void db_putI(const Json::Value &request, Json::Value &response)
         {
             response = this->db_put(request[0u].asString(), request[1u].asString(), request[2u].asString());
@@ -345,6 +372,94 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         inline virtual void shh_getMessagesI(const Json::Value &request, Json::Value &response)
         {
             response = this->shh_getMessages(request[0u].asString());
+        }
+        inline virtual void admin_web3_setVerbosityI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_web3_setVerbosity(request[0u].asInt(), request[1u].asString());
+        }
+        inline virtual void admin_net_startI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_net_start(request[0u].asString());
+        }
+        inline virtual void admin_net_stopI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_net_stop(request[0u].asString());
+        }
+        inline virtual void admin_net_connectI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_net_connect(request[0u].asString(), request[1u].asString());
+        }
+        inline virtual void admin_net_peersI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_net_peers(request[0u].asString());
+        }
+        inline virtual void admin_eth_blockQueueStatusI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_blockQueueStatus(request[0u].asString());
+        }
+        inline virtual void admin_eth_setAskPriceI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_setAskPrice(request[0u].asString(), request[1u].asString());
+        }
+        inline virtual void admin_eth_setBidPriceI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_setBidPrice(request[0u].asString(), request[1u].asString());
+        }
+        inline virtual void admin_eth_setReferencePriceI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_setReferencePrice(request[0u].asString(), request[1u].asString());
+        }
+        inline virtual void admin_eth_setPriorityI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_setPriority(request[0u].asInt(), request[1u].asString());
+        }
+        inline virtual void admin_eth_setMiningI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_setMining(request[0u].asBool(), request[1u].asString());
+        }
+        inline virtual void admin_eth_findBlockI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_findBlock(request[0u].asString(), request[1u].asString());
+        }
+        inline virtual void admin_eth_blockQueueFirstUnknownI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_blockQueueFirstUnknown(request[0u].asString());
+        }
+        inline virtual void admin_eth_blockQueueRetryUnknownI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_blockQueueRetryUnknown(request[0u].asString());
+        }
+        inline virtual void admin_eth_allAccountsI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_allAccounts(request[0u].asString());
+        }
+        inline virtual void admin_eth_newAccountI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_newAccount(request[0u], request[1u].asString());
+        }
+        inline virtual void admin_eth_setSigningKeyI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_setSigningKey(request[0u].asString(), request[1u].asString());
+        }
+        inline virtual void admin_eth_setMiningBenefactorI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_setMiningBenefactor(request[0u].asString(), request[1u].asString());
+        }
+        inline virtual void admin_eth_inspectI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_inspect(request[0u].asString(), request[1u].asString());
+        }
+        inline virtual void admin_eth_reprocessI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_reprocess(request[0u].asString(), request[1u].asString());
+        }
+        inline virtual void admin_eth_vmTraceI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_vmTrace(request[0u].asString(), request[1u].asInt(), request[2u].asString());
+        }
+        inline virtual void admin_eth_getReceiptByHashAndIndexI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_getReceiptByHashAndIndex(request[0u].asString(), request[1u].asInt(), request[2u].asString());
         }
         virtual std::string web3_sha3(const std::string& param1) = 0;
         virtual std::string web3_clientVersion() = 0;
@@ -398,6 +513,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual std::string eth_signTransaction(const Json::Value& param1) = 0;
         virtual Json::Value eth_inspectTransaction(const std::string& param1) = 0;
         virtual bool eth_injectTransaction(const std::string& param1) = 0;
+        virtual bool eth_notePassword(const std::string& param1) = 0;
         virtual bool db_put(const std::string& param1, const std::string& param2, const std::string& param3) = 0;
         virtual std::string db_get(const std::string& param1, const std::string& param2) = 0;
         virtual bool shh_post(const Json::Value& param1) = 0;
@@ -409,6 +525,28 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual bool shh_uninstallFilter(const std::string& param1) = 0;
         virtual Json::Value shh_getFilterChanges(const std::string& param1) = 0;
         virtual Json::Value shh_getMessages(const std::string& param1) = 0;
+        virtual bool admin_web3_setVerbosity(int param1, const std::string& param2) = 0;
+        virtual bool admin_net_start(const std::string& param1) = 0;
+        virtual bool admin_net_stop(const std::string& param1) = 0;
+        virtual bool admin_net_connect(const std::string& param1, const std::string& param2) = 0;
+        virtual Json::Value admin_net_peers(const std::string& param1) = 0;
+        virtual Json::Value admin_eth_blockQueueStatus(const std::string& param1) = 0;
+        virtual bool admin_eth_setAskPrice(const std::string& param1, const std::string& param2) = 0;
+        virtual bool admin_eth_setBidPrice(const std::string& param1, const std::string& param2) = 0;
+        virtual bool admin_eth_setReferencePrice(const std::string& param1, const std::string& param2) = 0;
+        virtual bool admin_eth_setPriority(int param1, const std::string& param2) = 0;
+        virtual bool admin_eth_setMining(bool param1, const std::string& param2) = 0;
+        virtual Json::Value admin_eth_findBlock(const std::string& param1, const std::string& param2) = 0;
+        virtual std::string admin_eth_blockQueueFirstUnknown(const std::string& param1) = 0;
+        virtual bool admin_eth_blockQueueRetryUnknown(const std::string& param1) = 0;
+        virtual Json::Value admin_eth_allAccounts(const std::string& param1) = 0;
+        virtual Json::Value admin_eth_newAccount(const Json::Value& param1, const std::string& param2) = 0;
+        virtual bool admin_eth_setSigningKey(const std::string& param1, const std::string& param2) = 0;
+        virtual bool admin_eth_setMiningBenefactor(const std::string& param1, const std::string& param2) = 0;
+        virtual Json::Value admin_eth_inspect(const std::string& param1, const std::string& param2) = 0;
+        virtual Json::Value admin_eth_reprocess(const std::string& param1, const std::string& param2) = 0;
+        virtual Json::Value admin_eth_vmTrace(const std::string& param1, int param2, const std::string& param3) = 0;
+        virtual Json::Value admin_eth_getReceiptByHashAndIndex(const std::string& param1, int param2, const std::string& param3) = 0;
 };
 
 #endif //JSONRPC_CPP_STUB_ABSTRACTWEBTHREESTUBSERVER_H_

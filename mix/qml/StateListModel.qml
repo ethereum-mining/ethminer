@@ -20,13 +20,29 @@ Item {
 			s.accounts = [stateListModel.newAccount("1000000", QEther.Ether, defaultAccount)]; //support for old project
 		if (!s.contracts)
 			s.contracts = [];
-		return {
-			title: s.title,
-			transactions: s.transactions.filter(function(t) { return !t.stdContract; }).map(fromPlainTransactionItem), //support old projects by filtering std contracts
-			accounts: s.accounts.map(fromPlainAccountItem),
-			contracts: s.contracts.map(fromPlainAccountItem),
-			miner: s.miner
-		};
+
+		var ret = {};
+		ret.title = s.title;
+		ret.transactions = s.transactions.filter(function(t) { return !t.stdContract; }).map(fromPlainTransactionItem); //support old projects by filtering std contracts
+		if (s.blocks)
+			ret.blocks = s.blocks.map(fromPlainBlockItem);
+		ret.accounts = s.accounts.map(fromPlainAccountItem);
+		ret.contracts = s.contracts.map(fromPlainAccountItem);
+		ret.miner = s.miner;
+
+		// support old projects
+		if (!ret.blocks)
+		{
+			ret.blocks = [{
+							  hash: "",
+							  number: -1,
+							  transactions: [],
+							  status: "pending"
+						  }]
+			for (var j in ret.transactions)
+				ret.blocks[0].transactions.push(fromPlainTransactionItem(toPlainTransactionItem(ret.transactions[j])))
+		}
+		return ret;
 	}
 
 	function fromPlainAccountItem(t)
@@ -58,8 +74,12 @@ Item {
 			sender: t.sender,
 			isContractCreation: t.isContractCreation,
 			label: t.label,
-			isFunctionCall: t.isFunctionCall
+			isFunctionCall: t.isFunctionCall,
+			saveStatus: t.saveStatus
 		};
+
+		if (r.saveStatus === undefined)
+			r.saveStatus = true
 
 		if (r.isFunctionCall === undefined)
 			r.isFunctionCall = true;
@@ -76,9 +96,21 @@ Item {
 		return r;
 	}
 
+	function fromPlainBlockItem(b)
+	{
+		var r = {
+			hash: b.hash,
+			number: b.number,
+			transactions: b.transactions.filter(function(t) { return !t.stdContract; }).map(fromPlainTransactionItem), //support old projects by filtering std contracts
+			status: b.status
+		}
+		return r;
+	}
+
 	function toPlainStateItem(s) {
 		return {
 			title: s.title,
+			blocks: s.blocks.map(toPlainBlockItem),
 			transactions: s.transactions.map(toPlainTransactionItem),
 			accounts: s.accounts.map(toPlainAccountItem),
 			contracts: s.contracts.map(toPlainAccountItem),
@@ -94,6 +126,17 @@ Item {
 				return params[k].declaration.type;
 		}
 		return '';
+	}
+
+	function toPlainBlockItem(b)
+	{
+		var r = {
+			hash: b.hash,
+			number: b.number,
+			transactions: b.transactions.map(toPlainTransactionItem),
+			status: b.status
+		}
+		return r;
 	}
 
 	function toPlainAccountItem(t)
@@ -125,7 +168,8 @@ Item {
 			parameters: {},
 			isContractCreation: t.isContractCreation,
 			label: t.label,
-			isFunctionCall: t.isFunctionCall
+			isFunctionCall: t.isFunctionCall,
+			saveStatus: t.saveStatus
 		};
 		for (var key in t.parameters)
 			r.parameters[key] = t.parameters[key];
@@ -146,6 +190,8 @@ Item {
 				projectData.states.push(toPlainStateItem(stateList[i]));
 			}
 			projectData.defaultStateIndex = stateListModel.defaultStateIndex;
+			stateListModel.data = projectData
+
 		}
 		onNewProject: {
 			var state = toPlainStateItem(stateListModel.createDefaultState());
@@ -170,6 +216,11 @@ Item {
 		id: stateDialog
 		onAccepted: {
 			var item = stateDialog.getItem();
+			saveState(item);
+		}
+
+		function saveState(item)
+		{
 			if (stateDialog.stateIndex < stateListModel.count) {
 				if (stateDialog.isDefault)
 					stateListModel.defaultStateIndex = stateIndex;
@@ -190,6 +241,7 @@ Item {
 	ListModel {
 		id: stateListModel
 		property int defaultStateIndex: 0
+		property variant data
 		signal defaultStateChanged;
 		signal stateListModelReady;
 		signal stateRun(int index)
@@ -208,12 +260,32 @@ Item {
 			return { name: name, secret: _secret, balance: QEtherHelper.createEther(_balance, _unit), address: address };
 		}
 
+		function duplicateState(index)
+		{
+			var state = stateList[index]
+			var item = fromPlainStateItem(toPlainStateItem(state))
+			item.title = qsTr("Copy of") + " " + state.title
+			appendState(item)
+			save()
+		}
+
+		function createEmptyBlock()
+		{
+			return {
+				hash: "",
+				number: -1,
+				transactions: [],
+				status: "pending"
+			}
+		}
+
 		function createDefaultState() {
 			var item = {
 				title: "",
 				transactions: [],
 				accounts: [],
-				contracts: []
+				contracts: [],
+				blocks: [{ status: "pending", number: -1, hash: "", transactions: []}]
 			};
 
 			var account = newAccount("1000000", QEther.Ether, defaultAccount)
@@ -228,6 +300,7 @@ Item {
 				ctorTr.label = qsTr("Deploy") + " " + ctorTr.contractId;
 				ctorTr.sender = item.accounts[0].secret;
 				item.transactions.push(ctorTr);
+				item.blocks[0].transactions.push(ctorTr)
 			}
 			return item;
 		}
@@ -284,8 +357,18 @@ Item {
 			stateDialog.open(stateListModel.count, item, false);
 		}
 
+		function appendState(item)
+		{
+			stateListModel.append(item);
+			stateList.push(item);
+		}
+
 		function editState(index) {
 			stateDialog.open(index, stateList[index], defaultStateIndex === index);
+		}
+
+		function getState(index) {
+			return stateList[index];
 		}
 
 		function debugDefaultState() {
@@ -295,7 +378,7 @@ Item {
 
 		function runState(index) {
 			var item = stateList[index];
-			clientModel.setupState(item);
+			clientModel.setupScenario(item);
 			stateRun(index);
 		}
 
@@ -322,8 +405,20 @@ Item {
 			return stateList[defaultStateIndex].title;
 		}
 
+		function reloadStateFromFromProject(index)
+		{
+			if (data)
+			{
+				var item = fromPlainStateItem(data.states[index])
+				stateListModel.set(index, item)
+				stateList[index] = item
+				return item
+			}
+		}
+
 		function loadStatesFromProject(projectData)
 		{
+			data = projectData
 			if (!projectData.states)
 				projectData.states = [];
 			if (projectData.defaultStateIndex !== undefined)
