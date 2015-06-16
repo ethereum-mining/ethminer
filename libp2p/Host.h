@@ -40,7 +40,8 @@
 #include "HostCapability.h"
 #include "Network.h"
 #include "Peer.h"
-#include "RLPxFrameIO.h"
+#include "RLPXSocket.h"
+#include "RLPXFrameCoder.h"
 #include "Common.h"
 namespace ba = boost::asio;
 namespace bi = ba::ip;
@@ -82,6 +83,7 @@ struct SubReputation
 {
 	bool isRude = false;
 	int utility = 0;
+	bytes data;
 };
 
 struct Reputation
@@ -96,6 +98,8 @@ public:
 
 	void noteRude(Session const& _s, std::string const& _sub = std::string());
 	bool isRude(Session const& _s, std::string const& _sub = std::string()) const;
+	void setData(Session const& _s, std::string const& _sub, bytes const& _data);
+	bytes data(Session const& _s, std::string const& _subs) const;
 
 private:
 	std::unordered_map<std::pair<p2p::NodeId, std::string>, Reputation> m_nodes;	///< Nodes that were impolite while syncing. We avoid syncing from these if possible.
@@ -197,7 +201,7 @@ public:
 	NodeId id() const { return m_alias.pub(); }
 
 	/// Validates and starts peer session, taking ownership of _io. Disconnects and returns false upon error.
-	void startPeerSession(Public const& _id, RLP const& _hello, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint);
+	void startPeerSession(Public const& _id, RLP const& _hello, RLPXFrameCoder* _io, std::shared_ptr<RLPXSocket> const& _s);
 
 protected:
 	void onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e);

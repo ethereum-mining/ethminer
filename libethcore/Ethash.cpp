@@ -108,7 +108,10 @@ bool Ethash::verify(BlockInfo const& _header)
 	bool pre = preVerify(_header);
 #if !ETH_DEBUG
 	if (!pre)
+	{
+		cwarn << "Fail on preVerify";
 		return false;
+	}
 #endif
 
 	auto result = EthashAux::eval(_header);
@@ -386,12 +389,13 @@ bool Ethash::GPUMiner::configureGPU(
 	unsigned _deviceId,
 	bool _allowCPU,
 	unsigned _extraGPUMemory,
+	bool _forceSingleChunk,
 	boost::optional<uint64_t> _currentBlock
 )
 {
 	s_platformId = _platformId;
 	s_deviceId = _deviceId;
-	return ethash_cl_miner::configureGPU(_allowCPU, _extraGPUMemory, _currentBlock);
+	return ethash_cl_miner::configureGPU(_allowCPU, _extraGPUMemory, _forceSingleChunk, _currentBlock);
 }
 
 #endif
