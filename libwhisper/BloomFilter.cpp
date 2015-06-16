@@ -25,48 +25,45 @@ using namespace std;
 using namespace dev;
 using namespace dev::shh;
 
-bool BloomFilter::matches(AbridgedTopic const& _t) const
-{
-	static unsigned const c_match = ~unsigned(0);
-	unsigned topic = AbridgedTopic::Arith(_t).convert_to<unsigned>();
-	unsigned matchingBits = m_filter & topic;
-	matchingBits |= ~topic;
-	return (c_match == matchingBits);
-}
+static unsigned const c_mask[] = { 1, 2, 4, 8, 16, 32, 64, 128 };
 
-void SharedBloomFilter::add(AbridgedTopic const& _t)
+void TopicBloomFilter::add(AbridgedTopic const& _h)
 {
-	unsigned const topic = AbridgedTopic::Arith(_t).convert_to<unsigned>();
-	m_filter |= topic;
-
-	unsigned nextBit = 1;
-	for (unsigned i = 0; i < ArrSize; ++i, nextBit <<= 1)
-		if (topic & nextBit)
-			if (m_refCounter[i] != numeric_limits<unsigned short>::max())
+	*this |= _h;
+	unsigned count = 0;
+	for (unsigned i = 0; i < CounterSize; ++i)
+		if (isBitSet(_h, i))
+		{
+			if (m_refCounter[i] != numeric_limits<uint16_t>::max())
 				m_refCounter[i]++;
 			//else: overflow
 
-	// in order to encounter overflow, you have to set at least 65536 filters simultaneously.
-	// even then, the problem will only arise after at least 65536 filters will be be removed.
-	// we assume, it will never happen.
+			// in order to encounter overflow, you have to set at least 65536 filters simultaneously.
+			// even then, the problem will only arise after at least 65536 filters will be be removed.
+			// we assume, it will never happen.
+		}
 }
 
-void SharedBloomFilter::remove(AbridgedTopic const& _t)
+void TopicBloomFilter::remove(AbridgedTopic const& _h)
 {
-	unsigned const topic = AbridgedTopic::Arith(_t).convert_to<unsigned>();
-
-	unsigned nextBit = 1;
-	for (unsigned i = 0; i < ArrSize; ++i, nextBit <<= 1)
-		if (topic & nextBit)
+	unsigned count = 0;
+	for (unsigned i = 0; i < CounterSize; ++i)
+		if (isBitSet(_h, i))
 		{
 			if (m_refCounter[i])
 				m_refCounter[i]--;
 
 			if (!m_refCounter[i])
-				m_filter &= ~nextBit;
+				(*this)[i/8] &= ~c_mask[i%8];
 		}
 }
 
+bool TopicBloomFilter::isBitSet(AbridgedTopic const& _h, unsigned _index)
+{	
+	unsigned iByte = _index / 8;
+	unsigned iBit = _index % 8;
+	return (_h[iByte] & c_mask[iBit]) != 0;
+}
 
 
 

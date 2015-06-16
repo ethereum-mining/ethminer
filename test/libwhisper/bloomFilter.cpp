@@ -20,122 +20,163 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <boost/test/unit_test.hpp>
+#include <libdevcore/SHA3.h>
 #include <libwhisper/BloomFilter.h>
 
 using namespace std;
 using namespace dev;
 using namespace dev::shh;
 
+void testAddNonExisting(TopicBloomFilter& _f, AbridgedTopic const& _h)
+{
+	BOOST_REQUIRE(!_f.contains(_h));
+	_f.add(_h);
+	BOOST_REQUIRE(_f.contains(_h));
+}
+
+void testRemoveExisting(TopicBloomFilter& _f, AbridgedTopic const& _h)
+{
+	BOOST_REQUIRE(_f.contains(_h));
+	_f.remove(_h);
+	BOOST_REQUIRE(!_f.contains(_h));
+}
+
+void testAddNonExistingBloom(TopicBloomFilter& _f, AbridgedTopic const& _h)
+{
+	BOOST_REQUIRE(!_f.containsBloom(_h));
+	_f.addBloom(_h);
+	BOOST_REQUIRE(_f.containsBloom(_h));
+}
+
+void testRemoveExistingBloom(TopicBloomFilter& _f, AbridgedTopic const& _h)
+{
+	BOOST_REQUIRE(_f.containsBloom(_h));
+	_f.removeBloom(_h);
+	BOOST_REQUIRE(!_f.containsBloom(_h));
+}
+
 BOOST_AUTO_TEST_SUITE(bloomFilter)
 
-BOOST_AUTO_TEST_CASE(match)
+BOOST_AUTO_TEST_CASE(bloomFilterRandom)
 {
 	VerbosityHolder setTemporaryLevel(10);
 	cnote << "Testing Bloom Filter matching...";
 
-	SharedBloomFilter f;
-	unsigned b00000001 = 0x01;
-	unsigned b00010000 = 0x10;
-	unsigned b00011000 = 0x18;
-	unsigned b00110000 = 0x30;
-	unsigned b00110010 = 0x32;
-	unsigned b00111000 = 0x38;
-	unsigned b00000110 = 0x06;
-	unsigned b00110110 = 0x36;
-	unsigned b00110111 = 0x37;
+	TopicBloomFilter f;
+	vector<AbridgedTopic> vec;
+	Topic x(0xDEADBEEF);
+	int const c_rounds = 4;
 
-	AbridgedTopic x(b00111000);
-	SharedBloomFilter f1(b00111000);
-	SharedBloomFilter f2(x);
-	BOOST_REQUIRE_EQUAL(x, f1.getAbridgedTopic());
-	BOOST_REQUIRE_EQUAL(x, f2.getAbridgedTopic());
-	BOOST_REQUIRE_EQUAL(b00111000, f1.getUnsigned());
-	BOOST_REQUIRE_EQUAL(b00111000, f2.getUnsigned());
+	for (int i = 0; i < c_rounds; ++i, x = sha3(x))
+		vec.push_back(abridge(x));
 
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00000001)));
-	f.add(AbridgedTopic(b00000001));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00010000)));
-	f.add(AbridgedTopic(b00010000));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00011000)));
-	f.add(AbridgedTopic(b00011000));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00110000)));
-	f.add(AbridgedTopic(b00110000));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00111000)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00110010)));
-	f.add(AbridgedTopic(b00110010));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00000110)));
-	f.add(AbridgedTopic(b00000110));
+	for (int i = 0; i < c_rounds; ++i) 
+		testAddNonExisting(f, vec[i]);
 
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110110)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110111)));
+	for (int i = 0; i < c_rounds; ++i)
+		testRemoveExisting(f, vec[i]);
 
-	f.remove(AbridgedTopic(b00000001));
-	f.remove(AbridgedTopic(b00000001));
-	f.remove(AbridgedTopic(b00000001));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00000001)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00010000)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00011000)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110000)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110010)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00111000)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00000110)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110110)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00110111)));
+	for (int i = 0; i < c_rounds; ++i) 
+		testAddNonExistingBloom(f, vec[i]);
 
-	f.remove(AbridgedTopic(b00010000));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00000001)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00010000)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00011000)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110000)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110010)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00111000)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00000110)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110110)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00110111)));
+	for (int i = 0; i < c_rounds; ++i)
+		testRemoveExistingBloom(f, vec[i]);
+}
 
-	f.remove(AbridgedTopic(b00111000));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00000001)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00010000)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00011000)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110000)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110010)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00111000)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00000110)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110110)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00110111)));
+BOOST_AUTO_TEST_CASE(bloomFilterRaw)
+{
+	VerbosityHolder setTemporaryLevel(10);
+	cnote << "Testing Raw Bloom matching...";
 
-	f.add(AbridgedTopic(b00000001));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00000001)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00010000)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00011000)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110000)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110010)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00111000)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00000110)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110110)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00110111)));
+	TopicBloomFilter f;
 
-	f.remove(AbridgedTopic(b00110111));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00000001)));
-	BOOST_REQUIRE(f.matches(AbridgedTopic(b00010000)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00011000)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00110000)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00110010)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00111000)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00000110)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00110110)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00110111)));
+	AbridgedTopic b00000001(0x01);
+	AbridgedTopic b00010000(0x10);
+	AbridgedTopic b00011000(0x18);
+	AbridgedTopic b00110000(0x30);
+	AbridgedTopic b00110010(0x32);
+	AbridgedTopic b00111000(0x38);
+	AbridgedTopic b00000110(0x06);
+	AbridgedTopic b00110110(0x36);
+	AbridgedTopic b00110111(0x37);
 
-	f.remove(AbridgedTopic(b00110111));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00000001)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00010000)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00011000)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00110000)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00110010)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00111000)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00000110)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00110110)));
-	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00110111)));
+	testAddNonExisting(f, b00000001);
+	testAddNonExisting(f, b00010000);	
+	testAddNonExisting(f, b00011000);	
+	testAddNonExisting(f, b00110000);
+	BOOST_REQUIRE(f.contains(b00111000));	
+	testAddNonExisting(f, b00110010);	
+	testAddNonExisting(f, b00000110);
+	BOOST_REQUIRE(f.contains(b00110110));
+	BOOST_REQUIRE(f.contains(b00110111));
+
+	f.remove(b00000001);
+	f.remove(b00000001);
+	f.remove(b00000001);
+	BOOST_REQUIRE(!f.contains(b00000001));
+	BOOST_REQUIRE(f.contains(b00010000));
+	BOOST_REQUIRE(f.contains(b00011000));
+	BOOST_REQUIRE(f.contains(b00110000));
+	BOOST_REQUIRE(f.contains(b00110010));
+	BOOST_REQUIRE(f.contains(b00111000));
+	BOOST_REQUIRE(f.contains(b00000110));
+	BOOST_REQUIRE(f.contains(b00110110));
+	BOOST_REQUIRE(!f.contains(b00110111));
+
+	f.remove(b00010000);
+	BOOST_REQUIRE(!f.contains(b00000001));
+	BOOST_REQUIRE(f.contains(b00010000));
+	BOOST_REQUIRE(f.contains(b00011000));
+	BOOST_REQUIRE(f.contains(b00110000));
+	BOOST_REQUIRE(f.contains(b00110010));
+	BOOST_REQUIRE(f.contains(b00111000));
+	BOOST_REQUIRE(f.contains(b00000110));
+	BOOST_REQUIRE(f.contains(b00110110));
+	BOOST_REQUIRE(!f.contains(b00110111));
+
+	f.remove(b00111000);
+	BOOST_REQUIRE(!f.contains(b00000001));
+	BOOST_REQUIRE(f.contains(b00010000));
+	BOOST_REQUIRE(!f.contains(b00011000));
+	BOOST_REQUIRE(f.contains(b00110000));
+	BOOST_REQUIRE(f.contains(b00110010));
+	BOOST_REQUIRE(!f.contains(b00111000));
+	BOOST_REQUIRE(f.contains(b00000110));
+	BOOST_REQUIRE(f.contains(b00110110));
+	BOOST_REQUIRE(!f.contains(b00110111));
+
+	f.add(b00000001);
+	BOOST_REQUIRE(f.contains(b00000001));
+	BOOST_REQUIRE(f.contains(b00010000));
+	BOOST_REQUIRE(!f.contains(b00011000));
+	BOOST_REQUIRE(f.contains(b00110000));
+	BOOST_REQUIRE(f.contains(b00110010));
+	BOOST_REQUIRE(!f.contains(b00111000));
+	BOOST_REQUIRE(f.contains(b00000110));
+	BOOST_REQUIRE(f.contains(b00110110));
+	BOOST_REQUIRE(f.contains(b00110111));
+
+	f.remove(b00110111);
+	BOOST_REQUIRE(!f.contains(b00000001));
+	BOOST_REQUIRE(f.contains(b00010000));
+	BOOST_REQUIRE(!f.contains(b00011000));
+	BOOST_REQUIRE(!f.contains(b00110000));
+	BOOST_REQUIRE(!f.contains(b00110010));
+	BOOST_REQUIRE(!f.contains(b00111000));
+	BOOST_REQUIRE(!f.contains(b00000110));
+	BOOST_REQUIRE(!f.contains(b00110110));
+	BOOST_REQUIRE(!f.contains(b00110111));
+
+	f.remove(b00110111);
+	BOOST_REQUIRE(!f.contains(b00000001));
+	BOOST_REQUIRE(!f.contains(b00010000));
+	BOOST_REQUIRE(!f.contains(b00011000));
+	BOOST_REQUIRE(!f.contains(b00110000));
+	BOOST_REQUIRE(!f.contains(b00110010));
+	BOOST_REQUIRE(!f.contains(b00111000));
+	BOOST_REQUIRE(!f.contains(b00000110));
+	BOOST_REQUIRE(!f.contains(b00110110));
+	BOOST_REQUIRE(!f.contains(b00110111));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
