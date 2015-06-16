@@ -144,6 +144,7 @@ public:
 	BlockLogBlooms logBlooms() const { return logBlooms(currentHash()); }
 
 	/// Get the transactions' receipts of a block (or the most recent mined if none given). Thread-safe.
+	/// receipts are given in the same order are in the same order as the transactions
 	BlockReceipts receipts(h256 const& _hash) const { return queryExtras<BlockReceipts, ExtraReceipts>(_hash, m_receipts, x_receipts, NullBlockReceipts); }
 	BlockReceipts receipts() const { return receipts(currentHash()); }
 
@@ -258,7 +259,7 @@ public:
 	void garbageCollect(bool _force = false);
 
 	/// Verify block and prepare it for enactment
-	static VerifiedBlockRef verifyBlock(bytes const& _block, std::function<void(Exception&)> const& _onBad = std::function<void(Exception&)>());
+	static VerifiedBlockRef verifyBlock(bytes const& _block, std::function<void(Exception&)> const& _onBad = std::function<void(Exception&)>(), ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Change the function that is called with a bad block.
 	template <class T> void setOnBad(T const& _t) { m_onBad = _t; }

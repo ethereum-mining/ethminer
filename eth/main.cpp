@@ -93,6 +93,7 @@ void interactiveHelp()
 		<< "    accounts  Gives information on all owned accounts (balances, mining beneficiary and default signer)." << endl
 		<< "    newaccount <name>  Creates a new account with the given name." << endl
 		<< "    transact  Execute a given transaction." << endl
+		<< "    transactnonce  Execute a given transaction with a specified nonce." << endl
 		<< "    txcreate  Execute a given contract creation transaction." << endl
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
@@ -108,6 +109,7 @@ void interactiveHelp()
 		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." << endl
 		<< "    importconfig <path>  Import the config (.RLP) from the path provided." << endl
 		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
+		<< "    reprocess <block>  Reprocess a given block." << endl
 		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
 		<< "    exit  Exits the application." << endl;
@@ -124,6 +126,7 @@ void help()
 #if ETH_JSONRPC || !ETH_TRUE
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port <n>  Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
+		<< "    --admin <password>  Specify admin session key for JSON-RPC (default: auto-generated and printed at startup)." << endl
 #endif
 		<< "    -K,--kill  First kill the blockchain." << endl
 		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
@@ -286,6 +289,7 @@ int main(int argc, char** argv)
 #if ETH_JSONRPC
 	int jsonrpc = -1;
 #endif
+	string jsonAdmin;
 	bool upnp = true;
 	WithExisting killChain = WithExisting::Trust;
 	bool jit = false;
@@ -597,6 +601,8 @@ int main(int argc, char** argv)
 			jsonrpc = jsonrpc == -1 ? SensibleHttpPort : jsonrpc;
 		else if (arg == "--json-rpc-port" && i + 1 < argc)
 			jsonrpc = atoi(argv[++i]);
+		else if (arg == "--json-admin" && i + 1 < argc)
+			jsonAdmin = argv[++i];
 #endif
 #if ETH_JSCONSOLE
 		else if (arg == "--console")
@@ -679,9 +685,8 @@ int main(int argc, char** argv)
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
-	std::string clientImplString = "++eth/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
 	dev::WebThreeDirect web3(
-		clientImplString,
+		WebThreeDirect::composeClientVersion("++eth", clientName),
 		dbPath,
 		killChain,
 		nodeMode == NodeMode::Full ? set<string>{"eth"/*, "shh"*/} : set<string>(),
@@ -794,7 +799,7 @@ int main(int argc, char** argv)
 //	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
 	std::shared_ptr<eth::TrivialGasPricer> gasPricer = make_shared<eth::TrivialGasPricer>(askPrice, bidPrice);
 	eth::Client* c = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
-	StructuredLogger::starting(clientImplString, dev::Version);
+	StructuredLogger::starting(WebThreeDirect::composeClientVersion("++eth", clientName), dev::Version);
 	if (c)
 	{
 		c->setGasPricer(gasPricer);
@@ -806,14 +811,14 @@ int main(int argc, char** argv)
 
 	cout << "Transaction Signer: " << signingKey << endl;
 	cout << "Mining Benefactor: " << beneficiary << endl;
-	web3.startNetwork();
-	cout << "Node ID: " << web3.enode() << endl;
 
-	if (bootstrap)
-		for (auto const& i: Host::pocHosts())
-			web3.requirePeer(i.first, i.second);
-	if (remoteHost.size())
-		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
+	if (bootstrap || !remoteHost.empty())
+	{
+		web3.startNetwork();
+		cout << "Node ID: " << web3.enode() << endl;
+	}
+	else
+		cout << "Networking disabled. To start, use netstart or pass -b or a remote host." << endl;
 
 #if ETH_JSONRPC || !ETH_TRUE
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
@@ -821,10 +826,21 @@ int main(int argc, char** argv)
 	if (jsonrpc > -1)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager), vector<KeyPair>()));
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer));
 		jsonrpcServer->StartListening();
+		if (jsonAdmin.empty())
+			jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Priviledge::Admin}});
+		else
+			jsonrpcServer->addSession(jsonAdmin, SessionPermissions{{Priviledge::Admin}});
+		cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
 	}
 #endif
+
+	if (bootstrap)
+		for (auto const& i: Host::pocHosts())
+			web3.requirePeer(i.first, i.second);
+	if (!remoteHost.empty())
+		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
 
 	signal(SIGABRT, &sighandler);
 	signal(SIGTERM, &sighandler);
@@ -965,8 +981,13 @@ int main(int argc, char** argv)
 				if (jsonrpc < 0)
 					jsonrpc = SensibleHttpPort;
 				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager), vector<KeyPair>()));
+				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer));
 				jsonrpcServer->StartListening();
+				if (jsonAdmin.empty())
+					jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Priviledge::Admin}});
+				else
+					jsonrpcServer->addSession(jsonAdmin, SessionPermissions{{Priviledge::Admin}});
+				cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
 			}
 			else if (cmd == "jsonstop")
 			{
@@ -1061,7 +1082,7 @@ int main(int argc, char** argv)
 			}
 			else if (c && cmd == "retryunknown")
 			{
-				c->retryUnkonwn();
+				c->retryUnknown();
 			}
 			else if (cmd == "peers")
 			{
@@ -1175,6 +1196,75 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 			}
+
+			else if (c && cmd == "transactnonce")
+			{
+				auto const& bc =c->blockChain();
+				auto h = bc.currentHash();
+				auto blockData = bc.block(h);
+				BlockInfo info(blockData);
+				if (iss.peek() != -1)
+				{
+					string hexAddr;
+					u256 amount;
+					u256 gasPrice;
+					u256 gas;
+					string sechex;
+					string sdata;
+					u256 nonce;
+
+					iss >> hexAddr >> amount >> gasPrice >> gas >> sechex >> sdata >> nonce;
+
+					if (!gasPrice)
+						gasPrice = gasPricer->bid(priority);
+
+					cnote << "Data:";
+					cnote << sdata;
+					bytes data = dev::eth::parseData(sdata);
+					cnote << "Bytes:";
+					string sbd = asString(data);
+					bytes bbd = asBytes(sbd);
+					stringstream ssbd;
+					ssbd << bbd;
+					cnote << ssbd.str();
+					int ssize = sechex.length();
+					int size = hexAddr.length();
+					u256 minGas = (u256)Transaction::gasRequired(data, 0);
+					if (size < 40)
+					{
+						if (size > 0)
+							cwarn << "Invalid address length:" << size;
+					}
+					else if (gas < minGas)
+						cwarn << "Minimum gas amount is" << minGas;
+					else if (ssize < 40)
+					{
+						if (ssize > 0)
+							cwarn << "Invalid secret length:" << ssize;
+					}
+					else
+					{
+						try
+						{
+							Secret secret = h256(fromHex(sechex));
+							Address dest = h160(fromHex(hexAddr));
+							c->submitTransaction(secret, amount, dest, data, gas, gasPrice, nonce);
+						}
+						catch (BadHexCharacter& _e)
+						{
+							cwarn << "invalid hex character, transaction rejected";
+							cwarn << boost::diagnostic_information(_e);
+						}
+						catch (...)
+						{
+							cwarn << "transaction rejected";
+						}
+					}
+				}
+				else
+					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA NONCE";
+			}
+
 			else if (c && cmd == "txcreate")
 			{
 				auto const& bc =c->blockChain();
@@ -1403,6 +1493,22 @@ int main(int argc, char** argv)
 				cout << "Hex: " << toHex(rb) << endl;
 				cout << r << endl;
 			}
+			else if (c && cmd == "reprocess")
+			{
+				string block;
+				iss >> block;
+				h256 blockHash;
+				try
+				{
+					if (block.size() == 64 || block.size() == 66)
+						blockHash = h256(block);
+					else
+						blockHash = c->blockChain().numberHash(stoi(block));
+					c->state(blockHash);
+				}
+				catch (...)
+				{}
+			}
 			else if (c && cmd == "dumptrace")
 			{
 				unsigned block;
@@ -1413,7 +1519,7 @@ int main(int argc, char** argv)
 				ofstream f;
 				f.open(filename);
 
-				dev::eth::State state =c->state(index + 1,c->blockChain().numberHash(block));
+				dev::eth::State state = c->state(index + 1,c->blockChain().numberHash(block));
 				if (index < state.pending().size())
 				{
 					Executive e(state, c->blockChain(), 0);
@@ -1605,7 +1711,7 @@ int main(int argc, char** argv)
 		while (!g_exit)
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
-	StructuredLogger::stopping(clientImplString, dev::Version);
+	StructuredLogger::stopping(WebThreeDirect::composeClientVersion("++eth", clientName), dev::Version);
 	auto netData = web3.saveNetwork();
 	if (!netData.empty())
 		writeFile((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp", netData);
