@@ -20,15 +20,19 @@
  * Ethereum IDE client.
  */
 
-#include <QDebug>
+#include <vector>
 #include <QMap>
 #include <QStringList>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <libethcore/CommonJS.h>
 #include <libsolidity/AST.h>
 #include "QVariableDeclaration.h"
 #include "QVariableDefinition.h"
 #include "QFunctionDefinition.h"
 #include "ContractCallDataEncoder.h"
+using namespace std;
 using namespace dev;
 using namespace dev::solidity;
 using namespace dev::mix;
@@ -38,13 +42,18 @@ bytes ContractCallDataEncoder::encodedData()
 	bytes r(m_encodedData);
 	size_t headerSize = m_encodedData.size() & ~0x1fUL; //ignore any prefix that is not 32-byte aligned
 	//apply offsets
-	for (auto const& p: m_offsetMap)
+	for (auto const& p: m_dynamicOffsetMap)
+	{
+		vector_ref<byte> offsetRef(m_dynamicData.data() + p.first, 32);
+		toBigEndian<size_t, vector_ref<byte>>(p.second + headerSize, offsetRef); //add header size minus signature hash
+	}
+	for (auto const& p: m_staticOffsetMap)
 	{
 		vector_ref<byte> offsetRef(r.data() + p.first, 32);
 		toBigEndian<size_t, vector_ref<byte>>(p.second + headerSize, offsetRef); //add header size minus signature hash
 	}
-
-	r.insert(r.end(), m_dynamicData.begin(), m_dynamicData.end());
+	if (m_dynamicData.size() > 0)
+		r.insert(r.end(), m_dynamicData.begin(), m_dynamicData.end());
 	return r;
 }
 
@@ -54,54 +63,95 @@ void ContractCallDataEncoder::encode(QFunctionDefinition const* _function)
 	m_encodedData.insert(m_encodedData.end(), hash.begin(), hash.end());
 }
 
+void ContractCallDataEncoder::encodeArray(QJsonArray const& _array, QList<int> _dim, SolidityType const& _type, bytes& _content)
+{
+	size_t offsetStart = _content.size();
+	if (_dim[0] == -1)
+	{
+		bytes count = bytes(32);
+		toBigEndian((u256)_array.size(), count);
+		_content += count; //reserved space for count
+	}
+	_dim.pop_front();
+
+	int k = 0;
+	for (QJsonValue const& c: _array)
+	{
+		if (c.isArray())
+		{
+			if (_dim[0] == -1)
+			{
+				m_dynamicOffsetMap.push_back(std::make_pair(m_dynamicData.size() + offsetStart + 32 + k * 32,
+															m_dynamicData.size() + _content.size()));
+			}
+			encodeArray(c.toArray(), _dim, _type, _content);
+		}
+		else
+		{
+			// encode single item
+			if (c.isDouble())
+				encodeSingleItem(QString::number(c.toDouble()), _type, _content);
+			else if (c.isString())
+				encodeSingleItem(c.toString(), _type, _content);
+		}
+		k++;
+	}
+}
+
 void ContractCallDataEncoder::encode(QVariant const& _data, SolidityType const& _type)
 {
-	u256 count = 1;
 	QStringList strList;
+	vector<int> dim;
 	if (_type.array)
 	{
-		if (_data.type() == QVariant::String)
-			strList = _data.toString().split(",", QString::SkipEmptyParts);  //TODO: proper parsing
+		QList<int> dim = extractDimension(_type. name);
+		bytes content;
+		QJsonDocument jsonResponse = QJsonDocument::fromJson(_data.toString().toUtf8());
+		QJsonArray jsonObject = jsonResponse.array();
+		size_t size = m_encodedData.size();
+		if (dim[0] == -1)
+		{
+			m_encodedData += bytes(32); // reserve space for offset
+			m_staticOffsetMap.push_back(std::make_pair(size, m_dynamicData.size()));
+		}
+		encodeArray(jsonObject, dim, _type, content);
+
+		if (!_type.dynamicSize)
+			m_encodedData.insert(m_encodedData.end(), content.begin(), content.end());
 		else
-			strList = _data.toStringList();
-		count = strList.count();
-
+			m_dynamicData.insert(m_dynamicData.end(), content.begin(), content.end());
 	}
-	else
-		strList.append(_data.toString());
-
-	if (_type.dynamicSize)
+	else if (_type.dynamicSize && _type.type == SolidityType::Type::Bytes)
 	{
 		bytes empty(32);
 		size_t sizePos = m_dynamicData.size();
 		m_dynamicData += empty; //reserve space for count
-		if (_type.type == SolidityType::Type::Bytes)
-			count = encodeSingleItem(_data.toString(), _type, m_dynamicData);
-		else
-		{
-			count = strList.count();
-			for (auto const& item: strList)
-				encodeSingleItem(item, _type, m_dynamicData);
-		}
+		u256 count = encodeSingleItem(_data.toString(), _type, m_dynamicData);
 		vector_ref<byte> sizeRef(m_dynamicData.data() + sizePos, 32);
 		toBigEndian(count, sizeRef);
-		m_offsetMap.push_back(std::make_pair(m_encodedData.size(), sizePos));
+		m_staticOffsetMap.push_back(std::make_pair(m_encodedData.size(), sizePos));
 		m_encodedData += empty; //reserve space for offset
 	}
 	else
-	{
-		if (_type.array)
-			count = _type.count;
-		int c = static_cast<int>(count);
-		if (strList.size() > c)
-			strList.erase(strList.begin() + c, strList.end());
-		else
-			while (strList.size() < c)
-				strList.append(QString());
+		encodeSingleItem(_data.toString(), _type, m_encodedData);
+}
 
-		for (auto const& item: strList)
-			encodeSingleItem(item, _type, m_encodedData);
+QList<int> ContractCallDataEncoder::extractDimension(QString const& _type)
+{
+	QList<int> dim;
+	QRegExp dimExtract("(\\[[^\\]]*\\])");
+	int pos = dimExtract.indexIn(_type);
+	while (pos != -1)
+	{
+		QString d = dimExtract.cap(0);
+		pos += d.length();
+		pos = dimExtract.indexIn(_type, pos);
+		if (d == "[]")
+			dim.push_front(-1);
+		else
+			dim.push_front(d.replace("[", "").replace("]", "").toInt());
 	}
+	return dim;
 }
 
 unsigned ContractCallDataEncoder::encodeSingleItem(QString const& _data, SolidityType const& _type, bytes& _dest)
