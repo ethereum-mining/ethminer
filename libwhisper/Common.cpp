@@ -22,6 +22,7 @@
 #include "Common.h"
 #include <libdevcore/SHA3.h>
 #include "Message.h"
+#include "BloomFilter.h"
 
 using namespace std;
 using namespace dev;
@@ -94,12 +95,12 @@ TopicFilter::TopicFilter(RLP const& _r)
 	}
 }
 
-AbridgedTopic TopicFilter::exportBloomFilter() const
+AbridgedTopic TopicFilter::exportBloom() const
 {
 	AbridgedTopic ret;
 	for (TopicMask const& t: m_topicMasks)
 		for (auto i: t)
-			ret |= i.first;		
+			ret |= i.first.template bloomPart<TopicBloomFilter::BitsPerBloom, TopicBloomFilter::size>();		
 		
 	return ret;
 }

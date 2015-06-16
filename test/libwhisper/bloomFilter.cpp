@@ -29,16 +29,16 @@ using namespace dev::shh;
 
 void testAddNonExisting(TopicBloomFilter& _f, AbridgedTopic const& _h)
 {
-	BOOST_REQUIRE(!_f.contains(_h));
-	_f.add(_h);
-	BOOST_REQUIRE(_f.contains(_h));
+	BOOST_REQUIRE(!_f.containsRaw(_h));
+	_f.addRaw(_h);
+	BOOST_REQUIRE(_f.containsRaw(_h));
 }
 
 void testRemoveExisting(TopicBloomFilter& _f, AbridgedTopic const& _h)
 {
-	BOOST_REQUIRE(_f.contains(_h));
-	_f.remove(_h);
-	BOOST_REQUIRE(!_f.contains(_h));
+	BOOST_REQUIRE(_f.containsRaw(_h));
+	_f.removeRaw(_h);
+	BOOST_REQUIRE(!_f.containsRaw(_h));
 }
 
 void testAddNonExistingBloom(TopicBloomFilter& _f, AbridgedTopic const& _h)
@@ -110,9 +110,9 @@ BOOST_AUTO_TEST_CASE(bloomFilterRaw)
 	BOOST_REQUIRE(f.contains(b00110110));
 	BOOST_REQUIRE(f.contains(b00110111));
 
-	f.remove(b00000001);
-	f.remove(b00000001);
-	f.remove(b00000001);
+	f.removeRaw(b00000001);
+	f.removeRaw(b00000001);
+	f.removeRaw(b00000001);
 	BOOST_REQUIRE(!f.contains(b00000001));
 	BOOST_REQUIRE(f.contains(b00010000));
 	BOOST_REQUIRE(f.contains(b00011000));
@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE(bloomFilterRaw)
 	BOOST_REQUIRE(f.contains(b00110110));
 	BOOST_REQUIRE(!f.contains(b00110111));
 
-	f.remove(b00010000);
+	f.removeRaw(b00010000);
 	BOOST_REQUIRE(!f.contains(b00000001));
 	BOOST_REQUIRE(f.contains(b00010000));
 	BOOST_REQUIRE(f.contains(b00011000));
@@ -134,7 +134,7 @@ BOOST_AUTO_TEST_CASE(bloomFilterRaw)
 	BOOST_REQUIRE(f.contains(b00110110));
 	BOOST_REQUIRE(!f.contains(b00110111));
 
-	f.remove(b00111000);
+	f.removeRaw(b00111000);
 	BOOST_REQUIRE(!f.contains(b00000001));
 	BOOST_REQUIRE(f.contains(b00010000));
 	BOOST_REQUIRE(!f.contains(b00011000));
@@ -145,7 +145,7 @@ BOOST_AUTO_TEST_CASE(bloomFilterRaw)
 	BOOST_REQUIRE(f.contains(b00110110));
 	BOOST_REQUIRE(!f.contains(b00110111));
 
-	f.add(b00000001);
+	f.addRaw(b00000001);
 	BOOST_REQUIRE(f.contains(b00000001));
 	BOOST_REQUIRE(f.contains(b00010000));
 	BOOST_REQUIRE(!f.contains(b00011000));
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(bloomFilterRaw)
 	BOOST_REQUIRE(f.contains(b00110110));
 	BOOST_REQUIRE(f.contains(b00110111));
 
-	f.remove(b00110111);
+	f.removeRaw(b00110111);
 	BOOST_REQUIRE(!f.contains(b00000001));
 	BOOST_REQUIRE(f.contains(b00010000));
 	BOOST_REQUIRE(!f.contains(b00011000));
@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE(bloomFilterRaw)
 	BOOST_REQUIRE(!f.contains(b00110110));
 	BOOST_REQUIRE(!f.contains(b00110111));
 
-	f.remove(b00110111);
+	f.removeRaw(b00110111);
 	BOOST_REQUIRE(!f.contains(b00000001));
 	BOOST_REQUIRE(!f.contains(b00010000));
 	BOOST_REQUIRE(!f.contains(b00011000));
