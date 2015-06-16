@@ -204,7 +204,7 @@ bool SecretStore::recode(h128 const& _uuid, string const& _newPass, function<str
 static bytes deriveNewKey(string const& _pass, KDF _kdf, js::mObject& o_ret)
 {
 	unsigned dklen = 32;
-	unsigned iterations = 1 << 19;
+	unsigned iterations = 1 << 18;
 	bytes salt = h256::random().asBytes();
 	if (_kdf == KDF::Scrypt)
 	{
