@@ -198,6 +198,7 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->mineStatus);
+	statusBar()->addPermanentWidget(ui->syncStatus);
 	statusBar()->addPermanentWidget(ui->chainStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
 
@@ -209,7 +210,9 @@ Main::Main(QWidget *parent) :
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir(), WithExisting::Trust, {"eth"/*, "shh"*/}, p2p::NetworkPreferences(), network));
 
 	m_httpConnector.reset(new jsonrpc::HttpServer(SensibleHttpPort, "", "", dev::SensibleHttpThreads));
-	m_server.reset(new OurWebThreeStubServer(*m_httpConnector, *web3(), this));
+	auto w3ss = new OurWebThreeStubServer(*m_httpConnector, this);
+	m_server.reset(w3ss);
+	auto sessionKey = w3ss->newSession(SessionPermissions{{Priviledge::Admin}});
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
@@ -226,12 +229,16 @@ Main::Main(QWidget *parent) :
 
 	m_dappHost.reset(new DappHost(8081));
 	m_dappLoader = new DappLoader(this, web3(), getNameReg());
+	m_dappLoader->setSessionKey(sessionKey);
 	connect(m_dappLoader, &DappLoader::dappReady, this, &Main::dappLoaded);
 	connect(m_dappLoader, &DappLoader::pageReady, this, &Main::pageLoaded);
 //	ui->webView->page()->settings()->setAttribute(QWebEngineSettings::DeveloperExtrasEnabled, true);
 //	QWebEngineInspector* inspector = new QWebEngineInspector();
 //	inspector->setPage(page);
 	setBeneficiary(*m_keyManager.accounts().begin());
+
+	ethereum()->setDefault(LatestBlock);
+
 	readSettings();
 
 	m_transact = new Transact(this, this);
@@ -1245,9 +1252,15 @@ void Main::refreshBlockCount()
 {
 	auto d = ethereum()->blockChain().details();
 	BlockQueueStatus b = ethereum()->blockQueueStatus();
-	HashChainStatus h = ethereum()->hashChainStatus();
-	ui->chainStatus->setText(QString("%10/%11%12 hashes %3 importing %4 ready %5 verifying %6 unverified %7 future %8 unknown %9 bad  %1 #%2")
-		.arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.importing).arg(b.verified).arg(b.verifying).arg(b.unverified).arg(b.future).arg(b.unknown).arg(b.bad).arg(h.received).arg(h.estimated ? "~" : "").arg(h.total));
+	SyncStatus sync = ethereum()->syncStatus();
+	QString syncStatus = EthereumHost::stateName(sync.state);
+	if (sync.state == SyncState::HashesParallel || sync.state == SyncState::HashesSingle)
+		syncStatus += QString(": %1/%2%3").arg(sync.hashesReceived).arg(sync.hashesEstimated ? "~" : "").arg(sync.hashesTotal);
+	if (sync.state == SyncState::Blocks || sync.state == SyncState::NewBlocks)
+		syncStatus += QString(": %1/%2").arg(sync.blocksReceived).arg(sync.blocksTotal);
+	ui->syncStatus->setText(syncStatus);
+	ui->chainStatus->setText(QString("%3 importing %4 ready %5 verifying %6 unverified %7 future %8 unknown %9 bad  %1 #%2")
+		.arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.importing).arg(b.verified).arg(b.verifying).arg(b.unverified).arg(b.future).arg(b.unknown).arg(b.bad));
 }
 
 void Main::on_turboMining_triggered()
@@ -1909,7 +1922,7 @@ void Main::on_clearPending_triggered()
 
 void Main::on_retryUnknown_triggered()
 {
-	ethereum()->retryUnkonwn();
+	ethereum()->retryUnknown();
 }
 
 void Main::on_killBlockchain_triggered()
@@ -1928,11 +1941,7 @@ void Main::on_net_triggered()
 {
 	ui->port->setEnabled(!ui->net->isChecked());
 	ui->clientName->setEnabled(!ui->net->isChecked());
-	string n = string("AlethZero/v") + dev::Version;
-	if (ui->clientName->text().size())
-		n += "/" + ui->clientName->text().toStdString();
-	n +=  "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM);
-	web3()->setClientVersion(n);
+	web3()->setClientVersion(WebThreeDirect::composeClientVersion("AlethZero", ui->clientName->text().toStdString()));
 	if (ui->net->isChecked())
 	{
 		web3()->setIdealPeerCount(ui->idealPeers->value());
