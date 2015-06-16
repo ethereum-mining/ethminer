@@ -130,7 +130,7 @@ public:
 	enum NodeRelation { Unknown = 0, Known };
 	
 	/// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
-	NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint);
+	NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint, bool _enabled = true);
 	~NodeTable();
 
 	/// Returns distance based on xor metric two node ids. Used by NodeEntry and NodeTable.
@@ -271,6 +271,8 @@ private:
 
 	boost::asio::deadline_timer m_bucketRefreshTimer;				///< Timer which schedules and enacts bucket refresh.
 	boost::asio::deadline_timer m_evictionCheckTimer;				///< Timer for handling node evictions.
+	
+	bool m_disabled;												///< Disable discovery.
 };
 
 inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)

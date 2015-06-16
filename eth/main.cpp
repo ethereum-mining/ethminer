@@ -171,6 +171,9 @@ void help()
 		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    --network-id <n> Only connect to other hosts with this network id (default:0)." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
+		<< "    --no-discovery  Disable Node discovery. (experimental)" << endl
+		<< "    --pin  Only connect to required (trusted) peers. (experimental)" << endl
+//		<< "    --require-peers <peers.json>  List of required (trusted) peers. (experimental)" << endl
 		<< endl;
 	MinerCLI::streamHelp(cout);
 	cout
@@ -307,6 +310,8 @@ int main(int argc, char** argv)
 	unsigned short remotePort = 30303;
 	unsigned peers = 11;
 	bool bootstrap = false;
+	bool disableDiscovery = false;
+	bool pinning = false;
 	unsigned networkId = 0;
 
 	/// Mining params
@@ -595,6 +600,10 @@ int main(int argc, char** argv)
 		}
 		else if (arg == "-b" || arg == "--bootstrap")
 			bootstrap = true;
+		else if (arg == "--no-discovery")
+			disableDiscovery = true;
+		else if (arg == "--pin")
+			pinning = true;
 		else if (arg == "-f" || arg == "--force-mining")
 			forceMining = true;
 		else if (arg == "-i" || arg == "--interactive")
@@ -687,6 +696,8 @@ int main(int argc, char** argv)
 	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat, structuredLoggingURL);
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
+	netPrefs.discovery = !disableDiscovery;
+	netPrefs.pin = pinning;
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
 	dev::WebThreeDirect web3(
 		WebThreeDirect::composeClientVersion("++eth", clientName),
