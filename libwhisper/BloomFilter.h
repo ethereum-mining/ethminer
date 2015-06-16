@@ -34,11 +34,13 @@ public:
 	TopicBloomFilter() { init(); }
 	TopicBloomFilter(AbridgedTopic const& _h): AbridgedTopic(_h) { init(); }
 
-	void addBloom(AbridgedTopic const& _h) { add(_h.template bloomPart<BitsPerBloom, 4>()); }
-	void removeBloom(AbridgedTopic const& _h) { remove(_h.template bloomPart<BitsPerBloom, 4>()); }
-	void add(AbridgedTopic const& _h);
-	void remove(AbridgedTopic const& _h);
+	void addBloom(AbridgedTopic const& _h) { addRaw(_h.template bloomPart<BitsPerBloom, 4>()); }
+	void removeBloom(AbridgedTopic const& _h) { removeRaw(_h.template bloomPart<BitsPerBloom, 4>()); }
 	bool containsBloom(AbridgedTopic const& _h) const { return contains(_h.template bloomPart<BitsPerBloom, 4>()); }
+
+	void addRaw(AbridgedTopic const& _h);
+	void removeRaw(AbridgedTopic const& _h);
+	bool containsRaw(AbridgedTopic const& _h) const { return contains(_h); }
 
 	enum { BitsPerBloom = 3 };
 	
@@ -46,7 +48,7 @@ private:
 	void init() { for (unsigned i = 0; i < CounterSize; ++i) m_refCounter[i] = 0; }
 	static bool isBitSet(AbridgedTopic const& _h, unsigned _index);
 
-	enum { CounterSize = 8 * AbridgedTopic::size };
+	enum { CounterSize = 8 * TopicBloomFilter::size };
 	std::array<uint16_t, CounterSize> m_refCounter;
 };
 
