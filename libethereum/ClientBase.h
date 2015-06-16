@@ -76,6 +76,7 @@ public:
 	virtual ~ClientBase() {}
 
 	/// Submits the given message-call transaction.
+	virtual void submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, u256 _nonce);
 	virtual void submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) override;
 
 	/// Submits a new contract-creation transaction.

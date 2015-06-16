@@ -360,7 +360,7 @@ pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, O
 {
 	try
 	{
-		return make_pair(ImportResult::Success, import(verifyBlock(_block, m_onBad), _stateDB, _ir));
+		return make_pair(ImportResult::Success, import(verifyBlock(_block, m_onBad, _ir), _stateDB, _ir));
 	}
 	catch (UnknownParent&)
 	{
@@ -1066,12 +1066,16 @@ bytes BlockChain::block(h256 const& _hash) const
 	return m_blocks[_hash];
 }
 
-VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exception&)> const& _onBad)
+VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exception&)> const& _onBad, ImportRequirements::value _ir)
 {
 	VerifiedBlockRef res;
 	try
 	{
-		res.info.populate(_block, CheckEverything);
+		Strictness strictness = Strictness::CheckEverything;
+		if (~_ir & ImportRequirements::ValidNonce)
+			strictness = Strictness::IgnoreNonce;
+
+		res.info.populate(_block, strictness);
 		res.info.verifyInternals(&_block);
 	}
 	catch (Exception& ex)

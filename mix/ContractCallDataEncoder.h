@@ -48,6 +48,8 @@ public:
 	void encode(QVariant const& _data, SolidityType const& _type);
 	/// Decode variable in order to be sent to QML view.
 	QStringList decode(QList<QVariableDeclaration*> const& _dec, bytes _value);
+	/// Decode @param _parameter
+	QString decode(QVariableDeclaration* const& _param, bytes _value);
 	/// Decode single variable
 	QVariant decode(SolidityType const& _type, bytes const& _value);
 	/// Get all encoded data encoded by encode function.
