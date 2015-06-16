@@ -21,6 +21,8 @@
  * @date 2014
  */
 
+#include "WebThreeStubServerBase.h"
+
 // Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
 
@@ -41,13 +43,13 @@
 #if ETH_SERPENT || !ETH_TRUE
 #include <libserpent/funcs.h>
 #endif
-#include "WebThreeStubServerBase.h"
 #include "AccountHolder.h"
-
+#include "JsonHelper.h"
 using namespace std;
 using namespace jsonrpc;
 using namespace dev;
-using namespace dev::eth;
+using namespace eth;
+using namespace shh;
 
 #if ETH_DEBUG
 const unsigned dev::SensibleHttpThreads = 1;
@@ -55,302 +57,6 @@ const unsigned dev::SensibleHttpThreads = 1;
 const unsigned dev::SensibleHttpThreads = 4;
 #endif
 const unsigned dev::SensibleHttpPort = 8545;
-
-static Json::Value toJson(dev::eth::BlockInfo const& _bi)
-{
-	Json::Value res;
-	if (_bi)
-	{
-		res["hash"] = toJS(_bi.hash());
-		res["parentHash"] = toJS(_bi.parentHash);
-		res["sha3Uncles"] = toJS(_bi.sha3Uncles);
-		res["miner"] = toJS(_bi.coinbaseAddress);
-		res["stateRoot"] = toJS(_bi.stateRoot);
-		res["transactionsRoot"] = toJS(_bi.transactionsRoot);
-		res["difficulty"] = toJS(_bi.difficulty);
-		res["number"] = toJS(_bi.number);
-		res["gasUsed"] = toJS(_bi.gasUsed);
-		res["gasLimit"] = toJS(_bi.gasLimit);
-		res["timestamp"] = toJS(_bi.timestamp);
-		res["extraData"] = toJS(_bi.extraData);
-		res["nonce"] = toJS(_bi.nonce);
-		res["logsBloom"] = toJS(_bi.logBloom);
-	}
-	return res;
-}
-
-static Json::Value toJson(dev::eth::Transaction const& _t, std::pair<h256, unsigned> _location, BlockNumber _blockNumber)
-{
-	Json::Value res;
-	if (_t)
-	{
-		res["hash"] = toJS(_t.sha3());
-		res["input"] = toJS(_t.data());
-		res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
-		res["from"] = toJS(_t.safeSender());
-		res["gas"] = toJS(_t.gas());
-		res["gasPrice"] = toJS(_t.gasPrice());
-		res["nonce"] = toJS(_t.nonce());
-		res["value"] = toJS(_t.value());
-		res["blockHash"] = toJS(_location.first);
-		res["transactionIndex"] = toJS(_location.second);
-		res["blockNumber"] = toJS(_blockNumber);
-	}
-	return res;
-}
-
-static Json::Value toJson(dev::eth::BlockInfo const& _bi, BlockDetails const& _bd, UncleHashes const& _us, Transactions const& _ts)
-{
-	Json::Value res = toJson(_bi);
-	if (_bi)
-	{
-		res["totalDifficulty"] = toJS(_bd.totalDifficulty);
-		res["uncles"] = Json::Value(Json::arrayValue);
-		for (h256 h: _us)
-			res["uncles"].append(toJS(h));
-		res["transactions"] = Json::Value(Json::arrayValue);
-		for (unsigned i = 0; i < _ts.size(); i++)
-			res["transactions"].append(toJson(_ts[i], std::make_pair(_bi.hash(), i), (BlockNumber)_bi.number));
-	}
-	return res;
-}
-
-static Json::Value toJson(dev::eth::BlockInfo const& _bi, BlockDetails const& _bd, UncleHashes const& _us, TransactionHashes const& _ts)
-{
-	Json::Value res = toJson(_bi);
-	if (_bi)
-	{
-		res["totalDifficulty"] = toJS(_bd.totalDifficulty);
-		res["uncles"] = Json::Value(Json::arrayValue);
-		for (h256 h: _us)
-			res["uncles"].append(toJS(h));
-		res["transactions"] = Json::Value(Json::arrayValue);
-		for (h256 const& t: _ts)
-			res["transactions"].append(toJS(t));
-	}
-	return res;
-}
-
-static Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
-{
-	Json::Value res;
-	res["to"] = _t.creation ? Json::Value() : toJS(_t.to);
-	res["from"] = toJS(_t.from);
-	res["gas"] = toJS(_t.gas);
-	res["gasPrice"] = toJS(_t.gasPrice);
-	res["value"] = toJS(_t.value);
-	res["data"] = toJS(_t.data, 32);
-	return res;
-}
-
-static Json::Value toJson(dev::eth::Transaction const& _t)
-{
-	Json::Value res;
-	res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.to());
-	res["from"] = toJS(_t.from());
-	res["gas"] = toJS(_t.gas());
-	res["gasPrice"] = toJS(_t.gasPrice());
-	res["value"] = toJS(_t.value());
-	res["data"] = toJS(_t.data(), 32);
-	res["nonce"] = toJS(_t.nonce());
-	res["hash"] = toJS(_t.sha3(WithSignature));
-	res["sighash"] = toJS(_t.sha3(WithoutSignature));
-	res["r"] = toJS(_t.signature().r);
-	res["s"] = toJS(_t.signature().s);
-	res["v"] = toJS(_t.signature().v);
-	return res;
-}
-
-static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
-{
-	Json::Value res;
-	if (_e.topics.size() > 0)
-	{
-		res["data"] = toJS(_e.data);
-		res["address"] = toJS(_e.address);
-		res["topics"] = Json::Value(Json::arrayValue);
-		for (auto const& t: _e.topics)
-			res["topics"].append(toJS(t));
-		if (_e.mined)
-		{
-			res["type"] = "mined";
-			res["blockNumber"] = _e.blockNumber;
-			res["blockHash"] = toJS(_e.blockHash);
-			res["logIndex"] = _e.logIndex;
-			res["transactionHash"] = toJS(_e.transactionHash);
-			res["transactionIndex"] = _e.transactionIndex;
-		}
-		else
-		{
-			res["type"] = "pending";
-			res["blockNumber"] = Json::Value(Json::nullValue);
-			res["blockHash"] = Json::Value(Json::nullValue);
-			res["logIndex"] = Json::Value(Json::nullValue);
-			res["transactionHash"] = Json::Value(Json::nullValue);
-			res["transactionIndex"] = Json::Value(Json::nullValue);
-		}
-	} else {
-		res = toJS(_e.special);
-	}
-	return res;
-}
-
-static Json::Value toJson(dev::eth::LocalisedLogEntries const& _es)
-{
-	Json::Value res(Json::arrayValue);
-	for (dev::eth::LocalisedLogEntry const& e: _es)
-		res.append(toJson(e));
-	return res;
-}
-
-static Json::Value toJson(map<u256, u256> const& _storage)
-{
-	Json::Value res(Json::objectValue);
-	for (auto i: _storage)
-		res[toJS(i.first)] = toJS(i.second);
-	return res;
-}
-
-static dev::eth::LogFilter toLogFilter(Json::Value const& _json)
-{
-	dev::eth::LogFilter filter;
-	if (!_json.isObject() || _json.empty())
-		return filter;
-
-	// check only !empty. it should throw exceptions if input params are incorrect
-	if (!_json["fromBlock"].empty())
-		filter.withEarliest(jsToFixed<32>(_json["fromBlock"].asString()));
-	if (!_json["toBlock"].empty())
-		filter.withLatest(jsToFixed<32>(_json["toBlock"].asString()));
-	if (!_json["address"].empty())
-	{
-		if (_json["address"].isArray())
-			for (auto i : _json["address"])
-				filter.address(jsToAddress(i.asString()));
-		else
-			filter.address(jsToAddress(_json["address"].asString()));
-	}
-	if (!_json["topics"].empty())
-		for (unsigned i = 0; i < _json["topics"].size(); i++)
-		{
-			if (_json["topics"][i].isArray())
-			{
-				for (auto t: _json["topics"][i])
-					if (!t.isNull())
-						filter.topic(i, jsToFixed<32>(t.asString()));
-			}
-			else if (!_json["topics"][i].isNull()) // if it is anything else then string, it should and will fail
-				filter.topic(i, jsToFixed<32>(_json["topics"][i].asString()));
-		}
-	return filter;
-}
-
-// TODO: this should be removed once we decide to remove backward compatibility with old log filters
-static dev::eth::LogFilter toLogFilter(Json::Value const& _json, Interface const& _client)	// commented to avoid warning. Uncomment once in use @ PoC-7.
-{
-	dev::eth::LogFilter filter;
-	if (!_json.isObject() || _json.empty())
-		return filter;
-
-	// check only !empty. it should throw exceptions if input params are incorrect
-	if (!_json["fromBlock"].empty())
-		filter.withEarliest(_client.hashFromNumber(jsToBlockNumber(_json["fromBlock"].asString())));
-	if (!_json["toBlock"].empty())
-		filter.withLatest(_client.hashFromNumber(jsToBlockNumber(_json["toBlock"].asString())));
-	if (!_json["address"].empty())
-	{
-		if (_json["address"].isArray())
-			for (auto i : _json["address"])
-				filter.address(jsToAddress(i.asString()));
-		else
-			filter.address(jsToAddress(_json["address"].asString()));
-	}
-	if (!_json["topics"].empty())
-		for (unsigned i = 0; i < _json["topics"].size(); i++)
-		{
-			if (_json["topics"][i].isArray())
-			{
-				for (auto t: _json["topics"][i])
-					if (!t.isNull())
-						filter.topic(i, jsToFixed<32>(t.asString()));
-			}
-			else if (!_json["topics"][i].isNull()) // if it is anything else then string, it should and will fail
-				filter.topic(i, jsToFixed<32>(_json["topics"][i].asString()));
-		}
-	return filter;
-}
-
-static shh::Message toMessage(Json::Value const& _json)
-{
-	shh::Message ret;
-	if (!_json["from"].empty())
-		ret.setFrom(jsToPublic(_json["from"].asString()));
-	if (!_json["to"].empty())
-		ret.setTo(jsToPublic(_json["to"].asString()));
-	if (!_json["payload"].empty())
-		ret.setPayload(jsToBytes(_json["payload"].asString()));
-	return ret;
-}
-
-static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, Secret _from)
-{
-	unsigned ttl = 50;
-	unsigned workToProve = 50;
-	shh::BuildTopic bt;
-
-	if (!_json["ttl"].empty())
-		ttl = jsToInt(_json["ttl"].asString());
-	
-	if (!_json["workToProve"].empty())
-		workToProve = jsToInt(_json["workToProve"].asString());
-	
-	if (!_json["topics"].empty())
-		for (auto i: _json["topics"])
-		{
-			if (i.isArray())
-			{
-				for (auto j: i)
-					if (!j.isNull())
-						bt.shift(jsToBytes(j.asString()));
-			}
-			else if (!i.isNull()) // if it is anything else then string, it should and will fail
-				bt.shift(jsToBytes(i.asString()));
-		}
-	
-	return _m.seal(_from, bt, ttl, workToProve);
-}
-
-static pair<shh::Topics, Public> toWatch(Json::Value const& _json)
-{
-	shh::BuildTopic bt;
-	Public to;
-
-	if (!_json["to"].empty())
-		to = jsToPublic(_json["to"].asString());
-
-	if (!_json["topics"].empty())
-		for (auto i: _json["topics"])
-			bt.shift(jsToBytes(i.asString()));
-	
-	return make_pair(bt, to);
-}
-
-static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message const& _m)
-{
-	Json::Value res;
-	res["hash"] = toJS(_h);
-	res["expiry"] = toJS(_e.expiry());
-	res["sent"] = toJS(_e.sent());
-	res["ttl"] = toJS(_e.ttl());
-	res["workProved"] = toJS(_e.workProved());
-	res["topics"] = Json::Value(Json::arrayValue);
-	for (auto const& t: _e.topic())
-		res["topics"].append(toJS(t));
-	res["payload"] = toJS(_m.payload());
-	res["from"] = toJS(_m.from());
-	res["to"] = toJS(_m.to());
-	return res;
-}
 
 WebThreeStubServerBase::WebThreeStubServerBase(AbstractServerConnector& _conn, std::shared_ptr<dev::eth::AccountHolder> const& _ethAccounts, vector<dev::KeyPair> const& _sshAccounts):
 	AbstractWebThreeStubServer(_conn),
@@ -468,7 +174,6 @@ string WebThreeStubServerBase::eth_getBlockTransactionCountByHash(string const& 
 	}
 }
 
-
 string WebThreeStubServerBase::eth_getBlockTransactionCountByNumber(string const& _blockNumber)
 {
 	try
@@ -517,42 +222,12 @@ string WebThreeStubServerBase::eth_getCode(string const& _address, string const&
 	}
 }
 
-static TransactionSkeleton toTransaction(Json::Value const& _json)
-{
-	TransactionSkeleton ret;
-	if (!_json.isObject() || _json.empty())
-		return ret;
-	
-	if (!_json["from"].empty())
-		ret.from = jsToAddress(_json["from"].asString());
-	if (!_json["to"].empty() && _json["to"].asString() != "0x")
-		ret.to = jsToAddress(_json["to"].asString());
-	else
-		ret.creation = true;
-	
-	if (!_json["value"].empty())
-		ret.value = jsToU256(_json["value"].asString());
-
-	if (!_json["gas"].empty())
-		ret.gas = jsToU256(_json["gas"].asString());
-
-	if (!_json["gasPrice"].empty())
-		ret.gasPrice = jsToU256(_json["gasPrice"].asString());
-
-	if (!_json["data"].empty())							// ethereum.js has preconstructed the data array
-		ret.data = jsToBytes(_json["data"].asString());
-	
-	if (!_json["code"].empty())
-		ret.data = jsToBytes(_json["code"].asString());
-	return ret;
-}
-
 string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json)
 {
 	try
 	{
 		string ret;
-		TransactionSkeleton t = toTransaction(_json);
+		TransactionSkeleton t = toTransactionSkeleton(_json);
 	
 		if (!t.from)
 			t.from = m_ethAccounts->defaultTransactAccount();
@@ -578,7 +253,7 @@ string WebThreeStubServerBase::eth_signTransaction(Json::Value const& _json)
 	try
 	{
 		string ret;
-		TransactionSkeleton t = toTransaction(_json);
+		TransactionSkeleton t = toTransactionSkeleton(_json);
 
 		if (!t.from)
 			t.from = m_ethAccounts->defaultTransactAccount();
@@ -627,7 +302,7 @@ string WebThreeStubServerBase::eth_call(Json::Value const& _json, string const& 
 {
 	try
 	{
-		TransactionSkeleton t = toTransaction(_json);
+		TransactionSkeleton t = toTransactionSkeleton(_json);
 		if (!t.from)
 			t.from = m_ethAccounts->defaultTransactAccount();
 	//	if (!m_accounts->isRealAccount(t.from))
@@ -798,34 +473,32 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _source)
 	return res;
 }
 
+#define ADMIN requires(_session, Priviledge::Admin)
+
 bool WebThreeStubServerBase::admin_web3_setVerbosity(int _v, string const& _session)
 {
-	if (!isAdmin(_session))
-		return false;
+	ADMIN;
 	g_logVerbosity = _v;
 	return true;
 }
 
 bool WebThreeStubServerBase::admin_net_start(std::string const& _session)
 {
-	if (!isAdmin(_session))
-		return false;
+	ADMIN;
 	network()->startNetwork();
 	return true;
 }
 
 bool WebThreeStubServerBase::admin_net_stop(std::string const& _session)
 {
-	if (!isAdmin(_session))
-		return false;
+	ADMIN;
 	network()->stopNetwork();
 	return true;
 }
 
 bool WebThreeStubServerBase::admin_net_connect(std::string const& _node, std::string const& _session)
 {
-	if (!isAdmin(_session))
-		return false;
+	ADMIN;
 	p2p::NodeId id;
 	bi::tcp::endpoint ep;
 	if (_node.substr(0, 8) == "enode://" && _node.find('@') == 136)
@@ -839,25 +512,9 @@ bool WebThreeStubServerBase::admin_net_connect(std::string const& _node, std::st
 	return true;
 }
 
-Json::Value toJson(p2p::PeerSessionInfo const& _p)
-{
-	Json::Value ret;
-	ret["id"] = _p.id.hex();
-	ret["clientVersion"] = _p.clientVersion;
-	ret["host"] = _p.host;
-	ret["port"] = _p.port;
-	ret["lastPing"] = (int)chrono::duration_cast<chrono::milliseconds>(_p.lastPing).count();
-	for (auto const& i: _p.notes)
-		ret["notes"][i.first] = i.second;
-	for (auto const& i: _p.caps)
-		ret["caps"][i.first] = (unsigned)i.second;
-	return ret;
-}
-
 Json::Value WebThreeStubServerBase::admin_net_peers(std::string const& _session)
 {
-	if (!isAdmin(_session))
-		return false;
+	ADMIN;
 	Json::Value ret;
 	for (p2p::PeerSessionInfo const& i: network()->peers())
 		ret.append(toJson(i));
@@ -866,8 +523,7 @@ Json::Value WebThreeStubServerBase::admin_net_peers(std::string const& _session)
 
 bool WebThreeStubServerBase::admin_eth_setMining(bool _on, std::string const& _session)
 {
-	if (!isAdmin(_session))
-		return false;
+	ADMIN;
 	if (_on)
 		client()->startMining();
 	else
@@ -970,8 +626,6 @@ bool WebThreeStubServerBase::eth_uninstallFilter(string const& _filterId)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
-	
-
 }
 
 Json::Value WebThreeStubServerBase::eth_getFilterChanges(string const& _filterId)

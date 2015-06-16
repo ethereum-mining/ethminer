@@ -619,7 +619,7 @@ void EthereumHost::onPeerAborting(EthereumPeer* _peer)
 	if (_peer->isConversing())
 	{
 		_peer->setIdle();
-		if (_peer->isCriticalSyncing())
+//		if (_peer->isCriticalSyncing())
 			_peer->setRude();
 		continueSync();
 	}

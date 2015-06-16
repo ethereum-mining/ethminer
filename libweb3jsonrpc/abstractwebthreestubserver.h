@@ -96,8 +96,8 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_setMiningBenefactor", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_setMiningBenefactorI);
             this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_inspect", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_inspectI);
             this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_reprocess", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_reprocessI);
-            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_vmTrace", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_vmTraceI);
-            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_getReceiptByHashAndIndex", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_getReceiptByHashAndIndexI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_vmTrace", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_INTEGER,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_vmTraceI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_getReceiptByHashAndIndex", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_INTEGER,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_getReceiptByHashAndIndexI);
         }
 
         inline virtual void web3_sha3I(const Json::Value &request, Json::Value &response)
@@ -455,11 +455,11 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         }
         inline virtual void admin_eth_vmTraceI(const Json::Value &request, Json::Value &response)
         {
-            response = this->admin_eth_vmTrace(request[0u].asString(), request[1u].asString(), request[2u].asString());
+            response = this->admin_eth_vmTrace(request[0u].asString(), request[1u].asInt(), request[2u].asString());
         }
         inline virtual void admin_eth_getReceiptByHashAndIndexI(const Json::Value &request, Json::Value &response)
         {
-            response = this->admin_eth_getReceiptByHashAndIndex(request[0u].asString(), request[1u].asString(), request[2u].asString());
+            response = this->admin_eth_getReceiptByHashAndIndex(request[0u].asString(), request[1u].asInt(), request[2u].asString());
         }
         virtual std::string web3_sha3(const std::string& param1) = 0;
         virtual std::string web3_clientVersion() = 0;
@@ -545,8 +545,8 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual bool admin_eth_setMiningBenefactor(const std::string& param1, const std::string& param2) = 0;
         virtual Json::Value admin_eth_inspect(const std::string& param1, const std::string& param2) = 0;
         virtual Json::Value admin_eth_reprocess(const std::string& param1, const std::string& param2) = 0;
-        virtual Json::Value admin_eth_vmTrace(const std::string& param1, const std::string& param2, const std::string& param3) = 0;
-        virtual Json::Value admin_eth_getReceiptByHashAndIndex(const std::string& param1, const std::string& param2, const std::string& param3) = 0;
+        virtual Json::Value admin_eth_vmTrace(const std::string& param1, int param2, const std::string& param3) = 0;
+        virtual Json::Value admin_eth_getReceiptByHashAndIndex(const std::string& param1, int param2, const std::string& param3) = 0;
 };
 
 #endif //JSONRPC_CPP_STUB_ABSTRACTWEBTHREESTUBSERVER_H_
