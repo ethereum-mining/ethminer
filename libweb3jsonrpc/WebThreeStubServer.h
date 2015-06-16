@@ -32,16 +32,19 @@
 
 namespace dev
 {
+
 class WebThreeDirect;
 namespace eth
 {
 class KeyManager;
-}
+class TrivialGasPricer;
+class CanonBlockChain;
+class BlockQueue;
 }
 
 struct SessionPermissions
 {
-	bool admin;
+	std::unordered_set<Priviledge> priviledges;
 };
 
 /**
@@ -50,7 +53,7 @@ struct SessionPermissions
 class WebThreeStubServer: public dev::WebThreeStubServerBase, public dev::WebThreeStubDatabaseFace
 {
 public:
-	WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::shared_ptr<dev::eth::AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _shhAccounts, dev::eth::KeyManager& _keyMan);
+	WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::shared_ptr<dev::eth::AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _shhAccounts, dev::eth::KeyManager& _keyMan, dev::eth::TrivialGasPricer& _gp);
 
 	virtual std::string web3_clientVersion() override;
 
@@ -58,7 +61,7 @@ public:
 	void addSession(std::string const& _session, SessionPermissions const& _p) { m_sessions[_session] = _p; }
 
 private:
-	bool isAdmin(std::string const& _session) const override { auto it = m_sessions.find(_session); return it != m_sessions.end() && it->second.admin; }
+	virtual bool hasPriviledgeLevel(std::string const& _session, Priviledge _l) const override { auto it = m_sessions.find(_session); return it != m_sessions.end() && it->second.priviledges.count(_l); }
 
 	virtual dev::eth::Interface* client() override;
 	virtual std::shared_ptr<dev::shh::Interface> face() override;
@@ -68,15 +71,37 @@ private:
 	virtual std::string get(std::string const& _name, std::string const& _key) override;
 	virtual void put(std::string const& _name, std::string const& _key, std::string const& _value) override;
 
-	virtual bool eth_notePassword(std::string const& _password);
-	virtual Json::Value admin_eth_blockQueueStatus(std::string const& _session);
+	virtual bool eth_notePassword(std::string const& _password) override;
+	virtual Json::Value admin_eth_blockQueueStatus(std::string const& _session) override;
+	virtual bool admin_eth_setAskPrice(std::string const& _wei, std::string const& _session) override;
+	virtual bool admin_eth_setBidPrice(std::string const& _wei, std::string const& _session) override;
+
+	virtual Json::Value admin_eth_findBlock(std::string const& _blockHash, std::string const& _session) override;
+	virtual std::string admin_eth_blockQueueFirstUnknown(std::string const& _session) override;
+	virtual bool admin_eth_blockQueueRetryUnknown(std::string const& _session) override;
+
+	virtual Json::Value admin_eth_allAccounts(std::string const& _session) override;
+	virtual Json::Value admin_eth_newAccount(const Json::Value& _info, std::string const& _session) override;
+	virtual bool admin_eth_setMiningBenefactor(std::string const& _uuidOrAddress, std::string const& _session) override;
+	virtual Json::Value admin_eth_inspect(std::string const& _address, std::string const& _session) override;
+	virtual Json::Value admin_eth_reprocess(std::string const& _blockNumberOrHash, std::string const& _session) override;
+	virtual Json::Value admin_eth_vmTrace(std::string const& _blockNumberOrHash, int _txIndex, std::string const& _session) override;
+	virtual Json::Value admin_eth_getReceiptByHashAndIndex(std::string const& _blockNumberOrHash, int _txIndex, std::string const& _session) override;
 
 private:
+	h256 blockHash(std::string const& _blockNumberOrHash) const;
+
+	dev::eth::CanonBlockChain const& bc() const;
+	dev::eth::BlockQueue const& bq() const;
+
 	dev::WebThreeDirect& m_web3;
 	dev::eth::KeyManager& m_keyMan;
+	dev::eth::TrivialGasPricer& m_gp;
 	leveldb::ReadOptions m_readOptions;
 	leveldb::WriteOptions m_writeOptions;
 	leveldb::DB* m_db;
 
 	std::unordered_map<std::string, SessionPermissions> m_sessions;
 };
+
+}
