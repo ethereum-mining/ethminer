@@ -827,6 +827,7 @@ int main(int argc, char** argv)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
 		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer));
+		jsonrpcServer->setMiningBenefactorChanger([&](Address const& a) { beneficiary = a; });
 		jsonrpcServer->StartListening();
 		if (jsonAdmin.empty())
 			jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Priviledge::Admin}});
@@ -982,6 +983,7 @@ int main(int argc, char** argv)
 					jsonrpc = SensibleHttpPort;
 				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
 				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer));
+				jsonrpcServer->setMiningBenefactorChanger([&](Address const& a) { beneficiary = a; });
 				jsonrpcServer->StartListening();
 				if (jsonAdmin.empty())
 					jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Priviledge::Admin}});
