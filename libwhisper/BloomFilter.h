@@ -28,44 +28,26 @@ namespace dev
 namespace shh
 {
 
-class BloomFilter
+class TopicBloomFilter: public AbridgedTopic
 {
 public:
-	virtual ~BloomFilter() {}
-	BloomFilter(): m_filter(0) {}
-	BloomFilter(unsigned _i): m_filter(_i) {}
-	BloomFilter(AbridgedTopic const& _t): m_filter(AbridgedTopic::Arith(_t).convert_to<unsigned>()) {}
+	TopicBloomFilter() { init(); }
+	TopicBloomFilter(AbridgedTopic const& _h): AbridgedTopic(_h) { init(); }
 
-	unsigned getUnsigned() const { return m_filter; }
-	AbridgedTopic getAbridgedTopic() const { return AbridgedTopic(m_filter); }
+	void addBloom(AbridgedTopic const& _h) { add(_h.template bloom<BitsPerBloom, 4>()); }
+	void removeBloom(AbridgedTopic const& _h) { remove(_h.template bloom<BitsPerBloom, 4>()); }
+	void add(AbridgedTopic const& _h);
+	void remove(AbridgedTopic const& _h);
+	bool containsBloom(AbridgedTopic const& _h) const { return contains(_h.template bloom<BitsPerBloom, 4>()); }
 
-	bool matches(AbridgedTopic const& _t) const;
-	virtual void add(Topic const& _t) { add(abridge(_t)); }
-	virtual void add(Topics const& _topics) { for (Topic t : _topics) add(abridge(t)); }
-	virtual void add(AbridgedTopic const& _t) { m_filter |= AbridgedTopic::Arith(_t).convert_to<unsigned>(); }
-	virtual void remove(AbridgedTopic const&) {} // not implemented in this class, use derived class instead.
-
-protected:
-	unsigned m_filter;
-};
-
-class SharedBloomFilter: public BloomFilter
-{
-public:
-	virtual ~SharedBloomFilter() {}
-	SharedBloomFilter() { init(); }
-	SharedBloomFilter(unsigned _i): BloomFilter(_i) { init(); }
-	SharedBloomFilter(AbridgedTopic const& _t): BloomFilter(_t) { init(); }
-
-	void add(AbridgedTopic const& _t) override;
-	void remove(AbridgedTopic const& _t) override;
-
-protected:
-	void init() { for (unsigned i = 0; i < ArrSize; ++i) m_refCounter[i] = 0; }
-
+	enum { BitsPerBloom = 3 };
+	
 private:
-	enum { ArrSize = 8 * AbridgedTopic::size };
-	unsigned short m_refCounter[ArrSize];
+	void init() { for (unsigned i = 0; i < CounterSize; ++i) m_refCounter[i] = 0; }
+	static bool isBitSet(AbridgedTopic const& _h, unsigned _index);
+
+	enum { CounterSize = 8 * AbridgedTopic::size };
+	std::array<uint16_t, CounterSize> m_refCounter;
 };
 
 }
