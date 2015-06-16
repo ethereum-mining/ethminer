@@ -129,6 +129,8 @@ public:
 
 	// Misc stuff:
 
+	static std::string composeClientVersion(std::string const& _client, std::string const& _name);
+
 	std::string const& clientVersion() const { return m_clientVersion; }
 
 	void setClientVersion(std::string const& _name) { m_clientVersion = _name; }

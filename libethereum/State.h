@@ -123,6 +123,12 @@ enum class Permanence
 	Committed
 };
 
+struct PopulationStatistics
+{
+	double verify;
+	double enact;
+};
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -146,9 +152,6 @@ public:
 	/// You can also set the coinbase address.
 	explicit State(OverlayDB const& _db, BaseState _bs = BaseState::PreExisting, Address _coinbaseAddress = Address());
 
-	/// Construct state object from arbitrary point in blockchain.
-	State(OverlayDB const& _db, BlockChain const& _bc, h256 _hash, ImportRequirements::value _ir = ImportRequirements::Default);
-
 	/// Copy state object.
 	State(State const& _s);
 
@@ -156,6 +159,9 @@ public:
 	State& operator=(State const& _s);
 
 	~State();
+
+	/// Construct state object from arbitrary point in blockchain.
+	PopulationStatistics populateFromChain(BlockChain const& _bc, h256 const& _hash, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Set the coinbase address for any transactions we do.
 	/// This causes a complete reset of current block.
