@@ -35,6 +35,19 @@ vector<AssemblyItem> CommonSubexpressionEliminator::getOptimizedItems()
 {
 	optimizeBreakingItem();
 
+	KnownState nextInitialState = m_state;
+	if (m_breakingItem)
+		nextInitialState.feedItem(*m_breakingItem);
+	KnownState nextState = nextInitialState;
+
+	ScopeGuard reset([&]()
+	{
+		m_breakingItem = nullptr;
+		m_storeOperations.clear();
+		m_initialState = move(nextInitialState);
+		m_state = move(nextState);
+	});
+
 	map<int, Id> initialStackContents;
 	map<int, Id> targetStackContents;
 	int minHeight = m_state.stackHeight() + 1;
@@ -52,15 +65,7 @@ vector<AssemblyItem> CommonSubexpressionEliminator::getOptimizedItems()
 		targetStackContents
 	);
 	if (m_breakingItem)
-	{
 		items.push_back(*m_breakingItem);
-		m_state.feedItem(*m_breakingItem);
-	}
-
-	// cleanup
-	m_initialState = m_state;
-	m_breakingItem = nullptr;
-	m_storeOperations.clear();
 
 	return items;
 }
@@ -74,31 +79,43 @@ void CommonSubexpressionEliminator::feedItem(AssemblyItem const& _item, bool _co
 
 void CommonSubexpressionEliminator::optimizeBreakingItem()
 {
-	if (!m_breakingItem || *m_breakingItem != AssemblyItem(Instruction::JUMPI))
+	if (!m_breakingItem)
 		return;
 
+	ExpressionClasses& classes = m_state.expressionClasses();
 	SourceLocation const& location = m_breakingItem->getLocation();
-	AssemblyItem::JumpType jumpType = m_breakingItem->getJumpType();
-
-	Id condition = m_state.stackElement(m_state.stackHeight() - 1, location);
-	Id zero = m_state.expressionClasses().find(u256(0));
-	if (m_state.expressionClasses().knownToBeDifferent(condition, zero))
+	if (*m_breakingItem == AssemblyItem(Instruction::JUMPI))
 	{
-		feedItem(AssemblyItem(Instruction::SWAP1, location), true);
-		feedItem(AssemblyItem(Instruction::POP, location), true);
+		AssemblyItem::JumpType jumpType = m_breakingItem->getJumpType();
 
-		AssemblyItem item(Instruction::JUMP, location);
-		item.setJumpType(jumpType);
-		m_breakingItem = m_state.expressionClasses().storeItem(item);
-		return;
+		Id condition = m_state.stackElement(m_state.stackHeight() - 1, location);
+		if (classes.knownNonZero(condition))
+		{
+			feedItem(AssemblyItem(Instruction::SWAP1, location), true);
+			feedItem(AssemblyItem(Instruction::POP, location), true);
+
+			AssemblyItem item(Instruction::JUMP, location);
+			item.setJumpType(jumpType);
+			m_breakingItem = classes.storeItem(item);
+		}
+		else if (classes.knownZero(condition))
+		{
+			AssemblyItem it(Instruction::POP, location);
+			feedItem(it, true);
+			feedItem(it, true);
+			m_breakingItem = nullptr;
+		}
 	}
-	Id negatedCondition = m_state.expressionClasses().find(Instruction::ISZERO, {condition});
-	if (m_state.expressionClasses().knownToBeDifferent(negatedCondition, zero))
+	else if (*m_breakingItem == AssemblyItem(Instruction::RETURN))
 	{
-		AssemblyItem it(Instruction::POP, location);
-		feedItem(it, true);
-		feedItem(it, true);
-		m_breakingItem = nullptr;
+		Id size = m_state.stackElement(m_state.stackHeight() - 1, location);
+		if (classes.knownZero(size))
+		{
+			feedItem(AssemblyItem(Instruction::POP, location), true);
+			feedItem(AssemblyItem(Instruction::POP, location), true);
+			AssemblyItem item(Instruction::STOP, location);
+			m_breakingItem = classes.storeItem(item);
+		}
 	}
 }
 

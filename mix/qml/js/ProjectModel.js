@@ -82,9 +82,9 @@ function saveProjectFile()
 		};
 		for (var i = 0; i < projectListModel.count; i++)
 			projectData.files.push({
-				title: projectListModel.get(i).name,
-				fileName: projectListModel.get(i).fileName,
-			});
+									   title: projectListModel.get(i).name,
+									   fileName: projectListModel.get(i).fileName,
+								   });
 
 		projectFileSaving(projectData);
 		var json = JSON.stringify(projectData, null, "\t");
@@ -98,50 +98,52 @@ function saveProjectFile()
 
 function loadProject(path) {
 	closeProject(function() {
-			console.log("Loading project at " + path);
-			var projectFile = path + projectFileName;
-			var json = fileIo.readFile(projectFile);
-			var projectData = JSON.parse(json);
-			if (projectData.deploymentDir)
-				projectModel.deploymentDir = projectData.deploymentDir
-			if (projectData.packageHash)
-				deploymentDialog.packageHash =  projectData.packageHash
-			if (projectData.packageBase64)
-				deploymentDialog.packageBase64 =  projectData.packageBase64
-			if (projectData.applicationUrlEth)
-				deploymentDialog.applicationUrlEth = projectData.applicationUrlEth
-			if (projectData.applicationUrlHttp)
-				deploymentDialog.applicationUrlHttp = projectData.applicationUrlHttp
-			if (!projectData.title) {
-				var parts = path.split("/");
-				projectData.title = parts[parts.length - 2];
-			}
-			deploymentAddresses = projectData.deploymentAddresses ? projectData.deploymentAddresses : [];
-			projectTitle = projectData.title;
-			projectPath = path;
-			if (!projectData.files)
-				projectData.files = [];
+		console.log("Loading project at " + path);
+		var projectFile = path + projectFileName;
+		var json = fileIo.readFile(projectFile);
+		if (!json)
+			return;
+		var projectData = JSON.parse(json);
+		if (projectData.deploymentDir)
+			projectModel.deploymentDir = projectData.deploymentDir
+		if (projectData.packageHash)
+			deploymentDialog.packageHash =  projectData.packageHash
+		if (projectData.packageBase64)
+			deploymentDialog.packageBase64 =  projectData.packageBase64
+		if (projectData.applicationUrlEth)
+			deploymentDialog.applicationUrlEth = projectData.applicationUrlEth
+		if (projectData.applicationUrlHttp)
+			deploymentDialog.applicationUrlHttp = projectData.applicationUrlHttp
+		if (!projectData.title) {
+			var parts = path.split("/");
+			projectData.title = parts[parts.length - 2];
+		}
+		deploymentAddresses = projectData.deploymentAddresses ? projectData.deploymentAddresses : [];
+		projectTitle = projectData.title;
+		projectPath = path;
+		if (!projectData.files)
+			projectData.files = [];
 
-			for(var i = 0; i < projectData.files.length; i++) {
-				var entry = projectData.files[i];
-				if (typeof(entry) === "string")
-					addFile(entry); //TODO: remove old project file support
-				else
-					addFile(entry.fileName, entry.title);
-			}
-			if (mainApplication.trackLastProject)
-				projectSettings.lastProjectPath = path;
-			projectLoading(projectData);
-			projectLoaded()
+		for(var i = 0; i < projectData.files.length; i++) {
+			var entry = projectData.files[i];
+			if (typeof(entry) === "string")
+				addFile(entry); //TODO: remove old project file support
+			else
+				addFile(entry.fileName, entry.title);
+		}
+		if (mainApplication.trackLastProject)
+			projectSettings.lastProjectPath = path;
+		projectLoading(projectData);
+		projectLoaded()
 
-			//TODO: move this to codemodel
-			var contractSources = {};
-			for (var d = 0; d < listModel.count; d++) {
-				var doc = listModel.get(d);
-				if (doc.isContract)
-					contractSources[doc.documentId] = fileIo.readFile(doc.path);
-			}
-			codeModel.reset(contractSources);
+		//TODO: move this to codemodel
+		var contractSources = {};
+		for (var d = 0; d < listModel.count; d++) {
+			var doc = listModel.get(d);
+			if (doc.isContract)
+				contractSources[doc.documentId] = fileIo.readFile(doc.path);
+		}
+		codeModel.reset(contractSources);
 	});
 }
 
@@ -160,12 +162,12 @@ function addFile(fileName, title) {
 		path: p,
 		fileName: fileName,
 		name: title !== undefined ? title : fileName,
-		documentId: fileName,
-		syntaxMode: syntaxMode,
-		isText: isContract || isHtml || isCss || isJs,
-		isContract: isContract,
-		isHtml: isHtml,
-		groupName: groupName
+									documentId: fileName,
+									syntaxMode: syntaxMode,
+									isText: isContract || isHtml || isCss || isJs,
+									isContract: isContract,
+									isHtml: isHtml,
+									groupName: groupName
 	};
 
 	projectListModel.append(docData);

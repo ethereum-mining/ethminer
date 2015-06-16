@@ -64,5 +64,10 @@
         <file>qml/js/ansi2html.js</file>
         <file>qml/js/NetworkDeployment.js</file>
         <file>qml/js/InputValidator.js</file>
+        <file>qml/Block.qml</file>
+        <file>qml/BlockChain.qml</file>
+        <file>qml/ScenarioExecution.qml</file>
+        <file>qml/ScenarioLoader.qml</file>
+        <file>qml/ScenarioButton.qml</file>
     </qresource>
 </RCC>

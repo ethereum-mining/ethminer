@@ -30,6 +30,7 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
+#include <boost/optional.hpp>
 
 #include <libdevcore/FileSystem.h>
 #include <libevmcore/Instruction.h>
@@ -97,11 +98,11 @@ public:
 		if ((arg == "-F" || arg == "--farm") && i + 1 < argc)
 		{
 			mode = OperationMode::Farm;
-			farmURL = argv[++i];
+			m_farmURL = argv[++i];
 		}
 		else if (arg == "--farm-recheck" && i + 1 < argc)
 			try {
-				farmRecheckPeriod = stol(argv[++i]);
+				m_farmRecheckPeriod = stol(argv[++i]);
 			}
 			catch (...)
 			{
@@ -110,7 +111,7 @@ public:
 			}
 		else if (arg == "--opencl-platform" && i + 1 < argc)
 			try {
-				openclPlatform = stol(argv[++i]);
+				m_openclPlatform = stol(argv[++i]);
 			}
 			catch (...)
 			{
@@ -119,8 +120,8 @@ public:
 			}
 		else if (arg == "--opencl-device" && i + 1 < argc)
 			try {
-				openclDevice = stol(argv[++i]);
-				miningThreads = 1;
+				m_openclDevice = stol(argv[++i]);
+				m_miningThreads = 1;
 			}
 			catch (...)
 			{
@@ -128,21 +129,20 @@ public:
 				throw BadArgument();
 			}
 		else if (arg == "--list-devices")
-		{
-			ProofOfWork::GPUMiner::listDevices();
-			exit(0);
-		}
-		else if (arg == "--use-chunks")
-		{
-			dagChunks = 4;
-		}
+			m_shouldListDevices = true;
+		else if (arg == "--allow-opencl-cpu")
+			m_clAllowCPU = true;
+		else if (arg == "--cl-extragpu-mem" && i + 1 < argc)
+			m_extraGPUMemory = 1000000 * stol(argv[++i]);
+		else if (arg == "--force-single-chunk")
+			m_forceSingleChunk = true;
 		else if (arg == "--phone-home" && i + 1 < argc)
 		{
 			string m = argv[++i];
 			if (isTrue(m))
-				phoneHome = true;
+				m_phoneHome = true;
 			else if (isFalse(m))
-				phoneHome = false;
+				m_phoneHome = false;
 			else
 			{
 				cerr << "Bad " << arg << " option: " << m << endl;
@@ -151,7 +151,7 @@ public:
 		}
 		else if (arg == "--benchmark-warmup" && i + 1 < argc)
 			try {
-				benchmarkWarmup = stol(argv[++i]);
+				m_benchmarkWarmup = stol(argv[++i]);
 			}
 			catch (...)
 			{
@@ -160,7 +160,7 @@ public:
 			}
 		else if (arg == "--benchmark-trial" && i + 1 < argc)
 			try {
-				benchmarkTrial = stol(argv[++i]);
+				m_benchmarkTrial = stol(argv[++i]);
 			}
 			catch (...)
 			{
@@ -169,7 +169,7 @@ public:
 			}
 		else if (arg == "--benchmark-trials" && i + 1 < argc)
 			try {
-				benchmarkTrials = stol(argv[++i]);
+				m_benchmarkTrials = stol(argv[++i]);
 			}
 			catch (...)
 			{
@@ -179,21 +179,12 @@ public:
 		else if (arg == "-C" || arg == "--cpu")
 			m_minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
-		{
-			if (!ProofOfWork::GPUMiner::haveSufficientMemory())
-			{
-				cout << "No GPU device with sufficient memory was found. Defaulting to CPU" << endl;
-				m_minerType = MinerType::CPU;
-			}
-			else
-			{
-				m_minerType = MinerType::GPU;
-				miningThreads = 1;
-			}
-		}
+			m_minerType = MinerType::GPU;
+		else if (arg == "--current-block" && i + 1 < argc)
+			m_currentBlock = stol(argv[++i]);
 		else if (arg == "--no-precompute")
 		{
-			precompute = false;
+			m_precompute = false;
 		}
 		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
 		{
@@ -201,7 +192,7 @@ public:
 			mode = OperationMode::DAGInit;
 			try
 			{
-				initDAG = stol(m);
+				m_initDAG = stol(m);
 			}
 			catch (...)
 			{
@@ -251,7 +242,7 @@ public:
 		else if ((arg == "-t" || arg == "--mining-threads") && i + 1 < argc)
 		{
 			try {
-				miningThreads = stol(argv[++i]);
+				m_miningThreads = stol(argv[++i]);
 			}
 			catch (...)
 			{
@@ -266,21 +257,36 @@ public:
 
 	void execute()
 	{
+		if (m_shouldListDevices)
+		{
+			ProofOfWork::GPUMiner::listDevices();
+			exit(0);
+		}
+
 		if (m_minerType == MinerType::CPU)
-			ProofOfWork::CPUMiner::setNumInstances(miningThreads);
+			ProofOfWork::CPUMiner::setNumInstances(m_miningThreads);
 		else if (m_minerType == MinerType::GPU)
 		{
-			ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
-			ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
-			ProofOfWork::GPUMiner::setNumInstances(miningThreads);
-			ProofOfWork::GPUMiner::setDagChunks(dagChunks);
+			ProofOfWork::GPUMiner::setNumInstances(m_miningThreads);
+			if (!ProofOfWork::GPUMiner::configureGPU(
+					m_openclPlatform,
+					m_openclDevice,
+					m_clAllowCPU,
+					m_extraGPUMemory,
+					m_forceSingleChunk,
+					m_currentBlock
+				))
+			{
+				cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
+				exit(1);
+			}
 		}
 		if (mode == OperationMode::DAGInit)
-			doInitDAG(initDAG);
+			doInitDAG(m_initDAG);
 		else if (mode == OperationMode::Benchmark)
-			doBenchmark(m_minerType, phoneHome, benchmarkWarmup, benchmarkTrial, benchmarkTrials);
+			doBenchmark(m_minerType, m_phoneHome, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
 		else if (mode == OperationMode::Farm)
-			doFarm(m_minerType, farmURL, farmRecheckPeriod);
+			doFarm(m_minerType, m_farmURL, m_farmRecheckPeriod);
 	}
 
 	static void streamHelp(ostream& _out)
@@ -311,7 +317,11 @@ public:
 			<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
 			<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
 			<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
-			<< "    --use-chunks When using GPU mining upload the DAG to the GPU in 4 chunks. " << endl
+			<< "    --allow-opencl-cpu Allows CPU to be considered as an OpenCL device if the OpenCL platform supports it." << endl
+			<< "    --list-devices List the detected OpenCL devices and exit." <<endl
+			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." <<endl
+			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." <<endl
+			<< "    --force-single-chunk Force DAG uploading in a single chunk against OpenCL's judgement. Use at your own risk." <<endl
 			;
 	}
 
@@ -400,7 +410,6 @@ private:
 			}
 			catch (...)
 			{
-				cout << "Error phoning home. ET is sad." << endl;
 			}
 		}
 #endif
@@ -447,7 +456,7 @@ private:
 						cnote << "Grabbing DAG for" << newSeedHash;
 					if (!(dag = EthashAux::full(newSeedHash, true, [&](unsigned _pc){ cout << "\rCreating DAG. " << _pc << "% done..." << flush; return 0; })))
 						BOOST_THROW_EXCEPTION(DAGCreationFailure());
-					if (precompute)
+					if (m_precompute)
 						EthashAux::computeFull(sha3(newSeedHash), true);
 					if (hh != current.headerHash)
 					{
@@ -496,22 +505,27 @@ private:
 
 	/// Mining options
 	MinerType m_minerType = MinerType::CPU;
-	unsigned openclPlatform = 0;
-	unsigned openclDevice = 0;
-	unsigned miningThreads = UINT_MAX;
-	unsigned dagChunks = 1;
+	unsigned m_openclPlatform = 0;
+	unsigned m_openclDevice = 0;
+	unsigned m_miningThreads = UINT_MAX;
+	bool m_shouldListDevices = false;
+	bool m_clAllowCPU = false;
+	bool m_forceSingleChunk = false;
+	boost::optional<uint64_t> m_currentBlock;
+	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
+	unsigned m_extraGPUMemory = 350000000;
 
 	/// DAG initialisation param.
-	unsigned initDAG = 0;
+	unsigned m_initDAG = 0;
 
 	/// Benchmarking params
-	bool phoneHome = true;
-	unsigned benchmarkWarmup = 3;
-	unsigned benchmarkTrial = 3;
-	unsigned benchmarkTrials = 5;
+	bool m_phoneHome = true;
+	unsigned m_benchmarkWarmup = 3;
+	unsigned m_benchmarkTrial = 3;
+	unsigned m_benchmarkTrials = 5;
 
 	/// Farm params
-	string farmURL = "http://127.0.0.1:8545";
-	unsigned farmRecheckPeriod = 500;
-	bool precompute = true;
+	string m_farmURL = "http://127.0.0.1:8545";
+	unsigned m_farmRecheckPeriod = 500;
+	bool m_precompute = true;
 };

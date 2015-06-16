@@ -41,6 +41,10 @@ public:
 	QFunctionDefinition(){}
 	QFunctionDefinition(QObject* _parent): QBasicNodeDefinition(_parent) {}
 	QFunctionDefinition(QObject* _parent, solidity::FunctionTypePointer const& _f);
+	QFunctionDefinition(QObject* _parent, solidity::ASTPointer<solidity::EventDefinition> const& _f);
+	QFunctionDefinition(QObject* _parent, solidity::ASTPointer<solidity::FunctionDefinition> const& _f);
+	/// Init members
+	void init(dev::solidity::FunctionTypePointer _f);
 	/// Get all input parameters of this function.
 	QList<QVariableDeclaration*> const& parametersList() const { return m_parameters; }
 	/// Get all input parameters of this function as QML property.
@@ -49,10 +53,13 @@ public:
 	QList<QVariableDeclaration*> returnParameters() const { return m_returnParameters; }
 	/// Get the hash of this function declaration on the contract ABI.
 	FixedHash<4> hash() const { return m_hash; }
+	/// Get the full hash of this function declaration on the contract ABI.
+	FixedHash<32> fullHash() const { return m_fullHash; }
 
 private:
 	int m_index;
 	FixedHash<4> m_hash;
+	FixedHash<32> m_fullHash;
 	QList<QVariableDeclaration*> m_parameters;
 	QList<QVariableDeclaration*> m_returnParameters;
 	void initQParameters();

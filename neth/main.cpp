@@ -577,10 +577,11 @@ int main(int argc, char** argv)
 #if ETH_JSONRPC || !ETH_TRUE
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
+	KeyManager km;
 	if (jsonrpc > -1)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<dev::eth::FixedAccountHolder>([&](){ return web3.ethereum(); }, vector<KeyPair>({us})), vector<KeyPair>({us})));
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<dev::eth::FixedAccountHolder>([&](){ return web3.ethereum(); }, vector<KeyPair>({us})), vector<KeyPair>({us})), km);
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
 	}

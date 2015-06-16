@@ -87,7 +87,7 @@ void VersionChecker::setOk()
 	}
 }
 
-void Client::onBadBlock(Exception& _ex)
+void Client::onBadBlock(Exception& _ex) const
 {
 	// BAD BLOCK!!!
 	bytes const* block = boost::get_error_info<errinfo_block>(_ex);
@@ -127,6 +127,7 @@ void Client::onBadBlock(Exception& _ex)
 
 	if (string const* vmtraceJson = boost::get_error_info<errinfo_vmtrace>(_ex))
 		Json::Reader().parse(*vmtraceJson, report["hints"]["vmtrace"]);
+
 	if (vector<bytes> const* receipts = boost::get_error_info<errinfo_receipts>(_ex))
 	{
 		report["hints"]["receipts"] = Json::arrayValue;
@@ -427,21 +428,17 @@ void Client::killChain()
 
 void Client::clearPending()
 {
-	h256Hash changeds;
 	DEV_WRITE_GUARDED(x_postMine)
 	{
 		if (!m_postMine.pending().size())
 			return;
-//		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
-//			appendFromNewPending(m_postMine.logBloom(i), changeds);
-		changeds.insert(PendingChangedFilter);
 		m_tq.clear();
 		DEV_READ_GUARDED(x_preMine)
 			m_postMine = m_preMine;
 	}
 
 	startMining();
-
+	h256Hash changeds;
 	noteChanged(changeds);
 }
 
@@ -464,47 +461,53 @@ static S& filtersStreamOut(S& _out, T const& _fs)
 	return _out;
 }
 
-void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& io_changed, h256 _transactionHash)
+void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& io_changed, h256 _sha3)
 {
 	Guard l(x_filtersWatches);
+	io_changed.insert(PendingChangedFilter);
+	m_specialFilters.at(PendingChangedFilter).push_back(_sha3);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
-		if (i.second.filter.envelops(RelativeBlock::Pending, m_bc.number() + 1))
+	{
+		// acceptable number.
+		auto m = i.second.filter.matches(_receipt);
+		if (m.size())
 		{
-			// acceptable number.
-			auto m = i.second.filter.matches(_receipt);
-			if (m.size())
-			{
-				// filter catches them
-				for (LogEntry const& l: m)
-					i.second.changes.push_back(LocalisedLogEntry(l, m_bc.number() + 1, _transactionHash));
-				io_changed.insert(i.first);
-			}
+			// filter catches them
+			for (LogEntry const& l: m)
+				i.second.changes.push_back(LocalisedLogEntry(l));
+			io_changed.insert(i.first);
 		}
+	}
 }
 
 void Client::appendFromNewBlock(h256 const& _block, h256Hash& io_changed)
 {
 	// TODO: more precise check on whether the txs match.
 	auto d = m_bc.info(_block);
-	auto br = m_bc.receipts(_block);
+	auto receipts = m_bc.receipts(_block).receipts;
 
 	Guard l(x_filtersWatches);
+	io_changed.insert(ChainChangedFilter);
+	m_specialFilters.at(ChainChangedFilter).push_back(_block);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
-		if (i.second.filter.envelops(RelativeBlock::Latest, d.number) && i.second.filter.matches(d.logBloom))
-			// acceptable number & looks like block may contain a matching log entry.
-			for (size_t j = 0; j < br.receipts.size(); j++)
+	{
+		// acceptable number & looks like block may contain a matching log entry.
+		unsigned logIndex = 0;
+		for (size_t j = 0; j < receipts.size(); j++)
+		{
+			logIndex++;
+			auto tr = receipts[j];
+			auto m = i.second.filter.matches(tr);
+			if (m.size())
 			{
-				auto tr = br.receipts[j];
-				auto m = i.second.filter.matches(tr);
-				if (m.size())
-				{
-					auto transactionHash = transaction(d.hash(), j).sha3();
-					// filter catches them
-					for (LogEntry const& l: m)
-						i.second.changes.push_back(LocalisedLogEntry(l, (unsigned)d.number, transactionHash));
-					io_changed.insert(i.first);
-				}
+				auto transactionHash = transaction(d.hash(), j).sha3();
+				// filter catches them
+				for (LogEntry const& l: m)
+					i.second.changes.push_back(LocalisedLogEntry(l, d, transactionHash, j, logIndex));
+				io_changed.insert(i.first);
 			}
+		}
+	}
 }
 
 void Client::setForceMining(bool _enable)
@@ -608,16 +611,26 @@ bool Client::submitWork(ProofOfWork::Solution const& _solution)
 	return true;
 }
 
+unsigned static const c_syncMin = 1;
+unsigned static const c_syncMax = 100;
+double static const c_targetDuration = 1;
+
 void Client::syncBlockQueue()
 {
 	ImportRoute ir;
-
 	cwork << "BQ ==> CHAIN ==> STATE";
-	{
-		tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, rand() % 90 + 10);
-		if (ir.first.empty())
-			return;
-	}
+	boost::timer t;
+	tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, m_syncAmount);
+	double elapsed = t.elapsed();
+
+	cnote << m_syncAmount << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (m_syncAmount / elapsed) << "blocks/s)";
+
+	if (elapsed > c_targetDuration * 1.1 && m_syncAmount > c_syncMin)
+		m_syncAmount = max(c_syncMin, m_syncAmount * 9 / 10);
+	else if (elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
+		m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
+	if (ir.first.empty())
+		return;
 	onChainChanged(ir);
 }
 
@@ -642,7 +655,7 @@ void Client::syncTransactionQueue()
 	DEV_READ_GUARDED(x_postMine)
 		for (size_t i = 0; i < newPendingReceipts.size(); i++)
 			appendFromNewPending(newPendingReceipts[i], changeds, m_postMine.pending()[i].sha3());
-	changeds.insert(PendingChangedFilter);
+
 
 	// Tell farm about new transaction (i.e. restartProofOfWork mining).
 	onPostStateChanged();
@@ -685,46 +698,48 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	h256Hash changeds;
 	for (auto const& h: _ir.first)
 		appendFromNewBlock(h, changeds);
-	changeds.insert(ChainChangedFilter);
 
 	// RESTART MINING
 
-	bool preChanged = false;
-	State newPreMine;
-	DEV_READ_GUARDED(x_preMine)
-		newPreMine = m_preMine;
-
-	// TODO: use m_postMine to avoid re-evaluating our own blocks.
-	preChanged = newPreMine.sync(m_bc);
-
-	if (preChanged || m_postMine.address() != m_preMine.address())
+	if (!m_bq.items().first)
 	{
-		if (isMining())
-			cnote << "New block on chain.";
+		bool preChanged = false;
+		State newPreMine;
+		DEV_READ_GUARDED(x_preMine)
+			newPreMine = m_preMine;
 
-		DEV_WRITE_GUARDED(x_preMine)
-			m_preMine = newPreMine;
-		DEV_WRITE_GUARDED(x_working)
-			m_working = newPreMine;
-		DEV_READ_GUARDED(x_postMine)
-			for (auto const& t: m_postMine.pending())
-			{
-				clog(ClientNote) << "Resubmitting post-mine transaction " << t;
-				auto ir = m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
-				if (ir != ImportResult::Success)
-					onTransactionQueueReady();
-			}
-		DEV_READ_GUARDED(x_working) DEV_WRITE_GUARDED(x_postMine)
-			m_postMine = m_working;
+		// TODO: use m_postMine to avoid re-evaluating our own blocks.
+		preChanged = newPreMine.sync(m_bc);
 
-		changeds.insert(PendingChangedFilter);
+		if (preChanged || m_postMine.address() != m_preMine.address())
+		{
+			if (isMining())
+				cnote << "New block on chain.";
 
-		onPostStateChanged();
+			DEV_WRITE_GUARDED(x_preMine)
+				m_preMine = newPreMine;
+			DEV_WRITE_GUARDED(x_working)
+				m_working = newPreMine;
+			DEV_READ_GUARDED(x_postMine)
+				for (auto const& t: m_postMine.pending())
+				{
+					clog(ClientNote) << "Resubmitting post-mine transaction " << t;
+					auto ir = m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
+					if (ir != ImportResult::Success)
+						onTransactionQueueReady();
+				}
+			DEV_READ_GUARDED(x_working) DEV_WRITE_GUARDED(x_postMine)
+				m_postMine = m_working;
+
+			changeds.insert(PendingChangedFilter);
+
+			onPostStateChanged();
+		}
+
+		// Quick hack for now - the TQ at this point already has the prior pending transactions in it;
+		// we should resync with it manually until we are stricter about what constitutes "knowing".
+		onTransactionQueueReady();
 	}
-
-	// Quick hack for now - the TQ at this point already has the prior pending transactions in it;
-	// we should resync with it manually until we are stricter about what constitutes "knowing".
-	onTransactionQueueReady();
 
 	noteChanged(changeds);
 }
@@ -791,15 +806,18 @@ void Client::noteChanged(h256Hash const& _filters)
 				cwatch << "!!!" << w.first << w.second.id.abridged();
 				w.second.changes += m_filters.at(w.second.id).changes;
 			}
-			else
-			{
-				cwatch << "!!!" << w.first << LogTag::Special << (w.second.id == PendingChangedFilter ? "pending" : w.second.id == ChainChangedFilter ? "chain" : "???");
-				w.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry, 0));
-			}
+			else if (m_specialFilters.count(w.second.id))
+				for (h256 const& hash: m_specialFilters.at(w.second.id))
+				{
+					cwatch << "!!!" << w.first << LogTag::Special << (w.second.id == PendingChangedFilter ? "pending" : w.second.id == ChainChangedFilter ? "chain" : "???");
+					w.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry, hash));
+				}
 		}
 	// clear the filters now.
 	for (auto& i: m_filters)
 		i.second.changes.clear();
+	for (auto& i: m_specialFilters)
+		i.second.clear();
 }
 
 void Client::doWork()
@@ -859,7 +877,18 @@ void Client::checkWatchGarbage()
 
 State Client::asOf(h256 const& _block) const
 {
-	return State(m_stateDB, bc(), _block);
+	try
+	{
+		State ret(m_stateDB);
+		ret.populateFromChain(bc(), _block);
+		return ret;
+	}
+	catch (Exception& ex)
+	{
+		ex << errinfo_block(bc().block(_block));
+		onBadBlock(ex);
+		return State();
+	}
 }
 
 void Client::prepareForTransaction()
@@ -869,12 +898,36 @@ void Client::prepareForTransaction()
 
 State Client::state(unsigned _txi, h256 _block) const
 {
-	return State(m_stateDB, m_bc, _block).fromPending(_txi);
+	try
+	{
+		State ret(m_stateDB);
+		ret.populateFromChain(m_bc, _block);
+		return ret.fromPending(_txi);
+	}
+	catch (Exception& ex)
+	{
+		ex << errinfo_block(bc().block(_block));
+		onBadBlock(ex);
+		return State();
+	}
 }
 
-eth::State Client::state(h256 _block) const
+State Client::state(h256 const& _block, PopulationStatistics* o_stats) const
 {
-	return State(m_stateDB, m_bc, _block);
+	try
+	{
+		State ret(m_stateDB);
+		PopulationStatistics s = ret.populateFromChain(m_bc, _block);
+		if (o_stats)
+			swap(s, *o_stats);
+		return ret;
+	}
+	catch (Exception& ex)
+	{
+		ex << errinfo_block(bc().block(_block));
+		onBadBlock(ex);
+		return State();
+	}
 }
 
 eth::State Client::state(unsigned _txi) const
@@ -890,8 +943,8 @@ void Client::flushTransactions()
 	doWork();
 }
 
-HashChainStatus Client::hashChainStatus() const
+SyncStatus Client::syncStatus() const
 {
 	auto h = m_host.lock();
-	return h ? h->status() : HashChainStatus { 0, 0, false };
+	return h ? h->status() : SyncStatus();
 }

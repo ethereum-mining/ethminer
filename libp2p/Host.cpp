@@ -61,17 +61,41 @@ ReputationManager::ReputationManager()
 
 void ReputationManager::noteRude(Session const& _s, std::string const& _sub)
 {
-	m_nodes[make_pair(_s.id(), _s.info().clientVersion)].subs[_sub].isRude = true;
+	DEV_WRITE_GUARDED(x_nodes)
+		m_nodes[make_pair(_s.id(), _s.info().clientVersion)].subs[_sub].isRude = true;
 }
 
 bool ReputationManager::isRude(Session const& _s, std::string const& _sub) const
 {
-	auto nit = m_nodes.find(make_pair(_s.id(), _s.info().clientVersion));
-	if (nit == m_nodes.end())
-		return false;
-	auto sit = nit->second.subs.find(_sub);
-	bool ret = sit == nit->second.subs.end() ? false : sit->second.isRude;
-	return _sub.empty() ? ret : (ret || isRude(_s));
+	DEV_READ_GUARDED(x_nodes)
+	{
+		auto nit = m_nodes.find(make_pair(_s.id(), _s.info().clientVersion));
+		if (nit == m_nodes.end())
+			return false;
+		auto sit = nit->second.subs.find(_sub);
+		bool ret = sit == nit->second.subs.end() ? false : sit->second.isRude;
+		return _sub.empty() ? ret : (ret || isRude(_s));
+	}
+	return false;
+}
+
+void ReputationManager::setData(Session const& _s, std::string const& _sub, bytes const& _data)
+{
+	DEV_WRITE_GUARDED(x_nodes)
+		m_nodes[make_pair(_s.id(), _s.info().clientVersion)].subs[_sub].data = _data;
+}
+
+bytes ReputationManager::data(Session const& _s, std::string const& _sub) const
+{
+	DEV_READ_GUARDED(x_nodes)
+	{
+		auto nit = m_nodes.find(make_pair(_s.id(), _s.info().clientVersion));
+		if (nit == m_nodes.end())
+			return bytes();
+		auto sit = nit->second.subs.find(_sub);
+		return sit == nit->second.subs.end() ? bytes() : sit->second.data;
+	}
+	return bytes();
 }
 
 Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bytesConstRef _restoreNetwork):
@@ -191,7 +215,7 @@ void Host::doneWorking()
 	m_sessions.clear();
 }
 
-void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint)
+void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameCoder* _io, std::shared_ptr<RLPXSocket> const& _s)
 {
 	// session maybe ingress or egress so m_peers and node table entries may not exist
 	shared_ptr<Peer> p;
@@ -211,7 +235,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 	}
 	if (p->isOffline())
 		p->m_lastConnected = std::chrono::system_clock::now();
-	p->endpoint.address = _endpoint.address();
+	p->endpoint.address = _s->remoteEndpoint().address();
 
 	auto protocolVersion = _rlp[0].toInt<unsigned>();
 	auto clientVersion = _rlp[1].toString();
@@ -230,7 +254,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 	clog(NetMessageSummary) << "Hello: " << clientVersion << "V[" << protocolVersion << "]" << _id << showbase << capslog.str() << dec << listenPort;
 	
 	// create session so disconnects are managed
-	auto ps = make_shared<Session>(this, _io, p, PeerSessionInfo({_id, clientVersion, _endpoint.address().to_string(), listenPort, chrono::steady_clock::duration(), _rlp[2].toSet<CapDesc>(), 0, map<string, string>()}));
+	auto ps = make_shared<Session>(this, _io, _s, p, PeerSessionInfo({_id, clientVersion, p->endpoint.address.to_string(), listenPort, chrono::steady_clock::duration(), _rlp[2].toSet<CapDesc>(), 0, map<string, string>()}));
 	if (protocolVersion < dev::p2p::c_protocolVersion - 1)
 	{
 		ps->disconnect(IncompatibleProtocol);

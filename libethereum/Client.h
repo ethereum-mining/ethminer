@@ -147,7 +147,7 @@ public:
 
 	// [PRIVATE API - only relevant for base clients, not available in general]
 	dev::eth::State state(unsigned _txi, h256 _block) const;
-	dev::eth::State state(h256 _block) const;
+	dev::eth::State state(h256 const& _block, PopulationStatistics* o_stats = nullptr) const;
 	dev::eth::State state(unsigned _txi) const;
 
 	/// Get the object representing the current state of Ethereum.
@@ -157,7 +157,7 @@ public:
 	/// Get some information on the block queue.
 	BlockQueueStatus blockQueueStatus() const { return m_bq.status(); }
 	/// Get some information on the block queue.
-	HashChainStatus hashChainStatus() const;
+	SyncStatus syncStatus() const;
 	/// Get the block queue.
 	BlockQueue const& blockQueue() const { return m_bq; }
 
@@ -226,7 +226,7 @@ public:
 	/// Kills the blockchain. Just for debug use.
 	void killChain();
 	/// Retries all blocks with unknown parents.
-	void retryUnkonwn() { m_bq.retryAllUnknown(); }
+	void retryUnknown() { m_bq.retryAllUnknown(); }
 	/// Get a report of activity.
 	ActivityReport activityReport() { ActivityReport ret; std::swap(m_report, ret); return ret; }
 	/// Set a JSONRPC server to which we can report bad blocks.
@@ -301,7 +301,7 @@ private:
 
 	/// Called when we have attempted to import a bad block.
 	/// @warning May be called from any thread.
-	void onBadBlock(Exception& _ex);
+	void onBadBlock(Exception& _ex) const;
 
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
 	CanonBlockChain m_bc;					///< Maintains block database.
@@ -337,6 +337,8 @@ private:
 											///< When did we last both doing GC on the watches?
 	mutable std::chrono::system_clock::time_point m_lastTick = std::chrono::system_clock::now();
 											///< When did we last tick()?
+
+	unsigned m_syncAmount = 50;				///< Number of blocks to sync in each go.
 
 	ActivityReport m_report;
 
