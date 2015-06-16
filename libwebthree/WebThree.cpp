@@ -30,6 +30,7 @@
 #include <libethereum/Defaults.h>
 #include <libethereum/EthereumHost.h>
 #include <libwhisper/WhisperHost.h>
+#include "BuildInfo.h"
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -70,6 +71,16 @@ WebThreeDirect::~WebThreeDirect()
 	// use bits of data owned by m_ethereum).
 	m_net.stop();
 	m_ethereum.reset();
+}
+
+std::string WebThreeDirect::composeClientVersion(std::string const& _client, std::string const& _clientName)
+{
+#if ETH_EVMJIT
+	char const* jit = "-JIT";
+#else
+	char const* jit = "";
+#endif
+	return _client + "v" + dev::Version + "-" + string(DEV_QUOTED(ETH_COMMIT_HASH)).substr(0, 8) + (ETH_CLEAN_REPO ? "" : "*") + "/" + _clientName + "/" DEV_QUOTED(ETH_BUILD_TYPE) "-" DEV_QUOTED(ETH_BUILD_PLATFORM) + jit;
 }
 
 p2p::NetworkPreferences const& WebThreeDirect::networkPreferences() const

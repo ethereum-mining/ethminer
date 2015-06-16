@@ -34,10 +34,7 @@ class OurAccountHolder: public QObject, public dev::eth::AccountHolder
 	Q_OBJECT
 
 public:
-	OurAccountHolder(
-		dev::WebThreeDirect& _web3,
-		Main* _main
-	);
+	OurAccountHolder(Main* _main);
 
 public slots:
 	void doValidations();
@@ -59,18 +56,16 @@ private:
 	std::queue<dev::eth::TransactionSkeleton> m_queued;
 	dev::Mutex x_queued;
 
-	dev::WebThreeDirect* m_web3;
 	Main* m_main;
 };
 
-class OurWebThreeStubServer: public QObject, public WebThreeStubServer
+class OurWebThreeStubServer: public QObject, public dev::WebThreeStubServer
 {
 	Q_OBJECT
 
 public:
 	OurWebThreeStubServer(
 		jsonrpc::AbstractServerConnector& _conn,
-		dev::WebThreeDirect& _web3,
 		Main* main
 	);
 
