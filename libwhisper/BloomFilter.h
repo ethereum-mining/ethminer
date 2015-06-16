@@ -34,11 +34,11 @@ public:
 	TopicBloomFilter() { init(); }
 	TopicBloomFilter(AbridgedTopic const& _h): AbridgedTopic(_h) { init(); }
 
-	void addBloom(AbridgedTopic const& _h) { add(_h.template bloom<BitsPerBloom, 4>()); }
-	void removeBloom(AbridgedTopic const& _h) { remove(_h.template bloom<BitsPerBloom, 4>()); }
+	void addBloom(AbridgedTopic const& _h) { add(_h.template bloomPart<BitsPerBloom, 4>()); }
+	void removeBloom(AbridgedTopic const& _h) { remove(_h.template bloomPart<BitsPerBloom, 4>()); }
 	void add(AbridgedTopic const& _h);
 	void remove(AbridgedTopic const& _h);
-	bool containsBloom(AbridgedTopic const& _h) const { return contains(_h.template bloom<BitsPerBloom, 4>()); }
+	bool containsBloom(AbridgedTopic const& _h) const { return contains(_h.template bloomPart<BitsPerBloom, 4>()); }
 
 	enum { BitsPerBloom = 3 };
 	
