@@ -110,9 +110,8 @@ function validateArray(_type, _value)
 	var dim = _type.match(arrayRegEx)
 	dim.reverse();
 	for (var k = 0; k < dim.length; k++)
-	{
 		_type = _type.replace(dim[k], "")
-	}
+	_type = _type.replace(/calldata/g, "")
 	return checkArrayRecursively(_type, dim, _value)
 }
 
