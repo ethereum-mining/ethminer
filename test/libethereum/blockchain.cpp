@@ -581,6 +581,12 @@ mArray importUncles(mObject const& _blObj, vector<BlockInfo>& _vBiUncles, vector
 		}
 
 		updatePoW(uncleBlockFromFields);
+		if (overwrite == "nonce" || overwrite == "mixHash")
+		{
+			uncleBlockFromFields.nonce = overwrite == "nonce" ? Nonce(uncleHeaderObj["nonce"].get_str()) : uncleBlockFromFields.nonce;
+			uncleBlockFromFields.mixHash = overwrite == "mixHash" ? h256(uncleHeaderObj["mixHash"].get_str()) : uncleBlockFromFields.mixHash;
+		}
+
 		writeBlockHeaderToJson(uncleHeaderObj, uncleBlockFromFields);
 
 		aUncleList.push_back(uncleHeaderObj);
@@ -677,16 +683,18 @@ void overwriteBlockHeader(BlockInfo& _header, mObject& _blObj)
 			tmp.timestamp = toInt(ho["timestamp"]);
 		if (ho.count("extraData"))
 			tmp.extraData = importByteArray(ho["extraData"].get_str());
-		if (ho.count("mixHash"))
-			tmp.mixHash = h256(ho["mixHash"].get_str());
-		tmp.noteDirty();
 
 		// find new valid nonce
 		if (tmp != _header)
-		{
 			mine(tmp);
-			_header = tmp;
-		}
+
+		if (ho.count("mixHash"))
+			tmp.mixHash = h256(ho["mixHash"].get_str());
+		if (ho.count("nonce"))
+			tmp.nonce = Nonce(ho["nonce"].get_str());
+
+		tmp.noteDirty();
+		_header = tmp;
 	}
 	else
 	{
