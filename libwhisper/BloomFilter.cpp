@@ -30,7 +30,6 @@ static unsigned const c_mask[] = { 1, 2, 4, 8, 16, 32, 64, 128 };
 void TopicBloomFilter::add(AbridgedTopic const& _h)
 {
 	*this |= _h;
-	unsigned count = 0;
 	for (unsigned i = 0; i < CounterSize; ++i)
 		if (isBitSet(_h, i))
 		{
@@ -46,7 +45,6 @@ void TopicBloomFilter::add(AbridgedTopic const& _h)
 
 void TopicBloomFilter::remove(AbridgedTopic const& _h)
 {
-	unsigned count = 0;
 	for (unsigned i = 0; i < CounterSize; ++i)
 		if (isBitSet(_h, i))
 		{
