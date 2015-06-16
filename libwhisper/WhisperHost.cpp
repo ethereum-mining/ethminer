@@ -113,7 +113,7 @@ unsigned WhisperHost::installWatch(shh::Topics const& _t)
 	if (!m_filters.count(h))
 		m_filters.insert(make_pair(h, f));
 
-	m_bloom.add(f.filter.exportBloomFilter());
+	m_bloom.addRaw(f.filter.exportBloom());
 	return installWatchOnId(h);
 }
 
@@ -153,7 +153,7 @@ void WhisperHost::uninstallWatch(unsigned _i)
 	auto fit = m_filters.find(id);
 	if (fit != m_filters.end())
 	{
-		m_bloom.remove(fit->second.filter.exportBloomFilter());
+		m_bloom.removeRaw(fit->second.filter.exportBloom());
 		if (!--fit->second.refCount)
 			m_filters.erase(fit);
 	}

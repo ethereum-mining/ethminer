@@ -105,7 +105,7 @@ public:
 	void streamRLP(RLPStream& _s) const { _s << m_topicMasks; }
 	h256 sha3() const;
 	bool matches(Envelope const& _m) const;
-	AbridgedTopic exportBloomFilter() const;
+	AbridgedTopic exportBloom() const;
 
 private:
 	TopicMasks m_topicMasks;

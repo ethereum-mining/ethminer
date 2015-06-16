@@ -27,7 +27,7 @@ using namespace dev::shh;
 
 static unsigned const c_mask[] = { 1, 2, 4, 8, 16, 32, 64, 128 };
 
-void TopicBloomFilter::add(AbridgedTopic const& _h)
+void TopicBloomFilter::addRaw(AbridgedTopic const& _h)
 {
 	*this |= _h;
 	for (unsigned i = 0; i < CounterSize; ++i)
@@ -43,7 +43,7 @@ void TopicBloomFilter::add(AbridgedTopic const& _h)
 		}
 }
 
-void TopicBloomFilter::remove(AbridgedTopic const& _h)
+void TopicBloomFilter::removeRaw(AbridgedTopic const& _h)
 {
 	for (unsigned i = 0; i < CounterSize; ++i)
 		if (isBitSet(_h, i))
