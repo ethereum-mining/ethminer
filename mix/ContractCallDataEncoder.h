@@ -69,11 +69,14 @@ private:
 	QString toString(bool _b);
 	QString toString(dev::bytes const& _b);
 	bool asString(dev::bytes const& _b, QString& _str);
+	QList<int> extractDimension(QString const& _type);
+	void encodeArray(QJsonArray const& _array, QList<int> _dim, SolidityType const& _type, bytes& _content);
 
 private:
 	bytes m_encodedData;
 	bytes m_dynamicData;
-	std::vector<std::pair<size_t, size_t>> m_offsetMap;
+	std::vector<std::pair<size_t, size_t>> m_dynamicOffsetMap;
+	std::vector<std::pair<size_t, size_t>> m_staticOffsetMap;
 };
 
 }
