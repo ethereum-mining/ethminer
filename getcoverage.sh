@@ -1,17 +1,33 @@
 #!/bin/bash
 
 CPP_ETHEREUM_PATH=$(pwd)
+BUILD_DIR=$CPP_ETHEREUM_PATH/build
+TEST_MODE=""
 
-which $CPP_ETHEREUM_PATH/build/test/testeth >/dev/null 2>&1
+for i in "$@"
+do
+case $i in
+	-builddir)
+	shift
+	((i++))
+	BUILD_DIR=${!i}
+	shift 
+	;;
+	--all)
+	TEST_MODE="--all"
+	shift 
+	;;
+esac
+done
+
+which $BUILD_DIR/test/testeth >/dev/null 2>&1
 if [ $? != 0 ]
 then
 	echo "You need to compile and build ethereum with cmake -DPROFILING option to the build dir!"
 	exit;
 fi
 
-OUTPUT_DIR="$CPP_ETHEREUM_PATH/build/test/coverage"
-TESTETH=$CPP_ETHEREUM_PATH/build
-
+OUTPUT_DIR=$BUILD_DIR/test/coverage
 if which lcov >/dev/null; then
 	if which genhtml >/dev/null; then
 		echo Cleaning previous report...
@@ -19,16 +35,16 @@ if which lcov >/dev/null; then
 			rm -r $OUTPUT_DIR
 		fi
 		mkdir $OUTPUT_DIR
-		lcov --directory $TESTETH --zerocounters
-		lcov --capture --initial --directory $TESTETH --output-file $OUTPUT_DIR/coverage_base.info
+		lcov --directory $BUILD_DIR --zerocounters
+		lcov --capture --initial --directory $BUILD_DIR --output-file $OUTPUT_DIR/coverage_base.info
 
 		echo Running testeth...
-		$CPP_ETHEREUM_PATH/build/test/testeth --all
-		$CPP_ETHEREUM_PATH/build/test/testeth -t StateTests --jit --all
-		$CPP_ETHEREUM_PATH/build/test/testeth -t VMTests --jit --all
+		$CPP_ETHEREUM_PATH/build/test/testeth $TEST_MODE
+		$CPP_ETHEREUM_PATH/build/test/testeth -t StateTests --jit $TEST_MODE
+		$CPP_ETHEREUM_PATH/build/test/testeth -t VMTests --jit $TEST_MODE
 
 		echo Prepearing coverage info...
-		lcov --capture --directory $TESTETH --output-file $OUTPUT_DIR/coverage_test.info
+		lcov --capture --directory $BUILD_DIR --output-file $OUTPUT_DIR/coverage_test.info
 		lcov --add-tracefile $OUTPUT_DIR/coverage_base.info --add-tracefile $OUTPUT_DIR/coverage_test.info --output-file $OUTPUT_DIR/coverage_all.info
 		lcov --extract $OUTPUT_DIR/coverage_all.info *cpp-ethereum/* --output-file $OUTPUT_DIR/coverage_export.info
 		genhtml $OUTPUT_DIR/coverage_export.info --output-directory $OUTPUT_DIR/testeth		
