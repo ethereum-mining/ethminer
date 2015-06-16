@@ -249,11 +249,14 @@ dev::bytes ContractCallDataEncoder::decodeBytes(dev::bytes const& _rawValue)
 
 QString ContractCallDataEncoder::toString(dev::bytes const& _b)
 {
+	return QString::fromStdString(dev::toJS(_b));
+}
+
+QString ContractCallDataEncoder::toChar(dev::bytes const& _b)
+{
 	QString str;
-	if (asString(_b, str))
-		return  "\"" + str +  "\" " + QString::fromStdString(dev::toJS(_b));
-	else
-		return QString::fromStdString(dev::toJS(_b));
+	asString(_b, str);
+	return  str;
 }
 
 
@@ -269,6 +272,8 @@ QVariant ContractCallDataEncoder::decode(SolidityType const& _type, bytes const&
 		return QVariant::fromValue(toString(decodeBool(rawParam)));
 	else if (type == QSolidityType::Type::Bytes || type == QSolidityType::Type::Hash)
 		return QVariant::fromValue(toString(decodeBytes(rawParam)));
+	else if (type == QSolidityType::Type::String)
+		return QVariant::fromValue(toChar(decodeBytes(rawParam)));
 	else if (type == QSolidityType::Type::Struct)
 		return QVariant::fromValue(QString("struct")); //TODO
 	else if (type == QSolidityType::Type::Address)

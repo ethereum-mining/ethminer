@@ -71,6 +71,7 @@ private:
 	bool asString(dev::bytes const& _b, QString& _str);
 	QList<int> extractDimension(QString const& _type);
 	void encodeArray(QJsonArray const& _array, QList<int> _dim, SolidityType const& _type, bytes& _content);
+	QString toChar(dev::bytes const& _b);
 
 private:
 	bytes m_encodedData;
