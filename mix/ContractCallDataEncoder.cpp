@@ -80,10 +80,7 @@ void ContractCallDataEncoder::encodeArray(QJsonArray const& _array, QList<int> _
 		if (c.isArray())
 		{
 			if (_dim[0] == -1)
-			{
-				m_dynamicOffsetMap.push_back(std::make_pair(m_dynamicData.size() + offsetStart + 32 + k * 32,
-															m_dynamicData.size() + _content.size()));
-			}
+				m_dynamicOffsetMap.push_back(std::make_pair(m_dynamicData.size() + offsetStart + 32 + k * 32, m_dynamicData.size() + _content.size()));
 			encodeArray(c.toArray(), _dim, _type, _content);
 		}
 		else
@@ -183,6 +180,11 @@ unsigned ContractCallDataEncoder::encodeSingleItem(QString const& _data, Solidit
 		catch (std::exception const&)
 		{
 			// manage input as a string.
+			QRegExp strExtract("\"(.*)\""); //check if contains both string and hex value, keep the string.
+			int i = strExtract.indexIn(src);
+			if (i != -1)
+				src = strExtract.cap(0);
+			src = src.replace("\"", "");
 			result = encodeStringParam(src, alignSize);
 		}
 	}
@@ -249,7 +251,11 @@ dev::bytes ContractCallDataEncoder::decodeBytes(dev::bytes const& _rawValue)
 
 QString ContractCallDataEncoder::toString(dev::bytes const& _b)
 {
-	return QString::fromStdString(dev::toJS(_b));
+	QString str;
+	if (asString(_b, str))
+		return  "\"" + str +  "\" " + QString::fromStdString(dev::toJS(_b));
+	else
+		return QString::fromStdString(dev::toJS(_b));
 }
 
 QString ContractCallDataEncoder::toChar(dev::bytes const& _b)
