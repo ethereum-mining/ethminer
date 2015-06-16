@@ -1072,7 +1072,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 	try
 	{
 		Strictness strictness = Strictness::CheckEverything;
-		if (_ir & ~ImportRequirements::ValidNonce)
+		if (~_ir & ImportRequirements::ValidNonce)
 			strictness = Strictness::IgnoreNonce;
 
 		res.info.populate(_block, strictness);
