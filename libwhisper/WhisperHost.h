@@ -87,7 +87,7 @@ private:
 	mutable dev::Mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;
 	std::map<unsigned, ClientWatch> m_watches;
-	SharedBloomFilter m_bloom;
+	TopicBloomFilter m_bloom;
 };
 
 }
