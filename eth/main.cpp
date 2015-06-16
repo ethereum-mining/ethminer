@@ -102,6 +102,9 @@ void interactiveHelp()
 		<< "    listaccounts  List the accounts on the network." << endl
 		<< "    listcontracts  List the contracts on the network." << endl
 		<< "    balanceat <address>  Gives the balance of the given account." << endl
+		<< "    balanceatblock <address> <blocknumber>  Gives the balance of the given account." << endl
+		<< "    storageat <address>  Gives the storage of the given account." << endl
+		<< "    storageatblock <address> <blocknumber>  Gives the storahe of the given account at a given blocknumber." << endl
 		<< "    codeat <address>  Gives the code of the given account." << endl
 #endif
 		<< "    setsigningkey <addr>  Set the address with which to sign transactions." << endl
@@ -168,6 +171,9 @@ void help()
 		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    --network-id <n> Only connect to other hosts with this network id (default:0)." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
+		<< "    --no-discovery  Disable Node discovery. (experimental)" << endl
+		<< "    --pin  Only connect to required (trusted) peers. (experimental)" << endl
+//		<< "    --require-peers <peers.json>  List of required (trusted) peers. (experimental)" << endl
 		<< endl;
 	MinerCLI::streamHelp(cout);
 	cout
@@ -304,6 +310,8 @@ int main(int argc, char** argv)
 	unsigned short remotePort = 30303;
 	unsigned peers = 11;
 	bool bootstrap = false;
+	bool disableDiscovery = false;
+	bool pinning = false;
 	unsigned networkId = 0;
 
 	/// Mining params
@@ -592,6 +600,10 @@ int main(int argc, char** argv)
 		}
 		else if (arg == "-b" || arg == "--bootstrap")
 			bootstrap = true;
+		else if (arg == "--no-discovery")
+			disableDiscovery = true;
+		else if (arg == "--pin")
+			pinning = true;
 		else if (arg == "-f" || arg == "--force-mining")
 			forceMining = true;
 		else if (arg == "-i" || arg == "--interactive")
@@ -684,6 +696,8 @@ int main(int argc, char** argv)
 	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat, structuredLoggingURL);
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
+	netPrefs.discovery = !disableDiscovery;
+	netPrefs.pin = pinning;
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
 	dev::WebThreeDirect web3(
 		WebThreeDirect::composeClientVersion("++eth", clientName),
@@ -1358,19 +1372,48 @@ int main(int argc, char** argv)
 					cout << "balance of " << stringHash << " is: " << toString(c->balanceAt(address)) << endl;
 				}
 			}
-			// TODO implement << operator for std::unorderd_map
-//			else if (c && cmd == "storageat")
-//			{
-//				if (iss.peek() != -1)
-//				{
-//					string stringHash;
-//					iss >> stringHash;
+			else if (c && cmd == "balanceatblock")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					unsigned blocknumber;
+					iss >> stringHash >> blocknumber;
 
-//					Address address = h160(fromHex(stringHash));
+					Address address = h160(fromHex(stringHash));
 
-//					cout << "storage at " << stringHash << " is: " << c->storageAt(address) << endl;
-//				}
-//			}
+					cout << "balance of " << stringHash << " is: " << toString(c->balanceAt(address, blocknumber)) << endl;
+				}
+			}
+			else if (c && cmd == "storageat")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					iss >> stringHash;
+
+					Address address = h160(fromHex(stringHash));
+
+					cout << "storage at " << stringHash << " is: " << endl;
+					for (auto s: c->storageAt(address))
+						cout << toHex(s.first) << " : " << toHex(s.second) << endl;
+				}
+			}
+			else if (c && cmd == "storageatblock")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					unsigned blocknumber;
+					iss >> stringHash >> blocknumber;
+
+					Address address = h160(fromHex(stringHash));
+
+					cout << "storage at " << stringHash << " is: " << endl;
+					for (auto s: c->storageAt(address, blocknumber))
+						cout << "\"0x" << toHex(s.first) << "\" : \"0x" << toHex(s.second) << "\"," << endl;
+				}
+			}
 			else if (c && cmd == "codeat")
 			{
 				if (iss.peek() != -1)
@@ -1384,6 +1427,7 @@ int main(int argc, char** argv)
 				}
 			}
 #endif
+
 			else if (c && cmd == "send")
 			{
 				if (iss.peek() != -1)
