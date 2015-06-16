@@ -254,42 +254,71 @@ h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 	return s;
 }
 
-h256 Nonce::get(bool _commit)
+mutex Nonce::s_x;
+
+h256 Nonce::get()
 {
 	// todo: atomic efface bit, periodic save, kdf, rr, rng
 	// todo: encrypt
-	static h256 s_seed;
-	static string s_seedFile(getDataDir() + "/seed");
-	static mutex s_x;
-	Guard l(s_x);
-	if (!s_seed)
-	{
-		static Nonce s_nonce;
-		bytes b = contents(s_seedFile);
-		if (b.size() == 32)
-			memcpy(s_seed.data(), b.data(), 32);
-		else
-		{
-			// todo: replace w/entropy from user and system
-			std::mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
-			std::uniform_int_distribution<uint16_t> d(0, 255);
-			for (unsigned i = 0; i < 32; ++i)
-				s_seed[i] = (byte)d(s_eng);
-		}
-		if (!s_seed)
-			BOOST_THROW_EXCEPTION(InvalidState());
-		
-		// prevent seed reuse if process terminates abnormally
-		try { writeFile(s_seedFile, bytes()); } catch (FileError const&) {}
-	}
-	h256 prev(s_seed);
-	sha3(prev.ref(), s_seed.ref());
-	if (_commit)
-		try { writeFile(s_seedFile, s_seed.asBytes()); } catch (FileError const&) {}
-	return std::move(s_seed);
+	Guard l(Nonce::s_x);
+	return Nonce::singleton().next();
 }
+
+// get: Called for the first time: read seed hash from file (or generate)
+// before destruction: increment current value and store
 
 Nonce::~Nonce()
 {
-	Nonce::get(true);
+	Guard l(Nonce::s_x);
+	// These might throw.
+	next();
+	commit();
+}
+
+Nonce& Nonce::singleton()
+{
+	static Nonce s;
+	return s;
+}
+
+void Nonce::initialiseIfNeeded()
+{
+	if (m_value)
+		return;
+
+	bytes b = contents(seedFile());
+	if (b.size() == 32)
+		memcpy(m_value.data(), b.data(), 32);
+	else
+	{
+		// todo: replace w/entropy from user and system
+		std::mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
+		std::uniform_int_distribution<uint16_t> d(0, 255);
+		for (unsigned i = 0; i < 32; ++i)
+			m_value[i] = byte(d(s_eng));
+	}
+	if (!m_value)
+		BOOST_THROW_EXCEPTION(InvalidState());
+
+	// prevent seed reuse if process terminates abnormally
+	// this might throw
+	writeFile(seedFile(), bytes());
+}
+
+h256 Nonce::next()
+{
+	initialiseIfNeeded();
+	m_value = sha3(m_value);
+	return m_value;
+}
+
+void Nonce::commit()
+{
+	// this might throw
+	writeFile(seedFile(), m_value.asBytes());
+}
+
+string Nonce::seedFile()
+{
+	return getDataDir() + "/seed";
 }
