@@ -55,7 +55,7 @@ class BlockChainSync;
  * @warning None of this is thread-safe. You have been warned.
  * @doWork Syncs to peers and sends new blocks and transactions.
  */
-class EthereumHost: public p2p::HostCapability<EthereumPeer>, Worker, HasInvariants
+class EthereumHost: public p2p::HostCapability<EthereumPeer>, Worker
 {
 public:
 	/// Start server, but don't listen.
@@ -118,8 +118,6 @@ private:
 	virtual void onStopping() { stopWorking(); }
 
 	BlockChainSync& sync();
-
-	bool invariants() const override;
 
 	BlockChain const& m_chain;
 	TransactionQueue& m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.

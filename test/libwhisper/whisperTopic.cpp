@@ -41,8 +41,7 @@ BOOST_FIXTURE_TEST_SUITE(whisper, P2PFixture)
 BOOST_AUTO_TEST_CASE(topic)
 {
 	cnote << "Testing Whisper...";
-	auto oldLogVerbosity = g_logVerbosity;
-	g_logVerbosity = 0;
+	VerbosityHolder setTemporaryLevel(0);
 
 	Host host1("Test", NetworkPreferences("127.0.0.1", 30303, false));
 	host1.setIdealPeerCount(1);
@@ -99,16 +98,13 @@ BOOST_AUTO_TEST_CASE(topic)
 	}
 
 	listener.join();
-	g_logVerbosity = oldLogVerbosity;
-
 	BOOST_REQUIRE_EQUAL(result, 1 + 9 + 25 + 49 + 81);
 }
 
 BOOST_AUTO_TEST_CASE(forwarding)
 {
 	cnote << "Testing Whisper forwarding...";
-	auto oldLogVerbosity = g_logVerbosity;
-	g_logVerbosity = 0;
+	VerbosityHolder setTemporaryLevel(0);
 
 	// Host must be configured not to share peers.
 	Host host1("Listner", NetworkPreferences("127.0.0.1", 30303, false));
@@ -202,16 +198,13 @@ BOOST_AUTO_TEST_CASE(forwarding)
 	listener.join();
 	done = true;
 	forwarder.join();
-	g_logVerbosity = oldLogVerbosity;
-
 	BOOST_REQUIRE_EQUAL(result, 1);
 }
 
 BOOST_AUTO_TEST_CASE(asyncforwarding)
 {
 	cnote << "Testing Whisper async forwarding...";
-	auto oldLogVerbosity = g_logVerbosity;
-	g_logVerbosity = 2;
+	VerbosityHolder setTemporaryLevel(2);
 
 	unsigned result = 0;
 	bool done = false;
@@ -294,8 +287,6 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 
 	done = true;
 	forwarder.join();
-	g_logVerbosity = oldLogVerbosity;
-
 	BOOST_REQUIRE_EQUAL(result, 1);
 }
 

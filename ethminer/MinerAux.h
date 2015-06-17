@@ -410,7 +410,6 @@ private:
 			}
 			catch (...)
 			{
-				cout << "Error phoning home. ET is sad." << endl;
 			}
 		}
 #endif

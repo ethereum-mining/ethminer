@@ -49,7 +49,6 @@ EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, Cap
 
 EthereumPeer::~EthereumPeer()
 {
-	clog(NetMessageSummary) << "Aborting Sync :-(";
 	abortSync();
 }
 
@@ -58,8 +57,15 @@ bool EthereumPeer::isRude() const
 	return repMan().isRude(*session(), name());
 }
 
+unsigned EthereumPeer::askOverride() const
+{
+	bytes const& d = repMan().data(*session(), name());
+	return d.empty() ? c_maxBlocksAsk : RLP(d).toInt<unsigned>(RLP::LaisezFaire);
+}
+
 void EthereumPeer::setRude()
 {
+	repMan().setData(*session(), name(), rlp(askOverride() / 2 + 1));
 	repMan().noteRude(*session(), name());
 	session()->addNote("manners", "RUDE");
 }
@@ -99,6 +105,7 @@ void EthereumPeer::requestStatus()
 {
 	assert(m_asking == Asking::Nothing);
 	setAsking(Asking::State);
+	m_requireTransactions = true;
 	RLPStream s;
 	bool latest = m_peerCapabilityVersion == host()->protocolVersion();
 	prep(s, StatusPacket, latest ? 6 : 5)
@@ -139,7 +146,7 @@ void EthereumPeer::requestHashes(h256 const& _lastHash)
 void EthereumPeer::requestBlocks()
 {
 	setAsking(Asking::Blocks);
-	auto blocks = m_sub.nextFetch(isRude() ? 1 : c_maxBlocksAsk);
+	auto blocks = m_sub.nextFetch(askOverride());
 	if (blocks.size())
 	{
 		RLPStream s;
