@@ -186,7 +186,7 @@ void BlockChainSync::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 				got++;
 				break;
 
-			case ImportResult::FutureTimeUnkwnown:
+			case ImportResult::FutureTimeUnknown:
 				future++; //Fall through
 
 			case ImportResult::UnknownParent:
@@ -270,7 +270,7 @@ void BlockChainSync::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 		case ImportResult::AlreadyKnown:
 			break;
 
-		case ImportResult::FutureTimeUnkwnown:
+		case ImportResult::FutureTimeUnknown:
 		case ImportResult::UnknownParent:
 			clog(NetMessageSummary) << "Received block with no known parent. Resyncing...";
 			resetSyncFor(_peer, h, _r[1].toInt<u256>());
