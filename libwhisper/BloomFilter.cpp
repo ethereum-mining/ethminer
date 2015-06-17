@@ -35,11 +35,8 @@ void TopicBloomFilter::addRaw(AbridgedTopic const& _h)
 		{
 			if (m_refCounter[i] != numeric_limits<uint16_t>::max())
 				m_refCounter[i]++;
-			//else: overflow
-
-			// in order to encounter overflow, you have to set at least 65536 filters simultaneously.
-			// even then, the problem will only arise after at least 65536 filters will be be removed.
-			// we assume, it will never happen.
+			else
+				BOOST_THROW_EXCEPTION(Overflow());
 		}
 }
 
@@ -52,7 +49,7 @@ void TopicBloomFilter::removeRaw(AbridgedTopic const& _h)
 				m_refCounter[i]--;
 
 			if (!m_refCounter[i])
-				(*this)[i/8] &= ~c_mask[i%8];
+				(*this)[i / 8] &= ~c_mask[i % 8];
 		}
 }
 

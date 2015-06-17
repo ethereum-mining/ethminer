@@ -38,7 +38,7 @@ AbridgedTopics dev::shh::abridge(Topics const& _topics)
 {
 	AbridgedTopics ret;
 	ret.reserve(_topics.size());
-	for (auto const& t : _topics)
+	for (auto const& t: _topics)
 		ret.push_back(abridge(t));
 	return ret;
 }
@@ -87,10 +87,10 @@ bool TopicFilter::matches(Envelope const& _e) const
 
 TopicFilter::TopicFilter(RLP const& _r)
 {
-	for (RLP i: _r)
+	for (RLP const& i: _r)
 	{
 		m_topicMasks.push_back(TopicMask());
-		for (RLP j: i)
+		for (RLP const& j: i)
 			m_topicMasks.back().push_back(j.toPair<FixedHash<4>, FixedHash<4>>());
 	}
 }
@@ -99,7 +99,7 @@ AbridgedTopic TopicFilter::exportBloom() const
 {
 	AbridgedTopic ret;
 	for (TopicMask const& t: m_topicMasks)
-		for (auto i: t)
+		for (auto const& i: t)
 			ret |= i.first.template bloomPart<TopicBloomFilter::BitsPerBloom, TopicBloomFilter::size>();		
 		
 	return ret;
