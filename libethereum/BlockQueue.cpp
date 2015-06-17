@@ -229,7 +229,8 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		cblockq << "OK - queued for future [" << bi.timestamp << "vs" << time(0) << "] - will wait until" << buf;
 		m_unknownSize += _block.size();
 		m_unknownCount++;
-		return ImportResult::FutureTime;
+		bool unknown =  !m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash);
+		return unknown ? ImportResult::FutureTimeUnkwnown : ImportResult::FutureTimeKnown;
 	}
 	else
 	{
