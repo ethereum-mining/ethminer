@@ -147,7 +147,7 @@ public:
 
 	// [PRIVATE API - only relevant for base clients, not available in general]
 	dev::eth::State state(unsigned _txi, h256 _block) const;
-	dev::eth::State state(h256 _block) const;
+	dev::eth::State state(h256 const& _block, PopulationStatistics* o_stats = nullptr) const;
 	dev::eth::State state(unsigned _txi) const;
 
 	/// Get the object representing the current state of Ethereum.
@@ -226,7 +226,7 @@ public:
 	/// Kills the blockchain. Just for debug use.
 	void killChain();
 	/// Retries all blocks with unknown parents.
-	void retryUnkonwn() { m_bq.retryAllUnknown(); }
+	void retryUnknown() { m_bq.retryAllUnknown(); }
 	/// Get a report of activity.
 	ActivityReport activityReport() { ActivityReport ret; std::swap(m_report, ret); return ret; }
 	/// Set a JSONRPC server to which we can report bad blocks.
