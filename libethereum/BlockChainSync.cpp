@@ -225,8 +225,11 @@ void BlockChainSync::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 	}
 
 	if (m_state == SyncState::NewBlocks && unknown > 0)
+	{
+		completeSync();
 		resetSyncFor(_peer, maxUnknown, std::numeric_limits<u256>::max()); //TODO: proper total difficuty
-	else if (m_state == SyncState::Blocks || m_state == SyncState::NewBlocks)
+	}
+	if (m_state == SyncState::Blocks || m_state == SyncState::NewBlocks)
 	{
 		if (downloadMan().isComplete())
 			completeSync();
