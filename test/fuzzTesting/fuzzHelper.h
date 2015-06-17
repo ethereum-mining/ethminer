@@ -76,7 +76,7 @@ public:
 	static std::string rndByteSequence(int _length = 1, SizeStrictness _sizeType = SizeStrictness::Strict);
 
 	/// Generate random int64
-	static std::string randomUniIntHex();
+	static std::string randomUniIntHex(u256 _maxVal = 0);
 	static int randomUniInt();
 
 private:

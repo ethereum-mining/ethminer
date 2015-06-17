@@ -27,11 +27,13 @@
 #include <test/TestHelper.h>
 #include <test/fuzzTesting/fuzzHelper.h>
 #include <libevm/VMFactory.h>
+#include <libdevcore/Common.h>
 
 //String Variables
 extern std::string const c_testExampleStateTest;
 extern std::string const c_testExampleTransactionTest;
 extern std::string const c_testExampleVMTest;
+extern std::string const c_testExampleBlockchainTest;
 
 //Main Test functinos
 void fillRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, std::string const& testString);
@@ -44,7 +46,7 @@ void parseTestWithTypes(std::string& test);
 int main(int argc, char *argv[])
 {
 	std::string testSuite;
-	json_spirit::mValue testValue;
+	json_spirit::mValue testmValue;
 	bool checktest = false;
 	for (auto i = 0; i < argc; ++i)
 	{
@@ -70,7 +72,7 @@ int main(int argc, char *argv[])
 				std::cout << "Error! Content of argument is empty! (Usage -checktest textstream) \n";
 				return 1;
 			}
-			read_string(s, testValue);
+			read_string(s, testmValue);
 			checktest = true;
 		}
 	}
@@ -84,15 +86,15 @@ int main(int argc, char *argv[])
 	if (testSuite == "BlockChainTests")
 	{
 		if (checktest)
-			return checkRandomTest(dev::test::doTransactionTests, testValue);
+			return checkRandomTest(dev::test::doBlockchainTests, testmValue);
 		else
-			fillRandomTest(dev::test::doTransactionTests, c_testExampleTransactionTest);
+			fillRandomTest(dev::test::doBlockchainTests, c_testExampleBlockchainTest);
 	}
 	else
 	if (testSuite == "TransactionTests")
 	{
 		if (checktest)
-			return checkRandomTest(dev::test::doTransactionTests, testValue);
+			return checkRandomTest(dev::test::doTransactionTests, testmValue);
 		else
 			fillRandomTest(dev::test::doTransactionTests, c_testExampleTransactionTest);
 	}
@@ -100,7 +102,7 @@ int main(int argc, char *argv[])
 	if (testSuite == "StateTests")
 	{
 		if (checktest)
-			return checkRandomTest(dev::test::doStateTests, testValue);
+			return checkRandomTest(dev::test::doStateTests, testmValue);
 		else
 			fillRandomTest(dev::test::doStateTests, c_testExampleStateTest);
 	}
@@ -110,7 +112,7 @@ int main(int argc, char *argv[])
 		if (checktest)
 		{
 			dev::eth::VMFactory::setKind(dev::eth::VMKind::JIT);
-			return checkRandomTest(dev::test::doVMTests, testValue);
+			return checkRandomTest(dev::test::doVMTests, testmValue);
 		}
 		else
 			fillRandomTest(dev::test::doVMTests, c_testExampleVMTest);
@@ -152,16 +154,17 @@ int checkRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, jso
 void fillRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, std::string const& testString)
 {
 	//redirect all output to the stream
-	std::ostringstream strCout;
-	std::streambuf* oldCoutStreamBuf = std::cout.rdbuf();
-	std::cout.rdbuf( strCout.rdbuf() );
-	std::cerr.rdbuf( strCout.rdbuf() );
+	//std::ostringstream strCout;
+	//std::streambuf* oldCoutStreamBuf = std::cout.rdbuf();
+	//std::cout.rdbuf( strCout.rdbuf() );
+	//std::cerr.rdbuf( strCout.rdbuf() );
 
 	json_spirit::mValue v;
 	try
 	{
 		std::string newTest = testString;
 		parseTestWithTypes(newTest);
+		std::cout << newTest;
 		json_spirit::read_string(newTest, v);
 		doTests(v, true);
 	}
@@ -171,8 +174,8 @@ void fillRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, std
 	}
 
 	//restroe output
-	std::cout.rdbuf(oldCoutStreamBuf);
-	std::cerr.rdbuf(oldCoutStreamBuf);
+	//std::cout.rdbuf(oldCoutStreamBuf);
+	//std::cerr.rdbuf(oldCoutStreamBuf);
 	std::cout << json_spirit::write_string(v, true);
 }
 
@@ -207,6 +210,9 @@ void parseTestWithTypes(std::string& _test)
 			if (types.at(i) == "[HEX]")
 				_test.replace(pos, 5, dev::test::RandomCode::randomUniIntHex());
 			else
+			if (types.at(i) == "[GASLIMIT]")
+				_test.replace(pos, 10, dev::test::RandomCode::randomUniIntHex(dev::u256("3000000000")));
+			else
 			if (types.at(i) == "[HASH20]")
 				_test.replace(pos, 8, dev::test::RandomCode::rndByteSequence(20));
 			else
@@ -235,7 +241,7 @@ void parseTestWithTypes(std::string& _test)
 
 std::vector<std::string> getTypes()
 {
-	return {"[CODE]", "[HEX]", "[HASH20]", "[HASH32]", "[0xHASH32]", "[V]"};
+	return {"[CODE]", "[HEX]", "[HASH20]", "[HASH32]", "[0xHASH32]", "[V]", "[GASLIMIT]"};
 }
 
 std::string const c_testExampleTransactionTest = R"(
@@ -263,7 +269,7 @@ std::string const c_testExampleStateTest = R"(
 		"env" : {
 		"currentCoinbase" : "[HASH20]",
 		"currentDifficulty" : "[HEX]",
-		"currentGasLimit" : "[HEX]",
+		"currentGasLimit" : "[GASLIMIT]",
 		"currentNumber" : "[HEX]",
 		"currentTimestamp" : "[HEX]",
 		"previousHash" : "[HASH32]"
@@ -310,7 +316,7 @@ std::string const c_testExampleVMTest = R"(
 		"env" : {
 				"previousHash" : "[HASH32]",
 				"currentNumber" : "[HEX]",
-				"currentGasLimit" : "[HEX]",
+				"currentGasLimit" : "[GASLIMIT]",
 				"currentDifficulty" : "[HEX]",
 				"currentTimestamp" : "[HEX]",
 				"currentCoinbase" : "[HASH20]"
@@ -333,5 +339,60 @@ std::string const c_testExampleVMTest = R"(
 				"gas" : "[HEX]"
 		   }
 	   }
+}
+)";
+
+std::string const c_testExampleBlockchainTest = R"(
+{
+ "blockTest" : {
+		 "genesisBlockHeader" : {
+			 "bloom" : "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+			 "coinbase" : "[HASH20]",
+			 "difficulty" : "131072",
+			 "extraData" : "[CODE]",
+			 "gasLimit" : "3141592",
+			 "gasUsed" : "0",
+			 "mixHash" : "[0xHASH32]",
+			 "nonce" : "0x0102030405060708",
+			 "number" : "0",
+			 "parentHash" : "0x0000000000000000000000000000000000000000000000000000000000000000",
+			 "receiptTrie" : "[0xHASH32]",
+			 "stateRoot" : "[0xHASH32]",
+			 "timestamp" : "[HEX]",
+			 "transactionsTrie" : "[0xHASH32]",
+			 "uncleHash" : "[0xHASH32]"
+		 },
+		 "pre" : {
+			"a94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
+				 "balance" : "[HEX]",
+				 "nonce" : "0",
+				 "code" : "",
+				 "storage": {}
+			 },
+			"095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
+				"balance" : "[HEX]",
+				"nonce" : "[HEX]",
+				"code" : "[CODE]",
+				"storage": {}
+			}
+		 },
+		 "blocks" : [
+			 {
+				 "transactions" : [
+					 {
+						 "data" : "[CODE]",
+						 "gasLimit" : "[HEX]",
+						 "gasPrice" : "[V]",
+						 "nonce" : "0",
+						 "secretKey" : "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8",
+						 "to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
+						 "value" : "[V]"
+					 }
+				 ],
+				 "uncleHeaders" : [
+				 ]
+			 }
+		 ]
+	 }
 }
 )";
