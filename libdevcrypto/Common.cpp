@@ -255,6 +255,7 @@ h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 }
 
 mutex Nonce::s_x;
+static string s_seedFile;
 
 h256 Nonce::get()
 {
@@ -264,15 +265,23 @@ h256 Nonce::get()
 	return Nonce::singleton().next();
 }
 
-// get: Called for the first time: read seed hash from file (or generate)
-// before destruction: increment current value and store
+void Nonce::reset()
+{
+	Guard l(Nonce::s_x);
+	Nonce::singleton().resetInternal();
+}
+
+void Nonce::setSeedFilePath(string const& _filePath)
+{
+	s_seedFile = _filePath;
+}
 
 Nonce::~Nonce()
 {
 	Guard l(Nonce::s_x);
-	// These might throw.
-	next();
-	commit();
+	if (m_value)
+		// this might throw
+		resetInternal();
 }
 
 Nonce& Nonce::singleton()
@@ -312,13 +321,17 @@ h256 Nonce::next()
 	return m_value;
 }
 
-void Nonce::commit()
+void Nonce::resetInternal()
 {
 	// this might throw
+	next();
 	writeFile(seedFile(), m_value.asBytes());
+	m_value = h256();
 }
 
-string Nonce::seedFile()
+string const& Nonce::seedFile()
 {
-	return getDataDir() + "/seed";
+	if (s_seedFile.empty())
+		s_seedFile = getDataDir() + "/seed";
+	return s_seedFile;
 }
