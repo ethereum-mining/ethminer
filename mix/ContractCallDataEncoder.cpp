@@ -37,6 +37,24 @@ using namespace dev;
 using namespace dev::solidity;
 using namespace dev::mix;
 
+static QList<int> extractDimension(QString const& _type)
+{
+	QList<int> dim;
+	QRegExp dimExtract("(\\[[^\\]]*\\])");
+	int pos = dimExtract.indexIn(_type);
+	while (pos != -1)
+	{
+		QString d = dimExtract.cap(0);
+		pos += d.length();
+		pos = dimExtract.indexIn(_type, pos);
+		if (d == "[]")
+			dim.push_front(-1);
+		else
+			dim.push_front(d.replace("[", "").replace("]", "").toInt());
+	}
+	return dim;
+}
+
 bytes ContractCallDataEncoder::encodedData()
 {
 	bytes r(m_encodedData);
@@ -118,7 +136,8 @@ void ContractCallDataEncoder::encode(QVariant const& _data, SolidityType const& 
 			m_encodedData += bytes(32); // reserve space for offset
 			m_staticOffsetMap.push_back(std::make_pair(size, m_dynamicData.size()));
 		}
-		encodeArray(_data.toJsonArray(), dim, _type, content);
+		QJsonDocument jsonDoc = QJsonDocument::fromJson(_data.toString().toUtf8());
+		encodeArray(jsonDoc.array(), dim, _type, content);
 
 		if (!_type.dynamicSize)
 			m_encodedData.insert(m_encodedData.end(), content.begin(), content.end());
@@ -127,24 +146,6 @@ void ContractCallDataEncoder::encode(QVariant const& _data, SolidityType const& 
 	}
 	else
 		encodeSingleItem(_data.toString(), _type, m_encodedData);
-}
-
-QList<int> ContractCallDataEncoder::extractDimension(QString const& _type)
-{
-	QList<int> dim;
-	QRegExp dimExtract("(\\[[^\\]]*\\])");
-	int pos = dimExtract.indexIn(_type);
-	while (pos != -1)
-	{
-		QString d = dimExtract.cap(0);
-		pos += d.length();
-		pos = dimExtract.indexIn(_type, pos);
-		if (d == "[]")
-			dim.push_front(-1);
-		else
-			dim.push_front(d.replace("[", "").replace("]", "").toInt());
-	}
-	return dim;
 }
 
 unsigned ContractCallDataEncoder::encodeSingleItem(QString const& _data, SolidityType const& _type, bytes& _dest)
