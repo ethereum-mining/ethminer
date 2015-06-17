@@ -364,7 +364,6 @@ void PV60Sync::transition(EthereumPeer* _peer, SyncState _s, bool _force, bool _
 {
 	clog(NetMessageSummary) << "Transition!" << EthereumHost::stateName(_s) << "from" << EthereumHost::stateName(m_state) << ", " << (isSyncing(_peer) ? "syncing" : "holding") << (needsSyncing(_peer) ? "& needed" : "");
 
-	//DEV_INVARIANT_CHECK;
 	if (m_state == SyncState::Idle && _s != SyncState::Idle)
 		_peer->m_requireTransactions = true;
 
