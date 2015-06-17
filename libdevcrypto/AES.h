@@ -75,6 +75,8 @@ public:
 	
 	/// Adjust mac interval. Next mac will be xored with value.
 	void adjustInterval(unsigned _interval) { m_macInterval = _interval; }
+
+	unsigned getMacInterval() { return m_macInterval;}
 	
 private:
 	AuthenticatedStream(AuthenticatedStream const&) = delete;
