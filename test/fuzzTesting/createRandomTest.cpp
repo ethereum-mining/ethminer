@@ -154,17 +154,16 @@ int checkRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, jso
 void fillRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, std::string const& testString)
 {
 	//redirect all output to the stream
-	//std::ostringstream strCout;
-	//std::streambuf* oldCoutStreamBuf = std::cout.rdbuf();
-	//std::cout.rdbuf( strCout.rdbuf() );
-	//std::cerr.rdbuf( strCout.rdbuf() );
+	std::ostringstream strCout;
+	std::streambuf* oldCoutStreamBuf = std::cout.rdbuf();
+	std::cout.rdbuf( strCout.rdbuf() );
+	std::cerr.rdbuf( strCout.rdbuf() );
 
 	json_spirit::mValue v;
 	try
 	{
 		std::string newTest = testString;
 		parseTestWithTypes(newTest);
-		std::cout << newTest;
 		json_spirit::read_string(newTest, v);
 		doTests(v, true);
 	}
@@ -174,8 +173,8 @@ void fillRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, std
 	}
 
 	//restroe output
-	//std::cout.rdbuf(oldCoutStreamBuf);
-	//std::cerr.rdbuf(oldCoutStreamBuf);
+	std::cout.rdbuf(oldCoutStreamBuf);
+	std::cerr.rdbuf(oldCoutStreamBuf);
 	std::cout << json_spirit::write_string(v, true);
 }
 
@@ -246,7 +245,7 @@ std::vector<std::string> getTypes()
 
 std::string const c_testExampleTransactionTest = R"(
 {
-"TransactionTest" : {
+	"randomTransactionTest" : {
 		"transaction" :
 		{
 			"data" : "[CODE]",
@@ -344,7 +343,7 @@ std::string const c_testExampleVMTest = R"(
 
 std::string const c_testExampleBlockchainTest = R"(
 {
- "blockTest" : {
+ "randomBlockTest" : {
 		 "genesisBlockHeader" : {
 			 "bloom" : "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 			 "coinbase" : "[HASH20]",
@@ -359,8 +358,8 @@ std::string const c_testExampleBlockchainTest = R"(
 			 "receiptTrie" : "[0xHASH32]",
 			 "stateRoot" : "[0xHASH32]",
 			 "timestamp" : "[HEX]",
-			 "transactionsTrie" : "[0xHASH32]",
-			 "uncleHash" : "[0xHASH32]"
+			 "transactionsTrie" : "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+			 "uncleHash" : "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"
 		 },
 		 "pre" : {
 			"a94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
@@ -371,7 +370,7 @@ std::string const c_testExampleBlockchainTest = R"(
 			 },
 			"095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
 				"balance" : "[HEX]",
-				"nonce" : "[HEX]",
+				"nonce" : "0",
 				"code" : "[CODE]",
 				"storage": {}
 			}
