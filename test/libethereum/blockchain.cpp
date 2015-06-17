@@ -582,8 +582,11 @@ mArray importUncles(mObject const& _blObj, vector<BlockInfo>& _vBiUncles, vector
 
 		updatePoW(uncleBlockFromFields);
 
-		uncleBlockFromFields.nonce = overwrite == "nonce" ? Nonce(uncleHeaderObj["nonce"].get_str()) : uncleBlockFromFields.nonce;
-		uncleBlockFromFields.mixHash = overwrite == "mixHash" ? h256(uncleHeaderObj["mixHash"].get_str()) : uncleBlockFromFields.mixHash;
+		if (overwrite == "nonce")
+			uncleBlockFromFields.nonce = Nonce(uncleHeaderObj["nonce"].get_str());
+
+		if (overwrite == "mixHash")
+			uncleBlockFromFields.mixHash = h256(uncleHeaderObj["mixHash"].get_str());
 
 		writeBlockHeaderToJson(uncleHeaderObj, uncleBlockFromFields);
 
