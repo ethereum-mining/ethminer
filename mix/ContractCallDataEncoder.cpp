@@ -45,12 +45,12 @@ bytes ContractCallDataEncoder::encodedData()
 	for (auto const& p: m_dynamicOffsetMap)
 	{
 		vector_ref<byte> offsetRef(m_dynamicData.data() + p.first, 32);
-		toBigEndian<size_t, vector_ref<byte>>(p.second + headerSize, offsetRef); //add header size minus signature hash
+		toBigEndian(p.second + headerSize, offsetRef); //add header size minus signature hash
 	}
 	for (auto const& p: m_staticOffsetMap)
 	{
 		vector_ref<byte> offsetRef(r.data() + p.first, 32);
-		toBigEndian<size_t, vector_ref<byte>>(p.second + headerSize, offsetRef); //add header size minus signature hash
+		toBigEndian(p.second + headerSize, offsetRef); //add header size minus signature hash
 	}
 	if (m_dynamicData.size() > 0)
 		r.insert(r.end(), m_dynamicData.begin(), m_dynamicData.end());
