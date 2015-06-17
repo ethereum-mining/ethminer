@@ -29,11 +29,15 @@
 #include <libdevcore/TrieDB.h>
 #include <libdevcore/TrieHash.h>
 #include "MemTrie.h"
-#include "../TestHelper.h"
+#include <test/TestHelper.h>
+#include <test/TestUtils.h>
 using namespace std;
 using namespace dev;
+using namespace dev::test;
 
 namespace js = json_spirit;
+
+BOOST_GLOBAL_FIXTURE( MoveNonceToTempDir );
 
 BOOST_AUTO_TEST_SUITE(KeyStore)
 
