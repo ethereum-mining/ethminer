@@ -58,7 +58,6 @@ EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQu
 
 EthereumHost::~EthereumHost()
 {
-	//foreachPeer([](EthereumPeer* _p) { _p->abortSync(); });
 }
 
 bool EthereumHost::ensureInitialised()
@@ -341,9 +340,4 @@ SyncStatus EthereumHost::status() const
 	if (!m_sync)
 		return SyncStatus();
 	return m_sync->status();
-}
-
-bool EthereumHost::invariants() const
-{
-	return true;
 }

@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE(genesis_tests)
 
 	cnote << "Testing Genesis block...";
 	js::mValue v;
-	string s = asString(contents(testPath + "/genesishashestest.json"));
+	string s = contentsString(testPath + "/genesishashestest.json");
 	BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'genesishashestest.json' is empty. Have you cloned the 'tests' repo branch develop?");
 	js::read_string(s, v);
 
