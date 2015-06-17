@@ -1,8 +1,8 @@
 Qt.include("QEtherHelper.js")
 
-var nbRegEx = new RegExp('^[0-9]+$');
-var arrayRegEx = new RegExp('\\[[^\\]]*\\]', "g");
-var capturenbRegEx = new RegExp("[0-9]+");
+var nbRegEx;
+var arrayRegEx;
+var capturenbRegEx;
 
 function validate(model, values)
 {
@@ -54,10 +54,7 @@ function check(type, value)
 
 function isArray(_type)
 {
-	if (!arrayRegEx.test(_type))
-		return false
-	else
-		return (_type.indexOf("int") !== -1 || _type.indexOf("bytes") !== -1 || _type.indexOf("bool") !== -1 || _type.indexOf("adress") !== -1)
+	return arrayRegEx.test(_type);
 }
 
 function checkArrayRecursively(_type, _dim, _array)
@@ -186,14 +183,6 @@ function validateAddress(_type, _value)
 function validateBytes(_type, _value)
 {
 	var ret = { valid: true, message: "" }
-	if (_value.indexOf("\"") === 0 && _value.indexOf("0x") !== -1)
-	{
-		//this is a different fomatting
-		var stringRegEx = new RegExp('".*"', "g");
-		var matches = _value.match(stringRegEx);
-		if (matches.length === 1)
-			_value = matches[0]
-	}
 	if (_type !== "bytes" && _value.length > parseInt(_type.replace("bytes", "")) )
 	{
 		ret.valid = false;

@@ -97,27 +97,7 @@ void ContractCallDataEncoder::encodeArray(QJsonArray const& _array, QList<int> _
 
 void ContractCallDataEncoder::encode(QVariant const& _data, SolidityType const& _type)
 {
-	QStringList strList;
-	if (_type.array)
-	{
-		QList<int> dim = extractDimension(_type. name);
-		bytes content;
-		QJsonDocument jsonResponse = QJsonDocument::fromJson(_data.toString().toUtf8());
-		QJsonArray jsonObject = jsonResponse.array();
-		size_t size = m_encodedData.size();
-		if (dim[0] == -1)
-		{
-			m_encodedData += bytes(32); // reserve space for offset
-			m_staticOffsetMap.push_back(std::make_pair(size, m_dynamicData.size()));
-		}
-		encodeArray(jsonObject, dim, _type, content);
-
-		if (!_type.dynamicSize)
-			m_encodedData.insert(m_encodedData.end(), content.begin(), content.end());
-		else
-			m_dynamicData.insert(m_dynamicData.end(), content.begin(), content.end());
-	}
-	else if (_type.dynamicSize && _type.type == SolidityType::Type::Bytes)
+	if (_type.dynamicSize && (_type.type == SolidityType::Type::Bytes || _type.type == SolidityType::Type::String))
 	{
 		bytes empty(32);
 		size_t sizePos = m_dynamicData.size();
@@ -127,6 +107,23 @@ void ContractCallDataEncoder::encode(QVariant const& _data, SolidityType const& 
 		toBigEndian(count, sizeRef);
 		m_staticOffsetMap.push_back(std::make_pair(m_encodedData.size(), sizePos));
 		m_encodedData += empty; //reserve space for offset
+	}
+	else if (_type.array)
+	{
+		QList<int> dim = extractDimension(_type. name);
+		bytes content;
+		size_t size = m_encodedData.size();
+		if (dim.front() == -1)
+		{
+			m_encodedData += bytes(32); // reserve space for offset
+			m_staticOffsetMap.push_back(std::make_pair(size, m_dynamicData.size()));
+		}
+		encodeArray(_data.toJsonArray(), dim, _type, content);
+
+		if (!_type.dynamicSize)
+			m_encodedData.insert(m_encodedData.end(), content.begin(), content.end());
+		else
+			m_dynamicData.insert(m_dynamicData.end(), content.begin(), content.end());
 	}
 	else
 		encodeSingleItem(_data.toString(), _type, m_encodedData);
@@ -179,11 +176,6 @@ unsigned ContractCallDataEncoder::encodeSingleItem(QString const& _data, Solidit
 		catch (std::exception const&)
 		{
 			// manage input as a string.
-			QRegExp strExtract("\"(.*)\""); //check if contains both string and hex value, keep the string.
-			int i = strExtract.indexIn(src);
-			if (i != -1)
-				src = strExtract.cap(0);
-			src = src.replace("\"", "");
 			result = encodeStringParam(src, alignSize);
 		}
 	}

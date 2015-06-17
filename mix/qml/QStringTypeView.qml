@@ -2,38 +2,33 @@ import QtQuick 2.0
 
 Item
 {
-	property string value
+	property alias value: textinput.text
 	property alias readOnly: textinput.readOnly
 	id: editRoot
-	height: 20
 	width: readOnly ? textinput.implicitWidth : 150
-	onValueChanged:
-	{
-		 textinput.text = value
-	}
 
-	SourceSansProBold
-	{
-		id: boldFont
+	DebuggerPaneStyle {
+		id: dbgStyle
 	}
 
 	Rectangle {
 		anchors.fill: parent
 		radius: 4
 		TextInput {
+			anchors.verticalCenter: parent.verticalCenter
 			id: textinput
+			font.family: dbgStyle.general.basicFont
 			clip: true
-			anchors.fill: parent
-			wrapMode: Text.WrapAnywhere
-			font.family: boldFont.name
 			selectByMouse: true
-			onTextChanged: {
-				var stringRegEx = new RegExp('"^\\"*', "g")
-				var str = stringRegEx.exec(text)
-				if (str && str.length > 0)
-					value = str[0]
-				else
-					value = text
+			text: value
+			anchors.fill: parent
+			font.pointSize: dbgStyle.general.basicFontSize
+			color: dbgStyle.general.basicColor
+			MouseArea {
+				id: mouseArea
+				anchors.fill: parent
+				hoverEnabled: true
+				onClicked: textinput.forceActiveFocus()
 			}
 		}
 	}

@@ -72,7 +72,7 @@ Column
 						return Qt.createComponent("qrc:/qml/QIntTypeView.qml");
 					else if (t === QSolidityType.Bool)
 						return Qt.createComponent("qrc:/qml/QBoolTypeView.qml");
-					else if (t === QSolidityType.Bytes)
+					else if (t === QSolidityType.Bytes || t === QSolidityType.String)
 						return Qt.createComponent("qrc:/qml/QStringTypeView.qml");
 					else if (t === QSolidityType.Hash)
 						return Qt.createComponent("qrc:/qml/QHashTypeView.qml");
