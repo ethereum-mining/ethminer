@@ -37,7 +37,7 @@ const char* BlockQueueChannel::name() { return EthOrange "[]>"; }
 const char* BlockQueueChannel::name() { return EthOrange "▣┅▶"; }
 #endif
 
-size_t const c_maxKnownCount = 10000;
+size_t const c_maxKnownCount = 100000;
 size_t const c_maxKnownSize = 128 * 1024 * 1024;
 size_t const c_maxUnknownCount = 100000;
 size_t const c_maxUnknownSize = 512 * 1024 * 1024; // Block size can be ~50kb
