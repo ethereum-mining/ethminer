@@ -30,9 +30,8 @@
 #include <libsolidity/CompilerUtils.h>
 
 using namespace std;
-
-namespace dev {
-namespace solidity {
+using namespace dev;
+using namespace dev::solidity;
 
 /**
  * Simple helper class to ensure that the stack height is the same at certain places in the code.
@@ -170,11 +169,17 @@ void Compiler::appendConstructor(FunctionDefinition const& _constructor)
 
 	if (argumentSize > 0)
 	{
-		m_context << u256(argumentSize);
+		CompilerUtils(m_context).fetchFreeMemoryPointer();
+		m_context << u256(argumentSize) << eth::Instruction::DUP1;
 		m_context.appendProgramSize();
-		m_context << u256(CompilerUtils::dataStartOffset); // copy it to byte four as expected for ABI calls
-		m_context << eth::Instruction::CODECOPY;
-		appendCalldataUnpacker(FunctionType(_constructor).getParameterTypes(), true);
+		m_context << eth::Instruction::DUP4 << eth::Instruction::CODECOPY;
+		m_context << eth::Instruction::ADD;
+		CompilerUtils(m_context).storeFreeMemoryPointer();
+		appendCalldataUnpacker(
+			FunctionType(_constructor).getParameterTypes(),
+			true,
+			CompilerUtils::freeMemoryPointer + 0x20
+		);
 	}
 	_constructor.accept(*this);
 }
@@ -232,26 +237,35 @@ void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 	}
 }
 
-void Compiler::appendCalldataUnpacker(TypePointers const& _typeParameters, bool _fromMemory)
+void Compiler::appendCalldataUnpacker(
+	TypePointers const& _typeParameters,
+	bool _fromMemory,
+	u256 _startOffset
+)
 {
 	// We do not check the calldata size, everything is zero-paddedd
 
-	m_context << u256(CompilerUtils::dataStartOffset);
+	if (_startOffset == u256(-1))
+		_startOffset = u256(CompilerUtils::dataStartOffset);
+
+	m_context << _startOffset;
 	for (TypePointer const& type: _typeParameters)
 	{
-		if (type->getCategory() == Type::Category::Array)
+		switch (type->getCategory())
+		{
+		case Type::Category::Array:
 		{
 			auto const& arrayType = dynamic_cast<ArrayType const&>(*type);
 			if (arrayType.location() == ReferenceType::Location::CallData)
 			{
+				solAssert(!_fromMemory, "");
 				if (type->isDynamicallySized())
 				{
 					// put on stack: data_pointer length
 					CompilerUtils(m_context).loadFromMemoryDynamic(IntegerType(256), !_fromMemory);
 					// stack: data_offset next_pointer
 					//@todo once we support nested arrays, this offset needs to be dynamic.
-					m_context << eth::Instruction::SWAP1 << u256(CompilerUtils::dataStartOffset);
-					m_context << eth::Instruction::ADD;
+					m_context << eth::Instruction::SWAP1 << _startOffset << eth::Instruction::ADD;
 					// stack: next_pointer data_pointer
 					// retrieve length
 					CompilerUtils(m_context).loadFromMemoryDynamic(IntegerType(256), !_fromMemory, true);
@@ -268,13 +282,15 @@ void Compiler::appendCalldataUnpacker(TypePointers const& _typeParameters, bool 
 			else
 			{
 				solAssert(arrayType.location() == ReferenceType::Location::Memory, "");
-				CompilerUtils(m_context).fetchFreeMemoryPointer();
-				CompilerUtils(m_context).storeInMemoryDynamic(*type);
-				CompilerUtils(m_context).storeFreeMemoryPointer();
+				// compute data pointer
+				m_context << eth::Instruction::DUP1 << _startOffset << eth::Instruction::ADD;
+				if (!_fromMemory)
+					solAssert(false, "Not yet implemented.");
+				m_context << eth::Instruction::SWAP1 << u256(0x20) << eth::Instruction::ADD;
 			}
+			break;
 		}
-		else
-		{
+		default:
 			solAssert(!type->isDynamicallySized(), "Unknown dynamically sized type: " + type->toString());
 			CompilerUtils(m_context).loadFromMemoryDynamic(*type, !_fromMemory, true);
 		}
@@ -284,24 +300,18 @@ void Compiler::appendCalldataUnpacker(TypePointers const& _typeParameters, bool 
 
 void Compiler::appendReturnValuePacker(TypePointers const& _typeParameters)
 {
-	unsigned dataOffset = 0;
-	unsigned stackDepth = 0;
-	for (TypePointer const& type: _typeParameters)
-		stackDepth += type->getSizeOnStack();
-
-	for (TypePointer const& type: _typeParameters)
-	{
-		CompilerUtils(m_context).copyToStackTop(stackDepth, type->getSizeOnStack());
-		ExpressionCompiler(m_context, m_optimize).appendTypeConversion(*type, *type, true);
-		bool const c_padToWords = true;
-		dataOffset += CompilerUtils(m_context).storeInMemory(dataOffset, *type, c_padToWords);
-		stackDepth -= type->getSizeOnStack();
-	}
-	// note that the stack is not cleaned up here
-	if (dataOffset == 0)
+	CompilerUtils utils(m_context);
+	if (_typeParameters.empty())
 		m_context << eth::Instruction::STOP;
 	else
-		m_context << u256(dataOffset) << u256(0) << eth::Instruction::RETURN;
+	{
+		utils.fetchFreeMemoryPointer();
+		//@todo optimization: if we return a single memory array, there should be enough space before
+		// its data to add the needed parts and we avoid a memory copy.
+		utils.encodeToMemory(_typeParameters, _typeParameters);
+		utils.toSizeAfterFreeMemoryPointer();
+		m_context << eth::Instruction::RETURN;
+	}
 }
 
 void Compiler::registerStateVariables(ContractDefinition const& _contract)
@@ -617,8 +627,5 @@ void Compiler::compileExpression(Expression const& _expression, TypePointer cons
 	ExpressionCompiler expressionCompiler(m_context, m_optimize);
 	expressionCompiler.compile(_expression);
 	if (_targetType)
-		expressionCompiler.appendTypeConversion(*_expression.getType(), *_targetType);
-}
-
-}
+		CompilerUtils(m_context).convertType(*_expression.getType(), *_targetType);
 }
