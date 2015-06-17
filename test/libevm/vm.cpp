@@ -323,6 +323,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 			fev.thisTxCode = get<3>(fev.addresses.at(fev.myAddress));
 			fev.code = fev.thisTxCode;
 		}
+		fev.codeHash = sha3(fev.code);
 
 		bytes output;
 		bool vmExceptionOccured = false;
