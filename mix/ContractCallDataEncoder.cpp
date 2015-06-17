@@ -98,7 +98,6 @@ void ContractCallDataEncoder::encodeArray(QJsonArray const& _array, QList<int> _
 void ContractCallDataEncoder::encode(QVariant const& _data, SolidityType const& _type)
 {
 	QStringList strList;
-	vector<int> dim;
 	if (_type.array)
 	{
 		QList<int> dim = extractDimension(_type. name);
