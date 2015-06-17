@@ -68,11 +68,6 @@ int fromHex(char _i, WhenError _throw);
 /// If _throw = ThrowType::DontThrow, it replaces bad hex characters with 0's, otherwise it will throw an exception.
 bytes fromHex(std::string const& _s, WhenError _throw = WhenError::DontThrow);
 
-#if 0
-std::string toBase58(bytesConstRef _data);
-bytes fromBase58(std::string const& _s);
-#endif
-
 /// Converts byte array to a string containing the same (binary) data. Unless
 /// the byte array happens to contain ASCII data, this won't be printable.
 inline std::string asString(bytes const& _b)
