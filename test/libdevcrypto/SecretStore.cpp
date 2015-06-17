@@ -45,7 +45,7 @@ BOOST_AUTO_TEST_CASE(basic_tests)
 
 	cnote << "Testing Key Store...";
 	js::mValue v;
-	string s = asString(contents(testPath + "/basic_tests.json"));
+	string s = contentsString(testPath + "/basic_tests.json");
 	BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'KeyStoreTests/basic_tests.json' is empty. Have you cloned the 'tests' repo branch develop?");
 	js::read_string(s, v);
 	for (auto& i: v.get_obj())
