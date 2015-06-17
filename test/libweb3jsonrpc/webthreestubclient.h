@@ -884,7 +884,7 @@ class WebThreeStubClient : public jsonrpc::Client
             else
                 throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString());
         }
-        Json::Value admin_eth_vmTrace(const std::string& param1, const std::string& param2, const std::string& param3) throw (jsonrpc::JsonRpcException)
+        Json::Value admin_eth_vmTrace(const std::string& param1, int param2, const std::string& param3) throw (jsonrpc::JsonRpcException)
         {
             Json::Value p;
             p.append(param1);
@@ -896,7 +896,7 @@ class WebThreeStubClient : public jsonrpc::Client
             else
                 throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString());
         }
-        Json::Value admin_eth_getReceiptByHashAndIndex(const std::string& param1, const std::string& param2, const std::string& param3) throw (jsonrpc::JsonRpcException)
+        Json::Value admin_eth_getReceiptByHashAndIndex(const std::string& param1, int param2, const std::string& param3) throw (jsonrpc::JsonRpcException)
         {
             Json::Value p;
             p.append(param1);

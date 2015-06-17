@@ -94,6 +94,9 @@ public:
 private:
 	using p2p::Capability::sealAndSend;
 
+	/// Figure out the amount of blocks we should be asking for.
+	unsigned askOverride() const;
+
 	/// Interpret an incoming message.
 	virtual bool interpret(unsigned _id, RLP const& _r);
 
