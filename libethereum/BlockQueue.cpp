@@ -233,7 +233,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		m_unknownCount++;
 		m_difficulty += bi.difficulty;
 		bool unknown =  !m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash);
-		return unknown ? ImportResult::FutureTimeUnkwnown : ImportResult::FutureTimeKnown;
+		return unknown ? ImportResult::FutureTimeUnknown : ImportResult::FutureTimeKnown;
 	}
 	else
 	{
