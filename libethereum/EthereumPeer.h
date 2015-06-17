@@ -141,11 +141,8 @@ private:
 
 	/// This is built as we ask for hashes. Once no more hashes are given, we present this to the
 	/// host who initialises the DownloadMan and m_sub becomes active for us to begin asking for blocks.
-	h256 m_syncingLastReceivedHash;				///< Hash most recently received from peer.
-	h256 m_syncingLatestHash;					///< Peer's latest block's hash, as of the current sync.
-	u256 m_syncingTotalDifficulty;				///< Peer's latest block's total difficulty, as of the current sync.
 	unsigned m_expectedHashes = 0;			///< Estimated upper bound of hashes to expect from this peer.
-	u256 m_syncHashNumber = 0;			///< Number of latest hash we sync to (PV61+)
+	u256 m_syncHashNumber = 0;				///< Number of latest hash we sync to (PV61+)
 	h256 m_syncHash;						///< Latest hash we sync to (PV60)
 
 	/// Once we're asking for blocks, this becomes in use.
