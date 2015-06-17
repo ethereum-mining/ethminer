@@ -289,6 +289,11 @@ void EthereumHost::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 
 void EthereumHost::onPeerTransactions(EthereumPeer* _peer, RLP const& _r)
 {
+	if (_peer->isCriticalSyncing())
+	{
+		clog(NetAllDetail) << "Ignoring transaction from peer we are syncing with";
+		return;
+	}
 	unsigned itemCount = _r.itemCount();
 	clog(NetAllDetail) << "Transactions (" << dec << itemCount << "entries)";
 	Guard l(_peer->x_knownTransactions);

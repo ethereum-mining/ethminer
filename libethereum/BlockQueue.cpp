@@ -37,7 +37,7 @@ const char* BlockQueueChannel::name() { return EthOrange "[]>"; }
 const char* BlockQueueChannel::name() { return EthOrange "▣┅▶"; }
 #endif
 
-size_t const c_maxKnownCount = 100000;
+size_t const c_maxKnownCount = 10000;
 size_t const c_maxKnownSize = 128 * 1024 * 1024;
 size_t const c_maxUnknownCount = 100000;
 size_t const c_maxUnknownSize = 512 * 1024 * 1024; // Block size can be ~50kb
@@ -81,6 +81,8 @@ void BlockQueue::clear()
 	m_unknownCount = 0;
 	m_knownSize = 0;
 	m_knownCount = 0;
+	m_difficulty = 0;
+	m_drainingDifficulty = 0;
 }
 
 void BlockQueue::verifierBody()
@@ -194,7 +196,6 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 
 	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi;
-
 	try
 	{
 		// TODO: quick verify
@@ -229,6 +230,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		cblockq << "OK - queued for future [" << bi.timestamp << "vs" << time(0) << "] - will wait until" << buf;
 		m_unknownSize += _block.size();
 		m_unknownCount++;
+		m_difficulty += bi.difficulty;
 		bool unknown =  !m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash);
 		return unknown ? ImportResult::FutureTimeUnkwnown : ImportResult::FutureTimeKnown;
 	}
@@ -249,6 +251,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 			m_unknown.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
 			m_unknownSet.insert(h);
 			m_unknownSize += _block.size();
+			m_difficulty += bi.difficulty;
 			m_unknownCount++;
 
 			return ImportResult::UnknownParent;
@@ -262,6 +265,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 			m_moreToVerify.notify_one();
 			m_readySet.insert(h);
 			m_knownSize += _block.size();
+			m_difficulty += bi.difficulty;
 			m_knownCount++;
 
 			noteReady_WITH_LOCK(h);
@@ -351,13 +355,16 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 	WriteGuard l(m_lock);
 	DEV_INVARIANT_CHECK;
 	m_drainingSet.clear();
+	m_difficulty -= m_drainingDifficulty;
+	m_drainingDifficulty = 0;
 	if (_bad.size())
 	{
 		// at least one of them was bad.
 		m_knownBad += _bad;
 		for (h256 const& b : _bad)
 			updateBad(b);
-	}	return !m_readySet.empty();
+	}
+	return !m_readySet.empty();
 }
 
 void BlockQueue::tick(BlockChain const& _bc)
@@ -434,6 +441,7 @@ void BlockQueue::drain(VerifiedBlocks& o_out, unsigned _max)
 	if (m_drainingSet.empty())
 	{
 		bool wasFull = knownFull();
+		m_drainingDifficulty = 0;
 		DEV_GUARDED(m_verification)
 		{
 			o_out.resize(min<unsigned>(_max, m_verified.size()));
@@ -446,6 +454,7 @@ void BlockQueue::drain(VerifiedBlocks& o_out, unsigned _max)
 			// TODO: @optimise use map<h256, bytes> rather than vector<bytes> & set<h256>.
 			auto h = bs.verified.info.hash();
 			m_drainingSet.insert(h);
+			m_drainingDifficulty += bs.verified.info.difficulty;
 			m_readySet.erase(h);
 			m_knownSize -= bs.verified.block.size();
 			m_knownCount--;
@@ -524,4 +533,20 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockQueueStatus const& _
 	_out << "bad: " << _bqs.bad << endl;
 
 	return _out;
+}
+
+u256 BlockQueue::difficulty() const
+{
+	UpgradableGuard l(m_lock);
+	return m_difficulty;
+}
+
+bool BlockQueue::isActive() const
+{
+	UpgradableGuard l(m_lock);
+	if (m_readySet.empty() && m_drainingSet.empty())
+		DEV_GUARDED(m_verification)
+			if (m_verified.empty() && m_verifying.empty() && m_unverified.empty())
+				return false;
+	return true;
 }
