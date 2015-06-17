@@ -28,14 +28,23 @@ Rectangle {
 		spacing: 10
 		ScenarioLoader
 		{
-			height: 70
+			height: 100
 			width: parent.width
 			id: loader
 		}
 
+		Connections
+		{
+			target: blockChain
+			onChainChanged:
+			{
+				loader.needSaveOrReload()
+			}
+		}
+
 		Rectangle
 		{
-			width: parent.width
+			width: parent.parent.width
 			height: 1
 			color: "#cccccc"
 		}
