@@ -59,10 +59,10 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		}
 
 		cerr << i.first << endl;
-		BOOST_REQUIRE(o.count("genesisBlockHeader"));
+		TBOOST_REQUIRE(o.count("genesisBlockHeader"));
 		BlockInfo biGenesisBlock = constructBlock(o["genesisBlockHeader"].get_obj());
 
-		BOOST_REQUIRE(o.count("pre"));
+		TBOOST_REQUIRE(o.count("pre"));
 		ImportTest importer(o["pre"].get_obj());
 		TransientDirectory td_stateDB_tmp;
 		State trueState(OverlayDB(State::openDB(td_stateDB_tmp.path())), BaseState::Empty, biGenesisBlock.coinbaseAddress);
@@ -77,7 +77,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		if (_fillin)
 			biGenesisBlock.stateRoot = trueState.rootHash();
 		else
-			BOOST_CHECK_MESSAGE(biGenesisBlock.stateRoot == trueState.rootHash(), "root hash does not match");
+			TBOOST_CHECK_MESSAGE((biGenesisBlock.stateRoot == trueState.rootHash()), "root hash does not match");
 
 		if (_fillin)
 		{
@@ -99,7 +99,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 		if (_fillin)
 		{
-			BOOST_REQUIRE(o.count("blocks"));
+			TBOOST_REQUIRE(o.count("blocks"));
 			mArray blArray;
 
 			blockSet genesis;
@@ -145,7 +145,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				// get txs
 				TransactionQueue txs;
 				ZeroGasPricer gp;
-				BOOST_REQUIRE(blObj.count("transactions"));
+				TBOOST_REQUIRE(blObj.count("transactions"));
 				for (auto const& txObj: blObj["transactions"].get_array())
 				{
 					mObject tx = txObj.get_obj();
@@ -337,29 +337,29 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				catch (Exception const& _e)
 				{
 					cnote << "state sync or block import did throw an exception: " << diagnostic_information(_e);
-					BOOST_CHECK(blObj.count("blockHeader") == 0);
-					BOOST_CHECK(blObj.count("transactions") == 0);
-					BOOST_CHECK(blObj.count("uncleHeaders") == 0);
+					TBOOST_CHECK((blObj.count("blockHeader") == 0));
+					TBOOST_CHECK((blObj.count("transactions") == 0));
+					TBOOST_CHECK((blObj.count("uncleHeaders") == 0));
 					continue;
 				}
 				catch (std::exception const& _e)
 				{
 					cnote << "state sync or block import did throw an exception: " << _e.what();
-					BOOST_CHECK(blObj.count("blockHeader") == 0);
-					BOOST_CHECK(blObj.count("transactions") == 0);
-					BOOST_CHECK(blObj.count("uncleHeaders") == 0);
+					TBOOST_CHECK((blObj.count("blockHeader") == 0));
+					TBOOST_CHECK((blObj.count("transactions") == 0));
+					TBOOST_CHECK((blObj.count("uncleHeaders") == 0));
 					continue;
 				}
 				catch (...)
 				{
 					cnote << "state sync or block import did throw an exception\n";
-					BOOST_CHECK(blObj.count("blockHeader") == 0);
-					BOOST_CHECK(blObj.count("transactions") == 0);
-					BOOST_CHECK(blObj.count("uncleHeaders") == 0);
+					TBOOST_CHECK((blObj.count("blockHeader") == 0));
+					TBOOST_CHECK((blObj.count("transactions") == 0));
+					TBOOST_CHECK((blObj.count("uncleHeaders") == 0));
 					continue;
 				}
 
-				BOOST_REQUIRE(blObj.count("blockHeader"));
+				TBOOST_REQUIRE(blObj.count("blockHeader"));
 
 				mObject tObj = blObj["blockHeader"].get_obj();
 				BlockInfo blockHeaderFromFields;
@@ -372,24 +372,24 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				if (importedAndBest)
 				{
 					//Check the fields restored from RLP to original fields
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.headerHash(WithNonce) == blockFromRlp.headerHash(WithNonce), "hash in given RLP not matching the block hash!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.parentHash == blockFromRlp.parentHash, "parentHash in given RLP not matching the block parentHash!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.sha3Uncles == blockFromRlp.sha3Uncles, "sha3Uncles in given RLP not matching the block sha3Uncles!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.coinbaseAddress == blockFromRlp.coinbaseAddress,"coinbaseAddress in given RLP not matching the block coinbaseAddress!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.stateRoot == blockFromRlp.stateRoot, "stateRoot in given RLP not matching the block stateRoot!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.transactionsRoot == blockFromRlp.transactionsRoot, "transactionsRoot in given RLP not matching the block transactionsRoot!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.receiptsRoot == blockFromRlp.receiptsRoot, "receiptsRoot in given RLP not matching the block receiptsRoot!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.logBloom == blockFromRlp.logBloom, "logBloom in given RLP not matching the block logBloom!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.difficulty == blockFromRlp.difficulty, "difficulty in given RLP not matching the block difficulty!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.number == blockFromRlp.number, "number in given RLP not matching the block number!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.gasLimit == blockFromRlp.gasLimit,"gasLimit in given RLP not matching the block gasLimit!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.gasUsed == blockFromRlp.gasUsed, "gasUsed in given RLP not matching the block gasUsed!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.timestamp == blockFromRlp.timestamp, "timestamp in given RLP not matching the block timestamp!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.extraData == blockFromRlp.extraData, "extraData in given RLP not matching the block extraData!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.mixHash == blockFromRlp.mixHash, "mixHash in given RLP not matching the block mixHash!");
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields.nonce == blockFromRlp.nonce, "nonce in given RLP not matching the block nonce!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.headerHash(WithNonce) == blockFromRlp.headerHash(WithNonce)), "hash in given RLP not matching the block hash!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.parentHash == blockFromRlp.parentHash), "parentHash in given RLP not matching the block parentHash!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.sha3Uncles == blockFromRlp.sha3Uncles), "sha3Uncles in given RLP not matching the block sha3Uncles!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.coinbaseAddress == blockFromRlp.coinbaseAddress),"coinbaseAddress in given RLP not matching the block coinbaseAddress!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.stateRoot == blockFromRlp.stateRoot), "stateRoot in given RLP not matching the block stateRoot!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.transactionsRoot == blockFromRlp.transactionsRoot), "transactionsRoot in given RLP not matching the block transactionsRoot!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.receiptsRoot == blockFromRlp.receiptsRoot), "receiptsRoot in given RLP not matching the block receiptsRoot!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.logBloom == blockFromRlp.logBloom), "logBloom in given RLP not matching the block logBloom!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.difficulty == blockFromRlp.difficulty), "difficulty in given RLP not matching the block difficulty!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.number == blockFromRlp.number), "number in given RLP not matching the block number!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.gasLimit == blockFromRlp.gasLimit),"gasLimit in given RLP not matching the block gasLimit!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.gasUsed == blockFromRlp.gasUsed), "gasUsed in given RLP not matching the block gasUsed!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.timestamp == blockFromRlp.timestamp), "timestamp in given RLP not matching the block timestamp!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.extraData == blockFromRlp.extraData), "extraData in given RLP not matching the block extraData!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.mixHash == blockFromRlp.mixHash), "mixHash in given RLP not matching the block mixHash!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields.nonce == blockFromRlp.nonce), "nonce in given RLP not matching the block nonce!");
 
-					BOOST_CHECK_MESSAGE(blockHeaderFromFields == blockFromRlp, "However, blockHeaderFromFields != blockFromRlp!");
+					TBOOST_CHECK_MESSAGE((blockHeaderFromFields == blockFromRlp), "However, blockHeaderFromFields != blockFromRlp!");
 
 					//Check transaction list
 
@@ -399,15 +399,15 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					{
 						mObject tx = txObj.get_obj();
 
-						BOOST_REQUIRE(tx.count("nonce"));
-						BOOST_REQUIRE(tx.count("gasPrice"));
-						BOOST_REQUIRE(tx.count("gasLimit"));
-						BOOST_REQUIRE(tx.count("to"));
-						BOOST_REQUIRE(tx.count("value"));
-						BOOST_REQUIRE(tx.count("v"));
-						BOOST_REQUIRE(tx.count("r"));
-						BOOST_REQUIRE(tx.count("s"));
-						BOOST_REQUIRE(tx.count("data"));
+						TBOOST_REQUIRE(tx.count("nonce"));
+						TBOOST_REQUIRE(tx.count("gasPrice"));
+						TBOOST_REQUIRE(tx.count("gasLimit"));
+						TBOOST_REQUIRE(tx.count("to"));
+						TBOOST_REQUIRE(tx.count("value"));
+						TBOOST_REQUIRE(tx.count("v"));
+						TBOOST_REQUIRE(tx.count("r"));
+						TBOOST_REQUIRE(tx.count("s"));
+						TBOOST_REQUIRE(tx.count("data"));
 
 						try
 						{
@@ -416,7 +416,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 						}
 						catch (Exception const& _e)
 						{
-							BOOST_ERROR("Failed transaction constructor with Exception: " << diagnostic_information(_e));
+							TBOOST_ERROR("Failed transaction constructor with Exception: " << diagnostic_information(_e));
 						}
 						catch (exception const& _e)
 						{
@@ -432,22 +432,22 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 						txsFromRlp.push_back(tx);
 					}
 
-					BOOST_CHECK_MESSAGE(txsFromRlp.size() == txsFromField.size(), "transaction list size does not match");
+					TBOOST_CHECK_MESSAGE((txsFromRlp.size() == txsFromField.size()), "transaction list size does not match");
 
 					for (size_t i = 0; i < txsFromField.size(); ++i)
 					{
-						BOOST_CHECK_MESSAGE(txsFromField[i].data() == txsFromRlp[i].data(), "transaction data in rlp and in field do not match");
-						BOOST_CHECK_MESSAGE(txsFromField[i].gas() == txsFromRlp[i].gas(), "transaction gasLimit in rlp and in field do not match");
-						BOOST_CHECK_MESSAGE(txsFromField[i].gasPrice() == txsFromRlp[i].gasPrice(), "transaction gasPrice in rlp and in field do not match");
-						BOOST_CHECK_MESSAGE(txsFromField[i].nonce() == txsFromRlp[i].nonce(), "transaction nonce in rlp and in field do not match");
-						BOOST_CHECK_MESSAGE(txsFromField[i].signature().r == txsFromRlp[i].signature().r, "transaction r in rlp and in field do not match");
-						BOOST_CHECK_MESSAGE(txsFromField[i].signature().s == txsFromRlp[i].signature().s, "transaction s in rlp and in field do not match");
-						BOOST_CHECK_MESSAGE(txsFromField[i].signature().v == txsFromRlp[i].signature().v, "transaction v in rlp and in field do not match");
-						BOOST_CHECK_MESSAGE(txsFromField[i].receiveAddress() == txsFromRlp[i].receiveAddress(), "transaction receiveAddress in rlp and in field do not match");
-						BOOST_CHECK_MESSAGE(txsFromField[i].value() == txsFromRlp[i].value(), "transaction receiveAddress in rlp and in field do not match");
+						TBOOST_CHECK_MESSAGE((txsFromField[i].data() == txsFromRlp[i].data()), "transaction data in rlp and in field do not match");
+						TBOOST_CHECK_MESSAGE((txsFromField[i].gas() == txsFromRlp[i].gas()), "transaction gasLimit in rlp and in field do not match");
+						TBOOST_CHECK_MESSAGE((txsFromField[i].gasPrice() == txsFromRlp[i].gasPrice()), "transaction gasPrice in rlp and in field do not match");
+						TBOOST_CHECK_MESSAGE((txsFromField[i].nonce() == txsFromRlp[i].nonce()), "transaction nonce in rlp and in field do not match");
+						TBOOST_CHECK_MESSAGE((txsFromField[i].signature().r == txsFromRlp[i].signature().r), "transaction r in rlp and in field do not match");
+						TBOOST_CHECK_MESSAGE((txsFromField[i].signature().s == txsFromRlp[i].signature().s), "transaction s in rlp and in field do not match");
+						TBOOST_CHECK_MESSAGE((txsFromField[i].signature().v == txsFromRlp[i].signature().v), "transaction v in rlp and in field do not match");
+						TBOOST_CHECK_MESSAGE((txsFromField[i].receiveAddress() == txsFromRlp[i].receiveAddress()), "transaction receiveAddress in rlp and in field do not match");
+						TBOOST_CHECK_MESSAGE((txsFromField[i].value() == txsFromRlp[i].value()), "transaction receiveAddress in rlp and in field do not match");
 
-						BOOST_CHECK_MESSAGE(txsFromField[i] == txsFromRlp[i], "transactions from  rlp and transaction from field do not match");
-						BOOST_CHECK_MESSAGE(txsFromField[i].rlp() == txsFromRlp[i].rlp(), "transactions rlp do not match");
+						TBOOST_CHECK_MESSAGE((txsFromField[i] == txsFromRlp[i]), "transactions from  rlp and transaction from field do not match");
+						TBOOST_CHECK_MESSAGE((txsFromField[i].rlp() == txsFromRlp[i].rlp()), "transactions rlp do not match");
 					}
 
 					// check uncle list
@@ -458,7 +458,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 						for (auto const& uBlHeaderObj: blObj["uncleHeaders"].get_array())
 						{
 							mObject uBlH = uBlHeaderObj.get_obj();
-							BOOST_REQUIRE(uBlH.size() == 16);
+							TBOOST_REQUIRE((uBlH.size() == 16));
 							bytes uncleRLP = createBlockRLPFromFields(uBlH);
 							const RLP c_uRLP(uncleRLP);
 							BlockInfo uncleBlockHeader;
@@ -468,7 +468,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 							}
 							catch(...)
 							{
-								BOOST_ERROR("invalid uncle header");
+								TBOOST_ERROR("invalid uncle header");
 							}
 							uBlHsFromField.push_back(uncleBlockHeader);
 						}
@@ -482,15 +482,15 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 						uBlHsFromRlp.push_back(uBl);
 					}
 
-					BOOST_REQUIRE_EQUAL(uBlHsFromField.size(), uBlHsFromRlp.size());
+					TBOOST_REQUIRE_EQUAL(uBlHsFromField.size(), uBlHsFromRlp.size());
 
 					for (size_t i = 0; i < uBlHsFromField.size(); ++i)
-						BOOST_CHECK_MESSAGE(uBlHsFromField[i] == uBlHsFromRlp[i], "block header in rlp and in field do not match");
+						TBOOST_CHECK_MESSAGE((uBlHsFromField[i] == uBlHsFromRlp[i]), "block header in rlp and in field do not match");
 				}//importedAndBest
 			}//all blocks
 
-			BOOST_REQUIRE(o.count("lastblockhash") > 0);
-			BOOST_CHECK_MESSAGE(toString(trueBc.info().hash()) == o["lastblockhash"].get_str(),
+			TBOOST_REQUIRE((o.count("lastblockhash") > 0));
+			TBOOST_CHECK_MESSAGE((toString(trueBc.info().hash()) == o["lastblockhash"].get_str()),
 					"Boost check: " + i.first + " lastblockhash does not match " + toString(trueBc.info().hash()) + " expected: " + o["lastblockhash"].get_str());
 		}
 	}
@@ -713,11 +713,11 @@ BlockInfo constructBlock(mObject& _o)
 	}
 	catch (std::exception const& _e)
 	{
-		BOOST_ERROR("Failed block population with Exception: " << _e.what());
+		TBOOST_ERROR("Failed block population with Exception: " << _e.what());
 	}
 	catch(...)
 	{
-		BOOST_ERROR("block population did throw an unknown exception\n");
+		TBOOST_ERROR("block population did throw an unknown exception\n");
 	}
 	return ret;
 }

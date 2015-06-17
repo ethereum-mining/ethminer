@@ -91,13 +91,15 @@ std::string RandomCode::generate(int _maxOpNumber, RandomCodeOptions _options)
 	return code;
 }
 
-std::string RandomCode::randomUniIntHex()
+std::string RandomCode::randomUniIntHex(u256 _maxVal)
 {
+	if (_maxVal == 0)
+		_maxVal = std::numeric_limits<uint64_t>::max();
 	refreshSeed();
 	int rand = randUniIntGen() % 100;
 	if (rand < 50)
-		return "0x" + toCompactHex((u256)randUniIntGen());
-	return "0x" + toCompactHex((u256)randUInt64Gen());
+		return "0x" + toCompactHex((u256)randUniIntGen() % _maxVal);
+	return "0x" + toCompactHex((u256)randUInt64Gen() % _maxVal);
 }
 
 int RandomCode::randomUniInt()
