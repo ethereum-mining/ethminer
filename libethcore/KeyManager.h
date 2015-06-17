@@ -38,8 +38,10 @@ struct KeyInfo
 	KeyInfo() = default;
 	KeyInfo(h256 const& _passHash, std::string const& _accountName): passHash(_passHash), accountName(_accountName) {}
 
-	h256 passHash; ///< Hash of the password or h256() / UnknownPassword if unknown.
-	std::string accountName; ///< Name of the key, or JSON key info if begins with '{'.
+	/// Hash of the password or h256() / UnknownPassword if unknown.
+	h256 passHash;
+	/// Name of the key, or JSON key info if begins with '{'.
+	std::string accountName;
 };
 
 static h256 const UnknownPassword;
