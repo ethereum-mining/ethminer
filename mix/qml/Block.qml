@@ -21,6 +21,7 @@ ColumnLayout
 	property int openedTr: 0
 	property int blockIndex
 	property variant scenario
+	property string labelColor: "#414141"
 
 	function calculateHeight()
 	{
@@ -41,18 +42,17 @@ ColumnLayout
 		height = calculateHeight()
 	}
 
-
-
 	RowLayout
 	{
 		Layout.preferredHeight: trHeight
 		Layout.preferredWidth: blockWidth
 		id: rowHeader
+
 		Rectangle
 		{
-			color: "#DEDCDC"
 			Layout.preferredWidth: blockWidth
 			Layout.preferredHeight: trHeight
+			color: "#DEDCDC"
 			radius: 4
 			anchors.left: parent.left
 			anchors.leftMargin: statusWidth + 5
@@ -60,12 +60,32 @@ ColumnLayout
 				anchors.verticalCenter: parent.verticalCenter
 				anchors.left: parent.left
 				anchors.leftMargin: horizontalMargin
+				color: "#adadad"
 				text:
 				{
-					if (status === "mined")
+					if (number === -2)
+						return qsTr("STARTING PARAMETERS")
+					else if (status === "mined")
 						return qsTr("BLOCK") + " " + number
 					else
-						return qsTr("BLOCK") + " pending"
+						return qsTr("PENDING TRANSACTIONS")
+				}
+			}
+
+			Label
+			{
+				text: qsTr("EDIT")
+				color:  "#1397da"
+				anchors.verticalCenter: parent.verticalCenter
+				anchors.right: parent.right
+				anchors.rightMargin: 14
+				MouseArea
+				{
+					anchors.fill: parent
+					onClicked:
+					{
+						// load edit block panel
+					}
 				}
 			}
 		}
@@ -75,7 +95,6 @@ ColumnLayout
 	{
 		id: transactionRepeater
 		model: transactions
-
 		RowLayout
 		{
 			id: rowTransaction
@@ -99,7 +118,7 @@ ColumnLayout
 								var p = log.param.get(i)
 								logsText.text += p.name + " = " + p.value + " - indexed:" + p.indexed + "\n"
 							}
-						else{
+						else {
 							logsText.text += "From : " + log.address + "\n"
 						}
 					}
@@ -112,18 +131,18 @@ ColumnLayout
 			{
 				id: trSaveStatus
 				Layout.preferredWidth: statusWidth
-				Layout.preferredHeight: trHeight
+				Layout.preferredHeight: parent.height
 				color: "transparent"
 				anchors.top: parent.top
 				property bool saveStatus
 
 				Image {
+					anchors.top: parent.top
+					anchors.topMargin: -7
 					id: saveStatusImage
 					source: "qrc:/qml/img/recyclediscard@2x.png"
 					width: statusWidth
 					fillMode: Image.PreserveAspectFit
-					anchors.verticalCenter: parent.verticalCenter
-					anchors.horizontalCenter: parent.horizontalCenter
 				}
 
 				Component.onCompleted:
@@ -177,6 +196,7 @@ ColumnLayout
 							Layout.preferredWidth: fromWidth
 							elide: Text.ElideRight
 							maximumLineCount: 1
+							color: labelColor
 							text: {
 								if (index >= 0)
 									return transactions.get(index).sender
@@ -195,6 +215,7 @@ ColumnLayout
 									return ""
 							}
 							elide: Text.ElideRight
+							color: labelColor
 							maximumLineCount: 1
 							Layout.preferredWidth: toWidth
 						}
@@ -217,6 +238,7 @@ ColumnLayout
 							id: returnValue
 							elide: Text.ElideRight
 							maximumLineCount: 1
+							color: labelColor
 							Layout.preferredWidth: valueWidth
 							text: {
 								if (index >= 0 && transactions.get(index).returned)
@@ -237,6 +259,7 @@ ColumnLayout
 								id: logs
 								anchors.left: parent.left
 								anchors.leftMargin: 10
+								color: labelColor
 								text: {
 									if (index >= 0 && transactions.get(index).logs && transactions.get(index).logs.count)
 										return transactions.get(index).logs.count

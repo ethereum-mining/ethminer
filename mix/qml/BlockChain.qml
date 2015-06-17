@@ -20,7 +20,7 @@ ColumnLayout {
 	signal chainChanged
 
 	onChainChanged: {
-		reBuildNeeded.start()
+		rebuild.startBlinking()
 	}
 
 	onWidthChanged:
@@ -55,12 +55,12 @@ ColumnLayout {
 		previousWidth = width
 	}
 
-	property int statusWidth: 30
+	property int statusWidth: 40
 	property int fromWidth: 100
 	property int toWidth: 100
 	property int valueWidth: 200
-	property int logsWidth: 50
-	property int debugActionWidth: 50
+	property int logsWidth: 40
+	property int debugActionWidth: 40
 	property int horizontalMargin: 10
 	property int cellSpacing: 10
 
@@ -68,12 +68,12 @@ ColumnLayout {
 	{
 		id: header
 		spacing: 0
-		Layout.preferredHeight: 25
+		Layout.preferredHeight: 30
 		Image {
 			id: debugImage
 			source: "qrc:/qml/img/recycleicon@2x.png"
 			Layout.preferredWidth: statusWidth
-			Layout.preferredHeight: 25
+			Layout.preferredHeight: parent.height
 			fillMode: Image.PreserveAspectFit
 		}
 		Rectangle
@@ -126,6 +126,19 @@ ColumnLayout {
 				id: blockChainLayout
 				width: parent.width
 				spacing: 10
+
+				Block
+				{
+					scenario: blockChainPanel.model
+					Layout.preferredWidth: blockChainScrollView.width
+					Layout.preferredHeight: 60
+					blockIndex: -1
+					transactions: []
+					status: ""
+					number: -2
+					trHeight: 60
+				}
+
 				Repeater // List of blocks
 				{
 					id: blockChainRepeater
@@ -229,7 +242,7 @@ ColumnLayout {
 				{
 					if (ensureNotFuturetime.running)
 						return;
-					reBuildNeeded.stop()
+					stopBlinking()
 					var retBlocks = [];
 					var bAdded = 0;
 					for (var j = 0; j < model.blocks.length; j++)
@@ -282,23 +295,8 @@ ColumnLayout {
 				Layout.preferredHeight: 30
 				buttonShortcut: ""
 				sourceImg: "qrc:/qml/img/recycleicon@2x.png"
-				Timer
-				{
-					id: reBuildNeeded
-					repeat: true
-					interval: 1000
-					running: false
-					onTriggered: {
-						if (!parent.fillColor || parent.fillColor === "white")
-							parent.fillColor = "orange"
-						else
-							parent.fillColor = "white"
-					}
-					onRunningChanged: {
-						if (!running)
-							parent.fillColor = "white"
-					}
-				}
+
+
 			}
 
 			ScenarioButton {
