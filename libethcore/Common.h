@@ -100,7 +100,8 @@ enum class ImportResult
 {
 	Success = 0,
 	UnknownParent,
-	FutureTime,
+	FutureTimeKnown,
+	FutureTimeUnkwnown,
 	AlreadyInChain,
 	AlreadyKnown,
 	Malformed,
