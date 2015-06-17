@@ -221,26 +221,26 @@ public:
 				break;
 			}
 			case OperationMode::ImportBare:
-				for (string const& i: m_inputs)
+				for (string const& input: m_inputs)
 				{
 					h128 u;
 					bytes b;
-					b = fromHex(i);
+					b = fromHex(input);
 					if (b.size() != 32)
 					{
-						std::string s = contentsString(i);
+						std::string s = contentsString(input);
 						b = fromHex(s);
 						if (b.size() != 32)
-							u = store.importKey(i);
+							u = store.importKey(input);
 					}
 					if (!u && b.size() == 32)
 						u = store.importSecret(b, lockPassword(toAddress(Secret(b)).abridged()));
 					if (!u)
 					{
-						cerr << "Cannot import " << i << " not a file or secret." << endl;
+						cerr << "Cannot import " << input << " not a file or secret." << endl;
 						continue;
 					}
-					cout << "Successfully imported " << i << " as " << toUUID(u);
+					cout << "Successfully imported " << input << " as " << toUUID(u);
 				}
 				break;
 			case OperationMode::InspectBare:

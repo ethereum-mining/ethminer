@@ -106,6 +106,7 @@ void EthereumPeer::requestStatus()
 {
 	assert(m_asking == Asking::Nothing);
 	setAsking(Asking::State);
+	m_requireTransactions = true;
 	RLPStream s;
 	bool latest = m_peerCapabilityVersion == host()->protocolVersion();
 	prep(s, StatusPacket, latest ? 6 : 5)
