@@ -31,10 +31,12 @@
 #include <libdevcrypto/ECDHE.h>
 #include <libdevcrypto/CryptoPP.h>
 #include <libp2p/RLPxHandshake.h>
+#include <libp2p/RLPXFrameWriter.h>
 
 using namespace std;
 using namespace dev;
 using namespace dev::crypto;
+using namespace dev::p2p;
 using namespace CryptoPP;
 
 BOOST_AUTO_TEST_SUITE(rlpx)
@@ -449,6 +451,56 @@ BOOST_AUTO_TEST_CASE(ecies_interop_test_primitives)
 	bytes expectedPlain3 = asBytes("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 	BOOST_REQUIRE(s_secp256k1.decryptECIES(kenc.sec(), plainTest3));
 	BOOST_REQUIRE(plainTest3 == expectedPlain3);
+}
+
+BOOST_AUTO_TEST_CASE(readerWriter)
+{
+	ECDHE localEph;
+	h256 localNonce = Nonce::get();
+	ECDHE remoteEph;
+	h256 remoteNonce = Nonce::get();
+	bytes ackCipher{0};
+	bytes authCipher{1};
+	RLPXFrameCoder coder(true, remoteEph.pubkey(), remoteNonce, localEph, localNonce, &ackCipher, &authCipher);
+	
+	/// Test writing a 64byte packet and drain with minimum frame size that
+	/// forces packet to be pieced into 4 frames.
+	/// (Minimum frame size has room for 16 bytes of payload)
+	
+	// 64-byte payload minus 3 bytes for packet-type and RLP overhead.
+	auto dequeLen = 16;
+	bytes stuff = sha3("A").asBytes();
+	bytes payload;
+	payload += stuff;
+	payload += stuff;
+	payload.resize(payload.size() - 3 /* packet-type, rlp-overhead */);
+	BOOST_REQUIRE_EQUAL(61, payload.size());
+	
+	auto drains = (payload.size() + 3) / dequeLen;
+	BOOST_REQUIRE_EQUAL(4, drains);
+	
+	RLPXFrameWriter w(0);
+	w.enque(0, (RLPStream() << payload));
+	vector<bytes> out;
+	for (unsigned i = 1; i < drains; i++)
+	{
+		auto n = w.drain(coder, RLPXFrameWriter::MinFrameDequeLength, out);
+		BOOST_REQUIRE_EQUAL(0, n);
+		BOOST_REQUIRE_EQUAL(out.size(), i);
+	}
+	BOOST_REQUIRE_EQUAL(1, w.drain(coder, RLPXFrameWriter::MinFrameDequeLength, out));
+	BOOST_REQUIRE_EQUAL(out.size(), drains);
+	BOOST_REQUIRE_EQUAL(0, w.drain(coder, RLPXFrameWriter::MinFrameDequeLength, out));
+	BOOST_REQUIRE_EQUAL(out.size(), drains);
+	
+	// we should now have a bunch of ciphertext in out
+	BOOST_REQUIRE(out.size() == drains);
+	for (auto const& c: out)
+		BOOST_REQUIRE(c.size() == RLPXFrameWriter::MinFrameDequeLength);
+	
+	// read and assemble dequed frames
+	
+	
 }
 
 BOOST_AUTO_TEST_SUITE_END()

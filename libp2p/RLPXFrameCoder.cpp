@@ -32,22 +32,26 @@ using namespace CryptoPP;
 
 RLPXFrameCoder::RLPXFrameCoder(RLPXHandshake const& _init)
 {
-	// we need:
-	// originated?
-	// Secret == output of ecdhe agreement
-	// authCipher
-	// ackCipher
+	setup(_init.m_originated, _init.m_remoteEphemeral, _init.m_remoteNonce, _init.m_ecdhe, _init.m_nonce, &_init.m_ackCipher, &_init.m_authCipher);
+}
 
+RLPXFrameCoder::RLPXFrameCoder(bool _originated, h512 _remoteEphemeral, h256 _remoteNonce, crypto::ECDHE const& _ecdhe, h256 _nonce, bytesConstRef _ackCipher, bytesConstRef _authCipher)
+{
+	setup(_originated, _remoteEphemeral, _remoteNonce, _ecdhe, _nonce, _ackCipher, _authCipher);
+}
+
+void RLPXFrameCoder::setup(bool _originated, h512 _remoteEphemeral, h256 _remoteNonce, crypto::ECDHE const& _ecdhe, h256 _nonce, bytesConstRef _ackCipher, bytesConstRef _authCipher)
+{
 	bytes keyMaterialBytes(64);
 	bytesRef keyMaterial(&keyMaterialBytes);
-
+	
 	// shared-secret = sha3(ecdhe-shared-secret || sha3(nonce || initiator-nonce))
 	Secret ephemeralShared;
-	_init.m_ecdhe.agree(_init.m_remoteEphemeral, ephemeralShared);
+	_ecdhe.agree(_remoteEphemeral, ephemeralShared);
 	ephemeralShared.ref().copyTo(keyMaterial.cropped(0, h256::size));
 	h512 nonceMaterial;
-	h256 const& leftNonce = _init.m_originated ? _init.m_remoteNonce : _init.m_nonce;
-	h256 const& rightNonce = _init.m_originated ? _init.m_nonce : _init.m_remoteNonce;
+	h256 const& leftNonce = _originated ? _remoteNonce : _nonce;
+	h256 const& rightNonce = _originated ? _nonce : _remoteNonce;
 	leftNonce.ref().copyTo(nonceMaterial.ref().cropped(0, h256::size));
 	rightNonce.ref().copyTo(nonceMaterial.ref().cropped(h256::size, h256::size));
 	auto outRef(keyMaterial.cropped(h256::size, h256::size));
@@ -65,31 +69,31 @@ RLPXFrameCoder::RLPXFrameCoder(RLPXHandshake const& _init)
 	h128 iv;
 	m_frameEnc.SetKeyWithIV(m_frameEncKey, h256::size, iv.data());
 	m_frameDec.SetKeyWithIV(m_frameDecKey, h256::size, iv.data());
-
+	
 	// mac-secret = sha3(ecdhe-shared-secret || aes-secret)
 	sha3(keyMaterial, outRef); // output mac-secret
 	m_macEncKey.resize(h256::size);
 	memcpy(m_macEncKey.data(), outRef.data(), h256::size);
 	m_macEnc.SetKey(m_macEncKey, h256::size);
-
+	
 	// Initiator egress-mac: sha3(mac-secret^recipient-nonce || auth-sent-init)
 	//           ingress-mac: sha3(mac-secret^initiator-nonce || auth-recvd-ack)
 	// Recipient egress-mac: sha3(mac-secret^initiator-nonce || auth-sent-ack)
 	//           ingress-mac: sha3(mac-secret^recipient-nonce || auth-recvd-init)
  
-	(*(h256*)outRef.data() ^ _init.m_remoteNonce).ref().copyTo(keyMaterial);
-	bytes const& egressCipher = _init.m_originated ? _init.m_authCipher : _init.m_ackCipher;
+	(*(h256*)outRef.data() ^ _remoteNonce).ref().copyTo(keyMaterial);
+	bytesConstRef egressCipher = _originated ? _authCipher : _ackCipher;
 	keyMaterialBytes.resize(h256::size + egressCipher.size());
 	keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
-	bytesConstRef(&egressCipher).copyTo(keyMaterial.cropped(h256::size, egressCipher.size()));
+	egressCipher.copyTo(keyMaterial.cropped(h256::size, egressCipher.size()));
 	m_egressMac.Update(keyMaterial.data(), keyMaterial.size());
-
+	
 	// recover mac-secret by re-xoring remoteNonce
-	(*(h256*)keyMaterial.data() ^ _init.m_remoteNonce ^ _init.m_nonce).ref().copyTo(keyMaterial);
-	bytes const& ingressCipher = _init.m_originated ? _init.m_ackCipher : _init.m_authCipher;
+	(*(h256*)keyMaterial.data() ^ _remoteNonce ^ _nonce).ref().copyTo(keyMaterial);
+	bytesConstRef ingressCipher = _originated ? _ackCipher : _authCipher;
 	keyMaterialBytes.resize(h256::size + ingressCipher.size());
 	keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
-	bytesConstRef(&ingressCipher).copyTo(keyMaterial.cropped(h256::size, ingressCipher.size()));
+	ingressCipher.copyTo(keyMaterial.cropped(h256::size, ingressCipher.size()));
 	m_ingressMac.Update(keyMaterial.data(), keyMaterial.size());
 }
 

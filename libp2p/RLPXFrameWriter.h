@@ -33,6 +33,63 @@ namespace dev
 namespace p2p
 {
 
+class RLPXFrameReader
+{
+	RLPXFrameReader(uint16_t _protocolType): m_protocolType(_protocolType) {}
+	
+	std::vector<RLPXPacket> assemble(bytes& _in)
+	{
+		bytesConstRef buffer(&_in);
+		std::vector<RLPXPacket> ret;
+		if (!_in.size())
+			return ret;
+		
+		while (!buffer.empty())
+		{
+			auto type = RLPXPacket::nextRLP(buffer);
+			buffer = buffer.cropped(type.size());
+			auto packet = RLPXPacket::nextRLP(buffer);
+			buffer = buffer.cropped(packet.size());
+			RLPXPacket p(m_protocolType, type);
+			p.streamIn(packet);
+			ret.push_back(std::move(p));
+		}
+		return ret;
+	}
+	
+	std::vector<RLPXPacket> assemble(bytes& _in, uint16_t _seq, uint32_t _totalSize)
+	{
+		// TODO: cleanup sequencing api (throw exception(s) when bad things happen)
+		
+		bytesConstRef buffer(&_in);
+		if (!m_incomplete.count(_seq) && _totalSize > 0)
+		{
+			// new packet
+			RLPXPacket p(m_protocolType, buffer);
+			if (p.isValid())
+				return std::vector<RLPXPacket>{std::move(p)};
+			m_incomplete[_seq] = std::move(p);
+		}
+		else
+		{
+			RLPXPacket& p = m_incomplete[_seq];
+			p.streamIn(buffer);
+			if (p.isValid())
+			{
+				std::vector<RLPXPacket> ret{std::move(p)};
+				m_incomplete.erase(_seq);
+				return ret;
+			}
+		}
+
+		return std::vector<RLPXPacket>();
+	}
+	
+protected:
+	uint16_t m_protocolType;
+	std::map<uint16_t, RLPXPacket> m_incomplete;	///< Incomplete packets which span multiple frames.
+};
+
 class RLPXFrameWriter
 {
 	struct QueueState
@@ -47,13 +104,15 @@ class RLPXFrameWriter
 	
 public:
 	enum PacketPriority { PriorityLow = 0, PriorityHigh };
+	static const uint16_t EmptyFrameLength = h128::size * 3; // header + headerMAC + frameMAC
+	static const uint16_t MinFrameDequeLength = h128::size * 4; // header + headerMAC + padded-block + frameMAC
 
 	RLPXFrameWriter(uint16_t _protocolType): m_protocolType(_protocolType) {}
 	RLPXFrameWriter(RLPXFrameWriter const& _s): m_protocolType(_s.m_protocolType) {}
 	
 	size_t size() const { size_t l; size_t h; DEV_GUARDED(m_q.first.x) h = m_q.first.q.size(); DEV_GUARDED(m_q.second.x) l = m_q.second.q.size(); return l + h; }
 	
-	/// Thread-safe.
+	/// Contents of _payload will be moved. Thread-safe.
 	void enque(unsigned _packetType, RLPStream& _payload, PacketPriority _priority = PriorityLow);
 	
 	/// Returns number of packets framed and outputs frames to o_bytes. Not thread-safe.
