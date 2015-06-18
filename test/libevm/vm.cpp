@@ -395,9 +395,9 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 				{
 					std::string warning = "Check State: Error! Unexpected output: " + o["out"].get_str() + " Expected: " + o["expectOut"].get_str();
 					if (Options::get().checkState)
-						BOOST_CHECK_MESSAGE((o["out"].get_str() == o["expectOut"].get_str()), warning);
+						{TBOOST_CHECK_MESSAGE((o["out"].get_str() == o["expectOut"].get_str()), warning);}
 					else
-						BOOST_WARN_MESSAGE((o["out"].get_str() == o["expectOut"].get_str()), warning);
+						TBOOST_WARN_MESSAGE((o["out"].get_str() == o["expectOut"].get_str()), warning);
 
 					o.erase(o.find("expectOut"));
 				}
@@ -440,7 +440,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 				checkLog(fev.sub.logs, test.sub.logs);
 			}
 			else	// Exception expected
-				BOOST_CHECK(vmExceptionOccured);
+				TBOOST_CHECK(vmExceptionOccured);
 		}
 	}
 }
