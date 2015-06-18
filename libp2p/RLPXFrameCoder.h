@@ -47,10 +47,16 @@ class RLPXFrameCoder
 	friend class RLPXFrameIOMux;
 	friend class Session;
 public:
-	/// Constructor.
-	/// Requires instance of RLPXHandshake which has completed first two phases of handshake.
+	/// Construct; requires instance of RLPXHandshake which has encrypted ECDH key exchange (first two phases of handshake).
 	RLPXFrameCoder(RLPXHandshake const& _init);
+	
+	/// Construct with external key material.
+	RLPXFrameCoder(bool _originated, h512 _remoteEphemeral, h256 _remoteNonce, crypto::ECDHE const& _ephemeral, h256 _nonce, bytesConstRef _ackCipher, bytesConstRef _authCipher);
+	
 	~RLPXFrameCoder() {}
+	
+	/// Establish shared secrets and setup AES and MAC states. Used by both constructors.
+	void setup(bool _originated, h512 _remoteEphemeral, h256 _remoteNonce, crypto::ECDHE const& _ephemeral, h256 _nonce, bytesConstRef _ackCipher, bytesConstRef _authCipher);
 	
 	/// Write single-frame payload of packet(s).
 	void writeFrame(uint16_t _protocolType, bytesConstRef _payload, bytes& o_bytes);
