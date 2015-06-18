@@ -105,7 +105,7 @@ private:
 	bool needBlocks() const { return m_state == SyncState::Blocks || m_state == SyncState::NewBlocks; }
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
-	void doWork();
+	virtual void doWork() override;
 
 	void maintainTransactions();
 	void maintainBlocks(h256 const& _currentBlock);
@@ -121,8 +121,8 @@ private:
 	/// Initialises the network peer-state, doing the stuff that needs to be once-only. @returns true if it really was first.
 	bool ensureInitialised();
 
-	virtual void onStarting() { startWorking(); }
-	virtual void onStopping() { stopWorking(); }
+	virtual void onStarting() override { startWorking(); }
+	virtual void onStopping() override { stopWorking(); }
 
 	void continueSync(); /// Find something to do for all peers
 	void continueSync(EthereumPeer* _peer); /// Find some work to do for a peer
