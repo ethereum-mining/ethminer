@@ -47,7 +47,7 @@ ColumnLayout
 		Layout.preferredHeight: trHeight
 		Layout.preferredWidth: blockWidth
 		id: rowHeader
-
+		spacing: 0
 		Rectangle
 		{
 			Layout.preferredWidth: blockWidth
@@ -55,7 +55,7 @@ ColumnLayout
 			color: "#DEDCDC"
 			radius: 4
 			anchors.left: parent.left
-			anchors.leftMargin: statusWidth + 5
+			anchors.leftMargin: statusWidth
 			Label {
 				anchors.verticalCenter: parent.verticalCenter
 				anchors.left: parent.left
@@ -99,6 +99,7 @@ ColumnLayout
 		{
 			id: rowTransaction
 			Layout.preferredHeight: trHeight
+			spacing: 0
 			function displayContent()
 			{
 				logsText.text = ""
@@ -138,7 +139,7 @@ ColumnLayout
 
 				Image {
 					anchors.top: parent.top
-					anchors.topMargin: -7
+					anchors.topMargin: -10
 					id: saveStatusImage
 					source: "qrc:/qml/img/recyclediscard@2x.png"
 					width: statusWidth
@@ -179,14 +180,27 @@ ColumnLayout
 				color: "#DEDCDC"
 				id: rowContentTr
 				anchors.top: parent.top
+
+				MouseArea
+				{
+					anchors.fill: parent
+					onDoubleClicked:
+					{
+						transactionDialog.stateAccounts = scenario.accounts
+						transactionDialog.execute = false
+						transactionDialog.open(index, blockIndex,  transactions.get(index))
+					}
+				}
+
 				ColumnLayout
 				{
 					anchors.top: parent.top
+					width: parent.width
 					spacing: 10
 					RowLayout
 					{
 						anchors.top: parent.top
-						anchors.verticalCenter: parent.verticalCenter
+						Layout.fillWidth: true
 						spacing: cellSpacing
 						Text
 						{
@@ -275,59 +289,7 @@ ColumnLayout
 							}
 						}
 
-						Rectangle
-						{
-							Layout.preferredWidth: debugActionWidth
-							Layout.preferredHeight: trHeight - 10
-							color: "transparent"
 
-							Image {
-								source: "qrc:/qml/img/edit.png"
-								width: 18
-								fillMode: Image.PreserveAspectFit
-								anchors.verticalCenter: parent.verticalCenter
-								anchors.horizontalCenter: parent.horizontalCenter
-							}
-							MouseArea
-							{
-								anchors.fill: parent
-								onClicked:
-								{
-									transactionDialog.stateAccounts = scenario.accounts
-									transactionDialog.execute = false
-									transactionDialog.open(index, blockIndex,  transactions.get(index))
-								}
-							}
-						}
-
-						Rectangle
-						{
-							Layout.preferredWidth: debugActionWidth
-							Layout.preferredHeight: trHeight - 10
-							color: "transparent"
-
-							Image {
-								id: debugImg
-								source: "qrc:/qml/img/rightarrow@2x.png"
-								width: statusWidth
-								fillMode: Image.PreserveAspectFit
-								anchors.verticalCenter: parent.verticalCenter
-								anchors.horizontalCenter: parent.horizontalCenter
-								visible: transactions.get(index).recordIndex !== undefined
-							}
-							MouseArea
-							{
-								anchors.fill: parent
-								onClicked:
-								{
-									if (transactions.get(index).recordIndex !== undefined)
-									{
-										debugTrRequested = [ blockIndex, index ]
-										clientModel.debugRecord(transactions.get(index).recordIndex);
-									}
-								}
-							}
-						}
 					}
 
 					RowLayout
@@ -359,6 +321,38 @@ ColumnLayout
 							anchors.left: parent.left
 							anchors.leftMargin: horizontalMargin
 							id: logsText
+						}
+					}
+				}
+			}
+
+			Rectangle
+			{
+				width: debugActionWidth
+				height: trHeight - 10
+				anchors.left: rowContentTr.right
+				anchors.top: rowContentTr.top
+				anchors.leftMargin: -50
+				color: "transparent"
+
+				Image {
+					id: debugImg
+					source: "qrc:/qml/img/rightarrow@2x.png"
+					width: debugActionWidth
+					fillMode: Image.PreserveAspectFit
+					anchors.verticalCenter: parent.verticalCenter
+					anchors.horizontalCenter: parent.horizontalCenter
+					visible: transactions.get(index).recordIndex !== undefined
+				}
+				MouseArea
+				{
+					anchors.fill: parent
+					onClicked:
+					{
+						if (transactions.get(index).recordIndex !== undefined)
+						{
+							debugTrRequested = [ blockIndex, index ]
+							clientModel.debugRecord(transactions.get(index).recordIndex);
 						}
 					}
 				}

@@ -391,7 +391,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	try
 #endif
 	{
-		block = verifyBlock(_block, m_onBad);
+		block = verifyBlock(_block, m_onBad, _ir);
 	}
 #if ETH_CATCH
 	catch (Exception& ex)

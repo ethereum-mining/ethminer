@@ -52,7 +52,8 @@ Rectangle {
 		Connections
 		{
 			target: loader
-			onLoaded: {
+			onLoaded:
+			{
 				blockChain.load(scenario)
 			}
 		}

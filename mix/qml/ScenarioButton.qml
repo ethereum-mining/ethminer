@@ -13,7 +13,8 @@ Rectangle {
 
 	function startBlinking()
 	{
-		 blinkTimer.start()
+		if (!blinkTimer.running)
+			blinkTimer.start()
 	}
 
 	function stopBlinking()

@@ -18,6 +18,18 @@ ColumnLayout {
 	property int previousWidth
 	property variant debugTrRequested: []
 	signal chainChanged
+	signal chainReloaded
+
+	Connections
+	{
+		target: codeModel
+		onContractRenamed: {
+			rebuild.startBlinking()
+		}
+		onNewContractCompiled: {
+			rebuild.startBlinking()
+		}
+	}
 
 	onChainChanged: {
 		rebuild.startBlinking()
@@ -30,14 +42,14 @@ ColumnLayout {
 		{
 			fromWidth = 100
 			toWidth = 100
-			valueWidth = 200
+			valueWidth = 250
 		}
 		else
 		{
 			var diff = (width - previousWidth) / 3;
 			fromWidth = fromWidth + diff < 100 ? 100 : fromWidth + diff
 			toWidth = toWidth + diff < 100 ? 100 : toWidth + diff
-			valueWidth = valueWidth + diff < 200 ? 200 : valueWidth + diff
+			valueWidth = valueWidth + diff < 250 ? 250 : valueWidth + diff
 		}
 		previousWidth = width
 	}
@@ -47,7 +59,7 @@ ColumnLayout {
 		if (!scenario)
 			return;
 		if (model)
-			chainChanged()
+			rebuild.startBlinking()
 		model = scenario
 		blockModel.clear()
 		for (var b in model.blocks)
@@ -55,10 +67,10 @@ ColumnLayout {
 		previousWidth = width
 	}
 
-	property int statusWidth: 40
+	property int statusWidth: 50
 	property int fromWidth: 100
 	property int toWidth: 100
-	property int valueWidth: 200
+	property int valueWidth: 250
 	property int logsWidth: 40
 	property int debugActionWidth: 40
 	property int horizontalMargin: 10
@@ -68,7 +80,7 @@ ColumnLayout {
 	{
 		id: header
 		spacing: 0
-		Layout.preferredHeight: 30
+		Layout.preferredHeight: 40
 		Image {
 			id: debugImage
 			source: "qrc:/qml/img/recycleicon@2x.png"

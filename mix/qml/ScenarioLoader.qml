@@ -17,6 +17,7 @@ ColumnLayout
 	signal saved(variant scenario)
 	signal duplicated(variant scenario)
 	signal loaded(variant scenario)
+	signal renamed(variant scenario)
 	spacing: 0
 	function init()
 	{
@@ -28,8 +29,6 @@ ColumnLayout
 		editStatus.visible = true
 	}
 
-	//anchors.margins: 10
-	//width: parent.width
 	Rectangle
 	{
 		Layout.fillWidth: true
@@ -75,6 +74,9 @@ ColumnLayout
 					projectModel.stateListModel.getState(scenarioList.currentIndex).title = scenarioName.text
 					projectModel.saveProjectFile()
 					saved(state)
+					scenarioList.model.get(scenarioList.currentIndex).title = scenarioName.text
+					scenarioList.currentIndex = scenarioList.currentIndex
+					renamed(projectModel.stateListModel.getState(scenarioList.currentIndex))
 				}
 			}
 
@@ -149,6 +151,7 @@ ColumnLayout
 				model: projectModel.stateListModel
 				textRole: "title"
 				height: 30
+				width: 150
 				onCurrentIndexChanged:
 				{
 					restoreScenario.restore()
@@ -158,6 +161,43 @@ ColumnLayout
 				{
 					var state = projectModel.stateListModel.getState(currentIndex)
 					loaded(state)
+				}
+
+				style: ComboBoxStyle {
+					background: Rectangle {
+						color: "white"
+						border.color: "#cccccc"
+						border.width: 1
+						radius: 4
+						anchors.fill: parent
+					}
+					label: Rectangle {
+						anchors.fill: parent
+						color: "white"
+						Text {
+							id: comboLabel
+							maximumLineCount: 1
+							elide: Text.ElideRight
+							width: parent.width
+							anchors.verticalCenter: parent.verticalCenter
+							anchors.horizontalCenter: parent.horizontalCenter
+							text: {
+								if (projectModel.stateListModel.getState(scenarioList.currentIndex))
+									return projectModel.stateListModel.getState(scenarioList.currentIndex).title
+								else
+									return ""
+							}
+							Connections {
+								target: blockChainSelector
+								onLoaded: {
+									comboLabel.text = projectModel.stateListModel.getState(scenarioList.currentIndex).title
+								}
+								onRenamed: {
+									comboLabel.text = scenario.title
+								}
+							}
+						}
+					}
 				}
 			}
 
