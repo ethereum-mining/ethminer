@@ -40,14 +40,15 @@ const char* NodeTableIngress::name() { return "<<P"; }
 
 NodeEntry::NodeEntry(NodeId const& _src, Public const& _pubk, NodeIPEndpoint const& _gw): Node(_pubk, _gw), distance(NodeTable::distance(_src, _pubk)) {}
 
-NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint):
+NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint, bool _enabled):
 	m_node(Node(_alias.pub(), _endpoint)),
 	m_secret(_alias.sec()),
 	m_io(_io),
 	m_socket(new NodeSocket(m_io, *this, (bi::udp::endpoint)m_node.endpoint)),
 	m_socketPointer(m_socket.get()),
 	m_bucketRefreshTimer(m_io),
-	m_evictionCheckTimer(m_io)
+	m_evictionCheckTimer(m_io),
+	m_disabled(!_enabled)
 {
 	for (unsigned i = 0; i < s_bins; i++)
 	{
@@ -55,8 +56,11 @@ NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint 
 		m_state[i].modified = chrono::steady_clock::now() - chrono::seconds(1);
 	}
 	
-	m_socketPointer->connect();
-	doRefreshBuckets(boost::system::error_code());
+	if (!m_disabled)
+	{
+		m_socketPointer->connect();
+		doRefreshBuckets(boost::system::error_code());
+	}
 }
 	
 NodeTable::~NodeTable()

@@ -326,7 +326,8 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 	{
 		clog(NetP2PNote) << "p2p.host.nodeTable.events.NodeEntryDropped " << _n;
 		RecursiveGuard l(x_sessions);
-		m_peers.erase(_n);
+		if (m_peers.count(_n) && !m_peers[_n]->required)
+			m_peers.erase(_n);
 	}
 }
 
@@ -390,7 +391,7 @@ void Host::runAcceptor()
 		{
 			if (peerCount() > 9 * m_idealPeerCount)
 			{
-				clog(NetConnect) << "Dropping incoming connect due to maximum peer count (2 * ideal peer count): " << socket->remoteEndpoint();
+				clog(NetConnect) << "Dropping incoming connect due to maximum peer count (9 * ideal peer count): " << socket->remoteEndpoint();
 				socket->close();
 				if (ec.value() < 1)
 					runAcceptor();
@@ -637,27 +638,40 @@ void Host::run(boost::system::error_code const&)
 	// updated. // disconnectLatePeers();
 
 	// todo: update peerSlotsAvailable()
-	unsigned pendingCount = 0;
-	DEV_GUARDED(x_pendingNodeConns)
-		pendingCount = m_pendingPeerConns.size();
-	int openSlots = m_idealPeerCount - peerCount() - pendingCount;
-	if (openSlots > 0)
+	
+	list<shared_ptr<Peer>> toConnect;
+	unsigned reqConn = 0;
 	{
-		list<shared_ptr<Peer>> toConnect;
+		RecursiveGuard l(x_sessions);
+		for (auto const& p: m_peers)
 		{
-			RecursiveGuard l(x_sessions);
-			for (auto p: m_peers)
-				if (p.second->shouldReconnect() && !havePeerSession(p.second->id))
-					toConnect.push_back(p.second);
+			bool haveSession = havePeerSession(p.second->id);
+			bool required = p.second->required;
+			if (haveSession && required)
+				reqConn++;
+			else if (!haveSession && p.second->shouldReconnect() && (!m_netPrefs.pin || required))
+				toConnect.push_back(p.second);
 		}
+	}
+
+	for (auto p: toConnect)
+		if (p->required && reqConn++ < m_idealPeerCount)
+			connect(p);
+	
+	if (!m_netPrefs.pin)
+	{
+		unsigned pendingCount = 0;
+		DEV_GUARDED(x_pendingNodeConns)
+			pendingCount = m_pendingPeerConns.size();
+		int openSlots = m_idealPeerCount - peerCount() - pendingCount + reqConn;
+		if (openSlots > 0)
+		{
+			for (auto p: toConnect)
+				if (!p->required && openSlots--)
+					connect(p);
 		
-		for (auto p: toConnect)
-			if (openSlots--)
-				connect(p);
-			else
-				break;
-		
-		m_nodeTable->discover();
+			m_nodeTable->discover();
+		}
 	}
 
 	auto runcb = [this](boost::system::error_code const& error) { run(error); };
@@ -698,7 +712,7 @@ void Host::startedWorking()
 	else
 		clog(NetP2PNote) << "p2p.start.notice id:" << id() << "TCP Listen port is invalid or unavailable.";
 
-	shared_ptr<NodeTable> nodeTable(new NodeTable(m_ioService, m_alias, NodeIPEndpoint(bi::address::from_string(listenAddress()), listenPort(), listenPort())));
+	shared_ptr<NodeTable> nodeTable(new NodeTable(m_ioService, m_alias, NodeIPEndpoint(bi::address::from_string(listenAddress()), listenPort(), listenPort()), m_netPrefs.discovery));
 	nodeTable->setEventHandler(new HostNodeTableHandler(*this));
 	m_nodeTable = nodeTable;
 	restoreNetwork(&m_restoreNetwork);
