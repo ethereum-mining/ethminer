@@ -103,7 +103,7 @@ private:
 	std::tuple<std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<p2p::Session>>> randomSelection(unsigned _percent = 25, std::function<bool(EthereumPeer*)> const& _allow = [](EthereumPeer const*){ return true; });
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
-	void doWork();
+	virtual void doWork() override;
 
 	void maintainTransactions();
 	void maintainBlocks(h256 const& _currentBlock);
@@ -114,8 +114,8 @@ private:
 	/// Initialises the network peer-state, doing the stuff that needs to be once-only. @returns true if it really was first.
 	bool ensureInitialised();
 
-	virtual void onStarting() { startWorking(); }
-	virtual void onStopping() { stopWorking(); }
+	virtual void onStarting() override { startWorking(); }
+	virtual void onStopping() override { stopWorking(); }
 
 	BlockChainSync& sync();
 
