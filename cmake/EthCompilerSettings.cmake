@@ -34,6 +34,11 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	# disable unknown pragma warning (4068)
 	# disable unsafe function warning (4996)
 	# disable decorated name length exceeded, name was truncated (4503)
+	# disable conversion from 'size_t' to 'type', possible loss of data (4267)
+	# disable qualifier applied to function type has no meaning; ignored (4180)
+	# disable C++ exception specification ignored except to indicate a function is not __declspec(nothrow) (4290)
+	# disable conversion from 'type1' to 'type2', possible loss of data (4244)
+	# disable forcing value to bool 'true' or 'false' (performance warning) (4800)
 	# disable warning C4535: calling _set_se_translator() requires /EHa (for boost tests)
 	# declare Windows XP requirement
 	# undefine windows.h MAX && MIN macros cause it cause conflicts with std::min && std::max functions
