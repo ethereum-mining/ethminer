@@ -23,13 +23,14 @@
 #include <iostream>
 #include <cstdlib>
 #include <fstream>
-#include "Exceptions.h"
 #include <stdio.h>
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <termios.h>
 #endif
+#include <boost/filesystem.hpp>
+#include "Exceptions.h"
 using namespace std;
 using namespace dev;
 
@@ -95,12 +96,23 @@ string dev::contentsString(string const& _file)
 	return contentsGeneric<string>(_file);
 }
 
-void dev::writeFile(std::string const& _file, bytesConstRef _data)
+void dev::writeFile(std::string const& _file, bytesConstRef _data, bool _writeDeleteRename)
 {
-	ofstream s(_file, ios::trunc | ios::binary);
-	s.write(reinterpret_cast<char const*>(_data.data()), _data.size());
-	if (!s)
-		BOOST_THROW_EXCEPTION(FileError());
+	if (_writeDeleteRename)
+	{
+		namespace fs = boost::filesystem;
+		fs::path tempPath = fs::unique_path(_file + "-%%%%%%");
+		writeFile(tempPath.string(), _data, false);
+		// will delete _file if it exists
+		fs::rename(tempPath, _file);
+	}
+	else
+	{
+		ofstream s(_file, ios::trunc | ios::binary);
+		s.write(reinterpret_cast<char const*>(_data.data()), _data.size());
+		if (!s)
+			BOOST_THROW_EXCEPTION(FileError());
+	}
 }
 
 std::string dev::getPassword(std::string const& _prompt)
