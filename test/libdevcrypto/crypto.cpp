@@ -39,7 +39,7 @@ using namespace dev::test;
 using namespace dev::crypto;
 using namespace CryptoPP;
 
-BOOST_GLOBAL_FIXTURE( MoveNonceToTempDir );
+BOOST_GLOBAL_FIXTURE( MoveNonceToTempDir )
 
 BOOST_AUTO_TEST_SUITE(devcrypto)
 
@@ -48,7 +48,6 @@ static CryptoPP::AutoSeededRandomPool s_rng;
 static CryptoPP::OID s_curveOID(CryptoPP::ASN1::secp256k1());
 static CryptoPP::DL_GroupParameters_EC<CryptoPP::ECP> s_params(s_curveOID);
 static CryptoPP::DL_GroupParameters_EC<CryptoPP::ECP>::EllipticCurve s_curve(s_params.GetCurve());
-
 
 BOOST_AUTO_TEST_CASE(sha3general)
 {
