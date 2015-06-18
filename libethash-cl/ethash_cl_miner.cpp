@@ -334,8 +334,11 @@ bool ethash_cl_miner::init(
 			m_dagChunks.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize));
 			ETHCL_LOG("Created one big buffer for the DAG");
 		}
-		catch (...)
+		catch (cl::Error err)
 		{
+			int errCode = err.err();
+			if (errCode != CL_INVALID_BUFFER_SIZE || errCode != CL_MEM_OBJECT_ALLOCATION_FAILURE)
+				ETHCL_LOG("Allocating single buffer failed with: " << err.what() << "(" << errCode << ")");
 			cl_ulong result;
 			device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &result);
 			ETHCL_LOG(
