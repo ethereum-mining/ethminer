@@ -140,12 +140,10 @@ unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
 bool ethash_cl_miner::configureGPU(
 	bool _allowCPU,
 	unsigned _extraGPUMemory,
-	bool _forceSingleChunk,
 	boost::optional<uint64_t> _currentBlock
 )
 {
 	s_allowCPU = _allowCPU;
-	s_forceSingleChunk = _forceSingleChunk;
 	s_extraRequiredGPUMem = _extraGPUMemory;
 	// by default let's only consider the DAG of the first epoch
 	uint64_t dagSize = _currentBlock ? ethash_get_datasize(*_currentBlock) : 1073739904U;
@@ -174,7 +172,6 @@ bool ethash_cl_miner::configureGPU(
 }
 
 bool ethash_cl_miner::s_allowCPU = false;
-bool ethash_cl_miner::s_forceSingleChunk = false;
 unsigned ethash_cl_miner::s_extraRequiredGPUMem;
 
 bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
@@ -288,23 +285,6 @@ bool ethash_cl_miner::init(
 		string device_version = device.getInfo<CL_DEVICE_VERSION>();
 		ETHCL_LOG("Using device: " << device.getInfo<CL_DEVICE_NAME>().c_str() << "(" << device_version.c_str() << ")");
 
-		// configure chunk number depending on max allocateable memory
-		cl_ulong result;
-		device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &result);
-		if (s_forceSingleChunk || result >= _dagSize)
-		{
-			m_dagChunksNum = 1;
-			ETHCL_LOG(
-				((result <= _dagSize && s_forceSingleChunk) ? "Forcing single chunk. Good luck!\n" : "") <<
-				"Using 1 big chunk. Max OpenCL allocateable memory is " << result
-			);
-		}
-		else
-		{
-			m_dagChunksNum = 4;
-			ETHCL_LOG("Using 4 chunks. Max OpenCL allocateable memory is " << result);
-		}
-
 		if (strncmp("OpenCL 1.0", device_version.c_str(), 10) == 0)
 		{
 			ETHCL_LOG("OpenCL 1.0 is not supported.");
@@ -346,6 +326,35 @@ bool ethash_cl_miner::init(
 			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
 			return false;
 		}
+
+		// create buffer for dag
+		try
+		{
+			m_dagChunksNum = 1;
+			m_dagChunks.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize));
+			ETHCL_LOG("Created one big buffer for the DAG");
+		}
+		catch (...)
+		{
+			cl_ulong result;
+			device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &result);
+			ETHCL_LOG(
+				"Failed to allocate 1 big chunk. Max allocateable memory is "
+				<< result << ". Trying to allocate 4 chunks."
+			);
+			m_dagChunksNum = 4;
+			for (unsigned i = 0; i < m_dagChunksNum; i++)
+			{
+				// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
+				ETHCL_LOG("Creating buffer for chunk " << i);
+				m_dagChunks.push_back(cl::Buffer(
+					m_context,
+					CL_MEM_READ_ONLY,
+					(i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7
+				));
+			}
+		}
+
 		if (m_dagChunksNum == 1)
 		{
 			ETHCL_LOG("Loading single big chunk kernels");
@@ -358,24 +367,6 @@ bool ethash_cl_miner::init(
 			m_hash_kernel = cl::Kernel(program, "ethash_hash_chunks");
 			m_search_kernel = cl::Kernel(program, "ethash_search_chunks");
 		}
-
-		// create buffer for dag
-		if (m_dagChunksNum == 1)
-		{
-			ETHCL_LOG("Creating one big buffer");
-			m_dagChunks.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize));
-		}
-		else
-			for (unsigned i = 0; i < m_dagChunksNum; i++)
-			{
-				// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
-				ETHCL_LOG("Creating buffer for chunk " << i);
-				m_dagChunks.push_back(cl::Buffer(
-					m_context,
-					CL_MEM_READ_ONLY,
-					(i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7
-				));
-			}
 
 		// create buffer for header
 		ETHCL_LOG("Creating buffer for header.");
