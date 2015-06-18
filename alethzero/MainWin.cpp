@@ -1157,7 +1157,7 @@ void Main::refreshNetwork()
 
 		auto ns = web3()->nodes();
 		for (p2p::Peer const& i: ns)
-			ui->nodes->insertItem(sessions.count(i.id) ? 0 : ui->nodes->count(), QString("[%1 %3] %2 - ( =%5s | /%4s%6 ) - *%7 $%8")
+			ui->nodes->insertItem(sessions.count(i.id) ? 0 : ui->nodes->count(), QString("[%1 %3] %2 - ( %4 ) - *%5")
 				.arg(QString::fromStdString(i.id.abridged()))
 				.arg(QString::fromStdString(i.endpoint.address.to_string()))
 				.arg(i.id == web3()->id() ? "self" : sessions.count(i.id) ? sessions[i.id] : "disconnected")
