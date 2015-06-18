@@ -35,7 +35,7 @@ void RLPXFrameWriter::enque(unsigned _packetType, RLPStream& _payload, PacketPri
 size_t RLPXFrameWriter::drain(RLPXFrameCoder& _coder, unsigned _size, vector<bytes>& o_toWrite)
 {
 	static const size_t c_blockSize = h128::size;
-	static const size_t c_overhead = c_blockSize * 2;
+	static const size_t c_overhead = c_blockSize * 3; // header + headerMac + frameMAC
 	if (_size < c_overhead + c_blockSize)
 		return 0;
 
@@ -60,6 +60,7 @@ size_t RLPXFrameWriter::drain(RLPXFrameCoder& _coder, unsigned _size, vector<byt
 		QueueState &qs = high ? m_q.first : m_q.second;
 		size_t frameAllot = (!swapQueues && highPending && lowPending ? frameLen / 2 - (c_overhead + c_blockSize) > 0 ? frameLen / 2 : frameLen : frameLen) - c_overhead;
 		size_t offset = 0;
+		size_t length = 0;
 		while (frameAllot >= c_blockSize)
 		{
 			if (qs.writing == nullptr)
@@ -89,13 +90,13 @@ size_t RLPXFrameWriter::drain(RLPXFrameCoder& _coder, unsigned _size, vector<byt
 			if (frameAllot && qs.remaining)
 			{
 				offset = qs.writing->size() - qs.remaining;
-				auto length = qs.remaining <= frameAllot ? qs.remaining : frameAllot;
+				length = qs.remaining <= frameAllot ? qs.remaining : frameAllot;
 				bytes portion = bytesConstRef(&qs.writing->data()).cropped(offset, length).toBytes();
 				qs.remaining -= length;
 				frameAllot -= portion.size();
 				payload += portion;
 			}
-			if (!qs.remaining)
+			if (!qs.remaining && ret++)
 				qs.writing = nullptr;
 			if (qs.sequenced)
 				break;
@@ -110,6 +111,7 @@ size_t RLPXFrameWriter::drain(RLPXFrameCoder& _coder, unsigned _size, vector<byt
 					_coder.writeFrame(m_protocolType, qs.sequence, &payload, payload);
 			else
 				_coder.writeFrame(m_protocolType, &payload, payload);
+			assert((int)frameLen - payload.size() >= 0);
 			frameLen -= payload.size();
 			o_toWrite.push_back(move(payload));
 			payload.resize(0);
@@ -120,7 +122,6 @@ size_t RLPXFrameWriter::drain(RLPXFrameCoder& _coder, unsigned _size, vector<byt
 				qs.sequenced = false;
 				DEV_GUARDED(qs.x)
 					qs.q.pop_front();
-				ret++;
 			}
 		}
 		else if (swapQueues)
