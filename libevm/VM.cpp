@@ -212,11 +212,11 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 		auto size = static_cast<size_t>(_stack.back());
 		_stack.pop_back();
 
-		auto sizeToBeCopied = bigIndex + size > _data.size() ? _data.size() < bigIndex ? 0 : _data.size() - index : size;
+		size_t sizeToBeCopied = bigIndex + size > _data.size() ? _data.size() < bigIndex ? 0 : _data.size() - index : size;
 
 		if (sizeToBeCopied > 0)
 			std::memcpy(_memory.data() + offset, _data.data() + index, sizeToBeCopied);
-		if (size - sizeToBeCopied > 0)
+		if (size > sizeToBeCopied)
 			std::memset(_memory.data() + offset + sizeToBeCopied, 0, size - sizeToBeCopied);
 	};
 
