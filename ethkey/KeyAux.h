@@ -44,7 +44,7 @@ class BadArgument: public Exception {};
 
 string getAccountPassword(KeyManager& keyManager, Address const& a)
 {
-	return getPassword("Enter password for address " + keyManager.accountDetails()[a].first + " (" + a.abridged() + "; hint:" + keyManager.accountDetails()[a].second + "): ");
+	return getPassword("Enter password for address " + keyManager.accountName(a) + " (" + a.abridged() + "; hint:" + keyManager.passwordHint(a) + "): ");
 }
 
 string createPassword(std::string const& _prompt)
@@ -359,20 +359,18 @@ public:
 							nonIcap.push_back(u);
 						else
 						{
-							std::pair<std::string, std::string> info = wallet.accountDetails()[a];
 							cout << toUUID(u) << " " << a.abridged();
 							cout << " " << ICAP(a).encoded();
-							cout << " " << info.first << endl;
+							cout << " " <<  wallet.accountName(a) << endl;
 						}
 					else
 						bare.push_back(u);
 				for (auto const& u: nonIcap)
 					if (Address a = wallet.address(u))
 					{
-						std::pair<std::string, std::string> info = wallet.accountDetails()[a];
 						cout << toUUID(u) << " " << a.abridged();
 						cout << "            (Not ICAP)             ";
-						cout << " " << info.first << endl;
+						cout << " " << wallet.accountName(a) << endl;
 					}
 				for (auto const& u: bare)
 					cout << toUUID(u) << " (Bare)" << endl;

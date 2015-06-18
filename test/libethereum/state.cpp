@@ -51,9 +51,9 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 		}
 
 		std::cout << "  " << i.first << std::endl;
-		BOOST_REQUIRE(o.count("env") > 0);
-		BOOST_REQUIRE(o.count("pre") > 0);
-		BOOST_REQUIRE(o.count("transaction") > 0);
+		TBOOST_REQUIRE((o.count("env") > 0));
+		TBOOST_REQUIRE((o.count("pre") > 0));
+		TBOOST_REQUIRE((o.count("transaction") > 0));
 
 		ImportTest importer(o, _fillin);
 
@@ -80,13 +80,13 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 #if ETH_FATDB
 			importer.exportTest(output, theState);
 #else
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("You can not fill tests when FATDB is switched off"));
+			TBOOST_THROW_EXCEPTION(Exception() << errinfo_comment("You can not fill tests when FATDB is switched off"));
 #endif
 		}
 		else
 		{
-			BOOST_REQUIRE(o.count("post") > 0);
-			BOOST_REQUIRE(o.count("out") > 0);
+			TBOOST_REQUIRE((o.count("post") > 0));
+			TBOOST_REQUIRE((o.count("out") > 0));
 
 			// check output
 			checkOutput(output, o);
@@ -101,7 +101,7 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 			auto resultAddrs = theState.addresses();
 			checkAddresses(expectedAddrs, resultAddrs);
 #endif
-			BOOST_CHECK_MESSAGE(theState.rootHash() == h256(o["postStateRoot"].get_str()), "wrong post state root");
+			TBOOST_CHECK_MESSAGE((theState.rootHash() == h256(o["postStateRoot"].get_str())), "wrong post state root");
 		}
 	}
 }

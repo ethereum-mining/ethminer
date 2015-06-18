@@ -80,7 +80,12 @@ ldb::Slice toSlice(h256 const& _h, unsigned _sub = 0);
 using BlocksHash = std::unordered_map<h256, bytes>;
 using TransactionHashes = h256s;
 using UncleHashes = h256s;
-using ImportRoute = std::pair<h256s, h256s>;
+
+struct ImportRoute
+{
+	h256s deadBlocks;
+	h256s liveBlocks;
+};
 
 enum {
 	ExtraDetails = 0,
@@ -112,7 +117,7 @@ public:
 
 	/// Sync the chain with any incoming blocks. All blocks should, if processed in order.
 	/// @returns fresh blocks, dead blocks and true iff there are additional blocks to be processed waiting.
-	std::tuple<h256s, h256s, bool> sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
+	std::tuple<ImportRoute, bool> sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
