@@ -27,6 +27,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <libp2p/Session.h>
 #include <libp2p/Capability.h>
 #include <libp2p/HostCapability.h>
+#include <test/TestHelper.h>
 
 using namespace std;
 using namespace dev;
@@ -98,6 +99,9 @@ BOOST_FIXTURE_TEST_SUITE(p2pCapability, P2PFixture)
 
 BOOST_AUTO_TEST_CASE(capability)
 {
+	if (test::Options::get().nonetwork)
+		return;
+
 	VerbosityHolder verbosityHolder(10);
 	cnote << "Testing Capability...";
 
