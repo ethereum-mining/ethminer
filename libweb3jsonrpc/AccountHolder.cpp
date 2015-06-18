@@ -103,7 +103,7 @@ void AccountHolder::clearQueue(int _id)
 
 AddressHash SimpleAccountHolder::realAccounts() const
 {
-	return m_keyManager.accounts();
+	return m_keyManager.accountsHash();
 }
 
 void SimpleAccountHolder::authenticate(dev::eth::TransactionSkeleton const& _t)

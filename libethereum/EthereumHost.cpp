@@ -292,8 +292,8 @@ void EthereumHost::onPeerStatus(EthereumPeer* _peer)
 		else
 			_peer->m_expectedHashes = estimatedHashes;
 		continueSync(_peer);
+		DEV_INVARIANT_CHECK;
 	}
-	DEV_INVARIANT_CHECK;
 }
 
 unsigned EthereumHost::estimateHashes()
@@ -313,6 +313,7 @@ unsigned EthereumHost::estimateHashes()
 void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes)
 {
 	RecursiveGuard l(x_sync);
+	DEV_INVARIANT_CHECK;
 	if (_peer->m_syncHashNumber > 0)
 		_peer->m_syncHashNumber += _hashes.size();
 
@@ -322,7 +323,6 @@ void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes)
 
 void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes, bool _complete)
 {
-	DEV_INVARIANT_CHECK;
 	if (_hashes.empty())
 	{
 		_peer->m_hashSub.doneFetch();
@@ -454,7 +454,8 @@ void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 	unsigned unknown = 0;
 	unsigned got = 0;
 	unsigned repeated = 0;
-	h256 lastUnknown;
+	u256 maxDifficulty = 0;
+	h256 maxUnknown;
 
 	for (unsigned i = 0; i < itemCount; ++i)
 	{
@@ -483,9 +484,17 @@ void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 				break;
 
 			case ImportResult::UnknownParent:
-				lastUnknown = h;
+			{
 				unknown++;
+				BlockInfo bi;
+				bi.populateFromHeader(_r[i][0]);
+				if (bi.difficulty > maxDifficulty)
+				{
+					maxDifficulty = bi.difficulty;
+					maxUnknown = h;
+				}
 				break;
+			}
 
 			default:;
 			}
@@ -501,8 +510,10 @@ void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 
 	if (m_state == SyncState::NewBlocks && unknown > 0)
 	{
-		_peer->m_latestHash = lastUnknown;
-		resetSyncTo(lastUnknown);
+		_peer->m_latestHash = maxUnknown;
+		_peer->m_totalDifficulty = maxDifficulty;
+		if (peerShouldGrabChain(_peer))
+			resetSyncTo(maxUnknown);
 	}
 
 	continueSync(_peer);
@@ -528,7 +539,7 @@ void EthereumHost::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 {
 	RecursiveGuard l(x_sync);
 	DEV_INVARIANT_CHECK;
-	if ((isSyncing() || _peer->isConversing()) && m_state != SyncState::NewBlocks)
+	if ((isSyncing() || _peer->isConversing()))
 	{
 		clog(NetMessageSummary) << "Ignoring new blocks since we're already downloading.";
 		return;
@@ -565,11 +576,14 @@ void EthereumHost::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 				u256 difficulty = _r[1].toInt<u256>();
 				if (m_syncingTotalDifficulty < difficulty)
 				{
-					clog(NetMessageSummary) << "Received block with no known parent. Resyncing...";
 					_peer->m_latestHash = h;
 					_peer->m_totalDifficulty = difficulty;
-					resetSyncTo(h);;
-					sync = true;
+					if (peerShouldGrabChain(_peer))
+					{
+						clog(NetMessageSummary) << "Received block with no known parent. Resyncing...";
+						resetSyncTo(h);;
+						sync = true;
+					}
 				}
 			}
 			break;
@@ -580,7 +594,7 @@ void EthereumHost::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 			_peer->m_knownBlocks.insert(h);
 
 		if (sync)
-			continueSync();
+			continueSync(_peer);
 	}
 	DEV_INVARIANT_CHECK;
 }
@@ -623,6 +637,7 @@ void EthereumHost::onPeerAborting(EthereumPeer* _peer)
 			_peer->setRude();
 		continueSync();
 	}
+	DEV_INVARIANT_CHECK;
 }
 
 void EthereumHost::continueSync()
@@ -758,10 +773,6 @@ bool EthereumHost::peerShouldGrabBlocks(EthereumPeer* _peer) const
 
 bool EthereumHost::peerShouldGrabChain(EthereumPeer* _peer) const
 {
-	// Early exit if this peer has proved unreliable.
-	if (_peer->isRude())
-		return false;
-
 	h256 c = m_chain.currentHash();
 	unsigned n = m_chain.number();
 	u256 td = m_chain.details().totalDifficulty;
@@ -815,6 +826,5 @@ bool EthereumHost::invariants() const
 		return false;
 	if (needBlocks() && (m_syncingLatestHash || !m_hashes.empty()))
 		return false;
-
 	return true;
 }
