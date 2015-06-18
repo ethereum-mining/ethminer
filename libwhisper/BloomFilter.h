@@ -28,29 +28,72 @@ namespace dev
 namespace shh
 {
 
-class TopicBloomFilter: public AbridgedTopic
+//enum { BloomSize = 4 }; 
+
+template <unsigned N>
+class TopicBloomFilterBase: public FixedHash<N>
 {
 public:
-	TopicBloomFilter() { init(); }
-	TopicBloomFilter(AbridgedTopic const& _h): AbridgedTopic(_h) { init(); }
+	TopicBloomFilterBase() { init(); }
+	TopicBloomFilterBase(FixedHash<N> const& _h): FixedHash<N>(_h) { init(); }
 
-	void addBloom(AbridgedTopic const& _h) { addRaw(_h.template bloomPart<BitsPerBloom, 4>()); }
-	void removeBloom(AbridgedTopic const& _h) { removeRaw(_h.template bloomPart<BitsPerBloom, 4>()); }
-	bool containsBloom(AbridgedTopic const& _h) const { return contains(_h.template bloomPart<BitsPerBloom, 4>()); }
+	void addBloom(AbridgedTopic const& _h) { addRaw(_h.template bloomPart<BitsPerBloom, N>()); }
+	void removeBloom(AbridgedTopic const& _h) { removeRaw(_h.template bloomPart<BitsPerBloom, N>()); }
+	bool containsBloom(AbridgedTopic const& _h) const { return contains(_h.template bloomPart<BitsPerBloom, N>()); }
 
-	void addRaw(AbridgedTopic const& _h);
-	void removeRaw(AbridgedTopic const& _h);
-	bool containsRaw(AbridgedTopic const& _h) const { return contains(_h); }
+	void addRaw(FixedHash<N> const& _h);
+	void removeRaw(FixedHash<N> const& _h);
+	bool containsRaw(FixedHash<N> const& _h) const { return contains(_h); }
 
 	enum { BitsPerBloom = 3 };
 	
 private:
 	void init() { for (unsigned i = 0; i < CounterSize; ++i) m_refCounter[i] = 0; }
-	static bool isBitSet(AbridgedTopic const& _h, unsigned _index);
+	static bool isBitSet(FixedHash<N> const& _h, unsigned _index);
 
-	enum { CounterSize = 8 * TopicBloomFilter::size };
+	enum { CounterSize = 8 * TopicBloomFilterBase::size };
 	std::array<uint16_t, CounterSize> m_refCounter;
 };
+
+static unsigned const c_mask[8] = { 1, 2, 4, 8, 16, 32, 64, 128 };
+
+template <unsigned N>
+void TopicBloomFilterBase<N>::addRaw(FixedHash<N> const& _h)
+{
+	*this |= _h;
+	for (unsigned i = 0; i < CounterSize; ++i)
+		if (isBitSet(_h, i))
+		{
+			if (m_refCounter[i] != numeric_limits<uint16_t>::max())
+				m_refCounter[i]++;
+			else
+				BOOST_THROW_EXCEPTION(Overflow());
+		}
+}
+
+template <unsigned N>
+void TopicBloomFilterBase<N>::removeRaw(FixedHash<N> const& _h)
+{
+	for (unsigned i = 0; i < CounterSize; ++i)
+		if (isBitSet(_h, i))
+		{
+			if (m_refCounter[i])
+				m_refCounter[i]--;
+
+			if (!m_refCounter[i])
+				(*this)[i / 8] &= ~c_mask[i % 8];
+		}
+}
+
+template <unsigned N>
+bool TopicBloomFilterBase<N>::isBitSet(FixedHash<N> const& _h, unsigned _index)
+{	
+	unsigned iByte = _index / 8;
+	unsigned iBit = _index % 8;
+	return (_h[iByte] & c_mask[iBit]) != 0;
+}
+
+using TopicBloomFilter = TopicBloomFilterBase<4>;
 
 }
 }

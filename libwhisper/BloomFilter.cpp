@@ -25,9 +25,11 @@ using namespace std;
 using namespace dev;
 using namespace dev::shh;
 
+/*
 static unsigned const c_mask[] = { 1, 2, 4, 8, 16, 32, 64, 128 };
 
-void TopicBloomFilter::addRaw(AbridgedTopic const& _h)
+template <unsigned N>
+void TopicBloomFilterBase<N>::addRaw(FixedHash<N> const& _h)
 {
 	*this |= _h;
 	for (unsigned i = 0; i < CounterSize; ++i)
@@ -40,7 +42,8 @@ void TopicBloomFilter::addRaw(AbridgedTopic const& _h)
 		}
 }
 
-void TopicBloomFilter::removeRaw(AbridgedTopic const& _h)
+template <unsigned N>
+void TopicBloomFilterBase<N>::removeRaw(FixedHash<N> const& _h)
 {
 	for (unsigned i = 0; i < CounterSize; ++i)
 		if (isBitSet(_h, i))
@@ -53,12 +56,13 @@ void TopicBloomFilter::removeRaw(AbridgedTopic const& _h)
 		}
 }
 
-bool TopicBloomFilter::isBitSet(AbridgedTopic const& _h, unsigned _index)
+template <unsigned N>
+bool TopicBloomFilterBase<N>::isBitSet(FixedHash<N> const& _h, unsigned _index)
 {	
 	unsigned iByte = _index / 8;
 	unsigned iBit = _index % 8;
 	return (_h[iByte] & c_mask[iBit]) != 0;
 }
 
-
+*/
 
