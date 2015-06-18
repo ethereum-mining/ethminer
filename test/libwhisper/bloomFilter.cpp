@@ -55,7 +55,65 @@ void testRemoveExistingBloom(TopicBloomFilter& _f, AbridgedTopic const& _h)
 	BOOST_REQUIRE(!_f.containsBloom(_h));
 }
 
+int calculateExpected(TopicBloomFilter const& f, int const n)
+{
+	int const m = f.size * 8; // number of bits in the bloom
+	int const k = f.BitsPerBloom; // number of hash functions (e.g. bits set to 1 in every bloom)
+
+	double singleBitSet = 1.0 / m; // probability of any bit being set after inserting a single bit
+	double singleBitNotSet = (1.0 - singleBitSet);
+
+	double singleNot = 1; // single bit not set after inserting N elements in the bloom filter
+	for (int i = 0; i < k * n; ++i)
+		singleNot *= singleBitNotSet;
+
+	double single = 1.0 - singleNot; // probability of a single bit being set after inserting N elements in the bloom filter
+
+	double kBitsSet = 1; // probability of K bits being set after inserting N elements in the bloom filter
+	for (int i = 0; i < k; ++i)
+		kBitsSet *= single;
+
+	return static_cast<int>(kBitsSet * 100 + 0.5); // in percents, rounded up
+}
+
+void testFalsePositiveRate(TopicBloomFilter const& f, int const inserted, Topic& x)
+{
+	int const c_sampleSize = 1000;
+	int falsePositive = 0;
+
+	for (int i = 0; i < c_sampleSize; ++i)
+	{
+		x = sha3(x);
+		AbridgedTopic a(x);
+		if (f.containsBloom(a))
+			++falsePositive;
+	}
+
+	falsePositive /= (c_sampleSize / 100); // in percents
+	int expected = calculateExpected(f, inserted);
+	int allowed = expected + (expected / 5); // allow deviations ~20%
+
+	//cnote << "Inserted: " << inserted << ", False Positive Rate: " << falsePositive << ", Expected: " << expected;
+	BOOST_REQUIRE(falsePositive <= allowed);
+}
+
 BOOST_AUTO_TEST_SUITE(bloomFilter)
+
+BOOST_AUTO_TEST_CASE(falsePositiveRate)
+{
+	VerbosityHolder setTemporaryLevel(10);
+	cnote << "Testing Bloom Filter False Positive Rate...";
+
+	TopicBloomFilter f;
+	Topic x(0xABCDEF); // deterministic pseudorandom value
+
+	for (int i = 1; i < 21; ++i)
+	{
+		x = sha3(x);
+		f.addBloom(AbridgedTopic(x));
+		testFalsePositiveRate(f, i, x);
+	}
+}
 
 BOOST_AUTO_TEST_CASE(bloomFilterRandom)
 {

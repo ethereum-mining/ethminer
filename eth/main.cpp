@@ -690,7 +690,7 @@ int main(int argc, char** argv)
 		return ret;
 	};
 	auto getAccountPassword = [&](Address const& a){
-		return getPassword("Enter password for address " + keyManager.accountDetails()[a].first + " (" + a.abridged() + "; hint:" + keyManager.accountDetails()[a].second + "): ");
+		return getPassword("Enter password for address " + keyManager.accountName(a) + " (" + a.abridged() + "; hint:" + keyManager.passwordHint(a) + "): ");
 	};
 
 	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat, structuredLoggingURL);
@@ -1137,10 +1137,10 @@ int main(int argc, char** argv)
 			{
 				cout << "Accounts:" << endl;
 				u256 total = 0;
-				for (auto const& i: keyManager.accountDetails())
+				for (auto const& address: keyManager.accounts())
 				{
-					auto b = c->balanceAt(i.first);
-					cout << ((i.first == signingKey) ? "SIGNING " : "        ") << ((i.first == beneficiary) ? "COINBASE " : "         ") << i.second.first << " (" << i.first << "): " << formatBalance(b) << " = " << b << " wei" << endl;
+					auto b = c->balanceAt(address);
+					cout << ((address == signingKey) ? "SIGNING " : "        ") << ((address == beneficiary) ? "COINBASE " : "         ") << keyManager.accountName(address) << " (" << address << "): " << formatBalance(b) << " = " << b << " wei" << endl;
 					total += b;
 				}
 				cout << "Total: " << formatBalance(total) << " = " << total << " wei" << endl;
