@@ -36,8 +36,8 @@ extern std::string const c_testExampleVMTest;
 extern std::string const c_testExampleBlockchainTest;
 
 //Main Test functinos
-void fillRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, std::string const& testString);
-int checkRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, json_spirit::mValue& value);
+void fillRandomTest(std::function<void(json_spirit::mValue&, bool)> _doTests, std::string const& _testString, bool _debug = false);
+int checkRandomTest(std::function<void(json_spirit::mValue&, bool)> _doTests, json_spirit::mValue& _value, bool _debug = false);
 
 //Helper Functions
 std::vector<std::string> getTypes();
@@ -48,6 +48,8 @@ int main(int argc, char *argv[])
 	std::string testSuite;
 	json_spirit::mValue testmValue;
 	bool checktest = false;
+	bool filldebug = false;
+	bool debug = false;
 	for (auto i = 0; i < argc; ++i)
 	{
 		auto arg = std::string{argv[i]};
@@ -75,6 +77,12 @@ int main(int argc, char *argv[])
 			read_string(s, testmValue);
 			checktest = true;
 		}
+		else
+		if (arg == "--debug")
+			debug = true;
+		else
+		if (arg == "--filldebug")
+			filldebug = true;
 	}
 
 	if (testSuite == "")
@@ -83,45 +91,50 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	else
-	if (testSuite == "BlockChainTests")
 	{
 		if (checktest)
-			return checkRandomTest(dev::test::doBlockchainTests, testmValue);
-		else
-			fillRandomTest(dev::test::doBlockchainTests, c_testExampleBlockchainTest);
-	}
-	else
-	if (testSuite == "TransactionTests")
-	{
-		if (checktest)
-			return checkRandomTest(dev::test::doTransactionTests, testmValue);
-		else
-			fillRandomTest(dev::test::doTransactionTests, c_testExampleTransactionTest);
-	}
-	else
-	if (testSuite == "StateTests")
-	{
-		if (checktest)
-			return checkRandomTest(dev::test::doStateTests, testmValue);
-		else
-			fillRandomTest(dev::test::doStateTests, c_testExampleStateTest);
-	}
-	else
-	if (testSuite == "VMTests")
-	{
-		if (checktest)
+			std::cout << "Testing: " << testSuite.substr(0, testSuite.length() - 1) << std::endl;
+
+		if (testSuite == "BlockChainTests")
 		{
-			dev::eth::VMFactory::setKind(dev::eth::VMKind::JIT);
-			return checkRandomTest(dev::test::doVMTests, testmValue);
+			if (checktest)
+				return checkRandomTest(dev::test::doBlockchainTests, testmValue, debug);
+			else
+				fillRandomTest(dev::test::doBlockchainTests, c_testExampleBlockchainTest, filldebug);
 		}
 		else
-			fillRandomTest(dev::test::doVMTests, c_testExampleVMTest);
+		if (testSuite == "TransactionTests")
+		{
+			if (checktest)
+				return checkRandomTest(dev::test::doTransactionTests, testmValue, debug);
+			else
+				fillRandomTest(dev::test::doTransactionTests, c_testExampleTransactionTest, filldebug);
+		}
+		else
+		if (testSuite == "StateTests")
+		{
+			if (checktest)
+				return checkRandomTest(dev::test::doStateTests, testmValue, debug);
+			else
+				fillRandomTest(dev::test::doStateTests, c_testExampleStateTest, filldebug);
+		}
+		else
+		if (testSuite == "VMTests")
+		{
+			if (checktest)
+			{
+				dev::eth::VMFactory::setKind(dev::eth::VMKind::JIT);
+				return checkRandomTest(dev::test::doVMTests, testmValue, debug);
+			}
+			else
+				fillRandomTest(dev::test::doVMTests, c_testExampleVMTest, filldebug);
+		}
 	}
 
 	return 0;
 }
 
-int checkRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, json_spirit::mValue& value)
+int checkRandomTest(std::function<void(json_spirit::mValue&, bool)> _doTests, json_spirit::mValue& _value, bool _debug)
 {
 	bool ret = 0;
 	try
@@ -129,14 +142,20 @@ int checkRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, jso
 		//redirect all output to the stream
 		std::ostringstream strCout;
 		std::streambuf* oldCoutStreamBuf = std::cout.rdbuf();
-		std::cout.rdbuf( strCout.rdbuf() );
-		std::cerr.rdbuf( strCout.rdbuf() );
+		if (!_debug)
+		{
+			std::cout.rdbuf( strCout.rdbuf() );
+			std::cerr.rdbuf( strCout.rdbuf() );
+		}
 
-		doTests(value, false);
+		_doTests(_value, false);
 
 		//restroe output
-		std::cout.rdbuf(oldCoutStreamBuf);
-		std::cerr.rdbuf(oldCoutStreamBuf);
+		if (!_debug)
+		{
+			std::cout.rdbuf(oldCoutStreamBuf);
+			std::cerr.rdbuf(oldCoutStreamBuf);
+		}
 	}
 	catch (dev::Exception const& _e)
 	{
@@ -151,21 +170,24 @@ int checkRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, jso
 	return ret;
 }
 
-void fillRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, std::string const& testString)
+void fillRandomTest(std::function<void(json_spirit::mValue&, bool)> _doTests, std::string const& _testString, bool _debug)
 {
 	//redirect all output to the stream
 	std::ostringstream strCout;
 	std::streambuf* oldCoutStreamBuf = std::cout.rdbuf();
-	std::cout.rdbuf( strCout.rdbuf() );
-	std::cerr.rdbuf( strCout.rdbuf() );
+	if (!_debug)
+	{
+		std::cout.rdbuf( strCout.rdbuf() );
+		std::cerr.rdbuf( strCout.rdbuf() );
+	}
 
 	json_spirit::mValue v;
 	try
 	{
-		std::string newTest = testString;
+		std::string newTest = _testString;
 		parseTestWithTypes(newTest);
 		json_spirit::read_string(newTest, v);
-		doTests(v, true);
+		_doTests(v, true);
 	}
 	catch(...)
 	{
@@ -173,8 +195,11 @@ void fillRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, std
 	}
 
 	//restroe output
-	std::cout.rdbuf(oldCoutStreamBuf);
-	std::cerr.rdbuf(oldCoutStreamBuf);
+	if (!_debug)
+	{
+		std::cout.rdbuf(oldCoutStreamBuf);
+		std::cerr.rdbuf(oldCoutStreamBuf);
+	}
 	std::cout << json_spirit::write_string(v, true);
 }
 
