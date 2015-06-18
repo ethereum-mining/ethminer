@@ -189,7 +189,7 @@ bytes dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations,
 		_salt.size(),
 		_iterations
 	) != _iterations)
-		BOOST_THROW_EXCEPTION(CryptoException());
+		BOOST_THROW_EXCEPTION(CryptoException() << errinfo_comment("Key derivation failed."));
 	return ret;
 }
 
@@ -207,7 +207,7 @@ bytes dev::scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uin
 		ret.data(),
 		ret.size()
 	) != 0)
-		BOOST_THROW_EXCEPTION(CryptoException());
+		BOOST_THROW_EXCEPTION(CryptoException() << errinfo_comment("Key derivation failed."));
 	return ret;
 }
 

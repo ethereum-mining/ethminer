@@ -112,8 +112,6 @@ h128 SecretStore::importSecret(bytes const& _s, string const& _pass)
 {
 	h128 r;
 	EncryptedKey key{encrypt(_s, _pass), string()};
-	if (!key.encryptedKey.empty())
-		BOOST_THROW_EXCEPTION(crypto::CryptoException());
 	r = h128::random();
 	m_cached[r] = _s;
 	m_keys[r] = move(key);
@@ -243,10 +241,7 @@ string SecretStore::encrypt(bytes const& _v, string const& _pass, KDF _kdf)
 
 	bytes derivedKey = deriveNewKey(_pass, _kdf, ret);
 	if (derivedKey.empty())
-	{
-		cwarn << "Key derivation failed.";
-		return string();
-	}
+		BOOST_THROW_EXCEPTION(crypto::CryptoException() << errinfo_comment("Key derivation failed."));
 
 	ret["cipher"] = "aes-128-ctr";
 	h128 key(derivedKey, h128::AlignLeft);
@@ -260,10 +255,7 @@ string SecretStore::encrypt(bytes const& _v, string const& _pass, KDF _kdf)
 	// cipher text
 	bytes cipherText = encryptSymNoAuth(key, iv, &_v);
 	if (cipherText.empty())
-	{
-		cwarn << "Key encryption failed.";
-		return string();
-	}
+		BOOST_THROW_EXCEPTION(crypto::CryptoException() << errinfo_comment("Key encryption failed."));
 	ret["ciphertext"] = toHex(cipherText);
 
 	// and mac.
