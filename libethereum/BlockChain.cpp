@@ -305,7 +305,7 @@ LastHashes BlockChain::lastHashes(unsigned _n) const
 	return m_lastLastHashes;
 }
 
-tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
+tuple<ImportRoute, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
 //	_bq.tick(*this);
 
@@ -326,8 +326,8 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 				ImportRoute r;
 				DEV_TIMED_ABOVE(Block import, 500)
 					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
-				fresh += r.first;
-				dead += r.second;
+				fresh += r.liveBlocks;
+				dead += r.deadBlocks;
 			}
 			catch (dev::eth::UnknownParent)
 			{
@@ -353,7 +353,7 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 				badBlocks.push_back(block.verified.info.hash());
 			}
 		}
-	return make_tuple(fresh, dead, _bq.doneDrain(badBlocks));
+	return make_tuple(ImportRoute{dead, fresh}, _bq.doneDrain(badBlocks));
 }
 
 pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir) noexcept
@@ -364,21 +364,21 @@ pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, O
 	}
 	catch (UnknownParent&)
 	{
-		return make_pair(ImportResult::UnknownParent, make_pair(h256s(), h256s()));
+		return make_pair(ImportResult::UnknownParent, ImportRoute());
 	}
 	catch (AlreadyHaveBlock&)
 	{
-		return make_pair(ImportResult::AlreadyKnown, make_pair(h256s(), h256s()));
+		return make_pair(ImportResult::AlreadyKnown, ImportRoute());
 	}
 	catch (FutureTime&)
 	{
-		return make_pair(ImportResult::FutureTime, make_pair(h256s(), h256s()));
+		return make_pair(ImportResult::FutureTime, ImportRoute());
 	}
 	catch (Exception& ex)
 	{
 		if (m_onBad)
 			m_onBad(ex);
-		return make_pair(ImportResult::Malformed, make_pair(h256s(), h256s()));
+		return make_pair(ImportResult::Malformed, ImportRoute());
 	}
 }
 
@@ -699,7 +699,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 			dead.push_back(h);
 		else
 			fresh.push_back(h);
-	return make_pair(fresh, dead);
+	return ImportRoute{dead, fresh};
 }
 
 void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
@@ -1072,7 +1072,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 	try
 	{
 		Strictness strictness = Strictness::CheckEverything;
-		if (_ir & ~ImportRequirements::ValidNonce)
+		if (~_ir & ImportRequirements::ValidNonce)
 			strictness = Strictness::IgnoreNonce;
 
 		res.info.populate(_block, strictness);

@@ -48,7 +48,6 @@ class AccountHolder
 public:
 	explicit AccountHolder(std::function<Interface*()> const& _client): m_client(_client) {}
 
-	// easiest to return keyManager.addresses();
 	virtual AddressHash realAccounts() const = 0;
 	// use m_web3's submitTransaction
 	// or use AccountHolder::queueTransaction(_t) to accept
