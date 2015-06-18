@@ -88,8 +88,7 @@ static js::mValue upgraded(string const& _s)
 
 SecretStore::SecretStore(string const& _path): m_path(_path)
 {
-	if (!m_path.empty())
-		load();
+	load();
 }
 
 bytes SecretStore::secret(h128 const& _uuid, function<string()> const& _pass, bool _useCache) const
@@ -136,9 +135,6 @@ void SecretStore::clearCache() const
 
 void SecretStore::save(string const& _keysPath)
 {
-	if (_keysPath.empty())
-		return;
-
 	fs::path p(_keysPath);
 	fs::create_directories(p);
 	for (auto& k: m_keys)
