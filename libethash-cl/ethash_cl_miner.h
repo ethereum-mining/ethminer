@@ -44,7 +44,6 @@ public:
 	static bool configureGPU(
 		bool _allowCPU,
 		unsigned _extraGPUMemory,
-		bool _forceSingleChunk,
 		boost::optional<uint64_t> _currentBlock
 	);
 
@@ -79,8 +78,6 @@ private:
 	unsigned m_workgroup_size;
 	bool m_opencl_1_1;
 
-	/// Force dag upload to GPU in a single chunk even if OpenCL thinks you can't do it. Use at your own risk.
-	static bool s_forceSingleChunk;
 	/// Allow CPU to appear as an OpenCL device or not. Default is false
 	static bool s_allowCPU;
 	/// GPU memory required for other things, like window rendering e.t.c.
