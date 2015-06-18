@@ -174,8 +174,8 @@ private:
 	/// Do we presently need syncing with this peer?
 	bool needsSyncing(EthereumPeer* _peer) const;
 
-	/// Check whether the session should bother grabbing blocks.
-	bool shouldGrabBlocks() const;
+	/// Check whether the session should bother grabbing blocks from a peer.
+	bool shouldGrabBlocks(EthereumPeer* _peer) const;
 
 	/// Attempt to begin syncing with the peer; first check the peer has a more difficlult chain to download, then start asking for hashes, then move to blocks
 	void attemptSync(EthereumPeer* _peer);
