@@ -321,7 +321,7 @@ bool ethash_cl_miner::init(
 			ETHCL_LOG("Printing program log");
 			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
 		}
-		catch (cl::Error err)
+		catch (cl::Error const& err)
 		{
 			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
 			return false;
@@ -334,7 +334,7 @@ bool ethash_cl_miner::init(
 			m_dagChunks.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize));
 			ETHCL_LOG("Created one big buffer for the DAG");
 		}
-		catch (cl::Error err)
+		catch (cl::Error const& err)
 		{
 			int errCode = err.err();
 			if (errCode != CL_INVALID_BUFFER_SIZE || errCode != CL_MEM_OBJECT_ALLOCATION_FAILURE)
@@ -345,6 +345,7 @@ bool ethash_cl_miner::init(
 				"Failed to allocate 1 big chunk. Max allocateable memory is "
 				<< result << ". Trying to allocate 4 chunks."
 			);
+			// The OpenCL kernel has a hard coded number of 4 chunks at the moment
 			m_dagChunksNum = 4;
 			for (unsigned i = 0; i < m_dagChunksNum; i++)
 			{
@@ -404,7 +405,7 @@ bool ethash_cl_miner::init(
 			m_search_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_max_search_results + 1) * sizeof(uint32_t));
 		}
 	}
-	catch (cl::Error err)
+	catch (cl::Error const& err)
 	{
 		ETHCL_LOG(err.what() << "(" << err.err() << ")");
 		return false;
@@ -498,7 +499,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 			pre_return_event.wait();
 #endif
 	}
-	catch (cl::Error err)
+	catch (cl::Error const& err)
 	{
 		ETHCL_LOG(err.what() << "(" << err.err() << ")");
 	}
