@@ -402,7 +402,7 @@ void PV60Sync::transition(EthereumPeer* _peer, SyncState _s, bool _force, bool _
 				clog(NetWarn) << "Bad state: asking for Hashes yet not syncing!";
 				return;
 			}
-			if (shouldGrabBlocks())
+			if (shouldGrabBlocks(_peer))
 			{
 				clog(NetNote) << "Difficulty of hashchain HIGHER. Grabbing" << m_syncingNeededBlocks.size() << "blocks [latest now" << m_syncingLatestHash << ", was" << host().latestBlockSent() << "]";
 				downloadMan().resetToChain(m_syncingNeededBlocks);
@@ -504,10 +504,10 @@ bool PV60Sync::isSyncing(EthereumPeer* _peer) const
 	return m_syncer == _peer;
 }
 
-bool PV60Sync::shouldGrabBlocks() const
+bool PV60Sync::shouldGrabBlocks(EthereumPeer* _peer) const
 {
-	auto td = m_syncingTotalDifficulty;
-	auto lh = m_syncingLatestHash;
+	auto td = _peer->m_totalDifficulty;
+	auto lh = _peer->m_latestHash;
 	auto ctd =  host().chain().details().totalDifficulty;
 
 	if (m_syncingNeededBlocks.empty())
