@@ -43,7 +43,7 @@ namespace eth
 {
 
 class Transaction;
-class BlockDetails;
+struct BlockDetails;
 class Interface;
 using Transactions = std::vector<Transaction>;
 using UncleHashes = h256s;

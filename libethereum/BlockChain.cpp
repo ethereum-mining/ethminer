@@ -1122,6 +1122,6 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 		++i;
 	}
 	res.block = bytesConstRef(&_block);
-	return move(res);
+	return res;
 }
 
