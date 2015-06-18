@@ -57,10 +57,12 @@ bytesRef contentsNew(std::string const& _file, bytesRef _dest = bytesRef());
 
 /// Write the given binary data into the given file, replacing the file if it pre-exists.
 /// Throws exception on error.
-void writeFile(std::string const& _file, bytesConstRef _data);
+/// @param _writeDeleteRename useful not to lose any data: If set, first writes to another file in
+/// the same directory and then moves that file.
+void writeFile(std::string const& _file, bytesConstRef _data, bool _writeDeleteRename = false);
 /// Write the given binary data into the given file, replacing the file if it pre-exists.
-inline void writeFile(std::string const& _file, bytes const& _data) { writeFile(_file, bytesConstRef(&_data)); }
-inline void writeFile(std::string const& _file, std::string const& _data) { writeFile(_file, bytesConstRef(_data)); }
+inline void writeFile(std::string const& _file, bytes const& _data, bool _writeDeleteRename = false) { writeFile(_file, bytesConstRef(&_data), _writeDeleteRename); }
+inline void writeFile(std::string const& _file, std::string const& _data, bool _writeDeleteRename = false) { writeFile(_file, bytesConstRef(_data), _writeDeleteRename); }
 
 /// Nicely renders the given bytes to a string, optionally as HTML.
 /// @a _bytes: bytes array to be rendered as string. @a _width of a bytes line.
