@@ -37,24 +37,6 @@ using namespace dev;
 using namespace dev::solidity;
 using namespace dev::mix;
 
-static QList<int> extractDimension(QString const& _type)
-{
-	QList<int> dim;
-	QRegExp dimExtract("(\\[[^\\]]*\\])");
-	int pos = dimExtract.indexIn(_type);
-	while (pos != -1)
-	{
-		QString d = dimExtract.cap(0);
-		pos += d.length();
-		pos = dimExtract.indexIn(_type, pos);
-		if (d == "[]")
-			dim.push_front(-1);
-		else
-			dim.push_front(d.replace("[", "").replace("]", "").toInt());
-	}
-	return dim;
-}
-
 bytes ContractCallDataEncoder::encodedData()
 {
 	bytes r(m_encodedData);
@@ -81,25 +63,24 @@ void ContractCallDataEncoder::encode(QFunctionDefinition const* _function)
 	m_encodedData.insert(m_encodedData.end(), hash.begin(), hash.end());
 }
 
-void ContractCallDataEncoder::encodeArray(QJsonArray const& _array, QList<int> _dim, SolidityType const& _type, bytes& _content)
+void ContractCallDataEncoder::encodeArray(QJsonArray const& _array, SolidityType const& _type, bytes& _content)
 {
 	size_t offsetStart = _content.size();
-	if (_dim[0] == -1)
+	if (_type.dynamicSize)
 	{
 		bytes count = bytes(32);
 		toBigEndian((u256)_array.size(), count);
 		_content += count; //reserved space for count
 	}
-	_dim.pop_front();
 
 	int k = 0;
 	for (QJsonValue const& c: _array)
 	{
 		if (c.isArray())
 		{
-			if (_dim[0] == -1)
+			if (_type.baseType->dynamicSize)
 				m_dynamicOffsetMap.push_back(std::make_pair(m_dynamicData.size() + offsetStart + 32 + k * 32, m_dynamicData.size() + _content.size()));
-			encodeArray(c.toArray(), _dim, _type, _content);
+			encodeArray(c.toArray(), *_type.baseType, _content);
 		}
 		else
 		{
@@ -128,16 +109,15 @@ void ContractCallDataEncoder::encode(QVariant const& _data, SolidityType const& 
 	}
 	else if (_type.array)
 	{
-		QList<int> dim = extractDimension(_type. name);
 		bytes content;
 		size_t size = m_encodedData.size();
-		if (dim.front() == -1)
+		if (_type.dynamicSize)
 		{
 			m_encodedData += bytes(32); // reserve space for offset
 			m_staticOffsetMap.push_back(std::make_pair(size, m_dynamicData.size()));
 		}
 		QJsonDocument jsonDoc = QJsonDocument::fromJson(_data.toString().toUtf8());
-		encodeArray(jsonDoc.array(), dim, _type, content);
+		encodeArray(jsonDoc.array(), _type, content);
 
 		if (!_type.dynamicSize)
 			m_encodedData.insert(m_encodedData.end(), content.begin(), content.end());
