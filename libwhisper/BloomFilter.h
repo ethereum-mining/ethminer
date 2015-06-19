@@ -28,8 +28,6 @@ namespace dev
 namespace shh
 {
 
-//enum { BloomSize = 4 }; 
-
 template <unsigned N>
 class TopicBloomFilterBase: public FixedHash<N>
 {
@@ -37,9 +35,9 @@ public:
 	TopicBloomFilterBase() { init(); }
 	TopicBloomFilterBase(FixedHash<N> const& _h): FixedHash<N>(_h) { init(); }
 
-	void addBloom(AbridgedTopic const& _h) { addRaw(_h.template bloomPart<BitsPerBloom, N>()); }
-	void removeBloom(AbridgedTopic const& _h) { removeRaw(_h.template bloomPart<BitsPerBloom, N>()); }
-	bool containsBloom(AbridgedTopic const& _h) const { return contains(_h.template bloomPart<BitsPerBloom, N>()); }
+	void addBloom(dev::shh::AbridgedTopic const& _h) { addRaw(_h.template bloomPart<BitsPerBloom, N>()); }
+	void removeBloom(dev::shh::AbridgedTopic const& _h) { removeRaw(_h.template bloomPart<BitsPerBloom, N>()); }
+	bool containsBloom(dev::shh::AbridgedTopic const& _h) const { return contains(_h.template bloomPart<BitsPerBloom, N>()); }
 
 	void addRaw(FixedHash<N> const& _h);
 	void removeRaw(FixedHash<N> const& _h);
@@ -55,7 +53,7 @@ private:
 	std::array<uint16_t, CounterSize> m_refCounter;
 };
 
-static unsigned const c_mask[8] = { 1, 2, 4, 8, 16, 32, 64, 128 };
+static unsigned const c_powerOfTwoBitMmask[8] = { 1, 2, 4, 8, 16, 32, 64, 128 };
 
 template <unsigned N>
 void TopicBloomFilterBase<N>::addRaw(FixedHash<N> const& _h)
@@ -81,7 +79,7 @@ void TopicBloomFilterBase<N>::removeRaw(FixedHash<N> const& _h)
 				m_refCounter[i]--;
 
 			if (!m_refCounter[i])
-				(*this)[i / 8] &= ~c_mask[i % 8];
+				(*this)[i / 8] &= ~c_powerOfTwoBitMmask[i % 8];
 		}
 }
 
@@ -90,10 +88,10 @@ bool TopicBloomFilterBase<N>::isBitSet(FixedHash<N> const& _h, unsigned _index)
 {	
 	unsigned iByte = _index / 8;
 	unsigned iBit = _index % 8;
-	return (_h[iByte] & c_mask[iBit]) != 0;
+	return (_h[iByte] & c_powerOfTwoBitMmask[iBit]) != 0;
 }
 
-using TopicBloomFilter = TopicBloomFilterBase<4>;
+using TopicBloomFilter = TopicBloomFilterBase<TopicBloomFilterSize>;
 
 }
 }
