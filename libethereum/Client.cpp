@@ -673,10 +673,10 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	// insert transactions that we are declaring the dead part of the chain
 	for (auto const& h: _ir.deadBlocks)
 	{
-		clog(ClientNote) << "Dead block:" << h;
+		clog(ClientTrace) << "Dead block:" << h;
 		for (auto const& t: m_bc.transactions(h))
 		{
-			clog(ClientNote) << "Resubmitting dead-block transaction " << Transaction(t, CheckTransaction::None);
+			clog(ClientTrace) << "Resubmitting dead-block transaction " << Transaction(t, CheckTransaction::None);
 			m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
 		}
 	}
@@ -684,10 +684,10 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
 	for (auto const& h: _ir.liveBlocks)
 	{
-		clog(ClientChat) << "Live block:" << h;
+		clog(ClientTrace) << "Live block:" << h;
 		for (auto const& th: m_bc.transactionHashes(h))
 		{
-			clog(ClientNote) << "Safely dropping transaction " << th;
+			clog(ClientTrace) << "Safely dropping transaction " << th;
 			m_tq.drop(th);
 		}
 	}
@@ -723,7 +723,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 			DEV_READ_GUARDED(x_postMine)
 				for (auto const& t: m_postMine.pending())
 				{
-					clog(ClientNote) << "Resubmitting post-mine transaction " << t;
+					clog(ClientTrace) << "Resubmitting post-mine transaction " << t;
 					auto ir = m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
 					if (ir != ImportResult::Success)
 						onTransactionQueueReady();
