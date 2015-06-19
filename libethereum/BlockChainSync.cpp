@@ -94,7 +94,7 @@ void BlockChainSync::onPeerStatus(EthereumPeer* _peer)
 	DEV_INVARIANT_CHECK;
 }
 
-unsigned BlockChainSync::estimateHashes()
+unsigned BlockChainSync::estimateHashes() const
 {
 	BlockInfo block = host().chain().info();
 	time_t lastBlockTime = (block.hash() == host().chain().genesisHash()) ? 1428192000 : (time_t)block.timestamp;
@@ -478,12 +478,12 @@ void PV60Sync::transition(EthereumPeer* _peer, SyncState _s, bool _force, bool _
 	clog(NetWarn) << "Invalid state transition:" << EthereumHost::stateName(_s) << "from" << EthereumHost::stateName(m_state) << ", " << (isSyncing(_peer) ? "syncing" : "holding") << (needsSyncing(_peer) ? "& needed" : "");
 }
 
-void PV60Sync::resetSyncFor(EthereumPeer* _peer, h256 _latestHash, u256 _td)
+void PV60Sync::resetSyncFor(EthereumPeer* _peer, h256 const& _latestHash, u256 const& _td)
 {
 	setNeedsSyncing(_peer, _latestHash, _td);
 }
 
-void PV60Sync::setNeedsSyncing(EthereumPeer* _peer, h256 _latestHash, u256 _td)
+void PV60Sync::setNeedsSyncing(EthereumPeer* _peer, h256 const& _latestHash, u256 const& _td)
 {
 	_peer->m_latestHash = _latestHash;
 	_peer->m_totalDifficulty = _td;
@@ -707,7 +707,7 @@ void PV60Sync::onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes)
 	}
 	unsigned knowns = 0;
 	unsigned unknowns = 0;
-	for (auto h: _hashes)
+	for (auto const& h: _hashes)
 	{
 		_peer->addRating(1);
 		DEV_GUARDED(_peer->x_knownBlocks)
