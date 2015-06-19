@@ -57,7 +57,6 @@ ColumnLayout
 			Layout.preferredWidth: blockWidth
 			Layout.preferredHeight: trHeight
 			color: "#DEDCDC"
-			radius: 4
 			anchors.left: parent.left
 			anchors.leftMargin: statusWidth
 			Label {
@@ -141,13 +140,14 @@ ColumnLayout
 				color: "transparent"
 				anchors.top: parent.top
 				property bool saveStatus
-
 				Image {
 					anchors.top: parent.top
-					anchors.topMargin: -10
+					anchors.left: parent.left
+					anchors.leftMargin: -9
+					anchors.topMargin: -9
 					id: saveStatusImage
 					source: "qrc:/qml/img/recyclediscard@2x.png"
-					width: statusWidth
+					width: statusWidth + 20
 					fillMode: Image.PreserveAspectFit
 				}
 
@@ -206,7 +206,7 @@ ColumnLayout
 					{
 						anchors.top: parent.top
 						Layout.fillWidth: true
-						spacing: cellSpacing
+						//spacing: cellSpacing
 						Rectangle
 						{
 							Layout.preferredWidth: fromWidth
