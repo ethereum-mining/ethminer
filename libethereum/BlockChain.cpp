@@ -372,7 +372,7 @@ pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, O
 	}
 	catch (FutureTime&)
 	{
-		return make_pair(ImportResult::FutureTime, ImportRoute());
+		return make_pair(ImportResult::FutureTimeKnown, ImportRoute());
 	}
 	catch (Exception& ex)
 	{
