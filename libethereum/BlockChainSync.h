@@ -114,9 +114,10 @@ protected:
 	/// Request blocks from peer if needed
 	void requestBlocks(EthereumPeer* _peer);
 
+protected:
 	Handler m_bqRoomAvailable;				///< Triggered once block queue
 	mutable RecursiveMutex x_sync;
-	SyncState m_state = SyncState::Idle;			///< Current sync state
+	SyncState m_state = SyncState::Idle;	///< Current sync state
 	unsigned m_estimatedHashes = 0;			///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
 
 private:
