@@ -67,7 +67,7 @@ ColumnLayout {
 		previousWidth = width
 	}
 
-	property int statusWidth: 50
+	property int statusWidth: 30
 	property int fromWidth: 150
 	property int toWidth: 100
 	property int valueWidth: 200
@@ -80,13 +80,20 @@ ColumnLayout {
 	{
 		id: header
 		spacing: 0
-		Layout.preferredHeight: 40
-		Image {
-			id: debugImage
-			source: "qrc:/qml/img/recycleicon@2x.png"
+		Layout.preferredHeight: 30
+		Rectangle
+		{
 			Layout.preferredWidth: statusWidth
 			Layout.preferredHeight: parent.height
-			fillMode: Image.PreserveAspectFit
+			color: "transparent"
+			Image {
+				id: debugImage
+				anchors.verticalCenter: parent.verticalCenter
+				anchors.horizontalCenter: parent.horizontalCenter
+				source: "qrc:/qml/img/recycleicon@2x.png"
+				width: statusWidth + 20
+				fillMode: Image.PreserveAspectFit
+			}
 		}
 		Rectangle
 		{
@@ -96,7 +103,7 @@ ColumnLayout {
 				anchors.verticalCenter: parent.verticalCenter
 				text: "From"
 				anchors.left: parent.left
-				anchors.leftMargin: horizontalMargin + 5
+				anchors.leftMargin: horizontalMargin
 			}
 		}
 		Label
@@ -243,142 +250,170 @@ ColumnLayout {
 		Layout.preferredWidth: parent.width
 		RowLayout
 		{
-			width: 4 * 100
+			anchors.horizontalCenter: parent.horizontalCenter
 			anchors.top: parent.top
 			anchors.topMargin: 10
-			spacing: 0
-			ScenarioButton {
-				id: rebuild
-				text: qsTr("Rebuild")
-				onClicked:
-				{
-					if (ensureNotFuturetime.running)
-						return;
-					stopBlinking()
-					var retBlocks = [];
-					var bAdded = 0;
-					for (var j = 0; j < model.blocks.length; j++)
+			spacing: 20
+
+			Rectangle {
+				Layout.preferredWidth: 100
+				Layout.preferredHeight: 30
+
+				ScenarioButton {
+					id: rebuild
+					text: qsTr("Rebuild")
+					width: 100
+					height: 30
+					roundLeft: true
+					roundRight: true
+					onClicked:
 					{
-						var b = model.blocks[j];
-						var block = {
-							hash: b.hash,
-							number: b.number,
-							transactions: [],
-							status: b.status
-						}
-						for (var k = 0; k < model.blocks[j].transactions.length; k++)
+						if (ensureNotFuturetime.running)
+							return;
+						stopBlinking()
+						var retBlocks = [];
+						var bAdded = 0;
+						for (var j = 0; j < model.blocks.length; j++)
 						{
-							if (blockModel.get(j).transactions.get(k).saveStatus)
+							var b = model.blocks[j];
+							var block = {
+								hash: b.hash,
+								number: b.number,
+								transactions: [],
+								status: b.status
+							}
+							for (var k = 0; k < model.blocks[j].transactions.length; k++)
 							{
-								var tr = model.blocks[j].transactions[k]
-								tr.saveStatus = true
-								block.transactions.push(tr);
+								if (blockModel.get(j).transactions.get(k).saveStatus)
+								{
+									var tr = model.blocks[j].transactions[k]
+									tr.saveStatus = true
+									block.transactions.push(tr);
+								}
+
+							}
+							if (block.transactions.length > 0)
+							{
+								bAdded++
+								block.number = bAdded
+								block.status = "mined"
+								retBlocks.push(block)
 							}
 
 						}
-						if (block.transactions.length > 0)
+						if (retBlocks.length === 0)
+							retBlocks.push(projectModel.stateListModel.createEmptyBlock())
+						else
 						{
-							bAdded++
-							block.number = bAdded
-							block.status = "mined"
-							retBlocks.push(block)
+							var last = retBlocks[retBlocks.length - 1]
+							last.number = -1
+							last.status = "pending"
 						}
 
-					}
-					if (retBlocks.length === 0)
-						retBlocks.push(projectModel.stateListModel.createEmptyBlock())
-					else
-					{
-						var last = retBlocks[retBlocks.length - 1]
-						last.number = -1
-						last.status = "pending"
-					}
+						model.blocks = retBlocks
+						blockModel.clear()
+						for (var j = 0; j < model.blocks.length; j++)
+							blockModel.append(model.blocks[j])
 
-					model.blocks = retBlocks
-					blockModel.clear()
-					for (var j = 0; j < model.blocks.length; j++)
-						blockModel.append(model.blocks[j])
-
-					ensureNotFuturetime.start()
-					clientModel.setupScenario(model);
+						ensureNotFuturetime.start()
+						clientModel.setupScenario(model);
+					}
+					buttonShortcut: ""
+					sourceImg: "qrc:/qml/img/recycleicon@2x.png"
 				}
-
-				Layout.preferredWidth: 100
-				Layout.preferredHeight: 30
-				buttonShortcut: ""
-				sourceImg: "qrc:/qml/img/recycleicon@2x.png"
-
-
 			}
 
-			ScenarioButton {
-				id: addTransaction
-				text: qsTr("Add Transaction")
-				onClicked:
-				{
-					var lastBlock = model.blocks[model.blocks.length - 1];
-					if (lastBlock.status === "mined")
-					{
-						var newblock = projectModel.stateListModel.createEmptyBlock()
-						blockModel.appendBlock(newblock)
-						model.blocks.push(newblock);
-					}
 
-					var item = TransactionHelper.defaultTransaction()
-					transactionDialog.stateAccounts = model.accounts
-					transactionDialog.execute = true
-					transactionDialog.open(model.blocks[model.blocks.length - 1].transactions.length, model.blocks.length - 1, item)
-				}
-				Layout.preferredWidth: 100
-				Layout.preferredHeight: 30
-				buttonShortcut: ""
-				sourceImg: "qrc:/qml/img/sendtransactionicon@2x.png"
-			}
-
-			Timer
+			Rectangle
 			{
-				id: ensureNotFuturetime
-				interval: 1000
-				repeat: false
-				running: false
-			}
+				Layout.preferredWidth: 200
+				Layout.preferredHeight: 30
+				color: "transparent"
 
-			ScenarioButton {
-				id: addBlockBtn
-				text: qsTr("Add Block")
-				onClicked:
-				{
-					if (ensureNotFuturetime.running)
-						return
-					if (clientModel.mining || clientModel.running)
-						return
-					if (model.blocks.length > 0)
+				ScenarioButton {
+					id: addTransaction
+					text: qsTr("Add Tx")
+					onClicked:
 					{
-						var lastBlock = model.blocks[model.blocks.length - 1]
-						if (lastBlock.status === "pending")
+						var lastBlock = model.blocks[model.blocks.length - 1];
+						if (lastBlock.status === "mined")
 						{
-							ensureNotFuturetime.start()
-							clientModel.mine()
+							var newblock = projectModel.stateListModel.createEmptyBlock()
+							blockModel.appendBlock(newblock)
+							model.blocks.push(newblock);
+						}
+
+						var item = TransactionHelper.defaultTransaction()
+						transactionDialog.stateAccounts = model.accounts
+						transactionDialog.execute = true
+						transactionDialog.open(model.blocks[model.blocks.length - 1].transactions.length, model.blocks.length - 1, item)
+					}
+					width: 100
+					height: 30
+					buttonShortcut: ""
+					sourceImg: "qrc:/qml/img/sendtransactionicon@2x.png"
+					roundLeft: true
+					roundRight: false
+				}
+
+				Timer
+				{
+					id: ensureNotFuturetime
+					interval: 1000
+					repeat: false
+					running: false
+				}
+
+				Rectangle
+				{
+					width: 1
+					height: parent.height
+					anchors.right: addBlockBtn.left
+					color: "#ededed"
+				}
+
+				ScenarioButton {
+					id: addBlockBtn
+					text: qsTr("Add Block..")
+					anchors.left: addTransaction.right
+					roundLeft: false
+					roundRight: true
+					onClicked:
+					{
+						if (ensureNotFuturetime.running)
+							return
+						if (clientModel.mining || clientModel.running)
+							return
+						if (model.blocks.length > 0)
+						{
+							var lastBlock = model.blocks[model.blocks.length - 1]
+							if (lastBlock.status === "pending")
+							{
+								ensureNotFuturetime.start()
+								clientModel.mine()
+							}
+							else
+								addNewBlock()
 						}
 						else
 							addNewBlock()
+
 					}
-					else
-						addNewBlock()
 
-				}
+					function addNewBlock()
+					{
+						var block = projectModel.stateListModel.createEmptyBlock()
+						model.blocks.push(block)
+						blockModel.appendBlock(block)
+					}
+					width: 100
+					height: 30
 
-				function addNewBlock()
-				{
-					var block = projectModel.stateListModel.createEmptyBlock()
-					model.blocks.push(block)
-					blockModel.appendBlock(block)
+					buttonShortcut: ""
+					sourceImg: "qrc:/qml/img/addblock@2x.png"
 				}
-				Layout.preferredWidth: 100
-				Layout.preferredHeight: 30
-				buttonShortcut: ""
-				sourceImg: "qrc:/qml/img/addblock@2x.png"
 			}
+
 
 			Connections
 			{
@@ -447,7 +482,7 @@ ColumnLayout {
 
 			ScenarioButton {
 				id: newAccount
-				text: qsTr("New Account")
+				text: qsTr("New Account..")
 				onClicked: {
 					model.accounts.push(projectModel.stateListModel.newAccount("1000000", QEther.Ether))
 				}
@@ -455,6 +490,8 @@ ColumnLayout {
 				Layout.preferredHeight: 30
 				buttonShortcut: ""
 				sourceImg: "qrc:/qml/img/newaccounticon@2x.png"
+				roundLeft: true
+				roundRight: true
 			}
 		}
 	}
