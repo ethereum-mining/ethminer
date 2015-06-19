@@ -46,10 +46,12 @@ void parseTestWithTypes(std::string& test);
 int main(int argc, char *argv[])
 {
 	std::string testSuite;
+	std::string testFillString;
 	json_spirit::mValue testmValue;
 	bool checktest = false;
 	bool filldebug = false;
 	bool debug = false;
+	bool filltest = false;
 	for (auto i = 0; i < argc; ++i)
 	{
 		auto arg = std::string{argv[i]};
@@ -64,7 +66,7 @@ int main(int argc, char *argv[])
 				testSuite = "";
 		}
 		else
-		if (arg == "-checktest" && i + 1 < argc)
+		if ((arg == "-checktest" || arg == "-filltest") && i + 1 < argc)
 		{
 			std::string s;
 			for (int j = i+1; j < argc; ++j)
@@ -74,8 +76,16 @@ int main(int argc, char *argv[])
 				std::cout << "Error! Content of argument is empty! (Usage -checktest textstream) \n";
 				return 1;
 			}
-			read_string(s, testmValue);
-			checktest = true;
+			if (arg == "-filltest")
+			{
+				testFillString = s;
+				filltest = true;
+			}
+			else
+			{
+				read_string(s, testmValue);
+				checktest = true;
+			}
 		}
 		else
 		if (arg == "--debug")
@@ -100,7 +110,7 @@ int main(int argc, char *argv[])
 			if (checktest)
 				return checkRandomTest(dev::test::doBlockchainTests, testmValue, debug);
 			else
-				fillRandomTest(dev::test::doBlockchainTests, c_testExampleBlockchainTest, filldebug);
+				fillRandomTest(dev::test::doBlockchainTests, (filltest) ? testFillString : c_testExampleBlockchainTest, filldebug);
 		}
 		else
 		if (testSuite == "TransactionTests")
@@ -108,7 +118,7 @@ int main(int argc, char *argv[])
 			if (checktest)
 				return checkRandomTest(dev::test::doTransactionTests, testmValue, debug);
 			else
-				fillRandomTest(dev::test::doTransactionTests, c_testExampleTransactionTest, filldebug);
+				fillRandomTest(dev::test::doTransactionTests, (filltest) ? testFillString : c_testExampleTransactionTest, filldebug);
 		}
 		else
 		if (testSuite == "StateTests")
@@ -116,7 +126,7 @@ int main(int argc, char *argv[])
 			if (checktest)
 				return checkRandomTest(dev::test::doStateTests, testmValue, debug);
 			else
-				fillRandomTest(dev::test::doStateTests, c_testExampleStateTest, filldebug);
+				fillRandomTest(dev::test::doStateTests, (filltest) ? testFillString : c_testExampleStateTest, filldebug);
 		}
 		else
 		if (testSuite == "VMTests")
@@ -127,7 +137,7 @@ int main(int argc, char *argv[])
 				return checkRandomTest(dev::test::doVMTests, testmValue, debug);
 			}
 			else
-				fillRandomTest(dev::test::doVMTests, c_testExampleVMTest, filldebug);
+				fillRandomTest(dev::test::doVMTests, (filltest) ? testFillString : c_testExampleVMTest, filldebug);
 		}
 	}
 
