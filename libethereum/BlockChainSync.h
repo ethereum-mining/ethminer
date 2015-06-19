@@ -103,29 +103,27 @@ protected:
 	virtual void pauseSync() = 0;
 
 	/// Restart sync for given peer
-	virtual void resetSyncFor(EthereumPeer* _peer, h256 _latestHash, u256 _td) = 0;
+	virtual void resetSyncFor(EthereumPeer* _peer, h256 const& _latestHash, u256 const& _td) = 0;
 
 	EthereumHost& host() { return m_host; }
 	EthereumHost const& host() const { return m_host; }
 
 	/// Estimates max number of hashes peers can give us.
-	unsigned estimateHashes();
+	unsigned estimatedHashes() const;
 
 	/// Request blocks from peer if needed
 	void requestBlocks(EthereumPeer* _peer);
+
+	Handler m_bqRoomAvailable;				///< Triggered once block queue
+	mutable RecursiveMutex x_sync;
+	SyncState m_state = SyncState::Idle;			///< Current sync state
+	unsigned m_estimatedHashes = 0;			///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
 
 private:
 	static char const* const s_stateNames[static_cast<int>(SyncState::Size)];
 	bool invariants() const override = 0;
 	EthereumHost& m_host;
 	HashDownloadMan m_hashMan;
-
-protected:
-	Handler m_bqRoomAvailable;
-	mutable RecursiveMutex x_sync;
-	SyncState m_state = SyncState::Idle;			///< Current sync state
-	SyncState m_lastActiveState = SyncState::Idle; 	///< Saved state before entering waiting queue mode
-	unsigned m_estimatedHashes = 0;					///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
 };
 
 
@@ -153,13 +151,14 @@ public:
 	/// @returns Sync status
 	SyncStatus status() const override;
 
+protected:
 	void onNewPeer(EthereumPeer* _peer) override;
 	void continueSync() override;
 	void peerDoneBlocks(EthereumPeer* _peer) override;
 	void restartSync() override;
 	void completeSync() override;
 	void pauseSync() override;
-	void resetSyncFor(EthereumPeer* _peer, h256 _latestHash, u256 _td) override;
+	void resetSyncFor(EthereumPeer* _peer, h256 const& _latestHash, u256 const& _td) override;
 
 private:
 	/// Transition sync state in a particular direction. @param _peer Peer that is responsible for state tranfer
@@ -169,7 +168,7 @@ private:
 	void resetNeedsSyncing(EthereumPeer* _peer) { setNeedsSyncing(_peer, h256(), 0); }
 
 	/// Update peer syncing requirements state.
-	void setNeedsSyncing(EthereumPeer* _peer, h256 _latestHash, u256 _td);
+	void setNeedsSyncing(EthereumPeer* _peer, h256 const& _latestHash, u256 const& _td);
 
 	/// Do we presently need syncing with this peer?
 	bool needsSyncing(EthereumPeer* _peer) const;
