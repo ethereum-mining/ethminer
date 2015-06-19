@@ -39,11 +39,12 @@ ColumnLayout
 			anchors.verticalCenter: parent.verticalCenter
 			anchors.horizontalCenter: parent.horizontalCenter
 			color: "transparent"
-			Text
+			Label
 			{
 				anchors.verticalCenter: parent.verticalCenter
 				anchors.horizontalCenter: parent.horizontalCenter
 				id: scenarioName
+				font.bold: true
 			}
 
 			TextInput
@@ -135,7 +136,8 @@ ColumnLayout
 
 	RowLayout
 	{
-		Layout.fillWidth: true
+		Layout.preferredWidth: 560
+		anchors.horizontalCenter: parent.horizontalCenter
 		Layout.preferredHeight: 50
 		spacing: 0
 
@@ -143,128 +145,193 @@ ColumnLayout
 		{
 			Layout.preferredWidth: 100 * 5
 			Layout.preferredHeight: 50
-			spacing: 0
+			spacing: 15
 
-			ComboBox
+			Rectangle
 			{
-				id: scenarioList
-				model: projectModel.stateListModel
-				textRole: "title"
+				color: "transparent"
+				width: 251
 				height: 30
-				width: 150
-				onCurrentIndexChanged:
+				Rectangle
 				{
-					restoreScenario.restore()
+					width: 10
+					height: parent.height
+					anchors.right: scenarioList.left
+					anchors.rightMargin: -8
+					radius: 15
 				}
 
-				function load()
+				ComboBox
 				{
-					var state = projectModel.stateListModel.getState(currentIndex)
-					loaded(state)
-				}
-
-				style: ComboBoxStyle {
-					background: Rectangle {
-						color: "white"
-						border.color: "#cccccc"
-						border.width: 1
-						radius: 4
-						anchors.fill: parent
+					id: scenarioList
+					model: projectModel.stateListModel
+					textRole: "title"
+					height: parent.height
+					width: 150
+					onCurrentIndexChanged:
+					{
+						restoreScenario.restore()
 					}
-					label: Rectangle {
-						anchors.fill: parent
-						color: "white"
-						Text {
-							id: comboLabel
-							maximumLineCount: 1
-							elide: Text.ElideRight
-							width: parent.width
-							anchors.verticalCenter: parent.verticalCenter
-							anchors.horizontalCenter: parent.horizontalCenter
-							text: {
-								if (projectModel.stateListModel.getState(scenarioList.currentIndex))
-									return projectModel.stateListModel.getState(scenarioList.currentIndex).title
-								else
-									return ""
-							}
-							Connections {
-								target: blockChainSelector
-								onLoaded: {
-									comboLabel.text = projectModel.stateListModel.getState(scenarioList.currentIndex).title
+
+					function load()
+					{
+						var state = projectModel.stateListModel.getState(currentIndex)
+						loaded(state)
+					}
+
+					style: ComboBoxStyle {
+						background: Rectangle {
+							color: "white"
+							anchors.fill: parent
+						}
+						label: Rectangle {
+							anchors.fill: parent
+							color: "white"
+							Label {
+								id: comboLabel
+								maximumLineCount: 1
+								elide: Text.ElideRight
+								width: parent.width
+								anchors.verticalCenter: parent.verticalCenter
+								anchors.horizontalCenter: parent.horizontalCenter
+								text: {
+									if (projectModel.stateListModel.getState(scenarioList.currentIndex))
+										return projectModel.stateListModel.getState(scenarioList.currentIndex).title
+									else
+										return ""
 								}
-								onRenamed: {
-									comboLabel.text = scenario.title
+								Connections {
+									target: blockChainSelector
+									onLoaded: {
+										comboLabel.text = projectModel.stateListModel.getState(scenarioList.currentIndex).title
+									}
+									onRenamed: {
+										comboLabel.text = scenario.title
+									}
 								}
 							}
 						}
 					}
 				}
-			}
 
-			ScenarioButton {
-				id: restoreScenario
-				width: 100
-				height: 30
-				buttonShortcut: ""
-				sourceImg: "qrc:/qml/img/restoreicon@2x.png"
-				onClicked: {
-					restore()
-				}
-				text: qsTr("Restore")
-				function restore()
+				Rectangle
 				{
-					var state = projectModel.stateListModel.reloadStateFromFromProject(scenarioList.currentIndex)
-					if (state)
-					{
-						editStatus.visible = false
-						restored(state)
-						loaded(state)
+					width: 1
+					height: parent.height
+					anchors.right: addScenario.left
+					color: "#ededed"
+				}
+
+				ScenarioButton {
+					id: addScenario
+					anchors.left: scenarioList.right
+					width: 100
+					height: parent.height
+					buttonShortcut: ""
+					sourceImg: "qrc:/qml/img/restoreicon@2x.png"
+					onClicked: {
+						var item = projectModel.stateListModel.createDefaultState();
+						item.title = qsTr("New Scenario")
+						projectModel.stateListModel.appendState(item)
+						projectModel.stateListModel.save()
+						scenarioList.currentIndex = projectModel.stateListModel.count - 1
+						scenarioNameEdit.edit()
 					}
+					text: qsTr("New..")
+					roundRight: true
+					roundLeft: false
 				}
 			}
 
-			ScenarioButton {
-				id: saveScenario
-				text: qsTr("Save")
-				onClicked: {
-					projectModel.saveProjectFile()
-					saved(state)
-				}
-				width: 100
-				height: 30
-				buttonShortcut: ""
-				sourceImg: "qrc:/qml/img/saveicon@2x.png"
-			}
 
-			ScenarioButton
+			Rectangle
 			{
-				id: duplicateScenario
-				text: qsTr("Duplicate")
-				onClicked: {
-					projectModel.stateListModel.duplicateState(scenarioList.currentIndex)
-					duplicated(state)
-				}
-				width: 100
+				width: 100 * 3
 				height: 30
-				buttonShortcut: ""
-				sourceImg: "qrc:/qml/img/duplicateicon@2x.png"
-			}
+				color: "transparent"
 
-			ScenarioButton {
-				id: addScenario
-				width: 100
-				height: 30
-				buttonShortcut: ""
-				sourceImg: "qrc:/qml/img/plus.png"
-				onClicked: {
-					var item = projectModel.stateListModel.createDefaultState();
-					item.title = qsTr("New Scenario")
-					projectModel.stateListModel.appendState(item)
-					projectModel.stateListModel.save()
-					scenarioList.currentIndex = projectModel.stateListModel.count - 1
-					scenarioNameEdit.edit()
+				Rectangle
+				{
+					width: 10
+					height: parent.height
+					anchors.right: restoreScenario.left
+					anchors.rightMargin: -4
+					radius: 15
 				}
-				text: qsTr("New")
+
+				ScenarioButton {
+					id: restoreScenario
+					width: 100
+					height: parent.height
+					buttonShortcut: ""
+					sourceImg: "qrc:/qml/img/restoreicon@2x.png"
+					onClicked: {
+						restore()
+					}
+					text: qsTr("Restore")
+					function restore()
+					{
+						var state = projectModel.stateListModel.reloadStateFromFromProject(scenarioList.currentIndex)
+						if (state)
+						{
+							editStatus.visible = false
+							restored(state)
+							loaded(state)
+						}
+					}
+					roundRight: false
+					roundLeft: true
+				}
+
+
+				Rectangle
+				{
+					width: 1
+					height: parent.height
+					anchors.right: saveScenario.left
+					color: "#ededed"
+				}
+
+				ScenarioButton {
+					id: saveScenario
+					anchors.left: restoreScenario.right
+					text: qsTr("Save")
+					onClicked: {
+						projectModel.saveProjectFile()
+						saved(state)
+					}
+					width: 100
+					height: parent.height
+					buttonShortcut: ""
+					sourceImg: "qrc:/qml/img/saveicon@2x.png"
+					roundRight: false
+					roundLeft: false
+				}
+
+				Rectangle
+				{
+					width: 1
+					height: parent.height
+					anchors.right: duplicateScenario.left
+					color: "#ededed"
+				}
+
+				ScenarioButton
+				{
+					id: duplicateScenario
+					anchors.left: saveScenario.right
+					text: qsTr("Duplicate")
+					onClicked: {
+						projectModel.stateListModel.duplicateState(scenarioList.currentIndex)
+						duplicated(state)
+					}
+					width: 100
+					height: parent.height
+					buttonShortcut: ""
+					sourceImg: "qrc:/qml/img/duplicateicon@2x.png"
+					roundRight: true
+					roundLeft: false
+				}
 			}
 		}
 	}
