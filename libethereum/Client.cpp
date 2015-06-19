@@ -620,7 +620,7 @@ void Client::syncBlockQueue()
 	ImportRoute ir;
 	cwork << "BQ ==> CHAIN ==> STATE";
 	boost::timer t;
-	tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, m_syncAmount);
+	tie(ir, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, m_syncAmount);
 	double elapsed = t.elapsed();
 
 	cnote << m_syncAmount << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (m_syncAmount / elapsed) << "blocks/s)";
@@ -629,7 +629,7 @@ void Client::syncBlockQueue()
 		m_syncAmount = max(c_syncMin, m_syncAmount * 9 / 10);
 	else if (elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
 		m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
-	if (ir.first.empty())
+	if (ir.liveBlocks.empty())
 		return;
 	onChainChanged(ir);
 }
@@ -671,7 +671,7 @@ void Client::syncTransactionQueue()
 void Client::onChainChanged(ImportRoute const& _ir)
 {
 	// insert transactions that we are declaring the dead part of the chain
-	for (auto const& h: _ir.second)
+	for (auto const& h: _ir.deadBlocks)
 	{
 		clog(ClientNote) << "Dead block:" << h;
 		for (auto const& t: m_bc.transactions(h))
@@ -682,7 +682,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	}
 
 	// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
-	for (auto const& h: _ir.first)
+	for (auto const& h: _ir.liveBlocks)
 	{
 		clog(ClientChat) << "Live block:" << h;
 		for (auto const& th: m_bc.transactionHashes(h))
@@ -696,7 +696,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		h->noteNewBlocks();
 
 	h256Hash changeds;
-	for (auto const& h: _ir.first)
+	for (auto const& h: _ir.liveBlocks)
 		appendFromNewBlock(h, changeds);
 
 	// RESTART MINING

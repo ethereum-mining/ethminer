@@ -157,19 +157,19 @@ Json::Value WebThreeStubServer::admin_eth_allAccounts(std::string const& _sessio
 	u256 total = 0;
 	u256 pendingtotal = 0;
 	Address beneficiary;
-	for (auto const& i: m_keyMan.accountDetails())
+	for (auto const& address: m_keyMan.accounts())
 	{
-		auto pending = m_web3.ethereum()->balanceAt(i.first, PendingBlock);
-		auto latest = m_web3.ethereum()->balanceAt(i.first, LatestBlock);
+		auto pending = m_web3.ethereum()->balanceAt(address, PendingBlock);
+		auto latest = m_web3.ethereum()->balanceAt(address, LatestBlock);
 		Json::Value a;
-		if (i.first == beneficiary)
+		if (address == beneficiary)
 			a["beneficiary"] = true;
-		a["address"] = toJS(i.first);
+		a["address"] = toJS(address);
 		a["balance"] = toJS(latest);
 		a["nicebalance"] = formatBalance(latest);
 		a["pending"] = toJS(pending);
 		a["nicepending"] = formatBalance(pending);
-		ret["accounts"][i.second.first] = a;
+		ret["accounts"][m_keyMan.accountName(address)] = a;
 		total += latest;
 		pendingtotal += pending;
 	}

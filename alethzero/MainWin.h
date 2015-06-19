@@ -96,7 +96,7 @@ public:
 	dev::eth::KeyManager& keyManager() override { return m_keyManager; }
 	bool doConfirm();
 
-	dev::Secret retrieveSecret(dev::Address const& _a) const override;
+	dev::Secret retrieveSecret(dev::Address const& _address) const override;
 
 public slots:
 	void load(QString _file);
