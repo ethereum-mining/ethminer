@@ -508,7 +508,7 @@ bool PV60Sync::shouldGrabBlocks(EthereumPeer* _peer) const
 {
 	auto td = _peer->m_totalDifficulty;
 	auto lh = _peer->m_latestHash;
-	auto ctd =  host().chain().details().totalDifficulty;
+	auto ctd = host().chain().details().totalDifficulty;
 
 	if (m_syncingNeededBlocks.empty())
 		return false;
