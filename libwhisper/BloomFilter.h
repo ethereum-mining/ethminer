@@ -37,11 +37,11 @@ public:
 
 	void addBloom(dev::shh::AbridgedTopic const& _h) { addRaw(_h.template bloomPart<BitsPerBloom, N>()); }
 	void removeBloom(dev::shh::AbridgedTopic const& _h) { removeRaw(_h.template bloomPart<BitsPerBloom, N>()); }
-	bool containsBloom(dev::shh::AbridgedTopic const& _h) const { return contains(_h.template bloomPart<BitsPerBloom, N>()); }
+	bool containsBloom(dev::shh::AbridgedTopic const& _h) const { return this->contains(_h.template bloomPart<BitsPerBloom, N>()); }
 
 	void addRaw(FixedHash<N> const& _h);
 	void removeRaw(FixedHash<N> const& _h);
-	bool containsRaw(FixedHash<N> const& _h) const { return contains(_h); }
+	bool containsRaw(FixedHash<N> const& _h) const { return this->contains(_h); }
 
 	enum { BitsPerBloom = 3 };
 	
