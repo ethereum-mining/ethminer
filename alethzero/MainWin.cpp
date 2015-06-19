@@ -1253,7 +1253,7 @@ void Main::refreshBlockCount()
 	BlockQueueStatus b = ethereum()->blockQueueStatus();
 	SyncStatus sync = ethereum()->syncStatus();
 	QString syncStatus = EthereumHost::stateName(sync.state);
-	if (sync.state == SyncState::HashesParallel || sync.state == SyncState::HashesSingle)
+	if (sync.state == SyncState::Hashes)
 		syncStatus += QString(": %1/%2%3").arg(sync.hashesReceived).arg(sync.hashesEstimated ? "~" : "").arg(sync.hashesTotal);
 	if (sync.state == SyncState::Blocks || sync.state == SyncState::NewBlocks)
 		syncStatus += QString(": %1/%2").arg(sync.blocksReceived).arg(sync.blocksTotal);
