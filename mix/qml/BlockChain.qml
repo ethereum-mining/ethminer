@@ -40,16 +40,16 @@ ColumnLayout {
 
 		if (width <= 630 || previousWidth <= 630)
 		{
-			fromWidth = 100
+			fromWidth = 150
 			toWidth = 100
-			valueWidth = 250
+			valueWidth = 200
 		}
 		else
 		{
 			var diff = (width - previousWidth) / 3;
-			fromWidth = fromWidth + diff < 100 ? 100 : fromWidth + diff
+			fromWidth = fromWidth + diff < 150 ? 150 : fromWidth + diff
 			toWidth = toWidth + diff < 100 ? 100 : toWidth + diff
-			valueWidth = valueWidth + diff < 250 ? 250 : valueWidth + diff
+			valueWidth = valueWidth + diff < 200 ? 200 : valueWidth + diff
 		}
 		previousWidth = width
 	}
@@ -68,9 +68,9 @@ ColumnLayout {
 	}
 
 	property int statusWidth: 50
-	property int fromWidth: 100
+	property int fromWidth: 150
 	property int toWidth: 100
-	property int valueWidth: 250
+	property int valueWidth: 200
 	property int logsWidth: 40
 	property int debugActionWidth: 40
 	property int horizontalMargin: 10
@@ -422,7 +422,6 @@ ColumnLayout {
 							return;
 						}
 					}
-
 					// tr is not in the list.
 					var itemTr = TransactionHelper.defaultTransaction()
 					itemTr.saveStatus = false
