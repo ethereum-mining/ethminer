@@ -37,6 +37,18 @@ using namespace dev;
 using namespace dev::eth;
 using namespace p2p;
 
+string toString(Asking _a)
+{
+	switch (_a)
+	{
+	case Asking::Blocks: return "Blocks";
+	case Asking::Hashes: return "Hashes";
+	case Asking::Nothing: return "Nothing";
+	case Asking::State: return "State";
+	}
+	return "?";
+}
+
 EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, CapDesc const& _cap):
 	Capability(_s, _h, _i),
 	m_sub(host()->downloadMan()),
@@ -49,6 +61,11 @@ EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, Cap
 
 EthereumPeer::~EthereumPeer()
 {
+	if (m_asking != Asking::Nothing)
+	{
+		cnote << "Peer aborting while being asked for " << ::toString(m_asking);
+		setRude();
+	}
 	abortSync();
 }
 
@@ -65,7 +82,9 @@ unsigned EthereumPeer::askOverride() const
 
 void EthereumPeer::setRude()
 {
+	auto old = askOverride();
 	repMan().setData(*session(), name(), rlp(askOverride() / 2 + 1));
+	cnote << "Rude behaviour; askOverride now" << askOverride() << ", was" << old;
 	repMan().noteRude(*session(), name());
 	session()->addNote("manners", "RUDE");
 }
@@ -83,18 +102,6 @@ EthereumHost* EthereumPeer::host() const
 /*
  * Possible asking/syncing states for two peers:
  */
-
-string toString(Asking _a)
-{
-	switch (_a)
-	{
-	case Asking::Blocks: return "Blocks";
-	case Asking::Hashes: return "Hashes";
-	case Asking::Nothing: return "Nothing";
-	case Asking::State: return "State";
-	}
-	return "?";
-}
 
 void EthereumPeer::setIdle()
 {
