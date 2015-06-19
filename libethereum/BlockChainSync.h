@@ -272,7 +272,7 @@ private:
 	h256 m_syncingLatestHash;					///< Latest block's hash of the peer we are syncing to, as of the current sync.
 	u256 m_syncingTotalDifficulty;				///< Latest block's total difficulty of the peer we aresyncing to, as of the current sync.
 	// TODO: switch to weak_ptr
-	EthereumPeer* m_syncer = nullptr;			///< Current
+	EthereumPeer* m_syncer = nullptr;			///< Peer we are currently syncing with
 };
 }
 }
