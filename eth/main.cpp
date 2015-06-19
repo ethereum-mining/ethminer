@@ -764,7 +764,8 @@ int main(int argc, char** argv)
 			case ImportResult::Success: good++; break;
 			case ImportResult::AlreadyKnown: alreadyHave++; break;
 			case ImportResult::UnknownParent: unknownParent++; break;
-			case ImportResult::FutureTime: futureTime++; break;
+			case ImportResult::FutureTimeUnknown: unknownParent++; futureTime++; break;
+			case ImportResult::FutureTimeKnown: futureTime++; break;
 			default: bad++; break;
 			}
 		}
