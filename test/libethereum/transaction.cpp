@@ -21,6 +21,7 @@
  */
 
 #include "../TestHelper.h"
+#include "test/fuzzTesting/fuzzHelper.h"
 
 using namespace std;
 using namespace json_spirit;
@@ -38,7 +39,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 
 		if (_fillin)
 		{
-			BOOST_REQUIRE(o.count("transaction") > 0);
+			TBOOST_REQUIRE((o.count("transaction") > 0));
 			mObject tObj = o["transaction"].get_obj();
 
 			//Construct Rlp of the given transaction
@@ -49,7 +50,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 			{
 				Transaction txFromFields(rlpStream.out(), CheckTransaction::Everything);
 				if (!txFromFields.signature().isValid())
-					BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("transaction from RLP signature is invalid") );
+					TBOOST_THROW_EXCEPTION(Exception() << errinfo_comment("transaction from RLP signature is invalid") );
 
 				o["sender"] = toString(txFromFields.sender());				
 				o["transaction"] = ImportTest::makeAllFieldsHex(tObj);
@@ -63,9 +64,9 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 				{
 					bool expectInValid = (o["expect"].get_str() == "invalid");
 					if (Options::get().checkState)
-							BOOST_CHECK_MESSAGE(expectInValid, "Check state: Transaction '" << i.first << "' is expected to be valid!");
+							{TBOOST_CHECK_MESSAGE(expectInValid, "Check state: Transaction '" << i.first << "' is expected to be valid!");}
 						else
-							BOOST_WARN_MESSAGE(expectInValid, "Check state: Transaction '" << i.first << "' is expected to be valid!");
+							{TBOOST_WARN_MESSAGE(expectInValid, "Check state: Transaction '" << i.first << "' is expected to be valid!");}
 
 					o.erase(o.find("expect"));
 				}
@@ -76,16 +77,16 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 			{
 				bool expectValid = (o["expect"].get_str() == "valid");
 				if (Options::get().checkState)
-						BOOST_CHECK_MESSAGE(expectValid, "Check state: Transaction '" << i.first << "' is expected to be invalid!");
+						{TBOOST_CHECK_MESSAGE(expectValid, "Check state: Transaction '" << i.first << "' is expected to be invalid!");}
 					else
-						BOOST_WARN_MESSAGE(expectValid, "Check state: Transaction '" << i.first << "' is expected to be invalid!");
+						{TBOOST_WARN_MESSAGE(expectValid, "Check state: Transaction '" << i.first << "' is expected to be invalid!");}
 
 				o.erase(o.find("expect"));
 			}
 		}
 		else
 		{			
-			BOOST_REQUIRE(o.count("rlp") > 0);
+			TBOOST_REQUIRE((o.count("rlp") > 0));
 			Transaction txFromRlp;
 			try
 			{
@@ -93,39 +94,39 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 				RLP rlp(stream);
 				txFromRlp = Transaction(rlp.data(), CheckTransaction::Everything);
 				if (!txFromRlp.signature().isValid())
-					BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("transaction from RLP signature is invalid") );
+					TBOOST_THROW_EXCEPTION(Exception() << errinfo_comment("transaction from RLP signature is invalid") );
 			}
 			catch(Exception const& _e)
 			{
 				cnote << i.first;
 				cnote << "Transaction Exception: " << diagnostic_information(_e);
-				BOOST_CHECK_MESSAGE(o.count("transaction") == 0, "A transaction object should not be defined because the RLP is invalid!");
+				TBOOST_CHECK_MESSAGE((o.count("transaction") == 0), "A transaction object should not be defined because the RLP is invalid!");
 				continue;
 			}
 			catch(...)
 			{
-				BOOST_CHECK_MESSAGE(o.count("transaction") == 0, "A transaction object should not be defined because the RLP is invalid!");
+				TBOOST_CHECK_MESSAGE((o.count("transaction") == 0), "A transaction object should not be defined because the RLP is invalid!");
 				continue;
 			}
 
-			BOOST_REQUIRE(o.count("transaction") > 0);
+			TBOOST_REQUIRE((o.count("transaction") > 0));
 
 			mObject tObj = o["transaction"].get_obj();
 			Transaction txFromFields(createRLPStreamFromTransactionFields(tObj).out(), CheckTransaction::Everything);
 
 			//Check the fields restored from RLP to original fields
-			BOOST_CHECK_MESSAGE(txFromFields.data() == txFromRlp.data(), "Data in given RLP not matching the Transaction data!");
-			BOOST_CHECK_MESSAGE(txFromFields.value() == txFromRlp.value(), "Value in given RLP not matching the Transaction value!");
-			BOOST_CHECK_MESSAGE(txFromFields.gasPrice() == txFromRlp.gasPrice(), "GasPrice in given RLP not matching the Transaction gasPrice!");
-			BOOST_CHECK_MESSAGE(txFromFields.gas() == txFromRlp.gas(),"Gas in given RLP not matching the Transaction gas!");
-			BOOST_CHECK_MESSAGE(txFromFields.nonce() == txFromRlp.nonce(),"Nonce in given RLP not matching the Transaction nonce!");
-			BOOST_CHECK_MESSAGE(txFromFields.receiveAddress() == txFromRlp.receiveAddress(), "Receive address in given RLP not matching the Transaction 'to' address!");
-			BOOST_CHECK_MESSAGE(txFromFields.sender() == txFromRlp.sender(), "Transaction sender address in given RLP not matching the Transaction 'vrs' signature!");
-			BOOST_CHECK_MESSAGE(txFromFields == txFromRlp, "However, txFromFields != txFromRlp!");
-			BOOST_REQUIRE (o.count("sender") > 0);
+			TBOOST_CHECK_MESSAGE((txFromFields.data() == txFromRlp.data()), "Data in given RLP not matching the Transaction data!");
+			TBOOST_CHECK_MESSAGE((txFromFields.value() == txFromRlp.value()), "Value in given RLP not matching the Transaction value!");
+			TBOOST_CHECK_MESSAGE((txFromFields.gasPrice() == txFromRlp.gasPrice()), "GasPrice in given RLP not matching the Transaction gasPrice!");
+			TBOOST_CHECK_MESSAGE((txFromFields.gas() == txFromRlp.gas()),"Gas in given RLP not matching the Transaction gas!");
+			TBOOST_CHECK_MESSAGE((txFromFields.nonce() == txFromRlp.nonce()),"Nonce in given RLP not matching the Transaction nonce!");
+			TBOOST_CHECK_MESSAGE((txFromFields.receiveAddress() == txFromRlp.receiveAddress()), "Receive address in given RLP not matching the Transaction 'to' address!");
+			TBOOST_CHECK_MESSAGE((txFromFields.sender() == txFromRlp.sender()), "Transaction sender address in given RLP not matching the Transaction 'vrs' signature!");
+			TBOOST_CHECK_MESSAGE((txFromFields == txFromRlp), "However, txFromFields != txFromRlp!");
+			TBOOST_REQUIRE ((o.count("sender") > 0));
 
 			Address addressReaded = Address(o["sender"].get_str());
-			BOOST_CHECK_MESSAGE(txFromFields.sender() == addressReaded || txFromRlp.sender() == addressReaded, "Signature address of sender does not match given sender address!");
+			TBOOST_CHECK_MESSAGE((txFromFields.sender() == addressReaded || txFromRlp.sender() == addressReaded), "Signature address of sender does not match given sender address!");
 		}
 	}//for
 }//doTransactionTests

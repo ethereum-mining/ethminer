@@ -21,6 +21,7 @@
  */
 
 #include <algorithm>
+#include <functional>
 #include <boost/range/adaptor/reversed.hpp>
 #include <libsolidity/Utils.h>
 #include <libsolidity/AST.h>
@@ -434,23 +435,29 @@ void StructDefinition::checkMemberTypes() const
 
 void StructDefinition::checkRecursion() const
 {
-	set<StructDefinition const*> definitionsSeen;
-	vector<StructDefinition const*> queue = {this};
-	while (!queue.empty())
+	using StructPointer = StructDefinition const*;
+	using StructPointersSet = set<StructPointer>;
+	function<void(StructPointer,StructPointersSet const&)> check = [&](StructPointer _struct, StructPointersSet const& _parents)
 	{
-		StructDefinition const* def = queue.back();
-		queue.pop_back();
-		if (definitionsSeen.count(def))
-			BOOST_THROW_EXCEPTION(ParserError() << errinfo_sourceLocation(def->getLocation())
-												<< errinfo_comment("Recursive struct definition."));
-		definitionsSeen.insert(def);
-		for (ASTPointer<VariableDeclaration> const& member: def->getMembers())
+		if (_parents.count(_struct))
+			BOOST_THROW_EXCEPTION(
+				ParserError() <<
+				errinfo_sourceLocation(_struct->getLocation()) <<
+				errinfo_comment("Recursive struct definition.")
+			);
+		set<StructDefinition const*> parents = _parents;
+		parents.insert(_struct);
+		for (ASTPointer<VariableDeclaration> const& member: _struct->getMembers())
 			if (member->getType()->getCategory() == Type::Category::Struct)
 			{
-				UserDefinedTypeName const& typeName = dynamic_cast<UserDefinedTypeName const&>(*member->getTypeName());
-				queue.push_back(&dynamic_cast<StructDefinition const&>(*typeName.getReferencedDeclaration()));
+				auto const& typeName = dynamic_cast<UserDefinedTypeName const&>(*member->getTypeName());
+				check(
+					&dynamic_cast<StructDefinition const&>(*typeName.getReferencedDeclaration()),
+					parents
+				);
 			}
-	}
+	};
+	check(this, {});
 }
 
 TypePointer EnumDefinition::getType(ContractDefinition const*) const
@@ -919,7 +926,7 @@ void MemberAccess::checkTypeRequirements(TypePointers const* _argumentTypes)
 	{
 		auto const& arrayType(dynamic_cast<ArrayType const&>(type));
 		m_isLValue = (*m_memberName == "length" &&
-			arrayType.location() != ReferenceType::Location::CallData && arrayType.isDynamicallySized());
+			arrayType.location() != DataLocation::CallData && arrayType.isDynamicallySized());
 	}
 	else
 		m_isLValue = false;
@@ -942,7 +949,7 @@ void IndexAccess::checkTypeRequirements(TypePointers const*)
 			m_type = make_shared<FixedBytesType>(1);
 		else
 			m_type = type.getBaseType();
-		m_isLValue = type.location() != ReferenceType::Location::CallData;
+		m_isLValue = type.location() != DataLocation::CallData;
 		break;
 	}
 	case Type::Category::Mapping:
@@ -959,7 +966,7 @@ void IndexAccess::checkTypeRequirements(TypePointers const*)
 	{
 		TypeType const& type = dynamic_cast<TypeType const&>(*m_base->getType());
 		if (!m_index)
-			m_type = make_shared<TypeType>(make_shared<ArrayType>(ReferenceType::Location::Memory, type.getActualType()));
+			m_type = make_shared<TypeType>(make_shared<ArrayType>(DataLocation::Memory, type.getActualType()));
 		else
 		{
 			m_index->checkTypeRequirements(nullptr);
@@ -967,7 +974,9 @@ void IndexAccess::checkTypeRequirements(TypePointers const*)
 			if (!length)
 				BOOST_THROW_EXCEPTION(m_index->createTypeError("Integer constant expected."));
 			m_type = make_shared<TypeType>(make_shared<ArrayType>(
-				ReferenceType::Location::Memory, type.getActualType(), length->literalValue(nullptr)));
+				DataLocation::Memory, type.getActualType(),
+				length->literalValue(nullptr)
+			));
 		}
 		break;
 	}

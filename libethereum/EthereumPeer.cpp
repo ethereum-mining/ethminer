@@ -30,6 +30,8 @@
 #include "EthereumHost.h"
 #include "TransactionQueue.h"
 #include "BlockQueue.h"
+#include "BlockChainSync.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -38,7 +40,6 @@ using namespace p2p;
 EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, CapDesc const& _cap):
 	Capability(_s, _h, _i),
 	m_sub(host()->downloadMan()),
-	m_hashSub(host()->hashDownloadMan()),
 	m_peerCapabilityVersion(_cap.second)
 {
 	session()->addNote("manners", isRude() ? "RUDE" : "nice");
@@ -97,8 +98,6 @@ string toString(Asking _a)
 
 void EthereumPeer::setIdle()
 {
-	m_sub.doneFetch();
-	m_hashSub.doneFetch();
 	setAsking(Asking::Nothing);
 }
 
@@ -120,14 +119,14 @@ void EthereumPeer::requestStatus()
 	sealAndSend(s);
 }
 
-void EthereumPeer::requestHashes()
+void EthereumPeer::requestHashes(u256 _number, unsigned _count)
 {
 	assert(m_asking == Asking::Nothing);
-	m_syncHashNumber = m_hashSub.nextFetch(c_maxHashesAsk);
+	m_syncHashNumber = _number;
 	m_syncHash = h256();
 	setAsking(Asking::Hashes);
 	RLPStream s;
-	prep(s, GetBlockHashesByNumberPacket, 2) << m_syncHashNumber << c_maxHashesAsk;
+	prep(s, GetBlockHashesByNumberPacket, 2) << m_syncHashNumber << _count;
 	clog(NetMessageDetail) << "Requesting block hashes for numbers " << m_syncHashNumber << "-" << m_syncHashNumber + c_maxHashesAsk - 1;
 	sealAndSend(s);
 }
