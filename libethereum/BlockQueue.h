@@ -117,6 +117,8 @@ public:
 
 	bool knownFull() const;
 	bool unknownFull() const;
+	u256 difficulty() const;	// Total difficulty of queueud blocks
+	bool isActive() const;
 
 private:
 	struct UnverifiedBlock
@@ -158,6 +160,8 @@ private:
 	std::atomic<size_t> m_knownSize;									///< Tracks total size in bytes of all known blocks;
 	std::atomic<size_t> m_unknownCount;									///< Tracks total count of unknown blocks. Used to avoid additional syncing
 	std::atomic<size_t> m_knownCount;									///< Tracks total count of known blocks. Used to avoid additional syncing
+	u256 m_difficulty;													///< Total difficulty of blocks in the queue
+	u256 m_drainingDifficulty;											///< Total difficulty of blocks in draining
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockQueueStatus const& _s);

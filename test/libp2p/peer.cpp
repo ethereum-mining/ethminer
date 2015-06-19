@@ -24,6 +24,8 @@
 #include <chrono>
 #include <thread>
 #include <libp2p/Host.h>
+#include <test/TestHelper.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -38,6 +40,9 @@ BOOST_FIXTURE_TEST_SUITE(p2p, P2PFixture)
 
 BOOST_AUTO_TEST_CASE(host)
 {
+	if (test::Options::get().nonetwork)
+		return;
+
 	VerbosityHolder sentinel(10);
 	
 	NetworkPreferences host1prefs("127.0.0.1", 30301, false);
@@ -64,6 +69,9 @@ BOOST_AUTO_TEST_CASE(host)
 
 BOOST_AUTO_TEST_CASE(networkConfig)
 {
+	if (test::Options::get().nonetwork)
+		return;
+
 	Host save("Test", NetworkPreferences(false));
 	bytes store(save.saveNetwork());
 	
@@ -73,6 +81,9 @@ BOOST_AUTO_TEST_CASE(networkConfig)
 
 BOOST_AUTO_TEST_CASE(saveNodes)
 {
+	if (test::Options::get().nonetwork)
+		return;
+
 	VerbosityHolder reduceVerbosity(2);
 
 	std::list<Host*> hosts;
@@ -134,6 +145,9 @@ BOOST_FIXTURE_TEST_SUITE(p2pPeer, P2PFixture)
 
 BOOST_AUTO_TEST_CASE(requirePeer)
 {
+	if (test::Options::get().nonetwork)
+		return;
+
 	VerbosityHolder reduceVerbosity(10);
 
 	const char* const localhost = "127.0.0.1";
@@ -186,6 +200,9 @@ BOOST_AUTO_TEST_SUITE(peerTypes)
 
 BOOST_AUTO_TEST_CASE(emptySharedPeer)
 {
+	if (test::Options::get().nonetwork)
+		return;
+
 	shared_ptr<Peer> p;
 	BOOST_REQUIRE(!p);
 	
