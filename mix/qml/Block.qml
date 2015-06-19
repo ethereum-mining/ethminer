@@ -16,7 +16,7 @@ ColumnLayout
 	property int number
 	property int blockWidth: Layout.preferredWidth - statusWidth - horizontalMargin
 	property int horizontalMargin: 10
-	property int trHeight: 30
+	property int trHeight: 35
 	spacing: 0
 	property int openedTr: 0
 	property int blockIndex
@@ -42,6 +42,10 @@ ColumnLayout
 		height = calculateHeight()
 	}
 
+	DebuggerPaneStyle {
+		id: dbgStyle
+	}
+
 	RowLayout
 	{
 		Layout.preferredHeight: trHeight
@@ -60,6 +64,7 @@ ColumnLayout
 				anchors.verticalCenter: parent.verticalCenter
 				anchors.left: parent.left
 				anchors.leftMargin: horizontalMargin
+				font.pointSize: dbgStyle.absoluteSize(1)
 				color: "#adadad"
 				text:
 				{
@@ -196,43 +201,60 @@ ColumnLayout
 				{
 					anchors.top: parent.top
 					width: parent.width
-					spacing: 10
+					spacing: 7
 					RowLayout
 					{
 						anchors.top: parent.top
 						Layout.fillWidth: true
 						spacing: cellSpacing
-						Text
+						Rectangle
 						{
-							id: hash
+							Layout.preferredWidth: fromWidth
 							anchors.left: parent.left
 							anchors.leftMargin: horizontalMargin
-							Layout.preferredWidth: fromWidth
-							elide: Text.ElideRight
-							maximumLineCount: 1
-							color: labelColor
-							text: {
-								if (index >= 0)
-									return transactions.get(index).sender
-								else
-									return ""
+							Text
+							{
+								id: hash
+								width: parent.width - 30
+								elide: Text.ElideRight
+								anchors.verticalCenter: parent.verticalCenter
+								maximumLineCount: 1
+								color: labelColor
+								font.pointSize: dbgStyle.absoluteSize(1)
+								font.bold: true
+								text: {
+									if (index >= 0)
+										return transactions.get(index).sender
+									else
+										return ""
+								}
 							}
 						}
 
-						Text
+
+						Rectangle
 						{
-							id: func
-							text: {
-								if (index >= 0)
-									parent.userFrienldyToken(transactions.get(index).label)
-								else
-									return ""
-							}
-							elide: Text.ElideRight
-							color: labelColor
-							maximumLineCount: 1
 							Layout.preferredWidth: toWidth
+							Text
+							{
+								id: func
+								text: {
+									if (index >= 0)
+										parent.parent.userFrienldyToken(transactions.get(index).label)
+									else
+										return ""
+								}
+								elide: Text.ElideRight
+								anchors.verticalCenter: parent.verticalCenter
+								color: labelColor
+								font.pointSize: dbgStyle.absoluteSize(1)
+								font.bold: true
+								maximumLineCount: 1
+								width: parent.width
+							}
 						}
+
+
 
 						function userFrienldyToken(value)
 						{
@@ -247,18 +269,25 @@ ColumnLayout
 								return value
 						}
 
-						Text
+						Rectangle
 						{
-							id: returnValue
-							elide: Text.ElideRight
-							maximumLineCount: 1
-							color: labelColor
 							Layout.preferredWidth: valueWidth
-							text: {
-								if (index >= 0 && transactions.get(index).returned)
-									return transactions.get(index).returned
-								else
-									return ""
+							Text
+							{
+								id: returnValue
+								elide: Text.ElideRight
+								anchors.verticalCenter: parent.verticalCenter
+								maximumLineCount: 1
+								color: labelColor
+								font.bold: true
+								font.pointSize: dbgStyle.absoluteSize(1)
+								width: parent.width -30
+								text: {
+									if (index >= 0 && transactions.get(index).returned)
+										return transactions.get(index).returned
+									else
+										return ""
+								}
 							}
 						}
 
@@ -272,8 +301,11 @@ ColumnLayout
 							{
 								id: logs
 								anchors.left: parent.left
+								anchors.verticalCenter: parent.verticalCenter
 								anchors.leftMargin: 10
 								color: labelColor
+								font.bold: true
+								font.pointSize: dbgStyle.absoluteSize(1)
 								text: {
 									if (index >= 0 && transactions.get(index).logs && transactions.get(index).logs.count)
 										return transactions.get(index).logs.count
@@ -288,8 +320,6 @@ ColumnLayout
 								}
 							}
 						}
-
-
 					}
 
 					RowLayout
@@ -329,8 +359,9 @@ ColumnLayout
 			Rectangle
 			{
 				width: debugActionWidth
-				height: trHeight - 10
+				height: trHeight
 				anchors.left: rowContentTr.right
+				anchors.topMargin: -6
 				anchors.top: rowContentTr.top
 				anchors.leftMargin: -50
 				color: "transparent"
