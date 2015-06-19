@@ -62,7 +62,7 @@ void TopicBloomFilterBase<N>::addRaw(FixedHash<N> const& _h)
 	for (unsigned i = 0; i < CounterSize; ++i)
 		if (isBitSet(_h, i))
 		{
-			if (m_refCounter[i] != numeric_limits<uint16_t>::max())
+			if (m_refCounter[i] != std::numeric_limits<uint16_t>::max())
 				m_refCounter[i]++;
 			else
 				BOOST_THROW_EXCEPTION(Overflow());
