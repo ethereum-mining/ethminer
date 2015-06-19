@@ -202,6 +202,24 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 		return nextPC;
 	};
 
+	auto copyDataToMemory = [](bytesConstRef _data, decltype(m_stack)& _stack, decltype(m_temp)& _memory)
+	{
+		auto offset = static_cast<size_t>(_stack.back());
+		_stack.pop_back();
+		bigint bigIndex = _stack.back();
+		auto index = static_cast<size_t>(bigIndex);
+		_stack.pop_back();
+		auto size = static_cast<size_t>(_stack.back());
+		_stack.pop_back();
+
+		size_t sizeToBeCopied = bigIndex + size > _data.size() ? _data.size() < bigIndex ? 0 : _data.size() - index : size;
+
+		if (sizeToBeCopied > 0)
+			std::memcpy(_memory.data() + offset, _data.data() + index, sizeToBeCopied);
+		if (size > sizeToBeCopied)
+			std::memset(_memory.data() + offset + sizeToBeCopied, 0, size - sizeToBeCopied);
+	};
+
 	m_steps = 0;
 	for (auto nextPC = m_curPC + 1; true; m_curPC = nextPC, nextPC = m_curPC + 1, ++m_steps)
 	{
@@ -364,44 +382,16 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 			m_stack.back() = _ext.codeAt(asAddress(m_stack.back())).size();
 			break;
 		case Instruction::CALLDATACOPY:
+			copyDataToMemory(_ext.data, m_stack, m_temp);
+			break;
 		case Instruction::CODECOPY:
+			copyDataToMemory(&_ext.code, m_stack, m_temp);
+			break;
 		case Instruction::EXTCODECOPY:
 		{
-			Address a;
-			if (inst == Instruction::EXTCODECOPY)
-			{
-				a = asAddress(m_stack.back());
-				m_stack.pop_back();
-			}
-			unsigned offset = (unsigned)m_stack.back();
+			auto a = asAddress(m_stack.back());
 			m_stack.pop_back();
-			u256 index = m_stack.back();
-			m_stack.pop_back();
-			unsigned size = (unsigned)m_stack.back();
-			m_stack.pop_back();
-			unsigned sizeToBeCopied;
-			switch(inst)
-			{
-			case Instruction::CALLDATACOPY:
-				sizeToBeCopied = index + (bigint)size > (u256)_ext.data.size() ? (u256)_ext.data.size() < index ? 0 : _ext.data.size() - (unsigned)index : size;
-				memcpy(m_temp.data() + offset, _ext.data.data() + (unsigned)index, sizeToBeCopied);
-				break;
-			case Instruction::CODECOPY:
-				sizeToBeCopied = index + (bigint)size > (u256)_ext.code.size() ? (u256)_ext.code.size() < index ? 0 : _ext.code.size() - (unsigned)index : size;
-				memcpy(m_temp.data() + offset, _ext.code.data() + (unsigned)index, sizeToBeCopied);
-				break;
-			case Instruction::EXTCODECOPY:
-				sizeToBeCopied = index + (bigint)size > (u256)_ext.codeAt(a).size() ? (u256)_ext.codeAt(a).size() < index ? 0 : _ext.codeAt(a).size() - (unsigned)index : size;
-				memcpy(m_temp.data() + offset, _ext.codeAt(a).data() + (unsigned)index, sizeToBeCopied);
-				break;
-			default:
-				// this is unreachable, but if someone introduces a bug in the future, he may get here.
-				assert(false);
-				BOOST_THROW_EXCEPTION(InvalidOpcode() << errinfo_comment("CALLDATACOPY, CODECOPY or EXTCODECOPY instruction requested."));
-				break;
-			}
-			memset(m_temp.data() + offset + sizeToBeCopied, 0, size - sizeToBeCopied);
-			break;
+			copyDataToMemory(&_ext.codeAt(a), m_stack, m_temp);
 		}
 		case Instruction::GASPRICE:
 			m_stack.push_back(_ext.gasPrice);
