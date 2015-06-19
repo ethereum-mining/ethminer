@@ -89,10 +89,10 @@ Item {
 		}
 	}
 
-	Connections {
+	/*Connections {
 		target: clientModel
 		onRunComplete: reload();
-	}
+	}*/
 
 	Connections {
 		target: codeModel
