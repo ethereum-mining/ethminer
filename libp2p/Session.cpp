@@ -155,7 +155,7 @@ void Session::serviceNodesRequest()
 	addNote("peers", "done");
 }
 
-bool Session::frameReceived(uint16_t _capId, PacketType _t, RLP const& _r)
+bool Session::readPacket(uint16_t _capId, PacketType _t, RLP const& _r)
 {
 	m_lastReceived = chrono::steady_clock::now();
 	clog(NetRight) << _t << _r;
@@ -466,7 +466,7 @@ void Session::doRead()
 			{
 				auto packetType = (PacketType)RLP(frame.cropped(0, 1)).toInt<unsigned>();
 				RLP r(frame.cropped(1));
-				if (!frameReceived(header.protocolId, packetType, r))
+				if (!readPacket(header.protocolId, packetType, r))
 					clog(NetWarn) << "Couldn't interpret packet." << RLP(r);
 			}
 			doRead();
