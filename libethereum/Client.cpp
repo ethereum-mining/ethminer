@@ -702,7 +702,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 
 	// RESTART MINING
 
-	if (!m_bq.items().first)
+	if (!isSyncing())
 	{
 		bool preChanged = false;
 		State newPreMine;
