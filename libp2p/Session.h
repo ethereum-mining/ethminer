@@ -104,7 +104,7 @@ private:
 	void write();
 
 	/// Deliver RLPX packet to Session or Capability for interpretation.
-	bool frameReceived(uint16_t _capId, PacketType _t, RLP const& _r);
+	bool readPacket(uint16_t _capId, PacketType _t, RLP const& _r);
 
 	/// Interpret an incoming Session packet.
 	bool interpret(PacketType _t, RLP const& _r);
