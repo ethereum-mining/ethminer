@@ -74,7 +74,7 @@ void RLPXSocketIO::doWrite()
 	size_t protFrameSize = capacity / active;
 	if (protFrameSize >= MinFrameSize)
 		for (auto& w: m_writers)
-			dequed += w.drain(m_coder, protFrameSize, m_toSend);
+			dequed += w.mux(m_coder, protFrameSize, m_toSend);
 
 	if (dequed)
 		write(dequed);

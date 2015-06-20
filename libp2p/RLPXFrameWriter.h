@@ -33,61 +33,71 @@ namespace dev
 namespace p2p
 {
 
+/**
+ * RLPFrameReader
+ * Reads and assembles RLPX frame byte buffers into RLPX packets. Additionally
+ * buffers incomplete packets which are pieced into multiple frames (has sequence).
+ * @todo drop frame and reset incomplete if
+ * @todo percolate sequenceid to p2p protocol
+ * @todo informative exception
+ */
 class RLPXFrameReader
 {
 	RLPXFrameReader(uint16_t _protocolType): m_protocolType(_protocolType) {}
 	
-	std::vector<RLPXPacket> assemble(bytes& _in)
+	/// Processes a single frame returning complete packets.
+	std::vector<RLPXPacket> demux(bytes& _frame, bool _sequence = false, uint16_t _seq = 0, uint32_t _totalSize = 0)
 	{
-		bytesConstRef buffer(&_in);
 		std::vector<RLPXPacket> ret;
-		if (!_in.size())
+		if (!_frame.size() || _frame.size() > _totalSize)
 			return ret;
-		
+
+		if (_sequence && m_incomplete.count(_seq))
+		{
+			uint32_t& remaining = m_incomplete.at(_seq).second;
+			if (!_totalSize && _frame.size() <= remaining)
+			{
+				RLPXPacket& p = m_incomplete.at(_seq).first;
+				if (_frame.size() > remaining)
+					return ret;
+				else if(p.streamIn(&_frame))
+				{
+					ret.push_back(std::move(p));
+					m_incomplete.erase(_seq);
+				}
+				else
+					remaining -= _frame.size();
+				return ret;
+			}
+			else
+				m_incomplete.erase(_seq);
+		}
+
+		bytesConstRef buffer(&_frame);
 		while (!buffer.empty())
 		{
 			auto type = RLPXPacket::nextRLP(buffer);
+			if (type.empty())
+				break;
 			buffer = buffer.cropped(type.size());
-			auto packet = RLPXPacket::nextRLP(buffer);
+			// consume entire buffer if packet has sequence
+			auto packet = _sequence ? buffer : RLPXPacket::nextRLP(buffer);
 			buffer = buffer.cropped(packet.size());
 			RLPXPacket p(m_protocolType, type);
-			p.streamIn(packet);
-			ret.push_back(std::move(p));
+			if (!packet.empty())
+				p.streamIn(packet);
+			
+			if (p.isValid())
+				ret.push_back(std::move(p));
+			else if (_sequence)
+				m_incomplete.insert(std::make_pair(_seq, std::make_pair(std::move(p), _totalSize - _frame.size())));
 		}
 		return ret;
 	}
 	
-	std::vector<RLPXPacket> assemble(bytes& _in, uint16_t _seq, uint32_t _totalSize)
-	{
-		// TODO: cleanup sequencing api (throw exception(s) when bad things happen)
-		
-		bytesConstRef buffer(&_in);
-		if (!m_incomplete.count(_seq) && _totalSize > 0)
-		{
-			// new packet
-			RLPXPacket p(m_protocolType, buffer);
-			if (p.isValid())
-				return std::vector<RLPXPacket>{std::move(p)};
-			m_incomplete[_seq] = std::move(p);
-		}
-		else
-		{
-			RLPXPacket& p = m_incomplete[_seq];
-			p.streamIn(buffer);
-			if (p.isValid())
-			{
-				std::vector<RLPXPacket> ret{std::move(p)};
-				m_incomplete.erase(_seq);
-				return ret;
-			}
-		}
-
-		return std::vector<RLPXPacket>();
-	}
-	
 protected:
 	uint16_t m_protocolType;
-	std::map<uint16_t, RLPXPacket> m_incomplete;	///< Incomplete packets which span multiple frames.
+	std::map<uint16_t, std::pair<RLPXPacket, uint32_t>> m_incomplete;	///< Incomplete packets and bytes remaining.
 };
 
 class RLPXFrameWriter
@@ -112,11 +122,11 @@ public:
 	
 	size_t size() const { size_t l; size_t h; DEV_GUARDED(m_q.first.x) h = m_q.first.q.size(); DEV_GUARDED(m_q.second.x) l = m_q.second.q.size(); return l + h; }
 	
-	/// Contents of _payload will be moved. Thread-safe.
+	/// Contents of _payload will be moved. Adds packet to queue, to be muxed into frames by mux when network buffer is ready for writing. Thread-safe.
 	void enque(unsigned _packetType, RLPStream& _payload, PacketPriority _priority = PriorityLow);
 	
 	/// Returns number of packets framed and outputs frames to o_bytes. Not thread-safe.
-	size_t drain(RLPXFrameCoder& _coder, unsigned _size, std::vector<bytes>& o_toWrite);
+	size_t mux(RLPXFrameCoder& _coder, unsigned _size, std::vector<bytes>& o_toWrite);
 	
 private:
 	uint16_t const m_protocolType;			// Protocol Type
