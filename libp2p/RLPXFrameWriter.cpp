@@ -25,6 +25,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
+const uint16_t RLPXFrameWriter::EmptyFrameLength = h128::size * 3; // header + headerMAC + frameMAC
+const uint16_t RLPXFrameWriter::MinFrameDequeLength = h128::size * 4; // header + headerMAC + padded-block + frameMAC
+
 void RLPXFrameWriter::enque(unsigned _packetType, RLPStream& _payload, PacketPriority _priority)
 {
 	QueueState& qs = _priority ? m_q.first : m_q.second;
@@ -113,7 +116,7 @@ size_t RLPXFrameWriter::mux(RLPXFrameCoder& _coder, unsigned _size, vector<bytes
 				_coder.writeFrame(m_protocolType, &payload, payload);
 			assert((int)frameLen - payload.size() >= 0);
 			frameLen -= payload.size();
-			o_toWrite.push_back(move(payload));
+			o_toWrite.push_back(payload);
 			payload.resize(0);
 			
 			if (!qs.remaining)
