@@ -493,9 +493,18 @@ dev::bytes const& CodeModel::getStdContractCode(const QString& _contractName, co
 	return m_compiledContracts.at(_contractName);
 }
 
+void CodeModel::retrieveSubType(SolidityType& _wrapperType, dev::solidity::Type const* _type)
+{
+	if (_type->getCategory() == Type::Category::Array)
+	{
+		ArrayType const* arrayType = dynamic_cast<ArrayType const*>(_type);
+		_wrapperType.baseType = std::make_shared<dev::mix::SolidityType const>(nodeType(arrayType->getBaseType().get()));
+	}
+}
+
 SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 {
-	SolidityType r { SolidityType::Type::UnsignedInteger, 32, 1, false, false, QString::fromStdString(_type->toString()), std::vector<SolidityDeclaration>(), std::vector<QString>() };
+	SolidityType r { SolidityType::Type::UnsignedInteger, 32, 1, false, false, QString::fromStdString(_type->toString()), std::vector<SolidityDeclaration>(), std::vector<QString>(), nullptr };
 	if (!_type)
 		return r;
 	switch (_type->getCategory())
@@ -536,6 +545,7 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 		r.count = static_cast<unsigned>(array->getLength());
 		r.dynamicSize = _type->isDynamicallySized();
 		r.array = true;
+		retrieveSubType(r, _type);
 	}
 		break;
 	case Type::Category::Enum:

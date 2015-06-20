@@ -140,7 +140,7 @@
         "expect" : {
             "095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
                 "storage" : {
-                    "0x" : "0x3f17f1962b36e491b30a40b2405849e597ba5fb5",
+                    "0x" : "0x00",
                     "0x01" : "0x00",
                     "0x02" : "0x01"
                 }
@@ -226,7 +226,7 @@
         "expect" : {
             "095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
                 "storage" : {
-                    "0x" : "0x3f17f1962b36e491b30a40b2405849e597ba5fb5",
+                    "0x" : "0x00",
                     "0x01" : "0x00",
                     "0x02" : "0x01"
                 }
@@ -1946,7 +1946,7 @@
         "expect" : {
             "095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
                 "storage" : {
-                    "0x" : "0x3f17f1962b36e491b30a40b2405849e597ba5fb5",
+                    "0x" : "0x00",
                     "0x01" : "0x00",
                     "0x02" : "0x01"
                 }
@@ -2032,7 +2032,7 @@
         "expect" : {
             "095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
                 "storage" : {
-                    "0x" : "0x3f17f1962b36e491b30a40b2405849e597ba5fb5",
+                    "0x" : "0x00",
                     "0x01" : "0x00",
                     "0x02" : "0x01"
                 }

@@ -391,7 +391,7 @@ void Host::runAcceptor()
 		{
 			if (peerCount() > 9 * m_idealPeerCount)
 			{
-				clog(NetConnect) << "Dropping incoming connect due to maximum peer count (2 * ideal peer count): " << socket->remoteEndpoint();
+				clog(NetConnect) << "Dropping incoming connect due to maximum peer count (9 * ideal peer count): " << socket->remoteEndpoint();
 				socket->close();
 				if (ec.value() < 1)
 					runAcceptor();
