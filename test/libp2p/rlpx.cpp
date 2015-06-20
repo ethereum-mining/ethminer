@@ -484,13 +484,13 @@ BOOST_AUTO_TEST_CASE(readerWriter)
 	vector<bytes> out;
 	for (unsigned i = 1; i < drains; i++)
 	{
-		auto n = w.drain(coder, RLPXFrameWriter::MinFrameDequeLength, out);
+		auto n = w.mux(coder, RLPXFrameWriter::MinFrameDequeLength, out);
 		BOOST_REQUIRE_EQUAL(0, n);
 		BOOST_REQUIRE_EQUAL(out.size(), i);
 	}
-	BOOST_REQUIRE_EQUAL(1, w.drain(coder, RLPXFrameWriter::MinFrameDequeLength, out));
+	BOOST_REQUIRE_EQUAL(1, w.mux(coder, RLPXFrameWriter::MinFrameDequeLength, out));
 	BOOST_REQUIRE_EQUAL(out.size(), drains);
-	BOOST_REQUIRE_EQUAL(0, w.drain(coder, RLPXFrameWriter::MinFrameDequeLength, out));
+	BOOST_REQUIRE_EQUAL(0, w.mux(coder, RLPXFrameWriter::MinFrameDequeLength, out));
 	BOOST_REQUIRE_EQUAL(out.size(), drains);
 	
 	// we should now have a bunch of ciphertext in out
