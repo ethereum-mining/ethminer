@@ -49,9 +49,9 @@ public:
 	RLPXFrameReader(uint16_t _protocolType): m_protocolType(_protocolType) {}
 	
 	/// Processes a single frame returning complete packets.
-	std::vector<RLPXPacket> demux(RLPXFrameCoder& _coder, bytes& _frame, bool _sequence = false, uint16_t _seq = 0, uint32_t _totalSize = 0)
+	std::vector<RLPXPacket> demux(RLPXFrameCoder& _coder, bytesRef _frame, bool _sequence = false, uint16_t _seq = 0, uint32_t _totalSize = 0)
 	{
-		if (!_coder.authAndDecryptFrame(&_frame))
+		if (!_coder.authAndDecryptFrame(_frame))
 			BOOST_THROW_EXCEPTION(RLPXFrameDecrytFailed());
 		
 		std::vector<RLPXPacket> ret;
@@ -66,7 +66,7 @@ public:
 				RLPXPacket& p = m_incomplete.at(_seq).first;
 				if (_frame.size() > remaining)
 					return ret;
-				else if(p.streamIn(&_frame))
+				else if(p.streamIn(_frame))
 				{
 					ret.push_back(std::move(p));
 					m_incomplete.erase(_seq);
@@ -79,7 +79,7 @@ public:
 				m_incomplete.erase(_seq);
 		}
 
-		bytesConstRef buffer(&_frame);
+		bytesConstRef buffer(_frame);
 		while (!buffer.empty())
 		{
 			auto type = RLPXPacket::nextRLP(buffer);
@@ -125,8 +125,8 @@ class RLPXFrameWriter
 	
 public:
 	enum PacketPriority { PriorityLow = 0, PriorityHigh };
-	static const uint16_t EmptyFrameLength = h128::size * 3; // header + headerMAC + frameMAC
-	static const uint16_t MinFrameDequeLength = h128::size * 4; // header + headerMAC + padded-block + frameMAC
+	static const uint16_t EmptyFrameLength;
+	static const uint16_t MinFrameDequeLength;
 
 	RLPXFrameWriter(uint16_t _protocolType): m_protocolType(_protocolType) {}
 	RLPXFrameWriter(RLPXFrameWriter const& _s): m_protocolType(_s.m_protocolType) {}
