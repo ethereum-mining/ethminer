@@ -481,25 +481,28 @@ BOOST_AUTO_TEST_CASE(readerWriter)
 	
 	RLPXFrameWriter w(0);
 	w.enque(0, (RLPStream() << payload));
-	vector<bytes> out;
+	vector<bytes> encframes;
 	for (unsigned i = 1; i < drains; i++)
 	{
-		auto n = w.mux(coder, RLPXFrameWriter::MinFrameDequeLength, out);
+		auto n = w.mux(coder, RLPXFrameWriter::MinFrameDequeLength, encframes);
 		BOOST_REQUIRE_EQUAL(0, n);
-		BOOST_REQUIRE_EQUAL(out.size(), i);
+		BOOST_REQUIRE_EQUAL(encframes.size(), i);
 	}
-	BOOST_REQUIRE_EQUAL(1, w.mux(coder, RLPXFrameWriter::MinFrameDequeLength, out));
-	BOOST_REQUIRE_EQUAL(out.size(), drains);
-	BOOST_REQUIRE_EQUAL(0, w.mux(coder, RLPXFrameWriter::MinFrameDequeLength, out));
-	BOOST_REQUIRE_EQUAL(out.size(), drains);
+	BOOST_REQUIRE_EQUAL(1, w.mux(coder, RLPXFrameWriter::MinFrameDequeLength, encframes));
+	BOOST_REQUIRE_EQUAL(encframes.size(), drains);
+	BOOST_REQUIRE_EQUAL(0, w.mux(coder, RLPXFrameWriter::MinFrameDequeLength, encframes));
+	BOOST_REQUIRE_EQUAL(encframes.size(), drains);
 	
-	// we should now have a bunch of ciphertext in out
-	BOOST_REQUIRE(out.size() == drains);
-	for (auto const& c: out)
+	// we should now have a bunch of ciphertext in encframes
+	BOOST_REQUIRE(encframes.size() == drains);
+	for (auto const& c: encframes)
 		BOOST_REQUIRE(c.size() == RLPXFrameWriter::MinFrameDequeLength);
 	
-	// read and assemble dequed frames
-	
+	// read and assemble dequed encframes
+	vector<RLPXPacket> packets;
+	RLPXFrameReader r(0);
+//	for (auto const& b: encframes)
+//		packets.push_back(r.demux());
 	
 }
 
