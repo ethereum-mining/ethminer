@@ -34,20 +34,6 @@ namespace p2p
 {
 
 struct RLPXFrameDecrytFailed: virtual dev::Exception {};
-
-struct RLPXFrameInfo
-{
-	RLPXFrameInfo() = default;
-	/// Constructor. frame-size || protocol-type, [sequence-id[, total-packet-size]]
-	RLPXFrameInfo(bytesConstRef _frameHeader);
-	uint32_t length = 0;			///< Max: 2**24
-	uint8_t padding = 0;
-	
-	uint16_t protocolId = 0;
-	bool hasSequence = false;
-	uint16_t sequenceId = 0;
-	uint32_t totalLength = 0;
-};
 	
 /**
  * RLPFrameReader
