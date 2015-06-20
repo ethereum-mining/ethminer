@@ -612,22 +612,23 @@ bool Client::submitWork(ProofOfWork::Solution const& _solution)
 }
 
 unsigned static const c_syncMin = 1;
-unsigned static const c_syncMax = 100;
+unsigned static const c_syncMax = 1000;
 double static const c_targetDuration = 1;
 
 void Client::syncBlockQueue()
 {
-	ImportRoute ir;
 	cwork << "BQ ==> CHAIN ==> STATE";
+	ImportRoute ir;
+	unsigned count;
 	boost::timer t;
-	tie(ir, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, m_syncAmount);
+	tie(ir, m_syncBlockQueue, count) = m_bc.sync(m_bq, m_stateDB, m_syncAmount);
 	double elapsed = t.elapsed();
 
-	cnote << m_syncAmount << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (m_syncAmount / elapsed) << "blocks/s)";
+	cnote << count << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (count / elapsed) << "blocks/s)";
 
-	if (elapsed > c_targetDuration * 1.1 && m_syncAmount > c_syncMin)
-		m_syncAmount = max(c_syncMin, m_syncAmount * 9 / 10);
-	else if (elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
+	if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
+		m_syncAmount = max(c_syncMin, count * 9 / 10);
+	else if (count == m_syncAmount && elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
 		m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
 	if (ir.liveBlocks.empty())
 		return;

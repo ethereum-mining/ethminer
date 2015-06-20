@@ -76,6 +76,9 @@ bool EthereumPeer::isRude() const
 
 unsigned EthereumPeer::askOverride() const
 {
+	std::string static const badGeth = "Geth/v0.9.27";
+	if (session()->info().clientVersion.substr(0, badGeth.size()) == badGeth)
+		return 1;
 	bytes const& d = repMan().data(*session(), name());
 	return d.empty() ? c_maxBlocksAsk : RLP(d).toInt<unsigned>(RLP::LaisezFaire);
 }
