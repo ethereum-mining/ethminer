@@ -497,15 +497,28 @@ BOOST_AUTO_TEST_CASE(readerWriter)
 	BOOST_REQUIRE(encframes.size() == drains);
 	for (auto const& c: encframes)
 	{
-		BOOST_REQUIRE(c.size() == RLPXFrameWriter::MinFrameDequeLength);
+		BOOST_REQUIRE_EQUAL(c.size(), RLPXFrameWriter::MinFrameDequeLength);
 	}
 	
 	// read and assemble dequed encframes
 	vector<RLPXPacket> packets;
 	RLPXFrameReader r(0);
-//	for (auto const& b: encframes)
-//		packets.push_back(r.demux());
-	
+	for (auto i = 0; i < encframes.size(); i++)
+	{
+		auto size = encframes[i].size();
+		auto p = encframes[i].data();
+		bytesRef frameWithHeader(encframes[i].data(), encframes[i].size());
+		bytesRef h = frameWithHeader.cropped(0, 16);
+		bool decryptedHeader = coder.authAndDecryptHeader(h);
+		BOOST_REQUIRE(decryptedHeader);
+		bytesRef frame = frameWithHeader.cropped(16);
+		auto packets = r.demux(coder, frame);
+		if (packets.size())
+			packets += move(packets);
+	}
+	BOOST_REQUIRE_EQUAL(packets.size(), 1);
+	BOOST_REQUIRE_EQUAL(packets.front().size(), payload.size());
+	BOOST_REQUIRE_EQUAL(sha3(packets.front().data()), sha3(payload));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
