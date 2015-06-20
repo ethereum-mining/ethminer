@@ -254,7 +254,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameCoder* 
 	clog(NetMessageSummary) << "Hello: " << clientVersion << "V[" << protocolVersion << "]" << _id << showbase << capslog.str() << dec << listenPort;
 	
 	// create session so disconnects are managed
-	auto ps = make_shared<Session>(this, _io, _s, p, PeerSessionInfo({_id, clientVersion, p->endpoint.address.to_string(), listenPort, chrono::steady_clock::duration(), _rlp[2].toSet<CapDesc>(), 0, map<string, string>()}));
+	auto ps = make_shared<Session>(this, _io, _s, p, PeerSessionInfo({_id, clientVersion, p->endpoint.address.to_string(), listenPort, chrono::steady_clock::duration(), _rlp[2].toSet<CapDesc>(), 0, map<string, string>(), protocolVersion}));
 	if (protocolVersion < dev::p2p::c_protocolVersion - 1)
 	{
 		ps->disconnect(IncompatibleProtocol);
@@ -724,8 +724,16 @@ void Host::startedWorking()
 
 void Host::doWork()
 {
-	if (m_run)
-		m_ioService.run();
+	try
+	{
+		if (m_run)
+			m_ioService.run();
+	}
+	catch (std::exception const& _e)
+	{
+		clog(NetP2PWarn) << "Exception in Network Thread:" << _e.what();
+		clog(NetP2PWarn) << "Network Restart is Recommended.";
+	}
 }
 
 void Host::keepAlivePeers()
