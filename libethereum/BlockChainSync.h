@@ -109,17 +109,16 @@ protected:
 	EthereumHost const& host() const { return m_host; }
 
 	/// Estimates max number of hashes peers can give us.
-	unsigned estimateHashes() const;
+	unsigned estimatedHashes() const;
 
 	/// Request blocks from peer if needed
 	void requestBlocks(EthereumPeer* _peer);
 
 protected:
-	Handler m_bqRoomAvailable;
+	Handler m_bqRoomAvailable;				///< Triggered once block queue
 	mutable RecursiveMutex x_sync;
-	SyncState m_state = SyncState::Idle;			///< Current sync state
-	SyncState m_lastActiveState = SyncState::Idle; 	///< Saved state before entering waiting queue mode
-	unsigned m_estimatedHashes = 0;					///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
+	SyncState m_state = SyncState::Idle;	///< Current sync state
+	unsigned m_estimatedHashes = 0;			///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
 
 private:
 	static char const* const s_stateNames[static_cast<int>(SyncState::Size)];
@@ -132,6 +131,70 @@ private:
 /**
  * @brief Syncrhonization over PV60. Selects a single peer and tries to downloading hashes from it. After hash downaload is complete
  * Syncs to peers and keeps up to date
+ */
+
+/**
+ * Transitions:
+ *
+ * Idle->Hashes
+ * 		Triggered when:
+ * 			* A new peer appears that we can sync to
+ * 			* Transtition to Idle, there are peers we can sync to
+ * 		Effects:
+ * 			* Set chain sync  (m_syncingTotalDifficulty, m_syncingLatestHash, m_syncer)
+ * 			* Requests hashes from m_syncer
+ *
+ *  Hashes->Idle
+ * 		Triggered when:
+ * 			* Received too many hashes
+ * 			* Received 0 total hashes from m_syncer
+ * 			* m_syncer aborts
+ * 		Effects:
+ * 			In case of too many hashes sync is reset
+ *
+ *  Hashes->Blocks
+ * 		Triggered when:
+ * 			* Received known hash from m_syncer
+ * 			* Received 0 hashes from m_syncer and m_syncingTotalBlocks not empty
+ * 		Effects:
+ * 			* Set up download manager, clear m_syncingTotalBlocks. Set all peers to help with downloading if they can
+ *
+ *  Blocks->Idle
+ * 		Triggered when:
+ * 			* m_syncer aborts
+ * 			* m_syncer does not have required block
+ * 			* All blocks downloaded
+ * 			* Block qeueue is full with unknown blocks
+ * 		Effects:
+ * 			* Download manager is reset
+ *
+ *  Blocks->Waiting
+ * 		Triggered when:
+ * 			* Block queue is full with known blocks
+ * 		Effects:
+ * 			* Stop requesting blocks from peers
+ *
+ *  Waiting->Blocks
+ * 		Triggered when:
+ * 			* Block queue has space for new blocks
+ * 		Effects:
+ * 			* Continue requesting blocks from peers
+ *
+ *  Idle->NewBlocks
+ * 		Triggered when:
+ * 			* New block hashes arrive
+ * 		Effects:
+ * 			* Set up download manager, clear m_syncingTotalBlocks. Download blocks from a single peer. If downloaded blocks have unknown parents, set the peer to sync
+ *
+ *  NewBlocks->Idle
+ * 		Triggered when:
+ * 			* m_syncer aborts
+ * 			* m_syncer does not have required block
+ * 			* All new blocks downloaded
+ * 			* Block qeueue is full with unknown blocks
+ * 		Effects:
+ * 			* Download manager is reset
+ *
  */
 class PV60Sync: public BlockChainSync
 {
@@ -153,6 +216,7 @@ public:
 	/// @returns Sync status
 	SyncStatus status() const override;
 
+protected:
 	void onNewPeer(EthereumPeer* _peer) override;
 	void continueSync() override;
 	void peerDoneBlocks(EthereumPeer* _peer) override;
@@ -205,9 +269,10 @@ private:
 
 	h256s m_syncingNeededBlocks;				///< The blocks that we should download from this peer.
 	h256 m_syncingLastReceivedHash;				///< Hash most recently received from peer.
-	h256 m_syncingLatestHash;					///< Peer's latest block's hash, as of the current sync.
-	u256 m_syncingTotalDifficulty;				///< Peer's latest block's total difficulty, as of the current sync.
-	EthereumPeer* m_syncer = nullptr;	// TODO: switch to weak_ptr
+	h256 m_syncingLatestHash;					///< Latest block's hash of the peer we are syncing to, as of the current sync.
+	u256 m_syncingTotalDifficulty;				///< Latest block's total difficulty of the peer we aresyncing to, as of the current sync.
+	// TODO: switch to weak_ptr
+	EthereumPeer* m_syncer = nullptr;			///< Peer we are currently syncing with
 };
 }
 }
