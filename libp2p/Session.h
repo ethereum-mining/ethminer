@@ -96,13 +96,19 @@ private:
 
 	/// Perform a read on the socket.
 	void doRead();
+	
+	/// Check error code after reading and drop peer if error code.
+	bool checkRead(std::size_t _expected, boost::system::error_code _ec, std::size_t _length);
 
 	/// Perform a single round of the write operation. This could end up calling itself asynchronously.
 	void write();
 
-	/// Interpret an incoming message.
-	bool interpret(PacketType _t, RLP const& _r);
+	/// Deliver RLPX packet to Session or Capability for interpretation.
+	bool frameReceived(uint16_t _capId, PacketType _t, RLP const& _r);
 
+	/// Interpret an incoming Session packet.
+	bool interpret(PacketType _t, RLP const& _r);
+	
 	/// @returns true iff the _msg forms a valid message for sending or receiving on the network.
 	static bool checkPacket(bytesConstRef _msg);
 

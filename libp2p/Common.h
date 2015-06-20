@@ -149,14 +149,15 @@ using CapDescs = std::vector<CapDesc>;
  */
 struct PeerSessionInfo
 {
-	NodeId id;
-	std::string clientVersion;
-	std::string host;
-	unsigned short port;
+	NodeId const id;
+	std::string const clientVersion;
+	std::string const host;
+	unsigned short const port;
 	std::chrono::steady_clock::duration lastPing;
-	std::set<CapDesc> caps;
+	std::set<CapDesc> const caps;
 	unsigned socketId;
 	std::map<std::string, std::string> notes;
+	unsigned const protocolVersion;
 };
 
 using PeerSessionInfos = std::vector<PeerSessionInfo>;
