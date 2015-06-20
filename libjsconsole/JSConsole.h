@@ -25,7 +25,7 @@
 #include <libjsengine/JSV8Engine.h>
 #include <libjsengine/JSV8Printer.h>
 
-class WebThreeStubServer;
+namespace dev { class WebThreeStubServer; }
 namespace jsonrpc { class AbstractServerConnector; }
 
 namespace dev
@@ -39,15 +39,14 @@ class JSConsole
 {
 public:
 	JSConsole(WebThreeDirect& _web3, std::shared_ptr<AccountHolder> const& _accounts);
-	~JSConsole();
-	void repl() const;
+	void readExpression() const;
 
 private:
 	std::string promptForIndentionLevel(int _i) const;
 
 	JSV8Engine m_engine;
 	JSV8Printer m_printer;
-	std::unique_ptr<WebThreeStubServer> m_jsonrpcServer;
+	std::unique_ptr<dev::WebThreeStubServer> m_jsonrpcServer;
 	std::unique_ptr<jsonrpc::AbstractServerConnector> m_jsonrpcConnector;
 };
 

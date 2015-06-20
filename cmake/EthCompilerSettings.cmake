@@ -34,17 +34,21 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	# disable unknown pragma warning (4068)
 	# disable unsafe function warning (4996)
 	# disable decorated name length exceeded, name was truncated (4503)
+	# disable conversion from 'size_t' to 'type', possible loss of data (4267)
+	# disable qualifier applied to function type has no meaning; ignored (4180)
+	# disable C++ exception specification ignored except to indicate a function is not __declspec(nothrow) (4290)
+	# disable conversion from 'type1' to 'type2', possible loss of data (4244)
+	# disable forcing value to bool 'true' or 'false' (performance warning) (4800)
 	# disable warning C4535: calling _set_se_translator() requires /EHa (for boost tests)
 	# declare Windows XP requirement
 	# undefine windows.h MAX && MIN macros cause it cause conflicts with std::min && std::max functions
 	# define miniupnp static library
-	add_compile_options(/MP /EHsc /wd4068 /wd4996 /wd4503 -D_WIN32_WINNT=0x0501 /DNOMINMAX /DMINIUPNP_STATICLIB)
+	add_compile_options(/MP /EHsc /wd4068 /wd4996 /wd4503 /wd4267 /wd4180 /wd4290 /wd4244 /wd4800 -D_WIN32_WINNT=0x0501 /DNOMINMAX /DMINIUPNP_STATICLIB)
 	# disable empty object file warning
 	set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /ignore:4221")
 	# warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification 
 	# warning LNK4099: pdb was not found with lib
-	# stack size 16MB
-	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ignore:4099,4075 /STACK:33554432")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ignore:4099,4075")
 
 	# windows likes static
 	if (NOT ETH_STATIC)
@@ -62,6 +66,13 @@ if (PROFILING AND (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_C
 	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lprofiler")
 #	set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -lprofiler")
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lprofiler")
+endif ()
+
+if (PROFILING AND (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")))
+        set(CMAKE_CXX_FLAGS "-g --coverage ${CMAKE_CXX_FLAGS}")
+        set(CMAKE_C_FLAGS "-g --coverage ${CMAKE_C_FLAGS}")
+        set(CMAKE_SHARED_LINKER_FLAGS "--coverage ${CMAKE_SHARED_LINKER_FLAGS} -lprofiler")
+        set(CMAKE_EXE_LINKER_FLAGS "--coverage ${CMAKE_EXE_LINKER_FLAGS} -lprofiler")
 endif ()
 
 if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang"))

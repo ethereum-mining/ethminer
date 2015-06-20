@@ -67,7 +67,7 @@ namespace dev
 			string testPath = getTestPath();
 			testPath += "/BasicTests";
 
-			string s = asString(contents(testPath + "/rlptest.json"));
+			string s = contentsString(testPath + "/rlptest.json");
 			BOOST_REQUIRE_MESSAGE( s.length() > 0,
 				"Contents of 'rlptest.json' is empty. Have you cloned the 'tests' repo branch develop?");
 			js::read_string(s, v);

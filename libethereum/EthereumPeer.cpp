@@ -30,15 +30,28 @@
 #include "EthereumHost.h"
 #include "TransactionQueue.h"
 #include "BlockQueue.h"
+#include "BlockChainSync.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace p2p;
 
+string toString(Asking _a)
+{
+	switch (_a)
+	{
+	case Asking::Blocks: return "Blocks";
+	case Asking::Hashes: return "Hashes";
+	case Asking::Nothing: return "Nothing";
+	case Asking::State: return "State";
+	}
+	return "?";
+}
+
 EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, CapDesc const& _cap):
 	Capability(_s, _h, _i),
 	m_sub(host()->downloadMan()),
-	m_hashSub(host()->hashDownloadMan()),
 	m_peerCapabilityVersion(_cap.second)
 {
 	session()->addNote("manners", isRude() ? "RUDE" : "nice");
@@ -48,6 +61,11 @@ EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, Cap
 
 EthereumPeer::~EthereumPeer()
 {
+	if (m_asking != Asking::Nothing)
+	{
+		cnote << "Peer aborting while being asked for " << ::toString(m_asking);
+		setRude();
+	}
 	abortSync();
 }
 
@@ -64,7 +82,9 @@ unsigned EthereumPeer::askOverride() const
 
 void EthereumPeer::setRude()
 {
+	auto old = askOverride();
 	repMan().setData(*session(), name(), rlp(askOverride() / 2 + 1));
+	cnote << "Rude behaviour; askOverride now" << askOverride() << ", was" << old;
 	repMan().noteRude(*session(), name());
 	session()->addNote("manners", "RUDE");
 }
@@ -83,22 +103,8 @@ EthereumHost* EthereumPeer::host() const
  * Possible asking/syncing states for two peers:
  */
 
-string toString(Asking _a)
-{
-	switch (_a)
-	{
-	case Asking::Blocks: return "Blocks";
-	case Asking::Hashes: return "Hashes";
-	case Asking::Nothing: return "Nothing";
-	case Asking::State: return "State";
-	}
-	return "?";
-}
-
 void EthereumPeer::setIdle()
 {
-	m_sub.doneFetch();
-	m_hashSub.doneFetch();
 	setAsking(Asking::Nothing);
 }
 
@@ -106,6 +112,7 @@ void EthereumPeer::requestStatus()
 {
 	assert(m_asking == Asking::Nothing);
 	setAsking(Asking::State);
+	m_requireTransactions = true;
 	RLPStream s;
 	bool latest = m_peerCapabilityVersion == host()->protocolVersion();
 	prep(s, StatusPacket, latest ? 6 : 5)
@@ -119,14 +126,14 @@ void EthereumPeer::requestStatus()
 	sealAndSend(s);
 }
 
-void EthereumPeer::requestHashes()
+void EthereumPeer::requestHashes(u256 _number, unsigned _count)
 {
 	assert(m_asking == Asking::Nothing);
-	m_syncHashNumber = m_hashSub.nextFetch(c_maxHashesAsk);
+	m_syncHashNumber = _number;
 	m_syncHash = h256();
 	setAsking(Asking::Hashes);
 	RLPStream s;
-	prep(s, GetBlockHashesByNumberPacket, 2) << m_syncHashNumber << c_maxHashesAsk;
+	prep(s, GetBlockHashesByNumberPacket, 2) << m_syncHashNumber << _count;
 	clog(NetMessageDetail) << "Requesting block hashes for numbers " << m_syncHashNumber << "-" << m_syncHashNumber + c_maxHashesAsk - 1;
 	sealAndSend(s);
 }

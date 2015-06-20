@@ -23,13 +23,14 @@
 #include <iostream>
 #include <cstdlib>
 #include <fstream>
-#include "Exceptions.h"
 #include <stdio.h>
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <termios.h>
 #endif
+#include <boost/filesystem.hpp>
+#include "Exceptions.h"
 using namespace std;
 using namespace dev;
 
@@ -64,64 +65,54 @@ string dev::memDump(bytes const& _bytes, unsigned _width, bool _html)
 	return ret.str();
 }
 
-// Don't forget to delete[] later.
-bytesRef dev::contentsNew(std::string const& _file, bytesRef _dest)
+template <typename _T>
+inline _T contentsGeneric(std::string const& _file)
 {
+	_T ret;
+	size_t const c_elementSize = sizeof(typename _T::value_type);
 	std::ifstream is(_file, std::ifstream::binary);
 	if (!is)
-		return bytesRef();
+		return ret;
+
 	// get length of file:
-	is.seekg (0, is.end);
+	is.seekg(0, is.end);
 	streamoff length = is.tellg();
-	if (length == 0) // return early, MSVC does not like reading 0 bytes
-		return bytesRef();
-	if (!_dest.empty() && _dest.size() != (unsigned)length)
-		return bytesRef();
-	is.seekg (0, is.beg);
-	bytesRef ret = _dest.empty() ? bytesRef(new byte[length], length) : _dest;
-	is.read((char*)ret.data(), length);
-	is.close();
+	if (length == 0)
+		return ret; // do not read empty file (MSVC does not like it)
+	is.seekg(0, is.beg);
+
+	ret.resize((length + c_elementSize - 1) / c_elementSize);
+	is.read(const_cast<char*>(reinterpret_cast<char const*>(ret.data())), length);
 	return ret;
 }
 
-bytes dev::contents(std::string const& _file)
+bytes dev::contents(string const& _file)
 {
-	std::ifstream is(_file, std::ifstream::binary);
-	if (!is)
-		return bytes();
-	// get length of file:
-	is.seekg (0, is.end);
-	streamoff length = is.tellg();
-	if (length == 0) // return early, MSVC does not like reading 0 bytes
-		return bytes();
-	is.seekg (0, is.beg);
-	bytes ret(length);
-	is.read((char*)ret.data(), length);
-	is.close();
-	return ret;
+	return contentsGeneric<bytes>(_file);
 }
 
-string dev::contentsString(std::string const& _file)
+string dev::contentsString(string const& _file)
 {
-	std::ifstream is(_file, std::ifstream::binary);
-	if (!is)
-		return string();
-	// get length of file:
-	is.seekg (0, is.end);
-	streamoff length = is.tellg();
-	if (length == 0) // return early, MSVC does not like reading 0 bytes
-		return string();
-	is.seekg (0, is.beg);
-	string ret;
-	ret.resize(length);
-	is.read((char*)ret.data(), length);
-	is.close();
-	return ret;
+	return contentsGeneric<string>(_file);
 }
 
-void dev::writeFile(std::string const& _file, bytesConstRef _data)
+void dev::writeFile(std::string const& _file, bytesConstRef _data, bool _writeDeleteRename)
 {
-	ofstream(_file, ios::trunc|ios::binary).write((char const*)_data.data(), _data.size());
+	if (_writeDeleteRename)
+	{
+		namespace fs = boost::filesystem;
+		fs::path tempPath = fs::unique_path(_file + "-%%%%%%");
+		writeFile(tempPath.string(), _data, false);
+		// will delete _file if it exists
+		fs::rename(tempPath, _file);
+	}
+	else
+	{
+		ofstream s(_file, ios::trunc | ios::binary);
+		s.write(reinterpret_cast<char const*>(_data.data()), _data.size());
+		if (!s)
+			BOOST_THROW_EXCEPTION(FileError());
+	}
 }
 
 std::string dev::getPassword(std::string const& _prompt)
