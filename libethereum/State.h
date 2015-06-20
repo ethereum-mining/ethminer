@@ -206,6 +206,8 @@ public:
 			return false;
 
 		PoW::assignResult(_result, m_currentBlock);
+		if (!PoW::verify(m_currentBlock))
+			return false;
 
 		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce) << m_currentBlock.nonce << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
 

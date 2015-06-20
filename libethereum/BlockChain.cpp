@@ -305,7 +305,7 @@ LastHashes BlockChain::lastHashes(unsigned _n) const
 	return m_lastLastHashes;
 }
 
-tuple<ImportRoute, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
+tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
 //	_bq.tick(*this);
 
@@ -315,6 +315,7 @@ tuple<ImportRoute, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _sta
 	h256s fresh;
 	h256s dead;
 	h256s badBlocks;
+	unsigned count = 0;
 	for (VerifiedBlock const& block: blocks)
 		if (!badBlocks.empty())
 			badBlocks.push_back(block.verified.info.hash());
@@ -328,6 +329,7 @@ tuple<ImportRoute, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _sta
 					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
 				fresh += r.liveBlocks;
 				dead += r.deadBlocks;
+				++count;
 			}
 			catch (dev::eth::UnknownParent)
 			{
@@ -353,7 +355,7 @@ tuple<ImportRoute, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _sta
 				badBlocks.push_back(block.verified.info.hash());
 			}
 		}
-	return make_tuple(ImportRoute{dead, fresh}, _bq.doneDrain(badBlocks));
+	return make_tuple(ImportRoute{dead, fresh}, _bq.doneDrain(badBlocks), count);
 }
 
 pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir) noexcept

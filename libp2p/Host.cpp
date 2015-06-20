@@ -580,7 +580,8 @@ PeerSessionInfos Host::peerSessionInfo() const
 	for (auto& i: m_sessions)
 		if (auto j = i.second.lock())
 			if (j->isConnected())
-				ret.push_back(j->m_info);
+				DEV_GUARDED(j->x_info)
+					ret.push_back(j->m_info);
 	return ret;
 }
 
