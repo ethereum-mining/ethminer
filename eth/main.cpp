@@ -1697,11 +1697,22 @@ int main(int argc, char** argv)
 		{
 #if ETH_JSCONSOLE
 			JSLocalConsole console;
+
+			jsonrpcServer = jsonrpcServer.reset(new WebThreeStubServer(*console.connector(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager), vector<KeyPair>(), keyManager));
+			jsonrpcServer->StartListening();
+			if (jsonAdmin.empty())
+				jsonAdmin = jsonrpcServer->newSession(SessionPermissions{true});
+			else
+				jsonrpcServer->addSession(jsonAdmin, SessionPermissions{true});
+			cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
+
 			while (!g_exit)
 			{
 				console.repl();
 				stopMiningAfterXBlocks(c, n, mining);
 			}
+
+			jsonrpcServer->StopListening();
 #endif
 		}
 		else
