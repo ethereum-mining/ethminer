@@ -765,7 +765,7 @@ void Client::startMining()
 
 void Client::rejigMining()
 {
-	if ((wouldMine() || remoteActive()) && !m_bq.items().first && (!isChainBad() || mineOnBadChain()) /*&& (forceMining() || transactionsWaiting())*/)
+	if ((wouldMine() || remoteActive()) && !isSyncing() && (!isChainBad() || mineOnBadChain()) /*&& (forceMining() || transactionsWaiting())*/)
 	{
 		cnote << "Rejigging mining...";
 		DEV_WRITE_GUARDED(x_working)
