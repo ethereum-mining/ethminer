@@ -54,8 +54,8 @@ enum WhisperPacket
 {
 	StatusPacket = 0,
 	MessagesPacket,
-	AddFilterPacket,
-	RemoveFilterPacket,
+	AddTopicFilterPacket,
+	RemoveTopicFilterPacket,
 	PacketCount
 };
 
