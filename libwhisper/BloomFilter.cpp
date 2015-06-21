@@ -25,40 +25,4 @@ using namespace std;
 using namespace dev;
 using namespace dev::shh;
 
-static unsigned const c_mask[] = { 1, 2, 4, 8, 16, 32, 64, 128 };
-
-void TopicBloomFilter::addRaw(AbridgedTopic const& _h)
-{
-	*this |= _h;
-	for (unsigned i = 0; i < CounterSize; ++i)
-		if (isBitSet(_h, i))
-		{
-			if (m_refCounter[i] != numeric_limits<uint16_t>::max())
-				m_refCounter[i]++;
-			else
-				BOOST_THROW_EXCEPTION(Overflow());
-		}
-}
-
-void TopicBloomFilter::removeRaw(AbridgedTopic const& _h)
-{
-	for (unsigned i = 0; i < CounterSize; ++i)
-		if (isBitSet(_h, i))
-		{
-			if (m_refCounter[i])
-				m_refCounter[i]--;
-
-			if (!m_refCounter[i])
-				(*this)[i / 8] &= ~c_mask[i % 8];
-		}
-}
-
-bool TopicBloomFilter::isBitSet(AbridgedTopic const& _h, unsigned _index)
-{	
-	unsigned iByte = _index / 8;
-	unsigned iBit = _index % 8;
-	return (_h[iByte] & c_mask[iBit]) != 0;
-}
-
-
 
