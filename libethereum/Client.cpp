@@ -355,6 +355,14 @@ bool Client::isSyncing() const
 	return false;
 }
 
+bool Client::isMajorSyncing() const
+{
+	// TODO: only return true if it is actually doing a proper chain sync.
+	if (auto h = m_host.lock())
+		return h->isSyncing();
+	return false;
+}
+
 void Client::startedWorking()
 {
 	// Synchronise the state according to the head of the block chain.
@@ -702,7 +710,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 
 	// RESTART MINING
 
-	if (!isSyncing())
+	if (!isMajorSyncing())
 	{
 		bool preChanged = false;
 		State newPreMine;
@@ -765,7 +773,7 @@ void Client::startMining()
 
 void Client::rejigMining()
 {
-	if ((wouldMine() || remoteActive()) && !isSyncing() && (!isChainBad() || mineOnBadChain()) /*&& (forceMining() || transactionsWaiting())*/)
+	if ((wouldMine() || remoteActive()) && !isMajorSyncing() && (!isChainBad() || mineOnBadChain()) /*&& (forceMining() || transactionsWaiting())*/)
 	{
 		cnote << "Rejigging mining...";
 		DEV_WRITE_GUARDED(x_working)
