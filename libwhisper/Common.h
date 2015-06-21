@@ -59,6 +59,8 @@ enum WhisperPacket
 	PacketCount
 };
 
+enum { TopicBloomFilterSize = 8 };
+
 using AbridgedTopic = FixedHash<4>;
 using Topic = h256;
 
@@ -105,7 +107,7 @@ public:
 	void streamRLP(RLPStream& _s) const { _s << m_topicMasks; }
 	h256 sha3() const;
 	bool matches(Envelope const& _m) const;
-	AbridgedTopic exportBloom() const;
+	FixedHash<TopicBloomFilterSize> exportBloom() const;
 
 private:
 	TopicMasks m_topicMasks;
