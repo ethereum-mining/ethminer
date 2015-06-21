@@ -24,8 +24,6 @@
 #if ETH_PROFILING_GPERF
 #include <gperftools/profiler.h>
 #endif
-#include <leveldb/db.h>
-#include <leveldb/write_batch.h>
 #include <boost/timer.hpp>
 #include <boost/filesystem.hpp>
 #include <test/JsonSpiritHeaders.h>
