@@ -22,15 +22,10 @@
 
 #pragma once
 
-#pragma warning(push)
-#pragma warning(disable: 4100 4267)
-#include <leveldb/db.h>
-#pragma warning(pop)
+#include <libdevcore/db.h>
 #include <json/json.h>
 #include <libdevcore/FixedHash.h>
 #include "Context.h"
-
-namespace ldb = leveldb;
 
 class NatspecHandler: public NatSpecFace
 {

@@ -21,15 +21,11 @@
 
 #pragma once
 
-#pragma warning(push)
-#pragma warning(disable: 4100 4267)
-#include <leveldb/db.h>
-#pragma warning(pop)
-
 #include <deque>
 #include <chrono>
 #include <unordered_map>
 #include <unordered_set>
+#include <libdevcore/db.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Guards.h>
@@ -41,7 +37,6 @@
 #include "Transaction.h"
 #include "BlockQueue.h"
 #include "VerifiedBlock.h"
-namespace ldb = leveldb;
 
 namespace std
 {

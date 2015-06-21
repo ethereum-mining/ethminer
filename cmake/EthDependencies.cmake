@@ -49,6 +49,12 @@ find_package (LevelDB REQUIRED)
 message(" - LevelDB header: ${LEVELDB_INCLUDE_DIRS}")
 message(" - LevelDB lib: ${LEVELDB_LIBRARIES}")
 
+find_package (RocksDB)
+if (ROCKSDB_FOUND)
+	message(" - RocksDB header: ${ROCKSDB_INCLUDE_DIRS}")
+	message(" - RocksDB lib: ${ROCKSDB_LIBRARIES}")
+endif()
+
 if (JSCONSOLE)
 	find_package (v8 REQUIRED)
 	message(" - v8 header: ${V8_INCLUDE_DIRS}")
