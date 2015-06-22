@@ -68,9 +68,7 @@ DownloadMan& BlockChainSync::downloadMan()
 
 void BlockChainSync::abortSync()
 {
-	DEV_INVARIANT_CHECK;
 	downloadMan().resetToChain(h256s());
-	DEV_INVARIANT_CHECK;
 }
 
 void BlockChainSync::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
