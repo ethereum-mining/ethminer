@@ -28,12 +28,12 @@ ColumnLayout
 		if (transactions)
 		{
 			if (index >= 0)
-				return 30 + 30 * transactions.count + openedTr
+				return trHeight + trHeight * transactions.count + openedTr
 			else
-				return 30
+				return trHeight
 		}
 		else
-			return 30
+			return trHeight
 	}
 
 	onOpenedTrChanged:
@@ -44,6 +44,19 @@ ColumnLayout
 
 	DebuggerPaneStyle {
 		id: dbgStyle
+	}
+
+	Rectangle
+	{
+		id: top
+		Layout.preferredWidth: blockWidth
+		height: 10
+		anchors.bottom: rowHeader.top
+		color: "#DEDCDC"
+		radius: 15
+		anchors.left: parent.left
+		anchors.leftMargin: statusWidth
+		anchors.bottomMargin: -5
 	}
 
 	RowLayout
@@ -201,12 +214,11 @@ ColumnLayout
 				{
 					anchors.top: parent.top
 					width: parent.width
-					spacing: 7
+					spacing: 20
 					RowLayout
 					{
 						anchors.top: parent.top
 						Layout.fillWidth: true
-						//spacing: cellSpacing
 						Rectangle
 						{
 							Layout.preferredWidth: fromWidth
@@ -389,6 +401,19 @@ ColumnLayout
 				}
 			}
 		}
+	}
+
+	Rectangle
+	{
+		id: right
+		Layout.preferredWidth: blockWidth
+		height: 10
+		anchors.top: parent.bottom
+		anchors.topMargin: 5
+		color: "#DEDCDC"
+		radius: 15
+		anchors.left: parent.left
+		anchors.leftMargin: statusWidth
 	}
 }
 
