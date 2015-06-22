@@ -205,7 +205,16 @@ Json::Value WebThreeStubServer::admin_eth_newAccount(Json::Value const& _info, s
 bool WebThreeStubServer::admin_eth_setMiningBenefactor(std::string const& _uuidOrAddress, std::string const& _session)
 {
 	ADMIN;
-	(void)_uuidOrAddress;
+	Address a;
+	h128 uuid = fromUUID(_uuidOrAddress);
+	if (uuid)
+		a = m_keyMan.address(uuid);
+	else if (isHash<Address>(_uuidOrAddress))
+		a = Address(_uuidOrAddress);
+	else
+		throw jsonrpc::JsonRpcException("Invalid UUID or address");
+	if (m_setMiningBenefactor)
+		m_setMiningBenefactor(a);
 	return true;
 }
 

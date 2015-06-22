@@ -39,12 +39,11 @@ JSConsole::JSConsole(WebThreeDirect& _web3, shared_ptr<AccountHolder> const& _ac
 	m_printer(m_engine)
 {
 	m_jsonrpcConnector.reset(new JSV8Connector(m_engine));
-	m_jsonrpcServer.reset(new WebThreeStubServer(*m_jsonrpcConnector.get(), _web3, _accounts, vector<KeyPair>()));
+	(void)_web3; (void)_accounts;
+//	m_jsonrpcServer.reset(new WebThreeStubServer(*m_jsonrpcConnector.get(), _web3, _accounts, vector<KeyPair>()));
 }
 
-JSConsole::~JSConsole() {}
-
-void JSConsole::repl() const
+void JSConsole::readExpression() const
 {
 	string cmd = "";
 	g_logPost = [](std::string const& a, char const*) { cout << "\r           \r" << a << endl << flush; rl_forced_update_display(); };
