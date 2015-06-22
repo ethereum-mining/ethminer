@@ -95,9 +95,9 @@ TopicFilter::TopicFilter(RLP const& _r)
 	}
 }
 
-AbridgedTopic TopicFilter::exportBloom() const
+FixedHash<TopicBloomFilter::size> TopicFilter::exportBloom() const
 {
-	AbridgedTopic ret;
+	FixedHash<TopicBloomFilter::size> ret;
 	for (TopicMask const& t: m_topicMasks)
 		for (auto const& i: t)
 			ret |= i.first.template bloomPart<TopicBloomFilter::BitsPerBloom, TopicBloomFilter::size>();		

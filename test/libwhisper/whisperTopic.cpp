@@ -25,6 +25,8 @@
 #include <libp2p/Host.h>
 #include <libwhisper/WhisperPeer.h>
 #include <libwhisper/WhisperHost.h>
+#include <test/TestHelper.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -40,6 +42,9 @@ BOOST_FIXTURE_TEST_SUITE(whisper, P2PFixture)
 
 BOOST_AUTO_TEST_CASE(topic)
 {
+	if (test::Options::get().nonetwork)
+		return;
+
 	cnote << "Testing Whisper...";
 	VerbosityHolder setTemporaryLevel(0);
 
@@ -103,6 +108,9 @@ BOOST_AUTO_TEST_CASE(topic)
 
 BOOST_AUTO_TEST_CASE(forwarding)
 {
+	if (test::Options::get().nonetwork)
+		return;
+
 	cnote << "Testing Whisper forwarding...";
 	VerbosityHolder setTemporaryLevel(0);
 
@@ -203,6 +211,9 @@ BOOST_AUTO_TEST_CASE(forwarding)
 
 BOOST_AUTO_TEST_CASE(asyncforwarding)
 {
+	if (test::Options::get().nonetwork)
+		return;
+
 	cnote << "Testing Whisper async forwarding...";
 	VerbosityHolder setTemporaryLevel(2);
 
