@@ -93,13 +93,13 @@ RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, code_iterator _codeB
 
 	// Unpack data
 	auto rtPtr = getRuntimePtr();
-	m_dataPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 0), "data");
+	m_dataPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(getRuntimeType(), rtPtr, 0), "data");
 	assert(m_dataPtr->getType() == Type::RuntimeDataPtr);
-	m_gasPtr = m_builder.CreateStructGEP(m_dataPtr, 0, "gas");
+	m_gasPtr = m_builder.CreateStructGEP(getRuntimeDataType(), m_dataPtr, 0, "gas");
 	assert(m_gasPtr->getType() == Type::Gas->getPointerTo());
-	m_memPtr = m_builder.CreateStructGEP(rtPtr, 2, "mem");
+	m_memPtr = m_builder.CreateStructGEP(getRuntimeType(), rtPtr, 2, "mem");
 	assert(m_memPtr->getType() == Array::getType()->getPointerTo());
-	m_envPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 1), "env");
+	m_envPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(getRuntimeType(), rtPtr, 1), "env");
 	assert(m_envPtr->getType() == Type::EnvPtr);
 
 	m_stackSize = m_builder.CreateAlloca(Type::Size, nullptr, "stackSize");
@@ -160,7 +160,7 @@ llvm::Value* RuntimeManager::getDataPtr()
 		return m_dataPtr;
 
 	auto rtPtr = getRuntimePtr();
-	auto dataPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 0), "data");
+	auto dataPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(getRuntimeType(), rtPtr, 0), "data");
 	assert(dataPtr->getType() == getRuntimeDataType()->getPointerTo());
 	return dataPtr;
 }
@@ -173,7 +173,7 @@ llvm::Value* RuntimeManager::getEnvPtr()
 
 llvm::Value* RuntimeManager::getPtr(RuntimeData::Index _index)
 {
-	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), _index);
+	auto ptr = getBuilder().CreateStructGEP(getRuntimeDataType(), getDataPtr(), _index);
 	assert(getRuntimeDataType()->getElementType(_index)->getPointerTo() == ptr->getType());
 	return ptr;
 }
