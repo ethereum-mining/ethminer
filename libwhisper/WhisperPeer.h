@@ -60,7 +60,10 @@ public:
 
 	WhisperHost* host() const;
 
-	void setBloom(FixedHash<TopicBloomFilterSize> const& _b) { m_bloom = _b; }
+	FixedHash<TopicBloomFilterSize> const& bloom() const { return m_bloom; }
+
+	/// called by the host, sends our bloom filter to remote peer
+	void advertizeTopicsOfInterest(FixedHash<TopicBloomFilterSize> const& _bloom);
 
 private:
 	virtual bool interpret(unsigned _id, RLP const&) override;
@@ -74,8 +77,8 @@ private:
 	std::multimap<unsigned, h256> m_unseen;	///< Rated according to what they want.
 
 	std::chrono::system_clock::time_point m_timer = std::chrono::system_clock::now();
-
-	FixedHash<TopicBloomFilterSize> m_bloom;
+	
+	FixedHash<TopicBloomFilterSize> m_bloom; ///< Peer's topics of interest
 };
 
 }

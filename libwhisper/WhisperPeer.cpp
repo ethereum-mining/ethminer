@@ -70,6 +70,11 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 			host()->inject(Envelope(i), this);
 		break;
 	}
+	case UpdateTopicFilterPacket:
+	{
+		m_bloom = (FixedHash<TopicBloomFilterSize>)_r;
+		break;
+	}
 	default:
 		return false;
 	}
@@ -103,4 +108,12 @@ void WhisperPeer::noteNewMessage(h256 _h, Envelope const& _m)
 {
 	Guard l(x_unseen);
 	m_unseen.insert(make_pair(rating(_m), _h));
+}
+
+void WhisperPeer::advertizeTopicsOfInterest(FixedHash<TopicBloomFilterSize> const& _bloom)
+{
+	RLPStream s;
+	prep(s, UpdateTopicFilterPacket, 1);
+	s << _bloom;
+	sealAndSend(s);
 }
