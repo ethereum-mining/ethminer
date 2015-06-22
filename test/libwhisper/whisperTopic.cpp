@@ -336,21 +336,19 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 	while (!host2.peerCount())
 		this_thread::sleep_for(chrono::milliseconds(10));
 
-	while (!whost1->peerSessions().size())
-		this_thread::sleep_for(chrono::milliseconds(10));
+	std::vector<std::pair<std::shared_ptr<Session>, std::shared_ptr<Peer>>> sessions;
 
-	for (int i = 0; i < 200; ++i)
+	for (int i = 0; i < 300; ++i)
 	{
-		this_thread::sleep_for(chrono::milliseconds(10));
-		auto sessions1 = whost1->peerSessions();
-		size_t x = sessions1.size();
-		BOOST_REQUIRE(x > 0);
-		if (whost1->peerSessions()[x-1].first->cap<WhisperPeer>()->bloom())
+		sessions = whost1->peerSessions();
+		if (!sessions.empty() && sessions.back().first->cap<WhisperPeer>()->bloom())
 			break;
+		else
+			this_thread::sleep_for(chrono::milliseconds(10));		
 	}
 
-	BOOST_REQUIRE(whost1->peerSessions().size());
-	FixedHash<TopicBloomFilterSize> bf1 = whost1->peerSessions().back().first->cap<WhisperPeer>()->bloom();
+	BOOST_REQUIRE(sessions.size());
+	FixedHash<TopicBloomFilterSize> bf1 = sessions.back().first->cap<WhisperPeer>()->bloom();
 	FixedHash<TopicBloomFilterSize> bf2 = whost2->bloom();
 	BOOST_REQUIRE_EQUAL(bf1, bf2);
 	BOOST_REQUIRE(bf1);
@@ -360,16 +358,17 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 
 	for (int i = 0; i < 300; ++i)
 	{
-		this_thread::sleep_for(chrono::milliseconds(10));
-		if (whost2->peerSessions().back().first->cap<WhisperPeer>()->bloom())
+		sessions = whost2->peerSessions();
+		if (!sessions.empty() && sessions.back().first->cap<WhisperPeer>()->bloom())
 			break;
+		else
+			this_thread::sleep_for(chrono::milliseconds(10));		
 	}
 
-	auto sessions2 = whost2->peerSessions();
-	BOOST_REQUIRE(sessions2.size());
-	BOOST_REQUIRE_EQUAL(sessions2.back().second->id, host1.id());
+	BOOST_REQUIRE(sessions.size());
+	BOOST_REQUIRE_EQUAL(sessions.back().second->id, host1.id());
 
-	bf2 = sessions2.back().first->cap<WhisperPeer>()->bloom();
+	bf2 = sessions.back().first->cap<WhisperPeer>()->bloom();
 	bf1 = whost1->bloom();
 	BOOST_REQUIRE_EQUAL(bf1, bf2);
 	BOOST_REQUIRE(bf1);
