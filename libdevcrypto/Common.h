@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <mutex>
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/Exceptions.h>
@@ -180,14 +181,36 @@ struct InvalidState: public dev::Exception {};
 h256 kdf(Secret const& _priv, h256 const& _hash);
 
 /**
- * @brief Generator for nonce material
+ * @brief Generator for nonce material.
  */
 struct Nonce
 {
-	static h256 get(bool _commit = false);
+	/// Returns the next nonce (might be read from a file).
+	static h256 get();
+	/// Stores the current nonce in a file and resets Nonce to the uninitialised state.
+	static void reset();
+	/// Sets the location of the seed file to a non-default place. Used for testing.
+	static void setSeedFilePath(std::string const& _filePath);
+
 private:
 	Nonce() {}
 	~Nonce();
+	/// @returns the singleton instance.
+	static Nonce& singleton();
+	/// Reads the last seed from the seed file.
+	void initialiseIfNeeded();
+	/// @returns the next nonce.
+	h256 next();
+	/// Stores the current seed in the seed file.
+	void resetInternal();
+	/// @returns the path of the seed file.
+	static std::string const& seedFile();
+
+	/// Mutex for the singleton object.
+	/// @note Every access to any private function has to be guarded by this mutex.
+	static std::mutex s_x;
+
+	h256 m_value;
 };
 }
 

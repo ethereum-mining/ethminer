@@ -23,11 +23,7 @@
 
 #pragma once
 
-#pragma warning(push)
-#pragma warning(disable: 4100 4267)
-#include <leveldb/db.h>
-#pragma warning(pop)
-
+#include <libdevcore/db.h>
 #include "WebThreeStubServerBase.h"
 
 namespace dev
@@ -60,6 +56,8 @@ public:
 	std::string newSession(SessionPermissions const& _p);
 	void addSession(std::string const& _session, SessionPermissions const& _p) { m_sessions[_session] = _p; }
 
+	virtual void setMiningBenefactorChanger(std::function<void(Address const&)> const& _f) { m_setMiningBenefactor = _f; }
+
 private:
 	virtual bool hasPriviledgeLevel(std::string const& _session, Priviledge _l) const override { auto it = m_sessions.find(_session); return it != m_sessions.end() && it->second.priviledges.count(_l); }
 
@@ -80,9 +78,9 @@ private:
 	virtual std::string admin_eth_blockQueueFirstUnknown(std::string const& _session) override;
 	virtual bool admin_eth_blockQueueRetryUnknown(std::string const& _session) override;
 
+	virtual bool admin_eth_setMiningBenefactor(std::string const& _uuidOrAddress, std::string const& _session) override;
 	virtual Json::Value admin_eth_allAccounts(std::string const& _session) override;
 	virtual Json::Value admin_eth_newAccount(const Json::Value& _info, std::string const& _session) override;
-	virtual bool admin_eth_setMiningBenefactor(std::string const& _uuidOrAddress, std::string const& _session) override;
 	virtual Json::Value admin_eth_inspect(std::string const& _address, std::string const& _session) override;
 	virtual Json::Value admin_eth_reprocess(std::string const& _blockNumberOrHash, std::string const& _session) override;
 	virtual Json::Value admin_eth_vmTrace(std::string const& _blockNumberOrHash, int _txIndex, std::string const& _session) override;
@@ -97,10 +95,11 @@ private:
 	dev::WebThreeDirect& m_web3;
 	dev::eth::KeyManager& m_keyMan;
 	dev::eth::TrivialGasPricer& m_gp;
-	leveldb::ReadOptions m_readOptions;
-	leveldb::WriteOptions m_writeOptions;
-	leveldb::DB* m_db;
+	ldb::ReadOptions m_readOptions;
+	ldb::WriteOptions m_writeOptions;
+	ldb::DB* m_db;
 
+	std::function<void(Address const&)> m_setMiningBenefactor;
 	std::unordered_map<std::string, SessionPermissions> m_sessions;
 };
 

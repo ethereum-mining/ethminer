@@ -36,7 +36,7 @@ __constant uint2 const Keccak_f1600_RC[24] = {
 	(uint2)(0x80008008, 0x80000000),
 };
 
-void keccak_f1600_round(uint2* a, uint r, uint out_size)
+static void keccak_f1600_round(uint2* a, uint r, uint out_size)
 {
    #if !__ENDIAN_LITTLE__
 	for (uint i = 0; i != 25; ++i)
@@ -152,7 +152,7 @@ void keccak_f1600_round(uint2* a, uint r, uint out_size)
    #endif
 }
 
-void keccak_f1600_no_absorb(ulong* a, uint in_size, uint out_size, uint isolate)
+static void keccak_f1600_no_absorb(ulong* a, uint in_size, uint out_size, uint isolate)
 {
 	for (uint i = in_size; i != 25; ++i)
 	{
@@ -194,17 +194,17 @@ void keccak_f1600_no_absorb(ulong* a, uint in_size, uint out_size, uint isolate)
 
 #define countof(x) (sizeof(x) / sizeof(x[0]))
 
-uint fnv(uint x, uint y)
+static uint fnv(uint x, uint y)
 {
 	return x * FNV_PRIME ^ y;
 }
 
-uint4 fnv4(uint4 x, uint4 y)
+static uint4 fnv4(uint4 x, uint4 y)
 {
 	return x * FNV_PRIME ^ y;
 }
 
-uint fnv_reduce(uint4 v)
+static uint fnv_reduce(uint4 v)
 {
 	return fnv(fnv(fnv(v.x, v.y), v.z), v.w);
 }
@@ -227,7 +227,7 @@ typedef union
 	uint4 uint4s[128 / sizeof(uint4)];
 } hash128_t;
 
-hash64_t init_hash(__constant hash32_t const* header, ulong nonce, uint isolate)
+static hash64_t init_hash(__constant hash32_t const* header, ulong nonce, uint isolate)
 {
 	hash64_t init;
 	uint const init_size = countof(init.ulongs);
@@ -243,7 +243,7 @@ hash64_t init_hash(__constant hash32_t const* header, ulong nonce, uint isolate)
 	return init;
 }
 
-uint inner_loop_chunks(uint4 init, uint thread_id, __local uint* share, __global hash128_t const* g_dag, __global hash128_t const* g_dag1, __global hash128_t const* g_dag2, __global hash128_t const* g_dag3, uint isolate)
+static uint inner_loop_chunks(uint4 init, uint thread_id, __local uint* share, __global hash128_t const* g_dag, __global hash128_t const* g_dag1, __global hash128_t const* g_dag2, __global hash128_t const* g_dag3, uint isolate)
 {
 	uint4 mix = init;
 
@@ -277,7 +277,7 @@ uint inner_loop_chunks(uint4 init, uint thread_id, __local uint* share, __global
 
 
 
-uint inner_loop(uint4 init, uint thread_id, __local uint* share, __global hash128_t const* g_dag, uint isolate)
+static uint inner_loop(uint4 init, uint thread_id, __local uint* share, __global hash128_t const* g_dag, uint isolate)
 {
 	uint4 mix = init;
 
@@ -311,7 +311,7 @@ uint inner_loop(uint4 init, uint thread_id, __local uint* share, __global hash12
 }
 
 
-hash32_t final_hash(hash64_t const* init, hash32_t const* mix, uint isolate)
+static hash32_t final_hash(hash64_t const* init, hash32_t const* mix, uint isolate)
 {
 	ulong state[25];
 
@@ -330,7 +330,7 @@ hash32_t final_hash(hash64_t const* init, hash32_t const* mix, uint isolate)
 	return hash;
 }
 
-hash32_t compute_hash_simple(
+static hash32_t compute_hash_simple(
 	__constant hash32_t const* g_header,
 	__global hash128_t const* g_dag,
 	ulong nonce,
@@ -383,7 +383,7 @@ typedef union
 } compute_hash_share;
 
 
-hash32_t compute_hash(
+static hash32_t compute_hash(
 	__local compute_hash_share* share,
 	__constant hash32_t const* g_header,
 	__global hash128_t const* g_dag,
@@ -427,7 +427,7 @@ hash32_t compute_hash(
 }
 
 
-hash32_t compute_hash_chunks(
+static hash32_t compute_hash_chunks(
 	__local compute_hash_share* share,
 	__constant hash32_t const* g_header,
 	__global hash128_t const* g_dag,

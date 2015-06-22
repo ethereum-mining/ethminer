@@ -219,6 +219,7 @@ public:
 
 	DownloadMan const* downloadMan() const;
 	bool isSyncing() const;
+	bool isMajorSyncing() const;
 	/// Sets the network id.
 	void setNetworkId(u256 _n);
 	/// Clears pending transactions. Just for debug use.

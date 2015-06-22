@@ -47,7 +47,8 @@ extern const unsigned c_databaseVersion;
 enum class Network
 {
 	Olympic = 0,
-	Frontier = 1
+	Frontier = 1,
+	Turbo = 2
 };
 extern const Network c_network;
 
@@ -100,7 +101,8 @@ enum class ImportResult
 {
 	Success = 0,
 	UnknownParent,
-	FutureTime,
+	FutureTimeKnown,
+	FutureTimeUnknown,
 	AlreadyInChain,
 	AlreadyKnown,
 	Malformed,
