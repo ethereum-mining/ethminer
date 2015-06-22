@@ -37,17 +37,17 @@ ColumnLayout {
 
 	onWidthChanged:
 	{
-
-		if (width <= 630 || previousWidth <= 630)
+		var minWidth = scenarioMinWidth - 20 // margin
+		if (width <= minWidth || previousWidth <= minWidth)
 		{
-			fromWidth = 150
+			fromWidth = 100
 			toWidth = 100
 			valueWidth = 200
 		}
 		else
 		{
 			var diff = (width - previousWidth) / 3;
-			fromWidth = fromWidth + diff < 150 ? 150 : fromWidth + diff
+			fromWidth = fromWidth + diff < 100 ? 100 : fromWidth + diff
 			toWidth = toWidth + diff < 100 ? 100 : toWidth + diff
 			valueWidth = valueWidth + diff < 200 ? 200 : valueWidth + diff
 		}
@@ -97,7 +97,7 @@ ColumnLayout {
 		}
 		Rectangle
 		{
-			Layout.preferredWidth: fromWidth + cellSpacing
+			Layout.preferredWidth: fromWidth
 			Label
 			{
 				anchors.verticalCenter: parent.verticalCenter
@@ -139,12 +139,12 @@ ColumnLayout {
 		{
 			id: blockChainScrollView
 			anchors.fill: parent
-			anchors.topMargin: 10
+			anchors.topMargin: 8
 			ColumnLayout
 			{
 				id: blockChainLayout
 				width: parent.width
-				spacing: 10
+				spacing: 20
 
 				Block
 				{
