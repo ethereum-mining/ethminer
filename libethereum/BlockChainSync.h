@@ -60,22 +60,22 @@ public:
 	virtual bool isSyncing() const = 0;
 
 	/// Called by peer to report status
-	virtual void onPeerStatus(EthereumPeer* _peer);
+	virtual void onPeerStatus(std::shared_ptr<EthereumPeer> _peer);
 
 	/// Called by peer once it has new blocks during syn
-	virtual void onPeerBlocks(EthereumPeer* _peer, RLP const& _r);
+	virtual void onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
 
 	/// Called by peer once it has new blocks
-	virtual void onPeerNewBlock(EthereumPeer* _peer, RLP const& _r);
+	virtual void onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
 
 	/// Called by peer once it has new hashes
-	virtual void onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes) = 0;
+	virtual void onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes) = 0;
 
 	/// Called by peer once it has another sequential block of hashes during sync
-	virtual void onPeerHashes(EthereumPeer* _peer, h256s const& _hashes) = 0;
+	virtual void onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes) = 0;
 
 	/// Called by peer when it is disconnecting
-	virtual void onPeerAborting(EthereumPeer* _peer) = 0;
+	virtual void onPeerAborting() = 0;
 
 	/// @returns Synchonization status
 	virtual SyncStatus status() const = 0;
@@ -85,10 +85,10 @@ public:
 protected:
 	//To be implemented in derived classes:
 	/// New valid peer appears
-	virtual void onNewPeer(EthereumPeer* _peer) = 0;
+	virtual void onNewPeer(std::shared_ptr<EthereumPeer> _peer) = 0;
 
 	/// Peer done downloading blocks
-	virtual void peerDoneBlocks(EthereumPeer* _peer) = 0;
+	virtual void peerDoneBlocks(std::shared_ptr<EthereumPeer> _peer) = 0;
 
 	/// Resume downloading after witing state
 	virtual void continueSync() = 0;
@@ -103,7 +103,7 @@ protected:
 	virtual void pauseSync() = 0;
 
 	/// Restart sync for given peer
-	virtual void resetSyncFor(EthereumPeer* _peer, h256 const& _latestHash, u256 const& _td) = 0;
+	virtual void resetSyncFor(std::shared_ptr<EthereumPeer> _peer, h256 const& _latestHash, u256 const& _td) = 0;
 
 	EthereumHost& host() { return m_host; }
 	EthereumHost const& host() const { return m_host; }
@@ -112,7 +112,7 @@ protected:
 	unsigned estimatedHashes() const;
 
 	/// Request blocks from peer if needed
-	void requestBlocks(EthereumPeer* _peer);
+	void requestBlocks(std::shared_ptr<EthereumPeer> _peer);
 
 protected:
 	Handler m_bqRoomAvailable;				///< Triggered once block queue
@@ -123,6 +123,8 @@ protected:
 private:
 	static char const* const s_stateNames[static_cast<int>(SyncState::Size)];
 	bool invariants() const override = 0;
+	void logNewBlock(h256 const& _h);
+
 	EthereumHost& m_host;
 	HashDownloadMan m_hashMan;
 };
@@ -202,65 +204,65 @@ public:
 	PV60Sync(EthereumHost& _host);
 
 	/// @returns true is Sync is in progress
-	bool isSyncing() const override { return !!m_syncer; }
+	bool isSyncing() const override { return !!m_syncer.lock(); }
 
 	/// Called by peer once it has new hashes
-	void onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes) override;
+	void onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes) override;
 
 	/// Called by peer once it has another sequential block of hashes during sync
-	void onPeerHashes(EthereumPeer* _peer, h256s const& _hashes) override;
+	void onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes) override;
 
 	/// Called by peer when it is disconnecting
-	void onPeerAborting(EthereumPeer* _peer) override;
+	void onPeerAborting() override;
 
 	/// @returns Sync status
 	SyncStatus status() const override;
 
 protected:
-	void onNewPeer(EthereumPeer* _peer) override;
+	void onNewPeer(std::shared_ptr<EthereumPeer> _peer) override;
 	void continueSync() override;
-	void peerDoneBlocks(EthereumPeer* _peer) override;
+	void peerDoneBlocks(std::shared_ptr<EthereumPeer> _peer) override;
 	void restartSync() override;
 	void completeSync() override;
 	void pauseSync() override;
-	void resetSyncFor(EthereumPeer* _peer, h256 const& _latestHash, u256 const& _td) override;
+	void resetSyncFor(std::shared_ptr<EthereumPeer> _peer, h256 const& _latestHash, u256 const& _td) override;
 
 private:
 	/// Transition sync state in a particular direction. @param _peer Peer that is responsible for state tranfer
-	void transition(EthereumPeer* _peer, SyncState _s, bool _force = false, bool _needHelp = true);
+	void transition(std::shared_ptr<EthereumPeer> _peer, SyncState _s, bool _force = false, bool _needHelp = true);
 
 	/// Reset peer syncing requirements state.
-	void resetNeedsSyncing(EthereumPeer* _peer) { setNeedsSyncing(_peer, h256(), 0); }
+	void resetNeedsSyncing(std::shared_ptr<EthereumPeer> _peer) { setNeedsSyncing(_peer, h256(), 0); }
 
 	/// Update peer syncing requirements state.
-	void setNeedsSyncing(EthereumPeer* _peer, h256 const& _latestHash, u256 const& _td);
+	void setNeedsSyncing(std::shared_ptr<EthereumPeer> _peer, h256 const& _latestHash, u256 const& _td);
 
 	/// Do we presently need syncing with this peer?
-	bool needsSyncing(EthereumPeer* _peer) const;
+	bool needsSyncing(std::shared_ptr<EthereumPeer> _peer) const;
 
 	/// Check whether the session should bother grabbing blocks from a peer.
-	bool shouldGrabBlocks(EthereumPeer* _peer) const;
+	bool shouldGrabBlocks(std::shared_ptr<EthereumPeer> _peer) const;
 
 	/// Attempt to begin syncing with the peer; first check the peer has a more difficlult chain to download, then start asking for hashes, then move to blocks
-	void attemptSync(EthereumPeer* _peer);
+	void attemptSync(std::shared_ptr<EthereumPeer> _peer);
 
 	/// Update our syncing state
-	void setState(EthereumPeer* _peer, SyncState _s, bool _isSyncing = false, bool _needHelp = false);
+	void setState(std::shared_ptr<EthereumPeer> _peer, SyncState _s, bool _isSyncing = false, bool _needHelp = false);
 
 	/// Check if peer is main syncer
-	bool isSyncing(EthereumPeer* _peer) const;
+	bool isSyncing(std::shared_ptr<EthereumPeer> _peer) const;
 
 	/// Check if we need (re-)syncing with the peer.
-	void noteNeedsSyncing(EthereumPeer* _who);
+	void noteNeedsSyncing(std::shared_ptr<EthereumPeer> _who);
 
 	/// Set main syncing peer
-	void changeSyncer(EthereumPeer* _syncer, bool _needHelp);
+	void changeSyncer(std::shared_ptr<EthereumPeer> _syncer, bool _needHelp);
 
 	/// Called when peer done downloading blocks
-	void noteDoneBlocks(EthereumPeer* _who, bool _clemency);
+	void noteDoneBlocks(std::shared_ptr<EthereumPeer> _who, bool _clemency);
 
-	/// Abort syncing for peer
-	void abortSync(EthereumPeer* _peer);
+	/// Abort syncing
+	void abortSync();
 
 	/// Reset hash chain syncing
 	void resetSync();
@@ -271,8 +273,8 @@ private:
 	h256 m_syncingLastReceivedHash;				///< Hash most recently received from peer.
 	h256 m_syncingLatestHash;					///< Latest block's hash of the peer we are syncing to, as of the current sync.
 	u256 m_syncingTotalDifficulty;				///< Latest block's total difficulty of the peer we aresyncing to, as of the current sync.
-	// TODO: switch to weak_ptr
-	EthereumPeer* m_syncer = nullptr;			///< Peer we are currently syncing with
+	h256Hash m_knownNewHashes; 					///< New hashes we know about use for logging only
+	std::weak_ptr<EthereumPeer> m_syncer;		///< Peer we are currently syncing with
 };
 }
 }

@@ -69,12 +69,11 @@ DownloadMan& BlockChainSync::downloadMan()
 void BlockChainSync::abortSync()
 {
 	DEV_INVARIANT_CHECK;
-	host().foreachPeer([this](EthereumPeer* _p) { onPeerAborting(_p); return true; });
 	downloadMan().resetToChain(h256s());
 	DEV_INVARIANT_CHECK;
 }
 
-void BlockChainSync::onPeerStatus(EthereumPeer* _peer)
+void BlockChainSync::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
 {
 	RecursiveGuard l(x_sync);
 	DEV_INVARIANT_CHECK;
@@ -111,7 +110,7 @@ unsigned BlockChainSync::estimatedHashes() const
 	return blockCount;
 }
 
-void BlockChainSync::requestBlocks(EthereumPeer* _peer)
+void BlockChainSync::requestBlocks(std::shared_ptr<EthereumPeer> _peer)
 {
 	if (host().bq().knownFull())
 	{
@@ -130,7 +129,13 @@ void BlockChainSync::requestBlocks(EthereumPeer* _peer)
 	}
 }
 
-void BlockChainSync::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
+void BlockChainSync::logNewBlock(h256 const& _h)
+{
+	if (m_state == SyncState::NewBlocks)
+		clog(NetAllDetail) << "NewBlock: " << _h;
+}
+
+void BlockChainSync::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
 	RecursiveGuard l(x_sync);
 	DEV_INVARIANT_CHECK;
@@ -138,7 +143,7 @@ void BlockChainSync::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 	clog(NetMessageSummary) << "Blocks (" << dec << itemCount << "entries)" << (itemCount ? "" : ": NoMoreBlocks");
 
 	_peer->setIdle();
-	if (m_state != SyncState::Blocks && m_state != SyncState::NewBlocks)
+	if (m_state != SyncState::Blocks && m_state != SyncState::NewBlocks && m_state != SyncState::Waiting)
 		clog(NetWarn) << "Unexpected Blocks received!";
 	if (m_state == SyncState::Waiting)
 	{
@@ -173,14 +178,17 @@ void BlockChainSync::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 			{
 			case ImportResult::Success:
 				success++;
+				logNewBlock(h);
 				break;
 
 			case ImportResult::Malformed:
 			case ImportResult::BadChain:
+				logNewBlock(h);
 				_peer->disable("Malformed block received.");
 				return;
 
 			case ImportResult::FutureTimeKnown:
+				logNewBlock(h);
 				future++;
 				break;
 			case ImportResult::AlreadyInChain:
@@ -194,6 +202,7 @@ void BlockChainSync::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 			case ImportResult::UnknownParent:
 			{
 				unknown++;
+				logNewBlock(h);
 				if (m_state == SyncState::NewBlocks)
 				{
 					BlockInfo bi;
@@ -241,7 +250,7 @@ void BlockChainSync::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 	DEV_INVARIANT_CHECK;
 }
 
-void BlockChainSync::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
+void BlockChainSync::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
 	DEV_INVARIANT_CHECK;
 	RecursiveGuard l(x_sync);
@@ -256,6 +265,7 @@ void BlockChainSync::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 		{
 		case ImportResult::Success:
 			_peer->addRating(100);
+			logNewBlock(h);
 			break;
 		case ImportResult::FutureTimeKnown:
 			//TODO: Rating dependent on how far in future it is.
@@ -263,6 +273,7 @@ void BlockChainSync::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 
 		case ImportResult::Malformed:
 		case ImportResult::BadChain:
+			logNewBlock(h);
 			_peer->disable("Malformed block received.");
 			return;
 
@@ -272,6 +283,7 @@ void BlockChainSync::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 
 		case ImportResult::FutureTimeUnknown:
 		case ImportResult::UnknownParent:
+			logNewBlock(h);
 			clog(NetMessageSummary) << "Received block with no known parent. Resyncing...";
 			resetSyncFor(_peer, h, _r[1].toInt<u256>());
 			break;
@@ -309,17 +321,17 @@ SyncStatus PV60Sync::status() const
 	return res;
 }
 
-void PV60Sync::setState(EthereumPeer* _peer, SyncState _s, bool _isSyncing, bool _needHelp)
+void PV60Sync::setState(std::shared_ptr<EthereumPeer> _peer, SyncState _s, bool _isSyncing, bool _needHelp)
 {
 	bool changedState = (m_state != _s);
 	m_state = _s;
 
-	if (_isSyncing != (m_syncer == _peer) || (_isSyncing && changedState))
+	if (_isSyncing != (m_syncer.lock() == _peer) || (_isSyncing && changedState))
 		changeSyncer(_isSyncing ? _peer : nullptr, _needHelp);
 	else if (_s == SyncState::Idle)
 		changeSyncer(nullptr, _needHelp);
 
-	assert(!!m_syncer || _s == SyncState::Idle);
+	assert(isSyncing() || _s == SyncState::Idle);
 }
 
 void PV60Sync::resetSync()
@@ -335,32 +347,33 @@ void PV60Sync::restartSync()
 	resetSync();
 	host().bq().clear();
 	if (isSyncing())
-		transition(m_syncer, SyncState::Idle);
+		transition(m_syncer.lock(), SyncState::Idle);
 }
 
 void PV60Sync::completeSync()
 {
 	if (isSyncing())
-		transition(m_syncer, SyncState::Idle);
+		transition(m_syncer.lock(), SyncState::Idle);
 }
 
 void PV60Sync::pauseSync()
 {
 	if (isSyncing())
-		setState(m_syncer, SyncState::Waiting, true);
+		setState(m_syncer.lock(), SyncState::Waiting, true);
 }
 
 void PV60Sync::continueSync()
 {
-	transition(m_syncer, SyncState::Blocks);
+	if (isSyncing())
+		transition(m_syncer.lock(), SyncState::Blocks);
 }
 
-void PV60Sync::onNewPeer(EthereumPeer* _peer)
+void PV60Sync::onNewPeer(std::shared_ptr<EthereumPeer> _peer)
 {
 	setNeedsSyncing(_peer, _peer->m_latestHash, _peer->m_totalDifficulty);
 }
 
-void PV60Sync::transition(EthereumPeer* _peer, SyncState _s, bool _force, bool _needHelp)
+void PV60Sync::transition(std::shared_ptr<EthereumPeer> _peer, SyncState _s, bool _force, bool _needHelp)
 {
 	clog(NetMessageSummary) << "Transition!" << EthereumHost::stateName(_s) << "from" << EthereumHost::stateName(m_state) << ", " << (isSyncing(_peer) ? "syncing" : "holding") << (needsSyncing(_peer) ? "& needed" : "");
 
@@ -451,7 +464,7 @@ void PV60Sync::transition(EthereumPeer* _peer, SyncState _s, bool _force, bool _
 	}
 	else if (_s == SyncState::Idle)
 	{
-		host().foreachPeer([this](EthereumPeer* _p) { _p->setIdle(); return true; });
+		host().foreachPeer([this](std::shared_ptr<EthereumPeer> _p) { _p->setIdle(); return true; });
 		if (m_state == SyncState::Blocks || m_state == SyncState::NewBlocks)
 		{
 			clog(NetNote) << "Finishing blocks fetch...";
@@ -478,12 +491,12 @@ void PV60Sync::transition(EthereumPeer* _peer, SyncState _s, bool _force, bool _
 	clog(NetWarn) << "Invalid state transition:" << EthereumHost::stateName(_s) << "from" << EthereumHost::stateName(m_state) << ", " << (isSyncing(_peer) ? "syncing" : "holding") << (needsSyncing(_peer) ? "& needed" : "");
 }
 
-void PV60Sync::resetSyncFor(EthereumPeer* _peer, h256 const& _latestHash, u256 const& _td)
+void PV60Sync::resetSyncFor(std::shared_ptr<EthereumPeer> _peer, h256 const& _latestHash, u256 const& _td)
 {
 	setNeedsSyncing(_peer, _latestHash, _td);
 }
 
-void PV60Sync::setNeedsSyncing(EthereumPeer* _peer, h256 const& _latestHash, u256 const& _td)
+void PV60Sync::setNeedsSyncing(std::shared_ptr<EthereumPeer> _peer, h256 const& _latestHash, u256 const& _td)
 {
 	_peer->m_latestHash = _latestHash;
 	_peer->m_totalDifficulty = _td;
@@ -494,17 +507,17 @@ void PV60Sync::setNeedsSyncing(EthereumPeer* _peer, h256 const& _latestHash, u25
 	_peer->session()->addNote("sync", string(isSyncing(_peer) ? "ongoing" : "holding") + (needsSyncing(_peer) ? " & needed" : ""));
 }
 
-bool PV60Sync::needsSyncing(EthereumPeer* _peer) const
+bool PV60Sync::needsSyncing(std::shared_ptr<EthereumPeer> _peer) const
 {
 	return !!_peer->m_latestHash;
 }
 
-bool PV60Sync::isSyncing(EthereumPeer* _peer) const
+bool PV60Sync::isSyncing(std::shared_ptr<EthereumPeer> _peer) const
 {
-	return m_syncer == _peer;
+	return m_syncer.lock() == _peer;
 }
 
-bool PV60Sync::shouldGrabBlocks(EthereumPeer* _peer) const
+bool PV60Sync::shouldGrabBlocks(std::shared_ptr<EthereumPeer> _peer) const
 {
 	auto td = _peer->m_totalDifficulty;
 	auto lh = _peer->m_latestHash;
@@ -521,7 +534,7 @@ bool PV60Sync::shouldGrabBlocks(EthereumPeer* _peer) const
 	return true;
 }
 
-void PV60Sync::attemptSync(EthereumPeer* _peer)
+void PV60Sync::attemptSync(std::shared_ptr<EthereumPeer> _peer)
 {
 	if (m_state != SyncState::Idle)
 	{
@@ -556,7 +569,7 @@ void PV60Sync::attemptSync(EthereumPeer* _peer)
 	}
 }
 
-void PV60Sync::noteNeedsSyncing(EthereumPeer* _peer)
+void PV60Sync::noteNeedsSyncing(std::shared_ptr<EthereumPeer> _peer)
 {
 	// if already downloading hash-chain, ignore.
 	if (isSyncing())
@@ -570,7 +583,7 @@ void PV60Sync::noteNeedsSyncing(EthereumPeer* _peer)
 		attemptSync(_peer);
 }
 
-void PV60Sync::changeSyncer(EthereumPeer* _syncer, bool _needHelp)
+void PV60Sync::changeSyncer(std::shared_ptr<EthereumPeer> _syncer, bool _needHelp)
 {
 	if (_syncer)
 		clog(NetAllDetail) << "Changing syncer to" << _syncer->session()->socketId();
@@ -581,7 +594,7 @@ void PV60Sync::changeSyncer(EthereumPeer* _syncer, bool _needHelp)
 	if (isSyncing())
 	{
 		if (_needHelp && (m_state == SyncState::Blocks || m_state == SyncState::NewBlocks))
-			host().foreachPeer([&](EthereumPeer* _p)
+			host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p)
 			{
 				clog(NetNote) << "Getting help with downloading blocks";
 				if (_p != _syncer && _p->m_asking == Asking::Nothing)
@@ -592,7 +605,7 @@ void PV60Sync::changeSyncer(EthereumPeer* _syncer, bool _needHelp)
 	else
 	{
 		// start grabbing next hash chain if there is one.
-		host().foreachPeer([this](EthereumPeer* _p)
+		host().foreachPeer([this](std::shared_ptr<EthereumPeer> _p)
 		{
 			attemptSync(_p);
 			return !isSyncing();
@@ -604,15 +617,15 @@ void PV60Sync::changeSyncer(EthereumPeer* _syncer, bool _needHelp)
 			clog(NetNote) << "No more peers to sync with.";
 		}
 	}
-	assert(!!m_syncer || m_state == SyncState::Idle);
+	assert(isSyncing() || m_state == SyncState::Idle);
 }
 
-void PV60Sync::peerDoneBlocks(EthereumPeer* _peer)
+void PV60Sync::peerDoneBlocks(std::shared_ptr<EthereumPeer> _peer)
 {
 	noteDoneBlocks(_peer, false);
 }
 
-void PV60Sync::noteDoneBlocks(EthereumPeer* _peer, bool _clemency)
+void PV60Sync::noteDoneBlocks(std::shared_ptr<EthereumPeer> _peer, bool _clemency)
 {
 	resetNeedsSyncing(_peer);
 	if (downloadMan().isComplete())
@@ -643,7 +656,7 @@ void PV60Sync::noteDoneBlocks(EthereumPeer* _peer, bool _clemency)
 	_peer->m_sub.doneFetch();
 }
 
-void PV60Sync::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes)
+void PV60Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
 {
 	RecursiveGuard l(x_sync);
 	DEV_INVARIANT_CHECK;
@@ -698,11 +711,11 @@ void PV60Sync::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes)
 	DEV_INVARIANT_CHECK;
 }
 
-void PV60Sync::onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes)
+void PV60Sync::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
 {
 	RecursiveGuard l(x_sync);
 	DEV_INVARIANT_CHECK;
-	if (isSyncing())
+	if (isSyncing() && (m_state != SyncState::NewBlocks || isSyncing(_peer)))
 	{
 		clog(NetMessageSummary) << "Ignoring since we're already downloading.";
 		return;
@@ -734,43 +747,56 @@ void PV60Sync::onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes)
 	clog(NetMessageSummary) << knowns << "knowns," << unknowns << "unknowns";
 	if (unknowns > 0)
 	{
-		clog(NetNote) << "Not syncing and new block hash discovered: syncing without help.";
-		downloadMan().resetToChain(m_syncingNeededBlocks);
+		if (m_state == SyncState::NewBlocks)
+		{
+			clog(NetNote) << "Downloading new blocks and seeing new hashes. Trying grabbing blocks";
+			_peer->requestBlocks(m_syncingNeededBlocks);
+		}
+		else
+		{
+			clog(NetNote) << "Not syncing and new block hash discovered: syncing without help.";
+			downloadMan().resetToChain(m_syncingNeededBlocks);
+			transition(_peer, SyncState::NewBlocks, false, false);
+		}
 		resetSync();
-		transition(_peer, SyncState::NewBlocks, false, false);
+
+		for (auto const& h: m_syncingNeededBlocks)
+			if (!m_knownNewHashes.count(h))
+			{
+				m_knownNewHashes.insert(h);
+				clog(NetMessageDetail) << "NewHashes: " << h;
+			}
 	}
 	DEV_INVARIANT_CHECK;
 }
 
-void PV60Sync::abortSync(EthereumPeer* _peer)
+void PV60Sync::abortSync()
 {
 	// Can't check invariants here since the peers is already removed from the list and the state is not updated yet.
-	if (isSyncing(_peer))
-	{
-		host().foreachPeer([this](EthereumPeer* _p) { _p->setIdle(); return true; });
-		transition(_peer, SyncState::Idle, true);
-	}
+	host().foreachPeer([this](std::shared_ptr<EthereumPeer> _p) { _p->setIdle(); return true; });
+	setState(std::shared_ptr<EthereumPeer>(), SyncState::Idle, false, true);
 	DEV_INVARIANT_CHECK;
 }
 
-void PV60Sync::onPeerAborting(EthereumPeer* _peer)
+void PV60Sync::onPeerAborting()
 {
 	RecursiveGuard l(x_sync);
 	// Can't check invariants here since the peers is already removed from the list and the state is not updated yet.
-	abortSync(_peer);
+	if (m_syncer.expired())
+		abortSync();
 	DEV_INVARIANT_CHECK;
 }
 
 bool PV60Sync::invariants() const
 {
-	if (m_state == SyncState::Idle && !!m_syncer)
+	if (m_state == SyncState::Idle && isSyncing())
 		return false;
-	if (m_state != SyncState::Idle && !m_syncer)
+	if (m_state != SyncState::Idle && !isSyncing())
 		return false;
 	if (m_state == SyncState::Hashes)
 	{
 		bool hashes = false;
-		host().foreachPeer([&](EthereumPeer* _p) { if (_p->m_asking == Asking::Hashes) hashes = true; return !hashes; });
+		host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p) { if (_p->m_asking == Asking::Hashes) hashes = true; return !hashes; });
 		if (!hashes)
 			return false;
 		if (!m_syncingLatestHash)
@@ -781,7 +807,7 @@ bool PV60Sync::invariants() const
 	if (m_state == SyncState::Blocks || m_state == SyncState::NewBlocks)
 	{
 		bool blocks = false;
-		host().foreachPeer([&](EthereumPeer* _p) { if (_p->m_asking == Asking::Blocks) blocks = true; return !blocks; });
+		host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p) { if (_p->m_asking == Asking::Blocks) blocks = true; return !blocks; });
 		if (!blocks)
 			return false;
 		if (downloadMan().isComplete())
@@ -790,7 +816,7 @@ bool PV60Sync::invariants() const
 	if (m_state == SyncState::Idle)
 	{
 		bool busy = false;
-		host().foreachPeer([&](EthereumPeer* _p) { if (_p->m_asking != Asking::Nothing && _p->m_asking != Asking::State) busy = true; return !busy; });
+		host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p) { if (_p->m_asking != Asking::Nothing && _p->m_asking != Asking::State) busy = true; return !busy; });
 		if (busy)
 			return false;
 	}
