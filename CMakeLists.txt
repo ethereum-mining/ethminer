@@ -84,7 +84,10 @@ function(configureProject)
 		add_definitions(-DETH_CURL)
 	endif()
 
-	add_definitions(-DNOBOOST)
+	if (NOBOOST)
+		add_definitions(-DNOBOOST)
+	endif()
+
 	add_definitions(-DETH_TRUE)
 endfunction()
 
