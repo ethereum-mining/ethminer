@@ -77,11 +77,10 @@ void Transact::setEnvironment(AddressHash const& _accounts, dev::eth::Client* _e
 
 	auto old = ui->from->currentIndex();
 	ui->from->clear();
-	for (auto const& i: m_accounts)
+	for (auto const& address: m_accounts)
 	{
-		auto d = m_context->keyManager().accountDetails()[i];
-		u256 b = ethereum()->balanceAt(i, PendingBlock);
-		QString s = QString("%4 %2: %1").arg(formatBalance(b).c_str()).arg(QString::fromStdString(m_context->render(i))).arg(QString::fromStdString(d.first));
+		u256 b = ethereum()->balanceAt(address, PendingBlock);
+		QString s = QString("%4 %2: %1").arg(formatBalance(b).c_str()).arg(QString::fromStdString(m_context->render(address))).arg(QString::fromStdString(m_context->keyManager().accountName(address)));
 		ui->from->addItem(s);
 	}
 	if (old > -1 && old < ui->from->count())

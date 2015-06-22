@@ -24,8 +24,6 @@
 #if ETH_PROFILING_GPERF
 #include <gperftools/profiler.h>
 #endif
-#include <leveldb/db.h>
-#include <leveldb/write_batch.h>
 #include <boost/timer.hpp>
 #include <boost/filesystem.hpp>
 #include <test/JsonSpiritHeaders.h>
@@ -305,7 +303,7 @@ LastHashes BlockChain::lastHashes(unsigned _n) const
 	return m_lastLastHashes;
 }
 
-tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
+tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
 //	_bq.tick(*this);
 
@@ -315,6 +313,7 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 	h256s fresh;
 	h256s dead;
 	h256s badBlocks;
+	unsigned count = 0;
 	for (VerifiedBlock const& block: blocks)
 		if (!badBlocks.empty())
 			badBlocks.push_back(block.verified.info.hash());
@@ -326,8 +325,9 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 				ImportRoute r;
 				DEV_TIMED_ABOVE(Block import, 500)
 					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
-				fresh += r.first;
-				dead += r.second;
+				fresh += r.liveBlocks;
+				dead += r.deadBlocks;
+				++count;
 			}
 			catch (dev::eth::UnknownParent)
 			{
@@ -353,7 +353,7 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 				badBlocks.push_back(block.verified.info.hash());
 			}
 		}
-	return make_tuple(fresh, dead, _bq.doneDrain(badBlocks));
+	return make_tuple(ImportRoute{dead, fresh}, _bq.doneDrain(badBlocks), count);
 }
 
 pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir) noexcept
@@ -364,21 +364,21 @@ pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, O
 	}
 	catch (UnknownParent&)
 	{
-		return make_pair(ImportResult::UnknownParent, make_pair(h256s(), h256s()));
+		return make_pair(ImportResult::UnknownParent, ImportRoute());
 	}
 	catch (AlreadyHaveBlock&)
 	{
-		return make_pair(ImportResult::AlreadyKnown, make_pair(h256s(), h256s()));
+		return make_pair(ImportResult::AlreadyKnown, ImportRoute());
 	}
 	catch (FutureTime&)
 	{
-		return make_pair(ImportResult::FutureTime, make_pair(h256s(), h256s()));
+		return make_pair(ImportResult::FutureTimeKnown, ImportRoute());
 	}
 	catch (Exception& ex)
 	{
 		if (m_onBad)
 			m_onBad(ex);
-		return make_pair(ImportResult::Malformed, make_pair(h256s(), h256s()));
+		return make_pair(ImportResult::Malformed, ImportRoute());
 	}
 }
 
@@ -699,7 +699,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 			dead.push_back(h);
 		else
 			fresh.push_back(h);
-	return make_pair(fresh, dead);
+	return ImportRoute{dead, fresh};
 }
 
 void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
@@ -1122,6 +1122,6 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 		++i;
 	}
 	res.block = bytesConstRef(&_block);
-	return move(res);
+	return res;
 }
 

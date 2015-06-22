@@ -22,15 +22,10 @@
 #pragma once
 
 #include <unordered_map>
-#pragma warning(push)
-#pragma warning(disable: 4100 4267)
-#include <leveldb/db.h>
-#pragma warning(pop)
-
+#include <libdevcore/db.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
 #include "TransactionReceipt.h"
-namespace ldb = leveldb;
 
 namespace dev
 {
