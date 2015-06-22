@@ -119,6 +119,7 @@ protected:
 	mutable RecursiveMutex x_sync;
 	SyncState m_state = SyncState::Idle;	///< Current sync state
 	unsigned m_estimatedHashes = 0;			///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
+	h256Hash m_knownNewHashes; 					///< New hashes we know about use for logging only
 
 private:
 	static char const* const s_stateNames[static_cast<int>(SyncState::Size)];
@@ -273,7 +274,6 @@ private:
 	h256 m_syncingLastReceivedHash;				///< Hash most recently received from peer.
 	h256 m_syncingLatestHash;					///< Latest block's hash of the peer we are syncing to, as of the current sync.
 	u256 m_syncingTotalDifficulty;				///< Latest block's total difficulty of the peer we aresyncing to, as of the current sync.
-	h256Hash m_knownNewHashes; 					///< New hashes we know about use for logging only
 	std::weak_ptr<EthereumPeer> m_syncer;		///< Peer we are currently syncing with
 };
 }
