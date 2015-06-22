@@ -788,58 +788,58 @@ BOOST_AUTO_TEST_SUITE(BlockChainTests)
 
 BOOST_AUTO_TEST_CASE(bcForkBlockTest)
 {
-	dev::test::executeTests("bcForkBlockTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+	dev::test::executeTests("bcForkBlockTest", "/BlockchainTests",dev::test::getFolder(__FILE__) + "/BlockchainTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(bcTotalDifficultyTest)
 {
-	dev::test::executeTests("bcTotalDifficultyTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+	dev::test::executeTests("bcTotalDifficultyTest", "/BlockchainTests",dev::test::getFolder(__FILE__) + "/BlockchainTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(bcInvalidRLPTest)
 {
-	dev::test::executeTests("bcInvalidRLPTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+	dev::test::executeTests("bcInvalidRLPTest", "/BlockchainTests",dev::test::getFolder(__FILE__) + "/BlockchainTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(bcRPC_API_Test)
 {
-	dev::test::executeTests("bcRPC_API_Test", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+	dev::test::executeTests("bcRPC_API_Test", "/BlockchainTests",dev::test::getFolder(__FILE__) + "/BlockchainTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(bcValidBlockTest)
 {
-	dev::test::executeTests("bcValidBlockTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+	dev::test::executeTests("bcValidBlockTest", "/BlockchainTests",dev::test::getFolder(__FILE__) + "/BlockchainTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(bcInvalidHeaderTest)
 {
-	dev::test::executeTests("bcInvalidHeaderTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+	dev::test::executeTests("bcInvalidHeaderTest", "/BlockchainTests",dev::test::getFolder(__FILE__) + "/BlockchainTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(bcUncleTest)
 {
-	dev::test::executeTests("bcUncleTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+	dev::test::executeTests("bcUncleTest", "/BlockchainTests",dev::test::getFolder(__FILE__) + "/BlockchainTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(bcUncleHeaderValiditiy)
 {
-	dev::test::executeTests("bcUncleHeaderValiditiy", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+	dev::test::executeTests("bcUncleHeaderValiditiy", "/BlockchainTests",dev::test::getFolder(__FILE__) + "/BlockchainTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(bcGasPricerTest)
 {
-	dev::test::executeTests("bcGasPricerTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+	dev::test::executeTests("bcGasPricerTest", "/BlockchainTests",dev::test::getFolder(__FILE__) + "/BlockchainTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(bcBruncleTest)
 {
-	dev::test::executeTests("bcBruncleTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+	dev::test::executeTests("bcBruncleTest", "/BlockchainTests",dev::test::getFolder(__FILE__) + "/BlockchainTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(bcWalletTest)
 {
 	if (test::Options::get().wallet)
-		dev::test::executeTests("bcWalletTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+		dev::test::executeTests("bcWalletTest", "/BlockchainTests",dev::test::getFolder(__FILE__) + "/BlockchainTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(userDefinedFile)
