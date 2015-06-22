@@ -224,6 +224,8 @@ public:
 	Q_INVOKABLE void unregisterContractSrc(QString const& _documentId);
 	/// Convert solidity type info to mix type
 	static SolidityType nodeType(dev::solidity::Type const* _type);
+	/// Retrieve subtype
+	static void retrieveSubType(SolidityType& _wrapperType, dev::solidity::Type const* _type);
 	/// Check if given location belongs to contract or function
 	bool isContractOrFunctionLocation(dev::SourceLocation const& _location);
 	/// Get funciton name by location

@@ -4,13 +4,14 @@ set(CMAKE_AUTOMOC OFF)
 aux_source_directory(. SRC_LIST)
 
 include_directories(BEFORE ..)
-include_directories(${LEVELDB_INCLUDE_DIRS})
+include_directories(${DB_INCLUDE_DIRS})
 
 set(EXECUTABLE rlp)
 
 add_executable(${EXECUTABLE} ${SRC_LIST})
 
 target_link_libraries(${EXECUTABLE} devcrypto)
+target_link_libraries(${EXECUTABLE} ${DB_LIBRARIES})
 
 if (APPLE)
 	install(TARGETS ${EXECUTABLE} DESTINATION bin)
