@@ -14,41 +14,22 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file JSConsole.h
- * @author Marek Kotewicz <marek@ethdev.com>
- * @date 2015
- * Ethereum client.
+/** @file Exceptions.h
+ * @author Christian <c@ethdev.com>
+ * @date 2016
  */
 
 #pragma once
 
-#include <libjsengine/JSV8Engine.h>
-#include <libjsengine/JSV8Printer.h>
-
-namespace dev { class WebThreeStubServer; }
-namespace jsonrpc { class AbstractServerConnector; }
+#include <libdevcore/Exceptions.h>
 
 namespace dev
 {
-namespace eth
+namespace crypto
 {
 
-class AccountHolder;
-
-class JSConsole
-{
-public:
-	JSConsole(WebThreeDirect& _web3, std::shared_ptr<AccountHolder> const& _accounts);
-	void readExpression() const;
-
-private:
-	std::string promptForIndentionLevel(int _i) const;
-
-	JSV8Engine m_engine;
-	JSV8Printer m_printer;
-	std::unique_ptr<dev::WebThreeStubServer> m_jsonrpcServer;
-	std::unique_ptr<jsonrpc::AbstractServerConnector> m_jsonrpcConnector;
-};
+/// Rare malfunction of cryptographic functions.
+DEV_SIMPLE_EXCEPTION(CryptoException);
 
 }
 }
