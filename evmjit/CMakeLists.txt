@@ -10,7 +10,7 @@ else()
 	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Wconversion -Wno-sign-conversion -Wno-unknown-pragmas ${CMAKE_CXX_FLAGS}")
 endif()
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND NOT ${CMAKE_BUILD_TYPE} STREQUAL "DebugSan")
 	# Do not allow unresovled symbols in shared library (default on linux)
 	set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
 endif()
