@@ -256,7 +256,6 @@ Item {
 			if (!_secret)
 				_secret = clientModel.newSecret();
 			var address = clientModel.address(_secret);
-			console.log(address);
 			var name = qsTr("Account") + "-" + address.substring(0, 4);
 			return { name: name, secret: _secret, balance: QEtherHelper.createEther(_balance, _unit), address: address };
 		}
