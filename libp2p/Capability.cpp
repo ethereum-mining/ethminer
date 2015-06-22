@@ -28,14 +28,14 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-Capability::Capability(Session* _s, HostCapabilityFace* _h, unsigned _idOffset): m_session(_s), m_hostCap(_h), m_idOffset(_idOffset)
+Capability::Capability(std::shared_ptr<Session> _s, HostCapabilityFace* _h, unsigned _idOffset): m_session(_s), m_hostCap(_h), m_idOffset(_idOffset)
 {
 	clog(NetConnect) << "New session for capability" << m_hostCap->name() << "; idOffset:" << m_idOffset;
 }
 
 void Capability::disable(std::string const& _problem)
 {
-	clog(NetWarn) << "DISABLE: Disabling capability '" << m_hostCap->name() << "'. Reason:" << _problem;
+	clog(NetNote) << "DISABLE: Disabling capability '" << m_hostCap->name() << "'. Reason:" << _problem;
 	m_enabled = false;
 }
 
@@ -46,12 +46,16 @@ RLPStream& Capability::prep(RLPStream& _s, unsigned _id, unsigned _args)
 
 void Capability::sealAndSend(RLPStream& _s)
 {
-	m_session->sealAndSend(_s);
+	shared_ptr<Session> session = m_session.lock();
+	if (session)
+		session->sealAndSend(_s);
 }
 
 void Capability::addRating(int _r)
 {
-	m_session->addRating(_r);
+	shared_ptr<Session> session = m_session.lock();
+	if (session)
+		session->addRating(_r);
 }
 
 ReputationManager& Capability::repMan() const
