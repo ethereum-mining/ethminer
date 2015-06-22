@@ -130,7 +130,8 @@ void BlockChainSync::requestBlocks(std::shared_ptr<EthereumPeer> _peer)
 void BlockChainSync::logNewBlock(h256 const& _h)
 {
 	if (m_state == SyncState::NewBlocks)
-		clog(NetAllDetail) << "NewBlock: " << _h;
+		clog(NetNote) << "NewBlock: " << _h;
+	m_knownNewHashes.erase(_h);
 }
 
 void BlockChainSync::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
@@ -415,13 +416,13 @@ void PV60Sync::transition(std::shared_ptr<EthereumPeer> _peer, SyncState _s, boo
 			}
 			if (shouldGrabBlocks(_peer))
 			{
-				clog(NetNote) << "Difficulty of hashchain HIGHER. Grabbing" << m_syncingNeededBlocks.size() << "blocks [latest now" << m_syncingLatestHash << ", was" << host().latestBlockSent() << "]";
+				clog(NetMessageDetail) << "Difficulty of hashchain HIGHER. Grabbing" << m_syncingNeededBlocks.size() << "blocks [latest now" << m_syncingLatestHash << ", was" << host().latestBlockSent() << "]";
 				downloadMan().resetToChain(m_syncingNeededBlocks);
 				resetSync();
 			}
 			else
 			{
-				clog(NetNote) << "Difficulty of hashchain not HIGHER. Ignoring.";
+				clog(NetMessageDetail) << "Difficulty of hashchain not HIGHER. Ignoring.";
 				resetSync();
 				setState(_peer, SyncState::Idle, false);
 				return;
@@ -465,7 +466,7 @@ void PV60Sync::transition(std::shared_ptr<EthereumPeer> _peer, SyncState _s, boo
 		host().foreachPeer([this](std::shared_ptr<EthereumPeer> _p) { _p->setIdle(); return true; });
 		if (m_state == SyncState::Blocks || m_state == SyncState::NewBlocks)
 		{
-			clog(NetNote) << "Finishing blocks fetch...";
+			clog(NetMessageDetail) << "Finishing blocks fetch...";
 
 			// a bit overkill given that the other nodes may yet have the needed blocks, but better to be safe than sorry.
 			if (isSyncing(_peer))
@@ -478,7 +479,7 @@ void PV60Sync::transition(std::shared_ptr<EthereumPeer> _peer, SyncState _s, boo
 		}
 		else if (m_state == SyncState::Hashes)
 		{
-			clog(NetNote) << "Finishing hashes fetch...";
+			clog(NetMessageDetail) << "Finishing hashes fetch...";
 			setState(_peer, SyncState::Idle, false);
 		}
 		// Otherwise it's fine. We don't care if it's Nothing->Nothing.
@@ -524,7 +525,7 @@ bool PV60Sync::shouldGrabBlocks(std::shared_ptr<EthereumPeer> _peer) const
 	if (m_syncingNeededBlocks.empty())
 		return false;
 
-	clog(NetNote) << "Should grab blocks? " << td << "vs" << ctd << ";" << m_syncingNeededBlocks.size() << " blocks, ends" << m_syncingNeededBlocks.back();
+	clog(NetMessageDetail) << "Should grab blocks? " << td << "vs" << ctd << ";" << m_syncingNeededBlocks.size() << " blocks, ends" << m_syncingNeededBlocks.back();
 
 	if (td < ctd || (td == ctd && host().chain().currentHash() == lh))
 		return false;
@@ -594,7 +595,7 @@ void PV60Sync::changeSyncer(std::shared_ptr<EthereumPeer> _syncer, bool _needHel
 		if (_needHelp && (m_state == SyncState::Blocks || m_state == SyncState::NewBlocks))
 			host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p)
 			{
-				clog(NetNote) << "Getting help with downloading blocks";
+				clog(NetMessageDetail) << "Getting help with downloading blocks";
 				if (_p != _syncer && _p->m_asking == Asking::Nothing)
 					transition(_p, m_state);
 				return true;
@@ -612,7 +613,7 @@ void PV60Sync::changeSyncer(std::shared_ptr<EthereumPeer> _syncer, bool _needHel
 		{
 			if (m_state != SyncState::Idle)
 				setState(_syncer, SyncState::Idle);
-			clog(NetNote) << "No more peers to sync with.";
+			clog(NetMessageDetail) << "No more peers to sync with.";
 		}
 	}
 	assert(isSyncing() || m_state == SyncState::Idle);
@@ -629,7 +630,7 @@ void PV60Sync::noteDoneBlocks(std::shared_ptr<EthereumPeer> _peer, bool _clemenc
 	if (downloadMan().isComplete())
 	{
 		// Done our chain-get.
-		clog(NetNote) << "Chain download complete.";
+		clog(NetMessageDetail) << "Chain download complete.";
 		// 1/100th for each useful block hash.
 		_peer->addRating(downloadMan().chainSize() / 100);
 		downloadMan().reset();
@@ -747,23 +748,22 @@ void PV60Sync::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const&
 	{
 		if (m_state == SyncState::NewBlocks)
 		{
-			clog(NetNote) << "Downloading new blocks and seeing new hashes. Trying grabbing blocks";
+			clog(NetMessageDetail) << "Downloading new blocks and seeing new hashes. Trying grabbing blocks";
 			_peer->requestBlocks(m_syncingNeededBlocks);
 		}
 		else
 		{
-			clog(NetNote) << "Not syncing and new block hash discovered: syncing without help.";
+			clog(NetMessageDetail) << "Not syncing and new block hash discovered: syncing without help.";
 			downloadMan().resetToChain(m_syncingNeededBlocks);
 			transition(_peer, SyncState::NewBlocks, false, false);
 		}
-		resetSync();
-
 		for (auto const& h: m_syncingNeededBlocks)
 			if (!m_knownNewHashes.count(h))
 			{
 				m_knownNewHashes.insert(h);
-				clog(NetMessageDetail) << "NewHashes: " << h;
+				clog(NetNote) << "NewHashes: " << h;
 			}
+		resetSync();
 	}
 	DEV_INVARIANT_CHECK;
 }
