@@ -198,7 +198,16 @@ public:
 			if (m_masterPassword.empty())
 				cerr << "Aborted (empty password not allowed)." << endl;
 			else
-				wallet.create(m_masterPassword);
+			{
+				try
+				{
+					wallet.create(m_masterPassword);
+				}
+				catch(Exception const& _e)
+				{
+					cerr << "unable to create wallet" << endl << boost::diagnostic_information(_e);
+				}
+			}
 		}
 		else if (m_mode < OperationMode::CreateWallet)
 		{
