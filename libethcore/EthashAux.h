@@ -38,7 +38,7 @@ class EthashAux
 public:
 	~EthashAux();
 
-	static EthashAux* get() {Guard l(x_this);if (!s_this) s_this = new EthashAux(); return s_this; }
+	static EthashAux* get();
 
 	struct LightAllocation
 	{
@@ -89,7 +89,6 @@ private:
 
 	void killCache(h256 const& _s);
 
-	static Mutex x_this;
 	static EthashAux* s_this;
 
 	SharedMutex x_lights;
