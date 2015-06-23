@@ -98,6 +98,4 @@ BOOST_AUTO_TEST_CASE(KeyManagerHints)
 	BOOST_CHECK(km.haveHint(password));
 }
 
-
-
 BOOST_AUTO_TEST_SUITE_END()
