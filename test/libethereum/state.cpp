@@ -80,7 +80,7 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 #if ETH_FATDB
 			importer.exportTest(output, theState);
 #else
-			TBOOST_THROW_EXCEPTION(Exception() << errinfo_comment("You can not fill tests when FATDB is switched off"));
+			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("You can not fill tests when FATDB is switched off"));
 #endif
 		}
 		else
