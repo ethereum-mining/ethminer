@@ -38,7 +38,7 @@ class EthashAux
 public:
 	~EthashAux();
 
-	static EthashAux* get() { if (!s_this) s_this = new EthashAux(); return s_this; }
+	static EthashAux* get() {Guard l(x_this);if (!s_this) s_this = new EthashAux(); return s_this; }
 
 	struct LightAllocation
 	{
@@ -89,12 +89,13 @@ private:
 
 	void killCache(h256 const& _s);
 
+	static Mutex x_this;
 	static EthashAux* s_this;
 
-	static SharedMutex x_lights;
+	SharedMutex x_lights;
 	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;
 
-	static Mutex x_fulls;
+	Mutex x_fulls;
 	std::condition_variable m_fullsChanged;
 	std::unordered_map<h256, std::weak_ptr<FullAllocation>> m_fulls;
 	FullType m_lastUsedFull;
@@ -102,7 +103,7 @@ private:
 	uint64_t m_generatingFullNumber = NotGenerating;
 	unsigned m_fullProgress;
 
-	static Mutex x_epochs;
+	Mutex x_epochs;
 	std::unordered_map<h256, unsigned> m_epochs;
 	h256s m_seedHashes;
 };
