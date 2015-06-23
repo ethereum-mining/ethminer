@@ -32,5 +32,4 @@ using namespace dev::eth;
 JSLocalConsole::JSLocalConsole()
 {
 	m_jsonrpcConnector.reset(new JSV8Connector(m_engine));
-//	m_jsonrpcServer.reset(new WebThreeStubServer(*m_jsonrpcConnector.get(), _web3, _accounts, vector<KeyPair>()));
 }
