@@ -109,11 +109,11 @@ if (GMP_FOUND)
 	message(" - gmp lib   : ${GMP_LIBRARIES}")
 endif()
 
-# m_curl is only requried for tests
-# TODO specify min m_curl version, on windows we are currently using 7.29
+# curl is only requried for tests
+# TODO specify min curl version, on windows we are currently using 7.29
 find_package (CURL)
-message(" - m_curl header: ${CURL_INCLUDE_DIRS}")
-message(" - m_curl lib   : ${CURL_LIBRARIES}")
+message(" - curl header: ${CURL_INCLUDE_DIRS}")
+message(" - curl lib   : ${CURL_LIBRARIES}")
 
 # cpuid required for eth
 find_package (Cpuid)
