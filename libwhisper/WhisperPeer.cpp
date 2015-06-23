@@ -31,6 +31,7 @@ using namespace dev::shh;
 WhisperPeer::WhisperPeer(std::shared_ptr<Session> _s, HostCapabilityFace* _h, unsigned _i, CapDesc const&): Capability(_s, _h, _i)
 {
 	RLPStream s;
+	//sealAndSend(prep(s, StatusPacket, 1) << version());
 	prep(s, StatusPacket, 2);
 	s << version();
 	s << host()->bloom();
@@ -58,9 +59,12 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 
 		if (protocolVersion != version())
 			disable("Invalid protocol version.");
-
-		if (_r.itemCount() > 1) // for backwards compatibility
-			m_bloom = (FixedHash<TopicBloomFilterSize>)_r[1];
+		else
+		{
+			if (_r.itemCount() > 1) // for backwards compatibility
+				m_bloom = (FixedHash<TopicBloomFilterSize>)_r[1];
+			advertizeTopicsOfInterest();
+		}
 
 		for (auto const& m: host()->all())
 			m_unseen.insert(make_pair(0, m.first));
@@ -115,10 +119,10 @@ void WhisperPeer::noteNewMessage(h256 _h, Envelope const& _m)
 	m_unseen.insert(make_pair(rating(_m), _h));
 }
 
-void WhisperPeer::advertizeTopicsOfInterest(FixedHash<TopicBloomFilterSize> const& _bloom)
+void WhisperPeer::advertizeTopicsOfInterest()
 {
 	RLPStream s;
 	prep(s, UpdateTopicFilterPacket, 1);
-	s << _bloom;
+	s << host()->bloom();
 	sealAndSend(s);
 }
