@@ -320,7 +320,7 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 	Host host2("second", NetworkPreferences("127.0.0.1", 30305, false));
 	host2.setIdealPeerCount(1);
 	auto whost2 = host2.registerCapability(new WhisperHost());
-	auto watch2 = whost2->installWatch(BuildTopicMask("test2"));
+	whost2->installWatch(BuildTopicMask("test2"));
 
 	host2.start();
 	while (!host2.haveNetwork())
@@ -354,7 +354,7 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 	BOOST_REQUIRE(bf1);
 	BOOST_REQUIRE(!whost1->bloom());
 
-	auto watch1 = whost1->installWatch(BuildTopicMask("test1"));
+	whost1->installWatch(BuildTopicMask("test1"));
 
 	for (int i = 0; i < 300; ++i)
 	{
