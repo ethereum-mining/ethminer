@@ -254,8 +254,10 @@ function doCreateProject(title, path) {
 			files: [ contractsFile, indexFile ]
 		};
 		//TODO: copy from template
-		fileIo.writeFile(dirPath + indexFile, htmlTemplate);
-		fileIo.writeFile(dirPath + contractsFile, contractTemplate);
+		if (!fileIo.fileExists(dirPath + indexFile))
+			fileIo.writeFile(dirPath + indexFile, htmlTemplate);
+		if (!fileIo.fileExists(dirPath + contractsFile))
+			fileIo.writeFile(dirPath + contractsFile, contractTemplate);
 		newProject(projectData);
 		var json = JSON.stringify(projectData, null, "\t");
 		fileIo.writeFile(projectFile, json);
@@ -342,7 +344,8 @@ function newContract() {
 function createAndAddFile(name, extension, content) {
 	var fileName = generateFileName(name, extension);
 	var filePath = projectPath + fileName;
-	fileIo.writeFile(filePath, content);
+	if (!fileIo.fileExists(filePath))
+		fileIo.writeFile(filePath, content);
 	var id = addFile(fileName);
 	saveProjectFile();
 	documentAdded(id);

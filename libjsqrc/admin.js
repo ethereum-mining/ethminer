@@ -3,7 +3,7 @@ web3.admin.setSessionKey = function(s) { web3.admin.sessionKey = s; };
 
 var getSessionKey = function () { return web3.admin.sessionKey; };
 
-web3._extend([
+web3._extend({
     property: 'admin',
     methods: [new web3._extend.Method({
         name: 'web3.setVerbosity',
@@ -21,7 +21,7 @@ web3._extend([
         inputFormatter: [getSessionKey],
         params: 1
     }), new web3._extend.Method({
-        name: 'net.connect'
+        name: 'net.connect',
         call: 'admin_net_connect',
         inputFormatter: [null, getSessionKey],
         params: 2
@@ -116,5 +116,5 @@ web3._extend([
         inputFormatter: [null, null, getSessionKey],
         params: 3
     })]
-]);
+});
 

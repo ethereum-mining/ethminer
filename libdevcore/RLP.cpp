@@ -202,9 +202,7 @@ unsigned RLP::items() const
 
 RLPStream& RLPStream::appendRaw(bytesConstRef _s, unsigned _itemCount)
 {
-	unsigned os = m_out.size();
-	m_out.resize(os + _s.size());
-	memcpy(m_out.data() + os, _s.data(), _s.size());
+	m_out.insert(m_out.end(), _s.begin(), _s.end());
 	noteAppended(_itemCount);
 	return *this;
 }
