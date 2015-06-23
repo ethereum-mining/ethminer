@@ -43,11 +43,17 @@ using namespace eth;
 
 const char* DAGChannel::name() { return EthGreen "DAG"; }
 
-Mutex dev::eth::EthashAux::x_this;
 EthashAux* dev::eth::EthashAux::s_this = nullptr;
 
 EthashAux::~EthashAux()
 {
+}
+
+EthashAux* EthashAux::get()
+{
+    static std::once_flag flag;
+    std::call_once(flag, []{s_this = new EthashAux();});
+    return s_this;
 }
 
 uint64_t EthashAux::cacheSize(BlockInfo const& _header)
