@@ -48,7 +48,6 @@ using h256Set = dev::h256Set;
 class WhisperHost;
 class WhisperPeer;
 class Whisper;
-
 class Envelope;
 
 enum WhisperPacket
@@ -59,6 +58,8 @@ enum WhisperPacket
 	RemoveFilterPacket,
 	PacketCount
 };
+
+enum { TopicBloomFilterSize = 8 };
 
 using AbridgedTopic = FixedHash<4>;
 using Topic = h256;
@@ -91,7 +92,7 @@ protected:
 	h256s m_parts;
 };
 
-using TopicMask = std::vector<std::pair<AbridgedTopic, AbridgedTopic>>;
+using TopicMask = std::vector<std::pair<AbridgedTopic, AbridgedTopic>>; // where pair::first is the actual abridged topic hash, pair::second is a constant (probably redundunt)
 using TopicMasks = std::vector<TopicMask>;
 
 class TopicFilter
@@ -101,20 +102,12 @@ public:
 	TopicFilter(Topics const& _m) { m_topicMasks.push_back(TopicMask()); for (auto const& h: _m) m_topicMasks.back().push_back(std::make_pair(abridge(h), h ? ~AbridgedTopic() : AbridgedTopic())); }
 	TopicFilter(TopicMask const& _m): m_topicMasks(1, _m) {}
 	TopicFilter(TopicMasks const& _m): m_topicMasks(_m) {}
-	TopicFilter(RLP const& _r)//: m_topicMasks(_r.toVector<std::vector<>>())
-	{
-		for (RLP i: _r)
-		{
-			m_topicMasks.push_back(TopicMask());
-			for (RLP j: i)
-				m_topicMasks.back().push_back(j.toPair<FixedHash<4>, FixedHash<4>>());
-		}
-	}
+	TopicFilter(RLP const& _r);
 
 	void streamRLP(RLPStream& _s) const { _s << m_topicMasks; }
 	h256 sha3() const;
-
 	bool matches(Envelope const& _m) const;
+	FixedHash<TopicBloomFilterSize> exportBloom() const;
 
 private:
 	TopicMasks m_topicMasks;

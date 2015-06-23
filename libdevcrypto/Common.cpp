@@ -31,6 +31,7 @@
 #include <libdevcore/FileSystem.h>
 #include "AES.h"
 #include "CryptoPP.h"
+#include "Exceptions.h"
 using namespace std;
 using namespace dev;
 using namespace dev::crypto;
@@ -178,15 +179,35 @@ bool dev::verify(Public const& _p, Signature const& _s, h256 const& _hash)
 bytes dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen)
 {
 	bytes ret(_dkLen);
-	PKCS5_PBKDF2_HMAC<SHA256> pbkdf;
-	pbkdf.DeriveKey(ret.data(), ret.size(), 0, (byte*)_pass.data(), _pass.size(), _salt.data(), _salt.size(), _iterations);
+	if (PKCS5_PBKDF2_HMAC<SHA256>().DeriveKey(
+		ret.data(),
+		ret.size(),
+		0,
+		reinterpret_cast<byte const*>(_pass.data()),
+		_pass.size(),
+		_salt.data(),
+		_salt.size(),
+		_iterations
+	) != _iterations)
+		BOOST_THROW_EXCEPTION(CryptoException() << errinfo_comment("Key derivation failed."));
 	return ret;
 }
 
 bytes dev::scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uint32_t _r, uint32_t _p, unsigned _dkLen)
 {
 	bytes ret(_dkLen);
-	libscrypt_scrypt((uint8_t const*)_pass.data(), _pass.size(), _salt.data(), _salt.size(), _n, _r, _p, ret.data(), ret.size());
+	if (libscrypt_scrypt(
+		reinterpret_cast<uint8_t const*>(_pass.data()),
+		_pass.size(),
+		_salt.data(),
+		_salt.size(),
+		_n,
+		_r,
+		_p,
+		ret.data(),
+		ret.size()
+	) != 0)
+		BOOST_THROW_EXCEPTION(CryptoException() << errinfo_comment("Key derivation failed."));
 	return ret;
 }
 
@@ -233,42 +254,84 @@ h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 	return s;
 }
 
-h256 Nonce::get(bool _commit)
+mutex Nonce::s_x;
+static string s_seedFile;
+
+h256 Nonce::get()
 {
 	// todo: atomic efface bit, periodic save, kdf, rr, rng
 	// todo: encrypt
-	static h256 s_seed;
-	static string s_seedFile(getDataDir() + "/seed");
-	static mutex s_x;
-	Guard l(s_x);
-	if (!s_seed)
-	{
-		static Nonce s_nonce;
-		bytes b = contents(s_seedFile);
-		if (b.size() == 32)
-			memcpy(s_seed.data(), b.data(), 32);
-		else
-		{
-			// todo: replace w/entropy from user and system
-			std::mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
-			std::uniform_int_distribution<uint16_t> d(0, 255);
-			for (unsigned i = 0; i < 32; ++i)
-				s_seed[i] = (byte)d(s_eng);
-		}
-		if (!s_seed)
-			BOOST_THROW_EXCEPTION(InvalidState());
-		
-		// prevent seed reuse if process terminates abnormally
-		writeFile(s_seedFile, bytes());
-	}
-	h256 prev(s_seed);
-	sha3(prev.ref(), s_seed.ref());
-	if (_commit)
-		writeFile(s_seedFile, s_seed.asBytes());
-	return std::move(s_seed);
+	Guard l(Nonce::s_x);
+	return Nonce::singleton().next();
+}
+
+void Nonce::reset()
+{
+	Guard l(Nonce::s_x);
+	Nonce::singleton().resetInternal();
+}
+
+void Nonce::setSeedFilePath(string const& _filePath)
+{
+	s_seedFile = _filePath;
 }
 
 Nonce::~Nonce()
 {
-	Nonce::get(true);
+	Guard l(Nonce::s_x);
+	if (m_value)
+		// this might throw
+		resetInternal();
+}
+
+Nonce& Nonce::singleton()
+{
+	static Nonce s;
+	return s;
+}
+
+void Nonce::initialiseIfNeeded()
+{
+	if (m_value)
+		return;
+
+	bytes b = contents(seedFile());
+	if (b.size() == 32)
+		memcpy(m_value.data(), b.data(), 32);
+	else
+	{
+		// todo: replace w/entropy from user and system
+		std::mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
+		std::uniform_int_distribution<uint16_t> d(0, 255);
+		for (unsigned i = 0; i < 32; ++i)
+			m_value[i] = byte(d(s_eng));
+	}
+	if (!m_value)
+		BOOST_THROW_EXCEPTION(InvalidState());
+
+	// prevent seed reuse if process terminates abnormally
+	// this might throw
+	writeFile(seedFile(), bytes());
+}
+
+h256 Nonce::next()
+{
+	initialiseIfNeeded();
+	m_value = sha3(m_value);
+	return m_value;
+}
+
+void Nonce::resetInternal()
+{
+	// this might throw
+	next();
+	writeFile(seedFile(), m_value.asBytes());
+	m_value = h256();
+}
+
+string const& Nonce::seedFile()
+{
+	if (s_seedFile.empty())
+		s_seedFile = getDataDir() + "/seed";
+	return s_seedFile;
 }

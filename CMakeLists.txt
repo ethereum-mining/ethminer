@@ -30,6 +30,7 @@ option(JSONRPC "Build with jsonprc. default on" ON)
 option(FATDB "Build with ability to list entries in the Trie. Doubles DB size, slows everything down, but good for looking at state diffs and trie contents." OFF)
 option(USENPM "Use npm to recompile ethereum.js if it was changed" OFF)
 option(PROFILING "Build in support for profiling" OFF)
+option(ROCKSDB "Use rocksdb rather than leveldb" OFF)
 
 set(BUNDLE "none" CACHE STRING "Predefined bundle of software to build (none, full, user, tests, minimal).")
 option(MINER "Build the CLI miner component" ON)
@@ -37,9 +38,10 @@ option(ETHKEY "Build the CLI key manager component" ON)
 option(SOLIDITY "Build the Solidity language components" ON)
 option(SERPENT "Build the Serpent language components" ON)
 option(TOOLS "Build the tools components" ON)
-option(NCURSES "Build the NCurses components" ON)
+option(NCURSES "Build the NCurses components" OFF)
 option(GUI "Build GUI components (AlethZero, Mix)" ON)
 option(TESTS "Build the tests." ON)
+option(NOBOOST "No use of boost macros in test functions" OFF)
 option(EVMJIT "Build just-in-time compiler for EVM code (requires LLVM)" OFF)
 option(ETHASHCL "Build in support for GPU mining via OpenCL" OFF)
 option(JSCONSOLE "Build in javascript console" OFF)
@@ -80,6 +82,10 @@ function(configureProject)
 
 	if (CURL_FOUND)
 		add_definitions(-DETH_CURL)
+	endif()
+
+	if (NOBOOST)
+		add_definitions(-DNOBOOST)
 	endif()
 
 	add_definitions(-DETH_TRUE)
@@ -193,8 +199,10 @@ eth_format_option(MINER)
 eth_format_option(USENPM)
 eth_format_option(PROFILING)
 eth_format_option(SOLIDITY)
+eth_format_option(ROCKSDB)
 eth_format_option(GUI)
 eth_format_option(TESTS)
+eth_format_option(NOBOOST)
 eth_format_option(TOOLS)
 eth_format_option(ETHASHCL)
 eth_format_option(JSCONSOLE)
@@ -222,7 +230,7 @@ elseif (BUNDLE STREQUAL "full")
 	set(SOLIDITY ON)
 	set(USENPM ON)
 	set(GUI ON)
-	set(NCURSES ${DECENT_PLATFORM})
+#	set(NCURSES ${DECENT_PLATFORM})
 	set(TOOLS ON)
 	set(TESTS ON)
 	set(FATDB ON)
@@ -249,7 +257,7 @@ elseif (BUNDLE STREQUAL "user")
 	set(SOLIDITY OFF)
 	set(USENPM OFF)
 	set(GUI ON)
-	set(NCURSES ${DECENT_PLATFORM})
+#	set(NCURSES ${DECENT_PLATFORM})
 	set(TOOLS ON)
 	set(TESTS OFF)
 elseif (BUNDLE STREQUAL "wallet")
@@ -307,6 +315,7 @@ message("-- PROFILING        Profiling support                        ${PROFILIN
 message("-- FATDB            Full database exploring                  ${FATDB}")
 message("-- JSONRPC          JSON-RPC support                         ${JSONRPC}")
 message("-- USENPM           Javascript source building               ${USENPM}")
+message("-- ROCKSDB          Prefer rocksdb to leveldb                ${ROCKSDB}")
 message("------------------------------------------------------------- components")
 message("-- MINER            Build miner                              ${MINER}")
 message("-- ETHKEY           Build wallet tools                       ${ETHKEY}")
@@ -316,6 +325,7 @@ message("-- SERPENT          Build Serpent language components        ${SERPENT}
 message("-- GUI              Build GUI components                     ${GUI}")
 message("-- NCURSES          Build NCurses components                 ${NCURSES}")
 message("-- TESTS            Build tests                              ${TESTS}")
+message("-- NOBOOST          No BOOST macros in test functions        ${NOBOOST}")
 message("-- ETHASHCL         Build OpenCL components (experimental!)  ${ETHASHCL}")
 message("-- JSCONSOLE        Build with javascript console            ${JSCONSOLE}")
 message("-- EVMJIT           Build LLVM-based JIT EVM (experimental!) ${EVMJIT}")
@@ -331,6 +341,15 @@ message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
 include(EthExecutableHelper)
 
 createBuildInfo()
+
+if (ROCKSDB AND ROCKSDB_FOUND)
+	set(DB_INCLUDE_DIRS ${ROCKSDB_INCLUDE_DIRS})
+	set(DB_LIBRARIES ${ROCKSDB_LIBRARIES})
+	add_definitions(-DETH_ROCKSDB)
+else()
+	set(DB_INCLUDE_DIRS ${LEVELDB_INCLUDE_DIRS})
+	set(DB_LIBRARIES ${LEVELDB_LIBRARIES})
+endif()
 
 if (EVMJIT)
 	set(EVMJIT_CPP TRUE) # include CPP-JIT connector
@@ -430,9 +449,9 @@ if (TOOLS)
 
 endif()
 
-if (NCURSES)
-	add_subdirectory(neth)
-endif ()
+#if (NCURSES)
+#	add_subdirectory(neth)
+#endif ()
 
 if (GUI)
 
@@ -458,7 +477,7 @@ if (APPLE AND GUI)
 		-DAPP_DMG_EXE=${ETH_APP_DMG}
 		-DAPP_DMG_FILE=appdmg.json.in
 		-DAPP_DMG_ICON="alethzero/alethzero.icns"
-		-DAPP_DMG_BACKGROUND="bg.png"
+		-DAPP_DMG_BACKGROUND="install-folder-bg.png"
 		-DETH_BUILD_DIR="${CMAKE_BINARY_DIR}"
 		-DETH_MIX_APP="$<TARGET_FILE_DIR:mix>"
 		-DETH_ALETHZERO_APP="$<TARGET_FILE_DIR:AlethZero>"

@@ -355,6 +355,14 @@ bool Client::isSyncing() const
 	return false;
 }
 
+bool Client::isMajorSyncing() const
+{
+	// TODO: only return true if it is actually doing a proper chain sync.
+	if (auto h = m_host.lock())
+		return h->isSyncing();
+	return false;
+}
+
 void Client::startedWorking()
 {
 	// Synchronise the state according to the head of the block chain.
@@ -612,22 +620,23 @@ bool Client::submitWork(ProofOfWork::Solution const& _solution)
 }
 
 unsigned static const c_syncMin = 1;
-unsigned static const c_syncMax = 100;
+unsigned static const c_syncMax = 1000;
 double static const c_targetDuration = 1;
 
 void Client::syncBlockQueue()
 {
-	ImportRoute ir;
 	cwork << "BQ ==> CHAIN ==> STATE";
+	ImportRoute ir;
+	unsigned count;
 	boost::timer t;
-	tie(ir, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, m_syncAmount);
+	tie(ir, m_syncBlockQueue, count) = m_bc.sync(m_bq, m_stateDB, m_syncAmount);
 	double elapsed = t.elapsed();
 
-	cnote << m_syncAmount << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (m_syncAmount / elapsed) << "blocks/s)";
+	cnote << count << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (count / elapsed) << "blocks/s)";
 
-	if (elapsed > c_targetDuration * 1.1 && m_syncAmount > c_syncMin)
-		m_syncAmount = max(c_syncMin, m_syncAmount * 9 / 10);
-	else if (elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
+	if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
+		m_syncAmount = max(c_syncMin, count * 9 / 10);
+	else if (count == m_syncAmount && elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
 		m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
 	if (ir.liveBlocks.empty())
 		return;
@@ -673,10 +682,10 @@ void Client::onDeadBlocks(h256s const& _blocks, h256Hash& io_changed)
 	// insert transactions that we are declaring the dead part of the chain
 	for (auto const& h: _blocks)
 	{
-		clog(ClientNote) << "Dead block:" << h;
+		clog(ClientTrace) << "Dead block:" << h;
 		for (auto const& t: m_bc.transactions(h))
 		{
-			clog(ClientNote) << "Resubmitting dead-block transaction " << Transaction(t, CheckTransaction::None);
+			clog(ClientTrace) << "Resubmitting dead-block transaction " << Transaction(t, CheckTransaction::None);
 			m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
 		}
 	}
@@ -690,10 +699,10 @@ void Client::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
 	// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
 	for (auto const& h: _blocks)
 	{
-		clog(ClientChat) << "Live block:" << h;
+		clog(ClientTrace) << "Live block:" << h;
 		for (auto const& th: m_bc.transactionHashes(h))
 		{
-			clog(ClientNote) << "Safely dropping transaction " << th;
+			clog(ClientTrace) << "Safely dropping transaction " << th;
 			m_tq.drop(th);
 		}
 	}
@@ -709,7 +718,7 @@ void Client::restartMining()
 {
 	// RESTART MINING
 
-	if (!m_bq.items().first)
+	if (!isMajorSyncing())
 	{
 		bool preChanged = false;
 		State newPreMine;
@@ -731,7 +740,7 @@ void Client::restartMining()
 			DEV_READ_GUARDED(x_postMine)
 				for (auto const& t: m_postMine.pending())
 				{
-					clog(ClientNote) << "Resubmitting post-mine transaction " << t;
+					clog(ClientTrace) << "Resubmitting post-mine transaction " << t;
 					auto ir = m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
 					if (ir != ImportResult::Success)
 						onTransactionQueueReady();
@@ -777,7 +786,7 @@ void Client::startMining()
 
 void Client::rejigMining()
 {
-	if ((wouldMine() || remoteActive()) && !m_bq.items().first && (!isChainBad() || mineOnBadChain()) /*&& (forceMining() || transactionsWaiting())*/)
+	if ((wouldMine() || remoteActive()) && !isMajorSyncing() && (!isChainBad() || mineOnBadChain()) /*&& (forceMining() || transactionsWaiting())*/)
 	{
 		cnote << "Rejigging mining...";
 		DEV_WRITE_GUARDED(x_working)
@@ -892,7 +901,9 @@ State Client::asOf(h256 const& _block) const
 {
 	try
 	{
-		return State(m_stateDB, bc(), _block);
+		State ret(m_stateDB);
+		ret.populateFromChain(bc(), _block);
+		return ret;
 	}
 	catch (Exception& ex)
 	{
@@ -909,12 +920,36 @@ void Client::prepareForTransaction()
 
 State Client::state(unsigned _txi, h256 _block) const
 {
-	return State(m_stateDB, m_bc, _block).fromPending(_txi);
+	try
+	{
+		State ret(m_stateDB);
+		ret.populateFromChain(m_bc, _block);
+		return ret.fromPending(_txi);
+	}
+	catch (Exception& ex)
+	{
+		ex << errinfo_block(bc().block(_block));
+		onBadBlock(ex);
+		return State();
+	}
 }
 
-eth::State Client::state(h256 _block) const
+State Client::state(h256 const& _block, PopulationStatistics* o_stats) const
 {
-	return State(m_stateDB, m_bc, _block);
+	try
+	{
+		State ret(m_stateDB);
+		PopulationStatistics s = ret.populateFromChain(m_bc, _block);
+		if (o_stats)
+			swap(s, *o_stats);
+		return ret;
+	}
+	catch (Exception& ex)
+	{
+		ex << errinfo_block(bc().block(_block));
+		onBadBlock(ex);
+		return State();
+	}
 }
 
 eth::State Client::state(unsigned _txi) const

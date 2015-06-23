@@ -68,6 +68,7 @@ public:
 	void setWork(WorkPackage const& _wp)
 	{
 		WriteGuard l(x_minerWork);
+		cdebug << "Farm::setWork()";
 		if (_wp.headerHash == m_work.headerHash)
 			return;
 		m_work = _wp;
@@ -94,6 +95,7 @@ public:
 	void stop()
 	{
 		WriteGuard l(x_minerWork);
+		cdebug << "Farm::stop()";
 		m_miners.clear();
 		m_work.reset();
 		m_isMining = false;
@@ -175,6 +177,7 @@ private:
 	bool start()
 	{
 		WriteGuard l(x_minerWork);
+		cdebug << "start()";
 		if (!m_miners.empty() && !!std::dynamic_pointer_cast<MinerType>(m_miners[0]))
 			return true;
 		m_miners.clear();

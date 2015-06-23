@@ -59,7 +59,7 @@ private:
 	Main* m_main;
 };
 
-class OurWebThreeStubServer: public QObject, public WebThreeStubServer
+class OurWebThreeStubServer: public QObject, public dev::WebThreeStubServer
 {
 	Q_OBJECT
 

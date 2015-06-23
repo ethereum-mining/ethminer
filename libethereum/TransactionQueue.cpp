@@ -29,6 +29,7 @@ using namespace dev;
 using namespace dev::eth;
 
 const char* TransactionQueueChannel::name() { return EthCyan "┉┅▶"; }
+const char* TransactionQueueTraceChannel::name() { return EthCyan " ┅▶"; }
 
 ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallback const& _cb, IfDropped _ik)
 {
@@ -115,7 +116,7 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 		m_known.insert(_h);
 		if (_cb)
 			m_callbacks[_h] = _cb;
-		ctxq << "Queued vaguely legit-looking transaction" << _h;
+		clog(TransactionQueueTraceChannel) << "Queued vaguely legit-looking transaction" << _h;
 		m_onReady();
 	}
 	catch (Exception const& _e)
