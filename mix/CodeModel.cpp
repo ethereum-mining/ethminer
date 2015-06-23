@@ -374,29 +374,55 @@ void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
 		dev::solidity::SourceUnit const& sourceUnit = _cs.getAST(*contractDefinition.getLocation().sourceName);
 		AssemblyItems const* items = _cs.getRuntimeAssemblyItems(n);
 		std::map<ASTNode const*, GasMeter::GasConsumption> gasCosts = GasEstimator::breakToStatementLevel(GasEstimator::structuralEstimation(*items, std::vector<ASTNode const*>({&sourceUnit})), {&sourceUnit});
+
+		auto gasToString = [](GasMeter::GasConsumption const& _gas)
+		{
+			if (_gas.isInfinite)
+				return QString("0");
+			else
+				return QString::fromStdString(toString(_gas.value));
+		};
+
+		// Structural gas costs (per opcode)
 		for (auto gasItem = gasCosts.begin(); gasItem != gasCosts.end(); ++gasItem)
 		{
 			SourceLocation const& location = gasItem->first->getLocation();
 			GasMeter::GasConsumption cost = gasItem->second;
-			std::stringstream v;
-			v << cost.value;
-			m_gasCostsMaps->push(sourceName, location.start, location.end, QString::fromStdString(v.str()), cost.isInfinite, GasMap::type::Statement);
+			m_gasCostsMaps->push(sourceName, location.start, location.end, gasToString(cost), cost.isInfinite, GasMap::type::Statement);
 		}
 
-		if (contractDefinition.getConstructor() != nullptr)
+		eth::AssemblyItems const& runtimeAssembly = *_cs.getRuntimeAssemblyItems(n);
+		// Functional gas costs (per function, but also for accessors)
+		for (auto it: contractDefinition.getInterfaceFunctions())
 		{
-			GasMeter::GasConsumption cost = GasEstimator::functionalEstimation(*_cs.getRuntimeAssemblyItems(n), contractDefinition.getConstructor()->externalSignature());
-			std::stringstream v;
-			v << cost.value;
-			m_gasCostsMaps->push(sourceName, contractDefinition.getConstructor()->getLocation().start, contractDefinition.getConstructor()->getLocation().end, QString::fromStdString(v.str()), cost.isInfinite, GasMap::type::Constructor);
+			if (!it.second->hasDeclaration())
+				continue;
+			SourceLocation loc = it.second->getDeclaration().getLocation();
+			GasMeter::GasConsumption cost = GasEstimator::functionalEstimation(runtimeAssembly, it.second->externalSignature());
+			m_gasCostsMaps->push(sourceName, loc.start, loc.end, gasToString(cost), cost.isInfinite, GasMap::type::Function);
 		}
-
-		for (auto func: contractDefinition.getDefinedFunctions())
+		if (auto const* fallback = contractDefinition.getFallbackFunction())
 		{
-			GasMeter::GasConsumption cost = GasEstimator::functionalEstimation(*_cs.getRuntimeAssemblyItems(n), func->externalSignature());
-			std::stringstream v;
-			v << cost.value;
-			m_gasCostsMaps->push(sourceName, func->getLocation().start, func->getLocation().end, QString::fromStdString(v.str()), cost.isInfinite, GasMap::type::Function);
+			SourceLocation loc = fallback->getLocation();
+			GasMeter::GasConsumption cost = GasEstimator::functionalEstimation(runtimeAssembly, "INVALID");
+			m_gasCostsMaps->push(sourceName, loc.start, loc.end, gasToString(cost), cost.isInfinite, GasMap::type::Function);
+		}
+		for (auto const& it: contractDefinition.getDefinedFunctions())
+		{
+			if (it->isPartOfExternalInterface() || it->isConstructor())
+				continue;
+			SourceLocation loc = it->getLocation();
+			size_t entry = _cs.getFunctionEntryPoint(n, *it);
+			GasEstimator::GasConsumption cost = GasEstimator::GasConsumption::infinite();
+			if (entry > 0)
+				cost = GasEstimator::functionalEstimation(runtimeAssembly, entry, *it);
+			m_gasCostsMaps->push(sourceName, loc.start, loc.end, gasToString(cost), cost.isInfinite, GasMap::type::Function);
+		}
+		if (auto const* constructor = contractDefinition.getConstructor())
+		{
+			SourceLocation loc = constructor->getLocation();
+			GasMeter::GasConsumption cost = GasEstimator::functionalEstimation(*_cs.getAssemblyItems(n));
+			m_gasCostsMaps->push(sourceName, loc.start, loc.end, gasToString(cost), cost.isInfinite, GasMap::type::Constructor);
 		}
 	}
 }
