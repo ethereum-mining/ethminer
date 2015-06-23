@@ -34,7 +34,6 @@ var Filter = require('./web3/filter');
 var utils = require('./utils/utils');
 var formatters = require('./web3/formatters');
 var RequestManager = require('./web3/requestmanager');
-var Method = require('./web3/method');
 var c = require('./utils/config');
 var Property = require('./web3/property');
 var Batch = require('./web3/batch');
@@ -94,8 +93,7 @@ web3.eth.filter = function (fil, eventParams, options, formatter) {
         return fil(eventParams, options);
     }
 
-    // what outputLogFormatter? that's wrong
-    //return new Filter(fil, watches.eth(), formatters.outputLogFormatter);
+    // output logs works for blockFilter and pendingTransaction filters?
     return new Filter(fil, watches.eth(), formatter || formatters.outputLogFormatter);
 };
 /*jshint maxparams:3 */
@@ -150,6 +148,23 @@ Object.defineProperty(web3.eth, 'defaultAccount', {
     }
 });
 
+
+// EXTEND
+web3._extend = function(extension){
+    /*jshint maxcomplexity: 6 */
+
+    if(extension.property && !web3[extension.property])
+        web3[extension.property] = {};
+
+    setupMethods(web3[extension.property] || web3, extension.methods || []);
+    setupProperties(web3[extension.property] || web3, extension.properties || []);
+};
+web3._extend.formatters = formatters;
+web3._extend.utils = utils;
+web3._extend.Method = require('./web3/method');
+web3._extend.Property = require('./web3/property');
+
+
 /// setups all api methods
 setupProperties(web3, web3Properties);
 setupMethods(web3.net, net.methods);
@@ -158,18 +173,6 @@ setupMethods(web3.eth, eth.methods);
 setupProperties(web3.eth, eth.properties);
 setupMethods(web3.db, db.methods);
 setupMethods(web3.shh, shh.methods);
-
-web3.admin = {};
-web3.admin.setSessionKey = function(s) { web3.admin.sessionKey = s; };
-
-var blockQueueStatus = new Property({
-	name: 'blockQueueStatus',
-	call: 'admin_eth_blockQueueStatus',
-	params: 1,
-	inputFormatter: [function() { return web3.admin.sessionKey; }]
-});
-
-setupMethods(web3.admin, [blockQueueStatus]);
 
 module.exports = web3;
 
