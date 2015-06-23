@@ -34,8 +34,6 @@ namespace dev
 namespace eth
 {
 
-class AccountHolder;
-
 class JSLocalConsole: public JSConsole<JSV8Engine, JSV8Printer>
 {
 public:
