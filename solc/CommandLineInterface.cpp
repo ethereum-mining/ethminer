@@ -273,6 +273,11 @@ void CommandLineInterface::handleGasEstimation(string const& _contract)
 			GasEstimator::GasConsumption gas = GasEstimator::functionalEstimation(*items, sig);
 			cout << "   " << sig << ":\t" << gas << endl;
 		}
+		if (contract.getFallbackFunction())
+		{
+			GasEstimator::GasConsumption gas = GasEstimator::functionalEstimation(*items, "INVALID");
+			cout << "   fallback:\t" << gas << endl;
+		}
 		cout << "internal:" << endl;
 		for (auto const& it: contract.getDefinedFunctions())
 		{
@@ -401,7 +406,7 @@ bool CommandLineInterface::processInput()
 				continue;
 			}
 
-			m_sourceCodes[infile] = asString(dev::contents(infile));
+			m_sourceCodes[infile] = dev::contentsString(infile);
 		}
 
 	m_compiler.reset(new CompilerStack(m_args["add-std"].as<bool>()));

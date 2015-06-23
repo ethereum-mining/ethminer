@@ -17,7 +17,7 @@ int main(int argc, char** argv)
 
 	JSRemoteConsole console(argv[1]);
 	while (true)
-		console.repl();
+		console.readExpression();
 
 	return 0;
 }

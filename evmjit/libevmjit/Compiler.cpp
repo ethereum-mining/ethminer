@@ -148,7 +148,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	auto fp = m_builder.CreateCall(frameaddress, m_builder.getInt32(0), "fp");
 	m_builder.CreateStore(fp, jmpBufWords);
 	auto stacksave = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::stacksave);
-	auto sp = m_builder.CreateCall(stacksave, "sp");
+	auto sp = m_builder.CreateCall(stacksave, {}, "sp");
 	auto jmpBufSp = m_builder.CreateConstInBoundsGEP1_64(jmpBufWords, 2, "jmpBuf.sp");
 	m_builder.CreateStore(sp, jmpBufSp);
 	auto setjmp = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::eh_sjlj_setjmp);
@@ -464,12 +464,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			// test for word >> (k * 8 + 7)
 			auto bitpos = m_builder.CreateAdd(k32x8, m_builder.getInt64(7), "bitpos");
 			auto bitposEx = m_builder.CreateZExt(bitpos, Type::Word);
-			auto bittester = m_builder.CreateShl(Constant::get(1), bitposEx);
-			auto bitresult = m_builder.CreateAnd(word, bittester);
-			auto bittest = m_builder.CreateICmpUGT(bitresult, Constant::get(0));
-			// FIXME: The following does not work - LLVM bug, report!
-			//auto bitval = m_builder.CreateLShr(word, bitpos, "bitval");
-			//auto bittest = m_builder.CreateTrunc(bitval, Type::Bool, "bittest");
+			auto bitval = m_builder.CreateLShr(word, bitposEx, "bitval");
+			auto bittest = m_builder.CreateTrunc(bitval, Type::Bool, "bittest");
 
 			auto mask_ = m_builder.CreateShl(Constant::get(1), bitposEx);
 			auto mask = m_builder.CreateSub(mask_, Constant::get(1), "mask");

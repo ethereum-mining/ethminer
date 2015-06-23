@@ -83,6 +83,7 @@ struct SubReputation
 {
 	bool isRude = false;
 	int utility = 0;
+	bytes data;
 };
 
 struct Reputation
@@ -97,6 +98,8 @@ public:
 
 	void noteRude(Session const& _s, std::string const& _sub = std::string());
 	bool isRude(Session const& _s, std::string const& _sub = std::string()) const;
+	void setData(Session const& _s, std::string const& _sub, bytes const& _data);
+	bytes data(Session const& _s, std::string const& _subs) const;
 
 private:
 	std::unordered_map<std::pair<p2p::NodeId, std::string>, Reputation> m_nodes;	///< Nodes that were impolite while syncing. We avoid syncing from these if possible.

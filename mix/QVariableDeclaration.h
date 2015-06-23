@@ -60,6 +60,7 @@ public:
 		Bool,
 		Address,
 		Bytes,
+		String,
 		Enum,
 		Struct
 	};

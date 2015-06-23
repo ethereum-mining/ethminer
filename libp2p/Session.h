@@ -67,7 +67,7 @@ public:
 	bool isConnected() const { return m_socket->ref().is_open(); }
 
 	NodeId id() const;
-	unsigned socketId() const { return m_info.socketId; }
+	unsigned socketId() const { Guard l(x_info); return m_info.socketId; }
 
 	template <class PeerCap>
 	std::shared_ptr<PeerCap> cap() const { try { return std::static_pointer_cast<PeerCap>(m_capabilities.at(std::make_pair(PeerCap::name(), PeerCap::version()))); } catch (...) { return nullptr; } }
@@ -81,9 +81,9 @@ public:
 	int rating() const;
 	void addRating(int _r);
 
-	void addNote(std::string const& _k, std::string const& _v) { m_info.notes[_k] = _v; }
+	void addNote(std::string const& _k, std::string const& _v) { Guard l(x_info); m_info.notes[_k] = _v; }
 
-	PeerSessionInfo const& info() const { return m_info; }
+	PeerSessionInfo info() const { Guard l(x_info); return m_info; }
 
 	void ensureNodesRequested();
 	void serviceNodesRequest();
@@ -119,6 +119,7 @@ private:
 	std::shared_ptr<Peer> m_peer;			///< The Peer object.
 	bool m_dropped = false;					///< If true, we've already divested ourselves of this peer. We're just waiting for the reads & writes to fail before the shared_ptr goes OOS and the destructor kicks in.
 
+	mutable Mutex x_info;
 	PeerSessionInfo m_info;						///< Dynamic information about this peer.
 
 	bool m_theyRequestedNodes = false;		///< Has the peer requested nodes from us without receiveing an answer from us?

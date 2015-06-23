@@ -193,6 +193,8 @@ QByteArray const& DappLoader::web3Content()
 		code += "\n";
 		code += contentsOfQResource(":/js/setup.js");
 		code += "\n";
+		code += contentsOfQResource(":/js/admin.js");
+		code += "\n";
 		m_web3Js = code.toLatin1();
 	}
 	return m_web3Js;
