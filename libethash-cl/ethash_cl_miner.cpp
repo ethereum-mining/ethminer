@@ -30,6 +30,7 @@
 #include <queue>
 #include <random>
 #include <vector>
+#include <boost/timer.hpp>
 #include <libethash/util.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
@@ -64,7 +65,7 @@ static void addDefinition(string& _source, char const* _id, unsigned _value)
 ethash_cl_miner::search_hook::~search_hook() {}
 
 ethash_cl_miner::ethash_cl_miner()
-:	m_opencl_1_1()
+:	m_openclOnePointOne()
 {
 }
 
@@ -252,7 +253,7 @@ void ethash_cl_miner::finish()
 bool ethash_cl_miner::init(
 	uint8_t const* _dag,
 	uint64_t _dagSize,
-	unsigned workgroup_size,
+	unsigned _workgroupSize,
 	unsigned _platformId,
 	unsigned _deviceId
 )
@@ -291,23 +292,23 @@ bool ethash_cl_miner::init(
 			return false;
 		}
 		if (strncmp("OpenCL 1.1", device_version.c_str(), 10) == 0)
-			m_opencl_1_1 = true;
+			m_openclOnePointOne = true;
 
 		// create context
 		m_context = cl::Context(vector<cl::Device>(&device, &device + 1));
 		m_queue = cl::CommandQueue(m_context, device);
 
 		// use requested workgroup size, but we require multiple of 8
-		m_workgroup_size = ((workgroup_size + 7) / 8) * 8;
+		m_workgroupSize = ((_workgroupSize + 7) / 8) * 8;
 
 		// patch source code
 		// note: ETHASH_CL_MINER_KERNEL is simply ethash_cl_miner_kernel.cl compiled
 		// into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
 		string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
-		addDefinition(code, "GROUP_SIZE", m_workgroup_size);
+		addDefinition(code, "GROUP_SIZE", m_workgroupSize);
 		addDefinition(code, "DAG_SIZE", (unsigned)(_dagSize / ETHASH_MIX_BYTES));
 		addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
-		addDefinition(code, "MAX_OUTPUTS", c_max_search_results);
+		addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
 		//debugf("%s", code.c_str());
 
 		// create miner OpenCL program
@@ -330,7 +331,7 @@ bool ethash_cl_miner::init(
 		// create buffer for dag
 		try
 		{
-			m_dagChunksNum = 1;
+			m_dagChunksCount = 1;
 			m_dagChunks.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize));
 			ETHCL_LOG("Created one big buffer for the DAG");
 		}
@@ -346,8 +347,8 @@ bool ethash_cl_miner::init(
 				<< result << ". Trying to allocate 4 chunks."
 			);
 			// The OpenCL kernel has a hard coded number of 4 chunks at the moment
-			m_dagChunksNum = 4;
-			for (unsigned i = 0; i < m_dagChunksNum; i++)
+			m_dagChunksCount = 4;
+			for (unsigned i = 0; i < m_dagChunksCount; i++)
 			{
 				// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
 				ETHCL_LOG("Creating buffer for chunk " << i);
@@ -359,24 +360,24 @@ bool ethash_cl_miner::init(
 			}
 		}
 
-		if (m_dagChunksNum == 1)
+		if (m_dagChunksCount == 1)
 		{
 			ETHCL_LOG("Loading single big chunk kernels");
-			m_hash_kernel = cl::Kernel(program, "ethash_hash");
-			m_search_kernel = cl::Kernel(program, "ethash_search");
+			m_hashKernel = cl::Kernel(program, "ethash_hash");
+			m_searchKernel = cl::Kernel(program, "ethash_search");
 		}
 		else
 		{
 			ETHCL_LOG("Loading chunk kernels");
-			m_hash_kernel = cl::Kernel(program, "ethash_hash_chunks");
-			m_search_kernel = cl::Kernel(program, "ethash_search_chunks");
+			m_hashKernel = cl::Kernel(program, "ethash_hash_chunks");
+			m_searchKernel = cl::Kernel(program, "ethash_search_chunks");
 		}
 
 		// create buffer for header
 		ETHCL_LOG("Creating buffer for header.");
 		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
-		if (m_dagChunksNum == 1)
+		if (m_dagChunksCount == 1)
 		{
 			ETHCL_LOG("Mapping one big chunk.");
 			m_queue.enqueueWriteBuffer(m_dagChunks[0], CL_TRUE, 0, _dagSize, _dag);
@@ -385,12 +386,12 @@ bool ethash_cl_miner::init(
 		{
 			// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
 			void* dag_ptr[4];
-			for (unsigned i = 0; i < m_dagChunksNum; i++)
+			for (unsigned i = 0; i < m_dagChunksCount; i++)
 			{
 				ETHCL_LOG("Mapping chunk " << i);
-				dag_ptr[i] = m_queue.enqueueMapBuffer(m_dagChunks[i], true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
+				dag_ptr[i] = m_queue.enqueueMapBuffer(m_dagChunks[i], true, m_openclOnePointOne ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
 			}
-			for (unsigned i = 0; i < m_dagChunksNum; i++)
+			for (unsigned i = 0; i < m_dagChunksCount; i++)
 			{
 				memcpy(dag_ptr[i], (char *)_dag + i*((_dagSize >> 9) << 7), (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
 				m_queue.enqueueUnmapMemObject(m_dagChunks[i], dag_ptr[i]);
@@ -398,11 +399,11 @@ bool ethash_cl_miner::init(
 		}
 
 		// create mining buffers
-		for (unsigned i = 0; i != c_num_buffers; ++i)
+		for (unsigned i = 0; i != c_bufferCount; ++i)
 		{
 			ETHCL_LOG("Creating mining buffer " << i);
-			m_hash_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY | (!m_opencl_1_1 ? CL_MEM_HOST_READ_ONLY : 0), 32 * c_hash_batch_size);
-			m_search_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_max_search_results + 1) * sizeof(uint32_t));
+			m_hashBuffer[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY | (!m_openclOnePointOne ? CL_MEM_HOST_READ_ONLY : 0), 32 * c_hashBatchSize);
+			m_searchBuffer[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_maxSearchResults + 1) * sizeof(uint32_t));
 		}
 	}
 	catch (cl::Error const& err)
@@ -413,7 +414,7 @@ bool ethash_cl_miner::init(
 	return true;
 }
 
-void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook)
+void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, unsigned _msPerBatch)
 {
 	try
 	{
@@ -429,8 +430,8 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 
 		// update header constant buffer
 		m_queue.enqueueWriteBuffer(m_header, false, 0, 32, header);
-		for (unsigned i = 0; i != c_num_buffers; ++i)
-			m_queue.enqueueWriteBuffer(m_search_buf[i], false, 0, 4, &c_zero);
+		for (unsigned i = 0; i != c_bufferCount; ++i)
+			m_queue.enqueueWriteBuffer(m_searchBuffer[i], false, 0, 4, &c_zero);
 
 #if CL_VERSION_1_2 && 0
 		cl::Event pre_return_event;
@@ -441,53 +442,59 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 			m_queue.finish();
 
 		unsigned argPos = 2;
-		m_search_kernel.setArg(1, m_header);
-		for (unsigned i = 0; i < m_dagChunksNum; ++i, ++argPos)
-			m_search_kernel.setArg(argPos, m_dagChunks[i]);
+		m_searchKernel.setArg(1, m_header);
+		for (unsigned i = 0; i < m_dagChunksCount; ++i, ++argPos)
+			m_searchKernel.setArg(argPos, m_dagChunks[i]);
 		// pass these to stop the compiler unrolling the loops
-		m_search_kernel.setArg(argPos + 1, target);
-		m_search_kernel.setArg(argPos + 2, ~0u);
+		m_searchKernel.setArg(argPos + 1, target);
+		m_searchKernel.setArg(argPos + 2, ~0u);
 
 		unsigned buf = 0;
 		random_device engine;
 		uint64_t start_nonce = uniform_int_distribution<uint64_t>()(engine);
-		for (;; start_nonce += c_search_batch_size)
+		for (;; start_nonce += m_batchSize)
 		{
 			// supply output buffer to kernel
-			m_search_kernel.setArg(0, m_search_buf[buf]);
-			if (m_dagChunksNum == 1)
-				m_search_kernel.setArg(3, start_nonce);
+			m_searchKernel.setArg(0, m_searchBuffer[buf]);
+			if (m_dagChunksCount == 1)
+				m_searchKernel.setArg(3, start_nonce);
 			else
-				m_search_kernel.setArg(6, start_nonce);
+				m_searchKernel.setArg(6, start_nonce);
 
 			// execute it!
-			m_queue.enqueueNDRangeKernel(m_search_kernel, cl::NullRange, c_search_batch_size, m_workgroup_size);
+			boost::timer t;
+			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_batchSize, m_workgroupSize);
+			unsigned ms = t.elapsed() * 1000;
+			if (ms > _msPerBatch * 1.1)
+				m_batchSize = max(128, m_batchSize * 9 / 10);
+			else if (ms > _msPerBatch * 0.9)
+				m_batchSize = m_batchSize * 10 / 9;
 
 			pending.push({ start_nonce, buf });
-			buf = (buf + 1) % c_num_buffers;
+			buf = (buf + 1) % c_bufferCount;
 
 			// read results
-			if (pending.size() == c_num_buffers)
+			if (pending.size() == c_bufferCount)
 			{
 				pending_batch const& batch = pending.front();
 
 				// could use pinned host pointer instead
-				uint32_t* results = (uint32_t*)m_queue.enqueueMapBuffer(m_search_buf[batch.buf], true, CL_MAP_READ, 0, (1 + c_max_search_results) * sizeof(uint32_t));
-				unsigned num_found = min<unsigned>(results[0], c_max_search_results);
+				uint32_t* results = (uint32_t*)m_queue.enqueueMapBuffer(m_searchBuffer[batch.buf], true, CL_MAP_READ, 0, (1 + c_maxSearchResults) * sizeof(uint32_t));
+				unsigned num_found = min<unsigned>(results[0], c_maxSearchResults);
 
-				uint64_t nonces[c_max_search_results];
+				uint64_t nonces[c_maxSearchResults];
 				for (unsigned i = 0; i != num_found; ++i)
 					nonces[i] = batch.start_nonce + results[i + 1];
 
-				m_queue.enqueueUnmapMemObject(m_search_buf[batch.buf], results);
+				m_queue.enqueueUnmapMemObject(m_searchBuffer[batch.buf], results);
 				bool exit = num_found && hook.found(nonces, num_found);
-				exit |= hook.searched(batch.start_nonce, c_search_batch_size); // always report searched before exit
+				exit |= hook.searched(batch.start_nonce, m_batchSize); // always report searched before exit
 				if (exit)
 					break;
 
 				// reset search buffer if we're still going
 				if (num_found)
-					m_queue.enqueueWriteBuffer(m_search_buf[batch.buf], true, 0, 4, &c_zero);
+					m_queue.enqueueWriteBuffer(m_searchBuffer[batch.buf], true, 0, 4, &c_zero);
 
 				pending.pop();
 			}
