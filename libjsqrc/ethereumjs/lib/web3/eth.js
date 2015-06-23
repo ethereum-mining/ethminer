@@ -77,11 +77,11 @@ var uncleCountCall = function (args) {
 /// @returns an array of objects describing web3.eth api methods
 
 var getBalance = new Method({
-	name: 'getBalance',
-	call: 'eth_getBalance',
-	params: 2,
-	inputFormatter: [utils.toAddress, formatters.inputDefaultBlockNumberFormatter],
-	outputFormatter: formatters.outputBigNumberFormatter
+    name: 'getBalance',
+    call: 'eth_getBalance',
+    params: 2,
+    inputFormatter: [utils.toAddress, formatters.inputDefaultBlockNumberFormatter],
+    outputFormatter: formatters.outputBigNumberFormatter
 });
 
 var getStorageAt = new Method({
