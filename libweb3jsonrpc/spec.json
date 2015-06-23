@@ -88,8 +88,8 @@
 { "name": "admin_eth_setMiningBenefactor", "params": ["", ""], "returns": true },
 { "name": "admin_eth_inspect", "params": ["", ""], "returns": {} },
 { "name": "admin_eth_reprocess", "params": ["", ""], "returns": {} },
-{ "name": "admin_eth_vmTrace", "params": ["", "", ""], "returns": {} },
-{ "name": "admin_eth_getReceiptByHashAndIndex", "params": ["", "", ""], "returns": {} }
+{ "name": "admin_eth_vmTrace", "params": ["", 0, ""], "returns": {} },
+{ "name": "admin_eth_getReceiptByHashAndIndex", "params": ["", 0, ""], "returns": {} }
 
 ]
 

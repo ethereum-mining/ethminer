@@ -33,7 +33,7 @@ OurWebThreeStubServer::OurWebThreeStubServer(
 	jsonrpc::AbstractServerConnector& _conn,
 	Main* _main
 ):
-	WebThreeStubServer(_conn, *_main->web3(), make_shared<OurAccountHolder>(_main), _main->owned().toVector().toStdVector(), _main->keyManager()),
+	WebThreeStubServer(_conn, *_main->web3(), make_shared<OurAccountHolder>(_main), _main->owned().toVector().toStdVector(), _main->keyManager(), *static_cast<TrivialGasPricer*>(_main->ethereum()->gasPricer().get())),
 	m_main(_main)
 {
 }
@@ -136,7 +136,7 @@ void OurAccountHolder::doValidations()
 
 AddressHash OurAccountHolder::realAccounts() const
 {
-	return m_main->keyManager().accounts();
+	return m_main->keyManager().accountsHash();
 }
 
 bool OurAccountHolder::validateTransaction(TransactionSkeleton const& _t, bool _toProxy)

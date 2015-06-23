@@ -50,6 +50,9 @@ namespace eth
 class EthereumPeer: public p2p::Capability
 {
 	friend class EthereumHost; //TODO: remove this
+	friend class BlockChainSync; //TODO: remove this
+	friend class PV60Sync; //TODO: remove this
+	friend class PV61Sync; //TODO: remove this
 
 public:
 	/// Basic constructor.
@@ -73,8 +76,8 @@ public:
 	/// Abort sync and reset fetch
 	void setIdle();
 
-	/// Request hashes. Uses hash download manager to get hash number. v61+ protocol version only
-	void requestHashes();
+	/// Request hashes by number. v61+ protocol version only
+	void requestHashes(u256 _number, unsigned _count);
 
 	/// Request hashes for given parent hash.
 	void requestHashes(h256 const& _lastHash);
@@ -90,6 +93,9 @@ public:
 
 private:
 	using p2p::Capability::sealAndSend;
+
+	/// Figure out the amount of blocks we should be asking for.
+	unsigned askOverride() const;
 
 	/// Interpret an incoming message.
 	virtual bool interpret(unsigned _id, RLP const& _r);
@@ -135,17 +141,15 @@ private:
 	h256 m_genesisHash;						///< Peer's genesis hash
 	u256 m_latestBlockNumber;				///< Number of the latest block this peer has
 
+
 	/// This is built as we ask for hashes. Once no more hashes are given, we present this to the
 	/// host who initialises the DownloadMan and m_sub becomes active for us to begin asking for blocks.
 	unsigned m_expectedHashes = 0;			///< Estimated upper bound of hashes to expect from this peer.
-	unsigned m_syncHashNumber = 0;			///< Number of latest hash we sync to (PV61+)
+	u256 m_syncHashNumber = 0;				///< Number of latest hash we sync to (PV61+)
 	h256 m_syncHash;						///< Latest hash we sync to (PV60)
 
 	/// Once we're asking for blocks, this becomes in use.
 	DownloadSub m_sub;
-
-	/// Once we're asking for hashes, this becomes in use.
-	HashDownloadSub m_hashSub;
 
 	u256 m_peerCapabilityVersion;			///< Protocol version this peer supports received as capability
 	/// Have we received a GetTransactions packet that we haven't yet answered?

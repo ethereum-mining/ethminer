@@ -57,6 +57,7 @@ struct SolidityType
 	QString name;
 	std::vector<SolidityDeclaration> members; //for struct
 	std::vector<QString> enumNames; //for enum
+	std::shared_ptr<SolidityType const> baseType;
 };
 
 struct SolidityDeclaration

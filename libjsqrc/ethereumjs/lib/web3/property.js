@@ -29,7 +29,6 @@ var Property = function (options) {
     this.setter = options.setter;
     this.outputFormatter = options.outputFormatter;
     this.inputFormatter = options.inputFormatter;
-	this.params = options.params;
 };
 
 /**

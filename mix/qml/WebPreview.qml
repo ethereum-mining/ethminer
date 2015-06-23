@@ -90,11 +90,6 @@ Item {
 	}
 
 	Connections {
-		target: clientModel
-		onRunComplete: reload();
-	}
-
-	Connections {
 		target: codeModel
 		onContractInterfaceChanged: reload();
 	}
