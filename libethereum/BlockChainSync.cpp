@@ -254,7 +254,6 @@ void BlockChainSync::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP con
 	DEV_INVARIANT_CHECK;
 	RecursiveGuard l(x_sync);
 	auto h = BlockInfo::headerHash(_r[0].data());
-	clog(NetMessageSummary) << "NewBlock: " << h;
 
 	if (_r.itemCount() != 2)
 		_peer->disable("NewBlock without 2 data fields.");
@@ -761,7 +760,7 @@ void PV60Sync::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const&
 			if (!m_knownNewHashes.count(h))
 			{
 				m_knownNewHashes.insert(h);
-				clog(NetNote) << "NewHashes: " << h;
+				clog(NetNote) << "NewHash: " << h;
 			}
 		resetSync();
 	}
