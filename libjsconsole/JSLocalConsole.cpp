@@ -21,7 +21,6 @@
  */
 
 #include <iostream>
-#include <libweb3jsonrpc/WebThreeStubServer.h>
 #include "JSLocalConsole.h"
 #include "JSV8Connector.h"
 

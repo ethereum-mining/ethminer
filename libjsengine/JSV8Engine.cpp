@@ -143,9 +143,11 @@ JSV8Engine::JSV8Engine(): m_scope(new JSV8Scope())
 	JSEngineResources resources;
 	string common = resources.loadResourceAsString("common");
 	string web3 = resources.loadResourceAsString("web3");
+	string admin = resources.loadResourceAsString("admin");
 	eval(common.c_str());
 	eval(web3.c_str());
 	eval("web3 = require('web3');");
+	eval(admin.c_str());
 }
 
 JSV8Engine::~JSV8Engine()
