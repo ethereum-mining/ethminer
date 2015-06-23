@@ -41,7 +41,6 @@ using namespace dev::eth;
 using namespace p2p;
 
 unsigned const EthereumHost::c_oldProtocolVersion = 60; //TODO: remove this once v61+ is common
-unsigned const c_chainReorgSize = 30000;
 
 char const* const EthereumHost::s_stateNames[static_cast<int>(SyncState::Size)] = {"Idle", "Waiting", "Hashes", "Blocks", "NewBlocks" };
 
