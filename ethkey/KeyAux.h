@@ -203,7 +203,7 @@ public:
 				{
 					wallet.create(m_masterPassword);
 				}
-				catch(Exception const& _e)
+				catch (Exception const& _e)
 				{
 					cerr << "unable to create wallet" << endl << boost::diagnostic_information(_e);
 				}
