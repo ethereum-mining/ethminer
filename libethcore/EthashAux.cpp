@@ -44,6 +44,9 @@ using namespace eth;
 const char* DAGChannel::name() { return EthGreen "DAG"; }
 
 EthashAux* dev::eth::EthashAux::s_this = nullptr;
+SharedMutex dev::eth::EthashAux::x_lights;
+Mutex dev::eth::EthashAux::x_epochs;
+Mutex dev::eth::EthashAux::x_fulls;
 
 EthashAux::~EthashAux()
 {
@@ -62,7 +65,7 @@ uint64_t EthashAux::dataSize(uint64_t _blockNumber)
 h256 EthashAux::seedHash(unsigned _number)
 {
 	unsigned epoch = _number / ETHASH_EPOCH_LENGTH;
-	Guard l(get()->x_epochs);
+	Guard l(x_epochs);
 	if (epoch >= get()->m_seedHashes.size())
 	{
 		h256 ret;
@@ -85,7 +88,7 @@ h256 EthashAux::seedHash(unsigned _number)
 
 uint64_t EthashAux::number(h256 const& _seedHash)
 {
-	Guard l(get()->x_epochs);
+	Guard l(x_epochs);
 	unsigned epoch = 0;
 	auto epochIter = get()->m_epochs.find(_seedHash);
 	if (epochIter == get()->m_epochs.end())
@@ -112,7 +115,7 @@ void EthashAux::killCache(h256 const& _s)
 
 EthashAux::LightType EthashAux::light(h256 const& _seedHash)
 {
-	ReadGuard l(get()->x_lights);
+	ReadGuard l(x_lights);
 	LightType ret = get()->m_lights[_seedHash];
 	return ret ? ret : (get()->m_lights[_seedHash] = make_shared<LightAllocation>(_seedHash));
 }
@@ -170,7 +173,7 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bool _createIfMissing
 	FullType ret;
 	auto l = light(_seedHash);
 
-	DEV_GUARDED(get()->x_fulls)
+	DEV_GUARDED(x_fulls)
 		if ((ret = get()->m_fulls[_seedHash].lock()))
 		{
 			get()->m_lastUsedFull = ret;
@@ -184,7 +187,7 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bool _createIfMissing
 		ret = make_shared<FullAllocation>(l->light, dagCallbackShim);
 //		cnote << "Done loading.";
 
-		DEV_GUARDED(get()->x_fulls)
+		DEV_GUARDED(x_fulls)
 			get()->m_fulls[_seedHash] = get()->m_lastUsedFull = ret;
 	}
 
@@ -195,7 +198,7 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bool _createIfMissing
 
 unsigned EthashAux::computeFull(h256 const& _seedHash, bool _createIfMissing)
 {
-	Guard l(get()->x_fulls);
+	Guard l(x_fulls);
 	uint64_t blockNumber;
 
 	DEV_IF_THROWS(blockNumber = EthashAux::number(_seedHash))
@@ -248,7 +251,7 @@ Ethash::Result EthashAux::eval(BlockInfo const& _header, Nonce const& _nonce)
 
 Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
 {
-	DEV_GUARDED(get()->x_fulls)
+	DEV_GUARDED(x_fulls)
 		if (FullType dag = get()->m_fulls[_seedHash].lock())
 			return dag->compute(_headerHash, _nonce);
 	DEV_IF_THROWS(return EthashAux::get()->light(_seedHash)->compute(_headerHash, _nonce))

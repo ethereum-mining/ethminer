@@ -91,10 +91,10 @@ private:
 
 	static EthashAux* s_this;
 
-	SharedMutex x_lights;
+	static SharedMutex x_lights;
 	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;
 
-	Mutex x_fulls;
+	static Mutex x_fulls;
 	std::condition_variable m_fullsChanged;
 	std::unordered_map<h256, std::weak_ptr<FullAllocation>> m_fulls;
 	FullType m_lastUsedFull;
@@ -102,7 +102,7 @@ private:
 	uint64_t m_generatingFullNumber = NotGenerating;
 	unsigned m_fullProgress;
 
-	Mutex x_epochs;
+	static Mutex x_epochs;
 	std::unordered_map<h256, unsigned> m_epochs;
 	h256s m_seedHashes;
 };
