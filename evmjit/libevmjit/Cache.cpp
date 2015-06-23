@@ -28,7 +28,7 @@ namespace
 	using Guard = std::lock_guard<std::mutex>;
 	std::mutex x_cacheMutex;
 	CacheMode g_mode;
-	llvm::MemoryBuffer* g_lastObject;
+	std::unique_ptr<llvm::MemoryBuffer> g_lastObject;
 	ExecutionEngineListener* g_listener;
 	static const size_t c_versionStampLength = 32;
 
@@ -90,8 +90,7 @@ void Cache::preload(llvm::ExecutionEngine& _ee, std::unordered_map<std::string, 
 		if (auto module = getObject(name))
 		{
 			DLOG(cache) << "Preload: " << name << "\n";
-			_ee.addModule(module.get());
-			module.release();
+			_ee.addModule(std::move(module));
 			auto addr = _ee.getFunctionAddress(name);
 			assert(addr);
 			_funcCache[std::move(name)] = addr;
@@ -148,7 +147,7 @@ std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 }
 
 
-void ObjectCache::notifyObjectCompiled(llvm::Module const* _module, llvm::MemoryBuffer const* _object)
+void ObjectCache::notifyObjectCompiled(llvm::Module const* _module, llvm::MemoryBufferRef _object)
 {
 	Guard g{x_cacheMutex};
 
@@ -171,19 +170,17 @@ void ObjectCache::notifyObjectCompiled(llvm::Module const* _module, llvm::Memory
 	llvm::sys::path::append(cachePath, id);
 
 	DLOG(cache) << id << ": write\n";
-	std::string error;
+	std::error_code error;
 	llvm::raw_fd_ostream cacheFile(cachePath.c_str(), error, llvm::sys::fs::F_None);
-	cacheFile << _object->getBuffer() << getLibVersionStamp();
+	cacheFile << _object.getBuffer() << getLibVersionStamp();
 }
 
-llvm::MemoryBuffer* ObjectCache::getObject(llvm::Module const* _module)
+std::unique_ptr<llvm::MemoryBuffer> ObjectCache::getObject(llvm::Module const* _module)
 {
 	Guard g{x_cacheMutex};
 
 	DLOG(cache) << _module->getModuleIdentifier() << ": use\n";
-	auto o = g_lastObject;
-	g_lastObject = nullptr;
-	return o;
+	return std::move(g_lastObject);
 }
 
 }

@@ -70,12 +70,16 @@ using LogEntries = std::vector<LogEntry>;
 struct LocalisedLogEntry: public LogEntry
 {
 	LocalisedLogEntry() {}
-	explicit LocalisedLogEntry(LogEntry const& _le): LogEntry(_le) {};
+	explicit LocalisedLogEntry(LogEntry const& _le): LogEntry(_le) {}
 
 	explicit LocalisedLogEntry(
 		LogEntry const& _le,
 		h256 _special
-	): LogEntry(_le), special(_special) {};
+	):
+		LogEntry(_le),
+		isSpecial(true),
+		special(_special)
+	{}
 
 	explicit LocalisedLogEntry(
 		LogEntry const& _le,
@@ -84,16 +88,26 @@ struct LocalisedLogEntry: public LogEntry
 		unsigned _ti,
 		unsigned _li,
 	    BlockPolarity _polarity = BlockPolarity::Unknown
-	): LogEntry(_le), blockHash(_bi.hash()), blockNumber((BlockNumber)_bi.number), transactionHash(_th), transactionIndex(_ti), logIndex(_li), mined(true), polarity(_polarity) {};
+	):
+		LogEntry(_le),
+		blockHash(_bi.hash()),
+		blockNumber((BlockNumber)_bi.number),
+		transactionHash(_th),
+		transactionIndex(_ti),
+		logIndex(_li),
+		mined(true),
+        polarity(_polarity)
+	{}
 
-	h256 blockHash = h256();
+	h256 blockHash;
 	BlockNumber blockNumber = 0;
-	h256 transactionHash = h256();
+	h256 transactionHash;
 	unsigned transactionIndex = 0;
 	unsigned logIndex = 0;
 	bool mined = false;
 	BlockPolarity polarity = BlockPolarity::Unknown;
-	h256 special = h256();
+	bool isSpecial = false;
+	h256 special;
 };
 
 using LocalisedLogEntries = std::vector<LocalisedLogEntry>;

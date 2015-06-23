@@ -102,6 +102,9 @@ void interactiveHelp()
 		<< "    listaccounts  List the accounts on the network." << endl
 		<< "    listcontracts  List the contracts on the network." << endl
 		<< "    balanceat <address>  Gives the balance of the given account." << endl
+		<< "    balanceatblock <address> <blocknumber>  Gives the balance of the given account." << endl
+		<< "    storageat <address>  Gives the storage of the given account." << endl
+		<< "    storageatblock <address> <blocknumber>  Gives the storahe of the given account at a given blocknumber." << endl
 		<< "    codeat <address>  Gives the code of the given account." << endl
 #endif
 		<< "    setsigningkey <addr>  Set the address with which to sign transactions." << endl
@@ -168,6 +171,9 @@ void help()
 		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    --network-id <n> Only connect to other hosts with this network id (default:0)." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
+		<< "    --no-discovery  Disable Node discovery. (experimental)" << endl
+		<< "    --pin  Only connect to required (trusted) peers. (experimental)" << endl
+//		<< "    --require-peers <peers.json>  List of required (trusted) peers. (experimental)" << endl
 		<< endl;
 	MinerCLI::streamHelp(cout);
 	cout
@@ -304,6 +310,8 @@ int main(int argc, char** argv)
 	unsigned short remotePort = 30303;
 	unsigned peers = 11;
 	bool bootstrap = false;
+	bool disableDiscovery = false;
+	bool pinning = false;
 	unsigned networkId = 0;
 
 	/// Mining params
@@ -592,6 +600,10 @@ int main(int argc, char** argv)
 		}
 		else if (arg == "-b" || arg == "--bootstrap")
 			bootstrap = true;
+		else if (arg == "--no-discovery")
+			disableDiscovery = true;
+		else if (arg == "--pin")
+			pinning = true;
 		else if (arg == "-f" || arg == "--force-mining")
 			forceMining = true;
 		else if (arg == "-i" || arg == "--interactive")
@@ -678,16 +690,17 @@ int main(int argc, char** argv)
 		return ret;
 	};
 	auto getAccountPassword = [&](Address const& a){
-		return getPassword("Enter password for address " + keyManager.accountDetails()[a].first + " (" + a.abridged() + "; hint:" + keyManager.accountDetails()[a].second + "): ");
+		return getPassword("Enter password for address " + keyManager.accountName(a) + " (" + a.abridged() + "; hint:" + keyManager.passwordHint(a) + "): ");
 	};
 
 	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat, structuredLoggingURL);
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
+	netPrefs.discovery = !disableDiscovery;
+	netPrefs.pin = pinning;
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
-	std::string clientImplString = "++eth/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
 	dev::WebThreeDirect web3(
-		clientImplString,
+		WebThreeDirect::composeClientVersion("++eth", clientName),
 		dbPath,
 		killChain,
 		nodeMode == NodeMode::Full ? set<string>{"eth"/*, "shh"*/} : set<string>(),
@@ -751,7 +764,8 @@ int main(int argc, char** argv)
 			case ImportResult::Success: good++; break;
 			case ImportResult::AlreadyKnown: alreadyHave++; break;
 			case ImportResult::UnknownParent: unknownParent++; break;
-			case ImportResult::FutureTime: futureTime++; break;
+			case ImportResult::FutureTimeUnknown: unknownParent++; futureTime++; break;
+			case ImportResult::FutureTimeKnown: futureTime++; break;
 			default: bad++; break;
 			}
 		}
@@ -800,7 +814,7 @@ int main(int argc, char** argv)
 //	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
 	std::shared_ptr<eth::TrivialGasPricer> gasPricer = make_shared<eth::TrivialGasPricer>(askPrice, bidPrice);
 	eth::Client* c = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
-	StructuredLogger::starting(clientImplString, dev::Version);
+	StructuredLogger::starting(WebThreeDirect::composeClientVersion("++eth", clientName), dev::Version);
 	if (c)
 	{
 		c->setGasPricer(gasPricer);
@@ -822,17 +836,18 @@ int main(int argc, char** argv)
 		cout << "Networking disabled. To start, use netstart or pass -b or a remote host." << endl;
 
 #if ETH_JSONRPC || !ETH_TRUE
-	shared_ptr<WebThreeStubServer> jsonrpcServer;
+	shared_ptr<dev::WebThreeStubServer> jsonrpcServer;
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager), vector<KeyPair>(), keyManager));
+		jsonrpcServer = shared_ptr<dev::WebThreeStubServer>(new dev::WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer));
+		jsonrpcServer->setMiningBenefactorChanger([&](Address const& a) { beneficiary = a; });
 		jsonrpcServer->StartListening();
 		if (jsonAdmin.empty())
-			jsonAdmin = jsonrpcServer->newSession(SessionPermissions{true});
+			jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Priviledge::Admin}});
 		else
-			jsonrpcServer->addSession(jsonAdmin, SessionPermissions{true});
+			jsonrpcServer->addSession(jsonAdmin, SessionPermissions{{Priviledge::Admin}});
 		cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
 	}
 #endif
@@ -982,12 +997,13 @@ int main(int argc, char** argv)
 				if (jsonrpc < 0)
 					jsonrpc = SensibleHttpPort;
 				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager));
+				jsonrpcServer = shared_ptr<dev::WebThreeStubServer>(new dev::WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer));
+				jsonrpcServer->setMiningBenefactorChanger([&](Address const& a) { beneficiary = a; });
 				jsonrpcServer->StartListening();
 				if (jsonAdmin.empty())
-					jsonAdmin = jsonrpcServer->newSession(SessionPermissions{true});
+					jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Priviledge::Admin}});
 				else
-					jsonrpcServer->addSession(jsonAdmin, SessionPermissions{true});
+					jsonrpcServer->addSession(jsonAdmin, SessionPermissions{{Priviledge::Admin}});
 				cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
 			}
 			else if (cmd == "jsonstop")
@@ -1083,7 +1099,7 @@ int main(int argc, char** argv)
 			}
 			else if (c && cmd == "retryunknown")
 			{
-				c->retryUnkonwn();
+				c->retryUnknown();
 			}
 			else if (cmd == "peers")
 			{
@@ -1123,10 +1139,10 @@ int main(int argc, char** argv)
 			{
 				cout << "Accounts:" << endl;
 				u256 total = 0;
-				for (auto const& i: keyManager.accountDetails())
+				for (auto const& address: keyManager.accounts())
 				{
-					auto b = c->balanceAt(i.first);
-					cout << ((i.first == signingKey) ? "SIGNING " : "        ") << ((i.first == beneficiary) ? "COINBASE " : "         ") << i.second.first << " (" << i.first << "): " << formatBalance(b) << " = " << b << " wei" << endl;
+					auto b = c->balanceAt(address);
+					cout << ((address == signingKey) ? "SIGNING " : "        ") << ((address == beneficiary) ? "COINBASE " : "         ") << keyManager.accountName(address) << " (" << address << "): " << formatBalance(b) << " = " << b << " wei" << endl;
 					total += b;
 				}
 				cout << "Total: " << formatBalance(total) << " = " << total << " wei" << endl;
@@ -1359,19 +1375,48 @@ int main(int argc, char** argv)
 					cout << "balance of " << stringHash << " is: " << toString(c->balanceAt(address)) << endl;
 				}
 			}
-			// TODO implement << operator for std::unorderd_map
-//			else if (c && cmd == "storageat")
-//			{
-//				if (iss.peek() != -1)
-//				{
-//					string stringHash;
-//					iss >> stringHash;
+			else if (c && cmd == "balanceatblock")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					unsigned blocknumber;
+					iss >> stringHash >> blocknumber;
 
-//					Address address = h160(fromHex(stringHash));
+					Address address = h160(fromHex(stringHash));
 
-//					cout << "storage at " << stringHash << " is: " << c->storageAt(address) << endl;
-//				}
-//			}
+					cout << "balance of " << stringHash << " is: " << toString(c->balanceAt(address, blocknumber)) << endl;
+				}
+			}
+			else if (c && cmd == "storageat")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					iss >> stringHash;
+
+					Address address = h160(fromHex(stringHash));
+
+					cout << "storage at " << stringHash << " is: " << endl;
+					for (auto s: c->storageAt(address))
+						cout << toHex(s.first) << " : " << toHex(s.second) << endl;
+				}
+			}
+			else if (c && cmd == "storageatblock")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					unsigned blocknumber;
+					iss >> stringHash >> blocknumber;
+
+					Address address = h160(fromHex(stringHash));
+
+					cout << "storage at " << stringHash << " is: " << endl;
+					for (auto s: c->storageAt(address, blocknumber))
+						cout << "\"0x" << toHex(s.first) << "\" : \"0x" << toHex(s.second) << "\"," << endl;
+				}
+			}
 			else if (c && cmd == "codeat")
 			{
 				if (iss.peek() != -1)
@@ -1385,6 +1430,7 @@ int main(int argc, char** argv)
 				}
 			}
 #endif
+
 			else if (c && cmd == "send")
 			{
 				if (iss.peek() != -1)
@@ -1520,7 +1566,7 @@ int main(int argc, char** argv)
 				ofstream f;
 				f.open(filename);
 
-				dev::eth::State state =c->state(index + 1,c->blockChain().numberHash(block));
+				dev::eth::State state = c->state(index + 1,c->blockChain().numberHash(block));
 				if (index < state.pending().size())
 				{
 					Executive e(state, c->blockChain(), 0);
@@ -1699,7 +1745,7 @@ int main(int argc, char** argv)
 			JSConsole console(web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager));
 			while (!g_exit)
 			{
-				console.repl();
+				console.readExpression();
 				stopMiningAfterXBlocks(c, n, mining);
 			}
 #endif
@@ -1712,7 +1758,7 @@ int main(int argc, char** argv)
 		while (!g_exit)
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
-	StructuredLogger::stopping(clientImplString, dev::Version);
+	StructuredLogger::stopping(WebThreeDirect::composeClientVersion("++eth", clientName), dev::Version);
 	auto netData = web3.saveNetwork();
 	if (!netData.empty())
 		writeFile((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp", netData);

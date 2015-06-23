@@ -212,7 +212,7 @@ Main::Main(QWidget *parent) :
 	m_httpConnector.reset(new jsonrpc::HttpServer(SensibleHttpPort, "", "", dev::SensibleHttpThreads));
 	auto w3ss = new OurWebThreeStubServer(*m_httpConnector, this);
 	m_server.reset(w3ss);
-	auto sessionKey = w3ss->newSession({true});
+	auto sessionKey = w3ss->newSession(SessionPermissions{{Priviledge::Admin}});
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
@@ -235,7 +235,7 @@ Main::Main(QWidget *parent) :
 //	ui->webView->page()->settings()->setAttribute(QWebEngineSettings::DeveloperExtrasEnabled, true);
 //	QWebEngineInspector* inspector = new QWebEngineInspector();
 //	inspector->setPage(page);
-	setBeneficiary(*m_keyManager.accounts().begin());
+	setBeneficiary(m_keyManager.accounts().front());
 
 	ethereum()->setDefault(LatestBlock);
 
@@ -430,9 +430,9 @@ void Main::installBalancesWatch()
 	// TODO: Update for new currencies reg.
 	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, PendingBlock); ++i)
 		altCoins.push_back(right160(ethereum()->stateAt(coinsAddr, i + 1)));
-	for (auto const& i: m_keyManager.accounts())
+	for (auto const& address: m_keyManager.accounts())
 		for (auto c: altCoins)
-			tf.address(c).topic(0, h256(i, h256::AlignRight));
+			tf.address(c).topic(0, h256(address, h256::AlignRight));
 
 	uninstallWatch(m_balancesFilter);
 	m_balancesFilter = installWatch(tf, [=](LocalisedLogEntries const&){ onBalancesChange(); });
@@ -501,7 +501,7 @@ void Main::load(QString _s)
 
 void Main::on_newTransaction_triggered()
 {
-	m_transact->setEnvironment(m_keyManager.accounts(), ethereum(), &m_natSpecDB);
+	m_transact->setEnvironment(m_keyManager.accountsHash(), ethereum(), &m_natSpecDB);
 	m_transact->show();
 }
 
@@ -735,18 +735,17 @@ void Main::writeSettings()
 	s.setValue("windowState", saveState());
 }
 
-Secret Main::retrieveSecret(Address const& _a) const
+Secret Main::retrieveSecret(Address const& _address) const
 {
-	auto info = m_keyManager.accountDetails()[_a];
 	while (true)
 	{
-		Secret s = m_keyManager.secret(_a, [&](){
+		Secret s = m_keyManager.secret(_address, [&](){
 			QDialog d;
 			Ui_GetPassword gp;
 			gp.setupUi(&d);
 			d.setWindowTitle("Unlock Account");
-			gp.label->setText(QString("Enter the password for the account %2 (%1).").arg(QString::fromStdString(_a.abridged())).arg(QString::fromStdString(info.first)));
-			gp.entry->setPlaceholderText("Hint: " + QString::fromStdString(info.second));
+			gp.label->setText(QString("Enter the password for the account %2 (%1).").arg(QString::fromStdString(_address.abridged())).arg(QString::fromStdString(m_keyManager.accountName(_address))));
+			gp.entry->setPlaceholderText("Hint: " + QString::fromStdString(m_keyManager.passwordHint(_address)));
 			return d.exec() == QDialog::Accepted ? gp.entry->text().toStdString() : string();
 		});
 		if (s || QMessageBox::warning(nullptr, "Unlock Account", "The password you gave is incorrect for this key.", QMessageBox::Retry, QMessageBox::Cancel) == QMessageBox::Cancel)
@@ -770,7 +769,7 @@ void Main::readSettings(bool _skipGeometry)
 			for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
 			{
 				memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
-				if (!m_keyManager.accounts().count(KeyPair(k).address()))
+				if (!m_keyManager.hasAccount(KeyPair(k).address()))
 					m_keyManager.import(k, "Imported (UNSAFE) key.");
 			}
 		}
@@ -858,7 +857,7 @@ void Main::on_importKey_triggered()
 	if (b.size() == 32)
 	{
 		auto k = KeyPair(h256(b));
-		if (!m_keyManager.accounts().count(k.address()))
+		if (!m_keyManager.hasAccount(k.address()))
 		{
 			QString s = QInputDialog::getText(this, "Import Account Key", "Enter this account's name");
 			if (QMessageBox::question(this, "Additional Security?", "Would you like to use additional security for this key? This lets you protect it with a different password to other keys, but also means you must re-enter the key's password every time you wish to use the account.", QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes)
@@ -939,7 +938,7 @@ void Main::on_claimPresale_triggered()
 			}
 
 			cnote << k.address();
-			if (!m_keyManager.accounts().count(k.address()))
+			if (!m_keyManager.hasAccount(k.address()))
 				ethereum()->submitTransaction(k.sec(), ethereum()->balanceAt(k.address()) - gasPrice() * c_txGas, m_beneficiary, {}, c_txGas, gasPrice());
 			else
 				QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
@@ -1110,13 +1109,13 @@ void Main::refreshBalances()
 //		cdebug << n << addr << denom << sha3(h256(n).asBytes());
 		altCoins[addr] = make_tuple(fromRaw(n), 0, denom);
 	}*/
-	for (pair<Address, std::pair<std::string, std::string>> const& i: m_keyManager.accountDetails())
+	for (auto const& address: m_keyManager.accounts())
 	{
-		u256 b = ethereum()->balanceAt(i.first);
-		QListWidgetItem* li = new QListWidgetItem(QString("%4 %2: %1 [%3]").arg(formatBalance(b).c_str()).arg(QString::fromStdString(render(i.first))).arg((unsigned)ethereum()->countAt(i.first)).arg(QString::fromStdString(i.second.first)), ui->ourAccounts);
-		li->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
+		u256 b = ethereum()->balanceAt(address);
+		QListWidgetItem* li = new QListWidgetItem(QString("%4 %2: %1 [%3]").arg(formatBalance(b).c_str()).arg(QString::fromStdString(render(address))).arg((unsigned)ethereum()->countAt(address)).arg(QString::fromStdString(m_keyManager.accountName(address))), ui->ourAccounts);
+		li->setData(Qt::UserRole, QByteArray((char const*)address.data(), Address::size));
 		li->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-		li->setCheckState(m_beneficiary == i.first ? Qt::Checked : Qt::Unchecked);
+		li->setCheckState(m_beneficiary == address ? Qt::Checked : Qt::Unchecked);
 		totalBalance += b;
 
 //		for (auto& c: altCoins)
@@ -1158,7 +1157,7 @@ void Main::refreshNetwork()
 
 		auto ns = web3()->nodes();
 		for (p2p::Peer const& i: ns)
-			ui->nodes->insertItem(sessions.count(i.id) ? 0 : ui->nodes->count(), QString("[%1 %3] %2 - ( =%5s | /%4s%6 ) - *%7 $%8")
+			ui->nodes->insertItem(sessions.count(i.id) ? 0 : ui->nodes->count(), QString("[%1 %3] %2 - ( %4 ) - *%5")
 				.arg(QString::fromStdString(i.id.abridged()))
 				.arg(QString::fromStdString(i.endpoint.address.to_string()))
 				.arg(i.id == web3()->id() ? "self" : sessions.count(i.id) ? sessions[i.id] : "disconnected")
@@ -1254,7 +1253,7 @@ void Main::refreshBlockCount()
 	BlockQueueStatus b = ethereum()->blockQueueStatus();
 	SyncStatus sync = ethereum()->syncStatus();
 	QString syncStatus = EthereumHost::stateName(sync.state);
-	if (sync.state == SyncState::HashesParallel || sync.state == SyncState::HashesSingle)
+	if (sync.state == SyncState::Hashes)
 		syncStatus += QString(": %1/%2%3").arg(sync.hashesReceived).arg(sync.hashesEstimated ? "~" : "").arg(sync.hashesTotal);
 	if (sync.state == SyncState::Blocks || sync.state == SyncState::NewBlocks)
 		syncStatus += QString(": %1/%2").arg(sync.blocksReceived).arg(sync.blocksTotal);
@@ -1922,7 +1921,7 @@ void Main::on_clearPending_triggered()
 
 void Main::on_retryUnknown_triggered()
 {
-	ethereum()->retryUnkonwn();
+	ethereum()->retryUnknown();
 }
 
 void Main::on_killBlockchain_triggered()
@@ -1941,11 +1940,7 @@ void Main::on_net_triggered()
 {
 	ui->port->setEnabled(!ui->net->isChecked());
 	ui->clientName->setEnabled(!ui->net->isChecked());
-	string n = string("AlethZero/v") + dev::Version;
-	if (ui->clientName->text().size())
-		n += "/" + ui->clientName->text().toStdString();
-	n +=  "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM);
-	web3()->setClientVersion(n);
+	web3()->setClientVersion(WebThreeDirect::composeClientVersion("AlethZero", ui->clientName->text().toStdString()));
 	if (ui->net->isChecked())
 	{
 		web3()->setIdealPeerCount(ui->idealPeers->value());
@@ -2098,9 +2093,8 @@ void Main::on_killAccount_triggered()
 	{
 		auto hba = ui->ourAccounts->currentItem()->data(Qt::UserRole).toByteArray();
 		Address h((byte const*)hba.data(), Address::ConstructFromPointer);
-		auto k = m_keyManager.accountDetails()[h];
-		QString s = QInputDialog::getText(this, QString::fromStdString("Kill Account " + k.first + "?!"),
-			QString::fromStdString("Account " + k.first + " (" + render(h) + ") has " + formatBalance(ethereum()->balanceAt(h)) + " in it.\r\nIt, and any contract that this account can access, will be lost forever if you continue. Do NOT continue unless you know what you are doing.\n"
+		QString s = QInputDialog::getText(this, QString::fromStdString("Kill Account " + m_keyManager.accountName(h) + "?!"),
+			QString::fromStdString("Account " + m_keyManager.accountName(h) + " (" + render(h) + ") has " + formatBalance(ethereum()->balanceAt(h)) + " in it.\r\nIt, and any contract that this account can access, will be lost forever if you continue. Do NOT continue unless you know what you are doing.\n"
 			"Are you sure you want to continue? \r\n If so, type 'YES' to confirm."),
 			QLineEdit::Normal, "NO");
 		if (s != "YES")
@@ -2108,10 +2102,10 @@ void Main::on_killAccount_triggered()
 		m_keyManager.kill(h);
 		if (m_keyManager.accounts().empty())
 			m_keyManager.import(Secret::random(), "Default account");
-		m_beneficiary = *m_keyManager.accounts().begin();
+		m_beneficiary = m_keyManager.accounts().front();
 		keysChanged();
 		if (m_beneficiary == h)
-			setBeneficiary(*m_keyManager.accounts().begin());
+			setBeneficiary(m_keyManager.accounts().front());
 	}
 }
 
@@ -2132,7 +2126,7 @@ void Main::on_reencryptKey_triggered()
 			return;
 		try {
 			auto pw = [&](){
-				auto p = QInputDialog::getText(this, "Re-Encrypt Key", "Enter the original password for this key.\nHint: " + QString::fromStdString(m_keyManager.hint(a)), QLineEdit::Password, QString()).toStdString();
+				auto p = QInputDialog::getText(this, "Re-Encrypt Key", "Enter the original password for this key.\nHint: " + QString::fromStdString(m_keyManager.passwordHint(a)), QLineEdit::Password, QString()).toStdString();
 				if (p.empty())
 					throw PasswordUnknown();
 				return p;
@@ -2155,7 +2149,7 @@ void Main::on_reencryptAll_triggered()
 	try {
 		for (Address const& a: m_keyManager.accounts())
 			while (!m_keyManager.recode(a, SemanticPassword::Existing, [&](){
-				auto p = QInputDialog::getText(nullptr, "Re-Encrypt Key", QString("Enter the original password for key %1.\nHint: %2").arg(QString::fromStdString(pretty(a))).arg(QString::fromStdString(m_keyManager.hint(a))), QLineEdit::Password, QString()).toStdString();
+				auto p = QInputDialog::getText(nullptr, "Re-Encrypt Key", QString("Enter the original password for key %1.\nHint: %2").arg(QString::fromStdString(pretty(a))).arg(QString::fromStdString(m_keyManager.passwordHint(a))), QLineEdit::Password, QString()).toStdString();
 				if (p.empty())
 					throw PasswordUnknown();
 				return p;
