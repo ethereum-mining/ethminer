@@ -467,7 +467,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 			unsigned ms = t.elapsed() * 1000;
 			if (ms > _msPerBatch * 1.1)
 				m_batchSize = max(128, m_batchSize * 9 / 10);
-			else if (ms > _msPerBatch * 0.9)
+			else if (ms < _msPerBatch * 0.9)
 				m_batchSize = m_batchSize * 10 / 9;
 
 			pending.push({ start_nonce, buf });
