@@ -34,6 +34,7 @@ BOOST_AUTO_TEST_SUITE(KeyManagerTests)
 
 BOOST_AUTO_TEST_CASE(KeyInfoDefaultConstructor)
 {
+	cnote << "KeyInfoDefaultConstructor";
 	KeyInfo kiDefault;
 	BOOST_CHECK_EQUAL(kiDefault.accountName, "");
 	BOOST_CHECK(kiDefault.passHash == h256());
@@ -41,6 +42,7 @@ BOOST_AUTO_TEST_CASE(KeyInfoDefaultConstructor)
 
 BOOST_AUTO_TEST_CASE(KeyInfoConstructor)
 {
+	cnote << "KeyInfoConstructor";
 	h256 passHash("0x2a");
 	string accountName = "myAccount";
 	KeyInfo ki(passHash, accountName);
@@ -50,6 +52,7 @@ BOOST_AUTO_TEST_CASE(KeyInfoConstructor)
 
 BOOST_AUTO_TEST_CASE(KeyManagerConstructor)
 {
+	cnote << "KeyManagerConstructor";
 	KeyManager km;
 	BOOST_CHECK_EQUAL(km.keysFile(), km.defaultPath());
 	BOOST_CHECK_EQUAL(km.defaultPath(), getDataDir("ethereum") + "/keys.info");
@@ -58,8 +61,10 @@ BOOST_AUTO_TEST_CASE(KeyManagerConstructor)
 
 BOOST_AUTO_TEST_CASE(KeyManagerKeysFile)
 {
+	cnote << "KeyManagerKeysFile";
 	KeyManager km;
 	string password = "hardPassword";
+	BOOST_CHECK(!km.load(password));
 
 	// set to valid path
 	TransientDirectory tmpDir;
@@ -71,7 +76,28 @@ BOOST_AUTO_TEST_CASE(KeyManagerKeysFile)
 	BOOST_CHECK(!km.exists());
 	km.setKeysFile(tmpDir.path() + "keysFile.json");
 	BOOST_CHECK_NO_THROW(km.create(password));
+
+	km.save(password);
+	BOOST_CHECK(km.load(password));
 }
+
+BOOST_AUTO_TEST_CASE(KeyManagerHints)
+{
+	cnote << "KeyManagerHints";
+	KeyManager km;
+	string password = "hardPassword";
+
+	// set to valid path
+	TransientDirectory tmpDir;
+	km.setKeysFile(tmpDir.path() + "keysFile.json");
+	km.create(password);
+	km.save(password);
+
+	BOOST_CHECK(!km.haveHint(password + "2"));
+	km.notePassword(password);
+	BOOST_CHECK(km.haveHint(password));
+}
+
 
 
 BOOST_AUTO_TEST_SUITE_END()
