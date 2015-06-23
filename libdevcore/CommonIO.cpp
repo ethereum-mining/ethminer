@@ -111,7 +111,7 @@ void dev::writeFile(std::string const& _file, bytesConstRef _data, bool _writeDe
 		ofstream s(_file, ios::trunc | ios::binary);
 		s.write(reinterpret_cast<char const*>(_data.data()), _data.size());
 		if (!s)
-			BOOST_THROW_EXCEPTION(FileError());
+			BOOST_THROW_EXCEPTION(FileError() << errinfo_comment("Could not write to file: " + _file));
 	}
 }
 
