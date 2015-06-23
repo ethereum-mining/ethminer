@@ -225,6 +225,26 @@ std::string Ethash::CPUMiner::platformInfo()
 
 #if ETH_ETHASHCL || !ETH_TRUE
 
+template <class N>
+class Notified
+{
+public:
+	Notified() {}
+	Notified(N const& _v): m_value(_v) {}
+	Notified& operator=(N const& _v) { std::unique_lock l(m_mutex); m_value = _v; m_cv.notify_all(); return *this; }
+
+	operator N() const { std::unique_lock l(m_mutex); return m_value; }
+
+	void wait() const { std::unique_lock l(m_mutex); m_cv.wait(l); }
+	void wait(N const& _v) const { std::unique_lock l(m_mutex); m_cv.wait(l, [&](){return m_value == _v;}); }
+	template <class F> void wait(F const& _f) const { std::unique_lock l(m_mutex); m_cv.wait(l, _f); }
+
+private:
+	Mutex m_mutex;
+	std::condition_variable m_cv;
+	N m_value;
+};
+
 class EthashCLHook: public ethash_cl_miner::search_hook
 {
 public:
@@ -232,19 +252,25 @@ public:
 
 	void abort()
 	{
-		Guard l(x_all);
+		std::unique_lock l(x_all);
 		if (m_aborted)
 			return;
 //		cdebug << "Attempting to abort";
+
 		m_abort = true;
-		for (unsigned timeout = 0; timeout < 100 && !m_aborted; ++timeout)
-			std::this_thread::sleep_for(chrono::milliseconds(30));
+		// m_abort is true so now searched()/found() will return true to abort the search.
+		// we hang around on this thread waiting for them to point out that they have aborted since
+		// otherwise we may end up deleting this object prior to searched()/found() being called.
+		m_aborted.wait(true);
+//		for (unsigned timeout = 0; timeout < 100 && !m_aborted; ++timeout)
+//			std::this_thread::sleep_for(chrono::milliseconds(30));
 //		if (!m_aborted)
 //			cwarn << "Couldn't abort. Abandoning OpenCL process.";
 	}
 
 	void reset()
 	{
+		Mutex l(x_all);
 		m_aborted = m_abort = false;
 	}
 
@@ -253,27 +279,19 @@ protected:
 	{
 //		dev::operator <<(std::cerr << "Found nonces: ", vector<uint64_t>(_nonces, _nonces + _count)) << std::endl;
 		for (uint32_t i = 0; i < _count; ++i)
-		{
 			if (m_owner->report(_nonces[i]))
-			{
-				m_aborted = true;
-				return true;
-			}
-		}
+				return (m_aborted = true);
 		return m_owner->shouldStop();
 	}
 
 	virtual bool searched(uint64_t _startNonce, uint32_t _count) override
 	{
-		Guard l(x_all);
+		Mutex l(x_all);
 //		std::cerr << "Searched " << _count << " from " << _startNonce << std::endl;
 		m_owner->accumulateHashes(_count);
 		m_last = _startNonce + _count;
 		if (m_abort || m_owner->shouldStop())
-		{
-			m_aborted = true;
-			return true;
-		}
+			return (m_aborted = true);
 		return false;
 	}
 
@@ -281,7 +299,7 @@ private:
 	Mutex x_all;
 	uint64_t m_last;
 	bool m_abort = false;
-	bool m_aborted = true;
+	Notified<bool> m_aborted = {true};
 	Ethash::GPUMiner* m_owner = nullptr;
 };
 
