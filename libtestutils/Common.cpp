@@ -59,7 +59,7 @@ Json::Value dev::test::loadJsonFromFile(std::string const& _path)
 {
 	Json::Reader reader;
 	Json::Value result;
-	string s = asString(dev::contents(_path));
+	string s = dev::contentsString(_path);
 	if (!s.length())
 		ctest << "Contents of " + _path + " is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?";
 	else

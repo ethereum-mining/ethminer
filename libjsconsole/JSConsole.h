@@ -39,7 +39,7 @@ public:
 	JSConsole(): m_engine(Engine()), m_printer(Printer(m_engine)) {};
 	~JSConsole() {};
 
-	void repl() const
+	void readExpression() const
 	{
 		std::string cmd = "";
 		g_logPost = [](std::string const& a, char const*) { std::cout << "\r           \r" << a << std::endl << std::flush; rl_forced_update_display(); };
