@@ -88,10 +88,7 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 void WhisperHost::advertizeTopicsOfInterest()
 {
 	for (auto i: peerSessions())
-	{
-		auto w = i.first->cap<WhisperPeer>().get();
-		w->advertizeTopicsOfInterest(m_bloom);
-	}
+		i.first->cap<WhisperPeer>().get()->advertizeTopicsOfInterest();
 }
 
 void WhisperHost::noteChanged(h256 _messageHash, h256 _filter)
