@@ -31,12 +31,12 @@ namespace p2p
 
 class ReputationManager;
 
-class Capability
+class Capability: public std::enable_shared_from_this<Capability>
 {
 	friend class Session;
 
 public:
-	Capability(Session* _s, HostCapabilityFace* _h, unsigned _idOffset);
+	Capability(std::shared_ptr<Session> _s, HostCapabilityFace* _h, unsigned _idOffset);
 	virtual ~Capability() {}
 
 	// Implement these in the derived class.
@@ -44,7 +44,7 @@ public:
 	static u256 version() { return 0; }
 	static unsigned messageCount() { return 0; }
 */
-	Session* session() const { return m_session; }
+	std::shared_ptr<Session> session() const { return m_session.lock(); }
 	HostCapabilityFace* hostCapability() const { return m_hostCap; }
 	Host* host() const { return m_hostCap->host(); }
 	ReputationManager& repMan() const;
@@ -59,7 +59,7 @@ protected:
 	void addRating(int _r);
 
 private:
-	Session* m_session;
+	std::weak_ptr<Session> m_session;
 	HostCapabilityFace* m_hostCap;
 	bool m_enabled = true;
 	unsigned m_idOffset;
