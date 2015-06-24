@@ -36,8 +36,8 @@ class JSRemoteConsole: public JSConsole<JSV8Engine, JSV8Printer>
 {
 
 public:
-	JSRemoteConsole(std::string _url): m_connector(m_engine, _url) {};
-	virtual ~JSRemoteConsole() {};
+	JSRemoteConsole(std::string _url): m_connector(m_engine, _url) {}
+	virtual ~JSRemoteConsole() {}
 
 private:
 	JSV8RemoteConnector m_connector;

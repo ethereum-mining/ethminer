@@ -18,7 +18,7 @@ class JSV8RemoteConnector : public JSV8RPC
 
 public:
 	JSV8RemoteConnector(JSV8Engine const& _engine, std::string _url): JSV8RPC(_engine), m_url(_url) {}
-	virtual ~JSV8RemoteConnector() {};
+	virtual ~JSV8RemoteConnector() {}
 
 	// implement JSV8RPC interface
 	void onSend(char const* _payload);

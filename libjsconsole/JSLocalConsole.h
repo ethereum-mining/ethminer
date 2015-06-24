@@ -38,7 +38,7 @@ class JSLocalConsole: public JSConsole<JSV8Engine, JSV8Printer>
 {
 public:
 	JSLocalConsole();
-	virtual ~JSLocalConsole() {};
+	virtual ~JSLocalConsole() {}
 
 	jsonrpc::AbstractServerConnector* connector() { return m_jsonrpcConnector.get(); }
 
