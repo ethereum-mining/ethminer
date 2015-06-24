@@ -632,7 +632,8 @@ void Client::syncBlockQueue()
 	tie(ir, m_syncBlockQueue, count) = m_bc.sync(m_bq, m_stateDB, m_syncAmount);
 	double elapsed = t.elapsed();
 
-	cnote << count << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (count / elapsed) << "blocks/s)";
+	if (count)
+		cnote << count << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (count / elapsed) << "blocks/s)";
 
 	if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
 		m_syncAmount = max(c_syncMin, count * 9 / 10);

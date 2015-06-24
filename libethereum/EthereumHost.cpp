@@ -104,7 +104,7 @@ void EthereumHost::doWork()
 		}
 	}
 
-	foreachPeer([](EthereumPeer* _p) { _p->tick(); return true; });
+	foreachPeer([](std::shared_ptr<EthereumPeer> _p) { _p->tick(); return true; });
 
 //	return netChange;
 	// TODO: Figure out what to do with netChange.
@@ -125,7 +125,7 @@ void EthereumHost::maintainTransactions()
 	}
 	for (auto const& t: ts)
 		m_transactionsSent.insert(t.first);
-	foreachPeerPtr([&](shared_ptr<EthereumPeer> _p)
+	foreachPeer([&](shared_ptr<EthereumPeer> _p)
 	{
 		bytes b;
 		unsigned n = 0;
@@ -150,17 +150,7 @@ void EthereumHost::maintainTransactions()
 	});
 }
 
-void EthereumHost::foreachPeer(std::function<bool(EthereumPeer*)> const& _f) const
-{
-	foreachPeerPtr([&](std::shared_ptr<EthereumPeer> _p)
-	{
-		if (_p)
-			return _f(_p.get());
-		return true;
-	});
-}
-
-void EthereumHost::foreachPeerPtr(std::function<bool(std::shared_ptr<EthereumPeer>)> const& _f) const
+void EthereumHost::foreachPeer(std::function<bool(std::shared_ptr<EthereumPeer>)> const& _f) const
 {
 	for (auto s: peerSessions())
 		if (!_f(s.first->cap<EthereumPeer>()))
@@ -245,7 +235,7 @@ BlockChainSync& EthereumHost::sync()
 		return *m_sync; // We only chose sync strategy once
 
 	bool pv61 = false;
-	foreachPeer([&](EthereumPeer* _p)
+	foreachPeer([&](std::shared_ptr<EthereumPeer> _p)
 	{
 		if (_p->m_protocolVersion == protocolVersion())
 			pv61 = true;
@@ -255,37 +245,37 @@ BlockChainSync& EthereumHost::sync()
 	return *m_sync;
 }
 
-void EthereumHost::onPeerStatus(EthereumPeer* _peer)
+void EthereumHost::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
 {
 	Guard l(x_sync);
 	sync().onPeerStatus(_peer);
 }
 
-void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes)
+void EthereumHost::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
 {
 	Guard l(x_sync);
 	sync().onPeerHashes(_peer, _hashes);
 }
 
-void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
+void EthereumHost::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
 	Guard l(x_sync);
 	sync().onPeerBlocks(_peer, _r);
 }
 
-void EthereumHost::onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes)
+void EthereumHost::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
 {
 	Guard l(x_sync);
 	sync().onPeerNewHashes(_peer, _hashes);
 }
 
-void EthereumHost::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
+void EthereumHost::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
 	Guard l(x_sync);
 	sync().onPeerNewBlock(_peer, _r);
 }
 
-void EthereumHost::onPeerTransactions(EthereumPeer* _peer, RLP const& _r)
+void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
 	if (_peer->isCriticalSyncing())
 	{
@@ -318,11 +308,11 @@ void EthereumHost::onPeerTransactions(EthereumPeer* _peer, RLP const& _r)
 	}
 }
 
-void EthereumHost::onPeerAborting(EthereumPeer* _peer)
+void EthereumHost::onPeerAborting()
 {
 	Guard l(x_sync);
 	if (m_sync)
-		m_sync->onPeerAborting(_peer);
+		m_sync->onPeerAborting();
 }
 
 bool EthereumHost::isSyncing() const
