@@ -325,8 +325,6 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 		}
 		fev.codeHash = sha3(fev.code);
 
-		fev.codeHash = sha3(fev.code);
-
 		bytes output;
 		bool vmExceptionOccured = false;
 		try
