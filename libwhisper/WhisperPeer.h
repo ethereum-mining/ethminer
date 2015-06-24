@@ -55,7 +55,7 @@ public:
 	static std::string name() { return "shh"; }
 	static u256 version() { return 2; }
 	static unsigned messageCount() { return PacketCount; }
-	FixedHash<TopicBloomFilterSize> const& bloom() const { return m_bloom; }	
+	FixedHash<TopicBloomFilterSize> const& bloom() const { return m_bloom; }
 	void advertiseTopicsOfInterest(); ///< sends our bloom filter to remote peer
 
 private:
@@ -66,7 +66,7 @@ private:
 
 	mutable dev::Mutex x_unseen;
 	std::multimap<unsigned, h256> m_unseen;	///< Rated according to what they want.
-	std::chrono::system_clock::time_point m_timer = std::chrono::system_clock::now();	
+	std::chrono::system_clock::time_point m_timer = std::chrono::system_clock::now();
 	FixedHash<TopicBloomFilterSize> m_bloom; ///< Peer's topics of interest
 };
 
