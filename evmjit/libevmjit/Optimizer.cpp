@@ -36,8 +36,6 @@ class LowerEVMPass : public llvm::BasicBlockPass
 {
 	static char ID;
 
-	bool m_mulFuncNeeded = false;
-
 public:
 	LowerEVMPass():
 		llvm::BasicBlockPass(ID)
@@ -45,6 +43,7 @@ public:
 
 	virtual bool runOnBasicBlock(llvm::BasicBlock& _bb) override;
 
+	using llvm::BasicBlockPass::doFinalization;
 	virtual bool doFinalization(llvm::Module& _module) override;
 };
 
