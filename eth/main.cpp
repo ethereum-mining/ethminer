@@ -187,6 +187,7 @@ void help()
 		<< "    --from <n>  Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --only <n>  Equivalent to --export-from n --export-to n." << endl
+		<< "    --dont-check  Avoids checking some of the aspects of blocks. Faster importing, but only do if you know the data is valid." << endl
 		<< endl
 		<< "General Options:" << endl
 		<< "    -d,--db-path <path>  Load database from path (default: " << getDataDir() << ")" << endl
@@ -283,6 +284,7 @@ int main(int argc, char** argv)
 
 	/// File name for import/export.
 	string filename;
+	bool safeImport = false;
 
 	/// Hashes/numbers for export range.
 	string exportFrom = "1";
@@ -395,6 +397,8 @@ int main(int argc, char** argv)
 			mode = OperationMode::Import;
 			filename = argv[++i];
 		}
+		else if (arg == "--dont-check")
+			safeImport = true;
 		else if ((arg == "-E" || arg == "--export") && i + 1 < argc)
 		{
 			mode = OperationMode::Export;
@@ -753,13 +757,18 @@ int main(int argc, char** argv)
 		unsigned futureTime = 0;
 		unsigned unknownParent = 0;
 		unsigned bad = 0;
+		chrono::steady_clock::time_point t = chrono::steady_clock::now();
+		double last = 0;
+		unsigned lastImported = 0;
+		unsigned imported = 0;
 		while (in.peek() != -1)
 		{
 			bytes block(8);
 			in.read((char*)block.data(), 8);
 			block.resize(RLP(block, RLP::LaisezFaire).actualSize());
 			in.read((char*)block.data() + 8, block.size() - 8);
-			switch (web3.ethereum()->injectBlock(block))
+
+			switch (web3.ethereum()->queueBlock(block, safeImport))
 			{
 			case ImportResult::Success: good++; break;
 			case ImportResult::AlreadyKnown: alreadyHave++; break;
@@ -768,8 +777,29 @@ int main(int argc, char** argv)
 			case ImportResult::FutureTimeKnown: futureTime++; break;
 			default: bad++; break;
 			}
+
+			// sync chain with queue
+			tuple<ImportRoute, bool, unsigned> r = web3.ethereum()->syncQueue(10);
+			imported += get<2>(r);
+
+			double e = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t).count() / 1000.0;
+			if ((unsigned)e >= last + 10)
+			{
+				auto i = imported - lastImported;
+				auto d = e - last;
+				cout << i << " more imported at " << (round(i * 10 / d) / 10) << " blocks/s. " << imported << " imported in " << e << " seconds at " << (round(imported * 10 / e) / 10) << " blocks/s (#" << web3.ethereum()->number() << ")" << endl;
+				last = (unsigned)e;
+				lastImported = imported;
+			}
 		}
-		cout << (good + bad + futureTime + unknownParent + alreadyHave) << " total: " << good << " ok, " << alreadyHave << " got, " << futureTime << " future, " << unknownParent << " unknown parent, " << bad << " malformed." << endl;
+
+		while (web3.ethereum()->blockQueue().items().first + web3.ethereum()->blockQueue().items().second > 0)
+		{
+			sleep(1);
+			web3.ethereum()->syncQueue(100000);
+		}
+		double e = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t).count() / 1000.0;
+		cout << imported << " imported in " << e << " seconds at " << (round(imported * 10 / e) / 10) << " blocks/s (#" << web3.ethereum()->number() << ")" << endl;
 		return 0;
 	}
 

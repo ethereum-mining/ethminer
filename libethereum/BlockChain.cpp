@@ -1116,6 +1116,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 		catch (Exception& ex)
 		{
 			ex << errinfo_transactionIndex(i);
+			ex << errinfo_transaction(tr.data().toBytes());
 			ex << errinfo_block(_block);
 			throw;
 		}
