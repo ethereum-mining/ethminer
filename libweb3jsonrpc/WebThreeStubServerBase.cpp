@@ -162,11 +162,15 @@ string WebThreeStubServerBase::eth_getTransactionCount(string const& _address, s
 	}
 }
 
-string WebThreeStubServerBase::eth_getBlockTransactionCountByHash(string const& _blockHash)
+Json::Value WebThreeStubServerBase::eth_getBlockTransactionCountByHash(string const& _blockHash)
 {
 	try
 	{
-		return toJS(client()->transactionCount(jsToFixed<32>(_blockHash)));
+		h256 blockHash = jsToFixed<32>(_blockHash);
+		if (!client()->isKnown(blockHash))
+			return Json::Value(Json::nullValue);
+
+		return toJS(client()->transactionCount(blockHash));
 	}
 	catch (...)
 	{
@@ -174,10 +178,14 @@ string WebThreeStubServerBase::eth_getBlockTransactionCountByHash(string const& 
 	}
 }
 
-string WebThreeStubServerBase::eth_getBlockTransactionCountByNumber(string const& _blockNumber)
+Json::Value WebThreeStubServerBase::eth_getBlockTransactionCountByNumber(string const& _blockNumber)
 {
 	try
 	{
+		BlockNumber blockNumber = jsToBlockNumber(_blockNumber);
+		if (!client()->isKnown(blockNumber))
+			return Json::Value(Json::nullValue);
+
 		return toJS(client()->transactionCount(jsToBlockNumber(_blockNumber)));
 	}
 	catch (...)
@@ -193,6 +201,7 @@ Json::Value WebThreeStubServerBase::eth_getUncleCountByBlockHash(string const& _
 		h256 blockHash = jsToFixed<32>(_blockHash);
 		if (!client()->isKnown(blockHash))
 			return Json::Value(Json::nullValue);
+
 		return toJS(client()->uncleCount(blockHash));
 	}
 	catch (...)
@@ -208,6 +217,7 @@ Json::Value WebThreeStubServerBase::eth_getUncleCountByBlockNumber(string const&
 		BlockNumber blockNumber = jsToBlockNumber(_blockNumber);
 		if (!client()->isKnown(blockNumber))
 			return Json::Value(Json::nullValue);
+
 		return toJS(client()->uncleCount(blockNumber));
 	}
 	catch (...)
@@ -336,7 +346,10 @@ Json::Value WebThreeStubServerBase::eth_getBlockByHash(string const& _blockHash,
 {
 	try
 	{
-		auto h = jsToFixed<32>(_blockHash);
+		h256 h = jsToFixed<32>(_blockHash);
+		if (!client()->isKnown(h))
+			return Json::Value(Json::nullValue);
+
 		if (_includeTransactions)
 			return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactions(h));
 		else
@@ -352,7 +365,10 @@ Json::Value WebThreeStubServerBase::eth_getBlockByNumber(string const& _blockNum
 {
 	try
 	{
-		auto h = jsToBlockNumber(_blockNumber);
+		BlockNumber h = jsToBlockNumber(_blockNumber);
+		if (!client()->isKnown(h))
+			return Json::Value(Json::nullValue);
+
 		if (_includeTransactions)
 			return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactions(h));
 		else

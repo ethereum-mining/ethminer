@@ -470,12 +470,17 @@ int ClientBase::compareBlockHashes(h256 _h1, h256 _h2) const
 
 bool ClientBase::isKnown(h256 _hash) const
 {
-	return bc().isKnown(_hash);
+	return _hash == PendingBlockHash ||
+		_hash == LatestBlockHash ||
+		_hash == EarliestBlockHash ||
+		bc().isKnown(_hash);
 }
 
 bool ClientBase::isKnown(BlockNumber _block) const
 {
-	return bc().numberHash(_block) != h256();
+	return _block == PendingBlock ||
+		_block == LatestBlock ||
+		bc().numberHash(_block) != h256();
 }
 
 bool ClientBase::isKnownTransaction(h256 _transactionHash) const
