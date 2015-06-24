@@ -186,11 +186,14 @@ string WebThreeStubServerBase::eth_getBlockTransactionCountByNumber(string const
 	}
 }
 
-string WebThreeStubServerBase::eth_getUncleCountByBlockHash(string const& _blockHash)
+Json::Value WebThreeStubServerBase::eth_getUncleCountByBlockHash(string const& _blockHash)
 {
 	try
 	{
-		return toJS(client()->uncleCount(jsToFixed<32>(_blockHash)));
+		h256 blockHash = jsToFixed<32>(_blockHash);
+		if (!client()->isKnown(blockHash))
+			return Json::Value(Json::nullValue);
+		return toJS(client()->uncleCount(blockHash));
 	}
 	catch (...)
 	{
@@ -198,11 +201,14 @@ string WebThreeStubServerBase::eth_getUncleCountByBlockHash(string const& _block
 	}
 }
 
-string WebThreeStubServerBase::eth_getUncleCountByBlockNumber(string const& _blockNumber)
+Json::Value WebThreeStubServerBase::eth_getUncleCountByBlockNumber(string const& _blockNumber)
 {
 	try
 	{
-		return toJS(client()->uncleCount(jsToBlockNumber(_blockNumber)));
+		BlockNumber blockNumber = jsToBlockNumber(_blockNumber);
+		if (!client()->isKnown(blockNumber))
+			return Json::Value(Json::nullValue);
+		return toJS(client()->uncleCount(blockNumber));
 	}
 	catch (...)
 	{

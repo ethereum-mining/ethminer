@@ -186,23 +186,23 @@ class WebThreeStubClient : public jsonrpc::Client
             else
                 throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString());
         }
-        std::string eth_getUncleCountByBlockHash(const std::string& param1) throw (jsonrpc::JsonRpcException)
+        Json::Value eth_getUncleCountByBlockHash(const std::string& param1) throw (jsonrpc::JsonRpcException)
         {
             Json::Value p;
             p.append(param1);
             Json::Value result = this->CallMethod("eth_getUncleCountByBlockHash",p);
-            if (result.isString())
-                return result.asString();
+            if (result.isObject())
+                return result;
             else
                 throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString());
         }
-        std::string eth_getUncleCountByBlockNumber(const std::string& param1) throw (jsonrpc::JsonRpcException)
+        Json::Value eth_getUncleCountByBlockNumber(const std::string& param1) throw (jsonrpc::JsonRpcException)
         {
             Json::Value p;
             p.append(param1);
             Json::Value result = this->CallMethod("eth_getUncleCountByBlockNumber",p);
-            if (result.isString())
-                return result.asString();
+            if (result.isObject())
+                return result;
             else
                 throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString());
         }
