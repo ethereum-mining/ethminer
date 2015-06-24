@@ -12,7 +12,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 aux_source_directory(. SRC_LIST)
 
 include_directories(BEFORE ..)
-include_directories(${LEVELDB_INCLUDE_DIRS})
+include_directories(${DB_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 
 set(EXECUTABLE webthree)
@@ -20,8 +20,6 @@ set(EXECUTABLE webthree)
 file(GLOB HEADERS "*.h")
 
 add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
-
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
 
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} evm)

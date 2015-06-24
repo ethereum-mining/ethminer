@@ -44,7 +44,7 @@ class BadArgument: public Exception {};
 
 string getAccountPassword(KeyManager& keyManager, Address const& a)
 {
-	return getPassword("Enter password for address " + keyManager.accountDetails()[a].first + " (" + a.abridged() + "; hint:" + keyManager.accountDetails()[a].second + "): ");
+	return getPassword("Enter password for address " + keyManager.accountName(a) + " (" + a.abridged() + "; hint:" + keyManager.passwordHint(a) + "): ");
 }
 
 string createPassword(std::string const& _prompt)
@@ -198,7 +198,16 @@ public:
 			if (m_masterPassword.empty())
 				cerr << "Aborted (empty password not allowed)." << endl;
 			else
-				wallet.create(m_masterPassword);
+			{
+				try
+				{
+					wallet.create(m_masterPassword);
+				}
+				catch (Exception const& _e)
+				{
+					cerr << "unable to create wallet" << endl << boost::diagnostic_information(_e);
+				}
+			}
 		}
 		else if (m_mode < OperationMode::CreateWallet)
 		{
@@ -221,26 +230,26 @@ public:
 				break;
 			}
 			case OperationMode::ImportBare:
-				for (string const& i: m_inputs)
+				for (string const& input: m_inputs)
 				{
 					h128 u;
 					bytes b;
-					b = fromHex(i);
+					b = fromHex(input);
 					if (b.size() != 32)
 					{
-						std::string s = contentsString(i);
+						std::string s = contentsString(input);
 						b = fromHex(s);
 						if (b.size() != 32)
-							u = store.importKey(i);
+							u = store.importKey(input);
 					}
 					if (!u && b.size() == 32)
 						u = store.importSecret(b, lockPassword(toAddress(Secret(b)).abridged()));
 					if (!u)
 					{
-						cerr << "Cannot import " << i << " not a file or secret." << endl;
+						cerr << "Cannot import " << input << " not a file or secret." << endl;
 						continue;
 					}
-					cout << "Successfully imported " << i << " as " << toUUID(u);
+					cout << "Successfully imported " << input << " as " << toUUID(u);
 				}
 				break;
 			case OperationMode::InspectBare:
@@ -359,20 +368,18 @@ public:
 							nonIcap.push_back(u);
 						else
 						{
-							std::pair<std::string, std::string> info = wallet.accountDetails()[a];
 							cout << toUUID(u) << " " << a.abridged();
 							cout << " " << ICAP(a).encoded();
-							cout << " " << info.first << endl;
+							cout << " " <<  wallet.accountName(a) << endl;
 						}
 					else
 						bare.push_back(u);
 				for (auto const& u: nonIcap)
 					if (Address a = wallet.address(u))
 					{
-						std::pair<std::string, std::string> info = wallet.accountDetails()[a];
 						cout << toUUID(u) << " " << a.abridged();
 						cout << "            (Not ICAP)             ";
-						cout << " " << info.first << endl;
+						cout << " " << wallet.accountName(a) << endl;
 					}
 				for (auto const& u: bare)
 					cout << toUUID(u) << " (Bare)" << endl;

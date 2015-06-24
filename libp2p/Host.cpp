@@ -284,7 +284,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameCoder* 
 		for (auto const& i: caps)
 			if (haveCapability(i))
 			{
-				ps->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(ps.get(), o, i));
+				ps->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(ps, o, i));
 				o += m_capabilities[i]->messageCount();
 			}
 		ps->start();
@@ -391,7 +391,7 @@ void Host::runAcceptor()
 		{
 			if (peerCount() > 9 * m_idealPeerCount)
 			{
-				clog(NetConnect) << "Dropping incoming connect due to maximum peer count (2 * ideal peer count): " << socket->remoteEndpoint();
+				clog(NetConnect) << "Dropping incoming connect due to maximum peer count (9 * ideal peer count): " << socket->remoteEndpoint();
 				socket->close();
 				if (ec.value() < 1)
 					runAcceptor();
@@ -580,7 +580,8 @@ PeerSessionInfos Host::peerSessionInfo() const
 	for (auto& i: m_sessions)
 		if (auto j = i.second.lock())
 			if (j->isConnected())
-				ret.push_back(j->m_info);
+				DEV_GUARDED(j->x_info)
+					ret.push_back(j->m_info);
 	return ret;
 }
 

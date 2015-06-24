@@ -306,9 +306,9 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 		}
 
 		std::cout << "  " << i.first << "\n";
-		BOOST_REQUIRE(o.count("env") > 0);
-		BOOST_REQUIRE(o.count("pre") > 0);
-		BOOST_REQUIRE(o.count("exec") > 0);
+		TBOOST_REQUIRE((o.count("env") > 0));
+		TBOOST_REQUIRE((o.count("pre") > 0));
+		TBOOST_REQUIRE((o.count("exec") > 0));
 
 		FakeExtVM fev;
 		fev.importEnv(o["env"].get_obj());
@@ -346,12 +346,12 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 		catch (Exception const& _e)
 		{
 			cnote << "VM did throw an exception: " << diagnostic_information(_e);
-			BOOST_ERROR("Failed VM Test with Exception: " << _e.what());
+			TBOOST_ERROR("Failed VM Test with Exception: " << _e.what());
 		}
 		catch (std::exception const& _e)
 		{
 			cnote << "VM did throw an exception: " << _e.what();
-			BOOST_ERROR("Failed VM Test with Exception: " << _e.what());
+			TBOOST_ERROR("Failed VM Test with Exception: " << _e.what());
 		}
 
 		// delete null entries in storage for the sake of comparison
@@ -397,9 +397,9 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 				{
 					std::string warning = "Check State: Error! Unexpected output: " + o["out"].get_str() + " Expected: " + o["expectOut"].get_str();
 					if (Options::get().checkState)
-						BOOST_CHECK_MESSAGE((o["out"].get_str() == o["expectOut"].get_str()), warning);
+						{TBOOST_CHECK_MESSAGE((o["out"].get_str() == o["expectOut"].get_str()), warning);}
 					else
-						BOOST_WARN_MESSAGE((o["out"].get_str() == o["expectOut"].get_str()), warning);
+						TBOOST_WARN_MESSAGE((o["out"].get_str() == o["expectOut"].get_str()), warning);
 
 					o.erase(o.find("expectOut"));
 				}
@@ -412,13 +412,13 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 		{
 			if (o.count("post") > 0)	// No exceptions expected
 			{
-				BOOST_CHECK(!vmExceptionOccured);
+				TBOOST_CHECK(!vmExceptionOccured);
 
-				BOOST_REQUIRE(o.count("post") > 0);
-				BOOST_REQUIRE(o.count("callcreates") > 0);
-				BOOST_REQUIRE(o.count("out") > 0);
-				BOOST_REQUIRE(o.count("gas") > 0);
-				BOOST_REQUIRE(o.count("logs") > 0);
+				TBOOST_REQUIRE((o.count("post") > 0));
+				TBOOST_REQUIRE((o.count("callcreates") > 0));
+				TBOOST_REQUIRE((o.count("out") > 0));
+				TBOOST_REQUIRE((o.count("gas") > 0));
+				TBOOST_REQUIRE((o.count("logs") > 0));
 
 				dev::test::FakeExtVM test;
 				test.importState(o["post"].get_obj());
@@ -427,7 +427,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 
 				checkOutput(output, o);
 
-				BOOST_CHECK_EQUAL(toInt(o["gas"]), fev.gas);
+				TBOOST_CHECK_EQUAL(toInt(o["gas"]), fev.gas);
 
 				State postState, expectState;
 				mObject mPostState = fev.exportState();
@@ -437,12 +437,12 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 
 				checkAddresses<std::map<Address, std::tuple<u256, u256, std::map<u256, u256>, bytes> > >(test.addresses, fev.addresses);
 
-				checkCallCreates(test.callcreates, fev.callcreates);
+				checkCallCreates(fev.callcreates, test.callcreates);
 
 				checkLog(fev.sub.logs, test.sub.logs);
 			}
 			else	// Exception expected
-				BOOST_CHECK(vmExceptionOccured);
+				TBOOST_CHECK(vmExceptionOccured);
 		}
 	}
 }

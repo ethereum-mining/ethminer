@@ -38,7 +38,7 @@ class EthashAux
 public:
 	~EthashAux();
 
-	static EthashAux* get() { if (!s_this) s_this = new EthashAux(); return s_this; }
+	static EthashAux* get();
 
 	struct LightAllocation
 	{

@@ -82,7 +82,7 @@ BOOST_AUTO_TEST_CASE(hex_encoded_securetrie_test)
 
 	cnote << "Testing Secure Trie...";
 	js::mValue v;
-	string s = asString(contents(testPath + "/hex_encoded_securetrie_test.json"));
+	string s = contentsString(testPath + "/hex_encoded_securetrie_test.json");
 	BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'hex_encoded_securetrie_test.json' is empty. Have you cloned the 'tests' repo branch develop?");
 	js::read_string(s, v);
 	for (auto& i: v.get_obj())
@@ -149,7 +149,7 @@ BOOST_AUTO_TEST_CASE(trie_test_anyorder)
 
 	cnote << "Testing Trie...";
 	js::mValue v;
-	string s = asString(contents(testPath + "/trieanyorder.json"));
+	string s = contentsString(testPath + "/trieanyorder.json");
 	BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'trieanyorder.json' is empty. Have you cloned the 'tests' repo branch develop?");
 	js::read_string(s, v);
 	for (auto& i: v.get_obj())
@@ -216,7 +216,7 @@ BOOST_AUTO_TEST_CASE(trie_tests_ordered)
 
 	cnote << "Testing Trie...";
 	js::mValue v;
-	string s = asString(contents(testPath + "/trietest.json"));
+	string s = contentsString(testPath + "/trietest.json");
 	BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'trietest.json' is empty. Have you cloned the 'tests' repo branch develop?");
 	js::read_string(s, v);
 

@@ -35,10 +35,12 @@ boost::random::mt19937 RandomCode::gen;
 boostIntDistrib RandomCode::opCodeDist = boostIntDistrib (0, 255);
 boostIntDistrib RandomCode::opLengDist = boostIntDistrib (1, 32);
 boostIntDistrib RandomCode::uniIntDist = boostIntDistrib (0, 0x7fffffff);
+boostUint64Distrib RandomCode::uInt64Dist = boostUint64Distrib (0, std::numeric_limits<uint64_t>::max());
 
 boostIntGenerator RandomCode::randOpCodeGen = boostIntGenerator(gen, opCodeDist);
 boostIntGenerator RandomCode::randOpLengGen = boostIntGenerator(gen, opLengDist);
 boostIntGenerator RandomCode::randUniIntGen = boostIntGenerator(gen, uniIntDist);
+boostUInt64Generator RandomCode::randUInt64Gen = boostUInt64Generator(gen, uInt64Dist);
 
 std::string RandomCode::rndByteSequence(int _length, SizeStrictness _sizeType)
 {
@@ -48,7 +50,7 @@ std::string RandomCode::rndByteSequence(int _length, SizeStrictness _sizeType)
 	for (auto i = 0; i < _length; i++)
 	{
 		uint8_t byte = randOpCodeGen();
-		hash += toCompactHex(byte);
+		hash += toCompactHex(byte, HexPrefix::DontAdd, 1);
 	}
 	return hash;
 }
@@ -89,10 +91,15 @@ std::string RandomCode::generate(int _maxOpNumber, RandomCodeOptions _options)
 	return code;
 }
 
-std::string RandomCode::randomUniIntHex()
+std::string RandomCode::randomUniIntHex(u256 _maxVal)
 {
+	if (_maxVal == 0)
+		_maxVal = std::numeric_limits<uint64_t>::max();
 	refreshSeed();
-	return "0x" + toCompactHex((int)randUniIntGen());
+	int rand = randUniIntGen() % 100;
+	if (rand < 50)
+		return "0x" + toCompactHex((u256)randUniIntGen() % _maxVal);
+	return "0x" + toCompactHex((u256)randUInt64Gen() % _maxVal);
 }
 
 int RandomCode::randomUniInt()
