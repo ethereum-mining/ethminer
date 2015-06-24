@@ -76,12 +76,6 @@ using BlocksHash = std::unordered_map<h256, bytes>;
 using TransactionHashes = h256s;
 using UncleHashes = h256s;
 
-struct ImportRoute
-{
-	h256s deadBlocks;
-	h256s liveBlocks;
-};
-
 enum {
 	ExtraDetails = 0,
 	ExtraBlockHash,
