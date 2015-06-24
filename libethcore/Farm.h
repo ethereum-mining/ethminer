@@ -95,7 +95,6 @@ public:
 	void stop()
 	{
 		WriteGuard l(x_minerWork);
-		cdebug << "Farm::stop()";
 		m_miners.clear();
 		m_work.reset();
 		m_isMining = false;
