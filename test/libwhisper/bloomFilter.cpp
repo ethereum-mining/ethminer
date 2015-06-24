@@ -28,8 +28,7 @@ using namespace dev;
 using namespace dev::shh;
 
 using TopicBloomFilterShort = TopicBloomFilterBase<4>;
-using TopicBloomFilterLong = TopicBloomFilterBase<8>;
-using TopicBloomFilterTest = TopicBloomFilterLong;
+using TopicBloomFilterTest = TopicBloomFilterBase<TopicBloomFilterSize>;
 
 void testAddNonExisting(TopicBloomFilterShort& _f, AbridgedTopic const& _h)
 {
@@ -59,7 +58,7 @@ void testRemoveExistingBloom(TopicBloomFilterShort& _f, AbridgedTopic const& _h)
 	BOOST_REQUIRE(!_f.containsBloom(_h));
 }
 
-int calculateExpected(TopicBloomFilterTest const& f, int const n)
+double calculateExpected(TopicBloomFilterTest const& f, int const n)
 {
 	int const m = f.size * 8; // number of bits in the bloom
 	int const k = f.BitsPerBloom; // number of hash functions (e.g. bits set to 1 in every bloom)
@@ -77,10 +76,10 @@ int calculateExpected(TopicBloomFilterTest const& f, int const n)
 	for (int i = 0; i < k; ++i)
 		kBitsSet *= single;
 
-	return static_cast<int>(kBitsSet * 100 + 0.5); // in percents, rounded up
+	return kBitsSet;
 }
 
-void testFalsePositiveRate(TopicBloomFilterTest const& f, int const inserted, Topic& x)
+double testFalsePositiveRate(TopicBloomFilterTest const& f, int const inserted, Topic& x)
 {
 	int const c_sampleSize = 1000;
 	int falsePositive = 0;
@@ -93,12 +92,14 @@ void testFalsePositiveRate(TopicBloomFilterTest const& f, int const inserted, To
 			++falsePositive;
 	}
 
-	falsePositive /= (c_sampleSize / 100); // in percents
-	int expected = calculateExpected(f, inserted);
-	int allowed = expected + (expected / 5); // allow deviations ~20%
+	double res = double(falsePositive) / double(c_sampleSize);
 
-	//cnote << "Inserted: " << inserted << ", False Positive Rate: " << falsePositive << ", Expected: " << expected;
-	BOOST_REQUIRE(falsePositive <= allowed);
+	double expected = calculateExpected(f, inserted);
+	double allowed = expected * 1.2 + 0.05; // allow deviations ~25%
+
+	//cnote << "Inserted: " << inserted << ", False Positive Rate: " << res << ", Expected: " << expected;
+	BOOST_REQUIRE(res <= allowed);
+	return expected;
 }
 
 BOOST_AUTO_TEST_SUITE(bloomFilter)
@@ -111,11 +112,13 @@ BOOST_AUTO_TEST_CASE(falsePositiveRate)
 	TopicBloomFilterTest f;
 	Topic x(0xC0DEFEED); // deterministic pseudorandom value
 
-	for (int i = 1; i < 21; ++i)
+	double expectedRate = 0;
+
+	for (int i = 1; i < 50 && expectedRate < 0.5; ++i)
 	{
 		x = sha3(x);
 		f.addBloom(AbridgedTopic(x));
-		testFalsePositiveRate(f, i, x);
+		expectedRate = testFalsePositiveRate(f, i, x);
 	}
 }
 

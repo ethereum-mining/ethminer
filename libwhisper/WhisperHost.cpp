@@ -85,10 +85,10 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 	}
 }
 
-void WhisperHost::advertizeTopicsOfInterest()
+void WhisperHost::advertiseTopicsOfInterest()
 {
 	for (auto i: peerSessions())
-		i.first->cap<WhisperPeer>().get()->advertizeTopicsOfInterest();
+		i.first->cap<WhisperPeer>().get()->advertiseTopicsOfInterest();
 }
 
 void WhisperHost::noteChanged(h256 _messageHash, h256 _filter)
@@ -120,7 +120,7 @@ unsigned WhisperHost::installWatch(shh::Topics const& _t)
 		m_filters.insert(make_pair(h, f));
 
 	m_bloom.addRaw(f.filter.exportBloom());
-	advertizeTopicsOfInterest();
+	advertiseTopicsOfInterest();
 
 	return installWatchOnId(h);
 }
@@ -165,7 +165,7 @@ void WhisperHost::uninstallWatch(unsigned _i)
 			m_filters.erase(fit);
 
 		m_bloom.removeRaw(fit->second.filter.exportBloom());
-		advertizeTopicsOfInterest();
+		advertiseTopicsOfInterest();
 	}
 }
 

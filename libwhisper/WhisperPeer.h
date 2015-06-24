@@ -56,7 +56,7 @@ public:
 	static u256 version() { return 2; }
 	static unsigned messageCount() { return PacketCount; }
 	FixedHash<TopicBloomFilterSize> const& bloom() const { return m_bloom; }	
-	void advertizeTopicsOfInterest(); ///< sends our bloom filter to remote peer
+	void advertiseTopicsOfInterest(); ///< sends our bloom filter to remote peer
 
 private:
 	virtual bool interpret(unsigned _id, RLP const&) override;
