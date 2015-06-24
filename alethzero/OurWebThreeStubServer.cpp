@@ -136,7 +136,7 @@ void OurAccountHolder::doValidations()
 
 AddressHash OurAccountHolder::realAccounts() const
 {
-	return m_main->keyManager().accounts();
+	return m_main->keyManager().accountsHash();
 }
 
 bool OurAccountHolder::validateTransaction(TransactionSkeleton const& _t, bool _toProxy)

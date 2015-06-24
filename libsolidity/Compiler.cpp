@@ -30,9 +30,8 @@
 #include <libsolidity/CompilerUtils.h>
 
 using namespace std;
-
-namespace dev {
-namespace solidity {
+using namespace dev;
+using namespace dev::solidity;
 
 /**
  * Simple helper class to ensure that the stack height is the same at certain places in the code.
@@ -164,14 +163,30 @@ void Compiler::appendConstructor(FunctionDefinition const& _constructor)
 {
 	CompilerContext::LocationSetter locationSetter(m_context, _constructor);
 	// copy constructor arguments from code to memory and then to stack, they are supplied after the actual program
-	unsigned argumentSize = 0;
-	for (ASTPointer<VariableDeclaration> const& var: _constructor.getParameters())
-		argumentSize += var->getType()->getCalldataEncodedSize();
-
-	if (argumentSize > 0)
+	if (!_constructor.getParameters().empty())
 	{
+		unsigned argumentSize = 0;
+		for (ASTPointer<VariableDeclaration> const& var: _constructor.getParameters())
+			if (var->getType()->isDynamicallySized())
+			{
+				argumentSize = 0;
+				break;
+			}
+			else
+				argumentSize += var->getType()->getCalldataEncodedSize();
+
 		CompilerUtils(m_context).fetchFreeMemoryPointer();
-		m_context << u256(argumentSize) << eth::Instruction::DUP1;
+		if (argumentSize == 0)
+		{
+			// argument size is dynamic, use CODESIZE to determine it
+			m_context.appendProgramSize(); // program itself
+			// CODESIZE is program plus manually added arguments
+			m_context << eth::Instruction::CODESIZE << eth::Instruction::SUB;
+		}
+		else
+			m_context << u256(argumentSize);
+		// stack: <memptr> <argument size>
+		m_context << eth::Instruction::DUP1;
 		m_context.appendProgramSize();
 		m_context << eth::Instruction::DUP4 << eth::Instruction::CODECOPY;
 		m_context << eth::Instruction::ADD;
@@ -246,21 +261,36 @@ void Compiler::appendCalldataUnpacker(
 {
 	// We do not check the calldata size, everything is zero-paddedd
 
+	//@todo this does not yet support nested arrays
+
 	if (_startOffset == u256(-1))
 		_startOffset = u256(CompilerUtils::dataStartOffset);
 
 	m_context << _startOffset;
 	for (TypePointer const& type: _typeParameters)
 	{
+		// stack: v1 v2 ... v(k-1) mem_offset
 		switch (type->getCategory())
 		{
 		case Type::Category::Array:
 		{
 			auto const& arrayType = dynamic_cast<ArrayType const&>(*type);
-			if (arrayType.location() == ReferenceType::Location::CallData)
+			solAssert(arrayType.location() != DataLocation::Storage, "");
+			solAssert(!arrayType.getBaseType()->isDynamicallySized(), "Nested arrays not yet implemented.");
+			if (_fromMemory)
 			{
-				solAssert(!_fromMemory, "");
-				if (type->isDynamicallySized())
+				solAssert(arrayType.location() == DataLocation::Memory, "");
+				// compute data pointer
+				m_context << eth::Instruction::DUP1 << eth::Instruction::MLOAD;
+				//@todo once we support nested arrays, this offset needs to be dynamic.
+				m_context << _startOffset << eth::Instruction::ADD;
+				m_context << eth::Instruction::SWAP1 << u256(0x20) << eth::Instruction::ADD;
+			}
+			else
+			{
+				// first load from calldata and potentially convert to memory if arrayType is memory
+				TypePointer calldataType = arrayType.copyForLocation(DataLocation::CallData, false);
+				if (calldataType->isDynamicallySized())
 				{
 					// put on stack: data_pointer length
 					CompilerUtils(m_context).loadFromMemoryDynamic(IntegerType(256), !_fromMemory);
@@ -277,17 +307,17 @@ void Compiler::appendCalldataUnpacker(
 				{
 					// leave the pointer on the stack
 					m_context << eth::Instruction::DUP1;
-					m_context << u256(type->getCalldataEncodedSize()) << eth::Instruction::ADD;
+					m_context << u256(calldataType->getCalldataEncodedSize()) << eth::Instruction::ADD;
 				}
-			}
-			else
-			{
-				solAssert(arrayType.location() == ReferenceType::Location::Memory, "");
-				// compute data pointer
-				m_context << eth::Instruction::DUP1 << _startOffset << eth::Instruction::ADD;
-				if (!_fromMemory)
-					solAssert(false, "Not yet implemented.");
-				m_context << eth::Instruction::SWAP1 << u256(0x20) << eth::Instruction::ADD;
+				if (arrayType.location() == DataLocation::Memory)
+				{
+					// copy to memory
+					// move calldata type up again
+					CompilerUtils(m_context).moveIntoStack(calldataType->getSizeOnStack());
+					CompilerUtils(m_context).convertType(*calldataType, arrayType);
+					// fetch next pointer again
+					CompilerUtils(m_context).moveToStackTop(arrayType.getSizeOnStack());
+				}
 			}
 			break;
 		}
@@ -301,24 +331,18 @@ void Compiler::appendCalldataUnpacker(
 
 void Compiler::appendReturnValuePacker(TypePointers const& _typeParameters)
 {
-	unsigned dataOffset = 0;
-	unsigned stackDepth = 0;
-	for (TypePointer const& type: _typeParameters)
-		stackDepth += type->getSizeOnStack();
-
-	for (TypePointer const& type: _typeParameters)
-	{
-		CompilerUtils(m_context).copyToStackTop(stackDepth, type->getSizeOnStack());
-		ExpressionCompiler(m_context, m_optimize).appendTypeConversion(*type, *type, true);
-		bool const c_padToWords = true;
-		dataOffset += CompilerUtils(m_context).storeInMemory(dataOffset, *type, c_padToWords);
-		stackDepth -= type->getSizeOnStack();
-	}
-	// note that the stack is not cleaned up here
-	if (dataOffset == 0)
+	CompilerUtils utils(m_context);
+	if (_typeParameters.empty())
 		m_context << eth::Instruction::STOP;
 	else
-		m_context << u256(dataOffset) << u256(0) << eth::Instruction::RETURN;
+	{
+		utils.fetchFreeMemoryPointer();
+		//@todo optimization: if we return a single memory array, there should be enough space before
+		// its data to add the needed parts and we avoid a memory copy.
+		utils.encodeToMemory(_typeParameters, _typeParameters);
+		utils.toSizeAfterFreeMemoryPointer();
+		m_context << eth::Instruction::RETURN;
+	}
 }
 
 void Compiler::registerStateVariables(ContractDefinition const& _contract)
@@ -634,8 +658,5 @@ void Compiler::compileExpression(Expression const& _expression, TypePointer cons
 	ExpressionCompiler expressionCompiler(m_context, m_optimize);
 	expressionCompiler.compile(_expression);
 	if (_targetType)
-		expressionCompiler.appendTypeConversion(*_expression.getType(), *_targetType);
-}
-
-}
+		CompilerUtils(m_context).convertType(*_expression.getType(), *_targetType);
 }

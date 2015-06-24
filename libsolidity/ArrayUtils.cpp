@@ -38,12 +38,7 @@ void ArrayUtils::copyArrayToStorage(ArrayType const& _targetType, ArrayType cons
 	// need to leave "target_ref target_byte_off" on the stack at the end
 
 	// stack layout: [source_ref] [source_byte_off] [source length] target_ref target_byte_off (top)
-	solAssert(_targetType.location() == ReferenceType::Location::Storage, "");
-	solAssert(
-		_sourceType.location() == ReferenceType::Location::CallData ||
-			_sourceType.location() == ReferenceType::Location::Storage,
-		"Given array location not implemented."
-	);
+	solAssert(_targetType.location() == DataLocation::Storage, "");
 
 	IntegerType uint256(256);
 	Type const* targetBaseType = _targetType.isByteArray() ? &uint256 : &(*_targetType.getBaseType());
@@ -51,7 +46,8 @@ void ArrayUtils::copyArrayToStorage(ArrayType const& _targetType, ArrayType cons
 
 	// TODO unroll loop for small sizes
 
-	bool sourceIsStorage = _sourceType.location() == ReferenceType::Location::Storage;
+	bool sourceIsStorage = _sourceType.location() == DataLocation::Storage;
+	bool fromCalldata = _sourceType.location() == DataLocation::CallData;
 	bool directCopy = sourceIsStorage && sourceBaseType->isValueType() && *sourceBaseType == *targetBaseType;
 	bool haveByteOffsetSource = !directCopy && sourceIsStorage && sourceBaseType->getStorageBytes() <= 16;
 	bool haveByteOffsetTarget = !directCopy && targetBaseType->getStorageBytes() <= 16;
@@ -69,8 +65,15 @@ void ArrayUtils::copyArrayToStorage(ArrayType const& _targetType, ArrayType cons
 		m_context << eth::Instruction::POP;
 	// stack: target_ref source_ref [source_length]
 	// retrieve source length
-	if (_sourceType.location() != ReferenceType::Location::CallData || !_sourceType.isDynamicallySized())
+	if (_sourceType.location() != DataLocation::CallData || !_sourceType.isDynamicallySized())
 		retrieveLength(_sourceType); // otherwise, length is already there
+	if (_sourceType.location() == DataLocation::Memory && _sourceType.isDynamicallySized())
+	{
+		// increment source pointer to point to data
+		m_context << eth::Instruction::SWAP1 << u256(0x20);
+		m_context << eth::Instruction::ADD << eth::Instruction::SWAP1;
+	}
+
 	// stack: target_ref source_ref source_length
 	m_context << eth::Instruction::DUP3;
 	// stack: target_ref source_ref source_length target_ref
@@ -82,7 +85,7 @@ void ArrayUtils::copyArrayToStorage(ArrayType const& _targetType, ArrayType cons
 	if (sourceBaseType->getCategory() == Type::Category::Mapping)
 	{
 		solAssert(targetBaseType->getCategory() == Type::Category::Mapping, "");
-		solAssert(_sourceType.location() == ReferenceType::Location::Storage, "");
+		solAssert(_sourceType.location() == DataLocation::Storage, "");
 		// nothing to copy
 		m_context
 			<< eth::Instruction::POP << eth::Instruction::POP
@@ -106,7 +109,7 @@ void ArrayUtils::copyArrayToStorage(ArrayType const& _targetType, ArrayType cons
 	eth::AssemblyItem copyLoopEndWithoutByteOffset = m_context.newTag();
 	m_context.appendConditionalJumpTo(copyLoopEndWithoutByteOffset);
 
-	if (_sourceType.location() == ReferenceType::Location::Storage && _sourceType.isDynamicallySized())
+	if (_sourceType.location() == DataLocation::Storage && _sourceType.isDynamicallySized())
 		CompilerUtils(m_context).computeHashStatic();
 	// stack: target_ref target_data_end source_length target_data_pos source_data_pos
 	m_context << eth::Instruction::SWAP2;
@@ -155,7 +158,7 @@ void ArrayUtils::copyArrayToStorage(ArrayType const& _targetType, ArrayType cons
 		// checking is easier.
 		// stack: target_ref target_data_end source_data_pos target_data_pos source_data_end [target_byte_offset] [source_byte_offset]
 		m_context << eth::dupInstruction(3 + byteOffsetSize);
-		if (_sourceType.location() == ReferenceType::Location::Storage)
+		if (_sourceType.location() == DataLocation::Storage)
 		{
 			if (haveByteOffsetSource)
 				m_context << eth::Instruction::DUP2;
@@ -164,9 +167,9 @@ void ArrayUtils::copyArrayToStorage(ArrayType const& _targetType, ArrayType cons
 			StorageItem(m_context, *sourceBaseType).retrieveValue(SourceLocation(), true);
 		}
 		else if (sourceBaseType->isValueType())
-			CompilerUtils(m_context).loadFromMemoryDynamic(*sourceBaseType, true, true, false);
+			CompilerUtils(m_context).loadFromMemoryDynamic(*sourceBaseType, fromCalldata, true, false);
 		else
-			solAssert(false, "Copying of unknown type requested: " + sourceBaseType->toString());
+			solAssert(false, "Copying of type " + _sourceType.toString(false) + " to storage not yet supported.");
 		// stack: target_ref target_data_end source_data_pos target_data_pos source_data_end [target_byte_offset] [source_byte_offset] <source_value>...
 		solAssert(
 			2 + byteOffsetSize + sourceBaseType->getSizeOnStack() <= 16,
@@ -231,7 +234,7 @@ void ArrayUtils::copyArrayToStorage(ArrayType const& _targetType, ArrayType cons
 void ArrayUtils::clearArray(ArrayType const& _type) const
 {
 	unsigned stackHeightStart = m_context.getStackHeight();
-	solAssert(_type.location() == ReferenceType::Location::Storage, "");
+	solAssert(_type.location() == DataLocation::Storage, "");
 	if (_type.getBaseType()->getStorageBytes() < 32)
 	{
 		solAssert(_type.getBaseType()->isValueType(), "Invalid storage size for non-value type.");
@@ -286,7 +289,7 @@ void ArrayUtils::clearArray(ArrayType const& _type) const
 
 void ArrayUtils::clearDynamicArray(ArrayType const& _type) const
 {
-	solAssert(_type.location() == ReferenceType::Location::Storage, "");
+	solAssert(_type.location() == DataLocation::Storage, "");
 	solAssert(_type.isDynamicallySized(), "");
 
 	unsigned stackHeightStart = m_context.getStackHeight();
@@ -314,7 +317,7 @@ void ArrayUtils::clearDynamicArray(ArrayType const& _type) const
 
 void ArrayUtils::resizeDynamicArray(const ArrayType& _type) const
 {
-	solAssert(_type.location() == ReferenceType::Location::Storage, "");
+	solAssert(_type.location() == DataLocation::Storage, "");
 	solAssert(_type.isDynamicallySized(), "");
 	if (!_type.isByteArray() && _type.getBaseType()->getStorageBytes() < 32)
 		solAssert(_type.getBaseType()->isValueType(), "Invalid storage size for non-value type.");
@@ -399,7 +402,7 @@ void ArrayUtils::clearStorageLoop(Type const& _type) const
 
 void ArrayUtils::convertLengthToSize(ArrayType const& _arrayType, bool _pad) const
 {
-	if (_arrayType.location() == ReferenceType::Location::Storage)
+	if (_arrayType.location() == DataLocation::Storage)
 	{
 		if (_arrayType.getBaseType()->getStorageSize() <= 1)
 		{
@@ -419,6 +422,10 @@ void ArrayUtils::convertLengthToSize(ArrayType const& _arrayType, bool _pad) con
 	}
 	else
 	{
+		solAssert(
+			_arrayType.getBaseType()->getCalldataEncodedSize() > 0,
+			"Copying nested dynamic arrays not yet implemented."
+		);
 		if (!_arrayType.isByteArray())
 			m_context << _arrayType.getBaseType()->getCalldataEncodedSize() << eth::Instruction::MUL;
 		else if (_pad)
@@ -437,13 +444,13 @@ void ArrayUtils::retrieveLength(ArrayType const& _arrayType) const
 		m_context << eth::Instruction::DUP1;
 		switch (_arrayType.location())
 		{
-		case ReferenceType::Location::CallData:
+		case DataLocation::CallData:
 			// length is stored on the stack
 			break;
-		case ReferenceType::Location::Memory:
+		case DataLocation::Memory:
 			m_context << eth::Instruction::MLOAD;
 			break;
-		case ReferenceType::Location::Storage:
+		case DataLocation::Storage:
 			m_context << eth::Instruction::SLOAD;
 			break;
 		}
@@ -452,16 +459,16 @@ void ArrayUtils::retrieveLength(ArrayType const& _arrayType) const
 
 void ArrayUtils::accessIndex(ArrayType const& _arrayType) const
 {
-	ReferenceType::Location location = _arrayType.location();
+	DataLocation location = _arrayType.location();
 	eth::Instruction load =
-		location == ReferenceType::Location::Storage ? eth::Instruction::SLOAD :
-		location == ReferenceType::Location::Memory ? eth::Instruction::MLOAD :
+		location == DataLocation::Storage ? eth::Instruction::SLOAD :
+		location == DataLocation::Memory ? eth::Instruction::MLOAD :
 		eth::Instruction::CALLDATALOAD;
 
 	// retrieve length
 	if (!_arrayType.isDynamicallySized())
 		m_context << _arrayType.getLength();
-	else if (location == ReferenceType::Location::CallData)
+	else if (location == DataLocation::CallData)
 		// length is stored on the stack
 		m_context << eth::Instruction::SWAP1;
 	else
@@ -476,30 +483,31 @@ void ArrayUtils::accessIndex(ArrayType const& _arrayType) const
 	m_context << eth::Instruction::SWAP1;
 	if (_arrayType.isDynamicallySized())
 	{
-		if (location == ReferenceType::Location::Storage)
+		if (location == DataLocation::Storage)
 			CompilerUtils(m_context).computeHashStatic();
-		else if (location == ReferenceType::Location::Memory)
+		else if (location == DataLocation::Memory)
 			m_context << u256(32) << eth::Instruction::ADD;
 	}
 	// stack: <index> <data_ref>
 	switch (location)
 	{
-	case ReferenceType::Location::CallData:
+	case DataLocation::CallData:
+	case DataLocation::Memory:
 		if (!_arrayType.isByteArray())
-			m_context
-				<< eth::Instruction::SWAP1
-				<< _arrayType.getBaseType()->getCalldataEncodedSize()
-				<< eth::Instruction::MUL;
+		{
+			m_context << eth::Instruction::SWAP1;
+			m_context << _arrayType.getBaseType()->getCalldataEncodedSize() << eth::Instruction::MUL;
+		}
 		m_context << eth::Instruction::ADD;
 		if (_arrayType.getBaseType()->isValueType())
 			CompilerUtils(m_context).loadFromMemoryDynamic(
 				*_arrayType.getBaseType(),
-				true,
+				location == DataLocation::CallData,
 				!_arrayType.isByteArray(),
 				false
 			);
 		break;
-	case ReferenceType::Location::Storage:
+	case DataLocation::Storage:
 		m_context << eth::Instruction::SWAP1;
 		if (_arrayType.getBaseType()->getStorageBytes() <= 16)
 		{
@@ -527,8 +535,6 @@ void ArrayUtils::accessIndex(ArrayType const& _arrayType) const
 			m_context << eth::Instruction::ADD << u256(0);
 		}
 		break;
-	case ReferenceType::Location::Memory:
-		solAssert(false, "Memory lvalues not yet implemented.");
 	}
 }
 

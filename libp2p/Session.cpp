@@ -44,7 +44,8 @@ Session::Session(Host* _h, RLPXFrameCoder* _io, std::shared_ptr<RLPXSocket> cons
 {
 	m_peer->m_lastDisconnect = NoDisconnect;
 	m_lastReceived = m_connect = chrono::steady_clock::now();
-	m_info.socketId = m_socket->ref().native_handle();
+	DEV_GUARDED(x_info)
+		m_info.socketId = m_socket->ref().native_handle();
 }
 
 Session::~Session()
@@ -187,9 +188,12 @@ bool Session::interpret(PacketType _t, RLP const& _r)
 			break;
 		}
 		case PongPacket:
-			m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
+		{
+			DEV_GUARDED(x_info)
+				m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
 			clog(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
 			break;
+		}
 		case GetPeersPacket:
 			// Disabled for interop testing.
 			// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
@@ -382,11 +386,12 @@ void Session::drop(DisconnectReason _reason)
 void Session::disconnect(DisconnectReason _reason)
 {
 	clog(NetConnect) << "Disconnecting (our reason:" << reasonOf(_reason) << ")";
-	StructuredLogger::p2pDisconnected(
-		m_info.id.abridged(),
-		m_peer->endpoint, // TODO: may not be 100% accurate
-		m_server->peerCount()
-	);
+	DEV_GUARDED(x_info)
+		StructuredLogger::p2pDisconnected(
+			m_info.id.abridged(),
+			m_peer->endpoint, // TODO: may not be 100% accurate
+			m_server->peerCount()
+		);
 	if (m_socket->ref().is_open())
 	{
 		RLPStream s;

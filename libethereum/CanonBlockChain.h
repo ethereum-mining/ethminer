@@ -21,11 +21,6 @@
 
 #pragma once
 
-#pragma warning(push)
-#pragma warning(disable: 4100 4267)
-#include <leveldb/db.h>
-#pragma warning(pop)
-
 #include <mutex>
 #include <libdevcore/Log.h>
 #include <libdevcore/Exceptions.h>
@@ -35,7 +30,6 @@
 #include "BlockDetails.h"
 #include "Account.h"
 #include "BlockChain.h"
-namespace ldb = leveldb;
 
 namespace dev
 {

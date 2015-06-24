@@ -5,25 +5,31 @@ Item
 	property alias value: textinput.text
 	property alias readOnly: textinput.readOnly
 	id: editRoot
-	height: 20
 	width: readOnly ? textinput.implicitWidth : 150
 
-	SourceSansProBold
-	{
-		id: boldFont
+	DebuggerPaneStyle {
+		id: dbgStyle
 	}
 
 	Rectangle {
 		anchors.fill: parent
 		radius: 4
 		TextInput {
+			anchors.verticalCenter: parent.verticalCenter
 			id: textinput
-			text: value
+			font.family: dbgStyle.general.basicFont
 			clip: true
-			anchors.fill: parent
-			wrapMode: Text.WrapAnywhere
-			font.family: boldFont.name
 			selectByMouse: true
+			text: value
+			anchors.fill: parent
+			font.pointSize: dbgStyle.general.basicFontSize
+			color: dbgStyle.general.basicColor
+			MouseArea {
+				id: mouseArea
+				anchors.fill: parent
+				hoverEnabled: true
+				onClicked: textinput.forceActiveFocus()
+			}
 		}
 	}
 }
