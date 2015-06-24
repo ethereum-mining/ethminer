@@ -13,7 +13,7 @@ import "."
 Dialog {
 	id: modalTransactionDialog
 	modality: Qt.ApplicationModal
-	width: 630
+	width: 580
 	height: 500
 	visible: false
 	title: qsTr("Edit Transaction")
@@ -31,7 +31,7 @@ Dialog {
 	property alias stateAccounts: senderComboBox.model
 	property bool saveStatus
 	signal accepted;
-
+	property int rowWidth: 500
 	StateDialogStyle {
 		id: transactionDialogStyle
 	}
@@ -39,8 +39,8 @@ Dialog {
 	function open(index, blockIdx, item) {
 		transactionIndex = index
 		blockIndex = blockIdx
-		typeLoader.transactionIndex = index
-		typeLoader.blockIndex = blockIdx
+		paramScroll.transactionIndex = index
+		paramScroll.blockIndex = blockIdx
 		saveStatus = item.saveStatus
 		gasValueEdit.gasValue = item.gas;
 		gasAutoCheck.checked = item.gasAuto ? true : false;
@@ -139,10 +139,10 @@ Dialog {
 
 	function initTypeLoader()
 	{
-		typeLoader.value = {}
-		typeLoader.members = []
-		typeLoader.value = paramValues;
-		typeLoader.members = paramsModel;
+		paramScroll.value = {}
+		paramScroll.members = []
+		paramScroll.value = paramValues;
+		paramScroll.members = paramsModel;
 		paramScroll.updateView()
 	}
 
@@ -273,6 +273,7 @@ Dialog {
 	}
 
 	contentItem: Rectangle {
+		id: containerRect
 		color: transactionDialogStyle.generic.backgroundColor
 		anchors.fill: parent
 		ScrollView
@@ -280,14 +281,18 @@ Dialog {
 			anchors.top: parent.top
 			anchors.fill: parent
 			ColumnLayout {
-				width: modalTransactionDialog.width - 30
-				anchors.horizontalCenter: parent.horizontalCenter
+				Layout.preferredWidth: rowWidth
 				anchors.top: parent.top
 				anchors.topMargin: 10
-				spacing: 10
+				anchors.left: parent.left
+				width: 500
+				anchors.leftMargin:
+				{
+					return (containerRect.width - 530) /2
+				}
+
 				RowLayout
 				{
-					Layout.fillWidth: true
 					Rectangle
 					{
 						Layout.preferredWidth: 150
@@ -318,7 +323,6 @@ Dialog {
 
 				RowLayout
 				{
-					Layout.fillWidth: true
 					Rectangle
 					{
 						Layout.preferredWidth: 150
@@ -335,7 +339,7 @@ Dialog {
 
 					Column
 					{
-						Layout.preferredWidth: 150
+						Layout.preferredWidth: 350
 						Layout.preferredHeight: 90
 						ExclusiveGroup {
 							id: rbbuttonList
@@ -393,7 +397,6 @@ Dialog {
 
 				RowLayout
 				{
-					Layout.fillWidth: true
 					Rectangle
 					{
 						Layout.preferredWidth: 150
@@ -436,7 +439,6 @@ Dialog {
 
 				RowLayout
 				{
-					Layout.fillWidth: true
 					Rectangle
 					{
 						Layout.preferredWidth: 150
@@ -444,12 +446,14 @@ Dialog {
 
 						function hide()
 						{
+							parent.visible = false
 							functionRect.visible = false
 							functionComboBox.visible = false
 						}
 
 						function show()
 						{
+							parent.visible = true
 							functionRect.visible = true
 							functionComboBox.visible = true
 						}
@@ -476,37 +480,26 @@ Dialog {
 					}
 				}
 
-				RowLayout
+				StructView
 				{
 					id: paramScroll
+					members: paramsModel;
+					accounts: senderComboBox.model
+					context: "parameter"
 					Layout.fillWidth: true
-
 					function updateView()
 					{
 						paramScroll.visible = paramsModel.length > 0
-						typeLoader.visible = paramsModel.length > 0
-						paramScroll.height = paramsModel.length < 6 ? paramsModel.length * 30 : 190
-						typeLoader.height = paramsModel.length < 6 ? paramsModel.length * 30 : 190
+						paramScroll.Layout.preferredHeight = paramsModel.length < 6 ? paramsModel.length * 30 : 205
 						if (paramsModel.length === 0)
 						{
 							paramScroll.height = 0
-							typeLoader.height = 0
 						}
-					}
-
-					StructView
-					{
-						id: typeLoader
-						Layout.preferredWidth: 500
-						members: paramsModel;
-						accounts: senderComboBox.model
-						context: "parameter"
 					}
 				}
 
 				RowLayout
 				{
-					Layout.fillWidth: true
 					Rectangle
 					{
 						Layout.preferredWidth: 150
@@ -519,6 +512,7 @@ Dialog {
 					}
 
 					Ether {
+						Layout.preferredWidth: 350
 						id: valueField
 						edit: true
 						displayFormattedValue: false
@@ -542,20 +536,24 @@ Dialog {
 
 				Rectangle
 				{
-					width: parent.width
 					height: 20
 					color: "transparent"
-					Label {
-						text: qsTr("Transaction fees")
+					Layout.preferredWidth: 500
+					Rectangle
+					{
+
 						anchors.horizontalCenter: parent.horizontalCenter
+						Label {
+							text: qsTr("Transaction fees")
+							anchors.horizontalCenter: parent.horizontalCenter
+						}
 					}
+
 				}
 
 				RowLayout
 				{
-					Layout.fillWidth: true
-					Layout.preferredHeight: 40
-
+					Layout.preferredHeight: 45
 					Rectangle
 					{
 						Layout.preferredWidth: 150
@@ -568,6 +566,7 @@ Dialog {
 
 					Row
 					{
+						Layout.preferredWidth: 350
 						DefaultTextField
 						{
 							property variant gasValue
@@ -595,7 +594,10 @@ Dialog {
 								{
 									var gasCost = codeModel.gasCostBy(contractName, functionName);
 									if (gasCost && gasCost.length > 0)
+									{
+										var gas = codeModel.txGas + codeModel.callStipend + parseInt(gasCost[0].gas)
 										estimatedGas.text = qsTr("Estimated cost: ") + gasCost[0].gas + " gas"
+									}
 								}
 
 								function updateView()
@@ -635,8 +637,8 @@ Dialog {
 
 				RowLayout
 				{
-					Layout.fillWidth: true
-					Layout.preferredHeight: 40
+					Layout.preferredWidth: 500
+					Layout.preferredHeight: 45
 					Rectangle
 					{
 						Layout.preferredWidth: 150
@@ -645,22 +647,23 @@ Dialog {
 							anchors.verticalCenter: parent.verticalCenter
 							anchors.right: parent.right
 							text: qsTr("Gas Price")
-						}
 
-						Label {
-							id: gasPriceMarket
-							anchors.top: gasPriceLabel.bottom
-							Component.onCompleted:
-							{
-								NetworkDeployment.gasPrice(function(result)
+							Label {
+								id: gasPriceMarket
+								anchors.top: gasPriceLabel.bottom
+								Component.onCompleted:
 								{
-									gasPriceMarket.text = qsTr("Current market: ") + " " + result + " Wei";
-								}, function (){});
+									NetworkDeployment.gasPrice(function(result)
+									{
+										gasPriceMarket.text = qsTr("Current market: ") + " " + result + " Wei";
+									}, function (){});
+								}
 							}
 						}
 					}
 
 					Ether {
+						Layout.preferredWidth: 350
 						id: gasPriceField
 						edit: true
 						displayFormattedValue: false
@@ -671,32 +674,37 @@ Dialog {
 
 				RowLayout
 				{
-					anchors.right: parent.right
 
-					Button {
-						text: qsTr("Cancel");
-						onClicked: close();
-					}
+					Layout.preferredWidth: 500
+					Row
+					{
+						width: parent.width
+						anchors.right: parent.right
+						Button {
+							id: updateBtn
+							text: qsTr("Cancel");
+							onClicked: close();
+						}
 
-					Button {
-						text: qsTr("Update");
-						onClicked: {
-							var invalid = InputValidator.validate(paramsModel, paramValues);
-							if (invalid.length === 0)
-							{
-								close();
-								accepted();
-							}
-							else
-							{
-								errorDialog.text = qsTr("Some parameters are invalid:\n");
-								for (var k in invalid)
-									errorDialog.text += invalid[k].message + "\n";
-								errorDialog.open();
+						Button {
+							text: qsTr("Update");
+							onClicked: {
+								var invalid = InputValidator.validate(paramsModel, paramValues);
+								if (invalid.length === 0)
+								{
+									close();
+									accepted();
+								}
+								else
+								{
+									errorDialog.text = qsTr("Some parameters are invalid:\n");
+									for (var k in invalid)
+										errorDialog.text += invalid[k].message + "\n";
+									errorDialog.open();
+								}
 							}
 						}
 					}
-
 
 					MessageDialog {
 						id: errorDialog
@@ -707,11 +715,10 @@ Dialog {
 
 				RowLayout
 				{
+					Layout.preferredHeight: 30
 					anchors.bottom: parent.bottom
-					Layout.preferredHeight: 20
 				}
 			}
 		}
 	}
 }
-

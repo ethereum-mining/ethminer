@@ -13,7 +13,7 @@ Column
 	property int transactionIndex
 	property string context
 	Layout.fillWidth: true
-	spacing: 15
+	spacing: 5
 	Repeater
 	{
 		id: repeater
@@ -21,7 +21,7 @@ Column
 		RowLayout
 		{
 			id: row
-			height: 20 + (members[index].type.category === QSolidityType.Struct ? (20 * members[index].type.members.length) : 0)
+			height: 30 + (members[index].type.category === QSolidityType.Struct ? (30 * members[index].type.members.length) : 0)
 			Layout.fillWidth: true
 			Rectangle
 			{
@@ -31,13 +31,11 @@ Column
 					anchors.right: parent.right
 					anchors.verticalCenter: parent.verticalCenter
 					Label {
-						height: 20
 						id: nameLabel
 						text: modelData.name
 					}
 
 					Label {
-						height: 20
 						id: typeLabel
 						text: " (" + modelData.type.name + ")"
 						font.italic: true
@@ -49,8 +47,6 @@ Column
 			Loader
 			{
 				id: typeLoader
-				height: 20
-				anchors.verticalCenter: parent.verticalCenter
 				sourceComponent:
 				{
 					var t = modelData.type.category;
