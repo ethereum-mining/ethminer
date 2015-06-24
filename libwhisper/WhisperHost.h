@@ -74,7 +74,7 @@ private:
 
 	void streamMessage(h256 _m, RLPStream& _s) const;
 	void noteChanged(h256 _messageHash, h256 _filter);
-	void advertizeTopicsOfInterest();
+	void advertiseTopicsOfInterest();
 
 	mutable dev::SharedMutex x_messages;
 	std::map<h256, Envelope> m_messages;
