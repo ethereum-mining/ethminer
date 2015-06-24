@@ -36,8 +36,8 @@ template<typename Engine, typename Printer>
 class JSConsole
 {
 public:
-	JSConsole(): m_engine(Engine()), m_printer(Printer(m_engine)) {};
-	~JSConsole() {};
+	JSConsole(): m_engine(Engine()), m_printer(Printer(m_engine)) {}
+	~JSConsole() {}
 
 	void readExpression() const
 	{

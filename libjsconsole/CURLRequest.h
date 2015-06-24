@@ -32,7 +32,7 @@
 class CURLRequest
 {
 public:
-	CURLRequest(): m_curl(curl_easy_init()) {};
+	CURLRequest(): m_curl(curl_easy_init()) {}
 	~CURLRequest()
 	{
 		if (m_curl)
