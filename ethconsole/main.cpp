@@ -1,4 +1,5 @@
 
+#include <string>
 #include <libjsconsole/JSRemoteConsole.h>
 
 using namespace std;
@@ -7,15 +8,18 @@ using namespace dev::eth;
 
 int main(int argc, char** argv)
 {
+	string remote;
 	if (argc != 2)
 	{
-		cout << "You must provide remote url\n";
-		cout << "eg:\n";
+		cout << "remote url not provided\n";
+		cout << "using default:\n";
 		cout << "./ethconsole http://localhost:8545\n";
-		return 1;
+		remote = "http://localhost:8545\n";
 	}
+	else
+		remote = argv[1];
 
-	JSRemoteConsole console(argv[1]);
+	JSRemoteConsole console(remote);
 	while (true)
 		console.readExpression();
 
