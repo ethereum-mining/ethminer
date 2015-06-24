@@ -104,10 +104,10 @@ bytes asNibbles(bytesConstRef const& _s);
 template <class _T, class _Out>
 inline void toBigEndian(_T _val, _Out& o_out)
 {
-	for (auto i = o_out.size(); i-- != 0; _val >>= 8)
+	for (auto i = o_out.size(); i != 0; _val >>= 8, i--)
 	{
 		_T v = _val & (_T)0xff;
-		o_out[i] = (typename _Out::value_type)(uint8_t)v;
+		o_out[i - 1] = (typename _Out::value_type)(uint8_t)v;
 	}
 }
 
