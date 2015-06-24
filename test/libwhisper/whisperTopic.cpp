@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 
 	host2.start();
 	while (!host2.haveNetwork())
-		this_thread::sleep_for(chrono::milliseconds(10));	
+		this_thread::sleep_for(chrono::milliseconds(10));
 
 	host1.addNode(host2.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30305, 30305));
 	while (!host1.haveNetwork())
@@ -344,7 +344,7 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 		if (!sessions.empty() && sessions.back().first->cap<WhisperPeer>()->bloom())
 			break;
 		else
-			this_thread::sleep_for(chrono::milliseconds(10));		
+			this_thread::sleep_for(chrono::milliseconds(10));
 	}
 
 	BOOST_REQUIRE(sessions.size());
@@ -362,7 +362,7 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 		if (!sessions.empty() && sessions.back().first->cap<WhisperPeer>()->bloom())
 			break;
 		else
-			this_thread::sleep_for(chrono::milliseconds(10));		
+			this_thread::sleep_for(chrono::milliseconds(10));
 	}
 
 	BOOST_REQUIRE(sessions.size());
