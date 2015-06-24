@@ -41,7 +41,7 @@
 
 #include <libwebthree/WebThree.h>
 #if ETH_JSCONSOLE || !ETH_TRUE
-#include <libjsconsole/JSConsole.h>
+#include <libjsconsole/JSLocalConsole.h>
 #endif
 #if ETH_READLINE || !ETH_TRUE
 #include <readline/readline.h>
@@ -1742,12 +1742,24 @@ int main(int argc, char** argv)
 		if (useConsole)
 		{
 #if ETH_JSCONSOLE
-			JSConsole console(web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager));
+			JSLocalConsole console;
+
+			jsonrpcServer = shared_ptr<dev::WebThreeStubServer>(new dev::WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer));
+			jsonrpcServer->setMiningBenefactorChanger([&](Address const& a) { beneficiary = a; });
+			jsonrpcServer->StartListening();
+			if (jsonAdmin.empty())
+				jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Priviledge::Admin}});
+			else
+				jsonrpcServer->addSession(jsonAdmin, SessionPermissions{{Priviledge::Admin}});
+			cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
+
 			while (!g_exit)
 			{
 				console.readExpression();
 				stopMiningAfterXBlocks(c, n, mining);
 			}
+
+			jsonrpcServer->StopListening();
 #endif
 		}
 		else
