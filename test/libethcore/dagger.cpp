@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE(basic_test)
 
 	cnote << "Testing Proof of Work...";
 	js::mValue v;
-	string s = asString(contents(testPath + "/ethash_tests.json"));
+	string s = contentsString(testPath + "/ethash_tests.json");
 	BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of 'ethash_tests.json' is empty. Have you cloned the 'tests' repo branch develop?");
 	js::read_string(s, v);
 	for (auto& i: v.get_obj())

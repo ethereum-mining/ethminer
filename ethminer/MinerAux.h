@@ -107,7 +107,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--opencl-platform" && i + 1 < argc)
 			try {
@@ -116,7 +116,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--opencl-device" && i + 1 < argc)
 			try {
@@ -126,7 +126,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--list-devices")
 			m_shouldListDevices = true;
@@ -134,8 +134,6 @@ public:
 			m_clAllowCPU = true;
 		else if (arg == "--cl-extragpu-mem" && i + 1 < argc)
 			m_extraGPUMemory = 1000000 * stol(argv[++i]);
-		else if (arg == "--force-single-chunk")
-			m_forceSingleChunk = true;
 		else if (arg == "--phone-home" && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -146,7 +144,7 @@ public:
 			else
 			{
 				cerr << "Bad " << arg << " option: " << m << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
 		else if (arg == "--benchmark-warmup" && i + 1 < argc)
@@ -156,7 +154,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--benchmark-trial" && i + 1 < argc)
 			try {
@@ -165,7 +163,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--benchmark-trials" && i + 1 < argc)
 			try {
@@ -174,7 +172,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "-C" || arg == "--cpu")
 			m_minerType = MinerType::CPU;
@@ -197,7 +195,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << m << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
 		else if ((arg == "-w" || arg == "--check-pow") && i + 4 < argc)
@@ -234,7 +232,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << m << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
 		else if (arg == "-M" || arg == "--benchmark")
@@ -247,7 +245,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
 		else
@@ -273,7 +271,6 @@ public:
 					m_openclDevice,
 					m_clAllowCPU,
 					m_extraGPUMemory,
-					m_forceSingleChunk,
 					m_currentBlock
 				))
 			{
@@ -318,10 +315,9 @@ public:
 			<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
 			<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
 			<< "    --allow-opencl-cpu Allows CPU to be considered as an OpenCL device if the OpenCL platform supports it." << endl
-			<< "    --list-devices List the detected OpenCL devices and exit." <<endl
-			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." <<endl
-			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." <<endl
-			<< "    --force-single-chunk Force DAG uploading in a single chunk against OpenCL's judgement. Use at your own risk." <<endl
+			<< "    --list-devices List the detected OpenCL devices and exit." << endl
+			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." << endl
+			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
 			;
 	}
 
@@ -510,7 +506,6 @@ private:
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 	bool m_clAllowCPU = false;
-	bool m_forceSingleChunk = false;
 	boost::optional<uint64_t> m_currentBlock;
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
 	unsigned m_extraGPUMemory = 350000000;

@@ -31,11 +31,15 @@
 #include <libdevcore/SHA3.h>
 #include <libdevcrypto/ECDHE.h>
 #include <libdevcrypto/CryptoPP.h>
+#include <test/TestUtils.h>
 
 using namespace std;
 using namespace dev;
+using namespace dev::test;
 using namespace dev::crypto;
 using namespace CryptoPP;
+
+BOOST_GLOBAL_FIXTURE( MoveNonceToTempDir )
 
 BOOST_AUTO_TEST_SUITE(devcrypto)
 

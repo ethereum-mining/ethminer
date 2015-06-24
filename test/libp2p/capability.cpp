@@ -27,6 +27,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <libp2p/Session.h>
 #include <libp2p/Capability.h>
 #include <libp2p/HostCapability.h>
+#include <test/TestHelper.h>
 
 using namespace std;
 using namespace dev;
@@ -41,7 +42,7 @@ struct P2PFixture
 class TestCapability: public Capability
 {
 public:
-	TestCapability(Session* _s, HostCapabilityFace* _h, unsigned _idOffset, CapDesc const&): Capability(_s, _h, _idOffset), m_cntReceivedMessages(0), m_testSum(0) {}
+	TestCapability(std::shared_ptr<Session> _s, HostCapabilityFace* _h, unsigned _idOffset, CapDesc const&): Capability(_s, _h, _idOffset), m_cntReceivedMessages(0), m_testSum(0) {}
 	virtual ~TestCapability() {}
 	int countReceivedMessages() { return m_cntReceivedMessages; }
 	int testSum() { return m_testSum; }
@@ -98,6 +99,9 @@ BOOST_FIXTURE_TEST_SUITE(p2pCapability, P2PFixture)
 
 BOOST_AUTO_TEST_CASE(capability)
 {
+	if (test::Options::get().nonetwork)
+		return;
+
 	VerbosityHolder verbosityHolder(10);
 	cnote << "Testing Capability...";
 

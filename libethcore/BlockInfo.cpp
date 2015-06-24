@@ -122,7 +122,7 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s, h256 const
 	try
 	{
 		if (_header.itemCount() != 15)
-			throw InvalidBlockHeaderItemCount();
+			BOOST_THROW_EXCEPTION(InvalidBlockHeaderItemCount());
 		parentHash = _header[field = 0].toHash<h256>(RLP::VeryStrict);
 		sha3Uncles = _header[field = 1].toHash<h256>(RLP::VeryStrict);
 		coinbaseAddress = _header[field = 2].toHash<Address>(RLP::VeryStrict);
@@ -146,7 +146,7 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s, h256 const
 	}
 
 	if (number > ~(unsigned)0)
-		throw InvalidNumber();
+		BOOST_THROW_EXCEPTION(InvalidNumber());
 
 	// check it hashes according to proof of work or that it's the genesis block.
 	if (_s == CheckEverything && parentHash && !ProofOfWork::verify(*this))
