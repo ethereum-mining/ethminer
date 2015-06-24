@@ -87,6 +87,18 @@ void VersionChecker::setOk()
 	}
 }
 
+ImportResult Client::queueBlock(bytes const& _block, bool _isSafe)
+{
+	if (m_bq.status().verified + m_bq.status().verifying + m_bq.status().unverified > 30000)
+		sleep(1);
+	return m_bq.import(&_block, bc(), _isSafe);
+}
+
+tuple<ImportRoute, bool, unsigned> Client::syncQueue(unsigned _max)
+{
+	return m_bc.sync(m_bq, m_stateDB, _max);
+}
+
 void Client::onBadBlock(Exception& _ex) const
 {
 	// BAD BLOCK!!!
