@@ -239,7 +239,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	m_extrasDB->Put(m_writeOptions, toSlice(m_lastBlockHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[m_lastBlockHash].rlp()));
 
 	h256 lastHash = m_lastBlockHash;
-	boost::timer t;
+	Timer t;
 	for (unsigned d = 1; d < originalNumber; ++d)
 	{
 		if (!(d % 1000))
@@ -412,13 +412,13 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	//@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
 #if ETH_TIMED_IMPORTS
-	boost::timer total;
+	Timer total;
 	double preliminaryChecks;
 	double enactment;
 	double collation;
 	double writing;
 	double checkBest;
-	boost::timer t;
+	Timer t;
 #endif
 
 	// Check block doesn't already exist first!

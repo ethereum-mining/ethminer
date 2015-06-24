@@ -40,7 +40,7 @@
 #include <unordered_set>
 #include <functional>
 #include <string>
-#include <boost/timer.hpp>
+#include <chrono>
 #include <boost/functional/hash.hpp>
 #pragma warning(push)
 #pragma GCC diagnostic push
@@ -193,13 +193,26 @@ private:
 class TimerHelper
 {
 public:
-	TimerHelper(char const* _id, unsigned _msReportWhenGreater = 0): m_id(_id), m_ms(_msReportWhenGreater) {}
+	TimerHelper(char const* _id, unsigned _msReportWhenGreater = 0): m_t(std::chrono::high_resolution_clock::now()), m_id(_id), m_ms(_msReportWhenGreater) {}
 	~TimerHelper();
 
 private:
-	boost::timer m_t;
+	std::chrono::high_resolution_clock::time_point m_t;
 	char const* m_id;
 	unsigned m_ms;
+};
+
+class Timer
+{
+public:
+	Timer() { restart(); }
+
+	std::chrono::high_resolution_clock::duration duration() const { return std::chrono::high_resolution_clock::now() - m_t; }
+	double elapsed() const { return std::chrono::duration_cast<std::chrono::microseconds>(duration()).count() / 1000000.0; }
+	void restart() { m_t = std::chrono::high_resolution_clock::now(); }
+
+private:
+	std::chrono::high_resolution_clock::time_point m_t;
 };
 
 #define DEV_TIMED(S) for (::std::pair<::dev::TimerHelper, bool> __eth_t(#S, true); __eth_t.second; __eth_t.second = false)

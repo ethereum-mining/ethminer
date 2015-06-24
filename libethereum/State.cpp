@@ -139,7 +139,7 @@ PopulationStatistics State::populateFromChain(BlockChain const& _bc, h256 const&
 
 		// 2. Enact the block's transactions onto this state.
 		m_ourAddress = bi.coinbaseAddress;
-		boost::timer t;
+		Timer t;
 		auto vb = BlockChain::verifyBlock(b);
 		ret.verify = t.elapsed();
 		t.restart();
@@ -401,7 +401,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi, Impor
 u256 State::enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir)
 {
 #if ETH_TIMED_ENACTMENTS
-	boost::timer t;
+	Timer t;
 	double populateVerify;
 	double populateGrand;
 	double syncReset;
@@ -507,7 +507,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 				{
 					if (i.second.gasPrice() >= _gp.ask(*this))
 					{
-	//					boost::timer t;
+	//					Timer t;
 						if (lh.empty())
 							lh = _bc.lastHashes();
 						execute(lh, i.second);

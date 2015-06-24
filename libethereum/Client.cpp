@@ -642,7 +642,7 @@ void Client::syncBlockQueue()
 	cwork << "BQ ==> CHAIN ==> STATE";
 	ImportRoute ir;
 	unsigned count;
-	boost::timer t;
+	Timer t;
 	tie(ir, m_syncBlockQueue, count) = m_bc.sync(m_bq, m_stateDB, m_syncAmount);
 	double elapsed = t.elapsed();
 
