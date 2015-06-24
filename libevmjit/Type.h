@@ -4,7 +4,7 @@
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Metadata.h>
-#include "preprocessor/llvm_includes_end.h" // FIXME: LLVM 3.7: check if needed
+#include "preprocessor/llvm_includes_end.h"
 
 #include "evmjit/JIT.h" // ReturnCode
 
