@@ -63,7 +63,7 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 		{
 			if (_r.itemCount() > 1) // for backwards compatibility
 				m_bloom = (FixedHash<TopicBloomFilterSize>)_r[1];
-			advertizeTopicsOfInterest();
+			advertiseTopicsOfInterest();
 		}
 
 		for (auto const& m: host()->all())
@@ -73,7 +73,7 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 			sendMessages();
 		break;
 	}
-	case UpdateTopicFilterPacket:
+	case TopicFilterPacket:
 	{
 		m_bloom = (FixedHash<TopicBloomFilterSize>)_r[0];
 		break;
@@ -119,10 +119,10 @@ void WhisperPeer::noteNewMessage(h256 _h, Envelope const& _m)
 	m_unseen.insert(make_pair(rating(_m), _h));
 }
 
-void WhisperPeer::advertizeTopicsOfInterest()
+void WhisperPeer::advertiseTopicsOfInterest()
 {
 	RLPStream s;
-	prep(s, UpdateTopicFilterPacket, 1);
+	prep(s, TopicFilterPacket, 1);
 	s << host()->bloom();
 	sealAndSend(s);
 }
