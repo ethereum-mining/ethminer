@@ -17,7 +17,7 @@ function defaultTransaction()
 	};
 }
 
-function rpcCall(requests, callBack)
+function rpcCall(requests, callBack, error)
 {
 	var jsonRpcUrl = "http://localhost:8545";
 	var rpcRequest = JSON.stringify(requests);
@@ -33,7 +33,7 @@ function rpcCall(requests, callBack)
 			{
 				var errorText = qsTr("Unable to initiate request to the live network. Please verify your ethereum node is up.") + qsTr(" Error status: ")  + httpRequest.status;
 				console.log(errorText);
-				deploymentError(errorText);
+				error(errorText);
 			}
 			else
 			{

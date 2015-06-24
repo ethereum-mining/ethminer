@@ -13,14 +13,11 @@ Column
 	property int transactionIndex
 	property string context
 	Layout.fillWidth: true
-	spacing: 5
-
+	spacing: 15
 	Repeater
 	{
 		id: repeater
 		visible: model.length > 0
-		//height: parent.height
-
 		RowLayout
 		{
 			id: row
@@ -42,7 +39,9 @@ Column
 					Label {
 						height: 20
 						id: typeLabel
-						text: "(" + modelData.type.name + ")"
+						text: " (" + modelData.type.name + ")"
+						font.italic: true
+						font.weight: Font.Light
 					}
 				}
 			}

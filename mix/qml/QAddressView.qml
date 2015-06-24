@@ -102,7 +102,6 @@ Row
 	}
 
 	Rectangle {
-		//anchors.fill: parent
 		radius: 4
 		anchors.verticalCenter: parent.verticalCenter
 		height: 20
