@@ -7,13 +7,14 @@ import QtQuick.Controls.Styles 1.3
 import org.ethereum.qml.QEther 1.0
 import "js/TransactionHelper.js" as TransactionHelper
 import "js/InputValidator.js" as InputValidator
+import "js/NetworkDeployment.js" as NetworkDeployment
 import "."
 
 Dialog {
 	id: modalTransactionDialog
 	modality: Qt.ApplicationModal
 	width: 630
-	height: 550
+	height: 500
 	visible: false
 	title: qsTr("Edit Transaction")
 	property int transactionIndex
@@ -59,6 +60,7 @@ Dialog {
 
 		load(item.isContractCreation, item.isFunctionCall, functionId, contractId)
 
+		estimatedGas.updateView()
 		visible = true;
 	}
 
@@ -273,217 +275,223 @@ Dialog {
 	contentItem: Rectangle {
 		color: transactionDialogStyle.generic.backgroundColor
 		anchors.fill: parent
-		ColumnLayout {
-			width: modalTransactionDialog.width - 30
-			anchors.horizontalCenter: parent.horizontalCenter
+		ScrollView
+		{
 			anchors.top: parent.top
-			anchors.topMargin: 20
-
-			RowLayout
-			{
-				Layout.fillWidth: true
-				Rectangle
+			anchors.fill: parent
+			ColumnLayout {
+				width: modalTransactionDialog.width - 30
+				anchors.horizontalCenter: parent.horizontalCenter
+				anchors.top: parent.top
+				anchors.topMargin: 10
+				spacing: 10
+				RowLayout
 				{
-					Layout.preferredWidth: 150
-					Label {
-						anchors.right: parent.right
-						anchors.verticalCenter: parent.verticalCenter
-						text: qsTr("Sender Account")
-					}
-				}
-
-				ComboBox {
-					function select(secret)
+					Layout.fillWidth: true
+					Rectangle
 					{
-						for (var i in model)
-							if (model[i].secret === secret)
-							{
-								currentIndex = i;
-								break;
-							}
-					}
-					Layout.preferredWidth: 350
-					id: senderComboBox
-					currentIndex: 0
-					textRole: "name"
-					editable: false
-				}
-			}
-
-			RowLayout
-			{
-				Layout.fillWidth: true
-				Rectangle
-				{
-					Layout.preferredWidth: 150
-					Layout.preferredHeight: 80
-					color: "transparent"
-					Label
-					{
-						anchors.verticalCenter: parent.verticalCenter
-						anchors.top: parent.top
-						anchors.right: parent.right
-						text: qsTr("Type of Transaction")
-					}
-				}
-
-				Column
-				{
-					Layout.preferredWidth: 150
-					Layout.preferredHeight: 90
-					ExclusiveGroup {
-						id: rbbuttonList
-						onCurrentChanged: {
-							if (current)
-							{
-								if (current.objectName === "trTypeSend")
-								{
-									recipientsAccount.visible = true
-									contractCreationComboBox.visible = false
-									modalTransactionDialog.load(false, false)
-								}
-								else if (current.objectName === "trTypeCreate")
-								{
-									contractCreationComboBox.visible = true
-									recipientsAccount.visible = false
-									modalTransactionDialog.load(true, true)
-								}
-								else if (current.objectName === "trTypeExecute")
-								{
-									recipientsAccount.visible = true
-									contractCreationComboBox.visible = false
-									modalTransactionDialog.load(false, true)
-								}
-							}
+						Layout.preferredWidth: 150
+						Label {
+							anchors.right: parent.right
+							anchors.verticalCenter: parent.verticalCenter
+							text: qsTr("Sender Account")
 						}
 					}
 
-					RadioButton {
-						id: trTypeSend
-						objectName: "trTypeSend"
-						exclusiveGroup: rbbuttonList
-						height: 30
-						text: qsTr("Send ether to account")
-
-					}
-
-					RadioButton {
-						id: trTypeCreate
-						objectName: "trTypeCreate"
-						exclusiveGroup: rbbuttonList
-						height: 30
-						text: qsTr("Create Contract")
-					}
-
-					RadioButton {
-						id: trTypeExecute
-						objectName: "trTypeExecute"
-						exclusiveGroup: rbbuttonList
-						height: 30
-						text: qsTr("Execute Contract")
+					ComboBox {
+						function select(secret)
+						{
+							for (var i in model)
+								if (model[i].secret === secret)
+								{
+									currentIndex = i;
+									break;
+								}
+						}
+						Layout.preferredWidth: 350
+						id: senderComboBox
+						currentIndex: 0
+						textRole: "name"
+						editable: false
 					}
 				}
-			}
 
-			RowLayout
-			{
-				Layout.fillWidth: true
-				Rectangle
+				RowLayout
 				{
-					Layout.preferredWidth: 150
-					Label {
-						id: labelRecipient
-						anchors.verticalCenter: parent.verticalCenter
-						anchors.right: parent.right
-						text: qsTr("Recipient Account")
+					Layout.fillWidth: true
+					Rectangle
+					{
+						Layout.preferredWidth: 150
+						Layout.preferredHeight: 80
+						color: "transparent"
+						Label
+						{
+							anchors.verticalCenter: parent.verticalCenter
+							anchors.top: parent.top
+							anchors.right: parent.right
+							text: qsTr("Type of Transaction")
+						}
+					}
+
+					Column
+					{
+						Layout.preferredWidth: 150
+						Layout.preferredHeight: 90
+						ExclusiveGroup {
+							id: rbbuttonList
+							onCurrentChanged: {
+								if (current)
+								{
+									if (current.objectName === "trTypeSend")
+									{
+										recipientsAccount.visible = true
+										contractCreationComboBox.visible = false
+										modalTransactionDialog.load(false, false)
+									}
+									else if (current.objectName === "trTypeCreate")
+									{
+										contractCreationComboBox.visible = true
+										recipientsAccount.visible = false
+										modalTransactionDialog.load(true, true)
+									}
+									else if (current.objectName === "trTypeExecute")
+									{
+										recipientsAccount.visible = true
+										contractCreationComboBox.visible = false
+										modalTransactionDialog.load(false, true)
+									}
+								}
+							}
+						}
+
+						RadioButton {
+							id: trTypeSend
+							objectName: "trTypeSend"
+							exclusiveGroup: rbbuttonList
+							height: 30
+							text: qsTr("Send ether to account")
+
+						}
+
+						RadioButton {
+							id: trTypeCreate
+							objectName: "trTypeCreate"
+							exclusiveGroup: rbbuttonList
+							height: 30
+							text: qsTr("Create Contract")
+						}
+
+						RadioButton {
+							id: trTypeExecute
+							objectName: "trTypeExecute"
+							exclusiveGroup: rbbuttonList
+							height: 30
+							text: qsTr("Execute Contract")
+						}
 					}
 				}
 
-				QAddressView
+				RowLayout
 				{
-					id: recipientsAccount
-					displayInput: false
-					onIndexChanged:
+					Layout.fillWidth: true
+					Rectangle
 					{
-						if (rbbuttonList.current.objectName === "trTypeExecute")
-							loadFunctions(contractFromToken(currentValue()))
+						Layout.preferredWidth: 150
+						Label {
+							id: labelRecipient
+							anchors.verticalCenter: parent.verticalCenter
+							anchors.right: parent.right
+							text: qsTr("Recipient Account")
+						}
+					}
+
+					QAddressView
+					{
+						id: recipientsAccount
+						displayInput: false
+						onIndexChanged:
+						{
+							if (rbbuttonList.current.objectName === "trTypeExecute")
+								loadFunctions(contractFromToken(currentValue()))
+						}
+					}
+
+					ComboBox {
+						id: contractCreationComboBox
+						function currentValue() {
+							return (currentIndex >=0 && currentIndex < contractsModel.count) ? contractsModel.get(currentIndex).cid : "";
+						}
+						Layout.preferredWidth: 350
+						currentIndex: -1
+						textRole: "text"
+						editable: false
+						model: ListModel {
+							id: contractsModel
+						}
+						onCurrentIndexChanged: {
+							loadCtorParameters(currentValue());
+						}
 					}
 				}
 
-				ComboBox {
-					id: contractCreationComboBox
-					function currentValue() {
-						return (currentIndex >=0 && currentIndex < contractsModel.count) ? contractsModel.get(currentIndex).cid : "";
-					}
-					Layout.preferredWidth: 350
-					currentIndex: -1
-					textRole: "text"
-					editable: false
-					model: ListModel {
-						id: contractsModel
-					}
-					onCurrentIndexChanged: {
-						loadCtorParameters(currentValue());
-					}
-				}
-			}
-
-			RowLayout
-			{
-				Layout.fillWidth: true
-				Rectangle
+				RowLayout
 				{
-					Layout.preferredWidth: 150
-					id: functionRect
-
-					function hide()
+					Layout.fillWidth: true
+					Rectangle
 					{
-						functionRect.visible = false
-						functionComboBox.visible = false
+						Layout.preferredWidth: 150
+						id: functionRect
+
+						function hide()
+						{
+							functionRect.visible = false
+							functionComboBox.visible = false
+						}
+
+						function show()
+						{
+							functionRect.visible = true
+							functionComboBox.visible = true
+						}
+
+						Label {
+							anchors.verticalCenter: parent.verticalCenter
+							anchors.right: parent.right
+							text: qsTr("Function")
+						}
 					}
 
-					function show()
-					{
-						functionRect.visible = true
-						functionComboBox.visible = true
-					}
-
-					Label {
-						anchors.verticalCenter: parent.verticalCenter
-						anchors.right: parent.right
-						text: qsTr("Function")
+					ComboBox {
+						id: functionComboBox
+						Layout.preferredWidth: 350
+						currentIndex: -1
+						textRole: "text"
+						editable: false
+						model: ListModel {
+							id: functionsModel
+						}
+						onCurrentIndexChanged: {
+							loadParameters();
+						}
 					}
 				}
 
-				ComboBox {
-					id: functionComboBox
-					Layout.preferredWidth: 350
-					currentIndex: -1
-					textRole: "text"
-					editable: false
-					model: ListModel {
-						id: functionsModel
-					}
-					onCurrentIndexChanged: {
-						loadParameters();
-					}
-				}
-			}
-
-			RowLayout
-			{
-				Layout.fillWidth: true
-				ScrollView
+				RowLayout
 				{
 					id: paramScroll
-					anchors.topMargin: 10
 					Layout.fillWidth: true
 
 					function updateView()
 					{
-						paramScroll.height = paramsModel.length < 4 ? paramsModel.length * 20 : 145
-						paramScroll.parent.Layout.preferredHeight = paramsModel.length < 4 ? paramsModel.length * 20 : 145
-						paramScroll.visible = paramsModel.length !== 0
+						paramScroll.visible = paramsModel.length > 0
+						typeLoader.visible = paramsModel.length > 0
+						paramScroll.height = paramsModel.length < 6 ? paramsModel.length * 30 : 190
+						typeLoader.height = paramsModel.length < 6 ? paramsModel.length * 30 : 190
+						if (paramsModel.length === 0)
+						{
+							paramScroll.height = 0
+							typeLoader.height = 0
+						}
 					}
 
 					StructView
@@ -495,135 +503,212 @@ Dialog {
 						context: "parameter"
 					}
 				}
-			}
 
-			RowLayout
-			{
-				Layout.fillWidth: true
-				Rectangle
+				RowLayout
 				{
-					Layout.preferredWidth: 150
-					Label {
-						id: amountLabel
-						anchors.verticalCenter: parent.verticalCenter
-						anchors.right: parent.right
-						text: qsTr("Amount")
-					}
-				}
-
-				Ether {
-					id: valueField
-					edit: true
-					displayFormattedValue: true
-				}
-			}
-
-			Rectangle
-			{
-				color: "#cccccc"
-				height: 1
-				Layout.fillWidth: true
-			}
-
-			Rectangle
-			{
-				width: parent.width
-				height: 20
-				color: "transparent"
-				Label {
-					text: qsTr("Transaction fees")
-					anchors.horizontalCenter: parent.horizontalCenter
-				}
-			}
-
-			RowLayout
-			{
-				Layout.fillWidth: true
-				Rectangle
-				{
-					Layout.preferredWidth: 150
-					Label {
-						anchors.verticalCenter: parent.verticalCenter
-						anchors.right: parent.right
-						text: qsTr("Gas")
-					}
-				}
-
-				Row
-				{
-					DefaultTextField
+					Layout.fillWidth: true
+					Rectangle
 					{
-						property variant gasValue
-						onGasValueChanged: text = gasValue.value();
-						onTextChanged: gasValue.setValue(text);
-						implicitWidth: 200
-						enabled: !gasAutoCheck.checked
-						id: gasValueEdit;
-					}
-
-					CheckBox
-					{
-						id: gasAutoCheck
-						checked: true
-						text: qsTr("Auto");
-					}
-				}
-			}
-
-			RowLayout
-			{
-				Layout.fillWidth: true
-				Rectangle
-				{
-					Layout.preferredWidth: 150
-					Label {
-						anchors.verticalCenter: parent.verticalCenter
-						anchors.right: parent.right
-						text: qsTr("Gas Price")
-					}
-				}
-
-				Ether {
-					id: gasPriceField
-					edit: true
-					displayFormattedValue: true
-				}
-			}
-
-
-			RowLayout
-			{
-				anchors.bottom: parent.bottom
-				anchors.right: parent.right;
-
-				Button {
-					text: qsTr("OK");
-					onClicked: {
-						var invalid = InputValidator.validate(paramsModel, paramValues);
-						if (invalid.length === 0)
-						{
-							close();
-							accepted();
-						}
-						else
-						{
-							errorDialog.text = qsTr("Some parameters are invalid:\n");
-							for (var k in invalid)
-								errorDialog.text += invalid[k].message + "\n";
-							errorDialog.open();
+						Layout.preferredWidth: 150
+						Label {
+							id: amountLabel
+							anchors.verticalCenter: parent.verticalCenter
+							anchors.right: parent.right
+							text: qsTr("Amount")
 						}
 					}
+
+					Ether {
+						id: valueField
+						edit: true
+						displayFormattedValue: false
+						displayUnitSelection: true
+					}
 				}
 
-				Button {
-					text: qsTr("Cancel");
-					onClicked: close();
+				Rectangle
+				{
+					Layout.preferredHeight: 30
+					Layout.fillWidth: true
+					color: "transparent"
+					Rectangle
+					{
+						color: "#cccccc"
+						height: 1
+						width: parent.width
+						anchors.verticalCenter: parent.verticalCenter
+					}
 				}
 
-				MessageDialog {
-					id: errorDialog
-					standardButtons: StandardButton.Ok
-					icon: StandardIcon.Critical
+				Rectangle
+				{
+					width: parent.width
+					height: 20
+					color: "transparent"
+					Label {
+						text: qsTr("Transaction fees")
+						anchors.horizontalCenter: parent.horizontalCenter
+					}
+				}
+
+				RowLayout
+				{
+					Layout.fillWidth: true
+					Layout.preferredHeight: 40
+
+					Rectangle
+					{
+						Layout.preferredWidth: 150
+						Label {
+							anchors.verticalCenter: parent.verticalCenter
+							anchors.right: parent.right
+							text: qsTr("Gas")
+						}
+					}
+
+					Row
+					{
+						DefaultTextField
+						{
+							property variant gasValue
+							onGasValueChanged: text = gasValue.value();
+							onTextChanged: gasValue.setValue(text);
+							implicitWidth: 200
+							enabled: !gasAutoCheck.checked
+							id: gasValueEdit;
+
+							Label
+							{
+								id: estimatedGas
+								anchors.top: parent.bottom
+								text: ""
+								Connections
+								{
+									target: functionComboBox
+									onCurrentIndexChanged:
+									{
+										estimatedGas.displayGas(contractFromToken(recipientsAccount.currentValue()), functionComboBox.currentText)
+									}
+								}
+
+								function displayGas(contractName, functionName)
+								{
+									var gasCost = codeModel.gasCostBy(contractName, functionName);
+									if (gasCost && gasCost.length > 0)
+										estimatedGas.text = qsTr("Estimated cost: ") + gasCost[0].gas + " gas"
+								}
+
+								function updateView()
+								{
+									if (rbbuttonList.current.objectName === "trTypeExecute")
+										estimatedGas.displayGas(contractFromToken(recipientsAccount.currentValue()), functionComboBox.currentText)
+									else if (rbbuttonList.current.objectName === "trTypeCreate")
+									{
+										var contractName = contractCreationComboBox.currentValue()
+										estimatedGas.displayGas(contractName, contractName)
+									}
+									else if (rbbuttonList.current.objectName === "trTypeSend")
+									{
+										var gas = codeModel.txGas + codeModel.callStipend
+										estimatedGas.text = qsTr("Estimated cost: ") + gas + " gas"
+									}
+								}
+
+								Connections
+								{
+									target: rbbuttonList
+									onCurrentChanged: {
+										estimatedGas.updateView()
+									}
+								}
+							}
+						}
+
+						CheckBox
+						{
+							id: gasAutoCheck
+							checked: true
+							text: qsTr("Auto");
+						}
+					}
+				}
+
+				RowLayout
+				{
+					Layout.fillWidth: true
+					Layout.preferredHeight: 40
+					Rectangle
+					{
+						Layout.preferredWidth: 150
+						Label {
+							id: gasPriceLabel
+							anchors.verticalCenter: parent.verticalCenter
+							anchors.right: parent.right
+							text: qsTr("Gas Price")
+						}
+
+						Label {
+							id: gasPriceMarket
+							anchors.top: gasPriceLabel.bottom
+							Component.onCompleted:
+							{
+								NetworkDeployment.gasPrice(function(result)
+								{
+									gasPriceMarket.text = qsTr("Current market: ") + " " + result + " Wei";
+								}, function (){});
+							}
+						}
+					}
+
+					Ether {
+						id: gasPriceField
+						edit: true
+						displayFormattedValue: false
+						displayUnitSelection: true
+					}
+				}
+
+
+				RowLayout
+				{
+					anchors.right: parent.right
+
+					Button {
+						text: qsTr("Cancel");
+						onClicked: close();
+					}
+
+					Button {
+						text: qsTr("Update");
+						onClicked: {
+							var invalid = InputValidator.validate(paramsModel, paramValues);
+							if (invalid.length === 0)
+							{
+								close();
+								accepted();
+							}
+							else
+							{
+								errorDialog.text = qsTr("Some parameters are invalid:\n");
+								for (var k in invalid)
+									errorDialog.text += invalid[k].message + "\n";
+								errorDialog.open();
+							}
+						}
+					}
+
+
+					MessageDialog {
+						id: errorDialog
+						standardButtons: StandardButton.Ok
+						icon: StandardIcon.Critical
+					}
+				}
+
+				RowLayout
+				{
+					anchors.bottom: parent.bottom
+					Layout.preferredHeight: 20
 				}
 			}
 		}
