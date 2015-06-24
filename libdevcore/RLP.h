@@ -292,7 +292,7 @@ public:
 	RLPs toList() const;
 
 	/// @returns the data payload. Valid for all types.
-	bytesConstRef payload() const { auto l = length(); if (l > m_data.size()) throw BadRLP(); return m_data.cropped(payloadOffset(), l); }
+	bytesConstRef payload() const { auto l = length(); if (l > m_data.size()) BOOST_THROW_EXCEPTION(BadRLP()); return m_data.cropped(payloadOffset(), l); }
 
 	/// @returns the theoretical size of this item.
 	/// @note Under normal circumstances, is equivalent to m_data.size() - use that unless you know it won't work.

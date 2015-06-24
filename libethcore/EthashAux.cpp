@@ -49,6 +49,13 @@ EthashAux::~EthashAux()
 {
 }
 
+EthashAux* EthashAux::get()
+{
+    static std::once_flag flag;
+    std::call_once(flag, []{s_this = new EthashAux();});
+    return s_this;
+}
+
 uint64_t EthashAux::cacheSize(BlockInfo const& _header)
 {
 	return ethash_get_cachesize((uint64_t)_header.number);

@@ -56,7 +56,7 @@ class EthereumPeer: public p2p::Capability
 
 public:
 	/// Basic constructor.
-	EthereumPeer(p2p::Session* _s, p2p::HostCapabilityFace* _h, unsigned _i, p2p::CapDesc const& _cap);
+	EthereumPeer(std::shared_ptr<p2p::Session> _s, p2p::HostCapabilityFace* _h, unsigned _i, p2p::CapDesc const& _cap);
 
 	/// Basic destructor.
 	virtual ~EthereumPeer();
@@ -84,6 +84,9 @@ public:
 
 	/// Request blocks. Uses block download manager.
 	void requestBlocks();
+
+	/// Request specified blocks from peer.
+	void requestBlocks(h256s const& _blocks);
 
 	/// Check if this node is rude.
 	bool isRude() const;

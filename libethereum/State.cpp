@@ -456,7 +456,7 @@ unordered_map<Address, u256> State::addresses() const
 			ret[i.first] = RLP(i.second)[1].toInt<u256>();
 	return ret;
 #else
-	throw InterfaceNotSupported("State::addresses()");
+	BOOST_THROW_EXCEPTION(InterfaceNotSupported("State::addresses()"));
 #endif
 }
 

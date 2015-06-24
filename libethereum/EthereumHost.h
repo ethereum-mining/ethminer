@@ -86,16 +86,15 @@ public:
 	static char const* stateName(SyncState _s) { return s_stateNames[static_cast<int>(_s)]; }
 
 	static unsigned const c_oldProtocolVersion;
-	void foreachPeerPtr(std::function<bool(std::shared_ptr<EthereumPeer>)> const& _f) const;
-	void foreachPeer(std::function<bool(EthereumPeer*)> const& _f) const;
+	void foreachPeer(std::function<bool(std::shared_ptr<EthereumPeer>)> const& _f) const;
 
-	void onPeerStatus(EthereumPeer* _peer);
-	void onPeerHashes(EthereumPeer* _peer, h256s const& _hashes);
-	void onPeerBlocks(EthereumPeer* _peer, RLP const& _r);
-	void onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes);
-	void onPeerNewBlock(EthereumPeer* _peer, RLP const& _r);
-	void onPeerTransactions(EthereumPeer* _peer, RLP const& _r);
-	void onPeerAborting(EthereumPeer* _peer);
+	void onPeerStatus(std::shared_ptr<EthereumPeer> _peer);
+	void onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes);
+	void onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
+	void onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes);
+	void onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
+	void onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
+	void onPeerAborting();
 
 private:
 	static char const* const s_stateNames[static_cast<int>(SyncState::Size)];
