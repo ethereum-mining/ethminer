@@ -171,7 +171,9 @@ void Client::onBadBlock(Exception& _ex) const
 	DEV_HINT_ERRINFO(max);
 	DEV_HINT_ERRINFO(name);
 	DEV_HINT_ERRINFO(field);
+	DEV_HINT_ERRINFO(transaction);
 	DEV_HINT_ERRINFO(data);
+	DEV_HINT_ERRINFO(phase);
 	DEV_HINT_ERRINFO_HASH(nonce);
 	DEV_HINT_ERRINFO(difficulty);
 	DEV_HINT_ERRINFO(target);
