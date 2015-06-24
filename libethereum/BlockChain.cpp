@@ -397,6 +397,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	catch (Exception& ex)
 	{
 //		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(ex);
+		ex << errinfo_phase(2);
 		ex << errinfo_now(time(0));
 		ex << errinfo_block(_block);
 		throw;
@@ -1080,6 +1081,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 	}
 	catch (Exception& ex)
 	{
+		ex << errinfo_phase(1);
 		ex << errinfo_now(time(0));
 		ex << errinfo_block(_block);
 		if (_onBad)
@@ -1097,6 +1099,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 		}
 		catch (Exception& ex)
 		{
+			ex << errinfo_phase(1);
 			ex << errinfo_uncleIndex(i);
 			ex << errinfo_now(time(0));
 			ex << errinfo_block(_block);
@@ -1107,16 +1110,18 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 		++i;
 	}
 	i = 0;
-	for (auto const& tr: r[1])
+	for (RLP const& tr: r[1])
 	{
+		bytesConstRef d = tr.data();
 		try
 		{
-			res.transactions.push_back(Transaction(tr.data(), CheckTransaction::Everything));
+			res.transactions.push_back(Transaction(d, CheckTransaction::Everything));
 		}
 		catch (Exception& ex)
 		{
+			ex << errinfo_phase(1);
 			ex << errinfo_transactionIndex(i);
-			ex << errinfo_transaction(tr.data().toBytes());
+			ex << errinfo_transaction(d.toBytes());
 			ex << errinfo_block(_block);
 			throw;
 		}
