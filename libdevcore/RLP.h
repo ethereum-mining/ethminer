@@ -204,9 +204,7 @@ public:
 		{
 			ret.reserve(itemCount());
 			for (auto const& i: *this)
-			{
 				ret.push_back((T)i);
-			}
 		 }
 		 return ret;
 	}
@@ -216,15 +214,21 @@ public:
 	{
 		std::set<T> ret;
 		if (isList())
-		{
 			for (auto const& i: *this)
-			{
 				ret.insert((T)i);
-			}
-		}
 		return ret;
 	}
-	
+
+	template <class T>
+	std::unordered_set<T> toUnorderedSet() const
+	{
+		std::unordered_set<T> ret;
+		if (isList())
+			for (auto const& i: *this)
+				ret.insert((T)i);
+		return ret;
+	}
+
 	template <class T, class U>
 	std::pair<T, U> toPair() const
 	{
