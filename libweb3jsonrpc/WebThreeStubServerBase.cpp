@@ -142,7 +142,7 @@ string WebThreeStubServerBase::eth_getStorageAt(string const& _address, string c
 {
 	try
 	{
-		return toJS(client()->stateAt(jsToAddress(_address), jsToU256(_position), jsToBlockNumber(_blockNumber)));
+		return toJS(toCompactBigEndian(client()->stateAt(jsToAddress(_address), jsToU256(_position), jsToBlockNumber(_blockNumber)), 1));
 	}
 	catch (...)
 	{
