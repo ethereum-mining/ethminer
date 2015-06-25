@@ -87,8 +87,10 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 
 void WhisperHost::advertiseTopicsOfInterest()
 {
+	FixedHash<TopicBloomFilterSize> b = bloom();
+
 	for (auto i: peerSessions())
-		i.first->cap<WhisperPeer>().get()->advertiseTopicsOfInterest();
+		i.first->cap<WhisperPeer>().get()->sendTopicsOfInterest(b);
 }
 
 void WhisperHost::noteChanged(h256 _messageHash, h256 _filter)
@@ -111,16 +113,15 @@ unsigned WhisperHost::installWatchOnId(h256 _h)
 
 unsigned WhisperHost::installWatch(shh::Topics const& _t)
 {
-	Guard l(m_filterLock);
-
 	InstalledFilter f(_t);
 	h256 h = f.filter.sha3();
 
+	Guard l(m_filterLock);
 	if (!m_filters.count(h))
 		m_filters.insert(make_pair(h, f));
 
 	m_bloom.addRaw(f.filter.exportBloom());
-	advertiseTopicsOfInterest();
+	noteAdvertiseTopicsOfInterest();
 
 	return installWatchOnId(h);
 }
@@ -165,7 +166,7 @@ void WhisperHost::uninstallWatch(unsigned _i)
 			m_filters.erase(fit);
 
 		m_bloom.removeRaw(fit->second.filter.exportBloom());
-		advertiseTopicsOfInterest();
+		noteAdvertiseTopicsOfInterest();
 	}
 }
 
@@ -184,4 +185,10 @@ void WhisperHost::cleanup()
 	WriteGuard l(x_messages);
 	for (auto it = m_expiryQueue.begin(); it != m_expiryQueue.end() && it->first <= now; it = m_expiryQueue.erase(it))
 		m_messages.erase(it->second);
+}
+
+void WhisperHost::noteAdvertiseTopicsOfInterest()
+{
+	for (auto i: peerSessions())
+		i.first->cap<WhisperPeer>().get()->noteAdvertiseTopicsOfInterest();
 }
