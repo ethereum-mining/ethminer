@@ -241,6 +241,16 @@ string pretty(h160 _a, dev::eth::State const& _st)
 
 bool g_exit = false;
 
+inline bool isPrime(unsigned _number)
+{
+	if (((!(_number & 1)) && _number != 2 ) || (_number < 2) || (_number % 3 == 0 && _number != 3))
+		return false;
+	for(unsigned k = 1; 36 * k * k - 12 * k < _number; ++k)
+		if ((_number % (6 * k + 1) == 0) || (_number % (6 * k - 1) == 0))
+			return false;
+	return true;
+}
+
 void sighandler(int)
 {
 	g_exit = true;
@@ -281,6 +291,7 @@ int main(int argc, char** argv)
 	/// Operating mode.
 	OperationMode mode = OperationMode::Node;
 	string dbPath;
+	unsigned prime = 0;
 
 	/// File name for import/export.
 	string filename;
@@ -404,6 +415,16 @@ int main(int argc, char** argv)
 			mode = OperationMode::Export;
 			filename = argv[++i];
 		}
+		else if (arg == "--prime" && i + 1 < argc)
+			try
+			{
+				prime = stoi(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
 		else if (arg == "--sentinel" && i + 1 < argc)
 			sentinel = argv[++i];
 		else if (arg == "--mine-on-wrong-chain")
@@ -801,6 +822,25 @@ int main(int argc, char** argv)
 		double e = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t).count() / 1000.0;
 		cout << imported << " imported in " << e << " seconds at " << (round(imported * 10 / e) / 10) << " blocks/s (#" << web3.ethereum()->number() << ")" << endl;
 		return 0;
+	}
+
+	{
+		auto pd = contents(getDataDir() + "primes");
+		unordered_set<unsigned> primes = RLP(pd).toUnorderedSet<unsigned>();
+		while (true)
+		{
+			if (!prime)
+				try
+				{
+					prime = stoi(getPassword("To enter the Frontier, enter a 6 digit prime that you have not entered before: "));
+				}
+				catch (...) {}
+			if (isPrime(prime) && !primes.count(prime))
+				break;
+			prime = 0;
+		}
+		primes.insert(prime);
+		writeFile(getDataDir() + "primes", rlp(primes));
 	}
 
 	if (keyManager.exists())
