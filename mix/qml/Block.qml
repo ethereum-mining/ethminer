@@ -243,7 +243,6 @@ ColumnLayout
 							}
 						}
 
-
 						Rectangle
 						{
 							Layout.preferredWidth: toWidth
@@ -265,8 +264,6 @@ ColumnLayout
 								width: parent.width
 							}
 						}
-
-
 
 						function userFrienldyToken(value)
 						{
@@ -293,7 +290,7 @@ ColumnLayout
 								color: labelColor
 								font.bold: true
 								font.pointSize: dbgStyle.absoluteSize(1)
-								width: parent.width -30
+								width: parent.width - 30
 								text: {
 									if (index >= 0 && transactions.get(index).returned)
 										return transactions.get(index).returned
@@ -401,19 +398,6 @@ ColumnLayout
 				}
 			}
 		}
-	}
-
-	Rectangle
-	{
-		id: right
-		Layout.preferredWidth: blockWidth
-		height: 10
-		anchors.top: parent.bottom
-		anchors.topMargin: 5
-		color: "#DEDCDC"
-		radius: 15
-		anchors.left: parent.left
-		anchors.leftMargin: statusWidth
 	}
 }
 
