@@ -178,8 +178,9 @@ tuple<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>, vector
 		return true;
 	});
 
-	chosen.reserve((peerCount * _percent + 99) / 100);
-	for (unsigned i = (peerCount * _percent + 99) / 100; i-- && allowed.size();)
+	size_t chosenSize = (peerCount * _percent + 99) / 100;
+	chosen.reserve(chosenSize);
+	for (unsigned i = chosenSize; i && allowed.size(); i--)
 	{
 		unsigned n = rand() % allowed.size();
 		chosen.push_back(std::move(allowed[n]));
