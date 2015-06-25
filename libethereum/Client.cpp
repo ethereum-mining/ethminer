@@ -90,7 +90,7 @@ void VersionChecker::setOk()
 ImportResult Client::queueBlock(bytes const& _block, bool _isSafe)
 {
 	if (m_bq.status().verified + m_bq.status().verifying + m_bq.status().unverified > 30000)
-		sleep(1);
+		this_thread::sleep_for(std::chrono::milliseconds(500));
 	return m_bq.import(&_block, bc(), _isSafe);
 }
 
