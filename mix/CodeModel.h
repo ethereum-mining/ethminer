@@ -31,6 +31,7 @@
 #include <QMetaEnum>
 #include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
+#include <libevmcore/Params.h>
 #include <libevmasm/Assembly.h>
 #include "SolidityType.h"
 #include "QBigInt.h"
@@ -140,6 +141,8 @@ class GasMap: public QObject
 	Q_PROPERTY(QString gas MEMBER m_gas CONSTANT)
 	Q_PROPERTY(bool isInfinite MEMBER m_isInfinite CONSTANT)
 	Q_PROPERTY(QString codeBlockType READ codeBlockType CONSTANT)
+	Q_PROPERTY(QString contractName MEMBER m_contractName CONSTANT)
+	Q_PROPERTY(QString functionName MEMBER m_functionName CONSTANT)
 
 public:
 
@@ -150,13 +153,19 @@ public:
 		Constructor
 	};
 
-	GasMap(int _start, int _end, QString _gas, bool _isInfinite, type _type, QObject* _parent): QObject(_parent), m_start(_start), m_end(_end), m_gas(_gas), m_isInfinite(_isInfinite), m_type(_type) {}
+	GasMap(int _start, int _end, QString _gas, bool _isInfinite, type _type, QString _contractName, QString _functionName, QObject* _parent): QObject(_parent),
+		m_start(_start), m_end(_end), m_gas(_gas), m_isInfinite(_isInfinite), m_type(_type), m_contractName(_contractName), m_functionName(_functionName) {}
+	QString contractName() { return m_contractName; }
+	QString functionName() { return m_functionName; }
 
+private:
 	int m_start;
 	int m_end;
 	QString m_gas;
 	bool m_isInfinite;
 	type m_type;
+	QString m_contractName;
+	QString m_functionName;
 
 	QString codeBlockType() const
 	{
@@ -178,10 +187,11 @@ class GasMapWrapper: public QObject
 
 public:
 	GasMapWrapper(QObject* _parent = nullptr): QObject(_parent){}
-	void push(QString _source, int _start, int _end, QString _value, bool _isInfinite, GasMap::type _type);
+	void push(QString _source, int _start, int _end, QString _value, bool _isInfinite, GasMap::type _type, QString _contractName = "", QString _functionName = "");
 	bool contains(QString _key);
 	void insert(QString _source, QVariantList _variantList);
 	QVariantList gasCostsByDocId(QString _source);
+	QVariantList gasCostsBy(QString _contractName, QString _functionName = "");
 
 private:
 	GasCostsMaps m_gasMaps;
@@ -200,6 +210,8 @@ public:
 	Q_PROPERTY(bool compiling READ isCompiling NOTIFY stateChanged)
 	Q_PROPERTY(bool hasContract READ hasContract NOTIFY codeChanged)
 	Q_PROPERTY(bool optimizeCode MEMBER m_optimizeCode WRITE setOptimizeCode)
+	Q_PROPERTY(int callStipend READ callStipend)
+	Q_PROPERTY(int txGas READ txGas)
 
 	/// @returns latest compilation results for contracts
 	QVariantMap contracts() const;
@@ -234,7 +246,10 @@ public:
 	void gasEstimation(solidity::CompilerStack const& _cs);
 	/// Gas cost by doc id
 	Q_INVOKABLE QVariantList gasCostByDocumentId(QString const& _documentId) const;
+	Q_INVOKABLE QVariantList gasCostBy(QString const& _contractName, QString const& _functionName) const;
 	Q_INVOKABLE void setOptimizeCode(bool _value);
+	int txGas() { return static_cast<int>(dev::eth::c_txGas); }
+	int callStipend() { return static_cast<int>(dev::eth::c_callStipend); }
 
 signals:
 	/// Emited on compilation state change
