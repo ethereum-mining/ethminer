@@ -139,7 +139,7 @@ void Transact::updateDestination()
 
 void Transact::updateFee()
 {
-	ui->fee->setText(QString("(gas sub-total: %1)").arg(formatBalance(fee()).c_str()));
+//	ui->fee->setText(QString("(gas sub-total: %1)").arg(formatBalance(fee()).c_str()));
 	auto totalReq = total();
 	ui->total->setText(QString("Total: %1").arg(formatBalance(totalReq).c_str()));
 
@@ -435,9 +435,18 @@ Address Transact::fromAccount()
 	return *it;
 }
 
+void Transact::updateNonce()
+{
+	u256 n = ethereum()->countAt(fromAccount(), PendingBlock);
+	ui->nonce->setMaximum((unsigned)n);
+	ui->nonce->setMinimum(0);
+	ui->nonce->setValue((unsigned)n);
+}
+
 void Transact::on_send_clicked()
 {
 //	Secret s = findSecret(value() + fee());
+	u256 nonce = ui->autoNonce->isChecked() ? ethereum()->countAt(fromAccount(), PendingBlock) : ui->nonce->value();
 	auto a = fromAccount();
 	auto b = ethereum()->balanceAt(a, PendingBlock);
 
@@ -455,7 +464,7 @@ void Transact::on_send_clicked()
 	{
 		// If execution is a contract creation, add Natspec to
 		// a local Natspec LEVELDB
-		ethereum()->submitTransaction(s, value(), m_data, ui->gas->value(), gasPrice());
+		ethereum()->submitTransaction(s, value(), m_data, ui->gas->value(), gasPrice(), nonce);
 #if ETH_SOLIDITY
 		string src = ui->data->toPlainText().toStdString();
 		if (sourceIsSolidity(src))
@@ -474,7 +483,7 @@ void Transact::on_send_clicked()
 	}
 	else
 		// TODO: cache like m_data.
-		ethereum()->submitTransaction(s, value(), m_context->fromString(ui->destination->currentText().toStdString()).first, m_data, ui->gas->value(), gasPrice());
+		ethereum()->submitTransaction(s, value(), m_context->fromString(ui->destination->currentText().toStdString()).first, m_data, ui->gas->value(), gasPrice(), nonce);
 	close();
 }
 
