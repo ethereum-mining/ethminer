@@ -13,22 +13,15 @@ Item
 		id: boldFont
 	}
 
-	Rectangle {
-		anchors.fill: parent
-		radius: 4
-		TextInput {
-			id: textinput
-			text: value
+	TextInput {
+		id: textinput
+		text: value
+		wrapMode: Text.WrapAnywhere
+		MouseArea {
+			id: mouseArea
 			anchors.fill: parent
-			wrapMode: Text.WrapAnywhere
-			clip: true
-			font.family: boldFont.name
-			MouseArea {
-				id: mouseArea
-				anchors.fill: parent
-				hoverEnabled: true
-				onClicked: textinput.forceActiveFocus()
-			}
+			hoverEnabled: true
+			onClicked: textinput.forceActiveFocus()
 		}
 	}
 }
