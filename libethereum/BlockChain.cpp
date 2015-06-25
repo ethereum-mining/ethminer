@@ -149,6 +149,7 @@ void BlockChain::open(std::string const& _path, WithExisting _we)
 
 	ldb::Options o;
 	o.create_if_missing = true;
+	o.max_open_files = 256;
 	ldb::DB::Open(o, path + "/blocks", &m_blocksDB);
 	ldb::DB::Open(o, path + "/details", &m_extrasDB);
 	if (!m_blocksDB || !m_extrasDB)
