@@ -385,6 +385,9 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByHash(string const& _tran
 	try
 	{
 		h256 h = jsToFixed<32>(_transactionHash);
+		if (!client()->isKnownTransaction(h))
+			return Json::Value(Json::nullValue);
+
 		auto l = client()->transactionLocation(h);
 		return toJson(client()->transaction(h), l, client()->numberFromHash(l.first));
 	}
