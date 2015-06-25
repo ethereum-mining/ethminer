@@ -53,21 +53,27 @@ public:
 	virtual ~WhisperPeer();
 	WhisperHost* host() const;
 	static std::string name() { return "shh"; }
-	static u256 version() { return 2; }
+	static u256 version() { return 3; }
 	static unsigned messageCount() { return PacketCount; }
-	FixedHash<TopicBloomFilterSize> const& bloom() const { return m_bloom; }
-	void advertiseTopicsOfInterest(); ///< sends our bloom filter to remote peer
+	FixedHash<TopicBloomFilterSize> bloom() const { dev::Guard g(x_bloom); return m_bloom; }
+	void sendTopicsOfInterest(FixedHash<TopicBloomFilterSize> const& _bloom); ///< sends our bloom filter to remote peer
+	void noteAdvertiseTopicsOfInterest() { m_advertiseTopicsOfInterest = true; }
 
 private:
 	virtual bool interpret(unsigned _id, RLP const&) override;
 	void sendMessages();
 	unsigned rating(Envelope const&) const { return 0; }	// TODO
 	void noteNewMessage(h256 _h, Envelope const& _m);
+	void setBloom(FixedHash<TopicBloomFilterSize> const& _b) { dev::Guard g(x_bloom); m_bloom = _b; }
 
 	mutable dev::Mutex x_unseen;
 	std::multimap<unsigned, h256> m_unseen;	///< Rated according to what they want.
 	std::chrono::system_clock::time_point m_timer = std::chrono::system_clock::now();
+
+	mutable dev::Mutex x_bloom;
 	FixedHash<TopicBloomFilterSize> m_bloom; ///< Peer's topics of interest
+
+	bool m_advertiseTopicsOfInterest;
 };
 
 }

@@ -338,7 +338,7 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 
 	std::vector<std::pair<std::shared_ptr<Session>, std::shared_ptr<Peer>>> sessions;
 
-	for (int i = 0; i < 300; ++i)
+	for (int i = 0; i < 600; ++i)
 	{
 		sessions = whost1->peerSessions();
 		if (!sessions.empty() && sessions.back().first->cap<WhisperPeer>()->bloom())
@@ -356,7 +356,7 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 
 	whost1->installWatch(BuildTopicMask("test1"));
 
-	for (int i = 0; i < 300; ++i)
+	for (int i = 0; i < 600; ++i)
 	{
 		sessions = whost2->peerSessions();
 		if (!sessions.empty() && sessions.back().first->cap<WhisperPeer>()->bloom())

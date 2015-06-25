@@ -31,11 +31,8 @@ using namespace dev::shh;
 WhisperPeer::WhisperPeer(std::shared_ptr<Session> _s, HostCapabilityFace* _h, unsigned _i, CapDesc const&): Capability(_s, _h, _i)
 {
 	RLPStream s;
-	//sealAndSend(prep(s, StatusPacket, 1) << version());
-	prep(s, StatusPacket, 2);
-	s << version();
-	s << host()->bloom();
-	sealAndSend(s);
+	sealAndSend(prep(s, StatusPacket, 1) << version());
+	noteAdvertiseTopicsOfInterest();
 }
 
 WhisperPeer::~WhisperPeer()
@@ -59,23 +56,19 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 
 		if (protocolVersion != version())
 			disable("Invalid protocol version.");
-		else
-		{
-			if (_r.itemCount() > 1) // for backwards compatibility
-				m_bloom = (FixedHash<TopicBloomFilterSize>)_r[1];
-			advertiseTopicsOfInterest();
-		}
 
 		for (auto const& m: host()->all())
 			m_unseen.insert(make_pair(0, m.first));
 
 		if (session()->id() < host()->host()->id())
 			sendMessages();
+
+		noteAdvertiseTopicsOfInterest();
 		break;
 	}
 	case TopicFilterPacket:
 	{
-		m_bloom = (FixedHash<TopicBloomFilterSize>)_r[0];
+		setBloom((FixedHash<TopicBloomFilterSize>)_r[0]);
 		break;
 	}
 	case MessagesPacket:
@@ -92,6 +85,9 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 
 void WhisperPeer::sendMessages()
 {
+	if (m_advertiseTopicsOfInterest)
+		sendTopicsOfInterest(host()->bloom());
+
 	RLPStream amalg;
 	unsigned msgCount = 0;
 	{
@@ -119,10 +115,12 @@ void WhisperPeer::noteNewMessage(h256 _h, Envelope const& _m)
 	m_unseen.insert(make_pair(rating(_m), _h));
 }
 
-void WhisperPeer::advertiseTopicsOfInterest()
+void WhisperPeer::sendTopicsOfInterest(FixedHash<TopicBloomFilterSize> const& _bloom)
 {
 	RLPStream s;
 	prep(s, TopicFilterPacket, 1);
-	s << host()->bloom();
+	s << _bloom;
 	sealAndSend(s);
+
+	m_advertiseTopicsOfInterest = false;
 }
