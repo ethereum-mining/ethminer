@@ -141,6 +141,7 @@ void help()
 		<< "    --master <password>  Give the master password for the key store." << endl
 		<< "    --password <password>  Give a password for a private key." << endl
 		<< "    --sentinel <server>  Set the sentinel for reporting bad blocks or chain issues." << endl
+		<< "    --prime <n>  Specify n as the 6 digit prime number to start Frontier." << endl
 		<< endl
 		<< "Client transacting:" << endl
 		/*<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (default: 15)." << endl
@@ -292,6 +293,7 @@ int main(int argc, char** argv)
 	OperationMode mode = OperationMode::Node;
 	string dbPath;
 	unsigned prime = 0;
+	bool yesIReallyKnowWhatImDoing = false;
 
 	/// File name for import/export.
 	string filename;
@@ -425,6 +427,8 @@ int main(int argc, char** argv)
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				return -1;
 			}
+		else if (arg == "--yes-i-really-know-what-im-doing")
+			yesIReallyKnowWhatImDoing = true;
 		else if (arg == "--sentinel" && i + 1 < argc)
 			sentinel = argv[++i];
 		else if (arg == "--mine-on-wrong-chain")
@@ -824,6 +828,7 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
+	if (c_network == Network::Frontier && !yesIReallyKnowWhatImDoing)
 	{
 		auto pd = contents(getDataDir() + "primes");
 		unordered_set<unsigned> primes = RLP(pd).toUnorderedSet<unsigned>();
