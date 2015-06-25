@@ -85,16 +85,9 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 	}
 }
 
-void WhisperHost::advertiseTopicsOfInterest()
-{
-	FixedHash<TopicBloomFilterSize> b = bloom();
-
-	for (auto i: peerSessions())
-		i.first->cap<WhisperPeer>().get()->sendTopicsOfInterest(b);
-}
-
 void WhisperHost::noteChanged(h256 _messageHash, h256 _filter)
 {
+	Guard l(m_filterLock);
 	for (auto& i: m_watches)
 		if (i.second.id == _filter)
 		{
@@ -103,27 +96,26 @@ void WhisperHost::noteChanged(h256 _messageHash, h256 _filter)
 		}
 }
 
-unsigned WhisperHost::installWatchOnId(h256 _h)
-{
-	auto ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
-	m_watches[ret] = ClientWatch(_h);
-	cwatshh << "+++" << ret << _h;
-	return ret;
-}
-
 unsigned WhisperHost::installWatch(shh::Topics const& _t)
 {
 	InstalledFilter f(_t);
 	h256 h = f.filter.sha3();
+	unsigned ret = 0;
 
-	Guard l(m_filterLock);
-	if (!m_filters.count(h))
-		m_filters.insert(make_pair(h, f));
+	DEV_GUARDED(m_filterLock)
+	{
+		if (!m_filters.count(h))
+			m_filters.insert(make_pair(h, f));
 
-	m_bloom.addRaw(f.filter.exportBloom());
+		ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
+		m_watches[ret] = ClientWatch(h);
+		cwatshh << "+++" << ret << h;
+
+		m_bloom.addRaw(f.filter.exportBloom());
+	}
+
 	noteAdvertiseTopicsOfInterest();
-
-	return installWatchOnId(h);
+	return ret;
 }
 
 h256s WhisperHost::watchMessages(unsigned _watchId)
@@ -151,23 +143,25 @@ void WhisperHost::uninstallWatch(unsigned _i)
 {
 	cwatshh << "XXX" << _i;
 
-	Guard l(m_filterLock);
-
-	auto it = m_watches.find(_i);
-	if (it == m_watches.end())
-		return;
-	auto id = it->second.id;
-	m_watches.erase(it);
-
-	auto fit = m_filters.find(id);
-	if (fit != m_filters.end())
+	DEV_GUARDED(m_filterLock)
 	{
-		if (!--fit->second.refCount)
-			m_filters.erase(fit);
+		auto it = m_watches.find(_i);
+		if (it == m_watches.end())
+			return;
+		auto id = it->second.id;
+		m_watches.erase(it);
 
-		m_bloom.removeRaw(fit->second.filter.exportBloom());
-		noteAdvertiseTopicsOfInterest();
+		auto fit = m_filters.find(id);
+		if (fit != m_filters.end())
+		{
+			if (!--fit->second.refCount)
+				m_filters.erase(fit);
+
+			m_bloom.removeRaw(fit->second.filter.exportBloom());
+		}
 	}
+
+	noteAdvertiseTopicsOfInterest();
 }
 
 void WhisperHost::doWork()

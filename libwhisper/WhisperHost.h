@@ -58,7 +58,6 @@ public:
 	virtual void inject(Envelope const& _e, WhisperPeer* _from = nullptr) override;
 	virtual Topics const& fullTopics(unsigned _id) const override { try { return m_filters.at(m_watches.at(_id).id).full; } catch (...) { return EmptyTopics; } }
 	virtual unsigned installWatch(Topics const& _filter) override;
-	virtual unsigned installWatchOnId(h256 _filterId) override;
 	virtual void uninstallWatch(unsigned _watchId) override;
 	virtual h256s peekWatch(unsigned _watchId) const override { dev::Guard l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return h256s(); } }
 	virtual h256s checkWatch(unsigned _watchId) override { cleanup(); dev::Guard l(m_filterLock); h256s ret; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes.clear(); } catch (...) {} return ret; }
@@ -75,7 +74,6 @@ private:
 
 	void streamMessage(h256 _m, RLPStream& _s) const;
 	void noteChanged(h256 _messageHash, h256 _filter);
-	void advertiseTopicsOfInterest(); ///< send our bloom filter to remote peers
 
 	mutable dev::SharedMutex x_messages;
 	std::map<h256, Envelope> m_messages;
