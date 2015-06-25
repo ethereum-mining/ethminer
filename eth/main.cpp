@@ -828,7 +828,7 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	if (c_network == Network::Frontier && !yesIReallyKnowWhatImDoing)
+	if (c_network == eth::Network::Frontier && !yesIReallyKnowWhatImDoing)
 	{
 		auto pd = contents(getDataDir() + "primes");
 		unordered_set<unsigned> primes = RLP(pd).toUnorderedSet<unsigned>();
