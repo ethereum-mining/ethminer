@@ -256,12 +256,14 @@ public:
 
 	void abort()
 	{
-		UniqueGuard l(x_all);
-		if (m_aborted)
-			return;
+		{
+			UniqueGuard l(x_all);
+			if (m_aborted)
+				return;
 //		cdebug << "Attempting to abort";
 
-		m_abort = true;
+			m_abort = true;
+		}
 		// m_abort is true so now searched()/found() will return true to abort the search.
 		// we hang around on this thread waiting for them to point out that they have aborted since
 		// otherwise we may end up deleting this object prior to searched()/found() being called.
