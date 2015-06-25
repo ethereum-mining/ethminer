@@ -466,7 +466,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_batchSize, m_workgroupSize);
 			unsigned ms = t.elapsed() * 1000;
 			if (ms > _msPerBatch * 1.1)
-				m_batchSize = max(128, m_batchSize * 9 / 10);
+				m_batchSize = max<unsigned>(128, m_batchSize * 9 / 10);
 			else if (ms < _msPerBatch * 0.9)
 				m_batchSize = m_batchSize * 10 / 9;
 
