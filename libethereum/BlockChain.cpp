@@ -323,7 +323,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 			{
 				// Nonce & uncle nonces already verified in verification thread at this point.
 				ImportRoute r;
-				DEV_TIMED_ABOVE(Block import, 500)
+				DEV_TIMED_ABOVE("Block import", 500)
 					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
 				fresh += r.liveBlocks;
 				dead += r.deadBlocks;
@@ -470,6 +470,9 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	h256 newLastBlockHash = currentHash();
 	unsigned newLastBlockNumber = number();
 
+	BlockLogBlooms blb;
+	BlockReceipts br;
+
 	u256 td;
 #if ETH_CATCH
 	try
@@ -480,8 +483,6 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 		State s(_db);
 		auto tdIncrease = s.enactOn(_block, *this, _ir);
 
-		BlockLogBlooms blb;
-		BlockReceipts br;
 		for (unsigned i = 0; i < s.pending().size(); ++i)
 		{
 			blb.blooms.push_back(s.receipt(i).bloom());
@@ -675,15 +676,17 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 
 #if ETH_TIMED_IMPORTS
 	checkBest = t.elapsed();
-	if (total.elapsed() > 1.0)
+	if (total.elapsed() > 0.5)
 	{
-		cnote << "SLOW IMPORT:" << _block.info.hash();
+		cnote << "SLOW IMPORT:" << _block.info.hash() << " #" << _block.info.number;
 		cnote << "  Import took:" << total.elapsed();
 		cnote << "  preliminaryChecks:" << preliminaryChecks;
 		cnote << "  enactment:" << enactment;
 		cnote << "  collation:" << collation;
 		cnote << "  writing:" << writing;
 		cnote << "  checkBest:" << checkBest;
+		cnote << "  " << _block.transactions.size() << " transactions";
+		cnote << "  " << _block.info.gasUsed << " gas used";
 	}
 #endif
 
