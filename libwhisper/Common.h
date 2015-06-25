@@ -59,6 +59,7 @@ enum WhisperPacket
 };
 
 enum { TopicBloomFilterSize = 64 };
+enum { WhisperProtocolVersion = 2 };
 
 using AbridgedTopic = FixedHash<4>;
 using Topic = h256;
