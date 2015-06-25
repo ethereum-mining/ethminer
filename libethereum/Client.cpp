@@ -680,7 +680,6 @@ void Client::syncTransactionQueue()
 		for (size_t i = 0; i < newPendingReceipts.size(); i++)
 			appendFromNewPending(newPendingReceipts[i], changeds, m_postMine.pending()[i].sha3());
 
-
 	// Tell farm about new transaction (i.e. restartProofOfWork mining).
 	onPostStateChanged();
 
