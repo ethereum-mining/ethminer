@@ -381,7 +381,7 @@ void Client::startedWorking()
 {
 	// Synchronise the state according to the head of the block chain.
 	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-	cdebug << "startedWorking()";
+	clog(ClientTrace) << "startedWorking()";
 
 	DEV_WRITE_GUARDED(x_preMine)
 		m_preMine.sync(m_bc);
@@ -577,7 +577,7 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 	try
 	{
 		State temp;
-//		cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
+//		clog(ClientTrace) << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
 		DEV_READ_GUARDED(x_postMine)
 			temp = m_postMine;
 		temp.addBalance(_from, _value + _gasPrice * _gas);
@@ -647,7 +647,7 @@ void Client::syncBlockQueue()
 	double elapsed = t.elapsed();
 
 	if (count)
-		cnote << count << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (count / elapsed) << "blocks/s)";
+		clog(ClientNote) << count << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (count / elapsed) << "blocks/s)";
 
 	if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
 		m_syncAmount = max(c_syncMin, count * 9 / 10);
@@ -738,7 +738,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		if (preChanged || m_postMine.address() != m_preMine.address())
 		{
 			if (isMining())
-				cnote << "New block on chain.";
+				clog(ClientTrace) << "New block on chain.";
 
 			DEV_WRITE_GUARDED(x_preMine)
 				m_preMine = newPreMine;
@@ -775,7 +775,7 @@ bool Client::remoteActive() const
 
 void Client::onPostStateChanged()
 {
-	cnote << "Post state changed.";
+	clog(ClientTrace) << "Post state changed.";
 	rejigMining();
 	m_remoteWorking = false;
 }
@@ -790,7 +790,7 @@ void Client::rejigMining()
 {
 	if ((wouldMine() || remoteActive()) && !isMajorSyncing() && (!isChainBad() || mineOnBadChain()) /*&& (forceMining() || transactionsWaiting())*/)
 	{
-		cnote << "Rejigging mining...";
+		clog(ClientTrace) << "Rejigging mining...";
 		DEV_WRITE_GUARDED(x_working)
 			m_working.commitToMine(m_bc);
 		DEV_READ_GUARDED(x_working)
@@ -887,7 +887,7 @@ void Client::checkWatchGarbage()
 				if (m_watches[key].lastPoll != chrono::system_clock::time_point::max() && chrono::system_clock::now() - m_watches[key].lastPoll > chrono::seconds(20))
 				{
 					toUninstall.push_back(key);
-					cnote << "GC: Uninstall" << key << "(" << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - m_watches[key].lastPoll).count() << "s old)";
+					clog(ClientTrace) << "GC: Uninstall" << key << "(" << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - m_watches[key].lastPoll).count() << "s old)";
 				}
 		for (auto i: toUninstall)
 			uninstallWatch(i);
