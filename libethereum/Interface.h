@@ -154,7 +154,7 @@ public:
 
 	BlockInfo blockInfo(BlockNumber _block) const { return blockInfo(hashFromNumber(_block)); }
 	BlockDetails blockDetails(BlockNumber _block) const { return blockDetails(hashFromNumber(_block)); }
-	Transaction transaction(BlockNumber _block, unsigned _i) const { if (_block == PendingBlock) { auto p = pending(); return _i < p.size() ? p[_i] : Transaction(); } return transaction(hashFromNumber(_block)); }
+	Transaction transaction(BlockNumber _block, unsigned _i) const { auto p = transactions(_block); return _i < p.size() ? p[_i] : Transaction(); }
 	unsigned transactionCount(BlockNumber _block) const { if (_block == PendingBlock) { auto p = pending(); return p.size(); } return transactionCount(hashFromNumber(_block)); }
 	Transactions transactions(BlockNumber _block) const { if (_block == PendingBlock) return pending(); return transactions(hashFromNumber(_block)); }
 	TransactionHashes transactionHashes(BlockNumber _block) const { if (_block == PendingBlock) return pendingHashes(); return transactionHashes(hashFromNumber(_block)); }
