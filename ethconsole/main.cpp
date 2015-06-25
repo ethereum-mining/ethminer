@@ -21,7 +21,6 @@
 
 #include <string>
 #include <libjsconsole/JSRemoteConsole.h>
-
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
