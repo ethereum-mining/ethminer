@@ -60,7 +60,7 @@ std::string hexPrefixEncode(bytes const& _hexVector, bool _leaf, int _begin, int
 std::string hexPrefixEncode(bytesConstRef _data, bool _leaf, int _beginNibble, int _endNibble, unsigned _offset)
 {
 	unsigned begin = _beginNibble + _offset;
-	unsigned end = (_endNibble < 0 ? (_data.size() * 2 - _offset) + 1 + _endNibble : _endNibble) + _offset;
+	unsigned end = (_endNibble < 0 ? ((int)(_data.size() * 2 - _offset) + 1) + _endNibble : _endNibble) + _offset;
 	bool odd = (end - begin) & 1;
 
 	std::string ret(1, ((_leaf ? 2 : 0) | (odd ? 1 : 0)) * 16);
