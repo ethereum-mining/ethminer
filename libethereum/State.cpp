@@ -634,7 +634,7 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 //	cnote << m_state;
 
 	LastHashes lh;
-	DEV_TIMED_ABOVE(lastHashes, 500)
+	DEV_TIMED_ABOVE("lastHashes", 500)
 		lh = _bc.lastHashes((unsigned)m_previousBlock.number);
 
 	RLP rlp(_block.block);
@@ -643,7 +643,7 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
-	DEV_TIMED_ABOVE(txEcec, 500)
+	DEV_TIMED_ABOVE("txExec", 500)
 		for (auto const& tr: _block.transactions)
 		{
 			try
@@ -664,7 +664,7 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 		}
 
 	h256 receiptsRoot;
-	DEV_TIMED_ABOVE(receiptsRoot, 500)
+	DEV_TIMED_ABOVE("receiptsRoot", 500)
 		receiptsRoot = orderedTrieRoot(receipts);
 
 	if (receiptsRoot != m_currentBlock.receiptsRoot)
@@ -698,12 +698,12 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 
 	vector<BlockInfo> rewarded;
 	h256Hash excluded;
-	DEV_TIMED_ABOVE(allKin, 500)
+	DEV_TIMED_ABOVE("allKin", 500)
 		excluded = _bc.allKinFrom(m_currentBlock.parentHash, 6);
 	excluded.insert(m_currentBlock.hash());
 
 	unsigned ii = 0;
-	DEV_TIMED_ABOVE(uncleCheck, 500)
+	DEV_TIMED_ABOVE("uncleCheck", 500)
 		for (auto const& i: rlp[2])
 		{
 			try
@@ -752,11 +752,11 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 			}
 		}
 
-	DEV_TIMED_ABOVE(applyRewards, 500)
+	DEV_TIMED_ABOVE("applyRewards", 500)
 		applyRewards(rewarded);
 
 	// Commit all cached state changes to the state trie.
-	DEV_TIMED_ABOVE(commit, 500)
+	DEV_TIMED_ABOVE("commit", 500)
 		commit();
 
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
