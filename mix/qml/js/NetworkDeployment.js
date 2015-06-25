@@ -201,7 +201,7 @@ function executeTrNextStep(trIndex, state, ctrAddresses, callBack)
 		callBack();
 }
 
-function gasPrice(callBack)
+function gasPrice(callBack, error)
 {
 	var requests = [{
 						jsonrpc: "2.0",
@@ -210,7 +210,9 @@ function gasPrice(callBack)
 						id: jsonRpcRequestId
 					}];
 	rpcCall(requests, function (httpCall, response){
-		callBack(JSON.parse(response)[0].result);
+		callBack(JSON.parse(response)[0].result)
+	}, function(message){
+		error(message)
 	});
 }
 
