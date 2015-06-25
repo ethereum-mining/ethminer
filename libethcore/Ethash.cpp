@@ -225,23 +225,26 @@ std::string Ethash::CPUMiner::platformInfo()
 
 #if ETH_ETHASHCL || !ETH_TRUE
 
+using UniqueGuard = std::unique_lock<std::mutex>;
+
 template <class N>
 class Notified
 {
 public:
 	Notified() {}
 	Notified(N const& _v): m_value(_v) {}
-	Notified& operator=(N const& _v) { std::unique_lock l(m_mutex); m_value = _v; m_cv.notify_all(); return *this; }
+	Notified(Notified const&) = delete;
+	Notified& operator=(N const& _v) { UniqueGuard l(m_mutex); m_value = _v; m_cv.notify_all(); return *this; }
 
-	operator N() const { std::unique_lock l(m_mutex); return m_value; }
+	operator N() const { UniqueGuard l(m_mutex); return m_value; }
 
-	void wait() const { std::unique_lock l(m_mutex); m_cv.wait(l); }
-	void wait(N const& _v) const { std::unique_lock l(m_mutex); m_cv.wait(l, [&](){return m_value == _v;}); }
-	template <class F> void wait(F const& _f) const { std::unique_lock l(m_mutex); m_cv.wait(l, _f); }
+	void wait() const { UniqueGuard l(m_mutex); m_cv.wait(l); }
+	void wait(N const& _v) const { UniqueGuard l(m_mutex); m_cv.wait(l, [&](){return m_value == _v;}); }
+	template <class F> void wait(F const& _f) const { UniqueGuard l(m_mutex); m_cv.wait(l, _f); }
 
 private:
-	Mutex m_mutex;
-	std::condition_variable m_cv;
+	mutable Mutex m_mutex;
+	mutable std::condition_variable m_cv;
 	N m_value;
 };
 
@@ -249,10 +252,11 @@ class EthashCLHook: public ethash_cl_miner::search_hook
 {
 public:
 	EthashCLHook(Ethash::GPUMiner* _owner): m_owner(_owner) {}
+	EthashCLHook(EthashCLHook const&) = delete;
 
 	void abort()
 	{
-		std::unique_lock l(x_all);
+		UniqueGuard l(x_all);
 		if (m_aborted)
 			return;
 //		cdebug << "Attempting to abort";
@@ -270,7 +274,7 @@ public:
 
 	void reset()
 	{
-		Mutex l(x_all);
+		UniqueGuard l(x_all);
 		m_aborted = m_abort = false;
 	}
 
@@ -286,7 +290,7 @@ protected:
 
 	virtual bool searched(uint64_t _startNonce, uint32_t _count) override
 	{
-		Mutex l(x_all);
+		UniqueGuard l(x_all);
 //		std::cerr << "Searched " << _count << " from " << _startNonce << std::endl;
 		m_owner->accumulateHashes(_count);
 		m_last = _startNonce + _count;
