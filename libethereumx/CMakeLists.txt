@@ -24,7 +24,6 @@ target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} lll)
 target_link_libraries(${EXECUTABLE} ethcore)
-target_link_libraries(${EXECUTABLE} secp256k1)
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
