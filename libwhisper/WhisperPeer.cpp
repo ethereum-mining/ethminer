@@ -117,11 +117,12 @@ void WhisperPeer::noteNewMessage(h256 _h, Envelope const& _m)
 
 void WhisperPeer::sendTopicsOfInterest(FixedHash<TopicBloomFilterSize> const& _bloom)
 {
-	Guard g(x_advertiseTopicsOfInterest);
+	DEV_GUARDED(x_advertiseTopicsOfInterest)
+		m_advertiseTopicsOfInterest = false;
+
 	RLPStream s;
 	prep(s, TopicFilterPacket, 1);
 	s << _bloom;
 	sealAndSend(s);
-	m_advertiseTopicsOfInterest = false;
 }
 
