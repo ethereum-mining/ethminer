@@ -456,8 +456,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		uint64_t start_nonce = uniform_int_distribution<uint64_t>()(engine);
 		for (;; start_nonce += m_batchSize)
 		{
-//			chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
-
+			chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 			// supply output buffer to kernel
 			m_searchKernel.setArg(0, m_searchBuffer[buf]);
 			if (m_dagChunksCount == 1)
@@ -497,19 +496,23 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				pending.pop();
 			}
 
-/*			chrono::high_resolution_clock::duration d = chrono::high_resolution_clock::now() - t;
-			if (d > chrono::milliseconds(_msPerBatch * 10 / 9))
+			// adjust batch size depending on last search time
+			auto d = chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t);
+			if (d != chrono::milliseconds(0)) // if duration is zero, we did not get in the actual search so adjust nothing
 			{
-				cerr << "Batch of" << m_batchSize << "took" << chrono::duration_cast<chrono::milliseconds>(d).count() << "ms, >>" << _msPerBatch << "ms.";
-				m_batchSize = max<unsigned>(128, m_batchSize * 9 / 10);
-				cerr << "New batch size" << m_batchSize;
+				if (d > chrono::milliseconds(_msPerBatch * 10 / 9))
+				{
+					// cerr << "Batch of " << m_batchSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, >> " << _msPerBatch << " ms." << endl;
+					m_batchSize = max<unsigned>(128, m_batchSize * 9 / 10);
+					// cerr << "New batch size" << m_batchSize << endl;
+				}
+				else if (d < chrono::milliseconds(_msPerBatch * 9 / 10))
+				{
+					// cerr << "Batch of " << m_batchSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, << " << _msPerBatch << " ms." << endl;
+					m_batchSize = m_batchSize * 10 / 9;
+					// cerr << "New batch size" << m_batchSize << endl;
+				}
 			}
-			else if (d < chrono::milliseconds(_msPerBatch * 9 / 10))
-			{
-				cerr << "Batch of" << m_batchSize << "took" << chrono::duration_cast<chrono::milliseconds>(d).count() << "ms, <<" << _msPerBatch << "ms.";
-				m_batchSize = m_batchSize * 10 / 9;
-				cerr << "New batch size" << m_batchSize;
-			}*/
 		}
 
 		// not safe to return until this is ready
