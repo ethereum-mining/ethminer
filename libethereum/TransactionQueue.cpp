@@ -39,20 +39,22 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallb
 	Transaction t;
 	ImportResult ir;
 	{
-	UpgradableGuard l(m_lock);
+		UpgradableGuard l(m_lock);
 
-	ir = check_WITH_LOCK(h, _ik);
-	if (ir != ImportResult::Success)
-		return ir;
+		ir = check_WITH_LOCK(h, _ik);
+		if (ir != ImportResult::Success)
+			return ir;
 
-	try {
-		t = Transaction(_transactionRLP, CheckTransaction::Everything);
-		UpgradeGuard ul(l);
-		ir = manageImport_WITH_LOCK(h, t, _cb);
-	}
-	catch (...) {
-		return ImportResult::Malformed;
-	}
+		try
+		{
+			t = Transaction(_transactionRLP, CheckTransaction::Everything);
+			UpgradeGuard ul(l);
+			ir = manageImport_WITH_LOCK(h, t, _cb);
+		}
+		catch (...)
+		{
+			return ImportResult::Malformed;
+		}
 	}
 //	cdebug << "import-END: Nonce of" << t.sender() << "now" << maxNonce(t.sender());
 	return ir;
