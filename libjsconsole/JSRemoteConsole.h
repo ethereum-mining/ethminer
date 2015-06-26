@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file JSV8Connector.h
+/** @file JSRemoteConsole.h
  * @author Marek Kotewicz <marek@ethdev.com>
  * @date 2015
  * Ethereum client.
@@ -22,28 +22,26 @@
 
 #pragma once
 
-#include <jsonrpccpp/server/abstractserverconnector.h>
-#include <libjsengine/JSV8RPC.h>
+#include <libjsengine/JSV8Engine.h>
+#include <libjsengine/JSV8Printer.h>
+#include "JSV8RemoteConnector.h"
+#include "JSConsole.h"
 
 namespace dev
 {
 namespace eth
 {
 
-class JSV8Connector: public jsonrpc::AbstractServerConnector, public JSV8RPC
+class JSRemoteConsole: public JSConsole<JSV8Engine, JSV8Printer>
 {
 
 public:
-	JSV8Connector(JSV8Engine const& _engine): JSV8RPC(_engine) {}
-	virtual ~JSV8Connector();
+	JSRemoteConsole(std::string _url): m_connector(m_engine, _url) {}
+	virtual ~JSRemoteConsole() {}
 
-	// implement AbstractServerConnector interface
-	bool StartListening();
-	bool StopListening();
-	bool SendResponse(std::string const& _response, void* _addInfo = nullptr);
+private:
+	JSV8RemoteConnector m_connector;
 
-	// implement JSV8RPC interface
-	void onSend(char const* _payload);
 };
 
 }

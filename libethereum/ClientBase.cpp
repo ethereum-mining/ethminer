@@ -56,6 +56,19 @@ void ClientBase::submitTransaction(Secret _secret, u256 _value, Address _dest, b
 	cnote << "New transaction " << t;
 }
 
+Address ClientBase::submitTransaction(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, u256 _nonce)
+{
+	prepareForTransaction();
+
+	Transaction t(_value, _gasPrice, _gas, _data, _nonce, _secret);
+	m_tq.import(t.rlp());
+
+	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
+	cnote << "New transaction " << t;
+
+	return right160(sha3(rlpList(t.sender(), t.nonce())));
+}
+
 void ClientBase::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
 	auto a = toAddress(_secret);

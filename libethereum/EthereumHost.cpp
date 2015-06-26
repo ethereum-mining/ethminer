@@ -166,20 +166,21 @@ tuple<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>, vector
 	vector<shared_ptr<EthereumPeer>> allowed;
 	vector<shared_ptr<Session>> sessions;
 	
-	auto const& ps = peerSessions();
-	allowed.reserve(ps.size());
-	for (auto const& j: ps)
+	size_t peerCount = 0;
+	foreachPeer([&](std::shared_ptr<EthereumPeer> _p)
 	{
-		auto pp = j.first->cap<EthereumPeer>();
-		if (_allow(pp.get()))
+		if (_allow(_p.get()))
 		{
-			allowed.push_back(move(pp));
-			sessions.push_back(move(j.first));
+			allowed.push_back(_p);
+			sessions.push_back(_p->session());
 		}
-	}
+		++peerCount;
+		return true;
+	});
 
-	chosen.reserve((ps.size() * _percent + 99) / 100);
-	for (unsigned i = (ps.size() * _percent + 99) / 100; i-- && allowed.size();)
+	size_t chosenSize = (peerCount * _percent + 99) / 100;
+	chosen.reserve(chosenSize);
+	for (unsigned i = chosenSize; i && allowed.size(); i--)
 	{
 		unsigned n = rand() % allowed.size();
 		chosen.push_back(std::move(allowed[n]));
