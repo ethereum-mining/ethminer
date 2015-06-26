@@ -19,7 +19,6 @@ endif()
 
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} ethereum)
-target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} ncurses)
 target_link_libraries(${EXECUTABLE} form)
 
