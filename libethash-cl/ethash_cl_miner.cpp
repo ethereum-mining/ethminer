@@ -464,19 +464,6 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 			// execute it!
 			chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_batchSize, m_workgroupSize);
-			chrono::high_resolution_clock::duration d = chrono::high_resolution_clock::now() - t;
-			if (d > chrono::milliseconds(_msPerBatch * 10 / 9))
-			{
-				cerr << "Batch of" << m_batchSize << "took" << chrono::duration_cast<chrono::milliseconds>(d).count() << "ms, >>" << _msPerBatch << "ms.";
-				m_batchSize = max<unsigned>(128, m_batchSize * 9 / 10);
-				cerr << "New batch size" << m_batchSize;
-			}
-			else if (d < chrono::milliseconds(_msPerBatch * 9 / 10))
-			{
-				cerr << "Batch of" << m_batchSize << "took" << chrono::duration_cast<chrono::milliseconds>(d).count() << "ms, <<" << _msPerBatch << "ms.";
-				m_batchSize = m_batchSize * 10 / 9;
-				cerr << "New batch size" << m_batchSize;
-			}
 
 			pending.push({ start_nonce, buf });
 			buf = (buf + 1) % c_bufferCount;
@@ -505,6 +492,20 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 					m_queue.enqueueWriteBuffer(m_searchBuffer[batch.buf], true, 0, 4, &c_zero);
 
 				pending.pop();
+			}
+
+			chrono::high_resolution_clock::duration d = chrono::high_resolution_clock::now() - t;
+			if (d > chrono::milliseconds(_msPerBatch * 10 / 9))
+			{
+				cerr << "Batch of" << m_batchSize << "took" << chrono::duration_cast<chrono::milliseconds>(d).count() << "ms, >>" << _msPerBatch << "ms.";
+				m_batchSize = max<unsigned>(128, m_batchSize * 9 / 10);
+				cerr << "New batch size" << m_batchSize;
+			}
+			else if (d < chrono::milliseconds(_msPerBatch * 9 / 10))
+			{
+				cerr << "Batch of" << m_batchSize << "took" << chrono::duration_cast<chrono::milliseconds>(d).count() << "ms, <<" << _msPerBatch << "ms.";
+				m_batchSize = m_batchSize * 10 / 9;
+				cerr << "New batch size" << m_batchSize;
 			}
 		}
 
