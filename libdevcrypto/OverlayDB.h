@@ -21,16 +21,11 @@
 
 #pragma once
 
-#pragma warning(push)
-#pragma warning(disable: 4100 4267)
-#include <leveldb/db.h>
-#pragma warning(pop)
-
 #include <memory>
+#include <libdevcore/db.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/MemoryDB.h>
-namespace ldb = leveldb;
 
 namespace dev
 {

@@ -56,6 +56,62 @@ void ExpressionCompiler::appendStateVariableInitialization(VariableDeclaration c
 	StorageItem(m_context, _varDecl).storeValue(*_varDecl.getType(), _varDecl.getLocation(), true);
 }
 
+void ExpressionCompiler::appendStackVariableInitialisation(Type const& _type, bool _toMemory)
+{
+	CompilerUtils utils(m_context);
+	auto const* referenceType = dynamic_cast<ReferenceType const*>(&_type);
+	if (!referenceType || referenceType->location() == DataLocation::Storage)
+	{
+		for (size_t i = 0; i < _type.getSizeOnStack(); ++i)
+			m_context << u256(0);
+		if (_toMemory)
+			utils.storeInMemoryDynamic(_type);
+		return;
+	}
+	solAssert(referenceType->location() == DataLocation::Memory, "");
+	if (!_toMemory)
+	{
+		// allocate memory
+		utils.fetchFreeMemoryPointer();
+		m_context << eth::Instruction::DUP1 << u256(max(32u, _type.getCalldataEncodedSize()));
+		m_context << eth::Instruction::ADD;
+		utils.storeFreeMemoryPointer();
+		m_context << eth::Instruction::DUP1;
+	}
+
+	if (auto structType = dynamic_cast<StructType const*>(&_type))
+		for (auto const& member: structType->getMembers())
+			appendStackVariableInitialisation(*member.type, true);
+	else if (auto arrayType = dynamic_cast<ArrayType const*>(&_type))
+	{
+		if (arrayType->isDynamicallySized())
+		{
+			// zero length
+			m_context << u256(0);
+			CompilerUtils(m_context).storeInMemoryDynamic(IntegerType(256));
+		}
+		else if (arrayType->getLength() > 0)
+		{
+			m_context << arrayType->getLength() << eth::Instruction::SWAP1;
+			// stack: items_to_do memory_pos
+			auto repeat = m_context.newTag();
+			m_context << repeat;
+			appendStackVariableInitialisation(*arrayType->getBaseType(), true);
+			m_context << eth::Instruction::SWAP1 << u256(1) << eth::Instruction::SWAP1;
+			m_context << eth::Instruction::SUB << eth::Instruction::SWAP1;
+			m_context << eth::Instruction::DUP2;
+			m_context.appendConditionalJumpTo(repeat);
+			m_context << eth::Instruction::SWAP1 << eth::Instruction::POP;
+		}
+	}
+	else
+		solAssert(false, "Requested initialisation for unknown type: " + _type.toString());
+
+	if (!_toMemory)
+		// remove the updated memory pointer
+		m_context << eth::Instruction::POP;
+}
+
 void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& _varDecl)
 {
 	CompilerContext::LocationSetter locationSetter(m_context, _varDecl);
@@ -457,6 +513,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 					strings(),
 					Location::Bare,
 					false,
+					nullptr,
 					true,
 					true
 				),
@@ -724,8 +781,8 @@ void ExpressionCompiler::endVisit(MemberAccess const& _memberAccess)
 			case DataLocation::Storage:
 				setLValue<StorageArrayLength>(_memberAccess, type);
 				break;
-			default:
-				solAssert(false, "Unsupported array location.");
+			case DataLocation::Memory:
+				m_context << eth::Instruction::MLOAD;
 				break;
 			}
 		break;
@@ -1004,9 +1061,14 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		_functionType.getReturnParameterTypes().empty() ?
 		nullptr :
 		_functionType.getReturnParameterTypes().front().get();
-	unsigned retSize = firstReturnType ? firstReturnType->getCalldataEncodedSize() : 0;
+	unsigned retSize = 0;
 	if (returnSuccessCondition)
 		retSize = 0; // return value actually is success condition
+	else if (firstReturnType)
+	{
+		retSize = firstReturnType->getCalldataEncodedSize();
+		solAssert(retSize > 0, "Unable to return dynamic type from external call.");
+	}
 
 	// Evaluate arguments.
 	TypePointers argumentTypes;
@@ -1123,6 +1185,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		//@todo manually update free memory pointer if we accept returning memory-stored objects
 		utils().fetchFreeMemoryPointer();
 		utils().loadFromMemoryDynamic(*firstReturnType, false, true, false);
+
 	}
 }
 

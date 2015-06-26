@@ -97,6 +97,12 @@ enum class RelativeBlock: BlockNumber
 	Pending = PendingBlock
 };
 
+struct ImportRoute
+{
+	h256s deadBlocks;
+	h256s liveBlocks;
+};
+
 enum class ImportResult
 {
 	Success = 0,

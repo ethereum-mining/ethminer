@@ -45,9 +45,9 @@ llvm::Function* Array::createArrayPushFunc()
 	auto pushBB = llvm::BasicBlock::Create(m_builder.getContext(), "Push", func);
 
 	m_builder.SetInsertPoint(entryBB);
-	auto dataPtr = m_builder.CreateStructGEP(arrayPtr, 0, "dataPtr");
-	auto sizePtr = m_builder.CreateStructGEP(arrayPtr, 1, "sizePtr");
-	auto capPtr = m_builder.CreateStructGEP(arrayPtr, 2, "capPtr");
+	auto dataPtr = m_builder.CreateStructGEP(getType(), arrayPtr, 0, "dataPtr");
+	auto sizePtr = m_builder.CreateStructGEP(getType(), arrayPtr, 1, "sizePtr");
+	auto capPtr = m_builder.CreateStructGEP(getType(), arrayPtr, 2, "capPtr");
 	auto data = m_builder.CreateLoad(dataPtr, "data");
 	auto size = m_builder.CreateLoad(sizePtr, "size");
 	auto cap = m_builder.CreateLoad(capPtr, "cap");
@@ -94,7 +94,7 @@ llvm::Function* Array::createArraySetFunc()
 
 	InsertPointGuard guard{m_builder};
 	m_builder.SetInsertPoint(llvm::BasicBlock::Create(m_builder.getContext(), {}, func));
-	auto dataPtr = m_builder.CreateStructGEP(arrayPtr, 0, "dataPtr");
+	auto dataPtr = m_builder.CreateStructGEP(getType(), arrayPtr, 0, "dataPtr");
 	auto data = m_builder.CreateLoad(dataPtr, "data");
 	auto valuePtr = m_builder.CreateGEP(data, index, "valuePtr");
 	m_builder.CreateStore(value, valuePtr);
@@ -116,7 +116,7 @@ llvm::Function* Array::createArrayGetFunc()
 
 	InsertPointGuard guard{m_builder};
 	m_builder.SetInsertPoint(llvm::BasicBlock::Create(m_builder.getContext(), {}, func));
-	auto dataPtr = m_builder.CreateStructGEP(arrayPtr, 0, "dataPtr");
+	auto dataPtr = m_builder.CreateStructGEP(getType(), arrayPtr, 0, "dataPtr");
 	auto data = m_builder.CreateLoad(dataPtr, "data");
 	auto valuePtr = m_builder.CreateGEP(data, index, "valuePtr");
 	auto value = m_builder.CreateLoad(valuePtr, "value");
@@ -161,7 +161,7 @@ llvm::Function* Array::createFreeFunc()
 
 	InsertPointGuard guard{m_builder};
 	m_builder.SetInsertPoint(llvm::BasicBlock::Create(m_builder.getContext(), {}, func));
-	auto dataPtr = m_builder.CreateStructGEP(arrayPtr, 0, "dataPtr");
+	auto dataPtr = m_builder.CreateStructGEP(getType(), arrayPtr, 0, "dataPtr");
 	auto data = m_builder.CreateLoad(dataPtr, "data");
 	auto mem = m_builder.CreateBitCast(data, Type::BytePtr, "mem");
 	m_builder.CreateCall(freeFunc, mem);
@@ -197,8 +197,8 @@ llvm::Function* Array::createExtendFunc()
 	InsertPointGuard guard{m_builder};
 	m_builder.SetInsertPoint(llvm::BasicBlock::Create(m_builder.getContext(), {}, func));
 	auto dataPtr = m_builder.CreateBitCast(arrayPtr, Type::BytePtr->getPointerTo(), "dataPtr");// TODO: Use byte* in Array
-	auto sizePtr = m_builder.CreateStructGEP(arrayPtr, 1, "sizePtr");
-	auto capPtr = m_builder.CreateStructGEP(arrayPtr, 2, "capPtr");
+	auto sizePtr = m_builder.CreateStructGEP(getType(), arrayPtr, 1, "sizePtr");
+	auto capPtr = m_builder.CreateStructGEP(getType(), arrayPtr, 2, "capPtr");
 	auto data = m_builder.CreateLoad(dataPtr, "data");
 	auto size = m_builder.CreateLoad(sizePtr, "size");
 	auto extSize = m_builder.CreateNUWSub(newSize, size, "extSize");
@@ -244,7 +244,7 @@ Array::Array(llvm::IRBuilder<>& _builder, llvm::Value* _array) :
 
 void Array::pop(llvm::Value* _count)
 {
-	auto sizePtr = m_builder.CreateStructGEP(m_array, 1, "sizePtr");
+	auto sizePtr = m_builder.CreateStructGEP(getType(), m_array, 1, "sizePtr");
 	auto size = m_builder.CreateLoad(sizePtr, "size");
 	auto newSize = m_builder.CreateNUWSub(size, _count, "newSize");
 	m_builder.CreateStore(newSize, sizePtr);
@@ -252,7 +252,7 @@ void Array::pop(llvm::Value* _count)
 
 llvm::Value* Array::size(llvm::Value* _array)
 {
-	auto sizePtr = m_builder.CreateStructGEP(_array ? _array : m_array, 1, "sizePtr");
+	auto sizePtr = m_builder.CreateStructGEP(getType(), _array ? _array : m_array, 1, "sizePtr");
 	return m_builder.CreateLoad(sizePtr, "array.size");
 }
 

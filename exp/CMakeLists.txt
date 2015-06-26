@@ -5,7 +5,7 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
 include_directories(BEFORE ..)
-include_directories(${LEVELDB_INCLUDE_DIRS})
+include_directories(${DB_INCLUDE_DIRS})
 
 set(EXECUTABLE exp)
 

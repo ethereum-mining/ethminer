@@ -107,7 +107,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--opencl-platform" && i + 1 < argc)
 			try {
@@ -116,7 +116,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--opencl-device" && i + 1 < argc)
 			try {
@@ -126,7 +126,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--list-devices")
 			m_shouldListDevices = true;
@@ -144,7 +144,7 @@ public:
 			else
 			{
 				cerr << "Bad " << arg << " option: " << m << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
 		else if (arg == "--benchmark-warmup" && i + 1 < argc)
@@ -154,7 +154,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--benchmark-trial" && i + 1 < argc)
 			try {
@@ -163,7 +163,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--benchmark-trials" && i + 1 < argc)
 			try {
@@ -172,7 +172,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "-C" || arg == "--cpu")
 			m_minerType = MinerType::CPU;
@@ -195,7 +195,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << m << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
 		else if ((arg == "-w" || arg == "--check-pow") && i + 4 < argc)
@@ -232,7 +232,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << m << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
 		else if (arg == "-M" || arg == "--benchmark")
@@ -245,7 +245,7 @@ public:
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				throw BadArgument();
+				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
 		else

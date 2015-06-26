@@ -77,6 +77,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, TransactionException cons
 	{
 		case TransactionException::None: _out << "None"; break;
 		case TransactionException::BadRLP: _out << "BadRLP"; break;
+		case TransactionException::InvalidFormat: _out << "InvalidFormat"; break;
 		case TransactionException::OutOfGasIntrinsic: _out << "OutOfGasIntrinsic"; break;
 		case TransactionException::InvalidSignature: _out << "InvalidSignature"; break;
 		case TransactionException::InvalidNonce: _out << "InvalidNonce"; break;
@@ -100,7 +101,7 @@ Transaction::Transaction(bytesConstRef _rlpData, CheckTransaction _checkSig)
 	try
 	{
 		if (!rlp.isList())
-			BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment("transaction RLP must be a list"));
+			BOOST_THROW_EXCEPTION(InvalidTransactionFormat() << errinfo_comment("transaction RLP must be a list"));
 
 		m_nonce = rlp[field = 0].toInt<u256>();
 		m_gasPrice = rlp[field = 1].toInt<u256>();
@@ -110,7 +111,7 @@ Transaction::Transaction(bytesConstRef _rlpData, CheckTransaction _checkSig)
 		m_value = rlp[field = 4].toInt<u256>();
 
 		if (!rlp[field = 5].isData())
-			BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment("transaction data RLP must be an array"));
+			BOOST_THROW_EXCEPTION(InvalidTransactionFormat() << errinfo_comment("transaction data RLP must be an array"));
 
 		m_data = rlp[field = 5].toBytes();
 		byte v = rlp[field = 6].toInt<byte>() - 27;
@@ -118,7 +119,7 @@ Transaction::Transaction(bytesConstRef _rlpData, CheckTransaction _checkSig)
 		h256 s = rlp[field = 8].toInt<u256>();
 
 		if (rlp.itemCount() > 9)
-			BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment("to many fields in the transaction RLP"));
+			BOOST_THROW_EXCEPTION(InvalidTransactionFormat() << errinfo_comment("to many fields in the transaction RLP"));
 
 		m_vrs = SignatureStruct{ r, s, v };
 		if (_checkSig >= CheckTransaction::Cheap && !m_vrs.isValid())
