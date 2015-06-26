@@ -21,16 +21,19 @@ Item
 		value = value === "true" ? "1" : value
 		value = value === "false" ? "0" : value;
 
+		var setValue = "1"
 		if (value === "")
-			boolCombo.currentIndex = parseInt(defaultValue);
+			setValue = parseInt(defaultValue);
 		else
-			boolCombo.currentIndex = parseInt(value);
+			setValue = parseInt(value);
+		boolCombo.checked = setValue === "1" ? true: false
 		boolCombo.enabled = !readOnly;
 	}
 
 	Rectangle {
+		color: "transparent"
 		anchors.fill: parent
-		ComboBox
+		CheckBox
 		{
 			property bool inited;
 			Component.onCompleted:
@@ -41,17 +44,13 @@ Item
 
 			id: boolCombo
 			anchors.fill: parent
-			onCurrentIndexChanged:
+			onCheckedChanged:
 			{
 				if (inited)
-					value = comboModel.get(currentIndex).value;
+					value = checked ? "1" : "0"
+
 			}
-			model: ListModel
-			{
-				id: comboModel
-				ListElement { text: qsTr("False"); value: "0" }
-				ListElement { text: qsTr("True"); value: "1" }
-			}
+			text: qsTr("True")
 		}
 	}
 }

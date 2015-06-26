@@ -42,6 +42,7 @@ namespace eth
 class BlockChain;
 
 struct BlockQueueChannel: public LogChannel { static const char* name(); static const int verbosity = 4; };
+struct BlockQueueTraceChannel: public LogChannel { static const char* name(); static const int verbosity = 7; };
 #define cblockq dev::LogOutputStream<dev::eth::BlockQueueChannel, true>()
 
 struct BlockQueueStatus

@@ -138,6 +138,9 @@ public:
 	/// Blocks until all pending transactions have been processed.
 	virtual void flushTransactions() override;
 
+	/// Queues a block for import.
+	ImportResult queueBlock(bytes const& _block, bool _isSafe = false);
+
 	using Interface::call; // to remove warning about hiding virtual function
 	/// Makes the given call. Nothing is recorded into the state. This cheats by creating a null address and endowing it with a lot of ETH.
 	ExecutionResult call(Address _dest, bytes const& _data = bytes(), u256 _gas = 125000, u256 _value = 0, u256 _gasPrice = 1 * ether, Address const& _from = Address());
@@ -160,6 +163,11 @@ public:
 	SyncStatus syncStatus() const;
 	/// Get the block queue.
 	BlockQueue const& blockQueue() const { return m_bq; }
+	/// Get the block queue.
+	OverlayDB const& stateDB() const { return m_stateDB; }
+
+	/// Freeze worker thread and sync some of the block queue.
+	std::tuple<ImportRoute, bool, unsigned> syncQueue(unsigned _max = 1);
 
 	// Mining stuff:
 
@@ -219,6 +227,7 @@ public:
 
 	DownloadMan const* downloadMan() const;
 	bool isSyncing() const;
+	bool isMajorSyncing() const;
 	/// Sets the network id.
 	void setNetworkId(u256 _n);
 	/// Clears pending transactions. Just for debug use.

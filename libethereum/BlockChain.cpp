@@ -24,8 +24,6 @@
 #if ETH_PROFILING_GPERF
 #include <gperftools/profiler.h>
 #endif
-#include <leveldb/db.h>
-#include <leveldb/write_batch.h>
 #include <boost/timer.hpp>
 #include <boost/filesystem.hpp>
 #include <test/JsonSpiritHeaders.h>
@@ -151,6 +149,7 @@ void BlockChain::open(std::string const& _path, WithExisting _we)
 
 	ldb::Options o;
 	o.create_if_missing = true;
+	o.max_open_files = 256;
 	ldb::DB::Open(o, path + "/blocks", &m_blocksDB);
 	ldb::DB::Open(o, path + "/details", &m_extrasDB);
 	if (!m_blocksDB || !m_extrasDB)
@@ -241,7 +240,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	m_extrasDB->Put(m_writeOptions, toSlice(m_lastBlockHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[m_lastBlockHash].rlp()));
 
 	h256 lastHash = m_lastBlockHash;
-	boost::timer t;
+	Timer t;
 	for (unsigned d = 1; d < originalNumber; ++d)
 	{
 		if (!(d % 1000))
@@ -305,7 +304,7 @@ LastHashes BlockChain::lastHashes(unsigned _n) const
 	return m_lastLastHashes;
 }
 
-tuple<ImportRoute, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
+tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
 //	_bq.tick(*this);
 
@@ -315,6 +314,7 @@ tuple<ImportRoute, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _sta
 	h256s fresh;
 	h256s dead;
 	h256s badBlocks;
+	unsigned count = 0;
 	for (VerifiedBlock const& block: blocks)
 		if (!badBlocks.empty())
 			badBlocks.push_back(block.verified.info.hash());
@@ -324,10 +324,11 @@ tuple<ImportRoute, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _sta
 			{
 				// Nonce & uncle nonces already verified in verification thread at this point.
 				ImportRoute r;
-				DEV_TIMED_ABOVE(Block import, 500)
+				DEV_TIMED_ABOVE("Block import", 500)
 					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
 				fresh += r.liveBlocks;
 				dead += r.deadBlocks;
+				++count;
 			}
 			catch (dev::eth::UnknownParent)
 			{
@@ -353,7 +354,7 @@ tuple<ImportRoute, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _sta
 				badBlocks.push_back(block.verified.info.hash());
 			}
 		}
-	return make_tuple(ImportRoute{dead, fresh}, _bq.doneDrain(badBlocks));
+	return make_tuple(ImportRoute{dead, fresh}, _bq.doneDrain(badBlocks), count);
 }
 
 pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir) noexcept
@@ -391,12 +392,13 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	try
 #endif
 	{
-		block = verifyBlock(_block, m_onBad);
+		block = verifyBlock(_block, m_onBad, _ir);
 	}
 #if ETH_CATCH
 	catch (Exception& ex)
 	{
 //		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(ex);
+		ex << errinfo_phase(2);
 		ex << errinfo_now(time(0));
 		ex << errinfo_block(_block);
 		throw;
@@ -411,13 +413,13 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	//@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
 #if ETH_TIMED_IMPORTS
-	boost::timer total;
+	Timer total;
 	double preliminaryChecks;
 	double enactment;
 	double collation;
 	double writing;
 	double checkBest;
-	boost::timer t;
+	Timer t;
 #endif
 
 	// Check block doesn't already exist first!
@@ -469,6 +471,9 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	h256 newLastBlockHash = currentHash();
 	unsigned newLastBlockNumber = number();
 
+	BlockLogBlooms blb;
+	BlockReceipts br;
+
 	u256 td;
 #if ETH_CATCH
 	try
@@ -479,8 +484,6 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 		State s(_db);
 		auto tdIncrease = s.enactOn(_block, *this, _ir);
 
-		BlockLogBlooms blb;
-		BlockReceipts br;
 		for (unsigned i = 0; i < s.pending().size(); ++i)
 		{
 			blb.blooms.push_back(s.receipt(i).bloom());
@@ -674,15 +677,17 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 
 #if ETH_TIMED_IMPORTS
 	checkBest = t.elapsed();
-	if (total.elapsed() > 1.0)
+	if (total.elapsed() > 0.5)
 	{
-		cnote << "SLOW IMPORT:" << _block.info.hash();
+		cnote << "SLOW IMPORT:" << _block.info.hash() << " #" << _block.info.number;
 		cnote << "  Import took:" << total.elapsed();
 		cnote << "  preliminaryChecks:" << preliminaryChecks;
 		cnote << "  enactment:" << enactment;
 		cnote << "  collation:" << collation;
 		cnote << "  writing:" << writing;
 		cnote << "  checkBest:" << checkBest;
+		cnote << "  " << _block.transactions.size() << " transactions";
+		cnote << "  " << _block.info.gasUsed << " gas used";
 	}
 #endif
 
@@ -1080,6 +1085,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 	}
 	catch (Exception& ex)
 	{
+		ex << errinfo_phase(1);
 		ex << errinfo_now(time(0));
 		ex << errinfo_block(_block);
 		if (_onBad)
@@ -1097,6 +1103,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 		}
 		catch (Exception& ex)
 		{
+			ex << errinfo_phase(1);
 			ex << errinfo_uncleIndex(i);
 			ex << errinfo_now(time(0));
 			ex << errinfo_block(_block);
@@ -1107,15 +1114,18 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 		++i;
 	}
 	i = 0;
-	for (auto const& tr: r[1])
+	for (RLP const& tr: r[1])
 	{
+		bytesConstRef d = tr.data();
 		try
 		{
-			res.transactions.push_back(Transaction(tr.data(), CheckTransaction::Everything));
+			res.transactions.push_back(Transaction(d, CheckTransaction::Everything));
 		}
 		catch (Exception& ex)
 		{
+			ex << errinfo_phase(1);
 			ex << errinfo_transactionIndex(i);
+			ex << errinfo_transaction(d.toBytes());
 			ex << errinfo_block(_block);
 			throw;
 		}

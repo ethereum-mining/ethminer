@@ -43,7 +43,8 @@ Session::Session(Host* _h, RLPXFrameCoder* _io, std::shared_ptr<RLPXSocket> cons
 {
 	m_peer->m_lastDisconnect = NoDisconnect;
 	m_lastReceived = m_connect = chrono::steady_clock::now();
-	m_info.socketId = m_socket->ref().native_handle();
+	DEV_GUARDED(x_info)
+		m_info.socketId = m_socket->ref().native_handle();
 }
 
 Session::~Session()
@@ -210,68 +211,13 @@ bool Session::interpret(PacketType _t, RLP const& _r)
 		break;
 	}
 	case PongPacket:
+		DEV_GUARDED(x_info)
 		m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
 		clog(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
 		break;
 	case GetPeersPacket:
-		// Disabled for interop testing.
-		// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
-		break;
-
-		clog(NetTriviaSummary) << "GetPeers";
-		m_theyRequestedNodes = true;
-		serviceNodesRequest();
 		break;
 	case PeersPacket:
-		// Disabled for interop testing.
-		// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
-		break;
-
-		clog(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
-		m_weRequestedNodes = false;
-		for (unsigned i = 0; i < _r.itemCount(); ++i)
-		{
-			bi::address peerAddress;
-			if (_r[i][0].size() == 16)
-				peerAddress = bi::address_v6(_r[i][0].toHash<FixedHash<16>>().asArray());
-			else if (_r[i][0].size() == 4)
-				peerAddress = bi::address_v4(_r[i][0].toHash<FixedHash<4>>().asArray());
-			else
-			{
-				cwarn << "Received bad peer packet:" << _r;
-				disconnect(BadProtocol);
-				return true;
-			}
-			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
-			NodeId id = _r[i][2].toHash<NodeId>();
-
-			clog(NetAllDetail) << "Checking: " << ep << "(" << id << ")";
-
-			if (!isPublicAddress(peerAddress))
-				goto CONTINUE;	// Private address. Ignore.
-
-			if (!id)
-				goto LAMEPEER;	// Null identity. Ignore.
-
-			if (m_server->id() == id)
-				goto LAMEPEER;	// Just our info - we already have that.
-
-			if (id == this->id())
-				goto LAMEPEER;	// Just their info - we already have that.
-
-			if (!ep.port())
-				goto LAMEPEER;	// Zero port? Don't think so.
-
-			if (ep.port() >= /*49152*/32768)
-				goto LAMEPEER;	// Private port according to IANA.
-
-			// OK passed all our checks. Assume it's good.
-			addRating(1000);
-			m_server->addNode(id, NodeIPEndpoint(ep.address(), ep.port(), ep.port()));
-			clog(NetTriviaDetail) << "New peer: " << ep << "(" << id << ")";
-			CONTINUE:;
-			LAMEPEER:;
-		}
 		break;
 	default:
 		return false;
@@ -387,11 +333,12 @@ void Session::drop(DisconnectReason _reason)
 void Session::disconnect(DisconnectReason _reason)
 {
 	clog(NetConnect) << "Disconnecting (our reason:" << reasonOf(_reason) << ")";
-	StructuredLogger::p2pDisconnected(
-		m_info.id.abridged(),
-		m_peer->endpoint, // TODO: may not be 100% accurate
-		m_server->peerCount()
-	);
+	DEV_GUARDED(x_info)
+		StructuredLogger::p2pDisconnected(
+			m_info.id.abridged(),
+			m_peer->endpoint, // TODO: may not be 100% accurate
+			m_server->peerCount()
+		);
 	if (m_socket->ref().is_open())
 	{
 		RLPStream s;

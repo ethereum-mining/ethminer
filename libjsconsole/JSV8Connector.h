@@ -43,7 +43,7 @@ public:
 	bool SendResponse(std::string const& _response, void* _addInfo = nullptr);
 
 	// implement JSV8RPC interface
-	void onSend(char const* payload);
+	void onSend(char const* _payload);
 };
 
 }

@@ -21,15 +21,11 @@
 
 #pragma once
 
-#pragma warning(push)
-#pragma warning(disable: 4100 4267)
-#include <leveldb/db.h>
-#pragma warning(pop)
-
 #include <deque>
 #include <chrono>
 #include <unordered_map>
 #include <unordered_set>
+#include <libdevcore/db.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Guards.h>
@@ -41,7 +37,6 @@
 #include "Transaction.h"
 #include "BlockQueue.h"
 #include "VerifiedBlock.h"
-namespace ldb = leveldb;
 
 namespace std
 {
@@ -81,12 +76,6 @@ using BlocksHash = std::unordered_map<h256, bytes>;
 using TransactionHashes = h256s;
 using UncleHashes = h256s;
 
-struct ImportRoute
-{
-	h256s deadBlocks;
-	h256s liveBlocks;
-};
-
 enum {
 	ExtraDetails = 0,
 	ExtraBlockHash,
@@ -117,7 +106,7 @@ public:
 
 	/// Sync the chain with any incoming blocks. All blocks should, if processed in order.
 	/// @returns fresh blocks, dead blocks and true iff there are additional blocks to be processed waiting.
-	std::tuple<ImportRoute, bool> sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
+	std::tuple<ImportRoute, bool, unsigned> sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
