@@ -40,7 +40,7 @@
 #include <unordered_set>
 #include <functional>
 #include <string>
-#include <boost/timer.hpp>
+#include <chrono>
 #include <boost/functional/hash.hpp>
 #pragma warning(push)
 #pragma GCC diagnostic push
@@ -193,16 +193,29 @@ private:
 class TimerHelper
 {
 public:
-	TimerHelper(char const* _id, unsigned _msReportWhenGreater = 0): m_id(_id), m_ms(_msReportWhenGreater) {}
+	TimerHelper(std::string const& _id, unsigned _msReportWhenGreater = 0): m_t(std::chrono::high_resolution_clock::now()), m_id(_id), m_ms(_msReportWhenGreater) {}
 	~TimerHelper();
 
 private:
-	boost::timer m_t;
-	char const* m_id;
+	std::chrono::high_resolution_clock::time_point m_t;
+	std::string m_id;
 	unsigned m_ms;
 };
 
-#define DEV_TIMED(S) for (::std::pair<::dev::TimerHelper, bool> __eth_t(#S, true); __eth_t.second; __eth_t.second = false)
+class Timer
+{
+public:
+	Timer() { restart(); }
+
+	std::chrono::high_resolution_clock::duration duration() const { return std::chrono::high_resolution_clock::now() - m_t; }
+	double elapsed() const { return std::chrono::duration_cast<std::chrono::microseconds>(duration()).count() / 1000000.0; }
+	void restart() { m_t = std::chrono::high_resolution_clock::now(); }
+
+private:
+	std::chrono::high_resolution_clock::time_point m_t;
+};
+
+#define DEV_TIMED(S) for (::std::pair<::dev::TimerHelper, bool> __eth_t(S, true); __eth_t.second; __eth_t.second = false)
 #define DEV_TIMED_SCOPE(S) ::dev::TimerHelper __eth_t(S)
 #if WIN32
 #define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__FUNCSIG__)
@@ -210,7 +223,7 @@ private:
 #define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__PRETTY_FUNCTION__)
 #endif
 
-#define DEV_TIMED_ABOVE(S, MS) for (::std::pair<::dev::TimerHelper, bool> __eth_t(::dev::TimerHelper(#S, MS), true); __eth_t.second; __eth_t.second = false)
+#define DEV_TIMED_ABOVE(S, MS) for (::std::pair<::dev::TimerHelper, bool> __eth_t(::dev::TimerHelper(S, MS), true); __eth_t.second; __eth_t.second = false)
 #define DEV_TIMED_SCOPE_ABOVE(S, MS) ::dev::TimerHelper __eth_t(S, MS)
 #if WIN32
 #define DEV_TIMED_FUNCTION_ABOVE(MS) DEV_TIMED_SCOPE_ABOVE(__FUNCSIG__, MS)

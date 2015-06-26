@@ -54,4 +54,3 @@ install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib L
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
 
 add_custom_target(aux_json SOURCES "spec.json")
-

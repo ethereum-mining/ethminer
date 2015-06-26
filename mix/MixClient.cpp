@@ -229,6 +229,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	case TransactionException::BadInstruction:
 	case TransactionException::InvalidSignature:
 	case TransactionException::InvalidNonce:
+	case TransactionException::InvalidFormat:
 	case TransactionException::BadRLP:
 		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Internal execution error"));
 	}

@@ -585,7 +585,7 @@ template<typename Trie> void perfTestTrie(char const* _name)
 		d.init();
 		cnote << "TriePerf " << _name << p;
 		std::vector<h256> keys(1000);
-		boost::timer t;
+		Timer t;
 		size_t ki = 0;
 		for (size_t i = 0; i < p; ++i)
 		{

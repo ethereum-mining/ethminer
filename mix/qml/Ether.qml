@@ -54,6 +54,7 @@ RowLayout {
 	{
 		id: units
 		visible: displayUnitSelection;
+		implicitWidth: 145
 		onCurrentTextChanged:
 		{
 			if (value)

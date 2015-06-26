@@ -139,7 +139,7 @@ PopulationStatistics State::populateFromChain(BlockChain const& _bc, h256 const&
 
 		// 2. Enact the block's transactions onto this state.
 		m_ourAddress = bi.coinbaseAddress;
-		boost::timer t;
+		Timer t;
 		auto vb = BlockChain::verifyBlock(b);
 		ret.verify = t.elapsed();
 		t.restart();
@@ -401,7 +401,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi, Impor
 u256 State::enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir)
 {
 #if ETH_TIMED_ENACTMENTS
-	boost::timer t;
+	Timer t;
 	double populateVerify;
 	double populateGrand;
 	double syncReset;
@@ -507,7 +507,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 				{
 					if (i.second.gasPrice() >= _gp.ask(*this))
 					{
-	//					boost::timer t;
+	//					Timer t;
 						if (lh.empty())
 							lh = _bc.lastHashes();
 						execute(lh, i.second);
@@ -531,8 +531,20 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 					if (req > got)
 					{
 						// too old
-						cnote << i.first << "Dropping old transaction (nonce too low)";
-						_tq.drop(i.first);
+						for (Transaction const& t: m_transactions)
+							if (t.from() == i.second.from())
+							{
+								if (t.nonce() < i.second.nonce())
+								{
+									cnote << i.first << "Dropping old transaction (nonce too low)";
+									_tq.drop(i.first);
+								}
+								else if (t.nonce() == i.second.nonce() && t.gasPrice() <= i.second.gasPrice())
+								{
+									cnote << i.first << "Dropping old transaction (gas price lower)";
+									_tq.drop(i.first);
+								}
+							}
 					}
 					else if (got > req + _tq.waiting(i.second.sender()))
 					{
@@ -634,7 +646,7 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 //	cnote << m_state;
 
 	LastHashes lh;
-	DEV_TIMED_ABOVE(lastHashes, 500)
+	DEV_TIMED_ABOVE("lastHashes", 500)
 		lh = _bc.lastHashes((unsigned)m_previousBlock.number);
 
 	RLP rlp(_block.block);
@@ -643,7 +655,7 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
-	DEV_TIMED_ABOVE(txEcec, 500)
+	DEV_TIMED_ABOVE("txExec", 500)
 		for (auto const& tr: _block.transactions)
 		{
 			try
@@ -664,7 +676,7 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 		}
 
 	h256 receiptsRoot;
-	DEV_TIMED_ABOVE(receiptsRoot, 500)
+	DEV_TIMED_ABOVE("receiptsRoot", 500)
 		receiptsRoot = orderedTrieRoot(receipts);
 
 	if (receiptsRoot != m_currentBlock.receiptsRoot)
@@ -698,12 +710,12 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 
 	vector<BlockInfo> rewarded;
 	h256Hash excluded;
-	DEV_TIMED_ABOVE(allKin, 500)
+	DEV_TIMED_ABOVE("allKin", 500)
 		excluded = _bc.allKinFrom(m_currentBlock.parentHash, 6);
 	excluded.insert(m_currentBlock.hash());
 
 	unsigned ii = 0;
-	DEV_TIMED_ABOVE(uncleCheck, 500)
+	DEV_TIMED_ABOVE("uncleCheck", 500)
 		for (auto const& i: rlp[2])
 		{
 			try
@@ -752,11 +764,11 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 			}
 		}
 
-	DEV_TIMED_ABOVE(applyRewards, 500)
+	DEV_TIMED_ABOVE("applyRewards", 500)
 		applyRewards(rewarded);
 
 	// Commit all cached state changes to the state trie.
-	DEV_TIMED_ABOVE(commit, 500)
+	DEV_TIMED_ABOVE("commit", 500)
 		commit();
 
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
