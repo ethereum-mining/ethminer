@@ -20,8 +20,7 @@
  */
 
 #include <thread>
-#include <leveldb/db.h>
-#include <leveldb/write_batch.h>
+#include <libdevcore/db.h>
 #include <libdevcore/Common.h>
 #include "OverlayDB.h"
 using namespace std;

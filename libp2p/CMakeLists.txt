@@ -14,7 +14,7 @@ aux_source_directory(. SRC_LIST)
 include_directories(BEFORE ..)
 # we may not use it in libp2p, but one of our dependecies is including leveldb in header file
 # and windows is failing to build without that
-include_directories(${LEVELDB_INCLUDE_DIRS})
+include_directories(${DB_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 
 if (MINIUPNPC_FOUND)

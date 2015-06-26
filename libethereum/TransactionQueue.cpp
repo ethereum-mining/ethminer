@@ -29,6 +29,7 @@ using namespace dev;
 using namespace dev::eth;
 
 const char* TransactionQueueChannel::name() { return EthCyan "┉┅▶"; }
+const char* TransactionQueueTraceChannel::name() { return EthCyan " ┅▶"; }
 
 ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallback const& _cb, IfDropped _ik)
 {
@@ -38,20 +39,22 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallb
 	Transaction t;
 	ImportResult ir;
 	{
-	UpgradableGuard l(m_lock);
+		UpgradableGuard l(m_lock);
 
-	ir = check_WITH_LOCK(h, _ik);
-	if (ir != ImportResult::Success)
-		return ir;
+		ir = check_WITH_LOCK(h, _ik);
+		if (ir != ImportResult::Success)
+			return ir;
 
-	try {
-		t = Transaction(_transactionRLP, CheckTransaction::Everything);
-		UpgradeGuard ul(l);
-		ir = manageImport_WITH_LOCK(h, t, _cb);
-	}
-	catch (...) {
-		return ImportResult::Malformed;
-	}
+		try
+		{
+			t = Transaction(_transactionRLP, CheckTransaction::Everything);
+			UpgradeGuard ul(l);
+			ir = manageImport_WITH_LOCK(h, t, _cb);
+		}
+		catch (...)
+		{
+			return ImportResult::Malformed;
+		}
 	}
 //	cdebug << "import-END: Nonce of" << t.sender() << "now" << maxNonce(t.sender());
 	return ir;
@@ -115,7 +118,7 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 		m_known.insert(_h);
 		if (_cb)
 			m_callbacks[_h] = _cb;
-		ctxq << "Queued vaguely legit-looking transaction" << _h;
+		clog(TransactionQueueTraceChannel) << "Queued vaguely legit-looking transaction" << _h;
 		m_onReady();
 	}
 	catch (Exception const& _e)

@@ -163,14 +163,30 @@ void Compiler::appendConstructor(FunctionDefinition const& _constructor)
 {
 	CompilerContext::LocationSetter locationSetter(m_context, _constructor);
 	// copy constructor arguments from code to memory and then to stack, they are supplied after the actual program
-	unsigned argumentSize = 0;
-	for (ASTPointer<VariableDeclaration> const& var: _constructor.getParameters())
-		argumentSize += var->getType()->getCalldataEncodedSize();
-
-	if (argumentSize > 0)
+	if (!_constructor.getParameters().empty())
 	{
+		unsigned argumentSize = 0;
+		for (ASTPointer<VariableDeclaration> const& var: _constructor.getParameters())
+			if (var->getType()->isDynamicallySized())
+			{
+				argumentSize = 0;
+				break;
+			}
+			else
+				argumentSize += var->getType()->getCalldataEncodedSize();
+
 		CompilerUtils(m_context).fetchFreeMemoryPointer();
-		m_context << u256(argumentSize) << eth::Instruction::DUP1;
+		if (argumentSize == 0)
+		{
+			// argument size is dynamic, use CODESIZE to determine it
+			m_context.appendProgramSize(); // program itself
+			// CODESIZE is program plus manually added arguments
+			m_context << eth::Instruction::CODESIZE << eth::Instruction::SUB;
+		}
+		else
+			m_context << u256(argumentSize);
+		// stack: <memptr> <argument size>
+		m_context << eth::Instruction::DUP1;
 		m_context.appendProgramSize();
 		m_context << eth::Instruction::DUP4 << eth::Instruction::CODECOPY;
 		m_context << eth::Instruction::ADD;
@@ -265,8 +281,9 @@ void Compiler::appendCalldataUnpacker(
 			{
 				solAssert(arrayType.location() == DataLocation::Memory, "");
 				// compute data pointer
+				m_context << eth::Instruction::DUP1 << eth::Instruction::MLOAD;
 				//@todo once we support nested arrays, this offset needs to be dynamic.
-				m_context << eth::Instruction::DUP1 << _startOffset << eth::Instruction::ADD;
+				m_context << _startOffset << eth::Instruction::ADD;
 				m_context << eth::Instruction::SWAP1 << u256(0x20) << eth::Instruction::ADD;
 			}
 			else
@@ -375,9 +392,9 @@ bool Compiler::visit(FunctionDefinition const& _function)
 	}
 
 	for (ASTPointer<VariableDeclaration const> const& variable: _function.getReturnParameters())
-		m_context.addAndInitializeVariable(*variable);
+		appendStackVariableInitialisation(*variable);
 	for (VariableDeclaration const* localVariable: _function.getLocalVariables())
-		m_context.addAndInitializeVariable(*localVariable);
+		appendStackVariableInitialisation(*localVariable);
 
 	if (_function.isConstructor())
 		if (auto c = m_context.getNextConstructor(dynamic_cast<ContractDefinition const&>(*_function.getScope())))
@@ -622,7 +639,7 @@ void Compiler::appendModifierOrFunctionCode()
 							  modifier.getParameters()[i]->getType());
 		}
 		for (VariableDeclaration const* localVariable: modifier.getLocalVariables())
-			m_context.addAndInitializeVariable(*localVariable);
+			appendStackVariableInitialisation(*localVariable);
 
 		unsigned const c_stackSurplus = CompilerUtils::getSizeOnStack(modifier.getParameters()) +
 										CompilerUtils::getSizeOnStack(modifier.getLocalVariables());
@@ -634,6 +651,13 @@ void Compiler::appendModifierOrFunctionCode()
 			m_context << eth::Instruction::POP;
 		m_stackCleanupForReturn -= c_stackSurplus;
 	}
+}
+
+void Compiler::appendStackVariableInitialisation(VariableDeclaration const& _variable)
+{
+	CompilerContext::LocationSetter location(m_context, _variable);
+	m_context.addVariable(_variable);
+	ExpressionCompiler(m_context).appendStackVariableInitialisation(*_variable.getType());
 }
 
 void Compiler::compileExpression(Expression const& _expression, TypePointer const& _targetType)

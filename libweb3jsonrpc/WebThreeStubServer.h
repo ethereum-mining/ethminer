@@ -23,11 +23,7 @@
 
 #pragma once
 
-#pragma warning(push)
-#pragma warning(disable: 4100 4267)
-#include <leveldb/db.h>
-#pragma warning(pop)
-
+#include <libdevcore/db.h>
 #include "WebThreeStubServerBase.h"
 
 namespace dev
@@ -99,9 +95,9 @@ private:
 	dev::WebThreeDirect& m_web3;
 	dev::eth::KeyManager& m_keyMan;
 	dev::eth::TrivialGasPricer& m_gp;
-	leveldb::ReadOptions m_readOptions;
-	leveldb::WriteOptions m_writeOptions;
-	leveldb::DB* m_db;
+	ldb::ReadOptions m_readOptions;
+	ldb::WriteOptions m_writeOptions;
+	ldb::DB* m_db;
 
 	std::function<void(Address const&)> m_setMiningBenefactor;
 	std::unordered_map<std::string, SessionPermissions> m_sessions;

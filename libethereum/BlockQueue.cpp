@@ -36,6 +36,7 @@ const char* BlockQueueChannel::name() { return EthOrange "[]>"; }
 #else
 const char* BlockQueueChannel::name() { return EthOrange "▣┅▶"; }
 #endif
+const char* BlockQueueTraceChannel::name() { return EthOrange "▣ ▶"; }
 
 size_t const c_maxKnownCount = 100000;
 size_t const c_maxKnownSize = 128 * 1024 * 1024;
@@ -183,14 +184,14 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 	// Check if we already know this block.
 	h256 h = BlockInfo::headerHash(_block);
 
-	cblockq << "Queuing block" << h << "for import...";
+	clog(BlockQueueTraceChannel) << "Queuing block" << h << "for import...";
 
 	UpgradableGuard l(m_lock);
 
 	if (m_readySet.count(h) || m_drainingSet.count(h) || m_unknownSet.count(h) || m_knownBad.count(h))
 	{
 		// Already know about this one.
-		cblockq << "Already known.";
+		clog(BlockQueueTraceChannel) << "Already known.";
 		return ImportResult::AlreadyKnown;
 	}
 
@@ -228,7 +229,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		time_t bit = (unsigned)bi.timestamp;
 		if (strftime(buf, 24, "%X", localtime(&bit)) == 0)
 			buf[0] = '\0'; // empty if case strftime fails
-		cblockq << "OK - queued for future [" << bi.timestamp << "vs" << time(0) << "] - will wait until" << buf;
+		clog(BlockQueueTraceChannel) << "OK - queued for future [" << bi.timestamp << "vs" << time(0) << "] - will wait until" << buf;
 		m_unknownSize += _block.size();
 		m_unknownCount++;
 		m_difficulty += bi.difficulty;
@@ -248,7 +249,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		else if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash))
 		{
 			// We don't know the parent (yet) - queue it up for later. It'll get resent to us if we find out about its ancestry later on.
-			cblockq << "OK - queued as unknown parent:" << bi.parentHash;
+			clog(BlockQueueTraceChannel) << "OK - queued as unknown parent:" << bi.parentHash;
 			m_unknown.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
 			m_unknownSet.insert(h);
 			m_unknownSize += _block.size();
@@ -260,7 +261,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		else
 		{
 			// If valid, append to blocks.
-			cblockq << "OK - ready for chain insertion.";
+			clog(BlockQueueTraceChannel) << "OK - ready for chain insertion.";
 			DEV_GUARDED(m_verification)
 				m_unverified.push_back(UnverifiedBlock { h, bi.parentHash, _block.toBytes() });
 			m_moreToVerify.notify_one();

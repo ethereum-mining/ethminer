@@ -542,6 +542,7 @@ public:
 	virtual bool isImplicitlyConvertibleTo(const Type& _convertTo) const override;
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual bool operator==(Type const& _other) const override;
+	virtual unsigned getCalldataEncodedSize(bool _padded) const override;
 	virtual u256 getStorageSize() const override;
 	virtual bool canLiveOutsideStorage() const override;
 	virtual unsigned getSizeOnStack() const override { return 2; }
@@ -669,17 +670,19 @@ public:
 		strings _returnParameterNames = strings(),
 		Location _location = Location::Internal,
 		bool _arbitraryParameters = false,
+		Declaration const* _declaration = nullptr,
 		bool _gasSet = false,
 		bool _valueSet = false
 	):
-		m_parameterTypes (_parameterTypes),
-		m_returnParameterTypes (_returnParameterTypes),
-		m_parameterNames (_parameterNames),
-		m_returnParameterNames (_returnParameterNames),
-		m_location (_location),
-		m_arbitraryParameters (_arbitraryParameters),
-		m_gasSet (_gasSet),
-		m_valueSet (_valueSet)
+		m_parameterTypes(_parameterTypes),
+		m_returnParameterTypes(_returnParameterTypes),
+		m_parameterNames(_parameterNames),
+		m_returnParameterNames(_returnParameterNames),
+		m_location(_location),
+		m_arbitraryParameters(_arbitraryParameters),
+		m_gasSet(_gasSet),
+		m_valueSet(_valueSet),
+		m_declaration(_declaration)
 	{}
 
 	TypePointers const& getParameterTypes() const { return m_parameterTypes; }
@@ -732,6 +735,12 @@ public:
 	/// @returns a copy of this type, where gas or value are set manually. This will never set one
 	/// of the parameters to fals.
 	TypePointer copyAndSetGasOrValue(bool _setGas, bool _setValue) const;
+
+	/// @returns a copy of this function type where all return parameters of dynamic size are
+	/// removed and the location of reference types is changed from CallData to Memory.
+	/// This is needed if external functions are called on other contracts, as they cannot return
+	/// dynamic values.
+	FunctionTypePointer asMemberFunction() const;
 
 private:
 	static TypePointers parseElementaryTypeVector(strings const& _types);

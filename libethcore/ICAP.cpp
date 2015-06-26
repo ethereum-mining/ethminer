@@ -71,7 +71,7 @@ ICAP ICAP::decoded(std::string const& _encoded)
 	std::string data;
 	std::tie(country, data) = fromIBAN(_encoded);
 	if (country != "XE")
-		throw InvalidICAP();
+		BOOST_THROW_EXCEPTION(InvalidICAP());
 	if (data.size() == 30)
 	{
 		ret.m_type = Direct;
@@ -88,10 +88,10 @@ ICAP ICAP::decoded(std::string const& _encoded)
 			ret.m_client = data.substr(7);
 		}
 		else
-			throw InvalidICAP();
+			BOOST_THROW_EXCEPTION(InvalidICAP());
 	}
 	else
-		throw InvalidICAP();
+		BOOST_THROW_EXCEPTION(InvalidICAP());
 
 	return ret;
 }
@@ -101,7 +101,7 @@ std::string ICAP::encoded() const
 	if (m_type == Direct)
 	{
 		if (!!m_direct[0])
-			throw InvalidICAP();
+			BOOST_THROW_EXCEPTION(InvalidICAP());
 		std::string d = toBase36<Address::size>(m_direct);
 		while (d.size() < 30)
 			d = "0" + d;
@@ -118,11 +118,11 @@ std::string ICAP::encoded() const
 			m_institution.size() != 4 ||
 			m_client.size() != 9
 		)
-			throw InvalidICAP();
+			BOOST_THROW_EXCEPTION(InvalidICAP());
 		return iban("XE", m_asset + m_institution + m_client);
 	}
 	else
-		throw InvalidICAP();
+		BOOST_THROW_EXCEPTION(InvalidICAP());
 }
 
 pair<Address, bytes> ICAP::lookup(std::function<bytes(Address, bytes)> const& _call, Address const& _reg) const
@@ -149,9 +149,9 @@ pair<Address, bytes> ICAP::lookup(std::function<bytes(Address, bytes)> const& _c
 		else if (m_institution[0] != 'X')
 			return make_pair(resolve(m_institution + "/" + m_client), bytes());
 		else
-			throw InterfaceNotSupported("ICAP::lookup(), bad institution");
+			BOOST_THROW_EXCEPTION(InterfaceNotSupported("ICAP::lookup(), bad institution"));
 	}
-	throw InterfaceNotSupported("ICAP::lookup(), bad asset");
+	BOOST_THROW_EXCEPTION(InterfaceNotSupported("ICAP::lookup(), bad asset"));
 }
 
 }
