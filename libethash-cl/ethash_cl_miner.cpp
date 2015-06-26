@@ -454,6 +454,8 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		uint64_t start_nonce = uniform_int_distribution<uint64_t>()(engine);
 		for (;; start_nonce += m_batchSize)
 		{
+			chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
+
 			// supply output buffer to kernel
 			m_searchKernel.setArg(0, m_searchBuffer[buf]);
 			if (m_dagChunksCount == 1)
@@ -462,7 +464,6 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				m_searchKernel.setArg(6, start_nonce);
 
 			// execute it!
-			chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_batchSize, m_workgroupSize);
 
 			pending.push({ start_nonce, buf });
