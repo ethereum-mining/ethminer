@@ -177,6 +177,8 @@ namespace crypto
 {
 struct InvalidState: public dev::Exception {};
 
+void secp256k1Init();
+
 /// Key derivation
 h256 kdf(Secret const& _priv, h256 const& _hash);
 
