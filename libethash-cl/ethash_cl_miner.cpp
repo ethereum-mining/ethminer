@@ -416,6 +416,7 @@ bool ethash_cl_miner::init(
 
 void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, unsigned _msPerBatch)
 {
+	(void)_msPerBatch;
 	try
 	{
 		struct pending_batch
