@@ -50,6 +50,7 @@ enum class TransactionException
 	None = 0,
 	Unknown,
 	BadRLP,
+	InvalidFormat,
 	OutOfGasIntrinsic,		///< Too little gas to pay for the base transaction cost.
 	InvalidSignature,
 	InvalidNonce,
