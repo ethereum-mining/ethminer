@@ -1,4 +1,5 @@
 import QtQuick 2.0
+import QtQuick.Controls 1.1
 
 Item
 {
@@ -11,25 +12,16 @@ Item
 		id: dbgStyle
 	}
 
-	Rectangle {
-		anchors.fill: parent
-		radius: 4
-		TextInput {
-			anchors.verticalCenter: parent.verticalCenter
-			id: textinput
-			font.family: dbgStyle.general.basicFont
-			clip: true
-			selectByMouse: true
-			text: value
+	TextField {
+		anchors.verticalCenter: parent.verticalCenter
+		id: textinput
+		selectByMouse: true
+		text: value
+		MouseArea {
+			id: mouseArea
 			anchors.fill: parent
-			font.pointSize: dbgStyle.general.basicFontSize
-			color: dbgStyle.general.basicColor
-			MouseArea {
-				id: mouseArea
-				anchors.fill: parent
-				hoverEnabled: true
-				onClicked: textinput.forceActiveFocus()
-			}
+			hoverEnabled: true
+			onClicked: textinput.forceActiveFocus()
 		}
 	}
 }

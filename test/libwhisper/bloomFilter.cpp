@@ -27,35 +27,39 @@ using namespace std;
 using namespace dev;
 using namespace dev::shh;
 
-void testAddNonExisting(TopicBloomFilter& _f, AbridgedTopic const& _h)
+using TopicBloomFilterShort = TopicBloomFilterBase<4>;
+using TopicBloomFilterLong = TopicBloomFilterBase<8>;
+using TopicBloomFilterTest = TopicBloomFilterLong;
+
+void testAddNonExisting(TopicBloomFilterShort& _f, AbridgedTopic const& _h)
 {
 	BOOST_REQUIRE(!_f.containsRaw(_h));
 	_f.addRaw(_h);
 	BOOST_REQUIRE(_f.containsRaw(_h));
 }
 
-void testRemoveExisting(TopicBloomFilter& _f, AbridgedTopic const& _h)
+void testRemoveExisting(TopicBloomFilterShort& _f, AbridgedTopic const& _h)
 {
 	BOOST_REQUIRE(_f.containsRaw(_h));
 	_f.removeRaw(_h);
 	BOOST_REQUIRE(!_f.containsRaw(_h));
 }
 
-void testAddNonExistingBloom(TopicBloomFilter& _f, AbridgedTopic const& _h)
+void testAddNonExistingBloom(TopicBloomFilterShort& _f, AbridgedTopic const& _h)
 {
 	BOOST_REQUIRE(!_f.containsBloom(_h));
 	_f.addBloom(_h);
 	BOOST_REQUIRE(_f.containsBloom(_h));
 }
 
-void testRemoveExistingBloom(TopicBloomFilter& _f, AbridgedTopic const& _h)
+void testRemoveExistingBloom(TopicBloomFilterShort& _f, AbridgedTopic const& _h)
 {
 	BOOST_REQUIRE(_f.containsBloom(_h));
 	_f.removeBloom(_h);
 	BOOST_REQUIRE(!_f.containsBloom(_h));
 }
 
-int calculateExpected(TopicBloomFilter const& f, int const n)
+int calculateExpected(TopicBloomFilterTest const& f, int const n)
 {
 	int const m = f.size * 8; // number of bits in the bloom
 	int const k = f.BitsPerBloom; // number of hash functions (e.g. bits set to 1 in every bloom)
@@ -76,7 +80,7 @@ int calculateExpected(TopicBloomFilter const& f, int const n)
 	return static_cast<int>(kBitsSet * 100 + 0.5); // in percents, rounded up
 }
 
-void testFalsePositiveRate(TopicBloomFilter const& f, int const inserted, Topic& x)
+void testFalsePositiveRate(TopicBloomFilterTest const& f, int const inserted, Topic& x)
 {
 	int const c_sampleSize = 1000;
 	int falsePositive = 0;
@@ -104,8 +108,8 @@ BOOST_AUTO_TEST_CASE(falsePositiveRate)
 	VerbosityHolder setTemporaryLevel(10);
 	cnote << "Testing Bloom Filter False Positive Rate...";
 
-	TopicBloomFilter f;
-	Topic x(0xABCDEF); // deterministic pseudorandom value
+	TopicBloomFilterTest f;
+	Topic x(0xC0DEFEED); // deterministic pseudorandom value
 
 	for (int i = 1; i < 21; ++i)
 	{
@@ -120,7 +124,7 @@ BOOST_AUTO_TEST_CASE(bloomFilterRandom)
 	VerbosityHolder setTemporaryLevel(10);
 	cnote << "Testing Bloom Filter matching...";
 
-	TopicBloomFilter f;
+	TopicBloomFilterShort f;
 	vector<AbridgedTopic> vec;
 	Topic x(0xDEADBEEF);
 	int const c_rounds = 4;
@@ -146,7 +150,7 @@ BOOST_AUTO_TEST_CASE(bloomFilterRaw)
 	VerbosityHolder setTemporaryLevel(10);
 	cnote << "Testing Raw Bloom matching...";
 
-	TopicBloomFilter f;
+	TopicBloomFilterShort f;
 
 	AbridgedTopic b00000001(0x01);
 	AbridgedTopic b00010000(0x10);

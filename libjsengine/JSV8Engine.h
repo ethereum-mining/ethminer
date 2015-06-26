@@ -22,7 +22,10 @@
 
 #pragma once
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
 #include <v8.h>
+#pragma clang diagnostic pop
 #include "JSEngine.h"
 
 namespace dev
