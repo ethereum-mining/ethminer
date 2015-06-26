@@ -66,12 +66,13 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 		m_expiryQueue.insert(make_pair(_m.expiry(), h));
 	}
 
-//	if (_p)
+	DEV_GUARDED(m_filterLock)
 	{
-		Guard l(m_filterLock);
 		for (auto const& f: m_filters)
 			if (f.second.filter.matches(_m))
-				noteChanged(h, f.first);
+				for (auto& i: m_watches)
+					if (i.second.id == f.first)
+						i.second.changes.push_back(h);
 	}
 
 	// TODO p2p: capability-based rating
@@ -83,17 +84,6 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 		else
 			w->noteNewMessage(h, _m);
 	}
-}
-
-void WhisperHost::noteChanged(h256 _messageHash, h256 _filter)
-{
-	Guard l(m_filterLock);
-	for (auto& i: m_watches)
-		if (i.second.id == _filter)
-		{
-			cwatshh << "!!!" << i.first << i.second.id;
-			i.second.changes.push_back(_messageHash);
-		}
 }
 
 unsigned WhisperHost::installWatch(shh::Topics const& _t)

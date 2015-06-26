@@ -66,15 +66,15 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 		noteAdvertiseTopicsOfInterest();
 		break;
 	}
-	case TopicFilterPacket:
-	{
-		setBloom((FixedHash<TopicBloomFilterSize>)_r[0]);
-		break;
-	}
 	case MessagesPacket:
 	{
 		for (auto i: _r)
 			host()->inject(Envelope(i), this);
+		break;
+	}
+	case TopicFilterPacket:
+	{
+		setBloom((FixedHash<TopicBloomFilterSize>)_r[0]);
 		break;
 	}
 	default:
