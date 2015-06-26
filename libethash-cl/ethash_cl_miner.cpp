@@ -454,7 +454,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		uint64_t start_nonce = uniform_int_distribution<uint64_t>()(engine);
 		for (;; start_nonce += m_batchSize)
 		{
-			chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
+//			chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 
 			// supply output buffer to kernel
 			m_searchKernel.setArg(0, m_searchBuffer[buf]);
@@ -495,7 +495,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				pending.pop();
 			}
 
-			chrono::high_resolution_clock::duration d = chrono::high_resolution_clock::now() - t;
+/*			chrono::high_resolution_clock::duration d = chrono::high_resolution_clock::now() - t;
 			if (d > chrono::milliseconds(_msPerBatch * 10 / 9))
 			{
 				cerr << "Batch of" << m_batchSize << "took" << chrono::duration_cast<chrono::milliseconds>(d).count() << "ms, >>" << _msPerBatch << "ms.";
@@ -507,7 +507,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				cerr << "Batch of" << m_batchSize << "took" << chrono::duration_cast<chrono::milliseconds>(d).count() << "ms, <<" << _msPerBatch << "ms.";
 				m_batchSize = m_batchSize * 10 / 9;
 				cerr << "New batch size" << m_batchSize;
-			}
+			}*/
 		}
 
 		// not safe to return until this is ready
