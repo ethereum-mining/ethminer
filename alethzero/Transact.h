@@ -45,7 +45,7 @@ public:
 	void setEnvironment(dev::AddressHash const& _accounts, dev::eth::Client* _eth, NatSpecFace* _natSpecDB);
 
 private slots:
-	void on_from_currentIndexChanged(int) { rejigData(); rejigData(); }
+	void on_from_currentIndexChanged(int) { updateNonce(); rejigData(); }
 	void on_destination_currentTextChanged(QString);
 	void on_value_valueChanged(int) { updateFee(); rejigData(); }
 	void on_gas_valueChanged(int) { updateFee(); rejigData(); }
@@ -61,6 +61,7 @@ private slots:
 private:
 	dev::eth::Client* ethereum() const { return m_ethereum; }
 	void rejigData();
+	void updateNonce();
 
 	dev::Address fromAccount();
 	void updateDestination();

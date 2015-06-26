@@ -19,6 +19,9 @@
 
 class ethash_cl_miner
 {
+private:
+	enum { c_maxSearchResults = 63, c_bufferCount = 2, c_hashBatchSize = 1024, c_searchBatchSize = 1024 * 16 };
+
 public:
 	struct search_hook
 	{
@@ -29,7 +32,6 @@ public:
 		virtual bool searched(uint64_t start_nonce, uint32_t count) = 0;
 	};
 
-public:
 	ethash_cl_miner();
 	~ethash_cl_miner();
 
@@ -50,33 +52,32 @@ public:
 	bool init(
 		uint8_t const* _dag,
 		uint64_t _dagSize,
-		unsigned workgroup_size = 64,
+		unsigned _workgroupSize = 64,
 		unsigned _platformId = 0,
 		unsigned _deviceId = 0
 	);
 	void finish();
-	void search(uint8_t const* header, uint64_t target, search_hook& hook);
+	void search(uint8_t const* _header, uint64_t _target, search_hook& _hook, unsigned _msPerBatch = 100);
 
-	void hash_chunk(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count);
-	void search_chunk(uint8_t const* header, uint64_t target, search_hook& hook);
+	void hash_chunk(uint8_t* _ret, uint8_t const* _header, uint64_t _nonce, unsigned _count);
+	void search_chunk(uint8_t const*_header, uint64_t _target, search_hook& _hook);
 
 private:
 
 	static std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId);
-	
-	enum { c_max_search_results = 63, c_num_buffers = 2, c_hash_batch_size = 1024, c_search_batch_size = 1024*256 };
 
 	cl::Context m_context;
 	cl::CommandQueue m_queue;
-	cl::Kernel m_hash_kernel;
-	cl::Kernel m_search_kernel;
-	unsigned int m_dagChunksNum;
+	cl::Kernel m_hashKernel;
+	cl::Kernel m_searchKernel;
+	unsigned int m_dagChunksCount;
 	std::vector<cl::Buffer> m_dagChunks;
 	cl::Buffer m_header;
-	cl::Buffer m_hash_buf[c_num_buffers];
-	cl::Buffer m_search_buf[c_num_buffers];
-	unsigned m_workgroup_size;
-	bool m_opencl_1_1;
+	cl::Buffer m_hashBuffer[c_bufferCount];
+	cl::Buffer m_searchBuffer[c_bufferCount];
+	unsigned m_workgroupSize;
+	unsigned m_batchSize = c_searchBatchSize;
+	bool m_openclOnePointOne;
 
 	/// Allow CPU to appear as an OpenCL device or not. Default is false
 	static bool s_allowCPU;

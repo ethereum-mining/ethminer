@@ -88,7 +88,7 @@ int main()
 		data.push_back(rlp(i));
 
 	h256 ret;
-	DEV_TIMED(triedb)
+	DEV_TIMED("triedb")
 	{
 		MemoryDB mdb;
 		GenericTrieDB<MemoryDB> t(&mdb);
@@ -99,7 +99,7 @@ int main()
 		ret = t.root();
 	}
 	cdebug << ret;
-	DEV_TIMED(hash256)
+	DEV_TIMED("hash256")
 		ret = orderedTrieRoot(data);
 	cdebug << ret;
 }

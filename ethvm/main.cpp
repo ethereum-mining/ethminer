@@ -165,7 +165,7 @@ int main(int argc, char** argv)
 
 	executive.initialize(t);
 	executive.create(sender, value, gasPrice, gas, &data, origin);
-	boost::timer timer;
+	Timer timer;
 	executive.go(onOp);
 	double execTime = timer.elapsed();
 	executive.finalize();
