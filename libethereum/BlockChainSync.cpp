@@ -534,7 +534,7 @@ bool PV60Sync::shouldGrabBlocks(std::shared_ptr<EthereumPeer> _peer) const
 
 void PV60Sync::attemptSync(std::shared_ptr<EthereumPeer> _peer)
 {
-	if (m_state != SyncState::Idle)
+	if (m_state != SyncState::Idle || _peer->m_asking != Asking::Nothing)
 	{
 		clog(NetAllDetail) << "Can't sync with this peer - outstanding asks.";
 		return;
