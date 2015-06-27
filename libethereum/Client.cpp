@@ -105,7 +105,8 @@ void Client::onBadBlock(Exception& _ex) const
 	bytes const* block = boost::get_error_info<errinfo_block>(_ex);
 	if (!block)
 	{
-		cwarn << "ODD: onBadBlock called but exception has no block in it.";
+		cwarn << "ODD: onBadBlock called but exception (" << _ex.what() << ") has no block in it.";
+		cwarn << boost::diagnostic_information(_ex, true);
 		return;
 	}
 
