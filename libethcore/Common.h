@@ -112,6 +112,7 @@ enum class ImportResult
 	AlreadyInChain,
 	AlreadyKnown,
 	Malformed,
+	OverbidGasPrice,
 	BadChain
 };
 
