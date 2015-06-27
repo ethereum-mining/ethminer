@@ -96,6 +96,15 @@ ldb::Slice dev::eth::toSlice(h256 const& _h, unsigned _sub)
 #endif
 }
 
+namespace dev
+{
+class WriteBatchNoter: public ldb::WriteBatch::Handler
+{
+	virtual void Put(ldb::Slice const& _key, ldb::Slice const& _value) { cout << "Put" << toHex(bytesConstRef(_key)) << "=>" << toHex(bytesConstRef(_value)); }
+	virtual void Delete(ldb::Slice const& _key) { cout << "Delete" << toHex(bytesConstRef(_key)); }
+};
+}
+
 #if ETH_DEBUG&&0
 static const chrono::system_clock::duration c_collectionDuration = chrono::seconds(15);
 static const unsigned c_collectionQueueSize = 2;
@@ -638,8 +647,25 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 		clog(BlockChainChat) << "   Imported but not best (oTD:" << details(last).totalDifficulty << " > TD:" << td << ")";
 	}
 
-	m_blocksDB->Write(m_writeOptions, &blocksBatch);
-	m_extrasDB->Write(m_writeOptions, &extrasBatch);
+	ldb::Status o = m_blocksDB->Write(m_writeOptions, &blocksBatch);
+	if (!o.ok())
+	{
+		cwarn << "Error writing to blockchain database: " << o.ToString();
+		WriteBatchNoter n;
+		blocksBatch.Iterate(&n);
+		cwarn << "Fail writing to blockchain database. Bombing out.";
+		exit(-1);
+	}
+	
+	o = m_extrasDB->Write(m_writeOptions, &extrasBatch);
+	if (!o.ok())
+	{
+		cwarn << "Error writing to extras database: " << o.ToString();
+		WriteBatchNoter n;
+		extrasBatch.Iterate(&n);
+		cwarn << "Fail writing to extras database. Bombing out.";
+		exit(-1);
+	}
 
 #if ETH_PARANOIA || !ETH_TRUE
 	if (isKnown(_block.info.hash()) && !details(_block.info.hash()))
@@ -667,7 +693,14 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 		{
 			m_lastBlockHash = newLastBlockHash;
 			m_lastBlockNumber = newLastBlockNumber;
-			m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&m_lastBlockHash, 32));
+			o = m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&m_lastBlockHash, 32));
+			if (!o.ok())
+			{
+				cwarn << "Error writing to extras database: " << o.ToString();
+				cout << "Put" << toHex(bytesConstRef(ldb::Slice("best"))) << "=>" << toHex(bytesConstRef(ldb::Slice((char const*)&m_lastBlockHash, 32)));
+				cwarn << "Fail writing to extras database. Bombing out.";
+				exit(-1);
+			}
 		}
 
 #if ETH_PARANOIA || !ETH_TRUE
