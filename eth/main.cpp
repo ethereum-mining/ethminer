@@ -820,7 +820,7 @@ int main(int argc, char** argv)
 
 		while (web3.ethereum()->blockQueue().items().first + web3.ethereum()->blockQueue().items().second > 0)
 		{
-			sleep(1);
+			this_thread::sleep_for(chrono::seconds(1));
 			web3.ethereum()->syncQueue(100000);
 		}
 		double e = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t).count() / 1000.0;
