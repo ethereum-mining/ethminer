@@ -649,9 +649,8 @@ void PV60Sync::noteDoneBlocks(std::shared_ptr<EthereumPeer> _peer, bool _clemenc
 		}
 		resetSync();
 		downloadMan().reset();
-		transition(_peer, SyncState::Idle);
-	}
 	_peer->m_sub.doneFetch();
+	}
 }
 
 void PV60Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
