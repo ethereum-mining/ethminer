@@ -212,11 +212,12 @@ bool Session::interpret(PacketType _t, RLP const& _r)
 	}
 	case PongPacket:
 		DEV_GUARDED(x_info)
-		m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
-		clog(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
+		{
+			m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
+			clog(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
+		}
 		break;
 	case GetPeersPacket:
-		break;
 	case PeersPacket:
 		break;
 	default:
