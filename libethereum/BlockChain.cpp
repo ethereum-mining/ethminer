@@ -400,7 +400,6 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 //		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(ex);
 		ex << errinfo_phase(2);
 		ex << errinfo_now(time(0));
-		ex << errinfo_block(_block);
 		throw;
 	}
 #endif
@@ -1127,6 +1126,8 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 			ex << errinfo_transactionIndex(i);
 			ex << errinfo_transaction(d.toBytes());
 			ex << errinfo_block(_block);
+			if (_onBad)
+				_onBad(ex);
 			throw;
 		}
 		++i;
