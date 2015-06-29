@@ -301,6 +301,11 @@ bool ethash_cl_miner::init(
 
 		// use requested workgroup size, but we require multiple of 8
 		m_workgroupSize = ((_workgroupSize + 7) / 8) * 8;
+		// make sure that global work size is evenly divisible by the local workgroup size
+		if (m_globalWorkSize % m_workgroupSize != 0)
+			m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
+		// remember the device's address bits
+		m_deviceBits = device.getInfo<CL_DEVICE_ADDRESS_BITS>();
 
 		// patch source code
 		// note: ETHASH_CL_MINER_KERNEL is simply ethash_cl_miner_kernel.cl compiled
@@ -454,7 +459,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		unsigned buf = 0;
 		random_device engine;
 		uint64_t start_nonce = uniform_int_distribution<uint64_t>()(engine);
-		for (;; start_nonce += m_batchSize)
+		for (;; start_nonce += m_globalWorkSize)
 		{
 			chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
 			// supply output buffer to kernel
@@ -465,7 +470,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				m_searchKernel.setArg(6, start_nonce);
 
 			// execute it!
-			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_batchSize, m_workgroupSize);
+			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
 
 			pending.push({ start_nonce, buf });
 			buf = (buf + 1) % c_bufferCount;
@@ -485,7 +490,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 
 				m_queue.enqueueUnmapMemObject(m_searchBuffer[batch.buf], results);
 				bool exit = num_found && hook.found(nonces, num_found);
-				exit |= hook.searched(batch.start_nonce, m_batchSize); // always report searched before exit
+				exit |= hook.searched(batch.start_nonce, m_globalWorkSize); // always report searched before exit
 				if (exit)
 					break;
 
@@ -496,21 +501,24 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				pending.pop();
 			}
 
-			// adjust batch size depending on last search time
+			// adjust global work size depending on last search time
+			// Global work size must be:
+			//  - less than or equal to 2 ^ DEVICE_BITS - 1
+			//  - divisible by lobal work size (workgroup size)
 			auto d = chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t);
-			if (d != chrono::milliseconds(0)) // if duration is zero, we did not get in the actual search so adjust nothing
+			if (d != chrono::milliseconds(0)) // if duration is zero, we did not get in the actual searh/or search not finished
 			{
 				if (d > chrono::milliseconds(_msPerBatch * 10 / 9))
 				{
-					// cerr << "Batch of " << m_batchSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, >> " << _msPerBatch << " ms." << endl;
-					m_batchSize = max<unsigned>(128, m_batchSize * 9 / 10);
-					// cerr << "New batch size" << m_batchSize << endl;
+					// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, >> " << _msPerBatch << " ms." << endl;
+					m_globalWorkSize = max<unsigned>(128, m_globalWorkSize + m_workgroupSize);
+					// cerr << "New global work size" << m_globalWorkSize << endl;
 				}
 				else if (d < chrono::milliseconds(_msPerBatch * 9 / 10))
 				{
-					// cerr << "Batch of " << m_batchSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, << " << _msPerBatch << " ms." << endl;
-					m_batchSize = m_batchSize * 10 / 9;
-					// cerr << "New batch size" << m_batchSize << endl;
+					// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, << " << _msPerBatch << " ms." << endl;
+					m_globalWorkSize = min<unsigned>(pow(2, m_deviceBits) - 1, m_globalWorkSize - m_workgroupSize);
+					// cerr << "New global work size" << m_globalWorkSize << endl;
 				}
 			}
 		}
