@@ -91,6 +91,7 @@ enum class SyncState
 struct SyncStatus
 {
 	SyncState state = SyncState::Idle;
+	unsigned protocolVersion = 0;
 	unsigned hashesTotal = 0;
 	unsigned hashesReceived = 0;
 	bool hashesEstimated = false;

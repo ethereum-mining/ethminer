@@ -116,7 +116,7 @@ private:
 	virtual void onStarting() override { startWorking(); }
 	virtual void onStopping() override { stopWorking(); }
 
-	BlockChainSync& sync();
+	BlockChainSync* sync();
 
 	BlockChain const& m_chain;
 	TransactionQueue& m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
