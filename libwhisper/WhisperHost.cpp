@@ -94,8 +94,11 @@ unsigned WhisperHost::installWatch(shh::Topics const& _t)
 
 	DEV_GUARDED(m_filterLock)
 	{
-		if (!m_filters.count(h))
+		auto it = m_filters.find(h);
+		if (m_filters.end() == it)
 			m_filters.insert(make_pair(h, f));
+		else
+			it->second.refCount++;
 
 		ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
 		m_watches[ret] = ClientWatch(h);
