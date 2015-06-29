@@ -24,6 +24,7 @@
 #if ETH_PROFILING_GPERF
 #include <gperftools/profiler.h>
 #endif
+#include <algorithm>
 #include <boost/timer.hpp>
 #include <boost/filesystem.hpp>
 #include <test/JsonSpiritHeaders.h>
@@ -289,15 +290,6 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 
 	delete oldExtrasDB;
 	boost::filesystem::remove_all(path + "/details.old");
-}
-
-template <class T, class V>
-bool contains(T const& _t, V const& _v)
-{
-	for (auto const& i: _t)
-		if (i == _v)
-			return true;
-	return false;
 }
 
 LastHashes BlockChain::lastHashes(unsigned _n) const
@@ -950,7 +942,7 @@ void BlockChain::checkConsistency()
 			if (p != h256() && p != m_genesisHash)	// TODO: for some reason the genesis details with the children get squished. not sure why.
 			{
 				auto dp = details(p);
-				if (asserts(contains(dp.children, h)))
+				if (asserts(end(dp.children) != find(begin(dp.children), end(dp.children), h)))
 				{
 					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
 				}
