@@ -77,8 +77,9 @@ private:
 	cl::Buffer m_hashBuffer[c_bufferCount];
 	cl::Buffer m_searchBuffer[c_bufferCount];
 	unsigned m_workgroupSize;
-	unsigned m_batchSize = c_searchBatchSize;
+	unsigned m_globalWorkSize = c_searchBatchSize;
 	bool m_openclOnePointOne;
+	unsigned m_deviceBits;
 
 	/// Allow CPU to appear as an OpenCL device or not. Default is false
 	static bool s_allowCPU;
