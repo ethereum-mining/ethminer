@@ -141,6 +141,7 @@ void EthereumPeer::requestStatus()
 void EthereumPeer::requestHashes(u256 _number, unsigned _count)
 {
 	assert(m_asking == Asking::Nothing);
+	assert(m_protocolVersion == host()->protocolVersion());
 	m_syncHashNumber = _number;
 	m_syncHash = h256();
 	setAsking(Asking::Hashes);
@@ -198,7 +199,7 @@ void EthereumPeer::requestBlocks()
 void EthereumPeer::setAsking(Asking _a)
 {
 	m_asking = _a;
-	m_lastAsk = chrono::system_clock::now();
+	m_lastAsk = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
 
 	auto s = session();
 	if (s)
@@ -211,9 +212,14 @@ void EthereumPeer::setAsking(Asking _a)
 void EthereumPeer::tick()
 {
 	auto s = session();
-	if (s && (chrono::system_clock::now() - m_lastAsk > chrono::seconds(10) && m_asking != Asking::Nothing))
+	time_t  now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
+	if (s && (now - m_lastAsk > 10 && m_asking != Asking::Nothing))
+	{
+		clog(NetWarn) << "timeout: " << (now - m_lastAsk) << " " <<
+		(m_asking == Asking::Nothing ? "nothing" : m_asking == Asking::State ? "state" : m_asking == Asking::Hashes ? "hashes" : m_asking == Asking::Blocks ? "blocks" : "?");
 		// timeout
 		s->disconnect(PingTimeout);
+	}
 }
 
 bool EthereumPeer::isConversing() const
@@ -228,6 +234,7 @@ bool EthereumPeer::isCriticalSyncing() const
 
 bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 {
+	m_lastAsk = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
 	try
 	{
 	switch (_id)
@@ -254,7 +261,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		}
 
 		clog(NetMessageSummary) << "Status:" << m_protocolVersion << "/" << m_networkId << "/" << m_genesisHash << "/" << m_latestBlockNumber << ", TD:" << m_totalDifficulty << "=" << m_latestHash;
-		setAsking(Asking::Nothing);
+		setIdle();
 		host()->onPeerStatus(dynamic_pointer_cast<EthereumPeer>(dynamic_pointer_cast<EthereumPeer>(shared_from_this())));
 		break;
 	}
@@ -311,6 +318,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			clog(NetWarn) << "Peer giving us hashes when we didn't ask for them.";
 			break;
 		}
+		setIdle();
 		h256s hashes(itemCount);
 		for (unsigned i = 0; i < itemCount; ++i)
 			hashes[i] = _r[i].toHash<h256>();
@@ -357,7 +365,10 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		if (m_asking != Asking::Blocks)
 			clog(NetImpolite) << "Peer giving us blocks when we didn't ask for them.";
 		else
+		{
+			setIdle();
 			host()->onPeerBlocks(dynamic_pointer_cast<EthereumPeer>(shared_from_this()), _r);
+		}
 		break;
 	}
 	case NewBlockPacket:
