@@ -320,7 +320,7 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 	Host host2("second", NetworkPreferences("127.0.0.1", 30305, false));
 	host2.setIdealPeerCount(1);
 	auto whost2 = host2.registerCapability(new WhisperHost());
-	whost2->installWatch(BuildTopicMask("test2"));
+	unsigned w2 = whost2->installWatch(BuildTopicMask("test2"));
 
 	host2.start();
 	while (!host2.haveNetwork())
@@ -354,7 +354,7 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 	BOOST_REQUIRE(bf1);
 	BOOST_REQUIRE(!whost1->bloom());
 
-	whost1->installWatch(BuildTopicMask("test1"));
+	unsigned w1 = whost1->installWatch(BuildTopicMask("test1"));
 
 	for (int i = 0; i < 600; ++i)
 	{
@@ -372,6 +372,16 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 	bf1 = whost1->bloom();
 	BOOST_REQUIRE_EQUAL(bf1, bf2);
 	BOOST_REQUIRE(bf1);
+
+	unsigned random = 0xC0FFEE;
+	whost1->uninstallWatch(w1);
+	whost1->uninstallWatch(random);
+	whost1->uninstallWatch(w1);
+	whost1->uninstallWatch(random);
+	whost2->uninstallWatch(random);
+	whost2->uninstallWatch(w2);
+	whost2->uninstallWatch(random);
+	whost2->uninstallWatch(w2);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

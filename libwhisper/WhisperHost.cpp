@@ -100,11 +100,10 @@ unsigned WhisperHost::installWatch(shh::Topics const& _t)
 		else
 			it->second.refCount++;
 
+		m_bloom.addRaw(f.filter.exportBloom());
 		ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
 		m_watches[ret] = ClientWatch(h);
 		cwatshh << "+++" << ret << h;
-
-		m_bloom.addRaw(f.filter.exportBloom());
 	}
 
 	noteAdvertiseTopicsOfInterest();
@@ -141,16 +140,16 @@ void WhisperHost::uninstallWatch(unsigned _i)
 		auto it = m_watches.find(_i);
 		if (it == m_watches.end())
 			return;
+
 		auto id = it->second.id;
 		m_watches.erase(it);
 
 		auto fit = m_filters.find(id);
 		if (fit != m_filters.end())
 		{
+			m_bloom.removeRaw(fit->second.filter.exportBloom());
 			if (!--fit->second.refCount)
 				m_filters.erase(fit);
-
-			m_bloom.removeRaw(fit->second.filter.exportBloom());
 		}
 	}
 
