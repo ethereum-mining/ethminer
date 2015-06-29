@@ -58,7 +58,7 @@ void testRemoveExistingBloom(TopicBloomFilterShort& _f, AbridgedTopic const& _h)
 	BOOST_REQUIRE(!_f.containsBloom(_h));
 }
 
-double calculateExpected(TopicBloomFilterTest const& f, int const n)
+double calculateExpected(TopicBloomFilterTest const& f, int n)
 {
 	int const m = f.size * 8; // number of bits in the bloom
 	int const k = f.BitsPerBloom; // number of hash functions (e.g. bits set to 1 in every bloom)
@@ -79,7 +79,7 @@ double calculateExpected(TopicBloomFilterTest const& f, int const n)
 	return kBitsSet;
 }
 
-double testFalsePositiveRate(TopicBloomFilterTest const& f, int const inserted, Topic& x)
+double testFalsePositiveRate(TopicBloomFilterTest const& f, int inserted, Topic& x)
 {
 	int const c_sampleSize = 1000;
 	int falsePositive = 0;
@@ -114,7 +114,7 @@ BOOST_AUTO_TEST_CASE(falsePositiveRate)
 
 	double expectedRate = 0;
 
-	for (int i = 1; i < 50 && expectedRate < 0.5; ++i)
+	for (int i = 1; i < 50 && isless(expectedRate, 0.5); ++i)
 	{
 		x = sha3(x);
 		f.addBloom(AbridgedTopic(x));
