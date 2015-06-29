@@ -45,6 +45,7 @@
 #pragma warning(push)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-fpermissive"
 #include <boost/version.hpp>
 #if (BOOST_VERSION == 105800)
 	#include "boost_multiprecision_number_compare_bug_workaround.hpp"
