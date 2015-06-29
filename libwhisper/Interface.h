@@ -67,7 +67,6 @@ public:
 
 	virtual Topics const& fullTopics(unsigned _id) const = 0;
 	virtual unsigned installWatch(Topics const& _filter) = 0;
-//	virtual unsigned installWatchOnId(h256 _filterId) = 0;
 	virtual void uninstallWatch(unsigned _watchId) = 0;
 	virtual h256s peekWatch(unsigned _watchId) const = 0;
 	virtual h256s checkWatch(unsigned _watchId) = 0;

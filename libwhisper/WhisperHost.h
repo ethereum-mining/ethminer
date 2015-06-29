@@ -51,7 +51,8 @@ public:
 	WhisperHost();
 	virtual ~WhisperHost();
 	unsigned protocolVersion() const { return WhisperProtocolVersion; }
-	void cleanup(); ///< remove old messages
+	/// remove old messages
+	void cleanup(); 
 	std::map<h256, Envelope> all() const { dev::ReadGuard l(x_messages); return m_messages; }
 	FixedHash<TopicBloomFilterSize> bloom() const { dev::Guard l(m_filterLock); return m_bloom; }
 
@@ -61,7 +62,8 @@ public:
 	virtual void uninstallWatch(unsigned _watchId) override;
 	virtual h256s peekWatch(unsigned _watchId) const override { dev::Guard l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return h256s(); } }
 	virtual h256s checkWatch(unsigned _watchId) override { cleanup(); dev::Guard l(m_filterLock); h256s ret; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes.clear(); } catch (...) {} return ret; }
-	virtual h256s watchMessages(unsigned _watchId) override; ///< returns IDs of messages, which match specific watch criteria
+	/// returns IDs of messages, which match specific watch criteria
+	virtual h256s watchMessages(unsigned _watchId) override; 
 	virtual Envelope envelope(h256 _m) const override { try { dev::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Envelope(); } }
 
 protected:
