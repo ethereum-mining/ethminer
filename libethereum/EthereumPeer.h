@@ -136,7 +136,7 @@ private:
 	/// What, if anything, we last asked the other peer for.
 	Asking m_asking = Asking::Nothing;
 	/// When we asked for it. Allows a time out.
-	std::chrono::system_clock::time_point m_lastAsk;
+	std::atomic<time_t> m_lastAsk;
 
 	/// These are determined through either a Status message or from NewBlock.
 	h256 m_latestHash;						///< Peer's latest block's hash that we know about or default null value if no need to sync.

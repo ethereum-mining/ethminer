@@ -1252,7 +1252,7 @@ void Main::refreshBlockCount()
 	auto d = ethereum()->blockChain().details();
 	BlockQueueStatus b = ethereum()->blockQueueStatus();
 	SyncStatus sync = ethereum()->syncStatus();
-	QString syncStatus = EthereumHost::stateName(sync.state);
+	QString syncStatus = QString("PV%1 %2").arg(sync.protocolVersion).arg(EthereumHost::stateName(sync.state));
 	if (sync.state == SyncState::Hashes)
 		syncStatus += QString(": %1/%2%3").arg(sync.hashesReceived).arg(sync.hashesEstimated ? "~" : "").arg(sync.hashesTotal);
 	if (sync.state == SyncState::Blocks || sync.state == SyncState::NewBlocks)

@@ -367,7 +367,7 @@ void Session::drop(DisconnectReason _reason)
 	if (socket.is_open())
 		try
 		{
-			clog(NetConnect) << "Closing " << socket.remote_endpoint() << "(" << reasonOf(_reason) << ")";
+			clog(NetWarn) << "Closing " << socket.remote_endpoint() << "(" << reasonOf(_reason) << ")";
 			boost::system::error_code ec;
 			socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
 			socket.close();
@@ -386,11 +386,12 @@ void Session::drop(DisconnectReason _reason)
 void Session::disconnect(DisconnectReason _reason)
 {
 	clog(NetConnect) << "Disconnecting (our reason:" << reasonOf(_reason) << ")";
+	size_t peerCount = m_server->peerCount(); //needs to  be outside of lock to avoid deadlocking with other thread that capture x_info/x_sessions in reverse order
 	DEV_GUARDED(x_info)
 		StructuredLogger::p2pDisconnected(
 			m_info.id.abridged(),
 			m_peer->endpoint, // TODO: may not be 100% accurate
-			m_server->peerCount()
+			peerCount
 		);
 	if (m_socket->ref().is_open())
 	{
