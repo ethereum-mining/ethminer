@@ -481,8 +481,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
 			auto idxValid = m_builder.CreateICmpULT(idx, Constant::get(32), "idxValid");
 			auto bytes = m_builder.CreateBitCast(value, llvm::VectorType::get(Type::Byte, 32), "bytes");
-			// Workaround for LLVM bug. Using index of type i256 can produce incorrect results
-			auto safeIdx = m_builder.CreateZExt(m_builder.CreateTrunc(idx, m_builder.getIntNTy(5)), Type::Size);
+			// Workaround for LLVM bug. Using big value of index causes invalid memory access.
+			auto safeIdx = m_builder.CreateTrunc(idx, m_builder.getIntNTy(5));
 			auto byte = m_builder.CreateExtractElement(bytes, safeIdx, "byte");
 			value = m_builder.CreateZExt(byte, Type::Word);
 			value = m_builder.CreateSelect(idxValid, value, Constant::get(0));
