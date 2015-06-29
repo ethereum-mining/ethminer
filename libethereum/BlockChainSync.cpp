@@ -813,7 +813,6 @@ bool PV60Sync::invariants() const
 			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("No peers asking for blocks"));
 		if (downloadMan().isComplete())
 			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("Block download complete but the state is still Blocks"));
-			return false;
 	}
 	if (m_state == SyncState::Waiting && !host().bq().isActive())
 		BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("Waiting while block queue is idle"));
