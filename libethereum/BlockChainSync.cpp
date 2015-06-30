@@ -791,38 +791,32 @@ void PV60Sync::onPeerAborting()
 bool PV60Sync::invariants() const
 {
 	if (m_state == SyncState::Idle && isSyncing())
-		return false;
+		BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("Idle while peer syncing"));
 	if (m_state != SyncState::Idle && !isSyncing())
-		return false;
+		BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("Active while peer not syncing"));
 	if (m_state == SyncState::Hashes)
 	{
 		bool hashes = false;
 		host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p) { if (_p->m_asking == Asking::Hashes) hashes = true; return !hashes; });
 		if (!hashes)
-			return false;
+			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("No peers asking for hashes"));
 		if (!m_syncingLatestHash)
-			return false;
+			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("m_syncingLatestHash is not set while downloading hashes"));
 		if (m_syncingNeededBlocks.empty() != (!m_syncingLastReceivedHash))
-			return false;
+			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("Received hashes but the hashes list is empty (or the other way around)"));
 	}
 	if (m_state == SyncState::Blocks || m_state == SyncState::NewBlocks)
 	{
 		bool blocks = false;
 		host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p) { if (_p->m_asking == Asking::Blocks) blocks = true; return !blocks; });
 		if (!blocks)
-			return false;
+			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("No peers asking for blocks"));
 		if (downloadMan().isComplete())
-			return false;
-	}
-	if (m_state == SyncState::Idle)
-	{
-		bool busy = false;
-		host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p) { if (_p->m_asking != Asking::Nothing && _p->m_asking != Asking::State) busy = true; return !busy; });
-		if (busy)
+			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("Block download complete but the state is still Blocks"));
 			return false;
 	}
 	if (m_state == SyncState::Waiting && !host().bq().isActive())
-		return false;
+		BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("Waiting while block queue is idle"));
 	return true;
 }
 
@@ -1085,19 +1079,15 @@ bool PV61Sync::isPV61Syncing() const
 bool PV61Sync::invariants() const
 {
 	if (m_downloadingChainMap.size() != m_chainSyncPeers.size())
-		return false;
-	if (m_state == SyncState::Idle && isSyncing())
-		return false;
-	if (m_state != SyncState::Idle && !isSyncing())
-		return false;
+		BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("m_downloadingChainMap and m_chainSyncPeers out of sync"));
 	if (m_state == SyncState::Hashes)
 	{
 		bool hashes = false;
 		host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p) { if (_p->m_asking == Asking::Hashes) hashes = true; return !hashes; });
 		if (!hashes)
-			return false;
+			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("No peers asking for hashes"));
 		if (isPV61Syncing() && !m_syncingBlockNumber)
-			return false;
+			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("Syncing in PV61 with no block number set"));
 	}
 	else if (!PV60Sync::invariants())
 			return false;
