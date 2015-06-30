@@ -140,11 +140,15 @@ unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
 
 bool ethash_cl_miner::configureGPU(
 	unsigned _platformId,
+	unsigned _globalWorkSize,
+	unsigned _msPerBatch,
 	bool _allowCPU,
 	unsigned _extraGPUMemory,
 	boost::optional<uint64_t> _currentBlock
 )
 {
+	s_initialGlobalWorkSize = _globalWorkSize;
+	s_msPerBatch = _msPerBatch;
 	s_allowCPU = _allowCPU;
 	s_extraRequiredGPUMem = _extraGPUMemory;
 	// by default let's only consider the DAG of the first epoch
@@ -175,6 +179,8 @@ bool ethash_cl_miner::configureGPU(
 
 bool ethash_cl_miner::s_allowCPU = false;
 unsigned ethash_cl_miner::s_extraRequiredGPUMem;
+unsigned ethash_cl_miner::s_msPerBatch = CL_DEFAULT_MS_PER_BATCH;
+unsigned ethash_cl_miner::s_initialGlobalWorkSize = CL_DEFAULT_GLOBAL_WORK_SIZE;
 
 bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
 {
@@ -302,6 +308,7 @@ bool ethash_cl_miner::init(
 		// use requested workgroup size, but we require multiple of 8
 		m_workgroupSize = ((_workgroupSize + 7) / 8) * 8;
 		// make sure that global work size is evenly divisible by the local workgroup size
+		m_globalWorkSize = s_initialGlobalWorkSize;
 		if (m_globalWorkSize % m_workgroupSize != 0)
 			m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
 		// remember the device's address bits
@@ -420,9 +427,8 @@ bool ethash_cl_miner::init(
 	return true;
 }
 
-void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, unsigned _msPerBatch)
+void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook)
 {
-	(void)_msPerBatch;
 	try
 	{
 		struct pending_batch
@@ -502,25 +508,28 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 			}
 
 			// adjust global work size depending on last search time
-			// Global work size must be:
-			//  - less than or equal to 2 ^ DEVICE_BITS - 1
-			//  - divisible by lobal work size (workgroup size)
-			auto d = chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t);
-			if (d != chrono::milliseconds(0)) // if duration is zero, we did not get in the actual searh/or search not finished
+			if (s_msPerBatch)
 			{
-				if (d > chrono::milliseconds(_msPerBatch * 10 / 9))
+				// Global work size must be:
+				//  - less than or equal to 2 ^ DEVICE_BITS - 1
+				//  - divisible by lobal work size (workgroup size)
+				auto d = chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t);
+				if (d != chrono::milliseconds(0)) // if duration is zero, we did not get in the actual searh/or search not finished
 				{
-					// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, >> " << _msPerBatch << " ms." << endl;
-					m_globalWorkSize = max<unsigned>(128, m_globalWorkSize + m_workgroupSize);
-					// cerr << "New global work size" << m_globalWorkSize << endl;
-				}
-				else if (d < chrono::milliseconds(_msPerBatch * 9 / 10))
-				{
-					// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, << " << _msPerBatch << " ms." << endl;
-					m_globalWorkSize = min<unsigned>(pow(2, m_deviceBits) - 1, m_globalWorkSize - m_workgroupSize);
-					// Global work size should never be less than the workgroup size
-					m_globalWorkSize = max<unsigned>(m_workgroupSize,  m_globalWorkSize);
-					// cerr << "New global work size" << m_globalWorkSize << endl;
+					if (d > chrono::milliseconds(s_msPerBatch * 10 / 9))
+					{
+						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, >> " << _msPerBatch << " ms." << endl;
+						m_globalWorkSize = max<unsigned>(128, m_globalWorkSize + m_workgroupSize);
+						// cerr << "New global work size" << m_globalWorkSize << endl;
+					}
+					else if (d < chrono::milliseconds(s_msPerBatch * 9 / 10))
+					{
+						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, << " << _msPerBatch << " ms." << endl;
+						m_globalWorkSize = min<unsigned>(pow(2, m_deviceBits) - 1, m_globalWorkSize - m_workgroupSize);
+						// Global work size should never be less than the workgroup size
+						m_globalWorkSize = max<unsigned>(m_workgroupSize,  m_globalWorkSize);
+						// cerr << "New global work size" << m_globalWorkSize << endl;
+					}
 				}
 			}
 		}

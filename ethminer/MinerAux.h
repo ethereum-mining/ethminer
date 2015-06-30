@@ -39,6 +39,7 @@
 #include <libdevcore/SHA3.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/EthashAux.h>
+#include <libethash-cl/ethash_cl_miner.h>
 #include <libethcore/Farm.h>
 #if ETH_JSONRPC || !ETH_TRUE
 #include <libweb3jsonrpc/WebThreeStubServer.h>
@@ -122,6 +123,24 @@ public:
 			try {
 				m_openclDevice = stol(argv[++i]);
 				m_miningThreads = 1;
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		else if (arg == "--cl-global-work-size" && i + 1 < argc)
+			try {
+				m_globalWorkSize = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		else if (arg == "--cl-ms-per-batch" && i + 1 < argc)
+			try {
+				m_msPerBatch = stol(argv[++i]);
 			}
 			catch (...)
 			{
@@ -266,6 +285,8 @@ public:
 		else if (m_minerType == MinerType::GPU)
 		{
 			if (!ProofOfWork::GPUMiner::configureGPU(
+					m_globalWorkSize,
+					m_msPerBatch,
 					m_openclPlatform,
 					m_openclDevice,
 					m_clAllowCPU,
@@ -318,6 +339,8 @@ public:
 			<< "    --list-devices List the detected OpenCL devices and exit." << endl
 			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." << endl
 			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
+			<< "    --cl-global-work Set the OpenCL global work size. Default is " << toString(CL_DEFAULT_GLOBAL_WORK_SIZE) << endl
+			<< "    --cl-ms-per-batch Set the OpenCL target milliseconds per batch (global workgroup size). Default is " << toString(CL_DEFAULT_MS_PER_BATCH) << ". If 0 is given then no autoadjustment of global work size will happen" << endl
 			;
 	}
 
@@ -506,6 +529,8 @@ private:
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 	bool m_clAllowCPU = false;
+	unsigned m_globalWorkSize = CL_DEFAULT_GLOBAL_WORK_SIZE;
+	unsigned m_msPerBatch = CL_DEFAULT_MS_PER_BATCH;
 	boost::optional<uint64_t> m_currentBlock;
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
 	unsigned m_extraGPUMemory = 350000000;
