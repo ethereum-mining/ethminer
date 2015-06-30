@@ -18,11 +18,11 @@ Rectangle {
 		onProjectLoaded: {
 			loader.init()
 		}
-
 	}
 
 	Column
 	{
+		id: scenarioColumn
 		anchors.margins: 10
 		anchors.fill: parent
 		spacing: 10
@@ -62,6 +62,28 @@ Rectangle {
 		{
 			id: blockChain
 			width: parent.width
+		}
+
+		Connections
+		{
+			target: blockChain
+			onTxSelected:{
+				var tx = model.block[blockIndex].transactions[txIndex]
+				var state =  blockChain.getState(tx.recordIndex)
+				watchers.updateWidthTx(tx, state)
+			}
+		}
+	}
+
+	ScrollView
+	{
+		anchors.top: scenarioColumn.bottom
+		width: parent.width
+		height: 500
+		Watchers
+		{
+			id: watchers
+			anchors.topMargin: 10
 		}
 	}
 }
