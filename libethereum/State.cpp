@@ -116,7 +116,7 @@ State::State(OverlayDB const& _db, BaseState _bs, Address _coinbaseAddress):
 
 PopulationStatistics State::populateFromChain(BlockChain const& _bc, h256 const& _h, ImportRequirements::value _ir)
 {
-	PopulationStatistics ret;
+	PopulationStatistics ret { 0.0, 0.0 };
 
 	if (!_bc.isKnown(_h))
 	{
