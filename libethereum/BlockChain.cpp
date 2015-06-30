@@ -541,7 +541,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 #endif
 	}
 #if ETH_CATCH
-	catch (BadRoot& ex)
+	catch (BadRoot&)
 	{
 		cwarn << "BadRoot error. Retrying import later.";
 		BOOST_THROW_EXCEPTION(FutureTime());
