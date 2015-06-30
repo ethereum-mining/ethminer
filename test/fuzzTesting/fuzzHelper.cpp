@@ -143,15 +143,30 @@ std::string RandomCode::fillArguments(dev::eth::Instruction _opcode, RandomCodeO
 	{
 		switch (_opcode)
 		{
+		case dev::eth::Instruction::CREATE:
+			//(CREATE value mem1 mem2)
+			code += getPushCode(randUniIntGen() % 128);  //memlen1
+			code += getPushCode(randUniIntGen() % 32);   //memlen1
+			code += getPushCode(randUniIntGen());		 //value
+		break;
 		case dev::eth::Instruction::CALL:
+		case dev::eth::Instruction::CALLCODE:
 			//(CALL gaslimit address value memstart1 memlen1 memstart2 memlen2)
-			code += getPushCode(randUniIntGen() % 32);  //memlen2
+			//(CALLCODE gaslimit address value memstart1 memlen1 memstart2 memlen2)
+			code += getPushCode(randUniIntGen() % 128);  //memlen2
 			code += getPushCode(randUniIntGen() % 32);  //memstart2
-			code += getPushCode(randUniIntGen() % 32);  //memlen1
+			code += getPushCode(randUniIntGen() % 128);  //memlen1
 			code += getPushCode(randUniIntGen() % 32);  //memlen1
 			code += getPushCode(randUniIntGen());		//value
 			code += getPushCode(toString(_options.getRandomAddress()));//address
 			code += getPushCode(randUniIntGen());		//gaslimit
+		break;
+		case dev::eth::Instruction::SUICIDE: //(SUICIDE address)
+			code += getPushCode(toString(_options.getRandomAddress()));
+		break;
+		case dev::eth::Instruction::RETURN:  //(RETURN memlen1 memlen2)
+			code += getPushCode(randUniIntGen() % 128);  //memlen1
+			code += getPushCode(randUniIntGen() % 32);  //memlen1
 		break;
 		default:
 			smart = false;
