@@ -409,6 +409,8 @@ void Ethash::GPUMiner::listDevices()
 }
 
 bool Ethash::GPUMiner::configureGPU(
+	unsigned _globalWorkSize,
+	unsigned _msPerBatch,
 	unsigned _platformId,
 	unsigned _deviceId,
 	bool _allowCPU,
@@ -418,7 +420,7 @@ bool Ethash::GPUMiner::configureGPU(
 {
 	s_platformId = _platformId;
 	s_deviceId = _deviceId;
-	return ethash_cl_miner::configureGPU(_platformId, _allowCPU, _extraGPUMemory, _currentBlock);
+	return ethash_cl_miner::configureGPU(_globalWorkSize, _msPerBatch, _allowCPU, _extraGPUMemory, _currentBlock);
 }
 
 #endif
