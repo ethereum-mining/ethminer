@@ -534,7 +534,7 @@ bool PV60Sync::shouldGrabBlocks(std::shared_ptr<EthereumPeer> _peer) const
 
 void PV60Sync::attemptSync(std::shared_ptr<EthereumPeer> _peer)
 {
-	if (m_state != SyncState::Idle)
+	if (m_state != SyncState::Idle || _peer->m_asking != Asking::Nothing)
 	{
 		clog(NetAllDetail) << "Can't sync with this peer - outstanding asks.";
 		return;
@@ -649,9 +649,8 @@ void PV60Sync::noteDoneBlocks(std::shared_ptr<EthereumPeer> _peer, bool _clemenc
 		}
 		resetSync();
 		downloadMan().reset();
-		transition(_peer, SyncState::Idle);
-	}
 	_peer->m_sub.doneFetch();
+	}
 }
 
 void PV60Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
