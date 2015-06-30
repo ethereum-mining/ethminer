@@ -236,6 +236,8 @@ signals:
 	void newRecord(RecordLogEntry* _r);
 	/// State (transaction log) cleared
 	void stateCleared();
+	/// new state has been processed
+	void newState(unsigned _record, QVariantMap _accounts);
 
 private:
 	RecordLogEntry* lastBlock() const;

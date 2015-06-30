@@ -840,6 +840,18 @@ void ClientModel::onNewTransaction()
 											 gasUsed, sender, label, inputParameters, logs);
 	QQmlEngine::setObjectOwnership(log, QQmlEngine::JavaScriptOwnership);
 	emit newRecord(log);
+	QVariantMap accountBalances;
+	for (auto const& ctr : m_contractAddresses)
+	{
+		u256 wei = m_client.balanceAt(ctr);
+		accountBalances.insert(ctr, wei);
+	}
+	for (auto const& account : m_account)
+	{
+		u256 wei = m_client.balanceAt(account);
+		accountBalances.insert(ctr, wei);
+	}
+	emit newState(recordIndex, accountBalances);
 }
 
 }
