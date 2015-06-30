@@ -27,7 +27,6 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
-#include "RLPxHandshake.h"
 #include "Host.h"
 #include "Capability.h"
 using namespace std;
@@ -157,120 +156,72 @@ void Session::serviceNodesRequest()
 	addNote("peers", "done");
 }
 
-bool Session::interpret(PacketType _t, RLP const& _r)
+bool Session::readPacket(uint16_t _capId, PacketType _t, RLP const& _r)
 {
 	m_lastReceived = chrono::steady_clock::now();
-
 	clog(NetRight) << _t << _r;
 	try		// Generic try-catch block designed to capture RLP format errors - TODO: give decent diagnostics, make a bit more specific over what is caught.
 	{
-		switch (_t)
-		{
-		case DisconnectPacket:
-		{
-			string reason = "Unspecified";
-			auto r = (DisconnectReason)_r[0].toInt<int>();
-			if (!_r[0].isInt())
-				drop(BadProtocol);
-			else
-			{
-				reason = reasonOf(r);
-				clog(NetMessageSummary) << "Disconnect (reason: " << reason << ")";
-				drop(DisconnectRequested);
-			}
-			break;
-		}
-		case PingPacket:
-		{
-			clog(NetTriviaSummary) << "Ping";
-			RLPStream s;
-			sealAndSend(prep(s, PongPacket));
-			break;
-		}
-		case PongPacket:
-		{
-			DEV_GUARDED(x_info)
-				m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
-			clog(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
-			break;
-		}
-		case GetPeersPacket:
-			// Disabled for interop testing.
-			// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
-			break;
-
-			clog(NetTriviaSummary) << "GetPeers";
-			m_theyRequestedNodes = true;
-			serviceNodesRequest();
-			break;
-		case PeersPacket:
-			// Disabled for interop testing.
-			// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
-			break;
-
-			clog(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
-			m_weRequestedNodes = false;
-			for (unsigned i = 0; i < _r.itemCount(); ++i)
-			{
-				bi::address peerAddress;
-				if (_r[i][0].size() == 16)
-					peerAddress = bi::address_v6(_r[i][0].toHash<FixedHash<16>>().asArray());
-				else if (_r[i][0].size() == 4)
-					peerAddress = bi::address_v4(_r[i][0].toHash<FixedHash<4>>().asArray());
-				else
-				{
-					cwarn << "Received bad peer packet:" << _r;
-					disconnect(BadProtocol);
-					return true;
-				}
-				auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
-				NodeId id = _r[i][2].toHash<NodeId>();
-
-				clog(NetAllDetail) << "Checking: " << ep << "(" << id << ")";
-
-				if (!isPublicAddress(peerAddress))
-					goto CONTINUE;	// Private address. Ignore.
-
-				if (!id)
-					goto LAMEPEER;	// Null identity. Ignore.
-
-				if (m_server->id() == id)
-					goto LAMEPEER;	// Just our info - we already have that.
-
-				if (id == this->id())
-					goto LAMEPEER;	// Just their info - we already have that.
-
-				if (!ep.port())
-					goto LAMEPEER;	// Zero port? Don't think so.
-
-				if (ep.port() >= /*49152*/32768)
-					goto LAMEPEER;	// Private port according to IANA.
-
-				// OK passed all our checks. Assume it's good.
-				addRating(1000);
-				m_server->addNode(id, NodeIPEndpoint(ep.address(), ep.port(), ep.port()));
-				clog(NetTriviaDetail) << "New peer: " << ep << "(" << id << ")";
-				CONTINUE:;
-				LAMEPEER:;
-			}
-			break;
-		default:
+		// v4 frame headers are useless, offset packet type used
+		// v5 protocol type is in header, packet type not offset
+		if (_capId == 0 && _t < UserPacket)
+			return interpret(_t, _r);
+		if (m_info.protocolVersion >= 5)
+			for (auto const& i: m_capabilities)
+				if (_capId == (uint16_t)i.first.second)
+					return i.second->m_enabled ? i.second->interpret(_t, _r) : true;
+		if (m_info.protocolVersion <= 4)
 			for (auto const& i: m_capabilities)
 				if (_t >= (int)i.second->m_idOffset && _t - i.second->m_idOffset < i.second->hostCapability()->messageCount())
-				{
-					if (i.second->m_enabled)
-						return i.second->interpret(_t - i.second->m_idOffset, _r);
-					else
-						return true;
-				}
-			return false;
-		}
+					return i.second->m_enabled ? i.second->interpret(_t - i.second->m_idOffset, _r) : true;
+		return false;
 	}
 	catch (std::exception const& _e)
 	{
 		clog(NetWarn) << "Exception caught in p2p::Session::interpret(): " << _e.what() << ". PacketType: " << _t << ". RLP: " << _r;
 		disconnect(BadProtocol);
 		return true;
+	}
+	return true;
+}
+
+bool Session::interpret(PacketType _t, RLP const& _r)
+{
+	switch (_t)
+	{
+	case DisconnectPacket:
+	{
+		string reason = "Unspecified";
+		auto r = (DisconnectReason)_r[0].toInt<int>();
+		if (!_r[0].isInt())
+			drop(BadProtocol);
+		else
+		{
+			reason = reasonOf(r);
+			clog(NetMessageSummary) << "Disconnect (reason: " << reason << ")";
+			drop(DisconnectRequested);
+		}
+		break;
+	}
+	case PingPacket:
+	{
+		clog(NetTriviaSummary) << "Ping";
+		RLPStream s;
+		sealAndSend(prep(s, PongPacket));
+		break;
+	}
+	case PongPacket:
+		DEV_GUARDED(x_info)
+		{
+			m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
+			clog(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
+		}
+		break;
+	case GetPeersPacket:
+	case PeersPacket:
+		break;
+	default:
+		return false;
 	}
 	return true;
 }
@@ -296,12 +247,9 @@ void Session::sealAndSend(RLPStream& _s)
 
 bool Session::checkPacket(bytesConstRef _msg)
 {
-	if (_msg.size() < 2)
+	if (_msg[0] > 0x7f || _msg.size() < 2)
 		return false;
-	if (_msg[0] > 0x7f)
-		return false;
-	RLP r(_msg.cropped(1));
-	if (r.actualSize() + 1 != _msg.size())
+	if (RLP(_msg.cropped(1)).actualSize() + 1 != _msg.size())
 		return false;
 	return true;
 }
@@ -418,82 +366,78 @@ void Session::doRead()
 	{
 		ThreadContext tc(info().id.abridged());
 		ThreadContext tc2(info().clientVersion);
-		if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
-		{
-			clog(NetWarn) << "Error reading: " << ec.message();
-			drop(TCPError);
-		}
-		else if (ec && length == 0)
+		if (!checkRead(h256::size, ec, length))
 			return;
-		else
+		else if (!m_io->authAndDecryptHeader(bytesRef(m_data.data(), length)))
 		{
-			/// authenticate and decrypt header
-			bytesRef header(m_data.data(), h256::size);
-			if (!m_io->authAndDecryptHeader(header))
+			clog(NetWarn) << "header decrypt failed";
+			drop(BadProtocol); // todo: better error
+			return;
+		}
+
+		RLPXFrameInfo header;
+		try
+		{
+			header = RLPXFrameInfo(bytesConstRef(m_data.data(), length));
+		}
+		catch (std::exception const& _e)
+		{
+			clog(NetWarn) << "Exception decoding frame header RLP:" << bytesConstRef(m_data.data(), h128::size).cropped(3);
+			drop(BadProtocol);
+			return;
+		}
+		
+		/// read padded frame and mac
+		auto tlen = header.length + header.padding + h128::size;
+		ba::async_read(m_socket->ref(), boost::asio::buffer(m_data, tlen), [this, self, header, tlen](boost::system::error_code ec, std::size_t length)
+		{
+			ThreadContext tc(info().id.abridged());
+			ThreadContext tc2(info().clientVersion);
+			if (!checkRead(tlen, ec, length))
+				return;
+			else if (!m_io->authAndDecryptFrame(bytesRef(m_data.data(), tlen)))
 			{
-				clog(NetWarn) << "header decrypt failed";
+				clog(NetWarn) << "frame decrypt failed";
 				drop(BadProtocol); // todo: better error
 				return;
 			}
 
-			/// check frame size
-			uint32_t frameSize = (m_data[0] * 256 + m_data[1]) * 256 + m_data[2];
-			if (frameSize >= (uint32_t)1 << 24)
+			bytesConstRef frame(m_data.data(), header.length);
+			if (!checkPacket(frame))
 			{
-				clog(NetWarn) << "frame size too large";
-				drop(BadProtocol);
+				cerr << "Received " << frame.size() << ": " << toHex(frame) << endl;
+				clog(NetWarn) << "INVALID MESSAGE RECEIVED";
+				disconnect(BadProtocol);
 				return;
 			}
-			
-			/// rlp of header has protocol-type, sequence-id[, total-packet-size]
-			bytes headerRLP(13);
-			bytesConstRef(m_data.data(), h128::size).cropped(3).copyTo(&headerRLP);
-			
-			/// read padded frame and mac
-			auto tlen = frameSize + ((16 - (frameSize % 16)) % 16) + h128::size;
-			ba::async_read(m_socket->ref(), boost::asio::buffer(m_data, tlen), [this, self, headerRLP, frameSize, tlen](boost::system::error_code ec, std::size_t length)
+			else
 			{
-				ThreadContext tc(info().id.abridged());
-				ThreadContext tc2(info().clientVersion);
-				if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
-				{
-					clog(NetWarn) << "Error reading: " << ec.message();
-					drop(TCPError);
-				}
-				else if (ec && length < tlen)
-				{
-					clog(NetWarn) << "Error reading - Abrupt peer disconnect: " << ec.message();
-					repMan().noteRude(*this);
-					drop(TCPError);
-					return;
-				}
-				else
-				{
-					if (!m_io->authAndDecryptFrame(bytesRef(m_data.data(), tlen)))
-					{
-						clog(NetWarn) << "frame decrypt failed";
-						drop(BadProtocol); // todo: better error
-						return;
-					}
-					
-					bytesConstRef frame(m_data.data(), frameSize);
-					if (!checkPacket(frame))
-					{
-						cerr << "Received " << frame.size() << ": " << toHex(frame) << endl;
-						clog(NetWarn) << "INVALID MESSAGE RECEIVED";
-						disconnect(BadProtocol);
-						return;
-					}
-					else
-					{
-						auto packetType = (PacketType)RLP(frame.cropped(0, 1)).toInt<unsigned>();
-						RLP r(frame.cropped(1));
-						if (!interpret(packetType, r))
-							clog(NetWarn) << "Couldn't interpret packet." << RLP(r);
-					}
-					doRead();
-				}
-			});
-		}
+				auto packetType = (PacketType)RLP(frame.cropped(0, 1)).toInt<unsigned>();
+				RLP r(frame.cropped(1));
+				if (!readPacket(header.protocolId, packetType, r))
+					clog(NetWarn) << "Couldn't interpret packet." << RLP(r);
+			}
+			doRead();
+		});
 	});
+}
+
+bool Session::checkRead(std::size_t _expected, boost::system::error_code _ec, std::size_t _length)
+{
+	if (_ec && _ec.category() != boost::asio::error::get_misc_category() && _ec.value() != boost::asio::error::eof)
+	{
+		clog(NetConnect) << "Error reading: " << _ec.message();
+		drop(TCPError);
+		return false;
+	}
+	else if (_ec && _length < _expected)
+	{
+		clog(NetWarn) << "Error reading - Abrupt peer disconnect: " << _ec.message();
+		repMan().noteRude(*this);
+		drop(TCPError);
+		return false;
+	}
+	// If this fails then there's an unhandled asio error
+	assert(_expected == _length);
+	return true;
 }
