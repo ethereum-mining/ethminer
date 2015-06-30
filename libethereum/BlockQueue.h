@@ -134,6 +134,7 @@ private:
 	bool invariants() const override;
 
 	void verifierBody();
+	void drainVerified();
 	void collectUnknownBad(h256 const& _bad);
 	void updateBad(h256 const& _bad);
 
