@@ -429,6 +429,7 @@ bool Ethash::GPUMiner::configureGPU(
 	}
 	
 	if (!ethash_cl_miner::configureGPU(
+			_platformId,
 			_localWorkSize,
 			_globalWorkSizeMultiplier * _localWorkSize,
 			_msPerBatch,
