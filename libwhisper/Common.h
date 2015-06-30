@@ -54,12 +54,12 @@ enum WhisperPacket
 {
 	StatusPacket = 0,
 	MessagesPacket,
-	AddFilterPacket,
-	RemoveFilterPacket,
+	TopicFilterPacket,
 	PacketCount
 };
 
-enum { TopicBloomFilterSize = 8 };
+enum { TopicBloomFilterSize = 64 };
+enum { WhisperProtocolVersion = 3 };
 
 using AbridgedTopic = FixedHash<4>;
 using Topic = h256;
