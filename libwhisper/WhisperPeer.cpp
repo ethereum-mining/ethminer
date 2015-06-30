@@ -58,7 +58,10 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 			disable("Invalid protocol version.");
 
 		for (auto const& m: host()->all())
+		{
+			Guard l(x_unseen);
 			m_unseen.insert(make_pair(0, m.first));
+		}
 
 		if (session()->id() < host()->host()->id())
 			sendMessages();
@@ -74,7 +77,7 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 	}
 	case TopicFilterPacket:
 	{
-		setBloom((FixedHash<TopicBloomFilterSize>)_r[0]);
+		setBloom((TopicBloomFilterHash)_r[0]);
 		break;
 	}
 	default:
@@ -115,7 +118,7 @@ void WhisperPeer::noteNewMessage(h256 _h, Envelope const& _m)
 	m_unseen.insert(make_pair(rating(_m), _h));
 }
 
-void WhisperPeer::sendTopicsOfInterest(FixedHash<TopicBloomFilterSize> const& _bloom)
+void WhisperPeer::sendTopicsOfInterest(TopicBloomFilterHash const& _bloom)
 {
 	DEV_GUARDED(x_advertiseTopicsOfInterest)
 		m_advertiseTopicsOfInterest = false;
