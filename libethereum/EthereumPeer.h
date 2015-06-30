@@ -142,8 +142,6 @@ private:
 	h256 m_latestHash;						///< Peer's latest block's hash that we know about or default null value if no need to sync.
 	u256 m_totalDifficulty;					///< Peer's latest block's total difficulty.
 	h256 m_genesisHash;						///< Peer's genesis hash
-	u256 m_latestBlockNumber;				///< Number of the latest block this peer has
-
 
 	/// This is built as we ask for hashes. Once no more hashes are given, we present this to the
 	/// host who initialises the DownloadMan and m_sub becomes active for us to begin asking for blocks.

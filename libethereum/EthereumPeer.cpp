@@ -127,14 +127,12 @@ void EthereumPeer::requestStatus()
 	m_requireTransactions = true;
 	RLPStream s;
 	bool latest = m_peerCapabilityVersion == host()->protocolVersion();
-	prep(s, StatusPacket, latest ? 6 : 5)
+	prep(s, StatusPacket, 5)
 					<< (latest ? host()->protocolVersion() : EthereumHost::c_oldProtocolVersion)
 					<< host()->networkId()
 					<< host()->chain().details().totalDifficulty
 					<< host()->chain().currentHash()
 					<< host()->chain().genesisHash();
-	if (latest)
-		s << u256(host()->chain().number());
 	sealAndSend(s);
 }
 
@@ -214,12 +212,8 @@ void EthereumPeer::tick()
 	auto s = session();
 	time_t  now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
 	if (s && (now - m_lastAsk > 10 && m_asking != Asking::Nothing))
-	{
-		clog(NetWarn) << "timeout: " << (now - m_lastAsk) << " " <<
-		(m_asking == Asking::Nothing ? "nothing" : m_asking == Asking::State ? "state" : m_asking == Asking::Hashes ? "hashes" : m_asking == Asking::Blocks ? "blocks" : "?");
 		// timeout
 		s->disconnect(PingTimeout);
-	}
 }
 
 bool EthereumPeer::isConversing() const
@@ -247,20 +241,9 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		m_latestHash = _r[3].toHash<h256>();
 		m_genesisHash = _r[4].toHash<h256>();
 		if (m_peerCapabilityVersion == host()->protocolVersion())
-		{
-			if (_r.itemCount() != 6)
-			{
-				clog(NetImpolite) << "Peer does not support PV61+ status extension.";
-				m_protocolVersion = EthereumHost::c_oldProtocolVersion;
-			}
-			else
-			{
-				m_protocolVersion = host()->protocolVersion();
-				m_latestBlockNumber = _r[5].toInt<u256>();
-			}
-		}
+			m_protocolVersion = host()->protocolVersion();
 
-		clog(NetMessageSummary) << "Status:" << m_protocolVersion << "/" << m_networkId << "/" << m_genesisHash << "/" << m_latestBlockNumber << ", TD:" << m_totalDifficulty << "=" << m_latestHash;
+		clog(NetMessageSummary) << "Status:" << m_protocolVersion << "/" << m_networkId << "/" << m_genesisHash << ", TD:" << m_totalDifficulty << "=" << m_latestHash;
 		setIdle();
 		host()->onPeerStatus(dynamic_pointer_cast<EthereumPeer>(dynamic_pointer_cast<EthereumPeer>(shared_from_this())));
 		break;
