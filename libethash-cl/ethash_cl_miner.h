@@ -17,7 +17,11 @@
 #include <functional>
 #include <libethash/ethash.h>
 
-#define CL_DEFAULT_GLOBAL_WORK_SIZE 1024 * 16
+/// Default value of the local work size. Also known as workgroup size.
+#define CL_DEFAULT_LOCAL_WORK_SIZE 64
+/// Default value of the global work size as a multiplier of the local work size
+#define CL_DEFAULT_GLOBAL_WORK_SIZE_MULTIPLIER 512 // * CL_DEFAULT_LOCAL_WORK_SIZE
+/// Default value of the milliseconds per global work size (per batch)
 #define CL_DEFAULT_MS_PER_BATCH 100
 
 class ethash_cl_miner
@@ -48,6 +52,7 @@ public:
 	static void listDevices();
 	static bool configureGPU(
 		unsigned _platformId,
+		unsigned _localWorkSize,
 		unsigned _globalWorkSize,
 		unsigned _msPerBatch,
 		bool _allowCPU,
@@ -58,7 +63,6 @@ public:
 	bool init(
 		uint8_t const* _dag,
 		uint64_t _dagSize,
-		unsigned _workgroupSize = 64,
 		unsigned _platformId = 0,
 		unsigned _deviceId = 0
 	);
@@ -81,11 +85,12 @@ private:
 	cl::Buffer m_header;
 	cl::Buffer m_hashBuffer[c_bufferCount];
 	cl::Buffer m_searchBuffer[c_bufferCount];
-	unsigned m_workgroupSize;
 	unsigned m_globalWorkSize;
 	bool m_openclOnePointOne;
 	unsigned m_deviceBits;
 
+	/// The local work size for the search
+	static unsigned s_workgroupSize;
 	/// The initial global work size for the searches
 	static unsigned s_initialGlobalWorkSize;
 	/// The target milliseconds per batch for the search. If 0, then no adjustment will happen

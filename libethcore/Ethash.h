@@ -88,7 +88,7 @@ public:
 		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : std::thread::hardware_concurrency(); }
 		static std::string platformInfo();
 		static void listDevices() {}
-		static bool configureGPU(unsigned, unsigned, unsigned, unsigned, bool, unsigned,  boost::optional<uint64_t>) { return false; }
+		static bool configureGPU(unsigned, unsigned, unsigned, unsigned, unsigned, bool, unsigned,  boost::optional<uint64_t>) { return false; }
 		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency()); }
 	protected:
 		void kickOff() override
@@ -118,7 +118,8 @@ public:
 		static unsigned getNumDevices();
 		static void listDevices();
 		static bool configureGPU(
-			unsigned _globalWorkSize,
+			unsigned _localWorkSize,
+			unsigned _globalWorkSizeMultiplier,
 			unsigned _msPerBatch,
 			unsigned _platformId,
 			unsigned _deviceId,
