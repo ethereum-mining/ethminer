@@ -397,7 +397,10 @@ if (JSCONSOLE)
 	add_subdirectory(ethconsole)
 endif ()
 
-add_subdirectory(secp256k1)
+if (NOT WIN32)
+	add_subdirectory(secp256k1)
+endif ()
+
 add_subdirectory(libscrypt)
 add_subdirectory(libdevcrypto)
 
