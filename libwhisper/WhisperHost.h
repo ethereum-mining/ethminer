@@ -50,11 +50,11 @@ class WhisperHost: public HostCapability<WhisperPeer>, public Interface, public 
 public:
 	WhisperHost();
 	virtual ~WhisperHost();
-	unsigned protocolVersion() const { return WhisperProtocolVersion; }
+	unsigned protocolVersion() const { return c_whisperProtocolVersion; }
 	/// remove old messages
 	void cleanup(); 
 	std::map<h256, Envelope> all() const { dev::ReadGuard l(x_messages); return m_messages; }
-	FixedHash<TopicBloomFilterSize> bloom() const { dev::Guard l(m_filterLock); return m_bloom; }
+	TopicBloomFilterHash bloom() const { dev::Guard l(m_filterLock); return m_bloom; }
 
 	virtual void inject(Envelope const& _e, WhisperPeer* _from = nullptr) override;
 	virtual Topics const& fullTopics(unsigned _id) const override { try { return m_filters.at(m_watches.at(_id).id).full; } catch (...) { return EmptyTopics; } }
