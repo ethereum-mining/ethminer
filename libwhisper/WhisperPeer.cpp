@@ -19,11 +19,10 @@
  * @date 2014
  */
 
-#include "WhisperPeer.h"
-
 #include <libdevcore/Log.h>
 #include <libp2p/All.h>
 #include "WhisperHost.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -33,6 +32,7 @@ WhisperPeer::WhisperPeer(std::shared_ptr<Session> _s, HostCapabilityFace* _h, un
 {
 	RLPStream s;
 	sealAndSend(prep(s, StatusPacket, 1) << version());
+	noteAdvertiseTopicsOfInterest();
 }
 
 WhisperPeer::~WhisperPeer()
@@ -62,12 +62,19 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 
 		if (session()->id() < host()->host()->id())
 			sendMessages();
+
+		noteAdvertiseTopicsOfInterest();
 		break;
 	}
 	case MessagesPacket:
 	{
 		for (auto i: _r)
 			host()->inject(Envelope(i), this);
+		break;
+	}
+	case TopicFilterPacket:
+	{
+		setBloom((FixedHash<TopicBloomFilterSize>)_r[0]);
 		break;
 	}
 	default:
@@ -78,6 +85,9 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 
 void WhisperPeer::sendMessages()
 {
+	if (m_advertiseTopicsOfInterest)
+		sendTopicsOfInterest(host()->bloom());
+
 	RLPStream amalg;
 	unsigned msgCount = 0;
 	{
@@ -104,3 +114,15 @@ void WhisperPeer::noteNewMessage(h256 _h, Envelope const& _m)
 	Guard l(x_unseen);
 	m_unseen.insert(make_pair(rating(_m), _h));
 }
+
+void WhisperPeer::sendTopicsOfInterest(FixedHash<TopicBloomFilterSize> const& _bloom)
+{
+	DEV_GUARDED(x_advertiseTopicsOfInterest)
+		m_advertiseTopicsOfInterest = false;
+
+	RLPStream s;
+	prep(s, TopicFilterPacket, 1);
+	s << _bloom;
+	sealAndSend(s);
+}
+
