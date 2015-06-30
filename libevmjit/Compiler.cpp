@@ -481,8 +481,10 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
 			auto idxValid = m_builder.CreateICmpULT(idx, Constant::get(32), "idxValid");
 			auto bytes = m_builder.CreateBitCast(value, llvm::VectorType::get(Type::Byte, 32), "bytes");
-			// Workaround for LLVM bug. Using big value of index causes invalid memory access.
+			// TODO: Workaround for LLVM bug. Using big value of index causes invalid memory access.
 			auto safeIdx = m_builder.CreateTrunc(idx, m_builder.getIntNTy(5));
+			// TODO: Workaround for LLVM bug. DAG Builder used sext on index instead of zext
+			safeIdx = m_builder.CreateZExt(safeIdx, Type::Size);
 			auto byte = m_builder.CreateExtractElement(bytes, safeIdx, "byte");
 			value = m_builder.CreateZExt(byte, Type::Word);
 			value = m_builder.CreateSelect(idxValid, value, Constant::get(0));
