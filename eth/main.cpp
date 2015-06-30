@@ -703,12 +703,24 @@ int main(int argc, char** argv)
 
 	string logbuf;
 	std::string additional;
-	g_logPost = [&](std::string const& a, char const*){
-		if (g_silence)
-			logbuf += a + "\n";
-		else
-			cout << "\r           \r" << a << endl << additional << flush;
-	};
+	if (interactive)
+		g_logPost = [&](std::string const& a, char const*){
+			static SpinLock s_lock;
+			SpinGuard l(s_lock);
+			
+			if (g_silence)
+				logbuf += a + "\n";
+			else
+				cout << "\r           \r" << a << endl << additional << flush;
+			
+			// helpful to use OutputDebugString on windows
+	#ifdef _WIN32
+			{
+				OutputDebugStringA(_s.data());
+				OutputDebugStringA("\n");
+			}
+	#endif
+		};
 
 	auto getPassword = [&](string const& prompt){
 		auto s = g_silence;
