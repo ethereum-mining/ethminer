@@ -17,6 +17,9 @@
 #include <functional>
 #include <libethash/ethash.h>
 
+#define CL_DEFAULT_GLOBAL_WORK_SIZE 1024 * 16
+#define CL_DEFAULT_MS_PER_BATCH 100
+
 class ethash_cl_miner
 {
 private:
@@ -45,6 +48,8 @@ public:
 	static void listDevices();
 	static bool configureGPU(
 		unsigned _platformId,
+		unsigned _globalWorkSize,
+		unsigned _msPerBatch,
 		bool _allowCPU,
 		unsigned _extraGPUMemory,
 		boost::optional<uint64_t> _currentBlock
@@ -58,7 +63,7 @@ public:
 		unsigned _deviceId = 0
 	);
 	void finish();
-	void search(uint8_t const* _header, uint64_t _target, search_hook& _hook, unsigned _msPerBatch = 100);
+	void search(uint8_t const* _header, uint64_t _target, search_hook& _hook);
 
 	void hash_chunk(uint8_t* _ret, uint8_t const* _header, uint64_t _nonce, unsigned _count);
 	void search_chunk(uint8_t const*_header, uint64_t _target, search_hook& _hook);
@@ -77,10 +82,14 @@ private:
 	cl::Buffer m_hashBuffer[c_bufferCount];
 	cl::Buffer m_searchBuffer[c_bufferCount];
 	unsigned m_workgroupSize;
-	unsigned m_globalWorkSize = c_searchBatchSize;
+	unsigned m_globalWorkSize;
 	bool m_openclOnePointOne;
 	unsigned m_deviceBits;
 
+	/// The initial global work size for the searches
+	static unsigned s_initialGlobalWorkSize;
+	/// The target milliseconds per batch for the search. If 0, then no adjustment will happen
+	static unsigned s_msPerBatch;
 	/// Allow CPU to appear as an OpenCL device or not. Default is false
 	static bool s_allowCPU;
 	/// GPU memory required for other things, like window rendering e.t.c.
