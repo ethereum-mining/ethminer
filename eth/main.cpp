@@ -712,11 +712,11 @@ int main(int argc, char** argv)
 				logbuf += a + "\n";
 			else
 				cout << "\r           \r" << a << endl << additional << flush;
-			
+
 			// helpful to use OutputDebugString on windows
 	#ifdef _WIN32
 			{
-				OutputDebugStringA(_s.data());
+				OutputDebugStringA(a.data());
 				OutputDebugStringA("\n");
 			}
 	#endif
