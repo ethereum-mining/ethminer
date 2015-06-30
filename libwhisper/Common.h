@@ -58,8 +58,8 @@ enum WhisperPacket
 	PacketCount
 };
 
-const int TopicBloomFilterSize = 64;
-const int WhisperProtocolVersion = 3;
+static const int TopicBloomFilterSize = 64;
+static const int WhisperProtocolVersion = 3;
 
 using AbridgedTopic = FixedHash<4>;
 using Topic = h256;
