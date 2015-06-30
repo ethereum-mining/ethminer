@@ -28,7 +28,7 @@ using namespace dev;
 using namespace dev::shh;
 
 using TopicBloomFilterShort = TopicBloomFilterBase<4>;
-using TopicBloomFilterTest = TopicBloomFilterBase<TopicBloomFilterSize>;
+using TopicBloomFilterTest = TopicBloomFilterBase<c_topicBloomFilterSize>;
 
 void testAddNonExisting(TopicBloomFilterShort& _f, AbridgedTopic const& _h)
 {
