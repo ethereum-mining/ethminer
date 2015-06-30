@@ -22,6 +22,7 @@ ColumnLayout
 	property int blockIndex
 	property variant scenario
 	property string labelColor: "#414141"
+	signal txSelected(var txIndex)
 
 	function calculateHeight()
 	{
@@ -204,9 +205,12 @@ ColumnLayout
 					anchors.fill: parent
 					onDoubleClicked:
 					{
+						/*
 						transactionDialog.stateAccounts = scenario.accounts
 						transactionDialog.execute = false
 						transactionDialog.open(index, blockIndex,  transactions.get(index))
+						*/
+						txSelected(index)
 					}
 				}
 

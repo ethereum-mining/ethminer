@@ -14,11 +14,13 @@ import "."
 ColumnLayout {
 	id: blockChainPanel
 	property variant model
+	property var states: {}
 	spacing: 0
 	property int previousWidth
 	property variant debugTrRequested: []
 	signal chainChanged
 	signal chainReloaded
+	signal txSelected(var blockIndex, var txIndex)
 
 	Connections
 	{
@@ -54,6 +56,11 @@ ColumnLayout {
 		previousWidth = width
 	}
 
+	function state(record)
+	{
+		return states[record]
+	}
+
 	function load(scenario)
 	{
 		if (!scenario)
@@ -61,6 +68,7 @@ ColumnLayout {
 		if (model)
 			rebuild.startBlinking()
 		model = scenario
+		states = []
 		blockModel.clear()
 		for (var b in model.blocks)
 			blockModel.append(model.blocks[b])
@@ -164,6 +172,14 @@ ColumnLayout {
 					model: blockModel
 					Block
 					{
+						Connections
+						{
+							target: block
+							onTxSelected: {
+								txSelected(index, txIndex)
+							}
+						}
+						id: block
 						scenario: blockChainPanel.model
 						Layout.preferredWidth: blockChainScrollView.width
 						Layout.preferredHeight:
@@ -271,6 +287,7 @@ ColumnLayout {
 						if (ensureNotFuturetime.running)
 							return;
 						stopBlinking()
+						states = []
 						var retBlocks = [];
 						var bAdded = 0;
 						for (var j = 0; j < model.blocks.length; j++)
@@ -475,6 +492,11 @@ ColumnLayout {
 					model.blocks[model.blocks.length - 1].transactions.push(itemTr)
 					blockModel.appendTransaction(itemTr)
 				}
+
+				onNewState: {
+					states[_record] = _accounts
+				}
+
 				onMiningComplete:
 				{
 				}
