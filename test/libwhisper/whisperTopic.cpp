@@ -348,8 +348,8 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 	}
 
 	BOOST_REQUIRE(sessions.size());
-	FixedHash<TopicBloomFilterSize> bf1 = sessions.back().first->cap<WhisperPeer>()->bloom();
-	FixedHash<TopicBloomFilterSize> bf2 = whost2->bloom();
+	TopicBloomFilterHash bf1 = sessions.back().first->cap<WhisperPeer>()->bloom();
+	TopicBloomFilterHash bf2 = whost2->bloom();
 	BOOST_REQUIRE_EQUAL(bf1, bf2);
 	BOOST_REQUIRE(bf1);
 	BOOST_REQUIRE(!whost1->bloom());
