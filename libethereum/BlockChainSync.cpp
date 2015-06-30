@@ -141,7 +141,10 @@ void BlockChainSync::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const
 	clog(NetMessageSummary) << "Blocks (" << dec << itemCount << "entries)" << (itemCount ? "" : ": NoMoreBlocks");
 
 	if (m_state != SyncState::Blocks && m_state != SyncState::NewBlocks && m_state != SyncState::Waiting)
-		clog(NetWarn) << "Unexpected Blocks received!";
+	{
+		clog(NetMessageSummary) << "Ignoring unexpected blocks";
+		return;
+	}
 	if (m_state == SyncState::Waiting)
 	{
 		clog(NetAllDetail) << "Ignored blocks while waiting";
@@ -182,6 +185,7 @@ void BlockChainSync::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const
 			case ImportResult::BadChain:
 				logNewBlock(h);
 				_peer->disable("Malformed block received.");
+				restartSync();
 				return;
 
 			case ImportResult::FutureTimeKnown:
@@ -691,7 +695,8 @@ void PV60Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _h
 		else if (status == QueueStatus::Bad)
 		{
 			cwarn << "block hash bad!" << h << ". Bailing...";
-			transition(_peer, SyncState::Idle);
+			_peer->disable("Bad blocks");
+			restartSync();
 			return;
 		}
 		else if (status == QueueStatus::Unknown)
@@ -1006,6 +1011,7 @@ void PV61Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _h
 			else if (status == QueueStatus::Bad)
 			{
 				cwarn << "block hash bad!" << h << ". Bailing...";
+				_peer->disable("Bad blocks");
 				restartSync();
 				return;
 			}
