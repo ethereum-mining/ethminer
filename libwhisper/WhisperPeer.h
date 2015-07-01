@@ -62,7 +62,7 @@ public:
 private:
 	virtual bool interpret(unsigned _id, RLP const&) override;
 	void sendMessages();
-	unsigned rating(Envelope const&) const { return 0; }	// TODO
+	unsigned rating(Envelope const&) const;
 	void noteNewMessage(h256 _h, Envelope const& _m);
 	void setBloom(TopicBloomFilterHash const& _b) { dev::Guard g(x_bloom); m_bloom = _b; }
 
