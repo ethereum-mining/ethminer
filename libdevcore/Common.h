@@ -41,6 +41,7 @@
 #include <functional>
 #include <string>
 #include <chrono>
+#include <boost/current_function.hpp>
 #include <boost/functional/hash.hpp>
 #pragma warning(push)
 #pragma GCC diagnostic push
@@ -186,7 +187,7 @@ private:
 
 /// Scope guard for invariant check in a class derived from HasInvariants.
 #if ETH_DEBUG
-#define DEV_INVARIANT_CHECK { ::dev::InvariantChecker __dev_invariantCheck(this, BOOST_THROW_EXCEPTION_CURRENT_FUNCTION, __FILE__, __LINE__); }
+#define DEV_INVARIANT_CHECK { ::dev::InvariantChecker __dev_invariantCheck(this, BOOST_CURRENT_FUNCTION, __FILE__, __LINE__); }
 #else
 #define DEV_INVARIANT_CHECK (void)0;
 #endif
