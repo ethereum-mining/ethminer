@@ -668,9 +668,7 @@ int main(int argc, char** argv)
 		}
 #if ETH_EVMJIT
 		else if (arg == "-J" || arg == "--jit")
-		{
 			jit = true;
-		}
 #endif
 		else if (arg == "-h" || arg == "--help")
 			help();
@@ -994,17 +992,11 @@ int main(int argc, char** argv)
 				web3.addNode(p2p::NodeId(), addrPort);
 			}
 			else if (cmd == "netstop")
-			{
 				web3.stopNetwork();
-			}
 			else if (c && cmd == "minestart")
-			{
 				c->startMining();
-			}
 			else if (c && cmd == "minestop")
-			{
 				c->stopMining();
-			}
 			else if (c && cmd == "mineforce")
 			{
 				string enable;
@@ -1127,13 +1119,9 @@ int main(int argc, char** argv)
 				}
 			}
 			else if (c && cmd == "block")
-			{
 				cout << "Current block: " << c->blockChain().details().number << endl;
-			}
 			else if (c && cmd == "blockqueue")
-			{
 				cout << "Current blockqueue status: " << endl << c->blockQueueStatus() << endl;
-			}
 			else if (c && cmd == "findblock")
 			{
 				if (iss.peek() != -1)
@@ -1182,13 +1170,9 @@ int main(int argc, char** argv)
 					cwarn << "Require parameter: findblock HASH";
 			}
 			else if (c && cmd == "firstunknown")
-			{
 				cout << "first unknown blockhash: " << c->blockQueue().firstUnknown().hex() << endl;
-			}
 			else if (c && cmd == "retryunknown")
-			{
 				c->retryUnknown();
-			}
 			else if (cmd == "peers")
 			{
 				for (auto it: web3.peers())

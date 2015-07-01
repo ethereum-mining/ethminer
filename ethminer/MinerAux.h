@@ -217,7 +217,7 @@ public:
 				auto boundary = bi.boundary();
 				m = boost::to_lower_copy(string(argv[++i]));
 				bi.nonce = h64(m);
-				auto r = EthashAux::eval(bi.seedHash(), powHash, bi.nonce);
+				auto r = EthashAux::eval(seedHash, powHash, bi.nonce);
 				bool valid = r.value < boundary;
 				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
 				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
