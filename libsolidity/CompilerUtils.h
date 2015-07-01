@@ -41,6 +41,10 @@ public:
 	void fetchFreeMemoryPointer();
 	/// Stores the free memory pointer from the stack.
 	void storeFreeMemoryPointer();
+	/// Allocates a number of bytes in memory as given on the stack.
+	/// Stack pre: <size>
+	/// Stack post: <mem_start>
+	void allocateMemory();
 	/// Appends code that transforms memptr to (memptr - free_memptr) memptr
 	void toSizeAfterFreeMemoryPointer();
 
@@ -65,18 +69,15 @@ public:
 		bool _padToWordBoundaries = true,
 		bool _keepUpdatedMemoryOffset = true
 	);
-	/// Stores data from stack in memory.
+	/// Stores a 256 bit integer from stack in memory.
 	/// @param _offset offset in memory
 	/// @param _type type of the data on the stack
-	/// @param _padToWordBoundaries if true, pad the data to word (32 byte) boundaries
-	/// @returns the number of bytes written to memory (can be different from _bytes if
-	///          _padToWordBoundaries is true)
-	unsigned storeInMemory(unsigned _offset,
-		Type const& _type = IntegerType(256),
-		bool _padToWordBoundaries = false
-	);
+	void storeInMemory(unsigned _offset);
 	/// Dynamic version of @see storeInMemory, expects the memory offset below the value on the stack
-	/// and also updates that. For arrays, only copies the data part.
+	/// and also updates that. For reference types, only copies the data pointer. Fails for
+	/// non-memory-references.
+	/// @param _padToWordBoundaries if true, adds zeros to pad to multiple of 32 bytes. Array elements
+	/// are always padded (except for byte arrays), regardless of this parameter.
 	/// Stack pre: memory_offset value...
 	/// Stack post: (memory_offset+length)
 	void storeInMemoryDynamic(Type const& _type, bool _padToWordBoundaries = true);
@@ -99,12 +100,21 @@ public:
 		bool _copyDynamicDataInPlace = false
 	);
 
+	/// Uses a CALL to the identity contract to perform a memory-to-memory copy.
+	/// Stack pre: <size> <target> <source>
+	/// Stack post:
+	void memoryCopy();
+
 	/// Appends code for an implicit or explicit type conversion. This includes erasing higher
 	/// order bits (@see appendHighBitCleanup) when widening integer but also copy to memory
 	/// if a reference type is converted from calldata or storage to memory.
 	/// If @a _cleanupNeeded, high order bits cleanup is also done if no type conversion would be
 	/// necessary.
 	void convertType(Type const& _typeOnStack, Type const& _targetType, bool _cleanupNeeded = false);
+
+	/// Creates a zero-value for the given type and puts it onto the stack. This might allocate
+	/// memory for memory references.
+	void pushZeroValue(Type const& _type);
 
 	/// Moves the value that is at the top of the stack to a stack variable.
 	void moveToStackVariable(VariableDeclaration const& _variable);
@@ -124,10 +134,8 @@ public:
 	static unsigned getSizeOnStack(std::vector<T> const& _variables);
 	static unsigned getSizeOnStack(std::vector<std::shared_ptr<Type const>> const& _variableTypes);
 
-	/// Appends code that computes tha SHA3 hash of the topmost stack element of type @a _type.
-	/// If @a _pad is set, padds the type to muliples of 32 bytes.
-	/// @note Only works for types of fixed size.
-	void computeHashStatic(Type const& _type = IntegerType(256), bool _padToWordBoundaries = false);
+	/// Appends code that computes tha SHA3 hash of the topmost stack element of 32 byte type.
+	void computeHashStatic();
 
 	/// Bytes we need to the start of call data.
 	///  - The size in bytes of the function (hash) identifier.

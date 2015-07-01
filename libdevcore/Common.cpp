@@ -32,10 +32,13 @@ char const* Version = "0.9.27";
 
 const u256 UndefinedU256 = ~(u256)0;
 
-void HasInvariants::checkInvariants() const
+void InvariantChecker::checkInvariants() const
 {
-	if (!invariants())
-		BOOST_THROW_EXCEPTION(FailedInvariant());
+	if (!m_this->invariants())
+	{
+		cwarn << "Invariant failed in" << m_function << "at" << m_file << ":" << m_line;
+		::boost::exception_detail::throw_exception_(FailedInvariant(), m_function, m_file, m_line);
+	}
 }
 
 struct TimerChannel: public LogChannel { static const char* name(); static const int verbosity = 0; };
@@ -48,9 +51,9 @@ const char* TimerChannel::name() { return EthRed " ⚡ "; }
 
 TimerHelper::~TimerHelper()
 {
-	auto e = m_t.elapsed();
-	if (!m_ms || e * 1000 > m_ms)
-		clog(TimerChannel) << m_id << e << "s";
+	auto e = std::chrono::high_resolution_clock::now() - m_t;
+	if (!m_ms || e > chrono::milliseconds(m_ms))
+		clog(TimerChannel) << m_id << chrono::duration_cast<chrono::milliseconds>(e).count() << "ms";
 }
 
 }

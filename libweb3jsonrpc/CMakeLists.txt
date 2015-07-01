@@ -27,7 +27,6 @@ target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_SERVER_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${MHD_LIBRARIES})
 
 target_link_libraries(${EXECUTABLE} webthree)
-target_link_libraries(${EXECUTABLE} secp256k1)
 
 if (SOLIDITY)
 	target_link_libraries(${EXECUTABLE} solidity)
@@ -54,4 +53,3 @@ install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib L
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
 
 add_custom_target(aux_json SOURCES "spec.json")
-

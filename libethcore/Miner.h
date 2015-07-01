@@ -107,9 +107,9 @@ public:
 		}
 		if (!!_work)
 		{
-			DEV_TIMED_ABOVE(pause, 250)
+			DEV_TIMED_ABOVE("pause", 250)
 				pause();
-			DEV_TIMED_ABOVE(kickOff, 250)
+			DEV_TIMED_ABOVE("kickOff", 250)
 				kickOff();
 		}
 		else if (!_work && !!old)

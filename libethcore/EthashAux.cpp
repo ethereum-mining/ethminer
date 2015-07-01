@@ -119,9 +119,11 @@ void EthashAux::killCache(h256 const& _s)
 
 EthashAux::LightType EthashAux::light(h256 const& _seedHash)
 {
-	ReadGuard l(get()->x_lights);
-	LightType ret = get()->m_lights[_seedHash];
-	return ret ? ret : (get()->m_lights[_seedHash] = make_shared<LightAllocation>(_seedHash));
+	UpgradableGuard l(get()->x_lights);
+	if (get()->m_lights.count(_seedHash))
+		return get()->m_lights.at(_seedHash);
+	UpgradeGuard l2(l);
+	return (get()->m_lights[_seedHash] = make_shared<LightAllocation>(_seedHash));
 }
 
 EthashAux::LightAllocation::LightAllocation(h256 const& _seedHash)

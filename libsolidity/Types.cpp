@@ -671,6 +671,26 @@ TypePointer ContractType::unaryOperatorResult(Token::Value _operator) const
 	return _operator == Token::Delete ? make_shared<VoidType>() : TypePointer();
 }
 
+TypePointer ReferenceType::unaryOperatorResult(Token::Value _operator) const
+{
+	if (_operator != Token::Delete)
+		return TypePointer();
+	// delete can be used on everything except calldata references or storage pointers
+	// (storage references are ok)
+	switch (location())
+	{
+	case DataLocation::CallData:
+		return TypePointer();
+	case DataLocation::Memory:
+		return make_shared<VoidType>();
+	case DataLocation::Storage:
+		return m_isPointer ? TypePointer() : make_shared<VoidType>();
+	default:
+		solAssert(false, "");
+	}
+	return TypePointer();
+}
+
 TypePointer ReferenceType::copyForLocationIfReference(DataLocation _location, TypePointer const& _type)
 {
 	if (auto type = dynamic_cast<ReferenceType const*>(_type.get()))
@@ -721,9 +741,13 @@ bool ArrayType::isImplicitlyConvertibleTo(const Type& _convertTo) const
 	}
 	else
 	{
-		// Require that the base type is the same, not only convertible.
-		// This disallows assignment of nested arrays from storage to memory for now.
-		if (*getBaseType() != *convertTo.getBaseType())
+		// Conversion to storage pointer or to memory, we de not copy element-for-element here, so
+		// require that the base type is the same, not only convertible.
+		// This disallows assignment of nested dynamic arrays from storage to memory for now.
+		if (
+			*copyForLocationIfReference(location(), getBaseType()) !=
+			*copyForLocationIfReference(location(), convertTo.getBaseType())
+		)
 			return false;
 		if (isDynamicallySized() != convertTo.isDynamicallySized())
 			return false;
@@ -732,13 +756,6 @@ bool ArrayType::isImplicitlyConvertibleTo(const Type& _convertTo) const
 			return false;
 		return true;
 	}
-}
-
-TypePointer ArrayType::unaryOperatorResult(Token::Value _operator) const
-{
-	if (_operator == Token::Delete)
-		return make_shared<VoidType>();
-	return TypePointer();
 }
 
 bool ArrayType::operator==(Type const& _other) const
@@ -822,16 +839,17 @@ string ArrayType::toString(bool _short) const
 TypePointer ArrayType::externalType() const
 {
 	if (m_arrayKind != ArrayKind::Ordinary)
-		return this->copyForLocation(DataLocation::CallData, true);
-	if (!m_baseType->externalType())
+		return this->copyForLocation(DataLocation::Memory, true);
+	TypePointer baseExt = m_baseType->externalType();
+	if (!baseExt)
 		return TypePointer();
 	if (m_baseType->getCategory() == Category::Array && m_baseType->isDynamicallySized())
 		return TypePointer();
 
 	if (isDynamicallySized())
-		return std::make_shared<ArrayType>(DataLocation::CallData, m_baseType->externalType());
+		return std::make_shared<ArrayType>(DataLocation::Memory, baseExt);
 	else
-		return std::make_shared<ArrayType>(DataLocation::CallData, m_baseType->externalType(), m_length);
+		return std::make_shared<ArrayType>(DataLocation::Memory, baseExt, m_length);
 }
 
 TypePointer ArrayType::copyForLocation(DataLocation _location, bool _isPointer) const
@@ -957,17 +975,28 @@ bool StructType::isImplicitlyConvertibleTo(const Type& _convertTo) const
 	return this->m_struct == convertTo.m_struct;
 }
 
-TypePointer StructType::unaryOperatorResult(Token::Value _operator) const
-{
-	return _operator == Token::Delete ? make_shared<VoidType>() : TypePointer();
-}
-
 bool StructType::operator==(Type const& _other) const
 {
 	if (_other.getCategory() != getCategory())
 		return false;
 	StructType const& other = dynamic_cast<StructType const&>(_other);
 	return ReferenceType::operator==(other) && other.m_struct == m_struct;
+}
+
+unsigned StructType::getCalldataEncodedSize(bool _padded) const
+{
+	unsigned size = 0;
+	for (auto const& member: getMembers())
+		if (!member.type->canLiveOutsideStorage())
+			return 0;
+		else
+		{
+			unsigned memberSize = member.type->getCalldataEncodedSize(_padded);
+			if (memberSize == 0)
+				return 0;
+			size += memberSize;
+		}
+	return size;
 }
 
 u256 StructType::getStorageSize() const
@@ -1248,15 +1277,17 @@ FunctionTypePointer FunctionType::externalFunctionType() const
 
 	for (auto type: m_parameterTypes)
 	{
-		if (!type->externalType())
+		if (auto ext = type->externalType())
+			paramTypes.push_back(ext);
+		else
 			return FunctionTypePointer();
-		paramTypes.push_back(type->externalType());
 	}
 	for (auto type: m_returnParameterTypes)
 	{
-		if (!type->externalType())
+		if (auto ext = type->externalType())
+			retParamTypes.push_back(ext);
+		else
 			return FunctionTypePointer();
-		retParamTypes.push_back(type->externalType());
 	}
 	return make_shared<FunctionType>(paramTypes, retParamTypes, m_parameterNames, m_returnParameterNames, m_location, m_arbitraryParameters);
 }

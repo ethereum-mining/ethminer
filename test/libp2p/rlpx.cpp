@@ -39,7 +39,7 @@ using namespace CryptoPP;
 
 BOOST_AUTO_TEST_SUITE(rlpx)
 
-static Secp256k1 s_secp256k1;
+static Secp256k1PP s_secp256k1;
 static CryptoPP::AutoSeededRandomPool s_rng;
 static CryptoPP::OID s_curveOID(CryptoPP::ASN1::secp256k1());
 static CryptoPP::DL_GroupParameters_EC<CryptoPP::ECP> s_params(s_curveOID);
