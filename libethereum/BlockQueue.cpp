@@ -114,15 +114,11 @@ void BlockQueue::verifierBody()
 		catch (...)
 		{
 			// bad block.
-			{
-				// has to be this order as that's how invariants() assumes.
-				WriteGuard l2(m_lock);
-				unique_lock<Mutex> l(m_verification);
-				m_readySet.erase(work.hash);
-				m_knownBad.insert(work.hash);
-			}
-
+			// has to be this order as that's how invariants() assumes.
+			WriteGuard l2(m_lock);
 			unique_lock<Mutex> l(m_verification);
+			m_readySet.erase(work.hash);
+			m_knownBad.insert(work.hash);
 			for (auto it = m_verifying.begin(); it != m_verifying.end(); ++it)
 				if (it->verified.info.mixHash == work.hash)
 				{
@@ -131,6 +127,7 @@ void BlockQueue::verifierBody()
 				}
 			cwarn << "BlockQueue missing our job: was there a GM?";
 			OK1:;
+			drainVerified_WITH_BOTH_LOCKS();
 			continue;
 		}
 
@@ -149,17 +146,8 @@ void BlockQueue::verifierBody()
 				}
 				else
 					m_verified.emplace_back(move(res));
-				while (m_verifying.size() && !m_verifying.front().blockData.empty())
-				{
-					if (m_knownBad.count(m_verifying.front().verified.info.parentHash))
-					{
-						m_readySet.erase(m_verifying.front().verified.info.hash());
-						m_knownBad.insert(res.verified.info.hash());
-					}
-					else
-						m_verified.emplace_back(move(m_verifying.front()));
-					m_verifying.pop_front();
-				}
+
+				drainVerified_WITH_BOTH_LOCKS();
 				ready = true;
 			}
 			else
@@ -176,6 +164,21 @@ void BlockQueue::verifierBody()
 		}
 		if (ready)
 			m_onReady();
+	}
+}
+
+void BlockQueue::drainVerified_WITH_BOTH_LOCKS()
+{
+	while (!m_verifying.empty() && !m_verifying.front().blockData.empty())
+	{
+		if (m_knownBad.count(m_verifying.front().verified.info.parentHash))
+		{
+			m_readySet.erase(m_verifying.front().verified.info.hash());
+			m_knownBad.insert(m_verifying.front().verified.info.hash());
+		}
+		else
+			m_verified.emplace_back(move(m_verifying.front()));
+		m_verifying.pop_front();
 	}
 }
 
