@@ -134,8 +134,8 @@ private:
 	bool invariants() const override;
 
 	void verifierBody();
-	void collectUnknownBad(h256 const& _bad);
-	void updateBad(h256 const& _bad);
+	void collectUnknownBad_WITH_BOTH_LOCKS(h256 const& _bad);
+	void updateBad_WITH_LOCK(h256 const& _bad);
 
 	mutable boost::shared_mutex m_lock;									///< General lock for the sets, m_future and m_unknown.
 	h256Hash m_drainingSet;												///< All blocks being imported.
