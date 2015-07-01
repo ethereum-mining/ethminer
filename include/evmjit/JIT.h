@@ -107,9 +107,7 @@ enum class ReturnCode
 	Rejected           = -5, ///< Input data (code, gas, block info, etc.) does not meet JIT requirement and execution request has been rejected
 
 	// Internal error codes
-	LLVMConfigError    = -101,
-	LLVMCompileError   = -102,
-	LLVMLinkError      = -103,
+	LLVMError          = -101,
 
 	UnexpectedException = -111,
 
