@@ -284,7 +284,7 @@ void BlockChainSync::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP con
 		case ImportResult::FutureTimeUnknown:
 		case ImportResult::UnknownParent:
 			logNewBlock(h);
-			clog(NetMessageSummary) << "Received block with no known parent. Resyncing...";
+			clog(NetMessageDetail) << "Received block with no known parent. Resyncing...";
 			resetSyncFor(_peer, h, _r[1].toInt<u256>());
 			break;
 		default:;
@@ -788,8 +788,12 @@ void PV60Sync::onPeerAborting()
 {
 	RecursiveGuard l(x_sync);
 	// Can't check invariants here since the peers is already removed from the list and the state is not updated yet.
-	if (m_syncer.expired())
+	if (m_syncer.expired() && m_state != SyncState::Idle)
+	{
+		clog(NetWarn) << "Syncing peer disconnected, restarting sync";
+		m_syncer.reset();
 		abortSync();
+	}
 	DEV_INVARIANT_CHECK;
 }
 
@@ -1051,8 +1055,12 @@ void PV61Sync::onPeerAborting()
 		else
 			++s;
 	}
-	if (m_syncer.expired())
+	if (m_syncer.expired() && m_state != SyncState::Idle)
+	{
+		clog(NetWarn) << "Syncing peer disconnected, restarting sync";
+		m_syncer.reset();
 		abortSync();
+	}
 	else if (isPV61Syncing())
 		requestSubchains();
 	DEV_INVARIANT_CHECK;
