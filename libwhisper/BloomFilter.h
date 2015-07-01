@@ -91,7 +91,7 @@ bool TopicBloomFilterBase<N>::isBitSet(FixedHash<N> const& _h, unsigned _index)
 	return (_h[iByte] & c_powerOfTwoBitMmask[iBit]) != 0;
 }
 
-using TopicBloomFilter = TopicBloomFilterBase<TopicBloomFilterSize>;
+using TopicBloomFilter = TopicBloomFilterBase<c_topicBloomFilterSize>;
 
 }
 }

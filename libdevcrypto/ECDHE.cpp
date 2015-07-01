@@ -27,7 +27,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::crypto;
 
-static Secp256k1 s_secp256k1;
+static Secp256k1PP s_secp256k1;
 
 void dev::crypto::ecdh::agree(Secret const& _s, Public const& _r, h256& o_s)
 {
