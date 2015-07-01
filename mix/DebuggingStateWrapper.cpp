@@ -38,13 +38,17 @@ using namespace dev::mix;
 
 namespace
 {
-	static QVariantList memDumpToList(bytes const& _bytes, unsigned _width)
+	static QVariantList memDumpToList(bytes const& _bytes, unsigned _width, bool _includeAddress = false)
 	{
 		QVariantList dumpList;
 		for (unsigned i = 0; i < _bytes.size(); i += _width)
 		{
 			std::stringstream ret;
-
+			if (_includeAddress)
+			{
+				ret << std::setfill('0') << std::setw(6) << std::hex << i << " ";
+				ret << "   ";
+			}
 			for (unsigned j = i; j < i + _width; ++j)
 				if (j < _bytes.size())
 					if (_bytes[j] >= 32 && _bytes[j] < 127)
@@ -137,7 +141,7 @@ QStringList QMachineState::debugStorage()
 
 QVariantList QMachineState::debugMemory()
 {
-	return memDumpToList(m_state.memory, 16);
+	return memDumpToList(m_state.memory, 16, true);
 }
 
 QCallData* QMachineState::getDebugCallData(QObject* _owner, bytes const& _data)

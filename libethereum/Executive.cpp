@@ -316,7 +316,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 	if (m_ext)
 	{
 #if ETH_TIMED_EXECUTIONS
-		boost::timer t;
+		Timer t;
 #endif
 		try
 		{

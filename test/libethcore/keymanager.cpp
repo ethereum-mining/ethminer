@@ -57,6 +57,8 @@ BOOST_AUTO_TEST_CASE(KeyManagerConstructor)
 	BOOST_CHECK_EQUAL(km.keysFile(), km.defaultPath());
 	BOOST_CHECK_EQUAL(km.defaultPath(), getDataDir("ethereum") + "/keys.info");
 	BOOST_CHECK(km.store().keys() == SecretStore().keys());
+	for (auto a: km.accounts())
+		km.kill(a);
 }
 
 BOOST_AUTO_TEST_CASE(KeyManagerKeysFile)
@@ -72,13 +74,15 @@ BOOST_AUTO_TEST_CASE(KeyManagerKeysFile)
 	BOOST_CHECK(!km.exists());
 	BOOST_CHECK_THROW(km.create(password), FileError);
 	km.setKeysFile(tmpDir.path() + "/notExistingDir/keysFile.json");
-	BOOST_CHECK_THROW(km.create(password), FileError);
-	BOOST_CHECK(!km.exists());
+	BOOST_CHECK_NO_THROW(km.create(password));
+	BOOST_CHECK(km.exists());
 	km.setKeysFile(tmpDir.path() + "keysFile.json");
 	BOOST_CHECK_NO_THROW(km.create(password));
-
 	km.save(password);
 	BOOST_CHECK(km.load(password));
+
+	for (auto a: km.accounts())
+		km.kill(a);
 }
 
 BOOST_AUTO_TEST_CASE(KeyManagerHints)
@@ -96,6 +100,25 @@ BOOST_AUTO_TEST_CASE(KeyManagerHints)
 	BOOST_CHECK(!km.haveHint(password + "2"));
 	km.notePassword(password);
 	BOOST_CHECK(km.haveHint(password));
+
+	for (auto a: km.accounts())
+		km.kill(a);
+}
+
+BOOST_AUTO_TEST_CASE(KeyManagerAccounts)
+{
+	KeyManager km;
+	string password = "hardPassword";
+
+	TransientDirectory tmpDir;
+	km.setKeysFile(tmpDir.path()+ "keysFile.json");
+
+	BOOST_CHECK_NO_THROW(km.create(password));
+	BOOST_CHECK(km.accounts().empty());
+	BOOST_CHECK(km.load(password));
+
+	for (auto a: km.accounts())
+		km.kill(a);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -155,6 +155,8 @@ bool ExpressionCompiler::visit(Assignment const& _assignment)
 	TypePointer type = _assignment.getRightHandSide().getType();
 	if (!_assignment.getType()->dataStoredIn(DataLocation::Storage))
 	{
+		//@todo we should delay conversion here if RHS is not in memory, LHS is a MemoryItem
+		// and not dynamically-sized.
 		utils().convertType(*type, *_assignment.getType());
 		type = _assignment.getType();
 	}
@@ -677,10 +679,24 @@ void ExpressionCompiler::endVisit(MemberAccess const& _memberAccess)
 	case Type::Category::Struct:
 	{
 		StructType const& type = dynamic_cast<StructType const&>(*_memberAccess.getExpression().getType());
-		m_context << eth::Instruction::POP; // structs always align to new slot
-		pair<u256, unsigned> const& offsets = type.getStorageOffsetsOfMember(member);
-		m_context << offsets.first << eth::Instruction::ADD << u256(offsets.second);
-		setLValueToStorageItem(_memberAccess);
+		switch (type.location())
+		{
+		case DataLocation::Storage:
+		{
+			m_context << eth::Instruction::POP; // structs always align to new slot
+			pair<u256, unsigned> const& offsets = type.getStorageOffsetsOfMember(member);
+			m_context << offsets.first << eth::Instruction::ADD << u256(offsets.second);
+			setLValueToStorageItem(_memberAccess);
+			break;
+		}
+		case DataLocation::Memory:
+		{
+			solAssert(false, "Member access for memory structs not yet implemented.");
+			break;
+		}
+		default:
+			solAssert(false, "Illegal data location for struct.");
+		}
 		break;
 	}
 	case Type::Category::Enum:
@@ -771,8 +787,9 @@ bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 		_indexAccess.getIndexExpression()->accept(*this);
 		// stack layout: <base_ref> [<length>] <index>
 		ArrayUtils(m_context).accessIndex(arrayType);
-		if (arrayType.location() == DataLocation::Storage)
+		switch (arrayType.location())
 		{
+		case DataLocation::Storage:
 			if (arrayType.isByteArray())
 			{
 				solAssert(!arrayType.isString(), "Index access to string is not allowed.");
@@ -780,6 +797,21 @@ bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 			}
 			else
 				setLValueToStorageItem(_indexAccess);
+			break;
+		case DataLocation::Memory:
+			setLValue<MemoryItem>(_indexAccess, *_indexAccess.getType(), !arrayType.isByteArray());
+			break;
+		case DataLocation::CallData:
+			//@todo if we implement this, the value in calldata has to be added to the base offset
+			solAssert(!arrayType.getBaseType()->isDynamicallySized(), "Nested arrays not yet implemented.");
+			if (arrayType.getBaseType()->isValueType())
+				CompilerUtils(m_context).loadFromMemoryDynamic(
+					*arrayType.getBaseType(),
+					true,
+					!arrayType.isByteArray(),
+					false
+				);
+			break;
 		}
 	}
 	else

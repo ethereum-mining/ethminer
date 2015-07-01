@@ -24,6 +24,7 @@
 #if ETH_PROFILING_GPERF
 #include <gperftools/profiler.h>
 #endif
+
 #include <boost/timer.hpp>
 #include <boost/filesystem.hpp>
 #include <test/JsonSpiritHeaders.h>
@@ -96,6 +97,15 @@ ldb::Slice dev::eth::toSlice(h256 const& _h, unsigned _sub)
 #endif
 }
 
+namespace dev
+{
+class WriteBatchNoter: public ldb::WriteBatch::Handler
+{
+	virtual void Put(ldb::Slice const& _key, ldb::Slice const& _value) { cnote << "Put" << toHex(bytesConstRef(_key)) << "=>" << toHex(bytesConstRef(_value)); }
+	virtual void Delete(ldb::Slice const& _key) { cnote << "Delete" << toHex(bytesConstRef(_key)); }
+};
+}
+
 #if ETH_DEBUG&&0
 static const chrono::system_clock::duration c_collectionDuration = chrono::seconds(15);
 static const unsigned c_collectionQueueSize = 2;
@@ -149,6 +159,7 @@ void BlockChain::open(std::string const& _path, WithExisting _we)
 
 	ldb::Options o;
 	o.create_if_missing = true;
+	o.max_open_files = 256;
 	ldb::DB::Open(o, path + "/blocks", &m_blocksDB);
 	ldb::DB::Open(o, path + "/details", &m_extrasDB);
 	if (!m_blocksDB || !m_extrasDB)
@@ -239,7 +250,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	m_extrasDB->Put(m_writeOptions, toSlice(m_lastBlockHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[m_lastBlockHash].rlp()));
 
 	h256 lastHash = m_lastBlockHash;
-	boost::timer t;
+	Timer t;
 	for (unsigned d = 1; d < originalNumber; ++d)
 	{
 		if (!(d % 1000))
@@ -281,15 +292,6 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	boost::filesystem::remove_all(path + "/details.old");
 }
 
-template <class T, class V>
-bool contains(T const& _t, V const& _v)
-{
-	for (auto const& i: _t)
-		if (i == _v)
-			return true;
-	return false;
-}
-
 LastHashes BlockChain::lastHashes(unsigned _n) const
 {
 	Guard l(x_lastLastHashes);
@@ -323,7 +325,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 			{
 				// Nonce & uncle nonces already verified in verification thread at this point.
 				ImportRoute r;
-				DEV_TIMED_ABOVE(Block import, 500)
+				DEV_TIMED_ABOVE("Block import " + toString(block.verified.info.number), 500)
 					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
 				fresh += r.liveBlocks;
 				dead += r.deadBlocks;
@@ -397,8 +399,8 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	catch (Exception& ex)
 	{
 //		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(ex);
+		ex << errinfo_phase(2);
 		ex << errinfo_now(time(0));
-		ex << errinfo_block(_block);
 		throw;
 	}
 #endif
@@ -411,13 +413,13 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	//@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
 #if ETH_TIMED_IMPORTS
-	boost::timer total;
+	Timer total;
 	double preliminaryChecks;
 	double enactment;
 	double collation;
 	double writing;
 	double checkBest;
-	boost::timer t;
+	Timer t;
 #endif
 
 	// Check block doesn't already exist first!
@@ -469,6 +471,9 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	h256 newLastBlockHash = currentHash();
 	unsigned newLastBlockNumber = number();
 
+	BlockLogBlooms blb;
+	BlockReceipts br;
+
 	u256 td;
 #if ETH_CATCH
 	try
@@ -479,8 +484,6 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 		State s(_db);
 		auto tdIncrease = s.enactOn(_block, *this, _ir);
 
-		BlockLogBlooms blb;
-		BlockReceipts br;
 		for (unsigned i = 0; i < s.pending().size(); ++i)
 		{
 			blb.blooms.push_back(s.receipt(i).bloom());
@@ -530,7 +533,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 #endif
 	}
 #if ETH_CATCH
-	catch (BadRoot& ex)
+	catch (BadRoot&)
 	{
 		cwarn << "BadRoot error. Retrying import later.";
 		BOOST_THROW_EXCEPTION(FutureTime());
@@ -636,8 +639,25 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 		clog(BlockChainChat) << "   Imported but not best (oTD:" << details(last).totalDifficulty << " > TD:" << td << ")";
 	}
 
-	m_blocksDB->Write(m_writeOptions, &blocksBatch);
-	m_extrasDB->Write(m_writeOptions, &extrasBatch);
+	ldb::Status o = m_blocksDB->Write(m_writeOptions, &blocksBatch);
+	if (!o.ok())
+	{
+		cwarn << "Error writing to blockchain database: " << o.ToString();
+		WriteBatchNoter n;
+		blocksBatch.Iterate(&n);
+		cwarn << "Fail writing to blockchain database. Bombing out.";
+		exit(-1);
+	}
+	
+	o = m_extrasDB->Write(m_writeOptions, &extrasBatch);
+	if (!o.ok())
+	{
+		cwarn << "Error writing to extras database: " << o.ToString();
+		WriteBatchNoter n;
+		extrasBatch.Iterate(&n);
+		cwarn << "Fail writing to extras database. Bombing out.";
+		exit(-1);
+	}
 
 #if ETH_PARANOIA || !ETH_TRUE
 	if (isKnown(_block.info.hash()) && !details(_block.info.hash()))
@@ -665,7 +685,14 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 		{
 			m_lastBlockHash = newLastBlockHash;
 			m_lastBlockNumber = newLastBlockNumber;
-			m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&m_lastBlockHash, 32));
+			o = m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&m_lastBlockHash, 32));
+			if (!o.ok())
+			{
+				cwarn << "Error writing to extras database: " << o.ToString();
+				cout << "Put" << toHex(bytesConstRef(ldb::Slice("best"))) << "=>" << toHex(bytesConstRef(ldb::Slice((char const*)&m_lastBlockHash, 32)));
+				cwarn << "Fail writing to extras database. Bombing out.";
+				exit(-1);
+			}
 		}
 
 #if ETH_PARANOIA || !ETH_TRUE
@@ -674,15 +701,17 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 
 #if ETH_TIMED_IMPORTS
 	checkBest = t.elapsed();
-	if (total.elapsed() > 1.0)
+	if (total.elapsed() > 0.5)
 	{
-		cnote << "SLOW IMPORT:" << _block.info.hash();
+		cnote << "SLOW IMPORT:" << _block.info.hash() << " #" << _block.info.number;
 		cnote << "  Import took:" << total.elapsed();
 		cnote << "  preliminaryChecks:" << preliminaryChecks;
 		cnote << "  enactment:" << enactment;
 		cnote << "  collation:" << collation;
 		cnote << "  writing:" << writing;
 		cnote << "  checkBest:" << checkBest;
+		cnote << "  " << _block.transactions.size() << " transactions";
+		cnote << "  " << _block.info.gasUsed << " gas used";
 	}
 #endif
 
@@ -1080,6 +1109,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 	}
 	catch (Exception& ex)
 	{
+		ex << errinfo_phase(1);
 		ex << errinfo_now(time(0));
 		ex << errinfo_block(_block);
 		if (_onBad)
@@ -1097,6 +1127,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 		}
 		catch (Exception& ex)
 		{
+			ex << errinfo_phase(1);
 			ex << errinfo_uncleIndex(i);
 			ex << errinfo_now(time(0));
 			ex << errinfo_block(_block);
@@ -1107,16 +1138,21 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 		++i;
 	}
 	i = 0;
-	for (auto const& tr: r[1])
+	for (RLP const& tr: r[1])
 	{
+		bytesConstRef d = tr.data();
 		try
 		{
-			res.transactions.push_back(Transaction(tr.data(), CheckTransaction::Everything));
+			res.transactions.push_back(Transaction(d, CheckTransaction::Everything));
 		}
 		catch (Exception& ex)
 		{
+			ex << errinfo_phase(1);
 			ex << errinfo_transactionIndex(i);
+			ex << errinfo_transaction(d.toBytes());
 			ex << errinfo_block(_block);
+			if (_onBad)
+				_onBad(ex);
 			throw;
 		}
 		++i;

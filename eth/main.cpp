@@ -41,7 +41,7 @@
 
 #include <libwebthree/WebThree.h>
 #if ETH_JSCONSOLE || !ETH_TRUE
-#include <libjsconsole/JSConsole.h>
+#include <libjsconsole/JSLocalConsole.h>
 #endif
 #if ETH_READLINE || !ETH_TRUE
 #include <readline/readline.h>
@@ -141,6 +141,7 @@ void help()
 		<< "    --master <password>  Give the master password for the key store." << endl
 		<< "    --password <password>  Give a password for a private key." << endl
 		<< "    --sentinel <server>  Set the sentinel for reporting bad blocks or chain issues." << endl
+		<< "    --prime <n>  Specify n as the 6 digit prime number to start Frontier." << endl
 		<< endl
 		<< "Client transacting:" << endl
 		/*<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (default: 15)." << endl
@@ -187,6 +188,7 @@ void help()
 		<< "    --from <n>  Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --only <n>  Equivalent to --export-from n --export-to n." << endl
+		<< "    --dont-check  Avoids checking some of the aspects of blocks. Faster importing, but only do if you know the data is valid." << endl
 		<< endl
 		<< "General Options:" << endl
 		<< "    -d,--db-path <path>  Load database from path (default: " << getDataDir() << ")" << endl
@@ -240,6 +242,16 @@ string pretty(h160 _a, dev::eth::State const& _st)
 
 bool g_exit = false;
 
+inline bool isPrime(unsigned _number)
+{
+	if (((!(_number & 1)) && _number != 2 ) || (_number < 2) || (_number % 3 == 0 && _number != 3))
+		return false;
+	for(unsigned k = 1; 36 * k * k - 12 * k < _number; ++k)
+		if ((_number % (6 * k + 1) == 0) || (_number % (6 * k - 1) == 0))
+			return false;
+	return true;
+}
+
 void sighandler(int)
 {
 	g_exit = true;
@@ -280,9 +292,12 @@ int main(int argc, char** argv)
 	/// Operating mode.
 	OperationMode mode = OperationMode::Node;
 	string dbPath;
+	unsigned prime = 0;
+	bool yesIReallyKnowWhatImDoing = false;
 
 	/// File name for import/export.
 	string filename;
+	bool safeImport = false;
 
 	/// Hashes/numbers for export range.
 	string exportFrom = "1";
@@ -395,11 +410,25 @@ int main(int argc, char** argv)
 			mode = OperationMode::Import;
 			filename = argv[++i];
 		}
+		else if (arg == "--dont-check")
+			safeImport = true;
 		else if ((arg == "-E" || arg == "--export") && i + 1 < argc)
 		{
 			mode = OperationMode::Export;
 			filename = argv[++i];
 		}
+		else if (arg == "--prime" && i + 1 < argc)
+			try
+			{
+				prime = stoi(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		else if (arg == "--yes-i-really-know-what-im-doing")
+			yesIReallyKnowWhatImDoing = true;
 		else if (arg == "--sentinel" && i + 1 < argc)
 			sentinel = argv[++i];
 		else if (arg == "--mine-on-wrong-chain")
@@ -674,12 +703,24 @@ int main(int argc, char** argv)
 
 	string logbuf;
 	std::string additional;
-	g_logPost = [&](std::string const& a, char const*){
-		if (g_silence)
-			logbuf += a + "\n";
-		else
-			cout << "\r           \r" << a << endl << additional << flush;
-	};
+	if (interactive)
+		g_logPost = [&](std::string const& a, char const*){
+			static SpinLock s_lock;
+			SpinGuard l(s_lock);
+			
+			if (g_silence)
+				logbuf += a + "\n";
+			else
+				cout << "\r           \r" << a << endl << additional << flush;
+
+			// helpful to use OutputDebugString on windows
+	#ifdef _WIN32
+			{
+				OutputDebugStringA(a.data());
+				OutputDebugStringA("\n");
+			}
+	#endif
+		};
 
 	auto getPassword = [&](string const& prompt){
 		auto s = g_silence;
@@ -753,13 +794,18 @@ int main(int argc, char** argv)
 		unsigned futureTime = 0;
 		unsigned unknownParent = 0;
 		unsigned bad = 0;
+		chrono::steady_clock::time_point t = chrono::steady_clock::now();
+		double last = 0;
+		unsigned lastImported = 0;
+		unsigned imported = 0;
 		while (in.peek() != -1)
 		{
 			bytes block(8);
 			in.read((char*)block.data(), 8);
 			block.resize(RLP(block, RLP::LaisezFaire).actualSize());
 			in.read((char*)block.data() + 8, block.size() - 8);
-			switch (web3.ethereum()->injectBlock(block))
+
+			switch (web3.ethereum()->queueBlock(block, safeImport))
 			{
 			case ImportResult::Success: good++; break;
 			case ImportResult::AlreadyKnown: alreadyHave++; break;
@@ -768,9 +814,51 @@ int main(int argc, char** argv)
 			case ImportResult::FutureTimeKnown: futureTime++; break;
 			default: bad++; break;
 			}
+
+			// sync chain with queue
+			tuple<ImportRoute, bool, unsigned> r = web3.ethereum()->syncQueue(10);
+			imported += get<2>(r);
+
+			double e = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t).count() / 1000.0;
+			if ((unsigned)e >= last + 10)
+			{
+				auto i = imported - lastImported;
+				auto d = e - last;
+				cout << i << " more imported at " << (round(i * 10 / d) / 10) << " blocks/s. " << imported << " imported in " << e << " seconds at " << (round(imported * 10 / e) / 10) << " blocks/s (#" << web3.ethereum()->number() << ")" << endl;
+				last = (unsigned)e;
+				lastImported = imported;
+//				cout << web3.ethereum()->blockQueueStatus() << endl;
+			}
 		}
-		cout << (good + bad + futureTime + unknownParent + alreadyHave) << " total: " << good << " ok, " << alreadyHave << " got, " << futureTime << " future, " << unknownParent << " unknown parent, " << bad << " malformed." << endl;
+
+		while (web3.ethereum()->blockQueue().items().first + web3.ethereum()->blockQueue().items().second > 0)
+		{
+			this_thread::sleep_for(chrono::seconds(1));
+			web3.ethereum()->syncQueue(100000);
+		}
+		double e = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t).count() / 1000.0;
+		cout << imported << " imported in " << e << " seconds at " << (round(imported * 10 / e) / 10) << " blocks/s (#" << web3.ethereum()->number() << ")" << endl;
 		return 0;
+	}
+
+	if (c_network == eth::Network::Frontier && !yesIReallyKnowWhatImDoing)
+	{
+		auto pd = contents(getDataDir() + "primes");
+		unordered_set<unsigned> primes = RLP(pd).toUnorderedSet<unsigned>();
+		while (true)
+		{
+			if (!prime)
+				try
+				{
+					prime = stoi(getPassword("To enter the Frontier, enter a 6 digit prime that you have not entered before: "));
+				}
+				catch (...) {}
+			if (isPrime(prime) && !primes.count(prime))
+				break;
+			prime = 0;
+		}
+		primes.insert(prime);
+		writeFile(getDataDir() + "primes", rlp(primes));
 	}
 
 	if (keyManager.exists())
@@ -1742,12 +1830,24 @@ int main(int argc, char** argv)
 		if (useConsole)
 		{
 #if ETH_JSCONSOLE
-			JSConsole console(web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager));
+			JSLocalConsole console;
+
+			jsonrpcServer = shared_ptr<dev::WebThreeStubServer>(new dev::WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer));
+			jsonrpcServer->setMiningBenefactorChanger([&](Address const& a) { beneficiary = a; });
+			jsonrpcServer->StartListening();
+			if (jsonAdmin.empty())
+				jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Priviledge::Admin}});
+			else
+				jsonrpcServer->addSession(jsonAdmin, SessionPermissions{{Priviledge::Admin}});
+			cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
+
 			while (!g_exit)
 			{
 				console.readExpression();
 				stopMiningAfterXBlocks(c, n, mining);
 			}
+
+			jsonrpcServer->StopListening();
 #endif
 		}
 		else
