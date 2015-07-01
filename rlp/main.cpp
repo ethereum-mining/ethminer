@@ -113,9 +113,9 @@ public:
 			m_out << "null";
 		else if (_d.isInt() && !m_prefs.stringInts)
 			if (m_prefs.hexInts)
-				m_out << (m_prefs.hexPrefix ? "0x" : "") << toHex(toCompactBigEndian(_d.toInt<bigint>(RLP::LaisezFaire), 1), 1);
+				m_out << (m_prefs.hexPrefix ? "0x" : "") << toHex(toCompactBigEndian(_d.toInt<bigint>(RLP::LaissezFaire), 1), 1);
 			else
-				m_out << _d.toInt<bigint>(RLP::LaisezFaire);
+				m_out << _d.toInt<bigint>(RLP::LaissezFaire);
 		else if (_d.isData() || (_d.isInt() && m_prefs.stringInts))
 			if (m_prefs.forceString || (!m_prefs.forceHex && isAscii(_d.toString())))
 				m_out << escaped(_d.toString(), m_prefs.escapeAll);
