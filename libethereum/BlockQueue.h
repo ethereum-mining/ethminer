@@ -136,6 +136,7 @@ private:
 	void verifierBody();
 	void collectUnknownBad_WITH_BOTH_LOCKS(h256 const& _bad);
 	void updateBad_WITH_LOCK(h256 const& _bad);
+	void drainVerified_WITH_BOTH_LOCKS();
 
 	mutable boost::shared_mutex m_lock;									///< General lock for the sets, m_future and m_unknown.
 	h256Hash m_drainingSet;												///< All blocks being imported.
