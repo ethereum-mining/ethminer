@@ -180,7 +180,7 @@ QStringList FileIo::makePackage(QString const& _deploymentFolder)
 	dev::h256 dappHash = dev::sha3(dapp);
 	//encrypt
 	KeyPair key(dappHash);
-	Secp256k1 enc;
+	Secp256k1PP enc;
 	enc.encrypt(key.pub(), dapp);
 
 	QUrl url(_deploymentFolder + "package.dapp");

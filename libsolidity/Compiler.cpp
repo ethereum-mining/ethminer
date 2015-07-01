@@ -261,7 +261,7 @@ void Compiler::appendCalldataUnpacker(
 {
 	// We do not check the calldata size, everything is zero-paddedd
 
-	//@todo this does not yet support nested arrays
+	//@todo this does not yet support nested dynamic arrays
 
 	if (_startOffset == u256(-1))
 		_startOffset = u256(CompilerUtils::dataStartOffset);
@@ -279,6 +279,12 @@ void Compiler::appendCalldataUnpacker(
 			solAssert(!arrayType.getBaseType()->isDynamicallySized(), "Nested arrays not yet implemented.");
 			if (_fromMemory)
 			{
+				solAssert(
+					arrayType.getBaseType()->isValueType(),
+					"Nested memory arrays not yet implemented here."
+				);
+				// @todo If base type is an array or struct, it is still calldata-style encoded, so
+				// we would have to convert it like below.
 				solAssert(arrayType.location() == DataLocation::Memory, "");
 				// compute data pointer
 				m_context << eth::Instruction::DUP1 << eth::Instruction::MLOAD;
@@ -311,6 +317,7 @@ void Compiler::appendCalldataUnpacker(
 				}
 				if (arrayType.location() == DataLocation::Memory)
 				{
+					// stack: calldata_ref [length] next_calldata
 					// copy to memory
 					// move calldata type up again
 					CompilerUtils(m_context).moveIntoStack(calldataType->getSizeOnStack());
@@ -392,9 +399,9 @@ bool Compiler::visit(FunctionDefinition const& _function)
 	}
 
 	for (ASTPointer<VariableDeclaration const> const& variable: _function.getReturnParameters())
-		m_context.addAndInitializeVariable(*variable);
+		appendStackVariableInitialisation(*variable);
 	for (VariableDeclaration const* localVariable: _function.getLocalVariables())
-		m_context.addAndInitializeVariable(*localVariable);
+		appendStackVariableInitialisation(*localVariable);
 
 	if (_function.isConstructor())
 		if (auto c = m_context.getNextConstructor(dynamic_cast<ContractDefinition const&>(*_function.getScope())))
@@ -639,7 +646,7 @@ void Compiler::appendModifierOrFunctionCode()
 							  modifier.getParameters()[i]->getType());
 		}
 		for (VariableDeclaration const* localVariable: modifier.getLocalVariables())
-			m_context.addAndInitializeVariable(*localVariable);
+			appendStackVariableInitialisation(*localVariable);
 
 		unsigned const c_stackSurplus = CompilerUtils::getSizeOnStack(modifier.getParameters()) +
 										CompilerUtils::getSizeOnStack(modifier.getLocalVariables());
@@ -651,6 +658,13 @@ void Compiler::appendModifierOrFunctionCode()
 			m_context << eth::Instruction::POP;
 		m_stackCleanupForReturn -= c_stackSurplus;
 	}
+}
+
+void Compiler::appendStackVariableInitialisation(VariableDeclaration const& _variable)
+{
+	CompilerContext::LocationSetter location(m_context, _variable);
+	m_context.addVariable(_variable);
+	CompilerUtils(m_context).pushZeroValue(*_variable.getType());
 }
 
 void Compiler::compileExpression(Expression const& _expression, TypePointer const& _targetType)

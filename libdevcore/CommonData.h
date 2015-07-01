@@ -334,4 +334,10 @@ std::vector<T> keysOf(std::unordered_map<T, U> const& _m)
 	return ret;
 }
 
+template <class T, class V>
+bool contains(T const& _t, V const& _v)
+{
+	return std::end(_t) != std::find(std::begin(_t), std::end(_t), _v);
+}
+
 }

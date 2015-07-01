@@ -113,6 +113,9 @@ public:
 	/// @returns an abridged version of the hash as a user-readable hex string.
 	std::string abridged() const { return toHex(ref().cropped(0, 4)) + "\342\200\246"; }
 
+	/// @returns a version of the hash as a user-readable hex string that leaves out the middle part.
+	std::string abridgedMiddle() const { return toHex(ref().cropped(0, 4)) + "\342\200\246" + toHex(ref().cropped(N - 4)); }
+
 	/// @returns the hash as a user-readable hex string.
 	std::string hex() const { return toHex(ref()); }
 
