@@ -244,4 +244,55 @@ BOOST_AUTO_TEST_CASE(bloomFilterRaw)
 	BOOST_REQUIRE(!f.contains(b00110111));
 }
 
+static const unsigned DistributionTestSize = 8;
+static const unsigned TestArrSize = 8 * DistributionTestSize;
+
+void updateDistribution(FixedHash<DistributionTestSize> const& _h, array<unsigned, TestArrSize>& _distribution)
+{
+	unsigned bits = 0;
+	for (unsigned i = 0; i < DistributionTestSize; ++i)
+		if (_h[i])
+			for (unsigned j = 0; j < 8; ++j)
+				if (_h[i] & c_powerOfTwoBitMmask[j])
+				{
+					_distribution[i * 8 + j]++;
+					if (++bits >= TopicBloomFilterTest::BitsPerBloom)
+						return;
+				}
+}
+
+BOOST_AUTO_TEST_CASE(distributionRate)
+{
+	cnote << "Testing Bloom Filter Distribution Rate...";
+
+	array<unsigned, TestArrSize> distribution;
+	for (unsigned i = 0; i < TestArrSize; ++i)
+		distribution[i] = 0;
+
+	Topic x(0xC0FFEE); // deterministic pseudorandom value
+
+	for (unsigned i = 0; i < 22000; ++i)
+	{
+		x = sha3(x);
+		FixedHash<DistributionTestSize> h = x.template bloomPart<TopicBloomFilterTest::BitsPerBloom, DistributionTestSize>();
+		updateDistribution(h, distribution);
+	}
+
+	unsigned average = 0;
+	for (unsigned i = 0; i < TestArrSize; ++i)
+		average += distribution[i];
+
+	average /= TestArrSize;
+	unsigned deviation = average / 10; // approx. 10%
+	unsigned maxAllowed = average + deviation;
+	unsigned minAllowed = average - deviation;
+
+	for (unsigned i = 0; i < TestArrSize; ++i)
+	{
+		//cnote << i << ":" << distribution[i];
+		BOOST_REQUIRE(distribution[i] > minAllowed);
+		BOOST_REQUIRE(distribution[i] < maxAllowed);
+	}
+}
+
 BOOST_AUTO_TEST_SUITE_END()
