@@ -220,6 +220,7 @@ bool TransactionQueue::remove_WITH_LOCK(h256 const& _txHash)
 
 unsigned TransactionQueue::waiting(Address const& _a) const
 {
+	ReadGuard l(m_lock);
 	auto it = m_senders.equal_range(_a);
 	unsigned ret = 0;
 	for (auto i = it.first; i != it.second; ++i, ++ret) {}

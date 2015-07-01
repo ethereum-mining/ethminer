@@ -265,7 +265,6 @@ public:
 			ProofOfWork::CPUMiner::setNumInstances(m_miningThreads);
 		else if (m_minerType == MinerType::GPU)
 		{
-			ProofOfWork::GPUMiner::setNumInstances(m_miningThreads);
 			if (!ProofOfWork::GPUMiner::configureGPU(
 					m_openclPlatform,
 					m_openclDevice,
@@ -277,6 +276,7 @@ public:
 				cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
 				exit(1);
 			}
+			ProofOfWork::GPUMiner::setNumInstances(m_miningThreads);
 		}
 		if (mode == OperationMode::DAGInit)
 			doInitDAG(m_initDAG);
