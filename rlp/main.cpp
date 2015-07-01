@@ -49,6 +49,7 @@ void help()
 		<< "General options:" << endl
 		<< "    -L,--lenience  Try not to bomb out early if possible." << endl
 		<< "    -x,--hex,--base-16  Treat input RLP as hex encoded data." << endl
+		<< "    -k,--keccak  Output Keccak-256 hash only." << endl
 		<< "    --64,--base-64  Treat input RLP as base-64 encoded data." << endl
 		<< "    -b,--bin,--base-256  Treat input RLP as raw binary data." << endl
 		<< "    -h,--help  Print this help message and exit." << endl
@@ -75,6 +76,7 @@ enum class Encoding {
 	Hex,
 	Base64,
 	Binary,
+	Keccak,
 };
 
 bool isAscii(string const& _s)
@@ -186,6 +188,8 @@ int main(int argc, char** argv)
 			version();
 		else if (arg == "-x" || arg == "--hex" || arg == "--base-16")
 			encoding = Encoding::Hex;
+		else if (arg == "-k" || arg == "--keccak")
+			encoding = Encoding::Keccak;
 		else if (arg == "--64" || arg == "--base-64")
 			encoding = Encoding::Base64;
 		else if (arg == "-b" || arg == "--bin" || arg == "--base-256")
@@ -370,6 +374,9 @@ int main(int argc, char** argv)
 				break;
 			case Encoding::Binary:
 				cout.write((char const*)out.out().data(), out.out().size());
+				break;
+			case Encoding::Keccak:
+				cout << sha3(out.out()).hex() << endl;
 				break;
 			}
 			break;
