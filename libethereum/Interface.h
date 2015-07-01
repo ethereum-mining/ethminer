@@ -133,7 +133,7 @@ public:
 
 	// [BLOCK QUERY API]
 
-	virtual bool isKnownTransaction(h256 _transactionHash) const = 0;
+	virtual bool isKnownTransaction(h256 const& _transactionHash) const = 0;
 	virtual Transaction transaction(h256 _transactionHash) const = 0;
 	virtual std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const = 0;
 	virtual h256 hashFromNumber(BlockNumber _number) const = 0;
@@ -141,7 +141,7 @@ public:
 	virtual int compareBlockHashes(h256 _h1, h256 _h2) const = 0;
 
 	virtual bool isKnown(BlockNumber _block) const = 0;
-	virtual bool isKnown(h256 _hash) const = 0;
+	virtual bool isKnown(h256 const& _hash) const = 0;
 	virtual BlockInfo blockInfo(h256 _hash) const = 0;
 	virtual BlockDetails blockDetails(h256 _hash) const = 0;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const = 0;
