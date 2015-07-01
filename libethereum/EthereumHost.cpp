@@ -317,8 +317,15 @@ void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP c
 void EthereumHost::onPeerAborting()
 {
 	Guard l(x_sync);
-	if (m_sync)
-		m_sync->onPeerAborting();
+	try
+	{
+		if (m_sync)
+			m_sync->onPeerAborting();
+	}
+	catch (Exception&)
+	{
+		cwarn << "Exception on peer destruciton: " << boost::current_exception_diagnostic_information();
+	}
 }
 
 bool EthereumHost::isSyncing() const
