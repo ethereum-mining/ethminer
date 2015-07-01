@@ -24,6 +24,7 @@
 #if ETH_PROFILING_GPERF
 #include <gperftools/profiler.h>
 #endif
+
 #include <boost/timer.hpp>
 #include <boost/filesystem.hpp>
 #include <test/JsonSpiritHeaders.h>
@@ -289,15 +290,6 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 
 	delete oldExtrasDB;
 	boost::filesystem::remove_all(path + "/details.old");
-}
-
-template <class T, class V>
-bool contains(T const& _t, V const& _v)
-{
-	for (auto const& i: _t)
-		if (i == _v)
-			return true;
-	return false;
 }
 
 LastHashes BlockChain::lastHashes(unsigned _n) const
