@@ -47,7 +47,7 @@ bytesConstRef SmartVM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _
 	auto vmKind = VMKind::Interpreter; // default VM
 
 	// Jitted EVM code already in memory?
-	if (evmjit::JIT::isCodeReady(eth2llvm(codeHash)))
+	if (evmjit::JIT::isCodeReady(eth2jit(codeHash)))
 	{
 		cnote << "Jitted";
 		vmKind = VMKind::JIT;
