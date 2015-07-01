@@ -115,6 +115,7 @@ void interactiveHelp()
 		<< "    reprocess <block>  Reprocess a given block." << endl
 		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
+		<< "    hashrate  Print the current hashrate in hashes per second if the client is mining." << endl
 		<< "    exit  Exits the application." << endl;
 }
 
@@ -1122,6 +1123,8 @@ int main(int argc, char** argv)
 				cout << "Current block: " << c->blockChain().details().number << endl;
 			else if (c && cmd == "blockqueue")
 				cout << "Current blockqueue status: " << endl << c->blockQueueStatus() << endl;
+			else if (c && cmd == "hashrate")
+				cout << "Current hash rate: " << toString(c->hashrate()) << " hashes per second." << endl;
 			else if (c && cmd == "findblock")
 			{
 				if (iss.peek() != -1)
