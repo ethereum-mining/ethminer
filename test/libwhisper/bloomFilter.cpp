@@ -245,8 +245,9 @@ BOOST_AUTO_TEST_CASE(bloomFilterRaw)
 }
 
 static const unsigned DistributionTestSize = 8;
+static const unsigned TestArrSize = 8 * DistributionTestSize;
 
-void updateDistribution(FixedHash<DistributionTestSize> const& _h, unsigned* _distribution)
+void updateDistribution(FixedHash<DistributionTestSize> const& _h, array<unsigned, TestArrSize>& _distribution)
 {
 	unsigned bits = 0;
 	for (unsigned i = 0; i < DistributionTestSize; ++i)
@@ -264,28 +265,29 @@ BOOST_AUTO_TEST_CASE(distributionRate)
 {
 	cnote << "Testing Bloom Filter Distribution Rate...";
 
-	unsigned const c_arrSize = DistributionTestSize * 8;
-	unsigned distribution[c_arrSize];
-	memset(distribution, 0, c_arrSize * sizeof(unsigned));
+	array<unsigned, TestArrSize> distribution;
+	for (unsigned i = 0; i < TestArrSize; ++i)
+		distribution[i] = 0;
+
 	Topic x(0xC0FFEE); // deterministic pseudorandom value
 
 	for (unsigned i = 0; i < 22000; ++i)
 	{
 		x = sha3(x);
-		FixedHash<DistributionTestSize> h = x.template bloomPart<TopicBloomFilterTest::BitsPerBloom, DistributionTestSize>(); 
+		FixedHash<DistributionTestSize> h = x.template bloomPart<TopicBloomFilterTest::BitsPerBloom, DistributionTestSize>();
 		updateDistribution(h, distribution);
 	}
 
 	unsigned average = 0;
-	for (unsigned i = 0; i < c_arrSize; ++i)
+	for (unsigned i = 0; i < TestArrSize; ++i)
 		average += distribution[i];
 
-	average /= c_arrSize;
+	average /= TestArrSize;
 	unsigned deviation = average / 10; // approx. 10%
 	unsigned maxAllowed = average + deviation;
 	unsigned minAllowed = average - deviation;
 
-	for (unsigned i = 0; i < c_arrSize; ++i)
+	for (unsigned i = 0; i < TestArrSize; ++i)
 	{
 		//cnote << i << ":" << distribution[i];
 		BOOST_REQUIRE(distribution[i] > minAllowed);
