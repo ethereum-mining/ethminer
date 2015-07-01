@@ -127,7 +127,7 @@ void BlockQueue::verifierBody()
 				}
 			cwarn << "BlockQueue missing our job: was there a GM?";
 			OK1:;
-			drainVerified();
+			drainVerified_WITH_BOTH_LOCKS();
 			continue;
 		}
 
@@ -147,7 +147,7 @@ void BlockQueue::verifierBody()
 				else
 					m_verified.emplace_back(move(res));
 
-				drainVerified();
+				drainVerified_WITH_BOTH_LOCKS();
 				ready = true;
 			}
 			else
@@ -167,9 +167,9 @@ void BlockQueue::verifierBody()
 	}
 }
 
-void BlockQueue::drainVerified()
+void BlockQueue::drainVerified_WITH_BOTH_LOCKS()
 {
-	while (m_verifying.size() && !m_verifying.front().blockData.empty())
+	while (!m_verifying.empty() && !m_verifying.front().blockData.empty())
 	{
 		if (m_knownBad.count(m_verifying.front().verified.info.parentHash))
 		{
