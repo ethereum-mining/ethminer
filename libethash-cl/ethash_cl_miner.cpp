@@ -24,13 +24,13 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <assert.h>
 #include <queue>
 #include <random>
 #include <vector>
-#include <boost/timer.hpp>
 #include <libethash/util.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
@@ -139,6 +139,7 @@ unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
 }
 
 bool ethash_cl_miner::configureGPU(
+	unsigned _platformId,
 	bool _allowCPU,
 	unsigned _extraGPUMemory,
 	boost::optional<uint64_t> _currentBlock
@@ -149,7 +150,7 @@ bool ethash_cl_miner::configureGPU(
 	// by default let's only consider the DAG of the first epoch
 	uint64_t dagSize = _currentBlock ? ethash_get_datasize(*_currentBlock) : 1073739904U;
 	uint64_t requiredSize =  dagSize + _extraGPUMemory;
-	return searchForAllDevices([&requiredSize](cl::Device const _device) -> bool
+	return searchForAllDevices(_platformId, [&requiredSize](cl::Device const _device) -> bool
 		{
 			cl_ulong result;
 			_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
@@ -416,6 +417,7 @@ bool ethash_cl_miner::init(
 
 void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, unsigned _msPerBatch)
 {
+	(void)_msPerBatch;
 	try
 	{
 		struct pending_batch
@@ -454,6 +456,8 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		uint64_t start_nonce = uniform_int_distribution<uint64_t>()(engine);
 		for (;; start_nonce += m_batchSize)
 		{
+//			chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
+
 			// supply output buffer to kernel
 			m_searchKernel.setArg(0, m_searchBuffer[buf]);
 			if (m_dagChunksCount == 1)
@@ -462,13 +466,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				m_searchKernel.setArg(6, start_nonce);
 
 			// execute it!
-			boost::timer t;
 			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_batchSize, m_workgroupSize);
-			unsigned ms = t.elapsed() * 1000;
-			if (ms > _msPerBatch * 1.1)
-				m_batchSize = max<unsigned>(128, m_batchSize * 9 / 10);
-			else if (ms < _msPerBatch * 0.9)
-				m_batchSize = m_batchSize * 10 / 9;
 
 			pending.push({ start_nonce, buf });
 			buf = (buf + 1) % c_bufferCount;
@@ -498,6 +496,20 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 
 				pending.pop();
 			}
+
+/*			chrono::high_resolution_clock::duration d = chrono::high_resolution_clock::now() - t;
+			if (d > chrono::milliseconds(_msPerBatch * 10 / 9))
+			{
+				cerr << "Batch of" << m_batchSize << "took" << chrono::duration_cast<chrono::milliseconds>(d).count() << "ms, >>" << _msPerBatch << "ms.";
+				m_batchSize = max<unsigned>(128, m_batchSize * 9 / 10);
+				cerr << "New batch size" << m_batchSize;
+			}
+			else if (d < chrono::milliseconds(_msPerBatch * 9 / 10))
+			{
+				cerr << "Batch of" << m_batchSize << "took" << chrono::duration_cast<chrono::milliseconds>(d).count() << "ms, <<" << _msPerBatch << "ms.";
+				m_batchSize = m_batchSize * 10 / 9;
+				cerr << "New batch size" << m_batchSize;
+			}*/
 		}
 
 		// not safe to return until this is ready

@@ -23,6 +23,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <libp2p/Host.h>
+#include <libp2p/Session.h>
 #include <libwhisper/WhisperPeer.h>
 #include <libwhisper/WhisperHost.h>
 #include <test/TestHelper.h>
@@ -299,6 +300,88 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 	done = true;
 	forwarder.join();
 	BOOST_REQUIRE_EQUAL(result, 1);
+}
+
+BOOST_AUTO_TEST_CASE(topicAdvertising)
+{
+	if (test::Options::get().nonetwork)
+		return;
+
+	cnote << "Testing Topic Advertising...";
+	VerbosityHolder setTemporaryLevel(2);
+
+	Host host1("first", NetworkPreferences("127.0.0.1", 30303, false));
+	host1.setIdealPeerCount(1);
+	auto whost1 = host1.registerCapability(new WhisperHost());
+	host1.start();
+	while (!host1.haveNetwork())
+		this_thread::sleep_for(chrono::milliseconds(10));
+
+	Host host2("second", NetworkPreferences("127.0.0.1", 30305, false));
+	host2.setIdealPeerCount(1);
+	auto whost2 = host2.registerCapability(new WhisperHost());
+	unsigned w2 = whost2->installWatch(BuildTopicMask("test2"));
+
+	host2.start();
+	while (!host2.haveNetwork())
+		this_thread::sleep_for(chrono::milliseconds(10));
+
+	host1.addNode(host2.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30305, 30305));
+	while (!host1.haveNetwork())
+		this_thread::sleep_for(chrono::milliseconds(10));
+
+	while (!host1.peerCount())
+		this_thread::sleep_for(chrono::milliseconds(10));
+
+	while (!host2.peerCount())
+		this_thread::sleep_for(chrono::milliseconds(10));
+
+	std::vector<std::pair<std::shared_ptr<Session>, std::shared_ptr<Peer>>> sessions;
+
+	for (int i = 0; i < 600; ++i)
+	{
+		sessions = whost1->peerSessions();
+		if (!sessions.empty() && sessions.back().first->cap<WhisperPeer>()->bloom())
+			break;
+		else
+			this_thread::sleep_for(chrono::milliseconds(10));
+	}
+
+	BOOST_REQUIRE(sessions.size());
+	TopicBloomFilterHash bf1 = sessions.back().first->cap<WhisperPeer>()->bloom();
+	TopicBloomFilterHash bf2 = whost2->bloom();
+	BOOST_REQUIRE_EQUAL(bf1, bf2);
+	BOOST_REQUIRE(bf1);
+	BOOST_REQUIRE(!whost1->bloom());
+
+	unsigned w1 = whost1->installWatch(BuildTopicMask("test1"));
+
+	for (int i = 0; i < 600; ++i)
+	{
+		sessions = whost2->peerSessions();
+		if (!sessions.empty() && sessions.back().first->cap<WhisperPeer>()->bloom())
+			break;
+		else
+			this_thread::sleep_for(chrono::milliseconds(10));
+	}
+
+	BOOST_REQUIRE(sessions.size());
+	BOOST_REQUIRE_EQUAL(sessions.back().second->id, host1.id());
+
+	bf2 = sessions.back().first->cap<WhisperPeer>()->bloom();
+	bf1 = whost1->bloom();
+	BOOST_REQUIRE_EQUAL(bf1, bf2);
+	BOOST_REQUIRE(bf1);
+
+	unsigned random = 0xC0FFEE;
+	whost1->uninstallWatch(w1);
+	whost1->uninstallWatch(random);
+	whost1->uninstallWatch(w1);
+	whost1->uninstallWatch(random);
+	whost2->uninstallWatch(random);
+	whost2->uninstallWatch(w2);
+	whost2->uninstallWatch(random);
+	whost2->uninstallWatch(w2);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
