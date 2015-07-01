@@ -50,6 +50,8 @@ bytesConstRef JitVM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _on
 	m_data.codeSize 	= _ext.code.size();
 	m_data.codeHash		= eth2jit(_ext.codeHash);
 
+	// Pass pointer to ExtVMFace casted to evmjit::Env* opaque type.
+	// JIT will do nothing with the pointer, just pass it to Env callback functions implemented in Env.cpp.
 	m_context.init(m_data, reinterpret_cast<evmjit::Env*>(&_ext));
 	auto exitCode = evmjit::JIT::exec(m_context);
 	switch (exitCode)
