@@ -114,8 +114,16 @@ void WhisperPeer::sendMessages()
 
 void WhisperPeer::noteNewMessage(h256 _h, Envelope const& _m)
 {
+	unsigned rate = rating(_m);
 	Guard l(x_unseen);
-	m_unseen.insert(make_pair(rating(_m), _h));
+	m_unseen.insert(make_pair(rate, _h));
+}
+
+unsigned WhisperPeer::rating(Envelope const&) const
+{
+	// rated by: 1. installed watch; 2. proof of work
+
+	return 0;
 }
 
 void WhisperPeer::sendTopicsOfInterest(TopicBloomFilterHash const& _bloom)
