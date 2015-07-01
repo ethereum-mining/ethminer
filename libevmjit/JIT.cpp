@@ -97,6 +97,8 @@ public:
 
 	ExecFunc getExecFunc(h256 const& _codeHash) const;
 	void mapExecFunc(h256 _codeHash, ExecFunc _funcAddr);
+
+	ExecFunc compile(byte const* _code, uint64_t _codeSize, h256 const& _codeHash);
 };
 
 JITImpl::JITImpl()
@@ -145,6 +147,33 @@ void JITImpl::mapExecFunc(h256 _codeHash, ExecFunc _funcAddr)
 	m_codeMap.emplace(std::move(_codeHash), _funcAddr);
 }
 
+ExecFunc JITImpl::compile(byte const* _code, uint64_t _codeSize, h256 const& _codeHash)
+{
+	auto name = hash2str(_codeHash);
+	auto module = Cache::getObject(name);
+	if (!module)
+	{
+		// TODO: Listener support must be redesigned. These should be a feature of JITImpl
+		//listener->stateChanged(ExecState::Compilation);
+		assert(_code || !_codeSize); //TODO: Is it good idea to execute empty code?
+		module = Compiler{{}}.compile(_code, _code + _codeSize, name);
+
+		if (g_optimize)
+		{
+			//listener->stateChanged(ExecState::Optimization);
+			optimize(*module);
+		}
+
+		prepare(*module);
+	}
+	if (g_dump)
+		module->dump();
+
+	m_engine->addModule(std::move(module));
+	//listener->stateChanged(ExecState::CodeGen);
+	return (ExecFunc)m_engine->getFunctionAddress(name);
+}
+
 } // anonymous namespace
 
 bool JIT::isCodeReady(h256 const& _codeHash)
@@ -154,60 +183,31 @@ bool JIT::isCodeReady(h256 const& _codeHash)
 
 ReturnCode JIT::exec(ExecutionContext& _context)
 {
+	//std::unique_ptr<ExecStats> listener{new ExecStats};
+	//listener->stateChanged(ExecState::Started);
+	//static StatsCollector statsCollector;
+
 	auto& jit = JITImpl::instance();
-
-	std::unique_ptr<ExecStats> listener{new ExecStats};
-	listener->stateChanged(ExecState::Started);
-
-	auto code = _context.code();
-	auto codeSize = _context.codeSize();
 	auto codeHash = _context.codeHash();
-
-	static StatsCollector statsCollector;
-
-	auto mainFuncName = hash2str(codeHash);
-
-	// TODO: Remove cast
 	auto execFunc = jit.getExecFunc(codeHash);
 	if (!execFunc)
 	{
-		auto module = Cache::getObject(mainFuncName);
-		if (!module)
-		{
-			listener->stateChanged(ExecState::Compilation);
-			assert(code || !codeSize); //TODO: Is it good idea to execute empty code?
-			module = Compiler{{}}.compile(code, code + codeSize, mainFuncName);
-
-			if (g_optimize)
-			{
-				listener->stateChanged(ExecState::Optimization);
-				optimize(*module);
-			}
-
-			prepare(*module);
-		}
-		if (g_dump)
-			module->dump();
-
-		jit.engine().addModule(std::move(module));
-		listener->stateChanged(ExecState::CodeGen);
-		execFunc = (ExecFunc)jit.engine().getFunctionAddress(mainFuncName);
-		if (!CHECK(execFunc))
-			return ReturnCode::LLVMLinkError;
+		execFunc = jit.compile(_context.code(), _context.codeSize(), codeHash);
+		if (!execFunc)
+			return ReturnCode::LLVMError;
 		jit.mapExecFunc(codeHash, execFunc);
 	}
 
-	listener->stateChanged(ExecState::Execution);
+	//listener->stateChanged(ExecState::Execution);
 	auto returnCode = execFunc(&_context);
-	listener->stateChanged(ExecState::Return);
+	//listener->stateChanged(ExecState::Return);
 
 	if (returnCode == ReturnCode::Return)
 		_context.returnData = _context.getReturnData(); // Save reference to return data
 
-	listener->stateChanged(ExecState::Finished);
-
-	if (g_stats)
-		statsCollector.stats.push_back(std::move(listener));
+	//listener->stateChanged(ExecState::Finished);
+	// if (g_stats)
+	// 	statsCollector.stats.push_back(std::move(listener));
 
 	return returnCode;
 }
