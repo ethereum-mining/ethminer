@@ -242,7 +242,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		if (m_knownBad.count(bi.parentHash))
 		{
 			m_knownBad.insert(bi.hash());
-			updateBad(bi.hash());
+			updateBad_WITH_LOCK(bi.hash());
 			// bad parent; this is bad too, note it as such
 			return ImportResult::BadChain;
 		}
@@ -277,12 +277,12 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 	}
 }
 
-void BlockQueue::updateBad(h256 const& _bad)
+void BlockQueue::updateBad_WITH_LOCK(h256 const& _bad)
 {
 	DEV_INVARIANT_CHECK;
 	DEV_GUARDED(m_verification)
 	{
-		collectUnknownBad(_bad);
+		collectUnknownBad_WITH_BOTH_LOCKS(_bad);
 		bool moreBad = true;
 		while (moreBad)
 		{
@@ -294,7 +294,7 @@ void BlockQueue::updateBad(h256 const& _bad)
 				{
 					m_knownBad.insert(b.verified.info.hash());
 					m_readySet.erase(b.verified.info.hash());
-					collectUnknownBad(b.verified.info.hash());
+					collectUnknownBad_WITH_BOTH_LOCKS(b.verified.info.hash());
 					moreBad = true;
 				}
 				else
@@ -307,7 +307,7 @@ void BlockQueue::updateBad(h256 const& _bad)
 				{
 					m_knownBad.insert(b.hash);
 					m_readySet.erase(b.hash);
-					collectUnknownBad(b.hash);
+					collectUnknownBad_WITH_BOTH_LOCKS(b.hash);
 					moreBad = true;
 				}
 				else
@@ -321,18 +321,18 @@ void BlockQueue::updateBad(h256 const& _bad)
 					h256 const& h = b.blockData.size() != 0 ? b.verified.info.hash() : b.verified.info.mixHash;
 					m_knownBad.insert(h);
 					m_readySet.erase(h);
-					collectUnknownBad(h);
+					collectUnknownBad_WITH_BOTH_LOCKS(h);
 					moreBad = true;
 				}
 				else
 					m_verifying.push_back(std::move(b));
 		}
 	}
-	DEV_INVARIANT_CHECK;
 }
 
-void BlockQueue::collectUnknownBad(h256 const& _bad)
+void BlockQueue::collectUnknownBad_WITH_BOTH_LOCKS(h256 const& _bad)
 {
+	DEV_INVARIANT_CHECK;
 	list<h256> badQueue(1, _bad);
 	while (!badQueue.empty())
 	{
@@ -349,7 +349,6 @@ void BlockQueue::collectUnknownBad(h256 const& _bad)
 		}
 		m_unknown.erase(r.first, r.second);
 	}
-
 }
 
 bool BlockQueue::doneDrain(h256s const& _bad)
@@ -364,7 +363,7 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 		// at least one of them was bad.
 		m_knownBad += _bad;
 		for (h256 const& b : _bad)
-			updateBad(b);
+			updateBad_WITH_LOCK(b);
 	}
 	return !m_readySet.empty();
 }

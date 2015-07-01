@@ -495,6 +495,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				pending.pop();
 			}
 
+			(void)_msPerBatch;
 /*			chrono::high_resolution_clock::duration d = chrono::high_resolution_clock::now() - t;
 			if (d > chrono::milliseconds(_msPerBatch * 10 / 9))
 			{
