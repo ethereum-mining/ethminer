@@ -63,7 +63,7 @@ private:
 	llvm::Value* m_memPtr = nullptr;
 	llvm::Value* m_envPtr = nullptr;
 
-	std::array<llvm::Value*, static_cast<size_t>(RuntimeData::Index::CodeSize) + 1> m_dataElts;
+	std::array<llvm::Value*, RuntimeData::numElements> m_dataElts;
 
 	llvm::Value* m_stackSize = nullptr;
 	llvm::Function* m_checkStackLimit = nullptr;

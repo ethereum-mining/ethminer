@@ -132,7 +132,7 @@ namespace
 llvm::Function* createUDivRemFunc(llvm::Type* _type, llvm::Module& _module, char const* _funcName)
 {
 	// Based of "Improved shift divisor algorithm" from "Software Integer Division" by Microsoft Research
-	// The following algorithm also handles divisor of value 0 returning 0 for both quotient and reminder
+	// The following algorithm also handles divisor of value 0 returning 0 for both quotient and remainder
 
 	auto retType = llvm::VectorType::get(_type, 2);
 	auto func = llvm::Function::Create(llvm::FunctionType::get(retType, {_type, _type}, false), llvm::Function::PrivateLinkage, _funcName, &_module);
@@ -327,7 +327,7 @@ llvm::Function* Arith256::getSDivRem256Func(llvm::Module& _module)
 	auto qAbs = builder.CreateExtractElement(res, uint64_t(0));
 	auto rAbs = builder.CreateExtractElement(res, 1);
 
-	// the reminder has the same sign as dividend
+	// the remainder has the same sign as dividend
 	auto rNeg = builder.CreateSub(Constant::get(0), rAbs);
 	auto r = builder.CreateSelect(xIsNeg, rNeg, rAbs);
 

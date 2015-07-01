@@ -20,12 +20,13 @@ namespace evmjit
 using byte = uint8_t;
 using bytes_ref = std::tuple<byte const*, size_t>;
 
+/// Representation of 256-bit hash value
 struct h256
 {
 	uint64_t words[4];
 };
 
-inline bool operator==(h256 _h1, h256 _h2)
+inline bool operator==(h256 const& _h1, h256 const& _h2)
 {
 	return 	_h1.words[0] == _h2.words[0] &&
 			_h1.words[1] == _h2.words[1] &&
@@ -39,7 +40,7 @@ struct i256
 	uint64_t words[4];
 
 	i256() = default;
-	i256(h256 _h) { std::memcpy(this, &_h, sizeof(*this)); }
+	i256(h256 const& _h) { std::memcpy(this, &_h, sizeof(*this)); }
 };
 
 // TODO: Merge with ExecutionContext
@@ -67,6 +68,8 @@ struct RuntimeData
 		ReturnData 		   = CallData,		///< Return data pointer (set only in case of RETURN)
 		ReturnDataSize 	   = CallDataSize,	///< Return data size (set only in case of RETURN)
 	};
+
+	static size_t const numElements = CodeSize + 1;
 
 	int64_t 	gas = 0;
 	int64_t 	gasPrice = 0;
@@ -170,4 +173,3 @@ template<> struct hash<dev::evmjit::h256>
 	};
 };
 }
-

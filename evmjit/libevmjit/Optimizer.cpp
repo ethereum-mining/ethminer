@@ -32,7 +32,7 @@ bool optimize(llvm::Module& _module)
 namespace
 {
 
-class LowerEVMPass : public llvm::BasicBlockPass
+class LowerEVMPass: public llvm::BasicBlockPass
 {
 	static char ID;
 
