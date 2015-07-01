@@ -244,7 +244,7 @@ BOOST_AUTO_TEST_CASE(bloomFilterRaw)
 	BOOST_REQUIRE(!f.contains(b00110111));
 }
 
-static unsigned const DistributionTestSize = 8;
+static const unsigned DistributionTestSize = 8;
 
 void updateDistribution(FixedHash<DistributionTestSize> const& _h, unsigned* _distribution)
 {
