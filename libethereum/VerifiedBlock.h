@@ -43,8 +43,32 @@ struct VerifiedBlockRef
 /// @brief Verified block info, combines block data and verified info/transactions
 struct VerifiedBlock
 {
+	VerifiedBlock() {};
+
+	VerifiedBlock(BlockInfo&& _bi)
+	{
+		verified.info = _bi;
+	}
+
+	VerifiedBlock(VerifiedBlock&& _other):
+		verified(std::move(_other.verified)),
+		blockData(std::move(_other.blockData))
+	{
+	}
+
+	VerifiedBlock& operator=(VerifiedBlock&& _other)
+	{
+		verified = (std::move(_other.verified));
+		blockData = (std::move(_other.blockData));
+		return *this;
+	}
+
 	VerifiedBlockRef verified;				///< Verified block structures
 	bytes blockData;						///< Block data
+
+private:
+	VerifiedBlock(VerifiedBlock const&) = delete;
+	VerifiedBlock operator=(VerifiedBlock const&) = delete;
 };
 
 using VerifiedBlocks = std::vector<VerifiedBlock>;

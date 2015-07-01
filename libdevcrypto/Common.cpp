@@ -29,6 +29,9 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/FileSystem.h>
+#if ETH_HAVE_SECP256K1
+#include <secp256k1/secp256k1.h>
+#endif
 #include "AES.h"
 #include "CryptoPP.h"
 #include "Exceptions.h"
@@ -36,7 +39,17 @@ using namespace std;
 using namespace dev;
 using namespace dev::crypto;
 
-static Secp256k1 s_secp256k1;
+#ifdef ETH_HAVE_SECP256K1
+struct Secp256k1Context
+{
+	Secp256k1Context() { secp256k1_start(); }
+	~Secp256k1Context() { secp256k1_stop(); }
+};
+static Secp256k1Context s_secp256k1;
+void dev::crypto::secp256k1Init() { (void)s_secp256k1; }
+#endif
+
+static Secp256k1PP s_secp256k1pp;
 
 bool dev::SignatureStruct::isValid() const noexcept
 {
@@ -53,34 +66,42 @@ Address dev::ZeroAddress = Address();
 
 Public dev::toPublic(Secret const& _secret)
 {
+#ifdef ETH_HAVE_SECP256K1
+	bytes o(65);
+	int pubkeylen;
+	if (!secp256k1_ecdsa_pubkey_create(o.data(), &pubkeylen, _secret.data(), false))
+		return Public();
+	return FixedHash<64>(o.data()+1, Public::ConstructFromPointer);
+#else
 	Public p;
-	s_secp256k1.toPublic(_secret, p);
+	s_secp256k1pp.toPublic(_secret, p);
 	return p;
+#endif
 }
 
 Address dev::toAddress(Public const& _public)
 {
-	return s_secp256k1.toAddress(_public);
+	return right160(sha3(_public.ref()));
 }
 
 Address dev::toAddress(Secret const& _secret)
 {
 	Public p;
-	s_secp256k1.toPublic(_secret, p);
-	return s_secp256k1.toAddress(p);
+	s_secp256k1pp.toPublic(_secret, p);
+	return toAddress(p);
 }
 
 void dev::encrypt(Public const& _k, bytesConstRef _plain, bytes& o_cipher)
 {
 	bytes io = _plain.toBytes();
-	s_secp256k1.encrypt(_k, io);
+	s_secp256k1pp.encrypt(_k, io);
 	o_cipher = std::move(io);
 }
 
 bool dev::decrypt(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext)
 {
 	bytes io = _cipher.toBytes();
-	s_secp256k1.decrypt(_k, io);
+	s_secp256k1pp.decrypt(_k, io);
 	if (io.empty())
 		return false;
 	o_plaintext = std::move(io);
@@ -90,14 +111,14 @@ bool dev::decrypt(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext)
 void dev::encryptECIES(Public const& _k, bytesConstRef _plain, bytes& o_cipher)
 {
 	bytes io = _plain.toBytes();
-	s_secp256k1.encryptECIES(_k, io);
+	s_secp256k1pp.encryptECIES(_k, io);
 	o_cipher = std::move(io);
 }
 
 bool dev::decryptECIES(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext)
 {
 	bytes io = _cipher.toBytes();
-	if (!s_secp256k1.decryptECIES(_k, io))
+	if (!s_secp256k1pp.decryptECIES(_k, io))
 		return false;
 	o_plaintext = std::move(io);
 	return true;
@@ -163,17 +184,17 @@ bytes dev::decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _ci
 
 Public dev::recover(Signature const& _sig, h256 const& _message)
 {
-	return s_secp256k1.recover(_sig, _message.ref());
+	return s_secp256k1pp.recover(_sig, _message.ref());
 }
 
 Signature dev::sign(Secret const& _k, h256 const& _hash)
 {
-	return s_secp256k1.sign(_k, _hash);
+	return s_secp256k1pp.sign(_k, _hash);
 }
 
 bool dev::verify(Public const& _p, Signature const& _s, h256 const& _hash)
 {
-	return s_secp256k1.verify(_p, _s, _hash.ref(), true);
+	return s_secp256k1pp.verify(_p, _s, _hash.ref(), true);
 }
 
 bytes dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen)
@@ -232,8 +253,8 @@ KeyPair KeyPair::create()
 KeyPair::KeyPair(h256 _sec):
 	m_secret(_sec)
 {
-	if (s_secp256k1.verifySecret(m_secret, m_public))
-		m_address = s_secp256k1.toAddress(m_public);
+	if (s_secp256k1pp.verifySecret(m_secret, m_public))
+		m_address = toAddress(m_public);
 }
 
 KeyPair KeyPair::fromEncryptedSeed(bytesConstRef _seed, std::string const& _password)

@@ -113,6 +113,26 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 		// If it doesn't work, the signature is bad.
 		// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
 
+		auto r = m_senders.equal_range(_transaction.from());
+		for (auto it = r.first; it != r.second; ++it)
+			if (m_current.count(it->second) && m_current[it->second].nonce() == _transaction.nonce())
+				if (_transaction.gasPrice() < m_current[it->second].gasPrice())
+					return ImportResult::OverbidGasPrice;
+				else
+				{
+					remove_WITH_LOCK(it->second);
+					break;
+				}
+			else if (m_future.count(it->second) && m_future[it->second].nonce() == _transaction.nonce())
+				if (_transaction.gasPrice() < m_future[it->second].gasPrice())
+					return ImportResult::OverbidGasPrice;
+				else
+				{
+					remove_WITH_LOCK(it->second);
+					break;
+				}
+			else {}
+
 		// If valid, append to blocks.
 		insertCurrent_WITH_LOCK(make_pair(_h, _transaction));
 		m_known.insert(_h);
@@ -200,6 +220,7 @@ bool TransactionQueue::remove_WITH_LOCK(h256 const& _txHash)
 
 unsigned TransactionQueue::waiting(Address const& _a) const
 {
+	ReadGuard l(m_lock);
 	auto it = m_senders.equal_range(_a);
 	unsigned ret = 0;
 	for (auto i = it.first; i != it.second; ++i, ++ret) {}

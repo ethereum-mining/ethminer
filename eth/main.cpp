@@ -703,12 +703,24 @@ int main(int argc, char** argv)
 
 	string logbuf;
 	std::string additional;
-	g_logPost = [&](std::string const& a, char const*){
-		if (g_silence)
-			logbuf += a + "\n";
-		else
-			cout << "\r           \r" << a << endl << additional << flush;
-	};
+	if (interactive)
+		g_logPost = [&](std::string const& a, char const*){
+			static SpinLock s_lock;
+			SpinGuard l(s_lock);
+			
+			if (g_silence)
+				logbuf += a + "\n";
+			else
+				cout << "\r           \r" << a << endl << additional << flush;
+
+			// helpful to use OutputDebugString on windows
+	#ifdef _WIN32
+			{
+				OutputDebugStringA(a.data());
+				OutputDebugStringA("\n");
+			}
+	#endif
+		};
 
 	auto getPassword = [&](string const& prompt){
 		auto s = g_silence;
@@ -820,7 +832,7 @@ int main(int argc, char** argv)
 
 		while (web3.ethereum()->blockQueue().items().first + web3.ethereum()->blockQueue().items().second > 0)
 		{
-			sleep(1);
+			this_thread::sleep_for(chrono::seconds(1));
 			web3.ethereum()->syncQueue(100000);
 		}
 		double e = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t).count() / 1000.0;

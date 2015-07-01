@@ -102,7 +102,7 @@ void BlockQueue::verifierBody()
 			BlockInfo bi;
 			bi.mixHash = work.hash;
 			bi.parentHash = work.parentHash;
-			m_verifying.push_back(VerifiedBlock { VerifiedBlockRef { bytesConstRef(), move(bi), Transactions() }, bytes() });
+			m_verifying.emplace_back(move(bi));
 		}
 
 		VerifiedBlock res;
@@ -148,7 +148,7 @@ void BlockQueue::verifierBody()
 					m_knownBad.insert(res.verified.info.hash());
 				}
 				else
-					m_verified.push_back(move(res));
+					m_verified.emplace_back(move(res));
 				while (m_verifying.size() && !m_verifying.front().blockData.empty())
 				{
 					if (m_knownBad.count(m_verifying.front().verified.info.parentHash))
@@ -157,7 +157,7 @@ void BlockQueue::verifierBody()
 						m_knownBad.insert(res.verified.info.hash());
 					}
 					else
-						m_verified.push_back(move(m_verifying.front()));
+						m_verified.emplace_back(move(m_verifying.front()));
 					m_verifying.pop_front();
 				}
 				ready = true;
