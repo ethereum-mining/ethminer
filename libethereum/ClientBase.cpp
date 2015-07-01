@@ -481,7 +481,7 @@ int ClientBase::compareBlockHashes(h256 _h1, h256 _h2) const
 	return -1;
 }
 
-bool ClientBase::isKnown(h256 _hash) const
+bool ClientBase::isKnown(h256 const& _hash) const
 {
 	return _hash == PendingBlockHash ||
 		_hash == LatestBlockHash ||
@@ -496,7 +496,7 @@ bool ClientBase::isKnown(BlockNumber _block) const
 		bc().numberHash(_block) != h256();
 }
 
-bool ClientBase::isKnownTransaction(h256 _transactionHash) const
+bool ClientBase::isKnownTransaction(h256 const& _transactionHash) const
 {
 	return bc().isKnownTransaction(_transactionHash);
 }
