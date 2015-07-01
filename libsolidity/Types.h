@@ -179,6 +179,9 @@ public:
 	/// is not a simple big-endian encoding or the type cannot be stored in calldata.
 	/// If @a _padded then it is assumed that each element is padded to a multiple of 32 bytes.
 	virtual unsigned getCalldataEncodedSize(bool _padded) const { (void)_padded; return 0; }
+	/// @returns the size of this data type in bytes when stored in memory. For memory-reference
+	/// types, this is the size of the memory pointer.
+	virtual unsigned memoryHeadSize() const { return getCalldataEncodedSize(); }
 	/// Convenience version of @see getCalldataEncodedSize(bool)
 	unsigned getCalldataEncodedSize() const { return getCalldataEncodedSize(true); }
 	/// @returns true if the type is dynamically encoded in calldata
@@ -373,6 +376,9 @@ public:
 	explicit ReferenceType(DataLocation _location): m_location(_location) {}
 	DataLocation location() const { return m_location; }
 
+	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
+	virtual unsigned memoryHeadSize() const override { return 32; }
+
 	/// @returns a copy of this type with location (recursively) changed to @a _location,
 	/// whereas isPointer is only shallowly changed - the deep copy is always a bound reference.
 	virtual TypePointer copyForLocation(DataLocation _location, bool _isPointer) const = 0;
@@ -439,11 +445,11 @@ public:
 	{}
 
 	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
-	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual bool operator==(const Type& _other) const override;
 	virtual unsigned getCalldataEncodedSize(bool _padded) const override;
 	virtual bool isDynamicallySized() const override { return m_hasDynamicLength; }
 	virtual u256 getStorageSize() const override;
+	virtual bool canLiveOutsideStorage() const override { return m_baseType->canLiveOutsideStorage(); }
 	virtual unsigned getSizeOnStack() const override;
 	virtual std::string toString(bool _short) const override;
 	virtual MemberList const& getMembers() const override
@@ -540,7 +546,6 @@ public:
 		//@todo only storage until we have non-storage structs
 		ReferenceType(DataLocation::Storage), m_struct(_struct) {}
 	virtual bool isImplicitlyConvertibleTo(const Type& _convertTo) const override;
-	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual unsigned getCalldataEncodedSize(bool _padded) const override;
 	virtual u256 getStorageSize() const override;

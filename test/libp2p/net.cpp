@@ -314,23 +314,23 @@ BOOST_AUTO_TEST_CASE(kademlia)
 	node.nodeTable->discover(); // ideally, joining with empty node table logs warning we can check for
 	node.setup();
 	node.populate();
-	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
+//	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
 
 	node.populateAll();
-	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
+//	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
 
 	auto nodes = node.nodeTable->nodes();
 	nodes.sort();
 
 	node.nodeTable->reset();
-	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
+//	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
 
 	node.populate(1);
-	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
+//	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
 
 	node.nodeTable->discover();
 	this_thread::sleep_for(chrono::milliseconds(2000));
-	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
+//	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
 
 	BOOST_REQUIRE_EQUAL(node.nodeTable->count(), 8);
 

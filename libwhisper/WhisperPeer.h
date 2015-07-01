@@ -44,8 +44,6 @@ using p2p::HostCapability;
 using p2p::Capability;
 using p2p::CapDesc;
 
-/**
- */
 class WhisperPeer: public Capability
 {
 	friend class WhisperHost;
@@ -53,25 +51,30 @@ class WhisperPeer: public Capability
 public:
 	WhisperPeer(std::shared_ptr<Session> _s, HostCapabilityFace* _h, unsigned _i, CapDesc const& _cap);
 	virtual ~WhisperPeer();
-
-	static std::string name() { return "shh"; }
-	static u256 version() { return 2; }
-	static unsigned messageCount() { return PacketCount; }
-
 	WhisperHost* host() const;
+	static std::string name() { return "shh"; }
+	static u256 version() { return c_whisperProtocolVersion; }
+	static unsigned messageCount() { return PacketCount; }
+	TopicBloomFilterHash bloom() const { dev::Guard g(x_bloom); return m_bloom; }
+	void sendTopicsOfInterest(TopicBloomFilterHash const& _bloom); ///< sends our bloom filter to remote peer
+	void noteAdvertiseTopicsOfInterest() { dev::Guard g(x_advertiseTopicsOfInterest); m_advertiseTopicsOfInterest = true; }
 
 private:
 	virtual bool interpret(unsigned _id, RLP const&) override;
-
 	void sendMessages();
-
 	unsigned rating(Envelope const&) const { return 0; }	// TODO
 	void noteNewMessage(h256 _h, Envelope const& _m);
+	void setBloom(TopicBloomFilterHash const& _b) { dev::Guard g(x_bloom); m_bloom = _b; }
 
 	mutable dev::Mutex x_unseen;
 	std::multimap<unsigned, h256> m_unseen;	///< Rated according to what they want.
-
 	std::chrono::system_clock::time_point m_timer = std::chrono::system_clock::now();
+
+	mutable dev::Mutex x_bloom;
+	TopicBloomFilterHash m_bloom; ///< Peer's topics of interest
+
+	mutable dev::Mutex x_advertiseTopicsOfInterest;
+	bool m_advertiseTopicsOfInterest;
 };
 
 }
