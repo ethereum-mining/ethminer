@@ -220,6 +220,7 @@ void parseTestWithTypes(std::string& _test)
 	options.setWeight(dev::eth::Instruction::STOP, 10);		//default 50
 	options.setWeight(dev::eth::Instruction::SSTORE, 70);
 	options.setWeight(dev::eth::Instruction::CALL, 75);
+	options.setWeight(dev::eth::Instruction::CALLCODE, 55);
 	options.addAddress(dev::Address("0xffffffffffffffffffffffffffffffffffffffff"));
 	options.addAddress(dev::Address("0x1000000000000000000000000000000000000000"));
 	options.addAddress(dev::Address("0x095e7baea6a6c7c4c2dfeb977efac326af552d87"));
@@ -230,7 +231,7 @@ void parseTestWithTypes(std::string& _test)
 	options.addAddress(dev::Address("0x0000000000000000000000000000000000000002"));
 	options.addAddress(dev::Address("0x0000000000000000000000000000000000000003"));
 	options.addAddress(dev::Address("0x0000000000000000000000000000000000000004"));
-	options.smartCodeProbability = 35;
+	options.smartCodeProbability = 60;
 
 	std::vector<std::string> types = getTypes();
 	for (unsigned i = 0; i < types.size(); i++)
