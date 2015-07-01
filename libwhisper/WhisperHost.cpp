@@ -66,21 +66,31 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 		m_expiryQueue.insert(make_pair(_m.expiry(), h));
 	}
 
-	DEV_GUARDED(m_filterLock)
-	{
-		for (auto const& f: m_filters)
-			if (f.second.filter.matches(_m))
-				for (auto& i: m_watches)
-					if (i.second.id == f.first)
-						i.second.changes.push_back(h);
-	}
+	int rating = 1; // rating is based upon: 1. installed watch; 2. proof of work
+
+	//if (bloomfilter.check)
+	//{
+		// rating *= 10;
+		if (_p) // originated externally
+			DEV_GUARDED(m_filterLock)
+			{
+				for (auto const& f: m_filters)
+					if (f.second.filter.matches(_m))
+						for (auto& i: m_watches)
+							if (i.second.id == f.first)
+							{
+								i.second.changes.push_back(h);
+								rating *= 10;
+							}
+			}
+	//}
 
 	// TODO p2p: capability-based rating
 	for (auto i: peerSessions())
 	{
 		auto w = i.first->cap<WhisperPeer>().get();
 		if (w == _p)
-			w->addRating(1);
+			w->addRating(rating);
 		else
 			w->noteNewMessage(h, _m);
 	}
