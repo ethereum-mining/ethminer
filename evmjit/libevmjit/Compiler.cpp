@@ -51,10 +51,8 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 
 	// Skip all STOPs in the end
 	for (; _codeEnd != _codeBegin; --_codeEnd)
-	{
 		if (*(_codeEnd - 1) != static_cast<byte>(Instruction::STOP))
 			break;
-	}
 
 	auto begin = _codeBegin; // begin of current block
 	bool nextJumpDest = false;
@@ -977,4 +975,3 @@ void Compiler::dump()
 }
 }
 }
-
