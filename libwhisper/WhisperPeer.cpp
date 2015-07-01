@@ -131,7 +131,7 @@ unsigned WhisperPeer::ratingForPeer(Envelope const& e) const
 		if (e.matchesBloomFilter(m_bloom))
 			rating += BloomFilterMatchReward;
 	
-	rating += e.sha3().firstBitSet(); // proof of work assessment
+	rating += e.sha3().firstBitSet();
 	return rating;
 }
 
