@@ -51,6 +51,8 @@ void WhisperHost::streamMessage(h256 _m, RLPStream& _s) const
 
 void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 {
+	// this function processes messages originated both by local host (_p == null), and by remote peers (_p != null)
+
 	cnote << this << ": inject: " << _m.expiry() << _m.ttl() << _m.topic() << toHex(_m.data());
 
 	if (_m.expiry() <= (unsigned)time(0))
@@ -66,7 +68,7 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 		m_expiryQueue.insert(make_pair(_m.expiry(), h));
 	}
 
-	int rating = 1; // rating is based upon: 1. installed watch; 2. proof of work
+	int rating = 1; // rating for local host is based upon: 1. installed watch; 2. proof of work
 
 	//if (bloomfilter.check)
 	//{
