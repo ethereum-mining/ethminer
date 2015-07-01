@@ -50,7 +50,7 @@ class WhisperHost: public HostCapability<WhisperPeer>, public Interface, public 
 public:
 	WhisperHost();
 	virtual ~WhisperHost();
-	unsigned protocolVersion() const { return c_whisperProtocolVersion; }
+	unsigned protocolVersion() const { return WhisperProtocolVersion; }
 	/// remove old messages
 	void cleanup(); 
 	std::map<h256, Envelope> all() const { dev::ReadGuard l(x_messages); return m_messages; }

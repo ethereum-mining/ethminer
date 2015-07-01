@@ -181,3 +181,12 @@ void Envelope::proveWork(unsigned _ms)
 			}
 		}
 }
+
+bool Envelope::matchesBloomFilter(TopicBloomFilterHash const& f) const
+{
+	for (AbridgedTopic t: m_topic)
+		if (f.contains(t.template bloomPart<BitsPerBloom, TopicBloomFilterSize>()))
+			return true;
+
+	return false;
+}

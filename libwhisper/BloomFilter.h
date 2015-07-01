@@ -42,14 +42,12 @@ public:
 	void addRaw(FixedHash<N> const& _h);
 	void removeRaw(FixedHash<N> const& _h);
 	bool containsRaw(FixedHash<N> const& _h) const { return this->contains(_h); }
-
-	enum { BitsPerBloom = 3 };
 	
 private:
 	void init() { for (unsigned i = 0; i < CounterSize; ++i) m_refCounter[i] = 0; }
 	static bool isBitSet(FixedHash<N> const& _h, unsigned _index);
 
-	enum { CounterSize = 8 * TopicBloomFilterBase::size };
+	static const unsigned CounterSize = N * 8;
 	std::array<uint16_t, CounterSize> m_refCounter;
 };
 
@@ -91,7 +89,7 @@ bool TopicBloomFilterBase<N>::isBitSet(FixedHash<N> const& _h, unsigned _index)
 	return (_h[iByte] & c_powerOfTwoBitMmask[iBit]) != 0;
 }
 
-using TopicBloomFilter = TopicBloomFilterBase<c_topicBloomFilterSize>;
+using TopicBloomFilter = TopicBloomFilterBase<TopicBloomFilterSize>;
 
 }
 }
