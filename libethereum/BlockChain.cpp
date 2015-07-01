@@ -24,6 +24,7 @@
 #if ETH_PROFILING_GPERF
 #include <gperftools/profiler.h>
 #endif
+
 #include <boost/timer.hpp>
 #include <boost/filesystem.hpp>
 #include <test/JsonSpiritHeaders.h>
@@ -291,15 +292,6 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	boost::filesystem::remove_all(path + "/details.old");
 }
 
-template <class T, class V>
-bool contains(T const& _t, V const& _v)
-{
-	for (auto const& i: _t)
-		if (i == _v)
-			return true;
-	return false;
-}
-
 LastHashes BlockChain::lastHashes(unsigned _n) const
 {
 	Guard l(x_lastLastHashes);
@@ -333,7 +325,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 			{
 				// Nonce & uncle nonces already verified in verification thread at this point.
 				ImportRoute r;
-				DEV_TIMED_ABOVE("Block import", 500)
+				DEV_TIMED_ABOVE("Block import " + toString(block.verified.info.number), 500)
 					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
 				fresh += r.liveBlocks;
 				dead += r.deadBlocks;
