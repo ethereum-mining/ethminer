@@ -827,6 +827,7 @@ int main(int argc, char** argv)
 				cout << i << " more imported at " << (round(i * 10 / d) / 10) << " blocks/s. " << imported << " imported in " << e << " seconds at " << (round(imported * 10 / e) / 10) << " blocks/s (#" << web3.ethereum()->number() << ")" << endl;
 				last = (unsigned)e;
 				lastImported = imported;
+//				cout << web3.ethereum()->blockQueueStatus() << endl;
 			}
 		}
 

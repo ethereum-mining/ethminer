@@ -89,13 +89,14 @@ void VersionChecker::setOk()
 
 ImportResult Client::queueBlock(bytes const& _block, bool _isSafe)
 {
-	if (m_bq.status().verified + m_bq.status().verifying + m_bq.status().unverified > 30000)
+	if (m_bq.status().verified + m_bq.status().verifying + m_bq.status().unverified > 10000)
 		this_thread::sleep_for(std::chrono::milliseconds(500));
 	return m_bq.import(&_block, bc(), _isSafe);
 }
 
 tuple<ImportRoute, bool, unsigned> Client::syncQueue(unsigned _max)
 {
+	stopWorking();
 	return m_bc.sync(m_bq, m_stateDB, _max);
 }
 

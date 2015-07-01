@@ -163,10 +163,6 @@ private:
 class HasInvariants
 {
 public:
-	/// Check invariants are met, throw if not.
-	void checkInvariants() const;
-
-protected:
 	/// Reimplement to specify the invariants.
 	virtual bool invariants() const = 0;
 };
@@ -175,16 +171,22 @@ protected:
 class InvariantChecker
 {
 public:
-	InvariantChecker(HasInvariants* _this): m_this(_this) { m_this->checkInvariants(); }
-	~InvariantChecker() { m_this->checkInvariants(); }
+	InvariantChecker(HasInvariants* _this, char const* _fn, char const* _file, int _line): m_this(_this), m_function(_fn), m_file(_file), m_line(_line) { checkInvariants(); }
+	~InvariantChecker() { checkInvariants(); }
 
 private:
+	/// Check invariants are met, throw if not.
+	void checkInvariants() const;
+
 	HasInvariants const* m_this;
+	char const* m_function;
+	char const* m_file;
+	int m_line;
 };
 
 /// Scope guard for invariant check in a class derived from HasInvariants.
 #if ETH_DEBUG
-#define DEV_INVARIANT_CHECK { ::dev::InvariantChecker __dev_invariantCheck(this); }
+#define DEV_INVARIANT_CHECK { ::dev::InvariantChecker __dev_invariantCheck(this, BOOST_THROW_EXCEPTION_CURRENT_FUNCTION, __FILE__, __LINE__); }
 #else
 #define DEV_INVARIANT_CHECK (void)0;
 #endif
