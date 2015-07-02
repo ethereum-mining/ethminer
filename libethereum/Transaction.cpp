@@ -42,7 +42,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, ExecutionResult const& _e
 TransactionException dev::eth::toTransactionException(Exception const& _e)
 {
 	// Basic Transaction exceptions
-	if (!!dynamic_cast<BadRLP const*>(&_e))
+	if (!!dynamic_cast<RLPException const*>(&_e))
 		return TransactionException::BadRLP;
 	if (!!dynamic_cast<OutOfGasIntrinsic const*>(&_e))
 		return TransactionException::OutOfGasIntrinsic;
