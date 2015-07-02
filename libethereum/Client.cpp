@@ -339,7 +339,8 @@ Client::~Client()
 	stopWorking();
 }
 
-static const Address c_canary("0x");
+static const Address c_canary("0x73c054b5865c427064641725a51032458d1d59b5");
+static const Addresses c_canaries = {};
 
 bool Client::isChainBad() const
 {
