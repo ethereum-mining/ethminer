@@ -488,5 +488,48 @@
             "to" : "b03f030056db7d467d778326658bac0d1b35d8f7",
             "value" : "0"
         }
+    },
+
+    "BadStateRootTx" : {
+        "env" : {
+            "currentCoinbase" : "2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
+            "currentDifficulty" : "45678256",
+            "currentGasLimit" : "(2**256)-1",
+            "currentGasLimit" : "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+            "currentNumber" : "0",
+            "currentTimestamp" : 1,
+            "previousHash" : "5e20a0453cecd065ea59c37ac63e079ee08998b6045136a8ce6635c7912ec0b6"
+        },
+        "expect" : {
+            "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
+                "balance" : "1000"
+            }
+        },
+        "pre" : {
+            "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
+                "balance" : "2000000",
+                "code" : "",
+                "nonce" : "0",
+                "storage" : {
+                }
+            },
+            "1baf27b88c48dd02b744999cf3522766929d2b2a" : {
+                "balance" : "1000",
+                "code" : "0x600073a94f5374fce5edbc8e2a8697c15331677e6ebf0b3314156023573540602035145b15602e576040356000555b",
+                "nonce" : "0",
+                "storage" : {
+                }
+            }
+        },
+        "transaction" :
+        {
+            "data" : "0x00000000000000000000000000000000000000000000000000000000000bc03712fac13c68425054e372b0861af05648614d69d32800fba9ad4522238d4b937a0000000000000000000000000000000000000000000000000000000000000000",
+            "gasLimit" : "200000",
+            "gasPrice" : "1",
+            "nonce" : "0",
+            "secretKey" : "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8",
+            "to" : "1baf27b88c48dd02b744999cf3522766929d2b2a",
+            "value" : "0"
+        }
     }
 }
