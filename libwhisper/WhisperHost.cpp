@@ -70,22 +70,16 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 
 	int rating = 1; // rating for local host is based upon: 1. installed watch; 2. proof of work
 
-	//if (bloomfilter.check)
-	//{
-		// rating *= 10;
-		if (_p) // originated externally
-			DEV_GUARDED(m_filterLock)
-			{
-				for (auto const& f: m_filters)
-					if (f.second.filter.matches(_m))
-						for (auto& i: m_watches)
-							if (i.second.id == f.first)
-							{
-								i.second.changes.push_back(h);
-								rating *= 10;
-							}
-			}
-	//}
+	if (_p) // incoming message from remote peer
+		DEV_GUARDED(m_filterLock)
+			for (auto const& f: m_filters)
+				if (f.second.filter.matches(_m))
+					for (auto& i: m_watches)
+						if (i.second.id == f.first)
+						{
+							i.second.changes.push_back(h);
+							rating += 10; // subject to review
+						}
 
 	// TODO p2p: capability-based rating
 	for (auto i: peerSessions())
