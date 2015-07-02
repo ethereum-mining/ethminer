@@ -76,15 +76,18 @@ void BlockChainSync::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
 {
 	RecursiveGuard l(x_sync);
 	DEV_INVARIANT_CHECK;
+	std::shared_ptr<Session> session = _peer->session();
+	if (!session)
+		return; // Expired
 	if (_peer->m_genesisHash != host().chain().genesisHash())
 		_peer->disable("Invalid genesis hash");
 	else if (_peer->m_protocolVersion != host().protocolVersion() && _peer->m_protocolVersion != EthereumHost::c_oldProtocolVersion)
 		_peer->disable("Invalid protocol version.");
 	else if (_peer->m_networkId != host().networkId())
 		_peer->disable("Invalid network identifier.");
-	else if (_peer->session()->info().clientVersion.find("/v0.7.0/") != string::npos)
+	else if (session->info().clientVersion.find("/v0.7.0/") != string::npos)
 		_peer->disable("Blacklisted client version.");
-	else if (host().isBanned(_peer->session()->id()))
+	else if (host().isBanned(session->id()))
 		_peer->disable("Peer banned for previous bad behaviour.");
 	else
 	{
@@ -345,26 +348,30 @@ void PV60Sync::restartSync()
 {
 	resetSync();
 	host().bq().clear();
-	if (isSyncing())
-		transition(m_syncer.lock(), SyncState::Idle);
+	std::shared_ptr<EthereumPeer> syncer = m_syncer.lock();
+	if (syncer)
+		transition(syncer, SyncState::Idle);
 }
 
 void PV60Sync::completeSync()
 {
-	if (isSyncing())
-		transition(m_syncer.lock(), SyncState::Idle);
+	std::shared_ptr<EthereumPeer> syncer = m_syncer.lock();
+	if (syncer)
+		transition(syncer, SyncState::Idle);
 }
 
 void PV60Sync::pauseSync()
 {
-	if (isSyncing())
-		setState(m_syncer.lock(), SyncState::Waiting, true);
+	std::shared_ptr<EthereumPeer> syncer = m_syncer.lock();
+	if (syncer)
+		transition(syncer, SyncState::Waiting, true);
 }
 
 void PV60Sync::continueSync()
 {
-	if (isSyncing())
-		transition(m_syncer.lock(), SyncState::Blocks);
+	std::shared_ptr<EthereumPeer> syncer = m_syncer.lock();
+	if (syncer)
+		transition(syncer, SyncState::Blocks);
 }
 
 void PV60Sync::onNewPeer(std::shared_ptr<EthereumPeer> _peer)
@@ -485,7 +492,9 @@ void PV60Sync::setNeedsSyncing(std::shared_ptr<EthereumPeer> _peer, h256 const& 
 	if (_peer->m_latestHash)
 		noteNeedsSyncing(_peer);
 
-	_peer->session()->addNote("sync", string(isSyncing(_peer) ? "ongoing" : "holding") + (needsSyncing(_peer) ? " & needed" : ""));
+	shared_ptr<Session> session = _peer->session();
+	if (session)
+		session->addNote("sync", string(isSyncing(_peer) ? "ongoing" : "holding") + (needsSyncing(_peer) ? " & needed" : ""));
 }
 
 bool PV60Sync::needsSyncing(std::shared_ptr<EthereumPeer> _peer) const
@@ -778,7 +787,33 @@ void PV60Sync::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const&
 void PV60Sync::abortSync()
 {
 	// Can't check invariants here since the peers is already removed from the list and the state is not updated yet.
-	setState(std::shared_ptr<EthereumPeer>(), SyncState::Idle, false, true);
+	bool continueSync = false;
+	if (m_state == SyncState::Blocks)
+	{
+		// Main syncer aborted, try to find a replacement
+		host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p)
+		{
+			if (_p->m_asking == Asking::Blocks)
+			{
+				setState(_p, SyncState::Blocks, true, true);		// will kick off other peers to help if available.
+				continueSync = true;
+				return false;
+			}
+			if (_p->m_asking == Asking::Nothing && shouldGrabBlocks(_p))
+			{
+				transition(_p, SyncState::Blocks);
+				clog(NetMessageDetail) << "New sync peer selected";
+				continueSync = true;
+				return false;
+			}
+			return true;
+		});
+	}
+	if (!continueSync)
+	{
+		// Just set to idle. Hashchain is keept, Sync will be continued if there are more peers to sync with
+		setState(std::shared_ptr<EthereumPeer>(), SyncState::Idle, false, true);
+	}
 	DEV_INVARIANT_CHECK;
 }
 
@@ -957,7 +992,7 @@ void PV61Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _h
 		{
 			auto syncPeer = m_chainSyncPeers.find(_peer);
 			if (syncPeer == m_chainSyncPeers.end())
-				clog(NetWarn) << "Hashes response from unexpected peer";
+				clog(NetMessageDetail) << "Hashes response from unexpected peer";
 			else
 			{
 				// Peer does not have request hashes, move back from downloading to ready
@@ -1013,8 +1048,16 @@ void PV61Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _h
 			else if (status == QueueStatus::Bad)
 			{
 				cwarn << "block hash bad!" << h << ". Bailing...";
-				_peer->disable("Bad blocks");
-				restartSync();
+				_peer->disable("Bad hashes");
+				if (isSyncing(_peer))
+					restartSync();
+				else
+				{
+					//try with other peer
+					m_readyChainMap[number] = move(m_downloadingChainMap.at(number));
+					m_downloadingChainMap.erase(number);
+					m_chainSyncPeers.erase(_peer);
+				}
 				return;
 			}
 			else if (status == QueueStatus::Unknown)
@@ -1053,13 +1096,9 @@ void PV61Sync::onPeerAborting()
 		else
 			++s;
 	}
-	if (m_syncer.expired() && m_state != SyncState::Idle)
-	{
-		clog(NetWarn) << "Syncing peer disconnected, restarting sync";
-		m_syncer.reset();
-		abortSync();
-	}
-	else if (isPV61Syncing())
+	if (m_syncer.expired())
+		PV60Sync::onPeerAborting();
+	else if (isPV61Syncing() && m_state == SyncState::Hashes)
 		requestSubchains();
 	DEV_INVARIANT_CHECK;
 }
