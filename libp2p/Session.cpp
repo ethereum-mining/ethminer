@@ -382,7 +382,7 @@ void Session::doRead()
 		}
 		catch (std::exception const& _e)
 		{
-			clog(NetWarn) << "Exception decoding frame header RLP:" << bytesConstRef(m_data.data(), h128::size).cropped(3);
+			clog(NetWarn) << "Exception decoding frame header RLP:" << _e.what() << bytesConstRef(m_data.data(), h128::size).cropped(3);
 			drop(BadProtocol);
 			return;
 		}
