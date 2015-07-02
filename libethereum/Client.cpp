@@ -339,17 +339,26 @@ Client::~Client()
 	stopWorking();
 }
 
-static const Address c_canary("0x73c054b5865c427064641725a51032458d1d59b5");
-static const Addresses c_canaries = {};
+static const Addresses c_canaries =
+{
+	Address("4bb7e8ae99b645c2b7860b8f3a2328aae28bd80a"),
+	Address("1baf27b88c48dd02b744999cf3522766929d2b2a"),
+	Address("a8edb1ac2c86d3d9d78f96cd18001f60df29e52c"),
+	Address("60d11b58744784dc97f878f7e3749c0f1381a004")
+};
 
 bool Client::isChainBad() const
 {
-	return stateAt(c_canary, 0) != 0;
+	unsigned numberBad = 0;
+	for (auto const& a: c_canaries)
+		if (!!stateAt(a, 0))
+			numberBad++;
+	return numberBad >= 2;
 }
 
 bool Client::isUpgradeNeeded() const
 {
-	return stateAt(c_canary, 0) == 2;
+	return stateAt(c_canaries[0], 0) == 2;
 }
 
 void Client::setNetworkId(u256 _n)
