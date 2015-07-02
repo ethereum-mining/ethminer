@@ -8,6 +8,7 @@ import "js/Debugger.js" as Debugger
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 import "."
 
+
 Rectangle {
 	color: "#ededed"
 	property alias bc: blockChain
@@ -20,70 +21,94 @@ Rectangle {
 		}
 	}
 
-	Column
-	{
-		id: scenarioColumn
-		anchors.margins: 10
-		anchors.fill: parent
-		spacing: 10
-		ScenarioLoader
-		{
-			height: 100
-			width: parent.width
-			id: loader
-		}
-
-		Connections
-		{
-			target: blockChain
-			onChainChanged:
-			{
-				loader.needSaveOrReload()
-			}
-		}
-
-		Rectangle
-		{
-			width: parent.parent.width
-			height: 1
-			color: "#cccccc"
-		}
-
-		Connections
-		{
-			target: loader
-			onLoaded:
-			{
-				blockChain.load(scenario)
-			}
-		}
-
-		BlockChain
-		{
-			id: blockChain
-			width: parent.width
-		}
-
-		Connections
-		{
-			target: blockChain
-			onTxSelected:{
-				var tx = model.block[blockIndex].transactions[txIndex]
-				var state =  blockChain.getState(tx.recordIndex)
-				watchers.updateWidthTx(tx, state)
-			}
-		}
-	}
-
 	ScrollView
 	{
-		anchors.top: scenarioColumn.bottom
-		width: parent.width
-		height: 500
-		Watchers
+		anchors.fill: parent
+		onWidthChanged: {
+			columnExe.width = width - 40
+		}
+
+		ColumnLayout
 		{
-			id: watchers
-			anchors.topMargin: 10
+			id: columnExe
+			Layout.preferredWidth: parent.width
+			width: parent.width - 40
+			anchors.left: parent.left
+			anchors.leftMargin: 15
+			ColumnLayout
+			{				
+				id: scenarioColumn
+				width: parent.width
+				spacing: 10				
+				ScenarioLoader
+				{
+					anchors.horizontalCenter: parent.horizontalCenter
+					height: 100
+					Layout.preferredWidth: 400
+					width: 400
+					id: loader
+				}
+
+				Connections
+				{
+					target: blockChain
+					onChainChanged:
+					{
+						loader.needSaveOrReload()
+					}
+				}
+
+				Rectangle
+				{
+					Layout.preferredWidth: parent.width
+					height: 1
+					color: "#cccccc"
+				}
+
+				Connections
+				{
+					target: loader
+					onLoaded:
+					{
+						watchers.clear()
+						blockChain.load(scenario)
+					}
+				}
+
+				BlockChain
+				{
+					id: blockChain
+					width: parent.width
+				}
+
+				Connections
+				{
+					target: blockChain
+					onTxSelected: {
+						var tx = blockChain.model.blocks[blockIndex].transactions[txIndex]
+						var state = blockChain.getState(tx.recordIndex)
+						watchers.updateWidthTx(tx, state, blockIndex, txIndex)
+					}
+					onRebuilding: {
+						watchers.clear()
+					}
+				}
+			}
+
+			Watchers
+			{
+				id: watchers
+				bc: blockChain
+				Layout.fillWidth: true
+				Layout.preferredHeight: 740
+			}
+
+			Rectangle
+			{
+				color: "transparent"
+				Layout.preferredHeight: 50
+				Layout.fillWidth: true
+			}
 		}
 	}
 }
