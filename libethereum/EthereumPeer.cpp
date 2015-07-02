@@ -86,7 +86,7 @@ unsigned EthereumPeer::askOverride() const
 	if (s->info().clientVersion.substr(0, badGeth.size()) == badGeth)
 		return 1;
 	bytes const& d = repMan().data(*s, name());
-	return d.empty() ? c_maxBlocksAsk : RLP(d).toInt<unsigned>(RLP::LaisezFaire);
+	return d.empty() ? c_maxBlocksAsk : RLP(d).toInt<unsigned>(RLP::LaissezFaire);
 }
 
 void EthereumPeer::setRude()
@@ -152,6 +152,8 @@ void EthereumPeer::requestHashes(u256 _number, unsigned _count)
 
 void EthereumPeer::requestHashes(h256 const& _lastHash)
 {
+	if (m_asking != Asking::Nothing)
+		clog(NetWarn) << "Asking hashes while requesting " << (m_asking == Asking::Nothing ? "nothing" : m_asking == Asking::State ? "state" : m_asking == Asking::Hashes ? "hashes" : m_asking == Asking::Blocks ? "blocks" : "?");
 	assert(m_asking == Asking::Nothing);
 	setAsking(Asking::Hashes);
 	RLPStream s;

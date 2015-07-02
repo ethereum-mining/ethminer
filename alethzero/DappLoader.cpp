@@ -129,7 +129,7 @@ void DappLoader::downloadComplete(QNetworkReply* _reply)
 
 		h256 expected = m_uriHashes[requestUrl];
 		bytes package(reinterpret_cast<unsigned char const*>(data.constData()), reinterpret_cast<unsigned char const*>(data.constData() + data.size()));
-		Secp256k1 dec;
+		Secp256k1PP dec;
 		dec.decrypt(expected, package);
 		h256 got = sha3(package);
 		if (got != expected)

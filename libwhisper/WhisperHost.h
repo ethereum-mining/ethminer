@@ -50,35 +50,30 @@ class WhisperHost: public HostCapability<WhisperPeer>, public Interface, public 
 public:
 	WhisperHost();
 	virtual ~WhisperHost();
-
-	unsigned protocolVersion() const { return 2; }
+	unsigned protocolVersion() const { return c_whisperProtocolVersion; }
+	/// remove old messages
+	void cleanup(); 
+	std::map<h256, Envelope> all() const { dev::ReadGuard l(x_messages); return m_messages; }
+	TopicBloomFilterHash bloom() const { dev::Guard l(m_filterLock); return m_bloom; }
 
 	virtual void inject(Envelope const& _e, WhisperPeer* _from = nullptr) override;
-
 	virtual Topics const& fullTopics(unsigned _id) const override { try { return m_filters.at(m_watches.at(_id).id).full; } catch (...) { return EmptyTopics; } }
 	virtual unsigned installWatch(Topics const& _filter) override;
-	virtual unsigned installWatchOnId(h256 _filterId) override;
 	virtual void uninstallWatch(unsigned _watchId) override;
 	virtual h256s peekWatch(unsigned _watchId) const override { dev::Guard l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return h256s(); } }
 	virtual h256s checkWatch(unsigned _watchId) override { cleanup(); dev::Guard l(m_filterLock); h256s ret; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes.clear(); } catch (...) {} return ret; }
-	virtual h256s watchMessages(unsigned _watchId) override; /// returns IDs of messages, which match specific watch criteria
-
+	/// returns IDs of messages, which match specific watch criteria
+	virtual h256s watchMessages(unsigned _watchId) override; 
 	virtual Envelope envelope(h256 _m) const override { try { dev::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Envelope(); } }
-
-	std::map<h256, Envelope> all() const { ReadGuard l(x_messages); return m_messages; }
-
-	void cleanup();
 
 protected:
 	virtual void doWork() override;
+	void noteAdvertiseTopicsOfInterest();
 
 private:
 	virtual void onStarting() override { startWorking(); }
 	virtual void onStopping() override { stopWorking(); }
-
 	void streamMessage(h256 _m, RLPStream& _s) const;
-
-	void noteChanged(h256 _messageHash, h256 _filter);
 
 	mutable dev::SharedMutex x_messages;
 	std::map<h256, Envelope> m_messages;

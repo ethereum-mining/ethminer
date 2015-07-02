@@ -139,6 +139,7 @@ unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
 }
 
 bool ethash_cl_miner::configureGPU(
+	unsigned _platformId,
 	bool _allowCPU,
 	unsigned _extraGPUMemory,
 	boost::optional<uint64_t> _currentBlock
@@ -149,7 +150,7 @@ bool ethash_cl_miner::configureGPU(
 	// by default let's only consider the DAG of the first epoch
 	uint64_t dagSize = _currentBlock ? ethash_get_datasize(*_currentBlock) : 1073739904U;
 	uint64_t requiredSize =  dagSize + _extraGPUMemory;
-	return searchForAllDevices([&requiredSize](cl::Device const _device) -> bool
+	return searchForAllDevices(_platformId, [&requiredSize](cl::Device const _device) -> bool
 		{
 			cl_ulong result;
 			_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
@@ -416,6 +417,7 @@ bool ethash_cl_miner::init(
 
 void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, unsigned _msPerBatch)
 {
+	(void)_msPerBatch;
 	try
 	{
 		struct pending_batch
