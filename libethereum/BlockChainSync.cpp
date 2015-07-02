@@ -805,10 +805,6 @@ bool PV60Sync::invariants() const
 		BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("Active while peer not syncing"));
 	if (m_state == SyncState::Hashes)
 	{
-		bool hashes = false;
-		host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p) { if (_p->m_asking == Asking::Hashes) hashes = true; return !hashes; });
-		if (!hashes)
-			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("No peers asking for hashes"));
 		if (!m_syncingLatestHash)
 			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("m_syncingLatestHash is not set while downloading hashes"));
 		if (m_syncingNeededBlocks.empty() != (!m_syncingLastReceivedHash))
@@ -816,10 +812,6 @@ bool PV60Sync::invariants() const
 	}
 	if (m_state == SyncState::Blocks || m_state == SyncState::NewBlocks)
 	{
-		bool blocks = false;
-		host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p) { if (_p->m_asking == Asking::Blocks) blocks = true; return !blocks; });
-		if (!blocks)
-			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("No peers asking for blocks"));
 		if (downloadMan().isComplete())
 			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("Block download complete but the state is still Blocks"));
 	}
@@ -1095,10 +1087,6 @@ bool PV61Sync::invariants() const
 		BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("m_downloadingChainMap and m_chainSyncPeers out of sync"));
 	if (m_state == SyncState::Hashes)
 	{
-		bool hashes = false;
-		host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p) { if (_p->m_asking == Asking::Hashes) hashes = true; return !hashes; });
-		if (!hashes)
-			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("No peers asking for hashes"));
 		if (isPV61Syncing() && !m_syncingBlockNumber)
 			BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment("Syncing in PV61 with no block number set"));
 	}
