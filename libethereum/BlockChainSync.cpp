@@ -791,10 +791,6 @@ bool PV60Sync::invariants() const
 		return false;
 	if (m_state == SyncState::Hashes)
 	{
-		bool hashes = false;
-		host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p) { if (_p->m_asking == Asking::Hashes) hashes = true; return !hashes; });
-		if (!hashes)
-			return false;
 		if (!m_syncingLatestHash)
 			return false;
 		if (m_syncingNeededBlocks.empty() != (!m_syncingLastReceivedHash))
@@ -802,10 +798,6 @@ bool PV60Sync::invariants() const
 	}
 	if (m_state == SyncState::Blocks || m_state == SyncState::NewBlocks)
 	{
-		bool blocks = false;
-		host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p) { if (_p->m_asking == Asking::Blocks) blocks = true; return !blocks; });
-		if (!blocks)
-			return false;
 		if (downloadMan().isComplete())
 			return false;
 	}
