@@ -301,7 +301,7 @@ public:
 	/// @returns the data payload. Valid for all types.
 	bytesConstRef payload() const { auto l = length(); if (l > m_data.size()) BOOST_THROW_EXCEPTION(BadRLP()); return m_data.cropped(payloadOffset(), l); }
 
-	/// @returns the theoretical size of this item.
+	/// @returns the theoretical size of this item as encoded in the data.
 	/// @note Under normal circumstances, is equivalent to m_data.size() - use that unless you know it won't work.
 	size_t actualSize() const;
 
@@ -326,6 +326,9 @@ private:
 
 	/// @returns the number of data items.
 	size_t items() const;
+
+	/// @returns the "actualSize" of the RLP encoded in the largest prefix of @a _data and throws on error.
+	static size_t actualSizeOfPrefix(bytesConstRef _data) { return RLP(_data, ThrowOnFail | FailIfTooSmall).actualSize(); }
 
 	/// Our byte data.
 	bytesConstRef m_data;

@@ -50,7 +50,7 @@ RLP::iterator& RLP::iterator::operator++()
 	if (m_remaining)
 	{
 		m_currentItem.retarget(m_currentItem.next().data(), m_remaining);
-		m_currentItem = m_currentItem.cropped(0, RLP(m_currentItem, ThrowOnFail | FailIfTooSmall).actualSize());
+		m_currentItem = m_currentItem.cropped(0, actualSizeOfPrefix(m_currentItem));
 		m_remaining -= std::min<size_t>(m_remaining, m_currentItem.size());
 	}
 	else
@@ -63,7 +63,7 @@ RLP::iterator::iterator(RLP const& _parent, bool _begin)
 	if (_begin && _parent.isList())
 	{
 		auto pl = _parent.payload();
-		m_currentItem = pl.cropped(0, RLP(pl, ThrowOnFail | FailIfTooSmall).actualSize());
+		m_currentItem = pl.cropped(0, actualSizeOfPrefix(pl));
 		m_remaining = pl.size() - m_currentItem.size();
 	}
 	else
@@ -77,14 +77,14 @@ RLP RLP::operator[](size_t _i) const
 {
 	if (_i < m_lastIndex)
 	{
-		m_lastEnd = RLP(payload(), ThrowOnFail | FailIfTooSmall).actualSize();
+		m_lastEnd = actualSizeOfPrefix(payload());
 		m_lastItem = payload().cropped(0, m_lastEnd);
 		m_lastIndex = 0;
 	}
 	for (; m_lastIndex < _i && m_lastItem.size(); ++m_lastIndex)
 	{
 		m_lastItem = payload().cropped(m_lastEnd);
-		m_lastItem = m_lastItem.cropped(0, RLP(m_lastItem, ThrowOnFail | FailIfTooSmall).actualSize());
+		m_lastItem = m_lastItem.cropped(0, actualSizeOfPrefix(m_lastItem));
 		m_lastEnd += m_lastItem.size();
 	}
 	return RLP(m_lastItem, ThrowOnFail | FailIfTooSmall);
@@ -204,7 +204,7 @@ size_t RLP::items() const
 		bytesConstRef d = payload().cropped(0, length());
 		size_t i = 0;
 		for (; d.size(); ++i)
-			d = d.cropped(RLP(d, ThrowOnFail | FailIfTooSmall).actualSize());
+			d = d.cropped(actualSizeOfPrefix(d));
 		return i;
 	}
 	return 0;
