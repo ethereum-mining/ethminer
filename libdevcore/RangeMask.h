@@ -217,7 +217,7 @@ template <class T> inline std::ostream& operator<<(std::ostream& _out, RangeMask
 }
 
 template <class T>
-RangeMask<T>& RangeMask<T>::unionWith(RangeMask<T>::Range const& _m)
+RangeMask<T>& RangeMask<T>::unionWith(typename RangeMask<T>::Range const& _m)
 {
 	for (auto i = _m.first; i < _m.second;)
 	{
