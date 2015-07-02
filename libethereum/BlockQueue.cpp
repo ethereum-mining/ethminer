@@ -336,7 +336,6 @@ void BlockQueue::updateBad_WITH_LOCK(h256 const& _bad)
 
 void BlockQueue::collectUnknownBad_WITH_BOTH_LOCKS(h256 const& _bad)
 {
-	DEV_INVARIANT_CHECK;
 	list<h256> badQueue(1, _bad);
 	while (!badQueue.empty())
 	{
@@ -504,7 +503,6 @@ void BlockQueue::noteReady_WITH_LOCK(h256 const& _good)
 	}
 	if (notify)
 		m_moreToVerify.notify_all();
-	DEV_INVARIANT_CHECK;
 }
 
 void BlockQueue::retryAllUnknown()
