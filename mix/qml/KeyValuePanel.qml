@@ -14,48 +14,112 @@ import "."
 ColumnLayout {
 	id: root
 	property alias title: titleLabel.text
-	property variant data
+	property variant _data
+	property string role
+	property alias model: modelKeyValue
 
-	function key(index)
+	function clear()
 	{
+		modelKeyValue.clear()
 	}
 
-	function value(index)
+	function init()
 	{
-	}
-
-	RowLayout
-	{
-		Label
+		modelKeyValue.clear()
+		if (typeof(computeData) !== "undefined" && computeData instanceof Function)
+			computeData()
+		else
 		{
-			id: titleLabel
+			console.log("--------------")
+			console.log(JSON.stringify(_data))
+			console.log(role)
+			if (_data !== undefined && _data[role] !== undefined)
+			{
+				var keys = Object.keys(_data[role])
+				for (var k in keys)
+				{
+					modelKeyValue.append({ "key": keys[k] === "" ? "undefined" : keys[k], "value": _data[role][keys[k]] })
+				}
+			}
 		}
 	}
 
 	RowLayout
 	{
-		Repeater
+		Layout.preferredHeight: 20
+		Layout.fillWidth: true
+		Label
 		{
-			id: repeaterKeyValue
-			RowLayout
+			id: titleLabel
+			anchors.left: parent.left
+			anchors.verticalCenter: parent.verticalCenter
+			color: "white"
+		}
+	}
+
+	RowLayout
+	{
+		Layout.fillWidth: true
+		Layout.preferredHeight: 100
+		ListModel
+		{
+			id: modelKeyValue
+		}
+
+		Rectangle
+		{
+			Layout.fillWidth: true
+			Layout.fillHeight: true
+			color: "white"
+			radius: 2
+			ScrollView
 			{
-				Rectangle
+				id: columnValues
+				horizontalScrollBarPolicy: Qt.ScrollBarAlwaysOff
+				anchors.fill: parent
+				ColumnLayout
 				{
-					id: key
-					Label
+					anchors.margins: 10
+					Repeater
 					{
-						text: {
-							return root.key(index)
-						}
-					}
-				}
-				Rectangle
-				{
-					id: value
-					Label
-					{
-						text: {
-							return root.value(index)
+						id: repeaterKeyValue
+						model: modelKeyValue
+						RowLayout
+						{
+							Layout.fillWidth: true
+							Layout.preferredHeight: 30
+							spacing: 0
+							Rectangle
+							{
+								Layout.preferredWidth: columnValues.width / 2
+								Label
+								{
+									anchors.left: parent.left
+									anchors.leftMargin: 10
+									text: {
+										if (index >=  0)
+											return repeaterKeyValue.model.get(index).key
+										else
+											return ""
+									}
+								}
+							}
+
+							Rectangle
+							{
+								Layout.preferredWidth: columnValues.width / 2 - 10
+								Label
+								{
+									anchors.right: parent.right
+									anchors.rightMargin: 10
+									text: {
+										if (index >= 0)
+											return repeaterKeyValue.model.get(index).value
+										else
+											return ""
+									}
+								}
+							}
 						}
 					}
 				}

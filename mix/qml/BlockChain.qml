@@ -13,14 +13,17 @@ import "."
 
 ColumnLayout {
 	id: blockChainPanel
+	property alias trDialog: transactionDialog
+	property alias blockChainRepeater: blockChainRepeater
 	property variant model
-	property var states: {}
+	property var states: ({})
 	spacing: 0
 	property int previousWidth
 	property variant debugTrRequested: []
 	signal chainChanged
 	signal chainReloaded
 	signal txSelected(var blockIndex, var txIndex)
+	signal rebuilding
 
 	Connections
 	{
@@ -42,21 +45,21 @@ ColumnLayout {
 		var minWidth = scenarioMinWidth - 20 // margin
 		if (width <= minWidth || previousWidth <= minWidth)
 		{
-			fromWidth = 100
-			toWidth = 100
-			valueWidth = 200
+			fromWidth = 250
+			toWidth = 240
+			//valueWidth = 200
 		}
 		else
 		{
 			var diff = (width - previousWidth) / 3;
-			fromWidth = fromWidth + diff < 100 ? 100 : fromWidth + diff
-			toWidth = toWidth + diff < 100 ? 100 : toWidth + diff
-			valueWidth = valueWidth + diff < 200 ? 200 : valueWidth + diff
+			fromWidth = fromWidth + diff < 250 ? 250 : fromWidth + diff
+			toWidth = toWidth + diff < 240 ? 240 : toWidth + diff
+			//valueWidth = valueWidth + diff < 200 ? 200 : valueWidth + diff
 		}
 		previousWidth = width
 	}
 
-	function state(record)
+	function getState(record)
 	{
 		return states[record]
 	}
@@ -76,10 +79,8 @@ ColumnLayout {
 	}
 
 	property int statusWidth: 30
-	property int fromWidth: 150
-	property int toWidth: 100
-	property int valueWidth: 200
-	property int logsWidth: 40
+	property int fromWidth: 250
+	property int toWidth: 240
 	property int debugActionWidth: 40
 	property int horizontalMargin: 10
 	property int cellSpacing: 10
@@ -118,16 +119,6 @@ ColumnLayout {
 		{
 			text: "To"
 			Layout.preferredWidth: toWidth + cellSpacing
-		}
-		Label
-		{
-			text: "Value"
-			Layout.preferredWidth: valueWidth + cellSpacing
-		}
-		Label
-		{
-			text: "Logs"
-			Layout.preferredWidth: logsWidth + cellSpacing
 		}
 		Label
 		{
@@ -170,13 +161,19 @@ ColumnLayout {
 				{
 					id: blockChainRepeater
 					model: blockModel
+
+					function editTx(blockIndex, txIndex)
+					{
+						itemAt(blockIndex).editTx(txIndex)
+					}
+
 					Block
 					{
 						Connections
 						{
 							target: block
 							onTxSelected: {
-								txSelected(index, txIndex)
+								blockChainPanel.txSelected(index, txIndex)
 							}
 						}
 						id: block
@@ -264,6 +261,8 @@ ColumnLayout {
 	Rectangle
 	{
 		Layout.preferredWidth: parent.width
+		Layout.preferredHeight: 70
+		color: "transparent"
 		RowLayout
 		{
 			anchors.horizontalCenter: parent.horizontalCenter
@@ -286,6 +285,7 @@ ColumnLayout {
 					{
 						if (ensureNotFuturetime.running)
 							return;
+						rebuilding()
 						stopBlinking()
 						states = []
 						var retBlocks = [];
@@ -333,7 +333,7 @@ ColumnLayout {
 							blockModel.append(model.blocks[j])
 
 						ensureNotFuturetime.start()
-						clientModel.setupScenario(model);
+						clientModel.setupScenario(model);						
 					}
 					buttonShortcut: ""
 					sourceImg: "qrc:/qml/img/recycleicon@2x.png"
@@ -465,11 +465,13 @@ ColumnLayout {
 							tr.recordIndex = _r.recordIndex
 							tr.logs = _r.logs
 							tr.sender = _r.sender
+							tr.returnParameters = _r.returnParameters
 							var trModel = blockModel.getTransaction(blockIndex, trIndex)
 							trModel.returned = _r.returned
 							trModel.recordIndex = _r.recordIndex
 							trModel.logs = _r.logs
 							trModel.sender = _r.sender
+							trModel.returnParameters = _r.returnParameters
 							blockModel.setTransaction(blockIndex, trIndex, trModel)
 							return;
 						}
@@ -489,6 +491,7 @@ ColumnLayout {
 					itemTr.sender = _r.sender
 					itemTr.recordIndex = _r.recordIndex
 					itemTr.logs = _r.logs
+					itemTr.returnParameters = _r.returnParameters
 					model.blocks[model.blocks.length - 1].transactions.push(itemTr)
 					blockModel.appendTransaction(itemTr)
 				}

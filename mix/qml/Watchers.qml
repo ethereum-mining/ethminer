@@ -11,49 +11,176 @@ import "js/TransactionHelper.js" as TransactionHelper
 import "js/QEtherHelper.js" as QEtherHelper
 import "."
 
-ColumnLayout {
-
+Rectangle {
+	color: "#4F4F4F"
+	radius: 4
 	property variant tx
-	property variant state
+	property variant currentState
+	property variant bc
+	property var blockIndex
+	property var txIndex
 
-	function updateWidthTx(_tx, _state)
+	function clear()
 	{
-		console.log("update tx")
-		console.log(JSON.stringify(tx))
-		console.log(JSON.stringify(state))
-		txLabel.text = tx.label
+		from.text = ""
+		to.text = ""
+		inputParams.clear()
+		returnParams.clear()
+		accounts.clear()
+		events.clear()
+	}
+
+	function updateWidthTx(_tx, _state, _blockIndex, _txIndex)
+	{
+		from.text = _tx.sender
+		to.text = _tx.label
 		tx = _tx
-		state = _state
-	}
-
-	RowLayout
-	{
-		Label {
-			id: txLabel
+		blockIndex  = _blockIndex
+		txIndex = _txIndex
+		currentState = _state
+		inputParams.init()
+		if (_tx.isContractCreation)
+		{
+			returnParams.role = "creationAddr"
+			returnParams._data = {
+				creationAddr : {
+					"": _tx.returned
+				}
+			}
 		}
+		else
+		{
+			returnParams.role = "returnParameters"
+			returnParams._data = tx
+		}
+		returnParams.init()
+		accounts.init()
+		events.init()
 	}
 
-	KeyValuePanel
-	{
-		id: inputParams
-		title: qsTr("INPUT PARAMETERS")
-	}
+	Column {
+		anchors.fill: parent
+		spacing: 15
+		Rectangle
+		{
+			height: 20
+			width: parent.width - 30
+			color: "transparent"
+			Row
+			{
+				anchors.horizontalCenter: parent.horizontalCenter
+				anchors.verticalCenter: parent.verticalCenter
+				height: 5
+				spacing: 5
+				Label {
+					id: fromLabel
+					text: qsTr("from")
+					visible: from.text !== ""
+					color: "#EAB920"					
+				}
+				Label {
+					id: from
+					color: "#EAB920"
+					elide: Text.ElideRight
+					maximumLineCount: 1
+					clip: true
+					width: 200
+				}
+				Label {
+					id: toLabel
+					text: qsTr("to")
+					visible: from.text !== ""
+					color: "#EAB920"
+				}
+				Label {
+					id: to
+					color: "#EAB920"
+					elide: Text.ElideRight
+					maximumLineCount: 1
+					clip: true
+					width: 100
+				}
 
-	KeyValuePanel
-	{
-		id: returnParams
-		title: qsTr("RETURN PARAMETERS")
-	}
+				Image {
+					source: "qrc:/qml/img/edit.png"
+					height: 15
+					fillMode: Image.PreserveAspectFit
+					visible: from.text !== ""
+					MouseArea
+					{
+						anchors.fill: parent
+						onClicked:
+						{
+							bc.blockChainRepeater.editTx(blockIndex, txIndex)
+						}
+					}
+				}
+			}
+		}
 
-	KeyValuePanel
-	{
-		id: balance
-		title: qsTr("BALANCES")
-	}
+		Rectangle {
+			height: 1
+			width: parent.width - 30
+			anchors.horizontalCenter: parent.horizontalCenter
+			border.color: "#cccccc"
+			border.width: 1
+		}
 
-	KeyValuePanel
-	{
-		id: events
-		title: qsTr("EVENTS")
+		KeyValuePanel
+		{
+			height: 150
+			width: parent.width - 30
+			anchors.horizontalCenter: parent.horizontalCenter
+			id: inputParams
+			title: qsTr("INPUT PARAMETERS")
+			role: "parameters"
+			_data: tx
+		}
+
+		KeyValuePanel
+		{
+			height: 150
+			width: parent.width - 30
+			anchors.horizontalCenter: parent.horizontalCenter
+			id: returnParams
+			title: qsTr("RETURN PARAMETERS")
+			role: "returnParameters"
+			_data: tx
+		}
+
+		KeyValuePanel
+		{
+			height: 150
+			width: parent.width - 30
+			anchors.horizontalCenter: parent.horizontalCenter
+			id: accounts
+			title: qsTr("ACCOUNTS")
+			role: "accounts"
+			_data: currentState
+		}
+
+		KeyValuePanel
+		{
+			height: 150
+			width: parent.width - 30
+			anchors.horizontalCenter: parent.horizontalCenter
+			id: events
+			title: qsTr("EVENTS")
+			function computeData()
+			{
+				model.clear()
+				var ret = []
+				for (var k in tx.logs)
+				{
+					var param = ""
+					for (var p in tx.logs[k].param)
+					{
+						param += " " + tx.logs[k].param[p].value + " "
+					}
+					param = "(" + param + ")"
+					model.append({ "key": tx.logs[k].name, "value": param })
+				}
+			}
+		}
 	}
 }
