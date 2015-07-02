@@ -164,30 +164,32 @@ size_t RLP::length() const
 		return n - c_rlpDataImmLenStart;
 	else if (n < c_rlpListStart)
 	{
-		if (m_data.size() <= n - c_rlpDataIndLenZero)
+		if (m_data.size() <= size_t(n - c_rlpDataIndLenZero))
 			BOOST_THROW_EXCEPTION(BadRLP());
 		if (m_data.size() > 1)
 			if (m_data[1] == 0)
 				BOOST_THROW_EXCEPTION(BadRLP());
-		if (n - c_rlpDataIndLenZero > sizeof(ret))
+		unsigned lengthSize = n - c_rlpDataIndLenZero;
+		if (lengthSize > sizeof(ret))
 			// We did not check, but would most probably not fit in our memory.
 			BOOST_THROW_EXCEPTION(UndersizeRLP());
-		for (unsigned i = 0; i < n - c_rlpDataIndLenZero; ++i)
+		for (unsigned i = 0; i < lengthSize; ++i)
 			ret = (ret << 8) | m_data[i + 1];
 	}
 	else if (n <= c_rlpListIndLenZero)
 		return n - c_rlpListStart;
 	else
 	{
-		if (m_data.size() <= n - c_rlpListIndLenZero)
+		unsigned lengthSize = n - c_rlpListIndLenZero;
+		if (m_data.size() <= lengthSize)
 			BOOST_THROW_EXCEPTION(BadRLP());
 		if (m_data.size() > 1)
 			if (m_data[1] == 0)
 				BOOST_THROW_EXCEPTION(BadRLP());
-		if (n - c_rlpListIndLenZero > sizeof(ret))
+		if (lengthSize > sizeof(ret))
 			// We did not check, but would most probably not fit in our memory.
 			BOOST_THROW_EXCEPTION(UndersizeRLP());
-		for (unsigned i = 0; i < n - c_rlpListIndLenZero; ++i)
+		for (unsigned i = 0; i < lengthSize; ++i)
 			ret = (ret << 8) | m_data[i + 1];
 	}
 	// We have to be able to add payloadOffset to length without overflow.
