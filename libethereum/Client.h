@@ -240,6 +240,8 @@ public:
 	ActivityReport activityReport() { ActivityReport ret; std::swap(m_report, ret); return ret; }
 	/// Set a JSONRPC server to which we can report bad blocks.
 	void setSentinel(std::string const& _server) { m_sentinel = _server; }
+	/// Get the JSONRPC server to which we report bad blocks.
+	std::string const& sentinel() const { return m_sentinel; }
 
 protected:
 	/// InterfaceStub methods
