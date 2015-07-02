@@ -95,12 +95,18 @@ BOOST_AUTO_TEST_CASE(work)
 	cnote << "Testing proof of work...";
 
 	Secret zero;
-	Topics topics = createRandomTopics(0xDEAD);
-	bytes const payload = createRandomPayload(0xFFFFF);
-	Message m(payload);
-	Envelope e = m.seal(zero, topics, 1, 50);
-	unsigned x = e.workProved();
-	BOOST_REQUIRE(x > 0);
+	unsigned r = 0xC0DEFEED;
+
+	for (int i = 0; i < 20; ++i)
+	{
+		Topics topics = createRandomTopics(++r);
+		bytes const payload = createRandomPayload(++r);
+		Message m(payload);
+		Envelope e = m.seal(zero, topics, 1, 50);
+		unsigned x = e.workProved();
+		cnote << x;
+		BOOST_REQUIRE(x > 4);
+	}
 }
 
 BOOST_AUTO_TEST_SUITE_END()
