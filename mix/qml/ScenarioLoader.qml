@@ -126,7 +126,6 @@ ColumnLayout
 								scenarioNameEdit.save()
 							else
 								scenarioNameEdit.edit()
-
 						}
 					}
 				}

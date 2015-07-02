@@ -37,6 +37,13 @@ ColumnLayout
 			return trHeight
 	}
 
+	function editTx(txIndex)
+	{
+		transactionDialog.stateAccounts = scenario.accounts
+		transactionDialog.execute = false
+		transactionDialog.open(txIndex, blockIndex,  transactions.get(txIndex))
+	}
+
 	onOpenedTrChanged:
 	{
 		Layout.preferredHeight = calculateHeight()
@@ -158,7 +165,7 @@ ColumnLayout
 					anchors.top: parent.top
 					anchors.left: parent.left
 					anchors.leftMargin: -9
-					anchors.topMargin: -9
+					anchors.topMargin: -4
 					id: saveStatusImage
 					source: "qrc:/qml/img/recyclediscard@2x.png"
 					width: statusWidth + 20
@@ -195,177 +202,115 @@ ColumnLayout
 			Rectangle
 			{
 				Layout.preferredWidth: blockWidth
-				Layout.preferredHeight: parent.height
+				Layout.preferredHeight: trHeight
+				height: trHeight
 				color: "#DEDCDC"
 				id: rowContentTr
 				anchors.top: parent.top
 
-				MouseArea
+				property bool selected: false
+				Connections
 				{
-					anchors.fill: parent
-					onDoubleClicked:
-					{
-						/*
-						transactionDialog.stateAccounts = scenario.accounts
-						transactionDialog.execute = false
-						transactionDialog.open(index, blockIndex,  transactions.get(index))
-						*/
-						txSelected(index)
+					target: blockChainPanel
+					onTxSelected: {
+						if (root.blockIndex !== blockIndex || index !== txIndex)
+							rowContentTr.deselect()
 					}
 				}
 
-				ColumnLayout
+				function deselect()
 				{
-					anchors.top: parent.top
-					width: parent.width
-					spacing: 20
-					RowLayout
+					rowContentTr.selected = false
+					rowContentTr.color = "#DEDCDC"
+					hash.color = labelColor
+					func.color = labelColor
+				}
+
+				MouseArea
+				{
+					anchors.fill: parent
+					onClicked: {
+						if (!rowContentTr.selected)
+						{
+							rowContentTr.selected = true
+							rowContentTr.color = "#4F4F4F"
+							hash.color = "#EAB920"
+							func.color = "#EAB920"
+							txSelected(index)
+						}
+						else
+							rowContentTr.deselect()
+
+					}
+					onDoubleClicked:
 					{
-						anchors.top: parent.top
-						Layout.fillWidth: true
-						Rectangle
-						{
-							Layout.preferredWidth: fromWidth
-							anchors.left: parent.left
-							anchors.leftMargin: horizontalMargin
-							Text
-							{
-								id: hash
-								width: parent.width - 30
-								elide: Text.ElideRight
-								anchors.verticalCenter: parent.verticalCenter
-								maximumLineCount: 1
-								color: labelColor
-								font.pointSize: dbgStyle.absoluteSize(1)
-								font.bold: true
-								text: {
-									if (index >= 0)
-										return transactions.get(index).sender
-									else
-										return ""
-								}
-							}
-						}
+						root.editTx(index)
+					}
+				}
 
-						Rectangle
+				RowLayout
+				{
+					Layout.fillWidth: true
+					Layout.preferredHeight: trHeight - 10
+					anchors.verticalCenter: parent.verticalCenter
+					Rectangle
+					{
+						Layout.preferredWidth: fromWidth
+						anchors.left: parent.left
+						anchors.leftMargin: horizontalMargin
+						Text
 						{
-							Layout.preferredWidth: toWidth
-							Text
-							{
-								id: func
-								text: {
-									if (index >= 0)
-										parent.parent.userFrienldyToken(transactions.get(index).label)
-									else
-										return ""
-								}
-								elide: Text.ElideRight
-								anchors.verticalCenter: parent.verticalCenter
-								color: labelColor
-								font.pointSize: dbgStyle.absoluteSize(1)
-								font.bold: true
-								maximumLineCount: 1
-								width: parent.width
-							}
-						}
-
-						function userFrienldyToken(value)
-						{
-							if (value && value.indexOf("<") === 0)
-							{
-								if (value.split("> ")[1] === " - ")
-									return value.split(" - ")[0].replace("<", "")
+							id: hash
+							width: parent.width - 30
+							elide: Text.ElideRight
+							anchors.verticalCenter: parent.verticalCenter
+							maximumLineCount: 1
+							color: labelColor
+							font.pointSize: dbgStyle.absoluteSize(1)
+							font.bold: true
+							text: {
+								if (index >= 0)
+									return clientModel.resolveAddress(transactions.get(index).sender)
 								else
-									return value.split(" - ")[0].replace("<", "") + "." + value.split("> ")[1] + "()";
-							}
-							else
-								return value
-						}
-
-						Rectangle
-						{
-							Layout.preferredWidth: valueWidth
-							Text
-							{
-								id: returnValue
-								elide: Text.ElideRight
-								anchors.verticalCenter: parent.verticalCenter
-								maximumLineCount: 1
-								color: labelColor
-								font.bold: true
-								font.pointSize: dbgStyle.absoluteSize(1)
-								width: parent.width - 30
-								text: {
-									if (index >= 0 && transactions.get(index).returned)
-										return transactions.get(index).returned
-									else
-										return ""
-								}
-							}
-						}
-
-						Rectangle
-						{
-							Layout.preferredWidth: logsWidth
-							Layout.preferredHeight: trHeight - 10
-							width: logsWidth
-							color: "transparent"
-							Text
-							{
-								id: logs
-								anchors.left: parent.left
-								anchors.verticalCenter: parent.verticalCenter
-								anchors.leftMargin: 10
-								color: labelColor
-								font.bold: true
-								font.pointSize: dbgStyle.absoluteSize(1)
-								text: {
-									if (index >= 0 && transactions.get(index).logs && transactions.get(index).logs.count)
-										return transactions.get(index).logs.count
-									else
-										return ""
-								}
-							}
-							MouseArea {
-								anchors.fill: parent
-								onClicked: {
-									rowTransaction.displayContent();
-								}
+									return ""
 							}
 						}
 					}
 
-					RowLayout
+					Rectangle
 					{
-						id: rowDetailedContent
-						visible: false
-						Layout.preferredHeight:{
-							if (index >= 0 && transactions.get(index).logs)
-								return 100 * transactions.get(index).logs.count
-							else
-								return 100
-						}
-						onVisibleChanged:
+						Layout.preferredWidth: toWidth
+						Text
 						{
-							var lognb = transactions.get(index).logs.count
-							if (visible)
-							{
-								rowContentTr.Layout.preferredHeight = trHeight + 100 * lognb
-								openedTr += 100 * lognb
+							id: func
+							text: {
+								if (index >= 0)
+									parent.parent.userFrienldyToken(transactions.get(index).label)
+								else
+									return ""
 							}
-							else
-							{
-								rowContentTr.Layout.preferredHeight = trHeight
-								openedTr -= 100 * lognb
-							}
-						}
-
-						Text {
-							anchors.left: parent.left
-							anchors.leftMargin: horizontalMargin
-							id: logsText
+							elide: Text.ElideRight
+							anchors.verticalCenter: parent.verticalCenter
+							color: labelColor
+							font.pointSize: dbgStyle.absoluteSize(1)
+							font.bold: true
+							maximumLineCount: 1
+							width: parent.width
 						}
 					}
+
+					function userFrienldyToken(value)
+					{
+						if (value && value.indexOf("<") === 0)
+						{
+							if (value.split("> ")[1] === " - ")
+								return value.split(" - ")[0].replace("<", "")
+							else
+								return value.split(" - ")[0].replace("<", "") + "." + value.split("> ")[1] + "()";
+						}
+						else
+							return value
+					}					
 				}
 			}
 
@@ -374,7 +319,6 @@ ColumnLayout
 				width: debugActionWidth
 				height: trHeight
 				anchors.left: rowContentTr.right
-				anchors.topMargin: -6
 				anchors.top: rowContentTr.top
 				anchors.leftMargin: -50
 				color: "transparent"

@@ -257,7 +257,9 @@ Item {
 				_secret = clientModel.newSecret();
 			var address = clientModel.address(_secret);
 			var name = qsTr("Account") + "-" + address.substring(0, 4);
-			return { name: name, secret: _secret, balance: QEtherHelper.createEther(_balance, _unit), address: address };
+			var amount = QEtherHelper.createEther(_balance, _unit)
+			clientModel.addAccount(_secret, amount.toWei().value())
+			return { name: name, secret: _secret, balance: amount, address: address };
 		}
 
 		function duplicateState(index)
