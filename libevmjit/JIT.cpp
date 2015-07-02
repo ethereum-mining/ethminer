@@ -1,6 +1,7 @@
 #include "evmjit/JIT.h"
 
 #include <array>
+#include <mutex>
 
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Module.h>
@@ -82,6 +83,7 @@ void parseOptions()
 class JITImpl
 {
 	std::unique_ptr<llvm::ExecutionEngine> m_engine;
+	mutable std::mutex x_codeMap;
 	std::unordered_map<h256, ExecFunc> m_codeMap;
 
 public:
@@ -136,6 +138,7 @@ JITImpl::JITImpl()
 
 ExecFunc JITImpl::getExecFunc(h256 const& _codeHash) const
 {
+	std::lock_guard<std::mutex> lock{x_codeMap};
 	auto it = m_codeMap.find(_codeHash);
 	if (it != m_codeMap.end())
 		return it->second;
@@ -144,6 +147,7 @@ ExecFunc JITImpl::getExecFunc(h256 const& _codeHash) const
 
 void JITImpl::mapExecFunc(h256 _codeHash, ExecFunc _funcAddr)
 {
+	std::lock_guard<std::mutex> lock{x_codeMap};
 	m_codeMap.emplace(std::move(_codeHash), _funcAddr);
 }
 
@@ -179,6 +183,14 @@ ExecFunc JITImpl::compile(byte const* _code, uint64_t _codeSize, h256 const& _co
 bool JIT::isCodeReady(h256 const& _codeHash)
 {
 	return JITImpl::instance().getExecFunc(_codeHash) != nullptr;
+}
+
+void JIT::compile(byte const* _code, uint64_t _codeSize, h256 const& _codeHash)
+{
+	auto& jit = JITImpl::instance();
+	auto execFunc = jit.compile(_code, _codeSize, _codeHash);
+	if (execFunc) // FIXME: What with error?
+		jit.mapExecFunc(_codeHash, execFunc);
 }
 
 ReturnCode JIT::exec(ExecutionContext& _context)
