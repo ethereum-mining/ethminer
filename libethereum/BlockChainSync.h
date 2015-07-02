@@ -315,6 +315,7 @@ private:
 	std::map<std::weak_ptr<EthereumPeer>, unsigned, std::owner_less<std::weak_ptr<EthereumPeer>>> m_chainSyncPeers; ///< Peers to m_downloadingSubchain number map
 	h256Hash m_knownHashes;								///< Subchain start markers. Used to track suchain completion
 	unsigned m_syncingBlockNumber = 0;					///< Current subchain marker
+	bool m_hashScanComplete = false;						///< True if leading peer completed hashchain scan and we have a list of subchains ready
 };
 }
 }
