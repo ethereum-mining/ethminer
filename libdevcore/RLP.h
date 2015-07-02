@@ -71,7 +71,7 @@ public:
 		FailIfTooSmall = 16,
 		Strict = ThrowOnFail | FailIfTooBig,
 		VeryStrict = ThrowOnFail | FailIfTooBig | FailIfTooSmall,
-		LaisezFaire = AllowNonCanon
+		LaissezFaire = AllowNonCanon
 	};
 
 	using Strictness = int;
