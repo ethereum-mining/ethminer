@@ -24,7 +24,6 @@
 #include <mutex>
 
 #include <libdevcore/Guards.h>
-#include <libdevcore/RangeMask.h>
 #include <libethcore/Common.h>
 #include <libp2p/Common.h>
 #include "CommonNet.h"
