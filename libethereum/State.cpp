@@ -883,7 +883,7 @@ LogBloom State::logBloom() const
 	return ret;
 }
 
-void State::commitToMine(BlockChain const& _bc)
+void State::commitToMine(BlockChain const& _bc, bytes const& _extraData)
 {
 	uncommitToMine();
 
@@ -966,6 +966,7 @@ void State::commitToMine(BlockChain const& _bc)
 	m_currentBlock.gasUsed = gasUsed();
 	m_currentBlock.stateRoot = m_state.root();
 	m_currentBlock.parentHash = m_previousBlock.hash();
+	m_currentBlock.extraData = _extraData;
 
 	m_committedToMine = true;
 }
