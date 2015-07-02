@@ -242,6 +242,8 @@ public:
 	void setSentinel(std::string const& _server) { m_sentinel = _server; }
 	/// Get the JSONRPC server to which we report bad blocks.
 	std::string const& sentinel() const { return m_sentinel; }
+	/// Set the extra data that goes into mined blocks.
+	void setExtraData(bytes const& _extraData) { m_extraData = _extraData; }
 
 protected:
 	/// InterfaceStub methods
@@ -359,6 +361,7 @@ private:
 	std::atomic<bool> m_syncBlockQueue = {false};
 
 	std::string m_sentinel;
+	bytes m_extraData;
 };
 
 }

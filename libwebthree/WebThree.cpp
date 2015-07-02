@@ -51,7 +51,10 @@ WebThreeDirect::WebThreeDirect(
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	if (_interfaces.count("eth"))
+	{
 		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _we, 0));
+		m_ethereum->setExtraData(rlpList(0, _clientVersion, m_net.id()));
+	}
 
 	if (_interfaces.count("shh"))
 		m_whisper = m_net.registerCapability<WhisperHost>(new WhisperHost);

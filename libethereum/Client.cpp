@@ -803,7 +803,7 @@ void Client::rejigMining()
 	{
 		clog(ClientTrace) << "Rejigging mining...";
 		DEV_WRITE_GUARDED(x_working)
-			m_working.commitToMine(m_bc);
+			m_working.commitToMine(m_bc, m_extraData);
 		DEV_READ_GUARDED(x_working)
 		{
 			DEV_WRITE_GUARDED(x_postMine)
