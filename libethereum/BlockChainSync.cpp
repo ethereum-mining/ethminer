@@ -92,7 +92,6 @@ void BlockChainSync::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
 		_peer->m_expectedHashes = hashes;
 		onNewPeer(_peer);
 	}
-	DEV_INVARIANT_CHECK;
 }
 
 unsigned BlockChainSync::estimatedHashes() const
@@ -293,7 +292,6 @@ void BlockChainSync::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP con
 		DEV_GUARDED(_peer->x_knownBlocks)
 			_peer->m_knownBlocks.insert(h);
 	}
-	DEV_INVARIANT_CHECK;
 }
 
 PV60Sync::PV60Sync(EthereumHost& _host):
