@@ -28,8 +28,7 @@ using namespace dev;
 using namespace dev::shh;
 
 using TopicBloomFilterShort = TopicBloomFilterBase<4>;
-using TopicBloomFilterLong = TopicBloomFilterBase<8>;
-using TopicBloomFilterTest = TopicBloomFilterLong;
+using TopicBloomFilterTest = TopicBloomFilterBase<c_topicBloomFilterSize>;
 
 void testAddNonExisting(TopicBloomFilterShort& _f, AbridgedTopic const& _h)
 {
@@ -59,7 +58,7 @@ void testRemoveExistingBloom(TopicBloomFilterShort& _f, AbridgedTopic const& _h)
 	BOOST_REQUIRE(!_f.containsBloom(_h));
 }
 
-int calculateExpected(TopicBloomFilterTest const& f, int const n)
+double calculateExpected(TopicBloomFilterTest const& f, int n)
 {
 	int const m = f.size * 8; // number of bits in the bloom
 	int const k = f.BitsPerBloom; // number of hash functions (e.g. bits set to 1 in every bloom)
@@ -77,10 +76,10 @@ int calculateExpected(TopicBloomFilterTest const& f, int const n)
 	for (int i = 0; i < k; ++i)
 		kBitsSet *= single;
 
-	return static_cast<int>(kBitsSet * 100 + 0.5); // in percents, rounded up
+	return kBitsSet;
 }
 
-void testFalsePositiveRate(TopicBloomFilterTest const& f, int const inserted, Topic& x)
+double testFalsePositiveRate(TopicBloomFilterTest const& f, int inserted, Topic& x)
 {
 	int const c_sampleSize = 1000;
 	int falsePositive = 0;
@@ -93,12 +92,14 @@ void testFalsePositiveRate(TopicBloomFilterTest const& f, int const inserted, To
 			++falsePositive;
 	}
 
-	falsePositive /= (c_sampleSize / 100); // in percents
-	int expected = calculateExpected(f, inserted);
-	int allowed = expected + (expected / 5); // allow deviations ~20%
+	double res = double(falsePositive) / double(c_sampleSize);
 
-	//cnote << "Inserted: " << inserted << ", False Positive Rate: " << falsePositive << ", Expected: " << expected;
-	BOOST_REQUIRE(falsePositive <= allowed);
+	double expected = calculateExpected(f, inserted);
+	double allowed = expected * 1.2 + 0.05; // allow deviations ~25%
+
+	//cnote << "Inserted: " << inserted << ", False Positive Rate: " << res << ", Expected: " << expected;
+	BOOST_REQUIRE(res <= allowed);
+	return expected;
 }
 
 BOOST_AUTO_TEST_SUITE(bloomFilter)
@@ -111,11 +112,13 @@ BOOST_AUTO_TEST_CASE(falsePositiveRate)
 	TopicBloomFilterTest f;
 	Topic x(0xC0DEFEED); // deterministic pseudorandom value
 
-	for (int i = 1; i < 21; ++i)
+	double expectedRate = 0;
+
+	for (int i = 1; i < 50 && isless(expectedRate, 0.5); ++i)
 	{
 		x = sha3(x);
 		f.addBloom(AbridgedTopic(x));
-		testFalsePositiveRate(f, i, x);
+		expectedRate = testFalsePositiveRate(f, i, x);
 	}
 }
 
@@ -239,6 +242,57 @@ BOOST_AUTO_TEST_CASE(bloomFilterRaw)
 	BOOST_REQUIRE(!f.contains(b00000110));
 	BOOST_REQUIRE(!f.contains(b00110110));
 	BOOST_REQUIRE(!f.contains(b00110111));
+}
+
+static const unsigned DistributionTestSize = 8;
+static const unsigned TestArrSize = 8 * DistributionTestSize;
+
+void updateDistribution(FixedHash<DistributionTestSize> const& _h, array<unsigned, TestArrSize>& _distribution)
+{
+	unsigned bits = 0;
+	for (unsigned i = 0; i < DistributionTestSize; ++i)
+		if (_h[i])
+			for (unsigned j = 0; j < 8; ++j)
+				if (_h[i] & c_powerOfTwoBitMmask[j])
+				{
+					_distribution[i * 8 + j]++;
+					if (++bits >= TopicBloomFilterTest::BitsPerBloom)
+						return;
+				}
+}
+
+BOOST_AUTO_TEST_CASE(distributionRate)
+{
+	cnote << "Testing Bloom Filter Distribution Rate...";
+
+	array<unsigned, TestArrSize> distribution;
+	for (unsigned i = 0; i < TestArrSize; ++i)
+		distribution[i] = 0;
+
+	Topic x(0xC0FFEE); // deterministic pseudorandom value
+
+	for (unsigned i = 0; i < 22000; ++i)
+	{
+		x = sha3(x);
+		FixedHash<DistributionTestSize> h = x.template bloomPart<TopicBloomFilterTest::BitsPerBloom, DistributionTestSize>();
+		updateDistribution(h, distribution);
+	}
+
+	unsigned average = 0;
+	for (unsigned i = 0; i < TestArrSize; ++i)
+		average += distribution[i];
+
+	average /= TestArrSize;
+	unsigned deviation = average / 10; // approx. 10%
+	unsigned maxAllowed = average + deviation;
+	unsigned minAllowed = average - deviation;
+
+	for (unsigned i = 0; i < TestArrSize; ++i)
+	{
+		//cnote << i << ":" << distribution[i];
+		BOOST_REQUIRE(distribution[i] > minAllowed);
+		BOOST_REQUIRE(distribution[i] < maxAllowed);
+	}
 }
 
 BOOST_AUTO_TEST_SUITE_END()

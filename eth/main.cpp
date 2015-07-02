@@ -115,6 +115,7 @@ void interactiveHelp()
 		<< "    reprocess <block>  Reprocess a given block." << endl
 		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
+		<< "    hashrate  Print the current hashrate in hashes per second if the client is mining." << endl
 		<< "    exit  Exits the application." << endl;
 }
 
@@ -668,9 +669,7 @@ int main(int argc, char** argv)
 		}
 #if ETH_EVMJIT
 		else if (arg == "-J" || arg == "--jit")
-		{
 			jit = true;
-		}
 #endif
 		else if (arg == "-h" || arg == "--help")
 			help();
@@ -703,12 +702,24 @@ int main(int argc, char** argv)
 
 	string logbuf;
 	std::string additional;
-	g_logPost = [&](std::string const& a, char const*){
-		if (g_silence)
-			logbuf += a + "\n";
-		else
-			cout << "\r           \r" << a << endl << additional << flush;
-	};
+	if (interactive)
+		g_logPost = [&](std::string const& a, char const*){
+			static SpinLock s_lock;
+			SpinGuard l(s_lock);
+			
+			if (g_silence)
+				logbuf += a + "\n";
+			else
+				cout << "\r           \r" << a << endl << additional << flush;
+
+			// helpful to use OutputDebugString on windows
+	#ifdef _WIN32
+			{
+				OutputDebugStringA(a.data());
+				OutputDebugStringA("\n");
+			}
+	#endif
+		};
 
 	auto getPassword = [&](string const& prompt){
 		auto s = g_silence;
@@ -790,7 +801,7 @@ int main(int argc, char** argv)
 		{
 			bytes block(8);
 			in.read((char*)block.data(), 8);
-			block.resize(RLP(block, RLP::LaisezFaire).actualSize());
+			block.resize(RLP(block, RLP::LaissezFaire).actualSize());
 			in.read((char*)block.data() + 8, block.size() - 8);
 
 			switch (web3.ethereum()->queueBlock(block, safeImport))
@@ -815,12 +826,13 @@ int main(int argc, char** argv)
 				cout << i << " more imported at " << (round(i * 10 / d) / 10) << " blocks/s. " << imported << " imported in " << e << " seconds at " << (round(imported * 10 / e) / 10) << " blocks/s (#" << web3.ethereum()->number() << ")" << endl;
 				last = (unsigned)e;
 				lastImported = imported;
+//				cout << web3.ethereum()->blockQueueStatus() << endl;
 			}
 		}
 
 		while (web3.ethereum()->blockQueue().items().first + web3.ethereum()->blockQueue().items().second > 0)
 		{
-			sleep(1);
+			this_thread::sleep_for(chrono::seconds(1));
 			web3.ethereum()->syncQueue(100000);
 		}
 		double e = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t).count() / 1000.0;
@@ -981,17 +993,11 @@ int main(int argc, char** argv)
 				web3.addNode(p2p::NodeId(), addrPort);
 			}
 			else if (cmd == "netstop")
-			{
 				web3.stopNetwork();
-			}
 			else if (c && cmd == "minestart")
-			{
 				c->startMining();
-			}
 			else if (c && cmd == "minestop")
-			{
 				c->stopMining();
-			}
 			else if (c && cmd == "mineforce")
 			{
 				string enable;
@@ -1114,13 +1120,11 @@ int main(int argc, char** argv)
 				}
 			}
 			else if (c && cmd == "block")
-			{
 				cout << "Current block: " << c->blockChain().details().number << endl;
-			}
 			else if (c && cmd == "blockqueue")
-			{
 				cout << "Current blockqueue status: " << endl << c->blockQueueStatus() << endl;
-			}
+			else if (c && cmd == "hashrate")
+				cout << "Current hash rate: " << toString(c->hashrate()) << " hashes per second." << endl;
 			else if (c && cmd == "findblock")
 			{
 				if (iss.peek() != -1)
@@ -1169,13 +1173,9 @@ int main(int argc, char** argv)
 					cwarn << "Require parameter: findblock HASH";
 			}
 			else if (c && cmd == "firstunknown")
-			{
 				cout << "first unknown blockhash: " << c->blockQueue().firstUnknown().hex() << endl;
-			}
 			else if (c && cmd == "retryunknown")
-			{
 				c->retryUnknown();
-			}
 			else if (cmd == "peers")
 			{
 				for (auto it: web3.peers())

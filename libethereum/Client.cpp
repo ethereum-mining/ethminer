@@ -89,13 +89,14 @@ void VersionChecker::setOk()
 
 ImportResult Client::queueBlock(bytes const& _block, bool _isSafe)
 {
-	if (m_bq.status().verified + m_bq.status().verifying + m_bq.status().unverified > 30000)
+	if (m_bq.status().verified + m_bq.status().verifying + m_bq.status().unverified > 10000)
 		this_thread::sleep_for(std::chrono::milliseconds(500));
 	return m_bq.import(&_block, bc(), _isSafe);
 }
 
 tuple<ImportRoute, bool, unsigned> Client::syncQueue(unsigned _max)
 {
+	stopWorking();
 	return m_bc.sync(m_bq, m_stateDB, _max);
 }
 
@@ -338,16 +339,26 @@ Client::~Client()
 	stopWorking();
 }
 
-static const Address c_canary("0x");
+static const Addresses c_canaries =
+{
+	Address("4bb7e8ae99b645c2b7860b8f3a2328aae28bd80a"),		// gav
+	Address("1baf27b88c48dd02b744999cf3522766929d2b2a"),		// vitalik
+	Address("a8edb1ac2c86d3d9d78f96cd18001f60df29e52c"),		// jeff
+	Address("60d11b58744784dc97f878f7e3749c0f1381a004")			// christoph
+};
 
 bool Client::isChainBad() const
 {
-	return stateAt(c_canary, 0) != 0;
+	unsigned numberBad = 0;
+	for (auto const& a: c_canaries)
+		if (!!stateAt(a, 0))
+			numberBad++;
+	return numberBad >= 2;
 }
 
 bool Client::isUpgradeNeeded() const
 {
-	return stateAt(c_canary, 0) == 2;
+	return stateAt(c_canaries[0], 0) == 2;
 }
 
 void Client::setNetworkId(u256 _n)
@@ -792,7 +803,7 @@ void Client::rejigMining()
 	{
 		clog(ClientTrace) << "Rejigging mining...";
 		DEV_WRITE_GUARDED(x_working)
-			m_working.commitToMine(m_bc);
+			m_working.commitToMine(m_bc, m_extraData);
 		DEV_READ_GUARDED(x_working)
 		{
 			DEV_WRITE_GUARDED(x_postMine)

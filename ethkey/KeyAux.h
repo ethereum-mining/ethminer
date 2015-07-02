@@ -32,6 +32,7 @@
 #include <libdevcore/FileSystem.h>
 #include <libethcore/KeyManager.h>
 #include <libethcore/ICAP.h>
+#include <libethcore/Transaction.h>
 #include "BuildInfo.h"
 using namespace std;
 using namespace dev;
@@ -105,7 +106,9 @@ public:
 		ImportWithAddress,
 		Export,
 		Recode,
-		Kill
+		Kill,
+		SignTx,
+		DecodeTx,
 	};
 
 	KeyCLI(OperationMode _mode = OperationMode::None): m_mode(_mode) {}
@@ -131,8 +134,13 @@ public:
 			auto v = argv[++i];
 			m_kdfParams[n] = v;
 		}
-		else if (arg == "--new-bare")
-			m_mode = OperationMode::NewBare;
+		else if (arg == "--sign-tx" && i + 1 < argc)
+		{
+			m_mode = OperationMode::SignTx;
+			m_signKey = argv[++i];
+		}
+		else if (arg == "--decode-tx")
+			m_mode = OperationMode::DecodeTx;
 		else if (arg == "--import-bare")
 			m_mode = OperationMode::ImportBare;
 		else if (arg == "--list-bare")
@@ -173,7 +181,7 @@ public:
 			m_mode = OperationMode::Recode;
 		else if (arg == "--no-icap")
 			m_icap = false;
-		else if (m_mode == OperationMode::ImportBare || m_mode == OperationMode::InspectBare || m_mode == OperationMode::KillBare || m_mode == OperationMode::Recode || m_mode == OperationMode::Export || m_mode == OperationMode::RecodeBare || m_mode == OperationMode::ExportBare)
+		else if (m_mode == OperationMode::DecodeTx || m_mode == OperationMode::SignTx || m_mode == OperationMode::ImportBare || m_mode == OperationMode::InspectBare || m_mode == OperationMode::KillBare || m_mode == OperationMode::Recode || m_mode == OperationMode::Export || m_mode == OperationMode::RecodeBare || m_mode == OperationMode::ExportBare)
 			m_inputs.push_back(arg);
 		else
 			return false;
@@ -207,6 +215,127 @@ public:
 				{
 					cerr << "unable to create wallet" << endl << boost::diagnostic_information(_e);
 				}
+			}
+		}
+		else if (m_mode == OperationMode::DecodeTx)
+		{
+			string const& i = m_inputs[0];
+			bytes b = fromHex(i);
+			if (b.empty())
+			{
+				std::string s = contentsString(i);
+				b = fromHex(s);
+				if (b.empty())
+					b = asBytes(s);
+			}
+			if (b.empty())
+				cerr << "Unknown file or bad hex: " << i << endl;
+			else
+				try
+				{
+					TransactionBase t(b, CheckTransaction::Everything);
+					cout << "Transaction " << t.sha3().hex() << endl;
+					if (t.isCreation())
+					{
+						cout << "  type: creation" << endl;
+						cout << "  code: " << toHex(t.data()) << endl;
+					}
+					else
+					{
+						cout << "  type: message" << endl;
+						cout << "  to: " << t.to().hex() << endl;
+						cout << "  data: " << (t.data().empty() ? "none" : toHex(t.data())) << endl;
+					}
+					cout << "  from: " << t.from().hex() << endl;
+					cout << "  value: " << formatBalance(t.value()) << " (" << t.value() << " wei)" << endl;
+					cout << "  nonce: " << t.nonce() << endl;
+					cout << "  gas: " << t.gas() << endl;
+					cout << "  gas price: " << formatBalance(t.gasPrice()) << " (" << t.gasPrice() << " wei)" << endl;
+					cout << "  signing hash: " << t.sha3(WithoutSignature).hex() << endl;
+					cout << "  v: " << (int)t.signature().v << endl;
+					cout << "  r: " << t.signature().r << endl;
+					cout << "  s: " << t.signature().s << endl;
+				}
+				catch (Exception& ex)
+				{
+					cerr << "Invalid transaction: " << ex.what() << endl;
+				}
+		}
+		else if (m_mode == OperationMode::SignTx)
+		{
+			Secret s;
+
+			string json = contentsString(m_signKey);
+			if (!json.empty())
+			{
+				SecretStore store(m_secretsPath);
+				s = Secret(store.secret(store.readKeyContent(json), [&](){ return getPassword("Enter password for key: "); }));
+			}
+			else
+			{
+				if (h128 u = fromUUID(m_signKey))
+				{
+					SecretStore store(m_secretsPath);
+					s = Secret(store.secret(u, [&](){ return getPassword("Enter password for key: "); }));
+				}
+				else if (Address a = Address(m_signKey))
+				{
+					KeyManager wallet(m_walletPath, m_secretsPath);
+					if (wallet.exists())
+					{
+						openWallet(wallet);
+						s = wallet.secret(a, [&](){ return getPassword("Enter password for key: "); });
+					}
+					else
+					{
+						cerr << "Wallet doesn't exist." << endl;
+						exit(-1);
+					}
+				}
+				else
+				{
+					cerr << "Bad file, UUID and address: " << m_signKey << endl;
+					exit(-1);
+				}
+			}
+			if (!s)
+			{
+				cerr << "UUID/address not found: " << m_signKey << endl;
+				exit(-1);
+			}
+
+			for (string const& i: m_inputs)
+			{
+				bytes b = fromHex(i);
+				bool isFile = false;
+				if (b.empty())
+				{
+					isFile = true;
+					std::string s = contentsString(i);
+					b = fromHex(s);
+					if (b.empty())
+						b = asBytes(s);
+				}
+				if (b.empty())
+					cerr << "Unknown file or bad hex: " << i << endl;
+				else
+					try
+					{
+						TransactionBase t(b, CheckTransaction::None);
+						t.sign(s);
+						cout << t.sha3() << ": ";
+						if (isFile)
+						{
+							writeFile(i + ".signed", t.data());
+							cout << i + ".signed" << endl;
+						}
+						else
+							cout << toHex(t.data()) << endl;
+					}
+					catch (Exception& ex)
+					{
+						cerr << "Invalid transaction: " << ex.what() << endl;
+					}
 			}
 		}
 		else if (m_mode < OperationMode::CreateWallet)
@@ -297,17 +426,7 @@ public:
 		{
 			KeyManager wallet(m_walletPath, m_secretsPath);
 			if (wallet.exists())
-				while (true)
-				{
-					if (wallet.load(m_masterPassword))
-						break;
-					if (!m_masterPassword.empty())
-					{
-						cout << "Password invalid. Try again." << endl;
-						m_masterPassword.clear();
-					}
-					m_masterPassword = getPassword("Please enter your MASTER password: ");
-				}
+				openWallet(wallet);
 			else
 			{
 				cerr << "Couldn't open wallet. Does it exist?" << endl;
@@ -419,6 +538,10 @@ public:
 			<< "    --wallet-path <path>  Specify Ethereum wallet path (default: " << KeyManager::defaultPath() << ")" << endl
 			<< "    -m, --master <password>  Specify wallet (master) password." << endl
 			<< endl
+			<< "Transaction operating modes:" << endl
+			<< "    -d,--decode-tx [<hex>|<file>]  Decode given transaction." << endl
+			<< "    -s,--sign-tx [ <address>|<uuid>|<file> ] [ <hex>|<file> , ... ]  (Re-)Sign given transaction." << endl
+			<< endl
 			<< "Encryption configuration:" << endl
 			<< "    --kdf <kdfname>  Specify KDF to use when encrypting (default: sc	rypt)" << endl
 			<< "    --kdf-param <name> <value>  Specify a parameter for the KDF." << endl
@@ -445,6 +568,21 @@ public:
 	}
 
 private:
+	void openWallet(KeyManager& _w)
+	{
+		while (true)
+		{
+			if (_w.load(m_masterPassword))
+				break;
+			if (!m_masterPassword.empty())
+			{
+				cout << "Password invalid. Try again." << endl;
+				m_masterPassword.clear();
+			}
+			m_masterPassword = getPassword("Please enter your MASTER password: ");
+		}
+	}
+
 	KDF kdf() const { return m_kdf == "pbkdf2" ? KDF::PBKDF2_SHA256 : KDF::Scrypt; }
 
 	/// Operating mode.
@@ -467,6 +605,9 @@ private:
 
 	/// Importing
 	strings m_inputs;
+
+	/// Signing
+	string m_signKey;
 
 	string m_kdf = "scrypt";
 	map<string, string> m_kdfParams;

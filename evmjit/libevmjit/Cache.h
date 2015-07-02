@@ -14,11 +14,9 @@ namespace llvm
 
 namespace dev
 {
-namespace eth
+namespace evmjit
 {
-namespace jit
-{
-class ExecutionEngineListener;
+class JITListener;
 
 enum class CacheMode
 {
@@ -47,7 +45,7 @@ public:
 class Cache
 {
 public:
-	static ObjectCache* getObjectCache(CacheMode _mode, ExecutionEngineListener* _listener);
+	static ObjectCache* init(CacheMode _mode, JITListener* _listener);
 	static std::unique_ptr<llvm::Module> getObject(std::string const& id);
 
 	/// Clears cache storage
@@ -57,6 +55,5 @@ public:
 	static void preload(llvm::ExecutionEngine& _ee, std::unordered_map<std::string, uint64_t>& _funcCache);
 };
 
-}
 }
 }

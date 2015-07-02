@@ -217,7 +217,7 @@ public:
 				auto boundary = bi.boundary();
 				m = boost::to_lower_copy(string(argv[++i]));
 				bi.nonce = h64(m);
-				auto r = EthashAux::eval(bi.seedHash(), powHash, bi.nonce);
+				auto r = EthashAux::eval(seedHash, powHash, bi.nonce);
 				bool valid = r.value < boundary;
 				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
 				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
@@ -265,7 +265,6 @@ public:
 			ProofOfWork::CPUMiner::setNumInstances(m_miningThreads);
 		else if (m_minerType == MinerType::GPU)
 		{
-			ProofOfWork::GPUMiner::setNumInstances(m_miningThreads);
 			if (!ProofOfWork::GPUMiner::configureGPU(
 					m_openclPlatform,
 					m_openclDevice,
@@ -277,6 +276,7 @@ public:
 				cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
 				exit(1);
 			}
+			ProofOfWork::GPUMiner::setNumInstances(m_miningThreads);
 		}
 		if (mode == OperationMode::DAGInit)
 			doInitDAG(m_initDAG);
