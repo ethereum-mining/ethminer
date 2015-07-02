@@ -902,14 +902,23 @@ void PV61Sync::requestSubchain(std::shared_ptr<EthereumPeer> _peer)
 		h256s& d = m_downloadingChainMap.at(syncPeer->second);
 		_peer->requestHashes(d.back());
 	}
-	else if (needsSyncing(_peer) && !m_readyChainMap.empty())
+	else if (needsSyncing(_peer))
 	{
-		clog(NetAllDetail) << "Helping with hashchin download";
-		h256s& d = m_readyChainMap.begin()->second;
-		_peer->requestHashes(d.back());
-		m_downloadingChainMap[m_readyChainMap.begin()->first] = move(d);
-		m_chainSyncPeers[_peer] = m_readyChainMap.begin()->first;
-		m_readyChainMap.erase(m_readyChainMap.begin());
+		if (!m_readyChainMap.empty())
+		{
+			clog(NetAllDetail) << "Helping with hashchin download";
+			h256s& d = m_readyChainMap.begin()->second;
+			_peer->requestHashes(d.back());
+			m_downloadingChainMap[m_readyChainMap.begin()->first] = move(d);
+			m_chainSyncPeers[_peer] = m_readyChainMap.begin()->first;
+			m_readyChainMap.erase(m_readyChainMap.begin());
+		}
+		else if (!m_downloadingChainMap.empty() && !m_completeChainMap.empty())
+		{
+			// Lead syncer is done, just grab whatever we can
+			h256s& d = m_downloadingChainMap.begin()->second;
+			_peer->requestHashes(d.back());
+		}
 	}
 }
 
@@ -1016,12 +1025,24 @@ void PV61Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _h
 	else
 	{
 		auto syncPeer = m_chainSyncPeers.find(_peer);
+		unsigned number = 0;
 		if (syncPeer == m_chainSyncPeers.end())
 		{
-			clog(NetWarn) << "Hashes response from unexpected peer";
+			//check downlading peers
+			for (auto const& downloader: m_downloadingChainMap)
+				if (downloader.second.back() == _peer->m_syncHash)
+				{
+					number = downloader.first;
+					break;
+				}
+		}
+		else
+			number = syncPeer->second;
+		if (number == 0)
+		{
+			clog(NetAllDetail) << "Hashes response from unexpected/expired peer";
 			return;
 		}
-		unsigned number = syncPeer->second;
 		h256s& hashes = m_downloadingChainMap.at(number);
 
 		unsigned knowns = 0;
@@ -1089,7 +1110,22 @@ void PV61Sync::onPeerAborting()
 			++s;
 	}
 	if (m_syncer.expired())
-		PV60Sync::onPeerAborting();
+	{
+		if (m_state == SyncState::Hashes)
+		{
+			// Main syncer aborted, other peers are probably still downloading hashes, just set one of them as syncer
+			host().foreachPeer([&](std::shared_ptr<EthereumPeer> _p)
+			{
+				if (_p->m_asking != Asking::Hashes)
+					return true;
+				setState(_p, SyncState::Hashes, true, true);
+				return false;
+			});
+		}
+
+		if (m_syncer.expired())
+			PV60Sync::onPeerAborting();
+	}
 	else if (isPV61Syncing() && m_state == SyncState::Hashes)
 		requestSubchains();
 	DEV_INVARIANT_CHECK;
