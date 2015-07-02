@@ -29,6 +29,18 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace CryptoPP;
 
+RLPXFrameInfo::RLPXFrameInfo(bytesConstRef _header)
+{
+	length = (_header[0] * 256 + _header[1]) * 256 + _header[2];
+	padding = ((16 - (length % 16)) % 16);
+	RLP header(_header.cropped(3), RLP::ThrowOnFail | RLP::FailIfTooSmall);
+	auto itemCount = header.itemCount();
+	protocolId = header[0].toInt<uint16_t>();
+	hasSequence = itemCount > 1;
+	sequenceId = hasSequence ? header[1].toInt<uint16_t>() : 0;
+	totalLength = itemCount == 3 ? header[2].toInt<uint32_t>() : 0;
+}
+
 RLPXFrameCoder::RLPXFrameCoder(RLPXHandshake const& _init)
 {
 	// we need:

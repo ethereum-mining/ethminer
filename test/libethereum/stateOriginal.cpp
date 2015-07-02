@@ -22,7 +22,6 @@
 
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <secp256k1/secp256k1.h>
 #include <libethereum/CanonBlockChain.h>
 #include <libethereum/State.h>
 #include <libethcore/Farm.h>

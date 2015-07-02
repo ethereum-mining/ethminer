@@ -27,7 +27,6 @@ target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_SERVER_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${MHD_LIBRARIES})
 
 target_link_libraries(${EXECUTABLE} webthree)
-target_link_libraries(${EXECUTABLE} secp256k1)
 
 if (SOLIDITY)
 	target_link_libraries(${EXECUTABLE} solidity)

@@ -418,7 +418,7 @@ bool Ethash::GPUMiner::configureGPU(
 {
 	s_platformId = _platformId;
 	s_deviceId = _deviceId;
-	return ethash_cl_miner::configureGPU(_allowCPU, _extraGPUMemory, _currentBlock);
+	return ethash_cl_miner::configureGPU(_platformId, _allowCPU, _extraGPUMemory, _currentBlock);
 }
 
 #endif
