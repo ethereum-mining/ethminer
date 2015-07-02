@@ -608,7 +608,6 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 	m_currentBlock.noteDirty();
 
 	LastHashes lh = _bc.lastHashes((unsigned)m_previousBlock.number);
-	vector<bytes> receipts;
 
 	string ret;
 	unsigned i = 0;
@@ -618,10 +617,6 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 		st.setShowMnemonics();
 		execute(lh, Transaction(tr.data(), CheckTransaction::Everything), Permanence::Committed, st.onOp());
 		ret += (ret.empty() ? "[" : ",") + st.json();
-
-		RLPStream receiptRLP;
-		m_receipts.back().streamRLP(receiptRLP);
-		receipts.push_back(receiptRLP.out());
 		++i;
 	}
 	return ret.empty() ? "[]" : (ret + "]");
