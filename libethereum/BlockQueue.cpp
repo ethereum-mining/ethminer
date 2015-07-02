@@ -184,7 +184,7 @@ void BlockQueue::drainVerified_WITH_BOTH_LOCKS()
 
 ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, bool _isOurs)
 {
-	cdebug << std::this_thread::get_id();
+	clog(BlockQueueTraceChannel) << std::this_thread::get_id();
 	// Check if we already know this block.
 	h256 h = BlockInfo::headerHash(_block);
 
