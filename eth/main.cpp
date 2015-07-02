@@ -801,7 +801,7 @@ int main(int argc, char** argv)
 		{
 			bytes block(8);
 			in.read((char*)block.data(), 8);
-			block.resize(RLP(block, RLP::LaisezFaire).actualSize());
+			block.resize(RLP(block, RLP::LaissezFaire).actualSize());
 			in.read((char*)block.data() + 8, block.size() - 8);
 
 			switch (web3.ethereum()->queueBlock(block, safeImport))
