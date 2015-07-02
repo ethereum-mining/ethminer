@@ -68,7 +68,7 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 		m_expiryQueue.insert(make_pair(_m.expiry(), h));
 	}
 
-	int rating = 1; // rating for local host is based upon: 1. installed watch; 2. proof of work
+	int rating = 1; // rating for local host is based upon: 1. installed watch; 2. ttl; 3. proof of work
 
 	if (_p) // incoming message from remote peer
 		DEV_GUARDED(m_filterLock)

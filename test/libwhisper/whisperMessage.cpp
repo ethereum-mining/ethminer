@@ -89,4 +89,18 @@ BOOST_AUTO_TEST_CASE(seal)
 		sealAndOpenSingleMessage(i);
 }
 
+BOOST_AUTO_TEST_CASE(work)
+{
+	VerbosityHolder setTemporaryLevel(10);
+	cnote << "Testing proof of work...";
+
+	Secret zero;
+	Topics topics = createRandomTopics(0xDEAD);
+	bytes const payload = createRandomPayload(0xFFFFF);
+	Message m(payload);
+	Envelope e = m.seal(zero, topics, 1, 50);
+	unsigned x = e.workProved();
+	BOOST_REQUIRE(x > 0);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
