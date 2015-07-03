@@ -199,6 +199,7 @@ private slots:
 
 	// Config
 	void on_gasPrices_triggered();
+	void on_sentinel_triggered();
 
 	void refreshWhisper();
 	void refreshBlockChain();

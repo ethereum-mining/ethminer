@@ -22,11 +22,16 @@
 #include "Utility.h"
 
 #include <boost/regex.hpp>
-#include <libethcore/Common.h>
+#include <boost/filesystem.hpp>
 #include <libdevcore/SHA3.h>
+#include <libdevcore/RLP.h>
+#include <libdevcore/Log.h>
+#include <libethcore/Common.h>
+#include "Defaults.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+namespace fs = boost::filesystem;
 
 bytes dev::eth::parseData(string const& _args)
 {
@@ -84,3 +89,47 @@ bytes dev::eth::parseData(string const& _args)
 
 	return m_data;
 }
+
+void dev::eth::upgradeDatabase(std::string const& _basePath)
+{
+	std::string path = _basePath.empty() ? Defaults::get()->dbPath() : _basePath;
+
+	if (fs::exists(path + "/state") && fs::exists(path + "/details") && fs::exists(path + "/blocks"))
+	{
+		// upgrade
+		cnote << "Upgrading database to new layout...";
+		bytes statusBytes = contents(path + "/status");
+		RLP status(statusBytes);
+		try
+		{
+			auto minorProtocolVersion = (unsigned)status[1];
+			auto databaseVersion = (unsigned)status[2];
+			auto genesisHash = (h256)status[3];
+
+			string chainPath = path + "/" + toHex(genesisHash.ref().cropped(0, 4));
+			string extrasPath = chainPath + "/" + toString(databaseVersion);
+
+			// write status
+			if (!fs::exists(chainPath + "/blocks"))
+			{
+				boost::filesystem::create_directories(chainPath);
+				fs::rename(path + "/blocks", chainPath + "/blocks");
+
+				if (!fs::exists(extrasPath + "/extras"))
+				{
+					boost::filesystem::create_directories(extrasPath);
+					fs::rename(path + "/details", extrasPath + "/extras");
+					fs::rename(path + "/state", extrasPath + "/state");
+					writeFile(extrasPath + "/minor", rlp(minorProtocolVersion));
+
+					fs::remove_all(path + "/status");
+				}
+			}
+		}
+		catch (...)
+		{
+			cwarn << "Couldn't upgrade - bad status";
+		}
+	}
+}
+

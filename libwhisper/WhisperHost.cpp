@@ -51,6 +51,8 @@ void WhisperHost::streamMessage(h256 _m, RLPStream& _s) const
 
 void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 {
+	// this function processes messages originated both by local host (_p == null), and by remote peers (_p != null)
+
 	cnote << this << ": inject: " << _m.expiry() << _m.ttl() << _m.topic() << toHex(_m.data());
 
 	if (_m.expiry() <= (unsigned)time(0))
@@ -66,21 +68,25 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 		m_expiryQueue.insert(make_pair(_m.expiry(), h));
 	}
 
-	DEV_GUARDED(m_filterLock)
-	{
-		for (auto const& f: m_filters)
-			if (f.second.filter.matches(_m))
-				for (auto& i: m_watches)
-					if (i.second.id == f.first)
-						i.second.changes.push_back(h);
-	}
+	int rating = 1; // rating for local host is based upon: 1. installed watch; 2. proof of work
+
+	if (_p) // incoming message from remote peer
+		DEV_GUARDED(m_filterLock)
+			for (auto const& f: m_filters)
+				if (f.second.filter.matches(_m))
+					for (auto& i: m_watches)
+						if (i.second.id == f.first)
+						{
+							i.second.changes.push_back(h);
+							rating += 10; // subject to review
+						}
 
 	// TODO p2p: capability-based rating
 	for (auto i: peerSessions())
 	{
 		auto w = i.first->cap<WhisperPeer>().get();
 		if (w == _p)
-			w->addRating(1);
+			w->addRating(rating);
 		else
 			w->noteNewMessage(h, _m);
 	}

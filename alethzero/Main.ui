@@ -227,6 +227,7 @@
      <string>&amp;Config</string>
     </property>
     <addaction name="gasPrices"/>
+    <addaction name="sentinel"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_View"/>
@@ -1796,6 +1797,11 @@ font-size: 14pt</string>
    </property>
    <property name="text">
     <string>Smart</string>
+   </property>
+  </action>
+  <action name="sentinel">
+   <property name="text">
+    <string>&amp;Sentinel...</string>
    </property>
   </action>
  </widget>
