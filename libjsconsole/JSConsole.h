@@ -65,7 +65,7 @@ public:
 				free(buff);
 			}
 #else
-			std::cout << propmtForIndentionLevel(openBrackets) << std::endl << std::flush;
+			std::cout << promptForIndentionLevel(openBrackets) << std::endl << std::flush;
 			std::getline(std::cin, rl);
 #endif
 			if (rl.length() > 0)
