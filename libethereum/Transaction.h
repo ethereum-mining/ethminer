@@ -85,7 +85,25 @@ public:
 	/// Constructs a null transaction.
 	Transaction() {}
 
-	using TransactionBase::TransactionBase;
+	/// Constructs a signed message-call transaction.
+	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data, u256 const& _nonce, Secret const& _secret):
+		TransactionBase(_value, _gasPrice, _gas, _dest, _data, _nonce, _secret)
+	{}
+
+	/// Constructs a signed contract-creation transaction.
+	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data, u256 const& _nonce, Secret const& _secret):
+		TransactionBase(_value, _gasPrice, _gas, _data, _nonce, _secret)
+	{}
+
+	/// Constructs an unsigned message-call transaction.
+	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data, u256 const& _nonce = 0):
+		TransactionBase(_value, _gasPrice, _gas, _dest, _data, _nonce)
+	{}
+
+	/// Constructs an unsigned contract-creation transaction.
+	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data, u256 const& _nonce = 0):
+		TransactionBase(_value, _gasPrice, _gas, _data, _nonce)
+	{}
 
 	/// Constructs a transaction from the given RLP.
 	explicit Transaction(bytesConstRef _rlp, CheckTransaction _checkSig);
