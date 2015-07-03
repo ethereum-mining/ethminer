@@ -36,7 +36,7 @@ namespace eth
 {
 namespace
 {
-	struct JitInfo: LogChannel { static const char* name() { return "JIT"; }; static const int verbosity = 0; };
+	struct JitInfo: LogChannel { static const char* name() { return "JIT"; }; static const int verbosity = 11; };
 
 	using HitMap = std::unordered_map<h256, uint64_t>;
 
