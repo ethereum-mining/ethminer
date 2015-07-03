@@ -24,16 +24,23 @@ Rectangle {
 	{
 		from.text = ""
 		to.text = ""
+		value.text = ""
 		inputParams.clear()
 		returnParams.clear()
 		accounts.clear()
 		events.clear()
 	}
 
+	function addAccount(address, amount)
+	{
+		accounts.add(address, amount)
+	}
+
 	function updateWidthTx(_tx, _state, _blockIndex, _txIndex)
 	{
-		from.text = _tx.sender
+		from.text = clientModel.resolveAddress(_tx.sender)
 		to.text = _tx.label
+		value.text = _tx.value.format()
 		tx = _tx
 		blockIndex  = _blockIndex
 		txIndex = _txIndex
@@ -43,10 +50,10 @@ Rectangle {
 		{
 			returnParams.role = "creationAddr"
 			returnParams._data = {
-				creationAddr : {
-					"": _tx.returned
+				creationAddr : {					
 				}
 			}
+			returnParams._data.creationAddr[qsTr("contract address")] = _tx.returned
 		}
 		else
 		{
@@ -68,6 +75,7 @@ Rectangle {
 			color: "transparent"
 			Row
 			{
+				id: rowHeader
 				anchors.horizontalCenter: parent.horizontalCenter
 				anchors.verticalCenter: parent.verticalCenter
 				height: 5
@@ -100,19 +108,28 @@ Rectangle {
 					clip: true
 					width: 100
 				}
+				Label {
+					id: value
+					color: "#EAB920"
+					font.italic: true
+					clip: true
+				}
+			}
 
-				Image {
-					source: "qrc:/qml/img/edit.png"
-					height: 15
-					fillMode: Image.PreserveAspectFit
-					visible: from.text !== ""
-					MouseArea
+			Image {
+				anchors.right: rowHeader.parent.right
+				anchors.top: rowHeader.parent.top
+				anchors.topMargin: 10
+				source: "qrc:/qml/img/edit.png"
+				height: 15
+				fillMode: Image.PreserveAspectFit
+				visible: from.text !== ""
+				MouseArea
+				{
+					anchors.fill: parent
+					onClicked:
 					{
-						anchors.fill: parent
-						onClicked:
-						{
-							bc.blockChainRepeater.editTx(blockIndex, txIndex)
-						}
+						bc.blockChainRepeater.editTx(blockIndex, txIndex)
 					}
 				}
 			}

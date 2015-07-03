@@ -206,12 +206,12 @@ QVariantList ClientModel::gasCosts() const
 	return res;
 }
 
-void ClientModel::addAccount(QString const& _secret, QString const& _amount)
+void ClientModel::addAccount(QString const& _secret)
 {
 	KeyPair key(Secret(_secret.toStdString()));
 	m_accountsSecret.push_back(key);
 	Address address = key.address();
-	m_accounts[address] = Account(u256(_amount.toStdString()), Account::NormalCreation);
+	m_accounts[address] = Account(u256(0), Account::NormalCreation);
 	m_ethAccounts->setAccounts(m_accountsSecret);
 }
 

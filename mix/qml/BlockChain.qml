@@ -24,6 +24,7 @@ ColumnLayout {
 	signal chainReloaded
 	signal txSelected(var blockIndex, var txIndex)
 	signal rebuilding
+	signal accountAdded(string address, string amount)
 
 	Connections
 	{
@@ -47,14 +48,12 @@ ColumnLayout {
 		{
 			fromWidth = 250
 			toWidth = 240
-			//valueWidth = 200
 		}
 		else
 		{
 			var diff = (width - previousWidth) / 3;
 			fromWidth = fromWidth + diff < 250 ? 250 : fromWidth + diff
 			toWidth = toWidth + diff < 240 ? 240 : toWidth + diff
-			//valueWidth = valueWidth + diff < 200 ? 200 : valueWidth + diff
 		}
 		previousWidth = width
 	}
@@ -89,7 +88,7 @@ ColumnLayout {
 	{
 		id: header
 		spacing: 0
-		Layout.preferredHeight: 30
+		Layout.preferredHeight: 24
 		Rectangle
 		{
 			Layout.preferredWidth: statusWidth
@@ -100,12 +99,13 @@ ColumnLayout {
 				anchors.verticalCenter: parent.verticalCenter
 				anchors.horizontalCenter: parent.horizontalCenter
 				source: "qrc:/qml/img/recycleicon@2x.png"
-				width: statusWidth + 20
+				width: statusWidth + 10
 				fillMode: Image.PreserveAspectFit
 			}
 		}
 		Rectangle
 		{
+			anchors.verticalCenter: parent.verticalCenter
 			Layout.preferredWidth: fromWidth
 			Label
 			{
@@ -118,11 +118,13 @@ ColumnLayout {
 		Label
 		{
 			text: "To"
+			anchors.verticalCenter: parent.verticalCenter
 			Layout.preferredWidth: toWidth + cellSpacing
 		}
 		Label
 		{
 			text: ""
+			anchors.verticalCenter: parent.verticalCenter
 			Layout.preferredWidth: debugActionWidth
 		}
 	}
@@ -363,6 +365,7 @@ ColumnLayout {
 						var item = TransactionHelper.defaultTransaction()
 						transactionDialog.stateAccounts = model.accounts
 						transactionDialog.execute = true
+						transactionDialog.editMode = false
 						transactionDialog.open(model.blocks[model.blocks.length - 1].transactions.length, model.blocks.length - 1, item)
 					}
 					width: 100
@@ -414,7 +417,6 @@ ColumnLayout {
 						}
 						else
 							addNewBlock()
-
 					}
 
 					function addNewBlock()
@@ -509,7 +511,12 @@ ColumnLayout {
 				id: newAccount
 				text: qsTr("New Account..")
 				onClicked: {
-					model.accounts.push(projectModel.stateListModel.newAccount("1000000", QEther.Ether))
+					var ac = projectModel.stateListModel.newAccount("O", QEther.Wei)
+					model.accounts.push(ac)
+					clientModel.addAccount(ac.secret);
+					for (var k in Object.keys(blockChainPanel.states))
+						blockChainPanel.states[k].accounts["0x" + ac.address] = "0 wei" // add the account in all the previous state (balance at O)
+					accountAdded(ac.address, "0")
 				}
 				Layout.preferredWidth: 100
 				Layout.preferredHeight: 30
