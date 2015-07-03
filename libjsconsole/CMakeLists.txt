@@ -12,7 +12,9 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(BEFORE ${V8_INCLUDE_DIRS})
 include_directories(BEFORE ..)
-include_directories(${READLINE_INCLUDE_DIRS})
+if (READLINE_FOUND)
+	include_directories(${READLINE_INCLUDE_DIRS})
+endif()
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 include_directories(${CURL_INCLUDE_DIRS})
 
@@ -31,6 +33,7 @@ target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_SERVER_LIBRARIES})
 
 target_link_libraries(${EXECUTABLE} ${CURL_LIBRARIES})
 if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
+	target_link_libraries(${EXECUTABLE} "ws2_32" "winmm")
 	eth_copy_dlls(${EXECUTABLE} CURL_DLLS)
 endif()
 
