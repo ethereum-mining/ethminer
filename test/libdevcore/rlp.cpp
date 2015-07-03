@@ -40,8 +40,86 @@ namespace js = json_spirit;
 namespace dev
 {
 	namespace test
-	{
-		static void buildRLP(js::mValue& _v, RLPStream& _rlp)
+	{	
+		void buildRLP(js::mValue& _v, RLPStream& _rlp);
+		void checkRLPAgainstJson(js::mValue& v, RLP& u);
+
+		void doRlpTests(json_spirit::mValue& v, bool _fillin)
+		{
+			for (auto& i: v.get_obj())
+			{
+				js::mObject& o = i.second.get_obj();
+				if (test::Options::get().singleTest && test::Options::get().singleTestName != i.first)
+				{
+					o.clear();
+					continue;
+				}
+
+				std::cout << "  " << i.first << std::endl;
+				TBOOST_REQUIRE((o.count("in") > 0));
+				TBOOST_REQUIRE((o.count("out") > 0));
+				TBOOST_REQUIRE(!o["out"].is_null());
+
+				if (!_fillin)
+				{
+					//Check Encode
+					bool skipEncode = false;
+					if (o["in"].type() == js::str_type)
+						if (o["in"].get_str() == "INVALID")
+							skipEncode = true;
+
+					if (!skipEncode)
+					{
+						RLPStream s;
+						dev::test::buildRLP(o["in"], s);
+						string computedText = toHex(s.out());
+
+						std::string expectedText(o["out"].get_str());
+						std::transform(expectedText.begin(), expectedText.end(), expectedText.begin(), ::tolower );
+
+						std::stringstream msg;
+						msg << "Encoding Failed: expected: " << expectedText << std::endl;
+						msg << " But Computed: " << computedText;
+						TBOOST_CHECK_MESSAGE(
+							(expectedText == computedText),
+							msg.str()
+							);
+					}
+
+					//Check Decode
+					// Uses the same test cases as encoding but in reverse.
+					// We read into the string of hex values, convert to bytes,
+					// and then compare the output structure to the json of the
+					// input object.
+					bool was_exception = false;
+					js::mValue& inputData = o["in"];
+					try
+					{
+						bytes payloadToDecode = fromHex(o["out"].get_str());
+						RLP payload(payloadToDecode);
+						dev::test::checkRLPAgainstJson(inputData, payload);
+					}
+					catch (Exception const& _e)
+					{
+						cnote << "Exception: " << diagnostic_information(_e);
+						was_exception = true;
+					}
+					catch (std::exception const& _e)
+					{
+						cnote << "rlp exception: " << _e.what();
+						was_exception = true;
+					}
+
+					if (skipEncode && was_exception)
+						continue;
+
+					if (was_exception)
+						TBOOST_ERROR("Unexpected RLP Exception!");
+				}
+			}
+		}
+
+		void buildRLP(js::mValue& _v, RLPStream& _rlp)
 		{
 			if (_v.type() == js::array_type)
 			{
@@ -62,25 +140,7 @@ namespace dev
 			}
 		}
 
-		static void getRLPTestCases(js::mValue& v)
-		{
-			string testPath = getTestPath();
-			testPath += "/BasicTests";
-
-			string s = contentsString(testPath + "/rlptest.json");
-			BOOST_REQUIRE_MESSAGE( s.length() > 0,
-				"Contents of 'rlptest.json' is empty. Have you cloned the 'tests' repo branch develop?");
-			js::read_string(s, v);
-		}
-
-		static void checkRLPTestCase(js::mObject& o)
-		{
-			BOOST_REQUIRE( o.count("in") > 0 );
-			BOOST_REQUIRE( o.count("out") > 0 );
-			BOOST_REQUIRE(!o["out"].is_null());
-		}
-
-		static void checkRLPAgainstJson(js::mValue& v, RLP& u)
+		void checkRLPAgainstJson(js::mValue& v, RLP& u)
 		{
 			if ( v.type() == js::str_type )
 			{
@@ -92,37 +152,37 @@ namespace dev
 					std::stringstream bintStream(bigIntStr);
 					bigint val;
 					bintStream >> val;
-					BOOST_CHECK( !u.isList() );
-					BOOST_CHECK( !u.isNull() );
-					BOOST_CHECK( u );             // operator bool()
-					BOOST_CHECK(u == val);
+					TBOOST_CHECK( !u.isList() );
+					TBOOST_CHECK( !u.isNull() );
+					TBOOST_CHECK( u );             // operator bool()
+					TBOOST_CHECK(u == val);
 				}
 				else
 				{
-					BOOST_CHECK( !u.isList() );
-					BOOST_CHECK( !u.isNull() );
-					BOOST_CHECK( u.isData() );
-					BOOST_CHECK( u );
-					BOOST_CHECK( u.size() == expectedText.length() );
-					BOOST_CHECK(u == expectedText);
+					TBOOST_CHECK( !u.isList() );
+					TBOOST_CHECK( !u.isNull() );
+					TBOOST_CHECK( u.isData() );
+					TBOOST_CHECK( u );
+					TBOOST_CHECK( u.size() == expectedText.length() );
+					TBOOST_CHECK(u == expectedText);
 				}
 			}
 			else if ( v.type() == js::int_type )
 			{
 				const int expectedValue = v.get_int();
-				BOOST_CHECK( u.isInt() );
-				BOOST_CHECK( !u.isList() );
-				BOOST_CHECK( !u.isNull() );
-				BOOST_CHECK( u );             // operator bool()
-				BOOST_CHECK(u == expectedValue);
+				TBOOST_CHECK( u.isInt() );
+				TBOOST_CHECK( !u.isList() );
+				TBOOST_CHECK( !u.isNull() );
+				TBOOST_CHECK( u );             // operator bool()
+				TBOOST_CHECK(u == expectedValue);
 			}
 			else if ( v.type() == js::array_type )
 			{
-				BOOST_CHECK( u.isList() );
-				BOOST_CHECK( !u.isInt() );
-				BOOST_CHECK( !u.isData() );
+				TBOOST_CHECK( u.isList() );
+				TBOOST_CHECK( !u.isInt() );
+				TBOOST_CHECK( !u.isData() );
 				js::mArray& arr = v.get_array();
-				BOOST_CHECK( u.itemCount() == arr.size() );
+				TBOOST_CHECK( u.itemCount() == arr.size() );
 				unsigned i;
 				for( i = 0; i < arr.size(); i++ )
 				{
@@ -132,71 +192,62 @@ namespace dev
 			}
 			else
 			{
-				BOOST_ERROR("Invalid Javascript object!");
+				TBOOST_ERROR("Invalid Javascript object!");
 			}
-
 		}
 	}
 }
 
-BOOST_AUTO_TEST_SUITE(BasicTests)
+BOOST_AUTO_TEST_SUITE(RlpTests)
 
-BOOST_AUTO_TEST_CASE(rlp_encoding_test)
+BOOST_AUTO_TEST_CASE(invalidRLPtest)
 {
-	cnote << "Testing RLP Encoding...";
-	js::mValue v;
-	dev::test::getRLPTestCases(v);
-
-	for (auto& i: v.get_obj())
-	{
-		js::mObject& o = i.second.get_obj();
-		cnote << i.first;
-		dev::test::checkRLPTestCase(o);
-
-		RLPStream s;
-		dev::test::buildRLP(o["in"], s);
-
-		std::string expectedText(o["out"].get_str());
-		std::transform(expectedText.begin(), expectedText.end(), expectedText.begin(), ::tolower );
-
-		const std::string& computedText = toHex(s.out());
-
-		std::stringstream msg;
-		msg << "Encoding Failed: expected: " << expectedText << std::endl;
-		msg << " But Computed: " << computedText;
-
-		BOOST_CHECK_MESSAGE(
-			expectedText == computedText,
-			msg.str()
-			);
-	}
-
+	dev::test::executeTests("invalidRLPtest", "/BasicTests", dev::test::getFolder(__FILE__) + "/StateTestsFiller", dev::test::doRlpTests);
 }
 
-BOOST_AUTO_TEST_CASE(rlp_decoding_test)
+
+BOOST_AUTO_TEST_CASE(rlptest)
 {
-	cnote << "Testing RLP decoding...";
-	// Uses the same test cases as encoding but in reverse.
-	// We read into the string of hex values, convert to bytes,
-	// and then compare the output structure to the json of the
-	// input object.
-	js::mValue v;
-	dev::test::getRLPTestCases(v);
-	for (auto& i: v.get_obj())
+	dev::test::executeTests("rlptest", "/BasicTests", dev::test::getFolder(__FILE__) + "/StateTestsFiller", dev::test::doRlpTests);
+}
+
+BOOST_AUTO_TEST_CASE(rlpRandom)
+{
+	test::Options::get();
+
+	string testPath = dev::test::getTestPath();
+	testPath += "/BasicTests/RandomRLPTests";
+
+	vector<boost::filesystem::path> testFiles;
+	boost::filesystem::directory_iterator iterator(testPath);
+	for(; iterator != boost::filesystem::directory_iterator(); ++iterator)
+		if (boost::filesystem::is_regular_file(iterator->path()) && iterator->path().extension() == ".json")
+			testFiles.push_back(iterator->path());
+
+	for (auto& path: testFiles)
 	{
-		js::mObject& o = i.second.get_obj();
-		cnote << i.first;
-		dev::test::checkRLPTestCase(o);
+		try
+		{
+			cnote << "Testing ..." << path.filename();
+			json_spirit::mValue v;
+			string s = asString(dev::contents(path.string()));
+			TBOOST_REQUIRE_MESSAGE(s.length() > 0, "Content of " + path.string() + " is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
+			json_spirit::read_string(s, v);
+			test::Listener::notifySuiteStarted(path.filename().string());
+			dev::test::doRlpTests(v, false);
+		}
 
-		js::mValue& inputData = o["in"];
-		bytes payloadToDecode = fromHex(o["out"].get_str());
-
-		RLP payload(payloadToDecode);
-
-		dev::test::checkRLPAgainstJson(inputData, payload);
-
+		catch (Exception const& _e)
+		{
+			TBOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			TBOOST_ERROR("Failed test with Exception: " << _e.what());
+		}
 	}
 }
+
 
 BOOST_AUTO_TEST_SUITE_END()
 
