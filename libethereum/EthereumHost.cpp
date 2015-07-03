@@ -286,7 +286,7 @@ void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP c
 	unsigned itemCount = _r.itemCount();
 	clog(NetAllDetail) << "Transactions (" << dec << itemCount << "entries)";
 	Guard l(_peer->x_knownTransactions);
-	for (unsigned i = 0; i < min<unsigned>(itemCount, 256); ++i)	// process 256 transactions at most. TODO: much better solution.
+	for (unsigned i = 0; i < min<unsigned>(itemCount, 32); ++i)	// process 256 transactions at most. TODO: much better solution.
 	{
 		auto h = sha3(_r[i].data());
 		_peer->m_knownTransactions.insert(h);

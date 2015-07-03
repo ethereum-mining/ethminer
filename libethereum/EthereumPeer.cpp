@@ -86,7 +86,7 @@ unsigned EthereumPeer::askOverride() const
 	if (s->info().clientVersion.substr(0, badGeth.size()) == badGeth)
 		return 1;
 	bytes const& d = repMan().data(*s, name());
-	return d.empty() ? c_maxBlocksAsk : RLP(d).toInt<unsigned>(RLP::LaisezFaire);
+	return d.empty() ? c_maxBlocksAsk : RLP(d).toInt<unsigned>(RLP::LaissezFaire);
 }
 
 void EthereumPeer::setRude()
