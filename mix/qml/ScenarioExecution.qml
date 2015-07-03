@@ -84,13 +84,26 @@ Rectangle {
 				Connections
 				{
 					target: blockChain
+					property var currentSelectedBlock
+					property var currentSelectedTx
 					onTxSelected: {
+						currentSelectedBlock = blockIndex
+						currentSelectedTx = txIndex
+						updateWatchers(blockIndex, txIndex)
+					}
+
+					function updateWatchers(blockIndex, txIndex){
 						var tx = blockChain.model.blocks[blockIndex].transactions[txIndex]
 						var state = blockChain.getState(tx.recordIndex)
 						watchers.updateWidthTx(tx, state, blockIndex, txIndex)
 					}
+
 					onRebuilding: {
 						watchers.clear()
+					}
+
+					onAccountAdded: {
+						watchers.addAccount(address, "0 wei")
 					}
 				}
 			}

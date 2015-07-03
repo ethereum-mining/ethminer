@@ -257,8 +257,7 @@ Item {
 				_secret = clientModel.newSecret();
 			var address = clientModel.address(_secret);
 			var name = qsTr("Account") + "-" + address.substring(0, 4);
-			var amount = QEtherHelper.createEther(_balance, _unit)
-			clientModel.addAccount(_secret, amount.toWei().value())
+			var amount = QEtherHelper.createEther(_balance, _unit)			
 			return { name: name, secret: _secret, balance: amount, address: address };
 		}
 

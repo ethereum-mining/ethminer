@@ -18,6 +18,11 @@ ColumnLayout {
 	property string role
 	property alias model: modelKeyValue
 
+	function add(key, value)
+	{
+		modelKeyValue.append({ "key": key, "value": value })
+	}
+
 	function clear()
 	{
 		modelKeyValue.clear()
@@ -29,10 +34,7 @@ ColumnLayout {
 		if (typeof(computeData) !== "undefined" && computeData instanceof Function)
 			computeData()
 		else
-		{
-			console.log("--------------")
-			console.log(JSON.stringify(_data))
-			console.log(role)
+		{			
 			if (_data !== undefined && _data[role] !== undefined)
 			{
 				var keys = Object.keys(_data[role])
@@ -77,6 +79,7 @@ ColumnLayout {
 				id: columnValues
 				horizontalScrollBarPolicy: Qt.ScrollBarAlwaysOff
 				anchors.fill: parent
+				clip: true
 				ColumnLayout
 				{
 					anchors.margins: 10
@@ -97,7 +100,7 @@ ColumnLayout {
 									anchors.left: parent.left
 									anchors.leftMargin: 10
 									text: {
-										if (index >=  0)
+										if (index >= 0 && repeaterKeyValue.model.get(index).key !== undefined)
 											return repeaterKeyValue.model.get(index).key
 										else
 											return ""
@@ -113,7 +116,7 @@ ColumnLayout {
 									anchors.right: parent.right
 									anchors.rightMargin: 10
 									text: {
-										if (index >= 0)
+										if (index >= 0 && repeaterKeyValue.model.get(index).value !== undefined)
 											return repeaterKeyValue.model.get(index).value
 										else
 											return ""
@@ -123,6 +126,7 @@ ColumnLayout {
 						}
 					}
 				}
+
 			}
 		}
 	}

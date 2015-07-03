@@ -188,7 +188,7 @@ public:
 	/// To Hex number
 	Q_INVOKABLE QString toHex(QString const& _int);
 	/// Add new account to the model
-	Q_INVOKABLE void addAccount(QString const& _secret, QString const& _amount);
+	Q_INVOKABLE void addAccount(QString const& _secret);
 	/// Return the address associated with the current secret
 	Q_INVOKABLE QString resolveAddress(QString const& _secret);
 
@@ -246,6 +246,8 @@ signals:
 	void stateCleared();
 	/// new state has been processed
 	void newState(unsigned _record, QVariantMap _accounts);
+	/// account has been added to the model
+	void accountAdded(QString _address, QString _amount);
 
 private:
 	RecordLogEntry* lastBlock() const;
