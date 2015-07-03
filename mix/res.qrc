@@ -90,5 +90,10 @@
         <file>qml/img/saveicon@2x.png</file>
         <file>qml/img/sendtransactionicon.png</file>
         <file>qml/img/sendtransactionicon@2x.png</file>
+        <file>qml/img/edittransaction@2x.png</file>
+        <file>qml/img/newblock@2x.png</file>
+        <file>qml/img/edittransaction2@2x.png</file>
+        <file>qml/img/edittransaction.png</file>
+        <file>qml/img/edittransaction2.png</file>
     </qresource>
 </RCC>
