@@ -101,7 +101,7 @@ void help()
 		<< "    -x,--peers <number>  Attempt to connect to given number of peers (default: 5)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 #if ETH_EVMJIT
-		<< "    --vm=<vm-kind>  Select VM. Options are: jit, smart. (default: interpreter)" << endl
+		<< "    --vm <vm-kind>  Select VM. Options are: interpreter, jit, smart. (default: interpreter)" << endl
 #endif
 		;
 		exit(0);
@@ -515,10 +515,21 @@ int main(int argc, char** argv)
 			}
 		}
 #if ETH_EVMJIT
-		else if (arg == "--vm=jit")
-			VMFactory::setKind(VMKind::JIT);
-		else if (arg == "--vm=smart")
-			VMFactory::setKind(VMKind::Smart);
+		else if (arg == "--vm" && i + 1 < argc)
+		{
+			string vmKind = argv[++i];
+			if (vmKind == "interpreter")
+				VMFactory::setKind(VMKind::Interpreter);
+			else if (vmKind == "jit")
+				VMFactory::setKind(VMKind::JIT);
+			else if (vmKind == "smart")
+				VMFactory::setKind(VMKind::Smart);
+			else
+			{
+				cerr << "Unknown VM kind: " << vmKind << endl;
+				return -1;
+			}
+		}
 #endif
 		else if (arg == "-h" || arg == "--help")
 			help();

@@ -43,10 +43,10 @@ void help()
 		<< "    --gas-price <n>  Transaction's gas price' should be <n> (default: 0)." << endl
 		<< "    --sender <a>  Transaction sender should be <a> (default: 0000...0069)." << endl
 		<< "    --origin <a>  Transaction origin should be <a> (default: 0000...0069)." << endl
-#if ETH_EVMJIT || !ETH_TRUETRUE
+#if ETH_EVMJIT || !ETH_TRUE
 		<< endl
 		<< "VM options:" << endl
-		<< "    --vm=<vm-kind>  Select VM. Options are: jit, smart. (default: interpreter)" << endl
+		<< "    --vm <vm-kind>  Select VM. Options are: interpreter, jit, smart. (default: interpreter)" << endl
 #endif
 		<< endl
 		<< "Options for trace:" << endl
@@ -96,10 +96,21 @@ int main(int argc, char** argv)
 		else if (arg == "-V" || arg == "--version")
 			version();
 #if ETH_EVMJIT
-		else if (arg == "--vm=jit")
-			VMFactory::setKind(VMKind::JIT);
-		else if (arg == "--vm=smart")
-			VMFactory::setKind(VMKind::Smart);
+		else if (arg == "--vm" && i + 1 < argc)
+		{
+			string vmKind = argv[++i];
+			if (vmKind == "interpreter")
+				VMFactory::setKind(VMKind::Interpreter);
+			else if (vmKind == "jit")
+				VMFactory::setKind(VMKind::JIT);
+			else if (vmKind == "smart")
+				VMFactory::setKind(VMKind::Smart);
+			else
+			{
+				cerr << "Unknown VM kind: " << vmKind << endl;
+				return -1;
+			}
+		}
 #endif
 		else if (arg == "--mnemonics")
 			st.setShowMnemonics();
