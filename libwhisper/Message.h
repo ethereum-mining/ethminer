@@ -80,6 +80,8 @@ public:
 	unsigned workProved() const;
 	void proveWork(unsigned _ms);
 
+	bool matchesBloomFilter(TopicBloomFilterHash const& f) const;
+
 private:
 	Envelope(unsigned _exp, unsigned _ttl, AbridgedTopics const& _topic): m_expiry(_exp), m_ttl(_ttl), m_topic(_topic) {}
 
