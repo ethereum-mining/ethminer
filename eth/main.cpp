@@ -193,7 +193,7 @@ void help()
 		<< "General Options:" << endl
 		<< "    -d,--db-path <path>  Load database from path (default: " << getDataDir() << ")" << endl
 #if ETH_EVMJIT || !ETH_TRUE
-		<< "    -J,--jit  Enable EVM JIT (default: off)." << endl
+		<< "    --vm=<vm-kind>  Select VM. Options are: jit, smart. (default: interpreter)" << endl
 #endif
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 8)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
@@ -313,7 +313,6 @@ int main(int argc, char** argv)
 	string jsonAdmin;
 	bool upnp = true;
 	WithExisting killChain = WithExisting::Trust;
-	bool jit = false;
 	string sentinel;
 
 	/// Networking params.
@@ -667,10 +666,10 @@ int main(int argc, char** argv)
 			}
 		}
 #if ETH_EVMJIT
-		else if (arg == "-J" || arg == "--jit")
-		{
-			jit = true;
-		}
+		else if (arg == "--vm=jit")
+			VMFactory::setKind(VMKind::JIT);
+		else if (arg == "--vm=smart")
+			VMFactory::setKind(VMKind::Smart);
 #endif
 		else if (arg == "-h" || arg == "--help")
 			help();
@@ -707,7 +706,7 @@ int main(int argc, char** argv)
 		g_logPost = [&](std::string const& a, char const*){
 			static SpinLock s_lock;
 			SpinGuard l(s_lock);
-			
+
 			if (g_silence)
 				logbuf += a + "\n";
 			else
@@ -735,7 +734,6 @@ int main(int argc, char** argv)
 	};
 
 	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat, structuredLoggingURL);
-	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	netPrefs.discovery = !disableDiscovery;
 	netPrefs.pin = pinning;
@@ -1864,4 +1862,3 @@ int main(int argc, char** argv)
 		writeFile((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp", netData);
 	return 0;
 }
-

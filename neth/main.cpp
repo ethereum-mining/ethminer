@@ -101,7 +101,7 @@ void help()
 		<< "    -x,--peers <number>  Attempt to connect to given number of peers (default: 5)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 #if ETH_EVMJIT
-		<< "    --jit  Use EVM JIT (default: off)." << endl
+		<< "    --vm=<vm-kind>  Select VM. Options are: jit, smart. (default: interpreter)" << endl
 #endif
 		;
 		exit(0);
@@ -514,15 +514,12 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
-		else if (arg == "--jit")
-		{
 #if ETH_EVMJIT
-			jit = true;
-#else
-			cerr << "EVM JIT not enabled" << endl;
-			return -1;
+		else if (arg == "--vm=jit")
+			VMFactory::setKind(VMKind::JIT);
+		else if (arg == "--vm=smart")
+			VMFactory::setKind(VMKind::Smart);
 #endif
-		}
 		else if (arg == "-h" || arg == "--help")
 			help();
 		else if (arg == "-V" || arg == "--version")
@@ -551,7 +548,7 @@ int main(int argc, char** argv)
 		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
 		&nodesState);
-	
+
 	web3.setIdealPeerCount(peers);
 	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
