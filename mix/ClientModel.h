@@ -246,8 +246,6 @@ signals:
 	void stateCleared();
 	/// new state has been processed
 	void newState(unsigned _record, QVariantMap _accounts);
-	/// account has been added to the model
-	void accountAdded(QString _address, QString _amount);
 
 private:
 	RecordLogEntry* lastBlock() const;
