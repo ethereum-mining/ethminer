@@ -46,7 +46,6 @@ struct Secp256k1Context
 	~Secp256k1Context() { secp256k1_stop(); }
 };
 static Secp256k1Context s_secp256k1;
-void dev::crypto::secp256k1Init() { (void)s_secp256k1; }
 #endif
 
 static Secp256k1PP s_secp256k1pp;
@@ -184,17 +183,38 @@ bytes dev::decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _ci
 
 Public dev::recover(Signature const& _sig, h256 const& _message)
 {
+#ifdef ETH_HAVE_SECP256K1
+	bytes o(65);
+	int pubkeylen;
+	if (!secp256k1_ecdsa_recover_compact(_message.data(), h256::size, _sig.data(), o.data(), &pubkeylen, false, o[64]))
+		return Public();
+	return FixedHash<64>(o.data()+1, Public::ConstructFromPointer);
+#else
 	return s_secp256k1pp.recover(_sig, _message.ref());
+#endif
 }
 
 Signature dev::sign(Secret const& _k, h256 const& _hash)
 {
+#ifdef ETH_HAVE_SECP256K1
+	Signature s;
+	if (!secp256k1_ecdsa_sign_compact(_hash.data(), h256::size, s.data(), _k.data(), Nonce::get().data(), (int*)(s.data()+64)))
+		return Signature();
+	return s;
+#else
 	return s_secp256k1pp.sign(_k, _hash);
+#endif
 }
 
 bool dev::verify(Public const& _p, Signature const& _s, h256 const& _hash)
 {
+	if (!_p)
+		return false;
+#ifdef ETH_HAVE_SECP256K1
+	return _p == recover(_s, _hash);
+#else
 	return s_secp256k1pp.verify(_p, _s, _hash.ref(), true);
+#endif
 }
 
 bytes dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen)

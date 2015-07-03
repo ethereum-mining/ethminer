@@ -69,7 +69,6 @@ BOOST_AUTO_TEST_CASE(emptySHA3Types)
 #if ETH_HAVE_SECP256K1
 BOOST_AUTO_TEST_CASE(secp256k1lib)
 {
-	secp256k1Init();
 	KeyPair k = KeyPair::create();
 	BOOST_REQUIRE(!!k.sec());
 	BOOST_REQUIRE(!!k.pub());
