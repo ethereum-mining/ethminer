@@ -1736,13 +1736,13 @@ int main(int argc, char** argv)
 		{
 #if ETH_JSCONSOLE || !ETH_TRUE
 			JSLocalConsole console;
-			// TODO: set port properly?
+			shared_ptr<dev::WebThreeStubServer> rpcServer = make_shared<dev::WebThreeStubServer>(*console.connector(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer);
 			while (!g_exit)
 			{
 				console.readExpression();
 				stopMiningAfterXBlocks(c, n, mining);
 			}
-			jsonrpcServer->StopListening();
+			rpcServer->StopListening();
 #endif
 		}
 		else
