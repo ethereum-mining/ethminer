@@ -20,6 +20,7 @@
  */
 
 #include "Message.h"
+#include "BloomFilter.h"
 
 using namespace std;
 using namespace dev;
@@ -185,7 +186,7 @@ void Envelope::proveWork(unsigned _ms)
 bool Envelope::matchesBloomFilter(TopicBloomFilterHash const& f) const
 {
 	for (AbridgedTopic t: m_topic)
-		if (f.contains(t.template bloomPart<BitsPerBloom, TopicBloomFilterSize>()))
+		if (f.contains(TopicBloomFilter::bloom(t)))
 			return true;
 
 	return false;

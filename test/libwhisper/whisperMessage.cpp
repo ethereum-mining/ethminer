@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE(work)
 		Message m(payload);
 		Envelope e = m.seal(zero, topics, 1, 50);
 		unsigned x = e.workProved();
-		cnote << x;
+		//cnote << x;
 		BOOST_REQUIRE(x > 4);
 	}
 }
