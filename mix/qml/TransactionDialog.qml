@@ -16,7 +16,8 @@ Dialog {
 	width: 580
 	height: 500
 	visible: false
-	title: qsTr("Edit Transaction")
+	title:  editMode ? qsTr("Edit Transaction") : qsTr("Add Transaction")
+	property bool editMode
 	property int transactionIndex
 	property int blockIndex
 	property alias gas: gasValueEdit.gasValue;
@@ -390,7 +391,7 @@ Dialog {
 							objectName: "trTypeExecute"
 							exclusiveGroup: rbbuttonList
 							height: 30
-							text: qsTr("Execute Contract")
+							text: qsTr("Transact with Contract")
 						}
 					}
 				}
@@ -687,7 +688,7 @@ Dialog {
 						}
 
 						Button {
-							text: qsTr("Update");
+							text: editMode ? qsTr("Update") : qsTr("Ok")
 							onClicked: {
 								var invalid = InputValidator.validate(paramsModel, paramValues);
 								if (invalid.length === 0)
