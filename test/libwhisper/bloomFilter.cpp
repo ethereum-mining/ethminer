@@ -28,7 +28,7 @@ using namespace dev;
 using namespace dev::shh;
 
 using TopicBloomFilterShort = TopicBloomFilterBase<4>;
-using TopicBloomFilterTest = TopicBloomFilterBase<c_topicBloomFilterSize>;
+using TopicBloomFilterTest = TopicBloomFilterBase<TopicBloomFilterSize>;
 
 void testAddNonExisting(TopicBloomFilterShort& _f, AbridgedTopic const& _h)
 {
@@ -61,7 +61,7 @@ void testRemoveExistingBloom(TopicBloomFilterShort& _f, AbridgedTopic const& _h)
 double calculateExpected(TopicBloomFilterTest const& f, int n)
 {
 	int const m = f.size * 8; // number of bits in the bloom
-	int const k = f.BitsPerBloom; // number of hash functions (e.g. bits set to 1 in every bloom)
+	int const k = BitsPerBloom; // number of hash functions (e.g. bits set to 1 in every bloom)
 
 	double singleBitSet = 1.0 / m; // probability of any bit being set after inserting a single bit
 	double singleBitNotSet = (1.0 - singleBitSet);
@@ -256,7 +256,7 @@ void updateDistribution(FixedHash<DistributionTestSize> const& _h, array<unsigne
 				if (_h[i] & c_powerOfTwoBitMmask[j])
 				{
 					_distribution[i * 8 + j]++;
-					if (++bits >= TopicBloomFilterTest::BitsPerBloom)
+					if (++bits >= BitsPerBloom)
 						return;
 				}
 }
@@ -274,7 +274,7 @@ BOOST_AUTO_TEST_CASE(distributionRate)
 	for (unsigned i = 0; i < 22000; ++i)
 	{
 		x = sha3(x);
-		FixedHash<DistributionTestSize> h = x.template bloomPart<TopicBloomFilterTest::BitsPerBloom, DistributionTestSize>();
+		FixedHash<DistributionTestSize> h = x.template bloomPart<BitsPerBloom, DistributionTestSize>();
 		updateDistribution(h, distribution);
 	}
 

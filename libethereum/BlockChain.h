@@ -94,7 +94,7 @@ using ProgressCallback = std::function<void(unsigned, unsigned)>;
 class BlockChain
 {
 public:
-	BlockChain(bytes const& _genesisBlock, std::string _path, WithExisting _we, ProgressCallback const& _p = ProgressCallback());
+	BlockChain(bytes const& _genesisBlock, std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _p = ProgressCallback());
 	~BlockChain();
 
 	/// Attempt a database re-open.
@@ -177,6 +177,9 @@ public:
 	LogBloom blockBloom(unsigned _number) const { return blocksBlooms(chunkId(0, _number / c_bloomIndexSize)).blooms[_number % c_bloomIndexSize]; }
 	std::vector<unsigned> withBlockBloom(LogBloom const& _b, unsigned _earliest, unsigned _latest) const;
 	std::vector<unsigned> withBlockBloom(LogBloom const& _b, unsigned _earliest, unsigned _latest, unsigned _topLevel, unsigned _index) const;
+
+	/// Returns true if transaction is known. Thread-safe
+	bool isKnownTransaction(h256 const& _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); return !!ta; }
 
 	/// Get a transaction from its hash. Thread-safe.
 	bytes transaction(h256 const& _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return bytes(); return transaction(ta.blockHash, ta.index); }
@@ -261,7 +264,7 @@ public:
 private:
 	static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
-	void open(std::string const& _path, WithExisting _we = WithExisting::Trust);
+	unsigned open(std::string const& _path, WithExisting _we = WithExisting::Trust);
 	void close();
 
 	template<class T, unsigned N> T queryExtras(h256 const& _h, std::unordered_map<h256, T>& _m, boost::shared_mutex& _x, T const& _n, ldb::DB* _extrasDB = nullptr) const

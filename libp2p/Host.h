@@ -33,7 +33,6 @@
 
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
-#include <libdevcore/RangeMask.h>
 #include <libdevcrypto/Common.h>
 #include <libdevcrypto/ECDHE.h>
 #include "NodeTable.h"
