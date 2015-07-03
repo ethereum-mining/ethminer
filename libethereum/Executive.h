@@ -53,7 +53,7 @@ public:
 
 	std::string json(bool _styled = false) const;
 
-	OnOpFunc onOp() { return [&](uint64_t _steps, Instruction _inst, bigint _newMemSize, bigint _gasCost, bigint _gas, VM* _vm, ExtVMFace const* _extVM) { (*this)(_steps, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM); }; }
+	OnOpFunc onOp() { return [=](uint64_t _steps, Instruction _inst, bigint _newMemSize, bigint _gasCost, bigint _gas, VM* _vm, ExtVMFace const* _extVM) { (*this)(_steps, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM); }; }
 
 private:
 	bool m_showMnemonics = false;

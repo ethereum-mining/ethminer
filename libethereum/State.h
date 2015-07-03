@@ -37,6 +37,7 @@
 #include "Transaction.h"
 #include "TransactionReceipt.h"
 #include "AccountDiff.h"
+#include "GasPricer.h"
 
 namespace dev
 {
@@ -78,45 +79,6 @@ enum class BaseState
 	PreExisting,
 	Empty,
 	CanonGenesis
-};
-
-enum class TransactionPriority
-{
-	Lowest = 0,
-	Low = 2,
-	Medium = 4,
-	High = 6,
-	Highest = 8
-};
-
-class GasPricer
-{
-public:
-	GasPricer() = default;
-	virtual ~GasPricer() = default;
-
-	virtual u256 ask(State const&) const = 0;
-	virtual u256 bid(TransactionPriority _p = TransactionPriority::Medium) const = 0;
-
-	virtual void update(BlockChain const&) {}
-};
-
-class TrivialGasPricer: public GasPricer
-{
-public:
-	TrivialGasPricer() = default;
-	TrivialGasPricer(u256 const& _ask, u256 const& _bid): m_ask(_ask), m_bid(_bid) {}
-
-	void setAsk(u256 const& _ask) { m_ask = _ask; }
-	void setBid(u256 const& _bid) { m_bid = _bid; }
-
-	u256 ask() const { return m_ask; }
-	u256 ask(State const&) const override { return m_ask; }
-	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return m_bid; }
-
-private:
-	u256 m_ask = 10 * szabo;
-	u256 m_bid = 10 * szabo;
 };
 
 enum class Permanence
@@ -171,7 +133,7 @@ public:
 	Address address() const { return m_ourAddress; }
 
 	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
-	static OverlayDB openDB(std::string _path, WithExisting _we = WithExisting::Trust);
+	static OverlayDB openDB(std::string const& _path, WithExisting _we = WithExisting::Trust);
 	static OverlayDB openDB(WithExisting _we = WithExisting::Trust) { return openDB(std::string(), _we); }
 	OverlayDB const& db() const { return m_db; }
 	OverlayDB& db() { return m_db; }

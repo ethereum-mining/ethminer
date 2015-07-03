@@ -206,6 +206,21 @@ QVariantList ClientModel::gasCosts() const
 	return res;
 }
 
+void ClientModel::addAccount(QString const& _secret)
+{
+	KeyPair key(Secret(_secret.toStdString()));
+	m_accountsSecret.push_back(key);
+	Address address = key.address();
+	m_accounts[address] = Account(u256(0), Account::NormalCreation);
+	m_ethAccounts->setAccounts(m_accountsSecret);
+}
+
+QString ClientModel::resolveAddress(QString const& _secret)
+{
+	KeyPair key(Secret(_secret.toStdString()));
+	return "0x" + QString::fromStdString(key.address().hex());
+}
+
 void ClientModel::setupScenario(QVariantMap _scenario)
 {
 	onStateReset();
@@ -336,6 +351,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence)
 				if (!transaction.isFunctionCall)
 				{
 					callAddress(Address(address.toStdString()), bytes(), transaction);
+
 					onNewTransaction();
 					continue;
 				}
@@ -674,7 +690,7 @@ RecordLogEntry* ClientModel::lastBlock() const
 	strGas << blockInfo.gasUsed;
 	stringstream strNumber;
 	strNumber << blockInfo.number;
-	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(dev::toHex(blockInfo.hash().ref()))), QString(), QString(), QString(), false, RecordLogEntry::RecordType::Block, QString::fromStdString(strGas.str()), QString(), tr("Block"), QVariantMap(), QVariantList());
+	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(dev::toHex(blockInfo.hash().ref()))), QString(), QString(), QString(), false, RecordLogEntry::RecordType::Block, QString::fromStdString(strGas.str()), QString(), tr("Block"), QVariantMap(), QVariantMap(), QVariantList());
 	QQmlEngine::setObjectOwnership(record, QQmlEngine::JavaScriptOwnership);
 	return record;
 }
@@ -735,6 +751,7 @@ void ClientModel::onNewTransaction()
 	Address contractAddress = (bool)tr.address ? tr.address : tr.contractAddress;
 	auto contractAddressIter = m_contractNames.find(contractAddress);
 	QVariantMap inputParameters;
+	QVariantMap returnParameters;
 	QVariantList logs;
 	if (contractAddressIter != m_contractNames.end())
 	{
@@ -754,6 +771,11 @@ void ClientModel::onNewTransaction()
 				returned += "(";
 				returned += returnValues.join(", ");
 				returned += ")";
+
+				QStringList returnParams = encoder.decode(funcDef->returnParameters(), tr.result.output);
+				for (int k = 0; k < returnParams.length(); ++k)
+					returnParameters.insert(funcDef->returnParameters().at(k)->name(), returnParams.at(k));
+
 				bytes data = tr.inputParameters;
 				data.erase(data.begin(), data.begin() + 4);
 				QStringList parameters = encoder.decode(funcDef->parametersList(), data);
@@ -837,9 +859,25 @@ void ClientModel::onNewTransaction()
 		}
 
 	RecordLogEntry* log = new RecordLogEntry(recordIndex, transactionIndex, contract, function, value, address, returned, tr.isCall(), RecordLogEntry::RecordType::Transaction,
-											 gasUsed, sender, label, inputParameters, logs);
+											 gasUsed, sender, label, inputParameters, returnParameters, logs);
 	QQmlEngine::setObjectOwnership(log, QQmlEngine::JavaScriptOwnership);
 	emit newRecord(log);
+
+	// retrieving all accounts balance
+	QVariantMap state;
+	QVariantMap accountBalances;
+	for (auto const& ctr : m_contractAddresses)
+	{
+		u256 wei = m_client->balanceAt(ctr.second, PendingBlock);		
+		accountBalances.insert("0x" + QString::fromStdString(ctr.second.hex()), QEther(wei, QEther::Wei).format());
+	}
+	for (auto const& account : m_accounts)
+	{
+		u256 wei = m_client->balanceAt(account.first, PendingBlock);
+		accountBalances.insert("0x" + QString::fromStdString(account.first.hex()),  QEther(wei, QEther::Wei).format());
+	}
+	state.insert("accounts", accountBalances);
+	emit newState(recordIndex, state);
 }
 
 }
