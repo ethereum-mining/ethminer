@@ -320,7 +320,7 @@ std::ostream& dev::operator<<(std::ostream& _out, RLP const& _d)
 	if (_d.isNull())
 		_out << "null";
 	else if (_d.isInt())
-		_out << std::showbase << std::hex << std::nouppercase << _d.toInt<bigint>(RLP::LaisezFaire) << dec;
+		_out << std::showbase << std::hex << std::nouppercase << _d.toInt<bigint>(RLP::LaissezFaire) << dec;
 	else if (_d.isData())
 		_out << escaped(_d.toString(), false);
 	else if (_d.isList())
