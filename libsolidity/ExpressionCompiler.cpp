@@ -155,8 +155,6 @@ bool ExpressionCompiler::visit(Assignment const& _assignment)
 	TypePointer type = _assignment.getRightHandSide().getType();
 	if (!_assignment.getType()->dataStoredIn(DataLocation::Storage))
 	{
-		//@todo we should delay conversion here if RHS is not in memory, LHS is a MemoryItem
-		// and not dynamically-sized.
 		utils().convertType(*type, *_assignment.getType());
 		type = _assignment.getType();
 	}
@@ -315,38 +313,66 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 	using Location = FunctionType::Location;
 	if (_functionCall.isTypeConversion())
 	{
-		//@todo struct construction
 		solAssert(_functionCall.getArguments().size() == 1, "");
 		solAssert(_functionCall.getNames().empty(), "");
 		Expression const& firstArgument = *_functionCall.getArguments().front();
 		firstArgument.accept(*this);
 		utils().convertType(*firstArgument.getType(), *_functionCall.getType());
+		return false;
+	}
+
+	FunctionTypePointer functionType;
+	if (_functionCall.isStructConstructorCall())
+	{
+		auto const& type = dynamic_cast<TypeType const&>(*_functionCall.getExpression().getType());
+		auto const& structType = dynamic_cast<StructType const&>(*type.getActualType());
+		functionType = structType.constructorType();
+	}
+	else
+		functionType = dynamic_pointer_cast<FunctionType const>(_functionCall.getExpression().getType());
+
+	TypePointers const& parameterTypes = functionType->getParameterTypes();
+	vector<ASTPointer<Expression const>> const& callArguments = _functionCall.getArguments();
+	vector<ASTPointer<ASTString>> const& callArgumentNames = _functionCall.getNames();
+	if (!functionType->takesArbitraryParameters())
+		solAssert(callArguments.size() == parameterTypes.size(), "");
+
+	vector<ASTPointer<Expression const>> arguments;
+	if (callArgumentNames.empty())
+		// normal arguments
+		arguments = callArguments;
+	else
+		// named arguments
+		for (auto const& parameterName: functionType->getParameterNames())
+		{
+			bool found = false;
+			for (size_t j = 0; j < callArgumentNames.size() && !found; j++)
+				if ((found = (parameterName == *callArgumentNames[j])))
+					// we found the actual parameter position
+					arguments.push_back(callArguments[j]);
+			solAssert(found, "");
+		}
+
+	if (_functionCall.isStructConstructorCall())
+	{
+		TypeType const& type = dynamic_cast<TypeType const&>(*_functionCall.getExpression().getType());
+		auto const& structType = dynamic_cast<StructType const&>(*type.getActualType());
+
+		m_context << u256(max(32u, structType.getCalldataEncodedSize(true)));
+		utils().allocateMemory();
+		m_context << eth::Instruction::DUP1;
+
+		for (unsigned i = 0; i < arguments.size(); ++i)
+		{
+			arguments[i]->accept(*this);
+			utils().convertType(*arguments[i]->getType(), *functionType->getParameterTypes()[i]);
+			utils().storeInMemoryDynamic(*functionType->getParameterTypes()[i]);
+		}
+		m_context << eth::Instruction::POP;
 	}
 	else
 	{
-		FunctionType const& function = dynamic_cast<FunctionType const&>(*_functionCall.getExpression().getType());
-		TypePointers const& parameterTypes = function.getParameterTypes();
-		vector<ASTPointer<Expression const>> const& callArguments = _functionCall.getArguments();
-		vector<ASTPointer<ASTString>> const& callArgumentNames = _functionCall.getNames();
-		if (!function.takesArbitraryParameters())
-			solAssert(callArguments.size() == parameterTypes.size(), "");
-
-		vector<ASTPointer<Expression const>> arguments;
-		if (callArgumentNames.empty())
-			// normal arguments
-			arguments = callArguments;
-		else
-			// named arguments
-			for (auto const& parameterName: function.getParameterNames())
-			{
-				bool found = false;
-				for (size_t j = 0; j < callArgumentNames.size() && !found; j++)
-					if ((found = (parameterName == *callArgumentNames[j])))
-						// we found the actual parameter position
-						arguments.push_back(callArguments[j]);
-				solAssert(found, "");
-			}
-
+		FunctionType const& function = *functionType;
 		switch (function.getLocation())
 		{
 		case Location::Internal:
@@ -691,7 +717,8 @@ void ExpressionCompiler::endVisit(MemberAccess const& _memberAccess)
 		}
 		case DataLocation::Memory:
 		{
-			solAssert(false, "Member access for memory structs not yet implemented.");
+			m_context << type.memoryOffsetOfMember(member) << eth::Instruction::ADD;
+			setLValue<MemoryItem>(_memberAccess, *_memberAccess.getType());
 			break;
 		}
 		default:
