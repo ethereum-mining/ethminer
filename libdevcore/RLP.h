@@ -327,8 +327,8 @@ private:
 	/// @returns the number of data items.
 	size_t items() const;
 
-	/// @returns the "actualSize" of the RLP encoded in the largest prefix of @a _data and throws on error.
-	static size_t actualSizeOfPrefix(bytesConstRef _data) { return RLP(_data, ThrowOnFail | FailIfTooSmall).actualSize(); }
+	/// @returns the size encoded into the RLP in @a _data and throws if _data is too short.
+	static size_t sizeAsEncoded(bytesConstRef _data) { return RLP(_data, ThrowOnFail | FailIfTooSmall).actualSize(); }
 
 	/// Our byte data.
 	bytesConstRef m_data;
