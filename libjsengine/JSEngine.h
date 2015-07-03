@@ -29,7 +29,7 @@ namespace eth
 {
 
 class JSException: public std::exception {};
-class JSPrintException: public JSException { char const* what() const noexcept { return "Cannot print expression!"; } };
+class JSPrintException: public JSException { char const* what() const { return "Cannot print expression!"; } };
 
 class JSString
 {
