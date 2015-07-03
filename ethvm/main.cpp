@@ -43,11 +43,10 @@ void help()
 		<< "    --gas-price <n>  Transaction's gas price' should be <n> (default: 0)." << endl
 		<< "    --sender <a>  Transaction sender should be <a> (default: 0000...0069)." << endl
 		<< "    --origin <a>  Transaction origin should be <a> (default: 0000...0069)." << endl
-#if ETH_EVMJIT || !ETH_TRUE
+#if ETH_EVMJIT || !ETH_TRUETRUE
 		<< endl
 		<< "VM options:" << endl
-		<< "    -J,--jit  Enable LLVM VM (default: off)." << endl
-		<< "    --smart  Enable smart VM (default: off)." << endl
+		<< "    --vm=<vm-kind>  Select VM. Options are: jit, smart. (default: interpreter)" << endl
 #endif
 		<< endl
 		<< "Options for trace:" << endl
@@ -97,9 +96,9 @@ int main(int argc, char** argv)
 		else if (arg == "-V" || arg == "--version")
 			version();
 #if ETH_EVMJIT
-		else if (arg == "-J" || arg == "--jit")
+		else if (arg == "--vm=jit")
 			VMFactory::setKind(VMKind::JIT);
-		else if (arg == "--smart")
+		else if (arg == "--vm=smart")
 			VMFactory::setKind(VMKind::Smart);
 #endif
 		else if (arg == "--mnemonics")
