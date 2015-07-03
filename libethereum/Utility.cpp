@@ -27,6 +27,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
+#include "CanonBlockChain.h"
 #include "Defaults.h"
 using namespace std;
 using namespace dev;
@@ -104,7 +105,7 @@ void dev::eth::upgradeDatabase(std::string const& _basePath)
 		{
 			auto minorProtocolVersion = (unsigned)status[1];
 			auto databaseVersion = (unsigned)status[2];
-			auto genesisHash = (h256)status[3];
+			auto genesisHash = status.itemCount() > 3 ? (h256)status[3] : CanonBlockChain::genesis().hash();
 
 			string chainPath = path + "/" + toHex(genesisHash.ref().cropped(0, 4));
 			string extrasPath = chainPath + "/" + toString(databaseVersion);
@@ -121,15 +122,19 @@ void dev::eth::upgradeDatabase(std::string const& _basePath)
 					fs::rename(path + "/details", extrasPath + "/extras");
 					fs::rename(path + "/state", extrasPath + "/state");
 					writeFile(extrasPath + "/minor", rlp(minorProtocolVersion));
-
-					fs::remove_all(path + "/status");
 				}
 			}
 		}
+		catch (Exception& ex)
+		{
+			cwarn << "Couldn't upgrade: " << ex.what() << boost::diagnostic_information(ex);
+		}
 		catch (...)
 		{
-			cwarn << "Couldn't upgrade - bad status";
+			cwarn << "Couldn't upgrade. Some issue with moving files around. Probably easiest just to redownload.";
 		}
+
+		fs::rename(path + "/status", path + "/status.old");
 	}
 }
 
