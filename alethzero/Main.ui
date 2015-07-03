@@ -44,14 +44,14 @@
          <string>0 bytes used</string>
         </property>
        </widget>
-	  </item>
-	  <item>
-	   <widget class="QLabel" name="syncStatus">
-		<property name="text">
-		 <string></string>
-		</property>
-	   </widget>
-	  </item>
+      </item>
+      <item>
+       <widget class="QLabel" name="syncStatus">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
       <item>
        <widget class="QLabel" name="chainStatus">
         <property name="text">
@@ -132,7 +132,7 @@
      <x>0</x>
      <y>0</y>
      <width>1617</width>
-     <height>24</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -192,8 +192,11 @@
     <addaction name="injectBlock"/>
     <addaction name="forceMining"/>
     <addaction name="separator"/>
+    <addaction name="vmInterpreter"/>
+    <addaction name="vmJIT"/>
+    <addaction name="vmSmart"/>
+    <addaction name="separator"/>
     <addaction name="usePrivate"/>
-    <addaction name="jitvm"/>
     <addaction name="retryUnknown"/>
     <addaction name="confirm"/>
    </widget>
@@ -1696,17 +1699,6 @@ font-size: 14pt</string>
     <string>&amp;Clear Pending</string>
    </property>
   </action>
-  <action name="jitvm">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>false</bool>
-   </property>
-   <property name="text">
-    <string>Use &amp;LLVM-EVM</string>
-   </property>
-  </action>
   <action name="killAccount">
    <property name="text">
     <string>&amp;Kill Account</string>
@@ -1780,6 +1772,30 @@ font-size: 14pt</string>
   <action name="gasPrices">
    <property name="text">
     <string>&amp;Gas Prices...</string>
+   </property>
+  </action>
+  <action name="vmInterpreter">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Interpreter</string>
+   </property>
+  </action>
+  <action name="vmJIT">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>JIT</string>
+   </property>
+  </action>
+  <action name="vmSmart">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Smart</string>
    </property>
   </action>
  </widget>
