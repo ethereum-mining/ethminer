@@ -42,5 +42,7 @@ namespace eth
  */
 bytes parseData(std::string const& _args);
 
+void upgradeDatabase(std::string const& _basePath);
+
 }
 }
