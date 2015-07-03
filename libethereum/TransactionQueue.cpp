@@ -98,7 +98,7 @@ ImportResult TransactionQueue::import(Transaction const& _transaction, ImportCal
 std::unordered_map<h256, Transaction> TransactionQueue::transactions() const
 {
 	ReadGuard l(m_lock);
-	return m_current + m_future;
+	return m_current;
 }
 
 ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transaction const& _transaction, ImportCallback const& _cb)
