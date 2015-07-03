@@ -127,9 +127,8 @@ unsigned WhisperPeer::ratingForPeer(Envelope const& e) const
 
 	unsigned rating = 0;
 
-	DEV_GUARDED(x_bloom)
-		if (e.matchesBloomFilter(m_bloom))
-			++rating;
+	if (e.matchesBloomFilter(bloom()))
+		++rating;
 
 	rating *= 256;
 	unsigned ttlReward = (256 > e.ttl() ? 256 - e.ttl() : 0);
