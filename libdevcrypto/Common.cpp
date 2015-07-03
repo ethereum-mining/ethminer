@@ -186,7 +186,7 @@ Public dev::recover(Signature const& _sig, h256 const& _message)
 #ifdef ETH_HAVE_SECP256K1
 	bytes o(65);
 	int pubkeylen;
-	if (!secp256k1_ecdsa_recover_compact(_message.data(), h256::size, _sig.data(), o.data(), &pubkeylen, false, o[64]))
+	if (!secp256k1_ecdsa_recover_compact(_message.data(), h256::size, _sig.data(), o.data(), &pubkeylen, false, _sig[64]))
 		return Public();
 	return FixedHash<64>(o.data()+1, Public::ConstructFromPointer);
 #else
