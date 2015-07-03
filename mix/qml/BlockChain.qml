@@ -429,7 +429,7 @@ ColumnLayout {
 					height: 30
 
 					buttonShortcut: ""
-					sourceImg: "qrc:/qml/img/addblock@2x.png"
+					sourceImg: "qrc:/qml/img/newblock@2x.png"
 				}
 			}
 

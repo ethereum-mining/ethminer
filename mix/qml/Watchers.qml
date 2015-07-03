@@ -70,15 +70,15 @@ Rectangle {
 		spacing: 15
 		Rectangle
 		{
-			height: 20
+			height: 15
 			width: parent.width - 30
 			color: "transparent"
 			Row
 			{
 				id: rowHeader
 				anchors.horizontalCenter: parent.horizontalCenter
-				anchors.verticalCenter: parent.verticalCenter
-				height: 5
+				anchors.top: rowHeader.parent.top
+				anchors.topMargin: 6
 				spacing: 5
 				Label {
 					id: fromLabel
@@ -119,9 +119,9 @@ Rectangle {
 			Image {
 				anchors.right: rowHeader.parent.right
 				anchors.top: rowHeader.parent.top
-				anchors.topMargin: 10
-				source: "qrc:/qml/img/edit.png"
-				height: 15
+				anchors.topMargin: -3
+				source: "qrc:/qml/img/edittransaction2.png"
+				height: 30
 				fillMode: Image.PreserveAspectFit
 				visible: from.text !== ""
 				MouseArea
