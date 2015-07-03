@@ -109,7 +109,6 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 		// If it doesn't work, the signature is bad.
 		// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
 
-
 		// Remove any prior transaction with the same nonce but a lower gas price.
 		// Bomb out if there's a prior transaction with higher gas price.
 		auto r = m_senders.equal_range(_transaction.from());
