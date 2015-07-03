@@ -60,15 +60,41 @@ namespace dev
 				TBOOST_REQUIRE((o.count("out") > 0));
 				TBOOST_REQUIRE(!o["out"].is_null());
 
-				if (!_fillin)
+				if (_fillin)
+				{
+					try
+					{
+						bytes payloadToDecode = fromHex(o["out"].get_str());
+						RLP payload(payloadToDecode);
+						if (payload.isEmpty())
+							BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("Decoded Empty RLP!"));
+						o["in"] = "VALID";
+					}
+					catch (Exception const& _e)
+					{
+						cnote << "Exception: " << diagnostic_information(_e);
+						o["in"] = "INVALID";
+					}
+					catch (std::exception const& _e)
+					{
+						cnote << "rlp exception: " << _e.what();
+						o["in"] = "INVALID";
+					}
+				}
+				else
 				{
 					//Check Encode
-					bool skipEncode = false;
+					int skipEncode = 0;
 					if (o["in"].type() == js::str_type)
+					{
 						if (o["in"].get_str() == "INVALID")
-							skipEncode = true;
+							skipEncode = 1;
+						else
+						if (o["in"].get_str() == "VALID")
+							skipEncode = 2;
+					}
 
-					if (!skipEncode)
+					if (skipEncode == 0)
 					{
 						RLPStream s;
 						dev::test::buildRLP(o["in"], s);
@@ -97,7 +123,9 @@ namespace dev
 					{
 						bytes payloadToDecode = fromHex(o["out"].get_str());
 						RLP payload(payloadToDecode);
-						dev::test::checkRLPAgainstJson(inputData, payload);
+
+						if (skipEncode == 0)
+							dev::test::checkRLPAgainstJson(inputData, payload);
 					}
 					catch (Exception const& _e)
 					{
@@ -110,8 +138,13 @@ namespace dev
 						was_exception = true;
 					}
 
-					if (skipEncode && was_exception)
+					//Expect exception as input is INVALID
+					if (skipEncode == 1 && was_exception)
 						continue;
+
+					//Expect exception as input is INVALID
+					if (skipEncode == 1 && !was_exception)
+						TBOOST_ERROR("Expected RLP Exception as rlp should be invalid!");
 
 					if (was_exception)
 						TBOOST_ERROR("Unexpected RLP Exception!");
