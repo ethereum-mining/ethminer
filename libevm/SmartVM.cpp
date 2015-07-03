@@ -26,6 +26,7 @@
 #include <queue>
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
+#include <libdevcore/Guards.h>
 #include <evmjit/JIT.h>
 #include <evmjit/libevmjit-cpp/Utils.h>
 #include "VMFactory.h"
@@ -92,20 +93,16 @@ namespace
 
 		~JitWorker()
 		{
-			{
-				std::lock_guard<std::mutex> lock{x_mutex};
+			DEV_GUARDED(x_mutex)
 				m_finished = true;
-			}
 			m_cv.notify_one();
 			m_worker.join();
 		}
 
 		void push(JitTask&& _task)
 		{
-			{
-		        std::lock_guard<std::mutex> lock(x_mutex);
-		        m_queue.push(std::move(_task));
-		    }
+			DEV_GUARDED(x_mutex)
+				m_queue.push(std::move(_task));
 			m_cv.notify_one();
 		}
 	};
