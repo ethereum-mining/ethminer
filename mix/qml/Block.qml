@@ -41,6 +41,7 @@ ColumnLayout
 	{
 		transactionDialog.stateAccounts = scenario.accounts
 		transactionDialog.execute = false
+		transactionDialog.editMode = true
 		transactionDialog.open(txIndex, blockIndex,  transactions.get(txIndex))
 	}
 
@@ -164,11 +165,11 @@ ColumnLayout
 				Image {
 					anchors.top: parent.top
 					anchors.left: parent.left
-					anchors.leftMargin: -9
-					anchors.topMargin: -4
+					anchors.leftMargin: -4
+					anchors.topMargin: 0
 					id: saveStatusImage
 					source: "qrc:/qml/img/recyclediscard@2x.png"
-					width: statusWidth + 20
+					width: statusWidth + 10
 					fillMode: Image.PreserveAspectFit
 				}
 
@@ -317,10 +318,10 @@ ColumnLayout
 			Rectangle
 			{
 				width: debugActionWidth
-				height: trHeight
-				anchors.left: rowContentTr.right
+				height: trHeight - 10
+				anchors.right: rowContentTr.right
 				anchors.top: rowContentTr.top
-				anchors.leftMargin: -50
+				anchors.rightMargin: 10
 				color: "transparent"
 
 				Image {
@@ -328,7 +329,6 @@ ColumnLayout
 					source: "qrc:/qml/img/rightarrow@2x.png"
 					width: debugActionWidth
 					fillMode: Image.PreserveAspectFit
-					anchors.verticalCenter: parent.verticalCenter
 					anchors.horizontalCenter: parent.horizontalCenter
 					visible: transactions.get(index).recordIndex !== undefined
 				}
