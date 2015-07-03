@@ -24,7 +24,9 @@ add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 target_link_libraries(${EXECUTABLE} jsengine)
 target_link_libraries(${EXECUTABLE} devcore)
-target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARIES})
+if (READLINE_FOUND)
+	target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARIES})
+endif()
 target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_SERVER_LIBRARIES})
 
 target_link_libraries(${EXECUTABLE} ${CURL_LIBRARIES})
