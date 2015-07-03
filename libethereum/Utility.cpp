@@ -125,9 +125,13 @@ void dev::eth::upgradeDatabase(std::string const& _basePath)
 				}
 			}
 		}
+		catch (Exception& ex)
+		{
+			cwarn << "Couldn't upgrade: " << ex.what() << boost::diagnostic_information(ex);
+		}
 		catch (...)
 		{
-			cwarn << "Couldn't upgrade - bad status";
+			cwarn << "Couldn't upgrade. Some issue with moving files around. Probably easiest just to redownload.";
 		}
 
 		fs::rename(path + "/status", path + "/status.old");
