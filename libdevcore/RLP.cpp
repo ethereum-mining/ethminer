@@ -246,7 +246,6 @@ void RLPStream::noteAppended(size_t _itemCount)
 				m_out[p] = (byte)(c_rlpListStart + s);
 			else if (c_rlpListIndLenZero + brs <= 0xff)
 			{
-
 				m_out[p] = (byte)(c_rlpListIndLenZero + brs);
 				byte* b = &(m_out[p + brs]);
 				for (; s; s >>= 8)
