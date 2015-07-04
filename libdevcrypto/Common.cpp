@@ -198,8 +198,10 @@ Signature dev::sign(Secret const& _k, h256 const& _hash)
 {
 #ifdef ETH_HAVE_SECP256K1
 	Signature s;
-	if (!secp256k1_ecdsa_sign_compact(_hash.data(), h256::size, s.data(), _k.data(), Nonce::get().data(), (int*)(s.data()+64)))
+	int v;
+	if (!secp256k1_ecdsa_sign_compact(_hash.data(), h256::size, s.data(), _k.data(), Nonce::get().data(), &v))
 		return Signature();
+	s[64] = v;
 	return s;
 #else
 	return s_secp256k1pp.sign(_k, _hash);
