@@ -296,6 +296,14 @@ void Main::on_gasPrices_triggered()
 	}
 }
 
+void Main::on_sentinel_triggered()
+{
+	bool ok;
+	QString sentinel = QInputDialog::getText(nullptr, "Enter sentinel address", "Enter the sentinel address for bad block reporting (e.g. http://badblockserver.com:8080). Enter nothing to disable.", QLineEdit::Normal, QString::fromStdString(ethereum()->sentinel()), &ok);
+	if (ok)
+		ethereum()->setSentinel(sentinel.toStdString());
+}
+
 void Main::on_newIdentity_triggered()
 {
 	KeyPair kp = KeyPair::create();

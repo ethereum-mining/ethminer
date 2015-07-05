@@ -28,7 +28,7 @@ add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 target_link_libraries(${EXECUTABLE} ethash)
 target_link_libraries(${EXECUTABLE} devcrypto)
-#target_link_libraries(${EXECUTABLE} evmcore)
+target_link_libraries(${EXECUTABLE} evmcore)
 
 if (ETHASHCL)
 	target_link_libraries(${EXECUTABLE} ethash-cl)

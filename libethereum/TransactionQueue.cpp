@@ -98,11 +98,7 @@ ImportResult TransactionQueue::import(Transaction const& _transaction, ImportCal
 std::unordered_map<h256, Transaction> TransactionQueue::transactions() const
 {
 	ReadGuard l(m_lock);
-	auto ret = m_current;
-	for (auto const& i: m_future)
-		if (i.second.nonce() < maxNonce_WITH_LOCK(i.second.sender()))
-			ret.insert(i);
-	return ret;
+	return m_current;
 }
 
 ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transaction const& _transaction, ImportCallback const& _cb)
@@ -113,6 +109,8 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 		// If it doesn't work, the signature is bad.
 		// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
 
+		// Remove any prior transaction with the same nonce but a lower gas price.
+		// Bomb out if there's a prior transaction with higher gas price.
 		auto r = m_senders.equal_range(_transaction.from());
 		for (auto it = r.first; it != r.second; ++it)
 			if (m_current.count(it->second) && m_current[it->second].nonce() == _transaction.nonce())
@@ -220,6 +218,7 @@ bool TransactionQueue::remove_WITH_LOCK(h256 const& _txHash)
 
 unsigned TransactionQueue::waiting(Address const& _a) const
 {
+	ReadGuard l(m_lock);
 	auto it = m_senders.equal_range(_a);
 	unsigned ret = 0;
 	for (auto i = it.first; i != it.second; ++i, ++ret) {}

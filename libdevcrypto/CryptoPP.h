@@ -67,13 +67,11 @@ inline Integer secretToExponent(Secret const& _s) { return std::move(Integer(_s.
  * CryptoPP secp256k1 algorithms.
  * @todo Collect ECIES methods into class.
  */
-class Secp256k1
+class Secp256k1PP
 {	
 public:
-	Secp256k1(): m_oid(ASN1::secp256k1()), m_params(m_oid), m_curve(m_params.GetCurve()), m_q(m_params.GetGroupOrder()), m_qs(m_params.GetSubgroupOrder()) {}
-	
-	Address toAddress(Public const& _p) { return right160(sha3(_p.ref())); }
-	
+	Secp256k1PP(): m_oid(ASN1::secp256k1()), m_params(m_oid), m_curve(m_params.GetCurve()), m_q(m_params.GetGroupOrder()), m_qs(m_params.GetSubgroupOrder()) {}
+
 	void toPublic(Secret const& _s, Public& o_public) { exponentToPublic(Integer(_s.data(), sizeof(_s)), o_public); }
 	
 	/// Encrypts text (replace input). (ECIES w/XOR-SHA1)

@@ -51,6 +51,8 @@ void WhisperHost::streamMessage(h256 _m, RLPStream& _s) const
 
 void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 {
+	// this function processes messages originated both by local host (_p == null), and by remote peers (_p != null)
+
 	cnote << this << ": inject: " << _m.expiry() << _m.ttl() << _m.topic() << toHex(_m.data());
 
 	if (_m.expiry() <= (unsigned)time(0))
@@ -66,55 +68,52 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 		m_expiryQueue.insert(make_pair(_m.expiry(), h));
 	}
 
-//	if (_p)
-	{
-		Guard l(m_filterLock);
-		for (auto const& f: m_filters)
-			if (f.second.filter.matches(_m))
-				noteChanged(h, f.first);
-	}
+	int rating = 1; // rating for local host is based upon: 1. installed watch; 2. proof of work
+
+	if (_p) // incoming message from remote peer
+		DEV_GUARDED(m_filterLock)
+			for (auto const& f: m_filters)
+				if (f.second.filter.matches(_m))
+					for (auto& i: m_watches)
+						if (i.second.id == f.first)
+						{
+							i.second.changes.push_back(h);
+							rating += 10; // subject to review
+						}
 
 	// TODO p2p: capability-based rating
 	for (auto i: peerSessions())
 	{
 		auto w = i.first->cap<WhisperPeer>().get();
 		if (w == _p)
-			w->addRating(1);
+			w->addRating(rating);
 		else
 			w->noteNewMessage(h, _m);
 	}
 }
 
-void WhisperHost::noteChanged(h256 _messageHash, h256 _filter)
-{
-	for (auto& i: m_watches)
-		if (i.second.id == _filter)
-		{
-			cwatshh << "!!!" << i.first << i.second.id;
-			i.second.changes.push_back(_messageHash);
-		}
-}
-
-unsigned WhisperHost::installWatchOnId(h256 _h)
-{
-	auto ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
-	m_watches[ret] = ClientWatch(_h);
-	cwatshh << "+++" << ret << _h;
-	return ret;
-}
-
 unsigned WhisperHost::installWatch(shh::Topics const& _t)
 {
-	Guard l(m_filterLock);
-
 	InstalledFilter f(_t);
 	h256 h = f.filter.sha3();
+	unsigned ret = 0;
 
-	if (!m_filters.count(h))
-		m_filters.insert(make_pair(h, f));
+	DEV_GUARDED(m_filterLock)
+	{
+		auto it = m_filters.find(h);
+		if (m_filters.end() == it)
+			m_filters.insert(make_pair(h, f));
+		else
+			it->second.refCount++;
 
-	m_bloom.addRaw(f.filter.exportBloom());
-	return installWatchOnId(h);
+		m_bloom.addRaw(f.filter.exportBloom());
+		ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
+		m_watches[ret] = ClientWatch(h);
+		cwatshh << "+++" << ret << h;
+	}
+
+	noteAdvertiseTopicsOfInterest();
+	return ret;
 }
 
 h256s WhisperHost::watchMessages(unsigned _watchId)
@@ -142,21 +141,25 @@ void WhisperHost::uninstallWatch(unsigned _i)
 {
 	cwatshh << "XXX" << _i;
 
-	Guard l(m_filterLock);
-
-	auto it = m_watches.find(_i);
-	if (it == m_watches.end())
-		return;
-	auto id = it->second.id;
-	m_watches.erase(it);
-
-	auto fit = m_filters.find(id);
-	if (fit != m_filters.end())
+	DEV_GUARDED(m_filterLock)
 	{
-		m_bloom.removeRaw(fit->second.filter.exportBloom());
-		if (!--fit->second.refCount)
-			m_filters.erase(fit);
+		auto it = m_watches.find(_i);
+		if (it == m_watches.end())
+			return;
+
+		auto id = it->second.id;
+		m_watches.erase(it);
+
+		auto fit = m_filters.find(id);
+		if (fit != m_filters.end())
+		{
+			m_bloom.removeRaw(fit->second.filter.exportBloom());
+			if (!--fit->second.refCount)
+				m_filters.erase(fit);
+		}
 	}
+
+	noteAdvertiseTopicsOfInterest();
 }
 
 void WhisperHost::doWork()
@@ -174,4 +177,10 @@ void WhisperHost::cleanup()
 	WriteGuard l(x_messages);
 	for (auto it = m_expiryQueue.begin(); it != m_expiryQueue.end() && it->first <= now; it = m_expiryQueue.erase(it))
 		m_messages.erase(it->second);
+}
+
+void WhisperHost::noteAdvertiseTopicsOfInterest()
+{
+	for (auto i: peerSessions())
+		i.first->cap<WhisperPeer>().get()->noteAdvertiseTopicsOfInterest();
 }

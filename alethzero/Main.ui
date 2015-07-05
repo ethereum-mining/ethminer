@@ -44,14 +44,14 @@
          <string>0 bytes used</string>
         </property>
        </widget>
-	  </item>
-	  <item>
-	   <widget class="QLabel" name="syncStatus">
-		<property name="text">
-		 <string></string>
-		</property>
-	   </widget>
-	  </item>
+      </item>
+      <item>
+       <widget class="QLabel" name="syncStatus">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
       <item>
        <widget class="QLabel" name="chainStatus">
         <property name="text">
@@ -224,6 +224,7 @@
      <string>&amp;Config</string>
     </property>
     <addaction name="gasPrices"/>
+    <addaction name="sentinel"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_View"/>
@@ -1780,6 +1781,11 @@ font-size: 14pt</string>
   <action name="gasPrices">
    <property name="text">
     <string>&amp;Gas Prices...</string>
+   </property>
+  </action>
+  <action name="sentinel">
+   <property name="text">
+    <string>&amp;Sentinel...</string>
    </property>
   </action>
  </widget>

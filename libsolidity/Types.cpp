@@ -30,11 +30,8 @@
 #include <libsolidity/AST.h>
 
 using namespace std;
-
-namespace dev
-{
-namespace solidity
-{
+using namespace dev;
+using namespace dev::solidity;
 
 void StorageOffsets::computeOffsets(TypePointers const& _types)
 {
@@ -671,6 +668,26 @@ TypePointer ContractType::unaryOperatorResult(Token::Value _operator) const
 	return _operator == Token::Delete ? make_shared<VoidType>() : TypePointer();
 }
 
+TypePointer ReferenceType::unaryOperatorResult(Token::Value _operator) const
+{
+	if (_operator != Token::Delete)
+		return TypePointer();
+	// delete can be used on everything except calldata references or storage pointers
+	// (storage references are ok)
+	switch (location())
+	{
+	case DataLocation::CallData:
+		return TypePointer();
+	case DataLocation::Memory:
+		return make_shared<VoidType>();
+	case DataLocation::Storage:
+		return m_isPointer ? TypePointer() : make_shared<VoidType>();
+	default:
+		solAssert(false, "");
+	}
+	return TypePointer();
+}
+
 TypePointer ReferenceType::copyForLocationIfReference(DataLocation _location, TypePointer const& _type)
 {
 	if (auto type = dynamic_cast<ReferenceType const*>(_type.get()))
@@ -736,13 +753,6 @@ bool ArrayType::isImplicitlyConvertibleTo(const Type& _convertTo) const
 			return false;
 		return true;
 	}
-}
-
-TypePointer ArrayType::unaryOperatorResult(Token::Value _operator) const
-{
-	if (_operator == Token::Delete)
-		return make_shared<VoidType>();
-	return TypePointer();
 }
 
 bool ArrayType::operator==(Type const& _other) const
@@ -962,11 +972,6 @@ bool StructType::isImplicitlyConvertibleTo(const Type& _convertTo) const
 	return this->m_struct == convertTo.m_struct;
 }
 
-TypePointer StructType::unaryOperatorResult(Token::Value _operator) const
-{
-	return _operator == Token::Delete ? make_shared<VoidType>() : TypePointer();
-}
-
 bool StructType::operator==(Type const& _other) const
 {
 	if (_other.getCategory() != getCategory())
@@ -991,6 +996,15 @@ unsigned StructType::getCalldataEncodedSize(bool _padded) const
 	return size;
 }
 
+u256 StructType::memorySize() const
+{
+	u256 size;
+	for (auto const& member: getMembers())
+		if (member.type->canLiveOutsideStorage())
+			size += member.type->memoryHeadSize();
+	return size;
+}
+
 u256 StructType::getStorageSize() const
 {
 	return max<u256>(1, getMembers().getStorageSize());
@@ -1002,6 +1016,14 @@ bool StructType::canLiveOutsideStorage() const
 		if (!member.type->canLiveOutsideStorage())
 			return false;
 	return true;
+}
+
+unsigned StructType::getSizeOnStack() const
+{
+	if (location() == DataLocation::Storage)
+		return 2; // slot and offset
+	else
+		return 1;
 }
 
 string StructType::toString(bool _short) const
@@ -1039,11 +1061,43 @@ TypePointer StructType::copyForLocation(DataLocation _location, bool _isPointer)
 	return copy;
 }
 
+FunctionTypePointer StructType::constructorType() const
+{
+	TypePointers paramTypes;
+	strings paramNames;
+	for (auto const& member: getMembers())
+	{
+		if (!member.type->canLiveOutsideStorage())
+			continue;
+		paramNames.push_back(member.name);
+		paramTypes.push_back(copyForLocationIfReference(DataLocation::Memory, member.type));
+	}
+	return make_shared<FunctionType>(
+		paramTypes,
+		TypePointers{copyForLocation(DataLocation::Memory, false)},
+		paramNames,
+		strings(),
+		FunctionType::Location::Internal
+	);
+}
+
 pair<u256, unsigned> const& StructType::getStorageOffsetsOfMember(string const& _name) const
 {
 	auto const* offsets = getMembers().getMemberStorageOffset(_name);
 	solAssert(offsets, "Storage offset of non-existing member requested.");
 	return *offsets;
+}
+
+u256 StructType::memoryOffsetOfMember(string const& _name) const
+{
+	u256 offset;
+	for (auto const& member: getMembers())
+		if (member.name == _name)
+			return offset;
+		else
+			offset += member.type->memoryHeadSize();
+	solAssert(false, "Member not found in struct.");
+	return 0;
 }
 
 TypePointer EnumType::unaryOperatorResult(Token::Value _operator) const
@@ -1654,7 +1708,4 @@ string MagicType::toString(bool) const
 	default:
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Unknown kind of magic."));
 	}
-}
-
-}
 }

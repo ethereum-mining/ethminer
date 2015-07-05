@@ -31,7 +31,6 @@
 
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
-#include <libdevcore/RangeMask.h>
 #include <libethcore/Common.h>
 #include <libp2p/Common.h>
 #include "CommonNet.h"
