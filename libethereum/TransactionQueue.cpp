@@ -33,7 +33,6 @@ const char* TransactionQueueTraceChannel::name() { return EthCyan " ┅▶"; }
 
 ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallback const& _cb, IfDropped _ik)
 {
-	m_limit = 256;
 	// Check if we already know this transaction.
 	h256 h = sha3(_transactionRLP);
 
