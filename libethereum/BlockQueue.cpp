@@ -92,8 +92,9 @@ void BlockQueue::verifierBody()
 	{
 		UnverifiedBlock work;
 
-		{
+		DEV_READ_GUARDED(m_lock)
 			DEV_INVARIANT_CHECK;
+		{
 			unique_lock<Mutex> l(m_verification);
 			m_moreToVerify.wait(l, [&](){ return !m_unverified.empty() || m_deleting; });
 			if (m_deleting)
@@ -105,6 +106,8 @@ void BlockQueue::verifierBody()
 			bi.parentHash = work.parentHash;
 			m_verifying.emplace_back(move(bi));
 		}
+		DEV_READ_GUARDED(m_lock)
+			DEV_INVARIANT_CHECK;
 
 		VerifiedBlock res;
 		swap(work.block, res.blockData);

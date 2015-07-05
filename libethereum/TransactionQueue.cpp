@@ -100,8 +100,10 @@ void TransactionQueue::verifierBody()
 		{
 			res = Transaction(work.data, CheckTransaction::Everything, work.hash);
 		}
-		catch (...)
+		catch (Exception& ex)
 		{
+			cdebug << "Bad transation inserted" << ex.what();
+			cdebug << boost::diagnostic_information(ex);
 			// bad transaction.
 			// has to be this order as that's how invariants() assumes.
 			WriteGuard l(m_lock);
@@ -304,7 +306,24 @@ void TransactionQueue::setFuture(std::pair<h256, Transaction> const& _t)
 void TransactionQueue::noteGood(std::pair<h256, Transaction> const& _t)
 {
 //	cdebug << "txQ::noteGood" << _t.first;
-	WriteGuard l(m_lock);
+	UpgradableGuard l(m_lock);
+
+	if (!m_known.count(_t.first))
+		return;
+
+	// Point out it has been successfully been placed in a block.
+	if (m_callbacks.count(_t.first) && m_callbacks[_t.first])
+		m_callbacks[_t.first](ImportResult::Success);
+
+	UpgradeGuard l2(l);
+
+	// Erase the transaction itself.
+	m_current.erase(_t.first);
+	m_callbacks.erase(_t.first);
+
+	// Bring the a now-value transaction with the next nonce from m_future into m_current.
+	// At present it reinserts all transactions from the good transaction's sender.
+	// TODO: Should really just insert the transaction with the following nonce.
 	auto r = m_senders.equal_range(_t.second.sender());
 	for (auto it = r.first; it != r.second; ++it)
 	{
@@ -317,16 +336,20 @@ void TransactionQueue::noteGood(std::pair<h256, Transaction> const& _t)
 	}
 }
 
-void TransactionQueue::drop(h256 const& _txHash)
+void TransactionQueue::drop(h256 const& _txHash, ImportResult _ir)
 {
 	UpgradableGuard l(m_lock);
 
 	if (!m_known.count(_txHash))
 		return;
 
+	if (m_callbacks.count(_txHash) && m_callbacks[_txHash])
+		m_callbacks[_txHash](_ir);
+
 	UpgradeGuard ul(l);
 	m_dropped.insert(_txHash);
 	m_known.erase(_txHash);
+	m_callbacks.erase(_txHash);
 
 	remove_WITH_LOCK(_txHash);
 }
