@@ -53,7 +53,7 @@ BlockQueue::BlockQueue():
 	unsigned verifierThreads = std::max(thread::hardware_concurrency(), 3U) - 2U;
 	for (unsigned i = 0; i < verifierThreads; ++i)
 		m_verifiers.emplace_back([=](){
-			setThreadName("blockcheck" + toString(i));
+			setThreadName("verifier" + toString(i));
 			this->verifierBody();
 		});
 }
@@ -92,8 +92,6 @@ void BlockQueue::verifierBody()
 	{
 		UnverifiedBlock work;
 
-		DEV_READ_GUARDED(m_lock)
-			DEV_INVARIANT_CHECK;
 		{
 			unique_lock<Mutex> l(m_verification);
 			m_moreToVerify.wait(l, [&](){ return !m_unverified.empty() || m_deleting; });
@@ -106,8 +104,6 @@ void BlockQueue::verifierBody()
 			bi.parentHash = work.parentHash;
 			m_verifying.emplace_back(move(bi));
 		}
-		DEV_READ_GUARDED(m_lock)
-			DEV_INVARIANT_CHECK;
 
 		VerifiedBlock res;
 		swap(work.block, res.blockData);
@@ -120,7 +116,6 @@ void BlockQueue::verifierBody()
 			// bad block.
 			// has to be this order as that's how invariants() assumes.
 			WriteGuard l2(m_lock);
-			DEV_INVARIANT_CHECK;
 			unique_lock<Mutex> l(m_verification);
 			m_readySet.erase(work.hash);
 			m_knownBad.insert(work.hash);
@@ -139,7 +134,6 @@ void BlockQueue::verifierBody()
 		bool ready = false;
 		{
 			WriteGuard l2(m_lock);
-			DEV_INVARIANT_CHECK;
 			unique_lock<Mutex> l(m_verification);
 			if (!m_verifying.empty() && m_verifying.front().verified.info.mixHash == work.hash)
 			{
@@ -466,8 +460,6 @@ void BlockQueue::drain(VerifiedBlocks& o_out, unsigned _max)
 				auto h = bs.verified.info.hash();
 				m_drainingSet.insert(h);
 				m_drainingDifficulty += bs.verified.info.difficulty;
-				if (!m_readySet.count(h))
-					cwarn << "ODD: Invariant will fail: ready set doesn't contain drained verified block" << h;
 				m_readySet.erase(h);
 				m_knownSize -= bs.verified.block.size();
 				m_knownCount--;

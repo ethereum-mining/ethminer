@@ -106,10 +106,10 @@ public:
 	{}
 
 	/// Constructs a transaction from the given RLP.
-	explicit Transaction(bytesConstRef _rlp, CheckTransaction _checkSig, h256 const& _precomputed = h256());
+	explicit Transaction(bytesConstRef _rlp, CheckTransaction _checkSig);
 
 	/// Constructs a transaction from the given RLP.
-	explicit Transaction(bytes const& _rlp, CheckTransaction _checkSig, h256 const& _precomputed = h256()): Transaction(&_rlp, _checkSig, _precomputed) {}
+	explicit Transaction(bytes const& _rlp, CheckTransaction _checkSig): Transaction(&_rlp, _checkSig) {}
 
 	/// @returns true if the transaction contains enough gas for the basic payment.
 	bool checkPayment() const { return m_gas >= gasRequired(); }
