@@ -334,11 +334,12 @@ void Session::drop(DisconnectReason _reason)
 void Session::disconnect(DisconnectReason _reason)
 {
 	clog(NetConnect) << "Disconnecting (our reason:" << reasonOf(_reason) << ")";
+	size_t peerCount = m_server->peerCount(); //needs to  be outside of lock to avoid deadlocking with other thread that capture x_info/x_sessions in reverse order
 	DEV_GUARDED(x_info)
 		StructuredLogger::p2pDisconnected(
 			m_info.id.abridged(),
 			m_peer->endpoint, // TODO: may not be 100% accurate
-			m_server->peerCount()
+			peerCount
 		);
 	if (m_socket->ref().is_open())
 	{

@@ -230,10 +230,10 @@ void EthereumHost::maintainBlocks(h256 const& _currentHash)
 	}
 }
 
-BlockChainSync& EthereumHost::sync()
+BlockChainSync* EthereumHost::sync()
 {
 	if (m_sync)
-		return *m_sync; // We only chose sync strategy once
+		return m_sync.get(); // We only chose sync strategy once
 
 	bool pv61 = false;
 	foreachPeer([&](std::shared_ptr<EthereumPeer> _p)
@@ -242,38 +242,43 @@ BlockChainSync& EthereumHost::sync()
 			pv61 = true;
 		return !pv61;
 	});
-	m_sync.reset(pv61 ? new PV60Sync(*this) : new PV60Sync(*this));
-	return *m_sync;
+	m_sync.reset(pv61 ? new PV61Sync(*this) : new PV60Sync(*this));
+	return m_sync.get();
 }
 
 void EthereumHost::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
 {
 	Guard l(x_sync);
-	sync().onPeerStatus(_peer);
+	if (sync())
+		sync()->onPeerStatus(_peer);
 }
 
 void EthereumHost::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
 {
 	Guard l(x_sync);
-	sync().onPeerHashes(_peer, _hashes);
+	if (sync())
+		sync()->onPeerHashes(_peer, _hashes);
 }
 
 void EthereumHost::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
 	Guard l(x_sync);
-	sync().onPeerBlocks(_peer, _r);
+	if (sync())
+		sync()->onPeerBlocks(_peer, _r);
 }
 
 void EthereumHost::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
 {
 	Guard l(x_sync);
-	sync().onPeerNewHashes(_peer, _hashes);
+	if (sync())
+		sync()->onPeerNewHashes(_peer, _hashes);
 }
 
 void EthereumHost::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
 	Guard l(x_sync);
-	sync().onPeerNewBlock(_peer, _r);
+	if (sync())
+		sync()->onPeerNewBlock(_peer, _r);
 }
 
 void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
@@ -312,8 +317,15 @@ void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP c
 void EthereumHost::onPeerAborting()
 {
 	Guard l(x_sync);
-	if (m_sync)
-		m_sync->onPeerAborting();
+	try
+	{
+		if (m_sync)
+			m_sync->onPeerAborting();
+	}
+	catch (Exception&)
+	{
+		cwarn << "Exception on peer destruciton: " << boost::current_exception_diagnostic_information();
+	}
 }
 
 bool EthereumHost::isSyncing() const
