@@ -25,6 +25,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <functional>
+#include <deque>
 #include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
