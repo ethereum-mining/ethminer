@@ -64,10 +64,10 @@ public:
 	TransactionBase(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data, u256 const& _nonce = 0): m_type(ContractCreation), m_nonce(_nonce), m_value(_value), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) {}
 
 	/// Constructs a transaction from the given RLP.
-	explicit TransactionBase(bytesConstRef _rlp, CheckTransaction _checkSig, h256 const& _precomputed = h256());
+	explicit TransactionBase(bytesConstRef _rlp, CheckTransaction _checkSig);
 
 	/// Constructs a transaction from the given RLP.
-	explicit TransactionBase(bytes const& _rlp, CheckTransaction _checkSig, h256 const& _precomputed = h256()): TransactionBase(&_rlp, _checkSig, _precomputed) {}
+	explicit TransactionBase(bytes const& _rlp, CheckTransaction _checkSig): TransactionBase(&_rlp, _checkSig) {}
 
 
 	/// Checks equality of transactions.
