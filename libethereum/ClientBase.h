@@ -149,6 +149,10 @@ public:
 	/// Get the coinbase address
 	virtual Address address() const override;
 
+	virtual bool isKnown(h256 const& _hash) const override;
+	virtual bool isKnown(BlockNumber _block) const override;
+	virtual bool isKnownTransaction(h256 const& _transactionHash) const override;
+
 	/// TODO: consider moving it to a separate interface
 
 	virtual void startMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::startMining")); }

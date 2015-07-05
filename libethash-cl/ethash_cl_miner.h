@@ -44,6 +44,7 @@ public:
 	static std::string platform_info(unsigned _platformId = 0, unsigned _deviceId = 0);
 	static void listDevices();
 	static bool configureGPU(
+		unsigned _platformId,
 		bool _allowCPU,
 		unsigned _extraGPUMemory,
 		boost::optional<uint64_t> _currentBlock

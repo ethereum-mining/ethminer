@@ -133,12 +133,15 @@ public:
 
 	// [BLOCK QUERY API]
 
+	virtual bool isKnownTransaction(h256 const& _transactionHash) const = 0;
 	virtual Transaction transaction(h256 _transactionHash) const = 0;
 	virtual std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const = 0;
 	virtual h256 hashFromNumber(BlockNumber _number) const = 0;
 	virtual BlockNumber numberFromHash(h256 _blockHash) const = 0;
 	virtual int compareBlockHashes(h256 _h1, h256 _h2) const = 0;
 
+	virtual bool isKnown(BlockNumber _block) const = 0;
+	virtual bool isKnown(h256 const& _hash) const = 0;
 	virtual BlockInfo blockInfo(h256 _hash) const = 0;
 	virtual BlockDetails blockDetails(h256 _hash) const = 0;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const = 0;
@@ -151,7 +154,7 @@ public:
 
 	BlockInfo blockInfo(BlockNumber _block) const { return blockInfo(hashFromNumber(_block)); }
 	BlockDetails blockDetails(BlockNumber _block) const { return blockDetails(hashFromNumber(_block)); }
-	Transaction transaction(BlockNumber _block, unsigned _i) const { if (_block == PendingBlock) { auto p = pending(); return _i < p.size() ? p[_i] : Transaction(); } return transaction(hashFromNumber(_block)); }
+	Transaction transaction(BlockNumber _block, unsigned _i) const { auto p = transactions(_block); return _i < p.size() ? p[_i] : Transaction(); }
 	unsigned transactionCount(BlockNumber _block) const { if (_block == PendingBlock) { auto p = pending(); return p.size(); } return transactionCount(hashFromNumber(_block)); }
 	Transactions transactions(BlockNumber _block) const { if (_block == PendingBlock) return pending(); return transactions(hashFromNumber(_block)); }
 	TransactionHashes transactionHashes(BlockNumber _block) const { if (_block == PendingBlock) return pendingHashes(); return transactionHashes(hashFromNumber(_block)); }

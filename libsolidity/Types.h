@@ -376,6 +376,7 @@ public:
 	explicit ReferenceType(DataLocation _location): m_location(_location) {}
 	DataLocation location() const { return m_location; }
 
+	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual unsigned memoryHeadSize() const override { return 32; }
 
 	/// @returns a copy of this type with location (recursively) changed to @a _location,
@@ -444,11 +445,11 @@ public:
 	{}
 
 	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
-	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual bool operator==(const Type& _other) const override;
 	virtual unsigned getCalldataEncodedSize(bool _padded) const override;
 	virtual bool isDynamicallySized() const override { return m_hasDynamicLength; }
 	virtual u256 getStorageSize() const override;
+	virtual bool canLiveOutsideStorage() const override { return m_baseType->canLiveOutsideStorage(); }
 	virtual unsigned getSizeOnStack() const override;
 	virtual std::string toString(bool _short) const override;
 	virtual MemberList const& getMembers() const override
@@ -542,22 +543,26 @@ class StructType: public ReferenceType
 public:
 	virtual Category getCategory() const override { return Category::Struct; }
 	explicit StructType(StructDefinition const& _struct):
-		//@todo only storage until we have non-storage structs
 		ReferenceType(DataLocation::Storage), m_struct(_struct) {}
 	virtual bool isImplicitlyConvertibleTo(const Type& _convertTo) const override;
-	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual unsigned getCalldataEncodedSize(bool _padded) const override;
+	u256 memorySize() const;
 	virtual u256 getStorageSize() const override;
 	virtual bool canLiveOutsideStorage() const override;
-	virtual unsigned getSizeOnStack() const override { return 2; }
+	virtual unsigned getSizeOnStack() const override;
 	virtual std::string toString(bool _short) const override;
 
 	virtual MemberList const& getMembers() const override;
 
 	TypePointer copyForLocation(DataLocation _location, bool _isPointer) const override;
 
+	/// @returns a function that peforms the type conversion between a list of struct members
+	/// and a memory struct of this type.
+	FunctionTypePointer constructorType() const;
+
 	std::pair<u256, unsigned> const& getStorageOffsetsOfMember(std::string const& _name) const;
+	u256 memoryOffsetOfMember(std::string const& _name) const;
 
 	StructDefinition const& structDefinition() const { return m_struct; }
 
