@@ -33,6 +33,7 @@ const char* TransactionQueueTraceChannel::name() { return EthCyan " ┅▶"; }
 
 ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallback const& _cb, IfDropped _ik)
 {
+	m_limit = 256;
 	// Check if we already know this transaction.
 	h256 h = sha3(_transactionRLP);
 
@@ -151,7 +152,6 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 		}
 		// If valid, append to blocks.
 		insertCurrent_WITH_LOCK(make_pair(_h, _transaction));
-		m_known.insert(_h);
 		if (_cb)
 			m_callbacks[_h] = _cb;
 		clog(TransactionQueueTraceChannel) << "Queued vaguely legit-looking transaction" << _h;
@@ -236,6 +236,7 @@ void TransactionQueue::insertCurrent_WITH_LOCK(std::pair<h256, Transaction> cons
 				m_future.erase(t.from());
 		}
 	}
+	m_known.insert(_p.first);
 }
 
 bool TransactionQueue::remove_WITH_LOCK(h256 const& _txHash)
@@ -252,6 +253,7 @@ bool TransactionQueue::remove_WITH_LOCK(h256 const& _txHash)
 	m_currentByHash.erase(t);
 	if (it->second.empty())
 		m_currentByAddressAndNonce.erase(it);
+	m_known.erase(_txHash);
 	return true;
 }
 
@@ -304,9 +306,9 @@ void TransactionQueue::drop(h256 const& _txHash)
 
 	UpgradeGuard ul(l);
 	m_dropped.insert(_txHash);
-	m_known.erase(_txHash);
 
 	remove_WITH_LOCK(_txHash);
+
 }
 
 void TransactionQueue::clear()
