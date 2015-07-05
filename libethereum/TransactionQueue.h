@@ -67,7 +67,7 @@ public:
 	ImportResult import(bytes const& _tx, ImportCallback const& _cb = ImportCallback(), IfDropped _ik = IfDropped::Ignore) { return import(&_tx, _cb, _ik); }
 	ImportResult import(bytesConstRef _tx, ImportCallback const& _cb = ImportCallback(), IfDropped _ik = IfDropped::Ignore);
 
-	void drop(h256 const& _txHash);
+	void drop(h256 const& _txHash, ImportResult _ir = ImportResult::Unknown);
 
 	unsigned waiting(Address const& _a) const;
 	std::unordered_map<h256, Transaction> transactions() const;

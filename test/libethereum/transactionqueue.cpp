@@ -40,13 +40,15 @@ BOOST_AUTO_TEST_CASE(maxNonce)
 	Address dest = Address("0x095e7baea6a6c7c4c2dfeb977efac326af552d87");
 	Address to = Address("0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b");
 	Secret sec = Secret("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8");
-	Transaction tx0(0, gasCost, gas, dest, bytes(), 0, sec );
-	Transaction tx0_1(1, gasCost, gas, dest, bytes(), 0, sec );
-	Transaction tx1(0, gasCost, gas, dest, bytes(), 1, sec );
-	Transaction tx2(0, gasCost, gas, dest, bytes(), 2, sec );
-	Transaction tx9(0, gasCost, gas, dest, bytes(), 9, sec );
+	Transaction tx0(0, gasCost, gas, dest, bytes(), 0, sec);
+	Transaction tx0_1(1, gasCost, gas, dest, bytes(), 0, sec);
+	Transaction tx1(0, gasCost, gas, dest, bytes(), 1, sec);
+	Transaction tx2(0, gasCost, gas, dest, bytes(), 2, sec);
+	Transaction tx9(0, gasCost, gas, dest, bytes(), 9, sec);
 
-	txq.import(tx0);
+	txq.import(tx0.rlp());
+	while (txq.transactions().empty())
+		this_thread::sleep_for(chrono::milliseconds(20));
 	BOOST_CHECK(1 == txq.maxNonce(to));
 	txq.import(tx0);
 	BOOST_CHECK(1 == txq.maxNonce(to));
@@ -58,7 +60,6 @@ BOOST_AUTO_TEST_CASE(maxNonce)
 	BOOST_CHECK(10 == txq.maxNonce(to));
 	txq.import(tx2);
 	BOOST_CHECK(10 == txq.maxNonce(to));
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()
