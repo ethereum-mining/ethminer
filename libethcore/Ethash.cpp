@@ -225,6 +225,29 @@ std::string Ethash::CPUMiner::platformInfo()
 
 #if ETH_ETHASHCL || !ETH_TRUE
 
+using UniqueGuard = std::unique_lock<std::mutex>;
+
+template <class N>
+class Notified
+{
+public:
+	Notified() {}
+	Notified(N const& _v): m_value(_v) {}
+	Notified(Notified const&) = delete;
+	Notified& operator=(N const& _v) { UniqueGuard l(m_mutex); m_value = _v; m_cv.notify_all(); return *this; }
+
+	operator N() const { UniqueGuard l(m_mutex); return m_value; }
+
+	void wait() const { UniqueGuard l(m_mutex); m_cv.wait(l); }
+	void wait(N const& _v) const { UniqueGuard l(m_mutex); m_cv.wait(l, [&](){return m_value == _v;}); }
+	template <class F> void wait(F const& _f) const { UniqueGuard l(m_mutex); m_cv.wait(l, _f); }
+
+private:
+	mutable Mutex m_mutex;
+	mutable std::condition_variable m_cv;
+	N m_value;
+};
+
 class EthashCLHook: public ethash_cl_miner::search_hook
 {
 public:
