@@ -23,6 +23,7 @@
 
 #include <mutex>
 #include <atomic>
+#include <condition_variable>
 #include <boost/thread.hpp>
 
 namespace dev
@@ -33,6 +34,7 @@ using RecursiveMutex = std::recursive_mutex;
 using SharedMutex = boost::shared_mutex;
 
 using Guard = std::lock_guard<std::mutex>;
+using UniqueGuard = std::unique_lock<std::mutex>;
 using RecursiveGuard = std::lock_guard<std::recursive_mutex>;
 using ReadGuard = boost::shared_lock<boost::shared_mutex>;
 using UpgradableGuard = boost::upgrade_lock<boost::shared_mutex>;
@@ -121,5 +123,32 @@ using SpinGuard = std::lock_guard<SpinLock>;
 	for (GenericUnguardSharedBool<SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
 #define DEV_WRITE_UNGUARDED(MUTEX) \
 	for (GenericUnguardBool<SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
+
+template <class N>
+class Notified
+{
+public:
+	Notified() {}
+	Notified(N const& _v): m_value(_v) {}
+	Notified(Notified const&) = delete;
+	Notified& operator=(N const& _v) { UniqueGuard l(m_mutex); m_value = _v; m_cv.notify_all(); return *this; }
+
+	operator N() const { UniqueGuard l(m_mutex); return m_value; }
+
+	void wait() const { UniqueGuard l(m_mutex); m_cv.wait(l); }
+	void wait(N const& _v) const { UniqueGuard l(m_mutex); m_cv.wait(l, [&](){return m_value == _v;}); }
+	void wait_not(N const& _v) const { UniqueGuard l(m_mutex); m_cv.wait(l, [&](){return m_value != _v;}); }
+	template <class F> void wait(F const& _f) const { UniqueGuard l(m_mutex); m_cv.wait(l, _f); }
+
+	template <class R, class P> void wait(std::chrono::duration<R, P> const& _duration) const { UniqueGuard l(m_mutex); m_cv.wait_for(l, _duration); }
+	template <class R, class P> void wait(std::chrono::duration<R, P> const& _duration, N const& _v) const { UniqueGuard l(m_mutex); m_cv.wait_for(l, _duration, [&](){return m_value == _v;}); }
+	template <class R, class P> void wait_not(std::chrono::duration<R, P> const& _duration, N const& _v) const { UniqueGuard l(m_mutex); m_cv.wait_for(l, _duration, [&](){return m_value != _v;}); }
+	template <class R, class P, class F> void wait(std::chrono::duration<R, P> const& _duration, F const& _f) const { UniqueGuard l(m_mutex); m_cv.wait_for(l, _duration, _f); }
+
+private:
+	mutable Mutex m_mutex;
+	mutable std::condition_variable m_cv;
+	N m_value;
+};
 
 }
