@@ -113,7 +113,12 @@ enum class ImportResult
 	AlreadyKnown,
 	Malformed,
 	OverbidGasPrice,
-	BadChain
+	GasPriceTooLow,
+	BadChain,
+	NonceTooLow,
+	FarAway,
+	TooMuchGas,
+	Unknown
 };
 
 struct ImportRequirements
