@@ -55,7 +55,7 @@ BOOST_AUTO_TEST_CASE(host)
 	auto node2 = host2.id();
 	host2.start();
 	
-	while (!host2.isStarted())
+	while (!host2.haveNetwork())
 		this_thread::sleep_for(chrono::milliseconds(20));
 	host1.addNode(node2, NodeIPEndpoint(bi::address::from_string("127.0.0.1"), host2prefs.listenPort, host2prefs.listenPort));
 	
