@@ -29,8 +29,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _checkSig, h256 const& _precomputed):
-	m_hashWith(_precomputed)
+TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _checkSig)
 {
 	int field = 0;
 	RLP rlp(_rlpData);
@@ -55,7 +54,7 @@ TransactionBase::TransactionBase(bytesConstRef _rlpData, CheckTransaction _check
 		h256 s = rlp[field = 8].toInt<u256>();
 
 		if (rlp.itemCount() > 9)
-			BOOST_THROW_EXCEPTION(InvalidTransactionFormat() << errinfo_comment("too many fields in the transaction RLP"));
+			BOOST_THROW_EXCEPTION(InvalidTransactionFormat() << errinfo_comment("to many fields in the transaction RLP"));
 
 		m_vrs = SignatureStruct{ r, s, v };
 		if (_checkSig >= CheckTransaction::Cheap && !m_vrs.isValid())
