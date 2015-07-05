@@ -24,6 +24,7 @@
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethereum/CanonBlockChain.h>
+#include <libethereum/TransactionQueue.h>
 #include <test/TestHelper.h>
 
 using namespace std;
