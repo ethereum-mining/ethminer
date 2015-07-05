@@ -244,7 +244,7 @@ BOOST_AUTO_TEST_CASE(bloomFilterRaw)
 	BOOST_REQUIRE(!f.contains(b00110111));
 }
 
-static const unsigned DistributionTestSize = 8;
+static const unsigned DistributionTestSize = TopicBloomFilterSize;
 static const unsigned TestArrSize = 8 * DistributionTestSize;
 
 void updateDistribution(FixedHash<DistributionTestSize> const& _h, array<unsigned, TestArrSize>& _distribution)
@@ -271,10 +271,10 @@ BOOST_AUTO_TEST_CASE(distributionRate)
 
 	Topic x(0xC0FFEE); // deterministic pseudorandom value
 
-	for (unsigned i = 0; i < 22000; ++i)
+	for (unsigned i = 0; i < 26000; ++i)
 	{
 		x = sha3(x);
-		FixedHash<DistributionTestSize> h = x.template bloomPart<BitsPerBloom, DistributionTestSize>();
+		FixedHash<DistributionTestSize> h = TopicBloomFilter::bloom(abridge(x));
 		updateDistribution(h, distribution);
 	}
 
@@ -283,16 +283,25 @@ BOOST_AUTO_TEST_CASE(distributionRate)
 		average += distribution[i];
 
 	average /= TestArrSize;
-	unsigned deviation = average / 10; // approx. 10%
+	unsigned deviation = average / 3;
 	unsigned maxAllowed = average + deviation;
 	unsigned minAllowed = average - deviation;
 
+	unsigned maximum = 0;
+	unsigned minimum = 0xFFFFFFFF;
+
 	for (unsigned i = 0; i < TestArrSize; ++i)
 	{
-		//cnote << i << ":" << distribution[i];
-		BOOST_REQUIRE(distribution[i] > minAllowed);
-		BOOST_REQUIRE(distribution[i] < maxAllowed);
+		unsigned const& z = distribution[i];
+		if (z > maximum)
+			maximum = z;
+		else if (z < minimum)
+			minimum = z;
 	}
+
+	cnote << minimum << average << maximum;
+	BOOST_REQUIRE(minimum > minAllowed);
+	BOOST_REQUIRE(maximum < maxAllowed);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
