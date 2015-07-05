@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include "Common.h"
 
 namespace dev
@@ -37,7 +38,7 @@ struct RLPXInvalidPacket: virtual dev::Exception {};
 class RLPXPacket
 {
 public:
-	static bytesConstRef nextRLP(bytesConstRef _b) { try { RLP r(_b, RLP::AllowNonCanon); auto s = r.actualSize(); if (s >= _b.size()) return _b.cropped(s); } catch(...) {} return bytesConstRef(); }
+	static bytesConstRef nextRLP(bytesConstRef _b) { try { RLP r(_b, RLP::AllowNonCanon); return _b.cropped(0, std::min((size_t)r.actualSize(), _b.size())); } catch(...) {} return bytesConstRef(); }
 	
 	/// Construct complete packet. RLPStream data is moved.
 	RLPXPacket(unsigned _capId, unsigned _type, RLPStream& _rlps): m_cap(_capId), m_type(_type), m_data(std::move(_rlps.out())) { if (!_type && !m_data.size()) BOOST_THROW_EXCEPTION(RLPXNullPacket()); }
@@ -59,7 +60,7 @@ public:
 	
 
 protected:
-	unsigned getType(bytesConstRef _rlp) { return RLP(_rlp.cropped(1)).toInt<unsigned>(); }
+	unsigned getType(bytesConstRef _rlp) { return RLP(_rlp.cropped(0, 1)).toInt<unsigned>(); }
 	
 	unsigned m_cap;
 	unsigned m_type;

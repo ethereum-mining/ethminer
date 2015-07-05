@@ -55,31 +55,36 @@ public:
 			BOOST_THROW_EXCEPTION(RLPXFrameDecrytFailed());
 		
 		std::vector<RLPXPacket> ret;
-		if (!_frame.size() || _frame.size() > _totalSize)
+		if (!_sequence && (!_frame.size() || _frame.size() > _totalSize))
 			return ret;
-
+		
+		// trim mac
+		bytesConstRef buffer = _frame.cropped(0, _frame.size() - h128::size);
+		// continue populating incomplete packets
 		if (_sequence && m_incomplete.count(_seq))
 		{
 			uint32_t& remaining = m_incomplete.at(_seq).second;
-			if (!_totalSize && _frame.size() <= remaining)
+			if (!_totalSize && buffer.size() > 0 && buffer.size() <= remaining)
 			{
+				remaining -= buffer.size();
+				
 				RLPXPacket& p = m_incomplete.at(_seq).first;
-				if (_frame.size() > remaining)
-					return ret;
-				else if(p.streamIn(_frame))
-				{
+				if(p.streamIn(buffer) && !remaining)
 					ret.push_back(std::move(p));
+				if (!remaining)
 					m_incomplete.erase(_seq);
-				}
-				else
-					remaining -= _frame.size();
+				
+				if (!ret.empty() && remaining)
+					BOOST_THROW_EXCEPTION(RLPXInvalidPacket());
+				else if (ret.empty() && !remaining)
+					BOOST_THROW_EXCEPTION(RLPXInvalidPacket());
+
 				return ret;
 			}
 			else
 				m_incomplete.erase(_seq);
 		}
-
-		bytesConstRef buffer(_frame);
+		
 		while (!buffer.empty())
 		{
 			auto type = RLPXPacket::nextRLP(buffer);
@@ -96,14 +101,15 @@ public:
 			if (p.isValid())
 				ret.push_back(std::move(p));
 			else if (_sequence)
-				m_incomplete.insert(std::make_pair(_seq, std::make_pair(std::move(p), _totalSize - _frame.size())));
+				// ugh: need to make total-size inclusive of packet-type :/
+				m_incomplete.insert(std::make_pair(_seq, std::make_pair(std::move(p), _totalSize - packet.size())));
 		}
 		return ret;
 	}
 	
 protected:
 	uint16_t m_protocolType;
-	std::map<uint16_t, std::pair<RLPXPacket, uint32_t>> m_incomplete;	///< Incomplete packets and bytes remaining.
+	std::map<uint16_t, std::pair<RLPXPacket, uint32_t>> m_incomplete;	///< Sequence: Incomplete packet and bytes remaining.
 };
 
 /**
