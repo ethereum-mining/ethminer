@@ -31,34 +31,12 @@ using namespace dev::eth;
 const char* TransactionQueueChannel::name() { return EthCyan "┉┅▶"; }
 const char* TransactionQueueTraceChannel::name() { return EthCyan " ┅▶"; }
 
-TransactionQueue::TransactionQueue()
-{
-	// Allow some room for other activity
-	unsigned verifierThreads = std::max(thread::hardware_concurrency(), 3U) - 2U;
-	for (unsigned i = 0; i < verifierThreads; ++i)
-		m_verifiers.emplace_back([=](){
-			setThreadName("txcheck" + toString(i));
-			this->verifierBody();
-		});
-}
-
-TransactionQueue::~TransactionQueue()
-{
-	m_deleting = true;
-	m_moreToVerify.notify_all();
-	for (auto& i: m_verifiers)
-		i.join();
-}
-
-bool TransactionQueue::invariants() const
-{
-	return true;
-}
-
 ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallback const& _cb, IfDropped _ik)
 {
 	// Check if we already know this transaction.
-	auto h = sha3(_transactionRLP);
+	h256 h = sha3(_transactionRLP);
+
+	Transaction t;
 	ImportResult ir;
 	{
 		UpgradableGuard l(m_lock);
@@ -67,69 +45,24 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallb
 		if (ir != ImportResult::Success)
 			return ir;
 
-		UpgradeGuard ll(l);
-		m_submitted.insert(h);
-		DEV_GUARDED(m_verification)
+		try
 		{
-			m_unverified.push_back(UnverifiedTransaction{h, _transactionRLP.toBytes(), _cb});
-			m_moreToVerify.notify_one();
+			t = Transaction(_transactionRLP, CheckTransaction::Everything);
+			UpgradeGuard ul(l);
+			ir = manageImport_WITH_LOCK(h, t, _cb);
+		}
+		catch (...)
+		{
+			return ImportResult::Malformed;
 		}
 	}
 //	cdebug << "import-END: Nonce of" << t.sender() << "now" << maxNonce(t.sender());
 	return ir;
 }
 
-void TransactionQueue::verifierBody()
-{
-	while (!m_deleting)
-	{
-		UnverifiedTransaction work;
-
-		{
-			DEV_INVARIANT_CHECK;
-			unique_lock<Mutex> l(m_verification);
-			m_moreToVerify.wait(l, [&](){ return !m_unverified.empty() || m_deleting; });
-			if (m_deleting)
-				return;
-			swap(work, m_unverified.front());
-			m_unverified.pop_front();
-		}
-
-		Transaction res;
-		try
-		{
-			res = Transaction(work.data, CheckTransaction::Everything, work.hash);
-		}
-		catch (Exception& ex)
-		{
-			cdebug << "Bad transation inserted" << ex.what();
-			cdebug << boost::diagnostic_information(ex);
-			// bad transaction.
-			// has to be this order as that's how invariants() assumes.
-			WriteGuard l(m_lock);
-			DEV_INVARIANT_CHECK;
-			m_submitted.erase(work.hash);
-			m_dropped.insert(work.hash);
-			if (work.cb)
-				work.cb(ImportResult::Malformed);
-			continue;
-		}
-
-		ImportResult ir;
-		{
-			WriteGuard l(m_lock);
-			DEV_INVARIANT_CHECK;
-			m_submitted.erase(work.hash);
-			ir = manageImport_WITH_LOCK(work.hash, res, work.cb);
-		}
-		if (ir != ImportResult::Success && work.cb)
-			work.cb(ir);
-	}
-}
-
 ImportResult TransactionQueue::check_WITH_LOCK(h256 const& _h, IfDropped _ik)
 {
-	if (m_known.count(_h) || m_submitted.count(_h))
+	if (m_known.count(_h))
 		return ImportResult::AlreadyKnown;
 
 	if (m_dropped.count(_h) && _ik == IfDropped::Ignore)
@@ -306,24 +239,7 @@ void TransactionQueue::setFuture(std::pair<h256, Transaction> const& _t)
 void TransactionQueue::noteGood(std::pair<h256, Transaction> const& _t)
 {
 //	cdebug << "txQ::noteGood" << _t.first;
-	UpgradableGuard l(m_lock);
-
-	if (!m_known.count(_t.first))
-		return;
-
-	// Point out it has been successfully been placed in a block.
-	if (m_callbacks.count(_t.first) && m_callbacks[_t.first])
-		m_callbacks[_t.first](ImportResult::Success);
-
-	UpgradeGuard l2(l);
-
-	// Erase the transaction itself.
-	m_current.erase(_t.first);
-	m_callbacks.erase(_t.first);
-
-	// Bring the a now-value transaction with the next nonce from m_future into m_current.
-	// At present it reinserts all transactions from the good transaction's sender.
-	// TODO: Should really just insert the transaction with the following nonce.
+	WriteGuard l(m_lock);
 	auto r = m_senders.equal_range(_t.second.sender());
 	for (auto it = r.first; it != r.second; ++it)
 	{
@@ -336,20 +252,16 @@ void TransactionQueue::noteGood(std::pair<h256, Transaction> const& _t)
 	}
 }
 
-void TransactionQueue::drop(h256 const& _txHash, ImportResult _ir)
+void TransactionQueue::drop(h256 const& _txHash)
 {
 	UpgradableGuard l(m_lock);
 
 	if (!m_known.count(_txHash))
 		return;
 
-	if (m_callbacks.count(_txHash) && m_callbacks[_txHash])
-		m_callbacks[_txHash](_ir);
-
 	UpgradeGuard ul(l);
 	m_dropped.insert(_txHash);
 	m_known.erase(_txHash);
-	m_callbacks.erase(_txHash);
 
 	remove_WITH_LOCK(_txHash);
 }
