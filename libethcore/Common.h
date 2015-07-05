@@ -171,7 +171,7 @@ public:
 	void operator()(Args&... _args) { for (auto const& f: m_fire) f.second->fire(std::forward<Args>(_args)...); }
 
 private:
-	std::map<unsigned, std::shared_ptr<Signal::HandlerAux>> m_fire;
+	std::map<unsigned, std::shared_ptr<typename Signal::HandlerAux>> m_fire;
 };
 
 template<class... Args> using Handler = std::shared_ptr<typename Signal<Args...>::HandlerAux>;
