@@ -52,7 +52,7 @@ public:
 	
 	unsigned type() const { return m_type; }
 	bytes const& data() const { return m_data; }
-	size_t size() const { try { return RLP(m_data, RLP::LaisezFaire).actualSize(); } catch(...) { return 0; } }
+	size_t size() const { try { return RLP(m_data, RLP::LaissezFaire).actualSize(); } catch(...) { return 0; } }
 
 	bool streamIn(bytesConstRef _in) { auto offset = m_data.size(); m_data.resize(offset + _in.size()); _in.copyTo(bytesRef(&m_data).cropped(offset)); return isValid(); }
 	
