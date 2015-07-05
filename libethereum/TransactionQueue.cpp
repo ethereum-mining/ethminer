@@ -31,12 +31,34 @@ using namespace dev::eth;
 const char* TransactionQueueChannel::name() { return EthCyan "┉┅▶"; }
 const char* TransactionQueueTraceChannel::name() { return EthCyan " ┅▶"; }
 
+TransactionQueue::TransactionQueue()
+{
+	// Allow some room for other activity
+	unsigned verifierThreads = std::max(thread::hardware_concurrency(), 3U) - 2U;
+	for (unsigned i = 0; i < verifierThreads; ++i)
+		m_verifiers.emplace_back([=](){
+			setThreadName("txcheck" + toString(i));
+			this->verifierBody();
+		});
+}
+
+TransactionQueue::~TransactionQueue()
+{
+	m_deleting = true;
+	m_moreToVerify.notify_all();
+	for (auto& i: m_verifiers)
+		i.join();
+}
+
+bool TransactionQueue::invariants() const
+{
+	return true;
+}
+
 ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallback const& _cb, IfDropped _ik)
 {
 	// Check if we already know this transaction.
-	h256 h = sha3(_transactionRLP);
-
-	Transaction t;
+	auto h = sha3(_transactionRLP);
 	ImportResult ir;
 	{
 		UpgradableGuard l(m_lock);
@@ -45,24 +67,67 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallb
 		if (ir != ImportResult::Success)
 			return ir;
 
-		try
+		UpgradeGuard ll(l);
+		m_submitted.insert(h);
+		DEV_GUARDED(m_verification)
 		{
-			t = Transaction(_transactionRLP, CheckTransaction::Everything);
-			UpgradeGuard ul(l);
-			ir = manageImport_WITH_LOCK(h, t, _cb);
-		}
-		catch (...)
-		{
-			return ImportResult::Malformed;
+			m_unverified.push_back(UnverifiedTransaction{h, _transactionRLP.toBytes(), _cb});
+			m_moreToVerify.notify_one();
 		}
 	}
 //	cdebug << "import-END: Nonce of" << t.sender() << "now" << maxNonce(t.sender());
 	return ir;
 }
 
+void TransactionQueue::verifierBody()
+{
+	while (!m_deleting)
+	{
+		UnverifiedTransaction work;
+
+		{
+			DEV_INVARIANT_CHECK;
+			unique_lock<Mutex> l(m_verification);
+			m_moreToVerify.wait(l, [&](){ return !m_unverified.empty() || m_deleting; });
+			if (m_deleting)
+				return;
+			swap(work, m_unverified.front());
+			m_unverified.pop_front();
+		}
+
+		Transaction res;
+		try
+		{
+			res = Transaction(work.data, CheckTransaction::Everything, work.hash);
+		}
+		catch (...)
+		{
+			// bad transaction.
+			// has to be this order as that's how invariants() assumes.
+			WriteGuard l(m_lock);
+			DEV_INVARIANT_CHECK;
+			m_submitted.erase(work.hash);
+			m_dropped.insert(work.hash);
+			if (work.cb)
+				work.cb(ImportResult::Malformed);
+			continue;
+		}
+
+		ImportResult ir;
+		{
+			WriteGuard l(m_lock);
+			DEV_INVARIANT_CHECK;
+			m_submitted.erase(work.hash);
+			ir = manageImport_WITH_LOCK(work.hash, res, work.cb);
+		}
+		if (ir != ImportResult::Success && work.cb)
+			work.cb(ir);
+	}
+}
+
 ImportResult TransactionQueue::check_WITH_LOCK(h256 const& _h, IfDropped _ik)
 {
-	if (m_known.count(_h))
+	if (m_known.count(_h) || m_submitted.count(_h))
 		return ImportResult::AlreadyKnown;
 
 	if (m_dropped.count(_h) && _ik == IfDropped::Ignore)
