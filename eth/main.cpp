@@ -115,6 +115,7 @@ void interactiveHelp()
 		<< "    reprocess <block>  Reprocess a given block." << endl
 		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
+		<< "    hashrate  Print the current hashrate in hashes per second if the client is mining." << endl
 		<< "    exit  Exits the application." << endl;
 }
 
@@ -282,6 +283,779 @@ void stopMiningAfterXBlocks(eth::Client* _c, unsigned _start, unsigned _mining)
 	if (_c->isMining() && _c->blockChain().details().number - _start == _mining)
 		_c->stopMining();
 	this_thread::sleep_for(chrono::milliseconds(100));
+}
+
+void interactiveMode(eth::Client* c, std::shared_ptr<eth::TrivialGasPricer> gasPricer, WebThreeDirect& web3, KeyManager& keyManager, string& logbuf, string& additional, function<string(string const&)> getPassword, function<string(Address const&)> getAccountPassword, NetworkPreferences netPrefs, Address beneficiary, Address signingKey, TransactionPriority priority)
+{
+	additional = "Press Enter";
+	string l;
+	while (!g_exit)
+	{
+		g_silence = false;
+		cout << logbuf << "Press Enter" << flush;
+		std::getline(cin, l);
+		logbuf.clear();
+		g_silence = true;
+
+#if ETH_READLINE
+		if (l.size())
+			add_history(l.c_str());
+		if (auto c = readline("> "))
+		{
+			l = c;
+			free(c);
+		}
+		else
+			break;
+#else
+		string l;
+		cout << "> " << flush;
+		std::getline(cin, l);
+#endif
+		istringstream iss(l);
+		string cmd;
+		iss >> cmd;
+		boost::to_lower(cmd);
+		if (cmd == "netstart")
+		{
+			iss >> netPrefs.listenPort;
+			web3.setNetworkPreferences(netPrefs);
+			web3.startNetwork();
+		}
+		else if (cmd == "connect")
+		{
+			string addrPort;
+			iss >> addrPort;
+			web3.addNode(p2p::NodeId(), addrPort);
+		}
+		else if (cmd == "netstop")
+			web3.stopNetwork();
+		else if (c && cmd == "minestart")
+			c->startMining();
+		else if (c && cmd == "minestop")
+			c->stopMining();
+		else if (c && cmd == "mineforce")
+		{
+			string enable;
+			iss >> enable;
+			c->setForceMining(isTrue(enable));
+		}
+		else if (cmd == "verbosity")
+		{
+			if (iss.peek() != -1)
+				iss >> g_logVerbosity;
+			cout << "Verbosity: " << g_logVerbosity << endl;
+		}
+		else if (cmd == "address")
+		{
+			cout << "Current mining beneficiary:" << endl << beneficiary << endl;
+			cout << "Current signing account:" << endl << signingKey << endl;
+		}
+		else if (c && cmd == "blockhashfromnumber")
+		{
+			if (iss.peek() != -1)
+			{
+				unsigned number;
+				iss >> number;
+				cout << " hash of block: " << c->hashFromNumber(number).hex() << endl;
+			}
+		}
+		else if (c && cmd == "numberfromblockhash")
+		{
+			if (iss.peek() != -1)
+			{
+				string stringHash;
+				iss >> stringHash;
+
+				h256 hash = h256(fromHex(stringHash));
+				cout << " number of block: " << c->numberFromHash(hash) << endl;
+			}
+		}
+		else if (c && cmd == "block")
+			cout << "Current block: " << c->blockChain().details().number << endl;
+		else if (c && cmd == "blockqueue")
+			cout << "Current blockqueue status: " << endl << c->blockQueueStatus() << endl;
+		else if (c && cmd == "hashrate")
+			cout << "Current hash rate: " << toString(c->hashrate()) << " hashes per second." << endl;
+		else if (c && cmd == "findblock")
+		{
+			if (iss.peek() != -1)
+			{
+				string stringHash;
+				iss >> stringHash;
+
+				h256 hash = h256(fromHex(stringHash));
+
+				// search in blockchain
+				cout << "search in blockchain... " << endl;
+				try
+				{
+					cout << c->blockInfo(hash) << endl;
+				}
+				catch(Exception& _e)
+				{
+					cout << "block not in blockchain" << endl;
+					cout << boost::diagnostic_information(_e) << endl;
+				}
+
+				cout << "search in blockqueue... " << endl;
+
+				switch(c->blockQueue().blockStatus(hash))
+				{
+				case QueueStatus::Ready:
+					cout << "Ready" << endl;
+					break;
+				case QueueStatus::Importing:
+					cout << "Importing" << endl;
+					break;
+				case QueueStatus::UnknownParent:
+					cout << "UnknownParent" << endl;
+					break;
+				case QueueStatus::Bad:
+					cout << "Bad" << endl;
+					break;
+				case QueueStatus::Unknown:
+					cout << "Unknown" << endl;
+					break;
+				default:
+					cout << "invalid queueStatus" << endl;
+				}
+			}
+			else
+				cwarn << "Require parameter: findblock HASH";
+		}
+		else if (c && cmd == "firstunknown")
+			cout << "first unknown blockhash: " << c->blockQueue().firstUnknown().hex() << endl;
+		else if (c && cmd == "retryunknown")
+			c->retryUnknown();
+		else if (cmd == "peers")
+		{
+			for (auto it: web3.peers())
+				cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
+					<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
+					<< endl;
+		}
+		else if (cmd == "newaccount")
+		{
+			string name;
+			std::getline(iss, name);
+			auto s = Secret::random();
+			string password;
+			while (password.empty())
+			{
+				password = getPassword("Please enter a password to protect this key (press enter for protection only be the MASTER password/keystore): ");
+				string confirm = getPassword("Please confirm the password by entering it again: ");
+				if (password != confirm)
+				{
+					cout << "Passwords were different. Try again." << endl;
+					password.clear();
+				}
+			}
+			if (!password.empty())
+			{
+				cout << "Enter a hint for this password: " << flush;
+				string hint;
+				std::getline(cin, hint);
+				keyManager.import(s, name, password, hint);
+			}
+			else
+				keyManager.import(s, name);
+			cout << "New account created: " << toAddress(s);
+		}
+		else if (c && cmd == "accounts")
+		{
+			cout << "Accounts:" << endl;
+			u256 total = 0;
+			for (auto const& address: keyManager.accounts())
+			{
+				auto b = c->balanceAt(address);
+				cout << ((address == signingKey) ? "SIGNING " : "        ") << ((address == beneficiary) ? "COINBASE " : "         ") << keyManager.accountName(address) << " (" << address << "): " << formatBalance(b) << " = " << b << " wei" << endl;
+				total += b;
+			}
+			cout << "Total: " << formatBalance(total) << " = " << total << " wei" << endl;
+		}
+		else if (c && cmd == "transact")
+		{
+			auto const& bc =c->blockChain();
+			auto h = bc.currentHash();
+			auto blockData = bc.block(h);
+			BlockInfo info(blockData);
+			if (iss.peek() != -1)
+			{
+				string hexAddr;
+				u256 amount;
+				u256 gasPrice;
+				u256 gas;
+				string sechex;
+				string sdata;
+
+				iss >> hexAddr >> amount >> gasPrice >> gas >> sechex >> sdata;
+
+				if (!gasPrice)
+					gasPrice = gasPricer->bid(priority);
+
+				cnote << "Data:";
+				cnote << sdata;
+				bytes data = dev::eth::parseData(sdata);
+				cnote << "Bytes:";
+				string sbd = asString(data);
+				bytes bbd = asBytes(sbd);
+				stringstream ssbd;
+				ssbd << bbd;
+				cnote << ssbd.str();
+				int ssize = sechex.length();
+				int size = hexAddr.length();
+				u256 minGas = (u256)Transaction::gasRequired(data, 0);
+				if (size < 40)
+				{
+					if (size > 0)
+						cwarn << "Invalid address length:" << size;
+				}
+				else if (gas < minGas)
+					cwarn << "Minimum gas amount is" << minGas;
+				else if (ssize < 40)
+				{
+					if (ssize > 0)
+						cwarn << "Invalid secret length:" << ssize;
+				}
+				else
+				{
+					try
+					{
+						Secret secret = h256(fromHex(sechex));
+						Address dest = h160(fromHex(hexAddr));
+						c->submitTransaction(secret, amount, dest, data, gas, gasPrice);
+					}
+					catch (BadHexCharacter& _e)
+					{
+						cwarn << "invalid hex character, transaction rejected";
+						cwarn << boost::diagnostic_information(_e);
+					}
+					catch (...)
+					{
+						cwarn << "transaction rejected";
+					}
+				}
+			}
+			else
+				cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
+		}
+
+		else if (c && cmd == "transactnonce")
+		{
+			auto const& bc =c->blockChain();
+			auto h = bc.currentHash();
+			auto blockData = bc.block(h);
+			BlockInfo info(blockData);
+			if (iss.peek() != -1)
+			{
+				string hexAddr;
+				u256 amount;
+				u256 gasPrice;
+				u256 gas;
+				string sechex;
+				string sdata;
+				u256 nonce;
+
+				iss >> hexAddr >> amount >> gasPrice >> gas >> sechex >> sdata >> nonce;
+
+				if (!gasPrice)
+					gasPrice = gasPricer->bid(priority);
+
+				cnote << "Data:";
+				cnote << sdata;
+				bytes data = dev::eth::parseData(sdata);
+				cnote << "Bytes:";
+				string sbd = asString(data);
+				bytes bbd = asBytes(sbd);
+				stringstream ssbd;
+				ssbd << bbd;
+				cnote << ssbd.str();
+				int ssize = sechex.length();
+				int size = hexAddr.length();
+				u256 minGas = (u256)Transaction::gasRequired(data, 0);
+				if (size < 40)
+				{
+					if (size > 0)
+						cwarn << "Invalid address length:" << size;
+				}
+				else if (gas < minGas)
+					cwarn << "Minimum gas amount is" << minGas;
+				else if (ssize < 40)
+				{
+					if (ssize > 0)
+						cwarn << "Invalid secret length:" << ssize;
+				}
+				else
+				{
+					try
+					{
+						Secret secret = h256(fromHex(sechex));
+						Address dest = h160(fromHex(hexAddr));
+						c->submitTransaction(secret, amount, dest, data, gas, gasPrice, nonce);
+					}
+					catch (BadHexCharacter& _e)
+					{
+						cwarn << "invalid hex character, transaction rejected";
+						cwarn << boost::diagnostic_information(_e);
+					}
+					catch (...)
+					{
+						cwarn << "transaction rejected";
+					}
+				}
+			}
+			else
+				cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA NONCE";
+		}
+
+		else if (c && cmd == "txcreate")
+		{
+			auto const& bc =c->blockChain();
+			auto h = bc.currentHash();
+			auto blockData = bc.block(h);
+			BlockInfo info(blockData);
+			if (iss.peek() != -1)
+			{
+				u256 amount;
+				u256 gasPrice;
+				u256 gas;
+				string sechex;
+				string sdata;
+
+				iss >> amount >> gasPrice >> gas >> sechex >> sdata;
+
+				if (!gasPrice)
+					gasPrice = gasPricer->bid(priority);
+
+				cnote << "Data:";
+				cnote << sdata;
+				bytes data = dev::eth::parseData(sdata);
+				cnote << "Bytes:";
+				string sbd = asString(data);
+				bytes bbd = asBytes(sbd);
+				stringstream ssbd;
+				ssbd << bbd;
+				cnote << ssbd.str();
+				int ssize = sechex.length();
+				u256 minGas = (u256)Transaction::gasRequired(data, 0);
+				if (gas < minGas)
+					cwarn << "Minimum gas amount is" << minGas;
+				else if (ssize < 40)
+				{
+					if (ssize > 0)
+						cwarn << "Invalid secret length:" << ssize;
+				}
+				else
+				{
+					try
+					{
+						Secret secret = h256(fromHex(sechex));
+						cout << " new contract address : " << c->submitTransaction(secret, amount, data, gas, gasPrice) << endl;
+					}
+					catch (BadHexCharacter& _e)
+					{
+						cwarn << "invalid hex character, transaction rejected";
+						cwarn << boost::diagnostic_information(_e);
+					}
+					catch (...)
+					{
+						cwarn << "transaction rejected";
+					}
+				}
+			}
+			else
+				cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET INIT";
+		}
+#if ETH_FATDB
+		else if (c && cmd == "listcontracts")
+		{
+			auto acs =c->addresses();
+			string ss;
+			for (auto const& i: acs)
+				if ( c->codeAt(i, PendingBlock).size())
+				{
+					ss = toString(i) + " : " + toString( c->balanceAt(i)) + " [" + toString((unsigned) c->countAt(i)) + "]";
+					cout << ss << endl;
+				}
+		}
+		else if (c && cmd == "listaccounts")
+		{
+			auto acs =c->addresses();
+			string ss;
+			for (auto const& i: acs)
+				if ( c->codeAt(i, PendingBlock).empty())
+				{
+					ss = toString(i) + " : " + toString( c->balanceAt(i)) + " [" + toString((unsigned) c->countAt(i)) + "]";
+					cout << ss << endl;
+				}
+		}
+		else if (c && cmd == "balanceat")
+		{
+			if (iss.peek() != -1)
+			{
+				string stringHash;
+				iss >> stringHash;
+
+				Address address = h160(fromHex(stringHash));
+
+				cout << "balance of " << stringHash << " is: " << toString(c->balanceAt(address)) << endl;
+			}
+		}
+		else if (c && cmd == "balanceatblock")
+		{
+			if (iss.peek() != -1)
+			{
+				string stringHash;
+				unsigned blocknumber;
+				iss >> stringHash >> blocknumber;
+
+				Address address = h160(fromHex(stringHash));
+
+				cout << "balance of " << stringHash << " is: " << toString(c->balanceAt(address, blocknumber)) << endl;
+			}
+		}
+		else if (c && cmd == "storageat")
+		{
+			if (iss.peek() != -1)
+			{
+				string stringHash;
+				iss >> stringHash;
+
+				Address address = h160(fromHex(stringHash));
+
+				cout << "storage at " << stringHash << " is: " << endl;
+				for (auto s: c->storageAt(address))
+					cout << toHex(s.first) << " : " << toHex(s.second) << endl;
+			}
+		}
+		else if (c && cmd == "storageatblock")
+		{
+			if (iss.peek() != -1)
+			{
+				string stringHash;
+				unsigned blocknumber;
+				iss >> stringHash >> blocknumber;
+
+				Address address = h160(fromHex(stringHash));
+
+				cout << "storage at " << stringHash << " is: " << endl;
+				for (auto s: c->storageAt(address, blocknumber))
+					cout << "\"0x" << toHex(s.first) << "\" : \"0x" << toHex(s.second) << "\"," << endl;
+			}
+		}
+		else if (c && cmd == "codeat")
+		{
+			if (iss.peek() != -1)
+			{
+				string stringHash;
+				iss >> stringHash;
+
+				Address address = h160(fromHex(stringHash));
+
+				cout << "code at " << stringHash << " is: " << toHex(c->codeAt(address)) << endl;
+			}
+		}
+#endif
+
+		else if (c && cmd == "send")
+		{
+			if (iss.peek() != -1)
+			{
+				string hexAddr;
+				u256 amount;
+
+				iss >> hexAddr >> amount;
+				int size = hexAddr.length();
+				if (size < 40)
+				{
+					if (size > 0)
+						cwarn << "Invalid address length:" << size;
+				}
+				else
+				{
+					auto const& bc =c->blockChain();
+					auto h = bc.currentHash();
+					auto blockData = bc.block(h);
+					BlockInfo info(blockData);
+					u256 minGas = (u256)Transaction::gasRequired(bytes(), 0);
+					try
+					{
+						Address dest = h160(fromHex(hexAddr, WhenError::Throw));
+						c->submitTransaction(keyManager.secret(signingKey, [&](){ return getAccountPassword(signingKey); }), amount, dest, bytes(), minGas);
+					}
+					catch (BadHexCharacter& _e)
+					{
+						cwarn << "invalid hex character, transaction rejected";
+						cwarn << boost::diagnostic_information(_e);
+					}
+					catch (...)
+					{
+						cwarn << "transaction rejected";
+					}
+				}
+			}
+			else
+				cwarn << "Require parameters: send ADDRESS AMOUNT";
+		}
+		else if (c && cmd == "contract")
+		{
+			auto const& bc =c->blockChain();
+			auto h = bc.currentHash();
+			auto blockData = bc.block(h);
+			BlockInfo info(blockData);
+			if (iss.peek() != -1)
+			{
+				u256 endowment;
+				u256 gas;
+				u256 gasPrice;
+				string sinit;
+				iss >> endowment >> gasPrice >> gas >> sinit;
+				trim_all(sinit);
+				int size = sinit.length();
+				bytes init;
+				cnote << "Init:";
+				cnote << sinit;
+				cnote << "Code size:" << size;
+				if (size < 1)
+					cwarn << "No code submitted";
+				else
+				{
+					cnote << "Assembled:";
+					stringstream ssc;
+					try
+					{
+						init = fromHex(sinit, WhenError::Throw);
+					}
+					catch (BadHexCharacter& _e)
+					{
+						cwarn << "invalid hex character, code rejected";
+						cwarn << boost::diagnostic_information(_e);
+						init = bytes();
+					}
+					catch (...)
+					{
+						cwarn << "code rejected";
+						init = bytes();
+					}
+					ssc.str(string());
+					ssc << disassemble(init);
+					cnote << "Init:";
+					cnote << ssc.str();
+				}
+				u256 minGas = (u256)Transaction::gasRequired(init, 0);
+				if (!init.size())
+					cwarn << "Contract creation aborted, no init code.";
+				else if (endowment < 0)
+					cwarn << "Invalid endowment";
+				else if (gas < minGas)
+					cwarn << "Minimum gas amount is" << minGas;
+				else
+					c->submitTransaction(keyManager.secret(signingKey, [&](){ return getAccountPassword(signingKey); }), endowment, init, gas, gasPrice);
+			}
+			else
+				cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
+		}
+		else if (c && cmd == "dumpreceipt")
+		{
+			unsigned block;
+			unsigned index;
+			iss >> block >> index;
+			dev::eth::TransactionReceipt r = c->blockChain().receipts(c->blockChain().numberHash(block)).receipts[index];
+			auto rb = r.rlp();
+			cout << "RLP: " << RLP(rb) << endl;
+			cout << "Hex: " << toHex(rb) << endl;
+			cout << r << endl;
+		}
+		else if (c && cmd == "reprocess")
+		{
+			string block;
+			iss >> block;
+			h256 blockHash;
+			try
+			{
+				if (block.size() == 64 || block.size() == 66)
+					blockHash = h256(block);
+				else
+					blockHash = c->blockChain().numberHash(stoi(block));
+				c->state(blockHash);
+			}
+			catch (...)
+			{}
+		}
+		else if (c && cmd == "dumptrace")
+		{
+			unsigned block;
+			unsigned index;
+			string filename;
+			string format;
+			iss >> block >> index >> filename >> format;
+			ofstream f;
+			f.open(filename);
+
+			dev::eth::State state = c->state(index + 1,c->blockChain().numberHash(block));
+			if (index < state.pending().size())
+			{
+				Executive e(state, c->blockChain(), 0);
+				Transaction t = state.pending()[index];
+				state = state.fromPending(index);
+				try
+				{
+					OnOpFunc oof;
+					if (format == "pretty")
+						oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, bigint gas, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
+						{
+							dev::eth::VM* vm = vvm;
+							dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
+							f << endl << "    STACK" << endl;
+							for (auto i: vm->stack())
+								f << (h256)i << endl;
+							f << "    MEMORY" << endl << dev::memDump(vm->memory());
+							f << "    STORAGE" << endl;
+							for (auto const& i: ext->state().storage(ext->myAddress))
+								f << showbase << hex << i.first << ": " << i.second << endl;
+							f << dec << ext->depth << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << gas << " | -" << dec << gasCost << " | " << newMemSize << "x32";
+						};
+					else if (format == "standard")
+						oof = [&](uint64_t, Instruction instr, bigint, bigint, bigint gas, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
+						{
+							dev::eth::VM* vm = vvm;
+							dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
+							f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)gas, 1)) << endl;
+						};
+					else if (format == "standard+")
+						oof = [&](uint64_t, Instruction instr, bigint, bigint, bigint gas, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
+						{
+							dev::eth::VM* vm = vvm;
+							dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
+							if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
+								for (auto const& i: ext->state().storage(ext->myAddress))
+									f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
+							f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)gas, 1)) << endl;
+						};
+					e.initialize(t);
+					if (!e.execute())
+						e.go(oof);
+					e.finalize();
+				}
+				catch(Exception const& _e)
+				{
+					// TODO: a bit more information here. this is probably quite worrying as the transaction is already in the blockchain.
+					cwarn << diagnostic_information(_e);
+				}
+			}
+		}
+		else if (c && cmd == "inspect")
+		{
+			string rechex;
+			iss >> rechex;
+
+			if (rechex.length() != 40)
+				cwarn << "Invalid address length";
+			else
+			{
+				auto h = h160(fromHex(rechex));
+				stringstream s;
+
+				try
+				{
+					auto storage =c->storageAt(h, PendingBlock);
+					for (auto const& i: storage)
+						s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
+					s << endl << disassemble( c->codeAt(h, PendingBlock)) << endl;
+
+					string outFile = getDataDir() + "/" + rechex + ".evm";
+					ofstream ofs;
+					ofs.open(outFile, ofstream::binary);
+					ofs.write(s.str().c_str(), s.str().length());
+					ofs.close();
+
+					cnote << "Saved" << rechex << "to" << outFile;
+				}
+				catch (dev::InvalidTrie)
+				{
+					cwarn << "Corrupted trie.";
+				}
+			}
+		}
+		else if (cmd == "setsigningkey")
+		{
+			if (iss.peek() != -1)
+			{
+				string hexSec;
+				iss >> hexSec;
+				signingKey = Address(fromHex(hexSec));
+			}
+			else
+				cwarn << "Require parameter: setSecret HEXSECRETKEY";
+		}
+		else if (cmd == "setaddress")
+		{
+			if (iss.peek() != -1)
+			{
+				string hexAddr;
+				iss >> hexAddr;
+				if (hexAddr.length() != 40)
+					cwarn << "Invalid address length: " << hexAddr.length();
+				else
+				{
+					try
+					{
+						beneficiary = h160(fromHex(hexAddr, WhenError::Throw));
+					}
+					catch (BadHexCharacter& _e)
+					{
+						cwarn << "invalid hex character, coinbase rejected";
+						cwarn << boost::diagnostic_information(_e);
+					}
+					catch (...)
+					{
+						cwarn << "coinbase rejected";
+					}
+				}
+			}
+			else
+				cwarn << "Require parameter: setAddress HEXADDRESS";
+		}
+		else if (cmd == "exportconfig")
+		{
+			if (iss.peek() != -1)
+			{
+				string path;
+				iss >> path;
+				RLPStream config(2);
+				config << signingKey << beneficiary;
+				writeFile(path, config.out());
+			}
+			else
+				cwarn << "Require parameter: exportConfig PATH";
+		}
+		else if (cmd == "importconfig")
+		{
+			if (iss.peek() != -1)
+			{
+				string path;
+				iss >> path;
+				bytes b = contents(path);
+				if (b.size())
+				{
+					RLP config(b);
+					signingKey = config[0].toHash<Address>();
+					beneficiary = config[1].toHash<Address>();
+				}
+				else
+					cwarn << path << "has no content!";
+			}
+			else
+				cwarn << "Require parameter: importConfig PATH";
+		}
+		else if (cmd == "help")
+			interactiveHelp();
+		else if (cmd == "exit")
+			break;
+		else
+			cout << "Unrecognised command. Type 'help' for help in interactive mode." << endl;
+	}
 }
 
 int main(int argc, char** argv)
@@ -668,9 +1442,7 @@ int main(int argc, char** argv)
 		}
 #if ETH_EVMJIT
 		else if (arg == "-J" || arg == "--jit")
-		{
 			jit = true;
-		}
 #endif
 		else if (arg == "-h" || arg == "--help")
 			help();
@@ -703,12 +1475,24 @@ int main(int argc, char** argv)
 
 	string logbuf;
 	std::string additional;
-	g_logPost = [&](std::string const& a, char const*){
-		if (g_silence)
-			logbuf += a + "\n";
-		else
-			cout << "\r           \r" << a << endl << additional << flush;
-	};
+	if (interactive)
+		g_logPost = [&](std::string const& a, char const*){
+			static SpinLock s_lock;
+			SpinGuard l(s_lock);
+			
+			if (g_silence)
+				logbuf += a + "\n";
+			else
+				cout << "\r           \r" << a << endl << additional << flush;
+
+			// helpful to use OutputDebugString on windows
+	#ifdef _WIN32
+			{
+				OutputDebugStringA(a.data());
+				OutputDebugStringA("\n");
+			}
+	#endif
+		};
 
 	auto getPassword = [&](string const& prompt){
 		auto s = g_silence;
@@ -790,7 +1574,7 @@ int main(int argc, char** argv)
 		{
 			bytes block(8);
 			in.read((char*)block.data(), 8);
-			block.resize(RLP(block, RLP::LaisezFaire).actualSize());
+			block.resize(RLP(block, RLP::LaissezFaire).actualSize());
 			in.read((char*)block.data() + 8, block.size() - 8);
 
 			switch (web3.ethereum()->queueBlock(block, safeImport))
@@ -815,6 +1599,7 @@ int main(int argc, char** argv)
 				cout << i << " more imported at " << (round(i * 10 / d) / 10) << " blocks/s. " << imported << " imported in " << e << " seconds at " << (round(imported * 10 / e) / 10) << " blocks/s (#" << web3.ethereum()->number() << ")" << endl;
 				last = (unsigned)e;
 				lastImported = imported;
+//				cout << web3.ethereum()->blockQueueStatus() << endl;
 			}
 		}
 
@@ -910,13 +1695,16 @@ int main(int argc, char** argv)
 	else
 		cout << "Networking disabled. To start, use netstart or pass -b or a remote host." << endl;
 
+	if (useConsole && jsonrpc == -1)
+		jsonrpc = SensibleHttpPort;
+
 #if ETH_JSONRPC || !ETH_TRUE
 	shared_ptr<dev::WebThreeStubServer> jsonrpcServer;
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-		jsonrpcServer = shared_ptr<dev::WebThreeStubServer>(new dev::WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer));
+		jsonrpcServer = make_shared<dev::WebThreeStubServer>(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer);
 		jsonrpcServer->setMiningBenefactorChanger([&](Address const& a) { beneficiary = a; });
 		jsonrpcServer->StartListening();
 		if (jsonAdmin.empty())
@@ -938,902 +1726,22 @@ int main(int argc, char** argv)
 	signal(SIGINT, &sighandler);
 
 	if (interactive)
-	{
-		additional = "Press Enter";
-		string l;
-		while (!g_exit)
-		{
-			g_silence = false;
-			cout << logbuf << "Press Enter" << flush;
-			std::getline(cin, l);
-			logbuf.clear();
-			g_silence = true;
-
-#if ETH_READLINE
-			if (l.size())
-				add_history(l.c_str());
-			if (auto c = readline("> "))
-			{
-				l = c;
-				free(c);
-			}
-			else
-				break;
-#else
-			string l;
-			cout << "> " << flush;
-			std::getline(cin, l);
-#endif
-			istringstream iss(l);
-			string cmd;
-			iss >> cmd;
-			boost::to_lower(cmd);
-			if (cmd == "netstart")
-			{
-				iss >> netPrefs.listenPort;
-				web3.setNetworkPreferences(netPrefs);
-				web3.startNetwork();
-			}
-			else if (cmd == "connect")
-			{
-				string addrPort;
-				iss >> addrPort;
-				web3.addNode(p2p::NodeId(), addrPort);
-			}
-			else if (cmd == "netstop")
-			{
-				web3.stopNetwork();
-			}
-			else if (c && cmd == "minestart")
-			{
-				c->startMining();
-			}
-			else if (c && cmd == "minestop")
-			{
-				c->stopMining();
-			}
-			else if (c && cmd == "mineforce")
-			{
-				string enable;
-				iss >> enable;
-				c->setForceMining(isTrue(enable));
-			}
-/*			else if (c && cmd == "setblockfees")
-			{
-				iss >> blockFees;
-				try
-				{
-					gasPricer->setRefBlockFees(u256(blockFees * 1000));
-				}
-				catch (Overflow const& _e)
-				{
-					cout << boost::diagnostic_information(_e);
-				}
-
-				cout << "Block fees: " << blockFees << endl;
-			}
-			else if (c && cmd == "setetherprice")
-			{
-				iss >> etherPrice;
-				if (etherPrice == 0)
-					cout << "ether price cannot be set to zero" << endl;
-				else
-				{
-					try
-					{
-						gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
-					}
-					catch (Overflow const& _e)
-					{
-						cout << boost::diagnostic_information(_e);
-					}
-				}
-				cout << "ether Price: " << etherPrice << endl;
-			}
-			else if (c && cmd == "setpriority")
-			{
-				string m;
-				iss >> m;
-				boost::to_lower(m);
-				if (m == "lowest")
-					priority = TransactionPriority::Lowest;
-				else if (m == "low")
-					priority = TransactionPriority::Low;
-				else if (m == "medium" || m == "mid" || m == "default" || m == "normal")
-					priority = TransactionPriority::Medium;
-				else if (m == "high")
-					priority = TransactionPriority::High;
-				else if (m == "highest")
-					priority = TransactionPriority::Highest;
-				else
-					try {
-						priority = (TransactionPriority)(max(0, min(100, stoi(m))) * 8 / 100);
-					}
-					catch (...) {
-						cerr << "Unknown priority: " << m << endl;
-					}
-				cout << "Priority: " << (int)priority << "/8" << endl;
-			}*/
-			else if (cmd == "verbosity")
-			{
-				if (iss.peek() != -1)
-					iss >> g_logVerbosity;
-				cout << "Verbosity: " << g_logVerbosity << endl;
-			}
-#if ETH_JSONRPC || !ETH_TRUE
-			else if (cmd == "jsonport")
-			{
-				if (iss.peek() != -1)
-					iss >> jsonrpc;
-				cout << "JSONRPC Port: " << jsonrpc << endl;
-			}
-			else if (cmd == "jsonstart")
-			{
-				if (jsonrpc < 0)
-					jsonrpc = SensibleHttpPort;
-				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-				jsonrpcServer = shared_ptr<dev::WebThreeStubServer>(new dev::WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer));
-				jsonrpcServer->setMiningBenefactorChanger([&](Address const& a) { beneficiary = a; });
-				jsonrpcServer->StartListening();
-				if (jsonAdmin.empty())
-					jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Priviledge::Admin}});
-				else
-					jsonrpcServer->addSession(jsonAdmin, SessionPermissions{{Priviledge::Admin}});
-				cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
-			}
-			else if (cmd == "jsonstop")
-			{
-				if (jsonrpcServer.get())
-					jsonrpcServer->StopListening();
-				jsonrpcServer.reset();
-			}
-#endif
-			else if (cmd == "address")
-			{
-				cout << "Current mining beneficiary:" << endl << beneficiary << endl;
-				cout << "Current signing account:" << endl << signingKey << endl;
-			}
-			else if (c && cmd == "blockhashfromnumber")
-			{
-				if (iss.peek() != -1)
-				{
-					unsigned number;
-					iss >> number;
-					cout << " hash of block: " << c->hashFromNumber(number).hex() << endl;
-				}
-			}
-			else if (c && cmd == "numberfromblockhash")
-			{
-				if (iss.peek() != -1)
-				{
-					string stringHash;
-					iss >> stringHash;
-
-					h256 hash = h256(fromHex(stringHash));
-					cout << " number of block: " << c->numberFromHash(hash) << endl;
-				}
-			}
-			else if (c && cmd == "block")
-			{
-				cout << "Current block: " << c->blockChain().details().number << endl;
-			}
-			else if (c && cmd == "blockqueue")
-			{
-				cout << "Current blockqueue status: " << endl << c->blockQueueStatus() << endl;
-			}
-			else if (c && cmd == "findblock")
-			{
-				if (iss.peek() != -1)
-				{
-					string stringHash;
-					iss >> stringHash;
-
-					h256 hash = h256(fromHex(stringHash));
-
-					// search in blockchain
-					cout << "search in blockchain... " << endl;
-					try
-					{
-						cout << c->blockInfo(hash) << endl;
-					}
-					catch(Exception& _e)
-					{
-						cout << "block not in blockchain" << endl;
-						cout << boost::diagnostic_information(_e) << endl;
-					}
-
-					cout << "search in blockqueue... " << endl;
-
-					switch(c->blockQueue().blockStatus(hash))
-					{
-					case QueueStatus::Ready:
-						cout << "Ready" << endl;
-						break;
-					case QueueStatus::Importing:
-						cout << "Importing" << endl;
-						break;
-					case QueueStatus::UnknownParent:
-						cout << "UnknownParent" << endl;
-						break;
-					case QueueStatus::Bad:
-						cout << "Bad" << endl;
-						break;
-					case QueueStatus::Unknown:
-						cout << "Unknown" << endl;
-						break;
-					default:
-						cout << "invalid queueStatus" << endl;
-					}
-				}
-				else
-					cwarn << "Require parameter: findblock HASH";
-			}
-			else if (c && cmd == "firstunknown")
-			{
-				cout << "first unknown blockhash: " << c->blockQueue().firstUnknown().hex() << endl;
-			}
-			else if (c && cmd == "retryunknown")
-			{
-				c->retryUnknown();
-			}
-			else if (cmd == "peers")
-			{
-				for (auto it: web3.peers())
-					cout << it.host << ":" << it.port << ", " << it.clientVersion << ", "
-						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
-						<< endl;
-			}
-			else if (cmd == "newaccount")
-			{
-				string name;
-				std::getline(iss, name);
-				auto s = Secret::random();
-				string password;
-				while (password.empty())
-				{
-					password = getPassword("Please enter a password to protect this key (press enter for protection only be the MASTER password/keystore): ");
-					string confirm = getPassword("Please confirm the password by entering it again: ");
-					if (password != confirm)
-					{
-						cout << "Passwords were different. Try again." << endl;
-						password.clear();
-					}
-				}
-				if (!password.empty())
-				{
-					cout << "Enter a hint for this password: " << flush;
-					string hint;
-					std::getline(cin, hint);
-					keyManager.import(s, name, password, hint);
-				}
-				else
-					keyManager.import(s, name);
-				cout << "New account created: " << toAddress(s);
-			}
-			else if (c && cmd == "accounts")
-			{
-				cout << "Accounts:" << endl;
-				u256 total = 0;
-				for (auto const& address: keyManager.accounts())
-				{
-					auto b = c->balanceAt(address);
-					cout << ((address == signingKey) ? "SIGNING " : "        ") << ((address == beneficiary) ? "COINBASE " : "         ") << keyManager.accountName(address) << " (" << address << "): " << formatBalance(b) << " = " << b << " wei" << endl;
-					total += b;
-				}
-				cout << "Total: " << formatBalance(total) << " = " << total << " wei" << endl;
-			}
-			else if (c && cmd == "transact")
-			{
-				auto const& bc =c->blockChain();
-				auto h = bc.currentHash();
-				auto blockData = bc.block(h);
-				BlockInfo info(blockData);
-				if (iss.peek() != -1)
-				{
-					string hexAddr;
-					u256 amount;
-					u256 gasPrice;
-					u256 gas;
-					string sechex;
-					string sdata;
-
-					iss >> hexAddr >> amount >> gasPrice >> gas >> sechex >> sdata;
-
-					if (!gasPrice)
-						gasPrice = gasPricer->bid(priority);
-
-					cnote << "Data:";
-					cnote << sdata;
-					bytes data = dev::eth::parseData(sdata);
-					cnote << "Bytes:";
-					string sbd = asString(data);
-					bytes bbd = asBytes(sbd);
-					stringstream ssbd;
-					ssbd << bbd;
-					cnote << ssbd.str();
-					int ssize = sechex.length();
-					int size = hexAddr.length();
-					u256 minGas = (u256)Transaction::gasRequired(data, 0);
-					if (size < 40)
-					{
-						if (size > 0)
-							cwarn << "Invalid address length:" << size;
-					}
-					else if (gas < minGas)
-						cwarn << "Minimum gas amount is" << minGas;
-					else if (ssize < 40)
-					{
-						if (ssize > 0)
-							cwarn << "Invalid secret length:" << ssize;
-					}
-					else
-					{
-						try
-						{
-							Secret secret = h256(fromHex(sechex));
-							Address dest = h160(fromHex(hexAddr));
-							c->submitTransaction(secret, amount, dest, data, gas, gasPrice);
-						}
-						catch (BadHexCharacter& _e)
-						{
-							cwarn << "invalid hex character, transaction rejected";
-							cwarn << boost::diagnostic_information(_e);
-						}
-						catch (...)
-						{
-							cwarn << "transaction rejected";
-						}
-					}
-				}
-				else
-					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
-			}
-
-			else if (c && cmd == "transactnonce")
-			{
-				auto const& bc =c->blockChain();
-				auto h = bc.currentHash();
-				auto blockData = bc.block(h);
-				BlockInfo info(blockData);
-				if (iss.peek() != -1)
-				{
-					string hexAddr;
-					u256 amount;
-					u256 gasPrice;
-					u256 gas;
-					string sechex;
-					string sdata;
-					u256 nonce;
-
-					iss >> hexAddr >> amount >> gasPrice >> gas >> sechex >> sdata >> nonce;
-
-					if (!gasPrice)
-						gasPrice = gasPricer->bid(priority);
-
-					cnote << "Data:";
-					cnote << sdata;
-					bytes data = dev::eth::parseData(sdata);
-					cnote << "Bytes:";
-					string sbd = asString(data);
-					bytes bbd = asBytes(sbd);
-					stringstream ssbd;
-					ssbd << bbd;
-					cnote << ssbd.str();
-					int ssize = sechex.length();
-					int size = hexAddr.length();
-					u256 minGas = (u256)Transaction::gasRequired(data, 0);
-					if (size < 40)
-					{
-						if (size > 0)
-							cwarn << "Invalid address length:" << size;
-					}
-					else if (gas < minGas)
-						cwarn << "Minimum gas amount is" << minGas;
-					else if (ssize < 40)
-					{
-						if (ssize > 0)
-							cwarn << "Invalid secret length:" << ssize;
-					}
-					else
-					{
-						try
-						{
-							Secret secret = h256(fromHex(sechex));
-							Address dest = h160(fromHex(hexAddr));
-							c->submitTransaction(secret, amount, dest, data, gas, gasPrice, nonce);
-						}
-						catch (BadHexCharacter& _e)
-						{
-							cwarn << "invalid hex character, transaction rejected";
-							cwarn << boost::diagnostic_information(_e);
-						}
-						catch (...)
-						{
-							cwarn << "transaction rejected";
-						}
-					}
-				}
-				else
-					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA NONCE";
-			}
-
-			else if (c && cmd == "txcreate")
-			{
-				auto const& bc =c->blockChain();
-				auto h = bc.currentHash();
-				auto blockData = bc.block(h);
-				BlockInfo info(blockData);
-				if (iss.peek() != -1)
-				{
-					u256 amount;
-					u256 gasPrice;
-					u256 gas;
-					string sechex;
-					string sdata;
-
-					iss >> amount >> gasPrice >> gas >> sechex >> sdata;
-
-					if (!gasPrice)
-						gasPrice = gasPricer->bid(priority);
-
-					cnote << "Data:";
-					cnote << sdata;
-					bytes data = dev::eth::parseData(sdata);
-					cnote << "Bytes:";
-					string sbd = asString(data);
-					bytes bbd = asBytes(sbd);
-					stringstream ssbd;
-					ssbd << bbd;
-					cnote << ssbd.str();
-					int ssize = sechex.length();
-					u256 minGas = (u256)Transaction::gasRequired(data, 0);
-					if (gas < minGas)
-						cwarn << "Minimum gas amount is" << minGas;
-					else if (ssize < 40)
-					{
-						if (ssize > 0)
-							cwarn << "Invalid secret length:" << ssize;
-					}
-					else
-					{
-						try
-						{
-							Secret secret = h256(fromHex(sechex));
-							cout << " new contract address : " << c->submitTransaction(secret, amount, data, gas, gasPrice) << endl;
-						}
-						catch (BadHexCharacter& _e)
-						{
-							cwarn << "invalid hex character, transaction rejected";
-							cwarn << boost::diagnostic_information(_e);
-						}
-						catch (...)
-						{
-							cwarn << "transaction rejected";
-						}
-					}
-				}
-				else
-					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET INIT";
-			}
-#if ETH_FATDB
-			else if (c && cmd == "listcontracts")
-			{
-				auto acs =c->addresses();
-				string ss;
-				for (auto const& i: acs)
-					if ( c->codeAt(i, PendingBlock).size())
-					{
-						ss = toString(i) + " : " + toString( c->balanceAt(i)) + " [" + toString((unsigned) c->countAt(i)) + "]";
-						cout << ss << endl;
-					}
-			}
-			else if (c && cmd == "listaccounts")
-			{
-				auto acs =c->addresses();
-				string ss;
-				for (auto const& i: acs)
-					if ( c->codeAt(i, PendingBlock).empty())
-					{
-						ss = toString(i) + " : " + toString( c->balanceAt(i)) + " [" + toString((unsigned) c->countAt(i)) + "]";
-						cout << ss << endl;
-					}
-			}
-			else if (c && cmd == "balanceat")
-			{
-				if (iss.peek() != -1)
-				{
-					string stringHash;
-					iss >> stringHash;
-
-					Address address = h160(fromHex(stringHash));
-
-					cout << "balance of " << stringHash << " is: " << toString(c->balanceAt(address)) << endl;
-				}
-			}
-			else if (c && cmd == "balanceatblock")
-			{
-				if (iss.peek() != -1)
-				{
-					string stringHash;
-					unsigned blocknumber;
-					iss >> stringHash >> blocknumber;
-
-					Address address = h160(fromHex(stringHash));
-
-					cout << "balance of " << stringHash << " is: " << toString(c->balanceAt(address, blocknumber)) << endl;
-				}
-			}
-			else if (c && cmd == "storageat")
-			{
-				if (iss.peek() != -1)
-				{
-					string stringHash;
-					iss >> stringHash;
-
-					Address address = h160(fromHex(stringHash));
-
-					cout << "storage at " << stringHash << " is: " << endl;
-					for (auto s: c->storageAt(address))
-						cout << toHex(s.first) << " : " << toHex(s.second) << endl;
-				}
-			}
-			else if (c && cmd == "storageatblock")
-			{
-				if (iss.peek() != -1)
-				{
-					string stringHash;
-					unsigned blocknumber;
-					iss >> stringHash >> blocknumber;
-
-					Address address = h160(fromHex(stringHash));
-
-					cout << "storage at " << stringHash << " is: " << endl;
-					for (auto s: c->storageAt(address, blocknumber))
-						cout << "\"0x" << toHex(s.first) << "\" : \"0x" << toHex(s.second) << "\"," << endl;
-				}
-			}
-			else if (c && cmd == "codeat")
-			{
-				if (iss.peek() != -1)
-				{
-					string stringHash;
-					iss >> stringHash;
-
-					Address address = h160(fromHex(stringHash));
-
-					cout << "code at " << stringHash << " is: " << toHex(c->codeAt(address)) << endl;
-				}
-			}
-#endif
-
-			else if (c && cmd == "send")
-			{
-				if (iss.peek() != -1)
-				{
-					string hexAddr;
-					u256 amount;
-
-					iss >> hexAddr >> amount;
-					int size = hexAddr.length();
-					if (size < 40)
-					{
-						if (size > 0)
-							cwarn << "Invalid address length:" << size;
-					}
-					else
-					{
-						auto const& bc =c->blockChain();
-						auto h = bc.currentHash();
-						auto blockData = bc.block(h);
-						BlockInfo info(blockData);
-						u256 minGas = (u256)Transaction::gasRequired(bytes(), 0);
-						try
-						{
-							Address dest = h160(fromHex(hexAddr, WhenError::Throw));
-							c->submitTransaction(keyManager.secret(signingKey, [&](){ return getAccountPassword(signingKey); }), amount, dest, bytes(), minGas);
-						}
-						catch (BadHexCharacter& _e)
-						{
-							cwarn << "invalid hex character, transaction rejected";
-							cwarn << boost::diagnostic_information(_e);
-						}
-						catch (...)
-						{
-							cwarn << "transaction rejected";
-						}
-					}
-				}
-				else
-					cwarn << "Require parameters: send ADDRESS AMOUNT";
-			}
-			else if (c && cmd == "contract")
-			{
-				auto const& bc =c->blockChain();
-				auto h = bc.currentHash();
-				auto blockData = bc.block(h);
-				BlockInfo info(blockData);
-				if (iss.peek() != -1)
-				{
-					u256 endowment;
-					u256 gas;
-					u256 gasPrice;
-					string sinit;
-					iss >> endowment >> gasPrice >> gas >> sinit;
-					trim_all(sinit);
-					int size = sinit.length();
-					bytes init;
-					cnote << "Init:";
-					cnote << sinit;
-					cnote << "Code size:" << size;
-					if (size < 1)
-						cwarn << "No code submitted";
-					else
-					{
-						cnote << "Assembled:";
-						stringstream ssc;
-						try
-						{
-							init = fromHex(sinit, WhenError::Throw);
-						}
-						catch (BadHexCharacter& _e)
-						{
-							cwarn << "invalid hex character, code rejected";
-							cwarn << boost::diagnostic_information(_e);
-							init = bytes();
-						}
-						catch (...)
-						{
-							cwarn << "code rejected";
-							init = bytes();
-						}
-						ssc.str(string());
-						ssc << disassemble(init);
-						cnote << "Init:";
-						cnote << ssc.str();
-					}
-					u256 minGas = (u256)Transaction::gasRequired(init, 0);
-					if (!init.size())
-						cwarn << "Contract creation aborted, no init code.";
-					else if (endowment < 0)
-						cwarn << "Invalid endowment";
-					else if (gas < minGas)
-						cwarn << "Minimum gas amount is" << minGas;
-					else
-						c->submitTransaction(keyManager.secret(signingKey, [&](){ return getAccountPassword(signingKey); }), endowment, init, gas, gasPrice);
-				}
-				else
-					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
-			}
-			else if (c && cmd == "dumpreceipt")
-			{
-				unsigned block;
-				unsigned index;
-				iss >> block >> index;
-				dev::eth::TransactionReceipt r = c->blockChain().receipts(c->blockChain().numberHash(block)).receipts[index];
-				auto rb = r.rlp();
-				cout << "RLP: " << RLP(rb) << endl;
-				cout << "Hex: " << toHex(rb) << endl;
-				cout << r << endl;
-			}
-			else if (c && cmd == "reprocess")
-			{
-				string block;
-				iss >> block;
-				h256 blockHash;
-				try
-				{
-					if (block.size() == 64 || block.size() == 66)
-						blockHash = h256(block);
-					else
-						blockHash = c->blockChain().numberHash(stoi(block));
-					c->state(blockHash);
-				}
-				catch (...)
-				{}
-			}
-			else if (c && cmd == "dumptrace")
-			{
-				unsigned block;
-				unsigned index;
-				string filename;
-				string format;
-				iss >> block >> index >> filename >> format;
-				ofstream f;
-				f.open(filename);
-
-				dev::eth::State state = c->state(index + 1,c->blockChain().numberHash(block));
-				if (index < state.pending().size())
-				{
-					Executive e(state, c->blockChain(), 0);
-					Transaction t = state.pending()[index];
-					state = state.fromPending(index);
-					try
-					{
-						OnOpFunc oof;
-						if (format == "pretty")
-							oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, bigint gas, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
-							{
-								dev::eth::VM* vm = vvm;
-								dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
-								f << endl << "    STACK" << endl;
-								for (auto i: vm->stack())
-									f << (h256)i << endl;
-								f << "    MEMORY" << endl << dev::memDump(vm->memory());
-								f << "    STORAGE" << endl;
-								for (auto const& i: ext->state().storage(ext->myAddress))
-									f << showbase << hex << i.first << ": " << i.second << endl;
-								f << dec << ext->depth << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << gas << " | -" << dec << gasCost << " | " << newMemSize << "x32";
-							};
-						else if (format == "standard")
-							oof = [&](uint64_t, Instruction instr, bigint, bigint, bigint gas, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
-							{
-								dev::eth::VM* vm = vvm;
-								dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
-								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)gas, 1)) << endl;
-							};
-						else if (format == "standard+")
-							oof = [&](uint64_t, Instruction instr, bigint, bigint, bigint gas, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
-							{
-								dev::eth::VM* vm = vvm;
-								dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
-								if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
-									for (auto const& i: ext->state().storage(ext->myAddress))
-										f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
-								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)gas, 1)) << endl;
-							};
-						e.initialize(t);
-						if (!e.execute())
-							e.go(oof);
-						e.finalize();
-					}
-					catch(Exception const& _e)
-					{
-						// TODO: a bit more information here. this is probably quite worrying as the transaction is already in the blockchain.
-						cwarn << diagnostic_information(_e);
-					}
-				}
-			}
-			else if (c && cmd == "inspect")
-			{
-				string rechex;
-				iss >> rechex;
-
-				if (rechex.length() != 40)
-					cwarn << "Invalid address length";
-				else
-				{
-					auto h = h160(fromHex(rechex));
-					stringstream s;
-
-					try
-					{
-						auto storage =c->storageAt(h, PendingBlock);
-						for (auto const& i: storage)
-							s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
-						s << endl << disassemble( c->codeAt(h, PendingBlock)) << endl;
-
-						string outFile = getDataDir() + "/" + rechex + ".evm";
-						ofstream ofs;
-						ofs.open(outFile, ofstream::binary);
-						ofs.write(s.str().c_str(), s.str().length());
-						ofs.close();
-
-						cnote << "Saved" << rechex << "to" << outFile;
-					}
-					catch (dev::InvalidTrie)
-					{
-						cwarn << "Corrupted trie.";
-					}
-				}
-			}
-			else if (cmd == "setsigningkey")
-			{
-				if (iss.peek() != -1)
-				{
-					string hexSec;
-					iss >> hexSec;
-					signingKey = Address(fromHex(hexSec));
-				}
-				else
-					cwarn << "Require parameter: setSecret HEXSECRETKEY";
-			}
-			else if (cmd == "setaddress")
-			{
-				if (iss.peek() != -1)
-				{
-					string hexAddr;
-					iss >> hexAddr;
-					if (hexAddr.length() != 40)
-						cwarn << "Invalid address length: " << hexAddr.length();
-					else
-					{
-						try
-						{
-							beneficiary = h160(fromHex(hexAddr, WhenError::Throw));
-						}
-						catch (BadHexCharacter& _e)
-						{
-							cwarn << "invalid hex character, coinbase rejected";
-							cwarn << boost::diagnostic_information(_e);
-						}
-						catch (...)
-						{
-							cwarn << "coinbase rejected";
-						}
-					}
-				}
-				else
-					cwarn << "Require parameter: setAddress HEXADDRESS";
-			}
-			else if (cmd == "exportconfig")
-			{
-				if (iss.peek() != -1)
-				{
-					string path;
-					iss >> path;
-					RLPStream config(2);
-					config << signingKey << beneficiary;
-					writeFile(path, config.out());
-				}
-				else
-					cwarn << "Require parameter: exportConfig PATH";
-			}
-			else if (cmd == "importconfig")
-			{
-				if (iss.peek() != -1)
-				{
-					string path;
-					iss >> path;
-					bytes b = contents(path);
-					if (b.size())
-					{
-						RLP config(b);
-						signingKey = config[0].toHash<Address>();
-						beneficiary = config[1].toHash<Address>();
-					}
-					else
-						cwarn << path << "has no content!";
-				}
-				else
-					cwarn << "Require parameter: importConfig PATH";
-			}
-			else if (cmd == "help")
-				interactiveHelp();
-			else if (cmd == "exit")
-				break;
-			else
-				cout << "Unrecognised command. Type 'help' for help in interactive mode." << endl;
-		}
-#if ETH_JSONRPC
-		if (jsonrpcServer.get())
-			jsonrpcServer->StopListening();
-#endif
-	}
+		interactiveMode(c, gasPricer, web3, keyManager, logbuf, additional, getPassword, getAccountPassword, netPrefs, beneficiary, signingKey, priority);
 	else if (c)
 	{
-		unsigned n =c->blockChain().details().number;
+		unsigned n = c->blockChain().details().number;
 		if (mining)
 			c->startMining();
 		if (useConsole)
 		{
-#if ETH_JSCONSOLE
+#if ETH_JSCONSOLE || !ETH_TRUE
 			JSLocalConsole console;
-
-			jsonrpcServer = shared_ptr<dev::WebThreeStubServer>(new dev::WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer));
-			jsonrpcServer->setMiningBenefactorChanger([&](Address const& a) { beneficiary = a; });
-			jsonrpcServer->StartListening();
-			if (jsonAdmin.empty())
-				jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Priviledge::Admin}});
-			else
-				jsonrpcServer->addSession(jsonAdmin, SessionPermissions{{Priviledge::Admin}});
-			cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
-
+			// TODO: set port properly?
 			while (!g_exit)
 			{
 				console.readExpression();
 				stopMiningAfterXBlocks(c, n, mining);
 			}
-
 			jsonrpcServer->StopListening();
 #endif
 		}
@@ -1844,6 +1752,11 @@ int main(int argc, char** argv)
 	else
 		while (!g_exit)
 			this_thread::sleep_for(chrono::milliseconds(1000));
+
+#if ETH_JSONRPC
+	if (jsonrpcServer.get())
+		jsonrpcServer->StopListening();
+#endif
 
 	StructuredLogger::stopping(WebThreeDirect::composeClientVersion("++eth", clientName), dev::Version);
 	auto netData = web3.saveNetwork();

@@ -19,11 +19,10 @@
  * @date 2014
  */
 
-#include "WhisperPeer.h"
-
 #include <libdevcore/Log.h>
 #include <libp2p/All.h>
 #include "WhisperHost.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -33,6 +32,7 @@ WhisperPeer::WhisperPeer(std::shared_ptr<Session> _s, HostCapabilityFace* _h, un
 {
 	RLPStream s;
 	sealAndSend(prep(s, StatusPacket, 1) << version());
+	noteAdvertiseTopicsOfInterest();
 }
 
 WhisperPeer::~WhisperPeer()
@@ -58,16 +58,26 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 			disable("Invalid protocol version.");
 
 		for (auto const& m: host()->all())
+		{
+			Guard l(x_unseen);
 			m_unseen.insert(make_pair(0, m.first));
+		}
 
 		if (session()->id() < host()->host()->id())
 			sendMessages();
+
+		noteAdvertiseTopicsOfInterest();
 		break;
 	}
 	case MessagesPacket:
 	{
 		for (auto i: _r)
 			host()->inject(Envelope(i), this);
+		break;
+	}
+	case TopicFilterPacket:
+	{
+		setBloom((TopicBloomFilterHash)_r[0]);
 		break;
 	}
 	default:
@@ -78,19 +88,20 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 
 void WhisperPeer::sendMessages()
 {
+	if (m_advertiseTopicsOfInterest)
+		sendTopicsOfInterest(host()->bloom());
+
+	multimap<unsigned, h256> available;
+	DEV_GUARDED(x_unseen)
+		m_unseen.swap(available);
+
 	RLPStream amalg;
-	unsigned msgCount = 0;
-	{
-		Guard l(x_unseen);
-		msgCount = m_unseen.size();
-		while (m_unseen.size())
-		{
-			auto p = *m_unseen.begin();
-			m_unseen.erase(m_unseen.begin());
-			host()->streamMessage(p.second, amalg);
-		}
-	}
-	
+
+	// send the highest rated messages first
+	for (auto i = available.rbegin(); i != available.rend(); ++i)
+		host()->streamMessage(i->second, amalg);
+
+	unsigned msgCount = available.size();
 	if (msgCount)
 	{
 		RLPStream s;
@@ -101,6 +112,37 @@ void WhisperPeer::sendMessages()
 
 void WhisperPeer::noteNewMessage(h256 _h, Envelope const& _m)
 {
+	unsigned rate = ratingForPeer(_m);
 	Guard l(x_unseen);
-	m_unseen.insert(make_pair(rating(_m), _h));
+	m_unseen.insert(make_pair(rate, _h));
 }
+
+unsigned WhisperPeer::ratingForPeer(Envelope const& e) const
+{
+	// we try to estimate, how valuable this nessage will be for the remote peer,
+	// according to the following criteria:
+	// 1. bloom filter 
+	// 2. proof of work
+
+	static const unsigned BloomFilterMatchReward = 256; // vlad todo: move to common.h
+	unsigned rating = 0;
+
+	DEV_GUARDED(x_bloom)
+		if (e.matchesBloomFilter(m_bloom))
+			rating += BloomFilterMatchReward;
+	
+	rating += e.sha3().firstBitSet();
+	return rating;
+}
+
+void WhisperPeer::sendTopicsOfInterest(TopicBloomFilterHash const& _bloom)
+{
+	DEV_GUARDED(x_advertiseTopicsOfInterest)
+		m_advertiseTopicsOfInterest = false;
+
+	RLPStream s;
+	prep(s, TopicFilterPacket, 1);
+	s << _bloom;
+	sealAndSend(s);
+}
+

@@ -11,7 +11,7 @@ namespace eth
 {
 namespace jit
 {
-
+using namespace evmjit;
 using instr_idx = uint64_t;
 
 class BasicBlock

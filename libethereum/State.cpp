@@ -25,7 +25,6 @@
 #include <random>
 #include <boost/filesystem.hpp>
 #include <boost/timer.hpp>
-#include <secp256k1/secp256k1.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Assertions.h>
 #include <libdevcore/StructuredLogger.h>
@@ -42,6 +41,7 @@
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+namespace fs = boost::filesystem;
 
 #define ctrace clog(StateTrace)
 #define ETH_TIMED_ENACTMENTS 0
@@ -53,23 +53,27 @@ const char* StateDetail::name() { return EthViolet "⚙" EthWhite " ◌"; }
 const char* StateTrace::name() { return EthViolet "⚙" EthGray " ◎"; }
 const char* StateChat::name() { return EthViolet "⚙" EthWhite " ◌"; }
 
-OverlayDB State::openDB(std::string _path, WithExisting _we)
+OverlayDB State::openDB(std::string const& _basePath, WithExisting _we)
 {
-	if (_path.empty())
-		_path = Defaults::get()->m_dbPath;
-	boost::filesystem::create_directory(_path);
+	std::string path = _basePath.empty() ? Defaults::get()->m_dbPath : _basePath;
 
 	if (_we == WithExisting::Kill)
-		boost::filesystem::remove_all(_path + "/state");
+	{
+		cnote << "Killing state database (WithExisting::Kill).";
+		boost::filesystem::remove_all(path + "/state");
+	}
+
+	path += "/" + toHex(CanonBlockChain::genesis().hash().ref().cropped(0, 4)) + "/" + toString(c_databaseVersion);
+	boost::filesystem::create_directories(path);
 
 	ldb::Options o;
 	o.max_open_files = 256;
 	o.create_if_missing = true;
 	ldb::DB* db = nullptr;
-	ldb::DB::Open(o, _path + "/state", &db);
+	ldb::DB::Open(o, path + "/state", &db);
 	if (!db)
 	{
-		if (boost::filesystem::space(_path + "/state").available < 1024)
+		if (boost::filesystem::space(path + "/state").available < 1024)
 		{
 			cwarn << "Not enough available space found on hard drive. Please free some up and then re-run. Bailing.";
 			BOOST_THROW_EXCEPTION(NotEnoughAvailableSpace());
@@ -117,7 +121,7 @@ State::State(OverlayDB const& _db, BaseState _bs, Address _coinbaseAddress):
 
 PopulationStatistics State::populateFromChain(BlockChain const& _bc, h256 const& _h, ImportRequirements::value _ir)
 {
-	PopulationStatistics ret;
+	PopulationStatistics ret { 0.0, 0.0 };
 
 	if (!_bc.isKnown(_h))
 	{
@@ -604,7 +608,6 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 	m_currentBlock.noteDirty();
 
 	LastHashes lh = _bc.lastHashes((unsigned)m_previousBlock.number);
-	vector<bytes> receipts;
 
 	string ret;
 	unsigned i = 0;
@@ -614,10 +617,6 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 		st.setShowMnemonics();
 		execute(lh, Transaction(tr.data(), CheckTransaction::Everything), Permanence::Committed, st.onOp());
 		ret += (ret.empty() ? "[" : ",") + st.json();
-
-		RLPStream receiptRLP;
-		m_receipts.back().streamRLP(receiptRLP);
-		receipts.push_back(receiptRLP.out());
 		++i;
 	}
 	return ret.empty() ? "[]" : (ret + "]");
@@ -884,7 +883,7 @@ LogBloom State::logBloom() const
 	return ret;
 }
 
-void State::commitToMine(BlockChain const& _bc)
+void State::commitToMine(BlockChain const& _bc, bytes const& _extraData)
 {
 	uncommitToMine();
 
@@ -967,6 +966,7 @@ void State::commitToMine(BlockChain const& _bc)
 	m_currentBlock.gasUsed = gasUsed();
 	m_currentBlock.stateRoot = m_state.root();
 	m_currentBlock.parentHash = m_previousBlock.hash();
+	m_currentBlock.extraData = _extraData;
 
 	m_committedToMine = true;
 }

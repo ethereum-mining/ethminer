@@ -543,7 +543,7 @@ void CodeModel::retrieveSubType(SolidityType& _wrapperType, dev::solidity::Type 
 
 SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 {
-	SolidityType r { SolidityType::Type::UnsignedInteger, 32, 1, false, false, QString::fromStdString(_type->toString()), std::vector<SolidityDeclaration>(), std::vector<QString>(), nullptr };
+	SolidityType r { SolidityType::Type::UnsignedInteger, 32, 1, false, false, QString::fromStdString(_type->toString(true)), std::vector<SolidityDeclaration>(), std::vector<QString>(), nullptr };
 	if (!_type)
 		return r;
 	switch (_type->getCategory())

@@ -24,6 +24,7 @@
 #if ETH_PROFILING_GPERF
 #include <gperftools/profiler.h>
 #endif
+
 #include <boost/timer.hpp>
 #include <boost/filesystem.hpp>
 #include <test/JsonSpiritHeaders.h>
@@ -96,6 +97,15 @@ ldb::Slice dev::eth::toSlice(h256 const& _h, unsigned _sub)
 #endif
 }
 
+namespace dev
+{
+class WriteBatchNoter: public ldb::WriteBatch::Handler
+{
+	virtual void Put(ldb::Slice const& _key, ldb::Slice const& _value) { cnote << "Put" << toHex(bytesConstRef(_key)) << "=>" << toHex(bytesConstRef(_value)); }
+	virtual void Delete(ldb::Slice const& _key) { cnote << "Delete" << toHex(bytesConstRef(_key)); }
+};
+}
+
 #if ETH_DEBUG&&0
 static const chrono::system_clock::duration c_collectionDuration = chrono::seconds(15);
 static const unsigned c_collectionQueueSize = 2;
@@ -117,7 +127,7 @@ static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 #endif
 
-BlockChain::BlockChain(bytes const& _genesisBlock, std::string _path, WithExisting _we, ProgressCallback const& _p)
+BlockChain::BlockChain(bytes const& _genesisBlock, std::string const& _path, WithExisting _we, ProgressCallback const& _p)
 {
 	// initialise deathrow.
 	m_cacheUsage.resize(c_collectionQueueSize);
@@ -127,8 +137,7 @@ BlockChain::BlockChain(bytes const& _genesisBlock, std::string _path, WithExisti
 	m_genesisBlock = _genesisBlock;
 	m_genesisHash = sha3(RLP(m_genesisBlock)[0].data());
 
-	open(_path, _we);
-	if (_we == WithExisting::Verify)
+	if (open(_path, _we) != c_minorProtocolVersion)
 		rebuild(_path, _p);
 }
 
@@ -137,24 +146,41 @@ BlockChain::~BlockChain()
 	close();
 }
 
-void BlockChain::open(std::string const& _path, WithExisting _we)
+unsigned BlockChain::open(std::string const& _path, WithExisting _we)
 {
-	std::string path = _path.empty() ? Defaults::get()->m_dbPath : _path;
-	boost::filesystem::create_directories(path);
+	string path = _path.empty() ? Defaults::get()->m_dbPath : _path;
+	string chainPath = path + "/" + toHex(m_genesisHash.ref().cropped(0, 4));
+	string extrasPath = chainPath + "/" + toString(c_databaseVersion);
+
+	boost::filesystem::create_directories(extrasPath);
+
+	bytes status = contents(extrasPath + "/minor");
+	unsigned lastMinor = c_minorProtocolVersion;
+	DEV_IGNORE_EXCEPTIONS(lastMinor = (unsigned)RLP(status));
+	if (c_minorProtocolVersion != lastMinor)
+	{
+		cnote << "Killing extras database (DB minor version:" << lastMinor << " != our miner version: " << c_minorProtocolVersion << ").";
+		DEV_IGNORE_EXCEPTIONS(boost::filesystem::remove_all(extrasPath + "/details.old"));
+		boost::filesystem::rename(extrasPath + "/extras", extrasPath + "/extras.old");
+		boost::filesystem::remove_all(extrasPath + "/state");
+		writeFile(extrasPath + "/minor", rlp(c_minorProtocolVersion));
+		lastMinor = (unsigned)RLP(status);
+	}
 	if (_we == WithExisting::Kill)
 	{
-		boost::filesystem::remove_all(path + "/blocks");
-		boost::filesystem::remove_all(path + "/details");
+		cnote << "Killing blockchain & extras database (WithExisting::Kill).";
+		boost::filesystem::remove_all(chainPath + "/blocks");
+		boost::filesystem::remove_all(extrasPath + "/extras");
 	}
 
 	ldb::Options o;
 	o.create_if_missing = true;
 	o.max_open_files = 256;
-	ldb::DB::Open(o, path + "/blocks", &m_blocksDB);
-	ldb::DB::Open(o, path + "/details", &m_extrasDB);
+	ldb::DB::Open(o, chainPath + "/blocks", &m_blocksDB);
+	ldb::DB::Open(o, extrasPath + "/extras", &m_extrasDB);
 	if (!m_blocksDB || !m_extrasDB)
 	{
-		if (boost::filesystem::space(path + "/blocks").available < 1024)
+		if (boost::filesystem::space(chainPath + "/blocks").available < 1024)
 		{
 			cwarn << "Not enough available space found on hard drive. Please free some up and then re-run. Bailing.";
 			BOOST_THROW_EXCEPTION(NotEnoughAvailableSpace());
@@ -184,7 +210,8 @@ void BlockChain::open(std::string const& _path, WithExisting _we)
 	m_lastBlockHash = l.empty() ? m_genesisHash : *(h256*)l.data();
 	m_lastBlockNumber = number(m_lastBlockHash);
 
-	cnote << "Opened blockchain DB. Latest: " << currentHash();
+	cnote << "Opened blockchain DB. Latest: " << currentHash() << (lastMinor == c_minorProtocolVersion ? "(rebuild not needed)" : "*** REBUILD NEEDED ***");
+	return lastMinor;
 }
 
 void BlockChain::close()
@@ -198,11 +225,11 @@ void BlockChain::close()
 	m_blocks.clear();
 }
 
-#define IGNORE_EXCEPTIONS(X) try { X; } catch (...) {}
-
 void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, unsigned)> const& _progress, bool _prepPoW)
 {
-	std::string path = _path.empty() ? Defaults::get()->m_dbPath : _path;
+	string path = _path.empty() ? Defaults::get()->m_dbPath : _path;
+	string chainPath = path + "/" + toHex(m_genesisHash.ref().cropped(0, 4));
+	string extrasPath = chainPath + "/" + toString(c_databaseVersion);
 
 #if ETH_PROFILING_GPERF
 	ProfilerStart("BlockChain_rebuild.log");
@@ -210,16 +237,21 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 
 	unsigned originalNumber = m_lastBlockNumber;
 
+	///////////////////////////////
+	// TODO
+	// - KILL ALL STATE/CHAIN
+	// - REINSERT ALL BLOCKS
+	///////////////////////////////
+
 	// Keep extras DB around, but under a temp name
 	delete m_extrasDB;
 	m_extrasDB = nullptr;
-	IGNORE_EXCEPTIONS(boost::filesystem::remove_all(path + "/details.old"));
-	boost::filesystem::rename(path + "/details", path + "/details.old");
+	boost::filesystem::rename(path + "/details", path + "/extras.old");
 	ldb::DB* oldExtrasDB;
 	ldb::Options o;
 	o.create_if_missing = true;
-	ldb::DB::Open(o, path + "/details.old", &oldExtrasDB);
-	ldb::DB::Open(o, path + "/details", &m_extrasDB);
+	ldb::DB::Open(o, extrasPath + "/extras.old", &oldExtrasDB);
+	ldb::DB::Open(o, extrasPath + "/extras", &m_extrasDB);
 
 	// Open a fresh state DB
 	State s(State::openDB(path, WithExisting::Kill), BaseState::CanonGenesis);
@@ -279,16 +311,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 #endif
 
 	delete oldExtrasDB;
-	boost::filesystem::remove_all(path + "/details.old");
-}
-
-template <class T, class V>
-bool contains(T const& _t, V const& _v)
-{
-	for (auto const& i: _t)
-		if (i == _v)
-			return true;
-	return false;
+	boost::filesystem::remove_all(path + "/extras.old");
 }
 
 LastHashes BlockChain::lastHashes(unsigned _n) const
@@ -324,7 +347,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 			{
 				// Nonce & uncle nonces already verified in verification thread at this point.
 				ImportRoute r;
-				DEV_TIMED_ABOVE("Block import", 500)
+				DEV_TIMED_ABOVE("Block import " + toString(block.verified.info.number), 500)
 					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
 				fresh += r.liveBlocks;
 				dead += r.deadBlocks;
@@ -532,7 +555,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 #endif
 	}
 #if ETH_CATCH
-	catch (BadRoot& ex)
+	catch (BadRoot&)
 	{
 		cwarn << "BadRoot error. Retrying import later.";
 		BOOST_THROW_EXCEPTION(FutureTime());
@@ -638,8 +661,25 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 		clog(BlockChainChat) << "   Imported but not best (oTD:" << details(last).totalDifficulty << " > TD:" << td << ")";
 	}
 
-	m_blocksDB->Write(m_writeOptions, &blocksBatch);
-	m_extrasDB->Write(m_writeOptions, &extrasBatch);
+	ldb::Status o = m_blocksDB->Write(m_writeOptions, &blocksBatch);
+	if (!o.ok())
+	{
+		cwarn << "Error writing to blockchain database: " << o.ToString();
+		WriteBatchNoter n;
+		blocksBatch.Iterate(&n);
+		cwarn << "Fail writing to blockchain database. Bombing out.";
+		exit(-1);
+	}
+	
+	o = m_extrasDB->Write(m_writeOptions, &extrasBatch);
+	if (!o.ok())
+	{
+		cwarn << "Error writing to extras database: " << o.ToString();
+		WriteBatchNoter n;
+		extrasBatch.Iterate(&n);
+		cwarn << "Fail writing to extras database. Bombing out.";
+		exit(-1);
+	}
 
 #if ETH_PARANOIA || !ETH_TRUE
 	if (isKnown(_block.info.hash()) && !details(_block.info.hash()))
@@ -667,7 +707,14 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 		{
 			m_lastBlockHash = newLastBlockHash;
 			m_lastBlockNumber = newLastBlockNumber;
-			m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&m_lastBlockHash, 32));
+			o = m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&m_lastBlockHash, 32));
+			if (!o.ok())
+			{
+				cwarn << "Error writing to extras database: " << o.ToString();
+				cout << "Put" << toHex(bytesConstRef(ldb::Slice("best"))) << "=>" << toHex(bytesConstRef(ldb::Slice((char const*)&m_lastBlockHash, 32)));
+				cwarn << "Fail writing to extras database. Bombing out.";
+				exit(-1);
+			}
 		}
 
 #if ETH_PARANOIA || !ETH_TRUE

@@ -178,7 +178,7 @@ bool Session::readPacket(uint16_t _capId, PacketType _t, RLP const& _r)
 	}
 	catch (std::exception const& _e)
 	{
-		clog(NetWarn) << "Peer causing an exception:" << _e.what() << _r;
+		clog(NetWarn) << "Exception caught in p2p::Session::interpret(): " << _e.what() << ". PacketType: " << _t << ". RLP: " << _r;
 		disconnect(BadProtocol);
 		return true;
 	}
@@ -382,7 +382,7 @@ void Session::doRead()
 		}
 		catch (std::exception const& _e)
 		{
-			clog(NetWarn) << "Exception decoding frame header RLP:" << bytesConstRef(m_data.data(), h128::size).cropped(3);
+			clog(NetWarn) << "Exception decoding frame header RLP:" << _e.what() << bytesConstRef(m_data.data(), h128::size).cropped(3);
 			drop(BadProtocol);
 			return;
 		}

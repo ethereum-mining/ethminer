@@ -54,18 +54,21 @@ enum WhisperPacket
 {
 	StatusPacket = 0,
 	MessagesPacket,
-	AddFilterPacket,
-	RemoveFilterPacket,
+	TopicFilterPacket,
 	PacketCount
 };
 
-enum { TopicBloomFilterSize = 8 };
+static const unsigned TopicBloomFilterSize = 64;
+static const unsigned BitsPerBloom = 3;
+static const unsigned WhisperProtocolVersion = 3;
 
 using AbridgedTopic = FixedHash<4>;
 using Topic = h256;
 
 using AbridgedTopics = std::vector<AbridgedTopic>;
 using Topics = h256s;
+
+using TopicBloomFilterHash = FixedHash<TopicBloomFilterSize>;
 
 AbridgedTopic abridge(Topic const& _topic);
 AbridgedTopics abridge(Topics const& _topics);
@@ -107,7 +110,7 @@ public:
 	void streamRLP(RLPStream& _s) const { _s << m_topicMasks; }
 	h256 sha3() const;
 	bool matches(Envelope const& _m) const;
-	FixedHash<TopicBloomFilterSize> exportBloom() const;
+	TopicBloomFilterHash exportBloom() const;
 
 private:
 	TopicMasks m_topicMasks;
