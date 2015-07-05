@@ -141,7 +141,7 @@ private:
 	unsigned m_futureSize = 0;													///< Current number of future transactions
 
 	std::condition_variable m_queueReady;										///< Signaled when m_unverified has a new entry.
-	std::thread m_verifier;														///< Verification thread
+	std::vector<std::thread> m_verifiers;
 	std::deque<UnverifiedTransaction> m_unverified;								///< Pending verification queue
 	mutable Mutex x_queue;														///< Verification queue mutex
 	bool m_aborting = false;													///< Exit condition for verifier.

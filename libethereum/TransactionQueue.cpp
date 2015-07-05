@@ -34,19 +34,22 @@ const char* TransactionQueueTraceChannel::name() { return EthCyan " ┅▶"; }
 TransactionQueue::TransactionQueue(unsigned _limit, unsigned _futureLimit):
 	m_current(PriorityCompare { *this }),
 	m_limit(_limit),
-	m_futureLimit(_futureLimit),
-	m_verifier([=](){
-		setThreadName("tr verified");
-		this->verifierBody();
-	})
+	m_futureLimit(_futureLimit)
 {
+		unsigned verifierThreads = std::max(thread::hardware_concurrency(), 3U) - 2U;
+		for (unsigned i = 0; i < verifierThreads; ++i)
+			m_verifiers.emplace_back([=](){
+				setThreadName("txcheck" + toString(i));
+				this->verifierBody();
+			});
 }
 
 TransactionQueue::~TransactionQueue()
 {
 	m_aborting = true;
 	m_queueReady.notify_all();
-	m_verifier.join();
+	for (auto& i: m_verifiers)
+		i.join();
 }
 
 ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, IfDropped _ik)
@@ -310,6 +313,17 @@ void TransactionQueue::makeCurrent_WITH_LOCK(Transaction const& _t)
 				m_future.erase(_t.from());
 		}
 	}
+
+	while (m_futureSize > m_futureLimit)
+	{
+		// TODO: priority queue for future transactions
+		// For now just drop random chain end
+		--m_futureSize;
+		clog(TransactionQueueTraceChannel) << "Dropping out of bounds future transaction" << m_future.begin()->second.rbegin()->second.transaction.sha3();
+		m_future.begin()->second.erase(--m_future.begin()->second.end());
+		if (m_future.begin()->second.empty())
+			m_future.erase(m_future.begin());
+	}
 }
 
 void TransactionQueue::drop(h256 const& _txHash)
@@ -372,7 +386,7 @@ void TransactionQueue::verifierBody()
 		try
 		{
 
-			Transaction t(work.transaction, CheckTransaction::Cheap);
+			Transaction t(work.transaction, CheckTransaction::Cheap); //Signature will be checked later
 			ImportResult ir = import(t);
 			m_onImport(ir, t.sha3(), work.nodeId);
 		}
