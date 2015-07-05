@@ -604,19 +604,18 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		for (auto const& t: m_bc.transactions(h))
 		{
 			clog(ClientTrace) << "Resubmitting dead-block transaction " << Transaction(t, CheckTransaction::None);
-			m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
+			m_tq.import(t, IfDropped::Retry);
 		}
 	}
 
 	// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
 	for (auto const& h: _ir.liveBlocks)
-	{
 		clog(ClientTrace) << "Live block:" << h;
-		for (auto const& th: m_bc.transactionHashes(h))
-		{
-			clog(ClientTrace) << "Safely dropping transaction " << th;
-			m_tq.drop(th);
-		}
+
+	for (auto const& t: _ir.goodTranactions)
+	{
+		clog(ClientTrace) << "Safely dropping transaction " << t.sha3();
+		m_tq.dropGood(t);
 	}
 
 	if (auto h = m_host.lock())
@@ -651,7 +650,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 				for (auto const& t: m_postMine.pending())
 				{
 					clog(ClientTrace) << "Resubmitting post-mine transaction " << t;
-					auto ir = m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
+					auto ir = m_tq.import(t, IfDropped::Retry);
 					if (ir != ImportResult::Success)
 						onTransactionQueueReady();
 				}
