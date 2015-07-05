@@ -604,7 +604,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		for (auto const& t: m_bc.transactions(h))
 		{
 			clog(ClientTrace) << "Resubmitting dead-block transaction " << Transaction(t, CheckTransaction::None);
-			m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
+			m_tq.import(t, ImportCallback(), IfDropped::Retry);
 		}
 	}
 
@@ -651,7 +651,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 				for (auto const& t: m_postMine.pending())
 				{
 					clog(ClientTrace) << "Resubmitting post-mine transaction " << t;
-					auto ir = m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
+					auto ir = m_tq.import(t, ImportCallback(), IfDropped::Retry);
 					if (ir != ImportResult::Success)
 						onTransactionQueueReady();
 				}

@@ -524,7 +524,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 					{
 						// less than 90% of our ask price for gas. drop.
 						cnote << i.first << "Dropping El Cheapo transaction (<90% of ask price)";
-						_tq.drop(i.first);
+						_tq.drop(i.first, ImportResult::GasPriceTooLow);
 					}
 				}
 				catch (InvalidNonce const& in)
@@ -541,12 +541,12 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 								if (t.nonce() < i.second.nonce())
 								{
 									cnote << i.first << "Dropping old transaction (nonce too low)";
-									_tq.drop(i.first);
+									_tq.drop(i.first, ImportResult::NonceTooLow);
 								}
 								else if (t.nonce() == i.second.nonce() && t.gasPrice() <= i.second.gasPrice())
 								{
 									cnote << i.first << "Dropping old transaction (gas price lower)";
-									_tq.drop(i.first);
+									_tq.drop(i.first, ImportResult::OverbidGasPrice);
 								}
 							}
 					}
@@ -554,7 +554,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 					{
 						// too new
 						cnote << i.first << "Dropping new transaction (too many nonces ahead)";
-						_tq.drop(i.first);
+						_tq.drop(i.first, ImportResult::FarAway);
 					}
 					else
 						_tq.setFuture(i);
@@ -565,7 +565,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 					if (got > m_currentBlock.gasLimit)
 					{
 						cnote << i.first << "Dropping over-gassy transaction (gas > block's gas limit)";
-						_tq.drop(i.first);
+						_tq.drop(i.first, ImportResult::TooMuchGas);
 					}
 					else
 					{
@@ -579,12 +579,12 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 				{
 					// Something else went wrong - drop it.
 					cnote << i.first << "Dropping invalid transaction:" << diagnostic_information(_e);
-					_tq.drop(i.first);
+					_tq.drop(i.first, ImportResult::Malformed);
 				}
 				catch (std::exception const&)
 				{
 					// Something else went wrong - drop it.
-					_tq.drop(i.first);
+					_tq.drop(i.first, ImportResult::Malformed);
 					cnote << i.first << "Transaction caused low-level exception :(";
 				}
 			}
