@@ -84,9 +84,17 @@ std::string RandomCode::generate(int _maxOpNumber, RandomCodeOptions _options)
 			}
 		}
 		else
+		{
+			if (info.name.find_first_of("PUSH") > 0)
+				code += toCompactHex(opcode);
 			code += fillArguments((dev::eth::Instruction) opcode, _options);
-		std::string byte = toCompactHex(opcode);
-		code += (byte == "") ? "00" : byte;
+		}
+
+		if (info.name.find_first_of("PUSH") <= 0)
+		{
+			std::string byte = toCompactHex(opcode);
+			code += (byte == "") ? "00" : byte;
+		}
 	}
 	return code;
 }
@@ -143,15 +151,135 @@ std::string RandomCode::fillArguments(dev::eth::Instruction _opcode, RandomCodeO
 	{
 		switch (_opcode)
 		{
+		case dev::eth::Instruction::PUSH1:	code += rndByteSequence(1);	break;
+		case dev::eth::Instruction::PUSH2:	code += rndByteSequence(2);	break;
+		case dev::eth::Instruction::PUSH3:	code += rndByteSequence(3);	break;
+		case dev::eth::Instruction::PUSH4:	code += rndByteSequence(4);	break;
+		case dev::eth::Instruction::PUSH5:	code += rndByteSequence(5);	break;
+		case dev::eth::Instruction::PUSH6:	code += rndByteSequence(6);	break;
+		case dev::eth::Instruction::PUSH7:	code += rndByteSequence(7);	break;
+		case dev::eth::Instruction::PUSH8:	code += rndByteSequence(8);	break;
+		case dev::eth::Instruction::PUSH9:	code += rndByteSequence(9);	break;
+		case dev::eth::Instruction::PUSH10:	code += rndByteSequence(10); break;
+		case dev::eth::Instruction::PUSH11:	code += rndByteSequence(11); break;
+		case dev::eth::Instruction::PUSH12:	code += rndByteSequence(12); break;
+		case dev::eth::Instruction::PUSH13:	code += rndByteSequence(13); break;
+		case dev::eth::Instruction::PUSH14:	code += rndByteSequence(14); break;
+		case dev::eth::Instruction::PUSH15:	code += rndByteSequence(15); break;
+		case dev::eth::Instruction::PUSH16:	code += rndByteSequence(16); break;
+		case dev::eth::Instruction::PUSH17:	code += rndByteSequence(17); break;
+		case dev::eth::Instruction::PUSH18:	code += rndByteSequence(18); break;
+		case dev::eth::Instruction::PUSH19:	code += rndByteSequence(19); break;
+		case dev::eth::Instruction::PUSH20:	code += rndByteSequence(20); break;
+		case dev::eth::Instruction::PUSH21:	code += rndByteSequence(21); break;
+		case dev::eth::Instruction::PUSH22:	code += rndByteSequence(22); break;
+		case dev::eth::Instruction::PUSH23:	code += rndByteSequence(23); break;
+		case dev::eth::Instruction::PUSH24:	code += rndByteSequence(24); break;
+		case dev::eth::Instruction::PUSH25:	code += rndByteSequence(25); break;
+		case dev::eth::Instruction::PUSH26:	code += rndByteSequence(26); break;
+		case dev::eth::Instruction::PUSH27:	code += rndByteSequence(27); break;
+		case dev::eth::Instruction::PUSH28:	code += rndByteSequence(28); break;
+		case dev::eth::Instruction::PUSH29:	code += rndByteSequence(29); break;
+		case dev::eth::Instruction::PUSH30:	code += rndByteSequence(30); break;
+		case dev::eth::Instruction::PUSH31:	code += rndByteSequence(31); break;
+		case dev::eth::Instruction::PUSH32:	code += rndByteSequence(32); break;
+		case dev::eth::Instruction::SWAP1:
+		case dev::eth::Instruction::SWAP2:
+		case dev::eth::Instruction::SWAP3:
+		case dev::eth::Instruction::SWAP4:
+		case dev::eth::Instruction::SWAP5:
+		case dev::eth::Instruction::SWAP6:
+		case dev::eth::Instruction::SWAP7:
+		case dev::eth::Instruction::SWAP8:
+		case dev::eth::Instruction::SWAP9:
+		case dev::eth::Instruction::SWAP10:
+		case dev::eth::Instruction::SWAP11:
+		case dev::eth::Instruction::SWAP12:
+		case dev::eth::Instruction::SWAP13:
+		case dev::eth::Instruction::SWAP14:
+		case dev::eth::Instruction::SWAP15:
+		case dev::eth::Instruction::SWAP16:
+		case dev::eth::Instruction::DUP1:
+		case dev::eth::Instruction::DUP2:
+		case dev::eth::Instruction::DUP3:
+		case dev::eth::Instruction::DUP4:
+		case dev::eth::Instruction::DUP5:
+		case dev::eth::Instruction::DUP6:
+		case dev::eth::Instruction::DUP7:
+		case dev::eth::Instruction::DUP8:
+		case dev::eth::Instruction::DUP9:
+		case dev::eth::Instruction::DUP10:
+		case dev::eth::Instruction::DUP11:
+		case dev::eth::Instruction::DUP12:
+		case dev::eth::Instruction::DUP13:
+		case dev::eth::Instruction::DUP14:
+		case dev::eth::Instruction::DUP15:
+		case dev::eth::Instruction::DUP16:
+			int times;
+			switch (_opcode)
+			{
+				case dev::eth::Instruction::DUP1:	times = 1; break;
+				case dev::eth::Instruction::SWAP1:
+				case dev::eth::Instruction::DUP2:	times = 2; break;
+				case dev::eth::Instruction::SWAP2:
+				case dev::eth::Instruction::DUP3:	times = 3; break;
+				case dev::eth::Instruction::SWAP3:
+				case dev::eth::Instruction::DUP4:	times = 4; break;
+				case dev::eth::Instruction::SWAP4:
+				case dev::eth::Instruction::DUP5:	times = 5; break;
+				case dev::eth::Instruction::SWAP5:
+				case dev::eth::Instruction::DUP6:	times = 6; break;
+				case dev::eth::Instruction::SWAP6:
+				case dev::eth::Instruction::DUP7:	times = 7; break;
+				case dev::eth::Instruction::SWAP7:
+				case dev::eth::Instruction::DUP8:	times = 8; break;
+				case dev::eth::Instruction::SWAP8:
+				case dev::eth::Instruction::DUP9:	times = 9; break;
+				case dev::eth::Instruction::SWAP9:
+				case dev::eth::Instruction::DUP10:	times = 10; break;
+				case dev::eth::Instruction::SWAP10:
+				case dev::eth::Instruction::DUP11:	times = 11; break;
+				case dev::eth::Instruction::SWAP11:
+				case dev::eth::Instruction::DUP12:	times = 12; break;
+				case dev::eth::Instruction::SWAP12:
+				case dev::eth::Instruction::DUP13:	times = 13; break;
+				case dev::eth::Instruction::SWAP13:
+				case dev::eth::Instruction::DUP14:	times = 14; break;
+				case dev::eth::Instruction::SWAP14:
+				case dev::eth::Instruction::DUP15:	times = 15; break;
+				case dev::eth::Instruction::SWAP15:
+				case dev::eth::Instruction::DUP16:	times = 16; break;
+				case dev::eth::Instruction::SWAP16:	times = 17; break;
+				default: times = 1;
+			}
+			for (int i = 0; i < times; i ++)
+				code += getPushCode(randUniIntGen() % 32);
+
+		break;
+		case dev::eth::Instruction::CREATE:
+			//(CREATE value mem1 mem2)
+			code += getPushCode(randUniIntGen() % 128);  //memlen1
+			code += getPushCode(randUniIntGen() % 32);   //memlen1
+			code += getPushCode(randUniIntGen());		 //value
+		break;
 		case dev::eth::Instruction::CALL:
+		case dev::eth::Instruction::CALLCODE:
 			//(CALL gaslimit address value memstart1 memlen1 memstart2 memlen2)
-			code += getPushCode(randUniIntGen() % 32);  //memlen2
+			//(CALLCODE gaslimit address value memstart1 memlen1 memstart2 memlen2)
+			code += getPushCode(randUniIntGen() % 128);  //memlen2
 			code += getPushCode(randUniIntGen() % 32);  //memstart2
-			code += getPushCode(randUniIntGen() % 32);  //memlen1
+			code += getPushCode(randUniIntGen() % 128);  //memlen1
 			code += getPushCode(randUniIntGen() % 32);  //memlen1
 			code += getPushCode(randUniIntGen());		//value
 			code += getPushCode(toString(_options.getRandomAddress()));//address
 			code += getPushCode(randUniIntGen());		//gaslimit
+		break;
+		case dev::eth::Instruction::SUICIDE: //(SUICIDE address)
+			code += getPushCode(toString(_options.getRandomAddress()));
+		break;
+		case dev::eth::Instruction::RETURN:  //(RETURN memlen1 memlen2)
+			code += getPushCode(randUniIntGen() % 128);  //memlen1
+			code += getPushCode(randUniIntGen() % 32);  //memlen1
 		break;
 		default:
 			smart = false;
