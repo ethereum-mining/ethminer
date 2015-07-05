@@ -121,17 +121,21 @@ unsigned WhisperPeer::ratingForPeer(Envelope const& e) const
 {
 	// we try to estimate, how valuable this nessage will be for the remote peer,
 	// according to the following criteria:
-	// 1. bloom filter 
-	// 2. proof of work
+	// 1. bloom filter
+	// 2. time to live
+	// 3. proof of work
 
-	static const unsigned BloomFilterMatchReward = 256; // vlad todo: move to common.h
 	unsigned rating = 0;
 
-	DEV_GUARDED(x_bloom)
-		if (e.matchesBloomFilter(m_bloom))
-			rating += BloomFilterMatchReward;
-	
-	rating += e.sha3().firstBitSet();
+	if (e.matchesBloomFilter(bloom()))
+		++rating;
+
+	rating *= 256;
+	unsigned ttlReward = (256 > e.ttl() ? 256 - e.ttl() : 0);
+	rating += ttlReward;
+
+	rating *= 256;
+	rating += e.workProved();
 	return rating;
 }
 
