@@ -21,6 +21,9 @@
 
 #pragma once
 
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <functional>
 #include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
@@ -41,14 +44,24 @@ struct TransactionQueueTraceChannel: public LogChannel { static const char* name
 
 enum class IfDropped { Ignore, Retry };
 
+using ImportCallback = std::function<void(ImportResult)>;
+
+struct UnverifiedTransaction
+{
+	h256 hash;
+	bytes data;
+	ImportCallback cb;
+};
+
 /**
  * @brief A queue of Transactions, each stored as RLP.
  * @threadsafe
  */
-class TransactionQueue
+class TransactionQueue: HasInvariants
 {
 public:
-	using ImportCallback = std::function<void(ImportResult)>;
+	TransactionQueue();
+	virtual ~TransactionQueue();
 
 	ImportResult import(Transaction const& _tx, ImportCallback const& _cb = ImportCallback(), IfDropped _ik = IfDropped::Ignore);
 	ImportResult import(bytes const& _tx, ImportCallback const& _cb = ImportCallback(), IfDropped _ik = IfDropped::Ignore) { return import(&_tx, _cb, _ik); }
@@ -75,6 +88,10 @@ private:
 	bool remove_WITH_LOCK(h256 const& _txHash);
 	u256 maxNonce_WITH_LOCK(Address const& _a) const;
 
+	bool invariants() const override;
+
+	void verifierBody();
+
 	mutable SharedMutex m_lock;													///< General lock.
 	h256Hash m_known;															///< Hashes of transactions in both sets.
 	std::unordered_multimap<Address, h256> m_senders;							///< Mapping from the sender address to the transaction hash; useful for determining the nonce of a given sender.
@@ -82,7 +99,15 @@ private:
 	std::unordered_map<h256, Transaction> m_future;								///< For transactions that have a future nonce; we re-insert into current once the sender has a valid TX.
 	std::unordered_map<h256, std::function<void(ImportResult)>> m_callbacks;	///< Called once.
 	h256Hash m_dropped;															///< Transactions that have previously been dropped.
+	h256Hash m_submitted;														///< Hashes of transactions that have been submitted but not yet processed (unverified or verifying).
 	Signal m_onReady;															///< Called when a subsequent call to import transactions will return a non-empty container. Be nice and exit fast.
+
+	mutable Mutex m_verification;												///< Mutex that allows writing to m_unverified & m_moreToVerify.
+	std::condition_variable m_moreToVerify;										///< Signaled when m_unverified has a new entry.
+	std::deque<UnverifiedTransaction> m_unverified;								///< List of <tx hash, tx data> ready for verification.
+
+	std::vector<std::thread> m_verifiers;								///< Threads who only verify.
+	bool m_deleting = false;											///< Exit condition for verifiers.
 };
 
 }
