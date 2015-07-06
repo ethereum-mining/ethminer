@@ -1,37 +1,44 @@
 #pragma once
 
-#include <evmjit/libevmjit/Common.h>
+#include <evmjit/JIT.h>
 
 namespace dev
 {
 namespace eth
 {
 
-inline u256 llvm2eth(jit::i256 _i)
+/// Converts EVM JIT representation of 256-bit integer to eth type dev::u256.
+inline u256 jit2eth(evmjit::i256 _i)
 {
-	u256 u = 0;
-	u |= _i.d;
+	u256 u = _i.words[3];
 	u <<= 64;
-	u |= _i.c;
+	u |= _i.words[2];
 	u <<= 64;
-	u |= _i.b;
+	u |= _i.words[1];
 	u <<= 64;
-	u |= _i.a;
+	u |= _i.words[0];
 	return u;
 }
 
-inline jit::i256 eth2llvm(u256 _u)
+/// Converts eth type dev::u256 to EVM JIT representation of 256-bit integer.
+inline evmjit::i256 eth2jit(u256 _u)
 {
-	jit::i256 i;
-	u256 mask = 0xFFFFFFFFFFFFFFFF;
-	i.a = static_cast<uint64_t>(_u & mask);
+	evmjit::i256 i;
+	i.words[0] = static_cast<uint64_t>(_u);
 	_u >>= 64;
-	i.b = static_cast<uint64_t>(_u & mask);
+	i.words[1] = static_cast<uint64_t>(_u);
 	_u >>= 64;
-	i.c = static_cast<uint64_t>(_u & mask);
+	i.words[2] = static_cast<uint64_t>(_u);
 	_u >>= 64;
-	i.d = static_cast<uint64_t>(_u & mask);
+	i.words[3] = static_cast<uint64_t>(_u);
 	return i;
+}
+
+/// Converts eth type dev::h256 to EVM JIT representation of 256-bit hash value.
+inline evmjit::h256 eth2jit(h256 _u)
+{
+	/// Just directly copies memory
+	return *(evmjit::h256*)&_u;
 }
 
 }

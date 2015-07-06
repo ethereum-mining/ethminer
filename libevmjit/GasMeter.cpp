@@ -216,22 +216,12 @@ void GasMeter::countExp(llvm::Value* _exponent)
 	// cost = ((256 - lz) + 7) / 8
 
 	// OPT: Can gas update be done in exp algorithm?
-
-	auto t = llvm::APInt{256, 1};
-	auto c = m_builder.CreateSelect(m_builder.CreateICmpUGE(_exponent, Constant::get(t)), m_builder.getInt64(1), m_builder.getInt64(0));
-	for (auto i = 2; i <= 32; ++i)
-	{
-		t <<= 8;
-		c = m_builder.CreateSelect(m_builder.CreateICmpUGE(_exponent, Constant::get(t)), m_builder.getInt64(i), c);
-	}
-
-	// FIXME: Does not work because of LLVM bug: https://llvm.org/bugs/show_bug.cgi?id=22304
-//	auto ctlz = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::ctlz, Type::Word);
-//	auto lz256 = m_builder.CreateCall2(ctlz, _exponent, m_builder.getInt1(false));
-//	auto lz = m_builder.CreateTrunc(lz256, Type::Gas, "lz");
-//	auto sigBits = m_builder.CreateSub(m_builder.getInt64(256), lz, "sigBits");
-//	auto sigBytes = m_builder.CreateUDiv(m_builder.CreateAdd(sigBits, m_builder.getInt64(7)), m_builder.getInt64(8));
-	count(m_builder.CreateNUWMul(c, m_builder.getInt64(c_expByteGas)));
+	auto ctlz = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::ctlz, Type::Word);
+	auto lz256 = m_builder.CreateCall(ctlz, {_exponent, m_builder.getInt1(false)});
+	auto lz = m_builder.CreateTrunc(lz256, Type::Gas, "lz");
+	auto sigBits = m_builder.CreateSub(m_builder.getInt64(256), lz, "sigBits");
+	auto sigBytes = m_builder.CreateUDiv(m_builder.CreateAdd(sigBits, m_builder.getInt64(7)), m_builder.getInt64(8));
+	count(m_builder.CreateNUWMul(sigBytes, m_builder.getInt64(c_expByteGas)));
 }
 
 void GasMeter::countSStore(Ext& _ext, llvm::Value* _index, llvm::Value* _newValue)
