@@ -46,7 +46,7 @@ class HttpRequest: public QObject
 
 private:
 	HttpRequest(QObject* _parent, QUrl&& _url, QString&& _content, QVariantMap&& _headers):
-		QObject(_parent), m_url(_url), m_content(_content), m_headers(_headers)
+		QObject(_parent), m_url(std::move(_url)), m_content(std::move(_content)), m_headers(std::move(_headers))
 	{
 	}
 
