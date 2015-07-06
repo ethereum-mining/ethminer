@@ -1,8 +1,9 @@
 #pragma once
 
+#include <array>
+
 #include "CompilerHelper.h"
 #include "Type.h"
-#include "RuntimeData.h"
 #include "Instruction.h"
 
 namespace dev
@@ -11,6 +12,7 @@ namespace eth
 {
 namespace jit
 {
+using namespace evmjit;
 class Stack;
 
 class RuntimeManager: public CompilerHelper
@@ -60,6 +62,8 @@ private:
 	llvm::Value* m_gasPtr = nullptr;
 	llvm::Value* m_memPtr = nullptr;
 	llvm::Value* m_envPtr = nullptr;
+
+	std::array<llvm::Value*, RuntimeData::numElements> m_dataElts;
 
 	llvm::Value* m_stackSize = nullptr;
 	llvm::Function* m_checkStackLimit = nullptr;

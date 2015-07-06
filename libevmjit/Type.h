@@ -3,9 +3,10 @@
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/Metadata.h>
 #include "preprocessor/llvm_includes_end.h"
 
-#include "Common.h"
+#include "evmjit/JIT.h" // ReturnCode
 
 namespace dev
 {
@@ -13,15 +14,12 @@ namespace eth
 {
 namespace jit
 {
+using namespace evmjit;
 
 struct Type
 {
 	static llvm::IntegerType* Word;
 	static llvm::PointerType* WordPtr;
-
-	/// Type for doing low precision arithmetics where 256-bit precision is not supported by native target
-	/// @TODO: Use 64-bit for now. In 128-bit compiler-rt library functions are required
-	static llvm::IntegerType* lowPrecision;
 
 	static llvm::IntegerType* Bool;
 	static llvm::IntegerType* Size;

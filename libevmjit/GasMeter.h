@@ -10,6 +10,7 @@ namespace eth
 namespace jit
 {
 class RuntimeManager;
+using namespace evmjit;
 
 class GasMeter : public CompilerHelper // TODO: Use RuntimeHelper
 {

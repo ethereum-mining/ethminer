@@ -64,22 +64,22 @@ llvm::Twine getName(RuntimeData::Index _index)
 {
 	switch (_index)
 	{
-	default:						return "data";
-	case RuntimeData::Address:		return "address";
-	case RuntimeData::Caller:		return "caller";
-	case RuntimeData::Origin:		return "origin";
-	case RuntimeData::CallValue:	return "callvalue";
-	case RuntimeData::GasPrice:		return "gasprice";
-	case RuntimeData::CoinBase:		return "coinbase";
-	case RuntimeData::Difficulty:	return "difficulty";
-	case RuntimeData::GasLimit:		return "gaslimit";
-	case RuntimeData::CallData:		return "callData";
-	case RuntimeData::Code:			return "code";
-	case RuntimeData::CodeSize:		return "code";
-	case RuntimeData::CallDataSize:	return "callDataSize";
-	case RuntimeData::Gas:			return "gas";
-	case RuntimeData::Number:		return "number";
-	case RuntimeData::Timestamp:	return "timestamp";
+	default:						return "";
+	case RuntimeData::Gas:			return "msg.gas";
+	case RuntimeData::GasPrice:		return "tx.gasprice";
+	case RuntimeData::CallData:		return "msg.data.ptr";
+	case RuntimeData::CallDataSize:	return "msg.data.size";
+	case RuntimeData::Address:		return "this.address";
+	case RuntimeData::Caller:		return "msg.caller";
+	case RuntimeData::Origin:		return "tx.origin";
+	case RuntimeData::CallValue:	return "msg.value";
+	case RuntimeData::CoinBase:		return "block.coinbase";
+	case RuntimeData::Difficulty:	return "block.difficulty";
+	case RuntimeData::GasLimit:		return "block.gaslimit";
+	case RuntimeData::Number:		return "block.number";
+	case RuntimeData::Timestamp:	return "block.timestamp";
+	case RuntimeData::Code:			return "code.ptr";
+	case RuntimeData::CodeSize:		return "code.size";
 	}
 }
 }
@@ -93,17 +93,22 @@ RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, code_iterator _codeB
 
 	// Unpack data
 	auto rtPtr = getRuntimePtr();
-	m_dataPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 0), "data");
+	m_dataPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(getRuntimeType(), rtPtr, 0), "dataPtr");
 	assert(m_dataPtr->getType() == Type::RuntimeDataPtr);
-	m_gasPtr = m_builder.CreateStructGEP(m_dataPtr, 0, "gas");
-	assert(m_gasPtr->getType() == Type::Gas->getPointerTo());
-	m_memPtr = m_builder.CreateStructGEP(rtPtr, 2, "mem");
+	m_memPtr = m_builder.CreateStructGEP(getRuntimeType(), rtPtr, 2, "mem");
 	assert(m_memPtr->getType() == Array::getType()->getPointerTo());
-	m_envPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 1), "env");
+	m_envPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(getRuntimeType(), rtPtr, 1), "env");
 	assert(m_envPtr->getType() == Type::EnvPtr);
 
 	m_stackSize = m_builder.CreateAlloca(Type::Size, nullptr, "stackSize");
 	m_builder.CreateStore(m_builder.getInt64(0), m_stackSize);
+
+	auto data = m_builder.CreateLoad(m_dataPtr, "data");
+	for (unsigned i = 0; i < m_dataElts.size(); ++i)
+		m_dataElts[i] = m_builder.CreateExtractValue(data, i, getName(RuntimeData::Index(i)));
+
+	m_gasPtr = m_builder.CreateAlloca(Type::Gas, nullptr, "gas.ptr");
+	m_builder.CreateStore(m_dataElts[RuntimeData::Index::Gas], m_gasPtr);
 
 	llvm::Type* checkStackLimitArgs[] = {Type::Size->getPointerTo(), Type::Size, Type::Size, Type::BytePtr};
 	m_checkStackLimit = llvm::Function::Create(llvm::FunctionType::get(Type::Void, checkStackLimitArgs, false), llvm::Function::PrivateLinkage, "stack.checkSize", getModule());
@@ -160,7 +165,7 @@ llvm::Value* RuntimeManager::getDataPtr()
 		return m_dataPtr;
 
 	auto rtPtr = getRuntimePtr();
-	auto dataPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 0), "data");
+	auto dataPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(getRuntimeType(), rtPtr, 0), "data");
 	assert(dataPtr->getType() == getRuntimeDataType()->getPointerTo());
 	return dataPtr;
 }
@@ -173,14 +178,14 @@ llvm::Value* RuntimeManager::getEnvPtr()
 
 llvm::Value* RuntimeManager::getPtr(RuntimeData::Index _index)
 {
-	auto ptr = getBuilder().CreateStructGEP(getDataPtr(), _index);
+	auto ptr = getBuilder().CreateStructGEP(getRuntimeDataType(), getDataPtr(), _index);
 	assert(getRuntimeDataType()->getElementType(_index)->getPointerTo() == ptr->getType());
 	return ptr;
 }
 
 llvm::Value* RuntimeManager::get(RuntimeData::Index _index)
 {
-	return getBuilder().CreateLoad(getPtr(_index), getName(_index));
+	return m_dataElts[_index];
 }
 
 void RuntimeManager::set(RuntimeData::Index _index, llvm::Value* _value)
@@ -194,8 +199,7 @@ void RuntimeManager::registerReturnData(llvm::Value* _offset, llvm::Value* _size
 {
 	auto memPtr = m_builder.CreateBitCast(getMem(), Type::BytePtr->getPointerTo());
 	auto mem = getBuilder().CreateLoad(memPtr, "memory");
-	auto idx = m_builder.CreateTrunc(_offset, Type::Size, "idx"); // Never allow memory index be a type bigger than i64 // TODO: Report bug & fix to LLVM
-	auto returnDataPtr = getBuilder().CreateGEP(mem, idx);
+	auto returnDataPtr = getBuilder().CreateGEP(mem, _offset);
 	set(RuntimeData::ReturnData, returnDataPtr);
 
 	auto size64 = getBuilder().CreateTrunc(_size, Type::Size);
@@ -212,6 +216,8 @@ void RuntimeManager::exit(ReturnCode _returnCode)
 	if (m_stack)
 		m_stack->free();
 
+	auto extGasPtr = m_builder.CreateStructGEP(getRuntimeDataType(), getDataPtr(), RuntimeData::Index::Gas, "msg.gas.ptr");
+	m_builder.CreateStore(getGas(), extGasPtr);
 	m_builder.CreateRet(Constant::get(_returnCode));
 }
 
@@ -265,9 +271,7 @@ llvm::Value* RuntimeManager::getCallDataSize()
 
 llvm::Value* RuntimeManager::getGas()
 {
-	auto gas = get(RuntimeData::Gas);
-	assert(gas->getType() == Type::Gas);
-	return gas;
+	return getBuilder().CreateLoad(getGasPtr(), "gas");
 }
 
 llvm::Value* RuntimeManager::getGasPtr()
@@ -285,7 +289,7 @@ llvm::Value* RuntimeManager::getMem()
 void RuntimeManager::setGas(llvm::Value* _gas)
 {
 	assert(_gas->getType() == Type::Gas);
-	set(RuntimeData::Gas, _gas);
+	getBuilder().CreateStore(_gas, getGasPtr());
 }
 
 }

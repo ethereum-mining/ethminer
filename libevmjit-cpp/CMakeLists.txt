@@ -15,10 +15,11 @@ else()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC") # add PIC for archive
 endif()
 
-add_library(${TARGET_NAME} ${SOURCES})
+add_library(${TARGET_NAME} STATIC ${SOURCES})
 set_property(TARGET ${TARGET_NAME} PROPERTY FOLDER "libs")
 
 include_directories(../..)
+include_directories(${EVMJIT_INCLUDE_DIR})
 include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 
