@@ -1269,6 +1269,7 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 	
 		// Add to the user-originated transactions that we've executed.
 		m_transactions.push_back(e.t());
+//		m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsedNoRefunds(), e.logs()));	// TODO: Switch in to be compliant with YP.
 		m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs()));
 		m_transactionSet.insert(e.t().sha3());
 	}
