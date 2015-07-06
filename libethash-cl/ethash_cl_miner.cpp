@@ -33,6 +33,7 @@
 #include <vector>
 #include <libethash/util.h>
 #include <libethash/ethash.h>
+#include <libethcore/Ethash.h>
 #include <libethash/internal.h>
 #include "ethash_cl_miner.h"
 #include "ethash_cl_miner_kernel.h"
@@ -49,6 +50,7 @@
 #undef max
 
 using namespace std;
+using namespace dev::eth;
 
 // TODO: If at any point we can use libdevcore in here then we should switch to using a LogChannel
 #define ETHCL_LOG(_contents) cout << "[OPENCL]:" << _contents << endl
@@ -181,9 +183,9 @@ bool ethash_cl_miner::configureGPU(
 
 bool ethash_cl_miner::s_allowCPU = false;
 unsigned ethash_cl_miner::s_extraRequiredGPUMem;
-unsigned ethash_cl_miner::s_msPerBatch = CL_DEFAULT_MS_PER_BATCH;
-unsigned ethash_cl_miner::s_workgroupSize = CL_DEFAULT_LOCAL_WORK_SIZE;
-unsigned ethash_cl_miner::s_initialGlobalWorkSize = CL_DEFAULT_GLOBAL_WORK_SIZE_MULTIPLIER * CL_DEFAULT_LOCAL_WORK_SIZE;
+unsigned ethash_cl_miner::s_msPerBatch = Ethash::defaultMSPerBatch;
+unsigned ethash_cl_miner::s_workgroupSize = Ethash::defaultLocalWorkSize;
+unsigned ethash_cl_miner::s_initialGlobalWorkSize = Ethash::defaultGlobalWorkSizeMultiplier * Ethash::defaultLocalWorkSize;
 
 bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
 {
