@@ -39,7 +39,6 @@
 #include <libdevcore/SHA3.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/EthashAux.h>
-#include <libethash-cl/ethash_cl_miner.h>
 #include <libethcore/Farm.h>
 #if ETH_JSONRPC || !ETH_TRUE
 #include <libweb3jsonrpc/WebThreeStubServer.h>
