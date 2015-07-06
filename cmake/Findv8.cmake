@@ -56,7 +56,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 		DOC "v8 nosnapshot library"
 	)
 
-	set(V8_LIBRARIES optimized ${V8_LIBRARIES} debug ${V8_LIBRARY_DEBUG} ${V8_NO_SNAPSHOT_LIBRARY_DEBUG})
+	set(V8_LIBRARIES "ws2_32" "winmm" optimized ${V8_LIBRARIES} debug ${V8_LIBRARY_DEBUG} ${V8_NO_SNAPSHOT_LIBRARY_DEBUG})
 
 endif()
 
