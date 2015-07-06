@@ -56,9 +56,8 @@ namespace dev
 				}
 
 				std::cout << "  " << i.first << std::endl;
-				TBOOST_REQUIRE((o.count("in") > 0));
 				TBOOST_REQUIRE((o.count("out") > 0));
-				TBOOST_REQUIRE(!o["out"].is_null());
+				TBOOST_REQUIRE((!o["out"].is_null()));
 
 				if (_fillin)
 				{
@@ -84,6 +83,7 @@ namespace dev
 				else
 				{
 					//Check Encode
+					TBOOST_REQUIRE((o.count("in") > 0));
 					int skipEncode = 0;
 					if (o["in"].type() == js::str_type)
 					{
@@ -185,37 +185,34 @@ namespace dev
 					std::stringstream bintStream(bigIntStr);
 					bigint val;
 					bintStream >> val;
-					TBOOST_CHECK( !u.isList() );
-					TBOOST_CHECK( !u.isNull() );
-					TBOOST_CHECK( u );             // operator bool()
-					TBOOST_CHECK(u == val);
+					TBOOST_CHECK(( !u.isList() ));
+					TBOOST_CHECK(( !u.isNull() ));
+					TBOOST_CHECK(( u == val ));
 				}
 				else
 				{
-					TBOOST_CHECK( !u.isList() );
-					TBOOST_CHECK( !u.isNull() );
-					TBOOST_CHECK( u.isData() );
-					TBOOST_CHECK( u );
-					TBOOST_CHECK( u.size() == expectedText.length() );
-					TBOOST_CHECK(u == expectedText);
+					TBOOST_CHECK(( !u.isList() ));
+					TBOOST_CHECK(( !u.isNull() ));
+					TBOOST_CHECK(( u.isData() ));
+					TBOOST_CHECK(( u.size() == expectedText.length() ));
+					TBOOST_CHECK(( u == expectedText ));
 				}
 			}
 			else if ( v.type() == js::int_type )
 			{
 				const int expectedValue = v.get_int();
-				TBOOST_CHECK( u.isInt() );
-				TBOOST_CHECK( !u.isList() );
-				TBOOST_CHECK( !u.isNull() );
-				TBOOST_CHECK( u );             // operator bool()
-				TBOOST_CHECK(u == expectedValue);
+				TBOOST_CHECK(( u.isInt() ));
+				TBOOST_CHECK(( !u.isList() ));
+				TBOOST_CHECK(( !u.isNull() ));
+				TBOOST_CHECK(( u == expectedValue ));
 			}
 			else if ( v.type() == js::array_type )
 			{
-				TBOOST_CHECK( u.isList() );
-				TBOOST_CHECK( !u.isInt() );
-				TBOOST_CHECK( !u.isData() );
+				TBOOST_CHECK(( u.isList() ));
+				TBOOST_CHECK(( !u.isInt() ));
+				TBOOST_CHECK(( !u.isData() ));
 				js::mArray& arr = v.get_array();
-				TBOOST_CHECK( u.itemCount() == arr.size() );
+				TBOOST_CHECK(( u.itemCount() == arr.size() ));
 				unsigned i;
 				for( i = 0; i < arr.size(); i++ )
 				{
@@ -235,13 +232,12 @@ BOOST_AUTO_TEST_SUITE(RlpTests)
 
 BOOST_AUTO_TEST_CASE(invalidRLPtest)
 {
-	dev::test::executeTests("invalidRLPtest", "/BasicTests", dev::test::getFolder(__FILE__) + "/StateTestsFiller", dev::test::doRlpTests);
+	dev::test::executeTests("invalidRLPTest", "/RLPTests", dev::test::getFolder(__FILE__) + "/RLPTestsFiller", dev::test::doRlpTests);
 }
-
 
 BOOST_AUTO_TEST_CASE(rlptest)
 {
-	dev::test::executeTests("rlptest", "/BasicTests", dev::test::getFolder(__FILE__) + "/StateTestsFiller", dev::test::doRlpTests);
+	dev::test::executeTests("rlptest", "/RLPTests", dev::test::getFolder(__FILE__) + "/RLPTestsFiller", dev::test::doRlpTests);
 }
 
 BOOST_AUTO_TEST_CASE(rlpRandom)
@@ -249,7 +245,7 @@ BOOST_AUTO_TEST_CASE(rlpRandom)
 	test::Options::get();
 
 	string testPath = dev::test::getTestPath();
-	testPath += "/BasicTests/RandomRLPTests";
+	testPath += "/RLPTests/RandomRLPTests";
 
 	vector<boost::filesystem::path> testFiles;
 	boost::filesystem::directory_iterator iterator(testPath);
@@ -264,7 +260,7 @@ BOOST_AUTO_TEST_CASE(rlpRandom)
 			cnote << "Testing ..." << path.filename();
 			json_spirit::mValue v;
 			string s = asString(dev::contents(path.string()));
-			TBOOST_REQUIRE_MESSAGE(s.length() > 0, "Content of " + path.string() + " is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
+			TBOOST_REQUIRE_MESSAGE((s.length() > 0), "Content of " + path.string() + " is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
 			json_spirit::read_string(s, v);
 			test::Listener::notifySuiteStarted(path.filename().string());
 			dev::test::doRlpTests(v, false);
@@ -281,6 +277,4 @@ BOOST_AUTO_TEST_CASE(rlpRandom)
 	}
 }
 
-
 BOOST_AUTO_TEST_SUITE_END()
-
