@@ -361,10 +361,12 @@ void TransactionQueue::clear()
 
 void TransactionQueue::enqueue(RLP const& _data, h512 const& _nodeId)
 {
-	unique_lock<Mutex> l(x_queue);
-	unsigned itemCount = _data.itemCount();
-	for (unsigned i = 0; i < itemCount; ++i)
-		m_unverified.emplace_back(UnverifiedTransaction(_data[i].data(), _nodeId));
+	{
+		Guard l(x_queue);
+		unsigned itemCount = _data.itemCount();
+		for (unsigned i = 0; i < itemCount; ++i)
+			m_unverified.emplace_back(UnverifiedTransaction(_data[i].data(), _nodeId));
+	}
 	m_queueReady.notify_all();
 }
 
@@ -385,7 +387,6 @@ void TransactionQueue::verifierBody()
 
 		try
 		{
-
 			Transaction t(work.transaction, CheckTransaction::Cheap); //Signature will be checked later
 			ImportResult ir = import(t);
 			m_onImport(ir, t.sha3(), work.nodeId);
