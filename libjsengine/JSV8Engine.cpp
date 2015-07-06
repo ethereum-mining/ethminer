@@ -161,7 +161,6 @@ JSV8Engine::~JSV8Engine()
 
 JSV8Value JSV8Engine::eval(char const* _cstr) const
 {
-	v8::HandleScope handleScope;
 	v8::TryCatch tryCatch;
 	v8::Local<v8::String> source = v8::String::New(_cstr);
 	v8::Local<v8::String> name(v8::String::New("(shell)"));
