@@ -22,6 +22,8 @@ eth_add_resources("${CMAKE_CURRENT_SOURCE_DIR}/JSResources.cmake" "JSRES")
 message(STATUS "HERE!!! ${JSRES}")
 add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS} ${JSRES})
 
+add_dependencies(${EXECUTABLE} BuildInfo.h)
+
 # macos brew version of v8 needs to be compiled with libstdc++
 # it also needs to be dynamic library
 # xcode needs libstdc++ to be explicitly set as it's attribute
