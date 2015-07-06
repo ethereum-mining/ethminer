@@ -128,6 +128,33 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
+		else if (arg == "--cl-global-work" && i + 1 < argc)
+			try {
+				m_globalWorkSizeMultiplier = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		else if (arg == "--cl-local-work" && i + 1 < argc)
+			try {
+				m_localWorkSize = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		else if (arg == "--cl-ms-per-batch" && i + 1 < argc)
+			try {
+				m_msPerBatch = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
 		else if (arg == "--list-devices")
 			m_shouldListDevices = true;
 		else if (arg == "--allow-opencl-cpu")
@@ -266,16 +293,16 @@ public:
 		else if (m_minerType == MinerType::GPU)
 		{
 			if (!ProofOfWork::GPUMiner::configureGPU(
+					m_localWorkSize,
+					m_globalWorkSizeMultiplier,
+					m_msPerBatch,
 					m_openclPlatform,
 					m_openclDevice,
 					m_clAllowCPU,
 					m_extraGPUMemory,
 					m_currentBlock
 				))
-			{
-				cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
 				exit(1);
-			}
 			ProofOfWork::GPUMiner::setNumInstances(m_miningThreads);
 		}
 		if (mode == OperationMode::DAGInit)
@@ -318,6 +345,9 @@ public:
 			<< "    --list-devices List the detected OpenCL devices and exit." << endl
 			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." << endl
 			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
+			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(dev::eth::Ethash::defaultLocalWorkSize) << endl
+			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << toString(dev::eth::Ethash::defaultGlobalWorkSizeMultiplier) << " * " << toString(dev::eth::Ethash::defaultLocalWorkSize) << endl
+			<< "    --cl-ms-per-batch Set the OpenCL target milliseconds per batch (global workgroup size). Default is " << toString(dev::eth::Ethash::defaultMSPerBatch) << ". If 0 is given then no autoadjustment of global work size will happen" << endl
 			;
 	}
 
@@ -506,6 +536,9 @@ private:
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 	bool m_clAllowCPU = false;
+	unsigned m_globalWorkSizeMultiplier = dev::eth::Ethash::defaultGlobalWorkSizeMultiplier;
+	unsigned m_localWorkSize = dev::eth::Ethash::defaultLocalWorkSize;
+	unsigned m_msPerBatch = dev::eth::Ethash::defaultMSPerBatch;
 	boost::optional<uint64_t> m_currentBlock;
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
 	unsigned m_extraGPUMemory = 350000000;
