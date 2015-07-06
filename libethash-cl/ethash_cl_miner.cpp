@@ -323,7 +323,7 @@ bool ethash_cl_miner::init(
 			ETHCL_LOG("Printing program log");
 			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
 		}
-		catch (cl::Error const& err)
+		catch (cl::Error const&)
 		{
 			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
 			return false;
