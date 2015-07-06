@@ -91,21 +91,6 @@ void reportException(v8::TryCatch* _tryCatch)
 	}
 }
 
-class JSV8Env
-{
-public:
-	static JSV8Env& getInstance()
-	{
-		static JSV8Env s_env;
-		return s_env;
-	}
-
-	~JSV8Env()
-	{
-		v8::V8::Dispose();
-	}
-};
-
 class JSV8Scope
 {
 public:
@@ -146,7 +131,7 @@ JSString JSV8Value::toString() const
 	return toCString(str);
 }
 
-JSV8Engine::JSV8Engine(): m_env(JSV8Env::getInstance()), m_scope(new JSV8Scope())
+JSV8Engine::JSV8Engine(): m_scope(new JSV8Scope())
 {
 	JSEngineResources resources;
 	eval("env = typeof(env) === 'undefined' ? {} : env; env.os = '" TO_STRING(ETH_BUILD_PLATFORM) "'");
