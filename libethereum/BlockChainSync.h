@@ -316,5 +316,8 @@ private:
 	unsigned m_syncingBlockNumber = 0;					///< Current subchain marker
 	bool m_hashScanComplete = false;						///< True if leading peer completed hashchain scan and we have a list of subchains ready
 };
+
+std::ostream& operator<<(std::ostream& _out, SyncStatus const& _sync);
+
 }
 }
