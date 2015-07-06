@@ -373,8 +373,6 @@ else ()
 	set(GENERAL 0)
 endif ()
 
-message("GENERAL ${GENERAL}")
-
 add_subdirectory(libdevcore)
 if (GENERAL)
 	add_subdirectory(libevmcore)
