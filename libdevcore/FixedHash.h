@@ -105,7 +105,7 @@ public:
 	FixedHash& operator&=(FixedHash const& _c) { for (unsigned i = 0; i < N; ++i) m_data[i] &= _c.m_data[i]; return *this; }
 	FixedHash operator&(FixedHash const& _c) const { return FixedHash(*this) &= _c; }
 	FixedHash operator~() const { FixedHash ret; for (unsigned i = 0; i < N; ++i) ret[i] = ~m_data[i]; return ret; }
-	FixedHash& operator++() { for (unsigned i = size; i > 0 && !++m_data[--i]; ) {}; return *this; }
+	FixedHash& operator++() { for (unsigned i = size; i > 0 && !++m_data[--i]; ) {} return *this; }
 
 	/// @returns true if all one-bits in @a _c are set in this object.
 	bool contains(FixedHash const& _c) const { return (*this & _c) == _c; }
