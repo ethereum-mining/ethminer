@@ -65,10 +65,11 @@ public:
 				free(buff);
 			}
 #else
-			std::cout << promptForIndentionLevel(openBrackets) << std::endl << std::flush;
+			std::cout << promptForIndentionLevel(openBrackets) << std::flush;
 			std::getline(std::cin, rl);
+			isEmpty = rl.length() == 0;
 #endif
-			if (rl.length() > 0)
+			if (!isEmpty)
 			{
 				cmd += rl;
 				cmd += " ";
