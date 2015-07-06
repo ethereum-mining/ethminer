@@ -56,7 +56,7 @@ public:
 	v8::Handle<v8::Context> const& context() const;
 
 private:
-	static JSV8Env s_env;
+	JSV8Env const& m_env;
 	JSV8Scope* m_scope;
 };
 
