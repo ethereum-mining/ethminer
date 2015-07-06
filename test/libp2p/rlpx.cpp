@@ -32,6 +32,7 @@
 #include <libdevcrypto/CryptoPP.h>
 #include <libp2p/RLPxHandshake.h>
 #include <libp2p/RLPXFrameWriter.h>
+#include <libp2p/RLPXFrameReader.h>
 
 using namespace std;
 using namespace dev;
@@ -481,7 +482,9 @@ BOOST_AUTO_TEST_CASE(readerWriter)
 	
 	RLPXFrameWriter w(0);
 	RLPStream rlpPayload(RLPStream() << payload);
-	w.enque(0, rlpPayload);
+	uint8_t packetType = 0;
+	bytes packetTypeRLP = (RLPStream() << packetType).out();
+	w.enque(packetType, rlpPayload);
 	vector<bytes> encframes;
 	for (unsigned i = 1; i < drains; i++)
 	{
@@ -516,8 +519,9 @@ BOOST_AUTO_TEST_CASE(readerWriter)
 			packets += move(p);
 	}
 	BOOST_REQUIRE_EQUAL(packets.size(), 1);
-	BOOST_REQUIRE_EQUAL(packets.front().size(), rlpPayload.out().size());
+	BOOST_REQUIRE_EQUAL(packets.front().size(), packetTypeRLP.size() + rlpPayload.out().size());
 	BOOST_REQUIRE_EQUAL(sha3(RLP(packets.front().data()).payload()), sha3(payload));
+	BOOST_REQUIRE_EQUAL(sha3(packets.front().type()), sha3(packetTypeRLP));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

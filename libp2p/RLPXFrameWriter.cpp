@@ -28,11 +28,18 @@ using namespace dev::p2p;
 const uint16_t RLPXFrameWriter::EmptyFrameLength = h128::size * 3; // header + headerMAC + frameMAC
 const uint16_t RLPXFrameWriter::MinFrameDequeLength = h128::size * 4; // header + headerMAC + padded-block + frameMAC
 
-void RLPXFrameWriter::enque(unsigned _packetType, RLPStream& _payload, PacketPriority _priority)
+void RLPXFrameWriter::enque(RLPXPacket&& _p, PacketPriority _priority)
 {
+	if (!_p.isValid())
+		return;
 	QueueState& qs = _priority ? m_q.first : m_q.second;
 	DEV_GUARDED(qs.x)
-		qs.q.push_back(move(RLPXPacket(m_protocolType, _packetType, _payload)));
+		qs.q.push_back(move(_p));
+}
+
+void RLPXFrameWriter::enque(unsigned _packetType, RLPStream& _payload, PacketPriority _priority)
+{
+	enque(RLPXPacket(m_protocolType, (RLPStream() << _packetType), _payload), _priority);
 }
 
 size_t RLPXFrameWriter::mux(RLPXFrameCoder& _coder, unsigned _size, vector<bytes>& o_toWrite)
@@ -70,13 +77,11 @@ size_t RLPXFrameWriter::mux(RLPXFrameCoder& _coder, unsigned _size, vector<bytes
 			{
 				DEV_GUARDED(qs.x)
 					qs.writing = &qs.q[0];
-				qs.remaining = qs.writing->size();
-				bytes packetType = rlp(qs.writing->type());
-				qs.sequenced = qs.remaining + packetType.size() > frameAllot;
+				qs.sequenced = qs.writing->size() > frameAllot;
 
-				// stop here if we can't write-out packet-type
-				// or payload already packed and packet won't fit
-				if (packetType.size() > frameAllot || (qs.sequenced && payload.size()))
+				// break here if we can't write-out packet-type
+				// or payload is packed and next packet won't fit (implicit)
+				if (qs.writing->type().size() > frameAllot || (qs.sequenced && !payload.empty()))
 				{
 					qs.writing = nullptr;
 					qs.remaining = 0;
@@ -85,14 +90,16 @@ size_t RLPXFrameWriter::mux(RLPXFrameCoder& _coder, unsigned _size, vector<bytes
 				}
 				else if (qs.sequenced)
 					qs.sequence = ++m_sequenceId;
-
-				frameAllot -= packetType.size();
-				payload += packetType;
+				
+				frameAllot -= qs.writing->type().size();
+				payload += qs.writing->type();
+				
+				qs.remaining = qs.writing->data().size();
 			}
 			assert(qs.sequenced || (!qs.sequenced && frameAllot >= qs.remaining));
 			if (frameAllot && qs.remaining)
 			{
-				offset = qs.writing->size() - qs.remaining;
+				offset = qs.writing->data().size() - qs.remaining;
 				length = qs.remaining <= frameAllot ? qs.remaining : frameAllot;
 				bytes portion = bytesConstRef(&qs.writing->data()).cropped(offset, length).toBytes();
 				qs.remaining -= length;
