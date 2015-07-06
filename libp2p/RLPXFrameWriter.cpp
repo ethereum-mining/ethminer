@@ -32,12 +32,12 @@ void RLPXFrameWriter::enque(RLPXPacket&& _p, PacketPriority _priority)
 {
 	if (!_p.isValid())
 		return;
-	QueueState& qs = _priority ? m_q.first : m_q.second;
+	WriterState& qs = _priority ? m_q.first : m_q.second;
 	DEV_GUARDED(qs.x)
 		qs.q.push_back(move(_p));
 }
 
-void RLPXFrameWriter::enque(unsigned _packetType, RLPStream& _payload, PacketPriority _priority)
+void RLPXFrameWriter::enque(uint8_t _packetType, RLPStream& _payload, PacketPriority _priority)
 {
 	enque(RLPXPacket(m_protocolType, (RLPStream() << _packetType), _payload), _priority);
 }
@@ -63,32 +63,45 @@ size_t RLPXFrameWriter::mux(RLPXFrameCoder& _coder, unsigned _size, vector<bytes
 			lowPending = !!m_q.second.q.size();
 
 		if (!highPending && !lowPending)
-			return 0;
-
+			return ret;
+		
 		// first run when !swapQueues, high > low, otherwise low > high
 		bool high = highPending && !swapQueues ? true : lowPending ? false : true;
-		QueueState &qs = high ? m_q.first : m_q.second;
+		WriterState &qs = high ? m_q.first : m_q.second;
 		size_t frameAllot = (!swapQueues && highPending && lowPending ? frameLen / 2 - (c_overhead + c_blockSize) > 0 ? frameLen / 2 : frameLen : frameLen) - c_overhead;
 		size_t offset = 0;
 		size_t length = 0;
 		while (frameAllot >= c_blockSize)
 		{
+			// Invariants:
+			// !qs.writing && payload.empty()	initial entry
+			// !qs.writing && !payload.empty()	continuation (multiple packets per frame)
+			// qs.writing && payload.empty()	initial entry, continuation (multiple frames per packet)
+			// qs.writing && !payload.empty()	INVALID
+			
+			// write packet-type
 			if (qs.writing == nullptr)
 			{
-				DEV_GUARDED(qs.x)
-					qs.writing = &qs.q[0];
-				qs.sequenced = qs.writing->size() > frameAllot;
+				{
+					Guard l(qs.x);
+					if (!qs.q.empty())
+						qs.writing = &qs.q[0];
+					else
+						break;
+				}
 
 				// break here if we can't write-out packet-type
 				// or payload is packed and next packet won't fit (implicit)
-				if (qs.writing->type().size() > frameAllot || (qs.sequenced && !payload.empty()))
+				qs.multiFrame = qs.writing->size() > frameAllot;
+				assert(qs.writing->type().size());
+				if (qs.writing->type().size() > frameAllot || (qs.multiFrame && !payload.empty()))
 				{
 					qs.writing = nullptr;
 					qs.remaining = 0;
-					qs.sequenced = false;
+					qs.multiFrame = false;
 					break;
 				}
-				else if (qs.sequenced)
+				else if (qs.multiFrame)
 					qs.sequence = ++m_sequenceId;
 				
 				frameAllot -= qs.writing->type().size();
@@ -96,7 +109,9 @@ size_t RLPXFrameWriter::mux(RLPXFrameCoder& _coder, unsigned _size, vector<bytes
 				
 				qs.remaining = qs.writing->data().size();
 			}
-			assert(qs.sequenced || (!qs.sequenced && frameAllot >= qs.remaining));
+			
+			// write payload w/remaining allotment
+			assert(qs.multiFrame || (!qs.multiFrame && frameAllot >= qs.remaining));
 			if (frameAllot && qs.remaining)
 			{
 				offset = qs.writing->data().size() - qs.remaining;
@@ -106,16 +121,25 @@ size_t RLPXFrameWriter::mux(RLPXFrameCoder& _coder, unsigned _size, vector<bytes
 				frameAllot -= portion.size();
 				payload += portion;
 			}
-			if (!qs.remaining && ret++)
+			
+			assert((!qs.remaining && (offset > 0 || !qs.multiFrame)) || (qs.remaining && qs.multiFrame));
+			if (!qs.remaining)
+			{
 				qs.writing = nullptr;
-			if (qs.sequenced)
+				DEV_GUARDED(qs.x)
+					qs.q.pop_front();
+				ret++;
+			}
+			// qs.writing is left alone for first frame of multi-frame packet
+			if (qs.multiFrame)
 				break;
 		}
 		
-		if (payload.size())
+		if (!payload.empty())
 		{
-			if (qs.sequenced)
+			if (qs.multiFrame)
 				if (offset == 0)
+					// 1st frame of segmented packet writes total-size of packet
 					_coder.writeFrame(m_protocolType, qs.sequence, qs.writing->size(), &payload, payload);
 				else
 					_coder.writeFrame(m_protocolType, qs.sequence, &payload, payload);
@@ -126,13 +150,8 @@ size_t RLPXFrameWriter::mux(RLPXFrameCoder& _coder, unsigned _size, vector<bytes
 			o_toWrite.push_back(payload);
 			payload.resize(0);
 			
-			if (!qs.remaining)
-			{
-				qs.writing = nullptr;
-				qs.sequenced = false;
-				DEV_GUARDED(qs.x)
-					qs.q.pop_front();
-			}
+			if (!qs.remaining && qs.multiFrame)
+				qs.multiFrame = false;
 		}
 		else if (swapQueues)
 			break;
