@@ -194,7 +194,7 @@ void help()
 		<< "General Options:" << endl
 		<< "    -d,--db-path <path>  Load database from path (default: " << getDataDir() << ")" << endl
 #if ETH_EVMJIT || !ETH_TRUE
-		<< "    -J,--jit  Enable EVM JIT (default: off)." << endl
+		<< "    --vm <vm-kind>  Select VM. Options are: interpreter, jit, smart. (default: interpreter)" << endl
 #endif
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 8)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
@@ -1441,8 +1441,21 @@ int main(int argc, char** argv)
 			}
 		}
 #if ETH_EVMJIT
-		else if (arg == "-J" || arg == "--jit")
-			jit = true;
+		else if (arg == "--vm" && i + 1 < argc)
+		{
+			string vmKind = argv[++i];
+			if (vmKind == "interpreter")
+				VMFactory::setKind(VMKind::Interpreter);
+			else if (vmKind == "jit")
+				VMFactory::setKind(VMKind::JIT);
+			else if (vmKind == "smart")
+				VMFactory::setKind(VMKind::Smart);
+			else
+			{
+				cerr << "Unknown VM kind: " << vmKind << endl;
+				return -1;
+			}
+		}
 #endif
 		else if (arg == "-h" || arg == "--help")
 			help();
@@ -1479,7 +1492,7 @@ int main(int argc, char** argv)
 		g_logPost = [&](std::string const& a, char const*){
 			static SpinLock s_lock;
 			SpinGuard l(s_lock);
-			
+
 			if (g_silence)
 				logbuf += a + "\n";
 			else
@@ -1736,13 +1749,13 @@ int main(int argc, char** argv)
 		{
 #if ETH_JSCONSOLE || !ETH_TRUE
 			JSLocalConsole console;
-			// TODO: set port properly?
+			shared_ptr<dev::WebThreeStubServer> rpcServer = make_shared<dev::WebThreeStubServer>(*console.connector(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer);
 			while (!g_exit)
 			{
 				console.readExpression();
 				stopMiningAfterXBlocks(c, n, mining);
 			}
-			jsonrpcServer->StopListening();
+			rpcServer->StopListening();
 #endif
 		}
 		else
@@ -1764,4 +1777,3 @@ int main(int argc, char** argv)
 		writeFile((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp", netData);
 	return 0;
 }
-
