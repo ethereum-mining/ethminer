@@ -33,7 +33,12 @@ namespace
 static unsigned const c_depthLimit = 1024;
 
 /// Upper bound of stack space needed by single CALL/CREATE execution. Set experimentally.
-static size_t const c_singleExecutionStackSize = 12 * 1024;
+static size_t const c_singleExecutionStackSize =
+#ifdef NDEBUG
+	12 * 1024;
+#else
+	64 * 1024;
+#endif
 
 /// Standard OSX thread stack limit. Should be reasonable for other platforms too.
 static size_t const c_defaultStackSize = 512 * 1024;
@@ -68,7 +73,7 @@ void go(unsigned _depth, Executive& _e, OnOpFunc const& _onOp)
 {
 	// If in the offloading point we need to switch to additional separated stack space.
 	// Current stack is too small to handle more CALL/CREATE executions.
-	// It needs to be done only once as newly allocated stack space it enough to handle 
+	// It needs to be done only once as newly allocated stack space it enough to handle
 	// the rest of the calls up to the depth limit (c_depthLimit).
 	if (_depth == c_offloadPoint)
 		goOnOffloadedStack(_e, _onOp);
@@ -104,4 +109,3 @@ h160 ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc 
 	io_gas = e.gas();
 	return e.newAddress();
 }
-
