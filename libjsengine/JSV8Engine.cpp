@@ -23,6 +23,10 @@
 #include <memory>
 #include "JSV8Engine.h"
 #include "libjsengine/JSEngineResources.hpp"
+#include "BuildInfo.h"
+
+#define TO_STRING_HELPER(s) #s
+#define TO_STRING(s) TO_STRING_HELPER(s)
 
 using namespace std;
 using namespace dev;
@@ -145,6 +149,7 @@ JSString JSV8Value::toString() const
 JSV8Engine::JSV8Engine(): m_env(JSV8Env::getInstance()), m_scope(new JSV8Scope())
 {
 	JSEngineResources resources;
+	eval("env = typeof(env) === 'undefined' ? {} : env; env.os = '" TO_STRING(ETH_BUILD_PLATFORM) "'");
 	string common = resources.loadResourceAsString("common");
 	string web3 = resources.loadResourceAsString("web3");
 	string admin = resources.loadResourceAsString("admin");
