@@ -41,14 +41,8 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 		NAMES v8_nosnapshot
 		DOC "v8 nosnapshot library"
 	)
-
-	find_library(
-		V8_SNAPSHOT_LIBRARY
-		NAMES v8_snapshot
-		DOC "v8 snapshotlibrary"
-	)
 	
-	set(V8_LIBRARIES ${V8_BASE_LIBRARY} ${V8_SNAPSHOT_LIBRARY} ${V8_NO_SNAPSHOT_LIBRARY})
+	set(V8_LIBRARIES ${V8_BASE_LIBRARY} ${V8_NO_SNAPSHOT_LIBRARY})
 
 	find_library(
 		V8_BASE_LIBRARY_DEBUG
@@ -62,13 +56,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 		DOC "v8 nosnapshot library"
 	)
 
-	find_library(
-		V8_SNAPSHOT_LIBRARY_DEBUG
-		NAMES v8_snapshotd
-		DOC "v8 snapshotlibrary"
-	)
-
-	set(V8_LIBRARIES optimized ${V8_LIBRARIES} debug ${V8_BASE_LIBRARY_DEBUG} ${V8_SNAPSHOT_LIBRARY_DEBUG} ${V8_NO_SNAPSHOT_LIBRARY_DEBUG})
+	set(V8_LIBRARIES optimized ${V8_LIBRARIES} debug ${V8_BASE_LIBRARY_DEBUG} ${V8_NO_SNAPSHOT_LIBRARY_DEBUG})
 
 endif()
 
