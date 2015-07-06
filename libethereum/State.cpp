@@ -38,6 +38,7 @@
 #include "Executive.h"
 #include "CachedAddressState.h"
 #include "CanonBlockChain.h"
+#include "TransactionQueue.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
