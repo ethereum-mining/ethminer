@@ -31,13 +31,6 @@
 #include "BlockInfo.h"
 #include "Miner.h"
 
-/// Default value of the local work size. Also known as workgroup size.
-#define CL_DEFAULT_LOCAL_WORK_SIZE 64
-/// Default value of the global work size as a multiplier of the local work size
-#define CL_DEFAULT_GLOBAL_WORK_SIZE_MULTIPLIER 512 // * CL_DEFAULT_LOCAL_WORK_SIZE
-/// Default value of the milliseconds per global work size (per batch)
-#define CL_DEFAULT_MS_PER_BATCH 100
-
 class ethash_cl_miner;
 
 namespace dev
@@ -157,6 +150,12 @@ public:
 #else
 	using GPUMiner = CPUMiner;
 #endif
+	/// Default value of the local work size. Also known as workgroup size.
+	static const unsigned defaultLocalWorkSize;
+	/// Default value of the global work size as a multiplier of the local work size
+	static const unsigned defaultGlobalWorkSizeMultiplier;
+	/// Default value of the milliseconds per global work size (per batch)
+	static const unsigned defaultMSPerBatch;
 };
 
 }
