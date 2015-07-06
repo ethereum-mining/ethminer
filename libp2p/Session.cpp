@@ -256,9 +256,8 @@ bool Session::checkPacket(bytesConstRef _msg)
 
 void Session::send(bytes&& _msg)
 {
-	clog(NetLeft) << RLP(bytesConstRef(&_msg).cropped(1));
-
 	bytesConstRef msg(&_msg);
+	clog(NetLeft) << RLP(msg.cropped(1));
 	if (!checkPacket(msg))
 		clog(NetWarn) << "INVALID PACKET CONSTRUCTED!";
 
@@ -268,7 +267,7 @@ void Session::send(bytes&& _msg)
 	bool doWrite = false;
 	{
 		Guard l(x_writeQueue);
-		m_writeQueue.push_back(_msg);
+		m_writeQueue.push_back(std::move(_msg));
 		doWrite = (m_writeQueue.size() == 1);
 	}
 
@@ -387,7 +386,7 @@ void Session::doRead()
 			drop(BadProtocol);
 			return;
 		}
-		
+
 		/// read padded frame and mac
 		auto tlen = header.length + header.padding + h128::size;
 		ba::async_read(m_socket->ref(), boost::asio::buffer(m_data, tlen), [this, self, header, tlen](boost::system::error_code ec, std::size_t length)
