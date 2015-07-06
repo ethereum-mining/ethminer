@@ -56,7 +56,7 @@ void RLPXFrameCoder::setup(bool _originated, h512 _remoteEphemeral, h256 _remote
 {
 	bytes keyMaterialBytes(64);
 	bytesRef keyMaterial(&keyMaterialBytes);
-	
+
 	// shared-secret = sha3(ecdhe-shared-secret || sha3(nonce || initiator-nonce))
 	Secret ephemeralShared;
 	_ecdhe.agree(_remoteEphemeral, ephemeralShared);
@@ -81,13 +81,13 @@ void RLPXFrameCoder::setup(bool _originated, h512 _remoteEphemeral, h256 _remote
 	h128 iv;
 	m_frameEnc.SetKeyWithIV(m_frameEncKey, h256::size, iv.data());
 	m_frameDec.SetKeyWithIV(m_frameDecKey, h256::size, iv.data());
-	
+
 	// mac-secret = sha3(ecdhe-shared-secret || aes-secret)
 	sha3(keyMaterial, outRef); // output mac-secret
 	m_macEncKey.resize(h256::size);
 	memcpy(m_macEncKey.data(), outRef.data(), h256::size);
 	m_macEnc.SetKey(m_macEncKey, h256::size);
-	
+
 	// Initiator egress-mac: sha3(mac-secret^recipient-nonce || auth-sent-init)
 	//           ingress-mac: sha3(mac-secret^initiator-nonce || auth-recvd-ack)
 	// Recipient egress-mac: sha3(mac-secret^initiator-nonce || auth-sent-ack)
@@ -99,7 +99,7 @@ void RLPXFrameCoder::setup(bool _originated, h512 _remoteEphemeral, h256 _remote
 	keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
 	egressCipher.copyTo(keyMaterial.cropped(h256::size, egressCipher.size()));
 	m_egressMac.Update(keyMaterial.data(), keyMaterial.size());
-	
+
 	// recover mac-secret by re-xoring remoteNonce
 	(*(h256*)keyMaterial.data() ^ _remoteNonce ^ _nonce).ref().copyTo(keyMaterial);
 	bytesConstRef ingressCipher = _originated ? _ackCipher : _authCipher;
@@ -144,7 +144,7 @@ void RLPXFrameCoder::writeFrame(RLPStream const& _header, bytesConstRef _payload
 	m_frameEnc.ProcessData(headerWithMac.data(), headerWithMac.data(), 16);
 	updateEgressMACWithHeader(bytesConstRef(&headerWithMac).cropped(0, 16));
 	egressDigest().ref().copyTo(bytesRef(&headerWithMac).cropped(h128::size,h128::size));
-	
+
 	auto padding = (16 - (_payload.size() % 16)) % 16;
 	o_bytes.swap(headerWithMac);
 	o_bytes.resize(32 + _payload.size() + padding + h128::size);

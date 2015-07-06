@@ -454,7 +454,7 @@ BOOST_AUTO_TEST_CASE(ecies_interop_test_primitives)
 	BOOST_REQUIRE(plainTest3 == expectedPlain3);
 }
 
-BOOST_AUTO_TEST_CASE(readerWriter)
+BOOST_AUTO_TEST_CASE(segmentedPacket)
 {
 	ECDHE localEph;
 	h256 localNonce = Nonce::get();
@@ -464,11 +464,14 @@ BOOST_AUTO_TEST_CASE(readerWriter)
 	bytes authCipher{1};
 	RLPXFrameCoder encoder(true, remoteEph.pubkey(), remoteNonce, localEph, localNonce, &ackCipher, &authCipher);
 	
-	/// Test writing a 64byte packet and drain with minimum frame size that
+	/// Test writing a 64byte RLPStream and drain with frame size that
 	/// forces packet to be pieced into 4 frames.
 	/// (Minimum frame size has room for 16 bytes of payload)
 	
 	// 64-byte payload minus 3 bytes for packet-type and RLP overhead.
+	// Note: mux() is called with RLPXFrameWriter::MinFrameDequeLength
+	// which is equal to 64byte, however, after overhead this means
+	// there are only 16 bytes of payload which will be dequed.
 	auto dequeLen = 16;
 	bytes stuff = sha3("A").asBytes();
 	bytes payload;
@@ -524,6 +527,51 @@ BOOST_AUTO_TEST_CASE(readerWriter)
 	BOOST_REQUIRE_EQUAL(packets.front().size(), packetTypeRLP.size() + rlpPayload.out().size());
 	BOOST_REQUIRE_EQUAL(sha3(RLP(packets.front().data()).payload()), sha3(payload));
 	BOOST_REQUIRE_EQUAL(sha3(packets.front().type()), sha3(packetTypeRLP));
+}
+
+BOOST_AUTO_TEST_CASE(coalescedPackets)
+{
+	ECDHE localEph;
+	h256 localNonce = Nonce::get();
+	ECDHE remoteEph;
+	h256 remoteNonce = Nonce::get();
+	bytes ackCipher{0};
+	bytes authCipher{1};
+	RLPXFrameCoder encoder(true, remoteEph.pubkey(), remoteNonce, localEph, localNonce, &ackCipher, &authCipher);
+	
+	/// Test writing four 32 byte RLPStream packets such that
+	/// a single 1KB frame will incldue all four packets.
+	auto dequeLen = 1024; // sufficient enough for all packets
+	bytes initialStuff = sha3("A").asBytes();
+	vector<h256> packets;
+	for (unsigned i = 0; i < 4; i++)
+		packets.push_back(sha3(initialStuff));
+	
+	RLPXFrameWriter w(0);
+	uint8_t packetType = 127;
+	for (auto const& p: packets)
+		w.enque(packetType, (RLPStream() << p));
+
+	vector<bytes> encframes;
+	BOOST_REQUIRE_EQUAL(4, w.mux(encoder, dequeLen, encframes));
+	BOOST_REQUIRE_EQUAL(0, w.mux(encoder, dequeLen, encframes));
+	BOOST_REQUIRE_EQUAL(1, encframes.size());
+	auto expectedFrameSize = RLPXFrameWriter::EmptyFrameLength + packets.size() * (/*packet-type*/ 1 + h256::size + /*rlp-prefix*/ 1);
+	expectedFrameSize += ((16 - (expectedFrameSize % 16)) % 16);
+	BOOST_REQUIRE_EQUAL(expectedFrameSize, encframes[0].size());
+}
+
+BOOST_AUTO_TEST_CASE(singleFramePacket)
+{
+}
+
+BOOST_AUTO_TEST_CASE(manyProtocols)
+{
+	
+}
+
+BOOST_AUTO_TEST_CASE(allOfSingleSegmentedCoalescedWithManyProtocols)
+{
 }
 
 BOOST_AUTO_TEST_SUITE_END()

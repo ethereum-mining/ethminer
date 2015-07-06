@@ -34,22 +34,27 @@ namespace p2p
 {
 
 /**
- * RLPXFrameWriter
- * Multiplex packets into encrypted RLPX frames.
+ * @brief Multiplex packets into encrypted RLPX frames.
  * @todo throw when enqueued packet is invalid
  * @todo use RLPXFrameInfo
- * @todo flag to disable multiple packets per frame
  */
 class RLPXFrameWriter
 {
-	struct QueueState
+	/**
+	 * @brief Queue and state for Writer
+	 * Properties are used independently;
+	 * only valid packets should be added to q
+	 * @todo implement as class
+	 */
+	struct WriterState
 	{
 		std::deque<RLPXPacket> q;
+		mutable Mutex x;
+		
 		RLPXPacket* writing = nullptr;
 		size_t remaining = 0;
-		bool sequenced = false;
+		bool multiFrame = false;
 		uint16_t sequence;
-		mutable Mutex x;
 	};
 	
 public:
@@ -60,11 +65,13 @@ public:
 	RLPXFrameWriter(uint16_t _protocolType): m_protocolType(_protocolType) {}
 	RLPXFrameWriter(RLPXFrameWriter const& _s): m_protocolType(_s.m_protocolType) {}
 	
+	/// Returns total number of queued packets. Thread-safe.
 	size_t size() const { size_t l; size_t h; DEV_GUARDED(m_q.first.x) h = m_q.first.q.size(); DEV_GUARDED(m_q.second.x) l = m_q.second.q.size(); return l + h; }
 	
-	/// Adds @_payload to queue (moves @_payload), to be muxed into frames by mux when network buffer is ready for writing. Thread-safe.
-	void enque(unsigned _packetType, RLPStream& _payload, PacketPriority _priority = PriorityLow);
-	
+	/// Moves @_payload output to queue, to be muxed into frames by mux() when network buffer is ready for writing. Thread-safe.
+	void enque(uint8_t _packetType, RLPStream& _payload, PacketPriority _priority = PriorityLow);
+
+	/// Moves @_p to queue, to be muxed into frames by mux() when network buffer is ready for writing. Thread-safe.
 	void enque(RLPXPacket&& _p, PacketPriority _priority = PriorityLow);
 	
 	/// Returns number of packets framed and outputs frames to o_bytes. Not thread-safe.
@@ -72,7 +79,7 @@ public:
 	
 private:
 	uint16_t const m_protocolType;			// Protocol Type
-	std::pair<QueueState, QueueState> m_q;		// High, Low frame queues
+	std::pair<WriterState, WriterState> m_q;		// High, Low frame queues
 	uint16_t m_sequenceId = 0;				// Sequence ID
 };
 
