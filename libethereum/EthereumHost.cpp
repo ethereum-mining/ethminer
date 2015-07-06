@@ -41,6 +41,7 @@ using namespace dev::eth;
 using namespace p2p;
 
 unsigned const EthereumHost::c_oldProtocolVersion = 60; //TODO: remove this once v61+ is common
+static unsigned const c_maxSendTransactions = 256;
 
 char const* const EthereumHost::s_stateNames[static_cast<int>(SyncState::Size)] = {"Idle", "Waiting", "Hashes", "Blocks", "NewBlocks" };
 
@@ -67,8 +68,7 @@ bool EthereumHost::ensureInitialised()
 		m_latestBlockSent = m_chain.currentHash();
 		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent;
 
-		for (auto const& i: m_tq.transactions())
-			m_transactionsSent.insert(i.first);
+		m_transactionsSent = m_tq.knownTransactions();
 		return true;
 	}
 	return false;
@@ -114,25 +114,26 @@ void EthereumHost::doWork()
 void EthereumHost::maintainTransactions()
 {
 	// Send any new transactions.
-	unordered_map<std::shared_ptr<EthereumPeer>, h256s> peerTransactions;
-	auto ts = m_tq.transactions();
-	for (auto const& i: ts)
+	unordered_map<std::shared_ptr<EthereumPeer>, std::vector<size_t>> peerTransactions;
+	auto ts = m_tq.topTransactions(c_maxSendTransactions);
+	for (size_t i = 0; i < ts.size(); ++i)
 	{
-		bool unsent = !m_transactionsSent.count(i.first);
-		auto peers = get<1>(randomSelection(0, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); }));
+		auto const& t = ts[i];
+		bool unsent = !m_transactionsSent.count(t.sha3());
+		auto peers = get<1>(randomSelection(0, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(t.sha3())); }));
 		for (auto const& p: peers)
-			peerTransactions[p].push_back(i.first);
+			peerTransactions[p].push_back(i);
 	}
 	for (auto const& t: ts)
-		m_transactionsSent.insert(t.first);
+		m_transactionsSent.insert(t.sha3());
 	foreachPeer([&](shared_ptr<EthereumPeer> _p)
 	{
 		bytes b;
 		unsigned n = 0;
-		for (auto const& h: peerTransactions[_p])
+		for (auto const& i: peerTransactions[_p])
 		{
-			_p->m_knownTransactions.insert(h);
-			b += ts[h].rlp();
+			_p->m_knownTransactions.insert(ts[i].sha3());
+			b += ts[i].rlp();
 			++n;
 		}
 
@@ -230,10 +231,10 @@ void EthereumHost::maintainBlocks(h256 const& _currentHash)
 	}
 }
 
-BlockChainSync& EthereumHost::sync()
+BlockChainSync* EthereumHost::sync()
 {
 	if (m_sync)
-		return *m_sync; // We only chose sync strategy once
+		return m_sync.get(); // We only chose sync strategy once
 
 	bool pv61 = false;
 	foreachPeer([&](std::shared_ptr<EthereumPeer> _p)
@@ -242,38 +243,43 @@ BlockChainSync& EthereumHost::sync()
 			pv61 = true;
 		return !pv61;
 	});
-	m_sync.reset(pv61 ? new PV60Sync(*this) : new PV60Sync(*this));
-	return *m_sync;
+	m_sync.reset(pv61 ? new PV61Sync(*this) : new PV60Sync(*this));
+	return m_sync.get();
 }
 
 void EthereumHost::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
 {
 	Guard l(x_sync);
-	sync().onPeerStatus(_peer);
+	if (sync())
+		sync()->onPeerStatus(_peer);
 }
 
 void EthereumHost::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
 {
 	Guard l(x_sync);
-	sync().onPeerHashes(_peer, _hashes);
+	if (sync())
+		sync()->onPeerHashes(_peer, _hashes);
 }
 
 void EthereumHost::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
 	Guard l(x_sync);
-	sync().onPeerBlocks(_peer, _r);
+	if (sync())
+		sync()->onPeerBlocks(_peer, _r);
 }
 
 void EthereumHost::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
 {
 	Guard l(x_sync);
-	sync().onPeerNewHashes(_peer, _hashes);
+	if (sync())
+		sync()->onPeerNewHashes(_peer, _hashes);
 }
 
 void EthereumHost::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
 	Guard l(x_sync);
-	sync().onPeerNewBlock(_peer, _r);
+	if (sync())
+		sync()->onPeerNewBlock(_peer, _r);
 }
 
 void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
@@ -312,8 +318,15 @@ void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP c
 void EthereumHost::onPeerAborting()
 {
 	Guard l(x_sync);
-	if (m_sync)
-		m_sync->onPeerAborting();
+	try
+	{
+		if (m_sync)
+			m_sync->onPeerAborting();
+	}
+	catch (Exception&)
+	{
+		cwarn << "Exception on peer destruciton: " << boost::current_exception_diagnostic_information();
+	}
 }
 
 bool EthereumHost::isSyncing() const
