@@ -33,6 +33,7 @@
 #include <vector>
 #include <libethash/util.h>
 #include <libethash/ethash.h>
+#include <libethcore/Ethash.h>
 #include <libethash/internal.h>
 #include "ethash_cl_miner.h"
 #include "ethash_cl_miner_kernel.h"
@@ -49,6 +50,7 @@
 #undef max
 
 using namespace std;
+using namespace dev::eth;
 
 // TODO: If at any point we can use libdevcore in here then we should switch to using a LogChannel
 #define ETHCL_LOG(_contents) cout << "[OPENCL]:" << _contents << endl
@@ -140,11 +142,17 @@ unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
 
 bool ethash_cl_miner::configureGPU(
 	unsigned _platformId,
+	unsigned _localWorkSize,
+	unsigned _globalWorkSize,
+	unsigned _msPerBatch,
 	bool _allowCPU,
 	unsigned _extraGPUMemory,
 	boost::optional<uint64_t> _currentBlock
 )
 {
+	s_workgroupSize = _localWorkSize;
+	s_initialGlobalWorkSize = _globalWorkSize;
+	s_msPerBatch = _msPerBatch;
 	s_allowCPU = _allowCPU;
 	s_extraRequiredGPUMem = _extraGPUMemory;
 	// by default let's only consider the DAG of the first epoch
@@ -175,6 +183,9 @@ bool ethash_cl_miner::configureGPU(
 
 bool ethash_cl_miner::s_allowCPU = false;
 unsigned ethash_cl_miner::s_extraRequiredGPUMem;
+unsigned ethash_cl_miner::s_msPerBatch = Ethash::defaultMSPerBatch;
+unsigned ethash_cl_miner::s_workgroupSize = Ethash::defaultLocalWorkSize;
+unsigned ethash_cl_miner::s_initialGlobalWorkSize = Ethash::defaultGlobalWorkSizeMultiplier * Ethash::defaultLocalWorkSize;
 
 bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
 {
@@ -254,7 +265,6 @@ void ethash_cl_miner::finish()
 bool ethash_cl_miner::init(
 	uint8_t const* _dag,
 	uint64_t _dagSize,
-	unsigned _workgroupSize,
 	unsigned _platformId,
 	unsigned _deviceId
 )
@@ -299,14 +309,18 @@ bool ethash_cl_miner::init(
 		m_context = cl::Context(vector<cl::Device>(&device, &device + 1));
 		m_queue = cl::CommandQueue(m_context, device);
 
-		// use requested workgroup size, but we require multiple of 8
-		m_workgroupSize = ((_workgroupSize + 7) / 8) * 8;
+		// make sure that global work size is evenly divisible by the local workgroup size
+		m_globalWorkSize = s_initialGlobalWorkSize;
+		if (m_globalWorkSize % s_workgroupSize != 0)
+			m_globalWorkSize = ((m_globalWorkSize / s_workgroupSize) + 1) * s_workgroupSize;
+		// remember the device's address bits
+		m_deviceBits = device.getInfo<CL_DEVICE_ADDRESS_BITS>();
 
 		// patch source code
 		// note: ETHASH_CL_MINER_KERNEL is simply ethash_cl_miner_kernel.cl compiled
 		// into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
 		string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
-		addDefinition(code, "GROUP_SIZE", m_workgroupSize);
+		addDefinition(code, "GROUP_SIZE", s_workgroupSize);
 		addDefinition(code, "DAG_SIZE", (unsigned)(_dagSize / ETHASH_MIX_BYTES));
 		addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
 		addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
@@ -415,9 +429,8 @@ bool ethash_cl_miner::init(
 	return true;
 }
 
-void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, unsigned _msPerBatch)
+void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook)
 {
-	(void)_msPerBatch;
 	try
 	{
 		struct pending_batch
@@ -454,10 +467,9 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		unsigned buf = 0;
 		random_device engine;
 		uint64_t start_nonce = uniform_int_distribution<uint64_t>()(engine);
-		for (;; start_nonce += m_batchSize)
+		for (;; start_nonce += m_globalWorkSize)
 		{
-//			chrono::high_resolution_clock::time_point t = chrono::high_resolution_clock::now();
-
+			auto t = chrono::high_resolution_clock::now();
 			// supply output buffer to kernel
 			m_searchKernel.setArg(0, m_searchBuffer[buf]);
 			if (m_dagChunksCount == 1)
@@ -466,7 +478,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				m_searchKernel.setArg(6, start_nonce);
 
 			// execute it!
-			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_batchSize, m_workgroupSize);
+			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, s_workgroupSize);
 
 			pending.push({ start_nonce, buf });
 			buf = (buf + 1) % c_bufferCount;
@@ -486,7 +498,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 
 				m_queue.enqueueUnmapMemObject(m_searchBuffer[batch.buf], results);
 				bool exit = num_found && hook.found(nonces, num_found);
-				exit |= hook.searched(batch.start_nonce, m_batchSize); // always report searched before exit
+				exit |= hook.searched(batch.start_nonce, m_globalWorkSize); // always report searched before exit
 				if (exit)
 					break;
 
@@ -497,19 +509,31 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				pending.pop();
 			}
 
-/*			chrono::high_resolution_clock::duration d = chrono::high_resolution_clock::now() - t;
-			if (d > chrono::milliseconds(_msPerBatch * 10 / 9))
+			// adjust global work size depending on last search time
+			if (s_msPerBatch)
 			{
-				cerr << "Batch of" << m_batchSize << "took" << chrono::duration_cast<chrono::milliseconds>(d).count() << "ms, >>" << _msPerBatch << "ms.";
-				m_batchSize = max<unsigned>(128, m_batchSize * 9 / 10);
-				cerr << "New batch size" << m_batchSize;
+				// Global work size must be:
+				//  - less than or equal to 2 ^ DEVICE_BITS - 1
+				//  - divisible by lobal work size (workgroup size)
+				auto d = chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t);
+				if (d != chrono::milliseconds(0)) // if duration is zero, we did not get in the actual searh/or search not finished
+				{
+					if (d > chrono::milliseconds(s_msPerBatch * 10 / 9))
+					{
+						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, >> " << _msPerBatch << " ms." << endl;
+						m_globalWorkSize = max<unsigned>(128, m_globalWorkSize + s_workgroupSize);
+						// cerr << "New global work size" << m_globalWorkSize << endl;
+					}
+					else if (d < chrono::milliseconds(s_msPerBatch * 9 / 10))
+					{
+						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, << " << _msPerBatch << " ms." << endl;
+						m_globalWorkSize = min<unsigned>(pow(2, m_deviceBits) - 1, m_globalWorkSize - s_workgroupSize);
+						// Global work size should never be less than the workgroup size
+						m_globalWorkSize = max<unsigned>(s_workgroupSize,  m_globalWorkSize);
+						// cerr << "New global work size" << m_globalWorkSize << endl;
+					}
+				}
 			}
-			else if (d < chrono::milliseconds(_msPerBatch * 9 / 10))
-			{
-				cerr << "Batch of" << m_batchSize << "took" << chrono::duration_cast<chrono::milliseconds>(d).count() << "ms, <<" << _msPerBatch << "ms.";
-				m_batchSize = m_batchSize * 10 / 9;
-				cerr << "New batch size" << m_batchSize;
-			}*/
 		}
 
 		// not safe to return until this is ready
