@@ -29,8 +29,9 @@ namespace dev
 namespace p2p
 {
 
-struct RLPXNullPacket: virtual dev::Exception {};
 struct RLPXInvalidPacket: virtual dev::Exception {};
+
+static bytesConstRef nextRLP(bytesConstRef _b) { try { RLP r(_b, RLP::AllowNonCanon); return _b.cropped(0, std::min((size_t)r.actualSize(), _b.size())); } catch(...) {} return bytesConstRef(); }
 
 /**
  * RLPX Packet
@@ -38,33 +39,29 @@ struct RLPXInvalidPacket: virtual dev::Exception {};
 class RLPXPacket
 {
 public:
-	static bytesConstRef nextRLP(bytesConstRef _b) { try { RLP r(_b, RLP::AllowNonCanon); return _b.cropped(0, std::min((size_t)r.actualSize(), _b.size())); } catch(...) {} return bytesConstRef(); }
-	
-	/// Construct complete packet. RLPStream data is moved.
-	RLPXPacket(unsigned _capId, unsigned _type, RLPStream& _rlps): m_cap(_capId), m_type(_type), m_data(std::move(_rlps.out())) { if (!_type && !m_data.size()) BOOST_THROW_EXCEPTION(RLPXNullPacket()); }
+	/// Construct packet. RLPStream data is invalidated.
+	RLPXPacket(uint8_t _capId, RLPStream& _type, RLPStream& _data): m_cap(_capId), m_type(std::move(_type.out())), m_data(std::move(_data.out())) {}
 
-	/// Construct packet with type and initial bytes; type is determined by RLP of 1st byte and packet may be incomplete.
-	RLPXPacket(unsigned _capId, bytesConstRef _in): m_cap(_capId), m_type(getType(_in)) { assert(_in.size()); if (_in.size() > 1) { m_data.resize(_in.size() - 1); _in.cropped(1).copyTo(&m_data); } }
+	/// Construct packet from single bytestream. RLPStream data is invalidated.
+	RLPXPacket(unsigned _capId, bytesConstRef _in): m_cap(_capId), m_type(nextRLP(_in).toBytes()) { if (_in.size() > m_type.size()) { m_data.resize(_in.size() - m_type.size()); _in.cropped(m_type.size()).copyTo(&m_data); } }
 	
 	RLPXPacket(RLPXPacket const& _p): m_cap(_p.m_cap), m_type(_p.m_type), m_data(_p.m_data) {}
-	
-	RLPXPacket(RLPXPacket&& _p): m_cap(_p.m_cap), m_type(_p.m_type), m_data(std::move(_p.m_data)) {}
-	
-	unsigned type() const { return m_type; }
+	RLPXPacket(RLPXPacket&& _p): m_cap(_p.m_cap), m_type(std::move(_p.m_type)), m_data(std::move(_p.m_data)) {}
+
+	bytes const& type() const { return m_type; }
+
 	bytes const& data() const { return m_data; }
-	size_t size() const { try { return RLP(m_data, RLP::LaissezFaire).actualSize(); } catch(...) { return 0; } }
-
-	bool streamIn(bytesConstRef _in) { auto offset = m_data.size(); m_data.resize(offset + _in.size()); _in.copyTo(bytesRef(&m_data).cropped(offset)); return isValid(); }
 	
-	bool isValid() { if (m_type > 0x7f) return false; try { return RLP(m_data).actualSize() == m_data.size(); } catch (...) {} return false; }
-	
+	size_t size() const { try { return RLP(m_type).actualSize() + RLP(m_data, RLP::LaissezFaire).actualSize(); } catch(...) { return 0; } }
 
+	/// Appends byte data and returns if packet is valid.
+	bool append(bytesConstRef _in) { auto offset = m_data.size(); m_data.resize(offset + _in.size()); _in.copyTo(bytesRef(&m_data).cropped(offset)); return isValid(); }
+	
+	virtual bool isValid() const noexcept { try { return !(m_type.empty() && m_data.empty()) && RLP(m_type).actualSize() == m_type.size() && RLP(m_data).actualSize() == m_data.size(); } catch (...) {} return false; }
+	
 protected:
-	unsigned getType(bytesConstRef _rlp) { return RLP(_rlp.cropped(0, 1)).toInt<unsigned>(); }
-	
-	unsigned m_cap;
-	unsigned m_type;
-	uint16_t m_sequence = 0;
+	uint8_t m_cap;
+	bytes m_type;
 	bytes m_data;
 };
 
