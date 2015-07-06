@@ -129,11 +129,6 @@ BOOST_AUTO_TEST_CASE(stPreCompiledContracts)
 	dev::test::executeTests("stPreCompiledContracts", "/StateTests",dev::test::getFolder(__FILE__) + "/StateTestsFiller", dev::test::doStateTests);
 }
 
-BOOST_AUTO_TEST_CASE(stPreCompiledContractsTransaction)
-{
-	dev::test::executeTests("stPreCompiledContractsTransaction", "/StateTests",dev::test::getFolder(__FILE__) + "/StateTestsFiller", dev::test::doStateTests);
-}
-
 BOOST_AUTO_TEST_CASE(stLogTests)
 {
 	dev::test::executeTests("stLogTests", "/StateTests",dev::test::getFolder(__FILE__) + "/StateTestsFiller", dev::test::doStateTests);
