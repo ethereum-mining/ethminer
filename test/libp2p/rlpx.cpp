@@ -500,7 +500,9 @@ BOOST_AUTO_TEST_CASE(readerWriter)
 	// we should now have a bunch of ciphertext in encframes
 	BOOST_REQUIRE(encframes.size() == drains);
 	for (auto const& c: encframes)
+	{
 		BOOST_REQUIRE_EQUAL(c.size(), RLPXFrameWriter::MinFrameDequeLength);
+	}
 	
 	// read and assemble dequed encframes
 	RLPXFrameCoder decoder(false, localEph.pubkey(), localNonce, remoteEph, remoteNonce, &ackCipher, &authCipher);
