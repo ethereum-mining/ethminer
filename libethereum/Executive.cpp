@@ -153,6 +153,11 @@ u256 Executive::gasUsed() const
 	return m_t.gas() - m_gas;
 }
 
+u256 Executive::gasUsedNoRefunds() const
+{
+	return m_t.gas() - m_gas + m_refunded;
+}
+
 void Executive::accrueSubState(SubState& _parentContext)
 {
 	if (m_ext)
@@ -391,8 +396,8 @@ void Executive::finalize()
 
 	// SSTORE refunds...
 	// must be done before the miner gets the fees.
-	if (m_ext)
-		m_gas += min((m_t.gas() - m_gas) / 2, m_ext->sub.refunds);
+	m_refunded = m_ext ? min((m_t.gas() - m_gas) / 2, m_ext->sub.refunds) : 0;
+	m_gas += m_refunded;
 
 	//	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
 	m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());

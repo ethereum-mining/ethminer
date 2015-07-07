@@ -707,7 +707,7 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="dockWidget_8">
+  <widget class="QDockWidget" name="blockChainDockWidget">
    <property name="features">
     <set>QDockWidget::DockWidgetFeatureMask</set>
    </property>

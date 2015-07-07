@@ -38,6 +38,7 @@
 #include "Executive.h"
 #include "CachedAddressState.h"
 #include "CanonBlockChain.h"
+#include "TransactionQueue.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -535,7 +536,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 					if (req > got)
 					{
 						// too old
-						for (Transaction const& mt: m_transactions)
+/*						for (Transaction const& mt: m_transactions)
 						{
 							if (mt.from() == t.from())
 							{
@@ -544,7 +545,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 								else if (mt.nonce() == t.nonce() && mt.gasPrice() <= t.gasPrice())
 									cnote << t.sha3() << "Dropping old transaction (gas price lower)";
 							}
-						}
+						}*/
 						_tq.drop(t.sha3());
 					}
 					else if (got > req + _tq.waiting(t.sender()))
@@ -1268,6 +1269,7 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 	
 		// Add to the user-originated transactions that we've executed.
 		m_transactions.push_back(e.t());
+//		m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsedNoRefunds(), e.logs()));	// TODO: Switch in to be compliant with YP.
 		m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs()));
 		m_transactionSet.insert(e.t().sha3());
 	}
