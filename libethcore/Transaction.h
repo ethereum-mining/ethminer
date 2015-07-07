@@ -51,6 +51,9 @@ public:
 	/// Constructs a null transaction.
 	TransactionBase() {}
 
+	/// Constructs a transaction from a transaction skeleton & optional secret.
+	TransactionBase(TransactionSkeleton const& _ts, Secret const& _s = Secret());
+
 	/// Constructs a signed message-call transaction.
 	TransactionBase(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data, u256 const& _nonce, Secret const& _secret): m_type(MessageCall), m_nonce(_nonce), m_value(_value), m_receiveAddress(_dest), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) { sign(_secret); }
 
@@ -68,7 +71,6 @@ public:
 
 	/// Constructs a transaction from the given RLP.
 	explicit TransactionBase(bytes const& _rlp, CheckTransaction _checkSig): TransactionBase(&_rlp, _checkSig) {}
-
 
 	/// Checks equality of transactions.
 	bool operator==(TransactionBase const& _c) const { return m_type == _c.m_type && (m_type == ContractCreation || m_receiveAddress == _c.m_receiveAddress) && m_value == _c.m_value && m_data == _c.m_data; }

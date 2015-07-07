@@ -37,6 +37,7 @@
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
+#include <libethereum/BlockChainSync.h>
 #include <libethcore/KeyManager.h>
 
 #include <libwebthree/WebThree.h>
@@ -375,6 +376,8 @@ void interactiveMode(eth::Client* c, std::shared_ptr<eth::TrivialGasPricer> gasP
 			cout << "Current block: " << c->blockChain().details().number << endl;
 		else if (c && cmd == "blockqueue")
 			cout << "Current blockqueue status: " << endl << c->blockQueueStatus() << endl;
+		else if (c && cmd == "sync")
+			cout << "Current sync status: " << endl << c->syncStatus() << endl;
 		else if (c && cmd == "hashrate")
 			cout << "Current hash rate: " << toString(c->hashrate()) << " hashes per second." << endl;
 		else if (c && cmd == "findblock")

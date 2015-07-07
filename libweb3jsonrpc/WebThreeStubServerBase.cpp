@@ -248,7 +248,7 @@ string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json)
 		if (!t.from)
 			t.from = m_ethAccounts->defaultTransactAccount();
 		if (t.creation)
-			ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
+			ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));
 		if (t.gasPrice == UndefinedU256)
 			t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
 		if (t.gas == UndefinedU256)

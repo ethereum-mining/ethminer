@@ -260,6 +260,8 @@ Main::Main(QWidget *parent) :
 	m_transact->setWindowFlags(Qt::Dialog);
 	m_transact->setWindowModality(Qt::WindowModal);
 
+	connect(ui->blockChainDockWidget, &QDockWidget::visibilityChanged, [=]() { refreshBlockChain(); });
+
 #if !ETH_FATDB
 	removeDockWidget(ui->dockWidget_accounts);
 #endif
@@ -1307,7 +1309,7 @@ void Main::on_turboMining_triggered()
 
 void Main::refreshBlockChain()
 {
-	if (!ui->blocks->isVisible() && isVisible())
+	if (!(ui->blockChainDockWidget->isVisible() || !tabifiedDockWidgets(ui->blockChainDockWidget).isEmpty()))
 		return;
 
 	DEV_TIMED_FUNCTION_ABOVE(500);
