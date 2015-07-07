@@ -66,7 +66,7 @@ public:
 	// [TRANSACTION API]
 
 	/// Submits a new transaction.
-	/// @returns the new contract's address (assuming it all goes through and it's contract creation).
+	/// @returns the transaction's hash.
 	virtual h256 submitTransaction(TransactionSkeleton const& _t, Secret const& _secret) = 0;
 
 	/// Submits the given message-call transaction.
