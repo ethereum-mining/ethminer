@@ -58,5 +58,53 @@ using TransactionReceipts = std::vector<TransactionReceipt>;
 
 std::ostream& operator<<(std::ostream& _out, eth::TransactionReceipt const& _r);
 
+class LocalisedTransactionReceipt: public TransactionReceipt
+{
+public:
+	LocalisedTransactionReceipt(
+		TransactionReceipt const& _t,
+	    h256 const& _hash,
+	    h256 const& _blockHash,
+	    BlockNumber _blockNumber,
+	    unsigned _transactionIndex,
+	    Address const& _contractAddress = Address()
+	):
+		TransactionReceipt(_t),
+		m_hash(_hash),
+		m_blockHash(_blockHash),
+		m_blockNumber(_blockNumber),
+		m_transactionIndex(_transactionIndex),
+		m_contractAddress(_contractAddress)
+	{}
+
+	h256 const& hash() const { return m_hash; }
+	h256 const& blockHash() const { return m_blockHash; }
+	BlockNumber blockNumber() const { return m_blockNumber; }
+	unsigned transactionIndex() const { return m_transactionIndex; }
+	Address const& contractAddress() const { return m_contractAddress; }
+
+	LocalisedLogEntries localisedLogs() const
+	{
+		LocalisedLogEntries localisedEntries;
+		LogEntries entries = log();
+		for (unsigned i = 0; i < entries.size(); i++)
+			localisedEntries.push_back(LocalisedLogEntry(
+				entries[i],
+				m_blockHash,
+				m_blockNumber,
+				m_hash,
+				m_transactionIndex,
+				i));
+		return localisedEntries;
+	};
+
+private:
+	h256 m_hash;
+	h256 m_blockHash;
+	BlockNumber m_blockNumber;
+	unsigned m_transactionIndex;
+	Address m_contractAddress;
+};
+
 }
 }
