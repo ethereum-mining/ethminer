@@ -1076,11 +1076,11 @@ template <class DB> bytes GenericTrieDB<DB>::place(RLP const& _orig, NibbleSlice
 
 	killNode(_orig);
 	if (_orig.isEmpty())
-		return (RLPStream(2) << hexPrefixEncode(_k, true) << _s).out();
+		return rlpList(hexPrefixEncode(_k, true), _s);
 
 	assert(_orig.isList() && (_orig.itemCount() == 2 || _orig.itemCount() == 17));
 	if (_orig.itemCount() == 2)
-		return (RLPStream(2) << _orig[0] << _s).out();
+		return rlpList(_orig[0], _s);
 
 	auto s = RLPStream(17);
 	for (unsigned i = 0; i < 16; ++i)
@@ -1162,7 +1162,7 @@ template <class DB> bytes GenericTrieDB<DB>::graft(RLP const& _orig)
 	}
 	assert(n.itemCount() == 2);
 
-	return (RLPStream(2) << hexPrefixEncode(keyOf(_orig), keyOf(n), isLeaf(n)) << n[1]).out();
+	return rlpList(hexPrefixEncode(keyOf(_orig), keyOf(n), isLeaf(n)), n[1]);
 //	auto ret =
 //	std::cout << keyOf(_orig) << " ++ " << keyOf(n) << " == " << keyOf(RLP(ret)) << std::endl;
 //	return ret;
@@ -1211,11 +1211,7 @@ template <class DB> bytes GenericTrieDB<DB>::branch(RLP const& _orig)
 		for (unsigned i = 0; i < 16; ++i)
 			if (i == b)
 				if (isLeaf(_orig) || k.size() > 1)
-				{
-					RLPStream bottom(2);
-					bottom << hexPrefixEncode(k.mid(1), isLeaf(_orig)) << _orig[1];
-					streamNode(r, bottom.out());
-				}
+					streamNode(r, rlpList(hexPrefixEncode(k.mid(1), isLeaf(_orig)), _orig[1]));
 				else
 					r << _orig[1];
 			else
