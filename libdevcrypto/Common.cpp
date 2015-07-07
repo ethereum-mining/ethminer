@@ -29,6 +29,7 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/FileSystem.h>
+#include <libdevcore/RLP.h>
 #if ETH_HAVE_SECP256K1
 #include <secp256k1/secp256k1.h>
 #endif
@@ -88,6 +89,11 @@ Address dev::toAddress(Secret const& _secret)
 	Public p;
 	s_secp256k1pp.toPublic(_secret, p);
 	return toAddress(p);
+}
+
+Address dev::toAddress(Address const& _from, u256 const& _nonce)
+{
+	return right160(sha3(rlpList(_from, _nonce)));
 }
 
 void dev::encrypt(Public const& _k, bytesConstRef _plain, bytes& o_cipher)
