@@ -66,7 +66,7 @@ class GenericTrieDB
 public:
 	using DB = _DB;
 
-	GenericTrieDB(DB* _db = nullptr): m_db(_db) {}
+	explicit GenericTrieDB(DB* _db = nullptr): m_db(_db) {}
 	GenericTrieDB(DB* _db, h256 const& _root, Verification _v = Verification::Normal) { open(_db, _root, _v); }
 	~GenericTrieDB() {}
 
@@ -96,73 +96,7 @@ public:
 	/// True if the trie is initialised but empty (i.e. that the DB contains the root node which is empty).
 	bool isEmpty() const { return m_root == c_shaNull && node(m_root).size(); }
 
-	h256 const& root() const { if (!node(m_root).size()) BOOST_THROW_EXCEPTION(BadRoot()); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return m_root; }	// patch the root in the case of the empty trie. TODO: handle this properly.
-
-	void debugPrint() {}
-
-	void descendKey(h256 _k, h256Hash& _keyMask, bool _wasExt, std::ostream* _out, int _indent = 0) const
-	{
-		_keyMask.erase(_k);
-		if (_k == m_root && _k == c_shaNull)	// root allowed to be empty
-			return;
-		descendList(RLP(node(_k)), _keyMask, _wasExt, _out, _indent);	// if not, it must be a list
-	}
-
-	void descendEntry(RLP const& _r, h256Hash& _keyMask, bool _wasExt, std::ostream* _out, int _indent) const
-	{
-		if (_r.isData() && _r.size() == 32)
-			descendKey(_r.toHash<h256>(), _keyMask, _wasExt, _out, _indent);
-		else if (_r.isList())
-			descendList(_r, _keyMask, _wasExt, _out, _indent);
-		else
-			BOOST_THROW_EXCEPTION(InvalidTrie());
-	}
-
-	void descendList(RLP const& _r, h256Hash& _keyMask, bool _wasExt, std::ostream* _out, int _indent) const
-	{
-		if (_r.isList() && _r.itemCount() == 2 && (!_wasExt || _out))
-		{
-			if (_out)
-				(*_out) << std::string(_indent * 2, ' ') << (_wasExt ? "!2 " : "2  ") << sha3(_r.data()) << ": " << _r << "\n";
-			if (!isLeaf(_r))						// don't go down leaves
-				descendEntry(_r[1], _keyMask, true, _out, _indent + 1);
-		}
-		else if (_r.isList() && _r.itemCount() == 17)
-		{
-			if (_out)
-				(*_out) << std::string(_indent * 2, ' ') << "17 " << sha3(_r.data()) << ": " << _r << "\n";
-			for (unsigned i = 0; i < 16; ++i)
-				if (!_r[i].isEmpty())				// 16 branches are allowed to be empty
-					descendEntry(_r[i], _keyMask, false, _out, _indent + 1);
-		}
-		else
-			BOOST_THROW_EXCEPTION(InvalidTrie());
-	}
-
-	h256Hash leftOvers(std::ostream* _out = nullptr) const
-	{
-		h256Hash k = m_db->keys();
-		descendKey(m_root, k, false, _out);
-		return k;
-	}
-
-	void debugStructure(std::ostream& _out) const
-	{
-		leftOvers(&_out);
-	}
-
-	bool check(bool _requireNoLeftOvers) const
-	{
-		try
-		{
-			return leftOvers().empty() || !_requireNoLeftOvers;
-		}
-		catch (...)
-		{
-			cwarn << boost::current_exception_diagnostic_information();
-			return false;
-		}
-	}
+	h256 const& root() const { if (node(m_root).empty()) BOOST_THROW_EXCEPTION(BadRoot()); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return m_root; }	// patch the root in the case of the empty trie. TODO: handle this properly.
 
 	std::string at(bytes const& _key) const { return at(&_key); }
 	std::string at(bytesConstRef _key) const;
@@ -181,7 +115,7 @@ public:
 		using value_type = std::pair<bytesConstRef, bytesConstRef>;
 
 		iterator() {}
-		iterator(GenericTrieDB const* _db);
+		explicit iterator(GenericTrieDB const* _db);
 		iterator(GenericTrieDB const* _db, bytesConstRef _key);
 
 		iterator& operator++() { next(); return *this; }
@@ -219,10 +153,83 @@ public:
 		GenericTrieDB<DB> const* m_that;
 	};
 
-	iterator begin() const { return this; }
+	iterator begin() const { return iterator(this); }
 	iterator end() const { return iterator(); }
 
 	iterator lower_bound(bytesConstRef _key) const { return iterator(this, _key); }
+
+	void debugPrint() {}
+
+	/// Used for debugging, scans the whole trie.
+	void descendKey(h256 const& _k, h256Hash& _keyMask, bool _wasExt, std::ostream* _out, int _indent = 0) const
+	{
+		_keyMask.erase(_k);
+		if (_k == m_root && _k == c_shaNull)	// root allowed to be empty
+			return;
+		descendList(RLP(node(_k)), _keyMask, _wasExt, _out, _indent);	// if not, it must be a list
+	}
+
+	/// Used for debugging, scans the whole trie.
+	void descendEntry(RLP const& _r, h256Hash& _keyMask, bool _wasExt, std::ostream* _out, int _indent) const
+	{
+		if (_r.isData() && _r.size() == 32)
+			descendKey(_r.toHash<h256>(), _keyMask, _wasExt, _out, _indent);
+		else if (_r.isList())
+			descendList(_r, _keyMask, _wasExt, _out, _indent);
+		else
+			BOOST_THROW_EXCEPTION(InvalidTrie());
+	}
+
+	/// Used for debugging, scans the whole trie.
+	void descendList(RLP const& _r, h256Hash& _keyMask, bool _wasExt, std::ostream* _out, int _indent) const
+	{
+		if (_r.isList() && _r.itemCount() == 2 && (!_wasExt || _out))
+		{
+			if (_out)
+				(*_out) << std::string(_indent * 2, ' ') << (_wasExt ? "!2 " : "2  ") << sha3(_r.data()) << ": " << _r << "\n";
+			if (!isLeaf(_r))						// don't go down leaves
+				descendEntry(_r[1], _keyMask, true, _out, _indent + 1);
+		}
+		else if (_r.isList() && _r.itemCount() == 17)
+		{
+			if (_out)
+				(*_out) << std::string(_indent * 2, ' ') << "17 " << sha3(_r.data()) << ": " << _r << "\n";
+			for (unsigned i = 0; i < 16; ++i)
+				if (!_r[i].isEmpty())				// 16 branches are allowed to be empty
+					descendEntry(_r[i], _keyMask, false, _out, _indent + 1);
+		}
+		else
+			BOOST_THROW_EXCEPTION(InvalidTrie());
+	}
+
+	/// Used for debugging, scans the whole trie.
+	h256Hash leftOvers(std::ostream* _out = nullptr) const
+	{
+		h256Hash k = m_db->keys();
+		descendKey(m_root, k, false, _out);
+		return k;
+	}
+
+	/// Used for debugging, scans the whole trie.
+	void debugStructure(std::ostream& _out) const
+	{
+		leftOvers(&_out);
+	}
+
+	/// Used for debugging, scans the whole trie.
+	/// @param _requireNoLeftOvers if true, requires that all keys are reachable.
+	bool check(bool _requireNoLeftOvers) const
+	{
+		try
+		{
+			return leftOvers().empty() || !_requireNoLeftOvers;
+		}
+		catch (...)
+		{
+			cwarn << boost::current_exception_diagnostic_information();
+			return false;
+		}
+	}
 
 protected:
 	DB* db() const { return m_db; }
@@ -279,12 +286,12 @@ private:
 	bool isTwoItemNode(RLP const& _n) const;
 	std::string deref(RLP const& _n) const;
 
-	std::string node(h256 _h) const { return m_db->lookup(_h); }
+	std::string node(h256 const& _h) const { return m_db->lookup(_h); }
 
 	// These are low-level node insertion functions that just go straight through into the DB.
 	h256 forceInsertNode(bytesConstRef _v) { auto h = sha3(_v); forceInsertNode(h, _v); return h; }
-	void forceInsertNode(h256 _h, bytesConstRef _v) { m_db->insert(_h, _v); }
-	void forceKillNode(h256 _h) { m_db->kill(_h); }
+	void forceInsertNode(h256 const& _h, bytesConstRef _v) { m_db->insert(_h, _v); }
+	void forceKillNode(h256 const& _h) { m_db->kill(_h); }
 
 	// This are semantically-aware node insertion functions that only kills when the node's
 	// data is < 32 bytes. It can safely be used when pruning the trie but won't work correctly
@@ -305,6 +312,9 @@ std::ostream& operator<<(std::ostream& _out, GenericTrieDB<DB> const& _db)
 	return _out;
 }
 
+/**
+ * Different view on a GenericTrieDB that can use different key types.
+ */
 template <class Generic, class _KeyType>
 class SpecificTrieDB: public Generic
 {
@@ -753,14 +763,14 @@ template <class DB> void GenericTrieDB<DB>::insert(bytesConstRef _key, bytesCons
 	tdebug << "Insert" << toHex(_key.cropped(0, 4)) << "=>" << toHex(_value);
 #endif
 
-	std::string rv = node(m_root);
-	assert(rv.size());
-	bytes b = mergeAt(RLP(rv), m_root, NibbleSlice(_key), _value);
+	std::string rootValue = node(m_root);
+	assert(rootValue.size());
+	bytes b = mergeAt(RLP(rootValue), m_root, NibbleSlice(_key), _value);
 
 	// mergeAt won't attempt to delete the node if it's less than 32 bytes
 	// However, we know it's the root node and thus always hashed.
 	// So, if it's less than 32 (and thus should have been deleted but wasn't) then we delete it here.
-	if (rv.size() < 32)
+	if (rootValue.size() < 32)
 		forceKillNode(m_root);
 	m_root = forceInsertNode(&b);
 }
