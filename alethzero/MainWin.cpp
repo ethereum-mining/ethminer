@@ -1993,12 +1993,12 @@ void Main::on_net_triggered()
 		web3()->setNetworkPreferences(netPrefs(), ui->dropPeers->isChecked());
 		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : h256());
 		web3()->startNetwork();
-		ui->downloadView->setDownloadMan(ethereum()->downloadMan());
+		ui->downloadView->setEthereum(ethereum());
 		ui->enode->setText(QString::fromStdString(web3()->enode()));
 	}
 	else
 	{
-		ui->downloadView->setDownloadMan(nullptr);
+		ui->downloadView->setEthereum(nullptr);
 		writeSettings();
 		web3()->stopNetwork();
 	}
