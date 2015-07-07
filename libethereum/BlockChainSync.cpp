@@ -397,7 +397,6 @@ void PV60Sync::transition(std::shared_ptr<EthereumPeer> _peer, SyncState _s, boo
 	if (m_state == SyncState::Idle && _s != SyncState::Idle)
 		_peer->m_requireTransactions = true;
 
-	RLPStream s;
 	if (_s == SyncState::Hashes)
 	{
 		if (m_state == SyncState::Idle || m_state == SyncState::Hashes)
