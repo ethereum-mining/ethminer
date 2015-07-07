@@ -536,7 +536,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 					if (req > got)
 					{
 						// too old
-						for (Transaction const& mt: m_transactions)
+/*						for (Transaction const& mt: m_transactions)
 						{
 							if (mt.from() == t.from())
 							{
@@ -545,7 +545,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 								else if (mt.nonce() == t.nonce() && mt.gasPrice() <= t.gasPrice())
 									cnote << t.sha3() << "Dropping old transaction (gas price lower)";
 							}
-						}
+						}*/
 						_tq.drop(t.sha3());
 					}
 					else if (got > req + _tq.waiting(t.sender()))
