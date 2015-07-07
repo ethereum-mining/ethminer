@@ -1706,7 +1706,7 @@ int main(int argc, char** argv)
 	cout << "Transaction Signer: " << signingKey << endl;
 	cout << "Mining Benefactor: " << beneficiary << endl;
 
-	if (bootstrap || !remoteHost.empty())
+	if (bootstrap || !remoteHost.empty() || disableDiscovery)
 	{
 		web3.startNetwork();
 		cout << "Node ID: " << web3.enode() << endl;
