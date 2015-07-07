@@ -24,6 +24,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <random>
 #include <algorithm>
 #include "CommonData.h"
