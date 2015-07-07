@@ -1212,7 +1212,6 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 	uncommitToMine();
 
 	// OK - transaction looks valid - execute.
-	u256 startGasUsed = gasUsed();
 #if ETH_PARANOIA
 	ctrace << "Executing" << e.t() << "on" << h;
 	ctrace << toHex(e.t().rlp());
@@ -1262,7 +1261,7 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 	
 		// Add to the user-originated transactions that we've executed.
 		m_transactions.push_back(e.t());
-		m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + (m_currentBlock.number >= 830000 ? e.gasUsedNoRefunds() : e.gasUsed()), e.logs()));
+		m_receipts.push_back(TransactionReceipt(rootHash(), e.gasUsed(), e.logs()));
 		m_transactionSet.insert(e.t().sha3());
 	}
 
