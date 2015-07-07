@@ -227,7 +227,7 @@ ReturnCode JIT::exec(ExecutionContext& _context)
 
 extern "C" void ext_free(void* _data) noexcept;
 
-ExecutionContext::~ExecutionContext()
+ExecutionContext::~ExecutionContext() noexcept
 {
 	if (m_memData)
 		ext_free(m_memData); // Use helper free to check memory leaks
