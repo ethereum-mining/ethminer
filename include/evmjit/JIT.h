@@ -121,7 +121,7 @@ public:
 	ExecutionContext(RuntimeData& _data, Env* _env) { init(_data, _env); }
 	ExecutionContext(ExecutionContext const&) = delete;
 	ExecutionContext& operator=(ExecutionContext const&) = delete;
-	EXPORT ~ExecutionContext();
+	EXPORT ~ExecutionContext() noexcept;
 
 	void init(RuntimeData& _data, Env* _env) { m_data = &_data; m_env = _env; }
 
