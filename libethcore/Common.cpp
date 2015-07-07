@@ -26,6 +26,7 @@
 #include <libdevcore/SHA3.h>
 #include "Exceptions.h"
 #include "ProofOfWork.h"
+#include "BlockInfo.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -112,9 +113,9 @@ std::string formatBalance(bigint const& _b)
 
 static void badBlockInfo(BlockInfo const& _bi, string const& _err)
 {
-	string const c_line = EthReset EthOnMaroon + string(80, ' ');
+	string const c_line = EthReset EthOnMaroon + string(80, ' ') + EthReset;
 	string const c_border = EthReset EthOnMaroon + string(2, ' ') + EthReset EthMaroonBold;
-	string const c_space = c_border + string(76, ' ') + c_border;
+	string const c_space = c_border + string(76, ' ') + c_border + EthReset;
 	stringstream ss;
 	ss << c_line << endl;
 	ss << c_space << endl;
