@@ -99,11 +99,12 @@ Json::Value toJson(dev::eth::BlockInfo const& _bi)
 		res["gasLimit"] = toJS(_bi.gasLimit);
 		res["timestamp"] = toJS(_bi.timestamp);
 		res["extraData"] = toJS(_bi.extraData);
-		res["nonce"] = toJS(_bi.nonce);
 		res["logsBloom"] = toJS(_bi.logBloom);
-
-		res["seedHash"] = toJS(_bi.seedHash());
 		res["target"] = toJS(_bi.boundary());
+
+		// TODO: move into ProofOfWork.
+		res["nonce"] = toJS(_bi.proof.nonce);
+		res["seedHash"] = toJS(_bi.proofCache());
 	}
 	return res;
 }

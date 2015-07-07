@@ -189,6 +189,7 @@ struct TransactionSkeleton
 	Address to;
 	u256 value;
 	bytes data;
+	u256 nonce = UndefinedU256;
 	u256 gas = UndefinedU256;
 	u256 gasPrice = UndefinedU256;
 	u256 nonce = UndefinedU256;
