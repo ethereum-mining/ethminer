@@ -45,7 +45,7 @@ State ClientBase::asOf(BlockNumber _h) const
 	return asOf(bc().numberHash(_h));
 }
 
-Address ClientBase::submitTransaction(TransactionSkeleton const& _t, Secret const& _secret)
+h256 ClientBase::submitTransaction(TransactionSkeleton const& _t, Secret const& _secret)
 {
 	prepareForTransaction();
 	
@@ -59,7 +59,7 @@ Address ClientBase::submitTransaction(TransactionSkeleton const& _t, Secret cons
 	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
 	cnote << "New transaction " << t;
 	
-	return _t.creation ? right160(sha3(rlpList(ts.from, ts.nonce))) : Address();
+	return t.sha3();
 }
 
 // TODO: remove try/catch, allow exceptions
@@ -325,6 +325,11 @@ Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 		return Transaction(b[1][_i].data(), CheckTransaction::Cheap);
 	else
 		return Transaction();
+}
+
+TransactionReceipt ClientBase::transactionReceipt(h256 const& _transactionHash) const
+{
+	return bc().transactionReceipt(_transactionHash);
 }
 
 pair<h256, unsigned> ClientBase::transactionLocation(h256 const& _transactionHash) const

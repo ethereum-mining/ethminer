@@ -46,5 +46,6 @@ Address Interface::submitTransaction(Secret const& _secret, u256 const& _endowme
 	ts.gas = _gas;
 	ts.gasPrice = _gasPrice;
 	ts.nonce = _nonce;
-	return submitTransaction(ts, _secret);
+	submitTransaction(ts, _secret);
+	return toAddress(toAddress(_secret), _nonce);
 }

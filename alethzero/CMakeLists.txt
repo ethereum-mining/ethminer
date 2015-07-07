@@ -7,6 +7,11 @@ if (${CMAKE_MAJOR_VERSION} GREATER 2)
 	cmake_policy(SET CMP0043 OLD)
 endif()
 
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+	# Supress warnings for qt headers for clang+ccache
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-inconsistent-missing-override")
+endif ()
+
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 

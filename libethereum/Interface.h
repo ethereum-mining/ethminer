@@ -66,8 +66,8 @@ public:
 	// [TRANSACTION API]
 
 	/// Submits a new transaction.
-	/// @returns the new contract's address (assuming it all goes through and it's contract creation).
-	virtual Address submitTransaction(TransactionSkeleton const& _t, Secret const& _secret) = 0;
+	/// @returns the transaction's hash.
+	virtual h256 submitTransaction(TransactionSkeleton const& _t, Secret const& _secret) = 0;
 
 	/// Submits the given message-call transaction.
 	void submitTransaction(Secret const& _secret, u256 const& _value, Address const& _dest, bytes const& _data = bytes(), u256 const& _gas = 10000, u256 const& _gasPrice = 10 * szabo, u256 const& _nonce = UndefinedU256);
@@ -135,6 +135,7 @@ public:
 
 	virtual bool isKnownTransaction(h256 const& _transactionHash) const = 0;
 	virtual Transaction transaction(h256 _transactionHash) const = 0;
+	virtual TransactionReceipt transactionReceipt(h256 const& _transactionHash) const = 0;
 	virtual std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const = 0;
 	virtual h256 hashFromNumber(BlockNumber _number) const = 0;
 	virtual BlockNumber numberFromHash(h256 _blockHash) const = 0;
