@@ -78,11 +78,10 @@ void go(unsigned _depth, Executive& _e, OnOpFunc const& _onOp)
 	// Current stack is too small to handle more CALL/CREATE executions.
 	// It needs to be done only once as newly allocated stack space it enough to handle
 	// the rest of the calls up to the depth limit (c_depthLimit).
-#if __clang__ // Enabled for clang only as the problem affects OSX
+
 	if (_depth == c_offloadPoint)
 		goOnOffloadedStack(_e, _onOp);
 	else
-#endif
 		_e.go(_onOp);
 }
 }
@@ -92,7 +91,11 @@ bool ExtVM::call(CallParameters& _p)
 	Executive e(m_s, lastHashes, depth + 1);
 	if (!e.call(_p, gasPrice, origin))
 	{
+	#if __clang__ // Enabled for clang only as the problem affects OSX
 		go(depth, e, _p.onOp);
+	#else
+		e.go(_p.onOp);
+	#endif
 		e.accrueSubState(sub);
 	}
 	_p.gas = e.gas();
