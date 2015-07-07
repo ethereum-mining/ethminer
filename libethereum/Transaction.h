@@ -130,5 +130,29 @@ private:
 /// Nice name for vector of Transaction.
 using Transactions = std::vector<Transaction>;
 
+class LocalisedTransaction: public Transaction
+{
+public:
+	LocalisedTransaction(
+		Transaction const& _t,
+		std::pair<h256, unsigned> const& _location,
+		BlockNumber _blockNumber
+	):
+		Transaction(_t),
+		m_blockHash(_location.first),
+		m_blockNumber(_blockNumber),
+		m_transactionIndex(_location.second)
+	{}
+
+	h256 const& blockHash() const { return m_blockHash; }
+	BlockNumber blockNumber() const { return m_blockNumber; }
+	unsigned transactionIndex() const { return m_transactionIndex; }
+
+private:
+	h256 m_blockHash;
+	BlockNumber m_blockNumber;
+	unsigned m_transactionIndex;
+};
+
 }
 }
