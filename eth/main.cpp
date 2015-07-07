@@ -1026,9 +1026,7 @@ void interactiveMode(eth::Client* c, std::shared_ptr<eth::TrivialGasPricer> gasP
 			{
 				string path;
 				iss >> path;
-				RLPStream config(2);
-				config << signingKey << beneficiary;
-				writeFile(path, config.out());
+				writeFile(path, rlpList(signingKey, beneficiary));
 			}
 			else
 				cwarn << "Require parameter: exportConfig PATH";
@@ -1477,11 +1475,7 @@ int main(int argc, char** argv)
 	for (auto const& s: passwordsToNote)
 		keyManager.notePassword(s);
 
-	{
-		RLPStream config(2);
-		config << signingKey << beneficiary;
-		writeFile(configFile, config.out());
-	}
+	writeFile(configFile, rlpList(signingKey, beneficiary));
 
 	if (sessionKey)
 		signingKey = sessionKey;
