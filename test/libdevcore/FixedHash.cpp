@@ -134,6 +134,10 @@ BOOST_AUTO_TEST_CASE(FixedHashIncrement)
 	incrementSingleIteration(0xFFFF);
 	incrementSingleIteration(0xFEDCBA);
 	incrementSingleIteration(0x7FFFFFFF);
+
+	FixedHash<4> h(0xFFFFFFFF);
+	FixedHash<4> zero;
+	BOOST_CHECK_EQUAL(++h, zero);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
