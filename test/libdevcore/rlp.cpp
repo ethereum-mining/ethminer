@@ -89,8 +89,7 @@ namespace dev
 					{
 						if (o["in"].get_str() == "INVALID")
 							skipEncode = 1;
-						else
-						if (o["in"].get_str() == "VALID")
+						else	if (o["in"].get_str() == "VALID")
 							skipEncode = 2;
 					}
 
