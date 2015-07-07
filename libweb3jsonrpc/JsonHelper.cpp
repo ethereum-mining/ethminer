@@ -269,6 +269,9 @@ TransactionSkeleton toTransactionSkeleton(Json::Value const& _json)
 
 	if (!_json["code"].empty())
 		ret.data = jsToBytes(_json["code"].asString());
+
+	if (!_json["nonce"].empty())
+		ret.nonce = jsToU256(_json["nonce"].asString());
 	return ret;
 }
 

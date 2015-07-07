@@ -22,6 +22,9 @@
 #pragma once
 
 #include <functional>
+#include <condition_variable>
+#include <thread>
+#include <deque>
 #include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
@@ -49,15 +52,14 @@ enum class IfDropped { Ignore, Retry };
 class TransactionQueue
 {
 public:
-	using ImportCallback = std::function<void(ImportResult)>;
-
 	/// @brief TransactionQueue
 	/// @param _limit Maximum number of pending transactions in the queue
 	/// @param _futureLimit Maximum number of future nonce transactions
-	TransactionQueue(unsigned _limit = 1024, unsigned _futureLimit = 1024): m_current(PriorityCompare { *this }), m_limit(_limit), m_futureLimit(_futureLimit) {}
-	ImportResult import(Transaction const& _tx, ImportCallback const& _cb = ImportCallback(), IfDropped _ik = IfDropped::Ignore);
-	ImportResult import(bytes const& _tx, ImportCallback const& _cb = ImportCallback(), IfDropped _ik = IfDropped::Ignore) { return import(&_tx, _cb, _ik); }
-	ImportResult import(bytesConstRef _tx, ImportCallback const& _cb = ImportCallback(), IfDropped _ik = IfDropped::Ignore);
+	TransactionQueue(unsigned _limit = 1024, unsigned _futureLimit = 1024);
+	~TransactionQueue();
+	void enqueue(RLP const& _data, h512 const& _nodeId);
+	ImportResult import(bytes const& _tx, IfDropped _ik = IfDropped::Ignore) { return import(&_tx, _ik); }
+	ImportResult import(Transaction const& _tx, IfDropped _ik = IfDropped::Ignore);
 
 	void drop(h256 const& _txHash);
 
@@ -66,9 +68,11 @@ public:
 	h256Hash knownTransactions() const;
 	u256 maxNonce(Address const& _a) const;
 	void setFuture(h256 const& _t);
+	void dropGood(Transaction const& _t);
 
 	void clear();
-	template <class T> Handler onReady(T const& _t) { return m_onReady.add(_t); }
+	template <class T> Handler<> onReady(T const& _t) { return m_onReady.add(_t); }
+	template <class T> Handler<ImportResult, h256 const&, h512 const&> onImport(T const& _t) { return m_onImport.add(_t); }
 
 private:
 	struct VerifiedTransaction
@@ -77,9 +81,23 @@ private:
 		VerifiedTransaction(VerifiedTransaction&& _t): transaction(std::move(_t.transaction)) {}
 
 		VerifiedTransaction(VerifiedTransaction const&) = delete;
-		VerifiedTransaction operator=(VerifiedTransaction const&) = delete;
+		VerifiedTransaction& operator=(VerifiedTransaction const&) = delete;
 
 		Transaction transaction;
+	};
+
+	struct UnverifiedTransaction
+	{
+		UnverifiedTransaction() {}
+		UnverifiedTransaction(bytesConstRef const& _t, h512 const& _nodeId): transaction(std::move(_t.toBytes())), nodeId(_nodeId) {}
+		UnverifiedTransaction(UnverifiedTransaction&& _t): transaction(std::move(_t.transaction)) {}
+		UnverifiedTransaction& operator=(UnverifiedTransaction&& _other) { transaction = std::move(_other.transaction); nodeId = std::move(_other.nodeId); return *this; }
+
+		UnverifiedTransaction(UnverifiedTransaction const&) = delete;
+		UnverifiedTransaction& operator=(UnverifiedTransaction const&) = delete;
+
+		bytes transaction;
+		h512 nodeId;
 	};
 
 	struct PriorityCompare
@@ -96,12 +114,15 @@ private:
 	// Use a set with dynamic comparator for minmax priority queue. The comparator takes into account min account nonce. Updating it does not affect the order.
 	using PriorityQueue = std::multiset<VerifiedTransaction, PriorityCompare>;
 
+	ImportResult import(bytesConstRef _tx, IfDropped _ik = IfDropped::Ignore);
 	ImportResult check_WITH_LOCK(h256 const& _h, IfDropped _ik);
-	ImportResult manageImport_WITH_LOCK(h256 const& _h, Transaction const& _transaction, ImportCallback const& _cb);
+	ImportResult manageImport_WITH_LOCK(h256 const& _h, Transaction const& _transaction);
 
 	void insertCurrent_WITH_LOCK(std::pair<h256, Transaction> const& _p);
+	void makeCurrent_WITH_LOCK(Transaction const& _t);
 	bool remove_WITH_LOCK(h256 const& _txHash);
 	u256 maxNonce_WITH_LOCK(Address const& _a) const;
+	void verifierBody();
 
 	mutable SharedMutex m_lock;													///< General lock.
 	h256Hash m_known;															///< Hashes of transactions in both sets.
@@ -114,10 +135,17 @@ private:
 	std::unordered_map<Address, std::map<u256, PriorityQueue::iterator>> m_currentByAddressAndNonce; ///< Transactions grouped by account and nonce
 	std::unordered_map<Address, std::map<u256, VerifiedTransaction>> m_future;	/// Future transactions
 
-	Signal m_onReady;															///< Called when a subsequent call to import transactions will return a non-empty container. Be nice and exit fast.
+	Signal<> m_onReady;															///< Called when a subsequent call to import transactions will return a non-empty container. Be nice and exit fast.
+	Signal<ImportResult, h256 const&, h512 const&> m_onImport;					///< Called for each import attempt. Arguments are result, transaction id an node id. Be nice and exit fast.
 	unsigned m_limit;															///< Max number of pending transactions
 	unsigned m_futureLimit;														///< Max number of future transactions
 	unsigned m_futureSize = 0;													///< Current number of future transactions
+
+	std::condition_variable m_queueReady;										///< Signaled when m_unverified has a new entry.
+	std::vector<std::thread> m_verifiers;
+	std::deque<UnverifiedTransaction> m_unverified;								///< Pending verification queue
+	mutable Mutex x_queue;														///< Verification queue mutex
+	bool m_aborting = false;													///< Exit condition for verifier.
 };
 
 }

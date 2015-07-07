@@ -65,16 +65,16 @@ public:
 
 	// [TRANSACTION API]
 
+	/// Submits a new transaction.
+	/// @returns the new contract's address (assuming it all goes through and it's contract creation).
+	virtual Address submitTransaction(TransactionSkeleton const& _t, Secret const& _secret) = 0;
+
 	/// Submits the given message-call transaction.
-	virtual void submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
+	void submitTransaction(Secret const& _secret, u256 const& _value, Address const& _dest, bytes const& _data = bytes(), u256 const& _gas = 10000, u256 const& _gasPrice = 10 * szabo, u256 const& _nonce = UndefinedU256);
 
 	/// Submits a new contract-creation transaction.
 	/// @returns the new contract's address (assuming it all goes through).
-	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
-
-	/// Submits a new contract-creation transaction.
-	/// @returns the new contract's address (assuming it all goes through).
-	Address submitTransaction(Secret const& _secret, TransactionSkeleton const& _t) { if (_t.creation) return submitTransaction(_secret, _t.value, _t.data, _t.gas, _t.gasPrice); submitTransaction(_secret, _t.value, _t.to, _t.data, _t.gas, _t.gasPrice); return Address(); }
+	Address submitTransaction(Secret const& _secret, u256 const& _endowment, bytes const& _init, u256 const& _gas = 10000, u256 const& _gasPrice = 10 * szabo, u256 const& _nonce = UndefinedU256);
 
 	/// Blocks until all pending transactions have been processed.
 	virtual void flushTransactions() = 0;
