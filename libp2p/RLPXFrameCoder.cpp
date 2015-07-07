@@ -37,8 +37,8 @@ RLPXFrameInfo::RLPXFrameInfo(bytesConstRef _header)
 	RLP header(_header.cropped(3), RLP::ThrowOnFail | RLP::FailIfTooSmall);
 	auto itemCount = header.itemCount();
 	protocolId = header[0].toInt<uint16_t>();
-	hasSequence = itemCount > 1;
-	sequenceId = hasSequence ? header[1].toInt<uint16_t>() : 0;
+	multiFrame = itemCount > 1;
+	sequenceId = multiFrame ? header[1].toInt<uint16_t>() : 0;
 	totalLength = itemCount == 3 ? header[2].toInt<uint32_t>() : 0;
 }
 

@@ -50,7 +50,7 @@ size_t RLPXFrameWriter::mux(RLPXFrameCoder& _coder, unsigned _size, vector<bytes
 		return 0;
 
 	size_t ret = 0;
-	size_t frameLen = _size;
+	size_t frameLen = _size / 16 * 16;
 	bytes payload(0);
 	bool swapQueues = false;
 	while (frameLen >= c_overhead + c_blockSize)

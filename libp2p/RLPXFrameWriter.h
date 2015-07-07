@@ -71,11 +71,12 @@ public:
 	/// Moves @_payload output to queue, to be muxed into frames by mux() when network buffer is ready for writing. Thread-safe.
 	void enque(uint8_t _packetType, RLPStream& _payload, PacketPriority _priority = PriorityLow);
 
-	/// Moves @_p to queue, to be muxed into frames by mux() when network buffer is ready for writing. Thread-safe.
-	void enque(RLPXPacket&& _p, PacketPriority _priority = PriorityLow);
-	
 	/// Returns number of packets framed and outputs frames to o_bytes. Not thread-safe.
 	size_t mux(RLPXFrameCoder& _coder, unsigned _size, std::vector<bytes>& o_toWrite);
+	
+protected:
+	/// Moves @_p to queue, to be muxed into frames by mux() when network buffer is ready for writing. Thread-safe.
+	void enque(RLPXPacket&& _p, PacketPriority _priority = PriorityLow);
 	
 private:
 	uint16_t const m_protocolType;			// Protocol Type

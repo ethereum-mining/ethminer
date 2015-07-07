@@ -48,9 +48,9 @@ struct RLPXFrameInfo
 	uint8_t padding = 0;			///< Length of padding which follows @length.
 	
 	uint16_t protocolId = 0;		///< Protocol ID as negotiated by handshake.
-	bool hasSequence = false;		///< If this frame is part of a sequence
+	bool multiFrame = false;		///< If this frame is part of a sequence
 	uint16_t sequenceId = 0;		///< Sequence ID of frame
-	uint32_t totalLength = 0;		///< Set to
+	uint32_t totalLength = 0;		///< Set to total length of packet in first frame of multiframe packet
 };
 
 class RLPXHandshake;
