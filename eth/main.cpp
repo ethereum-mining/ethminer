@@ -1471,6 +1471,15 @@ int main(int argc, char** argv)
 		}
 	}
 
+	if (g_logVerbosity > 0)
+	{
+		cout << EthGrayBold "(++)Ethereum" EthReset << endl;
+		if (c_network == eth::Network::Olympic)
+			cout << "Welcome to Olympic!" << endl;
+		else if (c_network == eth::Network::Frontier)
+			cout << "Welcome to the " EthMaroonBold "Frontier" EthReset "!" << endl;
+	}
+
 	m.execute();
 
 	KeyManager keyManager;
