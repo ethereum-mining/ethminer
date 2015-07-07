@@ -75,9 +75,11 @@ void go(unsigned _depth, Executive& _e, OnOpFunc const& _onOp)
 	// Current stack is too small to handle more CALL/CREATE executions.
 	// It needs to be done only once as newly allocated stack space it enough to handle
 	// the rest of the calls up to the depth limit (c_depthLimit).
+#if __GNUC__
 	if (_depth == c_offloadPoint)
 		goOnOffloadedStack(_e, _onOp);
 	else
+#endif
 		_e.go(_onOp);
 }
 }

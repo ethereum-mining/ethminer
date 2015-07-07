@@ -337,6 +337,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 	h256s fresh;
 	h256s dead;
 	h256s badBlocks;
+	Transactions goodTransactions;
 	unsigned count = 0;
 	for (VerifiedBlock const& block: blocks)
 		if (!badBlocks.empty())
@@ -351,6 +352,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
 				fresh += r.liveBlocks;
 				dead += r.deadBlocks;
+				goodTransactions += r.goodTranactions;
 				++count;
 			}
 			catch (dev::eth::UnknownParent)
@@ -377,7 +379,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 				badBlocks.push_back(block.verified.info.hash());
 			}
 		}
-	return make_tuple(ImportRoute{dead, fresh}, _bq.doneDrain(badBlocks), count);
+	return make_tuple(ImportRoute{dead, fresh, goodTransactions}, _bq.doneDrain(badBlocks), count);
 }
 
 pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir) noexcept
@@ -497,6 +499,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	BlockReceipts br;
 
 	u256 td;
+	Transactions goodTransactions;
 #if ETH_CATCH
 	try
 #endif
@@ -510,6 +513,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 		{
 			blb.blooms.push_back(s.receipt(i).bloom());
 			br.receipts.push_back(s.receipt(i));
+			goodTransactions.push_back(s.pending()[i]);
 		}
 
 		s.cleanup(true);
@@ -750,7 +754,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 			dead.push_back(h);
 		else
 			fresh.push_back(h);
-	return ImportRoute{dead, fresh};
+	return ImportRoute{dead, fresh, move(goodTransactions)};
 }
 
 void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
