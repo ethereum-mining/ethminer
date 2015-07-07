@@ -136,6 +136,12 @@ Main::Main(QWidget *parent) :
 	QtWebEngine::initialize();
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
+
+	if (c_network == eth::Network::Olympic)
+		setWindowTitle("AlethZero Olympic");
+	else if (c_network == eth::Network::Frontier)
+		setWindowTitle("AlethZero Frontier");
+
 	g_logPost = [=](string const& s, char const* c)
 	{
 		simpleDebugOut(s, c);
