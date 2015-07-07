@@ -1149,7 +1149,7 @@ font-size: 14pt</string>
       <number>0</number>
      </property>
      <item>
-      <widget class="DownloadView" name="downloadView" native="true"/>
+      <widget class="SyncView" name="downloadView" native="true"/>
      </item>
     </layout>
    </widget>
@@ -1814,7 +1814,7 @@ font-size: 14pt</string>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>DownloadView</class>
+   <class>SyncView</class>
    <extends>QWidget</extends>
    <header>DownloadView.h</header>
    <container>1</container>
