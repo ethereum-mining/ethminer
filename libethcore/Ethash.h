@@ -28,16 +28,20 @@
 #include <cstdint>
 #include <libdevcore/CommonIO.h>
 #include "Common.h"
-#include "BlockInfo.h"
 #include "Miner.h"
 
 class ethash_cl_miner;
 
 namespace dev
 {
+
+class RLP;
+class RLPStream;
+
 namespace eth
 {
 
+class BlockInfo;
 class EthashCLHook;
 
 class Ethash
@@ -45,8 +49,17 @@ class Ethash
 public:
 	using Miner = GenericMiner<Ethash>;
 
+	using HeaderCache = h256;
+	static void ensureHeaderCacheValid(HeaderCache& io_out, BlockInfo const& _h);
+	static void composeException(Exception& _ex, BlockInfo& _bi);
+	static void composeExceptionPre(Exception& _ex, BlockInfo& _bi);
+
 	struct Solution
 	{
+		bool operator==(Solution const& _v) const { return nonce == _v.nonce && mixHash == _v.mixHash; }
+		void populateFromRLP(RLP const& io_rlp, int& io_field);
+		void streamRLP(RLPStream& io_rlp) const;
+		static const unsigned Fields = 2;
 		Nonce nonce;
 		h256 mixHash;
 	};
@@ -78,7 +91,6 @@ public:
 	static bool verify(BlockInfo const& _header);
 	static bool preVerify(BlockInfo const& _header);
 	static WorkPackage package(BlockInfo const& _header);
-	static void assignResult(Solution const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
 
 	class CPUMiner: public Miner, Worker
 	{
