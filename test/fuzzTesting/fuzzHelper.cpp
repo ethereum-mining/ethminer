@@ -145,58 +145,29 @@ std::string RandomCode::fillArguments(dev::eth::Instruction _opcode, RandomCodeO
 	unsigned num = info.args;
 	int rand = randUniIntGen() % 100;
 	if (rand < _options.smartCodeProbability)
-		smart = true;	
+		smart = true;
 
 	if (smart)
 	{
 		//PUSH1 ... PUSH32
-		if (int(dev::eth::Instruction::PUSH1) <= int(_opcode) && int(_opcode) <= int(dev::eth::Instruction::PUSH32))
+		if (dev::eth::Instruction::PUSH1 <= _opcode && _opcode <= dev::eth::Instruction::PUSH32)
 		{
 		  code += rndByteSequence(int(_opcode) - int(dev::eth::Instruction::PUSH1) + 1);
 		  return code;
 		}
 
 		//SWAP1 ... SWAP16 || DUP1 ... DUP16
-		if ((int(dev::eth::Instruction::SWAP1) <= int(_opcode) && int(_opcode) <= int(dev::eth::Instruction::SWAP16))
-			|| (int(dev::eth::Instruction::DUP1) <= int(_opcode) && int(_opcode) <= int(dev::eth::Instruction::DUP16)))
+		bool isSWAP = (dev::eth::Instruction::SWAP1 <= _opcode && _opcode <= dev::eth::Instruction::SWAP16);
+		bool isDUP = (dev::eth::Instruction::DUP1 <= _opcode && _opcode <= dev::eth::Instruction::DUP16);
+
+		if (isSWAP || isDUP)
 		{
 			int times;
-			switch (_opcode)
-			{
-			case dev::eth::Instruction::DUP1:	times = 1; break;
-			case dev::eth::Instruction::SWAP1:
-			case dev::eth::Instruction::DUP2:	times = 2; break;
-			case dev::eth::Instruction::SWAP2:
-			case dev::eth::Instruction::DUP3:	times = 3; break;
-			case dev::eth::Instruction::SWAP3:
-			case dev::eth::Instruction::DUP4:	times = 4; break;
-			case dev::eth::Instruction::SWAP4:
-			case dev::eth::Instruction::DUP5:	times = 5; break;
-			case dev::eth::Instruction::SWAP5:
-			case dev::eth::Instruction::DUP6:	times = 6; break;
-			case dev::eth::Instruction::SWAP6:
-			case dev::eth::Instruction::DUP7:	times = 7; break;
-			case dev::eth::Instruction::SWAP7:
-			case dev::eth::Instruction::DUP8:	times = 8; break;
-			case dev::eth::Instruction::SWAP8:
-			case dev::eth::Instruction::DUP9:	times = 9; break;
-			case dev::eth::Instruction::SWAP9:
-			case dev::eth::Instruction::DUP10:	times = 10; break;
-			case dev::eth::Instruction::SWAP10:
-			case dev::eth::Instruction::DUP11:	times = 11; break;
-			case dev::eth::Instruction::SWAP11:
-			case dev::eth::Instruction::DUP12:	times = 12; break;
-			case dev::eth::Instruction::SWAP12:
-			case dev::eth::Instruction::DUP13:	times = 13; break;
-			case dev::eth::Instruction::SWAP13:
-			case dev::eth::Instruction::DUP14:	times = 14; break;
-			case dev::eth::Instruction::SWAP14:
-			case dev::eth::Instruction::DUP15:	times = 15; break;
-			case dev::eth::Instruction::SWAP15:
-			case dev::eth::Instruction::DUP16:	times = 16; break;
-			case dev::eth::Instruction::SWAP16:	times = 17; break;
-			default: times = 1;
-			}
+			if (isSWAP)
+				times = int(_opcode) - int(dev::eth::Instruction::SWAP1) + 2;
+			else
+			if (isDUP)
+				times = int(_opcode) - int(dev::eth::Instruction::DUP1) + 1;
 
 			for (int i = 0; i < times; i ++)
 				code += getPushCode(randUniIntGen() % 32);
