@@ -197,7 +197,7 @@ int main()
 		bool completed = false;
 		f.onSolutionFound([&](ProofOfWork::Solution sol)
 		{
-			ProofOfWork::assignResult(sol, bi);
+			bi.proof = sol;
 			return completed = true;
 		});
 		f.setWork(bi);
