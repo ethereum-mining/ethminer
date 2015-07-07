@@ -110,6 +110,9 @@ public:
 	/// @returns total gas used in the transaction/operation.
 	/// @warning Only valid after finalise().
 	u256 gasUsed() const;
+	/// @returns total gas used in the transaction/operation, excluding anything refunded.
+	/// @warning Only valid after finalise().
+	u256 gasUsedNoRefunds() const;
 
 	/// Set up the executive for evaluating a bare CREATE (contract-creation) operation.
 	/// @returns false iff go() must be called (and thus a VM execution in required).
@@ -154,6 +157,7 @@ private:
 	bool m_isCreation = false;			///< True if the transaction creates a contract, or if create() is called.
 	TransactionException m_excepted = TransactionException::None;	///< Details if the VM's execution resulted in an exception.
 	u256 m_gas = 0;						///< The gas for EVM code execution. Initial amount before go() execution, final amount after go() execution.
+	u256 m_refunded = 0;				///< The amount of gas refunded.
 
 	Transaction m_t;					///< The original transaction. Set by setup().
 	LogEntries m_logs;					///< The log entries created by this transaction. Set by finalize().
