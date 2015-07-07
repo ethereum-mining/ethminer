@@ -29,6 +29,7 @@
 { "name": "eth_getTransactionByHash", "params": [""], "order": [], "returns": {}},
 { "name": "eth_getTransactionByBlockHashAndIndex", "params": ["", ""], "order": [], "returns": {}},
 { "name": "eth_getTransactionByBlockNumberAndIndex", "params": ["", ""], "order": [], "returns": {}},
+{ "name": "eth_getTransactionReceipt", "params": [""], "order": [], "returns": {}},
 { "name": "eth_getUncleByBlockHashAndIndex", "params": ["", ""], "order": [], "returns": {}},
 { "name": "eth_getUncleByBlockNumberAndIndex", "params": ["", ""], "order": [], "returns": {}},
 { "name": "eth_getCompilers", "params": [], "order": [], "returns": []},
