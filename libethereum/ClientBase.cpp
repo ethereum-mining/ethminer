@@ -327,6 +327,11 @@ Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 		return Transaction();
 }
 
+TransactionReceipt ClientBase::transactionReceipt(h256 const& _transactionHash) const
+{
+	return bc().transactionReceipt(_transactionHash);
+}
+
 pair<h256, unsigned> ClientBase::transactionLocation(h256 const& _transactionHash) const
 {
 	return bc().transactionLocation(_transactionHash);

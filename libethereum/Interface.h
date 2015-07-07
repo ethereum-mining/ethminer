@@ -135,6 +135,7 @@ public:
 
 	virtual bool isKnownTransaction(h256 const& _transactionHash) const = 0;
 	virtual Transaction transaction(h256 _transactionHash) const = 0;
+	virtual TransactionReceipt transactionReceipt(h256 const& _transactionHash) const = 0;
 	virtual std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const = 0;
 	virtual h256 hashFromNumber(BlockNumber _number) const = 0;
 	virtual BlockNumber numberFromHash(h256 _blockHash) const = 0;

@@ -182,6 +182,33 @@ Json::Value toJson(dev::eth::TransactionReceipt const& _t)
 	return res;
 }
 
+Json::Value toJson(dev::eth::TransactionReceipt const& _tr, std::pair<h256, unsigned> _location, BlockNumber _blockNumber, Transaction const& _t)
+{
+	Json::Value res;
+	h256 h = _t.sha3();
+	res["transactionHash"] = toJS(h);
+	res["transactionIndex"] = _location.second;
+	res["blockHash"] = toJS(_location.first);
+	res["blockNumber"] = _blockNumber;
+	res["cumulativeGasUsed"] = toJS(_tr.gasUsed()); // TODO: check if this is fine
+	res["gasUsed"] = toJS(_tr.gasUsed());
+	res["contractAddress"] = toJS(toAddress(_t.from(), _t.nonce()));
+	res["logs"] = Json::Value(Json::arrayValue);
+	for (unsigned i = 0; i < _tr.log().size(); i++)
+	{
+		LogEntry e = _tr.log()[i];
+		Json::Value l = toJson(e);
+		l["type"] = "mined";
+		l["blockNumber"] = _blockNumber;
+		l["blockHash"] = toJS(_location.first);
+		l["logIndex"] = i;
+		l["transactionHash"] = toJS(h);
+		l["transactionIndex"] = _location.second;
+		res["logs"].append(l);
+	}
+	return res;
+}
+
 Json::Value toJson(dev::eth::Transaction const& _t)
 {
 	Json::Value res;
