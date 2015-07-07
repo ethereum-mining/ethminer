@@ -203,7 +203,7 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 				{
 					total += le.size();
 					for (unsigned j = 0; j < le.size(); ++j)
-						ret.insert(ret.begin(), LocalisedLogEntry(le[j], info, th, i, logIndex));
+						ret.insert(ret.begin(), LocalisedLogEntry(le[j], info.hash(), (BlockNumber)info.number, th, i, logIndex));
 				}
 			}
 			
