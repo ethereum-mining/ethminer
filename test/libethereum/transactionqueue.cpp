@@ -61,4 +61,112 @@ BOOST_AUTO_TEST_CASE(maxNonce)
 
 }
 
+BOOST_AUTO_TEST_CASE(priority)
+{
+	dev::eth::TransactionQueue txq;
+
+	const u256 gasCostCheap =  10 * szabo;
+	const u256 gasCostMed =  20 * szabo;
+	const u256 gasCostHigh =  30 * szabo;
+	const u256 gas = 25000;
+	Address dest = Address("0x095e7baea6a6c7c4c2dfeb977efac326af552d87");
+	Secret sender1 = Secret("0x3333333333333333333333333333333333333333333333333333333333333333");
+	Secret sender2 = Secret("0x4444444444444444444444444444444444444444444444444444444444444444");
+	Transaction tx0(0, gasCostCheap, gas, dest, bytes(), 0, sender1 );
+	Transaction tx0_1(1, gasCostMed, gas, dest, bytes(), 0, sender1 );
+	Transaction tx1(0, gasCostCheap, gas, dest, bytes(), 1, sender1 );
+	Transaction tx2(0, gasCostHigh, gas, dest, bytes(), 0, sender2 );
+	Transaction tx3(0, gasCostCheap + 1, gas, dest, bytes(), 1, sender2 );
+	Transaction tx4(0, gasCostHigh, gas, dest, bytes(), 2, sender1 );
+	Transaction tx5(0, gasCostMed, gas, dest, bytes(), 2, sender2 );
+
+	txq.import(tx0);
+	BOOST_CHECK(Transactions { tx0 } == txq.topTransactions(256));
+	txq.import(tx0);
+	BOOST_CHECK(Transactions { tx0 } == txq.topTransactions(256));
+	txq.import(tx0_1);
+	BOOST_CHECK(Transactions { tx0_1 } == txq.topTransactions(256));
+	txq.import(tx1);
+	BOOST_CHECK((Transactions { tx0_1, tx1 }) == txq.topTransactions(256));
+	txq.import(tx2);
+	BOOST_CHECK((Transactions { tx2, tx0_1, tx1 }) == txq.topTransactions(256));
+	txq.import(tx3);
+	BOOST_CHECK((Transactions { tx2, tx0_1, tx1, tx3 }) == txq.topTransactions(256));
+	txq.import(tx4);
+	BOOST_CHECK((Transactions { tx2, tx0_1, tx1, tx3, tx4 }) == txq.topTransactions(256));
+	txq.import(tx5);
+	BOOST_CHECK((Transactions { tx2, tx0_1, tx1, tx3, tx5, tx4 }) == txq.topTransactions(256));
+
+	txq.drop(tx0_1.sha3());
+	BOOST_CHECK((Transactions { tx2, tx1, tx3, tx5, tx4 }) == txq.topTransactions(256));
+	txq.drop(tx1.sha3());
+	BOOST_CHECK((Transactions { tx2, tx3, tx5, tx4 }) == txq.topTransactions(256));
+	txq.drop(tx5.sha3());
+	BOOST_CHECK((Transactions { tx2, tx3, tx4 }) == txq.topTransactions(256));
+
+	Transaction tx6(0, gasCostMed, gas, dest, bytes(), 20, sender1 );
+	txq.import(tx6);
+	BOOST_CHECK((Transactions { tx2, tx3, tx4, tx6 }) == txq.topTransactions(256));
+
+	Transaction tx7(0, gasCostMed, gas, dest, bytes(), 2, sender2 );
+	txq.import(tx7);
+	BOOST_CHECK((Transactions { tx2, tx3, tx4, tx6, tx7 }) == txq.topTransactions(256));
+}
+
+BOOST_AUTO_TEST_CASE(future)
+{
+	dev::eth::TransactionQueue txq;
+
+	// from a94f5374fce5edbc8e2a8697c15331677e6ebf0b
+	const u256 gasCostMed =  20 * szabo;
+	const u256 gas = 25000;
+	Address dest = Address("0x095e7baea6a6c7c4c2dfeb977efac326af552d87");
+	Secret sender = Secret("0x3333333333333333333333333333333333333333333333333333333333333333");
+	Transaction tx0(0, gasCostMed, gas, dest, bytes(), 0, sender );
+	Transaction tx1(0, gasCostMed, gas, dest, bytes(), 1, sender );
+	Transaction tx2(0, gasCostMed, gas, dest, bytes(), 2, sender );
+	Transaction tx3(0, gasCostMed, gas, dest, bytes(), 3, sender );
+	Transaction tx4(0, gasCostMed, gas, dest, bytes(), 4, sender );
+
+	txq.import(tx0);
+	txq.import(tx1);
+	txq.import(tx2);
+	txq.import(tx3);
+	txq.import(tx4);
+	BOOST_CHECK((Transactions { tx0, tx1, tx2, tx3, tx4 }) == txq.topTransactions(256));
+
+	txq.setFuture(tx2.sha3());
+	BOOST_CHECK((Transactions { tx0, tx1 }) == txq.topTransactions(256));
+
+	Transaction tx2_2(1, gasCostMed, gas, dest, bytes(), 2, sender );
+	txq.import(tx2_2);
+	BOOST_CHECK((Transactions { tx0, tx1, tx2_2, tx3, tx4 }) == txq.topTransactions(256));
+}
+
+
+BOOST_AUTO_TEST_CASE(lmits)
+{
+	dev::eth::TransactionQueue txq(3, 3);
+	const u256 gasCostMed =  20 * szabo;
+	const u256 gas = 25000;
+	Address dest = Address("0x095e7baea6a6c7c4c2dfeb977efac326af552d87");
+	Secret sender = Secret("0x3333333333333333333333333333333333333333333333333333333333333333");
+	Secret sender2 = Secret("0x4444444444444444444444444444444444444444444444444444444444444444");
+	Transaction tx0(0, gasCostMed, gas, dest, bytes(), 0, sender );
+	Transaction tx1(0, gasCostMed, gas, dest, bytes(), 1, sender );
+	Transaction tx2(0, gasCostMed, gas, dest, bytes(), 2, sender );
+	Transaction tx3(0, gasCostMed, gas, dest, bytes(), 3, sender );
+	Transaction tx4(0, gasCostMed, gas, dest, bytes(), 4, sender );
+	Transaction tx5(0, gasCostMed + 1, gas, dest, bytes(), 0, sender2 );
+
+	txq.import(tx0);
+	txq.import(tx1);
+	txq.import(tx2);
+	txq.import(tx3);
+	txq.import(tx4);
+	txq.import(tx5);
+	BOOST_CHECK((Transactions { tx5, tx0, tx1 }) == txq.topTransactions(256));
+}
+
+
 BOOST_AUTO_TEST_SUITE_END()

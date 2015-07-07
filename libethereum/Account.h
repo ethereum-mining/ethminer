@@ -152,8 +152,7 @@ public:
 	h256 codeHash() const { assert(!isFreshCode()); return m_codeHash; }
 
 	/// Sets the code of the account. Must only be called when isFreshCode() returns true.
-	void setCode(bytes&& _code) { assert(isFreshCode()); m_codeCache = _code; changed(); }
-	void setCode(bytes const& _code) { assert(isFreshCode()); m_codeCache = _code; changed(); }
+	void setCode(bytes&& _code) { assert(isFreshCode()); m_codeCache = std::move(_code); changed(); }
 
 	/// @returns true if the account's code is available through code().
 	bool codeCacheValid() const { return m_codeHash == EmptySHA3 || m_codeHash == c_contractConceptionCodeHash || m_codeCache.size(); }
@@ -206,4 +205,3 @@ private:
 
 }
 }
-

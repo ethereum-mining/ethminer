@@ -107,9 +107,7 @@ enum class ReturnCode
 	Rejected           = -5, ///< Input data (code, gas, block info, etc.) does not meet JIT requirement and execution request has been rejected
 
 	// Internal error codes
-	LLVMConfigError    = -101,
-	LLVMCompileError   = -102,
-	LLVMLinkError      = -103,
+	LLVMError          = -101,
 
 	UnexpectedException = -111,
 
@@ -154,6 +152,9 @@ public:
 	/// In this case the code can be executed without overhead.
 	/// \param _codeHash	The Keccak hash of the EVM code.
 	EXPORT static bool isCodeReady(h256 const& _codeHash);
+
+	/// Compile the given EVM code to machine code and make available for execution.
+	EXPORT static void compile(byte const* _code, uint64_t _codeSize, h256 const& _codeHash);
 
 	EXPORT static ReturnCode exec(ExecutionContext& _context);
 };

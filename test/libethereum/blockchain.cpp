@@ -24,6 +24,7 @@
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethereum/CanonBlockChain.h>
+#include <libethereum/TransactionQueue.h>
 #include <test/TestHelper.h>
 
 using namespace std;
@@ -200,8 +201,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 				//get valid transactions
 				Transactions txList;
-				for (auto const& txi: txs.transactions())
-					txList.push_back(txi.second);
+				for (auto const& txi: txs.topTransactions(std::numeric_limits<unsigned>::max()))
+					txList.push_back(txi);
 				blObj["transactions"] = writeTransactionsToJson(txList);
 
 				BlockInfo current_BlockHeader = state.info();

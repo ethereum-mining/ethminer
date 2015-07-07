@@ -21,6 +21,7 @@
 
 #include "BlockQueue.h"
 #include <thread>
+#include <sstream>
 #include <libdevcore/Log.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
@@ -473,7 +474,13 @@ void BlockQueue::drain(VerifiedBlocks& o_out, unsigned _max)
 bool BlockQueue::invariants() const
 {
 	Guard l(m_verification);
-	return m_readySet.size() == m_verified.size() + m_unverified.size() + m_verifying.size();
+	if (!(m_readySet.size() == m_verified.size() + m_unverified.size() + m_verifying.size()))
+	{
+		std::stringstream s;
+		s << "Failed BlockQueue invariant: m_readySet: " << m_readySet.size() << " m_verified: " << m_verified.size() << " m_unverified: " << m_unverified.size() << " m_verifying" << m_verifying.size();
+		BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment(s.str()));
+	}
+	return true;
 }
 
 void BlockQueue::noteReady_WITH_LOCK(h256 const& _good)

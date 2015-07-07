@@ -32,7 +32,6 @@
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/Miner.h>
 #include <libevm/ExtVMFace.h>
-#include "TransactionQueue.h"
 #include "Account.h"
 #include "Transaction.h"
 #include "TransactionReceipt.h"
@@ -67,6 +66,7 @@ using LogBloomRequirementError = boost::tuple<errinfo_required_LogBloom, errinfo
 
 class BlockChain;
 class State;
+class TransactionQueue;
 struct VerifiedBlockRef;
 
 struct StateChat: public LogChannel { static const char* name(); static const int verbosity = 4; };

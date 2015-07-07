@@ -114,7 +114,7 @@ protected:
 	void requestBlocks(std::shared_ptr<EthereumPeer> _peer);
 
 protected:
-	Handler m_bqRoomAvailable;				///< Triggered once block queue
+	Handler<> m_bqRoomAvailable;			///< Triggered once block queue
 	mutable RecursiveMutex x_sync;
 	SyncState m_state = SyncState::Idle;	///< Current sync state
 	unsigned m_estimatedHashes = 0;			///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
@@ -131,8 +131,8 @@ private:
 
 
 /**
- * @brief Syncrhonization over PV60. Selects a single peer and tries to downloading hashes from it. After hash downaload is complete
- * Syncs to peers and keeps up to date
+ * @brief Syncrhonization over PV60. Selects a single peer and tries to downloading hashes from it. After hash download is complete
+ * syncs to peers and keeps up to date
  */
 
 /**
@@ -227,7 +227,7 @@ protected:
 	void pauseSync() override;
 	void resetSyncFor(std::shared_ptr<EthereumPeer> _peer, h256 const& _latestHash, u256 const& _td) override;
 
-private:
+protected:
 	/// Transition sync state in a particular direction. @param _peer Peer that is responsible for state tranfer
 	void transition(std::shared_ptr<EthereumPeer> _peer, SyncState _s, bool _force = false, bool _needHelp = true);
 
@@ -261,6 +261,12 @@ private:
 	/// Called when peer done downloading blocks
 	void noteDoneBlocks(std::shared_ptr<EthereumPeer> _who, bool _clemency);
 
+	/// Start chainhash sync
+	virtual void syncHashes(std::shared_ptr<EthereumPeer> _peer);
+
+	/// Request subchain, no-op for pv60
+	virtual void requestSubchain(std::shared_ptr<EthereumPeer> /*_peer*/) {}
+
 	/// Abort syncing
 	void abortSync();
 
@@ -275,5 +281,43 @@ private:
 	u256 m_syncingTotalDifficulty;				///< Latest block's total difficulty of the peer we aresyncing to, as of the current sync.
 	std::weak_ptr<EthereumPeer> m_syncer;		///< Peer we are currently syncing with
 };
+
+/**
+ * @brief Syncrhonization over PV61. Selects a single peer and requests every c_hashSubchainSize hash, splitting the hashchain into subchains and downloading each subchain in parallel.
+ * Syncs to peers and keeps up to date
+ */
+class PV61Sync: public PV60Sync
+{
+public:
+	PV61Sync(EthereumHost& _host);
+
+protected:
+	void restartSync() override;
+	void requestSubchain(std::shared_ptr<EthereumPeer> _peer) override;
+	void syncHashes(std::shared_ptr<EthereumPeer> _peer) override;
+	void onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes) override;
+	void onPeerAborting() override;
+	SyncStatus status() const override;
+	bool invariants() const override;
+
+private:
+	/// Called when subchain is complete. Check if if hashchain is fully downloaded and proceed to downloading blocks
+	void completeSubchain(std::shared_ptr<EthereumPeer> _peer, unsigned _n);
+	/// Find a subchain for peers to downloading
+	void requestSubchains();
+	/// Check if downloading hashes in parallel
+	bool isPV61Syncing() const;
+
+	std::map<unsigned, h256s> m_completeChainMap;		///< Fully downloaded subchains
+	std::map<unsigned, h256s> m_readyChainMap;			///< Subchains ready for download
+	std::map<unsigned, h256s> m_downloadingChainMap;	///< Subchains currently being downloading. In sync with m_chainSyncPeers
+	std::map<std::weak_ptr<EthereumPeer>, unsigned, std::owner_less<std::weak_ptr<EthereumPeer>>> m_chainSyncPeers; ///< Peers to m_downloadingSubchain number map
+	h256Hash m_knownHashes;								///< Subchain start markers. Used to track suchain completion
+	unsigned m_syncingBlockNumber = 0;					///< Current subchain marker
+	bool m_hashScanComplete = false;						///< True if leading peer completed hashchain scan and we have a list of subchains ready
+};
+
+std::ostream& operator<<(std::ostream& _out, SyncStatus const& _sync);
+
 }
 }
