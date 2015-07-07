@@ -445,7 +445,8 @@ u256 State::enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc, Impor
 
 #if ETH_TIMED_ENACTMENTS
 	enactment = t.elapsed();
-	cnote << "popVer/popGrand/syncReset/enactment = " << populateVerify << "/" << populateGrand << "/" << syncReset << "/" << enactment;
+	if (populateVerify + populateGrand + syncReset + enactment > 0.5)
+		clog(StateChat) << "popVer/popGrand/syncReset/enactment = " << populateVerify << "/" << populateGrand << "/" << syncReset << "/" << enactment;
 #endif
 	return ret;
 }
@@ -513,18 +514,17 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 				{
 					if (t.gasPrice() >= _gp.ask(*this))
 					{
-	//					Timer t;
+//						Timer t;
 						if (lh.empty())
 							lh = _bc.lastHashes();
 						execute(lh, t);
 						ret.first.push_back(m_receipts.back());
 						++goodTxs;
-	//					cnote << "TX took:" << t.elapsed() * 1000;
+//						cnote << "TX took:" << t.elapsed() * 1000;
 					}
 					else if (t.gasPrice() < _gp.ask(*this) * 9 / 10)
 					{
-						// less than 90% of our ask price for gas. drop.
-						cnote << t.sha3() << "Dropping El Cheapo transaction (<90% of ask price)";
+						clog(StateTrace) << t.sha3() << "Dropping El Cheapo transaction (<90% of ask price)";
 						_tq.drop(t.sha3());
 					}
 				}
@@ -536,22 +536,13 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 					if (req > got)
 					{
 						// too old
-/*						for (Transaction const& mt: m_transactions)
-						{
-							if (mt.from() == t.from())
-							{
-								if (mt.nonce() < t.nonce())
-									cnote << t.sha3() << "Dropping old transaction (nonce too low)";
-								else if (mt.nonce() == t.nonce() && mt.gasPrice() <= t.gasPrice())
-									cnote << t.sha3() << "Dropping old transaction (gas price lower)";
-							}
-						}*/
+						clog(StateTrace) << t.sha3() << "Dropping old transaction (nonce too low)";
 						_tq.drop(t.sha3());
 					}
 					else if (got > req + _tq.waiting(t.sender()))
 					{
 						// too new
-						cnote << t.sha3() << "Dropping new transaction (too many nonces ahead)";
+						clog(StateTrace) << t.sha3() << "Dropping new transaction (too many nonces ahead)";
 						_tq.drop(t.sha3());
 					}
 					else
@@ -562,7 +553,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 					bigint const& got = *boost::get_error_info<errinfo_got>(e);
 					if (got > m_currentBlock.gasLimit)
 					{
-						cnote << t.sha3() << "Dropping over-gassy transaction (gas > block's gas limit)";
+						clog(StateTrace) << t.sha3() << "Dropping over-gassy transaction (gas > block's gas limit)";
 						_tq.drop(t.sha3());
 					}
 					else
@@ -576,14 +567,14 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 				catch (Exception const& _e)
 				{
 					// Something else went wrong - drop it.
-					cnote << t.sha3() << "Dropping invalid transaction:" << diagnostic_information(_e);
+					clog(StateTrace) << t.sha3() << "Dropping invalid transaction:" << diagnostic_information(_e);
 					_tq.drop(t.sha3());
 				}
 				catch (std::exception const&)
 				{
 					// Something else went wrong - drop it.
 					_tq.drop(t.sha3());
-					cnote << t.sha3() << "Transaction caused low-level exception :(";
+					cwarn << t.sha3() << "Transaction caused low-level exception :(";
 				}
 			}
 		if (chrono::steady_clock::now() > deadline)
@@ -965,6 +956,8 @@ void State::commitToMine(BlockChain const& _bc, bytes const& _extraData)
 	m_currentBlock.stateRoot = m_state.root();
 	m_currentBlock.parentHash = m_previousBlock.hash();
 	m_currentBlock.extraData = _extraData;
+	if (m_currentBlock.extraData.size() > 32)
+		m_currentBlock.extraData.resize(32);
 
 	m_committedToMine = true;
 }
