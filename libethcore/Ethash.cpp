@@ -46,6 +46,7 @@
 #endif
 #include "BlockInfo.h"
 #include "EthashAux.h"
+#include "Exceptions.h"
 using namespace std;
 using namespace std::chrono;
 
@@ -55,6 +56,26 @@ namespace eth
 {
 
 const Ethash::WorkPackage Ethash::NullWorkPackage = Ethash::WorkPackage();
+
+void Ethash::ensureHeaderCacheValid(HeaderCache& io_out, BlockInfo const& _h)
+{
+	if (!io_out)
+		io_out = EthashAux::seedHash((unsigned)_h.number);
+}
+
+void Ethash::composeException(Exception& _ex, BlockInfo& _bi)
+{
+	_ex << errinfo_nonce(_bi.proof.nonce);
+	_ex << errinfo_mixHash(_bi.proof.mixHash);
+	_ex << errinfo_seedHash(_bi.proofCache());
+	Ethash::Result er = EthashAux::eval(_bi.proofCache(), _bi.headerHash(WithoutProof), _bi.proof.nonce);
+	_ex << errinfo_ethashResult(make_tuple(er.value, er.mixHash));
+}
+
+void Ethash::composeExceptionPre(Exception& _ex, BlockInfo& _bi)
+{
+	_ex << errinfo_nonce(_bi.proof.nonce);
+}
 
 std::string Ethash::name()
 {
@@ -66,12 +87,23 @@ unsigned Ethash::revision()
 	return ETHASH_REVISION;
 }
 
+void Ethash::Solution::populateFromRLP(RLP const& _header, int& _field)
+{
+	mixHash = _header[_field].toHash<h256>(RLP::VeryStrict);
+	nonce = _header[++_field].toHash<Nonce>(RLP::VeryStrict);
+}
+
+void Ethash::Solution::streamRLP(RLPStream& io_rlp) const
+{
+	io_rlp << mixHash << nonce;
+}
+
 Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
 {
 	WorkPackage ret;
 	ret.boundary = _bi.boundary();
-	ret.headerHash = _bi.headerHash(WithoutNonce);
-	ret.seedHash = _bi.seedHash();
+	ret.headerHash = _bi.headerHash(WithoutProof);
+	ret.seedHash = _bi.proofCache();
 	return ret;
 }
 
@@ -84,7 +116,7 @@ void Ethash::ensurePrecomputed(unsigned _number)
 
 void Ethash::prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f)
 {
-	EthashAux::full(_header.seedHash(), true, _f);
+	EthashAux::full(_header.proofCache(), true, _f);
 }
 
 bool Ethash::preVerify(BlockInfo const& _header)
@@ -95,9 +127,9 @@ bool Ethash::preVerify(BlockInfo const& _header)
 	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
 
 	bool ret = !!ethash_quick_check_difficulty(
-			(ethash_h256_t const*)_header.headerHash(WithoutNonce).data(),
-			(uint64_t)(u64)_header.nonce,
-			(ethash_h256_t const*)_header.mixHash.data(),
+			(ethash_h256_t const*)_header.headerHash(WithoutProof).data(),
+			(uint64_t)(u64)_header.proof.nonce,
+			(ethash_h256_t const*)_header.proof.mixHash.data(),
 			(ethash_h256_t const*)boundary.data());
 
 	return ret;
@@ -115,7 +147,7 @@ bool Ethash::verify(BlockInfo const& _header)
 #endif
 
 	auto result = EthashAux::eval(_header);
-	bool slow = result.value <= _header.boundary() && result.mixHash == _header.mixHash;
+	bool slow = result.value <= _header.boundary() && result.mixHash == _header.proof.mixHash;
 
 //	cdebug << (slow ? "VERIFY" : "VERYBAD");
 //	cdebug << result.value.hex() << _header.boundary().hex();
@@ -125,9 +157,9 @@ bool Ethash::verify(BlockInfo const& _header)
 	if (!pre && slow)
 	{
 		cwarn << "WARNING: evaluated result gives true whereas ethash_quick_check_difficulty gives false.";
-		cwarn << "headerHash:" << _header.headerHash(WithoutNonce);
-		cwarn << "nonce:" << _header.nonce;
-		cwarn << "mixHash:" << _header.mixHash;
+		cwarn << "headerHash:" << _header.headerHash(WithoutProof);
+		cwarn << "nonce:" << _header.proof.nonce;
+		cwarn << "mixHash:" << _header.proof.mixHash;
 		cwarn << "difficulty:" << _header.difficulty;
 		cwarn << "boundary:" << _header.boundary();
 		cwarn << "result.value:" << result.value;
