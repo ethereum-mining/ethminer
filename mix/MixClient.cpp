@@ -303,22 +303,14 @@ State MixClient::asOf(h256 const& _block) const
 	return ret;
 }
 
-void MixClient::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, bool _gasAuto)
+Address MixClient::submitTransaction(eth::TransactionSkeleton const& _ts, Secret const& _secret, bool _gasAuto)
 {
 	WriteGuard l(x_state);
-	u256 n = m_state.transactionsFrom(toAddress(_secret));
-	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
+	TransactionSkeleton ts = _ts;
+	ts.nonce = m_state.transactionsFrom(toAddress(_secret));
+	eth::Transaction t(ts, _secret);
 	executeTransaction(t, m_state, false, _gasAuto, _secret);
-}
-
-Address MixClient::submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice, bool _gasAuto)
-{
-	WriteGuard l(x_state);
-	u256 n = m_state.transactionsFrom(toAddress(_secret));
-	eth::Transaction t(_endowment, _gasPrice, _gas, _init, n, _secret);
-	executeTransaction(t, m_state, false, _gasAuto, _secret);
-	Address address = right160(sha3(rlpList(t.sender(), t.nonce())));
-	return address;
+	return _ts.creation ? right160(sha3(rlpList(ts.to, ts.nonce))) : Address();
 }
 
 dev::eth::ExecutionResult MixClient::call(Address const& _from, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, bool _gasAuto, FudgeFactor _ff)
@@ -333,16 +325,6 @@ dev::eth::ExecutionResult MixClient::call(Address const& _from, u256 _value, Add
 	WriteGuard lw(x_state); //TODO: lock is required only for last execution state
 	executeTransaction(t, temp, true, _gasAuto);
 	return lastExecution().result;
-}
-
-void MixClient::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
-{
-	submitTransaction(_secret, _value, _dest, _data, _gas, _gasPrice, false);
-}
-
-Address MixClient::submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
-{
-	return submitTransaction(_secret, _endowment, _init, _gas, _gasPrice, false);
 }
 
 dev::eth::ExecutionResult MixClient::call(Address const& _from, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, eth::FudgeFactor _ff)
