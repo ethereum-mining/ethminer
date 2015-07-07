@@ -185,6 +185,7 @@ struct TransactionSkeleton
 	bytes data;
 	u256 gas = UndefinedU256;
 	u256 gasPrice = UndefinedU256;
+	u256 nonce = UndefinedU256;
 };
 
 void badBlock(bytesConstRef _header, std::string const& _err);

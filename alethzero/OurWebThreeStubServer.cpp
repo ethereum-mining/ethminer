@@ -130,7 +130,7 @@ void OurAccountHolder::doValidations()
 		else
 			// sign and submit.
 			if (Secret s = m_main->retrieveSecret(t.from))
-				m_main->ethereum()->submitTransaction(s, t);
+				m_main->ethereum()->submitTransaction(t, s);
 	}
 }
 
