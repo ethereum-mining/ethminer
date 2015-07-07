@@ -1718,7 +1718,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<div>Seed hash: <b>" << info.seedHash() << "</b>" << "</div>";
 			s << "<div>Mix hash: <b>" << info.mixHash << "</b>" << "</div>";
 			s << "<div>Nonce: <b>" << info.nonce << "</b>" << "</div>";
-			s << "<div>Hash w/o nonce: <b>" << info.headerHash(WithoutNonce) << "</b>" << "</div>";
+			s << "<div>Hash w/o nonce: <b>" << info.headerHash(WithoutProof) << "</b>" << "</div>";
 			s << "<div>Difficulty: <b>" << info.difficulty << "</b>" << "</div>";
 			if (info.number)
 			{
@@ -1749,7 +1749,7 @@ void Main::on_blocks_currentItemChanged()
 				s << line << "Seed hash: <b>" << uncle.seedHash() << "</b>" << "</div>";
 				s << line << "Mix hash: <b>" << uncle.mixHash << "</b>" << "</div>";
 				s << line << "Nonce: <b>" << uncle.nonce << "</b>" << "</div>";
-				s << line << "Hash w/o nonce: <b>" << uncle.headerHash(WithoutNonce) << "</b>" << "</div>";
+				s << line << "Hash w/o nonce: <b>" << uncle.headerHash(WithoutProof) << "</b>" << "</div>";
 				s << line << "Difficulty: <b>" << uncle.difficulty << "</b>" << "</div>";
 				auto e = EthashAux::eval(uncle);
 				s << line << "Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / uncle.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")" << "</div>";

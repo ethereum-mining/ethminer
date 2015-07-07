@@ -837,7 +837,7 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 	// Compile block:
 	RLPStream block;
 	block.appendList(3);
-	m_currentBlock.streamRLP(block, WithNonce);
+	m_currentBlock.streamRLP(block, WithProof);
 	block.appendRaw(m_currentTxs);
 	block.appendRaw(m_currentUncles);
 
@@ -902,7 +902,7 @@ void State::commitToMine(BlockChain const& _bc, bytes const& _extraData)
 				if (!excluded.count(u))	// ignore any uncles/mainline blocks that we know about.
 				{
 					BlockInfo ubi(_bc.block(u));
-					ubi.streamRLP(unclesData, WithNonce);
+					ubi.streamRLP(unclesData, WithProof);
 					++unclesCount;
 					uncleBlockHeaders.push_back(ubi);
 					if (unclesCount == 2)
@@ -970,7 +970,7 @@ void State::completeMine()
 	// Compile block:
 	RLPStream ret;
 	ret.appendList(3);
-	m_currentBlock.streamRLP(ret, WithNonce);
+	m_currentBlock.streamRLP(ret, WithProof);
 	ret.appendRaw(m_currentTxs);
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
@@ -978,7 +978,7 @@ void State::completeMine()
 	cnote << "Mined " << m_currentBlock.hash() << "(parent: " << m_currentBlock.parentHash << ")";
 	StructuredLogger::minedNewBlock(
 		m_currentBlock.hash().abridged(),
-		m_currentBlock.nonce.abridged(),
+		m_currentBlock.proof.nonce.abridged(),
 		"", //TODO: chain head hash here ??
 		m_currentBlock.parentHash.abridged()
 	);
