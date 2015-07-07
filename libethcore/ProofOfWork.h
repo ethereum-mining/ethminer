@@ -38,7 +38,6 @@ namespace eth
  * typename Solution
  * typename CPUMiner
  * typename GPUMiner
- * void assignResult(BlockInfo&, Result)
  * and a few others. TODO
  */
 using ProofOfWork = Ethash;
