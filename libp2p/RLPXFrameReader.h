@@ -44,64 +44,7 @@ public:
 	RLPXFrameReader(uint16_t _protocolType): m_protocolType(_protocolType) {}
 	
 	/// Processes a single frame returning complete packets.
-	std::vector<RLPXPacket> demux(RLPXFrameCoder& _coder, bytesRef _frame, bool _sequence = false, uint16_t _seq = 0, uint32_t _totalSize = 0)
-	{
-		if (!_coder.authAndDecryptFrame(_frame))
-			BOOST_THROW_EXCEPTION(RLPXFrameDecrytFailed());
-		
-		std::vector<RLPXPacket> ret;
-		if (!_sequence && (!_frame.size() || _frame.size() > _totalSize))
-			return ret;
-		
-		// trim mac
-		bytesConstRef buffer = _frame.cropped(0, _frame.size() - h128::size);
-		// continue populating incomplete packets
-		if (_sequence && m_incomplete.count(_seq))
-		{
-			uint32_t& remaining = m_incomplete.at(_seq).second;
-			if (!_totalSize && buffer.size() > 0 && buffer.size() <= remaining)
-			{
-				remaining -= buffer.size();
-				
-				RLPXPacket& p = m_incomplete.at(_seq).first;
-				if(p.append(buffer) && !remaining)
-					ret.push_back(std::move(p));
-				if (!remaining)
-					m_incomplete.erase(_seq);
-				
-				if (!ret.empty() && remaining)
-					BOOST_THROW_EXCEPTION(RLPXInvalidPacket());
-				else if (ret.empty() && !remaining)
-					BOOST_THROW_EXCEPTION(RLPXInvalidPacket());
-
-				return ret;
-			}
-			else
-				m_incomplete.erase(_seq);
-		}
-		
-		while (!buffer.empty())
-		{
-			auto type = nextRLP(buffer);
-			if (type.empty())
-				break;
-			buffer = buffer.cropped(type.size());
-			// consume entire buffer if packet has sequence
-			auto packet = _sequence ? buffer : nextRLP(buffer);
-			buffer = buffer.cropped(packet.size());
-			RLPXPacket p(m_protocolType, type);
-			if (!packet.empty())
-				p.append(packet);
-			
-			uint32_t remaining = _totalSize - type.size() - packet.size();
-			if (p.isValid())
-				ret.push_back(std::move(p));
-			else if (_sequence && remaining)
-				m_incomplete.insert(std::make_pair(_seq, std::make_pair(std::move(p), remaining)));
-			// else drop invalid packet
-		}
-		return ret;
-	}
+	std::vector<RLPXPacket> demux(RLPXFrameCoder& _coder, RLPXFrameInfo const& _info, bytesRef _frame);
 	
 protected:
 	uint16_t m_protocolType;
