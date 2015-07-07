@@ -45,48 +45,21 @@ State ClientBase::asOf(BlockNumber _h) const
 	return asOf(bc().numberHash(_h));
 }
 
-void ClientBase::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, u256 _nonce)
-{
-	prepareForTransaction();
-
-	Transaction t(_value, _gasPrice, _gas, _dest, _data, _nonce, _secret);
-	m_tq.import(t.rlp());
-
-	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
-	cnote << "New transaction " << t;
-}
-
-Address ClientBase::submitTransaction(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, u256 _nonce)
-{
-	prepareForTransaction();
-
-	Transaction t(_value, _gasPrice, _gas, _data, _nonce, _secret);
-	m_tq.import(t.rlp());
-
-	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
-	cnote << "New transaction " << t;
-
-	return right160(sha3(rlpList(t.sender(), t.nonce())));
-}
-
-void ClientBase::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
-{
-	auto a = toAddress(_secret);
-	submitTransaction(_secret, _value, _dest, _data, _gas, _gasPrice, max<u256>(postMine().transactionsFrom(a), m_tq.maxNonce(a)));
-}
-
-Address ClientBase::submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
+Address ClientBase::submitTransaction(TransactionSkeleton const& _t, Secret const& _secret)
 {
 	prepareForTransaction();
 	
-	u256 n = postMine().transactionsFrom(toAddress(_secret));
-	Transaction t(_endowment, _gasPrice, _gas, _init, n, _secret);
-	m_tq.import(t.rlp());
+	TransactionSkeleton ts(_t);
+	ts.from = toAddress(_secret);
+	if (_t.nonce == UndefinedU256)
+		ts.nonce = max<u256>(postMine().transactionsFrom(ts.from), m_tq.maxNonce(ts.from));
 
+	Transaction t(ts, _secret);
+	m_tq.import(t.rlp());
 	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
 	cnote << "New transaction " << t;
 	
-	return right160(sha3(rlpList(t.sender(), t.nonce())));
+	return _t.creation ? right160(sha3(rlpList(ts.from, ts.nonce))) : Address();
 }
 
 // TODO: remove try/catch, allow exceptions
