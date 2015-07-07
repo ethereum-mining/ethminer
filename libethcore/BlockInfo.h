@@ -24,16 +24,17 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include "Common.h"
+#include "ProofOfWork.h"
 
 namespace dev
 {
 namespace eth
 {
 
-enum IncludeNonce
+enum IncludeProof
 {
-	WithoutNonce = 0,
-	WithNonce = 1
+	WithoutProof = 0,
+	WithProof = 1
 };
 
 enum Strictness
@@ -82,8 +83,7 @@ public:
 	u256 gasUsed;
 	u256 timestamp = Invalid256;
 	bytes extraData;
-	h256 mixHash;
-	Nonce nonce;
+	typename ProofOfWork::Solution proof;
 
 	BlockInfo();
 	explicit BlockInfo(bytes const& _block, Strictness _s = IgnoreNonce, h256 const& _h = h256()): BlockInfo(&_block, _s, _h) {}
@@ -112,14 +112,13 @@ public:
 			gasUsed == _cmp.gasUsed &&
 			timestamp == _cmp.timestamp &&
 			extraData == _cmp.extraData &&
-			mixHash == _cmp.mixHash &&
-			nonce == _cmp.nonce;
+			proof == _cmp.proof;
 	}
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
 
 	void clear();
 
-	void noteDirty() const { m_hash = m_seedHash = m_boundary = h256(); }
+	void noteDirty() const { m_hash = m_boundary = h256(); m_proofCache = ProofOfWork::HeaderCache(); }
 
 	void populateFromHeader(RLP const& _header, Strictness _s = IgnoreNonce, h256 const& _h = h256());
 	void populate(bytesConstRef _block, Strictness _s = IgnoreNonce, h256 const& _h = h256());
@@ -130,16 +129,17 @@ public:
 
 	u256 calculateDifficulty(BlockInfo const& _parent) const;
 	u256 selectGasLimit(BlockInfo const& _parent) const;
-	h256 const& seedHash() const;
+	ProofOfWork::HeaderCache const& proofCache() const;
 	h256 const& hash() const;
 	h256 const& boundary() const;
 
 	/// sha3 of the header only.
-	h256 headerHash(IncludeNonce _n) const;
-	void streamRLP(RLPStream& _s, IncludeNonce _n) const;
+	h256 headerHash(IncludeProof _n) const;
+	void streamRLP(RLPStream& _s, IncludeProof _n) const;
 
 private:
-	mutable h256 m_seedHash;
+
+	mutable ProofOfWork::HeaderCache m_proofCache;
 	mutable h256 m_hash;						///< SHA3 hash of the block header! Not serialised.
 	mutable h256 m_boundary;					///< 2^256 / difficulty
 };
@@ -148,7 +148,7 @@ inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
 {
 	_out << _bi.hash() << " " << _bi.parentHash << " " << _bi.sha3Uncles << " " << _bi.coinbaseAddress << " " << _bi.stateRoot << " " << _bi.transactionsRoot << " " <<
 			_bi.receiptsRoot << " " << _bi.logBloom << " " << _bi.difficulty << " " << _bi.number << " " << _bi.gasLimit << " " <<
-			_bi.gasUsed << " " << _bi.timestamp << " " << _bi.mixHash << " " << _bi.nonce << " (" << _bi.seedHash() << ")";
+			_bi.gasUsed << " " << _bi.timestamp;
 	return _out;
 }
 
