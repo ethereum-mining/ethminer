@@ -26,7 +26,6 @@
 #include <libethcore/Common.h>
 #include <libethcore/Params.h>
 #include "EthashAux.h"
-#include "ProofOfWork.h"
 #include "Exceptions.h"
 #include "BlockInfo.h"
 using namespace std;
@@ -57,22 +56,21 @@ void BlockInfo::clear()
 	gasUsed = 0;
 	timestamp = 0;
 	extraData.clear();
-	mixHash = h256();
-	nonce = Nonce();
-	m_hash = m_seedHash = h256();
+	proof = ProofOfWork::Solution();
+	m_proofCache = ProofOfWork::HeaderCache();
+	m_hash = h256();
 }
 
-h256 const& BlockInfo::seedHash() const
+ProofOfWork::HeaderCache const& BlockInfo::proofCache() const
 {
-	if (!m_seedHash)
-		m_seedHash = EthashAux::seedHash((unsigned)number);
-	return m_seedHash;
+	ProofOfWork::ensureHeaderCacheValid(m_proofCache, *this);
+	return m_proofCache;
 }
 
 h256 const& BlockInfo::hash() const
 {
 	if (!m_hash)
-		m_hash = headerHash(WithNonce);
+		m_hash = headerHash(WithProof);
 	return m_hash;
 }
 
@@ -90,20 +88,20 @@ BlockInfo BlockInfo::fromHeader(bytesConstRef _header, Strictness _s, h256 const
 	return ret;
 }
 
-h256 BlockInfo::headerHash(IncludeNonce _n) const
+h256 BlockInfo::headerHash(IncludeProof _n) const
 {
 	RLPStream s;
 	streamRLP(s, _n);
 	return sha3(s.out());
 }
 
-void BlockInfo::streamRLP(RLPStream& _s, IncludeNonce _n) const
+void BlockInfo::streamRLP(RLPStream& _s, IncludeProof _n) const
 {
-	_s.appendList(_n == WithNonce ? 15 : 13)
+	_s.appendList(_n == WithProof ? 13 + ProofOfWork::Solution::Fields : 13)
 		<< parentHash << sha3Uncles << coinbaseAddress << stateRoot << transactionsRoot << receiptsRoot << logBloom
 		<< difficulty << number << gasLimit << gasUsed << timestamp << extraData;
-	if (_n == WithNonce)
-		_s << mixHash << nonce;
+	if (_n == WithProof)
+		proof.streamRLP(_s);
 }
 
 h256 BlockInfo::headerHash(bytesConstRef _block)
@@ -116,12 +114,12 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s, h256 const
 	m_hash = _h;
 	if (_h)
 		assert(_h == dev::sha3(_header.data()));
-	m_seedHash = h256();
+	m_proofCache = ProofOfWork::HeaderCache();
 
 	int field = 0;
 	try
 	{
-		if (_header.itemCount() != 15)
+		if (_header.itemCount() != 13 + ProofOfWork::Solution::Fields)
 			BOOST_THROW_EXCEPTION(InvalidBlockHeaderItemCount());
 		parentHash = _header[field = 0].toHash<h256>(RLP::VeryStrict);
 		sha3Uncles = _header[field = 1].toHash<h256>(RLP::VeryStrict);
@@ -136,8 +134,7 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s, h256 const
 		gasUsed = _header[field = 10].toInt<u256>();
 		timestamp = _header[field = 11].toInt<u256>();
 		extraData = _header[field = 12].toBytes();
-		mixHash = _header[field = 13].toHash<h256>(RLP::VeryStrict);
-		nonce = _header[field = 14].toHash<Nonce>(RLP::VeryStrict);
+		proof.populateFromRLP(_header, field = 13);
 	}
 	catch (Exception const& _e)
 	{
@@ -152,22 +149,18 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s, h256 const
 	if (_s == CheckEverything && parentHash && !ProofOfWork::verify(*this))
 	{
 		InvalidBlockNonce ex;
-		ex << errinfo_hash256(headerHash(WithoutNonce));
-		ex << errinfo_nonce(nonce);
+		ProofOfWork::composeException(ex, *this);
+		ex << errinfo_hash256(headerHash(WithoutProof));
 		ex << errinfo_difficulty(difficulty);
-		ex << errinfo_seedHash(seedHash());
 		ex << errinfo_target(boundary());
-		ex << errinfo_mixHash(mixHash);
-		Ethash::Result er = EthashAux::eval(seedHash(), headerHash(WithoutNonce), nonce);
-		ex << errinfo_ethashResult(make_tuple(er.value, er.mixHash));
 		BOOST_THROW_EXCEPTION(ex);
 	}
 	else if (_s == QuickNonce && parentHash && !ProofOfWork::preVerify(*this))
 	{
 		InvalidBlockNonce ex;
-		ex << errinfo_hash256(headerHash(WithoutNonce));
-		ex << errinfo_nonce(nonce);
+		ex << errinfo_hash256(headerHash(WithoutProof));
 		ex << errinfo_difficulty(difficulty);
+		ProofOfWork::composeExceptionPre(ex, *this);
 		BOOST_THROW_EXCEPTION(ex);
 	}
 
