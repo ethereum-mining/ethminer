@@ -100,6 +100,46 @@ BOOST_AUTO_TEST_CASE(FixedHashContains)
 	BOOST_CHECK(!h1.contains(h3));
 }
 
+void incrementSingleIteration(unsigned seed)
+{
+	unsigned next = seed + 1;
+
+	FixedHash<4> h1(seed);
+	FixedHash<4> h2 = h1;
+	FixedHash<4> h3(next);
+
+	FixedHash<32> hh1(seed);
+	FixedHash<32> hh2 = hh1;
+	FixedHash<32> hh3(next);
+
+	BOOST_CHECK_EQUAL(++h2, h3);
+	BOOST_CHECK_EQUAL(++hh2, hh3);
+
+	BOOST_CHECK(h2 > h1);
+	BOOST_CHECK(hh2 > hh1);
+
+	unsigned reverse1 = ((FixedHash<4>::Arith)h2).convert_to<unsigned>();
+	unsigned reverse2 = ((FixedHash<32>::Arith)hh2).convert_to<unsigned>();
+
+	BOOST_CHECK_EQUAL(next, reverse1);
+	BOOST_CHECK_EQUAL(next, reverse2);
+}
+
+BOOST_AUTO_TEST_CASE(FixedHashIncrement)
+{
+	incrementSingleIteration(0);
+	incrementSingleIteration(1);
+	incrementSingleIteration(0xBAD);
+	incrementSingleIteration(0xBEEF);
+	incrementSingleIteration(0xFFFF);
+	incrementSingleIteration(0xFEDCBA);
+	incrementSingleIteration(0x7FFFFFFF);
+
+	FixedHash<4> h(0xFFFFFFFF);
+	FixedHash<4> zero;
+	BOOST_CHECK_EQUAL(++h, zero);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }
