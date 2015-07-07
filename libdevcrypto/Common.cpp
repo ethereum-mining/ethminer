@@ -22,6 +22,7 @@
 
 #include "Common.h"
 #include <random>
+#include <cstdint>
 #include <chrono>
 #include <thread>
 #include <mutex>
