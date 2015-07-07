@@ -82,6 +82,14 @@ class DownloadMan
 	friend class DownloadSub;
 
 public:
+	struct Overview
+	{
+		size_t total;
+		size_t firstIncomplete;
+		size_t lastComplete;
+		size_t lastStarted;
+	};
+
 	~DownloadMan()
 	{
 		for (auto i: m_subs)
@@ -97,11 +105,9 @@ public:
 
 	void resetToChain(h256s const& _chain)
 	{
-		{
-			ReadGuard l(x_subs);
+		DEV_READ_GUARDED(x_subs)
 			for (auto i: m_subs)
 				i->resetFetch();
-		}
 		WriteGuard l(m_lock);
 		m_chain.clear();
 		m_chain.reserve(_chain.size());
@@ -112,11 +118,9 @@ public:
 
 	void reset()
 	{
-		{
-			ReadGuard l(x_subs);
+		DEV_READ_GUARDED(x_subs)
 			for (auto i: m_subs)
 				i->resetFetch();
-		}
 		WriteGuard l(m_lock);
 		m_chain.clear();
 		m_blocksGot.reset();
@@ -127,11 +131,9 @@ public:
 		ReadGuard l(m_lock);
 		auto ret = m_blocksGot;
 		if (!_desperate)
-		{
-			ReadGuard l(x_subs);
-			for (auto i: m_subs)
-				ret += i->m_asked;
-		}
+			DEV_READ_GUARDED(x_subs)
+				for (auto i: m_subs)
+					ret += i->m_asked;
 		return ret;
 	}
 
@@ -144,11 +146,14 @@ public:
 	h256s remaining() const
 	{
 		h256s ret;
-		ReadGuard l(m_lock);
-		for (auto i: m_blocksGot.inverted())
-			ret.push_back(m_chain[i]);
+		DEV_READ_GUARDED(m_lock)
+			for (auto i: m_blocksGot.inverted())
+				ret.push_back(m_chain[i]);
 		return ret;
 	}
+
+	h256 firstBlock() const { return m_chain.empty() ? h256() : m_chain[0]; }
+	Overview overview() const;
 
 	size_t chainSize() const { ReadGuard l(m_lock); return m_chain.size(); }
 	size_t chainEmpty() const { ReadGuard l(m_lock); return m_chain.empty(); }
