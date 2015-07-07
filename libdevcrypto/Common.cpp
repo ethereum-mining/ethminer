@@ -262,16 +262,9 @@ bytes dev::scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uin
 
 KeyPair KeyPair::create()
 {
-	static boost::thread_specific_ptr<mt19937_64> s_eng;
-	static unsigned s_id = 0;
-	if (!s_eng.get())
-		s_eng.reset(new mt19937_64(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count() + ++s_id));
-
-	uniform_int_distribution<uint16_t> d(0, 255);
-
 	for (int i = 0; i < 100; ++i)
 	{
-		KeyPair ret(FixedHash<32>::random(*s_eng.get()));
+		KeyPair ret(FixedHash<32>::random());
 		if (ret.address())
 			return ret;
 	}
