@@ -49,7 +49,6 @@ namespace
 struct MixPow //dummy POW
 {
 	typedef int Solution;
-	static void assignResult(int, BlockInfo const&) {}
 	static bool verify(BlockInfo const&) { return true; }
 };
 
