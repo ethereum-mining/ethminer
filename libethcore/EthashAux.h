@@ -78,7 +78,7 @@ public:
 	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result or empty pointer if not existing and _createIfMissing is false.
 	static FullType full(h256 const& _seedHash, bool _createIfMissing = false, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
 
-	static Ethash::Result eval(BlockInfo const& _header) { return eval(_header, _header.nonce); }
+	static Ethash::Result eval(BlockInfo const& _header);
 	static Ethash::Result eval(BlockInfo const& _header, Nonce const& _nonce);
 	static Ethash::Result eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce);
 

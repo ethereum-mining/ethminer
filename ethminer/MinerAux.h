@@ -254,17 +254,17 @@ public:
 				bi.difficulty = u256(m);
 				auto boundary = bi.boundary();
 				m = boost::to_lower_copy(string(argv[++i]));
-				bi.nonce = h64(m);
-				auto r = EthashAux::eval(seedHash, powHash, bi.nonce);
+				bi.proof.nonce = h64(m);
+				auto r = EthashAux::eval(seedHash, powHash, bi.proof.nonce);
 				bool valid = r.value < boundary;
 				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
 				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
 				cout << "  where " << boundary << " = 2^256 / " << bi.difficulty << endl;
-				cout << "  and " << r.value << " = ethash(" << powHash << ", " << bi.nonce << ")" << endl;
+				cout << "  and " << r.value << " = ethash(" << powHash << ", " << bi.proof.nonce << ")" << endl;
 				cout << "  with seed as " << seedHash << endl;
 				if (valid)
 					cout << "(mixHash = " << r.mixHash << ")" << endl;
-				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(bi.seedHash())->data()) << endl;
+				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(bi.proofCache())->data()) << endl;
 				exit(0);
 			}
 			catch (...)
@@ -382,7 +382,7 @@ private:
 	{
 		BlockInfo bi;
 		bi.number = _n;
-		cout << "Initializing DAG for epoch beginning #" << (bi.number / 30000 * 30000) << " (seedhash " << bi.seedHash().abridged() << "). This will take a while." << endl;
+		cout << "Initializing DAG for epoch beginning #" << (bi.number / 30000 * 30000) << " (seedhash " << bi.proofCache().abridged() << "). This will take a while." << endl;
 		Ethash::prep(bi);
 		exit(0);
 	}
