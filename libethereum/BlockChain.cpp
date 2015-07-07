@@ -871,33 +871,21 @@ template <class T> static unsigned getHashSize(unordered_map<h256, T> const& _ma
 
 void BlockChain::updateStats() const
 {
-	{
-		ReadGuard l(x_blocks);
-		m_lastStats.memBlocks = 0;
+	m_lastStats.memBlocks = 0;
+	DEV_READ_GUARDED(x_blocks)
 		for (auto const& i: m_blocks)
 			m_lastStats.memBlocks += i.second.size() + 64;
-	}
-	{
-		ReadGuard l(x_details);
+	DEV_READ_GUARDED(x_details)
 		m_lastStats.memDetails = getHashSize(m_details);
-	}
-	{
-		ReadGuard l1(x_logBlooms);
-		ReadGuard l2(x_blocksBlooms);
-		m_lastStats.memLogBlooms = getHashSize(m_logBlooms) + getHashSize(m_blocksBlooms);
-	}
-	{
-		ReadGuard l(x_receipts);
+	DEV_READ_GUARDED(x_logBlooms)
+		DEV_READ_GUARDED(x_blocksBlooms)
+			m_lastStats.memLogBlooms = getHashSize(m_logBlooms) + getHashSize(m_blocksBlooms);
+	DEV_READ_GUARDED(x_receipts)
 		m_lastStats.memReceipts = getHashSize(m_receipts);
-	}
-	{
-		ReadGuard l(x_blockHashes);
+	DEV_READ_GUARDED(x_blockHashes)
 		m_lastStats.memBlockHashes = getHashSize(m_blockHashes);
-	}
-	{
-		ReadGuard l(x_transactionAddresses);
+	DEV_READ_GUARDED(x_transactionAddresses)
 		m_lastStats.memTransactionAddresses = getHashSize(m_transactionAddresses);
-	}
 }
 
 void BlockChain::garbageCollect(bool _force)
@@ -954,10 +942,8 @@ void BlockChain::garbageCollect(bool _force)
 
 void BlockChain::checkConsistency()
 {
-	{
-		WriteGuard l(x_details);
+	DEV_WRITE_GUARDED(x_details)
 		m_details.clear();
-	}
 	ldb::Iterator* it = m_blocksDB->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().size() == 32)
@@ -969,13 +955,9 @@ void BlockChain::checkConsistency()
 			{
 				auto dp = details(p);
 				if (asserts(contains(dp.children, h)))
-				{
 					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
-				}
 				if (assertsEqual(dp.number, dh.number - 1))
-				{
 					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
-				}
 			}
 		}
 	delete it;
