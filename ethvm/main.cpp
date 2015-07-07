@@ -46,8 +46,7 @@ void help()
 #if ETH_EVMJIT || !ETH_TRUE
 		<< endl
 		<< "VM options:" << endl
-		<< "    -J,--jit  Enable LLVM VM (default: off)." << endl
-		<< "    --smart  Enable smart VM (default: off)." << endl
+		<< "    --vm <vm-kind>  Select VM. Options are: interpreter, jit, smart. (default: interpreter)" << endl
 #endif
 		<< endl
 		<< "Options for trace:" << endl
@@ -97,10 +96,21 @@ int main(int argc, char** argv)
 		else if (arg == "-V" || arg == "--version")
 			version();
 #if ETH_EVMJIT
-		else if (arg == "-J" || arg == "--jit")
-			VMFactory::setKind(VMKind::JIT);
-		else if (arg == "--smart")
-			VMFactory::setKind(VMKind::Smart);
+		else if (arg == "--vm" && i + 1 < argc)
+		{
+			string vmKind = argv[++i];
+			if (vmKind == "interpreter")
+				VMFactory::setKind(VMKind::Interpreter);
+			else if (vmKind == "jit")
+				VMFactory::setKind(VMKind::JIT);
+			else if (vmKind == "smart")
+				VMFactory::setKind(VMKind::Smart);
+			else
+			{
+				cerr << "Unknown VM kind: " << vmKind << endl;
+				return -1;
+			}
+		}
 #endif
 		else if (arg == "--mnemonics")
 			st.setShowMnemonics();

@@ -105,6 +105,7 @@ private:
 
 	void maintainTransactions();
 	void maintainBlocks(h256 const& _currentBlock);
+	void onTransactionImported(ImportResult _ir, h256 const& _h, h512 const& _nodeId);
 
 	///	Check to see if the network peer-state initialisation has happened.
 	bool isInitialised() const { return (bool)m_latestBlockSent; }
@@ -115,7 +116,7 @@ private:
 	virtual void onStarting() override { startWorking(); }
 	virtual void onStopping() override { stopWorking(); }
 
-	BlockChainSync& sync();
+	BlockChainSync* sync();
 
 	BlockChain const& m_chain;
 	TransactionQueue& m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
@@ -132,6 +133,7 @@ private:
 	bool m_newBlocks = false;
 
 	mutable Mutex x_sync;
+	mutable Mutex x_transactions;
 	DownloadMan m_man;
 	std::unique_ptr<BlockChainSync> m_sync;
 };

@@ -41,6 +41,7 @@ using namespace dev::eth;
 using namespace p2p;
 
 unsigned const EthereumHost::c_oldProtocolVersion = 60; //TODO: remove this once v61+ is common
+static unsigned const c_maxSendTransactions = 256;
 
 char const* const EthereumHost::s_stateNames[static_cast<int>(SyncState::Size)] = {"Idle", "Waiting", "Hashes", "Blocks", "NewBlocks" };
 
@@ -53,6 +54,7 @@ EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQu
 	m_networkId	(_networkId)
 {
 	m_latestBlockSent = _ch.currentHash();
+	m_tq.onImport([this](ImportResult _ir, h256 const& _h, h512 const& _nodeId) { onTransactionImported(_ir, _h, _nodeId); });
 }
 
 EthereumHost::~EthereumHost()
@@ -67,8 +69,8 @@ bool EthereumHost::ensureInitialised()
 		m_latestBlockSent = m_chain.currentHash();
 		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent;
 
-		for (auto const& i: m_tq.transactions())
-			m_transactionsSent.insert(i.first);
+		Guard l(x_transactions);
+		m_transactionsSent = m_tq.knownTransactions();
 		return true;
 	}
 	return false;
@@ -82,6 +84,7 @@ void EthereumHost::reset()
 	m_sync.reset();
 
 	m_latestBlockSent = h256();
+	Guard tl(x_transactions);
 	m_transactionsSent.clear();
 }
 
@@ -114,25 +117,29 @@ void EthereumHost::doWork()
 void EthereumHost::maintainTransactions()
 {
 	// Send any new transactions.
-	unordered_map<std::shared_ptr<EthereumPeer>, h256s> peerTransactions;
-	auto ts = m_tq.transactions();
-	for (auto const& i: ts)
+	unordered_map<std::shared_ptr<EthereumPeer>, std::vector<size_t>> peerTransactions;
+	auto ts = m_tq.topTransactions(c_maxSendTransactions);
 	{
-		bool unsent = !m_transactionsSent.count(i.first);
-		auto peers = get<1>(randomSelection(0, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); }));
-		for (auto const& p: peers)
-			peerTransactions[p].push_back(i.first);
+		Guard l(x_transactions);
+		for (size_t i = 0; i < ts.size(); ++i)
+		{
+			auto const& t = ts[i];
+			bool unsent = !m_transactionsSent.count(t.sha3());
+			auto peers = get<1>(randomSelection(0, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(t.sha3())); }));
+			for (auto const& p: peers)
+				peerTransactions[p].push_back(i);
+		}
+		for (auto const& t: ts)
+			m_transactionsSent.insert(t.sha3());
 	}
-	for (auto const& t: ts)
-		m_transactionsSent.insert(t.first);
 	foreachPeer([&](shared_ptr<EthereumPeer> _p)
 	{
 		bytes b;
 		unsigned n = 0;
-		for (auto const& h: peerTransactions[_p])
+		for (auto const& i: peerTransactions[_p])
 		{
-			_p->m_knownTransactions.insert(h);
-			b += ts[h].rlp();
+			_p->m_knownTransactions.insert(ts[i].sha3());
+			b += ts[i].rlp();
 			++n;
 		}
 
@@ -230,10 +237,10 @@ void EthereumHost::maintainBlocks(h256 const& _currentHash)
 	}
 }
 
-BlockChainSync& EthereumHost::sync()
+BlockChainSync* EthereumHost::sync()
 {
 	if (m_sync)
-		return *m_sync; // We only chose sync strategy once
+		return m_sync.get(); // We only chose sync strategy once
 
 	bool pv61 = false;
 	foreachPeer([&](std::shared_ptr<EthereumPeer> _p)
@@ -242,38 +249,43 @@ BlockChainSync& EthereumHost::sync()
 			pv61 = true;
 		return !pv61;
 	});
-	m_sync.reset(pv61 ? new PV60Sync(*this) : new PV60Sync(*this));
-	return *m_sync;
+	m_sync.reset(pv61 ? new PV61Sync(*this) : new PV60Sync(*this));
+	return m_sync.get();
 }
 
 void EthereumHost::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
 {
 	Guard l(x_sync);
-	sync().onPeerStatus(_peer);
+	if (sync())
+		sync()->onPeerStatus(_peer);
 }
 
 void EthereumHost::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
 {
 	Guard l(x_sync);
-	sync().onPeerHashes(_peer, _hashes);
+	if (sync())
+		sync()->onPeerHashes(_peer, _hashes);
 }
 
 void EthereumHost::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
 	Guard l(x_sync);
-	sync().onPeerBlocks(_peer, _r);
+	if (sync())
+		sync()->onPeerBlocks(_peer, _r);
 }
 
 void EthereumHost::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
 {
 	Guard l(x_sync);
-	sync().onPeerNewHashes(_peer, _hashes);
+	if (sync())
+		sync()->onPeerNewHashes(_peer, _hashes);
 }
 
 void EthereumHost::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
 	Guard l(x_sync);
-	sync().onPeerNewBlock(_peer, _r);
+	if (sync())
+		sync()->onPeerNewBlock(_peer, _r);
 }
 
 void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
@@ -285,35 +297,21 @@ void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP c
 	}
 	unsigned itemCount = _r.itemCount();
 	clog(NetAllDetail) << "Transactions (" << dec << itemCount << "entries)";
-	Guard l(_peer->x_knownTransactions);
-	for (unsigned i = 0; i < min<unsigned>(itemCount, 32); ++i)	// process 256 transactions at most. TODO: much better solution.
-	{
-		auto h = sha3(_r[i].data());
-		_peer->m_knownTransactions.insert(h);
-		ImportResult ir = m_tq.import(_r[i].data());
-		switch (ir)
-		{
-		case ImportResult::Malformed:
-			_peer->addRating(-100);
-			break;
-		case ImportResult::AlreadyKnown:
-			// if we already had the transaction, then don't bother sending it on.
-			m_transactionsSent.insert(h);
-			_peer->addRating(0);
-			break;
-		case ImportResult::Success:
-			_peer->addRating(100);
-			break;
-		default:;
-		}
-	}
+	m_tq.enqueue(_r, _peer->session()->id());
 }
 
 void EthereumHost::onPeerAborting()
 {
 	Guard l(x_sync);
-	if (m_sync)
-		m_sync->onPeerAborting();
+	try
+	{
+		if (m_sync)
+			m_sync->onPeerAborting();
+	}
+	catch (Exception&)
+	{
+		cwarn << "Exception on peer destruciton: " << boost::current_exception_diagnostic_information();
+	}
 }
 
 bool EthereumHost::isSyncing() const
@@ -330,4 +328,38 @@ SyncStatus EthereumHost::status() const
 	if (!m_sync)
 		return SyncStatus();
 	return m_sync->status();
+}
+
+void EthereumHost::onTransactionImported(ImportResult _ir, h256 const& _h, h512 const& _nodeId)
+{
+	auto session = host()->peerSession(_nodeId);
+	if (!session)
+		return;
+
+	std::shared_ptr<EthereumPeer> peer = session->cap<EthereumPeer>();
+	if (!peer)
+		peer = session->cap<EthereumPeer>(c_oldProtocolVersion);
+	if (!peer)
+		return;
+
+	Guard l(peer->x_knownTransactions);
+	peer->m_knownTransactions.insert(_h);
+	switch (_ir)
+	{
+	case ImportResult::Malformed:
+		peer->addRating(-100);
+		break;
+	case ImportResult::AlreadyKnown:
+		// if we already had the transaction, then don't bother sending it on.
+		{
+			Guard l(x_transactions);
+			m_transactionsSent.insert(_h);
+		}
+		peer->addRating(0);
+		break;
+	case ImportResult::Success:
+		peer->addRating(100);
+		break;
+	default:;
+	}
 }
