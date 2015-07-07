@@ -76,7 +76,7 @@ public:
 	virtual ~ClientBase() {}
 
 	/// Submits the given transaction.
-	/// @returns the new contract's address (assuming it all goes through).
+	/// @returns the new transaction's hash.
 	virtual h256 submitTransaction(TransactionSkeleton const& _t, Secret const& _secret) override;
 	using Interface::submitTransaction;
 
