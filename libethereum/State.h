@@ -169,11 +169,11 @@ public:
 		if (!m_committedToMine)
 			return false;
 
-		PoW::assignResult(_result, m_currentBlock);
+		m_currentBlock.proof = _result;
 		if (!PoW::verify(m_currentBlock))
 			return false;
 
-		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce) << m_currentBlock.nonce << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
+		cnote << "Completed" << m_currentBlock.headerHash(WithoutProof) << m_currentBlock.proof.nonce << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
 
 		completeMine();
 

@@ -575,8 +575,8 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 #endif
 
 	StructuredLogger::chainReceivedNewBlock(
-		_block.info.headerHash(WithoutNonce).abridged(),
-		_block.info.nonce.abridged(),
+		_block.info.headerHash(WithoutProof).abridged(),
+		_block.info.proof.nonce.abridged(),
 		currentHash().abridged(),
 		"", // TODO: remote id ??
 		_block.info.parentHash.abridged()
@@ -666,8 +666,8 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 		clog(BlockChainNote) << "   Imported and best" << td << " (#" << _block.info.number << "). Has" << (details(_block.info.parentHash).children.size() - 1) << "siblings. Route:" << route;
 
 		StructuredLogger::chainNewHead(
-			_block.info.headerHash(WithoutNonce).abridged(),
-			_block.info.nonce.abridged(),
+			_block.info.headerHash(WithoutProof).abridged(),
+			_block.info.proof.nonce.abridged(),
 			currentHash().abridged(),
 			_block.info.parentHash.abridged()
 		);
