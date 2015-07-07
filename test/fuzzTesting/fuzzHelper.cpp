@@ -162,7 +162,7 @@ std::string RandomCode::fillArguments(dev::eth::Instruction _opcode, RandomCodeO
 
 		if (isSWAP || isDUP)
 		{
-			int times;
+			int times = 0;
 			if (isSWAP)
 				times = int(_opcode) - int(dev::eth::Instruction::SWAP1) + 2;
 			else
