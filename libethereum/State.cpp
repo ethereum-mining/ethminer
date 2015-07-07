@@ -38,6 +38,7 @@
 #include "Executive.h"
 #include "CachedAddressState.h"
 #include "CanonBlockChain.h"
+#include "TransactionQueue.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -47,6 +48,7 @@ namespace fs = boost::filesystem;
 #define ETH_TIMED_ENACTMENTS 0
 
 static const u256 c_blockReward = c_network == Network::Olympic ? (1500 * finney) : (5 * ether);
+static const unsigned c_maxSyncTransactions = 256;
 
 const char* StateSafeExceptions::name() { return EthViolet "⚙" EthBlue " ℹ"; }
 const char* StateDetail::name() { return EthViolet "⚙" EthWhite " ◌"; }
@@ -495,7 +497,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 	pair<TransactionReceipts, bool> ret;
 	ret.second = false;
 
-	auto ts = _tq.transactions();
+	auto ts = _tq.topTransactions(c_maxSyncTransactions);
 
 	LastHashes lh;
 
@@ -504,27 +506,26 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 	for (int goodTxs = 1; goodTxs; )
 	{
 		goodTxs = 0;
-		for (auto const& i: ts)
-			if (!m_transactionSet.count(i.first))
+		for (auto const& t: ts)
+			if (!m_transactionSet.count(t.sha3()))
 			{
 				try
 				{
-					if (i.second.gasPrice() >= _gp.ask(*this))
+					if (t.gasPrice() >= _gp.ask(*this))
 					{
 	//					Timer t;
 						if (lh.empty())
 							lh = _bc.lastHashes();
-						execute(lh, i.second);
+						execute(lh, t);
 						ret.first.push_back(m_receipts.back());
-						_tq.noteGood(i);
 						++goodTxs;
 	//					cnote << "TX took:" << t.elapsed() * 1000;
 					}
-					else if (i.second.gasPrice() < _gp.ask(*this) * 9 / 10)
+					else if (t.gasPrice() < _gp.ask(*this) * 9 / 10)
 					{
 						// less than 90% of our ask price for gas. drop.
-						cnote << i.first << "Dropping El Cheapo transaction (<90% of ask price)";
-						_tq.drop(i.first);
+						cnote << t.sha3() << "Dropping El Cheapo transaction (<90% of ask price)";
+						_tq.drop(t.sha3());
 					}
 				}
 				catch (InvalidNonce const& in)
@@ -535,57 +536,54 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 					if (req > got)
 					{
 						// too old
-						for (Transaction const& t: m_transactions)
-							if (t.from() == i.second.from())
+/*						for (Transaction const& mt: m_transactions)
+						{
+							if (mt.from() == t.from())
 							{
-								if (t.nonce() < i.second.nonce())
-								{
-									cnote << i.first << "Dropping old transaction (nonce too low)";
-									_tq.drop(i.first);
-								}
-								else if (t.nonce() == i.second.nonce() && t.gasPrice() <= i.second.gasPrice())
-								{
-									cnote << i.first << "Dropping old transaction (gas price lower)";
-									_tq.drop(i.first);
-								}
+								if (mt.nonce() < t.nonce())
+									cnote << t.sha3() << "Dropping old transaction (nonce too low)";
+								else if (mt.nonce() == t.nonce() && mt.gasPrice() <= t.gasPrice())
+									cnote << t.sha3() << "Dropping old transaction (gas price lower)";
 							}
+						}*/
+						_tq.drop(t.sha3());
 					}
-					else if (got > req + _tq.waiting(i.second.sender()))
+					else if (got > req + _tq.waiting(t.sender()))
 					{
 						// too new
-						cnote << i.first << "Dropping new transaction (too many nonces ahead)";
-						_tq.drop(i.first);
+						cnote << t.sha3() << "Dropping new transaction (too many nonces ahead)";
+						_tq.drop(t.sha3());
 					}
 					else
-						_tq.setFuture(i);
+						_tq.setFuture(t.sha3());
 				}
 				catch (BlockGasLimitReached const& e)
 				{
 					bigint const& got = *boost::get_error_info<errinfo_got>(e);
 					if (got > m_currentBlock.gasLimit)
 					{
-						cnote << i.first << "Dropping over-gassy transaction (gas > block's gas limit)";
-						_tq.drop(i.first);
+						cnote << t.sha3() << "Dropping over-gassy transaction (gas > block's gas limit)";
+						_tq.drop(t.sha3());
 					}
 					else
 					{
 						// Temporarily no gas left in current block.
 						// OPTIMISE: could note this and then we don't evaluate until a block that does have the gas left.
 						// for now, just leave alone.
-//						_tq.setFuture(i);
+//						_tq.setFuture(t.sha3());
 					}
 				}
 				catch (Exception const& _e)
 				{
 					// Something else went wrong - drop it.
-					cnote << i.first << "Dropping invalid transaction:" << diagnostic_information(_e);
-					_tq.drop(i.first);
+					cnote << t.sha3() << "Dropping invalid transaction:" << diagnostic_information(_e);
+					_tq.drop(t.sha3());
 				}
 				catch (std::exception const&)
 				{
 					// Something else went wrong - drop it.
-					_tq.drop(i.first);
-					cnote << i.first << "Transaction caused low-level exception :(";
+					_tq.drop(t.sha3());
+					cnote << t.sha3() << "Transaction caused low-level exception :(";
 				}
 			}
 		if (chrono::steady_clock::now() > deadline)
@@ -1271,6 +1269,7 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 	
 		// Add to the user-originated transactions that we've executed.
 		m_transactions.push_back(e.t());
+//		m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsedNoRefunds(), e.logs()));	// TODO: Switch in to be compliant with YP.
 		m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs()));
 		m_transactionSet.insert(e.t().sha3());
 	}

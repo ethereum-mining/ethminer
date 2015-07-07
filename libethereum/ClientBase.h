@@ -75,14 +75,9 @@ public:
 	ClientBase() {}
 	virtual ~ClientBase() {}
 
-	/// Submits the given message-call transaction.
-	virtual void submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, u256 _nonce);
-	virtual void submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) override;
-
-	/// Submits a new contract-creation transaction.
+	/// Submits the given transaction.
 	/// @returns the new contract's address (assuming it all goes through).
-	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice, u256 _nonce);
-	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) override;
+	virtual Address submitTransaction(TransactionSkeleton const& _t, Secret const& _secret) override;
 	using Interface::submitTransaction;
 
 	/// Makes the given call. Nothing is recorded into the state.
