@@ -273,7 +273,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 
 	h256 lastHash = m_lastBlockHash;
 	Timer t;
-	for (unsigned d = 1; d < originalNumber; ++d)
+	for (unsigned d = 1; d <= originalNumber; ++d)
 	{
 		if (!(d % 1000))
 		{

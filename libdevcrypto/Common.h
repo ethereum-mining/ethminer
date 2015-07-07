@@ -85,6 +85,9 @@ Address toAddress(Public const& _public);
 /// @returns 0 if it's not a valid secret key.
 Address toAddress(Secret const& _secret);
 
+// Convert transaction from and nonce to address.
+Address toAddress(Address const& _from, u256 const& _nonce);
+
 /// Encrypts plain text using Public key.
 void encrypt(Public const& _k, bytesConstRef _plain, bytes& o_cipher);
 

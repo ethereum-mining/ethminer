@@ -363,11 +363,7 @@ int main(int argc, char** argv)
 		coinbase = config[1].toHash<Address>();
 	}
 	else
-	{
-		RLPStream config(2);
-		config << us.secret() << coinbase;
-		writeFile(configFile, config.out());
-	}
+		writeFile(configFile, rlpList(us.secret(), coinbase));
 
 	for (int i = 1; i < argc; ++i)
 	{
