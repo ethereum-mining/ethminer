@@ -119,6 +119,7 @@ public:
 	virtual BlockDetails blockDetails(h256 _hash) const override;
 	virtual Transaction transaction(h256 _transactionHash) const override;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const override;
+	virtual TransactionReceipt transactionReceipt(h256 const& _transactionHash) const override;
 	virtual std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const override;
 	virtual Transactions transactions(h256 _blockHash) const override;
 	virtual TransactionHashes transactionHashes(h256 _blockHash) const override;

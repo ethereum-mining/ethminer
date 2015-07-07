@@ -419,6 +419,23 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByBlockNumberAndIndex(stri
 	}
 }
 
+Json::Value WebThreeStubServerBase::eth_getTransactionReceipt(string const& _transactionHash)
+{
+	try
+	{
+		h256 h = jsToFixed<32>(_transactionHash);
+		if (!client()->isKnownTransaction(h))
+			return Json::Value(Json::nullValue);
+
+		auto l = client()->transactionLocation(h);
+		return toJson(client()->transactionReceipt(h), l, client()->numberFromHash(l.first), client()->transaction(h));
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
 Json::Value WebThreeStubServerBase::eth_getUncleByBlockHashAndIndex(string const& _blockHash, string const& _uncleIndex)
 {
 	try
