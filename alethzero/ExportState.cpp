@@ -127,11 +127,21 @@ void ExportStateDialog::fillContracts()
 	ui->contracts->clear();
 	ui->accounts->setEnabled(true);
 	ui->contracts->setEnabled(true);
-	for (auto i: ethereum()->addresses(m_block))
+	try
 	{
-		string r = m_main->render(i);
-		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(ethereum()->balanceAt(i)).c_str()).arg(QString::fromStdString(r)).arg((unsigned)ethereum()->countAt(i)), ethereum()->codeAt(i).empty() ? ui->accounts : ui->contracts))
-			->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
+		for (auto i: ethereum()->addresses(m_block))
+		{
+			string r = m_main->render(i);
+			(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(ethereum()->balanceAt(i)).c_str()).arg(QString::fromStdString(r)).arg((unsigned)ethereum()->countAt(i)), ethereum()->codeAt(i).empty() ? ui->accounts : ui->contracts))
+				->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
+		}
+	}
+	catch (InterfaceNotSupported const&)
+	{
+		ui->accounts->setEnabled(false);
+		ui->contracts->setEnabled(false);
+		ui->json->setEnabled(false);
+		ui->json->setText(QString("This feature requires compilation with FATDB support."));
 	}
 }
 
