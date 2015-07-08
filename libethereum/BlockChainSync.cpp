@@ -1170,9 +1170,9 @@ SyncStatus PV61Sync::status() const
 {
 	RecursiveGuard l(x_sync);
 	SyncStatus res = PV60Sync::status();
+	res.protocolVersion = 61;
 	if (m_state == SyncState::Hashes && isPV61Syncing())
 	{
-		res.protocolVersion = 61;
 		res.hashesReceived = 0;
 		for (auto const& d : m_readyChainMap)
 			res.hashesReceived += d.second.size();
