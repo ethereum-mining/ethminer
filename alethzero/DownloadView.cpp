@@ -66,12 +66,8 @@ void SyncView::paintEvent(QPaintEvent*)
 	unsigned hashCount = sync.state == SyncState::Hashes ? sync.hashesTotal : downloadCount;
 	unsigned hashDone = hashFrom + (sync.state == SyncState::Hashes ? sync.hashesReceived : hashCount);
 
-	m_lastFrom = min(syncFrom, m_lastFrom);
-	m_lastTo = max(max(syncFrom + syncCount, hashFrom + hashCount), m_lastTo);
-	unsigned from = min(min(hashFrom, downloadFrom), min(syncFrom, m_lastFrom));
-	unsigned count = max(max(hashFrom + hashCount, downloadFrom + downloadCount), max(syncFrom + syncCount, m_lastTo)) - from;
-	m_lastFrom = (m_lastFrom * 99 + syncFrom * 1) / 100;
-	m_lastTo = (m_lastTo * 99 + max(syncFrom + syncCount, hashFrom + hashCount) * 1) / 100;
+	unsigned from = min(min(hashFrom, downloadFrom), syncFrom);
+	unsigned count = max(max(hashFrom + hashCount, downloadFrom + downloadCount), syncFrom + syncCount) - from;
 
 	if (!count)
 	{
