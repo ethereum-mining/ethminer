@@ -36,12 +36,12 @@ SyncView::SyncView(QWidget* _p): QWidget(_p)
 
 void SyncView::paintEvent(QPaintEvent*)
 {
-	QPainter p(this);
-	p.fillRect(rect(), Qt::white);
-	p.setRenderHint(QPainter::Antialiasing, true);
-	p.setRenderHint(QPainter::HighQualityAntialiasing, true);
+	QPainter painter(this);
+	painter.fillRect(rect(), Qt::white);
+	painter.setRenderHint(QPainter::Antialiasing, true);
+	painter.setRenderHint(QPainter::HighQualityAntialiasing, true);
 
-	if (!m_client)
+	if (!m_client || !isVisible())
 		return;
 
 	DownloadMan const* man = m_client->downloadMan();
@@ -57,19 +57,17 @@ void SyncView::paintEvent(QPaintEvent*)
 	unsigned syncCount = syncUnverified + bqs.unknown - syncFrom;
 
 	// best effort guess. assumes there's no forks.
-	unsigned downloadFrom = m_client->numberFromHash(m_client->isKnown(man->firstBlock()) ? man->firstBlock() : PendingBlockHash);
-	unsigned downloadCount = sync.blocksTotal;
-	DownloadMan::Overview overview = man->overview();
-	unsigned downloadDone = downloadFrom + overview.total;
-//	unsigned downloadFlank = downloadFrom + (sync.state == SyncState::Blocks ? overview.firstIncomplete : downloadCount);
-	unsigned downloadPoint = downloadFrom + (sync.state == SyncState::Blocks ? overview.lastComplete : downloadCount);
+	unsigned downloadFrom = sync.state == SyncState::Idle ? m_lastSyncFrom : m_client->numberFromHash(m_client->isKnown(man->firstBlock()) ? man->firstBlock() : PendingBlockHash);
+	unsigned downloadCount = sync.state == SyncState::Idle ? m_lastSyncCount : sync.blocksTotal;
+	unsigned downloadDone = downloadFrom + (sync.state == SyncState::Idle ? m_lastSyncCount : sync.blocksReceived);
+	unsigned downloadPoint = downloadFrom + (sync.state == SyncState::Idle ? m_lastSyncCount : man->overview().lastComplete);
 
 	unsigned hashFrom = sync.state == SyncState::Hashes ? m_client->numberFromHash(PendingBlockHash) : downloadFrom;
 	unsigned hashCount = sync.state == SyncState::Hashes ? sync.hashesTotal : downloadCount;
 	unsigned hashDone = hashFrom + (sync.state == SyncState::Hashes ? sync.hashesReceived : hashCount);
 
 	QString labelText = QString("PV%1").arg(sync.protocolVersion);
-	QColor labelBack = QColor::fromHsv(sync.protocolVersion == 60 ? 30 : sync.protocolVersion == 61 ? 120 : 240, 15, 220);
+	QColor labelBack = QColor::fromHsv(sync.protocolVersion == 60 ? 30 : sync.protocolVersion == 61 ? 120 : 240, 25, 200);
 	QColor labelFore = labelBack.darker();
 	switch (sync.state)
 	{
@@ -112,48 +110,56 @@ void SyncView::paintEvent(QPaintEvent*)
 		cnote << "Importing:" << r(syncFrom) << r(syncImported) << r(syncImporting) << r(syncVerified) << r(syncVerifying) << r(syncUnverified);
 	}
 */
-	QPen pen;
-	pen.setCapStyle(Qt::FlatCap);
-	float squareSize = min(rect().width(), rect().height());
+	float const squareSize = min(rect().width(), rect().height());
 	auto middleRect = [&](float w, float h) {
-		return QRectF(squareSize / 2 - w / 2, squareSize / 2 - h / 2, w, h);
+		return QRectF(rect().width() / 2 - w / 2, rect().height() / 2 - h / 2, w, h);
 	};
 	auto middle = [&](float x) {
 		return middleRect(squareSize * x, squareSize * x);
 	};
-	auto arcLen = [&](unsigned x) {
-		return x * -5760.f / count;
+	auto pieProgress = [&](unsigned h, unsigned s, unsigned v, float size, float thickness, unsigned nfrom, unsigned ncount) {
+		auto arcLen = [&](unsigned x) {
+			return x * -5760.f / count;
+		};
+		auto arcPos = [&](unsigned x) {
+			return int(90 * 16.f + arcLen(x - from)) % 5760;
+		};
+		painter.setPen(QPen(QColor::fromHsv(h, s, v), squareSize * thickness, Qt::SolidLine, Qt::FlatCap));
+		painter.setBrush(Qt::NoBrush);
+		painter.drawArc(middle(size), arcPos(nfrom), arcLen(ncount));
 	};
-	auto arcPos = [&](unsigned x) {
-		return int(90 * 16.f + arcLen(x - from)) % 5760;
+	auto pieProgress2 = [&](unsigned h, unsigned s, unsigned v, float size, float orbit, float thickness, unsigned nfrom, unsigned ncount) {
+		pieProgress(h, s, v, size - orbit, thickness, nfrom, ncount);
+		pieProgress(h, s, v, size + orbit, thickness, nfrom, ncount);
 	};
-	auto progress = [&](unsigned h, unsigned s, unsigned v, float size, float thickness, unsigned nfrom, unsigned ncount) {
-		p.setBrush(Qt::NoBrush);
-		pen.setColor(QColor::fromHsv(h, s, v));
-		pen.setWidthF(squareSize * thickness);
-		p.setPen(pen);
-		p.drawArc(middle(size), arcPos(nfrom), arcLen(ncount));
+	auto pieLabel = [&](QString text, float points, QColor fore, QColor back) {
+		painter.setBrush(QBrush(back));
+		painter.setFont(QFont("Helvetica", points, QFont::Bold));
+		QRectF r = painter.boundingRect(middle(1.f), Qt::AlignCenter, text);
+		r.adjust(-r.width() / 4, -r.height() / 8, r.width() / 4, r.height() / 8);
+		painter.setPen(QPen(fore, r.height() / 20));
+		painter.drawRoundedRect(r, r.height() / 4, r.height() / 4);
+		painter.drawText(r, Qt::AlignCenter, text);
 	};
 
-	progress(0, 0, 220, 0.6f, 0.02f, from, hashDone);								// Download rail
-	progress(240, 25, 170, 0.6f, 0.02f, downloadDone, downloadPoint - downloadDone);	// Latest download point
-	progress(240, 50, 120, 0.6f, 0.04f, from, downloadDone - from);					// Downloaded
+	function<void(unsigned h, unsigned s, unsigned v, float size, float thickness, unsigned nfrom, unsigned ncount)> progress = pieProgress;
+	function<void(unsigned h, unsigned s, unsigned v, float size, float orbit, float thickness, unsigned nfrom, unsigned ncount)> progress2 = pieProgress2;
+	function<void(QString text, float points, QColor fore, QColor back, )> label = pieLabel;
+
+	if (sync.state != SyncState::Idle)
+	{
+		progress(0, 0, 220, 0.6f, 0.02f, from, hashDone - from);								// Download rail
+		progress(240, 25, 170, 0.6f, 0.02f, downloadDone, downloadPoint - downloadDone);	// Latest download point
+		progress(240, 50, 120, 0.6f, 0.04f, from, downloadDone - from);					// Downloaded
+	}
 
 	progress(0, 0, 220, 0.9f, 0.02f, from, count);								// Sync rail
 	progress(0, 0, 170, 0.9f, 0.02f, from, syncUnverified - from);				// Verification rail
-	progress(60, 25, 170, 0.9f, 0.02f, from, syncVerifying - from);				// Verifying.
-	progress(120, 25, 170, 0.9f, 0.02f, from, syncVerified - from);				// Verified.
-	progress(120, 50, 120, 0.9f, 0.04f, from, syncFrom - from);					// Imported.
-	progress(240, 25, 170, 0.9f, 0.04f, syncFrom, syncImporting - syncFrom);	// Importing.
+	progress2(60, 25, 170, 0.9f, 0.04f, 0.01f, from, syncVerifying - from);		// Verifying.
+	progress2(120, 25, 170, 0.9f, 0.04f, 0.01f, from, syncVerified - from);		// Verified.
+	progress(120, 50, 120, 0.9f, 0.05f, from, syncFrom - from);					// Imported.
+	progress(0, 0, 120, 0.9f, 0.02f, syncFrom, syncImporting - syncFrom);		// Importing.
 
-	if (sync.state != SyncState::Idle || !count)
-	{
-		p.setBrush(QBrush(labelBack));
-		p.setFont(QFont("Helvetica", 10, QFont::Bold));
-		QRectF r = p.boundingRect(middle(1.f), Qt::AlignCenter, labelText);
-		r.adjust(-r.width() / 8, -r.height() / 8, r.width() / 8, r.height() / 8);
-		p.setPen(QPen(labelFore, r.height() / 10));
-		p.drawRoundedRect(r, r.height() / 4, r.height() / 4);
-		p.drawText(r, Qt::AlignCenter, labelText);
-	}
+	if (sync.state != SyncState::Idle || (sync.state == SyncState::Idle && !syncCount))
+		label(labelText, 11, labelFore, labelBack);
 }
