@@ -390,8 +390,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence)
 				{
 					bytes param = encoder.encodedData();
 					contractCode.insert(contractCode.end(), param.begin(), param.end());
-					deployContract(contractCode, transaction);
-					Address newAddress = m_client->lastCreatedContractAddr();
+					Address newAddress = deployContract(contractCode, transaction);
 					std::pair<QString, int> contractToken = retrieveToken(transaction.contractId);
 					m_contractAddresses[contractToken] = newAddress;
 					m_contractNames[newAddress] = contractToken.first;
@@ -673,9 +672,10 @@ void ClientModel::debugRecord(unsigned _index)
 	showDebuggerForTransaction(e);
 }
 
-void ClientModel::deployContract(bytes const& _code, TransactionSettings const& _ctrTransaction)
+Address ClientModel::deployContract(bytes const& _code, TransactionSettings const& _ctrTransaction)
 {
 	m_client->submitTransaction(_ctrTransaction.sender, _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice, _ctrTransaction.gasAuto);
+	return m_client->lastCreatedContractAddr();
 }
 
 void ClientModel::callAddress(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
