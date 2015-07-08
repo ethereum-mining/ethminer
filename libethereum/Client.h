@@ -217,6 +217,8 @@ public:
 	std::string const& sentinel() const { return m_sentinel; }
 	/// Set the extra data that goes into mined blocks.
 	void setExtraData(bytes const& _extraData) { m_extraData = _extraData; }
+	/// Rewind to a prior head.
+	void rewind(unsigned _n) { m_bc.rewind(_n); }
 
 protected:
 	/// InterfaceStub methods
@@ -310,10 +312,10 @@ private:
 
 	GenericFarm<ProofOfWork> m_farm;		///< Our mining farm.
 
-	Handler m_tqReady;
-	Handler m_bqReady;
+	Handler<> m_tqReady;
+	Handler<> m_bqReady;
 
-	bool m_wouldMine = false;					///< True if we /should/ be mining.
+	bool m_wouldMine = false;				///< True if we /should/ be mining.
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
 	bool m_mineOnBadChain = false;			///< Mine even when the canary says it's a bad chain.

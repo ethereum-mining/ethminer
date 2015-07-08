@@ -119,6 +119,7 @@ public:
 	virtual Json::Value eth_getTransactionByHash(std::string const& _transactionHash);
 	virtual Json::Value eth_getTransactionByBlockHashAndIndex(std::string const& _blockHash, std::string const& _transactionIndex);
 	virtual Json::Value eth_getTransactionByBlockNumberAndIndex(std::string const& _blockNumber, std::string const& _transactionIndex);
+	virtual Json::Value eth_getTransactionReceipt(std::string const& _transactionHash);
 	virtual Json::Value eth_getUncleByBlockHashAndIndex(std::string const& _blockHash, std::string const& _uncleIndex);
 	virtual Json::Value eth_getUncleByBlockNumberAndIndex(std::string const& _blockNumber, std::string const& _uncleIndex);
 	virtual Json::Value eth_getCompilers();

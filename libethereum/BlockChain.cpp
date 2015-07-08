@@ -273,7 +273,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 
 	h256 lastHash = m_lastBlockHash;
 	Timer t;
-	for (unsigned d = 1; d < originalNumber; ++d)
+	for (unsigned d = 1; d <= originalNumber; ++d)
 	{
 		if (!(d % 1000))
 		{
@@ -337,6 +337,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 	h256s fresh;
 	h256s dead;
 	h256s badBlocks;
+	Transactions goodTransactions;
 	unsigned count = 0;
 	for (VerifiedBlock const& block: blocks)
 		if (!badBlocks.empty())
@@ -351,6 +352,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
 				fresh += r.liveBlocks;
 				dead += r.deadBlocks;
+				goodTransactions += r.goodTranactions;
 				++count;
 			}
 			catch (dev::eth::UnknownParent)
@@ -377,7 +379,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 				badBlocks.push_back(block.verified.info.hash());
 			}
 		}
-	return make_tuple(ImportRoute{dead, fresh}, _bq.doneDrain(badBlocks), count);
+	return make_tuple(ImportRoute{dead, fresh, goodTransactions}, _bq.doneDrain(badBlocks), count);
 }
 
 pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir) noexcept
@@ -497,6 +499,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	BlockReceipts br;
 
 	u256 td;
+	Transactions goodTransactions;
 #if ETH_CATCH
 	try
 #endif
@@ -510,6 +513,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 		{
 			blb.blooms.push_back(s.receipt(i).bloom());
 			br.receipts.push_back(s.receipt(i));
+			goodTransactions.push_back(s.pending()[i]);
 		}
 
 		s.cleanup(true);
@@ -750,7 +754,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 			dead.push_back(h);
 		else
 			fresh.push_back(h);
-	return ImportRoute{dead, fresh};
+	return ImportRoute{dead, fresh, move(goodTransactions)};
 }
 
 void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
@@ -791,6 +795,25 @@ void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
 			}
 			blocksBlooms(id);	// make sure it has been memoized.
 			m_blocksBlooms[id].blooms[offset] = acc;
+		}
+	}
+}
+
+void BlockChain::rewind(unsigned _newHead)
+{
+	DEV_WRITE_GUARDED(x_lastBlockHash)
+	{
+		if (_newHead >= m_lastBlockNumber)
+			return;
+		m_lastBlockHash = numberHash(_newHead);
+		m_lastBlockNumber = _newHead;
+		auto o = m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&m_lastBlockHash, 32));
+		if (!o.ok())
+		{
+			cwarn << "Error writing to extras database: " << o.ToString();
+			cout << "Put" << toHex(bytesConstRef(ldb::Slice("best"))) << "=>" << toHex(bytesConstRef(ldb::Slice((char const*)&m_lastBlockHash, 32)));
+			cwarn << "Fail writing to extras database. Bombing out.";
+			exit(-1);
 		}
 	}
 }
@@ -867,33 +890,21 @@ template <class T> static unsigned getHashSize(unordered_map<h256, T> const& _ma
 
 void BlockChain::updateStats() const
 {
-	{
-		ReadGuard l(x_blocks);
-		m_lastStats.memBlocks = 0;
+	m_lastStats.memBlocks = 0;
+	DEV_READ_GUARDED(x_blocks)
 		for (auto const& i: m_blocks)
 			m_lastStats.memBlocks += i.second.size() + 64;
-	}
-	{
-		ReadGuard l(x_details);
+	DEV_READ_GUARDED(x_details)
 		m_lastStats.memDetails = getHashSize(m_details);
-	}
-	{
-		ReadGuard l1(x_logBlooms);
-		ReadGuard l2(x_blocksBlooms);
-		m_lastStats.memLogBlooms = getHashSize(m_logBlooms) + getHashSize(m_blocksBlooms);
-	}
-	{
-		ReadGuard l(x_receipts);
+	DEV_READ_GUARDED(x_logBlooms)
+		DEV_READ_GUARDED(x_blocksBlooms)
+			m_lastStats.memLogBlooms = getHashSize(m_logBlooms) + getHashSize(m_blocksBlooms);
+	DEV_READ_GUARDED(x_receipts)
 		m_lastStats.memReceipts = getHashSize(m_receipts);
-	}
-	{
-		ReadGuard l(x_blockHashes);
+	DEV_READ_GUARDED(x_blockHashes)
 		m_lastStats.memBlockHashes = getHashSize(m_blockHashes);
-	}
-	{
-		ReadGuard l(x_transactionAddresses);
+	DEV_READ_GUARDED(x_transactionAddresses)
 		m_lastStats.memTransactionAddresses = getHashSize(m_transactionAddresses);
-	}
 }
 
 void BlockChain::garbageCollect(bool _force)
@@ -950,10 +961,8 @@ void BlockChain::garbageCollect(bool _force)
 
 void BlockChain::checkConsistency()
 {
-	{
-		WriteGuard l(x_details);
+	DEV_WRITE_GUARDED(x_details)
 		m_details.clear();
-	}
 	ldb::Iterator* it = m_blocksDB->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().size() == 32)
@@ -965,13 +974,9 @@ void BlockChain::checkConsistency()
 			{
 				auto dp = details(p);
 				if (asserts(contains(dp.children, h)))
-				{
 					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
-				}
 				if (assertsEqual(dp.number, dh.number - 1))
-				{
 					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
-				}
 			}
 		}
 	delete it;
@@ -1084,7 +1089,8 @@ bool BlockChain::isKnown(h256 const& _hash) const
 			if (d.empty())
 				return false;
 		}
-	return true;
+//	return true;
+	return details(_hash).number <= m_lastBlockNumber;		// to allow rewind functionality.
 }
 
 bytes BlockChain::block(h256 const& _hash) const

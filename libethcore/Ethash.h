@@ -88,7 +88,7 @@ public:
 		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : std::thread::hardware_concurrency(); }
 		static std::string platformInfo();
 		static void listDevices() {}
-		static bool configureGPU(unsigned, unsigned, bool, unsigned,  boost::optional<uint64_t>) { return false; }
+		static bool configureGPU(unsigned, unsigned, unsigned, unsigned, unsigned, bool, unsigned,  boost::optional<uint64_t>) { return false; }
 		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency()); }
 	protected:
 		void kickOff() override
@@ -118,6 +118,9 @@ public:
 		static unsigned getNumDevices();
 		static void listDevices();
 		static bool configureGPU(
+			unsigned _localWorkSize,
+			unsigned _globalWorkSizeMultiplier,
+			unsigned _msPerBatch,
 			unsigned _platformId,
 			unsigned _deviceId,
 			bool _allowCPU,
@@ -147,6 +150,12 @@ public:
 #else
 	using GPUMiner = CPUMiner;
 #endif
+	/// Default value of the local work size. Also known as workgroup size.
+	static const unsigned defaultLocalWorkSize;
+	/// Default value of the global work size as a multiplier of the local work size
+	static const unsigned defaultGlobalWorkSizeMultiplier;
+	/// Default value of the milliseconds per global work size (per batch)
+	static const unsigned defaultMSPerBatch;
 };
 
 }

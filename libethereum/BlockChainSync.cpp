@@ -41,6 +41,17 @@ using namespace p2p;
 unsigned const c_chainReorgSize = 30000; /// Added to estimated hashes to account for potential chain reorganiation
 unsigned const c_hashSubchainSize = 8192; /// PV61 subchain size
 
+std::ostream& dev::eth::operator<<(std::ostream& _out, SyncStatus const& _sync)
+{
+	_out << "protocol: " << _sync.protocolVersion << endl;
+	_out << "state: " << EthereumHost::stateName(_sync.state) << " ";
+	if (_sync.state == SyncState::Hashes)
+		_out << _sync.hashesReceived << "/" << (_sync.hashesEstimated ? "~" : "") << _sync.hashesTotal;
+	if (_sync.state == SyncState::Blocks || _sync.state == SyncState::NewBlocks)
+		_out << _sync.blocksReceived << "/" << _sync.blocksTotal;
+	return _out;
+}
+
 BlockChainSync::BlockChainSync(EthereumHost& _host):
 	m_host(_host)
 {
@@ -69,7 +80,7 @@ DownloadMan& BlockChainSync::downloadMan()
 
 void BlockChainSync::abortSync()
 {
-	downloadMan().resetToChain(h256s());
+	downloadMan().reset();
 }
 
 void BlockChainSync::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
@@ -386,7 +397,6 @@ void PV60Sync::transition(std::shared_ptr<EthereumPeer> _peer, SyncState _s, boo
 	if (m_state == SyncState::Idle && _s != SyncState::Idle)
 		_peer->m_requireTransactions = true;
 
-	RLPStream s;
 	if (_s == SyncState::Hashes)
 	{
 		if (m_state == SyncState::Idle || m_state == SyncState::Hashes)
