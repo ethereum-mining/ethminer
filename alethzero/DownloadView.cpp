@@ -41,7 +41,7 @@ void SyncView::paintEvent(QPaintEvent*)
 	painter.setRenderHint(QPainter::Antialiasing, true);
 	painter.setRenderHint(QPainter::HighQualityAntialiasing, true);
 
-	if (!m_client || !isVisible())
+	if (!m_client || !isVisible() || !rect().width() || !rect().height())
 		return;
 
 	DownloadMan const* man = m_client->downloadMan();
@@ -117,7 +117,7 @@ void SyncView::paintEvent(QPaintEvent*)
 	auto middle = [&](float x) {
 		return middleRect(squareSize * x, squareSize * x);
 	};
-	auto pieProgress = [&](unsigned h, unsigned s, unsigned v, float size, float thickness, unsigned nfrom, unsigned ncount) {
+	auto pieProgress = [&](unsigned h, unsigned s, unsigned v, float row, float thickness, unsigned nfrom, unsigned ncount) {
 		auto arcLen = [&](unsigned x) {
 			return x * -5760.f / count;
 		};
@@ -126,11 +126,7 @@ void SyncView::paintEvent(QPaintEvent*)
 		};
 		painter.setPen(QPen(QColor::fromHsv(h, s, v), squareSize * thickness, Qt::SolidLine, Qt::FlatCap));
 		painter.setBrush(Qt::NoBrush);
-		painter.drawArc(middle(size), arcPos(nfrom), arcLen(ncount));
-	};
-	auto pieProgress2 = [&](unsigned h, unsigned s, unsigned v, float size, float orbit, float thickness, unsigned nfrom, unsigned ncount) {
-		pieProgress(h, s, v, size - orbit, thickness, nfrom, ncount);
-		pieProgress(h, s, v, size + orbit, thickness, nfrom, ncount);
+		painter.drawArc(middle(0.5 + row / 2), arcPos(nfrom), arcLen(ncount));
 	};
 	auto pieLabel = [&](QString text, float points, QColor fore, QColor back) {
 		painter.setBrush(QBrush(back));
@@ -142,23 +138,55 @@ void SyncView::paintEvent(QPaintEvent*)
 		painter.drawText(r, Qt::AlignCenter, text);
 	};
 
-	function<void(unsigned h, unsigned s, unsigned v, float size, float thickness, unsigned nfrom, unsigned ncount)> progress = pieProgress;
-	function<void(unsigned h, unsigned s, unsigned v, float size, float orbit, float thickness, unsigned nfrom, unsigned ncount)> progress2 = pieProgress2;
-	function<void(QString text, float points, QColor fore, QColor back, )> label = pieLabel;
+	auto hProgress = [&](unsigned h, unsigned s, unsigned v, float row, float thickness, unsigned nfrom, unsigned ncount) {
+		QRectF r = rect();
+		painter.setPen(QPen(QColor::fromHsv(h, s, v), r.height() * thickness, Qt::SolidLine, Qt::FlatCap));
+		painter.setBrush(Qt::NoBrush);
+		painter.drawLine(QPointF((nfrom - from) * r.width() / count, row * r.height() * 0.8 + 0.2), QPointF((nfrom + ncount - from) * r.width() / count, row));
+	};
+	auto hLabel = [&](QString text, float points, QColor fore, QColor back) {
+		painter.setBrush(QBrush(back));
+		painter.setFont(QFont("Helvetica", points, QFont::Bold));
+		QRectF r = painter.boundingRect(rect(), Qt::AlignTop | Qt::AlignHCenter, text);
+		r.adjust(-r.width() / 4, -r.height() / 8, r.width() / 4, r.height() / 8);
+		painter.setPen(QPen(fore, r.height() / 20));
+		painter.drawRoundedRect(r, r.height() / 4, r.height() / 4);
+		painter.drawText(r, Qt::AlignCenter, text);
+	};
+
+	function<void(unsigned h, unsigned s, unsigned v, float row, float thickness, unsigned nfrom, unsigned ncount)> progress;
+	auto progress2 = [&](unsigned h, unsigned s, unsigned v, float row, float orbit, float thickness, unsigned nfrom, unsigned ncount) {
+		progress(h, s, v, row - orbit, thickness, nfrom, ncount);
+		progress(h, s, v, row + orbit, thickness, nfrom, ncount);
+	};
+	function<void(QString text, float points, QColor fore, QColor back)> label;
+	if (rect().width() / rect().height() > 5)
+	{
+		progress = hProgress;
+		label = hLabel;
+	}
+	else if (rect().height() / rect().width() > 5)
+	{
+	}
+	else
+	{
+		progress = pieProgress;
+		label = pieLabel;
+	}
 
 	if (sync.state != SyncState::Idle)
 	{
-		progress(0, 0, 220, 0.6f, 0.02f, from, hashDone - from);								// Download rail
-		progress(240, 25, 170, 0.6f, 0.02f, downloadDone, downloadPoint - downloadDone);	// Latest download point
-		progress(240, 50, 120, 0.6f, 0.04f, from, downloadDone - from);					// Downloaded
+		progress(0, 0, 220, 0.4f, 0.02f, from, hashDone - from);								// Download rail
+		progress(240, 25, 170, 0.4f, 0.02f, downloadDone, downloadPoint - downloadDone);	// Latest download point
+		progress(240, 50, 120, 0.4f, 0.04f, from, downloadDone - from);					// Downloaded
 	}
 
-	progress(0, 0, 220, 0.9f, 0.02f, from, count);								// Sync rail
-	progress(0, 0, 170, 0.9f, 0.02f, from, syncUnverified - from);				// Verification rail
-	progress2(60, 25, 170, 0.9f, 0.04f, 0.01f, from, syncVerifying - from);		// Verifying.
-	progress2(120, 25, 170, 0.9f, 0.04f, 0.01f, from, syncVerified - from);		// Verified.
-	progress(120, 50, 120, 0.9f, 0.05f, from, syncFrom - from);					// Imported.
-	progress(0, 0, 120, 0.9f, 0.02f, syncFrom, syncImporting - syncFrom);		// Importing.
+	progress(0, 0, 220, 0.8f, 0.02f, from, count);								// Sync rail
+	progress(0, 0, 170, 0.8f, 0.02f, from, syncUnverified - from);				// Verification rail
+	progress2(60, 25, 170, 0.8f, 0.05f, 0.01f, from, syncVerifying - from);		// Verifying.
+	progress2(120, 25, 170, 0.8f, 0.05f, 0.01f, from, syncVerified - from);		// Verified.
+	progress(120, 50, 120, 0.8f, 0.05f, from, syncFrom - from);					// Imported.
+	progress(0, 0, 120, 0.8f, 0.02f, syncFrom, syncImporting - syncFrom);		// Importing.
 
 	if (sync.state != SyncState::Idle || (sync.state == SyncState::Idle && !syncCount))
 		label(labelText, 11, labelFore, labelBack);
