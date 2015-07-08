@@ -416,7 +416,8 @@ bool Ethash::GPUMiner::configureGPU(
 	unsigned _deviceId,
 	bool _allowCPU,
 	unsigned _extraGPUMemory,
-	boost::optional<uint64_t> _currentBlock
+	bool _currentBlockGiven,
+	uint64_t _currentBlock
 )
 {
 	s_platformId = _platformId;
@@ -435,6 +436,7 @@ bool Ethash::GPUMiner::configureGPU(
 			_msPerBatch,
 			_allowCPU,
 			_extraGPUMemory,
+			_currentBlockGiven,
 			_currentBlock)
 	)
 	{
