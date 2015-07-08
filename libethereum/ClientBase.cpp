@@ -332,6 +332,20 @@ TransactionReceipt ClientBase::transactionReceipt(h256 const& _transactionHash) 
 	return bc().transactionReceipt(_transactionHash);
 }
 
+LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(h256 const& _transactionHash) const
+{
+	std::pair<h256, unsigned> tl = bc().transactionLocation(_transactionHash);
+	Transaction t = Transaction(bc().transaction(tl.first, tl.second), CheckTransaction::Cheap);
+	TransactionReceipt tr = bc().transactionReceipt(tl.first, tl.second);
+	return LocalisedTransactionReceipt(
+		tr,
+		t.sha3(),
+		tl.first,
+		numberFromHash(tl.first),
+		tl.second,
+		toAddress(t.from(), t.nonce()));
+}
+
 pair<h256, unsigned> ClientBase::transactionLocation(h256 const& _transactionHash) const
 {
 	return bc().transactionLocation(_transactionHash);
