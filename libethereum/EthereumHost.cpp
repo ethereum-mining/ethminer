@@ -88,6 +88,7 @@ void EthereumHost::reset()
 	if (m_sync)
 		m_sync->abortSync();
 	m_sync.reset();
+	m_syncStart = 0;
 
 	m_latestBlockSent = h256();
 	Guard tl(x_transactions);
@@ -114,6 +115,21 @@ void EthereumHost::doWork()
 	}
 
 	foreachPeer([](std::shared_ptr<EthereumPeer> _p) { _p->tick(); return true; });
+
+	if (m_syncStart)
+	{
+		Guard l(x_sync);
+		if (!m_sync)
+		{
+			time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
+			if ((now - m_syncStart) > 10)
+			{
+				m_sync.reset(new PV60Sync(*this));
+				m_syncStart = 0;
+				m_sync->restartSync();
+			}
+		}
+	}
 
 //	return netChange;
 	// TODO: Figure out what to do with netChange.
@@ -259,7 +275,14 @@ BlockChainSync* EthereumHost::sync()
 			pv61 = true;
 		return !pv61;
 	});
-	m_sync.reset(pv61 ? new PV61Sync(*this) : new PV60Sync(*this));
+	if (pv61)
+	{
+		m_syncStart = 0;
+		m_sync.reset(new PV61Sync(*this));
+	}
+	else if (!m_syncStart)
+		m_syncStart = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
+
 	return m_sync.get();
 }
 

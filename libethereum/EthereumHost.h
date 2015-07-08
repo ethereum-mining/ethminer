@@ -138,6 +138,7 @@ private:
 	mutable Mutex x_transactions;
 	DownloadMan m_man;
 	std::unique_ptr<BlockChainSync> m_sync;
+	std::atomic<time_t> m_syncStart = { 0 };
 };
 
 }
