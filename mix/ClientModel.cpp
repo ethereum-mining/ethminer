@@ -672,7 +672,7 @@ void ClientModel::debugRecord(unsigned _index)
 	showDebuggerForTransaction(e);
 }
 
-pair<h256, Address> ClientModel::deployContract(bytes const& _code, TransactionSettings const& _ctrTransaction)
+Address ClientModel::deployContract(bytes const& _code, TransactionSettings const& _ctrTransaction)
 {
 	return m_client->submitTransaction(_ctrTransaction.sender, _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice, _ctrTransaction.gasAuto);
 }
