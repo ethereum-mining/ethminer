@@ -315,6 +315,8 @@ bool ethash_cl_miner::init(
 			m_globalWorkSize = ((m_globalWorkSize / s_workgroupSize) + 1) * s_workgroupSize;
 		// remember the device's address bits
 		m_deviceBits = device.getInfo<CL_DEVICE_ADDRESS_BITS>();
+		// make sure first step of global work size adjustment is large enough
+		m_stepWorkSizeAdjust = pow(2, m_deviceBits/2+1);
 
 		// patch source code
 		// note: ETHASH_CL_MINER_KERNEL is simply ethash_cl_miner_kernel.cl compiled
@@ -520,14 +522,26 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				{
 					if (d > chrono::milliseconds(s_msPerBatch * 10 / 9))
 					{
-						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, >> " << _msPerBatch << " ms." << endl;
-						m_globalWorkSize = max<unsigned>(128, m_globalWorkSize - s_workgroupSize);
+						// Divide the step by 2 when adjustment way change
+						if (m_wayWorkSizeAdjust > -1 )
+							m_stepWorkSizeAdjust = max<unsigned>(1, m_stepWorkSizeAdjust / 2);
+						m_wayWorkSizeAdjust = -1;
+						// cerr << "m_stepWorkSizeAdjust: " << m_stepWorkSizeAdjust << ", m_wayWorkSizeAdjust: " << m_wayWorkSizeAdjust << endl;
+
+						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, >> " << s_msPerBatch << " ms." << endl;
+						m_globalWorkSize = max<unsigned>(128, m_globalWorkSize - m_stepWorkSizeAdjust);
 						// cerr << "New global work size" << m_globalWorkSize << endl;
 					}
 					else if (d < chrono::milliseconds(s_msPerBatch * 9 / 10))
 					{
-						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, << " << _msPerBatch << " ms." << endl;
-						m_globalWorkSize = min<unsigned>(pow(2, m_deviceBits) - 1, m_globalWorkSize + s_workgroupSize);
+						// Divide the step by 2 when adjustment way change
+						if (m_wayWorkSizeAdjust < 1 )
+							m_stepWorkSizeAdjust = max<unsigned>(1, m_stepWorkSizeAdjust / 2);
+						m_wayWorkSizeAdjust = 1;
+						// cerr << "m_stepWorkSizeAdjust: " << m_stepWorkSizeAdjust << ", m_wayWorkSizeAdjust: " << m_wayWorkSizeAdjust << endl;
+
+						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, << " << s_msPerBatch << " ms." << endl;
+						m_globalWorkSize = min<unsigned>(pow(2, m_deviceBits) - 1, m_globalWorkSize + m_stepWorkSizeAdjust);
 						// Global work size should never be less than the workgroup size
 						m_globalWorkSize = max<unsigned>(s_workgroupSize,  m_globalWorkSize);
 						// cerr << "New global work size" << m_globalWorkSize << endl;
