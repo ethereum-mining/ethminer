@@ -298,10 +298,12 @@ void BlockChainSync::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP con
 		case ImportResult::UnknownParent:
 		{
 			logNewBlock(h);
-			clog(NetMessageDetail) << "Received block with no known parent. Resyncing...";
 			u256 totalDifficulty = _r[1].toInt<u256>();
 			if (totalDifficulty > _peer->m_totalDifficulty)
+			{
+				clog(NetMessageDetail) << "Received block with no known parent. Resyncing...";
 				resetSyncFor(_peer, h, totalDifficulty);
+			}
 			break;
 		}
 		default:;
@@ -1168,9 +1170,9 @@ SyncStatus PV61Sync::status() const
 {
 	RecursiveGuard l(x_sync);
 	SyncStatus res = PV60Sync::status();
+	res.protocolVersion = 61;
 	if (m_state == SyncState::Hashes && isPV61Syncing())
 	{
-		res.protocolVersion = 61;
 		res.hashesReceived = 0;
 		for (auto const& d : m_readyChainMap)
 			res.hashesReceived += d.second.size();
