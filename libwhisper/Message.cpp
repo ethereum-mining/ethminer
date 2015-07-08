@@ -170,7 +170,7 @@ void Envelope::proveWork(unsigned _ms)
 	chrono::high_resolution_clock::time_point then = chrono::high_resolution_clock::now() + chrono::milliseconds(_ms);
 	while (chrono::high_resolution_clock::now() < then)
 		// do it rounds of 1024 for efficiency
-		for (unsigned i = 0; i < 1024; ++i)
+		for (unsigned i = 0; i < 1024; ++i, ++d[1])
 		{
 			auto fbs = dev::sha3(chuck).firstBitSet();
 			if (fbs > bestBitSet)
@@ -178,8 +178,6 @@ void Envelope::proveWork(unsigned _ms)
 				bestBitSet = fbs;
 				m_nonce = (h256::Arith)d[1];
 			}
-
-			incrementHash(d[1]);
 		}
 }
 
