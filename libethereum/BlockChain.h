@@ -218,6 +218,9 @@ public:
 	/// Alter the head of the chain to some prior block along it.
 	void rewind(unsigned _newHead);
 
+	/// Rescue the database.
+	void rescue(OverlayDB& _db);
+
 	/** @returns a tuple of:
 	 * - an vector of hashes of all blocks between @a _from and @a _to, all blocks are ordered first by a number of
 	 * blocks that are parent-to-child, then two sibling blocks, then a number of blocks that are child-to-parent;
