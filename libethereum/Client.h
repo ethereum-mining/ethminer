@@ -217,6 +217,8 @@ public:
 	std::string const& sentinel() const { return m_sentinel; }
 	/// Set the extra data that goes into mined blocks.
 	void setExtraData(bytes const& _extraData) { m_extraData = _extraData; }
+	/// Rewind to a prior head.
+	void rewind(unsigned _n) { m_bc.rewind(_n); }
 
 protected:
 	/// InterfaceStub methods

@@ -47,9 +47,10 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	add_compile_options(/MP /EHsc /wd4068 /wd4996 /wd4503 /wd4267 /wd4180 /wd4290 /wd4244 /wd4800 -D_WIN32_WINNT=0x0501 /DNOMINMAX /DMINIUPNP_STATICLIB)
 	# disable empty object file warning
 	set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /ignore:4221")
-	# warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification 
+	# warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification
 	# warning LNK4099: pdb was not found with lib
-	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ignore:4099,4075")
+	# stack size 16MB
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ignore:4099,4075 /STACK:16777216")
 
 	# windows likes static
 	if (NOT ETH_STATIC)
