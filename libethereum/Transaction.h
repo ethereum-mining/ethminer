@@ -135,13 +135,14 @@ class LocalisedTransaction: public Transaction
 public:
 	LocalisedTransaction(
 		Transaction const& _t,
-		std::pair<h256, unsigned> const& _location,
-		BlockNumber _blockNumber
+		h256 const& _blockHash,
+		BlockNumber _blockNumber,
+	    unsigned _transactionIndex
 	):
 		Transaction(_t),
-		m_blockHash(_location.first),
+		m_blockHash(_blockHash),
 		m_blockNumber(_blockNumber),
-		m_transactionIndex(_location.second)
+		m_transactionIndex(_transactionIndex)
 	{}
 
 	h256 const& blockHash() const { return m_blockHash; }
