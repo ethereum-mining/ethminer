@@ -58,7 +58,7 @@ public:
 			std::string rl;
 #if ETH_READLINE
 			char* buff = readline(promptForIndentionLevel(openBrackets).c_str());
-			isEmpty = !(buff && *buff);
+			isEmpty = !buff;
 			if (!isEmpty)
 			{
 				rl = std::string(buff);
