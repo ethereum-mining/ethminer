@@ -296,10 +296,14 @@ void BlockChainSync::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP con
 
 		case ImportResult::FutureTimeUnknown:
 		case ImportResult::UnknownParent:
+		{
 			logNewBlock(h);
 			clog(NetMessageDetail) << "Received block with no known parent. Resyncing...";
-			resetSyncFor(_peer, h, _r[1].toInt<u256>());
-			break;
+			u256 totalDifficulty = _r[1].toInt<u256>();
+			if (totalDifficulty > _peer->m_totalDifficulty)
+				resetSyncFor(_peer, h, totalDifficulty);
+		}
+		break;
 		default:;
 		}
 
