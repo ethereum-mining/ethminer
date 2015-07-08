@@ -30,8 +30,8 @@ Rectangle {
 		id: left
 		width: 10
 		height: parent.height
-		anchors.left: parent.left
-		anchors.leftMargin: -8
+		anchors.left: contentRectangle.left
+		anchors.leftMargin: -4
 		radius: 15
 	}
 
@@ -111,8 +111,8 @@ Rectangle {
 		id: right
 		width: 10
 		height: parent.height
-		anchors.left: contentRectangle.right
-		anchors.leftMargin: -8
+		anchors.right: contentRectangle.right
+		anchors.rightMargin: -4
 		radius: 15
 	}
 
