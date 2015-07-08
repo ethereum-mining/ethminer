@@ -31,7 +31,28 @@ using namespace dev::eth;
 const char* TransactionQueueChannel::name() { return EthCyan "┉┅▶"; }
 const char* TransactionQueueTraceChannel::name() { return EthCyan " ┅▶"; }
 
-ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallback const& _cb, IfDropped _ik)
+TransactionQueue::TransactionQueue(unsigned _limit, unsigned _futureLimit):
+	m_current(PriorityCompare { *this }),
+	m_limit(_limit),
+	m_futureLimit(_futureLimit)
+{
+		unsigned verifierThreads = std::max(thread::hardware_concurrency(), 3U) - 2U;
+		for (unsigned i = 0; i < verifierThreads; ++i)
+			m_verifiers.emplace_back([=](){
+				setThreadName("txcheck" + toString(i));
+				this->verifierBody();
+			});
+}
+
+TransactionQueue::~TransactionQueue()
+{
+	m_aborting = true;
+	m_queueReady.notify_all();
+	for (auto& i: m_verifiers)
+		i.join();
+}
+
+ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, IfDropped _ik)
 {
 	// Check if we already know this transaction.
 	h256 h = sha3(_transactionRLP);
@@ -49,14 +70,13 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallb
 		{
 			t = Transaction(_transactionRLP, CheckTransaction::Everything);
 			UpgradeGuard ul(l);
-			ir = manageImport_WITH_LOCK(h, t, _cb);
+			ir = manageImport_WITH_LOCK(h, t);
 		}
 		catch (...)
 		{
 			return ImportResult::Malformed;
 		}
 	}
-//	cdebug << "import-END: Nonce of" << t.sender() << "now" << maxNonce(t.sender());
 	return ir;
 }
 
@@ -71,27 +91,24 @@ ImportResult TransactionQueue::check_WITH_LOCK(h256 const& _h, IfDropped _ik)
 	return ImportResult::Success;
 }
 
-ImportResult TransactionQueue::import(Transaction const& _transaction, ImportCallback const& _cb, IfDropped _ik)
+ImportResult TransactionQueue::import(Transaction const& _transaction, IfDropped _ik)
 {
 	// Check if we already know this transaction.
 	h256 h = _transaction.sha3(WithSignature);
 
-//	cdebug << "import-BEGIN: Nonce of sender" << maxNonce(_transaction.sender());
 	ImportResult ret;
 	{
 		UpgradableGuard l(m_lock);
 		// TODO: keep old transactions around and check in State for nonce validity
-
 		auto ir = check_WITH_LOCK(h, _ik);
 		if (ir != ImportResult::Success)
 			return ir;
 
 		{
 			UpgradeGuard ul(l);
-			ret = manageImport_WITH_LOCK(h, _transaction, _cb);
+			ret = manageImport_WITH_LOCK(h, _transaction);
 		}
 	}
-//	cdebug << "import-END: Nonce of" << _transaction.sender() << "now" << maxNonce(_transaction.sender());
 	return ret;
 }
 
@@ -111,7 +128,7 @@ h256Hash TransactionQueue::knownTransactions() const
 	return m_known;
 }
 
-ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transaction const& _transaction, ImportCallback const& _cb)
+ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transaction const& _transaction)
 {
 	try
 	{
@@ -149,10 +166,8 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 				}
 			}
 		}
-		// If valid, append to blocks.
+		// If valid, append to transactions.
 		insertCurrent_WITH_LOCK(make_pair(_h, _transaction));
-		if (_cb)
-			m_callbacks[_h] = _cb;
 		clog(TransactionQueueTraceChannel) << "Queued vaguely legit-looking transaction" << _h;
 
 		while (m_current.size() > m_limit)
@@ -179,7 +194,6 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 
 u256 TransactionQueue::maxNonce(Address const& _a) const
 {
-//	cdebug << "txQ::maxNonce" << _a;
 	ReadGuard l(m_lock);
 	return maxNonce_WITH_LOCK(_a);
 }
@@ -212,29 +226,7 @@ void TransactionQueue::insertCurrent_WITH_LOCK(std::pair<h256, Transaction> cons
 	m_currentByHash[_p.first] = handle;
 
 	// Move following transactions from future to current
-	auto fs = m_future.find(t.from());
-	if (fs != m_future.end())
-	{
-		u256 nonce = t.nonce() + 1;
-		auto fb = fs->second.find(nonce);
-		if (fb != fs->second.end())
-		{
-			auto ft = fb;
-			while (ft != fs->second.end() && ft->second.transaction.nonce() == nonce)
-			{
-				inserted = m_currentByAddressAndNonce[t.from()].insert(std::make_pair(ft->second.transaction.nonce(), PriorityQueue::iterator()));
-				PriorityQueue::iterator handle = m_current.emplace(move(ft->second));
-				inserted.first->second = handle;
-				m_currentByHash[(*handle).transaction.sha3()] = handle;
-				--m_futureSize;
-				++ft;
-				++nonce;
-			}
-			fs->second.erase(fb, ft);
-			if (fs->second.empty())
-				m_future.erase(t.from());
-		}
-	}
+	makeCurrent_WITH_LOCK(t);
 	m_known.insert(_p.first);
 }
 
@@ -296,6 +288,44 @@ void TransactionQueue::setFuture(h256 const& _txHash)
 		m_currentByAddressAndNonce.erase(from);
 }
 
+void TransactionQueue::makeCurrent_WITH_LOCK(Transaction const& _t)
+{
+	auto fs = m_future.find(_t.from());
+	if (fs != m_future.end())
+	{
+		u256 nonce = _t.nonce() + 1;
+		auto fb = fs->second.find(nonce);
+		if (fb != fs->second.end())
+		{
+			auto ft = fb;
+			while (ft != fs->second.end() && ft->second.transaction.nonce() == nonce)
+			{
+				auto inserted = m_currentByAddressAndNonce[_t.from()].insert(std::make_pair(ft->second.transaction.nonce(), PriorityQueue::iterator()));
+				PriorityQueue::iterator handle = m_current.emplace(move(ft->second));
+				inserted.first->second = handle;
+				m_currentByHash[(*handle).transaction.sha3()] = handle;
+				--m_futureSize;
+				++ft;
+				++nonce;
+			}
+			fs->second.erase(fb, ft);
+			if (fs->second.empty())
+				m_future.erase(_t.from());
+		}
+	}
+
+	while (m_futureSize > m_futureLimit)
+	{
+		// TODO: priority queue for future transactions
+		// For now just drop random chain end
+		--m_futureSize;
+		clog(TransactionQueueTraceChannel) << "Dropping out of bounds future transaction" << m_future.begin()->second.rbegin()->second.transaction.sha3();
+		m_future.begin()->second.erase(--m_future.begin()->second.end());
+		if (m_future.begin()->second.empty())
+			m_future.erase(m_future.begin());
+	}
+}
+
 void TransactionQueue::drop(h256 const& _txHash)
 {
 	UpgradableGuard l(m_lock);
@@ -305,9 +335,17 @@ void TransactionQueue::drop(h256 const& _txHash)
 
 	UpgradeGuard ul(l);
 	m_dropped.insert(_txHash);
-
 	remove_WITH_LOCK(_txHash);
+}
 
+void TransactionQueue::dropGood(Transaction const& _t)
+{
+	WriteGuard l(m_lock);
+	makeCurrent_WITH_LOCK(_t);
+	if (!m_known.count(_t.sha3()))
+		return;
+	m_dropped.insert(_t.sha3());
+	remove_WITH_LOCK(_t.sha3());
 }
 
 void TransactionQueue::clear()
@@ -320,3 +358,44 @@ void TransactionQueue::clear()
 	m_future.clear();
 	m_futureSize = 0;
 }
+
+void TransactionQueue::enqueue(RLP const& _data, h512 const& _nodeId)
+{
+	{
+		Guard l(x_queue);
+		unsigned itemCount = _data.itemCount();
+		for (unsigned i = 0; i < itemCount; ++i)
+			m_unverified.emplace_back(UnverifiedTransaction(_data[i].data(), _nodeId));
+	}
+	m_queueReady.notify_all();
+}
+
+void TransactionQueue::verifierBody()
+{
+	while (!m_aborting)
+	{
+		UnverifiedTransaction work;
+
+		{
+			unique_lock<Mutex> l(x_queue);
+			m_queueReady.wait(l, [&](){ return !m_unverified.empty() || m_aborting; });
+			if (m_aborting)
+				return;
+			work = move(m_unverified.front());
+			m_unverified.pop_front();
+		}
+
+		try
+		{
+			Transaction t(work.transaction, CheckTransaction::Cheap); //Signature will be checked later
+			ImportResult ir = import(t);
+			m_onImport(ir, t.sha3(), work.nodeId);
+		}
+		catch (...)
+		{
+			// should not happen as exceptions are handled in import.
+			cwarn << "Bad transaction:" << boost::current_exception_diagnostic_information();
+		}
+	}
+}
+

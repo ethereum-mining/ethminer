@@ -75,14 +75,9 @@ public:
 	ClientBase() {}
 	virtual ~ClientBase() {}
 
-	/// Submits the given message-call transaction.
-	virtual void submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, u256 _nonce);
-	virtual void submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) override;
-
-	/// Submits a new contract-creation transaction.
-	/// @returns the new contract's address (assuming it all goes through).
-	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice, u256 _nonce);
-	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) override;
+	/// Submits the given transaction.
+	/// @returns the new transaction's hash.
+	virtual std::pair<h256, Address> submitTransaction(TransactionSkeleton const& _t, Secret const& _secret) override;
 	using Interface::submitTransaction;
 
 	/// Makes the given call. Nothing is recorded into the state.
@@ -124,6 +119,7 @@ public:
 	virtual BlockDetails blockDetails(h256 _hash) const override;
 	virtual Transaction transaction(h256 _transactionHash) const override;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const override;
+	virtual TransactionReceipt transactionReceipt(h256 const& _transactionHash) const override;
 	virtual std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const override;
 	virtual Transactions transactions(h256 _blockHash) const override;
 	virtual TransactionHashes transactionHashes(h256 _blockHash) const override;

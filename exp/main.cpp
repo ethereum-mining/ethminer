@@ -135,7 +135,7 @@ int main()
 	DownloadSub s0(man);
 	DownloadSub s1(man);
 	DownloadSub s2(man);
-	man.resetToChain(h256s({u256(0), u256(1), u256(2), u256(3), u256(4), u256(5), u256(6), u256(7), u256(8)}));
+	man.resetToChain(h256s({u256(0), u256(1), u256(2), u256(3), u256(4), u256(5), u256(6), u256(7), u256(8)}), 0);
 	assert((s0.nextFetch(2) == h256Set{(u256)7, (u256)8}));
 	assert((s1.nextFetch(2) == h256Set{(u256)5, (u256)6}));
 	assert((s2.nextFetch(2) == h256Set{(u256)3, (u256)4}));

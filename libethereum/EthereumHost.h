@@ -49,6 +49,8 @@ class TransactionQueue;
 class BlockQueue;
 class BlockChainSync;
 
+struct EthereumHostTrace: public LogChannel { static const char* name(); static const int verbosity = 6; };
+
 /**
  * @brief The EthereumHost class
  * @warning None of this is thread-safe. You have been warned.
@@ -105,6 +107,7 @@ private:
 
 	void maintainTransactions();
 	void maintainBlocks(h256 const& _currentBlock);
+	void onTransactionImported(ImportResult _ir, h256 const& _h, h512 const& _nodeId);
 
 	///	Check to see if the network peer-state initialisation has happened.
 	bool isInitialised() const { return (bool)m_latestBlockSent; }
@@ -132,6 +135,7 @@ private:
 	bool m_newBlocks = false;
 
 	mutable Mutex x_sync;
+	mutable Mutex x_transactions;
 	DownloadMan m_man;
 	std::unique_ptr<BlockChainSync> m_sync;
 };

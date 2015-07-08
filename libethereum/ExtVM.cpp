@@ -33,13 +33,21 @@ namespace
 static unsigned const c_depthLimit = 1024;
 
 /// Upper bound of stack space needed by single CALL/CREATE execution. Set experimentally.
-static size_t const c_singleExecutionStackSize = 12 * 1024;
+static size_t const c_singleExecutionStackSize =
+#ifdef NDEBUG
+	12 * 1024;
+#else
+	33 * 1024;
+#endif
 
 /// Standard OSX thread stack limit. Should be reasonable for other platforms too.
 static size_t const c_defaultStackSize = 512 * 1024;
 
+/// Stack overhead prior to allocation.
+static size_t const c_entryOverhead = 128 * 1024;
+
 /// On what depth execution should be offloaded to additional separated stack space.
-static unsigned const c_offloadPoint = c_defaultStackSize / c_singleExecutionStackSize;
+static unsigned const c_offloadPoint = (c_defaultStackSize - c_entryOverhead) / c_singleExecutionStackSize;
 
 void goOnOffloadedStack(Executive& _e, OnOpFunc const& _onOp)
 {
@@ -68,8 +76,9 @@ void go(unsigned _depth, Executive& _e, OnOpFunc const& _onOp)
 {
 	// If in the offloading point we need to switch to additional separated stack space.
 	// Current stack is too small to handle more CALL/CREATE executions.
-	// It needs to be done only once as newly allocated stack space it enough to handle 
+	// It needs to be done only once as newly allocated stack space it enough to handle
 	// the rest of the calls up to the depth limit (c_depthLimit).
+
 	if (_depth == c_offloadPoint)
 		goOnOffloadedStack(_e, _onOp);
 	else
@@ -82,7 +91,11 @@ bool ExtVM::call(CallParameters& _p)
 	Executive e(m_s, lastHashes, depth + 1);
 	if (!e.call(_p, gasPrice, origin))
 	{
+	#if __clang__ // Enabled for clang only as the problem affects OSX
 		go(depth, e, _p.onOp);
+	#else
+		e.go(_p.onOp);
+	#endif
 		e.accrueSubState(sub);
 	}
 	_p.gas = e.gas();
@@ -104,4 +117,3 @@ h160 ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc 
 	io_gas = e.gas();
 	return e.newAddress();
 }
-

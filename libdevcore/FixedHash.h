@@ -24,12 +24,17 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <random>
 #include <algorithm>
 #include "CommonData.h"
 
 namespace dev
 {
+
+/// Compile-time calculation of Log2 of constant values.
+template <unsigned N> struct StaticLog2 { enum { result = 1 + StaticLog2<N/2>::result }; };
+template <> struct StaticLog2<1> { enum { result = 0 }; };
 
 extern std::random_device s_fixedHashEngine;
 
@@ -77,7 +82,7 @@ public:
 	explicit FixedHash(byte const* _bs, ConstructFromPointerType) { memcpy(m_data.data(), _bs, N); }
 
 	/// Explicitly construct, copying from a  string.
-	explicit FixedHash(std::string const& _s, ConstructFromStringType _t = FromHex, ConstructFromHashType _ht = FailIfDifferent): FixedHash(_t == FromHex ? fromHex(_s) : dev::asBytes(_s), _ht) {}
+	explicit FixedHash(std::string const& _s, ConstructFromStringType _t = FromHex, ConstructFromHashType _ht = FailIfDifferent): FixedHash(_t == FromHex ? fromHex(_s, WhenError::Throw) : dev::asBytes(_s), _ht) {}
 
 	/// Convert to arithmetic type.
 	operator Arith() const { return fromBigEndian<Arith>(m_data); }
@@ -101,8 +106,9 @@ public:
 	FixedHash& operator&=(FixedHash const& _c) { for (unsigned i = 0; i < N; ++i) m_data[i] &= _c.m_data[i]; return *this; }
 	FixedHash operator&(FixedHash const& _c) const { return FixedHash(*this) &= _c; }
 	FixedHash operator~() const { FixedHash ret; for (unsigned i = 0; i < N; ++i) ret[i] = ~m_data[i]; return ret; }
+	FixedHash& operator++() { for (unsigned i = size; i > 0 && !++m_data[--i]; ) {} return *this; }
 
-	/// @returns true if all bytes in @a _c are set in this object.
+	/// @returns true if all one-bits in @a _c are set in this object.
 	bool contains(FixedHash const& _c) const { return (*this & _c) == _c; }
 
 	/// @returns a particular byte from the hash.
@@ -146,7 +152,7 @@ public:
 	{
 		FixedHash ret;
 		for (auto& i: ret.m_data)
-			i = std::uniform_int_distribution<uint16_t>(0, 255)(_eng);
+			i = (uint8_t)std::uniform_int_distribution<uint16_t>(0, 255)(_eng);
 		return ret;
 	}
 
@@ -171,18 +177,21 @@ public:
 
 	template <unsigned P, unsigned M> inline FixedHash<M> bloomPart() const
 	{
-		static_assert((M & (M - 1)) == 0, "M must be power-of-two"); 
-		static const unsigned c_bloomBits = M * 8;
-		unsigned mask = c_bloomBits - 1;
-		unsigned bloomBytes = (dev::toLog2(c_bloomBits) + 7) / 8;
+		unsigned const c_bloomBits = M * 8;
+		unsigned const c_mask = c_bloomBits - 1;
+		unsigned const c_bloomBytes = (StaticLog2<c_bloomBits>::result + 7) / 8;
+
+		static_assert((M & (M - 1)) == 0, "M must be power-of-two");
+		static_assert(P * c_bloomBytes <= N, "out of range");
+
 		FixedHash<M> ret;
 		byte const* p = data();
 		for (unsigned i = 0; i < P; ++i)
 		{
 			unsigned index = 0;
-			for (unsigned j = 0; j < bloomBytes; ++j, ++p)
+			for (unsigned j = 0; j < c_bloomBytes; ++j, ++p)
 				index = (index << 8) | *p;
-			index &= mask;
+			index &= c_mask;
 			ret[M - 1 - index / 8] |= (1 << (index % 8));
 		}
 		return ret;

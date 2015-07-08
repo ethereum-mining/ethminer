@@ -45,6 +45,12 @@ static unsigned const c_maxSendTransactions = 256;
 
 char const* const EthereumHost::s_stateNames[static_cast<int>(SyncState::Size)] = {"Idle", "Waiting", "Hashes", "Blocks", "NewBlocks" };
 
+#ifdef _WIN32
+const char* EthereumHostTrace::name() { return EthPurple "^" EthGray "  "; }
+#else
+const char* EthereumHostTrace::name() { return EthPurple "⧫" EthGray " "; }
+#endif
+
 EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId):
 	HostCapability<EthereumPeer>(),
 	Worker		("ethsync"),
@@ -54,6 +60,7 @@ EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQu
 	m_networkId	(_networkId)
 {
 	m_latestBlockSent = _ch.currentHash();
+	m_tq.onImport([this](ImportResult _ir, h256 const& _h, h512 const& _nodeId) { onTransactionImported(_ir, _h, _nodeId); });
 }
 
 EthereumHost::~EthereumHost()
@@ -66,8 +73,9 @@ bool EthereumHost::ensureInitialised()
 	{
 		// First time - just initialise.
 		m_latestBlockSent = m_chain.currentHash();
-		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent;
+		clog(EthereumHostTrace) << "Initialising: latest=" << m_latestBlockSent;
 
+		Guard l(x_transactions);
 		m_transactionsSent = m_tq.knownTransactions();
 		return true;
 	}
@@ -82,6 +90,7 @@ void EthereumHost::reset()
 	m_sync.reset();
 
 	m_latestBlockSent = h256();
+	Guard tl(x_transactions);
 	m_transactionsSent.clear();
 }
 
@@ -116,16 +125,19 @@ void EthereumHost::maintainTransactions()
 	// Send any new transactions.
 	unordered_map<std::shared_ptr<EthereumPeer>, std::vector<size_t>> peerTransactions;
 	auto ts = m_tq.topTransactions(c_maxSendTransactions);
-	for (size_t i = 0; i < ts.size(); ++i)
 	{
-		auto const& t = ts[i];
-		bool unsent = !m_transactionsSent.count(t.sha3());
-		auto peers = get<1>(randomSelection(0, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(t.sha3())); }));
-		for (auto const& p: peers)
-			peerTransactions[p].push_back(i);
+		Guard l(x_transactions);
+		for (size_t i = 0; i < ts.size(); ++i)
+		{
+			auto const& t = ts[i];
+			bool unsent = !m_transactionsSent.count(t.sha3());
+			auto peers = get<1>(randomSelection(0, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(t.sha3())); }));
+			for (auto const& p: peers)
+				peerTransactions[p].push_back(i);
+		}
+		for (auto const& t: ts)
+			m_transactionsSent.insert(t.sha3());
 	}
-	for (auto const& t: ts)
-		m_transactionsSent.insert(t.sha3());
 	foreachPeer([&](shared_ptr<EthereumPeer> _p)
 	{
 		bytes b;
@@ -144,7 +156,7 @@ void EthereumHost::maintainTransactions()
 			RLPStream ts;
 			_p->prep(ts, TransactionsPacket, n).appendRaw(b, n);
 			_p->sealAndSend(ts);
-			cnote << "Sent" << n << "transactions to " << _p->session()->info().clientVersion;
+			clog(EthereumHostTrace) << "Sent" << n << "transactions to " << _p->session()->info().clientVersion;
 		}
 		_p->m_requireTransactions = false;
 		return true;
@@ -200,11 +212,15 @@ void EthereumHost::maintainBlocks(h256 const& _currentHash)
 		if (diff(detailsFrom.number, detailsTo.number) < 20)
 		{
 			// don't be sending more than 20 "new" blocks. if there are any more we were probably waaaay behind.
-			clog(NetMessageSummary) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
+			clog(EthereumHostTrace) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
 
 			h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
 
-			auto s = randomSelection(25, [&](EthereumPeer* p){ DEV_GUARDED(p->x_knownBlocks) return !p->m_knownBlocks.count(_currentHash); return false; });
+			auto s = randomSelection(25, [&](EthereumPeer* p){
+				DEV_GUARDED(p->x_knownBlocks)
+					return !p->m_knownBlocks.count(_currentHash);
+				return false;
+			});
 			for (shared_ptr<EthereumPeer> const& p: get<0>(s))
 				for (auto const& b: blocks)
 				{
@@ -286,33 +302,12 @@ void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP c
 {
 	if (_peer->isCriticalSyncing())
 	{
-		clog(NetAllDetail) << "Ignoring transaction from peer we are syncing with";
+		clog(EthereumHostTrace) << "Ignoring transaction from peer we are syncing with";
 		return;
 	}
 	unsigned itemCount = _r.itemCount();
-	clog(NetAllDetail) << "Transactions (" << dec << itemCount << "entries)";
-	Guard l(_peer->x_knownTransactions);
-	for (unsigned i = 0; i < min<unsigned>(itemCount, 32); ++i)	// process 256 transactions at most. TODO: much better solution.
-	{
-		auto h = sha3(_r[i].data());
-		_peer->m_knownTransactions.insert(h);
-		ImportResult ir = m_tq.import(_r[i].data());
-		switch (ir)
-		{
-		case ImportResult::Malformed:
-			_peer->addRating(-100);
-			break;
-		case ImportResult::AlreadyKnown:
-			// if we already had the transaction, then don't bother sending it on.
-			m_transactionsSent.insert(h);
-			_peer->addRating(0);
-			break;
-		case ImportResult::Success:
-			_peer->addRating(100);
-			break;
-		default:;
-		}
-	}
+	clog(EthereumHostTrace) << "Transactions (" << dec << itemCount << "entries)";
+	m_tq.enqueue(_r, _peer->session()->id());
 }
 
 void EthereumHost::onPeerAborting()
@@ -343,4 +338,36 @@ SyncStatus EthereumHost::status() const
 	if (!m_sync)
 		return SyncStatus();
 	return m_sync->status();
+}
+
+void EthereumHost::onTransactionImported(ImportResult _ir, h256 const& _h, h512 const& _nodeId)
+{
+	auto session = host()->peerSession(_nodeId);
+	if (!session)
+		return;
+
+	std::shared_ptr<EthereumPeer> peer = session->cap<EthereumPeer>();
+	if (!peer)
+		peer = session->cap<EthereumPeer>(c_oldProtocolVersion);
+	if (!peer)
+		return;
+
+	Guard l(peer->x_knownTransactions);
+	peer->m_knownTransactions.insert(_h);
+	switch (_ir)
+	{
+	case ImportResult::Malformed:
+		peer->addRating(-100);
+		break;
+	case ImportResult::AlreadyKnown:
+		// if we already had the transaction, then don't bother sending it on.
+		DEV_GUARDED(x_transactions)
+			m_transactionsSent.insert(_h);
+		peer->addRating(0);
+		break;
+	case ImportResult::Success:
+		peer->addRating(100);
+		break;
+	default:;
+	}
 }
