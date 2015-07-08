@@ -51,4 +51,5 @@ private:
 	dev::eth::Client const* m_client = nullptr;
 
 	unsigned m_lastFrom = (unsigned)-1;
+	unsigned m_lastTo = (unsigned)-1;
 };
