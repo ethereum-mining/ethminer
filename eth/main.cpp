@@ -131,6 +131,7 @@ void help()
 #endif
 		<< "    -K,--kill  First kill the blockchain." << endl
 		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
+		<< "    --rescue  Attempt to rescue a corrupt database." << endl
 		<< "    --genesis-nonce <nonce>  Set the Genesis Nonce to the given hex nonce." << endl
 		<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
 		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
@@ -265,7 +266,8 @@ enum class OperationMode
 {
 	Node,
 	Import,
-	Export
+	Export,
+	Rescue
 };
 
 enum class Format
@@ -1253,6 +1255,8 @@ int main(int argc, char** argv)
 			killChain = WithExisting::Kill;
 		else if (arg == "-R" || arg == "--rebuild")
 			killChain = WithExisting::Verify;
+		else if (arg == "-R" || arg == "--rescue")
+			mode = OperationMode::Rescue;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 		{
 			if (arg == "-c")
@@ -1551,6 +1555,12 @@ int main(int argc, char** argv)
 			exit(-1);
 		}
 	};
+
+	if (mode == OperationMode::Rescue)
+	{
+		web3.ethereum()->rescue();
+		exit(0);
+	}
 
 	if (mode == OperationMode::Export)
 	{
