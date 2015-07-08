@@ -65,6 +65,14 @@ public:
 	void hash_chunk(uint8_t* _ret, uint8_t const* _header, uint64_t _nonce, unsigned _count);
 	void search_chunk(uint8_t const*_header, uint64_t _target, search_hook& _hook);
 
+	/* -- default values -- */
+	/// Default value of the local work size. Also known as workgroup size.
+	static const unsigned defaultLocalWorkSize;
+	/// Default value of the global work size as a multiplier of the local work size
+	static const unsigned defaultGlobalWorkSizeMultiplier;
+	/// Default value of the milliseconds per global work size (per batch)
+	static const unsigned defaultMSPerBatch;
+
 private:
 
 	static std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId);
