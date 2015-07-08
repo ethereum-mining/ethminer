@@ -303,14 +303,15 @@ State MixClient::asOf(h256 const& _block) const
 	return ret;
 }
 
-Address MixClient::submitTransaction(eth::TransactionSkeleton const& _ts, Secret const& _secret, bool _gasAuto)
+pair<h256, Address> MixClient::submitTransaction(eth::TransactionSkeleton const& _ts, Secret const& _secret, bool _gasAuto)
 {
 	WriteGuard l(x_state);
 	TransactionSkeleton ts = _ts;
-	ts.nonce = m_state.transactionsFrom(toAddress(_secret));
+	ts.from = toAddress(_secret);
+	ts.nonce = m_state.transactionsFrom(ts.from);
 	eth::Transaction t(ts, _secret);
 	executeTransaction(t, m_state, false, _gasAuto, _secret);
-	return _ts.creation ? right160(sha3(rlpList(ts.to, ts.nonce))) : Address();
+	return make_pair(t.sha3(), toAddress(ts.from, ts.nonce));
 }
 
 dev::eth::ExecutionResult MixClient::call(Address const& _from, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, bool _gasAuto, FudgeFactor _ff)

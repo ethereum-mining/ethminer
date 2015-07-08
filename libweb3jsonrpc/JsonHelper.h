@@ -50,12 +50,15 @@ using UncleHashes = h256s;
 using TransactionHashes = h256s;
 
 Json::Value toJson(BlockInfo const& _bi);
+//TODO: wrap these params into one structure eg. "LocalisedTransaction"
 Json::Value toJson(Transaction const& _t, std::pair<h256, unsigned> _location, BlockNumber _blockNumber);
 Json::Value toJson(BlockInfo const& _bi, BlockDetails const& _bd, UncleHashes const& _us, Transactions const& _ts);
 Json::Value toJson(BlockInfo const& _bi, BlockDetails const& _bd, UncleHashes const& _us, TransactionHashes const& _ts);
 Json::Value toJson(TransactionSkeleton const& _t);
 Json::Value toJson(Transaction const& _t);
 Json::Value toJson(TransactionReceipt const& _t);
+//TODO: wrap these params into one structure eg. "LocalisedTransactionReceipt"
+Json::Value toJson(TransactionReceipt const& _tr, std::pair<h256, unsigned> _location, BlockNumber _blockNumber, Transaction const& _t);
 Json::Value toJson(LocalisedLogEntry const& _e);
 Json::Value toJson(LogEntry const& _e);
 TransactionSkeleton toTransactionSkeleton(Json::Value const& _json);
