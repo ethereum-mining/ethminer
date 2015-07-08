@@ -1044,6 +1044,17 @@ void Main::on_vmInterpreter_triggered() { VMFactory::setKind(VMKind::Interpreter
 void Main::on_vmJIT_triggered() { VMFactory::setKind(VMKind::JIT); }
 void Main::on_vmSmart_triggered() { VMFactory::setKind(VMKind::Smart); }
 
+void Main::on_rewindChain_triggered()
+{
+	bool ok;
+	int n = QInputDialog::getInt(this, "Rewind Chain", "Enter the number of the new chain head.", ethereum()->number() * 9 / 10, 1, ethereum()->number(), 1, &ok);
+	if (ok)
+	{
+		ethereum()->rewind(n);
+		refreshAll();
+	}
+}
+
 void Main::on_urlEdit_returnPressed()
 {
 	QString s = ui->urlEdit->text();
