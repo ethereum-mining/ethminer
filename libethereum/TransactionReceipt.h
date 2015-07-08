@@ -63,11 +63,11 @@ class LocalisedTransactionReceipt: public TransactionReceipt
 public:
 	LocalisedTransactionReceipt(
 		TransactionReceipt const& _t,
-	    h256 const& _hash,
-	    h256 const& _blockHash,
-	    BlockNumber _blockNumber,
-	    unsigned _transactionIndex,
-	    Address const& _contractAddress = Address()
+		h256 const& _hash,
+		h256 const& _blockHash,
+		BlockNumber _blockNumber,
+		unsigned _transactionIndex,
+		Address const& _contractAddress = Address()
 	):
 		TransactionReceipt(_t),
 		m_hash(_hash),
