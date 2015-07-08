@@ -218,6 +218,9 @@ public:
 	/// Will call _progress with the progress in this operation first param done, second total.
 	void rebuild(std::string const& _path, ProgressCallback const& _progress = std::function<void(unsigned, unsigned)>(), bool _prepPoW = false);
 
+	/// Alter the head of the chain to some prior block along it.
+	void rewind(unsigned _newHead);
+
 	/** @returns a tuple of:
 	 * - an vector of hashes of all blocks between @a _from and @a _to, all blocks are ordered first by a number of
 	 * blocks that are parent-to-child, then two sibling blocks, then a number of blocks that are child-to-parent;

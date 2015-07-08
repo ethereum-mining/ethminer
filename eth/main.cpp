@@ -75,12 +75,8 @@ void interactiveHelp()
 		<< "Commands:" << endl
 		<< "    netstart <port>  Starts the network subsystem on a specific port." << endl
 		<< "    netstop  Stops the network subsystem." << endl
-		<< "    jsonstart <port>  Starts the JSON-RPC server." << endl
-		<< "    jsonstop  Stops the JSON-RPC server." << endl
 		<< "    connect <addr> <port>  Connects to a specific peer." << endl
 		<< "    verbosity (<level>)  Gets or sets verbosity level." << endl
-		<< "    setetherprice <p>  Resets the ether price." << endl
-		<< "    setpriority <p>  Resets the transaction priority." << endl
 		<< "    minestart  Starts mining." << endl
 		<< "    minestop  Stops mining." << endl
 		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
@@ -1026,9 +1022,7 @@ void interactiveMode(eth::Client* c, std::shared_ptr<eth::TrivialGasPricer> gasP
 			{
 				string path;
 				iss >> path;
-				RLPStream config(2);
-				config << signingKey << beneficiary;
-				writeFile(path, config.out());
+				writeFile(path, rlpList(signingKey, beneficiary));
 			}
 			else
 				cwarn << "Require parameter: exportConfig PATH";
@@ -1471,17 +1465,22 @@ int main(int argc, char** argv)
 		}
 	}
 
+	if (g_logVerbosity > 0)
+	{
+		cout << EthGrayBold "(++)Ethereum" EthReset << endl;
+		if (c_network == eth::Network::Olympic)
+			cout << "Welcome to Olympic!" << endl;
+		else if (c_network == eth::Network::Frontier)
+			cout << "Welcome to the " EthMaroonBold "Frontier" EthReset "!" << endl;
+	}
+
 	m.execute();
 
 	KeyManager keyManager;
 	for (auto const& s: passwordsToNote)
 		keyManager.notePassword(s);
 
-	{
-		RLPStream config(2);
-		config << signingKey << beneficiary;
-		writeFile(configFile, config.out());
-	}
+	writeFile(configFile, rlpList(signingKey, beneficiary));
 
 	if (sessionKey)
 		signingKey = sessionKey;
@@ -1703,7 +1702,7 @@ int main(int argc, char** argv)
 	cout << "Transaction Signer: " << signingKey << endl;
 	cout << "Mining Benefactor: " << beneficiary << endl;
 
-	if (bootstrap || !remoteHost.empty())
+	if (bootstrap || !remoteHost.empty() || disableDiscovery)
 	{
 		web3.startNetwork();
 		cout << "Node ID: " << web3.enode() << endl;
