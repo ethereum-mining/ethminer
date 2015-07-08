@@ -52,7 +52,7 @@ void SyncView::paintEvent(QPaintEvent*)
 	unsigned syncVerified = syncImporting + bqs.verified;
 	unsigned syncVerifying = syncVerified + bqs.verifying;
 	unsigned syncUnverified = syncVerifying + bqs.unverified;
-	unsigned syncUnknown = syncUnverified + bqs.unknown;
+	unsigned syncCount = syncUnverified + bqs.unknown - syncFrom;
 
 	// best effort guess. assumes there's no forks.
 	unsigned downloadFrom = m_client->numberFromHash(m_client->isKnown(man->firstBlock()) ? man->firstBlock() : PendingBlockHash);
@@ -67,17 +67,19 @@ void SyncView::paintEvent(QPaintEvent*)
 	unsigned hashDone = hashFrom + (sync.state == SyncState::Hashes ? sync.hashesReceived : hashCount);
 
 	m_lastFrom = min(syncFrom, m_lastFrom);
+	m_lastTo = max(max(syncFrom + syncCount, hashFrom + hashCount), m_lastTo);
 	unsigned from = min(min(hashFrom, downloadFrom), min(syncFrom, m_lastFrom));
-	unsigned count = max(hashFrom + hashCount, downloadFrom + downloadCount) - from;
-	m_lastFrom = (m_lastFrom * 95 + syncFrom) / 100;
+	unsigned count = max(max(hashFrom + hashCount, downloadFrom + downloadCount), max(syncFrom + syncCount, m_lastTo)) - from;
+	m_lastFrom = (m_lastFrom * 99 + syncFrom * 1) / 100;
+	m_lastTo = (m_lastTo * 99 + max(syncFrom + syncCount, hashFrom + hashCount) * 1) / 100;
 
 	if (!count)
 	{
-		m_lastFrom = (unsigned)-1;
+		m_lastFrom = m_lastTo = (unsigned)-1;
 		return;
 	}
 
-	cnote << "Range " << from << "-" << (from + count);
+	cnote << "Range " << from << "-" << (from + count) << "(" << hashFrom << "+" << hashCount << "," << downloadFrom << "+" << downloadCount << "," << syncFrom << "+" << syncCount << ")";
 	auto r = [&](unsigned u) {
 		return toString((u - from) * 100 / count) + "%";
 	};
@@ -85,27 +87,48 @@ void SyncView::paintEvent(QPaintEvent*)
 	if (count)
 	{
 		cnote << "Hashes:" << r(hashDone) << "   Blocks:" << r(downloadFlank) << r(downloadDone) << r(downloadPoint);
-		cnote << "Importing:" << r(syncFrom) << r(syncImported) << r(syncImporting) << r(syncVerified) << r(syncVerifying) << r(syncUnverified) << r(syncUnknown);
+		cnote << "Importing:" << r(syncFrom) << r(syncImported) << r(syncImporting) << r(syncVerified) << r(syncVerifying) << r(syncUnverified);
 	}
 
-	if (!man || man->chainEmpty() || !man->subCount())
-		return;
-
-	float s = min(rect().width(), rect().height());
+	float squareSize = min(rect().width(), rect().height());
 	QPen pen;
 	pen.setCapStyle(Qt::FlatCap);
-	pen.setWidthF(s / 10);
-	p.setPen(pen);
+	pen.setWidthF(squareSize / 20);
 	auto middle = [&](float x) {
-		return QRectF(s / 2 - s / 2 * x, 0 + s / 2 - s / 2 * x, s * x, s * x);
+		return QRectF(squareSize / 2 - squareSize / 2 * x, 0 + squareSize / 2 - squareSize / 2 * x, squareSize * x, squareSize * x);
 	};
 
-	auto toArc = [&](unsigned x) {
-		return (x - from) * -5760.f / count;
+	auto arcLen = [&](unsigned x) {
+		return x * -5760.f / count;
 	};
-	const float arcFrom = 90 * 16.f;
-	p.drawArc(middle(0.5f), arcFrom, toArc(downloadDone));
-	p.drawPie(middle(0.2f), arcFrom, toArc(hashDone));
+	auto arcPos = [&](unsigned x) {
+		return int(90 * 16.f + arcLen(x - from)) % 5760;
+	};
+
+	p.setPen(Qt::NoPen);
+	p.setBrush(QColor::fromHsv(0, 0, 210));
+	pen.setWidthF(0.f);
+	p.drawPie(middle(0.4f), arcPos(from), arcLen(hashDone - from));
+
+	auto progress = [&](unsigned h, unsigned s, unsigned v, float size, float thickness, unsigned nfrom, unsigned ncount) {
+		p.setBrush(Qt::NoBrush);
+		pen.setColor(QColor::fromHsv(h, s, v));
+		pen.setWidthF(squareSize * thickness);
+		p.setPen(pen);
+		p.drawArc(middle(size), arcPos(nfrom), arcLen(ncount));
+	};
+
+	progress(0, 50, 170, 0.4f, 0.12f, downloadFlank, downloadPoint - downloadFlank);
+	progress(0, 0, 150, 0.4f, 0.10f, from, downloadDone - from);
+
+	progress(0, 0, 230, 0.7f, 0.090f, from, syncUnverified - from);
+	progress(60, 25, 210, 0.7f, 0.08f, from, syncVerifying - from);
+	progress(120, 25, 190, 0.7f, 0.07f, from, syncVerified - from);
+
+	progress(0, 0, 220, 0.9f, 0.02f, from, count);
+	progress(0, 0, 100, 0.9f, 0.04f, from, syncFrom - from);
+	progress(0, 50, 100, 0.9f, 0.08f, syncFrom, syncImporting - syncFrom);
+
 	return;
 
 	double ratio = (double)rect().width() / rect().height();

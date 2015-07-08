@@ -199,6 +199,7 @@
     <addaction name="usePrivate"/>
     <addaction name="retryUnknown"/>
     <addaction name="confirm"/>
+    <addaction name="rewindChain"/>
    </widget>
    <widget class="QMenu" name="menu_View">
     <property name="title">
@@ -1802,6 +1803,11 @@ font-size: 14pt</string>
   <action name="sentinel">
    <property name="text">
     <string>&amp;Sentinel...</string>
+   </property>
+  </action>
+  <action name="rewindChain">
+   <property name="text">
+    <string>&amp;Rewind Chain...</string>
    </property>
   </action>
  </widget>
