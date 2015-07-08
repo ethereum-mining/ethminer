@@ -75,12 +75,8 @@ void interactiveHelp()
 		<< "Commands:" << endl
 		<< "    netstart <port>  Starts the network subsystem on a specific port." << endl
 		<< "    netstop  Stops the network subsystem." << endl
-		<< "    jsonstart <port>  Starts the JSON-RPC server." << endl
-		<< "    jsonstop  Stops the JSON-RPC server." << endl
 		<< "    connect <addr> <port>  Connects to a specific peer." << endl
 		<< "    verbosity (<level>)  Gets or sets verbosity level." << endl
-		<< "    setetherprice <p>  Resets the ether price." << endl
-		<< "    setpriority <p>  Resets the transaction priority." << endl
 		<< "    minestart  Starts mining." << endl
 		<< "    minestop  Stops mining." << endl
 		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
