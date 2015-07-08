@@ -32,21 +32,24 @@
 #endif
 
 namespace dev { namespace eth {
-class DownloadMan;
+class Client;
 }}
 
-class DownloadView: public QWidget
+class SyncView: public QWidget
 {
 	Q_OBJECT
 
 public:
-	DownloadView(QWidget* _p = nullptr);
+	SyncView(QWidget* _p = nullptr);
 
-	void setDownloadMan(dev::eth::DownloadMan const* _man) { m_man = _man; }
+	void setEthereum(dev::eth::Client const* _c) { m_client = _c; }
 
 protected:
 	virtual void paintEvent(QPaintEvent*);
 
 private:
-	dev::eth::DownloadMan const* m_man = nullptr;
+	dev::eth::Client const* m_client = nullptr;
+
+	unsigned m_lastFrom = (unsigned)-1;
+	unsigned m_lastTo = (unsigned)-1;
 };
