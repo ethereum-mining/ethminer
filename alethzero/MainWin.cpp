@@ -1044,6 +1044,17 @@ void Main::on_vmInterpreter_triggered() { VMFactory::setKind(VMKind::Interpreter
 void Main::on_vmJIT_triggered() { VMFactory::setKind(VMKind::JIT); }
 void Main::on_vmSmart_triggered() { VMFactory::setKind(VMKind::Smart); }
 
+void Main::on_rewindChain_triggered()
+{
+	bool ok;
+	int n = QInputDialog::getInt(this, "Rewind Chain", "Enter the number of the new chain head.", ethereum()->number() * 9 / 10, 1, ethereum()->number(), 1, &ok);
+	if (ok)
+	{
+		ethereum()->rewind(n);
+		refreshAll();
+	}
+}
+
 void Main::on_urlEdit_returnPressed()
 {
 	QString s = ui->urlEdit->text();
@@ -1993,12 +2004,12 @@ void Main::on_net_triggered()
 		web3()->setNetworkPreferences(netPrefs(), ui->dropPeers->isChecked());
 		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : h256());
 		web3()->startNetwork();
-		ui->downloadView->setDownloadMan(ethereum()->downloadMan());
+		ui->downloadView->setEthereum(ethereum());
 		ui->enode->setText(QString::fromStdString(web3()->enode()));
 	}
 	else
 	{
-		ui->downloadView->setDownloadMan(nullptr);
+		ui->downloadView->setEthereum(nullptr);
 		writeSettings();
 		web3()->stopNetwork();
 	}

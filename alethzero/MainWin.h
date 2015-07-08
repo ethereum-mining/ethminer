@@ -187,6 +187,7 @@ private slots:
 	void on_vmInterpreter_triggered();
 	void on_vmJIT_triggered();
 	void on_vmSmart_triggered();
+	void on_rewindChain_triggered();
 
 	// Debugger
 	void on_debugCurrent_triggered();
