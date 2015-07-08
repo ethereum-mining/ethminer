@@ -214,6 +214,26 @@ Json::Value toJson(dev::eth::Transaction const& _t)
 	return res;
 }
 
+Json::Value toJson(dev::eth::LocalisedTransaction const& _t)
+{
+	Json::Value res;
+	if (_t)
+	{
+		res["hash"] = toJS(_t.sha3());
+		res["input"] = toJS(_t.data());
+		res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
+		res["from"] = toJS(_t.safeSender());
+		res["gas"] = toJS(_t.gas());
+		res["gasPrice"] = toJS(_t.gasPrice());
+		res["nonce"] = toJS(_t.nonce());
+		res["value"] = toJS(_t.value());
+		res["blockHash"] = toJS(_t.blockHash());
+		res["transactionIndex"] = toJS(_t.transactionIndex());
+		res["blockNumber"] = toJS(_t.blockNumber());
+	}
+	return res;
+}
+
 Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 {
 	Json::Value res;
