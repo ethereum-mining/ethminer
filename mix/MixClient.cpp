@@ -303,14 +303,14 @@ State MixClient::asOf(h256 const& _block) const
 	return ret;
 }
 
-h256 MixClient::submitTransaction(eth::TransactionSkeleton const& _ts, Secret const& _secret, bool _gasAuto)
+pair<h256, Address> MixClient::submitTransaction(eth::TransactionSkeleton const& _ts, Secret const& _secret, bool _gasAuto)
 {
 	WriteGuard l(x_state);
 	TransactionSkeleton ts = _ts;
 	ts.nonce = m_state.transactionsFrom(toAddress(_secret));
 	eth::Transaction t(ts, _secret);
 	executeTransaction(t, m_state, false, _gasAuto, _secret);
-	return t.sha3();
+	return make_pair(t.sha3(), toAddress(ts.from, ts.nonce));
 }
 
 Address MixClient::lastCreatedContractAddr() const
