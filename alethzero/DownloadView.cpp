@@ -38,6 +38,8 @@ void SyncView::paintEvent(QPaintEvent*)
 {
 	QPainter p(this);
 	p.fillRect(rect(), Qt::white);
+	p.setRenderHint(QPainter::Antialiasing, true);
+	p.setRenderHint(QPainter::HighQualityAntialiasing, true);
 
 	if (!m_client)
 		return;
@@ -59,23 +61,47 @@ void SyncView::paintEvent(QPaintEvent*)
 	unsigned downloadCount = sync.blocksTotal;
 	DownloadMan::Overview overview = man->overview();
 	unsigned downloadDone = downloadFrom + overview.total;
-	unsigned downloadFlank = downloadFrom + overview.firstIncomplete;
-	unsigned downloadPoint = downloadFrom + overview.lastComplete;
+//	unsigned downloadFlank = downloadFrom + (sync.state == SyncState::Blocks ? overview.firstIncomplete : downloadCount);
+	unsigned downloadPoint = downloadFrom + (sync.state == SyncState::Blocks ? overview.lastComplete : downloadCount);
 
 	unsigned hashFrom = sync.state == SyncState::Hashes ? m_client->numberFromHash(PendingBlockHash) : downloadFrom;
 	unsigned hashCount = sync.state == SyncState::Hashes ? sync.hashesTotal : downloadCount;
 	unsigned hashDone = hashFrom + (sync.state == SyncState::Hashes ? sync.hashesReceived : hashCount);
 
-	unsigned from = min(min(hashFrom, downloadFrom), syncFrom);
-	unsigned count = max(max(hashFrom + hashCount, downloadFrom + downloadCount), syncFrom + syncCount) - from;
-
-	if (!count)
+	QString labelText = QString("PV%1").arg(sync.protocolVersion);
+	QColor labelBack = QColor::fromHsv(sync.protocolVersion == 60 ? 30 : sync.protocolVersion == 61 ? 120 : 240, 15, 220);
+	QColor labelFore = labelBack.darker();
+	switch (sync.state)
 	{
-		m_lastFrom = m_lastTo = (unsigned)-1;
-		return;
+	case SyncState::Hashes:
+		m_lastSyncFrom = hashFrom;
+		m_lastSyncCount = hashCount;
+		m_wasEstimate = sync.hashesEstimated;
+		break;
+	case SyncState::Blocks:
+		if (m_wasEstimate)
+		{
+			m_lastSyncFrom = downloadFrom;
+			m_lastSyncCount = downloadCount;
+			m_wasEstimate = false;
+		}
+		break;
+	case SyncState::Idle:
+		if (!syncCount)
+		{
+			m_lastSyncFrom = (unsigned)-1;
+			m_lastSyncCount = 0;
+			labelBack = QColor::fromHsv(0, 0, 200);
+			labelFore = Qt::white;
+			labelText = "Idle";
+		}
+	default: break;
 	}
 
-	cnote << "Range " << from << "-" << (from + count) << "(" << hashFrom << "+" << hashCount << "," << downloadFrom << "+" << downloadCount << "," << syncFrom << "+" << syncCount << ")";
+	unsigned from = min(min(hashFrom, downloadFrom), min(syncFrom, m_lastSyncFrom));
+	unsigned count = max(max(hashFrom + hashCount, downloadFrom + downloadCount), max(syncFrom + syncCount, m_lastSyncFrom + m_lastSyncCount)) - from;
+
+/*	cnote << "Range " << from << "-" << (from + count) << "(" << hashFrom << "+" << hashCount << "," << downloadFrom << "+" << downloadCount << "," << syncFrom << "+" << syncCount << ")";
 	auto r = [&](unsigned u) {
 		return toString((u - from) * 100 / count) + "%";
 	};
@@ -85,27 +111,22 @@ void SyncView::paintEvent(QPaintEvent*)
 		cnote << "Hashes:" << r(hashDone) << "   Blocks:" << r(downloadFlank) << r(downloadDone) << r(downloadPoint);
 		cnote << "Importing:" << r(syncFrom) << r(syncImported) << r(syncImporting) << r(syncVerified) << r(syncVerifying) << r(syncUnverified);
 	}
-
-	float squareSize = min(rect().width(), rect().height());
+*/
 	QPen pen;
 	pen.setCapStyle(Qt::FlatCap);
-	pen.setWidthF(squareSize / 20);
-	auto middle = [&](float x) {
-		return QRectF(squareSize / 2 - squareSize / 2 * x, 0 + squareSize / 2 - squareSize / 2 * x, squareSize * x, squareSize * x);
+	float squareSize = min(rect().width(), rect().height());
+	auto middleRect = [&](float w, float h) {
+		return QRectF(squareSize / 2 - w / 2, squareSize / 2 - h / 2, w, h);
 	};
-
+	auto middle = [&](float x) {
+		return middleRect(squareSize * x, squareSize * x);
+	};
 	auto arcLen = [&](unsigned x) {
 		return x * -5760.f / count;
 	};
 	auto arcPos = [&](unsigned x) {
 		return int(90 * 16.f + arcLen(x - from)) % 5760;
 	};
-
-	p.setPen(Qt::NoPen);
-	p.setBrush(QColor::fromHsv(0, 0, 210));
-	pen.setWidthF(0.f);
-	p.drawPie(middle(0.4f), arcPos(from), arcLen(hashDone - from));
-
 	auto progress = [&](unsigned h, unsigned s, unsigned v, float size, float thickness, unsigned nfrom, unsigned ncount) {
 		p.setBrush(Qt::NoBrush);
 		pen.setColor(QColor::fromHsv(h, s, v));
@@ -114,57 +135,25 @@ void SyncView::paintEvent(QPaintEvent*)
 		p.drawArc(middle(size), arcPos(nfrom), arcLen(ncount));
 	};
 
-	progress(0, 50, 170, 0.4f, 0.12f, downloadFlank, downloadPoint - downloadFlank);
-	progress(0, 0, 150, 0.4f, 0.10f, from, downloadDone - from);
+	progress(0, 0, 220, 0.6f, 0.02f, from, hashDone);								// Download rail
+	progress(240, 25, 170, 0.6f, 0.02f, downloadDone, downloadPoint - downloadDone);	// Latest download point
+	progress(240, 50, 120, 0.6f, 0.04f, from, downloadDone - from);					// Downloaded
 
-	progress(0, 0, 230, 0.7f, 0.090f, from, syncUnverified - from);
-	progress(60, 25, 210, 0.7f, 0.08f, from, syncVerifying - from);
-	progress(120, 25, 190, 0.7f, 0.07f, from, syncVerified - from);
+	progress(0, 0, 220, 0.9f, 0.02f, from, count);								// Sync rail
+	progress(0, 0, 170, 0.9f, 0.02f, from, syncUnverified - from);				// Verification rail
+	progress(60, 25, 170, 0.9f, 0.02f, from, syncVerifying - from);				// Verifying.
+	progress(120, 25, 170, 0.9f, 0.02f, from, syncVerified - from);				// Verified.
+	progress(120, 50, 120, 0.9f, 0.04f, from, syncFrom - from);					// Imported.
+	progress(240, 25, 170, 0.9f, 0.04f, syncFrom, syncImporting - syncFrom);	// Importing.
 
-	progress(0, 0, 220, 0.9f, 0.02f, from, count);
-	progress(0, 0, 100, 0.9f, 0.04f, from, syncFrom - from);
-	progress(0, 50, 100, 0.9f, 0.08f, syncFrom, syncImporting - syncFrom);
-
-	return;
-
-	double ratio = (double)rect().width() / rect().height();
-	if (ratio < 1)
-		ratio = 1 / ratio;
-	double n = min(16.0, min(rect().width(), rect().height()) / ceil(sqrt(man->chainSize() / ratio)));
-
-//	QSizeF area(rect().width() / floor(rect().width() / n), rect().height() / floor(rect().height() / n));
-	QSizeF area(n, n);
-	QPointF pos(0, 0);
-
-	auto bg = man->blocksGot();
-	unsigned subCount = man->subCount();
-	if (subCount == 0)
-		return;
-	unsigned dh = 360 / subCount;
-	for (unsigned i = bg.all().first, ei = bg.all().second; i < ei; ++i)
+	if (sync.state != SyncState::Idle || !count)
 	{
-		int s = -2;
-		if (bg.contains(i))
-			s = -1;
-		else
-		{
-			unsigned h = 0;
-			man->foreachSub([&](DownloadSub const& sub)
-			{
-				if (sub.askedContains(i))
-					s = h;
-				h++;
-			});
-		}
-		if (s == -2)
-			p.fillRect(QRectF(QPointF(pos) + QPointF(3 * area.width() / 8, 3 * area.height() / 8), area / 4), Qt::black);
-		else if (s == -1)
-			p.fillRect(QRectF(QPointF(pos) + QPointF(1 * area.width() / 8, 1 * area.height() / 8), area * 3 / 4), Qt::black);
-		else
-			p.fillRect(QRectF(QPointF(pos) + QPointF(1 * area.width() / 8, 1 * area.height() / 8), area * 3 / 4), QColor::fromHsv(s * dh, 64, 128));
-
-		pos.setX(pos.x() + n);
-		if (pos.x() >= rect().width() - n)
-			pos = QPoint(0, pos.y() + n);
+		p.setBrush(QBrush(labelBack));
+		p.setFont(QFont("Helvetica", 10, QFont::Bold));
+		QRectF r = p.boundingRect(middle(1.f), Qt::AlignCenter, labelText);
+		r.adjust(-r.width() / 8, -r.height() / 8, r.width() / 8, r.height() / 8);
+		p.setPen(QPen(labelFore, r.height() / 10));
+		p.drawRoundedRect(r, r.height() / 4, r.height() / 4);
+		p.drawText(r, Qt::AlignCenter, labelText);
 	}
 }

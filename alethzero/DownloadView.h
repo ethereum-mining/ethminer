@@ -50,6 +50,7 @@ protected:
 private:
 	dev::eth::Client const* m_client = nullptr;
 
-	unsigned m_lastFrom = (unsigned)-1;
-	unsigned m_lastTo = (unsigned)-1;
+	unsigned m_lastSyncFrom = (unsigned)-1;
+	unsigned m_lastSyncCount = 0;
+	bool m_wasEstimate = false;
 };
