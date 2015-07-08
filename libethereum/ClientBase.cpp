@@ -317,6 +317,12 @@ Transaction ClientBase::transaction(h256 _transactionHash) const
 	return Transaction(bc().transaction(_transactionHash), CheckTransaction::Cheap);
 }
 
+LocalisedTransaction ClientBase::localisedTransaction(h256 _transactionHash) const
+{
+	std::pair<h256, unsigned> tl = bc().transactionLocation(_transactionHash);
+	return localisedTransaction(tl.first, tl.second);
+}
+
 Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = bc().block(_blockHash);
@@ -325,6 +331,12 @@ Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 		return Transaction(b[1][_i].data(), CheckTransaction::Cheap);
 	else
 		return Transaction();
+}
+
+LocalisedTransaction ClientBase::localisedTransaction(h256 _blockHash, unsigned _i) const
+{
+	Transaction t = Transaction(bc().transaction(_blockHash, _i), CheckTransaction::Cheap);
+	return LocalisedTransaction(t, _blockHash, numberFromHash(_blockHash), _i);
 }
 
 TransactionReceipt ClientBase::transactionReceipt(h256 const& _transactionHash) const
