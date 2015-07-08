@@ -521,13 +521,13 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 					if (d > chrono::milliseconds(s_msPerBatch * 10 / 9))
 					{
 						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, >> " << _msPerBatch << " ms." << endl;
-						m_globalWorkSize = max<unsigned>(128, m_globalWorkSize + s_workgroupSize);
+						m_globalWorkSize = max<unsigned>(128, m_globalWorkSize - s_workgroupSize);
 						// cerr << "New global work size" << m_globalWorkSize << endl;
 					}
 					else if (d < chrono::milliseconds(s_msPerBatch * 9 / 10))
 					{
 						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, << " << _msPerBatch << " ms." << endl;
-						m_globalWorkSize = min<unsigned>(pow(2, m_deviceBits) - 1, m_globalWorkSize - s_workgroupSize);
+						m_globalWorkSize = min<unsigned>(pow(2, m_deviceBits) - 1, m_globalWorkSize + s_workgroupSize);
 						// Global work size should never be less than the workgroup size
 						m_globalWorkSize = max<unsigned>(s_workgroupSize,  m_globalWorkSize);
 						// cerr << "New global work size" << m_globalWorkSize << endl;
