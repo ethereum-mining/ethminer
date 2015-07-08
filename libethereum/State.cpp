@@ -1212,7 +1212,7 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 	uncommitToMine();
 
 	// OK - transaction looks valid - execute.
-	u256 startGasUsed = gasUsed();
+	u256 startGasUsed = e.gasUsed();
 #if ETH_PARANOIA
 	ctrace << "Executing" << e.t() << "on" << h;
 	ctrace << toHex(e.t().rlp());
