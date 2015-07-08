@@ -211,7 +211,10 @@ public:
 		else if (arg == "-G" || arg == "--opencl")
 			m_minerType = MinerType::GPU;
 		else if (arg == "--current-block" && i + 1 < argc)
+		{
 			m_currentBlock = stol(argv[++i]);
+			m_currentBlockGiven = true;
+		}
 		else if (arg == "--no-precompute")
 		{
 			m_precompute = false;
@@ -306,6 +309,7 @@ public:
 					m_openclDevice,
 					m_clAllowCPU,
 					m_extraGPUMemory,
+					m_currentBlockGiven,
 					m_currentBlock
 				))
 				exit(1);
@@ -553,7 +557,7 @@ private:
 	unsigned m_localWorkSize = ethash_cl_miner::c_defaultLocalWorkSize;
 	unsigned m_msPerBatch = ethash_cl_miner::c_defaultMSPerBatch;
 #endif
-	boost::optional<uint64_t> m_currentBlock;
+	uint64_t m_currentBlock = 0;
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
 	unsigned m_extraGPUMemory = 350000000;
 

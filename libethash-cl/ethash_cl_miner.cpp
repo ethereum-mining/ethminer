@@ -149,7 +149,8 @@ bool ethash_cl_miner::configureGPU(
 	unsigned _msPerBatch,
 	bool _allowCPU,
 	unsigned _extraGPUMemory,
-	boost::optional<uint64_t> _currentBlock
+	bool _currentBlockGiven,
+	uint64_t _currentBlock
 )
 {
 	s_workgroupSize = _localWorkSize;
@@ -158,7 +159,7 @@ bool ethash_cl_miner::configureGPU(
 	s_allowCPU = _allowCPU;
 	s_extraRequiredGPUMem = _extraGPUMemory;
 	// by default let's only consider the DAG of the first epoch
-	uint64_t dagSize = _currentBlock ? ethash_get_datasize(*_currentBlock) : 1073739904U;
+	uint64_t dagSize = _currentBlockGiven ? ethash_get_datasize(_currentBlock) : 1073739904U;
 	uint64_t requiredSize =  dagSize + _extraGPUMemory;
 	return searchForAllDevices(_platformId, [&requiredSize](cl::Device const _device) -> bool
 		{
