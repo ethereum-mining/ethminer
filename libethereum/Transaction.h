@@ -136,23 +136,23 @@ public:
 	LocalisedTransaction(
 		Transaction const& _t,
 		h256 const& _blockHash,
-		BlockNumber _blockNumber,
-		unsigned _transactionIndex
+		unsigned _transactionIndex,
+		BlockNumber _blockNumber = 0
 	):
 		Transaction(_t),
 		m_blockHash(_blockHash),
-		m_blockNumber(_blockNumber),
-		m_transactionIndex(_transactionIndex)
+		m_transactionIndex(_transactionIndex),
+		m_blockNumber(_blockNumber)
 	{}
 
 	h256 const& blockHash() const { return m_blockHash; }
-	BlockNumber blockNumber() const { return m_blockNumber; }
 	unsigned transactionIndex() const { return m_transactionIndex; }
+	BlockNumber blockNumber() const { return m_blockNumber; }
 
 private:
 	h256 m_blockHash;
-	BlockNumber m_blockNumber;
 	unsigned m_transactionIndex;
+	BlockNumber m_blockNumber;
 };
 
 }
