@@ -252,7 +252,7 @@ private:
 	QVariantMap contractAddresses() const;
 	QVariantList gasCosts() const;
 	void executeSequence(std::vector<TransactionSettings> const& _sequence);
-	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
+	Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	void callAddress(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 	void onNewTransaction();
 	void onStateReset();

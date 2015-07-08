@@ -142,6 +142,9 @@ public:
 	BlockReceipts receipts(h256 const& _hash) const { return queryExtras<BlockReceipts, ExtraReceipts>(_hash, m_receipts, x_receipts, NullBlockReceipts); }
 	BlockReceipts receipts() const { return receipts(currentHash()); }
 
+	/// Get the transaction receipt by transaction hash. Thread-safe.
+	TransactionReceipt transactionReceipt(h256 const& _transactionHash) const {TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return bytesConstRef(); return receipts(ta.blockHash).receipts[ta.index]; }
+
 	/// Get a list of transaction hashes for a given block. Thread-safe.
 	TransactionHashes transactionHashes(h256 const& _hash) const { auto b = block(_hash); RLP rlp(b); h256s ret; for (auto t: rlp[1]) ret.push_back(sha3(t.data())); return ret; }
 	TransactionHashes transactionHashes() const { return transactionHashes(currentHash()); }
@@ -211,6 +214,9 @@ public:
 	/// Run through database and verify all blocks by reevaluating.
 	/// Will call _progress with the progress in this operation first param done, second total.
 	void rebuild(std::string const& _path, ProgressCallback const& _progress = std::function<void(unsigned, unsigned)>(), bool _prepPoW = false);
+
+	/// Alter the head of the chain to some prior block along it.
+	void rewind(unsigned _newHead);
 
 	/** @returns a tuple of:
 	 * - an vector of hashes of all blocks between @a _from and @a _to, all blocks are ordered first by a number of
