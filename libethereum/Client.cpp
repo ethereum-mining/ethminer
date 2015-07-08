@@ -67,7 +67,7 @@ static const Addresses c_canaries =
 	Address("4bb7e8ae99b645c2b7860b8f3a2328aae28bd80a"),		// gav
 	Address("1baf27b88c48dd02b744999cf3522766929d2b2a"),		// vitalik
 	Address("a8edb1ac2c86d3d9d78f96cd18001f60df29e52c"),		// jeff
-	Address("60d11b58744784dc97f878f7e3749c0f1381a004")			// christoph
+	Address("ace7813896a84d3f5f80223916a5353ab16e46e6")			// christoph
 };
 
 VersionChecker::VersionChecker(string const& _dbPath)
