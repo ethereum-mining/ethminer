@@ -152,7 +152,7 @@ public:
 	{
 		FixedHash ret;
 		for (auto& i: ret.m_data)
-			i = std::uniform_int_distribution<uint8_t>(0, 255)(_eng);
+			i = (uint8_t)std::uniform_int_distribution<uint16_t>(0, 255)(_eng);
 		return ret;
 	}
 
