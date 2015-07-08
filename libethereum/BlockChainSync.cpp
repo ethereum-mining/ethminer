@@ -302,8 +302,8 @@ void BlockChainSync::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP con
 			u256 totalDifficulty = _r[1].toInt<u256>();
 			if (totalDifficulty > _peer->m_totalDifficulty)
 				resetSyncFor(_peer, h, totalDifficulty);
+			break;
 		}
-		break;
 		default:;
 		}
 
