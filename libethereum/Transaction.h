@@ -137,7 +137,7 @@ public:
 		Transaction const& _t,
 		h256 const& _blockHash,
 		BlockNumber _blockNumber,
-	    unsigned _transactionIndex
+		unsigned _transactionIndex
 	):
 		Transaction(_t),
 		m_blockHash(_blockHash),
