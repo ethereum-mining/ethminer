@@ -118,17 +118,17 @@ void EthereumHost::doWork()
 
 	if (m_syncStart)
 	{
-		Guard l(x_sync);
-		if (!m_sync)
-		{
-			time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
-			if ((now - m_syncStart) > 10)
+		DEV_GUARDED(x_sync);
+			if (!m_sync)
 			{
-				m_sync.reset(new PV60Sync(*this));
-				m_syncStart = 0;
-				m_sync->restartSync();
+				time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
+				if (now - m_syncStart > 10)
+				{
+					m_sync.reset(new PV60Sync(*this));
+					m_syncStart = 0;
+					m_sync->restartSync();
+				}
 			}
-		}
 	}
 
 //	return netChange;
