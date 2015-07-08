@@ -351,7 +351,6 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence)
 				if (!transaction.isFunctionCall)
 				{
 					callAddress(Address(address.toStdString()), bytes(), transaction);
-
 					onNewTransaction();
 					continue;
 				}
