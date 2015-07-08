@@ -55,7 +55,7 @@ namespace eth
 {
 
 const unsigned Ethash::defaultLocalWorkSize = 64;
-const unsigned Ethash::defaultGlobalWorkSizeMultiplier = 512; // * CL_DEFAULT_LOCAL_WORK_SIZE
+const unsigned Ethash::defaultGlobalWorkSizeMultiplier = 4096; // * CL_DEFAULT_LOCAL_WORK_SIZE
 const unsigned Ethash::defaultMSPerBatch = 0;
 const Ethash::WorkPackage Ethash::NullWorkPackage = Ethash::WorkPackage();
 
