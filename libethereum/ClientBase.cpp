@@ -336,7 +336,7 @@ Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 LocalisedTransaction ClientBase::localisedTransaction(h256 const& _blockHash, unsigned _i) const
 {
 	Transaction t = Transaction(bc().transaction(_blockHash, _i), CheckTransaction::Cheap);
-	return LocalisedTransaction(t, _blockHash, numberFromHash(_blockHash), _i);
+	return LocalisedTransaction(t, _blockHash, _i, numberFromHash(_blockHash));
 }
 
 TransactionReceipt ClientBase::transactionReceipt(h256 const& _transactionHash) const
