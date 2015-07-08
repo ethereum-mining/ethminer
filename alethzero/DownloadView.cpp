@@ -30,29 +30,118 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-DownloadView::DownloadView(QWidget* _p): QWidget(_p)
+SyncView::SyncView(QWidget* _p): QWidget(_p)
 {
 }
 
-void DownloadView::paintEvent(QPaintEvent*)
+void SyncView::paintEvent(QPaintEvent*)
 {
 	QPainter p(this);
-
 	p.fillRect(rect(), Qt::white);
-	if (!m_man || m_man->chainEmpty() || !m_man->subCount())
+
+	if (!m_client)
 		return;
+
+	DownloadMan const* man = m_client->downloadMan();
+	BlockQueueStatus bqs = m_client->blockQueueStatus();
+	SyncStatus sync = m_client->syncStatus();
+
+	unsigned syncFrom = m_client->numberFromHash(PendingBlockHash);
+	unsigned syncImported = syncFrom;
+	unsigned syncImporting = syncImported + bqs.importing;
+	unsigned syncVerified = syncImporting + bqs.verified;
+	unsigned syncVerifying = syncVerified + bqs.verifying;
+	unsigned syncUnverified = syncVerifying + bqs.unverified;
+	unsigned syncCount = syncUnverified + bqs.unknown - syncFrom;
+
+	// best effort guess. assumes there's no forks.
+	unsigned downloadFrom = m_client->numberFromHash(m_client->isKnown(man->firstBlock()) ? man->firstBlock() : PendingBlockHash);
+	unsigned downloadCount = sync.blocksTotal;
+	DownloadMan::Overview overview = man->overview();
+	unsigned downloadDone = downloadFrom + overview.total;
+	unsigned downloadFlank = downloadFrom + overview.firstIncomplete;
+	unsigned downloadPoint = downloadFrom + overview.lastComplete;
+
+	unsigned hashFrom = sync.state == SyncState::Hashes ? m_client->numberFromHash(PendingBlockHash) : downloadFrom;
+	unsigned hashCount = sync.state == SyncState::Hashes ? sync.hashesTotal : downloadCount;
+	unsigned hashDone = hashFrom + (sync.state == SyncState::Hashes ? sync.hashesReceived : hashCount);
+
+	m_lastFrom = min(syncFrom, m_lastFrom);
+	m_lastTo = max(max(syncFrom + syncCount, hashFrom + hashCount), m_lastTo);
+	unsigned from = min(min(hashFrom, downloadFrom), min(syncFrom, m_lastFrom));
+	unsigned count = max(max(hashFrom + hashCount, downloadFrom + downloadCount), max(syncFrom + syncCount, m_lastTo)) - from;
+	m_lastFrom = (m_lastFrom * 99 + syncFrom * 1) / 100;
+	m_lastTo = (m_lastTo * 99 + max(syncFrom + syncCount, hashFrom + hashCount) * 1) / 100;
+
+	if (!count)
+	{
+		m_lastFrom = m_lastTo = (unsigned)-1;
+		return;
+	}
+
+	cnote << "Range " << from << "-" << (from + count) << "(" << hashFrom << "+" << hashCount << "," << downloadFrom << "+" << downloadCount << "," << syncFrom << "+" << syncCount << ")";
+	auto r = [&](unsigned u) {
+		return toString((u - from) * 100 / count) + "%";
+	};
+
+	if (count)
+	{
+		cnote << "Hashes:" << r(hashDone) << "   Blocks:" << r(downloadFlank) << r(downloadDone) << r(downloadPoint);
+		cnote << "Importing:" << r(syncFrom) << r(syncImported) << r(syncImporting) << r(syncVerified) << r(syncVerifying) << r(syncUnverified);
+	}
+
+	float squareSize = min(rect().width(), rect().height());
+	QPen pen;
+	pen.setCapStyle(Qt::FlatCap);
+	pen.setWidthF(squareSize / 20);
+	auto middle = [&](float x) {
+		return QRectF(squareSize / 2 - squareSize / 2 * x, 0 + squareSize / 2 - squareSize / 2 * x, squareSize * x, squareSize * x);
+	};
+
+	auto arcLen = [&](unsigned x) {
+		return x * -5760.f / count;
+	};
+	auto arcPos = [&](unsigned x) {
+		return int(90 * 16.f + arcLen(x - from)) % 5760;
+	};
+
+	p.setPen(Qt::NoPen);
+	p.setBrush(QColor::fromHsv(0, 0, 210));
+	pen.setWidthF(0.f);
+	p.drawPie(middle(0.4f), arcPos(from), arcLen(hashDone - from));
+
+	auto progress = [&](unsigned h, unsigned s, unsigned v, float size, float thickness, unsigned nfrom, unsigned ncount) {
+		p.setBrush(Qt::NoBrush);
+		pen.setColor(QColor::fromHsv(h, s, v));
+		pen.setWidthF(squareSize * thickness);
+		p.setPen(pen);
+		p.drawArc(middle(size), arcPos(nfrom), arcLen(ncount));
+	};
+
+	progress(0, 50, 170, 0.4f, 0.12f, downloadFlank, downloadPoint - downloadFlank);
+	progress(0, 0, 150, 0.4f, 0.10f, from, downloadDone - from);
+
+	progress(0, 0, 230, 0.7f, 0.090f, from, syncUnverified - from);
+	progress(60, 25, 210, 0.7f, 0.08f, from, syncVerifying - from);
+	progress(120, 25, 190, 0.7f, 0.07f, from, syncVerified - from);
+
+	progress(0, 0, 220, 0.9f, 0.02f, from, count);
+	progress(0, 0, 100, 0.9f, 0.04f, from, syncFrom - from);
+	progress(0, 50, 100, 0.9f, 0.08f, syncFrom, syncImporting - syncFrom);
+
+	return;
 
 	double ratio = (double)rect().width() / rect().height();
 	if (ratio < 1)
 		ratio = 1 / ratio;
-	double n = min(16.0, min(rect().width(), rect().height()) / ceil(sqrt(m_man->chainSize() / ratio)));
+	double n = min(16.0, min(rect().width(), rect().height()) / ceil(sqrt(man->chainSize() / ratio)));
 
 //	QSizeF area(rect().width() / floor(rect().width() / n), rect().height() / floor(rect().height() / n));
 	QSizeF area(n, n);
 	QPointF pos(0, 0);
 
-	auto bg = m_man->blocksGot();
-	unsigned subCount = m_man->subCount();
+	auto bg = man->blocksGot();
+	unsigned subCount = man->subCount();
 	if (subCount == 0)
 		return;
 	unsigned dh = 360 / subCount;
@@ -64,7 +153,7 @@ void DownloadView::paintEvent(QPaintEvent*)
 		else
 		{
 			unsigned h = 0;
-			m_man->foreachSub([&](DownloadSub const& sub)
+			man->foreachSub([&](DownloadSub const& sub)
 			{
 				if (sub.askedContains(i))
 					s = h;
