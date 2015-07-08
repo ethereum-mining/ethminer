@@ -1057,9 +1057,7 @@ int main(int argc, char** argv)
 				else if (gas < minGas)
 					cwarn << "Minimum gas amount is" << minGas;
 				else
-				{
 					c->submitTransaction(us.secret(), endowment, init, gas);
-				}
 			}
 		}
 		else if (c && cmd == "inspect")

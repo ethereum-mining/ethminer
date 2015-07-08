@@ -24,6 +24,16 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+DownloadMan::Overview DownloadMan::overview() const
+{
+	ReadGuard l(m_lock);
+	Overview ret;
+	ret.firstIncomplete = m_blocksGot.firstOut();
+	ret.lastComplete = ret.lastStarted = m_blocksGot.lastIn();// TODO: lastStarted properly
+	ret.total = m_blocksGot.size();
+	return ret;
+}
+
 DownloadSub::DownloadSub(DownloadMan& _man): m_man(&_man)
 {
 	WriteGuard l(m_man->x_subs);
