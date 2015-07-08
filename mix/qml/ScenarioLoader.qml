@@ -6,6 +6,7 @@ import QtQuick.Dialogs 1.2
 import QtQuick.Window 2.0
 import QtQuick.Dialogs 1.1
 import Qt.labs.settings 1.0
+import org.ethereum.qml.InverseMouseArea 1.0
 import "js/Debugger.js" as Debugger
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 import "."
@@ -18,6 +19,7 @@ ColumnLayout
 	signal duplicated(variant scenario)
 	signal loaded(variant scenario)
 	signal renamed(variant scenario)
+	signal deleted()
 	spacing: 0
 	function init()
 	{
@@ -29,146 +31,92 @@ ColumnLayout
 		editStatus.visible = true
 	}
 
-	Rectangle
+	RowLayout
 	{
-		Layout.fillWidth: true
-		Layout.preferredHeight: 30
-		color: "transparent"
-		Rectangle
+		Layout.preferredWidth: 560
+		anchors.horizontalCenter: parent.horizontalCenter
+		Layout.preferredHeight: 60
+		spacing: 0
+		anchors.top: parent.top
+		anchors.topMargin: 10
+
+		Row
 		{
-			anchors.verticalCenter: parent.verticalCenter
-			anchors.horizontalCenter: parent.horizontalCenter
-			color: "transparent"
-			Label
-			{
-				anchors.verticalCenter: parent.verticalCenter
-				anchors.horizontalCenter: parent.horizontalCenter
-				id: scenarioName
-				font.bold: true
-			}
-
-			TextInput
-			{
-				id: scenarioNameEdit
-				visible: false
-				anchors.verticalCenter: parent.verticalCenter
-				anchors.horizontalCenter: parent.horizontalCenter
-				Keys.onEnterPressed:
-				{
-					save()
-				}
-
-				function edit()
-				{
-					editIconRect.anchors.left = scenarioNameEdit.right
-					editStatus.parent.anchors.left = scenarioNameEdit.right
-					scenarioNameEdit.forceActiveFocus()
-				}
-
-				function save()
-				{
-					editIconRect.anchors.left = scenarioName.right
-					editStatus.parent.anchors.left = scenarioName.right
-					scenarioName.text = scenarioNameEdit.text
-					scenarioName.visible = true
-					scenarioNameEdit.visible = false
-					projectModel.stateListModel.getState(scenarioList.currentIndex).title = scenarioName.text
-					projectModel.saveProjectFile()
-					saved(state)
-					scenarioList.model.get(scenarioList.currentIndex).title = scenarioName.text
-					scenarioList.currentIndex = scenarioList.currentIndex
-					renamed(projectModel.stateListModel.getState(scenarioList.currentIndex))
-				}
-			}
-
-			Connections
-			{
-				target: blockChainSelector
-				onLoaded:
-				{
-					scenarioName.text = scenario.title
-					scenarioNameEdit.text = scenario.title
-				}
-			}
+			Layout.preferredWidth: 100 * 5 + 30
+			Layout.preferredHeight: 50
+			spacing: 25
 
 			Rectangle
 			{
-				anchors.left: scenarioName.right
-				anchors.top: scenarioName.top
-				anchors.leftMargin: 2
-				Layout.preferredWidth: 20
-				Text {
-					id: editStatus
-					text: "*"
-					visible: false
-				}
-			}
+				color: "white"
+				width: 251 + 30
+				height: 30
 
-			Rectangle
-			{
-				id: editIconRect
-				anchors.top: scenarioName.top
-				anchors.topMargin: 6
-				anchors.left: scenarioName.right
-				anchors.leftMargin: 20
+				Rectangle
+				{
+					id: left
+					width: 10
+					height: parent.height
+					anchors.left: parent.left
+					anchors.leftMargin: -5
+					radius: 15
+				}
+
 				Image {
 					source: "qrc:/qml/img/edittransaction.png"
-					width: 30
+					height: parent.height - 10
 					fillMode: Image.PreserveAspectFit
-					anchors.verticalCenter: parent.verticalCenter
-					anchors.horizontalCenter: parent.horizontalCenter
+					anchors.left: parent.left
+					anchors.top: parent.top
+					anchors.topMargin: 4
+					id: editImg
 					MouseArea
 					{
 						anchors.fill: parent
 						onClicked:
 						{
-							scenarioName.visible = !scenarioName.visible
-							scenarioNameEdit.visible = !scenarioNameEdit.visible
-							if (!scenarioNameEdit.visible)
-								scenarioNameEdit.save()
-							else
-								scenarioNameEdit.edit()
+							scenarioNameEdit.toggleEdit()
 						}
 					}
 				}
-			}
-		}
-	}
 
-	RowLayout
-	{
-		Layout.preferredWidth: 560
-		anchors.horizontalCenter: parent.horizontalCenter
-		Layout.preferredHeight: 50
-		spacing: 0
-
-		Row
-		{
-			Layout.preferredWidth: 100 * 5
-			Layout.preferredHeight: 50
-			spacing: 15
-
-			Rectangle
-			{
-				color: "transparent"
-				width: 251
-				height: 30
-				Rectangle
+				Label
 				{
-					width: 10
+					anchors.left: editImg.right
+					text: "X"
 					height: parent.height
-					anchors.right: scenarioList.left
-					anchors.rightMargin: -8
-					radius: 15
+					color: "#cccccc"
+					id: deleteImg
+					anchors.top: parent.top
+					anchors.topMargin: 6
+					visible: projectModel.stateListModel.count > 1
+					MouseArea
+					{
+						anchors.fill: parent
+						onClicked:
+						{
+							if (projectModel.stateListModel.count > 1)
+							{
+								projectModel.stateListModel.deleteState(scenarioList.currentIndex)
+								scenarioList.currentIndex = 0
+								deleted()
+							}
+						}
+					}
 				}
 
 				ComboBox
 				{
 					id: scenarioList
+					anchors.left: deleteImg.right
+					anchors.leftMargin: 2
 					model: projectModel.stateListModel
+					anchors.top: parent.top
 					textRole: "title"
 					height: parent.height
 					width: 150
+					signal updateView()
+
 					onCurrentIndexChanged:
 					{
 						restoreScenario.restore()
@@ -177,15 +125,18 @@ ColumnLayout
 					function load()
 					{
 						var state = projectModel.stateListModel.getState(currentIndex)
-						loaded(state)
+						if (state)
+							loaded(state)
 					}
 
 					style: ComboBoxStyle {
+						id: style
 						background: Rectangle {
 							color: "white"
 							anchors.fill: parent
 						}
 						label: Rectangle {
+							property alias label: comboLabel
 							anchors.fill: parent
 							color: "white"
 							Label {
@@ -194,20 +145,33 @@ ColumnLayout
 								elide: Text.ElideRight
 								width: parent.width
 								anchors.verticalCenter: parent.verticalCenter
-								anchors.horizontalCenter: parent.horizontalCenter
-								text: {
-									if (projectModel.stateListModel.getState(scenarioList.currentIndex))
-										return projectModel.stateListModel.getState(scenarioList.currentIndex).title
-									else
-										return ""
+								anchors.left: parent.left
+								Component.onCompleted:
+								{
+									comboLabel.updateLabel()
 								}
+
+								function updateLabel()
+								{
+									comboLabel.text = ""
+									if (scenarioList.currentIndex < projectModel.stateListModel.count)
+										comboLabel.text = projectModel.stateListModel.getState(scenarioList.currentIndex).title
+								}
+
 								Connections {
 									target: blockChainSelector
 									onLoaded: {
-										comboLabel.text = projectModel.stateListModel.getState(scenarioList.currentIndex).title
+										if (projectModel.stateListModel.count > 0)
+											comboLabel.text = projectModel.stateListModel.getState(scenarioList.currentIndex).title
+										else
+											return ""
 									}
 									onRenamed: {
 										comboLabel.text = scenario.title
+										scenarioNameEdit.text = scenario.title
+									}
+									onDeleted: {
+										comboLabel.updateLabel()
 									}
 								}
 							}
@@ -215,9 +179,74 @@ ColumnLayout
 					}
 				}
 
+				TextField
+				{
+					id: scenarioNameEdit
+					anchors.left: deleteImg.right
+					anchors.leftMargin: 2
+					height: parent.height
+					z: 5
+					visible: false
+					width: 150
+					Keys.onEnterPressed:
+					{
+						toggleEdit()
+					}
+
+					Keys.onReturnPressed:
+					{
+						toggleEdit()
+					}
+
+					function toggleEdit()
+					{
+						scenarioList.visible = !scenarioList.visible
+						scenarioNameEdit.visible = !scenarioNameEdit.visible
+						if (!scenarioNameEdit.visible)
+							scenarioNameEdit.save()
+						else
+						{
+							scenarioNameEdit.text = projectModel.stateListModel.getState(scenarioList.currentIndex).title
+							scenarioNameEdit.forceActiveFocus()
+							outsideClick.active = true
+						}
+					}
+
+					function save()
+					{
+						outsideClick.active = false
+						projectModel.stateListModel.getState(scenarioList.currentIndex).title = scenarioNameEdit.text
+						projectModel.saveProjectFile()
+						saved(state)
+						scenarioList.model.get(scenarioList.currentIndex).title = scenarioNameEdit.text
+						scenarioList.currentIndex = scenarioList.currentIndex
+						renamed(projectModel.stateListModel.getState(scenarioList.currentIndex))
+					}
+
+					style: TextFieldStyle {
+						background: Rectangle {
+									radius: 2
+									implicitWidth: 100
+									implicitHeight: 30
+									color: "white"
+									border.color: "#cccccc"
+									border.width: 1
+								}
+					}
+
+					InverseMouseArea {
+						id: outsideClick
+						anchors.fill: parent
+						active: false
+						onClickedOutside: {
+							scenarioNameEdit.toggleEdit()
+						}
+					}
+				}
+
 				Rectangle
 				{
-					width: 1
+					width: 1					
 					height: parent.height
 					anchors.right: addScenario.left
 					color: "#ededed"
@@ -236,7 +265,6 @@ ColumnLayout
 						projectModel.stateListModel.appendState(item)
 						projectModel.stateListModel.save()
 						scenarioList.currentIndex = projectModel.stateListModel.count - 1
-						scenarioNameEdit.edit()
 					}
 					text: qsTr("New..")
 					roundRight: true
@@ -250,15 +278,6 @@ ColumnLayout
 				width: 100 * 3
 				height: 30
 				color: "transparent"
-
-				Rectangle
-				{
-					width: 10
-					height: parent.height
-					anchors.right: restoreScenario.left
-					anchors.rightMargin: -4
-					radius: 15
-				}
 
 				ScenarioButton {
 					id: restoreScenario
@@ -275,7 +294,6 @@ ColumnLayout
 						var state = projectModel.stateListModel.reloadStateFromFromProject(scenarioList.currentIndex)
 						if (state)
 						{
-							editStatus.visible = false
 							restored(state)
 							loaded(state)
 						}

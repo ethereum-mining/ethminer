@@ -202,7 +202,7 @@ ApplicationWindow {
 		text: qsTr("Deploy")
 		shortcut: "F5"
 		onTriggered: mainContent.startQuickDebugging()
-		enabled: codeModel.hasContract && !clientModel.running
+		enabled: codeModel.hasContract && !clientModel.running && projectModel.stateListModel.defaultStateName() !== ""
 	}
 
 	Action {
