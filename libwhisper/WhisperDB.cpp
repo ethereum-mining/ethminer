@@ -27,17 +27,16 @@
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
-#include <libethereum/Defaults.h>
+#include <libdevcore/FileSystem.h>
 #include "WhisperDB.h"
 
 using namespace std;
 using namespace dev;
 using namespace dev::shh;
-using namespace dev::eth;
 
 WhisperDB::WhisperDB()
 {
-	string path = Defaults::dbPath();
+	string path = dev::getDataDir();
 	boost::filesystem::create_directories(path);
 	ldb::Options op;
 	op.create_if_missing = true;
