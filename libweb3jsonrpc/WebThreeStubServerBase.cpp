@@ -427,8 +427,7 @@ Json::Value WebThreeStubServerBase::eth_getTransactionReceipt(string const& _tra
 		if (!client()->isKnownTransaction(h))
 			return Json::Value(Json::nullValue);
 
-		auto l = client()->transactionLocation(h);
-		return toJson(client()->transactionReceipt(h), l, client()->numberFromHash(l.first), client()->transaction(h));
+		return toJson(client()->localisedTransactionReceipt(h));
 	}
 	catch (...)
 	{
