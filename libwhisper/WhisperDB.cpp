@@ -39,9 +39,10 @@ WhisperDB::WhisperDB()
 {
 	string path = Defaults::dbPath();
 	boost::filesystem::create_directories(path);
-	ldb::Options o;
-	o.create_if_missing = true;
-	ldb::DB::Open(o, path + "/whisper", &m_db);
+	ldb::Options op;
+	op.create_if_missing = true;
+	op.max_open_files = 256;
+	ldb::DB::Open(op, path + "/whisper", &m_db);
 }
 
 WhisperDB::~WhisperDB()
