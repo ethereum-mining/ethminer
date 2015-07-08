@@ -242,21 +242,16 @@ string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json)
 {
 	try
 	{
-		string ret;
 		TransactionSkeleton t = toTransactionSkeleton(_json);
 	
 		if (!t.from)
 			t.from = m_ethAccounts->defaultTransactAccount();
-		if (t.creation)
-			ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
 		if (t.gasPrice == UndefinedU256)
 			t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
 		if (t.gas == UndefinedU256)
 			t.gas = min<u256>(client()->gasLimitRemaining() / 5, client()->balanceAt(t.from) / t.gasPrice);
 
-		m_ethAccounts->authenticate(t);
-	
-		return ret;
+		return toJS(m_ethAccounts->authenticate(t));
 	}
 	catch (...)
 	{
@@ -268,13 +263,10 @@ string WebThreeStubServerBase::eth_signTransaction(Json::Value const& _json)
 {
 	try
 	{
-		string ret;
 		TransactionSkeleton t = toTransactionSkeleton(_json);
 
 		if (!t.from)
 			t.from = m_ethAccounts->defaultTransactAccount();
-		if (t.creation)
-			ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
 		if (t.gasPrice == UndefinedU256)
 			t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
 		if (t.gas == UndefinedU256)
@@ -420,6 +412,23 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByBlockNumberAndIndex(stri
 		unsigned ti = jsToInt(_transactionIndex);
 		Transaction t = client()->transaction(bn, ti);
 		return toJson(t, make_pair(client()->hashFromNumber(bn), ti), bn);
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
+Json::Value WebThreeStubServerBase::eth_getTransactionReceipt(string const& _transactionHash)
+{
+	try
+	{
+		h256 h = jsToFixed<32>(_transactionHash);
+		if (!client()->isKnownTransaction(h))
+			return Json::Value(Json::nullValue);
+
+		auto l = client()->transactionLocation(h);
+		return toJson(client()->transactionReceipt(h), l, client()->numberFromHash(l.first), client()->transaction(h));
 	}
 	catch (...)
 	{

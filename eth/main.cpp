@@ -37,6 +37,7 @@
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
+#include <libethereum/BlockChainSync.h>
 #include <libethcore/KeyManager.h>
 
 #include <libwebthree/WebThree.h>
@@ -375,6 +376,8 @@ void interactiveMode(eth::Client* c, std::shared_ptr<eth::TrivialGasPricer> gasP
 			cout << "Current block: " << c->blockChain().details().number << endl;
 		else if (c && cmd == "blockqueue")
 			cout << "Current blockqueue status: " << endl << c->blockQueueStatus() << endl;
+		else if (c && cmd == "sync")
+			cout << "Current sync status: " << endl << c->syncStatus() << endl;
 		else if (c && cmd == "hashrate")
 			cout << "Current hash rate: " << toString(c->hashrate()) << " hashes per second." << endl;
 		else if (c && cmd == "findblock")
@@ -1023,9 +1026,7 @@ void interactiveMode(eth::Client* c, std::shared_ptr<eth::TrivialGasPricer> gasP
 			{
 				string path;
 				iss >> path;
-				RLPStream config(2);
-				config << signingKey << beneficiary;
-				writeFile(path, config.out());
+				writeFile(path, rlpList(signingKey, beneficiary));
 			}
 			else
 				cwarn << "Require parameter: exportConfig PATH";
@@ -1468,17 +1469,22 @@ int main(int argc, char** argv)
 		}
 	}
 
+	if (g_logVerbosity > 0)
+	{
+		cout << EthGrayBold "(++)Ethereum" EthReset << endl;
+		if (c_network == eth::Network::Olympic)
+			cout << "Welcome to Olympic!" << endl;
+		else if (c_network == eth::Network::Frontier)
+			cout << "Welcome to the " EthMaroonBold "Frontier" EthReset "!" << endl;
+	}
+
 	m.execute();
 
 	KeyManager keyManager;
 	for (auto const& s: passwordsToNote)
 		keyManager.notePassword(s);
 
-	{
-		RLPStream config(2);
-		config << signingKey << beneficiary;
-		writeFile(configFile, config.out());
-	}
+	writeFile(configFile, rlpList(signingKey, beneficiary));
 
 	if (sessionKey)
 		signingKey = sessionKey;
@@ -1700,7 +1706,7 @@ int main(int argc, char** argv)
 	cout << "Transaction Signer: " << signingKey << endl;
 	cout << "Mining Benefactor: " << beneficiary << endl;
 
-	if (bootstrap || !remoteHost.empty())
+	if (bootstrap || !remoteHost.empty() || disableDiscovery)
 	{
 		web3.startNetwork();
 		cout << "Node ID: " << web3.enode() << endl;

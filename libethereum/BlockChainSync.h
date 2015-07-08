@@ -114,7 +114,7 @@ protected:
 	void requestBlocks(std::shared_ptr<EthereumPeer> _peer);
 
 protected:
-	Handler m_bqRoomAvailable;				///< Triggered once block queue
+	Handler<> m_bqRoomAvailable;			///< Triggered once block queue
 	mutable RecursiveMutex x_sync;
 	SyncState m_state = SyncState::Idle;	///< Current sync state
 	unsigned m_estimatedHashes = 0;			///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
@@ -316,5 +316,8 @@ private:
 	unsigned m_syncingBlockNumber = 0;					///< Current subchain marker
 	bool m_hashScanComplete = false;						///< True if leading peer completed hashchain scan and we have a list of subchains ready
 };
+
+std::ostream& operator<<(std::ostream& _out, SyncStatus const& _sync);
+
 }
 }

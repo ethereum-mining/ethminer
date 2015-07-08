@@ -202,6 +202,9 @@ public:
 	/// Validates and starts peer session, taking ownership of _io. Disconnects and returns false upon error.
 	void startPeerSession(Public const& _id, RLP const& _hello, RLPXFrameCoder* _io, std::shared_ptr<RLPXSocket> const& _s);
 
+	/// Get session by id
+	std::shared_ptr<Session> peerSession(NodeId const& _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? m_sessions[_id].lock() : std::shared_ptr<Session>(); }
+
 protected:
 	void onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e);
 
@@ -211,8 +214,8 @@ protected:
 private:
 	enum PeerSlotRatio { Egress = 2, Ingress = 9 };
 	
-	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? !!m_sessions[_id].lock() : false; }
-	
+	bool havePeerSession(NodeId const& _id) { return !!peerSession(_id); }
+
 	/// Determines and sets m_tcpPublic to publicly advertised address.
 	void determinePublic();
 
