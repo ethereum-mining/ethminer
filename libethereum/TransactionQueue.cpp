@@ -36,12 +36,12 @@ TransactionQueue::TransactionQueue(unsigned _limit, unsigned _futureLimit):
 	m_limit(_limit),
 	m_futureLimit(_futureLimit)
 {
-		unsigned verifierThreads = std::max(thread::hardware_concurrency(), 3U) - 2U;
-		for (unsigned i = 0; i < verifierThreads; ++i)
-			m_verifiers.emplace_back([=](){
-				setThreadName("txcheck" + toString(i));
-				this->verifierBody();
-			});
+	unsigned verifierThreads = std::max(thread::hardware_concurrency(), 3U) - 2U;
+	for (unsigned i = 0; i < verifierThreads; ++i)
+		m_verifiers.emplace_back([=](){
+			setThreadName("txcheck" + toString(i));
+			this->verifierBody();
+		});
 }
 
 TransactionQueue::~TransactionQueue()
@@ -68,6 +68,9 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, IfDropped _
 
 		try
 		{
+			// Check validity of _transactionRLP as a transaction. To do this we just deserialise and attempt to determine the sender.
+			// If it doesn't work, the signature is bad.
+			// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
 			t = Transaction(_transactionRLP, CheckTransaction::Everything);
 			UpgradeGuard ul(l);
 			ir = manageImport_WITH_LOCK(h, t);
@@ -99,7 +102,6 @@ ImportResult TransactionQueue::import(Transaction const& _transaction, IfDropped
 	ImportResult ret;
 	{
 		UpgradableGuard l(m_lock);
-		// TODO: keep old transactions around and check in State for nonce validity
 		auto ir = check_WITH_LOCK(h, _ik);
 		if (ir != ImportResult::Success)
 			return ir;
@@ -132,11 +134,7 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 {
 	try
 	{
-		// Check validity of _transactionRLP as a transaction. To do this we just deserialise and attempt to determine the sender.
-		// If it doesn't work, the signature is bad.
-		// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
 		assert(_h == _transaction.sha3());
-
 		// Remove any prior transaction with the same nonce but a lower gas price.
 		// Bomb out if there's a prior transaction with higher gas price.
 		auto cs = m_currentByAddressAndNonce.find(_transaction.from());
@@ -263,7 +261,6 @@ unsigned TransactionQueue::waiting(Address const& _a) const
 
 void TransactionQueue::setFuture(h256 const& _txHash)
 {
-//	cdebug << "txQ::setFuture" << _t.first;
 	WriteGuard l(m_lock);
 	auto it = m_currentByHash.find(_txHash);
 	if (it == m_currentByHash.end())
