@@ -313,12 +313,6 @@ pair<h256, Address> MixClient::submitTransaction(eth::TransactionSkeleton const&
 	return make_pair(t.sha3(), toAddress(ts.from, ts.nonce));
 }
 
-Address MixClient::lastCreatedContractAddr() const
-{
-	Transaction tr =  m_state.pending().back();
-	return tr.isCreation() ? right160(sha3(rlpList(tr.sender(), tr.nonce()))) : Address();
-}
-
 dev::eth::ExecutionResult MixClient::call(Address const& _from, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, bool _gasAuto, FudgeFactor _ff)
 {
 	(void)_blockNumber;
