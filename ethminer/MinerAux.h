@@ -99,10 +99,16 @@ public:
 		Farm
 	};
 
+
+#if ETH_USING_ETHASH
 	MinerCLI(OperationMode _mode = OperationMode::None): mode(_mode) {}
+#else
+	MinerCLI(OperationMode = OperationMode::None) {}
+#endif
 
 	bool interpretOption(int& i, int argc, char** argv)
 	{
+#if ETH_USING_ETHASH
 		string arg = argv[i];
 		if ((arg == "-F" || arg == "--farm") && i + 1 < argc)
 		{
@@ -289,22 +295,29 @@ public:
 		else
 			return false;
 		return true;
+#else
+		(void)i;
+		(void)argc;
+		(void)argv;
+		return false;
+#endif
 	}
 
 	void execute()
 	{
+#if ETH_USING_ETHASH
 		if (m_shouldListDevices)
 		{
-			ProofOfWork::GPUMiner::listDevices();
+			Ethash::GPUMiner::listDevices();
 			exit(0);
 		}
 
 		if (m_minerType == MinerType::CPU)
-			ProofOfWork::CPUMiner::setNumInstances(m_miningThreads);
+			Ethash::CPUMiner::setNumInstances(m_miningThreads);
 		else if (m_minerType == MinerType::GPU)
 		{
 #if ETH_ETHASHCL || !ETH_TRUE
-			if (!ProofOfWork::GPUMiner::configureGPU(
+			if (!Ethash::GPUMiner::configureGPU(
 					m_localWorkSize,
 					m_globalWorkSizeMultiplier,
 					m_msPerBatch,
@@ -315,7 +328,7 @@ public:
 					m_currentBlock
 				))
 				exit(1);
-			ProofOfWork::GPUMiner::setNumInstances(m_miningThreads);
+			Ethash::GPUMiner::setNumInstances(m_miningThreads);
 #else
 			cerr << "Selected GPU mining without having compiled with -DETHASHCL=1" << endl;
 			exit(1);
@@ -327,10 +340,12 @@ public:
 			doBenchmark(m_minerType, m_phoneHome, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
 		else if (mode == OperationMode::Farm)
 			doFarm(m_minerType, m_farmURL, m_farmRecheckPeriod);
+#endif
 	}
 
 	static void streamHelp(ostream& _out)
 	{
+#if ETH_USING_ETHASH
 		_out
 #if ETH_JSONRPC || !ETH_TRUE
 			<< "Work farming mode:" << endl
@@ -367,8 +382,12 @@ public:
 			<< "    --cl-ms-per-batch Set the OpenCL target milliseconds per batch (global workgroup size). Default is " << toString(ethash_cl_miner::c_defaultMSPerBatch) << ". If 0 is given then no autoadjustment of global work size will happen" << endl
 #endif
 			;
+#else
+		(void)_out;
+#endif
 	}
 
+#if ETH_USING_ETHASH
 	enum class MinerType
 	{
 		CPU,
@@ -576,4 +595,5 @@ private:
 	string m_farmURL = "http://127.0.0.1:8545";
 	unsigned m_farmRecheckPeriod = 500;
 	bool m_precompute = true;
+#endif
 };
