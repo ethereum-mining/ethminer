@@ -356,9 +356,9 @@ public:
 			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." << endl
 #if ETH_ETHASHCL || !ETH_TRUE
 			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
-			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::defaultLocalWorkSize) << endl
-			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << toString(ethash_cl_miner::defaultGlobalWorkSizeMultiplier) << " * " << toString(ethash_cl_miner::defaultLocalWorkSize) << endl
-			<< "    --cl-ms-per-batch Set the OpenCL target milliseconds per batch (global workgroup size). Default is " << toString(ethash_cl_miner::defaultMSPerBatch) << ". If 0 is given then no autoadjustment of global work size will happen" << endl
+			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
+			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << toString(ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier) << " * " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
+			<< "    --cl-ms-per-batch Set the OpenCL target milliseconds per batch (global workgroup size). Default is " << toString(ethash_cl_miner::c_defaultMSPerBatch) << ". If 0 is given then no autoadjustment of global work size will happen" << endl
 #endif
 			;
 	}
@@ -549,9 +549,9 @@ private:
 	bool m_shouldListDevices = false;
 	bool m_clAllowCPU = false;
 #if ETH_ETHASHCL || !ETH_TRUE
-	unsigned m_globalWorkSizeMultiplier = ethash_cl_miner::defaultGlobalWorkSizeMultiplier;
-	unsigned m_localWorkSize = ethash_cl_miner::defaultLocalWorkSize;
-	unsigned m_msPerBatch = ethash_cl_miner::defaultMSPerBatch;
+	unsigned m_globalWorkSizeMultiplier = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier;
+	unsigned m_localWorkSize = ethash_cl_miner::c_defaultLocalWorkSize;
+	unsigned m_msPerBatch = ethash_cl_miner::c_defaultMSPerBatch;
 #endif
 	boost::optional<uint64_t> m_currentBlock;
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
