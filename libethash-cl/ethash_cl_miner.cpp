@@ -316,7 +316,7 @@ bool ethash_cl_miner::init(
 		// remember the device's address bits
 		m_deviceBits = device.getInfo<CL_DEVICE_ADDRESS_BITS>();
 		// make sure first step of global work size adjustment is large enough
-		m_stepWorkSizeAdjust = pow(2, m_deviceBits/2+1);
+		m_stepWorkSizeAdjust = pow(2, m_deviceBits / 2 + 1);
 
 		// patch source code
 		// note: ETHASH_CL_MINER_KERNEL is simply ethash_cl_miner_kernel.cl compiled
@@ -523,7 +523,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 					if (d > chrono::milliseconds(s_msPerBatch * 10 / 9))
 					{
 						// Divide the step by 2 when adjustment way change
-						if (m_wayWorkSizeAdjust > -1 )
+						if (m_wayWorkSizeAdjust > -1)
 							m_stepWorkSizeAdjust = max<unsigned>(1, m_stepWorkSizeAdjust / 2);
 						m_wayWorkSizeAdjust = -1;
 						// cerr << "m_stepWorkSizeAdjust: " << m_stepWorkSizeAdjust << ", m_wayWorkSizeAdjust: " << m_wayWorkSizeAdjust << endl;
@@ -535,7 +535,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 					else if (d < chrono::milliseconds(s_msPerBatch * 9 / 10))
 					{
 						// Divide the step by 2 when adjustment way change
-						if (m_wayWorkSizeAdjust < 1 )
+						if (m_wayWorkSizeAdjust < 1)
 							m_stepWorkSizeAdjust = max<unsigned>(1, m_stepWorkSizeAdjust / 2);
 						m_wayWorkSizeAdjust = 1;
 						// cerr << "m_stepWorkSizeAdjust: " << m_stepWorkSizeAdjust << ", m_wayWorkSizeAdjust: " << m_wayWorkSizeAdjust << endl;
