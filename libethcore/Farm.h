@@ -29,7 +29,6 @@
 #include <libethcore/Common.h>
 #include <libethcore/Miner.h>
 #include <libethcore/BlockInfo.h>
-#include <libethcore/ProofOfWork.h>
 
 namespace dev
 {
