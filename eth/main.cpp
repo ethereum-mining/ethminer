@@ -1702,7 +1702,10 @@ int main(int argc, char** argv)
 	{
 		c->setGasPricer(gasPricer);
 		c->setForceMining(forceMining);
+		// TODO: expose sealant interface.
+#if ETH_USING_ETHASH
 		c->setTurboMining(m.minerType() == MinerCLI::MinerType::GPU);
+#endif
 		c->setAddress(beneficiary);
 		c->setNetworkId(networkId);
 	}
