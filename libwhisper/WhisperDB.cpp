@@ -49,7 +49,7 @@ WhisperDB::~WhisperDB()
 	delete m_db;
 }
 
-bool WhisperDB::put(dev::h256 const& _key, string const& _value)
+bool WhisperDB::insert(dev::h256 const& _key, string const& _value)
 {
 	string s = _key.hex();
 	string cropped = s.substr(s.size() - 8);
@@ -62,7 +62,7 @@ bool WhisperDB::put(dev::h256 const& _key, string const& _value)
 	return status.ok();
 }
 
-string WhisperDB::get(dev::h256 const& _key) const
+string WhisperDB::lookup(dev::h256 const& _key) const
 {
 	string ret;
 	string s = _key.hex();
@@ -76,7 +76,7 @@ string WhisperDB::get(dev::h256 const& _key) const
 	return ret;
 }
 
-bool WhisperDB::erase(dev::h256 const& _key)
+bool WhisperDB::kill(dev::h256 const& _key)
 {
 	string s = _key.hex();
 	string cropped = s.substr(s.size() - 8);

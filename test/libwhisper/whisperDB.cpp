@@ -42,29 +42,29 @@ BOOST_AUTO_TEST_CASE(first)
 	string const text1 = "lorem_ipsum";
 	string const text2 = "dolor_sit_amet";
 
-	db.erase(h1);
-	db.erase(h2);
+	db.kill(h1);
+	db.kill(h2);
 
-	db.put(h1, text2);
-	s = db.get(h2);
+	db.insert(h1, text2);
+	s = db.lookup(h2);
 	BOOST_REQUIRE(s.empty());
-	s = db.get(h1);
+	s = db.lookup(h1);
 	BOOST_REQUIRE(!s.compare(text2));
 
-	db.put(h1, text1);
-	s = db.get(h2);
+	db.insert(h1, text1);
+	s = db.lookup(h2);
 	BOOST_REQUIRE(s.empty());
-	s = db.get(h1);
+	s = db.lookup(h1);
 	BOOST_REQUIRE(!s.compare(text1));
 
-	db.put(h2, text2);
-	s = db.get(h2);
+	db.insert(h2, text2);
+	s = db.lookup(h2);
 	BOOST_REQUIRE(!s.compare(text2));
-	s = db.get(h1);
+	s = db.lookup(h1);
 	BOOST_REQUIRE(!s.compare(text1));
 
-	db.erase(h1);
-	db.erase(h2);
+	db.kill(h1);
+	db.kill(h2);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
