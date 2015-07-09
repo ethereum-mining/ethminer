@@ -29,6 +29,7 @@
 #include <libdevcore/CommonIO.h>
 #include "Common.h"
 #include "Miner.h"
+#include "Farm.h"
 
 class ethash_cl_miner;
 
@@ -162,6 +163,36 @@ public:
 #else
 	using GPUMiner = CPUMiner;
 #endif
+	/// Default value of the local work size. Also known as workgroup size.
+	static const unsigned defaultLocalWorkSize;
+	/// Default value of the global work size as a multiplier of the local work size
+	static const unsigned defaultGlobalWorkSizeMultiplier;
+	/// Default value of the milliseconds per global work size (per batch)
+	static const unsigned defaultMSPerBatch;
+
+	struct Farm: public eth::GenericFarm<Ethash>
+	{
+	public:
+		strings sealers() const { return { "cpu", "opencl" }; }
+		void setSealer(std::string const& _sealer) { m_opencl = (_sealer == "opencl"); }
+
+		void sealBlock(BlockInfo const& _bi)
+		{
+			setWork(_bi);
+			if (m_opencl)
+				startGPU();
+			else
+				startCPU();
+
+			setWork(_bi);
+			ensurePrecomputed((unsigned)_bi.number);
+		}
+
+		void disable() { stop(); }
+
+	private:
+		bool m_opencl = false;
+	};
 };
 
 }
