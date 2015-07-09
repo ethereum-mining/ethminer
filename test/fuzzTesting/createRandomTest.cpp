@@ -34,6 +34,7 @@ extern std::string const c_testExampleStateTest;
 extern std::string const c_testExampleTransactionTest;
 extern std::string const c_testExampleVMTest;
 extern std::string const c_testExampleBlockchainTest;
+extern std::string const c_testExampleRLPTest;
 
 //Main Test functinos
 void fillRandomTest(std::function<void(json_spirit::mValue&, bool)> _doTests, std::string const& _testString, bool _debug = false);
@@ -62,7 +63,8 @@ int main(int argc, char *argv[])
 		if (arg == "-t" && i + 1 < argc)
 		{
 			testSuite = argv[i + 1];
-			if (testSuite != "BlockChainTests" && testSuite != "TransactionTests" && testSuite != "StateTests" && testSuite != "VMTests")
+			if (testSuite != "BlockChainTests" && testSuite != "TransactionTests" && testSuite != "StateTests"
+				&& testSuite != "VMTests" && testSuite != "RLPTests")
 				testSuite = "";
 		}
 		else
@@ -138,6 +140,14 @@ int main(int argc, char *argv[])
 			}
 			else
 				fillRandomTest(dev::test::doVMTests, (filltest) ? testFillString : c_testExampleVMTest, filldebug);
+		}
+		else
+		if (testSuite == "RLPTests")
+		{
+			if (checktest)
+				return checkRandomTest(dev::test::doStateTests, testmValue, debug);
+			else
+				fillRandomTest(dev::test::doStateTests, (filltest) ? testFillString : c_testExampleStateTest, filldebug);
 		}
 	}
 
@@ -239,6 +249,9 @@ void parseTestWithTypes(std::string& _test)
 		std::size_t pos = _test.find(types.at(i));
 		while (pos != std::string::npos)
 		{
+			if (types.at(i) == "[RLP]")
+				_test.replace(pos, 5, dev::test::RandomCode::generate(10, options));
+			else
 			if (types.at(i) == "[CODE]")
 				_test.replace(pos, 6, "0x"+dev::test::RandomCode::generate(10, options));
 			else
@@ -276,7 +289,7 @@ void parseTestWithTypes(std::string& _test)
 
 std::vector<std::string> getTypes()
 {
-	return {"[CODE]", "[HEX]", "[HASH20]", "[HASH32]", "[0xHASH32]", "[V]", "[GASLIMIT]"};
+	return {"[RLP]", "[CODE]", "[HEX]", "[HASH20]", "[HASH32]", "[0xHASH32]", "[V]", "[GASLIMIT]"};
 }
 
 std::string const c_testExampleTransactionTest = R"(
@@ -374,6 +387,14 @@ std::string const c_testExampleVMTest = R"(
 				"gas" : "[HEX]"
 		   }
 	   }
+}
+)";
+
+std::string const c_testExampleRLPTest = R"(
+{
+	"randomRLPTest" : {
+			"out" : "[RLP]"
+		}
 }
 )";
 
