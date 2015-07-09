@@ -50,9 +50,9 @@
 
 using namespace std;
 
-const unsigned ethash_cl_miner::defaultLocalWorkSize = 64;
-const unsigned ethash_cl_miner::defaultGlobalWorkSizeMultiplier = 4096; // * CL_DEFAULT_LOCAL_WORK_SIZE
-const unsigned ethash_cl_miner::defaultMSPerBatch = 0;
+const unsigned ethash_cl_miner::c_defaultLocalWorkSize = 64;
+const unsigned ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier = 4096; // * CL_DEFAULT_LOCAL_WORK_SIZE
+const unsigned ethash_cl_miner::c_defaultMSPerBatch = 0;
 
 // TODO: If at any point we can use libdevcore in here then we should switch to using a LogChannel
 #define ETHCL_LOG(_contents) cout << "[OPENCL]:" << _contents << endl
@@ -185,9 +185,9 @@ bool ethash_cl_miner::configureGPU(
 
 bool ethash_cl_miner::s_allowCPU = false;
 unsigned ethash_cl_miner::s_extraRequiredGPUMem;
-unsigned ethash_cl_miner::s_msPerBatch = ethash_cl_miner::defaultMSPerBatch;
-unsigned ethash_cl_miner::s_workgroupSize = ethash_cl_miner::defaultLocalWorkSize;
-unsigned ethash_cl_miner::s_initialGlobalWorkSize = ethash_cl_miner::defaultGlobalWorkSizeMultiplier * ethash_cl_miner::defaultLocalWorkSize;
+unsigned ethash_cl_miner::s_msPerBatch = ethash_cl_miner::c_defaultMSPerBatch;
+unsigned ethash_cl_miner::s_workgroupSize = ethash_cl_miner::c_defaultLocalWorkSize;
+unsigned ethash_cl_miner::s_initialGlobalWorkSize = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier * ethash_cl_miner::c_defaultLocalWorkSize;
 
 bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
 {
