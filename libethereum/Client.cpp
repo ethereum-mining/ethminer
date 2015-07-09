@@ -325,7 +325,7 @@ void Client::killChain()
 
 	m_tq.clear();
 	m_bq.clear();
-	m_farm.stop();
+	m_farm.disable();
 
 	{
 		WriteGuard l(x_postMine);
@@ -706,19 +706,10 @@ void Client::rejigMining()
 		}
 
 		if (m_wouldMine)
-		{
-			m_farm.setWork(m_miningInfo);
-			if (m_turboMining)
-				m_farm.startGPU();
-			else
-				m_farm.startCPU();
-
-			m_farm.setWork(m_miningInfo);
-			Ethash::ensurePrecomputed(m_bc.number());
-		}
+			m_farm.sealBlock(m_miningInfo);
 	}
 	if (!m_wouldMine)
-		m_farm.stop();
+		m_farm.disable();
 }
 
 void Client::noteChanged(h256Hash const& _filters)
