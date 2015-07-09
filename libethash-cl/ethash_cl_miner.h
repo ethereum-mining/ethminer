@@ -49,7 +49,6 @@ public:
 		unsigned _msPerBatch,
 		bool _allowCPU,
 		unsigned _extraGPUMemory,
-		bool _currentBlockGiven,
 		uint64_t _currentBlock
 	);
 
