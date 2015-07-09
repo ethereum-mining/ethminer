@@ -553,7 +553,7 @@ private:
 	unsigned m_localWorkSize = ethash_cl_miner::c_defaultLocalWorkSize;
 	unsigned m_msPerBatch = ethash_cl_miner::c_defaultMSPerBatch;
 #endif
-	boost::optional<uint64_t> m_currentBlock;
+	uint64_t m_currentBlock = 0;
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
 	unsigned m_extraGPUMemory = 350000000;
 
