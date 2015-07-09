@@ -173,7 +173,7 @@ public:
 		if (!PoW::verify(m_currentBlock))
 			return false;
 
-		cnote << "Completed" << m_currentBlock.headerHash(WithoutProof) << m_currentBlock.proof.nonce << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
+//		cnote << "Completed" << m_currentBlock.headerHash(WithoutProof) << m_currentBlock.proof.nonce << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
 
 		completeMine();
 
