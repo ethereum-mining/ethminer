@@ -23,6 +23,10 @@
 #include <memory>
 #include "JSV8Engine.h"
 #include "libjsengine/JSEngineResources.hpp"
+#include "BuildInfo.h"
+
+#define TO_STRING_HELPER(s) #s
+#define TO_STRING(s) TO_STRING_HELPER(s)
 
 using namespace std;
 using namespace dev;
@@ -87,15 +91,6 @@ void reportException(v8::TryCatch* _tryCatch)
 	}
 }
 
-class JSV8Env
-{
-public:
-	~JSV8Env()
-	{
-		v8::V8::Dispose();
-	}
-};
-
 class JSV8Scope
 {
 public:
@@ -124,8 +119,6 @@ private:
 }
 }
 
-JSV8Env JSV8Engine::s_env = JSV8Env();
-
 JSString JSV8Value::toString() const
 {
 	if (m_value.IsEmpty())
@@ -141,6 +134,7 @@ JSString JSV8Value::toString() const
 JSV8Engine::JSV8Engine(): m_scope(new JSV8Scope())
 {
 	JSEngineResources resources;
+	eval("env = typeof(env) === 'undefined' ? {} : env; env.os = '" TO_STRING(ETH_BUILD_PLATFORM) "'");
 	string common = resources.loadResourceAsString("common");
 	string web3 = resources.loadResourceAsString("web3");
 	string admin = resources.loadResourceAsString("admin");
@@ -157,7 +151,6 @@ JSV8Engine::~JSV8Engine()
 
 JSV8Value JSV8Engine::eval(char const* _cstr) const
 {
-	v8::HandleScope handleScope;
 	v8::TryCatch tryCatch;
 	v8::Local<v8::String> source = v8::String::New(_cstr);
 	v8::Local<v8::String> name(v8::String::New("(shell)"));

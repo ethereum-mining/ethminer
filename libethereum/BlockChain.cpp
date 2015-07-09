@@ -806,8 +806,19 @@ void BlockChain::rescue(OverlayDB& _db)
 	cout << "Rescuing database..." << endl;
 
 	unsigned u = 1;
-	while (isKnown(numberHash(u)))
-		u *= 2;
+	while (true)
+	{
+		try {
+			if (isKnown(numberHash(u)))
+				u *= 2;
+			else
+				break;
+		}
+		catch (...)
+		{
+			break;
+		}
+	}
 	unsigned l = u / 2;
 	cout << "Finding last likely block number..." << endl;
 	while (u - l > 1)
