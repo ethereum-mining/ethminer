@@ -36,9 +36,9 @@ class WhisperDB
 	WhisperDB();
 	~WhisperDB();
 
-	bool put(dev::h256 const& _key, std::string const& _value);
-	bool erase(dev::h256 const& _key);
-	std::string get(dev::h256 const& _key) const;
+	bool insert(dev::h256 const& _key, std::string const& _value);
+	bool kill(dev::h256 const& _key);
+	std::string lookup(dev::h256 const& _key) const;
 
 private:
 	ldb::ReadOptions m_readOptions;
