@@ -310,7 +310,7 @@ private:
 
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
-	GenericFarm<ProofOfWork> m_farm;		///< Our mining farm.
+	ProofOfWork::Farm m_farm;		///< Our mining farm.
 
 	Handler<> m_tqReady;
 	Handler<> m_bqReady;

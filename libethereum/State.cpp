@@ -976,12 +976,12 @@ void State::completeMine()
 	ret.swapOut(m_currentBytes);
 	m_currentBlock.noteDirty();
 	cnote << "Mined " << m_currentBlock.hash() << "(parent: " << m_currentBlock.parentHash << ")";
-	StructuredLogger::minedNewBlock(
+/*	StructuredLogger::minedNewBlock(
 		m_currentBlock.hash().abridged(),
 		m_currentBlock.proof.nonce.abridged(),
 		"", //TODO: chain head hash here ??
 		m_currentBlock.parentHash.abridged()
-	);
+	);*/
 
 	// Quickly reset the transactions.
 	// TODO: Leave this in a better state than this limbo, or at least record that it's in limbo.
