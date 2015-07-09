@@ -65,16 +65,26 @@ void Ethash::ensureHeaderCacheValid(HeaderCache& io_out, BlockInfo const& _h)
 
 void Ethash::composeException(Exception& _ex, BlockInfo& _bi)
 {
+#if ETH_USING_ETHASH
 	_ex << errinfo_nonce(_bi.proof.nonce);
 	_ex << errinfo_mixHash(_bi.proof.mixHash);
 	_ex << errinfo_seedHash(_bi.proofCache());
 	Ethash::Result er = EthashAux::eval(_bi.proofCache(), _bi.headerHash(WithoutProof), _bi.proof.nonce);
 	_ex << errinfo_ethashResult(make_tuple(er.value, er.mixHash));
+#else
+	(void)_ex;
+	(void)_bi;
+#endif
 }
 
 void Ethash::composeExceptionPre(Exception& _ex, BlockInfo& _bi)
 {
+#if ETH_USING_ETHASH
 	_ex << errinfo_nonce(_bi.proof.nonce);
+#else
+	(void)_ex;
+	(void)_bi;
+#endif
 }
 
 std::string Ethash::name()
@@ -103,7 +113,9 @@ Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
 	WorkPackage ret;
 	ret.boundary = _bi.boundary();
 	ret.headerHash = _bi.headerHash(WithoutProof);
+#if ETH_USING_ETHASH
 	ret.seedHash = _bi.proofCache();
+#endif
 	return ret;
 }
 
@@ -116,7 +128,12 @@ void Ethash::ensurePrecomputed(unsigned _number)
 
 void Ethash::prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f)
 {
+#if ETH_USING_ETHASH
 	EthashAux::full(_header.proofCache(), true, _f);
+#else
+	(void)_header;
+	(void)_f;
+#endif
 }
 
 bool Ethash::preVerify(BlockInfo const& _header)
@@ -124,6 +141,7 @@ bool Ethash::preVerify(BlockInfo const& _header)
 	if (_header.number >= ETHASH_EPOCH_LENGTH * 2048)
 		return false;
 
+#if ETH_USING_ETHASH
 	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
 
 	bool ret = !!ethash_quick_check_difficulty(
@@ -131,8 +149,10 @@ bool Ethash::preVerify(BlockInfo const& _header)
 			(uint64_t)(u64)_header.proof.nonce,
 			(ethash_h256_t const*)_header.proof.mixHash.data(),
 			(ethash_h256_t const*)boundary.data());
-
 	return ret;
+#else
+	return false;
+#endif
 }
 
 bool Ethash::verify(BlockInfo const& _header)
@@ -146,6 +166,7 @@ bool Ethash::verify(BlockInfo const& _header)
 	}
 #endif
 
+#if ETH_USING_ETHASH
 	auto result = EthashAux::eval(_header);
 	bool slow = result.value <= _header.boundary() && result.mixHash == _header.proof.mixHash;
 
@@ -168,6 +189,9 @@ bool Ethash::verify(BlockInfo const& _header)
 #endif
 
 	return slow;
+#else
+	return false;
+#endif
 }
 
 unsigned Ethash::CPUMiner::s_numInstances = 0;
