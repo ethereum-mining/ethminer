@@ -42,11 +42,121 @@ boostIntGenerator RandomCode::randOpLengGen = boostIntGenerator(gen, opLengDist)
 boostIntGenerator RandomCode::randUniIntGen = boostIntGenerator(gen, uniIntDist);
 boostUInt64Generator RandomCode::randUInt64Gen = boostUInt64Generator(gen, uInt64Dist);
 
-std::string RandomCode::rndByteSequence(int _length, SizeStrictness _sizeType)
+int RandomCode::recursiveRLP(std::string &result, int depth)
+{
+	bool genvalidrlp = true;
+	if (depth > 1)
+	{
+		//create rlp blocks
+		int size = 2 + randUniIntGen() % 4;
+		for (auto i = 0; i < size; i++)
+		{
+			std::string blockstr;
+			recursiveRLP(blockstr, depth - 1);
+			result += blockstr;
+		}
+
+		//make rlp header
+		int length = result.size()/2;
+		std::string header;		
+		int rnd = randUniIntGen() % 100;
+		if (rnd < 50)
+		{
+			//make header as array
+			if (length <= 55)
+				header = toCompactHex(128 + length);
+			else
+			{
+				std::string hexlength = toCompactHex(length);
+				header = toCompactHex(183 + hexlength.size()/2) + hexlength;
+			}
+		}
+		else
+		{
+			//make header as list
+			if (length <= 55)
+				header = toCompactHex(192 + length);
+			else
+			{
+				std::string hexlength = toCompactHex(length, HexPrefix::DontAdd, 1);
+				header = toCompactHex(247 + hexlength.size()/2) + hexlength;
+			}
+		}
+		result = header + result;
+		return result.size()/2;
+	}
+	if (depth == 1)
+	{
+		int rnd = randUniIntGen() % 5;
+		switch (rnd)
+		{
+		case 0:
+			//single byte [0x00, 0x7f]
+			result.insert(0, toCompactHex(randUniIntGen() % 128, HexPrefix::DontAdd, 1));
+			return 1;
+		case 1:
+		{
+			//string 0-55 [0x80, 0xb7] + string
+			int len = randUniIntGen() % 55;
+			std::string hex = rndByteSequence(len);
+			if (len == 1)
+			if (genvalidrlp && fromHex(hex)[0] < 128)
+				hex = toCompactHex((u64)128);
+
+			result.insert(0, toCompactHex(128 + len) + hex);
+			return len + 1;
+		}
+		case 2:
+		{
+			//string more 55 [0xb8, 0xbf] + length + string
+			int len = randUniIntGen() % 100;
+			if (len < 56 && genvalidrlp)
+				len = 56;
+
+			std::string hex = rndByteSequence(len);
+			std::string hexlen = toCompactHex(len, HexPrefix::DontAdd, 1);
+			std::string rlpblock = toCompactHex(183 + hexlen.size()/2) + hexlen + hex;
+			result.insert(0, rlpblock);
+			return rlpblock.size()/2;
+		}
+		case 3:
+		{
+			//list 0-55 [0xc0, 0xf7] + data
+			int len = randUniIntGen() % 55;
+			std::string hex = rndByteSequence(len);
+			result.insert(0, toCompactHex(192 + len) + hex);
+			return len + 1;
+		}
+		case 4:
+		{
+			//list more 55 [0xf8, 0xff] + length + data
+			int len = randUniIntGen() % 100;
+			if (len < 56 && genvalidrlp)
+				len = 56;
+			std::string hexlen = toCompactHex(len, HexPrefix::DontAdd, 1);
+			std::string rlpblock = toCompactHex(247 + hexlen.size()/2) + hexlen + rndByteSequence(len);
+			result.insert(0, rlpblock);
+			return rlpblock.size()/2;
+		}
+		}
+	}
+	return 0;
+}
+
+std::string RandomCode::rndRLPSequence(int _length, SizeStrictness _sizeType)
 {
 	refreshSeed();
 	std::string hash;
 	_length = (_sizeType == SizeStrictness::Strict) ? std::max(1, _length) : randomUniInt() % _length;
+	recursiveRLP(hash, _length);
+	return hash;
+}
+
+std::string RandomCode::rndByteSequence(int _length, SizeStrictness _sizeType)
+{
+	refreshSeed();
+	std::string hash = "";
+	_length = (_sizeType == SizeStrictness::Strict) ? std::max(0, _length) : randomUniInt() % _length;
 	for (auto i = 0; i < _length; i++)
 	{
 		uint8_t byte = randOpCodeGen();
