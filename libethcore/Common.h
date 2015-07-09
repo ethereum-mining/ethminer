@@ -192,11 +192,22 @@ struct TransactionSkeleton
 	u256 nonce = UndefinedU256;
 	u256 gas = UndefinedU256;
 	u256 gasPrice = UndefinedU256;
-	u256 nonce = UndefinedU256;
 };
 
 void badBlock(bytesConstRef _header, std::string const& _err);
 inline void badBlock(bytes const& _header, std::string const& _err) { badBlock(&_header, _err); }
+
+// TODO: move back into a mining subsystem and have it be accessible from Sealant only via a dynamic_cast.
+/**
+ * @brief Describes the progress of a mining operation.
+ */
+struct MiningProgress
+{
+//	MiningProgress& operator+=(MiningProgress const& _mp) { hashes += _mp.hashes; ms = std::max(ms, _mp.ms); return *this; }
+	uint64_t hashes = 0;		///< Total number of hashes computed.
+	uint64_t ms = 0;			///< Total number of milliseconds of mining thus far.
+	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
+};
 
 }
 }
