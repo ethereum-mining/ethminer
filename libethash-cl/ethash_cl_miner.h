@@ -1,6 +1,6 @@
 #pragma once
 
-#define __CL_ENABLE_EXCEPTIONS 
+#define __CL_ENABLE_EXCEPTIONS
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 
 #if defined(__clang__)
@@ -12,7 +12,6 @@
 #include "cl.hpp"
 #endif
 
-#include <boost/optional.hpp>
 #include <time.h>
 #include <functional>
 #include <libethash/ethash.h>
@@ -50,7 +49,7 @@ public:
 		unsigned _msPerBatch,
 		bool _allowCPU,
 		unsigned _extraGPUMemory,
-		boost::optional<uint64_t> _currentBlock
+		uint64_t _currentBlock
 	);
 
 	bool init(
