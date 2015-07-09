@@ -202,7 +202,12 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bool _createIfMissing
 
 Ethash::Result EthashAux::eval(BlockInfo const& _header)
 {
+#if ETH_USING_ETHASH
 	return eval(_header, _header.proof.nonce);
+#else
+	(void)_header;
+	return Ethash::Result();
+#endif
 }
 
 #define DEV_IF_THROWS(X) try { X; } catch (...)
@@ -257,7 +262,13 @@ Ethash::Result EthashAux::LightAllocation::compute(h256 const& _headerHash, Nonc
 
 Ethash::Result EthashAux::eval(BlockInfo const& _header, Nonce const& _nonce)
 {
+#if ETH_USING_ETHASH
 	return eval(_header.proofCache(), _header.headerHash(WithoutProof), _nonce);
+#else
+	(void)_header;
+	(void)_nonce;
+	return Ethash::Result();
+#endif
 }
 
 Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
