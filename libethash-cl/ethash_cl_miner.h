@@ -67,11 +67,11 @@ public:
 
 	/* -- default values -- */
 	/// Default value of the local work size. Also known as workgroup size.
-	static const unsigned c_defaultLocalWorkSize;
+	static unsigned const c_defaultLocalWorkSize;
 	/// Default value of the global work size as a multiplier of the local work size
-	static const unsigned c_defaultGlobalWorkSizeMultiplier;
+	static unsigned const c_defaultGlobalWorkSizeMultiplier;
 	/// Default value of the milliseconds per global work size (per batch)
-	static const unsigned c_defaultMSPerBatch;
+	static unsigned const c_defaultMSPerBatch;
 
 private:
 
