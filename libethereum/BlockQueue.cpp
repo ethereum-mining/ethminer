@@ -101,7 +101,7 @@ void BlockQueue::verifierBody()
 			swap(work, m_unverified.front());
 			m_unverified.pop_front();
 			BlockInfo bi;
-			bi.proof.mixHash = work.hash;
+			bi.sha3Uncles = work.hash;
 			bi.parentHash = work.parentHash;
 			m_verifying.emplace_back(move(bi));
 		}
@@ -121,7 +121,7 @@ void BlockQueue::verifierBody()
 			m_readySet.erase(work.hash);
 			m_knownBad.insert(work.hash);
 			for (auto it = m_verifying.begin(); it != m_verifying.end(); ++it)
-				if (it->verified.info.proof.mixHash == work.hash)
+				if (it->verified.info.sha3Uncles == work.hash)
 				{
 					m_verifying.erase(it);
 					goto OK1;
@@ -136,7 +136,7 @@ void BlockQueue::verifierBody()
 		{
 			WriteGuard l2(m_lock);
 			unique_lock<Mutex> l(m_verification);
-			if (!m_verifying.empty() && m_verifying.front().verified.info.proof.mixHash == work.hash)
+			if (!m_verifying.empty() && m_verifying.front().verified.info.sha3Uncles == work.hash)
 			{
 				// we're next!
 				m_verifying.pop_front();
@@ -154,7 +154,7 @@ void BlockQueue::verifierBody()
 			else
 			{
 				for (auto& i: m_verifying)
-					if (i.verified.info.proof.mixHash == work.hash)
+					if (i.verified.info.sha3Uncles == work.hash)
 					{
 						i = move(res);
 						goto OK;
@@ -323,9 +323,9 @@ void BlockQueue::updateBad_WITH_LOCK(h256 const& _bad)
 			std::deque<VerifiedBlock> oldVerifying;
 			swap(m_verifying, oldVerifying);
 			for (auto& b: oldVerifying)
-				if (m_knownBad.count(b.verified.info.parentHash) || m_knownBad.count(b.verified.info.proof.mixHash))
+				if (m_knownBad.count(b.verified.info.parentHash) || m_knownBad.count(b.verified.info.sha3Uncles))
 				{
-					h256 const& h = b.blockData.size() != 0 ? b.verified.info.hash() : b.verified.info.proof.mixHash;
+					h256 const& h = b.blockData.size() != 0 ? b.verified.info.hash() : b.verified.info.sha3Uncles;
 					m_knownBad.insert(h);
 					m_readySet.erase(h);
 					collectUnknownBad_WITH_BOTH_LOCKS(h);
