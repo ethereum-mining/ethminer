@@ -266,8 +266,7 @@ enum class OperationMode
 {
 	Node,
 	Import,
-	Export,
-	Rescue
+	Export
 };
 
 enum class Format
@@ -1085,7 +1084,7 @@ int main(int argc, char** argv)
 #endif
 	string jsonAdmin;
 	bool upnp = true;
-	WithExisting killChain = WithExisting::Trust;
+	WithExisting withExisting = WithExisting::Trust;
 	bool jit = false;
 	string sentinel;
 
@@ -1252,11 +1251,11 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		else if (arg == "-K" || arg == "--kill-blockchain" || arg == "--kill")
-			killChain = WithExisting::Kill;
+			withExisting = WithExisting::Kill;
 		else if (arg == "-R" || arg == "--rebuild")
-			killChain = WithExisting::Verify;
+			withExisting = WithExisting::Verify;
 		else if (arg == "-R" || arg == "--rescue")
-			mode = OperationMode::Rescue;
+			withExisting = WithExisting::Rescue;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 		{
 			if (arg == "-c")
@@ -1534,7 +1533,7 @@ int main(int argc, char** argv)
 	dev::WebThreeDirect web3(
 		WebThreeDirect::composeClientVersion("++eth", clientName),
 		dbPath,
-		killChain,
+		withExisting,
 		nodeMode == NodeMode::Full ? set<string>{"eth"/*, "shh"*/} : set<string>(),
 		netPrefs,
 		&nodesState);
@@ -1555,12 +1554,6 @@ int main(int argc, char** argv)
 			exit(-1);
 		}
 	};
-
-	if (mode == OperationMode::Rescue)
-	{
-		web3.ethereum()->rescue();
-		exit(0);
-	}
 
 	if (mode == OperationMode::Export)
 	{

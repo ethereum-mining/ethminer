@@ -189,7 +189,7 @@ private:
 
 /// Scope guard for invariant check in a class derived from HasInvariants.
 #if ETH_DEBUG
-#define DEV_INVARIANT_CHECK { ::dev::InvariantChecker __dev_invariantCheck(this, BOOST_CURRENT_FUNCTION, __FILE__, __LINE__); }
+#define DEV_INVARIANT_CHECK ::dev::InvariantChecker __dev_invariantCheck(this, BOOST_CURRENT_FUNCTION, __FILE__, __LINE__)
 #else
 #define DEV_INVARIANT_CHECK (void)0;
 #endif
@@ -240,6 +240,7 @@ enum class WithExisting: int
 {
 	Trust = 0,
 	Verify,
+	Rescue,
 	Kill
 };
 

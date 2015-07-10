@@ -95,7 +95,7 @@ using SpinGuard = std::lock_guard<SpinLock>;
  * Mutex m;
  * int d;
  * ...
- * ETH_(m)
+ * ETH_GUARDED(m)
  * {
  *   for (auto d = 50; d > 25; --d)
  *     foo(d);
