@@ -341,11 +341,22 @@ BOOST_AUTO_TEST_CASE(deadlineTimer)
 {
 	ba::io_service io;
 	ba::deadline_timer t(io);
-	t.expires_from_now(boost::posix_time::milliseconds(1));
-	this_thread::sleep_for(chrono::milliseconds(2));
+	bool start = false;
+	boost::system::error_code ec;
+	std::atomic<unsigned> fired(0);
+	
+	thread thread([&](){ while(!start) this_thread::sleep_for(chrono::milliseconds(10)); io.run(); });
+	t.expires_from_now(boost::posix_time::milliseconds(200));
+	start = true;
+	t.async_wait([&](boost::system::error_code const& _ec){ ec = _ec; fired++; });
+	BOOST_REQUIRE_NO_THROW(t.wait());
+	this_thread::sleep_for(chrono::milliseconds(250));
 	auto expire = t.expires_from_now().total_milliseconds();
 	BOOST_REQUIRE(expire <= 0);
-	BOOST_REQUIRE_NO_THROW(t.wait());
+	BOOST_REQUIRE(fired == 1);
+	BOOST_REQUIRE(!ec);
+	io.stop();
+	thread.join();
 }
 
 BOOST_AUTO_TEST_CASE(unspecifiedNode)
