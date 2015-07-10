@@ -94,6 +94,7 @@ public:
 		h256 const& mixHash() const { return m_mixHash; }
 
 	protected:
+		BlockHeaderRaw() = default;
 		BlockHeaderRaw(BlockInfo const& _bi): BlockInfo(_bi) {}
 
 		static const unsigned SealFields = 2;
