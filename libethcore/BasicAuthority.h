@@ -30,6 +30,7 @@
 #include "Sealer.h"
 
 class BasicAuthoritySeal;
+class BasicAuthoritySealEngine;
 
 namespace dev
 {
@@ -48,6 +49,8 @@ namespace eth
  */
 class BasicAuthority
 {
+	friend class ::BasicAuthoritySealEngine;
+
 public:
 	// TODO: remove
 	struct Result {};
@@ -70,6 +73,7 @@ public:
 		Signature sig() const { return m_sig; }
 
 	protected:
+		BlockHeaderRaw() = default;
 		BlockHeaderRaw(BlockInfo const& _bi): BlockInfo(_bi) {}
 
 		static const unsigned SealFields = 1;
@@ -84,7 +88,8 @@ public:
 	};
 	using BlockHeader = BlockHeaderPolished<BlockHeaderRaw>;
 
-	static const Address Authority;
+private:
+	static AddressHash s_authorities;
 };
 
 }
