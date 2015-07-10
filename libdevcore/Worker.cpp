@@ -50,11 +50,13 @@ void Worker::startWorking()
 //				cnote << "Trying to set Started: Thread was" << (unsigned)ex << "; " << ok;
 				(void)ok;
 
-				startedWorking();
-//				cnote << "Entering work loop...";
-				workLoop();
-//				cnote << "Finishing up worker thread...";
-				doneWorking();
+				try
+				{
+					startedWorking();
+					workLoop();
+					doneWorking();
+				}
+				catch (...) {}
 
 //				ex = WorkerState::Stopping;
 //				m_state.compare_exchange_strong(ex, WorkerState::Stopped);
