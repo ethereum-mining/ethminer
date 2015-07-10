@@ -56,7 +56,10 @@ void Worker::startWorking()
 					workLoop();
 					doneWorking();
 				}
-				catch (...) {}
+				catch (std::exception const& _e)
+				{
+					clog(WarnChannel) << "Exception thrown in Worker thread: " _e.what();
+				}
 
 //				ex = WorkerState::Stopping;
 //				m_state.compare_exchange_strong(ex, WorkerState::Stopped);
