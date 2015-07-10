@@ -122,8 +122,6 @@ public:
 	/// Copy state object.
 	State& operator=(State const& _s);
 
-	~State();
-
 	/// Construct state object from arbitrary point in blockchain.
 	PopulationStatistics populateFromChain(BlockChain const& _bc, h256 const& _hash, ImportRequirements::value _ir = ImportRequirements::Default);
 
@@ -145,11 +143,6 @@ public:
 	/// Get the header information on the present block.
 	BlockInfo const& info() const { return m_currentBlock; }
 
-	/// @brief Checks that mining the current object will result in a valid block.
-	/// Effectively attempts to import the serialised block.
-	/// @returns true if all is ok. If it's false, worry.
-	bool amIJustParanoid(BlockChain const& _bc);
-
 	/// Prepares the current state for mining.
 	/// Commits all transactions into the trie, compiles uncles and transactions list, applies all
 	/// rewards and populates the current block header with the appropriate hashes.
@@ -157,9 +150,6 @@ public:
 	///
 	/// This may be called multiple times and without issue.
 	void commitToMine(BlockChain const& _bc, bytes const& _extraData = {});
-
-	/// @returns true iff commitToMine() has been called without any subsequest transactions added &c.
-	bool isCommittedToMine() const { return m_committedToMine; }
 
 	/// Pass in a solution to the proof-of-work.
 	/// @returns true iff we were previously committed to mining.
@@ -196,24 +186,24 @@ public:
 	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit - gasUsed(); }
 
 	/// Check if the address is in use.
-	bool addressInUse(Address _address) const;
+	bool addressInUse(Address const& _address) const;
 
 	/// Check if the address contains executable code.
-	bool addressHasCode(Address _address) const;
+	bool addressHasCode(Address const& _address) const;
 
 	/// Get an account's balance.
 	/// @returns 0 if the address has never been used.
-	u256 balance(Address _id) const;
+	u256 balance(Address const& _id) const;
 
 	/// Add some amount to balance.
 	/// Will initialise the address if it has never been used.
-	void addBalance(Address _id, u256 _amount);
+	void addBalance(Address const& _id, u256 const& _amount);
 
 	/** Subtract some amount from balance.
 	 * @throws NotEnoughCash if balance of @a _id is less than @a _value (or has never been used).
 	 * @note We use bigint here as we don't want any accidental problems with negative numbers.
 	 */
-	void subBalance(Address _id, bigint _value);
+	void subBalance(Address const& _id, bigint const& _value);
 
 	/**
 	 * @brief Transfers "the balance @a _value between two accounts.
@@ -221,40 +211,40 @@ public:
 	 * @param _to Account to which @a _value will be added.
 	 * @param _value Amount to be transferred.
 	 */
-	void transferBalance(Address _from, Address _to, u256 _value) { subBalance(_from, _value); addBalance(_to, _value); }
+	void transferBalance(Address const& _from, Address const& _to, u256 const& _value) { subBalance(_from, _value); addBalance(_to, _value); }
 
 	/// Get the root of the storage of an account.
-	h256 storageRoot(Address _contract) const;
+	h256 storageRoot(Address const& _contract) const;
 
 	/// Get the value of a storage position of an account.
 	/// @returns 0 if no account exists at that address.
-	u256 storage(Address _contract, u256 _memory) const;
+	u256 storage(Address const& _contract, u256 const& _memory) const;
 
 	/// Set the value of a storage position of an account.
-	void setStorage(Address _contract, u256 _location, u256 _value) { m_cache[_contract].setStorage(_location, _value); }
+	void setStorage(Address const& _contract, u256 const& _location, u256 const& _value) { m_cache[_contract].setStorage(_location, _value); }
 
 	/// Create a new contract.
-	Address newContract(u256 _balance, bytes const& _code);
+	Address newContract(u256 const& _balance, bytes const& _code);
 
 	/// Get the storage of an account.
 	/// @note This is expensive. Don't use it unless you need to.
 	/// @returns std::unordered_map<u256, u256> if no account exists at that address.
-	std::unordered_map<u256, u256> storage(Address _contract) const;
+	std::unordered_map<u256, u256> storage(Address const& _contract) const;
 
 	/// Get the code of an account.
 	/// @returns bytes() if no account exists at that address.
-	bytes const& code(Address _contract) const;
+	bytes const& code(Address const& _contract) const;
 
 	/// Get the code hash of an account.
 	/// @returns EmptySHA3 if no account exists at that address or if there is no code associated with the address.
-	h256 codeHash(Address _contract) const;
+	h256 codeHash(Address const& _contract) const;
 
 	/// Note that the given address is sending a transaction and thus increment the associated ticker.
-	void noteSending(Address _id);
+	void noteSending(Address const& _id);
 
 	/// Get the number of transactions a particular address has sent (used for the transaction nonce).
 	/// @returns 0 if the address has never been used.
-	u256 transactionsFrom(Address _address) const;
+	u256 transactionsFrom(Address const& _address) const;
 
 	/// The hash of the root of our state tree.
 	h256 rootHash() const { return m_state.root(); }
@@ -333,10 +323,10 @@ private:
 	/// If _requireMemory is true, grab the full memory should it be a contract item.
 	/// If _forceCreate is true, then insert a default item into the cache, in the case it doesn't
 	/// exist in the DB.
-	void ensureCached(Address _a, bool _requireCode, bool _forceCreate) const;
+	void ensureCached(Address const& _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Retrieve all information about a given address into a cache.
-	void ensureCached(std::unordered_map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
+	void ensureCached(std::unordered_map<Address, Account>& _cache, Address const& _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock.
 	/// Throws on failure.
