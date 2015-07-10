@@ -70,6 +70,7 @@ namespace fs = boost::filesystem;
 #include <libethcore/BasicAuthority.h>
 #include <libethcore/BlockInfo.h>
 #include <libethcore/Ethash.h>
+#include <libethcore/Params.h>
 using namespace std;
 using namespace dev;
 using namespace eth;
@@ -80,24 +81,43 @@ using namespace eth;
 int main()
 {
 	BlockInfo bi;
+	bi.difficulty = c_genesisDifficulty;
+	bi.gasLimit = c_genesisGasLimit;
+	bi.number = 1;
+	bi.parentHash = sha3("parentHash");
+
 	bytes sealedData;
 
-	SealEngineFace* se = BasicAuthority::createSealEngine();
-	cdebug << se->sealers();
-	se->onSealGenerated([&](SealFace const* seal){ sealedData = seal->sealedHeader(bi); });
-	se->generateSeal(bi);
 	{
+		KeyPair kp(sha3("test"));
+		SealEngineFace* se = BasicAuthority::createSealEngine();
+		se->setOption("authority", rlp(kp.secret()));
+		se->setOption("authorities", rlpList(kp.address()));
+		cdebug << se->sealers();
+		bool done = false;
+		se->onSealGenerated([&](SealFace const* seal){
+			sealedData = seal->sealedHeader(bi);
+			done = true;
+		});
+		se->generateSeal(bi);
+		while (!done)
+			this_thread::sleep_for(chrono::milliseconds(50));
 		BasicAuthority::BlockHeader sealed = BasicAuthority::BlockHeader::fromHeader(sealedData, CheckEverything);
 		cdebug << sealed.sig();
 	}
 
-	SealEngineFace* se = Ethash::createSealEngine();
-	cdebug << se->sealers();
-	se->onSealGenerated([&](SealFace const* seal){ sealedData = seal->sealedHeader(bi); done = true; });
-	se->generateSeal(bi);
-	while (!done)
-		this_thread::sleep_for(chrono::milliseconds(50));
 	{
+		SealEngineFace* se = Ethash::createSealEngine();
+		cdebug << se->sealers();
+		bool done = false;
+		se->setSealer("cpu");
+		se->onSealGenerated([&](SealFace const* seal){
+			sealedData = seal->sealedHeader(bi);
+			done = true;
+		});
+		se->generateSeal(bi);
+		while (!done)
+			this_thread::sleep_for(chrono::milliseconds(50));
 		Ethash::BlockHeader sealed = Ethash::BlockHeader::fromHeader(sealedData, CheckEverything);
 		cdebug << sealed.nonce();
 	}
