@@ -156,12 +156,13 @@ void NodeTable::doDiscover(NodeId _node, unsigned _round, shared_ptr<set<shared_
 {
 	// NOTE: ONLY called by doDiscovery!
 	
-	if (!m_socketPointer->isOpen() || _round == s_maxSteps)
+	if (!m_socketPointer->isOpen())
 		return;
 	
 	if (_round == s_maxSteps)
 	{
 		clog(NodeTableEvent) << "Terminating discover after " << _round << " rounds.";
+		doDiscovery();
 		return;
 	}
 	else if (!_round && !_tried)
@@ -197,8 +198,9 @@ void NodeTable::doDiscover(NodeId _node, unsigned _round, shared_ptr<set<shared_
 
 	m_timers.schedule(c_reqTimeout.count() * 2, [this, _node, _round, _tried](boost::system::error_code const& _ec)
 	{
-		if (!_ec)
-			doDiscover(_node, _round + 1, _tried);
+		if (_ec)
+			clog(NodeTableWarn) << "Discovery timer canceled!";
+		doDiscover(_node, _round + 1, _tried);
 	});
 }
 
@@ -336,6 +338,9 @@ void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _en
 			
 			if (s.nodes.size() >= s_bucketSize)
 			{
+				if (removed)
+					clog(NodeTableWarn) << "DANGER: Bucket overflow when swapping node position.";
+				
 				// It's only contested iff nodeentry exists
 				contested = s.nodes.front().lock();
 				if (!contested)
