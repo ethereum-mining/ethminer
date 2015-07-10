@@ -46,9 +46,9 @@ class WhisperDB
 	void kill(dev::h256 const& _key);
 
 private:
-	ldb::ReadOptions m_readOptions;
-	ldb::WriteOptions m_writeOptions;
-	std::unique_ptr<ldb::DB> m_db;
+	leveldb::ReadOptions m_readOptions;
+	leveldb::WriteOptions m_writeOptions;
+	std::unique_ptr<leveldb::DB> m_db;
 };
 
 }
