@@ -49,16 +49,16 @@ public:
 	using Solution = typename PoW::Solution;
 	using Miner = GenericMiner<PoW>;
 
+	struct SealerDescriptor
+	{
+		std::function<unsigned()> instances;
+		std::function<Miner*(typename Miner::ConstructionInfo ci)> create;
+	};
+
 	~GenericFarm()
 	{
 		stop();
 	}
-
-	/**
-	 * @brief Sets the current mining mission.
-	 * @param _bi The block (header) we wish to be mining.
-	 */
-	void setWork(BlockInfo const& _bi) { setWork(PoW::package(_bi)); }
 
 	/**
 	 * @brief Sets the current mining mission.
@@ -76,18 +76,33 @@ public:
 		resetTimer();
 	}
 
-	/**
-	 * @brief (Re)start miners for CPU only.
-	 * @returns true if started properly.
-	 */
-	bool startCPU() { return start<typename PoW::CPUMiner>(); }
+	void setSealers(std::map<std::string, SealerDescriptor> const& _sealers) { m_sealers = _sealers; }
 
 	/**
-	 * @brief (Re)start miners for GPU only.
-	 * @returns true if started properly.
+	 * @brief Start a number of miners.
 	 */
-	bool startGPU() { return start<typename PoW::GPUMiner>(); }
+	bool start(std::string const& _sealer)
+	{
+		WriteGuard l(x_minerWork);
+		cdebug << "start()";
+		if (!m_miners.empty() && m_lastSealer == _sealer)
+			return true;
+		if (!m_sealers.count(_sealer))
+			return false;
 
+		m_miners.clear();
+		auto ins = m_sealers[_sealer].instances();
+		m_miners.reserve(ins);
+		for (unsigned i = 0; i < ins; ++i)
+		{
+			m_miners.push_back(std::shared_ptr<Miner>(m_sealers[_sealer].create(std::make_pair(this, i))));
+			m_miners.back()->setWork(m_work);
+		}
+		m_isMining = true;
+		m_lastSealer = _sealer;
+		resetTimer();
+		return true;
+	}
 	/**
 	 * @brief Stop all mining activities.
 	 */
@@ -168,28 +183,6 @@ private:
 		return false;
 	}
 
-	/**
-	 * @brief Start a number of miners.
-	 */
-	template <class MinerType>
-	bool start()
-	{
-		WriteGuard l(x_minerWork);
-		cdebug << "start()";
-		if (!m_miners.empty() && !!std::dynamic_pointer_cast<MinerType>(m_miners[0]))
-			return true;
-		m_miners.clear();
-		m_miners.reserve(MinerType::instances());
-		for (unsigned i = 0; i < MinerType::instances(); ++i)
-		{
-			m_miners.push_back(std::shared_ptr<Miner>(new MinerType(std::make_pair(this, i))));
-			m_miners.back()->setWork(m_work);
-		}
-		m_isMining = true;
-		resetTimer();
-		return true;
-	}
-
 	void resetTimer()
 	{
 		m_lastStart = std::chrono::steady_clock::now();
@@ -206,6 +199,9 @@ private:
 	std::chrono::steady_clock::time_point m_lastStart;
 
 	SolutionFound m_onSolutionFound;
+
+	std::map<std::string, SealerDescriptor> m_sealers;
+	std::string m_lastSealer;
 };
 
 }
