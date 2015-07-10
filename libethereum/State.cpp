@@ -214,10 +214,6 @@ State& State::operator=(State const& _s)
 	return *this;
 }
 
-State::~State()
-{
-}
-
 StateDiff State::diff(State const& _c, bool _quick) const
 {
 	StateDiff ret;
@@ -265,12 +261,12 @@ StateDiff State::diff(State const& _c, bool _quick) const
 	return ret;
 }
 
-void State::ensureCached(Address _a, bool _requireCode, bool _forceCreate) const
+void State::ensureCached(Address const& _a, bool _requireCode, bool _forceCreate) const
 {
 	ensureCached(m_cache, _a, _requireCode, _forceCreate);
 }
 
-void State::ensureCached(std::unordered_map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const
+void State::ensureCached(std::unordered_map<Address, Account>& _cache, const Address& _a, bool _requireCode, bool _forceCreate) const
 {
 	auto it = _cache.find(_a);
 	if (it == _cache.end())
@@ -827,43 +823,6 @@ void State::uncommitToMine()
 	}
 }
 
-bool State::amIJustParanoid(BlockChain const& _bc)
-{
-	commitToMine(_bc);
-
-	// Update difficulty according to timestamp.
-	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
-
-	// Compile block:
-	RLPStream block;
-	block.appendList(3);
-	m_currentBlock.streamRLP(block, WithNonce);
-	block.appendRaw(m_currentTxs);
-	block.appendRaw(m_currentUncles);
-
-	State s(*this);
-	s.resetCurrent();
-	try
-	{
-		cnote << "PARANOIA root:" << s.rootHash();
-//		s.m_currentBlock.populate(&block.out(), false);
-//		s.m_currentBlock.verifyInternals(&block.out());
-		s.enact(BlockChain::verifyBlock(block.out()), _bc, false);	// don't check nonce for this since we haven't mined it yet.
-		s.cleanup(false);
-		return true;
-	}
-	catch (Exception const& _e)
-	{
-		cwarn << "Bad block: " << diagnostic_information(_e);
-	}
-	catch (std::exception const& _e)
-	{
-		cwarn << "Bad block: " << _e.what();
-	}
-
-	return false;
-}
-
 LogBloom State::logBloom() const
 {
 	LogBloom ret;
@@ -991,7 +950,7 @@ void State::completeMine()
 	m_lastTx = m_db;
 }
 
-bool State::addressInUse(Address _id) const
+bool State::addressInUse(Address const& _id) const
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
@@ -1000,7 +959,7 @@ bool State::addressInUse(Address _id) const
 	return true;
 }
 
-bool State::addressHasCode(Address _id) const
+bool State::addressHasCode(Address const& _id) const
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
@@ -1009,7 +968,7 @@ bool State::addressHasCode(Address _id) const
 	return it->second.isFreshCode() || it->second.codeHash() != EmptySHA3;
 }
 
-u256 State::balance(Address _id) const
+u256 State::balance(Address const& _id) const
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
@@ -1018,7 +977,7 @@ u256 State::balance(Address _id) const
 	return it->second.balance();
 }
 
-void State::noteSending(Address _id)
+void State::noteSending(Address const& _id)
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
@@ -1032,7 +991,7 @@ void State::noteSending(Address _id)
 		it->second.incNonce();
 }
 
-void State::addBalance(Address _id, u256 _amount)
+void State::addBalance(Address const& _id, u256 const& _amount)
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
@@ -1042,7 +1001,7 @@ void State::addBalance(Address _id, u256 _amount)
 		it->second.addBalance(_amount);
 }
 
-void State::subBalance(Address _id, bigint _amount)
+void State::subBalance(Address const& _id, bigint const& _amount)
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
@@ -1052,7 +1011,7 @@ void State::subBalance(Address _id, bigint _amount)
 		it->second.addBalance(-_amount);
 }
 
-Address State::newContract(u256 _balance, bytes const& _code)
+Address State::newContract(u256 const& _balance, bytes const& _code)
 {
 	auto h = sha3(_code);
 	m_db.insert(h, &_code);
@@ -1069,7 +1028,7 @@ Address State::newContract(u256 _balance, bytes const& _code)
 	}
 }
 
-u256 State::transactionsFrom(Address _id) const
+u256 State::transactionsFrom(Address const& _id) const
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
@@ -1079,7 +1038,7 @@ u256 State::transactionsFrom(Address _id) const
 		return it->second.nonce();
 }
 
-u256 State::storage(Address _id, u256 _memory) const
+u256 State::storage(Address const& _id, u256 const& _memory) const
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
@@ -1101,7 +1060,7 @@ u256 State::storage(Address _id, u256 _memory) const
 	return ret;
 }
 
-unordered_map<u256, u256> State::storage(Address _id) const
+unordered_map<u256, u256> State::storage(Address const& _id) const
 {
 	unordered_map<u256, u256> ret;
 
@@ -1127,18 +1086,7 @@ unordered_map<u256, u256> State::storage(Address _id) const
 	return ret;
 }
 
-h256 State::storageRoot(Address _id) const
-{
-	string s = m_state.at(_id);
-	if (s.size())
-	{
-		RLP r(s);
-		return r[2].toHash<h256>();
-	}
-	return EmptyTrie;
-}
-
-bytes const& State::code(Address _contract) const
+bytes const& State::code(Address const& _contract) const
 {
 	if (!addressHasCode(_contract))
 		return NullBytes;
@@ -1146,7 +1094,7 @@ bytes const& State::code(Address _contract) const
 	return m_cache[_contract].code();
 }
 
-h256 State::codeHash(Address _contract) const
+h256 State::codeHash(Address const& _contract) const
 {
 	if (!addressHasCode(_contract))
 		return EmptySHA3;
