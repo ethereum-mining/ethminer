@@ -43,6 +43,12 @@ namespace dev
 	{	
 		void buildRLP(js::mValue& _v, RLPStream& _rlp);
 		void checkRLPAgainstJson(js::mValue& v, RLP& u);
+		enum class RlpType
+		{
+			Valid,
+			Invalid,
+			Test
+		};
 
 		void doRlpTests(json_spirit::mValue& v, bool _fillin)
 		{
@@ -55,7 +61,7 @@ namespace dev
 					continue;
 				}
 
-				std::cout << "  " << i.first << std::endl;
+				cout << "  " << i.first << endl;
 				TBOOST_REQUIRE((o.count("out") > 0));
 				TBOOST_REQUIRE((!o["out"].is_null()));
 
@@ -84,25 +90,25 @@ namespace dev
 				{
 					//Check Encode
 					TBOOST_REQUIRE((o.count("in") > 0));
-					int skipEncode = 0;
+					RlpType rlpType = RlpType::Test;
 					if (o["in"].type() == js::str_type)
 					{
 						if (o["in"].get_str() == "INVALID")
-							skipEncode = 1;
+							rlpType = RlpType::Invalid;
 						else	if (o["in"].get_str() == "VALID")
-							skipEncode = 2;
+							rlpType = RlpType::Valid;
 					}
 
-					if (skipEncode == 0)
+					if (rlpType == RlpType::Test)
 					{
 						RLPStream s;
 						dev::test::buildRLP(o["in"], s);
 						string computedText = toHex(s.out());
 
-						std::string expectedText(o["out"].get_str());
-						std::transform(expectedText.begin(), expectedText.end(), expectedText.begin(), ::tolower );
+						string expectedText(o["out"].get_str());
+						transform(expectedText.begin(), expectedText.end(), expectedText.begin(), ::tolower );
 
-						std::stringstream msg;
+						stringstream msg;
 						msg << "Encoding Failed: expected: " << expectedText << std::endl;
 						msg << " But Computed: " << computedText;
 						TBOOST_CHECK_MESSAGE(
@@ -123,7 +129,7 @@ namespace dev
 						bytes payloadToDecode = fromHex(o["out"].get_str());
 						RLP payload(payloadToDecode);
 
-						if (skipEncode == 0)
+						if (rlpType == RlpType::Test)
 							dev::test::checkRLPAgainstJson(inputData, payload);
 					}
 					catch (Exception const& _e)
@@ -131,20 +137,21 @@ namespace dev
 						cnote << "Exception: " << diagnostic_information(_e);
 						was_exception = true;
 					}
-					catch (std::exception const& _e)
+					catch (exception const& _e)
 					{
 						cnote << "rlp exception: " << _e.what();
 						was_exception = true;
 					}
 
 					//Expect exception as input is INVALID
-					if (skipEncode == 1 && was_exception)
+					if (rlpType == RlpType::Invalid && was_exception)
 						continue;
 
-					//Expect exception as input is INVALID
-					if (skipEncode == 1 && !was_exception)
+					//Check that there was an exception as input is INVALID
+					if (rlpType == RlpType::Invalid && !was_exception)
 						TBOOST_ERROR("Expected RLP Exception as rlp should be invalid!");
 
+					//input is VALID check that there was no exceptions
 					if (was_exception)
 						TBOOST_ERROR("Unexpected RLP Exception!");
 				}
@@ -176,12 +183,12 @@ namespace dev
 		{
 			if ( v.type() == js::str_type )
 			{
-				const std::string& expectedText = v.get_str();
+				const string& expectedText = v.get_str();
 				if ( !expectedText.empty() && expectedText.front() == '#' )
 				{
 					// Deal with bigint instead of a raw string
-					std::string bigIntStr = expectedText.substr(1,expectedText.length()-1);
-					std::stringstream bintStream(bigIntStr);
+					string bigIntStr = expectedText.substr(1,expectedText.length()-1);
+					stringstream bintStream(bigIntStr);
 					bigint val;
 					bintStream >> val;
 					TBOOST_CHECK(( !u.isList() ));
