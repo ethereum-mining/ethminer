@@ -26,11 +26,11 @@ using namespace std;
 using namespace dev;
 using namespace eth;
 
-const Address BasicAuthority::Authority = Address("1234567890123456789012345678901234567890");
+AddressHash BasicAuthority::s_authorities;
 
 bool BasicAuthority::BlockHeaderRaw::verify() const
 {
-	return toAddress(recover(m_sig, hashWithout())) == Authority;
+	return s_authorities.count(toAddress(recover(m_sig, hashWithout())));
 }
 
 bool BasicAuthority::BlockHeaderRaw::preVerify() const
@@ -94,11 +94,23 @@ public:
 	MiningProgress miningProgress() const { return MiningProgress(); }
 
 private:
+	virtual bool onOptionChanging(std::string const& _name, bytes const& _value)
+	{
+		RLP rlp(_value);
+		if (_name == "authorities")
+			BasicAuthority::s_authorities = rlp.toUnorderedSet<Address>();
+		else if (_name == "authority")
+			m_secret = rlp.toHash<Secret>();
+		else
+			return false;
+		return true;
+	}
+
 	Secret m_secret;
 	std::function<void(SealFace const* s)> m_onSealGenerated;
 };
 
-SealEngineFace* createSealEngine()
+SealEngineFace* BasicAuthority::createSealEngine()
 {
 	return new BasicAuthoritySealEngine;
 }
