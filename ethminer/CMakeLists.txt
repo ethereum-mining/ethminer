@@ -9,6 +9,7 @@ if (JSONRPC)
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 endif()
+include_directories(${OpenCL_INCLUDE_DIRS})
 
 set(EXECUTABLE ethminer)
 
@@ -40,4 +41,3 @@ if (APPLE)
 else()
 	eth_install_executable(${EXECUTABLE})
 endif()
-
