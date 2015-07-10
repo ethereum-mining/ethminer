@@ -119,7 +119,7 @@ bool Ethash::BlockHeaderRaw::verify() const
 	}
 #endif
 
-	auto result = EthashAux::eval(*this);
+	auto result = EthashAux::eval(seedHash(), hashWithout(), m_nonce);
 	bool slow = result.value <= boundary() && result.mixHash == m_mixHash;
 
 //	cdebug << (slow ? "VERIFY" : "VERYBAD");
@@ -281,6 +281,7 @@ public:
 	{
 		m_farm.onSolutionFound([=](Ethash::Solution const& sol)
 		{
+			cdebug << m_farm.work().seedHash << m_farm.work().headerHash << sol.nonce << EthashAux::eval(m_farm.work().seedHash, m_farm.work().headerHash, sol.nonce).value;
 			EthashSeal s(sol.mixHash, sol.nonce);
 			_f(&s);
 			return true;
