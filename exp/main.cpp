@@ -34,6 +34,7 @@
 #include <functional>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
+#if 0
 #include <libdevcore/TrieDB.h>
 #include <libdevcore/TrieHash.h>
 #include <libdevcore/RangeMask.h>
@@ -50,7 +51,6 @@
 #include <libdevcore/FileSystem.h>
 #include <libethereum/All.h>
 #include <libethcore/KeyManager.h>
-
 #include <libethereum/AccountDiff.h>
 #include <libethereum/DownloadMan.h>
 #include <libethereum/Client.h>
@@ -65,8 +65,47 @@ using namespace dev::p2p;
 using namespace dev::shh;
 namespace js = json_spirit;
 namespace fs = boost::filesystem;
+#else
+#include <libethcore/Sealer.h>
+#include <libethcore/BasicAuthority.h>
+#include <libethcore/BlockInfo.h>
+#include <libethcore/Ethash.h>
+using namespace std;
+using namespace dev;
+using namespace eth;
+#endif
 
 #if 1
+
+int main()
+{
+	BlockInfo bi;
+	bytes sealedData;
+
+	SealEngineFace* se = BasicAuthority::createSealEngine();
+	cdebug << se->sealers();
+	se->onSealGenerated([&](SealFace const* seal){ sealedData = seal->sealedHeader(bi); });
+	se->generateSeal(bi);
+	{
+		BasicAuthority::BlockHeader sealed = BasicAuthority::BlockHeader::fromHeader(sealedData, CheckEverything);
+		cdebug << sealed.sig();
+	}
+
+	SealEngineFace* se = Ethash::createSealEngine();
+	cdebug << se->sealers();
+	se->onSealGenerated([&](SealFace const* seal){ sealedData = seal->sealedHeader(bi); done = true; });
+	se->generateSeal(bi);
+	while (!done)
+		this_thread::sleep_for(chrono::milliseconds(50));
+	{
+		Ethash::BlockHeader sealed = Ethash::BlockHeader::fromHeader(sealedData, CheckEverything);
+		cdebug << sealed.nonce();
+	}
+
+	return 0;
+}
+
+#elif 0
 
 int main()
 {
