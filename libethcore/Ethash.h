@@ -30,6 +30,7 @@
 #include "Common.h"
 #include "Miner.h"
 #include "Farm.h"
+#include "Sealer.h"
 
 class ethash_cl_miner;
 
@@ -48,29 +49,23 @@ class EthashCLHook;
 class Ethash
 {
 public:
-	using Miner = GenericMiner<Ethash>;
+	static std::string name();
+	static unsigned revision();
+	static SealEngineFace* createSealEngine();
 
-	using HeaderCache = h256;
-	static void ensureHeaderCacheValid(HeaderCache& io_out, BlockInfo const& _h);
-	static void composeException(Exception& _ex, BlockInfo& _bi);
-	static void composeExceptionPre(Exception& _ex, BlockInfo& _bi);
-
+	// TODO: remove or virtualize
 	struct Solution
 	{
-		bool operator==(Solution const& _v) const { return nonce == _v.nonce && mixHash == _v.mixHash; }
-		void populateFromRLP(RLP const& io_rlp, int& io_field);
-		void streamRLP(RLPStream& io_rlp) const;
-		static const unsigned Fields = 2;
-		Nonce nonce;
+		h64 nonce;
 		h256 mixHash;
 	};
-
+	// TODO: make private
 	struct Result
 	{
 		h256 value;
 		h256 mixHash;
 	};
-
+	// TODO: virtualise
 	struct WorkPackage
 	{
 		WorkPackage() = default;
@@ -82,117 +77,50 @@ public:
 		h256 headerHash;	///< When h256() means "pause until notified a new work package is available".
 		h256 seedHash;
 	};
-
 	static const WorkPackage NullWorkPackage;
 
-	static std::string name();
-	static unsigned revision();
-	static void prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
+	class BlockHeaderRaw: public BlockInfo
+	{
+		friend class EthashSeal;
+
+	public:
+		bool verify() const;
+		bool preVerify() const;
+
+		void prep(std::function<int(unsigned)> const& _f = std::function<int(unsigned)>()) const;
+		WorkPackage package() const;
+		h256 const& seedHash() const;
+		h64 const& nonce() const { return m_nonce; }
+		h256 const& mixHash() const { return m_mixHash; }
+
+	protected:
+		BlockHeaderRaw(BlockInfo const& _bi): BlockInfo(_bi) {}
+
+		static const unsigned SealFields = 2;
+
+		void populateFromHeader(RLP const& _header, Strictness _s);
+		void clear() { m_mixHash = h256(); m_nonce = h64(); }
+		void noteDirty() const { m_seedHash = h256(); }
+		void streamRLPFields(RLPStream& _s) const { _s << m_mixHash << m_nonce; }
+
+	private:
+		h64 m_nonce;
+		h256 m_mixHash;
+
+		mutable h256 m_seedHash;
+		mutable h256 m_hash;						///< SHA3 hash of the block header! Not serialised.
+	};
+	using BlockHeader = BlockHeaderPolished<BlockHeaderRaw>;
+
+	// TODO: Move elsewhere (EthashAux?)
 	static void ensurePrecomputed(unsigned _number);
-	static bool verify(BlockInfo const& _header);
-	static bool preVerify(BlockInfo const& _header);
-	static WorkPackage package(BlockInfo const& _header);
 
-	class CPUMiner: public Miner, Worker
-	{
-	public:
-		CPUMiner(ConstructionInfo const& _ci): Miner(_ci), Worker("miner" + toString(index())) {}
-
-		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : std::thread::hardware_concurrency(); }
-		static std::string platformInfo();
-		static void listDevices() {}
-		static bool configureGPU(unsigned, unsigned, unsigned, unsigned, unsigned, bool, unsigned, uint64_t) { return false; }
-		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency()); }
-	protected:
-		void kickOff() override
-		{
-			stopWorking();
-			startWorking();
-		}
-
-		void pause() override { stopWorking(); }
-
-	private:
-		void workLoop() override;
-		static unsigned s_numInstances;
-	};
-
-#if ETH_ETHASHCL || !ETH_TRUE
-	class GPUMiner: public Miner, Worker
-	{
-		friend class dev::eth::EthashCLHook;
-
-	public:
-		GPUMiner(ConstructionInfo const& _ci);
-		~GPUMiner();
-
-		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
-		static std::string platformInfo();
-		static unsigned getNumDevices();
-		static void listDevices();
-		static bool configureGPU(
-			unsigned _localWorkSize,
-			unsigned _globalWorkSizeMultiplier,
-			unsigned _msPerBatch,
-			unsigned _platformId,
-			unsigned _deviceId,
-			bool _allowCPU,
-			unsigned _extraGPUMemory,
-			uint64_t _currentBlock
-		);
-		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
-
-	protected:
-		void kickOff() override;
-		void pause() override;
-
-	private:
-		void workLoop() override;
-		bool report(uint64_t _nonce);
-
-		using Miner::accumulateHashes;
-
-		EthashCLHook* m_hook = nullptr;
-		ethash_cl_miner* m_miner = nullptr;
-
-		h256 m_minerSeed;		///< Last seed in m_miner
-		static unsigned s_platformId;
-		static unsigned s_deviceId;
-		static unsigned s_numInstances;
-	};
-#else
-	using GPUMiner = CPUMiner;
-#endif
 	/// Default value of the local work size. Also known as workgroup size.
 	static const unsigned defaultLocalWorkSize;
 	/// Default value of the global work size as a multiplier of the local work size
 	static const unsigned defaultGlobalWorkSizeMultiplier;
 	/// Default value of the milliseconds per global work size (per batch)
 	static const unsigned defaultMSPerBatch;
-
-	struct Farm: public eth::GenericFarm<Ethash>
-	{
-	public:
-		strings sealers() const { return { "cpu", "opencl" }; }
-		void setSealer(std::string const& _sealer) { m_opencl = (_sealer == "opencl"); }
-
-		void sealBlock(BlockInfo const& _bi)
-		{
-			setWork(_bi);
-			if (m_opencl)
-				startGPU();
-			else
-				startCPU();
-
-			setWork(_bi);
-			ensurePrecomputed((unsigned)_bi.number);
-		}
-
-		void disable() { stop(); }
-
-	private:
-		bool m_opencl = false;
-	};
 };
 
 }
