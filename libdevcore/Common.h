@@ -65,6 +65,7 @@ using byte = uint8_t;
 #define DEV_IGNORE_EXCEPTIONS(X) try { X; } catch (...) {}
 
 #define DEV_IF_NO_ELSE(X) if(!(X)){}else
+#define DEV_IF_THROWS(X) try{X;}catch(...)
 
 namespace dev
 {
