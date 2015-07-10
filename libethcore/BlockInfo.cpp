@@ -36,9 +36,11 @@ BlockInfo::BlockInfo(): timestamp(Invalid256)
 {
 }
 
-BlockInfo::BlockInfo(bytesConstRef _block, Strictness _s, h256 const& _h)
+BlockInfo::BlockInfo(bytesConstRef _block, Strictness _s)
 {
-	populate(_block, _s, _h);
+	RLP header = extractHeader(_block);
+	m_hash = sha3(header.data());
+	populateFromHeader(header, _s);
 }
 
 void BlockInfo::clear()
@@ -56,22 +58,7 @@ void BlockInfo::clear()
 	gasUsed = 0;
 	timestamp = 0;
 	extraData.clear();
-	proof = ProofOfWork::Solution();
-	m_proofCache = ProofOfWork::HeaderCache();
-	m_hash = h256();
-}
-
-ProofOfWork::HeaderCache const& BlockInfo::proofCache() const
-{
-	ProofOfWork::ensureHeaderCacheValid(m_proofCache, *this);
-	return m_proofCache;
-}
-
-h256 const& BlockInfo::hash() const
-{
-	if (!m_hash)
-		m_hash = headerHash(WithProof);
-	return m_hash;
+	m_hashWithout = h256();
 }
 
 h256 const& BlockInfo::boundary() const
@@ -81,46 +68,48 @@ h256 const& BlockInfo::boundary() const
 	return m_boundary;
 }
 
-BlockInfo BlockInfo::fromHeader(bytesConstRef _header, Strictness _s, h256 const& _h)
+h256 const& BlockInfo::hashWithout() const
 {
-	BlockInfo ret;
-	ret.populateFromHeader(RLP(_header), _s, _h);
-	return ret;
+	if (!m_hashWithout)
+	{
+		RLPStream s(BasicFields);
+		streamRLPFields(s);
+		m_hashWithout = sha3(s.out());
+	}
+	return m_hashWithout;
 }
 
-h256 BlockInfo::headerHash(IncludeProof _n) const
+void BlockInfo::streamRLPFields(RLPStream& _s) const
 {
-	RLPStream s;
-	streamRLP(s, _n);
-	return sha3(s.out());
-}
-
-void BlockInfo::streamRLP(RLPStream& _s, IncludeProof _n) const
-{
-	_s.appendList(_n == WithProof ? 13 + ProofOfWork::Solution::Fields : 13)
-		<< parentHash << sha3Uncles << coinbaseAddress << stateRoot << transactionsRoot << receiptsRoot << logBloom
+	_s	<< parentHash << sha3Uncles << coinbaseAddress << stateRoot << transactionsRoot << receiptsRoot << logBloom
 		<< difficulty << number << gasLimit << gasUsed << timestamp << extraData;
-	if (_n == WithProof)
-		proof.streamRLP(_s);
 }
 
-h256 BlockInfo::headerHash(bytesConstRef _block)
+h256 BlockInfo::headerHashFromBlock(bytesConstRef _block)
 {
 	return sha3(RLP(_block)[0].data());
 }
 
-void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s, h256 const& _h)
+RLP BlockInfo::extractHeader(bytesConstRef _block)
 {
-	m_hash = _h;
-	if (_h)
-		assert(_h == dev::sha3(_header.data()));
-	m_proofCache = ProofOfWork::HeaderCache();
+	RLP root(_block);
+	if (!root.isList())
+		BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block needs to be a list") << BadFieldError(0, _block.toString()));
+	RLP header = root[0];
+	if (!header.isList())
+		BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block header needs to be a list") << BadFieldError(0, header.data().toString()));
+	if (!root[1].isList())
+		BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block transactions need to be a list") << BadFieldError(1, root[1].data().toString()));
+	if (!root[2].isList())
+		BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block uncles need to be a list") << BadFieldError(2, root[2].data().toString()));
+	return header;
+}
 
+void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s)
+{
 	int field = 0;
 	try
 	{
-		if (_header.itemCount() != 13 + ProofOfWork::Solution::Fields)
-			BOOST_THROW_EXCEPTION(InvalidBlockHeaderItemCount());
 		parentHash = _header[field = 0].toHash<h256>(RLP::VeryStrict);
 		sha3Uncles = _header[field = 1].toHash<h256>(RLP::VeryStrict);
 		coinbaseAddress = _header[field = 2].toHash<Address>(RLP::VeryStrict);
@@ -134,7 +123,6 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s, h256 const
 		gasUsed = _header[field = 10].toInt<u256>();
 		timestamp = _header[field = 11].toInt<u256>();
 		extraData = _header[field = 12].toBytes();
-		proof.populateFromRLP(_header, field = 13);
 	}
 	catch (Exception const& _e)
 	{
@@ -144,25 +132,6 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s, h256 const
 
 	if (number > ~(unsigned)0)
 		BOOST_THROW_EXCEPTION(InvalidNumber());
-
-	// check it hashes according to proof of work or that it's the genesis block.
-	if (_s == CheckEverything && parentHash && !ProofOfWork::verify(*this))
-	{
-		InvalidBlockNonce ex;
-		ProofOfWork::composeException(ex, *this);
-		ex << errinfo_hash256(headerHash(WithoutProof));
-		ex << errinfo_difficulty(difficulty);
-		ex << errinfo_target(boundary());
-		BOOST_THROW_EXCEPTION(ex);
-	}
-	else if (_s == QuickNonce && parentHash && !ProofOfWork::preVerify(*this))
-	{
-		InvalidBlockNonce ex;
-		ex << errinfo_hash256(headerHash(WithoutProof));
-		ex << errinfo_difficulty(difficulty);
-		ProofOfWork::composeExceptionPre(ex, *this);
-		BOOST_THROW_EXCEPTION(ex);
-	}
 
 	if (_s != CheckNothing)
 	{
@@ -178,24 +147,6 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s, h256 const
 		if (number && extraData.size() > c_maximumExtraDataSize)
 			BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(c_maximumExtraDataSize), bigint(extraData.size())));
 	}
-}
-
-void BlockInfo::populate(bytesConstRef _block, Strictness _s, h256 const& _h)
-{
-	RLP root(_block);
-	if (!root.isList())
-		BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block needs to be a list") << BadFieldError(0, _block.toString()));
-
-	RLP header = root[0];
-
-	if (!header.isList())
-		BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block header needs to be a list") << BadFieldError(0, header.data().toString()));
-	populateFromHeader(header, _s, _h);
-
-	if (!root[1].isList())
-		BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block transactions need to be a list") << BadFieldError(1, root[1].data().toString()));
-	if (!root[2].isList())
-		BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block uncles need to be a list") << BadFieldError(2, root[2].data().toString()));
 }
 
 struct BlockInfoDiagnosticsChannel: public LogChannel { static const char* name() { return EthBlue "▧" EthWhite " ◌"; } static const int verbosity = 9; };
@@ -242,9 +193,7 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 
 void BlockInfo::populateFromParent(BlockInfo const& _parent)
 {
-	noteDirty();
 	stateRoot = _parent.stateRoot;
-	parentHash = _parent.hash();
 	number = _parent.number + 1;
 	gasLimit = selectGasLimit(_parent);
 	gasUsed = 0;
@@ -285,9 +234,6 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 	// Check timestamp is after previous timestamp.
 	if (parentHash)
 	{
-		if (parentHash != _parent.hash())
-			BOOST_THROW_EXCEPTION(InvalidParentHash());
-
 		if (timestamp <= _parent.timestamp)
 			BOOST_THROW_EXCEPTION(InvalidTimestamp());
 
