@@ -158,7 +158,7 @@ public:
 	explicit BlockHeaderPolished(bytesConstRef _block, Strictness _s = IgnoreNonce, h256 const& _h = h256()) { populate(_block, _s, _h); }
 
 	static BlockHeaderPolished fromHeader(bytes const& _header, Strictness _s = IgnoreNonce, h256 const& _h = h256()) { return fromHeader(bytesConstRef(&_header), _s, _h); }
-	static BlockHeaderPolished fromHeader(bytesConstRef _header, Strictness _s = IgnoreNonce, h256 const& _h = h256()) { BlockHeaderPolished ret; ret.populateFromHeader(_header, _s, _h); return ret; }
+	static BlockHeaderPolished fromHeader(bytesConstRef _header, Strictness _s = IgnoreNonce, h256 const& _h = h256()) { BlockHeaderPolished ret; ret.populateFromHeader(RLP(_header), _s, _h); return ret; }
 
 	void populate(bytesConstRef _block, Strictness _s, h256 const& _h = h256()) { populateFromHeader(BlockInfo::extractHeader(_block), _s, _h); }
 
