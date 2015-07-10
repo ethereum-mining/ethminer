@@ -19,16 +19,9 @@
 * @date July 2015
  */
 
-#include <string>
-#include <boost/filesystem.hpp>
-
-#include <libdevcore/Common.h>
-#include <libdevcore/CommonData.h>
-#include <libdevcore/Exceptions.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/SHA3.h>
-#include <libdevcore/FileSystem.h>
 #include "WhisperDB.h"
+#include <boost/filesystem.hpp>
+#include <libdevcore/FileSystem.h>
 
 using namespace std;
 using namespace dev;
@@ -41,50 +34,36 @@ WhisperDB::WhisperDB()
 	ldb::Options op;
 	op.create_if_missing = true;
 	op.max_open_files = 256;
-	ldb::DB::Open(op, path + "/whisper", &m_db);
-}
-
-WhisperDB::~WhisperDB()
-{
-	delete m_db;
-}
-
-bool WhisperDB::insert(dev::h256 const& _key, string const& _value)
-{
-	string s = _key.hex();
-	string cropped = s.substr(s.size() - 8);
-	leveldb::Status status = m_db->Put(m_writeOptions, s, _value);
-	if (status.ok())
-		cdebug << "Whisper DB put:" << cropped << _value;
-	else
-		cdebug << "Whisper DB put failed:" << status.ToString() << "key:" << cropped;
-
-	return status.ok();
+	ldb::DB* p = nullptr;
+	leveldb::Status status = ldb::DB::Open(op, path + "/whisper", &p);
+	m_db.reset(p);
+	if (!status.ok())
+		BOOST_THROW_EXCEPTION(FailedToOpenLevelDB(status.ToString()));
 }
 
 string WhisperDB::lookup(dev::h256 const& _key) const
 {
 	string ret;
-	string s = _key.hex();
-	string cropped = s.substr(s.size() - 8);
-	leveldb::Status status = m_db->Get(m_readOptions, s, &ret);
-	if (status.ok())
-		cdebug << "Whisper DB get:" << cropped << ret;
-	else
-		cdebug << "Whisper DB get failed:" << status.ToString() << "key:" << cropped;
+	leveldb::Slice slice((char const*)_key.data(), _key.size);
+	leveldb::Status status = m_db->Get(m_readOptions, slice, &ret);
+	if (!status.ok() && !status.IsNotFound())
+		BOOST_THROW_EXCEPTION(FailedLookupInLevelDB(status.ToString()));
 
 	return ret;
 }
 
-bool WhisperDB::kill(dev::h256 const& _key)
+void WhisperDB::insert(dev::h256 const& _key, string const& _value)
 {
-	string s = _key.hex();
-	string cropped = s.substr(s.size() - 8);
-	leveldb::Status status = m_db->Delete(m_writeOptions, s);
-	if (status.ok())
-		cdebug << "Whisper DB erase:" << cropped;
-	else
-		cdebug << "Whisper DB erase failed:" << status.ToString() << "key:" << cropped;
-	
-	return status.ok();
+	leveldb::Slice slice((char const*)_key.data(), _key.size);
+	leveldb::Status status = m_db->Put(m_writeOptions, slice, _value);	
+	if (!status.ok())
+		BOOST_THROW_EXCEPTION(FailedInsertInLevelDB(status.ToString()));
+}
+
+void WhisperDB::kill(dev::h256 const& _key)
+{
+	leveldb::Slice slice((char const*)_key.data(), _key.size);
+	leveldb::Status status = m_db->Delete(m_writeOptions, slice);
+	if (!status.ok())
+		BOOST_THROW_EXCEPTION(FailedDeleteInLevelDB(status.ToString()));
 }
