@@ -36,8 +36,8 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libethcore/Params.h>
+#include <libethcore/Sealer.h>
 #include <libethcore/ABI.h>
-#include <libethcore/Farm.h>
 #include <libp2p/Common.h>
 #include "CanonBlockChain.h"
 #include "TransactionQueue.h"
@@ -310,7 +310,7 @@ private:
 
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
-	ProofOfWork::Farm m_farm;		///< Our mining farm.
+	std::shared_ptr<SealEngineFace> m_sealEngine;	///< Our block-sealing engine.
 
 	Handler<> m_tqReady;
 	Handler<> m_bqReady;
