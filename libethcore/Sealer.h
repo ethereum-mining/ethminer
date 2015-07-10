@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ProofOfWork.h
+/** @file Sealer.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  *
@@ -23,18 +23,36 @@
 
 #pragma once
 
-#include <libdevcore/RLP.h>
-#include <libdevcrypto/Common.h>
+#include <functional>
 #include "Common.h"
-//#include "Ethash.h"
-#include "BasicAuthority.h"
 
 namespace dev
 {
 namespace eth
 {
 
-using ProofOfWork = BasicAuthority;
+class BlockInfo;
+
+class SealFace
+{
+public:
+	virtual bool wouldSealHeader(BlockInfo const&) const { return true; }
+	virtual bytes sealedHeader(BlockInfo const& _bi) const = 0;
+};
+
+class SealEngineFace
+{
+public:
+	virtual strings sealers() const { return { "default" }; }
+	virtual void setSealer(std::string const&) {}
+	virtual void generateSeal(BlockInfo const& _bi) = 0;
+	virtual void onSealGenerated(std::function<void(SealFace const* s)> const& _f) = 0;
+	virtual void disable() {}
+
+	// TODO: rename & generalise
+	virtual bool isMining() const { return false; }
+	virtual MiningProgress miningProgress() const { return MiningProgress(); }
+};
 
 }
 }
