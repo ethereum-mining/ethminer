@@ -22,6 +22,7 @@
 #include "Client.h"
 
 #include <chrono>
+#include <memory>
 #include <thread>
 #include <boost/filesystem.hpp>
 #if ETH_JSONRPC || !ETH_TRUE
@@ -31,6 +32,7 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libp2p/Host.h>
+#include <libethcore/Ethash.h>
 #if ETH_JSONRPC || !ETH_TRUE
 #include "Sentinel.h"
 #endif
@@ -98,7 +100,8 @@ Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string c
 	m_bqReady = m_bq.onReady([=](){ this->onBlockQueueReady(); });			// TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
 	m_bq.setOnBad([=](Exception& ex){ this->onBadBlock(ex); });
 	m_bc.setOnBad([=](Exception& ex){ this->onBadBlock(ex); });
-	m_farm.onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
+	m_sealEngine = shared_ptr<SealEngineFace>(Ethash::createSealEngine());
+	m_sealEngine->onSolutionFound([=](Ethash::Solution const& s){ return this->submitWork(s); });
 
 	m_gp->update(m_bc);
 
