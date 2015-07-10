@@ -288,7 +288,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 
 			BlockInfo bi(b);
 			if (_prepPoW)
-				ProofOfWork::prep(bi);
+				Ethash::prep(bi);
 
 			if (bi.parentHash != lastHash)
 			{
