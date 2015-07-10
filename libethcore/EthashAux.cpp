@@ -200,18 +200,6 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bool _createIfMissing
 	return ret;
 }
 
-Ethash::Result EthashAux::eval(BlockInfo const& _header)
-{
-#if ETH_USING_ETHASH
-	return eval(_header, _header.proof.nonce);
-#else
-	(void)_header;
-	return Ethash::Result();
-#endif
-}
-
-#define DEV_IF_THROWS(X) try { X; } catch (...)
-
 unsigned EthashAux::computeFull(h256 const& _seedHash, bool _createIfMissing)
 {
 	Guard l(get()->x_fulls);
@@ -258,17 +246,6 @@ Ethash::Result EthashAux::LightAllocation::compute(h256 const& _headerHash, Nonc
 	if (!r.success)
 		BOOST_THROW_EXCEPTION(DAGCreationFailure());
 	return Ethash::Result{h256((uint8_t*)&r.result, h256::ConstructFromPointer), h256((uint8_t*)&r.mix_hash, h256::ConstructFromPointer)};
-}
-
-Ethash::Result EthashAux::eval(BlockInfo const& _header, Nonce const& _nonce)
-{
-#if ETH_USING_ETHASH
-	return eval(_header.proofCache(), _header.headerHash(WithoutProof), _nonce);
-#else
-	(void)_header;
-	(void)_nonce;
-	return Ethash::Result();
-#endif
 }
 
 Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
