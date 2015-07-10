@@ -31,11 +31,11 @@ WhisperDB::WhisperDB()
 {
 	string path = dev::getDataDir();
 	boost::filesystem::create_directories(path);
-	ldb::Options op;
+	leveldb::Options op;
 	op.create_if_missing = true;
 	op.max_open_files = 256;
-	ldb::DB* p = nullptr;
-	leveldb::Status status = ldb::DB::Open(op, path + "/whisper", &p);
+	leveldb::DB* p = nullptr;
+	leveldb::Status status = leveldb::DB::Open(op, path + "/whisper", &p);
 	m_db.reset(p);
 	if (!status.ok())
 		BOOST_THROW_EXCEPTION(FailedToOpenLevelDB(status.ToString()));
