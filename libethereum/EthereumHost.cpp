@@ -118,7 +118,7 @@ void EthereumHost::doWork()
 
 	if (m_syncStart)
 	{
-		DEV_GUARDED(x_sync);
+		DEV_GUARDED(x_sync)
 			if (!m_sync)
 			{
 				time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
