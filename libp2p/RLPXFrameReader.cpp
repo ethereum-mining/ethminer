@@ -28,7 +28,7 @@ using namespace dev::p2p;
 std::vector<RLPXPacket> RLPXFrameReader::demux(RLPXFrameCoder& _coder, RLPXFrameInfo const& _info, bytesRef _frame)
 {
 	if (!_coder.authAndDecryptFrame(_frame))
-		BOOST_THROW_EXCEPTION(RLPXFrameDecrytFailed());
+		BOOST_THROW_EXCEPTION(RLPXFrameDecryptFailed());
 	
 	std::vector<RLPXPacket> ret;
 	if (_frame.empty())

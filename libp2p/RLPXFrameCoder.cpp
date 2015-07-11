@@ -30,29 +30,28 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace CryptoPP;
 
-RLPXFrameInfo::RLPXFrameInfo(bytesConstRef _header)
-{
-	length = (_header[0] * 256 + _header[1]) * 256 + _header[2];
-	padding = ((16 - (length % 16)) % 16);
-	RLP header(_header.cropped(3), RLP::ThrowOnFail | RLP::FailIfTooSmall);
-	auto itemCount = header.itemCount();
-	protocolId = header[0].toInt<uint16_t>();
-	multiFrame = itemCount > 1;
-	sequenceId = multiFrame ? header[1].toInt<uint16_t>() : 0;
-	totalLength = itemCount == 3 ? header[2].toInt<uint32_t>() : 0;
-}
+RLPXFrameInfo::RLPXFrameInfo(bytesConstRef _header):
+	length((_header[0] * 256 + _header[1]) * 256 + _header[2]),
+	padding((16 - (length % 16)) % 16),
+	data(_header.cropped(3).toBytes()),
+	header(RLP(data, RLP::ThrowOnFail | RLP::FailIfTooSmall)),
+	protocolId(header[0].toInt<uint16_t>()),
+	multiFrame(header.itemCount() > 1),
+	sequenceId(multiFrame ? header[1].toInt<uint16_t>() : 0),
+	totalLength(header.itemCount() == 3 ? header[2].toInt<uint32_t>() : 0)
+{}
 
 RLPXFrameCoder::RLPXFrameCoder(RLPXHandshake const& _init)
 {
 	setup(_init.m_originated, _init.m_remoteEphemeral, _init.m_remoteNonce, _init.m_ecdhe, _init.m_nonce, &_init.m_ackCipher, &_init.m_authCipher);
 }
 
-RLPXFrameCoder::RLPXFrameCoder(bool _originated, h512 _remoteEphemeral, h256 _remoteNonce, crypto::ECDHE const& _ecdhe, h256 _nonce, bytesConstRef _ackCipher, bytesConstRef _authCipher)
+RLPXFrameCoder::RLPXFrameCoder(bool _originated, h512 const& _remoteEphemeral, h256 const& _remoteNonce, crypto::ECDHE const& _ecdhe, h256 const& _nonce, bytesConstRef _ackCipher, bytesConstRef _authCipher)
 {
 	setup(_originated, _remoteEphemeral, _remoteNonce, _ecdhe, _nonce, _ackCipher, _authCipher);
 }
 
-void RLPXFrameCoder::setup(bool _originated, h512 _remoteEphemeral, h256 _remoteNonce, crypto::ECDHE const& _ecdhe, h256 _nonce, bytesConstRef _ackCipher, bytesConstRef _authCipher)
+void RLPXFrameCoder::setup(bool _originated, h512 const& _remoteEphemeral, h256 const& _remoteNonce, crypto::ECDHE const& _ecdhe, h256 const& _nonce, bytesConstRef _ackCipher, bytesConstRef _authCipher)
 {
 	bytes keyMaterialBytes(64);
 	bytesRef keyMaterial(&keyMaterialBytes);
