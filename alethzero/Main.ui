@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>AlethZero Ethereum Client</string>
+   <string>AlethZero ++Ethereum</string>
   </property>
   <property name="dockNestingEnabled">
    <bool>true</bool>
@@ -132,7 +132,7 @@
      <x>0</x>
      <y>0</y>
      <width>1617</width>
-     <height>25</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -199,6 +199,7 @@
     <addaction name="usePrivate"/>
     <addaction name="retryUnknown"/>
     <addaction name="confirm"/>
+    <addaction name="rewindChain"/>
    </widget>
    <widget class="QMenu" name="menu_View">
     <property name="title">
@@ -1149,7 +1150,7 @@ font-size: 14pt</string>
       <number>0</number>
      </property>
      <item>
-      <widget class="DownloadView" name="downloadView" native="true"/>
+      <widget class="SyncView" name="downloadView" native="true"/>
      </item>
     </layout>
    </widget>
@@ -1804,6 +1805,11 @@ font-size: 14pt</string>
     <string>&amp;Sentinel...</string>
    </property>
   </action>
+  <action name="rewindChain">
+   <property name="text">
+    <string>&amp;Rewind Chain...</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
@@ -1814,7 +1820,7 @@ font-size: 14pt</string>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>DownloadView</class>
+   <class>SyncView</class>
    <extends>QWidget</extends>
    <header>DownloadView.h</header>
    <container>1</container>

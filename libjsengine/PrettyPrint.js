@@ -1,4 +1,14 @@
 var prettyPrint = (function () {
+    var onlyDecentPlatform = function (x) {
+        return env.os.indexOf('Windows') === -1 ? x : '';
+    };
+
+    var color_red = onlyDecentPlatform('\033[31m');
+    var color_green = onlyDecentPlatform('\033[32m');
+    var color_pink = onlyDecentPlatform('\033[35m');
+    var color_white = onlyDecentPlatform('\033[0m');
+    var color_blue = onlyDecentPlatform('\033[30m');
+
     function pp(object, indent) {
         try {
             JSON.stringify(object)
@@ -16,13 +26,13 @@ var prettyPrint = (function () {
             }
             str += " ]";
         } else if (object instanceof Error) {
-            str += "\033[31m" + "Error:\033[0m " + object.message;
+            str += color_red + "Error: " + color_white + object.message;
         }  else if (object === null) {
-            str += "\033[1m\033[30m" + "null";
+            str += color_blue + "null";
         } else if(typeof(object) === "undefined") {
-            str += "\033[1m\033[30m" + object;
+            str += color_blue + object;
         } else if (isBigNumber(object)) {
-            str += "\033[32m'" + object.toString(10) + "'";
+            str += color_green + object.toString(10) + "'";
         } else if(typeof(object) === "object") {
             str += "{\n";
             indent += "  ";
@@ -41,15 +51,15 @@ var prettyPrint = (function () {
             });
             str += indent.substr(2, indent.length) + "}";
         } else if(typeof(object) === "string") {
-            str += "\033[32m'" + object + "'";
+            str += color_green + object + "'";
         } else if(typeof(object) === "number") {
-            str += "\033[31m" + object;
+            str += color_red + object;
         } else if(typeof(object) === "function") {
-            str += "\033[35m[Function]";
+            str += color_pink + "[Function]";
         } else {
             str += object;
         }
-        str += "\033[0m";
+        str += color_white;
         return str;
     }
     var redundantFields = [

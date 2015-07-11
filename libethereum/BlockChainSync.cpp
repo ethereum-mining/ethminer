@@ -80,7 +80,7 @@ DownloadMan& BlockChainSync::downloadMan()
 
 void BlockChainSync::abortSync()
 {
-	downloadMan().resetToChain(h256s());
+	downloadMan().reset();
 }
 
 void BlockChainSync::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
@@ -296,10 +296,16 @@ void BlockChainSync::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP con
 
 		case ImportResult::FutureTimeUnknown:
 		case ImportResult::UnknownParent:
+		{
 			logNewBlock(h);
-			clog(NetMessageDetail) << "Received block with no known parent. Resyncing...";
-			resetSyncFor(_peer, h, _r[1].toInt<u256>());
+			u256 totalDifficulty = _r[1].toInt<u256>();
+			if (totalDifficulty > _peer->m_totalDifficulty)
+			{
+				clog(NetMessageDetail) << "Received block with no known parent. Resyncing...";
+				resetSyncFor(_peer, h, totalDifficulty);
+			}
 			break;
+		}
 		default:;
 		}
 
@@ -397,7 +403,6 @@ void PV60Sync::transition(std::shared_ptr<EthereumPeer> _peer, SyncState _s, boo
 	if (m_state == SyncState::Idle && _s != SyncState::Idle)
 		_peer->m_requireTransactions = true;
 
-	RLPStream s;
 	if (_s == SyncState::Hashes)
 	{
 		if (m_state == SyncState::Idle || m_state == SyncState::Hashes)
@@ -1165,9 +1170,9 @@ SyncStatus PV61Sync::status() const
 {
 	RecursiveGuard l(x_sync);
 	SyncStatus res = PV60Sync::status();
+	res.protocolVersion = 61;
 	if (m_state == SyncState::Hashes && isPV61Syncing())
 	{
-		res.protocolVersion = 61;
 		res.hashesReceived = 0;
 		for (auto const& d : m_readyChainMap)
 			res.hashesReceived += d.second.size();

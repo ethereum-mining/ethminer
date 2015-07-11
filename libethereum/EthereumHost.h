@@ -49,6 +49,8 @@ class TransactionQueue;
 class BlockQueue;
 class BlockChainSync;
 
+struct EthereumHostTrace: public LogChannel { static const char* name(); static const int verbosity = 6; };
+
 /**
  * @brief The EthereumHost class
  * @warning None of this is thread-safe. You have been warned.
@@ -136,6 +138,7 @@ private:
 	mutable Mutex x_transactions;
 	DownloadMan m_man;
 	std::unique_ptr<BlockChainSync> m_sync;
+	std::atomic<time_t> m_syncStart = { 0 };
 };
 
 }

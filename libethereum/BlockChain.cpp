@@ -192,6 +192,8 @@ unsigned BlockChain::open(std::string const& _path, WithExisting _we)
 		}
 	}
 
+	m_writeOptions.sync = true;
+
 	if (_we != WithExisting::Verify && !details(m_genesisHash))
 	{
 		// Insert details of genesis block.
@@ -273,7 +275,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 
 	h256 lastHash = m_lastBlockHash;
 	Timer t;
-	for (unsigned d = 1; d < originalNumber; ++d)
+	for (unsigned d = 1; d <= originalNumber; ++d)
 	{
 		if (!(d % 1000))
 		{
@@ -799,6 +801,75 @@ void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
 	}
 }
 
+void BlockChain::rescue(OverlayDB& _db)
+{
+	cout << "Rescuing database..." << endl;
+
+	unsigned u = 1;
+	while (true)
+	{
+		try {
+			if (isKnown(numberHash(u)))
+				u *= 2;
+			else
+				break;
+		}
+		catch (...)
+		{
+			break;
+		}
+	}
+	unsigned l = u / 2;
+	cout << "Finding last likely block number..." << endl;
+	while (u - l > 1)
+	{
+		unsigned m = (u + l) / 2;
+		cout << " " << m << flush;
+		if (isKnown(numberHash(m)))
+			l = m;
+		else
+			u = m;
+	}
+	cout << "  lowest is " << l << endl;
+	for (;; --l)
+	{
+		h256 h = numberHash(l);
+		cout << "Checking validity of " << l << " (" << h << ")..." << flush;
+		try
+		{
+			cout << "block..." << flush;
+			BlockInfo bi = info(h);
+			cout << "details..." << flush;
+			BlockDetails bd = details(h);
+			cout << "state..." << flush;
+			if (_db.exists(bi.stateRoot))
+				break;
+		}
+		catch (...) {}
+	}
+	cout << "OK." << endl;
+	rewind(l);
+}
+
+void BlockChain::rewind(unsigned _newHead)
+{
+	DEV_WRITE_GUARDED(x_lastBlockHash)
+	{
+		if (_newHead >= m_lastBlockNumber)
+			return;
+		m_lastBlockHash = numberHash(_newHead);
+		m_lastBlockNumber = _newHead;
+		auto o = m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&m_lastBlockHash, 32));
+		if (!o.ok())
+		{
+			cwarn << "Error writing to extras database: " << o.ToString();
+			cout << "Put" << toHex(bytesConstRef(ldb::Slice("best"))) << "=>" << toHex(bytesConstRef(ldb::Slice((char const*)&m_lastBlockHash, 32)));
+			cwarn << "Fail writing to extras database. Bombing out.";
+			exit(-1);
+		}
+	}
+}
+
 tuple<h256s, h256, unsigned> BlockChain::treeRoute(h256 const& _from, h256 const& _to, bool _common, bool _pre, bool _post) const
 {
 //	cdebug << "treeRoute" << _from << "..." << _to;
@@ -871,33 +942,21 @@ template <class T> static unsigned getHashSize(unordered_map<h256, T> const& _ma
 
 void BlockChain::updateStats() const
 {
-	{
-		ReadGuard l(x_blocks);
-		m_lastStats.memBlocks = 0;
+	m_lastStats.memBlocks = 0;
+	DEV_READ_GUARDED(x_blocks)
 		for (auto const& i: m_blocks)
 			m_lastStats.memBlocks += i.second.size() + 64;
-	}
-	{
-		ReadGuard l(x_details);
+	DEV_READ_GUARDED(x_details)
 		m_lastStats.memDetails = getHashSize(m_details);
-	}
-	{
-		ReadGuard l1(x_logBlooms);
-		ReadGuard l2(x_blocksBlooms);
-		m_lastStats.memLogBlooms = getHashSize(m_logBlooms) + getHashSize(m_blocksBlooms);
-	}
-	{
-		ReadGuard l(x_receipts);
+	DEV_READ_GUARDED(x_logBlooms)
+		DEV_READ_GUARDED(x_blocksBlooms)
+			m_lastStats.memLogBlooms = getHashSize(m_logBlooms) + getHashSize(m_blocksBlooms);
+	DEV_READ_GUARDED(x_receipts)
 		m_lastStats.memReceipts = getHashSize(m_receipts);
-	}
-	{
-		ReadGuard l(x_blockHashes);
+	DEV_READ_GUARDED(x_blockHashes)
 		m_lastStats.memBlockHashes = getHashSize(m_blockHashes);
-	}
-	{
-		ReadGuard l(x_transactionAddresses);
+	DEV_READ_GUARDED(x_transactionAddresses)
 		m_lastStats.memTransactionAddresses = getHashSize(m_transactionAddresses);
-	}
 }
 
 void BlockChain::garbageCollect(bool _force)
@@ -954,10 +1013,8 @@ void BlockChain::garbageCollect(bool _force)
 
 void BlockChain::checkConsistency()
 {
-	{
-		WriteGuard l(x_details);
+	DEV_WRITE_GUARDED(x_details)
 		m_details.clear();
-	}
 	ldb::Iterator* it = m_blocksDB->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().size() == 32)
@@ -969,13 +1026,9 @@ void BlockChain::checkConsistency()
 			{
 				auto dp = details(p);
 				if (asserts(contains(dp.children, h)))
-				{
 					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
-				}
 				if (assertsEqual(dp.number, dh.number - 1))
-				{
 					cnote << "Apparently the database is corrupt. Not much we can do at this stage...";
-				}
 			}
 		}
 	delete it;
@@ -1088,7 +1141,8 @@ bool BlockChain::isKnown(h256 const& _hash) const
 			if (d.empty())
 				return false;
 		}
-	return true;
+//	return true;
+	return details(_hash).number <= m_lastBlockNumber;		// to allow rewind functionality.
 }
 
 bytes BlockChain::block(h256 const& _hash) const

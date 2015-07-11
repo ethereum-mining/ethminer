@@ -88,7 +88,7 @@ template <unsigned N>
 bool TopicBloomFilterBase<N>::isBitSet(FixedHash<N> const& _h, unsigned _index)
 {
 	unsigned iByte = _index / 8;
-	unsigned iBit = _index & 0x7;
+	unsigned iBit = _index % 8;
 	return (_h[iByte] & c_powerOfTwoBitMmask[iBit]) != 0;
 }
 
@@ -96,7 +96,7 @@ template <unsigned N>
 void TopicBloomFilterBase<N>::setBit(FixedHash<N>& _h, unsigned _index)
 {
 	unsigned iByte = _index / 8;
-	unsigned iBit = _index & 0x7;
+	unsigned iBit = _index % 8;
 	_h[iByte] |= c_powerOfTwoBitMmask[iBit];
 }
 
