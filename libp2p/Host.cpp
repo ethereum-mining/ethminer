@@ -185,7 +185,7 @@ void Host::doneWorking()
 	for (unsigned n = 0;; n = 0)
 	{
 		DEV_GUARDED(x_connecting)
-			for (auto i: m_connecting)
+			for (auto const& i: m_connecting)
 				if (auto h = i.lock())
 				{
 					h->cancel();
