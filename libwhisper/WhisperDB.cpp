@@ -29,13 +29,13 @@ using namespace dev::shh;
 
 WhisperDB::WhisperDB()
 {
-	string path = dev::getDataDir();
+	string path = dev::getDataDir("shh");
 	boost::filesystem::create_directories(path);
 	leveldb::Options op;
 	op.create_if_missing = true;
 	op.max_open_files = 256;
 	leveldb::DB* p = nullptr;
-	leveldb::Status status = leveldb::DB::Open(op, path + "/whisper", &p);
+	leveldb::Status status = leveldb::DB::Open(op, path + "/messages", &p);
 	m_db.reset(p);
 	if (!status.ok())
 		BOOST_THROW_EXCEPTION(FailedToOpenLevelDB(status.ToString()));

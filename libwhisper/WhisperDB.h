@@ -30,10 +30,10 @@ namespace dev
 namespace shh
 {
 
-struct FailedToOpenLevelDB: virtual Exception { FailedToOpenLevelDB(std::string _message = std::string()): Exception(_message) {} };
-struct FailedInsertInLevelDB: virtual Exception { FailedInsertInLevelDB(std::string _message = std::string()): Exception(_message) {} };
-struct FailedLookupInLevelDB: virtual Exception { FailedLookupInLevelDB(std::string _message = std::string()): Exception(_message) {} };
-struct FailedDeleteInLevelDB: virtual Exception { FailedDeleteInLevelDB(std::string _message = std::string()): Exception(_message) {} };
+struct FailedToOpenLevelDB: virtual Exception { FailedToOpenLevelDB(std::string const& _message): Exception(_message) {} };
+struct FailedInsertInLevelDB: virtual Exception { FailedInsertInLevelDB(std::string const& _message): Exception(_message) {} };
+struct FailedLookupInLevelDB: virtual Exception { FailedLookupInLevelDB(std::string const& _message): Exception(_message) {} };
+struct FailedDeleteInLevelDB: virtual Exception { FailedDeleteInLevelDB(std::string const& _message): Exception(_message) {} };
 
 class WhisperDB
 {
