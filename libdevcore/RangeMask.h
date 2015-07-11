@@ -200,6 +200,20 @@ public:
 		return c;
 	}
 
+	size_t firstOut() const
+	{
+		if (m_ranges.empty() || !m_ranges.count(m_all.first))
+			return m_all.first;
+		return m_ranges.at(m_all.first);
+	}
+
+	size_t lastIn() const
+	{
+		if (m_ranges.empty())
+			return m_all.first;
+		return m_ranges.rbegin()->second - 1;
+	}
+
 private:
 	/// The ground range.
 	UnsignedRange m_all;

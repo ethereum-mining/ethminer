@@ -75,12 +75,8 @@ void interactiveHelp()
 		<< "Commands:" << endl
 		<< "    netstart <port>  Starts the network subsystem on a specific port." << endl
 		<< "    netstop  Stops the network subsystem." << endl
-		<< "    jsonstart <port>  Starts the JSON-RPC server." << endl
-		<< "    jsonstop  Stops the JSON-RPC server." << endl
 		<< "    connect <addr> <port>  Connects to a specific peer." << endl
 		<< "    verbosity (<level>)  Gets or sets verbosity level." << endl
-		<< "    setetherprice <p>  Resets the ether price." << endl
-		<< "    setpriority <p>  Resets the transaction priority." << endl
 		<< "    minestart  Starts mining." << endl
 		<< "    minestop  Stops mining." << endl
 		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
@@ -135,6 +131,7 @@ void help()
 #endif
 		<< "    -K,--kill  First kill the blockchain." << endl
 		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
+		<< "    --rescue  Attempt to rescue a corrupt database." << endl
 		<< "    --genesis-nonce <nonce>  Set the Genesis Nonce to the given hex nonce." << endl
 		<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
 		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
@@ -1026,9 +1023,7 @@ void interactiveMode(eth::Client* c, std::shared_ptr<eth::TrivialGasPricer> gasP
 			{
 				string path;
 				iss >> path;
-				RLPStream config(2);
-				config << signingKey << beneficiary;
-				writeFile(path, config.out());
+				writeFile(path, rlpList(signingKey, beneficiary));
 			}
 			else
 				cwarn << "Require parameter: exportConfig PATH";
@@ -1089,7 +1084,7 @@ int main(int argc, char** argv)
 #endif
 	string jsonAdmin;
 	bool upnp = true;
-	WithExisting killChain = WithExisting::Trust;
+	WithExisting withExisting = WithExisting::Trust;
 	bool jit = false;
 	string sentinel;
 
@@ -1256,9 +1251,11 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		else if (arg == "-K" || arg == "--kill-blockchain" || arg == "--kill")
-			killChain = WithExisting::Kill;
+			withExisting = WithExisting::Kill;
 		else if (arg == "-R" || arg == "--rebuild")
-			killChain = WithExisting::Verify;
+			withExisting = WithExisting::Verify;
+		else if (arg == "-R" || arg == "--rescue")
+			withExisting = WithExisting::Rescue;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 		{
 			if (arg == "-c")
@@ -1471,17 +1468,22 @@ int main(int argc, char** argv)
 		}
 	}
 
+	if (g_logVerbosity > 0)
+	{
+		cout << EthGrayBold "(++)Ethereum" EthReset << endl;
+		if (c_network == eth::Network::Olympic)
+			cout << "Welcome to Olympic!" << endl;
+		else if (c_network == eth::Network::Frontier)
+			cout << "Welcome to the " EthMaroonBold "Frontier" EthReset "!" << endl;
+	}
+
 	m.execute();
 
 	KeyManager keyManager;
 	for (auto const& s: passwordsToNote)
 		keyManager.notePassword(s);
 
-	{
-		RLPStream config(2);
-		config << signingKey << beneficiary;
-		writeFile(configFile, config.out());
-	}
+	writeFile(configFile, rlpList(signingKey, beneficiary));
 
 	if (sessionKey)
 		signingKey = sessionKey;
@@ -1531,7 +1533,7 @@ int main(int argc, char** argv)
 	dev::WebThreeDirect web3(
 		WebThreeDirect::composeClientVersion("++eth", clientName),
 		dbPath,
-		killChain,
+		withExisting,
 		nodeMode == NodeMode::Full ? set<string>{"eth"/*, "shh"*/} : set<string>(),
 		netPrefs,
 		&nodesState);
@@ -1703,7 +1705,7 @@ int main(int argc, char** argv)
 	cout << "Transaction Signer: " << signingKey << endl;
 	cout << "Mining Benefactor: " << beneficiary << endl;
 
-	if (bootstrap || !remoteHost.empty())
+	if (bootstrap || !remoteHost.empty() || disableDiscovery)
 	{
 		web3.startNetwork();
 		cout << "Node ID: " << web3.enode() << endl;
