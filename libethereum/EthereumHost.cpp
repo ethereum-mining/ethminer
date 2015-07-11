@@ -45,6 +45,12 @@ static unsigned const c_maxSendTransactions = 256;
 
 char const* const EthereumHost::s_stateNames[static_cast<int>(SyncState::Size)] = {"Idle", "Waiting", "Hashes", "Blocks", "NewBlocks" };
 
+#ifdef _WIN32
+const char* EthereumHostTrace::name() { return EthPurple "^" EthGray "  "; }
+#else
+const char* EthereumHostTrace::name() { return EthPurple "⧫" EthGray " "; }
+#endif
+
 EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId):
 	HostCapability<EthereumPeer>(),
 	Worker		("ethsync"),
@@ -67,7 +73,7 @@ bool EthereumHost::ensureInitialised()
 	{
 		// First time - just initialise.
 		m_latestBlockSent = m_chain.currentHash();
-		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent;
+		clog(EthereumHostTrace) << "Initialising: latest=" << m_latestBlockSent;
 
 		Guard l(x_transactions);
 		m_transactionsSent = m_tq.knownTransactions();
@@ -82,6 +88,7 @@ void EthereumHost::reset()
 	if (m_sync)
 		m_sync->abortSync();
 	m_sync.reset();
+	m_syncStart = 0;
 
 	m_latestBlockSent = h256();
 	Guard tl(x_transactions);
@@ -108,6 +115,21 @@ void EthereumHost::doWork()
 	}
 
 	foreachPeer([](std::shared_ptr<EthereumPeer> _p) { _p->tick(); return true; });
+
+	if (m_syncStart)
+	{
+		DEV_GUARDED(x_sync)
+			if (!m_sync)
+			{
+				time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
+				if (now - m_syncStart > 10)
+				{
+					m_sync.reset(new PV60Sync(*this));
+					m_syncStart = 0;
+					m_sync->restartSync();
+				}
+			}
+	}
 
 //	return netChange;
 	// TODO: Figure out what to do with netChange.
@@ -150,7 +172,7 @@ void EthereumHost::maintainTransactions()
 			RLPStream ts;
 			_p->prep(ts, TransactionsPacket, n).appendRaw(b, n);
 			_p->sealAndSend(ts);
-			cnote << "Sent" << n << "transactions to " << _p->session()->info().clientVersion;
+			clog(EthereumHostTrace) << "Sent" << n << "transactions to " << _p->session()->info().clientVersion;
 		}
 		_p->m_requireTransactions = false;
 		return true;
@@ -206,11 +228,15 @@ void EthereumHost::maintainBlocks(h256 const& _currentHash)
 		if (diff(detailsFrom.number, detailsTo.number) < 20)
 		{
 			// don't be sending more than 20 "new" blocks. if there are any more we were probably waaaay behind.
-			clog(NetMessageSummary) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
+			clog(EthereumHostTrace) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
 
 			h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
 
-			auto s = randomSelection(25, [&](EthereumPeer* p){ DEV_GUARDED(p->x_knownBlocks) return !p->m_knownBlocks.count(_currentHash); return false; });
+			auto s = randomSelection(25, [&](EthereumPeer* p){
+				DEV_GUARDED(p->x_knownBlocks)
+					return !p->m_knownBlocks.count(_currentHash);
+				return false;
+			});
 			for (shared_ptr<EthereumPeer> const& p: get<0>(s))
 				for (auto const& b: blocks)
 				{
@@ -249,7 +275,14 @@ BlockChainSync* EthereumHost::sync()
 			pv61 = true;
 		return !pv61;
 	});
-	m_sync.reset(pv61 ? new PV61Sync(*this) : new PV60Sync(*this));
+	if (pv61)
+	{
+		m_syncStart = 0;
+		m_sync.reset(new PV61Sync(*this));
+	}
+	else if (!m_syncStart)
+		m_syncStart = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
+
 	return m_sync.get();
 }
 
@@ -292,11 +325,11 @@ void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP c
 {
 	if (_peer->isCriticalSyncing())
 	{
-		clog(NetAllDetail) << "Ignoring transaction from peer we are syncing with";
+		clog(EthereumHostTrace) << "Ignoring transaction from peer we are syncing with";
 		return;
 	}
 	unsigned itemCount = _r.itemCount();
-	clog(NetAllDetail) << "Transactions (" << dec << itemCount << "entries)";
+	clog(EthereumHostTrace) << "Transactions (" << dec << itemCount << "entries)";
 	m_tq.enqueue(_r, _peer->session()->id());
 }
 
@@ -351,10 +384,8 @@ void EthereumHost::onTransactionImported(ImportResult _ir, h256 const& _h, h512 
 		break;
 	case ImportResult::AlreadyKnown:
 		// if we already had the transaction, then don't bother sending it on.
-		{
-			Guard l(x_transactions);
+		DEV_GUARDED(x_transactions)
 			m_transactionsSent.insert(_h);
-		}
 		peer->addRating(0);
 		break;
 	case ImportResult::Success:

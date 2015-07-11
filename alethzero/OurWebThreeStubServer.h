@@ -43,7 +43,7 @@ protected:
 	// easiest to return keyManager.addresses();
 	virtual dev::AddressHash realAccounts() const override;
 	// use web3 to submit a signed transaction to accept
-	virtual void authenticate(dev::eth::TransactionSkeleton const& _t) override;
+	virtual dev::h256 authenticate(dev::eth::TransactionSkeleton const& _t) override;
 
 private:
 	bool showAuthenticationPopup(std::string const& _title, std::string const& _text);
