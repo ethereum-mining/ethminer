@@ -33,7 +33,7 @@ namespace dev
 namespace p2p
 {
 
-struct RLPXFrameDecrytFailed: virtual dev::Exception {};
+struct RLPXFrameDecryptFailed: virtual dev::Exception {};
 
 /**
  * @brief Encapsulation of Frame
@@ -44,13 +44,17 @@ struct RLPXFrameInfo
 	RLPXFrameInfo() = default;
 	/// Constructor. frame-size || protocol-type, [sequence-id[, total-packet-size]]
 	RLPXFrameInfo(bytesConstRef _frameHeader);
-	uint32_t length = 0;			///< Size of frame (excludes padding). Max: 2**24
-	uint8_t padding = 0;			///< Length of padding which follows @length.
+
+	uint32_t const length;			///< Size of frame (excludes padding). Max: 2**24
+	uint8_t const padding;			///< Length of padding which follows @length.
 	
-	uint16_t protocolId = 0;		///< Protocol ID as negotiated by handshake.
-	bool multiFrame = false;		///< If this frame is part of a sequence
-	uint16_t sequenceId = 0;		///< Sequence ID of frame
-	uint32_t totalLength = 0;		///< Set to total length of packet in first frame of multiframe packet
+	bytes const data;				///< Bytes of Header.
+	RLP const header;				///< Header RLP.
+	
+	uint16_t const protocolId;		///< Protocol ID as negotiated by handshake.
+	bool const multiFrame;			///< If this frame is part of a sequence
+	uint16_t const sequenceId;		///< Sequence ID of frame
+	uint32_t const totalLength;		///< Set to total length of packet in first frame of multiframe packet
 };
 
 class RLPXHandshake;
@@ -75,12 +79,12 @@ public:
 	RLPXFrameCoder(RLPXHandshake const& _init);
 	
 	/// Construct with external key material.
-	RLPXFrameCoder(bool _originated, h512 _remoteEphemeral, h256 _remoteNonce, crypto::ECDHE const& _ephemeral, h256 _nonce, bytesConstRef _ackCipher, bytesConstRef _authCipher);
+	RLPXFrameCoder(bool _originated, h512 const& _remoteEphemeral, h256 const& _remoteNonce, crypto::ECDHE const& _ephemeral, h256 const& _nonce, bytesConstRef _ackCipher, bytesConstRef _authCipher);
 	
 	~RLPXFrameCoder() {}
 	
 	/// Establish shared secrets and setup AES and MAC states.
-	void setup(bool _originated, h512 _remoteEphemeral, h256 _remoteNonce, crypto::ECDHE const& _ephemeral, h256 _nonce, bytesConstRef _ackCipher, bytesConstRef _authCipher);
+	void setup(bool _originated, h512 const& _remoteEphemeral, h256 const& _remoteNonce, crypto::ECDHE const& _ephemeral, h256 const& _nonce, bytesConstRef _ackCipher, bytesConstRef _authCipher);
 	
 	/// Write single-frame payload of packet(s).
 	void writeFrame(uint16_t _protocolType, bytesConstRef _payload, bytes& o_bytes);
