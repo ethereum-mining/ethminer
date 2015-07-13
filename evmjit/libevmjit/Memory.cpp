@@ -5,7 +5,6 @@
 #include "preprocessor/llvm_includes_end.h"
 
 #include "Type.h"
-#include "Runtime.h"
 #include "GasMeter.h"
 #include "Endianness.h"
 #include "RuntimeManager.h"
@@ -191,8 +190,7 @@ llvm::Value* Memory::getSize()
 
 llvm::Value* Memory::getBytePtr(llvm::Value* _index)
 {
-	auto idx = m_builder.CreateTrunc(_index, Type::Size, "idx"); // Never allow memory index be a type bigger than i64
-	return m_builder.CreateGEP(getData(), idx, "ptr");
+	return m_builder.CreateGEP(getData(), _index, "ptr");
 }
 
 void Memory::require(llvm::Value* _offset, llvm::Value* _size)
@@ -235,7 +233,7 @@ void Memory::copyBytes(llvm::Value* _srcPtr, llvm::Value* _srcSize, llvm::Value*
 	auto bytesToZero = m_builder.CreateNUWSub(reqBytes, bytesToCopy, "bytesToZero");
 
 	auto src = m_builder.CreateGEP(_srcPtr, idx64, "src");
-	auto dstIdx = m_builder.CreateTrunc(_destMemIdx, Type::Size, "dstIdx"); // Never allow memory index be a type bigger than i64
+	auto dstIdx = m_builder.CreateTrunc(_destMemIdx, Type::Size, "dstIdx");
 	auto padIdx = m_builder.CreateNUWAdd(dstIdx, bytesToCopy, "padIdx");
 	auto dst = m_memory.getPtr(getRuntimeManager().getMem(), dstIdx);
 	auto pad = m_memory.getPtr(getRuntimeManager().getMem(), padIdx);

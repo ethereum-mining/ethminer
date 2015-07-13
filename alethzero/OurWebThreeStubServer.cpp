@@ -99,10 +99,11 @@ bool OurAccountHolder::showUnknownCallNotice(TransactionSkeleton const& _t, bool
 		"REJECT UNLESS YOU REALLY KNOW WHAT YOU ARE DOING!");
 }
 
-void OurAccountHolder::authenticate(TransactionSkeleton const& _t)
+h256 OurAccountHolder::authenticate(TransactionSkeleton const& _t)
 {
 	Guard l(x_queued);
 	m_queued.push(_t);
+	return h256();
 }
 
 void OurAccountHolder::doValidations()
@@ -130,7 +131,7 @@ void OurAccountHolder::doValidations()
 		else
 			// sign and submit.
 			if (Secret s = m_main->retrieveSecret(t.from))
-				m_main->ethereum()->submitTransaction(s, t);
+				m_main->ethereum()->submitTransaction(t, s);
 	}
 }
 

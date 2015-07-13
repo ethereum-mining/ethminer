@@ -69,5 +69,7 @@
         <file>qml/ScenarioExecution.qml</file>
         <file>qml/ScenarioLoader.qml</file>
         <file>qml/ScenarioButton.qml</file>
+        <file>qml/Watchers.qml</file>
+        <file>qml/KeyValuePanel.qml</file>
     </qresource>
 </RCC>

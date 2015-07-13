@@ -107,11 +107,13 @@ ColumnLayout
 			Rectangle
 			{
 				id: editIconRect
+				anchors.top: scenarioName.top
+				anchors.topMargin: 6
 				anchors.left: scenarioName.right
-				anchors.leftMargin: 15
+				anchors.leftMargin: 20
 				Image {
-					source: "qrc:/qml/img/edit.png"
-					width: 10
+					source: "qrc:/qml/img/edittransaction.png"
+					width: 30
 					fillMode: Image.PreserveAspectFit
 					anchors.verticalCenter: parent.verticalCenter
 					anchors.horizontalCenter: parent.horizontalCenter
@@ -126,7 +128,6 @@ ColumnLayout
 								scenarioNameEdit.save()
 							else
 								scenarioNameEdit.edit()
-
 						}
 					}
 				}

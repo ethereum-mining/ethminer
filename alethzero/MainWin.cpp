@@ -136,6 +136,12 @@ Main::Main(QWidget *parent) :
 	QtWebEngine::initialize();
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
+
+	if (c_network == eth::Network::Olympic)
+		setWindowTitle("AlethZero Olympic");
+	else if (c_network == eth::Network::Frontier)
+		setWindowTitle("AlethZero Frontier");
+
 	g_logPost = [=](string const& s, char const* c)
 	{
 		simpleDebugOut(s, c);
@@ -239,18 +245,31 @@ Main::Main(QWidget *parent) :
 
 	ethereum()->setDefault(LatestBlock);
 
+	m_vmSelectionGroup = new QActionGroup{ui->menu_Debug};
+	m_vmSelectionGroup->addAction(ui->vmInterpreter);
+	m_vmSelectionGroup->addAction(ui->vmJIT);
+	m_vmSelectionGroup->addAction(ui->vmSmart);
+	m_vmSelectionGroup->setExclusive(true);
+
+#if ETH_EVMJIT
+	ui->vmSmart->setChecked(true); // Default when JIT enabled
+	on_vmSmart_triggered();
+#else
+	ui->vmInterpreter->setChecked(true);
+	ui->vmJIT->setEnabled(false);
+	ui->vmSmart->setEnabled(false);
+#endif
+
 	readSettings();
 
 	m_transact = new Transact(this, this);
 	m_transact->setWindowFlags(Qt::Dialog);
 	m_transact->setWindowModality(Qt::WindowModal);
 
+	connect(ui->blockChainDockWidget, &QDockWidget::visibilityChanged, [=]() { refreshBlockChain(); });
+
 #if !ETH_FATDB
 	removeDockWidget(ui->dockWidget_accounts);
-#endif
-#if !ETH_EVMJIT
-	ui->jitvm->setEnabled(false);
-	ui->jitvm->setChecked(false);
 #endif
 	installWatches();
 	startTimer(100);
@@ -294,6 +313,14 @@ void Main::on_gasPrices_triggered()
 		static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setAsk(fromValueUnits(gp.askUnits, gp.askValue));
 		m_transact->resetGasPrice();
 	}
+}
+
+void Main::on_sentinel_triggered()
+{
+	bool ok;
+	QString sentinel = QInputDialog::getText(nullptr, "Enter sentinel address", "Enter the sentinel address for bad block reporting (e.g. http://badblockserver.com:8080). Enter nothing to disable.", QLineEdit::Normal, QString::fromStdString(ethereum()->sentinel()), &ok);
+	if (ok)
+		ethereum()->setSentinel(sentinel.toStdString());
 }
 
 void Main::on_newIdentity_triggered()
@@ -723,7 +750,8 @@ void Main::writeSettings()
 	s.setValue("url", ui->urlEdit->text());
 	s.setValue("privateChain", m_privateChain);
 	s.setValue("verbosity", ui->verbosity->value());
-	s.setValue("jitvm", ui->jitvm->isChecked());
+	if (auto vm = m_vmSelectionGroup->checkedAction())
+		s.setValue("vm", vm->text());
 
 	bytes d = m_webThree->saveNetwork();
 	if (!d.empty())
@@ -814,8 +842,28 @@ void Main::readSettings(bool _skipGeometry)
 	m_privateChain = s.value("privateChain", "").toString();
 	ui->usePrivate->setChecked(m_privateChain.size());
 	ui->verbosity->setValue(s.value("verbosity", 1).toInt());
-	ui->jitvm->setChecked(s.value("jitvm", true).toBool());
-	on_jitvm_triggered();
+
+#if ETH_EVMJIT // We care only if JIT is enabled. Otherwise it can cause misconfiguration.
+	auto vmName = s.value("vm").toString();
+	if (!vmName.isEmpty())
+	{
+		if (vmName == ui->vmInterpreter->text())
+		{
+			ui->vmInterpreter->setChecked(true);
+			on_vmInterpreter_triggered();
+		}
+		else if (vmName == ui->vmJIT->text())
+		{
+			ui->vmJIT->setChecked(true);
+			on_vmJIT_triggered();
+		}
+		else if (vmName == ui->vmSmart->text())
+		{
+			ui->vmSmart->setChecked(true);
+			on_vmSmart_triggered();
+		}
+	}
+#endif
 
 	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
@@ -992,10 +1040,19 @@ void Main::on_usePrivate_triggered()
 	on_killBlockchain_triggered();
 }
 
-void Main::on_jitvm_triggered()
+void Main::on_vmInterpreter_triggered() { VMFactory::setKind(VMKind::Interpreter); }
+void Main::on_vmJIT_triggered() { VMFactory::setKind(VMKind::JIT); }
+void Main::on_vmSmart_triggered() { VMFactory::setKind(VMKind::Smart); }
+
+void Main::on_rewindChain_triggered()
 {
-	bool jit = ui->jitvm->isChecked();
-	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
+	bool ok;
+	int n = QInputDialog::getInt(this, "Rewind Chain", "Enter the number of the new chain head.", ethereum()->number() * 9 / 10, 1, ethereum()->number(), 1, &ok);
+	if (ok)
+	{
+		ethereum()->rewind(n);
+		refreshAll();
+	}
 }
 
 void Main::on_urlEdit_returnPressed()
@@ -1252,7 +1309,7 @@ void Main::refreshBlockCount()
 	auto d = ethereum()->blockChain().details();
 	BlockQueueStatus b = ethereum()->blockQueueStatus();
 	SyncStatus sync = ethereum()->syncStatus();
-	QString syncStatus = EthereumHost::stateName(sync.state);
+	QString syncStatus = QString("PV%1 %2").arg(sync.protocolVersion).arg(EthereumHost::stateName(sync.state));
 	if (sync.state == SyncState::Hashes)
 		syncStatus += QString(": %1/%2%3").arg(sync.hashesReceived).arg(sync.hashesEstimated ? "~" : "").arg(sync.hashesTotal);
 	if (sync.state == SyncState::Blocks || sync.state == SyncState::NewBlocks)
@@ -1269,7 +1326,7 @@ void Main::on_turboMining_triggered()
 
 void Main::refreshBlockChain()
 {
-	if (!ui->blocks->isVisible() && isVisible())
+	if (!(ui->blockChainDockWidget->isVisible() || !tabifiedDockWidgets(ui->blockChainDockWidget).isEmpty()))
 		return;
 
 	DEV_TIMED_FUNCTION_ABOVE(500);
@@ -1947,12 +2004,12 @@ void Main::on_net_triggered()
 		web3()->setNetworkPreferences(netPrefs(), ui->dropPeers->isChecked());
 		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : h256());
 		web3()->startNetwork();
-		ui->downloadView->setDownloadMan(ethereum()->downloadMan());
+		ui->downloadView->setEthereum(ethereum());
 		ui->enode->setText(QString::fromStdString(web3()->enode()));
 	}
 	else
 	{
-		ui->downloadView->setDownloadMan(nullptr);
+		ui->downloadView->setEthereum(nullptr);
 		writeSettings();
 		web3()->stopNetwork();
 	}

@@ -45,7 +45,6 @@ std::array<FuncDesc, sizeOf<EnvFunc>::value> const& getEnvFuncDescs()
 		FuncDesc{"env_log", getFunctionType(Type::Void, {Type::EnvPtr, Type::BytePtr, Type::Size, Type::WordPtr, Type::WordPtr, Type::WordPtr, Type::WordPtr})},
 		FuncDesc{"env_blockhash", getFunctionType(Type::Void, {Type::EnvPtr, Type::WordPtr, Type::WordPtr})},
 		FuncDesc{"env_extcode", getFunctionType(Type::BytePtr, {Type::EnvPtr, Type::WordPtr, Type::Size->getPointerTo()})},
-		FuncDesc{"ext_calldataload", getFunctionType(Type::Void, {Type::RuntimeDataPtr, Type::WordPtr, Type::WordPtr})},
 	}};
 
 	return descs;
@@ -101,12 +100,27 @@ void Ext::sstore(llvm::Value* _index, llvm::Value* _value)
 	createCall(EnvFunc::sstore, {getRuntimeManager().getEnvPtr(), byPtr(_index), byPtr(_value)}); // Uses native endianness
 }
 
-llvm::Value* Ext::calldataload(llvm::Value* _index)
+llvm::Value* Ext::calldataload(llvm::Value* _idx)
 {
 	auto ret = getArgAlloca();
-	createCall(EnvFunc::calldataload, {getRuntimeManager().getDataPtr(), byPtr(_index), ret});
-	ret = m_builder.CreateLoad(ret);
-	return Endianness::toNative(m_builder, ret);
+	auto result = m_builder.CreateBitCast(ret, Type::BytePtr);
+
+	auto callDataSize = getRuntimeManager().getCallDataSize();
+	auto callDataSize64 = m_builder.CreateTrunc(callDataSize, Type::Size);
+	auto idxValid = m_builder.CreateICmpULT(_idx, callDataSize);
+	auto idx = m_builder.CreateTrunc(m_builder.CreateSelect(idxValid, _idx, callDataSize), Type::Size, "idx");
+
+	auto end = m_builder.CreateNUWAdd(idx, m_builder.getInt64(32));
+	end = m_builder.CreateSelect(m_builder.CreateICmpULE(end, callDataSize64), end, callDataSize64);
+	auto copySize = m_builder.CreateNUWSub(end, idx);
+	auto padSize = m_builder.CreateNUWSub(m_builder.getInt64(32), copySize);
+	auto dataBegin = m_builder.CreateGEP(Type::Byte, getRuntimeManager().getCallData(), idx);
+	m_builder.CreateMemCpy(result, dataBegin, copySize, 1);
+	auto pad = m_builder.CreateGEP(Type::Byte, result, copySize);
+	m_builder.CreateMemSet(pad, m_builder.getInt8(0), padSize, 1);
+
+	m_argCounter = 0; // Release args allocas. TODO: This is a bad design
+	return Endianness::toNative(m_builder, m_builder.CreateLoad(ret));
 }
 
 llvm::Value* Ext::balance(llvm::Value* _address)

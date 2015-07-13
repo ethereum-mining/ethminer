@@ -6,9 +6,7 @@
 
 namespace dev
 {
-namespace eth
-{
-namespace jit
+namespace evmjit
 {
 
 llvm::APInt readPushData(code_iterator& _curr, code_iterator _end)
@@ -37,6 +35,5 @@ void skipPushData(code_iterator& _curr, code_iterator _end)
 	for (decltype(numBytes) i = 0; i < numBytes && _curr < _end; ++i, ++_curr) {}
 }
 
-}
 }
 }

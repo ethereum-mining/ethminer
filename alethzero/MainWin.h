@@ -44,6 +44,7 @@
 #include "Connect.h"
 
 class QListWidgetItem;
+class QActionGroup;
 
 namespace Ui {
 class Main;
@@ -182,8 +183,11 @@ private slots:
 	void on_forceMining_triggered();
 	void on_usePrivate_triggered();
 	void on_turboMining_triggered();
-	void on_jitvm_triggered();
 	void on_retryUnknown_triggered();
+	void on_vmInterpreter_triggered();
+	void on_vmJIT_triggered();
+	void on_vmSmart_triggered();
+	void on_rewindChain_triggered();
 
 	// Debugger
 	void on_debugCurrent_triggered();
@@ -196,6 +200,7 @@ private slots:
 
 	// Config
 	void on_gasPrices_triggered();
+	void on_sentinel_triggered();
 
 	void refreshWhisper();
 	void refreshBlockChain();
@@ -271,6 +276,8 @@ private:
 	dev::Address m_nameReg;
 	dev::Address m_beneficiary;
 
+	QActionGroup* m_vmSelectionGroup = nullptr;
+
 	QList<QPair<QString, QString>> m_consoleHistory;
 	QMutex m_logLock;
 	QString m_logHistory;
@@ -286,6 +293,6 @@ private:
 	std::unique_ptr<DappHost> m_dappHost;
 	DappLoader* m_dappLoader;
 	QWebEnginePage* m_webPage;
-	
+
 	Connect m_connect;
 };

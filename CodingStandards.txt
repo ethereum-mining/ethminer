@@ -196,7 +196,7 @@ a. Prefer 'using' to 'typedef'. e.g. using ints = std::vector<int>; rather than 
 b. Generally avoid shortening a standard form that already includes all important information:
 - e.g. stick to shared_ptr<X> rather than shortening to ptr<X>.
 c. Where there are exceptions to this (due to excessive use and clear meaning), note the change prominently and use it consistently.
-- e.g. using Guard = boost::lock_guard<std::mutex>; ///< Guard is used throughout the codebase since it's clear in meaning and used commonly. 
+- e.g. using Guard = std::lock_guard<std::mutex>; ///< Guard is used throughout the codebase since it's clear in meaning and used commonly. 
 d. In general expressions should be roughly as important/semantically meaningful as the space they occupy.
 
 
@@ -226,4 +226,3 @@ a. Includes should go in order of lower level (STL -> boost -> libdevcore -> lib
 #include <libethereum/Defaults.h>
 
 b. The only exception to the above rule is the top of a .cpp file where its corresponding header should be located.
-

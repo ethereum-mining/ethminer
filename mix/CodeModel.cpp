@@ -543,7 +543,7 @@ void CodeModel::retrieveSubType(SolidityType& _wrapperType, dev::solidity::Type 
 
 SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 {
-	SolidityType r { SolidityType::Type::UnsignedInteger, 32, 1, false, false, QString::fromStdString(_type->toString()), std::vector<SolidityDeclaration>(), std::vector<QString>(), nullptr };
+	SolidityType r { SolidityType::Type::UnsignedInteger, 32, 1, false, false, QString::fromStdString(_type->toString(true)), std::vector<SolidityDeclaration>(), std::vector<QString>(), nullptr };
 	if (!_type)
 		return r;
 	switch (_type->getCategory())
@@ -562,7 +562,7 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 	{
 		FixedBytesType const* b = dynamic_cast<FixedBytesType const*>(_type);
 		r.type = SolidityType::Type::Bytes;
-		r.size = static_cast<unsigned>(b->getNumBytes());
+		r.size = static_cast<unsigned>(b->numBytes());
 	}
 		break;
 	case Type::Category::Contract:
@@ -608,6 +608,7 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 		break;
 	case Type::Category::Function:
 	case Type::Category::IntegerConstant:
+	case Type::Category::StringLiteral:
 	case Type::Category::Magic:
 	case Type::Category::Mapping:
 	case Type::Category::Modifier:

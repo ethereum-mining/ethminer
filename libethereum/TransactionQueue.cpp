@@ -31,7 +31,28 @@ using namespace dev::eth;
 const char* TransactionQueueChannel::name() { return EthCyan "┉┅▶"; }
 const char* TransactionQueueTraceChannel::name() { return EthCyan " ┅▶"; }
 
-ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallback const& _cb, IfDropped _ik)
+TransactionQueue::TransactionQueue(unsigned _limit, unsigned _futureLimit):
+	m_current(PriorityCompare { *this }),
+	m_limit(_limit),
+	m_futureLimit(_futureLimit)
+{
+	unsigned verifierThreads = std::max(thread::hardware_concurrency(), 3U) - 2U;
+	for (unsigned i = 0; i < verifierThreads; ++i)
+		m_verifiers.emplace_back([=](){
+			setThreadName("txcheck" + toString(i));
+			this->verifierBody();
+		});
+}
+
+TransactionQueue::~TransactionQueue()
+{
+	m_aborting = true;
+	m_queueReady.notify_all();
+	for (auto& i: m_verifiers)
+		i.join();
+}
+
+ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, IfDropped _ik)
 {
 	// Check if we already know this transaction.
 	h256 h = sha3(_transactionRLP);
@@ -47,16 +68,18 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallb
 
 		try
 		{
+			// Check validity of _transactionRLP as a transaction. To do this we just deserialise and attempt to determine the sender.
+			// If it doesn't work, the signature is bad.
+			// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
 			t = Transaction(_transactionRLP, CheckTransaction::Everything);
 			UpgradeGuard ul(l);
-			ir = manageImport_WITH_LOCK(h, t, _cb);
+			ir = manageImport_WITH_LOCK(h, t);
 		}
 		catch (...)
 		{
 			return ImportResult::Malformed;
 		}
 	}
-//	cdebug << "import-END: Nonce of" << t.sender() << "now" << maxNonce(t.sender());
 	return ir;
 }
 
@@ -71,74 +94,86 @@ ImportResult TransactionQueue::check_WITH_LOCK(h256 const& _h, IfDropped _ik)
 	return ImportResult::Success;
 }
 
-ImportResult TransactionQueue::import(Transaction const& _transaction, ImportCallback const& _cb, IfDropped _ik)
+ImportResult TransactionQueue::import(Transaction const& _transaction, IfDropped _ik)
 {
 	// Check if we already know this transaction.
 	h256 h = _transaction.sha3(WithSignature);
 
-//	cdebug << "import-BEGIN: Nonce of sender" << maxNonce(_transaction.sender());
 	ImportResult ret;
 	{
 		UpgradableGuard l(m_lock);
-		// TODO: keep old transactions around and check in State for nonce validity
-
 		auto ir = check_WITH_LOCK(h, _ik);
 		if (ir != ImportResult::Success)
 			return ir;
 
 		{
 			UpgradeGuard ul(l);
-			ret = manageImport_WITH_LOCK(h, _transaction, _cb);
+			ret = manageImport_WITH_LOCK(h, _transaction);
 		}
 	}
-//	cdebug << "import-END: Nonce of" << _transaction.sender() << "now" << maxNonce(_transaction.sender());
 	return ret;
 }
 
-std::unordered_map<h256, Transaction> TransactionQueue::transactions() const
+Transactions TransactionQueue::topTransactions(unsigned _limit) const
 {
 	ReadGuard l(m_lock);
-	auto ret = m_current;
-	for (auto const& i: m_future)
-		if (i.second.nonce() < maxNonce_WITH_LOCK(i.second.sender()))
-			ret.insert(i);
-	return ret;
+	Transactions res;
+	unsigned n = _limit;
+	for (auto t = m_current.begin(); n != 0 && t != m_current.end(); ++t, --n)
+		res.push_back(t->transaction);
+	return res;
 }
 
-ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transaction const& _transaction, ImportCallback const& _cb)
+h256Hash TransactionQueue::knownTransactions() const
+{
+	ReadGuard l(m_lock);
+	return m_known;
+}
+
+ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transaction const& _transaction)
 {
 	try
 	{
-		// Check validity of _transactionRLP as a transaction. To do this we just deserialise and attempt to determine the sender.
-		// If it doesn't work, the signature is bad.
-		// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
-
-		auto r = m_senders.equal_range(_transaction.from());
-		for (auto it = r.first; it != r.second; ++it)
-			if (m_current.count(it->second) && m_current[it->second].nonce() == _transaction.nonce())
-				if (_transaction.gasPrice() < m_current[it->second].gasPrice())
+		assert(_h == _transaction.sha3());
+		// Remove any prior transaction with the same nonce but a lower gas price.
+		// Bomb out if there's a prior transaction with higher gas price.
+		auto cs = m_currentByAddressAndNonce.find(_transaction.from());
+		if (cs != m_currentByAddressAndNonce.end())
+		{
+			auto t = cs->second.find(_transaction.nonce());
+			if (t != cs->second.end())
+			{
+				if (_transaction.gasPrice() < (*t->second).transaction.gasPrice())
+					return ImportResult::OverbidGasPrice;
+				else
+					remove_WITH_LOCK((*t->second).transaction.sha3());
+			}
+		}
+		auto fs = m_future.find(_transaction.from());
+		if (fs != m_future.end())
+		{
+			auto t = fs->second.find(_transaction.nonce());
+			if (t != fs->second.end())
+			{
+				if (_transaction.gasPrice() < t->second.transaction.gasPrice())
 					return ImportResult::OverbidGasPrice;
 				else
 				{
-					remove_WITH_LOCK(it->second);
-					break;
+					fs->second.erase(t);
+					--m_futureSize;
 				}
-			else if (m_future.count(it->second) && m_future[it->second].nonce() == _transaction.nonce())
-				if (_transaction.gasPrice() < m_future[it->second].gasPrice())
-					return ImportResult::OverbidGasPrice;
-				else
-				{
-					remove_WITH_LOCK(it->second);
-					break;
-				}
-			else {}
-
-		// If valid, append to blocks.
+			}
+		}
+		// If valid, append to transactions.
 		insertCurrent_WITH_LOCK(make_pair(_h, _transaction));
-		m_known.insert(_h);
-		if (_cb)
-			m_callbacks[_h] = _cb;
 		clog(TransactionQueueTraceChannel) << "Queued vaguely legit-looking transaction" << _h;
+
+		while (m_current.size() > m_limit)
+		{
+			clog(TransactionQueueTraceChannel) << "Dropping out of bounds transaction" << _h;
+			remove_WITH_LOCK(m_current.rbegin()->transaction.sha3());
+		}
+
 		m_onReady();
 	}
 	catch (Exception const& _e)
@@ -157,7 +192,6 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 
 u256 TransactionQueue::maxNonce(Address const& _a) const
 {
-//	cdebug << "txQ::maxNonce" << _a;
 	ReadGuard l(m_lock);
 	return maxNonce_WITH_LOCK(_a);
 }
@@ -165,92 +199,127 @@ u256 TransactionQueue::maxNonce(Address const& _a) const
 u256 TransactionQueue::maxNonce_WITH_LOCK(Address const& _a) const
 {
 	u256 ret = 0;
-	auto r = m_senders.equal_range(_a);
-	for (auto it = r.first; it != r.second; ++it)
-		if (m_current.count(it->second))
-		{
-//			cdebug << it->first << "1+" << m_current.at(it->second).nonce();
-			ret = max(ret, m_current.at(it->second).nonce() + 1);
-		}
-		else if (m_future.count(it->second))
-		{
-//			cdebug << it->first << "1+" << m_future.at(it->second).nonce();
-			ret = max(ret, m_future.at(it->second).nonce() + 1);
-		}
-		else
-		{
-			cwarn << "ERRROR!!!!! m_senders references non-current transaction";
-			cwarn << "Sender" << it->first << "has transaction" << it->second;
-			cwarn << "Count of m_current for" << it->second << "is" << m_current.count(it->second);
-		}
-	return ret;
+	auto cs = m_currentByAddressAndNonce.find(_a);
+	if (cs != m_currentByAddressAndNonce.end() && !cs->second.empty())
+		ret = cs->second.rbegin()->first;
+	auto fs = m_future.find(_a);
+	if (fs != m_future.end() && !fs->second.empty())
+		ret = std::max(ret, fs->second.rbegin()->first);
+	return ret + 1;
 }
 
 void TransactionQueue::insertCurrent_WITH_LOCK(std::pair<h256, Transaction> const& _p)
 {
-//	cdebug << "txQ::insertCurrent" << _p.first << _p.second.sender() << _p.second.nonce();
-	m_senders.insert(make_pair(_p.second.sender(), _p.first));
-	if (m_current.count(_p.first))
+	if (m_currentByHash.count(_p.first))
+	{
 		cwarn << "Transaction hash" << _p.first << "already in current?!";
-	m_current.insert(_p);
+		return;
+	}
+
+	Transaction const& t = _p.second;
+	// Insert into current
+	auto inserted = m_currentByAddressAndNonce[t.from()].insert(std::make_pair(t.nonce(), PriorityQueue::iterator()));
+	PriorityQueue::iterator handle = m_current.emplace(VerifiedTransaction(t));
+	inserted.first->second = handle;
+	m_currentByHash[_p.first] = handle;
+
+	// Move following transactions from future to current
+	makeCurrent_WITH_LOCK(t);
+	m_known.insert(_p.first);
 }
 
 bool TransactionQueue::remove_WITH_LOCK(h256 const& _txHash)
 {
-//	cdebug << "txQ::remove" << _txHash;
-	for (std::unordered_map<h256, Transaction>* pool: { &m_current, &m_future })
-	{
-		auto pit = pool->find(_txHash);
-		if (pit != pool->end())
-		{
-			auto r = m_senders.equal_range(pit->second.sender());
-			for (auto i = r.first; i != r.second; ++i)
-				if (i->second == _txHash)
-				{
-					m_senders.erase(i);
-					break;
-				}
-//			cdebug << "=> nonce" << pit->second.nonce();
-			pool->erase(pit);
-			return true;
-		}
-	}
-	return false;
+	auto t = m_currentByHash.find(_txHash);
+	if (t == m_currentByHash.end())
+		return false;
+
+	Address from = (*t->second).transaction.from();
+	auto it = m_currentByAddressAndNonce.find(from);
+	assert (it != m_currentByAddressAndNonce.end());
+	it->second.erase((*t->second).transaction.nonce());
+	m_current.erase(t->second);
+	m_currentByHash.erase(t);
+	if (it->second.empty())
+		m_currentByAddressAndNonce.erase(it);
+	m_known.erase(_txHash);
+	return true;
 }
 
 unsigned TransactionQueue::waiting(Address const& _a) const
 {
 	ReadGuard l(m_lock);
-	auto it = m_senders.equal_range(_a);
 	unsigned ret = 0;
-	for (auto i = it.first; i != it.second; ++i, ++ret) {}
+	auto cs = m_currentByAddressAndNonce.find(_a);
+	if (cs != m_currentByAddressAndNonce.end())
+		ret = cs->second.size();
+	auto fs = m_future.find(_a);
+	if (fs != m_future.end())
+		ret += fs->second.size();
 	return ret;
 }
 
-void TransactionQueue::setFuture(std::pair<h256, Transaction> const& _t)
+void TransactionQueue::setFuture(h256 const& _txHash)
 {
-//	cdebug << "txQ::setFuture" << _t.first;
 	WriteGuard l(m_lock);
-	if (m_current.count(_t.first))
+	auto it = m_currentByHash.find(_txHash);
+	if (it == m_currentByHash.end())
+		return;
+
+	VerifiedTransaction const& st = *(it->second);
+
+	Address from = st.transaction.from();
+	auto& queue = m_currentByAddressAndNonce[from];
+	auto& target = m_future[from];
+	auto cutoff = queue.lower_bound(st.transaction.nonce());
+	for (auto m = cutoff; m != queue.end(); ++m)
 	{
-		m_future.insert(_t);
-		m_current.erase(_t.first);
+		VerifiedTransaction& t = const_cast<VerifiedTransaction&>(*(m->second)); // set has only const iterators. Since we are moving out of container that's fine
+		m_currentByHash.erase(t.transaction.sha3());
+		target.emplace(t.transaction.nonce(), move(t));
+		m_current.erase(m->second);
+		++m_futureSize;
 	}
+	queue.erase(cutoff, queue.end());
+	if (queue.empty())
+		m_currentByAddressAndNonce.erase(from);
 }
 
-void TransactionQueue::noteGood(std::pair<h256, Transaction> const& _t)
+void TransactionQueue::makeCurrent_WITH_LOCK(Transaction const& _t)
 {
-//	cdebug << "txQ::noteGood" << _t.first;
-	WriteGuard l(m_lock);
-	auto r = m_senders.equal_range(_t.second.sender());
-	for (auto it = r.first; it != r.second; ++it)
+	auto fs = m_future.find(_t.from());
+	if (fs != m_future.end())
 	{
-		auto fit = m_future.find(it->second);
-		if (fit != m_future.end())
+		u256 nonce = _t.nonce() + 1;
+		auto fb = fs->second.find(nonce);
+		if (fb != fs->second.end())
 		{
-			m_current.insert(*fit);
-			m_future.erase(fit);
+			auto ft = fb;
+			while (ft != fs->second.end() && ft->second.transaction.nonce() == nonce)
+			{
+				auto inserted = m_currentByAddressAndNonce[_t.from()].insert(std::make_pair(ft->second.transaction.nonce(), PriorityQueue::iterator()));
+				PriorityQueue::iterator handle = m_current.emplace(move(ft->second));
+				inserted.first->second = handle;
+				m_currentByHash[(*handle).transaction.sha3()] = handle;
+				--m_futureSize;
+				++ft;
+				++nonce;
+			}
+			fs->second.erase(fb, ft);
+			if (fs->second.empty())
+				m_future.erase(_t.from());
 		}
+	}
+
+	while (m_futureSize > m_futureLimit)
+	{
+		// TODO: priority queue for future transactions
+		// For now just drop random chain end
+		--m_futureSize;
+		clog(TransactionQueueTraceChannel) << "Dropping out of bounds future transaction" << m_future.begin()->second.rbegin()->second.transaction.sha3();
+		m_future.begin()->second.erase(--m_future.begin()->second.end());
+		if (m_future.begin()->second.empty())
+			m_future.erase(m_future.begin());
 	}
 }
 
@@ -263,7 +332,67 @@ void TransactionQueue::drop(h256 const& _txHash)
 
 	UpgradeGuard ul(l);
 	m_dropped.insert(_txHash);
-	m_known.erase(_txHash);
-
 	remove_WITH_LOCK(_txHash);
 }
+
+void TransactionQueue::dropGood(Transaction const& _t)
+{
+	WriteGuard l(m_lock);
+	makeCurrent_WITH_LOCK(_t);
+	if (!m_known.count(_t.sha3()))
+		return;
+	m_dropped.insert(_t.sha3());
+	remove_WITH_LOCK(_t.sha3());
+}
+
+void TransactionQueue::clear()
+{
+	WriteGuard l(m_lock);
+	m_known.clear();
+	m_current.clear();
+	m_currentByAddressAndNonce.clear();
+	m_currentByHash.clear();
+	m_future.clear();
+	m_futureSize = 0;
+}
+
+void TransactionQueue::enqueue(RLP const& _data, h512 const& _nodeId)
+{
+	{
+		Guard l(x_queue);
+		unsigned itemCount = _data.itemCount();
+		for (unsigned i = 0; i < itemCount; ++i)
+			m_unverified.emplace_back(UnverifiedTransaction(_data[i].data(), _nodeId));
+	}
+	m_queueReady.notify_all();
+}
+
+void TransactionQueue::verifierBody()
+{
+	while (!m_aborting)
+	{
+		UnverifiedTransaction work;
+
+		{
+			unique_lock<Mutex> l(x_queue);
+			m_queueReady.wait(l, [&](){ return !m_unverified.empty() || m_aborting; });
+			if (m_aborting)
+				return;
+			work = move(m_unverified.front());
+			m_unverified.pop_front();
+		}
+
+		try
+		{
+			Transaction t(work.transaction, CheckTransaction::Cheap); //Signature will be checked later
+			ImportResult ir = import(t);
+			m_onImport(ir, t.sha3(), work.nodeId);
+		}
+		catch (...)
+		{
+			// should not happen as exceptions are handled in import.
+			cwarn << "Bad transaction:" << boost::current_exception_diagnostic_information();
+		}
+	}
+}
+

@@ -28,7 +28,7 @@ using namespace dev;
 using namespace dev::shh;
 
 using TopicBloomFilterShort = TopicBloomFilterBase<4>;
-using TopicBloomFilterTest = TopicBloomFilterBase<c_topicBloomFilterSize>;
+using TopicBloomFilterTest = TopicBloomFilterBase<TopicBloomFilterSize>;
 
 void testAddNonExisting(TopicBloomFilterShort& _f, AbridgedTopic const& _h)
 {
@@ -61,7 +61,7 @@ void testRemoveExistingBloom(TopicBloomFilterShort& _f, AbridgedTopic const& _h)
 double calculateExpected(TopicBloomFilterTest const& f, int n)
 {
 	int const m = f.size * 8; // number of bits in the bloom
-	int const k = f.BitsPerBloom; // number of hash functions (e.g. bits set to 1 in every bloom)
+	int const k = BitsPerBloom; // number of hash functions (e.g. bits set to 1 in every bloom)
 
 	double singleBitSet = 1.0 / m; // probability of any bit being set after inserting a single bit
 	double singleBitNotSet = (1.0 - singleBitSet);
@@ -242,6 +242,66 @@ BOOST_AUTO_TEST_CASE(bloomFilterRaw)
 	BOOST_REQUIRE(!f.contains(b00000110));
 	BOOST_REQUIRE(!f.contains(b00110110));
 	BOOST_REQUIRE(!f.contains(b00110111));
+}
+
+static const unsigned DistributionTestSize = TopicBloomFilterSize;
+static const unsigned TestArrSize = 8 * DistributionTestSize;
+
+void updateDistribution(FixedHash<DistributionTestSize> const& _h, array<unsigned, TestArrSize>& _distribution)
+{
+	unsigned bits = 0;
+	for (unsigned i = 0; i < DistributionTestSize; ++i)
+		if (_h[i])
+			for (unsigned j = 0; j < 8; ++j)
+				if (_h[i] & c_powerOfTwoBitMmask[j])
+				{
+					_distribution[i * 8 + j]++;
+					if (++bits >= BitsPerBloom)
+						return;
+				}
+}
+
+BOOST_AUTO_TEST_CASE(distributionRate)
+{
+	cnote << "Testing Bloom Filter Distribution Rate...";
+
+	array<unsigned, TestArrSize> distribution;
+	for (unsigned i = 0; i < TestArrSize; ++i)
+		distribution[i] = 0;
+
+	Topic x(0xC0FFEE); // deterministic pseudorandom value
+
+	for (unsigned i = 0; i < 26000; ++i)
+	{
+		x = sha3(x);
+		FixedHash<DistributionTestSize> h = TopicBloomFilter::bloom(abridge(x));
+		updateDistribution(h, distribution);
+	}
+
+	unsigned average = 0;
+	for (unsigned i = 0; i < TestArrSize; ++i)
+		average += distribution[i];
+
+	average /= TestArrSize;
+	unsigned deviation = average / 3;
+	unsigned maxAllowed = average + deviation;
+	unsigned minAllowed = average - deviation;
+
+	unsigned maximum = 0;
+	unsigned minimum = 0xFFFFFFFF;
+
+	for (unsigned i = 0; i < TestArrSize; ++i)
+	{
+		unsigned const& z = distribution[i];
+		if (z > maximum)
+			maximum = z;
+		else if (z < minimum)
+			minimum = z;
+	}
+
+	cnote << minimum << average << maximum;
+	BOOST_REQUIRE(minimum > minAllowed);
+	BOOST_REQUIRE(maximum < maxAllowed);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

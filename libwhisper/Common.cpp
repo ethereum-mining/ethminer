@@ -100,7 +100,7 @@ TopicBloomFilterHash TopicFilter::exportBloom() const
 	TopicBloomFilterHash ret;
 	for (TopicMask const& t: m_topicMasks)
 		for (auto const& i: t)
-			ret |= i.first.template bloomPart<TopicBloomFilter::BitsPerBloom, c_topicBloomFilterSize>();
+			ret |= TopicBloomFilter::bloom(i.first);
 		
 	return ret;
 }

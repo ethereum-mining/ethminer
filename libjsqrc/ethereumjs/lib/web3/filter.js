@@ -127,7 +127,7 @@ var pollFilter = function(self) {
 
 };
 
-var Filter = function (options, methods, formatter) {
+var Filter = function (options, methods, formatter, callback) {
     var self = this;
     var implementation = {};
     methods.forEach(function (method) {
@@ -135,23 +135,32 @@ var Filter = function (options, methods, formatter) {
     });
     this.options = getOptions(options);
     this.implementation = implementation;
+    this.filterId = null;
     this.callbacks = [];
     this.pollFilters = [];
     this.formatter = formatter;
     this.implementation.newFilter(this.options, function(error, id){
         if(error) {
-            self.callbacks.forEach(function(callback){
-                callback(error);
+            self.callbacks.forEach(function(cb){
+                cb(error);
             });
         } else {
             self.filterId = id;
-            // get filter logs at start
-            self.callbacks.forEach(function(callback){
-                getLogsAtStart(self, callback);
+
+            // get filter logs for the already existing watch calls
+            self.callbacks.forEach(function(cb){
+                getLogsAtStart(self, cb);
             });
-            pollFilter(self);
+            if(self.callbacks.length > 0)
+                pollFilter(self);
+
+            // start to watch immediately
+            if(callback) {
+                return self.watch(callback);
+            }
         }
     });
+
 };
 
 Filter.prototype.watch = function (callback) {

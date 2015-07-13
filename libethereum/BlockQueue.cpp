@@ -21,6 +21,7 @@
 
 #include "BlockQueue.h"
 #include <thread>
+#include <sstream>
 #include <libdevcore/Log.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
@@ -114,15 +115,11 @@ void BlockQueue::verifierBody()
 		catch (...)
 		{
 			// bad block.
-			{
-				// has to be this order as that's how invariants() assumes.
-				WriteGuard l2(m_lock);
-				unique_lock<Mutex> l(m_verification);
-				m_readySet.erase(work.hash);
-				m_knownBad.insert(work.hash);
-			}
-
+			// has to be this order as that's how invariants() assumes.
+			WriteGuard l2(m_lock);
 			unique_lock<Mutex> l(m_verification);
+			m_readySet.erase(work.hash);
+			m_knownBad.insert(work.hash);
 			for (auto it = m_verifying.begin(); it != m_verifying.end(); ++it)
 				if (it->verified.info.mixHash == work.hash)
 				{
@@ -131,6 +128,7 @@ void BlockQueue::verifierBody()
 				}
 			cwarn << "BlockQueue missing our job: was there a GM?";
 			OK1:;
+			drainVerified_WITH_BOTH_LOCKS();
 			continue;
 		}
 
@@ -149,17 +147,8 @@ void BlockQueue::verifierBody()
 				}
 				else
 					m_verified.emplace_back(move(res));
-				while (m_verifying.size() && !m_verifying.front().blockData.empty())
-				{
-					if (m_knownBad.count(m_verifying.front().verified.info.parentHash))
-					{
-						m_readySet.erase(m_verifying.front().verified.info.hash());
-						m_knownBad.insert(res.verified.info.hash());
-					}
-					else
-						m_verified.emplace_back(move(m_verifying.front()));
-					m_verifying.pop_front();
-				}
+
+				drainVerified_WITH_BOTH_LOCKS();
 				ready = true;
 			}
 			else
@@ -179,8 +168,24 @@ void BlockQueue::verifierBody()
 	}
 }
 
+void BlockQueue::drainVerified_WITH_BOTH_LOCKS()
+{
+	while (!m_verifying.empty() && !m_verifying.front().blockData.empty())
+	{
+		if (m_knownBad.count(m_verifying.front().verified.info.parentHash))
+		{
+			m_readySet.erase(m_verifying.front().verified.info.hash());
+			m_knownBad.insert(m_verifying.front().verified.info.hash());
+		}
+		else
+			m_verified.emplace_back(move(m_verifying.front()));
+		m_verifying.pop_front();
+	}
+}
+
 ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, bool _isOurs)
 {
+	clog(BlockQueueTraceChannel) << std::this_thread::get_id();
 	// Check if we already know this block.
 	h256 h = BlockInfo::headerHash(_block);
 
@@ -210,8 +215,10 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		return ImportResult::Malformed;
 	}
 
+	clog(BlockQueueTraceChannel) << "Block" << h << "is" << bi.number << "parent is" << bi.parentHash;
+
 	// Check block doesn't already exist first!
-	if (_bc.details(h))
+	if (_bc.isKnown(h))
 	{
 		cblockq << "Already known in chain.";
 		return ImportResult::AlreadyInChain;
@@ -242,7 +249,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		if (m_knownBad.count(bi.parentHash))
 		{
 			m_knownBad.insert(bi.hash());
-			updateBad(bi.hash());
+			updateBad_WITH_LOCK(bi.hash());
 			// bad parent; this is bad too, note it as such
 			return ImportResult::BadChain;
 		}
@@ -277,12 +284,12 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 	}
 }
 
-void BlockQueue::updateBad(h256 const& _bad)
+void BlockQueue::updateBad_WITH_LOCK(h256 const& _bad)
 {
 	DEV_INVARIANT_CHECK;
 	DEV_GUARDED(m_verification)
 	{
-		collectUnknownBad(_bad);
+		collectUnknownBad_WITH_BOTH_LOCKS(_bad);
 		bool moreBad = true;
 		while (moreBad)
 		{
@@ -294,7 +301,7 @@ void BlockQueue::updateBad(h256 const& _bad)
 				{
 					m_knownBad.insert(b.verified.info.hash());
 					m_readySet.erase(b.verified.info.hash());
-					collectUnknownBad(b.verified.info.hash());
+					collectUnknownBad_WITH_BOTH_LOCKS(b.verified.info.hash());
 					moreBad = true;
 				}
 				else
@@ -307,7 +314,7 @@ void BlockQueue::updateBad(h256 const& _bad)
 				{
 					m_knownBad.insert(b.hash);
 					m_readySet.erase(b.hash);
-					collectUnknownBad(b.hash);
+					collectUnknownBad_WITH_BOTH_LOCKS(b.hash);
 					moreBad = true;
 				}
 				else
@@ -321,17 +328,16 @@ void BlockQueue::updateBad(h256 const& _bad)
 					h256 const& h = b.blockData.size() != 0 ? b.verified.info.hash() : b.verified.info.mixHash;
 					m_knownBad.insert(h);
 					m_readySet.erase(h);
-					collectUnknownBad(h);
+					collectUnknownBad_WITH_BOTH_LOCKS(h);
 					moreBad = true;
 				}
 				else
 					m_verifying.push_back(std::move(b));
 		}
 	}
-	DEV_INVARIANT_CHECK;
 }
 
-void BlockQueue::collectUnknownBad(h256 const& _bad)
+void BlockQueue::collectUnknownBad_WITH_BOTH_LOCKS(h256 const& _bad)
 {
 	list<h256> badQueue(1, _bad);
 	while (!badQueue.empty())
@@ -349,7 +355,6 @@ void BlockQueue::collectUnknownBad(h256 const& _bad)
 		}
 		m_unknown.erase(r.first, r.second);
 	}
-
 }
 
 bool BlockQueue::doneDrain(h256s const& _bad)
@@ -364,7 +369,7 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 		// at least one of them was bad.
 		m_knownBad += _bad;
 		for (h256 const& b : _bad)
-			updateBad(b);
+			updateBad_WITH_LOCK(b);
 	}
 	return !m_readySet.empty();
 }
@@ -471,7 +476,13 @@ void BlockQueue::drain(VerifiedBlocks& o_out, unsigned _max)
 bool BlockQueue::invariants() const
 {
 	Guard l(m_verification);
-	return m_readySet.size() == m_verified.size() + m_unverified.size() + m_verifying.size();
+	if (!(m_readySet.size() == m_verified.size() + m_unverified.size() + m_verifying.size()))
+	{
+		std::stringstream s;
+		s << "Failed BlockQueue invariant: m_readySet: " << m_readySet.size() << " m_verified: " << m_verified.size() << " m_unverified: " << m_unverified.size() << " m_verifying" << m_verifying.size();
+		BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment(s.str()));
+	}
+	return true;
 }
 
 void BlockQueue::noteReady_WITH_LOCK(h256 const& _good)
@@ -501,7 +512,6 @@ void BlockQueue::noteReady_WITH_LOCK(h256 const& _good)
 	}
 	if (notify)
 		m_moreToVerify.notify_all();
-	DEV_INVARIANT_CHECK;
 }
 
 void BlockQueue::retryAllUnknown()

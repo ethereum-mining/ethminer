@@ -86,7 +86,7 @@ unsigned EthereumPeer::askOverride() const
 	if (s->info().clientVersion.substr(0, badGeth.size()) == badGeth)
 		return 1;
 	bytes const& d = repMan().data(*s, name());
-	return d.empty() ? c_maxBlocksAsk : RLP(d).toInt<unsigned>(RLP::LaisezFaire);
+	return d.empty() ? c_maxBlocksAsk : RLP(d).toInt<unsigned>(RLP::LaissezFaire);
 }
 
 void EthereumPeer::setRude()
@@ -127,20 +127,19 @@ void EthereumPeer::requestStatus()
 	m_requireTransactions = true;
 	RLPStream s;
 	bool latest = m_peerCapabilityVersion == host()->protocolVersion();
-	prep(s, StatusPacket, latest ? 6 : 5)
+	prep(s, StatusPacket, 5)
 					<< (latest ? host()->protocolVersion() : EthereumHost::c_oldProtocolVersion)
 					<< host()->networkId()
 					<< host()->chain().details().totalDifficulty
 					<< host()->chain().currentHash()
 					<< host()->chain().genesisHash();
-	if (latest)
-		s << u256(host()->chain().number());
 	sealAndSend(s);
 }
 
 void EthereumPeer::requestHashes(u256 _number, unsigned _count)
 {
 	assert(m_asking == Asking::Nothing);
+	assert(m_protocolVersion == host()->protocolVersion());
 	m_syncHashNumber = _number;
 	m_syncHash = h256();
 	setAsking(Asking::Hashes);
@@ -198,7 +197,7 @@ void EthereumPeer::requestBlocks()
 void EthereumPeer::setAsking(Asking _a)
 {
 	m_asking = _a;
-	m_lastAsk = chrono::system_clock::now();
+	m_lastAsk = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
 
 	auto s = session();
 	if (s)
@@ -211,7 +210,8 @@ void EthereumPeer::setAsking(Asking _a)
 void EthereumPeer::tick()
 {
 	auto s = session();
-	if (s && (chrono::system_clock::now() - m_lastAsk > chrono::seconds(10) && m_asking != Asking::Nothing))
+	time_t  now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
+	if (s && (now - m_lastAsk > 10 && m_asking != Asking::Nothing))
 		// timeout
 		s->disconnect(PingTimeout);
 }
@@ -228,6 +228,7 @@ bool EthereumPeer::isCriticalSyncing() const
 
 bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 {
+	m_lastAsk = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
 	try
 	{
 	switch (_id)
@@ -240,21 +241,10 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		m_latestHash = _r[3].toHash<h256>();
 		m_genesisHash = _r[4].toHash<h256>();
 		if (m_peerCapabilityVersion == host()->protocolVersion())
-		{
-			if (_r.itemCount() != 6)
-			{
-				clog(NetImpolite) << "Peer does not support PV61+ status extension.";
-				m_protocolVersion = EthereumHost::c_oldProtocolVersion;
-			}
-			else
-			{
-				m_protocolVersion = host()->protocolVersion();
-				m_latestBlockNumber = _r[5].toInt<u256>();
-			}
-		}
+			m_protocolVersion = host()->protocolVersion();
 
-		clog(NetMessageSummary) << "Status:" << m_protocolVersion << "/" << m_networkId << "/" << m_genesisHash << "/" << m_latestBlockNumber << ", TD:" << m_totalDifficulty << "=" << m_latestHash;
-		setAsking(Asking::Nothing);
+		clog(NetMessageSummary) << "Status:" << m_protocolVersion << "/" << m_networkId << "/" << m_genesisHash << ", TD:" << m_totalDifficulty << "=" << m_latestHash;
+		setIdle();
 		host()->onPeerStatus(dynamic_pointer_cast<EthereumPeer>(dynamic_pointer_cast<EthereumPeer>(shared_from_this())));
 		break;
 	}
@@ -311,6 +301,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			clog(NetWarn) << "Peer giving us hashes when we didn't ask for them.";
 			break;
 		}
+		setIdle();
 		h256s hashes(itemCount);
 		for (unsigned i = 0; i < itemCount; ++i)
 			hashes[i] = _r[i].toHash<h256>();
@@ -357,7 +348,10 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		if (m_asking != Asking::Blocks)
 			clog(NetImpolite) << "Peer giving us blocks when we didn't ask for them.";
 		else
+		{
+			setIdle();
 			host()->onPeerBlocks(dynamic_pointer_cast<EthereumPeer>(shared_from_this()), _r);
+		}
 		break;
 	}
 	case NewBlockPacket:
@@ -381,9 +375,9 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		return false;
 	}
 	}
-	catch (Exception const& _e)
+	catch (Exception const&)
 	{
-		clog(NetWarn) << "Peer causing an Exception:" << _e.what() << _r;
+		clog(NetWarn) << "Peer causing an Exception:" << boost::current_exception_diagnostic_information() << _r;
 	}
 	catch (std::exception const& _e)
 	{

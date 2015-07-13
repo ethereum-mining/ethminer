@@ -13,12 +13,18 @@ import "."
 
 ColumnLayout {
 	id: blockChainPanel
+	property alias trDialog: transactionDialog
+	property alias blockChainRepeater: blockChainRepeater
 	property variant model
+	property var states: ({})
 	spacing: 0
 	property int previousWidth
 	property variant debugTrRequested: []
 	signal chainChanged
 	signal chainReloaded
+	signal txSelected(var blockIndex, var txIndex)
+	signal rebuilding
+	signal accountAdded(string address, string amount)
 
 	Connections
 	{
@@ -40,18 +46,21 @@ ColumnLayout {
 		var minWidth = scenarioMinWidth - 20 // margin
 		if (width <= minWidth || previousWidth <= minWidth)
 		{
-			fromWidth = 100
-			toWidth = 100
-			valueWidth = 200
+			fromWidth = 250
+			toWidth = 240
 		}
 		else
 		{
 			var diff = (width - previousWidth) / 3;
-			fromWidth = fromWidth + diff < 100 ? 100 : fromWidth + diff
-			toWidth = toWidth + diff < 100 ? 100 : toWidth + diff
-			valueWidth = valueWidth + diff < 200 ? 200 : valueWidth + diff
+			fromWidth = fromWidth + diff < 250 ? 250 : fromWidth + diff
+			toWidth = toWidth + diff < 240 ? 240 : toWidth + diff
 		}
 		previousWidth = width
+	}
+
+	function getState(record)
+	{
+		return states[record]
 	}
 
 	function load(scenario)
@@ -61,6 +70,7 @@ ColumnLayout {
 		if (model)
 			rebuild.startBlinking()
 		model = scenario
+		states = []
 		blockModel.clear()
 		for (var b in model.blocks)
 			blockModel.append(model.blocks[b])
@@ -68,10 +78,8 @@ ColumnLayout {
 	}
 
 	property int statusWidth: 30
-	property int fromWidth: 150
-	property int toWidth: 100
-	property int valueWidth: 200
-	property int logsWidth: 40
+	property int fromWidth: 250
+	property int toWidth: 240
 	property int debugActionWidth: 40
 	property int horizontalMargin: 10
 	property int cellSpacing: 10
@@ -80,7 +88,7 @@ ColumnLayout {
 	{
 		id: header
 		spacing: 0
-		Layout.preferredHeight: 30
+		Layout.preferredHeight: 24
 		Rectangle
 		{
 			Layout.preferredWidth: statusWidth
@@ -91,12 +99,13 @@ ColumnLayout {
 				anchors.verticalCenter: parent.verticalCenter
 				anchors.horizontalCenter: parent.horizontalCenter
 				source: "qrc:/qml/img/recycleicon@2x.png"
-				width: statusWidth + 20
+				width: statusWidth + 10
 				fillMode: Image.PreserveAspectFit
 			}
 		}
 		Rectangle
 		{
+			anchors.verticalCenter: parent.verticalCenter
 			Layout.preferredWidth: fromWidth
 			Label
 			{
@@ -109,21 +118,13 @@ ColumnLayout {
 		Label
 		{
 			text: "To"
+			anchors.verticalCenter: parent.verticalCenter
 			Layout.preferredWidth: toWidth + cellSpacing
 		}
 		Label
 		{
-			text: "Value"
-			Layout.preferredWidth: valueWidth + cellSpacing
-		}
-		Label
-		{
-			text: "Logs"
-			Layout.preferredWidth: logsWidth + cellSpacing
-		}
-		Label
-		{
 			text: ""
+			anchors.verticalCenter: parent.verticalCenter
 			Layout.preferredWidth: debugActionWidth
 		}
 	}
@@ -162,8 +163,22 @@ ColumnLayout {
 				{
 					id: blockChainRepeater
 					model: blockModel
+
+					function editTx(blockIndex, txIndex)
+					{
+						itemAt(blockIndex).editTx(txIndex)
+					}
+
 					Block
 					{
+						Connections
+						{
+							target: block
+							onTxSelected: {
+								blockChainPanel.txSelected(index, txIndex)
+							}
+						}
+						id: block
 						scenario: blockChainPanel.model
 						Layout.preferredWidth: blockChainScrollView.width
 						Layout.preferredHeight:
@@ -248,6 +263,8 @@ ColumnLayout {
 	Rectangle
 	{
 		Layout.preferredWidth: parent.width
+		Layout.preferredHeight: 70
+		color: "transparent"
 		RowLayout
 		{
 			anchors.horizontalCenter: parent.horizontalCenter
@@ -270,7 +287,9 @@ ColumnLayout {
 					{
 						if (ensureNotFuturetime.running)
 							return;
+						rebuilding()
 						stopBlinking()
+						states = []
 						var retBlocks = [];
 						var bAdded = 0;
 						for (var j = 0; j < model.blocks.length; j++)
@@ -316,7 +335,7 @@ ColumnLayout {
 							blockModel.append(model.blocks[j])
 
 						ensureNotFuturetime.start()
-						clientModel.setupScenario(model);
+						clientModel.setupScenario(model);						
 					}
 					buttonShortcut: ""
 					sourceImg: "qrc:/qml/img/recycleicon@2x.png"
@@ -346,6 +365,7 @@ ColumnLayout {
 						var item = TransactionHelper.defaultTransaction()
 						transactionDialog.stateAccounts = model.accounts
 						transactionDialog.execute = true
+						transactionDialog.editMode = false
 						transactionDialog.open(model.blocks[model.blocks.length - 1].transactions.length, model.blocks.length - 1, item)
 					}
 					width: 100
@@ -397,7 +417,6 @@ ColumnLayout {
 						}
 						else
 							addNewBlock()
-
 					}
 
 					function addNewBlock()
@@ -410,7 +429,7 @@ ColumnLayout {
 					height: 30
 
 					buttonShortcut: ""
-					sourceImg: "qrc:/qml/img/addblock@2x.png"
+					sourceImg: "qrc:/qml/img/newblock@2x.png"
 				}
 			}
 
@@ -448,11 +467,13 @@ ColumnLayout {
 							tr.recordIndex = _r.recordIndex
 							tr.logs = _r.logs
 							tr.sender = _r.sender
+							tr.returnParameters = _r.returnParameters
 							var trModel = blockModel.getTransaction(blockIndex, trIndex)
 							trModel.returned = _r.returned
 							trModel.recordIndex = _r.recordIndex
 							trModel.logs = _r.logs
 							trModel.sender = _r.sender
+							trModel.returnParameters = _r.returnParameters
 							blockModel.setTransaction(blockIndex, trIndex, trModel)
 							return;
 						}
@@ -472,9 +493,15 @@ ColumnLayout {
 					itemTr.sender = _r.sender
 					itemTr.recordIndex = _r.recordIndex
 					itemTr.logs = _r.logs
+					itemTr.returnParameters = _r.returnParameters
 					model.blocks[model.blocks.length - 1].transactions.push(itemTr)
 					blockModel.appendTransaction(itemTr)
 				}
+
+				onNewState: {
+					states[_record] = _accounts
+				}
+
 				onMiningComplete:
 				{
 				}
@@ -484,7 +511,12 @@ ColumnLayout {
 				id: newAccount
 				text: qsTr("New Account..")
 				onClicked: {
-					model.accounts.push(projectModel.stateListModel.newAccount("1000000", QEther.Ether))
+					var ac = projectModel.stateListModel.newAccount("O", QEther.Wei)
+					model.accounts.push(ac)
+					clientModel.addAccount(ac.secret);
+					for (var k in Object.keys(blockChainPanel.states))
+						blockChainPanel.states[k].accounts["0x" + ac.address] = "0 wei" // add the account in all the previous state (balance at O)
+					accountAdded(ac.address, "0")
 				}
 				Layout.preferredWidth: 100
 				Layout.preferredHeight: 30

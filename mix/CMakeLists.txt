@@ -15,6 +15,11 @@ include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(BEFORE ..)
 
+if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang") AND NOT (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.6") AND NOT APPLE)
+	# Supress warnings for qt headers for clang+ccache
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-inconsistent-missing-override")
+endif ()
+
 find_package (Qt5WebEngine QUIET)
 qt5_add_resources(UI_RESOURCES res.qrc qml.qrc)
 
