@@ -114,6 +114,8 @@ void WhisperDB::loadAll(std::map<h256, Envelope>& o_dst)
 			o_dst[h1] = e;
 	}
 
+	delete it;
+
 	leveldb::WriteOptions woptions;
 	for (auto k: wasted)
 		m_db->Delete(woptions, k);
