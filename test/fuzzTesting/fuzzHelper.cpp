@@ -42,7 +42,7 @@ boostIntGenerator RandomCode::randOpLengGen = boostIntGenerator(gen, opLengDist)
 boostIntGenerator RandomCode::randUniIntGen = boostIntGenerator(gen, uniIntDist);
 boostUInt64Generator RandomCode::randUInt64Gen = boostUInt64Generator(gen, uInt64Dist);
 
-int RandomCode::recursiveRLP(std::string &_result, int _depth, RlpDebug &_debug)
+int RandomCode::recursiveRLP(std::string &_result, int _depth, std::string &_debug)
 {
 	bool genvalidrlp = false;
 	if (_depth > 1)
@@ -52,10 +52,10 @@ int RandomCode::recursiveRLP(std::string &_result, int _depth, RlpDebug &_debug)
 		for (auto i = 0; i < size; i++)
 		{
 			std::string blockstr;
-			RlpDebug blockDebug;
+			std::string blockDebug;
 			recursiveRLP(blockstr, _depth - 1, blockDebug);
 			_result += blockstr;
-			_debug.rlp += blockDebug.rlp;
+			_debug += blockDebug;
 		}
 
 		//make rlp header
@@ -94,7 +94,7 @@ int RandomCode::recursiveRLP(std::string &_result, int _depth, RlpDebug &_debug)
 			}
 		}
 		_result = header + _result;
-		_debug.rlp = "[" + header + "(" + toString(length) + "){" + toString(rtype) + "}]" + _debug.rlp;
+		_debug = "[" + header + "(" + toString(length) + "){" + toString(rtype) + "}]" + _debug;
 		return _result.size() / 2;
 	}
 	if (_depth == 1)
@@ -119,7 +119,7 @@ int RandomCode::recursiveRLP(std::string &_result, int _depth, RlpDebug &_debug)
 			//single byte [0x00, 0x7f]
 			std::string rlp = emptyZeros + toCompactHex(genbug ? randUniIntGen() % 255 : randUniIntGen() % 128, HexPrefix::DontAdd, 1);
 			_result.insert(0, rlp);
-			_debug.rlp.insert(0, "[" + rlp + "]");
+			_debug.insert(0, "[" + rlp + "]");
 			return 1;
 		}
 		case 1:
@@ -132,7 +132,7 @@ int RandomCode::recursiveRLP(std::string &_result, int _depth, RlpDebug &_debug)
 				hex = toCompactHex((u64)128);
 
 			_result.insert(0, toCompactHex(128 + len) + emptyZeros + hex);
-			_debug.rlp.insert(0, "[" + toCompactHex(128 + len) + "(" + toString(len) + ")]" + emptyZeros + hex);
+			_debug.insert(0, "[" + toCompactHex(128 + len) + "(" + toString(len) + ")]" + emptyZeros + hex);
 			return len + 1;
 		}
 		case 2:
@@ -145,7 +145,7 @@ int RandomCode::recursiveRLP(std::string &_result, int _depth, RlpDebug &_debug)
 			std::string hex = rndByteSequence(len);
 			std::string hexlen = emptyZeros2 + toCompactHex(len, HexPrefix::DontAdd, 1);
 			std::string rlpblock = toCompactHex(183 + hexlen.size() / 2) + hexlen + emptyZeros + hex;
-			_debug.rlp.insert(0, "[" + toCompactHex(183 + hexlen.size() / 2) + hexlen + "(" + toString(len) + "){2}]" + emptyZeros + hex);
+			_debug.insert(0, "[" + toCompactHex(183 + hexlen.size() / 2) + hexlen + "(" + toString(len) + "){2}]" + emptyZeros + hex);
 			_result.insert(0, rlpblock);
 			return rlpblock.size() / 2;
 		}
@@ -155,7 +155,7 @@ int RandomCode::recursiveRLP(std::string &_result, int _depth, RlpDebug &_debug)
 			int len = genbug ? randUniIntGen() % 255 : randUniIntGen() % 55;
 			std::string hex = emptyZeros + rndByteSequence(len);
 			_result.insert(0, toCompactHex(192 + len) + hex);
-			_debug.rlp.insert(0, "[" + toCompactHex(192 + len) + "(" + toString(len) + "){3}]" + hex);
+			_debug.insert(0, "[" + toCompactHex(192 + len) + "(" + toString(len) + "){3}]" + hex);
 			return len + 1;
 		}
 		case 4:
@@ -166,7 +166,7 @@ int RandomCode::recursiveRLP(std::string &_result, int _depth, RlpDebug &_debug)
 				len = 56;
 			std::string hexlen = emptyZeros2 + toCompactHex(len, HexPrefix::DontAdd, 1);
 			std::string rlpblock = toCompactHex(247 + hexlen.size() / 2) + hexlen + emptyZeros + rndByteSequence(len);
-			_debug.rlp.insert(0, "[" + toCompactHex(247 + hexlen.size() / 2) + hexlen + "(" + toString(len) + "){4}]" + emptyZeros + rndByteSequence(len));
+			_debug.insert(0, "[" + toCompactHex(247 + hexlen.size() / 2) + hexlen + "(" + toString(len) + "){4}]" + emptyZeros + rndByteSequence(len));
 			_result.insert(0, rlpblock);
 			return rlpblock.size() / 2;
 		}
@@ -175,14 +175,12 @@ int RandomCode::recursiveRLP(std::string &_result, int _depth, RlpDebug &_debug)
 	return 0;
 }
 
-std::string RandomCode::rndRLPSequence(int _depth, SizeStrictness _sizeType)
+std::string RandomCode::rndRLPSequence(int _depth, std::string& _debug)
 {
 	refreshSeed();
 	std::string hash;
-	_depth = (_sizeType == SizeStrictness::Strict) ? std::max(1, _depth) : randomUniInt() % _depth;
-	RlpDebug debug;
-	recursiveRLP(hash, _depth, debug);
-	cnote << debug.rlp;
+	_depth = std::min(std::max(1, _depth), 20); //limit depth to avoid overkill
+	recursiveRLP(hash, _depth, _debug);
 	return hash;
 }
 

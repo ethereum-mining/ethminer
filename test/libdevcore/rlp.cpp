@@ -30,8 +30,8 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <algorithm>
-#include "../JsonSpiritHeaders.h"
-#include "../TestHelper.h"
+#include "test/JsonSpiritHeaders.h"
+#include "test/TestHelper.h"
 
 using namespace std;
 using namespace dev;
@@ -131,6 +131,9 @@ namespace dev
 						RLP payload(payloadToDecode);
 						ostringstream() << payload;
 
+						//attempt to read all the contents of RLP
+						ostringstream() << payload;
+
 						if (rlpType == RlpType::Test)
 							dev::test::checkRLPAgainstJson(inputData, payload);
 					}
@@ -142,6 +145,10 @@ namespace dev
 					catch (exception const& _e)
 					{
 						cnote << "rlp exception: " << _e.what();
+						was_exception = true;
+					}
+					catch (...)
+					{
 						was_exception = true;
 					}
 
