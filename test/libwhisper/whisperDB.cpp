@@ -21,7 +21,9 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <thread>
 #include <boost/test/unit_test.hpp>
+#include <libp2p/Host.h>
 #include <libwhisper/WhisperDB.h>
+#include <libwhisper/WhisperHost.h>
 
 using namespace std;
 using namespace dev;
@@ -117,6 +119,58 @@ BOOST_AUTO_TEST_CASE(persistence)
 		db.kill(h1);
 		db.kill(h2);
 	}
+}
+
+BOOST_AUTO_TEST_CASE(messages)
+{
+	cnote << "Testing load/save Whisper messages...";
+	const unsigned TestSize = 3;
+	map<h256, Envelope> m1;
+	map<h256, Envelope> preexisting;
+	KeyPair us = KeyPair::create();
+
+	{
+		p2p::Host h("Test");
+		auto wh = h.registerCapability(new WhisperHost());
+		preexisting = wh->all();
+		cnote << preexisting.size() << "preexisting messages in DB";
+
+		for (int i = 0; i < TestSize; ++i)
+			wh->post(us.sec(), RLPStream().append(i).out(), BuildTopic("test"), 0xFFFFF);
+
+		m1 = wh->all();
+	}
+
+	{
+		p2p::Host h("Test");
+		auto wh = h.registerCapability(new WhisperHost());
+		map<h256, Envelope> m2 = wh->all();
+		BOOST_REQUIRE_EQUAL(m1.size(), m2.size());
+		BOOST_REQUIRE_EQUAL(m1.size() - preexisting.size(), TestSize);
+
+		for (auto i: m1)
+		{
+			RLPStream rlp1;
+			RLPStream rlp2;
+			i.second.streamRLP(rlp1);
+			m2[i.first].streamRLP(rlp2);
+			BOOST_REQUIRE_EQUAL(rlp1.out().size(), rlp2.out().size());
+			for (unsigned j = 0; j < rlp1.out().size(); ++j)
+				BOOST_REQUIRE_EQUAL(rlp1.out()[j], rlp2.out()[j]);
+		}
+	}
+
+	WhisperDB db;
+	unsigned x = 0;
+
+	for (auto i: m1)
+		if (preexisting.find(i.first) == preexisting.end())
+		{
+			db.kill(i.first);
+			++x;
+		}
+
+	BOOST_REQUIRE_EQUAL(x, TestSize);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
