@@ -40,7 +40,6 @@
 #include <libethcore/Farm.h>
 #include <libp2p/Common.h>
 #include "CanonBlockChain.h"
-#include "TransactionQueue.h"
 #include "State.h"
 #include "CommonNet.h"
 #include "ClientBase.h"
