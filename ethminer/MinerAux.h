@@ -81,6 +81,12 @@ inline std::string credits()
 }
 
 class BadArgument: public Exception {};
+struct MiningChannel: public LogChannel
+{
+	static const char* name() { return EthGreen "miner"; }
+	static const int verbosity = 2;
+};
+#define minelog clog(MiningChannel)
 
 class MinerCLI
 {
@@ -484,14 +490,14 @@ private:
 				for (unsigned i = 0; !completed; ++i)
 				{
 					if (current)
-						cnote << "Mining on PoWhash" << current.headerHash << ": " << f.miningProgress();
+						minelog << "Mining on PoWhash" << current.headerHash << ": " << f.miningProgress();
 					else
-						cnote << "Getting work package...";
+						minelog << "Getting work package...";
 					Json::Value v = rpc.eth_getWork();
 					h256 hh(v[0].asString());
 					h256 newSeedHash(v[1].asString());
 					if (current.seedHash != newSeedHash)
-						cnote << "Grabbing DAG for" << newSeedHash;
+						minelog << "Grabbing DAG for" << newSeedHash;
 					if (!(dag = EthashAux::full(newSeedHash, true, [&](unsigned _pc){ cout << "\rCreating DAG. " << _pc << "% done..." << flush; return 0; })))
 						BOOST_THROW_EXCEPTION(DAGCreationFailure());
 					if (m_precompute)
@@ -501,10 +507,10 @@ private:
 						current.headerHash = hh;
 						current.seedHash = newSeedHash;
 						current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
-						cnote << "Got work package:";
-						cnote << "  Header-hash:" << current.headerHash.hex();
-						cnote << "  Seedhash:" << current.seedHash.hex();
-						cnote << "  Target: " << h256(current.boundary).hex();
+						minelog << "Got work package:";
+						minelog << "  Header-hash:" << current.headerHash.hex();
+						minelog << "  Seedhash:" << current.seedHash.hex();
+						minelog << "  Target: " << h256(current.boundary).hex();
 						f.setWork(current);
 					}
 					this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
@@ -553,7 +559,7 @@ private:
 	unsigned m_localWorkSize = ethash_cl_miner::c_defaultLocalWorkSize;
 	unsigned m_msPerBatch = ethash_cl_miner::c_defaultMSPerBatch;
 #endif
-	boost::optional<uint64_t> m_currentBlock;
+	uint64_t m_currentBlock = 0;
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
 	unsigned m_extraGPUMemory = 350000000;
 
