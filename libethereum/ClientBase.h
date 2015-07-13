@@ -104,6 +104,7 @@ public:
 
 	virtual LocalisedLogEntries logs(unsigned _watchId) const override;
 	virtual LocalisedLogEntries logs(LogFilter const& _filter) const override;
+	virtual void appendLogsFromBlock(LogFilter const& _filter, h256 const& _blockHash, BlockPolarity _polarity, LocalisedLogEntries& io_logs) const;
 
 	/// Install, uninstall and query watches.
 	virtual unsigned installWatch(LogFilter const& _filter, Reaping _r = Reaping::Automatic) override;

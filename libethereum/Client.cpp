@@ -412,7 +412,6 @@ void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& 
 void Client::appendFromBlock(h256 const& _block, BlockPolarity _polarity, h256Hash& io_changed)
 {
 	// TODO: more precise check on whether the txs match.
-	auto d = m_bc.info(_block);
 	auto receipts = m_bc.receipts(_block).receipts;
 
 	Guard l(x_filtersWatches);
@@ -421,18 +420,16 @@ void Client::appendFromBlock(h256 const& _block, BlockPolarity _polarity, h256Ha
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
 	{
 		// acceptable number & looks like block may contain a matching log entry.
-		unsigned logIndex = 0;
 		for (size_t j = 0; j < receipts.size(); j++)
 		{
-			logIndex++;
 			auto tr = receipts[j];
 			auto m = i.second.filter.matches(tr);
 			if (m.size())
 			{
-				auto transactionHash = transaction(d.hash(), j).sha3();
+				auto transactionHash = transaction(_block, j).sha3();
 				// filter catches them
 				for (LogEntry const& l: m)
-					i.second.changes.push_back(LocalisedLogEntry(l, d.hash(), (BlockNumber)d.number, transactionHash, j, logIndex, _polarity));
+					i.second.changes.push_back(LocalisedLogEntry(l, _block, (BlockNumber)bc().number(_block), transactionHash, j, 0, _polarity));
 				io_changed.insert(i.first);
 			}
 		}
