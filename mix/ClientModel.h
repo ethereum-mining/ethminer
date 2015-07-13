@@ -171,7 +171,7 @@ public:
 	Q_PROPERTY(QVariantMap contractAddresses READ contractAddresses NOTIFY contractAddressesChanged)
 	/// @returns deployed contracts gas costs
 	Q_PROPERTY(QVariantList gasCosts READ gasCosts NOTIFY gasCostsChanged)
-	// @returns the last block
+	/// @returns the last block
 	Q_PROPERTY(RecordLogEntry* lastBlock READ lastBlock CONSTANT)
 	/// ethereum.js RPC request entry point
 	/// @param _message RPC request in Json format
@@ -191,6 +191,10 @@ public:
 	Q_INVOKABLE void addAccount(QString const& _secret);
 	/// Return the address associated with the current secret
 	Q_INVOKABLE QString resolveAddress(QString const& _secret);
+	/// Compute required gas for a list of transactions @arg _tr
+	QBigInt computeRequiredGas(QVariantList _tr);
+	/// init eth client
+	Q_INVOKABLE void init(QString _dbpath);
 
 public slots:
 	/// Setup scenario, run transaction sequence, show debugger for the last transaction
@@ -266,6 +270,7 @@ private:
 	void finalizeBlock();
 	void stopExecution();
 	void setupExecutionChain();
+	TransactionSettings transaction(QVariant _tr);	
 
 	std::atomic<bool> m_running;
 	std::atomic<bool> m_mining;
@@ -284,6 +289,7 @@ private:
 	CodeModel* m_codeModel = nullptr;
 	QList<QVariantList> m_queueTransactions;
 	mutable boost::shared_mutex x_queueTransactions;
+	QString m_dbpath;
 };
 
 }
