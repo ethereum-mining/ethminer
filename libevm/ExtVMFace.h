@@ -83,20 +83,21 @@ struct LocalisedLogEntry: public LogEntry
 
 	explicit LocalisedLogEntry(
 		LogEntry const& _le,
-		BlockInfo const& _bi,
-		h256 _th,
-		unsigned _ti,
-		unsigned _li,
-	    BlockPolarity _polarity = BlockPolarity::Unknown
+		h256 const& _blockHash,
+		BlockNumber _blockNumber,
+		h256 const& _transactionHash,
+		unsigned _transactionIndex,
+		unsigned _logIndex,
+		BlockPolarity _polarity = BlockPolarity::Unknown
 	):
 		LogEntry(_le),
-		blockHash(_bi.hash()),
-		blockNumber((BlockNumber)_bi.number),
-		transactionHash(_th),
-		transactionIndex(_ti),
-		logIndex(_li),
-		mined(true),
-        polarity(_polarity)
+		blockHash(_blockHash),
+		blockNumber(_blockNumber),
+		transactionHash(_transactionHash),
+		transactionIndex(_transactionIndex),
+		logIndex(_logIndex),
+		polarity(_polarity),
+		mined(true)
 	{}
 
 	h256 blockHash;
@@ -104,8 +105,8 @@ struct LocalisedLogEntry: public LogEntry
 	h256 transactionHash;
 	unsigned transactionIndex = 0;
 	unsigned logIndex = 0;
-	bool mined = false;
 	BlockPolarity polarity = BlockPolarity::Unknown;
+	bool mined = false;
 	bool isSpecial = false;
 	h256 special;
 };
