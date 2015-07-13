@@ -236,7 +236,7 @@ template <> struct hash<bi::address>
 			return boost::hash_range(range.begin(), range.end());
 		}
 		if (_a.is_unspecified())
-			return static_cast<size_t>(0x3487194039229152ul);  // Chosen by fair dice roll, guaranteed to be random
+			return static_cast<size_t>(0x3487194039229152ull);  // Chosen by fair dice roll, guaranteed to be random
 		return std::hash<std::string>()(_a.to_string());
 	}
 };

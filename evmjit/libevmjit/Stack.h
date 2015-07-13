@@ -24,18 +24,10 @@ public:
 	void free() { m_stack.free(); }
 
 private:
-	llvm::Function* getPopFunc();
-	llvm::Function* getPushFunc();
 	llvm::Function* getGetFunc();
-	llvm::Function* getSetFunc();
 
 	RuntimeManager& m_runtimeManager;
-
-	llvm::Function* m_pop = nullptr;
-	llvm::Function* m_push = nullptr;
 	llvm::Function* m_get = nullptr;
-	llvm::Function* m_set = nullptr;
-
 	Array m_stack;
 };
 

@@ -256,9 +256,8 @@ bool Session::checkPacket(bytesConstRef _msg)
 
 void Session::send(bytes&& _msg)
 {
-	clog(NetLeft) << RLP(bytesConstRef(&_msg).cropped(1));
-
 	bytesConstRef msg(&_msg);
+	clog(NetLeft) << RLP(msg.cropped(1));
 	if (!checkPacket(msg))
 		clog(NetWarn) << "INVALID PACKET CONSTRUCTED!";
 
@@ -268,7 +267,7 @@ void Session::send(bytes&& _msg)
 	bool doWrite = false;
 	{
 		Guard l(x_writeQueue);
-		m_writeQueue.push_back(_msg);
+		m_writeQueue.push_back(std::move(_msg));
 		doWrite = (m_writeQueue.size() == 1);
 	}
 
@@ -334,11 +333,12 @@ void Session::drop(DisconnectReason _reason)
 void Session::disconnect(DisconnectReason _reason)
 {
 	clog(NetConnect) << "Disconnecting (our reason:" << reasonOf(_reason) << ")";
+	size_t peerCount = m_server->peerCount(); //needs to  be outside of lock to avoid deadlocking with other thread that capture x_info/x_sessions in reverse order
 	DEV_GUARDED(x_info)
 		StructuredLogger::p2pDisconnected(
 			m_info.id.abridged(),
 			m_peer->endpoint, // TODO: may not be 100% accurate
-			m_server->peerCount()
+			peerCount
 		);
 	if (m_socket->ref().is_open())
 	{
@@ -382,11 +382,11 @@ void Session::doRead()
 		}
 		catch (std::exception const& _e)
 		{
-			clog(NetWarn) << "Exception decoding frame header RLP:" << bytesConstRef(m_data.data(), h128::size).cropped(3);
+			clog(NetWarn) << "Exception decoding frame header RLP:" << _e.what() << bytesConstRef(m_data.data(), h128::size).cropped(3);
 			drop(BadProtocol);
 			return;
 		}
-		
+
 		/// read padded frame and mac
 		auto tlen = header.length + header.padding + h128::size;
 		ba::async_read(m_socket->ref(), boost::asio::buffer(m_data, tlen), [this, self, header, tlen](boost::system::error_code ec, std::size_t length)

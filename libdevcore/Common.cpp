@@ -28,14 +28,17 @@ using namespace dev;
 namespace dev
 {
 
-char const* Version = "0.9.27";
+char const* Version = "0.9.29";
 
 const u256 UndefinedU256 = ~(u256)0;
 
-void HasInvariants::checkInvariants() const
+void InvariantChecker::checkInvariants() const
 {
-	if (!invariants())
-		BOOST_THROW_EXCEPTION(FailedInvariant());
+	if (!m_this->invariants())
+	{
+		cwarn << "Invariant failed in" << m_function << "at" << m_file << ":" << m_line;
+		::boost::exception_detail::throw_exception_(FailedInvariant(), m_function, m_file, m_line);
+	}
 }
 
 struct TimerChannel: public LogChannel { static const char* name(); static const int verbosity = 0; };

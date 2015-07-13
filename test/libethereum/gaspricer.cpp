@@ -20,10 +20,9 @@
  */
 
 #include <libtestutils/BlockChainLoader.h>
-#include <libethereum/State.h>
 #include <libethereum/BlockChain.h>
-#include <libethereum/Client.h>
-#include <libdevcore/TransientDirectory.h>
+#include <libethereum/GasPricer.h>
+#include <libethereum/BasicGasPricer.h>
 #include "../TestHelper.h"
 
 using namespace std;

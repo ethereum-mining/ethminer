@@ -13,9 +13,7 @@ set(EXECUTABLE ethconsole)
 file(GLOB HEADERS "*.h")
 
 add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
-
 target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARIES})
-target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${CURL_LIBRARIES})
 
 if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)

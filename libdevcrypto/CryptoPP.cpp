@@ -103,7 +103,7 @@ bool Secp256k1PP::decryptECIES(Secret const& _k, bytes& io_text)
 	// interop w/go ecies implementation
 	
 	// io_cipher[0] must be 2, 3, or 4, else invalidpublickey
-	if (io_text[0] < 2 || io_text[0] > 4)
+	if (io_text.empty() || io_text[0] < 2 || io_text[0] > 4)
 		// invalid message: publickey
 		return false;
 	

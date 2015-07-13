@@ -97,10 +97,13 @@ enum class RelativeBlock: BlockNumber
 	Pending = PendingBlock
 };
 
+class Transaction;
+
 struct ImportRoute
 {
 	h256s deadBlocks;
 	h256s liveBlocks;
+	std::vector<Transaction> goodTranactions;
 };
 
 enum class ImportResult
@@ -129,10 +132,10 @@ struct ImportRequirements
 };
 
 /// Super-duper signal mechanism. TODO: replace with somthing a bit heavier weight.
-class Signal
+template<typename... Args> class Signal
 {
 public:
-	using Callback = std::function<void()>;
+	using Callback = std::function<void(Args...)>;
 
 	class HandlerAux
 	{
@@ -141,7 +144,7 @@ public:
 	public:
 		~HandlerAux() { if (m_s) m_s->m_fire.erase(m_i); m_s = nullptr; }
 		void reset() { m_s = nullptr; }
-		void fire() { m_h(); }
+		void fire(Args&&... _args) { m_h(std::forward<Args>(_args)...); }
 
 	private:
 		HandlerAux(unsigned _i, Signal* _s, Callback const& _h): m_i(_i), m_s(_s), m_h(_h) {}
@@ -154,7 +157,8 @@ public:
 	~Signal()
 	{
 		for (auto const& h : m_fire)
-			h.second->reset();
+			if (auto l = h.second.lock())
+				l->reset();
 	}
 
 	std::shared_ptr<HandlerAux> add(Callback const& _h)
@@ -165,13 +169,18 @@ public:
 		return h;
 	}
 
-	void operator()() { for (auto const& f: m_fire) f.second->fire(); }
+	void operator()(Args&... _args)
+	{
+		for (auto const& f: m_fire)
+			if (auto h = f.second.lock())
+				h->fire(std::forward<Args>(_args)...);
+	}
 
 private:
-	std::map<unsigned, std::shared_ptr<Signal::HandlerAux>> m_fire;
+	std::map<unsigned, std::weak_ptr<typename Signal::HandlerAux>> m_fire;
 };
 
-using Handler = std::shared_ptr<Signal::HandlerAux>;
+template<class... Args> using Handler = std::shared_ptr<typename Signal<Args...>::HandlerAux>;
 
 struct TransactionSkeleton
 {
@@ -182,6 +191,7 @@ struct TransactionSkeleton
 	bytes data;
 	u256 gas = UndefinedU256;
 	u256 gasPrice = UndefinedU256;
+	u256 nonce = UndefinedU256;
 };
 
 void badBlock(bytesConstRef _header, std::string const& _err);

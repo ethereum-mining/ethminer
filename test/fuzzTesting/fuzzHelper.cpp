@@ -74,7 +74,7 @@ std::string RandomCode::generate(int _maxOpNumber, RandomCodeOptions _options)
 		uint8_t opcode = weightsDefined ? randOpCodeWeight() : randOpCodeGen();
 		dev::eth::InstructionInfo info = dev::eth::instructionInfo((dev::eth::Instruction) opcode);
 
-		if (info.name.find_first_of("INVALID_INSTRUCTION") > 0)
+		if (info.name.find("INVALID_INSTRUCTION") != std::string::npos)
 		{
 			//Byte code is yet not implemented
 			if (_options.useUndefinedOpCodes == false)
@@ -84,9 +84,17 @@ std::string RandomCode::generate(int _maxOpNumber, RandomCodeOptions _options)
 			}
 		}
 		else
+		{
+			if (info.name.find("PUSH") != std::string::npos)
+				code += toCompactHex(opcode);
 			code += fillArguments((dev::eth::Instruction) opcode, _options);
-		std::string byte = toCompactHex(opcode);
-		code += (byte == "") ? "00" : byte;
+		}
+
+		if (info.name.find("PUSH") == std::string::npos)
+		{
+			std::string byte = toCompactHex(opcode);
+			code += (byte == "") ? "00" : byte;
+		}
 	}
 	return code;
 }
@@ -141,17 +149,58 @@ std::string RandomCode::fillArguments(dev::eth::Instruction _opcode, RandomCodeO
 
 	if (smart)
 	{
+		//PUSH1 ... PUSH32
+		if (dev::eth::Instruction::PUSH1 <= _opcode && _opcode <= dev::eth::Instruction::PUSH32)
+		{
+		  code += rndByteSequence(int(_opcode) - int(dev::eth::Instruction::PUSH1) + 1);
+		  return code;
+		}
+
+		//SWAP1 ... SWAP16 || DUP1 ... DUP16
+		bool isSWAP = (dev::eth::Instruction::SWAP1 <= _opcode && _opcode <= dev::eth::Instruction::SWAP16);
+		bool isDUP = (dev::eth::Instruction::DUP1 <= _opcode && _opcode <= dev::eth::Instruction::DUP16);
+
+		if (isSWAP || isDUP)
+		{
+			int times = 0;
+			if (isSWAP)
+				times = int(_opcode) - int(dev::eth::Instruction::SWAP1) + 2;
+			else
+			if (isDUP)
+				times = int(_opcode) - int(dev::eth::Instruction::DUP1) + 1;
+
+			for (int i = 0; i < times; i ++)
+				code += getPushCode(randUniIntGen() % 32);
+
+			return code;
+		}
+
 		switch (_opcode)
 		{
+		case dev::eth::Instruction::CREATE:
+			//(CREATE value mem1 mem2)
+			code += getPushCode(randUniIntGen() % 128);  //memlen1
+			code += getPushCode(randUniIntGen() % 32);   //memlen1
+			code += getPushCode(randUniIntGen());		 //value
+		break;
 		case dev::eth::Instruction::CALL:
+		case dev::eth::Instruction::CALLCODE:
 			//(CALL gaslimit address value memstart1 memlen1 memstart2 memlen2)
-			code += getPushCode(randUniIntGen() % 32);  //memlen2
+			//(CALLCODE gaslimit address value memstart1 memlen1 memstart2 memlen2)
+			code += getPushCode(randUniIntGen() % 128);  //memlen2
 			code += getPushCode(randUniIntGen() % 32);  //memstart2
-			code += getPushCode(randUniIntGen() % 32);  //memlen1
+			code += getPushCode(randUniIntGen() % 128);  //memlen1
 			code += getPushCode(randUniIntGen() % 32);  //memlen1
 			code += getPushCode(randUniIntGen());		//value
 			code += getPushCode(toString(_options.getRandomAddress()));//address
 			code += getPushCode(randUniIntGen());		//gaslimit
+		break;
+		case dev::eth::Instruction::SUICIDE: //(SUICIDE address)
+			code += getPushCode(toString(_options.getRandomAddress()));
+		break;
+		case dev::eth::Instruction::RETURN:  //(RETURN memlen1 memlen2)
+			code += getPushCode(randUniIntGen() % 128);  //memlen1
+			code += getPushCode(randUniIntGen() % 32);  //memlen1
 		break;
 		default:
 			smart = false;

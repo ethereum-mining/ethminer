@@ -78,7 +78,6 @@ BOOST_AUTO_TEST_CASE(topic)
 			}
 			this_thread::sleep_for(chrono::milliseconds(50));
 		}
-
 	});
 
 	Host host2("Test", NetworkPreferences("127.0.0.1", 30300, false));
@@ -382,6 +381,41 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 	whost2->uninstallWatch(w2);
 	whost2->uninstallWatch(random);
 	whost2->uninstallWatch(w2);
+}
+
+BOOST_AUTO_TEST_CASE(selfAddressed)
+{
+	VerbosityHolder setTemporaryLevel(10);
+	cnote << "Testing self-addressed messaging with bloom filter matching...";
+
+	char const* text = "deterministic pseudorandom test";
+	BuildTopicMask mask(text);
+
+	Host host("first", NetworkPreferences("127.0.0.1", 30305, false));
+	auto wh = host.registerCapability(new WhisperHost());
+	auto watch = wh->installWatch(BuildTopicMask(text));
+
+	unsigned const sample = 0xFEED;
+	KeyPair us = KeyPair::create();
+	wh->post(us.sec(), RLPStream().append(sample).out(), BuildTopic(text));
+
+	TopicBloomFilterHash f = wh->bloom();
+	Envelope e = Message(RLPStream().append(sample).out()).seal(us.sec(), BuildTopic(text), 50, 50);
+	bool ok = e.matchesBloomFilter(f);
+	BOOST_REQUIRE(ok);
+
+	this_thread::sleep_for(chrono::milliseconds(50));
+
+	unsigned single = 0;
+	unsigned result = 0;
+	for (auto j: wh->checkWatch(watch))
+	{
+		Message msg = wh->envelope(j).open(wh->fullTopics(watch));
+		single = RLP(msg.payload()).toInt<unsigned>();
+		result += single;
+	}
+
+	BOOST_REQUIRE_EQUAL(sample, result);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

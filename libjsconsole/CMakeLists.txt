@@ -12,7 +12,9 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(BEFORE ${V8_INCLUDE_DIRS})
 include_directories(BEFORE ..)
-include_directories(${READLINE_INCLUDE_DIRS})
+if (READLINE_FOUND)
+	include_directories(${READLINE_INCLUDE_DIRS})
+endif()
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 include_directories(${CURL_INCLUDE_DIRS})
 
@@ -24,7 +26,9 @@ add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 target_link_libraries(${EXECUTABLE} jsengine)
 target_link_libraries(${EXECUTABLE} devcore)
-target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARIES})
+if (READLINE_FOUND)
+	target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARIES})
+endif()
 target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_SERVER_LIBRARIES})
 
 target_link_libraries(${EXECUTABLE} ${CURL_LIBRARIES})

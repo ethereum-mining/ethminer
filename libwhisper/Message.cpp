@@ -20,6 +20,7 @@
  */
 
 #include "Message.h"
+#include "BloomFilter.h"
 
 using namespace std;
 using namespace dev;
@@ -161,23 +162,30 @@ unsigned Envelope::workProved() const
 
 void Envelope::proveWork(unsigned _ms)
 {
-	// PoW
 	h256 d[2];
 	d[0] = sha3(WithoutNonce);
-	uint32_t& n = *(uint32_t*)&(d[1][28]);
 	unsigned bestBitSet = 0;
 	bytesConstRef chuck(d[0].data(), 64);
 
 	chrono::high_resolution_clock::time_point then = chrono::high_resolution_clock::now() + chrono::milliseconds(_ms);
-	for (n = 0; chrono::high_resolution_clock::now() < then; )
+	while (chrono::high_resolution_clock::now() < then)
 		// do it rounds of 1024 for efficiency
-		for (unsigned i = 0; i < 1024; ++i, ++n)
+		for (unsigned i = 0; i < 1024; ++i, ++d[1])
 		{
 			auto fbs = dev::sha3(chuck).firstBitSet();
 			if (fbs > bestBitSet)
 			{
 				bestBitSet = fbs;
-				m_nonce = n;
+				m_nonce = (h256::Arith)d[1];
 			}
 		}
+}
+
+bool Envelope::matchesBloomFilter(TopicBloomFilterHash const& f) const
+{
+	for (AbridgedTopic t: m_topic)
+		if (f.contains(TopicBloomFilter::bloom(t)))
+			return true;
+
+	return false;
 }

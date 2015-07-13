@@ -22,6 +22,7 @@
 
 #include "Common.h"
 #include <random>
+#include <cstdint>
 #include <chrono>
 #include <thread>
 #include <mutex>
@@ -29,6 +30,7 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/FileSystem.h>
+#include <libdevcore/RLP.h>
 #if ETH_HAVE_SECP256K1
 #include <secp256k1/secp256k1.h>
 #endif
@@ -46,7 +48,6 @@ struct Secp256k1Context
 	~Secp256k1Context() { secp256k1_stop(); }
 };
 static Secp256k1Context s_secp256k1;
-void dev::crypto::secp256k1Init() { (void)s_secp256k1; }
 #endif
 
 static Secp256k1PP s_secp256k1pp;
@@ -89,6 +90,11 @@ Address dev::toAddress(Secret const& _secret)
 	Public p;
 	s_secp256k1pp.toPublic(_secret, p);
 	return toAddress(p);
+}
+
+Address dev::toAddress(Address const& _from, u256 const& _nonce)
+{
+	return right160(sha3(rlpList(_from, _nonce)));
 }
 
 void dev::encrypt(Public const& _k, bytesConstRef _plain, bytes& o_cipher)
@@ -184,17 +190,40 @@ bytes dev::decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _ci
 
 Public dev::recover(Signature const& _sig, h256 const& _message)
 {
+#ifdef ETH_HAVE_SECP256K1
+	bytes o(65);
+	int pubkeylen;
+	if (!secp256k1_ecdsa_recover_compact(_message.data(), h256::size, _sig.data(), o.data(), &pubkeylen, false, _sig[64]))
+		return Public();
+	return FixedHash<64>(o.data()+1, Public::ConstructFromPointer);
+#else
 	return s_secp256k1pp.recover(_sig, _message.ref());
+#endif
 }
 
 Signature dev::sign(Secret const& _k, h256 const& _hash)
 {
+#ifdef ETH_HAVE_SECP256K1
+	Signature s;
+	int v;
+	if (!secp256k1_ecdsa_sign_compact(_hash.data(), h256::size, s.data(), _k.data(), Nonce::get().data(), &v))
+		return Signature();
+	s[64] = v;
+	return s;
+#else
 	return s_secp256k1pp.sign(_k, _hash);
+#endif
 }
 
 bool dev::verify(Public const& _p, Signature const& _s, h256 const& _hash)
 {
+	if (!_p)
+		return false;
+#ifdef ETH_HAVE_SECP256K1
+	return _p == recover(_s, _hash);
+#else
 	return s_secp256k1pp.verify(_p, _s, _hash.ref(), true);
+#endif
 }
 
 bytes dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen)
@@ -234,16 +263,9 @@ bytes dev::scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uin
 
 KeyPair KeyPair::create()
 {
-	static boost::thread_specific_ptr<mt19937_64> s_eng;
-	static unsigned s_id = 0;
-	if (!s_eng.get())
-		s_eng.reset(new mt19937_64(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count() + ++s_id));
-
-	uniform_int_distribution<uint16_t> d(0, 255);
-
 	for (int i = 0; i < 100; ++i)
 	{
-		KeyPair ret(FixedHash<32>::random(*s_eng.get()));
+		KeyPair ret(FixedHash<32>::random());
 		if (ret.address())
 			return ret;
 	}
@@ -325,7 +347,7 @@ void Nonce::initialiseIfNeeded()
 		std::mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
 		std::uniform_int_distribution<uint16_t> d(0, 255);
 		for (unsigned i = 0; i < 32; ++i)
-			m_value[i] = byte(d(s_eng));
+			m_value[i] = (uint8_t)d(s_eng);
 	}
 	if (!m_value)
 		BOOST_THROW_EXCEPTION(InvalidState());

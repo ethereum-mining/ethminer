@@ -53,7 +53,7 @@ public:
 	virtual ~WhisperPeer();
 	WhisperHost* host() const;
 	static std::string name() { return "shh"; }
-	static u256 version() { return c_whisperProtocolVersion; }
+	static u256 version() { return WhisperProtocolVersion; }
 	static unsigned messageCount() { return PacketCount; }
 	TopicBloomFilterHash bloom() const { dev::Guard g(x_bloom); return m_bloom; }
 	void sendTopicsOfInterest(TopicBloomFilterHash const& _bloom); ///< sends our bloom filter to remote peer
@@ -62,7 +62,7 @@ public:
 private:
 	virtual bool interpret(unsigned _id, RLP const&) override;
 	void sendMessages();
-	unsigned rating(Envelope const&) const { return 0; }	// TODO
+	unsigned ratingForPeer(Envelope const& e) const;
 	void noteNewMessage(h256 _h, Envelope const& _m);
 	void setBloom(TopicBloomFilterHash const& _b) { dev::Guard g(x_bloom); m_bloom = _b; }
 
