@@ -81,18 +81,25 @@ ClientModel::ClientModel():
 	qRegisterMetaType<QInstruction*>("QInstruction");
 	qRegisterMetaType<QCode*>("QCode");
 	qRegisterMetaType<QCallData*>("QCallData");
-	qRegisterMetaType<RecordLogEntry*>("RecordLogEntry*");
-
-	m_client.reset(new MixClient(QStandardPaths::writableLocation(QStandardPaths::TempLocation).toStdString()));
-
-	m_ethAccounts = make_shared<FixedAccountHolder>([=](){return m_client.get();}, std::vector<KeyPair>());
-	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), m_ethAccounts, std::vector<KeyPair>(), m_client.get()));
-	connect(m_web3Server.get(), &Web3Server::newTransaction, this, &ClientModel::onNewTransaction, Qt::DirectConnection);
+	qRegisterMetaType<RecordLogEntry*>("RecordLogEntry*");	
 }
 
 ClientModel::~ClientModel()
 {
 	m_runFuture.waitForFinished();
+}
+
+void ClientModel::init(QString _dbpath)
+{
+	m_dbpath = _dbpath;
+	if (m_dbpath.isEmpty())
+		m_client.reset(new MixClient(QStandardPaths::writableLocation(QStandardPaths::TempLocation).toStdString()));
+	else
+		m_client.reset(new MixClient(m_dbpath.toStdString()));
+
+	m_ethAccounts = make_shared<FixedAccountHolder>([=](){return m_client.get();}, std::vector<KeyPair>());
+	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), m_ethAccounts, std::vector<KeyPair>(), m_client.get()));
+	connect(m_web3Server.get(), &Web3Server::newTransaction, this, &ClientModel::onNewTransaction, Qt::DirectConnection);
 }
 
 QString ClientModel::apiCall(QString const& _message)
@@ -295,36 +302,40 @@ void ClientModel::finalizeBlock()
 	}
 }
 
+TransactionSettings ClientModel::transaction(QVariant _tr)
+{
+	QVariantMap transaction = _tr.toMap();
+	QString contractId = transaction.value("contractId").toString();
+	QString functionId = transaction.value("functionId").toString();
+	bool gasAuto = transaction.value("gasAuto").toBool();
+	u256 gas = 0;
+	if (transaction.value("gas").data())
+		gas = boost::get<u256>(qvariant_cast<QBigInt*>(transaction.value("gas"))->internalValue());
+	else
+		gasAuto = true;
+
+	u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
+	u256 gasPrice = (qvariant_cast<QEther*>(transaction.value("gasPrice")))->toU256Wei();
+	QString sender = transaction.value("sender").toString();
+	bool isContractCreation = transaction.value("isContractCreation").toBool();
+	bool isFunctionCall = transaction.value("isFunctionCall").toBool();
+	if (contractId.isEmpty() && m_codeModel->hasContract()) //TODO: This is to support old project files, remove later
+		contractId = m_codeModel->contracts().keys()[0];
+	Secret f = Secret(sender.toStdString());
+	TransactionSettings transactionSettings(contractId, functionId, value, gas, gasAuto, gasPrice, f, isContractCreation, isFunctionCall);
+	transactionSettings.parameterValues = transaction.value("parameters").toMap();
+	if (contractId == functionId || functionId == "Constructor")
+		transactionSettings.functionId.clear();
+	return transactionSettings;
+}
+
 void ClientModel::processNextTransactions()
 {
 	WriteGuard(x_queueTransactions);
 	vector<TransactionSettings> transactionSequence;
 	for (auto const& t: m_queueTransactions.front())
 	{
-		QVariantMap transaction = t.toMap();
-		QString contractId = transaction.value("contractId").toString();
-		QString functionId = transaction.value("functionId").toString();
-		bool gasAuto = transaction.value("gasAuto").toBool();
-		u256 gas = 0;
-		if (transaction.value("gas").data())
-			gas = boost::get<u256>(qvariant_cast<QBigInt*>(transaction.value("gas"))->internalValue());
-		else
-			gasAuto = true;
-
-		u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
-		u256 gasPrice = (qvariant_cast<QEther*>(transaction.value("gasPrice")))->toU256Wei();
-		QString sender = transaction.value("sender").toString();
-		bool isContractCreation = transaction.value("isContractCreation").toBool();
-		bool isFunctionCall = transaction.value("isFunctionCall").toBool();
-		if (contractId.isEmpty() && m_codeModel->hasContract()) //TODO: This is to support old project files, remove later
-			contractId = m_codeModel->contracts().keys()[0];
-		Secret f = Secret(sender.toStdString());
-		TransactionSettings transactionSettings(contractId, functionId, value, gas, gasAuto, gasPrice, f, isContractCreation, isFunctionCall);
-		transactionSettings.parameterValues = transaction.value("parameters").toMap();
-
-		if (contractId == functionId || functionId == "Constructor")
-			transactionSettings.functionId.clear();
-
+		TransactionSettings transactionSettings = transaction(t);
 		transactionSequence.push_back(transactionSettings);
 	}
 	executeSequence(transactionSequence);
