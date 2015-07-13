@@ -45,7 +45,7 @@ public:
 	/// Construct packet from single bytestream. RLPStream data is invalidated.
 	RLPXPacket(unsigned _capId, bytesConstRef _in): m_cap(_capId), m_type(nextRLP(_in).toBytes()) { if (_in.size() > m_type.size()) { m_data.resize(_in.size() - m_type.size()); _in.cropped(m_type.size()).copyTo(&m_data); } }
 	
-	RLPXPacket(RLPXPacket const& _p): m_cap(_p.m_cap), m_type(_p.m_type), m_data(_p.m_data) {}
+	RLPXPacket(RLPXPacket const& _p) = delete;
 	RLPXPacket(RLPXPacket&& _p): m_cap(_p.m_cap), m_type(std::move(_p.m_type)), m_data(std::move(_p.m_data)) {}
 
 	bytes const& type() const { return m_type; }
