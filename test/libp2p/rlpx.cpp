@@ -21,7 +21,6 @@
  */
 
 #include <random>
-#include <secp256k1/secp256k1.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/Log.h>

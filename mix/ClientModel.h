@@ -32,6 +32,7 @@
 #include <QVariableDeclaration.h>
 #include <libethereum/Account.h>
 #include "MachineStates.h"
+#include "QEther.h"
 
 namespace dev
 {
@@ -115,6 +116,8 @@ class RecordLogEntry: public QObject
 	Q_PROPERTY(QString label MEMBER m_label CONSTANT)
 	/// input parameters
 	Q_PROPERTY(QVariantMap parameters MEMBER m_inputParameters CONSTANT)
+	/// return parameters
+	Q_PROPERTY(QVariantMap returnParameters MEMBER m_returnParameters CONSTANT)
 	/// logs
 	Q_PROPERTY(QVariantList logs MEMBER m_logs CONSTANT)
 
@@ -128,9 +131,9 @@ public:
 	RecordLogEntry():
 		m_recordIndex(0), m_call(false), m_type(RecordType::Transaction) {}
 	RecordLogEntry(unsigned _recordIndex, QString _transactionIndex, QString _contract, QString _function, QString _value, QString _address, QString _returned, bool _call, RecordType _type, QString _gasUsed,
-				   QString _sender, QString _label, QVariantMap _inputParameters, QVariantList _logs):
+				   QString _sender, QString _label, QVariantMap _inputParameters, QVariantMap _returnParameters, QVariantList _logs):
 		m_recordIndex(_recordIndex), m_transactionIndex(_transactionIndex), m_contract(_contract), m_function(_function), m_value(_value), m_address(_address), m_returned(_returned), m_call(_call), m_type(_type), m_gasUsed(_gasUsed),
-		m_sender(_sender), m_label(_label), m_inputParameters(_inputParameters), m_logs(_logs) {}
+		m_sender(_sender), m_label(_label), m_inputParameters(_inputParameters), m_returnParameters(_returnParameters), m_logs(_logs) {}
 
 private:
 	unsigned m_recordIndex;
@@ -146,6 +149,7 @@ private:
 	QString m_sender;
 	QString m_label;
 	QVariantMap m_inputParameters;
+	QVariantMap m_returnParameters;
 	QVariantList m_logs;
 };
 
@@ -183,6 +187,10 @@ public:
 	Q_INVOKABLE QString encodeStringParam(QString const& _param);
 	/// To Hex number
 	Q_INVOKABLE QString toHex(QString const& _int);
+	/// Add new account to the model
+	Q_INVOKABLE void addAccount(QString const& _secret);
+	/// Return the address associated with the current secret
+	Q_INVOKABLE QString resolveAddress(QString const& _secret);
 
 public slots:
 	/// Setup scenario, run transaction sequence, show debugger for the last transaction
@@ -236,13 +244,15 @@ signals:
 	void newRecord(RecordLogEntry* _r);
 	/// State (transaction log) cleared
 	void stateCleared();
+	/// new state has been processed
+	void newState(unsigned _record, QVariantMap _accounts);
 
 private:
 	RecordLogEntry* lastBlock() const;
 	QVariantMap contractAddresses() const;
 	QVariantList gasCosts() const;
 	void executeSequence(std::vector<TransactionSettings> const& _sequence);
-	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
+	Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	void callAddress(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 	void onNewTransaction();
 	void onStateReset();

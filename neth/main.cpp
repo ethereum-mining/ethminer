@@ -101,7 +101,7 @@ void help()
 		<< "    -x,--peers <number>  Attempt to connect to given number of peers (default: 5)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 #if ETH_EVMJIT
-		<< "    --jit  Use EVM JIT (default: off)." << endl
+		<< "    --vm <vm-kind>  Select VM. Options are: interpreter, jit, smart. (default: interpreter)" << endl
 #endif
 		;
 		exit(0);
@@ -363,11 +363,7 @@ int main(int argc, char** argv)
 		coinbase = config[1].toHash<Address>();
 	}
 	else
-	{
-		RLPStream config(2);
-		config << us.secret() << coinbase;
-		writeFile(configFile, config.out());
-	}
+		writeFile(configFile, rlpList(us.secret(), coinbase));
 
 	for (int i = 1; i < argc; ++i)
 	{
@@ -514,15 +510,23 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
-		else if (arg == "--jit")
-		{
 #if ETH_EVMJIT
-			jit = true;
-#else
-			cerr << "EVM JIT not enabled" << endl;
-			return -1;
-#endif
+		else if (arg == "--vm" && i + 1 < argc)
+		{
+			string vmKind = argv[++i];
+			if (vmKind == "interpreter")
+				VMFactory::setKind(VMKind::Interpreter);
+			else if (vmKind == "jit")
+				VMFactory::setKind(VMKind::JIT);
+			else if (vmKind == "smart")
+				VMFactory::setKind(VMKind::Smart);
+			else
+			{
+				cerr << "Unknown VM kind: " << vmKind << endl;
+				return -1;
+			}
 		}
+#endif
 		else if (arg == "-h" || arg == "--help")
 			help();
 		else if (arg == "-V" || arg == "--version")
@@ -551,7 +555,7 @@ int main(int argc, char** argv)
 		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
 		&nodesState);
-	
+
 	web3.setIdealPeerCount(peers);
 	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
@@ -1053,9 +1057,7 @@ int main(int argc, char** argv)
 				else if (gas < minGas)
 					cwarn << "Minimum gas amount is" << minGas;
 				else
-				{
 					c->submitTransaction(us.secret(), endowment, init, gas);
-				}
 			}
 		}
 		else if (c && cmd == "inspect")

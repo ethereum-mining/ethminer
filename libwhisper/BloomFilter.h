@@ -35,21 +35,22 @@ public:
 	TopicBloomFilterBase() { init(); }
 	TopicBloomFilterBase(FixedHash<N> const& _h): FixedHash<N>(_h) { init(); }
 
-	void addBloom(dev::shh::AbridgedTopic const& _h) { addRaw(_h.template bloomPart<BitsPerBloom, N>()); }
-	void removeBloom(dev::shh::AbridgedTopic const& _h) { removeRaw(_h.template bloomPart<BitsPerBloom, N>()); }
-	bool containsBloom(dev::shh::AbridgedTopic const& _h) const { return this->contains(_h.template bloomPart<BitsPerBloom, N>()); }
+	void addBloom(AbridgedTopic const& _h) { addRaw(bloom(_h)); }
+	void removeBloom(AbridgedTopic const& _h) { removeRaw(bloom(_h)); }
+	bool containsBloom(AbridgedTopic const& _h) const { return this->contains(bloom(_h)); }
 
 	void addRaw(FixedHash<N> const& _h);
 	void removeRaw(FixedHash<N> const& _h);
 	bool containsRaw(FixedHash<N> const& _h) const { return this->contains(_h); }
 
-	enum { BitsPerBloom = 3 };
+	static FixedHash<N> bloom(AbridgedTopic const& _h);
+	static void setBit(FixedHash<N>& _h, unsigned index);
+	static bool isBitSet(FixedHash<N> const& _h, unsigned _index);
 	
 private:
 	void init() { for (unsigned i = 0; i < CounterSize; ++i) m_refCounter[i] = 0; }
-	static bool isBitSet(FixedHash<N> const& _h, unsigned _index);
 
-	enum { CounterSize = 8 * TopicBloomFilterBase::size };
+	static const unsigned CounterSize = N * 8;
 	std::array<uint16_t, CounterSize> m_refCounter;
 };
 
@@ -85,13 +86,52 @@ void TopicBloomFilterBase<N>::removeRaw(FixedHash<N> const& _h)
 
 template <unsigned N>
 bool TopicBloomFilterBase<N>::isBitSet(FixedHash<N> const& _h, unsigned _index)
-{	
+{
 	unsigned iByte = _index / 8;
 	unsigned iBit = _index % 8;
 	return (_h[iByte] & c_powerOfTwoBitMmask[iBit]) != 0;
 }
 
-using TopicBloomFilter = TopicBloomFilterBase<c_topicBloomFilterSize>;
+template <unsigned N>
+void TopicBloomFilterBase<N>::setBit(FixedHash<N>& _h, unsigned _index)
+{
+	unsigned iByte = _index / 8;
+	unsigned iBit = _index % 8;
+	_h[iByte] |= c_powerOfTwoBitMmask[iBit];
+}
+
+template <unsigned N>
+FixedHash<N> TopicBloomFilterBase<N>::bloom(AbridgedTopic const& _h)
+{
+	// The size of AbridgedTopic is 32 bits, and 27 of them participate in this algorithm.
+
+	// We need to review the algorithm if any of the following constants will be changed.
+	static_assert(4 == AbridgedTopic::size, "wrong template parameter in TopicBloomFilterBase<N>::bloom()");
+	static_assert(3 == BitsPerBloom, "wrong template parameter in TopicBloomFilterBase<N>::bloom()");
+
+	FixedHash<N> ret;
+
+	if (TopicBloomFilterSize == N)
+		for (unsigned i = 0; i < BitsPerBloom; ++i)
+		{
+			unsigned x = _h[i];
+			if (_h[BitsPerBloom] & c_powerOfTwoBitMmask[i])
+				x += 256;
+
+			setBit(ret, x);
+		}
+	else
+		for (unsigned i = 0; i < BitsPerBloom; ++i)
+		{
+			unsigned x = unsigned(_h[i]) + unsigned(_h[i + 1]);
+			x %= N * 8;
+			setBit(ret, x);
+		}
+
+	return ret;
+}
+
+using TopicBloomFilter = TopicBloomFilterBase<TopicBloomFilterSize>;
 
 }
 }

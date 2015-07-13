@@ -29,7 +29,3 @@ add_subdirectory(libevmjit)
 if(EVMJIT_CPP)
 	add_subdirectory(libevmjit-cpp)
 endif()
-
-if(EVMJIT_TOOLS)
-	add_subdirectory(evmcc)
-endif()

@@ -94,7 +94,7 @@ using ProgressCallback = std::function<void(unsigned, unsigned)>;
 class BlockChain
 {
 public:
-	BlockChain(bytes const& _genesisBlock, std::string _path, WithExisting _we, ProgressCallback const& _p = ProgressCallback());
+	BlockChain(bytes const& _genesisBlock, std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _p = ProgressCallback());
 	~BlockChain();
 
 	/// Attempt a database re-open.
@@ -141,6 +141,9 @@ public:
 	/// receipts are given in the same order are in the same order as the transactions
 	BlockReceipts receipts(h256 const& _hash) const { return queryExtras<BlockReceipts, ExtraReceipts>(_hash, m_receipts, x_receipts, NullBlockReceipts); }
 	BlockReceipts receipts() const { return receipts(currentHash()); }
+
+	/// Get the transaction receipt by transaction hash. Thread-safe.
+	TransactionReceipt transactionReceipt(h256 const& _transactionHash) const {TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return bytesConstRef(); return receipts(ta.blockHash).receipts[ta.index]; }
 
 	/// Get a list of transaction hashes for a given block. Thread-safe.
 	TransactionHashes transactionHashes(h256 const& _hash) const { auto b = block(_hash); RLP rlp(b); h256s ret; for (auto t: rlp[1]) ret.push_back(sha3(t.data())); return ret; }
@@ -212,6 +215,12 @@ public:
 	/// Will call _progress with the progress in this operation first param done, second total.
 	void rebuild(std::string const& _path, ProgressCallback const& _progress = std::function<void(unsigned, unsigned)>(), bool _prepPoW = false);
 
+	/// Alter the head of the chain to some prior block along it.
+	void rewind(unsigned _newHead);
+
+	/// Rescue the database.
+	void rescue(OverlayDB& _db);
+
 	/** @returns a tuple of:
 	 * - an vector of hashes of all blocks between @a _from and @a _to, all blocks are ordered first by a number of
 	 * blocks that are parent-to-child, then two sibling blocks, then a number of blocks that are child-to-parent;
@@ -264,7 +273,7 @@ public:
 private:
 	static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
-	void open(std::string const& _path, WithExisting _we = WithExisting::Trust);
+	unsigned open(std::string const& _path, WithExisting _we = WithExisting::Trust);
 	void close();
 
 	template<class T, unsigned N> T queryExtras(h256 const& _h, std::unordered_map<h256, T>& _m, boost::shared_mutex& _x, T const& _n, ldb::DB* _extrasDB = nullptr) const

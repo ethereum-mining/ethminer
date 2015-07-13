@@ -12,15 +12,13 @@
 #include <llvm/Support/raw_os_ostream.h>
 #include "preprocessor/llvm_includes_end.h"
 
-#include "ExecutionEngine.h"
+#include "ExecStats.h"
 #include "Utils.h"
 #include "BuildInfo.gen.h"
 
 namespace dev
 {
-namespace eth
-{
-namespace jit
+namespace evmjit
 {
 
 namespace
@@ -29,7 +27,7 @@ namespace
 	std::mutex x_cacheMutex;
 	CacheMode g_mode;
 	std::unique_ptr<llvm::MemoryBuffer> g_lastObject;
-	ExecutionEngineListener* g_listener;
+	JITListener* g_listener;
 	static const size_t c_versionStampLength = 32;
 
 	llvm::StringRef getLibVersionStamp()
@@ -44,15 +42,25 @@ namespace
 	}
 }
 
-ObjectCache* Cache::getObjectCache(CacheMode _mode, ExecutionEngineListener* _listener)
+ObjectCache* Cache::init(CacheMode _mode, JITListener* _listener)
 {
-	static ObjectCache objectCache;
-
 	Guard g{x_cacheMutex};
 
 	g_mode = _mode;
 	g_listener = _listener;
-	return &objectCache;
+
+	if (g_mode == CacheMode::clear)
+	{
+		Cache::clear();
+		g_mode = CacheMode::off;
+	}
+
+	if (g_mode != CacheMode::off)
+	{
+		static ObjectCache objectCache;
+		return &objectCache;
+	}
+	return nullptr;
 }
 
 void Cache::clear()
@@ -183,6 +191,5 @@ std::unique_ptr<llvm::MemoryBuffer> ObjectCache::getObject(llvm::Module const* _
 	return std::move(g_lastObject);
 }
 
-}
 }
 }

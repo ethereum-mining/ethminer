@@ -20,8 +20,13 @@
 
 #include "SmartVM.h"
 #include <unordered_map>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
+#include <libdevcore/Guards.h>
 #include <evmjit/JIT.h>
 #include <evmjit/libevmjit-cpp/Utils.h>
 #include "VMFactory.h"
@@ -32,6 +37,8 @@ namespace eth
 {
 namespace
 {
+	struct JitInfo: LogChannel { static const char* name() { return "JIT"; }; static const int verbosity = 11; };
+
 	using HitMap = std::unordered_map<h256, uint64_t>;
 
 	HitMap& getHitMap()
@@ -39,30 +46,93 @@ namespace
 		static HitMap s_hitMap;
 		return s_hitMap;
 	}
+
+	struct JitTask
+	{
+		bytes code;
+		h256 codeHash;
+	};
+
+	class JitWorker
+	{
+		bool m_finished = false;
+		std::mutex x_mutex;
+		std::condition_variable m_cv;
+		std::thread m_worker;
+		std::queue<JitTask> m_queue;
+
+		bool pop(JitTask& o_task)
+		{
+			std::unique_lock<std::mutex> lock{x_mutex};
+			m_cv.wait(lock, [this]{ return m_finished || !m_queue.empty(); });
+			if (m_finished)
+				return false;
+
+			assert(!m_queue.empty());
+			o_task = std::move(m_queue.front());
+			m_queue.pop();
+			return true;
+		}
+
+		void work()
+		{
+			clog(JitInfo) << "JIT worker started.";
+			JitTask task;
+			while (pop(task))
+			{
+				clog(JitInfo) << "Compilation... " << task.codeHash;
+				evmjit::JIT::compile(task.code.data(), task.code.size(), eth2jit(task.codeHash));
+				clog(JitInfo) << "   ...finished " << task.codeHash;
+			}
+			clog(JitInfo) << "JIT worker finished.";
+		}
+
+	public:
+		JitWorker() noexcept: m_worker([this]{ work(); })
+		{}
+
+		~JitWorker()
+		{
+			DEV_GUARDED(x_mutex)
+				m_finished = true;
+			m_cv.notify_one();
+			m_worker.join();
+		}
+
+		void push(JitTask&& _task)
+		{
+			DEV_GUARDED(x_mutex)
+				m_queue.push(std::move(_task));
+			m_cv.notify_one();
+		}
+	};
 }
 
 bytesConstRef SmartVM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 {
-	auto codeHash = sha3(_ext.code);
+	auto codeHash = _ext.codeHash;
 	auto vmKind = VMKind::Interpreter; // default VM
 
 	// Jitted EVM code already in memory?
-	if (evmjit::JIT::isCodeReady(eth2llvm(codeHash)))
+	if (evmjit::JIT::isCodeReady(eth2jit(codeHash)))
 	{
-		cnote << "Jitted";
+		clog(JitInfo) << "JIT:           " << codeHash;
 		vmKind = VMKind::JIT;
 	}
 	else
 	{
+		static JitWorker s_worker;
+
 		// Check EVM code hit count
-		static const uint64_t c_hitTreshold = 1;
+		static const uint64_t c_hitTreshold = 2;
 		auto& hits = getHitMap()[codeHash];
 		++hits;
-		if (hits > c_hitTreshold)
+		if (hits == c_hitTreshold)
 		{
-			cnote << "JIT selected";
-			vmKind = VMKind::JIT;
+			clog(JitInfo) << "Schedule:      " << codeHash;
+			s_worker.push({_ext.code, codeHash});
 		}
+		clog(JitInfo) << "Interpreter:   " << codeHash;
 	}
 
 	// TODO: Selected VM must be kept only because it returns reference to its internal memory.

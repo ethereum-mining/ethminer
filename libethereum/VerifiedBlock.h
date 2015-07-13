@@ -43,11 +43,11 @@ struct VerifiedBlockRef
 /// @brief Verified block info, combines block data and verified info/transactions
 struct VerifiedBlock
 {
-	VerifiedBlock() {};
+	VerifiedBlock() {}
 
 	VerifiedBlock(BlockInfo&& _bi)
 	{
-		verified.info = _bi;
+		verified.info = std::move(_bi);
 	}
 
 	VerifiedBlock(VerifiedBlock&& _other):

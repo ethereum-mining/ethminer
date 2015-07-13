@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>AlethZero Ethereum Client</string>
+   <string>AlethZero ++Ethereum</string>
   </property>
   <property name="dockNestingEnabled">
    <bool>true</bool>
@@ -44,14 +44,14 @@
          <string>0 bytes used</string>
         </property>
        </widget>
-	  </item>
-	  <item>
-	   <widget class="QLabel" name="syncStatus">
-		<property name="text">
-		 <string></string>
-		</property>
-	   </widget>
-	  </item>
+      </item>
+      <item>
+       <widget class="QLabel" name="syncStatus">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
       <item>
        <widget class="QLabel" name="chainStatus">
         <property name="text">
@@ -192,10 +192,14 @@
     <addaction name="injectBlock"/>
     <addaction name="forceMining"/>
     <addaction name="separator"/>
+    <addaction name="vmInterpreter"/>
+    <addaction name="vmJIT"/>
+    <addaction name="vmSmart"/>
+    <addaction name="separator"/>
     <addaction name="usePrivate"/>
-    <addaction name="jitvm"/>
     <addaction name="retryUnknown"/>
     <addaction name="confirm"/>
+    <addaction name="rewindChain"/>
    </widget>
    <widget class="QMenu" name="menu_View">
     <property name="title">
@@ -224,6 +228,7 @@
      <string>&amp;Config</string>
     </property>
     <addaction name="gasPrices"/>
+    <addaction name="sentinel"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_View"/>
@@ -703,7 +708,7 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="dockWidget_8">
+  <widget class="QDockWidget" name="blockChainDockWidget">
    <property name="features">
     <set>QDockWidget::DockWidgetFeatureMask</set>
    </property>
@@ -1145,7 +1150,7 @@ font-size: 14pt</string>
       <number>0</number>
      </property>
      <item>
-      <widget class="DownloadView" name="downloadView" native="true"/>
+      <widget class="SyncView" name="downloadView" native="true"/>
      </item>
     </layout>
    </widget>
@@ -1696,17 +1701,6 @@ font-size: 14pt</string>
     <string>&amp;Clear Pending</string>
    </property>
   </action>
-  <action name="jitvm">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>false</bool>
-   </property>
-   <property name="text">
-    <string>Use &amp;LLVM-EVM</string>
-   </property>
-  </action>
   <action name="killAccount">
    <property name="text">
     <string>&amp;Kill Account</string>
@@ -1782,6 +1776,40 @@ font-size: 14pt</string>
     <string>&amp;Gas Prices...</string>
    </property>
   </action>
+  <action name="vmInterpreter">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Interpreter</string>
+   </property>
+  </action>
+  <action name="vmJIT">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>JIT</string>
+   </property>
+  </action>
+  <action name="vmSmart">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Smart</string>
+   </property>
+  </action>
+  <action name="sentinel">
+   <property name="text">
+    <string>&amp;Sentinel...</string>
+   </property>
+  </action>
+  <action name="rewindChain">
+   <property name="text">
+    <string>&amp;Rewind Chain...</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
@@ -1792,7 +1820,7 @@ font-size: 14pt</string>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>DownloadView</class>
+   <class>SyncView</class>
    <extends>QWidget</extends>
    <header>DownloadView.h</header>
    <container>1</container>
