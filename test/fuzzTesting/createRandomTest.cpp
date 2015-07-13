@@ -145,9 +145,9 @@ int main(int argc, char *argv[])
 		if (testSuite == "RLPTests")
 		{
 			if (checktest)
-				return checkRandomTest(dev::test::doStateTests, testmValue, debug);
+				return checkRandomTest(dev::test::doRlpTests, testmValue, debug);
 			else
-				fillRandomTest(dev::test::doStateTests, (filltest) ? testFillString : c_testExampleStateTest, filldebug);
+				fillRandomTest(dev::test::doRlpTests, (filltest) ? testFillString : c_testExampleRLPTest, filldebug);
 		}
 	}
 
@@ -250,7 +250,12 @@ void parseTestWithTypes(std::string& _test)
 		while (pos != std::string::npos)
 		{
 			if (types.at(i) == "[RLP]")
-				_test.replace(pos, 5, dev::test::RandomCode::generate(10, options));
+			{
+				std::string debug;
+				int randomDepth = 1 + dev::test::RandomCode::randomUniInt() % 10;
+				_test.replace(pos, 5, dev::test::RandomCode::rndRLPSequence(randomDepth, debug));
+				cnote << debug;
+			}
 			else
 			if (types.at(i) == "[CODE]")
 				_test.replace(pos, 6, "0x"+dev::test::RandomCode::generate(10, options));
