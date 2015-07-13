@@ -432,7 +432,7 @@ void Client::appendFromBlock(h256 const& _block, BlockPolarity _polarity, h256Ha
 				auto transactionHash = transaction(d.hash(), j).sha3();
 				// filter catches them
 				for (LogEntry const& l: m)
-					i.second.changes.push_back(LocalisedLogEntry(l, d, transactionHash, j, logIndex, _polarity));
+					i.second.changes.push_back(LocalisedLogEntry(l, d.hash(), (BlockNumber)d.number, transactionHash, j, logIndex, _polarity));
 				io_changed.insert(i.first);
 			}
 		}

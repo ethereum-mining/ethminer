@@ -203,7 +203,7 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 				{
 					total += le.size();
 					for (unsigned j = 0; j < le.size(); ++j)
-						ret.insert(ret.begin(), LocalisedLogEntry(le[j], info, th, i, logIndex, BlockPolarity::Live));
+						ret.insert(ret.begin(), LocalisedLogEntry(le[j], info.hash(), (BlockNumber)info.number, th, i, logIndex, BlockPolarity::Live));
 				}
 			}
 			
@@ -317,6 +317,12 @@ Transaction ClientBase::transaction(h256 _transactionHash) const
 	return Transaction(bc().transaction(_transactionHash), CheckTransaction::Cheap);
 }
 
+LocalisedTransaction ClientBase::localisedTransaction(h256 const& _transactionHash) const
+{
+	std::pair<h256, unsigned> tl = bc().transactionLocation(_transactionHash);
+	return localisedTransaction(tl.first, tl.second);
+}
+
 Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = bc().block(_blockHash);
@@ -327,9 +333,29 @@ Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 		return Transaction();
 }
 
+LocalisedTransaction ClientBase::localisedTransaction(h256 const& _blockHash, unsigned _i) const
+{
+	Transaction t = Transaction(bc().transaction(_blockHash, _i), CheckTransaction::Cheap);
+	return LocalisedTransaction(t, _blockHash, _i, numberFromHash(_blockHash));
+}
+
 TransactionReceipt ClientBase::transactionReceipt(h256 const& _transactionHash) const
 {
 	return bc().transactionReceipt(_transactionHash);
+}
+
+LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(h256 const& _transactionHash) const
+{
+	std::pair<h256, unsigned> tl = bc().transactionLocation(_transactionHash);
+	Transaction t = Transaction(bc().transaction(tl.first, tl.second), CheckTransaction::Cheap);
+	TransactionReceipt tr = bc().transactionReceipt(tl.first, tl.second);
+	return LocalisedTransactionReceipt(
+		tr,
+		t.sha3(),
+		tl.first,
+		numberFromHash(tl.first),
+		tl.second,
+		toAddress(t.from(), t.nonce()));
 }
 
 pair<h256, unsigned> ClientBase::transactionLocation(h256 const& _transactionHash) const
