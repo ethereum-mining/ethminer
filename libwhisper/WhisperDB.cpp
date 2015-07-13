@@ -60,10 +60,61 @@ void WhisperDB::insert(dev::h256 const& _key, string const& _value)
 		BOOST_THROW_EXCEPTION(FailedInsertInLevelDB(status.ToString()));
 }
 
+void WhisperDB::insert(dev::h256 const& _key, bytes const& _value)
+{
+	leveldb::Slice k((char const*)_key.data(), _key.size);
+	leveldb::Slice v((char const*)_value.data(), _value.size());
+	leveldb::Status status = m_db->Put(m_writeOptions, k, v);
+	if (!status.ok())
+		BOOST_THROW_EXCEPTION(FailedInsertInLevelDB(status.ToString()));
+}
+
 void WhisperDB::kill(dev::h256 const& _key)
 {
 	leveldb::Slice slice((char const*)_key.data(), _key.size);
 	leveldb::Status status = m_db->Delete(m_writeOptions, slice);
 	if (!status.ok())
 		BOOST_THROW_EXCEPTION(FailedDeleteInLevelDB(status.ToString()));
+}
+
+void WhisperDB::loadAll(std::map<h256, Envelope>& o_dst)
+{
+	leveldb::ReadOptions op;
+	op.fill_cache = false;
+	op.verify_checksums = true;
+	vector<leveldb::Slice> wasted;
+	unsigned now = (unsigned)time(0);
+	leveldb::Iterator* it = m_db->NewIterator(op);
+
+	for (it->SeekToFirst(); it->Valid(); it->Next())
+	{
+		leveldb::Slice const k = it->key();
+		leveldb::Slice const v = it->value();
+
+		bool useless = false;
+		RLP rlp((byte const*)v.data(), v.size());
+		Envelope e(rlp);
+		h256 h2 = e.sha3();
+		h256 h1;
+
+		if (k.size() == h256::size)
+			h1 = h256((byte const*)k.data(), h256::ConstructFromPointer);
+
+		if (h1 != h2)
+		{
+			useless = true;
+			cwarn << "Corrupted data in Level DB:" << h1.hex() << "versus" << h2.hex();
+		}
+		else if (e.expiry() <= now)
+			useless = true;
+
+		if (useless)
+			wasted.push_back(k);
+		else
+			o_dst[h1] = e;
+	}
+
+	leveldb::WriteOptions woptions;
+	for (auto k: wasted)
+		m_db->Delete(woptions, k);
 }
