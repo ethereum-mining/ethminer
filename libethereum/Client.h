@@ -218,8 +218,6 @@ public:
 	void setExtraData(bytes const& _extraData) { m_extraData = _extraData; }
 	/// Rewind to a prior head.
 	void rewind(unsigned _n) { m_bc.rewind(_n); }
-	/// Rescue the chain.
-	void rescue() { m_bc.rescue(m_stateDB); }
 
 protected:
 	/// InterfaceStub methods

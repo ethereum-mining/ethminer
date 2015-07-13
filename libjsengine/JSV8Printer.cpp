@@ -37,7 +37,6 @@ JSV8Printer::JSV8Printer(JSV8Engine const& _engine): m_engine(_engine)
 
 JSString JSV8Printer::prettyPrint(JSV8Value const& _value) const
 {
-	v8::HandleScope handleScope;
 	v8::Local<v8::String> pp = v8::String::New("prettyPrint");
 	v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(m_engine.context()->Global()->Get(pp));
 	v8::Local<v8::Value> values[1] = {v8::Local<v8::Value>::New(_value.value())};
