@@ -518,9 +518,8 @@ BOOST_AUTO_TEST_CASE(segmentedPacketFlush)
 		BOOST_REQUIRE(decryptedHeader);
 		bytesRef frame = frameWithHeader.cropped(h256::size);
 		RLPXFrameInfo f(header);
-		auto p = r.demux(decoder, f, frame);
-		if (p.size())
-			packets += move(p);
+		for (RLPXPacket& p: r.demux(decoder, f, frame))
+			packets.push_back(move(p));
 	}
 	BOOST_REQUIRE_EQUAL(packets.size(), 1);
 	BOOST_REQUIRE_EQUAL(packets.front().size(), packetTypeRLP.size() + rlpPayload.out().size());
@@ -571,8 +570,8 @@ BOOST_AUTO_TEST_CASE(coalescedPacketsPadded)
 	bytesRef frame = frameWithHeader.cropped(h256::size);
 	RLPXFrameInfo f(header);
 	BOOST_REQUIRE_EQUAL(f.multiFrame, false);
-	auto p = r.demux(decoder, f, frame);
-	packets += move(p);
+	for (RLPXPacket& p: r.demux(decoder, f, frame))
+		packets.push_back(move(p));
 	
 	RLPStream rlpPayload;
 	rlpPayload << stuff;
@@ -623,8 +622,8 @@ BOOST_AUTO_TEST_CASE(singleFramePacketFlush)
 	bytesRef frame = frameWithHeader.cropped(h256::size);
 	RLPXFrameInfo f(header);
 	BOOST_REQUIRE_EQUAL(f.multiFrame, false);
-	auto p = r.demux(decoder, f, frame);
-	packets += move(p);
+	for (RLPXPacket& p: r.demux(decoder, f, frame))
+		packets.push_back(move(p));
 	
 	RLPStream rlpPayload;
 	rlpPayload << stuff;

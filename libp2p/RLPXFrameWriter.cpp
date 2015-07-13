@@ -66,7 +66,7 @@ size_t RLPXFrameWriter::mux(RLPXFrameCoder& _coder, unsigned _size, vector<bytes
 			return ret;
 		
 		// first run when !swapQueues, high > low, otherwise low > high
-		bool high = highPending && !swapQueues ? true : lowPending ? false : true;
+		bool high = highPending && !swapQueues ? true : !lowPending;
 		WriterState &qs = high ? m_q.first : m_q.second;
 		size_t frameAllot = (!swapQueues && highPending && lowPending ? frameLen / 2 - (c_overhead + c_blockSize) > 0 ? frameLen / 2 : frameLen : frameLen) - c_overhead;
 		size_t offset = 0;
