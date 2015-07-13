@@ -14,43 +14,26 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file DownloadView.h
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
+/**
+ * @author Christian <c@ethdev.com>
+ * @date 2015
+ * Versioning.
  */
 
-#pragma once
+#include <libsolidity/Version.h>
+#include <string>
+#include <BuildInfo.h>
+#include <libdevcore/Common.h>
 
-#ifdef Q_MOC_RUN
-#define BOOST_MPL_IF_HPP_INCLUDED
-#endif
+using namespace dev;
+using namespace dev::solidity;
+using namespace std;
 
-#include <list>
-#include <QtWidgets/QWidget>
-#ifndef Q_MOC_RUN
-#include <libethereum/Client.h>
-#endif
+char const* dev::solidity::VersionNumber = "0.1.0";
+extern string const dev::solidity::VersionString =
+	string(dev::solidity::VersionNumber) +
+	"-" +
+	string(DEV_QUOTED(ETH_COMMIT_HASH)).substr(0, 8) +
+	(ETH_CLEAN_REPO ? "" : "*") +
+	"/" DEV_QUOTED(ETH_BUILD_TYPE) "-" DEV_QUOTED(ETH_BUILD_PLATFORM);
 
-namespace dev { namespace eth {
-class Client;
-}}
-
-class SyncView: public QWidget
-{
-	Q_OBJECT
-
-public:
-	SyncView(QWidget* _p = nullptr);
-
-	void setEthereum(dev::eth::Client const* _c) { m_client = _c; }
-
-protected:
-	virtual void paintEvent(QPaintEvent*);
-
-private:
-	dev::eth::Client const* m_client = nullptr;
-
-	unsigned m_lastSyncFrom = (unsigned)-1;
-	unsigned m_lastSyncCount = 0;
-	bool m_wasEstimate = false;
-};

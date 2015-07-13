@@ -81,7 +81,6 @@ public:
 	void proveWork(unsigned _ms);
 
 	bool matchesBloomFilter(TopicBloomFilterHash const& f) const;
-	static void incrementHash(h256& _h) { for (unsigned i = h256::size; i > 0 && !++_h[--i]; ) {} }
 
 private:
 	Envelope(unsigned _exp, unsigned _ttl, AbridgedTopics const& _topic): m_expiry(_exp), m_ttl(_ttl), m_topic(_topic) {}

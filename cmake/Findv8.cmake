@@ -31,12 +31,32 @@ set(V8_LIBRARIES ${V8_LIBRARY})
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
 	find_library(
-		V8_LIBRARY_DEBUG
-		NAMES v8d
-		DOC "v8 debug library"
+		V8_LIBRARY
+		NAMES v8_base
+		DOC "v8 base library"
+	)
+
+	find_library(
+		V8_NO_SNAPSHOT_LIBRARY
+		NAMES v8_nosnapshot
+		DOC "v8 nosnapshot library"
 	)
 	
-	set(V8_LIBRARIES optimized ${V8_LIBRARIES} debug ${V8_LIBRARY_DEBUG})
+	set(V8_LIBRARIES ${V8_LIBRARY} ${V8_NO_SNAPSHOT_LIBRARY})
+
+	find_library(
+		V8_LIBRARY_DEBUG
+		NAMES v8_based
+		DOC "v8 base library"
+	)
+
+	find_library(
+		V8_NO_SNAPSHOT_LIBRARY_DEBUG
+		NAMES v8_nosnapshotd
+		DOC "v8 nosnapshot library"
+	)
+
+	set(V8_LIBRARIES "ws2_32" "winmm" optimized ${V8_LIBRARIES} debug ${V8_LIBRARY_DEBUG} ${V8_NO_SNAPSHOT_LIBRARY_DEBUG})
 
 endif()
 
