@@ -23,9 +23,11 @@
 #pragma once
 
 #include <libdevcore/Log.h>
-// TODO! make readline optional!
+
+#if ETH_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
+#endif
 
 namespace dev
 {
@@ -42,18 +44,35 @@ public:
 	void readExpression() const
 	{
 		std::string cmd = "";
-		g_logPost = [](std::string const& a, char const*) { std::cout << "\r           \r" << a << std::endl << std::flush; rl_forced_update_display(); };
+		g_logPost = [](std::string const& a, char const*)
+		{
+		    std::cout << "\r           \r" << a << std::endl << std::flush;
+#if ETH_READLINE
+		    rl_forced_update_display();
+#endif
+		};
 
 		bool isEmpty = true;
 		int openBrackets = 0;
 		do {
+			std::string rl;
+#if ETH_READLINE
 			char* buff = readline(promptForIndentionLevel(openBrackets).c_str());
-			isEmpty = !(buff && *buff);
+			isEmpty = !buff;
 			if (!isEmpty)
 			{
-				cmd += std::string(buff);
-				cmd += " ";
+				rl = std::string(buff);
 				free(buff);
+			}
+#else
+			std::cout << promptForIndentionLevel(openBrackets) << std::flush;
+			std::getline(std::cin, rl);
+			isEmpty = rl.length() == 0;
+#endif
+			if (!isEmpty)
+			{
+				cmd += rl;
+				cmd += " ";
 				int open = std::count(cmd.begin(), cmd.end(), '{');
 				open += std::count(cmd.begin(), cmd.end(), '(');
 				int closed = std::count(cmd.begin(), cmd.end(), '}');
@@ -64,7 +83,9 @@ public:
 
 		if (!isEmpty)
 		{
+#if ETH_READLINE
 			add_history(cmd.c_str());
+#endif
 			auto value = m_engine.eval(cmd.c_str());
 			std::string result = m_printer.prettyPrint(value).cstr();
 			std::cout << result << std::endl;

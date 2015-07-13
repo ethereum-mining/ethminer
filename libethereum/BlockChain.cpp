@@ -192,6 +192,8 @@ unsigned BlockChain::open(std::string const& _path, WithExisting _we)
 		}
 	}
 
+	m_writeOptions.sync = true;
+
 	if (_we != WithExisting::Verify && !details(m_genesisHash))
 	{
 		// Insert details of genesis block.
@@ -797,6 +799,56 @@ void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
 			m_blocksBlooms[id].blooms[offset] = acc;
 		}
 	}
+}
+
+void BlockChain::rescue(OverlayDB& _db)
+{
+	cout << "Rescuing database..." << endl;
+
+	unsigned u = 1;
+	while (true)
+	{
+		try {
+			if (isKnown(numberHash(u)))
+				u *= 2;
+			else
+				break;
+		}
+		catch (...)
+		{
+			break;
+		}
+	}
+	unsigned l = u / 2;
+	cout << "Finding last likely block number..." << endl;
+	while (u - l > 1)
+	{
+		unsigned m = (u + l) / 2;
+		cout << " " << m << flush;
+		if (isKnown(numberHash(m)))
+			l = m;
+		else
+			u = m;
+	}
+	cout << "  lowest is " << l << endl;
+	for (;; --l)
+	{
+		h256 h = numberHash(l);
+		cout << "Checking validity of " << l << " (" << h << ")..." << flush;
+		try
+		{
+			cout << "block..." << flush;
+			BlockInfo bi = info(h);
+			cout << "details..." << flush;
+			BlockDetails bd = details(h);
+			cout << "state..." << flush;
+			if (_db.exists(bi.stateRoot))
+				break;
+		}
+		catch (...) {}
+	}
+	cout << "OK." << endl;
+	rewind(l);
 }
 
 void BlockChain::rewind(unsigned _newHead)

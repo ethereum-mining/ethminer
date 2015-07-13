@@ -314,7 +314,8 @@ pair<h256, Address> MixClient::submitTransaction(eth::TransactionSkeleton const&
 {
 	WriteGuard l(x_state);
 	TransactionSkeleton ts = _ts;
-	ts.nonce = m_state.transactionsFrom(toAddress(_secret));
+	ts.from = toAddress(_secret);
+	ts.nonce = m_state.transactionsFrom(ts.from);
 	eth::Transaction t(ts, _secret);
 	executeTransaction(t, m_state, false, _gasAuto, _secret);
 	return make_pair(t.sha3(), toAddress(ts.from, ts.nonce));

@@ -75,12 +75,8 @@ void interactiveHelp()
 		<< "Commands:" << endl
 		<< "    netstart <port>  Starts the network subsystem on a specific port." << endl
 		<< "    netstop  Stops the network subsystem." << endl
-		<< "    jsonstart <port>  Starts the JSON-RPC server." << endl
-		<< "    jsonstop  Stops the JSON-RPC server." << endl
 		<< "    connect <addr> <port>  Connects to a specific peer." << endl
 		<< "    verbosity (<level>)  Gets or sets verbosity level." << endl
-		<< "    setetherprice <p>  Resets the ether price." << endl
-		<< "    setpriority <p>  Resets the transaction priority." << endl
 		<< "    minestart  Starts mining." << endl
 		<< "    minestop  Stops mining." << endl
 		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
@@ -135,6 +131,7 @@ void help()
 #endif
 		<< "    -K,--kill  First kill the blockchain." << endl
 		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
+		<< "    --rescue  Attempt to rescue a corrupt database." << endl
 		<< "    --genesis-nonce <nonce>  Set the Genesis Nonce to the given hex nonce." << endl
 		<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
 		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
@@ -1087,7 +1084,7 @@ int main(int argc, char** argv)
 #endif
 	string jsonAdmin;
 	bool upnp = true;
-	WithExisting killChain = WithExisting::Trust;
+	WithExisting withExisting = WithExisting::Trust;
 	bool jit = false;
 	string sentinel;
 
@@ -1254,9 +1251,11 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		else if (arg == "-K" || arg == "--kill-blockchain" || arg == "--kill")
-			killChain = WithExisting::Kill;
+			withExisting = WithExisting::Kill;
 		else if (arg == "-R" || arg == "--rebuild")
-			killChain = WithExisting::Verify;
+			withExisting = WithExisting::Verify;
+		else if (arg == "-R" || arg == "--rescue")
+			withExisting = WithExisting::Rescue;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 		{
 			if (arg == "-c")
@@ -1534,7 +1533,7 @@ int main(int argc, char** argv)
 	dev::WebThreeDirect web3(
 		WebThreeDirect::composeClientVersion("++eth", clientName),
 		dbPath,
-		killChain,
+		withExisting,
 		nodeMode == NodeMode::Full ? set<string>{"eth"/*, "shh"*/} : set<string>(),
 		netPrefs,
 		&nodesState);
