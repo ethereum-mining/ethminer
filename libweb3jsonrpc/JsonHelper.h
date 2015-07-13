@@ -43,6 +43,7 @@ namespace eth
 {
 
 class Transaction;
+class LocalisedTransaction;
 struct BlockDetails;
 class Interface;
 using Transactions = std::vector<Transaction>;
@@ -56,9 +57,9 @@ Json::Value toJson(BlockInfo const& _bi, BlockDetails const& _bd, UncleHashes co
 Json::Value toJson(BlockInfo const& _bi, BlockDetails const& _bd, UncleHashes const& _us, TransactionHashes const& _ts);
 Json::Value toJson(TransactionSkeleton const& _t);
 Json::Value toJson(Transaction const& _t);
+Json::Value toJson(LocalisedTransaction const& _t);
 Json::Value toJson(TransactionReceipt const& _t);
-//TODO: wrap these params into one structure eg. "LocalisedTransactionReceipt"
-Json::Value toJson(TransactionReceipt const& _tr, std::pair<h256, unsigned> _location, BlockNumber _blockNumber, Transaction const& _t);
+Json::Value toJson(LocalisedTransactionReceipt const& _t);
 Json::Value toJson(LocalisedLogEntry const& _e);
 Json::Value toJson(LogEntry const& _e);
 Json::Value toJson(std::map<h256, LocalisedLogEntries> const& _entriesByBlock);

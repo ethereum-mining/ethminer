@@ -182,30 +182,17 @@ Json::Value toJson(dev::eth::TransactionReceipt const& _t)
 	return res;
 }
 
-Json::Value toJson(dev::eth::TransactionReceipt const& _tr, std::pair<h256, unsigned> _location, BlockNumber _blockNumber, Transaction const& _t)
+Json::Value toJson(dev::eth::LocalisedTransactionReceipt const& _t)
 {
 	Json::Value res;
-	h256 h = _t.sha3();
-	res["transactionHash"] = toJS(h);
-	res["transactionIndex"] = _location.second;
-	res["blockHash"] = toJS(_location.first);
-	res["blockNumber"] = _blockNumber;
-	res["cumulativeGasUsed"] = toJS(_tr.gasUsed()); // TODO: check if this is fine
-	res["gasUsed"] = toJS(_tr.gasUsed());
-	res["contractAddress"] = toJS(toAddress(_t.from(), _t.nonce()));
-	res["logs"] = Json::Value(Json::arrayValue);
-	for (unsigned i = 0; i < _tr.log().size(); i++)
-	{
-		LogEntry e = _tr.log()[i];
-		Json::Value l = toJson(e);
-		l["type"] = "mined";
-		l["blockNumber"] = _blockNumber;
-		l["blockHash"] = toJS(_location.first);
-		l["logIndex"] = i;
-		l["transactionHash"] = toJS(h);
-		l["transactionIndex"] = _location.second;
-		res["logs"].append(l);
-	}
+	res["transactionHash"] = toJS(_t.hash());
+	res["transactionIndex"] = _t.transactionIndex();
+	res["blockHash"] = toJS(_t.blockHash());
+	res["blockNumber"] = _t.blockNumber();
+	res["cumulativeGasUsed"] = toJS(_t.gasUsed()); // TODO: check if this is fine
+	res["gasUsed"] = toJS(_t.gasUsed());
+	res["contractAddress"] = toJS(_t.contractAddress());
+	res["logs"] = dev::toJson(_t.localisedLogs());
 	return res;
 }
 
@@ -224,6 +211,26 @@ Json::Value toJson(dev::eth::Transaction const& _t)
 	res["r"] = toJS(_t.signature().r);
 	res["s"] = toJS(_t.signature().s);
 	res["v"] = toJS(_t.signature().v);
+	return res;
+}
+
+Json::Value toJson(dev::eth::LocalisedTransaction const& _t)
+{
+	Json::Value res;
+	if (_t)
+	{
+		res["hash"] = toJS(_t.sha3());
+		res["input"] = toJS(_t.data());
+		res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
+		res["from"] = toJS(_t.safeSender());
+		res["gas"] = toJS(_t.gas());
+		res["gasPrice"] = toJS(_t.gasPrice());
+		res["nonce"] = toJS(_t.nonce());
+		res["value"] = toJS(_t.value());
+		res["blockHash"] = toJS(_t.blockHash());
+		res["transactionIndex"] = toJS(_t.transactionIndex());
+		res["blockNumber"] = toJS(_t.blockNumber());
+	}
 	return res;
 }
 
