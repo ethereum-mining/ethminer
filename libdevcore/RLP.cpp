@@ -173,8 +173,14 @@ size_t RLP::length() const
 		if (lengthSize > sizeof(ret))
 			// We did not check, but would most probably not fit in our memory.
 			BOOST_THROW_EXCEPTION(UndersizeRLP());
+		// No leading zeroes.
+		if (!m_data[1])
+			BOOST_THROW_EXCEPTION(BadRLP());
 		for (unsigned i = 0; i < lengthSize; ++i)
 			ret = (ret << 8) | m_data[i + 1];
+		// Must be greater than the limit.
+		if (ret < c_rlpListStart - c_rlpDataImmLenStart - c_rlpMaxLengthBytes)
+			BOOST_THROW_EXCEPTION(BadRLP());
 	}
 	else if (n <= c_rlpListIndLenZero)
 		return n - c_rlpListStart;
@@ -189,8 +195,12 @@ size_t RLP::length() const
 		if (lengthSize > sizeof(ret))
 			// We did not check, but would most probably not fit in our memory.
 			BOOST_THROW_EXCEPTION(UndersizeRLP());
+		if (!m_data[1])
+			BOOST_THROW_EXCEPTION(BadRLP());
 		for (unsigned i = 0; i < lengthSize; ++i)
 			ret = (ret << 8) | m_data[i + 1];
+		if (ret < 0x100 - c_rlpListStart - c_rlpMaxLengthBytes)
+			BOOST_THROW_EXCEPTION(BadRLP());
 	}
 	// We have to be able to add payloadOffset to length without overflow.
 	// This rejects roughly 4GB-sized RLPs on some platforms.
@@ -203,7 +213,7 @@ size_t RLP::items() const
 {
 	if (isList())
 	{
-		bytesConstRef d = payload().cropped(0, length());
+		bytesConstRef d = payload();
 		size_t i = 0;
 		for (; d.size(); ++i)
 			d = d.cropped(sizeAsEncoded(d));

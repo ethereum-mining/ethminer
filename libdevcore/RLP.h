@@ -232,25 +232,22 @@ public:
 	template <class T, class U>
 	std::pair<T, U> toPair() const
 	{
+		if (itemCountStrict() != 2)
+			BOOST_THROW_EXCEPTION(BadCast());
 		std::pair<T, U> ret;
-		if (isList())
-		{
-			ret.first = (T)(*this)[0];
-			ret.second = (U)(*this)[1];
-		}
+		ret.first = (T)(*this)[0];
+		ret.second = (U)(*this)[1];
 		return ret;
 	}
 
 	template <class T, size_t N>
 	std::array<T, N> toArray() const
 	{
-		if (itemCount() != N || !isList())
+		if (itemCountStrict() != N)
 			BOOST_THROW_EXCEPTION(BadCast());
 		std::array<T, N> ret;
 		for (size_t i = 0; i < N; ++i)
-		{
 			ret[i] = (T)operator[](i);
-		}
 		return ret;
 	}
 
@@ -281,7 +278,9 @@ public:
 	template <class _N> _N toHash(int _flags = Strict) const
 	{
 		requireGood();
-		if (!isData() || (length() > _N::size && (_flags & FailIfTooBig)) || (length() < _N::size && (_flags & FailIfTooSmall)))
+		auto p = payload();
+		auto l = p.size();
+		if (!isData() || (l > _N::size && (_flags & FailIfTooBig)) || (l < _N::size && (_flags & FailIfTooSmall)))
 		{
 			if (_flags & ThrowOnFail)
 				BOOST_THROW_EXCEPTION(BadCast());
@@ -290,8 +289,8 @@ public:
 		}
 
 		_N ret;
-		size_t s = std::min<size_t>(_N::size, length());
-		memcpy(ret.data() + _N::size - s, payload().data(), s);
+		size_t s = std::min<size_t>(_N::size, l);
+		memcpy(ret.data() + _N::size - s, p.data(), s);
 		return ret;
 	}
 
