@@ -54,7 +54,7 @@ class RLPXFrameWriter
 		RLPXPacket* writing = nullptr;
 		size_t remaining = 0;
 		bool multiFrame = false;
-		uint16_t sequence;
+		uint16_t sequence = -1;
 	};
 	
 public:
