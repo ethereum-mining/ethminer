@@ -40,7 +40,7 @@ Item {
 	property string projectPath: ""
 	property string projectTitle: ""
 	property string currentDocumentId: ""
-	property var deploymentAddresses: []
+	property var deploymentAddresses: ({})
 	property string deploymentDir
 	property var listModel: projectListModel
 	property var stateListModel: projectStateListModel.model
@@ -48,7 +48,7 @@ Item {
 	property CodeEditorView codeEditor: null
 	property var unsavedFiles: []
 	property alias newProjectDialog: newProjectDialog
-	property string deployedState
+	property int deployedScenarioIndex
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }

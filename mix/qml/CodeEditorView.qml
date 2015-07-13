@@ -24,6 +24,19 @@ Item {
 		return "";
 	}
 
+	function getContracts()
+	{
+		var ctr = []
+		for (var i = 0; i < openDocCount; i++)
+		{
+			if (editorListModel.get(i).isContract)
+			{
+				ctr.push(editors.itemAt(i).item)
+			}
+		}
+		return ctr;
+	}
+
 	function isDocumentOpen(documentId) {
 		for (var i = 0; i < openDocCount; i++)
 			if (editorListModel.get(i).documentId === documentId &&

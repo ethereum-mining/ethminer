@@ -107,13 +107,13 @@ function loadProject(path) {
 		if (projectData.deploymentDir)
 			projectModel.deploymentDir = projectData.deploymentDir
 		if (projectData.packageHash)
-			deploymentDialog.packageHash =  projectData.packageHash
+			deploymentDialog.packageStep.packageHash =  projectData.packageHash
 		if (projectData.packageBase64)
-			deploymentDialog.packageBase64 =  projectData.packageBase64
+			deploymentDialog.packageStep.packageBase64 =  projectData.packageBase64
 		if (projectData.applicationUrlEth)
-			deploymentDialog.applicationUrlEth = projectData.applicationUrlEth
+			deploymentDialog.registerStep.applicationUrlEth = projectData.applicationUrlEth
 		if (projectData.applicationUrlHttp)
-			deploymentDialog.applicationUrlHttp = projectData.applicationUrlHttp
+			deploymentDialog.registerStep.applicationUrlHttp = projectData.applicationUrlHttp
 		if (!projectData.title) {
 			var parts = path.split("/");
 			projectData.title = parts[parts.length - 2];
