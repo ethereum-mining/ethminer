@@ -844,7 +844,7 @@ void BlockChain::rescue(OverlayDB& _db)
 			cout << "details..." << flush;
 			BlockDetails bd = details(h);
 			cout << "state..." << flush;
-			if (_db.exists(sha3(bi.stateRoot)))
+			if (_db.exists(bi.stateRoot))
 				break;
 		}
 		catch (...) {}
