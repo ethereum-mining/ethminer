@@ -6,7 +6,9 @@ aux_source_directory(. SRC_LIST)
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
 include_directories(BEFORE ..)
 include_directories(${DB_INCLUDE_DIRS})
-include_directories(${OpenCL_INCLUDE_DIRS})
+if (ETHASHCL)
+	include_directories(${OpenCL_INCLUDE_DIRS})
+endif ()
 
 set(EXECUTABLE exp)
 
