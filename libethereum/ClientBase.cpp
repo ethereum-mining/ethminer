@@ -171,49 +171,47 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 			// Might have a transaction that contains a matching log.
 			TransactionReceipt const& tr = temp.receipt(i);
 			LogEntries le = _f.matches(tr);
-			if (le.size())
-				for (unsigned j = 0; j < le.size(); ++j)
-					ret.insert(ret.begin(), LocalisedLogEntry(le[j]));
+			for (unsigned j = 0; j < le.size(); ++j)
+				ret.insert(ret.begin(), LocalisedLogEntry(le[j]));
 		}
 		begin = bc().number();
 	}
-	
+
+	// Handle blocks from main chain
 	set<unsigned> matchingBlocks;
 	for (auto const& i: _f.bloomPossibilities())
 		for (auto u: bc().withBlockBloom(i, end, begin))
 			matchingBlocks.insert(u);
 
-	unsigned falsePos = 0;
 	for (auto n: matchingBlocks)
+		appendLogsFromBlock(_f, bc().numberHash(n), BlockPolarity::Live, ret);
+
+	// Handle reverted blocks
+	h256s blocks;
+	h256 ancestor;
+	unsigned ancestorIndex;
+	tie(blocks, ancestor, ancestorIndex) = bc().treeRoute(_f.earliest(), _f.latest(), false);
+
+	for (size_t i = 0; i < ancestorIndex; i++)
+		appendLogsFromBlock(_f, blocks[i], BlockPolarity::Dead, ret);
+
+	return ret;
+}
+
+void ClientBase::appendLogsFromBlock(LogFilter const& _f, h256 const& _blockHash, BlockPolarity _polarity, LocalisedLogEntries& io_logs) const
+{
+	auto receipts = bc().receipts(_blockHash).receipts;
+	for (size_t i = 0; i < receipts.size(); i++)
 	{
-		int total = 0;
-		auto h = bc().numberHash(n);
-		auto info = bc().info(h);
-		auto receipts = bc().receipts(h).receipts;
-		unsigned logIndex = 0;
-		for (size_t i = 0; i < receipts.size(); i++)
+		TransactionReceipt receipt = receipts[i];
+		if (_f.matches(receipt.bloom()))
 		{
-			logIndex++;
-			TransactionReceipt receipt = receipts[i];
-			if (_f.matches(receipt.bloom()))
-			{
-				auto th = transaction(info.hash(), i).sha3();
-				LogEntries le = _f.matches(receipt);
-				if (le.size())
-				{
-					total += le.size();
-					for (unsigned j = 0; j < le.size(); ++j)
-						ret.insert(ret.begin(), LocalisedLogEntry(le[j], info.hash(), (BlockNumber)info.number, th, i, logIndex, BlockPolarity::Live));
-				}
-			}
-			
-			if (!total)
-				falsePos++;
+			auto th = transaction(_blockHash, i).sha3();
+			LogEntries le = _f.matches(receipt);
+			for (unsigned j = 0; j < le.size(); ++j)
+				io_logs.insert(io_logs.begin(), LocalisedLogEntry(le[j], _blockHash, (BlockNumber)bc().number(_blockHash), th, i, 0, _polarity));
 		}
 	}
-
-	cdebug << matchingBlocks.size() << "searched from" << (end - begin) << "skipped; " << falsePos << "false +ves";
-	return ret;
 }
 
 unsigned ClientBase::installWatch(LogFilter const& _f, Reaping _r)
