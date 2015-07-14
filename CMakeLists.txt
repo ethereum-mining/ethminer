@@ -363,6 +363,9 @@ else()
 endif()
 
 if (EVMJIT)
+	if (CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT DEFINED LLVM_DIR)
+		set(LLVM_DIR "${CMAKE_SOURCE_DIR}/extdep/install/windows/x64/share/llvm/cmake")
+	endif()
 	set(EVMJIT_CPP TRUE) # include CPP-JIT connector
 	add_subdirectory(evmjit)
 endif()
