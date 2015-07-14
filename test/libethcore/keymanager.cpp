@@ -107,11 +107,10 @@ BOOST_AUTO_TEST_CASE(KeyManagerHints)
 
 BOOST_AUTO_TEST_CASE(KeyManagerAccounts)
 {
-	KeyManager km;
 	string password = "hardPassword";
 
 	TransientDirectory tmpDir;
-	km.setKeysFile(tmpDir.path()+ "keysFile.json");
+	KeyManager km(tmpDir.path()+ "keysFile.json", tmpDir.path());
 
 	BOOST_CHECK_NO_THROW(km.create(password));
 	BOOST_CHECK(km.accounts().empty());
@@ -119,6 +118,33 @@ BOOST_AUTO_TEST_CASE(KeyManagerAccounts)
 
 	for (auto a: km.accounts())
 		km.kill(a);
+}
+
+BOOST_AUTO_TEST_CASE(KeyManagerKill)
+{
+	string password = "hardPassword";
+	TransientDirectory tmpDir;
+	KeyPair kp = KeyPair::create();
+
+	{
+		KeyManager km(tmpDir.path() + "keysFile.json", tmpDir.path());
+		BOOST_CHECK_NO_THROW(km.create(password));
+		BOOST_CHECK(km.accounts().empty());
+		BOOST_CHECK(km.load(password));
+		BOOST_CHECK(km.import(kp.secret(), "test"));
+	}
+	{
+		KeyManager km(tmpDir.path() + "keysFile.json", tmpDir.path());
+		BOOST_CHECK(km.load(password));
+		Addresses addresses = km.accounts();
+		BOOST_CHECK(addresses.size() == 1 && addresses[0] == kp.address());
+		km.kill(addresses[0]);
+	}
+	{
+		KeyManager km(tmpDir.path() + "keysFile.json", tmpDir.path());
+		BOOST_CHECK(km.load(password));
+		BOOST_CHECK(km.accounts().empty());
+	}
 }
 
 BOOST_AUTO_TEST_SUITE_END()
