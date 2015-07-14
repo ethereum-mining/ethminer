@@ -145,7 +145,7 @@ size_t RLPXFrameWriter::mux(RLPXFrameCoder& _coder, unsigned _size, vector<bytes
 					_coder.writeFrame(m_protocolType, qs.sequence, &payload, payload);
 			else
 				_coder.writeFrame(m_protocolType, &payload, payload);
-			assert((int)frameLen - payload.size() >= 0);
+			assert(frameLen >= payload.size());
 			frameLen -= payload.size();
 			o_toWrite.push_back(payload);
 			payload.resize(0);
