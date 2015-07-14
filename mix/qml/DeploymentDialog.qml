@@ -14,7 +14,7 @@ import "."
 Dialog {
 	id: modalDeploymentDialog
 	modality: Qt.ApplicationModal
-	width: 800
+	width: 850
 	height: 450
 	visible: false
 
