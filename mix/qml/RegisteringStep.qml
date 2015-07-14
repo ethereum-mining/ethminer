@@ -11,8 +11,8 @@ import "."
 
 Rectangle {
 	property variant worker
-	property alias applicationUrlEth: applicationUrlEth.text
-	property alias applicationUrlHttp: applicationUrlHttp.text
+	property string applicationUrlEth
+	property string applicationUrlHttp
 	property string eth: registrarAddr.text
 	property int ownedRegistrarDeployGas: 1179075 // TODO: Use sol library to calculate gas requirement for each tr.
 	property int ownedRegistrarSetSubRegistrarGas: 50000
@@ -25,14 +25,9 @@ Rectangle {
 	function show()
 	{
 		ctrRegisterLabel.calculateRegisterGas()
+		applicationUrlEthCtrl.text = applicationUrlEth
+		applicationUrlHttp.text = applicationUrlHttp
 		visible = true
-	}
-
-	Settings
-	{
-		id: settings
-		property alias ethUrl: applicationUrlEth.text
-		property string httpUrl: applicationUrlHttp.text
 	}
 
 	ColumnLayout
@@ -69,7 +64,7 @@ Rectangle {
 			DefaultTextField
 			{
 				id: registrarAddr
-				text: "bb9af5b8f19fb2bc1765ca36e697fa30e3386b71" //"c6d9d2cd449a754c494264e1809c50e34d64562b"
+				text: "31e316dace244c1efb93c565eb1974ff8efbdefe" //"c6d9d2cd449a754c494264e1809c50e34d64562b"
 				visible: true
 				Layout.preferredWidth: 235
 			}
@@ -92,8 +87,7 @@ Rectangle {
 
 			DefaultTextField
 			{
-				id: applicationUrlHttp
-				enabled: rowRegister.isOkToRegister()
+				id: applicationUrlHttpCtrl
 				Layout.preferredWidth: 235
 			}
 		}
@@ -160,7 +154,7 @@ Rectangle {
 				DefaultTextField
 				{
 					width: 235
-					id: applicationUrlEth
+					id: applicationUrlEthCtrl
 					onTextChanged: {
 						ctrRegisterLabel.calculateRegisterGas();
 					}
@@ -194,34 +188,44 @@ Rectangle {
 			width: 30
 			onClicked:
 			{
-				var inError = [];
-				var ethUrl = NetworkDeploymentCode.formatAppUrl(applicationUrlEth.text);
-				for (var k in ethUrl)
+				if (applicationUrlEthCtrl.text !== applicationUrlEth)
 				{
-					if (ethUrl[k].length > 32)
-						inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
+					var inError = [];
+					var ethUrl = NetworkDeploymentCode.formatAppUrl(applicationUrlEth.text);
+					for (var k in ethUrl)
+					{
+						if (ethUrl[k].length > 32)
+							inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
+					}
+					if (!worker.stopForInputError(inError))
+					{
+						NetworkDeploymentCode.registerDapp(function(){
+						})
+					}
 				}
-				if (!worker.stopForInputError(inError))
+
+
+				if (applicationUrlHttpCtrl.text !== applicationUrlHttp)
 				{
-					NetworkDeploymentCode.registerDapp(function(){
-						applicationUrlEth.text = ethUrl
-						if (applicationUrlHttp.text === "" || deploymentDialog.packageHash === "")
-						{
-							deployDialog.title = text;
-							deployDialog.text = qsTr("Please provide the link where the resources are stored and ensure the package is aleary built using the deployment step.")
-							deployDialog.open();
-							return;
-						}
-						var inError = [];
-						if (applicationUrlHttp.text.length > 32)
-							inError.push(qsTr(applicationUrlHttp.text));
-						if (!worker.stopForInputError(inError))
-						{
-							/*registerToUrlHint(function(){
-								settings.httpUrl = applicationUrlHttp.text
-							})*/
-						}
-					})
+					if (!(ethUrl.length === 1 && ethUrl[0] === projectModel.projectTitle))
+					{
+						applicationUrlEth.text = ethUrl.join('/')
+					}
+					if (applicationUrlHttp.text === "" || deploymentDialog.packageHash === "")
+					{
+						deployDialog.title = text;
+						deployDialog.text = qsTr("Please provide the link where the resources are stored and ensure the package is aleary built using the deployment step.")
+						deployDialog.open();
+						return;
+					}
+					var inError = [];
+					if (applicationUrlHttp.text.length > 32)
+						inError.push(qsTr(applicationUrlHttp.text));
+					if (!worker.stopForInputError(inError))
+					{
+						registerToUrlHint(function(){
+						})
+					}
 				}
 			}
 		}

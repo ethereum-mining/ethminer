@@ -32,8 +32,9 @@ function deployProject(force) {
 	deploymentDialog.open();
 }
 
-function deployContracts()
+function deployContracts(gas, callback)
 {	
+	deploymentGas = gas;
 	var jsonRpcUrl = "http://127.0.0.1:8080";
 	console.log("Deploying to " + jsonRpcUrl);
 	deploymentStarted();
@@ -50,6 +51,8 @@ function deployContracts()
 	executeTr(0, 0, state, ctrAddresses, function(){
 		projectModel.deploymentAddresses = ctrAddresses;
 		deploymentStepChanged(qsTr("Scenario deployed. Please wait for verifications"))
+		if (callback)
+			callback(ctrAddresses)
 	});
 }
 
@@ -135,16 +138,18 @@ function getFunction(ctrName, functionId)
 	}
 }
 
+var deploymentGas
+var trRealIndex = -1
 function executeTr(blockIndex, trIndex, state, ctrAddresses, callBack)
 {
+	trRealIndex++;
 	var tr = state.blocks.get(blockIndex).transactions.get(trIndex);
 	var func = getFunction(tr.contractId, tr.functionId);
-	console.log(func + " " + tr.contractId + " " + tr.functionId + " ")
 	if (!func)
 		executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, callBack);
 	else
 	{
-		var gasCost = clientModel.toHex(clientModel.gasCosts[trIndex]);
+		var gasCost = clientModel.toHex(deploymentGas[trRealIndex]);
 		var rpcParams = { "from": deploymentDialog.worker.currentAccount, "gas": "0x" + gasCost };
 		var params = replaceParamToken(func.parameters, tr.parameters, ctrAddresses);
 		var encodedParams = clientModel.encodeParams(params, contractFromToken(tr.contractId), tr.functionId);
@@ -223,6 +228,15 @@ function packageDapp(addresses)
 
 	deploymentStepChanged(qsTr("Packaging application ..."));
 	var deploymentDir = projectPath + deploymentId + "/";
+
+	if (deploymentDialog.packageStep.packageDir !== "")
+		deploymentDir = deploymentDialog.packageStep.packageDir
+	else
+	{
+		deploymentDir = projectPath + "package/"
+		fileIo.makeDir(deploymentDir);
+	}
+
 	projectModel.deploymentDir = deploymentDir;
 	fileIo.makeDir(deploymentDir);
 	for (var i = 0; i < projectListModel.count; i++) {
@@ -263,24 +277,18 @@ function packageDapp(addresses)
 	deploymentAddresses = addresses;
 	saveProject();
 
-	if (deploymentDialog.packageStep.packageDir !== "")
-		deploymentDir = deploymentDialog.packageStep.packageDir
-	else
-	{
-		deploymentDir = projectPath + "package/"
-		fileIo.makeDir(deploymentDir);
-	}
-
 	var packageRet = fileIo.makePackage(deploymentDir);
 	deploymentDialog.packageStep.packageHash = packageRet[0];
 	deploymentDialog.packageStep.packageBase64 = packageRet[1];
 	deploymentDialog.packageStep.localPackageUrl = packageRet[2] + "?hash=" + packageRet[0];
+	deploymentDialog.packageStep.lastDeployDate = date
 	deploymentComplete()
 }
 
 function registerDapp(callback)
 {
 	var applicationUrlEth = deploymentDialog.registerStep.applicationUrlEth;
+	projectModel.deploymentEthUrl = applicationUrlEth
 	applicationUrlEth = formatAppUrl(applicationUrlEth);
 	deploymentStepChanged(qsTr("Registering application on the Ethereum network ..."));
 	checkEthPath(applicationUrlEth, false, function (success) {
@@ -512,7 +520,7 @@ function registerContentHash(registrar, callBack)
 function registerToUrlHint(callback)
 {
 	deploymentStepChanged(qsTr("Registering application Resources (" + deploymentDialog.registerStep.applicationUrlHttp) + ") ...");
-
+	projectModel.deploymentHttpUrl = deploymentDialog.registerStep.applicationUrlHttp
 	urlHintAddress(function(urlHint){
 		var requests = [];
 		var paramUrlHttp = clientModel.encodeStringParam(deploymentDialog.registerStep.applicationUrlHttp);

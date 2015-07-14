@@ -127,7 +127,7 @@ Dialog {
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
 			var contract = codeModel.contracts[TransactionHelper.contractFromToken(contractCreationComboBox.currentValue())];
 			if (contract) {
-				var func = contract.contract.functions[functionComboBox.currentIndex /*+ 1*/];
+				var func = getFunction(functionComboBox.currentText, contract);
 				if (func) {
 					var parameters = func.parameters;
 					for (var p = 0; p < parameters.length; p++)
@@ -136,6 +136,18 @@ Dialog {
 			}
 		}
 		initTypeLoader();
+	}
+
+	function getFunction(name, contract)
+	{
+		for (var k in contract.contract.functions)
+		{
+			if (contract.contract.functions[k].name === name)
+			{
+				return contract.contract.functions[k]
+			}
+		}
+		return null
 	}
 
 	function initTypeLoader()

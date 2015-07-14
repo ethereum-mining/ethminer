@@ -2,6 +2,7 @@ import QtQuick 2.0
 import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.3
+import Qt.labs.settings 1.0
 import "js/TransactionHelper.js" as TransactionHelper
 import "js/NetworkDeployment.js" as NetworkDeploymentCode
 import "js/QEtherHelper.js" as QEtherHelper
@@ -10,9 +11,12 @@ import org.ethereum.qml.QEther 1.0
 Rectangle {
 	property variant paramsModel: []
 	property variant worker
+	property variant gas: []
 	color: "#E3E3E3E3"
 	anchors.fill: parent
 	id: root
+
+	property int labelWidth: 150
 
 	function show()
 	{
@@ -26,6 +30,7 @@ Rectangle {
 		}
 		if (worker.accounts.length > 0)
 			worker.currentAccount = worker.accounts[0].id
+		deployedAddresses.refresh()
 	}
 
 	RowLayout
@@ -201,7 +206,7 @@ Rectangle {
 					Layout.fillWidth: true
 					Rectangle
 					{
-						width: 100
+						width: labelWidth
 						Label
 						{
 							text: qsTr("Account")
@@ -228,7 +233,7 @@ Rectangle {
 					Layout.fillWidth: true
 					Rectangle
 					{
-						width: 100
+						width: labelWidth
 						Label
 						{
 							text: qsTr("Gas Price")
@@ -289,6 +294,7 @@ Rectangle {
 						worker.estimateGas(sce, function(gas) {
 							if (gasPriceLoad.loaded)
 							{
+								root.gas = gas
 								cost = 0
 								for (var k in gas)
 								{
@@ -308,7 +314,7 @@ Rectangle {
 
 					Rectangle
 					{
-						width: 100
+						width: labelWidth
 						Label
 						{
 							text: qsTr("Cost Estimate")
@@ -327,7 +333,66 @@ Rectangle {
 					}
 				}
 
+				RowLayout
+				{
+					id: deployedRow
+					Layout.fillWidth: true
+					Rectangle
+					{
+						width: labelWidth
+						Label
+						{
+							id: labelAddresses
+							text: qsTr("Deployed Addresses")
+							anchors.right: parent.right
+							anchors.verticalCenter: parent.verticalCenter
+						}
+					}
 
+					ColumnLayout
+					{
+
+						ListModel
+						{
+							id: deployedAddrModel
+						}
+
+						Repeater
+						{
+							id: deployedAddresses
+							model: deployedAddrModel
+							function refresh()
+							{
+								deployedAddrModel.clear()
+								deployedRow.visible = Object.keys(projectModel.deploymentAddresses).length > 0
+								for (var k in projectModel.deploymentAddresses)
+								{
+									deployedAddrModel.append({ id: k, value: projectModel.deploymentAddresses[k]})
+								}
+							}
+
+							Rectangle
+							{
+								Layout.preferredHeight: 20
+								Layout.preferredWidth: 235
+								color: "transparent"
+								Label
+								{
+									id: labelContract
+									width: 110
+									elide: Text.ElideRight
+									text: index > -1 ? deployedAddrModel.get(index).id : ""
+								}
+
+								TextField
+								{
+									anchors.left: labelContract.right
+									text:  index > - 1 ? deployedAddrModel.get(index).value : ""
+								}
+							}
+						}
+					}
+				}
 			}
 
 			Rectangle
@@ -341,7 +406,10 @@ Rectangle {
 					onClicked:
 					{
 						projectModel.deployedScenarioIndex = contractList.currentIndex
-						NetworkDeploymentCode.deployContracts();
+						NetworkDeploymentCode.deployContracts(root.gas, function(addresses)
+						{
+							deployedAddresses.refresh()
+						});
 					}
 				}
 			}

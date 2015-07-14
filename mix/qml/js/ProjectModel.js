@@ -74,11 +74,12 @@ function saveProjectFile()
 			files: [],
 			title: projectTitle,
 			deploymentAddresses: deploymentAddresses,
-			applicationUrlEth: deploymentDialog.applicationUrlEth,
-			applicationUrlHttp: deploymentDialog.applicationUrlHttp,
-			packageHash: deploymentDialog.packageHash,
-			packageBase64: deploymentDialog.packageBase64,
-			deploymentDir: projectModel.deploymentDir
+			applicationUrlEth: deploymentDialog.registerStep.applicationUrlEth,
+			applicationUrlHttp: deploymentDialog.registerStep.applicationUrlHttp,
+			packageHash: deploymentDialog.packageStep.packageHash,
+			packageBase64: deploymentDialog.packageStep.packageBase64,
+			deploymentDir: deploymentDialog.packageStep.packageDir,
+			lastPackageDate:  deploymentDialog.packageStep.lastDeployDate
 		};
 		for (var i = 0; i < projectListModel.count; i++)
 			projectData.files.push({
@@ -114,11 +115,13 @@ function loadProject(path) {
 			deploymentDialog.registerStep.applicationUrlEth = projectData.applicationUrlEth
 		if (projectData.applicationUrlHttp)
 			deploymentDialog.registerStep.applicationUrlHttp = projectData.applicationUrlHttp
+		if (projectData.lastPackageDate)
+			deploymentDialog.packageStep.lastDeployDate = projectData.lastPackageDate
 		if (!projectData.title) {
 			var parts = path.split("/");
 			projectData.title = parts[parts.length - 2];
 		}
-		deploymentAddresses = projectData.deploymentAddresses ? projectData.deploymentAddresses : [];
+		deploymentAddresses = projectData.deploymentAddresses ? projectData.deploymentAddresses : {};
 		projectTitle = projectData.title;
 		projectPath = path;
 		if (!projectData.files)
