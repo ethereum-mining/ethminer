@@ -506,6 +506,7 @@
             },
             {
                 "blocknumber" : "27",
+                "reverted": true,
                 "transactions" : [
                     {
                         "data" : "log1",
@@ -523,6 +524,7 @@
             },
             {
                 "blocknumber" : "28",
+                "reverted": true,
                 "transactions" : [
                     {
                         "data" : "log1a",
