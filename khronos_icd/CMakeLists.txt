@@ -1,9 +1,12 @@
 cmake_minimum_required (VERSION 2.6)
+cmake_policy(SET CMP0015 NEW)
+set(CMAKE_AUTOMOC OFF)
+
+aux_source_directory(. SRC_LIST)
+
+include_directories(BEFORE ..)
 
 project (OPENCL_ICD_LOADER)
-
-set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/bin)
-set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/bin)
 
 set (OPENCL_ICD_LOADER_SOURCES icd.c icd_dispatch.c)
 
@@ -22,7 +25,7 @@ add_library (OpenCL SHARED ${OPENCL_ICD_LOADER_SOURCES})
 set_target_properties (OpenCL PROPERTIES VERSION "1.2" SOVERSION "1")
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-    set_target_properties (OpenCL PROPERTIES LINK_FLAGS "-Wl,--version-script -Wl,../icd_exports.map")
+    set_target_properties (OpenCL PROPERTIES LINK_FLAGS "-Wl,--version-script -Wl,../../khronos_icd/icd_exports.map")
 endif ()
 
 target_link_libraries (OpenCL ${CMAKE_DL_LIBS})
