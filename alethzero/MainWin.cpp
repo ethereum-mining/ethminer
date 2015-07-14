@@ -639,7 +639,7 @@ pair<Address, bytes> Main::fromString(std::string const& _n) const
 		return make_pair(Address(), bytes());
 
 	std::string n = _n;
-	if (n.find_first_of("0x") == 0)
+	if (n.find("0x") == 0)
 		n.erase(0, 2);
 
 	auto g_newNameReg = getNameReg();
