@@ -28,7 +28,11 @@
 using namespace dev;
 
 DappHost::DappHost(int _port, int _threads):
-	m_port(_port), m_threads(_threads), m_running(false), m_daemon(nullptr)
+	m_port(_port),
+	m_url(QString("http://localhost:%1/").arg(m_port)),
+	m_threads(_threads),
+	m_running(false),
+	m_daemon(nullptr)
 {
 	startListening();
 }
@@ -135,5 +139,10 @@ QUrl DappHost::hostDapp(Dapp&& _dapp)
 	for (ManifestEntry const& entry: m_dapp.manifest.entries)
 		m_entriesByPath[QString::fromStdString(entry.path)] = &entry;
 
-	return QUrl(QString("http://localhost:%1/").arg(m_port));
+	return m_url;
+}
+
+bool DappHost::servesUrl(QUrl const& _url) const
+{
+	return m_url == _url || m_url.isParentOf(_url);
 }

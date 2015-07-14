@@ -234,7 +234,8 @@ Main::Main(QWidget *parent) :
 	});
 	connect(ui->webView, &QWebEngineView::urlChanged, [=](QUrl const& _url)
 	{
-		ui->urlEdit->setText(_url.toString());
+		if (!m_dappHost->servesUrl(_url))
+			ui->urlEdit->setText(_url.toString());
 	});
 
 	m_dappHost.reset(new DappHost(8081));
