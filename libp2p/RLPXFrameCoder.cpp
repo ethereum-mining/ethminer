@@ -23,42 +23,46 @@
 
 #include <libdevcore/Assertions.h>
 #include "RLPxHandshake.h"
+#include "RLPXPacket.h"
 
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 using namespace CryptoPP;
 
-RLPXFrameInfo::RLPXFrameInfo(bytesConstRef _header)
-{
-	length = (_header[0] * 256 + _header[1]) * 256 + _header[2];
-	padding = ((16 - (length % 16)) % 16);
-	RLP header(_header.cropped(3), RLP::ThrowOnFail | RLP::FailIfTooSmall);
-	auto itemCount = header.itemCount();
-	protocolId = header[0].toInt<uint16_t>();
-	hasSequence = itemCount > 1;
-	sequenceId = hasSequence ? header[1].toInt<uint16_t>() : 0;
-	totalLength = itemCount == 3 ? header[2].toInt<uint32_t>() : 0;
-}
+RLPXFrameInfo::RLPXFrameInfo(bytesConstRef _header):
+	length((_header[0] * 256 + _header[1]) * 256 + _header[2]),
+	padding((16 - (length % 16)) % 16),
+	data(_header.cropped(3).toBytes()),
+	header(RLP(data, RLP::ThrowOnFail | RLP::FailIfTooSmall)),
+	protocolId(header[0].toInt<uint16_t>()),
+	multiFrame(header.itemCount() > 1),
+	sequenceId(multiFrame ? header[1].toInt<uint16_t>() : 0),
+	totalLength(header.itemCount() == 3 ? header[2].toInt<uint32_t>() : 0)
+{}
 
 RLPXFrameCoder::RLPXFrameCoder(RLPXHandshake const& _init)
 {
-	// we need:
-	// originated?
-	// Secret == output of ecdhe agreement
-	// authCipher
-	// ackCipher
+	setup(_init.m_originated, _init.m_remoteEphemeral, _init.m_remoteNonce, _init.m_ecdhe, _init.m_nonce, &_init.m_ackCipher, &_init.m_authCipher);
+}
 
+RLPXFrameCoder::RLPXFrameCoder(bool _originated, h512 const& _remoteEphemeral, h256 const& _remoteNonce, crypto::ECDHE const& _ecdhe, h256 const& _nonce, bytesConstRef _ackCipher, bytesConstRef _authCipher)
+{
+	setup(_originated, _remoteEphemeral, _remoteNonce, _ecdhe, _nonce, _ackCipher, _authCipher);
+}
+
+void RLPXFrameCoder::setup(bool _originated, h512 const& _remoteEphemeral, h256 const& _remoteNonce, crypto::ECDHE const& _ecdhe, h256 const& _nonce, bytesConstRef _ackCipher, bytesConstRef _authCipher)
+{
 	bytes keyMaterialBytes(64);
 	bytesRef keyMaterial(&keyMaterialBytes);
 
 	// shared-secret = sha3(ecdhe-shared-secret || sha3(nonce || initiator-nonce))
 	Secret ephemeralShared;
-	_init.m_ecdhe.agree(_init.m_remoteEphemeral, ephemeralShared);
+	_ecdhe.agree(_remoteEphemeral, ephemeralShared);
 	ephemeralShared.ref().copyTo(keyMaterial.cropped(0, h256::size));
 	h512 nonceMaterial;
-	h256 const& leftNonce = _init.m_originated ? _init.m_remoteNonce : _init.m_nonce;
-	h256 const& rightNonce = _init.m_originated ? _init.m_nonce : _init.m_remoteNonce;
+	h256 const& leftNonce = _originated ? _remoteNonce : _nonce;
+	h256 const& rightNonce = _originated ? _nonce : _remoteNonce;
 	leftNonce.ref().copyTo(nonceMaterial.ref().cropped(0, h256::size));
 	rightNonce.ref().copyTo(nonceMaterial.ref().cropped(h256::size, h256::size));
 	auto outRef(keyMaterial.cropped(h256::size, h256::size));
@@ -88,52 +92,79 @@ RLPXFrameCoder::RLPXFrameCoder(RLPXHandshake const& _init)
 	// Recipient egress-mac: sha3(mac-secret^initiator-nonce || auth-sent-ack)
 	//           ingress-mac: sha3(mac-secret^recipient-nonce || auth-recvd-init)
  
-	(*(h256*)outRef.data() ^ _init.m_remoteNonce).ref().copyTo(keyMaterial);
-	bytes const& egressCipher = _init.m_originated ? _init.m_authCipher : _init.m_ackCipher;
+	(*(h256*)outRef.data() ^ _remoteNonce).ref().copyTo(keyMaterial);
+	bytesConstRef egressCipher = _originated ? _authCipher : _ackCipher;
 	keyMaterialBytes.resize(h256::size + egressCipher.size());
 	keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
-	bytesConstRef(&egressCipher).copyTo(keyMaterial.cropped(h256::size, egressCipher.size()));
+	egressCipher.copyTo(keyMaterial.cropped(h256::size, egressCipher.size()));
 	m_egressMac.Update(keyMaterial.data(), keyMaterial.size());
 
 	// recover mac-secret by re-xoring remoteNonce
-	(*(h256*)keyMaterial.data() ^ _init.m_remoteNonce ^ _init.m_nonce).ref().copyTo(keyMaterial);
-	bytes const& ingressCipher = _init.m_originated ? _init.m_ackCipher : _init.m_authCipher;
+	(*(h256*)keyMaterial.data() ^ _remoteNonce ^ _nonce).ref().copyTo(keyMaterial);
+	bytesConstRef ingressCipher = _originated ? _ackCipher : _authCipher;
 	keyMaterialBytes.resize(h256::size + ingressCipher.size());
 	keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
-	bytesConstRef(&ingressCipher).copyTo(keyMaterial.cropped(h256::size, ingressCipher.size()));
+	ingressCipher.copyTo(keyMaterial.cropped(h256::size, ingressCipher.size()));
 	m_ingressMac.Update(keyMaterial.data(), keyMaterial.size());
 }
 
-void RLPXFrameCoder::writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes)
+void RLPXFrameCoder::writeFrame(uint16_t _protocolType, bytesConstRef _payload, bytes& o_bytes)
 {
-	// _packet = type || rlpList()
-
 	RLPStream header;
-	uint32_t len = (uint32_t)_packet.size();
+	uint32_t len = (uint32_t)_payload.size();
 	header.appendRaw(bytes({byte((len >> 16) & 0xff), byte((len >> 8) & 0xff), byte(len & 0xff)}));
-	// zeroHeader: []byte{0xC2, 0x80, 0x80}. Should be rlpList(protocolType,seqId,totalPacketSize).
-	header.appendRaw(bytes({0xc2,0x80,0x80}));
-	
-	// TODO: SECURITY check that header is <= 16 bytes
+	header.appendList(1) << _protocolType;
+	writeFrame(header, _payload, o_bytes);
+}
 
+void RLPXFrameCoder::writeFrame(uint16_t _protocolType, uint16_t _seqId, bytesConstRef _payload, bytes& o_bytes)
+{
+	RLPStream header;
+	uint32_t len = (uint32_t)_payload.size();
+	header.appendRaw(bytes({byte((len >> 16) & 0xff), byte((len >> 8) & 0xff), byte(len & 0xff)}));
+	header.appendList(2) << _protocolType << _seqId;
+	writeFrame(header, _payload, o_bytes);
+}
+
+void RLPXFrameCoder::writeFrame(uint16_t _protocolType, uint16_t _seqId, uint32_t _totalSize, bytesConstRef _payload, bytes& o_bytes)
+{
+	RLPStream header;
+	uint32_t len = (uint32_t)_payload.size();
+	header.appendRaw(bytes({byte((len >> 16) & 0xff), byte((len >> 8) & 0xff), byte(len & 0xff)}));
+	header.appendList(3) << _protocolType << _seqId << _totalSize;
+	writeFrame(header, _payload, o_bytes);
+}
+
+void RLPXFrameCoder::writeFrame(RLPStream const& _header, bytesConstRef _payload, bytes& o_bytes)
+{
+	// TODO: SECURITY check header values && header <= 16 bytes
 	bytes headerWithMac(h256::size);
-	bytesConstRef(&header.out()).copyTo(bytesRef(&headerWithMac));
+	bytesConstRef(&_header.out()).copyTo(bytesRef(&headerWithMac));
 	m_frameEnc.ProcessData(headerWithMac.data(), headerWithMac.data(), 16);
 	updateEgressMACWithHeader(bytesConstRef(&headerWithMac).cropped(0, 16));
 	egressDigest().ref().copyTo(bytesRef(&headerWithMac).cropped(h128::size,h128::size));
 
-	auto padding = (16 - (_packet.size() % 16)) % 16;
+	auto padding = (16 - (_payload.size() % 16)) % 16;
 	o_bytes.swap(headerWithMac);
-	o_bytes.resize(32 + _packet.size() + padding + h128::size);
-	bytesRef packetRef(o_bytes.data() + 32, _packet.size());
-	m_frameEnc.ProcessData(packetRef.data(), _packet.data(), _packet.size());
-	bytesRef paddingRef(o_bytes.data() + 32 + _packet.size(), padding);
+	o_bytes.resize(32 + _payload.size() + padding + h128::size);
+	bytesRef packetRef(o_bytes.data() + 32, _payload.size());
+	m_frameEnc.ProcessData(packetRef.data(), _payload.data(), _payload.size());
+	bytesRef paddingRef(o_bytes.data() + 32 + _payload.size(), padding);
 	if (padding)
 		m_frameEnc.ProcessData(paddingRef.data(), paddingRef.data(), padding);
-	bytesRef packetWithPaddingRef(o_bytes.data() + 32, _packet.size() + padding);
+	bytesRef packetWithPaddingRef(o_bytes.data() + 32, _payload.size() + padding);
 	updateEgressMACWithFrame(packetWithPaddingRef);
-	bytesRef macRef(o_bytes.data() + 32 + _packet.size() + padding, h128::size);
+	bytesRef macRef(o_bytes.data() + 32 + _payload.size() + padding, h128::size);
 	egressDigest().ref().copyTo(macRef);
+}
+
+void RLPXFrameCoder::writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes)
+{
+	RLPStream header;
+	uint32_t len = (uint32_t)_packet.size();
+	header.appendRaw(bytes({byte((len >> 16) & 0xff), byte((len >> 8) & 0xff), byte(len & 0xff)}));
+	header.appendRaw(bytes({0xc2,0x80,0x80}));
+	writeFrame(header, _packet, o_bytes);
 }
 
 bool RLPXFrameCoder::authAndDecryptHeader(bytesRef io)
