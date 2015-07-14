@@ -61,7 +61,6 @@ Item
 		NetworkDeploymentCode.gasPrice(function(price) {
 			gasPrice = price;
 			gasPriceInt.setValue(price);
-			console.log("fjdsfkjds hfkdsf " + price)
 			gasPriceLoaded()
 		}, function(){});
 	}

@@ -13,17 +13,13 @@ Rectangle {
 	property variant worker
 	color: "#E3E3E3E3"
 	anchors.fill: parent
-
+	id: root
 	property string packageHash
 	property string packageBase64
 	property alias localPackageUrl: localPackageUrl.text
+	property alias lastDeployDate: lastDeployLabel.text
 	property string deploymentId
 	property string packageDir
-
-	Settings {
-		property alias localUrl: localPackageUrl.text
-	}
-
 
 	function show()
 	{
@@ -100,16 +96,35 @@ Rectangle {
 		Rectangle
 		{
 			Layout.fillWidth: true
-			Layout.preferredHeight: 20
+			Layout.preferredHeight: 40
 			color: "transparent"
 			Button
 			{
+				id: generatePackageBtn
 				Layout.preferredWidth: 200
 				anchors.horizontalCenter: parent.horizontalCenter
 				text: qsTr("Generate Package")
 				onClicked:
 				{
-					NetworkDeploymentCode.packageDapp(projectModel.deploymentAddresses)
+					NetworkDeploymentCode.packageDapp(projectModel.deploymentAddresses);
+				}
+			}
+
+			RowLayout
+			{
+				anchors.top: generatePackageBtn.bottom
+				anchors.topMargin: 10
+				visible: root.lastDeployDate !== ""
+				anchors.horizontalCenter: parent.horizontalCenter
+				Label
+				{
+					id: lastPackage
+					text: qsTr("Last Package")
+				}
+
+				Label
+				{
+					id: lastDeployLabel
 				}
 			}
 		}
