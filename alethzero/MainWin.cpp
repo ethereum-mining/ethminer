@@ -232,6 +232,10 @@ Main::Main(QWidget *parent) :
 	{
 		ui->tabWidget->setTabText(0, ui->webView->title());
 	});
+	connect(ui->webView, &QWebEngineView::urlChanged, [=](QUrl const& _url)
+	{
+		ui->urlEdit->setText(_url.toString());
+	});
 
 	m_dappHost.reset(new DappHost(8081));
 	m_dappLoader = new DappLoader(this, web3(), getNameReg());
