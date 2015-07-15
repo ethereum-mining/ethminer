@@ -246,7 +246,7 @@ Rectangle {
 					{
 						id: gasPriceInput
 						displayUnitSelection: true
-						displayFormattedValue: false
+						displayFormattedValue: true
 						edit: true
 					}
 
