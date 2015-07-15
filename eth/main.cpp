@@ -1085,7 +1085,6 @@ int main(int argc, char** argv)
 	string jsonAdmin;
 	bool upnp = true;
 	WithExisting withExisting = WithExisting::Trust;
-	bool jit = false;
 	string sentinel;
 
 	/// Networking params.
@@ -1525,7 +1524,6 @@ int main(int argc, char** argv)
 	};
 
 	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat, structuredLoggingURL);
-	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	netPrefs.discovery = !disableDiscovery;
 	netPrefs.pin = pinning;
