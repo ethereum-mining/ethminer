@@ -131,7 +131,7 @@ function(createBuildInfo)
 	add_custom_target(BuildInfo.h ALL
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		COMMAND ${CMAKE_COMMAND} -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
-			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}" 
+			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}"
 			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
 		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -175,9 +175,9 @@ endif ()
 
 macro(eth_format_option O)
 	if (${${O}})
-		set(${O} ON)	
+		set(${O} ON)
 	else()
-		set(${O} OFF)	
+		set(${O} OFF)
 	endif()
 endmacro()
 
@@ -426,7 +426,14 @@ if (GENERAL OR MINER)
 	add_subdirectory(libethash)
 	if (ETHASHCL)
 		add_subdirectory(libethash-cl)
-		add_subdirectory(khronos_icd)
+		if (APPLE)
+			add_library(OpenCL SHARED IMPORTED)
+			set_property(TARGET OpenCL PROPERTY IMPORTED_LOCATION ${OpenCL_LIBRARY})
+			set(OpenCL_TARGET OpenCL)
+		else()
+			add_subdirectory(khronos_icd)
+			set(OpenCL_TARGET OpenCL_ICD)
+		endif()
 	endif ()
 endif ()
 
