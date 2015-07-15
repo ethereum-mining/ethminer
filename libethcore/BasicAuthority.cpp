@@ -44,19 +44,19 @@ void BasicAuthority::BlockHeaderRaw::populateFromHeader(RLP const& _header, Stri
 	m_sig = _header[BlockInfo::BasicFields].toHash<Signature>();
 
 	// check it hashes according to proof of work or that it's the genesis block.
-	if (_s == CheckEverything && parentHash && !verify())
+	if (_s == CheckEverything && m_parentHash && !verify())
 	{
 		InvalidBlockNonce ex;
 		ex << errinfo_hash256(hashWithout());
-		ex << errinfo_difficulty(difficulty);
+		ex << errinfo_difficulty(m_difficulty);
 		ex << errinfo_target(boundary());
 		BOOST_THROW_EXCEPTION(ex);
 	}
-	else if (_s == QuickNonce && parentHash && !preVerify())
+	else if (_s == QuickNonce && m_parentHash && !preVerify())
 	{
 		InvalidBlockNonce ex;
 		ex << errinfo_hash256(hashWithout());
-		ex << errinfo_difficulty(difficulty);
+		ex << errinfo_difficulty(m_difficulty);
 		BOOST_THROW_EXCEPTION(ex);
 	}
 }
