@@ -391,7 +391,7 @@ public:
 		{
 			BlockHeader h(_block, (_ir & ImportRequirements::ValidSeal) ? Strictness::CheckEverything : Strictness::QuickNonce);
 			h.verifyInternals(_block);
-			h.verifyParent(header(h.parentHash));
+			h.verifyParent(header(h.parentHash()));
 			res.info = static_cast<BlockInfo&>(h);
 		}
 		catch (Exception& ex)
