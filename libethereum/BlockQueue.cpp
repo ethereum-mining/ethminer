@@ -110,7 +110,7 @@ void BlockQueue::verifierBody()
 		swap(work.block, res.blockData);
 		try
 		{
-			res.verified = BlockChain::verifyBlock(res.blockData, m_onBad);
+			res.verified = m_bc->verifyBlock(&res.blockData, m_onBad, CheckEverything);
 		}
 		catch (...)
 		{
@@ -183,11 +183,11 @@ void BlockQueue::drainVerified_WITH_BOTH_LOCKS()
 	}
 }
 
-ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, bool _isOurs)
+ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
 {
 	clog(BlockQueueTraceChannel) << std::this_thread::get_id();
 	// Check if we already know this block.
-	h256 h = BlockInfo::headerHash(_block);
+	h256 h = BlockInfo::headerHashFromBlock(_block);
 
 	clog(BlockQueueTraceChannel) << "Queuing block" << h << "for import...";
 
@@ -200,14 +200,12 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		return ImportResult::AlreadyKnown;
 	}
 
-	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi;
-
 	try
 	{
-		// TODO: quick verify
-		bi.populate(_block);
-		bi.verifyInternals(_block);
+		// TODO: quick verification of seal - will require BlockQueue to be templated on Sealer
+		// VERIFY: populates from the block and checks the block is internally coherent.
+		bi = m_bc->verifyBlock(_block, m_onBad, ImportRequirements::None).info;
 	}
 	catch (Exception const& _e)
 	{
@@ -218,7 +216,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 	clog(BlockQueueTraceChannel) << "Block" << h << "is" << bi.number << "parent is" << bi.parentHash;
 
 	// Check block doesn't already exist first!
-	if (_bc.isKnown(h))
+	if (m_bc->isKnown(h))
 	{
 		cblockq << "Already known in chain.";
 		return ImportResult::AlreadyInChain;
@@ -240,7 +238,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		m_unknownSize += _block.size();
 		m_unknownCount++;
 		m_difficulty += bi.difficulty;
-		bool unknown =  !m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash);
+		bool unknown =  !m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !m_bc->isKnown(bi.parentHash);
 		return unknown ? ImportResult::FutureTimeUnknown : ImportResult::FutureTimeKnown;
 	}
 	else
@@ -253,7 +251,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 			// bad parent; this is bad too, note it as such
 			return ImportResult::BadChain;
 		}
-		else if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash))
+		else if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !m_bc->isKnown(bi.parentHash))
 		{
 			// We don't know the parent (yet) - queue it up for later. It'll get resent to us if we find out about its ancestry later on.
 			clog(BlockQueueTraceChannel) << "OK - queued as unknown parent:" << bi.parentHash;
@@ -374,7 +372,7 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 	return !m_readySet.empty();
 }
 
-void BlockQueue::tick(BlockChain const& _bc)
+void BlockQueue::tick()
 {
 	vector<pair<h256, bytes>> todo;
 	{
@@ -406,7 +404,7 @@ void BlockQueue::tick(BlockChain const& _bc)
 	cblockq << "Importing" << todo.size() << "past-future blocks.";
 
 	for (auto const& b: todo)
-		import(&b.second, _bc);
+		import(&b.second);
 }
 
 template <class T> T advanced(T _t, unsigned _n)

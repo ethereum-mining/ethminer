@@ -25,6 +25,7 @@
 
 #include <functional>
 #include <libdevcore/Guards.h>
+#include <libdevcore/RLP.h>
 #include "Common.h"
 
 namespace dev
@@ -34,28 +35,22 @@ namespace eth
 
 class BlockInfo;
 
-class SealFace
-{
-public:
-	virtual bool wouldSealHeader(BlockInfo const&) const { return true; }
-	virtual bytes sealedHeader(BlockInfo const& _bi) const = 0;
-};
-
 class SealEngineFace
 {
 public:
+	virtual std::string name() const = 0;
+	virtual unsigned revision() const = 0;
+	virtual unsigned sealFields() const = 0;
+	virtual bytes sealRLP() const = 0;
+
 	bytes option(std::string const& _name) const { Guard l(x_options); return m_options.count(_name) ? m_options.at(_name) : bytes(); }
 	bool setOption(std::string const& _name, bytes const& _value) { Guard l(x_options); try { if (onOptionChanging(_name, _value)) { m_options[_name] = _value; return true; } } catch (...) {} return false; }
 
 	virtual strings sealers() const { return { "default" }; }
 	virtual void setSealer(std::string const&) {}
 	virtual void generateSeal(BlockInfo const& _bi) = 0;
-	virtual void onSealGenerated(std::function<void(SealFace const* s)> const& _f) = 0;
-	virtual void disable() {}
-
-	// TODO: rename & generalise
-	virtual bool isMining() const { return false; }
-	virtual MiningProgress miningProgress() const { return MiningProgress(); }
+	virtual void onSealGenerated(std::function<void(bytes const& s)> const& _f) = 0;
+	virtual void cancelGeneration() {}
 
 protected:
 	virtual bool onOptionChanging(std::string const&, bytes const&) { return true; }
@@ -64,6 +59,16 @@ protected:
 private:
 	mutable Mutex x_options;
 	std::unordered_map<std::string, bytes> m_options;
+};
+
+template <class Sealer>
+class SealEngineBase: public SealEngineFace
+{
+public:
+	std::string name() const override { return Sealer::name(); }
+	unsigned revision() const override { return Sealer::revision(); }
+	unsigned sealFields() const override { return Sealer::BlockHeader::SealFields; }
+	bytes sealRLP() const override { RLPStream s(sealFields()); s.appendRaw(typename Sealer::BlockHeader().sealFieldsRLP(), sealFields()); return s.out(); }
 };
 
 }
