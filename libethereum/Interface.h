@@ -134,6 +134,7 @@ public:
 	// [BLOCK QUERY API]
 
 	virtual bool isKnownTransaction(h256 const& _transactionHash) const = 0;
+	virtual bool isKnownTransaction(h256 const& _blockHash, unsigned _i) const = 0;
 	virtual Transaction transaction(h256 _transactionHash) const = 0;
 	virtual LocalisedTransaction localisedTransaction(h256 const& _transactionHash) const = 0;
 	virtual TransactionReceipt transactionReceipt(h256 const& _transactionHash) const = 0;

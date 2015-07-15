@@ -503,3 +503,7 @@ bool ClientBase::isKnownTransaction(h256 const& _transactionHash) const
 	return bc().isKnownTransaction(_transactionHash);
 }
 
+bool ClientBase::isKnownTransaction(h256 const& _blockHash, unsigned _i) const
+{
+	return isKnown(_blockHash) && bc().transactions().size() > _i;
+}
