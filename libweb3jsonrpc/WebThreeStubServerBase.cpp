@@ -394,6 +394,9 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByBlockHashAndIndex(string
 	{
 		h256 bh = jsToFixed<32>(_blockHash);
 		unsigned ti = jsToInt(_transactionIndex);
+		if (!client()->isKnownTransaction(bh, ti))
+			return Json::Value(Json::nullValue);
+
 		return toJson(client()->localisedTransaction(bh, ti));
 	}
 	catch (...)
@@ -407,8 +410,12 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByBlockNumberAndIndex(stri
 	try
 	{
 		BlockNumber bn = jsToBlockNumber(_blockNumber);
+		h256 bh = client()->hashFromNumber(bn);
 		unsigned ti = jsToInt(_transactionIndex);
-		return toJson(client()->localisedTransaction(client()->hashFromNumber(bn), ti));
+		if (!client()->isKnownTransaction(bh, ti))
+			return Json::Value(Json::nullValue);
+
+		return toJson(client()->localisedTransaction(bh, ti));
 	}
 	catch (...)
 	{

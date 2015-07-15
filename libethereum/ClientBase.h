@@ -152,6 +152,7 @@ public:
 	virtual bool isKnown(h256 const& _hash) const override;
 	virtual bool isKnown(BlockNumber _block) const override;
 	virtual bool isKnownTransaction(h256 const& _transactionHash) const override;
+	virtual bool isKnownTransaction(h256 const& _blockHash, unsigned _i) const override;
 
 	/// TODO: consider moving it to a separate interface
 
