@@ -189,7 +189,7 @@ Main::Main(QWidget *parent) :
 #endif
 	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
 
-	cerr << "State root: " << CanonBlockChain::genesis().stateRoot << endl;
+	cerr << "State root: " << CanonBlockChain::genesis().stateRoot() << endl;
 	auto block = CanonBlockChain::createGenesisBlock();
 	cerr << "Block Hash: " << CanonBlockChain::genesis().hash() << endl;
 	cerr << "Block RLP: " << RLP(block) << endl;
@@ -1629,7 +1629,7 @@ void Main::on_transactionQueue_currentItemChanged()
 		else
 			s << "<div>Log Bloom: <b><i>Uneventful</i></b></div>";
 		s << "<div>Gas Used: <b>" << receipt.gasUsed() << "</b></div>";
-		s << "<div>End State: <b>" << receipt.stateRoot().abridged() << "</b></div>";
+		s << "<div>End State: <b>" << receipt.stateRoot()().abridged() << "</b></div>";
 		auto r = receipt.rlp();
 		s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 		s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
@@ -1706,7 +1706,7 @@ void Main::on_blocks_currentItemChanged()
 		if (item->data(Qt::UserRole + 1).isNull())
 		{
 			char timestamp[64];
-			time_t rawTime = (time_t)(uint64_t)info.timestamp;
+			time_t rawTime = (time_t)(uint64_t)info.timestamp();
 			strftime(timestamp, 64, "%c", localtime(&rawTime));
 			s << "<h3>" << h << "</h3>";
 			s << "<h4>#" << info.number;
@@ -1714,7 +1714,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<div>D/TD: <b>" << info.difficulty << "</b>/<b>" << details.totalDifficulty << "</b> = 2^" << log2((double)info.difficulty) << "/2^" << log2((double)details.totalDifficulty) << "</div>";
 			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></div>";
 			s << "<div>Gas used/limit: <b>" << info.gasUsed << "</b>/<b>" << info.gasLimit << "</b>" << "</div>";
-			s << "<div>Beneficiary: <b>" << htmlEscaped(pretty(info.coinbaseAddress)) << " " << info.coinbaseAddress << "</b>" << "</div>";
+			s << "<div>Beneficiary: <b>" << htmlEscaped(pretty(info.coinbaseAddress())) << " " << info.coinbaseAddress() << "</b>" << "</div>";
 			s << "<div>Seed hash: <b>" << info.seedHash() << "</b>" << "</div>";
 			s << "<div>Mix hash: <b>" << info.mixHash << "</b>" << "</div>";
 			s << "<div>Nonce: <b>" << info.nonce << "</b>" << "</div>";
@@ -1724,7 +1724,7 @@ void Main::on_blocks_currentItemChanged()
 			{
 				auto e = EthashAux::eval(info);
 				s << "<div>Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")" << "</div>";
-				s << "<div>Parent: <b>" << info.parentHash << "</b>" << "</div>";
+				s << "<div>Parent: <b>" << info.parentHash() << "</b>" << "</div>";
 			}
 			else
 			{
@@ -1732,20 +1732,20 @@ void Main::on_blocks_currentItemChanged()
 				s << "<div>Parent: <b><i>It was a virgin birth</i></b></div>";
 			}
 //			s << "<div>Bloom: <b>" << details.bloom << "</b>";
-			if (!!info.logBloom)
-				s << "<div>Log Bloom: " << info.logBloom << "</div>";
+			if (!!info.logBloom())
+				s << "<div>Log Bloom: " << info.logBloom() << "</div>";
 			else
 				s << "<div>Log Bloom: <b><i>Uneventful</i></b></div>";
-			s << "<div>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>" << "</div>";
-			s << "<div>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>" << "</div>";
+			s << "<div>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot() << "</b>" << "</div>";
+			s << "<div>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles() << "</b>" << "</div>";
 			for (auto u: block[2])
 			{
 				BlockInfo uncle = BlockInfo::fromHeader(u.data());
 				char const* line = "<div><span style=\"margin-left: 2em\">&nbsp;</span>";
 				s << line << "Hash: <b>" << uncle.hash() << "</b>" << "</div>";
-				s << line << "Parent: <b>" << uncle.parentHash << "</b>" << "</div>";
+				s << line << "Parent: <b>" << uncle.parentHash() << "</b>" << "</div>";
 				s << line << "Number: <b>" << uncle.number << "</b>" << "</div>";
-				s << line << "Coinbase: <b>" << htmlEscaped(pretty(uncle.coinbaseAddress)) << " " << uncle.coinbaseAddress << "</b>" << "</div>";
+				s << line << "Coinbase: <b>" << htmlEscaped(pretty(uncle.coinbaseAddress())) << " " << uncle.coinbaseAddress() << "</b>" << "</div>";
 				s << line << "Seed hash: <b>" << uncle.seedHash() << "</b>" << "</div>";
 				s << line << "Mix hash: <b>" << uncle.mixHash << "</b>" << "</div>";
 				s << line << "Nonce: <b>" << uncle.nonce << "</b>" << "</div>";
@@ -1754,20 +1754,20 @@ void Main::on_blocks_currentItemChanged()
 				auto e = EthashAux::eval(uncle);
 				s << line << "Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / uncle.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")" << "</div>";
 			}
-			if (info.parentHash)
-				s << "<div>Pre: <b>" << BlockInfo(ethereum()->blockChain().block(info.parentHash)).stateRoot << "</b>" << "</div>";
+			if (info.parentHash())
+				s << "<div>Pre: <b>" << BlockInfo(ethereum()->blockChain().block(info.parentHash())).stateRoot() << "</b>" << "</div>";
 			else
 				s << "<div>Pre: <b><i>Nothing is before Phil</i></b>" << "</div>";
 
-			s << "<div>Receipts: @<b>" << info.receiptsRoot << "</b>:" << "</div>";
+			s << "<div>Receipts: @<b>" << info.receiptsRoot() << "</b>:" << "</div>";
 			BlockReceipts receipts = ethereum()->blockChain().receipts(h);
 			unsigned ii = 0;
 			for (auto const& i: block[1])
 			{
-				s << "<div>" << sha3(i.data()).abridged() << ": <b>" << receipts.receipts[ii].stateRoot() << "</b> [<b>" << receipts.receipts[ii].gasUsed() << "</b> used]" << "</div>";
+				s << "<div>" << sha3(i.data()).abridged() << ": <b>" << receipts.receipts[ii].stateRoot()() << "</b> [<b>" << receipts.receipts[ii].gasUsed() << "</b> used]" << "</div>";
 				++ii;
 			}
-			s << "<div>Post: <b>" << info.stateRoot << "</b>" << "</div>";
+			s << "<div>Post: <b>" << info.stateRoot() << "</b>" << "</div>";
 			s << "<div>Dump: " Span(Mono) << toHex(block[0].data()) << "</span>" << "</div>";
 			s << "<div>Receipts-Hex: " Span(Mono) << toHex(receipts.rlp()) << "</span></div>";
 		}
@@ -1807,7 +1807,7 @@ void Main::on_blocks_currentItemChanged()
 			else
 				s << "<div>Log Bloom: <b><i>Uneventful</i></b></div>";
 			s << "<div>Gas Used: <b>" << receipt.gasUsed() << "</b></div>";
-			s << "<div>End State: <b>" << receipt.stateRoot().abridged() << "</b></div>";
+			s << "<div>End State: <b>" << receipt.stateRoot()().abridged() << "</b></div>";
 			auto r = receipt.rlp();
 			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 			s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
