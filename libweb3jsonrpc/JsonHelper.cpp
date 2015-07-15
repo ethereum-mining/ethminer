@@ -102,11 +102,9 @@ Json::Value toJson(dev::eth::BlockInfo const& _bi)
 		res["logsBloom"] = toJS(_bi.logBloom);
 		res["target"] = toJS(_bi.boundary());
 
-#if ETH_USING_ETHASH
 		// TODO: move into ProofOfWork.
-		res["nonce"] = toJS(_bi.proof.nonce);
-		res["seedHash"] = toJS(_bi.proofCache());
-#endif
+//		res["nonce"] = toJS(_bi.proof.nonce);
+//		res["seedHash"] = toJS(_bi.proofCache());
 	}
 	return res;
 }

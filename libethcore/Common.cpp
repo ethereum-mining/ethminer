@@ -29,7 +29,6 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
 #include "Exceptions.h"
-#include "ProofOfWork.h"
 #include "BlockInfo.h"
 using namespace std;
 using namespace dev;
@@ -57,7 +56,7 @@ Network const c_network = Network::Frontier;
 Network const c_network = Network::Olympic;
 #endif
 
-const unsigned c_databaseVersion = c_databaseBaseVersion + (c_databaseVersionModifier << 8) + (ProofOfWork::revision() << 9);
+const unsigned c_databaseVersion = c_databaseBaseVersion + (c_databaseVersionModifier << 8) + (23 << 9);
 
 vector<pair<u256, string>> const& units()
 {
