@@ -30,7 +30,7 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-WhisperHost::WhisperHost(): Worker("shh")
+WhisperHost::WhisperHost(bool _useDB): Worker("shh"), m_useDB(_useDB)
 {
 	loadMessagesFromBD();
 }
@@ -206,6 +206,9 @@ void WhisperHost::noteAdvertiseTopicsOfInterest()
 
 void WhisperHost::saveMessagesToBD()
 {
+	if (!m_useDB)
+		return;
+
 	try
 	{
 		WhisperDB db;
@@ -247,6 +250,9 @@ void WhisperHost::saveMessagesToBD()
 
 void WhisperHost::loadMessagesFromBD()
 {
+	if (!m_useDB)
+		return;
+
 	try
 	{
 		map<h256, Envelope> m;
