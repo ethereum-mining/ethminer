@@ -63,7 +63,7 @@ EthashAux* EthashAux::get()
 
 uint64_t EthashAux::cacheSize(BlockInfo const& _header)
 {
-	return ethash_get_cachesize((uint64_t)_header.number);
+	return ethash_get_cachesize((uint64_t)_header.number());
 }
 
 uint64_t EthashAux::dataSize(uint64_t _blockNumber)
