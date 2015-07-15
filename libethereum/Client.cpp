@@ -98,7 +98,7 @@ void Client::init(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _
 	bc().setOnBad([=](Exception& ex){ this->onBadBlock(ex); });
 
 	if (_forceAction == WithExisting::Rescue)
-		m_bc.rescue(m_stateDB);
+		bc().rescue(m_stateDB);
 
 	m_gp->update(bc());
 
