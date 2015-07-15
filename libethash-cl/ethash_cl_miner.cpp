@@ -87,9 +87,11 @@ std::vector<cl::Platform> ethash_cl_miner::getPlatforms()
 	}
 	catch(cl::Error const& err)
 	{
+		#if !defined(CL_PLATFORM_NOT_FOUND_KHR)
 		if (err.err() == CL_PLATFORM_NOT_FOUND_KHR)
 			ETHCL_LOG("No OpenCL platforms found");
 		else
+		#endif
 			throw err;
 	}
 	return platforms;
@@ -190,7 +192,7 @@ bool ethash_cl_miner::configureGPU(
 				);
 				return true;
 			}
-			
+
 			ETHCL_LOG(
 				"OpenCL device " << _device.getInfo<CL_DEVICE_NAME>()
 				<< " has insufficient GPU memory." << result <<
@@ -231,7 +233,7 @@ bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, function<bool(cl
 	for (cl::Device const& device: devices)
 		if (_callback(device))
 			return true;
-		
+
 	return false;
 }
 
