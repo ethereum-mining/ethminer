@@ -398,8 +398,8 @@ private:
 	void doInitDAG(unsigned _n)
 	{
 		BlockInfo bi;
-		bi.number = _n;
-		cout << "Initializing DAG for epoch beginning #" << (bi.number / 30000 * 30000) << " (seedhash " << bi.proofCache().abridged() << "). This will take a while." << endl;
+		bi.number() = _n;
+		cout << "Initializing DAG for epoch beginning #" << (bi.number() / 30000 * 30000) << " (seedhash " << bi.proofCache().abridged() << "). This will take a while." << endl;
 		Ethash::prep(bi);
 		exit(0);
 	}
