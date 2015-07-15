@@ -49,6 +49,8 @@ Item {
 	property var unsavedFiles: []
 	property alias newProjectDialog: newProjectDialog
 	property int deployedScenarioIndex
+	property string applicationUrlEth
+	property string applicationUrlHttp
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
@@ -72,7 +74,7 @@ Item {
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
 	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
 	function deployProject() { NetworkDeploymentCode.deployProject(false); }
-	function registerToUrlHint() { NetworkDeploymentCode.registerToUrlHint(); }
+	function registerToUrlHint(url, callback) { NetworkDeploymentCode.registerToUrlHint(url, callback); }
 	function formatAppUrl() { NetworkDeploymentCode.formatAppUrl(url); }
 
 	Connections {

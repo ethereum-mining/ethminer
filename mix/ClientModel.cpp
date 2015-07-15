@@ -447,7 +447,6 @@ void ClientModel::executeTr(QVariantMap _tr)
 	}
 }
 
-
 std::pair<QString, int> ClientModel::resolvePair(QString const& _contractId)
 {
 	std::pair<QString, int> ret = std::make_pair(_contractId, 0);
@@ -684,12 +683,27 @@ void ClientModel::debugRecord(unsigned _index)
 
 Address ClientModel::deployContract(bytes const& _code, TransactionSettings const& _ctrTransaction)
 {
-	return m_client->submitTransaction(_ctrTransaction.sender, _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice, _ctrTransaction.gasAuto);
+	eth::TransactionSkeleton ts;
+	ts.creation = true;
+	ts.value = _ctrTransaction.value;
+	ts.data = _code;
+	ts.gas = _ctrTransaction.gas;
+	ts.gasPrice = _ctrTransaction.gasPrice;
+	ts.from = toAddress(_ctrTransaction.sender);
+	return m_client->submitTransaction(ts, _ctrTransaction.sender, _ctrTransaction.gasAuto).second;
 }
 
 void ClientModel::callAddress(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
 {
-	m_client->submitTransaction(_tr.sender, _tr.value, _contract, _data, _tr.gas, _tr.gasPrice, _tr.gasAuto);
+	eth::TransactionSkeleton ts;
+	ts.creation = false;
+	ts.value = _tr.value;
+	ts.to = _contract;
+	ts.data = _data;
+	ts.gas = _tr.gas;
+	ts.gasPrice = _tr.gasPrice;
+	ts.from = toAddress(_tr.sender);
+	m_client->submitTransaction(ts, _tr.sender, _tr.gasAuto);
 }
 
 RecordLogEntry* ClientModel::lastBlock() const
