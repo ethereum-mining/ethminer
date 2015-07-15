@@ -78,16 +78,30 @@ ethash_cl_miner::~ethash_cl_miner()
 	finish();
 }
 
+// Quite ugly. Saves us a lot of typing on these static functions
+// since we can't keep the platforms vector in the class (static class/functions)
+//
+// LTODO: With a bit of general refactoring this could go away and platforms
+// be queried only once and kept in the class.
+#define ETHASHCL_GET_PLATFORMS(platforms_, failStmt_)	\
+	do {												\
+		try												\
+		{												\
+			cl::Platform::get(&platforms_);				\
+		}												\
+		catch (cl::Error const& err)					\
+		{												\
+			int errCode = err.err();					\
+			if (errCode == CL_PLATFORM_NOT_FOUND_KHR)	\
+				ETHCL_LOG("No OpenCL platforms found");	\
+			failStmt_;									\
+		}												\
+	} while(0)
+
 string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
 {
 	vector<cl::Platform> platforms;
-	cl::Platform::get(&platforms);
-	if (platforms.empty())
-	{
-		ETHCL_LOG("No OpenCL platforms found.");
-		return string();
-	}
-
+	ETHASHCL_GET_PLATFORMS(platforms, return string());
 	// get GPU device of the selected platform
 	unsigned platform_num = min<unsigned>(_platformId, platforms.size() - 1);
 	vector<cl::Device> devices = getDevices(platforms, _platformId);
@@ -119,19 +133,14 @@ std::vector<cl::Device> ethash_cl_miner::getDevices(std::vector<cl::Platform> co
 unsigned ethash_cl_miner::getNumPlatforms()
 {
 	vector<cl::Platform> platforms;
-	cl::Platform::get(&platforms);
+	ETHASHCL_GET_PLATFORMS(platforms, return 0);
 	return platforms.size();
 }
 
 unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
 {
 	vector<cl::Platform> platforms;
-	cl::Platform::get(&platforms);
-	if (platforms.empty())
-	{
-		ETHCL_LOG("No OpenCL platforms found.");
-		return 0;
-	}
+	ETHASHCL_GET_PLATFORMS(platforms, return 0);
 
 	vector<cl::Device> devices = getDevices(platforms, _platformId);
 	if (devices.empty())
@@ -192,12 +201,7 @@ unsigned ethash_cl_miner::s_initialGlobalWorkSize = ethash_cl_miner::c_defaultGl
 bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
 {
 	vector<cl::Platform> platforms;
-	cl::Platform::get(&platforms);
-	if (platforms.empty())
-	{
-		ETHCL_LOG("No OpenCL platforms found.");
-		return false;
-	}
+	ETHASHCL_GET_PLATFORMS(platforms, return false);
 	for (unsigned i = 0; i < platforms.size(); ++i)
 		if (searchForAllDevices(i, _callback))
 			return true;
@@ -208,7 +212,7 @@ bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _cal
 bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, function<bool(cl::Device const&)> _callback)
 {
 	vector<cl::Platform> platforms;
-	cl::Platform::get(&platforms);
+	ETHASHCL_GET_PLATFORMS(platforms, return false);
 	if (_platformId >= platforms.size())
 		return false;
 
@@ -223,12 +227,7 @@ bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, function<bool(cl
 void ethash_cl_miner::doForAllDevices(function<void(cl::Device const&)> _callback)
 {
 	vector<cl::Platform> platforms;
-	cl::Platform::get(&platforms);
-	if (platforms.empty())
-	{
-		ETHCL_LOG("No OpenCL platforms found.");
-		return;
-	}
+	ETHASHCL_GET_PLATFORMS(platforms, return);
 	for (unsigned i = 0; i < platforms.size(); ++i)
 		doForAllDevices(i, _callback);
 }
@@ -236,7 +235,7 @@ void ethash_cl_miner::doForAllDevices(function<void(cl::Device const&)> _callbac
 void ethash_cl_miner::doForAllDevices(unsigned _platformId, function<void(cl::Device const&)> _callback)
 {
 	vector<cl::Platform> platforms;
-	cl::Platform::get(&platforms);
+	ETHASHCL_GET_PLATFORMS(platforms, return);
 	if (_platformId >= platforms.size())
 		return;
 
@@ -275,12 +274,7 @@ bool ethash_cl_miner::init(
 	try
 	{
 		vector<cl::Platform> platforms;
-		cl::Platform::get(&platforms);
-		if (platforms.empty())
-		{
-			ETHCL_LOG("No OpenCL platforms found.");
-			return false;
-		}
+		ETHASHCL_GET_PLATFORMS(platforms, return false);
 
 		// use selected platform
 		_platformId = min<unsigned>(_platformId, platforms.size() - 1);
