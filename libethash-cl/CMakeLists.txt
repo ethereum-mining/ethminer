@@ -21,7 +21,6 @@ set(HEADERS ${OUR_HEADERS} ${CMAKE_CURRENT_BINARY_DIR}/ethash_cl_miner_kernel.h)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${Boost_INCLUDE_DIRS})
-include_directories(${OpenCL_INCLUDE_DIRS})
 include_directories(..)
 add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 TARGET_LINK_LIBRARIES(${EXECUTABLE} OpenCL_ICD ethash)

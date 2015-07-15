@@ -29,6 +29,7 @@ if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
 endif ()
 
 target_link_libraries (OpenCL_ICD ${CMAKE_DL_LIBS})
+target_include_directories(OpenCL_ICD PUBLIC ${OpenCL_INCLUDE_DIR})
 
 enable_testing()
 add_subdirectory (test)
