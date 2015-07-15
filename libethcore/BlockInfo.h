@@ -42,9 +42,17 @@ enum Strictness
 {
 	CheckEverything,
 	QuickNonce,
-	IgnoreNonce,
+	IgnoreSeal,
 	CheckNothing
 };
+
+enum BlockDataType
+{
+	HeaderData,
+	BlockData
+};
+
+DEV_SIMPLE_EXCEPTION(NoHashRecorded);
 
 /** @brief Encapsulation of a block header.
  * Class to contain all of a block header's data. It is able to parse a block header and populate
@@ -69,7 +77,10 @@ enum Strictness
  */
 struct BlockInfo
 {
+	friend class BlockChain;
 public:
+	static const unsigned BasicFields = 13;
+
 	// TODO: make them all private!
 	h256 parentHash;
 	h256 sha3Uncles;
@@ -78,7 +89,7 @@ public:
 	h256 transactionsRoot;
 	h256 receiptsRoot;
 	LogBloom logBloom;
-	u256 difficulty;
+	u256 difficulty;		// TODO: pull out into BlockHeader
 	u256 number;
 	u256 gasLimit;
 	u256 gasUsed;
@@ -86,10 +97,12 @@ public:
 	bytes extraData;
 
 	BlockInfo();
-	BlockInfo(bytesConstRef _block, Strictness _s);
+	explicit BlockInfo(bytesConstRef _data, Strictness _s = CheckEverything, h256 const& _hashWith = h256(), BlockDataType _bdt = BlockData);
+	explicit BlockInfo(bytes const& _data, Strictness _s = CheckEverything, h256 const& _hashWith = h256(), BlockDataType _bdt = BlockData): BlockInfo(&_data, _s, _hashWith, _bdt) {}
 
 	static h256 headerHashFromBlock(bytes const& _block) { return headerHashFromBlock(&_block); }
 	static h256 headerHashFromBlock(bytesConstRef _block);
+	static RLP extractHeader(bytesConstRef _block);
 
 	explicit operator bool() const { return timestamp != Invalid256; }
 
@@ -121,17 +134,14 @@ public:
 
 	/// sha3 of the header only.
 	h256 const& hashWithout() const;
-	h256 const& hash() const { return m_hash; }
-
-protected:
-	static RLP extractHeader(bytesConstRef _block);
-	void populateFromHeader(RLP const& _header, Strictness _s = IgnoreNonce);
-	void streamRLPFields(RLPStream& _s) const;
+	h256 const& hash() const { if (m_hash) return m_hash; throw NoHashRecorded(); }
 
 	void clear();
 	void noteDirty() const { m_hashWithout = m_boundary = m_hash = h256(); }
 
-	static const unsigned BasicFields = 13;
+protected:
+	void populateFromHeader(RLP const& _header, Strictness _s = IgnoreSeal);
+	void streamRLPFields(RLPStream& _s) const;
 
 	mutable h256 m_hash;						///< SHA3 hash of the block header! Not serialised.
 
@@ -152,35 +162,50 @@ template <class BlockInfoSub>
 class BlockHeaderPolished: public BlockInfoSub
 {
 public:
+	static const unsigned Fields = BlockInfoSub::BasicFields + BlockInfoSub::SealFields;
+
 	BlockHeaderPolished() {}
 	BlockHeaderPolished(BlockInfo const& _bi): BlockInfoSub(_bi) {}
-	explicit BlockHeaderPolished(bytes const& _block, Strictness _s = IgnoreNonce, h256 const& _h = h256()) { populate(&_block, _s, _h); }
-	explicit BlockHeaderPolished(bytesConstRef _block, Strictness _s = IgnoreNonce, h256 const& _h = h256()) { populate(_block, _s, _h); }
+	explicit BlockHeaderPolished(bytes const& _data, Strictness _s = IgnoreSeal, h256 const& _h = h256(), BlockDataType _bdt = BlockData) { populate(&_data, _s, _h, _bdt); }
+	explicit BlockHeaderPolished(bytesConstRef _data, Strictness _s = IgnoreSeal, h256 const& _h = h256(), BlockDataType _bdt = BlockData) { populate(_data, _s, _h, _bdt); }
 
-	static BlockHeaderPolished fromHeader(bytes const& _header, Strictness _s = IgnoreNonce, h256 const& _h = h256()) { return fromHeader(bytesConstRef(&_header), _s, _h); }
-	static BlockHeaderPolished fromHeader(bytesConstRef _header, Strictness _s = IgnoreNonce, h256 const& _h = h256()) { BlockHeaderPolished ret; ret.populateFromHeader(RLP(_header), _s, _h); return ret; }
+	// deprecated - just use constructor instead.
+	static BlockHeaderPolished fromHeader(bytes const& _data, Strictness _s = IgnoreSeal, h256 const& _h = h256()) { return BlockHeaderPolished(_data, _s, _h, HeaderData); }
+	static BlockHeaderPolished fromHeader(bytesConstRef _data, Strictness _s = IgnoreSeal, h256 const& _h = h256()) { return BlockHeaderPolished(_data, _s, _h, HeaderData); }
 
-	void populate(bytesConstRef _block, Strictness _s, h256 const& _h = h256()) { populateFromHeader(BlockInfo::extractHeader(_block), _s, _h); }
+	// deprecated for public API - use constructor.
+	// TODO: make private.
+	void populate(bytesConstRef _data, Strictness _s, h256 const& _h = h256(), BlockDataType _bdt = BlockData)
+	{
+		populateFromHeader(_bdt == BlockData ? BlockInfo::extractHeader(_data) : RLP(_data), _s, _h);
+	}
 
 	void populateFromParent(BlockHeaderPolished const& _parent)
 	{
 		noteDirty();
 		BlockInfo::parentHash = _parent.hash();
 		BlockInfo::populateFromParent(_parent);
+		BlockInfoSub::populateFromParent(_parent);
 	}
 
+	// TODO: consider making private.
 	void verifyParent(BlockHeaderPolished const& _parent)
 	{
 		if (BlockInfo::parentHash && BlockInfo::parentHash != _parent.hash())
 			BOOST_THROW_EXCEPTION(InvalidParentHash());
 		BlockInfo::verifyParent(_parent);
+		BlockInfoSub::verifyParent(_parent);
 	}
 
-	void populateFromHeader(RLP const& _header, Strictness _s = IgnoreNonce, h256 const& _h = h256())
+	// deprecated for public API - use constructor.
+	// TODO: make private.
+	void populateFromHeader(RLP const& _header, Strictness _s = IgnoreSeal, h256 const& _h = h256())
 	{
 		BlockInfo::m_hash = _h;
 		if (_h)
 			assert(_h == dev::sha3(_header.data()));
+		else
+			BlockInfo::m_hash = dev::sha3(_header.data());
 
 		if (_header.itemCount() != BlockInfo::BasicFields + BlockInfoSub::SealFields)
 			BOOST_THROW_EXCEPTION(InvalidBlockHeaderItemCount());
@@ -212,6 +237,13 @@ public:
 		BlockInfo::streamRLPFields(_s);
 		if (_i == WithProof)
 			BlockInfoSub::streamRLPFields(_s);
+	}
+
+	bytes sealFieldsRLP() const
+	{
+		RLPStream s;
+		BlockInfoSub::streamRLPFields(s);
+		return s.out();
 	}
 };
 
