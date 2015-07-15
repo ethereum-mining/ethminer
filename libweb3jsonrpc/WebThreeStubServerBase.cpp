@@ -725,7 +725,19 @@ Json::Value WebThreeStubServerBase::eth_getLogs(Json::Value const& _json)
 {
 	try
 	{
-		return toJson(client()->logs(toLogFilter(_json)));
+		return toJson(client()->logs(toLogFilter(_json, *client())));
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
+Json::Value WebThreeStubServerBase::eth_getLogsEx(Json::Value const& _json)
+{
+	try
+	{
+		return toJsonByBlock(client()->logs(toLogFilter(_json)));
 	}
 	catch (...)
 	{
