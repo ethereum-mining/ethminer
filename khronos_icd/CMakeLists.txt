@@ -32,6 +32,3 @@ target_link_libraries (OpenCL_ICD ${CMAKE_DL_LIBS})
 target_include_directories(OpenCL_ICD PUBLIC ${OpenCL_INCLUDE_DIR})
 
 install(TARGETS OpenCL_ICD RUNTIME DESTINATION bin LIBRARY DESTINATION lib)
-
-enable_testing()
-add_subdirectory (test)
