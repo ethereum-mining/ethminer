@@ -124,10 +124,16 @@ struct ImportRequirements
 	using value = unsigned;
 	enum
 	{
-		ValidNonce = 1, ///< Validate nonce
+		ValidSeal = 1, ///< Validate seal
 		DontHave = 2, ///< Avoid old blocks
-		CheckUncles = 4, ///< Check uncle nonces
-		Default = ValidNonce | DontHave | CheckUncles
+		UncleBasic = 4, ///< Check the basic structure of the uncles.
+		TransactionBasic = 8, ///< Check the basic structure of the transactions.
+		UncleSeals = 16, ///< Check the basic structure of the uncles.
+		TransactionSignatures = 32, ///< Check the basic structure of the transactions.
+		CheckUncles = UncleBasic | UncleSeals, ///< Check uncle seals
+		CheckTransactions = TransactionBasic | TransactionSignatures, ///< Check transaction signatures
+		Default = ValidSeal | DontHave | CheckUncles | CheckTransactions,
+		None = 0
 	};
 };
 
@@ -201,7 +207,7 @@ inline void badBlock(bytes const& _header, std::string const& _err) { badBlock(&
 /**
  * @brief Describes the progress of a mining operation.
  */
-struct MiningProgress
+struct WorkingProgress
 {
 //	MiningProgress& operator+=(MiningProgress const& _mp) { hashes += _mp.hashes; ms = std::max(ms, _mp.ms); return *this; }
 	uint64_t hashes = 0;		///< Total number of hashes computed.

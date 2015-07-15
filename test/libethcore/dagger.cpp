@@ -24,7 +24,6 @@
 #include <random>
 #include "../JsonSpiritHeaders.h"
 #include <libdevcore/CommonIO.h>
-#include <libethcore/ProofOfWork.h>
 #include <libethcore/EthashAux.h>
 #include <boost/test/unit_test.hpp>
 #include "../TestHelper.h"
@@ -74,7 +73,7 @@ BOOST_AUTO_TEST_CASE(basic_test)
 #endif
 
 		h256 result(o["result"].get_str());
-		Ethash::Result r = EthashAux::eval(header);
+		EthashProofOfWork::Result r = EthashAux::eval(header);
 		BOOST_REQUIRE_EQUAL(r.value, result);
 		BOOST_REQUIRE_EQUAL(r.mixHash, header.mixHash);
 	}
