@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE(messages)
 {
 	cnote << "Testing load/save Whisper messages...";
 	VerbosityHolder setTemporaryLevel(2);
-	const unsigned TestSize = 3;
+	unsigned const TestSize = 3;
 	map<h256, Envelope> m1;
 	map<h256, Envelope> preexisting;
 	KeyPair us = KeyPair::create();
@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE(messages)
 		preexisting = wh->all();
 		cnote << preexisting.size() << "preexisting messages in DB";
 
-		for (int i = 0; i < TestSize; ++i)
+		for (unsigned i = 0; i < TestSize; ++i)
 			wh->post(us.sec(), RLPStream().append(i).out(), BuildTopic("test"), 0xFFFFF);
 
 		m1 = wh->all();
