@@ -29,6 +29,7 @@ using namespace dev::shh;
 
 WhisperDB::WhisperDB()
 {
+	m_readOptions.verify_checksums = true;
 	string path = dev::getDataDir("shh");
 	boost::filesystem::create_directories(path);
 	leveldb::Options op;
@@ -82,41 +83,54 @@ void WhisperDB::loadAll(std::map<h256, Envelope>& o_dst)
 	leveldb::ReadOptions op;
 	op.fill_cache = false;
 	op.verify_checksums = true;
-	vector<leveldb::Slice> wasted;
+	vector<string> wasted;
 	unsigned now = (unsigned)time(0);
-	leveldb::Iterator* it = m_db->NewIterator(op);
+	unique_ptr<leveldb::Iterator> it(m_db->NewIterator(op));
 
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 	{
 		leveldb::Slice const k = it->key();
 		leveldb::Slice const v = it->value();
+		bool useless = true;
 
-		bool useless = false;
-		RLP rlp((byte const*)v.data(), v.size());
-		Envelope e(rlp);
-		h256 h2 = e.sha3();
-		h256 h1;
-
-		if (k.size() == h256::size)
-			h1 = h256((byte const*)k.data(), h256::ConstructFromPointer);
-
-		if (h1 != h2)
+		try
 		{
-			useless = true;
-			cwarn << "Corrupted data in Level DB:" << h1.hex() << "versus" << h2.hex();
+			RLP rlp((byte const*)v.data(), v.size());
+			Envelope e(rlp);
+			h256 h2 = e.sha3();
+			h256 h1;
+
+			if (k.size() == h256::size)
+				h1 = h256((byte const*)k.data(), h256::ConstructFromPointer);
+
+			if (h1 != h2)
+				cwarn << "Corrupted data in Level DB:" << h1.hex() << "versus" << h2.hex();
+			else if (e.expiry() > now)
+			{
+				o_dst[h1] = e;
+				useless = false;
+			}
 		}
-		else if (e.expiry() <= now)
-			useless = true;
+		catch(RLPException const& ex)
+		{
+			cwarn << "RLPException in WhisperDB::loadAll():" << ex.what();
+		}
+		catch(Exception const& ex)
+		{
+			cwarn << "Exception in WhisperDB::loadAll():" << ex.what();
+		}
 
 		if (useless)
-			wasted.push_back(k);
-		else
-			o_dst[h1] = e;
+			wasted.push_back(k.ToString());
 	}
 
-	delete it;
+	cdebug << "WhisperDB::loadAll(): loaded " << o_dst.size() << ", deleted " << wasted.size() << "messages";
 
-	leveldb::WriteOptions woptions;
 	for (auto k: wasted)
-		m_db->Delete(woptions, k);
+	{
+		leveldb::Status status = m_db->Delete(m_writeOptions, k);
+		if (!status.ok())
+			cwarn << "Failed to delete an entry from Level DB:" << k;
+	}
 }
+
