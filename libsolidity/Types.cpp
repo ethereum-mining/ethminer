@@ -210,10 +210,11 @@ TypePointer Type::forLiteral(Literal const& _literal)
 	case Token::FalseLiteral:
 		return make_shared<BoolType>();
 	case Token::Number:
+		if (!IntegerConstantType::isValidLiteral(_literal))
+			return TypePointer();
 		return make_shared<IntegerConstantType>(_literal);
 	case Token::StringLiteral:
-		//@todo put larger strings into dynamic strings
-		return FixedBytesType::smallestTypeForLiteral(_literal.getValue());
+		return make_shared<StringLiteralType>(_literal);
 	default:
 		return shared_ptr<Type>();
 	}
@@ -322,6 +323,19 @@ const MemberList IntegerType::AddressMemberList({
 	{"send", make_shared<FunctionType>(strings{"uint"}, strings{"bool"}, FunctionType::Location::Send)}
 });
 
+bool IntegerConstantType::isValidLiteral(const Literal& _literal)
+{
+	try
+	{
+		bigint x(_literal.getValue());
+	}
+	catch (...)
+	{
+		return false;
+	}
+	return true;
+}
+
 IntegerConstantType::IntegerConstantType(Literal const& _literal)
 {
 	m_value = bigint(_literal.getValue());
@@ -378,7 +392,7 @@ bool IntegerConstantType::isImplicitlyConvertibleTo(Type const& _convertTo) cons
 	else if (_convertTo.getCategory() == Category::FixedBytes)
 	{
 		FixedBytesType const& fixedBytes = dynamic_cast<FixedBytesType const&>(_convertTo);
-		return fixedBytes.getNumBytes() * 8 >= getIntegerType()->getNumBits();
+		return fixedBytes.numBytes() * 8 >= getIntegerType()->getNumBits();
 	}
 	else
 		return false;
@@ -530,6 +544,33 @@ shared_ptr<IntegerType const> IntegerConstantType::getIntegerType() const
 		);
 }
 
+StringLiteralType::StringLiteralType(Literal const& _literal):
+	m_value(_literal.getValue())
+{
+}
+
+bool StringLiteralType::isImplicitlyConvertibleTo(Type const& _convertTo) const
+{
+	if (auto fixedBytes = dynamic_cast<FixedBytesType const*>(&_convertTo))
+		return size_t(fixedBytes->numBytes()) >= m_value.size();
+	else if (auto arrayType = dynamic_cast<ArrayType const*>(&_convertTo))
+		return arrayType->isByteArray();
+	else
+		return false;
+}
+
+bool StringLiteralType::operator==(const Type& _other) const
+{
+	if (_other.getCategory() != getCategory())
+		return false;
+	return m_value == dynamic_cast<StringLiteralType const&>(_other).m_value;
+}
+
+TypePointer StringLiteralType::mobileType() const
+{
+	return make_shared<ArrayType>(DataLocation::Memory, true);
+}
+
 shared_ptr<FixedBytesType> FixedBytesType::smallestTypeForLiteral(string const& _literal)
 {
 	if (_literal.length() <= 32)
@@ -588,15 +629,6 @@ bool FixedBytesType::operator==(Type const& _other) const
 		return false;
 	FixedBytesType const& other = dynamic_cast<FixedBytesType const&>(_other);
 	return other.m_bytes == m_bytes;
-}
-
-u256 FixedBytesType::literalValue(const Literal* _literal) const
-{
-	solAssert(_literal, "");
-	u256 value = 0;
-	for (char c: _literal->getValue())
-		value = (value << 8) | byte(c);
-	return value << ((32 - _literal->getValue().length()) * 8);
 }
 
 bool BoolType::isExplicitlyConvertibleTo(Type const& _convertTo) const
@@ -806,11 +838,9 @@ unsigned ArrayType::getSizeOnStack() const
 	if (m_location == DataLocation::CallData)
 		// offset [length] (stack top)
 		return 1 + (isDynamicallySized() ? 1 : 0);
-	else if (m_location == DataLocation::Storage)
-		// storage_key storage_offset
-		return 2;
 	else
-		// offset
+		// storage slot or memory offset
+		// byte offset inside storage value is omitted
 		return 1;
 }
 
@@ -1016,14 +1046,6 @@ bool StructType::canLiveOutsideStorage() const
 		if (!member.type->canLiveOutsideStorage())
 			return false;
 	return true;
-}
-
-unsigned StructType::getSizeOnStack() const
-{
-	if (location() == DataLocation::Storage)
-		return 2; // slot and offset
-	else
-		return 1;
 }
 
 string StructType::toString(bool _short) const
