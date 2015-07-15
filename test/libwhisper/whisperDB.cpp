@@ -124,6 +124,7 @@ BOOST_AUTO_TEST_CASE(persistence)
 BOOST_AUTO_TEST_CASE(messages)
 {
 	cnote << "Testing load/save Whisper messages...";
+	VerbosityHolder setTemporaryLevel(2);
 	const unsigned TestSize = 3;
 	map<h256, Envelope> m1;
 	map<h256, Envelope> preexisting;
@@ -171,6 +172,32 @@ BOOST_AUTO_TEST_CASE(messages)
 		}
 
 	BOOST_REQUIRE_EQUAL(x, TestSize);
+}
+
+BOOST_AUTO_TEST_CASE(corruptedData)
+{
+	cnote << "Testing corrupted data...";
+	VerbosityHolder setTemporaryLevel(2);
+	map<h256, Envelope> m;
+	h256 x = h256::random();
+
+	{
+		WhisperDB db;
+		db.insert(x, "this is a test input, representing corrupt data");
+	}
+
+	{
+		p2p::Host h("Test");
+		auto wh = h.registerCapability(new WhisperHost());
+		m = wh->all();
+		BOOST_REQUIRE(m.end() == m.find(x));
+	}
+
+	{
+		WhisperDB db;
+		string s = db.lookup(x);
+		BOOST_REQUIRE(s.empty());
+	}
 }
 
 BOOST_AUTO_TEST_SUITE_END()
