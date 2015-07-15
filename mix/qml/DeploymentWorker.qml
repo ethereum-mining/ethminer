@@ -79,10 +79,10 @@ Item
 		return false;
 	}
 
-	function waitForTrCountToIncrement(callBack)
+	function waitForTrReceipt(hash, callback)
 	{
-		poolLog.callBack = callBack;
-		poolLog.k = -1;
+		poolLog.callBack = callback;
+		poolLog.hash = hash
 		poolLog.elapsed = 0;
 		poolLog.start();
 	}
@@ -138,8 +138,8 @@ Item
 	{
 		id: poolLog
 		property var callBack
-		property int k: -1
 		property int elapsed
+		property string hash
 		interval: 500
 		running: false
 		repeat: true
@@ -149,25 +149,23 @@ Item
 			var jsonRpcRequestId = 0;
 			requests.push({
 							  jsonrpc: "2.0",
-							  method: "eth_getTransactionCount",
-							  params: [ currentAccount, "pending" ],
+							  method: "eth_getTransactionReceipt",
+							  params: [ hash ],
 							  id: jsonRpcRequestId++
 						  });
 			TransactionHelper.rpcCall(requests, function (httpRequest, response){
-				response = response.replace(/,0+/, ''); // ==> result:27,00000000
-				var count = JSON.parse(response)[0].result
-				if (k < parseInt(count) && k > 0)
+				console.log(response)
+				var receipt = JSON.parse(response)[0].result
+				if (receipt)
 				{
 					stop();
-					callBack(1);
+					callBack(1, receipt);
 				}
-				else if (elapsed > 25000)
+				else if (elapsed > 250000)
 				{
 					stop();
-					callBack(-1);
+					callBack(-1, null);
 				}
-				else
-					k = parseInt(JSON.parse(response)[0].result);
 			})
 		}
 	}	

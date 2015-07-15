@@ -144,6 +144,8 @@ function executeTr(blockIndex, trIndex, state, ctrAddresses, callBack)
 {
 	trRealIndex++;
 	var tr = state.blocks.get(blockIndex).transactions.get(trIndex);
+	if (!tr)
+		callBack()
 	var func = getFunction(tr.contractId, tr.functionId);
 	if (!func)
 		executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, callBack);
@@ -170,20 +172,20 @@ function executeTr(blockIndex, trIndex, state, ctrAddresses, callBack)
 			var txt = qsTr(tr.contractId + "." + tr.functionId + "() ...")
 			deploymentStepChanged(txt);
 			console.log(txt);
-			deploymentDialog.worker.waitForTrCountToIncrement(function(status) {
+
+			deploymentDialog.worker.waitForTrReceipt(JSON.parse(response)[0].result, function(status, receipt){
 				if (status === -1)
 					trCountIncrementTimeOut();
 				else
 				{
 					if (tr.contractId === tr.functionId)
 					{
-						retrieveContractAddress(JSON.parse(response)[0].result, function(addr){
-							ctrAddresses[tr.contractId + " - " + trIndex] = addr //get right ctr address if deploy more than one contract of same type.
-						})
+						ctrAddresses[tr.contractId] = receipt.contractAddress
+						ctrAddresses[tr.contractId + " - " + trIndex] = receipt.contractAddress //get right ctr address if deploy more than one contract of same type.
 					}
 					executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, callBack)
 				}
-			});
+			})
 		});
 	}
 }
@@ -247,10 +249,7 @@ function packageDapp(addresses)
 	if (deploymentDialog.packageStep.packageDir !== "")
 		deploymentDir = deploymentDialog.packageStep.packageDir
 	else
-	{
 		deploymentDir = projectPath + "package/"
-		fileIo.makeDir(deploymentDir);
-	}
 
 	projectModel.deploymentDir = deploymentDir;
 	fileIo.makeDir(deploymentDir);
@@ -514,6 +513,7 @@ function registerContentHash(registrar, callBack)
 	var txt = qsTr("Finalizing Dapp registration ...");
 	deploymentStepChanged(txt);
 	console.log(txt);
+	console.log("register url " + deploymentDialog.packageStep.packageHash + " " + projectModel.projectTitle)
 	var requests = [];
 	var paramTitle = clientModel.encodeStringParam(projectModel.projectTitle);
 	var gasCost = clientModel.toHex(deploymentDialog.registerStep.ownedRegistrarSetContentHashGas);
@@ -531,6 +531,7 @@ function registerContentHash(registrar, callBack)
 
 function registerToUrlHint(url, callback)
 {
+	console.log("register url " + deploymentDialog.packageStep.packageHash + " " + url)
 	deploymentStepChanged(qsTr("Registering application Resources..."))
 	urlHintAddress(function(urlHint){
 		var requests = [];

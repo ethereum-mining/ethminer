@@ -62,7 +62,7 @@ Rectangle {
 			DefaultTextField
 			{
 				id: registrarAddr
-				text: "31e316dace244c1efb93c565eb1974ff8efbdefe" //"c6d9d2cd449a754c494264e1809c50e34d64562b"
+				text: "be5aac309199b4e0740ff52d4b28dc948cf44bea" //"c6d9d2cd449a754c494264e1809c50e34d64562b"
 				visible: true
 				Layout.preferredWidth: 235
 			}
