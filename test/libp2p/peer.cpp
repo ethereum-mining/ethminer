@@ -43,28 +43,32 @@ BOOST_AUTO_TEST_CASE(host)
 	if (test::Options::get().nonetwork)
 		return;
 
-	VerbosityHolder sentinel(10);
-	
+	VerbosityHolder setTemporaryLevel(10);	
 	NetworkPreferences host1prefs("127.0.0.1", 30301, false);
-	NetworkPreferences host2prefs("127.0.0.1", 30302, false);
-	
+	NetworkPreferences host2prefs("127.0.0.1", 30302, false);	
 	Host host1("Test", host1prefs);
-	host1.start();
-		
 	Host host2("Test", host2prefs);
-	auto node2 = host2.id();
+	host1.start();
 	host2.start();
-	
-	while (!host2.haveNetwork())
-		this_thread::sleep_for(chrono::milliseconds(20));
+	auto node2 = host2.id();
+	int const step = 10;
+
+	for (int i = 0; i < 3000 && (!host1.isStarted() || !host2.isStarted()); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
+
+	BOOST_REQUIRE(host1.isStarted() && host2.isStarted());
 	host1.addNode(node2, NodeIPEndpoint(bi::address::from_string("127.0.0.1"), host2prefs.listenPort, host2prefs.listenPort));
 	
-	this_thread::sleep_for(chrono::seconds(3));
-	
-	auto host1peerCount = host1.peerCount();
-	auto host2peerCount = host2.peerCount();
-	BOOST_REQUIRE_EQUAL(host1peerCount, 1);
-	BOOST_REQUIRE_EQUAL(host2peerCount, 1);
+	for (int i = 0; i < 3000 && (!host1.haveNetwork() || !host2.haveNetwork()); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
+
+	BOOST_REQUIRE(host1.haveNetwork() && host2.haveNetwork());
+
+	for (int i = 0; i < 3000 && (!host1.peerCount() || !host2.peerCount()); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
+
+	BOOST_REQUIRE_EQUAL(host1.peerCount(), 1);
+	BOOST_REQUIRE_EQUAL(host2.peerCount(), 1);
 }
 
 BOOST_AUTO_TEST_CASE(networkConfig)

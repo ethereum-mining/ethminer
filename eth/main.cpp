@@ -131,6 +131,7 @@ void help()
 #endif
 		<< "    -K,--kill  First kill the blockchain." << endl
 		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
+		<< "    --rescue  Attempt to rescue a corrupt database." << endl
 		<< "    --genesis-nonce <nonce>  Set the Genesis Nonce to the given hex nonce." << endl
 		<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
 		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
@@ -909,7 +910,12 @@ void interactiveMode(eth::Client* c, std::shared_ptr<eth::TrivialGasPricer> gasP
 							f << endl << "    STACK" << endl;
 							for (auto i: vm->stack())
 								f << (h256)i << endl;
-							f << "    MEMORY" << endl << dev::memDump(vm->memory());
+							std::string memDump = (
+								(vm->memory().size() > 1000) ?
+								" mem size greater than 1000 bytes " :
+								dev::memDump(vm->memory())
+							);
+							f << "    MEMORY" << endl << memDump;
 							f << "    STORAGE" << endl;
 							for (auto const& i: ext->state().storage(ext->myAddress))
 								f << showbase << hex << i.first << ": " << i.second << endl;
@@ -1083,7 +1089,7 @@ int main(int argc, char** argv)
 #endif
 	string jsonAdmin;
 	bool upnp = true;
-	WithExisting killChain = WithExisting::Trust;
+	WithExisting withExisting = WithExisting::Trust;
 	bool jit = false;
 	string sentinel;
 
@@ -1250,9 +1256,11 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		else if (arg == "-K" || arg == "--kill-blockchain" || arg == "--kill")
-			killChain = WithExisting::Kill;
+			withExisting = WithExisting::Kill;
 		else if (arg == "-R" || arg == "--rebuild")
-			killChain = WithExisting::Verify;
+			withExisting = WithExisting::Verify;
+		else if (arg == "-R" || arg == "--rescue")
+			withExisting = WithExisting::Rescue;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 		{
 			if (arg == "-c")
@@ -1530,7 +1538,7 @@ int main(int argc, char** argv)
 	dev::WebThreeDirect web3(
 		WebThreeDirect::composeClientVersion("++eth", clientName),
 		dbPath,
-		killChain,
+		withExisting,
 		nodeMode == NodeMode::Full ? set<string>{"eth"/*, "shh"*/} : set<string>(),
 		netPrefs,
 		&nodesState);
