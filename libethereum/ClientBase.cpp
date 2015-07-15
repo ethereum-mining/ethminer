@@ -177,16 +177,8 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 		begin = bc().number();
 	}
 
-	// Handle blocks from main chain
-	set<unsigned> matchingBlocks;
-	for (auto const& i: _f.bloomPossibilities())
-		for (auto u: bc().withBlockBloom(i, end, begin))
-			matchingBlocks.insert(u);
-
-	for (auto n: matchingBlocks)
-		appendLogsFromBlock(_f, bc().numberHash(n), BlockPolarity::Live, ret);
-
 	// Handle reverted blocks
+	// There are not so many, so let's iterate over them
 	h256s blocks;
 	h256 ancestor;
 	unsigned ancestorIndex;
@@ -194,6 +186,34 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 
 	for (size_t i = 0; i < ancestorIndex; i++)
 		appendLogsFromBlock(_f, blocks[i], BlockPolarity::Dead, ret);
+
+	// cause end is our earliest block, let's compare it with our ancestor
+	// if ancestor is smaller let's move our end to it
+	// example:
+	//
+	// 3b -> 2b -> 1b
+	//                -> g
+	// 3a -> 2a -> 1a
+	//
+	// if earliest is at 1a and latest is a 3b, coverting them to numbers
+	// will give us pair (1, 3)
+	// and we want to get all logs from g (ancestor) to 3
+	// so we have to move 1a to g
+	end = min(end, (unsigned)numberFromHash(ancestor));
+
+	// Handle blocks from main chain
+	set<unsigned> matchingBlocks;
+	if (!_f.isRangeFilter())
+		for (auto const& i: _f.bloomPossibilities())
+			for (auto u: bc().withBlockBloom(i, end, begin))
+				matchingBlocks.insert(u);
+	else
+		// if it is a range filter, we want to get all logs from all blocks in given range
+		for (unsigned i = end; i <= begin; i++)
+			matchingBlocks.insert(i);
+
+	for (auto n: matchingBlocks)
+		appendLogsFromBlock(_f, bc().numberHash(n), BlockPolarity::Live, ret);
 
 	return ret;
 }
@@ -204,13 +224,10 @@ void ClientBase::appendLogsFromBlock(LogFilter const& _f, h256 const& _blockHash
 	for (size_t i = 0; i < receipts.size(); i++)
 	{
 		TransactionReceipt receipt = receipts[i];
-		if (_f.matches(receipt.bloom()))
-		{
-			auto th = transaction(_blockHash, i).sha3();
-			LogEntries le = _f.matches(receipt);
-			for (unsigned j = 0; j < le.size(); ++j)
-				io_logs.insert(io_logs.begin(), LocalisedLogEntry(le[j], _blockHash, (BlockNumber)bc().number(_blockHash), th, i, 0, _polarity));
-		}
+		auto th = transaction(_blockHash, i).sha3();
+		LogEntries le = _f.matches(receipt);
+		for (unsigned j = 0; j < le.size(); ++j)
+			io_logs.insert(io_logs.begin(), LocalisedLogEntry(le[j], _blockHash, (BlockNumber)bc().number(_blockHash), th, i, 0, _polarity));
 	}
 }
 
