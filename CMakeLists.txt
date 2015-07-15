@@ -426,6 +426,7 @@ if (GENERAL OR MINER)
 	add_subdirectory(libethash)
 	if (ETHASHCL)
 		add_subdirectory(libethash-cl)
+		add_subdirectory(khronos_icd)
 	endif ()
 endif ()
 
