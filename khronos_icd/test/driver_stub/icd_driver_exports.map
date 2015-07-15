@@ -1,0 +1,8 @@
+{
+    global:
+clGetExtensionFunctionAddress;
+clGetPlatformInfo;
+
+    local:
+        *;
+};
