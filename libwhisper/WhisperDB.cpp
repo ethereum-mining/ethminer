@@ -126,7 +126,7 @@ void WhisperDB::loadAll(std::map<h256, Envelope>& o_dst)
 
 	cdebug << "WhisperDB::loadAll(): loaded " << o_dst.size() << ", deleted " << wasted.size() << "messages";
 
-	for (auto k: wasted)
+	for (auto const& k: wasted)
 	{
 		leveldb::Status status = m_db->Delete(m_writeOptions, k);
 		if (!status.ok())
