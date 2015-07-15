@@ -62,7 +62,7 @@ namespace eth
 h256 const& Ethash::BlockHeaderRaw::seedHash() const
 {
 	if (!m_seedHash)
-		m_seedHash = EthashAux::seedHash((unsigned)number);
+		m_seedHash = EthashAux::seedHash((unsigned)m_number);
 	return m_seedHash;
 }
 
@@ -72,7 +72,7 @@ void Ethash::BlockHeaderRaw::populateFromHeader(RLP const& _header, Strictness _
 	m_nonce = _header[BlockInfo::BasicFields + 1].toHash<h64>();
 
 	// check it hashes according to proof of work or that it's the genesis block.
-	if (_s == CheckEverything && parentHash && !verify())
+	if (_s == CheckEverything && m_parentHash && !verify())
 	{
 		InvalidBlockNonce ex;
 		ex << errinfo_nonce(m_nonce);
@@ -81,42 +81,42 @@ void Ethash::BlockHeaderRaw::populateFromHeader(RLP const& _header, Strictness _
 		EthashProofOfWork::Result er = EthashAux::eval(seedHash(), hashWithout(), m_nonce);
 		ex << errinfo_ethashResult(make_tuple(er.value, er.mixHash));
 		ex << errinfo_hash256(hashWithout());
-		ex << errinfo_difficulty(difficulty);
+		ex << errinfo_difficulty(m_difficulty);
 		ex << errinfo_target(boundary());
 		BOOST_THROW_EXCEPTION(ex);
 	}
-	else if (_s == QuickNonce && parentHash && !preVerify())
+	else if (_s == QuickNonce && m_parentHash && !preVerify())
 	{
 		InvalidBlockNonce ex;
 		ex << errinfo_hash256(hashWithout());
-		ex << errinfo_difficulty(difficulty);
+		ex << errinfo_difficulty(m_difficulty);
 		ex << errinfo_nonce(m_nonce);
 		BOOST_THROW_EXCEPTION(ex);
 	}
 
 	if (_s != CheckNothing)
 	{
-		if (difficulty < c_minimumDifficulty)
-			BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError(bigint(c_minimumDifficulty), bigint(difficulty)) );
+		if (m_difficulty < c_minimumDifficulty)
+			BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError(bigint(c_minimumDifficulty), bigint(m_difficulty)) );
 
-		if (gasLimit < c_minGasLimit)
-			BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(bigint(c_minGasLimit), bigint(gasLimit)) );
+		if (m_gasLimit < c_minGasLimit)
+			BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(bigint(c_minGasLimit), bigint(m_gasLimit)) );
 
-		if (number && extraData.size() > c_maximumExtraDataSize)
-			BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(c_maximumExtraDataSize), bigint(extraData.size())));
+		if (m_number && m_extraData.size() > c_maximumExtraDataSize)
+			BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(c_maximumExtraDataSize), bigint(m_extraData.size())));
 	}
 }
 
 void Ethash::BlockHeaderRaw::verifyParent(BlockHeaderRaw const& _parent)
 {
 	// Check difficulty is correct given the two timestamps.
-	if (difficulty != calculateDifficulty(_parent))
-		BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError((bigint)calculateDifficulty(_parent), (bigint)difficulty));
+	if (m_difficulty != calculateDifficulty(_parent))
+		BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError((bigint)calculateDifficulty(_parent), (bigint)m_difficulty));
 
-	if (gasLimit < c_minGasLimit ||
-		gasLimit <= _parent.gasLimit - _parent.gasLimit / c_gasLimitBoundDivisor ||
-		gasLimit >= _parent.gasLimit + _parent.gasLimit / c_gasLimitBoundDivisor)
-		BOOST_THROW_EXCEPTION(InvalidGasLimit() << errinfo_min((bigint)_parent.gasLimit - _parent.gasLimit / c_gasLimitBoundDivisor) << errinfo_got((bigint)gasLimit) << errinfo_max((bigint)_parent.gasLimit + _parent.gasLimit / c_gasLimitBoundDivisor));
+	if (m_gasLimit < c_minGasLimit ||
+		m_gasLimit <= _parent.m_gasLimit - _parent.m_gasLimit / c_gasLimitBoundDivisor ||
+		m_gasLimit >= _parent.m_gasLimit + _parent.m_gasLimit / c_gasLimitBoundDivisor)
+		BOOST_THROW_EXCEPTION(InvalidGasLimit() << errinfo_min((bigint)_parent.m_gasLimit - _parent.m_gasLimit / c_gasLimitBoundDivisor) << errinfo_got((bigint)m_gasLimit) << errinfo_max((bigint)_parent.m_gasLimit + _parent.m_gasLimit / c_gasLimitBoundDivisor));
 }
 
 void Ethash::BlockHeaderRaw::populateFromParent(BlockHeaderRaw const& _parent)
@@ -126,7 +126,7 @@ void Ethash::BlockHeaderRaw::populateFromParent(BlockHeaderRaw const& _parent)
 
 bool Ethash::BlockHeaderRaw::preVerify() const
 {
-	if (number >= ETHASH_EPOCH_LENGTH * 2048)
+	if (m_number >= ETHASH_EPOCH_LENGTH * 2048)
 		return false;
 
 	bool ret = !!ethash_quick_check_difficulty(
@@ -162,7 +162,7 @@ bool Ethash::BlockHeaderRaw::verify() const
 		cwarn << "headerHash:" << hashWithout();
 		cwarn << "nonce:" << m_nonce;
 		cwarn << "mixHash:" << m_mixHash;
-		cwarn << "difficulty:" << difficulty;
+		cwarn << "difficulty:" << m_difficulty;
 		cwarn << "boundary:" << boundary();
 		cwarn << "result.value:" << result.value;
 		cwarn << "result.mixHash:" << result.mixHash;
@@ -290,7 +290,7 @@ public:
 		m_farm.setWork(m_sealing);
 		m_farm.start(m_sealer);
 		m_farm.setWork(m_sealing);		// TODO: take out one before or one after...
-		Ethash::ensurePrecomputed((unsigned)_bi.number);
+		Ethash::ensurePrecomputed((unsigned)_bi.number());
 	}
 	void onSealGenerated(std::function<void(bytes const&)> const& _f) override
 	{
