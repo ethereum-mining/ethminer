@@ -190,7 +190,7 @@ public:
 	ExecutionResult execute(LastHashes const& _lh, Transaction const& _t, Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
 
 	/// Get the remaining gas limit in this block.
-	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit - gasUsed(); }
+	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit() - gasUsed(); }
 
 	/// Check if the address is in use.
 	bool addressInUse(Address _address) const;
