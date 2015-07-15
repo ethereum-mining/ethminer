@@ -12,6 +12,7 @@ set (OPENCL_ICD_LOADER_SOURCES icd.c icd_dispatch.c)
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
     list (APPEND OPENCL_ICD_LOADER_SOURCES icd_linux.c icd_exports.map)
+    get_filename_component(ICD_EXPORTS_MAP_FILE icd_exports.map ABSOLUTE)
 else ()
     list (APPEND OPENCL_ICD_LOADER_SOURCES icd_windows.c OpenCL.def)
     include_directories ($ENV{DXSDK_DIR}/Include)
@@ -25,7 +26,7 @@ add_library (OpenCL_ICD SHARED ${OPENCL_ICD_LOADER_SOURCES})
 set_target_properties (OpenCL_ICD PROPERTIES VERSION "1.2" SOVERSION "1")
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-    set_target_properties (OpenCL_ICD PROPERTIES LINK_FLAGS "-Wl,--version-script -Wl,../../khronos_icd/icd_exports.map")
+    set_target_properties (OpenCL_ICD PROPERTIES LINK_FLAGS "-Wl,--version-script -Wl,${ICD_EXPORTS_MAP_FILE}")
 endif ()
 
 target_link_libraries (OpenCL_ICD ${CMAKE_DL_LIBS})
