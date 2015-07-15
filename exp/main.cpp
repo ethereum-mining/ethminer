@@ -85,8 +85,8 @@ int main()
 	BlockInfo bi;
 	bi.difficulty = c_genesisDifficulty;
 	bi.gasLimit = c_genesisGasLimit;
-	bi.number = 1;
-	bi.parentHash = sha3("parentHash");
+	bi.number() = 1;
+	bi.parentHash() = sha3("parentHash");
 
 	bytes sealedData;
 
@@ -329,7 +329,7 @@ int main()
 	mine(s, bc, se);
 
 	bytes minedBlock = s.blockData();
-	cnote << "Mined block is" << BlockInfo(minedBlock).stateRoot;
+	cnote << "Mined block is" << BlockInfo(minedBlock).stateRoot();
 	bc.import(minedBlock, stateDB);
 
 	cnote << bc;
