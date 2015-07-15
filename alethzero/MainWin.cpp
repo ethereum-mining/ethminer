@@ -638,18 +638,22 @@ pair<Address, bytes> Main::fromString(std::string const& _n) const
 	if (_n == "(Create Contract)")
 		return make_pair(Address(), bytes());
 
+	std::string n = _n;
+	if (n.find("0x") == 0)
+		n.erase(0, 2);
+
 	auto g_newNameReg = getNameReg();
 	if (g_newNameReg)
 	{
-		Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn("addr(bytes32)", ::toString32(_n))).output);
+		Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn("addr(bytes32)", ::toString32(n))).output);
 		if (a)
 			return make_pair(a, bytes());
 	}
-	if (_n.size() == 40)
+	if (n.size() == 40)
 	{
 		try
 		{
-			return make_pair(Address(fromHex(_n, WhenError::Throw)), bytes());
+			return make_pair(Address(fromHex(n, WhenError::Throw)), bytes());
 		}
 		catch (BadHexCharacter& _e)
 		{
@@ -665,7 +669,7 @@ pair<Address, bytes> Main::fromString(std::string const& _n) const
 	}
 	else
 		try {
-			return ICAP::decoded(_n).address([&](Address const& a, bytes const& b) -> bytes
+			return ICAP::decoded(n).address([&](Address const& a, bytes const& b) -> bytes
 			{
 				return ethereum()->call(a, b).output;
 			}, g_newNameReg);
