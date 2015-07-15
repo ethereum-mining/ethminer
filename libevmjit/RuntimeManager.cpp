@@ -77,7 +77,7 @@ llvm::Twine getName(RuntimeData::Index _index)
 	case RuntimeData::Difficulty:	return "block.difficulty";
 	case RuntimeData::GasLimit:		return "block.gaslimit";
 	case RuntimeData::Number:		return "block.number";
-	case RuntimeData::Timestamp:	return "block.timestamp";
+	case RuntimeData::Timestamp:	return "block.timestamp()";
 	case RuntimeData::Code:			return "code.ptr";
 	case RuntimeData::CodeSize:		return "code.size";
 	}
