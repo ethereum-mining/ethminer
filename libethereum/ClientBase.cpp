@@ -185,7 +185,7 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 	tie(blocks, ancestor, ancestorIndex) = bc().treeRoute(_f.earliest(), _f.latest(), false);
 
 	for (size_t i = 0; i < ancestorIndex; i++)
-		appendLogsFromBlock(_f, blocks[i], BlockPolarity::Dead, ret);
+		prependLogsFromBlock(_f, blocks[i], BlockPolarity::Dead, ret);
 
 	// cause end is our earliest block, let's compare it with our ancestor
 	// if ancestor is smaller let's move our end to it
@@ -195,11 +195,11 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 	//                -> g
 	// 3a -> 2a -> 1a
 	//
-	// if earliest is at 1a and latest is a 3b, coverting them to numbers
-	// will give us pair (1, 3)
-	// and we want to get all logs from g (ancestor) to 3
-	// so we have to move 1a to g
-	end = min(end, (unsigned)numberFromHash(ancestor));
+	// if earliest is at 2a and latest is a 3b, coverting them to numbers
+	// will give us pair (2, 3)
+	// and we want to get all logs from 1 (ancestor + 1) to 3
+	// so we have to move 2a to g + 1
+	end = min(end, (unsigned)numberFromHash(ancestor) + 1);
 
 	// Handle blocks from main chain
 	set<unsigned> matchingBlocks;
@@ -213,12 +213,13 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 			matchingBlocks.insert(i);
 
 	for (auto n: matchingBlocks)
-		appendLogsFromBlock(_f, bc().numberHash(n), BlockPolarity::Live, ret);
+		prependLogsFromBlock(_f, bc().numberHash(n), BlockPolarity::Live, ret);
 
+	reverse(ret.begin(), ret.end());
 	return ret;
 }
 
-void ClientBase::appendLogsFromBlock(LogFilter const& _f, h256 const& _blockHash, BlockPolarity _polarity, LocalisedLogEntries& io_logs) const
+void ClientBase::prependLogsFromBlock(LogFilter const& _f, h256 const& _blockHash, BlockPolarity _polarity, LocalisedLogEntries& io_logs) const
 {
 	auto receipts = bc().receipts(_blockHash).receipts;
 	for (size_t i = 0; i < receipts.size(); i++)
