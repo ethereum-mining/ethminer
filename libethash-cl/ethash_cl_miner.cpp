@@ -108,7 +108,7 @@ string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
 	if (devices.empty())
 	{
 		ETHCL_LOG("No OpenCL devices found.");
-		return string();
+		return {};
 	}
 
 	// use selected default device
