@@ -9,9 +9,6 @@ if (JSONRPC)
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 endif()
-if (ETHASHCL)
-	include_directories(${OpenCL_INCLUDE_DIRS})
-endif ()
 
 set(EXECUTABLE ethminer)
 
