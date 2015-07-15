@@ -36,9 +36,9 @@ namespace dev
 namespace eth
 {
 
-struct MineInfo: public MiningProgress {};
+struct MineInfo: public WorkingProgress {};
 
-inline std::ostream& operator<<(std::ostream& _out, MiningProgress _p)
+inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 {
 	_out << _p.rate() << " H/s = " <<  _p.hashes << " hashes / " << (double(_p.ms) / 1000) << " s";
 	return _out;
