@@ -123,9 +123,9 @@ public:
 	 * @brief Get information on the progress of mining this work package.
 	 * @return The progress with mining so far.
 	 */
-	MiningProgress const& miningProgress() const
+	WorkingProgress const& miningProgress() const
 	{
-		MiningProgress p;
+		WorkingProgress p;
 		p.ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_lastStart).count();
 		{
 			ReadGuard l2(x_minerWork);
@@ -195,7 +195,7 @@ private:
 	std::atomic<bool> m_isMining = {false};
 
 	mutable SharedMutex x_progress;
-	mutable MiningProgress m_progress;
+	mutable WorkingProgress m_progress;
 	std::chrono::steady_clock::time_point m_lastStart;
 
 	SolutionFound m_onSolutionFound;
