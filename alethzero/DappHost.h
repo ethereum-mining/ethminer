@@ -40,6 +40,9 @@ public:
 	/// Load and host a dapp. Previsous dapp in discarded. Synchronous
 	QUrl hostDapp(Dapp&& _dapp);
 
+	/// @returns true if the given url is served from this DappHost.
+	bool servesUrl(QUrl const& _url) const;
+
 private:
 	void startListening();
 	void stopListening();
@@ -48,7 +51,8 @@ private:
 	void sendResponse(std::string const& _url, MHD_Connection* _connection);
 	static int callback(void* _cls, MHD_Connection* _connection, char const* _url, char const* _method, char const* _version, char const* _uploadData, size_t* _uploadDataSize, void** _conCls);
 
-	int m_port;
+	int const m_port;
+	QUrl const m_url;
 	int m_threads;
 	bool m_running;
 	MHD_Daemon* m_daemon;
