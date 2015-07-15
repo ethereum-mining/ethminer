@@ -33,7 +33,6 @@
 #include <vector>
 #include <libethash/util.h>
 #include <libethash/ethash.h>
-#include <libethcore/Ethash.h>
 #include <libethash/internal.h>
 #include "ethash_cl_miner.h"
 #include "ethash_cl_miner_kernel.h"
@@ -50,7 +49,10 @@
 #undef max
 
 using namespace std;
-using namespace dev::eth;
+
+unsigned const ethash_cl_miner::c_defaultLocalWorkSize = 64;
+unsigned const ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier = 4096; // * CL_DEFAULT_LOCAL_WORK_SIZE
+unsigned const ethash_cl_miner::c_defaultMSPerBatch = 0;
 
 // TODO: If at any point we can use libdevcore in here then we should switch to using a LogChannel
 #define ETHCL_LOG(_contents) cout << "[OPENCL]:" << _contents << endl
@@ -147,7 +149,7 @@ bool ethash_cl_miner::configureGPU(
 	unsigned _msPerBatch,
 	bool _allowCPU,
 	unsigned _extraGPUMemory,
-	boost::optional<uint64_t> _currentBlock
+	uint64_t _currentBlock
 )
 {
 	s_workgroupSize = _localWorkSize;
@@ -156,7 +158,7 @@ bool ethash_cl_miner::configureGPU(
 	s_allowCPU = _allowCPU;
 	s_extraRequiredGPUMem = _extraGPUMemory;
 	// by default let's only consider the DAG of the first epoch
-	uint64_t dagSize = _currentBlock ? ethash_get_datasize(*_currentBlock) : 1073739904U;
+	uint64_t dagSize = ethash_get_datasize(_currentBlock);
 	uint64_t requiredSize =  dagSize + _extraGPUMemory;
 	return searchForAllDevices(_platformId, [&requiredSize](cl::Device const _device) -> bool
 		{
@@ -183,9 +185,9 @@ bool ethash_cl_miner::configureGPU(
 
 bool ethash_cl_miner::s_allowCPU = false;
 unsigned ethash_cl_miner::s_extraRequiredGPUMem;
-unsigned ethash_cl_miner::s_msPerBatch = Ethash::defaultMSPerBatch;
-unsigned ethash_cl_miner::s_workgroupSize = Ethash::defaultLocalWorkSize;
-unsigned ethash_cl_miner::s_initialGlobalWorkSize = Ethash::defaultGlobalWorkSizeMultiplier * Ethash::defaultLocalWorkSize;
+unsigned ethash_cl_miner::s_msPerBatch = ethash_cl_miner::c_defaultMSPerBatch;
+unsigned ethash_cl_miner::s_workgroupSize = ethash_cl_miner::c_defaultLocalWorkSize;
+unsigned ethash_cl_miner::s_initialGlobalWorkSize = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier * ethash_cl_miner::c_defaultLocalWorkSize;
 
 bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
 {
@@ -315,6 +317,8 @@ bool ethash_cl_miner::init(
 			m_globalWorkSize = ((m_globalWorkSize / s_workgroupSize) + 1) * s_workgroupSize;
 		// remember the device's address bits
 		m_deviceBits = device.getInfo<CL_DEVICE_ADDRESS_BITS>();
+		// make sure first step of global work size adjustment is large enough
+		m_stepWorkSizeAdjust = pow(2, m_deviceBits / 2 + 1);
 
 		// patch source code
 		// note: ETHASH_CL_MINER_KERNEL is simply ethash_cl_miner_kernel.cl compiled
@@ -520,14 +524,26 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				{
 					if (d > chrono::milliseconds(s_msPerBatch * 10 / 9))
 					{
-						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, >> " << _msPerBatch << " ms." << endl;
-						m_globalWorkSize = max<unsigned>(128, m_globalWorkSize + s_workgroupSize);
+						// Divide the step by 2 when adjustment way change
+						if (m_wayWorkSizeAdjust > -1)
+							m_stepWorkSizeAdjust = max<unsigned>(1, m_stepWorkSizeAdjust / 2);
+						m_wayWorkSizeAdjust = -1;
+						// cerr << "m_stepWorkSizeAdjust: " << m_stepWorkSizeAdjust << ", m_wayWorkSizeAdjust: " << m_wayWorkSizeAdjust << endl;
+
+						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, >> " << s_msPerBatch << " ms." << endl;
+						m_globalWorkSize = max<unsigned>(128, m_globalWorkSize - m_stepWorkSizeAdjust);
 						// cerr << "New global work size" << m_globalWorkSize << endl;
 					}
 					else if (d < chrono::milliseconds(s_msPerBatch * 9 / 10))
 					{
-						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, << " << _msPerBatch << " ms." << endl;
-						m_globalWorkSize = min<unsigned>(pow(2, m_deviceBits) - 1, m_globalWorkSize - s_workgroupSize);
+						// Divide the step by 2 when adjustment way change
+						if (m_wayWorkSizeAdjust < 1)
+							m_stepWorkSizeAdjust = max<unsigned>(1, m_stepWorkSizeAdjust / 2);
+						m_wayWorkSizeAdjust = 1;
+						// cerr << "m_stepWorkSizeAdjust: " << m_stepWorkSizeAdjust << ", m_wayWorkSizeAdjust: " << m_wayWorkSizeAdjust << endl;
+
+						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, << " << s_msPerBatch << " ms." << endl;
+						m_globalWorkSize = min<unsigned>(pow(2, m_deviceBits) - 1, m_globalWorkSize + m_stepWorkSizeAdjust);
 						// Global work size should never be less than the workgroup size
 						m_globalWorkSize = max<unsigned>(s_workgroupSize,  m_globalWorkSize);
 						// cerr << "New global work size" << m_globalWorkSize << endl;

@@ -1,6 +1,6 @@
 #pragma once
 
-#define __CL_ENABLE_EXCEPTIONS 
+#define __CL_ENABLE_EXCEPTIONS
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 
 #if defined(__clang__)
@@ -12,7 +12,6 @@
 #include "cl.hpp"
 #endif
 
-#include <boost/optional.hpp>
 #include <time.h>
 #include <functional>
 #include <libethash/ethash.h>
@@ -50,7 +49,7 @@ public:
 		unsigned _msPerBatch,
 		bool _allowCPU,
 		unsigned _extraGPUMemory,
-		boost::optional<uint64_t> _currentBlock
+		uint64_t _currentBlock
 	);
 
 	bool init(
@@ -64,6 +63,14 @@ public:
 
 	void hash_chunk(uint8_t* _ret, uint8_t const* _header, uint64_t _nonce, unsigned _count);
 	void search_chunk(uint8_t const*_header, uint64_t _target, search_hook& _hook);
+
+	/* -- default values -- */
+	/// Default value of the local work size. Also known as workgroup size.
+	static unsigned const c_defaultLocalWorkSize;
+	/// Default value of the global work size as a multiplier of the local work size
+	static unsigned const c_defaultGlobalWorkSizeMultiplier;
+	/// Default value of the milliseconds per global work size (per batch)
+	static unsigned const c_defaultMSPerBatch;
 
 private:
 
@@ -81,6 +88,11 @@ private:
 	unsigned m_globalWorkSize;
 	bool m_openclOnePointOne;
 	unsigned m_deviceBits;
+
+	/// The step used in the work size adjustment
+	unsigned int m_stepWorkSizeAdjust;
+	/// The Work Size way of adjustment, > 0 when previously increased, < 0 when previously decreased
+	int m_wayWorkSizeAdjust = 0;
 
 	/// The local work size for the search
 	static unsigned s_workgroupSize;
