@@ -106,6 +106,7 @@ Rectangle {
 				onClicked:
 				{
 					NetworkDeploymentCode.packageDapp(projectModel.deploymentAddresses);
+					projectModel.saveProject()
 				}
 			}
 

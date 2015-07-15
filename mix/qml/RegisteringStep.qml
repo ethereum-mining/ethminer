@@ -179,7 +179,6 @@ Rectangle {
 			{
 				id: appUrlFormatted
 				anchors.verticalCenter: parent.verticalCenter;
-				anchors.top: applicationUrlEthCtrl.bottom
 				anchors.topMargin: 10
 				font.italic: true
 				font.pointSize: appStyle.absoluteSize(-1)

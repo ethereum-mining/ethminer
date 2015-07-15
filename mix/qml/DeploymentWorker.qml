@@ -87,6 +87,21 @@ Item
 		poolLog.start();
 	}
 
+	function blockNumber(callback)
+	{
+		var requests = [];
+		requests.push({
+						  jsonrpc: "2.0",
+						  method: "eth_blockNumber",
+						  params: [],
+						  id: 0
+					  });
+		TransactionHelper.rpcCall(requests, function (httpRequest, response){
+			var b = JSON.parse(response)[0].result;
+			callback(parseInt(b, 16))
+		});
+	}
+
 	Component.onCompleted:
 	{
 		renewCtx()
@@ -168,6 +183,6 @@ Item
 				}
 			})
 		}
-	}	
+	}
 }
 
