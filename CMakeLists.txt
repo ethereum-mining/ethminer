@@ -435,8 +435,8 @@ endif ()
 add_subdirectory(libethcore)
 
 if (GENERAL)
-#	add_subdirectory(libevm)
-#	add_subdirectory(libethereum)
+	add_subdirectory(libevm)
+	add_subdirectory(libethereum)
 #	add_subdirectory(libwebthree)
 endif ()
 
