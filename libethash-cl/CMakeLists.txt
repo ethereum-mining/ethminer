@@ -24,7 +24,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${OpenCL_INCLUDE_DIRS})
 include_directories(..)
 add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
-TARGET_LINK_LIBRARIES(${EXECUTABLE} ${OpenCL_LIBRARIES} ethash)
+TARGET_LINK_LIBRARIES(${EXECUTABLE} OpenCL_ICD ethash)
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
