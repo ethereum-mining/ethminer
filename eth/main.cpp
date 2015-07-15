@@ -910,7 +910,12 @@ void interactiveMode(eth::Client* c, std::shared_ptr<eth::TrivialGasPricer> gasP
 							f << endl << "    STACK" << endl;
 							for (auto i: vm->stack())
 								f << (h256)i << endl;
-							f << "    MEMORY" << endl << dev::memDump(vm->memory());
+							std::string memDump = (
+								(vm->memory().size() > 1000) ?
+								" mem size greater than 1000 bytes " :
+								dev::memDump(vm->memory())
+							);
+							f << "    MEMORY" << endl << memDump;
 							f << "    STORAGE" << endl;
 							for (auto const& i: ext->state().storage(ext->myAddress))
 								f << showbase << hex << i.first << ": " << i.second << endl;
