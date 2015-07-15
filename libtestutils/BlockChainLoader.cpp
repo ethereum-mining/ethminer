@@ -36,7 +36,7 @@ BlockChainLoader::BlockChainLoader(Json::Value const& _json)
 
 	// load genesisBlock
 	m_bc.reset(new BlockChain(fromHex(_json["genesisRLP"].asString()), m_dir.path(), WithExisting::Kill));
-	assert(m_state.rootHash() == m_bc->info().stateRoot);
+	assert(m_state.rootHash() == m_bc->info().stateRoot());
 
 	// load blocks
 	for (auto const& block: _json["blocks"])
