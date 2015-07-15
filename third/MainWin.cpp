@@ -100,7 +100,7 @@ Main::Main(QWidget *parent) :
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
 
-	cerr << "State root: " << CanonBlockChain::genesis().stateRoot << endl;
+	cerr << "State root: " << CanonBlockChain::genesis().stateRoot() << endl;
 	auto gb = CanonBlockChain::createGenesisBlock();
 	cerr << "Block Hash: " << sha3(gb) << endl;
 	cerr << "Block RLP: " << RLP(gb) << endl;
