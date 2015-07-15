@@ -367,7 +367,8 @@ Rectangle {
 								deployedRow.visible = Object.keys(projectModel.deploymentAddresses).length > 0
 								for (var k in projectModel.deploymentAddresses)
 								{
-									deployedAddrModel.append({ id: k, value: projectModel.deploymentAddresses[k]})
+									if (k.indexOf("-") !== -1) // this is an contract instance. ctr without - are the last deployed (to support old project)
+										deployedAddrModel.append({ id: k, value: projectModel.deploymentAddresses[k]})
 								}
 							}
 
@@ -408,6 +409,8 @@ Rectangle {
 						projectModel.deployedScenarioIndex = contractList.currentIndex
 						NetworkDeploymentCode.deployContracts(root.gas, function(addresses)
 						{
+							projectModel.deploymentAddresses = addresses
+							projectModel.saveProject()
 							deployedAddresses.refresh()
 						});
 					}
