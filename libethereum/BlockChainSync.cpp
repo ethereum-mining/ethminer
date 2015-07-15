@@ -111,7 +111,7 @@ void BlockChainSync::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
 unsigned BlockChainSync::estimatedHashes() const
 {
 	BlockInfo block = host().chain().info();
-	time_t lastBlockTime = (block.hash() == host().chain().genesisHash()) ? 1428192000 : (time_t)block.timestamp;
+	time_t lastBlockTime = (block.hash() == host().chain().genesisHash()) ? 1428192000 : (time_t)block.timestamp();
 	time_t now = time(0);
 	unsigned blockCount = c_chainReorgSize;
 	if (lastBlockTime > now)
@@ -220,9 +220,9 @@ void BlockChainSync::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const
 				if (m_state == SyncState::NewBlocks)
 				{
 					BlockInfo bi(_r[i].data());
-					if (bi.number > maxUnknownNumber)
+					if (bi.number() > maxUnknownNumber)
 					{
-						maxUnknownNumber = bi.number;
+						maxUnknownNumber = bi.number();
 						maxUnknown = h;
 					}
 				}
