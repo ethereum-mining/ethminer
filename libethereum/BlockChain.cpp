@@ -597,9 +597,15 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 
 		// Most of the time these two will be equal - only when we're doing a chain revert will they not be
 		if (common != last)
+		{
+			// Erase the number-lookup cache for the segment of the chain that we're reverting (if any).
+			DEV_WRITE_GUARDED(x_blockHashes)
+				for (auto i = route.begin(); i != route.end() && *i != common; ++i)
+					m_blockHashes.erase(h256(u256(number(*i))));
 			// If we are reverting previous blocks, we need to clear their blooms (in particular, to
 			// rebuild any higher level blooms that they contributed to).
 			clearBlockBlooms(number(common) + 1, number(last) + 1);
+		}
 
 		// Go through ret backwards until hash != last.parent and update m_transactionAddresses, m_blockHashes
 		for (auto i = route.rbegin(); i != route.rend() && *i != common; ++i)
