@@ -42,9 +42,13 @@ boostIntGenerator RandomCode::randOpLengGen = boostIntGenerator(gen, opLengDist)
 boostIntGenerator RandomCode::randUniIntGen = boostIntGenerator(gen, uniIntDist);
 boostUInt64Generator RandomCode::randUInt64Gen = boostUInt64Generator(gen, uInt64Dist);
 
-int RandomCode::recursiveRLP(std::string &_result, int _depth, std::string &_debug)
+int RandomCode::recursiveRLP(std::string &_result, int _depth, std::string& _debug)
 {
-	bool genvalidrlp = false;
+	bool genValidRlp = true;
+	int bugProbability = randUniIntGen() % 100;
+	if (bugProbability < 80)
+		bool genValidRlp = false;
+
 	if (_depth > 1)
 	{
 		//create rlp blocks
@@ -101,15 +105,15 @@ int RandomCode::recursiveRLP(std::string &_result, int _depth, std::string &_deb
 	{
 		bool genbug = false;
 		bool genbug2 = false;
-		int bugprobability = randUniIntGen() % 100;
-		if (bugprobability < 150 && !genvalidrlp)
+		int bugProbability = randUniIntGen() % 100;
+		if (bugProbability < 50 && !genValidRlp)
 			genbug = true;
-		bugprobability = randUniIntGen() % 100;   //more randomness
-		if (bugprobability < 150 && !genvalidrlp)
+		bugProbability = randUniIntGen() % 100;   //more randomness
+		if (bugProbability < 50 && !genValidRlp)
 			genbug2 = true;
 
-		std::string emptyZeros = genvalidrlp ? "" : genbug ? "00" : "";
-		std::string emptyZeros2 = genvalidrlp ? "" : genbug2 ? "00" : "";
+		std::string emptyZeros = genValidRlp ? "" : genbug ? "00" : "";
+		std::string emptyZeros2 = genValidRlp ? "" : genbug2 ? "00" : "";
 
 		int rnd = randUniIntGen() % 5;
 		switch (rnd)
@@ -128,7 +132,7 @@ int RandomCode::recursiveRLP(std::string &_result, int _depth, std::string &_deb
 			int len = genbug ? randUniIntGen() % 255 : randUniIntGen() % 55;
 			std::string hex = rndByteSequence(len);
 			if (len == 1)
-			if (genvalidrlp && fromHex(hex)[0] < 128)
+			if (genValidRlp && fromHex(hex)[0] < 128)
 				hex = toCompactHex((u64)128);
 
 			_result.insert(0, toCompactHex(128 + len) + emptyZeros + hex);
@@ -139,7 +143,7 @@ int RandomCode::recursiveRLP(std::string &_result, int _depth, std::string &_deb
 		{
 			//string more 55 [0xb8, 0xbf] + length + string
 			int len = randUniIntGen() % 100;
-			if (len < 56 && genvalidrlp)
+			if (len < 56 && genValidRlp)
 				len = 56;
 
 			std::string hex = rndByteSequence(len);
@@ -162,7 +166,7 @@ int RandomCode::recursiveRLP(std::string &_result, int _depth, std::string &_deb
 		{
 			//list more 55 [0xf8, 0xff] + length + data
 			int len = randUniIntGen() % 100;
-			if (len < 56 && genvalidrlp)
+			if (len < 56 && genValidRlp)
 				len = 56;
 			std::string hexlen = emptyZeros2 + toCompactHex(len, HexPrefix::DontAdd, 1);
 			std::string rlpblock = toCompactHex(247 + hexlen.size() / 2) + hexlen + emptyZeros + rndByteSequence(len);
