@@ -277,13 +277,14 @@ Json::Value toJson(dev::eth::LogEntry const& _e)
 	return res;
 }
 
-Json::Value toJson(std::map<h256, dev::eth::LocalisedLogEntries> const& _entriesByBlock)
+Json::Value toJson(std::unordered_map<h256, dev::eth::LocalisedLogEntries> const& _entriesByBlock, vector<h256> const& _order)
 {
 	Json::Value res(Json::arrayValue);
-	for (auto const& i: _entriesByBlock)
+	for (auto const& i: _order)
 	{
+		auto entries = _entriesByBlock.at(i);
 		Json::Value currentBlock(Json::objectValue);
-		LocalisedLogEntry entry = i.second[0];
+		LocalisedLogEntry entry = entries[0];
 		if (entry.mined)
 		{
 
@@ -294,18 +295,20 @@ Json::Value toJson(std::map<h256, dev::eth::LocalisedLogEntries> const& _entries
 		else
 			currentBlock["type"] = "pending";
 
+		currentBlock["polarity"] = entry.polarity == BlockPolarity::Live ? true : false;
 		currentBlock["logs"] = Json::Value(Json::arrayValue);
 
-		for (LocalisedLogEntry const& e: i.second)
+		for (LocalisedLogEntry const& e: entries)
 		{
 			Json::Value log(Json::objectValue);
 			log["logIndex"] = e.logIndex;
-			log["polarity"] = e.polarity == BlockPolarity::Live ? true : false;
 			log["transactionIndex"] = e.transactionIndex;
 			log["transactionHash"] = toJS(e.transactionHash);
 			log["address"] = toJS(e.address);
 			log["data"] = toJS(e.data);
-			log["topics"] = toJS(e.topics);
+			log["topics"] = Json::Value(Json::arrayValue);
+			for (auto const& t: e.topics)
+				log["topics"].append(toJS(t));
 
 			currentBlock["logs"].append(log);
 		}
@@ -318,7 +321,8 @@ Json::Value toJson(std::map<h256, dev::eth::LocalisedLogEntries> const& _entries
 
 Json::Value toJsonByBlock(LocalisedLogEntries const& _entries)
 {
-	map <h256, LocalisedLogEntries> entriesByBlock;
+	vector<h256> order;
+	unordered_map <h256, LocalisedLogEntries> entriesByBlock;
 
 	for (dev::eth::LocalisedLogEntry const& e: _entries)
 	{
@@ -326,12 +330,15 @@ Json::Value toJsonByBlock(LocalisedLogEntries const& _entries)
 			continue;
 
 		if (entriesByBlock.count(e.blockHash) == 0)
+		{
 			entriesByBlock[e.blockHash] = LocalisedLogEntries();
+			order.push_back(e.blockHash);
+		}
 
 		entriesByBlock[e.blockHash].push_back(e);
 	}
 
-	return toJson(entriesByBlock);
+	return toJson(entriesByBlock, order);
 }
 
 TransactionSkeleton toTransactionSkeleton(Json::Value const& _json)

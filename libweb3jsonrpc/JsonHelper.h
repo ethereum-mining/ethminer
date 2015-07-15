@@ -62,7 +62,7 @@ Json::Value toJson(TransactionReceipt const& _t);
 Json::Value toJson(LocalisedTransactionReceipt const& _t);
 Json::Value toJson(LocalisedLogEntry const& _e);
 Json::Value toJson(LogEntry const& _e);
-Json::Value toJson(std::map<h256, LocalisedLogEntries> const& _entriesByBlock);
+Json::Value toJson(std::unordered_map<h256, LocalisedLogEntries> const& _entriesByBlock);
 Json::Value toJsonByBlock(LocalisedLogEntries const& _entries);
 TransactionSkeleton toTransactionSkeleton(Json::Value const& _json);
 LogFilter toLogFilter(Json::Value const& _json);
