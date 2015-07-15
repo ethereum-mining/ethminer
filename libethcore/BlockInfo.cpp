@@ -36,10 +36,10 @@ BlockInfo::BlockInfo(): timestamp(Invalid256)
 {
 }
 
-BlockInfo::BlockInfo(bytesConstRef _block, Strictness _s)
+BlockInfo::BlockInfo(bytesConstRef _block, Strictness _s, h256 const& _hashWith, BlockDataType _bdt)
 {
-	RLP header = extractHeader(_block);
-	m_hash = sha3(header.data());
+	RLP header = _bdt == BlockData ? extractHeader(_block) : RLP(_block);
+	m_hash = _hashWith ? _hashWith : sha3(header.data());
 	populateFromHeader(header, _s);
 }
 
@@ -58,7 +58,7 @@ void BlockInfo::clear()
 	gasUsed = 0;
 	timestamp = 0;
 	extraData.clear();
-	m_hashWithout = h256();
+	noteDirty();
 }
 
 h256 const& BlockInfo::boundary() const
@@ -133,20 +133,8 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s)
 	if (number > ~(unsigned)0)
 		BOOST_THROW_EXCEPTION(InvalidNumber());
 
-	if (_s != CheckNothing)
-	{
-		if (gasUsed > gasLimit)
-			BOOST_THROW_EXCEPTION(TooMuchGasUsed() << RequirementError(bigint(gasLimit), bigint(gasUsed)) );
-
-		if (difficulty < c_minimumDifficulty)
-			BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError(bigint(c_minimumDifficulty), bigint(difficulty)) );
-
-		if (gasLimit < c_minGasLimit)
-			BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(bigint(c_minGasLimit), bigint(gasLimit)) );
-
-		if (number && extraData.size() > c_maximumExtraDataSize)
-			BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(c_maximumExtraDataSize), bigint(extraData.size())));
-	}
+	if (_s != CheckNothing && gasUsed > gasLimit)
+		BOOST_THROW_EXCEPTION(TooMuchGasUsed() << RequirementError(bigint(gasLimit), bigint(gasUsed)) );
 }
 
 struct BlockInfoDiagnosticsChannel: public LogChannel { static const char* name() { return EthBlue "▧" EthWhite " ◌"; } static const int verbosity = 9; };
@@ -198,6 +186,7 @@ void BlockInfo::populateFromParent(BlockInfo const& _parent)
 	gasLimit = selectGasLimit(_parent);
 	gasUsed = 0;
 	difficulty = calculateDifficulty(_parent);
+	parentHash = _parent.hash();
 }
 
 u256 BlockInfo::selectGasLimit(BlockInfo const& _parent) const
@@ -222,15 +211,6 @@ u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 
 void BlockInfo::verifyParent(BlockInfo const& _parent) const
 {
-	// Check difficulty is correct given the two timestamps.
-	if (difficulty != calculateDifficulty(_parent))
-		BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError((bigint)calculateDifficulty(_parent), (bigint)difficulty));
-
-	if (gasLimit < c_minGasLimit ||
-		gasLimit <= _parent.gasLimit - _parent.gasLimit / c_gasLimitBoundDivisor ||
-		gasLimit >= _parent.gasLimit + _parent.gasLimit / c_gasLimitBoundDivisor)
-		BOOST_THROW_EXCEPTION(InvalidGasLimit() << errinfo_min((bigint)_parent.gasLimit - _parent.gasLimit / c_gasLimitBoundDivisor) << errinfo_got((bigint)gasLimit) << errinfo_max((bigint)_parent.gasLimit + _parent.gasLimit / c_gasLimitBoundDivisor));
-
 	// Check timestamp is after previous timestamp.
 	if (parentHash)
 	{

@@ -52,33 +52,31 @@ class BasicAuthority
 	friend class ::BasicAuthoritySealEngine;
 
 public:
-	// TODO: remove
-	struct Result {};
-	struct WorkPackage {};
-	static const WorkPackage NullWorkPackage;
-
 	static std::string name() { return "BasicAuthority"; }
 	static unsigned revision() { return 0; }
 	static SealEngineFace* createSealEngine();
 
 	class BlockHeaderRaw: public BlockInfo
 	{
-		friend class ::BasicAuthoritySeal;
+		friend class ::BasicAuthoritySealEngine;
 
 	public:
+		static const unsigned SealFields = 1;
+
 		bool verify() const;
 		bool preVerify() const;
 
-		WorkPackage package() const { return NullWorkPackage; }
 		Signature sig() const { return m_sig; }
+
+		StringHashMap jsInfo() const;
 
 	protected:
 		BlockHeaderRaw() = default;
 		BlockHeaderRaw(BlockInfo const& _bi): BlockInfo(_bi) {}
 
-		static const unsigned SealFields = 1;
-
 		void populateFromHeader(RLP const& _header, Strictness _s);
+		void populateFromParent(BlockHeaderRaw const& _parent);
+		void verifyParent(BlockHeaderRaw const& _parent);
 		void streamRLPFields(RLPStream& _s) const { _s << m_sig; }
 		void clear() { m_sig = Signature(); }
 		void noteDirty() const {}
