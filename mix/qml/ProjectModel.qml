@@ -51,6 +51,7 @@ Item {
 	property int deployedScenarioIndex
 	property string applicationUrlEth
 	property string applicationUrlHttp
+	property string deployBlockNumber
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }

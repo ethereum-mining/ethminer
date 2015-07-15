@@ -44,7 +44,6 @@ ApplicationWindow {
 		codeModel: codeModel
 		Component.onCompleted:
 		{
-			console.log("tmp")
 			init("/tmp")
 		}
 	}

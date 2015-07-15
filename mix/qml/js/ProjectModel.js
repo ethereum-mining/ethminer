@@ -79,7 +79,9 @@ function saveProjectFile()
 			packageHash: deploymentDialog.packageStep.packageHash,
 			packageBase64: deploymentDialog.packageStep.packageBase64,
 			deploymentDir: deploymentDialog.packageStep.packageDir,
-			lastPackageDate:  deploymentDialog.packageStep.lastDeployDate
+			lastPackageDate:  deploymentDialog.packageStep.lastDeployDate,
+			deployBlockNumber: projectModel.deployBlockNumber,
+			localPackageUrl: deploymentDialog.packageStep.localPackageUrl
 		};
 		for (var i = 0; i < projectListModel.count; i++)
 			projectData.files.push({
@@ -117,6 +119,10 @@ function loadProject(path) {
 			projectModel.applicationUrlHttp = projectData.applicationUrlHttp
 		if (projectData.lastPackageDate)
 			deploymentDialog.packageStep.lastDeployDate = projectData.lastPackageDate
+		if (projectData.deployBlockNumber)
+			projectModel.deployBlockNumber = projectData.deployBlockNumber
+		if (projectData.localPackageUrl)
+			deploymentDialog.packageStep.localPackageUrl =  projectData.localPackageUrl
 		if (!projectData.title) {
 			var parts = path.split("/");
 			projectData.title = parts[parts.length - 2];
