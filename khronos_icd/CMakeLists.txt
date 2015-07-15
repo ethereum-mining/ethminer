@@ -21,14 +21,14 @@ endif ()
 # OR copy OpenCL headers to ./inc/CL/
 include_directories (./inc)
 
-add_library (OpenCL SHARED ${OPENCL_ICD_LOADER_SOURCES})
-set_target_properties (OpenCL PROPERTIES VERSION "1.2" SOVERSION "1")
+add_library (OpenCL_ICD SHARED ${OPENCL_ICD_LOADER_SOURCES})
+set_target_properties (OpenCL_ICD PROPERTIES VERSION "1.2" SOVERSION "1")
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-    set_target_properties (OpenCL PROPERTIES LINK_FLAGS "-Wl,--version-script -Wl,../../khronos_icd/icd_exports.map")
+    set_target_properties (OpenCL_ICD PROPERTIES LINK_FLAGS "-Wl,--version-script -Wl,../../khronos_icd/icd_exports.map")
 endif ()
 
-target_link_libraries (OpenCL ${CMAKE_DL_LIBS})
+target_link_libraries (OpenCL_ICD ${CMAKE_DL_LIBS})
 
 enable_testing()
 add_subdirectory (test)
