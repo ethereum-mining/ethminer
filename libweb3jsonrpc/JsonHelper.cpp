@@ -88,18 +88,18 @@ Json::Value toJson(dev::eth::BlockInfo const& _bi)
 	if (_bi)
 	{
 		res["hash"] = toJS(_bi.hash());
-		res["parentHash"] = toJS(_bi.parentHash);
-		res["sha3Uncles"] = toJS(_bi.sha3Uncles);
-		res["miner"] = toJS(_bi.coinbaseAddress);
-		res["stateRoot"] = toJS(_bi.stateRoot);
-		res["transactionsRoot"] = toJS(_bi.transactionsRoot);
+		res["parentHash"] = toJS(_bi.parentHash());
+		res["sha3Uncles"] = toJS(_bi.sha3Uncles());
+		res["miner"] = toJS(_bi.coinbaseAddress());
+		res["stateRoot"] = toJS(_bi.stateRoot());
+		res["transactionsRoot"] = toJS(_bi.transactionsRoot());
 		res["difficulty"] = toJS(_bi.difficulty);
-		res["number"] = toJS(_bi.number);
+		res["number"] = toJS(_bi.number());
 		res["gasUsed"] = toJS(_bi.gasUsed);
 		res["gasLimit"] = toJS(_bi.gasLimit);
-		res["timestamp"] = toJS(_bi.timestamp);
-		res["extraData"] = toJS(_bi.extraData);
-		res["logsBloom"] = toJS(_bi.logBloom);
+		res["timestamp"] = toJS(_bi.timestamp());
+		res["extraData"] = toJS(_bi.extraData());
+		res["logsBloom"] = toJS(_bi.logBloom());
 		res["target"] = toJS(_bi.boundary());
 
 		// TODO: move into ProofOfWork.
@@ -140,7 +140,7 @@ Json::Value toJson(dev::eth::BlockInfo const& _bi, BlockDetails const& _bd, Uncl
 			res["uncles"].append(toJS(h));
 		res["transactions"] = Json::Value(Json::arrayValue);
 		for (unsigned i = 0; i < _ts.size(); i++)
-			res["transactions"].append(toJson(_ts[i], std::make_pair(_bi.hash(), i), (BlockNumber)_bi.number));
+			res["transactions"].append(toJson(_ts[i], std::make_pair(_bi.hash(), i), (BlockNumber)_bi.number()));
 	}
 	return res;
 }
@@ -176,7 +176,7 @@ Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
 Json::Value toJson(dev::eth::TransactionReceipt const& _t)
 {
 	Json::Value res;
-	res["stateRoot"] = toJS(_t.stateRoot());
+	res["stateRoot"] = toJS(_t.stateRoot()());
 	res["gasUsed"] = toJS(_t.gasUsed());
 	res["bloom"] = toJS(_t.bloom());
 	res["log"] = dev::toJson(_t.log());
