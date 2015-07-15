@@ -129,7 +129,6 @@ namespace dev
 					{
 						bytes payloadToDecode = fromHex(o["out"].get_str());
 						RLP payload(payloadToDecode);
-						ostringstream() << payload;
 
 						//attempt to read all the contents of RLP
 						ostringstream() << payload;
