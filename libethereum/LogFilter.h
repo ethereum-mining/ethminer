@@ -50,10 +50,20 @@ public:
 	void streamRLP(RLPStream& _s) const;
 	h256 sha3() const;
 
+	/// hash of earliest block which should be filtered
 	h256 earliest() const { return m_earliest; }
+
+	/// hash of latest block which should be filtered
 	h256 latest() const { return m_latest; }
 
+	/// Range filter is a filter which doesn't care about addresses or topics
+	/// Matches are all entries from earliest to latest
+	/// @returns true if addresses and topics are unspecified
+	bool isRangeFilter() const;
+
+	/// @returns bloom possibilities for all addresses and topics
 	std::vector<LogBloom> bloomPossibilities() const;
+
 	bool matches(LogBloom _bloom) const;
 	bool matches(State const& _s, unsigned _i) const;
 	LogEntries matches(TransactionReceipt const& _r) const;

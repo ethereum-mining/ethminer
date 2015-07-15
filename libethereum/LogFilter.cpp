@@ -46,6 +46,18 @@ h256 LogFilter::sha3() const
 	return dev::sha3(s.out());
 }
 
+bool LogFilter::isRangeFilter() const
+{
+	if (m_addresses.size())
+		return false;
+
+	for (auto const& t: m_topics)
+		if (t.size())
+			return false;
+
+	return true;
+}
+
 bool LogFilter::matches(LogBloom _bloom) const
 {
 	if (m_addresses.size())
@@ -134,6 +146,10 @@ vector<LogBloom> LogFilter::bloomPossibilities() const
 
 LogEntries LogFilter::matches(TransactionReceipt const& _m) const
 {
+	// there are no addresses or topics to filter
+	if (isRangeFilter())
+		return _m.log();
+
 	LogEntries ret;
 	if (matches(_m.bloom()))
 		for (LogEntry const& e: _m.log())
