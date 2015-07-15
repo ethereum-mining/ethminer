@@ -101,7 +101,7 @@ string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
 {
 	vector<cl::Platform> platforms = getPlatforms();
 	if (platforms.empty())
-		return string();
+		return {};
 	// get GPU device of the selected platform
 	unsigned platform_num = min<unsigned>(_platformId, platforms.size() - 1);
 	vector<cl::Device> devices = getDevices(platforms, _platformId);
