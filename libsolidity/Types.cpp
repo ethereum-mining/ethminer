@@ -210,6 +210,8 @@ TypePointer Type::forLiteral(Literal const& _literal)
 	case Token::FalseLiteral:
 		return make_shared<BoolType>();
 	case Token::Number:
+		if (!IntegerConstantType::isValidLiteral(_literal))
+			return TypePointer();
 		return make_shared<IntegerConstantType>(_literal);
 	case Token::StringLiteral:
 		return make_shared<StringLiteralType>(_literal);
@@ -320,6 +322,19 @@ const MemberList IntegerType::AddressMemberList({
 	{"callcode", make_shared<FunctionType>(strings(), strings{"bool"}, FunctionType::Location::BareCallCode, true)},
 	{"send", make_shared<FunctionType>(strings{"uint"}, strings{"bool"}, FunctionType::Location::Send)}
 });
+
+bool IntegerConstantType::isValidLiteral(const Literal& _literal)
+{
+	try
+	{
+		bigint x(_literal.getValue());
+	}
+	catch (...)
+	{
+		return false;
+	}
+	return true;
+}
 
 IntegerConstantType::IntegerConstantType(Literal const& _literal)
 {
@@ -823,11 +838,9 @@ unsigned ArrayType::getSizeOnStack() const
 	if (m_location == DataLocation::CallData)
 		// offset [length] (stack top)
 		return 1 + (isDynamicallySized() ? 1 : 0);
-	else if (m_location == DataLocation::Storage)
-		// storage_key storage_offset
-		return 2;
 	else
-		// offset
+		// storage slot or memory offset
+		// byte offset inside storage value is omitted
 		return 1;
 }
 
@@ -1033,14 +1046,6 @@ bool StructType::canLiveOutsideStorage() const
 		if (!member.type->canLiveOutsideStorage())
 			return false;
 	return true;
-}
-
-unsigned StructType::getSizeOnStack() const
-{
-	if (location() == DataLocation::Storage)
-		return 2; // slot and offset
-	else
-		return 1;
 }
 
 string StructType::toString(bool _short) const
