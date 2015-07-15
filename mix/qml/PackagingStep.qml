@@ -101,7 +101,6 @@ Rectangle {
 			Button
 			{
 				id: generatePackageBtn
-				Layout.preferredWidth: 200
 				anchors.horizontalCenter: parent.horizontalCenter
 				text: qsTr("Generate Package")
 				onClicked:

@@ -56,9 +56,9 @@ function deployContracts(gas, callback)
 	});
 }
 
-function checkPathCreationCost(callBack)
+function checkPathCreationCost(ethUrl, callBack)
 {
-	var dappUrl = formatAppUrl(deploymentDialog.registerStep.applicationUrlEth);
+	var dappUrl = formatAppUrl(ethUrl);
 	checkEthPath(dappUrl, true, function(success, cause) {
 		if (!success)
 		{
@@ -170,20 +170,35 @@ function executeTr(blockIndex, trIndex, state, ctrAddresses, callBack)
 			var txt = qsTr(tr.contractId + "." + tr.functionId + "() ...")
 			deploymentStepChanged(txt);
 			console.log(txt);
-			if (tr.contractId === tr.functionId)
-			{
-				ctrAddresses[tr.contractId] = JSON.parse(response)[0].result
-				ctrAddresses[tr.contractId + " - " + trIndex] = JSON.parse(response)[0].result //get right ctr address if deploy more than one contract of same type.
-			}
 			deploymentDialog.worker.waitForTrCountToIncrement(function(status) {
-				console.log("deploy contract?" + status)
 				if (status === -1)
 					trCountIncrementTimeOut();
 				else
+				{
+					if (tr.contractId === tr.functionId)
+					{
+						retrieveContractAddress(JSON.parse(response)[0].result, function(addr){
+							ctrAddresses[tr.contractId + " - " + trIndex] = addr //get right ctr address if deploy more than one contract of same type.
+						})
+					}
 					executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, callBack)
+				}
 			});
 		});
 	}
+}
+
+function retrieveContractAddress(trHash, callback)
+{
+	var requests = [{
+						jsonrpc: "2.0",
+						method: "eth_getTransactionReceipt",
+						params: [ trHash ],
+						id: jsonRpcRequestId
+					}];
+	rpcCall(requests, function (httpCall, response){
+		callback(JSON.parse(response)[0].contractAddress)
+	})
 }
 
 function executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, callBack)
@@ -285,13 +300,10 @@ function packageDapp(addresses)
 	deploymentComplete()
 }
 
-function registerDapp(callback)
+function registerDapp(url, callback)
 {
-	var applicationUrlEth = deploymentDialog.registerStep.applicationUrlEth;
-	projectModel.deploymentEthUrl = applicationUrlEth
-	applicationUrlEth = formatAppUrl(applicationUrlEth);
 	deploymentStepChanged(qsTr("Registering application on the Ethereum network ..."));
-	checkEthPath(applicationUrlEth, false, function (success) {
+	checkEthPath(url, false, function (success) {
 		if (!success)
 			return;
 		deploymentComplete();
@@ -517,13 +529,12 @@ function registerContentHash(registrar, callBack)
 	});
 }
 
-function registerToUrlHint(callback)
+function registerToUrlHint(url, callback)
 {
-	deploymentStepChanged(qsTr("Registering application Resources (" + deploymentDialog.registerStep.applicationUrlHttp) + ") ...");
-	projectModel.deploymentHttpUrl = deploymentDialog.registerStep.applicationUrlHttp
+	deploymentStepChanged(qsTr("Registering application Resources..."))
 	urlHintAddress(function(urlHint){
 		var requests = [];
-		var paramUrlHttp = clientModel.encodeStringParam(deploymentDialog.registerStep.applicationUrlHttp);
+		var paramUrlHttp = clientModel.encodeStringParam(url)
 		var gasCost = clientModel.toHex(deploymentDialog.registerStep.urlHintSuggestUrlGas);
 		requests.push({
 						  //urlHint => suggestUrl
@@ -570,6 +581,8 @@ function normalizeAddress(addr)
 
 function formatAppUrl(url)
 {
+	if (!url)
+		return [projectModel.projectTitle];
 	if (url.toLowerCase().lastIndexOf("/") === url.length - 1)
 		url = url.substring(0, url.length - 1);
 	if (url.toLowerCase().indexOf("eth://") === 0)

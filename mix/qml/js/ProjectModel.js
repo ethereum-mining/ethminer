@@ -74,8 +74,8 @@ function saveProjectFile()
 			files: [],
 			title: projectTitle,
 			deploymentAddresses: deploymentAddresses,
-			applicationUrlEth: deploymentDialog.registerStep.applicationUrlEth,
-			applicationUrlHttp: deploymentDialog.registerStep.applicationUrlHttp,
+			applicationUrlEth: projectModel.applicationUrlEth,
+			applicationUrlHttp: projectModel.applicationUrlHttp,
 			packageHash: deploymentDialog.packageStep.packageHash,
 			packageBase64: deploymentDialog.packageStep.packageBase64,
 			deploymentDir: deploymentDialog.packageStep.packageDir,
@@ -112,9 +112,9 @@ function loadProject(path) {
 		if (projectData.packageBase64)
 			deploymentDialog.packageStep.packageBase64 =  projectData.packageBase64
 		if (projectData.applicationUrlEth)
-			deploymentDialog.registerStep.applicationUrlEth = projectData.applicationUrlEth
+			projectModel.applicationUrlEth = projectData.applicationUrlEth
 		if (projectData.applicationUrlHttp)
-			deploymentDialog.registerStep.applicationUrlHttp = projectData.applicationUrlHttp
+			projectModel.applicationUrlHttp = projectData.applicationUrlHttp
 		if (projectData.lastPackageDate)
 			deploymentDialog.packageStep.lastDeployDate = projectData.lastPackageDate
 		if (!projectData.title) {

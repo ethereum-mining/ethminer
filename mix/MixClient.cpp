@@ -261,7 +261,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	if (!_call)
 	{
 		t = _gasAuto ? replaceGas(_t, d.gasUsed, _secret) : _t;
-		eth::ExecutionResult er = _state.execute(lastHashes, _t);
+		eth::ExecutionResult er = _state.execute(lastHashes, t);
 		if (t.isCreation() && _state.code(d.contractAddress).empty())
 			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas for contract deployment"));
 		d.gasUsed = er.gasUsed + er.gasRefunded + er.gasForDeposit + c_callStipend;

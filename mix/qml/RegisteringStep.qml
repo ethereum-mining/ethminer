@@ -11,8 +11,6 @@ import "."
 
 Rectangle {
 	property variant worker
-	property string applicationUrlEth
-	property string applicationUrlHttp
 	property string eth: registrarAddr.text
 	property int ownedRegistrarDeployGas: 1179075 // TODO: Use sol library to calculate gas requirement for each tr.
 	property int ownedRegistrarSetSubRegistrarGas: 50000
@@ -25,8 +23,8 @@ Rectangle {
 	function show()
 	{
 		ctrRegisterLabel.calculateRegisterGas()
-		applicationUrlEthCtrl.text = applicationUrlEth
-		applicationUrlHttp.text = applicationUrlHttp
+		applicationUrlEthCtrl.text = projectModel.applicationUrlEth
+		applicationUrlHttpCtrl.text = projectModel.applicationUrlHttp
 		visible = true
 	}
 
@@ -68,7 +66,7 @@ Rectangle {
 				visible: true
 				Layout.preferredWidth: 235
 			}
-		}		
+		}
 
 		RowLayout
 		{
@@ -79,7 +77,7 @@ Rectangle {
 				Layout.preferredWidth: col.width / 2
 				Label
 				{
-					text: qsTr("Web Application Resources URL")
+					text: qsTr("Htpp URL")
 					anchors.right: parent.right
 					anchors.verticalCenter: parent.verticalCenter
 				}
@@ -109,8 +107,8 @@ Rectangle {
 					{
 						if (!modalDeploymentDialog.visible)
 							return;
-						appUrlFormatted.text = NetworkDeploymentCode.formatAppUrl(applicationUrlEth.text).join('/');
-						NetworkDeploymentCode.checkPathCreationCost(function(pathCreationCost)
+						appUrlFormatted.text = NetworkDeploymentCode.formatAppUrl(applicationUrlEthCtrl.text).join('/');
+						NetworkDeploymentCode.checkPathCreationCost(applicationUrlEthCtrl.text, function(pathCreationCost)
 						{
 							var ether = QEtherHelper.createBigInt(pathCreationCost);
 							var gasTotal = ether.multiply(worker.gasPriceInt);
@@ -140,7 +138,7 @@ Rectangle {
 				Layout.preferredWidth: col.width / 2
 				Label
 				{
-					text: qsTr("Ethereum Application URL")
+					text: qsTr("Ethereum URL")
 					anchors.right: parent.right
 					anchors.verticalCenter: parent.verticalCenter
 				}
@@ -159,20 +157,34 @@ Rectangle {
 						ctrRegisterLabel.calculateRegisterGas();
 					}
 				}
-
-				DefaultLabel
-				{
-					id: appUrlFormatted
-					anchors.verticalCenter: parent.verticalCenter;
-					anchors.top: applicationUrlEth.bottom
-					anchors.topMargin: 10
-					font.italic: true
-					font.pointSize: appStyle.absoluteSize(-1)
-				}
 			}
 		}
 
+		RowLayout
+		{
+			Layout.fillWidth: true
+			Layout.preferredHeight: 20
+			Rectangle
+			{
+				Layout.preferredWidth: col.width / 2
+				Label
+				{
+					text: qsTr("Formatted Ethereum URL")
+					anchors.right: parent.right
+					anchors.verticalCenter: parent.verticalCenter
+				}
+			}
 
+			DefaultLabel
+			{
+				id: appUrlFormatted
+				anchors.verticalCenter: parent.verticalCenter;
+				anchors.top: applicationUrlEthCtrl.bottom
+				anchors.topMargin: 10
+				font.italic: true
+				font.pointSize: appStyle.absoluteSize(-1)
+			}
+		}
 	}
 
 	RowLayout
@@ -188,44 +200,37 @@ Rectangle {
 			width: 30
 			onClicked:
 			{
-				if (applicationUrlEthCtrl.text !== applicationUrlEth)
+				var inError = [];
+				var ethUrl = NetworkDeploymentCode.formatAppUrl(applicationUrlEthCtrl.text);
+				for (var k in ethUrl)
 				{
-					var inError = [];
-					var ethUrl = NetworkDeploymentCode.formatAppUrl(applicationUrlEth.text);
-					for (var k in ethUrl)
-					{
-						if (ethUrl[k].length > 32)
-							inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
-					}
-					if (!worker.stopForInputError(inError))
-					{
-						NetworkDeploymentCode.registerDapp(function(){
-						})
-					}
+					if (ethUrl[k].length > 32)
+						inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
+				}
+				if (!worker.stopForInputError(inError))
+				{
+					NetworkDeploymentCode.registerDapp(ethUrl, function(){
+						projectModel.applicationUrlEth = applicationUrlEthCtrl.text
+						projectModel.saveProject()
+					})
 				}
 
-
-				if (applicationUrlHttpCtrl.text !== applicationUrlHttp)
+				if (applicationUrlHttp.text === "" || deploymentDialog.packageHash === "")
 				{
-					if (!(ethUrl.length === 1 && ethUrl[0] === projectModel.projectTitle))
-					{
-						applicationUrlEth.text = ethUrl.join('/')
-					}
-					if (applicationUrlHttp.text === "" || deploymentDialog.packageHash === "")
-					{
-						deployDialog.title = text;
-						deployDialog.text = qsTr("Please provide the link where the resources are stored and ensure the package is aleary built using the deployment step.")
-						deployDialog.open();
-						return;
-					}
-					var inError = [];
-					if (applicationUrlHttp.text.length > 32)
-						inError.push(qsTr(applicationUrlHttp.text));
-					if (!worker.stopForInputError(inError))
-					{
-						registerToUrlHint(function(){
-						})
-					}
+					deployDialog.title = text;
+					deployDialog.text = qsTr("Please provide the link where the resources are stored and ensure the package is aleary built using the deployment step.")
+					deployDialog.open();
+					return;
+				}
+				inError = [];
+				if (applicationUrlHttpCtrl.text.length > 32)
+					inError.push(qsTr(applicationUrlHttpCtrl.text));
+				if (!worker.stopForInputError(inError))
+				{
+					registerToUrlHint(applicationUrlHttpCtrl.text, function(){
+						projectModel.applicationUrlHttp = applicationUrlHttpCtrl.text
+						projectModel.saveProject()
+					})
 				}
 			}
 		}
