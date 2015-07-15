@@ -154,7 +154,7 @@ ColumnLayout
 								function updateLabel()
 								{
 									comboLabel.text = ""
-									if (scenarioList.currentIndex < projectModel.stateListModel.count)
+									if (scenarioList.currentIndex > - 1 && scenarioList.currentIndex < projectModel.stateListModel.count)
 										comboLabel.text = projectModel.stateListModel.getState(scenarioList.currentIndex).title
 								}
 

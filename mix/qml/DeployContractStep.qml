@@ -30,6 +30,15 @@ Rectangle {
 		}
 		if (worker.accounts.length > 0)
 			worker.currentAccount = worker.accounts[0].id
+
+		if (projectModel.deployBlockNumber)
+		{
+			worker.blockNumber(function (bn)
+			{
+				verificationLabel.text = bn - projectModel.deployBlockNumber
+			});
+		}
+
 		deployedAddresses.refresh()
 	}
 
@@ -58,7 +67,8 @@ Rectangle {
 				textRole: "title"
 				onCurrentIndexChanged:
 				{
-					change()
+					if (root.visible)
+						change()
 				}
 
 				function change()
@@ -188,6 +198,7 @@ Rectangle {
 				Layout.preferredWidth: parent.width * 0.60
 				Layout.fillHeight: true
 				id: deploymentOption
+				spacing: 8
 
 				Label
 				{
@@ -343,7 +354,7 @@ Rectangle {
 						Label
 						{
 							id: labelAddresses
-							text: qsTr("Deployed Addresses")
+							text: qsTr("Deployed Contracts")
 							anchors.right: parent.right
 							anchors.verticalCenter: parent.verticalCenter
 						}
@@ -351,7 +362,8 @@ Rectangle {
 
 					ColumnLayout
 					{
-
+						anchors.top: parent.top
+						anchors.topMargin: 1
 						ListModel
 						{
 							id: deployedAddrModel
@@ -380,18 +392,42 @@ Rectangle {
 								Label
 								{
 									id: labelContract
-									width: 110
+									width: 112
 									elide: Text.ElideRight
 									text: index > -1 ? deployedAddrModel.get(index).id : ""
 								}
 
 								TextField
 								{
+									width: 123
+									anchors.verticalCenter: parent.verticalCenter
 									anchors.left: labelContract.right
 									text:  index > - 1 ? deployedAddrModel.get(index).value : ""
 								}
 							}
 						}
+					}
+				}
+
+				RowLayout
+				{
+					id: verificationRow
+					Layout.fillWidth: true
+					visible: Object.keys(projectModel.deploymentAddresses).length > 0
+					Rectangle
+					{
+						width: labelWidth
+						Label
+						{
+							text: qsTr("Verifications")
+							anchors.right: parent.right
+							anchors.verticalCenter: parent.verticalCenter
+						}
+					}
+
+					Label
+					{
+						id: verificationLabel
 					}
 				}
 			}
@@ -409,6 +445,12 @@ Rectangle {
 						projectModel.deployedScenarioIndex = contractList.currentIndex
 						NetworkDeploymentCode.deployContracts(root.gas, function(addresses)
 						{
+							worker.blockNumber(function (nb)
+							{
+								projectModel.deployBlockNumber = nb
+								verificationLabel.text = "0"
+								projectModel.saveProject()
+							})
 							projectModel.deploymentAddresses = addresses
 							projectModel.saveProject()
 							deployedAddresses.refresh()
