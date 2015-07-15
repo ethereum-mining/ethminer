@@ -23,6 +23,7 @@
 
 #include <json/json.h>
 #include <libethcore/Common.h>
+#include <libethcore/BlockInfo.h>
 #include <libethereum/LogFilter.h>
 #include <libwhisper/Message.h>
 
@@ -64,6 +65,19 @@ Json::Value toJson(LogEntry const& _e);
 TransactionSkeleton toTransactionSkeleton(Json::Value const& _json);
 LogFilter toLogFilter(Json::Value const& _json);
 LogFilter toLogFilter(Json::Value const& _json, Interface const& _client);	// commented to avoid warning. Uncomment once in use @ PoC-7.
+
+template <class BlockInfoSub>
+Json::Value toJson(BlockHeaderPolished<BlockInfoSub> const& _bh)
+{
+	Json::Value res;
+	if (_bh)
+	{
+		res = toJson(static_cast<BlockInfo const&>(_bh));
+		for (auto const& i: _bh.jsInfo())
+			res[i.first] = i.second;
+	}
+	return res;
+}
 
 }
 
