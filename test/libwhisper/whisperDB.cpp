@@ -29,7 +29,13 @@ using namespace std;
 using namespace dev;
 using namespace dev::shh;
 
-BOOST_AUTO_TEST_SUITE(whisperDB)
+struct P2PFixture
+{
+	P2PFixture() { dev::p2p::NodeIPEndpoint::test_allowLocal = true; }
+	~P2PFixture() { dev::p2p::NodeIPEndpoint::test_allowLocal = false; }
+};
+
+BOOST_FIXTURE_TEST_SUITE(whisperDB, P2PFixture)
 
 BOOST_AUTO_TEST_CASE(basic)
 {
