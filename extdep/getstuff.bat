@@ -11,6 +11,7 @@ call :download curl 7.4.2
 call :download jsoncpp 1.6.2
 call :download json-rpc-cpp 0.5.0
 call :download leveldb 1.2
+call :download llvm 3.7svn
 call :download microhttpd 0.9.2
 call :download qt 5.4.1
 call :download miniupnpc 1.9
