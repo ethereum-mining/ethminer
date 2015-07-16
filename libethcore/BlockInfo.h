@@ -128,6 +128,7 @@ public:
 	void setGasUsed(u256 const& _v) { m_gasUsed = _v; noteDirty(); }
 	void setExtraData(bytes const& _v) { m_extraData = _v; noteDirty(); }
 	void setLogBloom(LogBloom const& _v) { m_logBloom = _v; noteDirty(); }
+	void setDifficulty(u256 const& _v) { m_difficulty = _v; noteDirty(); }
 
 	Address const& coinbaseAddress() const { return m_coinbaseAddress; }
 	h256 const& stateRoot() const { return m_stateRoot; }
