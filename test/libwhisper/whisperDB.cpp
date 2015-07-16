@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE(messages)
 
 	{
 		p2p::Host h("Test");
-		auto wh = h.registerCapability(new WhisperHost());
+		auto wh = h.registerCapability(new WhisperHost(true));
 		preexisting = wh->all();
 		cnote << preexisting.size() << "preexisting messages in DB";
 
@@ -144,7 +144,7 @@ BOOST_AUTO_TEST_CASE(messages)
 
 	{
 		p2p::Host h("Test");
-		auto wh = h.registerCapability(new WhisperHost());
+		auto wh = h.registerCapability(new WhisperHost(true));
 		map<h256, Envelope> m2 = wh->all();
 		BOOST_REQUIRE_EQUAL(m1.size(), m2.size());
 		BOOST_REQUIRE_EQUAL(m1.size() - preexisting.size(), TestSize);
@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE(corruptedData)
 
 	{
 		p2p::Host h("Test");
-		auto wh = h.registerCapability(new WhisperHost());
+		auto wh = h.registerCapability(new WhisperHost(true));
 		m = wh->all();
 		BOOST_REQUIRE(m.end() == m.find(x));
 	}
