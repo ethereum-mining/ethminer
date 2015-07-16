@@ -77,7 +77,7 @@ std::ostream& operator<<(std::ostream& _out, ActivityReport const& _r);
  * @brief Main API hub for interfacing with Ethereum.
  * Not to be used directly - subclass.
  */
-class Client: public ClientBase, Worker
+class Client: public ClientBase, protected Worker
 {
 public:
 	/// New-style Constructor.
@@ -342,6 +342,8 @@ public:
 		init(_host, _dbPath, _forceAction, _networkId);
 	}
 
+	virtual ~SpecialisedClient() { stopWorking(); }
+
 	/// Get the object representing the current canonical blockchain.
 	CanonBlockChain<Sealer> const& blockChain() const { return m_bc; }
 
@@ -364,6 +366,8 @@ public:
 		WithExisting _forceAction = WithExisting::Trust,
 		u256 _networkId = 0
 	): SpecialisedClient<Ethash>(_host, _gpForAdoption, _dbPath, _forceAction, _networkId) {}
+
+	virtual ~EthashClient() { stopWorking(); }
 
 	/// Update to the latest transactions and get hash of the current block to be mined minus the
 	/// nonce (the 'work hash') and the difficulty to be met.
