@@ -110,7 +110,7 @@ void BlockQueue::verifierBody()
 		swap(work.block, res.blockData);
 		try
 		{
-			res.verified = m_bc->verifyBlock(&res.blockData, m_onBad, CheckEverything);
+			res.verified = m_bc->verifyBlock(&res.blockData, m_onBad, ImportRequirements::Everything & ~ImportRequirements::Parent);
 		}
 		catch (...)
 		{
