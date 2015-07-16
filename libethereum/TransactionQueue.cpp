@@ -161,6 +161,8 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 				{
 					fs->second.erase(t);
 					--m_futureSize;
+					if (fs->second.empty())
+						m_future.erase(fs);
 				}
 			}
 		}
