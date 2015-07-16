@@ -382,6 +382,27 @@ vector<pair<FixedHash<4>, FunctionTypePointer>> const& ContractDefinition::getIn
 	return *m_interfaceFunctionList;
 }
 
+string const& ContractDefinition::devDocumentation() const
+{
+	return m_devDocumentation;
+}
+
+string const& ContractDefinition::userDocumentation() const
+{
+	return m_userDocumentation;
+}
+
+void ContractDefinition::setDevDocumentation(string const& _devDocumentation)
+{
+	m_devDocumentation = _devDocumentation;
+}
+
+void ContractDefinition::setUserDocumentation(string const& _userDocumentation)
+{
+	m_userDocumentation = _userDocumentation;
+}
+
+
 vector<Declaration const*> const& ContractDefinition::getInheritableMembers() const
 {
 	if (!m_inheritableMembers)
