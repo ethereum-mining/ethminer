@@ -81,7 +81,12 @@ function saveProjectFile()
 			deploymentDir: deploymentDialog.packageStep.packageDir,
 			lastPackageDate:  deploymentDialog.packageStep.lastDeployDate,
 			deployBlockNumber: projectModel.deployBlockNumber,
-			localPackageUrl: deploymentDialog.packageStep.localPackageUrl
+			localPackageUrl: deploymentDialog.packageStep.localPackageUrl,
+			deploymentTrHashes: projectModel.deploymentTrHashes,
+			registerContentHashTrHash: projectModel.registerContentHashTrHash,
+			registerUrlTrHash: projectModel.registerUrlTrHash,
+			registerContentHashBlockNumber: projectModel.registerContentHashBlockNumber,
+			registerUrlBlockNumber: projectModel.registerUrlBlockNumber
 		};
 		for (var i = 0; i < projectListModel.count; i++)
 			projectData.files.push({
@@ -123,6 +128,16 @@ function loadProject(path) {
 			projectModel.deployBlockNumber = projectData.deployBlockNumber
 		if (projectData.localPackageUrl)
 			deploymentDialog.packageStep.localPackageUrl =  projectData.localPackageUrl
+		if (projectData.deploymentTrHashes)
+			projectModel.deploymentTrHashes = projectData.deploymentTrHashes
+		if (projectData.registerUrlTrHash)
+			projectModel.registerUrlTrHash = projectData.registerUrlHash
+		if (projectData.registerContentHashTrHash)
+			projectModel.registerContentHashTrHash = projectData.registerContentHashTrHash
+		if (projectData.registerContentHashBlockNumber)
+			projectModel.registerContentHashBlockNumber = projectData.registerContentHashBlockNumber
+		if (projectData.registerUrlBlockNumber)
+			projectModel.registerUrlBlockNumber = projectData.registerUrlBlockNumber
 		if (!projectData.title) {
 			var parts = path.split("/");
 			projectData.title = parts[parts.length - 2];
@@ -369,3 +384,4 @@ function generateFileName(name, extension) {
 	} while (fileIo.fileExists(filePath));
 	return fileName
 }
+

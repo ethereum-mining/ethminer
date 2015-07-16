@@ -23,6 +23,8 @@ Item
 
 	function renewCtx()
 	{
+		accounts = []
+		balances = {}
 		var requests = [{
 							//accounts
 							jsonrpc: "2.0",
@@ -33,7 +35,7 @@ Item
 
 		TransactionHelper.rpcCall(requests, function(arg1, arg2)
 		{
-			accounts = []
+
 			var ids = JSON.parse(arg2)[0].result;
 			requests = [];
 			for (var k in ids)
@@ -53,7 +55,9 @@ Item
 				for (var k in balanceRet)
 				{
 					var ether = QEtherHelper.createEther(balanceRet[k].result, QEther.Wei);
-					balances[accounts[k]] = ether
+					console.log(accounts[k].id)
+					console.log(ether.format())
+					balances[accounts[k].id] = ether
 				}
 			}, function(){});
 		}, function(){});
@@ -63,6 +67,16 @@ Item
 			gasPriceInt.setValue(price);
 			gasPriceLoaded()
 		}, function(){});
+	}
+
+	function balance(account)
+	{
+		for (var k in accounts)
+		{
+			if (accounts[k].id === account)
+				return balances[account]
+		}
+		return null
 	}
 
 	function stopForInputError(inError)
@@ -87,18 +101,54 @@ Item
 		poolLog.start();
 	}
 
-	function blockNumber(callback)
+	function verifyHash(tr, hash, callBack)
 	{
+		var h = {}
+		h[tr] = hash
+		verifyHashes(h, function (bn, trLost)
+		{
+			callBack(bn, trLost)
+		});
+	}
+
+	function verifyHashes(trHashes, callback)
+	{
+		//trHashes : { "trLabel": 'hash' }
 		var requests = [];
+		var req = 0
 		requests.push({
 						  jsonrpc: "2.0",
 						  method: "eth_blockNumber",
 						  params: [],
-						  id: 0
+						  id: req
 					  });
+		var label =  {}
+		for (var k in trHashes)
+		{
+			req++
+			label[req] = k
+			requests.push({
+							  jsonrpc: "2.0",
+							  method: "eth_getTransactionReceipt",
+							  params: [trHashes[k]],
+							  id: req
+						  });
+		}
+
 		TransactionHelper.rpcCall(requests, function (httpRequest, response){
-			var b = JSON.parse(response)[0].result;
-			callback(parseInt(b, 16))
+			console.log(response)
+
+			var ret = JSON.parse(response)
+			var b = ret[0].result;
+			var trLost = []
+			for (var k in ret)
+			{
+				if (ret[k].result === null)
+				{
+					trLost.push(label[ret[k].id])
+				}
+			}
+			callback(parseInt(b, 16), trLost)
 		});
 	}
 
