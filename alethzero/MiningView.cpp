@@ -36,7 +36,7 @@ using namespace dev::eth;
 // types
 
 using dev::eth::MineInfo;
-using dev::eth::MiningProgress;
+using dev::eth::WorkingProgress;
 
 // functions
 using dev::toString;
@@ -50,7 +50,7 @@ MiningView::MiningView(QWidget* _p): QWidget(_p)
 {
 }
 
-void MiningView::appendStats(list<MineInfo> const& _i, MiningProgress const& _p)
+void MiningView::appendStats(list<MineInfo> const& _i, WorkingProgress const& _p)
 {
 	(void)_p;
 	if (_i.empty())
