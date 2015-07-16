@@ -77,6 +77,13 @@ void FileIo::makeDir(QString const& _url)
 	dirPath.mkpath(dirPath.path());
 }
 
+void FileIo::deleteDir(QString const& _url)
+{
+	QDir dirPath(pathFromUrl(_url));
+	if (dirPath.exists())
+		dirPath.removeRecursively();
+}
+
 QString FileIo::readFile(QString const& _url)
 {
 	QFile file(pathFromUrl(_url));

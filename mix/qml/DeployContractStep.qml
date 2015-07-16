@@ -32,7 +32,7 @@ Rectangle {
 		if (worker.accounts.length > 0)
 			worker.currentAccount = worker.accounts[0].id
 
-		if (projectModel.deployBlockNumber)
+		if (projectModel.deployBlockNumber !== -1)
 		{
 			worker.verifyHashes(projectModel.deploymentTrHashes, function (bn, trLost)
 			{

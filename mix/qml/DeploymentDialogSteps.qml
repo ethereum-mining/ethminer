@@ -9,6 +9,11 @@ Rectangle {
 	property variant sel
 	signal selected(string step)
 
+	function refreshCurrent()
+	{
+		menu.itemAt(sel).select()
+	}
+
 	function init()
 	{
 		menu.itemAt(0).select()
@@ -22,14 +27,13 @@ Rectangle {
 	border.color: "#cccccc"
 	border.width: 1
 
-	Column
+	ColumnLayout
 	{
 		anchors.fill: parent
 		anchors.margins: 1
 		Repeater
 		{
 			id: menu
-			height: 150
 			model: [
 				{
 					step: 1,
@@ -50,8 +54,8 @@ Rectangle {
 
 			Rectangle
 			{
-				height: 50
-				width: parent.width
+				Layout.preferredHeight: 50
+				Layout.fillWidth: true
 				color: "white"
 				id: itemContainer
 
@@ -130,21 +134,69 @@ Rectangle {
 		}
 
 		Connections {
-			target:projectModel
+			target: projectModel
 			onDeploymentStarted: log.text = log.text + qsTr("Running deployment...") + "\n"
 			onDeploymentError: log.text = log.text + error + "\n"
 			onDeploymentComplete: log.text = log.text + qsTr("Deployment complete") + "\n"
 			onDeploymentStepChanged: log.text = log.text + message + "\n"
 		}
 
+		Rectangle
+		{
+			Layout.fillWidth: true
+			Layout.preferredHeight: 1
+			color: "#cccccc"
+		}
+
+		RowLayout
+		{
+			anchors.horizontalCenter: parent.horizontalCenter
+			Layout.preferredHeight: 20
+			anchors.left: parent.left
+			anchors.leftMargin: 2
+			Button
+			{
+				Layout.preferredHeight: 22
+				Layout.preferredWidth: 22
+				action: clearAction
+				iconSource: "qrc:/qml/img/cleariconactive.png"
+			}
+
+			Action {
+				id: clearAction
+				enabled: log.text !== ""
+				tooltip: qsTr("Clear")
+				onTriggered: {
+					log.text = ""
+				}
+			}
+
+			Button
+			{
+				Layout.preferredHeight: 22
+				text: qsTr("Clear Deployment")
+				action: clearDeployAction
+			}
+
+			Action {
+				id: clearDeployAction
+				onTriggered: {
+					fileIo.deleteDir(projectModel.deploymentDir)
+					projectModel.cleanDeploymentStatus()
+				}
+			}
+		}
+
 		ScrollView
 		{
-			width: parent.width
-			height: parent.height - menu.height
-			TextField
+			Layout.fillHeight: true
+			Layout.fillWidth: true
+			Text
 			{
-				anchors.fill: parent
-				maximumLength: 100000
+				anchors.left: parent.left
+				anchors.leftMargin: 2
+				font.pointSize: 9
+				font.italic: true
 				id: log
 			}
 		}

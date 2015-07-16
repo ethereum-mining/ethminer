@@ -27,24 +27,24 @@ Rectangle {
 		applicationUrlHttpCtrl.text = projectModel.applicationUrlHttp
 		visible = true
 
-		if (projectModel.registerContentHashTrHash)
+		if (projectModel.registerContentHashTrHash !== "")
 		{
 			worker.verifyHash("registerHash", projectModel.registerContentHashTrHash, function(bn, trLost)
 			{
-				updateVerification(bn, trLost, verificationEthUrl)
+				updateVerification(projectModel.registerContentHashBlockNumber, bn, trLost, verificationEthUrl)
 			});
 		}
 
-		if (projectModel.registerUrlTrHash)
+		if (projectModel.registerUrlTrHash !== "")
 		{
 			worker.verifyHash("registerUrl", projectModel.registerUrlTrHash, function(bn, trLost)
 			{
-				updateVerification(bn, trLost, verificationUrl)
+				updateVerification(projectModel.registerUrlBlockNumber, bn, trLost, verificationUrl)
 			});
 		}
 	}
 
-	function updateVerification(originbn, trLost, ctrl)
+	function updateVerification(originbn, bn, trLost, ctrl)
 	{
 		if (trLost.length === 0)
 		{
@@ -53,7 +53,7 @@ Rectangle {
 		}
 		else
 		{
-			ctrl.text = tr + qsTr(" invalidated")
+			ctrl.text = qsTr("invalidated")
 		}
 	}
 
@@ -106,7 +106,7 @@ Rectangle {
 				Layout.preferredWidth: col.width / 2
 				Label
 				{
-					text: qsTr("Htpp URL")
+					text: qsTr("Http URL")
 					anchors.right: parent.right
 					anchors.verticalCenter: parent.verticalCenter
 				}
@@ -116,13 +116,12 @@ Rectangle {
 			{
 				id: applicationUrlHttpCtrl
 				Layout.preferredWidth: 235
+			}
 
-				Label
-				{
-					id: verificationUrl
-					anchors.top: applicationUrlHttpCtrl.bottom
-					anchors.topMargin: 10
-				}
+			Label
+			{
+				id: verificationUrl
+				anchors.verticalCenter: parent.verticalCenter
 			}
 		}
 
@@ -230,7 +229,66 @@ Rectangle {
 	RowLayout
 	{
 		anchors.bottom: parent.bottom
+		anchors.bottomMargin: 10
 		width: parent.width		
+
+		function registerHash(callback)
+		{
+			var inError = [];
+			var ethUrl = NetworkDeploymentCode.formatAppUrl(applicationUrlEthCtrl.text);
+			for (var k in ethUrl)
+			{
+				if (ethUrl[k].length > 32)
+					inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
+			}
+			if (!worker.stopForInputError(inError))
+			{
+				NetworkDeploymentCode.registerDapp(ethUrl, function(){
+					projectModel.applicationUrlEth = applicationUrlEthCtrl.text
+					projectModel.saveProject()
+					worker.waitForTrReceipt(projectModel.registerContentHashTrHash, function(status, receipt)
+					{
+						worker.verifyHash("registerHash", projectModel.registerContentHashTrHash, function(bn, trLost)
+						{
+							projectModel.registerContentHashBlockNumber = bn
+							projectModel.saveProject()
+							root.updateVerification(bn, bn, trLost, verificationEthUrl)
+							callback()
+						});
+					});
+				})
+			}
+		}
+
+		function registerUrl()
+		{
+			if (applicationUrlHttp.text === "" || deploymentDialog.packageHash === "")
+			{
+				deployDialog.title = text;
+				deployDialog.text = qsTr("Please provide the link where the resources are stored and ensure the package is aleary built using the deployment step.")
+				deployDialog.open();
+				return;
+			}
+			var inError = [];
+			if (applicationUrlHttpCtrl.text.length > 32)
+				inError.push(qsTr(applicationUrlHttpCtrl.text));
+			if (!worker.stopForInputError(inError))
+			{
+				registerToUrlHint(applicationUrlHttpCtrl.text, function(){
+					projectModel.applicationUrlHttp = applicationUrlHttpCtrl.text
+					projectModel.saveProject()
+					worker.waitForTrReceipt(projectModel.registerUrlTrHash, function(status, receipt)
+					{
+						worker.verifyHash("registerUrl", projectModel.registerUrlTrHash, function(bn, trLost)
+						{
+							projectModel.registerUrlBlockNumber = bn
+							projectModel.saveProject()
+							root.updateVerification(bn, bn, trLost, verificationUrl)
+						});
+					})
+				})
+			}
+		}
 
 		Button
 		{
@@ -240,50 +298,9 @@ Rectangle {
 			width: 30
 			onClicked:
 			{
-				var inError = [];
-				var ethUrl = NetworkDeploymentCode.formatAppUrl(applicationUrlEthCtrl.text);
-				for (var k in ethUrl)
-				{
-					if (ethUrl[k].length > 32)
-						inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
-				}
-				if (!worker.stopForInputError(inError))
-				{
-					NetworkDeploymentCode.registerDapp(ethUrl, function(){
-						projectModel.applicationUrlEth = applicationUrlEthCtrl.text
-						projectModel.saveProject()
-						worker.verifyHash("registerHash", projectModel.registerContentHashTrHash, function(bn, trLost)
-						{
-							projectModel.registerContentHashBlockNumber = bn
-							projectModel.saveProject()
-							root.updateVerification(bn, trLost, verificationEthUrl)
-						});
-					})
-				}
-
-				if (applicationUrlHttp.text === "" || deploymentDialog.packageHash === "")
-				{
-					deployDialog.title = text;
-					deployDialog.text = qsTr("Please provide the link where the resources are stored and ensure the package is aleary built using the deployment step.")
-					deployDialog.open();
-					return;
-				}
-				inError = [];
-				if (applicationUrlHttpCtrl.text.length > 32)
-					inError.push(qsTr(applicationUrlHttpCtrl.text));
-				if (!worker.stopForInputError(inError))
-				{
-					registerToUrlHint(applicationUrlHttpCtrl.text, function(){
-						projectModel.applicationUrlHttp = applicationUrlHttpCtrl.text
-						projectModel.saveProject()
-						worker.verifyHash("registerUrl", projectModel.registerUrlTrHash, function(bn, trLost)
-						{
-							projectModel.registerUrlBlockNumber = bn
-							projectModel.saveProject()
-							root.updateVerification(bn, trLost, verificationUrl)
-						});
-					})
-				}
+				parent.registerHash(function(){
+					parent.registerUrl()
+				})
 			}
 		}
 	}
