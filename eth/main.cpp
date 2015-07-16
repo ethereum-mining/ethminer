@@ -1310,7 +1310,7 @@ int main(int argc, char** argv)
 		{
 			try
 			{
-				CanonBlockChain::setGenesisNonce(Nonce(argv[++i]));
+				CanonBlockChain<Ethash>::setGenesisNonce(Nonce(argv[++i]));
 			}
 			catch (...)
 			{
