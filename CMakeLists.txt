@@ -131,7 +131,7 @@ function(createBuildInfo)
 	add_custom_target(BuildInfo.h ALL
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		COMMAND ${CMAKE_COMMAND} -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
-			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}" 
+			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}"
 			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
 		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -175,9 +175,9 @@ endif ()
 
 macro(eth_format_option O)
 	if (${${O}})
-		set(${O} ON)	
+		set(${O} ON)
 	else()
-		set(${O} OFF)	
+		set(${O} OFF)
 	endif()
 endmacro()
 
@@ -506,26 +506,26 @@ endif ()
 if (WIN32)
 	# packaging stuff
 	include(InstallRequiredSystemLibraries)
-	set(CPACK_PACKAGE_NAME "Ethereum")
-	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Ethereum")
+	set(CPACK_PACKAGE_NAME "Ethereum (++)")
+	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "The Ethereum (++) Toolset")
 	set(CPACK_PACKAGE_VENDOR "ethereum.org")
 	set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
 	set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-	set(CPACK_PACKAGE_VERSION "0.9")
+	set(CPACK_PACKAGE_VERSION "0.9.29")
 	set(CPACK_GENERATOR "NSIS")
 	# seems to be not working
 	# set(CPACK_PACKAGE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.bmp")
 
 	# our stuff
-	set(CPACK_COMPONENT_ALETHZERO_GROUP "Applications")
-	set(CPACK_COMPONENT_MIX_GROUP "Applications")
-	set(CPACK_COMPONENT_SOLC_GROUP "CLI")
-	set(CPACK_COMPONENT_ETH_GROUP "CLI")
-	set(CPACK_COMPONENT_ETHMINER_GROUP "CLI")
-	set(CPACK_COMPONENT_RLP_GROUP "CLI")
-	set(CPACK_COMPONENT_ABI_GROUP "CLI")
+	#set(CPACK_COMPONENT_ALETHZERO_GROUP "Applications")
+	#set(CPACK_COMPONENT_MIX_GROUP "Applications")
+	#set(CPACK_COMPONENT_SOLC_GROUP "CLI")
+	#set(CPACK_COMPONENT_ETH_GROUP "CLI")
+	#set(CPACK_COMPONENT_ETHMINER_GROUP "CLI")
+	#set(CPACK_COMPONENT_RLP_GROUP "CLI")
+	#set(CPACK_COMPONENT_ABI_GROUP "CLI")
 
-	set(CPACK_COMPONENTS_ALL alethzero mix solc eth ethminer rlp abi)
+	#set(CPACK_COMPONENTS_ALL alethzero mix solc eth ethminer rlp abi)
 
 	# nsis specific stuff
 	if (CMAKE_CL_64)
@@ -536,7 +536,7 @@ if (WIN32)
 		set(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
 	endif()
 
-	set(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} Ethereum")
+	set(CPACK_NSIS_DISPLAY_NAME "Ethereum (++)")
 	set(CPACK_NSIS_HELP_LINK "https://github.com/ethereum/cpp-ethereum")
 	set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/ethereum/cpp-ethereum")
 	set(CPACK_NSIS_CONTACT "ethereum.org")
