@@ -84,7 +84,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 
 ldb::Slice dev::eth::toSlice(h256 const& _h, unsigned _sub)
 {
-#if TRUE //ALL_COMPILERS_ARE_CPP11_COMPLIANT
+#if ALL_COMPILERS_ARE_CPP11_COMPLIANT
 	static thread_local FixedHash<33> h = _h;
 	h[32] = (uint8_t)_sub;
 	return (ldb::Slice)h.ref();
@@ -100,7 +100,7 @@ ldb::Slice dev::eth::toSlice(h256 const& _h, unsigned _sub)
 
 ldb::Slice dev::eth::toSlice(uint64_t _n, unsigned _sub)
 {
-#if TRUE //ALL_COMPILERS_ARE_CPP11_COMPLIANT
+#if ALL_COMPILERS_ARE_CPP11_COMPLIANT
 	static thread_local FixedHash<33> h;
 	toBigEndian(_n, bytesRef(h.data() + 24, 8));
 	h[32] = (uint8_t)_sub;
@@ -109,7 +109,8 @@ ldb::Slice dev::eth::toSlice(uint64_t _n, unsigned _sub)
 	static boost::thread_specific_ptr<FixedHash<33>> t_h;
 	if (!t_h.get())
 		t_h.reset(new FixedHash<33>);
-	toBigEndian(_n, bytesRef(t_h->data() + 24, 8));
+	bytesRef ref(t_h->data() + 24, 8);
+	toBigEndian(_n, ref);
 	(*t_h)[32] = (uint8_t)_sub;
 	return (ldb::Slice)t_h->ref();
 #endif
