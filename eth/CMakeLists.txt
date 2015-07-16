@@ -30,7 +30,8 @@ if (JSONRPC)
 	target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_CLIENT_LIBRARIES})
 	target_link_libraries(${EXECUTABLE} ${CURL_LIBRARIES})
 	if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
-		eth_copy_dlls(${EXECUTABLE} CURL_DLLS)
+		eth_copy_dlls("${EXECUTABLE}" MHD_DLLS)
+		eth_copy_dlls("${EXECUTABLE}" OpenCL_DLLS)
 	endif()
 endif()
 
@@ -42,7 +43,7 @@ if (JSCONSOLE)
 endif()
 
 #if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
-#	eth_copy_dlls("${EXECUTABLE}" MHD_DLLS)
+#	eth_copy_dlls("${EXECUTABLE}" MHD_DLLS OpenCL_DLLS)
 #endif()
 
 if (APPLE)
