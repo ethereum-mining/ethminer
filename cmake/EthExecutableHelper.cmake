@@ -43,11 +43,11 @@ macro(eth_add_executable EXECUTABLE)
 
 endmacro()
 
-macro(eth_copy_dlls EXECUTABLE DLLS)
+macro(eth_copy_dll EXECUTABLE DLL)
 	# dlls must be unsubstitud list variable (without ${}) in format
 	# optimized;path_to_dll.dll;debug;path_to_dlld.dll 
-	list(GET ${DLLS} 1 DLL_RELEASE)
-	list(GET ${DLLS} 3 DLL_DEBUG)
+	list(GET ${DLL} 1 DLL_RELEASE)
+	list(GET ${DLL} 3 DLL_DEBUG)
 	add_custom_command(TARGET ${EXECUTABLE}
 		POST_BUILD 
 		COMMAND ${CMAKE_COMMAND} ARGS 
@@ -57,6 +57,12 @@ macro(eth_copy_dlls EXECUTABLE DLLS)
 		-DDESTINATION="${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}" 
 		-P "${ETH_SCRIPTS_DIR}/copydlls.cmake"
 	)
+endmacro()
+
+macro(eth_copy_dlls EXECUTABLE)
+	foreach(dll ${ARGN})
+		eth_copy_dll(${EXECUTABLE} ${dll})
+	endforeach(dll)
 endmacro()
 
 # 
@@ -124,7 +130,7 @@ macro(eth_install_executable EXECUTABLE)
 
 		#copy additional dlls
 		foreach(dll ${ETH_INSTALL_EXECUTABLE_DLLS})
-			eth_copy_dlls(${EXECUTABLE} ${dll})
+			eth_copy_dll(${EXECUTABLE} ${dll})
 		endforeach(dll)
 
 		install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Debug"
