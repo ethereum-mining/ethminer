@@ -48,11 +48,12 @@ function deployContracts(gas, callback)
 		console.log(txt);
 		return;
 	}
-	executeTr(0, 0, state, ctrAddresses, function(){
+	var trHashes = {}
+	executeTr(0, 0, state, ctrAddresses, trHashes, function(){
 		projectModel.deploymentAddresses = ctrAddresses;
 		deploymentStepChanged(qsTr("Scenario deployed. Please wait for verifications"))
 		if (callback)
-			callback(ctrAddresses)
+			callback(ctrAddresses, trHashes)
 	});
 }
 
@@ -140,7 +141,7 @@ function getFunction(ctrName, functionId)
 
 var deploymentGas
 var trRealIndex = -1
-function executeTr(blockIndex, trIndex, state, ctrAddresses, callBack)
+function executeTr(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack)
 {
 	trRealIndex++;
 	var tr = state.blocks.get(blockIndex).transactions.get(trIndex);
@@ -148,7 +149,7 @@ function executeTr(blockIndex, trIndex, state, ctrAddresses, callBack)
 		callBack()
 	var func = getFunction(tr.contractId, tr.functionId);
 	if (!func)
-		executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, callBack);
+		executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack);
 	else
 	{
 		var gasCost = clientModel.toHex(deploymentGas[trRealIndex]);
@@ -172,8 +173,9 @@ function executeTr(blockIndex, trIndex, state, ctrAddresses, callBack)
 			var txt = qsTr(tr.contractId + "." + tr.functionId + "() ...")
 			deploymentStepChanged(txt);
 			console.log(txt);
-
-			deploymentDialog.worker.waitForTrReceipt(JSON.parse(response)[0].result, function(status, receipt){
+			var hash = JSON.parse(response)[0].result
+			trHashes[tr.contractId + "." + tr.functionId + "()"] = hash
+			deploymentDialog.worker.waitForTrReceipt(hash, function(status, receipt){
 				if (status === -1)
 					trCountIncrementTimeOut();
 				else
@@ -183,7 +185,7 @@ function executeTr(blockIndex, trIndex, state, ctrAddresses, callBack)
 						ctrAddresses[tr.contractId] = receipt.contractAddress
 						ctrAddresses[tr.contractId + " - " + trIndex] = receipt.contractAddress //get right ctr address if deploy more than one contract of same type.
 					}
-					executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, callBack)
+					executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack)
 				}
 			})
 		});
@@ -203,17 +205,17 @@ function retrieveContractAddress(trHash, callback)
 	})
 }
 
-function executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, callBack)
+function executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack)
 {
 	trIndex++;
 	if (trIndex < state.blocks.get(blockIndex).transactions.count)
-		executeTr(blockIndex, trIndex, state, ctrAddresses, callBack);
+		executeTr(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack);
 	else
 	{
 		blockIndex++
 		if (blockIndex < state.blocks.count)
 		{
-			executeTr(blockIndex, 0, state, ctrAddresses, callBack);
+			executeTr(blockIndex, 0, state, ctrAddresses, trHashes, callBack);
 		}
 		else
 		{
@@ -514,6 +516,7 @@ function registerContentHash(registrar, callBack)
 	deploymentStepChanged(txt);
 	console.log(txt);
 	console.log("register url " + deploymentDialog.packageStep.packageHash + " " + projectModel.projectTitle)
+	projectModel.registerContentHashTrHash = ""
 	var requests = [];
 	var paramTitle = clientModel.encodeStringParam(projectModel.projectTitle);
 	var gasCost = clientModel.toHex(deploymentDialog.registerStep.ownedRegistrarSetContentHashGas);
@@ -525,6 +528,7 @@ function registerContentHash(registrar, callBack)
 					  id: jsonRpcRequestId++
 				  });
 	rpcCall(requests, function (httpRequest, response) {
+		projectModel.registerContentHashTrHash = JSON.parse(response)[0].result
 		callBack(true);
 	});
 }
@@ -546,6 +550,7 @@ function registerToUrlHint(url, callback)
 					  });
 
 		rpcCall(requests, function (httpRequest, response) {
+			projectModel.registerUrlTrHash = JSON.parse(response)[0].result
 			deploymentComplete();
 			if (callback)
 				callback()

@@ -16,7 +16,7 @@ Rectangle {
 	property int ownedRegistrarSetSubRegistrarGas: 50000
 	property int ownedRegistrarSetContentHashGas: 50000
 	property int urlHintSuggestUrlGas: 70000
-
+	id: root
 	color: "#E3E3E3E3"
 	anchors.fill: parent
 
@@ -26,6 +26,35 @@ Rectangle {
 		applicationUrlEthCtrl.text = projectModel.applicationUrlEth
 		applicationUrlHttpCtrl.text = projectModel.applicationUrlHttp
 		visible = true
+
+		if (projectModel.registerContentHashTrHash)
+		{
+			worker.verifyHash("registerHash", projectModel.registerContentHashTrHash, function(bn, trLost)
+			{
+				updateVerification(bn, trLost, verificationEthUrl)
+			});
+		}
+
+		if (projectModel.registerUrlTrHash)
+		{
+			worker.verifyHash("registerUrl", projectModel.registerUrlTrHash, function(bn, trLost)
+			{
+				updateVerification(bn, trLost, verificationUrl)
+			});
+		}
+	}
+
+	function updateVerification(originbn, trLost, ctrl)
+	{
+		if (trLost.length === 0)
+		{
+			ctrl.text = bn - originbn
+			ctrl.text += qsTr(" verifications")
+		}
+		else
+		{
+			ctrl.text = tr + qsTr(" invalidated")
+		}
 	}
 
 	ColumnLayout
@@ -87,6 +116,13 @@ Rectangle {
 			{
 				id: applicationUrlHttpCtrl
 				Layout.preferredWidth: 235
+
+				Label
+				{
+					id: verificationUrl
+					anchors.top: applicationUrlHttpCtrl.bottom
+					anchors.topMargin: 10
+				}
 			}
 		}
 
@@ -141,7 +177,7 @@ Rectangle {
 					text: qsTr("Ethereum URL")
 					anchors.right: parent.right
 					anchors.verticalCenter: parent.verticalCenter
-				}
+				}			
 			}
 
 			Rectangle
@@ -183,14 +219,19 @@ Rectangle {
 				font.italic: true
 				font.pointSize: appStyle.absoluteSize(-1)
 			}
+
+			Label
+			{
+				id: verificationEthUrl
+			}
 		}
 	}
 
 	RowLayout
 	{
 		anchors.bottom: parent.bottom
-		width: parent.width
-		anchors.bottomMargin: 8
+		width: parent.width		
+
 		Button
 		{
 			anchors.right: parent.right
@@ -211,6 +252,12 @@ Rectangle {
 					NetworkDeploymentCode.registerDapp(ethUrl, function(){
 						projectModel.applicationUrlEth = applicationUrlEthCtrl.text
 						projectModel.saveProject()
+						worker.verifyHash("registerHash", projectModel.registerContentHashTrHash, function(bn, trLost)
+						{
+							projectModel.registerContentHashBlockNumber = bn
+							projectModel.saveProject()
+							root.updateVerification(bn, trLost, verificationEthUrl)
+						});
 					})
 				}
 
@@ -229,6 +276,12 @@ Rectangle {
 					registerToUrlHint(applicationUrlHttpCtrl.text, function(){
 						projectModel.applicationUrlHttp = applicationUrlHttpCtrl.text
 						projectModel.saveProject()
+						worker.verifyHash("registerUrl", projectModel.registerUrlTrHash, function(bn, trLost)
+						{
+							projectModel.registerUrlBlockNumber = bn
+							projectModel.saveProject()
+							root.updateVerification(bn, trLost, verificationUrl)
+						});
 					})
 				}
 			}
