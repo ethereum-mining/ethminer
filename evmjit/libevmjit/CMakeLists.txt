@@ -29,6 +29,7 @@ else()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
 endif()
 
+
 set(EVMJIT_VERSION "0.0.0")
 set(EVMJIT_VERSION_MAJOR 0)
 set(EVMJIT_VERSION_MINOR 0)
