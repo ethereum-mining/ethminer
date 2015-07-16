@@ -106,7 +106,7 @@ bool WebThreeStubServer::admin_eth_setBidPrice(std::string const& _wei, std::str
 	return true;
 }
 
-dev::eth::CanonBlockChain const& WebThreeStubServer::bc() const
+dev::eth::BlockChain const& WebThreeStubServer::bc() const
 {
 	return m_web3.ethereum()->blockChain();
 }

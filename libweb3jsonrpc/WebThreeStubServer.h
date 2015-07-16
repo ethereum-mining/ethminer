@@ -34,7 +34,7 @@ namespace eth
 {
 class KeyManager;
 class TrivialGasPricer;
-class CanonBlockChain;
+class BlockChain;
 class BlockQueue;
 }
 
@@ -89,7 +89,7 @@ private:
 private:
 	h256 blockHash(std::string const& _blockNumberOrHash) const;
 
-	dev::eth::CanonBlockChain const& bc() const;
+	dev::eth::BlockChain const& bc() const;
 	dev::eth::BlockQueue const& bq() const;
 
 	dev::WebThreeDirect& m_web3;
