@@ -52,7 +52,7 @@ WebThreeDirect::WebThreeDirect(
 		Defaults::setDBPath(_dbPath);
 	if (_interfaces.count("eth"))
 	{
-		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _we, 0));
+		m_ethereum.reset(new eth::EthashClient(&m_net, shared_ptr<GasPricer>(), _dbPath, _we, 0));
 		m_ethereum->setExtraData(rlpList(0, _clientVersion, m_net.id()));
 	}
 
