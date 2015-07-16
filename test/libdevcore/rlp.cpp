@@ -71,6 +71,7 @@ namespace dev
 					{
 						bytes payloadToDecode = fromHex(o["out"].get_str());
 						RLP payload(payloadToDecode);
+						ostringstream() << payload;
 						if (payload.isEmpty())
 							BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("Decoded Empty RLP!"));
 						o["in"] = "VALID";
@@ -128,6 +129,7 @@ namespace dev
 					{
 						bytes payloadToDecode = fromHex(o["out"].get_str());
 						RLP payload(payloadToDecode);
+						ostringstream() << payload;
 
 						if (rlpType == RlpType::Test)
 							dev::test::checkRLPAgainstJson(inputData, payload);
