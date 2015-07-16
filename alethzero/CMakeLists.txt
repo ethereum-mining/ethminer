@@ -72,5 +72,5 @@ if (SERPENT)
 endif()
 
 # eth_install_executable is defined in cmake/EthExecutableHelper.cmake
-eth_install_executable(${EXECUTABLE} DLLS MHD_DLLS)
+eth_install_executable(${EXECUTABLE} DLLS MHD_DLLS EVMJIT_DLLS)
 
