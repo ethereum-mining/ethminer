@@ -91,6 +91,11 @@ Item
 		return false;
 	}
 
+	function forceStopPooling()
+	{
+		poolLog.stop()
+	}
+
 	function waitForTrReceipt(hash, callback)
 	{
 		poolLog.callBack = callback;

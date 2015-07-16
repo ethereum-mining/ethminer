@@ -73,6 +73,7 @@ Dialog {
 					DeploymentDialogSteps
 					{
 						id: steps
+						worker: worker
 					}
 				}
 
