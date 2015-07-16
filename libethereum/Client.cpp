@@ -84,10 +84,9 @@ void Client::init(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _
 	// TODO: consider returning the upgrade mechanism here. will delaying the opening of the blockchain database
 	// until after the construction.
 	m_stateDB = State::openDB(_dbPath, bc().genesisHash(), _forceAction);
-	m_preMine = State(m_stateDB);
-	m_postMine = State(m_stateDB);
 	// LAZY. TODO: move genesis state construction/commiting to stateDB openning and have this just take the root from the genesis block.
 	m_preMine = bc().genesisState(m_stateDB);
+	m_postMine = m_preMine;
 
 	m_bq.setChain(bc());
 
