@@ -55,8 +55,6 @@ Item
 				for (var k in balanceRet)
 				{
 					var ether = QEtherHelper.createEther(balanceRet[k].result, QEther.Wei);
-					console.log(accounts[k].id)
-					console.log(ether.format())
 					balances[accounts[k].id] = ether
 				}
 			}, function(){});
@@ -144,9 +142,7 @@ Item
 			for (var k in ret)
 			{
 				if (ret[k].result === null)
-				{
-					trLost.push(label[ret[k].id])
-				}
+					trLost.push(label[ret[k]])
 			}
 			callback(parseInt(b, 16), trLost)
 		});

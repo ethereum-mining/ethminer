@@ -82,7 +82,7 @@ function saveProjectFile()
 			lastPackageDate:  deploymentDialog.packageStep.lastDeployDate,
 			deployBlockNumber: projectModel.deployBlockNumber,
 			localPackageUrl: deploymentDialog.packageStep.localPackageUrl,
-			deploymentTrHashes: projectModel.deploymentTrHashes,
+			deploymentTrHashes: JSON.stringify(projectModel.deploymentTrHashes),
 			registerContentHashTrHash: projectModel.registerContentHashTrHash,
 			registerUrlTrHash: projectModel.registerUrlTrHash,
 			registerContentHashBlockNumber: projectModel.registerContentHashBlockNumber,
@@ -129,9 +129,9 @@ function loadProject(path) {
 		if (projectData.localPackageUrl)
 			deploymentDialog.packageStep.localPackageUrl =  projectData.localPackageUrl
 		if (projectData.deploymentTrHashes)
-			projectModel.deploymentTrHashes = projectData.deploymentTrHashes
+			projectModel.deploymentTrHashes = JSON.parse(projectData.deploymentTrHashes)
 		if (projectData.registerUrlTrHash)
-			projectModel.registerUrlTrHash = projectData.registerUrlHash
+			projectModel.registerUrlTrHash = projectData.registerUrlTrHash
 		if (projectData.registerContentHashTrHash)
 			projectModel.registerContentHashTrHash = projectData.registerContentHashTrHash
 		if (projectData.registerContentHashBlockNumber)

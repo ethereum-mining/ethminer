@@ -52,11 +52,11 @@ Item {
 	property string applicationUrlEth
 	property string applicationUrlHttp
 	property string deployBlockNumber
-	property string deploymentTrHashes
+	property var deploymentTrHashes
 	property string registerContentHashTrHash
 	property string registerUrlTrHash
-	property string registerContentHashBlockNumber
-	property string registerUrlBlockNumber
+	property int registerContentHashBlockNumber: -1
+	property int registerUrlBlockNumber: -1
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
@@ -82,6 +82,27 @@ Item {
 	function deployProject() { NetworkDeploymentCode.deployProject(false); }
 	function registerToUrlHint(url, callback) { NetworkDeploymentCode.registerToUrlHint(url, callback); }
 	function formatAppUrl() { NetworkDeploymentCode.formatAppUrl(url); }
+
+	function cleanDeploymentStatus()
+	{
+		deployedScenarioIndex = 0
+		applicationUrlEth = ""
+		applicationUrlHttp = ""
+		deployBlockNumber = ""
+		deploymentTrHashes = {}
+		registerContentHashTrHash = ""
+		registerUrlTrHash = ""
+		registerContentHashBlockNumber = -1
+		registerUrlBlockNumber = -1
+		deploymentAddresses = {}
+		deploymentDir = ""
+		deploymentDialog.packageStep.packageHash = ""
+		deploymentDialog.packageStep.packageBase64 = ""
+		deploymentDialog.packageStep.packageDir = ""
+		deploymentDialog.packageStep.lastDeployDate = ""
+		deploymentDialog.packageStep.localPackageUrl = ""
+		saveProject()
+	}
 
 	Connections {
 		target: mainApplication
