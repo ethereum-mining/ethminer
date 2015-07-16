@@ -29,6 +29,7 @@ Rectangle {
 		Repeater
 		{
 			id: menu
+			height: 150
 			model: [
 				{
 					step: 1,
@@ -128,6 +129,25 @@ Rectangle {
 			}
 		}
 
+		Connections {
+			target:projectModel
+			onDeploymentStarted: log.text = log.text + qsTr("Running deployment...") + "\n"
+			onDeploymentError: log.text = log.text + error + "\n"
+			onDeploymentComplete: log.text = log.text + qsTr("Deployment complete") + "\n"
+			onDeploymentStepChanged: log.text = log.text + message + "\n"
+		}
+
+		ScrollView
+		{
+			width: parent.width
+			height: parent.height - menu.height
+			TextField
+			{
+				anchors.fill: parent
+				maximumLength: 100000
+				id: log
+			}
+		}
 	}
 }
 

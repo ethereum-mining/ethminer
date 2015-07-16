@@ -28,18 +28,32 @@ Rectangle {
 		{
 			accountsModel.append(worker.accounts[k])
 		}
+
 		if (worker.accounts.length > 0)
 			worker.currentAccount = worker.accounts[0].id
 
 		if (projectModel.deployBlockNumber)
 		{
-			worker.blockNumber(function (bn)
+			worker.verifyHashes(projectModel.deploymentTrHashes, function (bn, trLost)
 			{
-				verificationLabel.text = bn - projectModel.deployBlockNumber
+				root.updateVerification(bn, trLost)
 			});
 		}
-
 		deployedAddresses.refresh()
+		worker.renewCtx()
+	}
+
+	function updateVerification(blockNumber, trLost)
+	{
+		verificationLabel.text = blockNumber - projectModel.deployBlockNumber
+		if (trLost.length > 0)
+		{
+			verificationLabel.text += "\n" + qsTr("Transactions lost") + "\n"
+			for (var k in trLost)
+			{
+				verificationLabel.text += trLost[k] + "\n"
+			}
+		}
 	}
 
 	RowLayout
@@ -235,7 +249,14 @@ Rectangle {
 						onCurrentTextChanged:
 						{
 							worker.currentAccount = currentText
+							accountBalance.text = worker.balance(currentText).format()
+							console.log(worker.balance(currentText).format())
 						}
+					}
+
+					Label
+					{
+						id: accountBalance
 					}
 				}
 
@@ -428,6 +449,7 @@ Rectangle {
 					Label
 					{
 						id: verificationLabel
+						maximumLineCount: 20
 					}
 				}
 			}
@@ -443,13 +465,14 @@ Rectangle {
 					onClicked:
 					{
 						projectModel.deployedScenarioIndex = contractList.currentIndex
-						NetworkDeploymentCode.deployContracts(root.gas, function(addresses)
+						NetworkDeploymentCode.deployContracts(root.gas, function(addresses, trHashes)
 						{
-							worker.blockNumber(function (nb)
+							projectModel.deploymentTrHashes = trHashes
+							worker.verifyHashes(trHashes, function (nb, trLost)
 							{
 								projectModel.deployBlockNumber = nb
-								verificationLabel.text = "0"
 								projectModel.saveProject()
+								root.updateVerification(nb, trLost)
 							})
 							projectModel.deploymentAddresses = addresses
 							projectModel.saveProject()

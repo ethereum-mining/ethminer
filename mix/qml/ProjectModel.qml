@@ -52,6 +52,11 @@ Item {
 	property string applicationUrlEth
 	property string applicationUrlHttp
 	property string deployBlockNumber
+	property string deploymentTrHashes
+	property string registerContentHashTrHash
+	property string registerUrlTrHash
+	property string registerContentHashBlockNumber
+	property string registerUrlBlockNumber
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
