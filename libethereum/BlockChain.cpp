@@ -137,7 +137,6 @@ BlockChain::BlockChain(bytes const& _genesisBlock, std::unordered_map<Address, A
 	// Initialise with the genesis as the last block on the longest chain.
 	m_genesisBlock = _genesisBlock;
 	m_genesisHash = sha3(RLP(m_genesisBlock)[0].data());
-	m_genesisState = _genesisState;
 
 	// remove the next line real soon. we don't need to be supporting this forever.
 	upgradeDatabase(_path, genesisHash());
