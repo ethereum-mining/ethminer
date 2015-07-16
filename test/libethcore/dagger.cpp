@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE(basic_test)
 		h256 headerHash(o["header_hash"].get_str());
 		Nonce nonce(o["nonce"].get_str());
 		BOOST_REQUIRE_EQUAL(headerHash, header.hashWithout());
-		BOOST_REQUIRE_EQUAL(nonce, header.nonce);
+		BOOST_REQUIRE_EQUAL(nonce, header.nonce());
 
 		unsigned cacheSize(o["cache_size"].get_int());
 		h256 cacheHash(o["cache_hash"].get_str());
@@ -73,9 +73,9 @@ BOOST_AUTO_TEST_CASE(basic_test)
 #endif
 
 		h256 result(o["result"].get_str());
-		EthashProofOfWork::Result r = EthashAux::eval(header);
+		EthashProofOfWork::Result r = EthashAux::eval(header.seedHash(), header.hashWithout(), header.nonce());
 		BOOST_REQUIRE_EQUAL(r.value, result);
-		BOOST_REQUIRE_EQUAL(r.mixHash, header.mixHash);
+		BOOST_REQUIRE_EQUAL(r.mixHash, header.mixHash());
 	}
 }
 

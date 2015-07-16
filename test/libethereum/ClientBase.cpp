@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE(blocks)
 			ETH_CHECK_EQUAL(expectedHashFromNumber, hashFromNumber);
 			
 			// blockInfo
-			auto compareBlockInfos = [](Json::Value const& _b, BlockInfo _blockInfo) -> void
+			auto compareBlockInfos = [](Json::Value const& _b, Ethash::BlockHeader _blockInfo) -> void
 			{
 				LogBloom expectedBlockInfoBloom = LogBloom(fromHex(_b["bloom"].asString()));
 				Address expectedBlockInfoCoinbase = Address(fromHex(_b["coinbase"].asString()));
@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE(blocks)
 				ETH_CHECK_EQUAL(expectedBlockInfoUncldeHash, _blockInfo.sha3Uncles());
 			};
 
-			BlockInfo blockInfo = _client.blockInfo(blockHash);
+			Ethash::BlockHeader blockInfo(_client.bc().headerData(blockHash));
 			compareBlockInfos(blockHeader, blockInfo);
 
 			// blockDetails
