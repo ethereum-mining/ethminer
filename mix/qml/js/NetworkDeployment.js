@@ -287,7 +287,7 @@ function packageDapp(addresses)
 				"\taddress: \"" + addresses[c] + "\"\n" +
 				"};\n" +
 				contractAccessor + ".contractClass = web3.eth.contract(" + contractAccessor + ".interface);\n" +
-				contractAccessor + ".contract = new " + contractAccessor + ".contractClass(" + contractAccessor + ".address);\n";
+				contractAccessor + ".contract = " + contractAccessor + ".contractClass.at(" + contractAccessor + ".address);\n";
 	}
 	fileIo.writeFile(deploymentDir + "deployment.js", deploymentJs);
 	deploymentAddresses = addresses;
