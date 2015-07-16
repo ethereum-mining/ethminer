@@ -29,6 +29,7 @@ using namespace dev::shh;
 
 WhisperDB::WhisperDB()
 {
+	m_readOptions.verify_checksums = true;
 	string path = dev::getDataDir("shh");
 	boost::filesystem::create_directories(path);
 	leveldb::Options op;
@@ -60,6 +61,15 @@ void WhisperDB::insert(dev::h256 const& _key, string const& _value)
 		BOOST_THROW_EXCEPTION(FailedInsertInLevelDB(status.ToString()));
 }
 
+void WhisperDB::insert(dev::h256 const& _key, bytes const& _value)
+{
+	leveldb::Slice k((char const*)_key.data(), _key.size);
+	leveldb::Slice v((char const*)_value.data(), _value.size());
+	leveldb::Status status = m_db->Put(m_writeOptions, k, v);
+	if (!status.ok())
+		BOOST_THROW_EXCEPTION(FailedInsertInLevelDB(status.ToString()));
+}
+
 void WhisperDB::kill(dev::h256 const& _key)
 {
 	leveldb::Slice slice((char const*)_key.data(), _key.size);
@@ -67,3 +77,60 @@ void WhisperDB::kill(dev::h256 const& _key)
 	if (!status.ok())
 		BOOST_THROW_EXCEPTION(FailedDeleteInLevelDB(status.ToString()));
 }
+
+void WhisperDB::loadAll(std::map<h256, Envelope>& o_dst)
+{
+	leveldb::ReadOptions op;
+	op.fill_cache = false;
+	op.verify_checksums = true;
+	vector<string> wasted;
+	unsigned now = (unsigned)time(0);
+	unique_ptr<leveldb::Iterator> it(m_db->NewIterator(op));
+
+	for (it->SeekToFirst(); it->Valid(); it->Next())
+	{
+		leveldb::Slice const k = it->key();
+		leveldb::Slice const v = it->value();
+		bool useless = true;
+
+		try
+		{
+			RLP rlp((byte const*)v.data(), v.size());
+			Envelope e(rlp);
+			h256 h2 = e.sha3();
+			h256 h1;
+
+			if (k.size() == h256::size)
+				h1 = h256((byte const*)k.data(), h256::ConstructFromPointer);
+
+			if (h1 != h2)
+				cwarn << "Corrupted data in Level DB:" << h1.hex() << "versus" << h2.hex();
+			else if (e.expiry() > now)
+			{
+				o_dst[h1] = e;
+				useless = false;
+			}
+		}
+		catch(RLPException const& ex)
+		{
+			cwarn << "RLPException in WhisperDB::loadAll():" << ex.what();
+		}
+		catch(Exception const& ex)
+		{
+			cwarn << "Exception in WhisperDB::loadAll():" << ex.what();
+		}
+
+		if (useless)
+			wasted.push_back(k.ToString());
+	}
+
+	cdebug << "WhisperDB::loadAll(): loaded " << o_dst.size() << ", deleted " << wasted.size() << "messages";
+
+	for (auto const& k: wasted)
+	{
+		leveldb::Status status = m_db->Delete(m_writeOptions, k);
+		if (!status.ok())
+			cwarn << "Failed to delete an entry from Level DB:" << k;
+	}
+}
+
