@@ -6,8 +6,10 @@ import QtQuick.Controls.Styles 1.3
 Rectangle {
 	anchors.fill: parent
 	color: "white"
+	property var worker
 	property variant sel
 	signal selected(string step)
+	id: root
 
 	function refreshCurrent()
 	{
@@ -181,8 +183,11 @@ Rectangle {
 			Action {
 				id: clearDeployAction
 				onTriggered: {
+					worker.forceStopPooling()
 					fileIo.deleteDir(projectModel.deploymentDir)
 					projectModel.cleanDeploymentStatus()
+					root.refreshCurrent()
+					log.text = ""
 				}
 			}
 		}
