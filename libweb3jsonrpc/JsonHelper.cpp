@@ -93,10 +93,10 @@ Json::Value toJson(dev::eth::BlockInfo const& _bi)
 		res["miner"] = toJS(_bi.coinbaseAddress());
 		res["stateRoot"] = toJS(_bi.stateRoot());
 		res["transactionsRoot"] = toJS(_bi.transactionsRoot());
-		res["difficulty"] = toJS(_bi.difficulty);
+		res["difficulty"] = toJS(_bi.difficulty());
 		res["number"] = toJS(_bi.number());
-		res["gasUsed"] = toJS(_bi.gasUsed);
-		res["gasLimit"] = toJS(_bi.gasLimit);
+		res["gasUsed"] = toJS(_bi.gasUsed());
+		res["gasLimit"] = toJS(_bi.gasLimit());
 		res["timestamp"] = toJS(_bi.timestamp());
 		res["extraData"] = toJS(_bi.extraData());
 		res["logsBloom"] = toJS(_bi.logBloom());
@@ -176,7 +176,7 @@ Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
 Json::Value toJson(dev::eth::TransactionReceipt const& _t)
 {
 	Json::Value res;
-	res["stateRoot"] = toJS(_t.stateRoot()());
+	res["stateRoot"] = toJS(_t.stateRoot());
 	res["gasUsed"] = toJS(_t.gasUsed());
 	res["bloom"] = toJS(_t.bloom());
 	res["log"] = dev::toJson(_t.log());

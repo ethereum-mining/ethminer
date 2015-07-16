@@ -21,10 +21,10 @@ if (READLINE_FOUND)
 endif()
 
 if (JSONRPC)
-#	target_link_libraries(${EXECUTABLE} web3jsonrpc)
+	target_link_libraries(${EXECUTABLE} web3jsonrpc)
 endif()
 
-#target_link_libraries(${EXECUTABLE} webthree)
+target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} p2p)
 if (ETHASHCL)
