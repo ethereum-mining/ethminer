@@ -118,12 +118,12 @@ public:
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	std::pair<ImportResult, ImportRoute> attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Default) noexcept;
+	std::pair<ImportResult, ImportRoute> attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Everything) noexcept;
 
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	ImportRoute import(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Default);
-	ImportRoute import(VerifiedBlockRef const& _block, OverlayDB const& _db, ImportRequirements::value _ir = ImportRequirements::Default);
+	ImportRoute import(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Everything);
+	ImportRoute import(VerifiedBlockRef const& _block, OverlayDB const& _db, ImportRequirements::value _ir = ImportRequirements::Everything);
 
 	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
 	bool isKnown(h256 const& _hash) const;
@@ -391,7 +391,8 @@ public:
 		{
 			BlockHeader h(_block, (_ir & ImportRequirements::ValidSeal) ? Strictness::CheckEverything : Strictness::QuickNonce);
 			h.verifyInternals(_block);
-			h.verifyParent(header(h.parentHash()));
+			if ((_ir & ImportRequirements::Parent) != 0)
+				h.verifyParent(header(h.parentHash()));
 			res.info = static_cast<BlockInfo&>(h);
 		}
 		catch (Exception& ex)
