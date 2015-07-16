@@ -130,9 +130,10 @@ struct ImportRequirements
 		TransactionBasic = 8, ///< Check the basic structure of the transactions.
 		UncleSeals = 16, ///< Check the basic structure of the uncles.
 		TransactionSignatures = 32, ///< Check the basic structure of the transactions.
+		Parent = 64, ///< Check parent block header
 		CheckUncles = UncleBasic | UncleSeals, ///< Check uncle seals
 		CheckTransactions = TransactionBasic | TransactionSignatures, ///< Check transaction signatures
-		Default = ValidSeal | DontHave | CheckUncles | CheckTransactions,
+		Everything = ValidSeal | DontHave | CheckUncles | CheckTransactions | Parent,
 		None = 0
 	};
 };

@@ -119,21 +119,21 @@ BOOST_AUTO_TEST_CASE(blocks)
 				h256 expectedBlockInfoUncldeHash = h256(fromHex(_b["uncleHash"].asString()));
 				ETH_CHECK_EQUAL(expectedBlockInfoBloom, _blockInfo.logBloom());
 				ETH_CHECK_EQUAL(expectedBlockInfoCoinbase, _blockInfo.coinbaseAddress());
-				ETH_CHECK_EQUAL(expectedBlockInfoDifficulty, _blockInfo.difficulty);
+				ETH_CHECK_EQUAL(expectedBlockInfoDifficulty, _blockInfo.difficulty());
 				ETH_CHECK_EQUAL_COLLECTIONS(
 					expectedBlockInfoExtraData.begin(),
 					expectedBlockInfoExtraData.end(),
 					_blockInfo.extraData().begin(),
 					_blockInfo.extraData().end()
 				);
-				ETH_CHECK_EQUAL(expectedBlockInfoGasLimit, _blockInfo.gasLimit);
-				ETH_CHECK_EQUAL(expectedBlockInfoGasUsed, _blockInfo.gasUsed);
+				ETH_CHECK_EQUAL(expectedBlockInfoGasLimit, _blockInfo.gasLimit());
+				ETH_CHECK_EQUAL(expectedBlockInfoGasUsed, _blockInfo.gasUsed());
 				ETH_CHECK_EQUAL(expectedBlockInfoHash, _blockInfo.hash());
-				ETH_CHECK_EQUAL(expectedBlockInfoMixHash, _blockInfo.mixHash);
-				ETH_CHECK_EQUAL(expectedBlockInfoNonce, _blockInfo.nonce);
-				ETH_CHECK_EQUAL(expectedBlockInfoNumber, _blockInfo.number);
+				ETH_CHECK_EQUAL(expectedBlockInfoMixHash, _blockInfo.mixHash());
+				ETH_CHECK_EQUAL(expectedBlockInfoNonce, _blockInfo.nonce());
+				ETH_CHECK_EQUAL(expectedBlockInfoNumber, _blockInfo.number());
 				ETH_CHECK_EQUAL(expectedBlockInfoParentHash, _blockInfo.parentHash());
-				ETH_CHECK_EQUAL(expectedBlockInfoReceiptsRoot, _blockInfo..receiptsRoot());
+				ETH_CHECK_EQUAL(expectedBlockInfoReceiptsRoot, _blockInfo.receiptsRoot());
 				ETH_CHECK_EQUAL(expectedBlockInfoTimestamp, _blockInfo.timestamp());
 				ETH_CHECK_EQUAL(expectedBlockInfoTransactionsRoot, _blockInfo.transactionsRoot());
 				ETH_CHECK_EQUAL(expectedBlockInfoUncldeHash, _blockInfo.sha3Uncles());
