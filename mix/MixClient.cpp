@@ -279,7 +279,7 @@ void MixClient::mine()
 	RLPStream header;
 	h.streamRLP(header);
 	m_state.sealBlock(header.out());
-	bc().import(m_state.blockData(), m_state.db(), ImportRequirements::Default & ~ImportRequirements::ValidSeal);
+	bc().import(m_state.blockData(), m_state.db(), ImportRequirements::Everything & ~ImportRequirements::ValidSeal);
 	m_state.sync(bc());
 	m_startState = m_state;
 }
