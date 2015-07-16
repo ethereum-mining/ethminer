@@ -84,17 +84,22 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 
 ldb::Slice dev::eth::toSlice(h256 const& _h, unsigned _sub)
 {
-#if ALL_COMPILERS_ARE_CPP11_COMPLIANT
-	static thread_local h256 h = _h ^ sha3(h256(u256(_sub)));
-	return ldb::Slice((char const*)&h, 32);
-#else
 	static boost::thread_specific_ptr<FixedHash<33>> t_h;
 	if (!t_h.get())
 		t_h.reset(new FixedHash<33>);
 	*t_h = FixedHash<33>(_h);
 	(*t_h)[32] = (uint8_t)_sub;
 	return (ldb::Slice)t_h->ref();//(char const*)t_h.get(), 32);
-#endif
+}
+
+ldb::Slice dev::eth::toSlice(uint64_t _n, unsigned _sub)
+{
+	static boost::thread_specific_ptr<FixedHash<33>> t_h;
+	if (!t_h.get())
+		t_h.reset(new FixedHash<33>);
+	toBigEndian(_n, bytesRef(t_h->data() + 24, 8));
+	(*t_h)[32] = (uint8_t)_sub;
+	return (ldb::Slice)t_h->ref();
 }
 
 namespace dev
@@ -289,7 +294,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 		}
 		try
 		{
-			bytes b = block(queryExtras<BlockHash, ExtraBlockHash>(h256(u256(d)), m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB).value);
+			bytes b = block(queryExtras<BlockHash, uint64_t, ExtraBlockHash>(d, m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB).value);
 
 			BlockInfo bi(&b);
 			if (_prepPoW)
@@ -359,7 +364,8 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 					r = import(block.verified, _stateDB, ImportRequirements::Everything & ~ImportRequirements::ValidSeal & ~ImportRequirements::CheckUncles);
 				fresh += r.liveBlocks;
 				dead += r.deadBlocks;
-				goodTransactions += r.goodTranactions;
+				goodTransactions.reserve(goodTransactions.size() + r.goodTranactions.size());
+				std::move(std::begin(r.goodTranactions), std::end(r.goodTranactions), std::back_inserter(goodTransactions));
 				++count;
 			}
 			catch (dev::eth::UnknownParent)
@@ -947,7 +953,7 @@ void BlockChain::noteUsed(h256 const& _h, unsigned _extra) const
 		m_inUse.insert(id);
 }
 
-template <class T> static unsigned getHashSize(unordered_map<h256, T> const& _map)
+template <class K, class T> static unsigned getHashSize(unordered_map<K, T> const& _map)
 {
 	unsigned ret = 0;
 	for (auto const& i: _map)
@@ -1004,9 +1010,6 @@ void BlockChain::garbageCollect(bool _force)
 			break;
 		case ExtraDetails:
 			m_details.erase(id.first);
-			break;
-		case ExtraBlockHash:
-			m_blockHashes.erase(id.first);
 			break;
 		case ExtraReceipts:
 			m_receipts.erase(id.first);
