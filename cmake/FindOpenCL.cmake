@@ -133,7 +133,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
 	set(OpenCL_LIBRARIES optimized ${OpenCL_LIBRARY} debug ${OpenCL_LIBRARY_DEBUG})
 
-    # prepare dlls
+	# prepare dlls
 	string(REPLACE ".lib" ".dll" OpenCL_DLL ${OpenCL_LIBRARY})
 	string(REPLACE "/lib/" "/bin/" OpenCL_DLL ${OpenCL_DLL})
 	string(REPLACE ".lib" ".dll" OpenCL_DLL_DEBUG ${OpenCL_LIBRARY_DEBUG})
