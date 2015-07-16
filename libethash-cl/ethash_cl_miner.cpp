@@ -87,11 +87,11 @@ std::vector<cl::Platform> ethash_cl_miner::getPlatforms()
 	}
 	catch(cl::Error const& err)
 	{
-		#if defined(CL_PLATFORM_NOT_FOUND_KHR)
+#if defined(CL_PLATFORM_NOT_FOUND_KHR)
 		if (err.err() == CL_PLATFORM_NOT_FOUND_KHR)
 			ETHCL_LOG("No OpenCL platforms found");
 		else
-		#endif
+#endif
 			throw err;
 	}
 	return platforms;
