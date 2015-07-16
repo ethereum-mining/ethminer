@@ -139,6 +139,12 @@ macro(eth_install_executable EXECUTABLE)
 			COMPONENT ${EXECUTABLE}
 		)
 
+		install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/RelWithDebInfo/"
+			DESTINATION bin
+			CONFIGURATIONS RelWithDebInfo
+			COMPONENT ${EXECUTABLE}
+		)
+
 	else()
 		install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin)
 	endif ()

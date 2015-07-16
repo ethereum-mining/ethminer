@@ -38,7 +38,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
 	set(MHD_LIBRARIES optimized ${MHD_LIBRARIES} debug ${MHD_LIBRARY_DEBUG})
 
-    # prepare dlls
+	# prepare dlls
 	string(REPLACE ".lib" ".dll" MHD_DLL ${MHD_LIBRARY})
 	string(REPLACE "/lib/" "/bin/" MHD_DLL ${MHD_DLL})
 	string(REPLACE ".lib" ".dll" MHD_DLL_DEBUG ${MHD_LIBRARY_DEBUG})
@@ -52,4 +52,3 @@ find_package_handle_standard_args(mhd DEFAULT_MSG
 	MHD_INCLUDE_DIR MHD_LIBRARY)
 
 mark_as_advanced(MHD_INCLUDE_DIR MHD_LIBRARY)
-
