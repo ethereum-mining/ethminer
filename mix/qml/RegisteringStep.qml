@@ -27,6 +27,7 @@ Rectangle {
 		applicationUrlHttpCtrl.text = projectModel.applicationUrlHttp
 		visible = true
 
+		verificationEthUrl.text = ""
 		if (projectModel.registerContentHashTrHash !== "")
 		{
 			worker.verifyHash("registerHash", projectModel.registerContentHashTrHash, function(bn, trLost)
@@ -35,6 +36,7 @@ Rectangle {
 			});
 		}
 
+		verificationUrl.text = ""
 		if (projectModel.registerUrlTrHash !== "")
 		{
 			worker.verifyHash("registerUrl", projectModel.registerUrlTrHash, function(bn, trLost)
