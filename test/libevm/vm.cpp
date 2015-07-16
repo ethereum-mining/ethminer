@@ -33,7 +33,7 @@ using namespace dev::eth;
 using namespace dev::test;
 
 FakeExtVM::FakeExtVM(eth::BlockInfo const& _previousBlock, eth::BlockInfo const& _currentBlock, unsigned _depth):			/// TODO: XXX: remove the default argument & fix.
-	ExtVMFace(Address(), Address(), Address(), 0, 1, bytesConstRef(), bytes(), EmptySHA3, _previousBlock, _currentBlock, test::lastHashes(_currentBlock.number), _depth) {}
+	ExtVMFace(Address(), Address(), Address(), 0, 1, bytesConstRef(), bytes(), EmptySHA3, _previousBlock, _currentBlock, test::lastHashes(_currentBlock.number()), _depth) {}
 
 h160 FakeExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _init, OnOpFunc const&)
 {
@@ -84,11 +84,11 @@ mObject FakeExtVM::exportEnv()
 {
 	mObject ret;
 	ret["previousHash"] = toString(currentBlock.parentHash());
-	ret["currentDifficulty"] = toCompactHex(currentBlock.difficulty, HexPrefix::Add, 1);
+	ret["currentDifficulty"] = toCompactHex(currentBlock.difficulty(), HexPrefix::Add, 1);
 	ret["currentTimestamp"] =  toCompactHex(currentBlock.timestamp(), HexPrefix::Add, 1);
 	ret["currentCoinbase"] = toString(currentBlock.coinbaseAddress());
-	ret["currentNumber"] = toCompactHex(currentBlock.number, HexPrefix::Add, 1);
-	ret["currentGasLimit"] = toCompactHex(currentBlock.gasLimit, HexPrefix::Add, 1);
+	ret["currentNumber"] = toCompactHex(currentBlock.number(), HexPrefix::Add, 1);
+	ret["currentGasLimit"] = toCompactHex(currentBlock.gasLimit(), HexPrefix::Add, 1);
 	return ret;
 }
 
@@ -107,7 +107,7 @@ void FakeExtVM::importEnv(mObject& _o)
 	lastHashes = test::lastHashes(currentBlock.number);
 	currentBlock.gasLimit = toInt(_o["currentGasLimit"]);
 	currentBlock.difficulty = toInt(_o["currentDifficulty"]);
-	currentBlock.timestamp() = toInt(_o["currentTimestamp"]);
+	currentBlock.timestamp = toInt(_o["currentTimestamp"]);
 	currentBlock.coinbaseAddress() = Address(_o["currentCoinbase"].get_str());
 }
 
