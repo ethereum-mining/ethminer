@@ -27,7 +27,7 @@ using namespace dev::eth;
 using namespace dev::test;
 
 StateLoader::StateLoader(Json::Value const& _json, std::string const& _dbPath):
-	m_state(State::openDB(_dbPath, WithExisting::Kill), BaseState::Empty)
+	m_state(State::openDB(_dbPath, h256{}, WithExisting::Kill), BaseState::Empty)
 {
 	for (string const& name: _json.getMemberNames())
 	{
