@@ -48,7 +48,7 @@ class WhisperHost: public HostCapability<WhisperPeer>, public Interface, public 
 	friend class WhisperPeer;
 
 public:
-	WhisperHost(bool _useDB = true);
+	WhisperHost(bool _useDB = false);
 	virtual ~WhisperHost();
 	unsigned protocolVersion() const { return WhisperProtocolVersion; }
 	void cleanup(); ///< remove old messages

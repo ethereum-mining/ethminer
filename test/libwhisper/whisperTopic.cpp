@@ -223,7 +223,7 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 	// Host must be configured not to share peers.
 	Host host1("Forwarder", NetworkPreferences("127.0.0.1", 30305, false));
 	host1.setIdealPeerCount(1);
-	auto whost1 = host1.registerCapability(new WhisperHost(false));
+	auto whost1 = host1.registerCapability(new WhisperHost());
 	host1.start();
 	while (!host1.haveNetwork())
 		this_thread::sleep_for(chrono::milliseconds(2));
@@ -252,7 +252,7 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 	{
 		Host host2("Sender", NetworkPreferences("127.0.0.1", 30300, false));
 		host2.setIdealPeerCount(1);
-		shared_ptr<WhisperHost> whost2 = host2.registerCapability(new WhisperHost(false));
+		shared_ptr<WhisperHost> whost2 = host2.registerCapability(new WhisperHost());
 		host2.start();
 		while (!host2.haveNetwork())
 			this_thread::sleep_for(chrono::milliseconds(2));
@@ -269,7 +269,7 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 	{
 		Host ph("Listener", NetworkPreferences("127.0.0.1", 30300, false));
 		ph.setIdealPeerCount(1);
-		shared_ptr<WhisperHost> wh = ph.registerCapability(new WhisperHost(false));
+		shared_ptr<WhisperHost> wh = ph.registerCapability(new WhisperHost());
 		ph.start();
 		while (!ph.haveNetwork())
 			this_thread::sleep_for(chrono::milliseconds(2));
