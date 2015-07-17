@@ -43,33 +43,31 @@ NodeEntry::NodeEntry(NodeId const& _src, Public const& _pubk, NodeIPEndpoint con
 NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint, bool _enabled):
 	m_node(Node(_alias.pub(), _endpoint)),
 	m_secret(_alias.sec()),
-	m_io(_io),
-	m_socket(new NodeSocket(m_io, *this, (bi::udp::endpoint)m_node.endpoint)),
+	m_socket(new NodeSocket(_io, *this, (bi::udp::endpoint)m_node.endpoint)),
 	m_socketPointer(m_socket.get()),
-	m_bucketRefreshTimer(m_io),
-	m_evictionCheckTimer(m_io),
-	m_disabled(!_enabled)
+	m_timers(_io)
 {
 	for (unsigned i = 0; i < s_bins; i++)
-	{
 		m_state[i].distance = i;
-		m_state[i].modified = chrono::steady_clock::now() - chrono::seconds(1);
-	}
 	
-	if (!m_disabled)
+	if (!_enabled)
+		return;
+	
+	try
 	{
 		m_socketPointer->connect();
-		doRefreshBuckets(boost::system::error_code());
+		doDiscovery();
+	}
+	catch (std::exception const& _e)
+	{
+		clog(NetWarn) << "Exception connecting NodeTable socket: " << _e.what();
+		clog(NetWarn) << "Discovery disabled.";
 	}
 }
 	
 NodeTable::~NodeTable()
 {
-	// Cancel scheduled tasks to ensure.
-	m_evictionCheckTimer.cancel();
-	m_bucketRefreshTimer.cancel();
-	
-	// Disconnect socket so that deallocation is safe.
+	m_timers.stop();
 	m_socketPointer->disconnect();
 }
 
@@ -117,16 +115,6 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relati
 	return ret;
 }
 
-void NodeTable::discover()
-{
-	static chrono::steady_clock::time_point s_lastDiscover = chrono::steady_clock::now() - std::chrono::seconds(30);
-	if (chrono::steady_clock::now() > s_lastDiscover + std::chrono::seconds(30))
-	{
-		s_lastDiscover = chrono::steady_clock::now();
-		discover(m_node.id);
-	}
-}
-
 list<NodeId> NodeTable::nodes() const
 {
 	list<NodeId> nodes;
@@ -164,14 +152,17 @@ shared_ptr<NodeEntry> NodeTable::nodeEntry(NodeId _id)
 	return m_nodes.count(_id) ? m_nodes[_id] : shared_ptr<NodeEntry>();
 }
 
-void NodeTable::discover(NodeId _node, unsigned _round, shared_ptr<set<shared_ptr<NodeEntry>>> _tried)
+void NodeTable::doDiscover(NodeId _node, unsigned _round, shared_ptr<set<shared_ptr<NodeEntry>>> _tried)
 {
-	if (!m_socketPointer->isOpen() || _round == s_maxSteps)
+	// NOTE: ONLY called by doDiscovery!
+	
+	if (!m_socketPointer->isOpen())
 		return;
 	
 	if (_round == s_maxSteps)
 	{
 		clog(NodeTableEvent) << "Terminating discover after " << _round << " rounds.";
+		doDiscovery();
 		return;
 	}
 	else if (!_round && !_tried)
@@ -195,6 +186,7 @@ void NodeTable::discover(NodeId _node, unsigned _round, shared_ptr<set<shared_pt
 	if (tried.empty())
 	{
 		clog(NodeTableEvent) << "Terminating discover after " << _round << " rounds.";
+		doDiscovery();
 		return;
 	}
 		
@@ -203,14 +195,12 @@ void NodeTable::discover(NodeId _node, unsigned _round, shared_ptr<set<shared_pt
 		_tried->insert(tried.front());
 		tried.pop_front();
 	}
-	
-	auto self(shared_from_this());
-	m_evictionCheckTimer.expires_from_now(boost::posix_time::milliseconds(c_reqTimeout.count() * 2));
-	m_evictionCheckTimer.async_wait([this, self, _node, _round, _tried](boost::system::error_code const& _ec)
+
+	m_timers.schedule(c_reqTimeout.count() * 2, [this, _node, _round, _tried](boost::system::error_code const& _ec)
 	{
 		if (_ec)
-			return;
-		discover(_node, _round + 1, _tried);
+			clog(NodeTableWarn) << "Discovery timer canceled!";
+		doDiscover(_node, _round + 1, _tried);
 	});
 }
 
@@ -310,15 +300,15 @@ void NodeTable::evict(shared_ptr<NodeEntry> _leastSeen, shared_ptr<NodeEntry> _n
 	if (!m_socketPointer->isOpen())
 		return;
 	
-	unsigned ec;
+	unsigned evicts;
 	DEV_GUARDED(x_evictions)
 	{
 		m_evictions.push_back(EvictionTimeout(make_pair(_leastSeen->id,chrono::steady_clock::now()), _new->id));
-		ec = m_evictions.size();
+		evicts = m_evictions.size();
 	}
 
-	if (ec == 1)
-		doCheckEvictions(boost::system::error_code());
+	if (evicts == 1)
+		doCheckEvictions();
 	ping(_leastSeen.get());
 }
 
@@ -348,14 +338,15 @@ void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _en
 			
 			if (s.nodes.size() >= s_bucketSize)
 			{
+				if (removed)
+					clog(NodeTableWarn) << "DANGER: Bucket overflow when swapping node position.";
+				
 				// It's only contested iff nodeentry exists
 				contested = s.nodes.front().lock();
 				if (!contested)
 				{
 					s.nodes.pop_front();
 					s.nodes.push_back(node);
-					s.touch();
-					
 					if (!removed && m_nodeEventHandler)
 						m_nodeEventHandler->appendEvent(node->id, NodeEntryAdded);
 				}
@@ -363,8 +354,6 @@ void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _en
 			else
 			{
 				s.nodes.push_back(node);
-				s.touch();
-				
 				if (!removed && m_nodeEventHandler)
 					m_nodeEventHandler->appendEvent(node->id, NodeEntryAdded);
 			}
@@ -576,14 +565,9 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	}
 }
 
-void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)
+void NodeTable::doCheckEvictions()
 {
-	if (_ec || !m_socketPointer->isOpen())
-		return;
-
-	auto self(shared_from_this());
-	m_evictionCheckTimer.expires_from_now(c_evictionCheckInterval);
-	m_evictionCheckTimer.async_wait([this, self](boost::system::error_code const& _ec)
+	m_timers.schedule(c_evictionCheckInterval.count(), [this](boost::system::error_code const& _ec)
 	{
 		if (_ec)
 			return;
@@ -605,28 +589,23 @@ void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)
 			dropNode(n);
 		
 		if (evictionsRemain)
-			doCheckEvictions(boost::system::error_code());
+			doCheckEvictions();
 	});
 }
 
-void NodeTable::doRefreshBuckets(boost::system::error_code const& _ec)
+void NodeTable::doDiscovery()
 {
-	if (_ec)
-		return;
-
-	clog(NodeTableEvent) << "refreshing buckets";
-	bool connected = m_socketPointer->isOpen();
-	if (connected)
+	m_timers.schedule(c_bucketRefresh.count(), [this](boost::system::error_code const& ec)
 	{
+		if (ec)
+			return;
+		
+		clog(NodeTableEvent) << "performing random discovery";
 		NodeId randNodeId;
 		crypto::Nonce::get().ref().copyTo(randNodeId.ref().cropped(0, h256::size));
 		crypto::Nonce::get().ref().copyTo(randNodeId.ref().cropped(h256::size, h256::size));
-		discover(randNodeId);
-	}
-
-	auto runcb = [this](boost::system::error_code const& error) { doRefreshBuckets(error); };
-	m_bucketRefreshTimer.expires_from_now(boost::posix_time::milliseconds(c_bucketRefresh.count()));
-	m_bucketRefreshTimer.async_wait(runcb);
+		doDiscover(randNodeId);
+	});
 }
 
 void PingNode::streamRLP(RLPStream& _s) const
