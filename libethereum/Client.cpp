@@ -22,6 +22,7 @@
 #include "Client.h"
 
 #include <chrono>
+#include <memory>
 #include <thread>
 #include <boost/filesystem.hpp>
 #if ETH_JSONRPC || !ETH_TRUE
@@ -31,6 +32,7 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libp2p/Host.h>
+#include <libethcore/Ethash.h>
 #if ETH_JSONRPC || !ETH_TRUE
 #include "Sentinel.h"
 #endif
@@ -70,46 +72,42 @@ static const Addresses c_canaries =
 	Address("ace7813896a84d3f5f80223916a5353ab16e46e6")			// christoph
 };
 
-VersionChecker::VersionChecker(string const& _dbPath)
-{
-	upgradeDatabase(_dbPath);
-}
-
-Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId):
-	Client(_extNet, make_shared<TrivialGasPricer>(), _dbPath, _forceAction, _networkId)
-{
-	startWorking();
-}
-
-Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId):
+Client::Client(std::shared_ptr<GasPricer> _gp):
 	Worker("eth", 0),
-	m_vc(_dbPath),
-	m_bc(_dbPath, _forceAction, [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; }),
-	m_gp(_gp),
-	m_stateDB(State::openDB(_dbPath, _forceAction)),
-	m_preMine(m_stateDB, BaseState::CanonGenesis),
-	m_postMine(m_stateDB)
+	m_gp(_gp ? _gp : make_shared<TrivialGasPricer>())
 {
-	if (_forceAction == WithExisting::Rescue)
-		m_bc.rescue(m_stateDB);
+}
+
+void Client::init(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId)
+{
+	// Cannot be opened until after blockchain is open, since BlockChain may upgrade the database.
+	// TODO: consider returning the upgrade mechanism here. will delaying the opening of the blockchain database
+	// until after the construction.
+	m_stateDB = State::openDB(_dbPath, bc().genesisHash(), _forceAction);
+	// LAZY. TODO: move genesis state construction/commiting to stateDB openning and have this just take the root from the genesis block.
+	m_preMine = bc().genesisState(m_stateDB);
+	m_postMine = m_preMine;
+
+	m_bq.setChain(bc());
 
 	m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds(30);
 	m_tqReady = m_tq.onReady([=](){ this->onTransactionQueueReady(); });	// TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
 	m_bqReady = m_bq.onReady([=](){ this->onBlockQueueReady(); });			// TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
 	m_bq.setOnBad([=](Exception& ex){ this->onBadBlock(ex); });
-	m_bc.setOnBad([=](Exception& ex){ this->onBadBlock(ex); });
-	m_farm.onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
+	bc().setOnBad([=](Exception& ex){ this->onBadBlock(ex); });
 
-	m_gp->update(m_bc);
+	if (_forceAction == WithExisting::Rescue)
+		bc().rescue(m_stateDB);
 
-	auto host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
+	m_gp->update(bc());
+
+	auto host = _extNet->registerCapability(new EthereumHost(bc(), m_tq, m_bq, _networkId));
 	m_host = host;
 	_extNet->addCapability(host, EthereumHost::staticName(), EthereumHost::c_oldProtocolVersion); //TODO: remove this one v61+ protocol is common
 
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	doWork();
-
 	startWorking();
 }
 
@@ -122,13 +120,13 @@ ImportResult Client::queueBlock(bytes const& _block, bool _isSafe)
 {
 	if (m_bq.status().verified + m_bq.status().verifying + m_bq.status().unverified > 10000)
 		this_thread::sleep_for(std::chrono::milliseconds(500));
-	return m_bq.import(&_block, bc(), _isSafe);
+	return m_bq.import(&_block, _isSafe);
 }
 
 tuple<ImportRoute, bool, unsigned> Client::syncQueue(unsigned _max)
 {
 	stopWorking();
-	return m_bc.sync(m_bq, m_stateDB, _max);
+	return bc().sync(m_bq, m_stateDB, _max);
 }
 
 void Client::onBadBlock(Exception& _ex) const
@@ -291,7 +289,7 @@ void Client::startedWorking()
 	clog(ClientTrace) << "startedWorking()";
 
 	DEV_WRITE_GUARDED(x_preMine)
-		m_preMine.sync(m_bc);
+		m_preMine.sync(bc());
 	DEV_READ_GUARDED(x_preMine)
 	{
 		DEV_WRITE_GUARDED(x_working)
@@ -306,7 +304,7 @@ void Client::doneWorking()
 	// Synchronise the state according to the head of the block chain.
 	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
 	DEV_WRITE_GUARDED(x_preMine)
-		m_preMine.sync(m_bc);
+		m_preMine.sync(bc());
 	DEV_READ_GUARDED(x_preMine)
 	{
 		DEV_WRITE_GUARDED(x_working)
@@ -325,7 +323,7 @@ void Client::killChain()
 
 	m_tq.clear();
 	m_bq.clear();
-	m_farm.stop();
+	m_sealEngine->cancelGeneration();
 
 	{
 		WriteGuard l(x_postMine);
@@ -337,10 +335,10 @@ void Client::killChain()
 		m_working = State();
 
 		m_stateDB = OverlayDB();
-		m_stateDB = State::openDB(Defaults::dbPath(), WithExisting::Kill);
-		m_bc.reopen(Defaults::dbPath(), WithExisting::Kill);
+		m_stateDB = State::openDB(Defaults::dbPath(), bc().genesisHash(), WithExisting::Kill);
+		bc().reopen(Defaults::dbPath(), WithExisting::Kill);
 
-		m_preMine = State(m_stateDB, BaseState::CanonGenesis);
+		m_preMine = bc().genesisState(m_stateDB);
 		m_postMine = State(m_stateDB);
 	}
 
@@ -412,7 +410,7 @@ void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& 
 void Client::appendFromBlock(h256 const& _block, BlockPolarity _polarity, h256Hash& io_changed)
 {
 	// TODO: more precise check on whether the txs match.
-	auto receipts = m_bc.receipts(_block).receipts;
+	auto receipts = bc().receipts(_block).receipts;
 
 	Guard l(x_filtersWatches);
 	io_changed.insert(ChainChangedFilter);
@@ -443,17 +441,22 @@ void Client::setForceMining(bool _enable)
 		startMining();
 }
 
-MiningProgress Client::miningProgress() const
+bool Client::isMining() const
 {
-	if (m_farm.isMining())
-		return m_farm.miningProgress();
-	return MiningProgress();
+	return Ethash::isWorking(m_sealEngine.get());
+}
+
+WorkingProgress Client::miningProgress() const
+{
+	if (Ethash::isWorking(m_sealEngine.get()))
+		return Ethash::workingProgress(m_sealEngine.get());
+	return WorkingProgress();
 }
 
 uint64_t Client::hashrate() const
 {
-	if (m_farm.isMining())
-		return m_farm.miningProgress().rate();
+	if (Ethash::isWorking(m_sealEngine.get()))
+		return Ethash::workingProgress(m_sealEngine.get()).rate();
 	return 0;
 }
 
@@ -498,45 +501,6 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 	return ret;
 }
 
-ProofOfWork::WorkPackage Client::getWork()
-{
-	// lock the work so a later submission isn't invalidated by processing a transaction elsewhere.
-	// this will be reset as soon as a new block arrives, allowing more transactions to be processed.
-	bool oldShould = shouldServeWork();
-	m_lastGetWork = chrono::system_clock::now();
-
-	if (!m_mineOnBadChain && isChainBad())
-		return ProofOfWork::WorkPackage();
-
-	// if this request has made us bother to serve work, prep it now.
-	if (!oldShould && shouldServeWork())
-		onPostStateChanged();
-	else
-		// otherwise, set this to true so that it gets prepped next time.
-		m_remoteWorking = true;
-	return ProofOfWork::package(m_miningInfo);
-}
-
-bool Client::submitWork(ProofOfWork::Solution const& _solution)
-{
-	bytes newBlock;
-	DEV_WRITE_GUARDED(x_working)
-		if (!m_working.completeMine<ProofOfWork>(_solution))
-			return false;
-
-	DEV_READ_GUARDED(x_working)
-	{
-		DEV_WRITE_GUARDED(x_postMine)
-			m_postMine = m_working;
-		newBlock = m_working.blockData();
-	}
-
-	// OPTIMISE: very inefficient to not utilise the existing OverlayDB in m_postMine that contains all trie changes.
-	m_bq.import(&newBlock, m_bc, true);
-
-	return true;
-}
-
 unsigned static const c_syncMin = 1;
 unsigned static const c_syncMax = 1000;
 double static const c_targetDuration = 1;
@@ -547,7 +511,7 @@ void Client::syncBlockQueue()
 	ImportRoute ir;
 	unsigned count;
 	Timer t;
-	tie(ir, m_syncBlockQueue, count) = m_bc.sync(m_bq, m_stateDB, m_syncAmount);
+	tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_syncAmount);
 	double elapsed = t.elapsed();
 
 	if (count)
@@ -571,7 +535,7 @@ void Client::syncTransactionQueue()
 	TransactionReceipts newPendingReceipts;
 
 	DEV_WRITE_GUARDED(x_working)
-		tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(m_bc, m_tq, *m_gp);
+		tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(bc(), m_tq, *m_gp);
 
 	if (newPendingReceipts.empty())
 		return;
@@ -584,7 +548,7 @@ void Client::syncTransactionQueue()
 		for (size_t i = 0; i < newPendingReceipts.size(); i++)
 			appendFromNewPending(newPendingReceipts[i], changeds, m_postMine.pending()[i].sha3());
 
-	// Tell farm about new transaction (i.e. restartProofOfWork mining).
+	// Tell farm about new transaction (i.e. restart mining).
 	onPostStateChanged();
 
 	// Tell watches about the new transactions.
@@ -601,7 +565,7 @@ void Client::onDeadBlocks(h256s const& _blocks, h256Hash& io_changed)
 	for (auto const& h: _blocks)
 	{
 		clog(ClientTrace) << "Dead block:" << h;
-		for (auto const& t: m_bc.transactions(h))
+		for (auto const& t: bc().transactions(h))
 		{
 			clog(ClientTrace) << "Resubmitting dead-block transaction " << Transaction(t, CheckTransaction::None);
 			m_tq.import(t, IfDropped::Retry);
@@ -637,7 +601,7 @@ void Client::restartMining()
 			newPreMine = m_preMine;
 
 		// TODO: use m_postMine to avoid re-evaluating our own blocks.
-		preChanged = newPreMine.sync(m_bc);
+		preChanged = newPreMine.sync(bc());
 
 		if (preChanged || m_postMine.address() != m_preMine.address())
 		{
@@ -706,7 +670,7 @@ void Client::rejigMining()
 	{
 		clog(ClientTrace) << "Rejigging mining...";
 		DEV_WRITE_GUARDED(x_working)
-			m_working.commitToMine(m_bc, m_extraData);
+			m_working.commitToMine(bc(), m_extraData);
 		DEV_READ_GUARDED(x_working)
 		{
 			DEV_WRITE_GUARDED(x_postMine)
@@ -715,19 +679,10 @@ void Client::rejigMining()
 		}
 
 		if (m_wouldMine)
-		{
-			m_farm.setWork(m_miningInfo);
-			if (m_turboMining)
-				m_farm.startGPU();
-			else
-				m_farm.startCPU();
-
-			m_farm.setWork(m_miningInfo);
-			Ethash::ensurePrecomputed(m_bc.number());
-		}
+			m_sealEngine->generateSeal(m_miningInfo);
 	}
 	if (!m_wouldMine)
-		m_farm.stop();
+		m_sealEngine->cancelGeneration();
 }
 
 void Client::noteChanged(h256Hash const& _filters)
@@ -783,7 +738,7 @@ void Client::tick()
 	{
 		m_report.ticks++;
 		checkWatchGarbage();
-		m_bq.tick(m_bc);
+		m_bq.tick();
 		m_lastTick = chrono::system_clock::now();
 		if (m_report.ticks == 15)
 			clog(ClientTrace) << activityReport();
@@ -807,7 +762,7 @@ void Client::checkWatchGarbage()
 			uninstallWatch(i);
 
 		// blockchain GC
-		m_bc.garbageCollect();
+		bc().garbageCollect();
 
 		m_lastGarbageCollection = chrono::system_clock::now();
 	}
@@ -839,7 +794,7 @@ State Client::state(unsigned _txi, h256 _block) const
 	try
 	{
 		State ret(m_stateDB);
-		ret.populateFromChain(m_bc, _block);
+		ret.populateFromChain(bc(), _block);
 		return ret.fromPending(_txi);
 	}
 	catch (Exception& ex)
@@ -855,7 +810,7 @@ State Client::state(h256 const& _block, PopulationStatistics* o_stats) const
 	try
 	{
 		State ret(m_stateDB);
-		PopulationStatistics s = ret.populateFromChain(m_bc, _block);
+		PopulationStatistics s = ret.populateFromChain(bc(), _block);
 		if (o_stats)
 			swap(s, *o_stats);
 		return ret;
@@ -886,3 +841,61 @@ SyncStatus Client::syncStatus() const
 	auto h = m_host.lock();
 	return h ? h->status() : SyncStatus();
 }
+
+bool Client::submitSealed(bytes const& _header)
+{
+	DEV_WRITE_GUARDED(x_working)
+		if (!m_working.sealBlock(_header))
+			return false;
+
+	bytes newBlock;
+	DEV_READ_GUARDED(x_working)
+	{
+		DEV_WRITE_GUARDED(x_postMine)
+			m_postMine = m_working;
+		newBlock = m_working.blockData();
+	}
+
+	// OPTIMISE: very inefficient to not utilise the existing OverlayDB in m_postMine that contains all trie changes.
+	return m_bq.import(&newBlock, true) == ImportResult::Success;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+std::tuple<h256, h256, h256> EthashClient::getEthashWork()
+{
+	// lock the work so a later submission isn't invalidated by processing a transaction elsewhere.
+	// this will be reset as soon as a new block arrives, allowing more transactions to be processed.
+	bool oldShould = shouldServeWork();
+	m_lastGetWork = chrono::system_clock::now();
+
+	if (!m_mineOnBadChain && isChainBad())
+		return std::tuple<h256, h256, h256>();
+
+	// if this request has made us bother to serve work, prep it now.
+	if (!oldShould && shouldServeWork())
+		onPostStateChanged();
+	else
+		// otherwise, set this to true so that it gets prepped next time.
+		m_remoteWorking = true;
+	Ethash::BlockHeader bh = Ethash::BlockHeader(m_miningInfo);
+	return std::tuple<h256, h256, h256>(bh.boundary(), bh.hashWithout(), bh.seedHash());
+}
+
+bool EthashClient::submitEthashWork(h256 const& _mixHash, h64 const& _nonce)
+{
+	Ethash::manuallySubmitWork(m_sealEngine.get(), _mixHash, _nonce);
+	return true;
+}
+

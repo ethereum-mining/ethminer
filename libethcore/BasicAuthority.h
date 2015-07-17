@@ -14,65 +14,59 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Ethash.h
+/** @file BasicAuthority.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  *
- * A proof of work algorithm.
+ * Determines the PoW algorithm.
  */
 
 #pragma once
 
-#include <chrono>
-#include <thread>
-#include <cstdint>
-#include <libdevcore/CommonIO.h>
+#include <libdevcore/RLP.h>
+#include <libdevcrypto/Common.h>
+#include "BlockInfo.h"
 #include "Common.h"
-#include "Miner.h"
-#include "Farm.h"
 #include "Sealer.h"
 
-class ethash_cl_miner;
+class BasicAuthoritySeal;
+class BasicAuthoritySealEngine;
 
 namespace dev
 {
-
-class RLP;
-class RLPStream;
-
 namespace eth
 {
 
-class BlockInfo;
-class EthashCLHook;
-
-class Ethash
+/**
+ * The proof of work algorithm base type.
+ *
+ * Must implement a basic templated interface, including:
+ * typename Result
+ * typename Solution
+ * typename CPUMiner
+ * typename GPUMiner
+ * and a few others. TODO
+ */
+class BasicAuthority
 {
+	friend class ::BasicAuthoritySealEngine;
+
 public:
-	static std::string name();
-	static unsigned revision();
+	static std::string name() { return "BasicAuthority"; }
+	static unsigned revision() { return 0; }
 	static SealEngineFace* createSealEngine();
-
-	using Nonce = h64;
-
-	static void manuallySubmitWork(SealEngineFace* _engine, h256 const& _mixHash, Nonce _nonce);
-	static bool isWorking(SealEngineFace* _engine);
-	static WorkingProgress workingProgress(SealEngineFace* _engine);
 
 	class BlockHeaderRaw: public BlockInfo
 	{
-		friend class EthashSealEngine;
+		friend class ::BasicAuthoritySealEngine;
 
 	public:
-		static const unsigned SealFields = 2;
+		static const unsigned SealFields = 1;
 
 		bool verify() const;
 		bool preVerify() const;
 
-		void prep(std::function<int(unsigned)> const& _f = std::function<int(unsigned)>()) const;
-		h256 const& seedHash() const;
-		Nonce const& nonce() const { return m_nonce; }
-		h256 const& mixHash() const { return m_mixHash; }
+		Signature sig() const { return m_sig; }
 
 		StringHashMap jsInfo() const;
 
@@ -83,21 +77,17 @@ public:
 		void populateFromHeader(RLP const& _header, Strictness _s);
 		void populateFromParent(BlockHeaderRaw const& _parent);
 		void verifyParent(BlockHeaderRaw const& _parent);
-		void clear() { m_mixHash = h256(); m_nonce = Nonce(); }
-		void noteDirty() const { m_seedHash = h256(); }
-		void streamRLPFields(RLPStream& _s) const { _s << m_mixHash << m_nonce; }
+		void streamRLPFields(RLPStream& _s) const { _s << m_sig; }
+		void clear() { m_sig = Signature(); }
+		void noteDirty() const {}
 
 	private:
-		Nonce m_nonce;
-		h256 m_mixHash;
-
-		mutable h256 m_seedHash;
-		mutable h256 m_hash;						///< SHA3 hash of the block header! Not serialised.
+		Signature m_sig;
 	};
 	using BlockHeader = BlockHeaderPolished<BlockHeaderRaw>;
 
-	// TODO: Move elsewhere (EthashAux?)
-	static void ensurePrecomputed(unsigned _number);
+private:
+	static AddressHash s_authorities;
 };
 
 }

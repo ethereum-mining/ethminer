@@ -111,7 +111,7 @@ void BlockChainSync::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
 unsigned BlockChainSync::estimatedHashes() const
 {
 	BlockInfo block = host().chain().info();
-	time_t lastBlockTime = (block.hash() == host().chain().genesisHash()) ? 1428192000 : (time_t)block.timestamp;
+	time_t lastBlockTime = (block.hash() == host().chain().genesisHash()) ? 1428192000 : (time_t)block.timestamp();
 	time_t now = time(0);
 	unsigned blockCount = c_chainReorgSize;
 	if (lastBlockTime > now)
@@ -183,11 +183,11 @@ void BlockChainSync::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const
 
 	for (unsigned i = 0; i < itemCount; ++i)
 	{
-		auto h = BlockInfo::headerHash(_r[i].data());
+		auto h = BlockInfo::headerHashFromBlock(_r[i].data());
 		if (_peer->m_sub.noteBlock(h))
 		{
 			_peer->addRating(10);
-			switch (host().bq().import(_r[i].data(), host().chain()))
+			switch (host().bq().import(_r[i].data()))
 			{
 			case ImportResult::Success:
 				success++;
@@ -219,11 +219,10 @@ void BlockChainSync::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const
 				logNewBlock(h);
 				if (m_state == SyncState::NewBlocks)
 				{
-					BlockInfo bi;
-					bi.populateFromHeader(_r[i][0]);
-					if (bi.number > maxUnknownNumber)
+					BlockInfo bi(_r[i].data());
+					if (bi.number() > maxUnknownNumber)
 					{
-						maxUnknownNumber = bi.number;
+						maxUnknownNumber = bi.number();
 						maxUnknown = h;
 					}
 				}
@@ -268,13 +267,13 @@ void BlockChainSync::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP con
 {
 	DEV_INVARIANT_CHECK;
 	RecursiveGuard l(x_sync);
-	auto h = BlockInfo::headerHash(_r[0].data());
+	auto h = BlockInfo::headerHashFromBlock(_r[0].data());
 
 	if (_r.itemCount() != 2)
 		_peer->disable("NewBlock without 2 data fields.");
 	else
 	{
-		switch (host().bq().import(_r[0].data(), host().chain()))
+		switch (host().bq().import(_r[0].data()))
 		{
 		case ImportResult::Success:
 			_peer->addRating(100);
@@ -916,26 +915,23 @@ void PV61Sync::requestSubchain(std::shared_ptr<EthereumPeer> _peer)
 	if (syncPeer != m_chainSyncPeers.end())
 	{
 		// Already downoading, request next batch
-		h256s& d = m_downloadingChainMap.at(syncPeer->second);
-		_peer->requestHashes(d.back());
+		SubChain const& s = m_downloadingChainMap.at(syncPeer->second);
+		_peer->requestHashes(s.lastHash);
 	}
 	else if (needsSyncing(_peer))
 	{
 		if (!m_readyChainMap.empty())
 		{
 			clog(NetAllDetail) << "Helping with hashchin download";
-			h256s& d = m_readyChainMap.begin()->second;
-			_peer->requestHashes(d.back());
-			m_downloadingChainMap[m_readyChainMap.begin()->first] = move(d);
+			SubChain& s = m_readyChainMap.begin()->second;
+			_peer->requestHashes(s.lastHash);
+			m_downloadingChainMap[m_readyChainMap.begin()->first] = move(s);
 			m_chainSyncPeers[_peer] = m_readyChainMap.begin()->first;
 			m_readyChainMap.erase(m_readyChainMap.begin());
 		}
 		else if (!m_downloadingChainMap.empty() && m_hashScanComplete)
-		{
 			// Lead syncer is done, just grab whatever we can
-			h256s& d = m_downloadingChainMap.begin()->second;
-			_peer->requestHashes(d.back());
-		}
+			_peer->requestHashes(m_downloadingChainMap.begin()->second.lastHash);
 	}
 }
 
@@ -974,7 +970,7 @@ void PV61Sync::completeSubchain(std::shared_ptr<EthereumPeer> _peer, unsigned _n
 		//Done chain-get
 		m_syncingNeededBlocks.clear();
 		for (auto h = m_completeChainMap.rbegin(); h != m_completeChainMap.rend(); ++h)
-			m_syncingNeededBlocks.insert(m_syncingNeededBlocks.end(), h->second.begin(), h->second.end());
+			m_syncingNeededBlocks.insert(m_syncingNeededBlocks.end(), h->second.hashes.begin(), h->second.hashes.end());
 		m_completeChainMap.clear();
 		m_knownHashes.clear();
 		m_syncingBlockNumber = 0;
@@ -1010,7 +1006,7 @@ void PV61Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _h
 		if (isSyncing(_peer) && _peer->m_syncHashNumber == m_syncingBlockNumber)
 		{
 			// End of hash chain, add last chunk to download
-			m_readyChainMap.insert(make_pair(m_syncingBlockNumber, h256s { _peer->m_latestHash }));
+			m_readyChainMap.insert(make_pair(m_syncingBlockNumber, SubChain{ h256s{ _peer->m_latestHash }, _peer->m_latestHash }));
 			m_hashScanComplete = true;
 			_peer->m_syncHashNumber = 0;
 			requestSubchain(_peer);
@@ -1038,7 +1034,7 @@ void PV61Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _h
 		// Got new subchain marker
 		assert(_hashes.size() == 1);
 		m_knownHashes.insert(_hashes[0]);
-		m_readyChainMap.insert(make_pair(m_syncingBlockNumber, h256s { _hashes[0] }));
+		m_readyChainMap.insert(make_pair(m_syncingBlockNumber, SubChain{ h256s{ _hashes[0] }, _hashes[0] }));
 		if ((m_readyChainMap.size() + m_downloadingChainMap.size() + m_completeChainMap.size()) * c_hashSubchainSize > _peer->m_expectedHashes)
 		{
 			_peer->disable("Too many hashes from lead peer");
@@ -1056,7 +1052,7 @@ void PV61Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _h
 		{
 			//check downlading peers
 			for (auto const& downloader: m_downloadingChainMap)
-				if (downloader.second.back() == _peer->m_syncHash)
+				if (downloader.second.lastHash == _peer->m_syncHash)
 				{
 					number = downloader.first;
 					break;
@@ -1071,7 +1067,7 @@ void PV61Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _h
 		}
 
 		auto downloadingPeer = m_downloadingChainMap.find(number);
-		if (downloadingPeer == m_downloadingChainMap.end() || downloadingPeer->second.back() != _peer->m_syncHash)
+		if (downloadingPeer == m_downloadingChainMap.end() || downloadingPeer->second.lastHash != _peer->m_syncHash)
 		{
 			// Too late, other peer has already downloaded our hashes
 			m_chainSyncPeers.erase(_peer);
@@ -1079,7 +1075,7 @@ void PV61Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _h
 			return;
 		}
 
-		h256s& hashes = downloadingPeer->second;
+		SubChain& subChain = downloadingPeer->second;
 		unsigned knowns = 0;
 		unsigned unknowns = 0;
 		for (unsigned i = 0; i < _hashes.size(); ++i)
@@ -1111,13 +1107,14 @@ void PV61Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _h
 			else if (status == QueueStatus::Unknown)
 			{
 				unknowns++;
-				hashes.push_back(h);
+				subChain.hashes.push_back(h);
 			}
 			else
 				knowns++;
+			subChain.lastHash = h;
 		}
-		clog(NetMessageSummary) << knowns << "knowns," << unknowns << "unknowns; now at" << hashes.back();
-		if (hashes.size() > c_hashSubchainSize)
+		clog(NetMessageSummary) << knowns << "knowns," << unknowns << "unknowns; now at" << subChain.lastHash;
+		if (subChain.hashes.size() > c_hashSubchainSize)
 		{
 			_peer->disable("Too many subchain hashes");
 			restartSync();
@@ -1175,11 +1172,11 @@ SyncStatus PV61Sync::status() const
 	{
 		res.hashesReceived = 0;
 		for (auto const& d : m_readyChainMap)
-			res.hashesReceived += d.second.size();
+			res.hashesReceived += d.second.hashes.size();
 		for (auto const& d : m_downloadingChainMap)
-			res.hashesReceived += d.second.size();
+			res.hashesReceived += d.second.hashes.size();
 		for (auto const& d : m_completeChainMap)
-			res.hashesReceived += d.second.size();
+			res.hashesReceived += d.second.hashes.size();
 	}
 	return res;
 }

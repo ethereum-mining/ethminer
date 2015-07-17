@@ -19,6 +19,7 @@
  * @date 2015
  */
 
+#include <libethereum/CanonBlockChain.h>
 #include "BlockChainLoader.h"
 #include "StateLoader.h"
 #include "Common.h"
@@ -35,8 +36,8 @@ BlockChainLoader::BlockChainLoader(Json::Value const& _json)
 	m_state = sl.state();
 
 	// load genesisBlock
-	m_bc.reset(new BlockChain(fromHex(_json["genesisRLP"].asString()), m_dir.path(), WithExisting::Kill));
-	assert(m_state.rootHash() == m_bc->info().stateRoot);
+	m_bc.reset(new FullBlockChain<Ethash>(fromHex(_json["genesisRLP"].asString()), sl.stateDefinition(), m_dir.path(), WithExisting::Kill));
+	assert(m_state.rootHash() == m_bc->info().stateRoot());
 
 	// load blocks
 	for (auto const& block: _json["blocks"])

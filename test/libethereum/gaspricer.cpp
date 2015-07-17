@@ -20,6 +20,7 @@
  */
 
 #include <libtestutils/BlockChainLoader.h>
+#include <libethcore/Ethash.h>
 #include <libethereum/BlockChain.h>
 #include <libethereum/GasPricer.h>
 #include <libethereum/BasicGasPricer.h>
@@ -54,7 +55,7 @@ BOOST_AUTO_TEST_CASE(trivialGasPricer)
 	std::shared_ptr<dev::eth::GasPricer> gp(new TrivialGasPricer);
 	BOOST_CHECK_EQUAL(gp->ask(State()), 10 * szabo);
 	BOOST_CHECK_EQUAL(gp->bid(), 10 * szabo);
-	gp->update(BlockChain(bytes(), TransientDirectory().path(), WithExisting::Kill));
+	gp->update(FullBlockChain<Ethash>(bytes(), StateDefinition(), TransientDirectory().path(), WithExisting::Kill));
 	BOOST_CHECK_EQUAL(gp->ask(State()), 10 * szabo);
 	BOOST_CHECK_EQUAL(gp->bid(), 10 * szabo);
 }

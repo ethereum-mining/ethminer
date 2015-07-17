@@ -14,34 +14,13 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ProofOfWork.h
+/** @file Sealer.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
- *
- * Determines the PoW algorithm.
  */
 
-#pragma once
+#include "Sealer.h"
+using namespace std;
+using namespace dev;
+using namespace eth;
 
-#include "Ethash.h"
-
-namespace dev
-{
-namespace eth
-{
-
-/**
- * The proof of work algorithm base type.
- *
- * Must implement a basic templated interface, including:
- * typename Result
- * typename Solution
- * typename CPUMiner
- * typename GPUMiner
- * void assignResult(BlockInfo&, Result)
- * and a few others. TODO
- */
-using ProofOfWork = Ethash;
-
-}
-}
