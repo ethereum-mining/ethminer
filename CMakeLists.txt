@@ -44,7 +44,7 @@ option(TESTS "Build the tests." ON)
 option(NOBOOST "No use of boost macros in test functions" OFF)
 option(EVMJIT "Build just-in-time compiler for EVM code (requires LLVM)" OFF)
 option(ETHASHCL "Build in support for GPU mining via OpenCL" OFF)
-option(JSCONSOLE "Build in javascript console" OFF)
+option(JSCONSOLE "Build in javascript console" ON)
 
 # propagates CMake configuration options to the compiler
 function(configureProject)
@@ -219,6 +219,9 @@ if (GUI)
 	set(JSONRPC ON)
 endif()
 
+# note: The value "default" which provides the defaults is just a fake value
+# which lets us keep the default values of all build options and is set at
+# the beginning of this file.
 if (BUNDLE STREQUAL "minimal")
 	set(SERPENT OFF)
 	set(SOLIDITY OFF)
