@@ -137,7 +137,6 @@ BlockChain::BlockChain(bytes const& _genesisBlock, std::unordered_map<Address, A
 	// Initialise with the genesis as the last block on the longest chain.
 	m_genesisBlock = _genesisBlock;
 	m_genesisHash = sha3(RLP(m_genesisBlock)[0].data());
-	m_genesisState = _genesisState;
 
 	// remove the next line real soon. we don't need to be supporting this forever.
 	upgradeDatabase(_path, genesisHash());
@@ -356,7 +355,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 				// Nonce & uncle nonces already verified in verification thread at this point.
 				ImportRoute r;
 				DEV_TIMED_ABOVE("Block import " + toString(block.verified.info.number()), 500)
-					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidSeal & ~ImportRequirements::CheckUncles);
+					r = import(block.verified, _stateDB, ImportRequirements::Everything & ~ImportRequirements::ValidSeal & ~ImportRequirements::CheckUncles);
 				fresh += r.liveBlocks;
 				dead += r.deadBlocks;
 				goodTransactions += r.goodTranactions;
