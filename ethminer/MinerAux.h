@@ -397,17 +397,16 @@ public:
 private:
 	void doInitDAG(unsigned _n)
 	{
-		BlockInfo bi;
-		bi.number() = _n;
-		cout << "Initializing DAG for epoch beginning #" << (bi.number() / 30000 * 30000) << " (seedhash " << bi.proofCache().abridged() << "). This will take a while." << endl;
-		Ethash::prep(bi);
+		h256 seedHash = EthashAux::seedHash(_n);
+		cout << "Initializing DAG for epoch beginning #" << (_n / 30000 * 30000) << " (seedhash " << seedHash.abridged() << "). This will take a while." << endl;
+		EthashAux::full(seedHash, true);
 		exit(0);
 	}
 
 	void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
 	{
-		BlockInfo genesis;
-		genesis.difficulty = 1 << 18;
+		Ethash::BlockHeader genesis;
+		genesis.setDifficulty(1 << 18);
 		cdebug << genesis.boundary();
 
 		GenericFarm<EthashProofOfWork> f;
@@ -417,17 +416,16 @@ private:
 		cout << "Benchmarking on platform: " << platformInfo << endl;
 
 		cout << "Preparing DAG..." << endl;
-		Ethash::prep(genesis);
+		genesis.prep();
 
-		genesis.difficulty = u256(1) << 63;
-		genesis.noteDirty();
+		genesis.setDifficulty(u256(1) << 63);
 		f.setWork(genesis);
 		if (_m == MinerType::CPU)
-			f.startCPU();
+			f.start("cpu");
 		else if (_m == MinerType::GPU)
-			f.startGPU();
+			f.start("opencl");
 
-		map<uint64_t, MiningProgress> results;
+		map<uint64_t, WorkingProgress> results;
 		uint64_t mean = 0;
 		uint64_t innerMean = 0;
 		for (unsigned i = 0; i <= _trials; ++i)
@@ -488,9 +486,9 @@ private:
 		Farm rpc(client);
 		GenericFarm<EthashProofOfWork> f;
 		if (_m == MinerType::CPU)
-			f.startCPU();
+			f.start("cpu");
 		else if (_m == MinerType::GPU)
-			f.startGPU();
+			f.start("opencl");
 
 		EthashProofOfWork::WorkPackage current;
 		EthashAux::FullType dag;

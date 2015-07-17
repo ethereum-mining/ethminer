@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <string>
+#include <libethcore/BasicAuthority.h>
 #include <libethereum/ExtVM.h>
 #include <libethereum/ClientBase.h>
 #include <libethereum/Client.h>
@@ -32,13 +33,40 @@
 
 namespace dev
 {
+
 namespace mix
 {
 
-class MixBlockChain: public dev::eth::BlockChain
+class NoProof
+{
+	class BlockHeaderRaw: public dev::eth::BlockInfo
+	{
+	public:
+		static const unsigned SealFields = 0;
+
+	protected:
+		BlockHeaderRaw() = default;
+		BlockHeaderRaw(BlockInfo const& _bi): BlockInfo(_bi) {}
+
+		void populateFromHeader(RLP const& _header, dev::eth::Strictness _s) { (void) _header; (void) _s; }
+		void populateFromParent(BlockHeaderRaw const& _parent) { (void)_parent; }
+		void streamRLPFields(RLPStream& _s) const { (void) _s; }
+	};
+
+public:
+
+	static std::string name() { return "NoProof"; }
+	static unsigned revision() { return 0; }
+	using BlockHeader = dev::eth::BlockHeaderPolished<BlockHeaderRaw>;
+
+private:
+	static AddressHash s_authorities;
+};
+
+class MixBlockChain: public dev::eth::FullBlockChain<NoProof>
 {
 public:
-	MixBlockChain(std::string const& _path, h256 _stateRoot): BlockChain(createGenesisBlock(_stateRoot), _path, WithExisting::Kill) {}
+	MixBlockChain(std::string const& _path, h256 _stateRoot);
 
 	static bytes createGenesisBlock(h256 _stateRoot);
 };
@@ -67,9 +95,7 @@ public:
 	void stopMining() override;
 	bool isMining() const override;
 	uint64_t hashrate() const override;
-	eth::MiningProgress miningProgress() const override;
-	eth::ProofOfWork::WorkPackage getWork() override { return eth::ProofOfWork::WorkPackage(); }
-	bool submitWork(eth::ProofOfWork::Solution const&) override { return false; }
+	eth::WorkingProgress miningProgress() const override;
 	virtual void flushTransactions() override {}
 
 	/// @returns the last mined block information

@@ -24,12 +24,13 @@
 #include <vector>
 #include <utility>
 #include <libdevcore/Exceptions.h>
+#include <libethcore/Params.h>
+#include <libethcore/BasicAuthority.h>
 #include <libethereum/CanonBlockChain.h>
 #include <libethereum/Transaction.h>
 #include <libethereum/Executive.h>
 #include <libethereum/ExtVM.h>
 #include <libethereum/BlockChain.h>
-#include <libethcore/Params.h>
 #include <libevm/VM.h>
 #include "Exceptions.h"
 using namespace std;
@@ -45,22 +46,20 @@ u256 const c_mixGenesisDifficulty = 131072; //TODO: make it lower for Mix someho
 
 namespace
 {
+}
 
-struct MixPow //dummy POW
+MixBlockChain::MixBlockChain(std::string const& _path, h256 _stateRoot):
+	FullBlockChain<NoProof>(createGenesisBlock(_stateRoot), std::unordered_map<Address, Account>(), _path, WithExisting::Kill)
 {
-	typedef int Solution;
-	static bool verify(BlockInfo const&) { return true; }
-};
-
 }
 
 bytes MixBlockChain::createGenesisBlock(h256 _stateRoot)
 {
 	RLPStream block(3);
-	block.appendList(15)
+	block.appendList(13)
 			<< h256() << EmptyListSHA3 << h160() << _stateRoot << EmptyTrie << EmptyTrie
 			<< LogBloom() << c_mixGenesisDifficulty << 0 << c_genesisGasLimit << 0 << (unsigned)0
-			<< std::string() << h256() << h64(u64(42));
+			<< std::string();
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -78,7 +77,6 @@ MixClient::~MixClient()
 
 void MixClient::resetState(std::unordered_map<Address, Account> const& _accounts,  Secret const& _miner)
 {
-
 	WriteGuard l(x_state);
 	Guard fl(x_filtersWatches);
 
@@ -91,12 +89,13 @@ void MixClient::resetState(std::unordered_map<Address, Account> const& _accounts
 	SecureTrieDB<Address, MemoryDB> accountState(&m_stateDB);
 	accountState.init();
 
-	dev::eth::commit(_accounts, static_cast<MemoryDB&>(m_stateDB), accountState);
+	dev::eth::commit(_accounts, accountState);
 	h256 stateRoot = accountState.root();
 	m_bc.reset();
 	m_bc.reset(new MixBlockChain(m_dbPath, stateRoot));
-	m_state = eth::State(m_stateDB, BaseState::PreExisting, KeyPair(_miner).address());
-	m_state.sync(bc());
+	State s(m_stateDB, BaseState::PreExisting, KeyPair(_miner).address());
+	s.sync(bc());
+	m_state = s;
 	m_startState = m_state;
 	WriteGuard lx(x_executions);
 	m_executions.clear();
@@ -275,11 +274,14 @@ void MixClient::mine()
 {
 	WriteGuard l(x_state);
 	m_state.commitToMine(bc());
-	m_state.completeMine<MixPow>(0);
-	bc().import(m_state.blockData(), m_state.db(), ImportRequirements::Default & ~ImportRequirements::ValidNonce);
+
+	NoProof::BlockHeader h(m_state.info());
+	RLPStream header;
+	h.streamRLP(header);
+	m_state.sealBlock(header.out());
+	bc().import(m_state.blockData(), m_state.db(), ImportRequirements::Everything & ~ImportRequirements::ValidSeal);
 	m_state.sync(bc());
 	m_startState = m_state;
-	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };
 }
 
 ExecutionResult MixClient::lastExecution() const
@@ -383,9 +385,9 @@ uint64_t MixClient::hashrate() const
 	return 0;
 }
 
-eth::MiningProgress MixClient::miningProgress() const
+eth::WorkingProgress MixClient::miningProgress() const
 {
-	return eth::MiningProgress();
+	return eth::WorkingProgress();
 }
 
 }
