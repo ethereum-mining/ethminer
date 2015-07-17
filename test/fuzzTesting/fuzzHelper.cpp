@@ -47,7 +47,7 @@ int RandomCode::recursiveRLP(std::string &_result, int _depth, std::string& _deb
 	bool genValidRlp = true;
 	int bugProbability = randUniIntGen() % 100;
 	if (bugProbability < 80)
-		bool genValidRlp = false;
+		genValidRlp = false;
 
 	if (_depth > 1)
 	{
