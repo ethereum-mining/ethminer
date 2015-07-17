@@ -161,6 +161,8 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 				{
 					fs->second.erase(t);
 					--m_futureSize;
+					if (fs->second.empty())
+						m_future.erase(fs);
 				}
 			}
 		}
@@ -201,11 +203,11 @@ u256 TransactionQueue::maxNonce_WITH_LOCK(Address const& _a) const
 	u256 ret = 0;
 	auto cs = m_currentByAddressAndNonce.find(_a);
 	if (cs != m_currentByAddressAndNonce.end() && !cs->second.empty())
-		ret = cs->second.rbegin()->first;
+		ret = cs->second.rbegin()->first + 1;
 	auto fs = m_future.find(_a);
 	if (fs != m_future.end() && !fs->second.empty())
-		ret = std::max(ret, fs->second.rbegin()->first);
-	return ret + 1;
+		ret = std::max(ret, fs->second.rbegin()->first + 1);
+	return ret;
 }
 
 void TransactionQueue::insertCurrent_WITH_LOCK(std::pair<h256, Transaction> const& _p)

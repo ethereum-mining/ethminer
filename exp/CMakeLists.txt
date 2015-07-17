@@ -6,9 +6,6 @@ aux_source_directory(. SRC_LIST)
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
 include_directories(BEFORE ..)
 include_directories(${DB_INCLUDE_DIRS})
-if (ETHASHCL)
-	include_directories(${OpenCL_INCLUDE_DIRS})
-endif ()
 
 set(EXECUTABLE exp)
 
@@ -28,8 +25,14 @@ target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} p2p)
 if (ETHASHCL)
-	target_link_libraries(${EXECUTABLE} ethash-cl)
-	target_link_libraries(${EXECUTABLE} ethash)
-	target_link_libraries(${EXECUTABLE} ${OpenCL_LIBRARIES})
+#	target_link_libraries(${EXECUTABLE} ethash-cl)
+#	target_link_libraries(${EXECUTABLE} ethash)
+#	target_link_libraries(${EXECUTABLE} OpenCL)
 endif()
+target_link_libraries(${EXECUTABLE} ethcore)
 install( TARGETS ${EXECUTABLE} DESTINATION bin)
+
+
+
+
+

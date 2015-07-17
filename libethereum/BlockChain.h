@@ -37,6 +37,7 @@
 #include "Transaction.h"
 #include "BlockQueue.h"
 #include "VerifiedBlock.h"
+#include "State.h"
 
 namespace std
 {
@@ -86,6 +87,13 @@ enum {
 };
 
 using ProgressCallback = std::function<void(unsigned, unsigned)>;
+using StateDefinition = std::unordered_map<Address, Account>;
+
+class VersionChecker
+{
+public:
+	VersionChecker(std::string const& _dbPath, h256 const& _genesisHash);
+};
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
@@ -94,7 +102,7 @@ using ProgressCallback = std::function<void(unsigned, unsigned)>;
 class BlockChain
 {
 public:
-	BlockChain(bytes const& _genesisBlock, std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _p = ProgressCallback());
+	BlockChain(bytes const& _genesisBlock, StateDefinition const& _genesisState, std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _p = ProgressCallback());
 	~BlockChain();
 
 	/// Attempt a database re-open.
@@ -110,24 +118,27 @@ public:
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	std::pair<ImportResult, ImportRoute> attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Default) noexcept;
+	std::pair<ImportResult, ImportRoute> attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Everything) noexcept;
 
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	ImportRoute import(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Default);
-	ImportRoute import(VerifiedBlockRef const& _block, OverlayDB const& _db, ImportRequirements::value _ir = ImportRequirements::Default);
+	ImportRoute import(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Everything);
+	ImportRoute import(VerifiedBlockRef const& _block, OverlayDB const& _db, ImportRequirements::value _ir = ImportRequirements::Everything);
 
 	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
 	bool isKnown(h256 const& _hash) const;
 
-	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
-	BlockInfo info(h256 const& _hash) const { return BlockInfo(block(_hash), IgnoreNonce, _hash); }
+	/// Get the partial-header of a block (or the most recent mined if none given). Thread-safe.
+	BlockInfo info(h256 const& _hash) const { return BlockInfo(headerData(_hash), CheckNothing, _hash, HeaderData); }
 	BlockInfo info() const { return info(currentHash()); }
 
 	/// Get a block (RLP format) for the given hash (or the most recent mined if none given). Thread-safe.
 	bytes block(h256 const& _hash) const;
 	bytes block() const { return block(currentHash()); }
-	bytes oldBlock(h256 const& _hash) const;
+
+	/// Get a block (RLP format) for the given hash (or the most recent mined if none given). Thread-safe.
+	bytes headerData(h256 const& _hash) const;
+	bytes headerData() const { return headerData(currentHash()); }
 
 	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
 	BlockDetails details(h256 const& _hash) const { return queryExtras<BlockDetails, ExtraDetails>(_hash, m_details, x_details, NullBlockDetails); }
@@ -267,13 +278,16 @@ public:
 	/// Deallocate unused data.
 	void garbageCollect(bool _force = false);
 
-	/// Verify block and prepare it for enactment
-	static VerifiedBlockRef verifyBlock(bytes const& _block, std::function<void(Exception&)> const& _onBad = std::function<void(Exception&)>(), ImportRequirements::value _ir = ImportRequirements::Default);
-
 	/// Change the function that is called with a bad block.
 	template <class T> void setOnBad(T const& _t) { m_onBad = _t; }
 
-private:
+	/// Get a pre-made genesis State object.
+	State genesisState(OverlayDB const& _db);
+
+	/// Verify block and prepare it for enactment
+	virtual VerifiedBlockRef verifyBlock(bytesConstRef _block, std::function<void(Exception&)> const& _onBad, ImportRequirements::value _ir) const = 0;
+
+protected:
 	static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
 	unsigned open(std::string const& _path, WithExisting _we = WithExisting::Trust);
@@ -348,6 +362,7 @@ private:
 	/// Genesis block info.
 	h256 m_genesisHash;
 	bytes m_genesisBlock;
+	std::unordered_map<Address, Account> m_genesisState;
 
 	ldb::ReadOptions m_readOptions;
 	ldb::WriteOptions m_writeOptions;
@@ -355,6 +370,89 @@ private:
 	std::function<void(Exception&)> m_onBad;									///< Called if we have a block that doesn't verify.
 
 	friend std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
+};
+
+template <class Sealer>
+class FullBlockChain: public BlockChain
+{
+public:
+	using BlockHeader = typename Sealer::BlockHeader;
+
+	FullBlockChain(bytes const& _genesisBlock, StateDefinition const& _genesisState, std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _p = ProgressCallback()):
+		BlockChain(_genesisBlock, _genesisState, _path, _we, _p)
+	{}
+
+	/// Get the header of a block (or the most recent mined if none given). Thread-safe.
+	typename Sealer::BlockHeader header(h256 const& _hash) const { return typename Sealer::BlockHeader(headerData(_hash), IgnoreSeal, _hash, HeaderData); }
+	typename Sealer::BlockHeader header() const { return header(currentHash()); }
+
+	virtual VerifiedBlockRef verifyBlock(bytesConstRef _block, std::function<void(Exception&)> const& _onBad, ImportRequirements::value _ir) const override
+	{
+		VerifiedBlockRef res;
+
+		try
+		{
+			BlockHeader h(_block, (_ir & ImportRequirements::ValidSeal) ? Strictness::CheckEverything : Strictness::QuickNonce);
+			h.verifyInternals(_block);
+			if ((_ir & ImportRequirements::Parent) != 0)
+				h.verifyParent(header(h.parentHash()));
+			res.info = static_cast<BlockInfo&>(h);
+		}
+		catch (Exception& ex)
+		{
+			ex << errinfo_phase(1);
+			ex << errinfo_now(time(0));
+			ex << errinfo_block(_block.toBytes());
+			if (_onBad)
+				_onBad(ex);
+			throw;
+		}
+
+		RLP r(_block);
+		unsigned i = 0;
+		if (_ir && ImportRequirements::UncleBasic)
+			for (auto const& uncle: r[2])
+			{
+				try
+				{
+					BlockHeader().populateFromHeader(RLP(uncle.data()), (_ir & ImportRequirements::UncleSeals) ? Strictness::CheckEverything : Strictness::IgnoreSeal);
+				}
+				catch (Exception& ex)
+				{
+					ex << errinfo_phase(1);
+					ex << errinfo_uncleIndex(i);
+					ex << errinfo_now(time(0));
+					ex << errinfo_block(_block.toBytes());
+					if (_onBad)
+						_onBad(ex);
+					throw;
+				}
+				++i;
+			}
+		i = 0;
+		if (_ir && ImportRequirements::TransactionBasic)
+			for (RLP const& tr: r[1])
+			{
+				bytesConstRef d = tr.data();
+				try
+				{
+					res.transactions.push_back(Transaction(d, (_ir & ImportRequirements::TransactionSignatures) ? CheckTransaction::Everything : CheckTransaction::None));
+				}
+				catch (Exception& ex)
+				{
+					ex << errinfo_phase(1);
+					ex << errinfo_transactionIndex(i);
+					ex << errinfo_transaction(d.toBytes());
+					ex << errinfo_block(_block.toBytes());
+					if (_onBad)
+						_onBad(ex);
+					throw;
+				}
+				++i;
+			}
+		res.block = bytesConstRef(_block);
+		return res;
+	}
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);

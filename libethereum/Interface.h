@@ -25,7 +25,7 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
-#include <libethcore/ProofOfWork.h>
+#include <libethcore/Ethash.h>
 #include "LogFilter.h"
 #include "Transaction.h"
 #include "AccountDiff.h"
@@ -211,12 +211,12 @@ public:
 	virtual uint64_t hashrate() const = 0;
 
 	/// Get hash of the current block to be mined minus the nonce (the 'work hash').
-	virtual ProofOfWork::WorkPackage getWork() = 0;
+	virtual std::tuple<h256, h256, h256> getEthashWork() { BOOST_THROW_EXCEPTION(InterfaceNotSupported("Interface::getEthashWork")); }
 	/// Submit the nonce for the proof-of-work.
-	virtual bool submitWork(ProofOfWork::Solution const& _proof) = 0;
+	virtual bool submitEthashWork(h256 const&, h64 const&) { BOOST_THROW_EXCEPTION(InterfaceNotSupported("Interface::submitEthashWork")); }
 
 	/// Check the progress of the mining.
-	virtual MiningProgress miningProgress() const = 0;
+	virtual WorkingProgress miningProgress() const = 0;
 
 protected:
 	int m_default = PendingBlock;
