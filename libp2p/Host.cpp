@@ -120,6 +120,15 @@ Host::~Host()
 void Host::start()
 {
 	startWorking();
+	while (isWorking() && !haveNetwork())
+		this_thread::sleep_for(chrono::milliseconds(10));
+	
+	// network start failed!
+	if (isWorking())
+		return;
+
+	clog(NetWarn) << "Network start failed!";
+	doneWorking();
 }
 
 void Host::stop()
@@ -130,11 +139,12 @@ void Host::stop()
 
 	{
 		// Although m_run is set by stop() or start(), it effects m_runTimer so x_runTimer is used instead of a mutex for m_run.
-		// when m_run == false, run() will cause this::run() to stop() ioservice
 		Guard l(x_runTimer);
 		// ignore if already stopped/stopping
 		if (!m_run)
 			return;
+		
+		// signal run() to prepare for shutdown and reset m_timer
 		m_run = false;
 	}
 
@@ -143,14 +153,18 @@ void Host::stop()
 		this_thread::sleep_for(chrono::milliseconds(50));
 
 	// stop worker thread
-	stopWorking();
+	if (isWorking())
+		stopWorking();
 }
 
 void Host::doneWorking()
 {
-	// reset ioservice (allows manually polling network, below)
+	// reset ioservice (cancels all timers and allows manually polling network, below)
 	m_ioService.reset();
 
+	DEV_GUARDED(x_timers)
+		m_timers.clear();
+	
 	// shutdown acceptor
 	m_tcp4Acceptor.cancel();
 	if (m_tcp4Acceptor.is_open())
@@ -170,15 +184,13 @@ void Host::doneWorking()
 	// disconnect pending handshake, before peers, as a handshake may create a peer
 	for (unsigned n = 0;; n = 0)
 	{
-		{
-			Guard l(x_connecting);
-			for (auto i: m_connecting)
+		DEV_GUARDED(x_connecting)
+			for (auto const& i: m_connecting)
 				if (auto h = i.lock())
 				{
 					h->cancel();
 					n++;
 				}
-		}
 		if (!n)
 			break;
 		m_ioService.poll();
@@ -187,8 +199,7 @@ void Host::doneWorking()
 	// disconnect peers
 	for (unsigned n = 0;; n = 0)
 	{
-		{
-			RecursiveGuard l(x_sessions);
+		DEV_RECURSIVE_GUARDED(x_sessions)
 			for (auto i: m_sessions)
 				if (auto p = i.second.lock())
 					if (p->isConnected())
@@ -196,7 +207,6 @@ void Host::doneWorking()
 						p->disconnect(ClientQuit);
 						n++;
 					}
-		}
 		if (!n)
 			break;
 
@@ -465,6 +475,9 @@ void Host::addNode(NodeId const& _node, NodeIPEndpoint const& _endpoint)
 
 void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 {
+	if (!m_run)
+		return;
+	
 	Node node(_n, _endpoint, true);
 	if (_n)
 	{
@@ -482,22 +495,21 @@ void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 				p.reset(new Peer(node));
 				m_peers[_n] = p;
 			}
-		connect(p);
 	}
 	else if (m_nodeTable)
 	{
-		shared_ptr<boost::asio::deadline_timer> t(new boost::asio::deadline_timer(m_ioService));
-		m_timers.push_back(t);
-		
 		m_nodeTable->addNode(node);
+		shared_ptr<boost::asio::deadline_timer> t(new boost::asio::deadline_timer(m_ioService));
 		t->expires_from_now(boost::posix_time::milliseconds(600));
 		t->async_wait([this, _n](boost::system::error_code const& _ec)
 		{
-			if (!_ec && m_nodeTable)
-				// FIXME RACE CONDITION (use weak_ptr or mutex).
-				if (auto n = m_nodeTable->node(_n))
-					requirePeer(n.id, n.endpoint);
+			if (!_ec)
+				if (m_nodeTable)
+					if (auto n = m_nodeTable->node(_n))
+						requirePeer(n.id, n.endpoint);
 		});
+		DEV_GUARDED(x_timers)
+			m_timers.push_back(t);
 	}
 }
 
@@ -512,8 +524,6 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 {
 	if (!m_run)
 		return;
-
-	_p->m_lastAttempted = std::chrono::system_clock::now();
 	
 	if (havePeerSession(_p->id))
 	{
@@ -539,6 +549,8 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 		m_pendingPeerConns.insert(nptr);
 	}
 
+	_p->m_lastAttempted = std::chrono::system_clock::now();
+	
 	bi::tcp::endpoint ep(_p->endpoint);
 	clog(NetConnect) << "Attempting connection to node" << _p->id << "@" << ep << "from" << id();
 	auto socket = make_shared<RLPXSocket>(new bi::tcp::socket(m_ioService));
@@ -615,21 +627,13 @@ void Host::run(boost::system::error_code const&)
 	m_nodeTable->processEvents();
 
 	// cleanup zombies
-	{
-		Guard l(x_connecting);
-		m_connecting.remove_if([](std::weak_ptr<RLPXHandshake> h){ return h.lock(); });
-	}
-	{
-		Guard l(x_timers);
+	DEV_GUARDED(x_connecting);
+		m_connecting.remove_if([](std::weak_ptr<RLPXHandshake> h){ return h.expired(); });
+	DEV_GUARDED(x_timers)
 		m_timers.remove_if([](std::shared_ptr<boost::asio::deadline_timer> t)
 		{
-			return t->expires_from_now().total_milliseconds() > 0;
+			return t->expires_from_now().total_milliseconds() < 0;
 		});
-	}
-	
-	for (auto p: m_sessions)
-		if (auto pp = p.second.lock())
-			pp->serviceNodesRequest();
 
 	keepAlivePeers();
 	
@@ -666,13 +670,9 @@ void Host::run(boost::system::error_code const&)
 			pendingCount = m_pendingPeerConns.size();
 		int openSlots = m_idealPeerCount - peerCount() - pendingCount + reqConn;
 		if (openSlots > 0)
-		{
 			for (auto p: toConnect)
 				if (!p->required && openSlots--)
 					connect(p);
-		
-			m_nodeTable->discover();
-		}
 	}
 
 	auto runcb = [this](boost::system::error_code const& error) { run(error); };
