@@ -36,8 +36,8 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libethcore/Params.h>
+#include <libethcore/Sealer.h>
 #include <libethcore/ABI.h>
-#include <libethcore/Farm.h>
 #include <libp2p/Common.h>
 #include "CanonBlockChain.h"
 #include "TransactionQueue.h"
@@ -60,12 +60,6 @@ enum ClientWorkState
 	Deleted
 };
 
-class VersionChecker
-{
-public:
-	VersionChecker(std::string const& _dbPath);
-};
-
 struct ClientNote: public LogChannel { static const char* name(); static const int verbosity = 2; };
 struct ClientChat: public LogChannel { static const char* name(); static const int verbosity = 4; };
 struct ClientTrace: public LogChannel { static const char* name(); static const int verbosity = 7; };
@@ -81,25 +75,14 @@ std::ostream& operator<<(std::ostream& _out, ActivityReport const& _r);
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
+ * Not to be used directly - subclass.
  */
-class Client: public ClientBase, Worker
+class Client: public ClientBase, protected Worker
 {
 public:
 	/// New-style Constructor.
-	explicit Client(
-		p2p::Host* _host,
-		std::string const& _dbPath = std::string(),
-		WithExisting _forceAction = WithExisting::Trust,
-		u256 _networkId = 0
-	);
-
-	explicit Client(
-		p2p::Host* _host,
-		std::shared_ptr<GasPricer> _gpForAdoption,		// pass it in with new.
-		std::string const& _dbPath = std::string(),
-		WithExisting _forceAction = WithExisting::Trust,
-		u256 _networkId = 0
-	);
+	/// Any final derived class's constructor should make sure they call init().
+	explicit Client(std::shared_ptr<GasPricer> _gpForAdoption);
 
 	/// Destructor.
 	virtual ~Client();
@@ -129,7 +112,7 @@ public:
 	/// Get the object representing the current state of Ethereum.
 	dev::eth::State postState() const { ReadGuard l(x_postMine); return m_postMine; }
 	/// Get the object representing the current canonical blockchain.
-	CanonBlockChain const& blockChain() const { return m_bc; }
+	BlockChain const& blockChain() const { return bc(); }
 	/// Get some information on the block queue.
 	BlockQueueStatus blockQueueStatus() const { return m_bq.status(); }
 	/// Get some information on the block queue.
@@ -176,25 +159,15 @@ public:
 	/// NOT thread-safe
 	void stopMining() override { m_wouldMine = false; rejigMining(); }
 	/// Are we mining now?
-	bool isMining() const override { return m_farm.isMining(); }
+	bool isMining() const override;
 	/// Are we mining now?
 	bool wouldMine() const override { return m_wouldMine; }
 	/// The hashrate...
 	uint64_t hashrate() const override;
 	/// Check the progress of the mining.
-	MiningProgress miningProgress() const override;
+	WorkingProgress miningProgress() const override;
 	/// Get and clear the mining history.
 	std::list<MineInfo> miningHistory();
-
-	/// Update to the latest transactions and get hash of the current block to be mined minus the
-	/// nonce (the 'work hash') and the difficulty to be met.
-	virtual ProofOfWork::WorkPackage getWork() override;
-
-	/** @brief Submit the proof for the proof-of-work.
-	 * @param _s A valid solution.
-	 * @return true if the solution was indeed valid and accepted.
-	 */
-	virtual bool submitWork(ProofOfWork::Solution const& _proof) override;
 
 	// Debug stuff:
 
@@ -218,12 +191,20 @@ public:
 	/// Set the extra data that goes into mined blocks.
 	void setExtraData(bytes const& _extraData) { m_extraData = _extraData; }
 	/// Rewind to a prior head.
-	void rewind(unsigned _n) { m_bc.rewind(_n); }
+	void rewind(unsigned _n) { bc().rewind(_n); }
+	/// Rescue the chain.
+	void rescue() { bc().rescue(m_stateDB); }
+	/// Get the seal engine.
+	SealEngineFace* sealEngine() const { return m_sealEngine.get(); }
 
 protected:
+	/// Perform critical setup functions.
+	/// Must be called in the constructor of the finally derived class.
+	void init(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId);
+
 	/// InterfaceStub methods
-	virtual BlockChain& bc() override { return m_bc; }
-	virtual BlockChain const& bc() const override { return m_bc; }
+	virtual BlockChain& bc() override = 0;
+	virtual BlockChain const& bc() const override = 0;
 
 	/// Returns the state object for the full block (i.e. the terminal state) for index _h.
 	/// Works properly with LatestBlock and PendingBlock.
@@ -245,7 +226,10 @@ protected:
 	/// This doesn't actually make any callbacks, but incrememnts some counters in m_watches.
 	void noteChanged(h256Hash const& _filters);
 
-private:
+	/// Submit
+	bool submitSealed(bytes const& _s);
+
+protected:
 	/// Called when Worker is starting.
 	void startedWorking() override;
 
@@ -300,8 +284,6 @@ private:
 	/// @warning May be called from any thread.
 	void onBadBlock(Exception& _ex) const;
 
-	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
-	CanonBlockChain m_bc;					///< Maintains block database.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 	std::shared_ptr<GasPricer> m_gp;		///< The gas pricer.
 
@@ -319,7 +301,7 @@ private:
 
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
-	GenericFarm<ProofOfWork> m_farm;		///< Our mining farm.
+	std::shared_ptr<SealEngineFace> m_sealEngine;	///< Our block-sealing engine.
 
 	Handler<> m_tqReady;
 	Handler<> m_bqReady;
@@ -346,6 +328,69 @@ private:
 
 	std::string m_sentinel;
 	bytes m_extraData;
+};
+
+template <class Sealer>
+class SpecialisedClient: public Client
+{
+public:
+	explicit SpecialisedClient(
+		p2p::Host* _host,
+		std::shared_ptr<GasPricer> _gpForAdoption,
+		std::string const& _dbPath = std::string(),
+		WithExisting _forceAction = WithExisting::Trust,
+		u256 _networkId = 0
+	):
+		Client(_gpForAdoption),
+		m_bc(_dbPath, _forceAction, [](unsigned d, unsigned t){ std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; })
+	{
+		m_sealEngine = std::shared_ptr<SealEngineFace>(Ethash::createSealEngine());
+		m_sealEngine->onSealGenerated([=](bytes const& header){
+			return this->submitSealed(header);
+		});
+		init(_host, _dbPath, _forceAction, _networkId);
+	}
+
+	virtual ~SpecialisedClient() { stopWorking(); }
+
+	/// Get the object representing the current canonical blockchain.
+	CanonBlockChain<Sealer> const& blockChain() const { return m_bc; }
+
+protected:
+	virtual BlockChain& bc() override { return m_bc; }
+	virtual BlockChain const& bc() const override { return m_bc; }
+
+protected:
+	CanonBlockChain<Sealer> m_bc;			///< Maintains block database.
+};
+
+class EthashClient: public SpecialisedClient<Ethash>
+{
+public:
+	/// Trivial forwarding constructor.
+	explicit EthashClient(
+		p2p::Host* _host,
+		std::shared_ptr<GasPricer> _gpForAdoption,
+		std::string const& _dbPath = std::string(),
+		WithExisting _forceAction = WithExisting::Trust,
+		u256 _networkId = 0
+	): SpecialisedClient<Ethash>(_host, _gpForAdoption, _dbPath, _forceAction, _networkId) {}
+
+	virtual ~EthashClient() { stopWorking(); }
+
+	/// Update to the latest transactions and get hash of the current block to be mined minus the
+	/// nonce (the 'work hash') and the difficulty to be met.
+	virtual std::tuple<h256, h256, h256> getEthashWork() override;
+
+	/** @brief Submit the proof for the proof-of-work.
+	 * @param _s A valid solution.
+	 * @return true if the solution was indeed valid and accepted.
+	 */
+	virtual bool submitEthashWork(h256 const& _mixHash, h64 const& _nonce) override;
+
+protected:
+	virtual BlockChain& bc() override { return m_bc; }
+	virtual BlockChain const& bc() const override { return m_bc; }
 };
 
 }

@@ -308,35 +308,17 @@ BOOST_AUTO_TEST_CASE(kademlia)
 	if (test::Options::get().nonetwork)
 		return;
 
-	// Not yet a 'real' test.
 	TestNodeTableHost node(8);
 	node.start();
-	node.nodeTable->discover(); // ideally, joining with empty node table logs warning we can check for
 	node.setup();
 	node.populate();
-//	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
-
 	node.populateAll();
-//	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
-
 	auto nodes = node.nodeTable->nodes();
 	nodes.sort();
-
 	node.nodeTable->reset();
-//	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
-
 	node.populate(1);
-//	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
-
-	node.nodeTable->discover();
 	this_thread::sleep_for(chrono::milliseconds(2000));
-//	clog << "NodeTable:\n" << *node.nodeTable.get() << endl;
-
 	BOOST_REQUIRE_EQUAL(node.nodeTable->count(), 8);
-
-	auto netNodes = node.nodeTable->nodes();
-	netNodes.sort();
-
 }
 
 BOOST_AUTO_TEST_CASE(udpOnce)
@@ -354,6 +336,28 @@ BOOST_AUTO_TEST_CASE(udpOnce)
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(netTypes)
+
+BOOST_AUTO_TEST_CASE(deadlineTimer)
+{
+	ba::io_service io;
+	ba::deadline_timer t(io);
+	bool start = false;
+	boost::system::error_code ec;
+	std::atomic<unsigned> fired(0);
+	
+	thread thread([&](){ while(!start) this_thread::sleep_for(chrono::milliseconds(10)); io.run(); });
+	t.expires_from_now(boost::posix_time::milliseconds(200));
+	start = true;
+	t.async_wait([&](boost::system::error_code const& _ec){ ec = _ec; fired++; });
+	BOOST_REQUIRE_NO_THROW(t.wait());
+	this_thread::sleep_for(chrono::milliseconds(250));
+	auto expire = t.expires_from_now().total_milliseconds();
+	BOOST_REQUIRE(expire <= 0);
+	BOOST_REQUIRE(fired == 1);
+	BOOST_REQUIRE(!ec);
+	io.stop();
+	thread.join();
+}
 
 BOOST_AUTO_TEST_CASE(unspecifiedNode)
 {

@@ -126,7 +126,6 @@ private:
 	void logNewBlock(h256 const& _h);
 
 	EthereumHost& m_host;
-	HashDownloadMan m_hashMan;
 };
 
 
@@ -308,12 +307,18 @@ private:
 	/// Check if downloading hashes in parallel
 	bool isPV61Syncing() const;
 
-	std::map<unsigned, h256s> m_completeChainMap;		///< Fully downloaded subchains
-	std::map<unsigned, h256s> m_readyChainMap;			///< Subchains ready for download
-	std::map<unsigned, h256s> m_downloadingChainMap;	///< Subchains currently being downloading. In sync with m_chainSyncPeers
+	struct SubChain
+	{
+		h256s hashes;	///< List of subchain hashes
+		h256 lastHash;	///< Last requested subchain hash
+	};
+
+	std::map<unsigned, SubChain> m_completeChainMap;		///< Fully downloaded subchains
+	std::map<unsigned, SubChain> m_readyChainMap;			///< Subchains ready for download
+	std::map<unsigned, SubChain> m_downloadingChainMap;		///< Subchains currently being downloading. In sync with m_chainSyncPeers
 	std::map<std::weak_ptr<EthereumPeer>, unsigned, std::owner_less<std::weak_ptr<EthereumPeer>>> m_chainSyncPeers; ///< Peers to m_downloadingSubchain number map
-	h256Hash m_knownHashes;								///< Subchain start markers. Used to track suchain completion
-	unsigned m_syncingBlockNumber = 0;					///< Current subchain marker
+	h256Hash m_knownHashes;									///< Subchain start markers. Used to track suchain completion
+	unsigned m_syncingBlockNumber = 0;						///< Current subchain marker
 	bool m_hashScanComplete = false;						///< True if leading peer completed hashchain scan and we have a list of subchains ready
 };
 

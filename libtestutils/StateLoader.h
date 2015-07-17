@@ -24,6 +24,7 @@
 #include <json/json.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethereum/State.h>
+#include <libethereum/BlockChain.h>
 
 namespace dev
 {
@@ -38,6 +39,7 @@ class StateLoader
 public:
 	StateLoader(Json::Value const& _json, std::string const& _dbPath);
 	eth::State const& state() const { return m_state; }
+	eth::StateDefinition const& stateDefinition() const { return m_state.m_cache; }
 
 private:
 	eth::State m_state;

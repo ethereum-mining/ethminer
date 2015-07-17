@@ -161,9 +161,7 @@ public:
 	virtual bool isMining() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::isMining")); }
 	virtual bool wouldMine() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::wouldMine")); }
 	virtual uint64_t hashrate() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::hashrate")); }
-	virtual MiningProgress miningProgress() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::miningProgress")); }
-	virtual ProofOfWork::WorkPackage getWork() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::getWork")); }
-	virtual bool submitWork(ProofOfWork::Solution const&) override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::submitWork")); }
+	virtual WorkingProgress miningProgress() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::miningProgress")); }
 
 	State asOf(BlockNumber _h) const;
 

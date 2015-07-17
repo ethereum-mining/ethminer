@@ -34,6 +34,7 @@
 #include <functional>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
+#if 0
 #include <libdevcore/TrieDB.h>
 #include <libdevcore/TrieHash.h>
 #include <libdevcore/RangeMask.h>
@@ -45,12 +46,10 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcrypto/SecretStore.h>
 #include <libp2p/All.h>
-#include <libethcore/ProofOfWork.h>
 #include <libethcore/Farm.h>
 #include <libdevcore/FileSystem.h>
 #include <libethereum/All.h>
 #include <libethcore/KeyManager.h>
-
 #include <libethereum/AccountDiff.h>
 #include <libethereum/DownloadMan.h>
 #include <libethereum/Client.h>
@@ -65,9 +64,69 @@ using namespace dev::p2p;
 using namespace dev::shh;
 namespace js = json_spirit;
 namespace fs = boost::filesystem;
+#else
+#include <libethcore/Sealer.h>
+#include <libethcore/BasicAuthority.h>
+#include <libethcore/BlockInfo.h>
+#include <libethcore/Ethash.h>
+#include <libethcore/Params.h>
+#include <libethereum/All.h>
+#include <libethereum/AccountDiff.h>
+#include <libethereum/DownloadMan.h>
+#include <libethereum/Client.h>
+using namespace std;
+using namespace dev;
+using namespace eth;
+#endif
 
-#if 1
+#if 0
+int main()
+{
+	BlockInfo bi;
+	bi.difficulty = c_genesisDifficulty;
+	bi.gasLimit = c_genesisGasLimit;
+	bi.number() = 1;
+	bi.parentHash() = sha3("parentHash");
 
+	bytes sealedData;
+
+	{
+		KeyPair kp(sha3("test"));
+		SealEngineFace* se = BasicAuthority::createSealEngine();
+		se->setOption("authority", rlp(kp.secret()));
+		se->setOption("authorities", rlpList(kp.address()));
+		cdebug << se->sealers();
+		bool done = false;
+		se->onSealGenerated([&](SealFace const* seal){
+			sealedData = seal->sealedHeader(bi);
+			done = true;
+		});
+		se->generateSeal(bi);
+		while (!done)
+			this_thread::sleep_for(chrono::milliseconds(50));
+		BasicAuthority::BlockHeader sealed = BasicAuthority::BlockHeader::fromHeader(sealedData, CheckEverything);
+		cdebug << sealed.sig();
+	}
+
+	{
+		SealEngineFace* se = Ethash::createSealEngine();
+		cdebug << se->sealers();
+		bool done = false;
+		se->setSealer("cpu");
+		se->onSealGenerated([&](SealFace const* seal){
+			sealedData = seal->sealedHeader(bi);
+			done = true;
+		});
+		se->generateSeal(bi);
+		while (!done)
+			this_thread::sleep_for(chrono::milliseconds(50));
+		Ethash::BlockHeader sealed = Ethash::BlockHeader::fromHeader(sealedData, CheckEverything);
+		cdebug << sealed.nonce();
+	}
+
+	return 0;
+}
+#elif 0
 int main()
 {
 	cdebug << pbkdf2("password", asBytes("salt"), 1, 32);
@@ -76,10 +135,7 @@ int main()
 	cdebug << pbkdf2("testpassword", fromHex("de5742f1f1045c402296422cee5a8a9ecf0ac5bf594deca1170d22aef33a79cf"), 262144, 16);
 	return 0;
 }
-
-
 #elif 0
-
 int main()
 {
 	cdebug << "EXP";
@@ -103,9 +159,7 @@ int main()
 		ret = orderedTrieRoot(data);
 	cdebug << ret;
 }
-
 #elif 0
-
 int main()
 {
 	KeyManager keyman;
@@ -127,7 +181,6 @@ int main()
 	cdebug << "Secret key for " << a2 << "is" << keyman.secret(a2);
 
 }
-
 #elif 0
 int main()
 {
@@ -187,17 +240,17 @@ int main()
 #elif 0
 int main()
 {
-	GenericFarm<Ethash> f;
+	GenericFarm<EthashProofOfWork> f;
 	BlockInfo genesis = CanonBlockChain::genesis();
 	genesis.difficulty = 1 << 18;
 	cdebug << genesis.boundary();
 
-	auto mine = [](GenericFarm<Ethash>& f, BlockInfo const& g, unsigned timeout) {
+	auto mine = [](GenericFarm<EthashProofOfWork>& f, BlockInfo const& g, unsigned timeout) {
 		BlockInfo bi = g;
 		bool completed = false;
-		f.onSolutionFound([&](ProofOfWork::Solution sol)
+		f.onSolutionFound([&](EthashProofOfWork::Solution sol)
 		{
-			ProofOfWork::assignResult(sol, bi);
+			bi.proof = sol;
 			return completed = true;
 		});
 		f.setWork(bi);
@@ -230,23 +283,16 @@ int main()
 
 	return 0;
 }
-#elif 0
-
-void mine(State& s, BlockChain const& _bc)
+#elif 1
+void mine(State& s, BlockChain const& _bc, SealEngineFace* _se)
 {
 	s.commitToMine(_bc);
-	GenericFarm<ProofOfWork> f;
-	bool completed = false;
-	f.onSolutionFound([&](ProofOfWork::Solution sol)
-	{
-		return completed = s.completeMine<ProofOfWork>(sol);
-	});
-	f.setWork(s.info());
-	f.startCPU();
-	while (!completed)
-		this_thread::sleep_for(chrono::milliseconds(20));
+	Notified<bytes> sealed;
+	_se->onSealGenerated([&](bytes const& sealedHeader){ sealed = sealedHeader; });
+	_se->generateSeal(s.info());
+	sealed.waitNot({});
+	s.sealBlock(sealed);
 }
-#elif 0
 int main()
 {
 	cnote << "Testing State...";
@@ -257,47 +303,62 @@ int main()
 
 	Defaults::setDBPath(boost::filesystem::temp_directory_path().string() + "/" + toString(chrono::system_clock::now().time_since_epoch().count()));
 
-	OverlayDB stateDB = State::openDB();
-	CanonBlockChain bc;
-	cout << bc;
+	using Sealer = Ethash;
+	CanonBlockChain<Sealer> bc;
+	auto gbb = bc.headerData(bc.genesisHash());
+	assert(Sealer::BlockHeader(bc.headerData(bc.genesisHash()), IgnoreSeal, bc.genesisHash(), HeaderData));
 
-	State s(stateDB, BaseState::CanonGenesis, myMiner.address());
-	cout << s;
+	SealEngineFace* se = Sealer::createSealEngine();
+	KeyPair kp(sha3("test"));
+	se->setOption("authority", rlp(kp.secret()));
+	se->setOption("authorities", rlpList(kp.address()));
+
+	OverlayDB stateDB = State::openDB(bc.genesisHash());
+	cnote << bc;
+
+	State s = bc.genesisState(stateDB);
+	s.setAddress(myMiner.address());
+	cnote << s;
 
 	// Sync up - this won't do much until we use the last state.
 	s.sync(bc);
 
-	cout << s;
+	cnote << s;
 
 	// Mine to get some ether!
-	mine(s, bc);
+	mine(s, bc, se);
 
-	bc.attemptImport(s.blockData(), stateDB);
+	bytes minedBlock = s.blockData();
+	cnote << "Mined block is" << BlockInfo(minedBlock).stateRoot();
+	bc.import(minedBlock, stateDB);
 
-	cout << bc;
+	cnote << bc;
 
 	s.sync(bc);
 
-	cout << s;
+	cnote << s;
+	cnote << "Miner now has" << s.balance(myMiner.address());
+	s.resetCurrent();
+	cnote << "Miner now has" << s.balance(myMiner.address());
 
 	// Inject a transaction to transfer funds from miner to me.
 	Transaction t(1000, 10000, 30000, me.address(), bytes(), s.transactionsFrom(myMiner.address()), myMiner.secret());
 	assert(t.sender() == myMiner.address());
 	s.execute(bc.lastHashes(), t);
 
-	cout << s;
+	cnote << s;
 
 	// Mine to get some ether and set in stone.
 	s.commitToMine(bc);
 	s.commitToMine(bc);
-	mine(s, bc);
+	mine(s, bc, se);
 	bc.attemptImport(s.blockData(), stateDB);
 
-	cout << bc;
+	cnote << bc;
 
 	s.sync(bc);
 
-	cout << s;
+	cnote << s;
 
 	return 0;
 }
