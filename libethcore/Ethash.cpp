@@ -196,7 +196,7 @@ public:
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : std::thread::hardware_concurrency(); }
 	static std::string platformInfo();
 	static void listDevices() {}
-	static bool configureGPU(unsigned, unsigned, unsigned, unsigned, unsigned, bool, unsigned,  boost::optional<uint64_t>) { return false; }
+	static bool configureGPU(unsigned, unsigned, unsigned, unsigned, unsigned, bool, unsigned, uint64_t) { return false; }
 	static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency()); }
 
 protected:
@@ -234,7 +234,7 @@ public:
 		unsigned _deviceId,
 		bool _allowCPU,
 		unsigned _extraGPUMemory,
-		boost::optional<uint64_t> _currentBlock
+		uint64_t _currentBlock
 	);
 	static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
 
@@ -246,7 +246,7 @@ private:
 	void workLoop() override;
 	bool report(uint64_t _nonce);
 
-	using Miner::accumulateHashes;
+	using GenericMiner<EthashProofOfWork>::accumulateHashes;
 
 	EthashCLHook* m_hook = nullptr;
 	ethash_cl_miner* m_miner = nullptr;
@@ -448,7 +448,7 @@ std::string EthashCPUMiner::platformInfo()
 class EthashCLHook: public ethash_cl_miner::search_hook
 {
 public:
-	EthashCLHook(Ethash::GPUMiner* _owner): m_owner(_owner) {}
+	EthashCLHook(EthashGPUMiner* _owner): m_owner(_owner) {}
 	EthashCLHook(EthashCLHook const&) = delete;
 
 	void abort()
@@ -511,7 +511,7 @@ unsigned EthashGPUMiner::s_deviceId = 0;
 unsigned EthashGPUMiner::s_numInstances = 0;
 
 EthashGPUMiner::EthashGPUMiner(ConstructionInfo const& _ci):
-	Miner(_ci),
+	GenericMiner<EthashProofOfWork>(_ci),
 	Worker("gpuminer" + toString(index())),
 	m_hook(new EthashCLHook(this))
 {
@@ -527,7 +527,7 @@ EthashGPUMiner::~EthashGPUMiner()
 bool EthashGPUMiner::report(uint64_t _nonce)
 {
 	Nonce n = (Nonce)(u64)_nonce;
-	Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
+	EthashProofOfWork::Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
 	if (r.value < work().boundary)
 		return submitProof(Solution{n, r.mixHash});
 	return false;

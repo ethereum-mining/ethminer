@@ -627,7 +627,7 @@ void Host::run(boost::system::error_code const&)
 	m_nodeTable->processEvents();
 
 	// cleanup zombies
-	DEV_GUARDED(x_connecting);
+	DEV_GUARDED(x_connecting)
 		m_connecting.remove_if([](std::weak_ptr<RLPXHandshake> h){ return h.expired(); });
 	DEV_GUARDED(x_timers)
 		m_timers.remove_if([](std::shared_ptr<boost::asio::deadline_timer> t)
