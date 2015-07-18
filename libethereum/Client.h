@@ -337,7 +337,7 @@ public:
 	{
 		m_sealEngine = std::shared_ptr<SealEngineFace>(Ethash::createSealEngine());
 		m_sealEngine->onSealGenerated([=](bytes const& header){
-			return this->submitSealed(header);
+			this->submitSealed(header);
 		});
 		init(_host, _dbPath, _forceAction, _networkId);
 	}
