@@ -209,7 +209,7 @@ public:
 	void populateFromParent(BlockHeaderPolished const& _parent)
 	{
 		noteDirty();
-		BlockInfo::parentHash = _parent.hash();
+		BlockInfo::m_parentHash = _parent.hash();
 		BlockInfo::populateFromParent(_parent);
 		BlockInfoSub::populateFromParent(_parent);
 	}
