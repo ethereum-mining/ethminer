@@ -21,6 +21,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include <libdevcore/CommonJS.h>
+#include <libtestutils/FixedClient.h>
 #include "../TestUtils.h"
 
 using namespace std;
@@ -139,7 +140,7 @@ BOOST_AUTO_TEST_CASE(blocks)
 				ETH_CHECK_EQUAL(expectedBlockInfoUncldeHash, _blockInfo.sha3Uncles());
 			};
 
-			Ethash::BlockHeader blockInfo(_client.bc().headerData(blockHash));
+			Ethash::BlockHeader blockInfo((static_cast<FixedClient&>(_client)).bc().headerData(blockHash));
 			compareBlockInfos(blockHeader, blockInfo);
 
 			// blockDetails

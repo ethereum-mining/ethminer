@@ -102,13 +102,26 @@ void FakeExtVM::importEnv(mObject& _o)
 	assert(_o.count("currentCoinbase") > 0);
 	assert(_o.count("currentNumber") > 0);
 
-	currentBlock.parentHash() = h256(_o["previousHash"].get_str());
-	currentBlock.number = toInt(_o["currentNumber"]);
-	lastHashes = test::lastHashes(currentBlock.number);
-	currentBlock.gasLimit = toInt(_o["currentGasLimit"]);
-	currentBlock.difficulty = toInt(_o["currentDifficulty"]);
-	currentBlock.timestamp = toInt(_o["currentTimestamp"]);
-	currentBlock.coinbaseAddress() = Address(_o["currentCoinbase"].get_str());
+
+	RLPStream rlpStream;
+	rlpStream.appendList(BlockInfo::BasicFields);
+
+	rlpStream << h256(_o["previousHash"].get_str());
+	rlpStream << EmptyListSHA3;
+	rlpStream << Address(_o["currentCoinbase"].get_str());
+	rlpStream << h256(); // stateRoot
+	rlpStream << EmptyTrie; // transactionTrie
+	rlpStream << EmptyTrie; // receiptTrie
+	rlpStream << LogBloom(); // bloom
+	rlpStream << toInt(_o["currentDifficulty"]);
+	rlpStream << toInt(_o["currentNumber"]);
+	rlpStream << toInt(_o["currentGasLimit"]);
+	rlpStream << 0; //gasUsed
+	rlpStream << toInt(_o["currentTimestamp"]);
+	rlpStream << std::string(); //extra data
+	currentBlock = BlockInfo(rlpStream.out(), CheckEverything, h256{}, HeaderData);
+
+	lastHashes = test::lastHashes(currentBlock.number());
 }
 
 mObject FakeExtVM::exportState()

@@ -233,7 +233,7 @@ void doStateTests(json_spirit::mValue& _v)
 			eth::State theState = importer.m_statePre;
 			try
 			{
-				output = theState.execute(test::lastHashes(importer.m_environment.currentBlock.number), importer.m_transaction).output;
+				output = theState.execute(test::lastHashes(importer.m_environment.currentBlock.number()), importer.m_transaction).output;
 			}
 			catch (Exception const& _e)
 			{
