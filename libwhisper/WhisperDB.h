@@ -47,11 +47,17 @@ class WhisperDB
 	void insert(dev::h256 const& _key, bytes const& _value);
 	void kill(dev::h256 const& _key);
 	void loadAll(std::map<h256, Envelope>& o_dst);
+	void save(dev::h256 const& _key, Envelope const& _e);
 
 private:
+	void streamMetaInfo(RLPStream& _rlp, Envelope const& _e);
+	void readMetaInfo(RLP const& _rlp, Envelope& _e);
+
 	leveldb::ReadOptions m_readOptions;
 	leveldb::WriteOptions m_writeOptions;
 	std::unique_ptr<leveldb::DB> m_db;
+
+	enum MetaInformation { StoreForeverFlag = 1, WatchedFlag = 2 };
 };
 
 }
