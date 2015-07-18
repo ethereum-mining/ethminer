@@ -59,7 +59,7 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 
 	cnote << this << ": inject: " << _m.expiry() << _m.ttl() << _m.topic() << toHex(_m.data());
 
-	if (_m.expiry() <= (unsigned)time(0))
+	if (_m.isExpired())
 		return;
 
 	auto h = _m.sha3();
@@ -69,13 +69,15 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 			return;
 		UpgradeGuard ll(l);
 		m_messages[h] = _m;
-		m_expiryQueue.insert(make_pair(_m.expiry(), h));
+		if (!_m.isStoreForever())
+			m_expiryQueue.insert(make_pair(_m.expiry(), h));
 	}
 
 	// rating of incoming message from remote host is assessed according to the following criteria:
 	// 1. installed watch match; 2. bloom filter match; 2. ttl; 3. proof of work
 
 	int rating = 0;
+	bool match_watch = false;
 
 	DEV_GUARDED(m_filterLock)
 		if (_m.matchesBloomFilter(m_bloom))
@@ -84,10 +86,11 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 			for (auto const& f: m_filters)
 				if (f.second.filter.matches(_m))
 					for (auto& i: m_watches)
-						if (i.second.id == f.first)
+						if (i.second.id == f.first) // match one of the watches
 						{
 							i.second.changes.push_back(h);
 							rating += 2;
+							match_watch = true;
 						}
 		}
 
@@ -98,6 +101,14 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 		rating += ttlReward;
 		rating *= 256;
 		rating += _m.workProved();
+	}
+
+	if (match_watch)
+	{
+		WriteGuard g(x_messages);
+		auto j = m_messages.find(h);
+		if (m_messages.end() != j)
+			j->second.setWatched();
 	}
 
 	// TODO p2p: capability-based rating
@@ -195,7 +206,12 @@ void WhisperHost::cleanup()
 	unsigned now = (unsigned)time(0);
 	WriteGuard l(x_messages);
 	for (auto it = m_expiryQueue.begin(); it != m_expiryQueue.end() && it->first <= now; it = m_expiryQueue.erase(it))
-		m_messages.erase(it->second);
+	{
+		auto j = m_messages.find(it->second);
+		if (j != m_messages.end())
+			if (!j->second.isStoreForever())
+				m_messages.erase(it->second);
+	}
 }
 
 void WhisperHost::noteAdvertiseTopicsOfInterest()
@@ -213,30 +229,14 @@ void WhisperHost::saveMessagesToBD()
 	{
 		WhisperDB db;
 		ReadGuard g(x_messages);
+		unsigned now = (unsigned)time(0);
 		for (auto const& m: m_messages)
-		{
-			RLPStream rlp;
-			m.second.streamRLP(rlp);
-			bytes b;
-			rlp.swapOut(b);
-			db.insert(m.first, b);
-		}
+			if (m.second.isStoreForever() || (m.second.expiry() > now && m.second.isWatched()))
+				db.save(m.first, m.second);
 	}
 	catch(FailedToOpenLevelDB const& ex)
 	{
 		cwarn << "Exception in WhisperHost::saveMessagesToBD() - failed to open DB:" << ex.what();
-	}
-	catch(FailedInsertInLevelDB const& ex)
-	{
-		cwarn << "Exception in WhisperHost::saveMessagesToBD() - failed to insert:" << ex.what();
-	}
-	catch(FailedLookupInLevelDB const& ex)
-	{
-		cwarn << "Exception in WhisperHost::saveMessagesToBD() - failed lookup:" << ex.what();
-	}
-	catch(FailedDeleteInLevelDB const& ex)
-	{
-		cwarn << "Exception in WhisperHost::saveMessagesToBD() - failed to delete:" << ex.what();
 	}
 	catch(Exception const& ex)
 	{
@@ -260,6 +260,9 @@ void WhisperHost::loadMessagesFromBD()
 		db.loadAll(m);
 		WriteGuard g(x_messages);
 		m_messages.swap(m);
+		for (auto const& msg: m)
+			if (!msg.second.isStoreForever())
+				m_expiryQueue.insert(make_pair(msg.second.expiry(), msg.first));
 	}
 	catch(Exception const& ex)
 	{
