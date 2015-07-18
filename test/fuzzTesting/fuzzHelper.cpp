@@ -52,7 +52,7 @@ int RandomCode::recursiveRLP(std::string &_result, int _depth, std::string& _deb
 	if (_depth > 1)
 	{
 		//create rlp blocks
-		int size = 2 + randUniIntGen() % 4;
+		int size = 1 + randUniIntGen() % 4;
 		for (auto i = 0; i < size; i++)
 		{
 			std::string blockstr;
@@ -183,7 +183,7 @@ std::string RandomCode::rndRLPSequence(int _depth, std::string& _debug)
 {
 	refreshSeed();
 	std::string hash;
-	_depth = std::min(std::max(1, _depth), 20); //limit depth to avoid overkill
+	_depth = std::min(std::max(1, _depth), 7); //limit depth to avoid overkill
 	recursiveRLP(hash, _depth, _debug);
 	return hash;
 }
