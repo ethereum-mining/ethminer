@@ -84,7 +84,6 @@ void WhisperDB::loadAll(std::map<h256, Envelope>& o_dst)
 	op.fill_cache = false;
 	op.verify_checksums = true;
 	vector<string> wasted;
-	unsigned now = (unsigned)time(0);
 	unique_ptr<leveldb::Iterator> it(m_db->NewIterator(op));
 
 	for (it->SeekToFirst(); it->Valid(); it->Next())
@@ -96,16 +95,18 @@ void WhisperDB::loadAll(std::map<h256, Envelope>& o_dst)
 		try
 		{
 			RLP rlp((byte const*)v.data(), v.size());
-			Envelope e(rlp);
+			Envelope e(rlp[1]);
 			h256 h2 = e.sha3();
 			h256 h1;
+
+			readMetaInfo(rlp[0], e);
 
 			if (k.size() == h256::size)
 				h1 = h256((byte const*)k.data(), h256::ConstructFromPointer);
 
 			if (h1 != h2)
 				cwarn << "Corrupted data in Level DB:" << h1.hex() << "versus" << h2.hex();
-			else if (e.expiry() > now)
+			else if (!e.isExpired())
 			{
 				o_dst[h1] = e;
 				useless = false;
@@ -134,3 +135,54 @@ void WhisperDB::loadAll(std::map<h256, Envelope>& o_dst)
 	}
 }
 
+void WhisperDB::save(h256 const& _key, Envelope const& _e)
+{
+	try
+	{
+		RLPStream meta;
+		streamMetaInfo(meta, _e);
+
+		RLPStream msg;
+		_e.streamRLP(msg);
+
+		RLPStream res(2);
+		res.appendRaw(meta.out());
+		res.appendRaw(msg.out());
+
+		bytes b;
+		res.swapOut(b);
+		insert(_key, b);
+	}
+	catch(RLPException const& ex)
+	{
+		cwarn << "RLPException in WhisperDB::save():" << ex.what();
+	}
+	catch(FailedInsertInLevelDB const& ex)
+	{
+		cwarn << "Exception in WhisperDB::save() - failed to insert:" << ex.what();
+	}
+}
+
+void WhisperDB::streamMetaInfo(RLPStream& _rlp, Envelope const& _e)
+{
+	uint32_t x = 0;
+
+	if (_e.isStoreForever())
+		x |= StoreForeverFlag;
+
+	if (_e.isWatched())
+		x |= WatchedFlag;
+
+	_rlp.append(x);
+}
+
+void WhisperDB::readMetaInfo(RLP const& _rlp, Envelope& _e)
+{
+	unsigned x = (uint32_t)_rlp;
+
+	if (x & StoreForeverFlag)
+		_e.setStoreForever();
+
+	if (x & WatchedFlag)
+		_e.setWatched();
+}
