@@ -399,43 +399,42 @@ void Host::runAcceptor()
 		auto socket = make_shared<RLPXSocket>(new bi::tcp::socket(m_ioService));
 		m_tcp4Acceptor.async_accept(socket->ref(), [=](boost::system::error_code ec)
 		{
-			if (peerCount() > 9 * m_idealPeerCount)
+			m_accepting = false;
+			if (ec || !m_run)
 			{
-				clog(NetConnect) << "Dropping incoming connect due to maximum peer count (9 * ideal peer count): " << socket->remoteEndpoint();
+				socket->close();
+				return;
+			}
+			if (peerCount() > Ingress * m_idealPeerCount)
+			{
+				clog(NetConnect) << "Dropping incoming connect due to maximum peer count (" << Ingress << " * ideal peer count): " << socket->remoteEndpoint();
 				socket->close();
 				if (ec.value() < 1)
 					runAcceptor();
 				return;
 			}
 			
-			// if no error code
 			bool success = false;
-			if (!ec)
+			try
 			{
-				try
-				{
-					// incoming connection; we don't yet know nodeid
-					auto handshake = make_shared<RLPXHandshake>(this, socket);
-					m_connecting.push_back(handshake);
-					handshake->start();
-					success = true;
-				}
-				catch (Exception const& _e)
-				{
-					clog(NetWarn) << "ERROR: " << diagnostic_information(_e);
-				}
-				catch (std::exception const& _e)
-				{
-					clog(NetWarn) << "ERROR: " << _e.what();
-				}
+				// incoming connection; we don't yet know nodeid
+				auto handshake = make_shared<RLPXHandshake>(this, socket);
+				m_connecting.push_back(handshake);
+				handshake->start();
+				success = true;
+			}
+			catch (Exception const& _e)
+			{
+				clog(NetWarn) << "ERROR: " << diagnostic_information(_e);
+			}
+			catch (std::exception const& _e)
+			{
+				clog(NetWarn) << "ERROR: " << _e.what();
 			}
 
 			if (!success)
 				socket->ref().close();
-			
-			m_accepting = false;
-			if (ec.value() < 1)
-				runAcceptor();
+			runAcceptor();
 		});
 	}
 }
@@ -627,7 +626,7 @@ void Host::run(boost::system::error_code const&)
 	m_nodeTable->processEvents();
 
 	// cleanup zombies
-	DEV_GUARDED(x_connecting);
+	DEV_GUARDED(x_connecting)
 		m_connecting.remove_if([](std::weak_ptr<RLPXHandshake> h){ return h.expired(); });
 	DEV_GUARDED(x_timers)
 		m_timers.remove_if([](std::shared_ptr<boost::asio::deadline_timer> t)
