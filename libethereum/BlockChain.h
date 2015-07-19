@@ -395,7 +395,12 @@ public:
 			BlockHeader h(_block, (_ir & ImportRequirements::ValidSeal) ? Strictness::CheckEverything : Strictness::QuickNonce);
 			h.verifyInternals(_block);
 			if ((_ir & ImportRequirements::Parent) != 0)
-				h.verifyParent(header(h.parentHash()));
+			{
+				bytes parentHeader(headerData(h.parentHash()));
+				if (parentHeader.empty())
+					BOOST_THROW_EXCEPTION(InvalidParentHash());
+				h.verifyParent(typename Sealer::BlockHeader(parentHeader, IgnoreSeal, h.parentHash(), HeaderData));
+			}
 			res.info = static_cast<BlockInfo&>(h);
 		}
 		catch (Exception& ex)
