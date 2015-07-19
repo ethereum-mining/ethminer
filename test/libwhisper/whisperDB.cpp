@@ -21,13 +21,21 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <thread>
 #include <boost/test/unit_test.hpp>
+#include <libp2p/Host.h>
 #include <libwhisper/WhisperDB.h>
+#include <libwhisper/WhisperHost.h>
 
 using namespace std;
 using namespace dev;
 using namespace dev::shh;
 
-BOOST_AUTO_TEST_SUITE(whisperDB)
+struct P2PFixture
+{
+	P2PFixture() { dev::p2p::NodeIPEndpoint::test_allowLocal = true; }
+	~P2PFixture() { dev::p2p::NodeIPEndpoint::test_allowLocal = false; }
+};
+
+BOOST_FIXTURE_TEST_SUITE(whisperDB, P2PFixture)
 
 BOOST_AUTO_TEST_CASE(basic)
 {
@@ -116,6 +124,85 @@ BOOST_AUTO_TEST_CASE(persistence)
 		BOOST_REQUIRE(!s.compare(text1));
 		db.kill(h1);
 		db.kill(h2);
+	}
+}
+
+BOOST_AUTO_TEST_CASE(messages)
+{
+	cnote << "Testing load/save Whisper messages...";
+	VerbosityHolder setTemporaryLevel(2);
+	unsigned const TestSize = 3;
+	map<h256, Envelope> m1;
+	map<h256, Envelope> preexisting;
+	KeyPair us = KeyPair::create();
+
+	{
+		p2p::Host h("Test");
+		auto wh = h.registerCapability(new WhisperHost(true));
+		preexisting = wh->all();
+		cnote << preexisting.size() << "preexisting messages in DB";
+
+		for (unsigned i = 0; i < TestSize; ++i)
+			wh->post(us.sec(), RLPStream().append(i).out(), BuildTopic("test"), 0xFFFFF);
+
+		m1 = wh->all();
+	}
+
+	{
+		p2p::Host h("Test");
+		auto wh = h.registerCapability(new WhisperHost(true));
+		map<h256, Envelope> m2 = wh->all();
+		BOOST_REQUIRE_EQUAL(m1.size(), m2.size());
+		BOOST_REQUIRE_EQUAL(m1.size() - preexisting.size(), TestSize);
+
+		for (auto i: m1)
+		{
+			RLPStream rlp1;
+			RLPStream rlp2;
+			i.second.streamRLP(rlp1);
+			m2[i.first].streamRLP(rlp2);
+			BOOST_REQUIRE_EQUAL(rlp1.out().size(), rlp2.out().size());
+			for (unsigned j = 0; j < rlp1.out().size(); ++j)
+				BOOST_REQUIRE_EQUAL(rlp1.out()[j], rlp2.out()[j]);
+		}
+	}
+
+	WhisperDB db;
+	unsigned x = 0;
+
+	for (auto i: m1)
+		if (preexisting.find(i.first) == preexisting.end())
+		{
+			db.kill(i.first);
+			++x;
+		}
+
+	BOOST_REQUIRE_EQUAL(x, TestSize);
+}
+
+BOOST_AUTO_TEST_CASE(corruptedData)
+{
+	cnote << "Testing corrupted data...";
+	VerbosityHolder setTemporaryLevel(2);
+	map<h256, Envelope> m;
+	h256 x = h256::random();
+
+	{
+		WhisperDB db;
+		db.insert(x, "this is a test input, representing corrupt data");
+	}
+
+	{
+		p2p::Host h("Test");
+		auto wh = h.registerCapability(new WhisperHost(true));
+		m = wh->all();
+		BOOST_REQUIRE(m.end() == m.find(x));
+	}
+
+	{
+		WhisperDB db;
+		string s = db.lookup(x);
+		BOOST_REQUIRE(s.empty());
 	}
 }
 

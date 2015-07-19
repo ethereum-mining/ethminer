@@ -124,6 +124,24 @@ endif()
 set(OpenCL_LIBRARIES ${OpenCL_LIBRARY})
 set(OpenCL_INCLUDE_DIRS ${OpenCL_INCLUDE_DIR})
 
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+
+	find_library(
+		OpenCL_LIBRARY_DEBUG
+		NAMES OpenCL_d
+	)
+
+	set(OpenCL_LIBRARIES optimized ${OpenCL_LIBRARY} debug ${OpenCL_LIBRARY_DEBUG})
+
+	# prepare dlls
+	string(REPLACE ".lib" ".dll" OpenCL_DLL ${OpenCL_LIBRARY})
+	string(REPLACE "/lib/" "/bin/" OpenCL_DLL ${OpenCL_DLL})
+	string(REPLACE ".lib" ".dll" OpenCL_DLL_DEBUG ${OpenCL_LIBRARY_DEBUG})
+	string(REPLACE "/lib/" "/bin/" OpenCL_DLL_DEBUG ${OpenCL_DLL_DEBUG})
+	set(OpenCL_DLLS optimized ${OpenCL_DLL} debug ${OpenCL_DLL_DEBUG})
+
+endif()
+
 include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
 find_package_handle_standard_args(
   OpenCL
