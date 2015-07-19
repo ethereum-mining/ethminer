@@ -75,7 +75,7 @@ DEV_SIMPLE_EXCEPTION(NoHashRecorded);
  * The default constructor creates an empty object, which can be tested against with the boolean
  * conversion operator.
  */
-struct BlockInfo
+class BlockInfo
 {
 	friend class BlockChain;
 public:
@@ -209,7 +209,7 @@ public:
 	void populateFromParent(BlockHeaderPolished const& _parent)
 	{
 		noteDirty();
-		BlockInfo::parentHash = _parent.hash();
+		BlockInfo::m_parentHash = _parent.hash();
 		BlockInfo::populateFromParent(_parent);
 		BlockInfoSub::populateFromParent(_parent);
 	}
