@@ -48,11 +48,10 @@ class WhisperHost: public HostCapability<WhisperPeer>, public Interface, public 
 	friend class WhisperPeer;
 
 public:
-	WhisperHost();
+	WhisperHost(bool _useDB = false);
 	virtual ~WhisperHost();
 	unsigned protocolVersion() const { return WhisperProtocolVersion; }
-	/// remove old messages
-	void cleanup(); 
+	void cleanup(); ///< remove old messages
 	std::map<h256, Envelope> all() const { dev::ReadGuard l(x_messages); return m_messages; }
 	TopicBloomFilterHash bloom() const { dev::Guard l(m_filterLock); return m_bloom; }
 
@@ -62,8 +61,7 @@ public:
 	virtual void uninstallWatch(unsigned _watchId) override;
 	virtual h256s peekWatch(unsigned _watchId) const override { dev::Guard l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return h256s(); } }
 	virtual h256s checkWatch(unsigned _watchId) override { cleanup(); dev::Guard l(m_filterLock); h256s ret; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes.clear(); } catch (...) {} return ret; }
-	/// returns IDs of messages, which match specific watch criteria
-	virtual h256s watchMessages(unsigned _watchId) override; 
+	virtual h256s watchMessages(unsigned _watchId) override; ///< returns IDs of messages, which match specific watch criteria
 	virtual Envelope envelope(h256 _m) const override { try { dev::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Envelope(); } }
 
 protected:
@@ -74,6 +72,8 @@ private:
 	virtual void onStarting() override { startWorking(); }
 	virtual void onStopping() override { stopWorking(); }
 	void streamMessage(h256 _m, RLPStream& _s) const;
+	void saveMessagesToBD();
+	void loadMessagesFromBD();
 
 	mutable dev::SharedMutex x_messages;
 	std::map<h256, Envelope> m_messages;
@@ -83,6 +83,8 @@ private:
 	std::map<h256, InstalledFilter> m_filters;
 	std::map<unsigned, ClientWatch> m_watches;
 	TopicBloomFilter m_bloom;
+
+	bool m_useDB; ///< needed for tests and other special cases
 };
 
 }
