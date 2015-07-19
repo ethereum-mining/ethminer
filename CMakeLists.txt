@@ -372,7 +372,7 @@ if (EVMJIT)
 	set(EVMJIT_CPP TRUE) # include CPP-JIT connector
 	add_subdirectory(evmjit)
 	if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-		get_property(EVMJIT_DLLS_LOCAL TARGET "evmjit" PROPERTY LOCATION)
+		set(EVMJIT_DLLS_LOCAL $<TARGET_FILE:evmjit>)
 		set(EVMJIT_DLLS optimized ${EVMJIT_DLLS_LOCAL} debug ${EVMJIT_DLLS_LOCAL})
 	endif()
 endif()
