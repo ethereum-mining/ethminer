@@ -186,7 +186,7 @@ void BlockInfo::populateFromParent(BlockInfo const& _parent)
 	m_gasLimit = selectGasLimit(_parent);
 	m_gasUsed = 0;
 	m_difficulty = calculateDifficulty(_parent);
-	m_parentHash = _parent.hash();
+	m_parentHash = _parent.m_hash;
 }
 
 u256 BlockInfo::selectGasLimit(BlockInfo const& _parent) const
