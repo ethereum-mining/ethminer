@@ -967,7 +967,15 @@ void PV61Sync::completeSubchain(std::shared_ptr<EthereumPeer> _peer, unsigned _n
 		//Done chain-get
 		m_syncingNeededBlocks.clear();
 		for (auto h = m_completeChainMap.rbegin(); h != m_completeChainMap.rend(); ++h)
-			m_syncingNeededBlocks.insert(m_syncingNeededBlocks.end(), h->second.hashes.begin(), h->second.hashes.end());
+			if (!host().chain().isKnown(h->second.hashes.front()) && !host().chain().isKnown(h->second.hashes.back()))
+			{
+				if (host().bq().blockStatus(h->second.hashes.front()) == QueueStatus::Unknown || host().bq().blockStatus(h->second.hashes.back()) == QueueStatus::Unknown)
+					m_syncingNeededBlocks.insert(m_syncingNeededBlocks.end(), h->second.hashes.begin(), h->second.hashes.end());
+				else
+					for (h256 const& hash: h->second.hashes)
+						if (!host().chain().isKnown(hash) && host().bq().blockStatus(hash) == QueueStatus::Unknown)
+							m_syncingNeededBlocks.insert(m_syncingNeededBlocks.end(), hash);
+			}
 		transition(syncer, SyncState::Blocks);
 	}
 	else
