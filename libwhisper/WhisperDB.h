@@ -24,6 +24,7 @@
 #include <libdevcore/db.h>
 #include <libdevcore/FixedHash.h>
 #include "Common.h"
+#include "Message.h"
 
 namespace dev
 {
@@ -43,7 +44,9 @@ class WhisperDB
 
 	std::string lookup(dev::h256 const& _key) const;
 	void insert(dev::h256 const& _key, std::string const& _value);
+	void insert(dev::h256 const& _key, bytes const& _value);
 	void kill(dev::h256 const& _key);
+	void loadAll(std::map<h256, Envelope>& o_dst);
 
 private:
 	leveldb::ReadOptions m_readOptions;
