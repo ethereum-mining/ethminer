@@ -849,7 +849,7 @@ void BlockChain::rescue(OverlayDB& _db)
 			u = m;
 	}
 	cout << "  lowest is " << l << endl;
-	for (;; --l)
+	for (; l > 0; --l)
 	{
 		h256 h = numberHash(l);
 		cout << "Checking validity of " << l << " (" << h << ")..." << flush;
