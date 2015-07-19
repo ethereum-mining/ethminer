@@ -708,7 +708,7 @@ BlockHeader constructBlock(mObject& _o, h256 const& _stateRoot)
 	try
 	{
 		// construct genesis block
-		const bytes c_blockRLP = createBlockRLPFromFields(_o);
+		const bytes c_blockRLP = createBlockRLPFromFields(_o, _stateRoot);
 		const RLP c_bRLP(c_blockRLP);
 		ret.populateFromHeader(c_bRLP, IgnoreSeal);
 	}
