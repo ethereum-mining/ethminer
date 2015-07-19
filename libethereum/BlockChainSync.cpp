@@ -648,7 +648,8 @@ void PV60Sync::noteDoneBlocks(std::shared_ptr<EthereumPeer> _peer, bool _clemenc
 			clog(NetNote) << "Chain download failed. Aborted while incomplete.";
 		else
 		{
-			// Done our chain-get.
+			// This can happen when the leading peer aborts and the one that is selected instead does not have all the blocks.
+			// Just stop syncing to this peer. Sync will restart if there are no more peers to sync with.
 			clog(NetNote) << "Peer does not have required blocks";
 			resetNeedsSyncing(_peer);
 		}
@@ -966,6 +967,7 @@ void PV61Sync::completeSubchain(std::shared_ptr<EthereumPeer> _peer, unsigned _n
 	{
 		//Done chain-get
 		m_syncingNeededBlocks.clear();
+		// Add hashes to download skipping onces that are already downloaded
 		for (auto h = m_completeChainMap.rbegin(); h != m_completeChainMap.rend(); ++h)
 			if (!host().chain().isKnown(h->second.hashes.front()) && !host().chain().isKnown(h->second.hashes.back()))
 			{
