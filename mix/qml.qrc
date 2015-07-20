@@ -71,5 +71,10 @@
         <file>qml/ScenarioButton.qml</file>
         <file>qml/Watchers.qml</file>
         <file>qml/KeyValuePanel.qml</file>
+        <file>qml/DeployContractStep.qml</file>
+        <file>qml/RegisteringStep.qml</file>
+        <file>qml/DeploymentDialogSteps.qml</file>
+        <file>qml/PackagingStep.qml</file>
+        <file>qml/DeploymentWorker.qml</file>
     </qresource>
 </RCC>
