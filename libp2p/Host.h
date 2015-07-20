@@ -212,7 +212,7 @@ protected:
 	void restoreNetwork(bytesConstRef _b);
 
 private:
-	enum PeerSlotRatio { Egress = 2, Ingress = 9 };
+	enum PeerSlotRatio { Egress = 1, Ingress = 4 };
 	
 	bool havePeerSession(NodeId const& _id) { return !!peerSession(_id); }
 

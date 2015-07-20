@@ -216,7 +216,7 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 
 	cnote << "Testing Whisper async forwarding...";
 	VerbosityHolder setTemporaryLevel(2);
-
+	unsigned const TestValue = 8456;
 	unsigned result = 0;
 	bool done = false;
 
@@ -228,18 +228,13 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 	while (!host1.haveNetwork())
 		this_thread::sleep_for(chrono::milliseconds(2));
 
+	auto w = whost1->installWatch(BuildTopicMask("test")); // only interested in odd packets
 	bool startedForwarder = false;
 	std::thread forwarder([&]()
 	{
 		setThreadName("forwarder");
-
-		this_thread::sleep_for(chrono::milliseconds(500));
-
+		this_thread::sleep_for(chrono::milliseconds(50));
 		startedForwarder = true;
-
-		/// Only interested in odd packets
-		auto w = whost1->installWatch(BuildTopicMask("test"));
-
 		while (!done)
 		{
 			for (auto i: whost1->checkWatch(w))
@@ -261,13 +256,13 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 		host2.start();
 		while (!host2.haveNetwork())
 			this_thread::sleep_for(chrono::milliseconds(2));
-		host2.addNode(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30305, 30305));
 
-		while (!host2.peerCount())
+		host2.requirePeer(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30305, 30305));
+		while (!host2.peerCount() || !host1.peerCount())
 			this_thread::sleep_for(chrono::milliseconds(5));
 
 		KeyPair us = KeyPair::create();
-		whost2->post(us.sec(), RLPStream().append(1).out(), BuildTopic("test"));
+		whost2->post(us.sec(), RLPStream().append(TestValue).out(), BuildTopic("test"), 777000);
 		this_thread::sleep_for(chrono::milliseconds(250));
 	}
 
@@ -278,10 +273,9 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 		ph.start();
 		while (!ph.haveNetwork())
 			this_thread::sleep_for(chrono::milliseconds(2));
-		ph.addNode(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30305, 30305));
 
-		/// Only interested in odd packets
-		auto w = wh->installWatch(BuildTopicMask("test"));
+		auto w = wh->installWatch(BuildTopicMask("test")); // only interested in odd packets
+		ph.requirePeer(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30305, 30305));
 
 		for (int i = 0; i < 200 && !result; ++i)
 		{
@@ -298,7 +292,7 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 
 	done = true;
 	forwarder.join();
-	BOOST_REQUIRE_EQUAL(result, 1);
+	BOOST_REQUIRE_EQUAL(result, TestValue);
 }
 
 BOOST_AUTO_TEST_CASE(topicAdvertising)

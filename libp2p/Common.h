@@ -37,6 +37,7 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/RLP.h>
+#include <libdevcore/Guards.h>
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 
@@ -212,6 +213,46 @@ struct Node
 	bool required = false;
 	
 	virtual operator bool() const { return (bool)id; }
+};
+
+class DeadlineOps
+{
+	class DeadlineOp
+	{
+	public:
+		DeadlineOp(ba::io_service& _io, unsigned _msInFuture, std::function<void(boost::system::error_code const&)> const& _f): m_timer(new ba::deadline_timer(_io)) { m_timer->expires_from_now(boost::posix_time::milliseconds(_msInFuture)); m_timer->async_wait(_f); }
+		~DeadlineOp() {}
+		
+		DeadlineOp(DeadlineOp&& _s): m_timer(_s.m_timer.release()) {}
+		DeadlineOp& operator=(DeadlineOp&& _s) { m_timer.reset(_s.m_timer.release()); return *this; }
+		
+		bool expired() { Guard l(x_timer); return m_timer->expires_from_now().total_nanoseconds() <= 0; }
+		void wait() { Guard l(x_timer); m_timer->wait(); }
+		
+	private:
+		std::unique_ptr<ba::deadline_timer> m_timer;
+		Mutex x_timer;
+	};
+	
+public:
+	DeadlineOps(ba::io_service& _io, unsigned _reapIntervalMs = 100): m_io(_io), m_reapIntervalMs(_reapIntervalMs), m_stopped({false}) { reap(); }
+	~DeadlineOps() { stop(); }
+	
+	void schedule(unsigned _msInFuture, std::function<void(boost::system::error_code const&)> const& _f) { if (m_stopped) return; DEV_GUARDED(x_timers) m_timers.emplace_back(m_io, _msInFuture, _f); }
+	
+	void stop() { m_stopped = true; DEV_GUARDED(x_timers) m_timers.clear(); }
+	
+protected:
+	void reap() { Guard l(x_timers); auto t = m_timers.begin(); while (t != m_timers.end()) if (t->expired()) { t->wait(); m_timers.erase(t); } else t++; m_timers.emplace_back(m_io, m_reapIntervalMs, [this](boost::system::error_code const& ec){ if (!ec) reap(); }); }
+	
+private:
+	ba::io_service& m_io;
+	unsigned m_reapIntervalMs;
+	
+	std::vector<DeadlineOp> m_timers;
+	Mutex x_timers;
+	
+	std::atomic<bool> m_stopped;
 };
 
 }
