@@ -74,11 +74,19 @@ function saveProjectFile()
 			files: [],
 			title: projectTitle,
 			deploymentAddresses: deploymentAddresses,
-			applicationUrlEth: deploymentDialog.applicationUrlEth,
-			applicationUrlHttp: deploymentDialog.applicationUrlHttp,
-			packageHash: deploymentDialog.packageHash,
-			packageBase64: deploymentDialog.packageBase64,
-			deploymentDir: projectModel.deploymentDir
+			applicationUrlEth: projectModel.applicationUrlEth,
+			applicationUrlHttp: projectModel.applicationUrlHttp,
+			packageHash: deploymentDialog.packageStep.packageHash,
+			packageBase64: deploymentDialog.packageStep.packageBase64,
+			deploymentDir: deploymentDialog.packageStep.packageDir,
+			lastPackageDate:  deploymentDialog.packageStep.lastDeployDate,
+			deployBlockNumber: projectModel.deployBlockNumber,
+			localPackageUrl: deploymentDialog.packageStep.localPackageUrl,
+			deploymentTrHashes: JSON.stringify(projectModel.deploymentTrHashes),
+			registerContentHashTrHash: projectModel.registerContentHashTrHash,
+			registerUrlTrHash: projectModel.registerUrlTrHash,
+			registerContentHashBlockNumber: projectModel.registerContentHashBlockNumber,
+			registerUrlBlockNumber: projectModel.registerUrlBlockNumber
 		};
 		for (var i = 0; i < projectListModel.count; i++)
 			projectData.files.push({
@@ -107,18 +115,34 @@ function loadProject(path) {
 		if (projectData.deploymentDir)
 			projectModel.deploymentDir = projectData.deploymentDir
 		if (projectData.packageHash)
-			deploymentDialog.packageHash =  projectData.packageHash
+			deploymentDialog.packageStep.packageHash =  projectData.packageHash
 		if (projectData.packageBase64)
-			deploymentDialog.packageBase64 =  projectData.packageBase64
+			deploymentDialog.packageStep.packageBase64 =  projectData.packageBase64
 		if (projectData.applicationUrlEth)
-			deploymentDialog.applicationUrlEth = projectData.applicationUrlEth
+			projectModel.applicationUrlEth = projectData.applicationUrlEth
 		if (projectData.applicationUrlHttp)
-			deploymentDialog.applicationUrlHttp = projectData.applicationUrlHttp
+			projectModel.applicationUrlHttp = projectData.applicationUrlHttp
+		if (projectData.lastPackageDate)
+			deploymentDialog.packageStep.lastDeployDate = projectData.lastPackageDate
+		if (projectData.deployBlockNumber)
+			projectModel.deployBlockNumber = projectData.deployBlockNumber
+		if (projectData.localPackageUrl)
+			deploymentDialog.packageStep.localPackageUrl =  projectData.localPackageUrl
+		if (projectData.deploymentTrHashes)
+			projectModel.deploymentTrHashes = JSON.parse(projectData.deploymentTrHashes)
+		if (projectData.registerUrlTrHash)
+			projectModel.registerUrlTrHash = projectData.registerUrlTrHash
+		if (projectData.registerContentHashTrHash)
+			projectModel.registerContentHashTrHash = projectData.registerContentHashTrHash
+		if (projectData.registerContentHashBlockNumber)
+			projectModel.registerContentHashBlockNumber = projectData.registerContentHashBlockNumber
+		if (projectData.registerUrlBlockNumber)
+			projectModel.registerUrlBlockNumber = projectData.registerUrlBlockNumber
 		if (!projectData.title) {
 			var parts = path.split("/");
 			projectData.title = parts[parts.length - 2];
 		}
-		deploymentAddresses = projectData.deploymentAddresses ? projectData.deploymentAddresses : [];
+		deploymentAddresses = projectData.deploymentAddresses ? projectData.deploymentAddresses : {};
 		projectTitle = projectData.title;
 		projectPath = path;
 		if (!projectData.files)
@@ -360,3 +384,4 @@ function generateFileName(name, extension) {
 	} while (fileIo.fileExists(filePath));
 	return fileName
 }
+

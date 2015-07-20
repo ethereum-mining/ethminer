@@ -45,3 +45,10 @@ function rpcCall(requests, callBack, error)
 	httpRequest.send(rpcRequest);
 }
 
+function contractFromToken(token)
+{
+	if (token.indexOf('<') === 0)
+		return token.replace("<", "").replace(">", "").split(" - ")[0];
+	return token;
+}
+

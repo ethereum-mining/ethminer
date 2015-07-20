@@ -83,7 +83,7 @@ Rectangle {
 				Label {
 					id: fromLabel
 					text: qsTr("from")
-					visible: from.text !== ""
+					visible: false
 					color: "#EAB920"					
 				}
 				Label {
@@ -97,7 +97,7 @@ Rectangle {
 				Label {
 					id: toLabel
 					text: qsTr("to")
-					visible: from.text !== ""
+					visible: false
 					color: "#EAB920"
 				}
 				Label {
