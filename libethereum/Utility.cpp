@@ -113,12 +113,14 @@ void dev::eth::upgradeDatabase(std::string const& _basePath, h256 const& _genesi
 			// write status
 			if (!fs::exists(chainPath + "/blocks"))
 			{
-				boost::filesystem::create_directories(chainPath);
+				fs::create_directories(chainPath);
+				fs::permissions(chainPath, fs::owner_all);
 				fs::rename(path + "/blocks", chainPath + "/blocks");
 
 				if (!fs::exists(extrasPath + "/extras"))
 				{
-					boost::filesystem::create_directories(extrasPath);
+					fs::create_directories(extrasPath);
+					fs::permissions(extrasPath, fs::owner_all);
 					fs::rename(path + "/details", extrasPath + "/extras");
 					fs::rename(path + "/state", extrasPath + "/state");
 					writeFile(extrasPath + "/minor", rlp(minorProtocolVersion));

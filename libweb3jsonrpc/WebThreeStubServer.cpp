@@ -34,6 +34,7 @@
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+namespace fs = boost::filesystem;
 
 bool isHex(std::string const& _s)
 {
@@ -56,7 +57,8 @@ WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, 
 	m_gp(_gp)
 {
 	auto path = getDataDir() + "/.web3";
-	boost::filesystem::create_directories(path);
+	fs::create_directories(path);
+	fs::permissions(path, fs::owner_all);
 	ldb::Options o;
 	o.create_if_missing = true;
 	ldb::DB::Open(o, path, &m_db);
