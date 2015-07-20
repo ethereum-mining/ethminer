@@ -196,7 +196,7 @@ unsigned BlockChain::open(std::string const& _path, WithExisting _we)
 		}
 	}
 
-	m_writeOptions.sync = true;
+//	m_writeOptions.sync = true;
 
 	if (_we != WithExisting::Verify && !details(m_genesisHash))
 	{
