@@ -32,38 +32,34 @@ function deployProject(force) {
 	deploymentDialog.open();
 }
 
-function startDeployProject(erasePrevious)
-{
-	var date = new Date();
-	var deploymentId = date.toLocaleString(Qt.locale(), "ddMMyyHHmmsszzz");
-	if (!erasePrevious)
-	{
-		finalizeDeployment(deploymentId, projectModel.deploymentAddresses);
-		return;
-	}
-
+function deployContracts(gas, callback)
+{	
+	deploymentGas = gas;
 	var jsonRpcUrl = "http://127.0.0.1:8080";
-	console.log("Deploying " + deploymentId + " to " + jsonRpcUrl);
+	console.log("Deploying to " + jsonRpcUrl);
 	deploymentStarted();
 
 	var ctrAddresses = {};
-	var state = retrieveState(projectModel.deployedState);
-	console.log(JSON.stringify(state));
+	var state = retrieveState(projectModel.deployedScenarioIndex);
 	if (!state)
 	{
-		var txt = qsTr("Unable to find state " + projectModel.deployedState);
+		var txt = qsTr("Unable to find this scenario");
 		deploymentError(txt);
 		console.log(txt);
 		return;
 	}
-	executeTr(0, state, ctrAddresses, function (){
-		finalizeDeployment(deploymentId, ctrAddresses);
+	var trHashes = {}
+	executeTr(0, 0, state, ctrAddresses, trHashes, function(){
+		projectModel.deploymentAddresses = ctrAddresses;
+		deploymentStepChanged(qsTr("Scenario deployed. Please wait for verifications"))
+		if (callback)
+			callback(ctrAddresses, trHashes)
 	});
 }
 
-function checkPathCreationCost(callBack)
+function checkPathCreationCost(ethUrl, callBack)
 {
-	var dappUrl = formatAppUrl(deploymentDialog.applicationUrlEth);
+	var dappUrl = formatAppUrl(ethUrl);
 	checkEthPath(dappUrl, true, function(success, cause) {
 		if (!success)
 		{
@@ -85,7 +81,7 @@ function checkPathCreationCost(callBack)
 		else
 		{
 			deploymentStepChanged(qsTr("Your Dapp can be registered here."));
-			callBack((dappUrl.length - 1) * (deploymentDialog.ownedRegistrarDeployGas + deploymentDialog.ownedRegistrarSetSubRegistrarGas) + deploymentDialog.ownedRegistrarSetContentHashGas);
+			callBack((dappUrl.length - 1) * (deploymentDialog.registerStep.ownedRegistrarDeployGas + deploymentDialog.registerStep.ownedRegistrarSetSubRegistrarGas) + deploymentDialog.registerStep.ownedRegistrarSetContentHashGas);
 		}
 	});
 }
@@ -97,19 +93,13 @@ function gasUsed()
 	for (var g in gasCosts)
 	{
 		gas += gasCosts[g];
-		console.log(" gasCost " + gasCosts[g]);
 	}
 	return gas;
 }
 
-function retrieveState(state)
+function retrieveState(stateIndex)
 {
-	for (var k = 0; k < projectModel.stateListModel.count; k++)
-	{
-		if (projectModel.stateListModel.get(k).title === state)
-			return projectModel.stateListModel.get(k);
-	}
-	return null;
+	return projectModel.stateListModel.get(stateIndex);
 }
 
 function replaceParamToken(paramsDef, params, ctrAddresses)
@@ -134,6 +124,7 @@ function replaceParamToken(paramsDef, params, ctrAddresses)
 
 function getFunction(ctrName, functionId)
 {
+	ctrName = contractFromToken(ctrName)
 	if (codeModel.contracts[ctrName] === undefined)
 		return null;
 	if (ctrName === functionId)
@@ -148,20 +139,25 @@ function getFunction(ctrName, functionId)
 	}
 }
 
-function executeTr(trIndex, state, ctrAddresses, callBack)
+var deploymentGas
+var trRealIndex = -1
+function executeTr(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack)
 {
-	var tr = state.transactions.get(trIndex);
+	trRealIndex++;
+	var tr = state.blocks.get(blockIndex).transactions.get(trIndex);
+	if (!tr)
+		callBack()
 	var func = getFunction(tr.contractId, tr.functionId);
 	if (!func)
-		executeTrNextStep(trIndex, state, ctrAddresses, callBack);
+		executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack);
 	else
 	{
-		var gasCost = clientModel.toHex(clientModel.gasCosts[trIndex]);
-		var rpcParams = { "from": deploymentDialog.currentAccount, "gas": "0x" + gasCost };
+		var gasCost = clientModel.toHex(deploymentGas[trRealIndex]);
+		var rpcParams = { "from": deploymentDialog.worker.currentAccount, "gas": "0x" + gasCost };
 		var params = replaceParamToken(func.parameters, tr.parameters, ctrAddresses);
-		var encodedParams = clientModel.encodeParams(params, tr.contractId, tr.functionId);
+		var encodedParams = clientModel.encodeParams(params, contractFromToken(tr.contractId), tr.functionId);
 
-		if (state.contractId === state.functionId)
+		if (tr.contractId === tr.functionId)
 			rpcParams.code = codeModel.contracts[tr.contractId].codeHex + encodedParams.join("");
 		else
 			rpcParams.data = func.hash + encodedParams.join("");
@@ -177,28 +173,55 @@ function executeTr(trIndex, state, ctrAddresses, callBack)
 			var txt = qsTr(tr.contractId + "." + tr.functionId + "() ...")
 			deploymentStepChanged(txt);
 			console.log(txt);
-			if (tr.contractId === tr.functionId)
-			{
-				ctrAddresses[tr.contractId] = JSON.parse(response)[0].result
-				ctrAddresses[tr.contractId + " - " + trIndex] = JSON.parse(response)[0].result //get right ctr address if deploy more than one contract of same type.
-			}
-			deploymentDialog.waitForTrCountToIncrement(function(status) {
+			var hash = JSON.parse(response)[0].result
+			trHashes[tr.contractId + "." + tr.functionId + "()"] = hash
+			deploymentDialog.worker.waitForTrReceipt(hash, function(status, receipt){
 				if (status === -1)
 					trCountIncrementTimeOut();
 				else
-					executeTrNextStep(trIndex, state, ctrAddresses, callBack)
-			});
+				{
+					if (tr.contractId === tr.functionId)
+					{
+						ctrAddresses[tr.contractId] = receipt.contractAddress
+						ctrAddresses[tr.contractId + " - " + trIndex] = receipt.contractAddress //get right ctr address if deploy more than one contract of same type.
+					}
+					executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack)
+				}
+			})
 		});
 	}
 }
 
-function executeTrNextStep(trIndex, state, ctrAddresses, callBack)
+function retrieveContractAddress(trHash, callback)
+{
+	var requests = [{
+						jsonrpc: "2.0",
+						method: "eth_getTransactionReceipt",
+						params: [ trHash ],
+						id: jsonRpcRequestId
+					}];
+	rpcCall(requests, function (httpCall, response){
+		callback(JSON.parse(response)[0].contractAddress)
+	})
+}
+
+function executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack)
 {
 	trIndex++;
-	if (trIndex < state.transactions.count)
-		executeTr(trIndex, state, ctrAddresses, callBack);
+	if (trIndex < state.blocks.get(blockIndex).transactions.count)
+		executeTr(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack);
 	else
-		callBack();
+	{
+		blockIndex++
+		if (blockIndex < state.blocks.count)
+		{
+			executeTr(blockIndex, 0, state, ctrAddresses, trHashes, callBack);
+		}
+		else
+		{
+			callBack();
+		}
+	}
 }
 
 function gasPrice(callBack, error)
@@ -216,9 +239,20 @@ function gasPrice(callBack, error)
 	});
 }
 
-function finalizeDeployment(deploymentId, addresses) {
+function packageDapp(addresses)
+{
+	var date = new Date();
+	var deploymentId = date.toLocaleString(Qt.locale(), "ddMMyyHHmmsszzz");
+	deploymentDialog.packageStep.deploymentId = deploymentId
+
 	deploymentStepChanged(qsTr("Packaging application ..."));
 	var deploymentDir = projectPath + deploymentId + "/";
+
+	if (deploymentDialog.packageStep.packageDir !== "")
+		deploymentDir = deploymentDialog.packageStep.packageDir
+	else
+		deploymentDir = projectPath + "package/"
+
 	projectModel.deploymentDir = deploymentDir;
 	fileIo.makeDir(deploymentDir);
 	for (var i = 0; i < projectListModel.count; i++) {
@@ -253,27 +287,29 @@ function finalizeDeployment(deploymentId, addresses) {
 				"\taddress: \"" + addresses[c] + "\"\n" +
 				"};\n" +
 				contractAccessor + ".contractClass = web3.eth.contract(" + contractAccessor + ".interface);\n" +
-				contractAccessor + ".contract = new " + contractAccessor + ".contractClass(" + contractAccessor + ".address);\n";
+				contractAccessor + ".contract = " + contractAccessor + ".contractClass.at(" + contractAccessor + ".address);\n";
 	}
 	fileIo.writeFile(deploymentDir + "deployment.js", deploymentJs);
 	deploymentAddresses = addresses;
 	saveProject();
 
 	var packageRet = fileIo.makePackage(deploymentDir);
-	deploymentDialog.packageHash = packageRet[0];
-	deploymentDialog.packageBase64 = packageRet[1];
-	deploymentDialog.localPackageUrl = packageRet[2] + "?hash=" + packageRet[0];
+	deploymentDialog.packageStep.packageHash = packageRet[0];
+	deploymentDialog.packageStep.packageBase64 = packageRet[1];
+	deploymentDialog.packageStep.localPackageUrl = packageRet[2] + "?hash=" + packageRet[0];
+	deploymentDialog.packageStep.lastDeployDate = date
+	deploymentComplete()
+}
 
-	var applicationUrlEth = deploymentDialog.applicationUrlEth;
-
-	applicationUrlEth = formatAppUrl(applicationUrlEth);
+function registerDapp(url, callback)
+{
 	deploymentStepChanged(qsTr("Registering application on the Ethereum network ..."));
-	checkEthPath(applicationUrlEth, false, function (success) {
+	checkEthPath(url, false, function (success) {
 		if (!success)
 			return;
 		deploymentComplete();
-		deployResourcesDialog.text = qsTr("Register Web Application to finalize deployment.");
-		deployResourcesDialog.open();
+		if (callback)
+			callback()
 	});
 }
 
@@ -283,8 +319,8 @@ function checkEthPath(dappUrl, checkOnly, callBack)
 	{
 		// convenient for dev purpose, should not be possible in normal env.
 		if (!checkOnly)
-			reserve(deploymentDialog.eth, function() {
-				registerContentHash(deploymentDialog.eth, callBack); // we directly create a dapp under the root registrar.
+			reserve(deploymentDialog.registerStep.eth, function() {
+				registerContentHash(deploymentDialog.registerStep.eth, callBack); // we directly create a dapp under the root registrar.
 			});
 		else
 			callBack(true);
@@ -298,7 +334,7 @@ function checkEthPath(dappUrl, checkOnly, callBack)
 						  //subRegistrar()
 						  jsonrpc: "2.0",
 						  method: "eth_call",
-						  params: [ { "gas": "0xffff", "from": deploymentDialog.currentAccount,  "to": '0x' + deploymentDialog.eth, "data": "0xe1fa8e84" + str }, "pending" ],
+						  params: [ { "gas": "0xffff", "from": deploymentDialog.worker.currentAccount,  "to": '0x' + deploymentDialog.registerStep.eth, "data": "0xe1fa8e84" + str }, "pending" ],
 						  id: jsonRpcRequestId++
 					  });
 		rpcCall(requests, function (httpRequest, response) {
@@ -327,12 +363,12 @@ function isOwner(addr, callBack)
 					  //getOwner()
 					  jsonrpc: "2.0",
 					  method: "eth_call",
-					  params: [ { "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0xb387ef92" }, "pending" ],
+					  params: [ { "from": deploymentDialog.worker.currentAccount, "to": '0x' + addr, "data": "0xb387ef92" }, "pending" ],
 					  id: jsonRpcRequestId++
 				  });
 	rpcCall(requests, function (httpRequest, response) {
 		var res = JSON.parse(response);
-		callBack(normalizeAddress(deploymentDialog.currentAccount) === normalizeAddress(res[0].result));
+		callBack(normalizeAddress(deploymentDialog.worker.currentAccount) === normalizeAddress(res[0].result));
 	});
 }
 
@@ -374,7 +410,7 @@ function continueRegistration(dappUrl, addr, callBack, checkOnly)
 						  //register()
 						  jsonrpc: "2.0",
 						  method: "eth_call",
-						  params: [ { "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0x5a3a05bd"  + str }, "pending" ],
+						  params: [ { "from": deploymentDialog.worker.currentAccount, "to": '0x' + addr, "data": "0x5a3a05bd"  + str }, "pending" ],
 						  id: jsonRpcRequestId++
 					  });
 
@@ -406,11 +442,11 @@ function continueRegistration(dappUrl, addr, callBack, checkOnly)
 				deploymentStepChanged(txt);
 				//current registrar is owned => ownedregistrar creation and continue.
 				requests = [];
-				var gasCost = clientModel.toHex(deploymentDialog.ownedRegistrarDeployGas);
+				var gasCost = clientModel.toHex(deploymentDialog.registerStep.ownedRegistrarDeployGas);
 				requests.push({
 								  jsonrpc: "2.0",
 								  method: "eth_sendTransaction",
-								  params: [ { "from": deploymentDialog.currentAccount, "gas": "0x" + gasCost, "code": "0x600080547fffffffffffffffffffffffff000000000000000000000000000000000000000016331781556105cd90819061003990396000f3007c010000000000000000000000000000000000000000000000000000000060003504630198489281146100b257806321f8a721146100e45780632dff6941146100ee5780633b3b57de1461010e5780635a3a05bd1461013e5780635fd4b08a146101715780637dd564111461017d57806389a69c0e14610187578063b387ef92146101bb578063b5c645bd146101f4578063be99a98014610270578063c3d014d6146102a8578063d93e7573146102dc57005b73ffffffffffffffffffffffffffffffffffffffff600435166000908152600160205260409020548060005260206000f35b6000808052602081f35b600435600090815260026020819052604090912001548060005260206000f35b600435600090815260026020908152604082205473ffffffffffffffffffffffffffffffffffffffff1680835291f35b600435600090815260026020908152604082206001015473ffffffffffffffffffffffffffffffffffffffff1680835291f35b60008060005260206000f35b6000808052602081f35b60005461030c9060043590602435903373ffffffffffffffffffffffffffffffffffffffff908116911614610569576105c9565b60005473ffffffffffffffffffffffffffffffffffffffff168073ffffffffffffffffffffffffffffffffffffffff1660005260206000f35b600435600090815260026020819052604090912080546001820154919092015473ffffffffffffffffffffffffffffffffffffffff9283169291909116908273ffffffffffffffffffffffffffffffffffffffff166000528173ffffffffffffffffffffffffffffffffffffffff166020528060405260606000f35b600054610312906004359060243590604435903373ffffffffffffffffffffffffffffffffffffffff90811691161461045457610523565b6000546103189060043590602435903373ffffffffffffffffffffffffffffffffffffffff90811691161461052857610565565b60005461031e90600435903373ffffffffffffffffffffffffffffffffffffffff90811691161461032457610451565b60006000f35b60006000f35b60006000f35b60006000f35b60008181526002602090815260408083205473ffffffffffffffffffffffffffffffffffffffff16835260019091529020548114610361576103e1565b6000818152600260205260408082205473ffffffffffffffffffffffffffffffffffffffff169183917ff63780e752c6a54a94fc52715dbc5518a3b4c3c2833d301a204226548a2a85459190a360008181526002602090815260408083205473ffffffffffffffffffffffffffffffffffffffff16835260019091528120555b600081815260026020819052604080832080547fffffffffffffffffffffffff00000000000000000000000000000000000000009081168255600182018054909116905590910182905582917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b50565b600083815260026020526040902080547fffffffffffffffffffffffff00000000000000000000000000000000000000001683179055806104bb57827fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc60006040a2610522565b73ffffffffffffffffffffffffffffffffffffffff8216837ff63780e752c6a54a94fc52715dbc5518a3b4c3c2833d301a204226548a2a854560006040a373ffffffffffffffffffffffffffffffffffffffff821660009081526001602052604090208390555b5b505050565b600082815260026020819052604080832090910183905583917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b5050565b60008281526002602052604080822060010180547fffffffffffffffffffffffff0000000000000000000000000000000000000000168417905583917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b505056" } ],
+								  params: [ { "from": deploymentDialog.worker.currentAccount, "gas": "0x" + gasCost, "code": "0x600080547fffffffffffffffffffffffff000000000000000000000000000000000000000016331781556105cd90819061003990396000f3007c010000000000000000000000000000000000000000000000000000000060003504630198489281146100b257806321f8a721146100e45780632dff6941146100ee5780633b3b57de1461010e5780635a3a05bd1461013e5780635fd4b08a146101715780637dd564111461017d57806389a69c0e14610187578063b387ef92146101bb578063b5c645bd146101f4578063be99a98014610270578063c3d014d6146102a8578063d93e7573146102dc57005b73ffffffffffffffffffffffffffffffffffffffff600435166000908152600160205260409020548060005260206000f35b6000808052602081f35b600435600090815260026020819052604090912001548060005260206000f35b600435600090815260026020908152604082205473ffffffffffffffffffffffffffffffffffffffff1680835291f35b600435600090815260026020908152604082206001015473ffffffffffffffffffffffffffffffffffffffff1680835291f35b60008060005260206000f35b6000808052602081f35b60005461030c9060043590602435903373ffffffffffffffffffffffffffffffffffffffff908116911614610569576105c9565b60005473ffffffffffffffffffffffffffffffffffffffff168073ffffffffffffffffffffffffffffffffffffffff1660005260206000f35b600435600090815260026020819052604090912080546001820154919092015473ffffffffffffffffffffffffffffffffffffffff9283169291909116908273ffffffffffffffffffffffffffffffffffffffff166000528173ffffffffffffffffffffffffffffffffffffffff166020528060405260606000f35b600054610312906004359060243590604435903373ffffffffffffffffffffffffffffffffffffffff90811691161461045457610523565b6000546103189060043590602435903373ffffffffffffffffffffffffffffffffffffffff90811691161461052857610565565b60005461031e90600435903373ffffffffffffffffffffffffffffffffffffffff90811691161461032457610451565b60006000f35b60006000f35b60006000f35b60006000f35b60008181526002602090815260408083205473ffffffffffffffffffffffffffffffffffffffff16835260019091529020548114610361576103e1565b6000818152600260205260408082205473ffffffffffffffffffffffffffffffffffffffff169183917ff63780e752c6a54a94fc52715dbc5518a3b4c3c2833d301a204226548a2a85459190a360008181526002602090815260408083205473ffffffffffffffffffffffffffffffffffffffff16835260019091528120555b600081815260026020819052604080832080547fffffffffffffffffffffffff00000000000000000000000000000000000000009081168255600182018054909116905590910182905582917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b50565b600083815260026020526040902080547fffffffffffffffffffffffff00000000000000000000000000000000000000001683179055806104bb57827fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc60006040a2610522565b73ffffffffffffffffffffffffffffffffffffffff8216837ff63780e752c6a54a94fc52715dbc5518a3b4c3c2833d301a204226548a2a854560006040a373ffffffffffffffffffffffffffffffffffffffff821660009081526001602052604090208390555b5b505050565b600082815260026020819052604080832090910183905583917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b5050565b60008281526002602052604080822060010180547fffffffffffffffffffffffff0000000000000000000000000000000000000000168417905583917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b505056" } ],
 								  id: jsonRpcRequestId++
 							  });
 
@@ -420,19 +456,19 @@ function continueRegistration(dappUrl, addr, callBack, checkOnly)
 					var txt = qsTr("Please wait " + dappUrl[0] + " is registering ...");
 					deploymentStepChanged(txt);
 					console.log(txt);
-					deploymentDialog.waitForTrCountToIncrement(function(status) {
+					deploymentDialog.worker.waitForTrCountToIncrement(function(status) {
 						if (status === -1)
 						{
 							trCountIncrementTimeOut();
 							return;
 						}
 						var crLevel = clientModel.encodeStringParam(dappUrl[0]);
-						var gasCost = clientModel.toHex(deploymentDialog.ownedRegistrarSetSubRegistrarGas);
+						var gasCost = clientModel.toHex(deploymentDialog.registerStep.ownedRegistrarSetSubRegistrarGas);
 						requests.push({
 										  //setRegister()
 										  jsonrpc: "2.0",
 										  method: "eth_sendTransaction",
-										  params: [ { "from": deploymentDialog.currentAccount, "gas": "0x" + gasCost, "to": '0x' + addr, "data": "0x89a69c0e" + crLevel + deploymentDialog.pad(newCtrAddress) } ],
+										  params: [ { "from": deploymentDialog.worker.currentAccount, "gas": "0x" + gasCost, "to": '0x' + addr, "data": "0x89a69c0e" + crLevel + newCtrAddress } ],
 										  id: jsonRpcRequestId++
 									  });
 
@@ -465,7 +501,7 @@ function reserve(registrar, callBack)
 				  //reserve()
 				  jsonrpc: "2.0",
 				  method: "eth_sendTransaction",
-				  params: [ { "from": deploymentDialog.currentAccount, "gas": "0xfffff", "to": '0x' + registrar, "data": "0x432ced04" + paramTitle } ],
+				  params: [ { "from": deploymentDialog.worker.currentAccount, "gas": "0xfffff", "to": '0x' + registrar, "data": "0x432ced04" + paramTitle } ],
 				  id: jsonRpcRequestId++
 			  });
 	rpcCall(requests, function (httpRequest, response) {
@@ -479,39 +515,45 @@ function registerContentHash(registrar, callBack)
 	var txt = qsTr("Finalizing Dapp registration ...");
 	deploymentStepChanged(txt);
 	console.log(txt);
+	console.log("register url " + deploymentDialog.packageStep.packageHash + " " + projectModel.projectTitle)
+	projectModel.registerContentHashTrHash = ""
 	var requests = [];
 	var paramTitle = clientModel.encodeStringParam(projectModel.projectTitle);
-	var gasCost = clientModel.toHex(deploymentDialog.ownedRegistrarSetContentHashGas);
+	var gasCost = clientModel.toHex(deploymentDialog.registerStep.ownedRegistrarSetContentHashGas);
 	requests.push({
 					  //setContent()
 					  jsonrpc: "2.0",
 					  method: "eth_sendTransaction",
-					  params: [ { "from": deploymentDialog.currentAccount, "gas": "0x" + gasCost, "to": '0x' + registrar, "data": "0xc3d014d6" + paramTitle + deploymentDialog.packageHash } ],
+					  params: [ { "from": deploymentDialog.worker.currentAccount, "gas": "0x" + gasCost, "to": '0x' + registrar, "data": "0xc3d014d6" + paramTitle + deploymentDialog.packageStep.packageHash } ],
 					  id: jsonRpcRequestId++
 				  });
 	rpcCall(requests, function (httpRequest, response) {
+		projectModel.registerContentHashTrHash = JSON.parse(response)[0].result
 		callBack(true);
 	});
 }
 
-function registerToUrlHint()
+function registerToUrlHint(url, callback)
 {
-	deploymentStepChanged(qsTr("Registering application Resources (" + deploymentDialog.applicationUrlHttp) + ") ...");
-
+	console.log("register url " + deploymentDialog.packageStep.packageHash + " " + url)
+	deploymentStepChanged(qsTr("Registering application Resources..."))
 	urlHintAddress(function(urlHint){
 		var requests = [];
-		var paramUrlHttp = clientModel.encodeStringParam(deploymentDialog.applicationUrlHttp);
-		var gasCost = clientModel.toHex(deploymentDialog.urlHintSuggestUrlGas);
+		var paramUrlHttp = clientModel.encodeStringParam(url)
+		var gasCost = clientModel.toHex(deploymentDialog.registerStep.urlHintSuggestUrlGas);
 		requests.push({
 						  //urlHint => suggestUrl
 						  jsonrpc: "2.0",
 						  method: "eth_sendTransaction",
-						  params: [ {  "to": '0x' + urlHint, "from": deploymentDialog.currentAccount, "gas": "0x" + gasCost, "data": "0x584e86ad" + deploymentDialog.packageHash + paramUrlHttp } ],
+						  params: [ {  "to": '0x' + urlHint, "from": deploymentDialog.worker.currentAccount, "gas": "0x" + gasCost, "data": "0x584e86ad" + deploymentDialog.packageStep.packageHash + paramUrlHttp } ],
 						  id: jsonRpcRequestId++
 					  });
 
 		rpcCall(requests, function (httpRequest, response) {
+			projectModel.registerUrlTrHash = JSON.parse(response)[0].result
 			deploymentComplete();
+			if (callback)
+				callback()
 		});
 	});
 }
@@ -524,7 +566,7 @@ function urlHintAddress(callBack)
 					  //registrar: get UrlHint addr
 					  jsonrpc: "2.0",
 					  method: "eth_call",
-					  params: [ {  "to": '0x' + deploymentDialog.eth, "from": deploymentDialog.currentAccount, "data": "0x3b3b57de" + urlHint }, "pending" ],
+					  params: [ {  "to": '0x' + deploymentDialog.registerStep.eth, "from": deploymentDialog.worker.currentAccount, "data": "0x3b3b57de" + urlHint }, "pending" ],
 					  id: jsonRpcRequestId++
 				  });
 
@@ -545,6 +587,8 @@ function normalizeAddress(addr)
 
 function formatAppUrl(url)
 {
+	if (!url)
+		return [projectModel.projectTitle];
 	if (url.toLowerCase().lastIndexOf("/") === url.length - 1)
 		url = url.substring(0, url.length - 1);
 	if (url.toLowerCase().indexOf("eth://") === 0)

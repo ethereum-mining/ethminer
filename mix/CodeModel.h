@@ -33,6 +33,7 @@
 #include <libdevcore/Guards.h>
 #include <libevmcore/Params.h>
 #include <libevmasm/Assembly.h>
+#include <libdevcore/SHA3.h>
 #include "SolidityType.h"
 #include "QBigInt.h"
 
@@ -246,8 +247,12 @@ public:
 	void gasEstimation(solidity::CompilerStack const& _cs);
 	/// Gas cost by doc id
 	Q_INVOKABLE QVariantList gasCostByDocumentId(QString const& _documentId) const;
+	/// Gas cost by @arg contractName @arg functionName
 	Q_INVOKABLE QVariantList gasCostBy(QString const& _contractName, QString const& _functionName) const;
+	/// Set optimize code
 	Q_INVOKABLE void setOptimizeCode(bool _value);
+	/// sha3
+	Q_INVOKABLE QString sha3(QString _source) { return QString::fromStdString(dev::sha3(_source.toStdString()).hex()); }
 	int txGas() { return static_cast<int>(dev::eth::c_txGas); }
 	int callStipend() { return static_cast<int>(dev::eth::c_callStipend); }
 

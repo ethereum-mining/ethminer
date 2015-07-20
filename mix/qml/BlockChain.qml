@@ -20,7 +20,7 @@ ColumnLayout {
 	spacing: 0
 	property int previousWidth
 	property variant debugTrRequested: []
-	signal chainChanged
+	signal chainChanged(var blockIndex, var txIndex, var item)
 	signal chainReloaded
 	signal txSelected(var blockIndex, var txIndex)
 	signal rebuilding
@@ -30,15 +30,46 @@ ColumnLayout {
 	{
 		target: codeModel
 		onContractRenamed: {
-			rebuild.startBlinking()
+			rebuild.needRebuild("ContractRenamed")
 		}
 		onNewContractCompiled: {
-			rebuild.startBlinking()
+			rebuild.needRebuild("NewContractCompiled")
+		}
+		onCompilationComplete: {
+			for (var c in rebuild.contractsHex)
+			{
+				if (codeModel.contracts[c] === undefined || codeModel.contracts[c].codeHex !== rebuild.contractsHex[c])
+				{
+					if (!rebuild.containsRebuildCause("CodeChanged"))
+					{
+						rebuild.needRebuild("CodeChanged")
+					}
+					return
+				}
+			}
+			rebuild.notNeedRebuild("CodeChanged")
 		}
 	}
 
+
 	onChainChanged: {
-		rebuild.startBlinking()
+			if (rebuild.txSha3[blockIndex][txIndex] !== codeModel.sha3(JSON.stringify(model.blocks[blockIndex].transactions[txIndex])))
+			{
+				rebuild.txChanged.push(rebuild.txSha3[blockIndex][txIndex])
+				rebuild.needRebuild("txChanged")
+			}
+			else {
+				for (var k in rebuild.txChanged)
+				{
+					if (rebuild.txChanged[k] === rebuild.txSha3[blockIndex][txIndex])
+					{
+						rebuild.txChanged.splice(k, 1)
+						break
+					}
+				}
+				if (rebuild.txChanged.length === 0)
+					rebuild.notNeedRebuild("txChanged")
+			}
 	}
 
 	onWidthChanged:
@@ -174,7 +205,8 @@ ColumnLayout {
 						Connections
 						{
 							target: block
-							onTxSelected: {
+							onTxSelected:
+							{
 								blockChainPanel.txSelected(index, txIndex)
 							}
 						}
@@ -274,8 +306,7 @@ ColumnLayout {
 
 			Rectangle {
 				Layout.preferredWidth: 100
-				Layout.preferredHeight: 30
-
+				Layout.preferredHeight: 30				
 				ScenarioButton {
 					id: rebuild
 					text: qsTr("Rebuild")
@@ -283,6 +314,42 @@ ColumnLayout {
 					height: 30
 					roundLeft: true
 					roundRight: true
+					property variant contractsHex: ({})
+					property variant txSha3: ({})
+					property variant txChanged: []
+					property var blinkReasons: []
+
+					function needRebuild(reason)
+					{
+						rebuild.startBlinking()
+						blinkReasons.push(reason)
+					}
+
+					function containsRebuildCause(reason)
+					{
+						for (var c in blinkReasons)
+						{
+							if (blinkReasons[c] === reason)
+								return true
+						}
+						return false
+					}
+
+
+					function notNeedRebuild(reason)
+					{
+						for (var c in blinkReasons)
+						{
+							if (blinkReasons[c] === reason)
+							{
+								blinkReasons.splice(c, 1)
+								break
+							}
+						}
+						if (blinkReasons.length === 0)
+							rebuild.stopBlinking()
+					}
+
 					onClicked:
 					{
 						if (ensureNotFuturetime.running)
@@ -335,8 +402,34 @@ ColumnLayout {
 							blockModel.append(model.blocks[j])
 
 						ensureNotFuturetime.start()
+						takeCodeSnapshot()
+						takeTxSnaphot()
+						blinkReasons = []
 						clientModel.setupScenario(model);						
 					}
+
+					function takeCodeSnapshot()
+					{
+						contractsHex = {}
+						for (var c in codeModel.contracts)
+							contractsHex[c] = codeModel.contracts[c].codeHex
+					}
+
+					function takeTxSnaphot()
+					{
+						txSha3 = {}
+						txChanged = []
+						for (var j = 0; j < model.blocks.length; j++)
+						{
+							for (var k = 0; k < model.blocks[j].transactions.length; k++)
+							{
+								if (txSha3[j] === undefined)
+									txSha3[j] = {}
+								txSha3[j][k] = codeModel.sha3(JSON.stringify(model.blocks[j].transactions[k]))
+							}
+						}
+					}
+
 					buttonShortcut: ""
 					sourceImg: "qrc:/qml/img/recycleicon@2x.png"
 				}
@@ -548,9 +641,8 @@ ColumnLayout {
 			else {
 				model.blocks[blockIndex].transactions[transactionIndex] = item
 				blockModel.setTransaction(blockIndex, transactionIndex, item)
-				chainChanged()
+				chainChanged(blockIndex, transactionIndex, item)
 			}
-
 		}
 	}
 }

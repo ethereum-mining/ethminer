@@ -79,7 +79,6 @@ MixClient::~MixClient()
 
 void MixClient::resetState(std::unordered_map<Address, Account> const& _accounts,  Secret const& _miner)
 {
-
 	WriteGuard l(x_state);
 	Guard fl(x_filtersWatches);
 
@@ -124,22 +123,16 @@ Transaction MixClient::replaceGas(Transaction const& _t, u256 const& _gas, Secre
 	return ret;
 }
 
-void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _call, bool _gasAuto, Secret const& _secret)
+ExecutionResult MixClient::debugTransaction(Transaction const& _t, State const& _state, LastHashes const& _lastHashes, bool _call)
 {
-	Transaction t = _gasAuto ? replaceGas(_t, m_state.gasLimitRemaining()) : _t;
-	// do debugging run first
-	LastHashes lastHashes(256);
-	lastHashes[0] = bc().numberHash(bc().number());
-	for (unsigned i = 1; i < 256; ++i)
-		lastHashes[i] = lastHashes[i - 1] ? bc().details(lastHashes[i - 1]).parent : h256();
-
 	State execState = _state;
-	execState.addBalance(t.sender(), t.gas() * t.gasPrice()); //give it enough balance for gas estimation
+	execState.addBalance(_t.sender(), _t.gas() * _t.gasPrice()); //give it enough balance for gas estimation
 	eth::ExecutionResult er;
-	Executive execution(execState, lastHashes, 0);
+	Executive execution(execState, _lastHashes, 0);
 	execution.setResultRecipient(er);
-	execution.initialize(t);
+	execution.initialize(_t);
 	execution.execute();
+
 	std::vector<MachineState> machineStates;
 	std::vector<unsigned> levels;
 	std::vector<MachineCode> codes;
@@ -235,7 +228,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	}
 
 	ExecutionResult d;
-	d.inputParameters = t.data();
+	d.inputParameters = _t.data();
 	d.result = er;
 	d.machineStates = machineStates;
 	d.executionCode = std::move(codes);
@@ -249,12 +242,26 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	if (!_call)
 		d.transactionIndex = m_state.pending().size();
 	d.executonIndex = m_executions.size();
+	return d;
+}
+
+
+void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _call, bool _gasAuto, Secret const& _secret)
+{
+	Transaction t = _gasAuto ? replaceGas(_t, m_state.gasLimitRemaining()) : _t;
+	// do debugging run first
+	LastHashes lastHashes(256);
+	lastHashes[0] = bc().numberHash(bc().number());
+	for (unsigned i = 1; i < 256; ++i)
+		lastHashes[i] = lastHashes[i - 1] ? bc().details(lastHashes[i - 1]).parent : h256();
+
+	ExecutionResult d = debugTransaction(t, _state, lastHashes, _call);
 
 	// execute on a state
 	if (!_call)
 	{
 		t = _gasAuto ? replaceGas(_t, d.gasUsed, _secret) : _t;
-		er = _state.execute(lastHashes, t);
+		eth::ExecutionResult er = _state.execute(lastHashes, t);
 		if (t.isCreation() && _state.code(d.contractAddress).empty())
 			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas for contract deployment"));
 		d.gasUsed = er.gasUsed + er.gasRefunded + er.gasForDeposit + c_callStipend;
