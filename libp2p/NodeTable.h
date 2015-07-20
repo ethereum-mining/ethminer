@@ -128,6 +128,7 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	
 public:
 	enum NodeRelation { Unknown = 0, Known };
+	enum DiscoverType { Random = 0 };
 	
 	/// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
 	NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint, bool _enabled = true);
@@ -144,9 +145,6 @@ public:
 
 	/// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen or NodeId is empty.
 	std::shared_ptr<NodeEntry> addNode(Node const& _node, NodeRelation _relation = NodeRelation::Unknown);
-
-	/// To be called when node table is empty. Runs node discovery with m_node.id as the target in order to populate node-table.
-	void discover();
 
 	/// Returns list of node ids active in node table.
 	std::list<NodeId> nodes() const;
@@ -184,16 +182,14 @@ private:
 	/// Intervals
 
 	/* todo: replace boost::posix_time; change constants to upper camelcase */
-	boost::posix_time::milliseconds const c_evictionCheckInterval = boost::posix_time::milliseconds(75);	///< Interval at which eviction timeouts are checked.
+	std::chrono::milliseconds const c_evictionCheckInterval = std::chrono::milliseconds(75);	///< Interval at which eviction timeouts are checked.
 	std::chrono::milliseconds const c_reqTimeout = std::chrono::milliseconds(300);						///< How long to wait for requests (evict, find iterations).
 	std::chrono::milliseconds const c_bucketRefresh = std::chrono::milliseconds(7200);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
 
 	struct NodeBucket
 	{
 		unsigned distance;
-		TimePoint modified;
 		std::list<std::weak_ptr<NodeEntry>> nodes;
-		void touch() { modified = std::chrono::steady_clock::now(); }
 	};
 
 	/// Used to ping endpoint.
@@ -210,7 +206,7 @@ private:
 
 	/// Used to discovery nodes on network which are close to the given target.
 	/// Sends s_alpha concurrent requests to nodes nearest to target, for nodes nearest to target, up to s_maxSteps rounds.
-	void discover(NodeId _target, unsigned _round = 0, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried = std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>>());
+	void doDiscover(NodeId _target, unsigned _round = 0, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried = std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>>());
 
 	/// Returns nodes from node table which are closest to target.
 	std::vector<std::shared_ptr<NodeEntry>> nearestNodeEntries(NodeId _target);
@@ -240,10 +236,10 @@ private:
 	/// Tasks
 
 	/// Called by evict() to ensure eviction check is scheduled to run and terminates when no evictions remain. Asynchronous.
-	void doCheckEvictions(boost::system::error_code const& _ec);
+	void doCheckEvictions();
 
-	/// Purges and pings nodes for any buckets which haven't been touched for c_bucketRefresh seconds.
-	void doRefreshBuckets(boost::system::error_code const& _ec);
+	/// Looks up a random node at @c_bucketRefresh interval.
+	void doDiscovery();
 
 	std::unique_ptr<NodeTableEventHandler> m_nodeEventHandler;		///< Event handler for node events.
 
@@ -251,7 +247,7 @@ private:
 	Secret m_secret;												///< This nodes secret key.
 
 	mutable Mutex x_nodes;											///< LOCK x_state first if both locks are required. Mutable for thread-safe copy in nodes() const.
-	std::unordered_map<NodeId, std::shared_ptr<NodeEntry>> m_nodes;	///< Nodes
+	std::unordered_map<NodeId, std::shared_ptr<NodeEntry>> m_nodes;	///< Known Node Endpoints
 
 	mutable Mutex x_state;											///< LOCK x_state first if both x_nodes and x_state locks are required.
 	std::array<NodeBucket, s_bins> m_state;							///< State of p2p node network.
@@ -264,15 +260,11 @@ private:
 
 	Mutex x_findNodeTimeout;
 	std::list<NodeIdTimePoint> m_findNodeTimeout;					///< Timeouts for pending Ping and FindNode requests.
-	
-	ba::io_service& m_io;											///< Used by bucket refresh timer.
+
 	std::shared_ptr<NodeSocket> m_socket;							///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
 	NodeSocket* m_socketPointer;									///< Set to m_socket.get(). Socket is created in constructor and disconnected in destructor to ensure access to pointer is safe.
 
-	boost::asio::deadline_timer m_bucketRefreshTimer;				///< Timer which schedules and enacts bucket refresh.
-	boost::asio::deadline_timer m_evictionCheckTimer;				///< Timer for handling node evictions.
-	
-	bool m_disabled;												///< Disable discovery.
+	DeadlineOps m_timers;
 };
 
 inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)

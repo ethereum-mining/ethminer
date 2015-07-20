@@ -75,6 +75,7 @@ public:
 private:
 
 	static std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId);
+	static std::vector<cl::Platform> getPlatforms();
 
 	cl::Context m_context;
 	cl::CommandQueue m_queue;
