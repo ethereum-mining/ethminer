@@ -393,6 +393,9 @@ public:
 	/// Read the byte stream.
 	bytes const& out() const { if(!m_listStack.empty()) BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("listStack is not empty")); return m_out; }
 
+	/// Invalidate the object and steal the output byte stream.
+	bytes&& invalidate() { if(!m_listStack.empty()) BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("listStack is not empty")); return std::move(m_out); }
+
 	/// Swap the contents of the output stream out for some other byte array.
 	void swapOut(bytes& _dest) { if(!m_listStack.empty()) BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("listStack is not empty")); swap(m_out, _dest); }
 

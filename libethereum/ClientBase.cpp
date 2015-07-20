@@ -171,49 +171,65 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 			// Might have a transaction that contains a matching log.
 			TransactionReceipt const& tr = temp.receipt(i);
 			LogEntries le = _f.matches(tr);
-			if (le.size())
-				for (unsigned j = 0; j < le.size(); ++j)
-					ret.insert(ret.begin(), LocalisedLogEntry(le[j]));
+			for (unsigned j = 0; j < le.size(); ++j)
+				ret.insert(ret.begin(), LocalisedLogEntry(le[j]));
 		}
 		begin = bc().number();
 	}
-	
+
+	// Handle reverted blocks
+	// There are not so many, so let's iterate over them
+	h256s blocks;
+	h256 ancestor;
+	unsigned ancestorIndex;
+	tie(blocks, ancestor, ancestorIndex) = bc().treeRoute(_f.earliest(), _f.latest(), false);
+
+	for (size_t i = 0; i < ancestorIndex; i++)
+		prependLogsFromBlock(_f, blocks[i], BlockPolarity::Dead, ret);
+
+	// cause end is our earliest block, let's compare it with our ancestor
+	// if ancestor is smaller let's move our end to it
+	// example:
+	//
+	// 3b -> 2b -> 1b
+	//                -> g
+	// 3a -> 2a -> 1a
+	//
+	// if earliest is at 2a and latest is a 3b, coverting them to numbers
+	// will give us pair (2, 3)
+	// and we want to get all logs from 1 (ancestor + 1) to 3
+	// so we have to move 2a to g + 1
+	end = min(end, (unsigned)numberFromHash(ancestor) + 1);
+
+	// Handle blocks from main chain
 	set<unsigned> matchingBlocks;
-	for (auto const& i: _f.bloomPossibilities())
-		for (auto u: bc().withBlockBloom(i, end, begin))
-			matchingBlocks.insert(u);
+	if (!_f.isRangeFilter())
+		for (auto const& i: _f.bloomPossibilities())
+			for (auto u: bc().withBlockBloom(i, end, begin))
+				matchingBlocks.insert(u);
+	else
+		// if it is a range filter, we want to get all logs from all blocks in given range
+		for (unsigned i = end; i <= begin; i++)
+			matchingBlocks.insert(i);
 
-	unsigned falsePos = 0;
 	for (auto n: matchingBlocks)
-	{
-		int total = 0;
-		auto h = bc().numberHash(n);
-		auto info = bc().info(h);
-		auto receipts = bc().receipts(h).receipts;
-		unsigned logIndex = 0;
-		for (size_t i = 0; i < receipts.size(); i++)
-		{
-			logIndex++;
-			TransactionReceipt receipt = receipts[i];
-			if (_f.matches(receipt.bloom()))
-			{
-				auto th = transaction(info.hash(), i).sha3();
-				LogEntries le = _f.matches(receipt);
-				if (le.size())
-				{
-					total += le.size();
-					for (unsigned j = 0; j < le.size(); ++j)
-						ret.insert(ret.begin(), LocalisedLogEntry(le[j], info, th, i, logIndex));
-				}
-			}
-			
-			if (!total)
-				falsePos++;
-		}
-	}
+		prependLogsFromBlock(_f, bc().numberHash(n), BlockPolarity::Live, ret);
 
-	cdebug << matchingBlocks.size() << "searched from" << (end - begin) << "skipped; " << falsePos << "false +ves";
+	reverse(ret.begin(), ret.end());
 	return ret;
+}
+
+void ClientBase::prependLogsFromBlock(LogFilter const& _f, h256 const& _blockHash, BlockPolarity _polarity, LocalisedLogEntries& io_logs) const
+{
+	auto receipts = bc().receipts(_blockHash).receipts;
+	for (size_t i = 0; i < receipts.size(); i++)
+	{
+		TransactionReceipt receipt = receipts[i];
+		auto th = transaction(_blockHash, i).sha3();
+		LogEntries le = _f.matches(receipt);
+		for (unsigned j = 0; j < le.size(); ++j)
+			io_logs.insert(io_logs.begin(), LocalisedLogEntry(le[j], _blockHash, (BlockNumber)bc().number(_blockHash), th, i, 0, _polarity));
+	}
 }
 
 unsigned ClientBase::installWatch(LogFilter const& _f, Reaping _r)
@@ -317,6 +333,12 @@ Transaction ClientBase::transaction(h256 _transactionHash) const
 	return Transaction(bc().transaction(_transactionHash), CheckTransaction::Cheap);
 }
 
+LocalisedTransaction ClientBase::localisedTransaction(h256 const& _transactionHash) const
+{
+	std::pair<h256, unsigned> tl = bc().transactionLocation(_transactionHash);
+	return localisedTransaction(tl.first, tl.second);
+}
+
 Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = bc().block(_blockHash);
@@ -327,9 +349,29 @@ Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 		return Transaction();
 }
 
+LocalisedTransaction ClientBase::localisedTransaction(h256 const& _blockHash, unsigned _i) const
+{
+	Transaction t = Transaction(bc().transaction(_blockHash, _i), CheckTransaction::Cheap);
+	return LocalisedTransaction(t, _blockHash, _i, numberFromHash(_blockHash));
+}
+
 TransactionReceipt ClientBase::transactionReceipt(h256 const& _transactionHash) const
 {
 	return bc().transactionReceipt(_transactionHash);
+}
+
+LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(h256 const& _transactionHash) const
+{
+	std::pair<h256, unsigned> tl = bc().transactionLocation(_transactionHash);
+	Transaction t = Transaction(bc().transaction(tl.first, tl.second), CheckTransaction::Cheap);
+	TransactionReceipt tr = bc().transactionReceipt(tl.first, tl.second);
+	return LocalisedTransactionReceipt(
+		tr,
+		t.sha3(),
+		tl.first,
+		numberFromHash(tl.first),
+		tl.second,
+		toAddress(t.from(), t.nonce()));
 }
 
 pair<h256, unsigned> ClientBase::transactionLocation(h256 const& _transactionHash) const
@@ -357,7 +399,7 @@ BlockInfo ClientBase::uncle(h256 _blockHash, unsigned _i) const
 	auto bl = bc().block(_blockHash);
 	RLP b(bl);
 	if (_i < b[2].itemCount())
-		return BlockInfo::fromHeader(b[2][_i].data());
+		return BlockInfo(b[2][_i].data(), CheckNothing, h256(), HeaderData);
 	else
 		return BlockInfo();
 }
@@ -479,3 +521,7 @@ bool ClientBase::isKnownTransaction(h256 const& _transactionHash) const
 	return bc().isKnownTransaction(_transactionHash);
 }
 
+bool ClientBase::isKnownTransaction(h256 const& _blockHash, unsigned _i) const
+{
+	return isKnown(_blockHash) && bc().transactions().size() > _i;
+}
