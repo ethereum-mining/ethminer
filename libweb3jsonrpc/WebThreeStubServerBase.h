@@ -136,6 +136,7 @@ public:
 	virtual Json::Value eth_getFilterLogs(std::string const& _filterId);
 	virtual Json::Value eth_getFilterLogsEx(std::string const& _filterId);
 	virtual Json::Value eth_getLogs(Json::Value const& _json);
+	virtual Json::Value eth_getLogsEx(Json::Value const& _json);
 	virtual Json::Value eth_getWork();
 	virtual bool eth_submitWork(std::string const& _nonce, std::string const&, std::string const& _mixHash);
 	virtual std::string eth_register(std::string const& _address);

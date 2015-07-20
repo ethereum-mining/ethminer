@@ -183,30 +183,17 @@ Json::Value toJson(dev::eth::TransactionReceipt const& _t)
 	return res;
 }
 
-Json::Value toJson(dev::eth::TransactionReceipt const& _tr, std::pair<h256, unsigned> _location, BlockNumber _blockNumber, Transaction const& _t)
+Json::Value toJson(dev::eth::LocalisedTransactionReceipt const& _t)
 {
 	Json::Value res;
-	h256 h = _t.sha3();
-	res["transactionHash"] = toJS(h);
-	res["transactionIndex"] = _location.second;
-	res["blockHash"] = toJS(_location.first);
-	res["blockNumber"] = _blockNumber;
-	res["cumulativeGasUsed"] = toJS(_tr.gasUsed()); // TODO: check if this is fine
-	res["gasUsed"] = toJS(_tr.gasUsed());
-	res["contractAddress"] = toJS(toAddress(_t.from(), _t.nonce()));
-	res["logs"] = Json::Value(Json::arrayValue);
-	for (unsigned i = 0; i < _tr.log().size(); i++)
-	{
-		LogEntry e = _tr.log()[i];
-		Json::Value l = toJson(e);
-		l["type"] = "mined";
-		l["blockNumber"] = _blockNumber;
-		l["blockHash"] = toJS(_location.first);
-		l["logIndex"] = i;
-		l["transactionHash"] = toJS(h);
-		l["transactionIndex"] = _location.second;
-		res["logs"].append(l);
-	}
+	res["transactionHash"] = toJS(_t.hash());
+	res["transactionIndex"] = _t.transactionIndex();
+	res["blockHash"] = toJS(_t.blockHash());
+	res["blockNumber"] = _t.blockNumber();
+	res["cumulativeGasUsed"] = toJS(_t.gasUsed()); // TODO: check if this is fine
+	res["gasUsed"] = toJS(_t.gasUsed());
+	res["contractAddress"] = toJS(_t.contractAddress());
+	res["logs"] = dev::toJson(_t.localisedLogs());
 	return res;
 }
 
@@ -228,6 +215,26 @@ Json::Value toJson(dev::eth::Transaction const& _t)
 	return res;
 }
 
+Json::Value toJson(dev::eth::LocalisedTransaction const& _t)
+{
+	Json::Value res;
+	if (_t)
+	{
+		res["hash"] = toJS(_t.sha3());
+		res["input"] = toJS(_t.data());
+		res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
+		res["from"] = toJS(_t.safeSender());
+		res["gas"] = toJS(_t.gas());
+		res["gasPrice"] = toJS(_t.gasPrice());
+		res["nonce"] = toJS(_t.nonce());
+		res["value"] = toJS(_t.value());
+		res["blockHash"] = toJS(_t.blockHash());
+		res["transactionIndex"] = toJS(_t.transactionIndex());
+		res["blockNumber"] = toJS(_t.blockNumber());
+	}
+	return res;
+}
+
 Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 {
 	Json::Value res;
@@ -237,6 +244,7 @@ Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 	else
 	{
 		res = toJson(static_cast<dev::eth::LogEntry const&>(_e));
+		res["polarity"] = _e.polarity == BlockPolarity::Live ? true : false;
 		if (_e.mined)
 		{
 			res["type"] = "mined";
@@ -268,6 +276,70 @@ Json::Value toJson(dev::eth::LogEntry const& _e)
 	for (auto const& t: _e.topics)
 		res["topics"].append(toJS(t));
 	return res;
+}
+
+Json::Value toJson(std::unordered_map<h256, dev::eth::LocalisedLogEntries> const& _entriesByBlock, vector<h256> const& _order)
+{
+	Json::Value res(Json::arrayValue);
+	for (auto const& i: _order)
+	{
+		auto entries = _entriesByBlock.at(i);
+		Json::Value currentBlock(Json::objectValue);
+		LocalisedLogEntry entry = entries[0];
+		if (entry.mined)
+		{
+
+			currentBlock["blockNumber"] = entry.blockNumber;
+			currentBlock["blockHash"] = toJS(entry.blockHash);
+			currentBlock["type"] = "mined";
+		}
+		else
+			currentBlock["type"] = "pending";
+
+		currentBlock["polarity"] = entry.polarity == BlockPolarity::Live ? true : false;
+		currentBlock["logs"] = Json::Value(Json::arrayValue);
+
+		for (LocalisedLogEntry const& e: entries)
+		{
+			Json::Value log(Json::objectValue);
+			log["logIndex"] = e.logIndex;
+			log["transactionIndex"] = e.transactionIndex;
+			log["transactionHash"] = toJS(e.transactionHash);
+			log["address"] = toJS(e.address);
+			log["data"] = toJS(e.data);
+			log["topics"] = Json::Value(Json::arrayValue);
+			for (auto const& t: e.topics)
+				log["topics"].append(toJS(t));
+
+			currentBlock["logs"].append(log);
+		}
+
+		res.append(currentBlock);
+	}
+
+	return res;
+}
+
+Json::Value toJsonByBlock(LocalisedLogEntries const& _entries)
+{
+	vector<h256> order;
+	unordered_map <h256, LocalisedLogEntries> entriesByBlock;
+
+	for (dev::eth::LocalisedLogEntry const& e: _entries)
+	{
+		if (e.isSpecial) // skip special log
+			continue;
+
+		if (entriesByBlock.count(e.blockHash) == 0)
+		{
+			entriesByBlock[e.blockHash] = LocalisedLogEntries();
+			order.push_back(e.blockHash);
+		}
+
+		entriesByBlock[e.blockHash].push_back(e);
+	}
+
+	return toJson(entriesByBlock, order);
 }
 
 TransactionSkeleton toTransactionSkeleton(Json::Value const& _json)
