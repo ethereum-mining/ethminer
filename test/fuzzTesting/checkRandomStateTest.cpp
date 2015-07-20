@@ -87,7 +87,7 @@ bool doStateTest(mValue& _v)
 
 		try
 		{
-			output = theState.execute(lastHashes(importer.m_environment.currentBlock.number), importer.m_transaction).output;
+			output = theState.execute(lastHashes(importer.m_environment.currentBlock.number()), importer.m_transaction).output;
 		}
 		catch (Exception const& _e)
 		{

@@ -76,11 +76,13 @@ public:
 	BlockQueue();
 	~BlockQueue();
 
+	void setChain(BlockChain const& _bc) { m_bc = &_bc; }
+
 	/// Import a block into the queue.
-	ImportResult import(bytesConstRef _block, BlockChain const& _bc, bool _isOurs = false);
+	ImportResult import(bytesConstRef _block, bool _isOurs = false);
 
 	/// Notes that time has moved on and some blocks that used to be "in the future" may no be valid.
-	void tick(BlockChain const& _bc);
+	void tick();
 
 	/// Grabs at most @a _max of the blocks that are ready, giving them in the correct order for insertion into the chain.
 	/// Don't forget to call doneDrain() once you're done importing.
@@ -137,6 +139,8 @@ private:
 	void collectUnknownBad_WITH_BOTH_LOCKS(h256 const& _bad);
 	void updateBad_WITH_LOCK(h256 const& _bad);
 	void drainVerified_WITH_BOTH_LOCKS();
+
+	BlockChain const* m_bc;												///< The blockchain into which our imports go.
 
 	mutable boost::shared_mutex m_lock;									///< General lock for the sets, m_future and m_unknown.
 	h256Hash m_drainingSet;												///< All blocks being imported.

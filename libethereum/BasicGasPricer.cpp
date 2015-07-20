@@ -30,7 +30,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 {
 	unsigned c = 0;
 	h256 p = _bc.currentHash();
-	m_gasPerBlock = _bc.info(p).gasLimit;
+	m_gasPerBlock = _bc.info(p).gasLimit();
 
 	map<u256, u256> dist;
 	u256 total = 0;
@@ -39,7 +39,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 	while (c < 1000 && p)
 	{
 		BlockInfo bi = _bc.info(p);
-		if (bi.transactionsRoot != EmptyTrie)
+		if (bi.transactionsRoot() != EmptyTrie)
 		{
 			auto bb = _bc.block(p);
 			RLP r(bb);
@@ -54,7 +54,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 				i++;
 			}
 		}
-		p = bi.parentHash;
+		p = bi.parentHash();
 		++c;
 	}
 

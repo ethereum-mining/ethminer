@@ -45,6 +45,11 @@ const char* DAGChannel::name() { return EthGreen "DAG"; }
 
 EthashAux* dev::eth::EthashAux::s_this = nullptr;
 
+const unsigned EthashProofOfWork::defaultLocalWorkSize = 64;
+const unsigned EthashProofOfWork::defaultGlobalWorkSizeMultiplier = 4096; // * CL_DEFAULT_LOCAL_WORK_SIZE
+const unsigned EthashProofOfWork::defaultMSPerBatch = 0;
+const EthashProofOfWork::WorkPackage EthashProofOfWork::NullWorkPackage = EthashProofOfWork::WorkPackage();
+
 EthashAux::~EthashAux()
 {
 }
@@ -58,7 +63,7 @@ EthashAux* EthashAux::get()
 
 uint64_t EthashAux::cacheSize(BlockInfo const& _header)
 {
-	return ethash_get_cachesize((uint64_t)_header.number);
+	return ethash_get_cachesize((uint64_t)_header.number());
 }
 
 uint64_t EthashAux::dataSize(uint64_t _blockNumber)
@@ -200,8 +205,6 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bool _createIfMissing
 	return ret;
 }
 
-#define DEV_IF_THROWS(X) try { X; } catch (...)
-
 unsigned EthashAux::computeFull(h256 const& _seedHash, bool _createIfMissing)
 {
 	Guard l(get()->x_fulls);
@@ -234,34 +237,29 @@ unsigned EthashAux::computeFull(h256 const& _seedHash, bool _createIfMissing)
 	return (get()->m_generatingFullNumber == blockNumber) ? get()->m_fullProgress : 0;
 }
 
-Ethash::Result EthashAux::FullAllocation::compute(h256 const& _headerHash, Nonce const& _nonce) const
+EthashProofOfWork::Result EthashAux::FullAllocation::compute(h256 const& _headerHash, Nonce const& _nonce) const
 {
 	ethash_return_value_t r = ethash_full_compute(full, *(ethash_h256_t*)_headerHash.data(), (uint64_t)(u64)_nonce);
 	if (!r.success)
 		BOOST_THROW_EXCEPTION(DAGCreationFailure());
-	return Ethash::Result{h256((uint8_t*)&r.result, h256::ConstructFromPointer), h256((uint8_t*)&r.mix_hash, h256::ConstructFromPointer)};
+	return EthashProofOfWork::Result{h256((uint8_t*)&r.result, h256::ConstructFromPointer), h256((uint8_t*)&r.mix_hash, h256::ConstructFromPointer)};
 }
 
-Ethash::Result EthashAux::LightAllocation::compute(h256 const& _headerHash, Nonce const& _nonce) const
+EthashProofOfWork::Result EthashAux::LightAllocation::compute(h256 const& _headerHash, Nonce const& _nonce) const
 {
 	ethash_return_value r = ethash_light_compute(light, *(ethash_h256_t*)_headerHash.data(), (uint64_t)(u64)_nonce);
 	if (!r.success)
 		BOOST_THROW_EXCEPTION(DAGCreationFailure());
-	return Ethash::Result{h256((uint8_t*)&r.result, h256::ConstructFromPointer), h256((uint8_t*)&r.mix_hash, h256::ConstructFromPointer)};
+	return EthashProofOfWork::Result{h256((uint8_t*)&r.result, h256::ConstructFromPointer), h256((uint8_t*)&r.mix_hash, h256::ConstructFromPointer)};
 }
 
-Ethash::Result EthashAux::eval(BlockInfo const& _header, Nonce const& _nonce)
-{
-	return eval(_header.seedHash(), _header.headerHash(WithoutNonce), _nonce);
-}
-
-Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
+EthashProofOfWork::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
 {
 	DEV_GUARDED(get()->x_fulls)
 		if (FullType dag = get()->m_fulls[_seedHash].lock())
 			return dag->compute(_headerHash, _nonce);
 	DEV_IF_THROWS(return EthashAux::get()->light(_seedHash)->compute(_headerHash, _nonce))
 	{
-		return Ethash::Result{ ~h256(), h256() };
+		return EthashProofOfWork::Result{ ~h256(), h256() };
 	}
 }

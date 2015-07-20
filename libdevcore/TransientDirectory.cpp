@@ -27,6 +27,7 @@
 #include "Log.h"
 using namespace std;
 using namespace dev;
+namespace fs = boost::filesystem;
 
 TransientDirectory::TransientDirectory():
 	TransientDirectory((boost::filesystem::temp_directory_path() / "eth_transient" / toString(FixedHash<4>::random())).string())
@@ -39,13 +40,14 @@ TransientDirectory::TransientDirectory(std::string const& _path):
 	if (boost::filesystem::exists(m_path))
 		BOOST_THROW_EXCEPTION(FileError());
 
-	boost::filesystem::create_directories(m_path);
+	fs::create_directories(m_path);
+	fs::permissions(m_path, fs::owner_all);
 }
 
 TransientDirectory::~TransientDirectory()
 {
 	boost::system::error_code ec;		
-	boost::filesystem::remove_all(m_path, ec);
+	fs::remove_all(m_path, ec);
 	if (!ec)
 		return;
 
@@ -56,7 +58,7 @@ TransientDirectory::~TransientDirectory()
 	this_thread::sleep_for(chrono::milliseconds(10));
 
 	ec.clear();
-	boost::filesystem::remove_all(m_path, ec);
+	fs::remove_all(m_path, ec);
 	if (!ec)
 		cwarn << "Failed to delete directory '" << m_path << "': " << ec.message();
 }

@@ -710,9 +710,9 @@ RecordLogEntry* ClientModel::lastBlock() const
 {
 	eth::BlockInfo blockInfo = m_client->blockInfo();
 	stringstream strGas;
-	strGas << blockInfo.gasUsed;
+	strGas << blockInfo.gasUsed();
 	stringstream strNumber;
-	strNumber << blockInfo.number;
+	strNumber << blockInfo.number();
 	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(dev::toHex(blockInfo.hash().ref()))), QString(), QString(), QString(), false, RecordLogEntry::RecordType::Block, QString::fromStdString(strGas.str()), QString(), tr("Block"), QVariantMap(), QVariantMap(), QVariantList());
 	QQmlEngine::setObjectOwnership(record, QQmlEngine::JavaScriptOwnership);
 	return record;
