@@ -67,6 +67,7 @@ public:
 protected:
 	virtual void doWork() override;
 	void noteAdvertiseTopicsOfInterest();
+	bool isWatched(Envelope const& _e) const;
 
 private:
 	virtual void onStarting() override { startWorking(); }

@@ -77,11 +77,7 @@ public:
 	bytes const& data() const { return m_data; }
 
 	bool matchesBloomFilter(TopicBloomFilterHash const& f) const;
-	void setStoreForever() { m_storeForever = true; }
-	bool isStoreForever() const { return m_storeForever; }
-	bool isExpired() const { return !m_storeForever && m_expiry <= (unsigned)time(0); }
-	void setWatched() { m_watched = true; }
-	bool isWatched() const { return m_watched; }
+	bool isExpired() const { return m_expiry <= (unsigned)time(0); }
 
 private:
 	Envelope(unsigned _exp, unsigned _ttl, AbridgedTopics const& _topic): m_expiry(_exp), m_ttl(_ttl), m_topic(_topic) {}
@@ -92,10 +88,6 @@ private:
 
 	AbridgedTopics m_topic;
 	bytes m_data;
-
-	/// Metainformation
-	bool m_storeForever = false;
-	bool m_watched = false;
 };
 
 enum /*Message Flags*/
