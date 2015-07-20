@@ -29,15 +29,16 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
 #include <libethereum/Defaults.h>
-
 using namespace dev;
 using namespace dev::eth;
 using namespace std;
+namespace fs = boost::filesystem;
 
 NatspecHandler::NatspecHandler()
 {
 	string path = Defaults::dbPath();
-	boost::filesystem::create_directories(path);
+	fs::create_directories(path);
+	fs::permissions(path, fs::owner_all);
 	ldb::Options o;
 	o.create_if_missing = true;
 	ldb::DB::Open(o, path + "/natspec", &m_db);
