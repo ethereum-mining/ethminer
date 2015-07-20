@@ -40,7 +40,7 @@ Item {
 	property string projectPath: ""
 	property string projectTitle: ""
 	property string currentDocumentId: ""
-	property var deploymentAddresses: []
+	property var deploymentAddresses: ({})
 	property string deploymentDir
 	property var listModel: projectListModel
 	property var stateListModel: projectStateListModel.model
@@ -48,7 +48,15 @@ Item {
 	property CodeEditorView codeEditor: null
 	property var unsavedFiles: []
 	property alias newProjectDialog: newProjectDialog
-	property string deployedState
+	property int deployedScenarioIndex
+	property string applicationUrlEth
+	property string applicationUrlHttp
+	property string deployBlockNumber
+	property var deploymentTrHashes
+	property string registerContentHashTrHash
+	property string registerUrlTrHash
+	property int registerContentHashBlockNumber: -1
+	property int registerUrlBlockNumber: -1
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
@@ -72,8 +80,29 @@ Item {
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
 	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
 	function deployProject() { NetworkDeploymentCode.deployProject(false); }
-	function registerToUrlHint() { NetworkDeploymentCode.registerToUrlHint(); }
+	function registerToUrlHint(url, callback) { NetworkDeploymentCode.registerToUrlHint(url, callback); }
 	function formatAppUrl() { NetworkDeploymentCode.formatAppUrl(url); }
+
+	function cleanDeploymentStatus()
+	{
+		deployedScenarioIndex = 0
+		applicationUrlEth = ""
+		applicationUrlHttp = ""
+		deployBlockNumber = ""
+		deploymentTrHashes = {}
+		registerContentHashTrHash = ""
+		registerUrlTrHash = ""
+		registerContentHashBlockNumber = -1
+		registerUrlBlockNumber = -1
+		deploymentAddresses = {}
+		deploymentDir = ""
+		deploymentDialog.packageStep.packageHash = ""
+		deploymentDialog.packageStep.packageBase64 = ""
+		deploymentDialog.packageStep.packageDir = ""
+		deploymentDialog.packageStep.lastDeployDate = ""
+		deploymentDialog.packageStep.localPackageUrl = ""
+		saveProject()
+	}
 
 	Connections {
 		target: mainApplication

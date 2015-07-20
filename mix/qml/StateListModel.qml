@@ -403,7 +403,10 @@ Item {
 
 		function defaultStateName()
 		{
-			return stateList[defaultStateIndex].title;
+			if (stateList.length > 0)
+				return stateList[defaultStateIndex].title;
+			else
+				return ""
 		}
 
 		function reloadStateFromFromProject(index)

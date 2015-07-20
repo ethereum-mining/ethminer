@@ -32,7 +32,6 @@ Rectangle {
 		{
 			id: columnExe
 			Layout.preferredWidth: parent.width
-			width: parent.width - 40
 			anchors.left: parent.left
 			anchors.leftMargin: 15
 			ColumnLayout
