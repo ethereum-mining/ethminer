@@ -125,9 +125,9 @@ Dialog {
 	function loadParameters() {
 		paramsModel = []
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
-			var contract = codeModel.contracts[contractFromToken(contractCreationComboBox.currentValue())];
+			var contract = codeModel.contracts[TransactionHelper.contractFromToken(contractCreationComboBox.currentValue())];
 			if (contract) {
-				var func = contract.contract.functions[functionComboBox.currentIndex + 1];
+				var func = getFunction(functionComboBox.currentText, contract);
 				if (func) {
 					var parameters = func.parameters;
 					for (var p = 0; p < parameters.length; p++)
@@ -136,6 +136,18 @@ Dialog {
 			}
 		}
 		initTypeLoader();
+	}
+
+	function getFunction(name, contract)
+	{
+		for (var k in contract.contract.functions)
+		{
+			if (contract.contract.functions[k].name === name)
+			{
+				return contract.contract.functions[k]
+			}
+		}
+		return null
 	}
 
 	function initTypeLoader()
@@ -188,7 +200,7 @@ Dialog {
 		if (!item.isContractCreation)
 		{
 			item.contractId = recipientsAccount.currentValue();
-			item.label = contractFromToken(item.contractId) + "." + item.functionId + "()";
+			item.label = TransactionHelper.contractFromToken(item.contractId) + "." + item.functionId + "()";
 			if (recipientsAccount.current().type === "address")
 			{
 				item.functionId = "";
@@ -205,14 +217,7 @@ Dialog {
 		item.sender = senderComboBox.model[senderComboBox.currentIndex].secret;
 		item.parameters = paramValues;
 		return item;
-	}
-
-	function contractFromToken(token)
-	{
-		if (token.indexOf('<') === 0)
-			return token.replace("<", "").replace(">", "").split(" - ")[0];
-		return token;
-	}
+	}	
 
 	function load(isContractCreation, isFunctionCall, functionId, contractId)
 	{
@@ -236,7 +241,7 @@ Dialog {
 			{
 				labelRecipient.text = qsTr("Recipient Contract")
 				functionRect.show()
-				loadFunctions(contractFromToken(recipientsAccount.currentValue()))
+				loadFunctions(TransactionHelper.contractFromToken(recipientsAccount.currentValue()))
 				loadParameters();
 				paramScroll.updateView()
 			}
@@ -416,7 +421,7 @@ Dialog {
 						onIndexChanged:
 						{
 							if (rbbuttonList.current.objectName === "trTypeExecute")
-								loadFunctions(contractFromToken(currentValue()))
+								loadFunctions(TransactionHelper.contractFromToken(currentValue()))
 						}
 					}
 
@@ -587,7 +592,7 @@ Dialog {
 									target: functionComboBox
 									onCurrentIndexChanged:
 									{
-										estimatedGas.displayGas(contractFromToken(recipientsAccount.currentValue()), functionComboBox.currentText)
+										estimatedGas.displayGas(TransactionHelper.contractFromToken(recipientsAccount.currentValue()), functionComboBox.currentText)
 									}
 								}
 
@@ -604,7 +609,7 @@ Dialog {
 								function updateView()
 								{
 									if (rbbuttonList.current.objectName === "trTypeExecute")
-										estimatedGas.displayGas(contractFromToken(recipientsAccount.currentValue()), functionComboBox.currentText)
+										estimatedGas.displayGas(TransactionHelper.contractFromToken(recipientsAccount.currentValue()), functionComboBox.currentText)
 									else if (rbbuttonList.current.objectName === "trTypeCreate")
 									{
 										var contractName = contractCreationComboBox.currentValue()
