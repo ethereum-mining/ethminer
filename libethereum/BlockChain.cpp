@@ -48,7 +48,7 @@ using namespace dev;
 using namespace dev::eth;
 namespace js = json_spirit;
 
-#define ETH_CATCH 0
+#define ETH_CATCH 1
 #define ETH_TIMED_IMPORTS 1
 
 #ifdef _WIN32
