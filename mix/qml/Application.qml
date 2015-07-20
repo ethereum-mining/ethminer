@@ -42,6 +42,10 @@ ApplicationWindow {
 	ClientModel {
 		id: clientModel
 		codeModel: codeModel
+		Component.onCompleted:
+		{
+			init("/tmp")
+		}
 	}
 
 	ProjectModel {
@@ -202,7 +206,7 @@ ApplicationWindow {
 		text: qsTr("Deploy")
 		shortcut: "F5"
 		onTriggered: mainContent.startQuickDebugging()
-		enabled: codeModel.hasContract && !clientModel.running
+		enabled: codeModel.hasContract && !clientModel.running && projectModel.stateListModel.defaultStateName() !== ""
 	}
 
 	Action {
