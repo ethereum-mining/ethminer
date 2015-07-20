@@ -84,22 +84,35 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 
 ldb::Slice dev::eth::toSlice(h256 const& _h, unsigned _sub)
 {
+#if TRUE //ALL_COMPILERS_ARE_CPP11_COMPLIANT
+	static thread_local FixedHash<33> h = _h;
+	h[32] = (uint8_t)_sub;
+	return (ldb::Slice)h.ref();
+#else
 	static boost::thread_specific_ptr<FixedHash<33>> t_h;
 	if (!t_h.get())
 		t_h.reset(new FixedHash<33>);
 	*t_h = FixedHash<33>(_h);
 	(*t_h)[32] = (uint8_t)_sub;
-	return (ldb::Slice)t_h->ref();//(char const*)t_h.get(), 32);
+	return (ldb::Slice)t_h->ref();
+#endif //ALL_COMPILERS_ARE_CPP11_COMPLIANT
 }
 
 ldb::Slice dev::eth::toSlice(uint64_t _n, unsigned _sub)
 {
+#if TRUE //ALL_COMPILERS_ARE_CPP11_COMPLIANT
+	static thread_local FixedHash<33> h;
+	toBigEndian(_n, bytesRef(h.data() + 24, 8));
+	h[32] = (uint8_t)_sub;
+	return (ldb::Slice)h.ref();
+#else
 	static boost::thread_specific_ptr<FixedHash<33>> t_h;
 	if (!t_h.get())
 		t_h.reset(new FixedHash<33>);
 	toBigEndian(_n, bytesRef(t_h->data() + 24, 8));
 	(*t_h)[32] = (uint8_t)_sub;
 	return (ldb::Slice)t_h->ref();
+#endif
 }
 
 namespace dev
@@ -613,7 +626,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 			unsigned n = number(route.front());
 			DEV_WRITE_GUARDED(x_blockHashes)
 				for (auto i = route.begin(); i != route.end() && *i != common; ++i, --n)
-					m_blockHashes.erase(h256(u256(n)));
+					m_blockHashes.erase(n);
 			DEV_WRITE_GUARDED(x_transactionAddresses)
 				m_transactionAddresses.clear();	// TODO: could perhaps delete them individually?
 
