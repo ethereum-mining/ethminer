@@ -42,11 +42,11 @@
 #include "State.h"
 #include "Utility.h"
 #include "Defaults.h"
-
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 namespace js = json_spirit;
+namespace fs = boost::filesystem;
 
 #define ETH_CATCH 1
 #define ETH_TIMED_IMPORTS 1
@@ -156,7 +156,8 @@ unsigned BlockChain::open(std::string const& _path, WithExisting _we)
 	string chainPath = path + "/" + toHex(m_genesisHash.ref().cropped(0, 4));
 	string extrasPath = chainPath + "/" + toString(c_databaseVersion);
 
-	boost::filesystem::create_directories(extrasPath);
+	fs::create_directories(extrasPath);
+	fs::permissions(extrasPath, fs::owner_all);
 
 	bytes status = contents(extrasPath + "/minor");
 	unsigned lastMinor = c_minorProtocolVersion;
