@@ -44,6 +44,7 @@ namespace eth
 {
 
 class Transaction;
+class LocalisedTransaction;
 struct BlockDetails;
 class Interface;
 using Transactions = std::vector<Transaction>;
@@ -57,11 +58,13 @@ Json::Value toJson(BlockInfo const& _bi, BlockDetails const& _bd, UncleHashes co
 Json::Value toJson(BlockInfo const& _bi, BlockDetails const& _bd, UncleHashes const& _us, TransactionHashes const& _ts);
 Json::Value toJson(TransactionSkeleton const& _t);
 Json::Value toJson(Transaction const& _t);
+Json::Value toJson(LocalisedTransaction const& _t);
 Json::Value toJson(TransactionReceipt const& _t);
-//TODO: wrap these params into one structure eg. "LocalisedTransactionReceipt"
-Json::Value toJson(TransactionReceipt const& _tr, std::pair<h256, unsigned> _location, BlockNumber _blockNumber, Transaction const& _t);
+Json::Value toJson(LocalisedTransactionReceipt const& _t);
 Json::Value toJson(LocalisedLogEntry const& _e);
 Json::Value toJson(LogEntry const& _e);
+Json::Value toJson(std::unordered_map<h256, LocalisedLogEntries> const& _entriesByBlock);
+Json::Value toJsonByBlock(LocalisedLogEntries const& _entries);
 TransactionSkeleton toTransactionSkeleton(Json::Value const& _json);
 LogFilter toLogFilter(Json::Value const& _json);
 LogFilter toLogFilter(Json::Value const& _json, Interface const& _client);	// commented to avoid warning. Uncomment once in use @ PoC-7.

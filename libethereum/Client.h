@@ -220,7 +220,7 @@ protected:
 
 	/// Collate the changed filters for the hash of the given block.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromNewBlock(h256 const& _blockHash, h256Hash& io_changed);
+	void appendFromBlock(h256 const& _blockHash, BlockPolarity _polarity, h256Hash& io_changed);
 
 	/// Record that the set of filters @a _filters have changed.
 	/// This doesn't actually make any callbacks, but incrememnts some counters in m_watches.
@@ -241,6 +241,15 @@ protected:
 
 	/// Called when wouldMine(), turboMining(), isChainBad(), forceMining(), pendingTransactions() have changed.
 	void rejigMining();
+
+	/// Called on chain changes
+	void onDeadBlocks(h256s const& _blocks, h256Hash& io_changed);
+
+	/// Called on chain changes
+	void onNewBlocks(h256s const& _blocks, h256Hash& io_changed);
+
+	/// Called after processing blocks by onChainChanged(_ir)
+	void restartMining();
 
 	/// Magically called when the chain has changed. An import route is provided.
 	/// Called by either submitWork() or in our main thread through syncBlockQueue().
