@@ -46,6 +46,7 @@
 { "name": "eth_getFilterLogs", "params": [""], "order": [], "returns": []},
 { "name": "eth_getFilterLogsEx", "params": [""], "order": [], "returns": []},
 { "name": "eth_getLogs", "params": [{}], "order": [], "returns": []},
+{ "name": "eth_getLogsEx", "params": [{}], "order": [], "returns": []},
 { "name": "eth_getWork", "params": [], "order": [], "returns": []},
 { "name": "eth_submitWork", "params": ["", "", ""], "order": [], "returns": true},
 { "name": "eth_register", "params": [""], "order": [], "returns": ""},
