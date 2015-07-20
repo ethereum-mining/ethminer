@@ -38,6 +38,8 @@
 #include <libethcore/Exceptions.h>
 #include <libdevcore/SHA3.h>
 #include <libethcore/EthashAux.h>
+#include <libethcore/EthashGPUMiner.h>
+#include <libethcore/EthashCPUMiner.h>
 #include <libethcore/Farm.h>
 #if ETH_ETHASHCL || !ETH_TRUE
 #include <libethash-cl/ethash_cl_miner.h>
@@ -99,15 +101,10 @@ public:
 	};
 
 
-#if ETH_USING_ETHASH
 	MinerCLI(OperationMode _mode = OperationMode::None): mode(_mode) {}
-#else
-	MinerCLI(OperationMode = OperationMode::None) {}
-#endif
 
 	bool interpretOption(int& i, int argc, char** argv)
 	{
-#if ETH_USING_ETHASH
 		string arg = argv[i];
 		if ((arg == "-F" || arg == "--farm") && i + 1 < argc)
 		{
@@ -246,7 +243,7 @@ public:
 			string m;
 			try
 			{
-				BlockInfo bi;
+				Ethash::BlockHeader bi;
 				m = boost::to_lower_copy(string(argv[++i]));
 				h256 powHash(m);
 				m = boost::to_lower_copy(string(argv[++i]));
@@ -256,20 +253,20 @@ public:
 				else
 					seedHash = EthashAux::seedHash(stol(m));
 				m = boost::to_lower_copy(string(argv[++i]));
-				bi.difficulty = u256(m);
+				bi.setDifficulty(u256(m));
 				auto boundary = bi.boundary();
 				m = boost::to_lower_copy(string(argv[++i]));
-				bi.proof.nonce = h64(m);
-				auto r = EthashAux::eval(seedHash, powHash, bi.proof.nonce);
+				bi.setNonce(h64(m));
+				auto r = EthashAux::eval(seedHash, powHash, bi.nonce());
 				bool valid = r.value < boundary;
 				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
 				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
-				cout << "  where " << boundary << " = 2^256 / " << bi.difficulty << endl;
-				cout << "  and " << r.value << " = ethash(" << powHash << ", " << bi.proof.nonce << ")" << endl;
+				cout << "  where " << boundary << " = 2^256 / " << bi.difficulty() << endl;
+				cout << "  and " << r.value << " = ethash(" << powHash << ", " << bi.nonce() << ")" << endl;
 				cout << "  with seed as " << seedHash << endl;
 				if (valid)
 					cout << "(mixHash = " << r.mixHash << ")" << endl;
-				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(bi.proofCache())->data()) << endl;
+				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(bi.seedHash())->data()) << endl;
 				exit(0);
 			}
 			catch (...)
@@ -294,29 +291,22 @@ public:
 		else
 			return false;
 		return true;
-#else
-		(void)i;
-		(void)argc;
-		(void)argv;
-		return false;
-#endif
 	}
 
 	void execute()
 	{
-#if ETH_USING_ETHASH
 		if (m_shouldListDevices)
 		{
-			Ethash::GPUMiner::listDevices();
+			EthashGPUMiner::listDevices();
 			exit(0);
 		}
 
 		if (m_minerType == MinerType::CPU)
-			Ethash::CPUMiner::setNumInstances(m_miningThreads);
+			EthashCPUMiner::setNumInstances(m_miningThreads);
 		else if (m_minerType == MinerType::GPU)
 		{
 #if ETH_ETHASHCL || !ETH_TRUE
-			if (!Ethash::GPUMiner::configureGPU(
+			if (!EthashGPUMiner::configureGPU(
 					m_localWorkSize,
 					m_globalWorkSizeMultiplier,
 					m_msPerBatch,
@@ -327,7 +317,7 @@ public:
 					m_currentBlock
 				))
 				exit(1);
-			Ethash::GPUMiner::setNumInstances(m_miningThreads);
+			EthashGPUMiner::setNumInstances(m_miningThreads);
 #else
 			cerr << "Selected GPU mining without having compiled with -DETHASHCL=1" << endl;
 			exit(1);
@@ -339,12 +329,10 @@ public:
 			doBenchmark(m_minerType, m_phoneHome, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
 		else if (mode == OperationMode::Farm)
 			doFarm(m_minerType, m_farmURL, m_farmRecheckPeriod);
-#endif
 	}
 
 	static void streamHelp(ostream& _out)
 	{
-#if ETH_USING_ETHASH
 		_out
 #if ETH_JSONRPC || !ETH_TRUE
 			<< "Work farming mode:" << endl
@@ -381,9 +369,6 @@ public:
 			<< "    --cl-ms-per-batch Set the OpenCL target milliseconds per batch (global workgroup size). Default is " << toString(ethash_cl_miner::c_defaultMSPerBatch) << ". If 0 is given then no autoadjustment of global work size will happen" << endl
 #endif
 			;
-#else
-		(void)_out;
-#endif
 	}
 
 	enum class MinerType

@@ -578,15 +578,13 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	}
 #endif
 
-#if ETH_USING_ETHASH
 	StructuredLogger::chainReceivedNewBlock(
-		_block.info.headerHash(WithoutProof).abridged(),
-		_block.info.proof.nonce.abridged(),
+		_block.info.hashWithout().abridged(),
+		"",//_block.info.proof.nonce.abridged(),
 		currentHash().abridged(),
 		"", // TODO: remote id ??
 		_block.info.parentHash().abridged()
 	);
-#endif
 	//	cnote << "Parent " << bi.parentHash() << " has " << details(bi.parentHash()).children.size() << " children.";
 
 	h256s route;
