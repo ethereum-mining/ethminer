@@ -68,6 +68,8 @@ public:
 	Q_INVOKABLE void stopWatching(QString const& _path);
 	/// Delete a file
 	Q_INVOKABLE void deleteFile(QString const& _path);
+	/// delete a directory
+	Q_INVOKABLE void deleteDir(QString const& _url);
 
 private:
 	QString getHomePath() const;
