@@ -270,7 +270,7 @@ private:
 	void finalizeBlock();
 	void stopExecution();
 	void setupExecutionChain();
-	TransactionSettings transaction(QVariant _tr);	
+	TransactionSettings transaction(QVariant const& _tr) const;
 
 	std::atomic<bool> m_running;
 	std::atomic<bool> m_mining;

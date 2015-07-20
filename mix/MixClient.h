@@ -61,7 +61,7 @@ public:
 	virtual std::pair<h256, Address> submitTransaction(eth::TransactionSkeleton const& _ts, Secret const& _secret) override { return submitTransaction(_ts, _secret, false); }
 	std::pair<h256, Address> submitTransaction(eth::TransactionSkeleton const& _ts, Secret const& _secret, bool _gasAuto);
 	dev::eth::ExecutionResult call(Address const& _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, eth::BlockNumber _blockNumber, bool _gasAuto, eth::FudgeFactor _ff = eth::FudgeFactor::Strict);
-	ExecutionResult debugTransaction(dev::eth::Transaction const& _t, eth:: State const& _state, eth::LastHashes _lastHashes, bool _call);
+	ExecutionResult debugTransaction(dev::eth::Transaction const& _t, eth:: State const& _state, eth::LastHashes const& _lastHashes, bool _call);
 	void setAddress(Address _us) override;
 	void startMining() override;
 	void stopMining() override;

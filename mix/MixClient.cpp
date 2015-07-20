@@ -123,7 +123,7 @@ Transaction MixClient::replaceGas(Transaction const& _t, u256 const& _gas, Secre
 	return ret;
 }
 
-ExecutionResult MixClient::debugTransaction(Transaction const& _t, State const& _state, LastHashes _lastHashes, bool _call)
+ExecutionResult MixClient::debugTransaction(Transaction const& _t, State const& _state, LastHashes const& _lastHashes, bool _call)
 {
 	State execState = _state;
 	execState.addBalance(_t.sender(), _t.gas() * _t.gasPrice()); //give it enough balance for gas estimation
