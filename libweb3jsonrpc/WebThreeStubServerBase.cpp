@@ -748,12 +748,10 @@ Json::Value WebThreeStubServerBase::eth_getLogsEx(Json::Value const& _json)
 Json::Value WebThreeStubServerBase::eth_getWork()
 {
 	Json::Value ret(Json::arrayValue);
-#if ETH_USING_ETHASH
-	auto r = client()->getWork();
-	ret.append(toJS(r.headerHash));
-	ret.append(toJS(r.seedHash));
-	ret.append(toJS(r.boundary));
-#endif
+	auto r = client()->getEthashWork();
+	ret.append(toJS(get<0>(r)));
+	ret.append(toJS(get<1>(r)));
+	ret.append(toJS(get<2>(r)));
 	return ret;
 }
 
@@ -761,13 +759,7 @@ bool WebThreeStubServerBase::eth_submitWork(string const& _nonce, string const&,
 {
 	try
 	{
-#if ETH_USING_ETHASH
-		return client()->submitWork(Ethash::Solution{jsToFixed<Nonce::size>(_nonce), jsToFixed<32>(_mixHash)});
-#else
-		(void)_nonce;
-		(void)_mixHash;
-		return false;
-#endif
+		return client()->submitEthashWork(jsToFixed<32>(_mixHash), jsToFixed<Nonce::size>(_nonce));
 	}
 	catch (...)
 	{

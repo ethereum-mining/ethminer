@@ -669,14 +669,12 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 
 		clog(BlockChainNote) << "   Imported and best" << td << " (#" << _block.info.number() << "). Has" << (details(_block.info.parentHash()).children.size() - 1) << "siblings. Route:" << route;
 
-#if ETH_USING_ETHASH
 		StructuredLogger::chainNewHead(
-			_block.info.headerHash(WithoutProof).abridged(),
-			_block.info.proof.nonce.abridged(),
+			_block.info.hashWithout().abridged(),
+			"",//_block.info.proof.nonce.abridged(),
 			currentHash().abridged(),
 			_block.info.parentHash().abridged()
 		);
-#endif
 	}
 	else
 	{
