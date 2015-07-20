@@ -407,10 +407,9 @@ void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& 
 	}
 }
 
-void Client::appendFromNewBlock(h256 const& _block, h256Hash& io_changed)
+void Client::appendFromBlock(h256 const& _block, BlockPolarity _polarity, h256Hash& io_changed)
 {
 	// TODO: more precise check on whether the txs match.
-	auto d = bc().info(_block);
 	auto receipts = bc().receipts(_block).receipts;
 
 	Guard l(x_filtersWatches);
@@ -419,18 +418,16 @@ void Client::appendFromNewBlock(h256 const& _block, h256Hash& io_changed)
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
 	{
 		// acceptable number & looks like block may contain a matching log entry.
-		unsigned logIndex = 0;
 		for (size_t j = 0; j < receipts.size(); j++)
 		{
-			logIndex++;
 			auto tr = receipts[j];
 			auto m = i.second.filter.matches(tr);
 			if (m.size())
 			{
-				auto transactionHash = transaction(d.hash(), j).sha3();
+				auto transactionHash = transaction(_block, j).sha3();
 				// filter catches them
 				for (LogEntry const& l: m)
-					i.second.changes.push_back(LocalisedLogEntry(l, d, transactionHash, j, logIndex));
+					i.second.changes.push_back(LocalisedLogEntry(l, _block, (BlockNumber)bc().number(_block), transactionHash, j, 0, _polarity));
 				io_changed.insert(i.first);
 			}
 		}
@@ -562,10 +559,10 @@ void Client::syncTransactionQueue()
 		h->noteNewTransactions();
 }
 
-void Client::onChainChanged(ImportRoute const& _ir)
+void Client::onDeadBlocks(h256s const& _blocks, h256Hash& io_changed)
 {
 	// insert transactions that we are declaring the dead part of the chain
-	for (auto const& h: _ir.deadBlocks)
+	for (auto const& h: _blocks)
 	{
 		clog(ClientTrace) << "Dead block:" << h;
 		for (auto const& t: bc().transactions(h))
@@ -575,23 +572,25 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		}
 	}
 
-	// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
-	for (auto const& h: _ir.liveBlocks)
-		clog(ClientTrace) << "Live block:" << h;
+	for (auto const& h: _blocks)
+		appendFromBlock(h, BlockPolarity::Dead, io_changed);
+}
 
-	for (auto const& t: _ir.goodTranactions)
-	{
-		clog(ClientTrace) << "Safely dropping transaction " << t.sha3();
-		m_tq.dropGood(t);
-	}
+void Client::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
+{
+	// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
+	for (auto const& h: _blocks)
+		clog(ClientTrace) << "Live block:" << h;
 
 	if (auto h = m_host.lock())
 		h->noteNewBlocks();
 
-	h256Hash changeds;
-	for (auto const& h: _ir.liveBlocks)
-		appendFromNewBlock(h, changeds);
+	for (auto const& h: _blocks)
+		appendFromBlock(h, BlockPolarity::Live, io_changed);
+}
 
+void Client::restartMining()
+{
 	// RESTART MINING
 
 	if (!isMajorSyncing())
@@ -624,8 +623,6 @@ void Client::onChainChanged(ImportRoute const& _ir)
 			DEV_READ_GUARDED(x_working) DEV_WRITE_GUARDED(x_postMine)
 				m_postMine = m_working;
 
-			changeds.insert(PendingChangedFilter);
-
 			onPostStateChanged();
 		}
 
@@ -633,7 +630,19 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		// we should resync with it manually until we are stricter about what constitutes "knowing".
 		onTransactionQueueReady();
 	}
+}
 
+void Client::onChainChanged(ImportRoute const& _ir)
+{
+	h256Hash changeds;
+	onDeadBlocks(_ir.deadBlocks, changeds);
+	for (auto const& t: _ir.goodTranactions)
+	{
+		clog(ClientTrace) << "Safely dropping transaction " << t.sha3();
+		m_tq.dropGood(t);
+	}
+	onNewBlocks(_ir.liveBlocks, changeds);
+	restartMining();
 	noteChanged(changeds);
 }
 
