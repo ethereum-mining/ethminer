@@ -152,12 +152,26 @@ var getTransactionFromBlock = new Method({
     outputFormatter: formatters.outputTransactionFormatter
 });
 
+var getTransactionReceipt = new Method({
+    name: 'getTransactionReceipt',
+    call: 'eth_getTransactionReceipt',
+    params: 1,
+    outputFormatter: formatters.outputTransactionReceiptFormatter
+});
+
 var getTransactionCount = new Method({
     name: 'getTransactionCount',
     call: 'eth_getTransactionCount',
     params: 2,
     inputFormatter: [null, formatters.inputDefaultBlockNumberFormatter],
     outputFormatter: utils.toDecimal
+});
+
+var sendRawTransaction = new Method({
+    name: 'sendRawTransaction',
+    call: 'eth_sendRawTransaction',
+    params: 1,
+    inputFormatter: [null]
 });
 
 var sendTransaction = new Method({
@@ -223,9 +237,11 @@ var methods = [
     getBlockUncleCount,
     getTransaction,
     getTransactionFromBlock,
+    getTransactionReceipt,
     getTransactionCount,
     call,
     estimateGas,
+    sendRawTransaction,
     sendTransaction,
     compileSolidity,
     compileLLL,
