@@ -99,7 +99,7 @@ private:
 	static std::string fillArguments(dev::eth::Instruction _opcode, RandomCodeOptions const& _options);
 	static std::string getPushCode(int _value);
 	static std::string getPushCode(std::string const& _hex);
-	static int recursiveRLP(std::string &_result, int _depth, std::string& _debug);
+	static int recursiveRLP(std::string& _result, int _depth, std::string& _debug);
 	static void refreshSeed();
 
 	static boost::random::mt19937 gen;			///< Random generator

@@ -72,8 +72,6 @@ namespace dev
 						bytes payloadToDecode = fromHex(o["out"].get_str());
 						RLP payload(payloadToDecode);
 						ostringstream() << payload;
-						if (payload.isEmpty())
-							BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("Decoded Empty RLP!"));
 						o["in"] = "VALID";
 					}
 					catch (Exception const& _e)
@@ -243,6 +241,28 @@ namespace dev
 }
 
 BOOST_AUTO_TEST_SUITE(RlpTests)
+
+BOOST_AUTO_TEST_CASE(EmptyArrayList)
+{
+	try
+	{
+		bytes payloadToDecode = fromHex("80");
+		RLP payload(payloadToDecode);
+		ostringstream() << payload;
+
+		payloadToDecode = fromHex("с0");
+		RLP payload2(payloadToDecode);
+		ostringstream() << payload2;
+	}
+	catch (Exception const& _e)
+	{
+		TBOOST_ERROR("Failed test with Exception: " << _e.what());
+	}
+	catch (exception const& _e)
+	{
+		TBOOST_ERROR("Failed test with Exception: " << _e.what());
+	}
+}
 
 BOOST_AUTO_TEST_CASE(invalidRLPtest)
 {
