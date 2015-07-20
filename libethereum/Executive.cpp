@@ -400,10 +400,14 @@ void Executive::finalize()
 	m_gas += m_refunded;
 
 	//	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
-	m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
+	if (m_t)
+	{
+		//	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
+		m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
 
-	u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
-	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress(), feesEarned);
+		u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
+		m_s.addBalance(m_s.m_currentBlock.coinbaseAddress(), feesEarned);
+	}
 
 	// Suicides...
 	if (m_ext)
