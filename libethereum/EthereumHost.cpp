@@ -323,11 +323,6 @@ void EthereumHost::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const
 
 void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
-	if (_peer->isCriticalSyncing())
-	{
-		clog(EthereumHostTrace) << "Ignoring transaction from peer we are syncing with";
-		return;
-	}
 	unsigned itemCount = _r.itemCount();
 	clog(EthereumHostTrace) << "Transactions (" << dec << itemCount << "entries)";
 	m_tq.enqueue(_r, _peer->session()->id());
