@@ -20,21 +20,24 @@
  */
 
 #include "WhisperHost.h"
-
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Log.h>
 #include <libp2p/All.h>
+#include "WhisperDB.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-WhisperHost::WhisperHost(): Worker("shh")
+WhisperHost::WhisperHost(bool _useDB): Worker("shh"), m_useDB(_useDB)
 {
+	loadMessagesFromBD();
 }
 
 WhisperHost::~WhisperHost()
 {
+	saveMessagesToBD();
 }
 
 void WhisperHost::streamMessage(h256 _m, RLPStream& _s) const
@@ -199,4 +202,71 @@ void WhisperHost::noteAdvertiseTopicsOfInterest()
 {
 	for (auto i: peerSessions())
 		i.first->cap<WhisperPeer>().get()->noteAdvertiseTopicsOfInterest();
+}
+
+void WhisperHost::saveMessagesToBD()
+{
+	if (!m_useDB)
+		return;
+
+	try
+	{
+		WhisperDB db;
+		ReadGuard g(x_messages);
+		for (auto const& m: m_messages)
+		{
+			RLPStream rlp;
+			m.second.streamRLP(rlp);
+			bytes b;
+			rlp.swapOut(b);
+			db.insert(m.first, b);
+		}
+	}
+	catch(FailedToOpenLevelDB const& ex)
+	{
+		cwarn << "Exception in WhisperHost::saveMessagesToBD() - failed to open DB:" << ex.what();
+	}
+	catch(FailedInsertInLevelDB const& ex)
+	{
+		cwarn << "Exception in WhisperHost::saveMessagesToBD() - failed to insert:" << ex.what();
+	}
+	catch(FailedLookupInLevelDB const& ex)
+	{
+		cwarn << "Exception in WhisperHost::saveMessagesToBD() - failed lookup:" << ex.what();
+	}
+	catch(FailedDeleteInLevelDB const& ex)
+	{
+		cwarn << "Exception in WhisperHost::saveMessagesToBD() - failed to delete:" << ex.what();
+	}
+	catch(Exception const& ex)
+	{
+		cwarn << "Exception in WhisperHost::saveMessagesToBD():" << ex.what();
+	}
+	catch(...)
+	{
+		cwarn << "Unknown Exception in WhisperHost::saveMessagesToBD()";
+	}
+}
+
+void WhisperHost::loadMessagesFromBD()
+{
+	if (!m_useDB)
+		return;
+
+	try
+	{
+		map<h256, Envelope> m;
+		WhisperDB db;
+		db.loadAll(m);
+		WriteGuard g(x_messages);
+		m_messages.swap(m);
+	}
+	catch(Exception const& ex)
+	{
+		cwarn << "Exception in WhisperHost::loadMessagesFromBD():" << ex.what();
+	}
+	catch(...)
+	{
+		cwarn << "Unknown Exception in WhisperHost::loadMessagesFromBD()";
+	}
 }

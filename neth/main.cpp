@@ -339,7 +339,6 @@ int main(int argc, char** argv)
 	bool upnp = true;
 	bool forceMining = false;
 	bool killChain = false;
-	bool jit = false;
 	bool structuredLogging = false;
 	string structuredLoggingFormat = "%Y-%m-%dT%H:%M:%S";
 	string clientName;
@@ -544,10 +543,9 @@ int main(int argc, char** argv)
 	cout << credits();
 
 	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat);
-	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
-	std::string clientImplString = "N++eth/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
+	std::string clientImplString = "N++eth/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM));
 	dev::WebThreeDirect web3(
 		clientImplString,
 		dbPath,
