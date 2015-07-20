@@ -302,7 +302,7 @@ void ClientModel::finalizeBlock()
 	}
 }
 
-TransactionSettings ClientModel::transaction(QVariant _tr)
+TransactionSettings ClientModel::transaction(QVariant const& _tr) const
 {
 	QVariantMap transaction = _tr.toMap();
 	QString contractId = transaction.value("contractId").toString();

@@ -330,10 +330,9 @@ ColumnLayout {
 						for (var c in blinkReasons)
 						{
 							if (blinkReasons[c] === reason)
-							{
 								return true
-							}
 						}
+						return false
 					}
 
 
