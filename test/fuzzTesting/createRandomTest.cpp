@@ -263,6 +263,9 @@ void parseTestWithTypes(std::string& _test)
 			if (types.at(i) == "[HEX]")
 				_test.replace(pos, 5, dev::test::RandomCode::randomUniIntHex());
 			else
+			if (types.at(i) == "[HEX32]")
+				_test.replace(pos, 7, dev::test::RandomCode::randomUniIntHex(std::numeric_limits<uint32_t>::max()));
+			else
 			if (types.at(i) == "[GASLIMIT]")
 				_test.replace(pos, 10, dev::test::RandomCode::randomUniIntHex(dev::u256("3000000000")));
 			else
@@ -294,7 +297,7 @@ void parseTestWithTypes(std::string& _test)
 
 std::vector<std::string> getTypes()
 {
-	return {"[RLP]", "[CODE]", "[HEX]", "[HASH20]", "[HASH32]", "[0xHASH32]", "[V]", "[GASLIMIT]"};
+	return {"[RLP]", "[CODE]", "[HEX]", "[HEX32]", "[HASH20]", "[HASH32]", "[0xHASH32]", "[V]", "[GASLIMIT]"};
 }
 
 std::string const c_testExampleTransactionTest = R"(
@@ -323,7 +326,7 @@ std::string const c_testExampleStateTest = R"(
 		"currentCoinbase" : "[HASH20]",
 		"currentDifficulty" : "[HEX]",
 		"currentGasLimit" : "[GASLIMIT]",
-		"currentNumber" : "[HEX]",
+		"currentNumber" : "[HEX32]",
 		"currentTimestamp" : "[HEX]",
 		"previousHash" : "[HASH32]"
 		},
@@ -353,7 +356,7 @@ std::string const c_testExampleStateTest = R"(
 	"transaction" : {
 		"data" : "[CODE]",
 		"gasLimit" : "[HEX]",
-		"gasPrice" : "[V]",
+		"gasPrice" : "[HEX32]",
 		"nonce" : "0",
 		"secretKey" : "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8",
 		"to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
