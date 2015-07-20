@@ -23,6 +23,7 @@
 
 #include <condition_variable>
 #include <libethash/ethash.h>
+#include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
 #include "Ethash.h"
 
@@ -32,6 +33,47 @@ namespace eth
 {
 
 struct DAGChannel: public LogChannel { static const char* name(); static const int verbosity = 1; };
+
+/// Proof of work definition for Ethash.
+struct EthashProofOfWork
+{
+	struct Solution
+	{
+		Nonce nonce;
+		h256 mixHash;
+	};
+
+	struct Result
+	{
+		h256 value;
+		h256 mixHash;
+	};
+
+	struct WorkPackage
+	{
+		WorkPackage() = default;
+		WorkPackage(Ethash::BlockHeader const& _bh):
+			boundary(_bh.boundary()),
+			headerHash(_bh.hashWithout()),
+			seedHash(_bh.seedHash())
+		{}
+		void reset() { headerHash = h256(); }
+		operator bool() const { return headerHash != h256(); }
+
+		h256 boundary;
+		h256 headerHash;	///< When h256() means "pause until notified a new work package is available".
+		h256 seedHash;
+	};
+
+	static const WorkPackage NullWorkPackage;
+
+	/// Default value of the local work size. Also known as workgroup size.
+	static const unsigned defaultLocalWorkSize;
+	/// Default value of the global work size as a multiplier of the local work size
+	static const unsigned defaultGlobalWorkSizeMultiplier;
+	/// Default value of the milliseconds per global work size (per batch)
+	static const unsigned defaultMSPerBatch;
+};
 
 class EthashAux
 {
@@ -45,7 +87,7 @@ public:
 		LightAllocation(h256 const& _seedHash);
 		~LightAllocation();
 		bytesConstRef data() const;
-		Ethash::Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
+		EthashProofOfWork::Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
 		ethash_light_t light;
 		uint64_t size;
 	};
@@ -54,7 +96,7 @@ public:
 	{
 		FullAllocation(ethash_light_t _light, ethash_callback_t _cb);
 		~FullAllocation();
-		Ethash::Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
+		EthashProofOfWork::Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
 		bytesConstRef data() const;
 		uint64_t size() const { return ethash_full_dag_size(full); }
 		ethash_full_t full;
@@ -78,9 +120,7 @@ public:
 	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result or empty pointer if not existing and _createIfMissing is false.
 	static FullType full(h256 const& _seedHash, bool _createIfMissing = false, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
 
-	static Ethash::Result eval(BlockInfo const& _header) { return eval(_header, _header.nonce); }
-	static Ethash::Result eval(BlockInfo const& _header, Nonce const& _nonce);
-	static Ethash::Result eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce);
+	static EthashProofOfWork::Result eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce);
 
 private:
 	EthashAux() {}

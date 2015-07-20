@@ -28,128 +28,79 @@
 #include <cstdint>
 #include <libdevcore/CommonIO.h>
 #include "Common.h"
-#include "BlockInfo.h"
 #include "Miner.h"
+#include "Farm.h"
+#include "Sealer.h"
 
 class ethash_cl_miner;
 
 namespace dev
 {
+
+class RLP;
+class RLPStream;
+
 namespace eth
 {
 
+class BlockInfo;
 class EthashCLHook;
 
 class Ethash
 {
 public:
-	using Miner = GenericMiner<Ethash>;
-
-	struct Solution
-	{
-		Nonce nonce;
-		h256 mixHash;
-	};
-
-	struct Result
-	{
-		h256 value;
-		h256 mixHash;
-	};
-
-	struct WorkPackage
-	{
-		WorkPackage() = default;
-
-		void reset() { headerHash = h256(); }
-		operator bool() const { return headerHash != h256(); }
-
-		h256 boundary;
-		h256 headerHash;	///< When h256() means "pause until notified a new work package is available".
-		h256 seedHash;
-	};
-
-	static const WorkPackage NullWorkPackage;
-
 	static std::string name();
 	static unsigned revision();
-	static void prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
+	static SealEngineFace* createSealEngine();
+
+	using Nonce = h64;
+
+	static void manuallySubmitWork(SealEngineFace* _engine, h256 const& _mixHash, Nonce _nonce);
+	static bool isWorking(SealEngineFace* _engine);
+	static WorkingProgress workingProgress(SealEngineFace* _engine);
+
+	class BlockHeaderRaw: public BlockInfo
+	{
+		friend class EthashSealEngine;
+
+	public:
+		static const unsigned SealFields = 2;
+
+		bool verify() const;
+		bool preVerify() const;
+
+		void prep(std::function<int(unsigned)> const& _f = std::function<int(unsigned)>()) const;
+		h256 const& seedHash() const;
+		Nonce const& nonce() const { return m_nonce; }
+		h256 const& mixHash() const { return m_mixHash; }
+
+		void setNonce(Nonce const& _n) { m_nonce = _n; noteDirty(); }
+		void setMixHash(h256 const& _n) { m_mixHash = _n; noteDirty(); }
+
+		StringHashMap jsInfo() const;
+
+	protected:
+		BlockHeaderRaw() = default;
+		BlockHeaderRaw(BlockInfo const& _bi): BlockInfo(_bi) {}
+
+		void populateFromHeader(RLP const& _header, Strictness _s);
+		void populateFromParent(BlockHeaderRaw const& _parent);
+		void verifyParent(BlockHeaderRaw const& _parent);
+		void clear() { m_mixHash = h256(); m_nonce = Nonce(); }
+		void noteDirty() const { m_seedHash = h256(); }
+		void streamRLPFields(RLPStream& _s) const { _s << m_mixHash << m_nonce; }
+
+	private:
+		Nonce m_nonce;
+		h256 m_mixHash;
+
+		mutable h256 m_seedHash;
+		mutable h256 m_hash;						///< SHA3 hash of the block header! Not serialised.
+	};
+	using BlockHeader = BlockHeaderPolished<BlockHeaderRaw>;
+
+	// TODO: Move elsewhere (EthashAux?)
 	static void ensurePrecomputed(unsigned _number);
-	static bool verify(BlockInfo const& _header);
-	static bool preVerify(BlockInfo const& _header);
-	static WorkPackage package(BlockInfo const& _header);
-	static void assignResult(Solution const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
-
-	class CPUMiner: public Miner, Worker
-	{
-	public:
-		CPUMiner(ConstructionInfo const& _ci): Miner(_ci), Worker("miner" + toString(index())) {}
-
-		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : std::thread::hardware_concurrency(); }
-		static std::string platformInfo();
-		static void listDevices() {}
-		static bool configureGPU(unsigned, unsigned, unsigned, unsigned, unsigned, bool, unsigned, uint64_t) { return false; }
-		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency()); }
-	protected:
-		void kickOff() override
-		{
-			stopWorking();
-			startWorking();
-		}
-
-		void pause() override { stopWorking(); }
-
-	private:
-		void workLoop() override;
-		static unsigned s_numInstances;
-	};
-
-#if ETH_ETHASHCL || !ETH_TRUE
-	class GPUMiner: public Miner, Worker
-	{
-		friend class dev::eth::EthashCLHook;
-
-	public:
-		GPUMiner(ConstructionInfo const& _ci);
-		~GPUMiner();
-
-		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
-		static std::string platformInfo();
-		static unsigned getNumDevices();
-		static void listDevices();
-		static bool configureGPU(
-			unsigned _localWorkSize,
-			unsigned _globalWorkSizeMultiplier,
-			unsigned _msPerBatch,
-			unsigned _platformId,
-			unsigned _deviceId,
-			bool _allowCPU,
-			unsigned _extraGPUMemory,
-			uint64_t _currentBlock
-		);
-		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
-
-	protected:
-		void kickOff() override;
-		void pause() override;
-
-	private:
-		void workLoop() override;
-		bool report(uint64_t _nonce);
-
-		using Miner::accumulateHashes;
-
-		EthashCLHook* m_hook = nullptr;
-		ethash_cl_miner* m_miner = nullptr;
-
-		h256 m_minerSeed;		///< Last seed in m_miner
-		static unsigned s_platformId;
-		static unsigned s_deviceId;
-		static unsigned s_numInstances;
-	};
-#else
-	using GPUMiner = CPUMiner;
-#endif
 };
 
 }

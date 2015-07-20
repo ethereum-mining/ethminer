@@ -231,8 +231,11 @@ public:
 		}
 	}
 
-protected:
-	DB* db() const { return m_db; }
+	/// Get the underlying database.
+	/// @warning This can be used to bypass the trie code. Don't use these unless you *really*
+	/// know what you're doing.
+	DB const* db() const { return m_db; }
+	DB* db() { return m_db; }
 
 private:
 	RLPStream& streamNode(RLPStream& _s, bytes const& _b);
@@ -383,6 +386,7 @@ public:
 	using Super::isEmpty;
 
 	using Super::root;
+	using Super::db;
 
 	using Super::leftOvers;
 	using Super::check;
@@ -435,6 +439,7 @@ public:
 	using Super::check;
 	using Super::open;
 	using Super::setRoot;
+	using Super::db;
 
 	std::string at(bytesConstRef _key) const { return Super::at(sha3(_key)); }
 	bool contains(bytesConstRef _key) { return Super::contains(sha3(_key)); }

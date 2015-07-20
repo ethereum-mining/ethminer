@@ -111,7 +111,7 @@ void BlockChainSync::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
 unsigned BlockChainSync::estimatedHashes() const
 {
 	BlockInfo block = host().chain().info();
-	time_t lastBlockTime = (block.hash() == host().chain().genesisHash()) ? 1428192000 : (time_t)block.timestamp;
+	time_t lastBlockTime = (block.hash() == host().chain().genesisHash()) ? 1428192000 : (time_t)block.timestamp();
 	time_t now = time(0);
 	unsigned blockCount = c_chainReorgSize;
 	if (lastBlockTime > now)
@@ -183,11 +183,11 @@ void BlockChainSync::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const
 
 	for (unsigned i = 0; i < itemCount; ++i)
 	{
-		auto h = BlockInfo::headerHash(_r[i].data());
+		auto h = BlockInfo::headerHashFromBlock(_r[i].data());
 		if (_peer->m_sub.noteBlock(h))
 		{
 			_peer->addRating(10);
-			switch (host().bq().import(_r[i].data(), host().chain()))
+			switch (host().bq().import(_r[i].data()))
 			{
 			case ImportResult::Success:
 				success++;
@@ -219,11 +219,10 @@ void BlockChainSync::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const
 				logNewBlock(h);
 				if (m_state == SyncState::NewBlocks)
 				{
-					BlockInfo bi;
-					bi.populateFromHeader(_r[i][0]);
-					if (bi.number > maxUnknownNumber)
+					BlockInfo bi(_r[i].data());
+					if (bi.number() > maxUnknownNumber)
 					{
-						maxUnknownNumber = bi.number;
+						maxUnknownNumber = bi.number();
 						maxUnknown = h;
 					}
 				}
@@ -268,13 +267,13 @@ void BlockChainSync::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP con
 {
 	DEV_INVARIANT_CHECK;
 	RecursiveGuard l(x_sync);
-	auto h = BlockInfo::headerHash(_r[0].data());
+	auto h = BlockInfo::headerHashFromBlock(_r[0].data());
 
 	if (_r.itemCount() != 2)
 		_peer->disable("NewBlock without 2 data fields.");
 	else
 	{
-		switch (host().bq().import(_r[0].data(), host().chain()))
+		switch (host().bq().import(_r[0].data()))
 		{
 		case ImportResult::Success:
 			_peer->addRating(100);
