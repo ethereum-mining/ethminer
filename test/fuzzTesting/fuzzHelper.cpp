@@ -42,7 +42,7 @@ boostIntGenerator RandomCode::randOpLengGen = boostIntGenerator(gen, opLengDist)
 boostIntGenerator RandomCode::randUniIntGen = boostIntGenerator(gen, uniIntDist);
 boostUInt64Generator RandomCode::randUInt64Gen = boostUInt64Generator(gen, uInt64Dist);
 
-int RandomCode::recursiveRLP(std::string &_result, int _depth, std::string& _debug)
+int RandomCode::recursiveRLP(std::string& _result, int _depth, std::string& _debug)
 {
 	bool genValidRlp = true;
 	int bugProbability = randUniIntGen() % 100;
