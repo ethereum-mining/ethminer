@@ -212,6 +212,8 @@ std::string Ethash::name()
 	return "Ethash";
 }
 
+bool Ethash::s_precompute = false;
+
 unsigned Ethash::revision()
 {
 	return ETHASH_REVISION;
@@ -219,7 +221,7 @@ unsigned Ethash::revision()
 
 void Ethash::ensurePrecomputed(unsigned _number)
 {
-	if (_number % ETHASH_EPOCH_LENGTH > ETHASH_EPOCH_LENGTH * 9 / 10)
+	if (s_precompute && _number % ETHASH_EPOCH_LENGTH > ETHASH_EPOCH_LENGTH * 9 / 10)
 		// 90% of the way to the new epoch
 		EthashAux::computeFull(EthashAux::seedHash(_number + ETHASH_EPOCH_LENGTH), true);
 }
