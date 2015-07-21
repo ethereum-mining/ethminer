@@ -360,6 +360,10 @@ if (EVMJIT)
 	endif()
 	set(EVMJIT_CPP TRUE) # include CPP-JIT connector
 	add_subdirectory(evmjit)
+	if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+		set(EVMJIT_DLLS_LOCAL $<TARGET_FILE:evmjit>)
+		set(EVMJIT_DLLS optimized ${EVMJIT_DLLS_LOCAL} debug ${EVMJIT_DLLS_LOCAL})
+	endif()
 endif()
 
 if (TOOLS OR GUI OR SOLIDITY OR TESTS)
@@ -401,10 +405,8 @@ if (JSCONSOLE)
 	add_subdirectory(ethconsole)
 endif ()
 
-if (NOT WIN32)
-	add_definitions(-DETH_HAVE_SECP256K1)
-	add_subdirectory(secp256k1)
-endif ()
+add_definitions(-DETH_HAVE_SECP256K1)
+add_subdirectory(secp256k1)
 
 add_subdirectory(libscrypt)
 add_subdirectory(libdevcrypto)

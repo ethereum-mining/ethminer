@@ -41,9 +41,8 @@ if (JSCONSOLE)
 	target_link_libraries(${EXECUTABLE} jsconsole)
 endif()
 
-if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
-	eth_copy_dlls("${EXECUTABLE}" MHD_DLLS)
-	eth_copy_dlls("${EXECUTABLE}" OpenCL_DLLS)
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+	eth_copy_dlls("${EXECUTABLE}" MHD_DLLS EVMJIT_DLLS OpenCL_DLLS)
 endif()
 
 if (APPLE)

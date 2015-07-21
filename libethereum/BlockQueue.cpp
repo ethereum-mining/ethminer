@@ -292,7 +292,7 @@ void BlockQueue::updateBad_WITH_LOCK(h256 const& _bad)
 		while (moreBad)
 		{
 			moreBad = false;
-			std::vector<VerifiedBlock> oldVerified;
+			std::deque<VerifiedBlock> oldVerified;
 			swap(m_verified, oldVerified);
 			for (auto& b: oldVerified)
 				if (m_knownBad.count(b.verified.info.parentHash()) || m_knownBad.count(b.verified.info.hash()))
