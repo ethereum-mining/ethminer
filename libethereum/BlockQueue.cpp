@@ -101,8 +101,8 @@ void BlockQueue::verifierBody()
 			swap(work, m_unverified.front());
 			m_unverified.pop_front();
 			BlockInfo bi;
-			bi.mixHash = work.hash;
-			bi.parentHash = work.parentHash;
+			bi.setSha3Uncles(work.hash);
+			bi.setParentHash(work.parentHash);
 			m_verifying.emplace_back(move(bi));
 		}
 
@@ -110,7 +110,7 @@ void BlockQueue::verifierBody()
 		swap(work.block, res.blockData);
 		try
 		{
-			res.verified = BlockChain::verifyBlock(res.blockData, m_onBad);
+			res.verified = m_bc->verifyBlock(&res.blockData, m_onBad, ImportRequirements::Everything & ~ImportRequirements::Parent);
 		}
 		catch (...)
 		{
@@ -121,7 +121,7 @@ void BlockQueue::verifierBody()
 			m_readySet.erase(work.hash);
 			m_knownBad.insert(work.hash);
 			for (auto it = m_verifying.begin(); it != m_verifying.end(); ++it)
-				if (it->verified.info.mixHash == work.hash)
+				if (it->verified.info.sha3Uncles() == work.hash)
 				{
 					m_verifying.erase(it);
 					goto OK1;
@@ -136,11 +136,11 @@ void BlockQueue::verifierBody()
 		{
 			WriteGuard l2(m_lock);
 			unique_lock<Mutex> l(m_verification);
-			if (!m_verifying.empty() && m_verifying.front().verified.info.mixHash == work.hash)
+			if (!m_verifying.empty() && m_verifying.front().verified.info.sha3Uncles() == work.hash)
 			{
 				// we're next!
 				m_verifying.pop_front();
-				if (m_knownBad.count(res.verified.info.parentHash))
+				if (m_knownBad.count(res.verified.info.parentHash()))
 				{
 					m_readySet.erase(res.verified.info.hash());
 					m_knownBad.insert(res.verified.info.hash());
@@ -154,7 +154,7 @@ void BlockQueue::verifierBody()
 			else
 			{
 				for (auto& i: m_verifying)
-					if (i.verified.info.mixHash == work.hash)
+					if (i.verified.info.sha3Uncles() == work.hash)
 					{
 						i = move(res);
 						goto OK;
@@ -172,7 +172,7 @@ void BlockQueue::drainVerified_WITH_BOTH_LOCKS()
 {
 	while (!m_verifying.empty() && !m_verifying.front().blockData.empty())
 	{
-		if (m_knownBad.count(m_verifying.front().verified.info.parentHash))
+		if (m_knownBad.count(m_verifying.front().verified.info.parentHash()))
 		{
 			m_readySet.erase(m_verifying.front().verified.info.hash());
 			m_knownBad.insert(m_verifying.front().verified.info.hash());
@@ -183,11 +183,11 @@ void BlockQueue::drainVerified_WITH_BOTH_LOCKS()
 	}
 }
 
-ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, bool _isOurs)
+ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
 {
 	clog(BlockQueueTraceChannel) << std::this_thread::get_id();
 	// Check if we already know this block.
-	h256 h = BlockInfo::headerHash(_block);
+	h256 h = BlockInfo::headerHashFromBlock(_block);
 
 	clog(BlockQueueTraceChannel) << "Queuing block" << h << "for import...";
 
@@ -200,14 +200,12 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		return ImportResult::AlreadyKnown;
 	}
 
-	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi;
-
 	try
 	{
-		// TODO: quick verify
-		bi.populate(_block);
-		bi.verifyInternals(_block);
+		// TODO: quick verification of seal - will require BlockQueue to be templated on Sealer
+		// VERIFY: populates from the block and checks the block is internally coherent.
+		bi = m_bc->verifyBlock(_block, m_onBad, ImportRequirements::None).info;
 	}
 	catch (Exception const& _e)
 	{
@@ -215,10 +213,10 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		return ImportResult::Malformed;
 	}
 
-	clog(BlockQueueTraceChannel) << "Block" << h << "is" << bi.number << "parent is" << bi.parentHash;
+	clog(BlockQueueTraceChannel) << "Block" << h << "is" << bi.number() << "parent is" << bi.parentHash();
 
 	// Check block doesn't already exist first!
-	if (_bc.isKnown(h))
+	if (m_bc->isKnown(h))
 	{
 		cblockq << "Already known in chain.";
 		return ImportResult::AlreadyInChain;
@@ -229,38 +227,38 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 
 	// Check it's not in the future
 	(void)_isOurs;
-	if (bi.timestamp > (u256)time(0)/* && !_isOurs*/)
+	if (bi.timestamp() > (u256)time(0)/* && !_isOurs*/)
 	{
-		m_future.insert(make_pair((unsigned)bi.timestamp, make_pair(h, _block.toBytes())));
+		m_future.insert(make_pair((unsigned)bi.timestamp(), make_pair(h, _block.toBytes())));
 		char buf[24];
-		time_t bit = (unsigned)bi.timestamp;
+		time_t bit = (unsigned)bi.timestamp();
 		if (strftime(buf, 24, "%X", localtime(&bit)) == 0)
 			buf[0] = '\0'; // empty if case strftime fails
-		clog(BlockQueueTraceChannel) << "OK - queued for future [" << bi.timestamp << "vs" << time(0) << "] - will wait until" << buf;
+		clog(BlockQueueTraceChannel) << "OK - queued for future [" << bi.timestamp() << "vs" << time(0) << "] - will wait until" << buf;
 		m_unknownSize += _block.size();
 		m_unknownCount++;
-		m_difficulty += bi.difficulty;
-		bool unknown =  !m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash);
+		m_difficulty += bi.difficulty();
+		bool unknown =  !m_readySet.count(bi.parentHash()) && !m_drainingSet.count(bi.parentHash()) && !m_bc->isKnown(bi.parentHash());
 		return unknown ? ImportResult::FutureTimeUnknown : ImportResult::FutureTimeKnown;
 	}
 	else
 	{
 		// We now know it.
-		if (m_knownBad.count(bi.parentHash))
+		if (m_knownBad.count(bi.parentHash()))
 		{
 			m_knownBad.insert(bi.hash());
 			updateBad_WITH_LOCK(bi.hash());
 			// bad parent; this is bad too, note it as such
 			return ImportResult::BadChain;
 		}
-		else if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash))
+		else if (!m_readySet.count(bi.parentHash()) && !m_drainingSet.count(bi.parentHash()) && !m_bc->isKnown(bi.parentHash()))
 		{
 			// We don't know the parent (yet) - queue it up for later. It'll get resent to us if we find out about its ancestry later on.
-			clog(BlockQueueTraceChannel) << "OK - queued as unknown parent:" << bi.parentHash;
-			m_unknown.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
+			clog(BlockQueueTraceChannel) << "OK - queued as unknown parent:" << bi.parentHash();
+			m_unknown.insert(make_pair(bi.parentHash(), make_pair(h, _block.toBytes())));
 			m_unknownSet.insert(h);
 			m_unknownSize += _block.size();
-			m_difficulty += bi.difficulty;
+			m_difficulty += bi.difficulty();
 			m_unknownCount++;
 
 			return ImportResult::UnknownParent;
@@ -270,11 +268,11 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 			// If valid, append to blocks.
 			clog(BlockQueueTraceChannel) << "OK - ready for chain insertion.";
 			DEV_GUARDED(m_verification)
-				m_unverified.push_back(UnverifiedBlock { h, bi.parentHash, _block.toBytes() });
+				m_unverified.push_back(UnverifiedBlock { h, bi.parentHash(), _block.toBytes() });
 			m_moreToVerify.notify_one();
 			m_readySet.insert(h);
 			m_knownSize += _block.size();
-			m_difficulty += bi.difficulty;
+			m_difficulty += bi.difficulty();
 			m_knownCount++;
 
 			noteReady_WITH_LOCK(h);
@@ -297,7 +295,7 @@ void BlockQueue::updateBad_WITH_LOCK(h256 const& _bad)
 			std::vector<VerifiedBlock> oldVerified;
 			swap(m_verified, oldVerified);
 			for (auto& b: oldVerified)
-				if (m_knownBad.count(b.verified.info.parentHash) || m_knownBad.count(b.verified.info.hash()))
+				if (m_knownBad.count(b.verified.info.parentHash()) || m_knownBad.count(b.verified.info.hash()))
 				{
 					m_knownBad.insert(b.verified.info.hash());
 					m_readySet.erase(b.verified.info.hash());
@@ -323,9 +321,9 @@ void BlockQueue::updateBad_WITH_LOCK(h256 const& _bad)
 			std::deque<VerifiedBlock> oldVerifying;
 			swap(m_verifying, oldVerifying);
 			for (auto& b: oldVerifying)
-				if (m_knownBad.count(b.verified.info.parentHash) || m_knownBad.count(b.verified.info.mixHash))
+				if (m_knownBad.count(b.verified.info.parentHash()) || m_knownBad.count(b.verified.info.sha3Uncles()))
 				{
-					h256 const& h = b.blockData.size() != 0 ? b.verified.info.hash() : b.verified.info.mixHash;
+					h256 const& h = b.blockData.size() != 0 ? b.verified.info.hash() : b.verified.info.sha3Uncles();
 					m_knownBad.insert(h);
 					m_readySet.erase(h);
 					collectUnknownBad_WITH_BOTH_LOCKS(h);
@@ -374,7 +372,7 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 	return !m_readySet.empty();
 }
 
-void BlockQueue::tick(BlockChain const& _bc)
+void BlockQueue::tick()
 {
 	vector<pair<h256, bytes>> todo;
 	{
@@ -406,7 +404,7 @@ void BlockQueue::tick(BlockChain const& _bc)
 	cblockq << "Importing" << todo.size() << "past-future blocks.";
 
 	for (auto const& b: todo)
-		import(&b.second, _bc);
+		import(&b.second);
 }
 
 template <class T> T advanced(T _t, unsigned _n)
@@ -462,7 +460,7 @@ void BlockQueue::drain(VerifiedBlocks& o_out, unsigned _max)
 				// TODO: @optimise use map<h256, bytes> rather than vector<bytes> & set<h256>.
 				auto h = bs.verified.info.hash();
 				m_drainingSet.insert(h);
-				m_drainingDifficulty += bs.verified.info.difficulty;
+				m_drainingDifficulty += bs.verified.info.difficulty();
 				m_readySet.erase(h);
 				m_knownSize -= bs.verified.block.size();
 				m_knownCount--;

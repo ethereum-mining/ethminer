@@ -2,7 +2,7 @@
 
 [![Join the chat at https://gitter.im/ethereum/cpp-ethereum](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereum/cpp-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-By Gav Wood et al, 2013, 2014, 2015.
+By Gav Wood et al*, 2013, 2014, 2015.
 
           | Linux   | OSX | Windows
 ----------|---------|-----|--------
@@ -12,7 +12,22 @@ evmjit    | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=L
 
 [![Stories in Ready](https://badge.waffle.io/ethereum/cpp-ethereum.png?label=ready&title=Ready)](http://waffle.io/ethereum/cpp-ethereum)
 
-Ethereum is based on a design in an original whitepaper by Vitalik Buterin. This implementation is based on the formal specification of a refinement of that idea detailed in the 'yellow paper' by Gavin Wood. Contributors, builders and testers include Alex Leverington (Clang & Mac building, client multiplexing), Tim Hughes (MSVC compilation & Dagger testing), Caktux (ongoing CI), Christoph Jentzsch (tests), Christian Reissweiner (Solidity), Marek Kotewicz (external JS & JSON-RPC), Eric Lombrozo (MinGW32 cross-compilation), Marko Simovic (original CI), and several others.
+Ethereum is based on a design in an original whitepaper by Vitalik Buterin. This implementation is based on the formal specification of a refinement of that idea detailed in the 'yellow paper' by Gavin Wood. Contributors, builders and testers include:
+
+- *arkpar* (**Arkadiy Paronyan**) Mix, PV61/BlockQueue
+- *debris* (**Marek Kotewicz**) JSONRPC, web3.js
+- *CJentzsch* (**Christoph Jentzsch**) tests, lots of tests
+- *LefterisJP* (**Lefteris Karapetsas**) Solidity, libethash
+- *chriseth* (**Christian Reitwiessner**) Solidity
+- *subtly* (**Alex Leverington**) libp2p, rlpx
+- *yann300* (**Yann Levreau**) Mix
+- *LianaHus* (**Liana Husikyan**) Solidity
+- *chfast* (**Paweł Bylica**) EVMJIT
+- *cubedro* (**Marian Oancea**) web3.js
+- *gluk250* (**Vlad Gluhovsky**) Whisper
+- *programmerTim* (**Tim Hughes**) libethash-cl
+
+And let's not forget: Caktux (neth, ongoing CI), Eric Lombrozo (original MinGW32 cross-compilation), Marko Simovic (original CI).
 
 ### Building
 

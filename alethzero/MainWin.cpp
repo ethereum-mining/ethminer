@@ -189,9 +189,9 @@ Main::Main(QWidget *parent) :
 #endif
 	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
 
-	cerr << "State root: " << CanonBlockChain::genesis().stateRoot << endl;
-	auto block = CanonBlockChain::createGenesisBlock();
-	cerr << "Block Hash: " << CanonBlockChain::genesis().hash() << endl;
+	cerr << "State root: " << CanonBlockChain<Ethash>::genesis().stateRoot() << endl;
+	auto block = CanonBlockChain<Ethash>::createGenesisBlock();
+	cerr << "Block Hash: " << CanonBlockChain<Ethash>::genesis().hash() << endl;
 	cerr << "Block RLP: " << RLP(block) << endl;
 	cerr << "Block Hex: " << toHex(block) << endl;
 	cerr << "eth Network protocol version: " << eth::c_protocolVersion << endl;
@@ -208,12 +208,13 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->chainStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
 
-	ui->blockCount->setText(QString("PV%1.%2 D%3 %4-%5 v%6").arg(eth::c_protocolVersion).arg(eth::c_minorProtocolVersion).arg(c_databaseVersion).arg(QString::fromStdString(ProofOfWork::name())).arg(ProofOfWork::revision()).arg(dev::Version));
 
 	QSettings s("ethereum", "alethzero");
 	m_networkConfig = s.value("peers").toByteArray();
 	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir(), WithExisting::Trust, {"eth"/*, "shh"*/}, p2p::NetworkPreferences(), network));
+
+	ui->blockCount->setText(QString("PV%1.%2 D%3 %4-%5 v%6").arg(eth::c_protocolVersion).arg(eth::c_minorProtocolVersion).arg(c_databaseVersion).arg(QString::fromStdString(ethereum()->sealEngine()->name())).arg(ethereum()->sealEngine()->revision()).arg(dev::Version));
 
 	m_httpConnector.reset(new jsonrpc::HttpServer(SensibleHttpPort, "", "", dev::SensibleHttpThreads));
 	auto w3ss = new OurWebThreeStubServer(*m_httpConnector, this);
@@ -1124,7 +1125,7 @@ void Main::refreshMining()
 	QString t;
 	if (gp.first != EthashAux::NotGenerating)
 		t = QString("DAG for #%1-#%2: %3% complete; ").arg(gp.first).arg(gp.first + ETHASH_EPOCH_LENGTH - 1).arg(gp.second);
-	MiningProgress p = ethereum()->miningProgress();
+	WorkingProgress p = ethereum()->miningProgress();
 	ui->mineStatus->setText(t + (ethereum()->isMining() ? p.hashes > 0 ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Awaiting DAG" : "Not mining"));
 	if (ethereum()->isMining() && p.hashes > 0)
 	{
@@ -1699,32 +1700,32 @@ void Main::on_blocks_currentItemChanged()
 		auto details = ethereum()->blockChain().details(h);
 		auto blockData = ethereum()->blockChain().block(h);
 		auto block = RLP(blockData);
-		BlockInfo info(blockData);
+		Ethash::BlockHeader info(blockData);
 
 		stringstream s;
 
 		if (item->data(Qt::UserRole + 1).isNull())
 		{
 			char timestamp[64];
-			time_t rawTime = (time_t)(uint64_t)info.timestamp;
+			time_t rawTime = (time_t)(uint64_t)info.timestamp();
 			strftime(timestamp, 64, "%c", localtime(&rawTime));
 			s << "<h3>" << h << "</h3>";
-			s << "<h4>#" << info.number;
+			s << "<h4>#" << info.number();
 			s << "&nbsp;&emsp;&nbsp;<b>" << timestamp << "</b></h4>";
-			s << "<div>D/TD: <b>" << info.difficulty << "</b>/<b>" << details.totalDifficulty << "</b> = 2^" << log2((double)info.difficulty) << "/2^" << log2((double)details.totalDifficulty) << "</div>";
+			s << "<div>D/TD: <b>" << info.difficulty() << "</b>/<b>" << details.totalDifficulty << "</b> = 2^" << log2((double)info.difficulty()) << "/2^" << log2((double)details.totalDifficulty) << "</div>";
 			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></div>";
-			s << "<div>Gas used/limit: <b>" << info.gasUsed << "</b>/<b>" << info.gasLimit << "</b>" << "</div>";
-			s << "<div>Beneficiary: <b>" << htmlEscaped(pretty(info.coinbaseAddress)) << " " << info.coinbaseAddress << "</b>" << "</div>";
+			s << "<div>Gas used/limit: <b>" << info.gasUsed() << "</b>/<b>" << info.gasLimit() << "</b>" << "</div>";
+			s << "<div>Beneficiary: <b>" << htmlEscaped(pretty(info.coinbaseAddress())) << " " << info.coinbaseAddress() << "</b>" << "</div>";
 			s << "<div>Seed hash: <b>" << info.seedHash() << "</b>" << "</div>";
-			s << "<div>Mix hash: <b>" << info.mixHash << "</b>" << "</div>";
-			s << "<div>Nonce: <b>" << info.nonce << "</b>" << "</div>";
-			s << "<div>Hash w/o nonce: <b>" << info.headerHash(WithoutNonce) << "</b>" << "</div>";
-			s << "<div>Difficulty: <b>" << info.difficulty << "</b>" << "</div>";
-			if (info.number)
+			s << "<div>Mix hash: <b>" << info.mixHash() << "</b>" << "</div>";
+			s << "<div>Nonce: <b>" << info.nonce() << "</b>" << "</div>";
+			s << "<div>Hash w/o nonce: <b>" << info.hashWithout() << "</b>" << "</div>";
+			s << "<div>Difficulty: <b>" << info.difficulty() << "</b>" << "</div>";
+			if (info.number())
 			{
-				auto e = EthashAux::eval(info);
-				s << "<div>Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")" << "</div>";
-				s << "<div>Parent: <b>" << info.parentHash << "</b>" << "</div>";
+				auto e = EthashAux::eval(info.seedHash(), info.hashWithout(), info.nonce());
+				s << "<div>Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty()) << "</b> (mixhash: " << e.mixHash.abridged() << ")" << "</div>";
+				s << "<div>Parent: <b>" << info.parentHash() << "</b>" << "</div>";
 			}
 			else
 			{
@@ -1732,34 +1733,34 @@ void Main::on_blocks_currentItemChanged()
 				s << "<div>Parent: <b><i>It was a virgin birth</i></b></div>";
 			}
 //			s << "<div>Bloom: <b>" << details.bloom << "</b>";
-			if (!!info.logBloom)
-				s << "<div>Log Bloom: " << info.logBloom << "</div>";
+			if (!!info.logBloom())
+				s << "<div>Log Bloom: " << info.logBloom() << "</div>";
 			else
 				s << "<div>Log Bloom: <b><i>Uneventful</i></b></div>";
-			s << "<div>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>" << "</div>";
-			s << "<div>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>" << "</div>";
+			s << "<div>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot() << "</b>" << "</div>";
+			s << "<div>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles() << "</b>" << "</div>";
 			for (auto u: block[2])
 			{
-				BlockInfo uncle = BlockInfo::fromHeader(u.data());
+				Ethash::BlockHeader uncle(u.data(), CheckNothing, h256(), HeaderData);
 				char const* line = "<div><span style=\"margin-left: 2em\">&nbsp;</span>";
 				s << line << "Hash: <b>" << uncle.hash() << "</b>" << "</div>";
-				s << line << "Parent: <b>" << uncle.parentHash << "</b>" << "</div>";
-				s << line << "Number: <b>" << uncle.number << "</b>" << "</div>";
-				s << line << "Coinbase: <b>" << htmlEscaped(pretty(uncle.coinbaseAddress)) << " " << uncle.coinbaseAddress << "</b>" << "</div>";
+				s << line << "Parent: <b>" << uncle.parentHash() << "</b>" << "</div>";
+				s << line << "Number: <b>" << uncle.number() << "</b>" << "</div>";
+				s << line << "Coinbase: <b>" << htmlEscaped(pretty(uncle.coinbaseAddress())) << " " << uncle.coinbaseAddress() << "</b>" << "</div>";
 				s << line << "Seed hash: <b>" << uncle.seedHash() << "</b>" << "</div>";
-				s << line << "Mix hash: <b>" << uncle.mixHash << "</b>" << "</div>";
-				s << line << "Nonce: <b>" << uncle.nonce << "</b>" << "</div>";
-				s << line << "Hash w/o nonce: <b>" << uncle.headerHash(WithoutNonce) << "</b>" << "</div>";
-				s << line << "Difficulty: <b>" << uncle.difficulty << "</b>" << "</div>";
-				auto e = EthashAux::eval(uncle);
-				s << line << "Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / uncle.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")" << "</div>";
+				s << line << "Mix hash: <b>" << uncle.mixHash() << "</b>" << "</div>";
+				s << line << "Nonce: <b>" << uncle.nonce() << "</b>" << "</div>";
+				s << line << "Hash w/o nonce: <b>" << uncle.headerHash(WithoutProof) << "</b>" << "</div>";
+				s << line << "Difficulty: <b>" << uncle.difficulty() << "</b>" << "</div>";
+				auto e = EthashAux::eval(uncle.seedHash(), uncle.hashWithout(), uncle.nonce());
+				s << line << "Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / uncle.difficulty()) << "</b> (mixhash: " << e.mixHash.abridged() << ")" << "</div>";
 			}
-			if (info.parentHash)
-				s << "<div>Pre: <b>" << BlockInfo(ethereum()->blockChain().block(info.parentHash)).stateRoot << "</b>" << "</div>";
+			if (info.parentHash())
+				s << "<div>Pre: <b>" << BlockInfo(ethereum()->blockChain().block(info.parentHash())).stateRoot() << "</b>" << "</div>";
 			else
 				s << "<div>Pre: <b><i>Nothing is before Phil</i></b>" << "</div>";
 
-			s << "<div>Receipts: @<b>" << info.receiptsRoot << "</b>:" << "</div>";
+			s << "<div>Receipts: @<b>" << info.receiptsRoot() << "</b>:" << "</div>";
 			BlockReceipts receipts = ethereum()->blockChain().receipts(h);
 			unsigned ii = 0;
 			for (auto const& i: block[1])
@@ -1767,7 +1768,7 @@ void Main::on_blocks_currentItemChanged()
 				s << "<div>" << sha3(i.data()).abridged() << ": <b>" << receipts.receipts[ii].stateRoot() << "</b> [<b>" << receipts.receipts[ii].gasUsed() << "</b> used]" << "</div>";
 				++ii;
 			}
-			s << "<div>Post: <b>" << info.stateRoot << "</b>" << "</div>";
+			s << "<div>Post: <b>" << info.stateRoot() << "</b>" << "</div>";
 			s << "<div>Dump: " Span(Mono) << toHex(block[0].data()) << "</span>" << "</div>";
 			s << "<div>Receipts-Hex: " Span(Mono) << toHex(receipts.rlp()) << "</span></div>";
 		}
