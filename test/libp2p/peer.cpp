@@ -44,8 +44,8 @@ BOOST_AUTO_TEST_CASE(host)
 		return;
 
 	VerbosityHolder setTemporaryLevel(10);	
-	NetworkPreferences host1prefs("127.0.0.1", 30301, false);
-	NetworkPreferences host2prefs("127.0.0.1", 30302, false);	
+	NetworkPreferences host1prefs("127.0.0.1", 30311, false);
+	NetworkPreferences host2prefs("127.0.0.1", 30312, false);	
 	Host host1("Test", host1prefs);
 	Host host2("Test", host2prefs);
 	host1.start();
@@ -67,9 +67,8 @@ BOOST_AUTO_TEST_CASE(host)
 	for (int i = 0; i < 3000 && (!host1.peerCount() || !host2.peerCount()); i += step)
 		this_thread::sleep_for(chrono::milliseconds(step));
 
-	//Temporary disabled
-	//BOOST_REQUIRE_EQUAL(host1.peerCount(), 1);
-	//BOOST_REQUIRE_EQUAL(host2.peerCount(), 1);
+	BOOST_REQUIRE_EQUAL(host1.peerCount(), 1);
+	BOOST_REQUIRE_EQUAL(host2.peerCount(), 1);
 }
 
 BOOST_AUTO_TEST_CASE(networkConfig)
