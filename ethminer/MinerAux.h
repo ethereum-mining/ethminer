@@ -297,7 +297,9 @@ public:
 	{
 		if (m_shouldListDevices)
 		{
+#if ETH_ETHASHCL || !ETH_TRUE
 			EthashGPUMiner::listDevices();
+#endif
 			exit(0);
 		}
 
