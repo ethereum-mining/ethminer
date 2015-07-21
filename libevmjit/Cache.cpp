@@ -28,17 +28,10 @@ namespace
 	CacheMode g_mode;
 	std::unique_ptr<llvm::MemoryBuffer> g_lastObject;
 	JITListener* g_listener;
-	static const size_t c_versionStampLength = 32;
 
 	llvm::StringRef getLibVersionStamp()
 	{
-		static auto version = llvm::SmallString<c_versionStampLength>{};
-		if (version.empty())
-		{
-			version = EVMJIT_VERSION_FULL;
-			version.resize(c_versionStampLength);
-		}
-		return version;
+		return EVMJIT_VERSION;
 	}
 }
 
@@ -130,11 +123,13 @@ std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 	if (auto r = llvm::MemoryBuffer::getFile(cachePath.str(), -1, false))
 	{
 		auto& buf = r.get();
-		auto objVersionStamp = buf->getBufferSize() >= c_versionStampLength ? llvm::StringRef{buf->getBufferEnd() - c_versionStampLength, c_versionStampLength} : llvm::StringRef{};
-		if (objVersionStamp == getLibVersionStamp())
+		auto expectedStamp = getLibVersionStamp();
+		auto stampSize = expectedStamp.size();
+		auto objStamp = buf->getBufferSize() >= stampSize ? llvm::StringRef{buf->getBufferEnd() - stampSize, stampSize} : llvm::StringRef{};
+		if (objStamp == expectedStamp)
 			g_lastObject = llvm::MemoryBuffer::getMemBufferCopy(r.get()->getBuffer());
 		else
-			DLOG(cache) << "Unmatched version: " << objVersionStamp.str() << ", expected " << getLibVersionStamp().str() << "\n";
+			DLOG(cache) << "Unmatched version: " << objStamp.str() << ", expected " << expectedStamp.str() << "\n";
 	}
 	else if (r.getError() != std::make_error_code(std::errc::no_such_file_or_directory))
 		DLOG(cache) << r.getError().message(); // TODO: Add warning log
