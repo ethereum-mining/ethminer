@@ -140,8 +140,8 @@ public:
 	bool turboMining() const { return m_turboMining; }
 	/// Enable/disable GPU mining.
 	void setTurboMining(bool _enable = true) { m_turboMining = _enable; if (isMining()) startMining(); }
-    /// Enable/disable precomputing of the DAG for next epoch
-    void setShouldPrecomputeDAG(bool _precompute);
+	/// Enable/disable precomputing of the DAG for next epoch
+	void setShouldPrecomputeDAG(bool _precompute);
 
 	/// Check to see if we'd mine on an apparently bad chain.
 	bool mineOnBadChain() const { return m_mineOnBadChain; }
