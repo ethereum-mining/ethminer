@@ -1037,9 +1037,9 @@ void PV61Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _h
 	if (isSyncing(_peer) && _peer->m_syncHashNumber == m_syncingBlockNumber)
 	{
 		// Got new subchain marker
-		if(_hashes.size() != 1)
+		if (_hashes.size() != 1)
 		{
-			clog(NetWarn) << "Peers gives to much hashes";
+			clog(NetWarn) << "Peer sent too many hashes";
 			_peer->disable("Too many hashes");
 			restartSync();
 			return;
