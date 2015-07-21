@@ -26,7 +26,6 @@
 #include "EthashGPUMiner.h"
 #include <thread>
 #include <chrono>
-#include <cpuid.h>
 #include <libethash-cl/ethash_cl_miner.h>
 using namespace std;
 using namespace dev;
