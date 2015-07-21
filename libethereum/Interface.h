@@ -25,7 +25,7 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
-#include <libethcore/ProofOfWork.h>
+#include <libethcore/Ethash.h>
 #include "LogFilter.h"
 #include "Transaction.h"
 #include "AccountDiff.h"
@@ -134,8 +134,11 @@ public:
 	// [BLOCK QUERY API]
 
 	virtual bool isKnownTransaction(h256 const& _transactionHash) const = 0;
+	virtual bool isKnownTransaction(h256 const& _blockHash, unsigned _i) const = 0;
 	virtual Transaction transaction(h256 _transactionHash) const = 0;
+	virtual LocalisedTransaction localisedTransaction(h256 const& _transactionHash) const = 0;
 	virtual TransactionReceipt transactionReceipt(h256 const& _transactionHash) const = 0;
+	virtual LocalisedTransactionReceipt localisedTransactionReceipt(h256 const& _transactionHash) const = 0;
 	virtual std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const = 0;
 	virtual h256 hashFromNumber(BlockNumber _number) const = 0;
 	virtual BlockNumber numberFromHash(h256 _blockHash) const = 0;
@@ -146,6 +149,7 @@ public:
 	virtual BlockInfo blockInfo(h256 _hash) const = 0;
 	virtual BlockDetails blockDetails(h256 _hash) const = 0;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const = 0;
+	virtual LocalisedTransaction localisedTransaction(h256 const& _blockHash, unsigned _i) const = 0;
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const = 0;
 	virtual UncleHashes uncleHashes(h256 _blockHash) const = 0;
 	virtual unsigned transactionCount(h256 _blockHash) const = 0;
@@ -207,12 +211,12 @@ public:
 	virtual uint64_t hashrate() const = 0;
 
 	/// Get hash of the current block to be mined minus the nonce (the 'work hash').
-	virtual ProofOfWork::WorkPackage getWork() = 0;
+	virtual std::tuple<h256, h256, h256> getEthashWork() { BOOST_THROW_EXCEPTION(InterfaceNotSupported("Interface::getEthashWork")); }
 	/// Submit the nonce for the proof-of-work.
-	virtual bool submitWork(ProofOfWork::Solution const& _proof) = 0;
+	virtual bool submitEthashWork(h256 const&, h64 const&) { BOOST_THROW_EXCEPTION(InterfaceNotSupported("Interface::submitEthashWork")); }
 
 	/// Check the progress of the mining.
-	virtual MiningProgress miningProgress() const = 0;
+	virtual WorkingProgress miningProgress() const = 0;
 
 protected:
 	int m_default = PendingBlock;

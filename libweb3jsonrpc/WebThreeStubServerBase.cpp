@@ -380,8 +380,7 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByHash(string const& _tran
 		if (!client()->isKnownTransaction(h))
 			return Json::Value(Json::nullValue);
 
-		auto l = client()->transactionLocation(h);
-		return toJson(client()->transaction(h), l, client()->numberFromHash(l.first));
+		return toJson(client()->localisedTransaction(h));
 	}
 	catch (...)
 	{
@@ -395,8 +394,10 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByBlockHashAndIndex(string
 	{
 		h256 bh = jsToFixed<32>(_blockHash);
 		unsigned ti = jsToInt(_transactionIndex);
-		Transaction t = client()->transaction(bh, ti);
-		return toJson(t, make_pair(bh, ti), client()->numberFromHash(bh));
+		if (!client()->isKnownTransaction(bh, ti))
+			return Json::Value(Json::nullValue);
+
+		return toJson(client()->localisedTransaction(bh, ti));
 	}
 	catch (...)
 	{
@@ -409,9 +410,12 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByBlockNumberAndIndex(stri
 	try
 	{
 		BlockNumber bn = jsToBlockNumber(_blockNumber);
+		h256 bh = client()->hashFromNumber(bn);
 		unsigned ti = jsToInt(_transactionIndex);
-		Transaction t = client()->transaction(bn, ti);
-		return toJson(t, make_pair(client()->hashFromNumber(bn), ti), bn);
+		if (!client()->isKnownTransaction(bh, ti))
+			return Json::Value(Json::nullValue);
+
+		return toJson(client()->localisedTransaction(bh, ti));
 	}
 	catch (...)
 	{
@@ -427,8 +431,7 @@ Json::Value WebThreeStubServerBase::eth_getTransactionReceipt(string const& _tra
 		if (!client()->isKnownTransaction(h))
 			return Json::Value(Json::nullValue);
 
-		auto l = client()->transactionLocation(h);
-		return toJson(client()->transactionReceipt(h), l, client()->numberFromHash(l.first), client()->transaction(h));
+		return toJson(client()->localisedTransactionReceipt(h));
 	}
 	catch (...)
 	{
@@ -686,7 +689,7 @@ Json::Value WebThreeStubServerBase::eth_getFilterChangesEx(string const& _filter
 		auto entries = client()->checkWatch(id);
 		if (entries.size())
 			cnote << "FIRING WATCH" << id << entries.size();
-		return toJson(entries);
+		return toJsonByBlock(entries);
 	}
 	catch (...)
 	{
@@ -710,7 +713,7 @@ Json::Value WebThreeStubServerBase::eth_getFilterLogsEx(string const& _filterId)
 {
 	try
 	{
-		return toJson(client()->logs(jsToInt(_filterId)));
+		return toJsonByBlock(client()->logs(jsToInt(_filterId)));
 	}
 	catch (...)
 	{
@@ -722,7 +725,19 @@ Json::Value WebThreeStubServerBase::eth_getLogs(Json::Value const& _json)
 {
 	try
 	{
-		return toJson(client()->logs(toLogFilter(_json)));
+		return toJson(client()->logs(toLogFilter(_json, *client())));
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
+Json::Value WebThreeStubServerBase::eth_getLogsEx(Json::Value const& _json)
+{
+	try
+	{
+		return toJsonByBlock(client()->logs(toLogFilter(_json)));
 	}
 	catch (...)
 	{
@@ -733,10 +748,10 @@ Json::Value WebThreeStubServerBase::eth_getLogs(Json::Value const& _json)
 Json::Value WebThreeStubServerBase::eth_getWork()
 {
 	Json::Value ret(Json::arrayValue);
-	auto r = client()->getWork();
-	ret.append(toJS(r.headerHash));
-	ret.append(toJS(r.seedHash));
-	ret.append(toJS(r.boundary));
+	auto r = client()->getEthashWork();
+	ret.append(toJS(get<0>(r)));
+	ret.append(toJS(get<1>(r)));
+	ret.append(toJS(get<2>(r)));
 	return ret;
 }
 
@@ -744,7 +759,7 @@ bool WebThreeStubServerBase::eth_submitWork(string const& _nonce, string const&,
 {
 	try
 	{
-		return client()->submitWork(ProofOfWork::Solution{jsToFixed<Nonce::size>(_nonce), jsToFixed<32>(_mixHash)});
+		return client()->submitEthashWork(jsToFixed<32>(_mixHash), jsToFixed<Nonce::size>(_nonce));
 	}
 	catch (...)
 	{
