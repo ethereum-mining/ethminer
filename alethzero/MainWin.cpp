@@ -594,7 +594,7 @@ void Main::eval(QString const& _js)
 void Main::addConsoleMessage(QString const& _js, QString const& _s)
 {
 	m_consoleHistory.push_back(qMakePair(_js, _s));
-	QString r = "<html><body style=\"margin: 0;\">" Div(Mono "position: absolute; bottom: 0; border: 0px; margin: 0px; width: 100%");
+	QString r = "<html><body style=\"margin: 0;\">" ETH_HTML_DIV(ETH_HTML_MONO "position: absolute; bottom: 0; border: 0px; margin: 0px; width: 100%");
 	for (auto const& i: m_consoleHistory)
 		r +=	"<div style=\"border-bottom: 1 solid #eee; width: 100%\"><span style=\"float: left; width: 1em; color: #888; font-weight: bold\">&gt;</span><span style=\"color: #35d\">" + i.first.toHtmlEscaped() + "</span></div>"
 				"<div style=\"border-bottom: 1 solid #eee; width: 100%\"><span style=\"float: left; width: 1em\">&nbsp;</span><span>" + i.second + "</span></div>";
@@ -1623,7 +1623,7 @@ void Main::on_transactionQueue_currentItemChanged()
 			if (tx.data().size())
 				s << dev::memDump(tx.data(), 16, true);
 		}
-		s << "<div>Hex: " Span(Mono) << toHex(tx.rlp()) << "</span></div>";
+		s << "<div>Hex: " ETH_HTML_SPAN(ETH_HTML_MONO) << toHex(tx.rlp()) << "</span></div>";
 		s << "<hr/>";
 		if (!!receipt.bloom())
 			s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
@@ -1633,7 +1633,7 @@ void Main::on_transactionQueue_currentItemChanged()
 		s << "<div>End State: <b>" << receipt.stateRoot().abridged() << "</b></div>";
 		auto r = receipt.rlp();
 		s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
-		s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
+		s << "<div>Receipt-Hex: " ETH_HTML_SPAN(ETH_HTML_MONO) << toHex(receipt.rlp()) << "</span></div>";
 		s << renderDiff(ethereum()->diff(i, PendingBlock));
 //		s << "Pre: " << fs.rootHash() << "<br/>";
 //		s << "Post: <b>" << ts.rootHash() << "</b>";
@@ -1768,9 +1768,9 @@ void Main::on_blocks_currentItemChanged()
 				s << "<div>" << sha3(i.data()).abridged() << ": <b>" << receipts.receipts[ii].stateRoot() << "</b> [<b>" << receipts.receipts[ii].gasUsed() << "</b> used]" << "</div>";
 				++ii;
 			}
-			s << "<div>Post: <b>" << info.stateRoot() << "</b>" << "</div>";
-			s << "<div>Dump: " Span(Mono) << toHex(block[0].data()) << "</span>" << "</div>";
-			s << "<div>Receipts-Hex: " Span(Mono) << toHex(receipts.rlp()) << "</span></div>";
+			s << "<div>Post: <b>" << info.stateRoot << "</b>" << "</div>";
+			s << "<div>Dump: " ETH_HTML_SPAN(ETH_HTML_MONO) << toHex(block[0].data()) << "</span>" << "</div>";
+			s << "<div>Receipts-Hex: " ETH_HTML_SPAN(ETH_HTML_MONO) << toHex(receipts.rlp()) << "</span></div>";
 		}
 		else
 		{
@@ -1801,7 +1801,7 @@ void Main::on_blocks_currentItemChanged()
 				else
 					s << "<h4>Data</h4>" << dev::memDump(tx.data(), 16, true);
 			}
-			s << "<div>Hex: " Span(Mono) << toHex(block[1][txi].data()) << "</span></div>";
+			s << "<div>Hex: " ETH_HTML_SPAN(ETH_HTML_MONO) << toHex(block[1][txi].data()) << "</span></div>";
 			s << "<hr/>";
 			if (!!receipt.bloom())
 				s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
@@ -1811,7 +1811,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<div>End State: <b>" << receipt.stateRoot().abridged() << "</b></div>";
 			auto r = receipt.rlp();
 			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
-			s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
+			s << "<div>Receipt-Hex: " ETH_HTML_SPAN(ETH_HTML_MONO) << toHex(receipt.rlp()) << "</span></div>";
 			s << "<h4>Diff</h4>" << renderDiff(ethereum()->diff(txi, h));
 			ui->debugCurrent->setEnabled(true);
 			ui->debugDumpState->setEnabled(true);
@@ -1881,7 +1881,7 @@ void Main::on_accounts_currentItemChanged()
 			for (auto const& i: storage)
 				s << "@" << showbase << hex << prettyU256(i.first) << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << prettyU256(i.second) << "<br/>";
 			s << "<h4>Body Code (" << sha3(ethereum()->codeAt(address)).abridged() << ")</h4>" << disassemble(ethereum()->codeAt(address));
-			s << Div(Mono) << toHex(ethereum()->codeAt(address)) << "</div>";
+			s << ETH_HTML_DIV(ETH_HTML_MONO) << toHex(ethereum()->codeAt(address)) << "</div>";
 			ui->accountInfo->appendHtml(QString::fromStdString(s.str()));
 		}
 		catch (dev::InvalidTrie)
