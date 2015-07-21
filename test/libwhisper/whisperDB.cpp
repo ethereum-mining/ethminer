@@ -141,6 +141,7 @@ BOOST_AUTO_TEST_CASE(messages)
 		auto wh = h.registerCapability(new WhisperHost(true));
 		preexisting = wh->all();
 		cnote << preexisting.size() << "preexisting messages in DB";
+		wh->installWatch(BuildTopic("test"));
 
 		for (unsigned i = 0; i < TestSize; ++i)
 			wh->post(us.sec(), RLPStream().append(i).out(), BuildTopic("test"), 0xFFFFF);
@@ -152,6 +153,7 @@ BOOST_AUTO_TEST_CASE(messages)
 		p2p::Host h("Test");
 		auto wh = h.registerCapability(new WhisperHost(true));
 		map<h256, Envelope> m2 = wh->all();
+		wh->installWatch(BuildTopic("test"));
 		BOOST_REQUIRE_EQUAL(m1.size(), m2.size());
 		BOOST_REQUIRE_EQUAL(m1.size() - preexisting.size(), TestSize);
 

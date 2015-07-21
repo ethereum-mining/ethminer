@@ -64,10 +64,11 @@ public:
 	Envelope() {}
 	Envelope(RLP const& _m);
 
-	operator bool() const { return !!m_expiry; }
-
 	void streamRLP(RLPStream& _s, IncludeNonce _withNonce = WithNonce) const { _s.appendList(_withNonce ? 5 : 4) << m_expiry << m_ttl << m_topic << m_data; if (_withNonce) _s << m_nonce; }
 	h256 sha3(IncludeNonce _withNonce = WithNonce) const { RLPStream s; streamRLP(s, _withNonce); return dev::sha3(s.out()); }
+	Message open(Topics const& _t, Secret const& _s = Secret()) const;
+	unsigned workProved() const;
+	void proveWork(unsigned _ms);
 
 	unsigned sent() const { return m_expiry - m_ttl; }
 	unsigned expiry() const { return m_expiry; }
@@ -75,12 +76,8 @@ public:
 	AbridgedTopics const& topic() const { return m_topic; }
 	bytes const& data() const { return m_data; }
 
-	Message open(Topics const& _t, Secret const& _s = Secret()) const;
-
-	unsigned workProved() const;
-	void proveWork(unsigned _ms);
-
 	bool matchesBloomFilter(TopicBloomFilterHash const& f) const;
+	bool isExpired() const { return m_expiry <= (unsigned)time(0); }
 
 private:
 	Envelope(unsigned _exp, unsigned _ttl, AbridgedTopics const& _topic): m_expiry(_exp), m_ttl(_ttl), m_topic(_topic) {}
