@@ -40,6 +40,8 @@
 #include "Executive.h"
 #include "EthereumHost.h"
 #include "Utility.h"
+#include "TransactionQueue.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -462,20 +464,8 @@ uint64_t Client::hashrate() const
 
 std::list<MineInfo> Client::miningHistory()
 {
-	std::list<MineInfo> ret;
-/*	ReadGuard l(x_localMiners);
-	if (m_localMiners.empty())
-		return ret;
-	ret = m_localMiners[0].miningHistory();
-	for (unsigned i = 1; i < m_localMiners.size(); ++i)
-	{
-		auto l = m_localMiners[i].miningHistory();
-		auto ri = ret.begin();
-		auto li = l.begin();
-		for (; ri != ret.end() && li != l.end(); ++ri, ++li)
-			ri->combine(*li);
-	}*/
-	return ret;
+	//TODO: reimplement for CPU/GPU miner
+	return std::list<MineInfo> {};
 }
 
 ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 _value, u256 _gasPrice, Address const& _from)
@@ -484,7 +474,7 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 	try
 	{
 		State temp;
-//		clog(ClientTrace) << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
+		clog(ClientDetail) << "Nonce at " << _dest << " pre:" << m_preMine.transactionsFrom(_dest) << " post:" << m_postMine.transactionsFrom(_dest);
 		DEV_READ_GUARDED(x_postMine)
 			temp = m_postMine;
 		temp.addBalance(_from, _value + _gasPrice * _gas);
@@ -496,7 +486,7 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 	}
 	catch (...)
 	{
-		// TODO: Some sort of notification of failure.
+		cwarn << "Client::call failed: " << boost::current_exception_diagnostic_information();
 	}
 	return ret;
 }
