@@ -63,6 +63,8 @@ public:
 	virtual h256s checkWatch(unsigned _watchId) override { cleanup(); dev::Guard l(m_filterLock); h256s ret; try { ret = m_watches.at(_watchId).changes; m_watches.at(_watchId).changes.clear(); } catch (...) {} return ret; }
 	virtual h256s watchMessages(unsigned _watchId) override; ///< returns IDs of messages, which match specific watch criteria
 	virtual Envelope envelope(h256 _m) const override { try { dev::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Envelope(); } }
+	virtual void saveTopicsToDB(std::string const& _app, std::string const& _password);
+	virtual std::vector<unsigned> restoreTopicsFromDB(std::string const& _app, std::string const& _password);
 
 protected:
 	virtual void doWork() override;
