@@ -27,7 +27,7 @@ using namespace dev;
 using namespace dev::shh;
 namespace fs = boost::filesystem;
 
-WhisperDB::WhisperDB()
+WhisperDB::WhisperDB(DBType _t): m_type(_t)
 {
 	m_readOptions.verify_checksums = true;
 	string path = dev::getDataDir("shh");
@@ -36,11 +36,23 @@ WhisperDB::WhisperDB()
 	leveldb::Options op;
 	op.create_if_missing = true;
 	op.max_open_files = 256;
+	string suffix = getTypeSuffix();
 	leveldb::DB* p = nullptr;
-	leveldb::Status status = leveldb::DB::Open(op, path + "/messages", &p);
+	leveldb::Status status = leveldb::DB::Open(op, path + suffix, &p);
 	m_db.reset(p);
 	if (!status.ok())
 		BOOST_THROW_EXCEPTION(FailedToOpenLevelDB(status.ToString()));
+}
+
+string WhisperDB::getTypeSuffix()
+{
+	switch(m_type)
+	{
+		case Messages: return "\\messages";
+		case Filters: return "\\filters";
+	}
+
+	return "\\misc";
 }
 
 string WhisperDB::lookup(dev::h256 const& _key) const
@@ -137,6 +149,9 @@ void WhisperDB::loadAll(std::map<h256, Envelope>& o_dst)
 
 void WhisperDB::save(h256 const& _key, Envelope const& _e)
 {
+	if (m_type != Messages)
+		BOOST_THROW_EXCEPTION(WrongTypeLevelDB());
+
 	try
 	{
 		RLPStream rlp;

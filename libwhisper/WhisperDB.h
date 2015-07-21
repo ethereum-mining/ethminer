@@ -31,6 +31,7 @@ namespace dev
 namespace shh
 {
 
+struct WrongTypeLevelDB: virtual Exception {};
 struct FailedToOpenLevelDB: virtual Exception { FailedToOpenLevelDB(std::string const& _message): Exception(_message) {} };
 struct FailedInsertInLevelDB: virtual Exception { FailedInsertInLevelDB(std::string const& _message): Exception(_message) {} };
 struct FailedLookupInLevelDB: virtual Exception { FailedLookupInLevelDB(std::string const& _message): Exception(_message) {} };
@@ -38,8 +39,10 @@ struct FailedDeleteInLevelDB: virtual Exception { FailedDeleteInLevelDB(std::str
 
 class WhisperDB
 {
-  public:
-	WhisperDB();
+public:
+	enum DBType { Messages, Filters };
+
+	WhisperDB(DBType _t);
 	~WhisperDB() {}
 
 	std::string lookup(dev::h256 const& _key) const;
@@ -50,9 +53,12 @@ class WhisperDB
 	void save(dev::h256 const& _key, Envelope const& _e);
 
 private:
+	std::string getTypeSuffix();
+
 	leveldb::ReadOptions m_readOptions;
 	leveldb::WriteOptions m_writeOptions;
 	std::unique_ptr<leveldb::DB> m_db;
+	DBType m_type;
 
 	enum MetaInformation { StoreForeverFlag = 1, WatchedFlag = 2 };
 };
