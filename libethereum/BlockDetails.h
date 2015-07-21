@@ -114,7 +114,7 @@ using BlockDetailsHash = std::unordered_map<h256, BlockDetails>;
 using BlockLogBloomsHash = std::unordered_map<h256, BlockLogBlooms>;
 using BlockReceiptsHash = std::unordered_map<h256, BlockReceipts>;
 using TransactionAddressHash = std::unordered_map<h256, TransactionAddress>;
-using BlockHashHash = std::unordered_map<h256, BlockHash>;
+using BlockHashHash = std::unordered_map<uint64_t, BlockHash>;
 using BlocksBloomsHash = std::unordered_map<h256, BlocksBlooms>;
 
 static const BlockDetails NullBlockDetails;

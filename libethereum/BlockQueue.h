@@ -154,7 +154,7 @@ private:
 
 	mutable Mutex m_verification;										///< Mutex that allows writing to m_verified, m_verifying and m_unverified.
 	std::condition_variable m_moreToVerify;								///< Signaled when m_unverified has a new entry.
-	std::vector<VerifiedBlock> m_verified;								///< List of blocks, in correct order, verified and ready for chain-import.
+	std::deque<VerifiedBlock> m_verified;								///< List of blocks, in correct order, verified and ready for chain-import.
 	std::deque<VerifiedBlock> m_verifying;								///< List of blocks being verified; as long as the block component (bytes) is empty, it's not finished.
 	std::deque<UnverifiedBlock> m_unverified;							///< List of <block hash, parent hash, block data> in correct order, ready for verification.
 
