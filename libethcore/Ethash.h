@@ -49,14 +49,12 @@ class EthashCLHook;
 class Ethash
 {
 public:
-	static bool s_precompute;
 	static std::string name();
 	static unsigned revision();
 	static SealEngineFace* createSealEngine();
 
 	using Nonce = h64;
 
-	static void setPrecompute(bool _shouldPrecompute) { s_precompute = _shouldPrecompute; }
 	static void manuallySubmitWork(SealEngineFace* _engine, h256 const& _mixHash, Nonce _nonce);
 	static bool isWorking(SealEngineFace* _engine);
 	static WorkingProgress workingProgress(SealEngineFace* _engine);
