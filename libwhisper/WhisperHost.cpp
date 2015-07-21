@@ -59,7 +59,7 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 
 	cnote << this << ": inject: " << _m.expiry() << _m.ttl() << _m.topic() << toHex(_m.data());
 
-	if (_m.expiry() <= (unsigned)time(0))
+	if (_m.isExpired())
 		return;
 
 	auto h = _m.sha3();
@@ -84,7 +84,7 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 			for (auto const& f: m_filters)
 				if (f.second.filter.matches(_m))
 					for (auto& i: m_watches)
-						if (i.second.id == f.first)
+						if (i.second.id == f.first) // match one of the watches
 						{
 							i.second.changes.push_back(h);
 							rating += 2;
@@ -204,6 +204,18 @@ void WhisperHost::noteAdvertiseTopicsOfInterest()
 		i.first->cap<WhisperPeer>().get()->noteAdvertiseTopicsOfInterest();
 }
 
+bool WhisperHost::isWatched(Envelope const& _e) const
+{
+	DEV_GUARDED(m_filterLock)
+		if (_e.matchesBloomFilter(m_bloom))
+			for (auto const& f: m_filters)
+				if (f.second.filter.matches(_e))
+					for (auto const& i: m_watches)
+						if (i.second.id == f.first)
+							return true;
+	return false;
+}
+
 void WhisperHost::saveMessagesToBD()
 {
 	if (!m_useDB)
@@ -213,30 +225,15 @@ void WhisperHost::saveMessagesToBD()
 	{
 		WhisperDB db;
 		ReadGuard g(x_messages);
+		unsigned now = (unsigned)time(0);
 		for (auto const& m: m_messages)
-		{
-			RLPStream rlp;
-			m.second.streamRLP(rlp);
-			bytes b;
-			rlp.swapOut(b);
-			db.insert(m.first, b);
-		}
+			if (m.second.expiry() > now)
+				if (isWatched(m.second))
+					db.save(m.first, m.second);
 	}
 	catch(FailedToOpenLevelDB const& ex)
 	{
 		cwarn << "Exception in WhisperHost::saveMessagesToBD() - failed to open DB:" << ex.what();
-	}
-	catch(FailedInsertInLevelDB const& ex)
-	{
-		cwarn << "Exception in WhisperHost::saveMessagesToBD() - failed to insert:" << ex.what();
-	}
-	catch(FailedLookupInLevelDB const& ex)
-	{
-		cwarn << "Exception in WhisperHost::saveMessagesToBD() - failed lookup:" << ex.what();
-	}
-	catch(FailedDeleteInLevelDB const& ex)
-	{
-		cwarn << "Exception in WhisperHost::saveMessagesToBD() - failed to delete:" << ex.what();
 	}
 	catch(Exception const& ex)
 	{
@@ -260,6 +257,8 @@ void WhisperHost::loadMessagesFromBD()
 		db.loadAll(m);
 		WriteGuard g(x_messages);
 		m_messages.swap(m);
+		for (auto const& msg: m)
+			m_expiryQueue.insert(make_pair(msg.second.expiry(), msg.first));
 	}
 	catch(Exception const& ex)
 	{
