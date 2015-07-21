@@ -158,8 +158,6 @@ public:
 
 	iterator lower_bound(bytesConstRef _key) const { return iterator(this, _key); }
 
-	void debugPrint() {}
-
 	/// Used for debugging, scans the whole trie.
 	void descendKey(h256 const& _k, h256Hash& _keyMask, bool _wasExt, std::ostream* _out, int _indent = 0) const
 	{
@@ -390,6 +388,7 @@ public:
 
 	using Super::leftOvers;
 	using Super::check;
+	using Super::debugStructure;
 
 	std::string at(bytesConstRef _key) const { return Super::at(sha3(_key)); }
 	bool contains(bytesConstRef _key) { return Super::contains(sha3(_key)); }
@@ -440,6 +439,7 @@ public:
 	using Super::open;
 	using Super::setRoot;
 	using Super::db;
+	using Super::debugStructure;
 
 	std::string at(bytesConstRef _key) const { return Super::at(sha3(_key)); }
 	bool contains(bytesConstRef _key) { return Super::contains(sha3(_key)); }
