@@ -223,7 +223,7 @@ void WhisperHost::saveMessagesToBD()
 
 	try
 	{
-		WhisperDB db;
+		WhisperDB db(WhisperDB::Messages);
 		ReadGuard g(x_messages);
 		unsigned now = (unsigned)time(0);
 		for (auto const& m: m_messages)
@@ -253,7 +253,7 @@ void WhisperHost::loadMessagesFromBD()
 	try
 	{
 		map<h256, Envelope> m;
-		WhisperDB db;
+		WhisperDB db(WhisperDB::Messages);
 		db.loadAll(m);
 		WriteGuard g(x_messages);
 		m_messages.swap(m);
@@ -268,4 +268,67 @@ void WhisperHost::loadMessagesFromBD()
 	{
 		cwarn << "Unknown Exception in WhisperHost::loadMessagesFromBD()";
 	}
+}
+
+void WhisperHost::saveTopicsToDB(string const& _app, string const& _password)
+{
+	bytes plain;
+
+	DEV_GUARDED(m_filterLock)
+	{
+		RLPStream rlp(m_filters.size());
+
+		for (auto const& x: m_filters)
+		{
+			Topics const& topics = x.second.full;
+			unsigned const RawDataSize = topics.size() * h256::size;
+			unique_ptr<byte> p(new byte[RawDataSize]);
+			unsigned i = 0;
+
+			for (auto const& t: topics)
+				memcpy(p.get() + i * h256::size, t.data(), h256::size);
+			
+			bytesConstRef ref(p.get(), RawDataSize);
+			rlp.append(ref);
+		}
+
+		rlp.swapOut(plain);
+	}
+
+	// todo: encrypt after tests
+
+	h256 h = sha3(_app);
+	WhisperDB db(WhisperDB::Messages);
+	db.insert(h, plain);
+}
+
+vector<unsigned> WhisperHost::restoreTopicsFromDB(string const& _app, string const& _password)
+{
+	vector<unsigned> ret;
+	h256 h = sha3(_app);
+	WhisperDB db(WhisperDB::Messages);
+	string raw = db.lookup(h);
+
+	// todo: decrypt after tests
+
+	RLP rlp(raw);
+	auto sz = rlp.itemCountStrict();
+
+	for (unsigned i = 0; i < sz; ++i)
+	{
+		RLP r = rlp[i];
+		bytesConstRef ref(r.data());
+		Topics topics;
+		unsigned num = ref.size() / h256::size;
+		for (unsigned j = 0; j < num; ++j)
+		{
+			h256 topic(ref.data() + j * h256::size, h256::ConstructFromPointerType());
+			topics.push_back(topic);
+		}
+
+		unsigned w = installWatch(topics);
+		ret.push_back(w);
+	}	
+
+	return ret;
 }

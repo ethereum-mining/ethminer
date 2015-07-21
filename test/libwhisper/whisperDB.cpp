@@ -28,6 +28,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 using namespace std;
 using namespace dev;
 using namespace dev::shh;
+using namespace dev::p2p;
 
 struct P2PFixture
 {
@@ -47,7 +48,7 @@ BOOST_AUTO_TEST_CASE(basic)
 	string const text2 = "ipsum";
 	h256 h1(0xBEEF);
 	h256 h2(0xC0FFEE);
-	WhisperDB db;
+	WhisperDB db(WhisperDB::Messages);
 
 	db.kill(h1);
 	db.kill(h2);
@@ -94,7 +95,7 @@ BOOST_AUTO_TEST_CASE(persistence)
 	h256 const h2(0xBADD00DE);
 
 	{
-		WhisperDB db;
+		WhisperDB db(WhisperDB::Messages);
 		db.kill(h1);
 		db.kill(h2);
 		s = db.lookup(h1);
@@ -109,7 +110,7 @@ BOOST_AUTO_TEST_CASE(persistence)
 	this_thread::sleep_for(chrono::milliseconds(20));
 
 	{
-		WhisperDB db;
+		WhisperDB db(WhisperDB::Messages);
 		db.insert(h1, text1);
 		db.insert(h2, text2);
 	}
@@ -117,7 +118,7 @@ BOOST_AUTO_TEST_CASE(persistence)
 	this_thread::sleep_for(chrono::milliseconds(20));
 
 	{
-		WhisperDB db;
+		WhisperDB db(WhisperDB::Messages);
 		s = db.lookup(h2);
 		BOOST_REQUIRE(!s.compare(text2));
 		s = db.lookup(h1);
@@ -169,7 +170,7 @@ BOOST_AUTO_TEST_CASE(messages)
 		}
 	}
 
-	WhisperDB db;
+	WhisperDB db(WhisperDB::Messages);
 	unsigned x = 0;
 
 	for (auto i: m1)
@@ -190,7 +191,7 @@ BOOST_AUTO_TEST_CASE(corruptedData)
 	h256 x = h256::random();
 
 	{
-		WhisperDB db;
+		WhisperDB db(WhisperDB::Messages);
 		db.insert(x, "this is a test input, representing corrupt data");
 	}
 
@@ -202,10 +203,91 @@ BOOST_AUTO_TEST_CASE(corruptedData)
 	}
 
 	{
-		WhisperDB db;
+		WhisperDB db(WhisperDB::Messages);
 		string s = db.lookup(x);
 		BOOST_REQUIRE(s.empty());
 	}
+}
+
+BOOST_AUTO_TEST_CASE(filters)
+{
+	cnote << "Testing filters saving...";
+	VerbosityHolder setTemporaryLevel(2);
+	string const app("test suite whisperDB/filters");
+	string const password("some pseudorandom stuff");
+
+	{
+		p2p::Host h("Test");
+		auto wh = h.registerCapability(new WhisperHost());
+		wh->installWatch(BuildTopic("t1"));
+		wh->installWatch(BuildTopic("t2"));
+		wh->saveTopicsToDB(app, password);
+	}
+
+	short unsigned port1 = 30313;
+	Host host1("Test", NetworkPreferences("127.0.0.1", port1, false));
+	host1.setIdealPeerCount(1);
+	auto whost1 = host1.registerCapability(new WhisperHost());
+	host1.start();
+	auto ids = whost1->restoreTopicsFromDB(app, password);
+	bool host1Ready = false;
+	unsigned result = 0;
+	unsigned messageCount = 0;
+
+	std::thread listener([&]()
+	{
+		setThreadName("other");
+		host1Ready = true;
+
+		for (int j = 0; j < 200 && messageCount < 2; ++j)
+		{
+			for (unsigned id: ids)
+				for (auto e: whost1->checkWatch(id))
+				{
+					Message msg = whost1->envelope(e).open(whost1->fullTopics(id));
+					unsigned x = RLP(msg.payload()).toInt<unsigned>();
+					cnote << "New message:" << x;
+					result += x;
+					++messageCount;
+				}
+
+			this_thread::sleep_for(chrono::milliseconds(50));
+		}
+	});
+
+	Host host2("Test", NetworkPreferences("127.0.0.1", 30314, false));
+	host2.setIdealPeerCount(1);
+	auto whost2 = host2.registerCapability(new WhisperHost());
+	host2.start();
+
+	while (!host1.haveNetwork())
+		this_thread::sleep_for(chrono::milliseconds(5));
+
+	host2.requirePeer(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), port1, port1));
+
+	while (!host1Ready)
+		this_thread::sleep_for(chrono::milliseconds(10));
+
+	while (!host1.peerCount() && !host2.peerCount())
+		this_thread::sleep_for(chrono::milliseconds(10));
+
+	unsigned ttl = 1000000;
+	whost2->post(RLPStream().append(8).out(), BuildTopic("t8"), ttl);
+	this_thread::sleep_for(chrono::milliseconds(10));
+	whost2->post(RLPStream().append(4).out(), BuildTopic("t4"), ttl);
+	this_thread::sleep_for(chrono::milliseconds(10));
+	whost2->post(RLPStream().append(1).out(), BuildTopic("t1"), ttl);
+	this_thread::sleep_for(chrono::milliseconds(10));
+	whost2->post(RLPStream().append(2).out(), BuildTopic("t2"), ttl);
+	this_thread::sleep_for(chrono::milliseconds(10));
+	whost2->post(RLPStream().append(16).out(), BuildTopic("t16"), ttl);
+
+	while (messageCount < 2)
+		this_thread::sleep_for(chrono::milliseconds(10));
+
+	listener.join();
+	BOOST_REQUIRE_EQUAL(messageCount, 2);
+	BOOST_REQUIRE_EQUAL(result, 3);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

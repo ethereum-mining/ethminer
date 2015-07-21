@@ -64,15 +64,15 @@ public:
 	virtual ~Interface();
 
 	virtual void inject(Envelope const& _m, WhisperPeer* _from = nullptr) = 0;
-
 	virtual Topics const& fullTopics(unsigned _id) const = 0;
 	virtual unsigned installWatch(Topics const& _filter) = 0;
 	virtual void uninstallWatch(unsigned _watchId) = 0;
 	virtual h256s peekWatch(unsigned _watchId) const = 0;
 	virtual h256s checkWatch(unsigned _watchId) = 0;
 	virtual h256s watchMessages(unsigned _watchId) = 0;
-
 	virtual Envelope envelope(h256 _m) const = 0;
+	virtual void saveTopicsToDB(std::string const& _app, std::string const& _password) = 0;
+	virtual std::vector<unsigned> restoreTopicsFromDB(std::string const& _app, std::string const& _password) = 0;
 
 	void post(bytes const& _payload, Topics _topics, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_topics, _ttl, _workToProve)); }
 	void post(Public _to, bytes const& _payload, Topics _topics, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).sealTo(_to, _topics, _ttl, _workToProve)); }
