@@ -85,8 +85,8 @@ void WhisperDB::loadAll(std::map<h256, Envelope>& o_dst)
 	op.fill_cache = false;
 	op.verify_checksums = true;
 	vector<string> wasted;
-	unsigned now = (unsigned)time(0);
 	unique_ptr<leveldb::Iterator> it(m_db->NewIterator(op));
+	unsigned const now = (unsigned)time(0);
 
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 	{
@@ -135,3 +135,22 @@ void WhisperDB::loadAll(std::map<h256, Envelope>& o_dst)
 	}
 }
 
+void WhisperDB::save(h256 const& _key, Envelope const& _e)
+{
+	try
+	{
+		RLPStream rlp;
+		_e.streamRLP(rlp);
+		bytes b;
+		rlp.swapOut(b);
+		insert(_key, b);
+	}
+	catch(RLPException const& ex)
+	{
+		cwarn << boost::diagnostic_information(ex);
+	}
+	catch(FailedInsertInLevelDB const& ex)
+	{
+		cwarn << boost::diagnostic_information(ex);
+	}
+}

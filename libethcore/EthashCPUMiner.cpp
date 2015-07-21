@@ -35,6 +35,7 @@ using namespace eth;
 
 unsigned EthashCPUMiner::s_numInstances = 0;
 
+#if ETH_CPUID || !ETH_TRUE
 static string jsonEncode(map<string, string> const& _m)
 {
 	string ret = "{";
@@ -50,6 +51,7 @@ static string jsonEncode(map<string, string> const& _m)
 
 	return ret + "}";
 }
+#endif
 
 void EthashCPUMiner::workLoop()
 {
