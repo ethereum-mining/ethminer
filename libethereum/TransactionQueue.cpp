@@ -107,6 +107,7 @@ ImportResult TransactionQueue::import(Transaction const& _transaction, IfDropped
 			return ir;
 
 		{
+			_transaction.safeSender(); // Perform EC recovery outside of the write lock
 			UpgradeGuard ul(l);
 			ret = manageImport_WITH_LOCK(h, _transaction);
 		}
