@@ -36,6 +36,13 @@ namespace dev
 namespace eth
 {
 
+enum class BlockPolarity
+{
+	Unknown,
+	Dead,
+	Live
+};
+
 struct LogEntry
 {
 	LogEntry() {}
@@ -76,17 +83,20 @@ struct LocalisedLogEntry: public LogEntry
 
 	explicit LocalisedLogEntry(
 		LogEntry const& _le,
-		BlockInfo const& _bi,
-		h256 _th,
-		unsigned _ti,
-		unsigned _li
+		h256 const& _blockHash,
+		BlockNumber _blockNumber,
+		h256 const& _transactionHash,
+		unsigned _transactionIndex,
+		unsigned _logIndex,
+		BlockPolarity _polarity = BlockPolarity::Unknown
 	):
 		LogEntry(_le),
-		blockHash(_bi.hash()),
-		blockNumber((BlockNumber)_bi.number),
-		transactionHash(_th),
-		transactionIndex(_ti),
-		logIndex(_li),
+		blockHash(_blockHash),
+		blockNumber(_blockNumber),
+		transactionHash(_transactionHash),
+		transactionIndex(_transactionIndex),
+		logIndex(_logIndex),
+		polarity(_polarity),
 		mined(true)
 	{}
 
@@ -95,6 +105,7 @@ struct LocalisedLogEntry: public LogEntry
 	h256 transactionHash;
 	unsigned transactionIndex = 0;
 	unsigned logIndex = 0;
+	BlockPolarity polarity = BlockPolarity::Unknown;
 	bool mined = false;
 	bool isSpecial = false;
 	h256 special;
@@ -205,7 +216,7 @@ public:
 	virtual void revert() {}
 
 	/// Hash of a block if within the last 256 blocks, or h256() otherwise.
-	h256 blockhash(u256 _number) { return _number < currentBlock.number && _number >= (std::max<u256>(256, currentBlock.number) - 256) ? lastHashes[(unsigned)(currentBlock.number - 1 - _number)] : h256(); }
+	h256 blockhash(u256 _number) { return _number < currentBlock.number() && _number >= (std::max<u256>(256, currentBlock.number()) - 256) ? lastHashes[(unsigned)(currentBlock.number() - 1 - _number)] : h256(); }
 
 	/// Get the code at the given location in code ROM.
 	byte getCode(u256 _n) const { return _n < code.size() ? code[(size_t)_n] : 0; }

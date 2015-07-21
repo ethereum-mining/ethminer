@@ -22,16 +22,17 @@
 #include "WhisperDB.h"
 #include <boost/filesystem.hpp>
 #include <libdevcore/FileSystem.h>
-
 using namespace std;
 using namespace dev;
 using namespace dev::shh;
+namespace fs = boost::filesystem;
 
 WhisperDB::WhisperDB()
 {
 	m_readOptions.verify_checksums = true;
 	string path = dev::getDataDir("shh");
-	boost::filesystem::create_directories(path);
+	fs::create_directories(path);
+	fs::permissions(path, fs::owner_all);
 	leveldb::Options op;
 	op.create_if_missing = true;
 	op.max_open_files = 256;

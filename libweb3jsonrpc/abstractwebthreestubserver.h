@@ -57,6 +57,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getFilterLogs", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getFilterLogsI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getFilterLogsEx", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getFilterLogsExI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getLogs", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_getLogsI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_getLogsEx", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_getLogsExI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getWork", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY,  NULL), &AbstractWebThreeStubServer::eth_getWorkI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_submitWork", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_submitWorkI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_register", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_registerI);
@@ -296,6 +297,10 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         {
             response = this->eth_getLogs(request[0u]);
         }
+        inline virtual void eth_getLogsExI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->eth_getLogsEx(request[0u]);
+        }
         inline virtual void eth_getWorkI(const Json::Value &request, Json::Value &response)
         {
             (void)request;
@@ -511,6 +516,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual Json::Value eth_getFilterLogs(const std::string& param1) = 0;
         virtual Json::Value eth_getFilterLogsEx(const std::string& param1) = 0;
         virtual Json::Value eth_getLogs(const Json::Value& param1) = 0;
+        virtual Json::Value eth_getLogsEx(const Json::Value& param1) = 0;
         virtual Json::Value eth_getWork() = 0;
         virtual bool eth_submitWork(const std::string& param1, const std::string& param2, const std::string& param3) = 0;
         virtual std::string eth_register(const std::string& param1) = 0;

@@ -14,11 +14,13 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ProofOfWork.cpp
+/** @file Sealer.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "ProofOfWork.h"
+#include "Sealer.h"
 using namespace std;
 using namespace dev;
+using namespace eth;
+
