@@ -60,6 +60,10 @@ public:
 	dev::bytes encodeBytes(QString const& _str);
 	/// Decode bytes from ABI
 	dev::bytes decodeBytes(dev::bytes const& _rawValue);
+	/// Decode array
+	QJsonArray decodeArray(SolidityType const& _type, bytes const& _value, int& pos);
+	/// Decode array items
+	QJsonValue decodeArrayContent(SolidityType const& _type, bytes const& _value, int& pos);
 
 private:
 	unsigned encodeSingleItem(QString const& _data, SolidityType const& _type, bytes& _dest);
