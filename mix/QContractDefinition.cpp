@@ -39,19 +39,8 @@ QContractDefinition::QContractDefinition(QObject* _parent, dev::solidity::Contra
 	else
 		m_constructor = new QFunctionDefinition(parent);
 
-	std::vector<std::string> found;
-	for (auto const& f: _contract->getDefinedFunctions())
-	{
-		m_functions.append(new QFunctionDefinition(parent, f));
-		found.push_back(f->getName());
-	}
-
 	for (auto const& it: _contract->getInterfaceFunctions())
-	{
-		if (std::find(found.begin(), found.end(), it.second->getDeclaration().getName()) == found.end())
-			m_functions.append(new QFunctionDefinition(parent, it.second));
-	}
-
+		m_functions.append(new QFunctionDefinition(parent, it.second));
 
 	for (auto const& it: _contract->getEvents())
 		m_events.append(new QFunctionDefinition(parent, it));
