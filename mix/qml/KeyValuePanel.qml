@@ -82,51 +82,44 @@ ColumnLayout {
 				clip: true
 				ColumnLayout
 				{
-					anchors.margins: 10
+					spacing: 0
+					id: colValue
+					anchors.top: parent.top
+					anchors.topMargin: 5
 					Repeater
 					{
 						id: repeaterKeyValue
 						model: modelKeyValue
-						RowLayout
+						Row
 						{
-							Layout.fillWidth: true
 							Layout.preferredHeight: 30
-							spacing: 0
-							Rectangle
+							spacing: 5
+							anchors.left: colValue.left
+							anchors.leftMargin: 5
+							Label
 							{
-								Layout.preferredWidth: columnValues.width / 2
-								Label
-								{
-									width: columnValues.width / 2 - 20
-									elide: Text.ElideRight
-									maximumLineCount: 1
-									anchors.left: parent.left
-									anchors.leftMargin: 10
-									text: {
-										if (index >= 0 && repeaterKeyValue.model.get(index).key !== undefined)
-											return repeaterKeyValue.model.get(index).key
-										else
-											return ""
-									}
+								maximumLineCount: 1
+								text: {
+									if (index >= 0 && repeaterKeyValue.model.get(index).key !== undefined)
+										return repeaterKeyValue.model.get(index).key
+									else
+										return ""
 								}
 							}
 
-							Rectangle
+							Label
 							{
-								Layout.preferredWidth: columnValues.width / 2 - 10
-								Label
-								{
-									width: columnValues.width / 2 - 10
-									elide: Text.ElideRight
-									maximumLineCount: 1
-									anchors.right: parent.right
-									anchors.rightMargin: 10
-									text: {
-										if (index >= 0 && repeaterKeyValue.model.get(index).value !== undefined)
-											return repeaterKeyValue.model.get(index).value
-										else
-											return ""
-									}
+								text: "="
+							}
+
+							Label
+							{
+								maximumLineCount: 1
+								text: {
+									if (index >= 0 && repeaterKeyValue.model.get(index).value !== undefined)
+										return repeaterKeyValue.model.get(index).value
+									else
+										return ""
 								}
 							}
 						}
