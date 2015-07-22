@@ -225,19 +225,15 @@ Rectangle {
 			}
 		}
 
-		Rectangle
-		{
-			Layout.fillWidth: true
-			Layout.preferredHeight: 1
-			color: "#cccccc"
-		}
+
 
 		RowLayout
 		{
 			anchors.horizontalCenter: parent.horizontalCenter
 			Layout.preferredHeight: 20
 			anchors.left: parent.left
-			anchors.leftMargin: 2
+			spacing: 0
+
 			Button
 			{
 				Layout.preferredHeight: 22
@@ -254,7 +250,14 @@ Rectangle {
 					deployLogs.logs[root.sel] = ""
 					log.text = deployLogs.logs[root.sel]
 				}
-			}			
+			}
+
+			Rectangle
+			{
+				Layout.fillWidth: true
+				Layout.preferredHeight: 1
+				color: "#cccccc"
+			}
 		}
 
 		ScrollView
