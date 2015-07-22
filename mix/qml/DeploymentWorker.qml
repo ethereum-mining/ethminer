@@ -21,15 +21,6 @@ Item
 	property variant accounts: []
 	signal gasPriceLoaded()
 
-	function highGasPrice()
-	{
-		var hex = deploymentDialog.worker.gasPriceInt.multiply(QEtherHelper.createBigInt(10)).hexValue();
-		if (hex.indexOf("0x") !== -1)
-			return hex
-		else
-			return "0x" + hex
-	}
-
 	function renewCtx()
 	{
 		accounts = []

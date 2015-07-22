@@ -12,6 +12,7 @@ Rectangle {
 	property variant paramsModel: []
 	property variant worker
 	property variant gas: []
+	property alias gasPrice: gasPriceInput
 	color: "#E3E3E3E3"
 	signal deployed
 	anchors.fill: parent
@@ -31,7 +32,11 @@ Rectangle {
 		}
 
 		if (worker.accounts.length > 0)
+		{
 			worker.currentAccount = worker.accounts[0].id
+			accountsList.currentIndex = 0
+		}
+
 
 		if (projectModel.deployBlockNumber !== -1)
 		{
@@ -47,6 +52,8 @@ Rectangle {
 	function updateVerification(blockNumber, trLost)
 	{
 		var nb = parseInt(blockNumber - projectModel.deployBlockNumber)
+		verificationTextArea.visible = false
+		verificationLabel.visible = true
 		if (nb >= 10)
 		{
 			verificationLabel.text = qsTr("contracts deployment verified")
@@ -57,12 +64,14 @@ Rectangle {
 			verificationLabel.text = nb
 			if (trLost.length > 0)
 			{
+				verificationTextArea.visible = true
+				verificationLabel.visible = false
 				deploymentStepChanged("following transactions are invalidated:")
-				verificationLabel.text += "\n" + qsTr("Transactions lost") + "\n"
+				verificationTextArea.text += "\n" + qsTr("Transactions lost") + "\n"
 				for (var k in trLost)
 				{
 					deploymentStepChanged(trLost[k])
-					verificationLabel.text += trLost[k] + "\n"
+					verificationTextArea.text += trLost[k] + "\n"
 				}
 			}
 		}
@@ -262,7 +271,6 @@ Rectangle {
 						{
 							worker.currentAccount = currentText
 							accountBalance.text = worker.balance(currentText).format()
-							console.log(worker.balance(currentText).format())
 						}
 					}
 
@@ -289,9 +297,14 @@ Rectangle {
 					Ether
 					{
 						id: gasPriceInput
-						displayUnitSelection: true
+						displayUnitSelection: false
 						displayFormattedValue: true
-						edit: true
+						edit: false
+
+						function toHexWei()
+						{
+							return "0x" + gasPriceInput.value.toWei().hexValue()
+						}
 					}
 
 					Connections
@@ -341,9 +354,7 @@ Rectangle {
 								root.gas = gas
 								cost = 0
 								for (var k in gas)
-								{
 									cost += gas[k]
-								}
 								setCost()
 							}
 						});
@@ -361,7 +372,7 @@ Rectangle {
 						width: labelWidth
 						Label
 						{
-							text: qsTr("Cost Estimate")
+							text: qsTr("Deployment Cost")
 							anchors.right: parent.right
 							anchors.verticalCenter: parent.verticalCenter
 						}
@@ -443,7 +454,14 @@ Rectangle {
 
 								TextArea
 								{
+									id: verificationTextArea
+									visible: false
+								}
+
+								Label
+								{
 									id: verificationLabel
+									visible: true
 								}
 							}
 						}
@@ -482,7 +500,7 @@ Rectangle {
 					onClicked:
 					{
 						projectModel.deployedScenarioIndex = contractList.currentIndex
-						NetworkDeploymentCode.deployContracts(root.gas, function(addresses, trHashes)
+						NetworkDeploymentCode.deployContracts(root.gas, gasPriceInput.toHexWei(), function(addresses, trHashes)
 						{
 							projectModel.deploymentTrHashes = trHashes
 							worker.verifyHashes(trHashes, function (nb, trLost)

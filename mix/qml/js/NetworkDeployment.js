@@ -32,9 +32,10 @@ function deployProject(force) {
 	deploymentDialog.open();
 }
 
-function deployContracts(gas, callback)
+function deployContracts(gas, gasPrice, callback)
 {	
 	deploymentGas = gas;
+	deploymentGasPrice = gasPrice
 	deploymentStarted();
 
 	var ctrAddresses = {};
@@ -135,6 +136,7 @@ function getFunction(ctrName, functionId)
 }
 
 var deploymentGas
+var deploymentGasPrice
 var trRealIndex = -1
 function executeTr(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack)
 {
@@ -148,7 +150,7 @@ function executeTr(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack)
 	else
 	{
 		var gasCost = clientModel.toHex(deploymentGas[trRealIndex]);
-		var rpcParams = { "from": deploymentDialog.worker.currentAccount, "gas": "0x" + gasCost, "gasPrice": "0x" + deploymentDialog.worker.highGasPrice() };
+		var rpcParams = { "from": deploymentDialog.worker.currentAccount, "gas": "0x" + gasCost, "gasPrice": deploymentGasPrice };
 		var params = replaceParamToken(func.parameters, tr.parameters, ctrAddresses);
 		var encodedParams = clientModel.encodeParams(params, contractFromToken(tr.contractId), tr.functionId);
 
@@ -209,13 +211,9 @@ function executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, trHashes, c
 	{
 		blockIndex++
 		if (blockIndex < state.blocks.count)
-		{
 			executeTr(blockIndex, 0, state, ctrAddresses, trHashes, callBack);
-		}
 		else
-		{
 			callBack();
-		}
 	}
 }
 
@@ -296,8 +294,9 @@ function packageDapp(addresses)
 	deploymentStepChanged(qsTr("Dapp is Packaged"))
 }
 
-function registerDapp(url, callback)
+function registerDapp(url, gasPrice, callback)
 {
+	deploymentGasPrice = gasPrice
 	deploymentStepChanged(qsTr("Registering application on the Ethereum network ..."));
 	checkEthPath(url, false, function (success) {
 		if (!success)
@@ -441,7 +440,7 @@ function continueRegistration(dappUrl, addr, callBack, checkOnly)
 				requests.push({
 								  jsonrpc: "2.0",
 								  method: "eth_sendTransaction",
-								  params: [ { "from": deploymentDialog.worker.currentAccount, "gasPrice": deploymentDialog.worker.highGasPrice(), "gas": "0x" + gasCost, "code": "0x600080547fffffffffffffffffffffffff000000000000000000000000000000000000000016331781556105cd90819061003990396000f3007c010000000000000000000000000000000000000000000000000000000060003504630198489281146100b257806321f8a721146100e45780632dff6941146100ee5780633b3b57de1461010e5780635a3a05bd1461013e5780635fd4b08a146101715780637dd564111461017d57806389a69c0e14610187578063b387ef92146101bb578063b5c645bd146101f4578063be99a98014610270578063c3d014d6146102a8578063d93e7573146102dc57005b73ffffffffffffffffffffffffffffffffffffffff600435166000908152600160205260409020548060005260206000f35b6000808052602081f35b600435600090815260026020819052604090912001548060005260206000f35b600435600090815260026020908152604082205473ffffffffffffffffffffffffffffffffffffffff1680835291f35b600435600090815260026020908152604082206001015473ffffffffffffffffffffffffffffffffffffffff1680835291f35b60008060005260206000f35b6000808052602081f35b60005461030c9060043590602435903373ffffffffffffffffffffffffffffffffffffffff908116911614610569576105c9565b60005473ffffffffffffffffffffffffffffffffffffffff168073ffffffffffffffffffffffffffffffffffffffff1660005260206000f35b600435600090815260026020819052604090912080546001820154919092015473ffffffffffffffffffffffffffffffffffffffff9283169291909116908273ffffffffffffffffffffffffffffffffffffffff166000528173ffffffffffffffffffffffffffffffffffffffff166020528060405260606000f35b600054610312906004359060243590604435903373ffffffffffffffffffffffffffffffffffffffff90811691161461045457610523565b6000546103189060043590602435903373ffffffffffffffffffffffffffffffffffffffff90811691161461052857610565565b60005461031e90600435903373ffffffffffffffffffffffffffffffffffffffff90811691161461032457610451565b60006000f35b60006000f35b60006000f35b60006000f35b60008181526002602090815260408083205473ffffffffffffffffffffffffffffffffffffffff16835260019091529020548114610361576103e1565b6000818152600260205260408082205473ffffffffffffffffffffffffffffffffffffffff169183917ff63780e752c6a54a94fc52715dbc5518a3b4c3c2833d301a204226548a2a85459190a360008181526002602090815260408083205473ffffffffffffffffffffffffffffffffffffffff16835260019091528120555b600081815260026020819052604080832080547fffffffffffffffffffffffff00000000000000000000000000000000000000009081168255600182018054909116905590910182905582917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b50565b600083815260026020526040902080547fffffffffffffffffffffffff00000000000000000000000000000000000000001683179055806104bb57827fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc60006040a2610522565b73ffffffffffffffffffffffffffffffffffffffff8216837ff63780e752c6a54a94fc52715dbc5518a3b4c3c2833d301a204226548a2a854560006040a373ffffffffffffffffffffffffffffffffffffffff821660009081526001602052604090208390555b5b505050565b600082815260026020819052604080832090910183905583917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b5050565b60008281526002602052604080822060010180547fffffffffffffffffffffffff0000000000000000000000000000000000000000168417905583917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b505056" } ],
+								  params: [ { "from": deploymentDialog.worker.currentAccount, "gasPrice": deploymentGasPrice, "gas": "0x" + gasCost, "code": "0x600080547fffffffffffffffffffffffff000000000000000000000000000000000000000016331781556105cd90819061003990396000f3007c010000000000000000000000000000000000000000000000000000000060003504630198489281146100b257806321f8a721146100e45780632dff6941146100ee5780633b3b57de1461010e5780635a3a05bd1461013e5780635fd4b08a146101715780637dd564111461017d57806389a69c0e14610187578063b387ef92146101bb578063b5c645bd146101f4578063be99a98014610270578063c3d014d6146102a8578063d93e7573146102dc57005b73ffffffffffffffffffffffffffffffffffffffff600435166000908152600160205260409020548060005260206000f35b6000808052602081f35b600435600090815260026020819052604090912001548060005260206000f35b600435600090815260026020908152604082205473ffffffffffffffffffffffffffffffffffffffff1680835291f35b600435600090815260026020908152604082206001015473ffffffffffffffffffffffffffffffffffffffff1680835291f35b60008060005260206000f35b6000808052602081f35b60005461030c9060043590602435903373ffffffffffffffffffffffffffffffffffffffff908116911614610569576105c9565b60005473ffffffffffffffffffffffffffffffffffffffff168073ffffffffffffffffffffffffffffffffffffffff1660005260206000f35b600435600090815260026020819052604090912080546001820154919092015473ffffffffffffffffffffffffffffffffffffffff9283169291909116908273ffffffffffffffffffffffffffffffffffffffff166000528173ffffffffffffffffffffffffffffffffffffffff166020528060405260606000f35b600054610312906004359060243590604435903373ffffffffffffffffffffffffffffffffffffffff90811691161461045457610523565b6000546103189060043590602435903373ffffffffffffffffffffffffffffffffffffffff90811691161461052857610565565b60005461031e90600435903373ffffffffffffffffffffffffffffffffffffffff90811691161461032457610451565b60006000f35b60006000f35b60006000f35b60006000f35b60008181526002602090815260408083205473ffffffffffffffffffffffffffffffffffffffff16835260019091529020548114610361576103e1565b6000818152600260205260408082205473ffffffffffffffffffffffffffffffffffffffff169183917ff63780e752c6a54a94fc52715dbc5518a3b4c3c2833d301a204226548a2a85459190a360008181526002602090815260408083205473ffffffffffffffffffffffffffffffffffffffff16835260019091528120555b600081815260026020819052604080832080547fffffffffffffffffffffffff00000000000000000000000000000000000000009081168255600182018054909116905590910182905582917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b50565b600083815260026020526040902080547fffffffffffffffffffffffff00000000000000000000000000000000000000001683179055806104bb57827fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc60006040a2610522565b73ffffffffffffffffffffffffffffffffffffffff8216837ff63780e752c6a54a94fc52715dbc5518a3b4c3c2833d301a204226548a2a854560006040a373ffffffffffffffffffffffffffffffffffffffff821660009081526001602052604090208390555b5b505050565b600082815260026020819052604080832090910183905583917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b5050565b60008281526002602052604080822060010180547fffffffffffffffffffffffff0000000000000000000000000000000000000000168417905583917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b505056" } ],
 								  id: jsonRpcRequestId++
 							  });
 
@@ -463,7 +462,7 @@ function continueRegistration(dappUrl, addr, callBack, checkOnly)
 										  //setRegister()
 										  jsonrpc: "2.0",
 										  method: "eth_sendTransaction",
-										  params: [ { "from": deploymentDialog.worker.currentAccount, "gasPrice": deploymentDialog.worker.highGasPrice(), "gas": "0x" + gasCost, "to": '0x' + addr, "data": "0x89a69c0e" + crLevel + newCtrAddress } ],
+										  params: [ { "from": deploymentDialog.worker.currentAccount, "gasPrice": deploymentGasPrice, "gas": "0x" + gasCost, "to": '0x' + addr, "data": "0x89a69c0e" + crLevel + newCtrAddress } ],
 										  id: jsonRpcRequestId++
 									  });
 
@@ -496,7 +495,7 @@ function reserve(registrar, callBack)
 				  //reserve()
 				  jsonrpc: "2.0",
 				  method: "eth_sendTransaction",
-				  params: [ { "from": deploymentDialog.worker.currentAccount, "gasPrice": deploymentDialog.worker.highGasPrice(), "gas": "0xfffff", "to": '0x' + registrar, "data": "0x432ced04" + paramTitle } ],
+				  params: [ { "from": deploymentDialog.worker.currentAccount, "gasPrice": deploymentGasPrice, "gas": "0xfffff", "to": '0x' + registrar, "data": "0x432ced04" + paramTitle } ],
 				  id: jsonRpcRequestId++
 			  });
 	rpcCall(requests, function (httpRequest, response) {
@@ -519,7 +518,7 @@ function registerContentHash(registrar, callBack)
 					  //setContent()
 					  jsonrpc: "2.0",
 					  method: "eth_sendTransaction",
-					  params: [ { "from": deploymentDialog.worker.currentAccount, "gasPrice": deploymentDialog.worker.highGasPrice(), "gas": "0x" + gasCost, "to": '0x' + registrar, "data": "0xc3d014d6" + paramTitle + deploymentDialog.packageStep.packageHash } ],
+					  params: [ { "from": deploymentDialog.worker.currentAccount, "gasPrice": deploymentGasPrice, "gas": "0x" + gasCost, "to": '0x' + registrar, "data": "0xc3d014d6" + paramTitle + deploymentDialog.packageStep.packageHash } ],
 					  id: jsonRpcRequestId++
 				  });
 	rpcCall(requests, function (httpRequest, response) {
@@ -531,6 +530,7 @@ function registerContentHash(registrar, callBack)
 function registerToUrlHint(url, callback)
 {
 	console.log("register url " + deploymentDialog.packageStep.packageHash + " " + url)
+	deploymentGasPrice = gasPrice
 	deploymentStepChanged(qsTr("Registering application Resources..."))
 	urlHintAddress(function(urlHint){
 		var requests = [];
@@ -540,7 +540,7 @@ function registerToUrlHint(url, callback)
 						  //urlHint => suggestUrl
 						  jsonrpc: "2.0",
 						  method: "eth_sendTransaction",
-						  params: [ {  "to": '0x' + urlHint, "gasPrice": deploymentDialog.worker.highGasPrice(), "from": deploymentDialog.worker.currentAccount, "gas": "0x" + gasCost, "data": "0x584e86ad" + deploymentDialog.packageStep.packageHash + paramUrlHttp } ],
+						  params: [ {  "to": '0x' + urlHint, "gasPrice": deploymentGasPrice, "from": deploymentDialog.worker.currentAccount, "gas": "0x" + gasCost, "data": "0x584e86ad" + deploymentDialog.packageStep.packageHash + paramUrlHttp } ],
 						  id: jsonRpcRequestId++
 					  });
 
