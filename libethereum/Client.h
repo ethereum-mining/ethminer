@@ -79,10 +79,6 @@ std::ostream& operator<<(std::ostream& _out, ActivityReport const& _r);
 class Client: public ClientBase, protected Worker
 {
 public:
-	/// New-style Constructor.
-	/// Any final derived class's constructor should make sure they call init().
-	explicit Client(std::shared_ptr<GasPricer> _gpForAdoption);
-
 	/// Destructor.
 	virtual ~Client();
 
@@ -197,6 +193,10 @@ public:
 	SealEngineFace* sealEngine() const { return m_sealEngine.get(); }
 
 protected:
+	/// New-style Constructor.
+	/// Any final derived class's constructor should make sure they call init().
+	explicit Client(std::shared_ptr<GasPricer> _gpForAdoption);
+
 	/// Perform critical setup functions.
 	/// Must be called in the constructor of the finally derived class.
 	void init(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId);
