@@ -19,7 +19,8 @@ function defaultTransaction()
 
 function rpcCall(requests, callBack, error)
 {
-	var jsonRpcUrl = "http://localhost:8545";
+	//var jsonRpcUrl = "http://localhost:8545";
+	var jsonRpcUrl = "http://10.10.42.111:8545"
 	var rpcRequest = JSON.stringify(requests);
 	console.log(rpcRequest);
 	var httpRequest = new XMLHttpRequest();
@@ -28,6 +29,8 @@ function rpcCall(requests, callBack, error)
 	httpRequest.setRequestHeader("Content-length", rpcRequest.length);
 	httpRequest.setRequestHeader("Connection", "close");
 	httpRequest.onreadystatechange = function() {
+		console.log(httpRequest.readyState)
+		console.log(httpRequest.responseText)
 		if (httpRequest.readyState === XMLHttpRequest.DONE) {
 			if (httpRequest.status !== 200 || httpRequest.responseText === "")
 			{

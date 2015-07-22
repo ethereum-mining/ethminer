@@ -97,6 +97,9 @@ ColumnLayout {
 								Layout.preferredWidth: columnValues.width / 2
 								Label
 								{
+									width: columnValues.width / 2 - 20
+									elide: Text.ElideRight
+									maximumLineCount: 1
 									anchors.left: parent.left
 									anchors.leftMargin: 10
 									text: {
@@ -113,6 +116,9 @@ ColumnLayout {
 								Layout.preferredWidth: columnValues.width / 2 - 10
 								Label
 								{
+									width: columnValues.width / 2 - 10
+									elide: Text.ElideRight
+									maximumLineCount: 1
 									anchors.right: parent.right
 									anchors.rightMargin: 10
 									text: {
