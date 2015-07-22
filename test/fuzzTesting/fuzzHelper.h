@@ -66,6 +66,12 @@ enum class SizeStrictness
 	Random
 };
 
+struct RlpDebug
+{
+	std::string rlp;
+	int insertions;
+};
+
 class RandomCode
 {
 public:
@@ -75,6 +81,16 @@ public:
 	/// Generate random byte string of a given length
 	static std::string rndByteSequence(int _length = 1, SizeStrictness _sizeType = SizeStrictness::Strict);
 
+	/// Generate random rlp byte sequence of a given depth (e.g [[[]],[]]). max depth level = 20.
+	/// The _debug string contains returned rlp string with analysed sections
+	/// [] - length section/ or single byte rlp encoding
+	/// () - decimal representation of length
+	/// {1} - Array
+	/// {2} - Array more than 55
+	/// {3} - List
+	/// {4} - List more than 55
+	static std::string rndRLPSequence(int _depth, std::string& _debug);
+
 	/// Generate random int64
 	static std::string randomUniIntHex(u256 _maxVal = 0);
 	static int randomUniInt();
@@ -83,6 +99,7 @@ private:
 	static std::string fillArguments(dev::eth::Instruction _opcode, RandomCodeOptions const& _options);
 	static std::string getPushCode(int _value);
 	static std::string getPushCode(std::string const& _hex);
+	static int recursiveRLP(std::string& _result, int _depth, std::string& _debug);
 	static void refreshSeed();
 
 	static boost::random::mt19937 gen;			///< Random generator
