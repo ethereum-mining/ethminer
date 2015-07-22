@@ -28,20 +28,17 @@ endif()
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND NOT LLVM_DIR)
 	# Workaround for Ubuntu broken LLVM package
 	message(STATUS "Using llvm-3.7-dev package from Ubuntu. If does not work, build LLVM and set -DLLVM_DIR=llvm-build/share/llvm/cmake")
-	execute_process(COMMAND llvm-config-3.7 --includedir OUTPUT_VARIABLE LLVM_INCLUDE_DIRS)
+	execute_process(COMMAND llvm-config-3.7 --includedir OUTPUT_VARIABLE LLVM_INCLUDE_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
 	message(STATUS "LLVM include dirs: ${LLVM_INCLUDE_DIRS}")
 	set(LLVM_LIBS "-lLLVMipo -lLLVMVectorize -lLLVMX86AsmParser -lLLVMX86CodeGen -lLLVMX86Desc -lLLVMX86Info -lLLVMMCDisassembler -lLLVMX86AsmPrinter -lLLVMX86Utils -lLLVMSelectionDAG -lLLVMAsmPrinter -lLLVMCodeGen -lLLVMScalarOpts -lLLVMProfileData -lLLVMInstCombine -lLLVMInstrumentation -lLLVMTransformUtils -lLLVMipa -lLLVMMCJIT -lLLVMExecutionEngine -lLLVMTarget -lLLVMAnalysis -lLLVMRuntimeDyld -lLLVMObject -lLLVMMCParser -lLLVMBitReader -lLLVMMC -lLLVMCore -lLLVMSupport -lz -lpthread -lffi -ltinfo -ldl -lm")
-	add_definitions(-D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS)
+	set(LLVM_DEFINITIONS "-D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS")
 	link_directories(/usr/lib/llvm-3.7/lib)
 else()
 	find_package(LLVM 3.7 REQUIRED CONFIG)
 	message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 	message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-	add_definitions(${LLVM_DEFINITIONS})
 	llvm_map_components_to_libnames(LLVM_LIBS core support mcjit x86asmparser x86codegen ipo)
 endif()
-
-get_filename_component(EVMJIT_INCLUDE_DIR include ABSOLUTE)
 
 add_subdirectory(libevmjit)
 
