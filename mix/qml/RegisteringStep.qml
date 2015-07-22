@@ -144,7 +144,7 @@ Rectangle {
 				Layout.preferredWidth: col.width / 2
 				Label
 				{
-					text: qsTr("Gas to use for dapp registration")
+					text: qsTr("Registration Cost")
 					anchors.right: parent.right
 					anchors.verticalCenter: parent.verticalCenter
 					id: ctrRegisterLabel
@@ -169,7 +169,7 @@ Rectangle {
 				id: gasToUseDeployInput
 				displayUnitSelection: true
 				displayFormattedValue: true
-				edit: true
+				edit: false
 				Layout.preferredWidth: 235
 			}
 		}
@@ -242,7 +242,7 @@ Rectangle {
 		anchors.bottomMargin: 10
 		width: parent.width		
 
-		function registerHash(callback)
+		function registerHash(gasPrice, callback)
 		{
 			var inError = [];
 			var ethUrl = NetworkDeploymentCode.formatAppUrl(applicationUrlEthCtrl.text);
@@ -252,8 +252,8 @@ Rectangle {
 					inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
 			}
 			if (!worker.stopForInputError(inError))
-			{
-				NetworkDeploymentCode.registerDapp(ethUrl, function(){
+			{				
+				NetworkDeploymentCode.registerDapp(ethUrl, gasPrice,  function(){
 					projectModel.applicationUrlEth = applicationUrlEthCtrl.text
 					projectModel.saveProject()
 					worker.waitForTrReceipt(projectModel.registerContentHashTrHash, function(status, receipt)
@@ -270,7 +270,7 @@ Rectangle {
 			}
 		}
 
-		function registerUrl()
+		function registerUrl(gasPrice, callback)
 		{
 			if (applicationUrlHttp.text === "" || deploymentDialog.packageHash === "")
 			{
@@ -284,7 +284,7 @@ Rectangle {
 				inError.push(qsTr(applicationUrlHttpCtrl.text));
 			if (!worker.stopForInputError(inError))
 			{
-				registerToUrlHint(applicationUrlHttpCtrl.text, function(){
+				registerToUrlHint(applicationUrlHttpCtrl.text, gasPrice, function(){
 					projectModel.applicationUrlHttp = applicationUrlHttpCtrl.text
 					projectModel.saveProject()
 					worker.waitForTrReceipt(projectModel.registerUrlTrHash, function(status, receipt)
@@ -295,6 +295,7 @@ Rectangle {
 							projectModel.saveProject()
 							root.updateVerification(bn, bn, trLost, verificationUrl)
 							root.registered()
+							callback()
 						});
 					})
 				})
@@ -309,8 +310,9 @@ Rectangle {
 			width: 30
 			onClicked:
 			{
-				parent.registerHash(function(){
-					parent.registerUrl()
+				var gasPrice = deploymentDialog.deployStep.gasPrice.toHexWei()
+				parent.registerHash(gasPrice, function(){
+					parent.registerUrl(gasPrice, function(){})
 				})
 			}
 		}
