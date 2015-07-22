@@ -77,10 +77,7 @@ function checkPathCreationCost(ethUrl, callBack)
 			}
 		}
 		else
-		{
-			deploymentStepChanged(qsTr("Your Dapp can be registered here."));
 			callBack((dappUrl.length - 1) * (deploymentDialog.registerStep.ownedRegistrarDeployGas + deploymentDialog.registerStep.ownedRegistrarSetSubRegistrarGas) + deploymentDialog.registerStep.ownedRegistrarSetContentHashGas);
-		}
 	});
 }
 

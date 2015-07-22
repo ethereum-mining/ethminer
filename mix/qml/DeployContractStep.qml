@@ -46,13 +46,24 @@ Rectangle {
 
 	function updateVerification(blockNumber, trLost)
 	{
-		verificationLabel.text = blockNumber - projectModel.deployBlockNumber
-		if (trLost.length > 0)
+		var nb = parseInt(blockNumber - projectModel.deployBlockNumber)
+		if (nb >= 10)
 		{
-			verificationLabel.text += "\n" + qsTr("Transactions lost") + "\n"
-			for (var k in trLost)
+			verificationLabel.text = qsTr("contracts deployment verified")
+			verificationLabel.color = "green"
+		}
+		else
+		{
+			verificationLabel.text = nb
+			if (trLost.length > 0)
 			{
-				verificationLabel.text += trLost[k] + "\n"
+				deploymentStepChanged("following transactions are invalidated:")
+				verificationLabel.text += "\n" + qsTr("Transactions lost") + "\n"
+				for (var k in trLost)
+				{
+					deploymentStepChanged(trLost[k])
+					verificationLabel.text += trLost[k] + "\n"
+				}
 			}
 		}
 	}

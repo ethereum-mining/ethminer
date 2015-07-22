@@ -33,7 +33,7 @@ Rectangle {
 		{
 			worker.verifyHash("registerHash", projectModel.registerContentHashTrHash, function(bn, trLost)
 			{
-				updateVerification(projectModel.registerContentHashBlockNumber, bn, trLost, verificationEthUrl)
+				updateVerification(projectModel.registerContentHashBlockNumber, bn, trLost, verificationEthUrl, "registerHash")
 			});
 		}
 
@@ -42,20 +42,27 @@ Rectangle {
 		{
 			worker.verifyHash("registerUrl", projectModel.registerUrlTrHash, function(bn, trLost)
 			{
-				updateVerification(projectModel.registerUrlBlockNumber, bn, trLost, verificationUrl)
+				updateVerification(projectModel.registerUrlBlockNumber, bn, trLost, verificationUrl, "registerUrl")
 			});
 		}
 	}
 
-	function updateVerification(originbn, bn, trLost, ctrl)
+	function updateVerification(originbn, bn, trLost, ctrl, trContext)
 	{
 		if (trLost.length === 0)
 		{
 			ctrl.text = bn - originbn
-			ctrl.text += qsTr(" verifications")
+			if (parseInt(bn - originbn) >= 10)
+			{
+				ctrl.color= "green"
+				ctrl.text= qsTr("verified")
+			}
+			else
+				ctrl.text += qsTr(" verifications")
 		}
 		else
 		{
+			deploymentStepChanged(trContext + qsTr(" has been invalidated.") + trLost[0] + " " + qsTr("no longer present") )
 			ctrl.text = qsTr("invalidated")
 		}
 	}

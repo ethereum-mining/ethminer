@@ -236,10 +236,8 @@ Rectangle {
 
 			Button
 			{
-				Layout.preferredHeight: 22
-				Layout.preferredWidth: 22
 				action: clearAction
-				iconSource: "qrc:/qml/img/cleariconactive.png"
+				text: qsTr("Clear Messages")
 			}
 
 			Action {
