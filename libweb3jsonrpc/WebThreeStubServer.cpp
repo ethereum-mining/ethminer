@@ -29,6 +29,7 @@
 #include <libdevcore/CommonJS.h>
 #include <libethcore/KeyManager.h>
 #include <libethereum/Executive.h>
+#include <libethereum/Block.h>
 #include <libwebthree/WebThree.h>
 #include "JsonHelper.h"
 using namespace std;
@@ -270,16 +271,14 @@ Json::Value WebThreeStubServer::admin_eth_vmTrace(std::string const& _blockNumbe
 	Json::Value ret;
 
 	auto c = m_web3.ethereum();
-	State state = c->state(_txIndex + 1, blockHash(_blockNumberOrHash));
-
 	if (_txIndex < 0)
 		throw jsonrpc::JsonRpcException("Negative index");
-
-	if ((unsigned)_txIndex < state.pending().size())
+	Block block = c->block(blockHash(_blockNumberOrHash));
+	if ((unsigned)_txIndex < block.pending().size())
 	{
+		Transaction t = block.pending()[_txIndex];
+		State state = block.fromPending(_txIndex);
 		Executive e(state, bc(), 0);
-		Transaction t = state.pending()[_txIndex];
-		state = state.fromPending(_txIndex);
 		try
 		{
 			StandardTrace st;

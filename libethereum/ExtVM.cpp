@@ -88,14 +88,14 @@ void go(unsigned _depth, Executive& _e, OnOpFunc const& _onOp)
 
 bool ExtVM::call(CallParameters& _p)
 {
-	Executive e(m_s, lastHashes, depth + 1);
+	Executive e(m_s, envInfo(), depth + 1);
 	if (!e.call(_p, gasPrice, origin))
 	{
-	#if __clang__ // Enabled for clang only as the problem affects OSX
+#if __clang__ // Enabled for clang only as the problem affects OSX
 		go(depth, e, _p.onOp);
-	#else
+#else
 		e.go(_p.onOp);
-	#endif
+#endif
 		e.accrueSubState(sub);
 	}
 	_p.gas = e.gas();
@@ -108,7 +108,7 @@ h160 ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc 
 	// Increment associated nonce for sender.
 	m_s.noteSending(myAddress);
 
-	Executive e(m_s, lastHashes, depth + 1);
+	Executive e(m_s, envInfo(), depth + 1);
 	if (!e.create(myAddress, _endowment, gasPrice, io_gas, _code, origin))
 	{
 		go(depth, e, _onOp);

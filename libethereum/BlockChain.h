@@ -58,6 +58,7 @@ namespace eth
 static const h256s NullH256s;
 
 class State;
+class Block;
 
 struct AlreadyHaveBlock: virtual Exception {};
 struct UnknownParent: virtual Exception {};
@@ -89,7 +90,6 @@ enum {
 };
 
 using ProgressCallback = std::function<void(unsigned, unsigned)>;
-using StateDefinition = std::unordered_map<Address, Account>;
 
 class VersionChecker
 {
@@ -106,7 +106,7 @@ class BlockChain
 public:
 	/// Doesn't open the database - if you want it open it's up to you to subclass this and open it
 	/// in the constructor there.
-	BlockChain(bytes const& _genesisBlock, StateDefinition const& _genesisState, std::string const& _path);
+	BlockChain(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path);
 	~BlockChain();
 
 	/// Reopen everything.
@@ -286,7 +286,7 @@ public:
 	template <class T> void setOnBad(T const& _t) { m_onBad = _t; }
 
 	/// Get a pre-made genesis State object.
-	State genesisState(OverlayDB const& _db);
+	Block genesisBlock(OverlayDB const& _db);
 
 	/// Verify block and prepare it for enactment
 	virtual VerifiedBlockRef verifyBlock(bytesConstRef _block, std::function<void(Exception&)> const& _onBad, ImportRequirements::value _ir = ImportRequirements::OutOfOrderChecks) const = 0;
@@ -296,7 +296,7 @@ protected:
 
 	/// Initialise everything and ready for openning the database.
 	// TODO: rename to init
-	void open(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path);
+	void open(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path);
 	/// Open the database.
 	// TODO: rename to open.
 	unsigned openDatabase(std::string const& _path, WithExisting _we);
@@ -400,11 +400,17 @@ class FullBlockChain: public BlockChain
 public:
 	using BlockHeader = typename Sealer::BlockHeader;
 
+<<<<<<< HEAD
 	FullBlockChain(bytes const& _genesisBlock, StateDefinition const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _pc = ProgressCallback()):
 		BlockChain(_genesisBlock, _genesisState, _path)
 	{
 		openDatabase(_path, _we, _pc);
 	}
+=======
+	FullBlockChain(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _p = ProgressCallback()):
+		BlockChain(_genesisBlock, _genesisState, _path, _we, _p)
+	{}
+>>>>>>> 0672b04... Compile fixes galore.
 
 	/// Get the header of a block (or the most recent mined if none given). Thread-safe.
 	typename Sealer::BlockHeader header(h256 const& _hash) const { return typename Sealer::BlockHeader(headerData(_hash), IgnoreSeal, _hash, HeaderData); }

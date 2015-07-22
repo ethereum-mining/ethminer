@@ -26,10 +26,13 @@
 #include "Interface.h"
 #include "LogFilter.h"
 #include "TransactionQueue.h"
+#include "Block.h"
 
-namespace dev {
+namespace dev
+{
 
-namespace eth {
+namespace eth
+{
 
 struct InstalledFilter
 {
@@ -163,16 +166,16 @@ public:
 	virtual uint64_t hashrate() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::hashrate")); }
 	virtual WorkingProgress miningProgress() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::miningProgress")); }
 
-	State asOf(BlockNumber _h) const;
+	Block asOf(BlockNumber _h) const;
 
 protected:
 	/// The interface that must be implemented in any class deriving this.
 	/// {
 	virtual BlockChain& bc() = 0;
 	virtual BlockChain const& bc() const = 0;
-	virtual State asOf(h256 const& _h) const = 0;
-	virtual State preMine() const = 0;
-	virtual State postMine() const = 0;
+	virtual Block asOf(h256 const& _h) const = 0;
+	virtual Block preMine() const = 0;
+	virtual Block postMine() const = 0;
 	virtual void prepareForTransaction() = 0;
 	/// }
 

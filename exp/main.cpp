@@ -299,7 +299,7 @@ int main()
 #elif 0
 void mine(State& s, BlockChain const& _bc, SealEngineFace* _se)
 {
-	s.commitToMine(_bc);
+	s.commitToSeal(_bc);
 	Notified<bytes> sealed;
 	_se->onSealGenerated([&](bytes const& sealedHeader){ sealed = sealedHeader; });
 	_se->generateSeal(s.info());
@@ -329,8 +329,8 @@ int main()
 	OverlayDB stateDB = State::openDB(bc.genesisHash());
 	cnote << bc;
 
-	State s = bc.genesisState(stateDB);
-	s.setAddress(myMiner.address());
+	Block s = bc.genesisBlock(stateDB);
+	s.setBeneficiary(myMiner.address());
 	cnote << s;
 
 	// Sync up - this won't do much until we use the last state.
@@ -362,8 +362,8 @@ int main()
 	cnote << s;
 
 	// Mine to get some ether and set in stone.
-	s.commitToMine(bc);
-	s.commitToMine(bc);
+	s.commitToSeal(bc);
+	s.commitToSeal(bc);
 	mine(s, bc, se);
 	bc.attemptImport(s.blockData(), stateDB);
 
@@ -386,7 +386,7 @@ int main()
 	cdebug << "Path:" << tempDir;
 	Client c(&net, tempDir);
 
-	c.setAddress(myMiner.address());
+	c.setBeneficiary(myMiner.address());
 
 	this_thread::sleep_for(chrono::milliseconds(1000));
 
