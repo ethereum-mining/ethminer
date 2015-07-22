@@ -33,6 +33,36 @@
 
 namespace dev
 {
+
+template<typename _T, typename _QueueT = std::queue<_T>>
+class concurrent_queue
+{
+public:
+	template<typename _U>
+	void push(_U&& _elem)
+	{
+		{
+			std::lock_guard<decltype(x_mutex)> guard{x_mutex};
+			m_queue.push(std::forward<_U>(_elem));
+		}
+		m_cv.notify_one();
+	}
+
+	_T pop()
+	{
+		std::unique_lock<std::mutex> lock{x_mutex};
+		m_cv.wait(lock, [this]{ return !m_queue.empty(); });
+		auto item = std::move(m_queue.front());
+		m_queue.pop();
+		return item;
+	}
+
+private:
+	_QueueT m_queue;
+	std::mutex x_mutex;
+	std::condition_variable m_cv;
+};
+
 namespace eth
 {
 namespace
@@ -51,34 +81,26 @@ namespace
 	{
 		bytes code;
 		h256 codeHash;
+
+		static JitTask createStopSentinel() { return {}; }
+
+		bool isStopSentinel()
+		{
+			assert((!code.empty() || !codeHash) && "'empty code => empty hash' invariand failed");
+			return code.empty();
+		}
 	};
 
 	class JitWorker
 	{
-		bool m_finished = false;
-		std::mutex x_mutex;
-		std::condition_variable m_cv;
 		std::thread m_worker;
-		std::queue<JitTask> m_queue;
-
-		bool pop(JitTask& o_task)
-		{
-			std::unique_lock<std::mutex> lock{x_mutex};
-			m_cv.wait(lock, [this]{ return m_finished || !m_queue.empty(); });
-			if (m_finished)
-				return false;
-
-			assert(!m_queue.empty());
-			o_task = std::move(m_queue.front());
-			m_queue.pop();
-			return true;
-		}
+		concurrent_queue<JitTask> m_queue;
 
 		void work()
 		{
 			clog(JitInfo) << "JIT worker started.";
 			JitTask task;
-			while (pop(task))
+			while (!(task = m_queue.pop()).isStopSentinel())
 			{
 				clog(JitInfo) << "Compilation... " << task.codeHash;
 				evmjit::JIT::compile(task.code.data(), task.code.size(), eth2jit(task.codeHash));
@@ -93,18 +115,11 @@ namespace
 
 		~JitWorker()
 		{
-			DEV_GUARDED(x_mutex)
-				m_finished = true;
-			m_cv.notify_one();
+			push(JitTask::createStopSentinel());
 			m_worker.join();
 		}
 
-		void push(JitTask&& _task)
-		{
-			DEV_GUARDED(x_mutex)
-				m_queue.push(std::move(_task));
-			m_cv.notify_one();
-		}
+		void push(JitTask&& _task) { m_queue.push(std::move(_task)); }
 	};
 }
 
