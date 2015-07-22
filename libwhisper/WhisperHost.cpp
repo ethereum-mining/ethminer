@@ -135,27 +135,6 @@ unsigned WhisperHost::installWatch(shh::Topics const& _t)
 	return ret;
 }
 
-h256s WhisperHost::watchMessages(unsigned _watchId)
-{
-	h256s ret;
-	auto wit = m_watches.find(_watchId);
-	if (wit == m_watches.end())
-		return ret;
-	TopicFilter f;
-	{
-		Guard l(m_filterLock);
-		auto fit = m_filters.find(wit->second.id);
-		if (fit == m_filters.end())
-			return ret;
-		f = fit->second.filter;
-	}
-	ReadGuard l(x_messages);
-	for (auto const& m: m_messages)
-		if (f.matches(m.second))
-			ret.push_back(m.first);
-	return ret;
-}
-
 void WhisperHost::uninstallWatch(unsigned _i)
 {
 	cwatshh << "XXX" << _i;
@@ -179,6 +158,45 @@ void WhisperHost::uninstallWatch(unsigned _i)
 	}
 
 	noteAdvertiseTopicsOfInterest();
+}
+
+h256s WhisperHost::watchMessages(unsigned _watchId)
+{
+	h256s ret;
+	auto wit = m_watches.find(_watchId);
+	if (wit == m_watches.end())
+		return ret;
+	TopicFilter f;
+	{
+		Guard l(m_filterLock);
+		auto fit = m_filters.find(wit->second.id);
+		if (fit == m_filters.end())
+			return ret;
+		f = fit->second.filter;
+	}
+	ReadGuard l(x_messages);
+	for (auto const& m: m_messages)
+		if (f.matches(m.second))
+			ret.push_back(m.first);
+	return ret;
+}
+
+h256s WhisperHost::checkWatch(unsigned _watchId)
+{
+	h256s ret;
+	cleanup();
+
+	dev::Guard l(m_filterLock);
+	try
+	{
+		ret = m_watches.at(_watchId).changes;
+		m_watches.at(_watchId).changes.clear();
+	}
+	catch (...)
+	{
+	}
+
+	return ret;
 }
 
 void WhisperHost::doWork()
@@ -254,7 +272,7 @@ void WhisperHost::loadMessagesFromBD()
 	{
 		map<h256, Envelope> m;
 		WhisperDB db(WhisperDB::Messages);
-		db.loadAll(m);
+		db.loadAllMessages(m);
 		WriteGuard g(x_messages);
 		m_messages.swap(m);
 		for (auto const& msg: m)
@@ -298,7 +316,7 @@ void WhisperHost::saveTopicsToDB(string const& _app, string const& _password)
 	// todo: encrypt after tests
 
 	h256 h = sha3(_app);
-	WhisperDB db(WhisperDB::Messages);
+	WhisperDB db(WhisperDB::Filters);
 	db.insert(h, plain);
 }
 
@@ -306,7 +324,7 @@ vector<unsigned> WhisperHost::restoreTopicsFromDB(string const& _app, string con
 {
 	vector<unsigned> ret;
 	h256 h = sha3(_app);
-	WhisperDB db(WhisperDB::Messages);
+	WhisperDB db(WhisperDB::Filters);
 	string raw = db.lookup(h);
 
 	// todo: decrypt after tests
@@ -317,7 +335,7 @@ vector<unsigned> WhisperHost::restoreTopicsFromDB(string const& _app, string con
 	for (unsigned i = 0; i < sz; ++i)
 	{
 		RLP r = rlp[i];
-		bytesConstRef ref(r.data());
+		bytesConstRef ref(r.toBytesConstRef());
 		Topics topics;
 		unsigned num = ref.size() / h256::size;
 		for (unsigned j = 0; j < num; ++j)

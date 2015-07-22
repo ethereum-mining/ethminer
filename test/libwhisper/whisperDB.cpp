@@ -225,24 +225,30 @@ BOOST_AUTO_TEST_CASE(filters)
 	}
 
 	short unsigned port1 = 30313;
+	unsigned const step = 10;
+	bool host1Ready = false;
+	bool sent = false;
+	unsigned result = 0;
+	unsigned messageCount = 0;
+
 	Host host1("Test", NetworkPreferences("127.0.0.1", port1, false));
 	host1.setIdealPeerCount(1);
 	auto whost1 = host1.registerCapability(new WhisperHost());
 	host1.start();
 	auto ids = whost1->restoreTopicsFromDB(app, password);
-	bool host1Ready = false;
-	unsigned result = 0;
-	unsigned messageCount = 0;
 
 	std::thread listener([&]()
 	{
 		setThreadName("other");
 		host1Ready = true;
 
-		for (int j = 0; j < 200 && messageCount < 2; ++j)
+		for (unsigned i = 0; i < 16000 && !sent; i += step)
+			this_thread::sleep_for(chrono::milliseconds(step));
+
+		for (unsigned j = 0; j < 200 && messageCount < 2; ++j)
 		{
 			for (unsigned id: ids)
-				for (auto e: whost1->checkWatch(id))
+				for (auto const& e: whost1->checkWatch(id))
 				{
 					Message msg = whost1->envelope(e).open(whost1->fullTopics(id));
 					unsigned x = RLP(msg.payload()).toInt<unsigned>();
@@ -260,30 +266,27 @@ BOOST_AUTO_TEST_CASE(filters)
 	auto whost2 = host2.registerCapability(new WhisperHost());
 	host2.start();
 
-	while (!host1.haveNetwork())
-		this_thread::sleep_for(chrono::milliseconds(5));
+	for (unsigned i = 0; i < 3000 && !host1.haveNetwork(); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
 
 	host2.requirePeer(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), port1, port1));
 
-	while (!host1Ready)
-		this_thread::sleep_for(chrono::milliseconds(10));
+	for (unsigned i = 0; i < 3000 && !host1Ready; i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
 
-	while (!host1.peerCount() && !host2.peerCount())
-		this_thread::sleep_for(chrono::milliseconds(10));
+	for (unsigned i = 0; i < 3000 && (!host1.peerCount() || !host2.peerCount()); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
 
-	unsigned ttl = 1000000;
+	unsigned ttl = 777000;
 	whost2->post(RLPStream().append(8).out(), BuildTopic("t8"), ttl);
-	this_thread::sleep_for(chrono::milliseconds(10));
 	whost2->post(RLPStream().append(4).out(), BuildTopic("t4"), ttl);
-	this_thread::sleep_for(chrono::milliseconds(10));
 	whost2->post(RLPStream().append(1).out(), BuildTopic("t1"), ttl);
-	this_thread::sleep_for(chrono::milliseconds(10));
 	whost2->post(RLPStream().append(2).out(), BuildTopic("t2"), ttl);
-	this_thread::sleep_for(chrono::milliseconds(10));
 	whost2->post(RLPStream().append(16).out(), BuildTopic("t16"), ttl);
+	sent = true;
 
-	while (messageCount < 2)
-		this_thread::sleep_for(chrono::milliseconds(10));
+	for (unsigned i = 0; i < 3000 && messageCount < 2; i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
 
 	listener.join();
 	BOOST_REQUIRE_EQUAL(messageCount, 2);
