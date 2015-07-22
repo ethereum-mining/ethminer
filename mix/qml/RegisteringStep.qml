@@ -156,7 +156,7 @@ Rectangle {
 						NetworkDeploymentCode.checkPathCreationCost(applicationUrlEthCtrl.text, function(pathCreationCost)
 						{
 							var ether = QEtherHelper.createBigInt(pathCreationCost);
-							var gasTotal = ether.multiply(worker.gasPriceInt);
+							var gasTotal = ether.multiply(deploymentDialog.deployStep.gasPrice.value.toWei());
 							gasToUseDeployInput.value = QEtherHelper.createEther(gasTotal.value(), QEther.Wei, parent);
 							gasToUseDeployInput.update();
 						});
@@ -167,7 +167,7 @@ Rectangle {
 			Ether
 			{
 				id: gasToUseDeployInput
-				displayUnitSelection: true
+				displayUnitSelection: false
 				displayFormattedValue: true
 				edit: false
 				Layout.preferredWidth: 235

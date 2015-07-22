@@ -297,9 +297,9 @@ Rectangle {
 					Ether
 					{
 						id: gasPriceInput
-						displayUnitSelection: false
+						displayUnitSelection: true
 						displayFormattedValue: true
-						edit: false
+						edit: true
 
 						function toHexWei()
 						{
