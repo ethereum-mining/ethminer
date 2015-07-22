@@ -3,26 +3,27 @@ set(TARGET_NAME evmjit)
 get_filename_component(EVMJIT_INCLUDE_DIR ../include ABSOLUTE)
 
 set(SOURCES
-    JIT.cpp				${EVMJIT_INCLUDE_DIR}/evmjit/JIT.h
-    Arith256.cpp		Arith256.h
-    Array.cpp			Array.h
-    BasicBlock.cpp		BasicBlock.h
-    Cache.cpp			Cache.h
-    					Common.h
-    Compiler.cpp		Compiler.h
-    CompilerHelper.cpp	CompilerHelper.h
-    Endianness.cpp		Endianness.h
-    ExecStats.cpp		ExecStats.h
-    Ext.cpp				Ext.h
-    GasMeter.cpp		GasMeter.h
-    Instruction.cpp		Instruction.h
-    interface.cpp		interface.h
-    Memory.cpp			Memory.h
-    Optimizer.cpp		Optimizer.h
-    RuntimeManager.cpp	RuntimeManager.h
-    Stack.cpp			Stack.h
-    Type.cpp			Type.h
-    Utils.cpp			Utils.h
+	JIT.cpp				${EVMJIT_INCLUDE_DIR}/evmjit/JIT.h
+	JIT-c.cpp			${EVMJIT_INCLUDE_DIR}/evmjit/JIT-c.h
+	Arith256.cpp		Arith256.h
+	Array.cpp			Array.h
+	BasicBlock.cpp		BasicBlock.h
+	Cache.cpp			Cache.h
+						Common.h
+	Compiler.cpp		Compiler.h
+	CompilerHelper.cpp	CompilerHelper.h
+	Endianness.cpp		Endianness.h
+	ExecStats.cpp		ExecStats.h
+	Ext.cpp				Ext.h
+	GasMeter.cpp		GasMeter.h
+	Instruction.cpp		Instruction.h
+	#interface.cpp		interface.h
+	Memory.cpp			Memory.h
+	Optimizer.cpp		Optimizer.h
+	RuntimeManager.cpp	RuntimeManager.h
+	Stack.cpp			Stack.h
+	Type.cpp			Type.h
+	Utils.cpp			Utils.h
 )
 source_group("" FILES ${SOURCES})
 
