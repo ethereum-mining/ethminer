@@ -1,5 +1,7 @@
 set(TARGET_NAME evmjit)
 
+get_filename_component(EVMJIT_INCLUDE_DIR ../include ABSOLUTE)
+
 set(SOURCES
     JIT.cpp				${EVMJIT_INCLUDE_DIR}/evmjit/JIT.h
     Arith256.cpp		Arith256.h
@@ -46,10 +48,10 @@ set_target_properties(${TARGET_NAME} PROPERTIES
 						VERSION ${EVMJIT_VERSION} SOVERSION ${EVMJIT_SOVERSION}
 						FOLDER "libs")
 
-include_directories(${EVMJIT_INCLUDE_DIR})
-include_directories(${LLVM_INCLUDE_DIRS})
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/gen)
-
+target_include_directories(${TARGET_NAME} PUBLIC ${EVMJIT_INCLUDE_DIR})
+target_include_directories(${TARGET_NAME} PRIVATE ${LLVM_INCLUDE_DIRS})
+target_include_directories(${TARGET_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/gen)
+target_compile_definitions(${TARGET_NAME} PRIVATE ${LLVM_DEFINITIONS})
 target_link_libraries(${TARGET_NAME} PRIVATE ${LLVM_LIBS})
 
 install(TARGETS ${TARGET_NAME} LIBRARY DESTINATION lib ARCHIVE DESTINATION lib RUNTIME DESTINATION bin)
