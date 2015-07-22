@@ -300,3 +300,4 @@ template <> struct hash<bi::address>
 };
 
 }
+
