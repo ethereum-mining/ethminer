@@ -21,7 +21,8 @@
  */
 
 #include "test/TestHelper.h"
-
+#include <libethcore/Exceptions.h>
+#include <libevm/VMFace.h>
 
 /*std::ostream& dev::eth::operator<<(std::ostream& _out, ExecutionResult const& _er)
 {
@@ -74,39 +75,32 @@ BOOST_AUTO_TEST_SUITE(libethereum)
 
 BOOST_AUTO_TEST_CASE(toTransactionExceptionConvert)
 {
-	RLPException rlpEx("exception");
-	BOOST_CHECK_MESSAGE(toTransactionException(*(dynamic_cast<Exception*>(&rlpEx))) == TransactionException::BadRLP, "RLPException !=> TransactionException");
+	RLPException rlpEx("exception");//toTransactionException(*(dynamic_cast<Exception*>
+	BOOST_CHECK_MESSAGE(toTransactionException(rlpEx) == TransactionException::BadRLP, "RLPException !=> TransactionException");
 	OutOfGasIntrinsic oogEx;
-	BOOST_CHECK_MESSAGE(toTransactionException(*(dynamic_cast<Exception*>(&oogEx))) == TransactionException::OutOfGasIntrinsic, "OutOfGasIntrinsic !=> TransactionException");
+	BOOST_CHECK_MESSAGE(toTransactionException(oogEx) == TransactionException::OutOfGasIntrinsic, "OutOfGasIntrinsic !=> TransactionException");
 	InvalidSignature sigEx;
-	BOOST_CHECK_MESSAGE(toTransactionException(*(dynamic_cast<Exception*>(&sigEx))) == TransactionException::InvalidSignature, "InvalidSignature !=> TransactionException");
+	BOOST_CHECK_MESSAGE(toTransactionException(sigEx) == TransactionException::InvalidSignature, "InvalidSignature !=> TransactionException");
 	OutOfGasBase oogbEx;
-	BOOST_CHECK_MESSAGE(toTransactionException(*(dynamic_cast<Exception*>(&oogbEx))) == TransactionException::OutOfGasBase, "OutOfGasBase !=> TransactionException");
+	BOOST_CHECK_MESSAGE(toTransactionException(oogbEx) == TransactionException::OutOfGasBase, "OutOfGasBase !=> TransactionException");
 	InvalidNonce nonceEx;
-	BOOST_CHECK_MESSAGE(toTransactionException(*(dynamic_cast<Exception*>(&nonceEx))) == TransactionException::InvalidNonce, "InvalidNonce !=> TransactionException");
-
-	/*TransactionException dev::eth::toTransactionException(Exception const& _e)
-	{
-
-		if (!!dynamic_cast<InvalidNonce const*>(&_e))
-			return TransactionException::InvalidNonce;
-		if (!!dynamic_cast<NotEnoughCash const*>(&_e))
-			return TransactionException::NotEnoughCash;
-		if (!!dynamic_cast<BlockGasLimitReached const*>(&_e))
-			return TransactionException::BlockGasLimitReached;
-		// VM execution exceptions
-		if (!!dynamic_cast<BadInstruction const*>(&_e))
-			return TransactionException::BadInstruction;
-		if (!!dynamic_cast<BadJumpDestination const*>(&_e))
-			return TransactionException::BadJumpDestination;
-		if (!!dynamic_cast<OutOfGas const*>(&_e))
-			return TransactionException::OutOfGas;
-		if (!!dynamic_cast<OutOfStack const*>(&_e))
-			return TransactionException::OutOfStack;
-		if (!!dynamic_cast<StackUnderflow const*>(&_e))
-			return TransactionException::StackUnderflow;
-		return TransactionException::Unknown;
-	}*/
+	BOOST_CHECK_MESSAGE(toTransactionException(nonceEx) == TransactionException::InvalidNonce, "InvalidNonce !=> TransactionException");
+	NotEnoughCash cashEx;
+	BOOST_CHECK_MESSAGE(toTransactionException(cashEx) == TransactionException::NotEnoughCash, "NotEnoughCash !=> TransactionException");
+	BlockGasLimitReached blGasEx;
+	BOOST_CHECK_MESSAGE(toTransactionException(blGasEx) == TransactionException::BlockGasLimitReached, "BlockGasLimitReached !=> TransactionException");
+	BadInstruction badInsEx;
+	BOOST_CHECK_MESSAGE(toTransactionException(badInsEx) == TransactionException::BadInstruction, "BadInstruction !=> TransactionException");
+	BadJumpDestination badJumpEx;
+	BOOST_CHECK_MESSAGE(toTransactionException(badJumpEx) == TransactionException::BadJumpDestination, "BadJumpDestination !=> TransactionException");
+	OutOfGas oogEx2;
+	BOOST_CHECK_MESSAGE(toTransactionException(oogEx2) == TransactionException::OutOfGas, "OutOfGas !=> TransactionException");
+	OutOfStack oosEx;
+	BOOST_CHECK_MESSAGE(toTransactionException(oosEx) == TransactionException::OutOfStack, "OutOfStack !=> TransactionException");
+	StackUnderflow stackEx;
+	BOOST_CHECK_MESSAGE(toTransactionException(stackEx) == TransactionException::StackUnderflow, "StackUnderflow !=> TransactionException");
+	Exception notEx;
+	BOOST_CHECK_MESSAGE(toTransactionException(notEx) == TransactionException::Unknown, "Unexpected should be TransactionException::Unknown");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
