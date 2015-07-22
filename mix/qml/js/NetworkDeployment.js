@@ -527,7 +527,7 @@ function registerContentHash(registrar, callBack)
 	});
 }
 
-function registerToUrlHint(url, callback)
+function registerToUrlHint(url, gasPrice, callback)
 {
 	console.log("register url " + deploymentDialog.packageStep.packageHash + " " + url)
 	deploymentGasPrice = gasPrice
