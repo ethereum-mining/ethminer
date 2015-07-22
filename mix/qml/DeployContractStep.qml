@@ -20,6 +20,7 @@ Rectangle {
 
 	property int labelWidth: 150
 
+
 	function show()
 	{
 		visible = true
@@ -31,12 +32,11 @@ Rectangle {
 			accountsModel.append(worker.accounts[k])
 		}
 
-		if (worker.accounts.length > 0)
+		if (worker.currentAccount === "" && worker.accounts.length > 0)
 		{
 			worker.currentAccount = worker.accounts[0].id
 			accountsList.currentIndex = 0
 		}
-
 
 		if (projectModel.deployBlockNumber !== -1)
 		{
