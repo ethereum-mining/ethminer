@@ -91,7 +91,7 @@ void WhisperDB::kill(dev::h256 const& _key)
 		BOOST_THROW_EXCEPTION(FailedDeleteInLevelDB(status.ToString()));
 }
 
-void WhisperDB::loadAll(std::map<h256, Envelope>& o_dst)
+void WhisperDB::loadAllMessages(std::map<h256, Envelope>& o_dst)
 {
 	leveldb::ReadOptions op;
 	op.fill_cache = false;

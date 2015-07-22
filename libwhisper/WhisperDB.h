@@ -49,7 +49,7 @@ public:
 	void insert(dev::h256 const& _key, std::string const& _value);
 	void insert(dev::h256 const& _key, bytes const& _value);
 	void kill(dev::h256 const& _key);
-	void loadAll(std::map<h256, Envelope>& o_dst);
+	void loadAllMessages(std::map<h256, Envelope>& o_dst);
 	void save(dev::h256 const& _key, Envelope const& _e);
 
 private:
