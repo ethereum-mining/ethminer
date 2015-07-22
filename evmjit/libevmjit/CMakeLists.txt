@@ -17,7 +17,6 @@ set(SOURCES
 	Ext.cpp				Ext.h
 	GasMeter.cpp		GasMeter.h
 	Instruction.cpp		Instruction.h
-	#interface.cpp		interface.h
 	Memory.cpp			Memory.h
 	Optimizer.cpp		Optimizer.h
 	RuntimeManager.cpp	RuntimeManager.h
@@ -56,3 +55,4 @@ target_compile_definitions(${TARGET_NAME} PRIVATE ${LLVM_DEFINITIONS})
 target_link_libraries(${TARGET_NAME} PRIVATE ${LLVM_LIBS})
 
 install(TARGETS ${TARGET_NAME} LIBRARY DESTINATION lib ARCHIVE DESTINATION lib RUNTIME DESTINATION bin)
+install(DIRECTORY ${EVMJIT_INCLUDE_DIR} DESTINATION include)
