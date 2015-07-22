@@ -50,7 +50,7 @@ namespace
 		bytes code;
 		h256 codeHash;
 
-		static JitTask createStopSentinel() { return {}; }
+		static JitTask createStopSentinel() { return JitTask(); }
 
 		bool isStopSentinel()
 		{
