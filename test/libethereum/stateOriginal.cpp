@@ -23,7 +23,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <libethereum/CanonBlockChain.h>
-#include <libethereum/State.h>
+#include <libethereum/Block.h>
 #include <libethcore/Farm.h>
 #include <libethcore/BasicAuthority.h>
 #include <libethereum/Defaults.h>
@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_SUITE(StateIntegration)
 
 BOOST_AUTO_TEST_CASE(Basic)
 {
-	State s;
+	Block s;
 }
 
 BOOST_AUTO_TEST_CASE(Complex)
@@ -64,8 +64,8 @@ BOOST_AUTO_TEST_CASE(Complex)
 	CanonBlockChain<BasicAuthority> bc;
 	cout << bc;
 
-	State s = bc.genesisState(stateDB);
-	s.setAddress(myMiner.address());
+	Block s = bc.genesisBlock(stateDB);
+	s.setBeneficiary(myMiner.address());
 	cout << s;
 
 	// Sync up - this won't do much until we use the last state.
@@ -92,8 +92,8 @@ BOOST_AUTO_TEST_CASE(Complex)
 	cout << s;
 
 	// Mine to get some ether and set in stone.
-	s.commitToMine(bc);
-	s.commitToMine(bc);
+	s.commitToSeal(bc);
+	s.commitToSeal(bc);
 	mine(s, bc);
 	bc.attemptImport(s.blockData(), stateDB);
 

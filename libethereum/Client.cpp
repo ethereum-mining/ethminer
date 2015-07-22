@@ -40,6 +40,7 @@
 #include "Executive.h"
 #include "EthereumHost.h"
 #include "Utility.h"
+#include "Block.h"
 #include "TransactionQueue.h"
 
 using namespace std;
@@ -87,7 +88,7 @@ void Client::init(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _
 	// until after the construction.
 	m_stateDB = State::openDB(_dbPath, bc().genesisHash(), _forceAction);
 	// LAZY. TODO: move genesis state construction/commiting to stateDB openning and have this just take the root from the genesis block.
-	m_preMine = bc().genesisState(m_stateDB);
+	m_preMine = bc().genesisBlock(m_stateDB);
 	m_postMine = m_preMine;
 
 	m_bq.setChain(bc());
@@ -344,16 +345,16 @@ void Client::reopenChain(WithExisting _we)
 		WriteGuard l2(x_preMine);
 		WriteGuard l3(x_working);
 
-		m_preMine = State();
-		m_postMine = State();
-		m_working = State();
+		m_preMine = Block();
+		m_postMine = Block();
+		m_working = Block();
 
 		m_stateDB = OverlayDB();
 		bc().reopen(_we);
 		m_stateDB = State::openDB(Defaults::dbPath(), bc().genesisHash(), _we);
 
-		m_preMine = bc().genesisState(m_stateDB);
-		m_postMine = m_preMine;
+		m_preMine = bc().genesisBlock(m_stateDB);
+		m_postMine = Block(m_stateDB);
 	}
 
 	if (auto h = m_host.lock())
@@ -502,12 +503,12 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 	ExecutionResult ret;
 	try
 	{
-		State temp;
+		Block temp;
 		clog(ClientDetail) << "Nonce at " << _dest << " pre:" << m_preMine.transactionsFrom(_dest) << " post:" << m_postMine.transactionsFrom(_dest);
 		DEV_READ_GUARDED(x_postMine)
 			temp = m_postMine;
-		temp.addBalance(_from, _value + _gasPrice * _gas);
-		Executive e(temp, LastHashes(), 0);
+		temp.mutableState().addBalance(_from, _value + _gasPrice * _gas);
+		Executive e(temp);
 		e.setResultRecipient(ret);
 		if (!e.call(_dest, _from, _value, _gasPrice, &_data, _gas))
 			e.go();
@@ -615,14 +616,14 @@ void Client::resyncStateFromChain()
 	if (!isMajorSyncing())
 	{
 		bool preChanged = false;
-		State newPreMine;
+		Block newPreMine;
 		DEV_READ_GUARDED(x_preMine)
 			newPreMine = m_preMine;
 
 		// TODO: use m_postMine to avoid re-evaluating our own blocks.
 		preChanged = newPreMine.sync(bc());
 
-		if (preChanged || m_postMine.address() != m_preMine.address())
+		if (preChanged || m_postMine.beneficiary() != m_preMine.beneficiary())
 		{
 			if (isMining())
 				clog(ClientTrace) << "New block on chain.";
@@ -710,7 +711,7 @@ void Client::rejigMining()
 	{
 		clog(ClientTrace) << "Rejigging mining...";
 		DEV_WRITE_GUARDED(x_working)
-			m_working.commitToMine(bc(), m_extraData);
+			m_working.commitToSeal(bc(), m_extraData);
 		DEV_READ_GUARDED(x_working)
 		{
 			DEV_WRITE_GUARDED(x_postMine)
@@ -814,56 +815,38 @@ void Client::checkWatchGarbage()
 	}
 }
 
-State Client::asOf(h256 const& _block) const
-{
-	try
-	{
-		State ret(m_stateDB);
-		ret.populateFromChain(bc(), _block);
-		return ret;
-	}
-	catch (Exception& ex)
-	{
-		ex << errinfo_block(bc().block(_block));
-		onBadBlock(ex);
-		return State();
-	}
-}
-
 void Client::prepareForTransaction()
 {
 	startWorking();
 }
 
-State Client::state(unsigned _txi, h256 _block) const
+Block Client::block(h256 const& _blockHash, PopulationStatistics* o_stats) const
 {
 	try
 	{
-		State ret(m_stateDB);
-		ret.populateFromChain(bc(), _block);
-		return ret.fromPending(_txi);
-	}
-	catch (Exception& ex)
-	{
-		ex << errinfo_block(bc().block(_block));
-		onBadBlock(ex);
-		return State();
-	}
-}
-
-State Client::state(h256 const& _block, PopulationStatistics* o_stats) const
-{
-	try
-	{
-		State ret(m_stateDB);
-		PopulationStatistics s = ret.populateFromChain(bc(), _block);
+		Block ret(m_stateDB);
+		PopulationStatistics s = ret.populateFromChain(bc(), _blockHash);
 		if (o_stats)
 			swap(s, *o_stats);
 		return ret;
 	}
 	catch (Exception& ex)
 	{
-		ex << errinfo_block(bc().block(_block));
+		ex << errinfo_block(bc().block(_blockHash));
+		onBadBlock(ex);
+		return Block();
+	}
+}
+
+State Client::state(unsigned _txi, h256 const& _blockHash) const
+{
+	try
+	{
+		return block(_blockHash).fromPending(_txi);
+	}
+	catch (Exception& ex)
+	{
+		ex << errinfo_block(bc().block(_blockHash));
 		onBadBlock(ex);
 		return State();
 	}
