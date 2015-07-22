@@ -313,11 +313,13 @@ void WhisperHost::saveTopicsToDB(string const& _app, string const& _password)
 		rlp.swapOut(plain);
 	}
 
-	// todo: encrypt after tests
+	bytes encrypted;
+	h256 s = sha3(_password);
+	encryptSym(s, &plain, encrypted);
 
 	h256 h = sha3(_app);
 	WhisperDB db(WhisperDB::Filters);
-	db.insert(h, plain);
+	db.insert(h, encrypted);
 }
 
 vector<unsigned> WhisperHost::restoreTopicsFromDB(string const& _app, string const& _password)
@@ -327,9 +329,11 @@ vector<unsigned> WhisperHost::restoreTopicsFromDB(string const& _app, string con
 	WhisperDB db(WhisperDB::Filters);
 	string raw = db.lookup(h);
 
-	// todo: decrypt after tests
+	bytes plain;
+	h256 s = sha3(_password);
+	decryptSym(s, raw, plain);
 
-	RLP rlp(raw);
+	RLP rlp(plain);
 	auto sz = rlp.itemCountStrict();
 
 	for (unsigned i = 0; i < sz; ++i)

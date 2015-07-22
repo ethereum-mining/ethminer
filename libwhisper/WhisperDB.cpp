@@ -93,6 +93,9 @@ void WhisperDB::kill(dev::h256 const& _key)
 
 void WhisperDB::loadAllMessages(std::map<h256, Envelope>& o_dst)
 {
+	if (m_type != Messages)
+		BOOST_THROW_EXCEPTION(WrongTypeLevelDB());
+
 	leveldb::ReadOptions op;
 	op.fill_cache = false;
 	op.verify_checksums = true;
