@@ -40,6 +40,7 @@ BOOST_FIXTURE_TEST_SUITE(p2p, P2PFixture)
 
 BOOST_AUTO_TEST_CASE(host)
 {
+	cnote << "p2p/host...";
 	if (test::Options::get().nonetwork)
 		return;
 
@@ -73,6 +74,7 @@ BOOST_AUTO_TEST_CASE(host)
 
 BOOST_AUTO_TEST_CASE(networkConfig)
 {
+	cnote << "p2p/networkConfig...";
 	if (test::Options::get().nonetwork)
 		return;
 
@@ -85,6 +87,7 @@ BOOST_AUTO_TEST_CASE(networkConfig)
 
 BOOST_AUTO_TEST_CASE(saveNodes)
 {
+	cnote << "p2p/saveNodes...";
 	if (test::Options::get().nonetwork)
 		return;
 
