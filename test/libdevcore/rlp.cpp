@@ -30,8 +30,8 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <algorithm>
-#include "../JsonSpiritHeaders.h"
-#include "../TestHelper.h"
+#include "test/JsonSpiritHeaders.h"
+#include "test/TestHelper.h"
 
 using namespace std;
 using namespace dev;
@@ -72,8 +72,6 @@ namespace dev
 						bytes payloadToDecode = fromHex(o["out"].get_str());
 						RLP payload(payloadToDecode);
 						ostringstream() << payload;
-						if (payload.isEmpty())
-							BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("Decoded Empty RLP!"));
 						o["in"] = "VALID";
 					}
 					catch (Exception const& _e)
@@ -129,6 +127,8 @@ namespace dev
 					{
 						bytes payloadToDecode = fromHex(o["out"].get_str());
 						RLP payload(payloadToDecode);
+
+						//attempt to read all the contents of RLP
 						ostringstream() << payload;
 
 						if (rlpType == RlpType::Test)
@@ -142,6 +142,10 @@ namespace dev
 					catch (exception const& _e)
 					{
 						cnote << "rlp exception: " << _e.what();
+						was_exception = true;
+					}
+					catch (...)
+					{
 						was_exception = true;
 					}
 
@@ -237,6 +241,28 @@ namespace dev
 }
 
 BOOST_AUTO_TEST_SUITE(RlpTests)
+
+BOOST_AUTO_TEST_CASE(EmptyArrayList)
+{
+	try
+	{
+		bytes payloadToDecode = fromHex("80");
+		RLP payload(payloadToDecode);
+		ostringstream() << payload;
+
+		payloadToDecode = fromHex("с0");
+		RLP payload2(payloadToDecode);
+		ostringstream() << payload2;
+	}
+	catch (Exception const& _e)
+	{
+		TBOOST_ERROR("Failed test with Exception: " << _e.what());
+	}
+	catch (exception const& _e)
+	{
+		TBOOST_ERROR("Failed test with Exception: " << _e.what());
+	}
+}
 
 BOOST_AUTO_TEST_CASE(invalidRLPtest)
 {
