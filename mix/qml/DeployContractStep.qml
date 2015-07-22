@@ -13,6 +13,7 @@ Rectangle {
 	property variant worker
 	property variant gas: []
 	color: "#E3E3E3E3"
+	signal deployed
 	anchors.fill: parent
 	id: root
 
@@ -460,6 +461,25 @@ Rectangle {
 				Layout.alignment: Qt.BottomEdge
 				Button
 				{
+					Layout.preferredHeight: 22
+					anchors.right: deployBtn.left
+					text: qsTr("Reset")
+					action: clearDeployAction
+				}
+
+				Action {
+					id: clearDeployAction
+					onTriggered: {
+						worker.forceStopPooling()
+						fileIo.deleteDir(projectModel.deploymentDir)
+						projectModel.cleanDeploymentStatus()
+						deploymentDialog.steps.reset()
+					}
+				}
+
+				Button
+				{
+					id: deployBtn
 					anchors.right: parent.right
 					text: qsTr("Deploy Contracts")
 					onClicked:
@@ -473,6 +493,7 @@ Rectangle {
 								projectModel.deployBlockNumber = nb
 								projectModel.saveProject()
 								root.updateVerification(nb, trLost)
+								root.deployed()
 							})
 							projectModel.deploymentAddresses = addresses
 							projectModel.saveProject()

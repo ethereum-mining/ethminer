@@ -22,6 +22,7 @@ Dialog {
 	property alias packageStep: packageStep
 	property alias registerStep: registerStep
 	property alias worker: worker
+	property alias steps: steps
 
 	function close()
 	{
