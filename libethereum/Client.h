@@ -340,13 +340,8 @@ public:
 		WithExisting _forceAction = WithExisting::Trust,
 		u256 _networkId = 0
 	):
-		Client(_gpForAdoption),
-		m_bc(_dbPath, _forceAction, [](unsigned d, unsigned t){ std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; })
+		SpecialisedClient(_gpForAdoption, _dbPath, _forceAction)
 	{
-		m_sealEngine = std::shared_ptr<SealEngineFace>(Ethash::createSealEngine());
-		m_sealEngine->onSealGenerated([=](bytes const& header){
-			this->submitSealed(header);
-		});
 		init(_host, _dbPath, _forceAction, _networkId);
 	}
 
@@ -356,10 +351,24 @@ public:
 	CanonBlockChain<Sealer> const& blockChain() const { return m_bc; }
 
 protected:
+	explicit SpecialisedClient(
+		std::shared_ptr<GasPricer> _gpForAdoption,
+		std::string const& _dbPath = std::string(),
+		WithExisting _forceAction = WithExisting::Trust,
+	):
+		Client(_gpForAdoption),
+		m_bc(_dbPath, _forceAction, [](unsigned d, unsigned t){ std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; })
+	{
+		m_sealEngine = std::shared_ptr<SealEngineFace>(Ethash::createSealEngine());
+		m_sealEngine->onSealGenerated([=](bytes const& header){
+			this->submitSealed(header);
+		});
+	}
+
 	virtual BlockChain& bc() override { return m_bc; }
 	virtual BlockChain const& bc() const override { return m_bc; }
 
-protected:
+private:
 	CanonBlockChain<Sealer> m_bc;			///< Maintains block database.
 };
 
@@ -373,9 +382,11 @@ public:
 		std::string const& _dbPath = std::string(),
 		WithExisting _forceAction = WithExisting::Trust,
 		u256 _networkId = 0
-	): SpecialisedClient<Ethash>(_host, _gpForAdoption, _dbPath, _forceAction, _networkId) {}
-
-	virtual ~EthashClient() { stopWorking(); }
+	):
+		SpecialisedClient<Ethash>(_gpForAdoption, _dbPath, _forceAction)
+	{
+		init(_host, _dbPath, _forceAction, _networkId);
+	}
 
 	/// Update to the latest transactions and get hash of the current block to be mined minus the
 	/// nonce (the 'work hash') and the difficulty to be met.
@@ -387,10 +398,6 @@ public:
 	 * @return true if the solution was indeed valid and accepted.
 	 */
 	virtual bool submitEthashWork(h256 const& _mixHash, h64 const& _nonce) override;
-
-protected:
-	virtual BlockChain& bc() override { return m_bc; }
-	virtual BlockChain const& bc() const override { return m_bc; }
 };
 
 }
