@@ -19,6 +19,7 @@ Rectangle {
 	id: root
 	color: "#E3E3E3E3"
 	anchors.fill: parent
+	signal registered
 
 	function show()
 	{
@@ -286,6 +287,7 @@ Rectangle {
 							projectModel.registerUrlBlockNumber = bn
 							projectModel.saveProject()
 							root.updateVerification(bn, bn, trLost, verificationUrl)
+							root.registered()
 						});
 					})
 				})

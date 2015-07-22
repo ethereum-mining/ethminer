@@ -21,6 +21,15 @@ Item
 	property variant accounts: []
 	signal gasPriceLoaded()
 
+	function highGasPrice()
+	{
+		var hex = deploymentDialog.worker.gasPriceInt.multiply(QEtherHelper.createBigInt(10)).hexValue();
+		if (hex.indexOf("0x") !== -1)
+			return hex
+		else
+			return "0x" + hex
+	}
+
 	function renewCtx()
 	{
 		accounts = []
@@ -206,7 +215,7 @@ Item
 		property var callBack
 		property int elapsed
 		property string hash
-		interval: 500
+		interval: 2000
 		running: false
 		repeat: true
 		onTriggered: {
@@ -227,7 +236,7 @@ Item
 					stop();
 					callBack(1, receipt);
 				}
-				else if (elapsed > 250000)
+				else if (elapsed > 2500000)
 				{
 					stop();
 					callBack(-1, null);

@@ -117,9 +117,15 @@ ColumnLayout {
 
 	RowLayout
 	{
+		Layout.preferredHeight: 10
+	}
+
+	RowLayout
+	{
 		id: header
 		spacing: 0
 		Layout.preferredHeight: 24
+		visible: false
 		Rectangle
 		{
 			Layout.preferredWidth: statusWidth
