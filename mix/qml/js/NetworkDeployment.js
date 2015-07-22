@@ -296,7 +296,7 @@ function packageDapp(addresses)
 	deploymentDialog.packageStep.packageBase64 = packageRet[1];
 	deploymentDialog.packageStep.localPackageUrl = packageRet[2] + "?hash=" + packageRet[0];
 	deploymentDialog.packageStep.lastDeployDate = date
-	deploymentComplete()
+	deploymentStepChanged(qsTr("Dapp is Packaged"))
 }
 
 function registerDapp(url, callback)
@@ -305,7 +305,7 @@ function registerDapp(url, callback)
 	checkEthPath(url, false, function (success) {
 		if (!success)
 			return;
-		deploymentComplete();
+		deploymentStepChanged(qsTr("Dapp has been registered. Please wait for verifications."));
 		if (callback)
 			callback()
 	});
@@ -549,7 +549,7 @@ function registerToUrlHint(url, callback)
 
 		rpcCall(requests, function (httpRequest, response) {
 			projectModel.registerUrlTrHash = JSON.parse(response)[0].result
-			deploymentComplete();
+			deploymentStepChanged(qsTr("Dapp resources has been registered. Please wait for verifications."));
 			if (callback)
 				callback()
 		});

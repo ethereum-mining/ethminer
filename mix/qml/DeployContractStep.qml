@@ -366,92 +366,78 @@ Rectangle {
 					}
 				}
 
-				RowLayout
+				Rectangle
 				{
-					id: deployedRow
+					border.color: "#cccccc"
+					border.width: 2
 					Layout.fillWidth: true
-					Rectangle
+					Layout.preferredHeight: parent.height + 25
+					color: "transparent"
+					ScrollView
 					{
-						width: labelWidth
-						Label
+						anchors.fill: parent
+						ColumnLayout
 						{
-							id: labelAddresses
-							text: qsTr("Deployed Contracts")
-							anchors.right: parent.right
-							anchors.verticalCenter: parent.verticalCenter
-						}
-					}
-
-					ColumnLayout
-					{
-						anchors.top: parent.top
-						anchors.topMargin: 1
-						ListModel
-						{
-							id: deployedAddrModel
-						}
-
-						Repeater
-						{
-							id: deployedAddresses
-							model: deployedAddrModel
-							function refresh()
+							RowLayout
 							{
-								deployedAddrModel.clear()
-								deployedRow.visible = Object.keys(projectModel.deploymentAddresses).length > 0
-								for (var k in projectModel.deploymentAddresses)
+								id: deployedRow
+								Layout.fillWidth: true
+								Rectangle
 								{
-									if (k.indexOf("-") !== -1) // this is an contract instance. ctr without - are the last deployed (to support old project)
-										deployedAddrModel.append({ id: k, value: projectModel.deploymentAddresses[k]})
+									width: labelWidth
+									Label
+									{
+										id: labelAddresses
+										text: qsTr("Deployed Contracts")
+										anchors.right: parent.right
+										anchors.verticalCenter: parent.verticalCenter
+									}
+								}
+
+								ColumnLayout
+								{
+									anchors.top: parent.top
+									anchors.topMargin: 1
+									width: parent.width
+									id: deployedAddresses
+									function refresh()
+									{
+										textAddresses.text = ""
+										deployedRow.visible = Object.keys(projectModel.deploymentAddresses).length > 0
+										textAddresses.text = JSON.stringify(projectModel.deploymentAddresses, null, ' ')
+									}
+									TextArea
+									{
+										anchors.fill: parent
+										id: textAddresses
+									}
 								}
 							}
 
-							Rectangle
+							RowLayout
 							{
-								Layout.preferredHeight: 20
-								Layout.preferredWidth: 235
-								color: "transparent"
-								Label
+								id: verificationRow
+								Layout.fillWidth: true
+								visible: Object.keys(projectModel.deploymentAddresses).length > 0
+								Rectangle
 								{
-									id: labelContract
-									width: 112
-									elide: Text.ElideRight
-									text: index > -1 ? deployedAddrModel.get(index).id : ""
+									width: labelWidth
+									Label
+									{
+										text: qsTr("Verifications")
+										anchors.right: parent.right
+										anchors.verticalCenter: parent.verticalCenter
+									}
 								}
 
-								TextField
+								TextArea
 								{
-									width: 123
-									anchors.verticalCenter: parent.verticalCenter
-									anchors.left: labelContract.right
-									text:  index > - 1 ? deployedAddrModel.get(index).value : ""
+									id: verificationLabel
 								}
 							}
 						}
 					}
-				}
 
-				RowLayout
-				{
-					id: verificationRow
-					Layout.fillWidth: true
-					visible: Object.keys(projectModel.deploymentAddresses).length > 0
-					Rectangle
-					{
-						width: labelWidth
-						Label
-						{
-							text: qsTr("Verifications")
-							anchors.right: parent.right
-							anchors.verticalCenter: parent.verticalCenter
-						}
-					}
-
-					Label
-					{
-						id: verificationLabel
-						maximumLineCount: 20
-					}
 				}
 			}
 
