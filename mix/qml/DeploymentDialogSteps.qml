@@ -74,6 +74,7 @@ Rectangle {
 	{
 		anchors.fill: parent
 		anchors.margins: 1
+		spacing: 0
 		Repeater
 		{
 			id: menu
@@ -225,37 +226,11 @@ Rectangle {
 			}
 		}
 
-
-
-		RowLayout
+		Rectangle
 		{
-			anchors.horizontalCenter: parent.horizontalCenter
-			Layout.preferredHeight: 20
-			anchors.left: parent.left
-			spacing: 0
-
-			Button
-			{
-				action: clearAction
-				text: qsTr("Clear Messages")
-			}
-
-			Action {
-				id: clearAction
-				enabled: log.text !== ""
-				tooltip: qsTr("Clear")
-				onTriggered: {
-					deployLogs.logs[root.sel] = ""
-					log.text = deployLogs.logs[root.sel]
-				}
-			}
-
-			Rectangle
-			{
-				Layout.fillWidth: true
-				Layout.preferredHeight: 1
-				color: "#cccccc"
-			}
+			Layout.fillWidth: true
+			Layout.preferredHeight: 2
+			color: "#cccccc"
 		}
 
 		ScrollView
@@ -271,6 +246,47 @@ Rectangle {
 				id: log
 			}
 		}
+
+		Rectangle
+		{
+			Layout.preferredHeight: 20
+			Layout.fillWidth: true
+			color: "#cccccc"
+			LogsPaneStyle
+			{
+				id: style
+			}
+
+			Label
+			{
+				anchors.horizontalCenter: parent.horizontalCenter
+				anchors.verticalCenter: parent.verticalCenter
+				text: qsTr("Logs")
+				font.italic: true
+				font.pointSize: style.absoluteSize(-1)
+			}
+
+			Button
+			{
+				height: 20
+				width: 20
+				anchors.right: parent.right
+				action: clearAction
+				iconSource: "qrc:/qml/img/cleariconactive.png"
+				tooltip: qsTr("Clear Messages")
+			}
+
+			Action {
+				id: clearAction
+				enabled: log.text !== ""
+				tooltip: qsTr("Clear")
+				onTriggered: {
+					deployLogs.logs[root.sel] = ""
+					log.text = deployLogs.logs[root.sel]
+				}
+			}
+		}
+
 	}
 }
 

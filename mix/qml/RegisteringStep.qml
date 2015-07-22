@@ -156,9 +156,12 @@ Rectangle {
 						NetworkDeploymentCode.checkPathCreationCost(applicationUrlEthCtrl.text, function(pathCreationCost)
 						{
 							var ether = QEtherHelper.createBigInt(pathCreationCost);
-							var gasTotal = ether.multiply(deploymentDialog.deployStep.gasPrice.value.toWei());
-							gasToUseDeployInput.value = QEtherHelper.createEther(gasTotal.value(), QEther.Wei, parent);
-							gasToUseDeployInput.update();
+							if (deploymentDialog.deployStep.gasPrice.value)
+							{
+								var gasTotal = ether.multiply(deploymentDialog.deployStep.gasPrice.value.toWei());
+								gasToUseDeployInput.value = QEtherHelper.createEther(gasTotal.value(), QEther.Wei, parent);
+								gasToUseDeployInput.update();
+							}
 						});
 					}
 				}
