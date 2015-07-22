@@ -193,17 +193,23 @@ bytes dev::decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _ci
 	}
 }
 
+static const Public c_zeroKey = toPublic(Secret());
+
 Public dev::recover(Signature const& _sig, h256 const& _message)
 {
+	Public ret;
 #ifdef ETH_HAVE_SECP256K1
 	bytes o(65);
 	int pubkeylen;
 	if (!secp256k1_ecdsa_recover_compact(_message.data(), h256::size, _sig.data(), o.data(), &pubkeylen, false, _sig[64]))
 		return Public();
-	return FixedHash<64>(o.data()+1, Public::ConstructFromPointer);
+	ret = FixedHash<64>(o.data()+1, Public::ConstructFromPointer);
 #else
-	return s_secp256k1pp.recover(_sig, _message.ref());
+	ret = s_secp256k1pp.recover(_sig, _message.ref());
 #endif
+	if (ret == c_zeroKey)
+		return Public();
+	return ret;
 }
 
 Signature dev::sign(Secret const& _k, h256 const& _hash)
