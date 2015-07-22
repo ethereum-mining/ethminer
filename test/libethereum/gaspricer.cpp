@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE(trivialGasPricer)
 	std::shared_ptr<dev::eth::GasPricer> gp(new TrivialGasPricer);
 	BOOST_CHECK_EQUAL(gp->ask(State()), c_defaultGasPrice);
 	BOOST_CHECK_EQUAL(gp->bid(), c_defaultGasPrice);
-	gp->update(CanonBlockChain<Ethash>(TransientDirectory().path(), WithExisting::Kill));
+	gp->update(CanonBlockChain<Ethash>(bytes(), AccountMap(), TransientDirectory().path(), WithExisting::Kill));
 	BOOST_CHECK_EQUAL(gp->ask(State()), c_defaultGasPrice);
 	BOOST_CHECK_EQUAL(gp->bid(), c_defaultGasPrice);
 }

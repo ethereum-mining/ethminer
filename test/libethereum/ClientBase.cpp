@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE(blocks)
 				h256 expectedBlockInfoTransactionsRoot = h256(fromHex(_b["transactionsTrie"].asString()));
 				h256 expectedBlockInfoUncldeHash = h256(fromHex(_b["uncleHash"].asString()));
 				ETH_CHECK_EQUAL(expectedBlockInfoBloom, _blockInfo.logBloom());
-				ETH_CHECK_EQUAL(expectedBlockInfoCoinbase, _blockInfo.coinbaseAddress());
+				ETH_CHECK_EQUAL(expectedBlockInfoCoinbase, _blockInfo.beneficiary());
 				ETH_CHECK_EQUAL(expectedBlockInfoDifficulty, _blockInfo.difficulty());
 				ETH_CHECK_EQUAL_COLLECTIONS(
 					expectedBlockInfoExtraData.begin(),

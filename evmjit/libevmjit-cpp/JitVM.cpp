@@ -41,7 +41,7 @@ bytesConstRef JitVM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _on
 	m_data.caller       = eth2jit(fromAddress(_ext.caller));
 	m_data.origin       = eth2jit(fromAddress(_ext.origin));
 	m_data.callValue    = eth2jit(_ext.value);
-	m_data.coinBase     = eth2jit(fromAddress(_ext.currentBlock.coinbaseAddress()));
+	m_data.coinBase     = eth2jit(fromAddress(_ext.currentBlock.beneficiary()));
 	m_data.difficulty   = eth2jit(_ext.currentBlock.difficulty());
 	m_data.gasLimit     = eth2jit(_ext.currentBlock.gasLimit());
 	m_data.number 		= static_cast<decltype(m_data.number)>(_ext.currentBlock.number());

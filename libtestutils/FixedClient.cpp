@@ -25,10 +25,10 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 
-eth::State FixedClient::asOf(h256 const& _h) const
+Block FixedClient::asOf(h256 const& _h) const
 {
 	ReadGuard l(x_stateDB);
-	State ret(m_state.db());
+	Block ret(m_block.db());
 	ret.populateFromChain(bc(), _h);
 	return ret;
 }

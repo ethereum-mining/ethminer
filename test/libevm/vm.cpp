@@ -86,7 +86,7 @@ mObject FakeExtVM::exportEnv()
 	ret["previousHash"] = toString(currentBlock.parentHash());
 	ret["currentDifficulty"] = toCompactHex(currentBlock.difficulty(), HexPrefix::Add, 1);
 	ret["currentTimestamp"] =  toCompactHex(currentBlock.timestamp(), HexPrefix::Add, 1);
-	ret["currentCoinbase"] = toString(currentBlock.coinbaseAddress());
+	ret["currentCoinbase"] = toString(currentBlock.beneficiary());
 	ret["currentNumber"] = toCompactHex(currentBlock.number(), HexPrefix::Add, 1);
 	ret["currentGasLimit"] = toCompactHex(currentBlock.gasLimit(), HexPrefix::Add, 1);
 	return ret;
