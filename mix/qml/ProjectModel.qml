@@ -80,7 +80,7 @@ Item {
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
 	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
 	function deployProject() { NetworkDeploymentCode.deployProject(false); }
-	function registerToUrlHint(url, callback) { NetworkDeploymentCode.registerToUrlHint(url, callback); }
+	function registerToUrlHint(url, gasPrice, callback) { NetworkDeploymentCode.registerToUrlHint(url, gasPrice, callback); }
 	function formatAppUrl() { NetworkDeploymentCode.formatAppUrl(url); }
 
 	function cleanDeploymentStatus()
