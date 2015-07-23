@@ -68,7 +68,7 @@ ColumnLayout
 					fillMode: Image.PreserveAspectFit
 					anchors.left: parent.left
 					anchors.top: parent.top
-					anchors.topMargin: 4
+					anchors.topMargin: 5
 					id: editImg
 					MouseArea
 					{
@@ -88,7 +88,7 @@ ColumnLayout
 					color: "#cccccc"
 					id: deleteImg
 					anchors.top: parent.top
-					anchors.topMargin: 6
+					anchors.topMargin: 5
 					visible: projectModel.stateListModel.count > 1
 					MouseArea
 					{
