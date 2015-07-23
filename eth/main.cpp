@@ -1148,6 +1148,10 @@ int main(int argc, char** argv)
 		beneficiary = config[1].toHash<Address>();
 	}
 
+	// do this here so that --genesis-json can actually override it.
+	if (!contents(getDataDir() + "/genesis.json").empty())
+		CanonBlockChain<Ethash>::setGenesis(contentsString(getDataDir() + "/genesis.json"));
+
 	MinerCLI m(MinerCLI::OperationMode::None);
 
 	for (int i = 1; i < argc; ++i)
@@ -1306,11 +1310,11 @@ int main(int argc, char** argv)
 		}
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
-		else if (arg == "--genesis-nonce" && i + 1 < argc)
+		else if (arg == "--genesis-json" && i + 1 < argc)
 		{
 			try
 			{
-				CanonBlockChain<Ethash>::setGenesisNonce(Nonce(argv[++i]));
+				CanonBlockChain<Ethash>::setGenesis(contentsString(argv[++i]));
 			}
 			catch (...)
 			{

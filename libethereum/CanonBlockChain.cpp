@@ -63,8 +63,35 @@ bytes CanonBlockChain<Ethash>::createGenesisBlock()
 		stateRoot = state.root();
 	}
 
+	js::mValue val;
+	json_spirit::read_string(s_genesisStateJSON.empty() ? c_genesisInfo : s_genesisStateJSON, val);
+	js::mObject genesis = val.get_obj();
+
+	h256 mixHash(genesis["mixhash"].get_str());
+	h256 parentHash(genesis["parentHash"].get_str());
+	h160 beneficiary(genesis["coinbase"].get_str());
+	u256 difficulty = fromBigEndian<u256>(fromHex(genesis["difficulty"].get_str()));
+	u256 gasLimit = fromBigEndian<u256>(fromHex(genesis["gasLimit"].get_str()));
+	u256 timestamp = fromBigEndian<u256>(fromHex(genesis["timestamp"].get_str()));
+	bytes extraData = fromHex(genesis["extraData"].get_str());
+	h64 nonce(genesis["nonce"].get_str());
+
 	block.appendList(15)
-			<< h256() << EmptyListSHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << c_genesisGasLimit << 0 << (unsigned)0 << string() << h256() << s_nonce;
+			<< parentHash
+			<< EmptyListSHA3	// sha3(uncles)
+			<< beneficiary
+			<< stateRoot
+			<< EmptyTrie	// transactions
+			<< EmptyTrie	// receipts
+			<< LogBloom()
+			<< difficulty
+			<< 0	// number
+			<< gasLimit
+			<< 0	// gasUsed
+			<< timestamp
+			<< extraData
+			<< mixHash
+			<< nonce;
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
@@ -78,7 +105,7 @@ unordered_map<Address, Account> CanonBlockChain<Ethash>::createGenesisState()
 	{
 		js::mValue val;
 		json_spirit::read_string(s_genesisStateJSON.empty() ? c_genesisInfo : s_genesisStateJSON, val);
-		for (auto account: val.get_obj())
+		for (auto account: val.get_obj()["alloc"].get_obj())
 		{
 			u256 balance;
 			if (account.second.get_obj().count("wei"))
@@ -97,17 +124,10 @@ unordered_map<Address, Account> CanonBlockChain<Ethash>::createGenesisState()
 	return s_ret;
 }
 
-void CanonBlockChain<Ethash>::setGenesisState(std::string const& _json)
+void CanonBlockChain<Ethash>::setGenesis(std::string const& _json)
 {
 	WriteGuard l(x_genesis);
 	s_genesisStateJSON = _json;
-	s_genesis.reset();
-}
-
-void CanonBlockChain<Ethash>::setGenesisNonce(Nonce const& _n)
-{
-	WriteGuard l(x_genesis);
-	s_nonce = _n;
 	s_genesis.reset();
 }
 

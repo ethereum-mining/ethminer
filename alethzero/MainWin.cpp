@@ -189,6 +189,9 @@ Main::Main(QWidget *parent) :
 #endif
 	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
 
+	if (!dev::contents(getDataDir() + "/genesis.json").empty())
+		CanonBlockChain<Ethash>::setGenesis(contentsString(getDataDir() + "/genesis.json"));
+
 	cerr << "State root: " << CanonBlockChain<Ethash>::genesis().stateRoot() << endl;
 	auto block = CanonBlockChain<Ethash>::createGenesisBlock();
 	cerr << "Block Hash: " << CanonBlockChain<Ethash>::genesis().hash() << endl;
