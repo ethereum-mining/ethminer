@@ -117,47 +117,7 @@ ColumnLayout {
 
 	RowLayout
 	{
-		id: header
-		spacing: 0
-		Layout.preferredHeight: 24
-		Rectangle
-		{
-			Layout.preferredWidth: statusWidth
-			Layout.preferredHeight: parent.height
-			color: "transparent"
-			Image {
-				id: debugImage
-				anchors.verticalCenter: parent.verticalCenter
-				anchors.horizontalCenter: parent.horizontalCenter
-				source: "qrc:/qml/img/recycleicon@2x.png"
-				width: statusWidth + 10
-				fillMode: Image.PreserveAspectFit
-			}
-		}
-		Rectangle
-		{
-			anchors.verticalCenter: parent.verticalCenter
-			Layout.preferredWidth: fromWidth
-			Label
-			{
-				anchors.verticalCenter: parent.verticalCenter
-				text: "From"
-				anchors.left: parent.left
-				anchors.leftMargin: horizontalMargin
-			}
-		}
-		Label
-		{
-			text: "To"
-			anchors.verticalCenter: parent.verticalCenter
-			Layout.preferredWidth: toWidth + cellSpacing
-		}
-		Label
-		{
-			text: ""
-			anchors.verticalCenter: parent.verticalCenter
-			Layout.preferredWidth: debugActionWidth
-		}
+		Layout.preferredHeight: 10
 	}
 
 	Rectangle
@@ -177,18 +137,6 @@ ColumnLayout {
 				id: blockChainLayout
 				width: parent.width
 				spacing: 20
-
-				Block
-				{
-					scenario: blockChainPanel.model
-					Layout.preferredWidth: blockChainScrollView.width
-					Layout.preferredHeight: 60
-					blockIndex: -1
-					transactions: []
-					status: ""
-					number: -2
-					trHeight: 60
-				}
 
 				Repeater // List of blocks
 				{
