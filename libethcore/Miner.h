@@ -84,6 +84,7 @@ public:
 		m_farm(_ci.first),
 		m_index(_ci.second)
 	{}
+	virtual ~GenericMiner() {}
 
 	// API FOR THE FARM TO CALL IN WITH
 
