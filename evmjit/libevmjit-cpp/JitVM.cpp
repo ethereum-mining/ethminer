@@ -60,8 +60,6 @@ bytesConstRef JitVM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _on
 		_ext.suicide(right160(jit2eth(m_data.address)));
 		break;
 
-	case evmjit::ReturnCode::BadJumpDestination:
-		BOOST_THROW_EXCEPTION(BadJumpDestination());
 	case evmjit::ReturnCode::OutOfGas:
 		BOOST_THROW_EXCEPTION(OutOfGas());
 	case evmjit::ReturnCode::StackUnderflow: // FIXME: Remove support for detail errors
