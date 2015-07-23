@@ -62,10 +62,6 @@ bytesConstRef JitVM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _on
 
 	case evmjit::ReturnCode::OutOfGas:
 		BOOST_THROW_EXCEPTION(OutOfGas());
-	case evmjit::ReturnCode::StackUnderflow: // FIXME: Remove support for detail errors
-		BOOST_THROW_EXCEPTION(StackUnderflow());
-	case evmjit::ReturnCode::BadInstruction:
-		BOOST_THROW_EXCEPTION(BadInstruction());
 	case evmjit::ReturnCode::LinkerWorkaround:	// never happens
 		env_sload();					// but forces linker to include env_* JIT callback functions
 		break;
