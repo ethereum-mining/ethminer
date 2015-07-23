@@ -217,6 +217,17 @@ void Client::onBadBlock(Exception& _ex) const
 		report["hints"]["ethashResult"]["value"] = get<0>(*r).hex();
 		report["hints"]["ethashResult"]["mixHash"] = get<1>(*r).hex();
 	}
+	if (bytes const* ed = boost::get_error_info<errinfo_extraData>(_ex))
+	{
+		RLP r(*ed);
+		report["hints"]["extraData"] = toHex(*ed);
+		try
+		{
+			if (r[0].toInt<int>() == 0)
+				report["hints"]["minerVersion"] = r[1].toString();
+		}
+		catch (...) {}
+	}
 	DEV_HINT_ERRINFO(required);
 	DEV_HINT_ERRINFO(got);
 	DEV_HINT_ERRINFO_HASH(required_LogBloom);

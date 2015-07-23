@@ -423,6 +423,7 @@ public:
 		if (_ir && ImportRequirements::UncleBasic)
 			for (auto const& uncle: r[2])
 			{
+				BlockHeader h;
 				try
 				{
 					h.populateFromHeader(RLP(uncle.data()), (_ir & ImportRequirements::UncleSeals) ? Strictness::CheckEverything : Strictness::IgnoreSeal);
