@@ -355,9 +355,14 @@ else()
 endif()
 
 if (EVMJIT)
-	if (CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT DEFINED LLVM_DIR)
-		set(LLVM_DIR "${CMAKE_SOURCE_DIR}/extdep/install/windows/x64/share/llvm/cmake")
+	if (NOT DEFINED LLVM_DIR)
+		if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+			set(LLVM_DIR "${CMAKE_SOURCE_DIR}/extdep/install/windows/x64/share/llvm/cmake")
+		elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+			set(LLVM_DIR "/usr/local/opt/llvm/share/llvm/cmake")
+		endif()
 	endif()
+
 	set(EVMJIT_CPP TRUE) # include CPP-JIT connector
 	add_subdirectory(evmjit)
 	if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
