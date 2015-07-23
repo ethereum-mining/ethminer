@@ -380,6 +380,7 @@ public:
 	};
 
 	MinerType minerType() const { return m_minerType; }
+	bool shouldPrecompute() const { return m_precompute; }
 
 private:
 	void doInitDAG(unsigned _n)
