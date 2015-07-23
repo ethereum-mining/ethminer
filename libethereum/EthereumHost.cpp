@@ -84,7 +84,7 @@ bool EthereumHost::ensureInitialised()
 
 void EthereumHost::reset()
 {
-	Guard l(x_sync);
+	RecursiveGuard l(x_sync);
 	if (m_sync)
 		m_sync->abortSync();
 	m_sync.reset();
@@ -118,7 +118,7 @@ void EthereumHost::doWork()
 
 	if (m_syncStart)
 	{
-		DEV_GUARDED(x_sync)
+		DEV_RECURSIVE_GUARDED(x_sync)
 			if (!m_sync)
 			{
 				time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
@@ -288,46 +288,41 @@ BlockChainSync* EthereumHost::sync()
 
 void EthereumHost::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
 {
-	Guard l(x_sync);
+	RecursiveGuard l(x_sync);
 	if (sync())
 		sync()->onPeerStatus(_peer);
 }
 
 void EthereumHost::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
 {
-	Guard l(x_sync);
+	RecursiveGuard l(x_sync);
 	if (sync())
 		sync()->onPeerHashes(_peer, _hashes);
 }
 
 void EthereumHost::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
-	Guard l(x_sync);
+	RecursiveGuard l(x_sync);
 	if (sync())
 		sync()->onPeerBlocks(_peer, _r);
 }
 
 void EthereumHost::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
 {
-	Guard l(x_sync);
+	RecursiveGuard l(x_sync);
 	if (sync())
 		sync()->onPeerNewHashes(_peer, _hashes);
 }
 
 void EthereumHost::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
-	Guard l(x_sync);
+	RecursiveGuard l(x_sync);
 	if (sync())
 		sync()->onPeerNewBlock(_peer, _r);
 }
 
 void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
-	if (_peer->isCriticalSyncing())
-	{
-		clog(EthereumHostTrace) << "Ignoring transaction from peer we are syncing with";
-		return;
-	}
 	unsigned itemCount = _r.itemCount();
 	clog(EthereumHostTrace) << "Transactions (" << dec << itemCount << "entries)";
 	m_tq.enqueue(_r, _peer->session()->id());
@@ -335,7 +330,7 @@ void EthereumHost::onPeerTransactions(std::shared_ptr<EthereumPeer> _peer, RLP c
 
 void EthereumHost::onPeerAborting()
 {
-	Guard l(x_sync);
+	RecursiveGuard l(x_sync);
 	try
 	{
 		if (m_sync)
@@ -349,7 +344,7 @@ void EthereumHost::onPeerAborting()
 
 bool EthereumHost::isSyncing() const
 {
-	Guard l(x_sync);
+	RecursiveGuard l(x_sync);
 	if (!m_sync)
 		return false;
 	return m_sync->isSyncing();
@@ -357,7 +352,7 @@ bool EthereumHost::isSyncing() const
 
 SyncStatus EthereumHost::status() const
 {
-	Guard l(x_sync);
+	RecursiveGuard l(x_sync);
 	if (!m_sync)
 		return SyncStatus();
 	return m_sync->status();

@@ -8,7 +8,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${CRYPTOPP_INCLUDE_DIRS})
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 
-add_executable(createRandomTest "./createRandomTest.cpp" "../TestHelper.cpp" "../Stats.cpp" "fuzzHelper.cpp" "../libethereum/transaction.cpp" "../libethereum/state.cpp" "../libevm/vm.cpp" "../libethereum/blockchain.cpp")
+add_executable(createRandomTest "./createRandomTest.cpp" "../TestHelper.cpp" "../Stats.cpp" "fuzzHelper.cpp" "../libethereum/transaction.cpp" "../libethereum/state.cpp" "../libevm/vm.cpp" "../libethereum/blockchain.cpp" "../libdevcore/rlp.cpp")
 
 add_executable(createRandomVMTest "./createRandomVMTest.cpp" "../libevm/vm.cpp" "../TestHelper.cpp" "../Stats.cpp")
 add_executable(createRandomStateTest "./createRandomStateTest.cpp" "../TestHelper.cpp" "../Stats.cpp" "fuzzHelper.cpp")
