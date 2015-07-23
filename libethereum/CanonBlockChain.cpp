@@ -38,8 +38,6 @@ using namespace dev;
 using namespace dev::eth;
 namespace js = json_spirit;
 
-#define ETH_CATCH 1
-
 std::unique_ptr<Ethash::BlockHeader> CanonBlockChain<Ethash>::s_genesis;
 boost::shared_mutex CanonBlockChain<Ethash>::x_genesis;
 Nonce CanonBlockChain<Ethash>::s_nonce(u64(42));
