@@ -241,13 +241,13 @@ void WhisperHost::saveMessagesToBD()
 
 	try
 	{
-		WhisperDB db(WhisperDB::Messages);
+		WhisperMessagesDB db;
 		ReadGuard g(x_messages);
 		unsigned now = (unsigned)time(0);
 		for (auto const& m: m_messages)
 			if (m.second.expiry() > now)
 				if (isWatched(m.second))
-					db.save(m.first, m.second);
+					db.saveSingleMessage(m.first, m.second);
 	}
 	catch(FailedToOpenLevelDB const& ex)
 	{
@@ -271,7 +271,7 @@ void WhisperHost::loadMessagesFromBD()
 	try
 	{
 		map<h256, Envelope> m;
-		WhisperDB db(WhisperDB::Messages);
+		WhisperMessagesDB db;
 		db.loadAllMessages(m);
 		WriteGuard g(x_messages);
 		m_messages.swap(m);
@@ -313,44 +313,11 @@ void WhisperHost::saveTopicsToDB(string const& _app, string const& _password)
 		rlp.swapOut(plain);
 	}
 
+	h256 s = sha3(_app);
+	h256 h = sha3(s);
 	bytes encrypted;
-	h256 s = sha3(_password);
 	encryptSym(s, &plain, encrypted);
 
-	h256 h = sha3(_app);
-	WhisperDB db(WhisperDB::Filters);
+	WhisperFiltersDB db;
 	db.insert(h, encrypted);
-}
-
-vector<unsigned> WhisperHost::restoreTopicsFromDB(string const& _app, string const& _password)
-{
-	vector<unsigned> ret;
-	h256 h = sha3(_app);
-	WhisperDB db(WhisperDB::Filters);
-	string raw = db.lookup(h);
-
-	bytes plain;
-	h256 s = sha3(_password);
-	decryptSym(s, raw, plain);
-
-	RLP rlp(plain);
-	auto sz = rlp.itemCountStrict();
-
-	for (unsigned i = 0; i < sz; ++i)
-	{
-		RLP r = rlp[i];
-		bytesConstRef ref(r.toBytesConstRef());
-		Topics topics;
-		unsigned num = ref.size() / h256::size;
-		for (unsigned j = 0; j < num; ++j)
-		{
-			h256 topic(ref.data() + j * h256::size, h256::ConstructFromPointerType());
-			topics.push_back(topic);
-		}
-
-		unsigned w = installWatch(topics);
-		ret.push_back(w);
-	}	
-
-	return ret;
 }

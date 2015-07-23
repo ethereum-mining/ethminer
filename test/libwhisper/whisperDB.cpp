@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(basic)
 	string const text2 = "ipsum";
 	h256 h1(0xBEEF);
 	h256 h2(0xC0FFEE);
-	WhisperDB db(WhisperDB::Messages);
+	WhisperMessagesDB db;
 
 	db.kill(h1);
 	db.kill(h2);
@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_CASE(persistence)
 	h256 const h2(0xBADD00DE);
 
 	{
-		WhisperDB db(WhisperDB::Messages);
+		WhisperMessagesDB db;
 		db.kill(h1);
 		db.kill(h2);
 		s = db.lookup(h1);
@@ -110,7 +110,7 @@ BOOST_AUTO_TEST_CASE(persistence)
 	this_thread::sleep_for(chrono::milliseconds(20));
 
 	{
-		WhisperDB db(WhisperDB::Messages);
+		WhisperMessagesDB db;
 		db.insert(h1, text1);
 		db.insert(h2, text2);
 	}
@@ -118,7 +118,7 @@ BOOST_AUTO_TEST_CASE(persistence)
 	this_thread::sleep_for(chrono::milliseconds(20));
 
 	{
-		WhisperDB db(WhisperDB::Messages);
+		WhisperMessagesDB db;
 		s = db.lookup(h2);
 		BOOST_REQUIRE(!s.compare(text2));
 		s = db.lookup(h1);
@@ -170,7 +170,7 @@ BOOST_AUTO_TEST_CASE(messages)
 		}
 	}
 
-	WhisperDB db(WhisperDB::Messages);
+	WhisperMessagesDB db;
 	unsigned x = 0;
 
 	for (auto i: m1)
@@ -191,7 +191,7 @@ BOOST_AUTO_TEST_CASE(corruptedData)
 	h256 x = h256::random();
 
 	{
-		WhisperDB db(WhisperDB::Messages);
+		WhisperMessagesDB db;
 		db.insert(x, "this is a test input, representing corrupt data");
 	}
 
@@ -203,7 +203,7 @@ BOOST_AUTO_TEST_CASE(corruptedData)
 	}
 
 	{
-		WhisperDB db(WhisperDB::Messages);
+		WhisperMessagesDB db;
 		string s = db.lookup(x);
 		BOOST_REQUIRE(s.empty());
 	}
@@ -214,7 +214,7 @@ BOOST_AUTO_TEST_CASE(filters)
 	cnote << "Testing filters saving...";
 	VerbosityHolder setTemporaryLevel(2);
 	string const app("test suite whisperDB/filters");
-	string const password("some pseudorandom stuff");
+	string const password("some pseudorandom stuff"); // todo: delete
 
 	{
 		p2p::Host h("Test");
@@ -235,7 +235,9 @@ BOOST_AUTO_TEST_CASE(filters)
 	host1.setIdealPeerCount(1);
 	auto whost1 = host1.registerCapability(new WhisperHost());
 	host1.start();
-	auto ids = whost1->restoreTopicsFromDB(app, password);
+	//auto ids = whost1->restoreTopicsFromDB(app, password); // todo: delete
+	WhisperFiltersDB db;
+	auto ids = db.restoreTopicsFromDB(whost1.get(), app);
 
 	std::thread listener([&]()
 	{
