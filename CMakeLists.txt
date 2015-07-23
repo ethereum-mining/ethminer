@@ -41,7 +41,7 @@ option(TOOLS "Build the tools components" ON)
 option(GUI "Build GUI components (AlethZero, Mix)" ON)
 option(TESTS "Build the tests." ON)
 option(NOBOOST "No use of boost macros in test functions" OFF)
-option(EVMJIT "Build just-in-time compiler for EVM code (requires LLVM)" OFF)
+option(EVMJIT "Build just-in-time compiler for EVM code (requires LLVM)" ON)
 option(ETHASHCL "Build in support for GPU mining via OpenCL" ON)
 option(JSCONSOLE "Build in javascript console" ON)
 
