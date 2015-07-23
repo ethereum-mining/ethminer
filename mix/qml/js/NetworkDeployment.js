@@ -157,7 +157,7 @@ function executeTr(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack)
 		if (tr.contractId === tr.functionId)
 			rpcParams.code = codeModel.contracts[tr.contractId].codeHex + encodedParams.join("");
 		else
-			rpcParams.data = func.qhash() + encodedParams.join("");
+			rpcParams.data = "0x" + func.qhash() + encodedParams.join("");
 
 		var requests = [{
 							jsonrpc: "2.0",
