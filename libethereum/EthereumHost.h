@@ -134,7 +134,7 @@ private:
 	bool m_newTransactions = false;
 	bool m_newBlocks = false;
 
-	mutable Mutex x_sync;
+	mutable RecursiveMutex x_sync;
 	mutable Mutex x_transactions;
 	DownloadMan m_man;
 	std::unique_ptr<BlockChainSync> m_sync;
