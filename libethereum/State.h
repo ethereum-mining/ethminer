@@ -52,6 +52,7 @@ using errinfo_uncleNumber = boost::error_info<struct tag_uncleNumber, u256>;
 using errinfo_unclesExcluded = boost::error_info<struct tag_unclesExcluded, h256Hash>;
 using errinfo_block = boost::error_info<struct tag_block, bytes>;
 using errinfo_now = boost::error_info<struct tag_now, unsigned>;
+using errinfo_extraData = boost::error_info<struct tag_extraData, bytes>;
 
 using errinfo_transactionIndex = boost::error_info<struct tag_transactionIndex, unsigned>;
 

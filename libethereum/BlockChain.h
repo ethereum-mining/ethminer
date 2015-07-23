@@ -393,10 +393,10 @@ public:
 	virtual VerifiedBlockRef verifyBlock(bytesConstRef _block, std::function<void(Exception&)> const& _onBad, ImportRequirements::value _ir) const override
 	{
 		VerifiedBlockRef res;
-
+		BlockHeader h;
 		try
 		{
-			BlockHeader h(_block, (_ir & ImportRequirements::ValidSeal) ? Strictness::CheckEverything : Strictness::QuickNonce);
+			h = BlockHeader(_block, (_ir & ImportRequirements::ValidSeal) ? Strictness::CheckEverything : Strictness::QuickNonce);
 			h.verifyInternals(_block);
 			if ((_ir & ImportRequirements::Parent) != 0)
 			{
@@ -412,6 +412,7 @@ public:
 			ex << errinfo_phase(1);
 			ex << errinfo_now(time(0));
 			ex << errinfo_block(_block.toBytes());
+			ex << errinfo_extraData(h.extraData());
 			if (_onBad)
 				_onBad(ex);
 			throw;
@@ -424,7 +425,7 @@ public:
 			{
 				try
 				{
-					BlockHeader().populateFromHeader(RLP(uncle.data()), (_ir & ImportRequirements::UncleSeals) ? Strictness::CheckEverything : Strictness::IgnoreSeal);
+					h.populateFromHeader(RLP(uncle.data()), (_ir & ImportRequirements::UncleSeals) ? Strictness::CheckEverything : Strictness::IgnoreSeal);
 				}
 				catch (Exception& ex)
 				{
@@ -432,6 +433,7 @@ public:
 					ex << errinfo_uncleIndex(i);
 					ex << errinfo_now(time(0));
 					ex << errinfo_block(_block.toBytes());
+					ex << errinfo_extraData(h.extraData());
 					if (_onBad)
 						_onBad(ex);
 					throw;
