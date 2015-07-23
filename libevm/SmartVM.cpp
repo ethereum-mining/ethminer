@@ -54,7 +54,7 @@ namespace
 
 		bool isStopSentinel()
 		{
-			assert((!code.empty() || !codeHash) && "'empty code => empty hash' invariand failed");
+			assert((!code.empty() || !codeHash) && "'empty code => empty hash' invariant failed");
 			return code.empty();
 		}
 	};
@@ -102,7 +102,7 @@ bytesConstRef SmartVM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _
 		clog(JitInfo) << "JIT:           " << codeHash;
 		vmKind = VMKind::JIT;
 	}
-	else
+	else if (!_ext.code.empty()) // This check is needed for VM tests
 	{
 		static JitWorker s_worker;
 
