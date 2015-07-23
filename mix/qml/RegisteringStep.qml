@@ -244,7 +244,9 @@ Rectangle {
 			Label
 			{
 				id: verificationEthUrl
+				anchors.topMargin: 10
 				font.italic: true
+				font.pointSize: appStyle.absoluteSize(-1)
 			}
 		}
 	}
