@@ -272,7 +272,8 @@ Item {
 
 				Button
 				{
-					height: 28
+					height: 22
+					width: 22
 					anchors.verticalCenter: parent.verticalCenter
 					action: expressionAction
 					iconSource: "qrc:/qml/img/console.png"
