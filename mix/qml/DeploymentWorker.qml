@@ -38,6 +38,7 @@ Item
 
 			var ids = JSON.parse(arg2)[0].result;
 			requests = [];
+            accounts = []
 			for (var k in ids)
 			{
 				requests.push({
@@ -52,6 +53,7 @@ Item
 
 			TransactionHelper.rpcCall(requests, function (request, response){
 				var balanceRet = JSON.parse(response);
+                balances = {}
 				for (var k in balanceRet)
 				{
 					var ether = QEtherHelper.createEther(balanceRet[k].result, QEther.Wei);
