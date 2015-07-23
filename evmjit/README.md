@@ -33,11 +33,4 @@ Ask me.
 
 ## Options
 
-Options to evmjit library can be passed by environmental variables, e.g. `EVMJIT_CACHE=0 testeth --jit`.
-
-Option        | Default value | Description
-------------- | ------------- | ----------------------------------------------
-EVMJIT_CACHE  | 1             | Enables on disk cache for compiled EVM objects
-EVMJIT_DUMP   | 0             | Dumps generated LLVM module to standard output
-  
-
+Options to evmjit library can be passed by environmental variable, e.g. `EVMJIT="-help" testeth --jit`.
