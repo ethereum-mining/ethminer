@@ -356,7 +356,7 @@ protected:
 	explicit SpecialisedClient(
 		std::shared_ptr<GasPricer> _gpForAdoption,
 		std::string const& _dbPath = std::string(),
-		WithExisting _forceAction = WithExisting::Trust,
+		WithExisting _forceAction = WithExisting::Trust
 	):
 		Client(_gpForAdoption),
 		m_bc(_dbPath, _forceAction, [](unsigned d, unsigned t){ std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; })
