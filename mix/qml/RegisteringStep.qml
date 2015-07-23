@@ -41,7 +41,7 @@ Rectangle {
 			});
 		}
 		else if (projectModel.registerContentHashTrHash !== "" && projectModel.registerContentHashBlockNumber === -1)
-			verificationEthUrl.text = qsTr("waiting verification")
+			verificationEthUrl.text = qsTr("waiting verifications")
 
 		verificationUrl.text = ""
 		if (projectModel.registerUrlTrHash !== "" && projectModel.registerUrlBlockNumber !== -1)
@@ -52,7 +52,7 @@ Rectangle {
 			});
 		}
 		else if (projectModel.registerUrlTrHash !== "" && projectModel.registerUrlBlockNumber === -1)
-			verificationUrl.text = qsTr("waiting verification")
+			verificationUrl.text = qsTr("waiting verifications")
 	}
 
 	function updateVerification(originbn, bn, trLost, ctrl, trContext)
@@ -140,6 +140,7 @@ Rectangle {
 			{
 				id: verificationUrl
 				anchors.verticalCenter: parent.verticalCenter
+				font.italic: true
 			}
 		}
 
@@ -243,6 +244,7 @@ Rectangle {
 			Label
 			{
 				id: verificationEthUrl
+				font.italic: true
 			}
 		}
 	}

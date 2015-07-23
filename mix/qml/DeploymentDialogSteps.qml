@@ -87,7 +87,7 @@ Rectangle {
 				{
 					step: 2,
 					type:"package",
-					label: qsTr("Package files")
+					label: qsTr("Package Dapp")
 				},
 				{
 					step: 3,
