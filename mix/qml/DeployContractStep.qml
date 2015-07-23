@@ -427,7 +427,6 @@ Rectangle {
 									{
 										textAddresses.text = ""
 										deployedRow.visible = Object.keys(projectModel.deploymentAddresses).length > 0
-										//rectDeploymentVariable.visible = Object.keys(projectModel.deploymentAddresses).length > 0
 										textAddresses.text = JSON.stringify(projectModel.deploymentAddresses, null, ' ')
 									}
 									TextArea
