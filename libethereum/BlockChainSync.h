@@ -292,6 +292,7 @@ public:
 
 protected:
 	void restartSync() override;
+	void completeSync() override;
 	void requestSubchain(std::shared_ptr<EthereumPeer> _peer) override;
 	void syncHashes(std::shared_ptr<EthereumPeer> _peer) override;
 	void onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes) override;
