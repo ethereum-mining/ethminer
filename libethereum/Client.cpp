@@ -443,6 +443,13 @@ void Client::setForceMining(bool _enable)
 		startMining();
 }
 
+void Client::setShouldPrecomputeDAG(bool _precompute)
+{
+	bytes trueBytes {1};
+	bytes falseBytes {0};
+	sealEngine()->setOption("precomputeDAG", _precompute ? trueBytes: falseBytes);
+}
+
 bool Client::isMining() const
 {
 	return Ethash::isWorking(m_sealEngine.get());
