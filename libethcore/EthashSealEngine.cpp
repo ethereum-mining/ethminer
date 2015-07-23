@@ -63,7 +63,7 @@ void EthashSealEngine::onSealGenerated(std::function<void(bytes const&)> const& 
 {
 	m_farm.onSolutionFound([=](EthashProofOfWork::Solution const& sol)
 	{
-		cdebug << m_farm.work().seedHash << m_farm.work().headerHash << sol.nonce << EthashAux::eval(m_farm.work().seedHash, m_farm.work().headerHash, sol.nonce).value;
+//		cdebug << m_farm.work().seedHash << m_farm.work().headerHash << sol.nonce << EthashAux::eval(m_farm.work().seedHash, m_farm.work().headerHash, sol.nonce).value;
 		m_sealing.m_mixHash = sol.mixHash;
 		m_sealing.m_nonce = sol.nonce;
 		RLPStream ret;
