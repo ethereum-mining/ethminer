@@ -28,9 +28,7 @@ Rectangle {
 		contractList.change()
 		accountsModel.clear()
 		for (var k in worker.accounts)
-		{
 			accountsModel.append(worker.accounts[k])
-		}
 
 		if (worker.currentAccount === "" && worker.accounts.length > 0)
 		{
@@ -395,9 +393,12 @@ Rectangle {
 					Layout.fillWidth: true
 					Layout.preferredHeight: parent.height + 25
 					color: "transparent"
+					id: rectDeploymentVariable
 					ScrollView
 					{
 						anchors.fill: parent
+						anchors.topMargin: 4
+						anchors.bottomMargin: 4
 						ColumnLayout
 						{
 							RowLayout
@@ -426,6 +427,7 @@ Rectangle {
 									{
 										textAddresses.text = ""
 										deployedRow.visible = Object.keys(projectModel.deploymentAddresses).length > 0
+										rectDeploymentVariable.visible = Object.keys(projectModel.deploymentAddresses).length > 0
 										textAddresses.text = JSON.stringify(projectModel.deploymentAddresses, null, ' ')
 									}
 									TextArea
@@ -466,7 +468,6 @@ Rectangle {
 							}
 						}
 					}
-
 				}
 			}
 

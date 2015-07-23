@@ -86,14 +86,8 @@ Item {
 	function cleanDeploymentStatus()
 	{
 		deployedScenarioIndex = 0
-		applicationUrlEth = ""
-		applicationUrlHttp = ""
 		deployBlockNumber = ""
 		deploymentTrHashes = {}
-		registerContentHashTrHash = ""
-		registerUrlTrHash = ""
-		registerContentHashBlockNumber = -1
-		registerUrlBlockNumber = -1
 		deploymentAddresses = {}
 		deploymentDir = ""
 		deploymentDialog.packageStep.packageHash = ""
@@ -101,6 +95,18 @@ Item {
 		deploymentDialog.packageStep.packageDir = ""
 		deploymentDialog.packageStep.lastDeployDate = ""
 		deploymentDialog.packageStep.localPackageUrl = ""
+		saveProject()
+		cleanRegisteringStatus()
+	}
+
+	function cleanRegisteringStatus()
+	{
+		applicationUrlEth = ""
+		applicationUrlHttp = ""
+		registerContentHashTrHash = ""
+		registerUrlTrHash = ""
+		registerContentHashBlockNumber = -1
+		registerUrlBlockNumber = -1
 		saveProject()
 	}
 

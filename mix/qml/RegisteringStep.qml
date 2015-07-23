@@ -24,27 +24,35 @@ Rectangle {
 	function show()
 	{
 		ctrRegisterLabel.calculateRegisterGas()
-		applicationUrlEthCtrl.text = projectModel.applicationUrlEth
-		applicationUrlHttpCtrl.text = projectModel.applicationUrlHttp
+		if (applicationUrlHttpCtrl.text === "")
+			applicationUrlHttpCtrl.text = projectModel.applicationUrlHttp
+
+		if (applicationUrlEthCtrl.text === "")
+			applicationUrlEthCtrl.text = projectModel.applicationUrlEth
+
 		visible = true
 
 		verificationEthUrl.text = ""
-		if (projectModel.registerContentHashTrHash !== "")
+		if (projectModel.registerContentHashTrHash !== "" && projectModel.registerContentHashBlockNumber !== -1)
 		{
 			worker.verifyHash("registerHash", projectModel.registerContentHashTrHash, function(bn, trLost)
 			{
 				updateVerification(projectModel.registerContentHashBlockNumber, bn, trLost, verificationEthUrl, "registerHash")
 			});
 		}
+		else if (projectModel.registerContentHashTrHash !== "" && projectModel.registerContentHashBlockNumber === -1)
+			verificationEthUrl.text = qsTr("waiting verification")
 
 		verificationUrl.text = ""
-		if (projectModel.registerUrlTrHash !== "")
+		if (projectModel.registerUrlTrHash !== "" && projectModel.registerUrlBlockNumber !== -1)
 		{
 			worker.verifyHash("registerUrl", projectModel.registerUrlTrHash, function(bn, trLost)
 			{
 				updateVerification(projectModel.registerUrlBlockNumber, bn, trLost, verificationUrl, "registerUrl")
 			});
 		}
+		else if (projectModel.registerUrlTrHash !== "" && projectModel.registerUrlBlockNumber === -1)
+			verificationUrl.text = qsTr("waiting verification")
 	}
 
 	function updateVerification(originbn, bn, trLost, ctrl, trContext)
@@ -259,6 +267,7 @@ Rectangle {
 				NetworkDeploymentCode.registerDapp(ethUrl, gasPrice,  function(){
 					projectModel.applicationUrlEth = applicationUrlEthCtrl.text
 					projectModel.saveProject()
+					verificationEthUrl.text = qsTr("waiting verifications")
 					worker.waitForTrReceipt(projectModel.registerContentHashTrHash, function(status, receipt)
 					{
 						worker.verifyHash("registerHash", projectModel.registerContentHashTrHash, function(bn, trLost)
@@ -290,6 +299,7 @@ Rectangle {
 				registerToUrlHint(applicationUrlHttpCtrl.text, gasPrice, function(){
 					projectModel.applicationUrlHttp = applicationUrlHttpCtrl.text
 					projectModel.saveProject()
+					verificationUrl.text = qsTr("waiting verifications")
 					worker.waitForTrReceipt(projectModel.registerUrlTrHash, function(status, receipt)
 					{
 						worker.verifyHash("registerUrl", projectModel.registerUrlTrHash, function(bn, trLost)
@@ -313,6 +323,9 @@ Rectangle {
 			width: 30
 			onClicked:
 			{
+				verificationEthUrl.text = ""
+				verificationUrl.text = ""
+				projectModel.cleanRegisteringStatus()
 				var gasPrice = deploymentDialog.deployStep.gasPrice.toHexWei()
 				parent.registerHash(gasPrice, function(){
 					parent.registerUrl(gasPrice, function(){})
