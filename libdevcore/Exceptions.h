@@ -56,7 +56,7 @@ DEV_SIMPLE_EXCEPTION(BadHexCharacter);
 DEV_SIMPLE_EXCEPTION(NoNetworking);
 DEV_SIMPLE_EXCEPTION(NoUPnPDevice);
 DEV_SIMPLE_EXCEPTION(RootNotFound);
-DEV_SIMPLE_EXCEPTION(BadRoot);
+struct BadRoot: virtual Exception { public: BadRoot(h256 const& _root): Exception("BadRoot " + _root.hex()), root(_root) {} h256 root; };
 DEV_SIMPLE_EXCEPTION(FileError);
 DEV_SIMPLE_EXCEPTION(Overflow);
 DEV_SIMPLE_EXCEPTION(FailedInvariant);

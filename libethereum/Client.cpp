@@ -586,7 +586,7 @@ void Client::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
 		appendFromBlock(h, BlockPolarity::Live, io_changed);
 }
 
-void Client::restartMining()
+void Client::resyncStateFromChain()
 {
 	// RESTART MINING
 
@@ -639,7 +639,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		m_tq.dropGood(t);
 	}
 	onNewBlocks(_ir.liveBlocks, changeds);
-	restartMining();
+	resyncStateFromChain();
 	noteChanged(changeds);
 }
 

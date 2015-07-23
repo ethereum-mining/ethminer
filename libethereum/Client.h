@@ -250,7 +250,7 @@ protected:
 	void onNewBlocks(h256s const& _blocks, h256Hash& io_changed);
 
 	/// Called after processing blocks by onChainChanged(_ir)
-	void restartMining();
+	void resyncStateFromChain();
 
 	/// Magically called when the chain has changed. An import route is provided.
 	/// Called by either submitWork() or in our main thread through syncBlockQueue().
