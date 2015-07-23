@@ -397,8 +397,8 @@ Rectangle {
 					ScrollView
 					{
 						anchors.fill: parent
-						anchors.topMargin: 4
-						anchors.bottomMargin: 4
+                        anchors.topMargin: 4
+                        anchors.bottomMargin: 4
 						ColumnLayout
 						{
 							RowLayout
@@ -427,7 +427,7 @@ Rectangle {
 									{
 										textAddresses.text = ""
 										deployedRow.visible = Object.keys(projectModel.deploymentAddresses).length > 0
-										rectDeploymentVariable.visible = Object.keys(projectModel.deploymentAddresses).length > 0
+										//rectDeploymentVariable.visible = Object.keys(projectModel.deploymentAddresses).length > 0
 										textAddresses.text = JSON.stringify(projectModel.deploymentAddresses, null, ' ')
 									}
 									TextArea
