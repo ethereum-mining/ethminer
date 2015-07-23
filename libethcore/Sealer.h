@@ -38,6 +38,8 @@ class BlockInfo;
 class SealEngineFace
 {
 public:
+	virtual ~SealEngineFace() {}
+
 	virtual std::string name() const = 0;
 	virtual unsigned revision() const = 0;
 	virtual unsigned sealFields() const = 0;
