@@ -352,7 +352,7 @@ void Client::killChain()
 		bc().reopen(Defaults::dbPath(), WithExisting::Kill);
 
 		m_preMine = bc().genesisState(m_stateDB);
-		m_postMine = State(m_stateDB);
+		m_postMine = m_preMine;
 	}
 
 	if (auto h = m_host.lock())
