@@ -55,6 +55,8 @@ public:
 	FixedHash<4> hash() const { return m_hash; }
 	/// Get the full hash of this function declaration on the contract ABI.
 	FixedHash<32> fullHash() const { return m_fullHash; }
+	/// Get the hash of this function declaration on the contract ABI. returns QString
+	Q_INVOKABLE QString qhash() const { return QString::fromStdString(m_hash.hex()); }
 
 private:
 	int m_index;
