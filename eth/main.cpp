@@ -1700,6 +1700,7 @@ int main(int argc, char** argv)
 		c->setGasPricer(gasPricer);
 		c->setForceMining(forceMining);
 		// TODO: expose sealant interface.
+		c->setShouldPrecomputeDAG(m.shouldPrecompute());
 		c->setTurboMining(m.minerType() == MinerCLI::MinerType::GPU);
 		c->setAddress(beneficiary);
 		c->setNetworkId(networkId);

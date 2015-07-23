@@ -145,7 +145,7 @@ void EthereumPeer::requestHashes(u256 _number, unsigned _count)
 	setAsking(Asking::Hashes);
 	RLPStream s;
 	prep(s, GetBlockHashesByNumberPacket, 2) << m_syncHashNumber << _count;
-	clog(NetMessageDetail) << "Requesting block hashes for numbers " << m_syncHashNumber << "-" << m_syncHashNumber + c_maxHashesAsk - 1;
+	clog(NetMessageDetail) << "Requesting block hashes for numbers " << m_syncHashNumber << "-" << m_syncHashNumber + _count - 1;
 	sealAndSend(s);
 }
 
@@ -298,7 +298,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 
 		if (m_asking != Asking::Hashes)
 		{
-			clog(NetWarn) << "Peer giving us hashes when we didn't ask for them.";
+			clog(NetAllDetail) << "Peer giving us hashes when we didn't ask for them.";
 			break;
 		}
 		setIdle();
