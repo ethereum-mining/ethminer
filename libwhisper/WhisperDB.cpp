@@ -158,17 +158,13 @@ void WhisperMessagesDB::saveSingleMessage(h256 const& _key, Envelope const& _e)
 	}
 }
 
-vector<unsigned> WhisperFiltersDB::restoreTopicsFromDB(WhisperHost* _host, string const& _password)
+vector<unsigned> WhisperFiltersDB::restoreTopicsFromDB(WhisperHost* _host, h256 const& _id)
 {
 	vector<unsigned> ret;
-	h256 s = sha3(_password);
-	h256 h = sha3(s);
-	string raw = lookup(h);
+	string raw = lookup(_id);
 	if (!raw.empty())
 	{
-		bytes plain;
-		decryptSym(s, raw, plain);
-		RLP rlp(plain);
+		RLP rlp(raw);
 		auto sz = rlp.itemCountStrict();
 
 		for (unsigned i = 0; i < sz; ++i)
@@ -191,15 +187,11 @@ vector<unsigned> WhisperFiltersDB::restoreTopicsFromDB(WhisperHost* _host, strin
 	return ret;
 }
 
-void WhisperFiltersDB::saveTopicsToDB(WhisperHost const& _host, std::string const& _password)
+void WhisperFiltersDB::saveTopicsToDB(WhisperHost const& _host, h256 const& _id)
 {
-	bytes plain;
+	bytes b;
 	RLPStream rlp;
 	_host.exportFilters(rlp);
-	rlp.swapOut(plain);
-	h256 s = sha3(_password);
-	h256 h = sha3(s);
-	bytes encrypted;
-	encryptSym(s, &plain, encrypted);
-	insert(h, encrypted);
+	rlp.swapOut(b);
+	insert(_id, b);
 }

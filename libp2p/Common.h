@@ -243,25 +243,7 @@ public:
 	void stop() { m_stopped = true; DEV_GUARDED(x_timers) m_timers.clear(); }
 	
 protected:
-	void reap()
-	{
-		Guard l(x_timers);
-		std::vector<DeadlineOp>::iterator t = m_timers.begin();
-		while (t != m_timers.end())
-			if (t->expired())
-			{
-				t->wait();
-				t = m_timers.erase(t);
-			}
-			else
-				t++;
-
-		m_timers.emplace_back(m_io, m_reapIntervalMs, [this](boost::system::error_code const& ec)
-		{
-			if (!ec)
-				reap();
-		});
-	}
+	void reap();
 	
 private:
 	ba::io_service& m_io;
