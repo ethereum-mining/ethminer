@@ -79,7 +79,7 @@ public:
 	~CanonBlockChain() {}
 
 	/// Reopen everything.
-	virtual void reopen(std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
+	virtual void reopen(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
 
 	/// @returns the genesis block header.
 	static Ethash::BlockHeader const& genesis();
