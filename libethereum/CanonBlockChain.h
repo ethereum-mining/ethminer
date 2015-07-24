@@ -78,6 +78,9 @@ public:
 	CanonBlockChain(std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
 	~CanonBlockChain() {}
 
+	/// Reopen everything.
+	virtual void reopen(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
+
 	/// @returns the genesis block header.
 	static Ethash::BlockHeader const& genesis();
 
@@ -89,18 +92,13 @@ public:
 	/// @note This is slow as it's constructed anew each call. Consider genesis() instead.
 	static std::unordered_map<Address, Account> createGenesisState();
 
-	/// Alter the value of the genesis block's nonce.
-	/// @warning Unless you're very careful, make sure you call this right at the start of the
-	/// program, before anything has had the chance to use this class at all.
-	static void setGenesisNonce(Nonce const& _n);
-
 	/// Alter all the genesis block's state by giving a JSON string with account details.
-	/// @TODO implement.
 	/// @warning Unless you're very careful, make sure you call this right at the start of the
 	/// program, before anything has had the chance to use this class at all.
-	static void setGenesisState(std::string const&);
+	static void setGenesis(std::string const& _genesisInfoJSON);
 
-	// TODO: setGenesisTimestamp, ...ExtraData, ...Difficulty, ...GasLimit,
+	/// Override the genesis block's extraData field.
+	static void forceGenesisExtraData(bytes const& _genesisExtraData);
 
 private:
 	/// Static genesis info and its lock.
@@ -108,6 +106,7 @@ private:
 	static std::unique_ptr<Ethash::BlockHeader> s_genesis;
 	static Nonce s_nonce;
 	static std::string s_genesisStateJSON;
+	static bytes s_genesisExtraData;
 };
 
 }

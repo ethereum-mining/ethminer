@@ -226,6 +226,8 @@ private:
 	void readSettings(bool _skipGeometry = false);
 	void writeSettings();
 
+	void setPrivateChain(QString const& _private, bool _forceConfigure = false);
+
 	unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f);
 	unsigned installWatch(dev::h256 _tf, WatchHandler const& _f);
 	void uninstallWatch(unsigned _w);

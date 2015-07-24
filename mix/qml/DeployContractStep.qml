@@ -12,11 +12,14 @@ Rectangle {
 	property variant paramsModel: []
 	property variant worker
 	property variant gas: []
+	property alias gasPrice: gasPriceInput
 	color: "#E3E3E3E3"
+	signal deployed
 	anchors.fill: parent
 	id: root
 
 	property int labelWidth: 150
+
 
 	function show()
 	{
@@ -25,12 +28,13 @@ Rectangle {
 		contractList.change()
 		accountsModel.clear()
 		for (var k in worker.accounts)
-		{
 			accountsModel.append(worker.accounts[k])
-		}
 
-		if (worker.accounts.length > 0)
+		if (worker.currentAccount === "" && worker.accounts.length > 0)
+		{
 			worker.currentAccount = worker.accounts[0].id
+			accountsList.currentIndex = 0
+		}
 
 		if (projectModel.deployBlockNumber !== -1)
 		{
@@ -45,13 +49,28 @@ Rectangle {
 
 	function updateVerification(blockNumber, trLost)
 	{
-		verificationLabel.text = blockNumber - projectModel.deployBlockNumber
-		if (trLost.length > 0)
+		var nb = parseInt(blockNumber - projectModel.deployBlockNumber)
+		verificationTextArea.visible = false
+		verificationLabel.visible = true
+		if (nb >= 10)
 		{
-			verificationLabel.text += "\n" + qsTr("Transactions lost") + "\n"
-			for (var k in trLost)
+			verificationLabel.text = qsTr("contracts deployment verified")
+			verificationLabel.color = "green"
+		}
+		else
+		{
+			verificationLabel.text = nb
+			if (trLost.length > 0)
 			{
-				verificationLabel.text += trLost[k] + "\n"
+				verificationTextArea.visible = true
+				verificationLabel.visible = false
+				deploymentStepChanged("following transactions are invalidated:")
+				verificationTextArea.text += "\n" + qsTr("Transactions lost") + "\n"
+				for (var k in trLost)
+				{
+					deploymentStepChanged(trLost[k])
+					verificationTextArea.text += trLost[k] + "\n"
+				}
 			}
 		}
 	}
@@ -250,7 +269,6 @@ Rectangle {
 						{
 							worker.currentAccount = currentText
 							accountBalance.text = worker.balance(currentText).format()
-							console.log(worker.balance(currentText).format())
 						}
 					}
 
@@ -280,6 +298,11 @@ Rectangle {
 						displayUnitSelection: true
 						displayFormattedValue: true
 						edit: true
+
+						function toHexWei()
+						{
+							return "0x" + gasPriceInput.value.toWei().hexValue()
+						}
 					}
 
 					Connections
@@ -329,9 +352,7 @@ Rectangle {
 								root.gas = gas
 								cost = 0
 								for (var k in gas)
-								{
 									cost += gas[k]
-								}
 								setCost()
 							}
 						});
@@ -349,7 +370,7 @@ Rectangle {
 						width: labelWidth
 						Label
 						{
-							text: qsTr("Cost Estimate")
+							text: qsTr("Deployment Cost")
 							anchors.right: parent.right
 							anchors.verticalCenter: parent.verticalCenter
 						}
@@ -365,91 +386,86 @@ Rectangle {
 					}
 				}
 
-				RowLayout
+				Rectangle
 				{
-					id: deployedRow
+					border.color: "#cccccc"
+					border.width: 2
 					Layout.fillWidth: true
-					Rectangle
+					Layout.preferredHeight: parent.height + 25
+					color: "transparent"
+					id: rectDeploymentVariable
+					ScrollView
 					{
-						width: labelWidth
-						Label
+						anchors.fill: parent
+                        anchors.topMargin: 4
+                        anchors.bottomMargin: 4
+						ColumnLayout
 						{
-							id: labelAddresses
-							text: qsTr("Deployed Contracts")
-							anchors.right: parent.right
-							anchors.verticalCenter: parent.verticalCenter
-						}
-					}
-
-					ColumnLayout
-					{
-						anchors.top: parent.top
-						anchors.topMargin: 1
-						ListModel
-						{
-							id: deployedAddrModel
-						}
-
-						Repeater
-						{
-							id: deployedAddresses
-							model: deployedAddrModel
-							function refresh()
+							RowLayout
 							{
-								deployedAddrModel.clear()
-								deployedRow.visible = Object.keys(projectModel.deploymentAddresses).length > 0
-								for (var k in projectModel.deploymentAddresses)
+								id: deployedRow
+								Layout.fillWidth: true
+								Rectangle
 								{
-									if (k.indexOf("-") !== -1) // this is an contract instance. ctr without - are the last deployed (to support old project)
-										deployedAddrModel.append({ id: k, value: projectModel.deploymentAddresses[k]})
+									width: labelWidth
+									Label
+									{
+										id: labelAddresses
+										text: qsTr("Deployed Contracts")
+										anchors.right: parent.right
+										anchors.verticalCenter: parent.verticalCenter
+									}
+								}
+
+								ColumnLayout
+								{
+									anchors.top: parent.top
+									anchors.topMargin: 1
+									width: parent.width
+									id: deployedAddresses
+									function refresh()
+									{
+										textAddresses.text = ""
+										deployedRow.visible = Object.keys(projectModel.deploymentAddresses).length > 0
+										textAddresses.text = JSON.stringify(projectModel.deploymentAddresses, null, ' ')
+									}
+									TextArea
+									{
+										anchors.fill: parent
+										id: textAddresses
+									}
 								}
 							}
 
-							Rectangle
+							RowLayout
 							{
-								Layout.preferredHeight: 20
-								Layout.preferredWidth: 235
-								color: "transparent"
+								id: verificationRow
+								Layout.fillWidth: true
+								visible: Object.keys(projectModel.deploymentAddresses).length > 0
+								Rectangle
+								{
+									width: labelWidth
+									Label
+									{
+										text: qsTr("Verifications")
+										anchors.right: parent.right
+										anchors.verticalCenter: parent.verticalCenter
+									}
+								}
+
+								TextArea
+								{
+									id: verificationTextArea
+									visible: false
+								}
+
 								Label
 								{
-									id: labelContract
-									width: 112
-									elide: Text.ElideRight
-									text: index > -1 ? deployedAddrModel.get(index).id : ""
-								}
-
-								TextField
-								{
-									width: 123
-									anchors.verticalCenter: parent.verticalCenter
-									anchors.left: labelContract.right
-									text:  index > - 1 ? deployedAddrModel.get(index).value : ""
+									id: verificationLabel
+									visible: true
 								}
 							}
 						}
-					}
-				}
-
-				RowLayout
-				{
-					id: verificationRow
-					Layout.fillWidth: true
-					visible: Object.keys(projectModel.deploymentAddresses).length > 0
-					Rectangle
-					{
-						width: labelWidth
-						Label
-						{
-							text: qsTr("Verifications")
-							anchors.right: parent.right
-							anchors.verticalCenter: parent.verticalCenter
-						}
-					}
-
-					Label
-					{
-						id: verificationLabel
-						maximumLineCount: 20
 					}
 				}
 			}
@@ -460,12 +476,31 @@ Rectangle {
 				Layout.alignment: Qt.BottomEdge
 				Button
 				{
+					Layout.preferredHeight: 22
+					anchors.right: deployBtn.left
+					text: qsTr("Reset")
+					action: clearDeployAction
+				}
+
+				Action {
+					id: clearDeployAction
+					onTriggered: {
+						worker.forceStopPooling()
+						fileIo.deleteDir(projectModel.deploymentDir)
+						projectModel.cleanDeploymentStatus()
+						deploymentDialog.steps.reset()
+					}
+				}
+
+				Button
+				{
+					id: deployBtn
 					anchors.right: parent.right
 					text: qsTr("Deploy Contracts")
 					onClicked:
 					{
 						projectModel.deployedScenarioIndex = contractList.currentIndex
-						NetworkDeploymentCode.deployContracts(root.gas, function(addresses, trHashes)
+						NetworkDeploymentCode.deployContracts(root.gas, gasPriceInput.toHexWei(), function(addresses, trHashes)
 						{
 							projectModel.deploymentTrHashes = trHashes
 							worker.verifyHashes(trHashes, function (nb, trLost)
@@ -473,6 +508,7 @@ Rectangle {
 								projectModel.deployBlockNumber = nb
 								projectModel.saveProject()
 								root.updateVerification(nb, trLost)
+								root.deployed()
 							})
 							projectModel.deploymentAddresses = addresses
 							projectModel.saveProject()

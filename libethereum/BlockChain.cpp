@@ -147,7 +147,12 @@ static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 #endif
 
 BlockChain::BlockChain(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _p):
-	m_genesisState(_genesisState)
+	m_dbPath(_path)
+{
+	open(_genesisBlock, _genesisState, _path, _we, _p);
+}
+
+void BlockChain::open(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _p)
 {
 	// initialise deathrow.
 	m_cacheUsage.resize(c_collectionQueueSize);
@@ -156,11 +161,12 @@ BlockChain::BlockChain(bytes const& _genesisBlock, std::unordered_map<Address, A
 	// Initialise with the genesis as the last block on the longest chain.
 	m_genesisBlock = _genesisBlock;
 	m_genesisHash = sha3(RLP(m_genesisBlock)[0].data());
+	m_genesisState = _genesisState;
 
 	// remove the next line real soon. we don't need to be supporting this forever.
 	upgradeDatabase(_path, genesisHash());
 
-	if (open(_path, _we) != c_minorProtocolVersion)
+	if (openDatabase(_path, _we) != c_minorProtocolVersion)
 		rebuild(_path, _p);
 }
 
@@ -169,7 +175,7 @@ BlockChain::~BlockChain()
 	close();
 }
 
-unsigned BlockChain::open(std::string const& _path, WithExisting _we)
+unsigned BlockChain::openDatabase(std::string const& _path, WithExisting _we)
 {
 	string path = _path.empty() ? Defaults::get()->m_dbPath : _path;
 	string chainPath = path + "/" + toHex(m_genesisHash.ref().cropped(0, 4));
@@ -220,8 +226,9 @@ unsigned BlockChain::open(std::string const& _path, WithExisting _we)
 
 	if (_we != WithExisting::Verify && !details(m_genesisHash))
 	{
+		BlockInfo gb(m_genesisBlock);
 		// Insert details of genesis block.
-		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {});
+		m_details[m_genesisHash] = BlockDetails(0, gb.difficulty(), h256(), {});
 		auto r = m_details[m_genesisHash].rlp();
 		m_extrasDB->Put(m_writeOptions, toSlice(m_genesisHash, ExtraDetails), (ldb::Slice)dev::ref(r));
 	}
@@ -243,12 +250,22 @@ unsigned BlockChain::open(std::string const& _path, WithExisting _we)
 void BlockChain::close()
 {
 	cnote << "Closing blockchain DB";
+	// Not thread safe...
 	delete m_extrasDB;
 	delete m_blocksDB;
 	m_lastBlockHash = m_genesisHash;
 	m_lastBlockNumber = 0;
 	m_details.clear();
 	m_blocks.clear();
+	m_logBlooms.clear();
+	m_receipts.clear();
+	m_transactionAddresses.clear();
+	m_blockHashes.clear();
+	m_blocksBlooms.clear();
+	m_cacheUsage.clear();
+	m_inUse.clear();
+	m_lastLastHashes.clear();
+	m_lastLastHashesNumber = (unsigned)-1;
 }
 
 void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, unsigned)> const& _progress, bool _prepPoW)
@@ -293,7 +310,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	m_lastBlockHash = genesisHash();
 	m_lastBlockNumber = 0;
 
-	m_details[m_lastBlockHash].totalDifficulty = c_genesisDifficulty;
+	m_details[m_lastBlockHash].totalDifficulty = BlockInfo(m_genesisBlock).difficulty();
 
 	m_extrasDB->Put(m_writeOptions, toSlice(m_lastBlockHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[m_lastBlockHash].rlp()));
 
@@ -586,9 +603,11 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 #endif
 	}
 #if ETH_CATCH
-	catch (BadRoot&)
+	catch (BadRoot& ex)
 	{
-		cwarn << "BadRoot error. Retrying import later.";
+		cwarn << "*** BadRoot error! Trying to import" << _block.info.hash() << "needed root" << ex.root;
+		cwarn << _block.info;
+		// Attempt in import later.
 		BOOST_THROW_EXCEPTION(FutureTime());
 	}
 	catch (Exception& ex)
@@ -1245,6 +1264,7 @@ State BlockChain::genesisState(OverlayDB const& _db)
 	dev::eth::commit(m_genesisState, ret.m_state);		// bit horrible. maybe consider a better way of constructing it?
 	ret.m_state.db()->commit();			// have to use this db() since it's the one that has been altered with the above commit.
 	ret.m_previousBlock = BlockInfo(&m_genesisBlock);
+	ret.resetCurrent();
 	return ret;
 }
 

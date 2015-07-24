@@ -106,8 +106,8 @@ public:
 	BlockChain(bytes const& _genesisBlock, StateDefinition const& _genesisState, std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _p = ProgressCallback());
 	~BlockChain();
 
-	/// Attempt a database re-open.
-	void reopen(std::string const& _path, WithExisting _we = WithExisting::Trust) { close(); open(_path, _we); }
+	/// Reopen everything.
+	virtual void reopen(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()) { close(); open(m_genesisBlock, m_genesisState, m_dbPath, _we, _pc); }
 
 	/// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
 	/// To be called from main loop every 100ms or so.
@@ -291,7 +291,11 @@ public:
 protected:
 	static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
-	unsigned open(std::string const& _path, WithExisting _we = WithExisting::Trust);
+	/// Initialise everything and open the database.
+	void open(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _p);
+	/// Open the database.
+	unsigned openDatabase(std::string const& _path, WithExisting _we = WithExisting::Trust);
+	/// Finalise everything and close the database.
 	void close();
 
 	template<class T, class K, unsigned N> T queryExtras(K const& _h, std::unordered_map<K, T>& _m, boost::shared_mutex& _x, T const& _n, ldb::DB* _extrasDB = nullptr) const
@@ -373,6 +377,8 @@ protected:
 
 	std::function<void(Exception&)> m_onBad;									///< Called if we have a block that doesn't verify.
 
+	std::string m_dbPath;
+
 	friend std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
 };
 
@@ -393,10 +399,10 @@ public:
 	virtual VerifiedBlockRef verifyBlock(bytesConstRef _block, std::function<void(Exception&)> const& _onBad, ImportRequirements::value _ir) const override
 	{
 		VerifiedBlockRef res;
-
+		BlockHeader h;
 		try
 		{
-			BlockHeader h(_block, (_ir & ImportRequirements::ValidSeal) ? Strictness::CheckEverything : Strictness::QuickNonce);
+			h = BlockHeader(_block, (_ir & ImportRequirements::ValidSeal) ? Strictness::CheckEverything : Strictness::QuickNonce);
 			h.verifyInternals(_block);
 			if ((_ir & ImportRequirements::Parent) != 0)
 			{
@@ -412,6 +418,7 @@ public:
 			ex << errinfo_phase(1);
 			ex << errinfo_now(time(0));
 			ex << errinfo_block(_block.toBytes());
+			ex << errinfo_extraData(h.extraData());
 			if (_onBad)
 				_onBad(ex);
 			throw;
@@ -422,9 +429,10 @@ public:
 		if (_ir && ImportRequirements::UncleBasic)
 			for (auto const& uncle: r[2])
 			{
+				BlockHeader h;
 				try
 				{
-					BlockHeader().populateFromHeader(RLP(uncle.data()), (_ir & ImportRequirements::UncleSeals) ? Strictness::CheckEverything : Strictness::IgnoreSeal);
+					h.populateFromHeader(RLP(uncle.data()), (_ir & ImportRequirements::UncleSeals) ? Strictness::CheckEverything : Strictness::IgnoreSeal);
 				}
 				catch (Exception& ex)
 				{
@@ -432,6 +440,7 @@ public:
 					ex << errinfo_uncleIndex(i);
 					ex << errinfo_now(time(0));
 					ex << errinfo_block(_block.toBytes());
+					ex << errinfo_extraData(h.extraData());
 					if (_onBad)
 						_onBad(ex);
 					throw;
