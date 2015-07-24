@@ -906,7 +906,7 @@ std::tuple<h256, h256, h256> EthashClient::getEthashWork()
 		// otherwise, set this to true so that it gets prepped next time.
 		m_remoteWorking = true;
 	Ethash::BlockHeader bh = Ethash::BlockHeader(m_miningInfo);
-	return std::tuple<h256, h256, h256>(bh.boundary(), bh.hashWithout(), bh.seedHash());
+	return std::tuple<h256, h256, h256>(bh.hashWithout(), bh.seedHash(), bh.boundary());
 }
 
 bool EthashClient::submitEthashWork(h256 const& _mixHash, h64 const& _nonce)
