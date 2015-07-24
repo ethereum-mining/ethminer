@@ -53,6 +53,7 @@ enum BlockDataType
 };
 
 DEV_SIMPLE_EXCEPTION(NoHashRecorded);
+DEV_SIMPLE_EXCEPTION(GenesisBlockCannotBeCalculated);
 
 /** @brief Encapsulation of a block header.
  * Class to contain all of a block header's data. It is able to parse a block header and populate

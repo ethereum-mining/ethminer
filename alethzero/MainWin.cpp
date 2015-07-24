@@ -378,10 +378,17 @@ NetworkPreferences Main::netPrefs() const
 		publicIP.clear();
 	}
 
+	NetworkPreferences ret;
+
 	if (isPublicAddress(publicIP))
-		return NetworkPreferences(publicIP, listenIP, ui->port->value(), ui->upnp->isChecked());
+		ret = NetworkPreferences(publicIP, listenIP, ui->port->value(), ui->upnp->isChecked());
 	else
-		return NetworkPreferences(listenIP, ui->port->value(), ui->upnp->isChecked());
+		ret = NetworkPreferences(listenIP, ui->port->value(), ui->upnp->isChecked());
+
+	ret.discovery = m_privateChain.isEmpty();
+	ret.pin = m_privateChain.isEmpty();
+
+	return ret;
 }
 
 void Main::onKeysChanged()
@@ -776,6 +783,30 @@ void Main::writeSettings()
 	s.setValue("windowState", saveState());
 }
 
+void Main::setPrivateChain(QString const& _private, bool _forceConfigure)
+{
+	if (m_privateChain == _private && !_forceConfigure)
+		return;
+
+	m_privateChain = _private;
+	ui->usePrivate->setChecked(!m_privateChain.isEmpty());
+
+	CanonBlockChain<Ethash>::forceGenesisExtraData(m_privateChain.isEmpty() ? bytes() : sha3(m_privateChain.toStdString()).asBytes());
+
+	// rejig blockchain now.
+	writeSettings();
+	ui->mine->setChecked(false);
+	ui->net->setChecked(false);
+	web3()->stopNetwork();
+
+	web3()->setNetworkPreferences(netPrefs());
+	ethereum()->reopenChain();
+
+	readSettings(true);
+	installWatches();
+	refreshAll();
+}
+
 Secret Main::retrieveSecret(Address const& _address) const
 {
 	while (true)
@@ -852,8 +883,7 @@ void Main::readSettings(bool _skipGeometry)
 	ui->listenIP->setText(s.value("listenIP", "").toString());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 	ui->nameReg->setText(s.value("nameReg", "").toString());
-	m_privateChain = s.value("privateChain", "").toString();
-	ui->usePrivate->setChecked(m_privateChain.size());
+	setPrivateChain(s.value("privateChain", "").toString());
 	ui->verbosity->setValue(s.value("verbosity", 1).toInt());
 
 #if ETH_EVMJIT // We care only if JIT is enabled. Otherwise it can cause misconfiguration.
@@ -1036,21 +1066,15 @@ void Main::on_exportState_triggered()
 
 void Main::on_usePrivate_triggered()
 {
+	QString pc;
 	if (ui->usePrivate->isChecked())
 	{
-		m_privateChain = QInputDialog::getText(this, "Enter Name", "Enter the name of your private chain", QLineEdit::Normal, QString("NewChain-%1").arg(time(0)));
-		if (m_privateChain.isEmpty())
-		{
-			if (ui->usePrivate->isChecked())
-				ui->usePrivate->setChecked(false);
-			else
-				// was cancelled.
-				return;
-		}
+		bool ok;
+		pc = QInputDialog::getText(this, "Enter Name", "Enter the name of your private chain", QLineEdit::Normal, QString("NewChain-%1").arg(time(0)), &ok);
+		if (!ok)
+			return;
 	}
-	else
-		m_privateChain.clear();
-	on_killBlockchain_triggered();
+	setPrivateChain(pc);
 }
 
 void Main::on_vmInterpreter_triggered() { VMFactory::setKind(VMKind::Interpreter); }
@@ -1715,6 +1739,13 @@ void Main::on_blocks_currentItemChanged()
 			s << "<h3>" << h << "</h3>";
 			s << "<h4>#" << info.number();
 			s << "&nbsp;&emsp;&nbsp;<b>" << timestamp << "</b></h4>";
+			try
+			{
+				RLP r(info.extraData());
+				if (r[0].toInt<int>() == 0)
+					s << "<div>Sealing client: <b>" << htmlEscaped(r[1].toString()) << "</b>" << "</div>";
+			}
+			catch (...) {}
 			s << "<div>D/TD: <b>" << info.difficulty() << "</b>/<b>" << details.totalDifficulty << "</b> = 2^" << log2((double)info.difficulty()) << "/2^" << log2((double)details.totalDifficulty) << "</div>";
 			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></div>";
 			s << "<div>Gas used/limit: <b>" << info.gasUsed() << "</b>/<b>" << info.gasLimit() << "</b>" << "</div>";
@@ -1736,6 +1767,8 @@ void Main::on_blocks_currentItemChanged()
 				s << "<div>Parent: <b><i>It was a virgin birth</i></b></div>";
 			}
 //			s << "<div>Bloom: <b>" << details.bloom << "</b>";
+			s << "<div>State root: " << ETH_HTML_SPAN(ETH_HTML_MONO) << info.stateRoot().hex() << "</span></div>";
+			s << "<div>Extra data: " << ETH_HTML_SPAN(ETH_HTML_MONO) << toHex(info.extraData()) << "</span></div>";
 			if (!!info.logBloom())
 				s << "<div>Log Bloom: " << info.logBloom() << "</div>";
 			else
@@ -2015,7 +2048,7 @@ void Main::on_net_triggered()
 	{
 		web3()->setIdealPeerCount(ui->idealPeers->value());
 		web3()->setNetworkPreferences(netPrefs(), ui->dropPeers->isChecked());
-		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : h256());
+		ethereum()->setNetworkId((h256)(u256)(int)c_network);
 		web3()->startNetwork();
 		ui->downloadView->setEthereum(ethereum());
 		ui->enode->setText(QString::fromStdString(web3()->enode()));

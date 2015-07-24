@@ -62,6 +62,7 @@ class State;
 struct AlreadyHaveBlock: virtual Exception {};
 struct UnknownParent: virtual Exception {};
 struct FutureTime: virtual Exception {};
+struct TransientError: virtual Exception {};
 
 struct BlockChainChat: public LogChannel { static const char* name(); static const int verbosity = 5; };
 struct BlockChainNote: public LogChannel { static const char* name(); static const int verbosity = 3; };
@@ -106,8 +107,8 @@ public:
 	BlockChain(bytes const& _genesisBlock, StateDefinition const& _genesisState, std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _p = ProgressCallback());
 	~BlockChain();
 
-	/// Attempt a database re-open.
-	void reopen(std::string const& _path, WithExisting _we = WithExisting::Trust) { close(); open(_path, _we); }
+	/// Reopen everything.
+	virtual void reopen(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()) { close(); open(m_genesisBlock, m_genesisState, m_dbPath, _we, _pc); }
 
 	/// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
 	/// To be called from main loop every 100ms or so.
@@ -291,7 +292,11 @@ public:
 protected:
 	static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
-	unsigned open(std::string const& _path, WithExisting _we = WithExisting::Trust);
+	/// Initialise everything and open the database.
+	void open(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _p);
+	/// Open the database.
+	unsigned openDatabase(std::string const& _path, WithExisting _we = WithExisting::Trust);
+	/// Finalise everything and close the database.
 	void close();
 
 	template<class T, class K, unsigned N> T queryExtras(K const& _h, std::unordered_map<K, T>& _m, boost::shared_mutex& _x, T const& _n, ldb::DB* _extrasDB = nullptr) const
@@ -372,6 +377,8 @@ protected:
 	ldb::WriteOptions m_writeOptions;
 
 	std::function<void(Exception&)> m_onBad;									///< Called if we have a block that doesn't verify.
+
+	std::string m_dbPath;
 
 	friend std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
 };

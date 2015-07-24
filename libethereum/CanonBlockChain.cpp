@@ -38,14 +38,21 @@ using namespace dev;
 using namespace dev::eth;
 namespace js = json_spirit;
 
-std::unique_ptr<Ethash::BlockHeader> CanonBlockChain<Ethash>::s_genesis;
+unique_ptr<Ethash::BlockHeader> CanonBlockChain<Ethash>::s_genesis;
 boost::shared_mutex CanonBlockChain<Ethash>::x_genesis;
 Nonce CanonBlockChain<Ethash>::s_nonce(u64(42));
-std::string CanonBlockChain<Ethash>::s_genesisStateJSON;
+string CanonBlockChain<Ethash>::s_genesisStateJSON;
+bytes CanonBlockChain<Ethash>::s_genesisExtraData;
 
 CanonBlockChain<Ethash>::CanonBlockChain(std::string const& _path, WithExisting _we, ProgressCallback const& _pc):
 	FullBlockChain<Ethash>(createGenesisBlock(), createGenesisState(), _path, _we, _pc)
 {
+}
+
+void CanonBlockChain<Ethash>::reopen(WithExisting _we, ProgressCallback const& _pc)
+{
+	close();
+	open(createGenesisBlock(), createGenesisState(), m_dbPath, _we, _pc);
 }
 
 bytes CanonBlockChain<Ethash>::createGenesisBlock()
@@ -87,7 +94,7 @@ bytes CanonBlockChain<Ethash>::createGenesisBlock()
 			<< gasLimit
 			<< 0	// gasUsed
 			<< timestamp
-			<< extraData
+			<< (s_genesisExtraData.empty() ? extraData : s_genesisExtraData)
 			<< mixHash
 			<< nonce;
 	block.appendRaw(RLPEmptyList);
@@ -108,7 +115,9 @@ unordered_map<Address, Account> CanonBlockChain<Ethash>::createGenesisState()
 			u256 balance;
 			if (account.second.get_obj().count("wei"))
 				balance = u256(account.second.get_obj()["wei"].get_str());
-			else
+			else if (account.second.get_obj().count("balance"))
+				balance = u256(account.second.get_obj()["balance"].get_str());
+			else if (account.second.get_obj().count("finney"))
 				balance = u256(account.second.get_obj()["finney"].get_str()) * finney;
 			if (account.second.get_obj().count("code"))
 			{
@@ -126,6 +135,13 @@ void CanonBlockChain<Ethash>::setGenesis(std::string const& _json)
 {
 	WriteGuard l(x_genesis);
 	s_genesisStateJSON = _json;
+	s_genesis.reset();
+}
+
+void CanonBlockChain<Ethash>::forceGenesisExtraData(bytes const& _genesisExtraData)
+{
+	WriteGuard l(x_genesis);
+	s_genesisExtraData = _genesisExtraData;
 	s_genesis.reset();
 }
 
