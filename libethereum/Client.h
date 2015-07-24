@@ -135,7 +135,7 @@ public:
 	/// Are we allowed to GPU mine?
 	bool turboMining() const { return m_turboMining; }
 	/// Enable/disable GPU mining.
-	void setTurboMining(bool _enable = true) { m_turboMining = _enable; if (isMining()) startMining(); }
+	void setTurboMining(bool _enable = true);
 	/// Enable/disable precomputing of the DAG for next epoch
 	void setShouldPrecomputeDAG(bool _precompute);
 
