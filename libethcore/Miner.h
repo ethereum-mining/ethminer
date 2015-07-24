@@ -58,6 +58,8 @@ public:
 	using Solution = typename PoW::Solution;
 	using Miner = GenericMiner<PoW>;
 
+	virtual ~GenericFarmFace() {}
+
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
 	 * @param _p The solution.

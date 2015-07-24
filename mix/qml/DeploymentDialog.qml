@@ -22,6 +22,7 @@ Dialog {
 	property alias packageStep: packageStep
 	property alias registerStep: registerStep
 	property alias worker: worker
+	property alias steps: steps
 
 	function close()
 	{
@@ -52,15 +53,31 @@ Dialog {
 			anchors.fill: parent
 			anchors.margins: 10
 
-			RowLayout
+			Rectangle
 			{
 				id: explanation
 				Layout.preferredWidth: parent.width - 50
 				Layout.preferredHeight: 50
+				color: "transparent"
 				Label
 				{
+					id: info
 					anchors.centerIn: parent
-					text: qsTr("Putting your dapp live is a multi step process. You can read more about it on the 'guide to uploading'.")
+					text: qsTr("Putting your dapp live is a multi step process. You can read more about it on the")
+				}
+
+				Text {
+					anchors.left: info.right
+					anchors.leftMargin: 7
+					id: linkText
+					text: '<html><style type="text/css"></style><a href="https://github.com/ethereum/wiki/wiki/Mix:-The-DApp-IDE#deployment-to-network">guide to uploading</a></html>'
+					onLinkActivated: Qt.openUrlExternally("https://github.com/ethereum/wiki/wiki/Mix:-The-DApp-IDE#deployment-to-network")
+					anchors.verticalCenter: parent.verticalCenter
+					MouseArea
+					{
+						anchors.fill: parent
+						cursorShape: Qt.PointingHandCursor
+					}
 				}
 			}
 

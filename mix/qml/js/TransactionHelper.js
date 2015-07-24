@@ -33,7 +33,8 @@ function rpcCall(requests, callBack, error)
 			{
 				var errorText = qsTr("Unable to initiate request to the live network. Please verify your ethereum node is up.") + qsTr(" Error status: ")  + httpRequest.status;
 				console.log(errorText);
-				error(errorText);
+				if (error)
+					error(errorText);
 			}
 			else
 			{
