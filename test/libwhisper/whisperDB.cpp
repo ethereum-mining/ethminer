@@ -224,7 +224,7 @@ BOOST_AUTO_TEST_CASE(filters)
 		db.saveTopicsToDB(*wh, persistID);
 	}
 
-	short unsigned port1 = 30313;
+	uint16_t port1 = 30308;
 	unsigned const step = 10;
 	bool host1Ready = false;
 	bool sent = false;
@@ -265,7 +265,7 @@ BOOST_AUTO_TEST_CASE(filters)
 		}
 	});
 
-	Host host2("Test", NetworkPreferences("127.0.0.1", 30314, false));
+	Host host2("Test", NetworkPreferences("127.0.0.1", 30309, false));
 	host2.setIdealPeerCount(1);
 	auto whost2 = host2.registerCapability(new WhisperHost());
 	host2.start();
