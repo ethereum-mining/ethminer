@@ -742,8 +742,9 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
 	if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() && m_currentBlock.stateRoot() != rootHash())
 	{
+		auto r = rootHash();
 		m_db.rollback();
-		BOOST_THROW_EXCEPTION(InvalidStateRoot() << Hash256RequirementError(rootHash(), m_currentBlock.stateRoot()));
+		BOOST_THROW_EXCEPTION(InvalidStateRoot() << Hash256RequirementError(r, m_currentBlock.stateRoot()));
 	}
 
 	if (m_currentBlock.gasUsed() != gasUsed())
