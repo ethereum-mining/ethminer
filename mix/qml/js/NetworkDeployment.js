@@ -157,7 +157,13 @@ function executeTr(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack)
 		if (tr.contractId === tr.functionId)
 			rpcParams.code = codeModel.contracts[tr.contractId].codeHex + encodedParams.join("");
 		else
-			rpcParams.data = "0x" + func.qhash() + encodedParams.join("");
+        {
+            rpcParams.data = "0x" + func.qhash() + encodedParams.join("");
+            console.log(tr.contractId)
+            console.log(JSON.stringify(ctrAddresses))
+            rpcParams.to = ctrAddresses[tr.contractId];
+        }
+			
 
 		var requests = [{
 							jsonrpc: "2.0",
@@ -180,7 +186,7 @@ function executeTr(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack)
 					if (tr.contractId === tr.functionId)
 					{
 						ctrAddresses[tr.contractId] = receipt.contractAddress
-						ctrAddresses[tr.contractId + " - " + trIndex] = receipt.contractAddress //get right ctr address if deploy more than one contract of same type.
+						ctrAddresses["<" + tr.contractId + " - " + trIndex  + ">"] = receipt.contractAddress //get right ctr address if deploy more than one contract of same type.
 					}
 					executeTrNextStep(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack)
 				}
