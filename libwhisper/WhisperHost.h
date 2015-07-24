@@ -48,7 +48,7 @@ class WhisperHost: public HostCapability<WhisperPeer>, public Interface, public 
 	friend class WhisperPeer;
 
 public:
-	WhisperHost(bool _useDB = false);
+	WhisperHost(bool _storeMessagesInDB = false);
 	virtual ~WhisperHost();
 	unsigned protocolVersion() const { return WhisperProtocolVersion; }
 	void cleanup(); ///< remove old messages
@@ -63,7 +63,8 @@ public:
 	virtual h256s checkWatch(unsigned _watchId) override;
 	virtual h256s watchMessages(unsigned _watchId) override; ///< returns IDs of messages, which match specific watch criteria
 	virtual Envelope envelope(h256 _m) const override { try { dev::ReadGuard l(x_messages); return m_messages.at(_m); } catch (...) { return Envelope(); } }
-	virtual void saveTopicsToDB(std::string const& _app, std::string const& _password);
+
+	void exportFilters(dev::RLPStream& o_dst) const;
 
 protected:
 	virtual void doWork() override;
@@ -86,7 +87,7 @@ private:
 	std::map<unsigned, ClientWatch> m_watches;
 	TopicBloomFilter m_bloom;
 
-	bool m_useDB; ///< needed for tests and other special cases
+	bool m_storeMessagesInDB; ///< needed for tests and other special cases
 };
 
 }
