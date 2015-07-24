@@ -28,23 +28,22 @@ BasicBlock::BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iter
 	m_begin(_begin),
 	m_end(_end),
 	m_llvmBB(llvm::BasicBlock::Create(_mainFunc->getContext(), {isJumpDest ? jumpDestName : basicBlockName, std::to_string(_firstInstrIdx)}, _mainFunc)),
-	m_stack(*this),
 	m_builder(_builder),
 	m_isJumpDest(isJumpDest)
 {}
 
 BasicBlock::BasicBlock(std::string _name, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest) :
 	m_llvmBB(llvm::BasicBlock::Create(_mainFunc->getContext(), _name, _mainFunc)),
-	m_stack(*this),
 	m_builder(_builder),
 	m_isJumpDest(isJumpDest)
 {}
 
-BasicBlock::LocalStack::LocalStack(BasicBlock& _owner) :
-	m_bblock(_owner)
+LocalStack::LocalStack(BasicBlock& _owner, Stack& _globalStack) :
+	m_bblock(_owner),
+	m_global(_globalStack)
 {}
 
-void BasicBlock::LocalStack::push(llvm::Value* _value)
+void LocalStack::push(llvm::Value* _value)
 {
 	assert(_value->getType() == Type::Word);
 	m_bblock.m_currentStack.push_back(_value);
@@ -52,7 +51,7 @@ void BasicBlock::LocalStack::push(llvm::Value* _value)
 	m_maxSize = std::max(m_maxSize, m_bblock.m_currentStack.size());
 }
 
-llvm::Value* BasicBlock::LocalStack::pop()
+llvm::Value* LocalStack::pop()
 {
 	auto result = get(0);
 
@@ -66,7 +65,7 @@ llvm::Value* BasicBlock::LocalStack::pop()
 /**
  *  Pushes a copy of _index-th element (tos is 0-th elem).
  */
-void BasicBlock::LocalStack::dup(size_t _index)
+void LocalStack::dup(size_t _index)
 {
 	auto val = get(_index);
 	push(val);
@@ -76,7 +75,7 @@ void BasicBlock::LocalStack::dup(size_t _index)
  *  Swaps tos with _index-th element (tos is 0-th elem).
  *  _index must be > 0.
  */
-void BasicBlock::LocalStack::swap(size_t _index)
+void LocalStack::swap(size_t _index)
 {
 	assert(_index > 0);
 	auto val = get(_index);
@@ -85,7 +84,7 @@ void BasicBlock::LocalStack::swap(size_t _index)
 	set(0, val);
 }
 
-std::vector<llvm::Value*>::iterator BasicBlock::LocalStack::getItemIterator(size_t _index)
+std::vector<llvm::Value*>::iterator LocalStack::getItemIterator(size_t _index)
 {
 	auto& currentStack = m_bblock.m_currentStack;
 	if (_index < currentStack.size())
@@ -98,7 +97,7 @@ std::vector<llvm::Value*>::iterator BasicBlock::LocalStack::getItemIterator(size
 	return currentStack.end() - _index - 1;
 }
 
-llvm::Value* BasicBlock::LocalStack::get(size_t _index)
+llvm::Value* LocalStack::get(size_t _index)
 {
 	auto& initialStack = m_bblock.m_initialStack;
 	auto itemIter = getItemIterator(_index);
@@ -124,7 +123,7 @@ llvm::Value* BasicBlock::LocalStack::get(size_t _index)
 	return *itemIter;
 }
 
-void BasicBlock::LocalStack::set(size_t _index, llvm::Value* _word)
+void LocalStack::set(size_t _index, llvm::Value* _word)
 {
 	auto itemIter = getItemIterator(_index);
 	*itemIter = _word;
@@ -388,4 +387,3 @@ void BasicBlock::dump(std::ostream& _out, bool _dotOutput)
 }
 }
 }
-

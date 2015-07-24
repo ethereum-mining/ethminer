@@ -163,7 +163,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 		auto iterCopy = basicBlockPairIt;
 		++iterCopy;
 		auto nextBasicBlock = (iterCopy != m_basicBlocks.end()) ? iterCopy->second.llvm() : nullptr;
-		compileBasicBlock(basicBlock, runtimeManager, arith, memory, ext, gasMeter, nextBasicBlock);
+		compileBasicBlock(basicBlock, runtimeManager, arith, memory, ext, gasMeter, nextBasicBlock, stack);
 	}
 
 	// Code for special blocks:
@@ -224,13 +224,13 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 
 
 void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runtimeManager,
-								 Arith256& _arith, Memory& _memory, Ext& _ext, GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock)
+								 Arith256& _arith, Memory& _memory, Ext& _ext, GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock, Stack& _globalStack)
 {
 	if (!_nextBasicBlock) // this is the last block in the code
 		_nextBasicBlock = m_stopBB;
 
 	m_builder.SetInsertPoint(_basicBlock.llvm());
-	auto& stack = _basicBlock.localStack();
+	LocalStack stack{_basicBlock, _globalStack};
 
 	for (auto it = _basicBlock.begin(); it != _basicBlock.end(); ++it)
 	{
@@ -857,7 +857,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		m_builder.CreateBr(_nextBasicBlock);
 
 	m_builder.SetInsertPoint(_basicBlock.llvm()->getFirstNonPHI());
-	_runtimeManager.checkStackLimit(_basicBlock.localStack().getMaxSize(), _basicBlock.localStack().getDiff());
+	_runtimeManager.checkStackLimit(stack.getMaxSize(), _basicBlock.getDiff());
 }
 
 
