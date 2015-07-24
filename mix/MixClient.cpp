@@ -58,7 +58,7 @@ bytes MixBlockChain::createGenesisBlock(h256 _stateRoot)
 	RLPStream block(3);
 	block.appendList(13)
 			<< h256() << EmptyListSHA3 << h160() << _stateRoot << EmptyTrie << EmptyTrie
-			<< LogBloom() << c_mixGenesisDifficulty << 0 << c_genesisGasLimit << 0 << (unsigned)0
+			<< LogBloom() << c_mixGenesisDifficulty << 0 << 3141592 << 0 << (unsigned)0
 			<< std::string();
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);

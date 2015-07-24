@@ -327,7 +327,7 @@ void Client::doneWorking()
 	}
 }
 
-void Client::killChain()
+void Client::reopenChain(WithExisting _we)
 {
 	bool wasMining = isMining();
 	if (wasMining)
@@ -348,8 +348,8 @@ void Client::killChain()
 		m_working = State();
 
 		m_stateDB = OverlayDB();
-		m_stateDB = State::openDB(Defaults::dbPath(), bc().genesisHash(), WithExisting::Kill);
-		bc().reopen(Defaults::dbPath(), WithExisting::Kill);
+		bc().reopen(_we);
+		m_stateDB = State::openDB(Defaults::dbPath(), bc().genesisHash(), _we);
 
 		m_preMine = bc().genesisState(m_stateDB);
 		m_postMine = m_preMine;
@@ -906,7 +906,7 @@ std::tuple<h256, h256, h256> EthashClient::getEthashWork()
 		// otherwise, set this to true so that it gets prepped next time.
 		m_remoteWorking = true;
 	Ethash::BlockHeader bh = Ethash::BlockHeader(m_miningInfo);
-	return std::tuple<h256, h256, h256>(bh.boundary(), bh.hashWithout(), bh.seedHash());
+	return std::tuple<h256, h256, h256>(bh.hashWithout(), bh.seedHash(), bh.boundary());
 }
 
 bool EthashClient::submitEthashWork(h256 const& _mixHash, h64 const& _nonce)

@@ -50,7 +50,9 @@ enum class Network
 	Frontier = 1,
 	Turbo = 2
 };
-extern const Network c_network;
+extern Network c_network;
+
+Network resetNetwork(Network _n);
 
 /// User-friendly string representation of the amount _b in wei.
 std::string formatBalance(bigint const& _b);
