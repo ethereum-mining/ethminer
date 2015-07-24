@@ -394,7 +394,7 @@ public:
 
 	/// Update to the latest transactions and get hash of the current block to be mined minus the
 	/// nonce (the 'work hash') and the difficulty to be met.
-	/// @returns Tuple of target boundary, hash without seal, seed hash.
+	/// @returns Tuple of hash without seal, seed hash, target boundary.
 	virtual std::tuple<h256, h256, h256> getEthashWork() override;
 
 	/** @brief Submit the proof for the proof-of-work.
