@@ -176,7 +176,9 @@ public:
 	/// Clears pending transactions. Just for debug use.
 	void clearPending();
 	/// Kills the blockchain. Just for debug use.
-	void killChain();
+	void killChain() { reopenChain(WithExisting::Kill); }
+	/// Reloads the blockchain. Just for debug use.
+	void reopenChain(WithExisting _we = WithExisting::Trust);
 	/// Retries all blocks with unknown parents.
 	void retryUnknown() { m_bq.retryAllUnknown(); }
 	/// Get a report of activity.

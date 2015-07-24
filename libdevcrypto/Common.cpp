@@ -193,7 +193,7 @@ bytes dev::decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _ci
 	}
 }
 
-static const Public c_zeroKey = toPublic(Secret());
+static const Public c_zeroKey("3f17f1962b36e491b30a40b2405849e597ba5fb5");
 
 Public dev::recover(Signature const& _sig, h256 const& _message)
 {
@@ -203,7 +203,7 @@ Public dev::recover(Signature const& _sig, h256 const& _message)
 	int pubkeylen;
 	if (!secp256k1_ecdsa_recover_compact(_message.data(), h256::size, _sig.data(), o.data(), &pubkeylen, false, _sig[64]))
 		return Public();
-	ret = FixedHash<64>(o.data()+1, Public::ConstructFromPointer);
+	ret = FixedHash<64>(o.data() + 1, Public::ConstructFromPointer);
 #else
 	ret = s_secp256k1pp.recover(_sig, _message.ref());
 #endif
