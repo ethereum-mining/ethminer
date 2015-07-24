@@ -179,7 +179,7 @@ Rectangle {
 
 			function updateWidth()
 			{
-				if (text.length > 80)
+				if (text.length > 100)
 					width = parent.width - 10
 				else
 					width = undefined

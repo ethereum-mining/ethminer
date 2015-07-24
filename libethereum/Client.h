@@ -79,10 +79,6 @@ std::ostream& operator<<(std::ostream& _out, ActivityReport const& _r);
 class Client: public ClientBase, protected Worker
 {
 public:
-	/// New-style Constructor.
-	/// Any final derived class's constructor should make sure they call init().
-	explicit Client(std::shared_ptr<GasPricer> _gpForAdoption);
-
 	/// Destructor.
 	virtual ~Client();
 
@@ -139,7 +135,7 @@ public:
 	/// Are we allowed to GPU mine?
 	bool turboMining() const { return m_turboMining; }
 	/// Enable/disable GPU mining.
-	void setTurboMining(bool _enable = true) { m_turboMining = _enable; if (isMining()) startMining(); }
+	void setTurboMining(bool _enable = true);
 	/// Enable/disable precomputing of the DAG for next epoch
 	void setShouldPrecomputeDAG(bool _precompute);
 
@@ -180,7 +176,9 @@ public:
 	/// Clears pending transactions. Just for debug use.
 	void clearPending();
 	/// Kills the blockchain. Just for debug use.
-	void killChain();
+	void killChain() { reopenChain(WithExisting::Kill); }
+	/// Reloads the blockchain. Just for debug use.
+	void reopenChain(WithExisting _we = WithExisting::Trust);
 	/// Retries all blocks with unknown parents.
 	void retryUnknown() { m_bq.retryAllUnknown(); }
 	/// Get a report of activity.
@@ -199,6 +197,10 @@ public:
 	SealEngineFace* sealEngine() const { return m_sealEngine.get(); }
 
 protected:
+	/// New-style Constructor.
+	/// Any final derived class's constructor should make sure they call init().
+	explicit Client(std::shared_ptr<GasPricer> _gpForAdoption);
+
 	/// Perform critical setup functions.
 	/// Must be called in the constructor of the finally derived class.
 	void init(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId);
@@ -250,7 +252,7 @@ protected:
 	void onNewBlocks(h256s const& _blocks, h256Hash& io_changed);
 
 	/// Called after processing blocks by onChainChanged(_ir)
-	void restartMining();
+	void resyncStateFromChain();
 
 	/// Magically called when the chain has changed. An import route is provided.
 	/// Called by either submitWork() or in our main thread through syncBlockQueue().
@@ -342,13 +344,8 @@ public:
 		WithExisting _forceAction = WithExisting::Trust,
 		u256 _networkId = 0
 	):
-		Client(_gpForAdoption),
-		m_bc(_dbPath, _forceAction, [](unsigned d, unsigned t){ std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; })
+		SpecialisedClient(_gpForAdoption, _dbPath, _forceAction)
 	{
-		m_sealEngine = std::shared_ptr<SealEngineFace>(Ethash::createSealEngine());
-		m_sealEngine->onSealGenerated([=](bytes const& header){
-			this->submitSealed(header);
-		});
 		init(_host, _dbPath, _forceAction, _networkId);
 	}
 
@@ -358,10 +355,24 @@ public:
 	CanonBlockChain<Sealer> const& blockChain() const { return m_bc; }
 
 protected:
+	explicit SpecialisedClient(
+		std::shared_ptr<GasPricer> _gpForAdoption,
+		std::string const& _dbPath = std::string(),
+		WithExisting _forceAction = WithExisting::Trust
+	):
+		Client(_gpForAdoption),
+		m_bc(_dbPath, _forceAction, [](unsigned d, unsigned t){ std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; })
+	{
+		m_sealEngine = std::shared_ptr<SealEngineFace>(Ethash::createSealEngine());
+		m_sealEngine->onSealGenerated([=](bytes const& header){
+			this->submitSealed(header);
+		});
+	}
+
 	virtual BlockChain& bc() override { return m_bc; }
 	virtual BlockChain const& bc() const override { return m_bc; }
 
-protected:
+private:
 	CanonBlockChain<Sealer> m_bc;			///< Maintains block database.
 };
 
@@ -375,9 +386,11 @@ public:
 		std::string const& _dbPath = std::string(),
 		WithExisting _forceAction = WithExisting::Trust,
 		u256 _networkId = 0
-	): SpecialisedClient<Ethash>(_host, _gpForAdoption, _dbPath, _forceAction, _networkId) {}
-
-	virtual ~EthashClient() { stopWorking(); }
+	):
+		SpecialisedClient<Ethash>(_gpForAdoption, _dbPath, _forceAction)
+	{
+		init(_host, _dbPath, _forceAction, _networkId);
+	}
 
 	/// Update to the latest transactions and get hash of the current block to be mined minus the
 	/// nonce (the 'work hash') and the difficulty to be met.
@@ -389,10 +402,6 @@ public:
 	 * @return true if the solution was indeed valid and accepted.
 	 */
 	virtual bool submitEthashWork(h256 const& _mixHash, h64 const& _nonce) override;
-
-protected:
-	virtual BlockChain& bc() override { return m_bc; }
-	virtual BlockChain const& bc() const override { return m_bc; }
 };
 
 }

@@ -35,7 +35,7 @@ ColumnLayout
 	{
 		Layout.preferredWidth: 560
 		anchors.horizontalCenter: parent.horizontalCenter
-		Layout.preferredHeight: 60
+		Layout.preferredHeight: 75
 		spacing: 0
 		anchors.top: parent.top
 		anchors.topMargin: 10
@@ -88,7 +88,7 @@ ColumnLayout
 					color: "#cccccc"
 					id: deleteImg
 					anchors.top: parent.top
-					anchors.topMargin: 6
+					anchors.topMargin: 7
 					visible: projectModel.stateListModel.count > 1
 					MouseArea
 					{

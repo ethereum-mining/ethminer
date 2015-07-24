@@ -105,6 +105,7 @@ ColumnLayout
 				anchors.verticalCenter: parent.verticalCenter
 				anchors.right: parent.right
 				anchors.rightMargin: 14
+				visible: false
 				MouseArea
 				{
 					anchors.fill: parent
