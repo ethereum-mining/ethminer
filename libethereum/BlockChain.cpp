@@ -226,8 +226,9 @@ unsigned BlockChain::openDatabase(std::string const& _path, WithExisting _we)
 
 	if (_we != WithExisting::Verify && !details(m_genesisHash))
 	{
+		BlockInfo gb(m_genesisBlock);
 		// Insert details of genesis block.
-		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {});
+		m_details[m_genesisHash] = BlockDetails(0, gb.difficulty(), h256(), {});
 		auto r = m_details[m_genesisHash].rlp();
 		m_extrasDB->Put(m_writeOptions, toSlice(m_genesisHash, ExtraDetails), (ldb::Slice)dev::ref(r));
 	}
@@ -309,7 +310,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	m_lastBlockHash = genesisHash();
 	m_lastBlockNumber = 0;
 
-	m_details[m_lastBlockHash].totalDifficulty = c_genesisDifficulty;
+	m_details[m_lastBlockHash].totalDifficulty = BlockInfo(m_genesisBlock).difficulty();
 
 	m_extrasDB->Put(m_writeOptions, toSlice(m_lastBlockHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[m_lastBlockHash].rlp()));
 
