@@ -62,6 +62,7 @@ class State;
 struct AlreadyHaveBlock: virtual Exception {};
 struct UnknownParent: virtual Exception {};
 struct FutureTime: virtual Exception {};
+struct TransientError: virtual Exception {};
 
 struct BlockChainChat: public LogChannel { static const char* name(); static const int verbosity = 5; };
 struct BlockChainNote: public LogChannel { static const char* name(); static const int verbosity = 3; };

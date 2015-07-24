@@ -1739,6 +1739,13 @@ void Main::on_blocks_currentItemChanged()
 			s << "<h3>" << h << "</h3>";
 			s << "<h4>#" << info.number();
 			s << "&nbsp;&emsp;&nbsp;<b>" << timestamp << "</b></h4>";
+			try
+			{
+				RLP r(info.extraData());
+				if (r[0].toInt<int>() == 0)
+					s << "<div>Sealing client: <b>" << htmlEscaped(r[1].toString()) << "</b>" << "</div>";
+			}
+			catch (...) {}
 			s << "<div>D/TD: <b>" << info.difficulty() << "</b>/<b>" << details.totalDifficulty << "</b> = 2^" << log2((double)info.difficulty()) << "/2^" << log2((double)details.totalDifficulty) << "</div>";
 			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></div>";
 			s << "<div>Gas used/limit: <b>" << info.gasUsed() << "</b>/<b>" << info.gasLimit() << "</b>" << "</div>";
@@ -1760,6 +1767,8 @@ void Main::on_blocks_currentItemChanged()
 				s << "<div>Parent: <b><i>It was a virgin birth</i></b></div>";
 			}
 //			s << "<div>Bloom: <b>" << details.bloom << "</b>";
+			s << "<div>State root: " << ETH_HTML_SPAN(ETH_HTML_MONO) << info.stateRoot().hex() << "</span></div>";
+			s << "<div>Extra data: " << ETH_HTML_SPAN(ETH_HTML_MONO) << toHex(info.extraData()) << "</span></div>";
 			if (!!info.logBloom())
 				s << "<div>Log Bloom: " << info.logBloom() << "</div>";
 			else
