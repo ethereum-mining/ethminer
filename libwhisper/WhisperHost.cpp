@@ -291,10 +291,11 @@ void WhisperHost::loadMessagesFromBD()
 void WhisperHost::saveTopicsToDB(string const& _app, string const& _password)
 {
 	bytes plain;
+	RLPStream rlp;
 
 	DEV_GUARDED(m_filterLock)
 	{
-		RLPStream rlp(m_filters.size());
+		rlp.appendList(m_filters.size());
 
 		for (auto const& x: m_filters)
 		{
@@ -304,15 +305,14 @@ void WhisperHost::saveTopicsToDB(string const& _app, string const& _password)
 			unsigned i = 0;
 
 			for (auto const& t: topics)
-				memcpy(p.get() + i * h256::size, t.data(), h256::size);
+				memcpy(p.get() + h256::size * i++, t.data(), h256::size);
 			
 			bytesConstRef ref(p.get(), RawDataSize);
 			rlp.append(ref);
-		}
-
-		rlp.swapOut(plain);
+		}		
 	}
 
+	rlp.swapOut(plain);
 	h256 s = sha3(_app);
 	h256 h = sha3(s);
 	bytes encrypted;
