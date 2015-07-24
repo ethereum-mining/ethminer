@@ -38,6 +38,8 @@ function check(type, value)
 		res = validateArray(type, value);
 	else if (type.indexOf("int") !== -1)
 		res = validateInt(type, value);
+	else if (type.indexOf("enum") !== -1)
+		res = validateInt(type, value);
 	else if (type.indexOf("bytes") !== -1)
 		res = validateBytes(type, value);
 	else if (type.indexOf("bool") !== -1)
