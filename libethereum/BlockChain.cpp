@@ -409,12 +409,12 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 				catch (dev::eth::FutureTime)
 				{
 					cwarn << "ODD: Import queue contains a block with future time.";
-					sleep(1);
+					this_thread::sleep_for(chrono::seconds(1));
 					continue;
 				}
 				catch (dev::eth::TransientError)
 				{
-					sleep(1);
+					this_thread::sleep_for(chrono::milliseconds(100));
 					continue;
 				}
 				catch (Exception& ex)
