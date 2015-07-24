@@ -64,6 +64,8 @@ public:
 	QJsonArray decodeArray(SolidityType const& _type, bytes const& _value, int& pos);
 	/// Decode array items
 	QJsonValue decodeArrayContent(SolidityType const& _type, bytes const& _value, int& pos);
+	/// Decode enum
+	QString decodeEnum(bytes _value);
 
 private:
 	unsigned encodeSingleItem(QString const& _data, SolidityType const& _type, bytes& _dest);
