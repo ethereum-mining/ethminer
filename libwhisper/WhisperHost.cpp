@@ -30,7 +30,7 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-WhisperHost::WhisperHost(bool _useDB): Worker("shh"), m_useDB(_useDB)
+WhisperHost::WhisperHost(bool _storeMessagesInDB): Worker("shh"), m_storeMessagesInDB(_storeMessagesInDB)
 {
 	loadMessagesFromBD();
 }
@@ -236,7 +236,7 @@ bool WhisperHost::isWatched(Envelope const& _e) const
 
 void WhisperHost::saveMessagesToBD()
 {
-	if (!m_useDB)
+	if (!m_storeMessagesInDB)
 		return;
 
 	try
@@ -265,7 +265,7 @@ void WhisperHost::saveMessagesToBD()
 
 void WhisperHost::loadMessagesFromBD()
 {
-	if (!m_useDB)
+	if (!m_storeMessagesInDB)
 		return;
 
 	try
@@ -288,14 +288,11 @@ void WhisperHost::loadMessagesFromBD()
 	}
 }
 
-void WhisperHost::saveTopicsToDB(string const& _app, string const& _password)
+void WhisperHost::exportFilters(RLPStream& o_dst) const
 {
-	bytes plain;
-	RLPStream rlp;
-
 	DEV_GUARDED(m_filterLock)
 	{
-		rlp.appendList(m_filters.size());
+		o_dst.appendList(m_filters.size());
 
 		for (auto const& x: m_filters)
 		{
@@ -308,16 +305,7 @@ void WhisperHost::saveTopicsToDB(string const& _app, string const& _password)
 				memcpy(p.get() + h256::size * i++, t.data(), h256::size);
 			
 			bytesConstRef ref(p.get(), RawDataSize);
-			rlp.append(ref);
+			o_dst.append(ref);
 		}		
 	}
-
-	rlp.swapOut(plain);
-	h256 s = sha3(_app);
-	h256 h = sha3(s);
-	bytes encrypted;
-	encryptSym(s, &plain, encrypted);
-
-	WhisperFiltersDB db;
-	db.insert(h, encrypted);
 }
