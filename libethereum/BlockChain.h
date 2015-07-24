@@ -107,7 +107,7 @@ public:
 	~BlockChain();
 
 	/// Reopen everything.
-	virtual void reopen(std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()) { close(); open(m_genesisBlock, m_genesisState, _path, _we, _pc); }
+	virtual void reopen(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()) { close(); open(m_genesisBlock, m_genesisState, m_dbPath, _we, _pc); }
 
 	/// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
 	/// To be called from main loop every 100ms or so.
@@ -376,6 +376,8 @@ protected:
 	ldb::WriteOptions m_writeOptions;
 
 	std::function<void(Exception&)> m_onBad;									///< Called if we have a block that doesn't verify.
+
+	std::string m_dbPath;
 
 	friend std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
 };
