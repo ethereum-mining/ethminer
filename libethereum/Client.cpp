@@ -461,6 +461,14 @@ void Client::setShouldPrecomputeDAG(bool _precompute)
 	sealEngine()->setOption("precomputeDAG", _precompute ? trueBytes: falseBytes);
 }
 
+void Client::setTurboMining(bool _enable)
+{
+	m_turboMining = _enable;
+	sealEngine()->setSealer("opencl");
+	if (isMining())
+		startMining();
+}
+
 bool Client::isMining() const
 {
 	return Ethash::isWorking(m_sealEngine.get());
