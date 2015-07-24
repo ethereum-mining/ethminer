@@ -146,8 +146,12 @@ static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 #endif
 
-BlockChain::BlockChain(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _p):
-	m_genesisState(_genesisState)
+BlockChain::BlockChain(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _p)
+{
+	open(_genesisBlock, _genesisState, _path, _we, _p);
+}
+
+void BlockChain::open(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _p)
 {
 	// initialise deathrow.
 	m_cacheUsage.resize(c_collectionQueueSize);
@@ -156,11 +160,12 @@ BlockChain::BlockChain(bytes const& _genesisBlock, std::unordered_map<Address, A
 	// Initialise with the genesis as the last block on the longest chain.
 	m_genesisBlock = _genesisBlock;
 	m_genesisHash = sha3(RLP(m_genesisBlock)[0].data());
+	m_genesisState = _genesisState;
 
 	// remove the next line real soon. we don't need to be supporting this forever.
 	upgradeDatabase(_path, genesisHash());
 
-	if (open(_path, _we) != c_minorProtocolVersion)
+	if (openDatabase(_path, _we) != c_minorProtocolVersion)
 		rebuild(_path, _p);
 }
 
@@ -169,7 +174,7 @@ BlockChain::~BlockChain()
 	close();
 }
 
-unsigned BlockChain::open(std::string const& _path, WithExisting _we)
+unsigned BlockChain::openDatabase(std::string const& _path, WithExisting _we)
 {
 	string path = _path.empty() ? Defaults::get()->m_dbPath : _path;
 	string chainPath = path + "/" + toHex(m_genesisHash.ref().cropped(0, 4));
@@ -243,12 +248,22 @@ unsigned BlockChain::open(std::string const& _path, WithExisting _we)
 void BlockChain::close()
 {
 	cnote << "Closing blockchain DB";
+	// Not thread safe...
 	delete m_extrasDB;
 	delete m_blocksDB;
 	m_lastBlockHash = m_genesisHash;
 	m_lastBlockNumber = 0;
 	m_details.clear();
 	m_blocks.clear();
+	m_logBlooms.clear();
+	m_receipts.clear();
+	m_transactionAddresses.clear();
+	m_blockHashes.clear();
+	m_blocksBlooms.clear();
+	m_cacheUsage.clear();
+	m_inUse.clear();
+	m_lastLastHashes.clear();
+	m_lastLastHashesNumber = (unsigned)-1;
 }
 
 void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, unsigned)> const& _progress, bool _prepPoW)
