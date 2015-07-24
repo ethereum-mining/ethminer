@@ -49,10 +49,10 @@ CanonBlockChain<Ethash>::CanonBlockChain(std::string const& _path, WithExisting 
 {
 }
 
-void CanonBlockChain<Ethash>::reopen(std::string const& _path, WithExisting _we, ProgressCallback const& _pc)
+void CanonBlockChain<Ethash>::reopen(WithExisting _we, ProgressCallback const& _pc)
 {
 	close();
-	open(createGenesisBlock(), createGenesisState(), _path, _we, _pc);
+	open(createGenesisBlock(), createGenesisState(), m_dbPath, _we, _pc);
 }
 
 bytes CanonBlockChain<Ethash>::createGenesisBlock()
