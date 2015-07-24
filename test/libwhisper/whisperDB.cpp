@@ -213,15 +213,15 @@ BOOST_AUTO_TEST_CASE(filters)
 {
 	cnote << "Testing filters saving...";
 	VerbosityHolder setTemporaryLevel(2);
-	string const app("test suite whisperDB/filters");
-	string const password("some pseudorandom stuff"); // todo: delete
+	string const password("some pseudorandom string");
 
 	{
+		WhisperFiltersDB db;
 		p2p::Host h("Test");
 		auto wh = h.registerCapability(new WhisperHost());
 		wh->installWatch(BuildTopic("t1"));
 		wh->installWatch(BuildTopic("t2"));
-		wh->saveTopicsToDB(app, password);
+		db.saveTopicsToDB(*wh, password);
 	}
 
 	short unsigned port1 = 30313;
@@ -235,9 +235,11 @@ BOOST_AUTO_TEST_CASE(filters)
 	host1.setIdealPeerCount(1);
 	auto whost1 = host1.registerCapability(new WhisperHost());
 	host1.start();
-	//auto ids = whost1->restoreTopicsFromDB(app, password); // todo: delete
 	WhisperFiltersDB db;
-	auto ids = db.restoreTopicsFromDB(whost1.get(), app);
+	auto watches = db.restoreTopicsFromDB(whost1.get(), password);
+	auto zero = db.restoreTopicsFromDB(whost1.get(), password + "qwer");
+	BOOST_REQUIRE(!watches.empty());
+	BOOST_REQUIRE(zero.empty());
 
 	std::thread listener([&]()
 	{
@@ -249,7 +251,7 @@ BOOST_AUTO_TEST_CASE(filters)
 
 		for (unsigned j = 0; j < 200 && messageCount < 2; ++j)
 		{
-			for (unsigned id: ids)
+			for (unsigned id: watches)
 				for (auto const& e: whost1->checkWatch(id))
 				{
 					Message msg = whost1->envelope(e).open(whost1->fullTopics(id));

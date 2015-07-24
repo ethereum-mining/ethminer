@@ -69,7 +69,8 @@ class WhisperFiltersDB: public WhisperDB
 public:
 	WhisperFiltersDB(): WhisperDB("filters") {}
 	virtual ~WhisperFiltersDB() {}
-	std::vector<unsigned> restoreTopicsFromDB(WhisperHost* _host, std::string const& _app);
+	std::vector<unsigned> restoreTopicsFromDB(WhisperHost* _host, std::string const& _password);
+	void saveTopicsToDB(WhisperHost const& _host, std::string const& _password);
 };
 
 }
