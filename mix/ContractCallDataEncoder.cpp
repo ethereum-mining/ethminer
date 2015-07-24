@@ -305,7 +305,7 @@ QVariant ContractCallDataEncoder::decode(SolidityType const& _type, bytes const&
 }
 
 QString ContractCallDataEncoder::decodeEnum(bytes _value){
-		return toChar(decodeBytes(_value));
+		return toString(decodeInt(_value));
 }
 
 QString ContractCallDataEncoder::decode(QVariableDeclaration* const& _param, bytes _value)
