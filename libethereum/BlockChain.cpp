@@ -436,7 +436,7 @@ pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, O
 {
 	try
 	{
-		return make_pair(ImportResult::Success, import(verifyBlock(&_block, m_onBad, _ir), _stateDB, _ir));
+		return make_pair(ImportResult::Success, import(verifyBlock(&_block, m_onBad, _ir), _stateDB, _ir | ImportRequirements::TransactionBasic));
 	}
 	catch (UnknownParent&)
 	{
@@ -467,7 +467,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	try
 #endif
 	{
-		block = verifyBlock(&_block, m_onBad, _ir);
+		block = verifyBlock(&_block, m_onBad, _ir | ImportRequirements::TransactionBasic);
 	}
 #if ETH_CATCH
 	catch (Exception& ex)
