@@ -159,8 +159,6 @@ function executeTr(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack)
 		else
         {
             rpcParams.data = "0x" + func.qhash() + encodedParams.join("");
-            console.log(tr.contractId)
-            console.log(JSON.stringify(ctrAddresses))
             rpcParams.to = ctrAddresses[tr.contractId];
         }
 			
