@@ -28,7 +28,7 @@ using namespace dev;
 namespace dev
 {
 
-char const* Version = "0.9.30";
+char const* Version = "0.9.32";
 
 const u256 UndefinedU256 = ~(u256)0;
 
