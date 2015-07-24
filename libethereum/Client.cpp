@@ -327,7 +327,7 @@ void Client::doneWorking()
 	}
 }
 
-void Client::killChain()
+void Client::reopenChain(WithExisting _we)
 {
 	bool wasMining = isMining();
 	if (wasMining)
@@ -348,8 +348,8 @@ void Client::killChain()
 		m_working = State();
 
 		m_stateDB = OverlayDB();
-		m_stateDB = State::openDB(Defaults::dbPath(), bc().genesisHash(), WithExisting::Kill);
-		bc().reopen(Defaults::dbPath(), WithExisting::Kill);
+		bc().reopen(Defaults::dbPath(), _we);
+		m_stateDB = State::openDB(Defaults::dbPath(), bc().genesisHash(), _we);
 
 		m_preMine = bc().genesisState(m_stateDB);
 		m_postMine = m_preMine;
