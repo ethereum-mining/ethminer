@@ -361,15 +361,22 @@ bool ethash_cl_miner::init(
 		try
 		{
 			m_dagChunksCount = 1;
+			ETHCL_LOG("Creating one big buffer for the DAG");
 			m_dagChunks.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize));
-			ETHCL_LOG("Created one big buffer for the DAG");
+			ETHCL_LOG("Loading single big chunk kernels");
+			m_hashKernel = cl::Kernel(program, "ethash_hash");
+			m_searchKernel = cl::Kernel(program, "ethash_search");
+			ETHCL_LOG("Mapping one big chunk.");
+			m_queue.enqueueWriteBuffer(m_dagChunks[0], CL_TRUE, 0, _dagSize, _dag);
 		}
 		catch (cl::Error const& err)
 		{
 			int errCode = err.err();
 			if (errCode != CL_INVALID_BUFFER_SIZE || errCode != CL_MEM_OBJECT_ALLOCATION_FAILURE)
-				ETHCL_LOG("Allocating single buffer failed with: " << err.what() << "(" << errCode << ")");
+				ETHCL_LOG("Allocating/mapping single buffer failed with: " << err.what() << "(" << errCode << ")");
 			cl_ulong result;
+			// if we fail midway on the try above make sure we start clean
+			m_dagChunks.clear();
 			device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &result);
 			ETHCL_LOG(
 				"Failed to allocate 1 big chunk. Max allocateable memory is "
@@ -387,32 +394,9 @@ bool ethash_cl_miner::init(
 					(i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7
 				));
 			}
-		}
-
-		if (m_dagChunksCount == 1)
-		{
-			ETHCL_LOG("Loading single big chunk kernels");
-			m_hashKernel = cl::Kernel(program, "ethash_hash");
-			m_searchKernel = cl::Kernel(program, "ethash_search");
-		}
-		else
-		{
 			ETHCL_LOG("Loading chunk kernels");
 			m_hashKernel = cl::Kernel(program, "ethash_hash_chunks");
 			m_searchKernel = cl::Kernel(program, "ethash_search_chunks");
-		}
-
-		// create buffer for header
-		ETHCL_LOG("Creating buffer for header.");
-		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
-
-		if (m_dagChunksCount == 1)
-		{
-			ETHCL_LOG("Mapping one big chunk.");
-			m_queue.enqueueWriteBuffer(m_dagChunks[0], CL_TRUE, 0, _dagSize, _dag);
-		}
-		else
-		{
 			// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
 			void* dag_ptr[4];
 			for (unsigned i = 0; i < m_dagChunksCount; i++)
@@ -426,6 +410,9 @@ bool ethash_cl_miner::init(
 				m_queue.enqueueUnmapMemObject(m_dagChunks[i], dag_ptr[i]);
 			}
 		}
+		// create buffer for header
+		ETHCL_LOG("Creating buffer for header.");
+		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
 		// create mining buffers
 		for (unsigned i = 0; i != c_bufferCount; ++i)
