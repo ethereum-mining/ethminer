@@ -348,7 +348,7 @@ void Client::reopenChain(WithExisting _we)
 		m_working = State();
 
 		m_stateDB = OverlayDB();
-		bc().reopen(Defaults::dbPath(), _we);
+		bc().reopen(_we);
 		m_stateDB = State::openDB(Defaults::dbPath(), bc().genesisHash(), _we);
 
 		m_preMine = bc().genesisState(m_stateDB);
