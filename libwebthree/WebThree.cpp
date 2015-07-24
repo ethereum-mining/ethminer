@@ -25,6 +25,7 @@
 #include <thread>
 
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <libdevcore/Log.h>
 #include <libethereum/Defaults.h>
@@ -53,7 +54,13 @@ WebThreeDirect::WebThreeDirect(
 	if (_interfaces.count("eth"))
 	{
 		m_ethereum.reset(new eth::EthashClient(&m_net, shared_ptr<GasPricer>(), _dbPath, _we, 0));
-		m_ethereum->setExtraData(rlpList(0, _clientVersion));
+		string bp = DEV_QUOTED(ETH_BUILD_PLATFORM);
+		vector<string> bps;
+		boost::split(bps, bp, boost::is_any_of("/"));
+		bps[0] = bps[0].substr(0, 5);
+		bps[1] = bps[1].substr(0, 3);
+		bps.back() = bps.back().substr(0, 3);
+		m_ethereum->setExtraData(rlpList(0, string(dev::Version) + "++" + string(DEV_QUOTED(ETH_COMMIT_HASH)).substr(0, 4) + (ETH_CLEAN_REPO ? "-" : "*") + string(DEV_QUOTED(ETH_BUILD_TYPE)).substr(0, 1) + boost::join(bps, "/")));
 	}
 
 	if (_interfaces.count("shh"))
@@ -78,12 +85,7 @@ WebThreeDirect::~WebThreeDirect()
 
 std::string WebThreeDirect::composeClientVersion(std::string const& _client, std::string const& _clientName)
 {
-#if ETH_EVMJIT
-	char const* jit = "-JIT";
-#else
-	char const* jit = "";
-#endif
-	return _client + "-" + "v" + dev::Version + "-" + string(DEV_QUOTED(ETH_COMMIT_HASH)).substr(0, 8) + (ETH_CLEAN_REPO ? "" : "*") + "/" + _clientName + "/" DEV_QUOTED(ETH_BUILD_TYPE) "-" DEV_QUOTED(ETH_BUILD_PLATFORM) + jit;
+	return _client + "-" + "v" + dev::Version + "-" + string(DEV_QUOTED(ETH_COMMIT_HASH)).substr(0, 8) + (ETH_CLEAN_REPO ? "" : "*") + "/" + _clientName + "/" DEV_QUOTED(ETH_BUILD_TYPE) "-" DEV_QUOTED(ETH_BUILD_PLATFORM);
 }
 
 p2p::NetworkPreferences const& WebThreeDirect::networkPreferences() const

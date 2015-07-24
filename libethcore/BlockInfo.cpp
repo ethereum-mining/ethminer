@@ -183,28 +183,30 @@ void BlockInfo::populateFromParent(BlockInfo const& _parent)
 {
 	m_stateRoot = _parent.stateRoot();
 	m_number = _parent.m_number + 1;
+	m_parentHash = _parent.m_hash;
 	m_gasLimit = selectGasLimit(_parent);
 	m_gasUsed = 0;
 	m_difficulty = calculateDifficulty(_parent);
-	m_parentHash = _parent.m_hash;
 }
 
 u256 BlockInfo::selectGasLimit(BlockInfo const& _parent) const
 {
-	if (!m_parentHash)
-		return c_genesisGasLimit;
+	static const u256 c_gasFloorTarget = 3141592;
+
+	if (!m_number)
+		throw GenesisBlockCannotBeCalculated();
 	else
 		// target minimum of 3141592
-		if (_parent.m_gasLimit < c_genesisGasLimit)
-			return min<u256>(c_genesisGasLimit, _parent.m_gasLimit + _parent.m_gasLimit / c_gasLimitBoundDivisor - 1);
+		if (_parent.m_gasLimit < c_gasFloorTarget)
+			return min<u256>(c_gasFloorTarget, _parent.m_gasLimit + _parent.m_gasLimit / c_gasLimitBoundDivisor - 1);
 		else
-			return max<u256>(c_genesisGasLimit, _parent.m_gasLimit - _parent.m_gasLimit / c_gasLimitBoundDivisor + 1 + (_parent.m_gasUsed * 6 / 5) / c_gasLimitBoundDivisor);
+			return max<u256>(c_gasFloorTarget, _parent.m_gasLimit - _parent.m_gasLimit / c_gasLimitBoundDivisor + 1 + (_parent.m_gasUsed * 6 / 5) / c_gasLimitBoundDivisor);
 }
 
 u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 {
-	if (!m_parentHash)
-		return (u256)c_genesisDifficulty;
+	if (!m_number)
+		throw GenesisBlockCannotBeCalculated();
 	else
 		return max<u256>(c_minimumDifficulty, m_timestamp >= _parent.m_timestamp + c_durationLimit ? _parent.m_difficulty - (_parent.m_difficulty / c_difficultyBoundDivisor) : (_parent.m_difficulty + (_parent.m_difficulty / c_difficultyBoundDivisor)));
 }
