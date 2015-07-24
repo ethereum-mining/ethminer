@@ -131,7 +131,7 @@ void help()
 		<< "    -K,--kill  First kill the blockchain." << endl
 		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
 		<< "    --rescue  Attempt to rescue a corrupt database." << endl
-		<< "    --genesis-nonce <nonce>  Set the Genesis Nonce to the given hex nonce." << endl
+		<< "    --genesis-json <file>  Import the genesis block information from the given json file." << endl
 		<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
 		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
 		<< "    --sign-key <address>  Sign all transactions with the key of the given address." << endl
