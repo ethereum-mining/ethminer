@@ -127,9 +127,10 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				TransientDirectory td_stateDB, td_bc;
 				FullBlockChain<Ethash> bc(rlpGenesisBlock.out(), StateDefinition(), td_bc.path(), WithExisting::Kill);
 				State state(OverlayDB(State::openDB(td_stateDB.path(), h256{}, WithExisting::Kill)), BaseState::Empty);
-				trueState.setAddress(biGenesisBlock.coinbaseAddress());
+				state.setAddress(biGenesisBlock.coinbaseAddress());
 				importer.importState(o["pre"].get_obj(), state);
 				state.commit();
+				state.sync(bc);
 
 				for (size_t i = 1; i < importBlockNumber; i++) //0 block is genesis
 				{
