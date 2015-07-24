@@ -157,12 +157,11 @@ function executeTr(blockIndex, trIndex, state, ctrAddresses, trHashes, callBack)
 		if (tr.contractId === tr.functionId)
 			rpcParams.code = codeModel.contracts[tr.contractId].codeHex + encodedParams.join("");
 		else
-        {
-            rpcParams.data = "0x" + func.qhash() + encodedParams.join("");
-            rpcParams.to = ctrAddresses[tr.contractId];
-        }
-			
-
+		{
+			rpcParams.data = "0x" + func.qhash() + encodedParams.join("");
+			rpcParams.to = ctrAddresses[tr.contractId];
+		}
+		
 		var requests = [{
 							jsonrpc: "2.0",
 							method: "eth_sendTransaction",
