@@ -26,13 +26,55 @@ Rectangle {
 		selected(step)
 	}
 
+	function reset()
+	{
+		for (var k in deployLogs.logs)
+		{
+			deployLogs.logs[k] = ""
+		}
+		deployLogs.switchLogs()
+		refreshCurrent()
+	}
+
 	border.color: "#cccccc"
 	border.width: 1
+
+
+	Connections
+	{
+		id: deployStatus
+		target: deploymentDialog.deployStep
+		onDeployed:
+		{
+			console.log("deployed")
+		}
+	}
+
+	Connections
+	{
+		id: packagedStatus
+		target: deploymentDialog.packageStep
+		onPackaged:
+		{
+			console.log("packaged")
+		}
+	}
+
+	Connections
+	{
+		id: registerStatus
+		target: deploymentDialog.registerStep
+		onRegistered:
+		{
+			console.log("registered")
+		}
+	}
 
 	ColumnLayout
 	{
 		anchors.fill: parent
 		anchors.margins: 1
+		spacing: 0
 		Repeater
 		{
 			id: menu
@@ -45,7 +87,7 @@ Rectangle {
 				{
 					step: 2,
 					type:"package",
-					label: qsTr("Package files")
+					label: qsTr("Package Dapp")
 				},
 				{
 					step: 3,
@@ -70,6 +112,7 @@ Rectangle {
 					labelContainer.state = "selected"
 					sel = index
 					itemClicked(menu.model[index].type)
+					deployLogs.switchLogs()
 				}
 
 				function unselect()
@@ -136,60 +179,58 @@ Rectangle {
 		}
 
 		Connections {
+			property var logs: ({})
+			id: deployLogs
+
+			function switchLogs()
+			{
+				if (root.sel)
+				{
+					if (!logs[root.sel])
+						logs[root.sel] = ""
+					log.text = logs[root.sel]
+				}
+			}
+
 			target: projectModel
-			onDeploymentStarted: log.text = log.text + qsTr("Running deployment...") + "\n"
-			onDeploymentError: log.text = log.text + error + "\n"
-			onDeploymentComplete: log.text = log.text + qsTr("Deployment complete") + "\n"
-			onDeploymentStepChanged: log.text = log.text + message + "\n"
+			onDeploymentStarted:
+			{
+				if (!logs[root.sel])
+					logs[root.sel] = ""
+				logs[root.sel] = logs[root.sel] + qsTr("Running deployment...") + "\n"
+				log.text = logs[root.sel]
+			}
+
+			onDeploymentError:
+			{
+				if (!logs[root.sel])
+					logs[root.sel] = ""
+				logs[root.sel] = logs[root.sel] + error + "\n"
+				log.text = logs[root.sel]
+			}
+
+			onDeploymentComplete:
+			{
+				if (!logs[root.sel])
+					logs[root.sel] = ""
+				logs[root.sel] = logs[root.sel] + qsTr("Deployment complete") + "\n"
+				log.text = logs[root.sel]
+			}
+
+			onDeploymentStepChanged:
+			{
+				if (!logs[root.sel])
+					logs[root.sel] = ""
+				logs[root.sel] = logs[root.sel] + message + "\n"
+				log.text = logs[root.sel]
+			}
 		}
 
 		Rectangle
 		{
 			Layout.fillWidth: true
-			Layout.preferredHeight: 1
+			Layout.preferredHeight: 2
 			color: "#cccccc"
-		}
-
-		RowLayout
-		{
-			anchors.horizontalCenter: parent.horizontalCenter
-			Layout.preferredHeight: 20
-			anchors.left: parent.left
-			anchors.leftMargin: 2
-			Button
-			{
-				Layout.preferredHeight: 22
-				Layout.preferredWidth: 22
-				action: clearAction
-				iconSource: "qrc:/qml/img/cleariconactive.png"
-			}
-
-			Action {
-				id: clearAction
-				enabled: log.text !== ""
-				tooltip: qsTr("Clear")
-				onTriggered: {
-					log.text = ""
-				}
-			}
-
-			Button
-			{
-				Layout.preferredHeight: 22
-				text: qsTr("Clear Deployment")
-				action: clearDeployAction
-			}
-
-			Action {
-				id: clearDeployAction
-				onTriggered: {
-					worker.forceStopPooling()
-					fileIo.deleteDir(projectModel.deploymentDir)
-					projectModel.cleanDeploymentStatus()
-					root.refreshCurrent()
-					log.text = ""
-				}
-			}
 		}
 
 		ScrollView
@@ -205,6 +246,47 @@ Rectangle {
 				id: log
 			}
 		}
+
+		Rectangle
+		{
+			Layout.preferredHeight: 20
+			Layout.fillWidth: true
+			color: "#cccccc"
+			LogsPaneStyle
+			{
+				id: style
+			}
+
+			Label
+			{
+				anchors.horizontalCenter: parent.horizontalCenter
+				anchors.verticalCenter: parent.verticalCenter
+				text: qsTr("Logs")
+				font.italic: true
+				font.pointSize: style.absoluteSize(-1)
+			}
+
+			Button
+			{
+				height: 20
+				width: 20
+				anchors.right: parent.right
+				action: clearAction
+				iconSource: "qrc:/qml/img/cleariconactive.png"
+				tooltip: qsTr("Clear Messages")
+			}
+
+			Action {
+				id: clearAction
+				enabled: log.text !== ""
+				tooltip: qsTr("Clear")
+				onTriggered: {
+					deployLogs.logs[root.sel] = ""
+					log.text = deployLogs.logs[root.sel]
+				}
+			}
+		}
+
 	}
 }
 

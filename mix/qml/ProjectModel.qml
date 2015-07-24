@@ -80,20 +80,14 @@ Item {
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
 	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
 	function deployProject() { NetworkDeploymentCode.deployProject(false); }
-	function registerToUrlHint(url, callback) { NetworkDeploymentCode.registerToUrlHint(url, callback); }
+	function registerToUrlHint(url, gasPrice, callback) { NetworkDeploymentCode.registerToUrlHint(url, gasPrice, callback); }
 	function formatAppUrl() { NetworkDeploymentCode.formatAppUrl(url); }
 
 	function cleanDeploymentStatus()
 	{
 		deployedScenarioIndex = 0
-		applicationUrlEth = ""
-		applicationUrlHttp = ""
 		deployBlockNumber = ""
 		deploymentTrHashes = {}
-		registerContentHashTrHash = ""
-		registerUrlTrHash = ""
-		registerContentHashBlockNumber = -1
-		registerUrlBlockNumber = -1
 		deploymentAddresses = {}
 		deploymentDir = ""
 		deploymentDialog.packageStep.packageHash = ""
@@ -101,6 +95,18 @@ Item {
 		deploymentDialog.packageStep.packageDir = ""
 		deploymentDialog.packageStep.lastDeployDate = ""
 		deploymentDialog.packageStep.localPackageUrl = ""
+		saveProject()
+		cleanRegisteringStatus()
+	}
+
+	function cleanRegisteringStatus()
+	{
+		applicationUrlEth = ""
+		applicationUrlHttp = ""
+		registerContentHashTrHash = ""
+		registerUrlTrHash = ""
+		registerContentHashBlockNumber = -1
+		registerUrlBlockNumber = -1
 		saveProject()
 	}
 

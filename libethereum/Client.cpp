@@ -217,6 +217,17 @@ void Client::onBadBlock(Exception& _ex) const
 		report["hints"]["ethashResult"]["value"] = get<0>(*r).hex();
 		report["hints"]["ethashResult"]["mixHash"] = get<1>(*r).hex();
 	}
+	if (bytes const* ed = boost::get_error_info<errinfo_extraData>(_ex))
+	{
+		RLP r(*ed);
+		report["hints"]["extraData"] = toHex(*ed);
+		try
+		{
+			if (r[0].toInt<int>() == 0)
+				report["hints"]["minerVersion"] = r[1].toString();
+		}
+		catch (...) {}
+	}
 	DEV_HINT_ERRINFO(required);
 	DEV_HINT_ERRINFO(got);
 	DEV_HINT_ERRINFO_HASH(required_LogBloom);
@@ -341,7 +352,7 @@ void Client::killChain()
 		bc().reopen(Defaults::dbPath(), WithExisting::Kill);
 
 		m_preMine = bc().genesisState(m_stateDB);
-		m_postMine = State(m_stateDB);
+		m_postMine = m_preMine;
 	}
 
 	if (auto h = m_host.lock())
@@ -448,6 +459,14 @@ void Client::setShouldPrecomputeDAG(bool _precompute)
 	bytes trueBytes {1};
 	bytes falseBytes {0};
 	sealEngine()->setOption("precomputeDAG", _precompute ? trueBytes: falseBytes);
+}
+
+void Client::setTurboMining(bool _enable)
+{
+	m_turboMining = _enable;
+	sealEngine()->setSealer("opencl");
+	if (isMining())
+		startMining();
 }
 
 bool Client::isMining() const
@@ -586,7 +605,7 @@ void Client::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
 		appendFromBlock(h, BlockPolarity::Live, io_changed);
 }
 
-void Client::restartMining()
+void Client::resyncStateFromChain()
 {
 	// RESTART MINING
 
@@ -639,7 +658,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		m_tq.dropGood(t);
 	}
 	onNewBlocks(_ir.liveBlocks, changeds);
-	restartMining();
+	resyncStateFromChain();
 	noteChanged(changeds);
 }
 

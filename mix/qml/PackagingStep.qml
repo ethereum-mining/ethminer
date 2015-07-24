@@ -20,6 +20,7 @@ Rectangle {
 	property alias lastDeployDate: lastDeployLabel.text
 	property string deploymentId
 	property string packageDir
+	signal packaged
 
 	function show()
 	{
@@ -107,6 +108,7 @@ Rectangle {
 				{
 					NetworkDeploymentCode.packageDapp(projectModel.deploymentAddresses);
 					projectModel.saveProject()
+					root.packaged()
 				}
 			}
 

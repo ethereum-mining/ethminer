@@ -586,9 +586,11 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 #endif
 	}
 #if ETH_CATCH
-	catch (BadRoot&)
+	catch (BadRoot& ex)
 	{
-		cwarn << "BadRoot error. Retrying import later.";
+		cwarn << "*** BadRoot error! Trying to import" << _block.info.hash() << "needed root" << ex.root;
+		cwarn << _block.info;
+		// Attempt in import later.
 		BOOST_THROW_EXCEPTION(FutureTime());
 	}
 	catch (Exception& ex)
@@ -1245,6 +1247,7 @@ State BlockChain::genesisState(OverlayDB const& _db)
 	dev::eth::commit(m_genesisState, ret.m_state);		// bit horrible. maybe consider a better way of constructing it?
 	ret.m_state.db()->commit();			// have to use this db() since it's the one that has been altered with the above commit.
 	ret.m_previousBlock = BlockInfo(&m_genesisBlock);
+	ret.resetCurrent();
 	return ret;
 }
 
