@@ -386,6 +386,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 		if (!badBlocks.empty())
 			badBlocks.push_back(block.verified.info.hash());
 		else
+		{
 			do {
 				try
 				{
@@ -427,6 +428,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 					badBlocks.push_back(block.verified.info.hash());
 				}
 			} while (false);
+		}
 	return make_tuple(ImportRoute{dead, fresh, goodTransactions}, _bq.doneDrain(badBlocks), count);
 }
 
