@@ -38,6 +38,7 @@ Item
 
 			var ids = JSON.parse(arg2)[0].result;
 			requests = [];
+            accounts = []
 			for (var k in ids)
 			{
 				requests.push({
@@ -52,6 +53,7 @@ Item
 
 			TransactionHelper.rpcCall(requests, function (request, response){
 				var balanceRet = JSON.parse(response);
+                balances = {}
 				for (var k in balanceRet)
 				{
 					var ether = QEtherHelper.createEther(balanceRet[k].result, QEther.Wei);
@@ -206,7 +208,7 @@ Item
 		property var callBack
 		property int elapsed
 		property string hash
-		interval: 500
+		interval: 2000
 		running: false
 		repeat: true
 		onTriggered: {
@@ -227,7 +229,7 @@ Item
 					stop();
 					callBack(1, receipt);
 				}
-				else if (elapsed > 250000)
+				else if (elapsed > 2500000)
 				{
 					stop();
 					callBack(-1, null);

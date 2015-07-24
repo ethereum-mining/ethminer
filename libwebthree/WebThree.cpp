@@ -53,7 +53,7 @@ WebThreeDirect::WebThreeDirect(
 	if (_interfaces.count("eth"))
 	{
 		m_ethereum.reset(new eth::EthashClient(&m_net, shared_ptr<GasPricer>(), _dbPath, _we, 0));
-		m_ethereum->setExtraData(rlpList(0, _clientVersion, m_net.id()));
+		m_ethereum->setExtraData(rlpList(0, _clientVersion));
 	}
 
 	if (_interfaces.count("shh"))

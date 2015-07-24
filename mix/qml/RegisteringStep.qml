@@ -19,42 +19,58 @@ Rectangle {
 	id: root
 	color: "#E3E3E3E3"
 	anchors.fill: parent
+	signal registered
 
 	function show()
 	{
 		ctrRegisterLabel.calculateRegisterGas()
-		applicationUrlEthCtrl.text = projectModel.applicationUrlEth
-		applicationUrlHttpCtrl.text = projectModel.applicationUrlHttp
+		if (applicationUrlHttpCtrl.text === "")
+			applicationUrlHttpCtrl.text = projectModel.applicationUrlHttp
+
+		if (applicationUrlEthCtrl.text === "")
+			applicationUrlEthCtrl.text = projectModel.applicationUrlEth
+
 		visible = true
 
 		verificationEthUrl.text = ""
-		if (projectModel.registerContentHashTrHash !== "")
+		if (projectModel.registerContentHashTrHash !== "" && projectModel.registerContentHashBlockNumber !== -1)
 		{
 			worker.verifyHash("registerHash", projectModel.registerContentHashTrHash, function(bn, trLost)
 			{
-				updateVerification(projectModel.registerContentHashBlockNumber, bn, trLost, verificationEthUrl)
+				updateVerification(projectModel.registerContentHashBlockNumber, bn, trLost, verificationEthUrl, "registerHash")
 			});
 		}
+		else if (projectModel.registerContentHashTrHash !== "" && projectModel.registerContentHashBlockNumber === -1)
+			verificationEthUrl.text = qsTr("waiting verifications")
 
 		verificationUrl.text = ""
-		if (projectModel.registerUrlTrHash !== "")
+		if (projectModel.registerUrlTrHash !== "" && projectModel.registerUrlBlockNumber !== -1)
 		{
 			worker.verifyHash("registerUrl", projectModel.registerUrlTrHash, function(bn, trLost)
 			{
-				updateVerification(projectModel.registerUrlBlockNumber, bn, trLost, verificationUrl)
+				updateVerification(projectModel.registerUrlBlockNumber, bn, trLost, verificationUrl, "registerUrl")
 			});
 		}
+		else if (projectModel.registerUrlTrHash !== "" && projectModel.registerUrlBlockNumber === -1)
+			verificationUrl.text = qsTr("waiting verifications")
 	}
 
-	function updateVerification(originbn, bn, trLost, ctrl)
+	function updateVerification(originbn, bn, trLost, ctrl, trContext)
 	{
 		if (trLost.length === 0)
 		{
 			ctrl.text = bn - originbn
-			ctrl.text += qsTr(" verifications")
+			if (parseInt(bn - originbn) >= 10)
+			{
+				ctrl.color= "green"
+				ctrl.text= qsTr("verified")
+			}
+			else
+				ctrl.text += qsTr(" verifications")
 		}
 		else
 		{
+			deploymentStepChanged(trContext + qsTr(" has been invalidated.") + trLost[0] + " " + qsTr("no longer present") )
 			ctrl.text = qsTr("invalidated")
 		}
 	}
@@ -124,6 +140,7 @@ Rectangle {
 			{
 				id: verificationUrl
 				anchors.verticalCenter: parent.verticalCenter
+				font.italic: true
 			}
 		}
 
@@ -136,7 +153,7 @@ Rectangle {
 				Layout.preferredWidth: col.width / 2
 				Label
 				{
-					text: qsTr("Gas to use for dapp registration")
+					text: qsTr("Registration Cost")
 					anchors.right: parent.right
 					anchors.verticalCenter: parent.verticalCenter
 					id: ctrRegisterLabel
@@ -148,9 +165,12 @@ Rectangle {
 						NetworkDeploymentCode.checkPathCreationCost(applicationUrlEthCtrl.text, function(pathCreationCost)
 						{
 							var ether = QEtherHelper.createBigInt(pathCreationCost);
-							var gasTotal = ether.multiply(worker.gasPriceInt);
-							gasToUseDeployInput.value = QEtherHelper.createEther(gasTotal.value(), QEther.Wei, parent);
-							gasToUseDeployInput.update();
+							if (deploymentDialog.deployStep.gasPrice.value)
+							{
+								var gasTotal = ether.multiply(deploymentDialog.deployStep.gasPrice.value.toWei());
+								gasToUseDeployInput.value = QEtherHelper.createEther(gasTotal.value(), QEther.Wei, parent);
+								gasToUseDeployInput.update();
+							}
 						});
 					}
 				}
@@ -159,9 +179,9 @@ Rectangle {
 			Ether
 			{
 				id: gasToUseDeployInput
-				displayUnitSelection: true
+				displayUnitSelection: false
 				displayFormattedValue: true
-				edit: true
+				edit: false
 				Layout.preferredWidth: 235
 			}
 		}
@@ -224,6 +244,10 @@ Rectangle {
 			Label
 			{
 				id: verificationEthUrl
+                anchors.verticalCenter: parent.verticalCenter;
+				anchors.topMargin: 10
+				font.italic: true
+				font.pointSize: appStyle.absoluteSize(-1)
 			}
 		}
 	}
@@ -234,7 +258,7 @@ Rectangle {
 		anchors.bottomMargin: 10
 		width: parent.width		
 
-		function registerHash(callback)
+		function registerHash(gasPrice, callback)
 		{
 			var inError = [];
 			var ethUrl = NetworkDeploymentCode.formatAppUrl(applicationUrlEthCtrl.text);
@@ -244,10 +268,11 @@ Rectangle {
 					inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
 			}
 			if (!worker.stopForInputError(inError))
-			{
-				NetworkDeploymentCode.registerDapp(ethUrl, function(){
+			{				
+				NetworkDeploymentCode.registerDapp(ethUrl, gasPrice,  function(){
 					projectModel.applicationUrlEth = applicationUrlEthCtrl.text
 					projectModel.saveProject()
+					verificationEthUrl.text = qsTr("waiting verifications")
 					worker.waitForTrReceipt(projectModel.registerContentHashTrHash, function(status, receipt)
 					{
 						worker.verifyHash("registerHash", projectModel.registerContentHashTrHash, function(bn, trLost)
@@ -262,7 +287,7 @@ Rectangle {
 			}
 		}
 
-		function registerUrl()
+		function registerUrl(gasPrice, callback)
 		{
 			if (applicationUrlHttp.text === "" || deploymentDialog.packageHash === "")
 			{
@@ -276,9 +301,10 @@ Rectangle {
 				inError.push(qsTr(applicationUrlHttpCtrl.text));
 			if (!worker.stopForInputError(inError))
 			{
-				registerToUrlHint(applicationUrlHttpCtrl.text, function(){
+				registerToUrlHint(applicationUrlHttpCtrl.text, gasPrice, function(){
 					projectModel.applicationUrlHttp = applicationUrlHttpCtrl.text
 					projectModel.saveProject()
+					verificationUrl.text = qsTr("waiting verifications")
 					worker.waitForTrReceipt(projectModel.registerUrlTrHash, function(status, receipt)
 					{
 						worker.verifyHash("registerUrl", projectModel.registerUrlTrHash, function(bn, trLost)
@@ -286,6 +312,8 @@ Rectangle {
 							projectModel.registerUrlBlockNumber = bn
 							projectModel.saveProject()
 							root.updateVerification(bn, bn, trLost, verificationUrl)
+							root.registered()
+							callback()
 						});
 					})
 				})
@@ -300,8 +328,12 @@ Rectangle {
 			width: 30
 			onClicked:
 			{
-				parent.registerHash(function(){
-					parent.registerUrl()
+				verificationEthUrl.text = ""
+				verificationUrl.text = ""
+				projectModel.cleanRegisteringStatus()
+				var gasPrice = deploymentDialog.deployStep.gasPrice.toHexWei()
+				parent.registerHash(gasPrice, function(){
+					parent.registerUrl(gasPrice, function(){})
 				})
 			}
 		}

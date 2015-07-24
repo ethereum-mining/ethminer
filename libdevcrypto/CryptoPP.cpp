@@ -287,6 +287,8 @@ Public Secp256k1PP::recover(Signature _signature, bytesConstRef _message)
 	{
 		// todo: make generator member
 		p = m_curve.CascadeMultiply(u2, x, u1, m_params.GetSubgroupGenerator());
+		if (p.identity)
+			return Public();
 		m_curve.EncodePoint(recoveredbytes, p, false);
 	}
 	memcpy(recovered.data(), &recoveredbytes[1], 64);
