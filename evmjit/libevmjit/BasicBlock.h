@@ -14,47 +14,48 @@ namespace jit
 using namespace evmjit;
 using instr_idx = uint64_t;
 
+class BasicBlock;
+
+class LocalStack
+{
+public:
+	LocalStack(BasicBlock& _owner, Stack& _globalStack);
+	LocalStack(LocalStack const&) = delete;
+	void operator=(LocalStack const&) = delete;
+
+	/// Pushes value on stack
+	void push(llvm::Value* _value);
+
+	/// Pops and returns top value
+	llvm::Value* pop();
+
+	/// Duplicates _index'th value on stack
+	void dup(size_t _index);
+
+	/// Swaps _index'th value on stack with a value on stack top.
+	/// @param _index Index of value to be swaped. Must be > 0.
+	void swap(size_t _index);
+
+	size_t getMaxSize() const { return m_maxSize; }
+
+private:
+	/// Gets _index'th value from top (counting from 0)
+	llvm::Value* get(size_t _index);
+
+	/// Sets _index'th value from top (counting from 0)
+	void set(size_t _index, llvm::Value* _value);
+
+	std::vector<llvm::Value*>::iterator getItemIterator(size_t _index);
+
+private:
+	BasicBlock& m_bblock;
+	Stack& m_global;
+	size_t m_maxSize = 0; ///< Max size reached by the stack.
+};
+
 class BasicBlock
 {
 public:
-	class LocalStack
-	{
-	public:
-		/// Pushes value on stack
-		void push(llvm::Value* _value);
-
-		/// Pops and returns top value
-		llvm::Value* pop();
-
-		/// Duplicates _index'th value on stack
-		void dup(size_t _index);
-
-		/// Swaps _index'th value on stack with a value on stack top.
-		/// @param _index Index of value to be swaped. Must be > 0.
-		void swap(size_t _index);
-
-		size_t getMaxSize() const { return m_maxSize; }
-		int getDiff() const { return m_bblock.m_tosOffset; }
-
-	private:
-		LocalStack(BasicBlock& _owner);
-		LocalStack(LocalStack const&) = delete;
-		void operator=(LocalStack const&) = delete;
-		friend BasicBlock;
-
-		/// Gets _index'th value from top (counting from 0)
-		llvm::Value* get(size_t _index);
-
-		/// Sets _index'th value from top (counting from 0)
-		void set(size_t _index, llvm::Value* _value);
-
-		std::vector<llvm::Value*>::iterator getItemIterator(size_t _index);
-
-	private:
-		BasicBlock& m_bblock;
-		size_t m_maxSize = 0; ///< Max size reached by the stack.
-	};
-
 	explicit BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest);
 	explicit BasicBlock(std::string _name, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest);
 
@@ -72,7 +73,7 @@ public:
 	llvm::Value* getJumpTarget() const { return m_jumpTarget; }
 	void setJumpTarget(llvm::Value* _jumpTarget) { m_jumpTarget = _jumpTarget; }
 
-	LocalStack& localStack() { return m_stack; }
+	int getDiff() const { return m_tosOffset; }
 
 	/// Optimization: propagates values between local stacks in basic blocks
 	/// to avoid excessive pushing/popping on the EVM stack.
@@ -93,10 +94,6 @@ private:
 
 	llvm::BasicBlock* const m_llvmBB;
 
-	/// Basic black state vector (stack) - current/end values and their positions on stack
-	/// @internal Must be AFTER m_llvmBB
-	LocalStack m_stack;
-
 	llvm::IRBuilder<>& m_builder;
 
 	/// This stack contains LLVM values that correspond to items found at
@@ -111,6 +108,7 @@ private:
 	/// executes. It may grow on both sides, as the code pushes items on
 	/// top of the stack or changes existing items.
 	std::vector<llvm::Value*> m_currentStack;
+	friend class LocalStack;
 
 	/// How many items higher is the current stack than the initial one.
 	/// May be negative.
@@ -127,4 +125,3 @@ private:
 }
 }
 }
-
