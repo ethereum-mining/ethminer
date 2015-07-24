@@ -213,7 +213,7 @@ BOOST_AUTO_TEST_CASE(filters)
 {
 	cnote << "Testing filters saving...";
 	VerbosityHolder setTemporaryLevel(2);
-	string const password("some pseudorandom string");
+	h256 persistID(0xC0FFEE);
 
 	{
 		WhisperFiltersDB db;
@@ -221,7 +221,7 @@ BOOST_AUTO_TEST_CASE(filters)
 		auto wh = h.registerCapability(new WhisperHost());
 		wh->installWatch(BuildTopic("t1"));
 		wh->installWatch(BuildTopic("t2"));
-		db.saveTopicsToDB(*wh, password);
+		db.saveTopicsToDB(*wh, persistID);
 	}
 
 	short unsigned port1 = 30313;
@@ -236,8 +236,8 @@ BOOST_AUTO_TEST_CASE(filters)
 	auto whost1 = host1.registerCapability(new WhisperHost());
 	host1.start();
 	WhisperFiltersDB db;
-	auto watches = db.restoreTopicsFromDB(whost1.get(), password);
-	auto zero = db.restoreTopicsFromDB(whost1.get(), password + "qwer");
+	auto watches = db.restoreTopicsFromDB(whost1.get(), persistID);
+	auto zero = db.restoreTopicsFromDB(whost1.get(), ++persistID);
 	BOOST_REQUIRE(!watches.empty());
 	BOOST_REQUIRE(zero.empty());
 
