@@ -47,6 +47,7 @@ bytes CanonBlockChain<Ethash>::s_genesisExtraData;
 CanonBlockChain<Ethash>::CanonBlockChain(std::string const& _path, WithExisting _we, ProgressCallback const& _pc):
 	FullBlockChain<Ethash>(createGenesisBlock(), createGenesisState(), _path, _we, _pc)
 {
+	BlockChain::openDatabase(_path, _we, _pc);
 }
 
 void CanonBlockChain<Ethash>::reopen(WithExisting _we, ProgressCallback const& _pc)
