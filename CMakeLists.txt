@@ -329,9 +329,9 @@ message("-- SOLIDITY         Build Solidity language components       ${SOLIDITY
 message("-- SERPENT          Build Serpent language components        ${SERPENT}")
 message("-- GUI              Build GUI components                     ${GUI}")
 message("-- TESTS            Build tests                              ${TESTS}")
-message("-- ETHASHCL         Build OpenCL components (experimental!)  ${ETHASHCL}")
+message("-- ETHASHCL         Build OpenCL components                  ${ETHASHCL}")
 message("-- JSCONSOLE        Build with javascript console            ${JSCONSOLE}")
-message("-- EVMJIT           Build LLVM-based JIT EVM (experimental!) ${EVMJIT}")
+message("-- EVMJIT           Build LLVM-based JIT EVM                 ${EVMJIT}")
 message("------------------------------------------------------------------------")
 message("")
 

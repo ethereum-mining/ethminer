@@ -463,6 +463,7 @@ public:
 					ex << errinfo_transactionIndex(i);
 					ex << errinfo_transaction(d.toBytes());
 					ex << errinfo_block(_block.toBytes());
+					ex << errinfo_extraData(h.extraData());
 					if (_onBad)
 						_onBad(ex);
 					throw;
