@@ -482,7 +482,7 @@ shh::Message toMessage(Json::Value const& _json)
 	return ret;
 }
 
-shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, Secret _from)
+shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, Secret const& _from)
 {
 	unsigned ttl = 50;
 	unsigned workToProve = 50;

@@ -87,7 +87,7 @@ public:
 	bool decryptECIES(Secret const& _k, bytes& io_text);
 	
 	/// Key derivation function used by encryptECIES and decryptECIES.
-	bytes eciesKDF(Secret _z, bytes _s1, unsigned kdBitLen = 256);
+	bytes eciesKDF(Secret const& _z, bytes _s1, unsigned kdBitLen = 256);
 	
 	/// @returns siganture of message.
 	Signature sign(Secret const& _k, bytesConstRef _message);
