@@ -34,7 +34,13 @@ namespace dev
 
 /// A secret key: 32 bytes.
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
-using Secret = h256;
+class Secret: public h256
+{
+public:
+	template <class ... Args> Secret(Args&& ... _args): h256(_args ...) {}
+	Secret(bytesSec const& _b): h256(bytesConstRef(&_b)) {}
+	~Secret() { ref().cleanse(); }
+};
 
 /// A public key: 64 bytes.
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
@@ -151,7 +157,7 @@ public:
 	KeyPair() {}
 
 	/// Normal constructor - populates object from the given secret key.
-	KeyPair(Secret _k);
+	KeyPair(Secret const& _k) { populateFromSecret(_k); }
 
 	/// Create a new, randomly generated object.
 	static KeyPair create();
@@ -174,6 +180,8 @@ public:
 	bool operator!=(KeyPair const& _c) const { return m_secret != _c.m_secret; }
 
 private:
+	void populateFromSecret(Secret const& _k);
+
 	Secret m_secret;
 	Public m_public;
 	Address m_address;

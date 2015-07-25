@@ -54,8 +54,8 @@ BOOST_AUTO_TEST_CASE(Complex)
 
 	cnote << "Testing State...";
 
-	KeyPair me = sha3("Gav Wood");
-	KeyPair myMiner = sha3("Gav's Miner");
+	KeyPair me = Secret(sha3("Gav Wood"));
+	KeyPair myMiner = Secret(sha3("Gav's Miner"));
 //	KeyPair you = sha3("123");
 
 	Defaults::setDBPath(boost::filesystem::temp_directory_path().string() + "/" + toString(chrono::system_clock::now().time_since_epoch().count()));
