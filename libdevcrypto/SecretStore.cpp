@@ -91,13 +91,13 @@ SecretStore::SecretStore(string const& _path): m_path(_path)
 	load();
 }
 
-bytes SecretStore::secret(h128 const& _uuid, function<string()> const& _pass, bool _useCache) const
+bytesSec SecretStore::secret(h128 const& _uuid, function<string()> const& _pass, bool _useCache) const
 {
 	auto rit = m_cached.find(_uuid);
 	if (_useCache && rit != m_cached.end())
 		return rit->second;
 	auto it = m_keys.find(_uuid);
-	bytes key;
+	bytesSec key;
 	if (it != m_keys.end())
 	{
 		key = decrypt(it->second.encryptedKey, _pass());
