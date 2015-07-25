@@ -110,7 +110,12 @@ BOOST_AUTO_TEST_CASE(priority)
 
 	Transaction tx7(0, gasCostMed, gas, dest, bytes(), 2, sender2 );
 	txq.import(tx7);
-	BOOST_CHECK((Transactions { tx2, tx3, tx4, tx6, tx7 }) == txq.topTransactions(256));
+#ifdef ETH_HAVE_SECP256K1
+		// deterministic signature: hash of tx5 and tx7 will be same
+		BOOST_CHECK((Transactions { tx2, tx3, tx4, tx6 }) == txq.topTransactions(256));
+#else
+		BOOST_CHECK((Transactions { tx2, tx3, tx4, tx6, tx7 }) == txq.topTransactions(256));
+#endif
 }
 
 BOOST_AUTO_TEST_CASE(future)
