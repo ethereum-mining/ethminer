@@ -75,18 +75,6 @@ BOOST_AUTO_TEST_CASE(AesDecryptFailInvalidSeed2)
 	bytes seed = fromHex("000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f");
 	BOOST_CHECK(bytes() == aesDecrypt(&seed, "test"));
 }
-BOOST_AUTO_TEST_CASE(AuthenticatedStreamConstructor)
-{
-	cout << "AuthenticatedStreamConstructor" << endl;
-
-	Secret const sec(dev::sha3("test"));
-	crypto::aes::AuthenticatedStream as(crypto::aes::Encrypt, sec, 0);
-	BOOST_CHECK(as.getMacInterval() == 0);
-	as.adjustInterval(1);
-	BOOST_CHECK(as.getMacInterval() == 1);
-	crypto::aes::AuthenticatedStream as_mac(crypto::aes::Encrypt, h128(), h128(), 42);
-	BOOST_CHECK(as_mac.getMacInterval() == 42);
-}
 
 BOOST_AUTO_TEST_SUITE_END()
 
