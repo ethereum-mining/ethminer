@@ -40,7 +40,7 @@ class Alias
 {
 	friend class ECDHEKeyExchange; // todo: remove
 public:
-	Alias(Secret _s): m_secret(_s) {};
+	Alias(Secret const& _s): m_secret(_s) {};
 	
 	AliasSession session(Address _a) { return m_sessions.count(_a) ? m_sessions.find(_a)->second : AliasSession(); }
 	

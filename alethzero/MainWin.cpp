@@ -349,8 +349,8 @@ void Main::refreshWhisper()
 
 void Main::addNewId(QString _ids)
 {
-	Secret _id = jsToSecret(_ids.toStdString());
-	KeyPair kp(_id);
+	Secret const& id = jsToSecret(_ids.toStdString());
+	KeyPair kp(id);
 	m_myIdentities.push_back(kp);
 	m_server->setIdentities(keysAsVector(owned()));
 	refreshWhisper();
@@ -1327,7 +1327,9 @@ void Main::refreshAccounts()
 	bool showContract = ui->showContracts->isChecked();
 	bool showBasic = ui->showBasic->isChecked();
 	bool onlyNamed = ui->onlyNamed->isChecked();
-	for (auto const& i: ethereum()->addresses())
+	auto as = ethereum()->addresses();
+	sort(as.begin(), as.end());
+	for (auto const& i: as)
 	{
 		bool isContract = (ethereum()->codeHashAt(i) != EmptySHA3);
 		if (!((showContract && isContract) || (showBasic && !isContract)))
