@@ -25,38 +25,7 @@
 using namespace std;
 using namespace dev;
 using namespace dev::crypto;
-using namespace dev::crypto::aes;
 using namespace CryptoPP;
-
-struct aes::Aes128Ctr
-{
-	Aes128Ctr(h128 _k)
-	{
-		mode.SetKeyWithIV(_k.data(), sizeof(h128), Nonce::get().data());
-	}
-	CTR_Mode<AES>::Encryption mode;
-};
-
-Stream::Stream(StreamType, h128 _ckey):
-	m_cSecret(_ckey)
-{
-	cryptor = new Aes128Ctr(_ckey);
-}
-
-Stream::~Stream()
-{
-	delete cryptor;
-}
-
-void Stream::update(bytesRef)
-{
-
-}
-
-size_t Stream::streamOut(bytes&)
-{
-	return 0;
-}
 
 bytes dev::aesDecrypt(bytesConstRef _ivCipher, std::string const& _password, unsigned _rounds, bytesConstRef _salt)
 {
