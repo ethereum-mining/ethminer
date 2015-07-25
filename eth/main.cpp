@@ -1085,7 +1085,7 @@ int main(int argc, char** argv)
 	NodeMode nodeMode = NodeMode::Full;
 	bool interactive = false;
 #if ETH_JSONRPC || !ETH_TRUE
-	int jsonrpc = -1;
+	int jsonRPCURL = -1;
 #endif
 	string jsonAdmin;
 	string genesisJSON;
@@ -1434,9 +1434,9 @@ int main(int argc, char** argv)
 			interactive = true;
 #if ETH_JSONRPC || !ETH_TRUE
 		else if ((arg == "-j" || arg == "--json-rpc"))
-			jsonrpc = jsonrpc == -1 ? SensibleHttpPort : jsonrpc;
+			jsonRPCURL = jsonRPCURL == -1 ? SensibleHttpPort : jsonRPCURL;
 		else if (arg == "--json-rpc-port" && i + 1 < argc)
-			jsonrpc = atoi(argv[++i]);
+			jsonRPCURL = atoi(argv[++i]);
 		else if (arg == "--json-admin" && i + 1 < argc)
 			jsonAdmin = argv[++i];
 #endif
@@ -1743,15 +1743,15 @@ int main(int argc, char** argv)
 	else
 		cout << "Networking disabled. To start, use netstart or pass -b or a remote host." << endl;
 
-	if (useConsole && jsonrpc == -1)
-		jsonrpc = SensibleHttpPort;
+	if (useConsole && jsonRPCURL == -1)
+		jsonRPCURL = SensibleHttpPort;
 
 #if ETH_JSONRPC || !ETH_TRUE
 	shared_ptr<dev::WebThreeStubServer> jsonrpcServer;
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
-	if (jsonrpc > -1)
+	if (jsonRPCURL > -1)
 	{
-		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
+		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonRPCURL, "", "", SensibleHttpThreads));
 		jsonrpcServer = make_shared<dev::WebThreeStubServer>(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer);
 		jsonrpcServer->setMiningBenefactorChanger([&](Address const& a) { beneficiary = a; });
 		jsonrpcServer->StartListening();
@@ -1760,6 +1760,8 @@ int main(int argc, char** argv)
 		else
 			jsonrpcServer->addSession(jsonAdmin, SessionPermissions{{Priviledge::Admin}});
 		cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
+		writeFile(getDataDir("web3") + "/session.key", jsonAdmin);
+		writeFile(getDataDir("web3") + "/session.url", "http://localhost:" + toString(jsonRPCURL));
 	}
 #endif
 
