@@ -104,6 +104,8 @@ public:
 class BlockChain
 {
 public:
+	/// Doesn't open the database - if you want it open it's up to you to subclass this and open it
+	/// in the constructor there.
 	BlockChain(bytes const& _genesisBlock, StateDefinition const& _genesisState, std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _p = ProgressCallback());
 	~BlockChain();
 
@@ -292,12 +294,19 @@ public:
 protected:
 	static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
-	/// Initialise everything and open the database.
+	/// Initialise everything and ready for openning the database.
 	void open(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _p);
 	/// Open the database.
-	unsigned openDatabase(std::string const& _path, WithExisting _we = WithExisting::Trust);
+	unsigned openDatabase(std::string const& _path, WithExisting _we);
 	/// Finalise everything and close the database.
 	void close();
+
+	/// Open the database, rebuilding if necessary.
+	void openDatabase(std::string const& _path, WithExisting _we, ProgressCallback const& _pc)
+	{
+		if (openDatabase(_path, _we) != c_minorProtocolVersion || _we == WithExisting::Verify)
+			rebuild(_path, _pc);
+	}
 
 	template<class T, class K, unsigned N> T queryExtras(K const& _h, std::unordered_map<K, T>& _m, boost::shared_mutex& _x, T const& _n, ldb::DB* _extrasDB = nullptr) const
 	{
