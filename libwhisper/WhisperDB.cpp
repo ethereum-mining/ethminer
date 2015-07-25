@@ -22,22 +22,25 @@
 #include "WhisperDB.h"
 #include <boost/filesystem.hpp>
 #include <libdevcore/FileSystem.h>
+#include "WhisperHost.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::shh;
 namespace fs = boost::filesystem;
 
-WhisperDB::WhisperDB()
+WhisperDB::WhisperDB(string const& _type)
 {
 	m_readOptions.verify_checksums = true;
 	string path = dev::getDataDir("shh");
 	fs::create_directories(path);
 	fs::permissions(path, fs::owner_all);
+	path.append("\\").append(_type);
 	leveldb::Options op;
 	op.create_if_missing = true;
 	op.max_open_files = 256;
 	leveldb::DB* p = nullptr;
-	leveldb::Status status = leveldb::DB::Open(op, path + "/messages", &p);
+	leveldb::Status status = leveldb::DB::Open(op, path, &p);
 	m_db.reset(p);
 	if (!status.ok())
 		BOOST_THROW_EXCEPTION(FailedToOpenLevelDB(status.ToString()));
@@ -79,7 +82,7 @@ void WhisperDB::kill(dev::h256 const& _key)
 		BOOST_THROW_EXCEPTION(FailedDeleteInLevelDB(status.ToString()));
 }
 
-void WhisperDB::loadAll(std::map<h256, Envelope>& o_dst)
+void WhisperMessagesDB::loadAllMessages(std::map<h256, Envelope>& o_dst)
 {
 	leveldb::ReadOptions op;
 	op.fill_cache = false;
@@ -135,7 +138,7 @@ void WhisperDB::loadAll(std::map<h256, Envelope>& o_dst)
 	}
 }
 
-void WhisperDB::save(h256 const& _key, Envelope const& _e)
+void WhisperMessagesDB::saveSingleMessage(h256 const& _key, Envelope const& _e)
 {
 	try
 	{
@@ -153,4 +156,42 @@ void WhisperDB::save(h256 const& _key, Envelope const& _e)
 	{
 		cwarn << boost::diagnostic_information(ex);
 	}
+}
+
+vector<unsigned> WhisperFiltersDB::restoreTopicsFromDB(WhisperHost* _host, h256 const& _id)
+{
+	vector<unsigned> ret;
+	string raw = lookup(_id);
+	if (!raw.empty())
+	{
+		RLP rlp(raw);
+		auto sz = rlp.itemCountStrict();
+
+		for (unsigned i = 0; i < sz; ++i)
+		{
+			RLP r = rlp[i];
+			bytesConstRef ref(r.toBytesConstRef());
+			Topics topics;
+			unsigned num = ref.size() / h256::size;
+			for (unsigned j = 0; j < num; ++j)
+			{
+				h256 topic(ref.data() + j * h256::size, h256::ConstructFromPointerType());
+				topics.push_back(topic);
+			}
+
+			unsigned w = _host->installWatch(topics);
+			ret.push_back(w);
+		}
+	}
+
+	return ret;
+}
+
+void WhisperFiltersDB::saveTopicsToDB(WhisperHost const& _host, h256 const& _id)
+{
+	bytes b;
+	RLPStream rlp;
+	_host.exportFilters(rlp);
+	rlp.swapOut(b);
+	insert(_id, b);
 }
