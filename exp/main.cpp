@@ -284,7 +284,19 @@ int main()
 	return 0;
 }
 #elif 1
-
+int main()
+{
+	string sol = contentsString("")
+	Transaction t(tx, CheckTransaction::None);
+	Public p = recover(t.signature(), t.sha3(WithoutSignature));
+	cnote << t.signature().r;
+	cnote << t.signature().s;
+	cnote << t.signature().v;
+	cnote << p;
+	cnote << toAddress(p);
+	cnote << t.sender();
+}
+#elif 0
 int main()
 {
 	bytes tx = fromHex("f84c01028332dcd58004801ba024843272ee176277535489859cbd275686023fe64aabd158b6fcdf2ae6a1ab6ba02f252a5016a48e5ec8d17aefaf4324d29b9e123fa623dc5a60539b3ad3610c95");
@@ -297,7 +309,6 @@ int main()
 	cnote << toAddress(p);
 	cnote << t.sender();
 }
-
 #elif 0
 void mine(State& s, BlockChain const& _bc, SealEngineFace* _se)
 {
