@@ -30,7 +30,7 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-WhisperHost::WhisperHost(bool _useDB): Worker("shh"), m_useDB(_useDB)
+WhisperHost::WhisperHost(bool _storeMessagesInDB): Worker("shh"), m_storeMessagesInDB(_storeMessagesInDB)
 {
 	loadMessagesFromBD();
 }
@@ -135,27 +135,6 @@ unsigned WhisperHost::installWatch(shh::Topics const& _t)
 	return ret;
 }
 
-h256s WhisperHost::watchMessages(unsigned _watchId)
-{
-	h256s ret;
-	auto wit = m_watches.find(_watchId);
-	if (wit == m_watches.end())
-		return ret;
-	TopicFilter f;
-	{
-		Guard l(m_filterLock);
-		auto fit = m_filters.find(wit->second.id);
-		if (fit == m_filters.end())
-			return ret;
-		f = fit->second.filter;
-	}
-	ReadGuard l(x_messages);
-	for (auto const& m: m_messages)
-		if (f.matches(m.second))
-			ret.push_back(m.first);
-	return ret;
-}
-
 void WhisperHost::uninstallWatch(unsigned _i)
 {
 	cwatshh << "XXX" << _i;
@@ -179,6 +158,45 @@ void WhisperHost::uninstallWatch(unsigned _i)
 	}
 
 	noteAdvertiseTopicsOfInterest();
+}
+
+h256s WhisperHost::watchMessages(unsigned _watchId)
+{
+	h256s ret;
+	auto wit = m_watches.find(_watchId);
+	if (wit == m_watches.end())
+		return ret;
+	TopicFilter f;
+	{
+		Guard l(m_filterLock);
+		auto fit = m_filters.find(wit->second.id);
+		if (fit == m_filters.end())
+			return ret;
+		f = fit->second.filter;
+	}
+	ReadGuard l(x_messages);
+	for (auto const& m: m_messages)
+		if (f.matches(m.second))
+			ret.push_back(m.first);
+	return ret;
+}
+
+h256s WhisperHost::checkWatch(unsigned _watchId)
+{
+	h256s ret;
+	cleanup();
+
+	dev::Guard l(m_filterLock);
+	try
+	{
+		ret = m_watches.at(_watchId).changes;
+		m_watches.at(_watchId).changes.clear();
+	}
+	catch (...)
+	{
+	}
+
+	return ret;
 }
 
 void WhisperHost::doWork()
@@ -218,18 +236,18 @@ bool WhisperHost::isWatched(Envelope const& _e) const
 
 void WhisperHost::saveMessagesToBD()
 {
-	if (!m_useDB)
+	if (!m_storeMessagesInDB)
 		return;
 
 	try
 	{
-		WhisperDB db;
+		WhisperMessagesDB db;
 		ReadGuard g(x_messages);
 		unsigned now = (unsigned)time(0);
 		for (auto const& m: m_messages)
 			if (m.second.expiry() > now)
 				if (isWatched(m.second))
-					db.save(m.first, m.second);
+					db.saveSingleMessage(m.first, m.second);
 	}
 	catch(FailedToOpenLevelDB const& ex)
 	{
@@ -247,14 +265,14 @@ void WhisperHost::saveMessagesToBD()
 
 void WhisperHost::loadMessagesFromBD()
 {
-	if (!m_useDB)
+	if (!m_storeMessagesInDB)
 		return;
 
 	try
 	{
 		map<h256, Envelope> m;
-		WhisperDB db;
-		db.loadAll(m);
+		WhisperMessagesDB db;
+		db.loadAllMessages(m);
 		WriteGuard g(x_messages);
 		m_messages.swap(m);
 		for (auto const& msg: m)
@@ -267,5 +285,27 @@ void WhisperHost::loadMessagesFromBD()
 	catch(...)
 	{
 		cwarn << "Unknown Exception in WhisperHost::loadMessagesFromBD()";
+	}
+}
+
+void WhisperHost::exportFilters(RLPStream& o_dst) const
+{
+	DEV_GUARDED(m_filterLock)
+	{
+		o_dst.appendList(m_filters.size());
+
+		for (auto const& x: m_filters)
+		{
+			Topics const& topics = x.second.full;
+			unsigned const RawDataSize = topics.size() * h256::size;
+			unique_ptr<byte> p(new byte[RawDataSize]);
+			unsigned i = 0;
+
+			for (auto const& t: topics)
+				memcpy(p.get() + h256::size * i++, t.data(), h256::size);
+			
+			bytesConstRef ref(p.get(), RawDataSize);
+			o_dst.append(ref);
+		}		
 	}
 }
