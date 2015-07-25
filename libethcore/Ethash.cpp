@@ -98,7 +98,7 @@ void Ethash::BlockHeaderRaw::populateFromHeader(RLP const& _header, Strictness _
 			BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(bigint(c_minGasLimit), bigint(m_gasLimit)) );
 
 		if (m_number && m_extraData.size() > c_maximumExtraDataSize)
-			BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(c_maximumExtraDataSize), bigint(m_extraData.size())));
+			BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(c_maximumExtraDataSize), bigint(m_extraData.size())) << errinfo_extraData(m_extraData));
 	}
 }
 
