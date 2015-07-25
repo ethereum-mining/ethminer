@@ -76,4 +76,6 @@ using errinfo_hash256 = boost::error_info<struct tag_hash, h256>;
 using errinfo_required_h256 = boost::error_info<struct tag_required_h256, h256>;
 using errinfo_got_h256 = boost::error_info<struct tag_get_h256, h256>;
 using Hash256RequirementError = boost::tuple<errinfo_required_h256, errinfo_got_h256>;
+using errinfo_extraData = boost::error_info<struct tag_extraData, bytes>;
+
 }
