@@ -464,7 +464,9 @@ void Client::setShouldPrecomputeDAG(bool _precompute)
 void Client::setTurboMining(bool _enable)
 {
 	m_turboMining = _enable;
-	sealEngine()->setSealer("opencl");
+#if ETH_ETHASHCL || !ETH_TRUE
+	sealEngine()->setSealer(_enable ? "opencl" : "cpu");
+#endif
 	if (isMining())
 		startMining();
 }
