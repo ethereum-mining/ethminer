@@ -89,7 +89,7 @@ namespace shh
 
 Json::Value toJson(h256 const& _h, Envelope const& _e, Message const& _m);
 Message toMessage(Json::Value const& _json);
-Envelope toSealed(Json::Value const& _json, Message const& _m, Secret _from);
+Envelope toSealed(Json::Value const& _json, Message const& _m, Secret const& _from);
 std::pair<Topics, Public> toWatch(Json::Value const& _json);
 
 }
