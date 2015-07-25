@@ -219,10 +219,10 @@ void Client::onBadBlock(Exception& _ex) const
 	}
 	if (bytes const* ed = boost::get_error_info<errinfo_extraData>(_ex))
 	{
-		RLP r(*ed);
 		report["hints"]["extraData"] = toHex(*ed);
 		try
 		{
+			RLP r(*ed);
 			if (r[0].toInt<int>() == 0)
 				report["hints"]["minerVersion"] = r[1].toString();
 		}
