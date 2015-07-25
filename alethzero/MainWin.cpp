@@ -137,6 +137,11 @@ Main::Main(QWidget *parent) :
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
 
+	if (qApp->arguments().size() > 1 && qApp->arguments()[1] == "--frontier")
+		resetNetwork(eth::Network::Frontier);
+	else if (qApp->arguments().size() > 1 && qApp->arguments()[1] == "--olympic")
+		resetNetwork(eth::Network::Olympic);
+
 	if (c_network == eth::Network::Olympic)
 		setWindowTitle("AlethZero Olympic");
 	else if (c_network == eth::Network::Frontier)
