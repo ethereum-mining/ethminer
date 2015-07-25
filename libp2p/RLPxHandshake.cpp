@@ -134,8 +134,6 @@ void RLPXHandshake::readAck()
 
 void RLPXHandshake::error()
 {
-	m_idleTimer.cancel();
-	
 	auto connected = m_socket->isConnected();
 	if (connected && !m_socket->remoteEndpoint().address().is_unspecified())
 		clog(NetP2PConnect) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Failed)";
@@ -149,6 +147,9 @@ void RLPXHandshake::error()
 
 void RLPXHandshake::transition(boost::system::error_code _ech)
 {
+	// reset timeout
+	m_idleTimer.cancel();
+	
 	if (_ech || m_nextState == Error || m_cancel)
 	{
 		clog(NetP2PConnect) << "Handshake Failed (I/O Error:" << _ech.message() << ")";
@@ -270,6 +271,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 						{
 							RLP rlp(frame.cropped(1), RLP::ThrowOnFail | RLP::FailIfTooSmall);
 							m_host->startPeerSession(m_remote, rlp, m_io, m_socket);
+							return;
 						}
 						catch (std::exception const& _e)
 						{
@@ -283,14 +285,17 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		});
 	}
 	
-	m_idleTimer.expires_from_now(c_timeout);
-	m_idleTimer.async_wait([this, self](boost::system::error_code const& _ec)
+	if (m_nextState != Error)
 	{
-		if (!_ec)
+		m_idleTimer.expires_from_now(c_timeout);
+		m_idleTimer.async_wait([this, self](boost::system::error_code const& _ec)
 		{
-			if (!m_socket->remoteEndpoint().address().is_unspecified())
-				clog(NetP2PConnect) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Timeout)";
-			cancel();
-		}
-	});
+			if (!_ec)
+			{
+				if (!m_socket->remoteEndpoint().address().is_unspecified())
+					clog(NetP2PConnect) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Timeout)";
+				cancel();
+			}
+		});
+	}
 }
