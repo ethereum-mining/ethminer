@@ -349,8 +349,7 @@ void Main::refreshWhisper()
 
 void Main::addNewId(QString _ids)
 {
-	Secret const& id = jsToSecret(_ids.toStdString());
-	KeyPair kp(id);
+	KeyPair kp(jsToSecret(_ids.toStdString()));
 	m_myIdentities.push_back(kp);
 	m_server->setIdentities(keysAsVector(owned()));
 	refreshWhisper();
