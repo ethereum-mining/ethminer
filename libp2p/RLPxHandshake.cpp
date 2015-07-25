@@ -134,6 +134,8 @@ void RLPXHandshake::readAck()
 
 void RLPXHandshake::error()
 {
+	m_idleTimer.cancel();
+	
 	auto connected = m_socket->isConnected();
 	if (connected && !m_socket->remoteEndpoint().address().is_unspecified())
 		clog(NetP2PConnect) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Failed)";
@@ -157,6 +159,18 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 	}
 	
 	auto self(shared_from_this());
+	assert(m_nextState != StartSession);
+	m_idleTimer.expires_from_now(c_timeout);
+	m_idleTimer.async_wait([this, self](boost::system::error_code const& _ec)
+	{
+		if (!_ec)
+		{
+			if (!m_socket->remoteEndpoint().address().is_unspecified())
+				clog(NetP2PConnect) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Timeout)";
+			cancel();
+		}
+	});
+	
 	if (m_nextState == New)
 	{
 		m_nextState = AckAuth;
@@ -244,6 +258,8 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 				m_handshakeInBuffer.resize(frameSize + ((16 - (frameSize % 16)) % 16) + h128::size);
 				ba::async_read(m_socket->ref(), boost::asio::buffer(m_handshakeInBuffer, m_handshakeInBuffer.size()), [this, self, headerRLP](boost::system::error_code ec, std::size_t)
 				{
+					m_idleTimer.cancel();
+					
 					if (ec)
 						transition(ec);
 					else
@@ -271,7 +287,6 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 						{
 							RLP rlp(frame.cropped(1), RLP::ThrowOnFail | RLP::FailIfTooSmall);
 							m_host->startPeerSession(m_remote, rlp, m_io, m_socket);
-							return;
 						}
 						catch (std::exception const& _e)
 						{
@@ -281,20 +296,6 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 						}
 					}
 				});
-			}
-		});
-	}
-	
-	if (m_nextState != Error)
-	{
-		m_idleTimer.expires_from_now(c_timeout);
-		m_idleTimer.async_wait([this, self](boost::system::error_code const& _ec)
-		{
-			if (!_ec)
-			{
-				if (!m_socket->remoteEndpoint().address().is_unspecified())
-					clog(NetP2PConnect) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Timeout)";
-				cancel();
 			}
 		});
 	}
