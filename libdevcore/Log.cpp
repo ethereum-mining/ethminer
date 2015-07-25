@@ -185,7 +185,7 @@ void dev::setThreadName(string const& _n)
 {
 #if defined(__linux__)
 	pthread_setname_np(pthread_self(), _n.c_str());
-#elsif defined(__APPLE__)
+#elif defined(__APPLE__)
 	pthread_setname_np(_n.c_str());
 #else
 	g_logThreadName.m_name.reset(new std::string(_n));
