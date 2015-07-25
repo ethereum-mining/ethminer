@@ -55,7 +55,7 @@ struct SolidityType;
 struct TransactionSettings
 {
 	TransactionSettings() {}
-	TransactionSettings(QString const& _contractId, QString const& _functionId, u256 _value, u256 _gas, bool _gasAuto, u256 _gasPrice, Secret _sender, bool _isContractCreation, bool _isFunctionCall):
+	TransactionSettings(QString const& _contractId, QString const& _functionId, u256 _value, u256 _gas, bool _gasAuto, u256 _gasPrice, Secret const& _sender, bool _isContractCreation, bool _isFunctionCall):
 		contractId(_contractId), functionId(_functionId), value(_value), gas(_gas), gasAuto(_gasAuto), gasPrice(_gasPrice), sender(_sender), isContractCreation(_isContractCreation), isFunctionCall(_isFunctionCall)  {}
 	TransactionSettings(QString const& _stdContractName, QString const& _stdContractUrl):
 		contractId(_stdContractName), gasAuto(true), stdContractUrl(_stdContractUrl), isContractCreation(true), isFunctionCall(true) {}

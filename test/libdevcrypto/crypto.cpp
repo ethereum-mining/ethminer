@@ -514,7 +514,7 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 		bytes keyMaterialBytes(512);
 		bytesRef keyMaterial(&keyMaterialBytes);
 		
-		h256 ess;
+		Secret ess;
 		// todo: ecdh-agree should be able to output bytes
 		eA.agree(eBAck, ess);
 		ess.ref().copyTo(keyMaterial.cropped(0, h256::size));
@@ -581,7 +581,7 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 		bytes keyMaterialBytes(512);
 		bytesRef keyMaterial(&keyMaterialBytes);
 		
-		h256 ess;
+		Secret ess;
 		// todo: ecdh-agree should be able to output bytes
 		eB.agree(eAAuth, ess);
 //		s_secp256k1.agree(eB.seckey(), eAAuth, ess);
