@@ -304,7 +304,8 @@ QVariant ContractCallDataEncoder::decode(SolidityType const& _type, bytes const&
 		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Parameter declaration not found"));
 }
 
-QString ContractCallDataEncoder::decodeEnum(bytes _value){
+QString ContractCallDataEncoder::decodeEnum(bytes _value)
+{
 		return toString(decodeInt(_value));
 }
 
