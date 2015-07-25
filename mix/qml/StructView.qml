@@ -61,7 +61,7 @@ Column
 					else if (t === QSolidityType.Struct)
 						return Qt.createComponent("qrc:/qml/StructView.qml");
 					else if (t === QSolidityType.Enum)
-						return Qt.createComponent("qrc:/qml/QStringTypeView.qml");
+						return Qt.createComponent("qrc:/qml/QIntTypeView.qml");
 					else if (t === QSolidityType.Address)
 						return Qt.createComponent("qrc:/qml/QAddressView.qml");
 					else
