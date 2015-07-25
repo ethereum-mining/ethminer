@@ -39,7 +39,7 @@ using AliasSession = std::pair<Public,h256>;
 class Alias
 {
 public:
-	Alias(Secret _s): m_secret(_s) {};
+	Alias(Secret const& _s): m_secret(_s) {};
 	
 	AliasSession session(Address _a) { return m_sessions.count(_a) ? m_sessions.find(_a)->second : AliasSession(); }
 	
