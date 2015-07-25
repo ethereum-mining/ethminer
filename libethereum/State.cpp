@@ -31,6 +31,7 @@
 #include <libdevcore/TrieHash.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
+#include <libethcore/Params.h>
 #include <libevm/VMFactory.h>
 #include "BlockChain.h"
 #include "Defaults.h"
@@ -47,7 +48,6 @@ namespace fs = boost::filesystem;
 #define ctrace clog(StateTrace)
 #define ETH_TIMED_ENACTMENTS 0
 
-static const u256 c_blockReward = c_network == Network::Olympic ? (1500 * finney) : (5 * ether);
 static const unsigned c_maxSyncTransactions = 256;
 
 const char* StateSafeExceptions::name() { return EthViolet "⚙" EthBlue " ℹ"; }
