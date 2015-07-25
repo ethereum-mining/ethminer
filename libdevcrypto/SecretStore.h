@@ -52,7 +52,7 @@ public:
 	/// @returns the secret key stored by the given @a _uuid.
 	/// @param _pass function that returns the password for the key.
 	/// @param _useCache if true, allow previously decrypted keys to be returned directly.
-	bytes secret(h128 const& _uuid, std::function<std::string()> const& _pass, bool _useCache = true) const;
+	bytesSec secret(h128 const& _uuid, std::function<std::string()> const& _pass, bool _useCache = true) const;
 	/// Imports the (encrypted) key stored in the file @a _file and copies it to the managed directory.
 	h128 importKey(std::string const& _file) { auto ret = readKey(_file, false); if (ret) save(); return ret; }
 	/// Imports the (encrypted) key contained in the json formatted @a _content and stores it in
@@ -107,7 +107,7 @@ private:
 	static bytes decrypt(std::string const& _v, std::string const& _pass);
 
 	/// Stores decrypted keys by uuid.
-	mutable std::unordered_map<h128, bytes> m_cached;
+	mutable std::unordered_map<h128, bytesSec> m_cached;
 	/// Stores encrypted keys together with the file they were loaded from by uuid.
 	std::unordered_map<h128, EncryptedKey> m_keys;
 
