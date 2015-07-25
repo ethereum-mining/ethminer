@@ -44,7 +44,7 @@ option(NOBOOST "No use of boost macros in test functions" OFF)
 option(EVMJIT "Build just-in-time compiler for EVM code (requires LLVM)" OFF)
 option(ETHASHCL "Build in support for GPU mining via OpenCL" ON)
 option(JSCONSOLE "Build in javascript console" ON)
-option(FRONTIER "Build for Frontier network" ON)
+option(FRONTIER "Build for Frontier network" OFF)
 
 # propagates CMake configuration options to the compiler
 function(configureProject)
