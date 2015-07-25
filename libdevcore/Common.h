@@ -79,6 +79,16 @@ using bytes = std::vector<byte>;
 using bytesRef = vector_ref<byte>;
 using bytesConstRef = vector_ref<byte const>;
 
+template <class T>
+class secure_vector: public std::vector<T>
+{
+public:
+	template <class ... Args> secure_vector(Args&& ... _args): std::vector<T>(_args ...) {}
+	~secure_vector() { vector_ref<T>(this).cleanse(); }
+};
+
+using bytesSec = secure_vector<byte>;
+
 // Numeric types.
 using bigint = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<>>;
 using u64 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<64, 64, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
