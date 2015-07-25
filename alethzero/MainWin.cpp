@@ -423,6 +423,7 @@ void Main::installWatches()
 {
 	auto newBlockId = installWatch(ChainChangedFilter, [=](LocalisedLogEntries const&){
 		onNewBlock();
+		onNewPending();
 	});
 	auto newPendingId = installWatch(PendingChangedFilter, [=](LocalisedLogEntries const&){
 		onNewPending();
@@ -1353,7 +1354,7 @@ void Main::refreshBlockCount()
 		syncStatus += QString(": %1/%2").arg(sync.blocksReceived).arg(sync.blocksTotal);
 	ui->syncStatus->setText(syncStatus);
 	ui->chainStatus->setText(QString("%3 importing %4 ready %5 verifying %6 unverified %7 future %8 unknown %9 bad  %1 #%2")
-		.arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.importing).arg(b.verified).arg(b.verifying).arg(b.unverified).arg(b.future).arg(b.unknown).arg(b.bad));
+		.arg(m_privateChain.size() ? "[" + m_privateChain + "] " : c_network == eth::Network::Olympic ? "Olympic" : "Frontier").arg(d.number).arg(b.importing).arg(b.verified).arg(b.verifying).arg(b.unverified).arg(b.future).arg(b.unknown).arg(b.bad));
 }
 
 void Main::on_turboMining_triggered()

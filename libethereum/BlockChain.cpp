@@ -620,6 +620,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	{
 		ex << errinfo_now(time(0));
 		ex << errinfo_block(_block.block.toBytes());
+		ex << errinfo_extraData(_block.info.extraData());
 		throw;
 	}
 #endif
