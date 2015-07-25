@@ -1327,7 +1327,9 @@ void Main::refreshAccounts()
 	bool showContract = ui->showContracts->isChecked();
 	bool showBasic = ui->showBasic->isChecked();
 	bool onlyNamed = ui->onlyNamed->isChecked();
-	for (auto const& i: ethereum()->addresses())
+	auto as = ethereum()->addresses();
+	sort(as.begin(), as.end());
+	for (auto const& i: as)
 	{
 		bool isContract = (ethereum()->codeHashAt(i) != EmptySHA3);
 		if (!((showContract && isContract) || (showBasic && !isContract)))
