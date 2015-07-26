@@ -124,10 +124,13 @@ void help()
 		<< "    --olympic  Use the Olympic (0.9) protocol." << endl
 		<< "    --frontier  Use the Frontier (1.0) protocol." << endl
 		<< "    --private <name>  Use a private chain." << endl
+		<< "    --genesis-json <file>  Import the genesis block information from the given json file." << endl
+		<< endl
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (default: full)." << endl
 #if ETH_JSCONSOLE || !ETH_TRUE
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 #endif
+		<< endl
 #if ETH_JSONRPC || !ETH_TRUE
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port <n>  Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
@@ -136,7 +139,7 @@ void help()
 		<< "    -K,--kill  First kill the blockchain." << endl
 		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
 		<< "    --rescue  Attempt to rescue a corrupt database." << endl
-		<< "    --genesis-json <file>  Import the genesis block information from the given json file." << endl
+		<< endl
 		<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
 		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
 		<< "    --sign-key <address>  Sign all transactions with the key of the given address." << endl
