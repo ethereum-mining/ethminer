@@ -137,10 +137,16 @@ Main::Main(QWidget *parent) :
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
 
-	if (qApp->arguments().size() > 1 && qApp->arguments()[1] == "--frontier")
-		resetNetwork(eth::Network::Frontier);
-	else if (qApp->arguments().size() > 1 && qApp->arguments()[1] == "--olympic")
-		resetNetwork(eth::Network::Olympic);
+	for (int i = 1; i < qApp->arguments().size(); ++i)
+	{
+		QString arg = qApp->arguments()[i];
+		if (arg == "--frontier")
+			resetNetwork(eth::Network::Frontier);
+		else if (arg == "--olympic")
+			resetNetwork(eth::Network::Olympic);
+		else if (arg == "--genesis-json" && i + 1 < qApp->arguments().size())
+			CanonBlockChain<Ethash>::setGenesis(contentsString(qApp->arguments()[++i].toStdString()));
+	}
 
 	if (c_network == eth::Network::Olympic)
 		setWindowTitle("AlethZero Olympic");
