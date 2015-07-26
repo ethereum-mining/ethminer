@@ -28,10 +28,10 @@ using namespace dev::eth;
 
 int main(int argc, char** argv)
 {
-	string remote = contentsString(getDataDir("web3") + "/session.rpc");
+	string remote = contentsString(getDataDir("web3") + "/session.url");
 	if (remote.empty())
 		remote = "http://localhost:8545";
-	string sessionKey = contentsString(getDataDir("web3") + "/session.url");
+	string sessionKey = contentsString(getDataDir("web3") + "/session.key");
 
 	for (int i = 1; i < argc; ++i)
 	{
