@@ -396,8 +396,8 @@ NetworkPreferences Main::netPrefs() const
 	else
 		ret = NetworkPreferences(listenIP, ui->port->value(), ui->upnp->isChecked());
 
-	ret.discovery = m_privateChain.isEmpty();
-	ret.pin = m_privateChain.isEmpty();
+	ret.discovery = m_privateChain.isEmpty() && !ui->hermitMode->isChecked();
+	ret.pin = m_privateChain.isEmpty() || ui->hermitMode->isChecked();
 
 	return ret;
 }
@@ -768,6 +768,7 @@ void Main::writeSettings()
 	s.setValue("askPrice", QString::fromStdString(toString(static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->ask())));
 	s.setValue("bidPrice", QString::fromStdString(toString(static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->bid())));
 	s.setValue("upnp", ui->upnp->isChecked());
+	s.setValue("hermitMode", ui->hermitMode->isChecked());
 	s.setValue("forceAddress", ui->forcePublicIP->text());
 	s.setValue("forceMining", ui->forceMining->isChecked());
 	s.setValue("turboMining", ui->turboMining->isChecked());
@@ -880,6 +881,7 @@ void Main::readSettings(bool _skipGeometry)
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forcePublicIP->setText(s.value("forceAddress", "").toString());
 	ui->dropPeers->setChecked(false);
+	ui->hermitMode->setChecked(s.value("hermitMode", true).toBool());
 	ui->forceMining->setChecked(s.value("forceMining", false).toBool());
 	on_forceMining_triggered();
 	ui->turboMining->setChecked(s.value("turboMining", false).toBool());
