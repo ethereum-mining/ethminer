@@ -186,7 +186,8 @@ unsigned BlockChain::openDatabase(std::string const& _path, WithExisting _we)
 
 	bytes status = contents(extrasPath + "/minor");
 	unsigned lastMinor = c_minorProtocolVersion;
-	DEV_IGNORE_EXCEPTIONS(lastMinor = (unsigned)RLP(status));
+	if (!status.empty())
+		DEV_IGNORE_EXCEPTIONS(lastMinor = (unsigned)RLP(status));
 	if (c_minorProtocolVersion != lastMinor)
 	{
 		cnote << "Killing extras database (DB minor version:" << lastMinor << " != our miner version: " << c_minorProtocolVersion << ").";
