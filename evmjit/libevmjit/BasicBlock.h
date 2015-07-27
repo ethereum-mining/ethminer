@@ -76,18 +76,12 @@ public:
 	code_iterator begin() const { return m_begin; }
 	code_iterator end() const { return m_end; }
 
-	bool isJumpDest() const { return m_isJumpDest; }
-
 private:
 	instr_idx const m_firstInstrIdx = 0; 	///< Code index of first instruction in the block
 	code_iterator const m_begin = {};			///< Iterator pointing code beginning of the block
 	code_iterator const m_end = {};				///< Iterator pointing code end of the block
 
 	llvm::BasicBlock* const m_llvmBB;
-
-	/// Is the basic block a valid jump destination.
-	/// JUMPDEST is the first instruction of the basic block.
-	bool const m_isJumpDest = false;
 };
 
 }
