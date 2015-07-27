@@ -38,17 +38,17 @@ LocalStack::LocalStack(Stack& _globalStack):
 void LocalStack::push(llvm::Value* _value)
 {
 	assert(_value->getType() == Type::Word);
-	m_currentStack.push_back(_value);
+	m_local.push_back(_value);
 	m_maxSize = std::max(m_maxSize, size());
 }
 
 llvm::Value* LocalStack::pop()
 {
 	auto item = get(0);
-	assert(!m_currentStack.empty() || !m_initialStack.empty());
+	assert(!m_local.empty() || !m_input.empty());
 
-	if (m_currentStack.size() > 0)
-		m_currentStack.pop_back();
+	if (m_local.size() > 0)
+		m_local.pop_back();
 	else
 		++m_globalPops;
 
@@ -80,13 +80,13 @@ void LocalStack::swap(size_t _index)
 
 llvm::Value* LocalStack::get(size_t _index)
 {
-	if (_index < m_currentStack.size())
-		return *(m_currentStack.rbegin() + _index); // count from back
+	if (_index < m_local.size())
+		return *(m_local.rbegin() + _index); // count from back
 
-	auto idx = _index - m_currentStack.size() + m_globalPops;
-	if (idx >= m_initialStack.size())
-		m_initialStack.resize(idx + 1);
-	auto& item = m_initialStack[idx];
+	auto idx = _index - m_local.size() + m_globalPops;
+	if (idx >= m_input.size())
+		m_input.resize(idx + 1);
+	auto& item = m_input[idx];
 
 	if (!item)
 		item = m_global.get(idx);
@@ -96,15 +96,15 @@ llvm::Value* LocalStack::get(size_t _index)
 
 void LocalStack::set(size_t _index, llvm::Value* _word)
 {
-	if (_index < m_currentStack.size())
+	if (_index < m_local.size())
 	{
-		*(m_currentStack.rbegin() + _index) = _word;
+		*(m_local.rbegin() + _index) = _word;
 		return;
 	}
 
-	auto idx = _index - m_currentStack.size() + m_globalPops;
-	assert(idx < m_initialStack.size());
-	m_initialStack[idx] = _word;
+	auto idx = _index - m_local.size() + m_globalPops;
+	assert(idx < m_input.size());
+	m_input[idx] = _word;
 }
 
 
@@ -118,15 +118,15 @@ void LocalStack::finalize(llvm::IRBuilder<>& _builder, llvm::BasicBlock& _bb)
 		_builder.SetInsertPoint(blockTerminator);
 
 		// Update items fetched from global stack ignoring the poped ones
-		assert(m_globalPops <= m_initialStack.size()); // pop() always does get()
-		for (auto i = m_globalPops; i < m_initialStack.size(); ++i)
+		assert(m_globalPops <= m_input.size()); // pop() always does get()
+		for (auto i = m_globalPops; i < m_input.size(); ++i)
 		{
-			if (m_initialStack[i])
-				m_global.set(i, m_initialStack[i]);
+			if (m_input[i])
+				m_global.set(i, m_input[i]);
 		}
 
 		// Add new items
-		for (auto& item: m_currentStack)
+		for (auto& item: m_local)
 		{
 			if (m_globalPops) 						// Override poped global items
 				m_global.set(--m_globalPops, item);	// using pops counter as the index
