@@ -348,13 +348,9 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 	{
 		sessions = whost1->peerSessions();
 		if (!sessions.empty())
-		{
 			bf1 = sessions.back().first->cap<WhisperPeer>()->bloom();
-			if (bf1)
-				break;
-		}
 
-		this_thread::sleep_for(chrono::milliseconds(10));
+		this_thread::sleep_for(chrono::milliseconds(step));
 	}
 
 	BOOST_REQUIRE(sessions.size());
@@ -364,18 +360,15 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 	BOOST_REQUIRE(!whost1->bloom());
 
 	unsigned w1 = whost1->installWatch(BuildTopicMask("test1"));
+	bf2 = TopicBloomFilterHash();
 
-	for (int i = 0; i < 600; ++i)
+	for (int i = 0; i < 600 && !bf2; ++i)
 	{
 		sessions = whost2->peerSessions();
 		if (!sessions.empty())
-		{
 			bf2 = sessions.back().first->cap<WhisperPeer>()->bloom();
-			if (bf2)
-				break;
-		}
 
-		this_thread::sleep_for(chrono::milliseconds(10));
+		this_thread::sleep_for(chrono::milliseconds(step));
 	}
 
 	BOOST_REQUIRE(sessions.size());
