@@ -4,17 +4,21 @@
  * file COPYING or http://www.opensource.org/licenses/mit-license.php.*
  **********************************************************************/
 
-#ifndef _SECP256K1_NUM_REPR_
-#define _SECP256K1_NUM_REPR_
+#ifndef _SECP256K1_NUM_IMPL_H_
+#define _SECP256K1_NUM_IMPL_H_
 
-#include <gmp.h>
+#if defined HAVE_CONFIG_H
+#include "libsecp256k1-config.h"
+#endif
 
-#define NUM_LIMBS ((256+GMP_NUMB_BITS-1)/GMP_NUMB_BITS)
+#include "num.h"
 
-typedef struct {
-    mp_limb_t data[2*NUM_LIMBS];
-    int neg;
-    int limbs;
-} secp256k1_num_t;
+#if defined(USE_NUM_GMP)
+#include "num_gmp_impl.h"
+#elif defined(USE_NUM_NONE)
+/* Nothing. */
+#else
+#error "Please select num implementation"
+#endif
 
 #endif
