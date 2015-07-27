@@ -61,7 +61,19 @@ Network resetNetwork(Network _n)
 {
 	c_network = _n;
 	c_maximumExtraDataSize = c_network == Network::Olympic ? 1024 : 32;
-	c_minGasLimit = c_network == Network::Turbo ? 100000000 : 5000;
+	switch(_n)
+	{
+	case Network::Turbo:
+		c_minGasLimit = 100000000;
+		break;
+	case Network::Olympic:
+		c_minGasLimit = 125000;
+		break;
+	case Network::Frontier:
+		c_minGasLimit = 5000;
+		break;
+	}
+
 	c_gasLimitBoundDivisor = 1024;
 	c_minimumDifficulty = 131072;
 	c_difficultyBoundDivisor = 2048;
