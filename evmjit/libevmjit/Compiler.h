@@ -28,7 +28,7 @@ public:
 
 private:
 
-	void createBasicBlocks(code_iterator _begin, code_iterator _end, llvm::SwitchInst& _switchInst);
+	std::vector<BasicBlock> createBasicBlocks(code_iterator _begin, code_iterator _end, llvm::SwitchInst& _switchInst);
 
 	void compileBasicBlock(BasicBlock& _basicBlock, class RuntimeManager& _runtimeManager, class Arith256& _arith, class Memory& _memory, class Ext& _ext, class GasMeter& _gasMeter,
 			llvm::BasicBlock* _nextBasicBlock, class Stack& _globalStack, llvm::SwitchInst& _jumpTable);
@@ -40,9 +40,6 @@ private:
 
 	/// Helper class for generating IR
 	llvm::IRBuilder<> m_builder;
-
-	/// Maps a program counter pc to a basic block that starts at pc (if any).
-	std::vector<BasicBlock> m_basicBlocks;
 
 	/// Stop basic block - terminates execution with STOP code (0)
 	llvm::BasicBlock* m_stopBB = nullptr;

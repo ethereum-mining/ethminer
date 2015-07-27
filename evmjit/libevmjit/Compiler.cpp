@@ -36,7 +36,7 @@ Compiler::Compiler(Options const& _options):
 	Type::init(m_builder.getContext());
 }
 
-void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEnd, llvm::SwitchInst& _jumpTable)
+std::vector<BasicBlock> Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEnd, llvm::SwitchInst& _jumpTable)
 {
 	/// Helper function that skips push data and finds next iterator (can be the end)
 	auto skipPushDataAndGetNext = [](code_iterator _curr, code_iterator _end)
@@ -54,8 +54,9 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 		if (*(_codeEnd - 1) != static_cast<byte>(Instruction::STOP))
 			break;
 
+	std::vector<BasicBlock> blocks;
+
 	auto begin = _codeBegin; // begin of current block
-	bool nextJumpDest = false;
 	for (auto curr = begin, next = begin; curr != _codeEnd; curr = next)
 	{
 		next = skipPushDataAndGetNext(curr, _codeEnd);
@@ -71,10 +72,6 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 			isEnd = true;
 			break;
 
-		case Instruction::JUMPDEST:
-			nextJumpDest = true;
-			break;
-
 		default:
 			break;
 		}
@@ -86,13 +83,14 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 		if (isEnd)
 		{
 			auto beginIdx = begin - _codeBegin;
-			m_basicBlocks.emplace_back(beginIdx, begin, next, m_mainFunc, nextJumpDest);
-			if (nextJumpDest)
-				_jumpTable.addCase(Constant::get(beginIdx), m_basicBlocks.back().llvm());
-			nextJumpDest = false;
+			blocks.emplace_back(beginIdx, begin, next, m_mainFunc);
+			if (Instruction(*begin) == Instruction::JUMPDEST)
+				_jumpTable.addCase(Constant::get(beginIdx), blocks.back().llvm());
 			begin = next;
 		}
 	}
+
+	return blocks;
 }
 
 void Compiler::fillJumpTable()
@@ -134,7 +132,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 
 	m_builder.SetInsertPoint(entryBlock);
 
-	createBasicBlocks(_begin, _end, jumpTable);
+	auto blocks = createBasicBlocks(_begin, _end, jumpTable);
 
 	// Init runtime structures.
 	RuntimeManager runtimeManager(m_builder, _begin, _end);
@@ -159,17 +157,15 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	auto normalFlow = m_builder.CreateICmpEQ(r, m_builder.getInt32(0));
 	runtimeManager.setJmpBuf(jmpBuf);
 
-	auto firstBB = m_basicBlocks.empty() ? m_stopBB : m_basicBlocks.front().llvm();
+	auto firstBB = blocks.empty() ? m_stopBB : blocks.front().llvm();
 	m_builder.CreateCondBr(normalFlow, firstBB, m_abortBB, Type::expectTrue);
 
-	for (auto basicBlockPairIt = m_basicBlocks.begin(); basicBlockPairIt != m_basicBlocks.end(); ++basicBlockPairIt)
+	for (auto it = blocks.begin(); it != blocks.end(); ++it)
 	{
 		// TODO: Rewrite
-		auto& basicBlock = *basicBlockPairIt;
-		auto iterCopy = basicBlockPairIt;
-		++iterCopy;
-		auto nextBasicBlock = (iterCopy != m_basicBlocks.end()) ? iterCopy->llvm() : nullptr;
-		compileBasicBlock(basicBlock, runtimeManager, arith, memory, ext, gasMeter, nextBasicBlock, stack, jumpTable);
+		auto nextIt = it + 1;
+		auto nextBasicBlock = (nextIt != blocks.end()) ? nextIt->llvm() : nullptr; // TODO: What with Stop block?
+		compileBasicBlock(*it, runtimeManager, arith, memory, ext, gasMeter, nextBasicBlock, stack, jumpTable);
 	}
 
 	// Code for special blocks:

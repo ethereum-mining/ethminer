@@ -20,14 +20,11 @@ namespace eth
 namespace jit
 {
 
-static const char* jumpDestName = "JmpDst.";
-static const char* basicBlockName = "Instr.";
-
-BasicBlock::BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc, bool isJumpDest):
+BasicBlock::BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc):
 	m_firstInstrIdx{_firstInstrIdx},
 	m_begin(_begin),
 	m_end(_end),
-	m_llvmBB(llvm::BasicBlock::Create(_mainFunc->getContext(), {isJumpDest ? jumpDestName : basicBlockName, std::to_string(_firstInstrIdx)}, _mainFunc))
+	m_llvmBB(llvm::BasicBlock::Create(_mainFunc->getContext(), {"Instr.", std::to_string(_firstInstrIdx)}, _mainFunc))
 {}
 
 LocalStack::LocalStack(Stack& _globalStack):
