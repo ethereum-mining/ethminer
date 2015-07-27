@@ -45,8 +45,6 @@ private:
 	/// Sets _index'th value from top (counting from 0)
 	void set(size_t _index, llvm::Value* _value);
 
-	std::vector<llvm::Value*>::iterator getItemIterator(size_t _index);
-
 private:
 	BasicBlock& m_bblock;
 	Stack& m_global;
@@ -113,6 +111,8 @@ private:
 	/// How many items higher is the current stack than the initial one.
 	/// May be negative.
 	int m_tosOffset = 0;
+
+	size_t m_globalPops = 0; ///< Number of items poped from global stack. In other words: global - local stack overlap.
 
 	/// Is the basic block a valid jump destination.
 	/// JUMPDEST is the first instruction of the basic block.
