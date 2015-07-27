@@ -392,6 +392,7 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 			auto a = asAddress(m_stack.back());
 			m_stack.pop_back();
 			copyDataToMemory(&_ext.codeAt(a), m_stack, m_temp);
+			break;
 		}
 		case Instruction::GASPRICE:
 			m_stack.push_back(_ext.gasPrice);
