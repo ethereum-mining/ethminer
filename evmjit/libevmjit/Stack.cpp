@@ -71,8 +71,7 @@ void Stack::set(size_t _index, llvm::Value* _value)
 
 void Stack::pop(size_t _count)
 {
-	// FIXME: Pop does not check for stack underflow but looks like not needed
-	//        We should place stack.require() check and begining of every BB
+	// TODO: We should place stack.require() check and begining of every BB
 	m_stack.pop(m_builder.getInt64(_count));
 }
 
