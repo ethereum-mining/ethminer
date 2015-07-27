@@ -32,7 +32,7 @@
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/RLP.h>
 #if ETH_HAVE_SECP256K1
-#include <secp256k1/secp256k1.h>
+#include <secp256k1/include/secp256k1.h>
 #endif
 #include "AES.h"
 #include "CryptoPP.h"
@@ -44,8 +44,10 @@ using namespace dev::crypto;
 #ifdef ETH_HAVE_SECP256K1
 struct Secp256k1Context
 {
-	Secp256k1Context() { secp256k1_start(); }
-	~Secp256k1Context() { secp256k1_stop(); }
+	Secp256k1Context() { ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); }
+	~Secp256k1Context() { secp256k1_context_destroy(ctx); }
+	secp256k1_context_t* ctx;
+	operator secp256k1_context_t const*() const { return ctx; }
 };
 static Secp256k1Context s_secp256k1;
 #endif
@@ -75,7 +77,7 @@ Public dev::toPublic(Secret const& _secret)
 #ifdef ETH_HAVE_SECP256K1
 	bytes o(65);
 	int pubkeylen;
-	if (!secp256k1_ecdsa_pubkey_create(o.data(), &pubkeylen, _secret.data(), false))
+	if (!secp256k1_ec_pubkey_create(s_secp256k1, o.data(), &pubkeylen, _secret.data(), false))
 		return Public();
 	return FixedHash<64>(o.data()+1, Public::ConstructFromPointer);
 #else
@@ -201,7 +203,7 @@ Public dev::recover(Signature const& _sig, h256 const& _message)
 #ifdef ETH_HAVE_SECP256K1
 	bytes o(65);
 	int pubkeylen;
-	if (!secp256k1_ecdsa_recover_compact(_message.data(), h256::size, _sig.data(), o.data(), &pubkeylen, false, _sig[64]))
+	if (!secp256k1_ecdsa_recover_compact(s_secp256k1, _message.data(), _sig.data(), o.data(), &pubkeylen, false, _sig[64]))
 		return Public();
 	ret = FixedHash<64>(o.data() + 1, Public::ConstructFromPointer);
 #else
@@ -217,7 +219,7 @@ Signature dev::sign(Secret const& _k, h256 const& _hash)
 #ifdef ETH_HAVE_SECP256K1
 	Signature s;
 	int v;
-	if (!secp256k1_ecdsa_sign_compact(_hash.data(), h256::size, s.data(), _k.data(), Nonce::get().data(), &v))
+	if (!secp256k1_ecdsa_sign_compact(s_secp256k1, _hash.data(), s.data(), _k.data(), NULL, NULL, &v))
 		return Signature();
 	s[64] = v;
 	return s;

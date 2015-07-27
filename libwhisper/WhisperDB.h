@@ -31,30 +31,46 @@ namespace dev
 namespace shh
 {
 
+struct WrongTypeLevelDB: virtual Exception {};
 struct FailedToOpenLevelDB: virtual Exception { FailedToOpenLevelDB(std::string const& _message): Exception(_message) {} };
 struct FailedInsertInLevelDB: virtual Exception { FailedInsertInLevelDB(std::string const& _message): Exception(_message) {} };
 struct FailedLookupInLevelDB: virtual Exception { FailedLookupInLevelDB(std::string const& _message): Exception(_message) {} };
 struct FailedDeleteInLevelDB: virtual Exception { FailedDeleteInLevelDB(std::string const& _message): Exception(_message) {} };
 
+class WhisperHost;
+
 class WhisperDB
 {
-  public:
-	WhisperDB();
-	~WhisperDB() {}
-
+public:
+	WhisperDB(std::string const& _type);
+	virtual ~WhisperDB() {}
 	std::string lookup(dev::h256 const& _key) const;
 	void insert(dev::h256 const& _key, std::string const& _value);
 	void insert(dev::h256 const& _key, bytes const& _value);
 	void kill(dev::h256 const& _key);
-	void loadAll(std::map<h256, Envelope>& o_dst);
-	void save(dev::h256 const& _key, Envelope const& _e);
 
-private:
+protected:
 	leveldb::ReadOptions m_readOptions;
 	leveldb::WriteOptions m_writeOptions;
 	std::unique_ptr<leveldb::DB> m_db;
+};
 
-	enum MetaInformation { StoreForeverFlag = 1, WatchedFlag = 2 };
+class WhisperMessagesDB: public WhisperDB
+{
+public:
+	WhisperMessagesDB(): WhisperDB("messages") {}
+	virtual ~WhisperMessagesDB() {}
+	void loadAllMessages(std::map<h256, Envelope>& o_dst);
+	void saveSingleMessage(dev::h256 const& _key, Envelope const& _e);
+};
+
+class WhisperFiltersDB: public WhisperDB
+{
+public:
+	WhisperFiltersDB(): WhisperDB("filters") {}
+	virtual ~WhisperFiltersDB() {}
+	std::vector<unsigned> restoreTopicsFromDB(WhisperHost* _host, h256 const& _id);
+	void saveTopicsToDB(WhisperHost const& _host, h256 const& _id);
 };
 
 }
