@@ -47,7 +47,7 @@ public:
 	bytes code() const;
 
 	// TODO: DEPRECATE.
-	std::unordered_map<u256, u256> storage() const;
+	std::map<u256, u256> storage() const;
 
 	AccountDiff diff(CachedAddressState const& _c);
 

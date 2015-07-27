@@ -151,6 +151,7 @@
     <addaction name="dropPeers"/>
     <addaction name="net"/>
     <addaction name="connect"/>
+    <addaction name="hermitMode"/>
    </widget>
    <widget class="QMenu" name="menu_Tools">
     <property name="title">
@@ -1808,6 +1809,14 @@ font-size: 14pt</string>
   <action name="rewindChain">
    <property name="text">
     <string>&amp;Rewind Chain...</string>
+   </property>
+  </action>
+  <action name="hermitMode">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Hermit Mode</string>
    </property>
   </action>
  </widget>

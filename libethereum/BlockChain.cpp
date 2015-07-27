@@ -620,6 +620,10 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	{
 		ex << errinfo_now(time(0));
 		ex << errinfo_block(_block.block.toBytes());
+		// only populate extraData if we actually managed to extract it. otherwise,
+		// we might be clobbering the existing one.
+		if (!_block.info.extraData().empty())
+			ex << errinfo_extraData(_block.info.extraData());
 		throw;
 	}
 #endif

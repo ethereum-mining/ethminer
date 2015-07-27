@@ -671,8 +671,8 @@ Json::Value WebThreeStubServerBase::eth_getFilterChanges(string const& _filterId
 	{
 		int id = jsToInt(_filterId);
 		auto entries = client()->checkWatch(id);
-		if (entries.size())
-			cnote << "FIRING WATCH" << id << entries.size();
+//		if (entries.size())
+//			cnote << "FIRING WATCH" << id << entries.size();
 		return toJson(entries);
 	}
 	catch (...)
@@ -687,8 +687,8 @@ Json::Value WebThreeStubServerBase::eth_getFilterChangesEx(string const& _filter
 	{
 		int id = jsToInt(_filterId);
 		auto entries = client()->checkWatch(id);
-		if (entries.size())
-			cnote << "FIRING WATCH" << id << entries.size();
+//		if (entries.size())
+//			cnote << "FIRING WATCH" << id << entries.size();
 		return toJsonByBlock(entries);
 	}
 	catch (...)
