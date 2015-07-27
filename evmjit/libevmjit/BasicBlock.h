@@ -65,7 +65,7 @@ private:
 class BasicBlock
 {
 public:
-	explicit BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc, bool isJumpDest);
+	explicit BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc);
 
 	BasicBlock(BasicBlock&&) = default;
 	BasicBlock& operator=(BasicBlock&&) = default;
