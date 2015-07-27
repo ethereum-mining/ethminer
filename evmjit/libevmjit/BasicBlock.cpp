@@ -44,7 +44,7 @@ void LocalStack::push(llvm::Value* _value)
 {
 	assert(_value->getType() == Type::Word);
 	m_currentStack.push_back(_value);
-	m_maxSize = std::max(m_maxSize, m_currentStack.size()); // FIXME: This is wrong too. + add min size;
+	m_maxSize = std::max(m_maxSize, size());
 }
 
 llvm::Value* LocalStack::pop()
@@ -57,6 +57,7 @@ llvm::Value* LocalStack::pop()
 	else
 		++m_globalPops;
 
+	m_minSize = std::min(m_minSize, size());
 	return item;
 }
 

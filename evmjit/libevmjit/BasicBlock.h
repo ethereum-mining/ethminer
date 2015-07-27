@@ -36,11 +36,11 @@ public:
 	/// @param _index Index of value to be swaped. Must be > 0.
 	void swap(size_t _index);
 
-	ssize_t getDiff() const { return static_cast<ssize_t>(m_currentStack.size()) - static_cast<ssize_t>(m_globalPops); }
-	size_t getMaxSize() const { return m_maxSize; }
+	ssize_t size() const { return static_cast<ssize_t>(m_currentStack.size()) - static_cast<ssize_t>(m_globalPops); }
+	ssize_t minSize() const { return m_minSize; }
+	ssize_t maxSize() const { return m_maxSize; }
 
-	/// TODO: comment
-	/// TODO: It must be the same builder as in global stack.
+	/// Finalize local stack: check the requirements and update of the global stack.
 	void finalize(llvm::IRBuilder<>& _builder, llvm::BasicBlock& _bb);
 
 private:
@@ -63,9 +63,11 @@ private:
 	/// top of the stack or changes existing items.
 	std::vector<llvm::Value*> m_currentStack;
 
-	size_t m_globalPops = 0; ///< Number of items poped from global stack. In other words: global - local stack overlap.
-	Stack& m_global;
-	size_t m_maxSize = 0; ///< Max size reached by the stack.
+	Stack& m_global;			///< Reference to global stack.
+
+	size_t m_globalPops = 0; 	///< Number of items poped from global stack. In other words: global - local stack overlap.
+	ssize_t m_minSize = 0;		///< Minimum reached local stack size. Can be negative.
+	ssize_t m_maxSize = 0; 		///< Maximum reached local stack size.
 };
 
 class BasicBlock
