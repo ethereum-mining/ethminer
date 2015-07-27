@@ -86,10 +86,9 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 		if (isEnd)
 		{
 			auto beginIdx = begin - _codeBegin;
-			auto r = m_basicBlocks.emplace(std::piecewise_construct, std::forward_as_tuple(beginIdx),
-					std::forward_as_tuple(beginIdx, begin, next, m_mainFunc, nextJumpDest));
+			m_basicBlocks.emplace_back(beginIdx, begin, next, m_mainFunc, nextJumpDest);
 			if (nextJumpDest)
-				_jumpTable.addCase(Constant::get(beginIdx), r.first->second.llvm());
+				_jumpTable.addCase(Constant::get(beginIdx), m_basicBlocks.back().llvm());
 			nextJumpDest = false;
 			begin = next;
 		}
@@ -160,15 +159,16 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	auto normalFlow = m_builder.CreateICmpEQ(r, m_builder.getInt32(0));
 	runtimeManager.setJmpBuf(jmpBuf);
 
-	auto firstBB = m_basicBlocks.empty() ? m_stopBB : m_basicBlocks.begin()->second.llvm();
+	auto firstBB = m_basicBlocks.empty() ? m_stopBB : m_basicBlocks.front().llvm();
 	m_builder.CreateCondBr(normalFlow, firstBB, m_abortBB, Type::expectTrue);
 
 	for (auto basicBlockPairIt = m_basicBlocks.begin(); basicBlockPairIt != m_basicBlocks.end(); ++basicBlockPairIt)
 	{
-		auto& basicBlock = basicBlockPairIt->second;
+		// TODO: Rewrite
+		auto& basicBlock = *basicBlockPairIt;
 		auto iterCopy = basicBlockPairIt;
 		++iterCopy;
-		auto nextBasicBlock = (iterCopy != m_basicBlocks.end()) ? iterCopy->second.llvm() : nullptr;
+		auto nextBasicBlock = (iterCopy != m_basicBlocks.end()) ? iterCopy->llvm() : nullptr;
 		compileBasicBlock(basicBlock, runtimeManager, arith, memory, ext, gasMeter, nextBasicBlock, stack, jumpTable);
 	}
 

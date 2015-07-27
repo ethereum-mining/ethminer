@@ -22,8 +22,6 @@ public:
 		bool dumpCFG = false;
 	};
 
-	using ProgramCounter = uint64_t;
-
 	Compiler(Options const& _options);
 
 	std::unique_ptr<llvm::Module> compile(code_iterator _begin, code_iterator _end, std::string const& _id);
@@ -44,7 +42,7 @@ private:
 	llvm::IRBuilder<> m_builder;
 
 	/// Maps a program counter pc to a basic block that starts at pc (if any).
-	std::map<ProgramCounter, BasicBlock> m_basicBlocks;
+	std::vector<BasicBlock> m_basicBlocks;
 
 	/// Stop basic block - terminates execution with STOP code (0)
 	llvm::BasicBlock* m_stopBB = nullptr;
