@@ -1324,7 +1324,7 @@ int main(int argc, char** argv)
 		}
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
-		else if (arg == "--genesis-json" && i + 1 < argc)
+		else if ((arg == "--genesis-json" || arg == "--genesis") && i + 1 < argc)
 		{
 			try
 			{
