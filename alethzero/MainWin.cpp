@@ -881,7 +881,7 @@ void Main::readSettings(bool _skipGeometry)
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forcePublicIP->setText(s.value("forceAddress", "").toString());
 	ui->dropPeers->setChecked(false);
-	ui->hermitMode->setChecked(s.value("hermitMode", true).toBool());
+	ui->hermitMode->setChecked(s.value("hermitMode", false).toBool());
 	ui->forceMining->setChecked(s.value("forceMining", false).toBool());
 	on_forceMining_triggered();
 	ui->turboMining->setChecked(s.value("turboMining", false).toBool());
