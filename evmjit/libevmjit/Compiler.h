@@ -36,8 +36,6 @@ private:
 
 	llvm::BasicBlock* getJumpTableBlock();
 
-	void removeDeadBlocks();
-
 	/// Compiler options
 	Options const& m_options;
 
