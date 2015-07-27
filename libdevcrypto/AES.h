@@ -24,70 +24,10 @@
 
 #pragma once
 
-#include <atomic>
 #include "Common.h"
 
 namespace dev
 {
-namespace crypto
-{
-namespace aes
-{
-
-struct Aes128Ctr;
-enum StreamType { Encrypt, Decrypt };
-	
-/**
- * @brief Encrypted stream
- */
-class Stream
-{
-public:
-	// streamtype maybe irrelevant w/ctr
-	Stream(StreamType _t, h128 _ckey);
-	~Stream();
-	
-	virtual void update(bytesRef io_bytes);
-	
-	/// Move ciphertext to _bytes.
-	virtual size_t streamOut(bytes& o_bytes);
-	
-private:
-	Stream(Stream const&) = delete;
-	Stream& operator=(Stream const&) = delete;
-	
-	h128 m_cSecret;
-	bytes m_text;
-
-	Aes128Ctr* cryptor;
-};
-	
-
-/**
- * @brief Encrypted stream with inband SHA3 mac at specific interval.
- */
-class AuthenticatedStream: public Stream
-{
-public:
-	AuthenticatedStream(StreamType _t, h128 _ckey, h128 _mackey, unsigned _interval): Stream(_t, _ckey), m_macSecret(_mackey) { m_macInterval = _interval; }
-	
-	AuthenticatedStream(StreamType _t, Secret const& _s, unsigned _interval): Stream(_t, h128(_s)), m_macSecret(FixedHash<16>((byte const*)_s.data()+16,h128::ConstructFromPointer)) { m_macInterval = _interval; }
-	
-	/// Adjust mac interval. Next mac will be xored with value.
-	void adjustInterval(unsigned _interval) { m_macInterval = _interval; }
-
-	unsigned getMacInterval() { return m_macInterval;}
-	
-private:
-	AuthenticatedStream(AuthenticatedStream const&) = delete;
-	AuthenticatedStream& operator=(AuthenticatedStream const&) = delete;
-	
-	std::atomic<unsigned> m_macInterval;
-	h128 m_macSecret;
-};
-
-}
-}
 
 bytes aesDecrypt(bytesConstRef _cipher, std::string const& _password, unsigned _rounds = 2000, bytesConstRef _salt = bytesConstRef());
 

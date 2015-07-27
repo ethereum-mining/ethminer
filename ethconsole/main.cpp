@@ -20,6 +20,7 @@
  */
 
 #include <string>
+#include <libdevcore/FileSystem.h>
 #include <libjsconsole/JSRemoteConsole.h>
 using namespace std;
 using namespace dev;
@@ -27,13 +28,30 @@ using namespace dev::eth;
 
 int main(int argc, char** argv)
 {
-	string remote;
-	if (argc == 1)
+	string remote = contentsString(getDataDir("web3") + "/session.url");
+	if (remote.empty())
 		remote = "http://localhost:8545";
-	else if (argc == 2)
-		remote = argv[1];
+	string sessionKey = contentsString(getDataDir("web3") + "/session.key");
+
+	for (int i = 1; i < argc; ++i)
+	{
+		string arg = argv[i];
+		if (arg == "--url" && i + 1 < argc)
+			remote = argv[++i];
+		else if (arg == "--session-key" && i + 1 < argc)
+			sessionKey = argv[++i];
+		else
+		{
+			cerr << "Invalid argument: " << arg << endl;
+			exit(-1);
+		}
+	}
 
 	JSRemoteConsole console(remote);
+
+	if (!sessionKey.empty())
+		console.eval("web3.admin.setSessionKey('" + sessionKey + "')");
+
 	while (true)
 		console.readExpression();
 
