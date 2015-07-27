@@ -76,6 +76,7 @@ void BlockQueue::clear()
 	m_drainingSet.clear();
 	m_verified.clear();
 	m_unverified.clear();
+	m_verifying.clear();
 	m_unknownSet.clear();
 	m_unknown.clear();
 	m_future.clear();
