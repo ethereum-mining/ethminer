@@ -52,9 +52,9 @@ bytes CachedAddressState::code() const
 	return h == EmptySHA3 ? bytes() : asBytes(m_o->lookup(h));
 }
 
-std::unordered_map<u256, u256> CachedAddressState::storage() const
+std::map<u256, u256> CachedAddressState::storage() const
 {
-	std::unordered_map<u256, u256> ret;
+	std::map<u256, u256> ret;
 	if (m_r)
 	{
 		SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(m_o), m_r[2].toHash<h256>());		// promise we won't alter the overlay! :)

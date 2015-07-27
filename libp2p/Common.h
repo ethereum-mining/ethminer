@@ -239,11 +239,12 @@ public:
 	~DeadlineOps() { stop(); }
 
 	void schedule(unsigned _msInFuture, std::function<void(boost::system::error_code const&)> const& _f) { if (m_stopped) return; DEV_GUARDED(x_timers) m_timers.emplace_back(m_io, _msInFuture, _f); }	
+
 	void stop() { m_stopped = true; DEV_GUARDED(x_timers) m_timers.clear(); }
 	
 protected:
 	void reap();
-
+	
 private:
 	ba::io_service& m_io;
 	unsigned m_reapIntervalMs;

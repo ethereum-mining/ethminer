@@ -31,6 +31,7 @@
 #include <libdevcore/TrieHash.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
+#include <libethcore/Params.h>
 #include <libevm/VMFactory.h>
 #include "BlockChain.h"
 #include "Defaults.h"
@@ -47,7 +48,6 @@ namespace fs = boost::filesystem;
 #define ctrace clog(StateTrace)
 #define ETH_TIMED_ENACTMENTS 0
 
-static const u256 c_blockReward = c_network == Network::Olympic ? (1500 * finney) : (5 * ether);
 static const unsigned c_maxSyncTransactions = 256;
 
 const char* StateSafeExceptions::name() { return EthViolet "⚙" EthBlue " ℹ"; }
@@ -136,7 +136,7 @@ PopulationStatistics State::populateFromChain(BlockChain const& _bc, h256 const&
 		// 2. Enact the block's transactions onto this state.
 		m_ourAddress = bi.coinbaseAddress();
 		Timer t;
-		auto vb = _bc.verifyBlock(&b, function<void(Exception&)>(), _ir);
+		auto vb = _bc.verifyBlock(&b, function<void(Exception&)>(), _ir | ImportRequirements::TransactionBasic);
 		ret.verify = t.elapsed();
 		t.restart();
 		enact(vb, _bc);
@@ -651,7 +651,7 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 		InvalidReceiptsStateRoot ex;
 		ex << Hash256RequirementError(receiptsRoot, m_currentBlock.receiptsRoot());
 		ex << errinfo_receipts(receipts);
-		ex << errinfo_vmtrace(vmTrace(_block.block, _bc, ImportRequirements::None));
+//		ex << errinfo_vmtrace(vmTrace(_block.block, _bc, ImportRequirements::None));
 		BOOST_THROW_EXCEPTION(ex);
 	}
 
@@ -742,8 +742,9 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
 	if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() && m_currentBlock.stateRoot() != rootHash())
 	{
+		auto r = rootHash();
 		m_db.rollback();
-		BOOST_THROW_EXCEPTION(InvalidStateRoot() << Hash256RequirementError(rootHash(), m_currentBlock.stateRoot()));
+		BOOST_THROW_EXCEPTION(InvalidStateRoot() << Hash256RequirementError(r, m_currentBlock.stateRoot()));
 	}
 
 	if (m_currentBlock.gasUsed() != gasUsed())
