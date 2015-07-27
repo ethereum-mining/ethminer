@@ -21,6 +21,7 @@
  */
 
 #include <vector>
+#include <QtCore/qmath.h>
 #include <QMap>
 #include <QStringList>
 #include <QJsonArray>
@@ -101,9 +102,9 @@ void ContractCallDataEncoder::encode(QVariant const& _data, SolidityType const& 
 		bytes empty(32);
 		size_t sizePos = m_dynamicData.size();
 		m_dynamicData += empty; //reserve space for count
-		u256 count = encodeSingleItem(_data.toString(), _type, m_dynamicData);
+		encodeSingleItem(_data.toString(), _type, m_dynamicData);
 		vector_ref<byte> sizeRef(m_dynamicData.data() + sizePos, 32);
-		toBigEndian(count, sizeRef);
+		toBigEndian(_data.toString().size(), sizeRef);
 		m_staticOffsetMap.push_back(std::make_pair(m_encodedData.size(), sizePos));
 		m_encodedData += empty; //reserve space for offset
 	}
@@ -223,11 +224,7 @@ dev::bytes ContractCallDataEncoder::decodeBytes(dev::bytes const& _rawValue)
 
 QString ContractCallDataEncoder::toString(dev::bytes const& _b)
 {
-	QString str;
-	if (asString(_b, str))
-		return  "\"" + str +  "\" " + QString::fromStdString(dev::toJS(_b));
-	else
-		return QString::fromStdString(dev::toJS(_b));
+	return QString::fromStdString(dev::toJS(_b));
 }
 
 QString ContractCallDataEncoder::toChar(dev::bytes const& _b)
@@ -242,8 +239,6 @@ QJsonValue ContractCallDataEncoder::decodeArrayContent(SolidityType const& _type
 	if (_type.baseType->array)
 	{
 		QJsonArray sub = decodeArray(*_type.baseType, _value, pos);
-		if (_type.baseType->dynamicSize)
-			pos = pos + 32;
 		return sub;
 	}
 	else
@@ -262,6 +257,8 @@ QJsonArray ContractCallDataEncoder::decodeArray(SolidityType const& _type, bytes
 	QJsonArray array;
 	bytesConstRef value(&_value);
 	int count = 0;
+	bigint offset = pos;
+	int valuePosition = pos;
 	if (!_type.dynamicSize)
 		count = _type.count;
 	else
@@ -269,14 +266,33 @@ QJsonArray ContractCallDataEncoder::decodeArray(SolidityType const& _type, bytes
 		bytesConstRef value(_value.data() + pos, 32); // offset
 		bytes rawParam(32);
 		value.populate(&rawParam);
-		bigint offset = decodeInt(rawParam);
-		pos = static_cast<int>(offset) + 32;
-		value = bytesConstRef(_value.data() + static_cast<int>(offset), 32); // offset
+		offset = decodeInt(rawParam);
+		valuePosition =  static_cast<int>(offset) + 32;
+		pos += 32;
+		value = bytesConstRef(_value.data() + static_cast<int>(offset), 32); // count
 		value.populate(&rawParam);
 		count = static_cast<int>(decodeInt(rawParam));
 	}
-	for (int k = 0; k < count; ++k)
-		array.append(decodeArrayContent(_type, _value, pos));
+	if (_type.type == QSolidityType::Type::Bytes || _type.type == QSolidityType::Type::String)
+	{
+		bytesConstRef value(_value.data() + (static_cast<int>(offset) + 32), 32);
+		bytes rawParam(count);
+		value.populate(&rawParam);
+		if (_type.type == QSolidityType::Type::Bytes)
+			array.append(toString(decodeBytes(rawParam)));
+		else
+			array.append(toChar(decodeBytes(rawParam)));
+	}
+	else
+	{
+		for (int k = 0; k < count; ++k)
+		{
+			if (_type.dynamicSize)
+				array.append(decodeArrayContent(_type, _value, valuePosition));
+			else
+				array.append(decodeArrayContent(_type, _value, pos));
+		}
+	}
 	return array;
 }
 
@@ -322,18 +338,14 @@ QStringList ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& 
 			QJsonArray array = decodeArray(type, _v, readPosition);
 			QJsonDocument jsonDoc = QJsonDocument::fromVariant(array.toVariantList());
 			r.append(jsonDoc.toJson(QJsonDocument::Compact));
-			if (type.dynamicSize)
-				readPosition++;
-			else
-				readPosition = type.count;
 		}
 		else
 		{
-			bytesConstRef value(_value.data() + (readPosition * 32), 32);
+			bytesConstRef value(_value.data() + readPosition, 32);
 			bytes rawParam(32);
 			value.populate(&rawParam);
 			r.append(decode(type, rawParam).toString());
-			readPosition++;
+			readPosition += 32;
 		}
 	}
 	return r;
