@@ -36,6 +36,19 @@ Rectangle {
 			accountsList.currentIndex = 0
 		}
 
+		verifyDeployedContract()
+
+		deployedAddresses.refresh()
+		worker.renewCtx()
+
+		worker.pooler.onTriggered.connect(function() {
+			if (root.visible)
+				verifyDeployedContract();
+		})
+	}
+
+	function verifyDeployedContract()
+	{
 		if (projectModel.deployBlockNumber !== -1)
 		{
 			worker.verifyHashes(projectModel.deploymentTrHashes, function (bn, trLost)
@@ -43,8 +56,6 @@ Rectangle {
 				root.updateVerification(bn, trLost)
 			});
 		}
-		deployedAddresses.refresh()
-		worker.renewCtx()
 	}
 
 	function updateVerification(blockNumber, trLost)

@@ -395,19 +395,22 @@ ColumnLayout {
 					text: qsTr("Add Tx")
 					onClicked:
 					{
-						var lastBlock = model.blocks[model.blocks.length - 1];
-						if (lastBlock.status === "mined")
+						if (model && model.blocks)
 						{
-							var newblock = projectModel.stateListModel.createEmptyBlock()
-							blockModel.appendBlock(newblock)
-							model.blocks.push(newblock);
-						}
+							var lastBlock = model.blocks[model.blocks.length - 1];
+							if (lastBlock.status === "mined")
+							{
+								var newblock = projectModel.stateListModel.createEmptyBlock()
+								blockModel.appendBlock(newblock)
+								model.blocks.push(newblock);
+							}
 
-						var item = TransactionHelper.defaultTransaction()
-						transactionDialog.stateAccounts = model.accounts
-						transactionDialog.execute = true
-						transactionDialog.editMode = false
-						transactionDialog.open(model.blocks[model.blocks.length - 1].transactions.length, model.blocks.length - 1, item)
+							var item = TransactionHelper.defaultTransaction()
+							transactionDialog.stateAccounts = model.accounts
+							transactionDialog.execute = true
+							transactionDialog.editMode = false
+							transactionDialog.open(model.blocks[model.blocks.length - 1].transactions.length, model.blocks.length - 1, item)
+						}
 					}
 					width: 100
 					height: 30
