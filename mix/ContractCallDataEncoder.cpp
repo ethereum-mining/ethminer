@@ -314,8 +314,15 @@ QVariant ContractCallDataEncoder::decode(SolidityType const& _type, bytes const&
 		return QVariant::fromValue(QString("struct")); //TODO
 	else if (type == QSolidityType::Type::Address)
 		return QVariant::fromValue(toString(decodeBytes(unpadLeft(rawParam))));
+	else if (type == QSolidityType::Type::Enum)
+		return QVariant::fromValue(decodeEnum(rawParam));
 	else
 		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Parameter declaration not found"));
+}
+
+QString ContractCallDataEncoder::decodeEnum(bytes _value)
+{
+		return toString(decodeInt(_value));
 }
 
 QString ContractCallDataEncoder::decode(QVariableDeclaration* const& _param, bytes _value)
