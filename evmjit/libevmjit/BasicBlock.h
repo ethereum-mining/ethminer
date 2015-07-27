@@ -14,8 +14,6 @@ namespace jit
 using namespace evmjit;
 using instr_idx = uint64_t;
 
-class BasicBlock;
-
 class LocalStack
 {
 public:
@@ -36,7 +34,7 @@ public:
 	/// @param _index Index of value to be swaped. Must be > 0.
 	void swap(size_t _index);
 
-	ssize_t size() const { return static_cast<ssize_t>(m_currentStack.size()) - static_cast<ssize_t>(m_globalPops); }
+	ssize_t size() const { return static_cast<ssize_t>(m_local.size()) - static_cast<ssize_t>(m_globalPops); }
 	ssize_t minSize() const { return m_minSize; }
 	ssize_t maxSize() const { return m_maxSize; }
 
@@ -50,18 +48,12 @@ private:
 	/// Sets _index'th value from top (counting from 0)
 	void set(size_t _index, llvm::Value* _value);
 
-	/// This stack contains LLVM values that correspond to items found at
-	/// the EVM stack when the current basic block starts executing.
-	/// Location 0 corresponds to the top of the EVM stack, location 1 is
-	/// the item below the top and so on. The stack grows as the code
-	/// accesses more items on the EVM stack but once a value is put on
-	/// the stack, it will never be replaced.
-	std::vector<llvm::Value*> m_initialStack;
+	/// Items fetched from global stack. First element matches the top of the global stack.
+	/// Can contain nulls if some items has been skipped.
+	std::vector<llvm::Value*> m_input;
 
-	/// This stack tracks the contents of the EVM stack as the basic block
-	/// executes. It may grow on both sides, as the code pushes items on
-	/// top of the stack or changes existing items.
-	std::vector<llvm::Value*> m_currentStack;
+	/// Local stack items that has not been pushed to global stack. First item is just above global stack.
+	std::vector<llvm::Value*> m_local;
 
 	Stack& m_global;			///< Reference to global stack.
 
