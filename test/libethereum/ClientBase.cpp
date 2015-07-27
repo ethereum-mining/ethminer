@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE(blocks)
 				ETH_CHECK_EQUAL(expectedBlockInfoUncldeHash, _blockInfo.sha3Uncles());
 			};
 
-			Ethash::BlockHeader blockInfo((static_cast<FixedClient&>(_client)).bc().headerData(blockHash));
+			Ethash::BlockHeader blockInfo((static_cast<FixedClient&>(_client)).bc().headerData(blockHash), IgnoreSeal, h256{}, HeaderData);
 			compareBlockInfos(blockHeader, blockInfo);
 
 			// blockDetails
