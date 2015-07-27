@@ -27,8 +27,7 @@ BasicBlock::BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iter
 	m_firstInstrIdx{_firstInstrIdx},
 	m_begin(_begin),
 	m_end(_end),
-	m_llvmBB(llvm::BasicBlock::Create(_mainFunc->getContext(), {isJumpDest ? jumpDestName : basicBlockName, std::to_string(_firstInstrIdx)}, _mainFunc)),
-	m_isJumpDest(isJumpDest)
+	m_llvmBB(llvm::BasicBlock::Create(_mainFunc->getContext(), {isJumpDest ? jumpDestName : basicBlockName, std::to_string(_firstInstrIdx)}, _mainFunc))
 {}
 
 LocalStack::LocalStack(Stack& _globalStack):

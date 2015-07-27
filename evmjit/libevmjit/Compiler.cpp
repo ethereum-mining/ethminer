@@ -36,7 +36,7 @@ Compiler::Compiler(Options const& _options):
 	Type::init(m_builder.getContext());
 }
 
-void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEnd)
+void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEnd, llvm::SwitchInst& _jumpTable)
 {
 	/// Helper function that skips push data and finds next iterator (can be the end)
 	auto skipPushDataAndGetNext = [](code_iterator _curr, code_iterator _end)
@@ -86,8 +86,10 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 		if (isEnd)
 		{
 			auto beginIdx = begin - _codeBegin;
-			m_basicBlocks.emplace(std::piecewise_construct, std::forward_as_tuple(beginIdx),
+			auto r = m_basicBlocks.emplace(std::piecewise_construct, std::forward_as_tuple(beginIdx),
 					std::forward_as_tuple(beginIdx, begin, next, m_mainFunc, nextJumpDest));
+			if (nextJumpDest)
+				_jumpTable.addCase(Constant::get(beginIdx), r.first->second.llvm());
 			nextJumpDest = false;
 			begin = next;
 		}
@@ -97,26 +99,18 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 void Compiler::fillJumpTable()
 {
 	assert(m_jumpTableBB);
-
 	if (llvm::pred_empty(m_jumpTableBB))
 	{
 		m_jumpTableBB->eraseFromParent(); // remove if unused
 		return;
 	}
 
-	m_builder.SetInsertPoint(m_jumpTableBB);
-	auto target = m_builder.CreatePHI(Type::Word, 16, "target");
+	// TODO: Extend this function as `resolveJumps()` and fill gaps in branch instructions.
+	auto target = llvm::cast<llvm::PHINode>(m_jumpTableBB->begin());
 	for (auto pred: llvm::predecessors(m_jumpTableBB))
 	{
 		auto targetMd = llvm::cast<llvm::LocalAsMetadata>(pred->getTerminator()->getMetadata("target")->getOperand(0));
 		target->addIncoming(targetMd->getValue(), pred);
-	}
-
-	auto switchInst = m_builder.CreateSwitch(target, m_abortBB);
-	for (auto& p: m_basicBlocks)
-	{
-		if (p.second.isJumpDest())
-			switchInst->addCase(Constant::get(p.first), p.second.llvm());
 	}
 }
 
@@ -131,9 +125,17 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 
 	// Create entry basic block
 	auto entryBlock = llvm::BasicBlock::Create(m_builder.getContext(), {}, m_mainFunc);
+
+	m_stopBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Stop", m_mainFunc);
+	m_abortBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Abort", m_mainFunc);
+	m_jumpTableBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "JumpTable", m_mainFunc);
+	m_builder.SetInsertPoint(m_jumpTableBB);
+	auto target = m_builder.CreatePHI(Type::Word, 16, "target");
+	auto& jumpTable = *m_builder.CreateSwitch(target, m_abortBB);
+
 	m_builder.SetInsertPoint(entryBlock);
 
-	createBasicBlocks(_begin, _end);
+	createBasicBlocks(_begin, _end, jumpTable);
 
 	// Init runtime structures.
 	RuntimeManager runtimeManager(m_builder, _begin, _end);
@@ -158,10 +160,6 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	auto normalFlow = m_builder.CreateICmpEQ(r, m_builder.getInt32(0));
 	runtimeManager.setJmpBuf(jmpBuf);
 
-	m_stopBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Stop", m_mainFunc);
-	m_abortBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Abort", m_mainFunc);
-	m_jumpTableBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "JumpTable", m_mainFunc);
-
 	auto firstBB = m_basicBlocks.empty() ? m_stopBB : m_basicBlocks.begin()->second.llvm();
 	m_builder.CreateCondBr(normalFlow, firstBB, m_abortBB, Type::expectTrue);
 
@@ -171,7 +169,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 		auto iterCopy = basicBlockPairIt;
 		++iterCopy;
 		auto nextBasicBlock = (iterCopy != m_basicBlocks.end()) ? iterCopy->second.llvm() : nullptr;
-		compileBasicBlock(basicBlock, runtimeManager, arith, memory, ext, gasMeter, nextBasicBlock, stack);
+		compileBasicBlock(basicBlock, runtimeManager, arith, memory, ext, gasMeter, nextBasicBlock, stack, jumpTable);
 	}
 
 	// Code for special blocks:
@@ -188,7 +186,8 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 
 
 void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runtimeManager,
-								 Arith256& _arith, Memory& _memory, Ext& _ext, GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock, Stack& _globalStack)
+								 Arith256& _arith, Memory& _memory, Ext& _ext, GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock, Stack& _globalStack,
+							 	 llvm::SwitchInst& jumpTable)
 {
 	if (!_nextBasicBlock) // this is the last block in the code
 		_nextBasicBlock = m_stopBB;
@@ -570,10 +569,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			if (auto constant = llvm::dyn_cast<llvm::ConstantInt>(target))
 			{
 				// If target index is a constant do direct jump to the target block.
-				auto&& c = constant->getValue();
-				auto targetIdx = c.getActiveBits() <= 64 ? c.getZExtValue() : -1;
-				auto it = m_basicBlocks.find(targetIdx);
-				jumpInst->setSuccessor(0, (it != m_basicBlocks.end() && it->second.isJumpDest()) ? it->second.llvm() : m_abortBB);
+				auto bb = jumpTable.findCaseValue(constant).getCaseSuccessor();
+				jumpInst->setSuccessor(0, bb);
 			}
 			else
 			{
