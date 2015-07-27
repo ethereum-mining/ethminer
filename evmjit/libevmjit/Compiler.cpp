@@ -108,18 +108,8 @@ void Compiler::fillJumpTable()
 	auto target = m_builder.CreatePHI(Type::Word, 16, "target");
 	for (auto pred: llvm::predecessors(m_jumpTableBB))
 	{
-		llvm::Value* incomingTarget = nullptr;
-		for (auto&& p: m_basicBlocks) // FIXME: Fix this stupid search. Use metadata to tag target in the basic block
-		{
-			if (p.second.llvm() == &*pred)
-			{
-				incomingTarget = p.second.getJumpTarget();
-				break;
-			}
-		}
-
-		assert(incomingTarget);
-		target->addIncoming(incomingTarget, pred);
+		auto targetMd = llvm::cast<llvm::LocalAsMetadata>(pred->getTerminator()->getMetadata("target")->getOperand(0));
+		target->addIncoming(targetMd->getValue(), pred);
 	}
 
 	auto switchInst = m_builder.CreateSwitch(target, m_abortBB);
@@ -571,44 +561,25 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		case Instruction::JUMP:
 		case Instruction::JUMPI:
 		{
-			llvm::BasicBlock* targetBlock = nullptr;
+			auto jumpBlock = m_jumpTableBB;
 			auto target = stack.pop();
+			auto jumpInst = (inst == Instruction::JUMP) ?
+					m_builder.CreateBr(jumpBlock) :
+					m_builder.CreateCondBr(m_builder.CreateICmpNE(stack.pop(), Constant::get(0), "jump.check"), jumpBlock, _nextBasicBlock);
+
 			if (auto constant = llvm::dyn_cast<llvm::ConstantInt>(target))
 			{
+				// If target index is a constant do direct jump to the target block.
 				auto&& c = constant->getValue();
 				auto targetIdx = c.getActiveBits() <= 64 ? c.getZExtValue() : -1;
 				auto it = m_basicBlocks.find(targetIdx);
-				targetBlock = (it != m_basicBlocks.end() && it->second.isJumpDest()) ? it->second.llvm() : m_abortBB;
+				jumpInst->setSuccessor(0, (it != m_basicBlocks.end() && it->second.isJumpDest()) ? it->second.llvm() : m_abortBB);
 			}
-
-			// TODO: Improve; check for constants
-			if (inst == Instruction::JUMP)
+			else
 			{
-				if (targetBlock)
-				{
-					m_builder.CreateBr(targetBlock);
-				}
-				else
-				{
-					_basicBlock.setJumpTarget(target);
-					m_builder.CreateBr(m_jumpTableBB);
-				}
-			}
-			else // JUMPI
-			{
-				auto val = stack.pop();
-				auto zero = Constant::get(0);
-				auto cond = m_builder.CreateICmpNE(val, zero, "nonzero");
-
-				if (targetBlock)
-				{
-					m_builder.CreateCondBr(cond, targetBlock, _nextBasicBlock);
-				}
-				else
-				{
-					_basicBlock.setJumpTarget(target);
-					m_builder.CreateCondBr(cond, m_jumpTableBB, _nextBasicBlock);
-				}
+				// Attach medatada to branch instruction with information about target index.
+				auto targetMd = llvm::MDNode::get(jumpInst->getContext(), llvm::LocalAsMetadata::get(target));
+				jumpInst->setMetadata("target", targetMd);
 			}
 			break;
 		}
