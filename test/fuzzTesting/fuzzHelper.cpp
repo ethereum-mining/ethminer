@@ -408,7 +408,7 @@ BOOST_AUTO_TEST_SUITE(RandomCodeTests)
 BOOST_AUTO_TEST_CASE(rndCode)
 {
 	std::string code;
-	std::cerr << "Testing Random Code: ";
+	std::cout << "Testing Random Code: ";
 	try
 	{
 		code = dev::test::RandomCode::generate(10);
@@ -417,7 +417,7 @@ BOOST_AUTO_TEST_CASE(rndCode)
 	{
 		BOOST_ERROR("Exception thrown when generating random code!");
 	}
-	std::cerr << code;
+	std::cout << code;
 }
 
 BOOST_AUTO_TEST_SUITE_END()
