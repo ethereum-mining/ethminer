@@ -74,7 +74,6 @@ class BasicBlock
 {
 public:
 	explicit BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc, bool isJumpDest);
-	explicit BasicBlock(std::string _name, llvm::Function* _mainFunc, bool isJumpDest);
 
 	BasicBlock(const BasicBlock&) = delete;
 	BasicBlock& operator=(const BasicBlock&) = delete;

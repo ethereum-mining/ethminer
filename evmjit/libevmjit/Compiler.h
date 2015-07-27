@@ -34,7 +34,7 @@ private:
 
 	void compileBasicBlock(BasicBlock& _basicBlock, class RuntimeManager& _runtimeManager, class Arith256& _arith, class Memory& _memory, class Ext& _ext, class GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock, class Stack& _globalStack);
 
-	llvm::BasicBlock* getJumpTableBlock();
+	void fillJumpTable();
 
 	/// Compiler options
 	Options const& m_options;
@@ -52,10 +52,10 @@ private:
 	llvm::BasicBlock* m_abortBB = nullptr;
 
 	/// Block with a jump table.
-	std::unique_ptr<BasicBlock> m_jumpTableBlock;
+	llvm::BasicBlock* m_jumpTableBB = nullptr;
 
 	/// Main program function
-	llvm::Function* m_mainFunc = nullptr;
+	llvm::Function* m_mainFunc = nullptr; // TODO: Remove
 };
 
 }
