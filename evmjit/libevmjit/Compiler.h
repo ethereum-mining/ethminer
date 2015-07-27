@@ -16,7 +16,8 @@ public:
 	struct Options
 	{
 		/// Optimize stack operations between basic blocks
-		bool optimizeStack = true;
+		/// TODO: Remove. It must be implemented as a separated pass.
+		bool optimizeStack = false;
 
 		/// Rewrite switch instructions to sequences of branches
 		bool rewriteSwitchToBranches = true;
