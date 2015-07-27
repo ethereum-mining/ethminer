@@ -223,6 +223,9 @@ if (GUI)
 	set(JSONRPC ON)
 endif()
 
+# Default CMAKE_BUILD_TYPE to "Release".
+set(CMAKE_BUILD_TYPE CACHE STRING "Release")
+
 # note: The value "default" which provides the defaults is just a fake value
 # which lets us keep the default values of all build options and is set at
 # the beginning of this file.
@@ -292,8 +295,23 @@ elseif (BUNDLE STREQUAL "miner")
 	set(ETHKEY OFF)
 	set(MINER ON)
 	set(ETHASHCL ON)
-elseif (BUNDLE STREQUAL "release")
-	set(SERPENT OFF)
+elseif (BUNDLE STREQUAL "default")	# development builds
+	set(SERPENT ${DECENT_PLATFORM})
+	set(SOLIDITY ON)
+	set(USENPM OFF)
+	set(GUI ON)
+	set(TOOLS ON)
+	set(TESTS ON)
+	set(FATDB ON)
+	set(ETHASHCL ON)
+	set(EVMJIT ON)
+	set(JSCONSOLE ON)
+	set(JSONRPC ON)
+	if ("x${CMAKE_BUILD_TYPE}" STREQUAL "x")
+		set(CMAKE_BUILD_TYPE "RelWithDebInfo")
+	endif ()
+elseif (BUNDLE STREQUAL "release")      # release builds
+	set(SERPENT ${DECENT_PLATFORM})
 	set(SOLIDITY ON)
 	set(USENPM OFF)
 	set(GUI ON)
@@ -304,10 +322,9 @@ elseif (BUNDLE STREQUAL "release")
 	set(EVMJIT ON)
 	set(JSCONSOLE ON)
 	set(JSONRPC ON)
+	set(FRONTIER ON)
 endif ()
 
-# Default CMAKE_BUILD_TYPE to "Release".
-set(CMAKE_BUILD_TYPE CACHE STRING "Release")
 if ("x${CMAKE_BUILD_TYPE}" STREQUAL "x")
 	set(CMAKE_BUILD_TYPE "Release")
 endif ()
