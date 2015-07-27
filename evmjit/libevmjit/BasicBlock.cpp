@@ -47,7 +47,6 @@ void LocalStack::push(llvm::Value* _value)
 {
 	assert(_value->getType() == Type::Word);
 	m_bblock.m_currentStack.push_back(_value);
-	m_bblock.m_tosOffset += 1;
 	m_maxSize = std::max(m_maxSize, m_bblock.m_currentStack.size());
 }
 
@@ -61,7 +60,6 @@ llvm::Value* LocalStack::pop()
 	else
 		++m_bblock.m_globalPops;
 
-	m_bblock.m_tosOffset -= 1;
 	return item;
 }
 
@@ -151,147 +149,6 @@ void BasicBlock::synchronizeLocalStack(Stack& _evmStack)
 		if (m_globalPops)
 			_evmStack.pop(m_globalPops);
 	}
-
-	m_tosOffset = 0;
-}
-
-void BasicBlock::linkLocalStacks(std::vector<BasicBlock*> basicBlocks, llvm::IRBuilder<>& _builder)
-{
-	struct BBInfo
-	{
-		BasicBlock& bblock;
-		std::vector<BBInfo*> predecessors;
-		size_t inputItems;
-		size_t outputItems;
-		std::vector<llvm::PHINode*> phisToRewrite;
-
-		BBInfo(BasicBlock& _bblock) :
-			bblock(_bblock),
-			predecessors(),
-			inputItems(0),
-			outputItems(0)
-		{
-			auto& initialStack = bblock.m_initialStack;
-			for (auto it = initialStack.begin();
-				 it != initialStack.end() && *it != nullptr;
-				 ++it, ++inputItems);
-
-			auto& exitStack = bblock.m_currentStack;
-			for (auto it = exitStack.rbegin();
-				 it != exitStack.rend() && *it != nullptr;
-				 ++it, ++outputItems);
-		}
-	};
-
-	std::map<llvm::BasicBlock*, BBInfo> cfg;
-
-	// Create nodes in cfg
-	for (auto bb : basicBlocks)
-		cfg.emplace(bb->llvm(), *bb);
-
-	// Create edges in cfg: for each bb info fill the list
-	// of predecessor infos.
-	for (auto& pair : cfg)
-	{
-		auto bb = pair.first;
-		auto& info = pair.second;
-
-		for (auto predIt = llvm::pred_begin(bb); predIt != llvm::pred_end(bb); ++predIt)
-		{
-			auto predInfoEntry = cfg.find(*predIt);
-			if (predInfoEntry != cfg.end()) // FIXME: It is wrong - will skip entry block
-				info.predecessors.push_back(&predInfoEntry->second);
-		}
-	}
-
-	// Iteratively compute inputs and outputs of each block, until reaching fixpoint.
-	bool valuesChanged = true;
-	while (valuesChanged)
-	{
-		for (auto& pair : cfg)
-		{
-			DLOG(bb) << pair.second.bblock.llvm()->getName().str()
-				<< ": in " << pair.second.inputItems
-				<< ", out " << pair.second.outputItems
-				<< "\n";
-		}
-
-		valuesChanged = false;
-		for (auto& pair : cfg)
-		{
-			auto& info = pair.second;
-
-			if (&info.bblock == basicBlocks.front())
-				info.inputItems = 0; // we cannot use phi nodes for first block as it is a successor of entry block
-
-			if (info.predecessors.empty())
-				info.inputItems = 0; // no consequences for other blocks, so leave valuesChanged false
-
-			for (auto predInfo : info.predecessors)
-			{
-				if (predInfo->outputItems < info.inputItems)
-				{
-					info.inputItems = predInfo->outputItems;
-					valuesChanged = true;
-				}
-				else if (predInfo->outputItems > info.inputItems)
-				{
-					predInfo->outputItems = info.inputItems;
-					valuesChanged = true;
-				}
-			}
-		}
-	}
-
-	// Propagate values between blocks.
-	for (auto& entry : cfg)
-	{
-		auto& info = entry.second;
-		auto& bblock = info.bblock;
-
-		llvm::BasicBlock::iterator fstNonPhi(bblock.llvm()->getFirstNonPHI());
-		auto phiIter = bblock.m_initialStack.begin();
-		for (size_t index = 0; index < info.inputItems; ++index, ++phiIter)
-		{
-			assert(llvm::isa<llvm::PHINode>(*phiIter));
-			auto phi = llvm::cast<llvm::PHINode>(*phiIter);
-
-			for (auto predIt : info.predecessors)
-			{
-				auto& predExitStack = predIt->bblock.m_currentStack;
-				auto value = *(predExitStack.end() - 1 - index);
-				phi->addIncoming(value, predIt->bblock.llvm());
-			}
-
-			// Move phi to the front
-			if (llvm::BasicBlock::iterator(phi) != bblock.llvm()->begin())
-			{
-				phi->removeFromParent();
-				_builder.SetInsertPoint(bblock.llvm(), bblock.llvm()->begin());
-				_builder.Insert(phi);
-			}
-		}
-
-		// The items pulled directly from predecessors block must be removed
-		// from the list of items that has to be popped from the initial stack.
-		auto& initialStack = bblock.m_initialStack;
-		initialStack.erase(initialStack.begin(), initialStack.begin() + info.inputItems);
-		// Initial stack shrinks, so the size difference grows:
-		bblock.m_tosOffset += (int)info.inputItems;
-	}
-
-	// We must account for the items that were pushed directly to successor
-	// blocks and thus should not be on the list of items to be pushed onto
-	// to EVM stack
-	for (auto& entry : cfg)
-	{
-		auto& info = entry.second;
-		auto& bblock = info.bblock;
-
-		auto& exitStack = bblock.m_currentStack;
-		exitStack.erase(exitStack.end() - info.outputItems, exitStack.end());
-		bblock.m_tosOffset -= (int)info.outputItems; // FIXME: Fix types
-	}
 }
 
 void BasicBlock::dump()
@@ -323,7 +180,7 @@ void BasicBlock::dump(std::ostream& _out, bool _dotOutput)
 		out << *ins << (_dotOutput ? "\\l" : "\n");
 
 	if (! _dotOutput)
-		out << "Current stack (offset = " << m_tosOffset << "):\n";
+		out << "Current stack:\n";
 	else
 		out << "|";
 

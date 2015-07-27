@@ -198,20 +198,6 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 
 	dumpCFGifRequired("blocks-init.dot");
 
-	if (m_options.optimizeStack)
-	{
-		std::vector<BasicBlock*> blockList;
-		for	(auto& entry : m_basicBlocks)
-			blockList.push_back(&entry.second);
-
-		if (m_jumpTableBlock)
-			blockList.push_back(m_jumpTableBlock.get());
-
-		BasicBlock::linkLocalStacks(blockList, m_builder);
-
-		dumpCFGifRequired("blocks-opt.dot");
-	}
-
 	for (auto& entry : m_basicBlocks)
 		entry.second.synchronizeLocalStack(stack);
 	if (m_jumpTableBlock)

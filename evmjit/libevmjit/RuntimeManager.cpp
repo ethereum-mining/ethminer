@@ -145,7 +145,7 @@ RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, code_iterator _codeB
 	m_builder.CreateUnreachable();
 }
 
-void RuntimeManager::checkStackLimit(size_t _max, int _diff)
+void RuntimeManager::checkStackLimit(size_t _max, ssize_t _diff)
 {
 	createCall(m_checkStackLimit, {m_stackSize, m_builder.getInt64(_max), m_builder.getInt64(_diff), getJmpBuf()});
 }
