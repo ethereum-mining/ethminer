@@ -7,34 +7,12 @@ if (${CMAKE_MAJOR_VERSION} GREATER 2)
 endif()
 set(CMAKE_AUTOMOC OFF)
 
-set(CMAKE_ASM_COMPILER "yasm")
-
 set(EXECUTABLE secp256k1)
 file(GLOB HEADERS "*.h") 
 
-if (APPLE OR UNIX)
-
-	add_library(${EXECUTABLE} ${EXECUTABLE}.c field_5x52_asm.asm)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -DUSE_FIELD_GMP -DUSE_NUM_GMP -DUSE_FIELD_INV_NUM")
-	target_link_libraries(${EXECUTABLE} ${GMP_LIBRARIES})
-elseif (CMAKE_COMPILER_IS_MINGW)
-
-	include_directories(${Boost_INCLUDE_DIRS})
-
-	add_library(${EXECUTABLE} ${EXECUTABLE}.c field_5x52_asm.asm)
-
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -W -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes -Wno-unused-function -DUSE_FIELD_GMP -DUSE_NUM_GMP -DUSE_FIELD_INV_NUM")
-	target_link_libraries(${EXECUTABLE} ${GMP_LIBRARIES})
-else()
-
-	include_directories(${Boost_INCLUDE_DIRS})
-
-	add_library(${EXECUTABLE} ${EXECUTABLE}.c)
-	# /TP - compile project as cpp project
-	set_target_properties(${EXECUTABLE} PROPERTIES COMPILE_FLAGS "/TP /wd4244")
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSE_NUM_BOOST -DUSE_FIELD_10X26 -DUSE_FIELD_INV_BUILTIN")
-	
-endif()
+add_library(${EXECUTABLE} ${EXECUTABLE}.c)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_CONFIG_H -g -O2 -W -std=c89 -pedantic -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes -Wno-unused-function -Wno-long-long -Wno-overlength-strings")
+target_link_libraries(${EXECUTABLE} ${GMP_LIBRARIES})	
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
