@@ -1790,6 +1790,7 @@ int main(int argc, char** argv)
 #if ETH_JSCONSOLE || !ETH_TRUE
 			JSLocalConsole console;
 			shared_ptr<dev::WebThreeStubServer> rpcServer = make_shared<dev::WebThreeStubServer>(*console.connector(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer);
+			console.eval("web3.admin.setSessionKey('" + jsonAdmin + "')");
 			while (!g_exit)
 			{
 				console.readExpression();
