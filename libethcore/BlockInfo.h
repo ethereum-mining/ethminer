@@ -146,7 +146,7 @@ public:
 
 	/// sha3 of the header only.
 	h256 const& hashWithout() const;
-	h256 const& hash() const { if (m_hash) return m_hash; throw NoHashRecorded(); }
+	h256 const& hash() const { if (m_hash) return m_hash; BOOST_THROW_EXCEPTION(NoHashRecorded()); }
 
 	void clear();
 	void noteDirty() const { m_hashWithout = m_boundary = m_hash = h256(); }
