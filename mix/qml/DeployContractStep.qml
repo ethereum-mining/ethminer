@@ -112,14 +112,10 @@ Rectangle {
 						for (var k = 0; k < projectModel.stateListModel.get(currentIndex).blocks.count; k++)
 						{
 							for (var j = 0; j < projectModel.stateListModel.get(currentIndex).blocks.get(k).transactions.count; j++)
-							{
 								trListModel.append(projectModel.stateListModel.get(currentIndex).blocks.get(k).transactions.get(j));
-							}
 						}
 						for (var k = 0; k < trListModel.count; k++)
-						{
 							trList.itemAt(k).init()
-						}
 						ctrDeployCtrLabel.calculateContractDeployGas();
 					}
 				}
@@ -166,9 +162,7 @@ Rectangle {
 									if (trListModel.get(index).parameters)
 									{
 										for (var k in trListModel.get(index).parameters)
-										{
 											paramList.append({ "name": k, "value": trListModel.get(index).parameters[k] })
-										}
 									}
 								}
 
@@ -219,7 +213,6 @@ Rectangle {
 				}
 			}
 		}
-
 
 		ColumnLayout
 		{
