@@ -38,7 +38,6 @@ using AliasSession = std::pair<Public,h256>;
  */
 class Alias
 {
-	friend class ECDHEKeyExchange; // todo: remove
 public:
 	Alias(Secret _s): m_secret(_s) {};
 	
@@ -75,40 +74,6 @@ public:
 protected:
 	KeyPair m_ephemeral;					///< Ephemeral keypair; generated.
 	mutable Public m_remoteEphemeral;		///< Public key of remote; parameter. Set once when agree is called, otherwise immutable.
-};
-
-/**
- * @brief Secure exchange of static keys.
- * Key exchange is encrypted with public key of remote and then encrypted by block cipher. For a blind remote the ecdhe public key is used to encrypt exchange, and for a known remote the known public key is used. The block cipher key is derived from ecdhe shared secret.
- *
- * Usage: Agree -> Exchange -> Authenticate
- */
-class ECDHEKeyExchange: private ECDHE
-{
-public:
-	/// Exchange with unknown remote (pass public key for ingress exchange)
-	ECDHEKeyExchange(Alias& _k): m_alias(_k) {}
-
-	/// Exchange with known remote
-	ECDHEKeyExchange(Alias& _k, AliasSession _known): m_alias(_k), m_known(_known) {}
-
-	/// Provide public key for dh agreement to generate shared secret.
-	void agree(Public const& _remoteEphemeral);
-	
-	/// @returns encrypted payload of key exchange
-	void exchange(bytes& o_exchange);
-	
-	/// Decrypt payload, check mac, check trust, decrypt exchange, authenticate exchange, verify version, verify signature, and if no failure occurs, update or creats trust and derive session-shared-secret.
-	bool authenticate(bytes _exchangeIn);
-
-private:
-	Secret m_ephemeralSecret;
-	Alias m_alias;
-	AliasSession m_known;
-	Secret m_sharedAliasSecret;
-
-	FixedHash<16> m_sharedC;
-	FixedHash<16> m_sharedM;
 };
 
 }
