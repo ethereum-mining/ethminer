@@ -38,15 +38,6 @@ private:
 
 	void removeDeadBlocks();
 
-	/// Dumps basic block graph in graphviz format to a file, if option dumpCFG is enabled.
-	void dumpCFGifRequired(std::string const& _dotfilePath);
-
-	/// Dumps basic block graph in graphviz format to a stream.
-	void dumpCFGtoStream(std::ostream& _out);
-
-	/// Dumps all basic blocks to stderr. Useful in a debugging session.
-	void dump();
-
 	/// Compiler options
 	Options const& m_options;
 
