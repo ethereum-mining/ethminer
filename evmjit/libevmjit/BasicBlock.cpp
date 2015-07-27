@@ -31,11 +31,6 @@ BasicBlock::BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iter
 	m_isJumpDest(isJumpDest)
 {}
 
-BasicBlock::BasicBlock(std::string _name, llvm::Function* _mainFunc, bool isJumpDest):
-	m_llvmBB(llvm::BasicBlock::Create(_mainFunc->getContext(), _name, _mainFunc)),
-	m_isJumpDest(isJumpDest)
-{}
-
 LocalStack::LocalStack(Stack& _globalStack):
 	m_global(_globalStack)
 {}

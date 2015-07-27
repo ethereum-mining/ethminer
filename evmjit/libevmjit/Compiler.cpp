@@ -94,22 +94,40 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 	}
 }
 
-llvm::BasicBlock* Compiler::getJumpTableBlock()
+void Compiler::fillJumpTable()
 {
-	if (!m_jumpTableBlock)
+	assert(m_jumpTableBB);
+
+	if (llvm::pred_empty(m_jumpTableBB))
 	{
-		m_jumpTableBlock.reset(new BasicBlock("JumpTable", m_mainFunc, true));
-		InsertPointGuard g{m_builder};
-		m_builder.SetInsertPoint(m_jumpTableBlock->llvm());
-		auto dest = m_builder.CreatePHI(Type::Word, 8, "target");
-		auto switchInstr = m_builder.CreateSwitch(dest, m_abortBB);
-		for (auto&& p : m_basicBlocks)
-		{
-			if (p.second.isJumpDest())
-				switchInstr->addCase(Constant::get(p.first), p.second.llvm());
-		}
+		m_jumpTableBB->eraseFromParent(); // remove if unused
+		return;
 	}
-	return m_jumpTableBlock->llvm();
+
+	m_builder.SetInsertPoint(m_jumpTableBB);
+	auto target = m_builder.CreatePHI(Type::Word, 16, "target");
+	for (auto pred: llvm::predecessors(m_jumpTableBB))
+	{
+		llvm::Value* incomingTarget = nullptr;
+		for (auto&& p: m_basicBlocks) // FIXME: Fix this stupid search. Use metadata to tag target in the basic block
+		{
+			if (p.second.llvm() == &*pred)
+			{
+				incomingTarget = p.second.getJumpTarget();
+				break;
+			}
+		}
+
+		assert(incomingTarget);
+		target->addIncoming(incomingTarget, pred);
+	}
+
+	auto switchInst = m_builder.CreateSwitch(target, m_abortBB);
+	for (auto& p: m_basicBlocks)
+	{
+		if (p.second.isJumpDest())
+			switchInst->addCase(Constant::get(p.first), p.second.llvm());
+	}
 }
 
 std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_iterator _end, std::string const& _id)
@@ -150,9 +168,9 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	auto normalFlow = m_builder.CreateICmpEQ(r, m_builder.getInt32(0));
 	runtimeManager.setJmpBuf(jmpBuf);
 
-	// TODO: Create Stop basic block on demand
 	m_stopBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Stop", m_mainFunc);
 	m_abortBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Abort", m_mainFunc);
+	m_jumpTableBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "JumpTable", m_mainFunc);
 
 	auto firstBB = m_basicBlocks.empty() ? m_stopBB : m_basicBlocks.begin()->second.llvm();
 	m_builder.CreateCondBr(normalFlow, firstBB, m_abortBB, Type::expectTrue);
@@ -167,32 +185,13 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	}
 
 	// Code for special blocks:
-	// TODO: move to separate function.
 	m_builder.SetInsertPoint(m_stopBB);
 	runtimeManager.exit(ReturnCode::Stop);
 
 	m_builder.SetInsertPoint(m_abortBB);
 	runtimeManager.exit(ReturnCode::OutOfGas);
 
-	// Link jump table target index
-	if (m_jumpTableBlock)
-	{
-		auto phi = llvm::cast<llvm::PHINode>(&m_jumpTableBlock->llvm()->getInstList().front());
-		for (auto predIt = llvm::pred_begin(m_jumpTableBlock->llvm()); predIt != llvm::pred_end(m_jumpTableBlock->llvm()); ++predIt)
-		{
-			BasicBlock* pred = nullptr;
-			for (auto&& p : m_basicBlocks)
-			{
-				if (p.second.llvm() == *predIt)
-				{
-					pred = &p.second;
-					break;
-				}
-			}
-
-			phi->addIncoming(pred->getJumpTarget(), pred->llvm());
-		}
-	}
+	fillJumpTable();
 
 	return module;
 }
@@ -592,7 +591,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 				else
 				{
 					_basicBlock.setJumpTarget(target);
-					m_builder.CreateBr(getJumpTableBlock());
+					m_builder.CreateBr(m_jumpTableBB);
 				}
 			}
 			else // JUMPI
@@ -608,7 +607,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 				else
 				{
 					_basicBlock.setJumpTarget(target);
-					m_builder.CreateCondBr(cond, getJumpTableBlock(), _nextBasicBlock);
+					m_builder.CreateCondBr(cond, m_jumpTableBB, _nextBasicBlock);
 				}
 			}
 			break;
