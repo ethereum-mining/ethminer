@@ -103,7 +103,7 @@ llvm::BasicBlock* Compiler::getJumpTableBlock()
 		m_builder.SetInsertPoint(m_jumpTableBlock->llvm());
 		auto dest = m_builder.CreatePHI(Type::Word, 8, "target");
 		auto switchInstr = m_builder.CreateSwitch(dest, m_abortBB);
-		for (auto&& p : m_basicBlocks) // FIXME: It mast be done at the end
+		for (auto&& p : m_basicBlocks)
 		{
 			if (p.second.isJumpDest())
 				switchInstr->addCase(Constant::get(p.first), p.second.llvm());
