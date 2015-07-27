@@ -186,12 +186,13 @@ Item {
 		onProjectLoading: stateListModel.loadStatesFromProject(projectData);
 		onProjectFileSaving: {
 			projectData.states = []
-			for(var i = 0; i < stateListModel.count; i++) {
+			for(var i = 0; i < stateListModel.count; i++)
+			{
 				projectData.states.push(toPlainStateItem(stateList[i]));
+				stateListModel.set(i, stateList[i]);
 			}
 			projectData.defaultStateIndex = stateListModel.defaultStateIndex;
 			stateListModel.data = projectData
-
 		}
 		onNewProject: {
 			var state = toPlainStateItem(stateListModel.createDefaultState());
@@ -247,7 +248,8 @@ Item {
 		signal stateRun(int index)
 		signal stateDeleted(int index)
 
-		function defaultTransactionItem() {
+		function defaultTransactionItem()
+		{
 			return TransactionHelper.defaultTransaction();
 		}
 
@@ -409,7 +411,7 @@ Item {
 				return ""
 		}
 
-		function reloadStateFromFromProject(index)
+		function reloadStateFromProject(index)
 		{
 			if (data)
 			{

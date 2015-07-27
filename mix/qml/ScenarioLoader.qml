@@ -291,7 +291,7 @@ ColumnLayout
 					text: qsTr("Restore")
 					function restore()
 					{
-						var state = projectModel.stateListModel.reloadStateFromFromProject(scenarioList.currentIndex)
+						var state = projectModel.stateListModel.reloadStateFromProject(scenarioList.currentIndex)
 						if (state)
 						{
 							restored(state)
@@ -301,7 +301,6 @@ ColumnLayout
 					roundRight: false
 					roundLeft: true
 				}
-
 
 				Rectangle
 				{
