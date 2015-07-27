@@ -179,6 +179,7 @@ void help()
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
 		<< "    --no-discovery  Disable Node discovery." << endl
 		<< "    --pin  Only connect to required (trusted) peers." << endl
+		<< "    --hermit  Equivalent to --no-discovery --pin." << endl
 //		<< "    --require-peers <peers.json>  List of required (trusted) peers. (experimental)" << endl
 		<< endl;
 	MinerCLI::streamHelp(cout);
@@ -1431,6 +1432,8 @@ int main(int argc, char** argv)
 			disableDiscovery = true;
 		else if (arg == "--pin")
 			pinning = true;
+		else if (arg == "--hermit")
+			pinning = disableDiscovery = true;
 		else if (arg == "-f" || arg == "--force-mining")
 			forceMining = true;
 		else if (arg == "--old-interactive")
