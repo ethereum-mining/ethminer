@@ -44,8 +44,8 @@ BOOST_AUTO_TEST_CASE(host)
 		return;
 
 	VerbosityHolder setTemporaryLevel(10);	
-	NetworkPreferences host1prefs("127.0.0.1", 30311, false);
-	NetworkPreferences host2prefs("127.0.0.1", 30312, false);	
+	NetworkPreferences host1prefs("127.0.0.1", 30321, false);
+	NetworkPreferences host2prefs("127.0.0.1", 30322, false);
 	Host host1("Test", host1prefs);
 	Host host2("Test", host2prefs);
 	host1.start();
@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE(saveNodes)
 
 	for (unsigned i = 0; i < c_nodes; ++i)
 	{
-		Host* h = new Host("Test", NetworkPreferences("127.0.0.1", 30300 + i, false));
+		Host* h = new Host("Test", NetworkPreferences("127.0.0.1", 30325 + i, false));
 		h->setIdealPeerCount(10);
 		// starting host is required so listenport is available
 		h->start();
@@ -155,8 +155,8 @@ BOOST_AUTO_TEST_CASE(requirePeer)
 	VerbosityHolder reduceVerbosity(10);
 
 	const char* const localhost = "127.0.0.1";
-	NetworkPreferences prefs1(localhost, 30301, false);
-	NetworkPreferences prefs2(localhost, 30302, false);
+	NetworkPreferences prefs1(localhost, 30323, false);
+	NetworkPreferences prefs2(localhost, 30324, false);
 	Host host1("Test", prefs1);
 	host1.start();
 
@@ -229,9 +229,9 @@ BOOST_AUTO_TEST_SUITE_END()
 int peerTest(int argc, char** argv)
 {
 	Public remoteAlias;
-	short listenPort = 30303;
+	short listenPort = 30304;
 	string remoteHost;
-	short remotePort = 30303;
+	short remotePort = 30304;
 	
 	for (int i = 1; i < argc; ++i)
 	{

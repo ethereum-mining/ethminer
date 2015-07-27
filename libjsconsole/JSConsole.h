@@ -46,9 +46,9 @@ public:
 		std::string cmd = "";
 		g_logPost = [](std::string const& a, char const*)
 		{
-		    std::cout << "\r           \r" << a << std::endl << std::flush;
+			std::cout << "\r           \r" << a << std::endl << std::flush;
 #if ETH_READLINE
-		    rl_forced_update_display();
+			rl_forced_update_display();
 #endif
 		};
 
@@ -91,6 +91,8 @@ public:
 			std::cout << result << std::endl;
 		}
 	}
+
+	void eval(std::string const& _expression) { m_engine.eval(_expression.c_str()); }
 
 protected:
 	Engine m_engine;

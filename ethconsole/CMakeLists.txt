@@ -20,6 +20,7 @@ if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
 	eth_copy_dlls(${EXECUTABLE} CURL_DLLS)
 endif()
 target_link_libraries(${EXECUTABLE} jsconsole)
+target_link_libraries(${EXECUTABLE} devcore)
 
 if (APPLE)
 	install(TARGETS ${EXECUTABLE} DESTINATION bin)

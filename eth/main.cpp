@@ -124,10 +124,13 @@ void help()
 		<< "    --olympic  Use the Olympic (0.9) protocol." << endl
 		<< "    --frontier  Use the Frontier (1.0) protocol." << endl
 		<< "    --private <name>  Use a private chain." << endl
+		<< "    --genesis-json <file>  Import the genesis block information from the given json file." << endl
+		<< endl
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (default: full)." << endl
 #if ETH_JSCONSOLE || !ETH_TRUE
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 #endif
+		<< endl
 #if ETH_JSONRPC || !ETH_TRUE
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port <n>  Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
@@ -136,7 +139,7 @@ void help()
 		<< "    -K,--kill  First kill the blockchain." << endl
 		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
 		<< "    --rescue  Attempt to rescue a corrupt database." << endl
-		<< "    --genesis-nonce <nonce>  Set the Genesis Nonce to the given hex nonce." << endl
+		<< endl
 		<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
 		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
 		<< "    --sign-key <address>  Sign all transactions with the key of the given address." << endl
@@ -176,6 +179,7 @@ void help()
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
 		<< "    --no-discovery  Disable Node discovery." << endl
 		<< "    --pin  Only connect to required (trusted) peers." << endl
+		<< "    --hermit  Equivalent to --no-discovery --pin." << endl
 //		<< "    --require-peers <peers.json>  List of required (trusted) peers. (experimental)" << endl
 		<< endl;
 	MinerCLI::streamHelp(cout);
@@ -1085,7 +1089,7 @@ int main(int argc, char** argv)
 	NodeMode nodeMode = NodeMode::Full;
 	bool interactive = false;
 #if ETH_JSONRPC || !ETH_TRUE
-	int jsonrpc = -1;
+	int jsonRPCURL = -1;
 #endif
 	string jsonAdmin;
 	string genesisJSON;
@@ -1428,15 +1432,17 @@ int main(int argc, char** argv)
 			disableDiscovery = true;
 		else if (arg == "--pin")
 			pinning = true;
+		else if (arg == "--hermit")
+			pinning = disableDiscovery = true;
 		else if (arg == "-f" || arg == "--force-mining")
 			forceMining = true;
 		else if (arg == "--old-interactive")
 			interactive = true;
 #if ETH_JSONRPC || !ETH_TRUE
 		else if ((arg == "-j" || arg == "--json-rpc"))
-			jsonrpc = jsonrpc == -1 ? SensibleHttpPort : jsonrpc;
+			jsonRPCURL = jsonRPCURL == -1 ? SensibleHttpPort : jsonRPCURL;
 		else if (arg == "--json-rpc-port" && i + 1 < argc)
-			jsonrpc = atoi(argv[++i]);
+			jsonRPCURL = atoi(argv[++i]);
 		else if (arg == "--json-admin" && i + 1 < argc)
 			jsonAdmin = argv[++i];
 #endif
@@ -1743,15 +1749,15 @@ int main(int argc, char** argv)
 	else
 		cout << "Networking disabled. To start, use netstart or pass -b or a remote host." << endl;
 
-	if (useConsole && jsonrpc == -1)
-		jsonrpc = SensibleHttpPort;
+	if (useConsole && jsonRPCURL == -1)
+		jsonRPCURL = SensibleHttpPort;
 
 #if ETH_JSONRPC || !ETH_TRUE
 	shared_ptr<dev::WebThreeStubServer> jsonrpcServer;
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
-	if (jsonrpc > -1)
+	if (jsonRPCURL > -1)
 	{
-		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
+		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonRPCURL, "", "", SensibleHttpThreads));
 		jsonrpcServer = make_shared<dev::WebThreeStubServer>(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer);
 		jsonrpcServer->setMiningBenefactorChanger([&](Address const& a) { beneficiary = a; });
 		jsonrpcServer->StartListening();
@@ -1760,6 +1766,8 @@ int main(int argc, char** argv)
 		else
 			jsonrpcServer->addSession(jsonAdmin, SessionPermissions{{Priviledge::Admin}});
 		cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
+		writeFile(getDataDir("web3") + "/session.key", jsonAdmin);
+		writeFile(getDataDir("web3") + "/session.url", "http://localhost:" + toString(jsonRPCURL));
 	}
 #endif
 
@@ -1785,6 +1793,7 @@ int main(int argc, char** argv)
 #if ETH_JSCONSOLE || !ETH_TRUE
 			JSLocalConsole console;
 			shared_ptr<dev::WebThreeStubServer> rpcServer = make_shared<dev::WebThreeStubServer>(*console.connector(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer);
+			console.eval("web3.admin.setSessionKey('" + jsonAdmin + "')");
 			while (!g_exit)
 			{
 				console.readExpression();

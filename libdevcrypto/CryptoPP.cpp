@@ -35,11 +35,10 @@ static_assert(dev::Signature::size == 65, "Signature must be 65 bytes.");
 
 bytes Secp256k1PP::eciesKDF(Secret _z, bytes _s1, unsigned kdByteLen)
 {
-	// interop w/go ecies implementation
-	
-	// for sha3, blocksize is 136 bytes
-	// for sha256, blocksize is 64 bytes
-	auto reps = ((kdByteLen + 7) * 8) / (64 * 8);
+	auto reps = ((kdByteLen + 7) * 8) / (CryptoPP::SHA256::BLOCKSIZE * 8);
+	// SEC/ISO/Shoup specify counter size SHOULD be equivalent
+	// to size of hash output, however, it also notes that
+	// the 4 bytes is okay. NIST specifies 4 bytes.
 	bytes ctr({0, 0, 0, 1});
 	bytes k;
 	CryptoPP::SHA256 ctx;
