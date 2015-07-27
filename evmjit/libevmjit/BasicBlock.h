@@ -71,11 +71,7 @@ public:
 	llvm::Value* getJumpTarget() const { return m_jumpTarget; }
 	void setJumpTarget(llvm::Value* _jumpTarget) { m_jumpTarget = _jumpTarget; }
 
-	int getDiff() const { return m_tosOffset; }
-
-	/// Optimization: propagates values between local stacks in basic blocks
-	/// to avoid excessive pushing/popping on the EVM stack.
-	static void linkLocalStacks(std::vector<BasicBlock*> _basicBlocks, llvm::IRBuilder<>& _builder);
+	ssize_t getDiff() const { return static_cast<ssize_t>(m_currentStack.size()) - static_cast<ssize_t>(m_globalPops); }
 
 	/// Synchronize current local stack with the EVM stack.
 	void synchronizeLocalStack(Stack& _evmStack);
@@ -107,10 +103,6 @@ private:
 	/// top of the stack or changes existing items.
 	std::vector<llvm::Value*> m_currentStack;
 	friend class LocalStack;
-
-	/// How many items higher is the current stack than the initial one.
-	/// May be negative.
-	int m_tosOffset = 0;
 
 	size_t m_globalPops = 0; ///< Number of items poped from global stack. In other words: global - local stack overlap.
 
