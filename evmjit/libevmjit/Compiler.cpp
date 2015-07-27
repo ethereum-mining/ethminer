@@ -174,8 +174,6 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	m_builder.SetInsertPoint(m_abortBB);
 	runtimeManager.exit(ReturnCode::OutOfGas);
 
-	removeDeadBlocks();
-
 	// Link jump table target index
 	if (m_jumpTableBlock)
 	{
@@ -837,36 +835,6 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
 	m_builder.SetInsertPoint(_basicBlock.llvm()->getFirstNonPHI()); // TODO: Move to LocalStack::finalize
 	_runtimeManager.checkStackLimit(stack.maxSize(), stack.size());
-}
-
-
-void Compiler::removeDeadBlocks()
-{
-	// Remove dead basic blocks
-	auto sthErased = false;
-	do
-	{
-		sthErased = false;
-		for (auto it = m_basicBlocks.begin(); it != m_basicBlocks.end();)
-		{
-			auto llvmBB = it->second.llvm();
-			if (llvm::pred_begin(llvmBB) == llvm::pred_end(llvmBB))
-			{
-				llvmBB->eraseFromParent();
-				m_basicBlocks.erase(it++);
-				sthErased = true;
-			}
-			else
-				++it;
-		}
-	}
-	while (sthErased);
-
-	if (m_jumpTableBlock && llvm::pred_begin(m_jumpTableBlock->llvm()) == llvm::pred_end(m_jumpTableBlock->llvm()))
-	{
-		m_jumpTableBlock->llvm()->eraseFromParent();
-		m_jumpTableBlock.reset();
-	}
 }
 
 
