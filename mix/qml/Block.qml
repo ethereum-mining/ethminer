@@ -96,7 +96,7 @@ ColumnLayout
 				text:
 				{
 					if (number === -2)
-						return qsTr("STARTING PARAMETERS")
+						return qsTr("GENESIS PARAMETERS")
 					else if (status === "mined")
 						return qsTr("BLOCK") + " " + number
 					else
