@@ -17,6 +17,7 @@
 /** @file gasPricer.cpp
  * @author Christoph Jentzsch <cj@ethdev.com>
  * @date 2015
+ * Gas pricer tests
  */
 
 #include <libtestutils/BlockChainLoader.h>
