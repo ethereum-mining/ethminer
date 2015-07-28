@@ -170,10 +170,11 @@ Item
 	{
 		if (!clientModelGasEstimation.running)
 		{
-			var ctr = projectModel.codeEditor.getContracts()
-			for (var k in ctr)
+			for (var si = 0; si < projectModel.listModel.count; si++)
 			{
-				codeModelGasEstimation.registerCodeChange(ctr[k].document.documentId, ctr[k].getText());
+				var document = projectModel.listModel.get(si);
+				if (document.isContract)
+					codeModelGasEstimation.registerCodeChange(document.documentId, fileIo.readFile(document.path));
 			}
 			gasEstimationConnect.callback = callback
 			clientModelGasEstimation.setupScenario(scenario)
