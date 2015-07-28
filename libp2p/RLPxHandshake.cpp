@@ -40,7 +40,7 @@ void RLPXHandshake::writeAuth()
 	// E(remote-pubk, S(ecdhe-random, ecdh-shared-secret^nonce) || H(ecdhe-random-pubk) || pubk || nonce || 0x0)
 	Secret staticShared;
 	crypto::ecdh::agree(m_host->m_alias.sec(), m_remote, staticShared);
-	sign(m_ecdhe.seckey(), staticShared ^ m_nonce).ref().copyTo(sig);
+	sign(m_ecdhe.seckey(), staticShared.makeInsecure() ^ m_nonce).ref().copyTo(sig);
 	sha3(m_ecdhe.pubkey().ref(), hepubk);
 	m_host->m_alias.pub().ref().copyTo(pubk);
 	m_nonce.ref().copyTo(nonce);
@@ -92,7 +92,7 @@ void RLPXHandshake::readAuth()
 			
 			Secret sharedSecret;
 			crypto::ecdh::agree(m_host->m_alias.sec(), m_remote, sharedSecret);
-			m_remoteEphemeral = recover(*(Signature*)sig.data(), sharedSecret ^ m_remoteNonce);
+			m_remoteEphemeral = recover(*(Signature*)sig.data(), sharedSecret.makeInsecure() ^ m_remoteNonce);
 
 			if (sha3(m_remoteEphemeral) != *(h256*)hepubk.data())
 				clog(NetP2PConnect) << "p2p.connect.ingress auth failed (invalid: hash mismatch) for" << m_socket->remoteEndpoint();

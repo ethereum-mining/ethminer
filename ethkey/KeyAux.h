@@ -192,7 +192,7 @@ public:
 	{
 		KeyPair k(Secret::random());
 		while (m_icap && k.address()[0])
-			k = KeyPair(sha3(k.secret()));
+			k = KeyPair(Secret(sha3(k.secret().ref())));
 		return k;
 	}
 
@@ -352,7 +352,7 @@ public:
 				if (m_lock.empty())
 					m_lock = createPassword("Enter a password with which to secure this account: ");
 				auto k = makeKey();
-				h128 u = store.importSecret(k.secret().asBytes(), m_lock);
+				h128 u = store.importSecret(k.secret().ref(), m_lock);
 				cout << "Created key " << toUUID(u) << endl;
 				cout << "  Address: " << k.address().hex() << endl;
 				cout << "  ICAP: " << ICAP(k.address()).encoded() << endl;
@@ -362,12 +362,12 @@ public:
 				for (string const& input: m_inputs)
 				{
 					h128 u;
-					bytes b;
-					b = fromHex(input);
+					bytesSec b;
+					b.writable() = fromHex(input);
 					if (b.size() != 32)
 					{
 						std::string s = contentsString(input);
-						b = fromHex(s);
+						b.writable() = fromHex(s);
 						if (b.size() != 32)
 							u = store.importKey(input);
 					}
@@ -386,18 +386,18 @@ public:
 					if (!contents(i).empty())
 					{
 						h128 u = store.readKey(i, false);
-						bytes s = store.secret(u, [&](){ return getPassword("Enter password for key " + i + ": "); });
+						bytesSec s = store.secret(u, [&](){ return getPassword("Enter password for key " + i + ": "); });
 						cout << "Key " << i << ":" << endl;
 						cout << "  UUID: " << toUUID(u) << ":" << endl;
 						cout << "  Address: " << toAddress(Secret(s)).hex() << endl;
-						cout << "  Secret: " << Secret(s).abridged() << endl;
+						cout << "  Secret: " << toHex(s.ref().cropped(0, 8)) << "..." << endl;
 					}
 					else if (h128 u = fromUUID(i))
 					{
-						bytes s = store.secret(u, [&](){ return getPassword("Enter password for key " + toUUID(u) + ": "); });
+						bytesSec s = store.secret(u, [&](){ return getPassword("Enter password for key " + toUUID(u) + ": "); });
 						cout << "Key " << i << ":" << endl;
 						cout << "  Address: " << toAddress(Secret(s)).hex() << endl;
-						cout << "  Secret: " << Secret(s).abridged() << endl;
+						cout << "  Secret: " << toHex(s.ref().cropped(0, 8)) << "..." << endl;
 					}
 					else
 						cerr << "Couldn't inspect " << i << "; not found." << endl;
@@ -454,12 +454,12 @@ public:
 			{
 				string const& i = m_inputs[0];
 				h128 u;
-				bytes b;
-				b = fromHex(i);
+				bytesSec b;
+				b.writable() = fromHex(i);
 				if (b.size() != 32)
 				{
 					std::string s = contentsString(i);
-					b = fromHex(s);
+					b.writable() = fromHex(s);
 					if (b.size() != 32)
 						u = wallet.store().importKey(i);
 				}

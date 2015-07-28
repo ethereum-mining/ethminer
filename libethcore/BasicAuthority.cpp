@@ -101,7 +101,7 @@ private:
 		if (_name == "authorities")
 			BasicAuthority::s_authorities = rlp.toUnorderedSet<Address>();
 		else if (_name == "authority")
-			m_secret = rlp.toHash<Secret>();
+			m_secret = Secret(rlp.toHash<h256>());
 		else
 			return false;
 		return true;
