@@ -6,7 +6,7 @@ extern "C"
 {
 using namespace dev::evmjit;
 
-EXPORT evmjit_context* evmjit_create(evmjit_runtime_data* _data, void* _env)
+evmjit_context* evmjit_create(evmjit_runtime_data* _data, void* _env)
 {
 	auto data = reinterpret_cast<RuntimeData*>(_data);
 	auto env  = reinterpret_cast<Env*>(_env);
@@ -20,13 +20,13 @@ EXPORT evmjit_context* evmjit_create(evmjit_runtime_data* _data, void* _env)
 	return reinterpret_cast<evmjit_context*>(context);
 }
 
-EXPORT void evmjit_destroy(evmjit_context* _context)
+void evmjit_destroy(evmjit_context* _context)
 {
 	auto context = reinterpret_cast<ExecutionContext*>(_context);
 	delete context;
 }
 
-EXPORT evmjit_return_code evmjit_exec(evmjit_context* _context)
+evmjit_return_code evmjit_exec(evmjit_context* _context)
 {
 	auto context = reinterpret_cast<ExecutionContext*>(_context);
 
