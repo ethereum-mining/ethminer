@@ -87,7 +87,7 @@ public:
 	bool decryptECIES(Secret const& _k, bytes& io_text);
 	
 	/// Key derivation function used by encryptECIES and decryptECIES.
-	bytes eciesKDF(Secret _z, bytes _s1, unsigned kdBitLen = 256);
+	bytes eciesKDF(Secret const& _z, bytes _s1, unsigned kdBitLen = 256);
 	
 	/// @returns siganture of message.
 	Signature sign(Secret const& _k, bytesConstRef _message);
@@ -107,10 +107,10 @@ public:
 	/// Verifies _s is a valid secret key and returns corresponding public key in o_p.
 	bool verifySecret(Secret const& _s, Public& o_p);
 	
-	void agree(Secret const& _s, Public const& _r, h256& o_s);
+	void agree(Secret const& _s, Public const& _r, Secret& o_s);
 	
 protected:
-	void exportPrivateKey(DL_PrivateKey_EC<ECP> const& _k, Secret& o_s) { _k.GetPrivateExponent().Encode(o_s.data(), Secret::size); }
+	void exportPrivateKey(DL_PrivateKey_EC<ECP> const& _k, Secret& o_s) { _k.GetPrivateExponent().Encode(o_s.writable().data(), Secret::size); }
 	
 	void exportPublicKey(DL_PublicKey_EC<ECP> const& _k, Public& o_p);
 	

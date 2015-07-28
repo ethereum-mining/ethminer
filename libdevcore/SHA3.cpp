@@ -211,13 +211,14 @@ defsha3(512)
 
 }
 
-h256 sha3(bytesConstRef _input)
+bool sha3(bytesConstRef _input, bytesRef o_output)
 {
 	// FIXME: What with unaligned memory?
-	h256 ret;
-	keccak::sha3_256(ret.data(), 32, _input.data(), _input.size());
+	if (o_output.size() != 32)
+		return false;
+	keccak::sha3_256(o_output.data(), 32, _input.data(), _input.size());
 //	keccak::keccak(ret.data(), 32, (uint64_t const*)_input.data(), _input.size());
-	return ret;
+	return true;
 }
 
 }
