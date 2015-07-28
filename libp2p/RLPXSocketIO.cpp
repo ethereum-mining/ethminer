@@ -1,16 +1,16 @@
 /*
  This file is part of cpp-ethereum.
- 
+
  cpp-ethereum is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
- 
+
  cpp-ethereum is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
- 
+
  You should have received a copy of the GNU General Public License
  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -34,7 +34,7 @@ RLPXSocketIO::RLPXSocketIO(unsigned _protCount, RLPXFrameCoder& _coder, bi::tcp:
 	m_flowControl(_flowControl),
 	m_coder(_coder),
 	m_socket(_socket),
-	m_writers(move(writers(_protCount))),
+	m_writers(writers(_protCount)),
 	m_egressCapacity(m_flowControl ? _initialCapacity : MaxPacketSize * m_writers.size())
 {}
 
@@ -61,11 +61,11 @@ void RLPXSocketIO::send(unsigned _protocolType, unsigned _type, RLPStream& _payl
 void RLPXSocketIO::doWrite()
 {
 	m_toSend.clear();
-	
+
 	size_t capacity;
 	DEV_GUARDED(x_queued)
 		capacity = min(m_egressCapacity, MaxPacketSize);
-	
+
 	size_t active = 0;
 	for (auto const& w: m_writers)
 		if (w.size())
@@ -97,7 +97,7 @@ void RLPXSocketIO::write(size_t _dequed)
 	{
 		if (ec)
 			return; // TCPSocketWriteError
-		
+
 		bool reschedule = false;
 		DEV_GUARDED(x_queued)
 		{
