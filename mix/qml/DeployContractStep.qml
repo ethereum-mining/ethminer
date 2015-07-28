@@ -490,7 +490,8 @@ Rectangle {
 					id: clearDeployAction
 					onTriggered: {
 						worker.forceStopPooling()
-						fileIo.deleteDir(projectModel.deploymentDir)
+						if (projectModel.deploymentDir && projectModel.deploymentDir !== "")
+							fileIo.deleteDir(projectModel.deploymentDir)
 						projectModel.cleanDeploymentStatus()
 						deploymentDialog.steps.reset()
 					}

@@ -22,6 +22,7 @@ ColumnLayout
 	property int blockIndex
 	property variant scenario
 	property string labelColor: "#414141"
+	property int scenarioIndex
 	signal txSelected(var txIndex)
 
 	function calculateHeight()
@@ -105,13 +106,14 @@ ColumnLayout
 				anchors.verticalCenter: parent.verticalCenter
 				anchors.right: parent.right
 				anchors.rightMargin: 14
-				visible: false
+				visible: number === -2
 				MouseArea
 				{
 					anchors.fill: parent
 					onClicked:
 					{
 						// load edit block panel
+						projectModel.stateListModel.editState(scenarioIndex)
 					}
 				}
 			}
