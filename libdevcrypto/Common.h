@@ -32,15 +32,7 @@
 namespace dev
 {
 
-/// A secret key: 32 bytes.
-/// @NOTE This is not endian-specific; it's just a bunch of bytes.
-class Secret: public h256
-{
-public:
-	template <class ... Args> Secret(Args&& ... _args): h256(_args ...) {}
-	Secret(bytesSec const& _b): h256(bytesConstRef(&_b)) {}
-	~Secret() { ref().cleanse(); }
-};
+using Secret = SecureFixedHash<32>;
 
 /// A public key: 64 bytes.
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
@@ -82,7 +74,7 @@ using Addresses = h160s;
 using AddressHash = std::unordered_set<h160>;
 
 /// A vector of secrets.
-using Secrets = h256s;
+using Secrets = std::vector<Secret>;
 
 /// Convert a secret key into the public key equivalent.
 Public toPublic(Secret const& _secret);
@@ -116,21 +108,21 @@ void encryptECIES(Public const& _k, bytesConstRef _plain, bytes& o_cipher);
 bool decryptECIES(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext);
 
 /// Encrypts payload with random IV/ctr using AES128-CTR.
-std::pair<bytes, h128> encryptSymNoAuth(h128 const& _k, bytesConstRef _plain);
+std::pair<bytes, h128> encryptSymNoAuth(SecureFixedHash<16> const& _k, bytesConstRef _plain);
 
 /// Encrypts payload with specified IV/ctr using AES128-CTR.
 bytes encryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _plain);
 
 /// Decrypts payload with specified IV/ctr using AES128-CTR.
-bytes decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _cipher);
+bytesSec decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _cipher);
 
 /// Encrypts payload with specified IV/ctr using AES128-CTR.
-inline bytes encryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _plain) { return encryptAES128CTR(_k.ref(), _iv, _plain); }
-inline bytes encryptSymNoAuth(h256 const& _k, h128 const& _iv, bytesConstRef _plain) { return encryptAES128CTR(_k.ref(), _iv, _plain); }
+inline bytes encryptSymNoAuth(SecureFixedHash<16> const& _k, h128 const& _iv, bytesConstRef _plain) { return encryptAES128CTR(_k.ref(), _iv, _plain); }
+inline bytes encryptSymNoAuth(SecureFixedHash<32> const& _k, h128 const& _iv, bytesConstRef _plain) { return encryptAES128CTR(_k.ref(), _iv, _plain); }
 
 /// Decrypts payload with specified IV/ctr using AES128-CTR.
-inline bytes decryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _cipher) { return decryptAES128CTR(_k.ref(), _iv, _cipher); }
-inline bytes decryptSymNoAuth(h256 const& _k, h128 const& _iv, bytesConstRef _cipher) { return decryptAES128CTR(_k.ref(), _iv, _cipher); }
+inline bytesSec decryptSymNoAuth(SecureFixedHash<16> const& _k, h128 const& _iv, bytesConstRef _cipher) { return decryptAES128CTR(_k.ref(), _iv, _cipher); }
+inline bytesSec decryptSymNoAuth(SecureFixedHash<32> const& _k, h128 const& _iv, bytesConstRef _cipher) { return decryptAES128CTR(_k.ref(), _iv, _cipher); }
 
 /// Recovers Public key from signed message hash.
 Public recover(Signature const& _sig, h256 const& _hash);
@@ -142,10 +134,10 @@ Signature sign(Secret const& _k, h256 const& _hash);
 bool verify(Public const& _k, Signature const& _s, h256 const& _hash);
 
 /// Derive key via PBKDF2.
-bytes pbkdf2(std::string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen = 32);
+bytesSec pbkdf2(std::string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen = 32);
 
 /// Derive key via Scrypt.
-bytes scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uint32_t _r, uint32_t _p, unsigned _dkLen);
+bytesSec scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uint32_t _r, uint32_t _p, unsigned _dkLen);
 
 /// Simple class that represents a "key pair".
 /// All of the data of the class can be regenerated from the secret key (m_secret) alone.
@@ -176,8 +168,8 @@ public:
 	/// Retrieve the associated address of the public key.
 	Address const& address() const { return m_address; }
 
-	bool operator==(KeyPair const& _c) const { return m_secret == _c.m_secret; }
-	bool operator!=(KeyPair const& _c) const { return m_secret != _c.m_secret; }
+	bool operator==(KeyPair const& _c) const { return m_public == _c.m_public; }
+	bool operator!=(KeyPair const& _c) const { return m_public != _c.m_public; }
 
 private:
 	void populateFromSecret(Secret const& _k);
