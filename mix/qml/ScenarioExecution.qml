@@ -85,7 +85,8 @@ Rectangle {
 					target: blockChain
 					property var currentSelectedBlock
 					property var currentSelectedTx
-					onTxSelected: {
+					onTxSelected:
+					{
 						currentSelectedBlock = blockIndex
 						currentSelectedTx = txIndex
 						updateWatchers(blockIndex, txIndex)

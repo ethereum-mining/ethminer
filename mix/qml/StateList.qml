@@ -38,10 +38,6 @@ Dialog {
 				anchors.right: parent.right
 				anchors.rightMargin: 10
 				Button {
-					action: addStateAction
-				}
-
-				Button {
 					action: closeAction
 				}
 			}

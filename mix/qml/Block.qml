@@ -46,6 +46,11 @@ ColumnLayout
 		transactionDialog.open(txIndex, blockIndex,  transactions.get(txIndex))
 	}
 
+	function select(txIndex)
+	{
+		transactionRepeater.itemAt(txIndex).select()
+	}
+
 	onOpenedTrChanged:
 	{
 		Layout.preferredHeight = calculateHeight()
@@ -129,6 +134,12 @@ ColumnLayout
 			id: rowTransaction
 			Layout.preferredHeight: trHeight
 			spacing: 0
+
+			function select()
+			{
+				rowContentTr.select()
+			}
+
 			function displayContent()
 			{
 				logsText.text = ""
@@ -222,6 +233,15 @@ ColumnLayout
 					}
 				}
 
+				function select()
+				{
+					rowContentTr.selected = true
+					rowContentTr.color = "#4F4F4F"
+					hash.color = "#EAB920"
+					func.color = "#EAB920"
+					txSelected(index)
+				}
+
 				function deselect()
 				{
 					rowContentTr.selected = false
@@ -235,13 +255,7 @@ ColumnLayout
 					anchors.fill: parent
 					onClicked: {
 						if (!rowContentTr.selected)
-						{
-							rowContentTr.selected = true
-							rowContentTr.color = "#4F4F4F"
-							hash.color = "#EAB920"
-							func.color = "#EAB920"
-							txSelected(index)
-						}
+							rowContentTr.select()
 						else
 							rowContentTr.deselect()
 
