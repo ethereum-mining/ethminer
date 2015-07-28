@@ -368,8 +368,6 @@ Item {
 		}
 
 		function editState(index) {
-			console.log(index)
-			console.log(defaultStateIndex)
 			stateDialog.open(index, stateList[index], defaultStateIndex === index);
 		}
 
