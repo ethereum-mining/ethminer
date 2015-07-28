@@ -61,8 +61,8 @@ namespace
 
 	class JitWorker
 	{
-		std::thread m_worker;
 		concurrent_queue<JitTask> m_queue;
+		std::thread m_worker; // Worker must be last to initialize
 
 		void work()
 		{
