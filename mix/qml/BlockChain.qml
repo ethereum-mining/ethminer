@@ -16,6 +16,7 @@ ColumnLayout {
 	property alias trDialog: transactionDialog
 	property alias blockChainRepeater: blockChainRepeater
 	property variant model
+	property int scenarioIndex
 	property var states: ({})
 	spacing: 0
 	property int previousWidth
@@ -25,6 +26,25 @@ ColumnLayout {
 	signal txSelected(var blockIndex, var txIndex)
 	signal rebuilding
 	signal accountAdded(string address, string amount)
+
+	Connections
+	{
+		target: projectModel.stateListModel
+		onAccountsValidated:
+		{
+			if (rebuild.accountsSha3 !== codeModel.sha3(JSON.stringify(_accounts)))
+				rebuild.needRebuild("AccountsChanged")
+			else
+				rebuild.notNeedRebuild("AccountsChanged")
+		}
+		onContractsValidated:
+		{
+			if (rebuild.contractsSha3 !== codeModel.sha3(JSON.stringify(_contracts)))
+				rebuild.needRebuild("ContractsChanged")
+			else
+				rebuild.notNeedRebuild("ContractsChanged")
+		}
+	}
 
 	Connections
 	{
@@ -94,13 +114,15 @@ ColumnLayout {
 		return states[record]
 	}
 
-	function load(scenario)
+	function load(scenario, index)
 	{
 		if (!scenario)
 			return;
 		if (model)
 			rebuild.startBlinking()
 		model = scenario
+		scenarioIndex = index
+		genesis.scenarioIndex = index
 		states = []
 		blockModel.clear()
 		for (var b in model.blocks)
@@ -137,6 +159,20 @@ ColumnLayout {
 				id: blockChainLayout
 				width: parent.width
 				spacing: 20
+
+				Block
+				{
+					id: genesis
+					scenario: blockChainPanel.model
+					scenarioIndex: scenarioIndex
+					Layout.preferredWidth: blockChainScrollView.width
+					Layout.preferredHeight: 60
+					blockIndex: -1
+					transactions: []
+					status: ""
+					number: -2
+					trHeight: 60
+				}
 
 				Repeater // List of blocks
 				{
@@ -264,6 +300,8 @@ ColumnLayout {
 					roundRight: true
 					property variant contractsHex: ({})
 					property variant txSha3: ({})
+					property variant accountsSha3
+					property variant contractsSha3
 					property variant txChanged: []
 					property var blinkReasons: []
 
@@ -352,8 +390,20 @@ ColumnLayout {
 						ensureNotFuturetime.start()
 						takeCodeSnapshot()
 						takeTxSnaphot()
+						takeAccountsSnapshot()
+						takeContractsSnapShot()
 						blinkReasons = []
 						clientModel.setupScenario(model);						
+					}
+
+					function takeContractsSnapShot()
+					{
+						contractsSha3 = codeModel.sha3(JSON.stringify(model.contracts))
+					}
+
+					function takeAccountsSnapshot()
+					{
+						accountsSha3 = codeModel.sha3(JSON.stringify(model.accounts))
 					}
 
 					function takeCodeSnapshot()
