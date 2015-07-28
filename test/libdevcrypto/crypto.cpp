@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE(cryptopp_patch)
 
 BOOST_AUTO_TEST_CASE(verify_secert)
 {
-	h256 empty;
+	Secret empty;
 	KeyPair kNot(empty);
 	BOOST_REQUIRE(!kNot.address());
 	KeyPair k(sha3(empty));
@@ -128,7 +128,7 @@ BOOST_AUTO_TEST_CASE(cryptopp_cryptopp_secp256k1libport)
 	bytes e(fromHex("0x01"));
 	e.resize(32);
 	int tests = 2;
-	while (sha3(&e, &e), secret = sha3(secret.asBytes()), tests--)
+	while (sha3(&e, &e), secret = sha3(secret), tests--)
 	{
 		KeyPair key(secret);
 		Public pkey = key.pub();
@@ -145,7 +145,7 @@ BOOST_AUTO_TEST_CASE(cryptopp_cryptopp_secp256k1libport)
 		Integer r = s_params.ConvertElementToInteger(rp);
 
 		Integer kInv = kInt.InverseMod(q);
-		Integer s = (kInv * (Integer(secret.asBytes().data(), 32)*r + heInt)) % q;
+		Integer s = (kInv * (Integer(secret.data(), 32) * r + heInt)) % q;
 		BOOST_REQUIRE(!!r && !!s);
 
 		Signature sig;
@@ -311,7 +311,7 @@ BOOST_AUTO_TEST_CASE(ecies_kdf)
 	BOOST_REQUIRE(eKey1.toBytes() == eKey2.toBytes());
 	BOOST_REQUIRE(mKey1.toBytes() == mKey2.toBytes());
 	
-	BOOST_REQUIRE((u256)h256(z1) > 0);
+	BOOST_REQUIRE(!!z1);
 	BOOST_REQUIRE(z1 == z2);
 	
 	BOOST_REQUIRE(key1.size() > 0 && ((u512)h512(key1)) > 0);
@@ -395,7 +395,7 @@ BOOST_AUTO_TEST_CASE(ecdh)
 	
 	ECDH<ECP>::Domain dhA(s_curveOID);
 	Secret shared;
-	BOOST_REQUIRE(dhA.Agree(shared.data(), a.sec().data(), pubb));
+	BOOST_REQUIRE(dhA.Agree(shared.writable().data(), a.sec().data(), pubb));
 	BOOST_REQUIRE(shared);
 }
 
@@ -453,7 +453,7 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 		bytesRef nonce(&auth[Signature::size + h256::size + Public::size], h256::size);
 		
 		crypto::ecdh::agree(nodeA.sec(), nodeB.pub(), ssA);
-		sign(eA.seckey(), ssA ^ nonceA).ref().copyTo(sig);
+		sign(eA.seckey(), (ssA ^ nonceA).makeInsecure()).ref().copyTo(sig);
 		sha3(eA.pubkey().ref(), hepubk);
 		nodeA.pub().ref().copyTo(pubk);
 		nonceA.ref().copyTo(nonce);
@@ -520,21 +520,21 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 		ess.ref().copyTo(keyMaterial.cropped(0, h256::size));
 		ssA.ref().copyTo(keyMaterial.cropped(h256::size, h256::size));
 //		auto token = sha3(ssA);
-		aEncryptK = sha3(keyMaterial);
+		aEncryptK = sha3Secure(keyMaterial);
 		aEncryptK.ref().copyTo(keyMaterial.cropped(h256::size, h256::size));
-		aMacK = sha3(keyMaterial);
+		aMacK = sha3Secure(keyMaterial);
 
 		keyMaterialBytes.resize(h256::size + authcipher.size());
 		keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
 		(aMacK ^ nonceBAck).ref().copyTo(keyMaterial);
 		bytesConstRef(&authcipher).copyTo(keyMaterial.cropped(h256::size, authcipher.size()));
-		aEgressMac = sha3(keyMaterial);
+		aEgressMac = sha3Secure(keyMaterial);
 		
 		keyMaterialBytes.resize(h256::size + ackcipher.size());
 		keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
 		(aMacK ^ nonceA).ref().copyTo(keyMaterial);
 		bytesConstRef(&ackcipher).copyTo(keyMaterial.cropped(h256::size, ackcipher.size()));
-		aIngressMac = sha3(keyMaterial);
+		aIngressMac = sha3Secure(keyMaterial);
 	}
 	
 	
@@ -573,7 +573,7 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 		
 		Secret ss;
 		s_secp256k1.agree(nodeB.sec(), nodeAAuth, ss);
-		eAAuth = recover(sigAuth, ss ^ nonceAAuth);
+		eAAuth = recover(sigAuth, (ss ^ nonceAAuth).makeInsecure());
 		// todo: test when this fails; means remote is bad or packet bits were flipped
 		BOOST_REQUIRE_EQUAL(heA, sha3(eAAuth));
 		BOOST_REQUIRE_EQUAL(eAAuth, eA.pubkey());
@@ -588,22 +588,22 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 		ess.ref().copyTo(keyMaterial.cropped(0, h256::size));
 		ssB.ref().copyTo(keyMaterial.cropped(h256::size, h256::size));
 //		auto token = sha3(ssA);
-		bEncryptK = sha3(keyMaterial);
+		bEncryptK = sha3Secure(keyMaterial);
 		bEncryptK.ref().copyTo(keyMaterial.cropped(h256::size, h256::size));
-		bMacK = sha3(keyMaterial);
+		bMacK = sha3Secure(keyMaterial);
 		
 		// todo: replace nonceB with decrypted nonceB
 		keyMaterialBytes.resize(h256::size + ackcipher.size());
 		keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
 		(bMacK ^ nonceAAuth).ref().copyTo(keyMaterial);
 		bytesConstRef(&ackcipher).copyTo(keyMaterial.cropped(h256::size, ackcipher.size()));
-		bEgressMac = sha3(keyMaterial);
+		bEgressMac = sha3Secure(keyMaterial);
 		
 		keyMaterialBytes.resize(h256::size + authcipher.size());
 		keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
 		(bMacK ^ nonceB).ref().copyTo(keyMaterial);
 		bytesConstRef(&authcipher).copyTo(keyMaterial.cropped(h256::size, authcipher.size()));
-		bIngressMac = sha3(keyMaterial);
+		bIngressMac = sha3Secure(keyMaterial);
 	}
 	
 	BOOST_REQUIRE_EQUAL(aEncryptK, bEncryptK);
@@ -617,7 +617,7 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 
 BOOST_AUTO_TEST_CASE(ecies_aes128_ctr_unaligned)
 {
-	h128 encryptK(sha3("..."), h128::AlignLeft);
+	SecureFixedHash<16> encryptK(sha3("..."), h128::AlignLeft);
 	h256 egressMac(sha3("+++"));
 	// TESTING: send encrypt magic sequence
 	bytes magic {0x22,0x40,0x08,0x91};
@@ -629,16 +629,17 @@ BOOST_AUTO_TEST_CASE(ecies_aes128_ctr_unaligned)
 	egressMac.ref().copyTo(bytesRef(&magicCipherAndMac).cropped(magicCipherAndMac.size() - 32, 32));
 	
 	bytesConstRef cipher(&magicCipherAndMac[0], magicCipherAndMac.size() - 32);
-	bytes plaintext = decryptSymNoAuth(encryptK, h128(), cipher);
+	bytes plaintext = decryptSymNoAuth(encryptK, h128(), cipher).makeInsecure();
 	
 	plaintext.resize(magic.size());
+	// @alex @subtly TODO: FIX: this check is pointless with the above line.
 	BOOST_REQUIRE(plaintext.size() > 0);
 	BOOST_REQUIRE(magic == plaintext);
 }
 
 BOOST_AUTO_TEST_CASE(ecies_aes128_ctr)
 {
-	h128 k(sha3("0xAAAA"), h128::AlignLeft);
+	SecureFixedHash<16> k(sha3("0xAAAA"), h128::AlignLeft);
 	string m = "AAAAAAAAAAAAAAAA";
 	bytesConstRef msg((byte*)m.data(), m.size());
 
@@ -646,7 +647,7 @@ BOOST_AUTO_TEST_CASE(ecies_aes128_ctr)
 	h128 iv;
 	tie(ciphertext, iv) = encryptSymNoAuth(k, msg);
 	
-	bytes plaintext = decryptSymNoAuth(k, iv, &ciphertext);
+	bytes plaintext = decryptSymNoAuth(k, iv, &ciphertext).makeInsecure();
 	BOOST_REQUIRE_EQUAL(asString(plaintext), m);
 }
 
