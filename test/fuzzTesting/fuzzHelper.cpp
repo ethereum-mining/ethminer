@@ -402,13 +402,12 @@ void RandomCodeOptions::setWeights()
 	opCodeProbability = boostDescreteDistrib(weights);
 }
 
-
 BOOST_AUTO_TEST_SUITE(RandomCodeTests)
 
 BOOST_AUTO_TEST_CASE(rndCode)
 {
 	std::string code;
-	std::cout << "Testing Random Code: ";
+	cnote << "Testing Random Code: ";
 	try
 	{
 		code = dev::test::RandomCode::generate(10);
@@ -417,7 +416,7 @@ BOOST_AUTO_TEST_CASE(rndCode)
 	{
 		BOOST_ERROR("Exception thrown when generating random code!");
 	}
-	std::cout << code;
+	cnote << code;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

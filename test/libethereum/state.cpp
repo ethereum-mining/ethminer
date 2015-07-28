@@ -41,6 +41,7 @@ namespace dev {  namespace test {
 
 void doStateTests(json_spirit::mValue& v, bool _fillin)
 {
+	string testname;
 	for (auto& i: v.get_obj())
 	{
 		mObject& o = i.second.get_obj();
@@ -50,10 +51,12 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 			continue;
 		}
 
-		std::cout << "  " << i.first << std::endl;
-		TBOOST_REQUIRE((o.count("env") > 0));
-		TBOOST_REQUIRE((o.count("pre") > 0));
-		TBOOST_REQUIRE((o.count("transaction") > 0));
+		cnote << i.first;
+		testname = "(" + i.first + ") ";
+
+		TBOOST_REQUIRE_MESSAGE((o.count("env") > 0), testname + "env not set!");
+		TBOOST_REQUIRE_MESSAGE((o.count("pre") > 0), testname + "pre not set!");
+		TBOOST_REQUIRE_MESSAGE((o.count("transaction") > 0), testname + "transaction not set!");
 
 		ImportTest importer(o, _fillin);
 		const State importedStatePost = importer.m_statePost;
@@ -66,9 +69,10 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 		if (_fillin)
 		{
 #if ETH_FATDB
-			importer.exportTest(output);
+			if (importer.exportTest(output))
+				cerr << testname << endl;
 #else
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("You can not fill tests when FATDB is switched off"));
+			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment(testname + "You can not fill tests when FATDB is switched off"));
 #endif
 		}
 		else
@@ -86,7 +90,7 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 #if ETH_FATDB
 			ImportTest::compareStates(importer.m_statePost, importedStatePost);
 #endif
-			TBOOST_CHECK_MESSAGE((importer.m_statePost.rootHash() == h256(o["postStateRoot"].get_str())), "wrong post state root");
+			TBOOST_CHECK_MESSAGE((importer.m_statePost.rootHash() == h256(o["postStateRoot"].get_str())), testname + "wrong post state root");
 		}
 	}
 }
@@ -237,11 +241,11 @@ BOOST_AUTO_TEST_CASE(stRandom)
 		}
 		catch (Exception const& _e)
 		{
-			BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+			BOOST_ERROR(path.filename().string() + "Failed test with Exception: " << diagnostic_information(_e));
 		}
 		catch (std::exception const& _e)
 		{
-			BOOST_ERROR("Failed test with Exception: " << _e.what());
+			BOOST_ERROR(path.filename().string() + "Failed test with Exception: " << _e.what());
 		}
 	}
 }

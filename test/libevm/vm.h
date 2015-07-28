@@ -26,6 +26,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <fstream>
 #include <cstdint>
 
+#include <test/TestHelper.h>
 #include <boost/test/unit_test.hpp>
 
 #include <json_spirit/json_spirit.h>
@@ -38,7 +39,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <libethereum/Transaction.h>
 #include <libethereum/ExtVM.h>
 #include <libethereum/State.h>
-#include <test/TestHelper.h>
 
 namespace dev { namespace test {
 
