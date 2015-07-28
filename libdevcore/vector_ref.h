@@ -5,11 +5,13 @@
 #include <type_traits>
 #include <vector>
 #include <string>
+#include <random>
 
 namespace dev
 {
 
 static unsigned char s_cleanseCounter = 0;
+static std::random_device s_vectorRefEngine;
 
 /**
  * A modifiable reference to an existing object or vector in memory.
@@ -67,6 +69,16 @@ public:
 	void copyTo(vector_ref<typename std::remove_const<_T>::type> _t) const { if (overlapsWith(_t)) memmove(_t.data(), m_data, std::min(_t.size(), m_count) * sizeof(_T)); else memcpy(_t.data(), m_data, std::min(_t.size(), m_count) * sizeof(_T)); }
 	/// Copies the contents of this vector_ref to the contents of @a _t, and zeros further trailing elements in @a _t.
 	void populate(vector_ref<typename std::remove_const<_T>::type> _t) const { copyTo(_t); memset(_t.data() + m_count, 0, std::max(_t.size(), m_count) - m_count); }
+	/// Populate with random data.
+	template <class Engine>
+	void randomize(Engine& _eng)
+	{
+		uint8_t* e = (uint8_t*)end();
+		for (uint8_t* i = (uint8_t*)begin(); i != e; ++i)
+			*i = (uint8_t)std::uniform_int_distribution<uint16_t>(0, 255)(_eng);
+	}
+	/// @returns a random valued object.
+	void randomize() { randomize(s_vectorRefEngine); }
 	/// Securely overwrite the memory.
 	/// @note adapted from OpenSSL's implementation.
 	void cleanse()
