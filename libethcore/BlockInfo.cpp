@@ -184,23 +184,23 @@ void BlockInfo::populateFromParent(BlockInfo const& _parent)
 	m_stateRoot = _parent.stateRoot();
 	m_number = _parent.m_number + 1;
 	m_parentHash = _parent.m_hash;
-	m_gasLimit = selectGasLimit(_parent);
+	m_gasLimit = _parent.childGasLimit();
 	m_gasUsed = 0;
 	m_difficulty = calculateDifficulty(_parent);
 }
 
-u256 BlockInfo::selectGasLimit(BlockInfo const& _parent) const
+u256 BlockInfo::childGasLimit(u256 const& _gasFloorTarget) const
 {
-	u256 const c_gasFloorTarget = c_network == Network::Frontier ? 5000 : 3141592;
+	u256 gasFloorTarget =
+		_gasFloorTarget == UndefinedU256 ? c_gasFloorTarget : _gasFloorTarget;
 
 	if (!m_number)
 		throw GenesisBlockCannotBeCalculated();
 	else
-		// target minimum of 3141592
-		if (_parent.m_gasLimit < c_gasFloorTarget)
-			return min<u256>(c_gasFloorTarget, _parent.m_gasLimit + _parent.m_gasLimit / c_gasLimitBoundDivisor - 1);
+		if (m_gasLimit < gasFloorTarget)
+			return min<u256>(gasFloorTarget, m_gasLimit + m_gasLimit / c_gasLimitBoundDivisor - 1);
 		else
-			return max<u256>(c_gasFloorTarget, _parent.m_gasLimit - _parent.m_gasLimit / c_gasLimitBoundDivisor + 1 + (_parent.m_gasUsed * 6 / 5) / c_gasLimitBoundDivisor);
+			return max<u256>(gasFloorTarget, m_gasLimit - m_gasLimit / c_gasLimitBoundDivisor + 1 + (m_gasUsed * 6 / 5) / c_gasLimitBoundDivisor);
 }
 
 u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
