@@ -99,6 +99,8 @@ public:
 	};
 	using BlockHeader = BlockHeaderPolished<BlockHeaderRaw>;
 
+	static void manuallySetWork(SealEngineFace* _engine, BlockHeader const& _work);
+
 	// TODO: Move elsewhere (EthashAux?)
 	static void ensurePrecomputed(unsigned _number);
 };

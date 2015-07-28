@@ -906,8 +906,12 @@ bool State::sealBlock(bytesConstRef _header)
 	if (!m_committedToMine)
 		return false;
 
+	// Check that this header is indeed for this block.
+	if (BlockInfo(_header, CheckNothing, h256{}, HeaderData).hashWithout() != m_currentBlock.hashWithout())
+		return false;
+
+	// Looks good!
 	clog(StateDetail) << "Sealing block!";
-	// Got it!
 
 	// Compile block:
 	RLPStream ret;
