@@ -53,6 +53,26 @@ static string jsonEncode(map<string, string> const& _m)
 }
 #endif
 
+EthashCPUMiner::EthashCPUMiner(GenericMiner<EthashProofOfWork>::ConstructionInfo const& _ci):
+	GenericMiner<EthashProofOfWork>(_ci), Worker("miner" + toString(index()))
+{
+}
+
+EthashCPUMiner::~EthashCPUMiner()
+{
+}
+
+void EthashCPUMiner::kickOff()
+{
+	stopWorking();
+	startWorking();
+}
+
+void EthashCPUMiner::pause()
+{
+	stopWorking();
+}
+
 void EthashCPUMiner::workLoop()
 {
 	auto tid = std::this_thread::get_id();
