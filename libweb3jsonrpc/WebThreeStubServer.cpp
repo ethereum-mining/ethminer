@@ -77,7 +77,7 @@ bool WebThreeStubServer::eth_notePassword(string const& _password)
 	return true;
 }
 
-#define ADMIN requires(_session, Priviledge::Admin)
+#define ADMIN requires(_session, Privilege::Admin)
 
 Json::Value WebThreeStubServer::admin_eth_blockQueueStatus(string const& _session)
 {
