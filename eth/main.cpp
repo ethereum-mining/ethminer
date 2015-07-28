@@ -66,7 +66,7 @@ using namespace dev::eth;
 using namespace boost::algorithm;
 using dev::eth::Instruction;
 
-static bool g_silence = false;
+static std::atomic<bool> g_silence = {false};
 
 void interactiveHelp()
 {
@@ -1560,7 +1560,7 @@ int main(int argc, char** argv)
 		};
 
 	auto getPassword = [&](string const& prompt){
-		auto s = g_silence;
+		bool s = g_silence;
 		g_silence = true;
 		cout << endl;
 		string ret = dev::getPassword(prompt);
