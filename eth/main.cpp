@@ -291,10 +291,13 @@ enum class Format
 	Human
 };
 
-void stopMiningAfterXBlocks(eth::Client* _c, unsigned _start, unsigned _mining)
+void stopMiningAfterXBlocks(eth::Client* _c, unsigned _start, unsigned& io_mining)
 {
-	if (_c->isMining() && _c->blockChain().details().number - _start == _mining)
+	if (io_mining != ~(unsigned)0 && io_mining && _c->isMining() && _c->blockChain().details().number - _start == io_mining)
+	{
 		_c->stopMining();
+		io_mining = ~(unsigned)0;
+	}
 	this_thread::sleep_for(chrono::milliseconds(100));
 }
 
