@@ -1,7 +1,13 @@
 # cmake global
 cmake_minimum_required(VERSION 2.8.12)
 
-project(ethereum)
+set(PROJECT_VERSION "0.9.34")
+if (${CMAKE_VERSION} VERSION_GREATER 3.0)
+	cmake_policy(SET CMP0048 NEW) 	# allow VERSION argument in project()
+	project(ethereum VERSION ${PROJECT_VERSION})
+else()
+	project(ethereum)
+endif()
 
 set(CMAKE_AUTOMOC ON)
 
@@ -41,7 +47,7 @@ option(TOOLS "Build the tools components" ON)
 option(GUI "Build GUI components (AlethZero, Mix)" ON)
 option(TESTS "Build the tests." ON)
 option(NOBOOST "No use of boost macros in test functions" OFF)
-option(EVMJIT "Build just-in-time compiler for EVM code (requires LLVM)" OFF)
+option(EVMJIT "Build just-in-time compiler for EVM code (requires LLVM)" ON)
 option(ETHASHCL "Build in support for GPU mining via OpenCL" ON)
 option(JSCONSOLE "Build in javascript console" ON)
 option(FRONTIER "Build for Frontier network" OFF)
@@ -136,6 +142,7 @@ function(createBuildInfo)
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		COMMAND ${CMAKE_COMMAND} -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
 			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}"
+			-DPROJECT_VERSION="${PROJECT_VERSION}"
 			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
 		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -391,9 +398,14 @@ else()
 endif()
 
 if (EVMJIT)
-	if (CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT DEFINED LLVM_DIR)
-		set(LLVM_DIR "${CMAKE_SOURCE_DIR}/extdep/install/windows/x64/share/llvm/cmake")
+	if (NOT DEFINED LLVM_DIR)
+		if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+			set(LLVM_DIR "${CMAKE_SOURCE_DIR}/extdep/install/windows/x64/share/llvm/cmake")
+		elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+			set(LLVM_DIR "/usr/local/opt/llvm/share/llvm/cmake")
+		endif()
 	endif()
+
 	set(EVMJIT_CPP TRUE) # include CPP-JIT connector
 	add_subdirectory(evmjit)
 	if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -539,7 +551,7 @@ if (WIN32)
 	set(CPACK_PACKAGE_VENDOR "ethereum.org")
 	set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
 	set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-	set(CPACK_PACKAGE_VERSION "0.9.34")
+	set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 	set(CPACK_GENERATOR "NSIS")
 	# seems to be not working
 	# set(CPACK_PACKAGE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.bmp")
