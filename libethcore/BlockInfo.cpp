@@ -191,7 +191,7 @@ void BlockInfo::populateFromParent(BlockInfo const& _parent)
 
 u256 BlockInfo::selectGasLimit(BlockInfo const& _parent) const
 {
-	static const u256 c_gasFloorTarget = 3141592;
+	u256 const c_gasFloorTarget = c_network == Network::Frontier ? 5000 : 3141592;
 
 	if (!m_number)
 		throw GenesisBlockCannotBeCalculated();
