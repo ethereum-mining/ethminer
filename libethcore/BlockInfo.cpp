@@ -176,7 +176,7 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 	}
 	clog(BlockInfoDiagnosticsChannel) << "Expected uncle hash:" << toString(sha3(root[2].data()));
 	if (m_sha3Uncles != sha3(root[2].data()))
-		BOOST_THROW_EXCEPTION(InvalidUnclesHash());
+		BOOST_THROW_EXCEPTION(InvalidUnclesHash() << Hash256RequirementError(sha3(root[2].data()), m_sha3Uncles));
 }
 
 void BlockInfo::populateFromParent(BlockInfo const& _parent)
