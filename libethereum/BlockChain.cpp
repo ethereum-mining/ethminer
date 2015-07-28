@@ -146,13 +146,13 @@ static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 #endif
 
-BlockChain::BlockChain(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _p):
+BlockChain::BlockChain(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path):
 	m_dbPath(_path)
 {
-	open(_genesisBlock, _genesisState, _path, _we, _p);
+	open(_genesisBlock, _genesisState, _path);
 }
 
-void BlockChain::open(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path, WithExisting, ProgressCallback const&)
+void BlockChain::open(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path)
 {
 	// initialise deathrow.
 	m_cacheUsage.resize(c_collectionQueueSize);

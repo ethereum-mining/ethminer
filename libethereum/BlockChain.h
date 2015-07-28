@@ -106,11 +106,11 @@ class BlockChain
 public:
 	/// Doesn't open the database - if you want it open it's up to you to subclass this and open it
 	/// in the constructor there.
-	BlockChain(bytes const& _genesisBlock, StateDefinition const& _genesisState, std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _p = ProgressCallback());
+	BlockChain(bytes const& _genesisBlock, StateDefinition const& _genesisState, std::string const& _path);
 	~BlockChain();
 
 	/// Reopen everything.
-	virtual void reopen(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()) { close(); open(m_genesisBlock, m_genesisState, m_dbPath, _we, _pc); }
+	virtual void reopen(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()) { close(); open(m_genesisBlock, m_genesisState, m_dbPath); openDatabase(m_dbPath, _we, _pc); }
 
 	/// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
 	/// To be called from main loop every 100ms or so.
@@ -295,8 +295,10 @@ protected:
 	static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
 	/// Initialise everything and ready for openning the database.
-	void open(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _p);
+	// TODO: rename to init
+	void open(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path);
 	/// Open the database.
+	// TODO: rename to open.
 	unsigned openDatabase(std::string const& _path, WithExisting _we);
 	/// Finalise everything and close the database.
 	void close();
@@ -398,9 +400,11 @@ class FullBlockChain: public BlockChain
 public:
 	using BlockHeader = typename Sealer::BlockHeader;
 
-	FullBlockChain(bytes const& _genesisBlock, StateDefinition const& _genesisState, std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _p = ProgressCallback()):
-		BlockChain(_genesisBlock, _genesisState, _path, _we, _p)
-	{}
+	FullBlockChain(bytes const& _genesisBlock, StateDefinition const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _pc = ProgressCallback()):
+		BlockChain(_genesisBlock, _genesisState, _path)
+	{
+		openDatabase(_path, _we, _pc);
+	}
 
 	/// Get the header of a block (or the most recent mined if none given). Thread-safe.
 	typename Sealer::BlockHeader header(h256 const& _hash) const { return typename Sealer::BlockHeader(headerData(_hash), IgnoreSeal, _hash, HeaderData); }
@@ -491,6 +495,12 @@ public:
 		res.block = bytesConstRef(_block);
 		return res;
 	}
+
+protected:
+	/// Constructor for derived classes to use when they'll open the chain db afterwards.
+	FullBlockChain(bytes const& _genesisBlock, StateDefinition const& _genesisState, std::string const& _path):
+		BlockChain(_genesisBlock, _genesisState, _path)
+	{}
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
