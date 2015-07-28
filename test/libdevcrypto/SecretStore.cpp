@@ -61,9 +61,9 @@ BOOST_AUTO_TEST_CASE(basic_tests)
 		SecretStore store(tmpDir.path());
 		h128 u = store.readKeyContent(js::write_string(o["json"], false));
 		cdebug << "read uuid" << u;
-		bytes s = store.secret(u, [&](){ return o["password"].get_str(); });
-		cdebug << "got secret" << toHex(s);
-		BOOST_REQUIRE_EQUAL(toHex(s), o["priv"].get_str());
+		bytesSec s = store.secret(u, [&](){ return o["password"].get_str(); });
+		cdebug << "got secret" << toHex(s.makeInsecure());
+		BOOST_REQUIRE_EQUAL(toHex(s.makeInsecure()), o["priv"].get_str());
 	}
 }
 
@@ -98,7 +98,7 @@ BOOST_AUTO_TEST_CASE(import_key_from_file)
 		uuid = store.importKey(importFile);
 		BOOST_CHECK(!!uuid);
 		BOOST_CHECK(contentsString(importFile) == keyData);
-		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; })));
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; }).makeInsecure()));
 		BOOST_CHECK_EQUAL(store.keys().size(), 1);
 	}
 	fs::remove(importFile);
@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE(import_key_from_file)
 	{
 		SecretStore store(storeDir.path());
 		BOOST_CHECK_EQUAL(store.keys().size(), 1);
-		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; })));
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; }).makeInsecure()));
 	}
 }
 
@@ -121,15 +121,15 @@ BOOST_AUTO_TEST_CASE(import_secret)
 		{
 			SecretStore store(storeDir.path());
 			BOOST_CHECK_EQUAL(store.keys().size(), 0);
-			uuid = store.importSecret(fromHex(priv), password);
+			uuid = store.importSecret(bytesSec(fromHex(priv)), password);
 			BOOST_CHECK(!!uuid);
-			BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; })));
+			BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; }).makeInsecure()));
 			BOOST_CHECK_EQUAL(store.keys().size(), 1);
 		}
 		{
 			SecretStore store(storeDir.path());
 			BOOST_CHECK_EQUAL(store.keys().size(), 1);
-			BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; })));
+			BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; }).makeInsecure()));
 		}
 	}
 }
@@ -145,12 +145,12 @@ BOOST_AUTO_TEST_CASE(wrong_password)
 	{
 		SecretStore store(storeDir.path());
 		BOOST_CHECK_EQUAL(store.keys().size(), 0);
-		uuid = store.importSecret(fromHex(priv), password);
+		uuid = store.importSecret(bytesSec(fromHex(priv)), password);
 		BOOST_CHECK(!!uuid);
-		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; })));
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; }).makeInsecure()));
 		BOOST_CHECK_EQUAL(store.keys().size(), 1);
 		// password will not be queried
-		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return "abcdefg"; })));
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return "abcdefg"; }).makeInsecure()));
 	}
 	{
 		SecretStore store(storeDir.path());
@@ -171,9 +171,9 @@ BOOST_AUTO_TEST_CASE(recode)
 	{
 		SecretStore store(storeDir.path());
 		BOOST_CHECK_EQUAL(store.keys().size(), 0);
-		uuid = store.importSecret(fromHex(priv), password);
+		uuid = store.importSecret(bytesSec(fromHex(priv)), password);
 		BOOST_CHECK(!!uuid);
-		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; })));
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return password; }).makeInsecure()));
 		BOOST_CHECK_EQUAL(store.keys().size(), 1);
 	}
 	{
@@ -182,16 +182,16 @@ BOOST_AUTO_TEST_CASE(recode)
 		BOOST_CHECK(store.secret(uuid, [&](){ return "abcdefg"; }).empty());
 		BOOST_CHECK(store.recode(uuid, changedPassword, [&](){ return password; }));
 		BOOST_CHECK_EQUAL(store.keys().size(), 1);
-		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return changedPassword; })));
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return changedPassword; }).makeInsecure()));
 		store.clearCache();
 		BOOST_CHECK(store.secret(uuid, [&](){ return password; }).empty());
-		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return changedPassword; })));
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return changedPassword; }).makeInsecure()));
 	}
 	{
 		SecretStore store(storeDir.path());
 		BOOST_CHECK_EQUAL(store.keys().size(), 1);
 		BOOST_CHECK(store.secret(uuid, [&](){ return password; }).empty());
-		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return changedPassword; })));
+		BOOST_CHECK_EQUAL(priv, toHex(store.secret(uuid, [&](){ return changedPassword; }).makeInsecure()));
 	}
 }
 
