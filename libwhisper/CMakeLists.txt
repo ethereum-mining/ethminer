@@ -21,10 +21,10 @@ file(GLOB HEADERS "*.h")
 
 add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
-target_link_libraries(${EXECUTABLE} ethcore)
+#target_link_libraries(${EXECUTABLE} ethcore)
+target_link_libraries(${EXECUTABLE} p2p)
 target_link_libraries(${EXECUTABLE} devcrypto)
 target_link_libraries(${EXECUTABLE} devcore)
-target_link_libraries(${EXECUTABLE} p2p)
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )

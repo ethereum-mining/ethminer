@@ -526,7 +526,7 @@ void interactiveMode(eth::Client* c, std::shared_ptr<eth::TrivialGasPricer> gasP
 				{
 					try
 					{
-						Secret secret = h256(fromHex(sechex));
+						Secret secret(fromHex(sechex));
 						Address dest = h160(fromHex(hexAddr));
 						c->submitTransaction(secret, amount, dest, data, gas, gasPrice);
 					}
@@ -594,7 +594,7 @@ void interactiveMode(eth::Client* c, std::shared_ptr<eth::TrivialGasPricer> gasP
 				{
 					try
 					{
-						Secret secret = h256(fromHex(sechex));
+						Secret secret(fromHex(sechex));
 						Address dest = h160(fromHex(hexAddr));
 						c->submitTransaction(secret, amount, dest, data, gas, gasPrice, nonce);
 					}
@@ -654,7 +654,7 @@ void interactiveMode(eth::Client* c, std::shared_ptr<eth::TrivialGasPricer> gasP
 				{
 					try
 					{
-						Secret secret = h256(fromHex(sechex));
+						Secret secret(fromHex(sechex));
 						cout << " new contract address : " << c->submitTransaction(secret, amount, data, gas, gasPrice) << endl;
 					}
 					catch (BadHexCharacter& _e)
@@ -1147,13 +1147,7 @@ int main(int argc, char** argv)
 	if (b.size())
 	{
 		RLP config(b);
-		if (config[0].size() == 32)	// secret key - import and forget.
-		{
-			Secret s = config[0].toHash<Secret>();
-			toImport.push_back(s);
-		}
-		else							// new format - just use it as an address.
-			signingKey = config[0].toHash<Address>();
+		signingKey = config[0].toHash<Address>();
 		beneficiary = config[1].toHash<Address>();
 	}
 
@@ -1300,13 +1294,13 @@ int main(int argc, char** argv)
 		else if ((arg == "-s" || arg == "--import-secret") && i + 1 < argc)
 		{
 			Secret s(fromHex(argv[++i]));
-			toImport.push_back(s);
+			toImport.emplace_back(s);
 			signingKey = toAddress(s);
 		}
 		else if ((arg == "-S" || arg == "--import-session-secret") && i + 1 < argc)
 		{
 			Secret s(fromHex(argv[++i]));
-			toImport.push_back(s);
+			toImport.emplace_back(s);
 			sessionKey = toAddress(s);
 		}
 		else if ((arg == "--sign-key") && i + 1 < argc)
