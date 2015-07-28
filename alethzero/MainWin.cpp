@@ -1017,46 +1017,18 @@ void Main::on_claimPresale_triggered()
 	QString s = QFileDialog::getOpenFileName(this, "Claim Account Contents", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
 	try
 	{
-		js::mValue val;
-		json_spirit::read_string(asString(dev::contents(s.toStdString())), val);
-		auto obj = val.get_obj();
-		if (obj["encseed"].type() == js::str_type)
-		{
-			auto encseed = fromHex(obj["encseed"].get_str());
-			KeyPair k;
-			for (bool gotit = false; !gotit;)
-			{
-				gotit = true;
-				k = KeyPair::fromEncryptedSeed(&encseed, QInputDialog::getText(this, "Enter Password", "Enter the wallet's passphrase", QLineEdit::Password).toStdString());
-				if (obj["ethaddr"].type() == js::str_type)
-				{
-					Address a(obj["ethaddr"].get_str());
-					Address b = k.address();
-					if (a != b)
-					{
-						if (QMessageBox::warning(this, "Password Wrong", "Could not import the secret key: the password you gave appears to be wrong.", QMessageBox::Retry, QMessageBox::Cancel) == QMessageBox::Cancel)
-							return;
-						else
-							gotit = false;
-					}
-				}
-			}
-
-			cnote << k.address();
-			if (!m_keyManager.hasAccount(k.address()))
-				ethereum()->submitTransaction(k.sec(), ethereum()->balanceAt(k.address()) - gasPrice() * c_txGas, m_beneficiary, {}, c_txGas, gasPrice());
-			else
-				QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
-		}
+		KeyPair k = m_keyManager.presaleSecret(dev::contentsString(s.toStdString()), [&](bool){ return QInputDialog::getText(this, "Enter Password", "Enter the wallet's passphrase", QLineEdit::Password).toStdString(); });
+		cnote << k.address();
+		if (!m_keyManager.hasAccount(k.address()))
+			ethereum()->submitTransaction(k.sec(), ethereum()->balanceAt(k.address()) - gasPrice() * c_txGas, m_beneficiary, {}, c_txGas, gasPrice());
 		else
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("encseed type is not js::str_type") );
-
+			QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
 	}
+	catch (dev::eth::PasswordUnknown&) {}
 	catch (...)
 	{
 		cerr << "Unhandled exception!" << endl <<
 			boost::current_exception_diagnostic_information();
-
 		QMessageBox::warning(this, "Key File Invalid", "Could not find secret key definition. This is probably not an Ethereum key file.");
 	}
 }
