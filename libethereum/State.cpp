@@ -1167,11 +1167,7 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 	ctrace << toHex(e.t().rlp());
 #endif
 	if (!e.execute())
-	{
-		if (onOp)
-			VMFactory::setKind(VMKind::Interpreter); // force interpreter if a trace is wanted
 		e.go(onOp);
-	}
 	e.finalize();
 
 #if ETH_PARANOIA
