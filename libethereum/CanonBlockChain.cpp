@@ -45,7 +45,7 @@ string CanonBlockChain<Ethash>::s_genesisStateJSON;
 bytes CanonBlockChain<Ethash>::s_genesisExtraData;
 
 CanonBlockChain<Ethash>::CanonBlockChain(std::string const& _path, WithExisting _we, ProgressCallback const& _pc):
-	FullBlockChain<Ethash>(createGenesisBlock(), createGenesisState(), _path, _we, _pc)
+	FullBlockChain<Ethash>(createGenesisBlock(), createGenesisState(), _path)
 {
 	BlockChain::openDatabase(_path, _we, _pc);
 }
@@ -53,7 +53,8 @@ CanonBlockChain<Ethash>::CanonBlockChain(std::string const& _path, WithExisting 
 void CanonBlockChain<Ethash>::reopen(WithExisting _we, ProgressCallback const& _pc)
 {
 	close();
-	open(createGenesisBlock(), createGenesisState(), m_dbPath, _we, _pc);
+	open(createGenesisBlock(), createGenesisState(), m_dbPath);
+	openDatabase(m_dbPath, _we, _pc);
 }
 
 bytes CanonBlockChain<Ethash>::createGenesisBlock()
