@@ -100,19 +100,30 @@ bytesSec SecretStore::secret(h128 const& _uuid, function<string()> const& _pass,
 	bytesSec key;
 	if (it != m_keys.end())
 	{
-		key = decrypt(it->second.encryptedKey, _pass());
+		key = bytesSec(decrypt(it->second.encryptedKey, _pass()));
 		if (!key.empty())
 			m_cached[_uuid] = key;
 	}
 	return key;
 }
 
-h128 SecretStore::importSecret(bytes const& _s, string const& _pass)
+h128 SecretStore::importSecret(bytesSec const& _s, string const& _pass)
+{
+	h128 r;
+	EncryptedKey key{encrypt(_s.ref(), _pass), string()};
+	r = h128::random();
+	m_cached[r] = _s;
+	m_keys[r] = move(key);
+	save();
+	return r;
+}
+
+h128 SecretStore::importSecret(bytesConstRef _s, string const& _pass)
 {
 	h128 r;
 	EncryptedKey key{encrypt(_s, _pass), string()};
 	r = h128::random();
-	m_cached[r] = _s;
+	m_cached[r] = bytesSec(_s);
 	m_keys[r] = move(key);
 	save();
 	return r;
@@ -188,16 +199,16 @@ h128 SecretStore::readKeyContent(string const& _content, string const& _file)
 
 bool SecretStore::recode(h128 const& _uuid, string const& _newPass, function<string()> const& _pass, KDF _kdf)
 {
-	bytes s = secret(_uuid, _pass, true);
+	bytesSec s = secret(_uuid, _pass, true);
 	if (s.empty())
 		return false;
 	m_cached.erase(_uuid);
-	m_keys[_uuid].encryptedKey = encrypt(s, _newPass, _kdf);
+	m_keys[_uuid].encryptedKey = encrypt(s.ref(), _newPass, _kdf);
 	save();
 	return true;
 }
 
-static bytes deriveNewKey(string const& _pass, KDF _kdf, js::mObject& o_ret)
+static bytesSec deriveNewKey(string const& _pass, KDF _kdf, js::mObject& o_ret)
 {
 	unsigned dklen = 32;
 	unsigned iterations = 1 << 18;
@@ -233,16 +244,16 @@ static bytes deriveNewKey(string const& _pass, KDF _kdf, js::mObject& o_ret)
 	}
 }
 
-string SecretStore::encrypt(bytes const& _v, string const& _pass, KDF _kdf)
+string SecretStore::encrypt(bytesConstRef _v, string const& _pass, KDF _kdf)
 {
 	js::mObject ret;
 
-	bytes derivedKey = deriveNewKey(_pass, _kdf, ret);
+	bytesSec derivedKey = deriveNewKey(_pass, _kdf, ret);
 	if (derivedKey.empty())
 		BOOST_THROW_EXCEPTION(crypto::CryptoException() << errinfo_comment("Key derivation failed."));
 
 	ret["cipher"] = "aes-128-ctr";
-	h128 key(derivedKey, h128::AlignLeft);
+	SecureFixedHash<16> key(derivedKey, h128::AlignLeft);
 	h128 iv = h128::random();
 	{
 		js::mObject params;
@@ -251,19 +262,19 @@ string SecretStore::encrypt(bytes const& _v, string const& _pass, KDF _kdf)
 	}
 
 	// cipher text
-	bytes cipherText = encryptSymNoAuth(key, iv, &_v);
+	bytes cipherText = encryptSymNoAuth(key, iv, _v);
 	if (cipherText.empty())
 		BOOST_THROW_EXCEPTION(crypto::CryptoException() << errinfo_comment("Key encryption failed."));
 	ret["ciphertext"] = toHex(cipherText);
 
 	// and mac.
-	h256 mac = sha3(ref(derivedKey).cropped(16, 16).toBytes() + cipherText);
+	h256 mac = sha3(derivedKey.ref().cropped(16, 16).toBytes() + cipherText);
 	ret["mac"] = toHex(mac.ref());
 
 	return js::write_string(js::mValue(ret), true);
 }
 
-bytes SecretStore::decrypt(string const& _v, string const& _pass)
+bytesSec SecretStore::decrypt(string const& _v, string const& _pass)
 {
 	js::mObject o;
 	{
@@ -273,14 +284,14 @@ bytes SecretStore::decrypt(string const& _v, string const& _pass)
 	}
 
 	// derive key
-	bytes derivedKey;
+	bytesSec derivedKey;
 	if (o["kdf"].get_str() == "pbkdf2")
 	{
 		auto params = o["kdfparams"].get_obj();
 		if (params["prf"].get_str() != "hmac-sha256")
 		{
 			cwarn << "Unknown PRF for PBKDF2" << params["prf"].get_str() << "not supported.";
-			return bytes();
+			return bytesSec();
 		}
 		unsigned iterations = params["c"].get_int();
 		bytes salt = fromHex(params["salt"].get_str());
@@ -294,13 +305,13 @@ bytes SecretStore::decrypt(string const& _v, string const& _pass)
 	else
 	{
 		cwarn << "Unknown KDF" << o["kdf"].get_str() << "not supported.";
-		return bytes();
+		return bytesSec();
 	}
 
 	if (derivedKey.size() < 32 && !(o.count("compat") && o["compat"].get_str() == "2"))
 	{
 		cwarn << "Derived key's length too short (<32 bytes)";
-		return bytes();
+		return bytesSec();
 	}
 
 	bytes cipherText = fromHex(o["ciphertext"].get_str());
@@ -311,23 +322,23 @@ bytes SecretStore::decrypt(string const& _v, string const& _pass)
 		h256 mac(o["mac"].get_str());
 		h256 macExp;
 		if (o.count("compat") && o["compat"].get_str() == "2")
-			macExp = sha3(bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
+			macExp = sha3(derivedKey.ref().cropped(derivedKey.size() - 16).toBytes() + cipherText);
 		else
-			macExp = sha3(bytesConstRef(&derivedKey).cropped(16, 16).toBytes() + cipherText);
+			macExp = sha3(derivedKey.ref().cropped(16, 16).toBytes() + cipherText);
 		if (mac != macExp)
 		{
 			cwarn << "Invalid key - MAC mismatch; expected" << toString(macExp) << ", got" << toString(mac);
-			return bytes();
+			return bytesSec();
 		}
 	}
 	else if (o.count("sillymac"))
 	{
 		h256 mac(o["sillymac"].get_str());
-		h256 macExp = sha3(asBytes(o["sillymacjson"].get_str()) + bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
+		h256 macExp = sha3(asBytes(o["sillymacjson"].get_str()) + derivedKey.ref().cropped(derivedKey.size() - 16).toBytes() + cipherText);
 		if (mac != macExp)
 		{
 			cwarn << "Invalid key - MAC mismatch; expected" << toString(macExp) << ", got" << toString(mac);
-			return bytes();
+			return bytesSec();
 		}
 	}
 	else
@@ -340,15 +351,15 @@ bytes SecretStore::decrypt(string const& _v, string const& _pass)
 		h128 iv(params["iv"].get_str());
 		if (o.count("compat") && o["compat"].get_str() == "2")
 		{
-			h128 key(sha3(h128(derivedKey, h128::AlignRight)), h128::AlignRight);
+			SecureFixedHash<16> key(sha3Secure(derivedKey.ref().cropped(derivedKey.size() - 16)), h128::AlignRight);
 			return decryptSymNoAuth(key, iv, &cipherText);
 		}
 		else
-			return decryptSymNoAuth(h128(derivedKey, h128::AlignLeft), iv, &cipherText);
+			return decryptSymNoAuth(SecureFixedHash<16>(derivedKey, h128::AlignLeft), iv, &cipherText);
 	}
 	else
 	{
 		cwarn << "Unknown cipher" << o["cipher"].get_str() << "not supported.";
-		return bytes();
+		return bytesSec();
 	}
 }
