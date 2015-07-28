@@ -187,7 +187,7 @@ QStringList FileIo::makePackage(QString const& _deploymentFolder)
 	bytes dapp = rlpStr.out();
 	dev::h256 dappHash = dev::sha3(dapp);
 	//encrypt
-	KeyPair key(dappHash);
+	KeyPair key((Secret(dappHash)));
 	Secp256k1PP enc;
 	enc.encrypt(key.pub(), dapp);
 
