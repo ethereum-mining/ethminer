@@ -103,7 +103,7 @@ void VM::checkRequirements(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp,
 		newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
 		break;
 	case Instruction::SHA3:
-		runGas = c_sha3Gas + (m_stack[m_stack.size() - 2] + 31) / 32 * c_sha3WordGas;
+		runGas = c_sha3Gas + ((bigint)m_stack[m_stack.size() - 2] + 31) / 32 * c_sha3WordGas;
 		newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
 		break;
 	case Instruction::CALLDATACOPY:

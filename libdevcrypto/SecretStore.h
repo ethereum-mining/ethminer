@@ -52,7 +52,7 @@ public:
 	/// @returns the secret key stored by the given @a _uuid.
 	/// @param _pass function that returns the password for the key.
 	/// @param _useCache if true, allow previously decrypted keys to be returned directly.
-	bytes secret(h128 const& _uuid, std::function<std::string()> const& _pass, bool _useCache = true) const;
+	bytesSec secret(h128 const& _uuid, std::function<std::string()> const& _pass, bool _useCache = true) const;
 	/// Imports the (encrypted) key stored in the file @a _file and copies it to the managed directory.
 	h128 importKey(std::string const& _file) { auto ret = readKey(_file, false); if (ret) save(); return ret; }
 	/// Imports the (encrypted) key contained in the json formatted @a _content and stores it in
@@ -60,7 +60,8 @@ public:
 	h128 importKeyContent(std::string const& _content) { auto ret = readKeyContent(_content, std::string()); if (ret) save(); return ret; }
 	/// Imports the decrypted key given by @a _s and stores it, encrypted with
 	/// (a key derived from) the password @a _pass.
-	h128 importSecret(bytes const& _s, std::string const& _pass);
+	h128 importSecret(bytesSec const& _s, std::string const& _pass);
+	h128 importSecret(bytesConstRef _s, std::string const& _pass);
 	/// Decrypts and re-encrypts the key identified by @a _uuid.
 	bool recode(h128 const& _uuid, std::string const& _newPass, std::function<std::string()> const& _pass, KDF _kdf = KDF::Scrypt);
 	/// Removes the key specified by @a _uuid from both memory and disk.
@@ -102,12 +103,12 @@ private:
 	void load(std::string const& _keysPath);
 	void load() { load(m_path); }
 	/// Encrypts @a _v with a key derived from @a _pass or the empty string on error.
-	static std::string encrypt(bytes const& _v, std::string const& _pass, KDF _kdf = KDF::Scrypt);
+	static std::string encrypt(bytesConstRef _v, std::string const& _pass, KDF _kdf = KDF::Scrypt);
 	/// Decrypts @a _v with a key derived from @a _pass or the empty byte array on error.
-	static bytes decrypt(std::string const& _v, std::string const& _pass);
+	static bytesSec decrypt(std::string const& _v, std::string const& _pass);
 
 	/// Stores decrypted keys by uuid.
-	mutable std::unordered_map<h128, bytes> m_cached;
+	mutable std::unordered_map<h128, bytesSec> m_cached;
 	/// Stores encrypted keys together with the file they were loaded from by uuid.
 	std::unordered_map<h128, EncryptedKey> m_keys;
 

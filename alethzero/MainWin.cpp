@@ -360,8 +360,7 @@ void Main::refreshWhisper()
 
 void Main::addNewId(QString _ids)
 {
-	Secret _id = jsToSecret(_ids.toStdString());
-	KeyPair kp(_id);
+	KeyPair kp(jsToSecret(_ids.toStdString()));
 	m_myIdentities.push_back(kp);
 	m_server->setIdentities(keysAsVector(owned()));
 	refreshWhisper();
@@ -847,28 +846,14 @@ void Main::readSettings(bool _skipGeometry)
 	restoreState(s.value("windowState").toByteArray());
 
 	{
-		QByteArray b = s.value("address").toByteArray();
-		if (!b.isEmpty())
-		{
-			h256 k;
-			for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
-			{
-				memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
-				if (!m_keyManager.hasAccount(KeyPair(k).address()))
-					m_keyManager.import(k, "Imported (UNSAFE) key.");
-			}
-		}
-	}
-
-	{
 		m_myIdentities.clear();
 		QByteArray b = s.value("identities").toByteArray();
 		if (!b.isEmpty())
 		{
-			h256 k;
+			Secret k;
 			for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
 			{
-				memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
+				memcpy(k.writable().data(), b.data() + i * sizeof(Secret), sizeof(Secret));
 				if (!count(m_myIdentities.begin(), m_myIdentities.end(), KeyPair(k)))
 					m_myIdentities.append(KeyPair(k));
 			}
@@ -961,7 +946,7 @@ void Main::on_importKey_triggered()
 	bytes b = fromHex(s.toStdString());
 	if (b.size() == 32)
 	{
-		auto k = KeyPair(h256(b));
+		auto k = KeyPair(Secret(bytesConstRef(&b)));
 		if (!m_keyManager.hasAccount(k.address()))
 		{
 			QString s = QInputDialog::getText(this, "Import Account Key", "Enter this account's name");
@@ -1068,7 +1053,7 @@ void Main::on_exportKey_triggered()
 		auto hba = ui->ourAccounts->currentItem()->data(Qt::UserRole).toByteArray();
 		Address h((byte const*)hba.data(), Address::ConstructFromPointer);
 		Secret s = retrieveSecret(h);
-		QMessageBox::information(this, "Export Account Key", "Secret key to account " + QString::fromStdString(render(h) + " is:\n" + s.hex()));
+		QMessageBox::information(this, "Export Account Key", "Secret key to account " + QString::fromStdString(render(h) + " is:\n" + s.makeInsecure().hex()));
 	}
 }
 
@@ -1340,9 +1325,7 @@ void Main::refreshAccounts()
 	bool showContract = ui->showContracts->isChecked();
 	bool showBasic = ui->showBasic->isChecked();
 	bool onlyNamed = ui->onlyNamed->isChecked();
-	auto as = ethereum()->addresses();
-	sort(as.begin(), as.end());
-	for (auto const& i: as)
+	for (auto const& i: ethereum()->addresses())
 	{
 		bool isContract = (ethereum()->codeHashAt(i) != EmptySHA3);
 		if (!((showContract && isContract) || (showBasic && !isContract)))

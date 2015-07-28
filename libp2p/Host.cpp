@@ -809,7 +809,7 @@ bytes Host::saveNetwork() const
 	// else: TODO: use previous configuration if available
 
 	RLPStream ret(3);
-	ret << dev::p2p::c_protocolVersion << m_alias.secret();
+	ret << dev::p2p::c_protocolVersion << m_alias.secret().ref();
 	ret.appendList(count);
 	if (!!count)
 		ret.appendRaw(network.out(), count);

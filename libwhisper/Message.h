@@ -118,16 +118,16 @@ public:
 	operator bool() const { return !!m_payload.size() || m_from || m_to; }
 
 	/// Turn this message into a ditributable Envelope.
-	Envelope seal(Secret _from, Topics const& _topics, unsigned _ttl = 50, unsigned _workToProve = 50) const;
+	Envelope seal(Secret const& _from, Topics const& _topics, unsigned _ttl = 50, unsigned _workToProve = 50) const;
 	// Overloads for skipping _from or specifying _to.
 	Envelope seal(Topics const& _topics, unsigned _ttl = 50, unsigned _workToProve = 50) const { return seal(Secret(), _topics, _ttl, _workToProve); }
 	Envelope sealTo(Public _to, Topics const& _topics, unsigned _ttl = 50, unsigned _workToProve = 50) { m_to = _to; return seal(Secret(), _topics, _ttl, _workToProve); }
-	Envelope sealTo(Secret _from, Public _to, Topics const& _topics, unsigned _ttl = 50, unsigned _workToProve = 50) { m_to = _to; return seal(_from, _topics, _ttl, _workToProve); }
+	Envelope sealTo(Secret const& _from, Public _to, Topics const& _topics, unsigned _ttl = 50, unsigned _workToProve = 50) { m_to = _to; return seal(_from, _topics, _ttl, _workToProve); }
 
 private:
 	bool populate(bytes const& _data);
 	bool openBroadcastEnvelope(Envelope const& _e, Topics const& _t, bytes& o_b);
-	h256 generateGamma(h256 const& _key, h256 const& _salt) const { return sha3(_key ^ _salt); }
+	Secret generateGamma(Secret const& _key, h256 const& _salt) const { return sha3(_key ^ _salt); }
 
 	Public m_from;
 	Public m_to;
