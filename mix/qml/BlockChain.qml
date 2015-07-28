@@ -184,6 +184,11 @@ ColumnLayout {
 						itemAt(blockIndex).editTx(txIndex)
 					}
 
+					function select(blockIndex, txIndex)
+					{
+						itemAt(blockIndex).select(txIndex)
+					}
+
 					Block
 					{
 						Connections
@@ -569,6 +574,7 @@ ColumnLayout {
 							trModel.sender = _r.sender
 							trModel.returnParameters = _r.returnParameters
 							blockModel.setTransaction(blockIndex, trIndex, trModel)
+							blockChainRepeater.select(blockIndex, trIndex)
 							return;
 						}
 					}
@@ -590,6 +596,7 @@ ColumnLayout {
 					itemTr.returnParameters = _r.returnParameters
 					model.blocks[model.blocks.length - 1].transactions.push(itemTr)
 					blockModel.appendTransaction(itemTr)
+					blockChainRepeater.select(blockIndex, trIndex)
 				}
 
 				onNewState: {
