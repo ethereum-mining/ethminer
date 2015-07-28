@@ -123,6 +123,9 @@ public:
 
 	static std::string defaultPath() { return getDataDir("ethereum") + "/keys.info"; }
 
+	/// Extracts the secret key from the presale wallet.
+	KeyPair presaleSecret(std::string const& _json, std::function<std::string(bool)> const& _password);
+
 private:
 	std::string getPassword(h128 const& _uuid, std::function<std::string()> const& _pass = DontKnowThrow) const;
 	std::string getPassword(h256 const& _passHash, std::function<std::string()> const& _pass = DontKnowThrow) const;
