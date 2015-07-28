@@ -40,7 +40,7 @@ class BlockQueue;
 
 struct SessionPermissions
 {
-	std::unordered_set<Priviledge> priviledges;
+	std::unordered_set<Privilege> privileges;
 };
 
 /**
@@ -59,7 +59,7 @@ public:
 	virtual void setMiningBenefactorChanger(std::function<void(Address const&)> const& _f) { m_setMiningBenefactor = _f; }
 
 private:
-	virtual bool hasPriviledgeLevel(std::string const& _session, Priviledge _l) const override { auto it = m_sessions.find(_session); return it != m_sessions.end() && it->second.priviledges.count(_l); }
+	virtual bool hasPrivilegeLevel(std::string const& _session, Privilege _l) const override { auto it = m_sessions.find(_session); return it != m_sessions.end() && it->second.privileges.count(_l); }
 
 	virtual dev::eth::Interface* client() override;
 	virtual std::shared_ptr<dev::shh::Interface> face() override;

@@ -510,7 +510,7 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _source)
 	return res;
 }
 
-#define ADMIN requires(_session, Priviledge::Admin)
+#define ADMIN requires(_session, Privilege::Admin)
 
 bool WebThreeStubServerBase::admin_web3_setVerbosity(int _v, string const& _session)
 {
