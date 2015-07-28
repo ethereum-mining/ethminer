@@ -371,6 +371,9 @@ bool ethash_cl_miner::init(
 		}
 		catch (cl::Error const& err)
 		{
+			ETHCL_LOG("Allocating/mapping single buffer failed with: " << err.what() << "(" << err.err() << "). GPU can't allocate the DAG in a single chunk. Bailing.");
+			return false;
+#if 0		// Disabling chunking for release since it seems not to work. Never manages to mine a block. TODO: Fix when time is found.
 			int errCode = err.err();
 			if (errCode != CL_INVALID_BUFFER_SIZE || errCode != CL_MEM_OBJECT_ALLOCATION_FAILURE)
 				ETHCL_LOG("Allocating/mapping single buffer failed with: " << err.what() << "(" << errCode << ")");
@@ -409,6 +412,7 @@ bool ethash_cl_miner::init(
 				memcpy(dag_ptr[i], (char *)_dag + i*((_dagSize >> 9) << 7), (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
 				m_queue.enqueueUnmapMemObject(m_dagChunks[i], dag_ptr[i]);
 			}
+#endif
 		}
 		// create buffer for header
 		ETHCL_LOG("Creating buffer for header.");
