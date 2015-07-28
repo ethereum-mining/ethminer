@@ -384,52 +384,49 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 	Transactions goodTransactions;
 	unsigned count = 0;
 	for (VerifiedBlock const& block: blocks)
-		if (!badBlocks.empty())
-			badBlocks.push_back(block.verified.info.hash());
-		else
-		{
-			do {
-				try
-				{
-					// Nonce & uncle nonces already verified in verification thread at this point.
-					ImportRoute r;
-					DEV_TIMED_ABOVE("Block import " + toString(block.verified.info.number()), 500)
-						r = import(block.verified, _stateDB, ImportRequirements::Everything & ~ImportRequirements::ValidSeal & ~ImportRequirements::CheckUncles);
-					fresh += r.liveBlocks;
-					dead += r.deadBlocks;
-					goodTransactions.reserve(goodTransactions.size() + r.goodTranactions.size());
-					std::move(std::begin(r.goodTranactions), std::end(r.goodTranactions), std::back_inserter(goodTransactions));
-					++count;
-				}
-				catch (dev::eth::UnknownParent)
-				{
-					cwarn << "ODD: Import queue contains block with unknown parent.";// << LogTag::Error << boost::current_exception_diagnostic_information();
-					// NOTE: don't reimport since the queue should guarantee everything in the right order.
-					// Can't continue - chain bad.
-					badBlocks.push_back(block.verified.info.hash());
-				}
-				catch (dev::eth::FutureTime)
-				{
-					cwarn << "ODD: Import queue contains a block with future time.";
-					this_thread::sleep_for(chrono::seconds(1));
-					continue;
-				}
-				catch (dev::eth::TransientError)
-				{
-					this_thread::sleep_for(chrono::milliseconds(100));
-					continue;
-				}
-				catch (Exception& ex)
-				{
-	//				cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!";// << LogTag::Error << diagnostic_information(ex);
-					if (m_onBad)
-						m_onBad(ex);
-					// NOTE: don't reimport since the queue should guarantee everything in the right order.
-					// Can't continue - chain  bad.
-					badBlocks.push_back(block.verified.info.hash());
-				}
-			} while (false);
-		}
+	{
+		do {
+			try
+			{
+				// Nonce & uncle nonces already verified in verification thread at this point.
+				ImportRoute r;
+				DEV_TIMED_ABOVE("Block import " + toString(block.verified.info.number()), 500)
+					r = import(block.verified, _stateDB, ImportRequirements::Everything & ~ImportRequirements::ValidSeal & ~ImportRequirements::CheckUncles);
+				fresh += r.liveBlocks;
+				dead += r.deadBlocks;
+				goodTransactions.reserve(goodTransactions.size() + r.goodTranactions.size());
+				std::move(std::begin(r.goodTranactions), std::end(r.goodTranactions), std::back_inserter(goodTransactions));
+				++count;
+			}
+			catch (dev::eth::UnknownParent)
+			{
+				cwarn << "ODD: Import queue contains block with unknown parent.";// << LogTag::Error << boost::current_exception_diagnostic_information();
+				// NOTE: don't reimport since the queue should guarantee everything in the right order.
+				// Can't continue - chain bad.
+				badBlocks.push_back(block.verified.info.hash());
+			}
+			catch (dev::eth::FutureTime)
+			{
+				cwarn << "ODD: Import queue contains a block with future time.";
+				this_thread::sleep_for(chrono::seconds(1));
+				continue;
+			}
+			catch (dev::eth::TransientError)
+			{
+				this_thread::sleep_for(chrono::milliseconds(100));
+				continue;
+			}
+			catch (Exception& ex)
+			{
+//				cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!";// << LogTag::Error << diagnostic_information(ex);
+				if (m_onBad)
+					m_onBad(ex);
+				// NOTE: don't reimport since the queue should guarantee everything in the right order.
+				// Can't continue - chain  bad.
+				badBlocks.push_back(block.verified.info.hash());
+			}
+		} while (false);
+	}
 	return make_tuple(ImportRoute{dead, fresh, goodTransactions}, _bq.doneDrain(badBlocks), count);
 }
 
