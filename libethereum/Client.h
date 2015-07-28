@@ -254,6 +254,9 @@ protected:
 	/// Called after processing blocks by onChainChanged(_ir)
 	void resyncStateFromChain();
 
+	/// Clear working state of transactions
+	void resetState();
+
 	/// Magically called when the chain has changed. An import route is provided.
 	/// Called by either submitWork() or in our main thread through syncBlockQueue().
 	void onChainChanged(ImportRoute const& _ir);
@@ -307,6 +310,7 @@ protected:
 	std::shared_ptr<SealEngineFace> m_sealEngine;	///< Our block-sealing engine.
 
 	Handler<> m_tqReady;
+	Handler<h256 const&> m_tqReplaced;
 	Handler<> m_bqReady;
 
 	bool m_wouldMine = false;				///< True if we /should/ be mining.

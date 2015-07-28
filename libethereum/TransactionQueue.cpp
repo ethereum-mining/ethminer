@@ -147,7 +147,11 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 				if (_transaction.gasPrice() < (*t->second).transaction.gasPrice())
 					return ImportResult::OverbidGasPrice;
 				else
-					remove_WITH_LOCK((*t->second).transaction.sha3());
+				{
+					h256 dropped = (*t->second).transaction.sha3();
+					remove_WITH_LOCK(dropped);
+					m_onReplaced(dropped);
+				}
 			}
 		}
 		auto fs = m_future.find(_transaction.from());
