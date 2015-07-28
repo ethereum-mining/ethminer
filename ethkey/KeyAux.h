@@ -104,6 +104,7 @@ public:
 		New,
 		Import,
 		ImportWithAddress,
+		ImportPresale,
 		Export,
 		Recode,
 		Kill,
@@ -143,7 +144,7 @@ public:
 			m_mode = OperationMode::DecodeTx;
 		else if (arg == "--import-bare")
 			m_mode = OperationMode::ImportBare;
-		else if (arg == "--list-bare")
+		else if (arg == "-l" || arg == "--list-bare")
 			m_mode = OperationMode::ListBare;
 		else if (arg == "--export-bare")
 			m_mode = OperationMode::ExportBare;
@@ -168,7 +169,13 @@ public:
 			m_inputs = strings(1, argv[++i]);
 			m_name = argv[++i];
 		}
-		else if ((arg == "-i" || arg == "--import-with-address") && i + 3 < argc)
+		else if (arg == "--import-presale" && i + 2 < argc)
+		{
+			m_mode = OperationMode::ImportPresale;
+			m_inputs = strings(1, argv[++i]);
+			m_name = argv[++i];
+		}
+		else if (arg == "--import-with-address" && i + 3 < argc)
 		{
 			m_mode = OperationMode::ImportWithAddress;
 			m_inputs = strings(1, argv[++i]);
@@ -477,6 +484,13 @@ public:
 				cout << "  UUID: " << toUUID(u) << endl;
 				break;
 			}
+			case OperationMode::ImportPresale:
+			{
+				std::string pw;
+				KeyPair k = wallet.presaleSecret(contentsString(m_inputs[0]), [&](bool){ return (pw = getPassword("Enter the password for the presale key: ")); });
+				wallet.import(k.secret(), m_name, pw, "Same password as used for presale key");
+				break;
+			}
 			case OperationMode::List:
 			{
 				vector<u128> bare;
@@ -530,6 +544,7 @@ public:
 			<< "    -l,--list  List all keys available in wallet." << endl
 			<< "    -n,--new <name>  Create a new key with given name and add it in the wallet." << endl
 			<< "    -i,--import [<uuid>|<file>|<secret-hex>] <name>  Import keys from given source and place in wallet." << endl
+			<< "    --import-presale <file> <name>  Import a presale wallet into a key with the given name." << endl
 			<< "    --import-with-address [<uuid>|<file>|<secret-hex>] <address> <name>  Import keys from given source with given address and place in wallet." << endl
 			<< "    -e,--export [ <address>|<uuid> , ... ]  Export given keys." << endl
 			<< "    -r,--recode [ <address>|<uuid>|<file> , ... ]  Decrypt and re-encrypt given keys." << endl

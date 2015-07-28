@@ -140,6 +140,7 @@ void help()
 		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
 		<< "    --rescue  Attempt to rescue a corrupt database." << endl
 		<< endl
+		<< "    --import-presale <file>  Import a presale key; you'll need to type the password to this." << endl
 		<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
 		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
 		<< "    --sign-key <address>  Sign all transactions with the key of the given address." << endl
@@ -224,6 +225,12 @@ void version()
 	cout << "Client database version: " << dev::eth::c_databaseVersion << endl;
 	cout << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
+}
+
+void importPresale(KeyManager& _km, string const& _file, function<string()> _pass)
+{
+	KeyPair k = _km.presaleSecret(contentsString(_file), [&](bool){ return _pass(); });
+	_km.import(k.secret(), "Presale wallet" + _file + " (insecure)");
 }
 
 Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
@@ -1120,6 +1127,7 @@ int main(int argc, char** argv)
 	Address signingKey;
 	Address sessionKey;
 	Address beneficiary = signingKey;
+	strings presaleImports;
 
 	/// Structured logging params
 	bool structuredLogging = false;
@@ -1434,6 +1442,8 @@ int main(int argc, char** argv)
 			pinning = true;
 		else if (arg == "--hermit")
 			pinning = disableDiscovery = true;
+		else if (arg == "--import-presale" && i + 1 < argc)
+			presaleImports.push_back(argv[++i]);
 		else if (arg == "-f" || arg == "--force-mining")
 			forceMining = true;
 		else if (arg == "--old-interactive")
@@ -1710,6 +1720,9 @@ int main(int argc, char** argv)
 		}
 		keyManager.create(masterPassword);
 	}
+
+	for (auto const& presale: presaleImports)
+		importPresale(keyManager, presale, [&](){ return getPassword("Enter your wallet password for " + presale + ": "); });
 
 	for (auto const& s: toImport)
 	{

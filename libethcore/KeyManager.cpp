@@ -23,12 +23,14 @@
 #include <thread>
 #include <mutex>
 #include <boost/filesystem.hpp>
+#include <test/JsonSpiritHeaders.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/RLP.h>
 using namespace std;
 using namespace dev;
 using namespace eth;
+namespace js = json_spirit;
 namespace fs = boost::filesystem;
 
 KeyManager::KeyManager(string const& _keysFile, string const& _secretsPath):
@@ -214,6 +216,39 @@ void KeyManager::kill(Address const& _a)
 	m_keyInfo.erase(id);
 	m_store.kill(id);
 	write(m_keysFile);
+}
+
+KeyPair KeyManager::presaleSecret(std::string const& _json, function<string(bool)> const& _password)
+{
+	js::mValue val;
+	json_spirit::read_string(_json, val);
+	auto obj = val.get_obj();
+	string p = _password(true);
+	if (obj["encseed"].type() == js::str_type)
+	{
+		auto encseed = fromHex(obj["encseed"].get_str());
+		KeyPair k;
+		for (bool gotit = false; !gotit;)
+		{
+			gotit = true;
+			k = KeyPair::fromEncryptedSeed(&encseed, p);
+			if (obj["ethaddr"].type() == js::str_type)
+			{
+				Address a(obj["ethaddr"].get_str());
+				Address b = k.address();
+				if (a != b)
+				{
+					if ((p = _password(false)).empty())
+						BOOST_THROW_EXCEPTION(PasswordUnknown());
+					else
+						gotit = false;
+				}
+			}
+		}
+		return k;
+	}
+	else
+		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("encseed type is not js::str_type"));
 }
 
 Addresses KeyManager::accounts() const
