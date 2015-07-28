@@ -1779,9 +1779,9 @@ int main(int argc, char** argv)
 		jsonrpcServer->setMiningBenefactorChanger([&](Address const& a) { beneficiary = a; });
 		jsonrpcServer->StartListening();
 		if (jsonAdmin.empty())
-			jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Priviledge::Admin}});
+			jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Privilege::Admin}});
 		else
-			jsonrpcServer->addSession(jsonAdmin, SessionPermissions{{Priviledge::Admin}});
+			jsonrpcServer->addSession(jsonAdmin, SessionPermissions{{Privilege::Admin}});
 		cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
 		writeFile(getDataDir("web3") + "/session.key", jsonAdmin);
 		writeFile(getDataDir("web3") + "/session.url", "http://localhost:" + toString(jsonRPCURL));
@@ -1810,7 +1810,7 @@ int main(int argc, char** argv)
 #if ETH_JSCONSOLE || !ETH_TRUE
 			JSLocalConsole console;
 			shared_ptr<dev::WebThreeStubServer> rpcServer = make_shared<dev::WebThreeStubServer>(*console.connector(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer);
-			string sessionKey = rpcServer->newSession(SessionPermissions{{Priviledge::Admin}});
+			string sessionKey = rpcServer->newSession(SessionPermissions{{Privilege::Admin}});
 			console.eval("web3.admin.setSessionKey('" + sessionKey + "')");
 			while (!g_exit)
 			{
