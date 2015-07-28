@@ -1,7 +1,13 @@
 # cmake global
 cmake_minimum_required(VERSION 2.8.12)
 
-project(ethereum)
+set(PROJECT_VERSION "0.9.34")
+if (${CMAKE_VERSION} VERSION_GREATER 3.0)
+	cmake_policy(SET CMP0048 NEW) 	# allow VERSION argument in project()
+	project(ethereum VERSION ${PROJECT_VERSION})
+else()
+	project(ethereum)
+endif()
 
 set(CMAKE_AUTOMOC ON)
 
@@ -136,6 +142,7 @@ function(createBuildInfo)
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		COMMAND ${CMAKE_COMMAND} -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
 			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}"
+			-DPROJECT_VERSION="${PROJECT_VERSION}"
 			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
 		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -544,7 +551,7 @@ if (WIN32)
 	set(CPACK_PACKAGE_VENDOR "ethereum.org")
 	set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
 	set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-	set(CPACK_PACKAGE_VERSION "0.9.34")
+	set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 	set(CPACK_GENERATOR "NSIS")
 	# seems to be not working
 	# set(CPACK_PACKAGE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.bmp")
