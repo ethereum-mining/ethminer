@@ -204,6 +204,10 @@ void help()
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 8)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 		<< "    -h,--help  Show this help message and exit." << endl
+		<< endl
+		<< "Experimental / Proof of Concept:" << endl
+		<< "    --shh  Enable Whisper" << endl
+		<< endl
 		;
 		exit(0);
 }
@@ -1138,6 +1142,9 @@ int main(int argc, char** argv)
 
 	/// Wallet password stuff
 	string masterPassword;
+	
+	/// Whisper
+	bool useWhisper = false;
 
 	string configFile = getDataDir() + "/config.rlp";
 	bytes b = contents(configFile);
@@ -1478,6 +1485,8 @@ int main(int argc, char** argv)
 			}
 		}
 #endif
+		else if (arg == "--shh")
+			useWhisper = true;
 		else if (arg == "-h" || arg == "--help")
 			help();
 		else if (arg == "-V" || arg == "--version")
@@ -1558,11 +1567,12 @@ int main(int argc, char** argv)
 	netPrefs.pin = pinning || !privateChain.empty();
 
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
+	auto caps = useWhisper ? set<string>{"eth", "shh"} : set<string>{"eth"};
 	dev::WebThreeDirect web3(
 		WebThreeDirect::composeClientVersion("++eth", clientName),
 		dbPath,
 		withExisting,
-		nodeMode == NodeMode::Full ? set<string>{"eth"/*, "shh"*/} : set<string>(),
+		nodeMode == NodeMode::Full ? caps : set<string>(),
 		netPrefs,
 		&nodesState);
 	web3.ethereum()->setMineOnBadChain(mineOnWrongChain);
