@@ -49,7 +49,15 @@ private:
 	RuntimeManager& m_runtimeManager;
 };
 
-using InsertPointGuard = llvm::IRBuilderBase::InsertPointGuard;
+struct InsertPointGuard
+{
+	explicit InsertPointGuard(llvm::IRBuilderBase& _builder): m_builder(_builder), m_insertPoint(_builder.saveIP()) {}
+	~InsertPointGuard() { m_builder.restoreIP(m_insertPoint); }
+
+private:
+	llvm::IRBuilderBase& m_builder;
+	llvm::IRBuilderBase::InsertPoint m_insertPoint;
+};
 
 }
 }
