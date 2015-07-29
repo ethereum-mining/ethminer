@@ -23,6 +23,8 @@
 #pragma once
 #include <exception>
 
+/// Do not use libstd headers here, it will break on MacOS.
+
 namespace dev
 {
 namespace eth

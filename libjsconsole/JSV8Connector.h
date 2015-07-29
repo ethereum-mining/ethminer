@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <string>
 #include <jsonrpccpp/server/abstractserverconnector.h>
 #include <libjsengine/JSV8RPC.h>
 
@@ -30,20 +31,24 @@ namespace dev
 namespace eth
 {
 
-class JSV8Connector: public jsonrpc::AbstractServerConnector, public JSV8RPC
+class JSV8Connector: public jsonrpc::AbstractServerConnector, private JSV8RPC
 {
-
 public:
 	JSV8Connector(JSV8Engine const& _engine): JSV8RPC(_engine) {}
 	virtual ~JSV8Connector();
 
 	// implement AbstractServerConnector interface
-	bool StartListening();
-	bool StopListening();
-	bool SendResponse(std::string const& _response, void* _addInfo = nullptr);
+	bool StartListening() override;
+	bool StopListening() override;
+	bool SendResponse(std::string const& _response, void* _addInfo = nullptr) override;
 
+private:
 	// implement JSV8RPC interface
-	void onSend(char const* _payload);
+	void onSend(char const* _payload) override;
+
+	char const* lastResponse() const override { return m_lastResponse.c_str(); }
+
+	std::string m_lastResponse = R"({"id": 1, "jsonrpc": "2.0", "error": "Uninitalized JSV8RPC!"})";
 };
 
 }
