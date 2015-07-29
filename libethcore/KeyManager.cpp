@@ -23,12 +23,14 @@
 #include <thread>
 #include <mutex>
 #include <boost/filesystem.hpp>
+#include <test/JsonSpiritHeaders.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/RLP.h>
 using namespace std;
 using namespace dev;
 using namespace eth;
+namespace js = json_spirit;
 namespace fs = boost::filesystem;
 
 KeyManager::KeyManager(string const& _keysFile, string const& _secretsPath):
@@ -81,9 +83,9 @@ bool KeyManager::load(string const& _pass)
 	{
 		bytes salt = contents(m_keysFile + ".salt");
 		bytes encKeys = contents(m_keysFile);
-		m_keysFileKey = h128(pbkdf2(_pass, salt, 262144, 16));
-		bytes bs = decryptSymNoAuth(m_keysFileKey, h128(), &encKeys);
-		RLP s(bs);
+		m_keysFileKey = SecureFixedHash<16>(pbkdf2(_pass, salt, 262144, 16));
+		bytesSec bs = decryptSymNoAuth(m_keysFileKey, h128(), &encKeys);
+		RLP s(bs.ref());
 		unsigned version = unsigned(s[0]);
 		if (version == 1)
 		{
@@ -178,7 +180,7 @@ h128 KeyManager::import(Secret const& _s, string const& _accountName, string con
 	auto passHash = hashPassword(_pass);
 	cachePassword(_pass);
 	m_passwordHint[passHash] = _passwordHint;
-	auto uuid = m_store.importSecret(_s.asBytes(), _pass);
+	auto uuid = m_store.importSecret(_s.asBytesSec(), _pass);
 	m_keyInfo[uuid] = KeyInfo{passHash, _accountName};
 	m_addrLookup[addr] = uuid;
 	write(m_keysFile);
@@ -187,7 +189,7 @@ h128 KeyManager::import(Secret const& _s, string const& _accountName, string con
 
 void KeyManager::importExisting(h128 const& _uuid, string const& _info, string const& _pass, string const& _passwordHint)
 {
-	bytes key = m_store.secret(_uuid, [&](){ return _pass; });
+	bytesSec key = m_store.secret(_uuid, [&](){ return _pass; });
 	if (key.empty())
 		return;
 	Address a = KeyPair(Secret(key)).address();
@@ -214,6 +216,39 @@ void KeyManager::kill(Address const& _a)
 	m_keyInfo.erase(id);
 	m_store.kill(id);
 	write(m_keysFile);
+}
+
+KeyPair KeyManager::presaleSecret(std::string const& _json, function<string(bool)> const& _password)
+{
+	js::mValue val;
+	json_spirit::read_string(_json, val);
+	auto obj = val.get_obj();
+	string p = _password(true);
+	if (obj["encseed"].type() == js::str_type)
+	{
+		auto encseed = fromHex(obj["encseed"].get_str());
+		KeyPair k;
+		for (bool gotit = false; !gotit;)
+		{
+			gotit = true;
+			k = KeyPair::fromEncryptedSeed(&encseed, p);
+			if (obj["ethaddr"].type() == js::str_type)
+			{
+				Address a(obj["ethaddr"].get_str());
+				Address b = k.address();
+				if (a != b)
+				{
+					if ((p = _password(false)).empty())
+						BOOST_THROW_EXCEPTION(PasswordUnknown());
+					else
+						gotit = false;
+				}
+			}
+		}
+		return k;
+	}
+	else
+		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("encseed type is not js::str_type"));
 }
 
 Addresses KeyManager::accounts() const
@@ -258,7 +293,7 @@ string const& KeyManager::passwordHint(Address const& _address) const
 h256 KeyManager::hashPassword(string const& _pass) const
 {
 	// TODO SECURITY: store this a bit more securely; Scrypt perhaps?
-	return h256(pbkdf2(_pass, asBytes(m_defaultPasswordDeprecated), 262144, 32));
+	return h256(pbkdf2(_pass, asBytes(m_defaultPasswordDeprecated), 262144, 32).makeInsecure());
 }
 
 void KeyManager::cachePassword(string const& _password) const
@@ -278,14 +313,14 @@ void KeyManager::write(string const& _pass, string const& _keysFile) const
 {
 	bytes salt = h256::random().asBytes();
 	writeFile(_keysFile + ".salt", salt);
-	auto key = h128(pbkdf2(_pass, salt, 262144, 16));
+	auto key = SecureFixedHash<16>(pbkdf2(_pass, salt, 262144, 16));
 
 	cachePassword(_pass);
 	m_master = hashPassword(_pass);
 	write(key, _keysFile);
 }
 
-void KeyManager::write(h128 const& _key, string const& _keysFile) const
+void KeyManager::write(SecureFixedHash<16> const& _key, string const& _keysFile) const
 {
 	RLPStream s(4);
 	s << 1; // version
