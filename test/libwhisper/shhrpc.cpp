@@ -32,11 +32,13 @@
 #include <test/libweb3jsonrpc/webthreestubclient.h>
 #include <libethcore/KeyManager.h>
 #include <libp2p/Common.h>
+#include <libwhisper/WhisperHost.h>
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::p2p;
+using namespace dev::shh;
 namespace js = json_spirit;
 
 WebThreeDirect* web3;
@@ -54,7 +56,7 @@ struct Setup
 		{
 			setup = true;
 			NetworkPreferences nprefs(std::string(), 30333, false);
-			web3 = new WebThreeDirect("++eth tests", "", WithExisting::Trust, {"eth", "shh"}, nprefs);		
+			web3 = new WebThreeDirect("shhrpc-web3", "", WithExisting::Trust, {"eth", "shh"}, nprefs);
 			web3->setIdealPeerCount(1);
 			web3->ethereum()->setForceMining(false);
 			auto server = new jsonrpc::HttpServer(8080);
@@ -72,9 +74,9 @@ struct Setup
 
 BOOST_FIXTURE_TEST_SUITE(shhrpc, Setup)
 
-BOOST_AUTO_TEST_CASE(first)
+BOOST_AUTO_TEST_CASE(web3face)
 {
-	cnote << "Testing shh rpc...";
+	cnote << "Testing web3 interface...";
 
 	web3->startNetwork();
 	unsigned const step = 10;
@@ -83,9 +85,11 @@ BOOST_AUTO_TEST_CASE(first)
 
 	BOOST_REQUIRE(web3->haveNetwork());
 
-	uint16_t const port2 = 30334;	
+	uint16_t const port2 = 30334;
 	NetworkPreferences prefs("127.0.0.1", port2, false);
-	Host host2("Test", prefs);
+	string const version = "shhrpc-host2";
+	Host host2(version, prefs);
+	auto whost2 = host2.registerCapability(new WhisperHost());
 	host2.start();
 
 	for (unsigned i = 0; i < 3000 && !host2.haveNetwork(); i += step)
@@ -95,11 +99,98 @@ BOOST_AUTO_TEST_CASE(first)
 
 	web3->requirePeer(host2.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), port2, port2));
 
-	for (unsigned i = 0; i < 4000 && (!web3->peerCount() || !host2.peerCount()); i += step)
+	for (unsigned i = 0; i < 3000 && (!web3->peerCount() || !host2.peerCount()); i += step)
 		this_thread::sleep_for(chrono::milliseconds(step));
 
-	BOOST_REQUIRE(web3->peerCount());
-	BOOST_REQUIRE(host2.peerCount());	
+	BOOST_REQUIRE_EQUAL(web3->peerCount(), 1);
+	BOOST_REQUIRE_EQUAL(host2.peerCount(), 1);
+
+	vector<PeerSessionInfo> vpeers = web3->peers();
+	BOOST_REQUIRE(!vpeers.empty());
+	PeerSessionInfo const& peer = vpeers.back();
+	BOOST_REQUIRE_EQUAL(peer.id, host2.id());
+	BOOST_REQUIRE_EQUAL(peer.port, port2);
+	BOOST_REQUIRE_EQUAL(peer.clientVersion, version);
+
+	web3->stopNetwork();
+
+	for (unsigned i = 0; i < 3000 && web3->haveNetwork(); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
+
+	BOOST_REQUIRE(!web3->peerCount());
+	BOOST_REQUIRE(!host2.peerCount());
+}
+
+BOOST_AUTO_TEST_CASE(send)
+{
+	cnote << "Testing send functionality...";
+
+	bool sent = false;
+	bool ready = false;
+	unsigned result = 0;
+	unsigned const messageCount = 10;
+	unsigned const step = 10;
+	uint16_t port2 = 30311;
+	Host host2("shhrpc-host2", NetworkPreferences("127.0.0.1", port2, false));
+	host2.setIdealPeerCount(1);
+	auto whost2 = host2.registerCapability(new WhisperHost());
+	host2.start();
+	web3->startNetwork();
+
+	std::thread listener([&]()
+	{
+		setThreadName("listener");
+		auto w = whost2->installWatch(BuildTopicMask("odd"));
+		ready = true;
+		set<unsigned> received;
+		for (unsigned x = 0; x < 9000 && !sent; x += step)
+			this_thread::sleep_for(chrono::milliseconds(step));
+
+		for (unsigned x = 0, last = 0; x < 100 && received.size() < messageCount; ++x)
+		{
+			this_thread::sleep_for(chrono::milliseconds(50));
+			for (auto i: whost2->checkWatch(w))
+			{
+				Message msg = whost2->envelope(i).open(whost2->fullTopics(w));
+				last = RLP(msg.payload()).toInt<unsigned>();
+				if (received.insert(last).second)
+					result += last;
+			}
+		}
+	});
+
+	for (unsigned i = 0; i < 2000 && (!host2.haveNetwork() || web3->haveNetwork()); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
+
+	BOOST_REQUIRE(host2.haveNetwork());
+	BOOST_REQUIRE(web3->haveNetwork());
+
+	web3->requirePeer(host2.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), port2, port2));
+
+	for (unsigned i = 0; i < 3000 && (!web3->peerCount() || !host2.peerCount()); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
+
+	BOOST_REQUIRE_EQUAL(host2.peerCount(), 1);
+	BOOST_REQUIRE_EQUAL(web3->peerCount(), 1);
+	
+	for (unsigned i = 0; i < 2000 && !ready; i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
+
+	BOOST_REQUIRE(ready);
+	
+	KeyPair us = KeyPair::create();
+	for (int i = 0; i < messageCount; ++i)
+	{
+		web3->whisper()->post(us.sec(), RLPStream().append(i * i).out(), BuildTopic(i)(i % 2 ? "odd" : "even"), 777000, 1);
+		this_thread::sleep_for(chrono::milliseconds(50));
+	}
+	
+	sent = true;
+	auto messages = web3->whisper()->all();
+	BOOST_REQUIRE_EQUAL(messages.size(), messageCount);
+
+	listener.join();
+	BOOST_REQUIRE_EQUAL(result, 1 + 9 + 25 + 49 + 81);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
