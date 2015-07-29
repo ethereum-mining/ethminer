@@ -51,13 +51,14 @@ Rectangle {
 
 		id: col
 		spacing: 20
+		anchors.left: parent.left
+		anchors.leftMargin: 10
 
 		Label
 		{
 			anchors.top: parent.top
 			Layout.fillWidth: true
-			anchors.left: parent.left
-			anchors.leftMargin: 10
+
 			text: qsTr("Upload and update your Dapp assets")
 		}
 
@@ -67,11 +68,11 @@ Rectangle {
 			Layout.preferredHeight: 20
 			Rectangle
 			{
-				Layout.preferredWidth: col.width / 2
+				Layout.preferredWidth: col.width / 5
 				Label
 				{
 					text: qsTr("Save Package to")
-					anchors.right: parent.right
+					anchors.left: parent.left
 					anchors.verticalCenter: parent.verticalCenter
 				}
 			}
@@ -80,7 +81,7 @@ Rectangle {
 			{
 				id: packageFolder
 				visible: true
-				Layout.preferredWidth: 150
+				Layout.preferredWidth: 360
 				text: projectPath + "package/"
 			}
 
@@ -102,7 +103,8 @@ Rectangle {
 			Button
 			{
 				id: generatePackageBtn
-				anchors.horizontalCenter: parent.horizontalCenter
+				anchors.left: parent.left
+				anchors.leftMargin: 10
 				text: qsTr("Generate Package")
 				onClicked:
 				{
@@ -117,7 +119,6 @@ Rectangle {
 				anchors.top: generatePackageBtn.bottom
 				anchors.topMargin: 10
 				visible: root.lastDeployDate !== ""
-				anchors.horizontalCenter: parent.horizontalCenter
 				Label
 				{
 					id: lastPackage
@@ -137,11 +138,11 @@ Rectangle {
 			Layout.preferredHeight: 20
 			Rectangle
 			{
-				Layout.preferredWidth: col.width / 2
+				Layout.preferredWidth: col.width / 5
 				Label
 				{
 					text: qsTr("Local package URL")
-					anchors.right: parent.right
+					anchors.left: parent.left
 					anchors.verticalCenter: parent.verticalCenter
 				}
 			}
@@ -149,7 +150,7 @@ Rectangle {
 			DefaultTextField
 			{
 				id: localPackageUrl
-				Layout.preferredWidth: 235
+				Layout.preferredWidth: 450
 				readOnly: true
 			}
 		}
@@ -157,7 +158,6 @@ Rectangle {
 		Label
 		{
 			Layout.preferredWidth: 300
-			anchors.horizontalCenter: parent.horizontalCenter
 			text: qsTr("You have to upload the package to a remote folder, or use a service like pastebin")
 			wrapMode: Text.WordWrap
 			clip: true
@@ -171,8 +171,9 @@ Rectangle {
 			Button
 			{
 				Layout.preferredWidth: 200
-				anchors.horizontalCenter: parent.horizontalCenter
 				text: qsTr("Copy Base64")
+				anchors.left: parent.left
+				anchors.leftMargin: 10
 				onClicked:
 				{
 					clipboard.text = deploymentDialog.packageStep.packageBase64;
@@ -188,8 +189,9 @@ Rectangle {
 			Button
 			{
 				Layout.preferredWidth: 200
-				anchors.horizontalCenter: parent.horizontalCenter
 				text: qsTr("Open pastebin")
+				anchors.left: parent.left
+				anchors.leftMargin: 10
 				onClicked:
 				{
 					Qt.openUrlExternally("http://pastebin.com/");
