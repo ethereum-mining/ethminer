@@ -559,6 +559,9 @@
         },
         "blocks" : [
             {
+                "blockHeader" : {
+                    "gasLimit" : "3141592"
+                },
                 "transactions" : [
                     {
                         "data" : "",
