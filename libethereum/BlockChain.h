@@ -450,6 +450,10 @@ public:
 				try
 				{
 					h.populateFromHeader(RLP(uncle.data()), (_ir & ImportRequirements::UncleSeals) ? Strictness::CheckEverything : Strictness::IgnoreSeal);
+					bytes parentHeader(headerData(h.parentHash()));
+					if (parentHeader.empty())
+						BOOST_THROW_EXCEPTION(InvalidParentHash());
+					h.verifyParent(typename Sealer::BlockHeader(parentHeader, IgnoreSeal, h.parentHash(), HeaderData));
 				}
 				catch (Exception& ex)
 				{
