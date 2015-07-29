@@ -20,6 +20,7 @@ ColumnLayout
 	signal loaded(variant scenario)
 	signal renamed(variant scenario)
 	signal deleted()
+	property alias selectedScenarioIndex: scenarioList.currentIndex
 	spacing: 0
 	function init()
 	{
@@ -80,15 +81,14 @@ ColumnLayout
 					}
 				}
 
-				Label
-				{
-					anchors.left: editImg.right
-					text: "X"
-					height: parent.height
-					color: "#cccccc"
+				Image {
+					source: "qrc:/qml/img/delete_sign.png"
+					height: parent.height - 16
+					fillMode: Image.PreserveAspectFit
 					id: deleteImg
+					anchors.left: editImg.right
 					anchors.top: parent.top
-					anchors.topMargin: 7
+					anchors.topMargin: 8
 					visible: projectModel.stateListModel.count > 1
 					MouseArea
 					{
@@ -98,10 +98,34 @@ ColumnLayout
 							if (projectModel.stateListModel.count > 1)
 							{
 								projectModel.stateListModel.deleteState(scenarioList.currentIndex)
-								scenarioList.currentIndex = 0
-								deleted()
+								scenarioList.init()
 							}
 						}
+					}
+				}
+
+				Label
+				{
+
+					MouseArea
+					{
+						anchors.fill: parent
+						onClicked:
+						{
+							if (projectModel.stateListModel.count > 1)
+							{
+								projectModel.stateListModel.deleteState(scenarioList.currentIndex)
+								scenarioList.init()
+							}
+						}
+					}
+				}
+
+				Connections
+				{
+					target: projectModel.stateListModel
+					onStateDeleted: {
+						scenarioList.init()
 					}
 				}
 
@@ -120,6 +144,12 @@ ColumnLayout
 					onCurrentIndexChanged:
 					{
 						restoreScenario.restore()
+					}
+
+					function init()
+					{
+						scenarioList.currentIndex = 0
+						deleted()
 					}
 
 					function load()
@@ -291,7 +321,7 @@ ColumnLayout
 					text: qsTr("Restore")
 					function restore()
 					{
-						var state = projectModel.stateListModel.reloadStateFromFromProject(scenarioList.currentIndex)
+						var state = projectModel.stateListModel.reloadStateFromProject(scenarioList.currentIndex)
 						if (state)
 						{
 							restored(state)
@@ -301,7 +331,6 @@ ColumnLayout
 					roundRight: false
 					roundLeft: true
 				}
-
 
 				Rectangle
 				{

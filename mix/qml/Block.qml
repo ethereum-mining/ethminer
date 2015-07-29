@@ -22,6 +22,7 @@ ColumnLayout
 	property int blockIndex
 	property variant scenario
 	property string labelColor: "#414141"
+	property int scenarioIndex
 	signal txSelected(var txIndex)
 
 	function calculateHeight()
@@ -43,6 +44,11 @@ ColumnLayout
 		transactionDialog.execute = false
 		transactionDialog.editMode = true
 		transactionDialog.open(txIndex, blockIndex,  transactions.get(txIndex))
+	}
+
+	function select(txIndex)
+	{
+		transactionRepeater.itemAt(txIndex).select()
 	}
 
 	onOpenedTrChanged:
@@ -90,7 +96,7 @@ ColumnLayout
 				text:
 				{
 					if (number === -2)
-						return qsTr("STARTING PARAMETERS")
+						return qsTr("GENESIS PARAMETERS")
 					else if (status === "mined")
 						return qsTr("BLOCK") + " " + number
 					else
@@ -105,13 +111,14 @@ ColumnLayout
 				anchors.verticalCenter: parent.verticalCenter
 				anchors.right: parent.right
 				anchors.rightMargin: 14
-				visible: false
+				visible: number === -2
 				MouseArea
 				{
 					anchors.fill: parent
 					onClicked:
 					{
 						// load edit block panel
+						projectModel.stateListModel.editState(scenarioIndex)
 					}
 				}
 			}
@@ -127,6 +134,12 @@ ColumnLayout
 			id: rowTransaction
 			Layout.preferredHeight: trHeight
 			spacing: 0
+
+			function select()
+			{
+				rowContentTr.select()
+			}
+
 			function displayContent()
 			{
 				logsText.text = ""
@@ -220,6 +233,15 @@ ColumnLayout
 					}
 				}
 
+				function select()
+				{
+					rowContentTr.selected = true
+					rowContentTr.color = "#4F4F4F"
+					hash.color = "#EAB920"
+					func.color = "#EAB920"
+					txSelected(index)
+				}
+
 				function deselect()
 				{
 					rowContentTr.selected = false
@@ -233,13 +255,7 @@ ColumnLayout
 					anchors.fill: parent
 					onClicked: {
 						if (!rowContentTr.selected)
-						{
-							rowContentTr.selected = true
-							rowContentTr.color = "#4F4F4F"
-							hash.color = "#EAB920"
-							func.color = "#EAB920"
-							txSelected(index)
-						}
+							rowContentTr.select()
 						else
 							rowContentTr.deselect()
 
