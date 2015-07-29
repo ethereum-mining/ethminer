@@ -19,6 +19,7 @@ Item
 	property alias gasPriceInt: gasPriceInt
 	property variant balances: ({})
 	property variant accounts: []
+	property alias pooler: pooler
 	signal gasPriceLoaded()
 
 	function renewCtx()
@@ -169,10 +170,11 @@ Item
 	{
 		if (!clientModelGasEstimation.running)
 		{
-			var ctr = projectModel.codeEditor.getContracts()
-			for (var k in ctr)
+			for (var si = 0; si < projectModel.listModel.count; si++)
 			{
-				codeModelGasEstimation.registerCodeChange(ctr[k].document.documentId, ctr[k].getText());
+				var document = projectModel.listModel.get(si);
+				if (document.isContract)
+					codeModelGasEstimation.registerCodeChange(document.documentId, fileIo.readFile(document.path));
 			}
 			gasEstimationConnect.callback = callback
 			clientModelGasEstimation.setupScenario(scenario)
@@ -193,13 +195,22 @@ Item
 		id: codeModelGasEstimation
 	}
 
-	ClientModel {
+	ClientModel
+	{
 		id: clientModelGasEstimation
 		codeModel: codeModelGasEstimation
 		Component.onCompleted:
 		{
 			init("/tmp/bcgas/")
 		}
+	}
+
+	Timer
+	{
+		id: pooler
+		interval: 5000
+		repeat: true
+		running: false
 	}
 
 	Timer

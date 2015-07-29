@@ -108,11 +108,13 @@ ApplicationWindow {
 			title: qsTr("Deploy")
 			MenuItem { action: mineAction }
 			MenuSeparator {}
-			MenuItem { action: editStatesAction }
-			MenuSeparator {}
 			MenuItem { action: deployViaRpcAction }
 			MenuSeparator {}
 			MenuItem { action: toggleRunOnLoadAction }
+		}
+		Menu {
+			title: qsTr("Scenario")
+			MenuItem { action: editStatesAction }
 		}
 		Menu {
 			title: qsTr("Debug")
@@ -184,7 +186,7 @@ ApplicationWindow {
 
 	Action {
 		id: editStatesAction
-		text: qsTr("Edit States")
+		text: qsTr("Edit Scenarii")
 		shortcut: "Ctrl+Alt+E"
 		onTriggered: stateList.open();
 	}
