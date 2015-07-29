@@ -906,8 +906,12 @@ bool State::sealBlock(bytesConstRef _header)
 	if (!m_committedToMine)
 		return false;
 
+	// Check that this header is indeed for this block.
+	if (BlockInfo(_header, CheckNothing, h256{}, HeaderData).hashWithout() != m_currentBlock.hashWithout())
+		return false;
+
+	// Looks good!
 	clog(StateDetail) << "Sealing block!";
-	// Got it!
 
 	// Compile block:
 	RLPStream ret;
@@ -1137,6 +1141,12 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 
 ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp)
 {
+	auto onOp = _onOp;
+#if ETH_VMTRACE
+	if (isChannelVisible<VMTraceChannel>())
+		onOp = Executive::simpleTrace(); // override tracer
+#endif
+
 #if ETH_PARANOIA
 	paranoia("start of execution.", true);
 	State old(*this);
@@ -1161,16 +1171,7 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 	ctrace << toHex(e.t().rlp());
 #endif
 	if (!e.execute())
-#if ETH_VMTRACE
-	{
-		if (isChannelVisible<VMTraceChannel>())
-			e.go(e.simpleTrace());
-		else
-			e.go(_onOp);
-	}
-#else
-		e.go(_onOp);
-#endif
+		e.go(onOp);
 	e.finalize();
 
 #if ETH_PARANOIA
@@ -1183,13 +1184,13 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 	else
 	{
 		commit();
-	
+
 #if ETH_PARANOIA && !ETH_FATDB
 		ctrace << "Executed; now" << rootHash();
 		ctrace << old.diff(*this);
-	
+
 		paranoia("after execution commit.", true);
-	
+
 		if (e.t().receiveAddress())
 		{
 			EnforceRefs r(m_db, true);
@@ -1200,9 +1201,9 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 			}
 		}
 #endif
-	
+
 		// TODO: CHECK TRIE after level DB flush to make sure exactly the same.
-	
+
 		// Add to the user-originated transactions that we've executed.
 		m_transactions.push_back(e.t());
 		m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs()));

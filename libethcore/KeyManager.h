@@ -123,6 +123,9 @@ public:
 
 	static std::string defaultPath() { return getDataDir("ethereum") + "/keys.info"; }
 
+	/// Extracts the secret key from the presale wallet.
+	KeyPair presaleSecret(std::string const& _json, std::function<std::string(bool)> const& _password);
+
 private:
 	std::string getPassword(h128 const& _uuid, std::function<std::string()> const& _pass = DontKnowThrow) const;
 	std::string getPassword(h256 const& _passHash, std::function<std::string()> const& _pass = DontKnowThrow) const;
@@ -136,8 +139,8 @@ private:
 	// @returns false if wasn't previously loaded ok.
 	bool write() const { return write(m_keysFile); }
 	bool write(std::string const& _keysFile) const;
-	void write(std::string const& _pass, std::string const& _keysFile) const;
-	void write(h128 const& _key, std::string const& _keysFile) const;
+	void write(std::string const& _pass, std::string const& _keysFile) const;	// TODO: all passwords should be a secure string.
+	void write(SecureFixedHash<16> const& _key, std::string const& _keysFile) const;
 
 	// Ethereum keys.
 
@@ -159,7 +162,7 @@ private:
 	std::string m_defaultPasswordDeprecated;
 
 	mutable std::string m_keysFile;
-	mutable h128 m_keysFileKey;
+	mutable SecureFixedHash<16> m_keysFileKey;
 	mutable h256 m_master;
 	SecretStore m_store;
 };

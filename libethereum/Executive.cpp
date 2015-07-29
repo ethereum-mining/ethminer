@@ -325,7 +325,8 @@ bool Executive::go(OnOpFunc const& _onOp)
 #endif
 		try
 		{
-			auto vm = VMFactory::create();
+			// Create VM instance. Force Interpreter if tracing requested.
+			auto vm = _onOp ? VMFactory::create(VMKind::Interpreter) : VMFactory::create();
 			if (m_isCreation)
 			{
 				auto out = vm->exec(m_gas, *m_ext, _onOp);

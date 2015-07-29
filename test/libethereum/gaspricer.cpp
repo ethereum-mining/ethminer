@@ -17,6 +17,7 @@
 /** @file gasPricer.cpp
  * @author Christoph Jentzsch <cj@ethdev.com>
  * @date 2015
+ * Gas pricer tests
  */
 
 #include <libtestutils/BlockChainLoader.h>
@@ -32,7 +33,7 @@ using namespace dev::eth;
 
 namespace dev {  namespace test {
 
-void executeGasPricerTest(const string name, double _etherPrice, double _blockFee, const string bcTestPath, TransactionPriority _txPrio, u256 _expectedAsk, u256 _expectedBid)
+void executeGasPricerTest(string const& name, double _etherPrice, double _blockFee, string const& bcTestPath, TransactionPriority _txPrio, u256 _expectedAsk, u256 _expectedBid)
 {
 	cnote << name;
 	BasicGasPricer gp(u256(double(ether / 1000) / _etherPrice), u256(_blockFee * 1000));
