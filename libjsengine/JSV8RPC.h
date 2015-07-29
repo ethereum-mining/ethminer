@@ -24,6 +24,8 @@
 
 #include <libjsengine/JSV8Engine.h>
 
+/// Do not use libstd headers here, it will break on MacOS.
+
 namespace dev
 {
 namespace eth
@@ -33,14 +35,12 @@ class JSV8RPC
 {
 public:
 	JSV8RPC(JSV8Engine const& _engine);
+	virtual ~JSV8RPC() { }
 	virtual void onSend(char const* _payload) = 0;
-	char const* lastResponse() const { return m_lastResponse; }
+	virtual char const* lastResponse() const = 0;
 
 private:
 	JSV8Engine const& m_engine;
-
-protected:
-	char const* m_lastResponse;
 };
 
 }
