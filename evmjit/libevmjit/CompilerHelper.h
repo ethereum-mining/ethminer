@@ -56,7 +56,7 @@ struct InsertPointGuard
 
 private:
 	llvm::IRBuilderBase& m_builder;
-	decltype(m_builder.saveIP()) m_insertPoint;
+	llvm::IRBuilderBase::InsertPoint m_insertPoint;
 };
 
 }
