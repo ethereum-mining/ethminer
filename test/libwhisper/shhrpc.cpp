@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE(send)
 		}
 	});
 
-	for (unsigned i = 0; i < 2000 && (!host2.haveNetwork() || web3->haveNetwork()); i += step)
+	for (unsigned i = 0; i < 2000 && (!host2.haveNetwork() || !web3->haveNetwork()); i += step)
 		this_thread::sleep_for(chrono::milliseconds(step));
 
 	BOOST_REQUIRE(host2.haveNetwork());
@@ -235,7 +235,7 @@ BOOST_AUTO_TEST_CASE(receive)
 		}
 	});
 
-	for (unsigned i = 0; i < 2000 && (!host2.haveNetwork() || web3->haveNetwork()); i += step)
+	for (unsigned i = 0; i < 2000 && (!host2.haveNetwork() || !web3->haveNetwork()); i += step)
 		this_thread::sleep_for(chrono::milliseconds(step));
 
 	BOOST_REQUIRE(host2.haveNetwork());
