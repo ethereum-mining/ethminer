@@ -21,7 +21,6 @@
  */
 
 #include <fstream>
-#include <random>
 #include <boost/test/unit_test.hpp>
 #include "../JsonSpiritHeaders.h"
 #include <libdevcrypto/SecretStore.h>

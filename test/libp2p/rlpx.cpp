@@ -20,7 +20,6 @@
  * RLPx test functions.
  */
 
-#include <random>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/Log.h>
