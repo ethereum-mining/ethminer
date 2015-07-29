@@ -186,12 +186,13 @@ Item {
 		onProjectLoading: stateListModel.loadStatesFromProject(projectData);
 		onProjectFileSaving: {
 			projectData.states = []
-			for(var i = 0; i < stateListModel.count; i++) {
+			for(var i = 0; i < stateListModel.count; i++)
+			{
 				projectData.states.push(toPlainStateItem(stateList[i]));
+				stateListModel.set(i, stateList[i]);
 			}
 			projectData.defaultStateIndex = stateListModel.defaultStateIndex;
 			stateListModel.data = projectData
-
 		}
 		onNewProject: {
 			var state = toPlainStateItem(stateListModel.createDefaultState());
@@ -221,20 +222,19 @@ Item {
 
 		function saveState(item)
 		{
-			if (stateDialog.stateIndex < stateListModel.count) {
-				if (stateDialog.isDefault)
-					stateListModel.defaultStateIndex = stateIndex;
-				stateList[stateDialog.stateIndex] = item;
-				stateListModel.set(stateDialog.stateIndex, item);
-			} else {
-				if (stateDialog.isDefault)
-					stateListModel.defaultStateIndex = 0;
-				stateList.push(item);
-				stateListModel.append(item);
+			stateList[stateDialog.stateIndex].accounts = item.accounts
+			stateList[stateDialog.stateIndex].contracts = item.contracts
+			stateListModel.get(stateDialog.stateIndex).accounts = item.accounts
+			stateListModel.get(stateDialog.stateIndex).contracts = item.contracts
+			stateListModel.accountsValidated(item.accounts)
+			stateListModel.contractsValidated(item.contracts)
+			stateListModel.get(stateDialog.stateIndex).miner = item.miner
+			stateList[stateDialog.stateIndex].miner = item.miner
+			if (item.defaultState)
+			{
+				stateListModel.defaultStateIndex = stateDialog.stateIndex
+				stateListModel.defaultStateChanged()
 			}
-			if (stateDialog.isDefault)
-				stateListModel.defaultStateChanged();
-			stateListModel.save();
 		}
 	}
 
@@ -242,12 +242,15 @@ Item {
 		id: stateListModel
 		property int defaultStateIndex: 0
 		property variant data
+		signal accountsValidated(var _accounts)
+		signal contractsValidated(var _contracts)
 		signal defaultStateChanged;
 		signal stateListModelReady;
 		signal stateRun(int index)
 		signal stateDeleted(int index)
 
-		function defaultTransactionItem() {
+		function defaultTransactionItem()
+		{
 			return TransactionHelper.defaultTransaction();
 		}
 
@@ -409,7 +412,7 @@ Item {
 				return ""
 		}
 
-		function reloadStateFromFromProject(index)
+		function reloadStateFromProject(index)
 		{
 			if (data)
 			{

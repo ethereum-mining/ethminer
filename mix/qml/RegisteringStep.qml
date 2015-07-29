@@ -32,6 +32,14 @@ Rectangle {
 
 		visible = true
 
+		worker.pooler.onTriggered.connect(function() {
+			if (root.visible)
+				verifyRegistering();
+		})
+	}
+
+	function verifyRegistering()
+	{
 		verificationEthUrl.text = ""
 		if (projectModel.registerContentHashTrHash !== "" && projectModel.registerContentHashBlockNumber !== -1)
 		{

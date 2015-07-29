@@ -57,6 +57,8 @@ BOOST_AUTO_TEST_CASE(topic)
 
 	bool host1Ready = false;
 	unsigned result = 0;
+	unsigned const step = 10;
+
 	std::thread listener([&]()
 	{
 		setThreadName("other");
@@ -85,22 +87,31 @@ BOOST_AUTO_TEST_CASE(topic)
 	host1.setIdealPeerCount(1);
 	auto whost2 = host2.registerCapability(new WhisperHost());
 	host2.start();
-	
-	while (!host1.haveNetwork())
-		this_thread::sleep_for(chrono::milliseconds(5));
+
+	for (unsigned i = 0; i < 3000 && (!host1.haveNetwork() || !host2.haveNetwork()); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
+
+	BOOST_REQUIRE(host1.haveNetwork());
+	BOOST_REQUIRE(host2.haveNetwork());
+
 	host2.addNode(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), port1, port1));
 
-	// wait for nodes to connect
-	this_thread::sleep_for(chrono::milliseconds(1000));
-	
-	while (!host1Ready)
-		this_thread::sleep_for(chrono::milliseconds(10));
+	for (unsigned i = 0; i < 3000 && (!host1.peerCount() || !host2.peerCount()); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
+
+	BOOST_REQUIRE(host1.peerCount());
+	BOOST_REQUIRE(host2.peerCount());
+
+	for (unsigned i = 0; i < 3000 && !host1Ready; i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
+
+	BOOST_REQUIRE(host1Ready);
 	
 	KeyPair us = KeyPair::create();
 	for (int i = 0; i < 10; ++i)
 	{
 		whost2->post(us.sec(), RLPStream().append(i * i).out(), BuildTopic(i)(i % 2 ? "odd" : "even"));
-		this_thread::sleep_for(chrono::milliseconds(250));
+		this_thread::sleep_for(chrono::milliseconds(50));
 	}
 
 	listener.join();
@@ -314,59 +325,54 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 	while (!host1.haveNetwork())
 		this_thread::sleep_for(chrono::milliseconds(10));
 
+	unsigned const step = 10;
 	uint16_t port2 = 30318;
 	Host host2("second", NetworkPreferences("127.0.0.1", port2, false));
 	host2.setIdealPeerCount(1);
 	auto whost2 = host2.registerCapability(new WhisperHost());
 	unsigned w2 = whost2->installWatch(BuildTopicMask("test2"));
-
 	host2.start();
-	while (!host2.haveNetwork())
-		this_thread::sleep_for(chrono::milliseconds(10));
+
+	for (unsigned i = 0; i < 3000 && (!host1.haveNetwork() || !host2.haveNetwork()); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
 
 	host1.addNode(host2.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), port2, port2));
-	while (!host1.haveNetwork())
-		this_thread::sleep_for(chrono::milliseconds(10));
 
-	while (!host1.peerCount())
-		this_thread::sleep_for(chrono::milliseconds(10));
-
-	while (!host2.peerCount())
-		this_thread::sleep_for(chrono::milliseconds(10));
+	for (unsigned i = 0; i < 3000 && (!host1.peerCount() || !host2.peerCount()); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
 
 	std::vector<std::pair<std::shared_ptr<Session>, std::shared_ptr<Peer>>> sessions;
+	TopicBloomFilterHash bf1;
 
-	for (int i = 0; i < 600; ++i)
+	for (int i = 0; i < 600 && !bf1; ++i)
 	{
 		sessions = whost1->peerSessions();
-		if (!sessions.empty() && sessions.back().first->cap<WhisperPeer>()->bloom())
-			break;
-		else
-			this_thread::sleep_for(chrono::milliseconds(10));
+		if (!sessions.empty())
+			bf1 = sessions.back().first->cap<WhisperPeer>()->bloom();
+
+		this_thread::sleep_for(chrono::milliseconds(step));
 	}
 
 	BOOST_REQUIRE(sessions.size());
-	TopicBloomFilterHash bf1 = sessions.back().first->cap<WhisperPeer>()->bloom();
 	TopicBloomFilterHash bf2 = whost2->bloom();
 	BOOST_REQUIRE_EQUAL(bf1, bf2);
 	BOOST_REQUIRE(bf1);
 	BOOST_REQUIRE(!whost1->bloom());
 
 	unsigned w1 = whost1->installWatch(BuildTopicMask("test1"));
+	bf2 = TopicBloomFilterHash();
 
-	for (int i = 0; i < 600; ++i)
+	for (int i = 0; i < 600 && !bf2; ++i)
 	{
 		sessions = whost2->peerSessions();
-		if (!sessions.empty() && sessions.back().first->cap<WhisperPeer>()->bloom())
-			break;
-		else
-			this_thread::sleep_for(chrono::milliseconds(10));
+		if (!sessions.empty())
+			bf2 = sessions.back().first->cap<WhisperPeer>()->bloom();
+
+		this_thread::sleep_for(chrono::milliseconds(step));
 	}
 
 	BOOST_REQUIRE(sessions.size());
 	BOOST_REQUIRE_EQUAL(sessions.back().second->id, host1.id());
-
-	bf2 = sessions.back().first->cap<WhisperPeer>()->bloom();
 	bf1 = whost1->bloom();
 	BOOST_REQUIRE_EQUAL(bf1, bf2);
 	BOOST_REQUIRE(bf1);
