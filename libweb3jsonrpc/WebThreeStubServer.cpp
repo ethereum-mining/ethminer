@@ -94,6 +94,14 @@ Json::Value WebThreeStubServer::admin_eth_blockQueueStatus(string const& _sessio
 	return ret;
 }
 
+Json::Value WebThreeStubServer::admin_eth_nodeInfo(string const& _session)
+{
+	ADMIN_GUARD;
+	Json::Value ret;
+	ret["fillmein"] = "please";
+	return ret;
+}
+
 bool WebThreeStubServer::admin_eth_setAskPrice(std::string const& _wei, std::string const& _session)
 {
 	ADMIN_GUARD;
