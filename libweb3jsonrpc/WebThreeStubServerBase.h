@@ -169,6 +169,7 @@ public:
 
 	virtual bool admin_eth_setMining(bool _on, std::string const& _session);
 	virtual Json::Value admin_eth_blockQueueStatus(std::string const& _session) { (void)_session; return Json::Value(); }
+	virtual Json::Value admin_eth_nodeInfo(std::string const& _session) { (void)_session; return Json::Value(); }
 	virtual bool admin_eth_setAskPrice(std::string const& _wei, std::string const& _session) { (void)_wei; (void)_session; return false; }
 	virtual bool admin_eth_setBidPrice(std::string const& _wei, std::string const& _session) { (void)_wei; (void)_session; return false; }
 	virtual Json::Value admin_eth_findBlock(std::string const& _blockHash, std::string const& _session) { (void)_blockHash; (void)_session; return Json::Value(); }

@@ -36,6 +36,11 @@ web3._extend({
         inputFormatter: [getSessionKey],
         params: 1
     }), new web3._extend.Method({
+        name: 'eth.nodeInfo',
+        call: 'admin_eth_nodeInfo',
+        inputFormatter: [getSessionKey],
+        params: 1
+    }), new web3._extend.Method({
         name: 'eth.setAskPrice',
         call: 'admin_eth_setAskPrice',
         inputFormatter: [null, getSessionKey],
