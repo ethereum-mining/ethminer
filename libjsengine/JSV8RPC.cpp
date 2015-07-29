@@ -51,6 +51,18 @@ v8::Handle<v8::Value> JSV8RPCSend(v8::Arguments const& _args)
 	return parseFunc->Call(parseFunc, 1, values);
 }
 
+v8::Handle<v8::Value> JSV8RPCSendAsync(v8::Arguments const& _args)
+{
+	// This is synchronous, but uses the callback-interface.
+
+	auto parsed = v8::Local<v8::Value>::New(JSV8RPCSend(_args));
+	v8::Handle<v8::Function> callback = v8::Handle<v8::Function>::Cast(_args[1]);
+	v8::Local<v8::Value> callbackArgs[2] = {v8::Local<v8::Value>::New(v8::Null()), parsed};
+	callback->Call(callback, 2, callbackArgs);
+
+	return v8::Undefined();
+}
+
 }
 }
 
@@ -59,10 +71,14 @@ JSV8RPC::JSV8RPC(JSV8Engine const& _engine): m_engine(_engine)
 	v8::HandleScope scope;
 	v8::Local<v8::ObjectTemplate> rpcTemplate = v8::ObjectTemplate::New();
 	rpcTemplate->SetInternalFieldCount(1);
-	rpcTemplate->Set(v8::String::New("send"),
-	                 v8::FunctionTemplate::New(JSV8RPCSend));
-	rpcTemplate->Set(v8::String::New("sendAsync"),
-	                 v8::FunctionTemplate::New(JSV8RPCSend));
+	rpcTemplate->Set(
+		v8::String::New("send"),
+		v8::FunctionTemplate::New(JSV8RPCSend)
+	);
+	rpcTemplate->Set(
+		v8::String::New("sendAsync"),
+		v8::FunctionTemplate::New(JSV8RPCSendAsync)
+	);
 
 	v8::Local<v8::Object> obj = rpcTemplate->NewInstance();
 	obj->SetInternalField(0, v8::External::New(this));
