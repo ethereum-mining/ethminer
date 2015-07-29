@@ -312,12 +312,8 @@ if (GUI)
 	set(JSONRPC ON)
 endif()
 
-# Default CMAKE_BUILD_TYPE to "Release".
+# Default CMAKE_BUILD_TYPE accordingly.
 set(CMAKE_BUILD_TYPE CACHE STRING ${D_CMAKE_BUILD_TYPE})
-
-#if ("x${CMAKE_BUILD_TYPE}" STREQUAL "x")
-#	set(CMAKE_BUILD_TYPE ${D_CMAKE_BUILD_TYPE})
-#endif ()
 
 # Default TARGET_PLATFORM to ${CMAKE_SYSTEM_NAME}
 # change this once we support cross compiling
