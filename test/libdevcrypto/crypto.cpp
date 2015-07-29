@@ -21,7 +21,6 @@
  * Crypto test functions.
  */
 
-#include <random>
 #if ETH_HAVE_SECP256K1
 #include <secp256k1/include/secp256k1.h>
 #endif

@@ -26,6 +26,7 @@ add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 target_link_libraries(${EXECUTABLE} ${Boost_THREAD_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${Boost_SYSTEM_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${Boost_FILESYSTEM_LIBRARIES})
+target_link_libraries(${EXECUTABLE} ${Boost_RANDOM_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${JSONCPP_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${DB_LIBRARIES})
 
