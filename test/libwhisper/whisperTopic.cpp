@@ -161,7 +161,6 @@ BOOST_AUTO_TEST_CASE(forwarding)
 		}
 	});
 
-
 	// Host must be configured not to share peers.
 	uint16_t port2 = 30313;
 	Host host2("Forwarder", NetworkPreferences("127.0.0.1", port2, false));
