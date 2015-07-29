@@ -182,7 +182,7 @@ BOOST_AUTO_TEST_CASE(send)
 	BOOST_REQUIRE_EQUAL(web3->peerCount(), 1);
 	
 	KeyPair us = KeyPair::create();
-	for (int i = 0; i < messageCount; ++i)
+	for (unsigned i = 0; i < messageCount; ++i)
 	{
 		web3->whisper()->post(us.sec(), RLPStream().append(i * i).out(), BuildTopic(i)(i % 2 ? "odd" : "even"), 777000, 1);
 		this_thread::sleep_for(chrono::milliseconds(50));
@@ -250,7 +250,7 @@ BOOST_AUTO_TEST_CASE(receive)
 	BOOST_REQUIRE_EQUAL(web3->peerCount(), 1);
 	
 	KeyPair us = KeyPair::create();
-	for (int i = 0; i < messageCount; ++i)
+	for (unsigned i = 0; i < messageCount; ++i)
 	{
 		web3->whisper()->post(us.sec(), RLPStream().append(i * i * i).out(), BuildTopic(i)(i % 2 ? "odd" : "even"), 777000, 1);
 		this_thread::sleep_for(chrono::milliseconds(50));
