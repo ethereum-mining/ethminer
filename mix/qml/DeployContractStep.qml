@@ -136,9 +136,11 @@ Rectangle {
 				ScrollView
 				{
 					anchors.fill: parent
+					horizontalScrollBarPolicy: Qt.ScrollBarAlwaysOff
 					ColumnLayout
 					{
 						spacing: 0
+
 						ListModel
 						{
 							id: trListModel
@@ -212,6 +214,13 @@ Rectangle {
 										text: name + "=" + value
 										font.italic: true
 									}
+								}
+
+								Rectangle
+								{
+									Layout.preferredWidth: scenarioList.width
+									Layout.preferredHeight: 1
+									color: "#cccccc"
 								}
 							}
 						}
