@@ -558,6 +558,20 @@ Json::Value WebThreeStubServerBase::admin_net_peers(std::string const& _session)
 	return ret;
 }
 
+Json::Value WebThreeStubServerBase::admin_net_nodeInfo(const string& _session)
+{
+	ADMIN;
+	Json::Value ret;
+	p2p::NodeInfo i = network()->nodeInfo();
+	ret["name"] = i.version;
+	ret["port"] = i.port;
+	ret["address"] = i.address;
+	ret["listenAddr"] = i.address + ":" + toString(i.port);
+	ret["id"] = i.id.hex();
+	ret["enode"] = i.enode();
+	return ret;
+}
+
 bool WebThreeStubServerBase::admin_eth_setMining(bool _on, std::string const& _session)
 {
 	ADMIN;
