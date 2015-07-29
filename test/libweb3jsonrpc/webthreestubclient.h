@@ -747,7 +747,7 @@ class WebThreeStubClient : public jsonrpc::Client
         {
             Json::Value p;
             p.append(param1);
-            Json::Value result = this->CallMethod("admin_eth_blockQueueStatus", p);
+            Json::Value result = this->CallMethod("admin_eth_blockQueueStatus",p);
             if (result.isObject())
                 return result;
             else
