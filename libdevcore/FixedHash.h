@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <algorithm>
 #include <boost/random/random_device.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
 #include "CommonData.h"
 
 namespace dev
@@ -154,7 +155,7 @@ public:
 	{
 		FixedHash ret;
 		for (auto& i: ret.m_data)
-			i = (uint8_t)std::uniform_int_distribution<uint16_t>(0, 255)(_eng);
+			i = (uint8_t)boost::random::uniform_int_distribution<uint16_t>(0, 255)(_eng);
 		return ret;
 	}
 
