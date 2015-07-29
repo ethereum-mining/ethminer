@@ -89,12 +89,4 @@ JSV8RPC::JSV8RPC(JSV8Engine const& _engine): m_engine(_engine)
 	v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(web3object->Get(setProvider));
 	v8::Local<v8::Value> values[1] = {obj};
 	func->Call(func, 1, values);
-
-	m_lastResponse = R"(
-	{
-		"id": 1,
-		"jsonrpc": "2.0",
-		"error": "Uninitalized JSV8RPC!"
-	}
-	)";
 }
