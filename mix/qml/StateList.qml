@@ -27,7 +27,7 @@ Dialog {
 				frameVisible: false
 				TableViewColumn {
 					role: "title"
-					title: qsTr("State")
+					title: qsTr("Scenario")
 					width: list.width
 				}
 			}
@@ -37,10 +37,6 @@ Dialog {
 				anchors.bottom: parent.bottom
 				anchors.right: parent.right
 				anchors.rightMargin: 10
-				Button {
-					action: addStateAction
-				}
-
 				Button {
 					action: closeAction
 				}
@@ -71,25 +67,12 @@ Dialog {
 					Layout.fillHeight: true
 					onClicked: list.model.deleteState(styleData.row);
 				}
-				ToolButton {
-					text: qsTr("Run");
-					Layout.fillHeight: true
-					onClicked: list.model.runState(styleData.row);
-				}
 			}
 		}
 	}
 
 	Row
 	{
-		Action {
-			id: addStateAction
-			text: qsTr("Add State")
-			shortcut: "Ctrl+T"
-			enabled: codeModel.hasContract && !clientModel.running;
-			onTriggered: list.model.addState();
-		}
-
 		Action {
 			id: closeAction
 			text: qsTr("Close")
