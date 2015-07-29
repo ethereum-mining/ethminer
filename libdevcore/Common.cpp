@@ -22,13 +22,14 @@
 #include "Common.h"
 #include "Exceptions.h"
 #include "Log.h"
+#include "BuildInfo.h"
 using namespace std;
 using namespace dev;
 
 namespace dev
 {
 
-char const* Version = "0.9.34";
+char const* Version = ETH_PROJECT_VERSION;
 
 const u256 UndefinedU256 = ~(u256)0;
 
@@ -57,4 +58,3 @@ TimerHelper::~TimerHelper()
 }
 
 }
-

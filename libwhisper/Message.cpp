@@ -60,7 +60,7 @@ bool Message::openBroadcastEnvelope(Envelope const& _e, Topics const& _fk, bytes
 		for (unsigned i = 0; i < _e.topic().size(); ++i)
 			if (_e.topic()[i] == knownTopic[ti])
 			{
-				topicSecret = _fk[ti];
+				topicSecret = Secret(_fk[ti]);
 				topicIndex = i;
 				break;
 			}
@@ -69,9 +69,9 @@ bool Message::openBroadcastEnvelope(Envelope const& _e, Topics const& _fk, bytes
 		return false;
 
 	unsigned index = topicIndex * 2;
-	h256 encryptedKey = h256(bytesConstRef(&(_e.data())).cropped(h256::size * index, h256::size));
+	Secret encryptedKey(bytesConstRef(&(_e.data())).cropped(h256::size * index, h256::size));
 	h256 salt = h256(bytesConstRef(&(_e.data())).cropped(h256::size * ++index, h256::size));
-	h256 key = generateGamma(topicSecret, salt) ^ encryptedKey;
+	Secret key = Secret(generateGamma(topicSecret, salt).makeInsecure() ^ encryptedKey.makeInsecure());
 	bytesConstRef cipherText = bytesConstRef(&(_e.data())).cropped(h256::size * 2 * _e.topic().size());
 	return decryptSym(key, cipherText, o_b);
 }
@@ -97,7 +97,7 @@ bool Message::populate(bytes const& _data)
 	return true;
 }
 
-Envelope Message::seal(Secret _from, Topics const& _fullTopics, unsigned _ttl, unsigned _workToProve) const
+Envelope Message::seal(Secret const& _from, Topics const& _fullTopics, unsigned _ttl, unsigned _workToProve) const
 {
 	AbridgedTopics topics = abridge(_fullTopics);
 	Envelope ret(time(0) + _ttl, _ttl, topics);
@@ -122,10 +122,10 @@ Envelope Message::seal(Secret _from, Topics const& _fullTopics, unsigned _ttl, u
 		// this message is for broadcast (could be read by anyone who knows at least one of the topics)
 		// create the shared secret for encrypting the payload, then encrypt the shared secret with each topic
 		Secret s = Secret::random();
-		for (h256 const& t : _fullTopics)
+		for (h256 const& t: _fullTopics)
 		{
 			h256 salt = h256::random();
-			ret.m_data += (generateGamma(t, salt) ^ s).asBytes();
+			ret.m_data += (generateGamma(Secret(t), salt).makeInsecure() ^ s.makeInsecure()).ref().toBytes();
 			ret.m_data += salt.asBytes();
 		}
 

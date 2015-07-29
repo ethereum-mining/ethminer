@@ -35,7 +35,8 @@ namespace eth
 class EthashCPUMiner: public GenericMiner<EthashProofOfWork>, Worker
 {
 public:
-	EthashCPUMiner(GenericMiner<EthashProofOfWork>::ConstructionInfo const& _ci): GenericMiner<EthashProofOfWork>(_ci), Worker("miner" + toString(index())) {}
+	EthashCPUMiner(GenericMiner<EthashProofOfWork>::ConstructionInfo const& _ci);
+	~EthashCPUMiner();
 
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : std::thread::hardware_concurrency(); }
 	static std::string platformInfo();
@@ -44,13 +45,8 @@ public:
 	static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency()); }
 
 protected:
-	void kickOff() override
-	{
-		stopWorking();
-		startWorking();
-	}
-
-	void pause() override { stopWorking(); }
+	void kickOff() override;
+	void pause() override;
 
 private:
 	void workLoop() override;

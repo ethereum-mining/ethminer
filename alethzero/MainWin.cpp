@@ -233,7 +233,7 @@ Main::Main(QWidget *parent) :
 	m_httpConnector.reset(new jsonrpc::HttpServer(SensibleHttpPort, "", "", dev::SensibleHttpThreads));
 	auto w3ss = new OurWebThreeStubServer(*m_httpConnector, this);
 	m_server.reset(w3ss);
-	auto sessionKey = w3ss->newSession(SessionPermissions{{Priviledge::Admin}});
+	auto sessionKey = w3ss->newSession(SessionPermissions{{Privilege::Admin}});
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
@@ -360,8 +360,7 @@ void Main::refreshWhisper()
 
 void Main::addNewId(QString _ids)
 {
-	Secret _id = jsToSecret(_ids.toStdString());
-	KeyPair kp(_id);
+	KeyPair kp(jsToSecret(_ids.toStdString()));
 	m_myIdentities.push_back(kp);
 	m_server->setIdentities(keysAsVector(owned()));
 	refreshWhisper();
@@ -847,28 +846,14 @@ void Main::readSettings(bool _skipGeometry)
 	restoreState(s.value("windowState").toByteArray());
 
 	{
-		QByteArray b = s.value("address").toByteArray();
-		if (!b.isEmpty())
-		{
-			h256 k;
-			for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
-			{
-				memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
-				if (!m_keyManager.hasAccount(KeyPair(k).address()))
-					m_keyManager.import(k, "Imported (UNSAFE) key.");
-			}
-		}
-	}
-
-	{
 		m_myIdentities.clear();
 		QByteArray b = s.value("identities").toByteArray();
 		if (!b.isEmpty())
 		{
-			h256 k;
+			Secret k;
 			for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
 			{
-				memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
+				memcpy(k.writable().data(), b.data() + i * sizeof(Secret), sizeof(Secret));
 				if (!count(m_myIdentities.begin(), m_myIdentities.end(), KeyPair(k)))
 					m_myIdentities.append(KeyPair(k));
 			}
@@ -961,7 +946,7 @@ void Main::on_importKey_triggered()
 	bytes b = fromHex(s.toStdString());
 	if (b.size() == 32)
 	{
-		auto k = KeyPair(h256(b));
+		auto k = KeyPair(Secret(bytesConstRef(&b)));
 		if (!m_keyManager.hasAccount(k.address()))
 		{
 			QString s = QInputDialog::getText(this, "Import Account Key", "Enter this account's name");
@@ -1017,46 +1002,18 @@ void Main::on_claimPresale_triggered()
 	QString s = QFileDialog::getOpenFileName(this, "Claim Account Contents", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
 	try
 	{
-		js::mValue val;
-		json_spirit::read_string(asString(dev::contents(s.toStdString())), val);
-		auto obj = val.get_obj();
-		if (obj["encseed"].type() == js::str_type)
-		{
-			auto encseed = fromHex(obj["encseed"].get_str());
-			KeyPair k;
-			for (bool gotit = false; !gotit;)
-			{
-				gotit = true;
-				k = KeyPair::fromEncryptedSeed(&encseed, QInputDialog::getText(this, "Enter Password", "Enter the wallet's passphrase", QLineEdit::Password).toStdString());
-				if (obj["ethaddr"].type() == js::str_type)
-				{
-					Address a(obj["ethaddr"].get_str());
-					Address b = k.address();
-					if (a != b)
-					{
-						if (QMessageBox::warning(this, "Password Wrong", "Could not import the secret key: the password you gave appears to be wrong.", QMessageBox::Retry, QMessageBox::Cancel) == QMessageBox::Cancel)
-							return;
-						else
-							gotit = false;
-					}
-				}
-			}
-
-			cnote << k.address();
-			if (!m_keyManager.hasAccount(k.address()))
-				ethereum()->submitTransaction(k.sec(), ethereum()->balanceAt(k.address()) - gasPrice() * c_txGas, m_beneficiary, {}, c_txGas, gasPrice());
-			else
-				QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
-		}
+		KeyPair k = m_keyManager.presaleSecret(dev::contentsString(s.toStdString()), [&](bool){ return QInputDialog::getText(this, "Enter Password", "Enter the wallet's passphrase", QLineEdit::Password).toStdString(); });
+		cnote << k.address();
+		if (!m_keyManager.hasAccount(k.address()))
+			ethereum()->submitTransaction(k.sec(), ethereum()->balanceAt(k.address()) - gasPrice() * c_txGas, m_beneficiary, {}, c_txGas, gasPrice());
 		else
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("encseed type is not js::str_type") );
-
+			QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
 	}
+	catch (dev::eth::PasswordUnknown&) {}
 	catch (...)
 	{
 		cerr << "Unhandled exception!" << endl <<
 			boost::current_exception_diagnostic_information();
-
 		QMessageBox::warning(this, "Key File Invalid", "Could not find secret key definition. This is probably not an Ethereum key file.");
 	}
 }
@@ -1068,7 +1025,7 @@ void Main::on_exportKey_triggered()
 		auto hba = ui->ourAccounts->currentItem()->data(Qt::UserRole).toByteArray();
 		Address h((byte const*)hba.data(), Address::ConstructFromPointer);
 		Secret s = retrieveSecret(h);
-		QMessageBox::information(this, "Export Account Key", "Secret key to account " + QString::fromStdString(render(h) + " is:\n" + s.hex()));
+		QMessageBox::information(this, "Export Account Key", "Secret key to account " + QString::fromStdString(render(h) + " is:\n" + s.makeInsecure().hex()));
 	}
 }
 
@@ -1340,9 +1297,7 @@ void Main::refreshAccounts()
 	bool showContract = ui->showContracts->isChecked();
 	bool showBasic = ui->showBasic->isChecked();
 	bool onlyNamed = ui->onlyNamed->isChecked();
-	auto as = ethereum()->addresses();
-	sort(as.begin(), as.end());
-	for (auto const& i: as)
+	for (auto const& i: ethereum()->addresses())
 	{
 		bool isContract = (ethereum()->codeHashAt(i) != EmptySHA3);
 		if (!((showContract && isContract) || (showBasic && !isContract)))
