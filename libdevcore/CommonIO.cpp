@@ -91,6 +91,14 @@ bytes dev::contents(string const& _file)
 	return contentsGeneric<bytes>(_file);
 }
 
+bytesSec dev::contentsSec(string const& _file)
+{
+	bytes b = contentsGeneric<bytes>(_file);
+	bytesSec ret(b);
+	bytesRef(&b).cleanse();
+	return ret;
+}
+
 string dev::contentsString(string const& _file)
 {
 	return contentsGeneric<string>(_file);
