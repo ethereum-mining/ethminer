@@ -354,13 +354,7 @@ void Nonce::initialiseIfNeeded()
 	if (b.size() == 32)
 		memcpy(m_value.data(), b.data(), 32);
 	else
-	{
-		// todo: replace w/entropy from user and system
-		std::mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
-		std::uniform_int_distribution<uint16_t> d(0, 255);
-		for (unsigned i = 0; i < 32; ++i)
-			m_value[i] = (uint8_t)d(s_eng);
-	}
+		m_value = h256::random();
 	if (!m_value)
 		BOOST_THROW_EXCEPTION(InvalidState());
 
