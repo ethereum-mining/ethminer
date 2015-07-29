@@ -76,6 +76,7 @@
 { "name": "admin_net_connect", "params": ["", ""], "returns": true },
 { "name": "admin_net_peers", "params": [""], "returns": [] },
 { "name": "admin_eth_blockQueueStatus", "params": [""], "returns": {}},
+{ "name": "admin_eth_nodeInfo", "params": [""], "returns": {}},
 { "name": "admin_eth_setAskPrice", "params": ["", ""], "returns": true },
 { "name": "admin_eth_setBidPrice", "params": ["", ""], "returns": true },
 { "name": "admin_eth_setReferencePrice", "params": ["", ""], "returns": true },
