@@ -150,7 +150,7 @@ bool dev::decryptSym(Secret const& _k, bytesConstRef _cipher, bytes& o_plain)
 
 std::pair<bytes, h128> dev::encryptSymNoAuth(SecureFixedHash<16> const& _k, bytesConstRef _plain)
 {
-	h128 iv(Nonce::get());
+	h128 iv(Nonce::get().makeInsecure());
 	return make_pair(encryptSymNoAuth(_k, iv, _plain), iv);
 }
 
@@ -312,7 +312,7 @@ h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 mutex Nonce::s_x;
 static string s_seedFile;
 
-h256 Nonce::get()
+Secret Nonce::get()
 {
 	// todo: atomic efface bit, periodic save, kdf, rr, rng
 	// todo: encrypt
@@ -350,11 +350,11 @@ void Nonce::initialiseIfNeeded()
 	if (m_value)
 		return;
 
-	bytes b = contents(seedFile());
+	bytesSec b = contentsSec(seedFile());
 	if (b.size() == 32)
-		memcpy(m_value.data(), b.data(), 32);
+		b.ref().populate(m_value.writable().ref());
 	else
-		m_value = h256::random();
+		m_value = Secret::random();
 	if (!m_value)
 		BOOST_THROW_EXCEPTION(InvalidState());
 
@@ -363,7 +363,7 @@ void Nonce::initialiseIfNeeded()
 	writeFile(seedFile(), bytes());
 }
 
-h256 Nonce::next()
+Secret Nonce::next()
 {
 	initialiseIfNeeded();
 	m_value = sha3(m_value);
@@ -374,8 +374,8 @@ void Nonce::resetInternal()
 {
 	// this might throw
 	next();
-	writeFile(seedFile(), m_value.asBytes());
-	m_value = h256();
+	writeFile(seedFile(), m_value.ref());
+	m_value.clear();
 }
 
 string const& Nonce::seedFile()
