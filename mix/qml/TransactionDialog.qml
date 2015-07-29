@@ -125,7 +125,7 @@ Dialog {
 	function loadParameters() {
 		paramsModel = []
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
-			var contract = codeModel.contracts[TransactionHelper.contractFromToken(contractCreationComboBox.currentValue())];
+			var contract = codeModel.contracts[TransactionHelper.contractFromToken(recipientsAccount.currentValue())];
 			if (contract) {
 				var func = getFunction(functionComboBox.currentText, contract);
 				if (func) {
@@ -498,9 +498,7 @@ Dialog {
 						paramScroll.visible = paramsModel.length > 0
 						paramScroll.Layout.preferredHeight = paramsModel.length < 6 ? paramsModel.length * 30 : 205
 						if (paramsModel.length === 0)
-						{
 							paramScroll.height = 0
-						}
 					}
 				}
 

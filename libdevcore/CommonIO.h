@@ -48,6 +48,8 @@ std::string getPassword(std::string const& _prompt);
 /// Retrieve and returns the contents of the given file.
 /// If the file doesn't exist or isn't readable, returns an empty container / bytes.
 bytes contents(std::string const& _file);
+/// Secure variation.
+bytesSec contentsSec(std::string const& _file);
 /// Retrieve and returns the contents of the given file as a std::string.
 /// If the file doesn't exist or isn't readable, returns an empty container / bytes.
 std::string contentsString(std::string const& _file);
