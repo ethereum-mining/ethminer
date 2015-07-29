@@ -58,8 +58,7 @@ public:
 			std::string rl;
 #if ETH_READLINE
 			char* buff = readline(promptForIndentionLevel(openBrackets).c_str());
-			isEmpty = !buff;
-			if (!isEmpty)
+			if (buff)
 			{
 				rl = std::string(buff);
 				free(buff);
@@ -67,16 +66,19 @@ public:
 #else
 			std::cout << promptForIndentionLevel(openBrackets) << std::flush;
 			std::getline(std::cin, rl);
-			isEmpty = rl.length() == 0;
 #endif
+			isEmpty = rl.empty();
+			//@todo this should eventually check the structure of the input, since unmatched
+			// brackets in strings will fail to execute the input now.
 			if (!isEmpty)
 			{
 				cmd += rl;
-				cmd += " ";
-				int open = std::count(cmd.begin(), cmd.end(), '{');
-				open += std::count(cmd.begin(), cmd.end(), '(');
-				int closed = std::count(cmd.begin(), cmd.end(), '}');
-				closed += std::count(cmd.begin(), cmd.end(), ')');
+				int open = 0;
+				for (char c: {'{', '[', '('})
+					open += std::count(cmd.begin(), cmd.end(), c);
+				int closed = 0;
+				for (char c: {'}', ']', ')'})
+					closed += std::count(cmd.begin(), cmd.end(), c);
 				openBrackets = open - closed;
 			}
 		} while (openBrackets > 0);
