@@ -71,7 +71,6 @@ private:
 
 	virtual bool eth_notePassword(std::string const& _password) override;
 	virtual Json::Value admin_eth_blockQueueStatus(std::string const& _session) override;
-	virtual Json::Value admin_eth_nodeInfo(std::string const& _session) override;
 	virtual bool admin_eth_setAskPrice(std::string const& _wei, std::string const& _session) override;
 	virtual bool admin_eth_setBidPrice(std::string const& _wei, std::string const& _session) override;
 
