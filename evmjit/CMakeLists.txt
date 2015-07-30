@@ -27,12 +27,14 @@ endif()
 # LLVM
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND NOT LLVM_DIR)
 	# Workaround for Ubuntu broken LLVM package
-	message(STATUS "Using llvm-3.7-dev package from Ubuntu. If does not work, build LLVM and set -DLLVM_DIR=llvm-build/share/llvm/cmake")
-	execute_process(COMMAND llvm-config-3.7 --includedir OUTPUT_VARIABLE LLVM_INCLUDE_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
+	# Ubuntu 14.04 replaced llvm3.7-dev with llvm3.8-dev in anticipation of llvm 3.7 release.
+	# We are forced to use the 3.8-dev package until llvm 3.7 release. TODO: Fix when 3.7 is released.
+	message(STATUS "Using llvm-3.8-dev package from Ubuntu. If does not work, build LLVM and set -DLLVM_DIR=llvm-build/share/llvm/cmake")
+	execute_process(COMMAND llvm-config-3.8 --includedir OUTPUT_VARIABLE LLVM_INCLUDE_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
 	message(STATUS "LLVM include dirs: ${LLVM_INCLUDE_DIRS}")
 	set(LLVM_LIBS "-lLLVMipo -lLLVMVectorize -lLLVMX86AsmParser -lLLVMX86CodeGen -lLLVMX86Desc -lLLVMX86Info -lLLVMMCDisassembler -lLLVMX86AsmPrinter -lLLVMX86Utils -lLLVMSelectionDAG -lLLVMAsmPrinter -lLLVMCodeGen -lLLVMScalarOpts -lLLVMProfileData -lLLVMInstCombine -lLLVMInstrumentation -lLLVMTransformUtils -lLLVMipa -lLLVMMCJIT -lLLVMExecutionEngine -lLLVMTarget -lLLVMAnalysis -lLLVMRuntimeDyld -lLLVMObject -lLLVMMCParser -lLLVMBitReader -lLLVMMC -lLLVMCore -lLLVMSupport -lz -lpthread -lffi -ltinfo -ldl -lm")
 	set(LLVM_DEFINITIONS "-D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS")
-	link_directories(/usr/lib/llvm-3.7/lib)
+	link_directories(/usr/lib/llvm-3.8/lib)
 else()
 	find_package(LLVM REQUIRED CONFIG)
 	if (${LLVM_VERSION} VERSION_LESS 3.7)
