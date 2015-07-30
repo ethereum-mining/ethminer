@@ -761,7 +761,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	try
 	{
 		State canary(_db, BaseState::Empty);
-		canary.populateFromChain(*this, _block.info.hash(), ImportRequirements::DontHave);
+		canary.populateFromChain(*this, _block.info.hash());
 	}
 	catch (...)
 	{
