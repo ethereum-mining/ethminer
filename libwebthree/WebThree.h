@@ -53,6 +53,9 @@ namespace bzz { class Interface; }
 class WebThreeNetworkFace
 {
 public:
+	/// Get information concerning this node.
+	virtual p2p::NodeInfo nodeInfo() const = 0;
+
 	/// Get information on the current peer set.
 	virtual std::vector<p2p::PeerSessionInfo> peers() = 0;
 
@@ -90,7 +93,8 @@ public:
 	/// Is network working? there may not be any peers yet.
 	virtual bool isNetworkStarted() const = 0;
 
-	std::string enode() const { return "enode://" + toHex(id().ref()) + "@" + (networkPreferences().publicIPAddress.empty() ? "127.0.0.1" : networkPreferences().publicIPAddress) + ":" + toString(networkPreferences().listenPort); }
+	/// Get enode string.
+	virtual std::string enode() const = 0;
 };
 
 
@@ -173,7 +177,11 @@ public:
 
 	void setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers = false) override;
 
+	p2p::NodeInfo nodeInfo() const override { return m_net.nodeInfo(); }
+
 	p2p::NodeId id() const override { return m_net.id(); }
+
+	std::string enode() const override { return m_net.enode(); }
 
 	/// Gets the nodes.
 	p2p::Peers nodes() const override { return m_net.getPeers(); }

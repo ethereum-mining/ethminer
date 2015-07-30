@@ -1,7 +1,7 @@
 # cmake global
 cmake_minimum_required(VERSION 2.8.12)
 
-set(PROJECT_VERSION "0.9.36")
+set(PROJECT_VERSION "0.9.37")
 if (${CMAKE_VERSION} VERSION_GREATER 3.0)
 	cmake_policy(SET CMP0048 NEW) 	# allow VERSION argument in project()
 	project(ethereum VERSION ${PROJECT_VERSION})
@@ -312,12 +312,8 @@ if (GUI)
 	set(JSONRPC ON)
 endif()
 
-# Default CMAKE_BUILD_TYPE to "Release".
+# Default CMAKE_BUILD_TYPE accordingly.
 set(CMAKE_BUILD_TYPE CACHE STRING ${D_CMAKE_BUILD_TYPE})
-
-#if ("x${CMAKE_BUILD_TYPE}" STREQUAL "x")
-#	set(CMAKE_BUILD_TYPE ${D_CMAKE_BUILD_TYPE})
-#endif ()
 
 # Default TARGET_PLATFORM to ${CMAKE_SYSTEM_NAME}
 # change this once we support cross compiling
