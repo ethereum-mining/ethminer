@@ -1883,7 +1883,8 @@ void Main::on_dumpBlockState_triggered()
 				a["storage"] = st;
 				s[i.first.hex()] = a;
 			}
-			js::write_stream(s, f, true);
+			js::mValue v(s);
+			js::write_stream(v, f, true);
 		}
 	}
 }
