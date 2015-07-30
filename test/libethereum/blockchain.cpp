@@ -838,11 +838,11 @@ BOOST_AUTO_TEST_CASE(bcGasPricerTest)
 	dev::test::executeTests("bcGasPricerTest", "/BlockchainTests",dev::test::getFolder(__FILE__) + "/BlockchainTestsFiller", dev::test::doBlockchainTests);
 }
 
-BOOST_AUTO_TEST_CASE(bcBruncleTest)
-{
-	if (c_network != Network::Frontier)
-		dev::test::executeTests("bcBruncleTest", "/BlockchainTests",dev::test::getFolder(__FILE__) + "/BlockchainTestsFiller", dev::test::doBlockchainTests);
-}
+//BOOST_AUTO_TEST_CASE(bcBruncleTest)
+//{
+//	if (c_network != Network::Frontier)
+//		dev::test::executeTests("bcBruncleTest", "/BlockchainTests",dev::test::getFolder(__FILE__) + "/BlockchainTestsFiller", dev::test::doBlockchainTests);
+//}
 
 BOOST_AUTO_TEST_CASE(bcBlockGasLimitTest)
 {
