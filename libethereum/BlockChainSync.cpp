@@ -684,6 +684,7 @@ void PV60Sync::syncHashes(std::shared_ptr<EthereumPeer> _peer)
 void PV60Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
 {
 	RecursiveGuard l(x_sync);
+	DEV_INVARIANT_CHECK;
 	if (!isSyncing(_peer))
 	{
 		clog(NetMessageSummary) << "Ignoring hashes since not syncing";
@@ -737,12 +738,12 @@ void PV60Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _h
 	}
 	// run through - ask for more.
 	transition(_peer, SyncState::Hashes);
-	DEV_INVARIANT_CHECK;
 }
 
 void PV60Sync::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _hashes)
 {
 	RecursiveGuard l(x_sync);
+	DEV_INVARIANT_CHECK;
 	if (isSyncing() && (m_state != SyncState::NewBlocks || isSyncing(_peer)))
 	{
 		clog(NetMessageDetail) << "Ignoring new hashes since we're already downloading.";
@@ -794,11 +795,11 @@ void PV60Sync::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const&
 			}
 		resetSync();
 	}
-	DEV_INVARIANT_CHECK;
 }
 
 void PV60Sync::abortSync()
 {
+	DEV_INVARIANT_CHECK;
 	// Can't check invariants here since the peers is already removed from the list and the state is not updated yet.
 	bool continueSync = false;
 	if (m_state == SyncState::Blocks)
@@ -827,12 +828,12 @@ void PV60Sync::abortSync()
 		// Just set to idle. Hashchain is keept, Sync will be continued if there are more peers to sync with
 		setState(std::shared_ptr<EthereumPeer>(), SyncState::Idle, false, true);
 	}
-	DEV_INVARIANT_CHECK;
 }
 
 void PV60Sync::onPeerAborting()
 {
 	RecursiveGuard l(x_sync);
+	DEV_INVARIANT_CHECK;
 	// Can't check invariants here since the peers is already removed from the list and the state is not updated yet.
 	if (m_syncer.expired() && m_state != SyncState::Idle)
 	{
@@ -840,7 +841,6 @@ void PV60Sync::onPeerAborting()
 		m_syncer.reset();
 		abortSync();
 	}
-	DEV_INVARIANT_CHECK;
 }
 
 bool PV60Sync::invariants() const

@@ -36,6 +36,19 @@ Rectangle {
 			accountsList.currentIndex = 0
 		}
 
+		verifyDeployedContract()
+
+		deployedAddresses.refresh()
+		worker.renewCtx()
+
+		worker.pooler.onTriggered.connect(function() {
+			if (root.visible)
+				verifyDeployedContract();
+		})
+	}
+
+	function verifyDeployedContract()
+	{
 		if (projectModel.deployBlockNumber !== -1)
 		{
 			worker.verifyHashes(projectModel.deploymentTrHashes, function (bn, trLost)
@@ -43,8 +56,6 @@ Rectangle {
 				root.updateVerification(bn, trLost)
 			});
 		}
-		deployedAddresses.refresh()
-		worker.renewCtx()
 	}
 
 	function updateVerification(blockNumber, trLost)
@@ -112,14 +123,10 @@ Rectangle {
 						for (var k = 0; k < projectModel.stateListModel.get(currentIndex).blocks.count; k++)
 						{
 							for (var j = 0; j < projectModel.stateListModel.get(currentIndex).blocks.get(k).transactions.count; j++)
-							{
 								trListModel.append(projectModel.stateListModel.get(currentIndex).blocks.get(k).transactions.get(j));
-							}
 						}
 						for (var k = 0; k < trListModel.count; k++)
-						{
 							trList.itemAt(k).init()
-						}
 						ctrDeployCtrLabel.calculateContractDeployGas();
 					}
 				}
@@ -168,9 +175,7 @@ Rectangle {
 									if (trListModel.get(index).parameters)
 									{
 										for (var k in trListModel.get(index).parameters)
-										{
 											paramList.append({ "name": k, "value": trListModel.get(index).parameters[k] })
-										}
 									}
 								}
 
@@ -228,7 +233,6 @@ Rectangle {
 				}
 			}
 		}
-
 
 		ColumnLayout
 		{
@@ -495,7 +499,8 @@ Rectangle {
 					id: clearDeployAction
 					onTriggered: {
 						worker.forceStopPooling()
-						fileIo.deleteDir(projectModel.deploymentDir)
+						if (projectModel.deploymentDir && projectModel.deploymentDir !== "")
+							fileIo.deleteDir(projectModel.deploymentDir)
 						projectModel.cleanDeploymentStatus()
 						deploymentDialog.steps.reset()
 					}

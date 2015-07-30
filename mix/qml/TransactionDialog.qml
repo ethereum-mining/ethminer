@@ -126,7 +126,7 @@ Dialog {
 	function loadParameters() {
 		paramsModel = []
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
-			var contract = codeModel.contracts[TransactionHelper.contractFromToken(contractCreationComboBox.currentValue())];
+			var contract = codeModel.contracts[TransactionHelper.contractFromToken(recipientsAccount.currentValue())];
 			if (contract) {
 				var func = getFunction(functionComboBox.currentText, contract);
 				if (func) {

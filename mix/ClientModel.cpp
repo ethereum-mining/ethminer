@@ -81,7 +81,7 @@ ClientModel::ClientModel():
 	qRegisterMetaType<QInstruction*>("QInstruction");
 	qRegisterMetaType<QCode*>("QCode");
 	qRegisterMetaType<QCallData*>("QCallData");
-	qRegisterMetaType<RecordLogEntry*>("RecordLogEntry*");	
+	qRegisterMetaType<RecordLogEntry*>("RecordLogEntry*");
 }
 
 ClientModel::~ClientModel()
@@ -236,6 +236,7 @@ void ClientModel::setupScenario(QVariantMap _scenario)
 
 	QVariantList blocks = _scenario.value("blocks").toList();
 	QVariantList stateAccounts = _scenario.value("accounts").toList();
+	QVariantList stateContracts = _scenario.value("contracts").toList();
 
 	m_accounts.clear();
 	m_accountsSecret.clear();
@@ -257,6 +258,19 @@ void ClientModel::setupScenario(QVariantMap _scenario)
 		m_accounts[address] = Account(qvariant_cast<QEther*>(account.value("balance"))->toU256Wei(), Account::NormalCreation);
 	}
 	m_ethAccounts->setAccounts(m_accountsSecret);
+
+	for (auto const& c: stateContracts)
+	{
+		QVariantMap contract = c.toMap();
+		Address address = Address(fromHex(contract.value("address").toString().toStdString()));
+		Account account(qvariant_cast<QEther*>(contract.value("balance"))->toU256Wei(), Account::ContractConception);
+		bytes code = fromHex(contract.value("code").toString().toStdString());
+		account.setCode(std::move(code));
+		QVariantMap storageMap = contract.value("storage").toMap();
+		for(auto s = storageMap.cbegin(); s != storageMap.cend(); ++s)
+			account.setStorage(fromBigEndian<u256>(fromHex(s.key().toStdString())), fromBigEndian<u256>(fromHex(s.value().toString().toStdString())));
+		m_accounts[address] = account;
+	}
 
 	bool trToExecute = false;
 	for (auto const& b: blocks)
@@ -910,7 +924,7 @@ void ClientModel::onNewTransaction()
 	QVariantMap accountBalances;
 	for (auto const& ctr : m_contractAddresses)
 	{
-		u256 wei = m_client->balanceAt(ctr.second, PendingBlock);		
+		u256 wei = m_client->balanceAt(ctr.second, PendingBlock);
 		accountBalances.insert("0x" + QString::fromStdString(ctr.second.hex()), QEther(wei, QEther::Wei).format());
 	}
 	for (auto const& account : m_accounts)

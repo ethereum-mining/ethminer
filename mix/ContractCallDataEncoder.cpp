@@ -21,6 +21,7 @@
  */
 
 #include <vector>
+#include <QtCore/qmath.h>
 #include <QMap>
 #include <QStringList>
 #include <QJsonArray>
@@ -223,11 +224,7 @@ dev::bytes ContractCallDataEncoder::decodeBytes(dev::bytes const& _rawValue)
 
 QString ContractCallDataEncoder::toString(dev::bytes const& _b)
 {
-	QString str;
-	if (asString(_b, str))
-		return  "\"" + str +  "\" " + QString::fromStdString(dev::toJS(_b));
-	else
-		return QString::fromStdString(dev::toJS(_b));
+	return QString::fromStdString(dev::toJS(_b));
 }
 
 QString ContractCallDataEncoder::toChar(dev::bytes const& _b)
@@ -242,8 +239,6 @@ QJsonValue ContractCallDataEncoder::decodeArrayContent(SolidityType const& _type
 	if (_type.baseType->array)
 	{
 		QJsonArray sub = decodeArray(*_type.baseType, _value, pos);
-		if (_type.baseType->dynamicSize)
-			pos = pos + 32;
 		return sub;
 	}
 	else
