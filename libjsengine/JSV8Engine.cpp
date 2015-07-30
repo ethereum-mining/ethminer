@@ -22,6 +22,7 @@
 
 #include <memory>
 #include "JSV8Engine.h"
+#include "JSV8Printer.h"
 #include "libjsengine/JSEngineResources.hpp"
 #include "BuildInfo.h"
 
@@ -91,6 +92,16 @@ void reportException(v8::TryCatch* _tryCatch)
 	}
 }
 
+v8::Handle<v8::Value> ConsoleLog(v8::Arguments const& _args)
+{
+	auto engine = reinterpret_cast<JSV8Engine const*>(v8::External::Unwrap(_args.Data()));
+	JSV8Printer printer(*engine);
+	for (int i = 0; i < _args.Length(); ++i)
+		printf("%s\n", printer.prettyPrint(_args[i]).cstr());
+	return v8::Undefined();
+}
+
+
 class JSV8Scope
 {
 public:
@@ -142,6 +153,17 @@ JSV8Engine::JSV8Engine(): m_scope(new JSV8Scope())
 	eval(web3.c_str());
 	eval("web3 = require('web3');");
 	eval(admin.c_str());
+
+	auto consoleTemplate = v8::ObjectTemplate::New();
+	for (auto property: {"log", "debug", "error"})
+		consoleTemplate->Set(
+			v8::String::New(property),
+			v8::FunctionTemplate::New(ConsoleLog, v8::External::Wrap(this))
+		);
+	context()->Global()->Set(
+		v8::String::New("console"),
+		consoleTemplate->NewInstance()
+	 );
 }
 
 JSV8Engine::~JSV8Engine()
