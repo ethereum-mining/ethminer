@@ -217,6 +217,8 @@ bool WebThreeStubServer::admin_eth_setMiningBenefactor(std::string const& _uuidO
 		throw jsonrpc::JsonRpcException("Invalid UUID or address");
 	if (m_setMiningBenefactor)
 		m_setMiningBenefactor(a);
+	else
+		m_web3.ethereum()->setAddress(a);
 	return true;
 }
 
