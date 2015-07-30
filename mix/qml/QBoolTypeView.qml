@@ -53,7 +53,6 @@ Item
 			for (var k in JSON.parse(boolArray.text))
 				formattedparam.push(parseInt(format(param[k])))
 			boolArray.text = JSON.stringify(formattedparam)
-
 		}
 	}
 
