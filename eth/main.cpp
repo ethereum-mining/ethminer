@@ -1126,7 +1126,7 @@ int main(int argc, char** argv)
 	bool bootstrap = false;
 	bool disableDiscovery = false;
 	bool pinning = false;
-	unsigned networkId = 0;
+	unsigned networkId = (unsigned)-1;
 
 	/// Mining params
 	unsigned mining = 0;
@@ -1522,6 +1522,8 @@ int main(int argc, char** argv)
 		CanonBlockChain<Ethash>::setGenesis(genesisJSON);
 	if (gasFloor != UndefinedU256)
 		c_gasFloorTarget = gasFloor;
+	if (networkId == (unsigned)-1)
+		networkId =  c_network;
 
 	if (g_logVerbosity > 0)
 	{
