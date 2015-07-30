@@ -223,6 +223,7 @@
     <addaction name="debugCurrent"/>
     <addaction name="debugDumpState"/>
     <addaction name="debugDumpStatePre"/>
+    <addaction name="dumpBlockState"/>
    </widget>
    <widget class="QMenu" name="menu_Config">
     <property name="title">
@@ -1817,6 +1818,11 @@ font-size: 14pt</string>
    </property>
    <property name="text">
     <string>&amp;Hermit Mode</string>
+   </property>
+  </action>
+  <action name="dumpBlockState">
+   <property name="text">
+    <string>Dump &amp;Block State as JSON...</string>
    </property>
   </action>
  </widget>
