@@ -53,10 +53,14 @@ Item
 			for (var k in JSON.parse(boolArray.text))
 				formattedparam.push(parseInt(format(param[k])))
 			boolArray.text = JSON.stringify(formattedparam)
-			value = ""
-			value = boolArray.text
-			console.log("gfdg " + value)
+
 		}
+	}
+
+	function finalize()
+	{
+		if (isArray())
+			value = boolArray.text
 	}
 
 	function format(value)

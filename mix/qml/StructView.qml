@@ -91,11 +91,6 @@ Column
 					var pname = members[index].name;
 					var vals = value;
 
-					item.onValueChanged.connect(function() {
-						vals[pname] = item.value;
-						valueChanged();
-					});
-
 					item.readOnly = context === "variable";
 					if (ptype.category === QSolidityType.Address)
 					{
@@ -107,7 +102,6 @@ Column
 							item.subType = dec[0];
 							item.load();
 						}
-						console.log("jj" + pname)
 						item.init();
 					}
 					else if (ptype.category === QSolidityType.Struct && !item.members)
@@ -124,9 +118,17 @@ Column
 						item.init();
 					}
 
+					item.onValueChanged.connect(function() {
+						vals[pname] = item.value;
+						valueChanged();
+					});
+
 					var newWidth = nameLabel.width + typeLabel.width + item.width + 108;
 					if (root.width < newWidth)
 						root.width = newWidth;
+
+					if (item.finalize)
+						item.finalize()
 				}
 
 				function getValue()
