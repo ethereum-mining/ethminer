@@ -193,6 +193,7 @@ private slots:
 	void on_debugCurrent_triggered();
 	void on_debugDumpState_triggered() { debugDumpState(1); }
 	void on_debugDumpStatePre_triggered() { debugDumpState(0); }
+	void on_dumpBlockState_triggered();
 
 	// Whisper
 	void on_newIdentity_triggered();
