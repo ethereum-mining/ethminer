@@ -39,7 +39,6 @@ extdep/download
 
 *.pyc
 
-
 # MacOS Development
 .DS_Store
 # CocoaPods
