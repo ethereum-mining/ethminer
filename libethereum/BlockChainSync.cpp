@@ -1145,8 +1145,12 @@ void PV61Sync::onPeerAborting()
 		if (s->first.expired())
 		{
 			unsigned number = s->second;
-			m_readyChainMap[number] = move(m_downloadingChainMap.at(number));
-			m_downloadingChainMap.erase(number);
+			auto downloading = m_downloadingChainMap.find(number);
+			if (downloading != m_downloadingChainMap.end())
+			{
+				m_readyChainMap[number] = move(downloading->second);
+				m_downloadingChainMap.erase(number);
+			}
 			m_chainSyncPeers.erase(s++);
 		}
 		else
