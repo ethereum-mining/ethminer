@@ -1,11 +1,4 @@
-console = {};
-console.log = function () {
-};
-console.warn = function () {
-};
-console.error = function () {
-};
-
 setTimeout = function () {
+	console.error("setTimeout not available in this environment.");
 };
 
