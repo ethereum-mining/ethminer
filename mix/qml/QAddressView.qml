@@ -88,6 +88,7 @@ ColumnLayout
 
 	function init()
 	{
+		btnAdd.visible = isArray()
 		textinput.readOnly = readOnly
 		if (isArray() || readOnly)
 			displayInput = true
@@ -101,25 +102,28 @@ ColumnLayout
 
 		if (!trCombobox.visible)
 		{
+			rowCombobox.visible = false
+			rowCombobox.height = 0
 			trCombobox.height = 0
 			textinput.anchors.top = textinput.parent.top
 		}
 
-
 		if (!readOnly)
 		{
+			trCombobox.currentIndex = 0
 			for (var k = 0; k < ctrModel.count; k++)
 			{
 				if (ctrModel.get(k).value === value)
 				{
-					trCombobox.currentIndex = k;
-					return;
+					trCombobox.currentIndex = k
+					break
 				}
 			}
-			trCombobox.currentIndex = 0;
 		}
 		if (!isArray())
 			trCombobox.update()
+		else if (value === "")
+			textinput.text = "[]"
 	}
 
 	function select(address)
