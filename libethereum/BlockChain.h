@@ -122,12 +122,12 @@ public:
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	std::pair<ImportResult, ImportRoute> attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Everything) noexcept;
+	std::pair<ImportResult, ImportRoute> attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _mutBeNew = true) noexcept;
 
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	ImportRoute import(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Everything);
-	ImportRoute import(VerifiedBlockRef const& _block, OverlayDB const& _db, ImportRequirements::value _ir = ImportRequirements::Everything);
+	ImportRoute import(bytes const& _block, OverlayDB const& _stateDB, bool _mustBeNew = true);
+	ImportRoute import(VerifiedBlockRef const& _block, OverlayDB const& _db, bool _mustBeNew = true);
 
 	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
 	bool isKnown(h256 const& _hash) const;
@@ -289,7 +289,7 @@ public:
 	State genesisState(OverlayDB const& _db);
 
 	/// Verify block and prepare it for enactment
-	virtual VerifiedBlockRef verifyBlock(bytesConstRef _block, std::function<void(Exception&)> const& _onBad, ImportRequirements::value _ir) const = 0;
+	virtual VerifiedBlockRef verifyBlock(bytesConstRef _block, std::function<void(Exception&)> const& _onBad, ImportRequirements::value _ir = ImportRequirements::OutOfOrderChecks) const = 0;
 
 protected:
 	static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
@@ -410,7 +410,7 @@ public:
 	typename Sealer::BlockHeader header(h256 const& _hash) const { return typename Sealer::BlockHeader(headerData(_hash), IgnoreSeal, _hash, HeaderData); }
 	typename Sealer::BlockHeader header() const { return header(currentHash()); }
 
-	virtual VerifiedBlockRef verifyBlock(bytesConstRef _block, std::function<void(Exception&)> const& _onBad, ImportRequirements::value _ir) const override
+	virtual VerifiedBlockRef verifyBlock(bytesConstRef _block, std::function<void(Exception&)> const& _onBad, ImportRequirements::value _ir = ImportRequirements::OutOfOrderChecks) const override
 	{
 		VerifiedBlockRef res;
 		BlockHeader h;
@@ -418,11 +418,11 @@ public:
 		{
 			h = BlockHeader(_block, (_ir & ImportRequirements::ValidSeal) ? Strictness::CheckEverything : Strictness::QuickNonce);
 			h.verifyInternals(_block);
-			if ((_ir & ImportRequirements::Parent) != 0)
+			if (!!(_ir & ImportRequirements::Parent))
 			{
 				bytes parentHeader(headerData(h.parentHash()));
 				if (parentHeader.empty())
-					BOOST_THROW_EXCEPTION(InvalidParentHash());
+					BOOST_THROW_EXCEPTION(InvalidParentHash() << errinfo_required_h256(h.parentHash()) << errinfo_currentNumber(h.number()));
 				h.verifyParent(typename Sealer::BlockHeader(parentHeader, IgnoreSeal, h.parentHash(), HeaderData));
 			}
 			res.info = static_cast<BlockInfo&>(h);
@@ -443,17 +443,20 @@ public:
 
 		RLP r(_block);
 		unsigned i = 0;
-		if (_ir && ImportRequirements::UncleBasic)
+		if (_ir && (ImportRequirements::UncleBasic | ImportRequirements::UncleParent | ImportRequirements::UncleSeals))
 			for (auto const& uncle: r[2])
 			{
-				BlockHeader h;
+				BlockHeader uh;
 				try
 				{
-					h.populateFromHeader(RLP(uncle.data()), (_ir & ImportRequirements::UncleSeals) ? Strictness::CheckEverything : Strictness::IgnoreSeal);
-					bytes parentHeader(headerData(h.parentHash()));
-					if (parentHeader.empty())
-						BOOST_THROW_EXCEPTION(InvalidParentHash());
-					h.verifyParent(typename Sealer::BlockHeader(parentHeader, IgnoreSeal, h.parentHash(), HeaderData));
+					uh.populateFromHeader(RLP(uncle.data()), (_ir & ImportRequirements::UncleSeals) ? Strictness::CheckEverything : Strictness::IgnoreSeal);
+					if (!!(_ir & ImportRequirements::UncleParent))
+					{
+						bytes parentHeader(headerData(uh.parentHash()));
+						if (parentHeader.empty())
+							BOOST_THROW_EXCEPTION(InvalidUncleParentHash() << errinfo_required_h256(uh.parentHash()) << errinfo_currentNumber(h.number()) << errinfo_uncleNumber(uh.number()));
+						uh.verifyParent(typename Sealer::BlockHeader(parentHeader, IgnoreSeal, uh.parentHash(), HeaderData));
+					}
 				}
 				catch (Exception& ex)
 				{
@@ -463,8 +466,8 @@ public:
 					ex << errinfo_block(_block.toBytes());
 					// only populate extraData if we actually managed to extract it. otherwise,
 					// we might be clobbering the existing one.
-					if (!h.extraData().empty())
-						ex << errinfo_extraData(h.extraData());
+					if (!uh.extraData().empty())
+						ex << errinfo_extraData(uh.extraData());
 					if (_onBad)
 						_onBad(ex);
 					throw;
@@ -472,7 +475,7 @@ public:
 				++i;
 			}
 		i = 0;
-		if (_ir && ImportRequirements::TransactionBasic)
+		if (_ir && (ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures))
 			for (RLP const& tr: r[1])
 			{
 				bytesConstRef d = tr.data();
