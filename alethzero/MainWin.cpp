@@ -1851,6 +1851,43 @@ void Main::on_debugCurrent_triggered()
 	}
 }
 
+std::string minHex(h256 const& _h)
+{
+	unsigned i = 0;
+	for (; i < 31 && !_h[i]; ++i) {}
+	return toHex(_h.ref().cropped(i));
+}
+
+void Main::on_dumpBlockState_triggered()
+{
+	if (auto item = ui->blocks->currentItem())
+	{
+		auto hba = item->data(Qt::UserRole).toByteArray();
+		assert(hba.size() == 32);
+		auto h = h256((byte const*)hba.data(), h256::ConstructFromPointer);
+		QString fn = QFileDialog::getSaveFileName(this, "Select file to output state dump");
+		ofstream f(fn.toStdString());
+		if (f.is_open())
+		{
+			js::mObject s;
+			State state = ethereum()->state(h);
+			for (pair<Address, u256> const& i: state.addresses())
+			{
+				js::mObject a;
+				a["balance"] = toString(i.second);
+				a["nonce"] = toString(state.transactionsFrom(i.first));
+				a["codeHash"] = state.codeHash(i.first).hex();
+				js::mObject st;
+				for (pair<u256, u256> const& j: state.storage(i.first))
+					st[minHex(j.first)] = st[minHex(j.second)];
+				a["storage"] = st;
+				s[i.first.hex()] = a;
+			}
+			js::write_stream(s, f, true);
+		}
+	}
+}
+
 void Main::debugDumpState(int _add)
 {
 	if (auto item = ui->blocks->currentItem())
