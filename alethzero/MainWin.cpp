@@ -1870,22 +1870,29 @@ void Main::on_dumpBlockState_triggered()
 		ofstream f(fn.toStdString());
 		if (f.is_open())
 		{
-			js::mObject s;
+			f << "{" << endl;
+//			js::mObject s;
 			State state = ethereum()->state(h);
+			int fi = 0;
 			for (pair<Address, u256> const& i: state.addresses())
 			{
-				js::mObject a;
-				a["balance"] = toString(i.second);
-				a["nonce"] = toString(state.transactionsFrom(i.first));
-				a["codeHash"] = state.codeHash(i.first).hex();
-				js::mObject st;
-				for (pair<u256, u256> const& j: state.storage(i.first))
-					st[minHex(j.first)] = st[minHex(j.second)];
-				a["storage"] = st;
-				s[i.first.hex()] = a;
+				f << (fi++ ? "," : "") << "\"" << i.first.hex() << "\": { ";
+				f << "\"balance\": \"" << toString(i.second) << "\", ";
+				if (state.codeHash(i.first) != EmptySHA3)
+				{
+					f << "\"codeHash\": \"" << state.codeHash(i.first).hex() << "\", ";
+					f << "\"storage\": {";
+					int fj = 0;
+					for (pair<u256, u256> const& j: state.storage(i.first))
+						f << (fj++ ? "," : "") << "\"" << minHex(j.first) << "\":\"" << minHex(j.second) << "\"";
+					f << "}, ";
+				}
+				f << "\"nonce\": \"" << toString(state.transactionsFrom(i.first)) << "\"";
+				f << "}" << endl;	// end account
+				if (!(fi % 100))
+					f << flush;
 			}
-			js::mValue v(s);
-			js::write_stream(v, f, true);
+			f << "}";
 		}
 	}
 #endif
