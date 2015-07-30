@@ -1523,7 +1523,7 @@ int main(int argc, char** argv)
 	if (gasFloor != UndefinedU256)
 		c_gasFloorTarget = gasFloor;
 	if (networkId == (unsigned)-1)
-		networkId =  c_network;
+		networkId =  (unsigned)c_network;
 
 	if (g_logVerbosity > 0)
 	{
