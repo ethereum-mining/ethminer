@@ -246,7 +246,7 @@ Dialog {
 				functionRect.show()
 				loadFunctions(TransactionHelper.contractFromToken(recipientsAccount.currentValue()))
 				loadParameters();
-				//paramScroll.updateView()
+				paramScroll.updateView()
 			}
 			else
 			{
@@ -492,7 +492,7 @@ Dialog {
 				StructView
 				{
 					id: paramScroll
-					members: paramsModel;
+					members: paramsModel
 					accounts: senderComboBox.model
 					context: "parameter"
 					Layout.fillWidth: true
