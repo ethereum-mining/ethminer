@@ -443,7 +443,7 @@ public:
 
 		RLP r(_block);
 		unsigned i = 0;
-		if (_ir && (ImportRequirements::UncleBasic | ImportRequirements::UncleParent | ImportRequirements::UncleSeals))
+		if (_ir && !!(ImportRequirements::UncleBasic | ImportRequirements::UncleParent | ImportRequirements::UncleSeals))
 			for (auto const& uncle: r[2])
 			{
 				BlockHeader uh;
@@ -475,7 +475,7 @@ public:
 				++i;
 			}
 		i = 0;
-		if (_ir && (ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures))
+		if (_ir && !!(ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures))
 			for (RLP const& tr: r[1])
 			{
 				bytesConstRef d = tr.data();
