@@ -111,7 +111,7 @@ unordered_map<Address, Account> CanonBlockChain<Ethash>::createGenesisState()
 	if (s_ret.empty())
 	{
 		js::mValue val;
-		json_spirit::read_string(s_genesisStateJSON.empty() ? c_genesisInfo : s_genesisStateJSON, val);
+		js::read_string(s_genesisStateJSON.empty() ? c_genesisInfo : s_genesisStateJSON, val);
 		for (auto account: val.get_obj()["alloc"].get_obj())
 		{
 			u256 balance;

@@ -41,6 +41,7 @@ enum IncludeProof
 enum Strictness
 {
 	CheckEverything,
+	JustSeal,
 	QuickNonce,
 	IgnoreSeal,
 	CheckNothing

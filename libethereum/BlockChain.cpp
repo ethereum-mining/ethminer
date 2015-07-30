@@ -427,11 +427,11 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 	return make_tuple(ImportRoute{dead, fresh, goodTransactions}, _bq.doneDrain(badBlocks), count);
 }
 
-pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir) noexcept
+pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _mustBeNew) noexcept
 {
 	try
 	{
-		return make_pair(ImportResult::Success, import(verifyBlock(&_block, m_onBad, _ir), _stateDB, _ir | ImportRequirements::TransactionBasic));
+		return make_pair(ImportResult::Success, import(verifyBlock(&_block, m_onBad, ImportRequirements::OutOfOrderChecks), _stateDB, _mustBeNew));
 	}
 	catch (UnknownParent&)
 	{
@@ -453,7 +453,7 @@ pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, O
 	}
 }
 
-ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, ImportRequirements::value _ir)
+ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _mustBeNew)
 {
 	// VERIFY: populates from the block and checks the block is internally coherent.
 	VerifiedBlockRef block;
@@ -462,7 +462,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	try
 #endif
 	{
-		block = verifyBlock(&_block, m_onBad, _ir | ImportRequirements::TransactionBasic);
+		block = verifyBlock(&_block, m_onBad, ImportRequirements::OutOfOrderChecks);
 	}
 #if ETH_CATCH
 	catch (Exception& ex)
@@ -474,10 +474,10 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	}
 #endif
 
-	return import(block, _db, _ir);
+	return import(block, _db, _mustBeNew);
 }
 
-ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& _db, ImportRequirements::value _ir)
+ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& _db, bool _mustBeNew)
 {
 	//@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
@@ -492,7 +492,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 #endif
 
 	// Check block doesn't already exist first!
-	if (isKnown(_block.info.hash()) && (_ir & ImportRequirements::DontHave))
+	if (isKnown(_block.info.hash()) && _mustBeNew)
 	{
 		clog(BlockChainNote) << _block.info.hash() << ": Not new.";
 		BOOST_THROW_EXCEPTION(AlreadyHaveBlock());
@@ -527,6 +527,9 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 		// Block has a timestamp in the future. This is no good.
 		BOOST_THROW_EXCEPTION(FutureTime());
 	}
+
+	// Verify parent-critical parts
+	verifyBlock(_block.block, m_onBad, ImportRequirements::InOrderChecks);
 
 	clog(BlockChainChat) << "Attempting import of " << _block.info.hash() << "...";
 
@@ -758,7 +761,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	try
 	{
 		State canary(_db, BaseState::Empty);
-		canary.populateFromChain(*this, _block.info.hash(), ImportRequirements::DontHave);
+		canary.populateFromChain(*this, _block.info.hash());
 	}
 	catch (...)
 	{
