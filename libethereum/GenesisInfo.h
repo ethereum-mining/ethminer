@@ -26,7 +26,8 @@
 namespace dev {
 namespace eth {
 
-extern std::string const c_genesisInfo;
+extern std::string const c_genesisInfoOlympic;
+extern std::string const c_genesisInfoFrontier;
 
 }
 }
