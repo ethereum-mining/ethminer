@@ -120,7 +120,6 @@ Dialog {
 		var type = parameter.type;
 		var pname = parameter.name;
 		paramsModel.push({ name: pname, type: type });
-		console.log(JSON.stringify(paramsModel))
 	}
 
 	function loadParameters() {
@@ -153,8 +152,7 @@ Dialog {
 
 	function initTypeLoader()
 	{
-		paramScroll.value = {}
-		paramScroll.members = []
+		paramScroll.clear()
 		paramScroll.value = paramValues;
 		paramScroll.members = paramsModel;
 		paramScroll.updateView()

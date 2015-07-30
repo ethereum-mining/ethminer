@@ -16,8 +16,10 @@ Column
 	spacing: 0
 	property int colHeight
 
-	onValueChanged:
+	function clear()
 	{
+		value = {}
+		members = []
 		colHeight = 0
 	}
 
@@ -119,17 +121,22 @@ Column
 					}
 
 					item.onValueChanged.connect(function() {
-						vals[pname] = item.value;
-						valueChanged();
+						syncValue(vals, pname)
 					});
 
 					var newWidth = nameLabel.width + typeLabel.width + item.width + 108;
 					if (root.width < newWidth)
 						root.width = newWidth;
 
-					if (item.finalize)
-						item.finalize()
+					syncValue(vals, pname)
 				}
+
+				function syncValue(vals, pname)
+				{
+					vals[pname] = item.value;
+					valueChanged();
+				}
+
 
 				function getValue()
 				{
