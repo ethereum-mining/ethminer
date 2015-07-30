@@ -46,7 +46,7 @@ RLPStream createFullBlockFromHeader(BlockHeader const& _bi, bytes const& _txs = 
 
 mArray writeTransactionsToJson(Transactions const& txs);
 mObject writeBlockHeaderToJson(mObject& _o, BlockHeader const& _bi);
-void overwriteBlockHeader(BlockHeader& _current_BlockHeader, mObject& _blObj);
+void overwriteBlockHeader(BlockHeader& _current_BlockHeader, mObject& _blObj, const BlockHeader& _parent);
 void updatePoW(BlockHeader& _bi);
 mArray importUncles(mObject const& _blObj, vector<BlockHeader>& _vBiUncles, vector<BlockHeader> const& _vBiBlocks, std::vector<blockSet> _blockSet);
 
@@ -223,7 +223,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				}
 
 				if (blObj.count("blockHeader"))
-					overwriteBlockHeader(current_BlockHeader, blObj);
+					overwriteBlockHeader(current_BlockHeader, blObj, vBiBlocks[vBiBlocks.size()-1]);
 
 				if (blObj.count("blockHeader") && blObj["blockHeader"].get_obj().count("bruncle"))
 					current_BlockHeader.populateFromParent(vBiBlocks[vBiBlocks.size() -1]);
@@ -664,7 +664,7 @@ bytes createBlockRLPFromFields(mObject& _tObj, h256 const& _stateRoot)
 	return rlpStream.out();
 }
 
-void overwriteBlockHeader(BlockHeader& _header, mObject& _blObj)
+void overwriteBlockHeader(BlockHeader& _header, mObject& _blObj, BlockHeader const& _parent)
 {
 	auto ho = _blObj["blockHeader"].get_obj();
 	if (ho.size() != 14)
@@ -683,6 +683,13 @@ void overwriteBlockHeader(BlockHeader& _header, mObject& _blObj)
 			ho.count("gasUsed") ? toInt(ho["gasUsed"]) : _header.gasUsed(),
 			ho.count("timestamp") ? toInt(ho["timestamp"]) : _header.timestamp(),
 			ho.count("extraData") ? importByteArray(ho["extraData"].get_str()) : _header.extraData());
+
+		if (ho.count("RelTimestamp"))
+		{
+			tmp.setTimestamp(toInt(ho["RelTimestamp"]) +_parent.timestamp());
+			tmp.setDifficulty(tmp.calculateDifficulty(_parent));
+			this_thread::sleep_for(chrono::seconds((int)toInt(ho["RelTimestamp"])));
+		}
 
 		// find new valid nonce
 		if (static_cast<BlockInfo>(tmp) != static_cast<BlockInfo>(_header) && tmp.difficulty())

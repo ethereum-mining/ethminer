@@ -144,7 +144,7 @@ public:
 			m_mode = OperationMode::DecodeTx;
 		else if (arg == "--import-bare")
 			m_mode = OperationMode::ImportBare;
-		else if (arg == "-l" || arg == "--list-bare")
+		else if (arg == "--list-bare")
 			m_mode = OperationMode::ListBare;
 		else if (arg == "--export-bare")
 			m_mode = OperationMode::ExportBare;
@@ -156,7 +156,7 @@ public:
 			m_mode = OperationMode::KillBare;
 		else if (arg == "--create-wallet")
 			m_mode = OperationMode::CreateWallet;
-		else if (arg == "--list")
+		else if (arg == "-l" || arg == "--list")
 			m_mode = OperationMode::List;
 		else if ((arg == "-n" || arg == "--new") && i + 1 < argc)
 		{
@@ -535,6 +535,7 @@ public:
 			<< "    --new-bare  Generate and output a key without interacting with wallet and dump the JSON." << endl
 			<< "    --import-bare [ <file>|<secret-hex> , ... ] Import keys from given sources." << endl
 			<< "    --recode-bare [ <uuid>|<file> , ... ]  Decrypt and re-encrypt given keys." << endl
+			<< "    --inspect-bare [ <uuid>|<file> , ... ]  Output information on given keys." << endl
 //			<< "    --export-bare [ <uuid> , ... ]  Export given keys." << endl
 			<< "    --kill-bare [ <uuid> , ... ]  Delete given keys." << endl
 			<< "Secret-store configuration:" << endl

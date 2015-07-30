@@ -39,7 +39,7 @@ bool JSV8Connector::StopListening()
 bool JSV8Connector::SendResponse(std::string const& _response, void* _addInfo)
 {
 	(void)_addInfo;
-	m_lastResponse = _response.c_str();
+	m_lastResponse = _response;
 	return true;
 }
 

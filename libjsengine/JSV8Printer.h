@@ -25,6 +25,8 @@
 #include "JSPrinter.h"
 #include "JSV8Engine.h"
 
+/// Do not use libstd headers here, it will break on MacOS.
+
 namespace dev
 {
 namespace eth
