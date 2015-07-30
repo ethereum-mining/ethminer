@@ -1860,6 +1860,7 @@ std::string minHex(h256 const& _h)
 
 void Main::on_dumpBlockState_triggered()
 {
+#if ETH_FATDB || !ETH_TRUE
 	if (auto item = ui->blocks->currentItem())
 	{
 		auto hba = item->data(Qt::UserRole).toByteArray();
@@ -1887,6 +1888,7 @@ void Main::on_dumpBlockState_triggered()
 			js::write_stream(v, f, true);
 		}
 	}
+#endif
 }
 
 void Main::debugDumpState(int _add)
