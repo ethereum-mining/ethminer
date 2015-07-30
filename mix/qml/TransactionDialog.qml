@@ -120,6 +120,7 @@ Dialog {
 		var type = parameter.type;
 		var pname = parameter.name;
 		paramsModel.push({ name: pname, type: type });
+		console.log(JSON.stringify(paramsModel))
 	}
 
 	function loadParameters() {
@@ -237,13 +238,15 @@ Dialog {
 				recipientsAccount.select(contractId);
 			if (functionId)
 				selectFunction(functionId);
+			else
+				functionComboBox.currentIndex = 0
 			if (isFunctionCall)
 			{
 				labelRecipient.text = qsTr("Recipient Contract")
 				functionRect.show()
 				loadFunctions(TransactionHelper.contractFromToken(recipientsAccount.currentValue()))
 				loadParameters();
-				paramScroll.updateView()
+				//paramScroll.updateView()
 			}
 			else
 			{
@@ -496,11 +499,9 @@ Dialog {
 					function updateView()
 					{
 						paramScroll.visible = paramsModel.length > 0
-						paramScroll.Layout.preferredHeight = paramsModel.length < 6 ? paramsModel.length * 30 : 205
+						paramScroll.Layout.preferredHeight = paramScroll.colHeight
 						if (paramsModel.length === 0)
-						{
 							paramScroll.height = 0
-						}
 					}
 				}
 

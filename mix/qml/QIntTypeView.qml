@@ -5,7 +5,7 @@ Item
 	property alias value: textinput.text
 	property alias readOnly: textinput.readOnly
 	id: editRoot
-	width: 200
+	width: 350
 	DebuggerPaneStyle {
 		id: dbgStyle
 	}
@@ -15,7 +15,7 @@ Item
 		id: textinput
 		selectByMouse: true
 		text: value
-		implicitWidth: 200
+		implicitWidth: 350
 		MouseArea {
 			id: mouseArea
 			anchors.fill: parent

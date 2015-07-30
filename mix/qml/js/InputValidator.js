@@ -32,10 +32,11 @@ function init()
 function check(type, value)
 {
 	var res = { valid: true, message : "" }
-	if (isContractType(type))
-		res = validateAddress(type, value);
-	else if (isArray(type))
+
+	if (isArray(type))
 		res = validateArray(type, value);
+	else if (isContractType(type))
+		res = validateAddress(type, value);
 	else if (type.indexOf("int") !== -1)
 		res = validateInt(type, value);
 	else if (type.indexOf("enum") !== -1)
@@ -196,7 +197,7 @@ function validateBytes(_type, _value)
 function validateBool(_type, _value)
 {
 	var ret = { valid: true, message: "" }
-	if (_value !== "1" && _value !== "0")
+	if (!(_value === "1" || _value === "0" || _value === 1 || _value === 0))
 	{
 		ret.valid = false;
 		ret.message = _value + " is not in the correct bool format";

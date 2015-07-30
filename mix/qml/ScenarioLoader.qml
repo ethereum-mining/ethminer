@@ -28,7 +28,6 @@ ColumnLayout
 
 	function needSaveOrReload()
 	{
-		editStatus.visible = true
 	}
 
 	RowLayout
