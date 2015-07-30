@@ -388,10 +388,29 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence)
 				{
 					QSolidityType const* type = p->type();
 					QVariant value = transaction.parameterValues.value(p->name());
-					if (type->type().type == SolidityType::Type::Address && value.toString().startsWith("<"))
+					if (type->type().type == SolidityType::Type::Address)
 					{
-						std::pair<QString, int> ctrParamInstance = resolvePair(value.toString());
-						value = QVariant(resolveToken(ctrParamInstance));
+						if (type->array())
+						{
+							QJsonArray jsonDoc = QJsonDocument::fromJson(value.toString().toUtf8()).array();
+							int k = 0;
+							for (QJsonValue const& item: jsonDoc)
+							{
+								if (item.toString().startsWith("<"))
+								{
+									std::pair<QString, int> ctrParamInstance = resolvePair(item.toString());
+									jsonDoc.replace(k, resolveToken(ctrParamInstance));
+								}
+								k++;
+							}
+							QJsonDocument doc(jsonDoc);
+							value = QVariant(doc.toJson(QJsonDocument::Compact));
+						}
+						else if (value.toString().startsWith("<"))
+						{
+							std::pair<QString, int> ctrParamInstance = resolvePair(value.toString());
+							value = QVariant(resolveToken(ctrParamInstance));
+						}
 					}
 					encoder.encode(value, type->type());
 				}
