@@ -31,8 +31,9 @@
 #include <queue>
 #include <vector>
 #include <random>
-#include <boost/random/random_device.hpp>
-#include <boost/random/uniform_int_distribution.hpp>
+#include <random>
+#include <atomic>
+#include <sstream>
 #include <libethash/util.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
@@ -57,7 +58,22 @@ unsigned const ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier = 4096; // * C
 unsigned const ethash_cl_miner::c_defaultMSPerBatch = 0;
 
 // TODO: If at any point we can use libdevcore in here then we should switch to using a LogChannel
+#if defined(_WIN32)
+extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char* lpOutputString);
+static std::atomic_flag s_logSpin = ATOMIC_FLAG_INIT;
+#define ETHCL_LOG(_contents) \
+	do \
+	{ \
+		std::stringstream ss; \
+		ss << _contents; \
+		while (s_logSpin.test_and_set(std::memory_order_acquire)) {} \
+		OutputDebugStringA(ss.str().c_str()); \
+		cerr << ss.str() << endl << flush; \
+		s_logSpin.clear(std::memory_order_release); \
+	} while (false)
+#else
 #define ETHCL_LOG(_contents) cout << "[OPENCL]:" << _contents << endl
+#endif
 // Types of OpenCL devices we are interested in
 #define ETHCL_QUERIED_DEVICE_TYPES (CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR)
 
@@ -472,8 +488,8 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		m_searchKernel.setArg(argPos + 2, ~0u);
 
 		unsigned buf = 0;
-		boost::random_device engine;
-		uint64_t start_nonce = boost::random::uniform_int_distribution<uint64_t>()(engine);
+		random_device engine;
+		uint64_t start_nonce = uniform_int_distribution<uint64_t>()(engine);
 		for (;; start_nonce += m_globalWorkSize)
 		{
 			auto t = chrono::high_resolution_clock::now();

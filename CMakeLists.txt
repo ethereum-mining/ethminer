@@ -1,7 +1,7 @@
 # cmake global
 cmake_minimum_required(VERSION 2.8.12)
 
-set(PROJECT_VERSION "0.9.37")
+set(PROJECT_VERSION "0.9.38")
 if (${CMAKE_VERSION} VERSION_GREATER 3.0)
 	cmake_policy(SET CMP0048 NEW) 	# allow VERSION argument in project()
 	project(ethereum VERSION ${PROJECT_VERSION})
@@ -57,7 +57,7 @@ set(D_PARANOID OFF)
 set(D_PROFILING OFF)
 set(D_ROCKSDB OFF)
 set(D_NOBOOST OFF)
-set(D_FRONTIER OFF)
+set(D_FRONTIER ON)
 set(D_MINER ON)
 set(D_ETHKEY ON)
 
@@ -139,7 +139,6 @@ elseif (BUNDLE STREQUAL "release")      # release builds
 	set(D_EVMJIT ON)
 	set(D_JSCONSOLE ON)
 	set(D_JSONRPC ON)
-	set(D_FRONTIER ON)
 	set(D_CMAKE_BUILD_TYPE "Release")
 endif ()
 
