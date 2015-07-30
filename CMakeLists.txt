@@ -139,7 +139,6 @@ elseif (BUNDLE STREQUAL "release")      # release builds
 	set(D_EVMJIT ON)
 	set(D_JSCONSOLE ON)
 	set(D_JSONRPC ON)
-	set(D_FRONTIER ON)
 	set(D_CMAKE_BUILD_TYPE "Release")
 endif ()
 
