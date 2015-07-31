@@ -112,7 +112,6 @@ Rectangle {
 	ColumnLayout {
 		id: debugScrollArea
 		anchors.fill: parent
-		//orientation: Qt.Vertical
 		spacing: 0
 		RowLayout
 		{

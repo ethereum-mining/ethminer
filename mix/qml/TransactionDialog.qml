@@ -8,6 +8,7 @@ import org.ethereum.qml.QEther 1.0
 import "js/TransactionHelper.js" as TransactionHelper
 import "js/InputValidator.js" as InputValidator
 import "js/NetworkDeployment.js" as NetworkDeployment
+import "js/QEtherHelper.js" as QEtherHelper
 import "."
 
 Dialog {
@@ -53,7 +54,6 @@ Dialog {
 		paramValues = item.parameters !== undefined ? item.parameters : {};
 		if (item.sender)
 			senderComboBox.select(item.sender);
-
 
 		trTypeCreate.checked = item.isContractCreation
 		trTypeSend.checked = !item.isFunctionCall
@@ -520,7 +520,7 @@ Dialog {
 						Layout.preferredWidth: 350
 						id: valueField
 						edit: true
-						displayFormattedValue: false
+						displayFormattedValue: true
 						displayUnitSelection: true
 					}
 				}
@@ -656,11 +656,12 @@ Dialog {
 							Label {
 								id: gasPriceMarket
 								anchors.top: gasPriceLabel.bottom
+								anchors.topMargin: 10
 								Component.onCompleted:
 								{
 									NetworkDeployment.gasPrice(function(result)
 									{
-										gasPriceMarket.text = qsTr("Current market: ") + " " + result + " Wei";
+										gasPriceMarket.text = qsTr("Current market: ") + " " + QEtherHelper.createEther(result, QEther.Wei).format()
 									}, function (){});
 								}
 							}
@@ -668,7 +669,7 @@ Dialog {
 					}
 
 					Ether {
-						Layout.preferredWidth: 350
+						Layout.preferredWidth: 400
 						id: gasPriceField
 						edit: true
 						displayFormattedValue: false

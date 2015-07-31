@@ -206,7 +206,7 @@ Rectangle {
 					text: qsTr("Ethereum URL")
 					anchors.left: parent.left
 					anchors.verticalCenter: parent.verticalCenter
-				}			
+				}
 			}
 
 			Rectangle
@@ -252,7 +252,7 @@ Rectangle {
 			Label
 			{
 				id: verificationEthUrl
-                anchors.verticalCenter: parent.verticalCenter;
+				anchors.verticalCenter: parent.verticalCenter;
 				anchors.topMargin: 10
 				font.italic: true
 				font.pointSize: appStyle.absoluteSize(-1)
@@ -264,7 +264,7 @@ Rectangle {
 	{
 		anchors.bottom: parent.bottom
 		anchors.bottomMargin: 10
-		width: parent.width		
+		width: parent.width
 
 		function registerHash(gasPrice, callback)
 		{
@@ -276,7 +276,7 @@ Rectangle {
 					inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
 			}
 			if (!worker.stopForInputError(inError))
-			{				
+			{
 				NetworkDeploymentCode.registerDapp(ethUrl, gasPrice,  function(){
 					projectModel.applicationUrlEth = applicationUrlEthCtrl.text
 					projectModel.saveProject()
@@ -309,7 +309,9 @@ Rectangle {
 				inError.push(qsTr(applicationUrlHttpCtrl.text));
 			if (!worker.stopForInputError(inError))
 			{
-				registerToUrlHint(applicationUrlHttpCtrl.text, gasPrice, function(){
+				var url = applicationUrlHttpCtrl.text
+				url = url.replace("http://", "").replace("https://", "")
+				registerToUrlHint(url, gasPrice, function(){
 					projectModel.applicationUrlHttp = applicationUrlHttpCtrl.text
 					projectModel.saveProject()
 					verificationUrl.text = qsTr("waiting verifications")
