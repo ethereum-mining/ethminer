@@ -181,6 +181,7 @@ void help()
 		<< "    --no-discovery  Disable Node discovery." << endl
 		<< "    --pin  Only connect to required (trusted) peers." << endl
 		<< "    --hermit  Equivalent to --no-discovery --pin." << endl
+		<< "    --sociable  Forces discovery and no pinning." << endl
 //		<< "    --require-peers <peers.json>  List of required (trusted) peers. (experimental)" << endl
 		<< endl;
 	MinerCLI::streamHelp(cout);
@@ -1126,6 +1127,8 @@ int main(int argc, char** argv)
 	bool bootstrap = false;
 	bool disableDiscovery = false;
 	bool pinning = false;
+	bool enableDiscovery = false;
+	bool noPinning = false;
 	unsigned networkId = (unsigned)-1;
 
 	/// Mining params
@@ -1449,6 +1452,8 @@ int main(int argc, char** argv)
 			pinning = true;
 		else if (arg == "--hermit")
 			pinning = disableDiscovery = true;
+		else if (arg == "--sociable")
+			noPinning = enableDiscovery = true;
 		else if (arg == "--import-presale" && i + 1 < argc)
 			presaleImports.push_back(argv[++i]);
 		else if (arg == "-f" || arg == "--force-mining")
@@ -1582,9 +1587,9 @@ int main(int argc, char** argv)
 	};
 
 	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat, structuredLoggingURL);
-	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
-	netPrefs.discovery = privateChain.empty() && !disableDiscovery;
-	netPrefs.pin = pinning || !privateChain.empty();
+	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP, listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
+	netPrefs.discovery = (privateChain.empty() && !disableDiscovery) || enableDiscovery;
+	netPrefs.pin = (pinning || !privateChain.empty()) && !noPinning;
 
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
 	auto caps = useWhisper ? set<string>{"eth", "shh"} : set<string>{"eth"};
@@ -1746,7 +1751,14 @@ int main(int argc, char** argv)
 	}
 
 	if (keyManager.accounts().empty())
-		keyManager.import(Secret::random(), "Default key");
+	{
+		h128 uuid = keyManager.import(Secret::random(), "Default key");
+		if (!beneficiary)
+			beneficiary = keyManager.address(uuid);
+		if (!signingKey)
+			signingKey = keyManager.address(uuid);
+		writeFile(configFile, rlpList(signingKey, beneficiary));
+	}
 
 	cout << ethCredits();
 	web3.setIdealPeerCount(peers);
@@ -1786,7 +1798,6 @@ int main(int argc, char** argv)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonRPCURL, "", "", SensibleHttpThreads));
 		jsonrpcServer = make_shared<dev::WebThreeStubServer>(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer);
-		jsonrpcServer->setMiningBenefactorChanger([&](Address const& a) { beneficiary = a; });
 		jsonrpcServer->StartListening();
 		if (jsonAdmin.empty())
 			jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Privilege::Admin}});
