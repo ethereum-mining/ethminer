@@ -15,7 +15,7 @@ Dialog {
 
 	width: 630
 	height: 660
-	title: qsTr("Edit State")
+	title: qsTr("Edit Genesis Parameters")
 	visible: false
 
 	property alias isDefault: defaultCheckBox.checked

@@ -17,6 +17,7 @@ Dialog {
 		ColumnLayout
 		{
 			anchors.fill: parent
+			anchors.margins: 10
 			TableView {
 				id: list
 				Layout.fillHeight: true
@@ -57,7 +58,7 @@ Dialog {
 					verticalAlignment: Text.AlignBottom
 				}
 				ToolButton {
-					text: qsTr("Edit");
+					text: qsTr("Edit Genesis");
 					Layout.fillHeight: true
 					onClicked: list.model.editState(styleData.row);
 				}
