@@ -1168,9 +1168,13 @@ int main(int argc, char** argv)
 	Secrets toImport;
 	if (b.size())
 	{
-		RLP config(b);
-		signingKey = config[0].toHash<Address>();
-		beneficiary = config[1].toHash<Address>();
+		try
+		{
+			RLP config(b);
+			signingKey = config[0].toHash<Address>();
+			beneficiary = config[1].toHash<Address>();
+		}
+		catch (...) {}
 	}
 
 	MinerCLI m(MinerCLI::OperationMode::None);
