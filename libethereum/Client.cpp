@@ -694,8 +694,14 @@ void Client::onPostStateChanged()
 
 void Client::startMining()
 {
-	m_wouldMine = true;
-	rejigMining();
+	clog(ClientNote) << "MiningBenefactor: " << address();
+	if (address() != Address())
+	{
+		m_wouldMine = true;
+		rejigMining();
+	}
+	else
+		clog(ClientNote) << "You need to set a MiningBenefactor in order to mine!";
 }
 
 void Client::rejigMining()
