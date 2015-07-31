@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(topic)
 	});
 
 	Host host2("Test", NetworkPreferences("127.0.0.1", 30310, false));
-	host1.setIdealPeerCount(1);
+	host2.setIdealPeerCount(1);
 	auto whost2 = host2.registerCapability(new WhisperHost());
 	host2.start();
 
