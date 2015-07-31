@@ -24,7 +24,7 @@ var prettyPrint = (function () {
                     str += ", ";
                 }
             }
-            str += " ]";
+            str += "]";
         } else if (object instanceof Error) {
             str += color_red + "Error: " + color_white + object.message;
         }  else if (object === null) {
