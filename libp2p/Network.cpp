@@ -211,14 +211,23 @@ bi::tcp::endpoint Network::traverseNAT(std::set<bi::address> const& _ifAddresses
 bi::tcp::endpoint Network::resolveHost(string const& _addr)
 {
 	static boost::asio::io_service s_resolverIoService;
-	
 	vector<string> split;
 	boost::split(split, _addr, boost::is_any_of(":"));
-	unsigned port = split.size() > 1 ? stoi(split[1]) : dev::p2p::c_defaultIPPort;
+	int givenPort;
+	try
+	{
+		givenPort = stoi(split[1]);
+	}
+	catch (...)
+	{
+		clog(NetWarn) << "Error resolving host address..." << LogTag::Url << _addr << ". Could not find a port after ':'";
+		return bi::tcp::endpoint();
+	}
+	unsigned port = split.size() > 1 ? givenPort : dev::p2p::c_defaultIPPort;
 
-	bi::tcp::endpoint ep(bi::address(), port);
 	boost::system::error_code ec;
 	bi::address address = bi::address::from_string(split[0], ec);
+	bi::tcp::endpoint ep(bi::address(), port);
 	if (!ec)
 		ep.address(address);
 	else
@@ -228,7 +237,10 @@ bi::tcp::endpoint Network::resolveHost(string const& _addr)
 		bi::tcp::resolver r(s_resolverIoService);
 		auto it = r.resolve({bi::tcp::v4(), split[0], toString(port)}, ec);
 		if (ec)
+		{
 			clog(NetWarn) << "Error resolving host address..." << LogTag::Url << _addr << ":" << LogTag::Error << ec.message();
+			return bi::tcp::endpoint();
+		}
 		else
 			ep = *it;
 	}
