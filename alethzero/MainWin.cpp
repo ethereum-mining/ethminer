@@ -1043,7 +1043,10 @@ void Main::on_usePrivate_triggered()
 		bool ok;
 		pc = QInputDialog::getText(this, "Enter Name", "Enter the name of your private chain", QLineEdit::Normal, QString("NewChain-%1").arg(time(0)), &ok);
 		if (!ok)
+		{
+			ui->usePrivate->setChecked(false);
 			return;
+		}
 	}
 	setPrivateChain(pc);
 }
