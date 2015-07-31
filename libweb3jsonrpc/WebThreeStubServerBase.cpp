@@ -545,6 +545,9 @@ bool WebThreeStubServerBase::admin_net_connect(std::string const& _node, std::st
 	}
 	else
 		ep = p2p::Network::resolveHost(_node);
+
+	if (ep == bi::tcp::endpoint())
+		return false;
 	network()->requirePeer(id, ep);
 	return true;
 }
