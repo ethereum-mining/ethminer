@@ -246,7 +246,7 @@ displayGasEstimation = function(show)
 			{
 				var color;
 				var colorIndex = Math.round(step * gasCosts[i].gas);
-				if (gasCosts[i].isInfinite || colorIndex > colorGradient.length)
+				if (gasCosts[i].isInfinite || colorIndex >= colorGradient.length)
 					color = colorGradient[colorGradient.length - 1];
 				else
 					color = colorGradient[colorIndex];

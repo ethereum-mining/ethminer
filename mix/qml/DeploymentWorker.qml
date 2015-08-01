@@ -128,7 +128,7 @@ Item
 						  params: [],
 						  id: req
 					  });
-		var label =  {}
+		var label = []
 		for (var k in trHashes)
 		{
 			req++
@@ -142,15 +142,13 @@ Item
 		}
 
 		TransactionHelper.rpcCall(requests, function (httpRequest, response){
-			console.log(response)
-
 			var ret = JSON.parse(response)
 			var b = ret[0].result;
 			var trLost = []
 			for (var k in ret)
 			{
-				if (ret[k].result === null)
-					trLost.push(label[ret[k]])
+				if (!ret[k].result)
+					trLost.push(label[ret[k].id])
 			}
 			callback(parseInt(b, 16), trLost)
 		});
