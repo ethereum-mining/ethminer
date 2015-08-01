@@ -42,6 +42,7 @@
 #include "Transact.h"
 #include "NatspecHandler.h"
 #include "Connect.h"
+#include "MainFace.h"
 
 class QListWidgetItem;
 class QActionGroup;
@@ -69,7 +70,7 @@ using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
 
 QString contentsOfQResource(std::string const& res);
 
-class Main: public QMainWindow, public Context
+class Main: public dev::az::MainFace
 {
 	Q_OBJECT
 
@@ -77,9 +78,9 @@ public:
 	explicit Main(QWidget *parent = 0);
 	~Main();
 
-	dev::WebThreeDirect* web3() const { return m_webThree.get(); }
-	dev::eth::Client* ethereum() const { return m_webThree->ethereum(); }
-	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_webThree->whisper(); }
+	dev::WebThreeDirect* web3() const override { return m_webThree.get(); }
+	dev::eth::Client* ethereum() const override { return m_webThree->ethereum(); }
+	std::shared_ptr<dev::shh::WhisperHost> whisper() const override { return m_webThree->whisper(); }
 
 	bool confirm() const;
 	NatSpecFace* natSpec() { return &m_natSpecDB; }
@@ -159,8 +160,6 @@ private slots:
 	// Stuff concerning the blocks/transactions/accounts panels
 	void on_ourAccounts_itemClicked(QListWidgetItem* _i);
 	void on_ourAccounts_doubleClicked();
-	void on_accounts_doubleClicked();
-	void on_accounts_currentItemChanged();
 	void on_transactionQueue_currentItemChanged();
 	void on_blockChainFilter_textChanged();
 	void on_blocks_currentItemChanged();
