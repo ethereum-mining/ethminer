@@ -52,8 +52,7 @@ BOOST_AUTO_TEST_CASE(TransactionConstructor)
 		BOOST_ERROR("Exception thrown but expected OutOfGasIntrinsic instead");
 	}
 
-	if (!wasException)
-		BOOST_ERROR("Expected OutOfGasIntrinsic exception to be thrown at TransactionConstructor test");
+	BOOST_CHECK_MESSAGE(wasException, "Expected OutOfGasIntrinsic exception to be thrown at TransactionConstructor test");
 }
 
 BOOST_AUTO_TEST_CASE(ExecutionResultOutput)
