@@ -74,13 +74,15 @@
 #include "DappHost.h"
 #include "WebPage.h"
 #include "ExportState.h"
+#include "AllAccounts.h"
 #include "ui_Main.h"
 #include "ui_GetPassword.h"
 #include "ui_GasPricing.h"
 using namespace std;
 using namespace dev;
-using namespace dev::p2p;
-using namespace dev::eth;
+using namespace az;
+using namespace p2p;
+using namespace eth;
 namespace js = json_spirit;
 
 string Main::fromRaw(h256 _n, unsigned* _inc)
@@ -126,8 +128,8 @@ static QString filterOutTerminal(QString _s)
 	return _s.replace(QRegExp("\x1b\\[(\\d;)?\\d+m"), "");
 }
 
-Main::Main(QWidget *parent) :
-	QMainWindow(parent),
+Main::Main(QWidget* _parent):
+	MainFace(_parent),
 	ui(new Ui::Main),
 	m_transact(nullptr),
 	m_dappLoader(nullptr),
@@ -302,6 +304,8 @@ Main::Main(QWidget *parent) :
 			s.setValue("splashMessage", false);
 		}
 	}
+
+	new dev::az::AllAccounts(this);
 }
 
 Main::~Main()
@@ -1283,35 +1287,6 @@ void Main::on_onlyNamed_toggled()
 	ui->refreshAccounts->setEnabled(true);
 }
 
-void Main::on_refreshAccounts_clicked()
-{
-	refreshAccounts();
-}
-
-void Main::refreshAccounts()
-{
-	DEV_TIMED_FUNCTION;
-#if ETH_FATDB || !ETH_TRUE
-	cwatch << "refreshAccounts()";
-	ui->accounts->clear();
-	bool showContract = ui->showContracts->isChecked();
-	bool showBasic = ui->showBasic->isChecked();
-	bool onlyNamed = ui->onlyNamed->isChecked();
-	for (auto const& i: ethereum()->addresses())
-	{
-		bool isContract = (ethereum()->codeHashAt(i) != EmptySHA3);
-		if (!((showContract && isContract) || (showBasic && !isContract)))
-			continue;
-		string r = render(i);
-		if (onlyNamed && !(r.find('"') != string::npos || r.substr(0, 2) == "XE"))
-			continue;
-		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(ethereum()->balanceAt(i)).c_str()).arg(QString::fromStdString(r)).arg((unsigned)ethereum()->countAt(i)), ui->accounts))
-			->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
-	}
-#endif
-	ui->refreshAccounts->setEnabled(false);
-}
-
 void Main::refreshBlockCount()
 {
 	auto d = ethereum()->blockChain().details();
@@ -1919,33 +1894,6 @@ void Main::debugDumpState(int _add)
 	}
 }
 
-void Main::on_accounts_currentItemChanged()
-{
-	ui->accountInfo->clear();
-	if (auto item = ui->accounts->currentItem())
-	{
-		auto hba = item->data(Qt::UserRole).toByteArray();
-		assert(hba.size() == 20);
-		auto address = h160((byte const*)hba.data(), h160::ConstructFromPointer);
-
-		stringstream s;
-		try
-		{
-			auto storage = ethereum()->storageAt(address);
-			for (auto const& i: storage)
-				s << "@" << showbase << hex << prettyU256(i.first) << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << prettyU256(i.second) << "<br/>";
-			s << "<h4>Body Code (" << sha3(ethereum()->codeAt(address)).abridged() << ")</h4>" << disassemble(ethereum()->codeAt(address));
-			s << ETH_HTML_DIV(ETH_HTML_MONO) << toHex(ethereum()->codeAt(address)) << "</div>";
-			ui->accountInfo->appendHtml(QString::fromStdString(s.str()));
-		}
-		catch (dev::InvalidTrie)
-		{
-			ui->accountInfo->appendHtml("Corrupted trie.");
-		}
-		ui->accountInfo->moveCursor(QTextCursor::Start);
-	}
-}
-
 void Main::on_idealPeers_valueChanged(int)
 {
 	m_webThree->setIdealPeerCount(ui->idealPeers->value());
@@ -1963,16 +1911,6 @@ void Main::on_ourAccounts_doubleClicked()
 	ui->log->setPlainText("");
 	m_logHistory.clear();
 }*/
-
-void Main::on_accounts_doubleClicked()
-{
-	if (ui->accounts->count())
-	{
-		auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
-		auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-		qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
-	}
-}
 
 static shh::Topics topicFromText(QString _s)
 {
