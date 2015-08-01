@@ -19,7 +19,7 @@ Rectangle {
 	id: root
 
 	property int labelWidth: 150
-
+	property bool verifyDeploy: true
 
 	function show()
 	{
@@ -37,12 +37,12 @@ Rectangle {
 		}
 
 		verifyDeployedContract()
-
 		deployedAddresses.refresh()
-		worker.renewCtx()
 
+		worker.renewCtx()
+		verifyDeploy = true
 		worker.pooler.onTriggered.connect(function() {
-			if (root.visible)
+			if (root.visible && verifyDeploy)
 				verifyDeployedContract();
 		})
 	}
@@ -73,10 +73,13 @@ Rectangle {
 			verificationLabel.text = nb
 			if (trLost.length > 0)
 			{
+				verifyDeploy = false
 				verificationTextArea.visible = true
 				verificationLabel.visible = false
+				verificationTextArea.text = ""
 				deploymentStepChanged("following transactions are invalidated:")
 				verificationTextArea.text += "\n" + qsTr("Transactions lost") + "\n"
+				verificationTextArea.textColor = "red"
 				for (var k in trLost)
 				{
 					deploymentStepChanged(trLost[k])
@@ -143,9 +146,11 @@ Rectangle {
 				ScrollView
 				{
 					anchors.fill: parent
+					horizontalScrollBarPolicy: Qt.ScrollBarAlwaysOff
 					ColumnLayout
 					{
 						spacing: 0
+
 						ListModel
 						{
 							id: trListModel
@@ -217,6 +222,13 @@ Rectangle {
 										text: name + "=" + value
 										font.italic: true
 									}
+								}
+
+								Rectangle
+								{
+									Layout.preferredWidth: scenarioList.width
+									Layout.preferredHeight: 1
+									color: "#cccccc"
 								}
 							}
 						}
@@ -524,6 +536,5 @@ Rectangle {
 			}
 		}
 	}
-
 }
 

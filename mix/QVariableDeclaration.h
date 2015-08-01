@@ -47,6 +47,7 @@ class QSolidityType: public QObject
 	Q_PROPERTY(int size READ size CONSTANT)
 	Q_PROPERTY(QString name READ name CONSTANT)
 	Q_PROPERTY(QVariantList members READ members CONSTANT)
+	Q_PROPERTY(bool array READ array CONSTANT)
 
 public:
 	QSolidityType() {}
@@ -71,6 +72,7 @@ public:
 	int size() const { return m_type.size; }
 	QString name() const { return m_type.name; }
 	QVariantList members() const;
+	bool array() const { return m_type.array; }
 
 private:
 	SolidityType m_type;

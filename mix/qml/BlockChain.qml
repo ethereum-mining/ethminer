@@ -376,7 +376,6 @@ ColumnLayout {
 								block.status = "mined"
 								retBlocks.push(block)
 							}
-
 						}
 						if (retBlocks.length === 0)
 							retBlocks.push(projectModel.stateListModel.createEmptyBlock())
@@ -587,7 +586,7 @@ ColumnLayout {
 					itemTr.parameters = _r.parameters
 					itemTr.isContractCreation = itemTr.functionId === itemTr.contractId
 					itemTr.label = _r.label
-					itemTr.isFunctionCall = itemTr.functionId !== ""
+					itemTr.isFunctionCall = itemTr.functionId !== "" && itemTr.functionId !== "<none>"
 					itemTr.returned = _r.returned
 					itemTr.value = QEtherHelper.createEther(_r.value, QEther.Wei)
 					itemTr.sender = _r.sender
@@ -617,7 +616,7 @@ ColumnLayout {
 					clientModel.addAccount(ac.secret);
 					for (var k in Object.keys(blockChainPanel.states))
 						blockChainPanel.states[k].accounts["0x" + ac.address] = "0 wei" // add the account in all the previous state (balance at O)
-					accountAdded(ac.address, "0")
+					accountAdded("0x" + ac.address, "0")
 				}
 				Layout.preferredWidth: 100
 				Layout.preferredHeight: 30
