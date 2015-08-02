@@ -58,3 +58,9 @@ void MainFace::killPlugins()
 {
 	m_plugins.clear();
 }
+
+void MainFace::allChange()
+{
+	for (auto const& p: m_plugins)
+		p.second->onAllChange();
+}
