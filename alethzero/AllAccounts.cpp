@@ -36,16 +36,19 @@ AllAccounts::AllAccounts(MainFace* _m):
 	m_ui(new Ui::AllAccounts)
 {
 	m_ui->setupUi(dock());
-
+	installWatches();
 	refresh();
 }
 
 AllAccounts::~AllAccounts()
 {
-
 }
 
-// TODO: Introduce interface for MainWin's refreshAccounts() and have it call refresh().
+void AllAccounts::installWatches()
+{
+	installWatch(ChainChangedFilter, [=](LocalisedLogEntries const&){ onAllChange(); });
+	installWatch(PendingChangedFilter, [=](LocalisedLogEntries const&){ onAllChange(); });
+}
 
 void AllAccounts::refresh()
 {
@@ -69,6 +72,11 @@ void AllAccounts::refresh()
 	}
 #endif
 	m_refreshAccounts->setEnabled(false);
+}
+
+void AllAccounts::onAllChange()
+{
+	ui->refreshAccounts->setEnabled(true);
 }
 
 void AllAccounts::on_accounts_currentItemChanged()
@@ -106,10 +114,5 @@ void AllAccounts::on_accounts_doubleClicked()
 		auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
 		qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 	}
-}
-
-void AllAccounts::on_refreshAccounts_clicked()
-{
-	refreshAccounts();
 }
 

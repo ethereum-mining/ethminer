@@ -145,13 +145,6 @@ private slots:
 	void on_claimPresale_triggered();
 	void on_exportKey_triggered();
 
-	// Account pane
-	void on_accountsFilter_textChanged();
-	void on_showBasic_toggled();
-	void on_showContracts_toggled();
-	void on_onlyNamed_toggled();
-	void on_refreshAccounts_clicked();
-
 	// Tools
 	void on_newTransaction_triggered();
 	void on_loadJS_triggered();
