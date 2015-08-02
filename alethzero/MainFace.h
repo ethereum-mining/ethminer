@@ -87,9 +87,9 @@ public:
 	virtual void onAllChange() {}
 
 private:
-	MainFace* m_main;
+	MainFace* m_main = nullptr;
 	std::string m_name;
-	QDockWidget* m_dock;
+	QDockWidget* m_dock = nullptr;
 };
 
 }

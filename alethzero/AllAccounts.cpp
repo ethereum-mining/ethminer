@@ -36,9 +36,18 @@ AllAccounts::AllAccounts(MainFace* _m):
 	Plugin(_m, "AllAccounts"),
 	m_ui(new Ui::AllAccounts)
 {
-	m_ui->setupUi(dock());
+	dock(Qt::RightDockWidgetArea, "All Accounts")->setWidget(new QWidget());
+	m_ui->setupUi(dock()->widget());
 	installWatches();
 	refresh();
+
+	connect(m_ui->accounts, SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)), SLOT(on_accounts_currentItemChanged()));
+	connect(m_ui->accounts, SIGNAL(doubleClicked(QModelIndex)), SLOT(on_accounts_doubleClicked()));
+	connect(m_ui->refreshAccounts, SIGNAL(clicked()), SLOT(refresh()));
+	connect(m_ui->accountsFilter, SIGNAL(textChanged(QString)), SLOT(onAllChange()));
+	connect(m_ui->showBasic, SIGNAL(toggled(bool)), SLOT(onAllChange()));
+	connect(m_ui->showContracts, SIGNAL(toggled(bool)), SLOT(onAllChange()));
+	connect(m_ui->onlyNamed, SIGNAL(toggled(bool)), SLOT(onAllChange()));
 }
 
 AllAccounts::~AllAccounts()
@@ -72,7 +81,7 @@ void AllAccounts::refresh()
 			->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
 	}
 #endif
-	m_refreshAccounts->setEnabled(false);
+	m_ui->refreshAccounts->setEnabled(false);
 }
 
 void AllAccounts::onAllChange()
