@@ -37,7 +37,7 @@ namespace az
 class AllAccounts: public Plugin
 {
 public:
-	AllAccounts(MainFace* _m): Plugin(_m, "AllAccounts") {}
+	AllAccounts(MainFace* _m);
 	~AllAccounts();
 
 private slots:

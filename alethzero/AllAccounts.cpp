@@ -21,6 +21,7 @@
 
 #include "AllAccounts.h"
 #include <sstream>
+#include <QClipboard>
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
 #include <libevmcore/Instruction.h>
@@ -46,8 +47,8 @@ AllAccounts::~AllAccounts()
 
 void AllAccounts::installWatches()
 {
-	installWatch(ChainChangedFilter, [=](LocalisedLogEntries const&){ onAllChange(); });
-	installWatch(PendingChangedFilter, [=](LocalisedLogEntries const&){ onAllChange(); });
+	main()->installWatch(ChainChangedFilter, [=](LocalisedLogEntries const&){ onAllChange(); });
+	main()->installWatch(PendingChangedFilter, [=](LocalisedLogEntries const&){ onAllChange(); });
 }
 
 void AllAccounts::refresh()
@@ -64,10 +65,10 @@ void AllAccounts::refresh()
 		bool isContract = (ethereum()->codeHashAt(i) != EmptySHA3);
 		if (!((showContract && isContract) || (showBasic && !isContract)))
 			continue;
-		string r = render(i);
+		string r = static_cast<Context*>(main())->render(i);
 		if (onlyNamed && !(r.find('"') != string::npos || r.substr(0, 2) == "XE"))
 			continue;
-		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(ethereum()->balanceAt(i)).c_str()).arg(QString::fromStdString(r)).arg((unsigned)ethereum()->countAt(i)), ui->accounts))
+		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(ethereum()->balanceAt(i)).c_str()).arg(QString::fromStdString(r)).arg((unsigned)ethereum()->countAt(i)), m_ui->accounts))
 			->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
 	}
 #endif
@@ -76,7 +77,7 @@ void AllAccounts::refresh()
 
 void AllAccounts::onAllChange()
 {
-	ui->refreshAccounts->setEnabled(true);
+	m_ui->refreshAccounts->setEnabled(true);
 }
 
 void AllAccounts::on_accounts_currentItemChanged()
@@ -102,15 +103,15 @@ void AllAccounts::on_accounts_currentItemChanged()
 		{
 			m_ui->accountInfo->appendHtml("Corrupted trie.");
 		}
-		ui->accountInfo->moveCursor(QTextCursor::Start);
+		m_ui->accountInfo->moveCursor(QTextCursor::Start);
 	}
 }
 
 void AllAccounts::on_accounts_doubleClicked()
 {
-	if (ui->accounts->count())
+	if (m_ui->accounts->count())
 	{
-		auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
+		auto hba = m_ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
 		auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
 		qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 	}

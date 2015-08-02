@@ -24,16 +24,18 @@
 #include <memory>
 #include <map>
 #include <string>
+#include <functional>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QAction>
 #include <QtWidgets/QDockWidget>
+#include <libevm/ExtVMFace.h>
 #include "Context.h"
 
 namespace dev
 {
 
-namespace web3 { class WebThreeDirect; }
-namespace eth { class Client; }
+class WebThreeDirect;
+namespace eth { class Client; class LogFilter; }
 namespace shh { class WhisperHost; }
 
 namespace az
@@ -41,21 +43,26 @@ namespace az
 
 class Plugin;
 
+using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
+
 class MainFace: public QMainWindow, public Context
 {
 public:
 	explicit MainFace(QWidget* _parent = nullptr): QMainWindow(_parent) {}
 
-	void adoptPlugin(Plugin* _p) { m_plugins.insert(_p->name(), std::shared_ptr<Plugin>(_p)); }
+	void adoptPlugin(Plugin* _p);
 	void killPlugins();
 
 	void allChange();
 
 	// TODO: tidy - all should be references that throw if module unavailable.
 	// TODO: provide a set of available web3 modules.
-	virtual dev::web3::WebThreeDirect* web3() const = 0;
+	virtual dev::WebThreeDirect* web3() const = 0;
 	virtual dev::eth::Client* ethereum() const = 0;
 	virtual std::shared_ptr<dev::shh::WhisperHost> whisper() const = 0;
+
+	virtual unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f) = 0;
+	virtual unsigned installWatch(dev::h256 const& _tf, WatchHandler const& _f) = 0;
 
 private:
 	std::unordered_map<std::string, std::shared_ptr<Plugin>> m_plugins;
@@ -69,7 +76,7 @@ public:
 
 	std::string const& name() const { return m_name; }
 
-	dev::web3::WebThreeDirect* web3() const { return m_main->web3(); }
+	dev::WebThreeDirect* web3() const { return m_main->web3(); }
 	dev::eth::Client* ethereum() const { return m_main->ethereum(); }
 	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_main->whisper(); }
 	MainFace* main() { return m_main; }
