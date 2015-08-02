@@ -20,7 +20,7 @@
  */
 
 #include "MainFace.h"
-
+using namespace std;
 using namespace dev;
 using namespace az;
 
@@ -30,7 +30,6 @@ Plugin::Plugin(MainFace* _f, std::string const& _name):
 {
 	_f->adoptPlugin(this);
 }
-
 
 QDockWidget* Plugin::dock(Qt::DockWidgetArea _area, QString _title)
 {
@@ -46,12 +45,17 @@ QDockWidget* Plugin::dock(Qt::DockWidgetArea _area, QString _title)
 
 void Plugin::addToDock(Qt::DockWidgetArea _area, QDockWidget* _dockwidget, Qt::Orientation _orientation)
 {
-	m_main->addDockWidget(_area, m_dock, _orientation);
+	m_main->addDockWidget(_area, _dockwidget, _orientation);
 }
 
 void Plugin::addAction(QAction* _a)
 {
 	m_main->addAction(_a);
+}
+
+void MainFace::adoptPlugin(Plugin* _p)
+{
+	m_plugins[_p->name()] = shared_ptr<Plugin>(_p);
 }
 
 void MainFace::killPlugins()
