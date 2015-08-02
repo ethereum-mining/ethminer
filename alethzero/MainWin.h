@@ -26,7 +26,6 @@
 #endif
 
 #include <map>
-
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>
@@ -132,7 +131,6 @@ private slots:
 	// View
 	void on_refresh_triggered();
 	void on_showAll_triggered() { refreshBlockChain(); }
-	void on_showAllAccounts_triggered() { refreshAccounts(); }
 	void on_preview_triggered();
 
 	// Account management
@@ -221,8 +219,8 @@ private:
 
 	void setPrivateChain(QString const& _private, bool _forceConfigure = false);
 
-	unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f);
-	unsigned installWatch(dev::h256 _tf, WatchHandler const& _f);
+	unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f) override;
+	unsigned installWatch(dev::h256 const& _tf, WatchHandler const& _f) override;
 	void uninstallWatch(unsigned _w);
 
 	void keysChanged();
