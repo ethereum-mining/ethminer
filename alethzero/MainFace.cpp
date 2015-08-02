@@ -39,6 +39,7 @@ QDockWidget* Plugin::dock(Qt::DockWidgetArea _area, QString _title)
 	{
 		m_dock = new QDockWidget(_title, m_main);
 		m_main->addDockWidget(_area, m_dock);
+		m_dock->setFeatures(QDockWidget::AllDockWidgetFeatures | QDockWidget::DockWidgetVerticalTitleBar);
 	}
 	return m_dock;
 }

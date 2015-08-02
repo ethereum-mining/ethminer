@@ -34,8 +34,10 @@ namespace dev
 namespace az
 {
 
-class AllAccounts: public Plugin
+class AllAccounts: public QObject, public Plugin
 {
+	Q_OBJECT
+
 public:
 	AllAccounts(MainFace* _m);
 	~AllAccounts();
@@ -43,21 +45,13 @@ public:
 private slots:
 	void on_accounts_currentItemChanged();
 	void on_accounts_doubleClicked();
-	void on_refreshAccounts_clicked() { refresh(); }
 
-	void on_accountsFilter_textChanged() { onAllChange(); }
-	void on_showBasic_toggled() { onAllChange(); }
-	void on_showContracts_toggled() { onAllChange(); }
-	void on_onlyNamed_toggled() { onAllChange(); }
-
-private:
 	void onAllChange();
-
-	void installWatches();
 	void refresh();
+private:
+	void installWatches();
 
 	Ui::AllAccounts* m_ui;
-	QAction* m_refreshAccounts;
 };
 
 }
