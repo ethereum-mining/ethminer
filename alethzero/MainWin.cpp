@@ -526,7 +526,6 @@ void Main::onNewBlock()
 	// update blockchain dependent views.
 	refreshBlockCount();
 	refreshBlockChain();
-	ui->refreshAccounts->setEnabled(true);
 
 	// We must update balances since we can't filter updates to basic accounts.
 	refreshBalances();
@@ -538,7 +537,6 @@ void Main::onNewPending()
 
 	// update any pending-transaction dependent views.
 	refreshPending();
-	ui->refreshAccounts->setEnabled(true);
 }
 
 void Main::on_forceMining_triggered()
@@ -1241,8 +1239,8 @@ void Main::refreshAll()
 	refreshBlockChain();
 	refreshBlockCount();
 	refreshPending();
-	ui->refreshAccounts->setEnabled(true);
 	refreshBalances();
+	allChange();
 }
 
 void Main::refreshPending()
@@ -1265,26 +1263,6 @@ void Main::refreshPending()
 				.arg((unsigned)t.nonce());
 		ui->transactionQueue->addItem(s);
 	}
-}
-
-void Main::on_accountsFilter_textChanged()
-{
-	ui->refreshAccounts->setEnabled(true);
-}
-
-void Main::on_showBasic_toggled()
-{
-	ui->refreshAccounts->setEnabled(true);
-}
-
-void Main::on_showContracts_toggled()
-{
-	ui->refreshAccounts->setEnabled(true);
-}
-
-void Main::on_onlyNamed_toggled()
-{
-	ui->refreshAccounts->setEnabled(true);
 }
 
 void Main::refreshBlockCount()

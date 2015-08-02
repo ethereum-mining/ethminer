@@ -49,6 +49,8 @@ public:
 	void adoptPlugin(Plugin* _p) { m_plugins.insert(_p->name(), std::shared_ptr<Plugin>(_p)); }
 	void killPlugins();
 
+	void allChange();
+
 	// TODO: tidy - all should be references that throw if module unavailable.
 	// TODO: provide a set of available web3 modules.
 	virtual dev::web3::WebThreeDirect* web3() const = 0;
@@ -74,6 +76,8 @@ public:
 	QDockWidget* dock(Qt::DockWidgetArea _area = Qt::RightDockWidgetArea, QString _title = QString());
 	void addToDock(Qt::DockWidgetArea _area, QDockWidget* _dockwidget, Qt::Orientation _orientation);
 	void addAction(QAction* _a);
+
+	virtual void onAllChange() {}
 
 private:
 	MainFace* m_main;
