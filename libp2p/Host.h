@@ -119,6 +119,17 @@ struct NodeInfo
 	std::string version;
 };
 
+struct NetworkHosts
+{
+	NetworkHosts() {}
+	
+	std::list<Node> const initialPeers;
+	std::list<Node> const requiredPeers;
+	std::list<Node> const acceptedHosts;
+	
+	std::list<Node> const bootstrapPeers;
+};
+
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.

@@ -178,8 +178,22 @@ void help()
 		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    --network-id <n> Only connect to other hosts with this network id." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
+	
+		// "initial, required"
+		// network.peers
+		// network.hosts
+		<< "	--peers <filename>  Text list of type:publickey@host[:port]  (default: bootstrap.txt)" << endl
+		<< "		Types:" << endl
+		<< "		default		Attempt connection when no other peers are available and pinning is disable." << endl
+		<< "		trusted		Keep connected at all times." << endl
+		<< "	--trust-peers <filename>  Text list of publickeys." << endl
+
+		<< "	--accept-hosts <filename>  List of host:port  Always accept connections from specified hosts." << endl
+// TODO (req'd update to UDP for signaling ingress connect):
+//		<< "	--accept-peers <filename>  List of publickey  Always accept connections from peers with specified public keys." << endl
+	
 		<< "    --no-discovery  Disable Node discovery." << endl
-		<< "    --pin  Only connect to required (trusted) peers." << endl
+		<< "    --pin  Only accept or connect to required peers." << endl
 		<< "    --hermit  Equivalent to --no-discovery --pin." << endl
 		<< "    --sociable  Forces discovery and no pinning." << endl
 //		<< "    --require-peers <peers.json>  List of required (trusted) peers. (experimental)" << endl
