@@ -66,8 +66,8 @@ public:
 	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return m_bid; }
 
 private:
-	u256 m_ask = 10 * szabo;
-	u256 m_bid = 10 * szabo;
+	u256 m_ask = 50 * shannon;
+	u256 m_bid = 50 * shannon;
 };
 
 }
