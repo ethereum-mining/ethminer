@@ -25,7 +25,8 @@
 #include <QPlainTextEdit>
 #include "MainFace.h"
 
-namespace Ui {
+namespace Ui
+{
 class AllAccounts;
 }
 

@@ -65,8 +65,6 @@ class DappLoader;
 class DappHost;
 struct Dapp;
 
-using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
-
 QString contentsOfQResource(std::string const& res);
 
 class Main: public dev::az::MainFace
@@ -219,8 +217,8 @@ private:
 
 	void setPrivateChain(QString const& _private, bool _forceConfigure = false);
 
-	unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f) override;
-	unsigned installWatch(dev::h256 const& _tf, WatchHandler const& _f) override;
+	unsigned installWatch(dev::eth::LogFilter const& _tf, dev::az::WatchHandler const& _f) override;
+	unsigned installWatch(dev::h256 const& _tf, dev::az::WatchHandler const& _f) override;
 	void uninstallWatch(unsigned _w);
 
 	void keysChanged();
@@ -256,7 +254,7 @@ private:
 
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;
 
-	std::map<unsigned, WatchHandler> m_handlers;
+	std::map<unsigned, dev::az::WatchHandler> m_handlers;
 	unsigned m_nameRegFilter = (unsigned)-1;
 	unsigned m_currenciesFilter = (unsigned)-1;
 	unsigned m_balancesFilter = (unsigned)-1;
