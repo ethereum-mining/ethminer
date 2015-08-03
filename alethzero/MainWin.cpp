@@ -75,6 +75,7 @@
 #include "WebPage.h"
 #include "ExportState.h"
 #include "AllAccounts.h"
+#include "LogPanel.h"
 #include "ui_Main.h"
 #include "ui_GetPassword.h"
 #include "ui_GasPricing.h"
@@ -123,11 +124,6 @@ QString contentsOfQResource(string const& res)
 Address c_newConfig = Address("c6d9d2cd449a754c494264e1809c50e34d64562b");
 //Address c_nameReg = Address("ddd1cea741d548f90d86fb87a3ae6492e18c03a1");
 
-static QString filterOutTerminal(QString _s)
-{
-	return _s.replace(QRegExp("\x1b\\[(\\d;)?\\d+m"), "");
-}
-
 Main::Main(QWidget* _parent):
 	MainFace(_parent),
 	ui(new Ui::Main),
@@ -157,16 +153,6 @@ Main::Main(QWidget* _parent):
 		setWindowTitle("AlethZero Olympic");
 	else if (c_network == eth::Network::Frontier)
 		setWindowTitle("AlethZero Frontier");
-
-	g_logPost = [=](string const& s, char const* c)
-	{
-		simpleDebugOut(s, c);
-		m_logLock.lock();
-		m_logHistory.append(filterOutTerminal(QString::fromStdString(s)) + "\n");
-		m_logChanged = true;
-		m_logLock.unlock();
-//		ui->log->addItem(QString::fromStdString(s));
-	};
 
 	// Open Key Store
 	bool opened = false;
@@ -217,7 +203,6 @@ Main::Main(QWidget* _parent):
 	cerr << "Client database version: " << c_databaseVersion << endl;
 
 	ui->configDock->close();
-	on_verbosity_valueChanged();
 
 	statusBar()->addPermanentWidget(ui->cacheUsage);
 	statusBar()->addPermanentWidget(ui->balance);
@@ -309,15 +294,13 @@ Main::Main(QWidget* _parent):
 	}
 
 	new dev::az::AllAccounts(this);
+	new dev::az::LogPanel(this);
 }
 
 Main::~Main()
 {
 	m_httpConnector->StopListening();
 	writeSettings();
-	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
-	// *after* the client is dead.
-	g_logPost = simpleDebugOut;
 }
 
 bool Main::confirm() const
@@ -786,7 +769,6 @@ void Main::writeSettings()
 	s.setValue("port", ui->port->value());
 	s.setValue("url", ui->urlEdit->text());
 	s.setValue("privateChain", m_privateChain);
-	s.setValue("verbosity", ui->verbosity->value());
 	if (auto vm = m_vmSelectionGroup->checkedAction())
 		s.setValue("vm", vm->text());
 
@@ -888,7 +870,6 @@ void Main::readSettings(bool _skipGeometry)
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 	ui->nameReg->setText(s.value("nameReg", "").toString());
 	setPrivateChain(s.value("privateChain", "").toString());
-	ui->verbosity->setValue(s.value("verbosity", 1).toInt());
 
 #if ETH_EVMJIT // We care only if JIT is enabled. Otherwise it can cause misconfiguration.
 	auto vmName = s.value("vm").toString();
@@ -1452,15 +1433,6 @@ void Main::timerEvent(QTimerEvent*)
 
 	if ((interval / 100 % 2 == 0 && m_webThree->ethereum()->isSyncing()) || interval == 1000)
 		ui->downloadView->update();
-
-	if (m_logChanged)
-	{
-		m_logLock.lock();
-		m_logChanged = false;
-		ui->log->appendPlainText(m_logHistory.mid(0, m_logHistory.length() - 1));
-		m_logHistory.clear();
-		m_logLock.unlock();
-	}
 
 	// refresh peer list every 1000ms, reset counter
 	if (interval == 1000)
@@ -2028,12 +2000,6 @@ void Main::on_connect_triggered()
 		else
 			web3()->addNode(nodeID, host);
 	}
-}
-
-void Main::on_verbosity_valueChanged()
-{
-	g_logVerbosity = ui->verbosity->value();
-	ui->verbosityLabel->setText(QString::number(g_logVerbosity));
 }
 
 void Main::on_mine_triggered()
