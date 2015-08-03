@@ -61,7 +61,7 @@ Network resetNetwork(Network _n)
 		c_minGasLimit = 5000;
 		break;
 	}
-	c_gasFloorTarget = c_network == Network::Frontier ? 5000 : 3141592;
+	c_gasFloorTarget = 3141592;
 	c_gasLimitBoundDivisor = 1024;
 	c_minimumDifficulty = 131072;
 	c_difficultyBoundDivisor = 2048;
