@@ -300,7 +300,7 @@ h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 {
 	// H(H(r||k)^h)
 	h256 s;
-	sha3mac(Nonce::get().ref(), _priv.ref(), s.ref());
+	sha3mac(Secret::random().ref(), _priv.ref(), s.ref());
 	s ^= _hash;
 	sha3(s.ref(), s.ref());
 	
