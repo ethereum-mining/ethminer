@@ -136,6 +136,7 @@ Main::Main(QWidget *parent) :
 	QtWebEngine::initialize();
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
+	std::string dbPath = getDataDir();
 
 	for (int i = 1; i < qApp->arguments().size(); ++i)
 	{
@@ -146,6 +147,8 @@ Main::Main(QWidget *parent) :
 			resetNetwork(eth::Network::Olympic);
 		else if (arg == "--genesis-json" && i + 1 < qApp->arguments().size())
 			CanonBlockChain<Ethash>::setGenesis(contentsString(qApp->arguments()[++i].toStdString()));
+		else if ((arg == "--db-path" || arg == "-d") && i + 1 < qApp->arguments().size())
+			dbPath = qApp->arguments()[++i].toStdString();
 	}
 
 	if (c_network == eth::Network::Olympic)
@@ -200,8 +203,8 @@ Main::Main(QWidget *parent) :
 #endif
 	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
 
-	if (!dev::contents(getDataDir() + "/genesis.json").empty())
-		CanonBlockChain<Ethash>::setGenesis(contentsString(getDataDir() + "/genesis.json"));
+	if (!dev::contents(dbPath + "/genesis.json").empty())
+		CanonBlockChain<Ethash>::setGenesis(contentsString(dbPath + "/genesis.json"));
 
 	cerr << "State root: " << CanonBlockChain<Ethash>::genesis().stateRoot() << endl;
 	auto block = CanonBlockChain<Ethash>::createGenesisBlock();
@@ -226,7 +229,7 @@ Main::Main(QWidget *parent) :
 	QSettings s("ethereum", "alethzero");
 	m_networkConfig = s.value("peers").toByteArray();
 	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
-	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir(), WithExisting::Trust, {"eth"/*, "shh"*/}, p2p::NetworkPreferences(), network));
+	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), dbPath, WithExisting::Trust, {"eth"/*, "shh"*/}, p2p::NetworkPreferences(), network));
 
 	ui->blockCount->setText(QString("PV%1.%2 D%3 %4-%5 v%6").arg(eth::c_protocolVersion).arg(eth::c_minorProtocolVersion).arg(c_databaseVersion).arg(QString::fromStdString(ethereum()->sealEngine()->name())).arg(ethereum()->sealEngine()->revision()).arg(dev::Version));
 
