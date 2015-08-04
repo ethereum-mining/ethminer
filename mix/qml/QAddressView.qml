@@ -1,8 +1,10 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.3
 import QtQuick.Controls.Styles 1.3
+import QtQuick.Layouts 1.1
+import "js/InputValidator.js" as InputValidator
 
-Row
+ColumnLayout
 {
 	property alias value: textinput.text
 	property alias accountRef: ctrModel
@@ -12,13 +14,27 @@ Row
 	property alias displayInput: textInputRect.visible
 	property variant accounts
 	signal indexChanged()
+	spacing: 0
 	id: editRoot
-	height: 20
+	height:
+	{
+		if (isArray() && !readOnly)
+			return 60
+		else
+			return 30
+	}
+
 	width: 320
 
 	SourceSansProBold
 	{
 		id: boldFont
+	}
+
+	function isArray()
+	{
+		InputValidator.init()
+		return InputValidator.isArray(subType)
 	}
 
 	function currentValue() {
@@ -38,7 +54,7 @@ Row
 	function load()
 	{
 		accountRef.clear();
-        if (subType === "contract" || subType === "address")
+		if (subType.indexOf("contract") !== -1 || subType.indexOf("address") !== -1)
 		{
 			var trCr = 0;
             if (blockChainPanel)
@@ -59,7 +75,7 @@ Row
                     }
                 }
 		}
-		if (subType === "address")
+		if (subType.indexOf("address") !== -1)
 		{
 			for (k = 0; k < accounts.length; k++)
 			{
@@ -72,21 +88,42 @@ Row
 
 	function init()
 	{
-		trCombobox.visible = !readOnly
+		btnAdd.visible = isArray()
 		textinput.readOnly = readOnly
+		if (isArray() || readOnly)
+			displayInput = true
+		else
+			displayInput = false
+
+		if (isArray() || !readOnly)
+			trCombobox.visible = true
+		else
+			trCombobox.visible = false
+
+		if (!trCombobox.visible)
+		{
+			rowCombobox.visible = false
+			rowCombobox.height = 0
+			trCombobox.height = 0
+			textinput.anchors.top = textinput.parent.top
+		}
+
 		if (!readOnly)
 		{
+			trCombobox.currentIndex = 0
 			for (var k = 0; k < ctrModel.count; k++)
 			{
 				if (ctrModel.get(k).value === value)
 				{
-					trCombobox.currentIndex = k;
-					return;
+					trCombobox.currentIndex = k
+					break
 				}
 			}
-			trCombobox.currentIndex = 0;
 		}
-		trCombobox.update()
+		if (!isArray())
+			trCombobox.update()
+		else if (value === "")
+			textinput.text = "[]"
 	}
 
 	function select(address)
@@ -101,17 +138,73 @@ Row
 		}
 	}
 
+	ListModel
+	{
+		id: ctrModel
+	}
+
+	Row
+	{
+		anchors.top: parent.top
+		height: 30
+		id: rowCombobox
+		ComboBox
+		{
+			property bool selected: false
+			id: trCombobox
+			model: ctrModel
+			width: 265
+			textRole: "itemid"
+			function update()
+			{
+				trCombobox.selected = false;
+				if (currentText === "")
+					return;
+				else if (currentText !== " - ")
+				{
+					if (model.get(currentIndex).type === "contract")
+						textinput.text = "<" + currentText + ">";
+					else
+						textinput.text = model.get(currentIndex).value; //address
+					trCombobox.selected = true;
+				}
+				else if (textinput.text.indexOf("<") === 0)
+				{
+					textinput.text = "";
+				}
+				indexChanged();
+			}
+
+			onCurrentIndexChanged: {
+				if (!isArray())
+					update()
+			}
+		}
+
+		Button
+		{
+			id: btnAdd
+			text: qsTr("Add")
+			visible: false
+			onClicked:
+			{
+				var ar = JSON.parse(textinput.text)
+				ar.push(trCombobox.model.get(currentIndex).value)
+				textinput.text = JSON.stringify(ar)
+			}
+		}
+	}
+
+
 	Rectangle {
 		radius: 4
-		anchors.verticalCenter: parent.verticalCenter
-		height: 20
+		width: 350
+		height: 30
 		id: textInputRect
-		TextInput {
+		TextField {
 			id: textinput
 			text: value
-			width: parent.width
-			height: parent.width
-			wrapMode: Text.WordWrap
+			anchors.fill: parent
 			clip: true
 			font.family: boldFont.name
 			MouseArea {
@@ -128,45 +221,6 @@ Row
 					trCombobox.selected = false;
 				}
 			}
-		}
-	}
-
-	ListModel
-	{
-		id: ctrModel
-	}
-
-	ComboBox
-	{
-		property bool selected: false
-		id: trCombobox
-		model: ctrModel
-		width: 350
-		textRole: "itemid"
-		anchors.verticalCenter: parent.verticalCenter
-
-		function update()
-		{
-			trCombobox.selected = false;
-			if (currentText === "")
-				return;
-			else if (currentText !== " - ")
-			{
-				if (model.get(currentIndex).type === "contract")
-					textinput.text = "<" + currentText + ">";
-				else
-					textinput.text = model.get(currentIndex).value; //address
-				trCombobox.selected = true;
-			}
-			else if (textinput.text.indexOf("<") === 0)
-			{
-				textinput.text = "";
-			}
-			indexChanged();
-		}
-
-		onCurrentIndexChanged: {
-			update()
 		}
 	}
 }
