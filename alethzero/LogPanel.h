@@ -49,7 +49,9 @@ private slots:
 	void on_verbosity_valueChanged();
 
 private:
-	void timerEvent(QTimerEvent*);
+	void timerEvent(QTimerEvent*) override;
+	void readSettings(QSettings const&) override;
+	void writeSettings(QSettings&) override;
 
 	Ui::LogPanel* m_ui;
 

@@ -288,18 +288,23 @@ Main::Main(QWidget* _parent):
 		QSettings s("ethereum", "alethzero");
 		if (s.value("splashMessage", true).toBool())
 		{
-			QMessageBox::information(this, "Here Be Dragons!", "This is proof-of-concept software. The project as a whole is not even at the alpha-testing stage. It is here to show you, if you have a technical bent, the sort of thing that might be possible down the line.\nPlease don't blame us if it does something unexpected or if you're underwhelmed with the user-experience. We have great plans for it in terms of UX down the line but right now we just want to get the groundwork sorted. We welcome contributions, be they in code, testing or documentation!\nAfter you close this message it won't appear again.");
+			QMessageBox::information(this, "Here Be Dragons!", "This is beta software: it is not yet at the release stage.\nPlease don't blame us if it does something unexpected or if you're underwhelmed with the user-experience. We have great plans for it in terms of UX down the line but right now we just want to make sure everything works roughly as expected. We welcome contributions, be they in code, testing or documentation!\nAfter you close this message it won't appear again.");
 			s.setValue("splashMessage", false);
 		}
 	}
 
-	new dev::az::AllAccounts(this);
-	new dev::az::LogPanel(this);
+	loadPlugin<dev::az::AllAccounts>();
+	loadPlugin<dev::az::LogPanel>();
 }
 
 Main::~Main()
 {
 	m_httpConnector->StopListening();
+
+	// save all settings here so we don't have to explicitly finalise plugins.
+	// NOTE: as soon as plugin finalisation means anything more than saving settings, this will
+	// need to be rethought into something more like:
+	// forEach([&](shared_ptr<Plugin> const& p){ finalisePlugin(p.get()); });
 	writeSettings();
 }
 
@@ -752,6 +757,11 @@ void Main::writeSettings()
 		s.setValue("identities", b);
 	}
 
+	forEach([&](std::shared_ptr<Plugin> p)
+	{
+		p->writeSettings(s);
+	});
+
 	s.setValue("askPrice", QString::fromStdString(toString(static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->ask())));
 	s.setValue("bidPrice", QString::fromStdString(toString(static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->bid())));
 	s.setValue("upnp", ui->upnp->isChecked());
@@ -762,7 +772,6 @@ void Main::writeSettings()
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("natSpec", ui->natSpec->isChecked());
 	s.setValue("showAll", ui->showAll->isChecked());
-	s.setValue("showAllAccounts", ui->showAllAccounts->isChecked());
 	s.setValue("clientName", ui->clientName->text());
 	s.setValue("idealPeers", ui->idealPeers->value());
 	s.setValue("listenIP", ui->listenIP->text());
@@ -847,6 +856,11 @@ void Main::readSettings(bool _skipGeometry)
 		}
 	}
 
+	forEach([&](std::shared_ptr<Plugin> p)
+	{
+		p->readSettings(s);
+	});
+
 	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setAsk(u256(s.value("askPrice", "500000000000").toString().toStdString()));
 	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setBid(u256(s.value("bidPrice", "500000000000").toString().toStdString()));
 
@@ -861,7 +875,6 @@ void Main::readSettings(bool _skipGeometry)
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->natSpec->setChecked(s.value("natSpec", true).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
-	ui->showAllAccounts->setChecked(s.value("showAllAccounts", false).toBool());
 	ui->clientName->setText(s.value("clientName", "").toString());
 	if (ui->clientName->text().isEmpty())
 		ui->clientName->setText(QInputDialog::getText(nullptr, "Enter identity", "Enter a name that will identify you on the peer network"));
@@ -2271,4 +2284,23 @@ void Main::dappLoaded(Dapp& _dapp)
 void Main::pageLoaded(QByteArray const& _content, QString const& _mimeType, QUrl const& _uri)
 {
 	ui->webView->page()->setContent(_content, _mimeType, _uri);
+}
+
+void Main::initPlugin(Plugin* _p)
+{
+	QSettings s("ethereum", "alethzero");
+	_p->readSettings(s);
+}
+
+void Main::finalisePlugin(Plugin* _p)
+{
+	QSettings s("ethereum", "alethzero");
+	_p->writeSettings(s);
+}
+
+void Main::unloadPlugin(string const& _name)
+{
+	shared_ptr<Plugin> p = takePlugin(_name);
+	if (p)
+		finalisePlugin(p.get());
 }

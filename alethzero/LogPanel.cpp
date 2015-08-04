@@ -53,14 +53,7 @@ LogPanel::LogPanel(MainFace* _m):
 		m_logHistory.append(filterOutTerminal(QString::fromStdString(s)) + "\n");
 		m_logChanged = true;
 		m_logLock.unlock();
-//		ui->log->addItem(QString::fromStdString(s));
 	};
-
-	// TODO: refactor
-	{
-		QSettings s("ethereum", "alethzero");
-		m_ui->verbosity->setValue(s.value("verbosity", 1).toInt());
-	}
 
 	on_verbosity_valueChanged();
 }
@@ -70,12 +63,16 @@ LogPanel::~LogPanel()
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
 	g_logPost = simpleDebugOut;
+}
 
-	// TODO: refactor
-	{
-		QSettings s("ethereum", "alethzero");
-		s.setValue("verbosity", m_ui->verbosity->value());
-	}
+void LogPanel::readSettings(QSettings const& _s)
+{
+	m_ui->verbosity->setValue(_s.value("verbosity", 1).toInt());
+}
+
+void LogPanel::writeSettings(QSettings& _s)
+{
+	_s.setValue("verbosity", m_ui->verbosity->value());
 }
 
 void LogPanel::timerEvent(QTimerEvent*)
