@@ -367,7 +367,7 @@ Secret Nonce::next()
 {
 	initialiseIfNeeded();
 	m_value = sha3(m_value);
-	return sha3(m_value);
+	return sha3(~m_value);
 }
 
 void Nonce::resetInternal()
