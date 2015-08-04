@@ -13,7 +13,16 @@ Column
 	property int transactionIndex
 	property string context
 	Layout.fillWidth: true
-	spacing: 5
+	spacing: 0
+	property int colHeight
+
+	function clear()
+	{
+		value = {}
+		members = []
+		colHeight = 0
+	}
+
 	Repeater
 	{
 		id: repeater
@@ -21,8 +30,17 @@ Column
 		RowLayout
 		{
 			id: row
-			height: 30 + (members[index].type.category === QSolidityType.Struct ? (30 * members[index].type.members.length) : 0)
 			Layout.fillWidth: true
+
+			Component.onCompleted:
+			{
+				if (QSolidityType.Address === members[index].type.category && members[index].type.array && context === "parameter")
+					height = 60
+				else
+					height = 30 + (members[index].type.category === QSolidityType.Struct ? (30 * members[index].type.members.length) : 0)
+				root.colHeight += height
+			}
+
 			Rectangle
 			{
 				Layout.preferredWidth: 150
@@ -30,12 +48,14 @@ Column
 				{
 					anchors.right: parent.right
 					anchors.verticalCenter: parent.verticalCenter
-					Label {
+					Label
+					{
 						id: nameLabel
 						text: modelData.name
 					}
 
-					Label {
+					Label
+					{
 						id: typeLabel
 						text: " (" + modelData.type.name + ")"
 						font.italic: true
@@ -72,6 +92,7 @@ Column
 					var ptype = members[index].type;
 					var pname = members[index].name;
 					var vals = value;
+
 					item.readOnly = context === "variable";
 					if (ptype.category === QSolidityType.Address)
 					{
@@ -94,17 +115,28 @@ Column
 						item.value = getValue();
 
 					if (ptype.category === QSolidityType.Bool)
+					{
+						item.subType = modelData.type.name
 						item.init();
+					}
 
 					item.onValueChanged.connect(function() {
-						vals[pname] = item.value;
-						valueChanged();
+						syncValue(vals, pname)
 					});
 
 					var newWidth = nameLabel.width + typeLabel.width + item.width + 108;
 					if (root.width < newWidth)
 						root.width = newWidth;
+
+					syncValue(vals, pname)
 				}
+
+				function syncValue(vals, pname)
+				{
+					vals[pname] = item.value;
+					valueChanged();
+				}
+
 
 				function getValue()
 				{
