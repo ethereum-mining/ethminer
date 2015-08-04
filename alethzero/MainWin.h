@@ -26,7 +26,6 @@
 #endif
 
 #include <map>
-
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>
@@ -42,6 +41,7 @@
 #include "Transact.h"
 #include "NatspecHandler.h"
 #include "Connect.h"
+#include "MainFace.h"
 
 class QListWidgetItem;
 class QActionGroup;
@@ -65,11 +65,9 @@ class DappLoader;
 class DappHost;
 struct Dapp;
 
-using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
-
 QString contentsOfQResource(std::string const& res);
 
-class Main: public QMainWindow, public Context
+class Main: public dev::az::MainFace
 {
 	Q_OBJECT
 
@@ -77,9 +75,9 @@ public:
 	explicit Main(QWidget *parent = 0);
 	~Main();
 
-	dev::WebThreeDirect* web3() const { return m_webThree.get(); }
-	dev::eth::Client* ethereum() const { return m_webThree->ethereum(); }
-	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_webThree->whisper(); }
+	dev::WebThreeDirect* web3() const override { return m_webThree.get(); }
+	dev::eth::Client* ethereum() const override { return m_webThree->ethereum(); }
+	std::shared_ptr<dev::shh::WhisperHost> whisper() const override { return m_webThree->whisper(); }
 
 	bool confirm() const;
 	NatSpecFace* natSpec() { return &m_natSpecDB; }
@@ -131,7 +129,6 @@ private slots:
 	// View
 	void on_refresh_triggered();
 	void on_showAll_triggered() { refreshBlockChain(); }
-	void on_showAllAccounts_triggered() { refreshAccounts(); }
 	void on_preview_triggered();
 
 	// Account management
@@ -144,13 +141,6 @@ private slots:
 	void on_claimPresale_triggered();
 	void on_exportKey_triggered();
 
-	// Account pane
-	void on_accountsFilter_textChanged();
-	void on_showBasic_toggled();
-	void on_showContracts_toggled();
-	void on_onlyNamed_toggled();
-	void on_refreshAccounts_clicked();
-
 	// Tools
 	void on_newTransaction_triggered();
 	void on_loadJS_triggered();
@@ -159,8 +149,6 @@ private slots:
 	// Stuff concerning the blocks/transactions/accounts panels
 	void on_ourAccounts_itemClicked(QListWidgetItem* _i);
 	void on_ourAccounts_doubleClicked();
-	void on_accounts_doubleClicked();
-	void on_accounts_currentItemChanged();
 	void on_transactionQueue_currentItemChanged();
 	void on_blockChainFilter_textChanged();
 	void on_blocks_currentItemChanged();
@@ -229,8 +217,8 @@ private:
 
 	void setPrivateChain(QString const& _private, bool _forceConfigure = false);
 
-	unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f);
-	unsigned installWatch(dev::h256 _tf, WatchHandler const& _f);
+	unsigned installWatch(dev::eth::LogFilter const& _tf, dev::az::WatchHandler const& _f) override;
+	unsigned installWatch(dev::h256 const& _tf, dev::az::WatchHandler const& _f) override;
 	void uninstallWatch(unsigned _w);
 
 	void keysChanged();
@@ -266,7 +254,7 @@ private:
 
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;
 
-	std::map<unsigned, WatchHandler> m_handlers;
+	std::map<unsigned, dev::az::WatchHandler> m_handlers;
 	unsigned m_nameRegFilter = (unsigned)-1;
 	unsigned m_currenciesFilter = (unsigned)-1;
 	unsigned m_balancesFilter = (unsigned)-1;
