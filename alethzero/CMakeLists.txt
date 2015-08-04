@@ -31,6 +31,9 @@ qt5_wrap_ui(ui_ExportState.h ExportState.ui)
 qt5_wrap_ui(ui_GetPassword.h GetPassword.ui)
 qt5_wrap_ui(ui_GasPricing.h GasPricing.ui)
 
+# Extensions
+qt5_wrap_ui(ui_AllAccounts.h AllAccounts.ui)
+
 file(GLOB HEADERS "*.h")
 
 if (APPLE)
@@ -42,7 +45,7 @@ endif ()
 # eth_add_executable is defined in cmake/EthExecutableHelper.cmake
 eth_add_executable(${EXECUTABLE} 
 	ICON alethzero
-	UI_RESOURCES alethzero.icns Main.ui Connect.ui Debugger.ui Transact.ui ExportState.ui GetPassword.ui GasPricing.ui
+	UI_RESOURCES alethzero.icns Main.ui Connect.ui Debugger.ui Transact.ui ExportState.ui GetPassword.ui GasPricing.ui AllAccounts.ui
 	WIN_RESOURCES alethzero.rc
 )
 
