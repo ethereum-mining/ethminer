@@ -31,6 +31,8 @@
 #include <libevm/ExtVMFace.h>
 #include "Context.h"
 
+class QSettings;
+
 namespace dev
 {
 
@@ -64,6 +66,10 @@ public:
 	virtual unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f) = 0;
 	virtual unsigned installWatch(dev::h256 const& _tf, WatchHandler const& _f) = 0;
 
+protected:
+	template <class F> void forEach(F const& _f) { for (auto const& p: m_plugins) _f(p.second); }
+	std::shared_ptr<Plugin> takePlugin(std::string const& _name) { auto it = m_plugins.find(_name); std::shared_ptr<Plugin> ret; if (it != m_plugins.end()) { ret = it->second; m_plugins.erase(it); } return ret; }
+
 private:
 	std::unordered_map<std::string, std::shared_ptr<Plugin>> m_plugins;
 };
@@ -85,6 +91,8 @@ public:
 	void addAction(QAction* _a);
 
 	virtual void onAllChange() {}
+	virtual void readSettings(QSettings const&) {}
+	virtual void writeSettings(QSettings&) {}
 
 private:
 	MainFace* m_main = nullptr;
