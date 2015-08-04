@@ -199,6 +199,11 @@ signals:
 	void poll();
 
 private:
+	template <class P> void loadPlugin() { dev::az::Plugin* p = new P(this); initPlugin(p); }
+	void initPlugin(dev::az::Plugin* _p);
+	void finalisePlugin(dev::az::Plugin* _p);
+	void unloadPlugin(std::string const& _name);
+
 	void debugDumpState(int _add);
 
 	dev::p2p::NetworkPreferences netPrefs() const;
