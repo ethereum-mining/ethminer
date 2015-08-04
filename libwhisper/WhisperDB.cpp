@@ -35,7 +35,7 @@ WhisperDB::WhisperDB(string const& _type)
 	string path = dev::getDataDir("shh");
 	fs::create_directories(path);
 	fs::permissions(path, fs::owner_all);
-	path.append("\\").append(_type);
+	path += "/" + _type;
 	leveldb::Options op;
 	op.create_if_missing = true;
 	op.max_open_files = 256;
