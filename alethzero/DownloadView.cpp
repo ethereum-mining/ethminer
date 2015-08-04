@@ -176,9 +176,6 @@ void SyncView::paintEvent(QPaintEvent*)
 		progress2 = hProgress2;
 		label = hLabel;
 	}
-	else if (rect().height() / rect().width() > 5)
-	{
-	}
 	else
 	{
 		progress = pieProgress;
