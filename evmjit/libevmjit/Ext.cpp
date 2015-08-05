@@ -131,7 +131,7 @@ llvm::Value* Ext::balance(llvm::Value* _address)
 	return m_builder.CreateLoad(ret);
 }
 
-llvm::Value* Ext::blockhash(llvm::Value* _number)
+llvm::Value* Ext::blockHash(llvm::Value* _number)
 {
 	auto hash = getArgAlloca();
 	createCall(EnvFunc::blockhash, {getRuntimeManager().getEnvPtr(), byPtr(_number), hash});
