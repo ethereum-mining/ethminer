@@ -54,6 +54,7 @@ LogPanel::LogPanel(MainFace* _m):
 		m_logChanged = true;
 		m_logLock.unlock();
 	};
+	startTimer(100);
 
 	on_verbosity_valueChanged();
 }
