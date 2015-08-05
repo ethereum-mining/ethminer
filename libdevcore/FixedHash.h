@@ -278,7 +278,7 @@ public:
 	SecureFixedHash operator|(SecureFixedHash const& _c) const { return SecureFixedHash(*this) |= _c; }
 	SecureFixedHash& operator&=(SecureFixedHash const& _c) { static_cast<FixedHash<T>&>(*this).operator^=(static_cast<FixedHash<T> const&>(_c)); return *this; }
 	SecureFixedHash operator&(SecureFixedHash const& _c) const { return SecureFixedHash(*this) &= _c; }
-	SecureFixedHash operator~() const { ~static_cast<FixedHash<T>&>(*this); return *this; }
+	SecureFixedHash operator~() const { auto r = ~static_cast<FixedHash<T> const&>(*this); return static_cast<SecureFixedHash const&>(r); }
 
 	using FixedHash<T>::abridged;
 	using FixedHash<T>::abridgedMiddle;

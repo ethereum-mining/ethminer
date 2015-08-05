@@ -17,7 +17,7 @@
 /** @file transaction.cpp
  * @author Dmitrii Khokhlov <winsvega@mail.ru>
  * @date 2015
- * Transaaction test functions.
+ * Transaction test functions.
  */
 
 #include "../TestHelper.h"
