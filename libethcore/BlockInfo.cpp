@@ -202,10 +202,15 @@ u256 BlockInfo::childGasLimit(u256 const& _gasFloorTarget) const
 
 u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 {
+	const unsigned c_expDiffPeriod = 100000;
+
 	if (!m_number)
 		throw GenesisBlockCannotBeCalculated();
-	else
-		return max<u256>(c_minimumDifficulty, m_timestamp >= _parent.m_timestamp + c_durationLimit ? _parent.m_difficulty - (_parent.m_difficulty / c_difficultyBoundDivisor) : (_parent.m_difficulty + (_parent.m_difficulty / c_difficultyBoundDivisor)));
+	u256 o = max<u256>(c_minimumDifficulty, m_timestamp >= _parent.m_timestamp + c_durationLimit ? _parent.m_difficulty - (_parent.m_difficulty / c_difficultyBoundDivisor) : (_parent.m_difficulty + (_parent.m_difficulty / c_difficultyBoundDivisor)));
+	unsigned periodCount = unsigned(_parent.number() + 1) / c_expDiffPeriod;
+	if (periodCount > 1)
+		o = max<u256>(c_minimumDifficulty, o + (u256(1) << (periodCount - 2)));	// latter will eventually become huge, so ensure it's a bigint.
+	return o;
 }
 
 void BlockInfo::verifyParent(BlockInfo const& _parent) const
