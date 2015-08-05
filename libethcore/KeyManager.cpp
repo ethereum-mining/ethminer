@@ -83,6 +83,8 @@ bool KeyManager::load(string const& _pass)
 	{
 		bytes salt = contents(m_keysFile + ".salt");
 		bytes encKeys = contents(m_keysFile);
+		if (encKeys.empty())
+			return false;
 		m_keysFileKey = SecureFixedHash<16>(pbkdf2(_pass, salt, 262144, 16));
 		bytesSec bs = decryptSymNoAuth(m_keysFileKey, h128(), &encKeys);
 		RLP s(bs.ref());
@@ -312,7 +314,7 @@ bool KeyManager::write(string const& _keysFile) const
 void KeyManager::write(string const& _pass, string const& _keysFile) const
 {
 	bytes salt = h256::random().asBytes();
-	writeFile(_keysFile + ".salt", salt);
+	writeFile(_keysFile + ".salt", salt, true);
 	auto key = SecureFixedHash<16>(pbkdf2(_pass, salt, 262144, 16));
 
 	cachePassword(_pass);
@@ -336,7 +338,7 @@ void KeyManager::write(SecureFixedHash<16> const& _key, string const& _keysFile)
 		s.appendList(2) << i.first << i.second;
 	s.append(m_defaultPasswordDeprecated);
 
-	writeFile(_keysFile, encryptSymNoAuth(_key, h128(), &s.out()));
+	writeFile(_keysFile, encryptSymNoAuth(_key, h128(), &s.out()), true);
 	m_keysFileKey = _key;
 	cachePassword(defaultPassword());
 }
