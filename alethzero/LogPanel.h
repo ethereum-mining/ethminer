@@ -21,13 +21,15 @@
 
 #pragma once
 
-#include <QListWidget>
-#include <QPlainTextEdit>
+#include <QMutex>
+#include <QString>
+#include <QPair>
+#include <QList>
 #include "MainFace.h"
 
 namespace Ui
 {
-class AllAccounts;
+class LogPanel;
 }
 
 namespace dev
@@ -35,25 +37,27 @@ namespace dev
 namespace az
 {
 
-class AllAccounts: public QObject, public Plugin
+class LogPanel: public QObject, public Plugin
 {
 	Q_OBJECT
 
 public:
-	AllAccounts(MainFace* _m);
-	~AllAccounts();
+	LogPanel(MainFace* _m);
+	~LogPanel();
 
 private slots:
-	void on_accounts_currentItemChanged();
-	void on_accounts_doubleClicked();
-
-	void onAllChange();
-	void refresh();
+	void on_verbosity_valueChanged();
 
 private:
-	void installWatches();
+	void timerEvent(QTimerEvent*) override;
+	void readSettings(QSettings const&) override;
+	void writeSettings(QSettings&) override;
 
-	Ui::AllAccounts* m_ui;
+	Ui::LogPanel* m_ui;
+
+	QMutex m_logLock;
+	QString m_logHistory;
+	bool m_logChanged = true;
 };
 
 }

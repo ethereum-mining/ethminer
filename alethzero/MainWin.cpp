@@ -75,6 +75,7 @@
 #include "WebPage.h"
 #include "ExportState.h"
 #include "AllAccounts.h"
+#include "LogPanel.h"
 #include "ui_Main.h"
 #include "ui_GetPassword.h"
 #include "ui_GasPricing.h"
@@ -123,11 +124,6 @@ QString contentsOfQResource(string const& res)
 Address c_newConfig = Address("c6d9d2cd449a754c494264e1809c50e34d64562b");
 //Address c_nameReg = Address("ddd1cea741d548f90d86fb87a3ae6492e18c03a1");
 
-static QString filterOutTerminal(QString _s)
-{
-	return _s.replace(QRegExp("\x1b\\[(\\d;)?\\d+m"), "");
-}
-
 Main::Main(QWidget* _parent):
 	MainFace(_parent),
 	ui(new Ui::Main),
@@ -157,16 +153,6 @@ Main::Main(QWidget* _parent):
 		setWindowTitle("AlethZero Olympic");
 	else if (c_network == eth::Network::Frontier)
 		setWindowTitle("AlethZero Frontier");
-
-	g_logPost = [=](string const& s, char const* c)
-	{
-		simpleDebugOut(s, c);
-		m_logLock.lock();
-		m_logHistory.append(filterOutTerminal(QString::fromStdString(s)) + "\n");
-		m_logChanged = true;
-		m_logLock.unlock();
-//		ui->log->addItem(QString::fromStdString(s));
-	};
 
 	// Open Key Store
 	bool opened = false;
@@ -217,7 +203,6 @@ Main::Main(QWidget* _parent):
 	cerr << "Client database version: " << c_databaseVersion << endl;
 
 	ui->configDock->close();
-	on_verbosity_valueChanged();
 
 	statusBar()->addPermanentWidget(ui->cacheUsage);
 	statusBar()->addPermanentWidget(ui->balance);
@@ -303,21 +288,24 @@ Main::Main(QWidget* _parent):
 		QSettings s("ethereum", "alethzero");
 		if (s.value("splashMessage", true).toBool())
 		{
-			QMessageBox::information(this, "Here Be Dragons!", "This is proof-of-concept software. The project as a whole is not even at the alpha-testing stage. It is here to show you, if you have a technical bent, the sort of thing that might be possible down the line.\nPlease don't blame us if it does something unexpected or if you're underwhelmed with the user-experience. We have great plans for it in terms of UX down the line but right now we just want to get the groundwork sorted. We welcome contributions, be they in code, testing or documentation!\nAfter you close this message it won't appear again.");
+			QMessageBox::information(this, "Here Be Dragons!", "This is beta software: it is not yet at the release stage.\nPlease don't blame us if it does something unexpected or if you're underwhelmed with the user-experience. We have great plans for it in terms of UX down the line but right now we just want to make sure everything works roughly as expected. We welcome contributions, be they in code, testing or documentation!\nAfter you close this message it won't appear again.");
 			s.setValue("splashMessage", false);
 		}
 	}
 
-	new dev::az::AllAccounts(this);
+	loadPlugin<dev::az::AllAccounts>();
+	loadPlugin<dev::az::LogPanel>();
 }
 
 Main::~Main()
 {
 	m_httpConnector->StopListening();
+
+	// save all settings here so we don't have to explicitly finalise plugins.
+	// NOTE: as soon as plugin finalisation means anything more than saving settings, this will
+	// need to be rethought into something more like:
+	// forEach([&](shared_ptr<Plugin> const& p){ finalisePlugin(p.get()); });
 	writeSettings();
-	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
-	// *after* the client is dead.
-	g_logPost = simpleDebugOut;
 }
 
 bool Main::confirm() const
@@ -769,6 +757,11 @@ void Main::writeSettings()
 		s.setValue("identities", b);
 	}
 
+	forEach([&](std::shared_ptr<Plugin> p)
+	{
+		p->writeSettings(s);
+	});
+
 	s.setValue("askPrice", QString::fromStdString(toString(static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->ask())));
 	s.setValue("bidPrice", QString::fromStdString(toString(static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->bid())));
 	s.setValue("upnp", ui->upnp->isChecked());
@@ -779,14 +772,12 @@ void Main::writeSettings()
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("natSpec", ui->natSpec->isChecked());
 	s.setValue("showAll", ui->showAll->isChecked());
-	s.setValue("showAllAccounts", ui->showAllAccounts->isChecked());
 	s.setValue("clientName", ui->clientName->text());
 	s.setValue("idealPeers", ui->idealPeers->value());
 	s.setValue("listenIP", ui->listenIP->text());
 	s.setValue("port", ui->port->value());
 	s.setValue("url", ui->urlEdit->text());
 	s.setValue("privateChain", m_privateChain);
-	s.setValue("verbosity", ui->verbosity->value());
 	if (auto vm = m_vmSelectionGroup->checkedAction())
 		s.setValue("vm", vm->text());
 
@@ -865,6 +856,11 @@ void Main::readSettings(bool _skipGeometry)
 		}
 	}
 
+	forEach([&](std::shared_ptr<Plugin> p)
+	{
+		p->readSettings(s);
+	});
+
 	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setAsk(u256(s.value("askPrice", "500000000000").toString().toStdString()));
 	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setBid(u256(s.value("bidPrice", "500000000000").toString().toStdString()));
 
@@ -879,7 +875,6 @@ void Main::readSettings(bool _skipGeometry)
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->natSpec->setChecked(s.value("natSpec", true).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
-	ui->showAllAccounts->setChecked(s.value("showAllAccounts", false).toBool());
 	ui->clientName->setText(s.value("clientName", "").toString());
 	if (ui->clientName->text().isEmpty())
 		ui->clientName->setText(QInputDialog::getText(nullptr, "Enter identity", "Enter a name that will identify you on the peer network"));
@@ -888,7 +883,6 @@ void Main::readSettings(bool _skipGeometry)
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 	ui->nameReg->setText(s.value("nameReg", "").toString());
 	setPrivateChain(s.value("privateChain", "").toString());
-	ui->verbosity->setValue(s.value("verbosity", 1).toInt());
 
 #if ETH_EVMJIT // We care only if JIT is enabled. Otherwise it can cause misconfiguration.
 	auto vmName = s.value("vm").toString();
@@ -1452,15 +1446,6 @@ void Main::timerEvent(QTimerEvent*)
 
 	if ((interval / 100 % 2 == 0 && m_webThree->ethereum()->isSyncing()) || interval == 1000)
 		ui->downloadView->update();
-
-	if (m_logChanged)
-	{
-		m_logLock.lock();
-		m_logChanged = false;
-		ui->log->appendPlainText(m_logHistory.mid(0, m_logHistory.length() - 1));
-		m_logHistory.clear();
-		m_logLock.unlock();
-	}
 
 	// refresh peer list every 1000ms, reset counter
 	if (interval == 1000)
@@ -2030,12 +2015,6 @@ void Main::on_connect_triggered()
 	}
 }
 
-void Main::on_verbosity_valueChanged()
-{
-	g_logVerbosity = ui->verbosity->value();
-	ui->verbosityLabel->setText(QString::number(g_logVerbosity));
-}
-
 void Main::on_mine_triggered()
 {
 	if (ui->mine->isChecked())
@@ -2305,4 +2284,23 @@ void Main::dappLoaded(Dapp& _dapp)
 void Main::pageLoaded(QByteArray const& _content, QString const& _mimeType, QUrl const& _uri)
 {
 	ui->webView->page()->setContent(_content, _mimeType, _uri);
+}
+
+void Main::initPlugin(Plugin* _p)
+{
+	QSettings s("ethereum", "alethzero");
+	_p->readSettings(s);
+}
+
+void Main::finalisePlugin(Plugin* _p)
+{
+	QSettings s("ethereum", "alethzero");
+	_p->writeSettings(s);
+}
+
+void Main::unloadPlugin(string const& _name)
+{
+	shared_ptr<Plugin> p = takePlugin(_name);
+	if (p)
+		finalisePlugin(p.get());
 }
