@@ -47,8 +47,8 @@ struct FakeExtVMFailure : virtual Exception {};
 class FakeExtVM: public eth::ExtVMFace
 {
 public:
-	FakeExtVM() = default;
-	FakeExtVM(eth::BlockInfo const& _previousBlock, eth::BlockInfo const& _currentBlock, unsigned _depth = 0);
+	FakeExtVM() = delete;
+	FakeExtVM(eth::EnvInfo const& _envInfo, unsigned _depth = 0);
 
 	virtual u256 store(u256 _n) override { return std::get<2>(addresses[myAddress])[_n]; }
 	virtual void setStore(u256 _n, u256 _v) override { std::get<2>(addresses[myAddress])[_n] = _v; }
