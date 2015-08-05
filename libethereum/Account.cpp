@@ -44,21 +44,20 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, AccountMaskMap* 
 
 	js::mValue val;
 	json_spirit::read_string(_json, val);
+
 	for (auto account: val.get_obj().count("alloc") ? val.get_obj()["alloc"].get_obj() : val.get_obj())
 	{
 		Address a(fromHex(account.first));
 		auto o = account.second.get_obj();
-		u256 balance;
+		u256 balance = 0;
 
-		bool haveBalance = true;
+		bool haveBalance = (o.count("wei") || o.count("finney") || o.count("balance"));
 		if (o.count("wei"))
 			balance = u256Safe(o["wei"].get_str());
 		else if (o.count("finney"))
 			balance = u256Safe(o["finney"].get_str()) * finney;
 		else if (o.count("balance"))
 			balance = u256Safe(o["balance"].get_str());
-		else
-			haveBalance = false;
 
 		bool haveCode = o.count("code");
 		if (haveCode)
@@ -70,12 +69,14 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, AccountMaskMap* 
 			ret[a] = Account(balance, Account::NormalCreation);
 
 		bool haveStorage = o.count("storage");
-		for (pair<string, js::mValue> const& j: o["storage"].get_obj())
-			ret[a].setStorage(u256(j.first), u256(j.second.get_str()));
+		if (haveStorage)
+			for (pair<string, js::mValue> const& j: o["storage"].get_obj())
+				ret[a].setStorage(u256(j.first), u256(j.second.get_str()));
 
 		bool haveNonce = o.count("nonce");
-		for (auto i = 0; i < u256Safe(o["nonce"].get_str()); ++i)
-			ret[a].incNonce();
+		if (haveNonce)
+			for (auto i = 0; i < u256Safe(o["nonce"].get_str()); ++i)
+				ret[a].incNonce();
 
 		if (o_mask)
 			(*o_mask)[a] = AccountMask(haveBalance, haveNonce, haveCode, haveStorage);

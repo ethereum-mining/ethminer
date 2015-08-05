@@ -19,6 +19,7 @@
  * @date 2015
  */
 
+#include <json/writer.h>
 #include <libethereum/CanonBlockChain.h>
 #include "BlockChainLoader.h"
 #include "Common.h"
@@ -30,7 +31,10 @@ using namespace dev::eth;
 BlockChainLoader::BlockChainLoader(Json::Value const& _json)
 {
 	// load genesisBlock
-	m_bc.reset(new FullBlockChain<Ethash>(fromHex(_json["genesisRLP"].asString()), jsonToAccountMap(_json["pre"].asString()), m_dir.path(), WithExisting::Kill));
+	bytes genesisBl = fromHex(_json["genesisRLP"].asString());
+
+	Json::FastWriter a;
+	m_bc.reset(new FullBlockChain<Ethash>(genesisBl, jsonToAccountMap( a.write(_json["pre"])), m_dir.path(), WithExisting::Kill));
 
 	// load pre state
 	m_block = m_bc->genesisBlock(State::openDB(m_dir.path(), m_bc->genesisHash(), WithExisting::Kill));
