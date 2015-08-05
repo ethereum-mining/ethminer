@@ -20,7 +20,13 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang") AND NOT (CMAKE_CXX_COMPILER_VER
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-inconsistent-missing-override")
 endif ()
 
-find_package (Qt5WebEngine QUIET)
+find_package (Qt5WebEngine)
+if (APPLE)
+# TODO: remove indirect dependencies once macdeployqt is fixed
+	find_package (Qt5WebEngineCore)
+	find_package (Qt5DBus)
+	find_package (Qt5PrintSupport)
+endif()
 qt5_add_resources(UI_RESOURCES res.qrc qml.qrc)
 
 file(GLOB HEADERS "*.h")
@@ -49,6 +55,11 @@ set(LIBRARIES "Qt5::Core;Qt5::Gui;Qt5::Widgets;Qt5::Network;Qt5::Quick;Qt5::Qml;
 if (${ETH_HAVE_WEBENGINE})
 	add_definitions(-DETH_HAVE_WEBENGINE)
 	list(APPEND LIBRARIES "Qt5::WebEngine")
+endif()
+if (APPLE)
+	list(APPEND LIBRARIES "Qt5::WebEngineCore")
+	list(APPEND LIBRARIES "Qt5::DBus")
+	list(APPEND LIBRARIES "Qt5::PrintSupport")
 endif()
 
 target_link_libraries(${EXECUTABLE} ${LIBRARIES})
