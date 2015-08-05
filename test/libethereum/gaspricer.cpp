@@ -54,11 +54,11 @@ BOOST_AUTO_TEST_CASE(trivialGasPricer)
 {
 	cnote << "trivialGasPricer";
 	std::shared_ptr<dev::eth::GasPricer> gp(new TrivialGasPricer);
-	BOOST_CHECK_EQUAL(gp->ask(State()), 10 * szabo);
-	BOOST_CHECK_EQUAL(gp->bid(), 10 * szabo);
+	BOOST_CHECK_EQUAL(gp->ask(State()), c_defaultGasPrice);
+	BOOST_CHECK_EQUAL(gp->bid(), c_defaultGasPrice);
 	gp->update(CanonBlockChain<Ethash>(TransientDirectory().path(), WithExisting::Kill));
-	BOOST_CHECK_EQUAL(gp->ask(State()), 10 * szabo);
-	BOOST_CHECK_EQUAL(gp->bid(), 10 * szabo);
+	BOOST_CHECK_EQUAL(gp->ask(State()), c_defaultGasPrice);
+	BOOST_CHECK_EQUAL(gp->bid(), c_defaultGasPrice);
 }
 
 BOOST_AUTO_TEST_CASE(basicGasPricerNoUpdate)
