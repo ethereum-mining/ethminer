@@ -114,7 +114,8 @@ void sighandler(int)
 void CommandLineInterface::actOnInput()
 {
 	BlockChainLoader bcl(m_json);
-	FixedClient client(bcl.bc(), bcl.state());
+	cerr << "void CommandLineInterface::actOnInput() FixedClient now accepts eth::Block!!!" << endl;
+	FixedClient client(bcl.bc(), eth::Block{}/*bcl.state()*/);
 	unique_ptr<FixedWebThreeServer> jsonrpcServer;
 	auto server = new jsonrpc::HttpServer(8080, "", "", 2);
 	jsonrpcServer.reset(new FixedWebThreeServer(*server, {}, &client));

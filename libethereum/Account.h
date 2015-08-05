@@ -227,6 +227,10 @@ public:
 	{}
 
 	bool allSet() const { return m_hasBalance && m_hasNonce && m_hasCode && m_hasStorage; }
+	bool hasBalance() const { return m_hasBalance; }
+	bool hasNonce() const { return m_hasNonce; }
+	bool hasCode() const { return m_hasCode; }
+	bool hasStorage() const { return m_hasStorage; }
 
 private:
 	bool m_hasBalance;
