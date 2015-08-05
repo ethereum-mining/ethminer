@@ -26,7 +26,7 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
-#include <libethereum/State.h>
+#include <libethereum/Block.h>
 #include <libethereum/Executive.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
@@ -84,7 +84,7 @@ int main(int argc, char** argv)
 	Address sender = Address(69);
 	Address origin = Address(69);
 	u256 value = 0;
-	u256 gas = state.gasLimitRemaining();
+	u256 gas = Block().gasLimitRemaining();
 	u256 gasPrice = 0;
 	bool styledJson = true;
 	StandardTrace st;

@@ -1817,7 +1817,7 @@ void Main::on_dumpBlockState_triggered()
 		{
 			f << "{" << endl;
 //			js::mObject s;
-			State state = ethereum()->state(h);
+			State state = ethereum()->block(h).state();
 			int fi = 0;
 			for (pair<Address, u256> const& i: state.addresses())
 			{

@@ -219,7 +219,7 @@ bool WebThreeStubServer::admin_eth_setMiningBenefactor(std::string const& _uuidO
 	if (m_setMiningBenefactor)
 		m_setMiningBenefactor(a);
 	else
-		m_web3.ethereum()->setAddress(a);
+		m_web3.ethereum()->setBeneficiary(a);
 	return true;
 }
 
