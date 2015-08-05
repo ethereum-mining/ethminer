@@ -29,12 +29,14 @@
 #include <libethcore/BlockInfo.h>
 #include <libethcore/Params.h>
 #include <liblll/Compiler.h>
+#include <test/JsonSpiritHeaders.h>
 #include "GenesisInfo.h"
 #include "State.h"
 #include "Defaults.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+namespace js = json_spirit;
 
 unique_ptr<Ethash::BlockHeader> CanonBlockChain<Ethash>::s_genesis;
 boost::shared_mutex CanonBlockChain<Ethash>::x_genesis;

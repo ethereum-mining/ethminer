@@ -81,6 +81,11 @@ Client::Client(std::shared_ptr<GasPricer> _gp):
 {
 }
 
+Client::~Client()
+{
+	stopWorking();
+}
+
 void Client::init(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId)
 {
 	// Cannot be opened until after blockchain is open, since BlockChain may upgrade the database.
@@ -115,9 +120,20 @@ void Client::init(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _
 	startWorking();
 }
 
-Client::~Client()
+Block Client::asOf(h256 const& _block) const
 {
-	stopWorking();
+	try
+	{
+		Block ret(m_stateDB);
+		ret.populateFromChain(bc(), _block);
+		return ret;
+	}
+	catch (Exception& ex)
+	{
+		ex << errinfo_block(bc().block(_block));
+		onBadBlock(ex);
+		return Block();
+	}
 }
 
 ImportResult Client::queueBlock(bytes const& _block, bool _isSafe)
@@ -654,7 +670,7 @@ void Client::resyncStateFromChain()
 
 void Client::resetState()
 {
-	State newPreMine;
+	Block newPreMine;
 	DEV_READ_GUARDED(x_preMine)
 		newPreMine = m_preMine;
 
