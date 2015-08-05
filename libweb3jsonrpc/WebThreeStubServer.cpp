@@ -257,7 +257,7 @@ Json::Value WebThreeStubServer::admin_eth_reprocess(std::string const& _blockNum
 	ADMIN_GUARD;
 	Json::Value ret;
 	PopulationStatistics ps;
-	m_web3.ethereum()->state(blockHash(_blockNumberOrHash), &ps);
+	m_web3.ethereum()->block(blockHash(_blockNumberOrHash), &ps);
 	ret["enact"] = ps.enact;
 	ret["verify"] = ps.verify;
 	ret["total"] = ps.verify + ps.enact;
