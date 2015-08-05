@@ -102,7 +102,6 @@ public:
 	// [PRIVATE API - only relevant for base clients, not available in general]
 	/// Get the block.
 	dev::eth::Block block(h256 const& _blockHash, PopulationStatistics* o_stats = nullptr) const;
-	dev::eth::Block state(h256 const& _blockHash, PopulationStatistics* o_stats = nullptr) const { return block(_blockHash, o_stats); }// TODO REMOVE
 	/// Get the state of the given block part way through execution, immediately before transaction
 	/// index @a _txi.
 	dev::eth::State state(unsigned _txi, h256 const& _block) const;
