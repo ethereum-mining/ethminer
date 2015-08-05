@@ -28,6 +28,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/Exceptions.h>
+#include <libdevcore/FileSystem.h>
 
 namespace dev
 {
@@ -188,8 +189,8 @@ DEV_SIMPLE_EXCEPTION(InvalidState);
 h256 kdf(Secret const& _priv, h256 const& _hash);
 
 /**
- * @brief Generator for nonce material.
- *The Nonce class should only be used when a non-repeating nonce 
+ * @brief Generator for non-repeating nonce material.
+ * The Nonce class should only be used when a non-repeating nonce
  * is required and, in its current form, not recommended for signatures.
  * This is primarily because the key-material for signatures is 
  * encrypted on disk whereas the seed for Nonce is not. 
@@ -200,38 +201,22 @@ class Nonce
 {
 public:
 	/// Returns the next nonce (might be read from a file).
-	static Secret get();
+	static Secret get() { static Nonce s; return s.next(); }
 
-	/// Stores the current nonce in a file and resets Nonce to the uninitialised state.
-	static void reset();
-
-	/// Sets the location of the seed file to a non-default place. Used for testing.
-	static void setSeedFilePath(std::string const& _filePath);
+	/// @returns path of the seed file. FOR TESTS ONLY: optionally set path to @_filePath.
+	static std::string const& seedFilePath(std::string const& _filePath = std::string());
 
 private:
 	Nonce() = default;
-	~Nonce();
-
-	/// @returns the singleton instance.
-	static Nonce& singleton();
-
-	/// Reads the last seed from the seed file.
-	void initialiseIfNeeded();
+	
+	/// Destructor. IO operation may throw.
+	~Nonce() { if (m_value && next()) dev::writeFile(seedFilePath(), m_value.ref()); }
 
 	/// @returns the next nonce.
 	Secret next();
 
-	/// Stores the current seed in the seed file.
-	void resetInternal();
-
-	/// @returns the path of the seed file.
-	static std::string const& seedFile();
-
+	std::mutex x_value;
 	Secret m_value;
-
-	/// Mutex for the singleton object.
-	/// @note Every access to any private function has to be guarded by this mutex.
-	static std::mutex s_x;
 };
 
 }
