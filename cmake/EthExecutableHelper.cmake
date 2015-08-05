@@ -95,7 +95,7 @@ macro(eth_install_executable EXECUTABLE)
 		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
 			COMMAND ${MACDEPLOYQT_APP} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app -executable=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app/Contents/MacOS/${EXECUTABLE} ${eth_qml_dir}
 			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-			COMMAND sh ${CMAKE_SOURCE_DIR}/macdeployfix.sh ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app/Contents
+			COMMAND sh ${CMAKE_SOURCE_DIR}/cmake/scripts/macdeployfix.sh ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app/Contents
 		)
 			
 		# This tool and next will inspect linked libraries in order to determine which dependencies are required
