@@ -118,8 +118,11 @@ void dev::writeFile(std::string const& _file, bytesConstRef _data, bool _writeDe
 	{
 		// create directory if not existent
 		fs::path p(_file);
-		fs::create_directories(p.parent_path());
-		fs::permissions(p.parent_path(), fs::owner_all);
+		if (!fs::exists(p.parent_path()))
+		{
+			fs::create_directories(p.parent_path());
+			DEV_IGNORE_EXCEPTIONS(fs::permissions(p.parent_path(), fs::owner_all));
+		}
 
 		ofstream s(_file, ios::trunc | ios::binary);
 		s.write(reinterpret_cast<char const*>(_data.data()), _data.size());
