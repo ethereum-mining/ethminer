@@ -153,10 +153,6 @@ private slots:
 	void on_blockChainFilter_textChanged();
 	void on_blocks_currentItemChanged();
 
-	// Logging
-//	void on_log_doubleClicked();
-	void on_verbosity_valueChanged();
-
 	// Misc
 	void on_urlEdit_returnPressed();
 	void on_jsInput_returnPressed();
@@ -203,6 +199,11 @@ signals:
 	void poll();
 
 private:
+	template <class P> void loadPlugin() { dev::az::Plugin* p = new P(this); initPlugin(p); }
+	void initPlugin(dev::az::Plugin* _p);
+	void finalisePlugin(dev::az::Plugin* _p);
+	void unloadPlugin(std::string const& _name);
+
 	void debugDumpState(int _add);
 
 	dev::p2p::NetworkPreferences netPrefs() const;
@@ -270,9 +271,6 @@ private:
 	QActionGroup* m_vmSelectionGroup = nullptr;
 
 	QList<QPair<QString, QString>> m_consoleHistory;
-	QMutex m_logLock;
-	QString m_logHistory;
-	bool m_logChanged = true;
 
 	std::unique_ptr<jsonrpc::HttpServer> m_httpConnector;
 	std::unique_ptr<OurWebThreeStubServer> m_server;
