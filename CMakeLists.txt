@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 2.8.12)
 
 set(PROJECT_VERSION "0.9.39")
 if (${CMAKE_VERSION} VERSION_GREATER 3.0)
+	cmake_policy(SET CMP0042 OLD) 	# fix MACOSX_RPATH
 	cmake_policy(SET CMP0048 NEW) 	# allow VERSION argument in project()
 	project(ethereum VERSION ${PROJECT_VERSION})
 else()
