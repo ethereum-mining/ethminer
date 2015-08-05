@@ -128,6 +128,7 @@ public:
 	void setCoinbaseAddress(Address const& _v) { m_coinbaseAddress = _v; noteDirty(); }
 	void setRoots(h256 const& _t, h256 const& _r, h256 const& _u, h256 const& _s) { m_transactionsRoot = _t; m_receiptsRoot = _r; m_stateRoot = _s; m_sha3Uncles = _u; noteDirty(); }
 	void setGasUsed(u256 const& _v) { m_gasUsed = _v; noteDirty(); }
+	void setNumber(u256 const& _v) { m_number = _v; noteDirty(); }
 	void setGasLimit(u256 const& _v) { m_gasLimit = _v; noteDirty(); }
 	void setExtraData(bytes const& _v) { m_extraData = _v; noteDirty(); }
 	void setLogBloom(LogBloom const& _v) { m_logBloom = _v; noteDirty(); }
