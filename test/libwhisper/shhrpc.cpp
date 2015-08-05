@@ -44,7 +44,9 @@ namespace js = json_spirit;
 WebThreeDirect* web3;
 unique_ptr<WebThreeStubServer> jsonrpcServer;
 unique_ptr<WebThreeStubClient> jsonrpcClient;
-static uint16_t const web3port = 30333;
+static uint16_t const g_web3port = 30333;
+static string const g_version("shhrpc-web3");
+static unsigned const g_ttl = 777000;
 
 struct Setup
 {
@@ -56,10 +58,9 @@ struct Setup
 		if (!setup)
 		{
 			setup = true;
-			NetworkPreferences nprefs(std::string(), web3port, false);
-			web3 = new WebThreeDirect("shhrpc-web3", "", WithExisting::Trust, {"eth", "shh"}, nprefs);
+			NetworkPreferences nprefs(std::string(), g_web3port, false);
+			web3 = new WebThreeDirect(g_version, "", WithExisting::Trust, {"shh"}, nprefs);
 			web3->setIdealPeerCount(1);
-			web3->ethereum()->setForceMining(false);
 			auto server = new jsonrpc::HttpServer(8080);
 			vector<KeyPair> v;
 			KeyManager keyMan;
@@ -78,6 +79,27 @@ struct Setup
 	}
 };
 
+Json::Value createMessage(string const& _from, string const& _to, string const& _topic = "", string _payload = "")
+{
+	Json::Value msg;
+	msg["from"] = _from;
+	msg["to"] = _to;
+	msg["ttl"] = toJS(g_ttl);
+
+	if (_payload.empty())
+		_payload = string("0x") + h256::random().hex();
+
+	msg["payload"] = _payload;
+	
+	if (!_topic.empty())
+	{
+		Json::Value t(Json::arrayValue);
+		t.append(_topic);
+		msg["topics"] = t;
+	}
+
+	return msg;
+}
 
 BOOST_FIXTURE_TEST_SUITE(shhrpc, Setup)
 
@@ -109,7 +131,7 @@ BOOST_AUTO_TEST_CASE(basic)
 	for (unsigned i = 0; i < 3000 && (!web3->peerCount() || !host2.peerCount()); i += step)
 		this_thread::sleep_for(chrono::milliseconds(step));
 
-	BOOST_REQUIRE_EQUAL(host2.peerCount(), 1);	
+	BOOST_REQUIRE_EQUAL(host2.peerCount(), 1);
 	BOOST_REQUIRE_EQUAL(web3->peerCount(), 1);
 
 	vector<PeerSessionInfo> vpeers = web3->peers();
@@ -149,9 +171,9 @@ BOOST_AUTO_TEST_CASE(send)
 	{
 		setThreadName("listener");
 		ready = true;
-		auto w = whost2->installWatch(BuildTopicMask("odd"));		
+		auto w = whost2->installWatch(BuildTopicMask("odd"));
 		set<unsigned> received;
-		for (unsigned x = 0; x < 9000 && !sent; x += step)
+		for (unsigned x = 0; x < 7000 && !sent; x += step)
 			this_thread::sleep_for(chrono::milliseconds(step));
 
 		for (unsigned x = 0, last = 0; x < 100 && received.size() < messageCount; ++x)
@@ -219,7 +241,7 @@ BOOST_AUTO_TEST_CASE(receive)
 		auto w = web3->whisper()->installWatch(BuildTopicMask("odd"));
 		
 		set<unsigned> received;
-		for (unsigned x = 0; x < 9000 && !sent; x += step)
+		for (unsigned x = 0; x < 7000 && !sent; x += step)
 			this_thread::sleep_for(chrono::milliseconds(step));
 
 		for (unsigned x = 0, last = 0; x < 100 && received.size() < messageCount; ++x)
@@ -233,6 +255,8 @@ BOOST_AUTO_TEST_CASE(receive)
 					result += last;
 			}
 		}
+
+		web3->whisper()->uninstallWatch(w);
 	});
 
 	for (unsigned i = 0; i < 2000 && (!host2.haveNetwork() || !web3->haveNetwork()); i += step)
@@ -241,7 +265,7 @@ BOOST_AUTO_TEST_CASE(receive)
 	BOOST_REQUIRE(host2.haveNetwork());
 	BOOST_REQUIRE(web3->haveNetwork());
 
-	host2.addNode(web3->id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), web3port, web3port));
+	host2.addNode(web3->id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), g_web3port, g_web3port));
 
 	for (unsigned i = 0; i < 3000 && (!web3->peerCount() || !host2.peerCount()); i += step)
 		this_thread::sleep_for(chrono::milliseconds(step));
@@ -252,13 +276,235 @@ BOOST_AUTO_TEST_CASE(receive)
 	KeyPair us = KeyPair::create();
 	for (unsigned i = 0; i < messageCount; ++i)
 	{
-		web3->whisper()->post(us.sec(), RLPStream().append(i * i * i).out(), BuildTopic(i)(i % 2 ? "odd" : "even"), 777000, 1);
+		web3->whisper()->post(us.sec(), RLPStream().append(i * i * i).out(), BuildTopic(i)(i % 2 ? "odd" : "even"), g_ttl, 1);
 		this_thread::sleep_for(chrono::milliseconds(50));
 	}
 	
 	sent = true;
 	listener.join();
 	BOOST_REQUIRE_EQUAL(result, 1 + 27 + 125);
+}
+
+BOOST_AUTO_TEST_CASE(serverBasic)
+{
+	cnote << "Testing basic jsonrpc server...";
+
+	string s = jsonrpcServer->web3_clientVersion();
+	BOOST_REQUIRE_EQUAL(s, g_version);
+
+	s = jsonrpcServer->net_version();
+	BOOST_REQUIRE(s.empty());
+
+	s = jsonrpcServer->web3_sha3("some pseudo-random string here");
+	BOOST_REQUIRE_EQUAL(s.size(), h256::size * 2 + 2);
+	BOOST_REQUIRE('0' == s[0] && 'x' == s[1]);
+
+	s = jsonrpcServer->net_peerCount();
+	BOOST_REQUIRE_EQUAL(s, "0x0");
+
+	KeyPair src = KeyPair::create();
+	KeyPair dst = KeyPair::create();
+	Json::Value t1 = createMessage(toJS(src.address()), toJS(dst.address()));
+	bool b = jsonrpcServer->shh_post(t1);
+	BOOST_REQUIRE(b);
+
+	string const id = jsonrpcServer->shh_newIdentity();
+	BOOST_REQUIRE_EQUAL(id.size(), 130);
+	BOOST_REQUIRE('0' == id[0] && 'x' == id[1]);
+
+	b = jsonrpcServer->shh_hasIdentity(id);
+	BOOST_REQUIRE(b);
+
+	Json::Value t2 = createMessage(id, id);
+	b = jsonrpcServer->shh_post(t2);
+	BOOST_REQUIRE(b);
+}
+
+BOOST_AUTO_TEST_CASE(server)
+{
+	cnote << "Testing server functionality...";
+
+	bool b;
+	string s;
+	Json::Value j;
+	SessionPermissions permissions;
+	permissions.privileges.insert(Privilege::Admin);
+	string const text = string("0x") + h256::random().hex(); // message must be in raw form
+
+	string sess1 = jsonrpcServer->newSession(permissions);
+	string sess2("session number two");
+	jsonrpcServer->addSession(sess2, permissions);
+	
+	b = jsonrpcServer->admin_web3_setVerbosity(5, sess1);
+	BOOST_REQUIRE(b);
+
+	b = jsonrpcServer->admin_net_start(sess1);
+	BOOST_REQUIRE(b);
+
+	unsigned const step = 10;
+	for (unsigned i = 0; i < 3000 && !jsonrpcServer->net_listening(); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
+
+	b = jsonrpcServer->net_listening();
+	BOOST_REQUIRE(b);
+	
+	b = jsonrpcServer->admin_net_stop(sess1);
+	BOOST_REQUIRE(b);
+
+	b = jsonrpcServer->net_listening();
+	BOOST_REQUIRE(!b);
+
+	j = jsonrpcServer->admin_net_peers(sess1);
+	BOOST_REQUIRE(j.empty());
+
+	j = jsonrpcServer->admin_net_nodeInfo(sess2);
+	BOOST_REQUIRE_EQUAL(j["id"].asString(), web3->id().hex());
+	BOOST_REQUIRE_EQUAL(j["port"].asUInt(), g_web3port);
+
+	uint16_t port2 = 30339;
+	Host host2("shhrpc-host2", NetworkPreferences("127.0.0.1", port2, false));
+	host2.setIdealPeerCount(1);
+	auto whost2 = host2.registerCapability(new WhisperHost());
+	host2.start();
+
+	b = jsonrpcServer->admin_net_start(sess2);
+	BOOST_REQUIRE(b);
+	
+	for (unsigned i = 0; i < 2000 && !host2.haveNetwork(); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
+
+	for (unsigned i = 0; i < 2000 && !jsonrpcServer->net_listening(); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
+
+	BOOST_REQUIRE(host2.haveNetwork());
+	BOOST_REQUIRE(jsonrpcServer->net_listening());
+
+	string node("enode://");
+	node += host2.id().hex();
+	node += "@";
+	node += "127.0.0.1:30339";
+	b = jsonrpcServer->admin_net_connect(node, sess2);
+
+	for (unsigned i = 0; i < 3000 && !host2.peerCount(); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
+
+	BOOST_REQUIRE_EQUAL(host2.peerCount(), 1);
+	this_thread::sleep_for(chrono::milliseconds(step));
+
+	j = jsonrpcServer->admin_net_peers(sess2);
+	BOOST_REQUIRE_EQUAL(j.size(), 1);
+	Json::Value peer = j[0];
+	s = peer["id"].asString();
+	BOOST_REQUIRE_EQUAL(s, host2.id().hex());
+	BOOST_REQUIRE_EQUAL(peer["port"].asUInt(), port2);
+
+	s = jsonrpcServer->net_peerCount();
+	BOOST_REQUIRE_EQUAL(s, "0x1");
+
+	KeyPair src = KeyPair::create();
+	KeyPair dst = KeyPair::create();
+
+	Json::Value t1 = createMessage(toJS(src.address()), toJS(dst.address()));
+	b = jsonrpcServer->shh_post(t1);
+	BOOST_REQUIRE(b);
+
+	string const id = jsonrpcServer->shh_newIdentity();
+	BOOST_REQUIRE_EQUAL(id.size(), 130);
+	BOOST_REQUIRE(jsonrpcServer->shh_hasIdentity(id));
+
+	Json::Value t2 = createMessage(id, id);
+	b = jsonrpcServer->shh_post(t2);
+	BOOST_REQUIRE(b);
+
+	string const nonexistent = "123456789";
+	b = jsonrpcServer->shh_uninstallFilter(nonexistent);
+	BOOST_REQUIRE(b);
+
+	j = jsonrpcServer->shh_getMessages(nonexistent);
+	BOOST_REQUIRE(j.empty());
+
+	string const topic = "unicorns";
+	Json::Value t(Json::arrayValue);
+	t.append(topic);
+	Json::Value f;
+	f["to"] = id;
+	f["topics"] = t;
+	string const filter = jsonrpcServer->shh_newFilter(f);
+
+	j = jsonrpcServer->shh_getFilterChanges(filter);
+	BOOST_REQUIRE(j.empty());
+
+	j = jsonrpcServer->shh_getMessages(filter);
+	BOOST_REQUIRE(j.empty());
+
+	Json::Value msg = createMessage(id, id, topic, text);
+	b = jsonrpcServer->shh_post(msg);
+	BOOST_REQUIRE(b);
+	this_thread::sleep_for(chrono::milliseconds(50));
+
+	j = jsonrpcServer->shh_getFilterChanges(filter);
+	BOOST_REQUIRE(!j.empty());
+	Json::Value m1 = j[0];
+	BOOST_REQUIRE_EQUAL(m1["ttl"], toJS(g_ttl));
+	BOOST_REQUIRE_EQUAL(m1["from"], id);
+	BOOST_REQUIRE_EQUAL(m1["to"], id);
+	BOOST_REQUIRE_EQUAL(m1["payload"], text);
+
+	j = jsonrpcServer->shh_getMessages(filter);	
+	BOOST_REQUIRE(!j.empty());
+	Json::Value m2 = j[0];
+	BOOST_REQUIRE_EQUAL(m2["ttl"], toJS(g_ttl));
+	BOOST_REQUIRE_EQUAL(m2["from"], id);
+	BOOST_REQUIRE_EQUAL(m2["to"], id);
+	BOOST_REQUIRE_EQUAL(m2["payload"], text);
+
+	j = jsonrpcServer->shh_getFilterChanges(filter);
+	BOOST_REQUIRE(j.empty());
+
+	j = jsonrpcServer->shh_getMessages(filter);
+	BOOST_REQUIRE(!j.empty());
+	m1 = j[0];
+	BOOST_REQUIRE_EQUAL(m1["ttl"], toJS(g_ttl));
+	BOOST_REQUIRE_EQUAL(m1["from"], id);
+	BOOST_REQUIRE_EQUAL(m1["to"], id);
+	BOOST_REQUIRE_EQUAL(m1["payload"], text);
+
+	msg = createMessage(id, id, topic);
+	b = jsonrpcServer->shh_post(msg);
+	BOOST_REQUIRE(b);
+	this_thread::sleep_for(chrono::milliseconds(50));
+
+	j = jsonrpcServer->shh_getFilterChanges(filter);
+	BOOST_REQUIRE_EQUAL(j.size(), 1);
+
+	j = jsonrpcServer->shh_getMessages(filter);
+	BOOST_REQUIRE_EQUAL(j.size(), 2);
+
+	b = jsonrpcServer->shh_uninstallFilter(filter);
+	BOOST_REQUIRE(b);
+
+	j = jsonrpcServer->shh_getFilterChanges(filter);
+	BOOST_REQUIRE(j.empty());
+
+	j = jsonrpcServer->shh_getMessages(filter);
+	BOOST_REQUIRE(j.empty());
+
+	msg = createMessage(id, id, topic);
+	b = jsonrpcServer->shh_post(msg);
+	BOOST_REQUIRE(b);
+	this_thread::sleep_for(chrono::milliseconds(50));
+
+	j = jsonrpcServer->shh_getFilterChanges(filter);
+	BOOST_REQUIRE(j.empty());
+
+	j = jsonrpcServer->shh_getMessages(filter);
+	BOOST_REQUIRE(j.empty());
+
+	b = jsonrpcServer->admin_net_stop(sess2);
+	BOOST_REQUIRE(b);
+
+	b = jsonrpcServer->net_listening();
+	BOOST_REQUIRE(!b);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
