@@ -50,6 +50,7 @@ BOOST_AUTO_TEST_CASE(difficultyTests)
 		BlockInfo parent;
 		parent.setTimestamp(test::toInt(o["parentTimestamp"]));
 		parent.setDifficulty(test::toInt(o["parentDifficulty"]));
+		parent.setNumber(test::toInt(o["currentBlockNumber"]) - 1);
 
 		BlockInfo current;
 		current.setTimestamp(test::toInt(o["currentTimestamp"]));
