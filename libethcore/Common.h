@@ -80,6 +80,7 @@ template <> inline u256 exp10<0>()
 static const u256 ether = exp10<18>();
 static const u256 finney = exp10<15>();
 static const u256 szabo = exp10<12>();
+static const u256 shannon = exp10<9>();
 static const u256 wei = exp10<0>();
 
 using Nonce = h64;

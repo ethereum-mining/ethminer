@@ -62,11 +62,11 @@ public:
 	~Ethereum();
 
 	/// Submits the given message-call transaction.
-	void submitTransaction(Secret const& _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
+	void submitTransaction(Secret const& _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = c_defaultGasPrice);
 
 	/// Submits a new contract-creation transaction.
 	/// @returns the new contract's address (assuming it all goes through).
-	Address submitTransaction(Secret const& _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
+	Address submitTransaction(Secret const& _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = c_defaultGasPrice);
 
 	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
 	void inject(bytesConstRef _rlp);
@@ -75,7 +75,7 @@ public:
 	void flushTransactions();
 
 	/// Makes the given call. Nothing is recorded into the state.
-	bytes call(Address const& _from, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
+	bytes call(Address const& _from, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = c_defaultGasPrice);
 
 	// Informational stuff
 

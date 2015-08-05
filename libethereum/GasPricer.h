@@ -40,6 +40,8 @@ enum class TransactionPriority
 	Highest = 8
 };
 
+static const u256 c_defaultGasPrice = 50 * shannon;
+
 class GasPricer
 {
 public:
@@ -66,8 +68,8 @@ public:
 	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return m_bid; }
 
 private:
-	u256 m_ask = 10 * szabo;
-	u256 m_bid = 10 * szabo;
+	u256 m_ask = c_defaultGasPrice;
+	u256 m_bid = c_defaultGasPrice;
 };
 
 }
