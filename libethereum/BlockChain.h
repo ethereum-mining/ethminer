@@ -400,17 +400,11 @@ class FullBlockChain: public BlockChain
 public:
 	using BlockHeader = typename Sealer::BlockHeader;
 
-<<<<<<< HEAD
-	FullBlockChain(bytes const& _genesisBlock, StateDefinition const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _pc = ProgressCallback()):
+	FullBlockChain(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _pc = ProgressCallback()):
 		BlockChain(_genesisBlock, _genesisState, _path)
 	{
 		openDatabase(_path, _we, _pc);
 	}
-=======
-	FullBlockChain(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _p = ProgressCallback()):
-		BlockChain(_genesisBlock, _genesisState, _path, _we, _p)
-	{}
->>>>>>> 0672b04... Compile fixes galore.
 
 	/// Get the header of a block (or the most recent mined if none given). Thread-safe.
 	typename Sealer::BlockHeader header(h256 const& _hash) const { return typename Sealer::BlockHeader(headerData(_hash), IgnoreSeal, _hash, HeaderData); }
@@ -511,7 +505,7 @@ public:
 
 protected:
 	/// Constructor for derived classes to use when they'll open the chain db afterwards.
-	FullBlockChain(bytes const& _genesisBlock, StateDefinition const& _genesisState, std::string const& _path):
+	FullBlockChain(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path):
 		BlockChain(_genesisBlock, _genesisState, _path)
 	{}
 };
