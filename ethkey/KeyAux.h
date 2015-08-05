@@ -226,21 +226,13 @@ public:
 		}
 		else if (m_mode == OperationMode::DecodeTx)
 		{
-			string const& i = m_inputs[0];
-			bytes b = fromHex(i);
+			bytes b = inputData(m_inputs[0]);
 			if (b.empty())
-			{
-				std::string s = contentsString(i);
-				b = fromHex(s);
-				if (b.empty())
-					b = asBytes(s);
-			}
-			if (b.empty())
-				cerr << "Unknown file or bad hex: " << i << endl;
+				cerr << "Unknown file or bad hex: '" << m_inputs[0] << "'" << endl;
 			else
 				try
 				{
-					TransactionBase t(b, CheckTransaction::Everything);
+					TransactionBase t(b, CheckTransaction::None);
 					cout << "Transaction " << t.sha3().hex() << endl;
 					if (t.isCreation())
 					{
@@ -253,7 +245,17 @@ public:
 						cout << "  to: " << t.to().hex() << endl;
 						cout << "  data: " << (t.data().empty() ? "none" : toHex(t.data())) << endl;
 					}
-					cout << "  from: " << t.from().hex() << endl;
+					try
+					{
+						auto s = t.sender();
+						if (t.isCreation())
+							cout << "  creates: " << toAddress(s, t.nonce()).hex();
+						cout << "  from: " << s.hex() << endl;
+					}
+					catch (...)
+					{
+						cout << "  from: <unsigned>" << endl;
+					}
 					cout << "  value: " << formatBalance(t.value()) << " (" << t.value() << " wei)" << endl;
 					cout << "  nonce: " << t.nonce() << endl;
 					cout << "  gas: " << t.gas() << endl;
@@ -313,18 +315,10 @@ public:
 
 			for (string const& i: m_inputs)
 			{
-				bytes b = fromHex(i);
-				bool isFile = false;
+				bool isFile;
+				bytes b = inputData(i, &isFile);
 				if (b.empty())
-				{
-					isFile = true;
-					std::string s = contentsString(i);
-					b = fromHex(s);
-					if (b.empty())
-						b = asBytes(s);
-				}
-				if (b.empty())
-					cerr << "Unknown file or bad hex: " << i << endl;
+					cerr << "Unknown file or bad hex: '" << i << "'" << endl;
 				else
 					try
 					{
@@ -571,6 +565,23 @@ public:
 			<< "Key generation configuration:" << endl
 			<< "    --no-icap  Don't bother to make a direct-ICAP capable key." << endl
 			;
+	}
+
+	static bytes inputData(std::string const& _input, bool* _isFile = nullptr)
+	{
+		bytes b = fromHex(_input);
+		if (_isFile)
+			*_isFile = false;
+		if (b.empty())
+		{
+			if (_isFile)
+				*_isFile = true;
+			std::string s = boost::trim_copy_if(contentsString(_input), is_any_of(" \t\n"));
+			b = fromHex(s);
+			if (b.empty())
+				b = asBytes(s);
+		}
+		return b;
 	}
 
 	static bool isTrue(std::string const& _m)
