@@ -249,7 +249,7 @@ public:
 					{
 						auto s = t.sender();
 						if (t.isCreation())
-							cout << "  creates: " << toAddress(s, t.nonce()).hex();
+							cout << "  creates: " << toAddress(s, t.nonce()).hex() << endl;
 						cout << "  from: " << s.hex() << endl;
 					}
 					catch (...)
@@ -327,11 +327,11 @@ public:
 						cout << t.sha3() << ": ";
 						if (isFile)
 						{
-							writeFile(i + ".signed", t.data());
+							writeFile(i + ".signed", toHex(t.rlp()));
 							cout << i + ".signed" << endl;
 						}
 						else
-							cout << toHex(t.data()) << endl;
+							cout << toHex(t.rlp()) << endl;
 					}
 					catch (Exception& ex)
 					{
