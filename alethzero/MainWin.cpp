@@ -290,7 +290,7 @@ Main::Main(QWidget* _parent):
 		}
 	}
 
-#if !ETH_FATDB
+#if ETH_FATDB
 	loadPlugin<dev::az::AllAccounts>();
 #endif
 	loadPlugin<dev::az::LogPanel>();
