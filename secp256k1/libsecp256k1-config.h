@@ -83,9 +83,7 @@
 #define STDC_HEADERS 1
 
 /* Define this symbol to enable x86_64 assembly optimizations */
-// #if defined(__APPLE__) || defined(__GNUC__)
-// #defined USE_ASM_X86_64 1
-// #endif
+/* #undef USE_ASM_X86_64 */
 
 /* Define this symbol to use endomorphism optimization */
 /* #undef USE_ENDOMORPHISM */
