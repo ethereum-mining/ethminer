@@ -278,9 +278,6 @@ Main::Main(QWidget* _parent):
 
 	connect(ui->blockChainDockWidget, &QDockWidget::visibilityChanged, [=]() { refreshBlockChain(); });
 
-#if !ETH_FATDB
-	removeDockWidget(ui->dockWidget_accounts);
-#endif
 	installWatches();
 	startTimer(100);
 
@@ -293,7 +290,9 @@ Main::Main(QWidget* _parent):
 		}
 	}
 
+#if !ETH_FATDB
 	loadPlugin<dev::az::AllAccounts>();
+#endif
 	loadPlugin<dev::az::LogPanel>();
 }
 
