@@ -21,7 +21,7 @@ https://github.com/ciaranm/inkpot
 .cm-s-inkpot span.cm-comment     { color: #cd8b00; }
 .cm-s-inkpot span.cm-def         { color: #cfbfad; font-weight:bold; }
 .cm-s-inkpot span.cm-keyword     { color: #808bed; }
-.cm-s-inkpot span.cm-builtin     { color: #cfbfad; }
+.cm-s-inkpot span.cm-builtin     { color: #efac6d; }
 .cm-s-inkpot span.cm-variable    { color: #cfbfad; }
 .cm-s-inkpot span.cm-string      { color: #ffcd8b; }
 .cm-s-inkpot span.cm-number      { color: #f0ad6d; }
