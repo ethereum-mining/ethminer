@@ -52,7 +52,7 @@ class CanonBlockChain: public FullBlockChain<Sealer>
 public:
 	CanonBlockChain(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()): CanonBlockChain<Sealer>(std::string(), _we, _pc) {}
 	CanonBlockChain(std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()):
-		FullBlockChain<Sealer>(createGenesisBlock(), AccountMap(), _path, _we, _pc)
+		FullBlockChain<Sealer>(createGenesisBlock(), AccountMap(), _path)
 	{
 		BlockChain::openDatabase(_path, _we, _pc);
 	}
