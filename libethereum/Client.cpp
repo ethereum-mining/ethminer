@@ -370,7 +370,7 @@ void Client::reopenChain(WithExisting _we)
 		m_stateDB = State::openDB(Defaults::dbPath(), bc().genesisHash(), _we);
 
 		m_preMine = bc().genesisBlock(m_stateDB);
-		m_postMine = Block(m_stateDB);
+		m_postMine = m_preMine;
 	}
 
 	if (auto h = m_host.lock())
