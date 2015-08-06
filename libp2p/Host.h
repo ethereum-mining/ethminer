@@ -119,6 +119,16 @@ struct NodeInfo
 	std::string version;
 };
 
+struct HostPeerPreferences
+{
+	unsigned const idealPeerCount = 11;	// Ideal number of peers to be connected to.
+	unsigned const stretchPeerCount = 7;	// Accepted connection multiplier (max peers = ideal*stretch).
+	
+//	std::list<NodeId> const defaultPeers;
+//	std::list<NodeId> const requiredPeers;
+//	std::list<NodeId> const trusted;
+};
+
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
@@ -173,6 +183,9 @@ public:
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
 
+	/// Set multipier for max accepted connections.
+	void setPeerStretch(unsigned _n) { m_stretchPeers = _n; }
+	
 	/// Get peer information.
 	PeerSessionInfos peerSessionInfo() const;
 
@@ -236,7 +249,9 @@ protected:
 	void restoreNetwork(bytesConstRef _b);
 
 private:
-	enum PeerSlotRatio { Egress = 1, Ingress = 4 };
+	enum PeerSlotType { Egress, Ingress };
+	
+	unsigned peerSlots(PeerSlotType _type) { return _type == Egress ? m_idealPeerCount : m_idealPeerCount * m_stretchPeers; }
 	
 	bool havePeerSession(NodeId const& _id) { return !!peerSession(_id); }
 
@@ -246,7 +261,7 @@ private:
 	void connect(std::shared_ptr<Peer> const& _p);
 
 	/// Returns true if pending and connected peer count is less than maximum
-	bool peerSlotsAvailable(PeerSlotRatio _type) { Guard l(x_pendingNodeConns); return peerCount() + m_pendingPeerConns.size() < _type * m_idealPeerCount; }
+	bool peerSlotsAvailable(PeerSlotType _type = Ingress) { Guard l(x_pendingNodeConns); return peerCount() + m_pendingPeerConns.size() < peerSlots(_type); }
 	
 	/// Ping the peers to update the latency information and disconnect peers which have timed out.
 	void keepAlivePeers();
@@ -314,6 +329,7 @@ private:
 	Mutex x_connecting;													///< Mutex for m_connecting.
 
 	unsigned m_idealPeerCount = 11;										///< Ideal number of peers to be connected to.
+	unsigned m_stretchPeers = 7;										///< Accepted connection multiplier (max peers = ideal*stretch).
 
 	std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;	///< Each of the capabilities we support.
 	
