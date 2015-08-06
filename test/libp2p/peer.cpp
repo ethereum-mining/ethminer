@@ -152,8 +152,9 @@ BOOST_AUTO_TEST_CASE(requirePeer)
 	if (test::Options::get().nonetwork)
 		return;
 
-	VerbosityHolder reduceVerbosity(10);
+	VerbosityHolder temporaryLevel(10);
 
+	unsigned const step = 10;
 	const char* const localhost = "127.0.0.1";
 	NetworkPreferences prefs1(localhost, 30323, false);
 	NetworkPreferences prefs2(localhost, 30324, false);
@@ -166,7 +167,8 @@ BOOST_AUTO_TEST_CASE(requirePeer)
 	auto node2 = host2.id();
 	host1.requirePeer(node2, NodeIPEndpoint(bi::address::from_string(localhost), prefs2.listenPort, prefs2.listenPort));
 
-	this_thread::sleep_for(chrono::seconds(3));
+	for (unsigned i = 0; i < 3000 && (!host1.peerCount() || !host2.peerCount()); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
 
 	auto host1peerCount = host1.peerCount();
 	auto host2peerCount = host2.peerCount();
@@ -190,7 +192,8 @@ BOOST_AUTO_TEST_CASE(requirePeer)
 
 	host1.relinquishPeer(node2);
 
-	this_thread::sleep_for(chrono::seconds(1));
+	for (unsigned i = 0; i < 2000 && (host1.peerCount() || host2.peerCount()); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
 
 	host1peerCount = host1.peerCount();
 	host2peerCount = host2.peerCount();
