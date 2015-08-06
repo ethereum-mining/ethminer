@@ -22,7 +22,6 @@
 #include "Block.h"
 
 #include <ctime>
-#include <random>
 #include <boost/filesystem.hpp>
 #include <boost/timer.hpp>
 #include <libdevcore/CommonIO.h>
@@ -31,6 +30,7 @@
 #include <libdevcore/TrieHash.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
+#include <libethcore/Params.h>
 #include <libevm/VMFactory.h>
 #include "BlockChain.h"
 #include "Defaults.h"
@@ -47,7 +47,6 @@ namespace fs = boost::filesystem;
 #define ctrace clog(BlockTrace)
 #define ETH_TIMED_ENACTMENTS 0
 
-static const u256 c_blockReward = c_network == Network::Olympic ? (1500 * finney) : (5 * ether);
 static const unsigned c_maxSyncTransactions = 256;
 
 const char* BlockSafeExceptions::name() { return EthViolet "⚙" EthBlue " ℹ"; }
@@ -551,8 +550,9 @@ u256 Block::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
 	if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() && m_currentBlock.stateRoot() != rootHash())
 	{
+		auto r = rootHash();
 		m_state.db().rollback();		// TODO: API in State for this?
-		BOOST_THROW_EXCEPTION(InvalidStateRoot() << Hash256RequirementError(rootHash(), m_currentBlock.stateRoot()));
+		BOOST_THROW_EXCEPTION(InvalidStateRoot() << Hash256RequirementError(r, m_currentBlock.stateRoot()));
 	}
 
 	if (m_currentBlock.gasUsed() != gasUsed())
@@ -694,8 +694,10 @@ bool Block::sealBlock(bytesConstRef _header)
 	if (!m_committedToMine)
 		return false;
 
+	if (BlockInfo(_header, CheckNothing, h256{}, HeaderData).hashWithout() != m_currentBlock.hashWithout())
+		return false;
+
 	clog(StateDetail) << "Sealing block!";
-	// Got it!
 
 	// Compile block:
 	RLPStream ret;
