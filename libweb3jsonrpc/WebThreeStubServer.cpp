@@ -29,6 +29,7 @@
 #include <libdevcore/CommonJS.h>
 #include <libethcore/KeyManager.h>
 #include <libethereum/Executive.h>
+#include <libethereum/Block.h>
 #include <libwebthree/WebThree.h>
 #include "JsonHelper.h"
 using namespace std;
@@ -218,7 +219,7 @@ bool WebThreeStubServer::admin_eth_setMiningBenefactor(std::string const& _uuidO
 	if (m_setMiningBenefactor)
 		m_setMiningBenefactor(a);
 	else
-		m_web3.ethereum()->setAddress(a);
+		m_web3.ethereum()->setBeneficiary(a);
 	return true;
 }
 
@@ -256,7 +257,7 @@ Json::Value WebThreeStubServer::admin_eth_reprocess(std::string const& _blockNum
 	ADMIN_GUARD;
 	Json::Value ret;
 	PopulationStatistics ps;
-	m_web3.ethereum()->state(blockHash(_blockNumberOrHash), &ps);
+	m_web3.ethereum()->block(blockHash(_blockNumberOrHash), &ps);
 	ret["enact"] = ps.enact;
 	ret["verify"] = ps.verify;
 	ret["total"] = ps.verify + ps.enact;
@@ -270,16 +271,14 @@ Json::Value WebThreeStubServer::admin_eth_vmTrace(std::string const& _blockNumbe
 	Json::Value ret;
 
 	auto c = m_web3.ethereum();
-	State state = c->state(_txIndex + 1, blockHash(_blockNumberOrHash));
-
 	if (_txIndex < 0)
 		throw jsonrpc::JsonRpcException("Negative index");
-
-	if ((unsigned)_txIndex < state.pending().size())
+	Block block = c->block(blockHash(_blockNumberOrHash));
+	if ((unsigned)_txIndex < block.pending().size())
 	{
+		Transaction t = block.pending()[_txIndex];
+		State state = block.fromPending(_txIndex);
 		Executive e(state, bc(), 0);
-		Transaction t = state.pending()[_txIndex];
-		state = state.fromPending(_txIndex);
 		try
 		{
 			StandardTrace st;

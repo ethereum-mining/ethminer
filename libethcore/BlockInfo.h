@@ -97,7 +97,7 @@ public:
 	{
 		return m_parentHash == _cmp.parentHash() &&
 			m_sha3Uncles == _cmp.sha3Uncles() &&
-			m_coinbaseAddress == _cmp.coinbaseAddress() &&
+			m_coinbaseAddress == _cmp.beneficiary() &&
 			m_stateRoot == _cmp.stateRoot() &&
 			m_transactionsRoot == _cmp.transactionsRoot() &&
 			m_receiptsRoot == _cmp.receiptsRoot() &&
@@ -134,7 +134,7 @@ public:
 	void setLogBloom(LogBloom const& _v) { m_logBloom = _v; noteDirty(); }
 	void setDifficulty(u256 const& _v) { m_difficulty = _v; noteDirty(); }
 
-	Address const& coinbaseAddress() const { return m_coinbaseAddress; }
+	Address const& beneficiary() const { return m_coinbaseAddress; }
 	h256 const& stateRoot() const { return m_stateRoot; }
 	h256 const& transactionsRoot() const { return m_transactionsRoot; }
 	h256 const& receiptsRoot() const { return m_receiptsRoot; }
@@ -182,7 +182,7 @@ private:
 
 inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
 {
-	_out << _bi.hashWithout() << " " << _bi.parentHash() << " " << _bi.sha3Uncles() << " " << _bi.coinbaseAddress() << " " << _bi.stateRoot() << " " << _bi.transactionsRoot() << " " <<
+	_out << _bi.hashWithout() << " " << _bi.parentHash() << " " << _bi.sha3Uncles() << " " << _bi.beneficiary() << " " << _bi.stateRoot() << " " << _bi.transactionsRoot() << " " <<
 			_bi.receiptsRoot() << " " << _bi.logBloom() << " " << _bi.difficulty() << " " << _bi.number() << " " << _bi.gasLimit() << " " <<
 			_bi.gasUsed() << " " << _bi.timestamp();
 	return _out;

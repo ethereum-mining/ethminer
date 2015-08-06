@@ -398,22 +398,22 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 			m_stack.push_back(_ext.gasPrice);
 			break;
 		case Instruction::BLOCKHASH:
-			m_stack.back() = (u256)_ext.blockhash(m_stack.back());
+			m_stack.back() = (u256)_ext.blockHash(m_stack.back());
 			break;
 		case Instruction::COINBASE:
-			m_stack.push_back((u160)_ext.currentBlock.coinbaseAddress());
+			m_stack.push_back((u160)_ext.envInfo().beneficiary());
 			break;
 		case Instruction::TIMESTAMP:
-			m_stack.push_back(_ext.currentBlock.timestamp());
+			m_stack.push_back(_ext.envInfo().timestamp());
 			break;
 		case Instruction::NUMBER:
-			m_stack.push_back(_ext.currentBlock.number());
+			m_stack.push_back(_ext.envInfo().number());
 			break;
 		case Instruction::DIFFICULTY:
-			m_stack.push_back(_ext.currentBlock.difficulty());
+			m_stack.push_back(_ext.envInfo().difficulty());
 			break;
 		case Instruction::GASLIMIT:
-			m_stack.push_back(_ext.currentBlock.gasLimit());
+			m_stack.push_back(_ext.envInfo().gasLimit());
 			break;
 		case Instruction::PUSH1:
 		case Instruction::PUSH2:
