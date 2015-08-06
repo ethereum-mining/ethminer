@@ -102,7 +102,10 @@ OverlayDB State::openDB(std::string const& _basePath, h256 const& _genesisHash, 
 		else
 		{
 			cwarn << status.ToString();
-			cwarn << "Database already open. You appear to have another instance of ethereum running. Bailing.";
+			cwarn <<
+				"Database " <<
+				(path + "/state") <<
+				"already open. You appear to have another instance of ethereum running. Bailing.";
 			BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
 		}
 	}
