@@ -135,7 +135,7 @@ PopulationStatistics Block::populateFromChain(BlockChain const& _bc, h256 const&
 		// 2. Enact the block's transactions onto this state.
 		m_beneficiary = bi.beneficiary();
 		Timer t;
-		auto vb = _bc.verifyBlock(&b, function<void(Exception&)>(), _ir);
+		auto vb = _bc.verifyBlock(&b, function<void(Exception&)>(), _ir | ImportRequirements::TransactionBasic);
 		ret.verify = t.elapsed();
 		t.restart();
 		enact(vb, _bc);
@@ -459,7 +459,7 @@ u256 Block::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 		InvalidReceiptsStateRoot ex;
 		ex << Hash256RequirementError(receiptsRoot, m_currentBlock.receiptsRoot());
 		ex << errinfo_receipts(receipts);
-		ex << errinfo_vmtrace(vmTrace(_block.block, _bc, ImportRequirements::None));
+//		ex << errinfo_vmtrace(vmTrace(_block.block, _bc, ImportRequirements::None));
 		BOOST_THROW_EXCEPTION(ex);
 	}
 
