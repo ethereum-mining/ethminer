@@ -1003,7 +1003,7 @@ int main(int argc, char** argv)
 
 	cout << ethCredits();
 	web3.setIdealPeerCount(peers);
-	web3.private_setPeerStretch(peerStretch);
+	web3.setPeerStretch(peerStretch);
 //	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
 	std::shared_ptr<eth::TrivialGasPricer> gasPricer = make_shared<eth::TrivialGasPricer>(askPrice, bidPrice);
 	eth::Client* c = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
