@@ -171,6 +171,9 @@ public:
 	/// Sets the ideal number of peers.
 	void setIdealPeerCount(size_t _n) override;
 
+	/// Sets ceiling for incoming connections to multiple of ideal peer count.
+	void private_setPeerStretch(size_t _n);
+	
 	bool haveNetwork() const override { return m_net.haveNetwork(); }
 
 	p2p::NetworkPreferences const& networkPreferences() const override;
