@@ -215,7 +215,8 @@ public:
 	virtual std::tuple<h256, h256, h256> getEthashWork() { BOOST_THROW_EXCEPTION(InterfaceNotSupported("Interface::getEthashWork")); }
 	/// Submit the nonce for the proof-of-work.
 	virtual bool submitEthashWork(h256 const&, h64 const&) { BOOST_THROW_EXCEPTION(InterfaceNotSupported("Interface::submitEthashWork")); }
-
+	/// Submit the ongoing hashrate of a particular external miner.
+	virtual void submitExternalHashrate(int, h256 const&) { BOOST_THROW_EXCEPTION(InterfaceNotSupported("Interface::submitExternalHashrate")); }
 	/// Check the progress of the mining.
 	virtual WorkingProgress miningProgress() const = 0;
 

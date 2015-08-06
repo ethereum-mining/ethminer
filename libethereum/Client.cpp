@@ -503,9 +503,10 @@ WorkingProgress Client::miningProgress() const
 
 uint64_t Client::hashrate() const
 {
+	uint64_t r = externalHashrate();
 	if (Ethash::isWorking(m_sealEngine.get()))
-		return Ethash::workingProgress(m_sealEngine.get()).rate();
-	return 0;
+		r += Ethash::workingProgress(m_sealEngine.get()).rate();
+	return r;
 }
 
 std::list<MineInfo> Client::miningHistory()
