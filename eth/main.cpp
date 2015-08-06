@@ -715,7 +715,7 @@ int main(int argc, char** argv)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
 			peers = atoi(argv[++i]);
-		else if ((arg == "-x" || arg == "--peer-stretch") && i + 1 < argc)
+		else if (arg == "--peer-stretch" && i + 1 < argc)
 			peerStretch = atoi(argv[++i]);
 		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
 		{
