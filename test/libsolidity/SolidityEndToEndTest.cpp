@@ -1151,8 +1151,10 @@ BOOST_AUTO_TEST_CASE(blockchain)
 							 "    blockNumber = block.number;\n"
 							 "  }\n"
 							 "}\n";
+	m_envInfo.setBeneficiary(Address(0x123));
+	m_envInfo.setNumber(7);
 	compileAndRun(sourceCode, 27);
-	BOOST_CHECK(callContractFunctionWithValue("someInfo()", 28) == encodeArgs(28, 0, 1));
+	BOOST_CHECK(callContractFunctionWithValue("someInfo()", 28) == encodeArgs(28, 0x123, 7));
 }
 
 BOOST_AUTO_TEST_CASE(msg_sig)
@@ -1187,12 +1189,14 @@ BOOST_AUTO_TEST_CASE(msg_sig_after_internal_call_is_same)
 BOOST_AUTO_TEST_CASE(now)
 {
 	char const* sourceCode = "contract test {\n"
-							 "  function someInfo() returns (bool success) {\n"
-							 "    return block.timestamp == now && now > 0;\n"
+							 "  function someInfo() returns (bool equal, uint val) {\n"
+							 "    equal = block.timestamp == now;\n"
+							 "    val = now;\n"
 							 "  }\n"
 							 "}\n";
+	m_envInfo.setTimestamp(9);
 	compileAndRun(sourceCode);
-	BOOST_CHECK(callContractFunction("someInfo()") == encodeArgs(true));
+	BOOST_CHECK(callContractFunction("someInfo()") == encodeArgs(true, 9));
 }
 
 BOOST_AUTO_TEST_CASE(type_conversions_cleanup)

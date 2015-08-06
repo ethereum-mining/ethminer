@@ -194,7 +194,7 @@ public:
 	// [MINING API]:
 
 	/// Set the coinbase address.
-	virtual void setAddress(Address _us) = 0;
+	virtual void setBeneficiary(Address _us) = 0;
 	/// Get the coinbase address.
 	virtual Address address() const = 0;
 

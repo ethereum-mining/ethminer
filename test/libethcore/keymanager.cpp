@@ -72,7 +72,7 @@ BOOST_AUTO_TEST_CASE(KeyManagerKeysFile)
 	TransientDirectory tmpDir;
 	km.setKeysFile(tmpDir.path());
 	BOOST_CHECK(!km.exists());
-	BOOST_CHECK_THROW(km.create(password), FileError);
+	BOOST_CHECK_THROW(km.create(password), boost::filesystem::filesystem_error);
 	km.setKeysFile(tmpDir.path() + "/notExistingDir/keysFile.json");
 	BOOST_CHECK_NO_THROW(km.create(password));
 	BOOST_CHECK(km.exists());

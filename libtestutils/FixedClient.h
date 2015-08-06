@@ -37,7 +37,7 @@ namespace test
 class FixedClient: public dev::eth::ClientBase
 {
 public:
-	FixedClient(eth::BlockChain const& _bc, eth::State _state) :  m_bc(_bc), m_state(_state) {}
+	FixedClient(eth::BlockChain const& _bc, eth::Block const& _block) :  m_bc(_bc), m_block(_block) {}
 	virtual ~FixedClient() {}
 	
 	// stub
@@ -45,15 +45,15 @@ public:
 	virtual eth::BlockChain& bc() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("FixedClient::bc()")); }
 	virtual eth::BlockChain const& bc() const override { return m_bc; }
 	using ClientBase::asOf;
-	virtual eth::State asOf(h256 const& _h) const override;
-	virtual eth::State preMine() const override { ReadGuard l(x_stateDB); return m_state; }
-	virtual eth::State postMine() const override { ReadGuard l(x_stateDB); return m_state; }
-	virtual void setAddress(Address _us) override { WriteGuard l(x_stateDB); m_state.setAddress(_us); }
+	virtual eth::Block asOf(h256 const& _h) const override;
+	virtual eth::Block preMine() const override { ReadGuard l(x_stateDB); return m_block; }
+	virtual eth::Block postMine() const override { ReadGuard l(x_stateDB); return m_block; }
+	virtual void setBeneficiary(Address _us) override { WriteGuard l(x_stateDB); m_block.setBeneficiary(_us); }
 	virtual void prepareForTransaction() override {}
 
 private:
 	eth::BlockChain const& m_bc;
-	eth::State m_state;
+	eth::Block m_block;
 	mutable SharedMutex x_stateDB;			///< Lock on the state DB, effectively a lock on m_postMine.
 };
 

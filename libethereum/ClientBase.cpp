@@ -36,7 +36,7 @@ const char* WorkInChannel::name() { return EthOrange "⚒" EthGreen "▬▶"; }
 const char* WorkOutChannel::name() { return EthOrange "⚒" EthNavy "◀▬"; }
 const char* WorkChannel::name() { return EthOrange "⚒" EthWhite "  "; }
 
-State ClientBase::asOf(BlockNumber _h) const
+Block ClientBase::asOf(BlockNumber _h) const
 {
 	if (_h == PendingBlock)
 		return postMine();
@@ -68,12 +68,12 @@ ExecutionResult ClientBase::call(Address const& _from, u256 _value, Address _des
 	ExecutionResult ret;
 	try
 	{
-		State temp = asOf(_blockNumber);
+		Block temp = asOf(_blockNumber);
 		u256 n = temp.transactionsFrom(_from);
 		Transaction t(_value, _gasPrice, _gas, _dest, _data, n);
 		t.forceSender(_from);
 		if (_ff == FudgeFactor::Lenient)
-			temp.addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
+			temp.mutableState().addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
 		ret = temp.execute(bc().lastHashes(), t, Permanence::Reverted);
 	}
 	catch (...)
@@ -88,14 +88,13 @@ ExecutionResult ClientBase::create(Address const& _from, u256 _value, bytes cons
 	ExecutionResult ret;
 	try
 	{
-		State temp = asOf(_blockNumber);
+		Block temp = asOf(_blockNumber);
 		u256 n = temp.transactionsFrom(_from);
 		//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
-		
 		Transaction t(_value, _gasPrice, _gas, _data, n);
 		t.forceSender(_from);
 		if (_ff == FudgeFactor::Lenient)
-			temp.addBalance(_from, (u256)(t.gasRequired() * t.gasPrice() + t.value()));
+			temp.mutableState().addBalance(_from, (u256)(t.gasRequired() * t.gasPrice() + t.value()));
 		ret = temp.execute(bc().lastHashes(), t, Permanence::Reverted);
 	}
 	catch (...)
@@ -165,7 +164,7 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 	// Handle pending transactions differently as they're not on the block chain.
 	if (begin > bc().number())
 	{
-		State temp = postMine();
+		Block temp = postMine();
 		for (unsigned i = 0; i < temp.pending().size(); ++i)
 		{
 			// Might have a transaction that contains a matching log.
@@ -440,14 +439,14 @@ h256s ClientBase::pendingHashes() const
 
 StateDiff ClientBase::diff(unsigned _txi, h256 _block) const
 {
-	State st = asOf(_block);
-	return st.fromPending(_txi).diff(st.fromPending(_txi + 1), true);
+	Block b = asOf(_block);
+	return b.fromPending(_txi).diff(b.fromPending(_txi + 1), true);
 }
 
 StateDiff ClientBase::diff(unsigned _txi, BlockNumber _block) const
 {
-	State st = asOf(_block);
-	return st.fromPending(_txi).diff(st.fromPending(_txi + 1), true);
+	Block b = asOf(_block);
+	return b.fromPending(_txi).diff(b.fromPending(_txi + 1), true);
 }
 
 Addresses ClientBase::addresses(BlockNumber _block) const
@@ -465,7 +464,7 @@ u256 ClientBase::gasLimitRemaining() const
 
 Address ClientBase::address() const
 {
-	return preMine().address();
+	return preMine().beneficiary();
 }
 
 h256 ClientBase::hashFromNumber(BlockNumber _number) const
