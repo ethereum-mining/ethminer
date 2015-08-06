@@ -216,7 +216,12 @@ unsigned BlockChain::openDatabase(std::string const& _path, WithExisting _we)
 		}
 		else
 		{
-			cwarn << "Database already open. You appear to have another instance of ethereum running. Bailing.";
+			cwarn <<
+				"Database " <<
+				(chainPath + "/blocks") <<
+				"or " <<
+				(extrasPath + "/extras") <<
+				"already open. You appear to have another instance of ethereum running. Bailing.";
 			BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
 		}
 	}
