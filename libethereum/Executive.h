@@ -32,10 +32,14 @@ namespace Json
 
 namespace dev
 {
+
+class OverlayDB;
+
 namespace eth
 {
 
 class State;
+class Block;
 class BlockChain;
 class ExtVM;
 struct Manifest;
@@ -84,10 +88,32 @@ private:
 class Executive
 {
 public:
-	/// Basic constructor.
-	Executive(State& _s, LastHashes const& _lh, unsigned _level = 0): m_s(_s), m_lastHashes(_lh), m_depth(_level) {}
-	/// Basic constructor.
-	Executive(State& _s, BlockChain const& _bc, unsigned _level = 0);
+	/// Simple constructor; executive will operate on given state, with the given environment info.
+	Executive(State& _s, EnvInfo const& _envInfo, unsigned _level = 0): m_s(_s), m_envInfo(_envInfo), m_depth(_level) {}
+
+	/** Easiest constructor.
+	 * Creates executive to operate on the state of end of the given block, populating environment
+	 * info from given Block and the LastHashes portion from the BlockChain.
+	 */
+	Executive(Block& _s, BlockChain const& _bc, unsigned _level = 0);
+
+	/** LastHashes-split constructor.
+	 * Creates executive to operate on the state of end of the given block, populating environment
+	 * info accordingly, with last hashes given explicitly.
+	 */
+	Executive(Block& _s, LastHashes const& _lh = LastHashes(), unsigned _level = 0);
+
+	/** Partially-automated split constructor; executive will operate on given state, with the given
+	 * environment info, populating the last hashes from the given chain.
+	 */
+	Executive(State& _s, BlockChain const& _bc, EnvInfo const& _envInfo, unsigned _level = 0);
+
+	/**
+	 * Automated split constructor; executive will operate on given state, with the environment info
+	 * populated from the given chain.
+	 * @note This will only work when the state to be operated on is already in the chain.
+	 */
+	Executive(State& _s, BlockChain const& _bc, unsigned _number, unsigned _level = 0);
 
 	Executive(Executive const&) = delete;
 	void operator=(Executive) = delete;
@@ -147,8 +173,9 @@ public:
 
 private:
 	State& m_s;							///< The state to which this operation/transaction is applied.
-	LastHashes m_lastHashes;
-	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required. shared_ptr used only to allow ExtVM forward reference.
+	// TODO: consider changign to EnvInfo const& to avoid LastHashes copy at every CALL/CREATE
+	EnvInfo m_envInfo;					///< Information on the runtime environment.
+	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required. shared_ptr used only to allow ExtVM forward reference. This field does *NOT* survive this object.
 	bytesRef m_outRef;					///< Reference to "expected output" buffer.
 	ExecutionResult* m_res = nullptr;	///< Optional storage for execution results.
 	Address m_newAddress;				///< The address of the created contract in the case of create() being called.

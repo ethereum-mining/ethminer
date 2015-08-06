@@ -40,6 +40,7 @@
 #include <liblll/Compiler.h>
 #include "GenesisInfo.h"
 #include "State.h"
+#include "Block.h"
 #include "Utility.h"
 #include "Defaults.h"
 using namespace std;
@@ -146,13 +147,13 @@ static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 #endif
 
-BlockChain::BlockChain(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path):
+BlockChain::BlockChain(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path):
 	m_dbPath(_path)
 {
 	open(_genesisBlock, _genesisState, _path);
 }
 
-void BlockChain::open(bytes const& _genesisBlock, std::unordered_map<Address, Account> const& _genesisState, std::string const& _path)
+void BlockChain::open(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path)
 {
 	// initialise deathrow.
 	m_cacheUsage.resize(c_collectionQueueSize);
@@ -295,7 +296,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	ldb::DB::Open(o, extrasPath + "/extras", &m_extrasDB);
 
 	// Open a fresh state DB
-	State s = genesisState(State::openDB(path, m_genesisHash, WithExisting::Kill));
+	Block s = genesisBlock(State::openDB(path, m_genesisHash, WithExisting::Kill));
 
 	// Clear all memos ready for replay.
 	m_details.clear();
@@ -554,7 +555,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	{
 		// Check transactions are valid and that they result in a state equivalent to our state_root.
 		// Get total difficulty increase and update state, checking it.
-		State s(_db);
+		Block s(_db);
 		auto tdIncrease = s.enactOn(_block, *this);
 
 		for (unsigned i = 0; i < s.pending().size(); ++i)
@@ -676,7 +677,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 			h256s alteredBlooms;
 			{
 				LogBloom blockBloom = tbi.logBloom();
-				blockBloom.shiftBloom<3>(sha3(tbi.coinbaseAddress().ref()));
+				blockBloom.shiftBloom<3>(sha3(tbi.beneficiary().ref()));
 
 				// Pre-memoize everything we need before locking x_blocksBlooms
 				for (unsigned level = 0, index = (unsigned)tbi.number(); level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize)
@@ -1266,13 +1267,12 @@ bytes BlockChain::headerData(h256 const& _hash) const
 	return BlockInfo::extractHeader(&m_blocks[_hash]).data().toBytes();
 }
 
-State BlockChain::genesisState(OverlayDB const& _db)
+Block BlockChain::genesisBlock(OverlayDB const& _db)
 {
-	State ret(_db, BaseState::Empty);
-	dev::eth::commit(m_genesisState, ret.m_state);		// bit horrible. maybe consider a better way of constructing it?
-	ret.m_state.db()->commit();			// have to use this db() since it's the one that has been altered with the above commit.
-	ret.m_previousBlock = BlockInfo(&m_genesisBlock);
-	ret.resetCurrent();
+	Block ret(_db, BaseState::Empty);
+	dev::eth::commit(m_genesisState, ret.mutableState().m_state);		// bit horrible. maybe consider a better way of constructing it?
+	ret.mutableState().db().commit();									// have to use this db() since it's the one that has been altered with the above commit.
+	ret.m_previousBlock = BlockInfo(m_genesisBlock);
 	return ret;
 }
 

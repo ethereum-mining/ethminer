@@ -21,11 +21,12 @@
  */
 #include <fstream>
 #include <iostream>
+#include <ctime>
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
-#include <libethereum/State.h>
+#include <libethereum/Block.h>
 #include <libethereum/Executive.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
@@ -83,10 +84,11 @@ int main(int argc, char** argv)
 	Address sender = Address(69);
 	Address origin = Address(69);
 	u256 value = 0;
-	u256 gas = state.gasLimitRemaining();
+	u256 gas = Block().gasLimitRemaining();
 	u256 gasPrice = 0;
 	bool styledJson = true;
 	StandardTrace st;
+	EnvInfo envInfo;
 
 	for (int i = 1; i < argc; ++i)
 	{
@@ -130,6 +132,18 @@ int main(int argc, char** argv)
 			value = u256(argv[++i]);
 		else if (arg == "--value" && i + 1 < argc)
 			value = u256(argv[++i]);
+		else if (arg == "--beneficiary" && i + 1 < argc)
+			envInfo.setBeneficiary(Address(argv[++i]));
+		else if (arg == "--number" && i + 1 < argc)
+			envInfo.setNumber(u256(argv[++i]));
+		else if (arg == "--difficulty" && i + 1 < argc)
+			envInfo.setDifficulty(u256(argv[++i]));
+		else if (arg == "--timestamp" && i + 1 < argc)
+			envInfo.setTimestamp(u256(argv[++i]));
+		else if (arg == "--gas-limit" && i + 1 < argc)
+			envInfo.setGasLimit(u256(argv[++i]));
+		else if (arg == "--value" && i + 1 < argc)
+			value = u256(argv[++i]);
 		else if (arg == "stats")
 			mode = Mode::Statistics;
 		else if (arg == "output")
@@ -151,7 +165,7 @@ int main(int argc, char** argv)
 		data = code;
 
 	state.addBalance(sender, value);
-	Executive executive(state, eth::LastHashes(), 0);
+	Executive executive(state, envInfo);
 	ExecutionResult res;
 	executive.setResultRecipient(res);
 	Transaction t = eth::Transaction(value, gasPrice, gas, data, 0);
