@@ -51,7 +51,9 @@
 #define HAVE_UNISTD_H 1
 
 /* Define to 1 if the system has the type `__int128'. */
+#if defined(__x86_64__) || defined(_M_X64)
 #define HAVE___INT128 1
+#endif
 
 /* Define to the sub-directory where libtool stores uninstalled libraries. */
 #define LT_OBJDIR ".libs/"
@@ -81,16 +83,18 @@
 #define STDC_HEADERS 1
 
 /* Define this symbol to enable x86_64 assembly optimizations */
-/* #undef USE_ASM_X86_64 */
+// #if defined(__APPLE__) || defined(__GNUC__)
+// #defined USE_ASM_X86_64 1
+// #endif
 
 /* Define this symbol to use endomorphism optimization */
 /* #undef USE_ENDOMORPHISM */
 
-/* Define this symbol to use the FIELD_10X26 implementation */
-/* #undef USE_FIELD_10X26 */
-
-/* Define this symbol to use the FIELD_5X52 implementation */
+#if defined(__x86_64__) || defined(_M_X64)
 #define USE_FIELD_5X52 1
+#elif defined(__i386) || defined(_M_IX86)
+#define USE_FIELD_10X26 1
+#endif
 
 /* Define this symbol to use the native field inverse implementation */
 /* #undef USE_FIELD_INV_BUILTIN */
@@ -104,11 +108,11 @@
 /* Define this symbol to use no num implementation */
 /* #undef USE_NUM_NONE */
 
-/* Define this symbol to use the 4x64 scalar implementation */
+#if defined(__x86_64__) || defined(_M_X64)
 #define USE_SCALAR_4X64 1
-
-/* Define this symbol to use the 8x32 scalar implementation */
-/* #undef USE_SCALAR_8X32 */
+#elif defined(__i386) || defined(_M_IX86)
+#define USE_SCALAR_8X32 1
+#endif
 
 /* Define this symbol to use the native scalar inverse implementation */
 /* #undef USE_SCALAR_INV_BUILTIN */
