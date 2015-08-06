@@ -522,13 +522,13 @@ void Transact::on_debug_clicked()
 
 	try
 	{
-		State st(ethereum()->postState());
+		Block postState(ethereum()->postState());
 		Transaction t = isCreation() ?
-			Transaction(value(), gasPrice(), ui->gas->value(), m_data, st.transactionsFrom(from)) :
-			Transaction(value(), gasPrice(), ui->gas->value(), m_context->fromString(ui->destination->currentText().toStdString()).first, m_data, st.transactionsFrom(from));
+			Transaction(value(), gasPrice(), ui->gas->value(), m_data, postState.transactionsFrom(from)) :
+			Transaction(value(), gasPrice(), ui->gas->value(), m_context->fromString(ui->destination->currentText().toStdString()).first, m_data, postState.transactionsFrom(from));
 		t.forceSender(from);
 		Debugger dw(m_context, this);
-		Executive e(st, ethereum()->blockChain(), 0);
+		Executive e(postState, ethereum()->blockChain(), 0);
 		dw.populate(e, t);
 		dw.exec();
 	}
