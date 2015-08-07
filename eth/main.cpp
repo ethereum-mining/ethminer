@@ -357,9 +357,8 @@ int main(int argc, char** argv)
 	string remoteHost;
 	unsigned short remotePort = 30303;
 	
-	HostPeerPreferences hprefs;
-	unsigned peers = hprefs.idealPeerCount;
-	unsigned peerStretch = hprefs.stretchPeerCount;
+	unsigned peers = 11;
+	unsigned peerStretch = 7;
 	std::map<NodeId, Node> preferredNodes;
 	bool bootstrap = false;
 	bool disableDiscovery = false;
