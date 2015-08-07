@@ -85,8 +85,6 @@ ExecutionResult ClientBase::call(Address const& _from, u256 _value, Address _des
 
 ExecutionResult ClientBase::create(Address const& _from, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff)
 {
-	cdebug << "*** HERE!!!";
-	cnote << "*** HERE!!!";
 	ExecutionResult ret;
 	try
 	{
@@ -96,7 +94,7 @@ ExecutionResult ClientBase::create(Address const& _from, u256 _value, bytes cons
 		Transaction t(_value, _gasPrice, _gas, _data, n);
 		t.forceSender(_from);
 		if (_ff == FudgeFactor::Lenient)
-			temp.mutableState().addBalance(_from, (u256)(t.gasRequired() * t.gasPrice() + t.value()));
+			temp.mutableState().addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
 		ret = temp.execute(bc().lastHashes(), t, Permanence::Reverted);
 	}
 	catch (...)

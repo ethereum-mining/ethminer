@@ -427,6 +427,12 @@ void Transact::rejigData()
 		bail("<div class=\"error\"><span class=\"icon\">ERROR</span> Account doesn't contain enough for paying even the basic amount of gas required.</div>");
 		return;
 	}
+	if (gasReq.neededGas > m_ethereum->gasLimitRemaining())
+	{
+		// Not enough - bail.
+		bail("<div class=\"error\"><span class=\"icon\">ERROR</span> Gas remaining in block isn't enough to allow the gas required.</div>");
+		return;
+	}
 	if (gasReq.er.excepted != TransactionException::None)
 	{
 		bail("<div class=\"error\"><span class=\"icon\">ERROR</span> " + QString::fromStdString(toString(gasReq.er.excepted)) + "</div>");
