@@ -265,6 +265,9 @@ private:
 	NodeSocket* m_socketPointer;									///< Set to m_socket.get(). Socket is created in constructor and disconnected in destructor to ensure access to pointer is safe.
 
 	DeadlineOps m_timers;
+
+	Mutex x_debug;
+	bool m_debug_destroyed;
 };
 
 inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)

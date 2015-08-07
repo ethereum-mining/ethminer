@@ -46,6 +46,7 @@ NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint 
 	m_socket(new NodeSocket(_io, *this, (bi::udp::endpoint)m_node.endpoint)),
 	m_socketPointer(m_socket.get()),
 	m_timers(_io)
+	,m_debug_destroyed(false)
 {
 	for (unsigned i = 0; i < s_bins; i++)
 		m_state[i].distance = i;
@@ -67,8 +68,12 @@ NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint 
 	
 NodeTable::~NodeTable()
 {
-	m_timers.stop();
-	m_socketPointer->disconnect();
+	DEV_GUARDED(x_debug)
+	{
+		m_debug_destroyed = true;
+		m_timers.stop();
+		m_socketPointer->disconnect();
+	}
 }
 
 void NodeTable::processEvents()
@@ -200,7 +205,11 @@ void NodeTable::doDiscover(NodeId _node, unsigned _round, shared_ptr<set<shared_
 	{
 		if (_ec)
 			clog(NodeTableWarn) << "Discovery timer canceled!";
-		doDiscover(_node, _round + 1, _tried);
+
+		if (!m_debug_destroyed)
+			DEV_GUARDED(x_debug)
+				if (!m_debug_destroyed)
+					doDiscover(_node, _round + 1, _tried);
 	});
 }
 
