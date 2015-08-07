@@ -20,9 +20,11 @@
  */
 
 #pragma once
-
+#pragma warning(push)
+#pragma clang diagnostic ignored "-Winconsistent-missing-override"
 #include <QtCore/QtCore>
 #include <QtQml/QJSEngine>
+#pragma warning(pop)
 
 /**
  * Should be used to evaluate natspec expression.
