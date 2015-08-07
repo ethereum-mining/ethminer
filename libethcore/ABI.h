@@ -68,5 +68,10 @@ template <class T> T abiOut(bytes const& _data)
 	return ABIDeserialiser<T>::deserialise(o);
 }
 
+template <class T> T abiOut(bytesConstRef& _data)
+{
+	return ABIDeserialiser<T>::deserialise(_data);
+}
+
 }
 }
