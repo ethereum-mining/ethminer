@@ -47,8 +47,6 @@ namespace fs = boost::filesystem;
 #define ctrace clog(StateTrace)
 #define ETH_TIMED_ENACTMENTS 0
 
-static const unsigned c_maxSyncTransactions = 256;
-
 const char* StateSafeExceptions::name() { return EthViolet "⚙" EthBlue " ℹ"; }
 const char* StateDetail::name() { return EthViolet "⚙" EthWhite " ◌"; }
 const char* StateTrace::name() { return EthViolet "⚙" EthGray " ◎"; }
