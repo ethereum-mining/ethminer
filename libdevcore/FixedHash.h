@@ -238,7 +238,14 @@ public:
 	explicit SecureFixedHash(bytes const* _d, ConstructFromPointerType _t): FixedHash<T>(_d, _t) {}
 	~SecureFixedHash() { ref().cleanse(); }
 
-	SecureFixedHash<T>& operator=(SecureFixedHash<T> const& _c) { ref().cleanse(); FixedHash<T>::operator=(static_cast<FixedHash<T> const&>(_c)); return *this; }
+	SecureFixedHash<T>& operator=(SecureFixedHash<T> const& _c)
+	{
+		if (&_c == this)
+			return *this;
+		ref().cleanse();
+		FixedHash<T>::operator=(static_cast<FixedHash<T> const&>(_c));
+		return *this;
+	}
 
 	using FixedHash<T>::size;
 
