@@ -85,6 +85,8 @@ ExecutionResult ClientBase::call(Address const& _from, u256 _value, Address _des
 
 ExecutionResult ClientBase::create(Address const& _from, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff)
 {
+	cdebug << "*** HERE!!!";
+	cnote << "*** HERE!!!";
 	ExecutionResult ret;
 	try
 	{
