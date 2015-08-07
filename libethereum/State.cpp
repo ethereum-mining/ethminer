@@ -83,7 +83,7 @@ OverlayDB State::openDB(std::string const& _basePath, h256 const& _genesisHash, 
 
 	path += "/" + toHex(_genesisHash.ref().cropped(0, 4)) + "/" + toString(c_databaseVersion);
 	boost::filesystem::create_directories(path);
-	fs::permissions(path, fs::owner_all);
+	DEV_IGNORE_EXCEPTIONS(fs::permissions(path, fs::owner_all));
 
 	ldb::Options o;
 	o.max_open_files = 256;

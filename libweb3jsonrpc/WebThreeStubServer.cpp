@@ -59,7 +59,7 @@ WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, 
 {
 	auto path = getDataDir() + "/.web3";
 	fs::create_directories(path);
-	fs::permissions(path, fs::owner_all);
+	DEV_IGNORE_EXCEPTIONS(fs::permissions(path, fs::owner_all));
 	ldb::Options o;
 	o.create_if_missing = true;
 	ldb::DB::Open(o, path, &m_db);
