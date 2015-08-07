@@ -128,7 +128,7 @@ void dev::writeFile(std::string const& _file, bytesConstRef _data, bool _writeDe
 		s.write(reinterpret_cast<char const*>(_data.data()), _data.size());
 		if (!s)
 			BOOST_THROW_EXCEPTION(FileError() << errinfo_comment("Could not write to file: " + _file));
-		fs::permissions(_file, fs::owner_read|fs::owner_write);
+		DEV_IGNORE_EXCEPTIONS(fs::permissions(_file, fs::owner_read|fs::owner_write));
 	}
 }
 

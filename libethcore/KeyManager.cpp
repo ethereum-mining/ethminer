@@ -95,8 +95,11 @@ bool KeyManager::load(string const& _pass)
 			{
 				h128 uuid(i[1]);
 				Address addr(i[0]);
-				m_addrLookup[addr] = uuid;
-				m_keyInfo[uuid] = KeyInfo(h256(i[2]), string(i[3]));
+				if (m_store.contains(uuid))
+				{
+					m_addrLookup[addr] = uuid;
+					m_keyInfo[uuid] = KeyInfo(h256(i[2]), string(i[3]));
+				}
 //				cdebug << toString(addr) << toString(uuid) << toString((h256)i[2]) << (string)i[3];
 			}
 
