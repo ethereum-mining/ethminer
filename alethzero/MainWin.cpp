@@ -859,8 +859,8 @@ void Main::readSettings(bool _skipGeometry)
 	{
 		p->readSettings(s);
 	});
-	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setAsk(u256(s.value("askPrice", QString::fromStdString(boost::lexical_cast<std::string>(c_defaultGasPrice))).toString().toStdString()));
-	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setBid(u256(s.value("bidPrice", QString::fromStdString(boost::lexical_cast<std::string>(c_defaultGasPrice))).toString().toStdString()));
+	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setAsk(u256(s.value("askPrice", QString::fromStdString(toString(c_defaultGasPrice))).toString().toStdString()));
+	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setBid(u256(s.value("bidPrice", QString::fromStdString(toString(c_defaultGasPrice))).toString().toStdString()));
 
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forcePublicIP->setText(s.value("forceAddress", "").toString());
