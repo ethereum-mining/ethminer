@@ -729,7 +729,7 @@ int main(int argc, char** argv)
 			}
 
 			vector<string> each;
-			boost::split(strs, peerset, boost::is_any_of("\t "));
+			boost::split(each, peerset, boost::is_any_of("\t "));
 			for (auto const& p: each)
 			{
 				string type;
@@ -739,7 +739,7 @@ int main(int argc, char** argv)
 				
 				// type:key@ip[:port]
 				vector<string> typeAndKeyAtHostAndPort;
-				boost::split(typeAndKeyAtHostAndPort, peerset, boost::is_any_of(":"));
+				boost::split(typeAndKeyAtHostAndPort, p, boost::is_any_of(":"));
 				if (typeAndKeyAtHostAndPort.size() < 2 || typeAndKeyAtHostAndPort.size() > 3)
 					continue;
 				
