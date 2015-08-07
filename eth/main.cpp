@@ -181,11 +181,12 @@ void help()
 		<< "    --network-id <n> Only connect to other hosts with this network id." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
 
-//		<< "	--peers <filename>  Text list of type publickey@host[:port]  (default: network)" << endl
-//		<< "		Types:" << endl
-//		<< "		default		Attempt connection when no other peers are available and pinning is disable." << endl
-//		<< "		trusted		Keep connected at all times." << endl
-//		<< "	--trust-peers <filename>  Text list of publickeys." << endl
+		<< "	--peerset <list>  Space delimited list of type type:publickey@ipAddress[:port]" << endl
+		<< "		Types:" << endl
+		<< "		default		Attempt connection when no other peers are available and pinning is disable." << endl
+		<< "		require		Keep connected at all times." << endl
+// TODO:
+//		<< "	--trust-peers <filename>  Space delimited list of publickeys." << endl
 	
 		<< "    --no-discovery  Disable Node discovery." << endl
 		<< "    --pin  Only accept or connect to trusted peers." << endl
@@ -359,6 +360,7 @@ int main(int argc, char** argv)
 	HostPeerPreferences hprefs;
 	unsigned peers = hprefs.idealPeerCount;
 	unsigned peerStretch = hprefs.stretchPeerCount;
+	std::map<NodeId, Node> preferredNodes;
 	bool bootstrap = false;
 	bool disableDiscovery = false;
 	bool pinning = false;
@@ -717,6 +719,63 @@ int main(int argc, char** argv)
 			peers = atoi(argv[++i]);
 		else if (arg == "--peer-stretch" && i + 1 < argc)
 			peerStretch = atoi(argv[++i]);
+		else if (arg == "--peerset" && i + 1 < argc)
+		{
+			string peerset = argv[++i];
+			if (peerset.empty())
+			{
+				cerr << "--peerset argument must not be empty";
+				return -1;
+			}
+
+			vector<string> each;
+			boost::split(strs, peerset, boost::is_any_of("\t "));
+			for (auto const& p: each)
+			{
+				string type;
+				string pubk;
+				string hostIP;
+				unsigned short port = c_defaultListenPort;
+				
+				// type:key@ip[:port]
+				vector<string> typeAndKeyAtHostAndPort;
+				boost::split(typeAndKeyAtHostAndPort, peerset, boost::is_any_of(":"));
+				if (typeAndKeyAtHostAndPort.size() < 2 || typeAndKeyAtHostAndPort.size() > 3)
+					continue;
+				
+				type = typeAndKeyAtHostAndPort[0];
+				if (typeAndKeyAtHostAndPort.size() == 3)
+					port = (uint16_t)atoi(typeAndKeyAtHostAndPort[2].c_str());
+
+				vector<string> keyAndHost;
+				boost::split(keyAndHost, typeAndKeyAtHostAndPort[1], boost::is_any_of("@"));
+				if (keyAndHost.size() != 2)
+					continue;
+				pubk = keyAndHost[0];
+				if (pubk.size() != 40)
+					continue;
+				hostIP = keyAndHost[1];
+				
+				// todo: use Network::resolveHost()
+				if (hostIP.size() < 4 /* g.it */)
+					continue;
+				
+				bool required = type == "required";
+				if (!required && type != "default")
+					continue;
+
+				Public publicKey(fromHex(pubk));
+				try
+				{
+					preferredNodes[publicKey] = Node(pubk, NodeIPEndpoint(bi::address(hostIP), port, port), required);
+				}
+				catch (...)
+				{
+					cerr << "Unrecognized peerset: " << peerset << endl;
+					return -1;
+				}
+			}
+		}
 		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -1002,6 +1061,7 @@ int main(int argc, char** argv)
 	}
 
 	cout << ethCredits();
+	
 	web3.setIdealPeerCount(peers);
 	web3.setPeerStretch(peerStretch);
 //	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
@@ -1051,12 +1111,18 @@ int main(int argc, char** argv)
 	}
 #endif
 
+	for (auto const& p: preferredNodes)
+		if (p.second.required)
+			web3.requirePeer(p.first, p.second.endpoint);
+		else
+			web3.addNode(p.first, p.second.endpoint);
+
 	if (bootstrap)
 		for (auto const& i: Host::pocHosts())
 			web3.requirePeer(i.first, i.second);
 	if (!remoteHost.empty())
 		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
-
+	
 	signal(SIGABRT, &sighandler);
 	signal(SIGTERM, &sighandler);
 	signal(SIGINT, &sighandler);
