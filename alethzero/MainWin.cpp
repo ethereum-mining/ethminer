@@ -860,8 +860,8 @@ void Main::readSettings(bool _skipGeometry)
 		p->readSettings(s);
 	});
 
-	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setAsk(u256(s.value("askPrice", "500000000000").toString().toStdString()));
-	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setBid(u256(s.value("bidPrice", "500000000000").toString().toStdString()));
+	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setAsk(u256(s.value("askPrice", "50000000000").toString().toStdString()));
+	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setBid(u256(s.value("bidPrice", "50000000000").toString().toStdString()));
 
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forcePublicIP->setText(s.value("forceAddress", "").toString());
