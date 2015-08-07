@@ -44,9 +44,9 @@ namespace js = json_spirit;
 WebThreeDirect* web3;
 unique_ptr<WebThreeStubServer> jsonrpcServer;
 unique_ptr<WebThreeStubClient> jsonrpcClient;
-static uint16_t const g_web3port = 30333;
-static string const g_version("shhrpc-web3");
-static unsigned const g_ttl = 777000;
+static uint16_t const c_web3port = 30333;
+static string const c_version("shhrpc-web3");
+static unsigned const c_ttl = 777000;
 
 struct Setup
 {
@@ -58,8 +58,8 @@ struct Setup
 		if (!setup)
 		{
 			setup = true;
-			NetworkPreferences nprefs(std::string(), g_web3port, false);
-			web3 = new WebThreeDirect(g_version, "", WithExisting::Trust, {"shh"}, nprefs);
+			NetworkPreferences nprefs(std::string(), c_web3port, false);
+			web3 = new WebThreeDirect(c_version, "", WithExisting::Trust, {"shh"}, nprefs);
 			web3->setIdealPeerCount(1);
 			auto server = new jsonrpc::HttpServer(8080);
 			vector<KeyPair> v;
@@ -84,7 +84,7 @@ Json::Value createMessage(string const& _from, string const& _to, string const& 
 	Json::Value msg;
 	msg["from"] = _from;
 	msg["to"] = _to;
-	msg["ttl"] = toJS(g_ttl);
+	msg["ttl"] = toJS(c_ttl);
 
 	if (_payload.empty())
 		_payload = string("0x") + h256::random().hex();
@@ -265,7 +265,7 @@ BOOST_AUTO_TEST_CASE(receive)
 	BOOST_REQUIRE(host2.haveNetwork());
 	BOOST_REQUIRE(web3->haveNetwork());
 
-	host2.addNode(web3->id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), g_web3port, g_web3port));
+	host2.addNode(web3->id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), c_web3port, c_web3port));
 
 	for (unsigned i = 0; i < 3000 && (!web3->peerCount() || !host2.peerCount()); i += step)
 		this_thread::sleep_for(chrono::milliseconds(step));
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE(receive)
 	KeyPair us = KeyPair::create();
 	for (unsigned i = 0; i < messageCount; ++i)
 	{
-		web3->whisper()->post(us.sec(), RLPStream().append(i * i * i).out(), BuildTopic(i)(i % 2 ? "odd" : "even"), g_ttl, 1);
+		web3->whisper()->post(us.sec(), RLPStream().append(i * i * i).out(), BuildTopic(i)(i % 2 ? "odd" : "even"), c_ttl, 1);
 		this_thread::sleep_for(chrono::milliseconds(50));
 	}
 	
@@ -290,7 +290,7 @@ BOOST_AUTO_TEST_CASE(serverBasic)
 	cnote << "Testing basic jsonrpc server...";
 
 	string s = jsonrpcServer->web3_clientVersion();
-	BOOST_REQUIRE_EQUAL(s, g_version);
+	BOOST_REQUIRE_EQUAL(s, c_version);
 
 	s = jsonrpcServer->net_version();
 	BOOST_REQUIRE(s.empty());
@@ -359,7 +359,7 @@ BOOST_AUTO_TEST_CASE(server)
 
 	j = jsonrpcServer->admin_net_nodeInfo(sess2);
 	BOOST_REQUIRE_EQUAL(j["id"].asString(), web3->id().hex());
-	BOOST_REQUIRE_EQUAL(j["port"].asUInt(), g_web3port);
+	BOOST_REQUIRE_EQUAL(j["port"].asUInt(), c_web3port);
 
 	uint16_t port2 = 30339;
 	Host host2("shhrpc-host2", NetworkPreferences("127.0.0.1", port2, false));
@@ -445,7 +445,7 @@ BOOST_AUTO_TEST_CASE(server)
 	j = jsonrpcServer->shh_getFilterChanges(filter);
 	BOOST_REQUIRE(!j.empty());
 	Json::Value m1 = j[0];
-	BOOST_REQUIRE_EQUAL(m1["ttl"], toJS(g_ttl));
+	BOOST_REQUIRE_EQUAL(m1["ttl"], toJS(c_ttl));
 	BOOST_REQUIRE_EQUAL(m1["from"], id);
 	BOOST_REQUIRE_EQUAL(m1["to"], id);
 	BOOST_REQUIRE_EQUAL(m1["payload"], text);
@@ -453,7 +453,7 @@ BOOST_AUTO_TEST_CASE(server)
 	j = jsonrpcServer->shh_getMessages(filter);	
 	BOOST_REQUIRE(!j.empty());
 	Json::Value m2 = j[0];
-	BOOST_REQUIRE_EQUAL(m2["ttl"], toJS(g_ttl));
+	BOOST_REQUIRE_EQUAL(m2["ttl"], toJS(c_ttl));
 	BOOST_REQUIRE_EQUAL(m2["from"], id);
 	BOOST_REQUIRE_EQUAL(m2["to"], id);
 	BOOST_REQUIRE_EQUAL(m2["payload"], text);
@@ -464,7 +464,7 @@ BOOST_AUTO_TEST_CASE(server)
 	j = jsonrpcServer->shh_getMessages(filter);
 	BOOST_REQUIRE(!j.empty());
 	m1 = j[0];
-	BOOST_REQUIRE_EQUAL(m1["ttl"], toJS(g_ttl));
+	BOOST_REQUIRE_EQUAL(m1["ttl"], toJS(c_ttl));
 	BOOST_REQUIRE_EQUAL(m1["from"], id);
 	BOOST_REQUIRE_EQUAL(m1["to"], id);
 	BOOST_REQUIRE_EQUAL(m1["payload"], text);
