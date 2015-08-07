@@ -389,6 +389,9 @@ BOOST_AUTO_TEST_CASE(topicAdvertising)
 
 BOOST_AUTO_TEST_CASE(selfAddressed)
 {
+	if (test::Options::get().nonetwork)
+		return;
+
 	VerbosityHolder setTemporaryLevel(10);
 	cnote << "Testing self-addressed messaging with bloom filter matching...";
 

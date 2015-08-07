@@ -34,7 +34,7 @@ WhisperDB::WhisperDB(string const& _type)
 	m_readOptions.verify_checksums = true;
 	string path = dev::getDataDir("shh");
 	fs::create_directories(path);
-	fs::permissions(path, fs::owner_all);
+	DEV_IGNORE_EXCEPTIONS(fs::permissions(path, fs::owner_all));
 	path += "/" + _type;
 	leveldb::Options op;
 	op.create_if_missing = true;

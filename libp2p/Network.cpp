@@ -216,7 +216,7 @@ bi::tcp::endpoint Network::resolveHost(string const& _addr)
 	int givenPort;
 	try
 	{
-		givenPort = stoi(split[1]);
+		givenPort = stoi(split.at(1));
 	}
 	catch (...)
 	{
