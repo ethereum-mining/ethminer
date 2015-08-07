@@ -22,7 +22,7 @@
 #include "LogFilter.h"
 
 #include <libdevcore/SHA3.h>
-#include "State.h"
+#include "Block.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -80,7 +80,7 @@ bool LogFilter::matches(LogBloom _bloom) const
 	return true;
 }
 
-bool LogFilter::matches(State const& _s, unsigned _i) const
+bool LogFilter::matches(Block const& _s, unsigned _i) const
 {
 	return matches(_s.receipt(_i)).size() > 0;
 }

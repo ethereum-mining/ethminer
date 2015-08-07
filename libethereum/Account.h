@@ -25,6 +25,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/TrieDB.h>
 #include <libdevcore/SHA3.h>
+#include <libethcore/Common.h>
 
 namespace dev
 {
@@ -202,6 +203,46 @@ private:
 	/// Value for m_codeHash when this account is having its code determined.
 	static const h256 c_contractConceptionCodeHash;
 };
+
+class AccountMask
+{
+public:
+	AccountMask(bool _all = false):
+		m_hasBalance(_all),
+		m_hasNonce(_all),
+		m_hasCode(_all),
+		m_hasStorage(_all)
+	{}
+
+	AccountMask(
+		bool _hasBalance,
+		bool _hasNonce,
+		bool _hasCode,
+		bool _hasStorage
+	):
+		m_hasBalance(_hasBalance),
+		m_hasNonce(_hasNonce),
+		m_hasCode(_hasCode),
+		m_hasStorage(_hasStorage)
+	{}
+
+	bool allSet() const { return m_hasBalance && m_hasNonce && m_hasCode && m_hasStorage; }
+	bool hasBalance() const { return m_hasBalance; }
+	bool hasNonce() const { return m_hasNonce; }
+	bool hasCode() const { return m_hasCode; }
+	bool hasStorage() const { return m_hasStorage; }
+
+private:
+	bool m_hasBalance;
+	bool m_hasNonce;
+	bool m_hasCode;
+	bool m_hasStorage;
+};
+
+using AccountMap = std::unordered_map<Address, Account>;
+using AccountMaskMap = std::unordered_map<Address, AccountMask>;
+
+AccountMap jsonToAccountMap(std::string const& _json, AccountMaskMap* o_mask = nullptr);
 
 }
 }

@@ -415,7 +415,7 @@ void Main::readSettings(bool _skipGeometry)
 				m_myKeys.append(KeyPair(k));
 		}
 	}
-	ethereum()->setAddress(m_myKeys.back().address());
+	ethereum()->setBeneficiary(m_myKeys.back().address());
 	m_networkConfig = s.value("peers").toByteArray();
 	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
@@ -609,7 +609,7 @@ void Main::on_mine_triggered()
 {
 	if (ui->mine->isChecked())
 	{
-		ethereum()->setAddress(m_myKeys.last().address());
+		ethereum()->setBeneficiary(m_myKeys.last().address());
 		ethereum()->startMining();
 	}
 	else

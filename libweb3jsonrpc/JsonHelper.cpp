@@ -90,7 +90,7 @@ Json::Value toJson(dev::eth::BlockInfo const& _bi)
 		res["hash"] = toJS(_bi.hash());
 		res["parentHash"] = toJS(_bi.parentHash());
 		res["sha3Uncles"] = toJS(_bi.sha3Uncles());
-		res["miner"] = toJS(_bi.coinbaseAddress());
+		res["miner"] = toJS(_bi.beneficiary());
 		res["stateRoot"] = toJS(_bi.stateRoot());
 		res["transactionsRoot"] = toJS(_bi.transactionsRoot());
 		res["difficulty"] = toJS(_bi.difficulty());
