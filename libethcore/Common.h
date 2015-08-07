@@ -154,9 +154,9 @@ public:
 		friend class Signal;
 
 	public:
-		~HandlerAux() { if (m_s) m_s->m_fire.erase(m_i); m_s = nullptr; }
+		~HandlerAux() { if (m_s) m_s->m_fire.erase(m_i); }
 		void reset() { m_s = nullptr; }
-		void fire(Args&&... _args) { m_h(std::forward<Args>(_args)...); }
+		void fire(Args const&... _args) { m_h(_args...); }
 
 	private:
 		HandlerAux(unsigned _i, Signal* _s, Callback const& _h): m_i(_i), m_s(_s), m_h(_h) {}
@@ -181,11 +181,11 @@ public:
 		return h;
 	}
 
-	void operator()(Args&... _args)
+	void operator()(Args const&... _args)
 	{
-		for (auto const& f: m_fire)
-			if (auto h = f.second.lock())
-				h->fire(std::forward<Args>(_args)...);
+		for (auto const& f: valuesOf(m_fire))
+			if (auto h = f.lock())
+				h->fire(_args...);
 	}
 
 private:
