@@ -52,7 +52,7 @@ class CanonBlockChain: public FullBlockChain<Sealer>
 public:
 	CanonBlockChain(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()): CanonBlockChain<Sealer>(std::string(), _we, _pc) {}
 	CanonBlockChain(std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()):
-		FullBlockChain<Sealer>(createGenesisBlock(), StateDefinition(), _path, _we, _pc)
+		FullBlockChain<Sealer>(createGenesisBlock(), AccountMap(), _path)
 	{
 		BlockChain::openDatabase(_path, _we, _pc);
 	}
@@ -93,7 +93,7 @@ public:
 
 	/// @returns the genesis block as its RLP-encoded byte array.
 	/// @note This is slow as it's constructed anew each call. Consider genesis() instead.
-	static std::unordered_map<Address, Account> createGenesisState();
+	static AccountMap const& createGenesisState();
 
 	/// Alter all the genesis block's state by giving a JSON string with account details.
 	/// @warning Unless you're very careful, make sure you call this right at the start of the

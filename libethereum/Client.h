@@ -40,7 +40,7 @@
 #include <libethcore/ABI.h>
 #include <libp2p/Common.h>
 #include "CanonBlockChain.h"
-#include "State.h"
+#include "Block.h"
 #include "CommonNet.h"
 #include "ClientBase.h"
 
@@ -100,12 +100,17 @@ public:
 	virtual u256 gasLimitRemaining() const override { return m_postMine.gasLimitRemaining(); }
 
 	// [PRIVATE API - only relevant for base clients, not available in general]
-	dev::eth::State state(unsigned _txi, h256 _block) const;
-	dev::eth::State state(h256 const& _block, PopulationStatistics* o_stats = nullptr) const;
+	/// Get the block.
+	dev::eth::Block block(h256 const& _blockHash, PopulationStatistics* o_stats = nullptr) const;
+	/// Get the state of the given block part way through execution, immediately before transaction
+	/// index @a _txi.
+	dev::eth::State state(unsigned _txi, h256 const& _block) const;
+	/// Get the state of the currently pending block part way through execution, immediately before
+	/// transaction index @a _txi.
 	dev::eth::State state(unsigned _txi) const;
 
 	/// Get the object representing the current state of Ethereum.
-	dev::eth::State postState() const { ReadGuard l(x_postMine); return m_postMine; }
+	dev::eth::Block postState() const { ReadGuard l(x_postMine); return m_postMine; }
 	/// Get the object representing the current canonical blockchain.
 	BlockChain const& blockChain() const { return bc(); }
 	/// Get some information on the block queue.
@@ -122,7 +127,7 @@ public:
 
 	// Mining stuff:
 
-	virtual void setAddress(Address _us) override { WriteGuard l(x_preMine); m_preMine.setAddress(_us); }
+	virtual void setBeneficiary(Address _us) override { WriteGuard l(x_preMine); m_preMine.setBeneficiary(_us); }
 
 	/// Check block validity prior to mining.
 	bool miningParanoia() const { return m_paranoia; }
@@ -212,9 +217,9 @@ protected:
 	/// Returns the state object for the full block (i.e. the terminal state) for index _h.
 	/// Works properly with LatestBlock and PendingBlock.
 	using ClientBase::asOf;
-	virtual State asOf(h256 const& _block) const override;
-	virtual State preMine() const override { ReadGuard l(x_preMine); return m_preMine; }
-	virtual State postMine() const override { ReadGuard l(x_postMine); return m_postMine; }
+	virtual Block asOf(h256 const& _block) const override;
+	virtual Block preMine() const override { ReadGuard l(x_preMine); return m_preMine; }
+	virtual Block postMine() const override { ReadGuard l(x_postMine); return m_postMine; }
 	virtual void prepareForTransaction() override;
 
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
@@ -295,11 +300,11 @@ protected:
 
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
 	mutable SharedMutex x_preMine;			///< Lock on m_preMine.
-	State m_preMine;						///< The present state of the client.
+	Block m_preMine;						///< The present state of the client.
 	mutable SharedMutex x_postMine;			///< Lock on m_postMine.
-	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
+	Block m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 	mutable SharedMutex x_working;			///< Lock on m_working.
-	State m_working;						///< The state of the client which we're mining (i.e. it'll have all the rewards added), while we're actually working on it.
+	Block m_working;						///< The state of the client which we're mining (i.e. it'll have all the rewards added), while we're actually working on it.
 	BlockInfo m_miningInfo;					///< The header we're attempting to mine on (derived from m_postMine).
 	bool remoteActive() const;				///< Is there an active and valid remote worker?
 	bool m_remoteWorking = false;			///< Has the remote worker recently been reset?

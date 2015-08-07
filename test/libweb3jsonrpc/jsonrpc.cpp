@@ -197,7 +197,7 @@ BOOST_AUTO_TEST_CASE(jsonrpc_transact)
 	dev::KeyPair key = KeyPair::create();
 	auto address = key.address();
 	auto receiver = KeyPair::create();
-	web3->ethereum()->setAddress(address);
+	web3->ethereum()->setBeneficiary(address);
 
 	coinbase = jsonrpcClient->eth_coinbase();
 	BOOST_CHECK_EQUAL(jsToAddress(coinbase), web3->ethereum()->address());
@@ -252,7 +252,7 @@ BOOST_AUTO_TEST_CASE(simple_contract)
 {
 	cnote << "Testing jsonrpc contract...";
 	KeyPair kp = KeyPair::create();
-	web3->ethereum()->setAddress(kp.address());
+	web3->ethereum()->setBeneficiary(kp.address());
 	jsonrpcServer->setAccounts({kp});
 
 	dev::eth::mine(*(web3->ethereum()), 1);
@@ -279,7 +279,7 @@ BOOST_AUTO_TEST_CASE(contract_storage)
 {
 	cnote << "Testing jsonrpc contract storage...";
 	KeyPair kp = KeyPair::create();
-	web3->ethereum()->setAddress(kp.address());
+	web3->ethereum()->setBeneficiary(kp.address());
 	jsonrpcServer->setAccounts({kp});
 
 	dev::eth::mine(*(web3->ethereum()), 1);

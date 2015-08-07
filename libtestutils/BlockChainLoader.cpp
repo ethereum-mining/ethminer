@@ -19,11 +19,10 @@
  * @date 2015
  */
 
+#include <json/writer.h>
 #include <libethereum/CanonBlockChain.h>
 #include "BlockChainLoader.h"
-#include "StateLoader.h"
 #include "Common.h"
-
 using namespace std;
 using namespace dev;
 using namespace dev::test;
@@ -31,21 +30,24 @@ using namespace dev::eth;
 
 BlockChainLoader::BlockChainLoader(Json::Value const& _json)
 {
-	// load pre state
-	StateLoader sl(_json["pre"], m_dir.path());
-	m_state = sl.state();
-
 	// load genesisBlock
-	m_bc.reset(new FullBlockChain<Ethash>(fromHex(_json["genesisRLP"].asString()), sl.stateDefinition(), m_dir.path(), WithExisting::Kill));
-	assert(m_state.rootHash() == m_bc->info().stateRoot());
+	bytes genesisBl = fromHex(_json["genesisRLP"].asString());
+
+	Json::FastWriter a;
+	m_bc.reset(new FullBlockChain<Ethash>(genesisBl, jsonToAccountMap( a.write(_json["pre"])), m_dir.path(), WithExisting::Kill));
+
+	// load pre state
+	m_block = m_bc->genesisBlock(State::openDB(m_dir.path(), m_bc->genesisHash(), WithExisting::Kill));
+
+	assert(m_block.rootHash() == m_bc->info().stateRoot());
 
 	// load blocks
 	for (auto const& block: _json["blocks"])
 	{
 		bytes rlp = fromHex(block["rlp"].asString());
-		m_bc->import(rlp, m_state.db());
+		m_bc->import(rlp, state().db());
 	}
 
 	// sync state
-	m_state.sync(*m_bc);
+	m_block.sync(*m_bc);
 }

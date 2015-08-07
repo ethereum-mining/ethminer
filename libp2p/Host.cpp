@@ -283,7 +283,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameCoder* 
 					return;
 				}
 		
-		if (!peerSlotsAvailable(Ingress))
+		if (!peerSlotsAvailable())
 		{
 			ps->disconnect(TooManyPeers);
 			return;
@@ -405,7 +405,7 @@ void Host::runAcceptor()
 				socket->close();
 				return;
 			}
-			if (peerCount() > Ingress * m_idealPeerCount)
+			if (peerCount() > peerSlots(Ingress))
 			{
 				clog(NetConnect) << "Dropping incoming connect due to maximum peer count (" << Ingress << " * ideal peer count): " << socket->remoteEndpoint();
 				socket->close();
