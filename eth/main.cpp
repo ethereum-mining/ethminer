@@ -170,7 +170,9 @@ void help()
 		<< "Client networking:" << endl
 		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
-		<< "    -x,--peers <number>  Attempt to connect to given number of peers (default: 5)." << endl
+		<< "    -x,--peers <number>  Attempt to connect to given number of peers (default: 11)." << endl
+		<< "	--peer-stretch <number>  Accepted connection multiplier (default: 7)." << endl
+	
 		<< "    --public-ip <ip>  Force public ip to given (default: auto)." << endl
 		<< "    --listen-ip <ip>(:<port>)  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
 		<< "    --listen <port>  Listen on the given port for incoming connections (default: 30303)." << endl
@@ -178,11 +180,17 @@ void help()
 		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    --network-id <n> Only connect to other hosts with this network id." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
+
+//		<< "	--peers <filename>  Text list of type publickey@host[:port]  (default: network)" << endl
+//		<< "		Types:" << endl
+//		<< "		default		Attempt connection when no other peers are available and pinning is disable." << endl
+//		<< "		trusted		Keep connected at all times." << endl
+//		<< "	--trust-peers <filename>  Text list of publickeys." << endl
+	
 		<< "    --no-discovery  Disable Node discovery." << endl
-		<< "    --pin  Only connect to required (trusted) peers." << endl
+		<< "    --pin  Only accept or connect to trusted peers." << endl
 		<< "    --hermit  Equivalent to --no-discovery --pin." << endl
 		<< "    --sociable  Forces discovery and no pinning." << endl
-//		<< "    --require-peers <peers.json>  List of required (trusted) peers. (experimental)" << endl
 		<< endl;
 	MinerCLI::streamHelp(cout);
 	cout
@@ -347,7 +355,10 @@ int main(int argc, char** argv)
 	string publicIP;
 	string remoteHost;
 	unsigned short remotePort = 30303;
-	unsigned peers = 11;
+	
+	HostPeerPreferences hprefs;
+	unsigned peers = hprefs.idealPeerCount;
+	unsigned peerStretch = hprefs.stretchPeerCount;
 	bool bootstrap = false;
 	bool disableDiscovery = false;
 	bool pinning = false;
@@ -704,6 +715,8 @@ int main(int argc, char** argv)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
 			peers = atoi(argv[++i]);
+		else if (arg == "--peer-stretch" && i + 1 < argc)
+			peerStretch = atoi(argv[++i]);
 		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -990,6 +1003,7 @@ int main(int argc, char** argv)
 
 	cout << ethCredits();
 	web3.setIdealPeerCount(peers);
+	web3.setPeerStretch(peerStretch);
 //	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
 	std::shared_ptr<eth::TrivialGasPricer> gasPricer = make_shared<eth::TrivialGasPricer>(askPrice, bidPrice);
 	eth::Client* c = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
