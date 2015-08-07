@@ -70,6 +70,9 @@ public:
 	/// Returns the uuids of all stored keys.
 	std::vector<h128> keys() const { return keysOf(m_keys); }
 
+	/// @returns true iff we have the given key stored.
+	bool contains(h128 const& _k) const { return m_keys.count(_k); }
+
 	/// Clears all cached decrypted keys. The passwords have to be supplied in order to retrieve
 	/// secrets again after calling this function.
 	void clearCache() const;
