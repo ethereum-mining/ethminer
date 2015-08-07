@@ -153,8 +153,8 @@ void help()
 		/*<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (default: 15)." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (default: 30.679)." << endl
 		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl*/
-		<< "    --ask <wei>  Set the minimum ask gas price under which no transactions will be mined (default 500000000000)." << endl
-		<< "    --bid <wei>  Set the bid gas price for to pay for transactions (default 500000000000)." << endl
+		<< "    --ask <wei>  Set the minimum ask gas price under which no transactions will be mined (default 50000000000)." << endl
+		<< "    --bid <wei>  Set the bid gas price for to pay for transactions (default 50000000000)." << endl
 		<< endl
 		<< "Client mining:" << endl
 		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
@@ -373,8 +373,8 @@ int main(int argc, char** argv)
 	TransactionPriority priority = TransactionPriority::Medium;
 //	double etherPrice = 30.679;
 //	double blockFees = 15.0;
-	u256 askPrice("500000000000");
-	u256 bidPrice("500000000000");
+	u256 askPrice = c_defaultGasPrice;
+	u256 bidPrice = c_defaultGasPrice;
 
 	// javascript console
 	bool useConsole = false;
