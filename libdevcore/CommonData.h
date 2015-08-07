@@ -349,6 +349,26 @@ std::vector<T> keysOf(std::unordered_map<T, U> const& _m)
 	return ret;
 }
 
+template<class T, class U>
+std::vector<U> valuesOf(std::map<T, U> const& _m)
+{
+	std::vector<U> ret;
+	ret.reserve(_m.size());
+	for (auto const& i: _m)
+		ret.push_back(i.second);
+	return ret;
+}
+
+template<class T, class U>
+std::vector<U> valuesOf(std::unordered_map<T, U> const& _m)
+{
+	std::vector<U> ret;
+	ret.reserve(_m.size());
+	for (auto const& i: _m)
+		ret.push_back(i.second);
+	return ret;
+}
+
 template <class T, class V>
 bool contains(T const& _t, V const& _v)
 {

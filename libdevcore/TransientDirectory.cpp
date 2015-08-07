@@ -41,7 +41,7 @@ TransientDirectory::TransientDirectory(std::string const& _path):
 		BOOST_THROW_EXCEPTION(FileError());
 
 	fs::create_directories(m_path);
-	fs::permissions(m_path, fs::owner_all);
+	DEV_IGNORE_EXCEPTIONS(fs::permissions(m_path, fs::owner_all));
 }
 
 TransientDirectory::~TransientDirectory()

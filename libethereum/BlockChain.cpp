@@ -180,7 +180,7 @@ unsigned BlockChain::openDatabase(std::string const& _path, WithExisting _we)
 	string extrasPath = chainPath + "/" + toString(c_databaseVersion);
 
 	fs::create_directories(extrasPath);
-	fs::permissions(extrasPath, fs::owner_all);
+	DEV_IGNORE_EXCEPTIONS(fs::permissions(extrasPath, fs::owner_all));
 
 	bytes status = contents(extrasPath + "/minor");
 	unsigned lastMinor = c_minorProtocolVersion;

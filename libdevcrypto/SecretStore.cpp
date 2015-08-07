@@ -148,7 +148,7 @@ void SecretStore::save(string const& _keysPath)
 {
 	fs::path p(_keysPath);
 	fs::create_directories(p);
-	fs::permissions(p, fs::owner_all);
+	DEV_IGNORE_EXCEPTIONS(fs::permissions(p, fs::owner_all));
 	for (auto& k: m_keys)
 	{
 		string uuid = toUUID(k.first);
@@ -170,7 +170,7 @@ void SecretStore::load(string const& _keysPath)
 {
 	fs::path p(_keysPath);
 	fs::create_directories(p);
-	fs::permissions(p, fs::owner_all);
+	DEV_IGNORE_EXCEPTIONS(fs::permissions(p, fs::owner_all));
 	for (fs::directory_iterator it(p); it != fs::directory_iterator(); ++it)
 		if (fs::is_regular_file(it->path()))
 			readKey(it->path().string(), true);
