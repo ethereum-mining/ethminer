@@ -24,6 +24,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <libp2p/Host.h>
 #include <libwhisper/WhisperDB.h>
 #include <libwhisper/WhisperHost.h>
+#include <test/TestHelper.h>
 
 using namespace std;
 using namespace dev;
