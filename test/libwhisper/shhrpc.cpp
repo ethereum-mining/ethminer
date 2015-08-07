@@ -55,7 +55,7 @@ struct Setup
 		dev::p2p::NodeIPEndpoint::test_allowLocal = true;
 
 		static bool setup = false;
-		if (!setup)
+		if (!setup && !test::Options::get().nonetwork)
 		{
 			setup = true;
 			NetworkPreferences nprefs(std::string(), c_web3port, false);
