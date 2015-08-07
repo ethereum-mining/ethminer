@@ -352,7 +352,8 @@ std::vector<T> keysOf(std::unordered_map<T, U> const& _m)
 template<class T, class U>
 std::vector<U> valuesOf(std::map<T, U> const& _m)
 {
-	std::vector<U> ret(_m.size());
+	std::vector<U> ret;
+	ret.reserve(_m.size());
 	for (auto const& i: _m)
 		ret.push_back(i.second);
 	return ret;
@@ -361,7 +362,8 @@ std::vector<U> valuesOf(std::map<T, U> const& _m)
 template<class T, class U>
 std::vector<U> valuesOf(std::unordered_map<T, U> const& _m)
 {
-	std::vector<U> ret(_m.size());
+	std::vector<U> ret;
+	ret.reserve(_m.size());
 	for (auto const& i: _m)
 		ret.push_back(i.second);
 	return ret;
