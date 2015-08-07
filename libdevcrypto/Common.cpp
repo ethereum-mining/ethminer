@@ -28,7 +28,6 @@
 #include <libscrypt/libscrypt.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/SHA3.h>
-#include <libdevcore/FileSystem.h>
 #include <libdevcore/RLP.h>
 #if ETH_HAVE_SECP256K1
 #include <secp256k1/include/secp256k1.h>
@@ -309,78 +308,34 @@ h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 	return s;
 }
 
-mutex Nonce::s_x;
-static string s_seedFile;
-
-Secret Nonce::get()
+string const& Nonce::seedFilePath(string const& _filePath)
 {
-	// todo: atomic efface bit, periodic save, kdf, rr, rng
-	// todo: encrypt
-	Guard l(Nonce::s_x);
-	return Nonce::singleton().next();
-}
-
-void Nonce::reset()
-{
-	Guard l(Nonce::s_x);
-	Nonce::singleton().resetInternal();
-}
-
-void Nonce::setSeedFilePath(string const& _filePath)
-{
-	s_seedFile = _filePath;
-}
-
-Nonce::~Nonce()
-{
-	Guard l(Nonce::s_x);
-	if (m_value)
-		// this might throw
-		resetInternal();
-}
-
-Nonce& Nonce::singleton()
-{
-	static Nonce s;
-	return s;
-}
-
-void Nonce::initialiseIfNeeded()
-{
-	if (m_value)
-		return;
-
-	bytesSec b = contentsSec(seedFile());
-	if (b.size() == 32)
-		b.ref().populate(m_value.writable().ref());
-	else
-		m_value = Secret::random();
-	if (!m_value)
-		BOOST_THROW_EXCEPTION(InvalidState());
-
-	// prevent seed reuse if process terminates abnormally
-	// this might throw
-	writeFile(seedFile(), bytes());
+	static mutex x_seedFile;
+	static string s_seedFile;
+	
+	Guard l(x_seedFile);
+	if (s_seedFile.empty())
+		s_seedFile = _filePath.empty() ? getDataDir() + "/seed" : _filePath;
+	return s_seedFile;
 }
 
 Secret Nonce::next()
 {
-	initialiseIfNeeded();
-	m_value = sha3(m_value);
+	Guard l(x_value);
+	if (!m_value)
+	{
+		bytesSec b = contentsSec(seedFilePath());
+		if (b.size() == 32)
+			b.ref().populate(m_value.writable().ref());
+		else
+			m_value = Secret::random();
+		if (!m_value)
+			BOOST_THROW_EXCEPTION(InvalidState());
+		
+		// prevent seed reuse if process terminates abnormally
+		// this might throw
+		writeFile(seedFilePath(), bytes());
+	}
+	m_value = sha3Secure(m_value.ref());
 	return sha3(~m_value);
-}
-
-void Nonce::resetInternal()
-{
-	// this might throw
-	next();
-	writeFile(seedFile(), m_value.ref());
-	m_value.clear();
-}
-
-string const& Nonce::seedFile()
-{
-	if (s_seedFile.empty())
-		s_seedFile = getDataDir() + "/seed";
-	return s_seedFile;
 }

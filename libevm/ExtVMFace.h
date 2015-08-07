@@ -162,6 +162,57 @@ struct CallParameters
 	OnOpFunc onOp;
 };
 
+class EnvInfo
+{
+public:
+	EnvInfo() {}
+	EnvInfo(BlockInfo const& _current, LastHashes const& _lh = LastHashes(), u256 const& _gasUsed = u256()):
+		m_number(_current.number()),
+		m_beneficiary(_current.beneficiary()),
+		m_timestamp(_current.timestamp()),
+		m_difficulty(_current.difficulty()),
+		m_gasLimit(_current.gasLimit()),
+		m_lastHashes(_lh),
+		m_gasUsed(_gasUsed)
+	{}
+
+	EnvInfo(BlockInfo const& _current, LastHashes&& _lh, u256 const& _gasUsed = u256()):
+		m_number(_current.number()),
+		m_beneficiary(_current.beneficiary()),
+		m_timestamp(_current.timestamp()),
+		m_difficulty(_current.difficulty()),
+		m_gasLimit(_current.gasLimit()),
+		m_lastHashes(_lh),
+		m_gasUsed(_gasUsed)
+	{}
+
+	u256 const& number() const { return m_number; }
+	Address const& beneficiary() const { return m_beneficiary; }
+	u256 const& timestamp() const { return m_timestamp; }
+	u256 const& difficulty() const { return m_difficulty; }
+	u256 const& gasLimit() const { return m_gasLimit; }
+	LastHashes const& lastHashes() const { return m_lastHashes; }
+	u256 const& gasUsed() const { return m_gasUsed; }
+
+	void setNumber(u256 const& _v) { m_number = _v; }
+	void setBeneficiary(Address const& _v) { m_beneficiary = _v; }
+	void setTimestamp(u256 const& _v) { m_timestamp = _v; }
+	void setDifficulty(u256 const& _v) { m_difficulty = _v; }
+	void setGasLimit(u256 const& _v) { m_gasLimit = _v; }
+	void setLastHashes(LastHashes const& _lh) { m_lastHashes = _lh; }
+	void setLastHashes(LastHashes&& _lh) { m_lastHashes = _lh; }
+	void setGasUsed(u256 const& _v) { m_gasUsed = _v; }
+
+private:
+	u256 m_number;
+	Address m_beneficiary;
+	u256 m_timestamp;
+	u256 m_difficulty;
+	u256 m_gasLimit;
+	LastHashes m_lastHashes;
+	u256 m_gasUsed;
+};
+
 /**
  * @brief Interface and null implementation of the class for specifying VM externalities.
  */
@@ -172,7 +223,7 @@ public:
 	ExtVMFace() = default;
 
 	/// Full constructor.
-	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytes _code, h256 const& _codeHash, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, LastHashes const& _lh, unsigned _depth);
+	ExtVMFace(EnvInfo const& _envInfo, Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytes _code, h256 const& _codeHash, unsigned _depth);
 
 	virtual ~ExtVMFace() = default;
 
@@ -216,11 +267,19 @@ public:
 	virtual void revert() {}
 
 	/// Hash of a block if within the last 256 blocks, or h256() otherwise.
-	h256 blockhash(u256 _number) { return _number < currentBlock.number() && _number >= (std::max<u256>(256, currentBlock.number()) - 256) ? lastHashes[(unsigned)(currentBlock.number() - 1 - _number)] : h256(); }
+	h256 blockHash(u256 _number) { return _number < envInfo().number() && _number >= (std::max<u256>(256, envInfo().number()) - 256) ? envInfo().lastHashes()[(unsigned)(envInfo().number() - 1 - _number)] : h256(); }
 
 	/// Get the code at the given location in code ROM.
 	byte getCode(u256 _n) const { return _n < code.size() ? code[(size_t)_n] : 0; }
 
+	/// Get the execution environment information.
+	EnvInfo const& envInfo() const { return m_envInfo; }
+
+private:
+	EnvInfo const& m_envInfo;
+
+public:
+	// TODO: make private
 	Address myAddress;			///< Address associated with executing code (a contract, or contract-to-be).
 	Address caller;				///< Address which sent the message (either equal to origin or a contract).
 	Address origin;				///< Original transactor.
@@ -229,9 +288,6 @@ public:
 	bytesConstRef data;			///< Current input data.
 	bytes code;					///< Current code that is executing.
 	h256 codeHash;				///< SHA3 hash of the executing code
-	LastHashes lastHashes;		///< Most recent 256 blocks' hashes.
-	BlockInfo previousBlock;	///< The previous block's information.	TODO: PoC-8: REMOVE
-	BlockInfo currentBlock;		///< The current block's information.
 	SubState sub;				///< Sub-band VM state (suicides, refund counter, logs).
 	unsigned depth = 0;			///< Depth of the present call.
 };
