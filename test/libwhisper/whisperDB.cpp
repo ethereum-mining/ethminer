@@ -24,6 +24,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <libp2p/Host.h>
 #include <libwhisper/WhisperDB.h>
 #include <libwhisper/WhisperHost.h>
+#include <test/TestHelper.h>
 
 using namespace std;
 using namespace dev;
@@ -130,6 +131,9 @@ BOOST_AUTO_TEST_CASE(persistence)
 
 BOOST_AUTO_TEST_CASE(messages)
 {
+	if (test::Options::get().nonetwork)
+		return;
+
 	cnote << "Testing load/save Whisper messages...";
 	VerbosityHolder setTemporaryLevel(2);
 	unsigned const TestSize = 3;
@@ -211,6 +215,9 @@ BOOST_AUTO_TEST_CASE(corruptedData)
 
 BOOST_AUTO_TEST_CASE(filters)
 {
+	if (test::Options::get().nonetwork)
+		return;
+
 	cnote << "Testing filters saving...";
 	VerbosityHolder setTemporaryLevel(2);
 	h256 persistID(0xC0FFEE);
