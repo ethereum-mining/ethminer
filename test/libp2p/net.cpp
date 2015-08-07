@@ -339,7 +339,7 @@ BOOST_AUTO_TEST_SUITE(netTypes)
 
 BOOST_AUTO_TEST_CASE(deadlineTimer)
 {
-	if (test::Options::get().nonetwork)
+	//if (test::Options::get().nonetwork)
 		return;
 
 	ba::io_service io;
