@@ -153,8 +153,8 @@ void help()
 		/*<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (default: 15)." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (default: 30.679)." << endl
 		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl*/
-		<< "    --ask <wei>  Set the minimum ask gas price under which no transactions will be mined (default " << boost::lexical_cast<std::string>(c_defaultGasPrice) << " )." << endl
-		<< "    --bid <wei>  Set the bid gas price for to pay for transactions (default " << boost::lexical_cast<std::string>(c_defaultGasPrice) << " )." << endl
+		<< "    --ask <wei>  Set the minimum ask gas price under which no transactions will be mined (default " << toString(c_defaultGasPrice) << " )." << endl
+		<< "    --bid <wei>  Set the bid gas price for to pay for transactions (default " << toString(c_defaultGasPrice) << " )." << endl
 		<< endl
 		<< "Client mining:" << endl
 		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
