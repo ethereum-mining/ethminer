@@ -45,7 +45,18 @@ v8::Handle<v8::Value> JSV8RPCSend(v8::Arguments const& _args)
 	v8::Local<v8::Value> vals[1] = {_args[0]->ToObject()};
 	v8::Local<v8::Value> stringifiedArg = stringifyFunc->Call(stringifyFunc, 1, vals);
 	v8::String::Utf8Value str(stringifiedArg);
-	that->onSend(*str);
+	try
+	{
+		that->onSend(*str);
+	}
+	catch (std::exception const& _e)
+	{
+		return v8::ThrowException(v8::String::New(_e.what()));
+	}
+	catch (...)
+	{
+		return v8::ThrowException(v8::String::New("Unknown C++ exception."));
+	}
 
 	v8::Local<v8::Value> values[1] = {v8::String::New(that->lastResponse())};
 	return parseFunc->Call(parseFunc, 1, values);
