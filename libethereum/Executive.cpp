@@ -383,7 +383,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 		}
 		catch (VMException const& _e)
 		{
-			clog(StateSafeExceptions) << "Safe VM Exception. " << diagnostic_information(_e);
+			cnote/*clog(StateSafeExceptions)*/ << "Safe VM Exception. " << diagnostic_information(_e);
 			m_gas = 0;
 			m_excepted = toTransactionException(_e);
 			m_ext->revert();
