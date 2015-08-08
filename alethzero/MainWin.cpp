@@ -183,7 +183,7 @@ Main::Main(QWidget* _parent):
 			QMessageBox::warning(nullptr, "Try again", "You entered two different passwords - please enter the same password twice.", QMessageBox::Ok);
 		}
 		m_keyManager.create(password.toStdString());
-		m_keyManager.import(Secret::random(), "Default identity");
+		m_keyManager.import(ICAP::createDirect(), "Default identity");
 	}
 
 #if ETH_DEBUG

@@ -41,7 +41,7 @@ public:
 	JSConsole(): m_engine(Engine()), m_printer(Printer(m_engine)) {}
 	~JSConsole() {}
 
-	void readExpression() const
+	bool readExpression() const
 	{
 		std::string cmd = "";
 		g_logPost = [](std::string const& a, char const*)
@@ -83,6 +83,9 @@ public:
 			}
 		} while (openBrackets > 0);
 
+		if (cmd == "quit")
+			return false;
+
 		if (!isEmpty)
 		{
 #if ETH_READLINE
@@ -92,6 +95,7 @@ public:
 			std::string result = m_printer.prettyPrint(value).cstr();
 			std::cout << result << std::endl;
 		}
+		return true;
 	}
 
 	void eval(std::string const& _expression) { m_engine.eval(_expression.c_str()); }
