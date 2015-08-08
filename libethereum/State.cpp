@@ -485,7 +485,7 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
 	else
 	{
 		commit();
-	
+
 #if ETH_PARANOIA && !ETH_FATDB
 		ctrace << "Executed; now" << rootHash();
 		ctrace << old.diff(*this);
