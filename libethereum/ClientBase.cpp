@@ -94,7 +94,7 @@ ExecutionResult ClientBase::create(Address const& _from, u256 _value, bytes cons
 		Transaction t(_value, _gasPrice, _gas, _data, n);
 		t.forceSender(_from);
 		if (_ff == FudgeFactor::Lenient)
-			temp.mutableState().addBalance(_from, (u256)(t.gasRequired() * t.gasPrice() + t.value()));
+			temp.mutableState().addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
 		ret = temp.execute(bc().lastHashes(), t, Permanence::Reverted);
 	}
 	catch (...)
