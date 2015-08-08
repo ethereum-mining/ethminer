@@ -505,7 +505,7 @@ public:
 					if (Address a = wallet.address(u))
 					{
 						cout << toUUID(u) << " " << a.abridged();
-						cout << "            (Not ICAP)             ";
+						cout << " " << ICAP(a).encoded();
 						cout << " " << wallet.accountName(a) << endl;
 					}
 				for (auto const& u: bare)
