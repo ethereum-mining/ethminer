@@ -359,7 +359,7 @@ int main(int argc, char** argv)
 	
 	unsigned peers = 11;
 	unsigned peerStretch = 7;
-	std::map<NodeId, Node> preferredNodes;
+	std::map<NodeId, pair<NodeIPEndpoint,bool>> preferredNodes;
 	bool bootstrap = false;
 	bool disableDiscovery = false;
 	bool pinning = false;
@@ -766,7 +766,7 @@ int main(int argc, char** argv)
 				Public publicKey(fromHex(pubk));
 				try
 				{
-					preferredNodes[publicKey] = Node(pubk, NodeIPEndpoint(bi::address(hostIP), port, port), required);
+					preferredNodes[publicKey] = make_pair(NodeIPEndpoint(bi::address::from_string(hostIP), port, port), required);
 				}
 				catch (...)
 				{
@@ -1110,10 +1110,10 @@ int main(int argc, char** argv)
 #endif
 
 	for (auto const& p: preferredNodes)
-		if (p.second.required)
-			web3.requirePeer(p.first, p.second.endpoint);
+		if (p.second.second)
+			web3.requirePeer(p.first, p.second.first);
 		else
-			web3.addNode(p.first, p.second.endpoint);
+			web3.addNode(p.first, p.second.first);
 
 	if (bootstrap)
 		for (auto const& i: Host::pocHosts())
