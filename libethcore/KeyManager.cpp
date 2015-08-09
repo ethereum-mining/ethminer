@@ -27,6 +27,7 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/RLP.h>
+#include <libdevcore/SHA3.h>
 using namespace std;
 using namespace dev;
 using namespace eth;
@@ -58,7 +59,7 @@ bool KeyManager::recode(Address const& _address, string const& _newPass, string 
 	if (!store().recode(u, _newPass, [&](){ return getPassword(u, _pass); }, _kdf))
 		return false;
 
-	m_keyInfo[u].passHash = hashPassword(_newPass);
+	m_keyInfo[_address].passHash = hashPassword(_newPass);
 	write();
 	return true;
 }
@@ -95,11 +96,23 @@ bool KeyManager::load(string const& _pass)
 			{
 				h128 uuid(i[1]);
 				Address addr(i[0]);
-				if (m_store.contains(uuid))
+				if (uuid)
 				{
-					m_addrLookup[addr] = uuid;
-					m_keyInfo[uuid] = KeyInfo(h256(i[2]), string(i[3]));
+					if (m_store.contains(uuid))
+					{
+						m_addrLookup[addr] = uuid;
+						m_uuidLookup[uuid] = addr;
+						m_keyInfo[addr] = KeyInfo(h256(i[2]), string(i[3]), i.itemCount() > 4 ? string(i[4]) : "");
+					}
+					else
+						cwarn << "Missing key!";
 				}
+				else
+				{
+					// TODO: brain wallet.
+					m_keyInfo[addr] = KeyInfo(h256(i[2]), string(i[3]), i.itemCount() > 4 ? string(i[4]) : "");
+				}
+
 //				cdebug << toString(addr) << toString(uuid) << toString((h256)i[2]) << (string)i[3];
 			}
 
@@ -137,10 +150,14 @@ Secret KeyManager::secret(h128 const& _uuid, function<string()> const& _pass) co
 
 string KeyManager::getPassword(h128 const& _uuid, function<string()> const& _pass) const
 {
-	auto kit = m_keyInfo.find(_uuid);
 	h256 ph;
-	if (kit != m_keyInfo.end())
-		ph = kit->second.passHash;
+	auto ait = m_uuidLookup.find(_uuid);
+	if (ait != m_uuidLookup.end())
+	{
+		auto kit = m_keyInfo.find(ait->second);
+		if (kit != m_keyInfo.end())
+			ph = kit->second.passHash;
+	}
 	return getPassword(ph, _pass);
 }
 
@@ -186,10 +203,32 @@ h128 KeyManager::import(Secret const& _s, string const& _accountName, string con
 	cachePassword(_pass);
 	m_passwordHint[passHash] = _passwordHint;
 	auto uuid = m_store.importSecret(_s.asBytesSec(), _pass);
-	m_keyInfo[uuid] = KeyInfo{passHash, _accountName};
+	m_keyInfo[addr] = KeyInfo{passHash, _accountName, ""};
 	m_addrLookup[addr] = uuid;
+	m_uuidLookup[uuid] = addr;
 	write(m_keysFile);
 	return uuid;
+}
+
+Secret KeyManager::brain(string const& _seed)
+{
+	h256 r = sha3(_seed);
+	for (auto i = 0; i < 16384; ++i)
+		r = sha3(r);
+	Secret ret(r);
+	r.ref().cleanse();
+	while (toAddress(ret)[0])
+		ret = sha3(ret);
+	return ret;
+}
+
+Address KeyManager::importBrain(string const& _seed, string const& _accountName, string const& _passwordHint)
+{
+	Address addr = toAddress(brain(_seed));
+	m_keyInfo[addr].accountName = _accountName;
+	m_keyInfo[addr].passwordHint = _passwordHint;
+	write();
+	return addr;
 }
 
 void KeyManager::importExisting(h128 const& _uuid, string const& _info, string const& _pass, string const& _passwordHint)
@@ -208,17 +247,19 @@ void KeyManager::importExisting(h128 const& _uuid, string const& _accountName, A
 {
 	if (!m_passwordHint.count(_passHash))
 		m_passwordHint[_passHash] = _passwordHint;
+	m_uuidLookup[_uuid] = _address;
 	m_addrLookup[_address] = _uuid;
-	m_keyInfo[_uuid].passHash = _passHash;
-	m_keyInfo[_uuid].accountName = _accountName;
+	m_keyInfo[_address].passHash = _passHash;
+	m_keyInfo[_address].accountName = _accountName;
 	write(m_keysFile);
 }
 
 void KeyManager::kill(Address const& _a)
 {
 	auto id = m_addrLookup[_a];
+	m_uuidLookup.erase(id);
 	m_addrLookup.erase(_a);
-	m_keyInfo.erase(id);
+	m_keyInfo.erase(_a);
 	m_store.kill(id);
 	write(m_keysFile);
 }
@@ -261,21 +302,21 @@ Addresses KeyManager::accounts() const
 	Addresses ret;
 	ret.reserve(m_addrLookup.size());
 	for (auto const& i: m_addrLookup)
-		if (m_keyInfo.count(i.second) > 0)
+		if (m_keyInfo.count(i.first) > 0)
 			ret.push_back(i.first);
 	return ret;
 }
 
 bool KeyManager::hasAccount(const Address& _address) const
 {
-	return m_addrLookup.count(_address) && m_keyInfo.count(m_addrLookup.at(_address));
+	return m_addrLookup.count(_address) && m_keyInfo.count(_address);
 }
 
 string const& KeyManager::accountName(Address const& _address) const
 {
 	try
 	{
-		return m_keyInfo.at(m_addrLookup.at(_address)).accountName;
+		return m_keyInfo.at(_address).accountName;
 	}
 	catch (...)
 	{
@@ -287,7 +328,7 @@ string const& KeyManager::passwordHint(Address const& _address) const
 {
 	try
 	{
-		return m_passwordHint.at(m_keyInfo.at(m_addrLookup.at(_address)).passHash);
+		return m_passwordHint.at(m_keyInfo.at(_address).passHash);
 	}
 	catch (...)
 	{
@@ -333,8 +374,8 @@ void KeyManager::write(SecureFixedHash<16> const& _key, string const& _keysFile)
 	for (auto const& address: accounts())
 	{
 		h128 id = uuid(address);
-		auto const& ki = m_keyInfo.at(id);
-		s.appendList(4) << address << id << ki.passHash << ki.accountName;
+		auto const& ki = m_keyInfo.at(address);
+		s.appendList(4) << address << id << ki.passHash << ki.accountName << ki.passwordHint;
 	}
 	s.appendList(m_passwordHint.size());
 	for (auto const& i: m_passwordHint)
