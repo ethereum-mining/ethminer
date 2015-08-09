@@ -93,6 +93,7 @@ public:
 	dev::u256 gasPrice() const override;
 
 	dev::eth::KeyManager& keyManager() override { return m_keyManager; }
+	void noteKeysChanged() override { refreshBalances(); }
 	bool doConfirm();
 
 	dev::Secret retrieveSecret(dev::Address const& _address) const override;
@@ -244,7 +245,6 @@ private:
 
 	void refreshAll();
 	void refreshPending();
-	void refreshAccounts();
 	void refreshBlockCount();
 	void refreshBalances();
 
