@@ -105,7 +105,7 @@ bool KeyManager::load(string const& _pass)
 						m_keyInfo[addr] = KeyInfo(h256(i[2]), string(i[3]), i.itemCount() > 4 ? string(i[4]) : "");
 					}
 					else
-						cwarn << "Missing key!";
+						cwarn << "Missing key:" << uuid << addr;
 				}
 				else
 				{
@@ -137,10 +137,13 @@ bool KeyManager::load(string const& _pass)
 
 Secret KeyManager::secret(Address const& _address, function<string()> const& _pass) const
 {
-	auto it = m_addrLookup.find(_address);
-	if (it == m_addrLookup.end())
+	auto it = m_keyInfo.find(_address);
+	if (it == m_keyInfo.end())
 		return Secret();
-	return secret(it->second, _pass);
+	if (m_addrLookup.count(_address))
+		return secret(m_addrLookup.at(_address), _pass);
+	else
+		return brain(_pass());
 }
 
 Secret KeyManager::secret(h128 const& _uuid, function<string()> const& _pass) const
@@ -190,10 +193,10 @@ h128 KeyManager::uuid(Address const& _a) const
 
 Address KeyManager::address(h128 const& _uuid) const
 {
-	for (auto const& i: m_addrLookup)
-		if (i.second == _uuid)
-			return i.first;
-	return Address();
+	auto it = m_uuidLookup.find(_uuid);
+	if (it == m_uuidLookup.end())
+		return Address();
+	return it->second;
 }
 
 h128 KeyManager::import(Secret const& _s, string const& _accountName, string const& _pass, string const& _passwordHint)
@@ -300,16 +303,15 @@ KeyPair KeyManager::presaleSecret(std::string const& _json, function<string(bool
 Addresses KeyManager::accounts() const
 {
 	Addresses ret;
-	ret.reserve(m_addrLookup.size());
-	for (auto const& i: m_addrLookup)
-		if (m_keyInfo.count(i.first) > 0)
-			ret.push_back(i.first);
+	ret.reserve(m_keyInfo.size());
+	for (auto const& i: m_keyInfo)
+		ret.push_back(i.first);
 	return ret;
 }
 
-bool KeyManager::hasAccount(const Address& _address) const
+bool KeyManager::hasAccount(Address const& _address) const
 {
-	return m_addrLookup.count(_address) && m_keyInfo.count(_address);
+	return m_keyInfo.count(_address);
 }
 
 string const& KeyManager::accountName(Address const& _address) const
@@ -328,7 +330,10 @@ string const& KeyManager::passwordHint(Address const& _address) const
 {
 	try
 	{
-		return m_passwordHint.at(m_keyInfo.at(_address).passHash);
+		auto& info = m_keyInfo.at(_address);
+		if (info.passwordHint.size())
+			return info.passwordHint;
+		return m_passwordHint.at(info.passHash);
 	}
 	catch (...)
 	{
@@ -375,7 +380,7 @@ void KeyManager::write(SecureFixedHash<16> const& _key, string const& _keysFile)
 	{
 		h128 id = uuid(address);
 		auto const& ki = m_keyInfo.at(address);
-		s.appendList(4) << address << id << ki.passHash << ki.accountName << ki.passwordHint;
+		s.appendList(5) << address << id << ki.passHash << ki.accountName << ki.passwordHint;
 	}
 	s.appendList(m_passwordHint.size());
 	for (auto const& i: m_passwordHint)

@@ -76,6 +76,7 @@
 #include "ExportState.h"
 #include "AllAccounts.h"
 #include "LogPanel.h"
+#include "BrainWallet.h"
 #include "ui_Main.h"
 #include "ui_GetPassword.h"
 #include "ui_GasPricing.h"
@@ -255,7 +256,7 @@ Main::Main(QWidget* _parent):
 
 	ethereum()->setDefault(LatestBlock);
 
-	m_vmSelectionGroup = new QActionGroup{ui->menu_Debug};
+	m_vmSelectionGroup = new QActionGroup{ui->menuDebug};
 	m_vmSelectionGroup->addAction(ui->vmInterpreter);
 	m_vmSelectionGroup->addAction(ui->vmJIT);
 	m_vmSelectionGroup->addAction(ui->vmSmart);
@@ -294,6 +295,7 @@ Main::Main(QWidget* _parent):
 	loadPlugin<dev::az::AllAccounts>();
 #endif
 	loadPlugin<dev::az::LogPanel>();
+	loadPlugin<dev::az::BrainWallet>();
 }
 
 Main::~Main()
