@@ -1179,7 +1179,7 @@ void Main::refreshBalances()
 	for (auto const& address: m_keyManager.accounts())
 	{
 		u256 b = ethereum()->balanceAt(address);
-		QListWidgetItem* li = new QListWidgetItem(QString("%4 %2: %1 [%3]").arg(formatBalance(b).c_str()).arg(QString::fromStdString(render(address))).arg((unsigned)ethereum()->countAt(address)).arg(QString::fromStdString(m_keyManager.accountName(address))), ui->ourAccounts);
+		QListWidgetItem* li = new QListWidgetItem(QString("<%5> %4 %2: %1 [%3]").arg(formatBalance(b).c_str()).arg(QString::fromStdString(render(address))).arg((unsigned)ethereum()->countAt(address)).arg(QString::fromStdString(m_keyManager.accountName(address))).arg(m_keyManager.haveKey(address) ? "KEY" : "BRAIN"), ui->ourAccounts);
 		li->setData(Qt::UserRole, QByteArray((char const*)address.data(), Address::size));
 		li->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 		li->setCheckState(m_beneficiary == address ? Qt::Checked : Qt::Unchecked);

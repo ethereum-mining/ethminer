@@ -97,6 +97,9 @@ public:
 	/// @returns the password hint for the account for the given address;
 	std::string const& passwordHint(Address const& _address) const;
 
+	/// @returns true if the given address has a key (UUID) associated with it. Equivalent to !!uuid(_a)
+	/// If the address has no key, it could be a brain wallet.
+	bool haveKey(Address const& _a) const { return m_addrLookup.count(_a); }
 	/// @returns the uuid of the key for the address @a _a or the empty hash on error.
 	h128 uuid(Address const& _a) const;
 	/// @returns the address corresponding to the key with uuid @a _uuid or the zero address on error.
