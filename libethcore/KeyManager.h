@@ -36,12 +36,14 @@ class PasswordUnknown: public Exception {};
 struct KeyInfo
 {
 	KeyInfo() = default;
-	KeyInfo(h256 const& _passHash, std::string const& _accountName): passHash(_passHash), accountName(_accountName) {}
+	KeyInfo(h256 const& _passHash, std::string const& _accountName, std::string const& _passwordHint): passHash(_passHash), accountName(_accountName), passwordHint(_passwordHint) {}
 
 	/// Hash of the password or h256() / UnknownPassword if unknown.
 	h256 passHash;
 	/// Name of the key, or JSON key info if begins with '{'.
 	std::string accountName;
+	/// Hint of the password. Alternative place for storage than the hash-based lookup.
+	std::string passwordHint;
 };
 
 static h256 const UnknownPassword;
@@ -102,6 +104,7 @@ public:
 
 	h128 import(Secret const& _s, std::string const& _accountName, std::string const& _pass, std::string const& _passwordHint);
 	h128 import(Secret const& _s, std::string const& _accountName) { return import(_s, _accountName, defaultPassword(), std::string()); }
+	Address importBrain(std::string const& _seed, std::string const& _accountName, std::string const& _seedHint);
 
 	SecretStore& store() { return m_store; }
 	void importExisting(h128 const& _uuid, std::string const& _accountName, std::string const& _pass, std::string const& _passwordHint);
@@ -126,6 +129,9 @@ public:
 	/// Extracts the secret key from the presale wallet.
 	KeyPair presaleSecret(std::string const& _json, std::function<std::string(bool)> const& _password);
 
+	/// @returns the brainwallet secret for the given seed.
+	static Secret brain(std::string const& _seed);
+
 private:
 	std::string getPassword(h128 const& _uuid, std::function<std::string()> const& _pass = DontKnowThrow) const;
 	std::string getPassword(h256 const& _passHash, std::function<std::string()> const& _pass = DontKnowThrow) const;
@@ -144,10 +150,12 @@ private:
 
 	// Ethereum keys.
 
+	/// Mapping key uuid -> address.
+	std::unordered_map<h128, Address> m_uuidLookup;
 	/// Mapping address -> key uuid.
 	std::unordered_map<Address, h128> m_addrLookup;
-	/// Mapping key uuid -> key info.
-	std::unordered_map<h128, KeyInfo> m_keyInfo;
+	/// Mapping address -> key info.
+	std::unordered_map<Address, KeyInfo> m_keyInfo;
 	/// Mapping password hash -> password hint.
 	std::unordered_map<h256, std::string> m_passwordHint;
 
