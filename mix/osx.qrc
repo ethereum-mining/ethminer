@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="qml/QFileDialog.qml">qml/MacFileDialog.qml</file>
+    </qresource>
+</RCC>

@@ -281,11 +281,12 @@ ApplicationWindow {
 		onTriggered: openProjectFileDialog.open()
 	}
 
-	FileDialog {
+	QFileDialog {
 		id: openProjectFileDialog
 		visible: false
 		title: qsTr("Open a Project")
 		selectFolder: true
+		selectExisting: true
 		onAccepted: {
 			var path = openProjectFileDialog.fileUrl.toString();
 			path += "/";
@@ -333,11 +334,12 @@ ApplicationWindow {
 		onTriggered: addExistingFileDialog.open()
 	}
 
-	FileDialog {
+	QFileDialog {
 		id: addExistingFileDialog
 		visible: false
 		title: qsTr("Add a File")
 		selectFolder: false
+		selectExisting: true
 		onAccepted: {
 			var paths = addExistingFileDialog.fileUrls;
 			projectModel.addExistingFiles(paths);
