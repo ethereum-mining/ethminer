@@ -54,7 +54,12 @@ protected:
 	Worker(Worker&& _m) { std::swap(m_name, _m.m_name); }
 
 	/// Move-assignment.
-	Worker& operator=(Worker&& _m) { std::swap(m_name, _m.m_name); return *this; }
+	Worker& operator=(Worker&& _m)
+	{
+		assert(&_m != this);
+		std::swap(m_name, _m.m_name);
+		return *this;
+	}
 
 	virtual ~Worker() { terminate(); }
 
