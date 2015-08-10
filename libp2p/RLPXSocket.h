@@ -39,8 +39,7 @@ namespace p2p
 class RLPXSocket: public std::enable_shared_from_this<RLPXSocket>
 {
 public:
-	/// Constructor. Dereferences and takes ownership of _socket.
-	RLPXSocket(bi::tcp::socket* _socket): m_socket(std::move(*_socket)) {}
+	RLPXSocket(ba::io_service& _ioService): m_socket(_ioService) {}
 	~RLPXSocket() { close(); }
 	
 	bool isConnected() const { return m_socket.is_open(); }
