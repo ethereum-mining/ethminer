@@ -46,7 +46,6 @@ NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint 
 	m_socket(new NodeSocket(_io, *this, (bi::udp::endpoint)m_node.endpoint)),
 	m_socketPointer(m_socket.get()),
 	m_timers(_io)
-	,m_debug_destroyed(false)
 {
 	for (unsigned i = 0; i < s_bins; i++)
 		m_state[i].distance = i;
@@ -68,12 +67,8 @@ NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint 
 	
 NodeTable::~NodeTable()
 {
-	DEV_GUARDED(x_debug)
-	{
-		m_debug_destroyed = true;
-		m_timers.stop();
-		m_socketPointer->disconnect();
-	}
+	m_socketPointer->disconnect();
+	m_timers.stop();
 }
 
 void NodeTable::processEvents()
@@ -204,12 +199,17 @@ void NodeTable::doDiscover(NodeId _node, unsigned _round, shared_ptr<set<shared_
 	m_timers.schedule(c_reqTimeout.count() * 2, [this, _node, _round, _tried](boost::system::error_code const& _ec)
 	{
 		if (_ec)
-			clog(NodeTableWarn) << "Discovery timer canceled!";
+			clog(NodeTableWarn) << "Discovery timer canceled: " << _ec.value() << _ec.message();
 
-		if (!m_debug_destroyed)
-			DEV_GUARDED(x_debug)
-				if (!m_debug_destroyed)
-					doDiscover(_node, _round + 1, _tried);
+		if (995 == _ec.value() || m_timers.isStopped())
+			return;
+
+		// Error code 995 means that the timer was probably aborted. It usually happens when "this" object
+		// is deallocated, in which case subsequent call to doDiscover() would cause a crash.
+		// We can not rely on m_timers.isStopped(), because "this" pointer was captured by the lambda,
+		// and therefore, in case of deallocation m_timers object no longer exists.
+
+		doDiscover(_node, _round + 1, _tried);
 	});
 }
 
