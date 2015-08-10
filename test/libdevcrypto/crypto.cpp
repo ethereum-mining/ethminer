@@ -40,8 +40,6 @@ using namespace dev::test;
 using namespace dev::crypto;
 using namespace CryptoPP;
 
-BOOST_GLOBAL_FIXTURE( MoveNonceToTempDir )
-
 BOOST_AUTO_TEST_SUITE(devcrypto)
 
 static Secp256k1PP s_secp256k1;
