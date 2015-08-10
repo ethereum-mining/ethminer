@@ -31,9 +31,16 @@
 #include <libethereum/Client.h>
 #endif
 
-namespace dev { namespace eth {
+namespace dev
+{
+
+namespace eth
+{
 struct MineInfo;
-}}
+}
+
+namespace az
+{
 
 class MiningView: public QWidget
 {
@@ -59,3 +66,7 @@ private:
 	double m_lastBest = 1e31;
 	bool m_haveReset = false;
 };
+
+}
+
+}

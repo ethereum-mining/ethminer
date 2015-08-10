@@ -28,17 +28,12 @@
 
 using namespace std;
 using namespace lb;
-
 // do *not* use eth since unsigned conflicts with Qt's global unit definition
 // using namespace dev;
+using namespace dev::az;
 using namespace dev::eth;
-
-// types
-
 using dev::eth::MineInfo;
 using dev::eth::WorkingProgress;
-
-// functions
 using dev::toString;
 using dev::trimFront;
 

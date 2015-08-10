@@ -32,6 +32,12 @@
 
 namespace Ui { class Debugger; }
 
+namespace dev
+{
+
+namespace az
+{
+
 struct WorldState
 {
 	uint64_t steps;
@@ -101,3 +107,6 @@ private:
 	DebugSession m_session;
 	Context* m_context;
 };
+
+}
+}
