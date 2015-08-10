@@ -159,7 +159,7 @@ Main::Main(QWidget* _parent):
 			QMessageBox::warning(nullptr, "Try again", "You entered two different passwords - please enter the same password twice.", QMessageBox::Ok);
 		}
 		m_keyManager.create(password.toStdString());
-		m_keyManager.import(Secret::random(), "Default identity");
+		m_keyManager.import(ICAP::createDirect(), "Default identity");
 	}
 
 #if ETH_DEBUG
@@ -317,9 +317,7 @@ void Main::install(AccountNamer* _adopt)
 
 void Main::uninstall(AccountNamer* _kill)
 {
-	auto it = m_namers.find(_kill);
-	if (it != m_namers.end())
-		m_namers.erase(it);
+	m_namers.erase(_kill);
 	refreshAll();
 }
 
@@ -411,7 +409,7 @@ NetworkPreferences Main::netPrefs() const
 		ret = NetworkPreferences(listenIP, ui->port->value(), ui->upnp->isChecked());
 
 	ret.discovery = m_privateChain.isEmpty() && !ui->hermitMode->isChecked();
-	ret.pin = m_privateChain.isEmpty() || ui->hermitMode->isChecked();
+	ret.pin = !ret.discovery;
 
 	return ret;
 }

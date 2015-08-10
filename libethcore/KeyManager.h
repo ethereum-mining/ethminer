@@ -36,7 +36,7 @@ class PasswordUnknown: public Exception {};
 struct KeyInfo
 {
 	KeyInfo() = default;
-	KeyInfo(h256 const& _passHash, std::string const& _accountName, std::string const& _passwordHint): passHash(_passHash), accountName(_accountName), passwordHint(_passwordHint) {}
+	KeyInfo(h256 const& _passHash, std::string const& _accountName, std::string const& _passwordHint = std::string()): passHash(_passHash), accountName(_accountName), passwordHint(_passwordHint) {}
 
 	/// Hash of the password or h256() / UnknownPassword if unknown.
 	h256 passHash;

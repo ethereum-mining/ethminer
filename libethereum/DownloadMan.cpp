@@ -44,6 +44,7 @@ DownloadSub::DownloadSub(DownloadMan& _man): m_man(&_man)
 
 DownloadSub::~DownloadSub()
 {
+	Guard fl(m_fetch);
 	if (m_man)
 	{
 		WriteGuard l(m_man->x_subs);

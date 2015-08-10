@@ -44,7 +44,10 @@ template <size_t N> inline std::string toBase36(FixedHash<N> const& _h)
 	typename FixedHash<N>::Arith a = _h;
 	std::string ret;
 	for (; a > 0; a /= 36)
-		ret = c_alphabet[(unsigned)a % 36] + ret;
+	{
+		unsigned r = (unsigned)(a - a / 36 * 36); // boost's % is broken
+		ret = c_alphabet[r] + ret;
+	}
 	return ret;
 }
 

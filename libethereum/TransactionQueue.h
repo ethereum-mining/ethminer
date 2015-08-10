@@ -140,7 +140,14 @@ private:
 		UnverifiedTransaction() {}
 		UnverifiedTransaction(bytesConstRef const& _t, h512 const& _nodeId): transaction(_t.toBytes()), nodeId(_nodeId) {}
 		UnverifiedTransaction(UnverifiedTransaction&& _t): transaction(std::move(_t.transaction)) {}
-		UnverifiedTransaction& operator=(UnverifiedTransaction&& _other) { transaction = std::move(_other.transaction); nodeId = std::move(_other.nodeId); return *this; }
+		UnverifiedTransaction& operator=(UnverifiedTransaction&& _other)
+		{
+			assert(&_other != this);
+
+			transaction = std::move(_other.transaction);
+			nodeId = std::move(_other.nodeId);
+			return *this;
+		}
 
 		UnverifiedTransaction(UnverifiedTransaction const&) = delete;
 		UnverifiedTransaction& operator=(UnverifiedTransaction const&) = delete;

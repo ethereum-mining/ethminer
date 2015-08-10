@@ -64,6 +64,17 @@ std::pair<string, string> ICAP::fromIBAN(std::string _iban)
 	return make_pair(c, d);
 }
 
+Secret ICAP::createDirect()
+{
+	Secret ret;
+	while (true)
+	{
+		ret = Secret::random();
+		if (!toAddress(ret)[0])
+			return ret;
+	}
+}
+
 ICAP ICAP::decoded(std::string const& _encoded)
 {
 	ICAP ret;
@@ -72,7 +83,7 @@ ICAP ICAP::decoded(std::string const& _encoded)
 	std::tie(country, data) = fromIBAN(_encoded);
 	if (country != "XE")
 		BOOST_THROW_EXCEPTION(InvalidICAP());
-	if (data.size() == 30)
+	if (data.size() == 30 || data.size() == 31)
 	{
 		ret.m_type = Direct;
 		// Direct ICAP
@@ -100,10 +111,8 @@ std::string ICAP::encoded() const
 {
 	if (m_type == Direct)
 	{
-		if (!!m_direct[0])
-			BOOST_THROW_EXCEPTION(InvalidICAP());
 		std::string d = toBase36<Address::size>(m_direct);
-		while (d.size() < 30)
+		while (d.size() < 30)		// always 34, sometimes 35.
 			d = "0" + d;
 		return iban("XE", d);
 	}
