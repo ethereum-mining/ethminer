@@ -54,7 +54,7 @@ class JSV8Engine: public JSEngine<JSV8Value>
 public:
 	JSV8Engine();
 	virtual ~JSV8Engine();
-	JSV8Value eval(char const* _cstr) const;
+	JSV8Value eval(char const* _cstr, char const* _origin = "(shell)") const;
 	v8::Handle<v8::Context> const& context() const;
 
 private:
