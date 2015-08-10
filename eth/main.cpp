@@ -763,7 +763,10 @@ int main(int argc, char** argv)
 	// Set up all the chain config stuff.
 	resetNetwork(releaseNetwork);
 	if (!privateChain.empty())
+	{
 		CanonBlockChain<Ethash>::forceGenesisExtraData(sha3(privateChain).asBytes());
+		CanonBlockChain<Ethash>::forceGenesisDifficulty(c_minimumDifficulty);
+	}
 	if (!genesisJSON.empty())
 		CanonBlockChain<Ethash>::setGenesis(genesisJSON);
 	if (gasFloor != UndefinedU256)
