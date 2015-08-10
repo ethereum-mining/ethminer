@@ -5,6 +5,7 @@
 #include <boost/test/unit_test.hpp>
 #include <libethcore/ICAP.h>
 
+using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
@@ -50,6 +51,13 @@ BOOST_AUTO_TEST_CASE(addressDecodingWithZeroPrefix)
 	Address address("0x00c5496aee77c1ba1f0854206a26dda82a81d6d8");
 	ICAP icap = ICAP::decoded("XE7338O073KYGTWWZN0F2WZ0R8PX5ZPPZS");
 	BOOST_CHECK_EQUAL(icap.direct(), address);
+}
+
+BOOST_AUTO_TEST_CASE(addressDecodingAndEncoding)
+{
+	std::string encoded = "XE499OG1EH8ZZI0KXC6N83EKGT1BM97P2O7";
+	ICAP icap = ICAP::decoded(encoded);
+	BOOST_CHECK_EQUAL(icap.encoded(), encoded);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
