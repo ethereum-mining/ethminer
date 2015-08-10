@@ -27,9 +27,15 @@
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 
+namespace dev
+{
+
+namespace az
+{
+
 class Main;
 
-class OurAccountHolder: public QObject, public dev::eth::AccountHolder
+class OurAccountHolder: public QObject, public eth::AccountHolder
 {
 	Q_OBJECT
 
@@ -47,27 +53,24 @@ protected:
 
 private:
 	bool showAuthenticationPopup(std::string const& _title, std::string const& _text);
-	bool showCreationNotice(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
-	bool showSendNotice(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
-	bool showUnknownCallNotice(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
+	bool showCreationNotice(eth::TransactionSkeleton const& _t, bool _toProxy);
+	bool showSendNotice(eth::TransactionSkeleton const& _t, bool _toProxy);
+	bool showUnknownCallNotice(eth::TransactionSkeleton const& _t, bool _toProxy);
 
-	bool validateTransaction(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
+	bool validateTransaction(eth::TransactionSkeleton const& _t, bool _toProxy);
 
-	std::queue<dev::eth::TransactionSkeleton> m_queued;
-	dev::Mutex x_queued;
+	std::queue<eth::TransactionSkeleton> m_queued;
+	Mutex x_queued;
 
 	Main* m_main;
 };
 
-class OurWebThreeStubServer: public QObject, public dev::WebThreeStubServer
+class OurWebThreeStubServer: public QObject, public WebThreeStubServer
 {
 	Q_OBJECT
 
 public:
-	OurWebThreeStubServer(
-		jsonrpc::AbstractServerConnector& _conn,
-		Main* main
-	);
+	OurWebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, Main* main);
 
 	virtual std::string shh_newIdentity() override;
 
@@ -77,3 +80,7 @@ signals:
 private:
 	Main* m_main;
 };
+
+}
+}
+
