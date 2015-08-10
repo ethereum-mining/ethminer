@@ -742,9 +742,14 @@ void Host::keepAlivePeers()
 		return;
 
 	RecursiveGuard l(x_sessions);
-	for (auto p: m_sessions)
-		if (auto pp = p.second.lock())
-				pp->ping();
+	for (auto it = m_sessions.begin(); it != m_sessions.end();)
+		if (auto p = it->second.lock())
+		{
+			p->ping();
+			++it;
+		}
+		else
+			it = m_sessions.erase(it);
 
 	m_lastPing = chrono::steady_clock::now();
 }
