@@ -317,9 +317,7 @@ void Main::install(AccountNamer* _adopt)
 
 void Main::uninstall(AccountNamer* _kill)
 {
-	auto it = m_namers.find(_kill);
-	if (it != m_namers.end())
-		m_namers.erase(it);
+	m_namers.erase(_kill);
 	refreshAll();
 }
 
