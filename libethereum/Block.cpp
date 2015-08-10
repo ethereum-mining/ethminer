@@ -80,6 +80,9 @@ Block::Block(Block const& _s):
 
 Block& Block::operator=(Block const& _s)
 {
+	if (&_s == this)
+		return *this;
+
 	m_state = _s.m_state;
 	m_transactions = _s.m_transactions;
 	m_receipts = _s.m_receipts;
