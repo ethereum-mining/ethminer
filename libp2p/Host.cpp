@@ -396,7 +396,7 @@ void Host::runAcceptor()
 		clog(NetConnect) << "Listening on local port " << m_listenPort << " (public: " << m_tcpPublic << ")";
 		m_accepting = true;
 
-		auto socket = make_shared<RLPXSocket>(new bi::tcp::socket(m_ioService));
+		auto socket = make_shared<RLPXSocket>(m_ioService);
 		m_tcp4Acceptor.async_accept(socket->ref(), [=](boost::system::error_code ec)
 		{
 			m_accepting = false;
@@ -552,7 +552,7 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 	
 	bi::tcp::endpoint ep(_p->endpoint);
 	clog(NetConnect) << "Attempting connection to node" << _p->id << "@" << ep << "from" << id();
-	auto socket = make_shared<RLPXSocket>(new bi::tcp::socket(m_ioService));
+	auto socket = make_shared<RLPXSocket>(m_ioService);
 	socket->ref().async_connect(ep, [=](boost::system::error_code const& ec)
 	{
 		_p->m_lastAttempted = std::chrono::system_clock::now();
