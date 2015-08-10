@@ -833,7 +833,6 @@ void PV60Sync::abortSync()
 void PV60Sync::onPeerAborting()
 {
 	RecursiveGuard l(x_sync);
-	DEV_INVARIANT_CHECK;
 	// Can't check invariants here since the peers is already removed from the list and the state is not updated yet.
 	if (m_syncer.expired() && m_state != SyncState::Idle)
 	{
