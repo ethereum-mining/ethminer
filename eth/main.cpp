@@ -219,8 +219,6 @@ string pretty(h160 _a, dev::eth::State const& _st)
 	return ns;
 }
 
-bool g_exit = false;
-
 inline bool isPrime(unsigned _number)
 {
 	if (((!(_number & 1)) && _number != 2 ) || (_number < 2) || (_number % 3 == 0 && _number != 3))
@@ -229,11 +227,6 @@ inline bool isPrime(unsigned _number)
 		if ((_number % (6 * k + 1) == 0) || (_number % (6 * k - 1) == 0))
 			return false;
 	return true;
-}
-
-void sighandler(int)
-{
-	g_exit = true;
 }
 
 enum class NodeMode
@@ -1028,9 +1021,9 @@ int main(int argc, char** argv)
 	if (!remoteHost.empty())
 		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
 
-	signal(SIGABRT, &sighandler);
-	signal(SIGTERM, &sighandler);
-	signal(SIGINT, &sighandler);
+	signal(SIGABRT, &Client::exitHandler);
+	signal(SIGTERM, &Client::exitHandler);
+	signal(SIGINT, &Client::exitHandler);
 
 	if (c)
 	{
@@ -1044,17 +1037,20 @@ int main(int argc, char** argv)
 			shared_ptr<dev::WebThreeStubServer> rpcServer = make_shared<dev::WebThreeStubServer>(*console.connector(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer);
 			string sessionKey = rpcServer->newSession(SessionPermissions{{Privilege::Admin}});
 			console.eval("web3.admin.setSessionKey('" + sessionKey + "')");
-			while (console.readExpression())
+			while (!Client::shouldExit())
+			{
+				console.readExpression();
 				stopMiningAfterXBlocks(c, n, mining);
+			}
 			rpcServer->StopListening();
 #endif
 		}
 		else
-			while (!g_exit)
+			while (!Client::shouldExit())
 				stopMiningAfterXBlocks(c, n, mining);
 	}
 	else
-		while (!g_exit)
+		while (!Client::shouldExit())
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
 #if ETH_JSONRPC

@@ -167,6 +167,7 @@ public:
 	virtual Json::Value admin_net_peers(std::string const& _session);
 	virtual Json::Value admin_net_nodeInfo(std::string const& _session);
 
+	virtual bool admin_eth_exit(std::string const& _session);
 	virtual bool admin_eth_setMining(bool _on, std::string const& _session);
 	virtual Json::Value admin_eth_blockQueueStatus(std::string const& _session) { (void)_session; return Json::Value(); }
 	virtual bool admin_eth_setAskPrice(std::string const& _wei, std::string const& _session) { (void)_wei; (void)_session; return false; }
