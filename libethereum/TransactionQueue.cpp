@@ -402,4 +402,3 @@ void TransactionQueue::verifierBody()
 		}
 	}
 }
-

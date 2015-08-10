@@ -308,33 +308,14 @@ h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 	return s;
 }
 
-string const& Nonce::seedFilePath(string const& _filePath)
-{
-	static mutex x_seedFile;
-	static string s_seedFile;
-	
-	Guard l(x_seedFile);
-	if (s_seedFile.empty())
-		s_seedFile = _filePath.empty() ? getDataDir() + "/seed" : _filePath;
-	return s_seedFile;
-}
-
 Secret Nonce::next()
 {
 	Guard l(x_value);
 	if (!m_value)
 	{
-		bytesSec b = contentsSec(seedFilePath());
-		if (b.size() == 32)
-			b.ref().populate(m_value.writable().ref());
-		else
-			m_value = Secret::random();
+		m_value = Secret::random();
 		if (!m_value)
 			BOOST_THROW_EXCEPTION(InvalidState());
-		
-		// prevent seed reuse if process terminates abnormally
-		// this might throw
-		writeFile(seedFilePath(), bytes());
 	}
 	m_value = sha3Secure(m_value.ref());
 	return sha3(~m_value);

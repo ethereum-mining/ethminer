@@ -136,6 +136,9 @@ void State::paranoia(std::string const& _when, bool _enforceRefs) const
 
 State& State::operator=(State const& _s)
 {
+	if (&_s == this)
+		return *this;
+
 	m_db = _s.m_db;
 	m_state.open(&m_db, _s.m_state.root(), Verification::Skip);
 	m_cache = _s.m_cache;
