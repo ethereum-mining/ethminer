@@ -27,14 +27,25 @@
 #include <QtWebEngineWidgets/QWebEnginePage>
 #pragma GCC diagnostic pop
 
+namespace dev
+{
+
+namespace az
+{
+
 class WebPage: public QWebEnginePage
 {
 	Q_OBJECT
+
 public:
-	WebPage(QObject* _parent): QWebEnginePage(_parent) { }
+	WebPage(QObject* _parent): QWebEnginePage(_parent) {}
+
 signals:
 	void consoleMessage(QString const& _msg);
 
 protected:
 	void javaScriptConsoleMessage(QWebEnginePage::JavaScriptConsoleMessageLevel _level, const QString& _message, int _lineNumber, const QString& _sourceID) override;
 };
+
+}
+}
