@@ -123,7 +123,7 @@ protected:
 	
 	/// Used to read and write RLPx encrypted frames for last step of handshake authentication.
 	/// Passed onto Host which will take ownership.
-	RLPXFrameCoder* m_io = nullptr;
+	std::unique_ptr<RLPXFrameCoder> m_io;
 	
 	std::shared_ptr<RLPXSocket> m_socket;		///< Socket.
 	boost::asio::deadline_timer m_idleTimer;	///< Timer which enforces c_timeout.
