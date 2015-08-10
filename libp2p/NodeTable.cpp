@@ -43,7 +43,7 @@ NodeEntry::NodeEntry(NodeId const& _src, Public const& _pubk, NodeIPEndpoint con
 NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint, bool _enabled):
 	m_node(Node(_alias.pub(), _endpoint)),
 	m_secret(_alias.sec()),
-	m_socket(new NodeSocket(_io, *this, (bi::udp::endpoint)m_node.endpoint)),
+	m_socket(make_shared<NodeSocket>(_io, *reinterpret_cast<UDPSocketEvents*>(this), (bi::udp::endpoint)m_node.endpoint)),
 	m_socketPointer(m_socket.get()),
 	m_timers(_io)
 {
@@ -81,7 +81,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relati
 {
 	if (_relation == Known)
 	{
-		shared_ptr<NodeEntry> ret(new NodeEntry(m_node.id, _node.id, _node.endpoint));
+		auto ret = make_shared<NodeEntry>(m_node.id, _node.id, _node.endpoint);
 		ret->pending = false;
 		DEV_GUARDED(x_nodes)
 			m_nodes[_node.id] = ret;
@@ -107,7 +107,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relati
 		if (m_nodes.count(_node.id))
 			return m_nodes[_node.id];
 	
-	shared_ptr<NodeEntry> ret(new NodeEntry(m_node.id, _node.id, _node.endpoint));
+	auto ret = make_shared<NodeEntry>(m_node.id, _node.id, _node.endpoint);
 	DEV_GUARDED(x_nodes)
 		m_nodes[_node.id] = ret;
 	clog(NodeTableConnect) << "addNode pending for" << _node.endpoint;
@@ -167,7 +167,7 @@ void NodeTable::doDiscover(NodeId _node, unsigned _round, shared_ptr<set<shared_
 	}
 	else if (!_round && !_tried)
 		// initialized _tried on first round
-		_tried.reset(new set<shared_ptr<NodeEntry>>());
+		_tried = make_shared<set<shared_ptr<NodeEntry>>>();
 	
 	auto nearest = nearestNodeEntries(_node);
 	list<shared_ptr<NodeEntry>> tried;
