@@ -71,6 +71,11 @@ public:
 	/// delete a directory
 	Q_INVOKABLE void deleteDir(QString const& _url);
 
+	//TODO: remove once qt 5.5.1 is out
+	Q_INVOKABLE QString urlToPath(QUrl const& _url) { return _url.toLocalFile(); }
+	Q_INVOKABLE QUrl pathToUrl(QString const& _path) { return QUrl::fromLocalFile(_path); }
+	Q_INVOKABLE QUrl pathFolder(QString const& _path);
+
 private:
 	QString getHomePath() const;
 	QString pathFromUrl(QString const& _url);

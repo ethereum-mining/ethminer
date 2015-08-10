@@ -20,6 +20,11 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang") AND NOT (CMAKE_CXX_COMPILER_VER
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-inconsistent-missing-override")
 endif ()
 
+#TODO: remove once qt 5.5.1 is out
+if (APPLE)
+    qt5_add_resources(UI_RESOURCES osx.qrc)
+endif()
+
 find_package (Qt5WebEngine)
 if (APPLE)
 # TODO: remove indirect dependencies once macdeployqt is fixed

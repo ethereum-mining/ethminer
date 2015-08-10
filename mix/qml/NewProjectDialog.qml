@@ -105,7 +105,7 @@ Item
 
 	}
 
-	FileDialog {
+	QFileDialog {
 		id: createProjectFileDialog
 		visible: false
 		title: qsTr("Please choose a path for the project")
