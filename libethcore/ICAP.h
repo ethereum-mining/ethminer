@@ -36,7 +36,7 @@ namespace dev
 namespace eth
 {
 
-struct InvalidICAP: virtual public dev::Exception {};
+DEV_SIMPLE_EXCEPTION(InvalidICAP);
 
 /**
  * @brief Encapsulation of an ICAP address.
@@ -61,6 +61,9 @@ public:
 		Direct,
 		Indirect
 	};
+
+	/// Create a direct address for ICAP.
+	static Secret createDirect();
 
 	/// @returns IBAN encoding of client and data.
 	static std::string iban(std::string _c, std::string _d);
