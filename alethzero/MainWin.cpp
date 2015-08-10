@@ -409,7 +409,7 @@ NetworkPreferences Main::netPrefs() const
 		ret = NetworkPreferences(listenIP, ui->port->value(), ui->upnp->isChecked());
 
 	ret.discovery = m_privateChain.isEmpty() && !ui->hermitMode->isChecked();
-	ret.pin = m_privateChain.isEmpty() || ui->hermitMode->isChecked();
+	ret.pin = !ret.discovery;
 
 	return ret;
 }
