@@ -27,7 +27,8 @@
 #include "MainWin.h"
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
+using namespace az;
+using namespace eth;
 
 OurWebThreeStubServer::OurWebThreeStubServer(
 	jsonrpc::AbstractServerConnector& _conn,

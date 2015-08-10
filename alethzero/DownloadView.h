@@ -31,9 +31,13 @@
 #include <libethereum/Client.h>
 #endif
 
-namespace dev { namespace eth {
-class Client;
-}}
+namespace dev
+{
+
+namespace eth { class Client; }
+
+namespace az
+{
 
 class SyncView: public QWidget
 {
@@ -54,3 +58,6 @@ private:
 	unsigned m_lastSyncCount = 0;
 	bool m_wasEstimate = false;
 };
+
+}
+}

@@ -47,6 +47,14 @@ class Plugin;
 
 using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
 
+class AccountNamer
+{
+public:
+	virtual std::string toName(Address const&) const { return std::string(); }
+	virtual Address toAddress(std::string const&) const { return Address(); }
+	virtual Addresses knownAddresses() const { return Addresses(); }
+};
+
 class MainFace: public QMainWindow, public Context
 {
 public:
@@ -65,6 +73,11 @@ public:
 
 	virtual unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f) = 0;
 	virtual unsigned installWatch(dev::h256 const& _tf, WatchHandler const& _f) = 0;
+
+	// Account naming API
+	virtual void install(AccountNamer* _adopt) = 0;
+	virtual void uninstall(AccountNamer* _kill) = 0;
+	virtual void noteAddressesChanged() = 0;
 
 protected:
 	template <class F> void forEach(F const& _f) { for (auto const& p: m_plugins) _f(p.second); }

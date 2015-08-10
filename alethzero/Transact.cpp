@@ -41,7 +41,6 @@
 #include <libethereum/Client.h>
 #include <libethereum/Utility.h>
 #include <libethcore/KeyManager.h>
-
 #if ETH_SERPENT
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
@@ -50,7 +49,8 @@
 #include "ui_Transact.h"
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
+using namespace az;
+using namespace eth;
 
 Transact::Transact(Context* _c, QWidget* _parent):
 	QDialog(_parent),
@@ -206,7 +206,7 @@ void Transact::on_copyUnsigned_clicked()
 	qApp->clipboard()->setText(QString::fromStdString(toHex(t.rlp())));
 }
 
-static std::string toString(TransactionException _te)
+/*static std::string toString(TransactionException _te)
 {
 	switch (_te)
 	{
@@ -223,7 +223,7 @@ static std::string toString(TransactionException _te)
 	case TransactionException::StackUnderflow: return "VM Error: Stack underflow";
 	default:; return std::string();
 	}
-}
+}*/
 
 #if ETH_SOLIDITY
 static string getFunctionHashes(dev::solidity::CompilerStack const& _compiler, string const& _contractName)

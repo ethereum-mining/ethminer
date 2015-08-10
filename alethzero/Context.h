@@ -30,7 +30,13 @@
 class QComboBox;
 class QSpinBox;
 
-namespace dev { namespace eth { struct StateDiff; class KeyManager; } }
+namespace dev
+{
+
+namespace eth { struct StateDiff; class KeyManager; }
+
+namespace az
+{
 
 #define ETH_HTML_SMALL "font-size: small; "
 #define ETH_HTML_MONO "font-family: Ubuntu Mono, Monospace, Lucida Console, Courier New; font-weight: bold; "
@@ -69,7 +75,10 @@ public:
 	virtual std::string render(dev::Address const& _a) const = 0;
 	virtual dev::Secret retrieveSecret(dev::Address const& _a) const = 0;
 	virtual dev::eth::KeyManager& keyManager() = 0;
+	virtual void noteKeysChanged() = 0;
 
 	virtual dev::u256 gasPrice() const = 0;
 };
 
+}
+}
