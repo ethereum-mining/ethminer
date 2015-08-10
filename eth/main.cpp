@@ -341,7 +341,7 @@ int main(int argc, char** argv)
 	string structuredLoggingURL;
 
 	/// Transaction params
-	TransactionPriority priority = TransactionPriority::Medium;
+//	TransactionPriority priority = TransactionPriority::Medium;
 //	double etherPrice = 30.679;
 //	double blockFees = 15.0;
 	u256 askPrice = c_defaultGasPrice;
@@ -605,7 +605,7 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
-		else if ((arg == "-P" || arg == "--priority") && i + 1 < argc)
+/*		else if ((arg == "-P" || arg == "--priority") && i + 1 < argc)
 		{
 			string m = boost::to_lower_copy(string(argv[++i]));
 			if (m == "lowest")
@@ -626,7 +626,7 @@ int main(int argc, char** argv)
 					cerr << "Unknown " << arg << " option: " << m << endl;
 					return -1;
 				}
-		}
+		}*/
 		else if ((arg == "-m" || arg == "--mining") && i + 1 < argc)
 		{
 			string m = argv[++i];
