@@ -69,6 +69,12 @@ TransactionSkeleton toTransactionSkeleton(Json::Value const& _json);
 LogFilter toLogFilter(Json::Value const& _json);
 LogFilter toLogFilter(Json::Value const& _json, Interface const& _client);	// commented to avoid warning. Uncomment once in use @ PoC-7.
 
+class AddressResolver
+{
+public:
+	static Address fromJS(std::string const& _address);
+};
+
 template <class BlockInfoSub>
 Json::Value toJson(BlockHeaderPolished<BlockInfoSub> const& _bh)
 {
