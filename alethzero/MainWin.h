@@ -106,6 +106,11 @@ public:
 
 	Secret retrieveSecret(Address const& _address) const override;
 
+	// Account naming API.
+	void install(AccountNamer* _adopt) override;
+	void uninstall(AccountNamer* _kill) override;
+	void noteAddressesChanged() override;
+
 public slots:
 	void load(QString _file);
 	void note(QString _entry);
@@ -292,6 +297,8 @@ private:
 	QWebEnginePage* m_webPage;
 
 	Connect m_connect;
+
+	std::unordered_set<AccountNamer*> m_namers;
 };
 
 }

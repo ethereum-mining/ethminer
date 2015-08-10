@@ -309,6 +309,25 @@ string Main::fromRaw(h256 const&_n, unsigned* _inc)
 	return string();
 }
 
+void Main::install(AccountNamer* _adopt)
+{
+	m_namers.insert(_adopt);
+	refreshAll();
+}
+
+void Main::uninstall(AccountNamer* _kill)
+{
+	auto it = m_namers.find(_kill);
+	if (it != m_namers.end())
+		m_namers.erase(it);
+	refreshAll();
+}
+
+void Main::noteAddressesChanged()
+{
+	refreshAll();
+}
+
 bool Main::confirm() const
 {
 	return ui->natSpec->isChecked();
@@ -638,6 +657,13 @@ std::string Main::pretty(dev::Address const& _a) const
 		if (!n.empty())
 			return n;
 	}
+
+	for (auto i: m_namers)
+	{
+		auto n = i->toName(_a);
+		if (!n.empty())
+			return n;
+	}
 	return string();
 }
 
@@ -670,6 +696,11 @@ pair<Address, bytes> Main::fromString(std::string const& _n) const
 		if (a)
 			return make_pair(a, bytes());
 	}
+
+	for (auto i: m_namers)
+		if (auto a = i->toAddress(_n))
+			return make_pair(a, bytes());
+
 	if (n.size() == 40)
 	{
 		try
