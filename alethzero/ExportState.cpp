@@ -25,10 +25,10 @@
 #include <libethereum/Client.h>
 #include "MainWin.h"
 #include "ui_ExportState.h"
-
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
+using namespace az;
+using namespace eth;
 
 ExportStateDialog::ExportStateDialog(Main* _parent):
 	QDialog(_parent),
@@ -46,7 +46,7 @@ ExportStateDialog::~ExportStateDialog()
 {
 }
 
-dev::eth::Client* ExportStateDialog::ethereum() const
+Client* ExportStateDialog::ethereum() const
 {
 	return m_main->ethereum();
 }
