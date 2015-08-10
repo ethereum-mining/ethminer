@@ -832,6 +832,7 @@ void Main::setPrivateChain(QString const& _private, bool _forceConfigure)
 	ui->usePrivate->setChecked(!m_privateChain.isEmpty());
 
 	CanonBlockChain<Ethash>::forceGenesisExtraData(m_privateChain.isEmpty() ? bytes() : sha3(m_privateChain.toStdString()).asBytes());
+	CanonBlockChain<Ethash>::forceGenesisDifficulty(m_privateChain.isEmpty() ? u256() : c_minimumDifficulty);
 
 	// rejig blockchain now.
 	writeSettings();
