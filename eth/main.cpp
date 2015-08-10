@@ -171,9 +171,9 @@ void help()
 		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
 		<< "    -x,--peers <number>  Attempt to connect to given number of peers (default: 11)." << endl
-		<< "	--peer-stretch <number>  Accepted connection multiplier (default: 7)." << endl
+		<< "    --peer-stretch <number>  Accepted connection multiplier (default: 7)." << endl
 	
-		<< "    --public-ip <ip>  Force public ip to given (default: auto)." << endl
+		<< "    --public-ip <ip>  Force advertised public ip to given (default: auto)." << endl
 		<< "    --listen-ip <ip>(:<port>)  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
 		<< "    --listen <port>  Listen on the given port for incoming connections (default: 30303)." << endl
 		<< "    -r,--remote <host>(:<port>)  Connect to remote host (default: none)." << endl
@@ -181,10 +181,10 @@ void help()
 		<< "    --network-id <n> Only connect to other hosts with this network id." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
 
-		<< "	--peerset <list>  Space delimited list of type type:publickey@ipAddress[:port]" << endl
-		<< "		Types:" << endl
-		<< "		default		Attempt connection when no other peers are available and pinning is disable." << endl
-		<< "		require		Keep connected at all times." << endl
+		<< "    --peerset <list>  Space delimited list of type type:publickey@ipAddress[:port]" << endl
+		<< "        Types:" << endl
+		<< "        default		Attempt connection when no other peers are available and pinning is disable." << endl
+		<< "        require		Keep connected at all times." << endl
 // TODO:
 //		<< "	--trust-peers <filename>  Space delimited list of publickeys." << endl
 	
