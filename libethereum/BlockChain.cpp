@@ -394,7 +394,7 @@ tuple<ImportRoute, bool, unsigned> BlockChain::sync(BlockQueue& _bq, OverlayDB c
 				// Nonce & uncle nonces already verified in verification thread at this point.
 				ImportRoute r;
 				DEV_TIMED_ABOVE("Block import " + toString(block.verified.info.number()), 500)
-					r = import(block.verified, _stateDB, ImportRequirements::Everything & ~ImportRequirements::ValidSeal & ~ImportRequirements::CheckUncles);
+					r = import(block.verified, _stateDB, (ImportRequirements::Everything & ~ImportRequirements::ValidSeal & ~ImportRequirements::CheckUncles) != 0);
 				fresh += r.liveBlocks;
 				dead += r.deadBlocks;
 				goodTransactions.reserve(goodTransactions.size() + r.goodTranactions.size());
@@ -1278,6 +1278,7 @@ Block BlockChain::genesisBlock(OverlayDB const& _db)
 	dev::eth::commit(m_genesisState, ret.mutableState().m_state);		// bit horrible. maybe consider a better way of constructing it?
 	ret.mutableState().db().commit();									// have to use this db() since it's the one that has been altered with the above commit.
 	ret.m_previousBlock = BlockInfo(m_genesisBlock);
+	ret.resetCurrent();
 	return ret;
 }
 
