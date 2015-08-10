@@ -87,32 +87,7 @@ using namespace p2p;
 using namespace eth;
 namespace js = json_spirit;
 
-string Main::fromRaw(h256 _n, unsigned* _inc)
-{
-	if (_n)
-	{
-		string s((char const*)_n.data(), 32);
-		auto l = s.find_first_of('\0');
-		if (!l)
-			return string();
-		if (l != string::npos)
-		{
-			auto p = s.find_first_not_of('\0', l);
-			if (!(p == string::npos || (_inc && p == 31)))
-				return string();
-			if (_inc)
-				*_inc = (byte)s[31];
-			s.resize(l);
-		}
-		for (auto i: s)
-			if (i < 32)
-				return string();
-		return s;
-	}
-	return string();
-}
-
-QString contentsOfQResource(string const& res)
+QString dev::az::contentsOfQResource(string const& res)
 {
 	QFile file(QString::fromStdString(res));
 	if (!file.open(QFile::ReadOnly))
@@ -307,6 +282,31 @@ Main::~Main()
 	// need to be rethought into something more like:
 	// forEach([&](shared_ptr<Plugin> const& p){ finalisePlugin(p.get()); });
 	writeSettings();
+}
+
+string Main::fromRaw(h256 const&_n, unsigned* _inc)
+{
+	if (_n)
+	{
+		string s((char const*)_n.data(), 32);
+		auto l = s.find_first_of('\0');
+		if (!l)
+			return string();
+		if (l != string::npos)
+		{
+			auto p = s.find_first_not_of('\0', l);
+			if (!(p == string::npos || (_inc && p == 31)))
+				return string();
+			if (_inc)
+				*_inc = (byte)s[31];
+			s.resize(l);
+		}
+		for (auto i: s)
+			if (i < 32)
+				return string();
+		return s;
+	}
+	return string();
 }
 
 bool Main::confirm() const

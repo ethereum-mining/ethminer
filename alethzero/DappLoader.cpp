@@ -34,12 +34,12 @@
 #include <libethereum/Client.h>
 #include <libwebthree/WebThree.h>
 #include "DappLoader.h"
-
 using namespace dev;
-using namespace dev::eth;
-using namespace dev::crypto;
+using namespace az;
+using namespace eth;
+using namespace crypto;
 
-QString contentsOfQResource(std::string const& res);
+namespace dev { namespace az { QString contentsOfQResource(std::string const& res); } }
 
 DappLoader::DappLoader(QObject* _parent, WebThreeDirect* _web3, Address _nameReg):
 	QObject(_parent), m_web3(_web3), m_nameReg(_nameReg)

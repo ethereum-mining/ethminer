@@ -30,7 +30,8 @@
 #include <libdevcore/SHA3.h>
 #include <libethereum/Defaults.h>
 using namespace dev;
-using namespace dev::eth;
+using namespace az;
+using namespace eth;
 using namespace std;
 namespace fs = boost::filesystem;
 
