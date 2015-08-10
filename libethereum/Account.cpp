@@ -21,6 +21,7 @@
 
 #include "Account.h"
 #include <test/JsonSpiritHeaders.h>
+#include <test/TestHelper.h>
 #include <libethcore/Common.h>
 using namespace std;
 using namespace dev;
@@ -63,7 +64,7 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, AccountMaskMap* 
 		if (haveCode)
 		{
 			ret[a] = Account(balance, Account::ContractConception);
-			ret[a].setCode(fromHex(o["code"].get_str()));
+			ret[a].setCode(test::importCode(o));
 		}
 		else
 			ret[a] = Account(balance, Account::NormalCreation);
