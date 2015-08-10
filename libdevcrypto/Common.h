@@ -203,14 +203,8 @@ public:
 	/// Returns the next nonce (might be read from a file).
 	static Secret get() { static Nonce s; return s.next(); }
 
-	/// @returns path of the seed file. FOR TESTS ONLY: optionally set path to @_filePath.
-	static std::string const& seedFilePath(std::string const& _filePath = std::string());
-
 private:
 	Nonce() = default;
-	
-	/// Destructor. IO operation may throw.
-	~Nonce() { if (m_value && next()) dev::writeFile(seedFilePath(), m_value.ref()); }
 
 	/// @returns the next nonce.
 	Secret next();
