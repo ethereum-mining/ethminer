@@ -284,7 +284,7 @@ Main::~Main()
 	writeSettings();
 }
 
-string Main::fromRaw(h256 const&_n, unsigned* _inc)
+string Main::fromRaw(h256 const& _n, unsigned* _inc)
 {
 	if (_n)
 	{
