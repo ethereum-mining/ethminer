@@ -224,7 +224,13 @@ class DeadlineOps
 		~DeadlineOp() {}
 		
 		DeadlineOp(DeadlineOp&& _s): m_timer(_s.m_timer.release()) {}
-		DeadlineOp& operator=(DeadlineOp&& _s) { m_timer.reset(_s.m_timer.release()); return *this; }
+		DeadlineOp& operator=(DeadlineOp&& _s)
+		{
+			assert(&_s != this);
+
+			m_timer.reset(_s.m_timer.release());
+			return *this;
+		}
 		
 		bool expired() { Guard l(x_timer); return m_timer->expires_from_now().total_nanoseconds() <= 0; }
 		void wait() { Guard l(x_timer); m_timer->wait(); }
