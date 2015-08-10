@@ -37,8 +37,6 @@ using namespace dev::test;
 namespace js = json_spirit;
 namespace fs = boost::filesystem;
 
-BOOST_GLOBAL_FIXTURE( MoveNonceToTempDir )
-
 BOOST_AUTO_TEST_SUITE(KeyStore)
 
 BOOST_AUTO_TEST_CASE(basic_tests)
