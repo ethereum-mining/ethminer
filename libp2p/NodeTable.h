@@ -264,7 +264,7 @@ private:
 	std::shared_ptr<NodeSocket> m_socket;							///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
 	NodeSocket* m_socketPointer;									///< Set to m_socket.get(). Socket is created in constructor and disconnected in destructor to ensure access to pointer is safe.
 
-	DeadlineOps m_timers;
+	DeadlineOps m_timers; ///< this should be the last member - it must be destroyed first
 };
 
 inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
