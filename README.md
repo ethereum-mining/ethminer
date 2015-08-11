@@ -43,9 +43,19 @@ See [TODO](https://github.com/ethereum/cpp-ethereum/wiki/TODO)
 
 ### License
 
-See [LICENSE](LICENSE)
+All new contributions are under the [MIT license](http://opensource.org/licenses/MIT).
+See [LICENSE](LICENSE). Some old contributions are under the [GPLv3 license](http://www.gnu.org/licenses/gpl-3.0.en.html). See [GPLV3_LICENSE](GPLV3_LICENSE).
 
 ### Contributing
+
+All new contributions are added under the MIT License. Please refer to the `LICENCSE` file in the root directory.
+To state that you accept this fact for all of your PRs please add yourself to the list of external contributors
+like in the example below.
+
+#### External Contributors
+- *Name Surname* (**email@domain**)
+
+#### Contribution guideline
 
 All development goes in develop branch - please don't submit pull requests to master.
 
