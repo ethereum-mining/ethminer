@@ -239,19 +239,22 @@ string WebThreeStubServerBase::eth_getCode(string const& _address, string const&
 	}
 }
 
+void WebThreeStubServerBase::setTransactionDefaults(TransactionSkeleton & _t)
+{
+	if (!_t.from)
+		_t.from = m_ethAccounts->defaultTransactAccount();
+	if (_t.gasPrice == UndefinedU256)
+		_t.gasPrice = c_defaultGasPrice;
+	if (_t.gas == UndefinedU256)
+		_t.gas = min<u256>(client()->gasLimitRemaining() / 5, client()->balanceAt(_t.from) / _t.gasPrice);
+}
+
 string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json)
 {
 	try
 	{
 		TransactionSkeleton t = toTransactionSkeleton(_json);
-	
-		if (!t.from)
-			t.from = m_ethAccounts->defaultTransactAccount();
-		if (t.gasPrice == UndefinedU256)
-			t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
-		if (t.gas == UndefinedU256)
-			t.gas = min<u256>(client()->gasLimitRemaining() / 5, client()->balanceAt(t.from) / t.gasPrice);
-
+		setTransactionDefaults(t);
 		return toJS(m_ethAccounts->authenticate(t));
 	}
 	catch (...)
@@ -265,14 +268,7 @@ string WebThreeStubServerBase::eth_signTransaction(Json::Value const& _json)
 	try
 	{
 		TransactionSkeleton t = toTransactionSkeleton(_json);
-
-		if (!t.from)
-			t.from = m_ethAccounts->defaultTransactAccount();
-		if (t.gasPrice == UndefinedU256)
-			t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
-		if (t.gas == UndefinedU256)
-			t.gas = min<u256>(client()->gasLimitRemaining() / 5, client()->balanceAt(t.from) / t.gasPrice);
-
+		setTransactionDefaults(t);
 		m_ethAccounts->authenticate(t);
 
 		return toJS((t.creation ? Transaction(t.value, t.gasPrice, t.gas, t.data) : Transaction(t.value, t.gasPrice, t.gas, t.to, t.data)).sha3(WithoutSignature));
@@ -312,15 +308,7 @@ string WebThreeStubServerBase::eth_call(Json::Value const& _json, string const& 
 	try
 	{
 		TransactionSkeleton t = toTransactionSkeleton(_json);
-		if (!t.from)
-			t.from = m_ethAccounts->defaultTransactAccount();
-	//	if (!m_accounts->isRealAccount(t.from))
-	//		return ret;
-		if (t.gasPrice == UndefinedU256)
-			t.gasPrice = 10 * dev::eth::szabo;
-		if (t.gas == UndefinedU256)
-			t.gas = client()->gasLimitRemaining();
-
+		setTransactionDefaults(t);
 		return toJS(client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice, jsToBlockNumber(_blockNumber), FudgeFactor::Lenient).output);
 	}
 	catch (...)
