@@ -19,6 +19,8 @@
  * @date 2015
  */
 
+#if ETH_FATDB
+
 #include "AllAccounts.h"
 #include <sstream>
 #include <QClipboard>
@@ -31,6 +33,8 @@ using namespace std;
 using namespace dev;
 using namespace az;
 using namespace eth;
+
+DEV_AZ_NOTE_PLUGIN(AllAccounts);
 
 AllAccounts::AllAccounts(MainFace* _m):
 	Plugin(_m, "AllAccounts"),
@@ -131,3 +135,4 @@ void AllAccounts::on_accounts_doubleClicked()
 	}
 }
 
+#endif

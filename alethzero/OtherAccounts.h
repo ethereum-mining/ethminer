@@ -14,51 +14,42 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file AllAccounts.h
+/** @file OtherAccounts.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2015
  */
 
 #pragma once
 
-#if ETH_FATDB
-
-#include <QListWidget>
-#include <QPlainTextEdit>
 #include "MainFace.h"
-
-namespace Ui
-{
-class AllAccounts;
-}
 
 namespace dev
 {
 namespace az
 {
 
-class AllAccounts: public QObject, public Plugin
+class OtherAccounts: public QObject, public AccountNamerPlugin
 {
 	Q_OBJECT
 
 public:
-	AllAccounts(MainFace* _m);
-	~AllAccounts();
+	OtherAccounts(MainFace* _m);
+
+protected:
+	std::string toName(Address const& _a) const override { if (m_toName.count(_a)) return m_toName.at(_a); return std::string(); }
+	Address toAddress(std::string const& _n) const override { if (m_toAddress.count(_n)) return m_toAddress.at(_n); return Address(); }
+	Addresses knownAddresses() const override { return keysOf(m_toName); }
 
 private slots:
-	void on_accounts_currentItemChanged();
-	void on_accounts_doubleClicked();
-
-	void onAllChange();
-	void refresh();
+	void import();
 
 private:
-	void installWatches();
+	void readSettings(QSettings const&) override;
+	void writeSettings(QSettings&) override;
 
-	Ui::AllAccounts* m_ui;
+	std::unordered_map<std::string, Address> m_toAddress;
+	std::unordered_map<Address, std::string> m_toName;
 };
 
 }
 }
-
-#endif

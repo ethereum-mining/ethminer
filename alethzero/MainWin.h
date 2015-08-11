@@ -110,6 +110,11 @@ public:
 	void install(AccountNamer* _adopt) override;
 	void uninstall(AccountNamer* _kill) override;
 	void noteAddressesChanged() override;
+	Address toAddress(std::string const&) const override;
+	std::string toName(Address const&) const override;
+	Addresses allKnownAddresses() const override;
+
+	void noteSettingsChanged() override { writeSettings(); }
 
 public slots:
 	void load(QString _file);
@@ -299,6 +304,8 @@ private:
 	Connect m_connect;
 
 	std::unordered_set<AccountNamer*> m_namers;
+
+	bool m_destructing = false;
 };
 
 }
