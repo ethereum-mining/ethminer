@@ -26,7 +26,14 @@
 #include <libethcore/Common.h>
 
 namespace Ui { class ExportState; }
-namespace dev { namespace eth { class Client; } }
+
+namespace dev
+{
+
+namespace eth { class Client; }
+
+namespace az
+{
 
 class Main;
 
@@ -44,7 +51,7 @@ private slots:
 	void on_saveButton_clicked();
 
 private:
-	dev::eth::Client* ethereum() const;
+	eth::Client* ethereum() const;
 	void fillBlocks();
 	void fillContracts();
 	void generateJSON();
@@ -53,5 +60,8 @@ private:
 	std::unique_ptr<Ui::ExportState> ui;
 	Main* m_main;
 	int m_recentBlocks = 0;
-	dev::eth::BlockNumber m_block = dev::eth::LatestBlock;
+	eth::BlockNumber m_block = eth::LatestBlock;
 };
+
+}
+}

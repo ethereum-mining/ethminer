@@ -103,6 +103,9 @@ public:
 	/// Override the genesis block's extraData field.
 	static void forceGenesisExtraData(bytes const& _genesisExtraData);
 
+	/// Override the genesis block's extraData field.
+	static void forceGenesisDifficulty(u256 const& _genesisDifficulty);
+
 private:
 	/// Static genesis info and its lock.
 	static boost::shared_mutex x_genesis;
@@ -110,6 +113,7 @@ private:
 	static Nonce s_nonce;
 	static std::string s_genesisStateJSON;
 	static bytes s_genesisExtraData;
+	static u256 s_genesisDifficulty;
 };
 
 }

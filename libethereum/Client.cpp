@@ -67,6 +67,12 @@ const char* ClientTrace::name() { return EthTeal "⧫" EthGray " ◎"; }
 const char* ClientDetail::name() { return EthTeal "⧫" EthCoal " ●"; }
 #endif
 
+bool Client::s_shouldExit = false;
+void Client::exitHandler(int)
+{
+	s_shouldExit = true;
+}
+
 static const Addresses c_canaries =
 {
 	Address("4bb7e8ae99b645c2b7860b8f3a2328aae28bd80a"),		// gav
@@ -110,9 +116,9 @@ void Client::init(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _
 
 	m_gp->update(bc());
 
-	auto host = _extNet->registerCapability(new EthereumHost(bc(), m_tq, m_bq, _networkId));
+	auto host = _extNet->registerCapability(make_shared<EthereumHost>(bc(), m_tq, m_bq, _networkId));
 	m_host = host;
-	_extNet->addCapability(host, EthereumHost::staticName(), EthereumHost::c_oldProtocolVersion); //TODO: remove this one v61+ protocol is common
+	_extNet->addCapability(host, EthereumHost::staticName(), EthereumHost::c_oldProtocolVersion); //TODO: remove this once v61+ protocol is common
 
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);

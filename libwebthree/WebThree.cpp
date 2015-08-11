@@ -64,7 +64,7 @@ WebThreeDirect::WebThreeDirect(
 	}
 
 	if (_interfaces.count("shh"))
-		m_whisper = m_net.registerCapability<WhisperHost>(new WhisperHost);
+		m_whisper = m_net.registerCapability(make_shared<WhisperHost>());
 }
 
 WebThreeDirect::~WebThreeDirect()

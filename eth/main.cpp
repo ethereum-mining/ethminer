@@ -38,7 +38,7 @@
 #include <libethereum/All.h>
 #include <libethereum/BlockChainSync.h>
 #include <libethcore/KeyManager.h>
-
+#include <libethcore/ICAP.h>
 #include <libwebthree/WebThree.h>
 #if ETH_JSCONSOLE || !ETH_TRUE
 #include <libjsconsole/JSLocalConsole.h>
@@ -68,58 +68,17 @@ using dev::eth::Instruction;
 
 static std::atomic<bool> g_silence = {false};
 
-void interactiveHelp()
-{
-	cout
-		<< "Commands:" << endl
-		<< "    netstart <port>  Starts the network subsystem on a specific port." << endl
-		<< "    netstop  Stops the network subsystem." << endl
-		<< "    connect <addr> <port>  Connects to a specific peer." << endl
-		<< "    verbosity (<level>)  Gets or sets verbosity level." << endl
-		<< "    minestart  Starts mining." << endl
-		<< "    minestop  Stops mining." << endl
-		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
-		<< "    block  Gives the current block height." << endl
-		<< "    blockhashfromnumber <number>  Gives the block hash with the givne number." << endl
-		<< "    numberfromblockhash <hash>  Gives the block number with the given hash." << endl
-		<< "    blockqueue  Gives the current block queue status." << endl
-		<< "    findblock <hash>  Searches for the block in the blockchain and blockqueue." << endl
-		<< "    firstunknown  Gives the first unknown block from the blockqueue." << endl
-		<< "    retryunknown  retries to import all unknown blocks from the blockqueue." << endl
-		<< "    accounts  Gives information on all owned accounts (balances, mining beneficiary and default signer)." << endl
-		<< "    newaccount <name>  Creates a new account with the given name." << endl
-		<< "    transact  Execute a given transaction." << endl
-		<< "    transactnonce  Execute a given transaction with a specified nonce." << endl
-		<< "    txcreate  Execute a given contract creation transaction." << endl
-		<< "    send  Execute a given transaction with current secret." << endl
-		<< "    contract  Create a new contract with current secret." << endl
-		<< "    peers  List the peers that are connected" << endl
-#if ETH_FATDB || !ETH_TRUE
-		<< "    listaccounts  List the accounts on the network." << endl
-		<< "    listcontracts  List the contracts on the network." << endl
-		<< "    balanceat <address>  Gives the balance of the given account." << endl
-		<< "    balanceatblock <address> <blocknumber>  Gives the balance of the given account." << endl
-		<< "    storageat <address>  Gives the storage of the given account." << endl
-		<< "    storageatblock <address> <blocknumber>  Gives the storahe of the given account at a given blocknumber." << endl
-		<< "    codeat <address>  Gives the code of the given account." << endl
-#endif
-		<< "    setsigningkey <addr>  Set the address with which to sign transactions." << endl
-		<< "    setaddress <addr>  Set the coinbase (mining payout) address." << endl
-		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." << endl
-		<< "    importconfig <path>  Import the config (.RLP) from the path provided." << endl
-		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
-		<< "    reprocess <block>  Reprocess a given block." << endl
-		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
-		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
-		<< "    hashrate  Print the current hashrate in hashes per second if the client is mining." << endl
-		<< "    exit  Exits the application." << endl;
-}
-
 void help()
 {
 	cout
 		<< "Usage eth [OPTIONS]" << endl
 		<< "Options:" << endl << endl
+		<< "Operating mode (default is non-interactive node):" << endl
+#if ETH_JSCONSOLE || !ETH_TRUE
+		<< "    console  Enter interactive console mode (default: non-interactive)." << endl
+		<< "    import <file>  Import file as a concatenated series of blocks." << endl
+		<< "    export <file>  Export file as a concatenated series of blocks." << endl
+#endif
 		<< "Client mode (default):" << endl
 		<< "    --olympic  Use the Olympic (0.9) protocol." << endl
 		<< "    --frontier  Use the Frontier (1.0) protocol." << endl
@@ -127,9 +86,6 @@ void help()
 		<< "    --genesis-json <file>  Import the genesis block information from the given json file." << endl
 		<< endl
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (default: full)." << endl
-#if ETH_JSCONSOLE || !ETH_TRUE
-		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
-#endif
 		<< endl
 #if ETH_JSONRPC || !ETH_TRUE
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
@@ -169,7 +125,8 @@ void help()
 		<< endl
 		<< "Client networking:" << endl
 		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
-		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
+		<< "    --bootstrap  Connect to the default Ethereum peerservers (default unless --no-discovery used)." << endl
+		<< "    --no-bootstrap  Do not connect to the default Ethereum peerservers (default only when --no-discovery is used)." << endl
 		<< "    -x,--peers <number>  Attempt to connect to given number of peers (default: 11)." << endl
 		<< "    --peer-stretch <number>  Accepted connection multiplier (default: 7)." << endl
 	
@@ -188,7 +145,7 @@ void help()
 // TODO:
 //		<< "	--trust-peers <filename>  Space delimited list of publickeys." << endl
 	
-		<< "    --no-discovery  Disable Node discovery." << endl
+		<< "    --no-discovery  Disable Node discovery, implies --no-bootstrap." << endl
 		<< "    --pin  Only accept or connect to trusted peers." << endl
 		<< "    --hermit  Equivalent to --no-discovery --pin." << endl
 		<< "    --sociable  Forces discovery and no pinning." << endl
@@ -199,9 +156,8 @@ void help()
 		<< "    --structured-logging  Enable structured logging (default output to stdout)." << endl
 		<< "    --structured-logging-format <format>  Set the structured logging time format." << endl
 		<< "    --structured-logging-url <URL>  Set the structured logging destination (currently only file:// supported)." << endl
+		<< endl
 		<< "Import/export modes:" << endl
-		<< "    -I,--import <file>  Import file as a concatenated series of blocks and exit." << endl
-		<< "    -E,--export <file>  Export file as a concatenated series of blocks and exit." << endl
 		<< "    --from <n>  Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --only <n>  Equivalent to --export-from n --export-to n." << endl
@@ -264,8 +220,6 @@ string pretty(h160 _a, dev::eth::State const& _st)
 	return ns;
 }
 
-bool g_exit = false;
-
 inline bool isPrime(unsigned _number)
 {
 	if (((!(_number & 1)) && _number != 2 ) || (_number < 2) || (_number % 3 == 0 && _number != 3))
@@ -274,11 +228,6 @@ inline bool isPrime(unsigned _number)
 		if ((_number % (6 * k + 1) == 0) || (_number % (6 * k - 1) == 0))
 			return false;
 	return true;
-}
-
-void sighandler(int)
-{
-	g_exit = true;
 }
 
 enum class NodeMode
@@ -311,12 +260,16 @@ void stopMiningAfterXBlocks(eth::Client* _c, unsigned _start, unsigned& io_minin
 	this_thread::sleep_for(chrono::milliseconds(100));
 }
 
-void interactiveMode(eth::Client*, std::shared_ptr<eth::TrivialGasPricer>, WebThreeDirect&, KeyManager&, string&, string&, function<string(string const&)>, function<string(Address const&)>, NetworkPreferences, Address, Address, TransactionPriority) {}
-
 int main(int argc, char** argv)
 {
 	// Init defaults
 	Defaults::get();
+
+#if ETH_DEBUG
+	g_logVerbosity = 4;
+#else
+	g_logVerbosity = 1;
+#endif
 
 	/// Operating mode.
 	OperationMode mode = OperationMode::Node;
@@ -360,7 +313,7 @@ int main(int argc, char** argv)
 	unsigned peers = 11;
 	unsigned peerStretch = 7;
 	std::map<NodeId, pair<NodeIPEndpoint,bool>> preferredNodes;
-	bool bootstrap = false;
+	bool bootstrap = true;
 	bool disableDiscovery = false;
 	bool pinning = false;
 	bool enableDiscovery = false;
@@ -382,7 +335,7 @@ int main(int argc, char** argv)
 	string structuredLoggingURL;
 
 	/// Transaction params
-	TransactionPriority priority = TransactionPriority::Medium;
+//	TransactionPriority priority = TransactionPriority::Medium;
 //	double etherPrice = 30.679;
 //	double blockFees = 15.0;
 	u256 askPrice = c_defaultGasPrice;
@@ -445,14 +398,14 @@ int main(int argc, char** argv)
 			passwordsToNote.push_back(argv[++i]);
 		else if (arg == "--master" && i + 1 < argc)
 			masterPassword = argv[++i];
-		else if ((arg == "-I" || arg == "--import") && i + 1 < argc)
+		else if ((arg == "-I" || arg == "--import" || arg == "import") && i + 1 < argc)
 		{
 			mode = OperationMode::Import;
 			filename = argv[++i];
 		}
 		else if (arg == "--dont-check")
 			safeImport = true;
-		else if ((arg == "-E" || arg == "--export") && i + 1 < argc)
+		else if ((arg == "-E" || arg == "--export" || arg == "export") && i + 1 < argc)
 		{
 			mode = OperationMode::Export;
 			filename = argv[++i];
@@ -646,7 +599,7 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
-		else if ((arg == "-P" || arg == "--priority") && i + 1 < argc)
+/*		else if ((arg == "-P" || arg == "--priority") && i + 1 < argc)
 		{
 			string m = boost::to_lower_copy(string(argv[++i]));
 			if (m == "lowest")
@@ -667,7 +620,7 @@ int main(int argc, char** argv)
 					cerr << "Unknown " << arg << " option: " << m << endl;
 					return -1;
 				}
-		}
+		}*/
 		else if ((arg == "-m" || arg == "--mining") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -686,8 +639,13 @@ int main(int argc, char** argv)
 		}
 		else if (arg == "-b" || arg == "--bootstrap")
 			bootstrap = true;
+		else if (arg == "--no-bootstrap")
+			bootstrap = false;
 		else if (arg == "--no-discovery")
+		{
 			disableDiscovery = true;
+			bootstrap = false;
+		}
 		else if (arg == "--pin")
 			pinning = true;
 		else if (arg == "--hermit")
@@ -709,7 +667,7 @@ int main(int argc, char** argv)
 			jsonAdmin = argv[++i];
 #endif
 #if ETH_JSCONSOLE || !ETH_TRUE
-		else if (arg == "-i" || arg == "--interactive" || arg == "--console")
+		else if (arg == "-i" || arg == "--interactive" || arg == "--console" || arg == "console")
 			useConsole = true;
 #endif
 		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
@@ -821,7 +779,10 @@ int main(int argc, char** argv)
 	// Set up all the chain config stuff.
 	resetNetwork(releaseNetwork);
 	if (!privateChain.empty())
+	{
 		CanonBlockChain<Ethash>::forceGenesisExtraData(sha3(privateChain).asBytes());
+		CanonBlockChain<Ethash>::forceGenesisDifficulty(c_minimumDifficulty);
+	}
 	if (!genesisJSON.empty())
 		CanonBlockChain<Ethash>::setGenesis(genesisJSON);
 	if (gasFloor != UndefinedU256)
@@ -835,7 +796,7 @@ int main(int argc, char** argv)
 		if (c_network == eth::Network::Olympic)
 			cout << "Welcome to Olympic!" << endl;
 		else if (c_network == eth::Network::Frontier)
-			cout << "Welcome to the " EthMaroonBold "Frontier" EthReset "!" << endl;
+			cout << "Beware. You're entering the " EthMaroonBold "Frontier" EthReset "!" << endl;
 	}
 
 	m.execute();
@@ -1051,7 +1012,7 @@ int main(int argc, char** argv)
 
 	if (keyManager.accounts().empty())
 	{
-		h128 uuid = keyManager.import(Secret::random(), "Default key");
+		h128 uuid = keyManager.import(ICAP::createDirect(), "Default key");
 		if (!beneficiary)
 			beneficiary = keyManager.address(uuid);
 		if (!signingKey)
@@ -1077,8 +1038,14 @@ int main(int argc, char** argv)
 		c->setNetworkId(networkId);
 	}
 
-	cout << "Transaction Signer: " << signingKey << endl;
-	cout << "Mining Benefactor: " << beneficiary << endl;
+	auto renderFullAddress = [&](Address const& _a) -> std::string
+	{
+		return ICAP(_a).encoded() + " (" + toUUID(keyManager.uuid(_a)) + " - " + toHex(_a.ref().cropped(0, 4)) + ")";
+	};
+
+	cout << "Transaction Signer: " << renderFullAddress(signingKey) << endl;
+	cout << "Mining Beneficiary: " << renderFullAddress(beneficiary) << endl;
+	cout << "Foundation: " << renderFullAddress(Address("de0b295669a9fd93d5f28d9ec85e40f4cb697bae")) << endl;
 
 	if (bootstrap || !remoteHost.empty() || disableDiscovery)
 	{
@@ -1086,7 +1053,7 @@ int main(int argc, char** argv)
 		cout << "Node ID: " << web3.enode() << endl;
 	}
 	else
-		cout << "Networking disabled. To start, use netstart or pass -b or a remote host." << endl;
+		cout << "Networking disabled. To start, use netstart or pass --bootstrap or a remote host." << endl;
 
 	if (useConsole && jsonRPCURL == -1)
 		jsonRPCURL = SensibleHttpPort;
@@ -1120,14 +1087,12 @@ int main(int argc, char** argv)
 			web3.requirePeer(i.first, i.second);
 	if (!remoteHost.empty())
 		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
-	
-	signal(SIGABRT, &sighandler);
-	signal(SIGTERM, &sighandler);
-	signal(SIGINT, &sighandler);
 
-	if (interactive)
-		interactiveMode(c, gasPricer, web3, keyManager, logbuf, additional, getPassword, getAccountPassword, netPrefs, beneficiary, signingKey, priority);
-	else if (c)
+	signal(SIGABRT, &Client::exitHandler);
+	signal(SIGTERM, &Client::exitHandler);
+	signal(SIGINT, &Client::exitHandler);
+
+	if (c)
 	{
 		unsigned n = c->blockChain().details().number;
 		if (mining)
@@ -1139,7 +1104,7 @@ int main(int argc, char** argv)
 			shared_ptr<dev::WebThreeStubServer> rpcServer = make_shared<dev::WebThreeStubServer>(*console.connector(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer);
 			string sessionKey = rpcServer->newSession(SessionPermissions{{Privilege::Admin}});
 			console.eval("web3.admin.setSessionKey('" + sessionKey + "')");
-			while (!g_exit)
+			while (!Client::shouldExit())
 			{
 				console.readExpression();
 				stopMiningAfterXBlocks(c, n, mining);
@@ -1148,11 +1113,11 @@ int main(int argc, char** argv)
 #endif
 		}
 		else
-			while (!g_exit)
+			while (!Client::shouldExit())
 				stopMiningAfterXBlocks(c, n, mining);
 	}
 	else
-		while (!g_exit)
+		while (!Client::shouldExit())
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
 #if ETH_JSONRPC

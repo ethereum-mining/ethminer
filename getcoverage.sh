@@ -17,6 +17,10 @@ case $i in
 	TEST_MODE="--all"
 	shift 
 	;;
+	--filltests)
+	TEST_FILL="--filltests"
+	shift
+	;;
 esac
 done
 
@@ -39,9 +43,9 @@ if which lcov >/dev/null; then
 		lcov --capture --initial --directory $BUILD_DIR --output-file $OUTPUT_DIR/coverage_base.info
 
 		echo Running testeth...
-		$CPP_ETHEREUM_PATH/build/test/testeth $TEST_MODE
-		$CPP_ETHEREUM_PATH/build/test/testeth -t StateTests --jit $TEST_MODE
-		$CPP_ETHEREUM_PATH/build/test/testeth -t VMTests --jit $TEST_MODE
+		$BUILD_DIR/test/testeth $TEST_MODE $TEST_FILL
+		$BUILD_DIR/test/testeth -t StateTests --jit $TEST_MODE
+		$BUILD_DIR/test/testeth -t VMTests --jit $TEST_MODE
 
 		echo Prepearing coverage info...
 		lcov --capture --directory $BUILD_DIR --output-file $OUTPUT_DIR/coverage_test.info
