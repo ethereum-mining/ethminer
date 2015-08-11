@@ -217,6 +217,7 @@ ApplicationWindow {
 		shortcut: "Ctrl+Alt+V"
 		onTriggered: mainContent.debuggerPanel.assemblyMode = !mainContent.debuggerPanel.assemblyMode;
 		checked:  mainContent.debuggerPanel.assemblyMode;
+		checkable: true
 		enabled: true
 	}
 
@@ -429,7 +430,9 @@ ApplicationWindow {
 	}
 
 	Settings {
+		id: appSettings
 		property alias gasEstimation: gasEstimationAction.checked
 		property alias optimizeCode: optimizeCodeAction.checked
+		property string nodeAddress: "http://localhost:8545"
 	}
 }
