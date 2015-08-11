@@ -53,9 +53,14 @@ To state that you accept this fact for all of your PRs please add yourself to th
 like in the example below.
 
 #### External Contributors
+I hereby place all my contributions in this file under an MIT
+licence, as specified [here](http://opensource.org/licenses/MIT).
 - *Name Surname* (**email@domain**)
 
 #### Contribution guideline
+
+Please add yourself in the `@author` section of the file your are adding/editing
+with the same wording as the one you listed yourself in the external contributors section above.
 
 All development goes in develop branch - please don't submit pull requests to master.
 
