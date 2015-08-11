@@ -51,14 +51,6 @@ void overwriteBlockHeader(BlockHeader& _current_BlockHeader, mObject& _blObj, co
 void updatePoW(BlockHeader& _bi);
 mArray importUncles(mObject const& _blObj, vector<BlockHeader>& _vBiUncles, vector<BlockHeader> const& _vBiBlocks, std::vector<blockSet> _blockSet);
 
-//void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
-//{
-//	if (_fillin == false)
-//		_v.get_bool();
-
-//	cerr << "BlockChainTests not implemented!" << endl;
-//}
-
 void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 {
 	for (auto& i: _v.get_obj())
