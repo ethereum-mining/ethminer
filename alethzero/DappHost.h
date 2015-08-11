@@ -29,6 +29,12 @@
 struct MHD_Daemon;
 struct MHD_Connection;
 
+namespace dev
+{
+
+namespace az
+{
+
 /// DApp web server. Servers web content, resolves paths by hashes
 class DappHost
 {
@@ -60,3 +66,5 @@ private:
 	std::map<QString, ManifestEntry const*> m_entriesByPath;
 };
 
+}
+}

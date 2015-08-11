@@ -25,9 +25,16 @@
 #include <QList>
 
 namespace Ui { class Connect; }
-namespace dev { namespace p2p { class Host; } }
 
-class Connect : public QDialog
+namespace dev
+{
+
+namespace p2p { class Host; }
+
+namespace az
+{
+
+class Connect: public QDialog
 {
 	Q_OBJECT
 
@@ -53,3 +60,6 @@ public:
 private:
 	Ui::Connect* ui;
 };
+
+}
+}

@@ -14,52 +14,33 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Connect.cpp
- * @author Alex Leverington <nessence@gmail.com>
+/** @file $NAME.h
+ * @author Gav Wood <i@gavwood.com>
  * @date 2015
  */
 
-#include "Connect.h"
-#include <libp2p/Host.h>
-#include "ui_Connect.h"
-using namespace dev;
-using namespace az;
+#pragma once
 
-Connect::Connect(QWidget *parent) :
-	QDialog(parent),
-	ui(new Ui::Connect)
+#include "MainFace.h"
+
+namespace dev
 {
-	ui->setupUi(this);
+namespace az
+{
+
+class $NAME: public QObject, public Plugin
+{
+	Q_OBJECT
+
+public:
+	$NAME(MainFace* _m);
+	~$NAME();
+
+private:
+	void onAllChange() override {}
+	void readSettings(QSettings const&) override {}
+	void writeSettings(QSettings&) override {}
+};
+
 }
-
-Connect::~Connect()
-{
-	delete ui;
-}
-
-void Connect::setEnvironment(QStringList const& _nodes)
-{
-	if (ui->host->count() == 0)
-		ui->host->addItems(_nodes);
-}
-
-void Connect::reset()
-{
-	ui->nodeId->clear();
-	ui->required->setChecked(true);
-}
-
-QString Connect::host()
-{
-	return ui->host->currentText();
-}
-
-QString Connect::nodeId()
-{
-	return ui->nodeId->text();
-}
-
-bool Connect::required()
-{
-	return ui->required->isChecked();
 }
