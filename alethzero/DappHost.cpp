@@ -24,8 +24,8 @@
 #include <microhttpd.h>
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
-
 using namespace dev;
+using namespace az;
 
 DappHost::DappHost(int _port, int _threads):
 	m_port(_port),

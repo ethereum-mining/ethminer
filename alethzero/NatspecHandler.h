@@ -27,6 +27,11 @@
 #include <libdevcore/FixedHash.h>
 #include "Context.h"
 
+namespace dev
+{
+namespace az
+{
+
 class NatspecHandler: public NatSpecFace
 {
   public:
@@ -52,3 +57,6 @@ class NatspecHandler: public NatSpecFace
 	ldb::DB* m_db = nullptr;
 	Json::Reader m_reader;
 };
+
+}
+}

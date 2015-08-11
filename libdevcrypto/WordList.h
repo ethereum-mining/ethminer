@@ -14,17 +14,18 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file WebPage.cpp
- * @author Arkadiy Paronyan arkadiy@ethdev.com>
+/** @file WordList.h
+ * @author Gav Wood <i@gavwood.com>
  * @date 2015
  */
 
-#include "WebPage.h"
-using namespace dev;
-using namespace az;
+#pragma once
 
-void WebPage::javaScriptConsoleMessage(QWebEnginePage::JavaScriptConsoleMessageLevel _level, QString const& _message, int _lineNumber, QString const& _sourceID)
+#include "Common.h"
+
+namespace dev
 {
-	QString prefix = _level == QWebEnginePage::ErrorMessageLevel ? "error" : _level == QWebEnginePage::WarningMessageLevel ? "warning" : "";
-	emit consoleMessage(QString("%1(%2:%3):%4").arg(prefix).arg(_sourceID).arg(_lineNumber).arg(_message));
+
+extern strings const WordList;
+
 }

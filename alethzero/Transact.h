@@ -30,8 +30,15 @@
 #include "Context.h"
 
 namespace Ui { class Transact; }
-namespace dev { namespace eth { class Client; } }
-namespace dev { namespace solidity { class CompilerStack; } }
+
+namespace dev
+{
+
+namespace eth { class Client; }
+namespace solidity { class CompilerStack; }
+
+namespace az
+{
 
 struct GasRequirements
 {
@@ -99,3 +106,7 @@ private:
 	NatSpecFace* m_natSpecDB = nullptr;
 	bool m_allGood = false;
 };
+
+}
+}
+
