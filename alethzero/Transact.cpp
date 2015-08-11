@@ -137,7 +137,10 @@ void Transact::updateDestination()
 	ui->destination->clear();
 	ui->destination->addItem("(Create Contract)");
 	for (Address const& a: m_main->allKnownAddresses())
+	{
+		cdebug << "Adding" << a << m_main->toName(a) << " -> " << (m_main->toName(a) + " (" + ICAP(a).encoded() + ")");
 		ui->destination->addItem(QString::fromStdString(m_main->toName(a) + " (" + ICAP(a).encoded() + ")"), QVariant(QByteArray((char const*)a.data(), a.size)));
+	}
 }
 
 void Transact::updateFee()
@@ -348,13 +351,11 @@ GasRequirements Transact::determineGasRequirements()
 	for (unsigned i = 0; i < 20 && ((haveUpperBound && upperBound - lowerBound > 100) || !haveUpperBound); ++i)	// get to with 100.
 	{
 		qint64 mid = haveUpperBound ? (lowerBound + upperBound) / 2 : upperBound;
-		cdebug << "Trying" << mid;
 		ExecutionResult er;
 		if (isCreation())
 			er = ethereum()->create(from, value(), m_data, mid, gasPrice(), ethereum()->getDefault(), FudgeFactor::Lenient);
 		else
 			er = ethereum()->call(from, value(), to, m_data, mid, gasPrice(), ethereum()->getDefault(), FudgeFactor::Lenient);
-		cdebug << toString(er.excepted);
 		if (er.excepted == TransactionException::OutOfGas || er.excepted == TransactionException::OutOfGasBase || er.excepted == TransactionException::OutOfGasIntrinsic || er.codeDeposit == CodeDeposit::Failed)
 		{
 			lowerBound = mid;

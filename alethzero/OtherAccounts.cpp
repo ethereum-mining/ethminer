@@ -34,7 +34,7 @@ DEV_AZ_NOTE_PLUGIN(OtherAccounts);
 OtherAccounts::OtherAccounts(MainFace* _m):
 	AccountNamerPlugin(_m, "OtherAccounts")
 {
-	connect(addMenuItem("New Brain Wallet...", "menuTools", true), SIGNAL(triggered()), SLOT(import()));
+	connect(addMenuItem("Register Third-party Address Names...", "menuTools", true), SIGNAL(triggered()), SLOT(import()));
 }
 
 void OtherAccounts::import()
@@ -48,8 +48,8 @@ void OtherAccounts::import()
 		QStringList sl = u.accounts->toPlainText().split("\n");
 		for (QString const& s: sl)
 		{
-			Address addr = toAddress(s.section("[ \\t]+", 0, 1).toStdString());
-			string name = s.section("[ \\t]+", 1).toStdString();
+			Address addr = dev::eth::toAddress(s.section(QRegExp("[ \\0\\t]+"), 0, 0).toStdString());
+			string name = s.section(QRegExp("[ \\0\\t]+"), 1).toStdString();
 			m_toName[addr] = name;
 			m_toAddress[name] = addr;
 		}
