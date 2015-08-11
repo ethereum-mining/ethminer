@@ -246,8 +246,10 @@ void Debugger::update()
 			ss << dec << "STEP: " << ws.steps << "  |  PC: 0x" << hex << ws.curPC << "  :  " << instructionInfo(ws.inst).name << "  |  ADDMEM: " << dec << ws.newMemSize << " words  |  COST: " << dec << ws.gasCost <<  "  |  GAS: " << dec << ws.gas;
 			ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
 			stringstream s;
-			for (auto const& i: ws.storage)
-				s << "@" << m_context->prettyU256(i.first) << "&nbsp;&nbsp;&nbsp;&nbsp;" << m_context->prettyU256(i.second) << "<br/>";
+			auto keys = dev::keysOf(ws.storage);
+			sort(keys.begin(), keys.end());
+			for (auto const& key: keys)
+				s << "@" << m_context->prettyU256(key) << "&nbsp;&nbsp;&nbsp;&nbsp;" << m_context->prettyU256(ws.storage.at(key)) << "<br/>";
 			ui->debugStorage->setHtml(QString::fromStdString(s.str()));
 		}
 	}
