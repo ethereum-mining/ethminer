@@ -95,7 +95,7 @@ void reportException(TryCatch* _tryCatch)
 	}
 }
 
-Handle<Value> ConsoleLog(Arguments const& _args)
+Handle<Value> consoleLog(Arguments const& _args)
 {
 	Local<External> wrap = Local<External>::Cast(_args.Data());
 	auto engine = reinterpret_cast<JSV8Engine const*>(wrap->Value());
@@ -105,7 +105,7 @@ Handle<Value> ConsoleLog(Arguments const& _args)
 	return Undefined();
 }
 
-Handle<Value> LoadScript(Arguments const& _args)
+Handle<Value> loadScript(Arguments const& _args)
 {
 	Local<External> wrap = Local<External>::Cast(_args.Data());
 	auto engine = reinterpret_cast<JSV8Engine const*>(wrap->Value());
@@ -189,14 +189,14 @@ JSV8Engine::JSV8Engine(): m_scope(new JSV8Scope())
 
 	auto consoleTemplate = ObjectTemplate::New();
 
-	Local<FunctionTemplate> consoleLog = FunctionTemplate::New(ConsoleLog, External::New(this));
-	consoleTemplate->Set(String::New("debug"), consoleLog);
-	consoleTemplate->Set(String::New("log"), consoleLog);
-	consoleTemplate->Set(String::New("error"), consoleLog);
+	Local<FunctionTemplate> consoleLogFunction = FunctionTemplate::New(consoleLog, External::New(this));
+	consoleTemplate->Set(String::New("debug"), consoleLogFunction);
+	consoleTemplate->Set(String::New("log"), consoleLogFunction);
+	consoleTemplate->Set(String::New("error"), consoleLogFunction);
 	context()->Global()->Set(String::New("console"), consoleTemplate->NewInstance());
 
-	Local<FunctionTemplate> loadScript = FunctionTemplate::New(LoadScript, External::New(this));
-	context()->Global()->Set(String::New("loadScript"), loadScript->GetFunction());
+	Local<FunctionTemplate> loadScriptFunction = FunctionTemplate::New(loadScript, External::New(this));
+	context()->Global()->Set(String::New("loadScript"), loadScriptFunction->GetFunction());
 }
 
 JSV8Engine::~JSV8Engine()
