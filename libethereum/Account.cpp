@@ -20,8 +20,8 @@
  */
 
 #include "Account.h"
+#include <liblll/Compiler.h>
 #include <test/JsonSpiritHeaders.h>
-#include <test/TestHelper.h>
 #include <libethcore/Common.h>
 using namespace std;
 using namespace dev;
@@ -64,7 +64,15 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, AccountMaskMap* 
 		if (haveCode)
 		{
 			ret[a] = Account(balance, Account::ContractConception);
-			ret[a].setCode(test::importCode(o));
+			if (o["code"].type() == json_spirit::str_type)
+			{
+				if (o["code"].get_str().find("0x") != 0)
+					ret[a].setCode(compileLLL(o["code"].get_str(), false));
+				else
+					ret[a].setCode(fromHex(o["code"].get_str().substr(2)));
+			}
+			else
+				cerr << "Error importing code of account " << a << "! Code field needs to be a string";
 		}
 		else
 			ret[a] = Account(balance, Account::NormalCreation);
