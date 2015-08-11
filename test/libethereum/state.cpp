@@ -59,7 +59,6 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 		const State importedStatePost = importer.m_statePost;
 		bytes output;
 
-		// execute transaction
 		Listener::ExecTimeGuard guard{i.first};
 		output = importer.executeTest();
 
