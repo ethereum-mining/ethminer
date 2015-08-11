@@ -48,19 +48,19 @@ See [LICENSE](LICENSE). Some old contributions are under the [GPLv3 license](htt
 
 ### Contributing
 
-All new contributions are added under the MIT License. Please refer to the `LICENCSE` file in the root directory.
-To state that you accept this fact for all of your PRs please add yourself to the list of external contributors
-like in the example below.
+All new contributions are added under the MIT License. Please refer to the `LICENSE` file in the root directory.
+To state that you accept this fact for all of your contributions please add yourself to the list of external contributors like in the example below.
 
 #### External Contributors
-I hereby place all my contributions in this file under an MIT
+I hereby place all my contributions in this codebase under an MIT
 licence, as specified [here](http://opensource.org/licenses/MIT).
 - *Name Surname* (**email@domain**)
 
 #### Contribution guideline
 
-Please add yourself in the `@author` section of the file your are adding/editing
-with the same wording as the one you listed yourself in the external contributors section above.
+Please add yourself in the `@author` doxygen  section of the file your are adding/editing
+with the same wording as the one you listed yourself in the external contributors section above,
+only replacing the word **contribution** by **file**
 
 All development goes in develop branch - please don't submit pull requests to master.
 
