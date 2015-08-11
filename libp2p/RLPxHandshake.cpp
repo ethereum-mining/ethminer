@@ -143,8 +143,7 @@ void RLPXHandshake::error()
 		clog(NetP2PConnect) << "Handshake Failed (Connection reset by peer)";
 
 	m_socket->close();
-	if (m_io != nullptr)
-		delete m_io;
+	m_io.reset();
 }
 
 void RLPXHandshake::transition(boost::system::error_code _ech)
@@ -194,7 +193,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 
 		/// This pointer will be freed if there is an error otherwise
 		/// it will be passed to Host which will take ownership.
-		m_io = new RLPXFrameCoder(*this);
+		m_io.reset(new RLPXFrameCoder(*this));
 
 		// old packet format
 		// 5 arguments, HelloPacket
@@ -286,7 +285,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 						try
 						{
 							RLP rlp(frame.cropped(1), RLP::ThrowOnFail | RLP::FailIfTooSmall);
-							m_host->startPeerSession(m_remote, rlp, m_io, m_socket);
+							m_host->startPeerSession(m_remote, rlp, move(m_io), m_socket);
 						}
 						catch (std::exception const& _e)
 						{

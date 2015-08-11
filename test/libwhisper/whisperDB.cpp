@@ -143,7 +143,7 @@ BOOST_AUTO_TEST_CASE(messages)
 
 	{
 		p2p::Host h("Test");
-		auto wh = h.registerCapability(new WhisperHost(true));
+		auto wh = h.registerCapability(make_shared<WhisperHost>(true));
 		preexisting = wh->all();
 		cnote << preexisting.size() << "preexisting messages in DB";
 		wh->installWatch(BuildTopic("test"));
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(messages)
 
 	{
 		p2p::Host h("Test");
-		auto wh = h.registerCapability(new WhisperHost(true));
+		auto wh = h.registerCapability(make_shared<WhisperHost>(true));
 		map<h256, Envelope> m2 = wh->all();
 		wh->installWatch(BuildTopic("test"));
 		BOOST_REQUIRE_EQUAL(m1.size(), m2.size());
@@ -204,7 +204,7 @@ BOOST_AUTO_TEST_CASE(corruptedData)
 
 	{
 		p2p::Host h("Test");
-		auto wh = h.registerCapability(new WhisperHost(true));
+		auto wh = h.registerCapability(make_shared<WhisperHost>(true));
 		m = wh->all();
 		BOOST_REQUIRE(m.end() == m.find(x));
 	}
@@ -228,7 +228,7 @@ BOOST_AUTO_TEST_CASE(filters)
 	{
 		WhisperFiltersDB db;
 		p2p::Host h("Test");
-		auto wh = h.registerCapability(new WhisperHost());
+		auto wh = h.registerCapability(make_shared<WhisperHost>());
 		wh->installWatch(BuildTopic("t1"));
 		wh->installWatch(BuildTopic("t2"));
 		db.saveTopicsToDB(*wh, persistID);
@@ -243,7 +243,7 @@ BOOST_AUTO_TEST_CASE(filters)
 
 	Host host1("Test", NetworkPreferences("127.0.0.1", port1, false));
 	host1.setIdealPeerCount(1);
-	auto whost1 = host1.registerCapability(new WhisperHost());
+	auto whost1 = host1.registerCapability(make_shared<WhisperHost>());
 	host1.start();
 	WhisperFiltersDB db;
 	auto watches = db.restoreTopicsFromDB(whost1.get(), persistID);
@@ -277,7 +277,7 @@ BOOST_AUTO_TEST_CASE(filters)
 
 	Host host2("Test", NetworkPreferences("127.0.0.1", 30309, false));
 	host2.setIdealPeerCount(1);
-	auto whost2 = host2.registerCapability(new WhisperHost());
+	auto whost2 = host2.registerCapability(make_shared<WhisperHost>());
 	host2.start();
 
 	for (unsigned i = 0; i < 3000 && !host1.haveNetwork(); i += step)

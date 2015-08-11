@@ -33,9 +33,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-Session::Session(Host* _h, RLPXFrameCoder* _io, std::shared_ptr<RLPXSocket> const& _s, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info):
+Session::Session(Host* _h, unique_ptr<RLPXFrameCoder>&& _io, std::shared_ptr<RLPXSocket> const& _s, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info):
 	m_server(_h),
-	m_io(_io),
+	m_io(move(_io)),
 	m_socket(_s),
 	m_peer(_n),
 	m_info(_info),
@@ -69,7 +69,6 @@ Session::~Session()
 		}
 	}
 	catch (...){}
-	delete m_io;
 }
 
 ReputationManager& Session::repMan() const

@@ -113,6 +113,9 @@ protected:
 	/// Request blocks from peer if needed
 	void requestBlocks(std::shared_ptr<EthereumPeer> _peer);
 
+private:
+	EthereumHost& m_host;
+
 protected:
 	Handler<> m_bqRoomAvailable;			///< Triggered once block queue
 	mutable RecursiveMutex x_sync;
@@ -124,8 +127,6 @@ private:
 	static char const* const s_stateNames[static_cast<int>(SyncState::Size)];
 	bool invariants() const override = 0;
 	void logNewBlock(h256 const& _h);
-
-	EthereumHost& m_host;
 };
 
 
