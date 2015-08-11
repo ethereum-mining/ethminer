@@ -23,6 +23,7 @@
 
 #include "WebThreeStubServerBase.h"
 
+#include <signal.h>
 // Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
 
@@ -573,6 +574,13 @@ Json::Value WebThreeStubServerBase::admin_net_nodeInfo(const string& _session)
 	ret["id"] = i.id.hex();
 	ret["enode"] = i.enode();
 	return ret;
+}
+
+bool WebThreeStubServerBase::admin_eth_exit(string const& _session)
+{
+	ADMIN;
+	Client::exitHandler(SIGTERM);
+	return true;
 }
 
 bool WebThreeStubServerBase::admin_eth_setMining(bool _on, std::string const& _session)
