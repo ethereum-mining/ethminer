@@ -221,7 +221,7 @@ class DeadlineOps
 	{
 	public:
 		DeadlineOp(ba::io_service& _io, unsigned _msInFuture, std::function<void(boost::system::error_code const&)> const& _f): m_timer(new ba::deadline_timer(_io)) { m_timer->expires_from_now(boost::posix_time::milliseconds(_msInFuture)); m_timer->async_wait(_f); }
-		~DeadlineOp() {}
+		~DeadlineOp() { if (m_timer) m_timer->cancel(); }
 		
 		DeadlineOp(DeadlineOp&& _s): m_timer(_s.m_timer.release()) {}
 		DeadlineOp& operator=(DeadlineOp&& _s)
@@ -247,6 +247,8 @@ public:
 	void schedule(unsigned _msInFuture, std::function<void(boost::system::error_code const&)> const& _f) { if (m_stopped) return; DEV_GUARDED(x_timers) m_timers.emplace_back(m_io, _msInFuture, _f); }	
 
 	void stop() { m_stopped = true; DEV_GUARDED(x_timers) m_timers.clear(); }
+
+	bool isStopped() const { return m_stopped; }
 	
 protected:
 	void reap();
