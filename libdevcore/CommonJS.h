@@ -51,10 +51,17 @@ inline std::string toJS(bytes const& _n, std::size_t _padding = 0)
 	return "0x" + toHex(n);
 }
 
-template< typename T >std::string toJS( T const& i )
+template<unsigned T> std::string toJS(SecureFixedHash<T> const& _i)
 {
 	std::stringstream stream;
-	stream << "0x" << std::hex << i;
+	stream << "0x" << _i.makeInsecure().hex();
+	return stream.str();
+}
+
+template<typename T> std::string toJS(T const& _i)
+{
+	std::stringstream stream;
+	stream << "0x" << std::hex << _i;
 	return stream.str();
 }
 

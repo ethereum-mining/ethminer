@@ -25,7 +25,12 @@
 
 #include <ctime>
 #include <chrono>
+#pragma warning(push)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <boost/thread.hpp>
+#pragma warning(pop)
+#pragma GCC diagnostic pop
 #include "vector_ref.h"
 #include "Common.h"
 #include "CommonIO.h"

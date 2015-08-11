@@ -23,8 +23,8 @@ bytesConstRef JitVM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _on
 	// TODO: Rejecting transactions with gas limit > 2^63 can be used by attacker to take JIT out of scope
 	rejected |= io_gas > std::numeric_limits<decltype(m_data.gas)>::max(); // Do not accept requests with gas > 2^63 (int64 max)
 	rejected |= _ext.gasPrice > std::numeric_limits<decltype(m_data.gasPrice)>::max();
-	rejected |= _ext.currentBlock.number() > std::numeric_limits<decltype(m_data.number)>::max();
-	rejected |= _ext.currentBlock.timestamp() > std::numeric_limits<decltype(m_data.timestamp)>::max();
+	rejected |= _ext.envInfo().number() > std::numeric_limits<decltype(m_data.number)>::max();
+	rejected |= _ext.envInfo().timestamp() > std::numeric_limits<decltype(m_data.timestamp)>::max();
 
 	if (rejected)
 	{
@@ -41,11 +41,11 @@ bytesConstRef JitVM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _on
 	m_data.caller       = eth2jit(fromAddress(_ext.caller));
 	m_data.origin       = eth2jit(fromAddress(_ext.origin));
 	m_data.callValue    = eth2jit(_ext.value);
-	m_data.coinBase     = eth2jit(fromAddress(_ext.currentBlock.coinbaseAddress()));
-	m_data.difficulty   = eth2jit(_ext.currentBlock.difficulty());
-	m_data.gasLimit     = eth2jit(_ext.currentBlock.gasLimit());
-	m_data.number 		= static_cast<decltype(m_data.number)>(_ext.currentBlock.number());
-	m_data.timestamp 	= static_cast<decltype(m_data.timestamp)>(_ext.currentBlock.timestamp());
+	m_data.coinBase     = eth2jit(fromAddress(_ext.envInfo().beneficiary()));
+	m_data.difficulty   = eth2jit(_ext.envInfo().difficulty());
+	m_data.gasLimit     = eth2jit(_ext.envInfo().gasLimit());
+	m_data.number 		= static_cast<decltype(m_data.number)>(_ext.envInfo().number());
+	m_data.timestamp 	= static_cast<decltype(m_data.timestamp)>(_ext.envInfo().timestamp());
 	m_data.code     	= _ext.code.data();
 	m_data.codeSize 	= _ext.code.size();
 	m_data.codeHash		= eth2jit(_ext.codeHash);

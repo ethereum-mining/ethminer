@@ -20,9 +20,10 @@
  */
 
 #include "Connect.h"
-
 #include <libp2p/Host.h>
 #include "ui_Connect.h"
+using namespace dev;
+using namespace az;
 
 Connect::Connect(QWidget *parent) :
 	QDialog(parent),

@@ -27,6 +27,7 @@
 #include <libethereum/Client.h>
 #include <libwebthree/WebThree.h>
 #include <libethcore/CommonJS.h>
+#include <libethcore/ICAP.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
 using namespace std;
@@ -90,7 +91,7 @@ Json::Value toJson(dev::eth::BlockInfo const& _bi)
 		res["hash"] = toJS(_bi.hash());
 		res["parentHash"] = toJS(_bi.parentHash());
 		res["sha3Uncles"] = toJS(_bi.sha3Uncles());
-		res["miner"] = toJS(_bi.coinbaseAddress());
+		res["miner"] = toJS(_bi.beneficiary());
 		res["stateRoot"] = toJS(_bi.stateRoot());
 		res["transactionsRoot"] = toJS(_bi.transactionsRoot());
 		res["difficulty"] = toJS(_bi.difficulty());
@@ -482,7 +483,7 @@ shh::Message toMessage(Json::Value const& _json)
 	return ret;
 }
 
-shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, Secret _from)
+shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, Secret const& _from)
 {
 	unsigned ttl = 50;
 	unsigned workToProve = 50;

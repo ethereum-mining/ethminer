@@ -20,7 +20,6 @@
  */
 
 #include "Common.h"
-#include <random>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <libdevcore/Base64.h>
 #include <libdevcore/Terminal.h>
@@ -51,36 +50,7 @@ const unsigned c_databaseBaseVersion = 9;
 const unsigned c_databaseVersionModifier = 0;
 #endif
 
-#if ETH_FRONTIER
-Network c_network = resetNetwork(Network::Frontier);
-#else
-Network c_network = resetNetwork(Network::Olympic);
-#endif
 
-Network resetNetwork(Network _n)
-{
-	c_network = _n;
-	c_maximumExtraDataSize = c_network == Network::Olympic ? 1024 : 32;
-	switch(_n)
-	{
-	case Network::Turbo:
-		c_minGasLimit = 100000000;
-		break;
-	case Network::Olympic:
-		c_minGasLimit = 125000;
-		break;
-	case Network::Frontier:
-		c_minGasLimit = 5000;
-		break;
-	}
-
-	c_gasLimitBoundDivisor = 1024;
-	c_minimumDifficulty = 131072;
-	c_difficultyBoundDivisor = 2048;
-	c_durationLimit = c_network == Network::Turbo ? 2 : c_network == Network::Olympic ? 8 : 13;
-	c_blockReward = c_network == Network::Olympic ? (1500 * finney) : (5 * ether);
-	return _n;
-}
 
 const unsigned c_databaseVersion = c_databaseBaseVersion + (c_databaseVersionModifier << 8) + (23 << 9);
 

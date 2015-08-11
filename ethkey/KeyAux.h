@@ -104,6 +104,7 @@ public:
 		New,
 		Import,
 		ImportWithAddress,
+		ImportPresale,
 		Export,
 		Recode,
 		Kill,
@@ -155,7 +156,7 @@ public:
 			m_mode = OperationMode::KillBare;
 		else if (arg == "--create-wallet")
 			m_mode = OperationMode::CreateWallet;
-		else if (arg == "--list")
+		else if (arg == "-l" || arg == "--list")
 			m_mode = OperationMode::List;
 		else if ((arg == "-n" || arg == "--new") && i + 1 < argc)
 		{
@@ -168,7 +169,13 @@ public:
 			m_inputs = strings(1, argv[++i]);
 			m_name = argv[++i];
 		}
-		else if ((arg == "-i" || arg == "--import-with-address") && i + 3 < argc)
+		else if (arg == "--import-presale" && i + 2 < argc)
+		{
+			m_mode = OperationMode::ImportPresale;
+			m_inputs = strings(1, argv[++i]);
+			m_name = argv[++i];
+		}
+		else if (arg == "--import-with-address" && i + 3 < argc)
 		{
 			m_mode = OperationMode::ImportWithAddress;
 			m_inputs = strings(1, argv[++i]);
@@ -192,7 +199,7 @@ public:
 	{
 		KeyPair k(Secret::random());
 		while (m_icap && k.address()[0])
-			k = KeyPair(sha3(k.secret()));
+			k = KeyPair(Secret(sha3(k.secret().ref())));
 		return k;
 	}
 
@@ -219,21 +226,13 @@ public:
 		}
 		else if (m_mode == OperationMode::DecodeTx)
 		{
-			string const& i = m_inputs[0];
-			bytes b = fromHex(i);
+			bytes b = inputData(m_inputs[0]);
 			if (b.empty())
-			{
-				std::string s = contentsString(i);
-				b = fromHex(s);
-				if (b.empty())
-					b = asBytes(s);
-			}
-			if (b.empty())
-				cerr << "Unknown file or bad hex: " << i << endl;
+				cerr << "Unknown file or bad hex: '" << m_inputs[0] << "'" << endl;
 			else
 				try
 				{
-					TransactionBase t(b, CheckTransaction::Everything);
+					TransactionBase t(b, CheckTransaction::None);
 					cout << "Transaction " << t.sha3().hex() << endl;
 					if (t.isCreation())
 					{
@@ -246,7 +245,17 @@ public:
 						cout << "  to: " << t.to().hex() << endl;
 						cout << "  data: " << (t.data().empty() ? "none" : toHex(t.data())) << endl;
 					}
-					cout << "  from: " << t.from().hex() << endl;
+					try
+					{
+						auto s = t.sender();
+						if (t.isCreation())
+							cout << "  creates: " << toAddress(s, t.nonce()).hex() << endl;
+						cout << "  from: " << s.hex() << endl;
+					}
+					catch (...)
+					{
+						cout << "  from: <unsigned>" << endl;
+					}
 					cout << "  value: " << formatBalance(t.value()) << " (" << t.value() << " wei)" << endl;
 					cout << "  nonce: " << t.nonce() << endl;
 					cout << "  gas: " << t.gas() << endl;
@@ -306,18 +315,10 @@ public:
 
 			for (string const& i: m_inputs)
 			{
-				bytes b = fromHex(i);
-				bool isFile = false;
+				bool isFile;
+				bytes b = inputData(i, &isFile);
 				if (b.empty())
-				{
-					isFile = true;
-					std::string s = contentsString(i);
-					b = fromHex(s);
-					if (b.empty())
-						b = asBytes(s);
-				}
-				if (b.empty())
-					cerr << "Unknown file or bad hex: " << i << endl;
+					cerr << "Unknown file or bad hex: '" << i << "'" << endl;
 				else
 					try
 					{
@@ -326,11 +327,11 @@ public:
 						cout << t.sha3() << ": ";
 						if (isFile)
 						{
-							writeFile(i + ".signed", t.data());
+							writeFile(i + ".signed", toHex(t.rlp()));
 							cout << i + ".signed" << endl;
 						}
 						else
-							cout << toHex(t.data()) << endl;
+							cout << toHex(t.rlp()) << endl;
 					}
 					catch (Exception& ex)
 					{
@@ -352,7 +353,7 @@ public:
 				if (m_lock.empty())
 					m_lock = createPassword("Enter a password with which to secure this account: ");
 				auto k = makeKey();
-				h128 u = store.importSecret(k.secret().asBytes(), m_lock);
+				h128 u = store.importSecret(k.secret().ref(), m_lock);
 				cout << "Created key " << toUUID(u) << endl;
 				cout << "  Address: " << k.address().hex() << endl;
 				cout << "  ICAP: " << ICAP(k.address()).encoded() << endl;
@@ -362,12 +363,12 @@ public:
 				for (string const& input: m_inputs)
 				{
 					h128 u;
-					bytes b;
-					b = fromHex(input);
+					bytesSec b;
+					b.writable() = fromHex(input);
 					if (b.size() != 32)
 					{
 						std::string s = contentsString(input);
-						b = fromHex(s);
+						b.writable() = fromHex(s);
 						if (b.size() != 32)
 							u = store.importKey(input);
 					}
@@ -386,18 +387,18 @@ public:
 					if (!contents(i).empty())
 					{
 						h128 u = store.readKey(i, false);
-						bytes s = store.secret(u, [&](){ return getPassword("Enter password for key " + i + ": "); });
+						bytesSec s = store.secret(u, [&](){ return getPassword("Enter password for key " + i + ": "); });
 						cout << "Key " << i << ":" << endl;
 						cout << "  UUID: " << toUUID(u) << ":" << endl;
 						cout << "  Address: " << toAddress(Secret(s)).hex() << endl;
-						cout << "  Secret: " << Secret(s).abridged() << endl;
+						cout << "  Secret: " << toHex(s.ref().cropped(0, 8)) << "..." << endl;
 					}
 					else if (h128 u = fromUUID(i))
 					{
-						bytes s = store.secret(u, [&](){ return getPassword("Enter password for key " + toUUID(u) + ": "); });
+						bytesSec s = store.secret(u, [&](){ return getPassword("Enter password for key " + toUUID(u) + ": "); });
 						cout << "Key " << i << ":" << endl;
 						cout << "  Address: " << toAddress(Secret(s)).hex() << endl;
-						cout << "  Secret: " << Secret(s).abridged() << endl;
+						cout << "  Secret: " << toHex(s.ref().cropped(0, 8)) << "..." << endl;
 					}
 					else
 						cerr << "Couldn't inspect " << i << "; not found." << endl;
@@ -454,12 +455,12 @@ public:
 			{
 				string const& i = m_inputs[0];
 				h128 u;
-				bytes b;
-				b = fromHex(i);
+				bytesSec b;
+				b.writable() = fromHex(i);
 				if (b.size() != 32)
 				{
 					std::string s = contentsString(i);
-					b = fromHex(s);
+					b.writable() = fromHex(s);
 					if (b.size() != 32)
 						u = wallet.store().importKey(i);
 				}
@@ -475,6 +476,13 @@ public:
 				cout << "  Name: " << m_name << endl;
 				cout << "  Address: " << m_address << endl;
 				cout << "  UUID: " << toUUID(u) << endl;
+				break;
+			}
+			case OperationMode::ImportPresale:
+			{
+				std::string pw;
+				KeyPair k = wallet.presaleSecret(contentsString(m_inputs[0]), [&](bool){ return (pw = getPassword("Enter the password for the presale key: ")); });
+				wallet.import(k.secret(), m_name, pw, "Same password as used for presale key");
 				break;
 			}
 			case OperationMode::List:
@@ -497,7 +505,7 @@ public:
 					if (Address a = wallet.address(u))
 					{
 						cout << toUUID(u) << " " << a.abridged();
-						cout << "            (Not ICAP)             ";
+						cout << " " << ICAP(a).encoded();
 						cout << " " << wallet.accountName(a) << endl;
 					}
 				for (auto const& u: bare)
@@ -521,6 +529,7 @@ public:
 			<< "    --new-bare  Generate and output a key without interacting with wallet and dump the JSON." << endl
 			<< "    --import-bare [ <file>|<secret-hex> , ... ] Import keys from given sources." << endl
 			<< "    --recode-bare [ <uuid>|<file> , ... ]  Decrypt and re-encrypt given keys." << endl
+			<< "    --inspect-bare [ <uuid>|<file> , ... ]  Output information on given keys." << endl
 //			<< "    --export-bare [ <uuid> , ... ]  Export given keys." << endl
 			<< "    --kill-bare [ <uuid> , ... ]  Delete given keys." << endl
 			<< "Secret-store configuration:" << endl
@@ -530,6 +539,7 @@ public:
 			<< "    -l,--list  List all keys available in wallet." << endl
 			<< "    -n,--new <name>  Create a new key with given name and add it in the wallet." << endl
 			<< "    -i,--import [<uuid>|<file>|<secret-hex>] <name>  Import keys from given source and place in wallet." << endl
+			<< "    --import-presale <file> <name>  Import a presale wallet into a key with the given name." << endl
 			<< "    --import-with-address [<uuid>|<file>|<secret-hex>] <address> <name>  Import keys from given source with given address and place in wallet." << endl
 			<< "    -e,--export [ <address>|<uuid> , ... ]  Export given keys." << endl
 			<< "    -r,--recode [ <address>|<uuid>|<file> , ... ]  Decrypt and re-encrypt given keys." << endl
@@ -555,6 +565,23 @@ public:
 			<< "Key generation configuration:" << endl
 			<< "    --no-icap  Don't bother to make a direct-ICAP capable key." << endl
 			;
+	}
+
+	static bytes inputData(std::string const& _input, bool* _isFile = nullptr)
+	{
+		bytes b = fromHex(_input);
+		if (_isFile)
+			*_isFile = false;
+		if (b.empty())
+		{
+			if (_isFile)
+				*_isFile = true;
+			std::string s = boost::trim_copy_if(contentsString(_input), is_any_of(" \t\n"));
+			b = fromHex(s);
+			if (b.empty())
+				b = asBytes(s);
+		}
+		return b;
 	}
 
 	static bool isTrue(std::string const& _m)

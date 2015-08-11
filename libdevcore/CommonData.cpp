@@ -20,8 +20,7 @@
  */
 
 #include "CommonData.h"
-
-#include <random>
+#include <boost/random/uniform_int_distribution.hpp>
 #include "Exceptions.h"
 #include "Log.h"
 
@@ -59,9 +58,9 @@ std::string dev::escaped(std::string const& _s, bool _all)
 std::string dev::randomWord()
 {
 	static std::mt19937_64 s_eng(0);
-	std::string ret(std::uniform_int_distribution<int>(1, 5)(s_eng), ' ');
+	std::string ret(boost::random::uniform_int_distribution<int>(1, 5)(s_eng), ' ');
 	char const n[] = "qwertyuiop";//asdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890";
-	std::uniform_int_distribution<int> d(0, sizeof(n) - 2);
+	boost::random::uniform_int_distribution<int> d(0, sizeof(n) - 2);
 	for (char& c: ret)
 		c = n[d(s_eng)];
 	return ret;

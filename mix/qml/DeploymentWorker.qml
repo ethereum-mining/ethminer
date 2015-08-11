@@ -19,6 +19,7 @@ Item
 	property alias gasPriceInt: gasPriceInt
 	property variant balances: ({})
 	property variant accounts: []
+	property alias pooler: pooler
 	signal gasPriceLoaded()
 
 	function renewCtx()
@@ -127,7 +128,7 @@ Item
 						  params: [],
 						  id: req
 					  });
-		var label =  {}
+		var label = []
 		for (var k in trHashes)
 		{
 			req++
@@ -141,15 +142,13 @@ Item
 		}
 
 		TransactionHelper.rpcCall(requests, function (httpRequest, response){
-			console.log(response)
-
 			var ret = JSON.parse(response)
 			var b = ret[0].result;
 			var trLost = []
 			for (var k in ret)
 			{
-				if (ret[k].result === null)
-					trLost.push(label[ret[k]])
+				if (!ret[k].result)
+					trLost.push(label[ret[k].id])
 			}
 			callback(parseInt(b, 16), trLost)
 		});
@@ -169,10 +168,11 @@ Item
 	{
 		if (!clientModelGasEstimation.running)
 		{
-			var ctr = projectModel.codeEditor.getContracts()
-			for (var k in ctr)
+			for (var si = 0; si < projectModel.listModel.count; si++)
 			{
-				codeModelGasEstimation.registerCodeChange(ctr[k].document.documentId, ctr[k].getText());
+				var document = projectModel.listModel.get(si);
+				if (document.isContract)
+					codeModelGasEstimation.registerCodeChange(document.documentId, fileIo.readFile(document.path));
 			}
 			gasEstimationConnect.callback = callback
 			clientModelGasEstimation.setupScenario(scenario)
@@ -193,13 +193,22 @@ Item
 		id: codeModelGasEstimation
 	}
 
-	ClientModel {
+	ClientModel
+	{
 		id: clientModelGasEstimation
 		codeModel: codeModelGasEstimation
 		Component.onCompleted:
 		{
 			init("/tmp/bcgas/")
 		}
+	}
+
+	Timer
+	{
+		id: pooler
+		interval: 5000
+		repeat: true
+		running: false
 	}
 
 	Timer

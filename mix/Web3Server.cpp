@@ -83,6 +83,10 @@ class EmptyNetwork : public dev::WebThreeNetworkFace
 		(void)_dropPeers;
 	}
 
+	p2p::NodeInfo nodeInfo() const override { return p2p::NodeInfo(); }
+
+	std::string enode() const override { return ""; }
+
 	p2p::NodeId id() const override
 	{
 		return p2p::NodeId();

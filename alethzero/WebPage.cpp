@@ -20,8 +20,10 @@
  */
 
 #include "WebPage.h"
+using namespace dev;
+using namespace az;
 
-void WebPage::javaScriptConsoleMessage(QWebEnginePage::JavaScriptConsoleMessageLevel _level, const QString& _message, int _lineNumber, const QString& _sourceID)
+void WebPage::javaScriptConsoleMessage(QWebEnginePage::JavaScriptConsoleMessageLevel _level, QString const& _message, int _lineNumber, QString const& _sourceID)
 {
 	QString prefix = _level == QWebEnginePage::ErrorMessageLevel ? "error" : _level == QWebEnginePage::WarningMessageLevel ? "warning" : "";
 	emit consoleMessage(QString("%1(%2:%3):%4").arg(prefix).arg(_sourceID).arg(_lineNumber).arg(_message));

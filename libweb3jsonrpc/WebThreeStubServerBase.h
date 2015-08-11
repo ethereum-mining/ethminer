@@ -59,7 +59,7 @@ public:
 	virtual void put(std::string const& _name, std::string const& _key, std::string const& _value) = 0;
 };
 
-enum class Priviledge
+enum class Privilege
 {
 	Admin
 };
@@ -69,9 +69,9 @@ enum class Priviledge
 namespace std
 {
 
-template<> struct hash<dev::Priviledge>
+template<> struct hash<dev::Privilege>
 {
-	size_t operator()(dev::Priviledge _value) const { return (size_t)_value; }
+	size_t operator()(dev::Privilege _value) const { return (size_t)_value; }
 };
 
 }
@@ -165,6 +165,7 @@ public:
 	virtual bool admin_net_stop(std::string const& _session);
 	virtual bool admin_net_connect(std::string const& _node, std::string const& _session);
 	virtual Json::Value admin_net_peers(std::string const& _session);
+	virtual Json::Value admin_net_nodeInfo(std::string const& _session);
 
 	virtual bool admin_eth_setMining(bool _on, std::string const& _session);
 	virtual Json::Value admin_eth_blockQueueStatus(std::string const& _session) { (void)_session; return Json::Value(); }
@@ -190,8 +191,8 @@ public:
 	std::map<dev::Public, dev::Secret> const& ids() const { return m_shhIds; }
 
 protected:
-	void requires(std::string const& _session, Priviledge _l) const { if (!hasPriviledgeLevel(_session, _l)) throw jsonrpc::JsonRpcException("Invalid priviledges"); }
-	virtual bool hasPriviledgeLevel(std::string const& _session, Priviledge _l) const { (void)_session; (void)_l; return false; }
+	void requires(std::string const& _session, Privilege _l) const { if (!hasPrivilegeLevel(_session, _l)) throw jsonrpc::JsonRpcException("Invalid privileges"); }
+	virtual bool hasPrivilegeLevel(std::string const& _session, Privilege _l) const { (void)_session; (void)_l; return false; }
 
 	virtual dev::eth::Interface* client() = 0;
 	virtual std::shared_ptr<dev::shh::Interface> face() = 0;

@@ -79,6 +79,8 @@ pair<u256, unsigned> const* StorageOffsets::getOffset(size_t _index) const
 
 MemberList& MemberList::operator=(MemberList&& _other)
 {
+	assert(&_other != this);
+
 	m_memberTypes = std::move(_other.m_memberTypes);
 	m_storageOffsets = std::move(_other.m_storageOffsets);
 	return *this;
@@ -179,6 +181,8 @@ TypePointer Type::fromMapping(ElementaryTypeName& _keyType, TypeName& _valueType
 		BOOST_THROW_EXCEPTION(_valueType.createTypeError("Invalid type name."));
 	// Convert value type to storage reference.
 	valueType = ReferenceType::copyForLocationIfReference(DataLocation::Storage, valueType);
+	// Convert key type to memory.
+	keyType = ReferenceType::copyForLocationIfReference(DataLocation::Memory, keyType);
 	return make_shared<MappingType>(keyType, valueType);
 }
 
@@ -309,6 +313,8 @@ TypePointer IntegerType::binaryOperatorResult(Token::Value _operator, TypePointe
 	// All integer types can be compared
 	if (Token::isCompareOp(_operator))
 		return commonType;
+	if (Token::isBooleanOp(_operator))
+		return TypePointer();
 	// Nothing else can be done with addresses
 	if (commonType->isAddress())
 		return TypePointer();
@@ -785,6 +791,21 @@ bool ArrayType::isImplicitlyConvertibleTo(const Type& _convertTo) const
 			return false;
 		return true;
 	}
+}
+
+bool ArrayType::isExplicitlyConvertibleTo(const Type& _convertTo) const
+{
+	if (isImplicitlyConvertibleTo(_convertTo))
+		return true;
+	// allow conversion bytes <-> string
+	if (_convertTo.getCategory() != getCategory())
+		return false;
+	auto& convertTo = dynamic_cast<ArrayType const&>(_convertTo);
+	if (convertTo.location() != location())
+		return false;
+	if (!isByteArray() || !convertTo.isByteArray())
+		return false;
+	return true;
 }
 
 bool ArrayType::operator==(Type const& _other) const

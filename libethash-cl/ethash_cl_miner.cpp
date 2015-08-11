@@ -29,8 +29,11 @@
 #include <iostream>
 #include <assert.h>
 #include <queue>
-#include <random>
 #include <vector>
+#include <random>
+#include <random>
+#include <atomic>
+#include <sstream>
 #include <libethash/util.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
@@ -55,7 +58,22 @@ unsigned const ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier = 4096; // * C
 unsigned const ethash_cl_miner::c_defaultMSPerBatch = 0;
 
 // TODO: If at any point we can use libdevcore in here then we should switch to using a LogChannel
+#if defined(_WIN32)
+extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char* lpOutputString);
+static std::atomic_flag s_logSpin = ATOMIC_FLAG_INIT;
+#define ETHCL_LOG(_contents) \
+	do \
+	{ \
+		std::stringstream ss; \
+		ss << _contents; \
+		while (s_logSpin.test_and_set(std::memory_order_acquire)) {} \
+		OutputDebugStringA(ss.str().c_str()); \
+		cerr << ss.str() << endl << flush; \
+		s_logSpin.clear(std::memory_order_release); \
+	} while (false)
+#else
 #define ETHCL_LOG(_contents) cout << "[OPENCL]:" << _contents << endl
+#endif
 // Types of OpenCL devices we are interested in
 #define ETHCL_QUERIED_DEVICE_TYPES (CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR)
 
@@ -266,6 +284,25 @@ void ethash_cl_miner::listDevices()
 	doForAllDevices([&outString, &i](cl::Device const _device)
 		{
 			outString += "[" + to_string(i) + "] " + _device.getInfo<CL_DEVICE_NAME>() + "\n";
+			outString += "\tCL_DEVICE_TYPE: ";
+			switch (_device.getInfo<CL_DEVICE_TYPE>())
+			{
+			case CL_DEVICE_TYPE_CPU:
+				outString += "CPU\n";
+				break;
+			case CL_DEVICE_TYPE_GPU:
+				outString += "GPU\n";
+				break;
+			case CL_DEVICE_TYPE_ACCELERATOR:
+				outString += "ACCELERATOR\n";
+				break;
+			default:
+				outString += "DEFAULT\n";
+				break;
+			}
+			outString += "\tCL_DEVICE_GLOBAL_MEM_SIZE: " + to_string(_device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()) + "\n";
+			outString += "\tCL_DEVICE_MAX_MEM_ALLOC_SIZE: " + to_string(_device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>()) + "\n";
+			outString += "\tCL_DEVICE_MAX_WORK_GROUP_SIZE: " + to_string(_device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>()) + "\n";
 			++i;
 		}
 	);
@@ -361,15 +398,25 @@ bool ethash_cl_miner::init(
 		try
 		{
 			m_dagChunksCount = 1;
+			ETHCL_LOG("Creating one big buffer for the DAG");
 			m_dagChunks.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize));
-			ETHCL_LOG("Created one big buffer for the DAG");
+			ETHCL_LOG("Loading single big chunk kernels");
+			m_hashKernel = cl::Kernel(program, "ethash_hash");
+			m_searchKernel = cl::Kernel(program, "ethash_search");
+			ETHCL_LOG("Mapping one big chunk.");
+			m_queue.enqueueWriteBuffer(m_dagChunks[0], CL_TRUE, 0, _dagSize, _dag);
 		}
 		catch (cl::Error const& err)
 		{
+			ETHCL_LOG("Allocating/mapping single buffer failed with: " << err.what() << "(" << err.err() << "). GPU can't allocate the DAG in a single chunk. Bailing.");
+			return false;
+#if 0		// Disabling chunking for release since it seems not to work. Never manages to mine a block. TODO: Fix when time is found.
 			int errCode = err.err();
 			if (errCode != CL_INVALID_BUFFER_SIZE || errCode != CL_MEM_OBJECT_ALLOCATION_FAILURE)
-				ETHCL_LOG("Allocating single buffer failed with: " << err.what() << "(" << errCode << ")");
+				ETHCL_LOG("Allocating/mapping single buffer failed with: " << err.what() << "(" << errCode << ")");
 			cl_ulong result;
+			// if we fail midway on the try above make sure we start clean
+			m_dagChunks.clear();
 			device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &result);
 			ETHCL_LOG(
 				"Failed to allocate 1 big chunk. Max allocateable memory is "
@@ -387,32 +434,9 @@ bool ethash_cl_miner::init(
 					(i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7
 				));
 			}
-		}
-
-		if (m_dagChunksCount == 1)
-		{
-			ETHCL_LOG("Loading single big chunk kernels");
-			m_hashKernel = cl::Kernel(program, "ethash_hash");
-			m_searchKernel = cl::Kernel(program, "ethash_search");
-		}
-		else
-		{
 			ETHCL_LOG("Loading chunk kernels");
 			m_hashKernel = cl::Kernel(program, "ethash_hash_chunks");
 			m_searchKernel = cl::Kernel(program, "ethash_search_chunks");
-		}
-
-		// create buffer for header
-		ETHCL_LOG("Creating buffer for header.");
-		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
-
-		if (m_dagChunksCount == 1)
-		{
-			ETHCL_LOG("Mapping one big chunk.");
-			m_queue.enqueueWriteBuffer(m_dagChunks[0], CL_TRUE, 0, _dagSize, _dag);
-		}
-		else
-		{
 			// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
 			void* dag_ptr[4];
 			for (unsigned i = 0; i < m_dagChunksCount; i++)
@@ -425,7 +449,11 @@ bool ethash_cl_miner::init(
 				memcpy(dag_ptr[i], (char *)_dag + i*((_dagSize >> 9) << 7), (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
 				m_queue.enqueueUnmapMemObject(m_dagChunks[i], dag_ptr[i]);
 			}
+#endif
 		}
+		// create buffer for header
+		ETHCL_LOG("Creating buffer for header.");
+		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
 		// create mining buffers
 		for (unsigned i = 0; i != c_bufferCount; ++i)

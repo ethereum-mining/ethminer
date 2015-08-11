@@ -22,6 +22,7 @@
 
 #include <memory>
 #include "JSV8Engine.h"
+#include "JSV8Printer.h"
 #include "libjsengine/JSEngineResources.hpp"
 #include "BuildInfo.h"
 
@@ -31,13 +32,14 @@
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+using namespace v8;
 
 namespace dev
 {
 namespace eth
 {
 
-static char const* toCString(v8::String::Utf8Value const& _value)
+static char const* toCString(String::Utf8Value const& _value)
 {
 	if (*_value)
 		return *_value;
@@ -46,12 +48,12 @@ static char const* toCString(v8::String::Utf8Value const& _value)
 
 // from:        https://github.com/v8/v8-git-mirror/blob/master/samples/shell.cc
 // v3.15 from:  https://chromium.googlesource.com/v8/v8.git/+/3.14.5.9/samples/shell.cc
-void reportException(v8::TryCatch* _tryCatch)
+void reportException(TryCatch* _tryCatch)
 {
-	v8::HandleScope handle_scope;
-	v8::String::Utf8Value exception(_tryCatch->Exception());
+	HandleScope handle_scope;
+	String::Utf8Value exception(_tryCatch->Exception());
 	char const* exceptionString = toCString(exception);
-	v8::Handle<v8::Message> message = _tryCatch->Message();
+	Handle<Message> message = _tryCatch->Message();
 
 	// V8 didn't provide any extra information about this error; just
 	// print the exception.
@@ -60,13 +62,13 @@ void reportException(v8::TryCatch* _tryCatch)
 	else
 	{
 		// Print (filename):(line number): (message).
-		v8::String::Utf8Value filename(message->GetScriptResourceName());
+		String::Utf8Value filename(message->GetScriptResourceName());
 		char const* filenameString = toCString(filename);
 		int linenum = message->GetLineNumber();
 		printf("%s:%i: %s\n", filenameString, linenum, exceptionString);
 
 		// Print line of source code.
-		v8::String::Utf8Value sourceline(message->GetSourceLine());
+		String::Utf8Value sourceline(message->GetSourceLine());
 		char const* sourcelineString = toCString(sourceline);
 		printf("%s\n", sourcelineString);
 
@@ -82,7 +84,7 @@ void reportException(v8::TryCatch* _tryCatch)
 
 		printf("\n");
 
-		v8::String::Utf8Value stackTrace(_tryCatch->StackTrace());
+		String::Utf8Value stackTrace(_tryCatch->StackTrace());
 		if (stackTrace.length() > 0)
 		{
 			char const* stackTraceString = toCString(stackTrace);
@@ -91,12 +93,23 @@ void reportException(v8::TryCatch* _tryCatch)
 	}
 }
 
+Handle<Value> ConsoleLog(Arguments const& _args)
+{
+	Local<External> wrap = Local<External>::Cast(_args.Data());
+	auto engine = reinterpret_cast<JSV8Engine const*>(wrap->Value());
+	JSV8Printer printer(*engine);
+	for (int i = 0; i < _args.Length(); ++i)
+		printf("%s\n", printer.prettyPrint(_args[i]).cstr());
+	return Undefined();
+}
+
+
 class JSV8Scope
 {
 public:
 	JSV8Scope():
 		m_handleScope(),
-		m_context(v8::Context::New(NULL, v8::ObjectTemplate::New())),
+		m_context(Context::New(NULL, ObjectTemplate::New())),
 		m_contextScope(m_context)
 	{
 		m_context->Enter();
@@ -108,12 +121,12 @@ public:
 		m_context.Dispose();
 	}
 
-	v8::Persistent <v8::Context> const& context() const { return m_context; }
+	Persistent <Context> const& context() const { return m_context; }
 
 private:
-	v8::HandleScope m_handleScope;
-	v8::Persistent <v8::Context> m_context;
-	v8::Context::Scope m_contextScope;
+	HandleScope m_handleScope;
+	Persistent <Context> m_context;
+	Context::Scope m_contextScope;
 };
 
 }
@@ -127,7 +140,7 @@ JSString JSV8Value::toString() const
 	else if (m_value->IsUndefined())
 		return "undefined";
 
-	v8::String::Utf8Value str(m_value);
+	String::Utf8Value str(m_value);
 	return toCString(str);
 }
 
@@ -142,6 +155,14 @@ JSV8Engine::JSV8Engine(): m_scope(new JSV8Scope())
 	eval(web3.c_str());
 	eval("web3 = require('web3');");
 	eval(admin.c_str());
+
+	auto consoleTemplate = ObjectTemplate::New();
+
+	Local<FunctionTemplate> function = FunctionTemplate::New(ConsoleLog, External::New(this));
+	consoleTemplate->Set(String::New("debug"), function);
+	consoleTemplate->Set(String::New("log"), function);
+	consoleTemplate->Set(String::New("error"), function);
+	context()->Global()->Set(String::New("console"), consoleTemplate->NewInstance());
 }
 
 JSV8Engine::~JSV8Engine()
@@ -151,18 +172,18 @@ JSV8Engine::~JSV8Engine()
 
 JSV8Value JSV8Engine::eval(char const* _cstr) const
 {
-	v8::TryCatch tryCatch;
-	v8::Local<v8::String> source = v8::String::New(_cstr);
-	v8::Local<v8::String> name(v8::String::New("(shell)"));
-	v8::ScriptOrigin origin(name);
-	v8::Handle<v8::Script> script = v8::Script::Compile(source, &origin);
+	TryCatch tryCatch;
+	Local<String> source = String::New(_cstr);
+	Local<String> name(String::New("(shell)"));
+	ScriptOrigin origin(name);
+	Handle<Script> script = Script::Compile(source, &origin);
 
 	// Make sure to wrap the exception in a new handle because
 	// the handle returned from the TryCatch is destroyed
 	if (script.IsEmpty())
 	{
 		reportException(&tryCatch);
-		return v8::Exception::Error(v8::Local<v8::String>::New(tryCatch.Message()->Get()));
+		return Exception::Error(Local<String>::New(tryCatch.Message()->Get()));
 	}
 
 	auto result = script->Run();
@@ -170,13 +191,13 @@ JSV8Value JSV8Engine::eval(char const* _cstr) const
 	if (result.IsEmpty())
 	{
 		reportException(&tryCatch);
-		return v8::Exception::Error(v8::Local<v8::String>::New(tryCatch.Message()->Get()));
+		return Exception::Error(Local<String>::New(tryCatch.Message()->Get()));
 	}
 
 	return result;
 }
 
-v8::Handle<v8::Context> const& JSV8Engine::context() const
+Handle<Context> const& JSV8Engine::context() const
 {
 	return m_scope->context();
 }

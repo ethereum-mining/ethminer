@@ -67,7 +67,6 @@ public:
 	void setWork(WorkPackage const& _wp)
 	{
 		WriteGuard l(x_minerWork);
-		cdebug << "Farm::setWork()";
 		if (_wp.headerHash == m_work.headerHash)
 			return;
 		m_work = _wp;
@@ -84,7 +83,6 @@ public:
 	bool start(std::string const& _sealer)
 	{
 		WriteGuard l(x_minerWork);
-		cdebug << "start()";
 		if (!m_miners.empty() && m_lastSealer == _sealer)
 			return true;
 		if (!m_sealers.count(_sealer))

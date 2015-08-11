@@ -85,6 +85,10 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 		if (auto mappingType = dynamic_cast<MappingType const*>(returnType.get()))
 		{
 			solAssert(CompilerUtils::freeMemoryPointer >= 0x40, "");
+			solAssert(
+				!paramTypes[i]->isDynamicallySized(),
+				"Accessors for mapping with dynamically-sized keys not yet implemented."
+			);
 			// pop offset
 			m_context << eth::Instruction::POP;
 			// move storage offset to memory.
@@ -803,15 +807,34 @@ bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 	if (baseType.getCategory() == Type::Category::Mapping)
 	{
 		// stack: storage_base_ref
-		Type const& keyType = *dynamic_cast<MappingType const&>(baseType).getKeyType();
-		m_context << u256(0); // memory position
+		TypePointer keyType = dynamic_cast<MappingType const&>(baseType).getKeyType();
 		solAssert(_indexAccess.getIndexExpression(), "Index expression expected.");
-		solAssert(keyType.getCalldataEncodedSize() <= 0x20, "Dynamic keys not yet implemented.");
-		appendExpressionCopyToMemory(keyType, *_indexAccess.getIndexExpression());
-		m_context << eth::Instruction::SWAP1;
-		solAssert(CompilerUtils::freeMemoryPointer >= 0x40, "");
-		utils().storeInMemoryDynamic(IntegerType(256));
-		m_context << u256(0) << eth::Instruction::SHA3;
+		if (keyType->isDynamicallySized())
+		{
+			_indexAccess.getIndexExpression()->accept(*this);
+			utils().fetchFreeMemoryPointer();
+			// stack: base index mem
+			// note: the following operations must not allocate memory!
+			utils().encodeToMemory(
+				TypePointers{_indexAccess.getIndexExpression()->getType()},
+				TypePointers{keyType},
+				false,
+				true
+			);
+			m_context << eth::Instruction::SWAP1;
+			utils().storeInMemoryDynamic(IntegerType(256));
+			utils().toSizeAfterFreeMemoryPointer();
+		}
+		else
+		{
+			m_context << u256(0); // memory position
+			appendExpressionCopyToMemory(*keyType, *_indexAccess.getIndexExpression());
+			m_context << eth::Instruction::SWAP1;
+			solAssert(CompilerUtils::freeMemoryPointer >= 0x40, "");
+			utils().storeInMemoryDynamic(IntegerType(256));
+			m_context << u256(0);
+		}
+		m_context << eth::Instruction::SHA3;
 		m_context << u256(0);
 		setLValueToStorageItem(_indexAccess);
 	}
@@ -1072,6 +1095,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	using FunctionKind = FunctionType::Location;
 	FunctionKind funKind = _functionType.getLocation();
 	bool returnSuccessCondition = funKind == FunctionKind::Bare || funKind == FunctionKind::BareCallCode;
+	bool isCallCode = funKind == FunctionKind::BareCallCode || funKind == FunctionKind::CallCode;
 
 	//@todo only return the first return value for now
 	Type const* firstReturnType =
@@ -1158,13 +1182,20 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	if (_functionType.gasSet())
 		m_context << eth::dupInstruction(m_context.baseToCurrentStackOffset(gasStackPos));
 	else
+	{
 		// send all gas except the amount needed to execute "SUB" and "CALL"
 		// @todo this retains too much gas for now, needs to be fine-tuned.
+		u256 gasNeededByCaller = eth::c_callGas + 10;
+		if (_functionType.valueSet())
+			gasNeededByCaller += eth::c_callValueTransferGas;
+		if (!isCallCode)
+			gasNeededByCaller += eth::c_callNewAccountGas; // we never know
 		m_context <<
-			u256(eth::c_callGas + 10 + (_functionType.valueSet() ? eth::c_callValueTransferGas : 0) + eth::c_callNewAccountGas) <<
+			gasNeededByCaller <<
 			eth::Instruction::GAS <<
 			eth::Instruction::SUB;
-	if (funKind == FunctionKind::CallCode || funKind == FunctionKind::BareCallCode)
+	}
+	if (isCallCode)
 		m_context << eth::Instruction::CALLCODE;
 	else
 		m_context << eth::Instruction::CALL;

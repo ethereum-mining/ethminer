@@ -14,10 +14,10 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file transaction.cpp
+/** @file transactionTests.cpp
  * @author Dmitrii Khokhlov <winsvega@mail.ru>
  * @date 2015
- * Transaaction test functions.
+ * Transaction test functions.
  */
 
 #include "../TestHelper.h"

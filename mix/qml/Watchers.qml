@@ -13,7 +13,6 @@ import "."
 
 Rectangle {
 	color: "#4F4F4F"
-	radius: 4
 	property variant tx
 	property variant currentState
 	property variant bc

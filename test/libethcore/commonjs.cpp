@@ -32,8 +32,8 @@ BOOST_AUTO_TEST_CASE(jsToPublic)
 {
 	cnote << "Testing jsToPublic...";
 	KeyPair kp = KeyPair::create();
-	string string = toJS(kp.pub());
-	Public pub = dev::jsToPublic(string);
+	string s = toJS(kp.pub());
+	Public pub = dev::jsToPublic(s);
 	BOOST_CHECK_EQUAL(kp.pub(), pub);
 }
 
@@ -41,8 +41,8 @@ BOOST_AUTO_TEST_CASE(jsToAddress)
 {
 	cnote << "Testing jsToPublic...";
 	KeyPair kp = KeyPair::create();
-	string string = toJS(kp.address());
-	Address address = dev::jsToAddress(string);
+	string s = toJS(kp.address());
+	Address address = dev::jsToAddress(s);
 	BOOST_CHECK_EQUAL(kp.address(), address);
 }
 
@@ -50,9 +50,9 @@ BOOST_AUTO_TEST_CASE(jsToSecret)
 {
 	cnote << "Testing jsToPublic...";
 	KeyPair kp = KeyPair::create();
-	string string = toJS(kp.secret());
-	Secret secret = dev::jsToSecret(string);
-	BOOST_CHECK_EQUAL(kp.secret(), secret);
+	string s = toJS(kp.secret().makeInsecure());
+	Secret secret = dev::jsToSecret(s);
+	BOOST_CHECK_EQUAL(kp.secret().makeInsecure(), secret.makeInsecure());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

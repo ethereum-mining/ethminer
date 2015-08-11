@@ -25,7 +25,7 @@ DebugInfoList
 				members: []
 				value: {}
 				context: "variable"
-				width:parent.width
+				width: parent.width
 			}
 		}
 	}

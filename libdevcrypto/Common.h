@@ -28,13 +28,12 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/Exceptions.h>
+#include <libdevcore/FileSystem.h>
 
 namespace dev
 {
 
-/// A secret key: 32 bytes.
-/// @NOTE This is not endian-specific; it's just a bunch of bytes.
-using Secret = h256;
+using Secret = SecureFixedHash<32>;
 
 /// A public key: 64 bytes.
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
@@ -76,7 +75,7 @@ using Addresses = h160s;
 using AddressHash = std::unordered_set<h160>;
 
 /// A vector of secrets.
-using Secrets = h256s;
+using Secrets = std::vector<Secret>;
 
 /// Convert a secret key into the public key equivalent.
 Public toPublic(Secret const& _secret);
@@ -110,21 +109,21 @@ void encryptECIES(Public const& _k, bytesConstRef _plain, bytes& o_cipher);
 bool decryptECIES(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext);
 
 /// Encrypts payload with random IV/ctr using AES128-CTR.
-std::pair<bytes, h128> encryptSymNoAuth(h128 const& _k, bytesConstRef _plain);
+std::pair<bytes, h128> encryptSymNoAuth(SecureFixedHash<16> const& _k, bytesConstRef _plain);
 
 /// Encrypts payload with specified IV/ctr using AES128-CTR.
 bytes encryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _plain);
 
 /// Decrypts payload with specified IV/ctr using AES128-CTR.
-bytes decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _cipher);
+bytesSec decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _cipher);
 
 /// Encrypts payload with specified IV/ctr using AES128-CTR.
-inline bytes encryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _plain) { return encryptAES128CTR(_k.ref(), _iv, _plain); }
-inline bytes encryptSymNoAuth(h256 const& _k, h128 const& _iv, bytesConstRef _plain) { return encryptAES128CTR(_k.ref(), _iv, _plain); }
+inline bytes encryptSymNoAuth(SecureFixedHash<16> const& _k, h128 const& _iv, bytesConstRef _plain) { return encryptAES128CTR(_k.ref(), _iv, _plain); }
+inline bytes encryptSymNoAuth(SecureFixedHash<32> const& _k, h128 const& _iv, bytesConstRef _plain) { return encryptAES128CTR(_k.ref(), _iv, _plain); }
 
 /// Decrypts payload with specified IV/ctr using AES128-CTR.
-inline bytes decryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _cipher) { return decryptAES128CTR(_k.ref(), _iv, _cipher); }
-inline bytes decryptSymNoAuth(h256 const& _k, h128 const& _iv, bytesConstRef _cipher) { return decryptAES128CTR(_k.ref(), _iv, _cipher); }
+inline bytesSec decryptSymNoAuth(SecureFixedHash<16> const& _k, h128 const& _iv, bytesConstRef _cipher) { return decryptAES128CTR(_k.ref(), _iv, _cipher); }
+inline bytesSec decryptSymNoAuth(SecureFixedHash<32> const& _k, h128 const& _iv, bytesConstRef _cipher) { return decryptAES128CTR(_k.ref(), _iv, _cipher); }
 
 /// Recovers Public key from signed message hash.
 Public recover(Signature const& _sig, h256 const& _hash);
@@ -136,10 +135,10 @@ Signature sign(Secret const& _k, h256 const& _hash);
 bool verify(Public const& _k, Signature const& _s, h256 const& _hash);
 
 /// Derive key via PBKDF2.
-bytes pbkdf2(std::string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen = 32);
+bytesSec pbkdf2(std::string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen = 32);
 
 /// Derive key via Scrypt.
-bytes scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uint32_t _r, uint32_t _p, unsigned _dkLen);
+bytesSec scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uint32_t _r, uint32_t _p, unsigned _dkLen);
 
 /// Simple class that represents a "key pair".
 /// All of the data of the class can be regenerated from the secret key (m_secret) alone.
@@ -151,7 +150,7 @@ public:
 	KeyPair() {}
 
 	/// Normal constructor - populates object from the given secret key.
-	KeyPair(Secret _k);
+	KeyPair(Secret const& _k) { populateFromSecret(_k); }
 
 	/// Create a new, randomly generated object.
 	static KeyPair create();
@@ -170,10 +169,12 @@ public:
 	/// Retrieve the associated address of the public key.
 	Address const& address() const { return m_address; }
 
-	bool operator==(KeyPair const& _c) const { return m_secret == _c.m_secret; }
-	bool operator!=(KeyPair const& _c) const { return m_secret != _c.m_secret; }
+	bool operator==(KeyPair const& _c) const { return m_public == _c.m_public; }
+	bool operator!=(KeyPair const& _c) const { return m_public != _c.m_public; }
 
 private:
+	void populateFromSecret(Secret const& _k);
+
 	Secret m_secret;
 	Public m_public;
 	Address m_address;
@@ -181,43 +182,37 @@ private:
 
 namespace crypto
 {
-struct InvalidState: public dev::Exception {};
+
+DEV_SIMPLE_EXCEPTION(InvalidState);
 
 /// Key derivation
 h256 kdf(Secret const& _priv, h256 const& _hash);
 
 /**
- * @brief Generator for nonce material.
+ * @brief Generator for non-repeating nonce material.
+ * The Nonce class should only be used when a non-repeating nonce
+ * is required and, in its current form, not recommended for signatures.
+ * This is primarily because the key-material for signatures is 
+ * encrypted on disk whereas the seed for Nonce is not. 
+ * Thus, Nonce's primary intended use at this time is for networking 
+ * where the key is also stored in plaintext.
  */
-struct Nonce
+class Nonce
 {
+public:
 	/// Returns the next nonce (might be read from a file).
-	static h256 get();
-	/// Stores the current nonce in a file and resets Nonce to the uninitialised state.
-	static void reset();
-	/// Sets the location of the seed file to a non-default place. Used for testing.
-	static void setSeedFilePath(std::string const& _filePath);
+	static Secret get() { static Nonce s; return s.next(); }
 
 private:
-	Nonce() {}
-	~Nonce();
-	/// @returns the singleton instance.
-	static Nonce& singleton();
-	/// Reads the last seed from the seed file.
-	void initialiseIfNeeded();
+	Nonce() = default;
+
 	/// @returns the next nonce.
-	h256 next();
-	/// Stores the current seed in the seed file.
-	void resetInternal();
-	/// @returns the path of the seed file.
-	static std::string const& seedFile();
+	Secret next();
 
-	/// Mutex for the singleton object.
-	/// @note Every access to any private function has to be guarded by this mutex.
-	static std::mutex s_x;
-
-	h256 m_value;
+	std::mutex x_value;
+	Secret m_value;
 };
+
 }
 
 }
