@@ -92,7 +92,15 @@ public:
 	explicit secure_vector(vector_ref<const T> _c): m_data(_c.data(), _c.data() + _c.size()) {}
 	~secure_vector() { ref().cleanse(); }
 
-	secure_vector<T>& operator=(secure_vector<T> const& _c) { ref().cleanse(); m_data = _c.m_data; return *this; }
+	secure_vector<T>& operator=(secure_vector<T> const& _c)
+	{
+		if (&_c == this)
+			return *this;
+
+		ref().cleanse();
+		m_data = _c.m_data;
+		return *this;
+	}
 	std::vector<T>& writable() { clear(); return m_data; }
 	std::vector<T> const& makeInsecure() const { return m_data; }
 

@@ -76,6 +76,7 @@
 #include "ExportState.h"
 #include "AllAccounts.h"
 #include "LogPanel.h"
+#include "BrainWallet.h"
 #include "ui_Main.h"
 #include "ui_GetPassword.h"
 #include "ui_GasPricing.h"
@@ -86,32 +87,7 @@ using namespace p2p;
 using namespace eth;
 namespace js = json_spirit;
 
-string Main::fromRaw(h256 _n, unsigned* _inc)
-{
-	if (_n)
-	{
-		string s((char const*)_n.data(), 32);
-		auto l = s.find_first_of('\0');
-		if (!l)
-			return string();
-		if (l != string::npos)
-		{
-			auto p = s.find_first_not_of('\0', l);
-			if (!(p == string::npos || (_inc && p == 31)))
-				return string();
-			if (_inc)
-				*_inc = (byte)s[31];
-			s.resize(l);
-		}
-		for (auto i: s)
-			if (i < 32)
-				return string();
-		return s;
-	}
-	return string();
-}
-
-QString contentsOfQResource(string const& res)
+QString dev::az::contentsOfQResource(string const& res)
 {
 	QFile file(QString::fromStdString(res));
 	if (!file.open(QFile::ReadOnly))
@@ -183,7 +159,7 @@ Main::Main(QWidget* _parent):
 			QMessageBox::warning(nullptr, "Try again", "You entered two different passwords - please enter the same password twice.", QMessageBox::Ok);
 		}
 		m_keyManager.create(password.toStdString());
-		m_keyManager.import(Secret::random(), "Default identity");
+		m_keyManager.import(ICAP::createDirect(), "Default identity");
 	}
 
 #if ETH_DEBUG
@@ -255,7 +231,7 @@ Main::Main(QWidget* _parent):
 
 	ethereum()->setDefault(LatestBlock);
 
-	m_vmSelectionGroup = new QActionGroup{ui->menu_Debug};
+	m_vmSelectionGroup = new QActionGroup{ui->menuDebug};
 	m_vmSelectionGroup->addAction(ui->vmInterpreter);
 	m_vmSelectionGroup->addAction(ui->vmJIT);
 	m_vmSelectionGroup->addAction(ui->vmSmart);
@@ -294,6 +270,7 @@ Main::Main(QWidget* _parent):
 	loadPlugin<dev::az::AllAccounts>();
 #endif
 	loadPlugin<dev::az::LogPanel>();
+	loadPlugin<dev::az::BrainWallet>();
 }
 
 Main::~Main()
@@ -305,6 +282,48 @@ Main::~Main()
 	// need to be rethought into something more like:
 	// forEach([&](shared_ptr<Plugin> const& p){ finalisePlugin(p.get()); });
 	writeSettings();
+}
+
+string Main::fromRaw(h256 const&_n, unsigned* _inc)
+{
+	if (_n)
+	{
+		string s((char const*)_n.data(), 32);
+		auto l = s.find_first_of('\0');
+		if (!l)
+			return string();
+		if (l != string::npos)
+		{
+			auto p = s.find_first_not_of('\0', l);
+			if (!(p == string::npos || (_inc && p == 31)))
+				return string();
+			if (_inc)
+				*_inc = (byte)s[31];
+			s.resize(l);
+		}
+		for (auto i: s)
+			if (i < 32)
+				return string();
+		return s;
+	}
+	return string();
+}
+
+void Main::install(AccountNamer* _adopt)
+{
+	m_namers.insert(_adopt);
+	refreshAll();
+}
+
+void Main::uninstall(AccountNamer* _kill)
+{
+	m_namers.erase(_kill);
+	refreshAll();
+}
+
+void Main::noteAddressesChanged()
+{
+	refreshAll();
 }
 
 bool Main::confirm() const
@@ -390,7 +409,7 @@ NetworkPreferences Main::netPrefs() const
 		ret = NetworkPreferences(listenIP, ui->port->value(), ui->upnp->isChecked());
 
 	ret.discovery = m_privateChain.isEmpty() && !ui->hermitMode->isChecked();
-	ret.pin = m_privateChain.isEmpty() || ui->hermitMode->isChecked();
+	ret.pin = !ret.discovery;
 
 	return ret;
 }
@@ -636,6 +655,13 @@ std::string Main::pretty(dev::Address const& _a) const
 		if (!n.empty())
 			return n;
 	}
+
+	for (auto i: m_namers)
+	{
+		auto n = i->toName(_a);
+		if (!n.empty())
+			return n;
+	}
 	return string();
 }
 
@@ -668,6 +694,11 @@ pair<Address, bytes> Main::fromString(std::string const& _n) const
 		if (a)
 			return make_pair(a, bytes());
 	}
+
+	for (auto i: m_namers)
+		if (auto a = i->toAddress(_n))
+			return make_pair(a, bytes());
+
 	if (n.size() == 40)
 	{
 		try
@@ -1177,7 +1208,7 @@ void Main::refreshBalances()
 	for (auto const& address: m_keyManager.accounts())
 	{
 		u256 b = ethereum()->balanceAt(address);
-		QListWidgetItem* li = new QListWidgetItem(QString("%4 %2: %1 [%3]").arg(formatBalance(b).c_str()).arg(QString::fromStdString(render(address))).arg((unsigned)ethereum()->countAt(address)).arg(QString::fromStdString(m_keyManager.accountName(address))), ui->ourAccounts);
+		QListWidgetItem* li = new QListWidgetItem(QString("<%5> %4 %2: %1 [%3]").arg(formatBalance(b).c_str()).arg(QString::fromStdString(render(address))).arg((unsigned)ethereum()->countAt(address)).arg(QString::fromStdString(m_keyManager.accountName(address))).arg(m_keyManager.haveKey(address) ? "KEY" : "BRAIN"), ui->ourAccounts);
 		li->setData(Qt::UserRole, QByteArray((char const*)address.data(), Address::size));
 		li->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 		li->setCheckState(m_beneficiary == address ? Qt::Checked : Qt::Unchecked);

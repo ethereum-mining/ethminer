@@ -14,52 +14,24 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Connect.cpp
- * @author Alex Leverington <nessence@gmail.com>
+/** @file $NAME.h
+ * @author Gav Wood <i@gavwood.com>
  * @date 2015
  */
 
-#include "Connect.h"
-#include <libp2p/Host.h>
-#include "ui_Connect.h"
+#include "$NAME.h"
+#include <libdevcore/Log.h>
+#include <libethereum/Client.h>
+using namespace std;
 using namespace dev;
 using namespace az;
+using namespace eth;
 
-Connect::Connect(QWidget *parent) :
-	QDialog(parent),
-	ui(new Ui::Connect)
+$NAME::$NAME(MainFace* _m):
+	Plugin(_m, "$NAME")
 {
-	ui->setupUi(this);
 }
 
-Connect::~Connect()
+$NAME::~$NAME()
 {
-	delete ui;
-}
-
-void Connect::setEnvironment(QStringList const& _nodes)
-{
-	if (ui->host->count() == 0)
-		ui->host->addItems(_nodes);
-}
-
-void Connect::reset()
-{
-	ui->nodeId->clear();
-	ui->required->setChecked(true);
-}
-
-QString Connect::host()
-{
-	return ui->host->currentText();
-}
-
-QString Connect::nodeId()
-{
-	return ui->nodeId->text();
-}
-
-bool Connect::required()
-{
-	return ui->required->isChecked();
 }

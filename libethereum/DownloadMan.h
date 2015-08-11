@@ -93,7 +93,10 @@ public:
 	~DownloadMan()
 	{
 		for (auto i: m_subs)
+		{
+			Guard l(i->m_fetch);
 			i->m_man = nullptr;
+		}
 	}
 
 	void appendToChain(h256s const& _hashes)
