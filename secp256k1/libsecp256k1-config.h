@@ -90,7 +90,7 @@
 
 #if defined(__x86_64__) || defined(_M_X64)
 #define USE_FIELD_5X52 1
-#elif defined(__i386) || defined(_M_IX86)
+#elif defined(__i386) || defined(_M_IX86) || defined(__arm__) || defined(__M_ARM)
 #define USE_FIELD_10X26 1
 #endif
 
@@ -108,7 +108,7 @@
 
 #if defined(__x86_64__) || defined(_M_X64)
 #define USE_SCALAR_4X64 1
-#elif defined(__i386) || defined(_M_IX86)
+#elif defined(__i386) || defined(_M_IX86) || defined(__arm__) || defined(__M_ARM)
 #define USE_SCALAR_8X32 1
 #endif
 

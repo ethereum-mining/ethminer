@@ -34,9 +34,14 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 {
 	for (auto& i: _v.get_obj())
 	{
-		cerr << i.first << endl;
 		mObject& o = i.second.get_obj();
+		if (test::Options::get().singleTest && test::Options::get().singleTestName != i.first)
+		{
+			o.clear();
+			continue;
+		}
 
+		cerr << i.first << endl;
 		if (_fillin)
 		{
 			TBOOST_REQUIRE((o.count("transaction") > 0));
