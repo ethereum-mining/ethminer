@@ -161,7 +161,7 @@ public:
 	static std::unordered_map<Public, std::string> const& pocHosts();
 
 	/// Register a peer-capability; all new peer connections will have this capability.
-	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; std::shared_ptr<T> ret(_t); m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = ret; return ret; }
+	template <class T> std::shared_ptr<T> registerCapability(std::shared_ptr<T> const& _t) { _t->m_host = this; m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = _t; return _t; }
 	template <class T> void addCapability(std::shared_ptr<T> const & _p, std::string const& _name, u256 const& _version) { m_capabilities[std::make_pair(_name, _version)] = _p; }
 
 	bool haveCapability(CapDesc const& _name) const { return m_capabilities.count(_name) != 0; }
