@@ -283,7 +283,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameCoder* 
 					return;
 				}
 		
-		if (!peerSlotsAvailable(Ingress))
+		if (!peerSlotsAvailable())
 		{
 			ps->disconnect(TooManyPeers);
 			return;
@@ -396,7 +396,7 @@ void Host::runAcceptor()
 		clog(NetConnect) << "Listening on local port " << m_listenPort << " (public: " << m_tcpPublic << ")";
 		m_accepting = true;
 
-		auto socket = make_shared<RLPXSocket>(new bi::tcp::socket(m_ioService));
+		auto socket = make_shared<RLPXSocket>(m_ioService);
 		m_tcp4Acceptor.async_accept(socket->ref(), [=](boost::system::error_code ec)
 		{
 			m_accepting = false;
@@ -405,7 +405,7 @@ void Host::runAcceptor()
 				socket->close();
 				return;
 			}
-			if (peerCount() > Ingress * m_idealPeerCount)
+			if (peerCount() > peerSlots(Ingress))
 			{
 				clog(NetConnect) << "Dropping incoming connect due to maximum peer count (" << Ingress << " * ideal peer count): " << socket->remoteEndpoint();
 				socket->close();
@@ -552,7 +552,7 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 	
 	bi::tcp::endpoint ep(_p->endpoint);
 	clog(NetConnect) << "Attempting connection to node" << _p->id << "@" << ep << "from" << id();
-	auto socket = make_shared<RLPXSocket>(new bi::tcp::socket(m_ioService));
+	auto socket = make_shared<RLPXSocket>(m_ioService);
 	socket->ref().async_connect(ep, [=](boost::system::error_code const& ec)
 	{
 		_p->m_lastAttempted = std::chrono::system_clock::now();
@@ -742,9 +742,14 @@ void Host::keepAlivePeers()
 		return;
 
 	RecursiveGuard l(x_sessions);
-	for (auto p: m_sessions)
-		if (auto pp = p.second.lock())
-				pp->ping();
+	for (auto it = m_sessions.begin(); it != m_sessions.end();)
+		if (auto p = it->second.lock())
+		{
+			p->ping();
+			++it;
+		}
+		else
+			it = m_sessions.erase(it);
 
 	m_lastPing = chrono::steady_clock::now();
 }
@@ -809,7 +814,7 @@ bytes Host::saveNetwork() const
 	// else: TODO: use previous configuration if available
 
 	RLPStream ret(3);
-	ret << dev::p2p::c_protocolVersion << m_alias.secret();
+	ret << dev::p2p::c_protocolVersion << m_alias.secret().ref();
 	ret.appendList(count);
 	if (!!count)
 		ret.appendRaw(network.out(), count);

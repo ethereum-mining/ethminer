@@ -409,6 +409,10 @@ public:
 	DataLocation location() const { return m_location; }
 
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
+	virtual TypePointer binaryOperatorResult(Token::Value, TypePointer const&) const override
+	{
+		return TypePointer();
+	}
 	virtual unsigned memoryHeadSize() const override { return 32; }
 
 	/// @returns a copy of this type with location (recursively) changed to @a _location,
@@ -477,6 +481,7 @@ public:
 	{}
 
 	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
+	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual bool operator==(const Type& _other) const override;
 	virtual unsigned getCalldataEncodedSize(bool _padded) const override;
 	virtual bool isDynamicallySized() const override { return m_hasDynamicLength; }

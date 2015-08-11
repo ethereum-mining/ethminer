@@ -20,15 +20,14 @@
  */
 
 #include "DownloadView.h"
-
 #include <QtWidgets>
 #include <QtCore>
 #include <libethereum/DownloadMan.h>
 #include "Grapher.h"
-
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
+using namespace az;
+using namespace eth;
 
 SyncView::SyncView(QWidget* _p): QWidget(_p)
 {
@@ -175,9 +174,6 @@ void SyncView::paintEvent(QPaintEvent*)
 		progress = hProgress;
 		progress2 = hProgress2;
 		label = hLabel;
-	}
-	else if (rect().height() / rect().width() > 5)
-	{
 	}
 	else
 	{

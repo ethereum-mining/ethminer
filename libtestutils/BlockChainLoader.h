@@ -24,7 +24,7 @@
 #include <json/json.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethereum/BlockChain.h>
-#include <libethereum/State.h>
+#include <libethereum/Block.h>
 
 namespace dev
 {
@@ -40,12 +40,13 @@ class BlockChainLoader
 public:
 	BlockChainLoader(Json::Value const& _json);
 	eth::BlockChain const& bc() const { return *m_bc; }
-	eth::State const& state() const { return m_state; }
+	eth::State const& state() const { return m_block.state(); }	// TODO remove?
+	eth::Block const& block() const { return m_block; }
 
 private:
 	TransientDirectory m_dir;
 	std::unique_ptr<eth::BlockChain> m_bc;
-	eth::State m_state;
+	eth::Block m_block;
 };
 
 }

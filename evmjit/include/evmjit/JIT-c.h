@@ -1,6 +1,14 @@
 
 #include "stdint.h"
 
+#ifdef _MSC_VER
+#define EXPORT __declspec(dllexport)
+#define _ALLOW_KEYWORD_MACROS
+#define noexcept throw()
+#else
+#define EXPORT
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -47,11 +55,11 @@ typedef enum evmjit_return_code
 
 typedef struct evmjit_context evmjit_context;
 
-evmjit_context* evmjit_create(evmjit_runtime_data* _data, void* _env);
+EXPORT evmjit_context* evmjit_create(evmjit_runtime_data* _data, void* _env);
 
-evmjit_return_code evmjit_exec(evmjit_context* _context);
+EXPORT evmjit_return_code evmjit_exec(evmjit_context* _context);
 
-void evmjit_destroy(evmjit_context* _context);
+EXPORT void evmjit_destroy(evmjit_context* _context);
 
 
 inline char const* evmjit_get_output(evmjit_runtime_data* _data) { return _data->callData; }

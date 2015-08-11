@@ -76,6 +76,7 @@ void BlockQueue::clear()
 	m_drainingSet.clear();
 	m_verified.clear();
 	m_unverified.clear();
+	m_verifying.clear();
 	m_unknownSet.clear();
 	m_unknown.clear();
 	m_future.clear();
@@ -110,7 +111,7 @@ void BlockQueue::verifierBody()
 		swap(work.block, res.blockData);
 		try
 		{
-			res.verified = m_bc->verifyBlock(&res.blockData, m_onBad, ImportRequirements::Everything & ~ImportRequirements::Parent);
+			res.verified = m_bc->verifyBlock(&res.blockData, m_onBad, ImportRequirements::OutOfOrderChecks);
 		}
 		catch (...)
 		{

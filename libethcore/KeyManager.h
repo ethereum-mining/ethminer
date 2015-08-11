@@ -36,12 +36,14 @@ class PasswordUnknown: public Exception {};
 struct KeyInfo
 {
 	KeyInfo() = default;
-	KeyInfo(h256 const& _passHash, std::string const& _accountName): passHash(_passHash), accountName(_accountName) {}
+	KeyInfo(h256 const& _passHash, std::string const& _accountName, std::string const& _passwordHint = std::string()): passHash(_passHash), accountName(_accountName), passwordHint(_passwordHint) {}
 
 	/// Hash of the password or h256() / UnknownPassword if unknown.
 	h256 passHash;
 	/// Name of the key, or JSON key info if begins with '{'.
 	std::string accountName;
+	/// Hint of the password. Alternative place for storage than the hash-based lookup.
+	std::string passwordHint;
 };
 
 static h256 const UnknownPassword;
@@ -95,6 +97,9 @@ public:
 	/// @returns the password hint for the account for the given address;
 	std::string const& passwordHint(Address const& _address) const;
 
+	/// @returns true if the given address has a key (UUID) associated with it. Equivalent to !!uuid(_a)
+	/// If the address has no key, it could be a brain wallet.
+	bool haveKey(Address const& _a) const { return m_addrLookup.count(_a); }
 	/// @returns the uuid of the key for the address @a _a or the empty hash on error.
 	h128 uuid(Address const& _a) const;
 	/// @returns the address corresponding to the key with uuid @a _uuid or the zero address on error.
@@ -102,6 +107,7 @@ public:
 
 	h128 import(Secret const& _s, std::string const& _accountName, std::string const& _pass, std::string const& _passwordHint);
 	h128 import(Secret const& _s, std::string const& _accountName) { return import(_s, _accountName, defaultPassword(), std::string()); }
+	Address importBrain(std::string const& _seed, std::string const& _accountName, std::string const& _seedHint);
 
 	SecretStore& store() { return m_store; }
 	void importExisting(h128 const& _uuid, std::string const& _accountName, std::string const& _pass, std::string const& _passwordHint);
@@ -123,6 +129,12 @@ public:
 
 	static std::string defaultPath() { return getDataDir("ethereum") + "/keys.info"; }
 
+	/// Extracts the secret key from the presale wallet.
+	KeyPair presaleSecret(std::string const& _json, std::function<std::string(bool)> const& _password);
+
+	/// @returns the brainwallet secret for the given seed.
+	static Secret brain(std::string const& _seed);
+
 private:
 	std::string getPassword(h128 const& _uuid, std::function<std::string()> const& _pass = DontKnowThrow) const;
 	std::string getPassword(h256 const& _passHash, std::function<std::string()> const& _pass = DontKnowThrow) const;
@@ -136,15 +148,17 @@ private:
 	// @returns false if wasn't previously loaded ok.
 	bool write() const { return write(m_keysFile); }
 	bool write(std::string const& _keysFile) const;
-	void write(std::string const& _pass, std::string const& _keysFile) const;
-	void write(h128 const& _key, std::string const& _keysFile) const;
+	void write(std::string const& _pass, std::string const& _keysFile) const;	// TODO: all passwords should be a secure string.
+	void write(SecureFixedHash<16> const& _key, std::string const& _keysFile) const;
 
 	// Ethereum keys.
 
+	/// Mapping key uuid -> address.
+	std::unordered_map<h128, Address> m_uuidLookup;
 	/// Mapping address -> key uuid.
 	std::unordered_map<Address, h128> m_addrLookup;
-	/// Mapping key uuid -> key info.
-	std::unordered_map<h128, KeyInfo> m_keyInfo;
+	/// Mapping address -> key info.
+	std::unordered_map<Address, KeyInfo> m_keyInfo;
 	/// Mapping password hash -> password hint.
 	std::unordered_map<h256, std::string> m_passwordHint;
 
@@ -159,7 +173,7 @@ private:
 	std::string m_defaultPasswordDeprecated;
 
 	mutable std::string m_keysFile;
-	mutable h128 m_keysFileKey;
+	mutable SecureFixedHash<16> m_keysFileKey;
 	mutable h256 m_master;
 	SecretStore m_store;
 };

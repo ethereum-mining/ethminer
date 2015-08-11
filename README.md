@@ -24,7 +24,7 @@ Ethereum is based on a design in an original whitepaper by Vitalik Buterin. This
 - *LianaHus* (**Liana Husikyan**) Solidity
 - *chfast* (**Paweł Bylica**) EVMJIT
 - *cubedro* (**Marian Oancea**) web3.js
-- *gluk250* (**Vlad Gluhovsky**) Whisper
+- *gluk256* (**Vlad Gluhovsky**) Whisper
 - *programmerTim* (**Tim Hughes**) libethash-cl
 
 And let's not forget: Caktux (neth, ongoing CI), Eric Lombrozo (original MinGW32 cross-compilation), Marko Simovic (original CI).

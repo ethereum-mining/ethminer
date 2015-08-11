@@ -626,7 +626,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		case Instruction::BLOCKHASH:
 		{
 			auto number = stack.pop();
-			auto hash = _ext.blockhash(number);
+			auto hash = _ext.blockHash(number);
 			stack.push(hash);
 			break;
 		}

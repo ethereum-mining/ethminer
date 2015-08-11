@@ -80,6 +80,7 @@ template <> inline u256 exp10<0>()
 static const u256 ether = exp10<18>();
 static const u256 finney = exp10<15>();
 static const u256 szabo = exp10<12>();
+static const u256 shannon = exp10<9>();
 static const u256 wei = exp10<0>();
 
 using Nonce = h64;
@@ -127,15 +128,17 @@ struct ImportRequirements
 	enum
 	{
 		ValidSeal = 1, ///< Validate seal
-		DontHave = 2, ///< Avoid old blocks
 		UncleBasic = 4, ///< Check the basic structure of the uncles.
 		TransactionBasic = 8, ///< Check the basic structure of the transactions.
 		UncleSeals = 16, ///< Check the basic structure of the uncles.
 		TransactionSignatures = 32, ///< Check the basic structure of the transactions.
-		Parent = 64, ///< Check parent block header
-		CheckUncles = UncleBasic | UncleSeals, ///< Check uncle seals
-		CheckTransactions = TransactionBasic | TransactionSignatures, ///< Check transaction signatures
-		Everything = ValidSeal | DontHave | CheckUncles | CheckTransactions | Parent,
+		Parent = 64, ///< Check parent block header.
+		UncleParent = 128, ///< Check uncle parent block header.
+		CheckUncles = UncleBasic | UncleSeals, ///< Check uncle seals.
+		CheckTransactions = TransactionBasic | TransactionSignatures, ///< Check transaction signatures.
+		OutOfOrderChecks = ValidSeal | CheckUncles | CheckTransactions, ///< Do all checks that can be done independently of prior blocks having been imported.
+		InOrderChecks = Parent | UncleParent, ///< Do all checks that cannot be done independently of prior blocks having been imported.
+		Everything = ValidSeal | CheckUncles | CheckTransactions | Parent | UncleParent,
 		None = 0
 	};
 };
@@ -151,9 +154,9 @@ public:
 		friend class Signal;
 
 	public:
-		~HandlerAux() { if (m_s) m_s->m_fire.erase(m_i); m_s = nullptr; }
+		~HandlerAux() { if (m_s) m_s->m_fire.erase(m_i); }
 		void reset() { m_s = nullptr; }
-		void fire(Args&&... _args) { m_h(std::forward<Args>(_args)...); }
+		void fire(Args const&... _args) { m_h(_args...); }
 
 	private:
 		HandlerAux(unsigned _i, Signal* _s, Callback const& _h): m_i(_i), m_s(_s), m_h(_h) {}
@@ -178,11 +181,11 @@ public:
 		return h;
 	}
 
-	void operator()(Args&... _args)
+	void operator()(Args const&... _args)
 	{
-		for (auto const& f: m_fire)
-			if (auto h = f.second.lock())
-				h->fire(std::forward<Args>(_args)...);
+		for (auto const& f: valuesOf(m_fire))
+			if (auto h = f.lock())
+				h->fire(_args...);
 	}
 
 private:

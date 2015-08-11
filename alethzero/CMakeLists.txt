@@ -20,8 +20,14 @@ include_directories(BEFORE ..)
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 
-find_package (Qt5WebEngine QUIET)
-find_package (Qt5WebEngineWidgets QUIET)
+find_package (Qt5WebEngine)
+find_package (Qt5WebEngineWidgets)
+if (APPLE)
+# TODO: remove indirect dependencies once macdeployqt is fixed
+	find_package (Qt5WebEngineCore)
+	find_package (Qt5DBus)
+	find_package (Qt5PrintSupport)
+endif()
 
 qt5_wrap_ui(ui_Main.h Main.ui)
 qt5_wrap_ui(ui_Connect.h Connect.ui)
@@ -30,6 +36,11 @@ qt5_wrap_ui(ui_Transact.h Transact.ui)
 qt5_wrap_ui(ui_ExportState.h ExportState.ui)
 qt5_wrap_ui(ui_GetPassword.h GetPassword.ui)
 qt5_wrap_ui(ui_GasPricing.h GasPricing.ui)
+
+# Extensions
+qt5_wrap_ui(ui_AllAccounts.h AllAccounts.ui)
+qt5_wrap_ui(ui_LogPanel.h LogPanel.ui)
+qt5_wrap_ui(ui_BrainWallet.h BrainWallet.ui)
 
 file(GLOB HEADERS "*.h")
 
@@ -42,7 +53,7 @@ endif ()
 # eth_add_executable is defined in cmake/EthExecutableHelper.cmake
 eth_add_executable(${EXECUTABLE} 
 	ICON alethzero
-	UI_RESOURCES alethzero.icns Main.ui Connect.ui Debugger.ui Transact.ui ExportState.ui GetPassword.ui GasPricing.ui
+	UI_RESOURCES alethzero.icns Main.ui Connect.ui Debugger.ui Transact.ui ExportState.ui GetPassword.ui GasPricing.ui AllAccounts.ui LogPanel.ui BrainWallet.ui
 	WIN_RESOURCES alethzero.rc
 )
 
@@ -52,6 +63,11 @@ target_link_libraries(${EXECUTABLE} Qt5::Core)
 target_link_libraries(${EXECUTABLE} Qt5::Widgets)
 target_link_libraries(${EXECUTABLE} Qt5::WebEngine)
 target_link_libraries(${EXECUTABLE} Qt5::WebEngineWidgets)
+if (APPLE)
+	target_link_libraries(${EXECUTABLE} Qt5::WebEngineCore)
+	target_link_libraries(${EXECUTABLE} Qt5::DBus)
+	target_link_libraries(${EXECUTABLE} Qt5::PrintSupport)
+endif()
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} evm)

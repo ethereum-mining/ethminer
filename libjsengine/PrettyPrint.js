@@ -24,7 +24,7 @@ var prettyPrint = (function () {
                     str += ", ";
                 }
             }
-            str += " ]";
+            str += "]";
         } else if (object instanceof Error) {
             str += color_red + "Error: " + color_white + object.message;
         }  else if (object === null) {
@@ -51,7 +51,7 @@ var prettyPrint = (function () {
             });
             str += indent.substr(2, indent.length) + "}";
         } else if(typeof(object) === "string") {
-            str += color_green + object + "'";
+            str += color_green + "'" + object + "'";
         } else if(typeof(object) === "number") {
             str += color_red + object;
         } else if(typeof(object) === "function") {
@@ -93,7 +93,7 @@ var prettyPrint = (function () {
         var args = arguments;
         var ret = "";
         for(var i = 0, l = args.length; i < l; i++) {
-    	    ret += pp(args[i], "") + "\n";
+           ret += pp(args[i], "");
         }
         return ret;
     };

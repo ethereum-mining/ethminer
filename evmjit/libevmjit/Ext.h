@@ -51,7 +51,7 @@ public:
 	llvm::Value* calldataload(llvm::Value* _index);
 	llvm::Value* create(llvm::Value* _endowment, llvm::Value* _initOff, llvm::Value* _initSize);
 	llvm::Value* call(llvm::Value* _callGas, llvm::Value* _receiveAddress, llvm::Value* _value, llvm::Value* _inOff, llvm::Value* _inSize, llvm::Value* _outOff, llvm::Value* _outSize, llvm::Value* _codeAddress);
-	llvm::Value* blockhash(llvm::Value* _number);
+	llvm::Value* blockHash(llvm::Value* _number);
 
 	llvm::Value* sha3(llvm::Value* _inOff, llvm::Value* _inSize);
 	MemoryRef extcode(llvm::Value* _addr);

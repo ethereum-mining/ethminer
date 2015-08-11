@@ -16,6 +16,7 @@ ColumnLayout {
 	property alias trDialog: transactionDialog
 	property alias blockChainRepeater: blockChainRepeater
 	property variant model
+	property int scenarioIndex
 	property var states: ({})
 	spacing: 0
 	property int previousWidth
@@ -25,6 +26,25 @@ ColumnLayout {
 	signal txSelected(var blockIndex, var txIndex)
 	signal rebuilding
 	signal accountAdded(string address, string amount)
+
+	Connections
+	{
+		target: projectModel.stateListModel
+		onAccountsValidated:
+		{
+			if (rebuild.accountsSha3 !== codeModel.sha3(JSON.stringify(_accounts)))
+				rebuild.needRebuild("AccountsChanged")
+			else
+				rebuild.notNeedRebuild("AccountsChanged")
+		}
+		onContractsValidated:
+		{
+			if (rebuild.contractsSha3 !== codeModel.sha3(JSON.stringify(_contracts)))
+				rebuild.needRebuild("ContractsChanged")
+			else
+				rebuild.notNeedRebuild("ContractsChanged")
+		}
+	}
 
 	Connections
 	{
@@ -94,13 +114,15 @@ ColumnLayout {
 		return states[record]
 	}
 
-	function load(scenario)
+	function load(scenario, index)
 	{
 		if (!scenario)
 			return;
 		if (model)
 			rebuild.startBlinking()
 		model = scenario
+		scenarioIndex = index
+		genesis.scenarioIndex = index
 		states = []
 		blockModel.clear()
 		for (var b in model.blocks)
@@ -138,6 +160,20 @@ ColumnLayout {
 				width: parent.width
 				spacing: 20
 
+				Block
+				{
+					id: genesis
+					scenario: blockChainPanel.model
+					scenarioIndex: scenarioIndex
+					Layout.preferredWidth: blockChainScrollView.width
+					Layout.preferredHeight: 60
+					blockIndex: -1
+					transactions: []
+					status: ""
+					number: -2
+					trHeight: 60
+				}
+
 				Repeater // List of blocks
 				{
 					id: blockChainRepeater
@@ -146,6 +182,11 @@ ColumnLayout {
 					function editTx(blockIndex, txIndex)
 					{
 						itemAt(blockIndex).editTx(txIndex)
+					}
+
+					function select(blockIndex, txIndex)
+					{
+						itemAt(blockIndex).select(txIndex)
 					}
 
 					Block
@@ -264,6 +305,8 @@ ColumnLayout {
 					roundRight: true
 					property variant contractsHex: ({})
 					property variant txSha3: ({})
+					property variant accountsSha3
+					property variant contractsSha3
 					property variant txChanged: []
 					property var blinkReasons: []
 
@@ -333,7 +376,6 @@ ColumnLayout {
 								block.status = "mined"
 								retBlocks.push(block)
 							}
-
 						}
 						if (retBlocks.length === 0)
 							retBlocks.push(projectModel.stateListModel.createEmptyBlock())
@@ -352,8 +394,20 @@ ColumnLayout {
 						ensureNotFuturetime.start()
 						takeCodeSnapshot()
 						takeTxSnaphot()
+						takeAccountsSnapshot()
+						takeContractsSnapShot()
 						blinkReasons = []
 						clientModel.setupScenario(model);						
+					}
+
+					function takeContractsSnapShot()
+					{
+						contractsSha3 = codeModel.sha3(JSON.stringify(model.contracts))
+					}
+
+					function takeAccountsSnapshot()
+					{
+						accountsSha3 = codeModel.sha3(JSON.stringify(model.accounts))
 					}
 
 					function takeCodeSnapshot()
@@ -395,19 +449,22 @@ ColumnLayout {
 					text: qsTr("Add Tx")
 					onClicked:
 					{
-						var lastBlock = model.blocks[model.blocks.length - 1];
-						if (lastBlock.status === "mined")
+						if (model && model.blocks)
 						{
-							var newblock = projectModel.stateListModel.createEmptyBlock()
-							blockModel.appendBlock(newblock)
-							model.blocks.push(newblock);
-						}
+							var lastBlock = model.blocks[model.blocks.length - 1];
+							if (lastBlock.status === "mined")
+							{
+								var newblock = projectModel.stateListModel.createEmptyBlock()
+								blockModel.appendBlock(newblock)
+								model.blocks.push(newblock);
+							}
 
-						var item = TransactionHelper.defaultTransaction()
-						transactionDialog.stateAccounts = model.accounts
-						transactionDialog.execute = true
-						transactionDialog.editMode = false
-						transactionDialog.open(model.blocks[model.blocks.length - 1].transactions.length, model.blocks.length - 1, item)
+							var item = TransactionHelper.defaultTransaction()
+							transactionDialog.stateAccounts = model.accounts
+							transactionDialog.execute = true
+							transactionDialog.editMode = false
+							transactionDialog.open(model.blocks[model.blocks.length - 1].transactions.length, model.blocks.length - 1, item)
+						}
 					}
 					width: 100
 					height: 30
@@ -516,6 +573,7 @@ ColumnLayout {
 							trModel.sender = _r.sender
 							trModel.returnParameters = _r.returnParameters
 							blockModel.setTransaction(blockIndex, trIndex, trModel)
+							blockChainRepeater.select(blockIndex, trIndex)
 							return;
 						}
 					}
@@ -528,7 +586,7 @@ ColumnLayout {
 					itemTr.parameters = _r.parameters
 					itemTr.isContractCreation = itemTr.functionId === itemTr.contractId
 					itemTr.label = _r.label
-					itemTr.isFunctionCall = itemTr.functionId !== ""
+					itemTr.isFunctionCall = itemTr.functionId !== "" && itemTr.functionId !== "<none>"
 					itemTr.returned = _r.returned
 					itemTr.value = QEtherHelper.createEther(_r.value, QEther.Wei)
 					itemTr.sender = _r.sender
@@ -537,6 +595,7 @@ ColumnLayout {
 					itemTr.returnParameters = _r.returnParameters
 					model.blocks[model.blocks.length - 1].transactions.push(itemTr)
 					blockModel.appendTransaction(itemTr)
+					blockChainRepeater.select(blockIndex, trIndex)
 				}
 
 				onNewState: {
@@ -557,7 +616,7 @@ ColumnLayout {
 					clientModel.addAccount(ac.secret);
 					for (var k in Object.keys(blockChainPanel.states))
 						blockChainPanel.states[k].accounts["0x" + ac.address] = "0 wei" // add the account in all the previous state (balance at O)
-					accountAdded(ac.address, "0")
+					accountAdded("0x" + ac.address, "0")
 				}
 				Layout.preferredWidth: 100
 				Layout.preferredHeight: 30

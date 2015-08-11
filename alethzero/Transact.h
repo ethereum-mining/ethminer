@@ -30,8 +30,24 @@
 #include "Context.h"
 
 namespace Ui { class Transact; }
-namespace dev { namespace eth { class Client; } }
-namespace dev { namespace solidity { class CompilerStack; } }
+
+namespace dev
+{
+
+namespace eth { class Client; }
+namespace solidity { class CompilerStack; }
+
+namespace az
+{
+
+struct GasRequirements
+{
+	qint64 neededGas;
+	qint64 baseGas;
+	qint64 executionGas;
+	qint64 refundedGas;
+	dev::eth::ExecutionResult er;
+};
 
 class Transact: public QDialog
 {
@@ -54,6 +70,7 @@ private slots:
 	void on_gasPrice_valueChanged(int) { updateFee(); rejigData(); }
 	void on_data_textChanged() { rejigData(); }
 	void on_optimize_clicked() { rejigData(); }
+	void on_copyUnsigned_clicked();
 	void on_send_clicked();
 	void on_debug_clicked();
 	void on_cancel_clicked() { close(); }
@@ -64,6 +81,7 @@ private:
 	void updateNonce();
 
 	dev::Address fromAccount();
+	dev::Address toAccount();
 	void updateDestination();
 	void updateFee();
 	bool isCreation() const;
@@ -71,6 +89,8 @@ private:
 	dev::u256 total() const;
 	dev::u256 value() const;
 	dev::u256 gasPrice() const;
+	dev::Address to() const;
+	GasRequirements determineGasRequirements();
 
 	std::string natspecNotice(dev::Address _to, dev::bytes const& _data);
 	dev::Secret findSecret(dev::u256 _totalReq) const;
@@ -86,3 +106,7 @@ private:
 	NatSpecFace* m_natSpecDB = nullptr;
 	bool m_allGood = false;
 };
+
+}
+}
+

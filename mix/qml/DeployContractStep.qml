@@ -19,7 +19,7 @@ Rectangle {
 	id: root
 
 	property int labelWidth: 150
-
+	property bool verifyDeploy: true
 
 	function show()
 	{
@@ -36,6 +36,19 @@ Rectangle {
 			accountsList.currentIndex = 0
 		}
 
+		verifyDeployedContract()
+		deployedAddresses.refresh()
+
+		worker.renewCtx()
+		verifyDeploy = true
+		worker.pooler.onTriggered.connect(function() {
+			if (root.visible && verifyDeploy)
+				verifyDeployedContract();
+		})
+	}
+
+	function verifyDeployedContract()
+	{
 		if (projectModel.deployBlockNumber !== -1)
 		{
 			worker.verifyHashes(projectModel.deploymentTrHashes, function (bn, trLost)
@@ -43,8 +56,6 @@ Rectangle {
 				root.updateVerification(bn, trLost)
 			});
 		}
-		deployedAddresses.refresh()
-		worker.renewCtx()
 	}
 
 	function updateVerification(blockNumber, trLost)
@@ -62,10 +73,13 @@ Rectangle {
 			verificationLabel.text = nb
 			if (trLost.length > 0)
 			{
+				verifyDeploy = false
 				verificationTextArea.visible = true
 				verificationLabel.visible = false
+				verificationTextArea.text = ""
 				deploymentStepChanged("following transactions are invalidated:")
 				verificationTextArea.text += "\n" + qsTr("Transactions lost") + "\n"
+				verificationTextArea.textColor = "red"
 				for (var k in trLost)
 				{
 					deploymentStepChanged(trLost[k])
@@ -112,14 +126,10 @@ Rectangle {
 						for (var k = 0; k < projectModel.stateListModel.get(currentIndex).blocks.count; k++)
 						{
 							for (var j = 0; j < projectModel.stateListModel.get(currentIndex).blocks.get(k).transactions.count; j++)
-							{
 								trListModel.append(projectModel.stateListModel.get(currentIndex).blocks.get(k).transactions.get(j));
-							}
 						}
 						for (var k = 0; k < trListModel.count; k++)
-						{
 							trList.itemAt(k).init()
-						}
 						ctrDeployCtrLabel.calculateContractDeployGas();
 					}
 				}
@@ -136,9 +146,11 @@ Rectangle {
 				ScrollView
 				{
 					anchors.fill: parent
+					horizontalScrollBarPolicy: Qt.ScrollBarAlwaysOff
 					ColumnLayout
 					{
 						spacing: 0
+
 						ListModel
 						{
 							id: trListModel
@@ -166,9 +178,7 @@ Rectangle {
 									if (trListModel.get(index).parameters)
 									{
 										for (var k in trListModel.get(index).parameters)
-										{
 											paramList.append({ "name": k, "value": trListModel.get(index).parameters[k] })
-										}
 									}
 								}
 
@@ -213,13 +223,19 @@ Rectangle {
 										font.italic: true
 									}
 								}
+
+								Rectangle
+								{
+									Layout.preferredWidth: scenarioList.width
+									Layout.preferredHeight: 1
+									color: "#cccccc"
+								}
 							}
 						}
 					}
 				}
 			}
 		}
-
 
 		ColumnLayout
 		{
@@ -486,7 +502,8 @@ Rectangle {
 					id: clearDeployAction
 					onTriggered: {
 						worker.forceStopPooling()
-						fileIo.deleteDir(projectModel.deploymentDir)
+						if (projectModel.deploymentDir && projectModel.deploymentDir !== "")
+							fileIo.deleteDir(projectModel.deploymentDir)
 						projectModel.cleanDeploymentStatus()
 						deploymentDialog.steps.reset()
 					}
@@ -519,6 +536,5 @@ Rectangle {
 			}
 		}
 	}
-
 }
 

@@ -8,6 +8,7 @@ import org.ethereum.qml.QEther 1.0
 import "js/TransactionHelper.js" as TransactionHelper
 import "js/InputValidator.js" as InputValidator
 import "js/NetworkDeployment.js" as NetworkDeployment
+import "js/QEtherHelper.js" as QEtherHelper
 import "."
 
 Dialog {
@@ -53,7 +54,6 @@ Dialog {
 		paramValues = item.parameters !== undefined ? item.parameters : {};
 		if (item.sender)
 			senderComboBox.select(item.sender);
-
 
 		trTypeCreate.checked = item.isContractCreation
 		trTypeSend.checked = !item.isFunctionCall
@@ -125,7 +125,7 @@ Dialog {
 	function loadParameters() {
 		paramsModel = []
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
-			var contract = codeModel.contracts[TransactionHelper.contractFromToken(contractCreationComboBox.currentValue())];
+			var contract = codeModel.contracts[TransactionHelper.contractFromToken(recipientsAccount.currentValue())];
 			if (contract) {
 				var func = getFunction(functionComboBox.currentText, contract);
 				if (func) {
@@ -152,8 +152,7 @@ Dialog {
 
 	function initTypeLoader()
 	{
-		paramScroll.value = {}
-		paramScroll.members = []
+		paramScroll.clear()
 		paramScroll.value = paramValues;
 		paramScroll.members = paramsModel;
 		paramScroll.updateView()
@@ -237,6 +236,8 @@ Dialog {
 				recipientsAccount.select(contractId);
 			if (functionId)
 				selectFunction(functionId);
+			else
+				functionComboBox.currentIndex = 0
 			if (isFunctionCall)
 			{
 				labelRecipient.text = qsTr("Recipient Contract")
@@ -489,18 +490,16 @@ Dialog {
 				StructView
 				{
 					id: paramScroll
-					members: paramsModel;
+					members: paramsModel
 					accounts: senderComboBox.model
 					context: "parameter"
 					Layout.fillWidth: true
 					function updateView()
 					{
 						paramScroll.visible = paramsModel.length > 0
-						paramScroll.Layout.preferredHeight = paramsModel.length < 6 ? paramsModel.length * 30 : 205
+						paramScroll.Layout.preferredHeight = paramScroll.colHeight
 						if (paramsModel.length === 0)
-						{
 							paramScroll.height = 0
-						}
 					}
 				}
 
@@ -521,7 +520,7 @@ Dialog {
 						Layout.preferredWidth: 350
 						id: valueField
 						edit: true
-						displayFormattedValue: false
+						displayFormattedValue: true
 						displayUnitSelection: true
 					}
 				}
@@ -657,11 +656,12 @@ Dialog {
 							Label {
 								id: gasPriceMarket
 								anchors.top: gasPriceLabel.bottom
+								anchors.topMargin: 10
 								Component.onCompleted:
 								{
 									NetworkDeployment.gasPrice(function(result)
 									{
-										gasPriceMarket.text = qsTr("Current market: ") + " " + result + " Wei";
+										gasPriceMarket.text = qsTr("Current market: ") + " " + QEtherHelper.createEther(result, QEther.Wei).format()
 									}, function (){});
 								}
 							}
@@ -669,7 +669,7 @@ Dialog {
 					}
 
 					Ether {
-						Layout.preferredWidth: 350
+						Layout.preferredWidth: 400
 						id: gasPriceField
 						edit: true
 						displayFormattedValue: false

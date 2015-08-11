@@ -27,6 +27,7 @@ Dialog {
 	function close()
 	{
 		visible = false;
+		worker.pooler.running = false
 	}
 
 	function open()
@@ -36,6 +37,7 @@ Dialog {
 		registerStep.visible = false
 		steps.init()
 		worker.renewCtx()
+		worker.pooler.running = true
 		visible = true;
 	}
 

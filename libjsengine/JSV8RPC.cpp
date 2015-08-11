@@ -45,10 +45,33 @@ v8::Handle<v8::Value> JSV8RPCSend(v8::Arguments const& _args)
 	v8::Local<v8::Value> vals[1] = {_args[0]->ToObject()};
 	v8::Local<v8::Value> stringifiedArg = stringifyFunc->Call(stringifyFunc, 1, vals);
 	v8::String::Utf8Value str(stringifiedArg);
-	that->onSend(*str);
+	try
+	{
+		that->onSend(*str);
+	}
+	catch (std::exception const& _e)
+	{
+		return v8::ThrowException(v8::String::New(_e.what()));
+	}
+	catch (...)
+	{
+		return v8::ThrowException(v8::String::New("Unknown C++ exception."));
+	}
 
 	v8::Local<v8::Value> values[1] = {v8::String::New(that->lastResponse())};
 	return parseFunc->Call(parseFunc, 1, values);
+}
+
+v8::Handle<v8::Value> JSV8RPCSendAsync(v8::Arguments const& _args)
+{
+	// This is synchronous, but uses the callback-interface.
+
+	auto parsed = v8::Local<v8::Value>::New(JSV8RPCSend(_args));
+	v8::Handle<v8::Function> callback = v8::Handle<v8::Function>::Cast(_args[1]);
+	v8::Local<v8::Value> callbackArgs[2] = {v8::Local<v8::Value>::New(v8::Null()), parsed};
+	callback->Call(callback, 2, callbackArgs);
+
+	return v8::Undefined();
 }
 
 }
@@ -59,10 +82,14 @@ JSV8RPC::JSV8RPC(JSV8Engine const& _engine): m_engine(_engine)
 	v8::HandleScope scope;
 	v8::Local<v8::ObjectTemplate> rpcTemplate = v8::ObjectTemplate::New();
 	rpcTemplate->SetInternalFieldCount(1);
-	rpcTemplate->Set(v8::String::New("send"),
-	                 v8::FunctionTemplate::New(JSV8RPCSend));
-	rpcTemplate->Set(v8::String::New("sendAsync"),
-	                 v8::FunctionTemplate::New(JSV8RPCSend));
+	rpcTemplate->Set(
+		v8::String::New("send"),
+		v8::FunctionTemplate::New(JSV8RPCSend)
+	);
+	rpcTemplate->Set(
+		v8::String::New("sendAsync"),
+		v8::FunctionTemplate::New(JSV8RPCSendAsync)
+	);
 
 	v8::Local<v8::Object> obj = rpcTemplate->NewInstance();
 	obj->SetInternalField(0, v8::External::New(this));
@@ -73,12 +100,4 @@ JSV8RPC::JSV8RPC(JSV8Engine const& _engine): m_engine(_engine)
 	v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(web3object->Get(setProvider));
 	v8::Local<v8::Value> values[1] = {obj};
 	func->Call(func, 1, values);
-
-	m_lastResponse = R"(
-	{
-		"id": 1,
-		"jsonrpc": "2.0",
-		"error": "Uninitalized JSV8RPC!"
-	}
-	)";
 }

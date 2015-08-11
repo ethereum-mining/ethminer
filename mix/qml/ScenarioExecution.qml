@@ -70,7 +70,7 @@ Rectangle {
 					onLoaded:
 					{
 						watchers.clear()
-						blockChain.load(scenario)
+						blockChain.load(scenario, loader.selectedScenarioIndex)
 					}
 				}
 
@@ -85,13 +85,15 @@ Rectangle {
 					target: blockChain
 					property var currentSelectedBlock
 					property var currentSelectedTx
-					onTxSelected: {
+					onTxSelected:
+					{
 						currentSelectedBlock = blockIndex
 						currentSelectedTx = txIndex
 						updateWatchers(blockIndex, txIndex)
 					}
 
-					function updateWatchers(blockIndex, txIndex){
+					function updateWatchers(blockIndex, txIndex)
+					{
 						var tx = blockChain.model.blocks[blockIndex].transactions[txIndex]
 						var state = blockChain.getState(tx.recordIndex)
 						watchers.updateWidthTx(tx, state, blockIndex, txIndex)
