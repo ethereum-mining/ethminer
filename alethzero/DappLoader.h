@@ -33,9 +33,12 @@
 
 namespace dev
 {
-	class WebThreeDirect;
-	class RLP;
-}
+
+class WebThreeDirect;
+class RLP;
+
+namespace az
+{
 
 struct ManifestEntry
 {
@@ -104,3 +107,5 @@ private:
 	std::string m_sessionKey;
 };
 
+}
+}

@@ -39,7 +39,7 @@ const char* VMTraceChannel::name() { return "EVM"; }
 const char* ExecutiveWarnChannel::name() { return WarnChannel::name(); }
 
 StandardTrace::StandardTrace():
-	m_trace(new Json::Value(Json::arrayValue))
+	m_trace(make_shared<Json::Value>(Json::arrayValue))
 {}
 
 bool changesMemory(Instruction _inst)
@@ -383,7 +383,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 		}
 		catch (VMException const& _e)
 		{
-			cnote/*clog(StateSafeExceptions)*/ << "Safe VM Exception. " << diagnostic_information(_e);
+			clog(StateSafeExceptions) << "Safe VM Exception. " << diagnostic_information(_e);
 			m_gas = 0;
 			m_excepted = toTransactionException(_e);
 			m_ext->revert();
