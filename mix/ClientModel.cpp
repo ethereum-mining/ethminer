@@ -449,6 +449,44 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence)
 				}
 				m_gasCosts.append(m_client->lastExecution().gasUsed);
 				onNewTransaction();
+				TransactionException exception = m_client->lastExecution().excepted;
+				if (exception != TransactionException::None)
+				{
+					switch (m_client->lastExecution().excepted)
+					{
+					case TransactionException::None:
+						break;
+					case TransactionException::NotEnoughCash:
+						emit runFailed("Insufficient balance for contract deployment");
+						break;
+					case TransactionException::OutOfGasIntrinsic:
+					case TransactionException::OutOfGasBase:
+					case TransactionException::OutOfGas:
+						emit runFailed("Not enough gas");
+						break;
+					case TransactionException::BlockGasLimitReached:
+						emit runFailed("Block gas limit reached");
+						break;
+					case TransactionException::BadJumpDestination:
+						emit runFailed("Solidity exception (bad jump)");
+						break;
+					case TransactionException::OutOfStack:
+						emit runFailed("Out of stack");
+						break;
+					case TransactionException::StackUnderflow:
+						emit runFailed("Stack underflow");
+						//these should not happen in mix
+					case TransactionException::Unknown:
+					case TransactionException::BadInstruction:
+					case TransactionException::InvalidSignature:
+					case TransactionException::InvalidNonce:
+					case TransactionException::InvalidFormat:
+					case TransactionException::BadRLP:
+						emit runFailed("Internal execution error");
+						break;
+					}
+					break;
+				}
 			}
 			emit runComplete();
 		}

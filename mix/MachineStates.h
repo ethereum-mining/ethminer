@@ -85,6 +85,7 @@ struct ExecutionResult
 	unsigned executonIndex = 0;
 	bytes inputParameters;
 	eth::LocalisedLogEntries logs;
+	eth::TransactionException excepted = eth::TransactionException::Unknown;
 
 	bool isCall() const { return transactionIndex == std::numeric_limits<unsigned>::max(); }
 	bool isConstructor() const { return !isCall() && !address; }
