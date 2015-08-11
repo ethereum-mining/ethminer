@@ -21,6 +21,8 @@
  */
 
 #include <memory>
+#include <iostream>
+#include <fstream>
 #include "JSV8Engine.h"
 #include "JSV8Printer.h"
 #include "libjsengine/JSEngineResources.hpp"
@@ -93,7 +95,7 @@ void reportException(TryCatch* _tryCatch)
 	}
 }
 
-Handle<Value> ConsoleLog(Arguments const& _args)
+Handle<Value> consoleLog(Arguments const& _args)
 {
 	Local<External> wrap = Local<External>::Cast(_args.Data());
 	auto engine = reinterpret_cast<JSV8Engine const*>(wrap->Value());
@@ -103,6 +105,35 @@ Handle<Value> ConsoleLog(Arguments const& _args)
 	return Undefined();
 }
 
+Handle<Value> loadScript(Arguments const& _args)
+{
+	Local<External> wrap = Local<External>::Cast(_args.Data());
+	auto engine = reinterpret_cast<JSV8Engine const*>(wrap->Value());
+
+	if (_args.Length() < 1)
+		return v8::ThrowException(v8::String::New("Missing file name."));
+	if (_args[0].IsEmpty() || _args[0]->IsUndefined())
+		return v8::ThrowException(v8::String::New("Invalid file name."));
+	v8::String::Utf8Value fileName(_args[0]);
+	if (fileName.length() == 0)
+		return v8::ThrowException(v8::String::New("Invalid file name."));
+
+	std::ifstream is(*fileName, std::ifstream::binary);
+	if (!is)
+		return v8::ThrowException(v8::String::New("Error opening file."));
+
+	string contents;
+	is.seekg(0, is.end);
+	streamoff length = is.tellg();
+	if (length > 0)
+	{
+		is.seekg(0, is.beg);
+		contents.resize(length);
+		is.read(const_cast<char*>(contents.data()), length);
+	}
+
+	return engine->eval(contents.data(), *fileName).value();
+}
 
 class JSV8Scope
 {
@@ -158,11 +189,14 @@ JSV8Engine::JSV8Engine(): m_scope(new JSV8Scope())
 
 	auto consoleTemplate = ObjectTemplate::New();
 
-	Local<FunctionTemplate> function = FunctionTemplate::New(ConsoleLog, External::New(this));
-	consoleTemplate->Set(String::New("debug"), function);
-	consoleTemplate->Set(String::New("log"), function);
-	consoleTemplate->Set(String::New("error"), function);
+	Local<FunctionTemplate> consoleLogFunction = FunctionTemplate::New(consoleLog, External::New(this));
+	consoleTemplate->Set(String::New("debug"), consoleLogFunction);
+	consoleTemplate->Set(String::New("log"), consoleLogFunction);
+	consoleTemplate->Set(String::New("error"), consoleLogFunction);
 	context()->Global()->Set(String::New("console"), consoleTemplate->NewInstance());
+
+	Local<FunctionTemplate> loadScriptFunction = FunctionTemplate::New(loadScript, External::New(this));
+	context()->Global()->Set(String::New("loadScript"), loadScriptFunction->GetFunction());
 }
 
 JSV8Engine::~JSV8Engine()
@@ -170,11 +204,11 @@ JSV8Engine::~JSV8Engine()
 	delete m_scope;
 }
 
-JSV8Value JSV8Engine::eval(char const* _cstr) const
+JSV8Value JSV8Engine::eval(char const* _cstr, char const* _origin) const
 {
 	TryCatch tryCatch;
 	Local<String> source = String::New(_cstr);
-	Local<String> name(String::New("(shell)"));
+	Local<String> name(String::New(_origin));
 	ScriptOrigin origin(name);
 	Handle<Script> script = Script::Compile(source, &origin);
 
