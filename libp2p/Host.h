@@ -225,7 +225,7 @@ public:
 	bool haveNetwork() const { return m_run && !!m_nodeTable; }
 	
 	/// Validates and starts peer session, taking ownership of _io. Disconnects and returns false upon error.
-	void startPeerSession(Public const& _id, RLP const& _hello, RLPXFrameCoder* _io, std::shared_ptr<RLPXSocket> const& _s);
+	void startPeerSession(Public const& _id, RLP const& _hello, std::unique_ptr<RLPXFrameCoder>&& _io, std::shared_ptr<RLPXSocket> const& _s);
 
 	/// Get session by id
 	std::shared_ptr<Session> peerSession(NodeId const& _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? m_sessions[_id].lock() : std::shared_ptr<Session>(); }
