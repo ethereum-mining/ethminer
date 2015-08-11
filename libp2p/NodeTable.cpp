@@ -201,12 +201,13 @@ void NodeTable::doDiscover(NodeId _node, unsigned _round, shared_ptr<set<shared_
 		if (_ec)
 			clog(NodeTableWarn) << "Discovery timer canceled: " << _ec.value() << _ec.message();
 
-		if (995 == _ec.value() || m_timers.isStopped())
+		if (_ec.value() == boost::asio::error::operation_aborted || m_timers.isStopped())
 			return;
 
-		// Error code 995 means that the timer was probably aborted. It usually happens when "this" object
-		// is deallocated, in which case subsequent call to doDiscover() would cause a crash.
-		// We can not rely on m_timers.isStopped(), because "this" pointer was captured by the lambda,
+		// error::operation_aborted means that the timer was probably aborted. 
+		// It usually happens when "this" object is deallocated, in which case 
+		// subsequent call to doDiscover() would cause a crash. We can not rely on 
+		// m_timers.isStopped(), because "this" pointer was captured by the lambda,
 		// and therefore, in case of deallocation m_timers object no longer exists.
 
 		doDiscover(_node, _round + 1, _tried);
