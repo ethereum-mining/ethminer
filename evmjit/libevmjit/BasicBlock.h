@@ -67,9 +67,6 @@ class BasicBlock
 public:
 	explicit BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc);
 
-	BasicBlock(BasicBlock&&) = default;
-	BasicBlock& operator=(BasicBlock&&) = default;
-
 	llvm::BasicBlock* llvm() { return m_llvmBB; }
 
 	instr_idx firstInstrIdx() const { return m_firstInstrIdx; }
@@ -78,10 +75,10 @@ public:
 
 private:
 	instr_idx const m_firstInstrIdx = 0; 	///< Code index of first instruction in the block
-	code_iterator const m_begin = {};			///< Iterator pointing code beginning of the block
-	code_iterator const m_end = {};				///< Iterator pointing code end of the block
+	code_iterator const m_begin = {};		///< Iterator pointing code beginning of the block
+	code_iterator const m_end = {};			///< Iterator pointing code end of the block
 
-	llvm::BasicBlock* const m_llvmBB;
+	llvm::BasicBlock* const m_llvmBB;		///< Reference to the LLVM BasicBlock
 };
 
 }
