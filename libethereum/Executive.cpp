@@ -39,7 +39,7 @@ const char* VMTraceChannel::name() { return "EVM"; }
 const char* ExecutiveWarnChannel::name() { return WarnChannel::name(); }
 
 StandardTrace::StandardTrace():
-	m_trace(new Json::Value(Json::arrayValue))
+	m_trace(make_shared<Json::Value>(Json::arrayValue))
 {}
 
 bool changesMemory(Instruction _inst)

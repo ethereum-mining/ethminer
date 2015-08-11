@@ -237,9 +237,9 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameCoder* 
 		{
 			// peer doesn't exist, try to get port info from node table
 			if (Node n = m_nodeTable->node(_id))
-				p.reset(new Peer(n));
+				p = make_shared<Peer>(n);
 			else
-				p.reset(new Peer(Node(_id, UnspecifiedNodeIPEndpoint)));
+				p = make_shared<Peer>(Node(_id, UnspecifiedNodeIPEndpoint));
 			m_peers[_id] = p;
 		}
 	}
@@ -294,7 +294,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameCoder* 
 		for (auto const& i: caps)
 			if (haveCapability(i))
 			{
-				ps->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(ps, o, i));
+				ps->m_capabilities[i] = m_capabilities[i]->newPeerCapability(ps, o, i);
 				o += m_capabilities[i]->messageCount();
 			}
 		ps->start();
@@ -323,7 +323,7 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 				}
 				else
 				{
-					p.reset(new Peer(n));
+					p = make_shared<Peer>(n);
 					m_peers[_n] = p;
 					clog(NetP2PNote) << "p2p.host.peers.events.peerAdded " << _n << p->endpoint;
 				}
@@ -491,14 +491,14 @@ void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 			}
 			else
 			{
-				p.reset(new Peer(node));
+				p = make_shared<Peer>(node);
 				m_peers[_n] = p;
 			}
 	}
 	else if (m_nodeTable)
 	{
 		m_nodeTable->addNode(node);
-		shared_ptr<boost::asio::deadline_timer> t(new boost::asio::deadline_timer(m_ioService));
+		auto t = make_shared<boost::asio::deadline_timer>(m_ioService);
 		t->expires_from_now(boost::posix_time::milliseconds(600));
 		t->async_wait([this, _n](boost::system::error_code const& _ec)
 		{
@@ -712,7 +712,12 @@ void Host::startedWorking()
 	else
 		clog(NetP2PNote) << "p2p.start.notice id:" << id() << "TCP Listen port is invalid or unavailable.";
 
-	shared_ptr<NodeTable> nodeTable(new NodeTable(m_ioService, m_alias, NodeIPEndpoint(bi::address::from_string(listenAddress()), listenPort(), listenPort()), m_netPrefs.discovery));
+	auto nodeTable = make_shared<NodeTable>(
+		m_ioService,
+		m_alias,
+		NodeIPEndpoint(bi::address::from_string(listenAddress()), listenPort(), listenPort()),
+		m_netPrefs.discovery
+	);
 	nodeTable->setEventHandler(new HostNodeTableHandler(*this));
 	m_nodeTable = nodeTable;
 	restoreNetwork(&m_restoreNetwork);
