@@ -199,7 +199,7 @@ void NodeTable::doDiscover(NodeId _node, unsigned _round, shared_ptr<set<shared_
 	m_timers.schedule(c_reqTimeout.count() * 2, [this, _node, _round, _tried](boost::system::error_code const& _ec)
 	{
 		if (_ec)
-			clog(NodeTableWarn) << "Discovery timer canceled: " << _ec.value() << _ec.message();
+			clog(NodeTableMessageDetail) << "Discovery timer canceled: " << _ec.value() << _ec.message();
 
 		if (_ec.value() == boost::asio::error::operation_aborted || m_timers.isStopped())
 			return;
