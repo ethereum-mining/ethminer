@@ -122,17 +122,18 @@ void LocalStack::finalize(llvm::IRBuilder<>& _builder, llvm::BasicBlock& _bb)
 		}
 
 		// Add new items
+		auto pops = m_globalPops;			// Copy pops counter to keep original value
 		for (auto& item: m_local)
 		{
-			if (m_globalPops) 						// Override poped global items
-				m_global.set(--m_globalPops, item);	// using pops counter as the index
+			if (pops) 						// Override poped global items
+				m_global.set(--pops, item);	// using pops counter as the index
 			else
 				m_global.push(item);
 		}
 
 		// Pop not overriden items
-		if (m_globalPops)
-			m_global.pop(m_globalPops);
+		if (pops)
+			m_global.pop(pops);
 	}
 }
 
