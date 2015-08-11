@@ -74,9 +74,6 @@
 #include "DappHost.h"
 #include "WebPage.h"
 #include "ExportState.h"
-#include "AllAccounts.h"
-#include "LogPanel.h"
-#include "BrainWallet.h"
 #include "ui_Main.h"
 #include "ui_GetPassword.h"
 #include "ui_GasPricing.h"
@@ -266,11 +263,8 @@ Main::Main(QWidget* _parent):
 		}
 	}
 
-#if ETH_FATDB
-	loadPlugin<dev::az::AllAccounts>();
-#endif
-	loadPlugin<dev::az::LogPanel>();
-	loadPlugin<dev::az::BrainWallet>();
+	for (auto const& i: *s_linkedPlugins)
+		initPlugin(i(this));
 }
 
 Main::~Main()
@@ -282,6 +276,9 @@ Main::~Main()
 	// need to be rethought into something more like:
 	// forEach([&](shared_ptr<Plugin> const& p){ finalisePlugin(p.get()); });
 	writeSettings();
+
+	m_destructing = true;
+	killPlugins();
 }
 
 string Main::fromRaw(h256 const& _n, unsigned* _inc)
@@ -318,12 +315,39 @@ void Main::install(AccountNamer* _adopt)
 void Main::uninstall(AccountNamer* _kill)
 {
 	m_namers.erase(_kill);
-	refreshAll();
+	if (!m_destructing)
+		refreshAll();
 }
 
 void Main::noteAddressesChanged()
 {
+	emit allKnownAddressesChanged();
 	refreshAll();
+}
+
+Address Main::toAddress(string const& _n) const
+{
+	for (AccountNamer* n: m_namers)
+		if (n->toAddress(_n))
+			return n->toAddress(_n);
+	return Address();
+}
+
+string Main::toName(Address const& _a) const
+{
+	for (AccountNamer* n: m_namers)
+		if (!n->toName(_a).empty())
+			return n->toName(_a);
+	return string();
+}
+
+Addresses Main::allKnownAddresses() const
+{
+	Addresses ret;
+	for (AccountNamer* i: m_namers)
+		ret += i->knownAddresses();
+	sort(ret.begin(), ret.end());
+	return ret;
 }
 
 bool Main::confirm() const
@@ -684,8 +708,6 @@ pair<Address, bytes> Main::fromString(std::string const& _n) const
 		return make_pair(Address(), bytes());
 
 	std::string n = _n;
-	if (n.find("0x") == 0)
-		n.erase(0, 2);
 
 	auto g_newNameReg = getNameReg();
 	if (g_newNameReg)
@@ -699,6 +721,16 @@ pair<Address, bytes> Main::fromString(std::string const& _n) const
 		if (auto a = i->toAddress(_n))
 			return make_pair(a, bytes());
 
+	try {
+		return ICAP::decoded(n).address([&](Address const& a, bytes const& b) -> bytes
+		{
+			return ethereum()->call(a, b).output;
+		}, g_newNameReg);
+	}
+	catch (...) {}
+
+	if (n.find("0x") == 0)
+		n.erase(0, 2);
 	if (n.size() == 40)
 	{
 		try
@@ -717,14 +749,6 @@ pair<Address, bytes> Main::fromString(std::string const& _n) const
 			return make_pair(Address(), bytes());
 		}
 	}
-	else
-		try {
-			return ICAP::decoded(n).address([&](Address const& a, bytes const& b) -> bytes
-			{
-				return ethereum()->call(a, b).output;
-			}, g_newNameReg);
-		}
-		catch (...) {}
 	return make_pair(Address(), bytes());
 }
 
@@ -1903,7 +1927,7 @@ void Main::on_ourAccounts_doubleClicked()
 {
 	auto hba = ui->ourAccounts->currentItem()->data(Qt::UserRole).toByteArray();
 	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
+	qApp->clipboard()->setText(QString::fromStdString(ICAP(h).encoded()) + " (" + QString::fromStdString(h.hex()) + ")");
 }
 
 /*void Main::on_log_doubleClicked()
@@ -2060,6 +2084,7 @@ void Main::on_mine_triggered()
 
 void Main::keysChanged()
 {
+	emit keyManagerChanged();
 	onBalancesChange();
 }
 
