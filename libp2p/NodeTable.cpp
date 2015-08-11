@@ -67,8 +67,8 @@ NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint 
 	
 NodeTable::~NodeTable()
 {
-	m_timers.stop();
 	m_socketPointer->disconnect();
+	m_timers.stop();
 }
 
 void NodeTable::processEvents()
@@ -199,7 +199,17 @@ void NodeTable::doDiscover(NodeId _node, unsigned _round, shared_ptr<set<shared_
 	m_timers.schedule(c_reqTimeout.count() * 2, [this, _node, _round, _tried](boost::system::error_code const& _ec)
 	{
 		if (_ec)
-			clog(NodeTableWarn) << "Discovery timer canceled!";
+			clog(NodeTableMessageDetail) << "Discovery timer canceled: " << _ec.value() << _ec.message();
+
+		if (_ec.value() == boost::asio::error::operation_aborted || m_timers.isStopped())
+			return;
+
+		// error::operation_aborted means that the timer was probably aborted. 
+		// It usually happens when "this" object is deallocated, in which case 
+		// subsequent call to doDiscover() would cause a crash. We can not rely on 
+		// m_timers.isStopped(), because "this" pointer was captured by the lambda,
+		// and therefore, in case of deallocation m_timers object no longer exists.
+
 		doDiscover(_node, _round + 1, _tried);
 	});
 }
