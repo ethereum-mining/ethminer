@@ -23,12 +23,15 @@
 #include <thread>
 #include <mutex>
 #include <boost/filesystem.hpp>
+#include <test/JsonSpiritHeaders.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/RLP.h>
+#include <libdevcore/SHA3.h>
 using namespace std;
 using namespace dev;
 using namespace eth;
+namespace js = json_spirit;
 namespace fs = boost::filesystem;
 
 KeyManager::KeyManager(string const& _keysFile, string const& _secretsPath):
@@ -56,7 +59,7 @@ bool KeyManager::recode(Address const& _address, string const& _newPass, string 
 	if (!store().recode(u, _newPass, [&](){ return getPassword(u, _pass); }, _kdf))
 		return false;
 
-	m_keyInfo[u].passHash = hashPassword(_newPass);
+	m_keyInfo[_address].passHash = hashPassword(_newPass);
 	write();
 	return true;
 }
@@ -81,9 +84,11 @@ bool KeyManager::load(string const& _pass)
 	{
 		bytes salt = contents(m_keysFile + ".salt");
 		bytes encKeys = contents(m_keysFile);
-		m_keysFileKey = h128(pbkdf2(_pass, salt, 262144, 16));
-		bytes bs = decryptSymNoAuth(m_keysFileKey, h128(), &encKeys);
-		RLP s(bs);
+		if (encKeys.empty())
+			return false;
+		m_keysFileKey = SecureFixedHash<16>(pbkdf2(_pass, salt, 262144, 16));
+		bytesSec bs = decryptSymNoAuth(m_keysFileKey, h128(), &encKeys);
+		RLP s(bs.ref());
 		unsigned version = unsigned(s[0]);
 		if (version == 1)
 		{
@@ -91,8 +96,22 @@ bool KeyManager::load(string const& _pass)
 			{
 				h128 uuid(i[1]);
 				Address addr(i[0]);
-				m_addrLookup[addr] = uuid;
-				m_keyInfo[uuid] = KeyInfo(h256(i[2]), string(i[3]));
+				if (uuid)
+				{
+					if (m_store.contains(uuid))
+					{
+						m_addrLookup[addr] = uuid;
+						m_uuidLookup[uuid] = addr;
+						m_keyInfo[addr] = KeyInfo(h256(i[2]), string(i[3]), i.itemCount() > 4 ? string(i[4]) : "");
+					}
+					else
+						cwarn << "Missing key:" << uuid << addr;
+				}
+				else
+				{
+					// TODO: brain wallet.
+					m_keyInfo[addr] = KeyInfo(h256(i[2]), string(i[3]), i.itemCount() > 4 ? string(i[4]) : "");
+				}
 //				cdebug << toString(addr) << toString(uuid) << toString((h256)i[2]) << (string)i[3];
 			}
 
@@ -117,10 +136,13 @@ bool KeyManager::load(string const& _pass)
 
 Secret KeyManager::secret(Address const& _address, function<string()> const& _pass) const
 {
-	auto it = m_addrLookup.find(_address);
-	if (it == m_addrLookup.end())
+	auto it = m_keyInfo.find(_address);
+	if (it == m_keyInfo.end())
 		return Secret();
-	return secret(it->second, _pass);
+	if (m_addrLookup.count(_address))
+		return secret(m_addrLookup.at(_address), _pass);
+	else
+		return brain(_pass());
 }
 
 Secret KeyManager::secret(h128 const& _uuid, function<string()> const& _pass) const
@@ -130,10 +152,14 @@ Secret KeyManager::secret(h128 const& _uuid, function<string()> const& _pass) co
 
 string KeyManager::getPassword(h128 const& _uuid, function<string()> const& _pass) const
 {
-	auto kit = m_keyInfo.find(_uuid);
 	h256 ph;
-	if (kit != m_keyInfo.end())
-		ph = kit->second.passHash;
+	auto ait = m_uuidLookup.find(_uuid);
+	if (ait != m_uuidLookup.end())
+	{
+		auto kit = m_keyInfo.find(ait->second);
+		if (kit != m_keyInfo.end())
+			ph = kit->second.passHash;
+	}
 	return getPassword(ph, _pass);
 }
 
@@ -166,10 +192,10 @@ h128 KeyManager::uuid(Address const& _a) const
 
 Address KeyManager::address(h128 const& _uuid) const
 {
-	for (auto const& i: m_addrLookup)
-		if (i.second == _uuid)
-			return i.first;
-	return Address();
+	auto it = m_uuidLookup.find(_uuid);
+	if (it == m_uuidLookup.end())
+		return Address();
+	return it->second;
 }
 
 h128 KeyManager::import(Secret const& _s, string const& _accountName, string const& _pass, string const& _passwordHint)
@@ -178,16 +204,38 @@ h128 KeyManager::import(Secret const& _s, string const& _accountName, string con
 	auto passHash = hashPassword(_pass);
 	cachePassword(_pass);
 	m_passwordHint[passHash] = _passwordHint;
-	auto uuid = m_store.importSecret(_s.asBytes(), _pass);
-	m_keyInfo[uuid] = KeyInfo{passHash, _accountName};
+	auto uuid = m_store.importSecret(_s.asBytesSec(), _pass);
+	m_keyInfo[addr] = KeyInfo{passHash, _accountName, ""};
 	m_addrLookup[addr] = uuid;
+	m_uuidLookup[uuid] = addr;
 	write(m_keysFile);
 	return uuid;
 }
 
+Secret KeyManager::brain(string const& _seed)
+{
+	h256 r = sha3(_seed);
+	for (auto i = 0; i < 16384; ++i)
+		r = sha3(r);
+	Secret ret(r);
+	r.ref().cleanse();
+	while (toAddress(ret)[0])
+		ret = sha3(ret);
+	return ret;
+}
+
+Address KeyManager::importBrain(string const& _seed, string const& _accountName, string const& _passwordHint)
+{
+	Address addr = toAddress(brain(_seed));
+	m_keyInfo[addr].accountName = _accountName;
+	m_keyInfo[addr].passwordHint = _passwordHint;
+	write();
+	return addr;
+}
+
 void KeyManager::importExisting(h128 const& _uuid, string const& _info, string const& _pass, string const& _passwordHint)
 {
-	bytes key = m_store.secret(_uuid, [&](){ return _pass; });
+	bytesSec key = m_store.secret(_uuid, [&](){ return _pass; });
 	if (key.empty())
 		return;
 	Address a = KeyPair(Secret(key)).address();
@@ -201,41 +249,75 @@ void KeyManager::importExisting(h128 const& _uuid, string const& _accountName, A
 {
 	if (!m_passwordHint.count(_passHash))
 		m_passwordHint[_passHash] = _passwordHint;
+	m_uuidLookup[_uuid] = _address;
 	m_addrLookup[_address] = _uuid;
-	m_keyInfo[_uuid].passHash = _passHash;
-	m_keyInfo[_uuid].accountName = _accountName;
+	m_keyInfo[_address].passHash = _passHash;
+	m_keyInfo[_address].accountName = _accountName;
 	write(m_keysFile);
 }
 
 void KeyManager::kill(Address const& _a)
 {
 	auto id = m_addrLookup[_a];
+	m_uuidLookup.erase(id);
 	m_addrLookup.erase(_a);
-	m_keyInfo.erase(id);
+	m_keyInfo.erase(_a);
 	m_store.kill(id);
 	write(m_keysFile);
+}
+
+KeyPair KeyManager::presaleSecret(std::string const& _json, function<string(bool)> const& _password)
+{
+	js::mValue val;
+	json_spirit::read_string(_json, val);
+	auto obj = val.get_obj();
+	string p = _password(true);
+	if (obj["encseed"].type() == js::str_type)
+	{
+		auto encseed = fromHex(obj["encseed"].get_str());
+		KeyPair k;
+		for (bool gotit = false; !gotit;)
+		{
+			gotit = true;
+			k = KeyPair::fromEncryptedSeed(&encseed, p);
+			if (obj["ethaddr"].type() == js::str_type)
+			{
+				Address a(obj["ethaddr"].get_str());
+				Address b = k.address();
+				if (a != b)
+				{
+					if ((p = _password(false)).empty())
+						BOOST_THROW_EXCEPTION(PasswordUnknown());
+					else
+						gotit = false;
+				}
+			}
+		}
+		return k;
+	}
+	else
+		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("encseed type is not js::str_type"));
 }
 
 Addresses KeyManager::accounts() const
 {
 	Addresses ret;
-	ret.reserve(m_addrLookup.size());
-	for (auto const& i: m_addrLookup)
-		if (m_keyInfo.count(i.second) > 0)
-			ret.push_back(i.first);
+	ret.reserve(m_keyInfo.size());
+	for (auto const& i: m_keyInfo)
+		ret.push_back(i.first);
 	return ret;
 }
 
-bool KeyManager::hasAccount(const Address& _address) const
+bool KeyManager::hasAccount(Address const& _address) const
 {
-	return m_addrLookup.count(_address) && m_keyInfo.count(m_addrLookup.at(_address));
+	return m_keyInfo.count(_address);
 }
 
 string const& KeyManager::accountName(Address const& _address) const
 {
 	try
 	{
-		return m_keyInfo.at(m_addrLookup.at(_address)).accountName;
+		return m_keyInfo.at(_address).accountName;
 	}
 	catch (...)
 	{
@@ -247,7 +329,10 @@ string const& KeyManager::passwordHint(Address const& _address) const
 {
 	try
 	{
-		return m_passwordHint.at(m_keyInfo.at(m_addrLookup.at(_address)).passHash);
+		auto& info = m_keyInfo.at(_address);
+		if (info.passwordHint.size())
+			return info.passwordHint;
+		return m_passwordHint.at(info.passHash);
 	}
 	catch (...)
 	{
@@ -258,7 +343,7 @@ string const& KeyManager::passwordHint(Address const& _address) const
 h256 KeyManager::hashPassword(string const& _pass) const
 {
 	// TODO SECURITY: store this a bit more securely; Scrypt perhaps?
-	return h256(pbkdf2(_pass, asBytes(m_defaultPasswordDeprecated), 262144, 32));
+	return h256(pbkdf2(_pass, asBytes(m_defaultPasswordDeprecated), 262144, 32).makeInsecure());
 }
 
 void KeyManager::cachePassword(string const& _password) const
@@ -277,15 +362,15 @@ bool KeyManager::write(string const& _keysFile) const
 void KeyManager::write(string const& _pass, string const& _keysFile) const
 {
 	bytes salt = h256::random().asBytes();
-	writeFile(_keysFile + ".salt", salt);
-	auto key = h128(pbkdf2(_pass, salt, 262144, 16));
+	writeFile(_keysFile + ".salt", salt, true);
+	auto key = SecureFixedHash<16>(pbkdf2(_pass, salt, 262144, 16));
 
 	cachePassword(_pass);
 	m_master = hashPassword(_pass);
 	write(key, _keysFile);
 }
 
-void KeyManager::write(h128 const& _key, string const& _keysFile) const
+void KeyManager::write(SecureFixedHash<16> const& _key, string const& _keysFile) const
 {
 	RLPStream s(4);
 	s << 1; // version
@@ -293,15 +378,15 @@ void KeyManager::write(h128 const& _key, string const& _keysFile) const
 	for (auto const& address: accounts())
 	{
 		h128 id = uuid(address);
-		auto const& ki = m_keyInfo.at(id);
-		s.appendList(4) << address << id << ki.passHash << ki.accountName;
+		auto const& ki = m_keyInfo.at(address);
+		s.appendList(5) << address << id << ki.passHash << ki.accountName << ki.passwordHint;
 	}
 	s.appendList(m_passwordHint.size());
 	for (auto const& i: m_passwordHint)
 		s.appendList(2) << i.first << i.second;
 	s.append(m_defaultPasswordDeprecated);
 
-	writeFile(_keysFile, encryptSymNoAuth(_key, h128(), &s.out()));
+	writeFile(_keysFile, encryptSymNoAuth(_key, h128(), &s.out()), true);
 	m_keysFileKey = _key;
 	cachePassword(defaultPassword());
 }

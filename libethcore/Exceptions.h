@@ -70,6 +70,7 @@ DEV_SIMPLE_EXCEPTION(InvalidNonce);
 DEV_SIMPLE_EXCEPTION(InvalidBlockHeaderItemCount);
 DEV_SIMPLE_EXCEPTION(InvalidBlockNonce);
 DEV_SIMPLE_EXCEPTION(InvalidParentHash);
+DEV_SIMPLE_EXCEPTION(InvalidUncleParentHash);
 DEV_SIMPLE_EXCEPTION(InvalidNumber);
 DEV_SIMPLE_EXCEPTION(BlockNotFound);
 

@@ -105,6 +105,30 @@ private:
 	SharedMutex mutable x_nodes;
 };
 
+struct NodeInfo
+{
+	NodeInfo() = default;
+	NodeInfo(NodeId const& _id, std::string const& _address, unsigned _port, std::string const& _version):
+		id(_id), address(_address), port(_port), version(_version) {}
+
+	std::string enode() const { return "enode://" + id.hex() + "@" + address + ":" + toString(port); }
+
+	NodeId id;
+	std::string address;
+	unsigned port;
+	std::string version;
+};
+
+struct HostPeerPreferences
+{
+	unsigned const idealPeerCount = 11;	// Ideal number of peers to be connected to.
+	unsigned const stretchPeerCount = 7;	// Accepted connection multiplier (max peers = ideal*stretch).
+	
+//	std::list<NodeId> const defaultPeers;
+//	std::list<NodeId> const requiredPeers;
+//	std::list<NodeId> const trusted;
+};
+
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
@@ -159,6 +183,9 @@ public:
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
 
+	/// Set multipier for max accepted connections.
+	void setPeerStretch(unsigned _n) { m_stretchPeers = _n; }
+	
 	/// Get peer information.
 	PeerSessionInfos peerSessionInfo() const;
 
@@ -197,13 +224,23 @@ public:
 	/// @returns if network is started and interactive.
 	bool haveNetwork() const { return m_run && !!m_nodeTable; }
 	
-	NodeId id() const { return m_alias.pub(); }
-
 	/// Validates and starts peer session, taking ownership of _io. Disconnects and returns false upon error.
 	void startPeerSession(Public const& _id, RLP const& _hello, RLPXFrameCoder* _io, std::shared_ptr<RLPXSocket> const& _s);
 
 	/// Get session by id
 	std::shared_ptr<Session> peerSession(NodeId const& _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? m_sessions[_id].lock() : std::shared_ptr<Session>(); }
+
+	/// Get our current node ID.
+	NodeId id() const { return m_alias.pub(); }
+
+	/// Get the public TCP endpoint.
+	bi::tcp::endpoint const& tcpPublic() const { return m_tcpPublic; }
+
+	/// Get the public endpoint information.
+	std::string enode() const { return "enode://" + id().hex() + "@" + (networkPreferences().publicIPAddress.empty() ? m_tcpPublic.address().to_string() : networkPreferences().publicIPAddress) + ":" + toString(m_tcpPublic.port()); }
+
+	/// Get the node information.
+	p2p::NodeInfo nodeInfo() const { return NodeInfo(id(), (networkPreferences().publicIPAddress.empty() ? m_tcpPublic.address().to_string() : networkPreferences().publicIPAddress), m_tcpPublic.port(), m_clientVersion); }
 
 protected:
 	void onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e);
@@ -212,7 +249,9 @@ protected:
 	void restoreNetwork(bytesConstRef _b);
 
 private:
-	enum PeerSlotRatio { Egress = 1, Ingress = 4 };
+	enum PeerSlotType { Egress, Ingress };
+	
+	unsigned peerSlots(PeerSlotType _type) { return _type == Egress ? m_idealPeerCount : m_idealPeerCount * m_stretchPeers; }
 	
 	bool havePeerSession(NodeId const& _id) { return !!peerSession(_id); }
 
@@ -222,7 +261,7 @@ private:
 	void connect(std::shared_ptr<Peer> const& _p);
 
 	/// Returns true if pending and connected peer count is less than maximum
-	bool peerSlotsAvailable(PeerSlotRatio _type) { Guard l(x_pendingNodeConns); return peerCount() + m_pendingPeerConns.size() < _type * m_idealPeerCount; }
+	bool peerSlotsAvailable(PeerSlotType _type = Ingress) { Guard l(x_pendingNodeConns); return peerCount() + m_pendingPeerConns.size() < peerSlots(_type); }
 	
 	/// Ping the peers to update the latency information and disconnect peers which have timed out.
 	void keepAlivePeers();
@@ -290,6 +329,7 @@ private:
 	Mutex x_connecting;													///< Mutex for m_connecting.
 
 	unsigned m_idealPeerCount = 11;										///< Ideal number of peers to be connected to.
+	unsigned m_stretchPeers = 7;										///< Accepted connection multiplier (max peers = ideal*stretch).
 
 	std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;	///< Each of the capabilities we support.
 	

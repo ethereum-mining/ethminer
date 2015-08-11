@@ -117,6 +117,9 @@ public:
 	/// Register a handler that will be called once asynchronous verification is comeplte an transaction has been imported
 	template <class T> Handler<ImportResult, h256 const&, h512 const&> onImport(T const& _t) { return m_onImport.add(_t); }
 
+	/// Register a handler that will be called once asynchronous verification is comeplte an transaction has been imported
+	template <class T> Handler<h256 const&> onReplaced(T const& _t) { return m_onReplaced.add(_t); }
+
 private:
 
 	/// Verified and imported transaction
@@ -137,7 +140,14 @@ private:
 		UnverifiedTransaction() {}
 		UnverifiedTransaction(bytesConstRef const& _t, h512 const& _nodeId): transaction(_t.toBytes()), nodeId(_nodeId) {}
 		UnverifiedTransaction(UnverifiedTransaction&& _t): transaction(std::move(_t.transaction)) {}
-		UnverifiedTransaction& operator=(UnverifiedTransaction&& _other) { transaction = std::move(_other.transaction); nodeId = std::move(_other.nodeId); return *this; }
+		UnverifiedTransaction& operator=(UnverifiedTransaction&& _other)
+		{
+			assert(&_other != this);
+
+			transaction = std::move(_other.transaction);
+			nodeId = std::move(_other.nodeId);
+			return *this;
+		}
 
 		UnverifiedTransaction(UnverifiedTransaction const&) = delete;
 		UnverifiedTransaction& operator=(UnverifiedTransaction const&) = delete;
@@ -184,6 +194,7 @@ private:
 
 	Signal<> m_onReady;															///< Called when a subsequent call to import transactions will return a non-empty container. Be nice and exit fast.
 	Signal<ImportResult, h256 const&, h512 const&> m_onImport;					///< Called for each import attempt. Arguments are result, transaction id an node id. Be nice and exit fast.
+	Signal<h256 const&> m_onReplaced;											///< Called whan transction is dropped during a call to import() to make room for another transaction.
 	unsigned m_limit;															///< Max number of pending transactions
 	unsigned m_futureLimit;														///< Max number of future transactions
 	unsigned m_futureSize = 0;													///< Current number of future transactions

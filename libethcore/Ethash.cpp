@@ -26,7 +26,6 @@
 #include <chrono>
 #include <array>
 #include <thread>
-#include <random>
 #include <thread>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
@@ -177,15 +176,22 @@ StringHashMap Ethash::BlockHeaderRaw::jsInfo() const
 	return { { "nonce", toJS(m_nonce) }, { "seedHash", toJS(seedHash()) }, { "mixHash", toJS(m_mixHash) } };
 }
 
-
+void Ethash::manuallySetWork(SealEngineFace* _engine, BlockHeader const& _work)
+{
+	// set m_sealing to the current problem.
+	if (EthashSealEngine* e = dynamic_cast<EthashSealEngine*>(_engine))
+		e->m_sealing = _work;
+}
 
 void Ethash::manuallySubmitWork(SealEngineFace* _engine, h256 const& _mixHash, Nonce _nonce)
 {
 	if (EthashSealEngine* e = dynamic_cast<EthashSealEngine*>(_engine))
+	{
 		// Go via the farm since the handler function object is stored as a local within the Farm's lambda.
 		// Has the side effect of stopping local workers, which is good, as long as it only does it for
 		// valid submissions.
 		static_cast<GenericFarmFace<EthashProofOfWork>&>(e->m_farm).submitProof(EthashProofOfWork::Solution{_nonce, _mixHash}, nullptr);
+	}
 }
 
 bool Ethash::isWorking(SealEngineFace* _engine)

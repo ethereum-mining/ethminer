@@ -15,15 +15,11 @@ Dialog {
 
 	width: 630
 	height: 660
-	title: qsTr("Edit State")
+	title: qsTr("Edit Genesis Parameters")
 	visible: false
 
-	property alias stateTitle: titleField.text
 	property alias isDefault: defaultCheckBox.checked
-	property alias model: transactionsModel
-	property alias transactionDialog: transactionDialog
 	property alias minerComboBox: comboMiner
-	property alias newAccAction: newAccountAction
 	property int stateIndex
 	property var stateTransactions: []
 	property var stateAccounts: []
@@ -36,16 +32,6 @@ Dialog {
 
 	function open(index, item, setDefault) {
 		stateIndex = index
-		stateTitle = item.title
-		transactionsModel.clear()
-
-		stateTransactions = []
-		var transactions = item.transactions
-		for (var t = 0; t < transactions.length; t++) {
-			transactionsModel.append(item.transactions[t])
-			stateTransactions.push(item.transactions[t])
-		}
-
 		accountsModel.clear()
 		stateAccounts = []
 		var miner = 0
@@ -66,8 +52,8 @@ Dialog {
 
 		visible = true
 		isDefault = setDefault
-		titleField.focus = true
-		defaultCheckBox.enabled = !isDefault
+		console.log(isDefault)
+		defaultCheckBox.checked = isDefault
 		comboMiner.model = stateAccounts
 		comboMiner.currentIndex = miner
 		forceActiveFocus()
@@ -84,8 +70,6 @@ Dialog {
 
 	function getItem() {
 		var item = {
-			title: stateDialog.stateTitle,
-			transactions: stateTransactions,
 			accounts: stateAccounts,
 			contracts: stateContracts
 		}
@@ -95,6 +79,7 @@ Dialog {
 				break
 			}
 		}
+		item.defaultState = defaultCheckBox.checked
 		return item
 	}
 
@@ -111,21 +96,6 @@ Dialog {
 				ColumnLayout {
 					id: dialogContent
 					anchors.top: parent.top
-					RowLayout {
-						Layout.fillWidth: true
-						DefaultLabel {
-							Layout.preferredWidth: 85
-							text: qsTr("Title")
-						}
-						DefaultTextField {
-							id: titleField
-							Layout.fillWidth: true
-						}
-					}
-
-					CommonSeparator {
-						Layout.fillWidth: true
-					}
 
 					RowLayout {
 						Layout.fillWidth: true
@@ -258,30 +228,6 @@ Dialog {
 								Layout.preferredWidth: 85
 								text: qsTr("Accounts")
 							}
-
-							Button {
-								id: newAccountButton
-								anchors.top: accountsLabel.bottom
-								anchors.topMargin: 10
-								iconSource: "qrc:/qml/img/plus.png"
-								action: newAccountAction
-							}
-
-							Action {
-								id: newAccountAction
-								tooltip: qsTr("Add new Account")
-								onTriggered: {
-									add()
-								}
-
-								function add() {
-									var account = stateListModel.newAccount(
-												"1000000", QEther.Ether)
-									stateAccounts.push(account)
-									accountsModel.append(account)
-									return account
-								}
-							}
 						}
 
 						MessageDialog {
@@ -313,21 +259,8 @@ Dialog {
 											id: deleteAccountAction
 											tooltip: qsTr("Delete Account")
 											onTriggered: {
-												if (transactionsModel.isUsed(
-															stateAccounts[styleData.row].secret))
-													alertAlreadyUsed.open()
-												else {
-													if (stateAccounts[styleData.row].name
-															=== comboMiner.currentText)
-														comboMiner.currentIndex = 0
-													stateAccounts.splice(
-																styleData.row,
-																1)
-													accountsModel.remove(
-																styleData.row)
-													comboMiner.model = stateAccounts //TODO: filter accounts wo private keys
-													comboMiner.update()
-												}
+												stateAccounts.splice(styleData.row, 1)
+												accountsView.model.remove(styleData.row)
 											}
 										}
 
@@ -405,91 +338,6 @@ Dialog {
 						Layout.fillWidth: true
 					}
 
-					RowLayout {
-						Layout.fillWidth: true
-
-						Rectangle {
-							Layout.preferredWidth: 85
-							DefaultLabel {
-								id: transactionsLabel
-								Layout.preferredWidth: 85
-								text: qsTr("Transactions")
-							}
-
-							Button {
-								anchors.top: transactionsLabel.bottom
-								anchors.topMargin: 10
-								iconSource: "qrc:/qml/img/plus.png"
-								action: newTrAction
-							}
-
-							Action {
-								id: newTrAction
-								tooltip: qsTr("Create a new transaction")
-								onTriggered: transactionsModel.addTransaction()
-							}
-						}
-
-						TableView {
-							id: transactionsView
-							Layout.fillWidth: true
-							model: transactionsModel
-							headerVisible: false
-							TableViewColumn {
-								role: "label"
-								title: qsTr("Name")
-								width: 150
-								delegate: Item {
-									RowLayout {
-										height: 30
-										width: parent.width
-										Button {
-											iconSource: "qrc:/qml/img/delete_sign.png"
-											action: deleteTransactionAction
-										}
-
-										Action {
-											id: deleteTransactionAction
-											tooltip: qsTr("Delete")
-											onTriggered: transactionsModel.deleteTransaction(
-															 styleData.row)
-										}
-
-										Button {
-											iconSource: "qrc:/qml/img/edit.png"
-											action: editAction
-											visible: styleData.row
-													 >= 0 ? !transactionsModel.get(
-																styleData.row).stdContract : false
-											width: 10
-											height: 10
-											Action {
-												id: editAction
-												tooltip: qsTr("Edit")
-												onTriggered: transactionsModel.editTransaction(
-																 styleData.row)
-											}
-										}
-
-										DefaultLabel {
-											Layout.preferredWidth: 150
-											text: {
-												if (styleData.row >= 0)
-													return transactionsModel.get(
-																styleData.row).label
-												else
-													return ""
-											}
-										}
-									}
-								}
-							}
-							rowDelegate: Rectangle {
-								color: styleData.alternate ? "transparent" : "#f0f0f0"
-								height: 30
-							}
-						}
-					}
 				}
 
 				RowLayout {
@@ -497,43 +345,15 @@ Dialog {
 					anchors.right: parent.right
 
 					Button {
-						text: qsTr("Delete")
-						enabled: !modalStateDialog.isDefault
-						onClicked: {
-							projectModel.stateListModel.deleteState(stateIndex)
-							close()
-						}
-					}
-					Button {
 						text: qsTr("OK")
 						onClicked: {
-							if (titleField.text === "")
-								alertDialog.open()
-							else
-							{
-								close()
-								accepted()
-							}
+							close()
+							accepted()
 						}
 					}
 					Button {
 						text: qsTr("Cancel")
 						onClicked: close()
-					}
-				}
-
-				MessageDialog
-				{
-					id: alertDialog
-					text: qsTr("Please provide a name.")
-				}
-
-				ListModel {
-					id: accountsModel
-
-					function removeAccount(_i) {
-						accountsModel.remove(_i)
-						stateAccounts.splice(_i, 1)
 					}
 				}
 
@@ -547,50 +367,11 @@ Dialog {
 				}
 
 				ListModel {
-					id: transactionsModel
+					id: accountsModel
 
-					function editTransaction(index) {
-						transactionDialog.stateAccounts = stateAccounts
-						transactionDialog.open(index,
-											   transactionsModel.get(index))
-					}
-
-					function addTransaction() {
-						// Set next id here to work around Qt bug
-						// https://bugreports.qt-project.org/browse/QTBUG-41327
-						// Second call to signal handler would just edit the item that was just created, no harm done
-						var item = TransactionHelper.defaultTransaction()
-						transactionDialog.stateAccounts = stateAccounts
-						transactionDialog.open(transactionsModel.count, item)
-					}
-
-					function deleteTransaction(index) {
-						stateTransactions.splice(index, 1)
-						transactionsModel.remove(index)
-					}
-
-					function isUsed(secret) {
-						for (var i in stateTransactions) {
-							if (stateTransactions[i].sender === secret)
-								return true
-						}
-						return false
-					}
-				}
-
-				TransactionDialog {
-					id: transactionDialog
-					onAccepted: {
-						var item = transactionDialog.getItem()
-						if (transactionDialog.transactionIndex < transactionsModel.count) {
-							transactionsModel.set(
-										transactionDialog.transactionIndex,
-										item)
-							stateTransactions[transactionDialog.transactionIndex] = item
-						} else {
-							transactionsModel.append(item)
-							stateTransactions.push(item)
-						}
+					function removeAccount(_i) {
+						accountsModel.remove(_i)
+						stateAccounts.splice(_i, 1)
 					}
 				}
 			}

@@ -24,6 +24,8 @@
 
 #include "JSEngine.h"
 
+/// Do not use libstd headers here, it will break on MacOS.
+
 namespace dev
 {
 namespace eth

@@ -59,7 +59,7 @@ private:
 
 	size_t m_globalPops = 0; 	///< Number of items poped from global stack. In other words: global - local stack overlap.
 	ssize_t m_minSize = 0;		///< Minimum reached local stack size. Can be negative.
-	ssize_t m_maxSize = 0; 		///< Maximum reached local stack size.
+	ssize_t m_maxSize = 0;		///< Maximum reached local stack size.
 };
 
 class BasicBlock

@@ -28,7 +28,9 @@
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/CommonJS.h>
 #include <libethcore/KeyManager.h>
+#include <libethcore/ICAP.h>
 #include <libethereum/Executive.h>
+#include <libethereum/Block.h>
 #include <libwebthree/WebThree.h>
 #include "JsonHelper.h"
 using namespace std;
@@ -58,7 +60,7 @@ WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, 
 {
 	auto path = getDataDir() + "/.web3";
 	fs::create_directories(path);
-	fs::permissions(path, fs::owner_all);
+	DEV_IGNORE_EXCEPTIONS(fs::permissions(path, fs::owner_all));
 	ldb::Options o;
 	o.create_if_missing = true;
 	ldb::DB::Open(o, path, &m_db);
@@ -77,11 +79,11 @@ bool WebThreeStubServer::eth_notePassword(string const& _password)
 	return true;
 }
 
-#define ADMIN requires(_session, Priviledge::Admin)
+#define ADMIN_GUARD requires(_session, Privilege::Admin)
 
 Json::Value WebThreeStubServer::admin_eth_blockQueueStatus(string const& _session)
 {
-	ADMIN;
+	ADMIN_GUARD;
 	Json::Value ret;
 	BlockQueueStatus bqs = m_web3.ethereum()->blockQueue().status();
 	ret["importing"] = (int)bqs.importing;
@@ -96,14 +98,14 @@ Json::Value WebThreeStubServer::admin_eth_blockQueueStatus(string const& _sessio
 
 bool WebThreeStubServer::admin_eth_setAskPrice(std::string const& _wei, std::string const& _session)
 {
-	ADMIN;
+	ADMIN_GUARD;
 	m_gp.setAsk(jsToU256(_wei));
 	return true;
 }
 
 bool WebThreeStubServer::admin_eth_setBidPrice(std::string const& _wei, std::string const& _session)
 {
-	ADMIN;
+	ADMIN_GUARD;
 	m_gp.setBid(jsToU256(_wei));
 	return true;
 }
@@ -120,7 +122,7 @@ dev::eth::BlockQueue const& WebThreeStubServer::bq() const
 
 Json::Value WebThreeStubServer::admin_eth_findBlock(std::string const& _blockHash, std::string const& _session)
 {
-	ADMIN;
+	ADMIN_GUARD;
 	h256 h(_blockHash);
 	if (bc().isKnown(h))
 		return toJson(bc().info(h));
@@ -141,20 +143,20 @@ Json::Value WebThreeStubServer::admin_eth_findBlock(std::string const& _blockHas
 
 std::string WebThreeStubServer::admin_eth_blockQueueFirstUnknown(std::string const& _session)
 {
-	ADMIN;
+	ADMIN_GUARD;
 	return bq().firstUnknown().hex();
 }
 
 bool WebThreeStubServer::admin_eth_blockQueueRetryUnknown(std::string const& _session)
 {
-	ADMIN;
+	ADMIN_GUARD;
 	m_web3.ethereum()->retryUnknown();
 	return true;
 }
 
 Json::Value WebThreeStubServer::admin_eth_allAccounts(std::string const& _session)
 {
-	ADMIN;
+	ADMIN_GUARD;
 	Json::Value ret;
 	u256 total = 0;
 	u256 pendingtotal = 0;
@@ -184,11 +186,11 @@ Json::Value WebThreeStubServer::admin_eth_allAccounts(std::string const& _sessio
 
 Json::Value WebThreeStubServer::admin_eth_newAccount(Json::Value const& _info, std::string const& _session)
 {
-	ADMIN;
+	ADMIN_GUARD;
 	if (!_info.isMember("name"))
 		throw jsonrpc::JsonRpcException("No member found: name");
 	string name = _info["name"].asString();
-	auto s = Secret::random();
+	auto s = ICAP::createDirect();
 	h128 uuid;
 	if (_info.isMember("password"))
 	{
@@ -206,7 +208,7 @@ Json::Value WebThreeStubServer::admin_eth_newAccount(Json::Value const& _info, s
 
 bool WebThreeStubServer::admin_eth_setMiningBenefactor(std::string const& _uuidOrAddress, std::string const& _session)
 {
-	ADMIN;
+	ADMIN_GUARD;
 	Address a;
 	h128 uuid = fromUUID(_uuidOrAddress);
 	if (uuid)
@@ -217,12 +219,14 @@ bool WebThreeStubServer::admin_eth_setMiningBenefactor(std::string const& _uuidO
 		throw jsonrpc::JsonRpcException("Invalid UUID or address");
 	if (m_setMiningBenefactor)
 		m_setMiningBenefactor(a);
+	else
+		m_web3.ethereum()->setBeneficiary(a);
 	return true;
 }
 
 Json::Value WebThreeStubServer::admin_eth_inspect(std::string const& _address, std::string const& _session)
 {
-	ADMIN;
+	ADMIN_GUARD;
 	if (!isHash<Address>(_address))
 		throw jsonrpc::JsonRpcException("Invalid address given.");
 
@@ -251,10 +255,10 @@ h256 WebThreeStubServer::blockHash(std::string const& _blockNumberOrHash) const
 
 Json::Value WebThreeStubServer::admin_eth_reprocess(std::string const& _blockNumberOrHash, std::string const& _session)
 {
-	ADMIN;
+	ADMIN_GUARD;
 	Json::Value ret;
 	PopulationStatistics ps;
-	m_web3.ethereum()->state(blockHash(_blockNumberOrHash), &ps);
+	m_web3.ethereum()->block(blockHash(_blockNumberOrHash), &ps);
 	ret["enact"] = ps.enact;
 	ret["verify"] = ps.verify;
 	ret["total"] = ps.verify + ps.enact;
@@ -263,21 +267,19 @@ Json::Value WebThreeStubServer::admin_eth_reprocess(std::string const& _blockNum
 
 Json::Value WebThreeStubServer::admin_eth_vmTrace(std::string const& _blockNumberOrHash, int _txIndex, std::string const& _session)
 {
-	ADMIN;
+	ADMIN_GUARD;
 
 	Json::Value ret;
 
 	auto c = m_web3.ethereum();
-	State state = c->state(_txIndex + 1, blockHash(_blockNumberOrHash));
-
 	if (_txIndex < 0)
 		throw jsonrpc::JsonRpcException("Negative index");
-
-	if ((unsigned)_txIndex < state.pending().size())
+	Block block = c->block(blockHash(_blockNumberOrHash));
+	if ((unsigned)_txIndex < block.pending().size())
 	{
+		Transaction t = block.pending()[_txIndex];
+		State state = block.fromPending(_txIndex);
 		Executive e(state, bc(), 0);
-		Transaction t = state.pending()[_txIndex];
-		state = state.fromPending(_txIndex);
 		try
 		{
 			StandardTrace st;
@@ -299,7 +301,7 @@ Json::Value WebThreeStubServer::admin_eth_vmTrace(std::string const& _blockNumbe
 
 Json::Value WebThreeStubServer::admin_eth_getReceiptByHashAndIndex(std::string const& _blockNumberOrHash, int _txIndex, std::string const& _session)
 {
-	ADMIN;
+	ADMIN_GUARD;
 	if (_txIndex < 0)
 		throw jsonrpc::JsonRpcException("Negative index");
 	auto h = blockHash(_blockNumberOrHash);

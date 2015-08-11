@@ -29,7 +29,8 @@
 #include "ui_Debugger.h"
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
+using namespace az;
+using namespace eth;
 
 Debugger::Debugger(Context* _c, QWidget* _parent):
 	QDialog(_parent),

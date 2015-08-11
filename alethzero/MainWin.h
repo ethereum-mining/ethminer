@@ -26,7 +26,6 @@
 #endif
 
 #include <map>
-
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>
@@ -42,6 +41,7 @@
 #include "Transact.h"
 #include "NatspecHandler.h"
 #include "Connect.h"
+#include "MainFace.h"
 
 class QListWidgetItem;
 class QActionGroup;
@@ -50,26 +50,32 @@ namespace Ui {
 class Main;
 }
 
-namespace dev { namespace eth {
-class Client;
-class State;
-}}
-
 namespace jsonrpc {
 class HttpServer;
 }
 
 class QWebEnginePage;
+
+namespace dev
+{
+
+namespace eth
+{
+class Client;
+class State;
+}
+
+namespace az
+{
+
 class OurWebThreeStubServer;
 class DappLoader;
 class DappHost;
 struct Dapp;
 
-using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
-
 QString contentsOfQResource(std::string const& res);
 
-class Main: public QMainWindow, public Context
+class Main: public MainFace
 {
 	Q_OBJECT
 
@@ -77,27 +83,33 @@ public:
 	explicit Main(QWidget *parent = 0);
 	~Main();
 
-	dev::WebThreeDirect* web3() const { return m_webThree.get(); }
-	dev::eth::Client* ethereum() const { return m_webThree->ethereum(); }
-	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_webThree->whisper(); }
+	WebThreeDirect* web3() const override { return m_webThree.get(); }
+	eth::Client* ethereum() const override { return m_webThree->ethereum(); }
+	std::shared_ptr<shh::WhisperHost> whisper() const override { return m_webThree->whisper(); }
 
 	bool confirm() const;
 	NatSpecFace* natSpec() { return &m_natSpecDB; }
 
 	std::string pretty(dev::Address const& _a) const override;
-	std::string prettyU256(dev::u256 const& _n) const override;
+	std::string prettyU256(u256 const& _n) const override;
 	std::string render(dev::Address const& _a) const override;
-	std::pair<dev::Address, dev::bytes> fromString(std::string const& _a) const override;
-	std::string renderDiff(dev::eth::StateDiff const& _d) const override;
+	std::pair<Address, bytes> fromString(std::string const& _a) const override;
+	std::string renderDiff(eth::StateDiff const& _d) const override;
 
-	QList<dev::KeyPair> owned() const { return m_myIdentities; }
+	QList<KeyPair> owned() const { return m_myIdentities; }
 
-	dev::u256 gasPrice() const override;
+	u256 gasPrice() const override;
 
-	dev::eth::KeyManager& keyManager() override { return m_keyManager; }
+	eth::KeyManager& keyManager() override { return m_keyManager; }
+	void noteKeysChanged() override { refreshBalances(); }
 	bool doConfirm();
 
-	dev::Secret retrieveSecret(dev::Address const& _address) const override;
+	Secret retrieveSecret(Address const& _address) const override;
+
+	// Account naming API.
+	void install(AccountNamer* _adopt) override;
+	void uninstall(AccountNamer* _kill) override;
+	void noteAddressesChanged() override;
 
 public slots:
 	void load(QString _file);
@@ -131,7 +143,6 @@ private slots:
 	// View
 	void on_refresh_triggered();
 	void on_showAll_triggered() { refreshBlockChain(); }
-	void on_showAllAccounts_triggered() { refreshAccounts(); }
 	void on_preview_triggered();
 
 	// Account management
@@ -144,13 +155,6 @@ private slots:
 	void on_claimPresale_triggered();
 	void on_exportKey_triggered();
 
-	// Account pane
-	void on_accountsFilter_textChanged();
-	void on_showBasic_toggled();
-	void on_showContracts_toggled();
-	void on_onlyNamed_toggled();
-	void on_refreshAccounts_clicked();
-
 	// Tools
 	void on_newTransaction_triggered();
 	void on_loadJS_triggered();
@@ -159,15 +163,9 @@ private slots:
 	// Stuff concerning the blocks/transactions/accounts panels
 	void on_ourAccounts_itemClicked(QListWidgetItem* _i);
 	void on_ourAccounts_doubleClicked();
-	void on_accounts_doubleClicked();
-	void on_accounts_currentItemChanged();
 	void on_transactionQueue_currentItemChanged();
 	void on_blockChainFilter_textChanged();
 	void on_blocks_currentItemChanged();
-
-	// Logging
-//	void on_log_doubleClicked();
-	void on_verbosity_valueChanged();
 
 	// Misc
 	void on_urlEdit_returnPressed();
@@ -193,6 +191,7 @@ private slots:
 	void on_debugCurrent_triggered();
 	void on_debugDumpState_triggered() { debugDumpState(1); }
 	void on_debugDumpStatePre_triggered() { debugDumpState(0); }
+	void on_dumpBlockState_triggered();
 
 	// Whisper
 	void on_newIdentity_triggered();
@@ -214,13 +213,18 @@ signals:
 	void poll();
 
 private:
+	template <class P> void loadPlugin() { Plugin* p = new P(this); initPlugin(p); }
+	void initPlugin(Plugin* _p);
+	void finalisePlugin(Plugin* _p);
+	void unloadPlugin(std::string const& _name);
+
 	void debugDumpState(int _add);
 
-	dev::p2p::NetworkPreferences netPrefs() const;
+	p2p::NetworkPreferences netPrefs() const;
 
 	QString lookup(QString const& _n) const;
-	dev::Address getNameReg() const;
-	dev::Address getCurrencies() const;
+	Address getNameReg() const;
+	Address getCurrencies() const;
 
 	void updateFee();
 	void readSettings(bool _skipGeometry = false);
@@ -228,8 +232,8 @@ private:
 
 	void setPrivateChain(QString const& _private, bool _forceConfigure = false);
 
-	unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f);
-	unsigned installWatch(dev::h256 _tf, WatchHandler const& _f);
+	unsigned installWatch(eth::LogFilter const& _tf, WatchHandler const& _f) override;
+	unsigned installWatch(h256 const& _tf, WatchHandler const& _f) override;
 	void uninstallWatch(unsigned _w);
 
 	void keysChanged();
@@ -254,16 +258,15 @@ private:
 
 	void refreshAll();
 	void refreshPending();
-	void refreshAccounts();
 	void refreshBlockCount();
 	void refreshBalances();
 
-	void setBeneficiary(dev::Address const& _b);
+	void setBeneficiary(Address const& _b);
 	std::string getPassword(std::string const& _title, std::string const& _for, std::string* _hint = nullptr, bool* _ok = nullptr);
 
 	std::unique_ptr<Ui::Main> ui;
 
-	std::unique_ptr<dev::WebThreeDirect> m_webThree;
+	std::unique_ptr<WebThreeDirect> m_webThree;
 
 	std::map<unsigned, WatchHandler> m_handlers;
 	unsigned m_nameRegFilter = (unsigned)-1;
@@ -272,8 +275,8 @@ private:
 
 	QByteArray m_networkConfig;
 	QStringList m_servers;
-	QList<dev::KeyPair> m_myIdentities;
-	dev::eth::KeyManager m_keyManager;
+	QList<KeyPair> m_myIdentities;
+	eth::KeyManager m_keyManager;
 	QString m_privateChain;
 	dev::Address m_nameReg;
 	dev::Address m_beneficiary;
@@ -281,14 +284,11 @@ private:
 	QActionGroup* m_vmSelectionGroup = nullptr;
 
 	QList<QPair<QString, QString>> m_consoleHistory;
-	QMutex m_logLock;
-	QString m_logHistory;
-	bool m_logChanged = true;
 
 	std::unique_ptr<jsonrpc::HttpServer> m_httpConnector;
 	std::unique_ptr<OurWebThreeStubServer> m_server;
 
-	static std::string fromRaw(dev::h256 _n, unsigned* _inc = nullptr);
+	static std::string fromRaw(h256 const& _n, unsigned* _inc = nullptr);
 	NatspecHandler m_natSpecDB;
 
 	Transact* m_transact;
@@ -297,4 +297,9 @@ private:
 	QWebEnginePage* m_webPage;
 
 	Connect m_connect;
+
+	std::unordered_set<AccountNamer*> m_namers;
 };
+
+}
+}

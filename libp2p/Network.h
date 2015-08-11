@@ -48,12 +48,18 @@ struct NetworkPreferences
 	// Network Preferences with intended Public IP
 	NetworkPreferences(std::string const& publicIP, std::string const& l = std::string(), unsigned short lp = 30303, bool u = true): publicIPAddress(publicIP), listenIPAddress(l), listenPort(lp), traverseNAT(u) { if (!publicIPAddress.empty() && !isPublicAddress(publicIPAddress)) BOOST_THROW_EXCEPTION(InvalidPublicIPAddress()); }
 
+	/// Addressing
+	
 	std::string publicIPAddress;
 	std::string listenIPAddress;
 	unsigned short listenPort = 30303;
+	
+	
+	/// Preferences
+	
 	bool traverseNAT = true;
 	bool discovery = true;		// Discovery is activated with network.
-	bool pin = false;			// Only connect to trusted ("required") peers.
+	bool pin = false;			// Only accept or connect to trusted peers.
 };
 
 /**

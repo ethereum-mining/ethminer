@@ -32,6 +32,14 @@ Rectangle {
 
 		visible = true
 
+		worker.pooler.onTriggered.connect(function() {
+			if (root.visible)
+				verifyRegistering();
+		})
+	}
+
+	function verifyRegistering()
+	{
 		verificationEthUrl.text = ""
 		if (projectModel.registerContentHashTrHash !== "" && projectModel.registerContentHashBlockNumber !== -1)
 		{
@@ -82,11 +90,11 @@ Rectangle {
 		anchors.topMargin: 10
 		id: col
 		spacing: 20
+		anchors.left: parent.left
+		anchors.leftMargin: 10
 		Label
 		{
 			anchors.top: parent.top
-			anchors.left: parent.left
-			anchors.leftMargin: 10
 			Layout.fillWidth: true
 			text: qsTr("Register your Dapp on the Name registrar Contract")
 		}
@@ -97,11 +105,11 @@ Rectangle {
 			Layout.preferredHeight: 20
 			Rectangle
 			{
-				Layout.preferredWidth: col.width / 2
+				Layout.preferredWidth: col.width / 5
 				Label
 				{
 					text: qsTr("Root Registrar address")
-					anchors.right: parent.right
+					anchors.left: parent.left
 					anchors.verticalCenter: parent.verticalCenter
 				}
 			}
@@ -111,7 +119,7 @@ Rectangle {
 				id: registrarAddr
 				text: "c6d9d2cd449a754c494264e1809c50e34d64562b"
 				visible: true
-				Layout.preferredWidth: 235
+				Layout.preferredWidth: 450
 			}
 		}
 
@@ -121,11 +129,11 @@ Rectangle {
 			Layout.preferredHeight: 20
 			Rectangle
 			{
-				Layout.preferredWidth: col.width / 2
+				Layout.preferredWidth: col.width / 5
 				Label
 				{
 					text: qsTr("Http URL")
-					anchors.right: parent.right
+					anchors.left: parent.left
 					anchors.verticalCenter: parent.verticalCenter
 				}
 			}
@@ -133,7 +141,7 @@ Rectangle {
 			DefaultTextField
 			{
 				id: applicationUrlHttpCtrl
-				Layout.preferredWidth: 235
+				Layout.preferredWidth: 450
 			}
 
 			Label
@@ -150,11 +158,11 @@ Rectangle {
 			Layout.preferredHeight: 20
 			Rectangle
 			{
-				Layout.preferredWidth: col.width / 2
+				Layout.preferredWidth: col.width / 5
 				Label
 				{
 					text: qsTr("Registration Cost")
-					anchors.right: parent.right
+					anchors.left: parent.left
 					anchors.verticalCenter: parent.verticalCenter
 					id: ctrRegisterLabel
 					function calculateRegisterGas()
@@ -192,23 +200,23 @@ Rectangle {
 			Layout.preferredHeight: 20
 			Rectangle
 			{
-				Layout.preferredWidth: col.width / 2
+				Layout.preferredWidth: col.width / 5
 				Label
 				{
 					text: qsTr("Ethereum URL")
-					anchors.right: parent.right
+					anchors.left: parent.left
 					anchors.verticalCenter: parent.verticalCenter
-				}			
+				}
 			}
 
 			Rectangle
 			{
 				height: 25
 				color: "transparent"
-				Layout.preferredWidth: 235
+				Layout.preferredWidth: 450
 				DefaultTextField
 				{
-					width: 235
+					width: 450
 					id: applicationUrlEthCtrl
 					onTextChanged: {
 						ctrRegisterLabel.calculateRegisterGas();
@@ -223,11 +231,11 @@ Rectangle {
 			Layout.preferredHeight: 20
 			Rectangle
 			{
-				Layout.preferredWidth: col.width / 2
+				Layout.preferredWidth: col.width / 4
 				Label
 				{
 					text: qsTr("Formatted Ethereum URL")
-					anchors.right: parent.right
+					anchors.left: parent.left
 					anchors.verticalCenter: parent.verticalCenter
 				}
 			}
@@ -244,7 +252,7 @@ Rectangle {
 			Label
 			{
 				id: verificationEthUrl
-                anchors.verticalCenter: parent.verticalCenter;
+				anchors.verticalCenter: parent.verticalCenter;
 				anchors.topMargin: 10
 				font.italic: true
 				font.pointSize: appStyle.absoluteSize(-1)
@@ -256,7 +264,7 @@ Rectangle {
 	{
 		anchors.bottom: parent.bottom
 		anchors.bottomMargin: 10
-		width: parent.width		
+		width: parent.width
 
 		function registerHash(gasPrice, callback)
 		{
@@ -268,7 +276,7 @@ Rectangle {
 					inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
 			}
 			if (!worker.stopForInputError(inError))
-			{				
+			{
 				NetworkDeploymentCode.registerDapp(ethUrl, gasPrice,  function(){
 					projectModel.applicationUrlEth = applicationUrlEthCtrl.text
 					projectModel.saveProject()
@@ -301,7 +309,9 @@ Rectangle {
 				inError.push(qsTr(applicationUrlHttpCtrl.text));
 			if (!worker.stopForInputError(inError))
 			{
-				registerToUrlHint(applicationUrlHttpCtrl.text, gasPrice, function(){
+				var url = applicationUrlHttpCtrl.text
+				url = url.replace("http://", "").replace("https://", "")
+				registerToUrlHint(url, gasPrice, function(){
 					projectModel.applicationUrlHttp = applicationUrlHttpCtrl.text
 					projectModel.saveProject()
 					verificationUrl.text = qsTr("waiting verifications")

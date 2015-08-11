@@ -21,7 +21,6 @@
  */
 
 #include "Common.h"
-#include <random>
 #include <cstdint>
 #include <chrono>
 #include <thread>
@@ -29,7 +28,6 @@
 #include <libscrypt/libscrypt.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/SHA3.h>
-#include <libdevcore/FileSystem.h>
 #include <libdevcore/RLP.h>
 #if ETH_HAVE_SECP256K1
 #include <secp256k1/include/secp256k1.h>
@@ -149,9 +147,9 @@ bool dev::decryptSym(Secret const& _k, bytesConstRef _cipher, bytes& o_plain)
 	return decrypt(_k, _cipher, o_plain);
 }
 
-std::pair<bytes, h128> dev::encryptSymNoAuth(h128 const& _k, bytesConstRef _plain)
+std::pair<bytes, h128> dev::encryptSymNoAuth(SecureFixedHash<16> const& _k, bytesConstRef _plain)
 {
-	h128 iv(Nonce::get());
+	h128 iv(Nonce::get().makeInsecure());
 	return make_pair(encryptSymNoAuth(_k, iv, _plain), iv);
 }
 
@@ -175,23 +173,23 @@ bytes dev::encryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _pl
 	}
 }
 
-bytes dev::decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _cipher)
+bytesSec dev::decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _cipher)
 {
 	if (_k.size() != 16 && _k.size() != 24 && _k.size() != 32)
-		return bytes();
+		return bytesSec();
 	SecByteBlock key(_k.data(), _k.size());
 	try
 	{
 		CTR_Mode<AES>::Decryption d;
 		d.SetKeyWithIV(key, key.size(), _iv.data());
-		bytes ret(_cipher.size());
-		d.ProcessData(ret.data(), _cipher.data(), _cipher.size());
+		bytesSec ret(_cipher.size());
+		d.ProcessData(ret.writable().data(), _cipher.data(), _cipher.size());
 		return ret;
 	}
 	catch (CryptoPP::Exception& _e)
 	{
 		cerr << _e.what() << endl;
-		return bytes();
+		return bytesSec();
 	}
 }
 
@@ -239,12 +237,12 @@ bool dev::verify(Public const& _p, Signature const& _s, h256 const& _hash)
 #endif
 }
 
-bytes dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen)
+bytesSec dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen)
 {
-	bytes ret(_dkLen);
+	bytesSec ret(_dkLen);
 	if (PKCS5_PBKDF2_HMAC<SHA256>().DeriveKey(
-		ret.data(),
-		ret.size(),
+		ret.writable().data(),
+		_dkLen,
 		0,
 		reinterpret_cast<byte const*>(_pass.data()),
 		_pass.size(),
@@ -256,9 +254,9 @@ bytes dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations,
 	return ret;
 }
 
-bytes dev::scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uint32_t _r, uint32_t _p, unsigned _dkLen)
+bytesSec dev::scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uint32_t _r, uint32_t _p, unsigned _dkLen)
 {
-	bytes ret(_dkLen);
+	bytesSec ret(_dkLen);
 	if (libscrypt_scrypt(
 		reinterpret_cast<uint8_t const*>(_pass.data()),
 		_pass.size(),
@@ -267,41 +265,41 @@ bytes dev::scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uin
 		_n,
 		_r,
 		_p,
-		ret.data(),
-		ret.size()
+		ret.writable().data(),
+		_dkLen
 	) != 0)
 		BOOST_THROW_EXCEPTION(CryptoException() << errinfo_comment("Key derivation failed."));
 	return ret;
+}
+
+void KeyPair::populateFromSecret(Secret const& _sec)
+{
+	m_secret = _sec;
+	if (s_secp256k1pp.verifySecret(m_secret, m_public))
+		m_address = toAddress(m_public);
 }
 
 KeyPair KeyPair::create()
 {
 	for (int i = 0; i < 100; ++i)
 	{
-		KeyPair ret(FixedHash<32>::random());
+		KeyPair ret(Secret::random());
 		if (ret.address())
 			return ret;
 	}
 	return KeyPair();
 }
 
-KeyPair::KeyPair(h256 _sec):
-	m_secret(_sec)
-{
-	if (s_secp256k1pp.verifySecret(m_secret, m_public))
-		m_address = toAddress(m_public);
-}
-
 KeyPair KeyPair::fromEncryptedSeed(bytesConstRef _seed, std::string const& _password)
 {
-	return KeyPair(sha3(aesDecrypt(_seed, _password)));
+	return KeyPair(Secret(sha3(aesDecrypt(_seed, _password))));
 }
 
 h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 {
 	// H(H(r||k)^h)
 	h256 s;
-	sha3mac(Nonce::get().ref(), _priv.ref(), s.ref());
+	sha3mac(Secret::random().ref(), _priv.ref(), s.ref());
 	s ^= _hash;
 	sha3(s.ref(), s.ref());
 	
@@ -310,84 +308,15 @@ h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 	return s;
 }
 
-mutex Nonce::s_x;
-static string s_seedFile;
-
-h256 Nonce::get()
+Secret Nonce::next()
 {
-	// todo: atomic efface bit, periodic save, kdf, rr, rng
-	// todo: encrypt
-	Guard l(Nonce::s_x);
-	return Nonce::singleton().next();
-}
-
-void Nonce::reset()
-{
-	Guard l(Nonce::s_x);
-	Nonce::singleton().resetInternal();
-}
-
-void Nonce::setSeedFilePath(string const& _filePath)
-{
-	s_seedFile = _filePath;
-}
-
-Nonce::~Nonce()
-{
-	Guard l(Nonce::s_x);
-	if (m_value)
-		// this might throw
-		resetInternal();
-}
-
-Nonce& Nonce::singleton()
-{
-	static Nonce s;
-	return s;
-}
-
-void Nonce::initialiseIfNeeded()
-{
-	if (m_value)
-		return;
-
-	bytes b = contents(seedFile());
-	if (b.size() == 32)
-		memcpy(m_value.data(), b.data(), 32);
-	else
-	{
-		// todo: replace w/entropy from user and system
-		std::mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
-		std::uniform_int_distribution<uint16_t> d(0, 255);
-		for (unsigned i = 0; i < 32; ++i)
-			m_value[i] = (uint8_t)d(s_eng);
-	}
+	Guard l(x_value);
 	if (!m_value)
-		BOOST_THROW_EXCEPTION(InvalidState());
-
-	// prevent seed reuse if process terminates abnormally
-	// this might throw
-	writeFile(seedFile(), bytes());
-}
-
-h256 Nonce::next()
-{
-	initialiseIfNeeded();
-	m_value = sha3(m_value);
-	return m_value;
-}
-
-void Nonce::resetInternal()
-{
-	// this might throw
-	next();
-	writeFile(seedFile(), m_value.asBytes());
-	m_value = h256();
-}
-
-string const& Nonce::seedFile()
-{
-	if (s_seedFile.empty())
-		s_seedFile = getDataDir() + "/seed";
-	return s_seedFile;
+	{
+		m_value = Secret::random();
+		if (!m_value)
+			BOOST_THROW_EXCEPTION(InvalidState());
+	}
+	m_value = sha3Secure(m_value.ref());
+	return sha3(~m_value);
 }

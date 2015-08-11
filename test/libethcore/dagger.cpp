@@ -21,7 +21,6 @@
  */
 
 #include <fstream>
-#include <random>
 #include "../JsonSpiritHeaders.h"
 #include <libdevcore/CommonIO.h>
 #include <libethcore/EthashAux.h>
