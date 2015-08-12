@@ -217,6 +217,7 @@ ApplicationWindow {
 		shortcut: "Ctrl+Alt+V"
 		onTriggered: mainContent.debuggerPanel.assemblyMode = !mainContent.debuggerPanel.assemblyMode;
 		checked:  mainContent.debuggerPanel.assemblyMode;
+		checkable: true
 		enabled: true
 	}
 
@@ -281,11 +282,12 @@ ApplicationWindow {
 		onTriggered: openProjectFileDialog.open()
 	}
 
-	FileDialog {
+	QFileDialog {
 		id: openProjectFileDialog
 		visible: false
 		title: qsTr("Open a Project")
 		selectFolder: true
+		selectExisting: true
 		onAccepted: {
 			var path = openProjectFileDialog.fileUrl.toString();
 			path += "/";
@@ -333,11 +335,12 @@ ApplicationWindow {
 		onTriggered: addExistingFileDialog.open()
 	}
 
-	FileDialog {
+	QFileDialog {
 		id: addExistingFileDialog
 		visible: false
 		title: qsTr("Add a File")
 		selectFolder: false
+		selectExisting: true
 		onAccepted: {
 			var paths = addExistingFileDialog.fileUrls;
 			projectModel.addExistingFiles(paths);
@@ -427,7 +430,9 @@ ApplicationWindow {
 	}
 
 	Settings {
+		id: appSettings
 		property alias gasEstimation: gasEstimationAction.checked
 		property alias optimizeCode: optimizeCodeAction.checked
+		property string nodeAddress: "http://localhost:8545"
 	}
 }

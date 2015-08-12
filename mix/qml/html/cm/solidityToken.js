@@ -28,6 +28,26 @@ function solMisc()
 	return { "true": true, "false": true, "null": true };
 }
 
+function solBuiltIn()
+{
+	return { "msg": true, "tx": true, "block": true, "now": true };
+}
+
+function solBlock()
+{
+	return { "coinbase": true, "difficulty": true, "gaslimit": true, "number": true, "blockhash": true, "timestamp":true };
+}
+
+function solMsg()
+{
+	return { "data": true, "gas": true, "sender": true, "sig": true, "value": true };
+}
+
+function solTx()
+{
+	return { "gasprice": true, "origin": true }
+}
+
 function keywordsName()
 {
 	var keywords = {};
@@ -37,5 +57,9 @@ function keywordsName()
 	keywords[solTime.name.toLowerCase()] = "Time";
 	keywords[solTypes.name.toLowerCase()] = "Type";
 	keywords[solMisc.name.toLowerCase()] = "Misc";
+	keywords[solBuiltIn.name.toLowerCase()] = "BuiltIn";
+	keywords[solBlock.name.toLowerCase()] = "Block";
+	keywords[solMsg.name.toLowerCase()] = "Message";
+	keywords[solTx.name.toLowerCase()] = "Transaction";
 	return keywords;
 }
