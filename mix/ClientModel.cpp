@@ -776,7 +776,7 @@ void ClientModel::onNewTransaction()
 	case TransactionException::None:
 		break;
 	case TransactionException::NotEnoughCash:
-		emit runFailed("Insufficient balance for contract deployment");
+		emit runFailed("Insufficient balance");
 		break;
 	case TransactionException::OutOfGasIntrinsic:
 	case TransactionException::OutOfGasBase:
