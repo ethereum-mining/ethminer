@@ -328,7 +328,7 @@ void Main::noteAddressesChanged()
 
 bool Main::confirm() const
 {
-	return ui->natSpec->isChecked();
+	return true; //ui->natSpec->isChecked();
 }
 
 void Main::on_gasPrices_triggered()
@@ -472,7 +472,7 @@ Address Main::getCurrencies() const
 
 bool Main::doConfirm()
 {
-	return ui->confirm->isChecked();
+	return true; //ui->confirm->isChecked();
 }
 
 void Main::installNameRegWatch()
