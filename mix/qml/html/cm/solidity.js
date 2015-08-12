@@ -16,6 +16,7 @@ CodeMirror.defineMode("solidity", function(config) {
   var stdContract = solStdContract();
   var keywords = solKeywords();
   var atoms = solMisc();
+  var builtins = solBuiltIn();
 
   var isOperatorChar = /[+\-*&^%:=<>!|\/]/;
 
@@ -64,6 +65,7 @@ CodeMirror.defineMode("solidity", function(config) {
 	if (atoms.propertyIsEnumerable(cur)) return "atom";
 	if (types.propertyIsEnumerable(cur)) return "variable-2";
 	if (stdContract.propertyIsEnumerable(cur)) return "variable-3";
+	if (builtins.propertyIsEnumerable(cur)) return "builtin";
 	return "variable";
   }
 
