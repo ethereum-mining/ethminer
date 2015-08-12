@@ -240,7 +240,7 @@ private:
 
 	unsigned installWatch(eth::LogFilter const& _tf, WatchHandler const& _f) override;
 	unsigned installWatch(h256 const& _tf, WatchHandler const& _f) override;
-	void uninstallWatch(unsigned _w);
+	void uninstallWatch(unsigned _w) override;
 
 	void keysChanged();
 
