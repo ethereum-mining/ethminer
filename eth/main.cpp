@@ -724,6 +724,7 @@ int main(int argc, char** argv)
 	{
 		CanonBlockChain<Ethash>::forceGenesisExtraData(sha3(privateChain).asBytes());
 		CanonBlockChain<Ethash>::forceGenesisDifficulty(c_minimumDifficulty);
+		CanonBlockChain<Ethash>::forceGenesisGasLimit(u256(1) << 32);
 	}
 	if (!genesisJSON.empty())
 		CanonBlockChain<Ethash>::setGenesis(genesisJSON);

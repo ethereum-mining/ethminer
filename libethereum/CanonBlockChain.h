@@ -103,8 +103,11 @@ public:
 	/// Override the genesis block's extraData field.
 	static void forceGenesisExtraData(bytes const& _genesisExtraData);
 
-	/// Override the genesis block's extraData field.
+	/// Override the genesis block's difficulty field.
 	static void forceGenesisDifficulty(u256 const& _genesisDifficulty);
+
+	/// Override the genesis block's gasLimit field.
+	static void forceGenesisGasLimit(u256 const& _genesisGasLimit);
 
 private:
 	/// Static genesis info and its lock.
@@ -114,6 +117,7 @@ private:
 	static std::string s_genesisStateJSON;
 	static bytes s_genesisExtraData;
 	static u256 s_genesisDifficulty;
+	static u256 s_genesisGasLimit;
 };
 
 }
