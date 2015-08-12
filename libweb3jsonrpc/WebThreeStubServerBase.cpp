@@ -244,7 +244,7 @@ void WebThreeStubServerBase::setTransactionDefaults(TransactionSkeleton & _t)
 	if (!_t.from)
 		_t.from = m_ethAccounts->defaultTransactAccount();
 	if (_t.gasPrice == UndefinedU256)
-		_t.gasPrice = c_defaultGasPrice;
+		_t.gasPrice = client()->gasBidPrice();
 	if (_t.gas == UndefinedU256)
 		_t.gas = min<u256>(client()->gasLimitRemaining() / 5, client()->balanceAt(_t.from) / _t.gasPrice);
 }
