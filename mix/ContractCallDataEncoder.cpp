@@ -343,8 +343,18 @@ QStringList ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& 
 		if (type.array)
 		{
 			QJsonArray array = decodeArray(type, _v, readPosition);
-			QJsonDocument jsonDoc = QJsonDocument::fromVariant(array.toVariantList());
-			r.append(jsonDoc.toJson(QJsonDocument::Compact));
+			if (type.type == SolidityType::String && array.count() <= 1)
+			{
+				if (array.count() == 1)
+					r.append(array[0].toString());
+				else
+					r.append(QString());
+			}
+			else
+			{
+				QJsonDocument jsonDoc = QJsonDocument::fromVariant(array.toVariantList());
+				r.append(jsonDoc.toJson(QJsonDocument::Compact));
+			}
 		}
 		else
 		{
