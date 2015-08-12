@@ -346,14 +346,14 @@ GasRequirements Transact::determineGasRequirements()
 	bool haveUpperBound = false;
 	qint64 lowerBound = baseGas;
 	qint64 upperBound = (qint64)ethereum()->gasLimitRemaining();
-	for (unsigned i = 0; i < 20 && ((haveUpperBound && upperBound - lowerBound > 100) || !haveUpperBound); ++i)	// get to with 100.
+	for (unsigned i = 0; i < 30 && ((haveUpperBound && upperBound - lowerBound > 16) || !haveUpperBound); ++i)	// get to with 100.
 	{
 		qint64 mid = haveUpperBound ? (lowerBound + upperBound) / 2 : upperBound;
 		ExecutionResult er;
 		if (isCreation())
-			er = ethereum()->create(from, value(), m_data, mid, gasPrice(), ethereum()->getDefault(), FudgeFactor::Lenient);
+			er = ethereum()->create(from, value(), m_data, mid, gasPrice(), PendingBlock, FudgeFactor::Lenient);
 		else
-			er = ethereum()->call(from, value(), to, m_data, mid, gasPrice(), ethereum()->getDefault(), FudgeFactor::Lenient);
+			er = ethereum()->call(from, value(), to, m_data, mid, gasPrice(), PendingBlock, FudgeFactor::Lenient);
 		if (er.excepted == TransactionException::OutOfGas || er.excepted == TransactionException::OutOfGasBase || er.excepted == TransactionException::OutOfGasIntrinsic || er.codeDeposit == CodeDeposit::Failed)
 		{
 			lowerBound = mid;
