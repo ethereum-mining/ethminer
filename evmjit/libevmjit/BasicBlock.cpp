@@ -85,7 +85,10 @@ llvm::Value* LocalStack::get(size_t _index)
 	auto& item = m_input[idx];
 
 	if (!item)
-		item = m_global.get(idx);
+	{
+		item = m_global.get(idx); 											// Reach an item from global stack
+		m_minSize = std::min(m_minSize, -static_cast<ssize_t>(idx) - 1); 	// and remember required stack size
+	}
 
 	return item;
 }
