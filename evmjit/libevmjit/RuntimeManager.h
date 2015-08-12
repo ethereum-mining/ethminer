@@ -50,7 +50,7 @@ public:
 	static llvm::StructType* getRuntimeType();
 	static llvm::StructType* getRuntimeDataType();
 
-	void checkStackLimit(size_t _max, ssize_t _diff);
+	void checkStackLimit(ssize_t _min, ssize_t _max, ssize_t _diff);
 
 private:
 	llvm::Value* getPtr(RuntimeData::Index _index);

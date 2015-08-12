@@ -797,7 +797,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 	stack.finalize(m_builder, *_basicBlock.llvm()); // TODO: Use references
 
 	m_builder.SetInsertPoint(_basicBlock.llvm()->getFirstNonPHI()); // TODO: Move to LocalStack::finalize
-	_runtimeManager.checkStackLimit(stack.maxSize(), stack.size());
+	_runtimeManager.checkStackLimit(stack.minSize(), stack.maxSize(), stack.size());
 }
 
 
