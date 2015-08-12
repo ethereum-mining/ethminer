@@ -63,4 +63,5 @@ void OurAccounts::updateNames()
 	m_names.clear();
 	for (Address const& i: main()->keyManager().accounts())
 		m_names[main()->keyManager().accountName(i)] = i;
+	noteKnownChanged();
 }
