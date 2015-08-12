@@ -95,6 +95,32 @@ std::vector<BasicBlock> Compiler::createBasicBlocks(code_iterator _codeBegin, co
 
 void Compiler::fillJumpTable()
 {
+	for (auto it = m_mainFunc->begin(); it != m_mainFunc->end(); ++it)
+	{
+		auto term = it->getTerminator();
+		if (!term)
+		{
+			// Block may have no terminator if the next instruction is a jump destination.
+			auto next = it->getNextNode();
+			if (next == m_mainFunc->end())
+				next = m_stopBB;
+			llvm::IRBuilder<>{it}.CreateBr(next);
+		}
+		else if (auto jump = llvm::dyn_cast<llvm::BranchInst>(term))
+		{
+			if (jump->isConditional())
+			{
+				if (!jump->getSuccessor(1))
+				{
+					auto next = it->getNextNode();
+					if (next == m_mainFunc->end())
+						next = m_stopBB;
+					jump->setSuccessor(1, next);
+				}
+			}
+		}
+	}
+
 	assert(m_jumpTableBB);
 	if (llvm::pred_empty(m_jumpTableBB))
 	{
@@ -160,13 +186,8 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	auto firstBB = blocks.empty() ? m_stopBB : blocks.front().llvm();
 	m_builder.CreateCondBr(normalFlow, firstBB, m_abortBB, Type::expectTrue);
 
-	for (auto it = blocks.begin(); it != blocks.end(); ++it)
-	{
-		// TODO: Rewrite
-		auto nextIt = it + 1;
-		auto nextBasicBlock = (nextIt != blocks.end()) ? nextIt->llvm() : nullptr; // TODO: What with Stop block?
-		compileBasicBlock(*it, runtimeManager, arith, memory, ext, gasMeter, nextBasicBlock, stack, jumpTable);
-	}
+	for (auto& block: blocks)
+		compileBasicBlock(block, runtimeManager, arith, memory, ext, gasMeter, stack, jumpTable);
 
 	// Code for special blocks:
 	m_builder.SetInsertPoint(m_stopBB);
@@ -182,12 +203,9 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 
 
 void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runtimeManager,
-								 Arith256& _arith, Memory& _memory, Ext& _ext, GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock, Stack& _globalStack,
+								 Arith256& _arith, Memory& _memory, Ext& _ext, GasMeter& _gasMeter, Stack& _globalStack,
 							 	 llvm::SwitchInst& jumpTable)
 {
-	if (!_nextBasicBlock) // this is the last block in the code
-		_nextBasicBlock = m_stopBB;
-
 	m_builder.SetInsertPoint(_basicBlock.llvm());
 	LocalStack stack{_globalStack};
 
@@ -560,7 +578,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			auto target = stack.pop();
 			auto jumpInst = (inst == Instruction::JUMP) ?
 					m_builder.CreateBr(jumpBlock) :
-					m_builder.CreateCondBr(m_builder.CreateICmpNE(stack.pop(), Constant::get(0), "jump.check"), jumpBlock, _nextBasicBlock);
+					m_builder.CreateCondBr(m_builder.CreateICmpNE(stack.pop(), Constant::get(0), "jump.check"), jumpBlock, nullptr);
 
 			if (auto constant = llvm::dyn_cast<llvm::ConstantInt>(target))
 			{
@@ -789,10 +807,6 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 	}
 
 	_gasMeter.commitCostBlock();
-
-	// Block may have no terminator if the next instruction is a jump destination.
-	if (!_basicBlock.llvm()->getTerminator())
-		m_builder.CreateBr(_nextBasicBlock);
 
 	stack.finalize(m_builder, *_basicBlock.llvm()); // TODO: Use references
 
