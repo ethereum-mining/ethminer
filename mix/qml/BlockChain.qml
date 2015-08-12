@@ -492,7 +492,7 @@ ColumnLayout {
 
 				ScenarioButton {
 					id: addBlockBtn
-					text: qsTr("Add Block..")
+					text: qsTr("Add Block...")
 					anchors.left: addTransaction.right
 					roundLeft: false
 					roundRight: true
@@ -609,7 +609,7 @@ ColumnLayout {
 
 			ScenarioButton {
 				id: newAccount
-				text: qsTr("New Account..")
+				text: qsTr("New Account...")
 				onClicked: {
 					var ac = projectModel.stateListModel.newAccount("O", QEther.Wei)
 					model.accounts.push(ac)
