@@ -139,7 +139,7 @@ void Transact::updateDestination()
 	for (Address const& a: m_main->allKnownAddresses())
 	{
 		cdebug << "Adding" << a << m_main->toName(a) << " -> " << (m_main->toName(a) + " (" + ICAP(a).encoded() + ")");
-		ui->destination->addItem(QString::fromStdString(m_main->toName(a) + " (" + ICAP(a).encoded() + ")"), QVariant(QByteArray((char const*)a.data(), a.size)));
+		ui->destination->addItem(QString::fromStdString(m_main->toName(a) + " (" + ICAP(a).encoded() + ")"), QString::fromStdString(a.hex()));
 	}
 }
 
@@ -167,8 +167,8 @@ void Transact::on_destination_currentTextChanged(QString)
 	if (ui->destination->currentText().size() && ui->destination->currentText() != "(Create Contract)")
 	{
 		pair<Address, bytes> p;
-		if (!ui->destination->currentData().isNull())
-			p.first = Address(bytesConstRef((uint8_t const*)ui->destination->currentData().toByteArray().data_ptr(), 20));
+		if (!ui->destination->currentData().isNull() && ui->destination->currentText() == ui->destination->itemText(ui->destination->currentIndex()))
+			p.first = Address(ui->destination->currentData().toString().toStdString());
 		else
 			p = m_main->fromString(ui->destination->currentText().toStdString());
 

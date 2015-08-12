@@ -25,6 +25,18 @@ using namespace std;
 using namespace dev;
 using namespace az;
 
+void AccountNamer::noteKnownChanged()
+{
+	if (m_main)
+		m_main->noteKnownAddressesChanged(this);
+}
+
+void AccountNamer::noteNamesChanged()
+{
+	if (m_main)
+		m_main->noteAddressNamesChanged(this);
+}
+
 void MainFace::notePlugin(std::function<Plugin*(MainFace*)> const& _new)
 {
 	if (!s_linkedPlugins)

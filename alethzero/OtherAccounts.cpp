@@ -54,7 +54,7 @@ void OtherAccounts::import()
 			m_toAddress[name] = addr;
 		}
 		main()->noteSettingsChanged();
-		main()->noteAddressesChanged();
+		noteKnownChanged();
 	}
 }
 
@@ -71,6 +71,7 @@ void OtherAccounts::readSettings(QSettings const& _s)
 			m_toAddress[l[1].toStdString()] = Address(l[0].toStdString());
 		}
 	}
+	noteKnownChanged();
 }
 
 void OtherAccounts::writeSettings(QSettings& _s)
