@@ -119,16 +119,6 @@ struct NodeInfo
 	std::string version;
 };
 
-struct HostPeerPreferences
-{
-	unsigned const idealPeerCount = 11;	// Ideal number of peers to be connected to.
-	unsigned const stretchPeerCount = 7;	// Accepted connection multiplier (max peers = ideal*stretch).
-	
-//	std::list<NodeId> const defaultPeers;
-//	std::list<NodeId> const requiredPeers;
-//	std::list<NodeId> const trusted;
-};
-
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
