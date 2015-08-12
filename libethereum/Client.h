@@ -98,6 +98,8 @@ public:
 
 	/// Get the remaining gas limit in this block.
 	virtual u256 gasLimitRemaining() const override { return m_postMine.gasLimitRemaining(); }
+	/// Get the gas bid price
+	virtual u256 gasBidPrice() const override { return m_gp->bid(); }
 
 	// [PRIVATE API - only relevant for base clients, not available in general]
 	/// Get the block.
