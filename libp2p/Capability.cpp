@@ -35,7 +35,7 @@ Capability::Capability(std::shared_ptr<Session> _s, HostCapabilityFace* _h, unsi
 
 void Capability::disable(std::string const& _problem)
 {
-	clog(NetNote) << "DISABLE: Disabling capability '" << m_hostCap->name() << "'. Reason:" << _problem;
+	clog(NetTriviaSummary) << "DISABLE: Disabling capability '" << m_hostCap->name() << "'. Reason:" << _problem;
 	m_enabled = false;
 }
 
