@@ -42,7 +42,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 			continue;
 		}
 
-		testname = "(" + i.first ") ";
+		testname = "(" + i.first + ") ";
 		cnote << testname;
 		if (_fillin)
 		{
