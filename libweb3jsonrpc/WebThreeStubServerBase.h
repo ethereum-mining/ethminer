@@ -193,6 +193,7 @@ public:
 
 protected:
 	void requires(std::string const& _session, Privilege _l) const { if (!hasPrivilegeLevel(_session, _l)) throw jsonrpc::JsonRpcException("Invalid privileges"); }
+	void setTransactionDefaults(eth::TransactionSkeleton & _t);
 	virtual bool hasPrivilegeLevel(std::string const& _session, Privilege _l) const { (void)_session; (void)_l; return false; }
 
 	virtual dev::eth::Interface* client() = 0;
