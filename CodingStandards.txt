@@ -226,3 +226,15 @@ a. Includes should go in order of lower level (STL -> boost -> libdevcore -> lib
 #include <libethereum/Defaults.h>
 
 b. The only exception to the above rule is the top of a .cpp file where its corresponding header should be located.
+
+13. Logging
+
+Logging should be performed at appropriate verbosities depending on the logging message.
+The more likely a message is to repeat (and thus cuase noise) the higher in verbosity it should be.
+Some rules to keep in mind:
+
+ - Verbosity == 0 -> Reserved for important stuff that users must see and can understand.
+ - Verbosity == 1 -> Reserved for stuff that users don't need to see but can understand.
+ - Verbosity >= 2 -> Anything that is or might be displayed more than once every minute
+ - Verbosity >= 3 -> Anything that only a developer would understand
+ - Verbosity >= 4 -> Anything that is low-level (e.g. peer disconnects, timers being cancelled)
