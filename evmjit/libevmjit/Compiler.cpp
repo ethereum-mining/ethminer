@@ -139,7 +139,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	GasMeter gasMeter(m_builder, runtimeManager);
 	Memory memory(runtimeManager, gasMeter);
 	Ext ext(runtimeManager, memory);
-	Stack stack(m_builder, runtimeManager);
+	Stack stack(m_builder);
 	runtimeManager.setStack(stack); // Runtime Manager will free stack memory
 	Arith256 arith(m_builder);
 
