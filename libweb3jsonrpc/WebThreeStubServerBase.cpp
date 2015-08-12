@@ -780,6 +780,12 @@ bool WebThreeStubServerBase::eth_submitWork(string const& _nonce, string const&,
 	}
 }
 
+bool WebThreeStubServerBase::eth_submitHashrate(int _hashes, string const& _id)
+{
+	client()->submitExternalHashrate(_hashes, jsToFixed<32>(_id));
+	return true;
+}
+
 string WebThreeStubServerBase::eth_register(string const& _address)
 {
 	try

@@ -109,7 +109,8 @@ public:
 	// Account naming API.
 	void install(AccountNamer* _adopt) override;
 	void uninstall(AccountNamer* _kill) override;
-	void noteAddressesChanged() override;
+	void noteKnownAddressesChanged(AccountNamer*) override;
+	void noteAddressNamesChanged(AccountNamer*) override;
 	Address toAddress(std::string const&) const override;
 	std::string toName(Address const&) const override;
 	Addresses allKnownAddresses() const override;

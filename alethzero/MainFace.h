@@ -47,15 +47,26 @@ namespace az
 	static bool s_notePlugin = [](){ MainFace::notePlugin([](MainFace* m){ return new ClassName(m); }); return true; }()
 
 class Plugin;
+class MainFace;
+class Main;
 
 using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
 
 class AccountNamer
 {
+	friend class Main;
+
 public:
 	virtual std::string toName(Address const&) const { return std::string(); }
 	virtual Address toAddress(std::string const&) const { return Address(); }
 	virtual Addresses knownAddresses() const { return Addresses(); }
+
+protected:
+	void noteKnownChanged();
+	void noteNamesChanged();
+
+private:
+	MainFace* m_main = nullptr;
 };
 
 class MainFace: public QMainWindow, public Context
@@ -86,7 +97,8 @@ public:
 	// Account naming API
 	virtual void install(AccountNamer* _adopt) = 0;
 	virtual void uninstall(AccountNamer* _kill) = 0;
-	virtual void noteAddressesChanged() = 0;
+	virtual void noteKnownAddressesChanged(AccountNamer*) = 0;
+	virtual void noteAddressNamesChanged(AccountNamer*) = 0;
 	virtual Address toAddress(std::string const&) const = 0;
 	virtual std::string toName(Address const&) const = 0;
 	virtual Addresses allKnownAddresses() const = 0;
@@ -100,7 +112,8 @@ protected:
 	static std::vector<std::function<Plugin*(MainFace*)>>* s_linkedPlugins;
 
 signals:
-	void allKnownAddressesChanged();
+	void knownAddressesChanged();
+	void addressNamesChanged();
 	void keyManagerChanged();
 
 private:
