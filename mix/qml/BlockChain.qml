@@ -214,6 +214,13 @@ ColumnLayout {
 							else
 								return []
 						}
+						transactionModel:
+						{
+							if (index >= 0)
+								return scenario.blocks[index].transactions
+							else
+								return []
+						}
 
 						status:
 						{
