@@ -545,7 +545,7 @@ void Transact::on_send_clicked()
 	}
 	else
 		// TODO: cache like m_data.
-		ethereum()->submitTransaction(s, value(), m_main->fromString(ui->destination->currentText().toStdString()).first, m_data, ui->gas->value(), gasPrice(), nonce);
+		ethereum()->submitTransaction(s, value(), toAccount().first, m_data, ui->gas->value(), gasPrice(), nonce);
 	close();
 }
 
@@ -565,7 +565,7 @@ void Transact::on_debug_clicked()
 		Block postState(ethereum()->postState());
 		Transaction t = isCreation() ?
 			Transaction(value(), gasPrice(), ui->gas->value(), m_data, postState.transactionsFrom(from)) :
-			Transaction(value(), gasPrice(), ui->gas->value(), m_main->fromString(ui->destination->currentText().toStdString()).first, m_data, postState.transactionsFrom(from));
+			Transaction(value(), gasPrice(), ui->gas->value(), toAccount().first, m_data, postState.transactionsFrom(from));
 		t.forceSender(from);
 		Debugger dw(m_main, this);
 		Executive e(postState, ethereum()->blockChain(), 0);
