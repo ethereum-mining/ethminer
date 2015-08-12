@@ -14,51 +14,39 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file AllAccounts.h
+/** @file OurAccounts.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2015
  */
 
 #pragma once
 
-#if ETH_FATDB
-
-#include <QListWidget>
-#include <QPlainTextEdit>
 #include "MainFace.h"
-
-namespace Ui
-{
-class AllAccounts;
-}
 
 namespace dev
 {
 namespace az
 {
 
-class AllAccounts: public QObject, public Plugin
+class OurAccounts: public QObject, public AccountNamerPlugin
 {
 	Q_OBJECT
 
 public:
-	AllAccounts(MainFace* _m);
-	~AllAccounts();
+	OurAccounts(MainFace* _m);
+	~OurAccounts();
+
+protected:
+	std::string toName(Address const& _a) const override;
+	Address toAddress(std::string const& _n) const override;
+	Addresses knownAddresses() const override;
 
 private slots:
-	void on_accounts_currentItemChanged();
-	void on_accounts_doubleClicked();
-
-	void onAllChange();
-	void refresh();
+	void updateNames();
 
 private:
-	void installWatches();
-
-	Ui::AllAccounts* m_ui;
+	std::unordered_map<std::string, Address> m_names;
 };
 
 }
 }
-
-#endif

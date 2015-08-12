@@ -27,7 +27,7 @@
 #include <QDialog>
 #include <QMap>
 #include <QList>
-#include "Context.h"
+#include "MainFace.h"
 
 namespace Ui { class Transact; }
 
@@ -54,7 +54,7 @@ class Transact: public QDialog
 	Q_OBJECT
 
 public:
-	explicit Transact(Context* _context, QWidget* _parent = 0);
+	explicit Transact(MainFace* _context, QWidget* _parent = 0);
 	~Transact();
 
 	void resetGasPrice();
@@ -102,7 +102,7 @@ private:
 
 	dev::AddressHash m_accounts;
 	dev::eth::Client* m_ethereum = nullptr;
-	Context* m_context = nullptr;
+	MainFace* m_main = nullptr;
 	NatSpecFace* m_natSpecDB = nullptr;
 	bool m_allGood = false;
 };

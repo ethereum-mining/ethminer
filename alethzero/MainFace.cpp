@@ -19,10 +19,30 @@
  * @date 2014
  */
 
+#include <QMenu>
 #include "MainFace.h"
 using namespace std;
 using namespace dev;
 using namespace az;
+
+void AccountNamer::noteKnownChanged()
+{
+	if (m_main)
+		m_main->noteKnownAddressesChanged(this);
+}
+
+void AccountNamer::noteNamesChanged()
+{
+	if (m_main)
+		m_main->noteAddressNamesChanged(this);
+}
+
+void MainFace::notePlugin(std::function<Plugin*(MainFace*)> const& _new)
+{
+	if (!s_linkedPlugins)
+		s_linkedPlugins = new std::vector<std::function<Plugin*(MainFace*)>>();
+	s_linkedPlugins->push_back(_new);
+}
 
 Plugin::Plugin(MainFace* _f, std::string const& _name):
 	m_main(_f),
@@ -53,6 +73,18 @@ void Plugin::addAction(QAction* _a)
 {
 	m_main->addAction(_a);
 }
+
+QAction* Plugin::addMenuItem(QString _n, QString _menuName, bool _sep)
+{
+	QAction* a = new QAction(_n, main());
+	QMenu* m = main()->findChild<QMenu*>(_menuName);
+	if (_sep)
+		m->addSeparator();
+	m->addAction(a);
+	return a;
+}
+
+std::vector<std::function<Plugin*(MainFace*)>>* MainFace::s_linkedPlugins = nullptr;
 
 void MainFace::adoptPlugin(Plugin* _p)
 {
