@@ -31,7 +31,7 @@ private:
 	std::vector<BasicBlock> createBasicBlocks(code_iterator _begin, code_iterator _end, llvm::SwitchInst& _switchInst);
 
 	void compileBasicBlock(BasicBlock& _basicBlock, class RuntimeManager& _runtimeManager, class Arith256& _arith, class Memory& _memory, class Ext& _ext, class GasMeter& _gasMeter,
-			llvm::BasicBlock* _nextBasicBlock, class Stack& _globalStack, llvm::SwitchInst& _jumpTable);
+			class Stack& _globalStack, llvm::SwitchInst& _jumpTable);
 
 	void fillJumpTable();
 
