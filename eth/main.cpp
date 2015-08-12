@@ -128,9 +128,9 @@ void help()
 		<< "    --bootstrap  Connect to the default Ethereum peerservers (default unless --no-discovery used)." << endl
 		<< "    --no-bootstrap  Do not connect to the default Ethereum peerservers (default only when --no-discovery is used)." << endl
 		<< "    -x,--peers <number>  Attempt to connect to given number of peers (default: 11)." << endl
-		<< "	--peer-stretch <number>  Accepted connection multiplier (default: 7)." << endl
+		<< "    --peer-stretch <number>  Accepted connection multiplier (default: 7)." << endl
 	
-		<< "    --public-ip <ip>  Force public ip to given (default: auto)." << endl
+		<< "    --public-ip <ip>  Force advertised public ip to given (default: auto)." << endl
 		<< "    --listen-ip <ip>(:<port>)  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
 		<< "    --listen <port>  Listen on the given port for incoming connections (default: 30303)." << endl
 		<< "    -r,--remote <host>(:<port>)  Connect to remote host (default: none)." << endl
@@ -138,11 +138,12 @@ void help()
 		<< "    --network-id <n> Only connect to other hosts with this network id." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
 
-//		<< "	--peers <filename>  Text list of type publickey@host[:port]  (default: network)" << endl
-//		<< "		Types:" << endl
-//		<< "		default		Attempt connection when no other peers are available and pinning is disable." << endl
-//		<< "		trusted		Keep connected at all times." << endl
-//		<< "	--trust-peers <filename>  Text list of publickeys." << endl
+		<< "    --peerset <list>  Space delimited list of type type:publickey@ipAddress[:port]" << endl
+		<< "        Types:" << endl
+		<< "        default		Attempt connection when no other peers are available and pinning is disable." << endl
+		<< "        require		Keep connected at all times." << endl
+// TODO:
+//		<< "	--trust-peers <filename>  Space delimited list of publickeys." << endl
 	
 		<< "    --no-discovery  Disable Node discovery, implies --no-bootstrap." << endl
 		<< "    --pin  Only accept or connect to trusted peers." << endl
@@ -309,9 +310,9 @@ int main(int argc, char** argv)
 	string remoteHost;
 	unsigned short remotePort = 30303;
 	
-	HostPeerPreferences hprefs;
-	unsigned peers = hprefs.idealPeerCount;
-	unsigned peerStretch = hprefs.stretchPeerCount;
+	unsigned peers = 11;
+	unsigned peerStretch = 7;
+	std::map<NodeId, pair<NodeIPEndpoint,bool>> preferredNodes;
 	bool bootstrap = true;
 	bool disableDiscovery = false;
 	bool pinning = false;
@@ -675,6 +676,63 @@ int main(int argc, char** argv)
 			peers = atoi(argv[++i]);
 		else if (arg == "--peer-stretch" && i + 1 < argc)
 			peerStretch = atoi(argv[++i]);
+		else if (arg == "--peerset" && i + 1 < argc)
+		{
+			string peerset = argv[++i];
+			if (peerset.empty())
+			{
+				cerr << "--peerset argument must not be empty";
+				return -1;
+			}
+
+			vector<string> each;
+			boost::split(each, peerset, boost::is_any_of("\t "));
+			for (auto const& p: each)
+			{
+				string type;
+				string pubk;
+				string hostIP;
+				unsigned short port = c_defaultListenPort;
+				
+				// type:key@ip[:port]
+				vector<string> typeAndKeyAtHostAndPort;
+				boost::split(typeAndKeyAtHostAndPort, p, boost::is_any_of(":"));
+				if (typeAndKeyAtHostAndPort.size() < 2 || typeAndKeyAtHostAndPort.size() > 3)
+					continue;
+				
+				type = typeAndKeyAtHostAndPort[0];
+				if (typeAndKeyAtHostAndPort.size() == 3)
+					port = (uint16_t)atoi(typeAndKeyAtHostAndPort[2].c_str());
+
+				vector<string> keyAndHost;
+				boost::split(keyAndHost, typeAndKeyAtHostAndPort[1], boost::is_any_of("@"));
+				if (keyAndHost.size() != 2)
+					continue;
+				pubk = keyAndHost[0];
+				if (pubk.size() != 40)
+					continue;
+				hostIP = keyAndHost[1];
+				
+				// todo: use Network::resolveHost()
+				if (hostIP.size() < 4 /* g.it */)
+					continue;
+				
+				bool required = type == "required";
+				if (!required && type != "default")
+					continue;
+
+				Public publicKey(fromHex(pubk));
+				try
+				{
+					preferredNodes[publicKey] = make_pair(NodeIPEndpoint(bi::address::from_string(hostIP), port, port), required);
+				}
+				catch (...)
+				{
+					cerr << "Unrecognized peerset: " << peerset << endl;
+					return -1;
+				}
+			}
+		}
 		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -1018,6 +1076,12 @@ int main(int argc, char** argv)
 		writeFile(getDataDir("web3") + "/session.url", "http://localhost:" + toString(jsonRPCURL));
 	}
 #endif
+
+	for (auto const& p: preferredNodes)
+		if (p.second.second)
+			web3.requirePeer(p.first, p.second.first);
+		else
+			web3.addNode(p.first, p.second.first);
 
 	if (bootstrap)
 		for (auto const& i: Host::pocHosts())
