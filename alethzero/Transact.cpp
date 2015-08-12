@@ -121,11 +121,6 @@ u256 Transact::gasPrice() const
 	return ui->gasPrice->value() * units()[units().size() - 1 - ui->gasPriceUnits->currentIndex()].first;
 }
 
-Address Transact::to() const
-{
-	return m_main->fromString(ui->destination->currentText().toStdString()).first;
-}
-
 u256 Transact::total() const
 {
 	return value() + fee();
@@ -166,12 +161,7 @@ void Transact::on_destination_currentTextChanged(QString)
 {
 	if (ui->destination->currentText().size() && ui->destination->currentText() != "(Create Contract)")
 	{
-		pair<Address, bytes> p;
-		if (!ui->destination->currentData().isNull() && ui->destination->currentText() == ui->destination->itemText(ui->destination->currentIndex()))
-			p.first = Address(ui->destination->currentData().toString().trimmed().toStdString());
-		else
-			p = m_main->fromString(ui->destination->currentText().trimmed().toStdString());
-
+		auto p = toAccount();
 		if (p.first)
 			ui->calculatedName->setText(QString::fromStdString(m_main->render(p.first)));
 		else
@@ -210,7 +200,7 @@ void Transact::on_copyUnsigned_clicked()
 		t = Transaction(value(), gasPrice(), ui->gas->value(), m_data, nonce);
 	else
 		// TODO: cache like m_data.
-		t = Transaction(value(), gasPrice(), ui->gas->value(), to(), m_data, nonce);
+		t = Transaction(value(), gasPrice(), ui->gas->value(), toAccount().first, m_data, nonce);
 	qApp->clipboard()->setText(QString::fromStdString(toHex(t.rlp())));
 }
 
@@ -331,9 +321,17 @@ string Transact::natspecNotice(Address _to, bytes const& _data)
 		return "Destination not a contract.";
 }
 
-Address Transact::toAccount()
+pair<Address, bytes> Transact::toAccount()
 {
-	return isCreation() ? Address() : m_main->fromString(ui->destination->currentText().toStdString()).first;
+	pair<Address, bytes> p;
+	if (!isCreation())
+	{
+		if (!ui->destination->currentData().isNull() && ui->destination->currentText() == ui->destination->itemText(ui->destination->currentIndex()))
+			p.first = Address(ui->destination->currentData().toString().trimmed().toStdString());
+		else
+			p = m_main->fromString(ui->destination->currentText().trimmed().toStdString());
+	}
+	return p;
 }
 
 GasRequirements Transact::determineGasRequirements()
@@ -342,7 +340,7 @@ GasRequirements Transact::determineGasRequirements()
 	qint64 baseGas = (qint64)Transaction::gasRequired(m_data, 0);
 
 	Address from = fromAccount();
-	Address to = toAccount();
+	Address to = toAccount().first;
 	ExecutionResult lastGood;
 
 	bool haveUpperBound = false;
@@ -452,7 +450,7 @@ void Transact::rejigData()
 
 	// Add Natspec information
 	if (!isCreation())
-		htmlInfo = "<div class=\"info\"><span class=\"icon\">INFO</span> " + QString::fromStdString(natspecNotice(toAccount(), m_data)).toHtmlEscaped() + "</div>" + htmlInfo;
+		htmlInfo = "<div class=\"info\"><span class=\"icon\">INFO</span> " + QString::fromStdString(natspecNotice(toAccount().first, m_data)).toHtmlEscaped() + "</div>" + htmlInfo;
 
 	// Update gas
 	if (ui->gas->value() == ui->gas->minimum())

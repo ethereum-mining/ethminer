@@ -81,7 +81,7 @@ private:
 	void updateNonce();
 
 	dev::Address fromAccount();
-	dev::Address toAccount();
+	std::pair<dev::Address, bytes> toAccount();
 	void updateDestination();
 	void updateFee();
 	bool isCreation() const;
