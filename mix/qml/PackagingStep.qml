@@ -27,11 +27,12 @@ Rectangle {
 		visible = true
 	}
 
-	FileDialog {
+	QFileDialog {
 		id: ressourcesFolder
 		visible: false
 		title: qsTr("Please choose a path")
 		selectFolder: true
+		selectExisting: true
 		property variant target
 		onAccepted: {
 			var u = ressourcesFolder.fileUrl.toString();

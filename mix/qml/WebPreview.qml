@@ -95,6 +95,11 @@ Item {
 	}
 
 	Connections {
+		target: clientModel
+		onRunComplete: reload();
+	}
+
+	Connections {
 		target: projectModel
 
 		onDocumentAdded: {
@@ -313,7 +318,6 @@ Item {
 				width: parent.width
 				Layout.preferredWidth: parent.width
 				id: webView
-				experimental.settings.localContentCanAccessRemoteUrls: true
 				onJavaScriptConsoleMessage: {
 					console.log(sourceID + ":" + lineNumber + ": " + message);
 					webPreview.javaScriptMessage(level, sourceID, lineNumber - 1, message);
