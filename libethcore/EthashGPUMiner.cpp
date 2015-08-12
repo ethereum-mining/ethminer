@@ -213,7 +213,7 @@ bool EthashGPUMiner::configureGPU(
 	s_platformId = _platformId;
 	s_deviceId = _deviceId;
 
-	if (_localWorkSize != 32 && _localWorkSize != 64 && _localWorkSize != 128)
+	if (_localWorkSize != 32 && _localWorkSize != 64 && _localWorkSize != 128 && _localWorkSize != 256)
 	{
 		cout << "Given localWorkSize of " << toString(_localWorkSize) << "is invalid. Must be either 32,64, or 128" << endl;
 		return false;
