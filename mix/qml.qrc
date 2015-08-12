@@ -34,6 +34,7 @@
         <file>qml/QStringTypeView.qml</file>
         <file>qml/QVariableDeclaration.qml</file>
         <file>qml/QVariableDefinition.qml</file>
+        <file>qml/QFileDialog.qml</file>
         <file>qml/SourceSansProBold.qml</file>
         <file>qml/SourceSansProLight.qml</file>
         <file>qml/SourceSansProRegular.qml</file>

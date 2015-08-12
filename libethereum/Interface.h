@@ -190,6 +190,8 @@ public:
 
 	/// Get the remaining gas limit in this block.
 	virtual u256 gasLimitRemaining() const = 0;
+	// Get the gas bidding price
+	virtual u256 gasBidPrice() const = 0;
 
 	// [MINING API]:
 
