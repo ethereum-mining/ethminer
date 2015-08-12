@@ -168,9 +168,9 @@ void Transact::on_destination_currentTextChanged(QString)
 	{
 		pair<Address, bytes> p;
 		if (!ui->destination->currentData().isNull() && ui->destination->currentText() == ui->destination->itemText(ui->destination->currentIndex()))
-			p.first = Address(ui->destination->currentData().toString().toStdString());
+			p.first = Address(ui->destination->currentData().toString().trimmed().toStdString());
 		else
-			p = m_main->fromString(ui->destination->currentText().toStdString());
+			p = m_main->fromString(ui->destination->currentText().trimmed().toStdString());
 
 		if (p.first)
 			ui->calculatedName->setText(QString::fromStdString(m_main->render(p.first)));
