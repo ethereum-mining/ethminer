@@ -444,7 +444,10 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence)
 				{
 					auto contractAddressIter = m_contractAddresses.find(ctrInstance);
 					if (contractAddressIter == m_contractAddresses.end())
+					{
 						emit runFailed("Contract '" + transaction.contractId + tr(" not deployed.") + "' " + tr(" Cannot call ") + transaction.functionId);
+						break;
+					}
 					callAddress(contractAddressIter->second, encoder.encodedData(), transaction);
 				}
 				m_gasCosts.append(m_client->lastExecution().gasUsed);
