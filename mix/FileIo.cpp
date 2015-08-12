@@ -224,3 +224,11 @@ void FileIo::deleteFile(QString const& _path)
 	QFile file(pathFromUrl(_path));
 	file.remove();
 }
+
+QUrl FileIo::pathFolder(QString const& _path)
+{
+	QFileInfo info(_path);
+	if (info.exists() && info.isDir())
+		return QUrl::fromLocalFile(_path);
+	return QUrl::fromLocalFile(QFileInfo(_path).absolutePath());
+}

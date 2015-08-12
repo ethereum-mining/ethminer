@@ -19,7 +19,7 @@ function defaultTransaction()
 
 function rpcCall(requests, callBack, error)
 {
-	var jsonRpcUrl = "http://localhost:8545";
+	var jsonRpcUrl = appSettings.nodeAddress;
 	var rpcRequest = JSON.stringify(requests);
 	console.log(rpcRequest);
 	var httpRequest = new XMLHttpRequest();
