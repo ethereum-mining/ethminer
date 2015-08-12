@@ -63,7 +63,7 @@ EthereumPeer::~EthereumPeer()
 {
 	if (m_asking != Asking::Nothing)
 	{
-		cnote << "Peer aborting while being asked for " << ::toString(m_asking);
+		clog(NetAllDetail) << "Peer aborting while being asked for " << ::toString(m_asking);
 		setRude();
 	}
 	abortSync();
