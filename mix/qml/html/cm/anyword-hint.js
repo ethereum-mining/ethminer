@@ -24,6 +24,15 @@
 		list = addSolToken(curWord, list, seen, solMisc(), solMisc);
 	}
 
+	//TODO: tokenize properly
+	if (curLine.slice(start - 6, start) === "block.")
+		list = addSolToken(curWord, list, seen, solBlock(), solBlock);
+	else if (curLine.slice(start - 4, start) === "msg.")
+		list = addSolToken(curWord, list, seen, solMsg(), solMsg);
+	else if (curLine.slice(start - 3, start) === "tx.")
+		list = addSolToken(curWord, list, seen, solTx(), solTx);
+
+
 	var previousWord = "";
 	var re = new RegExp(word.source, "g");
 	for (var dir = -1; dir <= 1; dir += 2) {

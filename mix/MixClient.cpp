@@ -199,35 +199,8 @@ ExecutionResult MixClient::debugTransaction(Transaction const& _t, State const& 
 	execution.go(onOp);
 	execution.finalize();
 
-	switch (er.excepted)
-	{
-	case TransactionException::None:
-		break;
-	case TransactionException::NotEnoughCash:
-		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Insufficient balance for contract deployment"));
-	case TransactionException::OutOfGasIntrinsic:
-	case TransactionException::OutOfGasBase:
-	case TransactionException::OutOfGas:
-		BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas"));
-	case TransactionException::BlockGasLimitReached:
-		BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Block gas limit reached"));
-	case TransactionException::BadJumpDestination:
-		BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Solidity exception (bad jump)"));
-	case TransactionException::OutOfStack:
-		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Out of stack"));
-	case TransactionException::StackUnderflow:
-		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Stack underflow"));
-		//these should not happen in mix
-	case TransactionException::Unknown:
-	case TransactionException::BadInstruction:
-	case TransactionException::InvalidSignature:
-	case TransactionException::InvalidNonce:
-	case TransactionException::InvalidFormat:
-	case TransactionException::BadRLP:
-		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Internal execution error"));
-	}
-
 	ExecutionResult d;
+	d.excepted = er.excepted;
 	d.inputParameters = _t.data();
 	d.result = er;
 	d.machineStates = machineStates;
@@ -257,7 +230,8 @@ void MixClient::executeTransaction(Transaction const& _t, Block& _block, bool _c
 	// execute on a state
 	if (!_call)
 	{
-		t = _gasAuto ? replaceGas(_t, d.gasUsed, _secret) : _t;
+		u256 useGas = min(d.gasUsed, _block.gasLimitRemaining());
+		t = _gasAuto ? replaceGas(_t, useGas, _secret) : _t;
 		eth::ExecutionResult const& er = _block.execute(envInfo.lastHashes(), t);
 		if (t.isCreation() && _block.state().code(d.contractAddress).empty())
 			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas for contract deployment"));
@@ -284,7 +258,7 @@ void MixClient::mine()
 	RLPStream header;
 	h.streamRLP(header);
 	m_postMine.sealBlock(header.out());
-	bc().import(m_postMine.blockData(), m_stateDB, ImportRequirements::Everything & ~ImportRequirements::ValidSeal);
+	bc().import(m_postMine.blockData(), m_stateDB, (ImportRequirements::Everything & ~ImportRequirements::ValidSeal) != 0);
 	m_postMine.sync(bc());
 	m_preMine = m_postMine;
 }

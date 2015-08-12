@@ -124,7 +124,7 @@ Dialog {
 									importJsonFileDialog.open()
 								}
 							}
-							FileDialog {
+							QFileDialog {
 								id: importJsonFileDialog
 								visible: false
 								title: qsTr("Select State File")
