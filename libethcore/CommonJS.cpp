@@ -22,28 +22,9 @@
  */
 
 #include "CommonJS.h"
-#include "ICAP.h"
 
 namespace dev
 {
-
-Address jsToAddress(std::string const& _s)
-{
-	try
-	{
-		eth::ICAP i = eth::ICAP::decoded(_s);
-		return i.direct();
-	}
-	catch (eth::InvalidICAP&) {}
-	try
-	{
-		auto b = fromHex(_s.substr(0, 2) == "0x" ? _s.substr(2) : _s, WhenError::Throw);
-		if (b.size() == 20)
-			return Address(b);
-	}
-	catch (BadHexCharacter&) {}
-	BOOST_THROW_EXCEPTION(InvalidAddress());
-}
 
 std::string prettyU256(u256 _n, bool _abridged)
 {
