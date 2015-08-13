@@ -217,11 +217,7 @@ llvm::Type* Array::getType()
 }
 
 Array::Array(llvm::IRBuilder<>& _builder, char const* _name) :
-	CompilerHelper(_builder),
-	m_pushFunc([this](){ return createArrayPushFunc(); }),
-	m_setFunc([this](){ return createArraySetFunc(); }),
-	m_getFunc([this](){ return createArrayGetFunc(); }),
-	m_freeFunc([this](){ return createFreeFunc(); })
+	CompilerHelper(_builder)
 {
 	m_array = m_builder.CreateAlloca(getType(), nullptr, _name);
 	m_builder.CreateStore(llvm::ConstantAggregateZero::get(getType()), m_array);
@@ -229,11 +225,7 @@ Array::Array(llvm::IRBuilder<>& _builder, char const* _name) :
 
 Array::Array(llvm::IRBuilder<>& _builder, llvm::Value* _array) :
 	CompilerHelper(_builder),
-	m_array(_array),
-	m_pushFunc([this](){ return createArrayPushFunc(); }),
-	m_setFunc([this](){ return createArraySetFunc(); }),
-	m_getFunc([this](){ return createArrayGetFunc(); }),
-	m_freeFunc([this](){ return createFreeFunc(); })
+	m_array(_array)
 {
 	m_builder.CreateStore(llvm::ConstantAggregateZero::get(getType()), m_array);
 }

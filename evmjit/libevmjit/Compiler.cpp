@@ -36,7 +36,7 @@ Compiler::Compiler(Options const& _options):
 	Type::init(m_builder.getContext());
 }
 
-void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEnd)
+std::vector<BasicBlock> Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEnd, llvm::SwitchInst& _jumpTable)
 {
 	/// Helper function that skips push data and finds next iterator (can be the end)
 	auto skipPushDataAndGetNext = [](code_iterator _curr, code_iterator _end)
@@ -54,8 +54,9 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 		if (*(_codeEnd - 1) != static_cast<byte>(Instruction::STOP))
 			break;
 
+	std::vector<BasicBlock> blocks;
+
 	auto begin = _codeBegin; // begin of current block
-	bool nextJumpDest = false;
 	for (auto curr = begin, next = begin; curr != _codeEnd; curr = next)
 	{
 		next = skipPushDataAndGetNext(curr, _codeEnd);
@@ -71,10 +72,6 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 			isEnd = true;
 			break;
 
-		case Instruction::JUMPDEST:
-			nextJumpDest = true;
-			break;
-
 		default:
 			break;
 		}
@@ -86,42 +83,32 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 		if (isEnd)
 		{
 			auto beginIdx = begin - _codeBegin;
-			m_basicBlocks.emplace(std::piecewise_construct, std::forward_as_tuple(beginIdx),
-					std::forward_as_tuple(beginIdx, begin, next, m_mainFunc, m_builder, nextJumpDest));
-			nextJumpDest = false;
+			blocks.emplace_back(beginIdx, begin, next, m_mainFunc);
+			if (Instruction(*begin) == Instruction::JUMPDEST)
+				_jumpTable.addCase(Constant::get(beginIdx), blocks.back().llvm());
 			begin = next;
 		}
 	}
+
+	return blocks;
 }
 
-llvm::BasicBlock* Compiler::getJumpTableBlock(RuntimeManager& _runtimeManager)
+void Compiler::fillJumpTable()
 {
-	if (!m_jumpTableBlock)
+	assert(m_jumpTableBB);
+	if (llvm::pred_empty(m_jumpTableBB))
 	{
-		m_jumpTableBlock.reset(new BasicBlock("JumpTable", m_mainFunc, m_builder, true));
-		InsertPointGuard g{m_builder};
-		m_builder.SetInsertPoint(m_jumpTableBlock->llvm());
-		auto dest = m_builder.CreatePHI(Type::Word, 8, "target");
-		auto switchInstr = m_builder.CreateSwitch(dest, getBadJumpBlock(_runtimeManager));
-		for (auto&& p : m_basicBlocks)
-		{
-			if (p.second.isJumpDest())
-				switchInstr->addCase(Constant::get(p.first), p.second.llvm());
-		}
+		m_jumpTableBB->eraseFromParent(); // remove if unused
+		return;
 	}
-	return m_jumpTableBlock->llvm();
-}
 
-llvm::BasicBlock* Compiler::getBadJumpBlock(RuntimeManager& _runtimeManager)
-{
-	if (!m_badJumpBlock)
+	// TODO: Extend this function as `resolveJumps()` and fill gaps in branch instructions.
+	auto target = llvm::cast<llvm::PHINode>(m_jumpTableBB->begin());
+	for (auto pred: llvm::predecessors(m_jumpTableBB))
 	{
-		m_badJumpBlock.reset(new BasicBlock("BadJump", m_mainFunc, m_builder, true));
-		InsertPointGuard g{m_builder};
-		m_builder.SetInsertPoint(m_badJumpBlock->llvm());
-		_runtimeManager.exit(ReturnCode::BadJumpDestination);
+		auto targetMd = llvm::cast<llvm::LocalAsMetadata>(pred->getTerminator()->getMetadata("target")->getOperand(0));
+		target->addIncoming(targetMd->getValue(), pred);
 	}
-	return m_badJumpBlock->llvm();
 }
 
 std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_iterator _end, std::string const& _id)
@@ -135,16 +122,24 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 
 	// Create entry basic block
 	auto entryBlock = llvm::BasicBlock::Create(m_builder.getContext(), {}, m_mainFunc);
+
+	m_stopBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Stop", m_mainFunc);
+	m_abortBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Abort", m_mainFunc);
+	m_jumpTableBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "JumpTable", m_mainFunc);
+	m_builder.SetInsertPoint(m_jumpTableBB);
+	auto target = m_builder.CreatePHI(Type::Word, 16, "target");
+	auto& jumpTable = *m_builder.CreateSwitch(target, m_abortBB);
+
 	m_builder.SetInsertPoint(entryBlock);
 
-	createBasicBlocks(_begin, _end);
+	auto blocks = createBasicBlocks(_begin, _end, jumpTable);
 
 	// Init runtime structures.
 	RuntimeManager runtimeManager(m_builder, _begin, _end);
 	GasMeter gasMeter(m_builder, runtimeManager);
 	Memory memory(runtimeManager, gasMeter);
 	Ext ext(runtimeManager, memory);
-	Stack stack(m_builder, runtimeManager);
+	Stack stack(m_builder);
 	runtimeManager.setStack(stack); // Runtime Manager will free stack memory
 	Arith256 arith(m_builder);
 
@@ -162,87 +157,39 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	auto normalFlow = m_builder.CreateICmpEQ(r, m_builder.getInt32(0));
 	runtimeManager.setJmpBuf(jmpBuf);
 
-	// TODO: Create Stop basic block on demand
-	m_stopBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Stop", m_mainFunc);
-	m_abortBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Abort", m_mainFunc);
-
-	auto firstBB = m_basicBlocks.empty() ? m_stopBB : m_basicBlocks.begin()->second.llvm();
+	auto firstBB = blocks.empty() ? m_stopBB : blocks.front().llvm();
 	m_builder.CreateCondBr(normalFlow, firstBB, m_abortBB, Type::expectTrue);
 
-	for (auto basicBlockPairIt = m_basicBlocks.begin(); basicBlockPairIt != m_basicBlocks.end(); ++basicBlockPairIt)
+	for (auto it = blocks.begin(); it != blocks.end(); ++it)
 	{
-		auto& basicBlock = basicBlockPairIt->second;
-		auto iterCopy = basicBlockPairIt;
-		++iterCopy;
-		auto nextBasicBlock = (iterCopy != m_basicBlocks.end()) ? iterCopy->second.llvm() : nullptr;
-		compileBasicBlock(basicBlock, runtimeManager, arith, memory, ext, gasMeter, nextBasicBlock);
+		// TODO: Rewrite
+		auto nextIt = it + 1;
+		auto nextBasicBlock = (nextIt != blocks.end()) ? nextIt->llvm() : nullptr; // TODO: What with Stop block?
+		compileBasicBlock(*it, runtimeManager, arith, memory, ext, gasMeter, nextBasicBlock, stack, jumpTable);
 	}
 
 	// Code for special blocks:
-	// TODO: move to separate function.
 	m_builder.SetInsertPoint(m_stopBB);
 	runtimeManager.exit(ReturnCode::Stop);
 
 	m_builder.SetInsertPoint(m_abortBB);
 	runtimeManager.exit(ReturnCode::OutOfGas);
 
-	removeDeadBlocks();
-
-	// Link jump table target index
-	if (m_jumpTableBlock)
-	{
-		auto phi = llvm::cast<llvm::PHINode>(&m_jumpTableBlock->llvm()->getInstList().front());
-		for (auto predIt = llvm::pred_begin(m_jumpTableBlock->llvm()); predIt != llvm::pred_end(m_jumpTableBlock->llvm()); ++predIt)
-		{
-			BasicBlock* pred = nullptr;
-			for (auto&& p : m_basicBlocks)
-			{
-				if (p.second.llvm() == *predIt)
-				{
-					pred = &p.second;
-					break;
-				}
-			}
-
-			phi->addIncoming(pred->getJumpTarget(), pred->llvm());
-		}
-	}
-
-	dumpCFGifRequired("blocks-init.dot");
-
-	if (m_options.optimizeStack)
-	{
-		std::vector<BasicBlock*> blockList;
-		for	(auto& entry : m_basicBlocks)
-			blockList.push_back(&entry.second);
-
-		if (m_jumpTableBlock)
-			blockList.push_back(m_jumpTableBlock.get());
-
-		BasicBlock::linkLocalStacks(blockList, m_builder);
-
-		dumpCFGifRequired("blocks-opt.dot");
-	}
-
-	for (auto& entry : m_basicBlocks)
-		entry.second.synchronizeLocalStack(stack);
-	if (m_jumpTableBlock)
-		m_jumpTableBlock->synchronizeLocalStack(stack);
-
-	dumpCFGifRequired("blocks-sync.dot");
+	fillJumpTable();
 
 	return module;
 }
 
 
 void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runtimeManager,
-								 Arith256& _arith, Memory& _memory, Ext& _ext, GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock)
+								 Arith256& _arith, Memory& _memory, Ext& _ext, GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock, Stack& _globalStack,
+							 	 llvm::SwitchInst& jumpTable)
 {
 	if (!_nextBasicBlock) // this is the last block in the code
 		_nextBasicBlock = m_stopBB;
 
 	m_builder.SetInsertPoint(_basicBlock.llvm());
-	auto& stack = _basicBlock.localStack();
+	LocalStack stack{_globalStack};
 
 	for (auto it = _basicBlock.begin(); it != _basicBlock.end(); ++it)
 	{
@@ -609,44 +556,23 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		case Instruction::JUMP:
 		case Instruction::JUMPI:
 		{
-			llvm::BasicBlock* targetBlock = nullptr;
+			auto jumpBlock = m_jumpTableBB;
 			auto target = stack.pop();
+			auto jumpInst = (inst == Instruction::JUMP) ?
+					m_builder.CreateBr(jumpBlock) :
+					m_builder.CreateCondBr(m_builder.CreateICmpNE(stack.pop(), Constant::get(0), "jump.check"), jumpBlock, _nextBasicBlock);
+
 			if (auto constant = llvm::dyn_cast<llvm::ConstantInt>(target))
 			{
-				auto&& c = constant->getValue();
-				auto targetIdx = c.getActiveBits() <= 64 ? c.getZExtValue() : -1;
-				auto it = m_basicBlocks.find(targetIdx);
-				targetBlock = (it != m_basicBlocks.end() && it->second.isJumpDest()) ? it->second.llvm() : getBadJumpBlock(_runtimeManager);
+				// If target index is a constant do direct jump to the target block.
+				auto bb = jumpTable.findCaseValue(constant).getCaseSuccessor();
+				jumpInst->setSuccessor(0, bb);
 			}
-
-			// TODO: Improve; check for constants
-			if (inst == Instruction::JUMP)
+			else
 			{
-				if (targetBlock)
-				{
-					m_builder.CreateBr(targetBlock);
-				}
-				else
-				{
-					_basicBlock.setJumpTarget(target);
-					m_builder.CreateBr(getJumpTableBlock(_runtimeManager));
-				}
-			}
-			else // JUMPI
-			{
-				auto val = stack.pop();
-				auto zero = Constant::get(0);
-				auto cond = m_builder.CreateICmpNE(val, zero, "nonzero");
-
-				if (targetBlock)
-				{
-					m_builder.CreateCondBr(cond, targetBlock, _nextBasicBlock);
-				}
-				else
-				{
-					_basicBlock.setJumpTarget(target);
-					m_builder.CreateCondBr(cond, getJumpTableBlock(_runtimeManager), _nextBasicBlock);
-				}
+				// Attach medatada to branch instruction with information about target index.
+				auto targetMd = llvm::MDNode::get(jumpInst->getContext(), llvm::LocalAsMetadata::get(target));
+				jumpInst->setMetadata("target", targetMd);
 			}
 			break;
 		}
@@ -868,109 +794,12 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 	if (!_basicBlock.llvm()->getTerminator())
 		m_builder.CreateBr(_nextBasicBlock);
 
-	m_builder.SetInsertPoint(_basicBlock.llvm()->getFirstNonPHI());
-	_runtimeManager.checkStackLimit(_basicBlock.localStack().getMaxSize(), _basicBlock.localStack().getDiff());
+	stack.finalize(m_builder, *_basicBlock.llvm()); // TODO: Use references
+
+	m_builder.SetInsertPoint(_basicBlock.llvm()->getFirstNonPHI()); // TODO: Move to LocalStack::finalize
+	_runtimeManager.checkStackLimit(stack.minSize(), stack.maxSize(), stack.size());
 }
 
-
-
-void Compiler::removeDeadBlocks()
-{
-	// Remove dead basic blocks
-	auto sthErased = false;
-	do
-	{
-		sthErased = false;
-		for (auto it = m_basicBlocks.begin(); it != m_basicBlocks.end();)
-		{
-			auto llvmBB = it->second.llvm();
-			if (llvm::pred_begin(llvmBB) == llvm::pred_end(llvmBB))
-			{
-				llvmBB->eraseFromParent();
-				m_basicBlocks.erase(it++);
-				sthErased = true;
-			}
-			else
-				++it;
-		}
-	}
-	while (sthErased);
-
-	if (m_jumpTableBlock && llvm::pred_begin(m_jumpTableBlock->llvm()) == llvm::pred_end(m_jumpTableBlock->llvm()))
-	{
-		m_jumpTableBlock->llvm()->eraseFromParent();
-		m_jumpTableBlock.reset();
-	}
-
-	if (m_badJumpBlock && llvm::pred_begin(m_badJumpBlock->llvm()) == llvm::pred_end(m_badJumpBlock->llvm()))
-	{
-		m_badJumpBlock->llvm()->eraseFromParent();
-		m_badJumpBlock.reset();
-	}
-}
-
-void Compiler::dumpCFGifRequired(std::string const& _dotfilePath)
-{
-	if (! m_options.dumpCFG)
-		return;
-
-	// TODO: handle i/o failures
-	std::ofstream ofs(_dotfilePath);
-	dumpCFGtoStream(ofs);
-	ofs.close();
-}
-
-void Compiler::dumpCFGtoStream(std::ostream& _out)
-{
-	_out << "digraph BB {\n"
-		 << "  node [shape=record, fontname=Courier, fontsize=10];\n"
-		 << "  entry [share=record, label=\"entry block\"];\n";
-
-	std::vector<BasicBlock*> blocks;
-	for (auto& pair : m_basicBlocks)
-		blocks.push_back(&pair.second);
-	if (m_jumpTableBlock)
-		blocks.push_back(m_jumpTableBlock.get());
-	if (m_badJumpBlock)
-		blocks.push_back(m_badJumpBlock.get());
-
-	// std::map<BasicBlock*,int> phiNodesPerBlock;
-
-	// Output nodes
-	for (auto bb : blocks)
-	{
-		std::string blockName = bb->llvm()->getName();
-
-		std::ostringstream oss;
-		bb->dump(oss, true);
-
-		_out << " \"" << blockName << "\" [shape=record, label=\" { " << blockName << "|" << oss.str() << "} \"];\n";
-	}
-
-	// Output edges
-	for (auto bb : blocks)
-	{
-		std::string blockName = bb->llvm()->getName();
-
-		auto end = llvm::pred_end(bb->llvm());
-		for (llvm::pred_iterator it = llvm::pred_begin(bb->llvm()); it != end; ++it)
-		{
-			_out << "  \"" << (*it)->getName().str() << "\" -> \"" << blockName << "\" ["
-				 << ((m_jumpTableBlock.get() && *it == m_jumpTableBlock.get()->llvm()) ? "style = dashed, " : "")
-				 << "];\n";
-		}
-	}
-
-	_out << "}\n";
-}
-
-void Compiler::dump()
-{
-	for (auto& entry : m_basicBlocks)
-		entry.second.dump();
-	if (m_jumpTableBlock != nullptr)
-		m_jumpTableBlock->dump();
-}
 
 }
 }

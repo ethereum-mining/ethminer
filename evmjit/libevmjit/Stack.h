@@ -1,7 +1,5 @@
 #pragma once
 
-#include <functional>
-
 #include "Array.h"
 
 namespace dev
@@ -10,12 +8,11 @@ namespace eth
 {
 namespace jit
 {
-class RuntimeManager;
 
-class Stack : public CompilerHelper
+class Stack: public CompilerHelper
 {
 public:
-	Stack(llvm::IRBuilder<>& builder, RuntimeManager& runtimeManager);
+	Stack(llvm::IRBuilder<>& builder);
 
 	llvm::Value* get(size_t _index);
 	void set(size_t _index, llvm::Value* _value);
@@ -24,10 +21,6 @@ public:
 	void free() { m_stack.free(); }
 
 private:
-	llvm::Function* getGetFunc();
-
-	RuntimeManager& m_runtimeManager;
-	llvm::Function* m_get = nullptr;
 	Array m_stack;
 };
 
@@ -35,5 +28,3 @@ private:
 }
 }
 }
-
-

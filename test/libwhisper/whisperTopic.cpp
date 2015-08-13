@@ -47,7 +47,8 @@ BOOST_AUTO_TEST_CASE(topic)
 		return;
 
 	cnote << "Testing Whisper...";
-	VerbosityHolder setTemporaryLevel(0);
+	if (g_logVerbosity != -1)
+		VerbosityHolder setTemporaryLevel(0);
 
 	uint16_t port1 = 30311;
 	Host host1("Test", NetworkPreferences("127.0.0.1", port1, false));
@@ -160,6 +161,7 @@ BOOST_AUTO_TEST_CASE(forwarding)
 			this_thread::sleep_for(chrono::milliseconds(50));
 		}
 	});
+
 
 	// Host must be configured not to share peers.
 	uint16_t port2 = 30313;
@@ -392,7 +394,9 @@ BOOST_AUTO_TEST_CASE(selfAddressed)
 	if (test::Options::get().nonetwork)
 		return;
 
-	VerbosityHolder setTemporaryLevel(10);
+	if (g_logVerbosity != -1)
+		VerbosityHolder setTemporaryLevel(10);
+
 	cnote << "Testing self-addressed messaging with bloom filter matching...";
 
 	char const* text = "deterministic pseudorandom test";
