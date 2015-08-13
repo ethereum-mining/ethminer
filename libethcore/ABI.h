@@ -43,7 +43,17 @@ template <class T> struct ABISerialiser {};
 template <unsigned N> struct ABISerialiser<FixedHash<N>> { static bytes serialise(FixedHash<N> const& _t) { static_assert(N <= 32, "Cannot serialise hash > 32 bytes."); static_assert(N > 0, "Cannot serialise zero-length hash."); return bytes(32 - N, 0) + _t.asBytes(); } };
 template <> struct ABISerialiser<u256> { static bytes serialise(u256 const& _t) { return h256(_t).asBytes(); } };
 template <> struct ABISerialiser<u160> { static bytes serialise(u160 const& _t) { return bytes(12, 0) + h160(_t).asBytes(); } };
-template <> struct ABISerialiser<string32> { static bytes serialise(string32 const& _t) { return bytesConstRef((byte const*)_t.data(), 32).toBytes(); } };
+template <> struct ABISerialiser<string32> { static bytes serialise(string32 const& _t) { bytes ret; bytesConstRef((byte const*)_t.data(), 32).populate(bytesRef(&ret)); return ret; } };
+template <> struct ABISerialiser<std::string>
+{
+	static bytes serialise(std::string const& _t)
+	{
+		bytes ret = h256(u256(32)).asBytes() + h256(u256(_t.size())).asBytes();
+		ret.resize(ret.size() + (_t.size() + 31) / 32 * 32);
+		bytesConstRef(&_t).populate(bytesRef(&ret).cropped(64));
+		return ret;
+	}
+};
 
 inline bytes abiInAux() { return {}; }
 template <class T, class ... U> bytes abiInAux(T const& _t, U const& ... _u)
@@ -61,6 +71,19 @@ template <unsigned N> struct ABIDeserialiser<FixedHash<N>> { static FixedHash<N>
 template <> struct ABIDeserialiser<u256> { static u256 deserialise(bytesConstRef& io_t) { u256 ret = fromBigEndian<u256>(io_t.cropped(0, 32)); io_t = io_t.cropped(32); return ret; } };
 template <> struct ABIDeserialiser<u160> { static u160 deserialise(bytesConstRef& io_t) { u160 ret = fromBigEndian<u160>(io_t.cropped(12, 20)); io_t = io_t.cropped(32); return ret; } };
 template <> struct ABIDeserialiser<string32> { static string32 deserialise(bytesConstRef& io_t) { string32 ret; io_t.cropped(0, 32).populate(bytesRef((byte*)ret.data(), 32)); io_t = io_t.cropped(32); return ret; } };
+template <> struct ABIDeserialiser<std::string>
+{
+	static std::string deserialise(bytesConstRef& io_t)
+	{
+		unsigned o = (uint16_t)u256(h256(io_t.cropped(0, 32)));
+		unsigned s = (uint16_t)u256(h256(io_t.cropped(o, 32)));
+		std::string ret;
+		ret.resize(s);
+		io_t.cropped(o + 32, s).populate(bytesRef((byte*)ret.data(), s));
+		io_t = io_t.cropped(32);
+		return ret;
+	}
+};
 
 template <class T> T abiOut(bytes const& _data)
 {

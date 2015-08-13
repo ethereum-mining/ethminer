@@ -94,8 +94,8 @@ QString dev::az::contentsOfQResource(string const& res)
 }
 
 //Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
-Address c_newConfig = Address("c6d9d2cd449a754c494264e1809c50e34d64562b");
-//Address c_nameReg = Address("ddd1cea741d548f90d86fb87a3ae6492e18c03a1");
+//Address c_newConfig = Address("c6d9d2cd449a754c494264e1809c50e34d64562b");
+Address c_nameReg = Address("96d76ae3397b52d9f61215270df65d72358709e3");
 
 Main::Main(QWidget* _parent):
 	MainFace(_parent),
@@ -486,8 +486,8 @@ void Main::installWatches()
 	cdebug << "newBlock watch ID: " << newBlockId;
 	cdebug << "newPending watch ID: " << newPendingId;
 
-	installWatch(LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installNameRegWatch(); });
-	installWatch(LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installCurrenciesWatch(); });
+//	installWatch(LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installNameRegWatch(); });
+//	installWatch(LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installCurrenciesWatch(); });
 }
 
 Address Main::getNameReg() const
@@ -498,7 +498,8 @@ Address Main::getNameReg() const
 
 Address Main::getCurrencies() const
 {
-	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn("lookup(uint256)", (u256)3)).output);
+//	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn("lookup(uint256)", (u256)3)).output);
+	return Address();
 }
 
 bool Main::doConfirm()
@@ -923,8 +924,8 @@ void Main::readSettings(bool _skipGeometry)
 	{
 		p->readSettings(s);
 	});
-	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setAsk(u256(s.value("askPrice", QString::fromStdString(toString(c_defaultGasPrice))).toString().toStdString()));
-	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setBid(u256(s.value("bidPrice", QString::fromStdString(toString(c_defaultGasPrice))).toString().toStdString()));
+	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setAsk(u256(s.value("askPrice", QString::fromStdString(toString(DefaultGasPrice))).toString().toStdString()));
+	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setBid(u256(s.value("bidPrice", QString::fromStdString(toString(DefaultGasPrice))).toString().toStdString()));
 
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forcePublicIP->setText(s.value("forceAddress", "").toString());
