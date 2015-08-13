@@ -93,6 +93,7 @@ public:
 
 	virtual unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f) = 0;
 	virtual unsigned installWatch(dev::h256 const& _tf, WatchHandler const& _f) = 0;
+	virtual void uninstallWatch(unsigned _id) = 0;
 
 	// Account naming API
 	virtual void install(AccountNamer* _adopt) = 0;
