@@ -799,7 +799,6 @@ void PV60Sync::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const&
 
 void PV60Sync::abortSync()
 {
-	DEV_INVARIANT_CHECK;
 	// Can't check invariants here since the peers is already removed from the list and the state is not updated yet.
 	bool continueSync = false;
 	if (m_state == SyncState::Blocks)
