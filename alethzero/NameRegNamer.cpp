@@ -42,7 +42,7 @@ string NameRegNamer::toName(Address const& _a) const
 {
 	for (auto const& r: m_registrars)
 	{
-		string n = abiOut<string>(main()->ethereum()->call(r, abiIn("name(address)", _a)).output);
+		string n = abiOut<string>(main()->ethereum()->call(Address(1), 0, r, abiIn("name(address)", _a), 1000000, DefaultGasPrice, PendingBlock, FudgeFactor::Lenient).output);
 		if (!n.empty())
 			return n;
 	}
@@ -95,7 +95,8 @@ void NameRegNamer::readSettings(QSettings const& _s)
 	while (!m_registrars.empty())
 		killRegistrar(m_registrars.back());
 
-	Address a("96d76ae3397b52d9f61215270df65d72358709e3");
+	Address a("047cdba9627a8686bb24b3a65d87dab7efa53d31");
+	m_registrars.push_back(a);
 	m_filters[a] = main()->installWatch(LogFilter().address(a), [=](LocalisedLogEntries const&){ updateCache(); });
 
 	noteKnownChanged();
