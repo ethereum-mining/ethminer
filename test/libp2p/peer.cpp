@@ -43,7 +43,9 @@ BOOST_AUTO_TEST_CASE(host)
 	if (test::Options::get().nonetwork)
 		return;
 
-	VerbosityHolder setTemporaryLevel(10);	
+	if (g_logVerbosity != -1)
+		VerbosityHolder setTemporaryLevel(10);
+
 	NetworkPreferences host1prefs("127.0.0.1", 30321, false);
 	NetworkPreferences host2prefs("127.0.0.1", 30322, false);
 	Host host1("Test", host1prefs);
@@ -88,7 +90,8 @@ BOOST_AUTO_TEST_CASE(saveNodes)
 	if (test::Options::get().nonetwork)
 		return;
 
-	VerbosityHolder reduceVerbosity(2);
+	if (g_logVerbosity != -1)
+		VerbosityHolder reduceVerbosity(2);
 
 	std::list<Host*> hosts;
 	unsigned const c_step = 10;
@@ -152,7 +155,8 @@ BOOST_AUTO_TEST_CASE(requirePeer)
 	if (test::Options::get().nonetwork)
 		return;
 
-	VerbosityHolder temporaryLevel(10);
+	if (g_logVerbosity != -1)
+		VerbosityHolder reduceVerbosity(10);
 
 	unsigned const step = 10;
 	const char* const localhost = "127.0.0.1";

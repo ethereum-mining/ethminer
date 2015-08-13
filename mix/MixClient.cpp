@@ -269,7 +269,7 @@ void MixClient::mine()
 	RLPStream header;
 	h.streamRLP(header);
 	m_postMine.sealBlock(header.out());
-	bc().import(m_postMine.blockData(), m_stateDB, (ImportRequirements::Everything & ~ImportRequirements::ValidSeal) != 0);
+	bc().import(m_postMine.blockData(), m_postMine.state().db(), (ImportRequirements::Everything & ~ImportRequirements::ValidSeal) != 0);
 	m_postMine.sync(bc());
 	m_preMine = m_postMine;
 }

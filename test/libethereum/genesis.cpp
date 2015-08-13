@@ -21,11 +21,13 @@
  */
 
 #include <fstream>
+#include <random>
+
 #include <boost/test/unit_test.hpp>
 #include "../JsonSpiritHeaders.h"
 #include <libdevcore/CommonIO.h>
 #include <libethereum/CanonBlockChain.h>
-#include "../TestHelper.h"
+#include <test/TestHelper.h>
 
 using namespace std;
 using namespace dev;
