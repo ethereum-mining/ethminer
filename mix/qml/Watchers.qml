@@ -12,12 +12,15 @@ import "js/QEtherHelper.js" as QEtherHelper
 import "."
 
 Rectangle {
-	color: "#4F4F4F"
+	color: selectedBlockColor
 	property variant tx
 	property variant currentState
 	property variant bc
 	property var blockIndex
 	property var txIndex
+
+	property string selectedBlockColor: "#accbf2"
+	property string selectedBlockForeground: "#445e7f"
 
 	function clear()
 	{
@@ -83,11 +86,11 @@ Rectangle {
 					id: fromLabel
 					text: qsTr("from")
 					visible: false
-					color: "#EAB920"					
+					color: selectedBlockForeground					
 				}
 				Label {
 					id: from
-					color: "#EAB920"
+					color: selectedBlockForeground
 					elide: Text.ElideRight
 					maximumLineCount: 1
 					clip: true
@@ -97,11 +100,11 @@ Rectangle {
 					id: toLabel
 					text: qsTr("to")
 					visible: false
-					color: "#EAB920"
+					color: selectedBlockForeground
 				}
 				Label {
 					id: to
-					color: "#EAB920"
+					color: selectedBlockForeground
 					elide: Text.ElideRight
 					maximumLineCount: 1
 					clip: true
@@ -109,7 +112,7 @@ Rectangle {
 				}
 				Label {
 					id: value
-					color: "#EAB920"
+					color: selectedBlockForeground
 					font.italic: true
 					clip: true
 				}
@@ -118,9 +121,9 @@ Rectangle {
 			Image {
 				anchors.right: rowHeader.parent.right
 				anchors.top: rowHeader.parent.top
-				anchors.topMargin: -3
-				source: "qrc:/qml/img/edittransaction2.png"
-				height: 30
+				anchors.topMargin: 5
+				source: "qrc:/qml/img/edit_combox.png"
+				height: 15
 				fillMode: Image.PreserveAspectFit
 				visible: from.text !== ""
 				MouseArea
