@@ -41,6 +41,9 @@
 extern int qInitResources_js();
 using namespace dev::mix;
 
+
+
+
 ApplicationService::ApplicationService()
 {
 #ifdef ETH_HAVE_WEBENGINE

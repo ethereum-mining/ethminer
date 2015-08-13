@@ -55,7 +55,7 @@ class Session: public std::enable_shared_from_this<Session>
 	friend class HostCapabilityFace;
 
 public:
-	Session(Host* _server, RLPXFrameCoder* _io, std::shared_ptr<RLPXSocket> const& _s, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info);
+	Session(Host* _server, std::unique_ptr<RLPXFrameCoder>&& _io, std::shared_ptr<RLPXSocket> const& _s, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info);
 	virtual ~Session();
 
 	void start();
@@ -113,7 +113,7 @@ private:
 
 	Host* m_server;							///< The host that owns us. Never null.
 
-	RLPXFrameCoder* m_io;						///< Transport over which packets are sent.
+	std::unique_ptr<RLPXFrameCoder> m_io;	///< Transport over which packets are sent.
 	std::shared_ptr<RLPXSocket> m_socket;		///< Socket of peer's connection.
 	Mutex x_writeQueue;						///< Mutex for the write queue.
 	std::deque<bytes> m_writeQueue;			///< The write queue.

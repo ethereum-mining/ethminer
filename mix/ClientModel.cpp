@@ -444,11 +444,17 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence)
 				{
 					auto contractAddressIter = m_contractAddresses.find(ctrInstance);
 					if (contractAddressIter == m_contractAddresses.end())
+					{
 						emit runFailed("Contract '" + transaction.contractId + tr(" not deployed.") + "' " + tr(" Cannot call ") + transaction.functionId);
+						break;
+					}
 					callAddress(contractAddressIter->second, encoder.encodedData(), transaction);
 				}
 				m_gasCosts.append(m_client->lastExecution().gasUsed);
 				onNewTransaction();
+				TransactionException exception = m_client->lastExecution().excepted;
+				if (exception != TransactionException::None)
+					break;
 			}
 			emit runComplete();
 		}
@@ -764,6 +770,42 @@ void ClientModel::onStateReset()
 void ClientModel::onNewTransaction()
 {
 	ExecutionResult const& tr = m_client->lastExecution();
+
+	switch (tr.excepted)
+	{
+	case TransactionException::None:
+		break;
+	case TransactionException::NotEnoughCash:
+		emit runFailed("Insufficient balance");
+		break;
+	case TransactionException::OutOfGasIntrinsic:
+	case TransactionException::OutOfGasBase:
+	case TransactionException::OutOfGas:
+		emit runFailed("Not enough gas");
+		break;
+	case TransactionException::BlockGasLimitReached:
+		emit runFailed("Block gas limit reached");
+		break;
+	case TransactionException::BadJumpDestination:
+		emit runFailed("Solidity exception (bad jump)");
+		break;
+	case TransactionException::OutOfStack:
+		emit runFailed("Out of stack");
+		break;
+	case TransactionException::StackUnderflow:
+		emit runFailed("Stack underflow");
+		//these should not happen in mix
+	case TransactionException::Unknown:
+	case TransactionException::BadInstruction:
+	case TransactionException::InvalidSignature:
+	case TransactionException::InvalidNonce:
+	case TransactionException::InvalidFormat:
+	case TransactionException::BadRLP:
+		emit runFailed("Internal execution error");
+		break;
+	}
+
+
 	unsigned block = m_client->number() + 1;
 	unsigned recordIndex = tr.executonIndex;
 	QString transactionIndex = tr.isCall() ? QObject::tr("Call") : QString("%1:%2").arg(block).arg(tr.transactionIndex);

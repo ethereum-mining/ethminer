@@ -413,6 +413,7 @@ public:
 							cerr << "Couldn't re-encode " << toUUID(u) << "; key corrupt or incorrect password supplied." << endl;
 					else
 						cerr << "Couldn't re-encode " << i << "; not found." << endl;
+				break;
 			case OperationMode::KillBare:
 				for (auto const& i: m_inputs)
 					if (h128 u = fromUUID(i))

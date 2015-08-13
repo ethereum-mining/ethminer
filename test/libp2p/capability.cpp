@@ -110,11 +110,11 @@ BOOST_AUTO_TEST_CASE(capability)
 	NetworkPreferences prefs2(localhost, 30302, false);
 
 	Host host1("Test", prefs1);
-	auto thc1 = host1.registerCapability(new TestHostCapability());
+	auto thc1 = host1.registerCapability(make_shared<TestHostCapability>());
 	host1.start();	
 
 	Host host2("Test", prefs2);
-	auto thc2 = host2.registerCapability(new TestHostCapability());
+	auto thc2 = host2.registerCapability(make_shared<TestHostCapability>());
 	host2.start();
 
 	int const step = 10;

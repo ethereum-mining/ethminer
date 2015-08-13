@@ -17,7 +17,7 @@
    <item>
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;WARNING: Brain wallets, or human-entropic seeds, are practically and cryptographically insecure. They're a terrible idea for protecteding anything of value and this functionality is here only as a toy.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;That said, if you're intent on using one, make the phrase as long and random as you can. If you're sensible, you'll ask the internet for a list of words to memorise and use those. Write the phrase down on paper and bury it under an oak tree or something - if you forget it, you're screwed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;WARNING: Brain wallets, or human-entropic seeds, are generally a Bad Plan. Unless used properly they're a terrible idea for protecteding anything of value. Read up on them and know the risks before using this functionality!&lt;/span&gt;&lt;/p&gt;&lt;p&gt;That said, if you're intent on using one, make the phrase as long and random as you can. If you're sensible, you'll use the Generate button and memorise the list of words it gives you. This is the only way to guarantee a strong brainwallet. Write the phrase down on paper and bury it under an oak tree or something - if you forget it, you're screwed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>
@@ -34,7 +34,7 @@
    <item>
     <widget class="QTextEdit" name="seed">
      <property name="placeholderText">
-      <string>Write your seed phrase here. Make it long and random. Don't ever forget it. If you want it to have any chance at being secure, ask a machine to select 13 dictionary words at random.</string>
+      <string>Write your seed phrase here. Make it long and random. Don't ever forget it. If you want it to have any chance at being secure, hit the Generate button and memorize what ends up here.</string>
      </property>
     </widget>
    </item>

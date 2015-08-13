@@ -59,20 +59,9 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 		const State importedStatePost = importer.m_statePost;
 		bytes output;
 
-		try
-		{
-			Listener::ExecTimeGuard guard{i.first};
-			output = importer.executeTest();
-		}
-		catch (Exception const& _e)
-		{
-			cnote << "Exception: " << diagnostic_information(_e);
-			//theState.commit();
-		}
-		catch (std::exception const& _e)
-		{
-			cnote << "state execution exception: " << _e.what();
-		}
+		// execute transaction
+		Listener::ExecTimeGuard guard{i.first};
+		output = importer.executeTest();
 
 		if (_fillin)
 		{

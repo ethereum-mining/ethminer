@@ -60,6 +60,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getLogsEx", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_getLogsExI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getWork", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY,  NULL), &AbstractWebThreeStubServer::eth_getWorkI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_submitWork", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_submitWorkI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_submitHashrate", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_INTEGER,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_submitHashrateI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_register", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_registerI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_unregister", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_unregisterI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_fetchQueuedTransactions", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_fetchQueuedTransactionsI);
@@ -85,6 +86,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("admin_net_peers", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_net_peersI);
             this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_blockQueueStatus", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_blockQueueStatusI);
             this->bindAndAddMethod(jsonrpc::Procedure("admin_net_nodeInfo", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_net_nodeInfoI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_exit", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_exitI);
             this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_setAskPrice", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_setAskPriceI);
             this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_setBidPrice", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_setBidPriceI);
             this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_setReferencePrice", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_setReferencePriceI);
@@ -311,6 +313,10 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         {
             response = this->eth_submitWork(request[0u].asString(), request[1u].asString(), request[2u].asString());
         }
+        inline virtual void eth_submitHashrateI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->eth_submitHashrate(request[0u].asInt(), request[1u].asString());
+        }
         inline virtual void eth_registerI(const Json::Value &request, Json::Value &response)
         {
             response = this->eth_register(request[0u].asString());
@@ -411,6 +417,10 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         inline virtual void admin_net_nodeInfoI(const Json::Value &request, Json::Value &response)
         {
             response = this->admin_net_nodeInfo(request[0u].asString());
+        }
+        inline virtual void admin_eth_exitI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_exit(request[0u].asString());
         }
         inline virtual void admin_eth_setAskPriceI(const Json::Value &request, Json::Value &response)
         {
@@ -524,6 +534,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual Json::Value eth_getLogsEx(const Json::Value& param1) = 0;
         virtual Json::Value eth_getWork() = 0;
         virtual bool eth_submitWork(const std::string& param1, const std::string& param2, const std::string& param3) = 0;
+        virtual bool eth_submitHashrate(int param1, const std::string& param2) = 0;
         virtual std::string eth_register(const std::string& param1) = 0;
         virtual bool eth_unregister(const std::string& param1) = 0;
         virtual Json::Value eth_fetchQueuedTransactions(const std::string& param1) = 0;
@@ -549,6 +560,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual Json::Value admin_net_peers(const std::string& param1) = 0;
         virtual Json::Value admin_eth_blockQueueStatus(const std::string& param1) = 0;
         virtual Json::Value admin_net_nodeInfo(const std::string& param1) = 0;
+        virtual bool admin_eth_exit(const std::string& param1) = 0;
         virtual bool admin_eth_setAskPrice(const std::string& param1, const std::string& param2) = 0;
         virtual bool admin_eth_setBidPrice(const std::string& param1, const std::string& param2) = 0;
         virtual bool admin_eth_setReferencePrice(const std::string& param1, const std::string& param2) = 0;

@@ -225,7 +225,7 @@ void Host::doneWorking()
 	m_sessions.clear();
 }
 
-void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameCoder* _io, std::shared_ptr<RLPXSocket> const& _s)
+void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXFrameCoder>&& _io, std::shared_ptr<RLPXSocket> const& _s)
 {
 	// session maybe ingress or egress so m_peers and node table entries may not exist
 	shared_ptr<Peer> p;
@@ -237,9 +237,9 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameCoder* 
 		{
 			// peer doesn't exist, try to get port info from node table
 			if (Node n = m_nodeTable->node(_id))
-				p.reset(new Peer(n));
+				p = make_shared<Peer>(n);
 			else
-				p.reset(new Peer(Node(_id, UnspecifiedNodeIPEndpoint)));
+				p = make_shared<Peer>(Node(_id, UnspecifiedNodeIPEndpoint));
 			m_peers[_id] = p;
 		}
 	}
@@ -264,7 +264,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameCoder* 
 	clog(NetMessageSummary) << "Hello: " << clientVersion << "V[" << protocolVersion << "]" << _id << showbase << capslog.str() << dec << listenPort;
 	
 	// create session so disconnects are managed
-	auto ps = make_shared<Session>(this, _io, _s, p, PeerSessionInfo({_id, clientVersion, p->endpoint.address.to_string(), listenPort, chrono::steady_clock::duration(), _rlp[2].toSet<CapDesc>(), 0, map<string, string>(), protocolVersion}));
+	auto ps = make_shared<Session>(this, move(_io), _s, p, PeerSessionInfo({_id, clientVersion, p->endpoint.address.to_string(), listenPort, chrono::steady_clock::duration(), _rlp[2].toSet<CapDesc>(), 0, map<string, string>(), protocolVersion}));
 	if (protocolVersion < dev::p2p::c_protocolVersion - 1)
 	{
 		ps->disconnect(IncompatibleProtocol);
@@ -294,7 +294,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameCoder* 
 		for (auto const& i: caps)
 			if (haveCapability(i))
 			{
-				ps->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(ps, o, i));
+				ps->m_capabilities[i] = m_capabilities[i]->newPeerCapability(ps, o, i);
 				o += m_capabilities[i]->messageCount();
 			}
 		ps->start();
@@ -323,7 +323,7 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 				}
 				else
 				{
-					p.reset(new Peer(n));
+					p = make_shared<Peer>(n);
 					m_peers[_n] = p;
 					clog(NetP2PNote) << "p2p.host.peers.events.peerAdded " << _n << p->endpoint;
 				}
@@ -449,7 +449,7 @@ string Host::pocHost()
 std::unordered_map<Public, std::string> const& Host::pocHosts()
 {
 	static const std::unordered_map<Public, std::string> c_ret = {
-		{ Public("487611428e6c99a11a9795a6abe7b529e81315ca6aad66e2a2fc76e3adf263faba0d35466c2f8f68d561dbefa8878d4df5f1f2ddb1fbeab7f42ffb8cd328bd4a"), "poc-9.ethdev.com:30303" },
+		{ Public("979b7fa28feeb35a4741660a16076f1943202cb72b6af70d327f053e248bab9ba81760f39d0701ef1d8f89cc1fbd2cacba0710a12cd5314d5e0c9021aa3637f9"), "poc-9.ethdev.com:30303" },
 		{ Public("a979fb575495b8d6db44f750317d0f4622bf4c2aa3365d6af7c284339968eef29b69ad0dce72a4d8db5ebb4968de0e3bec910127f134779fbcb0cb6d3331163c"), "52.16.188.185:30303" },
 		{ Public("7f25d3eab333a6b98a8b5ed68d962bb22c876ffcd5561fca54e3c2ef27f754df6f7fd7c9b74cc919067abac154fb8e1f8385505954f161ae440abc355855e034"), "54.207.93.166:30303" }
 	};
@@ -491,14 +491,14 @@ void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 			}
 			else
 			{
-				p.reset(new Peer(node));
+				p = make_shared<Peer>(node);
 				m_peers[_n] = p;
 			}
 	}
 	else if (m_nodeTable)
 	{
 		m_nodeTable->addNode(node);
-		shared_ptr<boost::asio::deadline_timer> t(new boost::asio::deadline_timer(m_ioService));
+		auto t = make_shared<boost::asio::deadline_timer>(m_ioService);
 		t->expires_from_now(boost::posix_time::milliseconds(600));
 		t->async_wait([this, _n](boost::system::error_code const& _ec)
 		{
@@ -530,14 +530,8 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 		return;
 	}
 
-	if (!!m_nodeTable && !m_nodeTable->haveNode(_p->id))
-	{
-		// connect was attempted, so try again by adding to node table
-		m_nodeTable->addNode(*_p.get());
-		// abort unless peer is required
-		if (!_p->required)
-			return;
-	}
+	if (!!m_nodeTable && !m_nodeTable->haveNode(_p->id) && !_p->required)
+		return;
 
 	// prevent concurrently connecting to a node
 	Peer *nptr = _p.get();
@@ -712,7 +706,12 @@ void Host::startedWorking()
 	else
 		clog(NetP2PNote) << "p2p.start.notice id:" << id() << "TCP Listen port is invalid or unavailable.";
 
-	shared_ptr<NodeTable> nodeTable(new NodeTable(m_ioService, m_alias, NodeIPEndpoint(bi::address::from_string(listenAddress()), listenPort(), listenPort()), m_netPrefs.discovery));
+	auto nodeTable = make_shared<NodeTable>(
+		m_ioService,
+		m_alias,
+		NodeIPEndpoint(bi::address::from_string(listenAddress()), listenPort(), listenPort()),
+		m_netPrefs.discovery
+	);
 	nodeTable->setEventHandler(new HostNodeTableHandler(*this));
 	m_nodeTable = nodeTable;
 	restoreNetwork(&m_restoreNetwork);
