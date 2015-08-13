@@ -15,13 +15,19 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file NewAccount.h
- * @author Gav Wood <i@gavwood.com>
+ * @author Marek Kotewicz <marek@ethdev.com>
  * @date 2015
  */
 
 #pragma once
 
 #include "MainFace.h"
+
+
+namespace Ui
+{
+class NewAccount;
+}
 
 namespace dev
 {
@@ -38,6 +44,12 @@ public:
 
 private slots:
 	void create();
+
+private:
+	enum Type { NoVanity = 0, DirectICAP, FirstTwo, FirstTwoNextTwo, FirstThree, FirstFour, StringMatch };
+	bool validatePassword(Ui::NewAccount const& _u);
+	void onDialogAccepted(Ui::NewAccount const& _u);
+	KeyPair newKeyPair(Type _type, bytes const& _prefix);
 };
 
 }

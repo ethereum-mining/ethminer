@@ -152,7 +152,6 @@ private slots:
 	void on_preview_triggered();
 
 	// Account management
-	void on_newAccount_triggered();
 	void on_killAccount_triggered();
 	void on_importKey_triggered();
 	void on_reencryptKey_triggered();
