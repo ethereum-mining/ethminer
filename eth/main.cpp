@@ -115,7 +115,7 @@ void help()
 		<< "    --bid <wei>  Set the bid gas price to pay for transactions (default " << toString(c_defaultGasPrice) << " )." << endl
 		<< endl
 		<< "Client mining:" << endl
-		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to given address (default: auto)." << endl
+		<< "    -a,--address <addr>  Set the etherbase (mining payout) address to given address (default: auto)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (default: off)." << endl
 		<< "    -f,--force-mining  Mine even when there are no transactions to mine (default: off)." << endl
 		<< "    --mine-on-wrong-chain  Mine even when we know that it is the wrong chain (default: off)." << endl
@@ -494,7 +494,7 @@ int main(int argc, char** argv)
 				cerr << "-c is DEPRECATED. It will be removed for the Frontier. Use --client-name instead." << endl;
 			clientName = argv[++i];
 		}
-		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
+		else if ((arg == "-a" || arg == "--address" || arg == "--etherbase-address" || arg == "--coinbase-address") && i + 1 < argc)
 			try {
 				beneficiary = h160(fromHex(argv[++i], WhenError::Throw));
 			}
