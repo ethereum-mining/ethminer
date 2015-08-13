@@ -132,7 +132,7 @@
      <x>0</x>
      <y>0</y>
      <width>1617</width>
-     <height>24</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -162,7 +162,6 @@
     <addaction name="prepNextDAG"/>
     <addaction name="separator"/>
     <addaction name="newTransaction"/>
-    <addaction name="newAccount"/>
     <addaction name="importKey"/>
     <addaction name="importKeyFile"/>
     <addaction name="claimPresale"/>

@@ -13,9 +13,12 @@
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QLabel" name="selectTypeLabel">
+    <widget class="QLabel" name="typeLabel">
      <property name="maximumSize">
       <size>
        <width>16777215</width>
@@ -31,7 +34,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QComboBox" name="selectTypeComboBox">
+    <widget class="QComboBox" name="typeComboBox">
      <property name="maximumSize">
       <size>
        <width>16777215</width>
@@ -41,7 +44,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="enterHexLabel">
+    <widget class="QLabel" name="hexLabel">
      <property name="maximumSize">
       <size>
        <width>16777215</width>
@@ -54,17 +57,17 @@
     </widget>
    </item>
    <item>
-    <widget class="QTextEdit" name="enterHexText">
+    <widget class="QTextEdit" name="hexText">
      <property name="maximumSize">
       <size>
        <width>16777215</width>
-       <height>20</height>
+       <height>21</height>
       </size>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="enterNameLabel">
+    <widget class="QLabel" name="nameLabel">
      <property name="maximumSize">
       <size>
        <width>16777215</width>
@@ -77,19 +80,12 @@
     </widget>
    </item>
    <item>
-    <widget class="QTextEdit" name="enterNameText">
+    <widget class="QTextEdit" name="nameText">
      <property name="maximumSize">
       <size>
        <width>16777215</width>
-       <height>20</height>
+       <height>21</height>
       </size>
-     </property>
-     <property name="html">
-      <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'.Helvetica Neue DeskInterface'; font-size:13pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
     </widget>
    </item>
@@ -120,7 +116,7 @@ p, li { white-space: pre-wrap; }
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="enterPasswordLabel">
+    <widget class="QLabel" name="passwordLabel">
      <property name="maximumSize">
       <size>
        <width>16777215</width>
@@ -133,20 +129,17 @@ p, li { white-space: pre-wrap; }
     </widget>
    </item>
    <item>
-    <widget class="QTextEdit" name="enterPasswordText">
-     <property name="enabled">
-      <bool>true</bool>
-     </property>
+    <widget class="QTextEdit" name="passwordText">
      <property name="maximumSize">
       <size>
        <width>16777215</width>
-       <height>20</height>
+       <height>21</height>
       </size>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="enterPasswordAgainLabel">
+    <widget class="QLabel" name="passwordAgainLabel">
      <property name="maximumSize">
       <size>
        <width>16777215</width>
@@ -159,14 +152,28 @@ p, li { white-space: pre-wrap; }
     </widget>
    </item>
    <item>
-    <widget class="QTextEdit" name="enterPasswordAgainText">
-     <property name="enabled">
-      <bool>true</bool>
-     </property>
+    <widget class="QTextEdit" name="passwordAgainText">
      <property name="maximumSize">
       <size>
        <width>16777215</width>
-       <height>20</height>
+       <height>21</height>
+      </size>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="hintLabel">
+     <property name="text">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Enter hint:&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTextEdit" name="hintText">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>50</height>
       </size>
      </property>
     </widget>
@@ -188,6 +195,15 @@ p, li { white-space: pre-wrap; }
      </item>
      <item>
       <widget class="QPushButton" name="cancel">
+       <property name="maximumSize">
+        <size>
+         <width>83</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::LeftToRight</enum>
+       </property>
        <property name="text">
         <string>Cancel</string>
        </property>
@@ -195,6 +211,21 @@ p, li { white-space: pre-wrap; }
      </item>
      <item>
       <widget class="QPushButton" name="create">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>83</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::LeftToRight</enum>
+       </property>
        <property name="text">
         <string>&amp;Create</string>
        </property>
@@ -209,22 +240,6 @@ p, li { white-space: pre-wrap; }
  </widget>
  <resources/>
  <connections>
-  <connection>
-   <sender>create</sender>
-   <signal>clicked()</signal>
-   <receiver>NewAccount</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>462</x>
-     <y>484</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>449</x>
-     <y>504</y>
-    </hint>
-   </hints>
-  </connection>
   <connection>
    <sender>cancel</sender>
    <signal>clicked()</signal>
