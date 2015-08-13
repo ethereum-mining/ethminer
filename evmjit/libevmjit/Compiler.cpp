@@ -29,6 +29,8 @@ namespace eth
 namespace jit
 {
 
+static const auto c_destIdxLabel = "destIdx";
+
 Compiler::Compiler(Options const& _options):
 	m_options(_options),
 	m_builder(llvm::getGlobalContext())
@@ -93,47 +95,40 @@ std::vector<BasicBlock> Compiler::createBasicBlocks(code_iterator _codeBegin, co
 	return blocks;
 }
 
-void Compiler::fillJumpTable()
+void Compiler::resolveJumps()
 {
-	for (auto it = m_mainFunc->begin(); it != m_mainFunc->end(); ++it)
+	// Iterate through all EVM instructions blocks (skip first 4 - special blocks).
+	for (auto it = std::next(m_mainFunc->begin(), 4); it != m_mainFunc->end(); ++it)
 	{
+		auto jumpTable = llvm::cast<llvm::SwitchInst>(m_jumpTableBB->getTerminator());
+		auto jumpTableInput = llvm::cast<llvm::PHINode>(m_jumpTableBB->begin());
+		auto nextBlock = it->getNextNode() != m_mainFunc->end() ? it->getNextNode() : m_stopBB;
 		auto term = it->getTerminator();
+
 		if (!term)
 		{
 			// Block may have no terminator if the next instruction is a jump destination.
-			auto next = it->getNextNode();
-			if (next == m_mainFunc->end())
-				next = m_stopBB;
-			llvm::IRBuilder<>{it}.CreateBr(next);
+			llvm::IRBuilder<>{it}.CreateBr(nextBlock);
 		}
 		else if (auto jump = llvm::dyn_cast<llvm::BranchInst>(term))
 		{
-			if (jump->isConditional())
+			// Resolve jump
+			if (jump->getSuccessor(0) == m_jumpTableBB)
 			{
-				if (!jump->getSuccessor(1))
+				auto destIdx = llvm::cast<llvm::ValueAsMetadata>(jump->getMetadata(c_destIdxLabel)->getOperand(0))->getValue();
+				if (auto constant = llvm::dyn_cast<llvm::ConstantInt>(destIdx))
 				{
-					auto next = it->getNextNode();
-					if (next == m_mainFunc->end())
-						next = m_stopBB;
-					jump->setSuccessor(1, next);
+					// If destination index is a constant do direct jump to the destination block.
+					auto bb = jumpTable->findCaseValue(constant).getCaseSuccessor();
+					jump->setSuccessor(0, bb);
 				}
+				else
+					jumpTableInput->addIncoming(destIdx, it); // Fill up PHI node
+
+				if (jump->isConditional())
+					jump->setSuccessor(1, nextBlock); // Set next block for conditional jumps
 			}
 		}
-	}
-
-	assert(m_jumpTableBB);
-	if (llvm::pred_empty(m_jumpTableBB))
-	{
-		m_jumpTableBB->eraseFromParent(); // remove if unused
-		return;
-	}
-
-	// TODO: Extend this function as `resolveJumps()` and fill gaps in branch instructions.
-	auto target = llvm::cast<llvm::PHINode>(m_jumpTableBB->begin());
-	for (auto pred: llvm::predecessors(m_jumpTableBB))
-	{
-		auto targetMd = llvm::cast<llvm::LocalAsMetadata>(pred->getTerminator()->getMetadata("target")->getOperand(0));
-		target->addIncoming(targetMd->getValue(), pred);
 	}
 }
 
@@ -187,7 +182,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	m_builder.CreateCondBr(normalFlow, firstBB, m_abortBB, Type::expectTrue);
 
 	for (auto& block: blocks)
-		compileBasicBlock(block, runtimeManager, arith, memory, ext, gasMeter, stack, jumpTable);
+		compileBasicBlock(block, runtimeManager, arith, memory, ext, gasMeter, stack);
 
 	// Code for special blocks:
 	m_builder.SetInsertPoint(m_stopBB);
@@ -196,15 +191,14 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	m_builder.SetInsertPoint(m_abortBB);
 	runtimeManager.exit(ReturnCode::OutOfGas);
 
-	fillJumpTable();
+	resolveJumps();
 
 	return module;
 }
 
 
 void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runtimeManager,
-								 Arith256& _arith, Memory& _memory, Ext& _ext, GasMeter& _gasMeter, Stack& _globalStack,
-							 	 llvm::SwitchInst& jumpTable)
+								 Arith256& _arith, Memory& _memory, Ext& _ext, GasMeter& _gasMeter, Stack& _globalStack)
 {
 	m_builder.SetInsertPoint(_basicBlock.llvm());
 	LocalStack stack{_globalStack};
@@ -574,24 +568,16 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		case Instruction::JUMP:
 		case Instruction::JUMPI:
 		{
-			auto jumpBlock = m_jumpTableBB;
-			auto target = stack.pop();
-			auto jumpInst = (inst == Instruction::JUMP) ?
-					m_builder.CreateBr(jumpBlock) :
-					m_builder.CreateCondBr(m_builder.CreateICmpNE(stack.pop(), Constant::get(0), "jump.check"), jumpBlock, nullptr);
+			auto destIdx = llvm::MDNode::get(m_builder.getContext(), llvm::ValueAsMetadata::get(stack.pop()));
 
-			if (auto constant = llvm::dyn_cast<llvm::ConstantInt>(target))
-			{
-				// If target index is a constant do direct jump to the target block.
-				auto bb = jumpTable.findCaseValue(constant).getCaseSuccessor();
-				jumpInst->setSuccessor(0, bb);
-			}
-			else
-			{
-				// Attach medatada to branch instruction with information about target index.
-				auto targetMd = llvm::MDNode::get(jumpInst->getContext(), llvm::LocalAsMetadata::get(target));
-				jumpInst->setMetadata("target", targetMd);
-			}
+			// Create branch instruction, initially to jump table.
+			// Destination will be optimized with direct jump during jump resolving if destination index is a constant.
+			auto jumpInst = (inst == Instruction::JUMP) ?
+					m_builder.CreateBr(m_jumpTableBB) :
+					m_builder.CreateCondBr(m_builder.CreateICmpNE(stack.pop(), Constant::get(0), "jump.check"), m_jumpTableBB, nullptr);
+
+			// Attach medatada to branch instruction with information about destination index.
+			jumpInst->setMetadata(c_destIdxLabel, destIdx);
 			break;
 		}
 
