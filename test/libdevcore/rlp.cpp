@@ -65,8 +65,8 @@ namespace dev
 				cnote << "  " << i.first;
 				testname = "(" + i.first + ") ";
 
-				TBOOST_REQUIRE_MESSAGE((o.count("out") > 0), testname + "out not set!");
-				TBOOST_REQUIRE_MESSAGE((!o["out"].is_null()), testname + "out is set to null!");
+				BOOST_REQUIRE_MESSAGE(o.count("out") > 0, testname + "out not set!");
+				BOOST_REQUIRE_MESSAGE(!o["out"].is_null(), testname + "out is set to null!");
 
 				if (_fillin)
 				{
@@ -91,7 +91,7 @@ namespace dev
 				else
 				{
 					//Check Encode
-					TBOOST_REQUIRE_MESSAGE((o.count("in") > 0), testname + "in not set!");
+					BOOST_REQUIRE_MESSAGE(o.count("in") > 0, testname + "in not set!");
 					RlpType rlpType = RlpType::Test;
 					if (o["in"].type() == js::str_type)
 					{
@@ -113,10 +113,7 @@ namespace dev
 						stringstream msg;
 						msg << "Encoding Failed: expected: " << expectedText << std::endl;
 						msg << " But Computed: " << computedText;
-						TBOOST_CHECK_MESSAGE(
-							(expectedText == computedText),
-							testname + msg.str()
-							);
+						BOOST_CHECK_MESSAGE(expectedText == computedText, testname + msg.str());
 					}
 
 					//Check Decode
@@ -158,11 +155,11 @@ namespace dev
 
 					//Check that there was an exception as input is INVALID
 					if (rlpType == RlpType::Invalid && !was_exception)
-						TBOOST_ERROR(testname + "Expected RLP Exception as rlp should be invalid!");
+						BOOST_ERROR(testname + "Expected RLP Exception as rlp should be invalid!");
 
 					//input is VALID check that there was no exceptions
 					if (was_exception)
-						TBOOST_ERROR(testname + "Unexpected RLP Exception!");
+						BOOST_ERROR(testname + "Unexpected RLP Exception!");
 				}
 			}
 		}
@@ -200,34 +197,34 @@ namespace dev
 					stringstream bintStream(bigIntStr);
 					bigint val;
 					bintStream >> val;
-					TBOOST_CHECK(( !u.isList() ));
-					TBOOST_CHECK(( !u.isNull() ));
-					TBOOST_CHECK(( u == val ));
+					BOOST_CHECK( !u.isList() );
+					BOOST_CHECK( !u.isNull() );
+					BOOST_CHECK( u == val );
 				}
 				else
 				{
-					TBOOST_CHECK(( !u.isList() ));
-					TBOOST_CHECK(( !u.isNull() ));
-					TBOOST_CHECK(( u.isData() ));
-					TBOOST_CHECK(( u.size() == expectedText.length() ));
-					TBOOST_CHECK(( u == expectedText ));
+					BOOST_CHECK( !u.isList() );
+					BOOST_CHECK( !u.isNull() );
+					BOOST_CHECK( u.isData() );
+					BOOST_CHECK( u.size() == expectedText.length() );
+					BOOST_CHECK( u == expectedText );
 				}
 			}
 			else if ( v.type() == js::int_type )
 			{
 				const int expectedValue = v.get_int();
-				TBOOST_CHECK(( u.isInt() ));
-				TBOOST_CHECK(( !u.isList() ));
-				TBOOST_CHECK(( !u.isNull() ));
-				TBOOST_CHECK(( u == expectedValue ));
+				BOOST_CHECK( u.isInt() );
+				BOOST_CHECK( !u.isList() );
+				BOOST_CHECK( !u.isNull() );
+				BOOST_CHECK( u == expectedValue );
 			}
 			else if ( v.type() == js::array_type )
 			{
-				TBOOST_CHECK(( u.isList() ));
-				TBOOST_CHECK(( !u.isInt() ));
-				TBOOST_CHECK(( !u.isData() ));
+				BOOST_CHECK( u.isList() );
+				BOOST_CHECK( !u.isInt() );
+				BOOST_CHECK( !u.isData() );
 				js::mArray& arr = v.get_array();
-				TBOOST_CHECK(( u.itemCount() == arr.size() ));
+				BOOST_CHECK( u.itemCount() == arr.size() );
 				unsigned i;
 				for( i = 0; i < arr.size(); i++ )
 				{
@@ -237,7 +234,7 @@ namespace dev
 			}
 			else
 			{
-				TBOOST_ERROR("Invalid Javascript object!");
+				BOOST_ERROR("Invalid Javascript object!");
 			}
 		}
 	}
@@ -259,11 +256,11 @@ BOOST_AUTO_TEST_CASE(EmptyArrayList)
 	}
 	catch (Exception const& _e)
 	{
-		TBOOST_ERROR("(EmptyArrayList) Failed test with Exception: " << _e.what());
+		BOOST_ERROR("(EmptyArrayList) Failed test with Exception: " << _e.what());
 	}
 	catch (exception const& _e)
 	{
-		TBOOST_ERROR("(EmptyArrayList) Failed test with Exception: " << _e.what());
+		BOOST_ERROR("(EmptyArrayList) Failed test with Exception: " << _e.what());
 	}
 }
 
@@ -297,7 +294,7 @@ BOOST_AUTO_TEST_CASE(rlpRandom)
 			cnote << "Testing ..." << path.filename();
 			json_spirit::mValue v;
 			string s = asString(dev::contents(path.string()));
-			TBOOST_REQUIRE_MESSAGE((s.length() > 0), "Content of " + path.string() + " is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
+			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Content of " + path.string() + " is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
 			json_spirit::read_string(s, v);
 			test::Listener::notifySuiteStarted(path.filename().string());
 			dev::test::doRlpTests(v, false);
@@ -305,11 +302,11 @@ BOOST_AUTO_TEST_CASE(rlpRandom)
 
 		catch (Exception const& _e)
 		{
-			TBOOST_ERROR(path.filename().string() + "Failed test with Exception: " << diagnostic_information(_e));
+			BOOST_ERROR(path.filename().string() + "Failed test with Exception: " << diagnostic_information(_e));
 		}
 		catch (std::exception const& _e)
 		{
-			TBOOST_ERROR(path.filename().string() + "Failed test with Exception: " << _e.what());
+			BOOST_ERROR(path.filename().string() + "Failed test with Exception: " << _e.what());
 		}
 	}
 }
