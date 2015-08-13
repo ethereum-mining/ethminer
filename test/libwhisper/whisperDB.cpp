@@ -41,7 +41,9 @@ BOOST_FIXTURE_TEST_SUITE(whisperDB, P2PFixture)
 
 BOOST_AUTO_TEST_CASE(basic)
 {
-	VerbosityHolder setTemporaryLevel(10);
+	if (g_logVerbosity != -1)
+		VerbosityHolder setTemporaryLevel(10);
+
 	cnote << "Testing Whisper DB...";
 
 	string s;
@@ -86,7 +88,9 @@ BOOST_AUTO_TEST_CASE(basic)
 
 BOOST_AUTO_TEST_CASE(persistence)
 {
-	VerbosityHolder setTemporaryLevel(10);
+	if (g_logVerbosity != -1)
+		VerbosityHolder setTemporaryLevel(10);
+
 	cnote << "Testing persistence of Whisper DB...";
 
 	string s;
@@ -135,7 +139,9 @@ BOOST_AUTO_TEST_CASE(messages)
 		return;
 
 	cnote << "Testing load/save Whisper messages...";
-	VerbosityHolder setTemporaryLevel(2);
+	if (g_logVerbosity != -1)
+		VerbosityHolder setTemporaryLevel(2);
+
 	unsigned const TestSize = 3;
 	map<h256, Envelope> m1;
 	map<h256, Envelope> preexisting;
@@ -193,7 +199,9 @@ BOOST_AUTO_TEST_CASE(corruptedData)
 		return;
 
 	cnote << "Testing corrupted data...";
-	VerbosityHolder setTemporaryLevel(2);
+	if (g_logVerbosity != -1)
+		VerbosityHolder setTemporaryLevel(2);
+
 	map<h256, Envelope> m;
 	h256 x = h256::random();
 
@@ -222,7 +230,9 @@ BOOST_AUTO_TEST_CASE(filters)
 		return;
 
 	cnote << "Testing filters saving...";
-	VerbosityHolder setTemporaryLevel(2);
+	if (g_logVerbosity != -1)
+		VerbosityHolder setTemporaryLevel(2);
+
 	h256 persistID(0xC0FFEE);
 
 	{
