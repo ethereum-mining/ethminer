@@ -83,20 +83,20 @@ void help()
 		<< "    --olympic  Use the Olympic (0.9) protocol." << endl
 		<< "    --frontier  Use the Frontier (1.0) protocol." << endl
 		<< "    --private <name>  Use a private chain." << endl
-		<< "    --genesis-json <file>  Import the genesis block information from the given json file." << endl
+		<< "    --genesis-json <file>  Import the genesis block information from the given JSON file." << endl
 		<< endl
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (default: full)." << endl
 		<< endl
 #if ETH_JSONRPC || !ETH_TRUE
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port <n>  Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
-		<< "    --admin <password>  Specify admin session key for JSON-RPC (default: auto-generated and printed at startup)." << endl
+		<< "    --admin <password>  Specify admin session key for JSON-RPC (default: auto-generated and printed at start-up)." << endl
 #endif
-		<< "    -K,--kill  First kill the blockchain." << endl
+		<< "    -K,--kill  Kill the blockchain first." << endl
 		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
 		<< "    --rescue  Attempt to rescue a corrupt database." << endl
 		<< endl
-		<< "    --import-presale <file>  Import a presale key; you'll need to type the password to this." << endl
+		<< "    --import-presale <file>  Import a pre-sale key; you'll need to specify the password to this key." << endl
 		<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
 		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
 		<< "    --sign-key <address>  Sign all transactions with the key of the given address." << endl
@@ -106,74 +106,74 @@ void help()
 		<< "    --sentinel <server>  Set the sentinel for reporting bad blocks or chain issues." << endl
 		<< endl
 		<< "Client transacting:" << endl
-		/*<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (default: 15)." << endl
-		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (default: 30.679)." << endl
-		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl*/
-		<< "    --ask <wei>  Set the minimum ask gas price under which no transactions will be mined (default " << toString(c_defaultGasPrice) << " )." << endl
-		<< "    --bid <wei>  Set the bid gas price for to pay for transactions (default " << toString(c_defaultGasPrice) << " )." << endl
+		/*<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit, e.g. ¢ (default: 15)." << endl
+		<< "    -e,--ether-price <n>  Set the ether price in the reference unit, e.g. ¢ (default: 30.679)." << endl
+		<< "    -P,--priority <0 - 100>  Set the default priority percentage (%) of a transaction (default: 50)." << endl*/
+		<< "    --ask <wei>  Set the minimum ask gas price under which no transaction will be mined (default " << toString(c_defaultGasPrice) << " )." << endl
+		<< "    --bid <wei>  Set the bid gas price to pay for transactions (default " << toString(c_defaultGasPrice) << " )." << endl
 		<< endl
 		<< "Client mining:" << endl
-		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
-		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (default: off)" << endl
-		<< "    -f,--force-mining  Mine even when there are no transactions to mine (default: off)" << endl
-		<< "    --mine-on-wrong-chain  Mine even when we know it's the wrong chain (default: off)" << endl
+		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to given address (default: auto)." << endl
+		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (default: off)." << endl
+		<< "    -f,--force-mining  Mine even when there are no transactions to mine (default: off)." << endl
+		<< "    --mine-on-wrong-chain  Mine even when we know that it is the wrong chain (default: off)." << endl
 		<< "    -C,--cpu  When mining, use the CPU." << endl
-		<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
-		<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
-		<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
-		<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
+		<< "    -G,--opencl  When mining, use the GPU via OpenCL." << endl
+		<< "    --opencl-platform <n>  When mining using -G/--opencl, use OpenCL platform n (default: 0)." << endl
+		<< "    --opencl-device <n>  When mining using -G/--opencl, use OpenCL device n (default: 0)." << endl
+		<< "    -t, --mining-threads <n>  Limit number of CPU/GPU miners to n (default: use everything available on selected platform)." << endl
 		<< endl
 		<< "Client networking:" << endl
 		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
-		<< "    --bootstrap  Connect to the default Ethereum peerservers (default unless --no-discovery used)." << endl
-		<< "    --no-bootstrap  Do not connect to the default Ethereum peerservers (default only when --no-discovery is used)." << endl
-		<< "    -x,--peers <number>  Attempt to connect to given number of peers (default: 11)." << endl
-		<< "    --peer-stretch <number>  Accepted connection multiplier (default: 7)." << endl
+		<< "    --bootstrap  Connect to the default Ethereum peer servers (default unless --no-discovery used)." << endl
+		<< "    --no-bootstrap  Do not connect to the default Ethereum peer servers (default only when --no-discovery is used)." << endl
+		<< "    -x,--peers <number>  Attempt to connect to a given number of peers (default: 11)." << endl
+		<< "    --peer-stretch <number>  Give the accepted connection multiplier (default: 7)." << endl
 	
-		<< "    --public-ip <ip>  Force advertised public ip to given (default: auto)." << endl
+		<< "    --public-ip <ip>  Force advertised public IP to the given IP (default: auto)." << endl
 		<< "    --listen-ip <ip>(:<port>)  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
 		<< "    --listen <port>  Listen on the given port for incoming connections (default: 30303)." << endl
-		<< "    -r,--remote <host>(:<port>)  Connect to remote host (default: none)." << endl
-		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
-		<< "    --network-id <n> Only connect to other hosts with this network id." << endl
+		<< "    -r,--remote <host>(:<port>)  Connect to the given remote host (default: none)." << endl
+		<< "    --port <port>  Connect to the given remote port (default: 30303)." << endl
+		<< "    --network-id <n>  Only connect to other hosts with this network id." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
 
-		<< "    --peerset <list>  Space delimited list of type type:publickey@ipAddress[:port]" << endl
+		<< "    --peerset <list>  Space delimited list of peers; element format: type:publickey@ipAddress[:port]." << endl
 		<< "        Types:" << endl
-		<< "        default		Attempt connection when no other peers are available and pinning is disable." << endl
+		<< "        default		Attempt connection when no other peers are available and pinning is disabled." << endl
 		<< "        require		Keep connected at all times." << endl
 // TODO:
 //		<< "	--trust-peers <filename>  Space delimited list of publickeys." << endl
 	
-		<< "    --no-discovery  Disable Node discovery, implies --no-bootstrap." << endl
+		<< "    --no-discovery  Disable node discovery, implies --no-bootstrap." << endl
 		<< "    --pin  Only accept or connect to trusted peers." << endl
 		<< "    --hermit  Equivalent to --no-discovery --pin." << endl
-		<< "    --sociable  Forces discovery and no pinning." << endl
+		<< "    --sociable  Force discovery and no pinning." << endl
 		<< endl;
 	MinerCLI::streamHelp(cout);
 	cout
 		<< "Client structured logging:" << endl
-		<< "    --structured-logging  Enable structured logging (default output to stdout)." << endl
+		<< "    --structured-logging  Enable structured logging (default: output to stdout)." << endl
 		<< "    --structured-logging-format <format>  Set the structured logging time format." << endl
 		<< "    --structured-logging-url <URL>  Set the structured logging destination (currently only file:// supported)." << endl
 		<< endl
 		<< "Import/export modes:" << endl
-		<< "    --from <n>  Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
-		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
+		<< "    --from <n>  Export only from block n; n may be a decimal, a '0x' pre-fixed hash, or 'latest'." << endl
+		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' pre-fixed hash, or 'latest'." << endl
 		<< "    --only <n>  Equivalent to --export-from n --export-to n." << endl
-		<< "    --dont-check  Avoids checking some of the aspects of blocks. Faster importing, but only do if you know the data is valid." << endl
+		<< "    --dont-check  Prevent checking some block aspects. Faster importing, but to apply only when the data is known to be valid." << endl
 		<< endl
 		<< "General Options:" << endl
-		<< "    -d,--db-path <path>  Load database from path (default: " << getDataDir() << ")" << endl
+		<< "    -d,--db-path <path>  Load database from path (default: " << getDataDir() << ")." << endl
 #if ETH_EVMJIT || !ETH_TRUE
-		<< "    --vm <vm-kind>  Select VM. Options are: interpreter, jit, smart. (default: interpreter)" << endl
+		<< "    --vm <vm-kind>  Select VM; options are: interpreter, jit or smart (default: interpreter)." << endl
 #endif
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 8)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 		<< "    -h,--help  Show this help message and exit." << endl
 		<< endl
 		<< "Experimental / Proof of Concept:" << endl
-		<< "    --shh  Enable Whisper" << endl
+		<< "    --shh  Enable Whisper." << endl
 		<< endl
 		;
 		exit(0);
