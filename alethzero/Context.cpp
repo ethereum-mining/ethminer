@@ -39,12 +39,17 @@ Context::~Context()
 void dev::az::setValueUnits(QComboBox* _units, QSpinBox* _value, u256 _v)
 {
 	initUnits(_units);
-	_units->setCurrentIndex(0);
-	while (_v > 50000 && _units->currentIndex() < (int)(units().size() - 2))
+	if (_v > 0)
 	{
-		_v /= 1000;
-		_units->setCurrentIndex(_units->currentIndex() + 1);
+		_units->setCurrentIndex(0);
+		while (_v > 50000 && _units->currentIndex() < (int)(units().size() - 2))
+		{
+			_v /= 1000;
+			_units->setCurrentIndex(_units->currentIndex() + 1);
+		}
 	}
+	else
+		_units->setCurrentIndex(6);
 	_value->setValue((unsigned)_v);
 }
 

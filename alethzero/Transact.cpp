@@ -40,6 +40,7 @@
 #include <libnatspec/NatspecExpressionEvaluator.h>
 #include <libethereum/Client.h>
 #include <libethereum/Utility.h>
+#include <libethcore/ICAP.h>
 #include <libethcore/KeyManager.h>
 #if ETH_SERPENT
 #include <libserpent/funcs.h>
@@ -52,10 +53,10 @@ using namespace dev;
 using namespace az;
 using namespace eth;
 
-Transact::Transact(Context* _c, QWidget* _parent):
+Transact::Transact(MainFace* _c, QWidget* _parent):
 	QDialog(_parent),
 	ui(new Ui::Transact),
-	m_context(_c)
+	m_main(_c)
 {
 	ui->setupUi(this);
 
@@ -81,9 +82,10 @@ void Transact::setEnvironment(AddressHash const& _accounts, dev::eth::Client* _e
 	for (auto const& address: m_accounts)
 	{
 		u256 b = ethereum()->balanceAt(address, PendingBlock);
-		QString s = QString("%4 %2: %1").arg(formatBalance(b).c_str()).arg(QString::fromStdString(m_context->render(address))).arg(QString::fromStdString(m_context->keyManager().accountName(address)));
+		QString s = QString("%2: %1").arg(formatBalance(b).c_str()).arg(QString::fromStdString(m_main->render(address)));
 		ui->from->addItem(s);
 	}
+	updateDestination();
 	if (old > -1 && old < ui->from->count())
 		ui->from->setCurrentIndex(old);
 	else if (ui->from->count())
@@ -92,7 +94,7 @@ void Transact::setEnvironment(AddressHash const& _accounts, dev::eth::Client* _e
 
 void Transact::resetGasPrice()
 {
-	setValueUnits(ui->gasPriceUnits, ui->gasPrice, m_context->gasPrice());
+	setValueUnits(ui->gasPriceUnits, ui->gasPrice, m_main->gasPrice());
 }
 
 bool Transact::isCreation() const
@@ -119,11 +121,6 @@ u256 Transact::gasPrice() const
 	return ui->gasPrice->value() * units()[units().size() - 1 - ui->gasPriceUnits->currentIndex()].first;
 }
 
-Address Transact::to() const
-{
-	return m_context->fromString(ui->destination->currentText().toStdString()).first;
-}
-
 u256 Transact::total() const
 {
 	return value() + fee();
@@ -131,16 +128,14 @@ u256 Transact::total() const
 
 void Transact::updateDestination()
 {
-	cwatch << "updateDestination()";
-	QString s;
-	for (auto i: ethereum()->addresses())
-		if ((s = QString::fromStdString(m_context->pretty(i))).size())
-			// A namereg address
-			if (ui->destination->findText(s, Qt::MatchExactly | Qt::MatchCaseSensitive) == -1)
-				ui->destination->addItem(s);
-	for (int i = 0; i < ui->destination->count(); ++i)
-		if (ui->destination->itemText(i) != "(Create Contract)" && !to())
-			ui->destination->removeItem(i--);
+	// TODO: should be a Qt model.
+	ui->destination->clear();
+	ui->destination->addItem("(Create Contract)");
+	for (Address const& a: m_main->allKnownAddresses())
+	{
+		cdebug << "Adding" << a << m_main->toName(a) << " -> " << (m_main->toName(a) + " (" + ICAP(a).encoded() + ")");
+		ui->destination->addItem(QString::fromStdString(m_main->toName(a) + " (" + ICAP(a).encoded() + ")"), QString::fromStdString(a.hex()));
+	}
 }
 
 void Transact::updateFee()
@@ -166,11 +161,14 @@ void Transact::on_destination_currentTextChanged(QString)
 {
 	if (ui->destination->currentText().size() && ui->destination->currentText() != "(Create Contract)")
 	{
-		auto p = m_context->fromString(ui->destination->currentText().toStdString());
+		auto p = toAccount();
 		if (p.first)
-			ui->calculatedName->setText(QString::fromStdString(m_context->render(p.first)));
+			ui->calculatedName->setText(QString::fromStdString(m_main->render(p.first)));
 		else
 			ui->calculatedName->setText("Unknown Address");
+
+//		ui->calculatedName->setText(m_main->toName(a) + " (" + ICAP(a).encoded() + ")");
+
 		if (!p.second.empty())
 		{
 			m_data = p.second;
@@ -202,7 +200,7 @@ void Transact::on_copyUnsigned_clicked()
 		t = Transaction(value(), gasPrice(), ui->gas->value(), m_data, nonce);
 	else
 		// TODO: cache like m_data.
-		t = Transaction(value(), gasPrice(), ui->gas->value(), to(), m_data, nonce);
+		t = Transaction(value(), gasPrice(), ui->gas->value(), toAccount().first, m_data, nonce);
 	qApp->clipboard()->setText(QString::fromStdString(toHex(t.rlp())));
 }
 
@@ -323,9 +321,17 @@ string Transact::natspecNotice(Address _to, bytes const& _data)
 		return "Destination not a contract.";
 }
 
-Address Transact::toAccount()
+pair<Address, bytes> Transact::toAccount()
 {
-	return isCreation() ? Address() : m_context->fromString(ui->destination->currentText().toStdString()).first;
+	pair<Address, bytes> p;
+	if (!isCreation())
+	{
+		if (!ui->destination->currentData().isNull() && ui->destination->currentText() == ui->destination->itemText(ui->destination->currentIndex()))
+			p.first = Address(ui->destination->currentData().toString().trimmed().toStdString());
+		else
+			p = m_main->fromString(ui->destination->currentText().trimmed().toStdString());
+	}
+	return p;
 }
 
 GasRequirements Transact::determineGasRequirements()
@@ -334,22 +340,20 @@ GasRequirements Transact::determineGasRequirements()
 	qint64 baseGas = (qint64)Transaction::gasRequired(m_data, 0);
 
 	Address from = fromAccount();
-	Address to = toAccount();
+	Address to = toAccount().first;
 	ExecutionResult lastGood;
 
 	bool haveUpperBound = false;
 	qint64 lowerBound = baseGas;
 	qint64 upperBound = (qint64)ethereum()->gasLimitRemaining();
-	for (unsigned i = 0; i < 20 && ((haveUpperBound && upperBound - lowerBound > 100) || !haveUpperBound); ++i)	// get to with 100.
+	for (unsigned i = 0; i < 30 && ((haveUpperBound && upperBound - lowerBound > 16) || !haveUpperBound); ++i)	// get to with 100.
 	{
 		qint64 mid = haveUpperBound ? (lowerBound + upperBound) / 2 : upperBound;
-		cdebug << "Trying" << mid;
 		ExecutionResult er;
 		if (isCreation())
-			er = ethereum()->create(from, value(), m_data, mid, gasPrice(), ethereum()->getDefault(), FudgeFactor::Lenient);
+			er = ethereum()->create(from, value(), m_data, mid, gasPrice(), PendingBlock, FudgeFactor::Lenient);
 		else
-			er = ethereum()->call(from, value(), to, m_data, mid, gasPrice(), ethereum()->getDefault(), FudgeFactor::Lenient);
-		cdebug << toString(er.excepted);
+			er = ethereum()->call(from, value(), to, m_data, mid, gasPrice(), PendingBlock, FudgeFactor::Lenient);
 		if (er.excepted == TransactionException::OutOfGas || er.excepted == TransactionException::OutOfGasBase || er.excepted == TransactionException::OutOfGasIntrinsic || er.codeDeposit == CodeDeposit::Failed)
 		{
 			lowerBound = mid;
@@ -446,7 +450,7 @@ void Transact::rejigData()
 
 	// Add Natspec information
 	if (!isCreation())
-		htmlInfo = "<div class=\"info\"><span class=\"icon\">INFO</span> " + QString::fromStdString(natspecNotice(toAccount(), m_data)).toHtmlEscaped() + "</div>" + htmlInfo;
+		htmlInfo = "<div class=\"info\"><span class=\"icon\">INFO</span> " + QString::fromStdString(natspecNotice(toAccount().first, m_data)).toHtmlEscaped() + "</div>" + htmlInfo;
 
 	// Update gas
 	if (ui->gas->value() == ui->gas->minimum())
@@ -481,7 +485,7 @@ Secret Transact::findSecret(u256 _totalReq) const
 		if (b > bestBalance)
 			bestBalance = b, best = i;
 	}
-	return m_context->retrieveSecret(best);
+	return m_main->retrieveSecret(best);
 }
 
 Address Transact::fromAccount()
@@ -514,7 +518,7 @@ void Transact::on_send_clicked()
 		return;
 	}
 
-	Secret s = m_context->retrieveSecret(a);
+	Secret s = m_main->retrieveSecret(a);
 	if (!s)
 		return;
 
@@ -541,7 +545,7 @@ void Transact::on_send_clicked()
 	}
 	else
 		// TODO: cache like m_data.
-		ethereum()->submitTransaction(s, value(), m_context->fromString(ui->destination->currentText().toStdString()).first, m_data, ui->gas->value(), gasPrice(), nonce);
+		ethereum()->submitTransaction(s, value(), toAccount().first, m_data, ui->gas->value(), gasPrice(), nonce);
 	close();
 }
 
@@ -561,9 +565,9 @@ void Transact::on_debug_clicked()
 		Block postState(ethereum()->postState());
 		Transaction t = isCreation() ?
 			Transaction(value(), gasPrice(), ui->gas->value(), m_data, postState.transactionsFrom(from)) :
-			Transaction(value(), gasPrice(), ui->gas->value(), m_context->fromString(ui->destination->currentText().toStdString()).first, m_data, postState.transactionsFrom(from));
+			Transaction(value(), gasPrice(), ui->gas->value(), toAccount().first, m_data, postState.transactionsFrom(from));
 		t.forceSender(from);
-		Debugger dw(m_context, this);
+		Debugger dw(m_main, this);
 		Executive e(postState, ethereum()->blockChain(), 0);
 		dw.populate(e, t);
 		dw.exec();

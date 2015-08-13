@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE(basic)
 	NetworkPreferences prefs2("127.0.0.1", port2, false);
 	string const version2 = "shhrpc-host2";
 	Host host2(version2, prefs2);
-	auto whost2 = host2.registerCapability(new WhisperHost());
+	auto whost2 = host2.registerCapability(make_shared<WhisperHost>());
 	host2.start();
 
 	for (unsigned i = 0; i < 3000 && !host2.haveNetwork(); i += step)
@@ -169,7 +169,7 @@ BOOST_AUTO_TEST_CASE(send)
 
 	Host host2("shhrpc-host2", NetworkPreferences("127.0.0.1", port2, false));
 	host2.setIdealPeerCount(1);
-	auto whost2 = host2.registerCapability(new WhisperHost());
+	auto whost2 = host2.registerCapability(make_shared<WhisperHost>());
 	host2.start();
 	web3->startNetwork();
 
@@ -239,7 +239,7 @@ BOOST_AUTO_TEST_CASE(receive)
 	uint16_t port2 = 30338;
 	Host host2("shhrpc-host2", NetworkPreferences("127.0.0.1", port2, false));
 	host2.setIdealPeerCount(1);
-	auto whost2 = host2.registerCapability(new WhisperHost());
+	auto whost2 = host2.registerCapability(make_shared<WhisperHost>());
 	host2.start();
 	web3->startNetwork();
 
@@ -379,7 +379,7 @@ BOOST_AUTO_TEST_CASE(server)
 	uint16_t port2 = 30339;
 	Host host2("shhrpc-host2", NetworkPreferences("127.0.0.1", port2, false));
 	host2.setIdealPeerCount(1);
-	auto whost2 = host2.registerCapability(new WhisperHost());
+	auto whost2 = host2.registerCapability(make_shared<WhisperHost>());
 	host2.start();
 
 	b = jsonrpcServer->admin_net_start(sess2);

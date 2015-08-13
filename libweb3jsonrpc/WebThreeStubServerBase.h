@@ -139,6 +139,7 @@ public:
 	virtual Json::Value eth_getLogsEx(Json::Value const& _json);
 	virtual Json::Value eth_getWork();
 	virtual bool eth_submitWork(std::string const& _nonce, std::string const&, std::string const& _mixHash);
+	virtual bool eth_submitHashrate(int _hashes, std::string const& _id);
 	virtual std::string eth_register(std::string const& _address);
 	virtual bool eth_unregister(std::string const& _accountId);
 	virtual Json::Value eth_fetchQueuedTransactions(std::string const& _accountId);
@@ -167,6 +168,7 @@ public:
 	virtual Json::Value admin_net_peers(std::string const& _session);
 	virtual Json::Value admin_net_nodeInfo(std::string const& _session);
 
+	virtual bool admin_eth_exit(std::string const& _session);
 	virtual bool admin_eth_setMining(bool _on, std::string const& _session);
 	virtual Json::Value admin_eth_blockQueueStatus(std::string const& _session) { (void)_session; return Json::Value(); }
 	virtual bool admin_eth_setAskPrice(std::string const& _wei, std::string const& _session) { (void)_wei; (void)_session; return false; }
@@ -192,6 +194,7 @@ public:
 
 protected:
 	void requires(std::string const& _session, Privilege _l) const { if (!hasPrivilegeLevel(_session, _l)) throw jsonrpc::JsonRpcException("Invalid privileges"); }
+	void setTransactionDefaults(eth::TransactionSkeleton & _t);
 	virtual bool hasPrivilegeLevel(std::string const& _session, Privilege _l) const { (void)_session; (void)_l; return false; }
 
 	virtual dev::eth::Interface* client() = 0;

@@ -12,6 +12,7 @@ ColumnLayout
 {
 	id: root
 	property variant transactions
+	property variant transactionModel
 	property string status
 	property int number
 	property int blockWidth: Layout.preferredWidth - statusWidth - horizontalMargin
@@ -202,6 +203,7 @@ ColumnLayout
 
 					if (index >= 0)
 						transactions.get(index).saveStatus = saveStatus
+						transactionModel[index].saveStatus = saveStatus
 				}
 
 				MouseArea {
