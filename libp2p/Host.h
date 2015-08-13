@@ -119,16 +119,6 @@ struct NodeInfo
 	std::string version;
 };
 
-struct HostPeerPreferences
-{
-	unsigned const idealPeerCount = 11;	// Ideal number of peers to be connected to.
-	unsigned const stretchPeerCount = 7;	// Accepted connection multiplier (max peers = ideal*stretch).
-	
-//	std::list<NodeId> const defaultPeers;
-//	std::list<NodeId> const requiredPeers;
-//	std::list<NodeId> const trusted;
-};
-
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
@@ -161,7 +151,7 @@ public:
 	static std::unordered_map<Public, std::string> const& pocHosts();
 
 	/// Register a peer-capability; all new peer connections will have this capability.
-	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; std::shared_ptr<T> ret(_t); m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = ret; return ret; }
+	template <class T> std::shared_ptr<T> registerCapability(std::shared_ptr<T> const& _t) { _t->m_host = this; m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = _t; return _t; }
 	template <class T> void addCapability(std::shared_ptr<T> const & _p, std::string const& _name, u256 const& _version) { m_capabilities[std::make_pair(_name, _version)] = _p; }
 
 	bool haveCapability(CapDesc const& _name) const { return m_capabilities.count(_name) != 0; }
@@ -225,7 +215,7 @@ public:
 	bool haveNetwork() const { return m_run && !!m_nodeTable; }
 	
 	/// Validates and starts peer session, taking ownership of _io. Disconnects and returns false upon error.
-	void startPeerSession(Public const& _id, RLP const& _hello, RLPXFrameCoder* _io, std::shared_ptr<RLPXSocket> const& _s);
+	void startPeerSession(Public const& _id, RLP const& _hello, std::unique_ptr<RLPXFrameCoder>&& _io, std::shared_ptr<RLPXSocket> const& _s);
 
 	/// Get session by id
 	std::shared_ptr<Session> peerSession(NodeId const& _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? m_sessions[_id].lock() : std::shared_ptr<Session>(); }

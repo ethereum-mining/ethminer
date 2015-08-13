@@ -246,8 +246,10 @@ void Debugger::update()
 			ss << dec << "STEP: " << ws.steps << "  |  PC: 0x" << hex << ws.curPC << "  :  " << instructionInfo(ws.inst).name << "  |  ADDMEM: " << dec << ws.newMemSize << " words  |  COST: " << dec << ws.gasCost <<  "  |  GAS: " << dec << ws.gas;
 			ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
 			stringstream s;
-			for (auto const& i: ws.storage)
-				s << "@" << m_context->prettyU256(i.first) << "&nbsp;&nbsp;&nbsp;&nbsp;" << m_context->prettyU256(i.second) << "<br/>";
+			auto keys = dev::keysOf(ws.storage);
+			sort(keys.begin(), keys.end());
+			for (auto const& key: keys)
+				s << "@" << m_context->prettyU256(key) << "&nbsp;&nbsp;&nbsp;&nbsp;" << m_context->prettyU256(ws.storage.at(key)) << "<br/>";
 			ui->debugStorage->setHtml(QString::fromStdString(s.str()));
 		}
 	}
@@ -346,7 +348,7 @@ void Debugger::on_dump_clicked()
 	ofstream f(fn.toStdString());
 	if (f.is_open())
 		for (WorldState const& ws: m_session.history)
-			f << ws.cur << " " << hex << toHex(dev::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
+			f << ws.cur << " " << hex << toHex(dev::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(dev::toCompactBigEndian((unsigned)(byte)ws.inst, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
 }
 
 void Debugger::on_dumpPretty_clicked()
@@ -377,6 +379,6 @@ void Debugger::on_dumpStorage_clicked()
 			if (ws.inst == Instruction::STOP || ws.inst == Instruction::RETURN || ws.inst == Instruction::SUICIDE)
 				for (auto i: ws.storage)
 					f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
-			f << ws.cur << " " << hex << toHex(dev::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
+			f << ws.cur << " " << hex << toHex(dev::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(dev::toCompactBigEndian((unsigned)(byte)ws.inst, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
 		}
 }

@@ -43,6 +43,8 @@ boost::shared_mutex CanonBlockChain<Ethash>::x_genesis;
 Nonce CanonBlockChain<Ethash>::s_nonce(u64(42));
 string CanonBlockChain<Ethash>::s_genesisStateJSON;
 bytes CanonBlockChain<Ethash>::s_genesisExtraData;
+u256 CanonBlockChain<Ethash>::s_genesisDifficulty;
+u256 CanonBlockChain<Ethash>::s_genesisGasLimit;
 
 CanonBlockChain<Ethash>::CanonBlockChain(std::string const& _path, WithExisting _we, ProgressCallback const& _pc):
 	FullBlockChain<Ethash>(createGenesisBlock(), createGenesisState(), _path)
@@ -91,9 +93,9 @@ bytes CanonBlockChain<Ethash>::createGenesisBlock()
 			<< EmptyTrie	// transactions
 			<< EmptyTrie	// receipts
 			<< LogBloom()
-			<< difficulty
+			<< (s_genesisDifficulty ? s_genesisDifficulty : difficulty)
 			<< 0	// number
-			<< gasLimit
+			<< (s_genesisGasLimit ? s_genesisGasLimit : gasLimit)
 			<< 0	// gasUsed
 			<< timestamp
 			<< (s_genesisExtraData.empty() ? extraData : s_genesisExtraData)
@@ -123,6 +125,20 @@ void CanonBlockChain<Ethash>::forceGenesisExtraData(bytes const& _genesisExtraDa
 {
 	WriteGuard l(x_genesis);
 	s_genesisExtraData = _genesisExtraData;
+	s_genesis.reset();
+}
+
+void CanonBlockChain<Ethash>::forceGenesisDifficulty(u256 const& _genesisDifficulty)
+{
+	WriteGuard l(x_genesis);
+	s_genesisDifficulty = _genesisDifficulty;
+	s_genesis.reset();
+}
+
+void CanonBlockChain<Ethash>::forceGenesisGasLimit(u256 const& _genesisGasLimit)
+{
+	WriteGuard l(x_genesis);
+	s_genesisGasLimit = _genesisGasLimit;
 	s_genesis.reset();
 }
 

@@ -128,9 +128,9 @@ void help()
 		<< "    --bootstrap  Connect to the default Ethereum peerservers (default unless --no-discovery used)." << endl
 		<< "    --no-bootstrap  Do not connect to the default Ethereum peerservers (default only when --no-discovery is used)." << endl
 		<< "    -x,--peers <number>  Attempt to connect to given number of peers (default: 11)." << endl
-		<< "	--peer-stretch <number>  Accepted connection multiplier (default: 7)." << endl
+		<< "    --peer-stretch <number>  Accepted connection multiplier (default: 7)." << endl
 	
-		<< "    --public-ip <ip>  Force public ip to given (default: auto)." << endl
+		<< "    --public-ip <ip>  Force advertised public ip to given (default: auto)." << endl
 		<< "    --listen-ip <ip>(:<port>)  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
 		<< "    --listen <port>  Listen on the given port for incoming connections (default: 30303)." << endl
 		<< "    -r,--remote <host>(:<port>)  Connect to remote host (default: none)." << endl
@@ -138,11 +138,12 @@ void help()
 		<< "    --network-id <n> Only connect to other hosts with this network id." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
 
-//		<< "	--peers <filename>  Text list of type publickey@host[:port]  (default: network)" << endl
-//		<< "		Types:" << endl
-//		<< "		default		Attempt connection when no other peers are available and pinning is disable." << endl
-//		<< "		trusted		Keep connected at all times." << endl
-//		<< "	--trust-peers <filename>  Text list of publickeys." << endl
+		<< "    --peerset <list>  Space delimited list of type type:publickey@ipAddress[:port]" << endl
+		<< "        Types:" << endl
+		<< "        default		Attempt connection when no other peers are available and pinning is disable." << endl
+		<< "        require		Keep connected at all times." << endl
+// TODO:
+//		<< "	--trust-peers <filename>  Space delimited list of publickeys." << endl
 	
 		<< "    --no-discovery  Disable Node discovery, implies --no-bootstrap." << endl
 		<< "    --pin  Only accept or connect to trusted peers." << endl
@@ -219,8 +220,6 @@ string pretty(h160 _a, dev::eth::State const& _st)
 	return ns;
 }
 
-bool g_exit = false;
-
 inline bool isPrime(unsigned _number)
 {
 	if (((!(_number & 1)) && _number != 2 ) || (_number < 2) || (_number % 3 == 0 && _number != 3))
@@ -229,11 +228,6 @@ inline bool isPrime(unsigned _number)
 		if ((_number % (6 * k + 1) == 0) || (_number % (6 * k - 1) == 0))
 			return false;
 	return true;
-}
-
-void sighandler(int)
-{
-	g_exit = true;
 }
 
 enum class NodeMode
@@ -316,9 +310,9 @@ int main(int argc, char** argv)
 	string remoteHost;
 	unsigned short remotePort = 30303;
 	
-	HostPeerPreferences hprefs;
-	unsigned peers = hprefs.idealPeerCount;
-	unsigned peerStretch = hprefs.stretchPeerCount;
+	unsigned peers = 11;
+	unsigned peerStretch = 7;
+	std::map<NodeId, pair<NodeIPEndpoint,bool>> preferredNodes;
 	bool bootstrap = true;
 	bool disableDiscovery = false;
 	bool pinning = false;
@@ -682,6 +676,63 @@ int main(int argc, char** argv)
 			peers = atoi(argv[++i]);
 		else if (arg == "--peer-stretch" && i + 1 < argc)
 			peerStretch = atoi(argv[++i]);
+		else if (arg == "--peerset" && i + 1 < argc)
+		{
+			string peerset = argv[++i];
+			if (peerset.empty())
+			{
+				cerr << "--peerset argument must not be empty";
+				return -1;
+			}
+
+			vector<string> each;
+			boost::split(each, peerset, boost::is_any_of("\t "));
+			for (auto const& p: each)
+			{
+				string type;
+				string pubk;
+				string hostIP;
+				unsigned short port = c_defaultListenPort;
+				
+				// type:key@ip[:port]
+				vector<string> typeAndKeyAtHostAndPort;
+				boost::split(typeAndKeyAtHostAndPort, p, boost::is_any_of(":"));
+				if (typeAndKeyAtHostAndPort.size() < 2 || typeAndKeyAtHostAndPort.size() > 3)
+					continue;
+				
+				type = typeAndKeyAtHostAndPort[0];
+				if (typeAndKeyAtHostAndPort.size() == 3)
+					port = (uint16_t)atoi(typeAndKeyAtHostAndPort[2].c_str());
+
+				vector<string> keyAndHost;
+				boost::split(keyAndHost, typeAndKeyAtHostAndPort[1], boost::is_any_of("@"));
+				if (keyAndHost.size() != 2)
+					continue;
+				pubk = keyAndHost[0];
+				if (pubk.size() != 40)
+					continue;
+				hostIP = keyAndHost[1];
+				
+				// todo: use Network::resolveHost()
+				if (hostIP.size() < 4 /* g.it */)
+					continue;
+				
+				bool required = type == "required";
+				if (!required && type != "default")
+					continue;
+
+				Public publicKey(fromHex(pubk));
+				try
+				{
+					preferredNodes[publicKey] = make_pair(NodeIPEndpoint(bi::address::from_string(hostIP), port, port), required);
+				}
+				catch (...)
+				{
+					cerr << "Unrecognized peerset: " << peerset << endl;
+					return -1;
+				}
+			}
+		}
 		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -728,7 +779,11 @@ int main(int argc, char** argv)
 	// Set up all the chain config stuff.
 	resetNetwork(releaseNetwork);
 	if (!privateChain.empty())
+	{
 		CanonBlockChain<Ethash>::forceGenesisExtraData(sha3(privateChain).asBytes());
+		CanonBlockChain<Ethash>::forceGenesisDifficulty(c_minimumDifficulty);
+		CanonBlockChain<Ethash>::forceGenesisGasLimit(u256(1) << 32);
+	}
 	if (!genesisJSON.empty())
 		CanonBlockChain<Ethash>::setGenesis(genesisJSON);
 	if (gasFloor != UndefinedU256)
@@ -1022,15 +1077,21 @@ int main(int argc, char** argv)
 	}
 #endif
 
+	for (auto const& p: preferredNodes)
+		if (p.second.second)
+			web3.requirePeer(p.first, p.second.first);
+		else
+			web3.addNode(p.first, p.second.first);
+
 	if (bootstrap)
 		for (auto const& i: Host::pocHosts())
 			web3.requirePeer(i.first, i.second);
 	if (!remoteHost.empty())
 		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
 
-	signal(SIGABRT, &sighandler);
-	signal(SIGTERM, &sighandler);
-	signal(SIGINT, &sighandler);
+	signal(SIGABRT, &Client::exitHandler);
+	signal(SIGTERM, &Client::exitHandler);
+	signal(SIGINT, &Client::exitHandler);
 
 	if (c)
 	{
@@ -1044,17 +1105,20 @@ int main(int argc, char** argv)
 			shared_ptr<dev::WebThreeStubServer> rpcServer = make_shared<dev::WebThreeStubServer>(*console.connector(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer);
 			string sessionKey = rpcServer->newSession(SessionPermissions{{Privilege::Admin}});
 			console.eval("web3.admin.setSessionKey('" + sessionKey + "')");
-			while (console.readExpression())
+			while (!Client::shouldExit())
+			{
+				console.readExpression();
 				stopMiningAfterXBlocks(c, n, mining);
+			}
 			rpcServer->StopListening();
 #endif
 		}
 		else
-			while (!g_exit)
+			while (!Client::shouldExit())
 				stopMiningAfterXBlocks(c, n, mining);
 	}
 	else
-		while (!g_exit)
+		while (!Client::shouldExit())
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
 #if ETH_JSONRPC

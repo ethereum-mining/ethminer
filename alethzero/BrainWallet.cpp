@@ -34,14 +34,12 @@ using namespace dev;
 using namespace az;
 using namespace eth;
 
+DEV_AZ_NOTE_PLUGIN(BrainWallet);
+
 BrainWallet::BrainWallet(MainFace* _m):
 	Plugin(_m, "BrainWallet")
 {
-	QAction* a = new QAction("New Brain Wallet...", main());
-	QMenu* m = _m->findChild<QMenu*>("menuTools");
-	m->addSeparator();
-	m->addAction(a);
-	connect(a, SIGNAL(triggered()), SLOT(create()));
+	connect(addMenuItem("New Brain Wallet...", "menuTools", true), SIGNAL(triggered()), SLOT(create()));
 }
 
 BrainWallet::~BrainWallet()

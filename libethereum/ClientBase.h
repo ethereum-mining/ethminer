@@ -148,6 +148,7 @@ public:
 	using Interface::addresses;
 	virtual Addresses addresses(BlockNumber _block) const override;
 	virtual u256 gasLimitRemaining() const override;
+	virtual u256 gasBidPrice() const override { return c_defaultGasPrice; }
 
 	/// Get the coinbase address
 	virtual Address address() const override;
@@ -166,6 +167,8 @@ public:
 	virtual uint64_t hashrate() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::hashrate")); }
 	virtual WorkingProgress miningProgress() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::miningProgress")); }
 
+	virtual void submitExternalHashrate(int _rate, h256 const& _id) override;
+
 	Block asOf(BlockNumber _h) const;
 
 protected:
@@ -179,6 +182,8 @@ protected:
 	virtual void prepareForTransaction() = 0;
 	/// }
 
+	uint64_t externalHashrate() const;
+
 	TransactionQueue m_tq;							///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 
 	// filters
@@ -187,6 +192,9 @@ protected:
 	std::unordered_map<h256, h256s> m_specialFilters = std::unordered_map<h256, std::vector<h256>>{{PendingChangedFilter, {}}, {ChainChangedFilter, {}}};
 															///< The dictionary of special filters and their additional data
 	std::map<unsigned, ClientWatch> m_watches;				///< Each and every watch - these reference a filter.
+	
+	// external hashrate
+	mutable std::unordered_map<h256, std::pair<uint64_t, std::chrono::steady_clock::time_point>> m_externalRates;
 };
 
 }}

@@ -12,6 +12,7 @@ Column
 	property int blockIndex
 	property int transactionIndex
 	property string context
+	property bool readOnly
 	Layout.fillWidth: true
 	spacing: 0
 	property int colHeight
@@ -26,7 +27,7 @@ Column
 	Repeater
 	{
 		id: repeater
-		visible: model.length > 0
+		visible: members.length > 0
 		RowLayout
 		{
 			id: row

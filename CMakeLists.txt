@@ -1,7 +1,7 @@
 # cmake global
 cmake_minimum_required(VERSION 2.8.12)
 
-set(PROJECT_VERSION "0.9.40")
+set(PROJECT_VERSION "0.9.41")
 if (${CMAKE_VERSION} VERSION_GREATER 3.0)
 	cmake_policy(SET CMP0042 OLD) 	# fix MACOSX_RPATH
 	cmake_policy(SET CMP0048 NEW) 	# allow VERSION argument in project()
@@ -344,7 +344,7 @@ message("-- FATDB            Full database exploring                  ${FATDB}")
 message("-- JSONRPC          JSON-RPC support                         ${JSONRPC}")
 message("-- USENPM           Javascript source building               ${USENPM}")
 message("-- ROCKSDB          Prefer rocksdb to leveldb                ${ROCKSDB}")
-message("-- OLYMPIC	         Default to the Olympic network           ${OLYMPIC}")
+message("-- OLYMPIC          Default to the Olympic network           ${OLYMPIC}")
 message("------------------------------------------------------------- components")
 message("-- MINER            Build miner                              ${MINER}")
 message("-- ETHKEY           Build wallet tools                       ${ETHKEY}")

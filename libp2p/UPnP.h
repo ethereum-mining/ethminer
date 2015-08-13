@@ -50,8 +50,8 @@ public:
 private:
 	std::set<int> m_reg;
 	bool m_ok;
-	std::shared_ptr<struct UPNPUrls> m_urls;
-	std::shared_ptr<struct IGDdatas> m_data;
+	std::shared_ptr<UPNPUrls> m_urls;
+	std::shared_ptr<IGDdatas> m_data;
 };
 
 }

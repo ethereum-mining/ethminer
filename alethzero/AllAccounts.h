@@ -21,6 +21,8 @@
 
 #pragma once
 
+#if ETH_FATDB
+
 #include <QListWidget>
 #include <QPlainTextEdit>
 #include "MainFace.h"
@@ -58,3 +60,5 @@ private:
 
 }
 }
+
+#endif

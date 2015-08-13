@@ -40,8 +40,8 @@ using namespace dev::p2p;
 UPnP::UPnP()
 {
 #if ETH_MINIUPNPC
-	m_urls.reset(new UPNPUrls);
-	m_data.reset(new IGDdatas);
+	m_urls = make_shared<UPNPUrls>();
+	m_data = make_shared<IGDdatas>();
 
 	m_ok = false;
 
