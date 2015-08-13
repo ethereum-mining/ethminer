@@ -46,7 +46,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 		cnote << testname;
 		if (_fillin)
 		{
-			TBOOST_REQUIRE((o.count("transaction") > 0));
+			BOOST_REQUIRE(o.count("transaction") > 0);
 			mObject tObj = o["transaction"].get_obj();
 
 			//Construct Rlp of the given transaction
@@ -71,9 +71,9 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 				{
 					bool expectInValid = (o["expect"].get_str() == "invalid");
 					if (Options::get().checkState)
-							{TBOOST_CHECK_MESSAGE(expectInValid, testname + "Check state: Transaction '" << i.first << "' is expected to be valid!");}
+							BOOST_CHECK_MESSAGE(expectInValid, testname + "Check state: Transaction '" << i.first << "' is expected to be valid!");
 						else
-							{TBOOST_WARN_MESSAGE(expectInValid, testname + "Check state: Transaction '" << i.first << "' is expected to be valid!");}
+							BOOST_WARN_MESSAGE(expectInValid, testname + "Check state: Transaction '" << i.first << "' is expected to be valid!");
 
 					o.erase(o.find("expect"));
 				}
@@ -84,16 +84,16 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 			{
 				bool expectValid = (o["expect"].get_str() == "valid");
 				if (Options::get().checkState)
-						{TBOOST_CHECK_MESSAGE(expectValid, testname + "Check state: Transaction '" << i.first << "' is expected to be invalid!");}
+						BOOST_CHECK_MESSAGE(expectValid, testname + "Check state: Transaction '" << i.first << "' is expected to be invalid!");
 					else
-						{TBOOST_WARN_MESSAGE(expectValid, testname + "Check state: Transaction '" << i.first << "' is expected to be invalid!");}
+						BOOST_WARN_MESSAGE(expectValid, testname + "Check state: Transaction '" << i.first << "' is expected to be invalid!");
 
 				o.erase(o.find("expect"));
 			}
 		}
 		else
 		{			
-			TBOOST_REQUIRE((o.count("rlp") > 0));
+			BOOST_REQUIRE(o.count("rlp") > 0);
 			Transaction txFromRlp;
 			try
 			{
@@ -107,33 +107,33 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 			{
 				cnote << i.first;
 				cnote << "Transaction Exception: " << diagnostic_information(_e);
-				TBOOST_CHECK_MESSAGE((o.count("transaction") == 0), testname + "A transaction object should not be defined because the RLP is invalid!");
+				BOOST_CHECK_MESSAGE(o.count("transaction") == 0, testname + "A transaction object should not be defined because the RLP is invalid!");
 				continue;
 			}
 			catch(...)
 			{
-				TBOOST_CHECK_MESSAGE((o.count("transaction") == 0), testname + "A transaction object should not be defined because the RLP is invalid!");
+				BOOST_CHECK_MESSAGE(o.count("transaction") == 0, testname + "A transaction object should not be defined because the RLP is invalid!");
 				continue;
 			}
 
-			TBOOST_REQUIRE_MESSAGE((o.count("transaction") > 0), testname + "Expected a valid transaction!");
+			BOOST_REQUIRE_MESSAGE(o.count("transaction") > 0, testname + "Expected a valid transaction!");
 
 			mObject tObj = o["transaction"].get_obj();
 			Transaction txFromFields(createRLPStreamFromTransactionFields(tObj).out(), CheckTransaction::Everything);
 
 			//Check the fields restored from RLP to original fields
-			TBOOST_CHECK_MESSAGE((txFromFields.data() == txFromRlp.data()), testname + "Data in given RLP not matching the Transaction data!");
-			TBOOST_CHECK_MESSAGE((txFromFields.value() == txFromRlp.value()), testname + "Value in given RLP not matching the Transaction value!");
-			TBOOST_CHECK_MESSAGE((txFromFields.gasPrice() == txFromRlp.gasPrice()), testname + "GasPrice in given RLP not matching the Transaction gasPrice!");
-			TBOOST_CHECK_MESSAGE((txFromFields.gas() == txFromRlp.gas()), testname + "Gas in given RLP not matching the Transaction gas!");
-			TBOOST_CHECK_MESSAGE((txFromFields.nonce() == txFromRlp.nonce()), testname + "Nonce in given RLP not matching the Transaction nonce!");
-			TBOOST_CHECK_MESSAGE((txFromFields.receiveAddress() == txFromRlp.receiveAddress()), testname + "Receive address in given RLP not matching the Transaction 'to' address!");
-			TBOOST_CHECK_MESSAGE((txFromFields.sender() == txFromRlp.sender()), testname + "Transaction sender address in given RLP not matching the Transaction 'vrs' signature!");
-			TBOOST_CHECK_MESSAGE((txFromFields == txFromRlp), testname + "However, txFromFields != txFromRlp!");
-			TBOOST_REQUIRE ((o.count("sender") > 0));
+			BOOST_CHECK_MESSAGE(txFromFields.data() == txFromRlp.data(), testname + "Data in given RLP not matching the Transaction data!");
+			BOOST_CHECK_MESSAGE(txFromFields.value() == txFromRlp.value(), testname + "Value in given RLP not matching the Transaction value!");
+			BOOST_CHECK_MESSAGE(txFromFields.gasPrice() == txFromRlp.gasPrice(), testname + "GasPrice in given RLP not matching the Transaction gasPrice!");
+			BOOST_CHECK_MESSAGE(txFromFields.gas() == txFromRlp.gas(), testname + "Gas in given RLP not matching the Transaction gas!");
+			BOOST_CHECK_MESSAGE(txFromFields.nonce() == txFromRlp.nonce(), testname + "Nonce in given RLP not matching the Transaction nonce!");
+			BOOST_CHECK_MESSAGE(txFromFields.receiveAddress() == txFromRlp.receiveAddress(), testname + "Receive address in given RLP not matching the Transaction 'to' address!");
+			BOOST_CHECK_MESSAGE(txFromFields.sender() == txFromRlp.sender(), testname + "Transaction sender address in given RLP not matching the Transaction 'vrs' signature!");
+			BOOST_CHECK_MESSAGE(txFromFields == txFromRlp, testname + "However, txFromFields != txFromRlp!");
+			BOOST_REQUIRE (o.count("sender") > 0);
 
 			Address addressReaded = Address(o["sender"].get_str());
-			TBOOST_CHECK_MESSAGE((txFromFields.sender() == addressReaded || txFromRlp.sender() == addressReaded), testname + "Signature address of sender does not match given sender address!");
+			BOOST_CHECK_MESSAGE(txFromFields.sender() == addressReaded || txFromRlp.sender() == addressReaded, testname + "Signature address of sender does not match given sender address!");
 		}
 	}//for
 }//doTransactionTests

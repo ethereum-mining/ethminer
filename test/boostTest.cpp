@@ -28,24 +28,54 @@
 #define BOOST_TEST_NO_MAIN
 #include <boost/test/included/unit_test.hpp>
 #pragma GCC diagnostic pop
-
 #include <test/TestHelper.h>
+
 using namespace boost::unit_test;
+
+char** originalArgv;
+int originalArgc;
+static std::ostringstream strCout;
+std::streambuf* oldCoutStreamBuf;
 
 //Custom Boost Initialization
 test_suite* init_func( int argc, char* argv[] )
 {
 	if (argc == 0)
-		argv[1]=(char*)"a";
+		argv[0] = (char*)"a";
 
-	dev::test::Options::get();
-
+	//restore output for creating test
+	std::cout.rdbuf(oldCoutStreamBuf);
+	std::cerr.rdbuf(oldCoutStreamBuf);
+	const dev::test::Options& opt = dev::test::Options::get();
+	if (opt.createRandomTest)
+	{
+		//For no reason BOOST tend to remove valuable arg -t "TestSuiteName", so using original parametrs instead
+		if (dev::test::createRandomTest(originalArgc, originalArgv))
+			throw framework::internal_error("Create Random Test Error!");
+		else
+		{
+			//disable post output so the test json would be clean
+			std::cout.rdbuf( strCout.rdbuf() );
+			std::cerr.rdbuf( strCout.rdbuf() );
+			throw framework::nothing_to_test();
+		}
+	}
 	return 0;
 }
 
 //Custom Boost Unit Test Main
 int main( int argc, char* argv[] )
 {
+	originalArgc = argc;
+	originalArgv = new char*[argc];
+	for (int i = 0; i < argc; i++)
+		originalArgv[i] = argv[i];
+
+	//disable initial output
+	oldCoutStreamBuf = std::cout.rdbuf();
+	std::cout.rdbuf( strCout.rdbuf() );
+	std::cerr.rdbuf( strCout.rdbuf() );
+
 	try
 	{
 		framework::init( init_func, argc, argv );
@@ -87,6 +117,4 @@ int main( int argc, char* argv[] )
 
 		return boost::exit_exception_failure;
 	}
-
-	return 0;
 }

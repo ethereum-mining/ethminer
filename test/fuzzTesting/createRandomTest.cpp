@@ -19,8 +19,6 @@
  * @date 2015
  */
 
-///This file require #define DONTUSE_BOOST_MACROS compile flag to run!
-
 #include <string>
 #include <iostream>
 
@@ -44,7 +42,8 @@ int checkRandomTest(std::function<void(json_spirit::mValue&, bool)> _doTests, js
 std::vector<std::string> getTypes();
 void parseTestWithTypes(std::string& test);
 
-int main(int argc, char *argv[])
+namespace dev { namespace test {
+int createRandomTest(int argc, char *argv[])
 {
 	std::string testSuite;
 	std::string testFillString;
@@ -75,7 +74,7 @@ int main(int argc, char *argv[])
 				s += argv[j];
 			if (asserts(s.length() > 0))
 			{
-				std::cout << "Error! Content of argument is empty! (Usage -checktest textstream) \n";
+				std::cout << "Error! Content of argument is empty! (Usage -checktest textstream)" << std::endl;
 				return 1;
 			}
 			if (arg == "-filltest")
@@ -99,7 +98,7 @@ int main(int argc, char *argv[])
 
 	if (testSuite == "")
 	{
-		std::cout << "Error! Test suite not supported! (Usage -t TestSuite)";
+		std::cout << "Error! Test suite not supported! (Usage -t TestSuite)" << std::endl;
 		return 1;
 	}
 	else
@@ -153,6 +152,7 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
+}} //namesapces
 
 int checkRandomTest(std::function<void(json_spirit::mValue&, bool)> _doTests, json_spirit::mValue& _value, bool _debug)
 {
