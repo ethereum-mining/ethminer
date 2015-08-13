@@ -125,6 +125,7 @@ void Whisper::readSettings(QSettings const& _s)
 		}
 	}
 	main()->web3Server()->setIdentities(keysAsVector(m_myIdentities));
+	refreshWhisper();
 }
 
 void Whisper::writeSettings(QSettings& _s)
