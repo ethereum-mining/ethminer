@@ -15,9 +15,6 @@ public:
 
 	struct Options
 	{
-		/// Optimize stack operations between basic blocks
-		bool optimizeStack = true;
-
 		/// Rewrite switch instructions to sequences of branches
 		bool rewriteSwitchToBranches = true;
 
@@ -25,41 +22,24 @@ public:
 		bool dumpCFG = false;
 	};
 
-	using ProgramCounter = uint64_t;
-
 	Compiler(Options const& _options);
 
 	std::unique_ptr<llvm::Module> compile(code_iterator _begin, code_iterator _end, std::string const& _id);
 
 private:
 
-	void createBasicBlocks(code_iterator _begin, code_iterator _end);
+	std::vector<BasicBlock> createBasicBlocks(code_iterator _begin, code_iterator _end, llvm::SwitchInst& _switchInst);
 
-	void compileBasicBlock(BasicBlock& _basicBlock, class RuntimeManager& _runtimeManager, class Arith256& _arith, class Memory& _memory, class Ext& _ext, class GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock);
+	void compileBasicBlock(BasicBlock& _basicBlock, class RuntimeManager& _runtimeManager, class Arith256& _arith, class Memory& _memory, class Ext& _ext, class GasMeter& _gasMeter,
+			llvm::BasicBlock* _nextBasicBlock, class Stack& _globalStack, llvm::SwitchInst& _jumpTable);
 
-	llvm::BasicBlock* getJumpTableBlock(RuntimeManager& _runtimeManager);
-
-	llvm::BasicBlock* getBadJumpBlock(RuntimeManager& _runtimeManager);
-
-	void removeDeadBlocks();
-
-	/// Dumps basic block graph in graphviz format to a file, if option dumpCFG is enabled.
-	void dumpCFGifRequired(std::string const& _dotfilePath);
-
-	/// Dumps basic block graph in graphviz format to a stream.
-	void dumpCFGtoStream(std::ostream& _out);
-
-	/// Dumps all basic blocks to stderr. Useful in a debugging session.
-	void dump();
+	void fillJumpTable();
 
 	/// Compiler options
 	Options const& m_options;
 
 	/// Helper class for generating IR
 	llvm::IRBuilder<> m_builder;
-
-	/// Maps a program counter pc to a basic block that starts at pc (if any).
-	std::map<ProgramCounter, BasicBlock> m_basicBlocks;
 
 	/// Stop basic block - terminates execution with STOP code (0)
 	llvm::BasicBlock* m_stopBB = nullptr;
@@ -68,13 +48,10 @@ private:
 	llvm::BasicBlock* m_abortBB = nullptr;
 
 	/// Block with a jump table.
-	std::unique_ptr<BasicBlock> m_jumpTableBlock;
-
-	/// Destination for invalid jumps
-	std::unique_ptr<BasicBlock> m_badJumpBlock;
+	llvm::BasicBlock* m_jumpTableBB = nullptr;
 
 	/// Main program function
-	llvm::Function* m_mainFunc = nullptr;
+	llvm::Function* m_mainFunc = nullptr; // TODO: Remove
 };
 
 }

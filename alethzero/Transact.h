@@ -105,6 +105,8 @@ private:
 	MainFace* m_main = nullptr;
 	NatSpecFace* m_natSpecDB = nullptr;
 	bool m_allGood = false;
+
+	bool m_determiningGas = false;
 };
 
 }

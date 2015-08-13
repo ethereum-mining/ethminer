@@ -106,7 +106,9 @@ BOOST_AUTO_TEST_SUITE(bloomFilter)
 
 BOOST_AUTO_TEST_CASE(falsePositiveRate)
 {
-	VerbosityHolder setTemporaryLevel(10);
+	if (g_logVerbosity != -1)
+		VerbosityHolder setTemporaryLevel(10);
+
 	cnote << "Testing Bloom Filter False Positive Rate...";
 
 	TopicBloomFilterTest f;
@@ -124,7 +126,9 @@ BOOST_AUTO_TEST_CASE(falsePositiveRate)
 
 BOOST_AUTO_TEST_CASE(bloomFilterRandom)
 {
-	VerbosityHolder setTemporaryLevel(10);
+	if (g_logVerbosity != -1)
+		VerbosityHolder setTemporaryLevel(10);
+
 	cnote << "Testing Bloom Filter matching...";
 
 	TopicBloomFilterShort f;
@@ -150,7 +154,9 @@ BOOST_AUTO_TEST_CASE(bloomFilterRandom)
 
 BOOST_AUTO_TEST_CASE(bloomFilterRaw)
 {
-	VerbosityHolder setTemporaryLevel(10);
+	if (g_logVerbosity != -1)
+		VerbosityHolder setTemporaryLevel(10);
+
 	cnote << "Testing Raw Bloom matching...";
 
 	TopicBloomFilterShort f;
