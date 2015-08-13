@@ -20,6 +20,7 @@
  */
 
 #include "NameRegNamer.h"
+#include <QSettings>
 #include <libdevcore/Log.h>
 #include <libethereum/Client.h>
 using namespace std;
