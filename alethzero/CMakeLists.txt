@@ -16,7 +16,6 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 file(GLOB_RECURSE SRC_LIST "./plugins/*.cpp")
 file(GLOB_RECURSE HEADERS "./plugins/*.h")
-file(GLOB_RECURSE PLUGIN_UI "./plugins/*.ui")
 aux_source_directory(. SRC_LIST)
 
 file(GLOB_RECURSE PLUGIN_UI RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/plugins/*.ui")
