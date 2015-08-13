@@ -197,8 +197,6 @@ Main::Main(QWidget* _parent):
 	auto w3ss = new OurWebThreeStubServer(*m_httpConnector, this);
 	m_server.reset(w3ss);
 	auto sessionKey = w3ss->newSession(SessionPermissions{{Privilege::Admin}});
-	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
-	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 
 	WebPage* webPage = new WebPage(this);
@@ -385,29 +383,6 @@ void Main::on_sentinel_triggered()
 	QString sentinel = QInputDialog::getText(nullptr, "Enter sentinel address", "Enter the sentinel address for bad block reporting (e.g. http://badblockserver.com:8080). Enter nothing to disable.", QLineEdit::Normal, QString::fromStdString(ethereum()->sentinel()), &ok);
 	if (ok)
 		ethereum()->setSentinel(sentinel.toStdString());
-}
-
-void Main::on_newIdentity_triggered()
-{
-	KeyPair kp = KeyPair::create();
-	m_myIdentities.append(kp);
-	m_server->setIdentities(keysAsVector(owned()));
-	refreshWhisper();
-}
-
-void Main::refreshWhisper()
-{
-	ui->shhFrom->clear();
-	for (auto i: m_server->ids())
-		ui->shhFrom->addItem(QString::fromStdString(toHex(i.first.ref())));
-}
-
-void Main::addNewId(QString _ids)
-{
-	KeyPair kp(jsToSecret(_ids.toStdString()));
-	m_myIdentities.push_back(kp);
-	m_server->setIdentities(keysAsVector(owned()));
-	refreshWhisper();
 }
 
 NetworkPreferences Main::netPrefs() const
@@ -666,17 +641,6 @@ void Main::addConsoleMessage(QString const& _js, QString const& _s)
 	ui->jsConsole->setHtml(r);
 }
 
-static Public stringToPublic(QString const& _a)
-{
-	string sn = _a.toStdString();
-	if (_a.size() == sizeof(Public) * 2)
-		return Public(fromHex(_a.toStdString()));
-	else if (_a.size() == sizeof(Public) * 2 + 2 && _a.startsWith("0x"))
-		return Public(fromHex(_a.mid(2).toStdString()));
-	else
-		return Public();
-}
-
 std::string Main::pretty(dev::Address const& _a) const
 {
 	auto g_newNameReg = getNameReg();
@@ -807,17 +771,6 @@ void Main::writeSettings()
 {
 	QSettings s("ethereum", "alethzero");
 	s.remove("address");
-	{
-		QByteArray b;
-		b.resize(sizeof(Secret) * m_myIdentities.size());
-		auto p = b.data();
-		for (auto i: m_myIdentities)
-		{
-			memcpy(p, &(i.secret()), sizeof(Secret));
-			p += sizeof(Secret);
-		}
-		s.setValue("identities", b);
-	}
 
 	forEach([&](std::shared_ptr<Plugin> p)
 	{
@@ -904,21 +857,6 @@ void Main::readSettings(bool _skipGeometry)
 	if (!_skipGeometry)
 		restoreGeometry(s.value("geometry").toByteArray());
 	restoreState(s.value("windowState").toByteArray());
-
-	{
-		m_myIdentities.clear();
-		QByteArray b = s.value("identities").toByteArray();
-		if (!b.isEmpty())
-		{
-			Secret k;
-			for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
-			{
-				memcpy(k.writable().data(), b.data() + i * sizeof(Secret), sizeof(Secret));
-				if (!count(m_myIdentities.begin(), m_myIdentities.end(), KeyPair(k)))
-					m_myIdentities.append(KeyPair(k));
-			}
-		}
-	}
 
 	forEach([&](std::shared_ptr<Plugin> p)
 	{
@@ -1523,7 +1461,6 @@ void Main::timerEvent(QTimerEvent*)
 	{
 		interval = 0;
 		refreshNetwork();
-		refreshWhispers();
 		refreshCache();
 		refreshBlockCount();
 		poll();
@@ -1953,60 +1890,6 @@ void Main::on_ourAccounts_doubleClicked()
 	m_logHistory.clear();
 }*/
 
-static shh::Topics topicFromText(QString _s)
-{
-	shh::BuildTopic ret;
-	while (_s.size())
-	{
-		QRegExp r("(@|\\$)?\"([^\"]*)\"(\\s.*)?");
-		QRegExp d("(@|\\$)?([0-9]+)(\\s*(ether)|(finney)|(szabo))?(\\s.*)?");
-		QRegExp h("(@|\\$)?(0x)?(([a-fA-F0-9])+)(\\s.*)?");
-		bytes part;
-		if (r.exactMatch(_s))
-		{
-			for (auto i: r.cap(2))
-				part.push_back((byte)i.toLatin1());
-			if (r.cap(1) != "$")
-				for (int i = r.cap(2).size(); i < 32; ++i)
-					part.push_back(0);
-			else
-				part.push_back(0);
-			_s = r.cap(3);
-		}
-		else if (d.exactMatch(_s))
-		{
-			u256 v(d.cap(2).toStdString());
-			if (d.cap(6) == "szabo")
-				v *= szabo;
-			else if (d.cap(5) == "finney")
-				v *= finney;
-			else if (d.cap(4) == "ether")
-				v *= ether;
-			bytes bs = dev::toCompactBigEndian(v);
-			if (d.cap(1) != "$")
-				for (auto i = bs.size(); i < 32; ++i)
-					part.push_back(0);
-			for (auto b: bs)
-				part.push_back(b);
-			_s = d.cap(7);
-		}
-		else if (h.exactMatch(_s))
-		{
-			bytes bs = fromHex((((h.cap(3).size() & 1) ? "0" : "") + h.cap(3)).toStdString());
-			if (h.cap(1) != "$")
-				for (auto i = bs.size(); i < 32; ++i)
-					part.push_back(0);
-			for (auto b: bs)
-				part.push_back(b);
-			_s = h.cap(5);
-		}
-		else
-			_s = _s.mid(1);
-		ret.shift(part);
-	}
-	return ret;
-}
-
 void Main::on_clearPending_triggered()
 {
 	writeSettings();
@@ -2293,19 +2176,6 @@ std::string Main::prettyU256(dev::u256 const& _n) const
 	return s.str();
 }
 
-void Main::on_post_clicked()
-{
-	return;
-	shh::Message m;
-	m.setTo(stringToPublic(ui->shhTo->currentText()));
-	m.setPayload(parseData(ui->shhData->toPlainText().toStdString()));
-	Public f = stringToPublic(ui->shhFrom->currentText());
-	Secret from;
-	if (m_server->ids().count(f))
-		from = m_server->ids().at(f);
-	whisper()->inject(m.seal(from, topicFromText(ui->shhTopic->toPlainText()), ui->shhTtl->value(), ui->shhWork->value()));
-}
-
 int Main::authenticate(QString _title, QString _text)
 {
 	QMessageBox userInput(this);
@@ -2316,36 +2186,6 @@ int Main::authenticate(QString _title, QString _text)
 	userInput.button(QMessageBox::Cancel)->setText("Reject");
 	userInput.setDefaultButton(QMessageBox::Cancel);
 	return userInput.exec();
-}
-
-void Main::refreshWhispers()
-{
-	return;
-	ui->whispers->clear();
-	for (auto const& w: whisper()->all())
-	{
-		shh::Envelope const& e = w.second;
-		shh::Message m;
-		for (pair<Public, Secret> const& i: m_server->ids())
-			if (!!(m = e.open(shh::Topics(), i.second)))
-				break;
-		if (!m)
-			m = e.open(shh::Topics());
-
-		QString msg;
-		if (m.from())
-			// Good message.
-			msg = QString("{%1 -> %2} %3").arg(m.from() ? m.from().abridged().c_str() : "???").arg(m.to() ? m.to().abridged().c_str() : "*").arg(toHex(m.payload()).c_str());
-		else if (m)
-			// Maybe message.
-			msg = QString("{%1 -> %2} %3 (?)").arg(m.from() ? m.from().abridged().c_str() : "???").arg(m.to() ? m.to().abridged().c_str() : "*").arg(toHex(m.payload()).c_str());
-
-		time_t ex = e.expiry();
-		QString t(ctime(&ex));
-		t.chop(1);
-		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topic()).c_str()).arg(msg);
-		ui->whispers->addItem(item);
-	}
 }
 
 void Main::dappLoaded(Dapp& _dapp)

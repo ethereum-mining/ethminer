@@ -14,6 +14,16 @@ endif ()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
+file(GLOB_RECURSE SRC_LIST "./plugins/*.cpp")
+file(GLOB_RECURSE HEADERS "./plugins/*.h")
+file(GLOB_RECURSE PLUGIN_UI "./plugins/*.ui")
+aux_source_directory(. SRC_LIST)
+
+file(GLOB_RECURSE PLUGIN_UI RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/plugins/*.ui")
+foreach(ITEM ${PLUGIN_UI})
+    get_filename_component(UI_NAME ${ITEM} NAME_WE)
+    qt5_wrap_ui(ui_${UI_NAME}.h ./${ITEM})
+endforeach()
 
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
 include_directories(BEFORE ..)
@@ -54,7 +64,7 @@ endif ()
 # eth_add_executable is defined in cmake/EthExecutableHelper.cmake
 eth_add_executable(${EXECUTABLE} 
 	ICON alethzero
-	UI_RESOURCES alethzero.icns Main.ui Connect.ui Debugger.ui Transact.ui ExportState.ui GetPassword.ui GasPricing.ui AllAccounts.ui LogPanel.ui BrainWallet.ui OtherAccounts.ui
+    UI_RESOURCES ${PLUGIN_UI} alethzero.icns Main.ui Connect.ui Debugger.ui Transact.ui ExportState.ui GetPassword.ui GasPricing.ui AllAccounts.ui LogPanel.ui BrainWallet.ui OtherAccounts.ui
 	WIN_RESOURCES alethzero.rc
 )
 
