@@ -35,13 +35,20 @@ static unsigned const c_depthLimit = 1024;
 /// Upper bound of stack space needed by single CALL/CREATE execution. Set experimentally.
 static size_t const c_singleExecutionStackSize =
 #ifdef NDEBUG
-	12 * 1024;
+	10 * 1024;
 #else
-	33 * 1024;
+	16 * 1024;
 #endif
 
-/// Standard OSX thread stack limit. Should be reasonable for other platforms too.
-static size_t const c_defaultStackSize = 512 * 1024;
+/// Standard thread stack size.
+static size_t const c_defaultStackSize =
+#if defined(__linux)
+	 8 * 1024 * 1024;
+#elif defined(_WIN32)
+	16 * 1024 * 1024;
+#else
+	      512 * 1024; // OSX and other OSs
+#endif
 
 /// Stack overhead prior to allocation.
 static size_t const c_entryOverhead = 128 * 1024;
@@ -80,7 +87,10 @@ void go(unsigned _depth, Executive& _e, OnOpFunc const& _onOp)
 	// the rest of the calls up to the depth limit (c_depthLimit).
 
 	if (_depth == c_offloadPoint)
+	{
+		cnote << "Stack offloading (depth: " << c_offloadPoint << ")";
 		goOnOffloadedStack(_e, _onOp);
+	}
 	else
 		_e.go(_onOp);
 }
@@ -91,11 +101,7 @@ bool ExtVM::call(CallParameters& _p)
 	Executive e(m_s, envInfo(), depth + 1);
 	if (!e.call(_p, gasPrice, origin))
 	{
-#if __clang__ // Enabled for clang only as the problem affects OSX
 		go(depth, e, _p.onOp);
-#else
-		e.go(_p.onOp);
-#endif
 		e.accrueSubState(sub);
 	}
 	_p.gas = e.gas();
