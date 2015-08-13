@@ -160,8 +160,8 @@ void help()
 		<< "    --structured-logging-url <URL>  Set the structured logging destination (currently only file:// supported)." << endl
 		<< endl
 		<< "Import/export modes:" << endl
-		<< "    --from <n>  Export only from block n; n may be a decimal, a '0x' pre-fixed hash, or 'latest'." << endl
-		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' pre-fixed hash, or 'latest'." << endl
+		<< "    --from <n>  Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
+		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --only <n>  Equivalent to --export-from n --export-to n." << endl
 		<< "    --dont-check  Prevent checking some block aspects. Faster importing, but to apply only when the data is known to be valid." << endl
 		<< endl
