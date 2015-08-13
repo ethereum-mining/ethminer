@@ -25,7 +25,7 @@
 #include <libdevcore/CommonIO.h>
 #include <libethcore/EthashAux.h>
 #include <boost/test/unit_test.hpp>
-#include "../TestHelper.h"
+#include <test/TestHelper.h>
 
 using namespace std;
 using namespace dev;
