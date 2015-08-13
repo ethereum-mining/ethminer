@@ -210,11 +210,6 @@
     <addaction name="separator"/>
     <addaction name="preview"/>
    </widget>
-   <widget class="QMenu" name="menuWhisper">
-    <property name="title">
-     <string>&amp;Whisper</string>
-    </property>
-   </widget>
    <widget class="QMenu" name="menuDebug">
     <property name="title">
      <string>&amp;Debug</string>
@@ -235,7 +230,6 @@
    <addaction name="menuView"/>
    <addaction name="menuNetwork"/>
    <addaction name="menuTools"/>
-   <addaction name="menuWhispe4"/>
    <addaction name="menuDebug"/>
    <addaction name="menuConfig"/>
    <addaction name="menuHelp"/>
