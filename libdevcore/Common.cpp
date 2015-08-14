@@ -33,6 +33,9 @@ char const* Version = ETH_PROJECT_VERSION;
 
 const u256 UndefinedU256 = ~(u256)0;
 
+unsigned char s_cleanseCounter = 0;
+boost::random_device s_vectorRefEngine;
+
 void InvariantChecker::checkInvariants(HasInvariants const* _this, char const* _fn, char const* _file, int _line, bool _pre)
 {
 	if (!_this->invariants())
