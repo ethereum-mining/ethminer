@@ -33,6 +33,7 @@
 #include <libethcore/KeyManager.h>
 #include <libethcore/ICAP.h>
 #include <libethcore/Transaction.h>
+#include <libdevcrypto/WordList.h>
 #include "BuildInfo.h"
 using namespace std;
 using namespace dev;
@@ -108,6 +109,9 @@ public:
 		Export,
 		Recode,
 		Kill,
+		NewBrain,
+		ImportBrain,
+		InspectBrain,
 		SignTx,
 		DecodeTx,
 	};
@@ -175,6 +179,18 @@ public:
 			m_inputs = strings(1, argv[++i]);
 			m_name = argv[++i];
 		}
+		else if (arg == "--new-brain" && i + 1 < argc)
+		{
+			m_mode = OperationMode::NewBrain;
+			m_name = argv[++i];
+		}
+		else if (arg == "--import-brain" && i + 1 < argc)
+		{
+			m_mode = OperationMode::ImportBrain;
+			m_name = argv[++i];
+		}
+		else if (arg == "--inspect-brain")
+			m_mode = OperationMode::InspectBrain;
 		else if (arg == "--import-with-address" && i + 3 < argc)
 		{
 			m_mode = OperationMode::ImportWithAddress;
@@ -203,9 +219,34 @@ public:
 		return k;
 	}
 
+	Secret getSecret(std::string const& _signKey)
+	{
+		string json = contentsString(_signKey);
+		if (!json.empty())
+			return Secret(secretStore().secret(secretStore().readKeyContent(json), [&](){ return getPassword("Enter password for key: "); }));
+		else
+		{
+			if (h128 u = fromUUID(_signKey))
+				return Secret(secretStore().secret(u, [&](){ return getPassword("Enter password for key: "); }));
+			else if (Address a = Address(_signKey))
+				return keyManager().secret(a, [&](){ return getPassword("Enter password for key (hint:" + keyManager().passwordHint(a) + "): "); });
+			else if (_signKey.substr(0, 6) == "brain:")
+				return KeyManager::brain(_signKey.substr(6));
+			else if (_signKey == "brain")
+				return KeyManager::brain(getPassword("Enter brain wallet phrase: "));
+			else
+			{
+				cerr << "Bad file, UUID and address: " << _signKey << endl;
+				exit(-1);
+			}
+		}
+	}
+
 	void execute()
 	{
-		if (m_mode == OperationMode::CreateWallet)
+		switch (m_mode)
+		{
+		case OperationMode::CreateWallet:
 		{
 			KeyManager wallet(m_walletPath, m_secretsPath);
 			if (m_masterPassword.empty())
@@ -223,8 +264,9 @@ public:
 					cerr << "unable to create wallet" << endl << boost::diagnostic_information(_e);
 				}
 			}
+			break;
 		}
-		else if (m_mode == OperationMode::DecodeTx)
+		case OperationMode::DecodeTx:
 		{
 			bytes b = inputData(m_inputs[0]);
 			if (b.empty())
@@ -269,50 +311,11 @@ public:
 				{
 					cerr << "Invalid transaction: " << ex.what() << endl;
 				}
+			break;
 		}
-		else if (m_mode == OperationMode::SignTx)
+		case OperationMode::SignTx:
 		{
-			Secret s;
-
-			string json = contentsString(m_signKey);
-			if (!json.empty())
-			{
-				SecretStore store(m_secretsPath);
-				s = Secret(store.secret(store.readKeyContent(json), [&](){ return getPassword("Enter password for key: "); }));
-			}
-			else
-			{
-				if (h128 u = fromUUID(m_signKey))
-				{
-					SecretStore store(m_secretsPath);
-					s = Secret(store.secret(u, [&](){ return getPassword("Enter password for key: "); }));
-				}
-				else if (Address a = Address(m_signKey))
-				{
-					KeyManager wallet(m_walletPath, m_secretsPath);
-					if (wallet.exists())
-					{
-						openWallet(wallet);
-						s = wallet.secret(a, [&](){ return getPassword("Enter password for key: "); });
-					}
-					else
-					{
-						cerr << "Wallet doesn't exist." << endl;
-						exit(-1);
-					}
-				}
-				else
-				{
-					cerr << "Bad file, UUID and address: " << m_signKey << endl;
-					exit(-1);
-				}
-			}
-			if (!s)
-			{
-				cerr << "UUID/address not found: " << m_signKey << endl;
-				exit(-1);
-			}
-
+			Secret s = getSecret(m_signKey);
 			for (string const& i: m_inputs)
 			{
 				bool isFile;
@@ -338,182 +341,208 @@ public:
 						cerr << "Invalid transaction: " << ex.what() << endl;
 					}
 			}
+			break;
 		}
-		else if (m_mode < OperationMode::CreateWallet)
+		case OperationMode::NewBrain:
 		{
-			SecretStore store(m_secretsPath);
-			switch (m_mode)
+			if (m_name != "--")
+				keyManager();
+			boost::random_device d;
+			boost::random::uniform_int_distribution<unsigned> pickWord(0, WordList.size() - 1);
+			string seed;
+			for (int i = 0; i < 13; ++i)
+				seed += (seed.size() ? " " : "") + WordList[pickWord(d)];
+			cout << "Your brain key phrase: <<" << seed << ">>" << endl;
+			if (m_name != "--")
 			{
-			case OperationMode::ListBare:
-				for (h128 const& u: std::set<h128>() + store.keys())
-					cout << toUUID(u) << endl;
-				break;
-			case OperationMode::NewBare:
-			{
-				if (m_lock.empty())
-					m_lock = createPassword("Enter a password with which to secure this account: ");
-				auto k = makeKey();
-				h128 u = store.importSecret(k.secret().ref(), m_lock);
-				cout << "Created key " << toUUID(u) << endl;
-				cout << "  Address: " << k.address().hex() << endl;
-				cout << "  ICAP: " << ICAP(k.address()).encoded() << endl;
-				break;
+				std::string hint;
+				cout << "Enter a hint for the phrase if you want: " << flush;
+				getline(cin, hint);
+				Address a = keyManager().importBrain(seed, m_name, hint);
+				cout << a.abridged() << endl;
+				cout << "  ICAP: " << ICAP(a).encoded() << endl;
+				cout << "  Address: " << a.hex() << endl;
 			}
-			case OperationMode::ImportBare:
-				for (string const& input: m_inputs)
-				{
-					h128 u;
-					bytesSec b;
-					b.writable() = fromHex(input);
-					if (b.size() != 32)
-					{
-						std::string s = contentsString(input);
-						b.writable() = fromHex(s);
-						if (b.size() != 32)
-							u = store.importKey(input);
-					}
-					if (!u && b.size() == 32)
-						u = store.importSecret(b, lockPassword(toAddress(Secret(b)).abridged()));
-					if (!u)
-					{
-						cerr << "Cannot import " << input << " not a file or secret." << endl;
-						continue;
-					}
-					cout << "Successfully imported " << input << " as " << toUUID(u);
-				}
-				break;
-			case OperationMode::InspectBare:
-				for (auto const& i: m_inputs)
-					if (!contents(i).empty())
-					{
-						h128 u = store.readKey(i, false);
-						bytesSec s = store.secret(u, [&](){ return getPassword("Enter password for key " + i + ": "); });
-						cout << "Key " << i << ":" << endl;
-						cout << "  UUID: " << toUUID(u) << ":" << endl;
-						cout << "  Address: " << toAddress(Secret(s)).hex() << endl;
-						cout << "  Secret: " << toHex(s.ref().cropped(0, 8)) << "..." << endl;
-					}
-					else if (h128 u = fromUUID(i))
-					{
-						bytesSec s = store.secret(u, [&](){ return getPassword("Enter password for key " + toUUID(u) + ": "); });
-						cout << "Key " << i << ":" << endl;
-						cout << "  Address: " << toAddress(Secret(s)).hex() << endl;
-						cout << "  Secret: " << toHex(s.ref().cropped(0, 8)) << "..." << endl;
-					}
-					else
-						cerr << "Couldn't inspect " << i << "; not found." << endl;
-				break;
-			case OperationMode::ExportBare: break;
-			case OperationMode::RecodeBare:
-				for (auto const& i: m_inputs)
-					if (h128 u = fromUUID(i))
-						if (store.recode(u, lockPassword(toUUID(u)), [&](){ return getPassword("Enter password for key " + toUUID(u) + ": "); }, kdf()))
-							cerr << "Re-encoded " << toUUID(u) << endl;
-						else
-							cerr << "Couldn't re-encode " << toUUID(u) << "; key corrupt or incorrect password supplied." << endl;
-					else
-						cerr << "Couldn't re-encode " << i << "; not found." << endl;
-				break;
-			case OperationMode::KillBare:
-				for (auto const& i: m_inputs)
-					if (h128 u = fromUUID(i))
-						store.kill(u);
-					else
-						cerr << "Couldn't kill " << i << "; not found." << endl;
-				break;
-			default: break;
-			}
+			break;
 		}
-		else
+		case OperationMode::InspectBrain:
 		{
-			KeyManager wallet(m_walletPath, m_secretsPath);
-			if (wallet.exists())
-				openWallet(wallet);
-			else
+			Address a = toAddress(KeyManager::brain(getPassword("Enter brain wallet key phrase: ")));
+			cout << a.abridged() << endl;
+			cout << "  ICAP: " << ICAP(a).encoded() << endl;
+			cout << "  Address: " << a.hex() << endl;
+			break;
+		}
+		case OperationMode::ListBare:
+			for (h128 const& u: std::set<h128>() + secretStore().keys())
+				cout << toUUID(u) << endl;
+			break;
+		case OperationMode::NewBare:
+		{
+			if (m_lock.empty())
+				m_lock = createPassword("Enter a password with which to secure this account: ");
+			auto k = makeKey();
+			h128 u = secretStore().importSecret(k.secret().ref(), m_lock);
+			cout << "Created key " << toUUID(u) << endl;
+			cout << "  Address: " << k.address().hex() << endl;
+			cout << "  ICAP: " << ICAP(k.address()).encoded() << endl;
+			break;
+		}
+		case OperationMode::ImportBare:
+			for (string const& input: m_inputs)
 			{
-				cerr << "Couldn't open wallet. Does it exist?" << endl;
-				exit(-1);
-			}
-			switch (m_mode)
-			{
-			case OperationMode::New:
-			{
-				tie(m_lock, m_lockHint) = createPassword(wallet, "Enter a password with which to secure this account (or nothing to use the master password): ", m_lock, m_lockHint);
-				auto k = makeKey();
-				bool usesMaster = m_lock.empty();
-				h128 u = usesMaster ? wallet.import(k.secret(), m_name) : wallet.import(k.secret(), m_name, m_lock, m_lockHint);
-				cout << "Created key " << toUUID(u) << endl;
-				cout << "  Name: " << m_name << endl;
-				if (usesMaster)
-					cout << "  Uses master password." << endl;
-				else
-					cout << "  Password hint: " << m_lockHint << endl;
-				cout << "  Address: " << k.address().hex() << endl;
-				cout << "  ICAP: " << ICAP(k.address()).encoded() << endl;
-				break;
-			}
-			case OperationMode::ImportWithAddress:
-			{
-				string const& i = m_inputs[0];
 				h128 u;
 				bytesSec b;
-				b.writable() = fromHex(i);
+				b.writable() = fromHex(input);
 				if (b.size() != 32)
 				{
-					std::string s = contentsString(i);
+					std::string s = contentsString(input);
 					b.writable() = fromHex(s);
 					if (b.size() != 32)
-						u = wallet.store().importKey(i);
+						u = secretStore().importKey(input);
 				}
 				if (!u && b.size() == 32)
-					u = wallet.store().importSecret(b, lockPassword(toAddress(Secret(b)).abridged()));
+					u = secretStore().importSecret(b, lockPassword(toAddress(Secret(b)).abridged()));
 				if (!u)
 				{
-					cerr << "Cannot import " << i << " not a file or secret." << endl;
-					break;
+					cerr << "Cannot import " << input << " not a file or secret." << endl;
+					continue;
 				}
-				wallet.importExisting(u, m_name, m_address);
-				cout << "Successfully imported " << i << ":" << endl;
-				cout << "  Name: " << m_name << endl;
-				cout << "  Address: " << m_address << endl;
-				cout << "  UUID: " << toUUID(u) << endl;
-				break;
+				cout << "Successfully imported " << input << " as " << toUUID(u);
 			}
-			case OperationMode::ImportPresale:
-			{
-				std::string pw;
-				KeyPair k = wallet.presaleSecret(contentsString(m_inputs[0]), [&](bool){ return (pw = getPassword("Enter the password for the presale key: ")); });
-				wallet.import(k.secret(), m_name, pw, "Same password as used for presale key");
-				break;
-			}
-			case OperationMode::List:
-			{
-				vector<u128> bare;
-				vector<u128> nonIcap;
-				for (auto const& u: wallet.store().keys())
-					if (Address a = wallet.address(u))
-						if (a[0])
-							nonIcap.push_back(u);
-						else
-						{
-							cout << toUUID(u) << " " << a.abridged();
-							cout << " " << ICAP(a).encoded();
-							cout << " " <<  wallet.accountName(a) << endl;
-						}
+			break;
+		case OperationMode::InspectBare:
+			for (auto const& i: m_inputs)
+				if (!contents(i).empty())
+				{
+					h128 u = secretStore().readKey(i, false);
+					bytesSec s = secretStore().secret(u, [&](){ return getPassword("Enter password for key " + i + ": "); });
+					cout << "Key " << i << ":" << endl;
+					cout << "  UUID: " << toUUID(u) << ":" << endl;
+					cout << "  Address: " << toAddress(Secret(s)).hex() << endl;
+					cout << "  Secret: " << toHex(s.ref().cropped(0, 8)) << "..." << endl;
+				}
+				else if (h128 u = fromUUID(i))
+				{
+					bytesSec s = secretStore().secret(u, [&](){ return getPassword("Enter password for key " + toUUID(u) + ": "); });
+					cout << "Key " << i << ":" << endl;
+					cout << "  Address: " << toAddress(Secret(s)).hex() << endl;
+					cout << "  Secret: " << toHex(s.ref().cropped(0, 8)) << "..." << endl;
+				}
+				else
+					cerr << "Couldn't inspect " << i << "; not found." << endl;
+			break;
+		case OperationMode::ExportBare: break;
+		case OperationMode::RecodeBare:
+			for (auto const& i: m_inputs)
+				if (h128 u = fromUUID(i))
+					if (secretStore().recode(u, lockPassword(toUUID(u)), [&](){ return getPassword("Enter password for key " + toUUID(u) + ": "); }, kdf()))
+						cerr << "Re-encoded " << toUUID(u) << endl;
 					else
-						bare.push_back(u);
-				for (auto const& u: nonIcap)
-					if (Address a = wallet.address(u))
-					{
-						cout << toUUID(u) << " " << a.abridged();
-						cout << " " << ICAP(a).encoded();
-						cout << " " << wallet.accountName(a) << endl;
-					}
-				for (auto const& u: bare)
-					cout << toUUID(u) << " (Bare)" << endl;
+						cerr << "Couldn't re-encode " << toUUID(u) << "; key corrupt or incorrect password supplied." << endl;
+				else
+					cerr << "Couldn't re-encode " << i << "; not found." << endl;
+			break;
+		case OperationMode::KillBare:
+			for (auto const& i: m_inputs)
+				if (h128 u = fromUUID(i))
+					secretStore().kill(u);
+				else
+					cerr << "Couldn't kill " << i << "; not found." << endl;
+			break;
+		case OperationMode::New:
+		{
+			keyManager();
+			tie(m_lock, m_lockHint) = createPassword(keyManager(), "Enter a password with which to secure this account (or nothing to use the master password): ", m_lock, m_lockHint);
+			auto k = makeKey();
+			bool usesMaster = m_lock.empty();
+			h128 u = usesMaster ? keyManager().import(k.secret(), m_name) : keyManager().import(k.secret(), m_name, m_lock, m_lockHint);
+			cout << "Created key " << toUUID(u) << endl;
+			cout << "  Name: " << m_name << endl;
+			if (usesMaster)
+				cout << "  Uses master password." << endl;
+			else
+				cout << "  Password hint: " << m_lockHint << endl;
+			cout << "  Address: " << k.address().hex() << endl;
+			cout << "  ICAP: " << ICAP(k.address()).encoded() << endl;
+			break;
+		}
+		case OperationMode::ImportWithAddress:
+		{
+			keyManager();
+			string const& i = m_inputs[0];
+			h128 u;
+			bytesSec b;
+			b.writable() = fromHex(i);
+			if (b.size() != 32)
+			{
+				std::string s = contentsString(i);
+				b.writable() = fromHex(s);
+				if (b.size() != 32)
+					u = keyManager().store().importKey(i);
 			}
-			default: break;
+			if (!u && b.size() == 32)
+				u = keyManager().store().importSecret(b, lockPassword(toAddress(Secret(b)).abridged()));
+			if (!u)
+			{
+				cerr << "Cannot import " << i << " not a file or secret." << endl;
+				break;
 			}
+			keyManager().importExisting(u, m_name, m_address);
+			cout << "Successfully imported " << i << ":" << endl;
+			cout << "  Name: " << m_name << endl;
+			cout << "  Address: " << m_address << endl;
+			cout << "  UUID: " << toUUID(u) << endl;
+			break;
+		}
+		case OperationMode::ImportBrain:
+		{
+			keyManager();
+			std::string seed = getPassword("Enter brain wallet key phrase: ");
+			std::string hint;
+			cout << "Enter a hint for the phrase if you want: " << flush;
+			getline(cin, hint);
+			Address a = keyManager().importBrain(seed, m_name, hint);
+			cout << a << endl;
+			cout << "  ICAP: " << ICAP(a).encoded() << endl;
+			cout << "  Address: " << a.hex() << endl;
+			break;
+		}
+		case OperationMode::ImportPresale:
+		{
+			keyManager();
+			std::string pw;
+			KeyPair k = keyManager().presaleSecret(contentsString(m_inputs[0]), [&](bool){ return (pw = getPassword("Enter the password for the presale key: ")); });
+			keyManager().import(k.secret(), m_name, pw, "Same password as used for presale key");
+			break;
+		}
+		case OperationMode::List:
+		{
+			vector<u128> bare;
+			AddressHash got;
+
+			for (auto const& u: keyManager().store().keys())
+				if (Address a = keyManager().address(u))
+				{
+					got.insert(a);
+					cout << toUUID(u) << " " << a.abridged();
+					string s = ICAP(a).encoded();
+					cout << " " << s << string(35 - s.size(), ' ');
+					cout << " " << keyManager().accountName(a) << endl;
+				}
+				else
+					bare.push_back(u);
+			for (auto const& a: keyManager().accounts())
+				if (!got.count(a))
+				{
+					cout << "               (Brain)               " << a.abridged();
+					cout << " " << ICAP(a).encoded() << " ";
+					cout << " " << keyManager().accountName(a) << endl;
+				}
+			for (auto const& u: bare)
+				cout << toUUID(u) << " (Bare)" << endl;
+		}
+		default: break;
 		}
 	}
 
@@ -544,6 +573,12 @@ public:
 			<< "    --import-with-address [<uuid>|<file>|<secret-hex>] <address> <name>  Import keys from given source with given address and place in wallet." << endl
 			<< "    -e,--export [ <address>|<uuid> , ... ]  Export given keys." << endl
 			<< "    -r,--recode [ <address>|<uuid>|<file> , ... ]  Decrypt and re-encrypt given keys." << endl
+			<< "Brain wallet operating modes:" << endl
+			<< "WARNING: Brain wallets with human-generated passphrasses are highly susceptible to attack. Don't use such a thing for" << endl
+			<< "anything important." << endl
+			<< "    --new-brain [ <name>|-- ]  Create a new 13-word brain wallet; argument is the name or if --, do not add to wallet."<< endl
+			<< "    --import-brain <name>  Import your own brain wallet." << endl
+			<< "    --inspect-brain  Check the address of a particular brain wallet." << endl
 			<< "Wallet configuration:" << endl
 			<< "    --create-wallet  Create an Ethereum master wallet." << endl
 			<< "    --wallet-path <path>  Specify Ethereum wallet path (default: " << KeyManager::defaultPath() << ")" << endl
@@ -551,7 +586,7 @@ public:
 			<< endl
 			<< "Transaction operating modes:" << endl
 			<< "    -d,--decode-tx [<hex>|<file>]  Decode given transaction." << endl
-			<< "    -s,--sign-tx [ <address>|<uuid>|<file> ] [ <hex>|<file> , ... ]  (Re-)Sign given transaction." << endl
+			<< "    -s,--sign-tx [ <address>|<uuid>|<file>|brain(:<brain-phrase>) ] [ <hex>|<file> , ... ]  (Re-)Sign given transaction." << endl
 			<< endl
 			<< "Encryption configuration:" << endl
 			<< "    --kdf <kdfname>  Specify KDF to use when encrypting (default: sc	rypt)" << endl
@@ -612,6 +647,35 @@ private:
 	}
 
 	KDF kdf() const { return m_kdf == "pbkdf2" ? KDF::PBKDF2_SHA256 : KDF::Scrypt; }
+
+	KeyManager& keyManager()
+	{
+		if (!m_keyManager)
+		{
+			m_keyManager.reset(new KeyManager(m_walletPath, m_secretsPath));
+			if (m_keyManager->exists())
+				openWallet(*m_keyManager);
+			else
+			{
+				cerr << "Couldn't open wallet. Does it exist?" << endl;
+				exit(-1);
+			}
+		}
+		return *m_keyManager;
+	}
+
+	SecretStore& secretStore()
+	{
+		if (m_keyManager)
+			return m_keyManager->store();
+		if (!m_secretStore)
+			m_secretStore.reset(new SecretStore(m_secretsPath));
+		return *m_secretStore;
+	}
+
+	/// Where the keys are.
+	unique_ptr<SecretStore> m_secretStore;
+	unique_ptr<KeyManager> m_keyManager;
 
 	/// Operating mode.
 	OperationMode m_mode;
