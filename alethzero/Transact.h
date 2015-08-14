@@ -88,6 +88,7 @@ private:
 	void updateFee();
 	bool isCreation() const;
 	dev::u256 fee() const;
+	dev::u256 gas() const;
 	dev::u256 total() const;
 	dev::u256 value() const;
 	dev::u256 gasPrice() const;
@@ -108,8 +109,8 @@ private:
 	dev::eth::Client* m_ethereum = nullptr;
 	MainFace* m_main = nullptr;
 	NatSpecFace* m_natSpecDB = nullptr;
-	bool m_allGood = false;
 
+	QString m_dataInfo;
 	qint64 m_startLowerBound = 0;
 	qint64 m_startUpperBound = 0;
 	qint64 m_lowerBound = 0;
