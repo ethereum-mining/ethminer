@@ -37,6 +37,8 @@ namespace dev
 namespace p2p
 {
 
+static const unsigned short c_defaultListenPort = 30303;
+
 struct NetworkPreferences
 {
 	// Default Network Preferences
@@ -52,7 +54,7 @@ struct NetworkPreferences
 	
 	std::string publicIPAddress;
 	std::string listenIPAddress;
-	unsigned short listenPort = 30303;
+	unsigned short listenPort = c_defaultListenPort;
 	
 	
 	/// Preferences

@@ -444,8 +444,15 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence)
 				{
 					auto contractAddressIter = m_contractAddresses.find(ctrInstance);
 					if (contractAddressIter == m_contractAddresses.end())
+					{
 						emit runFailed("Contract '" + transaction.contractId + tr(" not deployed.") + "' " + tr(" Cannot call ") + transaction.functionId);
-					callAddress(contractAddressIter->second, encoder.encodedData(), transaction);
+						Address fakeAddress = Address::random();
+						std::pair<QString, int> contractToken = resolvePair(transaction.contractId);
+						m_contractNames[fakeAddress] = contractToken.first;
+						callAddress(fakeAddress, encoder.encodedData(), transaction); //Transact to a random fake address to that transaction is added to the list anyway
+					}
+					else
+						callAddress(contractAddressIter->second, encoder.encodedData(), transaction);
 				}
 				m_gasCosts.append(m_client->lastExecution().gasUsed);
 				onNewTransaction();
@@ -773,7 +780,7 @@ void ClientModel::onNewTransaction()
 	case TransactionException::None:
 		break;
 	case TransactionException::NotEnoughCash:
-		emit runFailed("Insufficient balance for contract deployment");
+		emit runFailed("Insufficient balance");
 		break;
 	case TransactionException::OutOfGasIntrinsic:
 	case TransactionException::OutOfGasBase:
@@ -830,9 +837,9 @@ void ClientModel::onNewTransaction()
 	else
 	{
 		//transaction/call
-		if (tr.transactionData.size() > 0 && tr.transactionData.front().size() >= 4)
+		if (tr.inputParameters.size() >= 4)
 		{
-			functionHash = FixedHash<4>(tr.transactionData.front().data(), FixedHash<4>::ConstructFromPointer);
+			functionHash = FixedHash<4>(tr.inputParameters.data(), FixedHash<4>::ConstructFromPointer);
 			function = QString::fromStdString(toJS(functionHash));
 			abi = true;
 		}
