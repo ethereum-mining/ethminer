@@ -128,12 +128,12 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				vBiBlocks.clear();
 				vBiBlocks.push_back(biGenesisBlock);
 
-				TransientDirectory td_stateDB, td_bc;
+				TransientDirectory td_bc;
+				TransientDirectory td_stateDB;
 				FullBlockChain<Ethash> bc(rlpGenesisBlock.out(), AccountMap(), td_bc.path(), WithExisting::Kill);
 
 				OverlayDB database (State::openDB(td_stateDB.path(), h256{}, WithExisting::Kill));
 				State state(database, BaseState::Empty);
-				Block block(database, BaseState::Empty, biGenesisBlock.beneficiary());
 				state = importer.m_statePre;
 				state.commit();
 
@@ -188,7 +188,9 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 						cnote << "error in importing uncle! This produces an invalid block (May be by purpose for testing).";
 					}
 				}
+
 				bc.sync(uncleBlockQueue, state.db(), 4);
+				Block block = bc.genesisBlock(state.db()); 
 
 				//mine a new block on top of previously imported
 				try
