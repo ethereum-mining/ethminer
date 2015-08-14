@@ -132,9 +132,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				TransientDirectory td_stateDB;
 				FullBlockChain<Ethash> bc(rlpGenesisBlock.out(), AccountMap(), td_bc.path(), WithExisting::Kill);
 
-				OverlayDB database (State::openDB(td_stateDB.path(), h256{}, WithExisting::Kill));
-				State state(database, BaseState::Empty);
-				state = importer.m_statePre;
+				//OverlayDB database (State::openDB(td_stateDB.path(), h256{}, WithExisting::Kill));
+				State state = importer.m_statePre;
 				state.commit();
 
 				//import previous blocks
@@ -209,7 +208,6 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					cnote << "block sync or mining did throw an exception: " << _e.what();
 					return;
 				}
-
 
 				blObj["rlp"] = toHex(block.blockData(), 2, HexPrefix::Add);
 
