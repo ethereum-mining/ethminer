@@ -143,7 +143,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				vBiBlocks.clear();
 				vBiBlocks.push_back(biGenesisBlock);
 
-				TransientDirectory td_stateDB, td_bc;
+				TransientDirectory td_bc;
+				TransientDirectory td_stateDB;
 				FullBlockChain<Ethash> bc(rlpGenesisBlock.out(), AccountMap(), td_bc.path(), WithExisting::Kill);
 
 				//OverlayDB database (State::openDB(td_stateDB.path(), h256{}, WithExisting::Kill));
@@ -206,7 +207,9 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				//block.commitToSeal(bc);
 
 				//Block block(State::openDB(bc.genesisHash()), BaseState::Empty, biGenesisBlock.beneficiary());
-				Block block = bc.genesisBlock(State::openDB(bc.genesisHash())); //NOT CLEAR WHAT IT RETURNS IF bc INITIALIZED WITH CUSTOM GENESIS BLOCK
+
+				//trueState TempDir default constructor for bc's state same as for trueState ?
+				Block block = bc.genesisBlock(trueState.db()); //NOT CLEAR WHAT IT RETURNS IF bc INITIALIZED WITH CUSTOM GENESIS BLOCK
 				//Block block (State::openDB(biGenesisBlock.hash()));
 				//Block block(state.db(), BaseState::Empty);
 				//mine a new block on top of previously imported
