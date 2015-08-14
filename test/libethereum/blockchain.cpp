@@ -78,20 +78,6 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		o["pre"] = fillJsonWithState(trueState); //convert all fields to hex
 		trueState.commit();
 
-
-		/// Trick
-		//merge into init state string our test predefined state and change difficulty for testing
-		//string genesisState = *(const_cast<string*>(&c_genesisInfoFrontier/*c_genesisInfoOlympic*/));
-		/*size_t pos = genesisState.find("alloc");
-		string sss = json_spirit::write_string(o["pre"], true);
-		sss.replace(0, 1, "");
-		sss.replace(sss.length() - 2, 2, ",");
-		genesisState.insert(pos + 9, sss);
-		genesisState.replace(genesisState.find("0x400000000"), 7, "0x20000");
-		note << genesisState;
-		*/
-		///
-
 		//Imported blocks from the start
 		std::vector<blockSet> blockSets;  //Block(bytes) => UncleList(Blocks(bytes))
 
@@ -148,7 +134,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				FullBlockChain<Ethash> bc(rlpGenesisBlock.out(), AccountMap(), td_bc.path(), WithExisting::Kill);
 
 				//OverlayDB database (State::openDB(td_stateDB.path(), h256{}, WithExisting::Kill));
-				State state = importer.m_statePre;
+				State state(OverlayDB(State::openDB(td_stateDB.path(), h256{}, WithExisting::Kill)), BaseState::Empty); //= importer.m_statePre;
+				ImportTest::importState(o["pre"].get_obj(), state);
 				state.commit();
 
 				//import previous blocks
@@ -164,7 +151,6 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					bc.sync(uncleQueue, state.db(), 4);
 					bc.attemptImport(blockFromSet, state.db());
 					vBiBlocks.push_back(BlockHeader(blockFromSet));
-					//state.sync(bc);
 				}
 
 				// get txs
@@ -204,15 +190,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				}
 
 				bc.sync(uncleBlockQueue, state.db(), 4);
-				//block.commitToSeal(bc);
 
-				//Block block(State::openDB(bc.genesisHash()), BaseState::Empty, biGenesisBlock.beneficiary());
-
-				//trueState TempDir default constructor for bc's state same as for trueState ?
-				Block block = bc.genesisBlock(trueState.db()); //NOT CLEAR WHAT IT RETURNS IF bc INITIALIZED WITH CUSTOM GENESIS BLOCK
-				//Block block (State::openDB(biGenesisBlock.hash()));
-				//Block block(state.db(), BaseState::Empty);
-				//mine a new block on top of previously imported
+				Block block = bc.genesisBlock(state.db()); //NOT CLEAR WHAT IT RETURNS IF bc INITIALIZED WITH CUSTOM GENESIS BLOCK
 				try
 				{
 					block.sync(bc);
@@ -229,7 +208,6 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					cnote << "block sync or mining did throw an exception: " << _e.what();
 					return;
 				}
-
 
 				blObj["rlp"] = toHex(block.blockData(), 2, HexPrefix::Add);
 
