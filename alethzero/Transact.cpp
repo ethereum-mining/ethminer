@@ -451,10 +451,11 @@ GasRequirements Transact::determineGasRequirements()
 		}
 		else
 		{
+			// Begin async binary chop for gas calculation..
 			m_lastGood = lastGood;
 			m_lowerBound = m_startLowerBound;
 			m_upperBound = m_startUpperBound;
-			startTimer(0);
+			m_gasCalcTimer = startTimer(0);
 			return GasRequirements{m_upperBound, baseGas, m_upperBound - baseGas, (qint64)lastGood.gasRefunded, lastGood};
 		}
 	}
