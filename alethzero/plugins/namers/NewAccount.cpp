@@ -60,6 +60,7 @@ void NewAccount::create()
 	u.hexText->setEnabled(false);
 	u.passwordText->setEnabled(false);
 	u.passwordAgainText->setEnabled(false);
+	u.hintText->setEnabled(false);
 
 	QStringList items =
 	{
@@ -84,6 +85,7 @@ void NewAccount::create()
 		bool checked = u.additionalCheckBox->checkState() == Qt::CheckState::Checked;
 		u.passwordText->setEnabled(checked);
 		u.passwordAgainText->setEnabled(checked);
+		u.hintText->setEnabled(checked);
 	});
 
 	connect(u.create, &QPushButton::clicked, [&]()
