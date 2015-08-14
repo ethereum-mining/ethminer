@@ -294,8 +294,9 @@ ColumnLayout
 						projectModel.stateListModel.appendState(item)
 						projectModel.stateListModel.save()
 						scenarioList.currentIndex = projectModel.stateListModel.count - 1
+						clientModel.setupScenario(item);
 					}
-					text: qsTr("New..")
+					text: qsTr("New...")
 					roundRight: true
 					roundLeft: false
 				}

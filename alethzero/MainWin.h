@@ -84,6 +84,7 @@ public:
 	~Main();
 
 	WebThreeDirect* web3() const override { return m_webThree.get(); }
+	OurWebThreeStubServer* web3Server() const override { return m_server.get(); }
 	eth::Client* ethereum() const override { return m_webThree->ethereum(); }
 	std::shared_ptr<shh::WhisperHost> whisper() const override { return m_webThree->whisper(); }
 
@@ -95,8 +96,6 @@ public:
 	std::string render(dev::Address const& _a) const override;
 	std::pair<Address, bytes> fromString(std::string const& _a) const override;
 	std::string renderDiff(eth::StateDiff const& _d) const override;
-
-	QList<KeyPair> owned() const { return m_myIdentities; }
 
 	u256 gasPrice() const override;
 
@@ -152,7 +151,6 @@ private slots:
 	void on_preview_triggered();
 
 	// Account management
-	void on_newAccount_triggered();
 	void on_killAccount_triggered();
 	void on_importKey_triggered();
 	void on_reencryptKey_triggered();
@@ -199,17 +197,11 @@ private slots:
 	void on_debugDumpStatePre_triggered() { debugDumpState(0); }
 	void on_dumpBlockState_triggered();
 
-	// Whisper
-	void on_newIdentity_triggered();
-	void on_post_clicked();
-
 	// Config
 	void on_gasPrices_triggered();
 	void on_sentinel_triggered();
 
-	void refreshWhisper();
 	void refreshBlockChain();
-	void addNewId(QString _ids);
 
 	// Dapps
 	void dappLoaded(Dapp& _dapp); //qt does not support rvalue refs for signals
@@ -240,7 +232,7 @@ private:
 
 	unsigned installWatch(eth::LogFilter const& _tf, WatchHandler const& _f) override;
 	unsigned installWatch(h256 const& _tf, WatchHandler const& _f) override;
-	void uninstallWatch(unsigned _w);
+	void uninstallWatch(unsigned _w) override;
 
 	void keysChanged();
 
@@ -259,7 +251,6 @@ private:
 
 	void refreshNetwork();
 	void refreshMining();
-	void refreshWhispers();
 	void refreshCache();
 
 	void refreshAll();
@@ -281,7 +272,6 @@ private:
 
 	QByteArray m_networkConfig;
 	QStringList m_servers;
-	QList<KeyPair> m_myIdentities;
 	eth::KeyManager m_keyManager;
 	QString m_privateChain;
 	dev::Address m_nameReg;

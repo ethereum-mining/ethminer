@@ -148,7 +148,7 @@ public:
 	using Interface::addresses;
 	virtual Addresses addresses(BlockNumber _block) const override;
 	virtual u256 gasLimitRemaining() const override;
-	virtual u256 gasBidPrice() const override { return c_defaultGasPrice; }
+	virtual u256 gasBidPrice() const override { return DefaultGasPrice; }
 
 	/// Get the coinbase address
 	virtual Address address() const override;

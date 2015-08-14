@@ -296,6 +296,7 @@ namespace dev { namespace test {
 
 void doVMTests(json_spirit::mValue& v, bool _fillin)
 {
+	string testname;
 	for (auto& i: v.get_obj())
 	{
 		mObject& o = i.second.get_obj();
@@ -305,10 +306,12 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 			continue;
 		}
 
-		std::cout << "  " << i.first << "\n";
-		TBOOST_REQUIRE((o.count("env") > 0));
-		TBOOST_REQUIRE((o.count("pre") > 0));
-		TBOOST_REQUIRE((o.count("exec") > 0));
+		cnote << i.first;
+		testname = "(" + i.first + ") ";
+
+		TBOOST_REQUIRE_MESSAGE((o.count("env") > 0), testname + "env not set!");
+		TBOOST_REQUIRE_MESSAGE((o.count("pre") > 0), testname + "pre not set!");
+		TBOOST_REQUIRE_MESSAGE((o.count("exec") > 0), testname + "exec not set!");
 
 		FakeExtVM fev(eth::EnvInfo{});
 		fev.importEnv(o["env"].get_obj());
@@ -338,7 +341,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 		}
 		catch (VMException const&)
 		{
-			std::cout << "    Safe VM Exception\n";
+			cnote << "    Safe VM Exception\n";
 			vmExceptionOccured = true;
 		}
 		catch (Exception const& _e)
@@ -535,7 +538,7 @@ BOOST_AUTO_TEST_CASE(vmRandom)
 	{
 		try
 		{
-			std::cout << "TEST " << path.filename() << "\n";
+			cnote << "TEST " << path.filename();
 			json_spirit::mValue v;
 			string s = asString(dev::contents(path.string()));
 			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Content of " + path.string() + " is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");

@@ -20,6 +20,7 @@
  * State test functions.
  */
 
+#include <test/TestHelper.h>
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <libethereum/CanonBlockChain.h>
@@ -27,7 +28,6 @@
 #include <libethcore/Farm.h>
 #include <libethcore/BasicAuthority.h>
 #include <libethereum/Defaults.h>
-#include <test/TestHelper.h>
 
 using namespace std;
 using namespace dev;
