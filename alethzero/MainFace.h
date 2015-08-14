@@ -49,6 +49,7 @@ namespace az
 class Plugin;
 class MainFace;
 class Main;
+class OurWebThreeStubServer;
 
 using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
 
@@ -89,10 +90,12 @@ public:
 	// TODO: provide a set of available web3 modules.
 	virtual dev::WebThreeDirect* web3() const = 0;
 	virtual dev::eth::Client* ethereum() const = 0;
+	virtual OurWebThreeStubServer* web3Server() const = 0;
 	virtual std::shared_ptr<dev::shh::WhisperHost> whisper() const = 0;
 
 	virtual unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f) = 0;
 	virtual unsigned installWatch(dev::h256 const& _tf, WatchHandler const& _f) = 0;
+	virtual void uninstallWatch(unsigned _id) = 0;
 
 	// Account naming API
 	virtual void install(AccountNamer* _adopt) = 0;

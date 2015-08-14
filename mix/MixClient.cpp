@@ -130,8 +130,27 @@ ExecutionResult MixClient::debugTransaction(Transaction const& _t, State const& 
 	eth::ExecutionResult er;
 	Executive execution(execState, _envInfo);
 	execution.setResultRecipient(er);
-	execution.initialize(_t);
-	execution.execute();
+
+	ExecutionResult d;
+	d.address = _t.receiveAddress();
+	d.sender = _t.sender();
+	d.value = _t.value();
+	d.inputParameters = _t.data();
+	d.executonIndex = m_executions.size();
+	if (!_call)
+		d.transactionIndex = m_postMine.pending().size();
+
+	try
+	{
+		execution.initialize(_t);
+		execution.execute();
+	}
+	catch (Exception const& _e)
+	{
+		d.excepted = toTransactionException(_e);
+		d.transactionData.push_back(_t.data());
+		return d;
+	}
 
 	std::vector<MachineState> machineStates;
 	std::vector<unsigned> levels;
@@ -199,22 +218,14 @@ ExecutionResult MixClient::debugTransaction(Transaction const& _t, State const& 
 	execution.go(onOp);
 	execution.finalize();
 
-	ExecutionResult d;
 	d.excepted = er.excepted;
-	d.inputParameters = _t.data();
 	d.result = er;
 	d.machineStates = machineStates;
 	d.executionCode = std::move(codes);
 	d.transactionData = std::move(data);
-	d.address = _t.receiveAddress();
-	d.sender = _t.sender();
-	d.value = _t.value();
 	d.gasUsed = er.gasUsed + er.gasRefunded + c_callStipend;
 	if (_t.isCreation())
 		d.contractAddress = right160(sha3(rlpList(_t.sender(), _t.nonce())));
-	if (!_call)
-		d.transactionIndex = m_postMine.pending().size();
-	d.executonIndex = m_executions.size();
 	return d;
 }
 
@@ -228,7 +239,7 @@ void MixClient::executeTransaction(Transaction const& _t, Block& _block, bool _c
 	ExecutionResult d = debugTransaction(t, _block.state(), envInfo, _call);
 
 	// execute on a state
-	if (!_call)
+	if (!_call && d.excepted == TransactionException::None)
 	{
 		u256 useGas = min(d.gasUsed, _block.gasLimitRemaining());
 		t = _gasAuto ? replaceGas(_t, useGas, _secret) : _t;
@@ -258,7 +269,7 @@ void MixClient::mine()
 	RLPStream header;
 	h.streamRLP(header);
 	m_postMine.sealBlock(header.out());
-	bc().import(m_postMine.blockData(), m_stateDB, (ImportRequirements::Everything & ~ImportRequirements::ValidSeal) != 0);
+	bc().import(m_postMine.blockData(), m_postMine.state().db(), (ImportRequirements::Everything & ~ImportRequirements::ValidSeal) != 0);
 	m_postMine.sync(bc());
 	m_preMine = m_postMine;
 }

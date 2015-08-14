@@ -59,10 +59,10 @@ private:
 	llvm::Function* getReallocFunc();
 
 	LazyFunction m_pushFunc = {[this](){ return createArrayPushFunc(); }}; // TODO: If works on MSVC, remove form initialization list
-	LazyFunction m_setFunc;
+	LazyFunction m_setFunc = {[this](){ return createArraySetFunc(); }};
 	LazyFunction m_getPtrFunc = {[this](){ return createGetPtrFunc(); }};
-	LazyFunction m_getFunc;
-	LazyFunction m_freeFunc;
+	LazyFunction m_getFunc = {[this](){ return createArrayGetFunc(); }};
+	LazyFunction m_freeFunc = {[this](){ return createFreeFunc(); }};
 	LazyFunction m_extendFunc = {[this](){ return createExtendFunc(); }};
 	LazyFunction m_reallocFunc = {[this](){ return getReallocFunc(); }};
 };
@@ -70,5 +70,3 @@ private:
 }
 }
 }
-
-

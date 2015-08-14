@@ -27,7 +27,7 @@
 #include <libdevcore/TrieDB.h>
 #include <libdevcore/TrieHash.h>
 #include "MemTrie.h"
-#include "../TestHelper.h"
+#include <test/TestHelper.h>
 
 using namespace std;
 using namespace dev;
@@ -315,35 +315,35 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 		MemoryDB m;
 		GenericTrieDB<MemoryDB> t(&m);
 		t.init();	// initialise as empty tree.
-		cout << t;
-		cout << m;
-		cout << t.root() << endl;
-		cout << stringMapHash256(StringMap()) << endl;
+		cnote << t;
+		cnote << m;
+		cnote << t.root();
+		cnote << stringMapHash256(StringMap());
 
 		t.insert(string("tesz"), string("test"));
-		cout << t;
-		cout << m;
-		cout << t.root() << endl;
-		cout << stringMapHash256({{"test", "test"}}) << endl;
+		cnote << t;
+		cnote << m;
+		cnote << t.root();
+		cnote << stringMapHash256({{"test", "test"}});
 
 		t.insert(string("tesa"), string("testy"));
-		cout << t;
-		cout << m;
-		cout << t.root() << endl;
-		cout << stringMapHash256({{"test", "test"}, {"te", "testy"}}) << endl;
-		cout << t.at(string("test")) << endl;
-		cout << t.at(string("te")) << endl;
-		cout << t.at(string("t")) << endl;
+		cnote << t;
+		cnote << m;
+		cnote << t.root();
+		cnote << stringMapHash256({{"test", "test"}, {"te", "testy"}});
+		cnote << t.at(string("test"));
+		cnote << t.at(string("te"));
+		cnote << t.at(string("t"));
 
 		t.remove(string("te"));
-		cout << m;
-		cout << t.root() << endl;
-		cout << stringMapHash256({{"test", "test"}}) << endl;
+		cnote << m;
+		cnote << t.root();
+		cnote << stringMapHash256({{"test", "test"}});
 
 		t.remove(string("test"));
-		cout << m;
-		cout << t.root() << endl;
-		cout << stringMapHash256(StringMap()) << endl;
+		cnote << m;
+		cnote << t.root();
+		cnote << stringMapHash256(StringMap());
 	}
 	{
 		MemoryDB m;
@@ -351,37 +351,37 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 		t.init();	// initialise as empty tree.
 		t.insert(string("a"), string("A"));
 		t.insert(string("b"), string("B"));
-		cout << t;
-		cout << m;
-		cout << t.root() << endl;
-		cout << stringMapHash256({{"b", "B"}, {"a", "A"}}) << endl;
+		cnote << t;
+		cnote << m;
+		cnote << t.root();
+		cnote << stringMapHash256({{"b", "B"}, {"a", "A"}});
 		bytes r(stringMapRlp256({{"b", "B"}, {"a", "A"}}));
-		cout << RLP(r) << endl;
+		cnote << RLP(r);
 	}
 	{
 		MemTrie t;
 		t.insert("dog", "puppy");
-		cout << hex << t.hash256() << endl;
+		cnote << hex << t.hash256();
 		bytes r(t.rlp());
-		cout << RLP(r) << endl;
+		cnote << RLP(r);
 	}
 	{
 		MemTrie t;
 		t.insert("bed", "d");
 		t.insert("be", "e");
-		cout << hex << t.hash256() << endl;
+		cnote << hex << t.hash256();
 		bytes r(t.rlp());
-		cout << RLP(r) << endl;
+		cnote << RLP(r);
 	}
 	{
-		cout << hex << stringMapHash256({{"dog", "puppy"}, {"doe", "reindeer"}}) << endl;
+		cnote << hex << stringMapHash256({{"dog", "puppy"}, {"doe", "reindeer"}});
 		MemTrie t;
 		t.insert("dog", "puppy");
 		t.insert("doe", "reindeer");
-		cout << hex << t.hash256() << endl;
+		cnote << hex << t.hash256();
 		bytes r(t.rlp());
-		cout << RLP(r) << endl;
-		cout << toHex(t.rlp()) << endl;
+		cnote << RLP(r);
+		cnote << toHex(t.rlp());
 	}
 	{
 		MemoryDB m;
@@ -397,12 +397,12 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 			t.insert(a, b);
 			s[a] = b;
 
-			cout << endl << "-------------------------------" << endl;
-			cout << a << " -> " << b << endl;
-			cout << d;
-			cout << m;
-			cout << d.root() << endl;
-			cout << stringMapHash256(s) << endl;
+			cnote << "/n-------------------------------";
+			cnote << a << " -> " << b;
+			cnote << d;
+			cnote << m;
+			cnote << d.root();
+			cnote << stringMapHash256(s);
 
 			BOOST_REQUIRE(d.check(true));
 			BOOST_REQUIRE_EQUAL(t.hash256(), stringMapHash256(s));
@@ -421,12 +421,12 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 			t.remove(a);
 			d.remove(string(a));
 
-			/*cout << endl << "-------------------------------" << endl;
-			cout << "X " << a << endl;
-			cout << d;
-			cout << m;
-			cout << d.root() << endl;
-			cout << hash256(s) << endl;*/
+			/*cnote << endl << "-------------------------------";
+			cnote << "X " << a;
+			cnote << d;
+			cnote << m;
+			cnote << d.root();
+			cnote << hash256(s);*/
 
 			BOOST_REQUIRE(d.check(true));
 			BOOST_REQUIRE(t.at(a).empty());
@@ -559,9 +559,11 @@ BOOST_AUTO_TEST_CASE(trieStess)
 //					for (auto i: dm2.get())
 //						cwarn << i.first << ": " << RLP(i.second);
 					d2.debugStructure(cerr);
-					g_logVerbosity = 99;
+					if (g_logVerbosity != -1)
+						g_logVerbosity = 99;
 					d2.remove(k);
-					g_logVerbosity = 4;
+					if (g_logVerbosity != -1)
+						g_logVerbosity = 4;
 
 					cwarn << "Good?" << d2.root();
 				}

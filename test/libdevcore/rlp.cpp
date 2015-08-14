@@ -52,6 +52,7 @@ namespace dev
 
 		void doRlpTests(json_spirit::mValue& v, bool _fillin)
 		{
+			string testname;
 			for (auto& i: v.get_obj())
 			{
 				js::mObject& o = i.second.get_obj();
@@ -61,9 +62,11 @@ namespace dev
 					continue;
 				}
 
-				cout << "  " << i.first << endl;
-				TBOOST_REQUIRE((o.count("out") > 0));
-				TBOOST_REQUIRE((!o["out"].is_null()));
+				cnote << "  " << i.first;
+				testname = "(" + i.first + ") ";
+
+				TBOOST_REQUIRE_MESSAGE((o.count("out") > 0), testname + "out not set!");
+				TBOOST_REQUIRE_MESSAGE((!o["out"].is_null()), testname + "out is set to null!");
 
 				if (_fillin)
 				{
@@ -88,7 +91,7 @@ namespace dev
 				else
 				{
 					//Check Encode
-					TBOOST_REQUIRE((o.count("in") > 0));
+					TBOOST_REQUIRE_MESSAGE((o.count("in") > 0), testname + "in not set!");
 					RlpType rlpType = RlpType::Test;
 					if (o["in"].type() == js::str_type)
 					{
@@ -112,7 +115,7 @@ namespace dev
 						msg << " But Computed: " << computedText;
 						TBOOST_CHECK_MESSAGE(
 							(expectedText == computedText),
-							msg.str()
+							testname + msg.str()
 							);
 					}
 
@@ -155,11 +158,11 @@ namespace dev
 
 					//Check that there was an exception as input is INVALID
 					if (rlpType == RlpType::Invalid && !was_exception)
-						TBOOST_ERROR("Expected RLP Exception as rlp should be invalid!");
+						TBOOST_ERROR(testname + "Expected RLP Exception as rlp should be invalid!");
 
 					//input is VALID check that there was no exceptions
 					if (was_exception)
-						TBOOST_ERROR("Unexpected RLP Exception!");
+						TBOOST_ERROR(testname + "Unexpected RLP Exception!");
 				}
 			}
 		}
@@ -256,11 +259,11 @@ BOOST_AUTO_TEST_CASE(EmptyArrayList)
 	}
 	catch (Exception const& _e)
 	{
-		TBOOST_ERROR("Failed test with Exception: " << _e.what());
+		TBOOST_ERROR("(EmptyArrayList) Failed test with Exception: " << _e.what());
 	}
 	catch (exception const& _e)
 	{
-		TBOOST_ERROR("Failed test with Exception: " << _e.what());
+		TBOOST_ERROR("(EmptyArrayList) Failed test with Exception: " << _e.what());
 	}
 }
 
@@ -302,11 +305,11 @@ BOOST_AUTO_TEST_CASE(rlpRandom)
 
 		catch (Exception const& _e)
 		{
-			TBOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+			TBOOST_ERROR(path.filename().string() + "Failed test with Exception: " << diagnostic_information(_e));
 		}
 		catch (std::exception const& _e)
 		{
-			TBOOST_ERROR("Failed test with Exception: " << _e.what());
+			TBOOST_ERROR(path.filename().string() + "Failed test with Exception: " << _e.what());
 		}
 	}
 }

@@ -33,12 +33,12 @@ char const* Version = ETH_PROJECT_VERSION;
 
 const u256 UndefinedU256 = ~(u256)0;
 
-void InvariantChecker::checkInvariants() const
+void InvariantChecker::checkInvariants(HasInvariants const* _this, char const* _fn, char const* _file, int _line, bool _pre)
 {
-	if (!m_this->invariants())
+	if (!_this->invariants())
 	{
-		cwarn << "Invariant failed in" << m_function << "at" << m_file << ":" << m_line;
-		::boost::exception_detail::throw_exception_(FailedInvariant(), m_function, m_file, m_line);
+		cwarn << (_pre ? "Pre" : "Post") << "invariant failed in" << _fn << "at" << _file << ":" << _line;
+		::boost::exception_detail::throw_exception_(FailedInvariant(), _fn, _file, _line);
 	}
 }
 

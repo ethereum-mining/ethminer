@@ -20,53 +20,42 @@ namespace eth
 namespace jit
 {
 
-static const char* jumpDestName = "JmpDst.";
-static const char* basicBlockName = "Instr.";
-
-BasicBlock::BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest) :
+BasicBlock::BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc):
 	m_firstInstrIdx{_firstInstrIdx},
 	m_begin(_begin),
 	m_end(_end),
-	m_llvmBB(llvm::BasicBlock::Create(_mainFunc->getContext(), {isJumpDest ? jumpDestName : basicBlockName, std::to_string(_firstInstrIdx)}, _mainFunc)),
-	m_stack(*this),
-	m_builder(_builder),
-	m_isJumpDest(isJumpDest)
+	m_llvmBB(llvm::BasicBlock::Create(_mainFunc->getContext(), {"Instr.", std::to_string(_firstInstrIdx)}, _mainFunc))
 {}
 
-BasicBlock::BasicBlock(std::string _name, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest) :
-	m_llvmBB(llvm::BasicBlock::Create(_mainFunc->getContext(), _name, _mainFunc)),
-	m_stack(*this),
-	m_builder(_builder),
-	m_isJumpDest(isJumpDest)
+LocalStack::LocalStack(Stack& _globalStack):
+	m_global(_globalStack)
 {}
 
-BasicBlock::LocalStack::LocalStack(BasicBlock& _owner) :
-	m_bblock(_owner)
-{}
-
-void BasicBlock::LocalStack::push(llvm::Value* _value)
+void LocalStack::push(llvm::Value* _value)
 {
 	assert(_value->getType() == Type::Word);
-	m_bblock.m_currentStack.push_back(_value);
-	m_bblock.m_tosOffset += 1;
-	m_maxSize = std::max(m_maxSize, m_bblock.m_tosOffset);
+	m_local.push_back(_value);
+	m_maxSize = std::max(m_maxSize, size());
 }
 
-llvm::Value* BasicBlock::LocalStack::pop()
+llvm::Value* LocalStack::pop()
 {
-	auto result = get(0);
+	auto item = get(0);
+	assert(!m_local.empty() || !m_input.empty());
 
-	if (m_bblock.m_currentStack.size() > 0)
-		m_bblock.m_currentStack.pop_back();
+	if (m_local.size() > 0)
+		m_local.pop_back();
+	else
+		++m_globalPops;
 
-	m_bblock.m_tosOffset -= 1;
-	return result;
+	m_minSize = std::min(m_minSize, size());
+	return item;
 }
 
 /**
  *  Pushes a copy of _index-th element (tos is 0-th elem).
  */
-void BasicBlock::LocalStack::dup(size_t _index)
+void LocalStack::dup(size_t _index)
 {
 	auto val = get(_index);
 	push(val);
@@ -76,7 +65,7 @@ void BasicBlock::LocalStack::dup(size_t _index)
  *  Swaps tos with _index-th element (tos is 0-th elem).
  *  _index must be > 0.
  */
-void BasicBlock::LocalStack::swap(size_t _index)
+void LocalStack::swap(size_t _index)
 {
 	assert(_index > 0);
 	auto val = get(_index);
@@ -85,304 +74,71 @@ void BasicBlock::LocalStack::swap(size_t _index)
 	set(0, val);
 }
 
-std::vector<llvm::Value*>::iterator BasicBlock::LocalStack::getItemIterator(size_t _index)
+llvm::Value* LocalStack::get(size_t _index)
 {
-	auto& currentStack = m_bblock.m_currentStack;
-	if (_index < currentStack.size())
-		return currentStack.end() - _index - 1;
+	if (_index < m_local.size())
+		return *(m_local.rbegin() + _index); // count from back
 
-	// Need to map more elements from the EVM stack
-	auto nNewItems = 1 + _index - currentStack.size();
-	currentStack.insert(currentStack.begin(), nNewItems, nullptr);
+	auto idx = _index - m_local.size() + m_globalPops;
+	if (idx >= m_input.size())
+		m_input.resize(idx + 1);
+	auto& item = m_input[idx];
 
-	return currentStack.end() - _index - 1;
-}
-
-llvm::Value* BasicBlock::LocalStack::get(size_t _index)
-{
-	auto& initialStack = m_bblock.m_initialStack;
-	auto itemIter = getItemIterator(_index);
-
-	if (*itemIter == nullptr)
+	if (!item)
 	{
-		// Need to fetch a new item from the EVM stack
-		assert(static_cast<int>(_index) >= m_bblock.m_tosOffset);
-		size_t initialIdx = _index - m_bblock.m_tosOffset;
-		if (initialIdx >= initialStack.size())
-		{
-			auto nNewItems = 1 + initialIdx - initialStack.size();
-			initialStack.insert(initialStack.end(), nNewItems, nullptr);
-		}
-
-		assert(initialStack[initialIdx] == nullptr);
-		// Create a dummy value.
-		std::string name = "get_" + std::to_string(_index);
-		initialStack[initialIdx] = m_bblock.m_builder.CreatePHI(Type::Word, 0, std::move(name));
-		*itemIter = initialStack[initialIdx];
+		item = m_global.get(idx); 											// Reach an item from global stack
+		m_minSize = std::min(m_minSize, -static_cast<ssize_t>(idx) - 1); 	// and remember required stack size
 	}
 
-	return *itemIter;
+	return item;
 }
 
-void BasicBlock::LocalStack::set(size_t _index, llvm::Value* _word)
+void LocalStack::set(size_t _index, llvm::Value* _word)
 {
-	auto itemIter = getItemIterator(_index);
-	*itemIter = _word;
+	if (_index < m_local.size())
+	{
+		*(m_local.rbegin() + _index) = _word;
+		return;
+	}
+
+	auto idx = _index - m_local.size() + m_globalPops;
+	assert(idx < m_input.size());
+	m_input[idx] = _word;
 }
 
 
-
-
-
-void BasicBlock::synchronizeLocalStack(Stack& _evmStack)
+void LocalStack::finalize(llvm::IRBuilder<>& _builder, llvm::BasicBlock& _bb)
 {
-	auto blockTerminator = m_llvmBB->getTerminator();
-	assert(blockTerminator != nullptr);
+	auto blockTerminator = _bb.getTerminator();
+	assert(blockTerminator);
 	if (blockTerminator->getOpcode() != llvm::Instruction::Ret)
 	{
-		// Not needed in case of ret instruction. Ret also invalidates the stack.
-		m_builder.SetInsertPoint(blockTerminator);
+		// Not needed in case of ret instruction. Ret invalidates the stack.
+		_builder.SetInsertPoint(blockTerminator);
 
-		auto currIter = m_currentStack.begin();
-		auto endIter = m_currentStack.end();
-
-		// Update (emit set()) changed values
-		for (int idx = (int)m_currentStack.size() - 1 - m_tosOffset;
-			 currIter < endIter && idx >= 0;
-			 ++currIter, --idx)
+		// Update items fetched from global stack ignoring the poped ones
+		assert(m_globalPops <= m_input.size()); // pop() always does get()
+		for (auto i = m_globalPops; i < m_input.size(); ++i)
 		{
-			assert(static_cast<size_t>(idx) < m_initialStack.size());
-			if (*currIter != m_initialStack[idx]) // value needs update
-				_evmStack.set(static_cast<size_t>(idx), *currIter);
+			if (m_input[i])
+				m_global.set(i, m_input[i]);
 		}
 
-		// Pop values
-		if (m_tosOffset < 0)
-			_evmStack.pop(static_cast<size_t>(-m_tosOffset));
-
-		// Push new values
-		for (; currIter < endIter; ++currIter)
+		// Add new items
+		auto pops = m_globalPops;			// Copy pops counter to keep original value
+		for (auto& item: m_local)
 		{
-			assert(*currIter != nullptr);
-			_evmStack.push(*currIter);
-		}
-	}
-
-	// Emit get() for all (used) values from the initial stack
-	for (size_t idx = 0; idx < m_initialStack.size(); ++idx)
-	{
-		auto val = m_initialStack[idx];
-		if (val == nullptr)
-			continue;
-
-		llvm::PHINode* phi = llvm::cast<llvm::PHINode>(val);
-		// Insert call to get() just before the PHI node and replace
-		// the uses of PHI with the uses of this new instruction.
-		m_builder.SetInsertPoint(phi);
-		auto newVal = _evmStack.get(idx); // OPT: Value may be never user but we need to check stack heigth
-		                                  //      It is probably a good idea to keep heigth as a local variable accesible by LLVM directly
-		phi->replaceAllUsesWith(newVal);
-		phi->eraseFromParent();
-	}
-
-	// Reset the stack
-	m_initialStack.erase(m_initialStack.begin(), m_initialStack.end());
-	m_currentStack.erase(m_currentStack.begin(), m_currentStack.end());
-	m_tosOffset = 0;
-}
-
-void BasicBlock::linkLocalStacks(std::vector<BasicBlock*> basicBlocks, llvm::IRBuilder<>& _builder)
-{
-	struct BBInfo
-	{
-		BasicBlock& bblock;
-		std::vector<BBInfo*> predecessors;
-		size_t inputItems;
-		size_t outputItems;
-		std::vector<llvm::PHINode*> phisToRewrite;
-
-		BBInfo(BasicBlock& _bblock) :
-			bblock(_bblock),
-			predecessors(),
-			inputItems(0),
-			outputItems(0)
-		{
-			auto& initialStack = bblock.m_initialStack;
-			for (auto it = initialStack.begin();
-				 it != initialStack.end() && *it != nullptr;
-				 ++it, ++inputItems);
-
-			//if (bblock.localStack().m_tosOffset > 0)
-			//	outputItems = bblock.localStack().m_tosOffset;
-			auto& exitStack = bblock.m_currentStack;
-			for (auto it = exitStack.rbegin();
-				 it != exitStack.rend() && *it != nullptr;
-				 ++it, ++outputItems);
-		}
-	};
-
-	std::map<llvm::BasicBlock*, BBInfo> cfg;
-
-	// Create nodes in cfg
-	for (auto bb : basicBlocks)
-		cfg.emplace(bb->llvm(), *bb);
-
-	// Create edges in cfg: for each bb info fill the list
-	// of predecessor infos.
-	for (auto& pair : cfg)
-	{
-		auto bb = pair.first;
-		auto& info = pair.second;
-
-		for (auto predIt = llvm::pred_begin(bb); predIt != llvm::pred_end(bb); ++predIt)
-		{
-			auto predInfoEntry = cfg.find(*predIt);
-			if (predInfoEntry != cfg.end()) // FIXME: It is wrong - will skip entry block
-				info.predecessors.push_back(&predInfoEntry->second);
-		}
-	}
-
-	// Iteratively compute inputs and outputs of each block, until reaching fixpoint.
-	bool valuesChanged = true;
-	while (valuesChanged)
-	{
-		for (auto& pair : cfg)
-		{
-			DLOG(bb) << pair.second.bblock.llvm()->getName().str()
-				<< ": in " << pair.second.inputItems
-				<< ", out " << pair.second.outputItems
-				<< "\n";
+			if (pops) 						// Override poped global items
+				m_global.set(--pops, item);	// using pops counter as the index
+			else
+				m_global.push(item);
 		}
 
-		valuesChanged = false;
-		for (auto& pair : cfg)
-		{
-			auto& info = pair.second;
-
-			if (&info.bblock == basicBlocks.front())
-				info.inputItems = 0; // we cannot use phi nodes for first block as it is a successor of entry block
-
-			if (info.predecessors.empty())
-				info.inputItems = 0; // no consequences for other blocks, so leave valuesChanged false
-
-			for (auto predInfo : info.predecessors)
-			{
-				if (predInfo->outputItems < info.inputItems)
-				{
-					info.inputItems = predInfo->outputItems;
-					valuesChanged = true;
-				}
-				else if (predInfo->outputItems > info.inputItems)
-				{
-					predInfo->outputItems = info.inputItems;
-					valuesChanged = true;
-				}
-			}
-		}
-	}
-
-	// Propagate values between blocks.
-	for (auto& entry : cfg)
-	{
-		auto& info = entry.second;
-		auto& bblock = info.bblock;
-
-		llvm::BasicBlock::iterator fstNonPhi(bblock.llvm()->getFirstNonPHI());
-		auto phiIter = bblock.m_initialStack.begin();
-		for (size_t index = 0; index < info.inputItems; ++index, ++phiIter)
-		{
-			assert(llvm::isa<llvm::PHINode>(*phiIter));
-			auto phi = llvm::cast<llvm::PHINode>(*phiIter);
-
-			for (auto predIt : info.predecessors)
-			{
-				auto& predExitStack = predIt->bblock.m_currentStack;
-				auto value = *(predExitStack.end() - 1 - index);
-				phi->addIncoming(value, predIt->bblock.llvm());
-			}
-
-			// Move phi to the front
-			if (llvm::BasicBlock::iterator(phi) != bblock.llvm()->begin())
-			{
-				phi->removeFromParent();
-				_builder.SetInsertPoint(bblock.llvm(), bblock.llvm()->begin());
-				_builder.Insert(phi);
-			}
-		}
-
-		// The items pulled directly from predecessors block must be removed
-		// from the list of items that has to be popped from the initial stack.
-		auto& initialStack = bblock.m_initialStack;
-		initialStack.erase(initialStack.begin(), initialStack.begin() + info.inputItems);
-		// Initial stack shrinks, so the size difference grows:
-		bblock.m_tosOffset += (int)info.inputItems;
-	}
-
-	// We must account for the items that were pushed directly to successor
-	// blocks and thus should not be on the list of items to be pushed onto
-	// to EVM stack
-	for (auto& entry : cfg)
-	{
-		auto& info = entry.second;
-		auto& bblock = info.bblock;
-
-		auto& exitStack = bblock.m_currentStack;
-		exitStack.erase(exitStack.end() - info.outputItems, exitStack.end());
-		bblock.m_tosOffset -= (int)info.outputItems; // FIXME: Fix types
+		// Pop not overriden items
+		if (pops)
+			m_global.pop(pops);
 	}
 }
-
-void BasicBlock::dump()
-{
-	dump(std::cerr, false);
-}
-
-void BasicBlock::dump(std::ostream& _out, bool _dotOutput)
-{
-	llvm::raw_os_ostream out(_out);
-
-	out << (_dotOutput ? "" : "Initial stack:\n");
-	for (auto val : m_initialStack)
-	{
-		if (val == nullptr)
-			out << "  ?";
-		else if (llvm::isa<llvm::ExtractValueInst>(val))
-			out << "  " << val->getName();
-		else if (llvm::isa<llvm::Instruction>(val))
-			out << *val;
-		else
-			out << "  " << *val;
-
-		out << (_dotOutput ? "\\l" : "\n");
-	}
-
-	out << (_dotOutput ? "| " : "Instructions:\n");
-	for (auto ins = m_llvmBB->begin(); ins != m_llvmBB->end(); ++ins)
-		out << *ins << (_dotOutput ? "\\l" : "\n");
-
-	if (! _dotOutput)
-		out << "Current stack (offset = " << m_tosOffset << "):\n";
-	else
-		out << "|";
-
-	for (auto val = m_currentStack.rbegin(); val != m_currentStack.rend(); ++val)
-	{
-		if (*val == nullptr)
-			out << "  ?";
-		else if (llvm::isa<llvm::ExtractValueInst>(*val))
-			out << "  " << (*val)->getName();
-		else if (llvm::isa<llvm::Instruction>(*val))
-			out << **val;
-		else
-			out << "  " << **val;
-		out << (_dotOutput ? "\\l" : "\n");
-	}
-
-	if (! _dotOutput)
-		out << "  ...\n----------------------------------------\n";
-}
-
-
 
 
 }

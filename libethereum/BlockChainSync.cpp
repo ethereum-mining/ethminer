@@ -260,13 +260,13 @@ void BlockChainSync::onPeerBlocks(std::shared_ptr<EthereumPeer> _peer, RLP const
 		else
 			requestBlocks(_peer); // Some of the blocks might have been downloaded by helping peers, proceed anyway
 	}
-	DEV_INVARIANT_CHECK;
+	DEV_INVARIANT_CHECK_HERE;
 }
 
 void BlockChainSync::onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r)
 {
-	DEV_INVARIANT_CHECK;
 	RecursiveGuard l(x_sync);
+	DEV_INVARIANT_CHECK;
 	auto h = BlockInfo::headerHashFromBlock(_r[0].data());
 
 	if (_r.itemCount() != 2)
@@ -441,7 +441,7 @@ void PV60Sync::transition(std::shared_ptr<EthereumPeer> _peer, SyncState _s, boo
 			// Looks like it's the best yet for total difficulty. Set to download.
 			setState(_peer, SyncState::Blocks, isSyncing(_peer), _needHelp);		// will kick off other peers to help if available.
 			requestBlocks(_peer);
-			DEV_INVARIANT_CHECK;
+			DEV_INVARIANT_CHECK_HERE;
 			return;
 		}
 	}
@@ -453,7 +453,7 @@ void PV60Sync::transition(std::shared_ptr<EthereumPeer> _peer, SyncState _s, boo
 		{
 			setState(_peer, SyncState::NewBlocks, true, _needHelp);
 			requestBlocks(_peer);
-			DEV_INVARIANT_CHECK;
+			DEV_INVARIANT_CHECK_HERE;
 			return;
 		}
 	}
@@ -487,7 +487,7 @@ void PV60Sync::transition(std::shared_ptr<EthereumPeer> _peer, SyncState _s, boo
 			setState(_peer, SyncState::Idle, false);
 		}
 		// Otherwise it's fine. We don't care if it's Nothing->Nothing.
-		DEV_INVARIANT_CHECK;
+		DEV_INVARIANT_CHECK_HERE;
 		return;
 	}
 
@@ -799,7 +799,6 @@ void PV60Sync::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, h256s const&
 
 void PV60Sync::abortSync()
 {
-	DEV_INVARIANT_CHECK;
 	// Can't check invariants here since the peers is already removed from the list and the state is not updated yet.
 	bool continueSync = false;
 	if (m_state == SyncState::Blocks)
@@ -828,6 +827,7 @@ void PV60Sync::abortSync()
 		// Just set to idle. Hashchain is keept, Sync will be continued if there are more peers to sync with
 		setState(std::shared_ptr<EthereumPeer>(), SyncState::Idle, false, true);
 	}
+	DEV_INVARIANT_CHECK_HERE;
 }
 
 void PV60Sync::onPeerAborting()
@@ -840,6 +840,7 @@ void PV60Sync::onPeerAborting()
 		m_syncer.reset();
 		abortSync();
 	}
+	DEV_INVARIANT_CHECK_HERE;
 }
 
 bool PV60Sync::invariants() const
@@ -1132,7 +1133,7 @@ void PV61Sync::onPeerHashes(std::shared_ptr<EthereumPeer> _peer, h256s const& _h
 		}
 		requestSubchain(_peer);
 	}
-	DEV_INVARIANT_CHECK;
+	DEV_INVARIANT_CHECK_HERE;
 }
 
 void PV61Sync::onPeerAborting()
@@ -1174,7 +1175,7 @@ void PV61Sync::onPeerAborting()
 	}
 	else if (isPV61Syncing() && m_state == SyncState::Hashes)
 		requestSubchains();
-	DEV_INVARIANT_CHECK;
+	DEV_INVARIANT_CHECK_HERE;
 }
 
 SyncStatus PV61Sync::status() const
