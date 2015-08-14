@@ -105,14 +105,9 @@ void Compiler::resolveJumps()
 		auto nextBlock = it->getNextNode() != m_mainFunc->end() ? it->getNextNode() : m_stopBB;
 		auto term = it->getTerminator();
 
-		if (!term)
-		{
-			// Block may have no terminator if the next instruction is a jump destination.
+		if (!term) // Block may have no terminator if the next instruction is a jump destination.
 			llvm::IRBuilder<>{it}.CreateBr(nextBlock);
-		}
 		else if (auto jump = llvm::dyn_cast<llvm::BranchInst>(term))
-		{
-			// Resolve jump
 			if (jump->getSuccessor(0) == m_jumpTableBB)
 			{
 				auto destIdx = llvm::cast<llvm::ValueAsMetadata>(jump->getMetadata(c_destIdxLabel)->getOperand(0))->getValue();
@@ -128,7 +123,6 @@ void Compiler::resolveJumps()
 				if (jump->isConditional())
 					jump->setSuccessor(1, nextBlock); // Set next block for conditional jumps
 			}
-		}
 	}
 }
 
