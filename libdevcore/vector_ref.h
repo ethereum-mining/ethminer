@@ -12,8 +12,8 @@
 namespace dev
 {
 
-static unsigned char s_cleanseCounter = 0;
-static boost::random_device s_vectorRefEngine;
+extern unsigned char s_cleanseCounter;
+extern boost::random_device s_vectorRefEngine;
 
 /**
  * A modifiable reference to an existing object or vector in memory.
