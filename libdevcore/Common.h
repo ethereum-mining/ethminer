@@ -216,13 +216,12 @@ public:
 class InvariantChecker
 {
 public:
-	InvariantChecker(HasInvariants* _this, char const* _fn, char const* _file, int _line): m_this(_this), m_function(_fn), m_file(_file), m_line(_line) { checkInvariants(); }
-	~InvariantChecker() { checkInvariants(); }
+	InvariantChecker(HasInvariants* _this, char const* _fn, char const* _file, int _line): m_this(_this), m_function(_fn), m_file(_file), m_line(_line) { checkInvariants(_this, _fn , _file, _line, true); }
+	~InvariantChecker() { checkInvariants(m_this, m_function, m_file, m_line, false); }
+	/// Check invariants are met, throw if not.
+	static void checkInvariants(HasInvariants const* _this, char const* _fn, char const* _file, int line, bool _pre);
 
 private:
-	/// Check invariants are met, throw if not.
-	void checkInvariants() const;
-
 	HasInvariants const* m_this;
 	char const* m_function;
 	char const* m_file;
@@ -232,8 +231,10 @@ private:
 /// Scope guard for invariant check in a class derived from HasInvariants.
 #if ETH_DEBUG
 #define DEV_INVARIANT_CHECK ::dev::InvariantChecker __dev_invariantCheck(this, BOOST_CURRENT_FUNCTION, __FILE__, __LINE__)
+#define DEV_INVARIANT_CHECK_HERE ::dev::InvariantChecker::checkInvariants(this, BOOST_CURRENT_FUNCTION, __FILE__, __LINE__, true)
 #else
 #define DEV_INVARIANT_CHECK (void)0;
+#define DEV_INVARIANT_CHECK_HERE (void)0;
 #endif
 
 /// Simple scope-based timer helper.
