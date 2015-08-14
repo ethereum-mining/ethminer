@@ -21,9 +21,12 @@
 
 #pragma once
 
+#if ETH_FATDB
+
 #include <memory>
 #include <QDialog>
 #include <libethcore/Common.h>
+#include "MainFace.h"
 
 namespace Ui { class ExportState; }
 
@@ -35,14 +38,13 @@ namespace eth { class Client; }
 namespace az
 {
 
-class Main;
 
-class ExportStateDialog: public QDialog
+class ExportStateDialog: public QDialog, public Plugin
 {
 	Q_OBJECT
 
 public:
-	explicit ExportStateDialog(Main* _parent = 0);
+	ExportStateDialog(MainFace* _m);
 	virtual ~ExportStateDialog();
 
 private slots:
@@ -51,17 +53,18 @@ private slots:
 	void on_saveButton_clicked();
 
 private:
-	eth::Client* ethereum() const;
+	void showEvent(QShowEvent* _event) override;
 	void fillBlocks();
 	void fillContracts();
 	void generateJSON();
 
 private:
-	std::unique_ptr<Ui::ExportState> ui;
-	Main* m_main;
+	std::unique_ptr<Ui::ExportState> m_ui;
 	int m_recentBlocks = 0;
 	eth::BlockNumber m_block = eth::LatestBlock;
 };
 
 }
 }
+
+#endif //ETH_FATDB
