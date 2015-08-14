@@ -64,8 +64,6 @@ Transact::Transact(MainFace* _c, QWidget* _parent):
 	setValueUnits(ui->valueUnits, ui->value, 0);
 
 	on_destination_currentTextChanged(QString());
-
-	startTimer(100);
 }
 
 Transact::~Transact()
@@ -455,6 +453,7 @@ GasRequirements Transact::determineGasRequirements()
 			m_lastGood = lastGood;
 			m_lowerBound = m_startLowerBound;
 			m_upperBound = m_startUpperBound;
+			killTimer(m_gasCalcTimer);
 			m_gasCalcTimer = startTimer(0);
 			return GasRequirements{m_upperBound, baseGas, m_upperBound - baseGas, (qint64)lastGood.gasRefunded, lastGood};
 		}
