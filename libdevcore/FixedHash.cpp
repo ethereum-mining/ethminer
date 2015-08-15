@@ -30,7 +30,14 @@ boost::random_device dev::s_fixedHashEngine;
 
 h128 dev::fromUUID(std::string const& _uuid)
 {
-	return h128(boost::replace_all_copy(_uuid, "-", ""));
+	try
+	{
+		return h128(boost::replace_all_copy(_uuid, "-", ""));
+	}
+	catch (...)
+	{
+		return h128();
+	}
 }
 
 std::string dev::toUUID(h128 const& _uuid)
