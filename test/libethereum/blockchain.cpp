@@ -73,6 +73,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		BlockHeader biGenesisBlock = constructBlock(o["genesisBlockHeader"].get_obj(), h256{});
 
 		State trueState(OverlayDB(State::openDB(td_stateDB_tmp.path(), h256{}, WithExisting::Kill)), BaseState::Empty);
+		Block trueBlock; //lastBlock of trueBlockchain
 		ImportTest::importState(o["pre"].get_obj(), trueState);
 		o["pre"] = fillJsonWithState(trueState); //convert all fields to hex
 		trueState.commit();
@@ -133,7 +134,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				FullBlockChain<Ethash> bc(rlpGenesisBlock.out(), AccountMap(), td_bc.path(), WithExisting::Kill);
 
 				//OverlayDB database (State::openDB(td_stateDB.path(), h256{}, WithExisting::Kill));
-				State state = importer.m_statePre;
+				State state(OverlayDB(State::openDB(td_stateDB.path(), h256{}, WithExisting::Kill)), BaseState::Empty); //= importer.m_statePre;
+				ImportTest::importState(o["pre"].get_obj(), state);
 				state.commit();
 
 				//import previous blocks
@@ -149,7 +151,6 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					bc.sync(uncleQueue, state.db(), 4);
 					bc.attemptImport(blockFromSet, state.db());
 					vBiBlocks.push_back(BlockHeader(blockFromSet));
-					//state.sync(bc);
 				}
 
 				// get txs
@@ -189,9 +190,9 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				}
 
 				bc.sync(uncleBlockQueue, state.db(), 4);
-				Block block = bc.genesisBlock(state.db()); 
 
-				//mine a new block on top of previously imported
+				Block block = bc.genesisBlock(state.db()); //NOT CLEAR WHAT IT RETURNS IF bc INITIALIZED WITH CUSTOM GENESIS BLOCK
+				block.setBeneficiary(biGenesisBlock.beneficiary());
 				try
 				{
 					block.sync(bc);
@@ -284,7 +285,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					//attempt to import new block to the true blockchain
 					trueBc.sync(uncleBlockQueue, trueState.db(), 4);
 					trueBc.attemptImport(block2.out(), trueState.db());
-					//trueState.sync(trueBc);
+					trueBlock = block; //seems to be the last imported block
 
 					blockSet newBlock;
 					newBlock.first = block2.out();
@@ -316,7 +317,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				AccountMaskMap expectStateMap;
 				State stateExpect(OverlayDB(), BaseState::Empty);
 				ImportTest::importState(o["expect"].get_obj(), stateExpect, expectStateMap);
-				ImportTest::compareStates(stateExpect, trueState, expectStateMap, Options::get().checkState ? WhenError::Throw : WhenError::DontThrow);
+				ImportTest::compareStates(stateExpect, trueBlock.state(), expectStateMap, Options::get().checkState ? WhenError::Throw : WhenError::DontThrow);
 				o.erase(o.find("expect"));
 			}
 
