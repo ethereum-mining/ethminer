@@ -211,6 +211,7 @@
     <property name="title">
      <string>&amp;Debug</string>
     </property>
+    <addaction name="debugPending"/>
     <addaction name="debugCurrent"/>
     <addaction name="debugDumpState"/>
     <addaction name="debugDumpStatePre"/>
@@ -1383,6 +1384,14 @@ font-size: 14pt</string>
   <action name="bulkTransactions">
    <property name="text">
     <string>&amp;Bulk Inject Transactions...</string>
+   </property>
+  </action>
+  <action name="debugPending">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Debug &amp;Pending Transaction</string>
    </property>
   </action>
  </widget>
