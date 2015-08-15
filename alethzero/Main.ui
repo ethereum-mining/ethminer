@@ -172,7 +172,6 @@
     <addaction name="separator"/>
     <addaction name="loadJS"/>
     <addaction name="separator"/>
-    <addaction name="exportState"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -1094,11 +1093,6 @@ font-size: 14pt</string>
   <action name="loadJS">
    <property name="text">
     <string>&amp;Load Javascript...</string>
-   </property>
-  </action>
-  <action name="exportState">
-   <property name="text">
-    <string>&amp;Export State...</string>
    </property>
   </action>
   <action name="debugStepBack">
