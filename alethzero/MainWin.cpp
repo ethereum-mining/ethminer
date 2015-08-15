@@ -73,7 +73,6 @@
 #include "DappLoader.h"
 #include "DappHost.h"
 #include "WebPage.h"
-#include "ExportState.h"
 #include "ui_Main.h"
 #include "ui_GetPassword.h"
 #include "ui_GasPricing.h"
@@ -1028,12 +1027,6 @@ void Main::on_exportKey_triggered()
 		Secret s = retrieveSecret(h);
 		QMessageBox::information(this, "Export Account Key", "Secret key to account " + QString::fromStdString(render(h) + " is:\n" + s.makeInsecure().hex()));
 	}
-}
-
-void Main::on_exportState_triggered()
-{
-	ExportStateDialog dialog(this);
-	dialog.exec();
 }
 
 void Main::on_usePrivate_triggered()
