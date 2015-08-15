@@ -667,9 +667,10 @@ std::string Main::render(dev::Address const& _a) const
 	if (p.size() == 9 && p.find_first_not_of("QWERYUOPASDFGHJKLZXCVBNM1234567890") == string::npos)
 		p = ICAP(p, "XREG").encoded();
 	else
-		DEV_IGNORE_EXCEPTIONS(n = ICAP(_a).encoded());
-	if (n.empty())
-		n = _a.abridged();
+		DEV_IGNORE_EXCEPTIONS(n = ICAP(_a).encoded().substr(0, 8));
+	if (!n.empty())
+		n += " ";
+	n += _a.abridged();
 	return p.empty() ? n : (p + " " + n);
 }
 
@@ -1584,25 +1585,6 @@ void Main::on_transactionQueue_currentItemChanged()
 
 	ui->pendingInfo->setHtml(QString::fromStdString(s.str()));
 	ui->pendingInfo->moveCursor(QTextCursor::Start);
-}
-
-void Main::on_inject_triggered()
-{
-	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
-	try
-	{
-		bytes b = fromHex(s.toStdString(), WhenError::Throw);
-		ethereum()->injectTransaction(b);
-	}
-	catch (BadHexCharacter& _e)
-	{
-		cwarn << "invalid hex character, transaction rejected";
-		cwarn << boost::diagnostic_information(_e);
-	}
-	catch (...)
-	{
-		cwarn << "transaction rejected";
-	}
 }
 
 void Main::on_injectBlock_triggered()
