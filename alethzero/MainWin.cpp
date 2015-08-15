@@ -1022,6 +1022,28 @@ void Main::on_claimPresale_triggered()
 	}
 }
 
+void Main::on_importPresale_triggered()
+{
+	QString s = QFileDialog::getOpenFileName(this, "Claim Account Contents", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
+	try
+	{
+		string pass;
+		KeyPair k = m_keyManager.presaleSecret(dev::contentsString(s.toStdString()), [&](bool){ return (pass = QInputDialog::getText(this, "Enter Password", "Enter the wallet's passphrase", QLineEdit::Password).toStdString()); });
+		cnote << k.address();
+		if (!m_keyManager.hasAccount(k.address()))
+			keyManager().import(k.secret(), "Presale wallet (" + s.toStdString() + ")", pass, "Same password as for the presale wallet");
+		else
+			QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
+	}
+	catch (dev::eth::PasswordUnknown&) {}
+	catch (...)
+	{
+		cerr << "Unhandled exception!" << endl <<
+			boost::current_exception_diagnostic_information();
+		QMessageBox::warning(this, "Key File Invalid", "Could not find secret key definition. This is probably not an Ethereum key file.");
+	}
+}
+
 void Main::on_exportKey_triggered()
 {
 	if (ui->ourAccounts->currentRow() >= 0)

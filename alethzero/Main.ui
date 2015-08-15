@@ -164,6 +164,7 @@
     <addaction name="newTransaction"/>
     <addaction name="importKey"/>
     <addaction name="importKeyFile"/>
+    <addaction name="importPresale"/>
     <addaction name="claimPresale"/>
     <addaction name="exportKey"/>
     <addaction name="reencryptAll"/>
@@ -1392,6 +1393,11 @@ font-size: 14pt</string>
    </property>
    <property name="text">
     <string>Debug &amp;Pending Transaction</string>
+   </property>
+  </action>
+  <action name="importPresale">
+   <property name="text">
+    <string>Import Ether &amp;Presale Wallet...</string>
    </property>
   </action>
  </widget>
