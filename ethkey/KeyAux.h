@@ -144,6 +144,67 @@ public:
 			m_mode = OperationMode::SignTx;
 			m_signKey = argv[++i];
 		}
+		else if (arg == "--tx-data" && i + 1 < argc)
+			try
+			{
+				m_toSign.data = fromHex(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Invalid argument to " << arg << endl;
+				exit(-1);
+			}
+		else if (arg == "--tx-nonce" && i + 1 < argc)
+			try
+			{
+				m_toSign.nonce = u256(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Invalid argument to " << arg << endl;
+				exit(-1);
+			}
+		else if ((arg == "--tx-dest" || arg == "--tx-to" || arg == "--tx-destination") && i + 1 < argc)
+			try
+			{
+				m_toSign.creation = false;
+				m_toSign.to = toAddress(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Invalid argument to " << arg << endl;
+				exit(-1);
+			}
+		else if (arg == "--tx-gas" && i + 1 < argc)
+			try
+			{
+				m_toSign.gas = u256(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Invalid argument to " << arg << endl;
+				exit(-1);
+			}
+		else if (arg == "--tx-gasprice" && i + 1 < argc)
+			try
+			{
+				m_toSign.gasPrice = u256(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Invalid argument to " << arg << endl;
+				exit(-1);
+			}
+		else if (arg == "--tx-value" && i + 1 < argc)
+			try
+			{
+				m_toSign.value = u256(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Invalid argument to " << arg << endl;
+				exit(-1);
+			}
 		else if (arg == "--decode-tx")
 			m_mode = OperationMode::DecodeTx;
 		else if (arg == "--import-bare")
@@ -315,30 +376,28 @@ public:
 		case OperationMode::SignTx:
 		{
 			Secret s = getSecret(m_signKey);
+			if (m_inputs.empty())
+				m_inputs.push_back(string());
 			for (string const& i: m_inputs)
 			{
-				bool isFile;
-				bytes b = inputData(i, &isFile);
-				if (b.empty())
-					cerr << "Unknown file or bad hex: '" << i << "'" << endl;
-				else
-					try
+				bool isFile = false;
+				try
+				{
+					TransactionBase t = i.empty() ? TransactionBase(m_toSign) : TransactionBase(inputData(i, &isFile), CheckTransaction::None);
+					t.sign(s);
+					cout << t.sha3() << ": ";
+					if (isFile)
 					{
-						TransactionBase t(b, CheckTransaction::None);
-						t.sign(s);
-						cout << t.sha3() << ": ";
-						if (isFile)
-						{
-							writeFile(i + ".signed", toHex(t.rlp()));
-							cout << i + ".signed" << endl;
-						}
-						else
-							cout << toHex(t.rlp()) << endl;
+						writeFile(i + ".signed", toHex(t.rlp()));
+						cout << i + ".signed" << endl;
 					}
-					catch (Exception& ex)
-					{
-						cerr << "Invalid transaction: " << ex.what() << endl;
-					}
+					else
+						cout << toHex(t.rlp()) << endl;
+				}
+				catch (Exception& ex)
+				{
+					cerr << "Invalid transaction: " << ex.what() << endl;
+				}
 			}
 			break;
 		}
@@ -699,6 +758,7 @@ private:
 
 	/// Signing
 	string m_signKey;
+	TransactionSkeleton m_toSign;
 
 	string m_kdf = "scrypt";
 	map<string, string> m_kdfParams;
