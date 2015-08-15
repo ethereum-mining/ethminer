@@ -44,7 +44,7 @@ namespace az
 {
 
 #define DEV_AZ_NOTE_PLUGIN(ClassName) \
-	static bool s_notePlugin = [](){ MainFace::notePlugin([](MainFace* m){ return new ClassName(m); }); return true; }()
+	static bool s_notePlugin __attribute__((unused)) = [](){ MainFace::notePlugin([](MainFace* m){ return new ClassName(m); }); return true; }()
 
 class Plugin;
 class MainFace;
