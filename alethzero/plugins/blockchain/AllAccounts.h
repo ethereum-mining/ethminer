@@ -21,7 +21,7 @@
 
 #pragma once
 
-#if ETH_FATDB
+#if ETH_FATDB || !ETH_TRUE
 
 #include <QListWidget>
 #include <QPlainTextEdit>
