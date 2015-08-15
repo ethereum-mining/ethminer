@@ -21,6 +21,7 @@
 
 #include "OtherAccounts.h"
 #include <QSettings>
+#include <QMessageBox>
 #include <libdevcore/Log.h>
 #include <libethereum/Client.h>
 #include <ui_OtherAccounts.h>
@@ -46,12 +47,22 @@ void OtherAccounts::import()
 	if (d.exec() == QDialog::Accepted)
 	{
 		QStringList sl = u.accounts->toPlainText().split("\n");
+		unsigned line = 1;
 		for (QString const& s: sl)
 		{
-			Address addr = dev::eth::toAddress(s.section(QRegExp("[ \\0\\t]+"), 0, 0).toStdString());
-			string name = s.section(QRegExp("[ \\0\\t]+"), 1).toStdString();
-			m_toName[addr] = name;
-			m_toAddress[name] = addr;
+			try
+			{
+				Address addr = dev::eth::toAddress(s.section(QRegExp("[ \\0\\t]+"), 0, 0).trimmed().toStdString());
+				string name = s.section(QRegExp("[ \\0\\t]+"), 1).trimmed().toStdString();
+				m_toName[addr] = name;
+				m_toAddress[name] = addr;
+			}
+			catch (...)
+			{
+				if (QMessageBox::warning(&d, "Invalid Line Format", "Line format or address given on line " + QString::number(line) + " is invalid:\n" + s, QMessageBox::Abort, QMessageBox::Ignore) == QMessageBox::Abort)
+					break;
+			}
+			line++;
 		}
 		main()->noteSettingsChanged();
 		noteKnownChanged();
