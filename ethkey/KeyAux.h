@@ -228,17 +228,16 @@ public:
 		{
 			if (h128 u = fromUUID(_signKey))
 				return Secret(secretStore().secret(u, [&](){ return getPassword("Enter password for key: "); }));
-			else if (Address a = Address(_signKey))
-				return keyManager().secret(a, [&](){ return getPassword("Enter password for key (hint:" + keyManager().passwordHint(a) + "): "); });
-			else if (_signKey.substr(0, 6) == "brain:")
+			if (_signKey.substr(0, 6) == "brain:")
 				return KeyManager::brain(_signKey.substr(6));
-			else if (_signKey == "brain")
+			if (_signKey == "brain")
 				return KeyManager::brain(getPassword("Enter brain wallet phrase: "));
-			else
-			{
-				cerr << "Bad file, UUID and address: " << _signKey << endl;
-				exit(-1);
-			}
+			Address a;
+			DEV_IGNORE_EXCEPTIONS(a = Address(_signKey));
+			if (a)
+				return keyManager().secret(a, [&](){ return getPassword("Enter password for key (hint:" + keyManager().passwordHint(a) + "): "); });
+			cerr << "Bad file, UUID and address: " << _signKey << endl;
+			exit(-1);
 		}
 	}
 
