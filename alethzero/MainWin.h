@@ -157,6 +157,7 @@ private slots:
 	void on_reencryptAll_triggered();
 	void on_importKeyFile_triggered();
 	void on_claimPresale_triggered();
+	void on_importPresale_triggered();
 	void on_exportKey_triggered();
 
 	// Tools
