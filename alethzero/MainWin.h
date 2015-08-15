@@ -191,6 +191,7 @@ private slots:
 
 	// Debugger
 	void on_debugCurrent_triggered();
+	void on_debugPending_triggered();
 	void on_debugDumpState_triggered() { debugDumpState(1); }
 	void on_debugDumpStatePre_triggered() { debugDumpState(0); }
 	void on_dumpBlockState_triggered();
@@ -223,7 +224,7 @@ private:
 	Address getCurrencies() const;
 
 	void updateFee();
-	void readSettings(bool _skipGeometry = false);
+	void readSettings(bool _skipGeometry = false, bool _onlyGeometry = false);
 	void writeSettings();
 
 	void setPrivateChain(QString const& _private, bool _forceConfigure = false);

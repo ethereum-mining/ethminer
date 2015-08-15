@@ -240,7 +240,7 @@ Main::Main(QWidget* _parent):
 	ui->vmSmart->setEnabled(false);
 #endif
 
-	readSettings();
+	readSettings(true, false);
 
 	m_transact = new Transact(this, this);
 	m_transact->setWindowFlags(Qt::Dialog);
@@ -262,6 +262,8 @@ Main::Main(QWidget* _parent):
 
 	for (auto const& i: *s_linkedPlugins)
 		initPlugin(i(this));
+
+	readSettings(false, true);
 }
 
 Main::~Main()
@@ -850,13 +852,15 @@ Secret Main::retrieveSecret(Address const& _address) const
 	}
 }
 
-void Main::readSettings(bool _skipGeometry)
+void Main::readSettings(bool _skipGeometry, bool _onlyGeometry)
 {
 	QSettings s("ethereum", "alethzero");
 
 	if (!_skipGeometry)
 		restoreGeometry(s.value("geometry").toByteArray());
 	restoreState(s.value("windowState").toByteArray());
+	if (_onlyGeometry)
+		return;
 
 	forEach([&](std::shared_ptr<Plugin> p)
 	{
@@ -1543,6 +1547,7 @@ void Main::on_transactionQueue_currentItemChanged()
 	int i = ui->transactionQueue->currentRow();
 	if (i >= 0 && i < (int)ethereum()->pending().size())
 	{
+		ui->debugPending->setEnabled(true);
 		Transaction tx(ethereum()->pending()[i]);
 		TransactionReceipt receipt(ethereum()->postState().receipt(i));
 		auto ss = tx.safeSender();
@@ -1582,6 +1587,8 @@ void Main::on_transactionQueue_currentItemChanged()
 //		s << "Pre: " << fs.rootHash() << "<br/>";
 //		s << "Post: <b>" << ts.rootHash() << "</b>";
 	}
+	else
+		ui->debugPending->setEnabled(false);
 
 	ui->pendingInfo->setHtml(QString::fromStdString(s.str()));
 	ui->pendingInfo->moveCursor(QTextCursor::Start);
@@ -1777,6 +1784,22 @@ void Main::on_debugCurrent_triggered()
 			dw.exec();
 		}
 	}
+}
+
+void Main::on_debugPending_triggered()
+{
+	int txi = ui->transactionQueue->currentRow();
+	if (txi == -1)
+		return;
+
+	Block b = ethereum()->postState();
+	bytes t = b.pending()[txi].rlp();
+	State s(ethereum()->state(txi));
+	BlockInfo bi(b.info());
+	Executive e(s, ethereum()->blockChain(), EnvInfo(bi));
+	Debugger dw(this, this);
+	dw.populate(e, Transaction(t, CheckTransaction::Everything));
+	dw.exec();
 }
 
 std::string minHex(h256 const& _h)

@@ -135,6 +135,9 @@ public:
 	/// @returns the brainwallet secret for the given seed.
 	static Secret brain(std::string const& _seed);
 
+	/// @returns the HD subkey for a given key.
+	static Secret subkey(Secret const& _s, unsigned _index);
+
 private:
 	std::string getPassword(h128 const& _uuid, std::function<std::string()> const& _pass = DontKnowThrow) const;
 	std::string getPassword(h256 const& _passHash, std::function<std::string()> const& _pass = DontKnowThrow) const;
