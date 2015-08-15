@@ -289,6 +289,8 @@ public:
 		{
 			if (h128 u = fromUUID(_signKey))
 				return Secret(secretStore().secret(u, [&](){ return getPassword("Enter password for key: "); }));
+			if (_signKey.substr(0, 6) == "brain#" && _signKey.find(":") != string::npos)
+				return KeyManager::subkey(KeyManager::brain(_signKey.substr(_signKey.find(":"))), stoul(_signKey.substr(6, _signKey.find(":" - 7))));
 			if (_signKey.substr(0, 6) == "brain:")
 				return KeyManager::brain(_signKey.substr(6));
 			if (_signKey == "brain")
@@ -644,7 +646,7 @@ public:
 			<< endl
 			<< "Transaction operating modes:" << endl
 			<< "    -d,--decode-tx [<hex>|<file>]  Decode given transaction." << endl
-			<< "    -s,--sign-tx [ <address>|<uuid>|<file>|brain(:<brain-phrase>) ] [ <hex>|<file> , ... ]  (Re-)Sign given transaction." << endl
+			<< "    -s,--sign-tx [ <address>|<uuid>|<file>|brain((#<HD-index>):<brain-phrase>) ] [ <hex>|<file> , ... ]  (Re-)Sign given transaction." << endl
 			<< endl
 			<< "Encryption configuration:" << endl
 			<< "    --kdf <kdfname>  Specify KDF to use when encrypting (default: sc	rypt)" << endl

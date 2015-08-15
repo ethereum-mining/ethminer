@@ -224,6 +224,16 @@ Secret KeyManager::brain(string const& _seed)
 	return ret;
 }
 
+Secret KeyManager::subkey(Secret const& _s, unsigned _index)
+{
+	RLPStream out(2);
+	out << _s.ref();
+	out << _index;
+	bytesSec r;
+	out.swapOut(r.writable());
+	return sha3(r);
+}
+
 Address KeyManager::importBrain(string const& _seed, string const& _accountName, string const& _passwordHint)
 {
 	Address addr = toAddress(brain(_seed));
