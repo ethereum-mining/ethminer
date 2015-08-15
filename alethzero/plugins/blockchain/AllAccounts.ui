@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
+    <width>405</width>
     <height>300</height>
    </rect>
   </property>
@@ -46,6 +46,9 @@
        <property name="checkable">
         <bool>true</bool>
        </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
       </widget>
      </item>
      <item>
@@ -62,15 +65,15 @@
       </widget>
      </item>
      <item>
-      <widget class="QToolButton" name="onlyNamed">
+      <widget class="QToolButton" name="onlyKnown">
        <property name="text">
-        <string>Only Named</string>
+        <string>Only Known</string>
        </property>
        <property name="checkable">
         <bool>true</bool>
        </property>
        <property name="checked">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
       </widget>
      </item>

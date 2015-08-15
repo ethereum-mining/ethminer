@@ -14,12 +14,12 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file AllAccounts.h
+/** @file AllAccounts.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2015
  */
 
-#if ETH_FATDB
+#if ETH_FATDB || !ETH_TRUE
 
 #include "AllAccounts.h"
 #include <sstream>
@@ -51,7 +51,7 @@ AllAccounts::AllAccounts(MainFace* _m):
 	connect(m_ui->accountsFilter, SIGNAL(textChanged(QString)), SLOT(onAllChange()));
 	connect(m_ui->showBasic, SIGNAL(toggled(bool)), SLOT(onAllChange()));
 	connect(m_ui->showContracts, SIGNAL(toggled(bool)), SLOT(onAllChange()));
-	connect(m_ui->onlyNamed, SIGNAL(toggled(bool)), SLOT(onAllChange()));
+	connect(m_ui->onlyKnown, SIGNAL(toggled(bool)), SLOT(onAllChange()));
 }
 
 AllAccounts::~AllAccounts()
@@ -72,20 +72,24 @@ void AllAccounts::refresh()
 	m_ui->accounts->clear();
 	bool showContract = m_ui->showContracts->isChecked();
 	bool showBasic = m_ui->showBasic->isChecked();
-	bool onlyNamed = m_ui->onlyNamed->isChecked();
-	auto as = ethereum()->addresses();
-	sort(as.begin(), as.end());
+	bool onlyKnown = m_ui->onlyKnown->isChecked();
+
+	Addresses as;
+	if (onlyKnown)
+		as = main()->allKnownAddresses();
+	else
+		as = ethereum()->addresses();
+
 	for (auto const& i: as)
 	{
 		bool isContract = (ethereum()->codeHashAt(i) != EmptySHA3);
 		if (!((showContract && isContract) || (showBasic && !isContract)))
 			continue;
 		string r = static_cast<Context*>(main())->render(i);
-		if (onlyNamed && !(r.find('"') != string::npos || r.substr(0, 2) == "XE"))
-			continue;
 		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(ethereum()->balanceAt(i)).c_str()).arg(QString::fromStdString(r)).arg((unsigned)ethereum()->countAt(i)), m_ui->accounts))
 			->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
 	}
+	m_ui->accounts->sortItems();
 #endif
 	m_ui->refreshAccounts->setEnabled(false);
 }
