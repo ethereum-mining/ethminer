@@ -55,16 +55,44 @@ void ImportKey::import()
 	string lastKey;
 	Secret lastSecret;
 	string lastPassword;
+	Address lastAddress;
+
+	auto updateAction = [&](){
+		if (!u.import_2->isEnabled())
+			u.action->clear();
+		else if (lastKey.empty() && !lastSecret)
+			u.action->setText("Import brainwallet with given address and hint");
+		else if (!lastKey.empty() && !lastSecret)
+		{
+			h256 ph;
+			DEV_IGNORE_EXCEPTIONS(ph = h256(u.passwordHash->text().toStdString()));
+			if (ph)
+				u.action->setText("Import untouched key with given address and hint");
+			else
+				u.action->setText("Import untouched key with given address, password hash and hint");
+		}
+		else
+		{
+			bool mp = u.noPassword->isChecked();
+			if (mp)
+				u.action->setText("Import recast key using master password and given hint");
+			else
+				u.action->setText("Import recast key with given password and hint");
+		}
+	};
 
 	auto updateImport = [&](){
-		u.import_2->setDisabled(u.addressOut->text().isEmpty() || u.name->text().isEmpty());
+		u.import_2->setDisabled(u.addressOut->text().isEmpty() || u.name->text().isEmpty() || !(u.oldPassword->isChecked() || u.newPassword->isChecked() || u.noPassword->isChecked()));
+		updateAction();
 	};
 
 	auto updateAddress = [&](){
+		lastAddress.clear();
 		string as = u.address->text().toStdString();
 		try
 		{
-			u.addressOut->setText(QString::fromStdString(main()->render(eth::toAddress(as))));
+			lastAddress = eth::toAddress(as);
+			u.addressOut->setText(QString::fromStdString(main()->render(lastAddress)));
 		}
 		catch (...)
 		{
@@ -75,6 +103,7 @@ void ImportKey::import()
 
 	auto updatePassword = [&](){
 		u.passwordHash->setText(QString::fromStdString(sha3(u.password->text().toStdString()).hex()));
+		updateAction();
 	};
 
 	function<void()> updateKey = [&](){
@@ -116,9 +145,12 @@ void ImportKey::import()
 		u.oldPassword->setEnabled(!!lastSecret);
 		u.newPassword->setEnabled(!!lastSecret);
 		u.noPassword->setEnabled(!!lastSecret);
+		u.masterLabel->setEnabled(!!lastSecret);
+		u.oldLabel->setEnabled(!!lastSecret);
+		u.showPassword->setEnabled(!!lastSecret);
 		u.password->setEnabled(!!lastSecret);
 		u.passwordHash->setReadOnly(!!lastSecret);
-		u.address->setReadOnly(!lastSecret);
+		u.address->setReadOnly(!!lastSecret);
 		if (lastSecret)
 		{
 			u.oldPassword->setEnabled(!lastPassword.empty());
@@ -129,15 +161,18 @@ void ImportKey::import()
 		}
 		else
 			u.address->clear();
+		updateImport();
 	};
 
 	connect(u.noPassword, &QRadioButton::clicked, [&](){
 		u.passwordHash->clear();
-		u.hint->setText("Same as master password.");
+		u.hint->setText("No additional password (same as master password).");
+		updateAction();
 	});
 	connect(u.oldPassword, &QRadioButton::clicked, [&](){
 		u.passwordHash->setText(QString::fromStdString(sha3(lastPassword).hex()));
 		u.hint->setText("Same as original password for file " + QString::fromStdString(lastKey));
+		updateAction();
 	});
 	connect(u.newPassword, &QRadioButton::clicked, [&](){
 		u.hint->setText("");
@@ -147,6 +182,7 @@ void ImportKey::import()
 	connect(u.address, &QLineEdit::textChanged, [&](){ updateAddress(); });
 	connect(u.key, &QLineEdit::textEdited, [&](){ updateKey(); });
 	connect(u.name, &QLineEdit::textEdited, [&](){ updateImport(); });
+	connect(u.showPassword, &QCheckBox::toggled, [&](bool show){ u.password->setEchoMode(show ? QLineEdit::Normal : QLineEdit::Password); });
 	connect(u.openKey, &QToolButton::clicked, [&](){
 		QString fn = QFileDialog::getOpenFileName(main(), "Open Key File", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
 		if (!fn.isEmpty())
@@ -158,23 +194,28 @@ void ImportKey::import()
 
 	if (d.exec() == QDialog::Accepted)
 	{
-		Address a = ICAP::decoded(u.addressOut->text().toStdString()).direct();
+		Address a = ICAP::decoded(lastAddress).direct();
 		string n = u.name->text().toStdString();
-		h256 ph;
-		DEV_IGNORE_EXCEPTIONS(ph = h256(u.passwordHash->text().toStdString()));
 		string h = u.hint->text().toStdString();
-		bool mp = u.noPassword->isChecked();
-		string p = mp ? string() : u.oldPassword ? lastPassword : u.password->text().toStdString();
 
 		// check for a brain wallet import
 		if (lastKey.empty() && !lastSecret)
 			main()->keyManager().importExistingBrain(a, n, h);
 		else if (!lastKey.empty() && !lastSecret)
+		{
+			h256 ph;
+			DEV_IGNORE_EXCEPTIONS(ph = h256(u.passwordHash->text().toStdString()));
 			main()->keyManager().importExisting(main()->keyManager().store().importKey(lastKey), n, a, ph, h);
-		else if (mp)
-			main()->keyManager().import(lastSecret, n);
+		}
 		else
-			main()->keyManager().import(lastSecret, n, p, h);
+		{
+			bool mp = u.noPassword->isChecked();
+			string p = mp ? string() : u.oldPassword ? lastPassword : u.password->text().toStdString();
+			if (mp)
+				main()->keyManager().import(lastSecret, n);
+			else
+				main()->keyManager().import(lastSecret, n, p, h);
+		}
 
 		main()->noteKeysChanged();
 	}
