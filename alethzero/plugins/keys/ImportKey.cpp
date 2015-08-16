@@ -194,7 +194,7 @@ void ImportKey::import()
 
 	if (d.exec() == QDialog::Accepted)
 	{
-		Address a = ICAP::decoded(lastAddress).direct();
+		Address a = lastAddress;
 		string n = u.name->text().toStdString();
 		string h = u.hint->text().toStdString();
 
