@@ -265,7 +265,10 @@
  </widget>
  <tabstops>
   <tabstop>name</tabstop>
+  <tabstop>key</tabstop>
+  <tabstop>openKey</tabstop>
   <tabstop>address</tabstop>
+  <tabstop>addressOut</tabstop>
   <tabstop>noPassword</tabstop>
   <tabstop>oldPassword</tabstop>
   <tabstop>newPassword</tabstop>
