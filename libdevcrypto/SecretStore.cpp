@@ -107,6 +107,14 @@ bytesSec SecretStore::secret(h128 const& _uuid, function<string()> const& _pass,
 	return key;
 }
 
+bytesSec SecretStore::secret(string const& _content, string const& _pass)
+{
+	js::mValue u = upgraded(_content);
+	if (u.type() != js::obj_type)
+		return bytesSec();
+	return decrypt(js::write_string(u.get_obj()["crypto"], false), _pass);
+}
+
 h128 SecretStore::importSecret(bytesSec const& _s, string const& _pass)
 {
 	h128 r;
@@ -169,8 +177,6 @@ void SecretStore::save(string const& _keysPath)
 void SecretStore::load(string const& _keysPath)
 {
 	fs::path p(_keysPath);
-	fs::create_directories(p);
-	DEV_IGNORE_EXCEPTIONS(fs::permissions(p, fs::owner_all));
 	for (fs::directory_iterator it(p); it != fs::directory_iterator(); ++it)
 		if (fs::is_regular_file(it->path()))
 			readKey(it->path().string(), true);
