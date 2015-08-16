@@ -243,6 +243,13 @@ Address KeyManager::importBrain(string const& _seed, string const& _accountName,
 	return addr;
 }
 
+void KeyManager::importExistingBrain(Address const& _a, string const& _accountName, string const& _passwordHint)
+{
+	m_keyInfo[_a].accountName = _accountName;
+	m_keyInfo[_a].passwordHint = _passwordHint;
+	write();
+}
+
 void KeyManager::importExisting(h128 const& _uuid, string const& _info, string const& _pass, string const& _passwordHint)
 {
 	bytesSec key = m_store.secret(_uuid, [&](){ return _pass; });
