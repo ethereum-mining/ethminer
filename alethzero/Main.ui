@@ -132,7 +132,7 @@
      <x>0</x>
      <y>0</y>
      <width>1617</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -164,6 +164,7 @@
     <addaction name="newTransaction"/>
     <addaction name="importKey"/>
     <addaction name="importKeyFile"/>
+    <addaction name="importPresale"/>
     <addaction name="claimPresale"/>
     <addaction name="exportKey"/>
     <addaction name="reencryptAll"/>
@@ -172,7 +173,6 @@
     <addaction name="separator"/>
     <addaction name="loadJS"/>
     <addaction name="separator"/>
-    <addaction name="exportState"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -188,7 +188,6 @@
     <addaction name="paranoia"/>
     <addaction name="clearPending"/>
     <addaction name="killBlockchain"/>
-    <addaction name="inject"/>
     <addaction name="injectBlock"/>
     <addaction name="forceMining"/>
     <addaction name="separator"/>
@@ -213,6 +212,7 @@
     <property name="title">
      <string>&amp;Debug</string>
     </property>
+    <addaction name="debugPending"/>
     <addaction name="debugCurrent"/>
     <addaction name="debugDumpState"/>
     <addaction name="debugDumpStatePre"/>
@@ -1097,11 +1097,6 @@ font-size: 14pt</string>
     <string>&amp;Load Javascript...</string>
    </property>
   </action>
-  <action name="exportState">
-   <property name="text">
-    <string>&amp;Export State...</string>
-   </property>
-  </action>
   <action name="debugStepBack">
    <property name="enabled">
     <bool>false</bool>
@@ -1385,6 +1380,24 @@ font-size: 14pt</string>
   <action name="dumpBlockState">
    <property name="text">
     <string>Dump &amp;Block State as JSON...</string>
+   </property>
+  </action>
+  <action name="bulkTransactions">
+   <property name="text">
+    <string>&amp;Bulk Inject Transactions...</string>
+   </property>
+  </action>
+  <action name="debugPending">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Debug &amp;Pending Transaction</string>
+   </property>
+  </action>
+  <action name="importPresale">
+   <property name="text">
+    <string>Import Ether &amp;Presale Wallet...</string>
    </property>
   </action>
  </widget>

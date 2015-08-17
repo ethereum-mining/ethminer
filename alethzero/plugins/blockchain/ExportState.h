@@ -14,51 +14,57 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file AllAccounts.h
- * @author Gav Wood <i@gavwood.com>
+/** @file ExportState.h
+ * @author Arkadiy Paronyan <arkadiy@ethdev.com>
  * @date 2015
  */
 
 #pragma once
 
-#if ETH_FATDB || !ETH_TRUE
+#if ETH_FATDB
 
-#include <QListWidget>
-#include <QPlainTextEdit>
+#include <memory>
+#include <QDialog>
+#include <libethcore/Common.h>
 #include "MainFace.h"
 
-namespace Ui
-{
-class AllAccounts;
-}
+namespace Ui { class ExportState; }
 
 namespace dev
 {
+
+namespace eth { class Client; }
+
 namespace az
 {
 
-class AllAccounts: public QObject, public Plugin
+
+class ExportStateDialog: public QDialog, public Plugin
 {
 	Q_OBJECT
 
 public:
-	AllAccounts(MainFace* _m);
-	~AllAccounts();
+	ExportStateDialog(MainFace* _m);
+	virtual ~ExportStateDialog();
 
 private slots:
-	void on_accounts_currentItemChanged();
-	void on_accounts_doubleClicked();
-
-	void onAllChange();
-	void refresh();
+	void on_block_editTextChanged();
+	void on_block_currentIndexChanged(int _index);
+	void on_saveButton_clicked();
 
 private:
-	void installWatches();
+	void showEvent(QShowEvent* _event) override;
+	void fillBlocks();
+	void fillContracts();
+	void generateJSON();
 
-	Ui::AllAccounts* m_ui;
+private:
+	std::unique_ptr<Ui::ExportState> m_ui;
+	int m_recentBlocks = 0;
+	eth::BlockNumber m_block = eth::LatestBlock;
 };
 
 }
 }
 
-#endif
+#endif //ETH_FATDB
