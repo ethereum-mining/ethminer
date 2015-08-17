@@ -71,7 +71,7 @@ public:
 	{
 		static unsigned char s_cleanseCounter = 0;
 		uint8_t* p = (uint8_t*)begin();
-		size_t len = (uint8_t*)end() - p;
+		size_t const len = (uint8_t*)end() - p;
 		size_t loop = len;
 		size_t count = s_cleanseCounter;
 		while (loop--)
@@ -83,6 +83,7 @@ public:
 		if (p)
 			count += (63 + (size_t)p);
 		s_cleanseCounter = (uint8_t)count;
+		memset((uint8_t*)begin(), 0, len);
 	}
 
 	_T* begin() { return m_data; }

@@ -73,7 +73,6 @@
 #include "DappLoader.h"
 #include "DappHost.h"
 #include "WebPage.h"
-#include "ExportState.h"
 #include "ui_Main.h"
 #include "ui_GetPassword.h"
 #include "ui_GasPricing.h"
@@ -241,7 +240,7 @@ Main::Main(QWidget* _parent):
 	ui->vmSmart->setEnabled(false);
 #endif
 
-	readSettings();
+	readSettings(true, false);
 
 	m_transact = new Transact(this, this);
 	m_transact->setWindowFlags(Qt::Dialog);
@@ -263,6 +262,8 @@ Main::Main(QWidget* _parent):
 
 	for (auto const& i: *s_linkedPlugins)
 		initPlugin(i(this));
+
+	readSettings(false, true);
 }
 
 Main::~Main()
@@ -668,9 +669,10 @@ std::string Main::render(dev::Address const& _a) const
 	if (p.size() == 9 && p.find_first_not_of("QWERYUOPASDFGHJKLZXCVBNM1234567890") == string::npos)
 		p = ICAP(p, "XREG").encoded();
 	else
-		DEV_IGNORE_EXCEPTIONS(n = ICAP(_a).encoded());
-	if (n.empty())
-		n = _a.abridged();
+		DEV_IGNORE_EXCEPTIONS(n = ICAP(_a).encoded().substr(0, 8));
+	if (!n.empty())
+		n += " ";
+	n += _a.abridged();
 	return p.empty() ? n : (p + " " + n);
 }
 
@@ -850,13 +852,15 @@ Secret Main::retrieveSecret(Address const& _address) const
 	}
 }
 
-void Main::readSettings(bool _skipGeometry)
+void Main::readSettings(bool _skipGeometry, bool _onlyGeometry)
 {
 	QSettings s("ethereum", "alethzero");
 
 	if (!_skipGeometry)
 		restoreGeometry(s.value("geometry").toByteArray());
 	restoreState(s.value("windowState").toByteArray());
+	if (_onlyGeometry)
+		return;
 
 	forEach([&](std::shared_ptr<Plugin> p)
 	{
@@ -1018,6 +1022,28 @@ void Main::on_claimPresale_triggered()
 	}
 }
 
+void Main::on_importPresale_triggered()
+{
+	QString s = QFileDialog::getOpenFileName(this, "Claim Account Contents", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
+	try
+	{
+		string pass;
+		KeyPair k = m_keyManager.presaleSecret(dev::contentsString(s.toStdString()), [&](bool){ return (pass = QInputDialog::getText(this, "Enter Password", "Enter the wallet's passphrase", QLineEdit::Password).toStdString()); });
+		cnote << k.address();
+		if (!m_keyManager.hasAccount(k.address()))
+			keyManager().import(k.secret(), "Presale wallet (" + s.toStdString() + ")", pass, "Same password as for the presale wallet");
+		else
+			QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
+	}
+	catch (dev::eth::PasswordUnknown&) {}
+	catch (...)
+	{
+		cerr << "Unhandled exception!" << endl <<
+			boost::current_exception_diagnostic_information();
+		QMessageBox::warning(this, "Key File Invalid", "Could not find secret key definition. This is probably not an Ethereum key file.");
+	}
+}
+
 void Main::on_exportKey_triggered()
 {
 	if (ui->ourAccounts->currentRow() >= 0)
@@ -1027,12 +1053,6 @@ void Main::on_exportKey_triggered()
 		Secret s = retrieveSecret(h);
 		QMessageBox::information(this, "Export Account Key", "Secret key to account " + QString::fromStdString(render(h) + " is:\n" + s.makeInsecure().hex()));
 	}
-}
-
-void Main::on_exportState_triggered()
-{
-	ExportStateDialog dialog(this);
-	dialog.exec();
 }
 
 void Main::on_usePrivate_triggered()
@@ -1549,6 +1569,7 @@ void Main::on_transactionQueue_currentItemChanged()
 	int i = ui->transactionQueue->currentRow();
 	if (i >= 0 && i < (int)ethereum()->pending().size())
 	{
+		ui->debugPending->setEnabled(true);
 		Transaction tx(ethereum()->pending()[i]);
 		TransactionReceipt receipt(ethereum()->postState().receipt(i));
 		auto ss = tx.safeSender();
@@ -1588,28 +1609,11 @@ void Main::on_transactionQueue_currentItemChanged()
 //		s << "Pre: " << fs.rootHash() << "<br/>";
 //		s << "Post: <b>" << ts.rootHash() << "</b>";
 	}
+	else
+		ui->debugPending->setEnabled(false);
 
 	ui->pendingInfo->setHtml(QString::fromStdString(s.str()));
 	ui->pendingInfo->moveCursor(QTextCursor::Start);
-}
-
-void Main::on_inject_triggered()
-{
-	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
-	try
-	{
-		bytes b = fromHex(s.toStdString(), WhenError::Throw);
-		ethereum()->injectTransaction(b);
-	}
-	catch (BadHexCharacter& _e)
-	{
-		cwarn << "invalid hex character, transaction rejected";
-		cwarn << boost::diagnostic_information(_e);
-	}
-	catch (...)
-	{
-		cwarn << "transaction rejected";
-	}
 }
 
 void Main::on_injectBlock_triggered()
@@ -1804,6 +1808,22 @@ void Main::on_debugCurrent_triggered()
 	}
 }
 
+void Main::on_debugPending_triggered()
+{
+	int txi = ui->transactionQueue->currentRow();
+	if (txi == -1)
+		return;
+
+	Block b = ethereum()->postState();
+	bytes t = b.pending()[txi].rlp();
+	State s(ethereum()->state(txi));
+	BlockInfo bi(b.info());
+	Executive e(s, ethereum()->blockChain(), EnvInfo(bi));
+	Debugger dw(this, this);
+	dw.populate(e, Transaction(t, CheckTransaction::Everything));
+	dw.exec();
+}
+
 std::string minHex(h256 const& _h)
 {
 	unsigned i = 0;
@@ -1986,83 +2006,6 @@ void Main::keysChanged()
 {
 	emit keyManagerChanged();
 	onBalancesChange();
-}
-
-bool beginsWith(Address _a, bytes const& _b)
-{
-	for (unsigned i = 0; i < min<unsigned>(20, _b.size()); ++i)
-		if (_a[i] != _b[i])
-			return false;
-	return true;
-}
-
-void Main::on_newAccount_triggered()
-{
-	bool ok = true;
-	enum { NoVanity = 0, DirectICAP, FirstTwo, FirstTwoNextTwo, FirstThree, FirstFour, StringMatch };
-	QStringList items = {"No vanity (instant)", "Direct ICAP address", "Two pairs first (a few seconds)", "Two pairs first and second (a few minutes)", "Three pairs first (a few minutes)", "Four pairs first (several hours)", "Specific hex string"};
-	unsigned v = items.QList<QString>::indexOf(QInputDialog::getItem(this, "Vanity Key?", "Would you a vanity key? This could take several hours.", items, 1, false, &ok));
-	if (!ok)
-		return;
-
-	bytes bs;
-	if (v == StringMatch)
-	{
-		QString s = QInputDialog::getText(this, "Vanity Beginning?", "Enter some hex digits that it should begin with.\nNOTE: The more you enter, the longer generation will take.", QLineEdit::Normal, QString(), &ok);
-		if (!ok)
-			return;
-		bs = fromHex(s.toStdString());
-	}
-
-	KeyPair p;
-	bool keepGoing = true;
-	unsigned done = 0;
-	function<void()> f = [&]() {
-		KeyPair lp;
-		while (keepGoing)
-		{
-			done++;
-			if (done % 1000 == 0)
-				cnote << "Tried" << done << "keys";
-			lp = KeyPair::create();
-			auto a = lp.address();
-			if (v == NoVanity ||
-				(v == DirectICAP && !a[0]) ||
-				(v == FirstTwo && a[0] == a[1]) ||
-				(v == FirstTwoNextTwo && a[0] == a[1] && a[2] == a[3]) ||
-				(v == FirstThree && a[0] == a[1] && a[1] == a[2]) ||
-				(v == FirstFour && a[0] == a[1] && a[1] == a[2] && a[2] == a[3]) ||
-				(v == StringMatch && beginsWith(lp.address(), bs))
-			)
-				break;
-		}
-		if (keepGoing)
-			p = lp;
-		keepGoing = false;
-	};
-	vector<std::thread*> ts;
-	for (unsigned t = 0; t < std::thread::hardware_concurrency() - 1; ++t)
-		ts.push_back(new std::thread(f));
-	f();
-	for (std::thread* t: ts)
-	{
-		t->join();
-		delete t;
-	}
-
-	QString s = QInputDialog::getText(this, "Create Account", "Enter this account's name");
-	if (QMessageBox::question(this, "Create Account", "Would you like to use additional security for this key? This lets you protect it with a different password to other keys, but also means you must re-enter the key's password every time you wish to use the account.", QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes)
-	{
-		bool ok = false;
-		std::string hint;
-		std::string password = getPassword("Create Account", "Enter the password you would like to use for this key. Don't forget it!", &hint, &ok);
-		if (!ok)
-			return;
-		m_keyManager.import(p.secret(), s.toStdString(), password, hint);
-	}
-	else
-		m_keyManager.import(p.secret(), s.toStdString());
-	keysChanged();
 }
 
 void Main::on_killAccount_triggered()

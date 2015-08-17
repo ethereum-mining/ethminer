@@ -79,6 +79,8 @@ private:
 	dev::eth::Client* ethereum() const { return m_ethereum; }
 	void rejigData();
 	void updateNonce();
+	void updateBounds();
+	void finaliseBounds();
 
 	dev::Address fromAccount();
 	std::pair<dev::Address, bytes> toAccount();
@@ -86,6 +88,7 @@ private:
 	void updateFee();
 	bool isCreation() const;
 	dev::u256 fee() const;
+	dev::u256 gas() const;
 	dev::u256 total() const;
 	dev::u256 value() const;
 	dev::u256 gasPrice() const;
@@ -94,6 +97,8 @@ private:
 
 	std::string natspecNotice(dev::Address _to, dev::bytes const& _data);
 	dev::Secret findSecret(dev::u256 _totalReq) const;
+
+	void timerEvent(QTimerEvent*) override;
 
 	Ui::Transact* ui = nullptr;
 
@@ -104,9 +109,14 @@ private:
 	dev::eth::Client* m_ethereum = nullptr;
 	MainFace* m_main = nullptr;
 	NatSpecFace* m_natSpecDB = nullptr;
-	bool m_allGood = false;
 
-	bool m_determiningGas = false;
+	QString m_dataInfo;
+	qint64 m_startLowerBound = 0;
+	qint64 m_startUpperBound = 0;
+	qint64 m_lowerBound = 0;
+	qint64 m_upperBound = 0;
+	eth::ExecutionResult m_lastGood;
+	int m_gasCalcTimer = 0;
 };
 
 }

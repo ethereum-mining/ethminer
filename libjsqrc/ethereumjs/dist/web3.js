@@ -4577,12 +4577,34 @@ var addToGroup = new Method({
     params: 0
 });
 
+
+var newFilter = new Method({
+    name: 'newFilter',
+    call: 'shh_newFilter',
+    params: 1
+});
+
+var getFilterChanges = new Method({
+    name: 'getFilterChanges',
+    call: 'shh_getFilterChanges',
+    params: 1
+});
+
+var getMessages = new Method({
+    name: 'getMessages',
+    call: 'shh_getMessages',
+    params: 1
+})
+
 var methods = [
     post,
     newIdentity,
     hasIdentity,
     newGroup,
-    addToGroup
+    addToGroup,
+    newFilter,
+    getFilterChanges,
+    getMessages
 ];
 
 module.exports = {
