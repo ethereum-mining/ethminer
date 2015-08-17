@@ -164,10 +164,10 @@ public:
 	virtual void stopMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::stopMining")); }
 	virtual bool isMining() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::isMining")); }
 	virtual bool wouldMine() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::wouldMine")); }
-	virtual uint64_t hashrate() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::hashrate")); }
+	virtual u256 hashrate() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::hashrate")); }
 	virtual WorkingProgress miningProgress() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::miningProgress")); }
 
-	virtual void submitExternalHashrate(int _rate, h256 const& _id) override;
+	virtual void submitExternalHashrate(u256 const& _rate, h256 const& _id) override;
 
 	Block asOf(BlockNumber _h) const;
 
@@ -182,7 +182,7 @@ protected:
 	virtual void prepareForTransaction() = 0;
 	/// }
 
-	uint64_t externalHashrate() const;
+	u256 externalHashrate() const;
 
 	TransactionQueue m_tq;							///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 
@@ -194,7 +194,7 @@ protected:
 	std::map<unsigned, ClientWatch> m_watches;				///< Each and every watch - these reference a filter.
 	
 	// external hashrate
-	mutable std::unordered_map<h256, std::pair<uint64_t, std::chrono::steady_clock::time_point>> m_externalRates;
+	mutable std::unordered_map<h256, std::pair<u256, std::chrono::steady_clock::time_point>> m_externalRates;
 };
 
 }}

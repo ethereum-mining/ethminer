@@ -171,7 +171,7 @@ public:
 	/// Are we mining now?
 	bool wouldMine() const override { return m_wouldMine; }
 	/// The hashrate...
-	uint64_t hashrate() const override;
+	u256 hashrate() const override;
 	/// Check the progress of the mining.
 	WorkingProgress miningProgress() const override;
 	/// Get and clear the mining history.
