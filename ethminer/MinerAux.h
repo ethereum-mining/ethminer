@@ -513,7 +513,15 @@ private:
 						minelog << "Getting work package...";
 
 					auto rate = mp.rate();
-					rpc.eth_submitHashrate((int)rate, "0x" + id.hex());
+					try
+					{
+						rpc.eth_submitHashrate((int)rate, "0x" + id.hex());
+					}
+					catch (jsonrpc::JsonRpcException const& _e)
+					{
+						cwarn << "Failed to submit hashrate.";
+						cwarn << boost::diagnostic_information(_e);
+					}
 
 					Json::Value v = rpc.eth_getWork();
 					h256 hh(v[0].asString());
