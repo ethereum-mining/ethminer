@@ -177,9 +177,13 @@ void SecretStore::save(string const& _keysPath)
 void SecretStore::load(string const& _keysPath)
 {
 	fs::path p(_keysPath);
-	for (fs::directory_iterator it(p); it != fs::directory_iterator(); ++it)
-		if (fs::is_regular_file(it->path()))
-			readKey(it->path().string(), true);
+	try
+	{
+		for (fs::directory_iterator it(p); it != fs::directory_iterator(); ++it)
+			if (fs::is_regular_file(it->path()))
+				readKey(it->path().string(), true);
+	}
+	catch (...) {}
 }
 
 h128 SecretStore::readKey(string const& _file, bool _takeFileOwnership)
