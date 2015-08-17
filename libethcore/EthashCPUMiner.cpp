@@ -25,6 +25,7 @@
 #include <thread>
 #include <chrono>
 #include <boost/algorithm/string.hpp>
+#include <random>
 #if ETH_CPUID || !ETH_TRUE
 #define HAVE_STDINT_H
 #include <libcpuid/libcpuid.h>
@@ -78,7 +79,7 @@ void EthashCPUMiner::workLoop()
 	auto tid = std::this_thread::get_id();
 	static std::mt19937_64 s_eng((time(0) + std::hash<decltype(tid)>()(tid)));
 
-	uint64_t tryNonce = (uint64_t)(u64)Nonce::random(s_eng);
+	uint64_t tryNonce = s_eng();
 	ethash_return_value ethashReturn;
 
 	WorkPackage w = work();

@@ -20,6 +20,7 @@
  */
 
 #include "CommonData.h"
+#include <random>
 #include <boost/random/uniform_int_distribution.hpp>
 #include "Exceptions.h"
 #include "Log.h"
