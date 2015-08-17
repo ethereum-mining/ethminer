@@ -113,9 +113,7 @@ inline u256 jsToU256(std::string const& _s) { return jsToInt<32>(_s); }
 
 inline int jsToInt(std::string const& _s)
 {
-	if (_s.size() > 2 && _s.substr(0, 2).compare("0x") == 0)
-		return std::stoi(_s, nullptr, 16);
-	return std::stoi(_s, nullptr, 10);
+	return std::stoi(_s, nullptr, 0);
 }
 
 inline std::string jsToDecimal(std::string const& _s)
