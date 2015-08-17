@@ -515,7 +515,7 @@ private:
 					auto rate = mp.rate();
 					try
 					{
-						rpc.eth_submitHashrate((int)rate, "0x" + id.hex());
+						rpc.eth_submitHashrate(toHex((u256)rate, HexPrefix::Add), "0x" + id.hex());
 					}
 					catch (jsonrpc::JsonRpcException const& _e)
 					{
