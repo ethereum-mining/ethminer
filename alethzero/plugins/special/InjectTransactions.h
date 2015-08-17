@@ -14,53 +14,34 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ExportState.h
- * @author Arkadiy Paronyan <arkadiy@ethdev.com>
+/** @file InjectTransactions.h
+ * @author Gav Wood <i@gavwood.com>
  * @date 2015
  */
 
 #pragma once
 
-#include <memory>
-#include <QDialog>
-#include <libethcore/Common.h>
-
-namespace Ui { class ExportState; }
+#include "MainFace.h"
 
 namespace dev
 {
-
-namespace eth { class Client; }
-
 namespace az
 {
 
-class Main;
-
-class ExportStateDialog: public QDialog
+class InjectTransactions: public QObject, public Plugin
 {
 	Q_OBJECT
 
 public:
-	explicit ExportStateDialog(Main* _parent = 0);
-	virtual ~ExportStateDialog();
+	InjectTransactions(MainFace* _m);
+	~InjectTransactions();
 
 private slots:
-	void on_block_editTextChanged();
-	void on_block_currentIndexChanged(int _index);
-	void on_saveButton_clicked();
+	void injectOne();
+	void injectBulk();
 
 private:
-	eth::Client* ethereum() const;
-	void fillBlocks();
-	void fillContracts();
-	void generateJSON();
-
-private:
-	std::unique_ptr<Ui::ExportState> ui;
-	Main* m_main;
-	int m_recentBlocks = 0;
-	eth::BlockNumber m_block = eth::LatestBlock;
+	void doInject(QString _txHex);
 };
 
 }

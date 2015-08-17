@@ -14,37 +14,31 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file FixedHash.cpp
+/** @file ImportKey.h
  * @author Gav Wood <i@gavwood.com>
- * @date 2014
+ * @date 2015
  */
 
-#include "FixedHash.h"
-#include <ctime>
-#include <boost/algorithm/string.hpp>
+#pragma once
 
-using namespace std;
-using namespace dev;
+#include "MainFace.h"
 
-boost::random_device dev::s_fixedHashEngine;
-
-h128 dev::fromUUID(std::string const& _uuid)
+namespace dev
 {
-	try
-	{
-		return h128(boost::replace_all_copy(_uuid, "-", ""));
-	}
-	catch (...)
-	{
-		return h128();
-	}
-}
-
-std::string dev::toUUID(h128 const& _uuid)
+namespace az
 {
-	std::string ret = toHex(_uuid.ref());
-	for (unsigned i: {20, 16, 12, 8})
-		ret.insert(ret.begin() + i, '-');
-	return ret;
-}
 
+class ImportKey: public QObject, public Plugin
+{
+	Q_OBJECT
+
+public:
+	ImportKey(MainFace* _m);
+	~ImportKey();
+
+private slots:
+	void import();
+};
+
+}
+}

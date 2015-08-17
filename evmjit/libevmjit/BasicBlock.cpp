@@ -110,11 +110,13 @@ void LocalStack::set(size_t _index, llvm::Value* _word)
 void LocalStack::finalize(llvm::IRBuilder<>& _builder, llvm::BasicBlock& _bb)
 {
 	auto blockTerminator = _bb.getTerminator();
-	assert(blockTerminator);
-	if (blockTerminator->getOpcode() != llvm::Instruction::Ret)
+	if (!blockTerminator || blockTerminator->getOpcode() != llvm::Instruction::Ret)
 	{
 		// Not needed in case of ret instruction. Ret invalidates the stack.
-		_builder.SetInsertPoint(blockTerminator);
+		if (blockTerminator)
+			_builder.SetInsertPoint(blockTerminator);
+		else
+			_builder.SetInsertPoint(&_bb);
 
 		// Update items fetched from global stack ignoring the poped ones
 		assert(m_globalPops <= m_input.size()); // pop() always does get()
