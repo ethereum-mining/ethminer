@@ -29,7 +29,6 @@
 #include <libdevcrypto/OverlayDB.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
-#include <libethcore/Ethash.h>
 #include <libethcore/Miner.h>
 #include <libevm/ExtVMFace.h>
 #include "Account.h"
@@ -253,7 +252,7 @@ public:
 	bytes const& blockData() const { return m_currentBytes; }
 
 	/// Get the header information on the present block.
-	Ethash::BlockHeader const& info() const { return m_currentBlock; }
+	BlockInfo const& info() const { return m_currentBlock; }
 
 
 private:
@@ -289,7 +288,7 @@ private:
 	State m_precommit;							///< State at the point immediately prior to rewards.
 
 	BlockInfo m_previousBlock;					///< The previous block's information.
-	Ethash::BlockHeader m_currentBlock;					///< The current block's information.
+	BlockInfo m_currentBlock;					///< The current block's information.
 	bytes m_currentBytes;						///< The current block.
 	bool m_committedToMine = false;				///< Have we committed to mine on the present m_currentBlock?
 

@@ -709,7 +709,7 @@ bool Block::sealBlock(bytesConstRef _header)
 	ret.appendRaw(m_currentTxs);
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
-	m_currentBlock = Ethash::BlockHeader(_header, CheckNothing, h256(), HeaderData);
+	m_currentBlock = BlockInfo(_header, CheckNothing, h256(), HeaderData);
 	cnote << "Mined " << m_currentBlock.hash() << "(parent: " << m_currentBlock.parentHash() << ")";
 	// TODO: move into Sealer
 	StructuredLogger::minedNewBlock(
