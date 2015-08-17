@@ -780,9 +780,9 @@ bool WebThreeStubServerBase::eth_submitWork(string const& _nonce, string const&,
 	}
 }
 
-bool WebThreeStubServerBase::eth_submitHashrate(std::string const& _hashes, string const& _id)
+bool WebThreeStubServerBase::eth_submitHashrate(string const& _hashes, string const& _id)
 {
-	client()->submitExternalHashrate(std::stoi(_hashes, nullptr, 0), jsToFixed<32>(_id));
+	client()->submitExternalHashrate(stoi(_hashes, nullptr, 0), jsToFixed<32>(_id));
 	return true;
 }
 
