@@ -284,6 +284,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					//attempt to import new block to the true blockchain
 					trueBc.sync(uncleBlockQueue, trueState.db(), 4);
 					trueBc.attemptImport(blockRLP.out(), trueState.db());
+					trueState = block.state();
 
 					blockSet newBlock;
 					newBlock.first = blockRLP.out();
