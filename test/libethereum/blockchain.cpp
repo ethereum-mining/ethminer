@@ -73,7 +73,6 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		BlockHeader biGenesisBlock = constructBlock(o["genesisBlockHeader"].get_obj(), h256{});
 
 		State trueState(OverlayDB(State::openDB(tdStateDB.path(), h256{}, WithExisting::Kill)), BaseState::Empty);
-		Block trueBlock; //lastBlock of trueBlockchain
 		ImportTest::importState(o["pre"].get_obj(), trueState);
 		o["pre"] = fillJsonWithState(trueState); //convert all fields to hex
 		trueState.commit();
@@ -218,7 +217,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					txList.push_back(txi);
 				blObj["transactions"] = writeTransactionsToJson(txList);
 
-				BlockHeader current_BlockHeader = block.info();
+				BlockHeader current_BlockHeader(block.blockData());
 
 				RLPStream uncleStream;
 				uncleStream.appendList(vBiUncles.size());
@@ -263,7 +262,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				blObj["rlp"] = toHex(blockRLP.out(), 2, HexPrefix::Add);
 
 				if (sha3(RLP(block.blockData())[0].data()) != sha3(RLP(blockRLP.out())[0].data()))
-				{
+				{				
 					cnote << "block header mismatch block.blockData() vs updated block.info()\n";
 					cnote << toHex(RLP(block.blockData())[0].data()) << "vs" << toHex(RLP(blockRLP.out())[0].data());
 				}
@@ -284,7 +283,9 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					//attempt to import new block to the true blockchain
 					trueBc.sync(uncleBlockQueue, trueState.db(), 4);
 					trueBc.attemptImport(blockRLP.out(), trueState.db());
-					trueState = block.state();
+
+					if (block.blockData() == trueBc.block())
+						trueState = block.state();
 
 					blockSet newBlock;
 					newBlock.first = blockRLP.out();
@@ -316,7 +317,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				AccountMaskMap expectStateMap;
 				State stateExpect(OverlayDB(), BaseState::Empty);
 				ImportTest::importState(o["expect"].get_obj(), stateExpect, expectStateMap);
-				ImportTest::compareStates(stateExpect, trueBlock.state(), expectStateMap, Options::get().checkState ? WhenError::Throw : WhenError::DontThrow);
+				if (ImportTest::compareStates(stateExpect, trueState, expectStateMap, Options::get().checkState ? WhenError::Throw : WhenError::DontThrow))
+					cerr << testname << endl;
 				o.erase(o.find("expect"));
 			}
 
