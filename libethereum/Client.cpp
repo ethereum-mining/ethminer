@@ -507,9 +507,9 @@ WorkingProgress Client::miningProgress() const
 	return WorkingProgress();
 }
 
-uint64_t Client::hashrate() const
+u256 Client::hashrate() const
 {
-	uint64_t r = externalHashrate();
+	u256 r = externalHashrate();
 	if (Ethash::isWorking(m_sealEngine.get()))
 		r += Ethash::workingProgress(m_sealEngine.get()).rate();
 	return r;
