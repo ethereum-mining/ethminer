@@ -370,7 +370,7 @@ bool MixClient::isMining() const
 	return false;
 }
 
-uint64_t MixClient::hashrate() const
+u256 MixClient::hashrate() const
 {
 	return 0;
 }
