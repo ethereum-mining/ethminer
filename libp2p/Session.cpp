@@ -419,8 +419,11 @@ void Session::doRead()
 			{
 				auto packetType = (PacketType)RLP(frame.cropped(0, 1)).toInt<unsigned>();
 				RLP r(frame.cropped(1));
-				if (!readPacket(hProtocolId, packetType, r))
+				bool ok = readPacket(hProtocolId, packetType, r);
+#if ETH_DEBUG
+				if (!ok)
 					clog(NetWarn) << "Couldn't interpret packet." << RLP(r);
+#endif
 			}
 			doRead();
 		});
