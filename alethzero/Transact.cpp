@@ -136,11 +136,12 @@ void Transact::updateDestination()
 	// TODO: should be a Qt model.
 	ui->destination->clear();
 	ui->destination->addItem("(Create Contract)");
+	QMultiMap<QString, QString> in;
 	for (Address const& a: m_main->allKnownAddresses())
-	{
-		cdebug << "Adding" << a << m_main->toName(a) << " -> " << (m_main->toName(a) + " (" + ICAP(a).encoded() + ")");
-		ui->destination->addItem(QString::fromStdString(m_main->toName(a) + " (" + ICAP(a).encoded() + ")"), QString::fromStdString(a.hex()));
-	}
+		in.insert(QString::fromStdString(m_main->toName(a) + " (" + ICAP(a).encoded() + ")"), QString::fromStdString(a.hex()));
+	for (auto i = in.begin(); i != in.end(); ++i)
+		ui->destination->addItem(i.key(), i.value());
+
 }
 
 void Transact::updateFee()
@@ -361,9 +362,8 @@ void Transact::timerEvent(QTimerEvent*)
 		}
 
 		updateBounds();
-		if (m_lowerBound == m_upperBound)
-			finaliseBounds();
 	}
+	finaliseBounds();
 }
 
 void Transact::updateBounds()
@@ -380,6 +380,8 @@ void Transact::updateBounds()
 
 void Transact::finaliseBounds()
 {
+	killTimer(m_gasCalcTimer);
+
 	quint64 baseGas = (quint64)Transaction::gasRequired(m_data, 0);
 	ui->progressGas->setVisible(false);
 
@@ -420,7 +422,6 @@ void Transact::finaliseBounds()
 	updateFee();
 	ui->code->setHtml(htmlInfo + m_dataInfo);
 	ui->send->setEnabled(true);
-	killTimer(m_gasCalcTimer);
 }
 
 GasRequirements Transact::determineGasRequirements()
