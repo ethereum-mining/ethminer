@@ -73,7 +73,6 @@
 #include "DappLoader.h"
 #include "DappHost.h"
 #include "WebPage.h"
-#include "ExportState.h"
 #include "ui_Main.h"
 #include "ui_GetPassword.h"
 #include "ui_GasPricing.h"
@@ -241,7 +240,7 @@ Main::Main(QWidget* _parent):
 	ui->vmSmart->setEnabled(false);
 #endif
 
-	readSettings();
+	readSettings(true, false);
 
 	m_transact = new Transact(this, this);
 	m_transact->setWindowFlags(Qt::Dialog);
@@ -263,6 +262,8 @@ Main::Main(QWidget* _parent):
 
 	for (auto const& i: *s_linkedPlugins)
 		initPlugin(i(this));
+
+	readSettings(false, true);
 }
 
 Main::~Main()
@@ -668,9 +669,10 @@ std::string Main::render(dev::Address const& _a) const
 	if (p.size() == 9 && p.find_first_not_of("QWERYUOPASDFGHJKLZXCVBNM1234567890") == string::npos)
 		p = ICAP(p, "XREG").encoded();
 	else
-		DEV_IGNORE_EXCEPTIONS(n = ICAP(_a).encoded());
-	if (n.empty())
-		n = _a.abridged();
+		DEV_IGNORE_EXCEPTIONS(n = ICAP(_a).encoded().substr(0, 8));
+	if (!n.empty())
+		n += " ";
+	n += _a.abridged();
 	return p.empty() ? n : (p + " " + n);
 }
 
@@ -850,13 +852,15 @@ Secret Main::retrieveSecret(Address const& _address) const
 	}
 }
 
-void Main::readSettings(bool _skipGeometry)
+void Main::readSettings(bool _skipGeometry, bool _onlyGeometry)
 {
 	QSettings s("ethereum", "alethzero");
 
 	if (!_skipGeometry)
 		restoreGeometry(s.value("geometry").toByteArray());
 	restoreState(s.value("windowState").toByteArray());
+	if (_onlyGeometry)
+		return;
 
 	forEach([&](std::shared_ptr<Plugin> p)
 	{
@@ -1018,6 +1022,28 @@ void Main::on_claimPresale_triggered()
 	}
 }
 
+void Main::on_importPresale_triggered()
+{
+	QString s = QFileDialog::getOpenFileName(this, "Claim Account Contents", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
+	try
+	{
+		string pass;
+		KeyPair k = m_keyManager.presaleSecret(dev::contentsString(s.toStdString()), [&](bool){ return (pass = QInputDialog::getText(this, "Enter Password", "Enter the wallet's passphrase", QLineEdit::Password).toStdString()); });
+		cnote << k.address();
+		if (!m_keyManager.hasAccount(k.address()))
+			keyManager().import(k.secret(), "Presale wallet (" + s.toStdString() + ")", pass, "Same password as for the presale wallet");
+		else
+			QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
+	}
+	catch (dev::eth::PasswordUnknown&) {}
+	catch (...)
+	{
+		cerr << "Unhandled exception!" << endl <<
+			boost::current_exception_diagnostic_information();
+		QMessageBox::warning(this, "Key File Invalid", "Could not find secret key definition. This is probably not an Ethereum key file.");
+	}
+}
+
 void Main::on_exportKey_triggered()
 {
 	if (ui->ourAccounts->currentRow() >= 0)
@@ -1027,12 +1053,6 @@ void Main::on_exportKey_triggered()
 		Secret s = retrieveSecret(h);
 		QMessageBox::information(this, "Export Account Key", "Secret key to account " + QString::fromStdString(render(h) + " is:\n" + s.makeInsecure().hex()));
 	}
-}
-
-void Main::on_exportState_triggered()
-{
-	ExportStateDialog dialog(this);
-	dialog.exec();
 }
 
 void Main::on_usePrivate_triggered()
@@ -1549,6 +1569,7 @@ void Main::on_transactionQueue_currentItemChanged()
 	int i = ui->transactionQueue->currentRow();
 	if (i >= 0 && i < (int)ethereum()->pending().size())
 	{
+		ui->debugPending->setEnabled(true);
 		Transaction tx(ethereum()->pending()[i]);
 		TransactionReceipt receipt(ethereum()->postState().receipt(i));
 		auto ss = tx.safeSender();
@@ -1588,28 +1609,11 @@ void Main::on_transactionQueue_currentItemChanged()
 //		s << "Pre: " << fs.rootHash() << "<br/>";
 //		s << "Post: <b>" << ts.rootHash() << "</b>";
 	}
+	else
+		ui->debugPending->setEnabled(false);
 
 	ui->pendingInfo->setHtml(QString::fromStdString(s.str()));
 	ui->pendingInfo->moveCursor(QTextCursor::Start);
-}
-
-void Main::on_inject_triggered()
-{
-	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
-	try
-	{
-		bytes b = fromHex(s.toStdString(), WhenError::Throw);
-		ethereum()->injectTransaction(b);
-	}
-	catch (BadHexCharacter& _e)
-	{
-		cwarn << "invalid hex character, transaction rejected";
-		cwarn << boost::diagnostic_information(_e);
-	}
-	catch (...)
-	{
-		cwarn << "transaction rejected";
-	}
 }
 
 void Main::on_injectBlock_triggered()
@@ -1802,6 +1806,22 @@ void Main::on_debugCurrent_triggered()
 			dw.exec();
 		}
 	}
+}
+
+void Main::on_debugPending_triggered()
+{
+	int txi = ui->transactionQueue->currentRow();
+	if (txi == -1)
+		return;
+
+	Block b = ethereum()->postState();
+	bytes t = b.pending()[txi].rlp();
+	State s(ethereum()->state(txi));
+	BlockInfo bi(b.info());
+	Executive e(s, ethereum()->blockChain(), EnvInfo(bi));
+	Debugger dw(this, this);
+	dw.populate(e, Transaction(t, CheckTransaction::Everything));
+	dw.exec();
 }
 
 std::string minHex(h256 const& _h)

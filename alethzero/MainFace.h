@@ -43,8 +43,13 @@ namespace shh { class WhisperHost; }
 namespace az
 {
 
+#ifndef _MSC_VER // MSVC does not like gcc compiler attributes
+#define DEV_AZ_NOTE_PLUGIN(ClassName) \
+	static bool s_notePlugin __attribute__((unused)) = [](){ MainFace::notePlugin([](MainFace* m){ return new ClassName(m); }); return true; }()
+#else
 #define DEV_AZ_NOTE_PLUGIN(ClassName) \
 	static bool s_notePlugin = [](){ MainFace::notePlugin([](MainFace* m){ return new ClassName(m); }); return true; }()
+#endif
 
 class Plugin;
 class MainFace;

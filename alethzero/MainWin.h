@@ -157,12 +157,12 @@ private slots:
 	void on_reencryptAll_triggered();
 	void on_importKeyFile_triggered();
 	void on_claimPresale_triggered();
+	void on_importPresale_triggered();
 	void on_exportKey_triggered();
 
 	// Tools
 	void on_newTransaction_triggered();
 	void on_loadJS_triggered();
-	void on_exportState_triggered();
 
 	// Stuff concerning the blocks/transactions/accounts panels
 	void on_ourAccounts_itemClicked(QListWidgetItem* _i);
@@ -180,7 +180,6 @@ private slots:
 	void on_paranoia_triggered();
 	void on_killBlockchain_triggered();
 	void on_clearPending_triggered();
-	void on_inject_triggered();
 	void on_injectBlock_triggered();
 	void on_forceMining_triggered();
 	void on_usePrivate_triggered();
@@ -193,6 +192,7 @@ private slots:
 
 	// Debugger
 	void on_debugCurrent_triggered();
+	void on_debugPending_triggered();
 	void on_debugDumpState_triggered() { debugDumpState(1); }
 	void on_debugDumpStatePre_triggered() { debugDumpState(0); }
 	void on_dumpBlockState_triggered();
@@ -225,7 +225,7 @@ private:
 	Address getCurrencies() const;
 
 	void updateFee();
-	void readSettings(bool _skipGeometry = false);
+	void readSettings(bool _skipGeometry = false, bool _onlyGeometry = false);
 	void writeSettings();
 
 	void setPrivateChain(QString const& _private, bool _forceConfigure = false);

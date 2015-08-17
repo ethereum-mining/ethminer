@@ -7,8 +7,6 @@
 #include "RuntimeManager.h"
 #include "Utils.h"
 
-#include <set> // DEBUG only
-
 namespace dev
 {
 namespace eth
