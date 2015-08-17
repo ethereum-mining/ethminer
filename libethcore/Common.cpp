@@ -112,14 +112,14 @@ std::string formatBalance(bigint const& _b)
 	else
 		b = (u256)_b;
 
-	if (b > units()[0].first * 10000)
+	if (b > units()[0].first * 1000)
 	{
 		ret << (b / units()[0].first) << " " << units()[0].second;
 		return ret.str();
 	}
 	ret << setprecision(5);
 	for (auto const& i: units())
-		if (i.first != 1 && b >= i.first * 100)
+		if (i.first != 1 && b >= i.first * 1)
 		{
 			ret << (double(b / (i.first / 1000)) / 1000.0) << " " << i.second;
 			return ret.str();

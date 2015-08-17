@@ -17,7 +17,7 @@ set(ETH_GENERATED_DIR "${PROJECT_BINARY_DIR}/gen")
 include_directories(${ETH_GENERATED_DIR})
 
 # custom cmake scripts
-set(ETH_SCRIPTS_DIR ${CMAKE_SOURCE_DIR}/cmake/scripts)
+set(ETH_SCRIPTS_DIR ${CMAKE_CURRENT_LIST_DIR}/scripts)
 
 # Qt5 requires opengl
 # TODO use proper version of windows SDK (32 vs 64)

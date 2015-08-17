@@ -14,37 +14,43 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file FixedHash.cpp
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
+/** @file NewAccount.h
+ * @author Marek Kotewicz <marek@ethdev.com>
+ * @date 2015
  */
 
-#include "FixedHash.h"
-#include <ctime>
-#include <boost/algorithm/string.hpp>
+#pragma once
 
-using namespace std;
-using namespace dev;
+#include "MainFace.h"
 
-boost::random_device dev::s_fixedHashEngine;
 
-h128 dev::fromUUID(std::string const& _uuid)
+namespace Ui
 {
-	try
-	{
-		return h128(boost::replace_all_copy(_uuid, "-", ""));
-	}
-	catch (...)
-	{
-		return h128();
-	}
+class NewAccount;
 }
 
-std::string dev::toUUID(h128 const& _uuid)
+namespace dev
 {
-	std::string ret = toHex(_uuid.ref());
-	for (unsigned i: {20, 16, 12, 8})
-		ret.insert(ret.begin() + i, '-');
-	return ret;
-}
+namespace az
+{
 
+class NewAccount: public QObject, public Plugin
+{
+	Q_OBJECT
+
+public:
+	NewAccount(MainFace* _m);
+	~NewAccount();
+
+private slots:
+	void create();
+
+private:
+	enum Type { NoVanity = 0, DirectICAP, FirstTwo, FirstTwoNextTwo, FirstThree, FirstFour, StringMatch };
+	bool validatePassword(Ui::NewAccount const& _u);
+	void onDialogAccepted(Ui::NewAccount const& _u);
+	KeyPair newKeyPair(Type _type, bytes const& _prefix);
+};
+
+}
+}

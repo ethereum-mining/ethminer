@@ -19,77 +19,86 @@
  * @date 2015
  */
 
+#if ETH_FATDB
+
 #include "ExportState.h"
+#include <fstream>
 #include <QFileDialog>
 #include <QTextStream>
 #include <libethereum/Client.h>
-#include "MainWin.h"
 #include "ui_ExportState.h"
 using namespace std;
 using namespace dev;
 using namespace az;
 using namespace eth;
 
-ExportStateDialog::ExportStateDialog(Main* _parent):
-	QDialog(_parent),
-	ui(new Ui::ExportState),
-	m_main(_parent)
+DEV_AZ_NOTE_PLUGIN(ExportStateDialog);
+
+ExportStateDialog::ExportStateDialog(MainFace* _m):
+	QDialog(_m),
+	Plugin(_m, "Export State"),
+	m_ui(new Ui::ExportState)
 {
-	ui->setupUi(this);
-	connect(ui->close, &QPushButton::clicked, this, &ExportStateDialog::close);
-	connect(ui->accounts, &QListWidget::itemSelectionChanged, this, &ExportStateDialog::generateJSON);
-	connect(ui->contracts, &QListWidget::itemSelectionChanged, this, &ExportStateDialog::generateJSON);
+	m_ui->setupUi(this);
+	connect(m_ui->close, &QPushButton::clicked, this, &ExportStateDialog::close);
+	connect(m_ui->accounts, &QListWidget::itemSelectionChanged, this, &ExportStateDialog::generateJSON);
+	connect(m_ui->contracts, &QListWidget::itemSelectionChanged, this, &ExportStateDialog::generateJSON);
 	fillBlocks();
+	connect(addMenuItem("Export State...", "menuTools", true), SIGNAL(triggered()), SLOT(exec()));
 }
 
 ExportStateDialog::~ExportStateDialog()
 {
-}
 
-Client* ExportStateDialog::ethereum() const
+}
+void ExportStateDialog::showEvent(QShowEvent*)
 {
-	return m_main->ethereum();
+	m_ui->block->clear();
+	m_ui->block->clearEditText();
+	m_ui->accounts->clear();
+	m_ui->contracts->clear();
+	fillBlocks();
 }
 
 void ExportStateDialog::on_block_editTextChanged()
 {
-	QString text = ui->block->currentText();
-	int i = ui->block->count();
+	QString text = m_ui->block->currentText();
+	int i = m_ui->block->count();
 	while (i-- >= 0)
-		if (ui->block->itemText(i) == text)
+		if (m_ui->block->itemText(i) == text)
 			return;
 	fillBlocks();
 }
 
 void ExportStateDialog::on_block_currentIndexChanged(int _index)
 {
-	m_block = ui->block->itemData(_index).toUInt();
+	m_block = m_ui->block->itemData(_index).toUInt();
 	fillContracts();
 }
 
 void ExportStateDialog::fillBlocks()
 {
 	BlockChain const& bc = ethereum()->blockChain();
-	QStringList filters = ui->block->currentText().toLower().split(QRegExp("\\s+"), QString::SkipEmptyParts);
+	QStringList filters = m_ui->block->currentText().toLower().split(QRegExp("\\s+"), QString::SkipEmptyParts);
 	const unsigned numLastBlocks = 10;
-	if (ui->block->count() == 0)
+	if (m_ui->block->count() == 0)
 	{
 		unsigned i = numLastBlocks;
 		for (auto h = bc.currentHash(); bc.details(h) && i; h = bc.details(h).parent, --i)
 		{
 			auto d = bc.details(h);
-			ui->block->addItem(QString("#%1 %2").arg(d.number).arg(h.abridged().c_str()), d.number);
+			m_ui->block->addItem(QString("#%1 %2").arg(d.number).arg(h.abridged().c_str()), d.number);
 			if (h == bc.genesisHash())
 				break;
 		}
-		if (ui->block->currentIndex() < 0)
-			ui->block->setCurrentIndex(0);
+		if (m_ui->block->currentIndex() < 0)
+			m_ui->block->setCurrentIndex(0);
 		m_recentBlocks = numLastBlocks - i;
 	}
 
-	int i = ui->block->count();
+	int i = m_ui->block->count();
 	while (i > 0 && i >= m_recentBlocks)
-		ui->block->removeItem(i--);
+		m_ui->block->removeItem(i--);
 
 	h256Hash blocks;
 	for (QString f: filters)
@@ -117,31 +126,31 @@ void ExportStateDialog::fillBlocks()
 	for (auto const& h: blocks)
 	{
 		auto d = bc.details(h);
-		ui->block->addItem(QString("#%1 %2").arg(d.number).arg(h.abridged().c_str()), d.number);
+		m_ui->block->addItem(QString("#%1 %2").arg(d.number).arg(h.abridged().c_str()), d.number);
 	}
 }
 
 void ExportStateDialog::fillContracts()
 {
-	ui->accounts->clear();
-	ui->contracts->clear();
-	ui->accounts->setEnabled(true);
-	ui->contracts->setEnabled(true);
+	m_ui->accounts->clear();
+	m_ui->contracts->clear();
+	m_ui->accounts->setEnabled(true);
+	m_ui->contracts->setEnabled(true);
 	try
 	{
 		for (auto i: ethereum()->addresses(m_block))
 		{
-			string r = m_main->render(i);
-			(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(ethereum()->balanceAt(i)).c_str()).arg(QString::fromStdString(r)).arg((unsigned)ethereum()->countAt(i)), ethereum()->codeAt(i).empty() ? ui->accounts : ui->contracts))
+			string r = main()->render(i);
+			(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(ethereum()->balanceAt(i)).c_str()).arg(QString::fromStdString(r)).arg((unsigned)ethereum()->countAt(i)), ethereum()->codeAt(i).empty() ? m_ui->accounts : m_ui->contracts))
 				->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
 		}
 	}
 	catch (InterfaceNotSupported const&)
 	{
-		ui->accounts->setEnabled(false);
-		ui->contracts->setEnabled(false);
-		ui->json->setEnabled(false);
-		ui->json->setText(QString("This feature requires compilation with FATDB support."));
+		m_ui->accounts->setEnabled(false);
+		m_ui->contracts->setEnabled(false);
+		m_ui->json->setEnabled(false);
+		m_ui->json->setText(QString("This feature requires compilation with FATDB support."));
 	}
 }
 
@@ -150,14 +159,14 @@ void ExportStateDialog::generateJSON()
 	std::stringstream json;
 	json << "{\n";
 	std::string prefix;
-	for(QListWidgetItem* item: ui->accounts->selectedItems())
+	for(QListWidgetItem* item: m_ui->accounts->selectedItems())
 	{
 		auto hba = item->data(Qt::UserRole).toByteArray();
 		auto address = Address((byte const*)hba.data(), Address::ConstructFromPointer);
 		json << prefix << "\t\"" << toHex(address.ref()) << "\": {  \"wei\": \"" << ethereum()->balanceAt(address, m_block) << "\" }";
 		prefix = ",\n";
 	}
-	for(QListWidgetItem* item: ui->contracts->selectedItems())
+	for(QListWidgetItem* item: m_ui->contracts->selectedItems())
 	{
 		auto hba = item->data(Qt::UserRole).toByteArray();
 		auto address = Address((byte const*)hba.data(), Address::ConstructFromPointer);
@@ -181,9 +190,9 @@ void ExportStateDialog::generateJSON()
 	json << "\n}";
 	json.flush();
 
-	ui->json->setEnabled(true);
-	ui->json->setText(QString::fromStdString(json.str()));
-	ui->saveButton->setEnabled(true);
+	m_ui->json->setEnabled(true);
+	m_ui->json->setText(QString::fromStdString(json.str()));
+	m_ui->saveButton->setEnabled(true);
 }
 
 void ExportStateDialog::on_saveButton_clicked()
@@ -193,5 +202,7 @@ void ExportStateDialog::on_saveButton_clicked()
 		fn = fn.append(".json");
 	ofstream file(fn.toStdString());
 	if (file.is_open())
-		file << ui->json->toPlainText().toStdString();
+		file << m_ui->json->toPlainText().toStdString();
 }
+
+#endif //ETH_FATDB

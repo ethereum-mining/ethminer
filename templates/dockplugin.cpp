@@ -14,10 +14,12 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file $NAME.h
+/** @file $NAME.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2015
  */
+
+DEV_AZ_NOTE_PLUGIN($NAME);
 
 #include "$NAME.h"
 #include <libdevcore/Log.h>

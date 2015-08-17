@@ -23,6 +23,11 @@ ColumnLayout
 	property int blockIndex
 	property variant scenario
 	property string labelColor: "#414141"
+
+
+	property string selectedBlockColor: "#accbf2"
+	property string selectedBlockForeground: "#445e7f"
+
 	property int scenarioIndex
 	signal txSelected(var txIndex)
 
@@ -105,14 +110,15 @@ ColumnLayout
 				}
 			}
 
-			Label
-			{
-				text: qsTr("EDIT")
-				color:  "#1397da"
+			Image {
 				anchors.verticalCenter: parent.verticalCenter
 				anchors.right: parent.right
 				anchors.rightMargin: 14
 				visible: number === -2
+				source: "qrc:/qml/img/edit_combox.png"
+				height: 15
+				fillMode: Image.PreserveAspectFit
+
 				MouseArea
 				{
 					anchors.fill: parent
@@ -122,6 +128,7 @@ ColumnLayout
 						projectModel.stateListModel.editState(scenarioIndex)
 					}
 				}
+			
 			}
 		}
 	}
@@ -237,11 +244,12 @@ ColumnLayout
 
 				function select()
 				{
-					rowContentTr.selected = true
-					rowContentTr.color = "#4F4F4F"
-					hash.color = "#EAB920"
-					func.color = "#EAB920"
+					rowContentTr.selected = true	
+					rowContentTr.color = selectedBlockColor
+					hash.color = selectedBlockForeground
+					func.color = selectedBlockForeground
 					txSelected(index)
+
 				}
 
 				function deselect()
@@ -345,7 +353,7 @@ ColumnLayout
 
 				Image {
 					id: debugImg
-					source: "qrc:/qml/img/rightarrow@2x.png"
+					source: "qrc:/qml/img/rightarrowcircle.png"
 					width: debugActionWidth
 					fillMode: Image.PreserveAspectFit
 					anchors.horizontalCenter: parent.horizontalCenter

@@ -86,6 +86,7 @@
         <file>qml/img/restoreicon@2x.png</file>
         <file>qml/img/rightarrow.png</file>
         <file>qml/img/rightarrow@2x.png</file>
+        <file>qml/img/rightarrowcircle.png</file>
         <file>qml/img/saveicon.png</file>
         <file>qml/img/saveicon@2x.png</file>
         <file>qml/img/sendtransactionicon.png</file>
