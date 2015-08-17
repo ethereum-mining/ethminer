@@ -28,7 +28,6 @@
 #include <libethereum/TransactionQueue.h>
 #include <test/TestHelper.h>
 #include <libethereum/Block.h>
-#include <libethereum/GenesisInfo.h>
 
 using namespace std;
 using namespace json_spirit;
@@ -70,9 +69,11 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		TBOOST_REQUIRE(o.count("pre"));
 
 		ImportTest importer(o, _fillin, testType::BlockChainTests);
-		TransientDirectory tdStateDB;
+		TransientDirectory td_stateDB_tmp;
 		BlockHeader biGenesisBlock = constructBlock(o["genesisBlockHeader"].get_obj(), h256{});
-		State trueState(OverlayDB(State::openDB(tdStateDB.path(), h256{}, WithExisting::Kill)), BaseState::Empty);
+
+		State trueState(OverlayDB(State::openDB(td_stateDB_tmp.path(), h256{}, WithExisting::Kill)), BaseState::Empty);
+		Block trueBlock; //lastBlock of trueBlockchain
 		ImportTest::importState(o["pre"].get_obj(), trueState);
 		o["pre"] = fillJsonWithState(trueState); //convert all fields to hex
 		trueState.commit();
@@ -83,7 +84,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		if (_fillin)
 			biGenesisBlock = constructBlock(o["genesisBlockHeader"].get_obj(), trueState.rootHash());
 		else
-			TBOOST_CHECK_MESSAGE((biGenesisBlock.stateRoot() == trueState.rootHash()), "root hash does not match");
+			TBOOST_CHECK_MESSAGE((biGenesisBlock.stateRoot() == trueState.rootHash()), testname + "root hash does not match");
 
 		if (_fillin)
 		{
@@ -128,12 +129,12 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				vBiBlocks.clear();
 				vBiBlocks.push_back(biGenesisBlock);
 
-				TransientDirectory tdBc;
-				TransientDirectory tdStateDB;
-				FullBlockChain<Ethash> bc(rlpGenesisBlock.out(), AccountMap(), tdBc.path(), WithExisting::Kill);
+				TransientDirectory td_bc;
+				TransientDirectory td_stateDB;
+				FullBlockChain<Ethash> bc(rlpGenesisBlock.out(), AccountMap(), td_bc.path(), WithExisting::Kill);
 
 				//OverlayDB database (State::openDB(td_stateDB.path(), h256{}, WithExisting::Kill));
-				State state(OverlayDB(State::openDB(tdStateDB.path(), h256{}, WithExisting::Kill)), BaseState::Empty); //= importer.m_statePre;
+				State state(OverlayDB(State::openDB(td_stateDB.path(), h256{}, WithExisting::Kill)), BaseState::Empty); //= importer.m_statePre;
 				ImportTest::importState(o["pre"].get_obj(), state);
 				state.commit();
 
@@ -190,7 +191,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 				bc.sync(uncleBlockQueue, state.db(), 4);
 
-				Block block = bc.genesisBlock(state.db());
+				Block block = bc.genesisBlock(state.db()); //NOT CLEAR WHAT IT RETURNS IF bc INITIALIZED WITH CUSTOM GENESIS BLOCK
+				block.setBeneficiary(biGenesisBlock.beneficiary());
 				try
 				{
 					block.sync(bc);
@@ -313,7 +315,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				AccountMaskMap expectStateMap;
 				State stateExpect(OverlayDB(), BaseState::Empty);
 				ImportTest::importState(o["expect"].get_obj(), stateExpect, expectStateMap);
-				ImportTest::compareStates(stateExpect, trueState, expectStateMap, Options::get().checkState ? WhenError::Throw : WhenError::DontThrow);
+				ImportTest::compareStates(stateExpect, trueBlock.state(), expectStateMap, Options::get().checkState ? WhenError::Throw : WhenError::DontThrow);
 				o.erase(o.find("expect"));
 			}
 
