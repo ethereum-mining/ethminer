@@ -524,14 +524,14 @@ bool ClientBase::isKnownTransaction(h256 const& _blockHash, unsigned _i) const
 	return isKnown(_blockHash) && bc().transactions().size() > _i;
 }
 
-void ClientBase::submitExternalHashrate(int _rate, h256 const& _id)
+void ClientBase::submitExternalHashrate(u256 const& _rate, h256 const& _id)
 {
 	m_externalRates[_id] = make_pair(_rate, chrono::steady_clock::now());
 }
 
-uint64_t ClientBase::externalHashrate() const
+u256 ClientBase::externalHashrate() const
 {
-	uint64_t ret = 0;
+	u256 ret = 0;
 	for (auto i = m_externalRates.begin(); i != m_externalRates.end();)
 		if (chrono::steady_clock::now() - i->second.second > chrono::seconds(5))
 			i = m_externalRates.erase(i);
