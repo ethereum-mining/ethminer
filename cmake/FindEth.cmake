@@ -2,19 +2,10 @@
 #
 # Find the ethereum includes and library
 # 
-# if you nee to add a custom library search path, do it via via CMAKE_PREFIX_PATH 
-# 
 # This module defines
-#  ETH_INCLUDE_DIRS, where to find header, etc.
 #  ETH_CORE_LIBRARIES, the libraries needed to use ethereum.
 #  ETH_FOUND, If false, do not try to use ethereum.
-
-# only look in default directories
-find_path(
-	ETH_INCLUDE_DIR 
-	NAMES ethereum.h
-	DOC "ethereum include dir"
-)
+#  TODO: ETH_INCLUDE_DIRS
 
 set(CORE_LIBS web3jsonrpc;webthree;whisper;ethereum;evm;ethcore;lll;p2p;evmasm;devcrypto;evmcore;natspec;devcore;ethash-cl;ethash;secp256k1;scrypt;jsqrc)
 set(ALL_LIBS ${CORE_LIBS};evmjit;solidity;secp256k1)
