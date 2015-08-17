@@ -139,7 +139,7 @@ public:
 	virtual Json::Value eth_getLogsEx(Json::Value const& _json);
 	virtual Json::Value eth_getWork();
 	virtual bool eth_submitWork(std::string const& _nonce, std::string const&, std::string const& _mixHash);
-	virtual bool eth_submitHashrate(int _hashes, std::string const& _id);
+	virtual bool eth_submitHashrate(std::string const& _hashes, std::string const& _id);
 	virtual std::string eth_register(std::string const& _address);
 	virtual bool eth_unregister(std::string const& _accountId);
 	virtual Json::Value eth_fetchQueuedTransactions(std::string const& _accountId);
