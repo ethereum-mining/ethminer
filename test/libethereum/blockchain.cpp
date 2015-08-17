@@ -69,10 +69,10 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		TBOOST_REQUIRE(o.count("pre"));
 
 		ImportTest importer(o, _fillin, testType::BlockChainTests);
-		TransientDirectory td_stateDB_tmp;
+		TransientDirectory tdStateDB;
 		BlockHeader biGenesisBlock = constructBlock(o["genesisBlockHeader"].get_obj(), h256{});
 
-		State trueState(OverlayDB(State::openDB(td_stateDB_tmp.path(), h256{}, WithExisting::Kill)), BaseState::Empty);
+		State trueState(OverlayDB(State::openDB(tdStateDB.path(), h256{}, WithExisting::Kill)), BaseState::Empty);
 		Block trueBlock; //lastBlock of trueBlockchain
 		ImportTest::importState(o["pre"].get_obj(), trueState);
 		o["pre"] = fillJsonWithState(trueState); //convert all fields to hex
@@ -129,12 +129,12 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				vBiBlocks.clear();
 				vBiBlocks.push_back(biGenesisBlock);
 
-				TransientDirectory td_bc;
-				TransientDirectory td_stateDB;
-				FullBlockChain<Ethash> bc(rlpGenesisBlock.out(), AccountMap(), td_bc.path(), WithExisting::Kill);
+				TransientDirectory tdBc;
+				TransientDirectory tdStateDB;
+				FullBlockChain<Ethash> bc(rlpGenesisBlock.out(), AccountMap(), tdBc.path(), WithExisting::Kill);
 
 				//OverlayDB database (State::openDB(td_stateDB.path(), h256{}, WithExisting::Kill));
-				State state(OverlayDB(State::openDB(td_stateDB.path(), h256{}, WithExisting::Kill)), BaseState::Empty); //= importer.m_statePre;
+				State state(OverlayDB(State::openDB(tdStateDB.path(), h256{}, WithExisting::Kill)), BaseState::Empty); //= importer.m_statePre;
 				ImportTest::importState(o["pre"].get_obj(), state);
 				state.commit();
 
