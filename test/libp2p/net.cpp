@@ -159,13 +159,13 @@ BOOST_AUTO_TEST_CASE(requestTimeout)
 		return;
 
 	using TimePoint = std::chrono::steady_clock::time_point;
-	using RequestTimeout = std::pair<NodeId, TimePoint>;
+	using RequestTimeout = std::pair<NodeID, TimePoint>;
 	
 	std::chrono::milliseconds timeout(300);
 	std::list<RequestTimeout> timeouts;
 	
-	NodeId nodeA(sha3("a"));
-	NodeId nodeB(sha3("b"));
+	NodeID nodeA(sha3("a"));
+	NodeID nodeB(sha3("b"));
 	timeouts.push_back(make_pair(nodeA, chrono::steady_clock::now()));
 	this_thread::sleep_for(std::chrono::milliseconds(100));
 	timeouts.push_back(make_pair(nodeB, chrono::steady_clock::now()));
@@ -385,7 +385,7 @@ BOOST_AUTO_TEST_CASE(nodeTableReturnsUnspecifiedNode)
 
 	ba::io_service io;
 	NodeTable t(io, KeyPair::create(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30303, 30303));
-	if (Node n = t.node(NodeId()))
+	if (Node n = t.node(NodeID()))
 		BOOST_REQUIRE(false);
 	else
 		BOOST_REQUIRE(n == UnspecifiedNode);

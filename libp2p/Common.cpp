@@ -20,6 +20,7 @@
  */
 
 #include "Common.h"
+#include "Network.h"
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -29,7 +30,7 @@ const unsigned dev::p2p::c_defaultIPPort = 30303;
 static_assert(dev::p2p::c_protocolVersion == 4, "Replace v3 compatbility with v4 compatibility before updating network version.");
 
 const dev::p2p::NodeIPEndpoint dev::p2p::UnspecifiedNodeIPEndpoint = NodeIPEndpoint(bi::address(), 0, 0);
-const dev::p2p::Node dev::p2p::UnspecifiedNode = dev::p2p::Node(NodeId(), UnspecifiedNodeIPEndpoint);
+const dev::p2p::Node dev::p2p::UnspecifiedNode = dev::p2p::Node(NodeID(), UnspecifiedNodeIPEndpoint);
 
 bool dev::p2p::NodeIPEndpoint::test_allowLocal = false;
 
@@ -199,13 +200,66 @@ void DeadlineOps::reap()
 	});
 }
 
-namespace dev {
+Node::Node(NodeSpec const& _s, PeerType _p):
+	id(_s.id()),
+	endpoint(_s.nodeIPEndpoint()),
+	peerType(_p)
+{}
+
+NodeSpec::NodeSpec(string const& _user)
+{
+	m_address = _user;
+	if (m_address.substr(0, 8) == "enode://" && m_address.find('@') == 136)
+	{
+		m_id = p2p::NodeID(m_address.substr(8, 128));
+		m_address = m_address.substr(137);
+	}
+	size_t colon = m_address.find_first_of(":");
+	if (colon != string::npos)
+	{
+		m_address = m_address.substr(0, colon);
+		string ports = m_address.substr(colon + 1);
+		size_t p2 = ports.find_first_of(".");
+		if (p2 != string::npos)
+		{
+			m_udpPort = stoi(ports.substr(p2 + 1));
+			m_tcpPort = stoi(ports.substr(0, p2));
+		}
+		else
+			m_tcpPort = m_udpPort = stoi(ports);
+	}
+}
+
+NodeIPEndpoint NodeSpec::nodeIPEndpoint() const
+{
+	return NodeIPEndpoint(p2p::Network::resolveHost(m_address).address(), m_udpPort, m_tcpPort);
+}
+
+std::string NodeSpec::enode() const
+{
+	string ret = m_address;
+
+	if (m_tcpPort)
+		if (m_udpPort && m_tcpPort != m_udpPort)
+			ret += ":" + toString(m_tcpPort) + "." + toString(m_udpPort);
+		else
+			ret += ":" + toString(m_tcpPort);
+	else if (m_udpPort)
+		ret += ":" + toString(m_udpPort);
+
+	if (m_id)
+		return "enode://" + m_id.hex() + "@" + ret;
+	return ret;
+}
+
+namespace dev
+{
 	
 std::ostream& operator<<(std::ostream& _out, dev::p2p::NodeIPEndpoint const& _ep)
 {
 	_out << _ep.address << _ep.udpPort << _ep.tcpPort;
 	return _out;
 }
-	
+
 }
 

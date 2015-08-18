@@ -38,7 +38,7 @@ const char* NodeTableAllDetail::name() { return "=P="; }
 const char* NodeTableEgress::name() { return ">>P"; }
 const char* NodeTableIngress::name() { return "<<P"; }
 
-NodeEntry::NodeEntry(NodeId const& _src, Public const& _pubk, NodeIPEndpoint const& _gw): Node(_pubk, _gw), distance(NodeTable::distance(_src, _pubk)) {}
+NodeEntry::NodeEntry(NodeID const& _src, Public const& _pubk, NodeIPEndpoint const& _gw): Node(_pubk, _gw), distance(NodeTable::distance(_src, _pubk)) {}
 
 NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint, bool _enabled):
 	m_node(Node(_alias.pub(), _endpoint)),
@@ -115,9 +115,9 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relati
 	return ret;
 }
 
-list<NodeId> NodeTable::nodes() const
+list<NodeID> NodeTable::nodes() const
 {
-	list<NodeId> nodes;
+	list<NodeID> nodes;
 	DEV_GUARDED(x_nodes)
 		for (auto& i: m_nodes)
 			nodes.push_back(i.second->id);
@@ -135,24 +135,24 @@ list<NodeEntry> NodeTable::snapshot() const
 	return ret;
 }
 
-Node NodeTable::node(NodeId const& _id)
+Node NodeTable::node(NodeID const& _id)
 {
 	Guard l(x_nodes);
 	if (m_nodes.count(_id))
 	{
 		auto entry = m_nodes[_id];
-		return Node(_id, entry->endpoint, entry->required);
+		return Node(_id, entry->endpoint, entry->peerType);
 	}
 	return UnspecifiedNode;
 }
 
-shared_ptr<NodeEntry> NodeTable::nodeEntry(NodeId _id)
+shared_ptr<NodeEntry> NodeTable::nodeEntry(NodeID _id)
 {
 	Guard l(x_nodes);
 	return m_nodes.count(_id) ? m_nodes[_id] : shared_ptr<NodeEntry>();
 }
 
-void NodeTable::doDiscover(NodeId _node, unsigned _round, shared_ptr<set<shared_ptr<NodeEntry>>> _tried)
+void NodeTable::doDiscover(NodeID _node, unsigned _round, shared_ptr<set<shared_ptr<NodeEntry>>> _tried)
 {
 	// NOTE: ONLY called by doDiscovery!
 	
@@ -214,7 +214,7 @@ void NodeTable::doDiscover(NodeId _node, unsigned _round, shared_ptr<set<shared_
 	});
 }
 
-vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
+vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeID _target)
 {
 	// send s_alpha FindNode packets to nodes we know, closest to target
 	static unsigned lastBin = s_bins - 1;
@@ -611,7 +611,7 @@ void NodeTable::doDiscovery()
 			return;
 		
 		clog(NodeTableEvent) << "performing random discovery";
-		NodeId randNodeId;
+		NodeID randNodeId;
 		crypto::Nonce::get().ref().copyTo(randNodeId.ref().cropped(0, h256::size));
 		crypto::Nonce::get().ref().copyTo(randNodeId.ref().cropped(h256::size, h256::size));
 		doDiscover(randNodeId);

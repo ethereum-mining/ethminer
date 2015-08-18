@@ -314,7 +314,7 @@ int main(int argc, char** argv)
 	
 	unsigned peers = 11;
 	unsigned peerStretch = 7;
-	std::map<NodeId, pair<NodeIPEndpoint,bool>> preferredNodes;
+	std::map<NodeID, pair<NodeIPEndpoint,bool>> preferredNodes;
 	bool bootstrap = true;
 	bool disableDiscovery = false;
 	bool pinning = false;
@@ -1089,7 +1089,7 @@ int main(int argc, char** argv)
 		for (auto const& i: Host::pocHosts())
 			web3.requirePeer(i.first, i.second);
 	if (!remoteHost.empty())
-		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
+		web3.addNode(p2p::NodeID(), remoteHost + ":" + toString(remotePort));
 
 	signal(SIGABRT, &Client::exitHandler);
 	signal(SIGTERM, &Client::exitHandler);

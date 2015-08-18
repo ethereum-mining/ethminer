@@ -279,6 +279,13 @@ private:
 #define DEV_TIMED_FUNCTION_ABOVE(MS) DEV_TIMED_SCOPE_ABOVE(__PRETTY_FUNCTION__, MS)
 #endif
 
+#ifdef _MSC_VER
+// TODO.
+#define DEV_UNUSED
+#else
+#define DEV_UNUSED __attribute__((unused))
+#endif
+
 enum class WithExisting: int
 {
 	Trust = 0,
