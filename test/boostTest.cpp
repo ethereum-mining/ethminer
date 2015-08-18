@@ -32,8 +32,7 @@
 
 using namespace boost::unit_test;
 
-char** originalArgv;
-int originalArgc;
+std::vector<char*> originalArgs;
 static std::ostringstream strCout;
 std::streambuf* oldCoutStreamBuf;
 
@@ -46,17 +45,17 @@ test_suite* init_func( int argc, char* argv[] )
 	//restore output for creating test
 	std::cout.rdbuf(oldCoutStreamBuf);
 	std::cerr.rdbuf(oldCoutStreamBuf);
-	const dev::test::Options& opt = dev::test::Options::get();
+	const auto& opt = dev::test::Options::get();
 	if (opt.createRandomTest)
 	{
 		//For no reason BOOST tend to remove valuable arg -t "TestSuiteName", so using original parametrs instead
-		if (dev::test::createRandomTest(originalArgc, originalArgv))
+		if (dev::test::createRandomTest(originalArgs))
 			throw framework::internal_error("Create Random Test Error!");
 		else
 		{
 			//disable post output so the test json would be clean
-			std::cout.rdbuf( strCout.rdbuf() );
-			std::cerr.rdbuf( strCout.rdbuf() );
+			std::cout.rdbuf(strCout.rdbuf());
+			std::cerr.rdbuf(strCout.rdbuf());
 			throw framework::nothing_to_test();
 		}
 	}
@@ -66,10 +65,8 @@ test_suite* init_func( int argc, char* argv[] )
 //Custom Boost Unit Test Main
 int main( int argc, char* argv[] )
 {
-	originalArgc = argc;
-	originalArgv = new char*[argc];
 	for (int i = 0; i < argc; i++)
-		originalArgv[i] = argv[i];
+		originalArgs.push_back(argv[i]);
 
 	//disable initial output
 	oldCoutStreamBuf = std::cout.rdbuf();
