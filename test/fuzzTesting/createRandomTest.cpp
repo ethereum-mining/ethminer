@@ -43,7 +43,7 @@ std::vector<std::string> getTypes();
 void parseTestWithTypes(std::string& test);
 
 namespace dev { namespace test {
-int createRandomTest(int argc, char *argv[])
+int createRandomTest(std::vector<char*> const& args)
 {
 	std::string testSuite;
 	std::string testFillString;
@@ -52,29 +52,30 @@ int createRandomTest(int argc, char *argv[])
 	bool filldebug = false;
 	bool debug = false;
 	bool filltest = false;
-	for (auto i = 0; i < argc; ++i)
+
+	for (unsigned i = 0; i < args.size(); ++i)
 	{
-		auto arg = std::string{argv[i]};
+		auto arg = std::string{args.at(i)};
 		dev::test::Options& options = const_cast<dev::test::Options&>(dev::test::Options::get());
 		if (arg == "--fulloutput")
 			options.fulloutput = true;
 		else
-		if (arg == "-t" && i + 1 < argc)
+		if (arg == "-t" && i + 1 < args.size())
 		{
-			testSuite = argv[i + 1];
+			testSuite = args.at(i+1);
 			if (testSuite != "BlockChainTests" && testSuite != "TransactionTests" && testSuite != "StateTests"
 				&& testSuite != "VMTests" && testSuite != "RLPTests")
 				testSuite = "";
 		}
 		else
-		if ((arg == "-checktest" || arg == "-filltest") && i + 1 < argc)
+		if ((arg == "-checktest" || arg == "-filltest") && i + 1 < args.size())
 		{
 			std::string s;
-			for (int j = i+1; j < argc; ++j)
-				s += argv[j];
+			for (unsigned j = i+1; j < args.size(); ++j)
+				s += args.at(j);
 			if (asserts(s.length() > 0))
 			{
-				std::cout << "Error! Content of argument is empty! (Usage -checktest textstream)" << std::endl;
+				std::cerr << "Error! Content of argument is empty! (Usage -checktest textstream)" << std::endl;
 				return 1;
 			}
 			if (arg == "-filltest")
@@ -98,7 +99,7 @@ int createRandomTest(int argc, char *argv[])
 
 	if (testSuite == "")
 	{
-		std::cout << "Error! Test suite not supported! (Usage -t TestSuite)" << std::endl;
+		std::cerr << "Error! Test suite not supported! (Usage -t TestSuite)" << std::endl;
 		return 1;
 	}
 	else
@@ -152,7 +153,7 @@ int createRandomTest(int argc, char *argv[])
 
 	return 0;
 }
-}} //namesapces
+}} //namespaces
 
 int checkRandomTest(std::function<void(json_spirit::mValue&, bool)> _doTests, json_spirit::mValue& _value, bool _debug)
 {
