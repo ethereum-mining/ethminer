@@ -95,7 +95,7 @@ public:
 	void startMining() override;
 	void stopMining() override;
 	bool isMining() const override;
-	uint64_t hashrate() const override;
+	u256 hashrate() const override;
 	eth::WorkingProgress miningProgress() const override;
 	virtual void flushTransactions() override {}
 
