@@ -790,7 +790,7 @@ void Client::doWork()
 	}
 
 	t = true;
-	if (m_syncTransactionQueue.compare_exchange_strong(t, false) && !m_remoteWorking && !isSyncing())
+	if (!isSyncing() && !m_remoteWorking && m_syncTransactionQueue.compare_exchange_strong(t, false))
 		syncTransactionQueue();
 
 	tick();

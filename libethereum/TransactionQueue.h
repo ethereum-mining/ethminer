@@ -42,13 +42,6 @@ struct TransactionQueueChannel: public LogChannel { static const char* name(); s
 struct TransactionQueueTraceChannel: public LogChannel { static const char* name(); static const int verbosity = 7; };
 #define ctxq dev::LogOutputStream<dev::eth::TransactionQueueTraceChannel, true>()
 
-/// Import transaction policy
-enum class IfDropped
-{
-	Ignore, ///< Don't import transaction that was previously dropped.
-	Retry 	///< Import transaction even if it was dropped before.
-};
-
 /**
  * @brief A queue of Transactions, each stored as RLP.
  * Maintains a transaction queue sorted by nonce diff and gas price.
