@@ -242,12 +242,14 @@ function(createBuildInfo)
 		set(_cmake_build_type "${CMAKE_CFG_INTDIR}")
 	endif()
 
+	message("createBuildInfo()")
+
 	# Generate header file containing useful build information
 	add_custom_target(BuildInfo.h ALL
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		COMMAND ${CMAKE_COMMAND} -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
 			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}"
-			-DPROJECT_VERSION="${PROJECT_VERSION}"
+			-DPROJECT_VERSION="${PROJECT_VERSION}" -DETH_FATDB="${FATDB}"
 			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
 		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -375,6 +377,7 @@ message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
 # this must be an include, as a function it would mess up with variable scope!
 include(EthExecutableHelper)
 
+message("creating build info...")
 createBuildInfo()
 
 if (ROCKSDB AND ROCKSDB_FOUND)

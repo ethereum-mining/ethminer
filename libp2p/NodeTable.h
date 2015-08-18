@@ -40,7 +40,7 @@ namespace p2p
  */
 struct NodeEntry: public Node
 {
-	NodeEntry(NodeId const& _src, Public const& _pubk, NodeIPEndpoint const& _gw);
+	NodeEntry(NodeID const& _src, Public const& _pubk, NodeIPEndpoint const& _gw);
 	unsigned const distance;	///< Node's distance (xor of _src as integer).
 	bool pending = true;		///< Node will be ignored until Pong is received
 };
@@ -56,13 +56,13 @@ class NodeTableEventHandler
 {
 	friend class NodeTable;
 public:
-	virtual void processEvent(NodeId const& _n, NodeTableEventType const& _e) = 0;
+	virtual void processEvent(NodeID const& _n, NodeTableEventType const& _e) = 0;
 
 protected:
 	/// Called by NodeTable on behalf of an implementation (Host) to process new events without blocking nodetable.
 	void processEvents()
 	{
-		std::list<std::pair<NodeId, NodeTableEventType>> events;
+		std::list<std::pair<NodeID, NodeTableEventType>> events;
 		{
 			Guard l(x_events);
 			if (!m_nodeEventHandler.size())
@@ -78,11 +78,11 @@ protected:
 	}
 
 	/// Called by NodeTable to append event.
-	virtual void appendEvent(NodeId _n, NodeTableEventType _e) { Guard l(x_events); m_nodeEventHandler.push_back(_n); m_events[_n] = _e; }
+	virtual void appendEvent(NodeID _n, NodeTableEventType _e) { Guard l(x_events); m_nodeEventHandler.push_back(_n); m_events[_n] = _e; }
 
 	Mutex x_events;
-	std::list<NodeId> m_nodeEventHandler;
-	std::unordered_map<NodeId, NodeTableEventType> m_events;
+	std::list<NodeID> m_nodeEventHandler;
+	std::unordered_map<NodeID, NodeTableEventType> m_events;
 };
 
 class NodeTable;
@@ -123,8 +123,8 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	friend std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable);
 	using NodeSocket = UDPSocket<NodeTable, 1280>;
 	using TimePoint = std::chrono::steady_clock::time_point;	///< Steady time point.
-	using NodeIdTimePoint = std::pair<NodeId, TimePoint>;
-	using EvictionTimeout = std::pair<NodeIdTimePoint, NodeId>;	///< First NodeId (NodeIdTimePoint) may be evicted and replaced with second NodeId.
+	using NodeIdTimePoint = std::pair<NodeID, TimePoint>;
+	using EvictionTimeout = std::pair<NodeIdTimePoint, NodeID>;	///< First NodeID (NodeIdTimePoint) may be evicted and replaced with second NodeID.
 	
 public:
 	enum NodeRelation { Unknown = 0, Known };
@@ -135,7 +135,7 @@ public:
 	~NodeTable();
 
 	/// Returns distance based on xor metric two node ids. Used by NodeEntry and NodeTable.
-	static unsigned distance(NodeId const& _a, NodeId const& _b) { u256 d = sha3(_a) ^ sha3(_b); unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
+	static unsigned distance(NodeID const& _a, NodeID const& _b) { u256 d = sha3(_a) ^ sha3(_b); unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
 
 	/// Set event handler for NodeEntryAdded and NodeEntryDropped events.
 	void setEventHandler(NodeTableEventHandler* _handler) { m_nodeEventHandler.reset(_handler); }
@@ -143,11 +143,11 @@ public:
 	/// Called by implementation which provided handler to process NodeEntryAdded/NodeEntryDropped events. Events are coalesced by type whereby old events are ignored.
 	void processEvents();
 
-	/// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen or NodeId is empty.
+	/// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen or NodeID is empty.
 	std::shared_ptr<NodeEntry> addNode(Node const& _node, NodeRelation _relation = NodeRelation::Unknown);
 
 	/// Returns list of node ids active in node table.
-	std::list<NodeId> nodes() const;
+	std::list<NodeID> nodes() const;
 
 	/// Returns node count.
 	unsigned count() const { return m_nodes.size(); }
@@ -156,10 +156,10 @@ public:
 	std::list<NodeEntry> snapshot() const;
 
 	/// Returns true if node id is in node table.
-	bool haveNode(NodeId const& _id) { Guard l(x_nodes); return m_nodes.count(_id) > 0; }
+	bool haveNode(NodeID const& _id) { Guard l(x_nodes); return m_nodes.count(_id) > 0; }
 
 	/// Returns the Node to the corresponding node id or the empty Node if that id is not found.
-	Node node(NodeId const& _id);
+	Node node(NodeID const& _id);
 
 #if defined(BOOST_AUTO_TEST_SUITE) || defined(_MSC_VER) // MSVC includes access specifier in symbol name
 protected:
@@ -202,14 +202,14 @@ private:
 	NodeEntry center() const { return NodeEntry(m_node.id, m_node.publicKey(), m_node.endpoint); }
 
 	/// Used by asynchronous operations to return NodeEntry which is active and managed by node table.
-	std::shared_ptr<NodeEntry> nodeEntry(NodeId _id);
+	std::shared_ptr<NodeEntry> nodeEntry(NodeID _id);
 
 	/// Used to discovery nodes on network which are close to the given target.
 	/// Sends s_alpha concurrent requests to nodes nearest to target, for nodes nearest to target, up to s_maxSteps rounds.
-	void doDiscover(NodeId _target, unsigned _round = 0, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried = std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>>());
+	void doDiscover(NodeID _target, unsigned _round = 0, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried = std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>>());
 
 	/// Returns nodes from node table which are closest to target.
-	std::vector<std::shared_ptr<NodeEntry>> nearestNodeEntries(NodeId _target);
+	std::vector<std::shared_ptr<NodeEntry>> nearestNodeEntries(NodeID _target);
 
 	/// Asynchronously drops _leastSeen node if it doesn't reply and adds _new node, otherwise _new node is thrown away.
 	void evict(std::shared_ptr<NodeEntry> _leastSeen, std::shared_ptr<NodeEntry> _new);
@@ -247,7 +247,7 @@ private:
 	Secret m_secret;												///< This nodes secret key.
 
 	mutable Mutex x_nodes;											///< LOCK x_state first if both locks are required. Mutable for thread-safe copy in nodes() const.
-	std::unordered_map<NodeId, std::shared_ptr<NodeEntry>> m_nodes;	///< Known Node Endpoints
+	std::unordered_map<NodeID, std::shared_ptr<NodeEntry>> m_nodes;	///< Known Node Endpoints
 
 	mutable Mutex x_state;											///< LOCK x_state first if both x_nodes and x_state locks are required.
 	std::array<NodeBucket, s_bins> m_state;							///< State of p2p node network.
@@ -333,13 +333,13 @@ struct Pong: RLPXDatagram<Pong>
  * Minimum Encoded Size: 21 bytes
  * Maximum Encoded Size: 30 bytes
  *
- * target: NodeId of node. The responding node will send back nodes closest to the target.
+ * target: NodeID of node. The responding node will send back nodes closest to the target.
  *
  */
 struct FindNode: RLPXDatagram<FindNode>
 {
 	FindNode(bi::udp::endpoint _ep): RLPXDatagram<FindNode>(_ep) {}
-	FindNode(bi::udp::endpoint _ep, NodeId _target): RLPXDatagram<FindNode>(_ep), target(_target), ts(futureFromEpoch(std::chrono::seconds(60))) {}
+	FindNode(bi::udp::endpoint _ep, NodeID _target): RLPXDatagram<FindNode>(_ep), target(_target), ts(futureFromEpoch(std::chrono::seconds(60))) {}
 
 	static const uint8_t type = 3;
 
@@ -360,7 +360,7 @@ struct Neighbours: RLPXDatagram<Neighbours>
 		Neighbour(Node const& _node): endpoint(_node.endpoint), node(_node.id) {}
 		Neighbour(RLP const& _r): endpoint(_r) { node = h512(_r[3].toBytes()); }
 		NodeIPEndpoint endpoint;
-		NodeId node;
+		NodeID node;
 		void streamRLP(RLPStream& _s) const { _s.appendList(4); endpoint.streamRLP(_s, NodeIPEndpoint::StreamInline); _s << node; }
 	};
 

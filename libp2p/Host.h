@@ -47,11 +47,11 @@ namespace bi = ba::ip;
 
 namespace std
 {
-template<> struct hash<pair<dev::p2p::NodeId, string>>
+template<> struct hash<pair<dev::p2p::NodeID, string>>
 {
-	size_t operator()(pair<dev::p2p::NodeId, string> const& _value) const
+	size_t operator()(pair<dev::p2p::NodeID, string> const& _value) const
 	{
-		size_t ret = hash<dev::p2p::NodeId>()(_value.first);
+		size_t ret = hash<dev::p2p::NodeID>()(_value.first);
 		return ret ^ (hash<string>()(_value.second) + 0x9e3779b9 + (ret << 6) + (ret >> 2));
 	}
 };
@@ -73,7 +73,7 @@ public:
 	Host const& host() const { return m_host; }
 
 private:
-	virtual void processEvent(NodeId const& _n, NodeTableEventType const& _e);
+	virtual void processEvent(NodeID const& _n, NodeTableEventType const& _e);
 
 	Host& m_host;
 };
@@ -101,19 +101,19 @@ public:
 	bytes data(Session const& _s, std::string const& _subs) const;
 
 private:
-	std::unordered_map<std::pair<p2p::NodeId, std::string>, Reputation> m_nodes;	///< Nodes that were impolite while syncing. We avoid syncing from these if possible.
+	std::unordered_map<std::pair<p2p::NodeID, std::string>, Reputation> m_nodes;	///< Nodes that were impolite while syncing. We avoid syncing from these if possible.
 	SharedMutex mutable x_nodes;
 };
 
 struct NodeInfo
 {
 	NodeInfo() = default;
-	NodeInfo(NodeId const& _id, std::string const& _address, unsigned _port, std::string const& _version):
+	NodeInfo(NodeID const& _id, std::string const& _address, unsigned _port, std::string const& _version):
 		id(_id), address(_address), port(_port), version(_version) {}
 
 	std::string enode() const { return "enode://" + id.hex() + "@" + address + ":" + toString(port); }
 
-	NodeId id;
+	NodeID id;
 	std::string address;
 	unsigned port;
 	std::string version;
@@ -156,17 +156,20 @@ public:
 	CapDescs caps() const { CapDescs ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
 	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(std::make_pair(T::staticName(), T::staticVersion()))); } catch (...) { return nullptr; } }
 
+	/// Add a potential peer.
+	void addPeer(NodeSpec const& _s, PeerType _t);
+
 	/// Add node as a peer candidate. Node is added if discovery ping is successful and table has capacity.
-	void addNode(NodeId const& _node, NodeIPEndpoint const& _endpoint);
+	void addNode(NodeID const& _node, NodeIPEndpoint const& _endpoint);
 	
 	/// Create Peer and attempt keeping peer connected.
-	void requirePeer(NodeId const& _node, NodeIPEndpoint const& _endpoint);
+	void requirePeer(NodeID const& _node, NodeIPEndpoint const& _endpoint);
 
 	/// Create Peer and attempt keeping peer connected.
-	void requirePeer(NodeId const& _node, bi::address const& _addr, unsigned short _udpPort, unsigned short _tcpPort) { requirePeer(_node, NodeIPEndpoint(_addr, _udpPort, _tcpPort)); }
+	void requirePeer(NodeID const& _node, bi::address const& _addr, unsigned short _udpPort, unsigned short _tcpPort) { requirePeer(_node, NodeIPEndpoint(_addr, _udpPort, _tcpPort)); }
 
 	/// Note peer as no longer being required.
-	void relinquishPeer(NodeId const& _node);
+	void relinquishPeer(NodeID const& _node);
 	
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
@@ -216,10 +219,10 @@ public:
 	void startPeerSession(Public const& _id, RLP const& _hello, std::unique_ptr<RLPXFrameCoder>&& _io, std::shared_ptr<RLPXSocket> const& _s);
 
 	/// Get session by id
-	std::shared_ptr<Session> peerSession(NodeId const& _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? m_sessions[_id].lock() : std::shared_ptr<Session>(); }
+	std::shared_ptr<Session> peerSession(NodeID const& _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? m_sessions[_id].lock() : std::shared_ptr<Session>(); }
 
 	/// Get our current node ID.
-	NodeId id() const { return m_alias.pub(); }
+	NodeID id() const { return m_alias.pub(); }
 
 	/// Get the public TCP endpoint.
 	bi::tcp::endpoint const& tcpPublic() const { return m_tcpPublic; }
@@ -231,7 +234,7 @@ public:
 	p2p::NodeInfo nodeInfo() const { return NodeInfo(id(), (networkPreferences().publicIPAddress.empty() ? m_tcpPublic.address().to_string() : networkPreferences().publicIPAddress), m_tcpPublic.port(), m_clientVersion); }
 
 protected:
-	void onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e);
+	void onNodeTableEvent(NodeID const& _n, NodeTableEventType const& _e);
 
 	/// Deserialise the data and populate the set of known peers.
 	void restoreNetwork(bytesConstRef _b);
@@ -241,7 +244,7 @@ private:
 	
 	unsigned peerSlots(PeerSlotType _type) { return _type == Egress ? m_idealPeerCount : m_idealPeerCount * m_stretchPeers; }
 	
-	bool havePeerSession(NodeId const& _id) { return !!peerSession(_id); }
+	bool havePeerSession(NodeID const& _id) { return !!peerSession(_id); }
 
 	/// Determines and sets m_tcpPublic to publicly advertised address.
 	void determinePublic();
@@ -302,15 +305,15 @@ private:
 	std::shared_ptr<NodeTable> m_nodeTable;									///< Node table (uses kademlia-like discovery).
 
 	/// Shared storage of Peer objects. Peers are created or destroyed on demand by the Host. Active sessions maintain a shared_ptr to a Peer;
-	std::unordered_map<NodeId, std::shared_ptr<Peer>> m_peers;
+	std::unordered_map<NodeID, std::shared_ptr<Peer>> m_peers;
 	
 	/// Peers we try to connect regardless of p2p network.
-	std::set<NodeId> m_requiredPeers;
+	std::set<NodeID> m_requiredPeers;
 	Mutex x_requiredPeers;
 
 	/// The nodes to which we are currently connected. Used by host to service peer requests and keepAlivePeers and for shutdown. (see run())
 	/// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
-	mutable std::unordered_map<NodeId, std::weak_ptr<Session>> m_sessions;
+	mutable std::unordered_map<NodeID, std::weak_ptr<Session>> m_sessions;
 	mutable RecursiveMutex x_sessions;
 	
 	std::list<std::weak_ptr<RLPXHandshake>> m_connecting;					///< Pending connections.
