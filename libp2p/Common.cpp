@@ -217,8 +217,8 @@ NodeSpec::NodeSpec(string const& _user)
 	size_t colon = m_address.find_first_of(":");
 	if (colon != string::npos)
 	{
-		m_address = m_address.substr(0, colon);
 		string ports = m_address.substr(colon + 1);
+		m_address = m_address.substr(0, colon);
 		size_t p2 = ports.find_first_of(".");
 		if (p2 != string::npos)
 		{
