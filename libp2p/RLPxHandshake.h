@@ -66,7 +66,7 @@ public:
 	RLPXHandshake(Host* _host, std::shared_ptr<RLPXSocket> const& _socket): m_host(_host), m_originated(false), m_socket(_socket), m_idleTimer(m_socket->ref().get_io_service()) { crypto::Nonce::get().ref().copyTo(m_nonce.ref()); }
 	
 	/// Setup outbound connection.
-	RLPXHandshake(Host* _host, std::shared_ptr<RLPXSocket> const& _socket, NodeId _remote): m_host(_host), m_remote(_remote), m_originated(true), m_socket(_socket), m_idleTimer(m_socket->ref().get_io_service()) { crypto::Nonce::get().ref().copyTo(m_nonce.ref()); }
+	RLPXHandshake(Host* _host, std::shared_ptr<RLPXSocket> const& _socket, NodeID _remote): m_host(_host), m_remote(_remote), m_originated(true), m_socket(_socket), m_idleTimer(m_socket->ref().get_io_service()) { crypto::Nonce::get().ref().copyTo(m_nonce.ref()); }
 
 	~RLPXHandshake() {}
 
@@ -104,7 +104,7 @@ protected:
 	Host* m_host;					///< Host which provides m_alias, protocolVersion(), m_clientVersion, caps(), and TCP listenPort().
 	
 	/// Node id of remote host for socket.
-	NodeId m_remote;					///< Public address of remote host.
+	NodeID m_remote;					///< Public address of remote host.
 	bool m_originated = false;		///< True if connection is outbound.
 	
 	/// Buffers for encoded and decoded handshake phases
