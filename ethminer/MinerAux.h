@@ -37,6 +37,7 @@
 #include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
 #include <libdevcore/SHA3.h>
+#include <libdevcore/CommonJS.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/EthashGPUMiner.h>
 #include <libethcore/EthashCPUMiner.h>
@@ -515,7 +516,7 @@ private:
 					auto rate = mp.rate();
 					try
 					{
-						rpc.eth_submitHashrate((int)rate, "0x" + id.hex());
+						rpc.eth_submitHashrate(toJS((u256)rate), "0x" + id.hex());
 					}
 					catch (jsonrpc::JsonRpcException const& _e)
 					{
