@@ -509,10 +509,6 @@ if (GUI)
 #		add_subdirectory(third)	// reenable once not qtwebkit.
 	endif()
 
-	if (SOLIDITY)
-		add_subdirectory(mix)
-	endif ()
-
 endif()
 
 if (APPLE AND GUI)
