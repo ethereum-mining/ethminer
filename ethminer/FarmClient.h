@@ -34,7 +34,7 @@ class FarmClient : public jsonrpc::Client
             else
                 throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString());
         }
-        bool eth_submitHashrate(int param1, const std::string& param2) throw (jsonrpc::JsonRpcException)
+        bool eth_submitHashrate(const std::string& param1, const std::string& param2) throw (jsonrpc::JsonRpcException)
         {
             Json::Value p;
             p.append(param1);
