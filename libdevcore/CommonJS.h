@@ -67,9 +67,9 @@ template<typename T> std::string toJS(T const& _i)
 
 /// Convert string to byte array. Input parameters can be hex or dec. Returns empty array if invalid input e.g neither dec or hex.
 bytes jsToBytes(std::string const& _s);
-/// Add '0' on the head of @a _b until @a _l.
+/// Add '0' on, or remove items from, the front of @a _b until it is of length @a _l.
 bytes padded(bytes _b, unsigned _l);
-/// Add '0' on the queue of @a _b until @a _l.
+/// Add '0' on, or remove items from,  the back of @a _b until it is of length @a _l.
 bytes paddedRight(bytes _b, unsigned _l);
 /// Removing all trailing '0'. Returns empty array if input contains only '0' char.
 bytes unpadded(bytes _s);
