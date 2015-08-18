@@ -67,7 +67,7 @@ void InjectTransactions::doInject(QString _txHex)
 	try
 	{
 		bytes b = fromHex(_txHex.toStdString(), WhenError::Throw);
-		main()->ethereum()->injectTransaction(b);
+		main()->ethereum()->injectTransaction(b, IfDropped::Retry);
 	}
 	catch (BadHexCharacter& _e)
 	{

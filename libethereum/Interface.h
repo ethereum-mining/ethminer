@@ -94,7 +94,7 @@ public:
 	ExecutionResult create(Secret const& _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, FudgeFactor _ff = FudgeFactor::Strict) { return create(toAddress(_secret), _value, _data, _gas, _gasPrice, _ff); }
 
 	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
-	virtual ImportResult injectTransaction(bytes const& _rlp) = 0;
+	virtual ImportResult injectTransaction(bytes const& _rlp, IfDropped _id = IfDropped::Ignore) = 0;
 
 	/// Injects the RLP-encoded block given by the _rlp into the block queue directly.
 	virtual ImportResult injectBlock(bytes const& _block) = 0;
