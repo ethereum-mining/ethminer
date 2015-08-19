@@ -506,5 +506,9 @@ if (GUI)
 
 	add_subdirectory(libnatspec)
 	add_subdirectory(libjsqrc)
+	
+	
+	add_subdirectory(alethzero)
+	add_subdirectory(mix)
 
 endif()
