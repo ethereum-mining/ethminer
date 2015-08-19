@@ -217,15 +217,15 @@ BOOST_AUTO_TEST_CASE(emptySharedPeer)
 	shared_ptr<Peer> p;
 	BOOST_REQUIRE(!p);
 	
-	std::map<NodeId, std::shared_ptr<Peer>> peers;
-	p = peers[NodeId()];
+	std::map<NodeID, std::shared_ptr<Peer>> peers;
+	p = peers[NodeID()];
 	BOOST_REQUIRE(!p);
 	
 	p.reset(new Peer(UnspecifiedNode));
 	BOOST_REQUIRE(!p->id);
 	BOOST_REQUIRE(!*p);
 	
-	p.reset(new Peer(Node(NodeId(EmptySHA3), UnspecifiedNodeIPEndpoint)));
+	p.reset(new Peer(Node(NodeID(EmptySHA3), UnspecifiedNodeIPEndpoint)));
 	BOOST_REQUIRE(!(!*p));
 	BOOST_REQUIRE(*p);
 	BOOST_REQUIRE(p);
