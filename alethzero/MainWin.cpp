@@ -158,10 +158,8 @@ Main::Main(QWidget* _parent):
 		m_keyManager.import(ICAP::createDirect(), "Default identity");
 	}
 
-#if ETH_DEBUG
-	m_servers.append("127.0.0.1:30300");
-#endif
-	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
+	for (auto const& i: Host::pocHosts())
+		m_servers.append(QString::fromStdString("enode://" + i.first.hex() + "@" + i.second));
 
 	if (!dev::contents(dbPath + "/genesis.json").empty())
 		CanonBlockChain<Ethash>::setGenesis(contentsString(dbPath + "/genesis.json"));

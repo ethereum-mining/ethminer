@@ -119,7 +119,7 @@ Main::Main(QWidget *parent) :
 
 	bytesConstRef networkConfig((byte*)m_networkConfig.data(), m_networkConfig.size());
 	m_web3.reset(new WebThreeDirect("Third", getDataDir() + "/Third", false, {"eth", "shh"}, NetworkPreferences(), networkConfig));
-	m_web3->connect(Host::pocHost());
+//	m_web3->connect(Host::pocHost());
 
 	m_httpConnector.reset(new jsonrpc::HttpServer(8080));
 	m_server.reset(new WebThreeStubServer(*m_httpConnector, *web3(), keysAsVector(m_myKeys)));

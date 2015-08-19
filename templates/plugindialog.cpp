@@ -14,24 +14,26 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Exceptions.h
- * @author Christian <c@ethdev.com>
- * @date 2014
+/** @file $NAME.cpp
+ * @author Gav Wood <i@gavwood.com>
+ * @date 2015
  */
 
-#pragma once
+#include "$NAME.h"
+#include <libdevcore/Log.h>
+#include <libethereum/Client.h>
+using namespace std;
+using namespace dev;
+using namespace az;
+using namespace eth;
 
-#include <libdevcore/Exceptions.h>
+DEV_AZ_NOTE_PLUGIN($NAME);
 
-namespace dev
+$NAME::$NAME(MainFace* _m):
+	Plugin(_m, "$NAME")
 {
-namespace eth
-{
-
-struct AssemblyException: virtual Exception {};
-struct OptimizerException: virtual AssemblyException {};
-struct StackTooDeepException: virtual OptimizerException {};
-struct ItemNotAvailableException: virtual OptimizerException {};
-
 }
+
+$NAME::~$NAME()
+{
 }

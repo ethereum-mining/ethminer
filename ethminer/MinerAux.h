@@ -37,6 +37,7 @@
 #include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
 #include <libdevcore/SHA3.h>
+#include <libdevcore/CommonJS.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/EthashGPUMiner.h>
 #include <libethcore/EthashCPUMiner.h>
@@ -513,7 +514,15 @@ private:
 						minelog << "Getting work package...";
 
 					auto rate = mp.rate();
-					rpc.eth_submitHashrate((int)rate, "0x" + id.hex());
+					try
+					{
+						rpc.eth_submitHashrate(toJS((u256)rate), "0x" + id.hex());
+					}
+					catch (jsonrpc::JsonRpcException const& _e)
+					{
+						cwarn << "Failed to submit hashrate.";
+						cwarn << boost::diagnostic_information(_e);
+					}
 
 					Json::Value v = rpc.eth_getWork();
 					h256 hh(v[0].asString());

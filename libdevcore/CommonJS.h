@@ -67,9 +67,9 @@ template<typename T> std::string toJS(T const& _i)
 
 /// Convert string to byte array. Input parameters can be hex or dec. Returns empty array if invalid input e.g neither dec or hex.
 bytes jsToBytes(std::string const& _s);
-/// Add '0' on the head of @a _b until @a _l.
+/// Add '0' on, or remove items from, the front of @a _b until it is of length @a _l.
 bytes padded(bytes _b, unsigned _l);
-/// Add '0' on the queue of @a _b until @a _l.
+/// Add '0' on, or remove items from,  the back of @a _b until it is of length @a _l.
 bytes paddedRight(bytes _b, unsigned _l);
 /// Removing all trailing '0'. Returns empty array if input contains only '0' char.
 bytes unpadded(bytes _s);
@@ -113,9 +113,7 @@ inline u256 jsToU256(std::string const& _s) { return jsToInt<32>(_s); }
 
 inline int jsToInt(std::string const& _s)
 {
-	if (_s.size() > 2 && _s.substr(0, 2).compare("0x") == 0)
-		return std::stoi(_s, nullptr, 16);
-	return std::stoi(_s, nullptr, 10);
+	return std::stoi(_s, nullptr, 0);
 }
 
 inline std::string jsToDecimal(std::string const& _s)
