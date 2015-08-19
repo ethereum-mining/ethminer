@@ -15,8 +15,8 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file boostTest.cpp
- * @author Marko Simovic <markobarko@gmail.com>
- * @date 2014
+ * @author Dimitry Khokhlov <dimitry@ethdev.com>
+ * @date 2015
  * Stub for generating main boost.test module.
  * Original code taken from boost sources.
  */
@@ -39,8 +39,9 @@ std::streambuf* oldCoutStreamBuf;
 //Custom Boost Initialization
 test_suite* init_func( int argc, char* argv[] )
 {
-	if (argc == 0)
-		argv[0] = (char*)"a";
+	//Required for boost. -nowarning
+	(void) argc;
+	(void) argv[0];
 
 	//restore output for creating test
 	std::cout.rdbuf(oldCoutStreamBuf);
