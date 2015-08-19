@@ -62,11 +62,14 @@ public:
 	/// Same as peers().size(), but more efficient.
 	virtual size_t peerCount() const = 0;
 
+	/// Generalised peer addition.
+	virtual void addPeer(p2p::NodeSpec const& _node, p2p::PeerType _t) = 0;
+
 	/// Add node to connect to.
-	virtual void addNode(p2p::NodeId const& _node, bi::tcp::endpoint const& _hostEndpoint) = 0;
+	virtual void addNode(p2p::NodeID const& _node, bi::tcp::endpoint const& _hostEndpoint) = 0;
 	
 	/// Require connection to peer.
-	virtual void requirePeer(p2p::NodeId const& _node, bi::tcp::endpoint const& _endpoint) = 0;
+	virtual void requirePeer(p2p::NodeID const& _node, bi::tcp::endpoint const& _endpoint) = 0;
 	
 	/// Save peers
 	virtual dev::bytes saveNetwork() = 0;
@@ -79,7 +82,7 @@ public:
 	virtual p2p::NetworkPreferences const& networkPreferences() const = 0;
 	virtual void setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers) = 0;
 
-	virtual p2p::NodeId id() const = 0;
+	virtual p2p::NodeID id() const = 0;
 
 	/// Gets the nodes.
 	virtual p2p::Peers nodes() const = 0;
@@ -147,23 +150,26 @@ public:
 	/// Same as peers().size(), but more efficient.
 	size_t peerCount() const override;
 	
-	/// Add node to connect to.
-	virtual void addNode(p2p::NodeId const& _node, bi::tcp::endpoint const& _hostEndpoint) override;
-	
-	/// Add node to connect to.
-	void addNode(p2p::NodeId const& _node, std::string const& _hostString) { addNode(_node, p2p::Network::resolveHost(_hostString)); }
-	
-	/// Add node to connect to.
-	void addNode(bi::tcp::endpoint const& _endpoint) { addNode(p2p::NodeId(), _endpoint); }
+	/// Generalised peer addition.
+	virtual void addPeer(p2p::NodeSpec const& _node, p2p::PeerType _t) override;
 
 	/// Add node to connect to.
-	void addNode(std::string const& _hostString) { addNode(p2p::NodeId(), _hostString); }
+	virtual void addNode(p2p::NodeID const& _node, bi::tcp::endpoint const& _hostEndpoint) override;
+
+	/// Add node to connect to.
+	void addNode(p2p::NodeID const& _node, std::string const& _hostString) { addNode(_node, p2p::Network::resolveHost(_hostString)); }
+	
+	/// Add node to connect to.
+	void addNode(bi::tcp::endpoint const& _endpoint) { addNode(p2p::NodeID(), _endpoint); }
+
+	/// Add node to connect to.
+	void addNode(std::string const& _hostString) { addNode(p2p::NodeID(), _hostString); }
 	
 	/// Require connection to peer.
-	void requirePeer(p2p::NodeId const& _node, bi::tcp::endpoint const& _endpoint) override;
+	void requirePeer(p2p::NodeID const& _node, bi::tcp::endpoint const& _endpoint) override;
 
 	/// Require connection to peer.
-	void requirePeer(p2p::NodeId const& _node, std::string const& _hostString) { requirePeer(_node, p2p::Network::resolveHost(_hostString)); }
+	void requirePeer(p2p::NodeID const& _node, std::string const& _hostString) { requirePeer(_node, p2p::Network::resolveHost(_hostString)); }
 
 	/// Save peers
 	dev::bytes saveNetwork() override;
@@ -182,7 +188,7 @@ public:
 
 	p2p::NodeInfo nodeInfo() const override { return m_net.nodeInfo(); }
 
-	p2p::NodeId id() const override { return m_net.id(); }
+	p2p::NodeID id() const override { return m_net.id(); }
 
 	std::string enode() const override { return m_net.enode(); }
 

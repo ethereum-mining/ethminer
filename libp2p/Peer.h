@@ -58,7 +58,7 @@ class Peer: public Node
 
 public:
 	/// Construct Peer from Node.
-	Peer(Node const& _node): Node(_node.id, _node.endpoint, _node.required) {}
+	Peer(Node const& _node): Node(_node) {}
 	
 	bool isOffline() const { return !m_session.lock(); }
 

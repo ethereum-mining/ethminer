@@ -76,9 +76,9 @@ ReputationManager& Session::repMan() const
 	return m_server->repMan();
 }
 
-NodeId Session::id() const
+NodeID Session::id() const
 {
-	return m_peer ? m_peer->id : NodeId();
+	return m_peer ? m_peer->id : NodeID();
 }
 
 void Session::addRating(int _r)

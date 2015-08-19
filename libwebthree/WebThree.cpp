@@ -128,14 +128,18 @@ bytes WebThreeDirect::saveNetwork()
 	return m_net.saveNetwork();
 }
 
-void WebThreeDirect::addNode(NodeId const& _node, bi::tcp::endpoint const& _host)
+void WebThreeDirect::addNode(NodeID const& _node, bi::tcp::endpoint const& _host)
 {
 	m_net.addNode(_node, NodeIPEndpoint(_host.address(), _host.port(), _host.port()));
 }
 
-void WebThreeDirect::requirePeer(NodeId const& _node, bi::tcp::endpoint const& _host)
+void WebThreeDirect::requirePeer(NodeID const& _node, bi::tcp::endpoint const& _host)
 {
 	m_net.requirePeer(_node, NodeIPEndpoint(_host.address(), _host.port(), _host.port()));
 }
 
+void WebThreeDirect::addPeer(NodeSpec const& _s, PeerType _t)
+{
+	m_net.addPeer(_s, _t);
+}
 
