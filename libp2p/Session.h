@@ -83,6 +83,7 @@ public:
 	void addNote(std::string const& _k, std::string const& _v) { Guard l(x_info); m_info.notes[_k] = _v; }
 
 	PeerSessionInfo info() const { Guard l(x_info); return m_info; }
+	std::chrono::steady_clock::time_point connectionTime() { return m_connect; }
 
 	void ensureNodesRequested();
 	void serviceNodesRequest();

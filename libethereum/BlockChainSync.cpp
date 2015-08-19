@@ -100,6 +100,8 @@ void BlockChainSync::onPeerStatus(std::shared_ptr<EthereumPeer> _peer)
 		_peer->disable("Blacklisted client version.");
 	else if (host().isBanned(session->id()))
 		_peer->disable("Peer banned for previous bad behaviour.");
+	else if (_peer->m_asking != Asking::State && _peer->m_asking != Asking::Nothing)
+		_peer->disable("Peer banned for unexpected status message.");
 	else
 	{
 		unsigned hashes = estimatedHashes();
