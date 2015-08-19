@@ -38,7 +38,7 @@ bool Peer::shouldReconnect() const
 	
 unsigned Peer::fallbackSeconds() const
 {
-	if (required)
+	if (peerType == PeerType::Required)
 		return 5;
 	switch (m_lastDisconnect)
 	{

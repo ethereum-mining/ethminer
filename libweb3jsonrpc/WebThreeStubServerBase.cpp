@@ -525,19 +525,7 @@ bool WebThreeStubServerBase::admin_net_stop(std::string const& _session)
 bool WebThreeStubServerBase::admin_net_connect(std::string const& _node, std::string const& _session)
 {
 	ADMIN;
-	p2p::NodeId id;
-	bi::tcp::endpoint ep;
-	if (_node.substr(0, 8) == "enode://" && _node.find('@') == 136)
-	{
-		id = p2p::NodeId(_node.substr(8, 128));
-		ep = p2p::Network::resolveHost(_node.substr(137));
-	}
-	else
-		ep = p2p::Network::resolveHost(_node);
-
-	if (ep == bi::tcp::endpoint())
-		return false;
-	network()->requirePeer(id, ep);
+	network()->addPeer(p2p::NodeSpec(_node), p2p::PeerType::Required);
 	return true;
 }
 

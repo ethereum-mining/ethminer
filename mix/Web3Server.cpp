@@ -44,13 +44,19 @@ class EmptyNetwork : public dev::WebThreeNetworkFace
 		return 0;
 	}
 
-	void addNode(p2p::NodeId const& _node, bi::tcp::endpoint const& _hostEndpoint) override
+	void addPeer(p2p::NodeSpec const& _node, p2p::PeerType _t) override
+	{
+		(void)_node;
+		(void)_t;
+	}
+
+	void addNode(p2p::NodeID const& _node, bi::tcp::endpoint const& _hostEndpoint) override
 	{
 		(void)_node;
 		(void)_hostEndpoint;
 	}
 
-	void requirePeer(p2p::NodeId const& _node, bi::tcp::endpoint const& _endpoint) override
+	void requirePeer(p2p::NodeID const& _node, bi::tcp::endpoint const& _endpoint) override
 	{
 		(void)_node;
 		(void)_endpoint;
@@ -87,9 +93,9 @@ class EmptyNetwork : public dev::WebThreeNetworkFace
 
 	std::string enode() const override { return ""; }
 
-	p2p::NodeId id() const override
+	p2p::NodeID id() const override
 	{
-		return p2p::NodeId();
+		return p2p::NodeID();
 	}
 
 	p2p::Peers nodes() const override
