@@ -73,14 +73,14 @@ public:
 	TestHostCapability(): Worker("test") {}
 	virtual ~TestHostCapability() {}
 
-	void sendTestMessage(NodeId const& _id, int _x)
+	void sendTestMessage(NodeID const& _id, int _x)
 	{
 		for (auto i: peerSessions())
 			if (_id == i.second->id)
 				i.first->cap<TestCapability>().get()->sendTestMessage(_x);
 	}
 
-	std::pair<int, int> retrieveTestData(NodeId const& _id)
+	std::pair<int, int> retrieveTestData(NodeID const& _id)
 	{ 
 		int cnt = 0;
 		int checksum = 0;

@@ -65,7 +65,7 @@ public:
 
 	bool isConnected() const { return m_socket->ref().is_open(); }
 
-	NodeId id() const;
+	NodeID id() const;
 	unsigned socketId() const { Guard l(x_info); return m_info.socketId; }
 
 	template <class PeerCap>
