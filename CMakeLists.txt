@@ -507,8 +507,4 @@ if (GUI)
 	add_subdirectory(libnatspec)
 	add_subdirectory(libjsqrc)
 
-	if (SOLIDITY)
-		add_subdirectory(mix)
-	endif ()
-
 endif()
