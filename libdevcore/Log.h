@@ -111,11 +111,11 @@ std::string getThreadName();
 
 /// The default logging channels. Each has an associated verbosity and three-letter prefix (name() ).
 /// Channels should inherit from LogChannel and define name() and verbosity.
-struct LogChannel { static const char* name(); static const int verbosity = 1; };
+struct LogChannel { static const char* name(); static const int verbosity = 1; static const bool debug = true; };
 struct LeftChannel: public LogChannel { static const char* name(); };
 struct RightChannel: public LogChannel { static const char* name(); };
-struct WarnChannel: public LogChannel { static const char* name(); static const int verbosity = 0; };
-struct NoteChannel: public LogChannel { static const char* name(); };
+struct WarnChannel: public LogChannel { static const char* name(); static const int verbosity = 0; static const bool debug = false; };
+struct NoteChannel: public LogChannel { static const char* name(); static const bool debug = false; };
 struct DebugChannel: public LogChannel { static const char* name(); static const int verbosity = 0; };
 
 enum class LogTag
@@ -259,30 +259,29 @@ public:
 	template <class T> LogOutputStream& operator<<(T const& _t) { if (Id::verbosity <= g_logVerbosity) { if (_AutoSpacing && m_sstr.str().size() && m_sstr.str().back() != ' ') m_sstr << " "; append(_t); } return *this; }
 };
 
-// Simple cout-like stream objects for accessing common log channels.
-// Dirties the global namespace, but oh so convenient...
-#define cnote dev::LogOutputStream<dev::NoteChannel, true>()
-#define cwarn dev::LogOutputStream<dev::WarnChannel, true>()
-
-// Null stream-like objects.
-#define ndebug if (true) {} else dev::NullOutputStream()
-#define nlog(X) if (true) {} else dev::NullOutputStream()
-#define nslog(X) if (true) {} else dev::NullOutputStream()
-
-// Kill debugging log channel when we're in release mode.
-#if NDEBUG
-#define cdebug ndebug
-#else
-#define cdebug dev::LogOutputStream<dev::DebugChannel, true>()
-#endif
-
 // Kill all logs when when NLOG is defined.
 #if NLOG
 #define clog(X) nlog(X)
 #define cslog(X) nslog(X)
 #else
+#if NDEBUG
+#define clog(X) if (X::debug) {} else dev::LogOutputStream<X, true>()
+#define cslog(X) if (X::debug) {} else dev::LogOutputStream<X, false>()
+#else
 #define clog(X) dev::LogOutputStream<X, true>()
 #define cslog(X) dev::LogOutputStream<X, false>()
 #endif
+#endif
+
+// Simple cout-like stream objects for accessing common log channels.
+// Dirties the global namespace, but oh so convenient...
+#define cdebug clog(dev::DebugChannel)
+#define cnote clog(dev::NoteChannel)
+#define cwarn clog(dev::WarnChannel)
+
+// Null stream-like objects.
+#define ndebug if (true) {} else dev::NullOutputStream()
+#define nlog(X) if (true) {} else dev::NullOutputStream()
+#define nslog(X) if (true) {} else dev::NullOutputStream()
 
 }
