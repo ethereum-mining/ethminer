@@ -363,7 +363,8 @@ void Transact::timerEvent(QTimerEvent*)
 
 		updateBounds();
 	}
-	finaliseBounds();
+	else
+		finaliseBounds();
 }
 
 void Transact::updateBounds()

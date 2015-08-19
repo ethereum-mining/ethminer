@@ -94,7 +94,7 @@ public:
 	ExecutionResult create(Secret const& _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, FudgeFactor _ff = FudgeFactor::Strict) { return create(toAddress(_secret), _value, _data, _gas, _gasPrice, _ff); }
 
 	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
-	virtual ImportResult injectTransaction(bytes const& _rlp) = 0;
+	virtual ImportResult injectTransaction(bytes const& _rlp, IfDropped _id = IfDropped::Ignore) = 0;
 
 	/// Injects the RLP-encoded block given by the _rlp into the block queue directly.
 	virtual ImportResult injectBlock(bytes const& _block) = 0;
@@ -211,14 +211,14 @@ public:
 	/// Would we like to mine now?
 	virtual bool wouldMine() const = 0;
 	/// Current hash rate.
-	virtual uint64_t hashrate() const = 0;
+	virtual u256 hashrate() const = 0;
 
 	/// Get hash of the current block to be mined minus the nonce (the 'work hash').
 	virtual std::tuple<h256, h256, h256> getEthashWork() { BOOST_THROW_EXCEPTION(InterfaceNotSupported("Interface::getEthashWork")); }
 	/// Submit the nonce for the proof-of-work.
 	virtual bool submitEthashWork(h256 const&, h64 const&) { BOOST_THROW_EXCEPTION(InterfaceNotSupported("Interface::submitEthashWork")); }
 	/// Submit the ongoing hashrate of a particular external miner.
-	virtual void submitExternalHashrate(int, h256 const&) { BOOST_THROW_EXCEPTION(InterfaceNotSupported("Interface::submitExternalHashrate")); }
+	virtual void submitExternalHashrate(u256 const&, h256 const&) { BOOST_THROW_EXCEPTION(InterfaceNotSupported("Interface::submitExternalHashrate")); }
 	/// Check the progress of the mining.
 	virtual WorkingProgress miningProgress() const = 0;
 
