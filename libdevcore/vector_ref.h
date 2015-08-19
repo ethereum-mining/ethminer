@@ -55,7 +55,7 @@ public:
 	/// @returns a new vector_ref which is a shifted and shortened view of the original data.
 	/// If this goes out of bounds in any way, returns an empty vector_ref.
 	/// If @a _count is ~size_t(0), extends the view to the end of the data.
-	vector_ref<_T> cropped(size_t _begin, size_t _count) const { if (m_data && _begin + _count <= m_count) return vector_ref<_T>(m_data + _begin, _count == ~size_t(0) ? m_count - _begin : _count); else return vector_ref<_T>(); }
+	vector_ref<_T> cropped(size_t _begin, size_t _count) const { if (m_data && _begin <= m_count && _count <= m_count && _begin + _count <= m_count) return vector_ref<_T>(m_data + _begin, _count == ~size_t(0) ? m_count - _begin : _count); else return vector_ref<_T>(); }
 	/// @returns a new vector_ref which is a shifted view of the original data (not going beyond it).
 	vector_ref<_T> cropped(size_t _begin) const { if (m_data && _begin <= m_count) return vector_ref<_T>(m_data + _begin, m_count - _begin); else return vector_ref<_T>(); }
 	void retarget(_T* _d, size_t _s) { m_data = _d; m_count = _s; }
