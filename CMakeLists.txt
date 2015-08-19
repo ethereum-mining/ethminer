@@ -242,12 +242,14 @@ function(createBuildInfo)
 		set(_cmake_build_type "${CMAKE_CFG_INTDIR}")
 	endif()
 
+	message("createBuildInfo()")
+
 	# Generate header file containing useful build information
 	add_custom_target(BuildInfo.h ALL
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		COMMAND ${CMAKE_COMMAND} -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
 			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}"
-			-DPROJECT_VERSION="${PROJECT_VERSION}"
+			-DPROJECT_VERSION="${PROJECT_VERSION}" -DETH_FATDB="${FATDB}"
 			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
 		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -375,6 +377,7 @@ message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
 # this must be an include, as a function it would mess up with variable scope!
 include(EthExecutableHelper)
 
+message("creating build info...")
 createBuildInfo()
 
 if (ROCKSDB AND ROCKSDB_FOUND)
@@ -504,74 +507,8 @@ if (GUI)
 	add_subdirectory(libnatspec)
 	add_subdirectory(libjsqrc)
 
-	if (ETH_HAVE_WEBENGINE)
-		add_subdirectory(alethzero)
-#		add_subdirectory(third)	// reenable once not qtwebkit.
-	endif()
-
 	if (SOLIDITY)
 		add_subdirectory(mix)
 	endif ()
 
 endif()
-
-if (APPLE AND GUI)
-
-	add_custom_target(appdmg
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-		COMMAND ${CMAKE_COMMAND}
-		-DAPP_DMG_EXE=${ETH_APP_DMG}
-		-DAPP_DMG_FILE=appdmg.json.in
-		-DAPP_DMG_ICON="alethzero/alethzero.icns"
-		-DAPP_DMG_BACKGROUND="install-folder-bg.png"
-		-DETH_BUILD_DIR="${CMAKE_BINARY_DIR}"
-		-DETH_MIX_APP="$<TARGET_FILE_DIR:mix>"
-		-DETH_ALETHZERO_APP="$<TARGET_FILE_DIR:AlethZero>"
-		-P "${ETH_SCRIPTS_DIR}/appdmg.cmake"
-	)
-
-endif ()
-
-if (WIN32)
-	# packaging stuff
-	include(InstallRequiredSystemLibraries)
-	set(CPACK_PACKAGE_NAME "Ethereum")
-	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "The Ethereum Toolset")
-	set(CPACK_PACKAGE_VENDOR "ethereum.org")
-	set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
-	set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-	set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
-	set(CPACK_GENERATOR "NSIS")
-	# seems to be not working
-	# set(CPACK_PACKAGE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.bmp")
-
-	# our stuff
-	#set(CPACK_COMPONENT_ALETHZERO_GROUP "Applications")
-	#set(CPACK_COMPONENT_MIX_GROUP "Applications")
-	#set(CPACK_COMPONENT_SOLC_GROUP "CLI")
-	#set(CPACK_COMPONENT_ETH_GROUP "CLI")
-	#set(CPACK_COMPONENT_ETHMINER_GROUP "CLI")
-	#set(CPACK_COMPONENT_RLP_GROUP "CLI")
-	#set(CPACK_COMPONENT_ABI_GROUP "CLI")
-
-	#set(CPACK_COMPONENTS_ALL alethzero mix solc eth ethminer rlp abi)
-
-	# nsis specific stuff
-	if (CMAKE_CL_64)
-		set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
-		set(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION} (Win64)")
-	else ()
-		set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES")
-		set(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
-	endif()
-
-	set(CPACK_NSIS_DISPLAY_NAME "Ethereum")
-	set(CPACK_NSIS_HELP_LINK "https://github.com/ethereum/cpp-ethereum")
-	set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/ethereum/cpp-ethereum")
-	set(CPACK_NSIS_CONTACT "ethereum.org")
-	set(CPACK_NSIS_MODIFY_PATH ON)
-	set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.ico")
-	set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/alethzero/alethzero.ico")
-
-	include(CPack)
-endif (WIN32)

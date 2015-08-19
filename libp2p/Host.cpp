@@ -50,7 +50,7 @@ std::chrono::milliseconds const c_keepAliveTimeOut = std::chrono::milliseconds(1
 
 HostNodeTableHandler::HostNodeTableHandler(Host& _host): m_host(_host) {}
 
-void HostNodeTableHandler::processEvent(NodeId const& _n, NodeTableEventType const& _e)
+void HostNodeTableHandler::processEvent(NodeID const& _n, NodeTableEventType const& _e)
 {
 	m_host.onNodeTableEvent(_n, _e);
 }
@@ -305,7 +305,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXF
 	StructuredLogger::p2pConnected(_id.abridged(), ps->m_peer->endpoint, ps->m_peer->m_lastConnected, clientVersion, peerCount());
 }
 
-void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
+void Host::onNodeTableEvent(NodeID const& _n, NodeTableEventType const& _e)
 {
 	if (_e == NodeEntryAdded)
 	{
@@ -336,7 +336,7 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 	{
 		clog(NetP2PNote) << "p2p.host.nodeTable.events.NodeEntryDropped " << _n;
 		RecursiveGuard l(x_sessions);
-		if (m_peers.count(_n) && !m_peers[_n]->required)
+		if (m_peers.count(_n) && m_peers[_n]->peerType == PeerType::Optional)
 			m_peers.erase(_n);
 	}
 }
@@ -450,7 +450,15 @@ std::unordered_map<Public, std::string> const& Host::pocHosts()
 	return c_ret;
 }
 
-void Host::addNode(NodeId const& _node, NodeIPEndpoint const& _endpoint)
+void Host::addPeer(NodeSpec const& _s, PeerType _t)
+{
+	if (_t == PeerType::Optional)
+		addNode(_s.id(), _s.nodeIPEndpoint());
+	else
+		requirePeer(_s.id(), _s.nodeIPEndpoint());
+}
+
+void Host::addNode(NodeID const& _node, NodeIPEndpoint const& _endpoint)
 {
 	// return if network is stopped while waiting on Host::run() or nodeTable to start
 	while (!haveNetwork())
@@ -466,12 +474,12 @@ void Host::addNode(NodeId const& _node, NodeIPEndpoint const& _endpoint)
 		m_nodeTable->addNode(Node(_node, _endpoint));
 }
 
-void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
+void Host::requirePeer(NodeID const& _n, NodeIPEndpoint const& _endpoint)
 {
 	if (!m_run)
 		return;
 	
-	Node node(_n, _endpoint, true);
+	Node node(_n, _endpoint, PeerType::Required);
 	if (_n)
 	{
 		// create or update m_peers entry
@@ -481,7 +489,7 @@ void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 			{
 				p = m_peers[_n];
 				p->endpoint = node.endpoint;
-				p->required = true;
+				p->peerType = PeerType::Required;
 			}
 			else
 			{
@@ -506,7 +514,7 @@ void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 	}
 }
 
-void Host::relinquishPeer(NodeId const& _node)
+void Host::relinquishPeer(NodeID const& _node)
 {
 	Guard l(x_requiredPeers);
 	if (m_requiredPeers.count(_node))
@@ -524,7 +532,7 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 		return;
 	}
 
-	if (!!m_nodeTable && !m_nodeTable->haveNode(_p->id) && !_p->required)
+	if (!!m_nodeTable && !m_nodeTable->haveNode(_p->id) && _p->peerType == PeerType::Optional)
 		return;
 
 	// prevent concurrently connecting to a node
@@ -638,7 +646,7 @@ void Host::run(boost::system::error_code const&)
 		for (auto const& p: m_peers)
 		{
 			bool haveSession = havePeerSession(p.second->id);
-			bool required = p.second->required;
+			bool required = p.second->peerType == PeerType::Required;
 			if (haveSession && required)
 				reqConn++;
 			else if (!haveSession && p.second->shouldReconnect() && (!m_netPrefs.pin || required))
@@ -647,7 +655,7 @@ void Host::run(boost::system::error_code const&)
 	}
 
 	for (auto p: toConnect)
-		if (p->required && reqConn++ < m_idealPeerCount)
+		if (p->peerType == PeerType::Required && reqConn++ < m_idealPeerCount)
 			connect(p);
 	
 	if (!m_netPrefs.pin)
@@ -658,7 +666,7 @@ void Host::run(boost::system::error_code const&)
 		int openSlots = m_idealPeerCount - peerCount() - pendingCount + reqConn;
 		if (openSlots > 0)
 			for (auto p: toConnect)
-				if (!p->required && openSlots--)
+				if (p->peerType == PeerType::Optional && openSlots--)
 					connect(p);
 	}
 
@@ -780,11 +788,11 @@ bytes Host::saveNetwork() const
 			continue;
 
 		// Only save peers which have connected within 2 days, with properly-advertised port and public IP address
-		if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && !!p.endpoint && p.id != id() && (p.required || p.endpoint.isAllowed()))
+		if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && !!p.endpoint && p.id != id() && (p.peerType == PeerType::Required || p.endpoint.isAllowed()))
 		{
 			network.appendList(11);
 			p.endpoint.streamRLP(network, NodeIPEndpoint::StreamInline);
-			network << p.id << p.required
+			network << p.id << (p.peerType == PeerType::Required ? true : false)
 				<< chrono::duration_cast<chrono::seconds>(p.m_lastConnected.time_since_epoch()).count()
 				<< chrono::duration_cast<chrono::seconds>(p.m_lastAttempted.time_since_epoch()).count()
 				<< p.m_failedAttempts << (unsigned)p.m_lastDisconnect << p.m_score << p.m_rating;
@@ -843,13 +851,13 @@ void Host::restoreNetwork(bytesConstRef _b)
 
 			if (i.itemCount() == 4 || i.itemCount() == 11)
 			{
-				Node n((NodeId)i[3], NodeIPEndpoint(i));
+				Node n((NodeID)i[3], NodeIPEndpoint(i));
 				if (i.itemCount() == 4 && n.endpoint.isAllowed())
 					m_nodeTable->addNode(n);
 				else if (i.itemCount() == 11)
 				{
-					n.required = i[4].toInt<bool>();
-					if (!n.endpoint.isAllowed() && !n.required)
+					n.peerType = i[4].toInt<bool>() ? PeerType::Required : PeerType::Optional;
+					if (!n.endpoint.isAllowed() && n.peerType == PeerType::Optional)
 						continue;
 					shared_ptr<Peer> p = make_shared<Peer>(n);
 					p->m_lastConnected = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
@@ -859,7 +867,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 					p->m_score = (int)i[9].toInt<unsigned>();
 					p->m_rating = (int)i[10].toInt<unsigned>();
 					m_peers[p->id] = p;
-					if (p->required)
+					if (p->peerType == PeerType::Required)
 						requirePeer(p->id, n.endpoint);
 					else
 						m_nodeTable->addNode(*p.get(), NodeTable::NodeRelation::Known);
@@ -867,13 +875,13 @@ void Host::restoreNetwork(bytesConstRef _b)
 			}
 			else if (i.itemCount() == 3 || i.itemCount() == 10)
 			{
-				Node n((NodeId)i[2], NodeIPEndpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<uint16_t>(), i[1].toInt<uint16_t>()));
+				Node n((NodeID)i[2], NodeIPEndpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<uint16_t>(), i[1].toInt<uint16_t>()));
 				if (i.itemCount() == 3 && n.endpoint.isAllowed())
 					m_nodeTable->addNode(n);
 				else if (i.itemCount() == 10)
 				{
-					n.required = i[3].toInt<bool>();
-					if (!n.endpoint.isAllowed() && !n.required)
+					n.peerType = i[3].toInt<bool>() ? PeerType::Required : PeerType::Optional;
+					if (!n.endpoint.isAllowed() && n.peerType == PeerType::Optional)
 						continue;
 					shared_ptr<Peer> p = make_shared<Peer>(n);
 					p->m_lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
@@ -883,7 +891,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 					p->m_score = (int)i[8].toInt<unsigned>();
 					p->m_rating = (int)i[9].toInt<unsigned>();
 					m_peers[p->id] = p;
-					if (p->required)
+					if (p->peerType == PeerType::Required)
 						requirePeer(p->id, n.endpoint);
 					else
 						m_nodeTable->addNode(*p.get(), NodeTable::NodeRelation::Known);
