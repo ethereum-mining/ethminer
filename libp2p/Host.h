@@ -145,9 +145,7 @@ public:
 	/// Will block on network process events.
 	virtual ~Host();
 
-	/// Default host for current version of client.
-	static std::string pocHost();
-
+	/// Default hosts for current version of client.
 	static std::unordered_map<Public, std::string> const& pocHosts();
 
 	/// Register a peer-capability; all new peer connections will have this capability.

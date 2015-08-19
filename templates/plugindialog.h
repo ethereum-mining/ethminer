@@ -14,24 +14,33 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Exceptions.h
- * @author Christian <c@ethdev.com>
- * @date 2014
+/** @file $NAME.h
+ * @author Gav Wood <i@gavwood.com>
+ * @date 2015
  */
 
 #pragma once
 
-#include <libdevcore/Exceptions.h>
+#include "MainFace.h"
 
 namespace dev
 {
-namespace eth
+namespace az
 {
 
-struct AssemblyException: virtual Exception {};
-struct OptimizerException: virtual AssemblyException {};
-struct StackTooDeepException: virtual OptimizerException {};
-struct ItemNotAvailableException: virtual OptimizerException {};
+class $NAME: public QObject, public Plugin
+{
+	Q_OBJECT
+
+public:
+	$NAME(MainFace* _m);
+	~$NAME();
+
+private:
+	void onAllChange() override {}
+	void readSettings(QSettings const&) override {}
+	void writeSettings(QSettings&) override {}
+};
 
 }
 }

@@ -149,18 +149,16 @@ public:
 	/// @returns a constant reference to the object's data as an STL array.
 	std::array<byte, N> const& asArray() const { return m_data; }
 
-	/// @returns a randomly-valued hash
+	/// Populate with random data.
 	template <class Engine>
-	static FixedHash random(Engine& _eng)
+	void randomize(Engine& _eng)
 	{
-		FixedHash ret;
-		for (auto& i: ret.m_data)
+		for (auto& i: m_data)
 			i = (uint8_t)boost::random::uniform_int_distribution<uint16_t>(0, 255)(_eng);
-		return ret;
 	}
 
 	/// @returns a random valued object.
-	static FixedHash random() { return random(s_fixedHashEngine); }
+	static FixedHash random() { FixedHash ret; ret.randomize(s_fixedHashEngine); return ret; }
 
 	struct hash
 	{
@@ -293,7 +291,7 @@ public:
 	bytesConstRef ref() const { return FixedHash<T>::ref(); }
 	byte const* data() const { return FixedHash<T>::data(); }
 
-	static SecureFixedHash<T> random() { SecureFixedHash<T> ret; ret.FixedHash<T>::ref().randomize(); return ret; }
+	static SecureFixedHash<T> random() { SecureFixedHash<T> ret; ret.randomize(s_fixedHashEngine); return ret; }
 	using FixedHash<T>::firstBitSet;
 
 	void clear() { ref().cleanse(); }

@@ -294,6 +294,7 @@ void TransactionQueue::setFuture(h256 const& _txHash)
 
 void TransactionQueue::makeCurrent_WITH_LOCK(Transaction const& _t)
 {
+	bool newCurrent = false;
 	auto fs = m_future.find(_t.from());
 	if (fs != m_future.end())
 	{
@@ -311,6 +312,7 @@ void TransactionQueue::makeCurrent_WITH_LOCK(Transaction const& _t)
 				--m_futureSize;
 				++ft;
 				++nonce;
+				newCurrent = true;
 			}
 			fs->second.erase(fb, ft);
 			if (fs->second.empty())
@@ -328,6 +330,9 @@ void TransactionQueue::makeCurrent_WITH_LOCK(Transaction const& _t)
 		if (m_future.begin()->second.empty())
 			m_future.erase(m_future.begin());
 	}
+
+	if (newCurrent)
+		m_onReady();
 }
 
 void TransactionQueue::drop(h256 const& _txHash)

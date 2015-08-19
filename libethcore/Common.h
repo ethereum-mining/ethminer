@@ -226,5 +226,12 @@ struct WorkingProgress
 	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
 };
 
+/// Import transaction policy
+enum class IfDropped
+{
+	Ignore, ///< Don't import transaction that was previously dropped.
+	Retry 	///< Import transaction even if it was dropped before.
+};
+
 }
 }
