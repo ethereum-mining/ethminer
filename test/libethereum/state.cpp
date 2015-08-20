@@ -54,9 +54,9 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 		cnote << i.first;
 		testname = "(" + i.first + ") ";
 
-		TBOOST_REQUIRE_MESSAGE((o.count("env") > 0), testname + "env not set!");
-		TBOOST_REQUIRE_MESSAGE((o.count("pre") > 0), testname + "pre not set!");
-		TBOOST_REQUIRE_MESSAGE((o.count("transaction") > 0), testname + "transaction not set!");
+		BOOST_REQUIRE_MESSAGE(o.count("env") > 0, testname + "env not set!");
+		BOOST_REQUIRE_MESSAGE(o.count("pre") > 0, testname + "pre not set!");
+		BOOST_REQUIRE_MESSAGE(o.count("transaction") > 0, testname + "transaction not set!");
 
 		ImportTest importer(o, _fillin);
 		const State importedStatePost = importer.m_statePost;
@@ -76,8 +76,8 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 		}
 		else
 		{
-			TBOOST_REQUIRE((o.count("post") > 0));
-			TBOOST_REQUIRE((o.count("out") > 0));
+			BOOST_REQUIRE(o.count("post") > 0);
+			BOOST_REQUIRE(o.count("out") > 0);
 
 			// check output
 			checkOutput(output, o);
@@ -89,7 +89,7 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 #if ETH_FATDB
 			ImportTest::compareStates(importer.m_statePost, importedStatePost);
 #endif
-			TBOOST_CHECK_MESSAGE((importer.m_statePost.rootHash() == h256(o["postStateRoot"].get_str())), testname + "wrong post state root");
+			BOOST_CHECK_MESSAGE(importer.m_statePost.rootHash() == h256(o["postStateRoot"].get_str()), testname + "wrong post state root");
 		}
 	}
 }
