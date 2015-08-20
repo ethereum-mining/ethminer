@@ -259,17 +259,17 @@ int ImportTest::compareStates(State const& _stateExpect, State const& _statePost
 		{									\
 			if (_throw == WhenError::Throw) \
 			{								\
-				TBOOST_CHECK_MESSAGE(a, b);	\
+				BOOST_CHECK_MESSAGE(a, b);	\
 				if (!a)						\
 					return 1;				\
 			}								\
 			else							\
-				{TBOOST_WARN_MESSAGE(a,b);}	\
+				BOOST_WARN_MESSAGE(a,b);	\
 		}
 
 	for (auto const& a: _stateExpect.addresses())
 	{
-		CHECK(_statePost.addressInUse(a.first), "Check State: " << a.first << " missing expected address!");
+		CHECK(_statePost.addressInUse(a.first), "Compare States: " << a.first << " missing expected address!");
 		if (_statePost.addressInUse(a.first))
 		{
 			AccountMask addressOptions(true);
@@ -281,7 +281,7 @@ int ImportTest::compareStates(State const& _stateExpect, State const& _statePost
 				}
 				catch(std::out_of_range const&)
 				{
-					TBOOST_ERROR("expectedStateOptions map does not match expectedState in checkExpectedState!");
+					BOOST_ERROR("expectedStateOptions map does not match expectedState in checkExpectedState!");
 					break;
 				}
 			}
@@ -329,12 +329,12 @@ int ImportTest::exportTest(bytes const& _output)
 		if (Options::get().checkState)
 		{
 			bool statement = (m_testObject["out"].get_str() == m_testObject["expectOut"].get_str());
-			TBOOST_CHECK_MESSAGE(statement, warning);
+			BOOST_CHECK_MESSAGE(statement, warning);
 			if (!statement)
 				err = 1;
 		}
 		else
-			TBOOST_WARN_MESSAGE((m_testObject["out"].get_str() == m_testObject["expectOut"].get_str()), warning);
+			BOOST_WARN_MESSAGE(m_testObject["out"].get_str() == m_testObject["expectOut"].get_str(), warning);
 
 		m_testObject.erase(m_testObject.find("expectOut"));
 	}
@@ -502,17 +502,17 @@ void checkOutput(bytes const& _output, json_spirit::mObject& _o)
 	int j = 0;
 
 	if (_o["out"].get_str().find("#") == 0)
-		{TBOOST_CHECK(((u256)_output.size() == toInt(_o["out"].get_str().substr(1))));}
+		BOOST_CHECK((u256)_output.size() == toInt(_o["out"].get_str().substr(1)));
 	else if (_o["out"].type() == json_spirit::array_type)
 		for (auto const& d: _o["out"].get_array())
 		{
-			TBOOST_CHECK_MESSAGE((_output[j] == toInt(d)), "Output byte [" << j << "] different!");
+			BOOST_CHECK_MESSAGE(_output[j] == toInt(d), "Output byte [" << j << "] different!");
 			++j;
 		}
 	else if (_o["out"].get_str().find("0x") == 0)
-		{TBOOST_CHECK((_output == fromHex(_o["out"].get_str().substr(2))));}
+		BOOST_CHECK(_output == fromHex(_o["out"].get_str().substr(2)));
 	else
-		TBOOST_CHECK((_output == fromHex(_o["out"].get_str())));
+		BOOST_CHECK(_output == fromHex(_o["out"].get_str()));
 }
 
 void checkStorage(map<u256, u256> _expectedStore, map<u256, u256> _resultStore, Address _expectedAddr)
@@ -523,44 +523,44 @@ void checkStorage(map<u256, u256> _expectedStore, map<u256, u256> _resultStore, 
 		auto& expectedStoreKey = expectedStorePair.first;
 		auto resultStoreIt = _resultStore.find(expectedStoreKey);
 		if (resultStoreIt == _resultStore.end())
-			{TBOOST_ERROR(_expectedAddr << ": missing store key " << expectedStoreKey);}
+			BOOST_ERROR(_expectedAddr << ": missing store key " << expectedStoreKey);
 		else
 		{
 			auto& expectedStoreValue = expectedStorePair.second;
 			auto& resultStoreValue = resultStoreIt->second;
-			TBOOST_CHECK_MESSAGE((expectedStoreValue == resultStoreValue), _expectedAddr << ": store[" << expectedStoreKey << "] = " << resultStoreValue << ", expected " << expectedStoreValue);
+			BOOST_CHECK_MESSAGE(expectedStoreValue == resultStoreValue, _expectedAddr << ": store[" << expectedStoreKey << "] = " << resultStoreValue << ", expected " << expectedStoreValue);
 		}
 	}
-	TBOOST_CHECK_EQUAL(_resultStore.size(), _expectedStore.size());
+	BOOST_CHECK_EQUAL(_resultStore.size(), _expectedStore.size());
 	for (auto&& resultStorePair: _resultStore)
 	{
 		if (!_expectedStore.count(resultStorePair.first))
-			TBOOST_ERROR(_expectedAddr << ": unexpected store key " << resultStorePair.first);
+			BOOST_ERROR(_expectedAddr << ": unexpected store key " << resultStorePair.first);
 	}
 }
 
 void checkLog(LogEntries _resultLogs, LogEntries _expectedLogs)
 {
-	TBOOST_REQUIRE_EQUAL(_resultLogs.size(), _expectedLogs.size());
+	BOOST_REQUIRE_EQUAL(_resultLogs.size(), _expectedLogs.size());
 
 	for (size_t i = 0; i < _resultLogs.size(); ++i)
 	{
-		TBOOST_CHECK_EQUAL(_resultLogs[i].address, _expectedLogs[i].address);
-		TBOOST_CHECK_EQUAL(_resultLogs[i].topics, _expectedLogs[i].topics);
-		TBOOST_CHECK((_resultLogs[i].data == _expectedLogs[i].data));
+		BOOST_CHECK_EQUAL(_resultLogs[i].address, _expectedLogs[i].address);
+		BOOST_CHECK_EQUAL(_resultLogs[i].topics, _expectedLogs[i].topics);
+		BOOST_CHECK(_resultLogs[i].data == _expectedLogs[i].data);
 	}
 }
 
 void checkCallCreates(eth::Transactions _resultCallCreates, eth::Transactions _expectedCallCreates)
 {
-	TBOOST_REQUIRE_EQUAL(_resultCallCreates.size(), _expectedCallCreates.size());
+	BOOST_REQUIRE_EQUAL(_resultCallCreates.size(), _expectedCallCreates.size());
 
 	for (size_t i = 0; i < _resultCallCreates.size(); ++i)
 	{
-		TBOOST_CHECK((_resultCallCreates[i].data() == _expectedCallCreates[i].data()));
-		TBOOST_CHECK((_resultCallCreates[i].receiveAddress() == _expectedCallCreates[i].receiveAddress()));
-		TBOOST_CHECK((_resultCallCreates[i].gas() == _expectedCallCreates[i].gas()));
-		TBOOST_CHECK((_resultCallCreates[i].value() == _expectedCallCreates[i].value()));
+		BOOST_CHECK(_resultCallCreates[i].data() == _expectedCallCreates[i].data());
+		BOOST_CHECK(_resultCallCreates[i].receiveAddress() == _expectedCallCreates[i].receiveAddress());
+		BOOST_CHECK(_resultCallCreates[i].gas() == _expectedCallCreates[i].gas());
+		BOOST_CHECK(_resultCallCreates[i].value() == _expectedCallCreates[i].value());
 	}
 }
 
@@ -586,7 +586,7 @@ void userDefinedTest(std::function<void(json_spirit::mValue&, bool)> doTests)
 		cnote << "Testing user defined test: " << filename;
 		json_spirit::mValue v;
 		string s = contentsString(filename);
-		TBOOST_REQUIRE_MESSAGE((s.length() > 0), "Contents of " + filename + " is empty. ");
+		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + filename + " is empty. ");
 		json_spirit::read_string(s, v);
 		json_spirit::mObject oSingleTest;
 
@@ -604,11 +604,11 @@ void userDefinedTest(std::function<void(json_spirit::mValue&, bool)> doTests)
 	}
 	catch (Exception const& _e)
 	{
-		TBOOST_ERROR("Failed Test with Exception: " << diagnostic_information(_e));
+		BOOST_ERROR("Failed Test with Exception: " << diagnostic_information(_e));
 	}
 	catch (std::exception const& _e)
 	{
-		TBOOST_ERROR("Failed Test with Exception: " << _e.what());
+		BOOST_ERROR("Failed Test with Exception: " << _e.what());
 	}
 }
 
@@ -628,18 +628,18 @@ void executeTests(const string& _name, const string& _testPathAppendix, const bo
 			json_spirit::mValue v;
 			boost::filesystem::path p(__FILE__);
 			string s = asString(dev::contents(_pathToFiller.string() + "/" + _name + "Filler.json"));
-			TBOOST_REQUIRE_MESSAGE((s.length() > 0), "Contents of " + _pathToFiller.string() + "/" + _name + "Filler.json is empty.");
+			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + _pathToFiller.string() + "/" + _name + "Filler.json is empty.");
 			json_spirit::read_string(s, v);
 			doTests(v, true);
 			writeFile(testPath + "/" + _name + ".json", asBytes(json_spirit::write_string(v, true)));
 		}
 		catch (Exception const& _e)
 		{
-			TBOOST_ERROR("Failed filling test with Exception: " << diagnostic_information(_e));
+			BOOST_ERROR("Failed filling test with Exception: " << diagnostic_information(_e));
 		}
 		catch (std::exception const& _e)
 		{
-			TBOOST_ERROR("Failed filling test with Exception: " << _e.what());
+			BOOST_ERROR("Failed filling test with Exception: " << _e.what());
 		}
 	}
 
@@ -648,18 +648,18 @@ void executeTests(const string& _name, const string& _testPathAppendix, const bo
 		cnote << "TEST " << _name << ":";
 		json_spirit::mValue v;
 		string s = asString(dev::contents(testPath + "/" + _name + ".json"));
-		TBOOST_REQUIRE_MESSAGE((s.length() > 0), "Contents of " + testPath + "/" + _name + ".json is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
+		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + testPath + "/" + _name + ".json is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
 		json_spirit::read_string(s, v);
 		Listener::notifySuiteStarted(_name);
 		doTests(v, false);
 	}
 	catch (Exception const& _e)
 	{
-		TBOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
 	}
 	catch (std::exception const& _e)
 	{
-		TBOOST_ERROR("Failed test with Exception: " << _e.what());
+		BOOST_ERROR("Failed test with Exception: " << _e.what());
 	}
 }
 
@@ -802,6 +802,8 @@ Options::Options()
 			else
 				logVerbosity = Verbosity::Full;
 		}
+		else if (arg == "--createRandomTest")
+			createRandomTest = true;
 	}
 
 	//Default option
