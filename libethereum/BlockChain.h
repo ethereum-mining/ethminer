@@ -286,7 +286,7 @@ public:
 	template <class T> void setOnBad(T const& _t) { m_onBad = _t; }
 
 	/// Get a pre-made genesis State object.
-	Block genesisBlock(OverlayDB const& _db);
+	Block genesisBlock(OverlayDB const& _db) const;
 
 	/// Verify block and prepare it for enactment
 	virtual VerifiedBlockRef verifyBlock(bytesConstRef _block, std::function<void(Exception&)> const& _onBad, ImportRequirements::value _ir = ImportRequirements::OutOfOrderChecks) const = 0;
