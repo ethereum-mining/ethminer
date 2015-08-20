@@ -37,11 +37,11 @@ static std::ostringstream strCout;
 std::streambuf* oldCoutStreamBuf;
 
 //Custom Boost Initialization
-test_suite* init_func( int argc, char* argv[] )
+test_suite* init_func(int argc, char* argv[])
 {
 	//Required for boost. -nowarning
 	(void) argc;
-	(void) argv[0];
+	(void) argv;
 
 	//restore output for creating test
 	std::cout.rdbuf(oldCoutStreamBuf);
@@ -71,18 +71,18 @@ int main( int argc, char* argv[] )
 
 	//disable initial output
 	oldCoutStreamBuf = std::cout.rdbuf();
-	std::cout.rdbuf( strCout.rdbuf() );
-	std::cerr.rdbuf( strCout.rdbuf() );
+	std::cout.rdbuf(strCout.rdbuf());
+	std::cerr.rdbuf(strCout.rdbuf());
 
 	try
 	{
-		framework::init( init_func, argc, argv );
+		framework::init(init_func, argc, argv);
 
 		if( !runtime_config::test_to_run().is_empty() )
 		{
-			test_case_filter filter( runtime_config::test_to_run() );
+			test_case_filter filter(runtime_config::test_to_run());
 
-			traverse_test_tree( framework::master_test_suite().p_id, filter );
+			traverse_test_tree(framework::master_test_suite().p_id, filter);
 		}
 
 		framework::run();
@@ -91,7 +91,7 @@ int main( int argc, char* argv[] )
 
 		return runtime_config::no_result_code()
 					? boost::exit_success
-					: results_collector.results( framework::master_test_suite().p_id ).result_code();
+					: results_collector.results(framework::master_test_suite().p_id).result_code();
 	}
 	catch (framework::nothing_to_test const&)
 	{
