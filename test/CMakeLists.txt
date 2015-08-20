@@ -31,10 +31,6 @@ if (JSCONSOLE)
 	add_subdirectory(libjsengine)
 endif()
 
-if (SOLIDITY)
-	add_subdirectory(libsolidity)
-	add_subdirectory(contracts)
-endif ()
 if (JSONRPC)
 add_subdirectory(libweb3jsonrpc)
 endif ()
@@ -83,10 +79,6 @@ endif ()
 if (JSCONSOLE)
 	target_link_libraries(testeth jsengine)
 endif()
-
-if (SOLIDITY)
-	target_link_libraries(testeth solidity)
-endif ()
 
 target_link_libraries(testeth testutils)
 
