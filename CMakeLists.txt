@@ -412,10 +412,6 @@ if (TOOLS)
 	add_subdirectory(lllc)
 endif ()
 
-if (JSONRPC AND GENERAL)
-	add_subdirectory(libweb3jsonrpc)
-endif ()
-
 if (JSCONSOLE)
 	add_subdirectory(libjsengine)
 	add_subdirectory(libjsconsole)
@@ -447,7 +443,6 @@ add_subdirectory(libethcore)
 if (GENERAL)
 	add_subdirectory(libevm)
 	add_subdirectory(libethereum)
-	add_subdirectory(libwebthree)
 endif ()
 
 if (MINER OR TOOLS)
@@ -458,24 +453,24 @@ if (ETHKEY OR TOOLS)
 	add_subdirectory(ethkey)
 endif ()
 
-if (TESTS)
-	add_subdirectory(libtestutils)
-	add_subdirectory(test)
-	if (JSONRPC)
-		add_subdirectory(ethrpctest)
-	endif ()
-endif ()
+# TODO: sort out tests so they're not dependent on webthree/web3jsonrpc and reenable
+#if (TESTS)
+#	add_subdirectory(libtestutils)
+#	add_subdirectory(test)
+#	if (JSONRPC)
+#		add_subdirectory(ethrpctest)
+#	endif ()
+#endif ()
 
 if (TOOLS)
 
 	add_subdirectory(rlp)
 	add_subdirectory(abi)
 	add_subdirectory(ethvm)
-	add_subdirectory(eth)
 
-	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-		add_subdirectory(exp)
-	endif ()
+#	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
+#		add_subdirectory(exp)
+#	endif ()
 
 endif()
 
@@ -483,7 +478,6 @@ if (GUI)
 
 	add_subdirectory(libnatspec)
 	add_subdirectory(libjsqrc)
-	
 	
 	add_subdirectory(alethzero)
 	add_subdirectory(mix)
