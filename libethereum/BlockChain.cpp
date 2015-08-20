@@ -1272,7 +1272,7 @@ bytes BlockChain::headerData(h256 const& _hash) const
 	return BlockInfo::extractHeader(&m_blocks[_hash]).data().toBytes();
 }
 
-Block BlockChain::genesisBlock(OverlayDB const& _db)
+Block BlockChain::genesisBlock(OverlayDB const& _db) const
 {
 	Block ret(_db, BaseState::Empty);
 	dev::eth::commit(m_genesisState, ret.mutableState().m_state);		// bit horrible. maybe consider a better way of constructing it?
