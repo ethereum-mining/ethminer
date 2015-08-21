@@ -128,6 +128,12 @@ if (OpenCL_FOUND)
 	message(" - opencl lib   : ${OpenCL_LIBRARIES}")
 endif()
 
+find_package (CUDA)
+if (CUDA_FOUND)
+	message(" - CUDA header: ${CUDA_INCLUDE_DIRS}")
+	message(" - CUDA lib   : ${CUDA_LIBRARIES}")
+endif()
+
 # find location of jsonrpcstub
 find_program(ETH_JSON_RPC_STUB jsonrpcstub)
 message(" - jsonrpcstub location    : ${ETH_JSON_RPC_STUB}")
