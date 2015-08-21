@@ -39,11 +39,15 @@
 #include <libdevcore/SHA3.h>
 #include <libdevcore/CommonJS.h>
 #include <libethcore/EthashAux.h>
+#include <libethcore/EthashCUDAMiner.h>
 #include <libethcore/EthashGPUMiner.h>
 #include <libethcore/EthashCPUMiner.h>
 #include <libethcore/Farm.h>
 #if ETH_ETHASHCL || !ETH_TRUE
 #include <libethash-cl/ethash_cl_miner.h>
+#endif
+#if ETH_ETHASHCU || !ETH_TRUE
+#include <libethash-cu/ethash_cu_miner.h>
 #endif
 #if ETH_JSONRPC || !ETH_TRUE
 #include <libweb3jsonrpc/WebThreeStubServer.h>
@@ -140,8 +144,8 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-#if ETH_ETHASHCL || !ETH_TRUE
-		else if (arg == "--cl-global-work" && i + 1 < argc)
+#if ETH_ETHASHCL || ETH_ETHASHCU || !ETH_TRUE
+		else if (arg == "--gpu-global-work" && i + 1 < argc)
 			try {
 				m_globalWorkSizeMultiplier = stol(argv[++i]);
 			}
@@ -150,7 +154,7 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-		else if (arg == "--cl-local-work" && i + 1 < argc)
+		else if (arg == "--gpu-local-work" && i + 1 < argc)
 			try {
 				m_localWorkSize = stol(argv[++i]);
 			}
@@ -219,6 +223,8 @@ public:
 			m_minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
 			m_minerType = MinerType::GPU;
+		else if (arg == "-U" || arg == "--cuda")
+			m_minerType = MinerType::CUDA;
 		else if (arg == "--current-block" && i + 1 < argc)
 			m_currentBlock = stol(argv[++i]);
 		else if (arg == "--no-precompute")
@@ -288,6 +294,21 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
+		}
+		else if (arg == "--cuda-devices") {
+			while (m_cudaDeviceCount < 16 && i + 1 < argc)
+			{
+				try {
+					m_cudaDevices[m_cudaDeviceCount++] = stol(argv[++i]);
+				}
+				catch (...)
+				{
+					break;
+				}
+			}
+		}
+		else if (arg == "--cuda-high-cpu") {
+			m_cudaHighCPULoad = true;
 		}
 		else
 			return false;
@@ -377,7 +398,8 @@ public:
 	enum class MinerType
 	{
 		CPU,
-		GPU
+		GPU,
+		CUDA
 	};
 
 	MinerType minerType() const { return m_minerType; }
@@ -477,6 +499,9 @@ private:
 #if ETH_ETHASHCL
 		sealers["opencl"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
 #endif
+#if ETH_ETHASHCU
+		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+#endif
 		(void)_m;
 		(void)_remote;
 		(void)_recheckPeriod;
@@ -491,7 +516,8 @@ private:
 			f.start("cpu");
 		else if (_m == MinerType::GPU)
 			f.start("opencl");
-
+		else if (_m == MinerType::CUDA)
+			f.start("cuda");
 		EthashProofOfWork::WorkPackage current;
 		EthashAux::FullType dag;
 		while (true)
@@ -589,6 +615,13 @@ private:
 	unsigned m_globalWorkSizeMultiplier = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = ethash_cl_miner::c_defaultLocalWorkSize;
 	unsigned m_msPerBatch = ethash_cl_miner::c_defaultMSPerBatch;
+#endif
+#if ETH_ETHASHCU || !ETH_TRUE
+	unsigned m_globalWorkSizeMultiplier = ethash_cu_miner::c_defaultGlobalWorkSizeMultiplier;
+	unsigned m_localWorkSize = ethash_cu_miner::c_defaultLocalWorkSize;
+	unsigned m_cudaDeviceCount = 0;
+	unsigned m_cudaDevices[16];
+	bool	 m_cudaHighCPULoad = false;
 #endif
 	uint64_t m_currentBlock = 0;
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
