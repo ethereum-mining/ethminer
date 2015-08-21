@@ -123,7 +123,7 @@ elseif (BUNDLE STREQUAL "miner")
 	set(D_MINER ON)
 	set(D_ETHASHCL ON)
 	set(D_FATDB OFF)
-	set(D_JSONRPC OFF)
+	set(D_JSONRPC ON)
 	set(D_JSCONSOLE OFF)
 	set(D_EVMJIT OFF)
 elseif (BUNDLE STREQUAL "release")      # release builds
