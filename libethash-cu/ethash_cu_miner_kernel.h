@@ -2,7 +2,7 @@
 #define _ETHASH_CU_MINER_KERNEL_H_
 
 #include <stdint.h>
-
+#include <cuda_runtime.h>
 
 typedef union
 {
@@ -32,7 +32,6 @@ typedef union
 	uint4	 uint4s[128 / sizeof(uint4)];
 } hash128_t;
 
-//typedef uint32_t hash128_t;
 
 cudaError set_constants(
 	uint32_t * dag_size,
