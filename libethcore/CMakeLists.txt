@@ -10,6 +10,10 @@ if (CPUID_FOUND)
 	include_directories(${Cpuid_INCLUDE_DIRS})
 endif ()
 
+if (ETHASHCU)
+	include_directories(${CUDA_INCLUDE_DIRS})
+endif ()
+
 set(EXECUTABLE ethcore)
 
 file(GLOB HEADERS "*.h")
