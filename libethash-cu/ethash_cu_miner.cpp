@@ -65,7 +65,7 @@ std::string ethash_cu_miner::platform_info(unsigned _deviceId)
 	int runtime_version;
 	int device_count;
 	
-	device_count = get_num_devices();
+	device_count = getNumDevices();
 
 	if (device_count == 0)
 		return std::string();
@@ -99,7 +99,7 @@ std::string ethash_cu_miner::platform_info(unsigned _deviceId)
 
 }
 
-int ethash_cu_miner::get_num_devices()
+int ethash_cu_miner::getNumDevices()
 {
 	int device_count;
 
@@ -123,7 +123,7 @@ void ethash_cu_miner::finish()
 bool ethash_cu_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned num_buffers, unsigned search_batch_size, unsigned workgroup_size, unsigned _deviceId, bool highcpu)
 {
 	
-	int device_count = get_num_devices();
+	int device_count = getNumDevices();
 
 	if (device_count == 0)
 		return false;
