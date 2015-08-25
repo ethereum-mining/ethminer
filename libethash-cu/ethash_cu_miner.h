@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cuda_runtime.h>
+//#include <cuda_runtime.h>
 
 #include <time.h>
 #include <functional>
@@ -24,8 +24,17 @@ public:
 
 	bool init(uint8_t const* _dag, uint64_t _dagSize, unsigned num_buffers = 2, unsigned search_batch_size = 262144, unsigned workgroup_size = 64, unsigned _deviceId = 0, bool highcpu = false);
 	static std::string platform_info(unsigned _deviceId = 0);
-	static int get_num_devices();
-
+	static int getNumDevices();
+	static void listDevices();
+	static bool configureGPU(
+		unsigned _platformId,
+		unsigned _localWorkSize,
+		unsigned _globalWorkSize,
+		unsigned _msPerBatch,
+		bool _allowCPU,
+		unsigned _extraGPUMemory,
+		uint64_t _currentBlock
+		);
 
 	void finish();
 	void hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count);
