@@ -45,6 +45,7 @@ namespace eth
  * typename Solution
  * typename CPUMiner
  * typename GPUMiner
+ * typename CUDAMiner
  * and a few others. TODO
  */
 class BasicAuthority

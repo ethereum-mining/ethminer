@@ -24,6 +24,7 @@
 #include "EthashSealEngine.h"
 #include "EthashCPUMiner.h"
 #include "EthashGPUMiner.h"
+#include "EthashCUDAMiner.h"
 using namespace std;
 using namespace dev;
 using namespace eth;
@@ -35,6 +36,9 @@ EthashSealEngine::EthashSealEngine()
 #if ETH_ETHASHCL
 	sealers["opencl"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
 #endif
+#if ETH_ETHASHCU
+	sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+#endif
 	m_farm.setSealers(sealers);
 }
 
@@ -44,6 +48,9 @@ strings EthashSealEngine::sealers() const
 		"cpu"
 #if ETH_ETHASHCL
 		, "opencl"
+#endif
+#if ETH_ETHASHCU
+		, "cuda"
 #endif
 	};
 }

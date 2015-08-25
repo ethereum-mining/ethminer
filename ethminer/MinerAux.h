@@ -295,6 +295,7 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
+#if ETH_ETHASHCU || !ETH_TRUE
 		else if (arg == "--cuda-devices") {
 			while (m_cudaDeviceCount < 16 && i + 1 < argc)
 			{
@@ -310,6 +311,7 @@ public:
 		else if (arg == "--cuda-high-cpu") {
 			m_cudaHighCPULoad = true;
 		}
+#endif
 		else
 			return false;
 		return true;
