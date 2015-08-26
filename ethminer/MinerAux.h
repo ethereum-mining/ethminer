@@ -145,7 +145,7 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 #if ETH_ETHASHCL || ETH_ETHASHCU || !ETH_TRUE
-		else if (arg == "--gpu-global-work" && i + 1 < argc)
+		else if ((arg == "--cl-global-work" || arg == "--cuda-grid-size")  && i + 1 < argc)
 			try {
 				m_globalWorkSizeMultiplier = stol(argv[++i]);
 			}
@@ -154,7 +154,7 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-		else if (arg == "--gpu-local-work" && i + 1 < argc)
+		else if ((arg == "--cl-local-work" || arg == "--cuda-block-size") && i + 1 < argc)
 			try {
 				m_localWorkSize = stol(argv[++i]);
 			}
@@ -163,6 +163,12 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
+		else if (arg == "--list-devices")
+			m_shouldListDevices = true;
+		else if ((arg == "--cl-extragpu-mem" || arg == "--cuda-extragpu-mem") && i + 1 < argc)
+			m_extraGPUMemory = 1000000 * stol(argv[++i]);
+#endif
+#if ETH_ETHASHCL || !ETH_TRUE
 		else if (arg == "--cl-ms-per-batch" && i + 1 < argc)
 			try {
 				m_msPerBatch = stol(argv[++i]);
@@ -172,13 +178,29 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-#endif
-		else if (arg == "--list-devices")
-			m_shouldListDevices = true;
 		else if (arg == "--allow-opencl-cpu")
 			m_clAllowCPU = true;
-		else if (arg == "--cl-extragpu-mem" && i + 1 < argc)
-			m_extraGPUMemory = 1000000 * stol(argv[++i]);
+#endif
+#if ETH_ETHASHCU || !ETH_TRUE
+		else if (arg == "--cuda-devices") {
+			while (m_cudaDeviceCount < 16 && i + 1 < argc)
+			{
+				try {
+					m_cudaDevices[m_cudaDeviceCount++] = stol(argv[++i]);
+				}
+				catch (...)
+				{
+					break;
+				}
+			}
+		}
+		else if (arg == "--cuda-turbo") {
+			m_cudaHighCPULoad = true;
+		}
+		else if (arg == "--cuda-streams" && i + 1 < argc) {
+			m_numStreams = stol(argv[++i]);
+		}
+#endif
 		else if (arg == "--phone-home" && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -295,23 +317,6 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
-#if ETH_ETHASHCU || !ETH_TRUE
-		else if (arg == "--cuda-devices") {
-			while (m_cudaDeviceCount < 16 && i + 1 < argc)
-			{
-				try {
-					m_cudaDevices[m_cudaDeviceCount++] = stol(argv[++i]);
-				}
-				catch (...)
-				{
-					break;
-				}
-			}
-		}
-		else if (arg == "--cuda-high-cpu") {
-			m_cudaHighCPULoad = true;
-		}
-#endif
 		else
 			return false;
 		return true;
@@ -322,7 +327,12 @@ public:
 		if (m_shouldListDevices)
 		{
 #if ETH_ETHASHCL || !ETH_TRUE
-			EthashGPUMiner::listDevices();
+			if (m_minerType == MinerType::GPU)
+				EthashGPUMiner::listDevices();
+#endif
+#if ETH_ETHASHCU || !ETH_TRUE
+			if (m_minerType == MinerType::CUDA)
+				EthashCUDAMiner::listDevices();
 #endif
 			exit(0);
 		}
@@ -346,6 +356,31 @@ public:
 			EthashGPUMiner::setNumInstances(m_miningThreads);
 #else
 			cerr << "Selected GPU mining without having compiled with -DETHASHCL=1" << endl;
+			exit(1);
+#endif
+		}
+		else if (m_minerType == MinerType::CUDA)
+		{
+#if ETH_ETHASHCU || !ETH_TRUE
+			if (!EthashCUDAMiner::configureGPU(
+				m_localWorkSize,
+				m_globalWorkSizeMultiplier,
+				m_numStreams,
+				m_openclDevice,
+				m_extraGPUMemory,
+				m_cudaHighCPULoad,
+				m_currentBlock
+				))
+				exit(1);
+
+			if (m_cudaDeviceCount != 0) {
+				EthashCUDAMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
+				m_miningThreads = m_cudaDeviceCount;
+			}
+			EthashCUDAMiner::setNumInstances(m_miningThreads);
+			
+#else
+			cerr << "Selected CUDA mining without having compiled with -DETHASHCU=1 or -DBUNDLE=cudaminer" << endl;
 			exit(1);
 #endif
 		}
@@ -382,17 +417,26 @@ public:
 			<< "Mining configuration:" << endl
 			<< "    -C,--cpu  When mining, use the CPU." << endl
 			<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
+			<< "    -U,--cuda  When mining use the GPU via CUDA." << endl
 			<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
 			<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
 			<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
 			<< "    --allow-opencl-cpu Allows CPU to be considered as an OpenCL device if the OpenCL platform supports it." << endl
-			<< "    --list-devices List the detected OpenCL devices and exit." << endl
+			<< "    --list-devices List the detected OpenCL/CUDA devices and exit." << endl
 			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." << endl
 #if ETH_ETHASHCL || !ETH_TRUE
 			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
 			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << toString(ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier) << " * " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
 			<< "    --cl-ms-per-batch Set the OpenCL target milliseconds per batch (global workgroup size). Default is " << toString(ethash_cl_miner::c_defaultMSPerBatch) << ". If 0 is given then no autoadjustment of global work size will happen" << endl
+#endif
+#if ETH_ETHASHCU || !ETH_TRUE
+			<< "    --cuda-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
+			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(ethash_cu_miner::c_defaultBlockSize) << endl
+			<< "    --cuda-grid-size Set the CUDA grid size. Default is " << toString(ethash_cu_miner::c_defaultGridSize) << endl
+			<< "    --cuda-streams Set the number of CUDA streams. Default is " << toString(ethash_cu_miner::c_defaultNumStreams) << endl
+			<< "    --cuda-turbo Get a bit of extra hashrate at the cost of high CPU load... Default is false" << endl
+			<< "    --cuda-devices <0 1 ..n> Select which GPU's to mine on. Default is to use all" << endl
 #endif
 			;
 	}
@@ -428,10 +472,13 @@ private:
 #if ETH_ETHASHCL
 		sealers["opencl"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
 #endif
+#if ETH_ETHASHCU
+		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+#endif
 		f.setSealers(sealers);
 		f.onSolutionFound([&](EthashProofOfWork::Solution) { return false; });
 
-		string platformInfo = _m == MinerType::CPU ? "CPU" : "GPU";//EthashProofOfWork::CPUMiner::platformInfo() : _m == MinerType::GPU ? EthashProofOfWork::GPUMiner::platformInfo() : "";
+		string platformInfo = _m == MinerType::CPU ? "CPU" : (_m == MinerType::GPU ? "GPU" : "CUDA");
 		cout << "Benchmarking on platform: " << platformInfo << endl;
 
 		cout << "Preparing DAG..." << endl;
@@ -443,6 +490,8 @@ private:
 			f.start("cpu");
 		else if (_m == MinerType::GPU)
 			f.start("opencl");
+		else if (_m == MinerType::CUDA)
+			f.start("cuda");
 
 		map<uint64_t, WorkingProgress> results;
 		uint64_t mean = 0;
@@ -614,15 +663,18 @@ private:
 	bool m_shouldListDevices = false;
 	bool m_clAllowCPU = false;
 #if ETH_ETHASHCL || !ETH_TRUE
+#if !ETH_ETHASHCU || !ETH_TRUE
 	unsigned m_globalWorkSizeMultiplier = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = ethash_cl_miner::c_defaultLocalWorkSize;
+#endif
 	unsigned m_msPerBatch = ethash_cl_miner::c_defaultMSPerBatch;
 #endif
 #if ETH_ETHASHCU || !ETH_TRUE
-	unsigned m_globalWorkSizeMultiplier = ethash_cu_miner::c_defaultGlobalWorkSizeMultiplier;
-	unsigned m_localWorkSize = ethash_cu_miner::c_defaultLocalWorkSize;
+	unsigned m_globalWorkSizeMultiplier = ethash_cu_miner::c_defaultGridSize;
+	unsigned m_localWorkSize = ethash_cu_miner::c_defaultBlockSize;
 	unsigned m_cudaDeviceCount = 0;
 	unsigned m_cudaDevices[16];
+	unsigned m_numStreams = ethash_cu_miner::c_defaultNumStreams;
 	bool	 m_cudaHighCPULoad = false;
 #endif
 	uint64_t m_currentBlock = 0;

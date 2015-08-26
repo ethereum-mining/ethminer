@@ -103,6 +103,8 @@ namespace dev
 unsigned EthashCUDAMiner::s_platformId = 0;
 unsigned EthashCUDAMiner::s_deviceId = 0;
 unsigned EthashCUDAMiner::s_numInstances = 0;
+int EthashCUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+
 
 EthashCUDAMiner::EthashCUDAMiner(ConstructionInfo const& _ci) :
 GenericMiner<EthashProofOfWork>(_ci),
@@ -147,7 +149,7 @@ void EthashCUDAMiner::workLoop()
 			delete m_miner;
 			m_miner = new ethash_cu_miner;
 
-			unsigned device = instances() > 1 ? index() : s_deviceId;
+			unsigned device = instances() > 1 ? (s_devices[index()] > -1 ? s_devices[index()] : index()) : s_deviceId;
 
 			EthashAux::FullType dag;
 			while (true)
@@ -164,7 +166,7 @@ void EthashCUDAMiner::workLoop()
 				this_thread::sleep_for(chrono::milliseconds(500));
 			}
 			bytesConstRef dagData = dag->data();
-			m_miner->init(dagData.data(), dagData.size(), s_platformId, device);
+			m_miner->init(dagData.data(), dagData.size(), device);
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
@@ -200,36 +202,33 @@ void EthashCUDAMiner::listDevices()
 }
 
 bool EthashCUDAMiner::configureGPU(
-	unsigned _localWorkSize,
-	unsigned _globalWorkSizeMultiplier,
-	unsigned _msPerBatch,
-	unsigned _platformId,
+	unsigned _blockSize,
+	unsigned _gridSize,
+	unsigned _numStreams,
 	unsigned _deviceId,
-	bool _allowCPU,
 	unsigned _extraGPUMemory,
+	bool	 _highcpu,
 	uint64_t _currentBlock
 	)
 {
-	s_platformId = _platformId;
 	s_deviceId = _deviceId;
 
-	if (_localWorkSize != 32 && _localWorkSize != 64 && _localWorkSize != 128 && _localWorkSize != 256)
+	if (_blockSize != 32 && _blockSize != 64 && _blockSize != 128)
 	{
-		cout << "Given localWorkSize of " << toString(_localWorkSize) << "is invalid. Must be either 32,64,128 or 256" << endl;
+		cout << "Given localWorkSize of " << toString(_blockSize) << "is invalid. Must be either 32,64 or 128" << endl;
 		return false;
 	}
 
 	if (!ethash_cu_miner::configureGPU(
-		_platformId,
-		_localWorkSize,
-		_globalWorkSizeMultiplier * _localWorkSize,
-		_msPerBatch,
-		_allowCPU,
+		_blockSize,
+		_gridSize,
+		_numStreams,
 		_extraGPUMemory,
+		_highcpu,
 		_currentBlock)
 		)
 	{
-		cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
+		cout << "No CUDA device with sufficient memory was found. Can't CUDA mine. Remove the -U argument" << endl;
 		return false;
 	}
 	return true;
