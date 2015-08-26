@@ -170,7 +170,8 @@ public:
 #endif
 #if ETH_ETHASHCL || !ETH_TRUE
 		else if (arg == "--cl-ms-per-batch" && i + 1 < argc)
-			try {
+			try 
+			{
 				m_msPerBatch = stol(argv[++i]);
 			}
 			catch (...)
@@ -182,10 +183,12 @@ public:
 			m_clAllowCPU = true;
 #endif
 #if ETH_ETHASHCU || !ETH_TRUE
-		else if (arg == "--cuda-devices") {
+		else if (arg == "--cuda-devices") 
+		{
 			while (m_cudaDeviceCount < 16 && i + 1 < argc)
 			{
-				try {
+				try 
+				{
 					m_cudaDevices[m_cudaDeviceCount++] = stol(argv[++i]);
 				}
 				catch (...)
@@ -194,12 +197,10 @@ public:
 				}
 			}
 		}
-		else if (arg == "--cuda-turbo") {
+		else if (arg == "--cuda-turbo") 
 			m_cudaHighCPULoad = true;
-		}
-		else if (arg == "--cuda-streams" && i + 1 < argc) {
+		else if (arg == "--cuda-streams" && i + 1 < argc)
 			m_numStreams = stol(argv[++i]);
-		}
 #endif
 		else if (arg == "--phone-home" && i + 1 < argc)
 		{
@@ -262,9 +263,7 @@ public:
 		else if (arg == "--current-block" && i + 1 < argc)
 			m_currentBlock = stol(argv[++i]);
 		else if (arg == "--no-precompute")
-		{
 			m_precompute = false;
-		}
 		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
 		{
 			string m = boost::to_lower_copy(string(argv[++i]));
@@ -320,7 +319,8 @@ public:
 			mode = OperationMode::Benchmark;
 		else if ((arg == "-t" || arg == "--mining-threads") && i + 1 < argc)
 		{
-			try {
+			try 
+			{
 				m_miningThreads = stol(argv[++i]);
 			}
 			catch (...)
