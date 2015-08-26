@@ -448,7 +448,7 @@ public:
 			<< "    --cuda-grid-size Set the CUDA grid size. Default is " << toString(ethash_cu_miner::c_defaultGridSize) << endl
 			<< "    --cuda-streams Set the number of CUDA streams. Default is " << toString(ethash_cu_miner::c_defaultNumStreams) << endl
 			<< "    --cuda-turbo Get a bit of extra hashrate at the cost of high CPU load... Default is false" << endl
-			<< "    --cuda-devices <0 1 ..n> Select which GPU's to mine on. Default is to use all" << endl
+			<< "    --cuda-devices <0 1 ..n> Select which GPUs to mine on. Default is to use all" << endl
 #endif
 			;
 	}
