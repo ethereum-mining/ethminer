@@ -245,8 +245,18 @@ public:
 			m_minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
 			m_minerType = MinerType::GPU;
-		else if (arg == "-U" || arg == "--cuda")
+		else if (arg == "-U" || arg == "--cuda") {
 			m_minerType = MinerType::CUDA;
+
+			cout << "Genoil's CUDA ethminer" << endl;
+			cout << "=====================================================================" << endl;
+			cout << "Forked from github.com/ethereum/cpp-ethereum" << endl;
+			cout << "Ported from tim hughes' OpenCL kernel" << endl;
+			cout << "With contributions from tpruvot and sp_ " << endl << endl;
+			cout << "Please consider donating a tiny fraction of the extra performance to:" << endl;
+			cout << "ETH: 0xb9310b185455f863f526dab3d245809f6854b4d" << endl;
+			cout << "BTC: 1Nu2fMCEBjmnLzqb8qUJpKgq5RoEWFhNcW" << endl << endl;
+		}
 		else if (arg == "--current-block" && i + 1 < argc)
 			m_currentBlock = stol(argv[++i]);
 		else if (arg == "--no-precompute")
