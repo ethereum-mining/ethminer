@@ -233,7 +233,8 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--benchmark-trials" && i + 1 < argc)
-			try {
+			try 
+			{
 				m_benchmarkTrials = stol(argv[++i]);
 			}
 			catch (...)
@@ -244,14 +245,15 @@ public:
 		else if (arg == "-C" || arg == "--cpu")
 			m_minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
-			m_minerType = MinerType::GPU;
-		else if (arg == "-U" || arg == "--cuda") {
+			m_minerType = MinerType::CL;
+		else if (arg == "-U" || arg == "--cuda") 
+		{
 			m_minerType = MinerType::CUDA;
 
 			cout << "Genoil's CUDA ethminer" << endl;
 			cout << "=====================================================================" << endl;
 			cout << "Forked from github.com/ethereum/cpp-ethereum" << endl;
-			cout << "Ported from tim hughes' OpenCL kernel" << endl;
+			cout << "Ported from Tim Hughes' OpenCL kernel" << endl;
 			cout << "With contributions from tpruvot and sp_ " << endl << endl;
 			cout << "Please consider donating a tiny fraction of the extra performance to:" << endl;
 			cout << "ETH: 0xb9310b185455f863f526dab3d245809f6854b4d" << endl;
@@ -337,7 +339,7 @@ public:
 		if (m_shouldListDevices)
 		{
 #if ETH_ETHASHCL || !ETH_TRUE
-			if (m_minerType == MinerType::GPU)
+			if (m_minerType == MinerType::CL)
 				EthashGPUMiner::listDevices();
 #endif
 #if ETH_ETHASHCU || !ETH_TRUE
@@ -349,7 +351,7 @@ public:
 
 		if (m_minerType == MinerType::CPU)
 			EthashCPUMiner::setNumInstances(m_miningThreads);
-		else if (m_minerType == MinerType::GPU)
+		else if (m_minerType == MinerType::CL)
 		{
 #if ETH_ETHASHCL || !ETH_TRUE
 			if (!EthashGPUMiner::configureGPU(
@@ -382,8 +384,8 @@ public:
 				m_currentBlock
 				))
 				exit(1);
-
-			if (m_cudaDeviceCount != 0) {
+			if (m_cudaDeviceCount != 0) 
+			{
 				EthashCUDAMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
 				m_miningThreads = m_cudaDeviceCount;
 			}
@@ -454,7 +456,7 @@ public:
 	enum class MinerType
 	{
 		CPU,
-		GPU,
+		CL,
 		CUDA
 	};
 
@@ -488,7 +490,7 @@ private:
 		f.setSealers(sealers);
 		f.onSolutionFound([&](EthashProofOfWork::Solution) { return false; });
 
-		string platformInfo = _m == MinerType::CPU ? "CPU" : (_m == MinerType::GPU ? "GPU" : "CUDA");
+		string platformInfo = _m == MinerType::CPU ? "CPU" : (_m == MinerType::CL ? "GPU" : "CUDA");
 		cout << "Benchmarking on platform: " << platformInfo << endl;
 
 		cout << "Preparing DAG..." << endl;
@@ -498,7 +500,7 @@ private:
 		f.setWork(genesis);
 		if (_m == MinerType::CPU)
 			f.start("cpu");
-		else if (_m == MinerType::GPU)
+		else if (_m == MinerType::CL)
 			f.start("opencl");
 		else if (_m == MinerType::CUDA)
 			f.start("cuda");
@@ -575,7 +577,7 @@ private:
 		f.setSealers(sealers);
 		if (_m == MinerType::CPU)
 			f.start("cpu");
-		else if (_m == MinerType::GPU)
+		else if (_m == MinerType::CL)
 			f.start("opencl");
 		else if (_m == MinerType::CUDA)
 			f.start("cuda");
@@ -685,7 +687,7 @@ private:
 	unsigned m_cudaDeviceCount = 0;
 	unsigned m_cudaDevices[16];
 	unsigned m_numStreams = ethash_cu_miner::c_defaultNumStreams;
-	bool	 m_cudaHighCPULoad = false;
+	bool m_cudaHighCPULoad = false;
 #endif
 	uint64_t m_currentBlock = 0;
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)

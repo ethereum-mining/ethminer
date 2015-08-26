@@ -118,7 +118,6 @@ std::string ethash_cu_miner::platform_info(unsigned _deviceId)
 	sprintf(compute, "%d.%d", device_props.major, device_props.minor);
 
 	return "{ \"platform\": \"CUDA " + std::string(platform) + "\", \"device\": \"" + device_props.name + "\", \"version\": \"Compute " + std::string(compute) + "\" }";
-
 }
 
 unsigned ethash_cu_miner::getNumDevices()
@@ -201,7 +200,6 @@ void ethash_cu_miner::finish()
 
 bool ethash_cu_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned _deviceId)
 {
-	
 	int device_count = getNumDevices();
 
 	if (device_count == 0)
