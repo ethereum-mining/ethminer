@@ -46,17 +46,20 @@ namespace dev
 			static unsigned getNumDevices();
 			static void listDevices();
 			static bool configureGPU(
-				unsigned _localWorkSize,
-				unsigned _globalWorkSizeMultiplier,
-				unsigned _msPerBatch,
-				unsigned _platformId,
+				unsigned _blockSize,
+				unsigned _gridSize,
+				unsigned _numStreams,
 				unsigned _deviceId,
-				bool _allowCPU,
 				unsigned _extraGPUMemory,
+				bool	 _highcpu,
 				uint64_t _currentBlock
 				);
 			static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
-
+			static void setDevices(unsigned * _devices, unsigned _selectedDeviceCount) {
+				for (unsigned i = 0; i < _selectedDeviceCount; i++) {
+					s_devices[i] = _devices[i];
+				}
+			}
 		protected:
 			void kickOff() override;
 			void pause() override;
@@ -74,6 +77,7 @@ namespace dev
 			static unsigned s_platformId;
 			static unsigned s_deviceId;
 			static unsigned s_numInstances;
+			static int		s_devices[16];
 		};
 
 	}

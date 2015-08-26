@@ -22,37 +22,35 @@ public:
 public:
 	ethash_cu_miner();
 
-	bool init(uint8_t const* _dag, uint64_t _dagSize, unsigned num_buffers = 2, unsigned search_batch_size = 262144, unsigned workgroup_size = 64, unsigned _deviceId = 0, bool highcpu = false);
 	static std::string platform_info(unsigned _deviceId = 0);
-	static int getNumDevices();
+	static unsigned getNumDevices();
 	static void listDevices();
 	static bool configureGPU(
-		unsigned _platformId,
-		unsigned _localWorkSize,
-		unsigned _globalWorkSize,
-		unsigned _msPerBatch,
-		bool _allowCPU,
+		unsigned _blockSize,
+		unsigned _gridSize,
+		unsigned _numStreams,
 		unsigned _extraGPUMemory,
+		bool	 _highcpu,
 		uint64_t _currentBlock
 		);
-
+	bool init(
+		uint8_t const* _dag,
+		uint64_t _dagSize,
+		unsigned _deviceId = 0
+		);
 	void finish();
-	void hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count);
 	void search(uint8_t const* header, uint64_t target, search_hook& hook);
 
 	/* -- default values -- */
-	/// Default value of the local work size. Also known as workgroup size.
-	static unsigned const c_defaultLocalWorkSize;
-	/// Default value of the global work size as a multiplier of the local work size
-	static unsigned const c_defaultGlobalWorkSizeMultiplier;
+	/// Default value of the block size. Also known as workgroup size.
+	static unsigned const c_defaultBlockSize;
+	/// Default value of the grid size
+	static unsigned const c_defaultGridSize;
+	// default number of CUDA streams
+	static unsigned const c_defaultNumStreams;
 
 private:
 	enum { c_max_search_results = 63, c_hash_batch_size = 1024 };
-	
-	bool	 m_highcpu;
-	unsigned m_num_buffers;
-	unsigned m_search_batch_size;
-	unsigned m_workgroup_size;
 
 	hash128_t * m_dag_ptr;
 	hash32_t * m_header;
@@ -61,5 +59,16 @@ private:
 	uint32_t ** m_search_buf;
 	cudaStream_t  * m_streams;
 
-	
+	/// The local work size for the search
+	static unsigned s_blockSize;
+	/// The initial global work size for the searches
+	static unsigned s_gridSize;
+	/// The number of CUDA streams
+	static unsigned s_numStreams;
+	/// Whether or not to let the CPU wait
+	static bool s_highCPU;
+
+	/// GPU memory required for other things, like window rendering e.t.c.
+	/// User can set it via the --cl-extragpu-mem argument.
+	static unsigned s_extraRequiredGPUMem;
 };
