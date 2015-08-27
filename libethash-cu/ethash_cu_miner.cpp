@@ -72,7 +72,7 @@ static std::atomic_flag s_logSpin = ATOMIC_FLAG_INIT;
 		s_logSpin.clear(std::memory_order_release); \
 			} while (false)
 #else
-#define ETHCL_LOG(_contents) cout << "[OPENCL]:" << _contents << endl
+#define ETHCU_LOG(_contents) cout << "[CUDA]:" << _contents << endl
 #endif
 
 #define CUDA_SAFE_CALL(call)                                          \
@@ -117,7 +117,8 @@ std::string ethash_cu_miner::platform_info(unsigned _deviceId)
 	char compute[5];
 	sprintf(compute, "%d.%d", device_props.major, device_props.minor);
 
-	return "{ \"platform\": \"CUDA " + std::string(platform) + "\", \"device\": \"" + device_props.name + "\", \"version\": \"Compute " + std::string(compute) + "\" }";
+	return "{ \"platform\": \"CUDA " + std::string(platform) + "\", \"device\": \"" + std::string(device_props.name) + "\", \"version\": \"Compute " + std::string(compute) + "\" }";
+
 }
 
 unsigned ethash_cu_miner::getNumDevices()
@@ -152,16 +153,16 @@ bool ethash_cu_miner::configureGPU(
 		if (props.totalGlobalMem >= requiredSize)
 		{
 			ETHCU_LOG(
-				"Found suitable CUDA device [" << props.name
+				"Found suitable CUDA device [" << string(props.name)
 				<< "] with " << props.totalGlobalMem << " bytes of GPU memory"
 				);
 			return true;
 		}
 
 		ETHCU_LOG(
-			"CUDA device " << props.name
-			<< " has insufficient GPU memory." << props.totalGlobalMem <<
-			" bytes of memory found < " << requiredSize << " bytes of memory required"
+			"CUDA device " << string(props.name)
+			<< " has insufficient GPU memory." << to_string(props.totalGlobalMem) <<
+			" bytes of memory found < " << to_string(requiredSize) << " bytes of memory required"
 			);
 	}
 	return false;
@@ -182,7 +183,7 @@ void ethash_cu_miner::listDevices()
 		cudaDeviceProp props;
 		CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
 
-		outString += "[" + to_string(i) + "] " + props.name + "\n";
+		outString += "[" + to_string(i) + "] " + string(props.name) + "\n";
 		outString += "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) + "\n";
 		outString += "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
 	}
