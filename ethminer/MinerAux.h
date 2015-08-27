@@ -491,7 +491,7 @@ private:
 		f.setSealers(sealers);
 		f.onSolutionFound([&](EthashProofOfWork::Solution) { return false; });
 
-		string platformInfo = _m == MinerType::CPU ? "CPU" : (_m == MinerType::CL ? "GPU" : "CUDA");
+		string platformInfo = _m == MinerType::CPU ? "CPU" : (_m == MinerType::CL ? "CL" : "CUDA");
 		cout << "Benchmarking on platform: " << platformInfo << endl;
 
 		cout << "Preparing DAG..." << endl;
