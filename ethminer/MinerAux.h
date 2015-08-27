@@ -91,6 +91,7 @@ struct MiningChannel: public LogChannel
 {
 	static const char* name() { return EthGreen "miner"; }
 	static const int verbosity = 2;
+	static const bool debug = false;
 };
 #define minelog clog(MiningChannel)
 
