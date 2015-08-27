@@ -177,7 +177,6 @@ bool ethash_cu_miner::s_highCPU = false;
 void ethash_cu_miner::listDevices()
 {
 	string outString = "\nListing CUDA devices.\nFORMAT: [deviceID] deviceName\n";
-	unsigned int i = 0;
 	for (unsigned int i = 0; i < getNumDevices(); i++)
 	{
 		cudaDeviceProp props;
