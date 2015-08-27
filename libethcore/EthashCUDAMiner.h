@@ -30,57 +30,63 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace dev
 {
-	namespace eth
+namespace eth
+{
+	class EthashCUDAMiner : public GenericMiner<EthashProofOfWork>, Worker
 	{
+		friend class dev::eth::EthashCUHook;
 
-		class EthashCUDAMiner : public GenericMiner<EthashProofOfWork>, Worker
+	public:
+		EthashCUDAMiner(ConstructionInfo const& _ci);
+		~EthashCUDAMiner();
+
+		static unsigned instances() 
+		{ 
+			return s_numInstances > 0 ? s_numInstances : 1; 
+		}
+		static std::string platformInfo();
+		static unsigned getNumDevices();
+		static void listDevices();
+		static bool configureGPU(
+			unsigned _blockSize,
+			unsigned _gridSize,
+			unsigned _numStreams,
+			unsigned _deviceId,
+			unsigned _extraGPUMemory,
+			bool	 _highcpu,
+			uint64_t _currentBlock
+			);
+		static void setNumInstances(unsigned _instances) 
+		{ 
+			s_numInstances = std::min<unsigned>(_instances, getNumDevices());
+		}
+		static void setDevices(unsigned * _devices, unsigned _selectedDeviceCount) 
 		{
-			friend class dev::eth::EthashCUHook;
-
-		public:
-			EthashCUDAMiner(ConstructionInfo const& _ci);
-			~EthashCUDAMiner();
-
-			static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
-			static std::string platformInfo();
-			static unsigned getNumDevices();
-			static void listDevices();
-			static bool configureGPU(
-				unsigned _blockSize,
-				unsigned _gridSize,
-				unsigned _numStreams,
-				unsigned _deviceId,
-				unsigned _extraGPUMemory,
-				bool	 _highcpu,
-				uint64_t _currentBlock
-				);
-			static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
-			static void setDevices(unsigned * _devices, unsigned _selectedDeviceCount) {
-				for (unsigned i = 0; i < _selectedDeviceCount; i++) {
-					s_devices[i] = _devices[i];
-				}
+			for (unsigned i = 0; i < _selectedDeviceCount; i++) 
+			{
+				s_devices[i] = _devices[i];
 			}
-		protected:
-			void kickOff() override;
-			void pause() override;
+		}
+	protected:
+		void kickOff() override;
+		void pause() override;
 
-		private:
-			void workLoop() override;
-			bool report(uint64_t _nonce);
+	private:
+		void workLoop() override;
+		bool report(uint64_t _nonce);
 
-			using GenericMiner<EthashProofOfWork>::accumulateHashes;
+		using GenericMiner<EthashProofOfWork>::accumulateHashes;
 
-			EthashCUHook* m_hook = nullptr;
-			ethash_cu_miner* m_miner = nullptr;
+		EthashCUHook* m_hook = nullptr;
+		ethash_cu_miner* m_miner = nullptr;
 
-			h256 m_minerSeed;		///< Last seed in m_miner
-			static unsigned s_platformId;
-			static unsigned s_deviceId;
-			static unsigned s_numInstances;
-			static int		s_devices[16];
-		};
-
-	}
+		h256 m_minerSeed;		///< Last seed in m_miner
+		static unsigned s_platformId;
+		static unsigned s_deviceId;
+		static unsigned s_numInstances;
+		static int s_devices[16];
+	};
+}
 }
 
 #endif
