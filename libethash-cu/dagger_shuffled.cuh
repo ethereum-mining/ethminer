@@ -32,7 +32,7 @@ __device__ uint64_t compute_hash_shuffle(
 
 	uint4 mix;
 	uint2 shuffle[8];
-
+	
 	for (int i = 0; i < THREADS_PER_HASH; i++)
 	{
 		// share init among threads
@@ -93,7 +93,7 @@ __device__ uint64_t compute_hash_shuffle(
 			state[11] = shuffle[3];
 		}
 	}
-
+	
 	// keccak_256(keccak_512(header..nonce) .. mix);
 	state[12] = vectorize(0x0000000000000001ULL);
 	for (uint32_t i = 13; i < 25; i++)
