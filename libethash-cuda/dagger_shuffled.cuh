@@ -76,6 +76,7 @@ __device__ uint64_t compute_hash_shuffle(
 		uint32_t thread_mix = fnv_reduce(mix);
 
 		// update mix accross threads
+		/*
 		shuffle[0].x = __shfl(thread_mix, start_lane + 0);
 		shuffle[0].y = __shfl(thread_mix, start_lane + 1);
 		shuffle[1].x = __shfl(thread_mix, start_lane + 2);
@@ -84,14 +85,30 @@ __device__ uint64_t compute_hash_shuffle(
 		shuffle[2].y = __shfl(thread_mix, start_lane + 5);
 		shuffle[3].x = __shfl(thread_mix, start_lane + 6);
 		shuffle[3].y = __shfl(thread_mix, start_lane + 7);
-
+		*/
 		if (i == thread_id) {
 			//move mix into state:
-			state[8] = shuffle[0];
-			state[9] = shuffle[1];
-			state[10] = shuffle[2];
-			state[11] = shuffle[3];
+			state[8].x = __shfl(thread_mix, start_lane + 0);
+			state[8].y = __shfl(thread_mix, start_lane + 1);
+			state[9].x = __shfl(thread_mix, start_lane + 2);
+			state[9].y = __shfl(thread_mix, start_lane + 3);
+			state[10].x = __shfl(thread_mix, start_lane + 4);
+			state[10].y = __shfl(thread_mix, start_lane + 5);
+			state[11].x = __shfl(thread_mix, start_lane + 6);
+			state[11].y = __shfl(thread_mix, start_lane + 7);
 		}
+		/*
+		else {
+			shuffle[0].x = __shfl(thread_mix, start_lane + 0);
+			shuffle[0].y = __shfl(thread_mix, start_lane + 1);
+			shuffle[1].x = __shfl(thread_mix, start_lane + 2);
+			shuffle[1].y = __shfl(thread_mix, start_lane + 3);
+			shuffle[2].x = __shfl(thread_mix, start_lane + 4);
+			shuffle[2].y = __shfl(thread_mix, start_lane + 5);
+			shuffle[3].x = __shfl(thread_mix, start_lane + 6);
+			shuffle[3].y = __shfl(thread_mix, start_lane + 7);
+		}
+		*/
 	}
 	
 	// keccak_256(keccak_512(header..nonce) .. mix);
