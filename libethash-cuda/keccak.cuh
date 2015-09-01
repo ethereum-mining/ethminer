@@ -26,7 +26,14 @@ uint2 xor5(const uint2 a, const uint2 b, const uint2 c, const uint2 d, const uin
 	uint2 f = lop3xor(a,b,c);
 	return lop3xor(d,e,f);
 }
+#else
+__device__ __forceinline__
+uint2 xor5(const uint2 a, const uint2 b, const uint2 c, const uint2 d, const uint2 e) {
+	return a ^ b ^ c ^ d ^ e;
+}
+#endif
 
+#if __CUDA_ARCH__ >= 500
 __device__ __forceinline__
 uint2 chi(const uint2 a, const uint2 b, const uint2 c) {
 	uint2 result;
@@ -34,12 +41,7 @@ uint2 chi(const uint2 a, const uint2 b, const uint2 c) {
 	asm("lop3.b32 %0, %1, %2, %3, 0x82;" : "=r"(result.y) : "r"(a.y), "r"(b.y), "r"(c.y));
 	return result;
 }
-
-#else
-__device__ __forceinline__
-uint2 xor5(const uint2 a, const uint2 b, const uint2 c, const uint2 d, const uint2 e) {
-	return a ^ b ^ c ^ d ^ e;
-}
+#else 
 __device__ __forceinline__
 uint2 chi(const uint2 a, const uint2 b, const uint2 c) {
 	return a ^ (~b) & c;
