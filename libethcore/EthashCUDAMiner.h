@@ -22,7 +22,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #pragma once
-#if ETH_ETHASHCU || !ETH_TRUE
+#if ETH_ETHASHCUDA || !ETH_TRUE
 
 #include "libdevcore/Worker.h"
 #include "EthashAux.h"
@@ -34,7 +34,7 @@ namespace eth
 {
 	class EthashCUDAMiner : public GenericMiner<EthashProofOfWork>, Worker
 	{
-		friend class dev::eth::EthashCUHook;
+		friend class dev::eth::EthashCUDAHook;
 
 	public:
 		EthashCUDAMiner(ConstructionInfo const& _ci);
@@ -77,8 +77,8 @@ namespace eth
 
 		using GenericMiner<EthashProofOfWork>::accumulateHashes;
 
-		EthashCUHook* m_hook = nullptr;
-		ethash_cu_miner* m_miner = nullptr;
+		EthashCUDAHook* m_hook = nullptr;
+		ethash_cuda_miner* m_miner = nullptr;
 
 		h256 m_minerSeed;		///< Last seed in m_miner
 		static unsigned s_platformId;

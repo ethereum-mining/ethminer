@@ -5,9 +5,9 @@
 #include <time.h>
 #include <functional>
 #include <libethash/ethash.h>
-#include "ethash_cu_miner_kernel.h"
+#include "ethash_cuda_miner_kernel.h"
 
-class ethash_cu_miner
+class ethash_cuda_miner
 {
 public:
 	struct search_hook
@@ -20,7 +20,7 @@ public:
 	};
 
 public:
-	ethash_cu_miner();
+	ethash_cuda_miner();
 
 	static std::string platform_info(unsigned _deviceId = 0);
 	static unsigned getNumDevices();

@@ -14,8 +14,8 @@
   You should have received a copy of the GNU General Public License
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ethash_cu_miner.cpp
-* @author Tim Hughes <tim@twistedfury.com>
+/** @file ethash_cuda_miner.cpp
+* @author Genoil <jw@meneer.net>
 * @date 2015
 */
 
@@ -37,8 +37,8 @@
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
 #include <cuda_runtime.h>
-#include "ethash_cu_miner.h"
-#include "ethash_cu_miner_kernel_globals.h"
+#include "ethash_cuda_miner.h"
+#include "ethash_cuda_miner_kernel_globals.h"
 
 
 #define ETHASH_BYTES 32
@@ -54,14 +54,14 @@
 
 using namespace std;
 
-unsigned const ethash_cu_miner::c_defaultBlockSize = 128;
-unsigned const ethash_cu_miner::c_defaultGridSize = 2048; // * CL_DEFAULT_LOCAL_WORK_SIZE
-unsigned const ethash_cu_miner::c_defaultNumStreams = 2;
+unsigned const ethash_cuda_miner::c_defaultBlockSize = 128;
+unsigned const ethash_cuda_miner::c_defaultGridSize = 2048; // * CL_DEFAULT_LOCAL_WORK_SIZE
+unsigned const ethash_cuda_miner::c_defaultNumStreams = 2;
 
 #if defined(_WIN32)
 extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char* lpOutputString);
 static std::atomic_flag s_logSpin = ATOMIC_FLAG_INIT;
-#define ETHCU_LOG(_contents) \
+#define ETHCUDA_LOG(_contents) \
 	do \
 			{ \
 		std::stringstream ss; \
@@ -72,7 +72,7 @@ static std::atomic_flag s_logSpin = ATOMIC_FLAG_INIT;
 		s_logSpin.clear(std::memory_order_release); \
 			} while (false)
 #else
-#define ETHCU_LOG(_contents) cout << "[CUDA]:" << _contents << endl
+#define ETHCUDA_LOG(_contents) cout << "[CUDA]:" << _contents << endl
 #endif
 
 #define CUDA_SAFE_CALL(call)                                          \
@@ -85,13 +85,13 @@ do {                                                                  \
 		}                                                                 \
 } while (0)
 
-ethash_cu_miner::search_hook::~search_hook() {}
+ethash_cuda_miner::search_hook::~search_hook() {}
 
-ethash_cu_miner::ethash_cu_miner()
+ethash_cuda_miner::ethash_cuda_miner()
 {
 }
 
-std::string ethash_cu_miner::platform_info(unsigned _deviceId)
+std::string ethash_cuda_miner::platform_info(unsigned _deviceId)
 {
 	int runtime_version;
 	int device_count;
@@ -121,14 +121,14 @@ std::string ethash_cu_miner::platform_info(unsigned _deviceId)
 
 }
 
-unsigned ethash_cu_miner::getNumDevices()
+unsigned ethash_cuda_miner::getNumDevices()
 {
 	int device_count;
 	CUDA_SAFE_CALL(cudaGetDeviceCount(&device_count));
 	return device_count;
 }
 
-bool ethash_cu_miner::configureGPU(
+bool ethash_cuda_miner::configureGPU(
 	unsigned _blockSize,
 	unsigned _gridSize,
 	unsigned _numStreams,
@@ -152,14 +152,14 @@ bool ethash_cu_miner::configureGPU(
 		CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
 		if (props.totalGlobalMem >= requiredSize)
 		{
-			ETHCU_LOG(
+			ETHCUDA_LOG(
 				"Found suitable CUDA device [" << string(props.name)
 				<< "] with " << props.totalGlobalMem << " bytes of GPU memory"
 				);
 			return true;
 		}
 
-		ETHCU_LOG(
+		ETHCUDA_LOG(
 			"CUDA device " << string(props.name)
 			<< " has insufficient GPU memory." << to_string(props.totalGlobalMem) <<
 			" bytes of memory found < " << to_string(requiredSize) << " bytes of memory required"
@@ -168,13 +168,13 @@ bool ethash_cu_miner::configureGPU(
 	return false;
 }
 
-unsigned ethash_cu_miner::s_extraRequiredGPUMem;
-unsigned ethash_cu_miner::s_blockSize = ethash_cu_miner::c_defaultBlockSize;
-unsigned ethash_cu_miner::s_gridSize = ethash_cu_miner::c_defaultGridSize;
-unsigned ethash_cu_miner::s_numStreams = ethash_cu_miner::c_defaultNumStreams;
-bool ethash_cu_miner::s_highCPU = false;
+unsigned ethash_cuda_miner::s_extraRequiredGPUMem;
+unsigned ethash_cuda_miner::s_blockSize = ethash_cuda_miner::c_defaultBlockSize;
+unsigned ethash_cuda_miner::s_gridSize = ethash_cuda_miner::c_defaultGridSize;
+unsigned ethash_cuda_miner::s_numStreams = ethash_cuda_miner::c_defaultNumStreams;
+bool ethash_cuda_miner::s_highCPU = false;
 
-void ethash_cu_miner::listDevices()
+void ethash_cuda_miner::listDevices()
 {
 	string outString = "\nListing CUDA devices.\nFORMAT: [deviceID] deviceName\n";
 	for (unsigned int i = 0; i < getNumDevices(); i++)
@@ -186,10 +186,10 @@ void ethash_cu_miner::listDevices()
 		outString += "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) + "\n";
 		outString += "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
 	}
-	ETHCU_LOG(outString);
+	ETHCUDA_LOG(outString);
 }
 
-void ethash_cu_miner::finish()
+void ethash_cuda_miner::finish()
 {
 	for (unsigned i = 0; i != s_numStreams; i++) {
 		cudaStreamDestroy(m_streams[i]);
@@ -198,7 +198,7 @@ void ethash_cu_miner::finish()
 	cudaDeviceReset();
 }
 
-bool ethash_cu_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned _deviceId)
+bool ethash_cuda_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned _deviceId)
 {
 	int device_count = getNumDevices();
 
@@ -276,7 +276,7 @@ static unsigned waitStream(cudaStream_t stream)
 	return wait_ms;
 }
 
-void ethash_cu_miner::search(uint8_t const* header, uint64_t target, search_hook& hook)
+void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_hook& hook)
 {
 	struct pending_batch
 	{

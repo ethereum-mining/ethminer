@@ -21,12 +21,12 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 * Determines the PoW algorithm.
 */
 
-#if ETH_ETHASHCU || !ETH_TRUE
+#if ETH_ETHASHCUDA || !ETH_TRUE
 
 #include "EthashCUDAMiner.h"
 #include <thread>
 #include <chrono>
-#include <libethash-cu/ethash_cu_miner.h>
+#include <libethash-cuda/ethash_cuda_miner.h>
 using namespace std;
 using namespace dev;
 using namespace eth;
@@ -35,11 +35,11 @@ namespace dev
 {
 namespace eth
 {
-	class EthashCUHook : public ethash_cu_miner::search_hook
+	class EthashCUDAHook : public ethash_cuda_miner::search_hook
 	{
 	public:
-		EthashCUHook(EthashCUDAMiner* _owner) : m_owner(_owner) {}
-		EthashCUHook(EthashCUHook const&) = delete;
+		EthashCUDAHook(EthashCUDAMiner* _owner) : m_owner(_owner) {}
+		EthashCUDAHook(EthashCUDAHook const&) = delete;
 
 		void abort()
 		{
@@ -106,7 +106,7 @@ int EthashCUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -
 EthashCUDAMiner::EthashCUDAMiner(ConstructionInfo const& _ci) :
 	GenericMiner<EthashProofOfWork>(_ci),
 	Worker("cudaminer" + toString(index())),
-m_hook( new EthashCUHook(this))
+m_hook( new EthashCUDAHook(this))
 {
 }
 
@@ -144,7 +144,7 @@ void EthashCUDAMiner::workLoop()
 			m_minerSeed = w.seedHash;
 
 			delete m_miner;
-			m_miner = new ethash_cu_miner;
+			m_miner = new ethash_cuda_miner;
 
 			unsigned device = instances() > 1 ? (s_devices[index()] > -1 ? s_devices[index()] : index()) : s_deviceId;
 
@@ -185,17 +185,17 @@ void EthashCUDAMiner::pause()
 
 std::string EthashCUDAMiner::platformInfo()
 {
-	return ethash_cu_miner::platform_info(s_deviceId);
+	return ethash_cuda_miner::platform_info(s_deviceId);
 }
 
 unsigned EthashCUDAMiner::getNumDevices()
 {
-	return ethash_cu_miner::getNumDevices();
+	return ethash_cuda_miner::getNumDevices();
 }
 
 void EthashCUDAMiner::listDevices()
 {
-	return ethash_cu_miner::listDevices();
+	return ethash_cuda_miner::listDevices();
 }
 
 bool EthashCUDAMiner::configureGPU(
@@ -214,7 +214,7 @@ bool EthashCUDAMiner::configureGPU(
 		cout << "Given localWorkSize of " << toString(_blockSize) << "is invalid. Must be either 32,64 or 128" << endl;
 		return false;
 	}
-	if (!ethash_cu_miner::configureGPU(
+	if (!ethash_cuda_miner::configureGPU(
 		_blockSize,
 		_gridSize,
 		_numStreams,
