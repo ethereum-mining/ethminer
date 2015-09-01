@@ -32,7 +32,7 @@ __device__ uint64_t compute_hash_shuffle(
 
 	uint4 mix;
 	uint2 shuffle[8];
-
+	
 	for (int i = 0; i < THREADS_PER_HASH; i++)
 	{
 		// share init among threads
