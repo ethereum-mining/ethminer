@@ -11,7 +11,41 @@ __device__ __constant__ uint64_t const keccak_round_constants[24] = {
 	0x8000000000008080ULL, 0x0000000080000001ULL, 0x8000000080008008ULL
 };
 
-#define bitselect(a, b, c) ((a) ^ ((c) & ((b) ^ (a))))
+
+#if __CUDA_ARCH__ >= 500
+__device__ __forceinline__ 
+uint2 lop3xor(const uint2 a, const uint2 b, const uint2 c) {
+	uint2 result;
+	asm("lop3.b32 %0, %1, %2, %3, 0x96;" : "=r"(result.x) : "r"(a.x), "r"(b.x), "r"(c.x));
+	asm("lop3.b32 %0, %1, %2, %3, 0x96;" : "=r"(result.y) : "r"(a.y), "r"(b.y), "r"(c.y));
+	return result;
+}
+
+__device__ __forceinline__ 
+uint2 xor5(const uint2 a, const uint2 b, const uint2 c, const uint2 d, const uint2 e) {
+	uint2 f = lop3xor(a,b,c);
+	return lop3xor(d,e,f);
+}
+
+__device__ __forceinline__
+uint2 chi(const uint2 a, const uint2 b, const uint2 c) {
+	uint2 result;
+	asm("lop3.b32 %0, %1, %2, %3, 0x82;" : "=r"(result.x) : "r"(a.x), "r"(b.x), "r"(c.x));
+	asm("lop3.b32 %0, %1, %2, %3, 0x82;" : "=r"(result.y) : "r"(a.y), "r"(b.y), "r"(c.y));
+	return result;
+}
+
+#else
+__device__ __forceinline__
+uint2 xor5(const uint2 a, const uint2 b, const uint2 c, const uint2 d, const uint2 e) {
+	return a ^ b ^ c ^ d ^ e;
+}
+__device__ __forceinline__
+uint2 chi(const uint2 a, const uint2 b, const uint2 c) {
+	return a ^ (~b) & c;
+}
+#endif	
+
 
 __device__ __forceinline__ void keccak_f1600_block(uint2* s, uint32_t out_size)
 {
@@ -21,11 +55,11 @@ __device__ __forceinline__ void keccak_f1600_block(uint2* s, uint32_t out_size)
 	for (int i = 0; i < 24; i++)
 	{
 		/* theta: c = a[0,i] ^ a[1,i] ^ .. a[4,i] */
-		t[0] = s[0] ^ s[5] ^ s[10] ^ s[15] ^ s[20];
-		t[1] = s[1] ^ s[6] ^ s[11] ^ s[16] ^ s[21];
-		t[2] = s[2] ^ s[7] ^ s[12] ^ s[17] ^ s[22];
-		t[3] = s[3] ^ s[8] ^ s[13] ^ s[18] ^ s[23];
-		t[4] = s[4] ^ s[9] ^ s[14] ^ s[19] ^ s[24];
+		t[0] = xor5(s[0] , s[5] , s[10] , s[15] , s[20]);
+		t[1] = xor5(s[1] , s[6] , s[11] , s[16] , s[21]);
+		t[2] = xor5(s[2] , s[7] , s[12] , s[17] , s[22]);
+		t[3] = xor5(s[3] , s[8] , s[13] , s[18] , s[23]);
+		t[4] = xor5(s[4] , s[9] , s[14] , s[19] , s[24]);
 
 		/* theta: d[i] = c[i+4] ^ rotl(c[i+1],1) */
 		/* theta: a[0,i], a[1,i], .. a[4,i] ^= d[i] */
@@ -70,20 +104,49 @@ __device__ __forceinline__ void keccak_f1600_block(uint2* s, uint32_t out_size)
 
 		// squeeze this in here
 		/* chi: a[i,j] ^= ~b[i,j+1] & b[i,j+2] */
-		u = s[0]; v = s[1]; s[0] ^= (~v) & s[2];
+		u = s[0]; v = s[1]; 
+		s[0] = chi(s[0], v, s[2]);
 
 		/* iota: a[0,0] ^= round constant */
 		s[0] ^= vectorize(keccak_round_constants[i]);
 		if (i == 23 && out_size == 1) return;
 
 		// continue chi
-		s[1] ^= (~s[2]) & s[3]; s[2] ^= (~s[3]) & s[4]; s[3] ^= (~s[4]) & u; s[4] ^= (~u) & v;
-		u = s[5]; v = s[6]; s[5] ^= (~v) & s[7]; s[6] ^= (~s[7]) & s[8]; s[7] ^= (~s[8]) & s[9];
+		s[1] = chi(s[1], s[2], s[3]);
+		s[2] = chi(s[2], s[3], s[4]);
+		s[3] = chi(s[3], s[4], u);
+		s[4] = chi(s[4], u, v);
+
+		u = s[5]; v = s[6]; 
+
+		s[5] = chi(s[5], v, s[7]);
+		s[6] = chi(s[6], s[7], s[8]);
+		s[7] = chi(s[7], s[8], s[9]);
 
 		if (i == 23) return;
-		s[8] ^= (~s[9]) & u; s[9] ^= (~u) & v;
-		u = s[10]; v = s[11]; s[10] ^= (~v) & s[12]; s[11] ^= (~s[12]) & s[13]; s[12] ^= (~s[13]) & s[14]; s[13] ^= (~s[14]) & u; s[14] ^= (~u) & v;
-		u = s[15]; v = s[16]; s[15] ^= (~v) & s[17]; s[16] ^= (~s[17]) & s[18]; s[17] ^= (~s[18]) & s[19]; s[18] ^= (~s[19]) & u; s[19] ^= (~u) & v;
-		u = s[20]; v = s[21]; s[20] ^= (~v) & s[22]; s[21] ^= (~s[22]) & s[23]; s[22] ^= (~s[23]) & s[24]; s[23] ^= (~s[24]) & u; s[24] ^= (~u) & v;
+
+		s[8] = chi(s[8], s[9], u);
+		s[9] = chi(s[9], u, v);
+
+		u = s[10]; v = s[11]; 
+		s[10] = chi(s[10], v, s[12]);
+		s[11] = chi(s[11], s[12], s[13]);
+		s[12] = chi(s[12], s[13], s[14]);
+		s[13] = chi(s[13], s[14], u);
+		s[14] = chi(s[14], u, v);
+
+		u = s[15]; v = s[16];
+		s[15] = chi(s[15], v, s[17]);
+		s[16] = chi(s[16], s[12], s[18]);
+		s[17] = chi(s[17], s[13], s[19]);
+		s[18] = chi(s[18], s[14], u);
+		s[19] = chi(s[19], u, v);
+
+		u = s[20]; v = s[21];
+		s[20] = chi(s[20], v, s[22]);
+		s[21] = chi(s[21], s[22], s[23]);
+		s[22] = chi(s[22], s[23], s[24]);
+		s[23] = chi(s[23], s[24], u);
+		s[24] = chi(s[24], u, v);
 	}
 }
