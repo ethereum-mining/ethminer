@@ -33,7 +33,7 @@
 #include "Sealer.h"
 
 class ethash_cl_miner;
-class ethash_cu_miner;
+class ethash_cuda_miner;
 
 namespace dev
 {
@@ -46,7 +46,7 @@ namespace eth
 
 class BlockInfo;
 class EthashCLHook;
-class EthashCUHook;
+class EthashCUDAHook;
 
 class Ethash
 {

@@ -1,5 +1,5 @@
-#include "ethash_cu_miner_kernel_globals.h"
-#include "ethash_cu_miner_kernel.h"
+#include "ethash_cuda_miner_kernel_globals.h"
+#include "ethash_cuda_miner_kernel.h"
 #include "keccak.cuh"
 #include "dagger.cuh"
 

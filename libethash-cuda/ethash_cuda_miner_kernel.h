@@ -1,5 +1,5 @@
-#ifndef _ETHASH_CU_MINER_KERNEL_H_
-#define _ETHASH_CU_MINER_KERNEL_H_
+#ifndef _ETHASH_CUDA_MINER_KERNEL_H_
+#define _ETHASH_CUDA_MINER_KERNEL_H_
 
 #include <stdint.h>
 #include <cuda_runtime.h>
