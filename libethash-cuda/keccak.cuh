@@ -105,7 +105,7 @@ __device__ __forceinline__ void keccak_f1600_block(uint2* s, uint32_t out_size)
 		// squeeze this in here
 		/* chi: a[i,j] ^= ~b[i,j+1] & b[i,j+2] */
 		u = s[0]; v = s[1]; 
-		s[0] = chi(s[0], v, s[2]);
+		s[0] = chi(s[0], s[1], s[2]);
 
 		/* iota: a[0,0] ^= round constant */
 		s[0] ^= vectorize(keccak_round_constants[i]);
@@ -119,7 +119,7 @@ __device__ __forceinline__ void keccak_f1600_block(uint2* s, uint32_t out_size)
 
 		u = s[5]; v = s[6]; 
 
-		s[5] = chi(s[5], v, s[7]);
+		s[5] = chi(s[5], s[6], s[7]);
 		s[6] = chi(s[6], s[7], s[8]);
 		s[7] = chi(s[7], s[8], s[9]);
 
@@ -129,21 +129,21 @@ __device__ __forceinline__ void keccak_f1600_block(uint2* s, uint32_t out_size)
 		s[9] = chi(s[9], u, v);
 
 		u = s[10]; v = s[11]; 
-		s[10] = chi(s[10], v, s[12]);
+		s[10] = chi(s[10], s[11], s[12]);
 		s[11] = chi(s[11], s[12], s[13]);
 		s[12] = chi(s[12], s[13], s[14]);
 		s[13] = chi(s[13], s[14], u);
 		s[14] = chi(s[14], u, v);
 
 		u = s[15]; v = s[16];
-		s[15] = chi(s[15], v, s[17]);
-		s[16] = chi(s[16], s[12], s[18]);
-		s[17] = chi(s[17], s[13], s[19]);
-		s[18] = chi(s[18], s[14], u);
+		s[15] = chi(s[15], s[16], s[17]);
+		s[16] = chi(s[16], s[17], s[18]);
+		s[17] = chi(s[17], s[18], s[19]);
+		s[18] = chi(s[18], s[19], u);
 		s[19] = chi(s[19], u, v);
 
 		u = s[20]; v = s[21];
-		s[20] = chi(s[20], v, s[22]);
+		s[20] = chi(s[20], s[21], s[22]);
 		s[21] = chi(s[21], s[22], s[23]);
 		s[22] = chi(s[22], s[23], s[24]);
 		s[23] = chi(s[23], s[24], u);
