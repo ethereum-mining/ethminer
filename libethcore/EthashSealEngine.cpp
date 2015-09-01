@@ -36,7 +36,7 @@ EthashSealEngine::EthashSealEngine()
 #if ETH_ETHASHCL
 	sealers["opencl"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
 #endif
-#if ETH_ETHASHCU
+#if ETH_ETHASHCUDA
 	sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 	m_farm.setSealers(sealers);
@@ -49,7 +49,7 @@ strings EthashSealEngine::sealers() const
 #if ETH_ETHASHCL
 		, "opencl"
 #endif
-#if ETH_ETHASHCU
+#if ETH_ETHASHCUDA
 		, "cuda"
 #endif
 	};

@@ -11,7 +11,7 @@ if (JSONRPC)
 	include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 endif()
 
-if (ETHASHCU)
+if (ETHASHCUDA)
 	include_directories(${CUDA_INCLUDE_DIRS})
 endif ()
 
