@@ -103,6 +103,7 @@ public:
 		None,
 		DAGInit,
 		Benchmark,
+		Simulation,
 		Farm
 	};
 
@@ -318,6 +319,8 @@ public:
 		}
 		else if (arg == "-M" || arg == "--benchmark")
 			mode = OperationMode::Benchmark;
+		else if (arg == "-S" || arg == "--simulation")
+			mode = OperationMode::Simulation;
 		else if ((arg == "-t" || arg == "--mining-threads") && i + 1 < argc)
 		{
 			try 
@@ -404,6 +407,8 @@ public:
 			doBenchmark(m_minerType, m_phoneHome, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
 		else if (mode == OperationMode::Farm)
 			doFarm(m_minerType, m_farmURL, m_farmRecheckPeriod);
+		else if (mode == OperationMode::Simulation)
+			doSimulation(m_minerType);
 	}
 
 	static void streamHelp(ostream& _out)
@@ -423,6 +428,8 @@ public:
 			<< "    --benchmark-warmup <seconds>  Set the duration of warmup for the benchmark tests (default: 3)." << endl
 			<< "    --benchmark-trial <seconds>  Set the duration for each trial for the benchmark tests (default: 3)." << endl
 			<< "    --benchmark-trials <n>  Set the duration of warmup for the benchmark tests (default: 5)." << endl
+			<< "Simulation mode:" << endl
+			<< "    -S,--simulation Mining test mode. Used to validate kernel optimizations." << endl
 #if ETH_JSONRPC || !ETH_TRUE
 			<< "    --phone-home <on/off>  When benchmarking, publish results (default: on)" << endl
 #endif
@@ -555,6 +562,84 @@ private:
 		}
 #endif
 		exit(0);
+	}
+
+	void doSimulation(MinerType _m, int difficulty = 20)
+	{
+		Ethash::BlockHeader genesis;
+		genesis.setDifficulty(1 << 18);
+		cdebug << genesis.boundary();
+
+		GenericFarm<EthashProofOfWork> f;
+		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
+		sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); } };
+#if ETH_ETHASHCL
+		sealers["opencl"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
+#endif
+#if ETH_ETHASHCUDA
+		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+#endif
+		f.setSealers(sealers);
+
+		string platformInfo = _m == MinerType::CPU ? "CPU" : (_m == MinerType::CL ? "CL" : "CUDA");
+		cout << "Benchmarking on platform: " << platformInfo << endl;
+
+		cout << "Preparing DAG..." << endl;
+		genesis.prep();
+
+		genesis.setDifficulty(u256(1) << difficulty);
+		f.setWork(genesis);
+
+		if (_m == MinerType::CPU)
+			f.start("cpu");
+		else if (_m == MinerType::CL)
+			f.start("opencl");
+		else if (_m == MinerType::CUDA)
+			f.start("cuda");
+
+		EthashAux::FullType dag;
+
+		int time = 0;
+
+		EthashProofOfWork::WorkPackage current = EthashProofOfWork::WorkPackage(genesis);
+		while (true) {
+			bool completed = false;
+			EthashProofOfWork::Solution solution;
+			f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+			{
+				solution = sol;
+				return completed = true;
+			});
+			for (unsigned i = 0; !completed; ++i)
+			{
+				cnote << "Mining on difficulty " << difficulty << " " << f.miningProgress();
+				this_thread::sleep_for(chrono::milliseconds(1000));
+				time++;
+			}
+			//cnote << "Solution found";
+			cnote << "Difficulty:" << difficulty << "  Nonce:" << solution.nonce.hex();
+			//cnote << "  Mixhash:" << solution.mixHash.hex();
+			//cnote << "  Header-hash:" << current.headerHash.hex();
+			//cnote << "  Seedhash:" << current.seedHash.hex();
+			//cnote << "  Target: " << h256(current.boundary).hex();
+			//cnote << "  Ethash: " << h256(EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value).hex();
+			if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
+			{
+				cnote << "SUCCESS: GPU gave correct result!";
+			}
+			else
+				cwarn << "FAILURE: GPU gave incorrect result!";
+
+			if (time < 12)
+				difficulty++;
+			else if (time > 18)
+				difficulty--;
+			time = 0;
+			genesis.setDifficulty(u256(1) << difficulty);
+			genesis.noteDirty();
+			f.setWork(genesis);
+			current = EthashProofOfWork::WorkPackage(genesis);
+		}
 	}
 
 	void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
