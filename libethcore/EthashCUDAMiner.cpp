@@ -146,7 +146,7 @@ void EthashCUDAMiner::workLoop()
 			delete m_miner;
 			m_miner = new ethash_cuda_miner;
 
-			unsigned device = instances() > 1 ? (s_devices[index()] > -1 ? s_devices[index()] : index()) : s_deviceId;
+			unsigned device = s_devices[index()] > -1 ? s_devices[index()] : index();
 
 			EthashAux::FullType dag;
 			while (true)
@@ -202,19 +202,18 @@ bool EthashCUDAMiner::configureGPU(
 	unsigned _blockSize,
 	unsigned _gridSize,
 	unsigned _numStreams,
-	unsigned _deviceId,
 	unsigned _extraGPUMemory,
 	bool _highcpu,
 	uint64_t _currentBlock
 	)
 {
-	s_deviceId = _deviceId;
 	if (_blockSize != 32 && _blockSize != 64 && _blockSize != 128)
 	{
 		cout << "Given localWorkSize of " << toString(_blockSize) << "is invalid. Must be either 32,64 or 128" << endl;
 		return false;
 	}
 	if (!ethash_cuda_miner::configureGPU(
+		s_devices,
 		_blockSize,
 		_gridSize,
 		_numStreams,
