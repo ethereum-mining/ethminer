@@ -31,6 +31,10 @@ __device__ __forceinline__
 uint2 xor5(const uint2 a, const uint2 b, const uint2 c, const uint2 d, const uint2 e) {
 	return a ^ b ^ c ^ d ^ e;
 }
+__device__ __forceinline__
+uint2 lop3xor(const uint2 a, const uint2 b, const uint2 c) {
+	return a ^ b ^ c;
+}
 #endif
 
 #if __CUDA_ARCH__ >= 500
@@ -65,16 +69,52 @@ __device__ __forceinline__ void keccak_f1600_block(uint2* s, uint32_t out_size)
 
 		/* theta: d[i] = c[i+4] ^ rotl(c[i+1],1) */
 		/* theta: a[0,i], a[1,i], .. a[4,i] ^= d[i] */
-		u = t[4] ^ ROL2(t[1], 1);
-		s[0] ^= u; s[5] ^= u; s[10] ^= u; s[15] ^= u; s[20] ^= u;
-		u = t[0] ^ ROL2(t[2], 1);
-		s[1] ^= u; s[6] ^= u; s[11] ^= u; s[16] ^= u; s[21] ^= u;
-		u = t[1] ^ ROL2(t[3], 1);
-		s[2] ^= u; s[7] ^= u; s[12] ^= u; s[17] ^= u; s[22] ^= u;
-		u = t[2] ^ ROL2(t[4], 1);
-		s[3] ^= u; s[8] ^= u; s[13] ^= u; s[18] ^= u; s[23] ^= u;
-		u = t[3] ^ ROL2(t[0], 1);
-		s[4] ^= u; s[9] ^= u; s[14] ^= u; s[19] ^= u; s[24] ^= u;
+		u = ROL2(t[1], 1);
+		//s[0] ^= u; s[5] ^= u; s[10] ^= u; s[15] ^= u; s[20] ^= u;
+
+		s[0]  = lop3xor(s[0], t[4], u);
+		s[5]  = lop3xor(s[5], t[4], u);
+		s[10] = lop3xor(s[10], t[4], u);
+		s[15] = lop3xor(s[15], t[4], u);
+		s[20] = lop3xor(s[20], t[4], u);
+
+		u = ROL2(t[2], 1);
+		//s[1] ^= u; s[6] ^= u; s[11] ^= u; s[16] ^= u; s[21] ^= u;
+
+		s[1] = lop3xor(s[1], t[0], u);
+		s[6] = lop3xor(s[6], t[0], u);
+		s[11] = lop3xor(s[11], t[0], u);
+		s[16] = lop3xor(s[16], t[0], u);
+		s[21] = lop3xor(s[21], t[0], u);
+
+		u = ROL2(t[3], 1);
+		//s[2] ^= u; s[7] ^= u; s[12] ^= u; s[17] ^= u; s[22] ^= u;
+
+		s[2] = lop3xor(s[2], t[1], u);
+		s[7] = lop3xor(s[7], t[1], u);
+		s[12] = lop3xor(s[12], t[1], u);
+		s[17] = lop3xor(s[17], t[1], u);
+		s[22] = lop3xor(s[22], t[1], u);
+
+		u = ROL2(t[4], 1);
+
+		//s[3] ^= u; s[8] ^= u; s[13] ^= u; s[18] ^= u; s[23] ^= u;
+
+		s[3] = lop3xor(s[3], t[2], u);
+		s[8] = lop3xor(s[8], t[2], u);
+		s[13] = lop3xor(s[13], t[2], u);
+		s[18] = lop3xor(s[18], t[2], u);
+		s[23] = lop3xor(s[23], t[2], u);
+
+
+		u = ROL2(t[0], 1);
+		//s[4] ^= u; s[9] ^= u; s[14] ^= u; s[19] ^= u; s[24] ^= u;
+
+		s[4] = lop3xor(s[4], t[3], u);
+		s[9] = lop3xor(s[9], t[3], u);
+		s[14] = lop3xor(s[14], t[3], u);
+		s[19] = lop3xor(s[19], t[3], u);
+		s[24] = lop3xor(s[24], t[3], u);
 
 		/* rho pi: b[..] = rotl(a[..], ..) */
 		u = s[1];
@@ -106,13 +146,14 @@ __device__ __forceinline__ void keccak_f1600_block(uint2* s, uint32_t out_size)
 
 		// squeeze this in here
 		/* chi: a[i,j] ^= ~b[i,j+1] & b[i,j+2] */
-		u = s[0]; v = s[1]; 
+		u = s[0]; 
 		s[0] = chi(s[0], s[1], s[2]);
 
 		/* iota: a[0,0] ^= round constant */
 		s[0] ^= vectorize(keccak_round_constants[i]);
 		if (i == 23 && out_size == 1) return;
 
+		v = s[1];
 		// continue chi
 		s[1] = chi(s[1], s[2], s[3]);
 		s[2] = chi(s[2], s[3], s[4]);
