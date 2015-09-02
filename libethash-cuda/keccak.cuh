@@ -41,9 +41,7 @@ uint2 chi(const uint2 a, const uint2 b, const uint2 c) {
 	asm("lop3.b32 %0, %1, %2, %3, 0xd2;" : "=r"(result.y) : "r"(a.y), "r"(b.y), "r"(c.y));
 	return result;
 }
-
 #else
-
 __device__ __forceinline__
 uint2 chi(const uint2 a, const uint2 b, const uint2 c) {
 	return a ^ (~b) & c;
