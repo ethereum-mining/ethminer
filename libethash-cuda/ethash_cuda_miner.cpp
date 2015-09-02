@@ -129,6 +129,7 @@ unsigned ethash_cuda_miner::getNumDevices()
 }
 
 bool ethash_cuda_miner::configureGPU(
+	int *	 _devices,
 	unsigned _blockSize,
 	unsigned _gridSize,
 	unsigned _numStreams,
@@ -148,24 +149,29 @@ bool ethash_cuda_miner::configureGPU(
 	uint64_t requiredSize = dagSize + _extraGPUMemory;
 	for (unsigned int i = 0; i < getNumDevices(); i++)
 	{
-		cudaDeviceProp props;
-		CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
-		if (props.totalGlobalMem >= requiredSize)
+		if (_devices[i] != -1) 
 		{
-			ETHCUDA_LOG(
-				"Found suitable CUDA device [" << string(props.name)
-				<< "] with " << props.totalGlobalMem << " bytes of GPU memory"
-				);
-			return true;
+			cudaDeviceProp props;
+			CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, _devices[i]));
+			if (props.totalGlobalMem >= requiredSize)
+			{
+				ETHCUDA_LOG(
+					"Found suitable CUDA device [" << string(props.name)
+					<< "] with " << props.totalGlobalMem << " bytes of GPU memory"
+					);
+			}
+			else
+			{
+				ETHCUDA_LOG(
+					"CUDA device " << string(props.name)
+					<< " has insufficient GPU memory." << to_string(props.totalGlobalMem) <<
+					" bytes of memory found < " << to_string(requiredSize) << " bytes of memory required"
+					);
+				return false;
+			}
 		}
-
-		ETHCUDA_LOG(
-			"CUDA device " << string(props.name)
-			<< " has insufficient GPU memory." << to_string(props.totalGlobalMem) <<
-			" bytes of memory found < " << to_string(requiredSize) << " bytes of memory required"
-			);
 	}
-	return false;
+	return true;
 }
 
 unsigned ethash_cuda_miner::s_extraRequiredGPUMem;

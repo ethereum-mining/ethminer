@@ -26,6 +26,7 @@ public:
 	static unsigned getNumDevices();
 	static void listDevices();
 	static bool configureGPU(
+		int *	 _devices,
 		unsigned _blockSize,
 		unsigned _gridSize,
 		unsigned _numStreams,
