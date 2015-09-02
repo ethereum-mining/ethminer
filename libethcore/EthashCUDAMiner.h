@@ -51,7 +51,6 @@ namespace eth
 			unsigned _blockSize,
 			unsigned _gridSize,
 			unsigned _numStreams,
-			unsigned _deviceId,
 			unsigned _extraGPUMemory,
 			bool	 _highcpu,
 			uint64_t _currentBlock
