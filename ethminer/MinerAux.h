@@ -375,23 +375,24 @@ public:
 		else if (m_minerType == MinerType::CUDA)
 		{
 #if ETH_ETHASHCUDA || !ETH_TRUE
+			if (m_cudaDeviceCount == 0)
+			{
+				m_cudaDevices[0]  = 0;
+				m_cudaDeviceCount = 1;
+			}
+			EthashCUDAMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
+			m_miningThreads = m_cudaDeviceCount;
+	
+			EthashCUDAMiner::setNumInstances(m_miningThreads);
 			if (!EthashCUDAMiner::configureGPU(
 				m_localWorkSize,
 				m_globalWorkSizeMultiplier,
 				m_numStreams,
-				m_openclDevice,
 				m_extraGPUMemory,
 				m_cudaHighCPULoad,
 				m_currentBlock
 				))
 				exit(1);
-			if (m_cudaDeviceCount != 0) 
-			{
-				EthashCUDAMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
-				m_miningThreads = m_cudaDeviceCount;
-			}
-			EthashCUDAMiner::setNumInstances(m_miningThreads);
-			
 #else
 			cerr << "Selected CUDA mining without having compiled with -DETHASHCUDA=1 or -DBUNDLE=cudaminer" << endl;
 			exit(1);
@@ -486,7 +487,7 @@ private:
 		sealers["opencl"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 		f.setSealers(sealers);
 		f.onSolutionFound([&](EthashProofOfWork::Solution) { return false; });
