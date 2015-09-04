@@ -27,6 +27,7 @@
 #include <fstream>
 #include <iostream>
 #include <signal.h>
+#include <random>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
@@ -612,7 +613,10 @@ private:
 			});
 			for (unsigned i = 0; !completed; ++i)
 			{
-				cnote << "Mining on difficulty " << difficulty << " " << f.miningProgress();
+				auto mp = f.miningProgress();
+				f.resetMiningProgress();
+
+				cnote << "Mining on difficulty " << difficulty << " " << mp;
 				this_thread::sleep_for(chrono::milliseconds(1000));
 				time++;
 			}
@@ -637,8 +641,24 @@ private:
 			time = 0;
 			genesis.setDifficulty(u256(1) << difficulty);
 			genesis.noteDirty();
-			f.setWork(genesis);
-			current = EthashProofOfWork::WorkPackage(genesis);
+			//f.setWork(genesis);
+		
+			h256 hh;
+			std::random_device engine;
+			hh.randomize(engine);
+			h256 newSeedHash = h256();
+
+			current.headerHash = hh;
+			current.seedHash = newSeedHash;
+			current.boundary = genesis.boundary();
+			minelog << "Generated random work package:";
+			minelog << "  Header-hash:" << current.headerHash.hex();
+			minelog << "  Seedhash:" << current.seedHash.hex();
+			minelog << "  Target: " << h256(current.boundary).hex();
+			f.setWork(current);
+			
+
+			//current = EthashProofOfWork::WorkPackage(genesis);
 		}
 	}
 
@@ -690,6 +710,7 @@ private:
 						minelog << "Getting work package...";
 
 					auto rate = mp.rate();
+
 					try
 					{
 						rpc.eth_submitHashrate(toJS((u256)rate), "0x" + id.hex());

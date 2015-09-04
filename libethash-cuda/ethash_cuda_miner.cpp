@@ -44,10 +44,6 @@
 #define ETHASH_BYTES 32
 
 // workaround lame platforms
-#if !CL_VERSION_1_2
-#define CL_MAP_WRITE_INVALIDATE_REGION CL_MAP_WRITE
-#define CL_MEM_HOST_READ_ONLY 0
-#endif
 
 #undef min
 #undef max
@@ -221,7 +217,7 @@ bool ethash_cuda_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned _d
 		return false;
 	}
 
-	cout << "Using device: " << device_props.name << "(" << device_props.major << "." << device_props.minor << ")" << endl;
+	cout << "Using device: " << device_props.name << " (Compute " << device_props.major << "." << device_props.minor << ")" << endl;
 
 	cudaError_t r = cudaSetDevice(device_num);
 	if (r != cudaSuccess)
@@ -233,7 +229,6 @@ bool ethash_cuda_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned _d
 	cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
 	cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
-	m_hash_buf	 = new void *[s_numStreams];
 	m_search_buf = new uint32_t *[s_numStreams];
 	m_streams = new cudaStream_t[s_numStreams];
 
@@ -257,7 +252,6 @@ bool ethash_cuda_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned _d
 	// create mining buffers
 	for (unsigned i = 0; i != s_numStreams; ++i)
 	{		
-		result = cudaMallocHost(&m_hash_buf[i], 32 * c_hash_batch_size);
 		result = cudaMallocHost(&m_search_buf[i], (c_max_search_results + 1) * sizeof(uint32_t));
 		result = cudaStreamCreate(&m_streams[i]);
 	}
@@ -297,7 +291,7 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 	cudaMemcpy(m_header, header, 32, cudaMemcpyHostToDevice);
 	for (unsigned i = 0; i != s_numStreams; ++i)
 	{
-		cudaMemcpy(m_search_buf[i], &c_zero, 4, cudaMemcpyHostToDevice);
+		cudaMemcpyAsync(m_search_buf[i], &c_zero, 4, cudaMemcpyHostToDevice, m_streams[i]);
 	}
 	cudaError err = cudaGetLastError();
 	if (cudaSuccess != err)
@@ -308,7 +302,7 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 	unsigned buf = 0;
 	std::random_device engine;
 	uint64_t start_nonce = std::uniform_int_distribution<uint64_t>()(engine);
-	for (;; start_nonce += s_gridSize)
+	for (;;)
 	{
 		run_ethash_search(s_gridSize, s_blockSize, m_streams[buf], m_search_buf[buf], m_header, m_dag_ptr, start_nonce, target);
 		
@@ -324,7 +318,8 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 
 			if (!s_highCPU)
 				waitStream(m_streams[buf]); // 28ms
-			cudaMemcpyAsync(results, m_search_buf[batch.buf], (1 + c_max_search_results) * sizeof(uint32_t), cudaMemcpyHostToHost, m_streams[batch.buf]);
+
+			cudaMemcpyAsync(results, m_search_buf[batch.buf], (1 + c_max_search_results) * sizeof(uint32_t), cudaMemcpyDeviceToHost, m_streams[batch.buf]);
 
 			unsigned num_found = std::min<unsigned>(results[0], c_max_search_results);
 			uint64_t nonces[c_max_search_results];
