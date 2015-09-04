@@ -11,8 +11,7 @@ __device__ __constant__ uint64_t const keccak_round_constants[24] = {
 	0x8000000000008080ULL, 0x0000000080000001ULL, 0x8000000080008008ULL
 };
 
-
-#if __CUDA_ARCH__ >= 500
+#if __CUDA_ARCH__ >= 500 && CUDART_VERSION >= 7050
 __device__ __forceinline__ 
 uint2 xor3(const uint2 a, const uint2 b, const uint2 c) {
 	uint2 result;
@@ -37,7 +36,7 @@ uint2 xor3(const uint2 a, const uint2 b, const uint2 c) {
 }
 #endif
 
-#if __CUDA_ARCH__ >= 500
+#if __CUDA_ARCH__ >= 500 && CUDART_VERSION >= 7050
 __device__ __forceinline__
 uint2 chi(const uint2 a, const uint2 b, const uint2 c) {
 	uint2 result;

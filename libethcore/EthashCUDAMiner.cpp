@@ -23,6 +23,10 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #if ETH_ETHASHCUDA || !ETH_TRUE
 
+#if defined(WIN32)
+#include <Windows.h>
+#endif
+
 #include "EthashCUDAMiner.h"
 #include <thread>
 #include <chrono>
@@ -108,8 +112,16 @@ EthashCUDAMiner::EthashCUDAMiner(ConstructionInfo const& _ci) :
 	Worker("cudaminer" + toString(index())),
 m_hook( new EthashCUDAHook(this))
 {
+/*
+#if defined(WIN32)
+	SYSTEM_INFO sysinfo;
+	GetSystemInfo(&sysinfo);
+	int num_cpus = sysinfo.dwNumberOfProcessors;
+	SetThreadAffinityMask(GetCurrentThread(), 1 << (index() % num_cpus));
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#endif
+*/
 }
-
 EthashCUDAMiner::~EthashCUDAMiner()
 {
 	pause();
