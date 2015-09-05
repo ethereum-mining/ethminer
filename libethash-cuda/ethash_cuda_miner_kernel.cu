@@ -25,21 +25,16 @@ ethash_search(
 	uint64_t target
 	)
 {
-	
 	uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;	
-	
 #if __CUDA_ARCH__ >= SHUFFLE_MIN_VER
 	uint64_t hash = compute_hash_shuffle((uint2 *)g_header, g_dag, start_nonce + gid);
-	if (cuda_swab64(hash) < target)
 #else
-	hash32_t hash = compute_hash(g_header, g_dag, start_nonce + gid);	
-	if (cuda_swab64(hash.uint64s[0]) < target)
+	uint64_t hash = compute_hash(g_header, g_dag, start_nonce + gid).uint64s[0];
 #endif
-	{
-		atomicInc(g_output, d_max_outputs);
-		g_output[g_output[0]] = gid;
-	}
-	
+	if (cuda_swab64(hash) > target) return;
+	uint32_t index = atomicInc(g_output, d_max_outputs) + 1;
+	g_output[index] = gid;
+	__threadfence_system();
 }
 
 void run_ethash_search(

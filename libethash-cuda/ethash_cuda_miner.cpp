@@ -285,13 +285,12 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 	};
 	std::queue<pending_batch> pending;
 
-	static uint32_t const c_zero = 0;
 
 	// update header constant buffer
 	cudaMemcpy(m_header, header, 32, cudaMemcpyHostToDevice);
 	for (unsigned i = 0; i != s_numStreams; ++i)
 	{
-		cudaMemcpyAsync(m_search_buf[i], &c_zero, 4, cudaMemcpyHostToDevice, m_streams[i]);
+		m_search_buf[i][0] = 0;
 	}
 	cudaError err = cudaGetLastError();
 	if (cudaSuccess != err)
@@ -314,13 +313,12 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 		{
 			pending_batch const& batch = pending.front();
 
-			uint32_t results[1 + c_max_search_results];
-
-			if (!s_highCPU)
+			if (s_highCPU)
+				cudaStreamSynchronize(m_streams[buf]);
+			else
 				waitStream(m_streams[buf]); // 28ms
 
-			cudaMemcpyAsync(results, m_search_buf[batch.buf], (1 + c_max_search_results) * sizeof(uint32_t), cudaMemcpyDeviceToHost, m_streams[batch.buf]);
-
+			uint32_t * results = m_search_buf[batch.buf];
 			unsigned num_found = std::min<unsigned>(results[0], c_max_search_results);
 			uint64_t nonces[c_max_search_results];
 			for (unsigned i = 0; i != num_found; ++i)
@@ -339,7 +337,7 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 			start_nonce += s_gridSize * s_blockSize;
 			// reset search buffer if we're still going
 			if (num_found)
-				cudaMemcpyAsync(m_search_buf[batch.buf], &c_zero, 4, cudaMemcpyHostToDevice, m_streams[batch.buf]);
+				results[0] = 0;
 
 			cudaError err = cudaGetLastError();
 			if (cudaSuccess != err)
