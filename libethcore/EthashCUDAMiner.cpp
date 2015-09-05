@@ -215,7 +215,7 @@ bool EthashCUDAMiner::configureGPU(
 	unsigned _gridSize,
 	unsigned _numStreams,
 	unsigned _extraGPUMemory,
-	bool _highcpu,
+	unsigned _scheduleFlag,
 	uint64_t _currentBlock
 	)
 {
@@ -230,7 +230,7 @@ bool EthashCUDAMiner::configureGPU(
 		_gridSize,
 		_numStreams,
 		_extraGPUMemory,
-		_highcpu,
+		_scheduleFlag,
 		_currentBlock)
 		)
 	{

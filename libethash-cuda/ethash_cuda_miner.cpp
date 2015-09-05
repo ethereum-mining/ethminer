@@ -130,7 +130,7 @@ bool ethash_cuda_miner::configureGPU(
 	unsigned _gridSize,
 	unsigned _numStreams,
 	unsigned _extraGPUMemory,
-	bool	 _highcpu,
+	unsigned _scheduleFlag,
 	uint64_t _currentBlock
 	)
 {
@@ -138,7 +138,7 @@ bool ethash_cuda_miner::configureGPU(
 	s_gridSize = _gridSize;
 	s_extraRequiredGPUMem = _extraGPUMemory;
 	s_numStreams = _numStreams;
-	s_highCPU = _highcpu;
+	s_scheduleFlag = _scheduleFlag;
 
 	// by default let's only consider the DAG of the first epoch
 	uint64_t dagSize = ethash_get_datasize(_currentBlock);
@@ -174,7 +174,7 @@ unsigned ethash_cuda_miner::s_extraRequiredGPUMem;
 unsigned ethash_cuda_miner::s_blockSize = ethash_cuda_miner::c_defaultBlockSize;
 unsigned ethash_cuda_miner::s_gridSize = ethash_cuda_miner::c_defaultGridSize;
 unsigned ethash_cuda_miner::s_numStreams = ethash_cuda_miner::c_defaultNumStreams;
-bool ethash_cuda_miner::s_highCPU = false;
+unsigned ethash_cuda_miner::s_scheduleFlag = 0;
 
 void ethash_cuda_miner::listDevices()
 {
@@ -226,7 +226,7 @@ bool ethash_cuda_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned _d
 		return false;
 	}
 	cudaDeviceReset();
-	cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
+	cudaSetDeviceFlags(s_scheduleFlag);
 	cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
 	m_search_buf = new uint32_t *[s_numStreams];
@@ -261,19 +261,6 @@ bool ethash_cuda_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned _d
 		return false;
 	}
 	return true;
-}
-
-/**
- * Prevent High CPU usage while waiting for an async task
- */
-static unsigned waitStream(cudaStream_t stream)
-{
-	unsigned wait_ms = 0;
-	while (cudaStreamQuery(stream) == cudaErrorNotReady) {
-		this_thread::sleep_for(chrono::milliseconds(10));
-		wait_ms += 10;
-	}
-	return wait_ms;
 }
 
 void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_hook& hook)
@@ -313,10 +300,7 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 		{
 			pending_batch const& batch = pending.front();
 
-			if (s_highCPU)
-				cudaStreamSynchronize(m_streams[buf]);
-			else
-				waitStream(m_streams[buf]); // 28ms
+			cudaStreamSynchronize(m_streams[buf]);
 
 			uint32_t * results = m_search_buf[batch.buf];
 			unsigned num_found = std::min<unsigned>(results[0], c_max_search_results);

@@ -31,7 +31,7 @@ public:
 		unsigned _gridSize,
 		unsigned _numStreams,
 		unsigned _extraGPUMemory,
-		bool	 _highcpu,
+		unsigned _scheduleFlag,
 		uint64_t _currentBlock
 		);
 	bool init(
@@ -66,8 +66,8 @@ private:
 	static unsigned s_gridSize;
 	/// The number of CUDA streams
 	static unsigned s_numStreams;
-	/// Whether or not to let the CPU wait
-	static bool s_highCPU;
+	/// CUDA schedule flag
+	static unsigned s_scheduleFlag;
 
 	/// GPU memory required for other things, like window rendering e.t.c.
 	/// User can set it via the --cl-extragpu-mem argument.

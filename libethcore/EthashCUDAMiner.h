@@ -52,7 +52,7 @@ namespace eth
 			unsigned _gridSize,
 			unsigned _numStreams,
 			unsigned _extraGPUMemory,
-			bool	 _highcpu,
+			unsigned _scheduleFlag,
 			uint64_t _currentBlock
 			);
 		static void setNumInstances(unsigned _instances) 
