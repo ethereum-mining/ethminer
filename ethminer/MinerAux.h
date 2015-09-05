@@ -200,8 +200,19 @@ public:
 				}
 			}
 		}
-		else if (arg == "--cuda-turbo") 
-			m_cudaHighCPULoad = true;
+		else if (arg == "--cuda-schedule" && i + 1 < argc)
+		{
+			string mode = argv[++i];
+			if (mode == "Auto") m_cudaSchedule = 0;
+			else if (mode == "Spin") m_cudaSchedule = 1;
+			else if (mode == "Yield") m_cudaSchedule = 2;
+			else if (mode == "Sync") m_cudaSchedule = 4;
+			else 
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
 		else if (arg == "--cuda-streams" && i + 1 < argc)
 			m_numStreams = stol(argv[++i]);
 #endif
@@ -393,7 +404,7 @@ public:
 				m_globalWorkSizeMultiplier,
 				m_numStreams,
 				m_extraGPUMemory,
-				m_cudaHighCPULoad,
+				m_cudaSchedule,
 				m_currentBlock
 				))
 				exit(1);
@@ -457,7 +468,11 @@ public:
 			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(ethash_cuda_miner::c_defaultBlockSize) << endl
 			<< "    --cuda-grid-size Set the CUDA grid size. Default is " << toString(ethash_cuda_miner::c_defaultGridSize) << endl
 			<< "    --cuda-streams Set the number of CUDA streams. Default is " << toString(ethash_cuda_miner::c_defaultNumStreams) << endl
-			<< "    --cuda-turbo Get a bit of extra hashrate at the cost of high CPU load... Default is false" << endl
+			<< "    --cuda-schedule <mode> Set the schedule mode for CUDA threads waiting for CUDA devices to finish work. Default is Auto. Possible values are:" << endl
+			<< "        Auto  - Uses a heuristic based on the number of active CUDA contexts in the process C and the number of logical processors in the system P. If C > P, then Yield else Spin." << endl
+			<< "        Spin  - Instruct CUDA to actively spin when waiting for results from the device." << endl
+			<< "        Yield - Instruct CUDA to yield its thread when waiting for results from the device." << endl
+			<< "        Sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device." << endl
 			<< "    --cuda-devices <0 1 ..n> Select which GPUs to mine on. Default is to use all" << endl
 #endif
 			;
@@ -795,7 +810,7 @@ private:
 	unsigned m_cudaDeviceCount = 0;
 	unsigned m_cudaDevices[16];
 	unsigned m_numStreams = ethash_cuda_miner::c_defaultNumStreams;
-	bool m_cudaHighCPULoad = false;
+	unsigned m_cudaSchedule = 0;
 #endif
 	uint64_t m_currentBlock = 0;
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
