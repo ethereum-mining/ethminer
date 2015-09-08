@@ -203,10 +203,10 @@ public:
 		else if (arg == "--cuda-schedule" && i + 1 < argc)
 		{
 			string mode = argv[++i];
-			if (mode == "Auto") m_cudaSchedule = 0;
-			else if (mode == "Spin") m_cudaSchedule = 1;
-			else if (mode == "Yield") m_cudaSchedule = 2;
-			else if (mode == "Sync") m_cudaSchedule = 4;
+			if (mode == "auto") m_cudaSchedule = 0;
+			else if (mode == "spin") m_cudaSchedule = 1;
+			else if (mode == "yield") m_cudaSchedule = 2;
+			else if (mode == "sync") m_cudaSchedule = 4;
 			else 
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
@@ -468,11 +468,11 @@ public:
 			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(ethash_cuda_miner::c_defaultBlockSize) << endl
 			<< "    --cuda-grid-size Set the CUDA grid size. Default is " << toString(ethash_cuda_miner::c_defaultGridSize) << endl
 			<< "    --cuda-streams Set the number of CUDA streams. Default is " << toString(ethash_cuda_miner::c_defaultNumStreams) << endl
-			<< "    --cuda-schedule <mode> Set the schedule mode for CUDA threads waiting for CUDA devices to finish work. Default is Auto. Possible values are:" << endl
-			<< "        Auto  - Uses a heuristic based on the number of active CUDA contexts in the process C and the number of logical processors in the system P. If C > P, then Yield else Spin." << endl
-			<< "        Spin  - Instruct CUDA to actively spin when waiting for results from the device." << endl
-			<< "        Yield - Instruct CUDA to yield its thread when waiting for results from the device." << endl
-			<< "        Sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device." << endl
+			<< "    --cuda-schedule <mode> Set the schedule mode for CUDA threads waiting for CUDA devices to finish work. Default is auto. Possible values are:" << endl
+			<< "        auto  - Uses a heuristic based on the number of active CUDA contexts in the process C and the number of logical processors in the system P. If C > P, then yield else spin." << endl
+			<< "        spin  - Instruct CUDA to actively spin when waiting for results from the device." << endl
+			<< "        yield - Instruct CUDA to yield its thread when waiting for results from the device." << endl
+			<< "        sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device." << endl
 			<< "    --cuda-devices <0 1 ..n> Select which GPUs to mine on. Default is to use all" << endl
 #endif
 			;
