@@ -269,7 +269,7 @@ public:
 			cout << "=====================================================================" << endl;
 			cout << "Forked from github.com/ethereum/cpp-ethereum" << endl;
 			cout << "Ported from Tim Hughes' OpenCL kernel" << endl;
-			cout << "With contributions from tpruvot and sp_ " << endl << endl;
+			cout << "With contributions from RoBiK, tpruvot and sp_ " << endl << endl;
 			cout << "Please consider donating a tiny fraction of the extra performance to:" << endl;
 			cout << "ETH: 0xb9310b185455f863f526dab3d245809f6854b4d" << endl;
 			cout << "BTC: 1Nu2fMCEBjmnLzqb8qUJpKgq5RoEWFhNcW" << endl << endl;
@@ -468,7 +468,7 @@ public:
 			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(ethash_cuda_miner::c_defaultBlockSize) << endl
 			<< "    --cuda-grid-size Set the CUDA grid size. Default is " << toString(ethash_cuda_miner::c_defaultGridSize) << endl
 			<< "    --cuda-streams Set the number of CUDA streams. Default is " << toString(ethash_cuda_miner::c_defaultNumStreams) << endl
-			<< "    --cuda-schedule <mode> Set the schedule mode for CUDA threads waiting for CUDA devices to finish work. Default is auto. Possible values are:" << endl
+			<< "    --cuda-schedule <mode> Set the schedule mode for CUDA threads waiting for CUDA devices to finish work. Default is sync. Possible values are:" << endl
 			<< "        auto  - Uses a heuristic based on the number of active CUDA contexts in the process C and the number of logical processors in the system P. If C > P, then yield else spin." << endl
 			<< "        spin  - Instruct CUDA to actively spin when waiting for results from the device." << endl
 			<< "        yield - Instruct CUDA to yield its thread when waiting for results from the device." << endl
@@ -810,7 +810,7 @@ private:
 	unsigned m_cudaDeviceCount = 0;
 	unsigned m_cudaDevices[16];
 	unsigned m_numStreams = ethash_cuda_miner::c_defaultNumStreams;
-	unsigned m_cudaSchedule = 0;
+	unsigned m_cudaSchedule = 4; // sync
 #endif
 	uint64_t m_currentBlock = 0;
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
