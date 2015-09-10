@@ -9,14 +9,17 @@ typedef union
 	hash32_t mix;
 } compute_hash_share;
 
-__device__ hash64_t init_hash(hash32_t const* header, uint64_t nonce)
+__device__ hash64_t init_hash(uint64_t nonce)
 {
 	hash64_t init;
 
 	// sha3_512(header .. nonce)
 	uint64_t state[25];
 
-	copy(state, header->uint64s, 4);
+	state[0] = d_header.uint64s[0];
+	state[1] = d_header.uint64s[1];
+	state[2] = d_header.uint64s[2];
+	state[3] = d_header.uint64s[3];
 	state[4] = nonce;
 	state[5] = 0x0000000000000001;
 	state[6] = 0;
@@ -32,7 +35,7 @@ __device__ hash64_t init_hash(hash32_t const* header, uint64_t nonce)
 	return init;
 }
 
-__device__ uint32_t inner_loop(uint4 mix, uint32_t thread_id, uint32_t* share, hash128_t const* g_dag)
+__device__ uint32_t inner_loop(uint4 mix, uint32_t thread_id, uint32_t* share)
 {
 	// share init0
 	if (thread_id == 0)
@@ -59,9 +62,9 @@ __device__ uint32_t inner_loop(uint4 mix, uint32_t thread_id, uint32_t* share, h
 			__threadfence_block();
 
 #if __CUDA_ARCH__ >= 350
-			mix = fnv4(mix, __ldg(&g_dag[*share].uint4s[thread_id]));
+			mix = fnv4(mix, __ldg((&d_dag[*share])->uint4s + thread_id));
 #else
-			mix = fnv4(mix, g_dag[*share].uint4s[thread_id]);
+			mix = fnv4(mix, (&d_dag[*share])->uint4s[thread_id]);
 #endif
 
 		}
@@ -99,15 +102,13 @@ __device__ hash32_t final_hash(hash64_t const* init, hash32_t const* mix)
 }
 
 __device__ hash32_t compute_hash(
-	hash32_t const* g_header,
-	hash128_t const* g_dag,
 	uint64_t nonce
 	)
 {
 	extern __shared__  compute_hash_share share[];
 
 	// Compute one init hash per work item.
-	hash64_t init = init_hash(g_header, nonce);
+	hash64_t init = init_hash(nonce);
 
 	// Threads work together in this phase in groups of 8.
 	uint32_t const thread_id = threadIdx.x & (THREADS_PER_HASH - 1);
@@ -123,7 +124,7 @@ __device__ hash32_t compute_hash(
 
 		uint4 thread_init = share[hash_id].init.uint4s[thread_id & 3];
 
-		uint32_t thread_mix = inner_loop(thread_init, thread_id, share[hash_id].mix.uint32s, g_dag);
+		uint32_t thread_mix = inner_loop(thread_init, thread_id, share[hash_id].mix.uint32s);
 
 		share[hash_id].mix.uint32s[thread_id] = thread_mix;
 
