@@ -51,13 +51,12 @@ public:
 	static unsigned const c_defaultNumStreams;
 
 private:
-	enum { c_max_search_results = 63, c_hash_batch_size = 1024 };
+	hash32_t m_current_header;
+	uint64_t m_current_target;
+	uint64_t m_current_nonce;
+	uint64_t m_current_index;
 
-	hash128_t * m_dag_ptr;
-	hash32_t * m_header;
-
-	void ** m_hash_buf;
-	uint32_t ** m_search_buf;
+	volatile uint32_t ** m_search_buf;
 	cudaStream_t  * m_streams;
 
 	/// The local work size for the search
