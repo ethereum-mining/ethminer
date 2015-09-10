@@ -4,18 +4,16 @@
 #include "dagger.cuh"
 
 __device__ uint64_t compute_hash_shuffle(
-	uint2 const* g_header,
-	hash128_t const* g_dag,
 	uint64_t nonce
 	)
 {
 	// sha3_512(header .. nonce)
 	uint2 state[25];
 
-	state[0] = g_header[0];
-	state[1] = g_header[1];
-	state[2] = g_header[2];
-	state[3] = g_header[3];
+	state[0] = d_header.uint2s[0];
+	state[1] = d_header.uint2s[1];
+	state[2] = d_header.uint2s[2];
+	state[3] = d_header.uint2s[3];
 	state[4] = vectorize(nonce);
 	state[5] = vectorize(0x0000000000000001ULL);
 	for (uint32_t i = 6; i < 25; i++)
@@ -69,7 +67,7 @@ __device__ uint64_t compute_hash_shuffle(
 				}
 				shuffle[0].x = __shfl(shuffle[0].x, start_lane + t);
 
-				mix = fnv4(mix, g_dag[shuffle[0].x].uint4s[thread_id]);
+				mix = fnv4(mix, (&d_dag[shuffle[0].x])->uint4s[thread_id]);
 			}
 		}
 
