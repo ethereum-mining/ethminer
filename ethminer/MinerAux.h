@@ -271,7 +271,7 @@ public:
 			cout << "Ported from Tim Hughes' OpenCL kernel" << endl;
 			cout << "With contributions from RoBiK, tpruvot and sp_ " << endl << endl;
 			cout << "Please consider donating a tiny fraction of the extra performance to:" << endl;
-			cout << "ETH: 0xb9310b185455f863f526dab3d245809f6854b4d" << endl;
+			cout << "ETH: 0xeb9310b185455f863f526dab3d245809f6854b4d" << endl;
 			cout << "BTC: 1Nu2fMCEBjmnLzqb8qUJpKgq5RoEWFhNcW" << endl << endl;
 		}
 		else if (arg == "--current-block" && i + 1 < argc)
