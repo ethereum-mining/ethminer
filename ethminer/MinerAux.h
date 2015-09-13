@@ -196,6 +196,7 @@ public:
 				}
 				catch (...)
 				{
+					i--;
 					break;
 				}
 			}
