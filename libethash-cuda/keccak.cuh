@@ -56,7 +56,7 @@ __device__ __forceinline__ void keccak_f1600_block(uint2* s, uint32_t out_size)
 {
 	uint2 t[5], u, v;
 
-#pragma unroll 3
+
 	for (int i = 0; i < 24; i++)
 	{
 		/* theta: c = a[0,i] ^ a[1,i] ^ .. a[4,i] */
