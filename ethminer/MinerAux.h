@@ -614,7 +614,10 @@ private:
 		else if (_m == MinerType::CUDA)
 			f.start("cuda");
 
-		EthashAux::FullType dag;
+		// h256 seedHash = h256("0x6d29f6dd1270e49744bd5377ec86395b2de2abbe54bae16281b8e39b35538dcd");
+		h256 seedHash = h256("0x0000000000000000000000000000000000000000000000000000000000000000");
+
+		EthashAux::FullType dag = EthashAux::full(seedHash, false, nullptr);
 
 		int time = 0;
 
@@ -662,10 +665,9 @@ private:
 			h256 hh;
 			std::random_device engine;
 			hh.randomize(engine);
-			h256 newSeedHash = h256();
-
+			
 			current.headerHash = hh;
-			current.seedHash = newSeedHash;
+			current.seedHash = seedHash;
 			current.boundary = genesis.boundary();
 			minelog << "Generated random work package:";
 			minelog << "  Header-hash:" << current.headerHash.hex();
