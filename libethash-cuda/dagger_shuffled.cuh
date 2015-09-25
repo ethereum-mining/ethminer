@@ -10,14 +10,10 @@ __device__ uint64_t compute_hash_shuffle(
 	// sha3_512(header .. nonce)
 	uint2 state[25];
 	
-	state[0] = d_header.uint2s[0];
-	state[1] = d_header.uint2s[1];
-	state[2] = d_header.uint2s[2];
-	state[3] = d_header.uint2s[3];
 	state[4] = vectorize(nonce);
 
 	keccak_f1600_init(state);
-
+	
 	// Threads work together in this phase in groups of 8.
 	const int thread_id  = threadIdx.x &  (THREADS_PER_HASH - 1);
 	const int start_lane = threadIdx.x & ~(THREADS_PER_HASH - 1);
@@ -90,6 +86,6 @@ __device__ uint64_t compute_hash_shuffle(
 	
 	// keccak_256(keccak_512(header..nonce) .. mix);
 	keccak_f1600_final(state);
-
+	
 	return devectorize(state[0]);
 }
