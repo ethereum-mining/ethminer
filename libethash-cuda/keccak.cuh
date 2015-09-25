@@ -289,7 +289,6 @@ __device__ __forceinline__ void keccak_f1600_init(uint2* s)
 	s[6] = xor3(s[6], t[0], u);
 	s[16] = xor3(s[16], t[0], u);
 
-
 	u = ROL2(t[3], 1);
 	s[12] = xor3(s[12], t[1], u);
 	s[22] = xor3(s[22], t[1], u);
@@ -323,8 +322,6 @@ __device__ __forceinline__ void keccak_f1600_init(uint2* s)
 	s[2] = chi(s[2], s[3], s[4]);
 	s[3] = chi(s[3], s[4], u);
 	s[4] = chi(s[4], u, v);
-
-	u = s[5]; v = s[6];
 	s[5] = chi(s[5], s[6], s[7]);
 	s[6] = chi(s[6], s[7], s[8]);
 	s[7] = chi(s[7], s[8], s[9]);
@@ -333,7 +330,7 @@ __device__ __forceinline__ void keccak_f1600_init(uint2* s)
 	s[0] ^= vectorize(keccak_round_constants[23]);
 }
 
-__device__ __forceinline__ void keccak_f1600_final(uint2* s)
+__device__ __forceinline__ uint64_t keccak_f1600_final(uint2* s)
 {
 	uint2 t[5], u, v;
 
@@ -589,5 +586,6 @@ __device__ __forceinline__ void keccak_f1600_final(uint2* s)
 	s[0] = chi(s[0], s[1], s[2]);
 
 	/* iota: a[0,0] ^= round constant */
-	s[0] ^= vectorize(keccak_round_constants[23]);
+	//s[0] ^= vectorize(keccak_round_constants[23]);
+	return devectorize(s[0]) ^ keccak_round_constants[23];
 }

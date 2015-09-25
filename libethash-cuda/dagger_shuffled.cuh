@@ -85,7 +85,5 @@ __device__ uint64_t compute_hash_shuffle(
 	}
 	
 	// keccak_256(keccak_512(header..nonce) .. mix);
-	keccak_f1600_final(state);
-	
-	return devectorize(state[0]);
+	return keccak_f1600_final(state);
 }
