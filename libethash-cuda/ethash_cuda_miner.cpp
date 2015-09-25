@@ -64,7 +64,7 @@ static std::atomic_flag s_logSpin = ATOMIC_FLAG_INIT;
 		ss << _contents; \
 						while (s_logSpin.test_and_set(std::memory_order_acquire)) {} \
 		OutputDebugStringA(ss.str().c_str()); \
-		cerr << ss.str() << endl << flush; \
+		cout << ss.str() << endl << flush; \
 		s_logSpin.clear(std::memory_order_release); \
 			} while (false)
 #else
