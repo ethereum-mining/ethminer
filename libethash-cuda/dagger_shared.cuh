@@ -21,16 +21,8 @@ __device__ hash64_t init_hash(uint64_t nonce)
 	state[2] = d_header.uint64s[2];
 	state[3] = d_header.uint64s[3];
 	state[4] = nonce;
-	state[5] = 0x0000000000000001;
-	state[6] = 0;
-	state[7] = 0;
-	state[8] = 0x8000000000000000;
-	for (uint32_t i = 9; i < 25; i++)
-	{
-		state[i] = 0;
-	}
 
-	keccak_f1600_block((uint2 *)state, 8);
+	keccak_f1600_init((uint2 *)state);
 	copy(init.uint64s, state, 8);
 	return init;
 }
@@ -83,18 +75,8 @@ __device__ hash32_t final_hash(hash64_t const* init, hash32_t const* mix)
 	// keccak_256(keccak_512(header..nonce) .. mix);
 	copy(state, init->uint64s, 8);
 	copy(state + 8, mix->uint64s, 4);
-	state[12] = 0x0000000000000001;
-	for (uint32_t i = 13; i < 16; i++)
-	{
-		state[i] = 0;
-	}
-	state[16] = 0x8000000000000000;
-	for (uint32_t i = 17; i < 25; i++)
-	{
-		state[i] = 0;
-	}
 
-	keccak_f1600_block((uint2 *)state, 1);
+	keccak_f1600_final((uint2 *)state);
 
 	// copy out
 	copy(hash.uint64s, state, 4);
