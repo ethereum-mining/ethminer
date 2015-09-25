@@ -29,18 +29,23 @@ __device__ __forceinline__ void keccak_f1600_init(uint2* s)
 {
 	uint2 t[5], u, v;
 
-	s[5] = vectorize(0x0000000000000001ULL);
-	for (uint32_t i = 6; i < 25; i++)
+	devectorize2(d_header.uint4s[0], s[0], s[1]);
+	devectorize2(d_header.uint4s[1], s[2], s[3]);
+
+	for (uint32_t i = 5; i < 25; i++)
 	{
 		s[i] = make_uint2(0, 0);
 	}
-	s[8] = vectorize(0x8000000000000000ULL);
+	s[5].x = 1;
+	s[8].y = 0x80000000;
 
 	/* theta: c = a[0,i] ^ a[1,i] ^ .. a[4,i] */
-	t[0] = s[0] ^ s[5];
-	t[1] = s[1] ^ s[11];
+	t[0].x = s[0].x ^ s[5].x;
+	t[0].y = s[0].y;
+	t[1] = s[1];
 	t[2] = s[2];
-	t[3] = s[3] ^ s[8];
+	t[3].x = s[3].x;
+	t[3].y = s[3].y ^ s[8].y;
 	t[4] = s[4];
 
 	/* theta: d[i] = c[i+4] ^ rotl(c[i+1],1) */
@@ -73,7 +78,6 @@ __device__ __forceinline__ void keccak_f1600_init(uint2* s)
 	s[13] = xor3(s[13], t[2], u);
 	s[18] = xor3(s[18], t[2], u);
 	s[23] = xor3(s[23], t[2], u);
-
 
 	u = ROL2(t[0], 1);
 	s[4] = xor3(s[4], t[3], u);
@@ -333,12 +337,12 @@ __device__ __forceinline__ void keccak_f1600_final(uint2* s)
 {
 	uint2 t[5], u, v;
 
-	s[12] = vectorize(0x0000000000000001ULL);
-	for (uint32_t i = 13; i < 25; i++)
+	for (uint32_t i = 12; i < 25; i++)
 	{
-		s[i] = vectorize(0ULL);
+		s[i] = make_uint2(0, 0);
 	}
-	s[16] = vectorize(0x8000000000000000);
+	s[12].x = 1;
+	s[16].y = 0x80000000;
 	
 	/* theta: c = a[0,i] ^ a[1,i] ^ .. a[4,i] */
 	t[0] = xor3(s[0], s[5], s[10]);
