@@ -57,6 +57,7 @@ void run_ethash_search(
 	uint64_t start_nonce
 	);
 
+
 #define CUDA_SAFE_CALL(call)								\
 do {														\
 	cudaError_t err = call;									\
