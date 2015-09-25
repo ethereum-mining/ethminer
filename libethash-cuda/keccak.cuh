@@ -11,21 +11,6 @@ __device__ __constant__ uint64_t const keccak_round_constants[24] = {
 	0x8000000000008080ULL, 0x0000000080000001ULL, 0x8000000080008008ULL
 };
 
-#if __CUDA_ARCH__ >= 500 && CUDART_VERSION >= 7050
-__device__ __forceinline__ 
-uint2 xor3(const uint2 a, const uint2 b, const uint2 c) {
-	uint2 result;
-	asm("lop3.b32 %0, %1, %2, %3, 0x96;" : "=r"(result.x) : "r"(a.x), "r"(b.x), "r"(c.x));
-	asm("lop3.b32 %0, %1, %2, %3, 0x96;" : "=r"(result.y) : "r"(a.y), "r"(b.y), "r"(c.y));
-	return result;
-}
-
-__device__ __forceinline__ 
-uint2 xor5(const uint2 a, const uint2 b, const uint2 c, const uint2 d, const uint2 e) {
-	uint2 f = xor3(a,b,c);
-	return xor3(d,e,f);
-}
-#else
 __device__ __forceinline__
 uint2 xor5(const uint2 a, const uint2 b, const uint2 c, const uint2 d, const uint2 e) {
 	return a ^ b ^ c ^ d ^ e;
@@ -34,23 +19,11 @@ __device__ __forceinline__
 uint2 xor3(const uint2 a, const uint2 b, const uint2 c) {
 	return a ^ b ^ c;
 }
-#endif
 
-#if __CUDA_ARCH__ >= 500 && CUDART_VERSION >= 7050
-__device__ __forceinline__
-uint2 chi(const uint2 a, const uint2 b, const uint2 c) {
-	uint2 result;
-	asm("lop3.b32 %0, %1, %2, %3, 0xd2;" : "=r"(result.x) : "r"(a.x), "r"(b.x), "r"(c.x));
-	asm("lop3.b32 %0, %1, %2, %3, 0xd2;" : "=r"(result.y) : "r"(a.y), "r"(b.y), "r"(c.y));
-	return result;
-}
-#else
 __device__ __forceinline__
 uint2 chi(const uint2 a, const uint2 b, const uint2 c) {
 	return a ^ (~b) & c;
 }
-#endif	
-
 
 __device__ __forceinline__ void keccak_f1600_init(uint2* s)
 {
