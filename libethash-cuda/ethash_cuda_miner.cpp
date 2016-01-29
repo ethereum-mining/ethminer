@@ -51,7 +51,7 @@
 using namespace std;
 
 unsigned const ethash_cuda_miner::c_defaultBlockSize = 128;
-unsigned const ethash_cuda_miner::c_defaultGridSize = 2048; // * CL_DEFAULT_LOCAL_WORK_SIZE
+unsigned const ethash_cuda_miner::c_defaultGridSize = 8192; // * CL_DEFAULT_LOCAL_WORK_SIZE
 unsigned const ethash_cuda_miner::c_defaultNumStreams = 2;
 
 #if defined(_WIN32)
@@ -130,6 +130,10 @@ bool ethash_cuda_miner::configureGPU(
 		s_extraRequiredGPUMem = _extraGPUMemory;
 		s_numStreams = _numStreams;
 		s_scheduleFlag = _scheduleFlag;
+
+		ETHCUDA_LOG(
+			"Using grid size " << s_gridSize << ", block size " << s_blockSize << endl
+			);
 
 		// by default let's only consider the DAG of the first epoch
 		uint64_t dagSize = ethash_get_datasize(_currentBlock);
