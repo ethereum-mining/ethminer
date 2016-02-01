@@ -331,9 +331,38 @@ public:
 			}
 		}
 		else if (arg == "-M" || arg == "--benchmark")
+		{
 			mode = OperationMode::Benchmark;
-		else if (arg == "-S" || arg == "--simulation")
+			if (i + 1 < argc)
+			{
+				string m = boost::to_lower_copy(string(argv[++i]));
+				try
+				{
+					m_benchmarkBlock = stol(m);
+				}
+				catch (...)
+				{
+					cerr << "Bad " << arg << " option: " << argv[i] << endl;
+					BOOST_THROW_EXCEPTION(BadArgument());
+				}
+			}
+		}
+		else if (arg == "-S" || arg == "--simulation") {
 			mode = OperationMode::Simulation;
+			if (i + 1 < argc)
+			{
+				string m = boost::to_lower_copy(string(argv[++i]));
+				try
+				{
+					m_benchmarkBlock = stol(m);
+				}
+				catch (...)
+				{
+					cerr << "Bad " << arg << " option: " << argv[i] << endl;
+					BOOST_THROW_EXCEPTION(BadArgument());
+				}
+			}
+		}
 		else if ((arg == "-t" || arg == "--mining-threads") && i + 1 < argc)
 		{
 			try 
@@ -437,7 +466,7 @@ public:
 			<< "    -w,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
 			<< endl
 			<< "Benchmarking mode:" << endl
-			<< "    -M,--benchmark  Benchmark for mining and exit; use with --cpu and --opencl." << endl
+			<< "    -M [<n>],--benchmark [<n>] Benchmark for mining and exit; Optionally specify block number to benchmark against specific DAG." << endl
 			<< "    --benchmark-warmup <seconds>  Set the duration of warmup for the benchmark tests (default: 3)." << endl
 			<< "    --benchmark-trial <seconds>  Set the duration for each trial for the benchmark tests (default: 3)." << endl
 			<< "    --benchmark-trials <n>  Set the duration of warmup for the benchmark tests (default: 5)." << endl
@@ -501,6 +530,7 @@ private:
 	void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
 	{
 		Ethash::BlockHeader genesis;
+		genesis.setNumber(m_benchmarkBlock);
 		genesis.setDifficulty(1 << 18);
 		cdebug << genesis.boundary();
 
@@ -519,7 +549,7 @@ private:
 		string platformInfo = _m == MinerType::CPU ? "CPU" : (_m == MinerType::CL ? "CL" : "CUDA");
 		cout << "Benchmarking on platform: " << platformInfo << endl;
 
-		cout << "Preparing DAG..." << endl;
+		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
 		genesis.prep();
 
 		genesis.setDifficulty(u256(1) << 63);
@@ -584,6 +614,7 @@ private:
 	void doSimulation(MinerType _m, int difficulty = 20)
 	{
 		Ethash::BlockHeader genesis;
+		genesis.setNumber(m_benchmarkBlock);
 		genesis.setDifficulty(1 << 18);
 		cdebug << genesis.boundary();
 
@@ -599,9 +630,9 @@ private:
 		f.setSealers(sealers);
 
 		string platformInfo = _m == MinerType::CPU ? "CPU" : (_m == MinerType::CL ? "CL" : "CUDA");
-		cout << "Benchmarking on platform: " << platformInfo << endl;
+		cout << "Running mining simulation on platform: " << platformInfo << endl;
 
-		cout << "Preparing DAG..." << endl;
+		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
 		genesis.prep();
 
 		genesis.setDifficulty(u256(1) << difficulty);
@@ -613,11 +644,6 @@ private:
 			f.start("opencl");
 		else if (_m == MinerType::CUDA)
 			f.start("cuda");
-
-		// h256 seedHash = h256("0x6d29f6dd1270e49744bd5377ec86395b2de2abbe54bae16281b8e39b35538dcd");
-		h256 seedHash = h256("0x0000000000000000000000000000000000000000000000000000000000000000");
-
-		EthashAux::FullType dag = EthashAux::full(seedHash, false, nullptr);
 
 		int time = 0;
 
@@ -660,14 +686,12 @@ private:
 			time = 0;
 			genesis.setDifficulty(u256(1) << difficulty);
 			genesis.noteDirty();
-			//f.setWork(genesis);
 		
 			h256 hh;
 			std::random_device engine;
 			hh.randomize(engine);
 			
 			current.headerHash = hh;
-			current.seedHash = seedHash;
 			current.boundary = genesis.boundary();
 			minelog << "Generated random work package:";
 			minelog << "  Header-hash:" << current.headerHash.hex();
@@ -675,8 +699,6 @@ private:
 			minelog << "  Target: " << h256(current.boundary).hex();
 			f.setWork(current);
 			
-
-			//current = EthashProofOfWork::WorkPackage(genesis);
 		}
 	}
 
@@ -823,11 +845,11 @@ private:
 	unsigned m_initDAG = 0;
 
 	/// Benchmarking params
-	bool m_phoneHome = true;
+	bool m_phoneHome = false;
 	unsigned m_benchmarkWarmup = 3;
 	unsigned m_benchmarkTrial = 3;
 	unsigned m_benchmarkTrials = 5;
-
+	unsigned m_benchmarkBlock = 0;
 	/// Farm params
 	string m_farmURL = "http://127.0.0.1:8545";
 	unsigned m_farmRecheckPeriod = 500;
