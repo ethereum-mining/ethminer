@@ -265,18 +265,13 @@ public:
 		else if (arg == "-U" || arg == "--cuda") 
 		{
 			m_minerType = MinerType::CUDA;
-
-			cout << "Genoil's CUDA ethminer " << ETH_PROJECT_VERSION << endl;
-			cout << "=====================================================================" << endl;
-			cout << "Forked from github.com/ethereum/cpp-ethereum" << endl;
-			cout << "Ported from Tim Hughes' OpenCL kernel" << endl;
-			cout << "With contributions from RoBiK, tpruvot and sp_ " << endl << endl;
-			cout << "Please consider a donation to:" << endl;
-			cout << "ETH: 0xeb9310b185455f863f526dab3d245809f6854b4d" << endl << endl;;
-
 		}
 		else if (arg == "--current-block" && i + 1 < argc)
 			m_currentBlock = stol(argv[++i]);
+		else if ((arg == "-R" || arg == "--dag-dir") && i + 1 < argc)
+		{
+			strcpy(s_dagDir, argv[++i]);
+		}
 		else if (arg == "--no-precompute")
 			m_precompute = false;
 		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
@@ -342,8 +337,13 @@ public:
 				}
 				catch (...)
 				{
-					cerr << "Bad " << arg << " option: " << argv[i] << endl;
-					BOOST_THROW_EXCEPTION(BadArgument());
+					if (argv[i][0] == 45) { // check next arg
+						i--;
+					}
+					else {
+						cerr << "Bad " << arg << " option: " << argv[i] << endl;
+						BOOST_THROW_EXCEPTION(BadArgument());
+					}
 				}
 			}
 		}
@@ -358,8 +358,13 @@ public:
 				}
 				catch (...)
 				{
-					cerr << "Bad " << arg << " option: " << argv[i] << endl;
-					BOOST_THROW_EXCEPTION(BadArgument());
+					if (argv[i][0] == 45) { // check next arg
+						i--;
+					}
+					else {
+						cerr << "Bad " << arg << " option: " << argv[i] << endl;
+						BOOST_THROW_EXCEPTION(BadArgument());
+					}
 				}
 			}
 		}
@@ -471,7 +476,7 @@ public:
 			<< "    --benchmark-trial <seconds>  Set the duration for each trial for the benchmark tests (default: 3)." << endl
 			<< "    --benchmark-trials <n>  Set the duration of warmup for the benchmark tests (default: 5)." << endl
 			<< "Simulation mode:" << endl
-			<< "    -S,--simulation Mining test mode. Used to validate kernel optimizations." << endl
+			<< "    -S [<n>],--simulation [<n>] Mining test mode. Used to validate kernel optimizations. Optionally specify block number." << endl
 #if ETH_JSONRPC || !ETH_TRUE
 			<< "    --phone-home <on/off>  When benchmarking, publish results (default: on)" << endl
 #endif
@@ -487,6 +492,7 @@ public:
 			<< "    --allow-opencl-cpu Allows CPU to be considered as an OpenCL device if the OpenCL platform supports it." << endl
 			<< "    --list-devices List the detected OpenCL/CUDA devices and exit." << endl
 			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." << endl
+			<< "    -R <s>, --dag-dir <s> Store/Load DAG files in/from the specified directory. Useful for running multiple instances with different configurations." << endl
 #if ETH_ETHASHCL || !ETH_TRUE
 			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
@@ -521,6 +527,7 @@ public:
 private:
 	void doInitDAG(unsigned _n)
 	{
+		EthashAux::setCustomDirName(s_dagDir);
 		h256 seedHash = EthashAux::seedHash(_n);
 		cout << "Initializing DAG for epoch beginning #" << (_n / 30000 * 30000) << " (seedhash " << seedHash.abridged() << "). This will take a while." << endl;
 		EthashAux::full(seedHash, true);
@@ -529,6 +536,7 @@ private:
 
 	void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
 	{
+		EthashAux::setCustomDirName(s_dagDir);
 		Ethash::BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
 		genesis.setDifficulty(1 << 18);
@@ -613,6 +621,8 @@ private:
 
 	void doSimulation(MinerType _m, int difficulty = 20)
 	{
+		EthashAux::setCustomDirName(s_dagDir);
+
 		Ethash::BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
 		genesis.setDifficulty(1 << 18);
@@ -704,6 +714,8 @@ private:
 
 	void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 	{
+		EthashAux::setCustomDirName(s_dagDir);
+
 		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
 		sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashCPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); }};
 #if ETH_ETHASHCL
@@ -838,6 +850,7 @@ private:
 	unsigned m_cudaSchedule = 4; // sync
 #endif
 	uint64_t m_currentBlock = 0;
+	static char s_dagDir[256];
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
 	unsigned m_extraGPUMemory = 350000000;
 
@@ -855,3 +868,5 @@ private:
 	unsigned m_farmRecheckPeriod = 500;
 	bool m_precompute = true;
 };
+
+char MinerCLI::s_dagDir[256] = "";
