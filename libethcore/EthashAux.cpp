@@ -43,6 +43,7 @@ using namespace eth;
 const char* DAGChannel::name() { return EthGreen "DAG"; }
 
 EthashAux* dev::eth::EthashAux::s_this = nullptr;
+char  dev::eth::EthashAux::s_customDirName[256] = "";
 
 const unsigned EthashProofOfWork::defaultLocalWorkSize = 64;
 const unsigned EthashProofOfWork::defaultGlobalWorkSizeMultiplier = 4096; // * CL_DEFAULT_LOCAL_WORK_SIZE
@@ -68,6 +69,17 @@ uint64_t EthashAux::cacheSize(BlockInfo const& _header)
 uint64_t EthashAux::dataSize(uint64_t _blockNumber)
 {
 	return ethash_get_datasize(_blockNumber);
+}
+
+
+void EthashAux::setCustomDirName(const char * custom_dir_name)
+{
+	strcpy(s_customDirName, custom_dir_name);
+}
+
+char * EthashAux::customDirName()
+{
+	return s_customDirName;
 }
 
 h256 EthashAux::seedHash(unsigned _number)
@@ -152,7 +164,7 @@ bytesConstRef EthashAux::LightAllocation::data() const
 EthashAux::FullAllocation::FullAllocation(ethash_light_t _light, ethash_callback_t _cb)
 {
 //	cdebug << "About to call ethash_full_new...";
-	full = ethash_full_new(_light, _cb);
+	full = ethash_full_new(_light, EthashAux::customDirName(), _cb);
 //	cdebug << "Called OK.";
 	if (!full)
 	{

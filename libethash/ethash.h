@@ -108,7 +108,7 @@ ethash_return_value_t ethash_light_compute(
  * @return              Newly allocated ethash_full handler or NULL in case of
  *                      ERRNOMEM or invalid parameters used for @ref ethash_compute_full_data()
  */
-ethash_full_t ethash_full_new(ethash_light_t light, ethash_callback_t callback);
+ethash_full_t ethash_full_new(ethash_light_t light, const char * custom_dir_name, ethash_callback_t callback);
 
 /**
  * Frees a previously allocated ethash_full handler
