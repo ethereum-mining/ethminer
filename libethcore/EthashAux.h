@@ -109,7 +109,8 @@ public:
 	static uint64_t number(h256 const& _seedHash);
 	static uint64_t cacheSize(BlockInfo const& _header);
 	static uint64_t dataSize(uint64_t _blockNumber);
-
+	static void setCustomDirName(const char * custom_dir_name);
+	static char * customDirName();
 	static LightType light(h256 const& _seedHash);
 
 	static const uint64_t NotGenerating = (uint64_t)-1;
@@ -130,6 +131,7 @@ private:
 	void killCache(h256 const& _s);
 
 	static EthashAux* s_this;
+	static char s_customDirName[256];
 
 	SharedMutex x_lights;
 	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;
@@ -145,6 +147,8 @@ private:
 	Mutex x_epochs;
 	std::unordered_map<h256, unsigned> m_epochs;
 	h256s m_seedHashes;
+
+	
 };
 
 }

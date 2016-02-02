@@ -455,12 +455,16 @@ fail_free_full:
 	return NULL;
 }
 
-ethash_full_t ethash_full_new(ethash_light_t light, ethash_callback_t callback)
+ethash_full_t ethash_full_new(ethash_light_t light, const char * custom_dir_name, ethash_callback_t callback)
 {
 	char strbuf[256];
-	if (!ethash_get_default_dirname(strbuf, 256)) {
-		return NULL;
-	}
+
+	if (strcmp(custom_dir_name, "") != 0) 
+		strcpy(strbuf, custom_dir_name);
+	else 
+		if (!ethash_get_default_dirname(strbuf, 256)) {
+			return NULL;
+		}
 	uint64_t full_size = ethash_get_datasize(light->block_number);
 	ethash_h256_t seedhash = ethash_get_seedhash(light->block_number);
 	return ethash_full_new_internal(strbuf, seedhash, full_size, light, callback);
