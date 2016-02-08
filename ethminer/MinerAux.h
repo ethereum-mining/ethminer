@@ -60,6 +60,9 @@
 #include "PhoneHome.h"
 #include "FarmClient.h"
 #endif
+#if ETH_STRATUM || !ETH_TRUE
+#include <libstratum/EthStratumClient.h>
+#endif
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -105,7 +108,8 @@ public:
 		DAGInit,
 		Benchmark,
 		Simulation,
-		Farm
+		Farm,
+		Stratum
 	};
 
 
@@ -128,6 +132,44 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
+#if ETH_STRATUM || !ETH_TRUE
+		if ((arg == "-S" || arg == "--stratum") && i + 1 < argc)
+		{
+			mode = OperationMode::Stratum;
+			string url = string(argv[++i]);
+			size_t p = url.find_last_of(":");
+			if (p > 0) 
+			{
+				m_farmURL = url.substr(0, p);
+				if (p + 1 <= url.length())
+					m_port = url.substr(p+1);
+			}
+			else
+			{
+				m_farmURL = url;
+			}
+		}
+		else if ((arg == "-O" || arg == "--userpass") && i + 1 < argc)
+		{
+			string userpass = string(argv[++i]);
+			size_t p = userpass.find_first_of(":");
+			m_user = userpass.substr(0, p);
+			if (p + 1 <= userpass.length())
+				m_pass = userpass.substr(p+1);
+		}
+		else if ((arg == "-u" || arg == "--user") && i + 1 < argc)
+		{
+			m_user = string(argv[++i]);
+		}
+		else if ((arg == "-p" || arg == "--pass") && i + 1 < argc)
+		{
+			m_pass = string(argv[++i]);
+		}
+		else if ((arg == "-o" || arg == "--port") && i + 1 < argc)
+		{
+			m_port = string(argv[++i]);
+		}
+#endif
 		else if (arg == "--opencl-platform" && i + 1 < argc)
 			try {
 				m_openclPlatform = stol(argv[++i]);
@@ -347,7 +389,7 @@ public:
 				}
 			}
 		}
-		else if (arg == "-S" || arg == "--simulation") {
+		else if (arg == "-Z" || arg == "--simulation") {
 			mode = OperationMode::Simulation;
 			if (i + 1 < argc)
 			{
@@ -456,6 +498,10 @@ public:
 			doFarm(m_minerType, m_farmURL, m_farmRecheckPeriod);
 		else if (mode == OperationMode::Simulation)
 			doSimulation(m_minerType);
+#if ETH_STRATUM || !ETH_TRUE
+		else if (mode == OperationMode::Stratum)
+			doStratum(m_minerType, m_farmURL, m_port, m_user, m_pass);
+#endif
 	}
 
 	static void streamHelp(ostream& _out)
@@ -824,6 +870,27 @@ private:
 		exit(0);
 	}
 
+	void doStratum(MinerType _m, string const & host, string const & port, string const & user, string const & pass)
+	{
+		EthashAux::setCustomDirName(s_dagDir);
+
+		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
+		sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); } };
+#if ETH_ETHASHCL
+		sealers["opencl"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
+#endif
+#if ETH_ETHASHCUDA
+		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+#endif
+
+		EthStratumClient client(host, port, user, pass);
+		client.connect();
+
+		while (true)
+			this_thread::sleep_for(chrono::milliseconds(1000));
+	}
+
+
 	/// Operating mode.
 	OperationMode mode;
 
@@ -867,6 +934,13 @@ private:
 	string m_farmURL = "http://127.0.0.1:8545";
 	unsigned m_farmRecheckPeriod = 500;
 	bool m_precompute = true;
+
+#if ETH_STRATUM || !ETH_TRUE
+	string m_user;
+	string m_pass;
+	string m_port;
+#endif
+
 };
 
 char MinerCLI::s_dagDir[256] = "";
