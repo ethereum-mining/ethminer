@@ -8,12 +8,7 @@
 #include "ethash_cuda_miner_kernel_globals.h"
 #include "cuda_helper.h"
 
-#define SHUFFLE_MIN_VER 350
-#if __CUDA_ARCH__ >= SHUFFLE_MIN_VER
 #include "dagger_shuffled.cuh"
-#else
-#include "dagger_shared.cuh"
-#endif
 
 __global__ void 
 __launch_bounds__(128, 7)
@@ -23,11 +18,7 @@ ethash_search(
 	)
 {
 	uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;	
-#if __CUDA_ARCH__ >= SHUFFLE_MIN_VER
 	uint64_t hash = compute_hash_shuffle(start_nonce + gid);
-#else
-	uint64_t hash = compute_hash(start_nonce + gid).uint64s[0];
-#endif
 	if (cuda_swab64(hash) > d_target) return;
 	uint32_t index = atomicInc(const_cast<uint32_t*>(g_output), SEARCH_RESULT_BUFFER_SIZE - 1) + 1;
 	g_output[index] = gid;
@@ -42,11 +33,7 @@ void run_ethash_search(
 	uint64_t start_nonce
 )
 {
-#if __CUDA_ARCH__ >= SHUFFLE_MIN_VER
 	ethash_search <<<blocks, threads, 0, stream >>>(g_output, start_nonce);
-#else
-	ethash_search <<<blocks, threads, (sizeof(compute_hash_share) * threads) / THREADS_PER_HASH, stream>>>(g_output, start_nonce);
-#endif
 	CUDA_SAFE_CALL(cudaGetLastError());
 }
 
