@@ -1,7 +1,10 @@
 #include "ethash_cuda_miner_kernel_globals.h"
 #include "ethash_cuda_miner_kernel.h"
 #include "keccak.cuh"
-#include "dagger.cuh"
+#include "fnv.cuh"
+
+#define ACCESSES 64
+#define THREADS_PER_HASH (128 / 16)
 
 __device__ uint64_t compute_hash_shuffle(
 	uint64_t nonce
@@ -26,8 +29,8 @@ __device__ uint64_t compute_hash_shuffle(
 	{
 		// share init among threads
 		for (int j = 0; j < 8; j++) {
-			shuffle[j].x = __shfl(state[j].x, start_lane + i);
-			shuffle[j].y = __shfl(state[j].y, start_lane + i);
+			shuffle[j].x = __shfl(state[j].x, i, THREADS_PER_HASH);
+			shuffle[j].y = __shfl(state[j].y, i, THREADS_PER_HASH);
 		}
 
 		// ugly but avoids local reads/writes
@@ -56,7 +59,7 @@ __device__ uint64_t compute_hash_shuffle(
 				{	
 					shuffle[0].x = fnv(init0 ^ (a + b), ((uint32_t *)&mix)[b]) % d_dag_size;
 				}
-				shuffle[0].x = __shfl(shuffle[0].x, start_lane + t);
+				shuffle[0].x = __shfl(shuffle[0].x, t, THREADS_PER_HASH);
 
 				mix = fnv4(mix, (&d_dag[shuffle[0].x])->uint4s[thread_id]);
 			}
@@ -66,14 +69,14 @@ __device__ uint64_t compute_hash_shuffle(
 
 		// update mix accross threads
 		
-		shuffle[0].x = __shfl(thread_mix, start_lane + 0);
-		shuffle[0].y = __shfl(thread_mix, start_lane + 1);
-		shuffle[1].x = __shfl(thread_mix, start_lane + 2);
-		shuffle[1].y = __shfl(thread_mix, start_lane + 3);
-		shuffle[2].x = __shfl(thread_mix, start_lane + 4);
-		shuffle[2].y = __shfl(thread_mix, start_lane + 5);
-		shuffle[3].x = __shfl(thread_mix, start_lane + 6);
-		shuffle[3].y = __shfl(thread_mix, start_lane + 7);
+		shuffle[0].x = __shfl(thread_mix, 0, THREADS_PER_HASH);
+		shuffle[0].y = __shfl(thread_mix, 1, THREADS_PER_HASH);
+		shuffle[1].x = __shfl(thread_mix, 2, THREADS_PER_HASH);
+		shuffle[1].y = __shfl(thread_mix, 3, THREADS_PER_HASH);
+		shuffle[2].x = __shfl(thread_mix, 4, THREADS_PER_HASH);
+		shuffle[2].y = __shfl(thread_mix, 5, THREADS_PER_HASH);
+		shuffle[3].x = __shfl(thread_mix, 6, THREADS_PER_HASH);
+		shuffle[3].y = __shfl(thread_mix, 7, THREADS_PER_HASH);
 		
 		if (i == thread_id) {
 			//move mix into state:

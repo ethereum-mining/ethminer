@@ -7,32 +7,13 @@
 
 #define SEARCH_RESULT_BUFFER_SIZE 64
 
-typedef union
+typedef struct
 {
-	uint64_t uint64s[16 / sizeof(uint64_t)];
-	uint32_t uint32s[16 / sizeof(uint32_t)];
-} hash16_t;
-
-typedef union
-{
-	uint32_t uint32s[32 / sizeof(uint32_t)];
-	uint64_t uint64s[32 / sizeof(uint64_t)];
-	uint2 uint2s[32 / sizeof(uint2)];
 	uint4 uint4s[32 / sizeof(uint4)];
 } hash32_t;
 
-
-typedef union
+typedef struct
 {
-	uint32_t uint32s[64 / sizeof(uint32_t)];
-	uint64_t uint64s[64 / sizeof(uint64_t)];
-	uint4	 uint4s[64 / sizeof(uint4)];
-} hash64_t;
-
-
-typedef union
-{
-	uint32_t uint32s[128 / sizeof(uint32_t)];
 	uint4	 uint4s[128 / sizeof(uint4)];
 } hash128_t;
 

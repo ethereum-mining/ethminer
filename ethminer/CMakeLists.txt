@@ -37,6 +37,10 @@ target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} ethash)
 target_link_libraries(${EXECUTABLE} devcrypto)
 
+if (ETHSTRATUM)
+target_link_libraries(${EXECUTABLE} ethstratum)
+endif()
+
 if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
 	eth_copy_dlls("${EXECUTABLE}" MHD_DLLS)
 	eth_copy_dlls("${EXECUTABLE}" OpenCL_DLLS)
