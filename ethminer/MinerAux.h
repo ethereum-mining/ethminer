@@ -883,8 +883,9 @@ private:
 		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 
+	
 		EthStratumClient client(host, port, user, pass);
-		client.connect();
+		//client.connect();
 
 		while (true)
 			this_thread::sleep_for(chrono::milliseconds(1000));
