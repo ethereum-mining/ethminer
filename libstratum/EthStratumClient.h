@@ -15,12 +15,17 @@ public:
 	EthStratumClient(string const & host, string const & port, string const & user, string const & pass);
 	~EthStratumClient();
 
-	void connect();
+	boost::asio::io_service m_io_service;
 	
 private:
+	void connect();
 	void resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
 	void connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
 	
+	void handleResponse(const boost::system::error_code& ec);
+	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
+
+
 	void subscribe_handler(const boost::system::error_code& ec);
 	void authorize_handler(const boost::system::error_code& ec);
 	void read_subscribe_handler(const boost::system::error_code& ec, std::size_t bytes_transferred);
@@ -32,8 +37,9 @@ private:
 	string m_user;
 	string m_pass;
 
-	io_service m_io_service;
+	
 	tcp::socket m_socket;
+
 	boost::asio::streambuf m_requestBuffer;
 	boost::asio::streambuf m_responseBuffer;
 };
