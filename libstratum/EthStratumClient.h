@@ -4,21 +4,30 @@
 #include <boost/bind.hpp>
 #include <json/json.h>
 #include <libdevcore/Log.h>
+#include <libdevcore/FixedHash.h>
+#include <libethcore/Farm.h>
+#include <libethcore/EthashAux.h>
+#include "BuildInfo.h"
+
 
 using namespace std;
 using namespace boost::asio;
 using boost::asio::ip::tcp;
+using namespace dev;
+using namespace dev::eth;
 
 class EthStratumClient
 {
 public:
-	EthStratumClient(string const & host, string const & port, string const & user, string const & pass);
+	EthStratumClient(GenericFarm<EthashProofOfWork> * f, string const & host, string const & port, string const & user, string const & pass);
 	~EthStratumClient();
 
-	boost::asio::io_service m_io_service;
-	
+	bool isRunning() { return m_running; }
+	h256 currentHeaderHash() { return m_current.headerHash; }
+	bool current() { return m_current; }
 private:
 	void connect();
+	void disconnect();
 	void resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
 	void connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
 	
@@ -36,8 +45,15 @@ private:
 	string m_port;
 	string m_user;
 	string m_pass;
+	bool   m_authorized;
+	bool   m_running;
+	bool  m_precompute;
 
-	
+	GenericFarm<EthashProofOfWork> * p_farm;
+	EthashProofOfWork::WorkPackage m_current;
+	EthashAux::FullType m_dag;
+
+	boost::asio::io_service m_io_service;
 	tcp::socket m_socket;
 
 	boost::asio::streambuf m_requestBuffer;
