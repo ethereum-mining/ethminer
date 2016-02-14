@@ -500,7 +500,7 @@ public:
 			doSimulation(m_minerType);
 #if ETH_STRATUM || !ETH_TRUE
 		else if (mode == OperationMode::Stratum)
-			doStratum(m_minerType, m_farmURL, m_port, m_user, m_pass);
+			doStratum(m_minerType, m_farmRecheckPeriod, m_farmURL, m_port, m_user, m_pass);
 #endif
 	}
 
@@ -870,7 +870,7 @@ private:
 		exit(0);
 	}
 
-	void doStratum(MinerType _m, string const & host, string const & port, string const & user, string const & pass)
+	void doStratum(MinerType _m, unsigned _recheckPeriod, string const & host, string const & port, string const & user, string const & pass)
 	{
 		EthashAux::setCustomDirName(s_dagDir);
 
@@ -882,13 +882,29 @@ private:
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
+		GenericFarm<EthashProofOfWork> f;
+		EthStratumClient client(&f, host, port, user, pass);
 
-	
-		EthStratumClient client(host, port, user, pass);
-		//client.connect();
+		f.setSealers(sealers);
+		if (_m == MinerType::CPU)
+			f.start("cpu");
+		else if (_m == MinerType::CL)
+			f.start("opencl");
+		else if (_m == MinerType::CUDA)
+			f.start("cuda");
 
-		while (true)
-			this_thread::sleep_for(chrono::milliseconds(1000));
+		
+		while (client.isRunning())
+		{
+			auto mp = f.miningProgress();
+			f.resetMiningProgress();
+			if (client.current())
+				minelog << "Mining on PoWhash" << client.currentHeaderHash() << ": " << mp;
+			else
+				minelog << "Getting work package...";
+
+			this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
+		}
 	}
 
 
