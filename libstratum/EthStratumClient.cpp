@@ -139,6 +139,8 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 					}
 					cnote << "Authorized worker " << m_user;
 					break;
+				case 4:
+					cnote << response;
 				default:
 					string method = responseObject.get("method", "").asString();
 					if (method == "mining.notify")
@@ -209,6 +211,11 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 }
 
 bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
-	
+	std::ostream os(&m_requestBuffer);
+	os << "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" << m_user << "\",\"" << m_job << "\",\"" << solution.nonce.hex() << "\",\"" << m_current.headerHash.hex() << "\",\"" << solution.mixHash.hex() << "\"]}\n";
+	async_write(m_socket, m_requestBuffer,
+		boost::bind(&EthStratumClient::handleResponse, this,
+		boost::asio::placeholders::error));
+	return true;
 }
 
