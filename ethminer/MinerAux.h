@@ -893,7 +893,15 @@ private:
 		else if (_m == MinerType::CUDA)
 			f.start("cuda");
 
-		
+		bool completed = false;
+		EthashProofOfWork::Solution solution;
+		f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+		{
+			solution = sol;
+			minelog << "Solution!";
+			return client.submit(solution);
+		});
+
 		while (client.isRunning())
 		{
 			auto mp = f.miningProgress();

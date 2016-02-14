@@ -109,17 +109,18 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 		Json::Reader reader;
 		if (reader.parse(response.c_str(), responseObject))
 		{
-			Json::Value error = responseObject.get("error", NULL);
-			if (error.isArray())
-			{
-				string msg = error.get(1, "Unknown error").asString();
-				cnote << msg;
-			}
-			std::ostream os(&m_requestBuffer);
-			Json::Value params;
-			int id = responseObject.get("id", NULL).asInt();	
-			switch (id) 
-			{
+			if (responseObject.isMember("id")) {
+				Json::Value error = responseObject.get("error", NULL);
+				if (error.isArray())
+				{
+					string msg = error.get(1, "Unknown error").asString();
+					cnote << msg;
+				}
+				std::ostream os(&m_requestBuffer);
+				Json::Value params;
+				int id = responseObject.get("id", NULL).asInt();
+				switch (id)
+				{
 				case 1:
 					cnote << "Subscribed to stratum server";
 
@@ -145,14 +146,14 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 						params = responseObject.get("params", NULL);
 						if (params.isArray())
 						{
-							string jobNumber	= params.get((Json::Value::ArrayIndex)0, "").asString();
-							string sHeaderHash	= params.get((Json::Value::ArrayIndex)1, "").asString();
-							string sSeedHash	= params.get((Json::Value::ArrayIndex)2, "").asString();
-							string sShareTarget	= params.get((Json::Value::ArrayIndex)3, "").asString();
-							bool cleanJobs		= params.get((Json::Value::ArrayIndex)4, "").asBool();
+							m_job = params.get((Json::Value::ArrayIndex)0, "").asString();
+							string sHeaderHash = params.get((Json::Value::ArrayIndex)1, "").asString();
+							string sSeedHash = params.get((Json::Value::ArrayIndex)2, "").asString();
+							string sShareTarget = params.get((Json::Value::ArrayIndex)3, "").asString();
+							bool cleanJobs = params.get((Json::Value::ArrayIndex)4, "").asBool();
 							if (sHeaderHash != "" && sSeedHash != "" && sShareTarget != "")
 							{
-								cnote << "Received new job #" + jobNumber;
+								cnote << "Received new job #" + m_job;
 								cnote << "Header hash: 0x" + sHeaderHash;
 								cnote << "Seed hash: 0x" + sSeedHash;
 								cnote << "Share target: 0x" + sShareTarget;
@@ -184,18 +185,17 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 					}
 					else if (method == "client.get_version")
 					{
-						os << "{\"error\": null, \"id\" : "<< id <<", \"result\" : \"" << ETH_PROJECT_VERSION << "\"}";
+						os << "{\"error\": null, \"id\" : " << id << ", \"result\" : \"" << ETH_PROJECT_VERSION << "\"}";
 						async_write(m_socket, m_requestBuffer,
 							boost::bind(&EthStratumClient::handleResponse, this,
 							boost::asio::placeholders::error));
 					}
 					break;
+				}
 			}
-
 			async_read_until(m_socket, m_responseBuffer, "\n",
 				boost::bind(&EthStratumClient::readResponse, this,
 				boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
-
 		}
 		else
 		{
@@ -206,5 +206,9 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 	{
 		cwarn << "Read response failed: " << ec.message();
 	}
+}
+
+bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
+	
 }
 

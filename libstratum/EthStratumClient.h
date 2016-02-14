@@ -25,6 +25,7 @@ public:
 	bool isRunning() { return m_running; }
 	h256 currentHeaderHash() { return m_current.headerHash; }
 	bool current() { return m_current; }
+	bool submit(EthashProofOfWork::Solution solution);
 private:
 	void connect();
 	void disconnect();
@@ -34,12 +35,7 @@ private:
 	void handleResponse(const boost::system::error_code& ec);
 	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
 
-
-	void subscribe_handler(const boost::system::error_code& ec);
-	void authorize_handler(const boost::system::error_code& ec);
-	void read_subscribe_handler(const boost::system::error_code& ec, std::size_t bytes_transferred);
-	void read_authorize_handler(const boost::system::error_code& ec, std::size_t bytes_transferred);
-	void read_work_handler(const boost::system::error_code& ec, std::size_t bytes_transferred);
+	
 
 	string m_host;
 	string m_port;
@@ -47,10 +43,11 @@ private:
 	string m_pass;
 	bool   m_authorized;
 	bool   m_running;
-	bool  m_precompute;
+	bool   m_precompute;
 
 	GenericFarm<EthashProofOfWork> * p_farm;
 	EthashProofOfWork::WorkPackage m_current;
+	string m_job;
 	EthashAux::FullType m_dag;
 
 	boost::asio::io_service m_io_service;
