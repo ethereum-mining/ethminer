@@ -886,22 +886,25 @@ private:
 		EthStratumClient client(&f, host, port, user, pass);
 
 		f.setSealers(sealers);
+		/*
 		if (_m == MinerType::CPU)
 			f.start("cpu");
 		else if (_m == MinerType::CL)
 			f.start("opencl");
 		else if (_m == MinerType::CUDA)
 			f.start("cuda");
-
+*/
 		bool completed = false;
 		EthashProofOfWork::Solution solution;
+		/*
 		f.onSolutionFound([&](EthashProofOfWork::Solution sol)
 		{
 			solution = sol;
 			minelog << "Solution!";
-			return client.submit(solution);
+			client.submit(solution);
+			return false;
 		});
-
+		*/
 		while (client.isRunning())
 		{
 			auto mp = f.miningProgress();

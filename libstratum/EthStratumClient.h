@@ -34,9 +34,8 @@ private:
 	
 	void handleResponse(const boost::system::error_code& ec);
 	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
-
+	void processReponse(Json::Value& responseObject);
 	
-
 	string m_host;
 	string m_port;
 	string m_user;
@@ -44,6 +43,8 @@ private:
 	bool   m_authorized;
 	bool   m_running;
 	bool   m_precompute;
+
+	string m_response;
 
 	GenericFarm<EthashProofOfWork> * p_farm;
 	EthashProofOfWork::WorkPackage m_current;
