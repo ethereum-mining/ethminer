@@ -14,6 +14,7 @@ EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, string co
 	m_authorized = false;
 	m_running = true;
 	m_precompute = true;
+	m_pending = 0;
 	p_farm = f;
 	connect();
 }
@@ -82,13 +83,20 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 
 }
 
-void EthStratumClient::handleResponse(const boost::system::error_code& ec) {
-	if (!ec)
-	{
+void EthStratumClient::readline() {
+
+	if (m_pending == 0) {
 		async_read_until(m_socket, m_responseBuffer, "\n",
 			boost::bind(&EthStratumClient::readResponse, this,
 			boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
+		m_pending++;
+	}
+}
 
+void EthStratumClient::handleResponse(const boost::system::error_code& ec) {
+	if (!ec)
+	{
+		readline();
 	}
 	else
 	{
@@ -98,19 +106,13 @@ void EthStratumClient::handleResponse(const boost::system::error_code& ec) {
 
 void EthStratumClient::readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred)
 {
+	m_pending = m_pending > 0 ? m_pending - 1 : 0;
+
 	if (!ec)
 	{
 		std::istream is(&m_responseBuffer);
 		std::string response;
 		getline(is, response);
-		cnote << response;
-
-		if (response.back() != '}') {
-			m_response = response;
-		}
-		if (response.front() != '{') {
-			response = m_response + response;
-		}
 
 		Json::Value responseObject;
 		Json::Reader reader;
@@ -129,9 +131,8 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 		cwarn << "Read response failed: " << ec.message();
 	}
 
-	async_read_until(m_socket, m_responseBuffer, "\n",
-		boost::bind(&EthStratumClient::readResponse, this,
-		boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
+	readline();
+
 }
 
 void EthStratumClient::processReponse(Json::Value& responseObject)
@@ -166,7 +167,11 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		cnote << "Authorized worker " << m_user;
 		break;
 	case 4:
-		cnote << m_response;
+		if (responseObject.get("result", false).asBool())
+			cnote << "B-) Submitted and accepted.";
+		else
+			cwarn << ":-( Not accepted.";
+		break;
 	default:
 		string method = responseObject.get("method", "").asString();
 		if (method == "mining.notify")
@@ -201,7 +206,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					{
 						m_current.headerHash = h256(sHeaderHash);
 						m_current.seedHash = seedHash;
-						m_current.boundary = h256(sShareTarget, h256::AlignRight);
+						m_current.boundary = h256(sShareTarget);// , h256::AlignRight);
 						p_farm->setWork(m_current);
 					}
 				}
@@ -213,7 +218,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		}
 		else if (method == "client.get_version")
 		{
-			os << "{\"error\": null, \"id\" : " << id << ", \"result\" : \"" << ETH_PROJECT_VERSION << "\"}";
+			os << "{\"error\": null, \"id\" : " << id << ", \"result\" : \"" << ETH_PROJECT_VERSION << "\"}\n";
 			async_write(m_socket, m_requestBuffer,
 				boost::bind(&EthStratumClient::handleResponse, this,
 				boost::asio::placeholders::error));
@@ -223,11 +228,28 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 }
 
 bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
-	std::ostream os(&m_requestBuffer);
-	os << "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" << m_user << "\",\"" << m_job << "\",\"" << solution.nonce.hex() << "\",\"" << m_current.headerHash.hex() << "\",\"" << solution.mixHash.hex() << "\"]}\n";
-	async_write(m_socket, m_requestBuffer,
-		boost::bind(&EthStratumClient::handleResponse, this,
-		boost::asio::placeholders::error));
-	return true;
+
+	cnote << "Solution found; Submitting to" << m_host << "...";
+	cnote << "  Nonce:" << solution.nonce.hex();
+	cnote << "  Mixhash:" << solution.mixHash.hex();
+	cnote << "  Header-hash:" << m_current.headerHash.hex();
+	cnote << "  Seedhash:" << m_current.seedHash.hex();
+	cnote << "  Target: " << h256(m_current.boundary).hex();
+	cnote << "  Ethash: " << h256(EthashAux::eval(m_current.seedHash, m_current.headerHash, solution.nonce).value).hex();
+	if (EthashAux::eval(m_current.seedHash, m_current.headerHash, solution.nonce).value < m_current.boundary)
+	{
+		string json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" + m_user + "\",\"" + m_job + "\",\"0x" + solution.nonce.hex() + "\",\"0x" + m_current.headerHash.hex() + "\",\"0x" + solution.mixHash.hex() + "\"]}\n";
+		std::ostream os(&m_requestBuffer);
+		os << json;
+
+		async_write(m_socket, m_requestBuffer,
+			boost::bind(&EthStratumClient::handleResponse, this,
+			boost::asio::placeholders::error));
+		return true;
+	}
+	else
+		cwarn << "FAILURE: GPU gave incorrect result!";
+	
+	return false;
 }
 
