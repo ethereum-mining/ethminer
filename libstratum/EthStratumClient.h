@@ -32,6 +32,7 @@ private:
 	void resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
 	void connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
 	
+	void readline();
 	void handleResponse(const boost::system::error_code& ec);
 	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
 	void processReponse(Json::Value& responseObject);
@@ -44,6 +45,7 @@ private:
 	bool   m_running;
 	bool   m_precompute;
 
+	int m_pending;
 	string m_response;
 
 	GenericFarm<EthashProofOfWork> * p_farm;

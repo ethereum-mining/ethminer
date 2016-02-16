@@ -133,7 +133,7 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 #if ETH_STRATUM || !ETH_TRUE
-		if ((arg == "-S" || arg == "--stratum") && i + 1 < argc)
+		else if ((arg == "-S" || arg == "--stratum") && i + 1 < argc)
 		{
 			mode = OperationMode::Stratum;
 			string url = string(argv[++i]);
@@ -886,25 +886,22 @@ private:
 		EthStratumClient client(&f, host, port, user, pass);
 
 		f.setSealers(sealers);
-		/*
+		
 		if (_m == MinerType::CPU)
 			f.start("cpu");
 		else if (_m == MinerType::CL)
 			f.start("opencl");
 		else if (_m == MinerType::CUDA)
 			f.start("cuda");
-*/
+
 		bool completed = false;
-		EthashProofOfWork::Solution solution;
-		/*
+		
 		f.onSolutionFound([&](EthashProofOfWork::Solution sol)
 		{
-			solution = sol;
-			minelog << "Solution!";
-			client.submit(solution);
+			client.submit(sol);
 			return false;
 		});
-		*/
+		
 		while (client.isRunning())
 		{
 			auto mp = f.miningProgress();
@@ -912,7 +909,7 @@ private:
 			if (client.current())
 				minelog << "Mining on PoWhash" << client.currentHeaderHash() << ": " << mp;
 			else
-				minelog << "Getting work package...";
+				minelog << "Waiting for work package...";
 
 			this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 		}

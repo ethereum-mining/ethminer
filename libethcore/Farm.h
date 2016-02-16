@@ -111,7 +111,7 @@ public:
 		m_work.reset();
 		m_isMining = false;
 	}
-
+	
 	bool isMining() const
 	{
 		return m_isMining;
