@@ -38,10 +38,22 @@ void EthStratumClient::connect()
 	
 }
 
+void EthStratumClient::reconnect()
+{
+	m_socket.close();
+	m_io_service.reset();
+	m_authorized = false;
+	cnote << "Reconnecting in 3 seconds...";
+	boost::asio::deadline_timer     timer(m_io_service, boost::posix_time::seconds(3));
+	timer.wait();
+	connect();
+}
+
 void EthStratumClient::disconnect()
 {
 	cnote << "Disconnecting";
 	m_running = false;
+	
 	m_socket.close();
 	m_io_service.stop();
 }
@@ -78,7 +90,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 	else
 	{
 		cwarn << "Could not connect to stratum server " << m_host << ":" << m_port << ", " << ec.message();
-		disconnect();
+		reconnect();
 	}
 
 }
@@ -114,30 +126,36 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 		std::string response;
 		getline(is, response);
 
-		Json::Value responseObject;
-		Json::Reader reader;
-		if (reader.parse(response.c_str(), responseObject))
+		if (response.front() == '{' && response.back() == '}') 
 		{
-			processReponse(responseObject);
-			m_response = response;
+			Json::Value responseObject;
+			Json::Reader reader;
+			if (reader.parse(response.c_str(), responseObject))
+			{
+				processReponse(responseObject);
+				m_response = response;
+			}
+			else
+			{
+				cwarn << "Parse response failed: " << reader.getFormattedErrorMessages();
+			}
 		}
 		else
 		{
-			cwarn << "Parse response failed: " << reader.getFormattedErrorMessages();
+			cwarn << "Discarding incomplete response";
 		}
+		readline();
 	}
 	else
 	{
 		cwarn << "Read response failed: " << ec.message();
+		reconnect();
 	}
-
-	readline();
-
 }
 
 void EthStratumClient::processReponse(Json::Value& responseObject)
 {
-	Json::Value error = responseObject.get("error", NULL);
+	Json::Value error = responseObject.get("error", new Json::Value);
 	if (error.isArray())
 	{
 		string msg = error.get(1, "Unknown error").asString();
@@ -167,7 +185,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		cnote << "Authorized worker " << m_user;
 		break;
 	case 4:
-		if (responseObject.get("result", false).asBool())
+ 		if (responseObject.get("result", false).asBool())
 			cnote << "B-) Submitted and accepted.";
 		else
 			cwarn << ":-( Not accepted.";
@@ -225,6 +243,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		}
 		break;
 	}
+
 }
 
 bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
