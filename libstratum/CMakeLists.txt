@@ -4,6 +4,7 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(..)
 include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${JSONCPP_INCLUDE_DIRS})
 
 file(GLOB HEADERS "*.h")
 
