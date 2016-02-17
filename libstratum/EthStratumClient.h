@@ -28,6 +28,7 @@ public:
 	bool submit(EthashProofOfWork::Solution solution);
 private:
 	void connect();
+	void reconnect();
 	void disconnect();
 	void resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
 	void connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
