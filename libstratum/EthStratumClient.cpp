@@ -33,6 +33,7 @@ void EthStratumClient::connect()
 	r.async_resolve(q, boost::bind(&EthStratumClient::resolve_handler,
 																	this, boost::asio::placeholders::error,
 																	boost::asio::placeholders::iterator));
+	cnote << "This line fix 'Could not resolve host' ??? dunno why ??";
 
 	boost::thread t(boost::bind(&boost::asio::io_service::run, &m_io_service));
 	
