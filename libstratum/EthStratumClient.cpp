@@ -163,7 +163,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 	}
 	std::ostream os(&m_requestBuffer);
 	Json::Value params;
-	int id = responseObject.get("id", NULL).asInt();
+	int id = responseObject.get("id", Json::Value::null).asInt();
 	switch (id)
 	{
 	case 1:
@@ -176,7 +176,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			boost::asio::placeholders::error));
 		break;
 	case 2:
-		m_authorized = responseObject.get("result", NULL).asBool();
+		m_authorized = responseObject.get("result", Json::Value::null).asBool();
 		if (!m_authorized)
 		{
 			disconnect();
@@ -194,7 +194,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		string method = responseObject.get("method", "").asString();
 		if (method == "mining.notify")
 		{
-			params = responseObject.get("params", NULL);
+			params = responseObject.get("params", Json::Value::null);
 			if (params.isArray())
 			{
 				m_job = params.get((Json::Value::ArrayIndex)0, "").asString();
