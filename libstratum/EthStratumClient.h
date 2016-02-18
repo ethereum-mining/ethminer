@@ -7,6 +7,7 @@
 #include <libdevcore/FixedHash.h>
 #include <libethcore/Farm.h>
 #include <libethcore/EthashAux.h>
+#include <libethcore/Miner.h>
 #include "BuildInfo.h"
 
 
@@ -19,10 +20,10 @@ using namespace dev::eth;
 class EthStratumClient
 {
 public:
-	EthStratumClient(GenericFarm<EthashProofOfWork> * f, string const & host, string const & port, string const & user, string const & pass);
+	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass);
 	~EthStratumClient();
 
-	bool isRunning() { return m_running; }
+	bool isConnected() { return m_connected; }
 	h256 currentHeaderHash() { return m_current.headerHash; }
 	bool current() { return m_current; }
 	bool submit(EthashProofOfWork::Solution solution);
@@ -38,12 +39,13 @@ private:
 	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
 	void processReponse(Json::Value& responseObject);
 	
+	MinerType m_minerType;
 	string m_host;
 	string m_port;
 	string m_user;
 	string m_pass;
 	bool   m_authorized;
-	bool   m_running;
+	bool   m_connected;
 	bool   m_precompute;
 
 	int m_pending;
