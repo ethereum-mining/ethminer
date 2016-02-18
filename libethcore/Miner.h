@@ -36,6 +36,13 @@ namespace dev
 namespace eth
 {
 
+enum class MinerType
+{
+	CPU,
+	CL,
+	CUDA
+};
+
 struct MineInfo: public WorkingProgress {};
 
 inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)

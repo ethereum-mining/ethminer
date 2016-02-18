@@ -560,13 +560,6 @@ public:
 			;
 	}
 
-	enum class MinerType
-	{
-		CPU,
-		CL,
-		CUDA
-	};
-
 	MinerType minerType() const { return m_minerType; }
 	bool shouldPrecompute() const { return m_precompute; }
 
@@ -883,34 +876,27 @@ private:
 		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 		GenericFarm<EthashProofOfWork> f;
-		EthStratumClient client(&f, host, port, user, pass);
+		EthStratumClient client(&f, _m, host, port, user, pass);
 
 		f.setSealers(sealers);
-		
-		if (_m == MinerType::CPU)
-			f.start("cpu");
-		else if (_m == MinerType::CL)
-			f.start("opencl");
-		else if (_m == MinerType::CUDA)
-			f.start("cuda");
-
-		bool completed = false;
-		
+				
 		f.onSolutionFound([&](EthashProofOfWork::Solution sol)
 		{
 			client.submit(sol);
 			return false;
 		});
 		
-		while (client.isRunning())
+		while (true)
 		{
 			auto mp = f.miningProgress();
 			f.resetMiningProgress();
-			if (client.current())
-				minelog << "Mining on PoWhash" << client.currentHeaderHash() << ": " << mp;
-			else
-				minelog << "Waiting for work package...";
-
+			if (client.isConnected())
+			{
+				if (client.current())
+					minelog << "Mining on PoWhash" << client.currentHeaderHash() << ": " << mp;
+				else
+					minelog << "Waiting for work package...";
+			}
 			this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 		}
 	}
