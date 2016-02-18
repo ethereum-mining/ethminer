@@ -4,17 +4,20 @@
 using boost::asio::ip::tcp;
 
 
-EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, string const & host, string const & port, string const & user, string const & pass)
+EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass)
 	: m_socket(m_io_service)
 {
+	m_minerType = m;
 	m_host = host;
 	m_port = port;
 	m_user = user;
 	m_pass = pass;
 	m_authorized = false;
-	m_running = true;
+	m_connected = false;
 	m_precompute = true;
 	m_pending = 0;
+	
+
 	p_farm = f;
 	connect();
 }
@@ -42,9 +45,15 @@ void EthStratumClient::connect()
 
 void EthStratumClient::reconnect()
 {
+	if (p_farm->isMining())
+	{
+		cnote << "Stopping farm";
+		p_farm->stop();
+	}
 	m_socket.close();
 	m_io_service.reset();
 	m_authorized = false;
+	m_connected = false;
 	cnote << "Reconnecting in 3 seconds...";
 	boost::asio::deadline_timer     timer(m_io_service, boost::posix_time::seconds(3));
 	timer.wait();
@@ -54,8 +63,12 @@ void EthStratumClient::reconnect()
 void EthStratumClient::disconnect()
 {
 	cnote << "Disconnecting";
-	m_running = false;
-	
+	m_connected = false;
+	if (p_farm->isMining())
+	{
+		cnote << "Stopping farm";
+		p_farm->stop();
+	}
 	m_socket.close();
 	m_io_service.stop();
 }
@@ -71,7 +84,7 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	else
 	{
 		cerr << "Could not resolve host" << m_host + ":" + m_port + ", " << ec.message();
-		disconnect();
+		reconnect();
 	}
 }
 
@@ -79,7 +92,15 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 {
 	if (!ec)
 	{
+		m_connected = true;
 		cnote << "Connected to stratum server " << m_host << ":" << m_port;
+		cnote << "Starting farm";
+		if (m_minerType == MinerType::CPU)
+			p_farm->start("cpu");
+		else if (m_minerType == MinerType::CL)
+			p_farm->start("opencl");
+		else if (m_minerType == MinerType::CUDA)
+			p_farm->start("cuda");
 
 		std::ostream os(&m_requestBuffer);
 		os << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n";
