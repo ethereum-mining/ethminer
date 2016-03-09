@@ -137,7 +137,7 @@ elseif (BUNDLE STREQUAL "cudaminer")
 	set(D_ETHKEY OFF)
 	set(D_MINER ON)
 	set(D_ETHASHCL ON)
-	set(D_ETHASHCUDA ON) 
+	set(D_ETHASHCUDA ON)
 	set(D_FATDB OFF)
 	set(D_JSONRPC ON)
 	set(D_JSCONSOLE OFF)
@@ -177,7 +177,7 @@ function(configureProject)
 	if (ETHASHCUDA)
 		add_definitions(-DETH_ETHASHCUDA)
 	endif()
-	
+
 	if (EVMJIT)
 		add_definitions(-DETH_EVMJIT)
 	endif()
@@ -471,33 +471,13 @@ if (ETHKEY OR TOOLS)
 	add_subdirectory(ethkey)
 endif ()
 
-# TODO: sort out tests so they're not dependent on webthree/web3jsonrpc and reenable
-#if (TESTS)
-#	add_subdirectory(libtestutils)
-#	add_subdirectory(test)
-#	if (JSONRPC)
-#		add_subdirectory(ethrpctest)
-#	endif ()
-#endif ()
-
 if (TOOLS)
-
 	add_subdirectory(rlp)
 	add_subdirectory(abi)
 	add_subdirectory(ethvm)
-
-#	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-#		add_subdirectory(exp)
-#	endif ()
-
 endif()
 
 if (GUI)
-
 	add_subdirectory(libnatspec)
 	add_subdirectory(libjsqrc)
-	
-	add_subdirectory(alethzero)
-	add_subdirectory(mix)
-
 endif()
