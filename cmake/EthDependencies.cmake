@@ -41,9 +41,11 @@ message(STATUS "ctest path: ${CTEST_COMMAND}")
 
 # Dependencies must have a version number, to ensure reproducible build. The version provided here is the one that is in the extdep repository. If you use system libraries, version numbers may be different.
 
-find_package (CryptoPP 5.6.2 EXACT REQUIRED)
-message(" - CryptoPP header: ${CRYPTOPP_INCLUDE_DIRS}")
-message(" - CryptoPP lib   : ${CRYPTOPP_LIBRARIES}")
+if (CRYPTOPP_FOUND)
+    # find_package (CryptoPP 5.6.2 REQUIRED)
+    message(" - CryptoPP header: ${CRYPTOPP_INCLUDE_DIRS}")
+    message(" - CryptoPP lib   : ${CRYPTOPP_LIBRARIES}")
+endif()
 
 find_package (LevelDB REQUIRED)
 message(" - LevelDB header: ${LEVELDB_INCLUDE_DIRS}")
