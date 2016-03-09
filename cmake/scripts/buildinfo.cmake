@@ -47,6 +47,10 @@ set(INFILE "${ETH_SOURCE_DIR}/BuildInfo.h.in")
 set(TMPFILE "${ETH_DST_DIR}/BuildInfo.h.tmp")
 set(OUTFILE "${ETH_DST_DIR}/BuildInfo.h")
 
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+	set(OUTFILE "${ETH_DST_DIR}/CMakeFiles/BuildInfo.h")
+endif()
+
 message("ETH_FATDB: ${ETH_FATDB}")
 configure_file("${INFILE}" "${TMPFILE}")
 
