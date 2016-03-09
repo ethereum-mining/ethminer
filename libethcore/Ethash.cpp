@@ -111,7 +111,7 @@ void Ethash::BlockHeaderRaw::verifyParent(BlockHeaderRaw const& _parent)
 	if (m_gasLimit < c_minGasLimit ||
 		m_gasLimit <= _parent.m_gasLimit - _parent.m_gasLimit / c_gasLimitBoundDivisor ||
 		m_gasLimit >= _parent.m_gasLimit + _parent.m_gasLimit / c_gasLimitBoundDivisor)
-        BOOST_THROW_EXCEPTION(InvalidGasLimit() << errinfo_min((bigint)_parent.m_gasLimit - _parent.m_gasLimit / c_gasLimitBoundDivisor) << errinfo_got((bigint)m_gasLimit) << errinfo_max((bigint)_parent.m_gasLimit + _parent.m_gasLimit / c_gasLimitBoundDivisor));
+        	BOOST_THROW_EXCEPTION(InvalidGasLimit() << errinfo_min((bigint)(_parent.m_gasLimit - _parent.m_gasLimit / c_gasLimitBoundDivisor)) << errinfo_got((bigint)m_gasLimit) << errinfo_max((bigint)(_parent.m_gasLimit + _parent.m_gasLimit / c_gasLimitBoundDivisor)));
 }
 
 void Ethash::BlockHeaderRaw::populateFromParent(BlockHeaderRaw const& _parent)
