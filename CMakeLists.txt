@@ -171,11 +171,11 @@ function(configureProject)
 	if (ETHASHCUDA)
 		add_definitions(-DETH_ETHASHCUDA)
 	endif()
-	
+
 	if (ETHSTRATUM)
 		add_definitions(-DETH_STRATUM)
 	endif()
-	
+
 	if (FATDB)
 		add_definitions(-DETH_FATDB)
 	endif()
@@ -302,7 +302,6 @@ eth_format_option(ETHASHCL)
 eth_format_option(ETHASHCUDA)
 eth_format_option(JSCONSOLE)
 eth_format_option(OLYMPIC)
-eth_format_option(SERPENT)
 eth_format_option(ETHSTRATUM)
 
 if (JSCONSOLE)
@@ -346,7 +345,6 @@ message("-- OLYMPIC          Default to the Olympic network           ${OLYMPIC}
 message("------------------------------------------------------------- components")
 message("-- MINER            Build miner                              ${MINER}")
 message("-- TOOLS            Build basic tools                        ${TOOLS}")
-message("-- SERPENT          Build Serpent language components        ${SERPENT}")
 message("-- GUI              Build GUI components                     ${GUI}")
 message("-- TESTS            Build tests                              ${TESTS}")
 message("-- ETHASHCL         Build OpenCL components                  ${ETHASHCL}")
@@ -387,11 +385,6 @@ if (GENERAL)
 	add_subdirectory(libevmcore)
 	add_subdirectory(libevmasm)
 	add_subdirectory(liblll)
-endif ()
-
-if (SERPENT)
-	add_subdirectory(libserpent)
-	add_subdirectory(sc)
 endif ()
 
 if (TOOLS)
