@@ -11,7 +11,7 @@ else ()
 endif()
 set (CMAKE_PREFIX_PATH ${ETH_DEPENDENCY_INSTALL_DIR})
 
-# setup directory for cmake generated files and include it globally 
+# setup directory for cmake generated files and include it globally
 # it's not used yet, but if we have more generated files, consider moving them to ETH_GENERATED_DIR
 set(ETH_GENERATED_DIR "${PROJECT_BINARY_DIR}/gen")
 include_directories(${ETH_GENERATED_DIR})
@@ -75,7 +75,7 @@ if (JSONRPC)
 	message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
 	add_definitions(-DETH_JSONRPC)
 
- 	find_package(MHD) 
+ 	find_package(MHD)
 	message(" - microhttpd header: ${MHD_INCLUDE_DIRS}")
 	message(" - microhttpd lib   : ${MHD_LIBRARIES}")
 	message(" - microhttpd dll   : ${MHD_DLLS}")
@@ -177,25 +177,6 @@ if (GUI)
 		message(" - appdmg location : ${ETH_APP_DMG}")
 	endif()
 
-	if (USENPM)
-
-		# TODO check node && npm version
-		find_program(ETH_NODE node)
-		string(REGEX REPLACE "node" "" ETH_NODE_DIRECTORY ${ETH_NODE})
-		message(" - nodejs location : ${ETH_NODE}")
-
-		find_program(ETH_NPM npm)
-		string(REGEX REPLACE "npm" "" ETH_NPM_DIRECTORY ${ETH_NPM})
-		message(" - npm location    : ${ETH_NPM}")
-
-		if (NOT ETH_NODE)
-			message(FATAL_ERROR "node not found!")
-		endif()
-		if (NOT ETH_NPM)
-			message(FATAL_ERROR "npm not found!")
-		endif()
-	endif()
-
 endif() #GUI
 
 # use multithreaded boost libraries, with -mt suffix
@@ -206,16 +187,16 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 # TODO hanlde other msvc versions or it will fail find them
 	set(Boost_COMPILER -vc120)
 # use static boost libraries *.lib
-	set(Boost_USE_STATIC_LIBS ON) 
+	set(Boost_USE_STATIC_LIBS ON)
 
 elseif (APPLE)
 
 # use static boost libraries *.a
-	set(Boost_USE_STATIC_LIBS ON) 
+	set(Boost_USE_STATIC_LIBS ON)
 
 elseif (UNIX)
 # use dynamic boost libraries .dll
-	set(Boost_USE_STATIC_LIBS OFF) 
+	set(Boost_USE_STATIC_LIBS OFF)
 
 endif()
 
@@ -228,4 +209,3 @@ if (APPLE)
 	link_directories(/usr/local/lib)
 	include_directories(/usr/local/include)
 endif()
-
