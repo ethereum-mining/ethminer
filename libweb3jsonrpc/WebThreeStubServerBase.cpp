@@ -41,9 +41,6 @@
 #include <libethcore/CommonJS.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
-#if ETH_SERPENT || !ETH_TRUE
-#include <libserpent/funcs.h>
-#endif
 #include "AccountHolder.h"
 #include "JsonHelper.h"
 using namespace std;
