@@ -28,11 +28,9 @@ endif ()
 if (ETHASHCUDA)
 	target_link_libraries(${EXECUTABLE} ethash-cuda)
 endif ()
-target_link_libraries(${EXECUTABLE} devcrypto)
 if (CPUID_FOUND)
 	target_link_libraries(${EXECUTABLE} ${CPUID_LIBRARIES})
 endif ()
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
-
