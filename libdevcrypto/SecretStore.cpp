@@ -28,7 +28,7 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/FileSystem.h>
-#include <test/JsonSpiritHeaders.h>
+#include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcrypto/Exceptions.h>
 using namespace std;
 using namespace dev;

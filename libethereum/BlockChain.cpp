@@ -27,7 +27,7 @@
 
 #include <boost/timer.hpp>
 #include <boost/filesystem.hpp>
-#include <test/JsonSpiritHeaders.h>
+#include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/Assertions.h>
 #include <libdevcore/RLP.h>

@@ -29,7 +29,7 @@
 #include <libethcore/BlockInfo.h>
 #include <libethcore/Params.h>
 #include <liblll/Compiler.h>
-#include <test/JsonSpiritHeaders.h>
+#include <json_spirit/JsonSpiritHeaders.h>
 #include "GenesisInfo.h"
 #include "State.h"
 #include "Defaults.h"
