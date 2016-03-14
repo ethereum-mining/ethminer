@@ -286,14 +286,6 @@ set(DB_LIBRARIES ${LEVELDB_LIBRARIES})
 
 add_subdirectory(libdevcore)
 
-if (NOT WIN32)
-	add_definitions(-DETH_HAVE_SECP256K1)
-	add_subdirectory(secp256k1)
-endif ()
-
-add_subdirectory(libscrypt)
-add_subdirectory(libdevcrypto)
-
 if (MINER)
 	add_subdirectory(libethash)
 	if (ETHASHCL)

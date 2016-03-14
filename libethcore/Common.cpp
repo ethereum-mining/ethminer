@@ -27,7 +27,6 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
-#include "ICAP.h"
 #include "Exceptions.h"
 #include "Params.h"
 #include "BlockInfo.h"
@@ -49,12 +48,6 @@ const unsigned c_databaseVersion = c_databaseBaseVersion + (c_databaseVersionMod
 
 Address toAddress(std::string const& _s)
 {
-	try
-	{
-		eth::ICAP i = eth::ICAP::decoded(_s);
-		return i.direct();
-	}
-	catch (eth::InvalidICAP&) {}
 	try
 	{
 		auto b = fromHex(_s.substr(0, 2) == "0x" ? _s.substr(2) : _s, WhenError::Throw);
