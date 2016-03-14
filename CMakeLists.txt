@@ -294,11 +294,6 @@ set(DB_INCLUDE_DIRS ${LEVELDB_INCLUDE_DIRS})
 set(DB_LIBRARIES ${LEVELDB_LIBRARIES})
 
 add_subdirectory(libdevcore)
-if (GENERAL)
-	add_subdirectory(libevmcore)
-	add_subdirectory(libevmasm)
-	add_subdirectory(liblll)
-endif ()
 
 if (NOT WIN32)
 	add_definitions(-DETH_HAVE_SECP256K1)
@@ -308,12 +303,7 @@ endif ()
 add_subdirectory(libscrypt)
 add_subdirectory(libdevcrypto)
 
-if (GENERAL)
-	add_subdirectory(libp2p)
-	add_subdirectory(libwhisper)
-endif ()
-
-if (GENERAL OR MINER)
+if (MINER)
 	add_subdirectory(libethash)
 	if (ETHASHCL)
 		add_subdirectory(libethash-cl)
@@ -327,10 +317,4 @@ if (GENERAL OR MINER)
 endif ()
 
 add_subdirectory(libethcore)
-
-if (GENERAL)
-	add_subdirectory(libevm)
-	add_subdirectory(libethereum)
-endif ()
-
 add_subdirectory(ethminer)
