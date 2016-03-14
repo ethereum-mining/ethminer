@@ -26,8 +26,8 @@
 #include <string>
 #include <functional>
 #include <libdevcore/Common.h>
+#include <libdevcore/Exceptions.h>
 #include <libdevcore/FixedHash.h>
-#include <libdevcrypto/Common.h>
 
 namespace dev
 {
@@ -56,6 +56,10 @@ Network resetNetwork(Network _n);
 
 /// User-friendly string representation of the amount _b in wei.
 std::string formatBalance(bigint const& _b);
+
+/// An Ethereum address: 20 bytes.
+/// @NOTE This is not endian-specific; it's just a bunch of bytes.
+using Address = h160;
 
 DEV_SIMPLE_EXCEPTION(InvalidAddress);
 
