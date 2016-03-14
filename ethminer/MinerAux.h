@@ -34,7 +34,6 @@
 #include <boost/optional.hpp>
 
 #include <libdevcore/FileSystem.h>
-#include <libevmcore/Instruction.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
 #include <libdevcore/SHA3.h>
@@ -67,7 +66,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace boost::algorithm;
-using dev::eth::Instruction;
 
 #undef RETURN
 
@@ -138,7 +136,7 @@ public:
 			mode = OperationMode::Stratum;
 			string url = string(argv[++i]);
 			size_t p = url.find_last_of(":");
-			if (p > 0) 
+			if (p > 0)
 			{
 				m_farmURL = url.substr(0, p);
 				if (p + 1 <= url.length())
@@ -215,7 +213,7 @@ public:
 #endif
 #if ETH_ETHASHCL || !ETH_TRUE
 		else if (arg == "--cl-ms-per-batch" && i + 1 < argc)
-			try 
+			try
 			{
 				m_msPerBatch = stol(argv[++i]);
 			}
@@ -228,11 +226,11 @@ public:
 			m_clAllowCPU = true;
 #endif
 #if ETH_ETHASHCUDA || !ETH_TRUE
-		else if (arg == "--cuda-devices") 
+		else if (arg == "--cuda-devices")
 		{
 			while (m_cudaDeviceCount < 16 && i + 1 < argc)
 			{
-				try 
+				try
 				{
 					m_cudaDevices[m_cudaDeviceCount++] = stol(argv[++i]);
 				}
@@ -250,7 +248,7 @@ public:
 			else if (mode == "spin") m_cudaSchedule = 1;
 			else if (mode == "yield") m_cudaSchedule = 2;
 			else if (mode == "sync") m_cudaSchedule = 4;
-			else 
+			else
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
@@ -291,7 +289,7 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--benchmark-trials" && i + 1 < argc)
-			try 
+			try
 			{
 				m_benchmarkTrials = stol(argv[++i]);
 			}
@@ -304,7 +302,7 @@ public:
 			m_minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
 			m_minerType = MinerType::CL;
-		else if (arg == "-U" || arg == "--cuda") 
+		else if (arg == "-U" || arg == "--cuda")
 		{
 			m_minerType = MinerType::CUDA;
 		}
@@ -412,7 +410,7 @@ public:
 		}
 		else if ((arg == "-t" || arg == "--mining-threads") && i + 1 < argc)
 		{
-			try 
+			try
 			{
 				m_miningThreads = stol(argv[++i]);
 			}
@@ -474,7 +472,7 @@ public:
 			}
 			EthashCUDAMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
 			m_miningThreads = m_cudaDeviceCount;
-	
+
 			EthashCUDAMiner::setNumInstances(m_miningThreads);
 			if (!EthashCUDAMiner::configureGPU(
 				m_localWorkSize,
@@ -735,11 +733,11 @@ private:
 			time = 0;
 			genesis.setDifficulty(u256(1) << difficulty);
 			genesis.noteDirty();
-		
+
 			h256 hh;
 			std::random_device engine;
 			hh.randomize(engine);
-			
+
 			current.headerHash = hh;
 			current.boundary = genesis.boundary();
 			minelog << "Generated random work package:";
@@ -747,7 +745,7 @@ private:
 			minelog << "  Seedhash:" << current.seedHash.hex();
 			minelog << "  Target: " << h256(current.boundary).hex();
 			f.setWork(current);
-			
+
 		}
 	}
 
@@ -879,13 +877,13 @@ private:
 		EthStratumClient client(&f, _m, host, port, user, pass);
 
 		f.setSealers(sealers);
-				
+
 		f.onSolutionFound([&](EthashProofOfWork::Solution sol)
 		{
 			client.submit(sol);
 			return false;
 		});
-		
+
 		while (true)
 		{
 			auto mp = f.miningProgress();
