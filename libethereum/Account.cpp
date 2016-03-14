@@ -21,7 +21,7 @@
 
 #include "Account.h"
 #include <liblll/Compiler.h>
-#include <test/JsonSpiritHeaders.h>
+#include <json_spirit/JsonSpiritHeaders.h>
 #include <libethcore/Common.h>
 using namespace std;
 using namespace dev;

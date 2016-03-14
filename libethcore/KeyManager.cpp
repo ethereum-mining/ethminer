@@ -23,7 +23,7 @@
 #include <thread>
 #include <mutex>
 #include <boost/filesystem.hpp>
-#include <test/JsonSpiritHeaders.h>
+#include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/RLP.h>
