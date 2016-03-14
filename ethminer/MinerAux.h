@@ -50,7 +50,6 @@
 #include <libethash-cuda/ethash_cuda_miner.h>
 #endif
 #if ETH_JSONRPC || !ETH_TRUE
-#include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #endif
