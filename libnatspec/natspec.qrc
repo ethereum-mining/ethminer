@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/natspec">
-        <file alias="natspec.js">natspecjs/dist/natspec.min.js</file>
-    </qresource>
-</RCC>
