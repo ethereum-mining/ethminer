@@ -35,7 +35,7 @@ endif()
 
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} ethash)
-target_link_libraries(${EXECUTABLE} devcrypto)
+target_link_libraries(${EXECUTABLE} devcore)
 
 if (ETHSTRATUM)
 target_link_libraries(${EXECUTABLE} ethstratum)

@@ -14,24 +14,18 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Exceptions.h
- * @author Christian <c@ethdev.com>
+/** @file JsonSpiritHeaders.h
+ * @author Tim Hughes <tim@twistedfury.com>
  * @date 2014
  */
-
 #pragma once
 
-#include <libdevcore/Exceptions.h>
-
-namespace dev
-{
-namespace eth
-{
-
-struct AssemblyException: virtual Exception {};
-struct OptimizerException: virtual AssemblyException {};
-struct StackTooDeepException: virtual OptimizerException {};
-struct ItemNotAvailableException: virtual OptimizerException {};
-
-}
-}
+#pragma warning(push)
+#pragma warning(disable: 4100)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include "../json_spirit/json_spirit_reader_template.h"
+#include "../json_spirit/json_spirit_writer_template.h"
+#pragma GCC diagnostic pop
+#pragma warning(pop)
