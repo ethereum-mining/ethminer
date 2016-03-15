@@ -1,8 +1,0 @@
-# Ignore standard library headers.
-src:*/include/c\+\+/*
-
-# Ignore boost libraries headers.
-src:*/include/boost/*
-
-# Ignore Crypto++ library. We plan to remove it in the future. It exploits interger overflow and uses memcpy incorrectly.
-src:*/include/cryptopp/*
