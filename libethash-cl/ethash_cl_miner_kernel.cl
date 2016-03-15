@@ -36,6 +36,22 @@ __constant uint2 const Keccak_f1600_RC[24] = {
 	(uint2)(0x80008008, 0x80000000),
 };
 
+static uint2 ROL2(const uint2 v, const int n)
+{
+	uint2 result;
+	if (n <= 32)
+	{
+		result.y = ((v.y << (n)) | (v.x >> (32 - n)));
+		result.x = ((v.x << (n)) | (v.y >> (32 - n)));
+	}
+	else
+	{
+		result.y = ((v.x << (n - 32)) | (v.y >> (64 - n)));
+		result.x = ((v.y << (n - 32)) | (v.x >> (64 - n)));
+	}
+	return result;
+}
+
 static void keccak_f1600_round(uint2* a, uint r, uint out_size)
 {
    #if !__ENDIAN_LITTLE__
@@ -43,104 +59,113 @@ static void keccak_f1600_round(uint2* a, uint r, uint out_size)
 		a[i] = a[i].yx;
    #endif
 
-	uint2 b[25];
-	uint2 t;
+	uint2 t[5];
+	uint2 u, v;
 
 	// Theta
-	b[0] = a[0] ^ a[5] ^ a[10] ^ a[15] ^ a[20];
-	b[1] = a[1] ^ a[6] ^ a[11] ^ a[16] ^ a[21];
-	b[2] = a[2] ^ a[7] ^ a[12] ^ a[17] ^ a[22];
-	b[3] = a[3] ^ a[8] ^ a[13] ^ a[18] ^ a[23];
-	b[4] = a[4] ^ a[9] ^ a[14] ^ a[19] ^ a[24];
-	t = b[4] ^ (uint2)(b[1].x << 1 | b[1].y >> 31, b[1].y << 1 | b[1].x >> 31);
-	a[0] ^= t;
-	a[5] ^= t;
-	a[10] ^= t;
-	a[15] ^= t;
-	a[20] ^= t;
-	t = b[0] ^ (uint2)(b[2].x << 1 | b[2].y >> 31, b[2].y << 1 | b[2].x >> 31);
-	a[1] ^= t;
-	a[6] ^= t;
-	a[11] ^= t;
-	a[16] ^= t;
-	a[21] ^= t;
-	t = b[1] ^ (uint2)(b[3].x << 1 | b[3].y >> 31, b[3].y << 1 | b[3].x >> 31);
-	a[2] ^= t;
-	a[7] ^= t;
-	a[12] ^= t;
-	a[17] ^= t;
-	a[22] ^= t;
-	t = b[2] ^ (uint2)(b[4].x << 1 | b[4].y >> 31, b[4].y << 1 | b[4].x >> 31);
-	a[3] ^= t;
-	a[8] ^= t;
-	a[13] ^= t;
-	a[18] ^= t;
-	a[23] ^= t;
-	t = b[3] ^ (uint2)(b[0].x << 1 | b[0].y >> 31, b[0].y << 1 | b[0].x >> 31);
-	a[4] ^= t;
-	a[9] ^= t;
-	a[14] ^= t;
-	a[19] ^= t;
-	a[24] ^= t;
+	t[0] = a[0] ^ a[5] ^ a[10] ^ a[15] ^ a[20];
+	t[1] = a[1] ^ a[6] ^ a[11] ^ a[16] ^ a[21];
+	t[2] = a[2] ^ a[7] ^ a[12] ^ a[17] ^ a[22];
+	t[3] = a[3] ^ a[8] ^ a[13] ^ a[18] ^ a[23];
+	t[4] = a[4] ^ a[9] ^ a[14] ^ a[19] ^ a[24];
+	u = t[4] ^ ROL2(t[1], 1);
+	a[0] ^= u;
+	a[5] ^= u;
+	a[10] ^= u;
+	a[15] ^= u;
+	a[20] ^= u;
+	u = t[0] ^ ROL2(t[2], 1);
+	a[1] ^= u;
+	a[6] ^= u;
+	a[11] ^= u;
+	a[16] ^= u;
+	a[21] ^= u;
+	u = t[1] ^ ROL2(t[3], 1);
+	a[2] ^= u;
+	a[7] ^= u;
+	a[12] ^= u;
+	a[17] ^= u;
+	a[22] ^= u;
+	u = t[2] ^ ROL2(t[4], 1);
+	a[3] ^= u;
+	a[8] ^= u;
+	a[13] ^= u;
+	a[18] ^= u;
+	a[23] ^= u;
+	u = t[3] ^ ROL2(t[0], 1);
+	a[4] ^= u;
+	a[9] ^= u;
+	a[14] ^= u;
+	a[19] ^= u;
+	a[24] ^= u;
 
 	// Rho Pi
-	b[0] = a[0];
-	b[10] = (uint2)(a[1].x << 1 | a[1].y >> 31, a[1].y << 1 | a[1].x >> 31);
-	b[7] = (uint2)(a[10].x << 3 | a[10].y >> 29, a[10].y << 3 | a[10].x >> 29);
-	b[11] = (uint2)(a[7].x << 6 | a[7].y >> 26, a[7].y << 6 | a[7].x >> 26);
-	b[17] = (uint2)(a[11].x << 10 | a[11].y >> 22, a[11].y << 10 | a[11].x >> 22);
-	b[18] = (uint2)(a[17].x << 15 | a[17].y >> 17, a[17].y << 15 | a[17].x >> 17);
-	b[3] = (uint2)(a[18].x << 21 | a[18].y >> 11, a[18].y << 21 | a[18].x >> 11);
-	b[5] = (uint2)(a[3].x << 28 | a[3].y >> 4, a[3].y << 28 | a[3].x >> 4);
-	b[16] = (uint2)(a[5].y << 4 | a[5].x >> 28, a[5].x << 4 | a[5].y >> 28);
-	b[8] = (uint2)(a[16].y << 13 | a[16].x >> 19, a[16].x << 13 | a[16].y >> 19);
-	b[21] = (uint2)(a[8].y << 23 | a[8].x >> 9, a[8].x << 23 | a[8].y >> 9);
-	b[24] = (uint2)(a[21].x << 2 | a[21].y >> 30, a[21].y << 2 | a[21].x >> 30);
-	b[4] = (uint2)(a[24].x << 14 | a[24].y >> 18, a[24].y << 14 | a[24].x >> 18);
-	b[15] = (uint2)(a[4].x << 27 | a[4].y >> 5, a[4].y << 27 | a[4].x >> 5);
-	b[23] = (uint2)(a[15].y << 9 | a[15].x >> 23, a[15].x << 9 | a[15].y >> 23);
-	b[19] = (uint2)(a[23].y << 24 | a[23].x >> 8, a[23].x << 24 | a[23].y >> 8);
-	b[13] = (uint2)(a[19].x << 8 | a[19].y >> 24, a[19].y << 8 | a[19].x >> 24);
-	b[12] = (uint2)(a[13].x << 25 | a[13].y >> 7, a[13].y << 25 | a[13].x >> 7);
-	b[2] = (uint2)(a[12].y << 11 | a[12].x >> 21, a[12].x << 11 | a[12].y >> 21);
-	b[20] = (uint2)(a[2].y << 30 | a[2].x >> 2, a[2].x << 30 | a[2].y >> 2);
-	b[14] = (uint2)(a[20].x << 18 | a[20].y >> 14, a[20].y << 18 | a[20].x >> 14);
-	b[22] = (uint2)(a[14].y << 7 | a[14].x >> 25, a[14].x << 7 | a[14].y >> 25);
-	b[9] = (uint2)(a[22].y << 29 | a[22].x >> 3, a[22].x << 29 | a[22].y >> 3);
-	b[6] = (uint2)(a[9].x << 20 | a[9].y >> 12, a[9].y << 20 | a[9].x >> 12);
-	b[1] = (uint2)(a[6].y << 12 | a[6].x >> 20, a[6].x << 12 | a[6].y >> 20);
+	u = a[1];
+	a[1] = ROL2(a[6], 44);
+	a[6] = ROL2(a[9], 20);
+	a[9] = ROL2(a[22], 61);
+	a[22] = ROL2(a[14], 39);
+	a[14] = ROL2(a[20], 18);
+	a[20] = ROL2(a[2], 62);
+	a[2] = ROL2(a[12], 43);
+	a[12] = ROL2(a[13], 25);
+	a[13] = ROL2(a[19], 8);
+	a[19] = ROL2(a[23], 56);
+	a[23] = ROL2(a[15], 41);
+	a[15] = ROL2(a[4], 27);
+	a[4] = ROL2(a[24], 14);
+	a[24] = ROL2(a[21], 2);
+	a[21] = ROL2(a[8], 55);
+	a[8] = ROL2(a[16], 45);
+	a[16] = ROL2(a[5], 36);
+	a[5] = ROL2(a[3], 28);
+	a[3] = ROL2(a[18], 21);
+	a[18] = ROL2(a[17], 15);
+	a[17] = ROL2(a[11], 10);
+	a[11] = ROL2(a[7], 6);
+	a[7] = ROL2(a[10], 3);
+	a[10] = ROL2(u, 1);
 
 	// Chi
-	a[0] = bitselect(b[0] ^ b[2], b[0], b[1]);
+	u = a[0]; v = a[1];
+	a[0] = bitselect(a[0] ^ a[2], a[0], a[1]);
 	
 	if (out_size > 4)
 	{
-		a[1] = bitselect(b[1] ^ b[3], b[1], b[2]);
-		a[2] = bitselect(b[2] ^ b[4], b[2], b[3]);
-		a[3] = bitselect(b[3] ^ b[0], b[3], b[4]);
-		a[4] = bitselect(b[4] ^ b[1], b[4], b[0]);
-		a[5] = bitselect(b[5] ^ b[7], b[5], b[6]);
-		a[6] = bitselect(b[6] ^ b[8], b[6], b[7]);
-		a[7] = bitselect(b[7] ^ b[9], b[7], b[8]);
-		a[8] = bitselect(b[8] ^ b[5], b[8], b[9]);
+		a[1] = bitselect(a[1] ^ a[3], a[1], a[2]);
+		a[2] = bitselect(a[2] ^ a[4], a[2], a[3]);
+		a[3] = bitselect(a[3] ^ u, a[3], a[4]);
+		a[4] = bitselect(a[4] ^ v, a[4], u);
+
+		u = a[5]; v = a[6];
+		a[5] = bitselect(a[5] ^ a[7], a[5], a[6]);
+		a[6] = bitselect(a[6] ^ a[8], a[6], a[7]);
+		a[7] = bitselect(a[7] ^ a[9], a[7], a[8]);
+		a[8] = bitselect(a[8] ^ u, a[8], a[9]);
 		if (out_size > 8)
 		{
-			a[9] = bitselect(b[9] ^ b[6], b[9], b[5]);
-			a[10] = bitselect(b[10] ^ b[12], b[10], b[11]);
-			a[11] = bitselect(b[11] ^ b[13], b[11], b[12]);
-			a[12] = bitselect(b[12] ^ b[14], b[12], b[13]);
-			a[13] = bitselect(b[13] ^ b[10], b[13], b[14]);
-			a[14] = bitselect(b[14] ^ b[11], b[14], b[10]);
-			a[15] = bitselect(b[15] ^ b[17], b[15], b[16]);
-			a[16] = bitselect(b[16] ^ b[18], b[16], b[17]);
-			a[17] = bitselect(b[17] ^ b[19], b[17], b[18]);
-			a[18] = bitselect(b[18] ^ b[15], b[18], b[19]);
-			a[19] = bitselect(b[19] ^ b[16], b[19], b[15]);
-			a[20] = bitselect(b[20] ^ b[22], b[20], b[21]);
-			a[21] = bitselect(b[21] ^ b[23], b[21], b[22]);
-			a[22] = bitselect(b[22] ^ b[24], b[22], b[23]);
-			a[23] = bitselect(b[23] ^ b[20], b[23], b[24]);
-			a[24] = bitselect(b[24] ^ b[21], b[24], b[20]);
+			a[9]  = bitselect(a[9] ^ v, a[9], u);
+
+			u = a[10]; v = a[11];
+			a[10] = bitselect(a[10] ^ a[12], a[10], a[11]);
+			a[11] = bitselect(a[11] ^ a[13], a[11], a[12]);
+			a[12] = bitselect(a[12] ^ a[14], a[12], a[13]);
+			a[13] = bitselect(a[13] ^ u, a[13], a[14]);
+			a[14] = bitselect(a[14] ^ v, a[14], u);
+
+			u = a[15]; v = a[16];
+			a[15] = bitselect(a[15] ^ a[17], a[15], a[16]);
+			a[16] = bitselect(a[16] ^ a[18], a[16], a[17]);
+			a[17] = bitselect(a[17] ^ a[19], a[17], a[18]);
+			a[18] = bitselect(a[18] ^ u, a[18], a[19]);
+			a[19] = bitselect(a[19] ^ v, a[19], u);
+
+			u = a[20]; v = a[21];
+			a[20] = bitselect(a[20] ^ a[22], a[20], a[21]);
+			a[21] = bitselect(a[21] ^ a[23], a[21], a[22]);
+			a[22] = bitselect(a[22] ^ a[24], a[22], a[23]);
+			a[23] = bitselect(a[23] ^ u, a[23], a[24]);
+			a[24] = bitselect(a[24] ^ v, a[24], u);
 		}
 	}
 
@@ -257,12 +282,11 @@ static ulong compute_hash(
 	uint const thread_id = gid & 7;
 	uint const hash_id = (gid & (GROUP_SIZE-1)) >> 3;
 
-	uint i = 0;
-	do
+	for (int i = 0; i < THREADS_PER_HASH; i++)
 	{
 		// share init with other threads
 		if (i == thread_id)
-			copy(share[hash_id].uint4s, state, 4);
+			copy(share[hash_id].ulongs, state, 8);
 
 		barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -277,12 +301,10 @@ static ulong compute_hash(
 		barrier(CLK_LOCAL_MEM_FENCE);
 		uint init0 = *share0;
 
-		uint a = 0;
-		do
+		for (uint a = 0; a < ACCESSES; a += 4)
 		{
 			bool update_share = thread_id == ((a >> 2) & (THREADS_PER_HASH - 1));
 
-			#pragma unroll
 			for (uint i = 0; i != 4; ++i)
 			{
 				if (update_share)
@@ -293,7 +315,7 @@ static ulong compute_hash(
 
 				mix = fnv4(mix, g_dag[*share0].uint4s[thread_id]);
 			}
-		} while ((a += 4) != (ACCESSES & isolate));
+		}
 
 		share[hash_id].uints[thread_id] = fnv_reduce(mix);
 		barrier(CLK_LOCAL_MEM_FENCE);
@@ -303,7 +325,6 @@ static ulong compute_hash(
 
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
-	while (++i != (THREADS_PER_HASH & isolate));
 
 	// keccak_256(keccak_512(header..nonce) .. mix);
 	keccak_f1600_no_absorb(state, 12, 4, isolate);
