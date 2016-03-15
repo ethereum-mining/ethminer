@@ -32,7 +32,6 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/CommonJS.h>
-#include <libdevcrypto/CryptoPP.h>
 #include <libdevcore/FileSystem.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
