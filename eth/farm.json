@@ -1,4 +1,0 @@
-[
-	{ "name": "eth_getWork", "params": [], "order": [], "returns": []},
-	{ "name": "eth_submitWork", "params": ["", "", ""], "order": [], "returns": true}
-]
