@@ -54,11 +54,6 @@ static uint2 ROL2(const uint2 v, const int n)
 
 static void keccak_f1600_round(uint2* a, uint r, uint out_size)
 {
-   #if !__ENDIAN_LITTLE__
-	for (uint i = 0; i != 25; ++i)
-		a[i] = a[i].yx;
-   #endif
-
 	uint2 t[5];
 	uint2 u, v;
 
@@ -127,75 +122,61 @@ static void keccak_f1600_round(uint2* a, uint r, uint out_size)
 	a[10] = ROL2(u, 1);
 
 	// Chi
-	u = a[0]; v = a[1];
+	u = a[0]; 
 	a[0] = bitselect(a[0] ^ a[2], a[0], a[1]);
-	
-	if (out_size > 4)
-	{
-		a[1] = bitselect(a[1] ^ a[3], a[1], a[2]);
-		a[2] = bitselect(a[2] ^ a[4], a[2], a[3]);
-		a[3] = bitselect(a[3] ^ u, a[3], a[4]);
-		a[4] = bitselect(a[4] ^ v, a[4], u);
-
-		u = a[5]; v = a[6];
-		a[5] = bitselect(a[5] ^ a[7], a[5], a[6]);
-		a[6] = bitselect(a[6] ^ a[8], a[6], a[7]);
-		a[7] = bitselect(a[7] ^ a[9], a[7], a[8]);
-		a[8] = bitselect(a[8] ^ u, a[8], a[9]);
-		if (out_size > 8)
-		{
-			a[9]  = bitselect(a[9] ^ v, a[9], u);
-
-			u = a[10]; v = a[11];
-			a[10] = bitselect(a[10] ^ a[12], a[10], a[11]);
-			a[11] = bitselect(a[11] ^ a[13], a[11], a[12]);
-			a[12] = bitselect(a[12] ^ a[14], a[12], a[13]);
-			a[13] = bitselect(a[13] ^ u, a[13], a[14]);
-			a[14] = bitselect(a[14] ^ v, a[14], u);
-
-			u = a[15]; v = a[16];
-			a[15] = bitselect(a[15] ^ a[17], a[15], a[16]);
-			a[16] = bitselect(a[16] ^ a[18], a[16], a[17]);
-			a[17] = bitselect(a[17] ^ a[19], a[17], a[18]);
-			a[18] = bitselect(a[18] ^ u, a[18], a[19]);
-			a[19] = bitselect(a[19] ^ v, a[19], u);
-
-			u = a[20]; v = a[21];
-			a[20] = bitselect(a[20] ^ a[22], a[20], a[21]);
-			a[21] = bitselect(a[21] ^ a[23], a[21], a[22]);
-			a[22] = bitselect(a[22] ^ a[24], a[22], a[23]);
-			a[23] = bitselect(a[23] ^ u, a[23], a[24]);
-			a[24] = bitselect(a[24] ^ v, a[24], u);
-		}
-	}
-
 	// Iota
 	a[0] ^= Keccak_f1600_RC[r];
+	
+	if (out_size == 1) return;
+	// Continue Chi
+	v = a[1];
+	a[1] = bitselect(a[1] ^ a[3], a[1], a[2]);
+	a[2] = bitselect(a[2] ^ a[4], a[2], a[3]);
+	a[3] = bitselect(a[3] ^ u, a[3], a[4]);
+	a[4] = bitselect(a[4] ^ v, a[4], u);
 
-   #if !__ENDIAN_LITTLE__
-	for (uint i = 0; i != 25; ++i)
-		a[i] = a[i].yx;
-   #endif
+	u = a[5]; v = a[6];
+	a[5] = bitselect(a[5] ^ a[7], a[5], a[6]);
+	a[6] = bitselect(a[6] ^ a[8], a[6], a[7]);
+	a[7] = bitselect(a[7] ^ a[9], a[7], a[8]);
+	a[8] = bitselect(a[8] ^ u, a[8], a[9]);
+	
+	if (out_size == 8) return;
+
+	a[9]  = bitselect(a[9] ^ v, a[9], u);
+
+	u = a[10]; v = a[11];
+	a[10] = bitselect(a[10] ^ a[12], a[10], a[11]);
+	a[11] = bitselect(a[11] ^ a[13], a[11], a[12]);
+	a[12] = bitselect(a[12] ^ a[14], a[12], a[13]);
+	a[13] = bitselect(a[13] ^ u, a[13], a[14]);
+	a[14] = bitselect(a[14] ^ v, a[14], u);
+
+	u = a[15]; v = a[16];
+	a[15] = bitselect(a[15] ^ a[17], a[15], a[16]);
+	a[16] = bitselect(a[16] ^ a[18], a[16], a[17]);
+	a[17] = bitselect(a[17] ^ a[19], a[17], a[18]);
+	a[18] = bitselect(a[18] ^ u, a[18], a[19]);
+	a[19] = bitselect(a[19] ^ v, a[19], u);
+
+	u = a[20]; v = a[21];
+	a[20] = bitselect(a[20] ^ a[22], a[20], a[21]);
+	a[21] = bitselect(a[21] ^ a[23], a[21], a[22]);
+	a[22] = bitselect(a[22] ^ a[24], a[22], a[23]);
+	a[23] = bitselect(a[23] ^ u, a[23], a[24]);
+	a[24] = bitselect(a[24] ^ v, a[24], u);
 }
 
-static void keccak_f1600_no_absorb(ulong* a, uint in_size, uint out_size, uint isolate)
+static void keccak_f1600_no_absorb(uint2* a, uint out_size, uint isolate)
 {
-	for (uint i = in_size; i != 25; ++i)
-	{
-		a[i] = 0;
-	}
-#if __ENDIAN_LITTLE__
-	a[in_size] ^= 0x0000000000000001;
-	a[24-out_size*2] ^= 0x8000000000000000;
-#else
-	a[in_size] ^= 0x0100000000000000;
-	a[24-out_size*2] ^= 0x0000000000000080;
-#endif
+
 
 	// Originally I unrolled the first and last rounds to interface
 	// better with surrounding code, however I haven't done this
 	// without causing the AMD compiler to blow up the VGPR usage.
+
 	uint r = 0;
+	uint o = 25;
 	do
 	{
 		// This dynamic branch stops the AMD compiler unrolling the loop
@@ -207,18 +188,17 @@ static void keccak_f1600_no_absorb(ulong* a, uint in_size, uint out_size, uint i
 		// doesn't bother.
 		if (isolate)
 		{
-			keccak_f1600_round((uint2*)a, r++, 25);
+			keccak_f1600_round(a, r++, o);
+			if (r == 23) o = out_size;
 		}
-	}
-	while (r < 23);
+	} 
+	while (r < 24);
 
 	// final round optimised for digest size
-	keccak_f1600_round((uint2*)a, r++, out_size);
+	//keccak_f1600_round(a, 23, out_size);
 }
 
 #define copy(dst, src, count) for (uint i = 0; i != count; ++i) { (dst)[i] = (src)[i]; }
-
-#define countof(x) (sizeof(x) / sizeof(x[0]))
 
 static uint fnv(uint x, uint y)
 {
@@ -235,21 +215,13 @@ static uint fnv_reduce(uint4 v)
 	return fnv(fnv(fnv(v.x, v.y), v.z), v.w);
 }
 
-typedef union
+typedef struct
 {
 	ulong ulongs[32 / sizeof(ulong)];
-	uint uints[32 / sizeof(uint)];
 } hash32_t;
 
-typedef union
+typedef struct
 {
-	ulong ulongs[64 / sizeof(ulong)];
-	uint4 uint4s[64 / sizeof(uint4)];
-} hash64_t;
-
-typedef union
-{
-	uint uints[128 / sizeof(uint)];
 	uint4 uint4s[128 / sizeof(uint4)];
 } hash128_t;
 
@@ -259,14 +231,18 @@ typedef union {
 	uint  uints[16];
 } compute_hash_share;
 
-static ulong compute_hash(
-	__local compute_hash_share* share,
+__attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
+__kernel void ethash_search(
+	__global volatile uint* restrict g_output,
 	__constant hash32_t const* g_header,
 	__global hash128_t const* g_dag,
-	ulong nonce,
+	ulong start_nonce,
+	ulong target,
 	uint isolate
 	)
 {
+	__local compute_hash_share share[HASHES_PER_LOOP];
+
 	uint const gid = get_global_id(0);
 
 	// Compute one init hash per work item.
@@ -274,13 +250,20 @@ static ulong compute_hash(
 	// sha3_512(header .. nonce)
 	ulong state[25];
 	copy(state, g_header->ulongs, 4);
-	state[4] = nonce;
-	keccak_f1600_no_absorb(state, 5, 8, isolate);
-	 
+	state[4] = start_nonce + gid;
 
+	for (uint i = 6; i != 25; ++i)
+	{
+		state[i] = 0;
+	}
+	state[5] = 0x0000000000000001;
+	state[8] = 0x8000000000000000;
+
+	keccak_f1600_no_absorb((uint2*)state, 8, isolate);
+	
 	// Threads work together in this phase in groups of 8.
 	uint const thread_id = gid & 7;
-	uint const hash_id = (gid & (GROUP_SIZE-1)) >> 3;
+	uint const hash_id = (gid & (GROUP_SIZE - 1)) >> 3;
 
 	for (int i = 0; i < THREADS_PER_HASH; i++)
 	{
@@ -326,28 +309,17 @@ static ulong compute_hash(
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
 
+	for (uint i = 13; i != 25; ++i)
+	{
+		state[i] = 0;
+	}
+	state[12] = 0x0000000000000001;
+	state[16] = 0x8000000000000000;
+
 	// keccak_256(keccak_512(header..nonce) .. mix);
-	keccak_f1600_no_absorb(state, 12, 4, isolate);
+	keccak_f1600_no_absorb((uint2*)state, 1, isolate);
 
-	return state[0];
-}
-
-__attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
-__kernel void ethash_search(
-	__global volatile uint* restrict g_output,
-	__constant hash32_t const* g_header,
-	__global hash128_t const* g_dag,
-	ulong start_nonce,
-	ulong target,
-	uint isolate
-	)
-{
-	__local compute_hash_share share[HASHES_PER_LOOP];
-
-	uint const gid = get_global_id(0);
-	ulong hash = compute_hash(share, g_header, g_dag, start_nonce + gid, isolate);
-
-	if (as_ulong(as_uchar8(hash).s76543210) < target)
+	if (as_ulong(as_uchar8(state[0]).s76543210) < target)
 	{
 		uint slot = min(MAX_OUTPUTS, atomic_inc(&g_output[0]) + 1);
 		g_output[slot] = gid;
