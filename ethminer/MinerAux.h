@@ -211,16 +211,6 @@ public:
 			m_extraGPUMemory = 1000000 * stol(argv[++i]);
 #endif
 #if ETH_ETHASHCL || !ETH_TRUE
-		else if (arg == "--cl-ms-per-batch" && i + 1 < argc)
-			try
-			{
-				m_msPerBatch = stol(argv[++i]);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
 		else if (arg == "--allow-opencl-cpu")
 			m_clAllowCPU = true;
 #endif
@@ -447,7 +437,6 @@ public:
 			if (!EthashGPUMiner::configureGPU(
 					m_localWorkSize,
 					m_globalWorkSizeMultiplier,
-					m_msPerBatch,
 					m_openclPlatform,
 					m_openclDevice,
 					m_clAllowCPU,
@@ -540,7 +529,6 @@ public:
 			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
 			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << toString(ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier) << " * " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
-			<< "    --cl-ms-per-batch Set the OpenCL target milliseconds per batch (global workgroup size). Default is " << toString(ethash_cl_miner::c_defaultMSPerBatch) << ". If 0 is given then no autoadjustment of global work size will happen" << endl
 #endif
 #if ETH_ETHASHCUDA || !ETH_TRUE
 			<< "    --cuda-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
@@ -914,7 +902,6 @@ private:
 	unsigned m_globalWorkSizeMultiplier = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = ethash_cl_miner::c_defaultLocalWorkSize;
 #endif
-	unsigned m_msPerBatch = ethash_cl_miner::c_defaultMSPerBatch;
 #endif
 #if ETH_ETHASHCUDA || !ETH_TRUE
 	unsigned m_globalWorkSizeMultiplier = ethash_cuda_miner::c_defaultGridSize;
