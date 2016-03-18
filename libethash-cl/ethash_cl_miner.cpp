@@ -55,7 +55,6 @@ using namespace std;
 
 unsigned const ethash_cl_miner::c_defaultLocalWorkSize = 64;
 unsigned const ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier = 4096; // * CL_DEFAULT_LOCAL_WORK_SIZE
-unsigned const ethash_cl_miner::c_defaultMSPerBatch = 0;
 
 // TODO: If at any point we can use libdevcore in here then we should switch to using a LogChannel
 #if defined(_WIN32)
@@ -184,7 +183,6 @@ bool ethash_cl_miner::configureGPU(
 	unsigned _platformId,
 	unsigned _localWorkSize,
 	unsigned _globalWorkSize,
-	unsigned _msPerBatch,
 	bool _allowCPU,
 	unsigned _extraGPUMemory,
 	uint64_t _currentBlock
@@ -192,7 +190,6 @@ bool ethash_cl_miner::configureGPU(
 {
 	s_workgroupSize = _localWorkSize;
 	s_initialGlobalWorkSize = _globalWorkSize;
-	s_msPerBatch = _msPerBatch;
 	s_allowCPU = _allowCPU;
 	s_extraRequiredGPUMem = _extraGPUMemory;
 	// by default let's only consider the DAG of the first epoch
@@ -223,7 +220,6 @@ bool ethash_cl_miner::configureGPU(
 
 bool ethash_cl_miner::s_allowCPU = false;
 unsigned ethash_cl_miner::s_extraRequiredGPUMem;
-unsigned ethash_cl_miner::s_msPerBatch = ethash_cl_miner::c_defaultMSPerBatch;
 unsigned ethash_cl_miner::s_workgroupSize = ethash_cl_miner::c_defaultLocalWorkSize;
 unsigned ethash_cl_miner::s_initialGlobalWorkSize = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier * ethash_cl_miner::c_defaultLocalWorkSize;
 
@@ -362,10 +358,6 @@ bool ethash_cl_miner::init(
 		m_globalWorkSize = s_initialGlobalWorkSize;
 		if (m_globalWorkSize % s_workgroupSize != 0)
 			m_globalWorkSize = ((m_globalWorkSize / s_workgroupSize) + 1) * s_workgroupSize;
-		// remember the device's address bits
-		m_deviceBits = device.getInfo<CL_DEVICE_ADDRESS_BITS>();
-		// make sure first step of global work size adjustment is large enough
-		m_stepWorkSizeAdjust = pow(2, m_deviceBits / 2 + 1);
 
 		// patch source code
 		// note: ETHASH_CL_MINER_KERNEL is simply ethash_cl_miner_kernel.cl compiled
@@ -397,13 +389,12 @@ bool ethash_cl_miner::init(
 		// create buffer for dag
 		try
 		{
-			m_dagChunksCount = 1;
 			ETHCL_LOG("Creating one big buffer for the DAG");
-			m_dagChunks.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize));
+			m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize);
 			ETHCL_LOG("Loading single big chunk kernels");
 			m_searchKernel = cl::Kernel(program, "ethash_search");
 			ETHCL_LOG("Mapping one big chunk.");
-			m_queue.enqueueWriteBuffer(m_dagChunks[0], CL_TRUE, 0, _dagSize, _dag);
+			m_queue.enqueueWriteBuffer(m_dag, CL_TRUE, 0, _dagSize, _dag);
 		}
 		catch (cl::Error const& err)
 		{
@@ -456,13 +447,12 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 #endif
 			m_queue.finish();
 
-		unsigned argPos = 2;
+		
 		m_searchKernel.setArg(1, m_header);
-		for (unsigned i = 0; i < m_dagChunksCount; ++i, ++argPos)
-			m_searchKernel.setArg(argPos, m_dagChunks[i]);
+		m_searchKernel.setArg(2, m_dag );
 		// pass these to stop the compiler unrolling the loops
-		m_searchKernel.setArg(argPos + 1, target);
-		m_searchKernel.setArg(argPos + 2, ~0u);
+		m_searchKernel.setArg(4, target);
+		m_searchKernel.setArg(5, ~0u);
 
 		unsigned buf = 0;
 		random_device engine;
@@ -472,10 +462,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 			auto t = chrono::high_resolution_clock::now();
 			// supply output buffer to kernel
 			m_searchKernel.setArg(0, m_searchBuffer[buf]);
-			if (m_dagChunksCount == 1)
-				m_searchKernel.setArg(3, start_nonce);
-			else
-				m_searchKernel.setArg(6, start_nonce);
+			m_searchKernel.setArg(3, start_nonce);
 
 			// execute it!
 			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, s_workgroupSize);
@@ -507,44 +494,6 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 					m_queue.enqueueWriteBuffer(m_searchBuffer[batch.buf], true, 0, 4, &c_zero);
 
 				pending.pop();
-			}
-
-			// adjust global work size depending on last search time
-			if (s_msPerBatch)
-			{
-				// Global work size must be:
-				//  - less than or equal to 2 ^ DEVICE_BITS - 1
-				//  - divisible by lobal work size (workgroup size)
-				auto d = chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - t);
-				if (d != chrono::milliseconds(0)) // if duration is zero, we did not get in the actual searh/or search not finished
-				{
-					if (d > chrono::milliseconds(s_msPerBatch * 10 / 9))
-					{
-						// Divide the step by 2 when adjustment way change
-						if (m_wayWorkSizeAdjust > -1)
-							m_stepWorkSizeAdjust = max<unsigned>(1, m_stepWorkSizeAdjust / 2);
-						m_wayWorkSizeAdjust = -1;
-						// cerr << "m_stepWorkSizeAdjust: " << m_stepWorkSizeAdjust << ", m_wayWorkSizeAdjust: " << m_wayWorkSizeAdjust << endl;
-
-						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, >> " << s_msPerBatch << " ms." << endl;
-						m_globalWorkSize = max<unsigned>(128, m_globalWorkSize - m_stepWorkSizeAdjust);
-						// cerr << "New global work size" << m_globalWorkSize << endl;
-					}
-					else if (d < chrono::milliseconds(s_msPerBatch * 9 / 10))
-					{
-						// Divide the step by 2 when adjustment way change
-						if (m_wayWorkSizeAdjust < 1)
-							m_stepWorkSizeAdjust = max<unsigned>(1, m_stepWorkSizeAdjust / 2);
-						m_wayWorkSizeAdjust = 1;
-						// cerr << "m_stepWorkSizeAdjust: " << m_stepWorkSizeAdjust << ", m_wayWorkSizeAdjust: " << m_wayWorkSizeAdjust << endl;
-
-						// cerr << "Batch of " << m_globalWorkSize << " took " << chrono::duration_cast<chrono::milliseconds>(d).count() << " ms, << " << s_msPerBatch << " ms." << endl;
-						m_globalWorkSize = min<unsigned>(pow(2, m_deviceBits) - 1, m_globalWorkSize + m_stepWorkSizeAdjust);
-						// Global work size should never be less than the workgroup size
-						m_globalWorkSize = max<unsigned>(s_workgroupSize,  m_globalWorkSize);
-						// cerr << "New global work size" << m_globalWorkSize << endl;
-					}
-				}
 			}
 		}
 

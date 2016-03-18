@@ -48,7 +48,6 @@ public:
 	static bool configureGPU(
 		unsigned _localWorkSize,
 		unsigned _globalWorkSizeMultiplier,
-		unsigned _msPerBatch,
 		unsigned _platformId,
 		unsigned _deviceId,
 		bool _allowCPU,

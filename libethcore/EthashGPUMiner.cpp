@@ -202,7 +202,6 @@ void EthashGPUMiner::listDevices()
 bool EthashGPUMiner::configureGPU(
 	unsigned _localWorkSize,
 	unsigned _globalWorkSizeMultiplier,
-	unsigned _msPerBatch,
 	unsigned _platformId,
 	unsigned _deviceId,
 	bool _allowCPU,
@@ -223,7 +222,6 @@ bool EthashGPUMiner::configureGPU(
 			_platformId,
 			_localWorkSize,
 			_globalWorkSizeMultiplier * _localWorkSize,
-			_msPerBatch,
 			_allowCPU,
 			_extraGPUMemory,
 			_currentBlock)
