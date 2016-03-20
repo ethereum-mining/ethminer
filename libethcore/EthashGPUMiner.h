@@ -55,6 +55,13 @@ public:
 		uint64_t _currentBlock
 	);
 	static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
+	static void setDevices(unsigned * _devices, unsigned _selectedDeviceCount)
+	{
+		for (unsigned i = 0; i < _selectedDeviceCount; i++)
+		{
+			s_devices[i] = _devices[i];
+		}
+	}
 
 protected:
 	void kickOff() override;
@@ -73,6 +80,7 @@ private:
 	static unsigned s_platformId;
 	static unsigned s_deviceId;
 	static unsigned s_numInstances;
+	static int s_devices[16];
 };
 
 }

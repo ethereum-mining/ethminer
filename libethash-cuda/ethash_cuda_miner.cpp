@@ -141,10 +141,12 @@ bool ethash_cuda_miner::configureGPU(
 		unsigned devicesCount = getNumDevices();
 		for (unsigned int i = 0; i < devicesCount; i++)
 		{
+			
 			if (_devices[i] != -1)
 			{
+				int deviceId = min((int)devicesCount - 1, _devices[i]);
 				cudaDeviceProp props;
-				CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, _devices[i]));
+				CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, deviceId));
 				if (props.totalGlobalMem >= requiredSize)
 				{
 					ETHCUDA_LOG(
