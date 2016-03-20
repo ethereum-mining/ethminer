@@ -103,6 +103,7 @@ private:
 unsigned EthashGPUMiner::s_platformId = 0;
 unsigned EthashGPUMiner::s_deviceId = 0;
 unsigned EthashGPUMiner::s_numInstances = 0;
+int EthashGPUMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
 EthashGPUMiner::EthashGPUMiner(ConstructionInfo const& _ci):
 	GenericMiner<EthashProofOfWork>(_ci),
@@ -147,7 +148,7 @@ void EthashGPUMiner::workLoop()
 			delete m_miner;
 			m_miner = new ethash_cl_miner;
 
-			unsigned device = instances() > 1 ? index() : s_deviceId;
+			unsigned device = s_devices[index()] > -1 ? s_devices[index()] : index();
 
 			EthashAux::FullType dag;
 			while (true)
