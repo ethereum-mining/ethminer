@@ -75,6 +75,14 @@ struct EthashProofOfWork
 	static const unsigned defaultMSPerBatch;
 };
 
+enum class DAGEraseMode
+{
+	None,
+	Old,
+	Bench,
+	All
+};
+
 class EthashAux
 {
 public:
@@ -111,6 +119,10 @@ public:
 	static uint64_t dataSize(uint64_t _blockNumber);
 	static void setCustomDirName(const char * custom_dir_name);
 	static char * customDirName();
+
+	static void setDAGEraseMode(DAGEraseMode mode);
+	static void EthashAux::eraseDAGs();
+
 	static LightType light(h256 const& _seedHash);
 
 	static const uint64_t NotGenerating = (uint64_t)-1;
@@ -120,6 +132,8 @@ public:
 	static std::pair<uint64_t, unsigned> fullGeneratingProgress() { return std::make_pair(get()->m_generatingFullNumber, get()->m_fullProgress); }
 	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result or empty pointer if not existing and _createIfMissing is false.
 	static FullType full(h256 const& _seedHash, bool _createIfMissing = false, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
+	
+
 
 	static EthashProofOfWork::Result eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce);
 
@@ -132,6 +146,7 @@ private:
 
 	static EthashAux* s_this;
 	static char s_customDirName[256];
+	static DAGEraseMode s_dagEraseMode;
 
 	SharedMutex x_lights;
 	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;

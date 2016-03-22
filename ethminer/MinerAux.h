@@ -109,7 +109,6 @@ public:
 		Stratum
 	};
 
-
 	MinerCLI(OperationMode _mode = OperationMode::None): mode(_mode) {}
 
 	bool interpretOption(int& i, int argc, char** argv)
@@ -314,6 +313,19 @@ public:
 		{
 			strcpy(s_dagDir, argv[++i]);
 		}
+		else if ((arg == "-E" || arg == "--erase-dags") && i + 1 < argc)
+		{
+			string m = string(argv[++i]);
+			if (m == "none") m_eraseMode = DAGEraseMode::None;
+			else if (m == "old") m_eraseMode = DAGEraseMode::Old;
+			else if (m == "bench") m_eraseMode = DAGEraseMode::Bench;
+			else if (m == "all") m_eraseMode = DAGEraseMode::All;
+			else
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
 		else if (arg == "--no-precompute")
 			m_precompute = false;
 		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
@@ -429,6 +441,11 @@ public:
 
 	void execute()
 	{
+		EthashAux::setCustomDirName(s_dagDir);
+		EthashAux::setDAGEraseMode(m_eraseMode);
+		EthashAux::eraseDAGs();
+		
+
 		if (m_shouldListDevices)
 		{
 #if ETH_ETHASHCL || !ETH_TRUE
@@ -513,6 +530,12 @@ public:
 #if ETH_JSONRPC || !ETH_TRUE
 			<< "Work farming mode:" << endl
 			<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
+#endif
+#if ETH_STRATUM || !ETH_TRUE
+			<< "	-S, --stratum <host:port>  Put into stratum mode with the stratum server at host:port" << endl
+			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
+#endif
+#if ETH_JSONRPC || ETH_STRATUM || !ETH_TRUE
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500)." << endl
 			<< "    --no-precompute  Don't precompute the next epoch's DAG." << endl
 #endif
@@ -525,12 +548,18 @@ public:
 			<< "    --benchmark-trial <seconds>  Set the duration for each trial for the benchmark tests (default: 3)." << endl
 			<< "    --benchmark-trials <n>  Set the duration of warmup for the benchmark tests (default: 5)." << endl
 			<< "Simulation mode:" << endl
-			<< "    -S [<n>],--simulation [<n>] Mining test mode. Used to validate kernel optimizations. Optionally specify block number." << endl
+			<< "    -Z [<n>],--simulation [<n>] Mining test mode. Used to validate kernel optimizations. Optionally specify block number." << endl
 #if ETH_JSONRPC || !ETH_TRUE
 			<< "    --phone-home <on/off>  When benchmarking, publish results (default: off)" << endl
 #endif
-			<< "DAG creation mode:" << endl
+			<< "DAG file management:" << endl
 			<< "    -D,--create-dag <number>  Create the DAG in preparation for mining on given block and exit." << endl
+			<< "    -R <s>, --dag-dir <s> Store/Load DAG files in/from the specified directory. Useful for running multiple instances with different configurations." << endl
+			<< "    -E <mode>, --erase-dags <mode> Erase unneeded DAG files. Default is 'none'. Possible values are:" << endl
+			<< "        none  - don't erase DAG files (default)" << endl
+			<< "        old   - erase all DAG files older than current epoch" << endl
+			<< "		bench - like old, but keep epoch 0 for benchmarking" << endl
+			<< "        all   - erase all DAG files" << endl
 			<< "Mining configuration:" << endl
 			<< "    -C,--cpu  When mining, use the CPU." << endl
 			<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
@@ -542,7 +571,6 @@ public:
 			<< "    --allow-opencl-cpu Allows CPU to be considered as an OpenCL device if the OpenCL platform supports it." << endl
 			<< "    --list-devices List the detected OpenCL/CUDA devices and exit." << endl
 			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." << endl
-			<< "    -R <s>, --dag-dir <s> Store/Load DAG files in/from the specified directory. Useful for running multiple instances with different configurations." << endl
 #if ETH_ETHASHCL || !ETH_TRUE
 			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
@@ -553,7 +581,7 @@ public:
 			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(ethash_cuda_miner::c_defaultBlockSize) << endl
 			<< "    --cuda-grid-size Set the CUDA grid size. Default is " << toString(ethash_cuda_miner::c_defaultGridSize) << endl
 			<< "    --cuda-streams Set the number of CUDA streams. Default is " << toString(ethash_cuda_miner::c_defaultNumStreams) << endl
-			<< "    --cuda-schedule <mode> Set the schedule mode for CUDA threads waiting for CUDA devices to finish work. Default is sync. Possible values are:" << endl
+			<< "    --cuda-schedule <mode> Set the schedule mode for CUDA threads waiting for CUDA devices to finish work. Default is 'sync'. Possible values are:" << endl
 			<< "        auto  - Uses a heuristic based on the number of active CUDA contexts in the process C and the number of logical processors in the system P. If C > P, then yield else spin." << endl
 			<< "        spin  - Instruct CUDA to actively spin when waiting for results from the device." << endl
 			<< "        yield - Instruct CUDA to yield its thread when waiting for results from the device." << endl
@@ -569,16 +597,16 @@ public:
 private:
 	void doInitDAG(unsigned _n)
 	{
-		EthashAux::setCustomDirName(s_dagDir);
 		h256 seedHash = EthashAux::seedHash(_n);
 		cout << "Initializing DAG for epoch beginning #" << (_n / 30000 * 30000) << " (seedhash " << seedHash.abridged() << "). This will take a while." << endl;
 		EthashAux::full(seedHash, true);
 		exit(0);
 	}
 
+	
+
 	void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
 	{
-		EthashAux::setCustomDirName(s_dagDir);
 		Ethash::BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
 		genesis.setDifficulty(1 << 18);
@@ -663,8 +691,6 @@ private:
 
 	void doSimulation(MinerType _m, int difficulty = 20)
 	{
-		EthashAux::setCustomDirName(s_dagDir);
-
 		Ethash::BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
 		genesis.setDifficulty(1 << 18);
@@ -756,8 +782,6 @@ private:
 
 	void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 	{
-		EthashAux::setCustomDirName(s_dagDir);
-
 		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
 		sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashCPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); }};
 #if ETH_ETHASHCL
@@ -866,10 +890,9 @@ private:
 		exit(0);
 	}
 
+#if ETH_STRATUM || !ETH_TRUE
 	void doStratum(MinerType _m, unsigned _recheckPeriod, string const & host, string const & port, string const & user, string const & pass)
 	{
-		EthashAux::setCustomDirName(s_dagDir);
-
 		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
 		sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); } };
 #if ETH_ETHASHCL
@@ -888,7 +911,7 @@ private:
 			client.submit(sol);
 			return false;
 		});
-
+		 
 		while (true)
 		{
 			auto mp = f.miningProgress();
@@ -903,10 +926,11 @@ private:
 			this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 		}
 	}
-
+#endif
 
 	/// Operating mode.
 	OperationMode mode;
+	DAGEraseMode m_eraseMode = DAGEraseMode::None;
 
 	/// Mining options
 	MinerType m_minerType = MinerType::CPU;

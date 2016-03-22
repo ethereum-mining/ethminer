@@ -38,11 +38,13 @@ using namespace std;
 using namespace chrono;
 using namespace dev;
 using namespace eth;
+using namespace boost::filesystem;
 
 const char* DAGChannel::name() { return EthGreen "DAG"; }
 
 EthashAux* dev::eth::EthashAux::s_this = nullptr;
 char  dev::eth::EthashAux::s_customDirName[256] = "";
+dev::eth::DAGEraseMode dev::eth::EthashAux::s_dagEraseMode = DAGEraseMode::None;
 
 const unsigned EthashProofOfWork::defaultLocalWorkSize = 64;
 const unsigned EthashProofOfWork::defaultGlobalWorkSizeMultiplier = 4096; // * CL_DEFAULT_LOCAL_WORK_SIZE
@@ -79,6 +81,48 @@ void EthashAux::setCustomDirName(const char * custom_dir_name)
 char * EthashAux::customDirName()
 {
 	return s_customDirName;
+}
+
+void EthashAux::setDAGEraseMode(DAGEraseMode mode)
+{
+	s_dagEraseMode = mode;
+}
+
+void EthashAux::eraseDAGs()
+{
+	if (s_dagEraseMode == DAGEraseMode::None) return;
+
+	path p(s_customDirName);
+	vector<path> files;
+
+	directory_iterator end_itr;
+
+	for (directory_iterator itr(p); itr != end_itr; ++itr)
+	{
+		if (is_regular_file(itr->path())) {
+			files.push_back(itr->path());
+		}
+	}
+
+	std::sort(files.begin(), files.end(),
+		[](const path& p1, const path& p2)
+	{
+		return file_size(p1) < file_size(p2);
+	});
+
+	size_t dagcount = files.size();
+	size_t dagcounter = 0;
+	for (std::vector<path>::const_iterator path = files.begin(); path != files.end(); ++path)
+	{
+		if (s_dagEraseMode == DAGEraseMode::Bench && path->filename() == "full-R23-0000000000000000") {}
+		else if ((s_dagEraseMode == DAGEraseMode::Old || s_dagEraseMode == DAGEraseMode::Bench) && dagcount - dagcounter <= 2) {}
+		else
+		{
+			cnote << "Deleting DAG file " << path->string();
+			remove(*path);
+		}
+		dagcounter++;
+	}
 }
 
 h256 EthashAux::seedHash(unsigned _number)
@@ -238,6 +282,7 @@ unsigned EthashAux::computeFull(h256 const& _seedHash, bool _createIfMissing)
 		get()->m_fullGenerator = unique_ptr<thread>(new thread([=](){
 			cnote << "Loading full DAG of seedhash: " << _seedHash;
 			get()->full(_seedHash, true, [](unsigned p){ get()->m_fullProgress = p; return 0; });
+			eraseDAGs(); // delete any old DAG files
 			cnote << "Full DAG loaded";
 			get()->m_fullProgress = 0;
 			get()->m_generatingFullNumber = NotGenerating;
@@ -246,6 +291,8 @@ unsigned EthashAux::computeFull(h256 const& _seedHash, bool _createIfMissing)
 
 	return (get()->m_generatingFullNumber == blockNumber) ? get()->m_fullProgress : 0;
 }
+
+
 
 EthashProofOfWork::Result EthashAux::FullAllocation::compute(h256 const& _headerHash, Nonce const& _nonce) const
 {
