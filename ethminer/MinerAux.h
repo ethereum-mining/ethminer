@@ -999,7 +999,7 @@ private:
 	uint64_t m_currentBlock = 0;
 	static char s_dagDir[256];
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
-	unsigned m_extraGPUMemory = 350000000;
+	unsigned m_extraGPUMemory = 0;// 350000000; don't assume miners run desktops...
 
 	/// DAG initialisation param.
 	unsigned m_initDAG = 0;
