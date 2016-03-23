@@ -118,10 +118,25 @@ public:
 		{
 			mode = OperationMode::Farm;
 			m_farmURL = argv[++i];
+			m_activeFarmURL = m_farmURL;
+		}
+		else if ((arg == "-FF" || arg == "--farm-failover") && i + 1 < argc)
+		{
+			mode = OperationMode::Farm;
+			m_farmFailOverURL = argv[++i];
 		}
 		else if (arg == "--farm-recheck" && i + 1 < argc)
 			try {
 				m_farmRecheckPeriod = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		else if (arg == "--farm-retries" && i + 1 < argc)
+			try {
+				m_maxFarmRetries = stol(argv[++i]);
 			}
 			catch (...)
 			{
@@ -515,7 +530,7 @@ public:
 		else if (mode == OperationMode::Benchmark)
 			doBenchmark(m_minerType, m_phoneHome, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
 		else if (mode == OperationMode::Farm)
-			doFarm(m_minerType, m_farmURL, m_farmRecheckPeriod);
+			doFarm(m_minerType, m_activeFarmURL, m_farmRecheckPeriod);
 		else if (mode == OperationMode::Simulation)
 			doSimulation(m_minerType);
 #if ETH_STRATUM || !ETH_TRUE
@@ -530,6 +545,8 @@ public:
 #if ETH_JSONRPC || !ETH_TRUE
 			<< "Work farming mode:" << endl
 			<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
+			<< "    -FF,--farm-failover <url> Failover farm URL (default: disabled)" << endl
+			<< "	--farm-retries <n> Number of retries until switch to failover (default: 3)" << endl
 #endif
 #if ETH_STRATUM || !ETH_TRUE
 			<< "	-S, --stratum <host:port>  Put into stratum mode with the stratum server at host:port" << endl
@@ -780,7 +797,8 @@ private:
 		}
 	}
 
-	void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
+	
+	void doFarm(MinerType _m, string & _remote, unsigned _recheckPeriod)
 	{
 		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
 		sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashCPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); }};
@@ -794,10 +812,14 @@ private:
 		(void)_remote;
 		(void)_recheckPeriod;
 #if ETH_JSONRPC || !ETH_TRUE
-		jsonrpc::HttpClient client(_remote);
+		jsonrpc::HttpClient client(m_farmURL);
+		:: FarmClient rpc(client);
+		jsonrpc::HttpClient failoverClient(m_farmFailOverURL);
+		::FarmClient rpcFailover(failoverClient);
+
+		FarmClient * prpc = &rpc;
 
 		h256 id = h256::random();
-		::FarmClient rpc(client);
 		GenericFarm<EthashProofOfWork> f;
 		f.setSealers(sealers);
 		if (_m == MinerType::CPU)
@@ -831,7 +853,7 @@ private:
 
 					try
 					{
-						rpc.eth_submitHashrate(toJS((u256)rate), "0x" + id.hex());
+						prpc->eth_submitHashrate(toJS((u256)rate), "0x" + id.hex());
 					}
 					catch (jsonrpc::JsonRpcException const& _e)
 					{
@@ -839,7 +861,7 @@ private:
 						cwarn << boost::diagnostic_information(_e);
 					}
 
-					Json::Value v = rpc.eth_getWork();
+					Json::Value v = prpc->eth_getWork();
 					h256 hh(v[0].asString());
 					h256 newSeedHash(v[1].asString());
 					if (current.seedHash != newSeedHash)
@@ -870,7 +892,7 @@ private:
 				cnote << "  Ethash: " << h256(EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value).hex();
 				if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
 				{
-					bool ok = rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
+					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
 					if (ok)
 						cnote << "B-) Submitted and accepted.";
 					else
@@ -885,6 +907,22 @@ private:
 				for (auto i = 3; --i; this_thread::sleep_for(chrono::seconds(1)))
 					cerr << "JSON-RPC problem. Probably couldn't connect. Retrying in " << i << "... \r";
 				cerr << endl;
+				if (m_farmFailOverURL != "")
+				{
+					m_farmRetries++;
+					if (m_farmRetries == m_maxFarmRetries)
+					{
+						if (_remote == m_farmURL) {
+							_remote = m_farmFailOverURL;
+							prpc = &rpcFailover;
+						}
+						else {
+							_remote = m_farmURL;
+							prpc = &rpc;
+						}
+						m_farmRetries = 0;
+					}
+				}
 			}
 #endif
 		exit(0);
@@ -971,6 +1009,10 @@ private:
 	unsigned m_benchmarkBlock = 0;
 	/// Farm params
 	string m_farmURL = "http://127.0.0.1:8545";
+	string m_farmFailOverURL = "";
+	string m_activeFarmURL = m_farmURL;
+	unsigned m_farmRetries = 0;
+	unsigned m_maxFarmRetries = 3;
 	unsigned m_farmRecheckPeriod = 500;
 	bool m_precompute = true;
 

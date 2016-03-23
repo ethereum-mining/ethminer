@@ -282,7 +282,7 @@ unsigned EthashAux::computeFull(h256 const& _seedHash, bool _createIfMissing)
 		get()->m_fullGenerator = unique_ptr<thread>(new thread([=](){
 			cnote << "Loading full DAG of seedhash: " << _seedHash;
 			get()->full(_seedHash, true, [](unsigned p){ get()->m_fullProgress = p; return 0; });
-			eraseDAGs(); // delete any old DAG files
+			eraseDAGs();
 			cnote << "Full DAG loaded";
 			get()->m_fullProgress = 0;
 			get()->m_generatingFullNumber = NotGenerating;
