@@ -459,7 +459,10 @@ public:
 		EthashAux::setCustomDirName(s_dagDir);
 		EthashAux::setDAGEraseMode(m_eraseMode);
 		EthashAux::eraseDAGs();
-		
+		if (m_eraseMode == DAGEraseMode::All)
+		{
+			m_eraseMode = DAGEraseMode::None;
+		}
 
 		if (m_shouldListDevices)
 		{
@@ -576,7 +579,7 @@ public:
 			<< "        none  - don't erase DAG files (default)" << endl
 			<< "        old   - erase all DAG files older than current epoch" << endl
 			<< "		bench - like old, but keep epoch 0 for benchmarking" << endl
-			<< "        all   - erase all DAG files" << endl
+			<< "        all   - erase all DAG files. After deleting all files, setting changes to none." << endl
 			<< "Mining configuration:" << endl
 			<< "    -C,--cpu  When mining, use the CPU." << endl
 			<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
