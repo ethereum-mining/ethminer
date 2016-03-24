@@ -121,7 +121,7 @@ public:
 	static char * dagDirName();
 
 	static void setDAGEraseMode(DAGEraseMode mode);
-	static void EthashAux::eraseDAGs();
+	static void eraseDAGs();
 
 	static LightType light(h256 const& _seedHash);
 
