@@ -117,8 +117,8 @@ public:
 	static uint64_t number(h256 const& _seedHash);
 	static uint64_t cacheSize(BlockInfo const& _header);
 	static uint64_t dataSize(uint64_t _blockNumber);
-	static void setCustomDirName(const char * custom_dir_name);
-	static char * customDirName();
+	static void setDAGDirName(const char * custom_dir_name);
+	static char * dagDirName();
 
 	static void setDAGEraseMode(DAGEraseMode mode);
 	static void EthashAux::eraseDAGs();
@@ -145,7 +145,7 @@ private:
 	void killCache(h256 const& _s);
 
 	static EthashAux* s_this;
-	static char s_customDirName[256];
+	static char s_dagDirName[256];
 	static DAGEraseMode s_dagEraseMode;
 
 	SharedMutex x_lights;

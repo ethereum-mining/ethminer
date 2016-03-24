@@ -32,6 +32,7 @@
 #include <libdevcore/SHA3.h>
 #include <libdevcore/FileSystem.h>
 #include <libethash/internal.h>
+#include <libethash/io.h>
 #include "BlockInfo.h"
 #include "Exceptions.h"
 using namespace std;
@@ -43,7 +44,7 @@ using namespace boost::filesystem;
 const char* DAGChannel::name() { return EthGreen "DAG"; }
 
 EthashAux* dev::eth::EthashAux::s_this = nullptr;
-char  dev::eth::EthashAux::s_customDirName[256] = "";
+char  dev::eth::EthashAux::s_dagDirName[256] = "";
 dev::eth::DAGEraseMode dev::eth::EthashAux::s_dagEraseMode = DAGEraseMode::None;
 
 const unsigned EthashProofOfWork::defaultLocalWorkSize = 64;
@@ -73,14 +74,20 @@ uint64_t EthashAux::dataSize(uint64_t _blockNumber)
 }
 
 
-void EthashAux::setCustomDirName(const char * custom_dir_name)
+void EthashAux::setDAGDirName(const char * custom_dir_name)
 {
-	strcpy(s_customDirName, custom_dir_name);
+	char strbuf[256];
+	if (strcmp(custom_dir_name, "") != 0)
+		strcpy(strbuf, custom_dir_name);
+	else
+		ethash_get_default_dirname(strbuf, 256);
+
+	strcpy(s_dagDirName, strbuf);
 }
 
-char * EthashAux::customDirName()
+char * EthashAux::dagDirName()
 {
-	return s_customDirName;
+	return s_dagDirName;
 }
 
 void EthashAux::setDAGEraseMode(DAGEraseMode mode)
@@ -92,7 +99,7 @@ void EthashAux::eraseDAGs()
 {
 	if (s_dagEraseMode == DAGEraseMode::None) return;
 
-	path p(s_customDirName);
+	path p(s_dagDirName);
 	vector<path> files;
 
 	directory_iterator end_itr;
@@ -207,7 +214,7 @@ bytesConstRef EthashAux::LightAllocation::data() const
 EthashAux::FullAllocation::FullAllocation(ethash_light_t _light, ethash_callback_t _cb)
 {
 //	cdebug << "About to call ethash_full_new...";
-	full = ethash_full_new(_light, EthashAux::customDirName(), _cb);
+	full = ethash_full_new(_light, EthashAux::dagDirName(), _cb);
 //	cdebug << "Called OK.";
 	if (!full)
 	{

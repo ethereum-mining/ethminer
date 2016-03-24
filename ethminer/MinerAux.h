@@ -456,7 +456,7 @@ public:
 
 	void execute()
 	{
-		EthashAux::setCustomDirName(s_dagDir);
+		EthashAux::setDAGDirName(s_dagDir);
 		EthashAux::setDAGEraseMode(m_eraseMode);
 		EthashAux::eraseDAGs();
 		if (m_eraseMode == DAGEraseMode::All)
@@ -998,7 +998,7 @@ private:
 #endif
 	uint64_t m_currentBlock = 0;
 	static char s_dagDir[256];
-	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
+	// default value was 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
 	unsigned m_extraGPUMemory = 0;// 350000000; don't assume miners run desktops...
 
 	/// DAG initialisation param.
