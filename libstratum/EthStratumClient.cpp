@@ -228,9 +228,9 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				if (sHeaderHash != "" && sSeedHash != "" && sShareTarget != "")
 				{
 					cnote << "Received new job #" + m_job;
-					cnote << "Header hash: 0x" + sHeaderHash;
-					cnote << "Seed hash: 0x" + sSeedHash;
-					cnote << "Share target: 0x" + sShareTarget;
+					cnote << "Header hash: " + sHeaderHash;
+					cnote << "Seed hash: " + sSeedHash;
+					cnote << "Share target: " + sShareTarget;
 
 					h256 seedHash = h256(sSeedHash);
 					h256 headerHash = h256(sHeaderHash);
@@ -272,12 +272,12 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
 
 	cnote << "Solution found; Submitting to" << m_host << "...";
-	cnote << "  Nonce:" << solution.nonce.hex();
-	cnote << "  Mixhash:" << solution.mixHash.hex();
-	cnote << "  Header-hash:" << m_current.headerHash.hex();
-	cnote << "  Seedhash:" << m_current.seedHash.hex();
-	cnote << "  Target: " << h256(m_current.boundary).hex();
-	cnote << "  Ethash: " << h256(EthashAux::eval(m_current.seedHash, m_current.headerHash, solution.nonce).value).hex();
+	cnote << "  Nonce:" << "0x"+solution.nonce.hex();
+	cnote << "  Mixhash:" << "0x" + solution.mixHash.hex();
+	cnote << "  Header-hash:" << "0x" + m_current.headerHash.hex();
+	cnote << "  Seedhash:" << "0x" + m_current.seedHash.hex();
+	cnote << "  Target: " << "0x" + h256(m_current.boundary).hex();
+	cnote << "  Ethash: " << "0x" + h256(EthashAux::eval(m_current.seedHash, m_current.headerHash, solution.nonce).value).hex();
 	if (EthashAux::eval(m_current.seedHash, m_current.headerHash, solution.nonce).value < m_current.boundary)
 	{
 		string json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" + m_user + "\",\"" + m_job + "\",\"0x" + solution.nonce.hex() + "\",\"0x" + m_current.headerHash.hex() + "\",\"0x" + solution.mixHash.hex() + "\"]}\n";
