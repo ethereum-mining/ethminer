@@ -100,6 +100,13 @@ void EthashAux::eraseDAGs()
 	if (s_dagEraseMode == DAGEraseMode::None) return;
 
 	path p(s_dagDirName);
+	
+	if (!is_directory(p))
+	{
+		cnote << "Can't clean up DAG directory:" << s_dagDirName << "does not exist (yet).";
+		return;
+	}
+
 	vector<path> files;
 
 	directory_iterator end_itr;
