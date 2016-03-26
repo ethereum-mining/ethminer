@@ -474,6 +474,8 @@ public:
 			if (m_minerType == MinerType::CUDA)
 				EthashCUDAMiner::listDevices();
 #endif
+			if (m_minerType == MinerType::CPU)
+				cout << "--list-devices should be combined with GPU mining flag (-G for OpenCL or -U for CUDA)" << endl;
 			exit(0);
 		}
 
@@ -589,7 +591,7 @@ public:
 			<< "    --opencl-devices <0 1 ..n> Select which OpenCL devices to mine on. Default is to use all" << endl
 			<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
 			<< "    --allow-opencl-cpu Allows CPU to be considered as an OpenCL device if the OpenCL platform supports it." << endl
-			<< "    --list-devices List the detected OpenCL/CUDA devices and exit." << endl
+			<< "    --list-devices List the detected OpenCL/CUDA devices and exit. Should be combined with -G or -U flag" << endl
 			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." << endl
 #if ETH_ETHASHCL || !ETH_TRUE
 			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
