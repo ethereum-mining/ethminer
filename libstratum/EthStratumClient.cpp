@@ -225,6 +225,12 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				string sSeedHash = params.get((Json::Value::ArrayIndex)2, "").asString();
 				string sShareTarget = params.get((Json::Value::ArrayIndex)3, "").asString();
 				bool cleanJobs = params.get((Json::Value::ArrayIndex)4, "").asBool();
+
+				if (sShareTarget.length() < 66)
+					sShareTarget = "0x" + string(66 - sShareTarget.length(), '0') + sShareTarget.substr(2);
+
+				int l = sShareTarget.length();
+
 				if (sHeaderHash != "" && sSeedHash != "" && sShareTarget != "")
 				{
 					cnote << "Received new job #" + m_job;
