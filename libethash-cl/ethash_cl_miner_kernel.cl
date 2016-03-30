@@ -263,7 +263,7 @@ __kernel void ethash_search(
 	
 	// Threads work together in this phase in groups of 8.
 	uint const thread_id = gid & 7;
-	uint const hash_id = (gid & (GROUP_SIZE - 1)) >> 3;
+	uint const hash_id = (gid % GROUP_SIZE) >> 3;
 
 	for (int i = 0; i < THREADS_PER_HASH; i++)
 	{
