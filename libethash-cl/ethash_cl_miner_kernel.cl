@@ -36,6 +36,33 @@ __constant uint2 const Keccak_f1600_RC[24] = {
 	(uint2)(0x80008008, 0x80000000),
 };
 
+#if PLATFORM == 1 // CUDA
+static uint2 ROL2(const uint2 a, const int offset) {
+	uint2 result;
+	if (offset >= 32) {
+		asm("shf.l.wrap.b32 %0, %1, %2, %3;" : "=r"(result.x) : "r"(a.x), "r"(a.y), "r"(offset));
+		asm("shf.l.wrap.b32 %0, %1, %2, %3;" : "=r"(result.y) : "r"(a.y), "r"(a.x), "r"(offset));
+	}
+	else {
+		asm("shf.l.wrap.b32 %0, %1, %2, %3;" : "=r"(result.x) : "r"(a.y), "r"(a.x), "r"(offset));
+		asm("shf.l.wrap.b32 %0, %1, %2, %3;" : "=r"(result.y) : "r"(a.x), "r"(a.y), "r"(offset));
+	}
+	return result;
+}
+#elif PLATFORM == 2 // APP
+#pragma OPENCL EXTENSION cl_amd_media_ops : enable
+static uint2 ROL2(const uint2 vv, const int r)
+{
+	if (r <= 32)
+	{
+		return amd_bitalign((vv).xy, (vv).yx, 32 - r);
+	}
+	else
+	{
+		return amd_bitalign((vv).yx, (vv).xy, 64 - r);
+	}
+}
+#else
 static uint2 ROL2(const uint2 v, const int n)
 {
 	uint2 result;
@@ -51,6 +78,7 @@ static uint2 ROL2(const uint2 v, const int n)
 	}
 	return result;
 }
+#endif
 
 static void keccak_f1600_round(uint2* a, uint r, uint out_size)
 {

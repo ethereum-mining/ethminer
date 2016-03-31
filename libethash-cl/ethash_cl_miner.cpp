@@ -327,8 +327,19 @@ bool ethash_cl_miner::init(
 
 		// use selected platform
 		_platformId = min<unsigned>(_platformId, platforms.size() - 1);
-		ETHCL_LOG("Using platform: " << platforms[_platformId].getInfo<CL_PLATFORM_NAME>().c_str());
 
+		string platformName = platforms[_platformId].getInfo<CL_PLATFORM_NAME>();
+		ETHCL_LOG("Using platform: " << platformName.c_str());
+
+		int platformId = 0;
+		if (platformName == "NVIDIA CUDA")
+		{
+			platformId = 1;
+		}
+		else if (platformName == "AMD Accelerated Parallel Processing")
+		{
+			platformId = 2;
+		}
 		// get GPU device of the default platform
 		vector<cl::Device> devices = getDevices(platforms, _platformId);
 		if (devices.empty())
@@ -367,6 +378,8 @@ bool ethash_cl_miner::init(
 		addDefinition(code, "DAG_SIZE", (unsigned)(_dagSize / ETHASH_MIX_BYTES));
 		addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
 		addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
+		addDefinition(code, "PLATFORM", platformId);
+
 		//debugf("%s", code.c_str());
 
 		// create miner OpenCL program
