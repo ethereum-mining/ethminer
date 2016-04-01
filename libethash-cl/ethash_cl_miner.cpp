@@ -42,6 +42,10 @@
 
 #define ETHASH_BYTES 32
 
+#define OPENCL_PLATFORM_UNKNOWN 0
+#define OPENCL_PLATFORM_NVIDIA  1
+#define OPENCL_PLATFORM_AMD		2
+
 // workaround lame platforms
 #if !CL_VERSION_1_2
 #define CL_MAP_WRITE_INVALIDATE_REGION CL_MAP_WRITE
@@ -331,14 +335,14 @@ bool ethash_cl_miner::init(
 		string platformName = platforms[_platformId].getInfo<CL_PLATFORM_NAME>();
 		ETHCL_LOG("Using platform: " << platformName.c_str());
 
-		int platformId = 0;
+		int platformId = OPENCL_PLATFORM_UNKNOWN;
 		if (platformName == "NVIDIA CUDA")
 		{
-			platformId = 1;
+			platformId = OPENCL_PLATFORM_NVIDIA;
 		}
 		else if (platformName == "AMD Accelerated Parallel Processing")
 		{
-			platformId = 2;
+			platformId = OPENCL_PLATFORM_AMD;
 		}
 		// get GPU device of the default platform
 		vector<cl::Device> devices = getDevices(platforms, _platformId);
@@ -361,6 +365,21 @@ bool ethash_cl_miner::init(
 		if (strncmp("OpenCL 1.1", device_version.c_str(), 10) == 0)
 			m_openclOnePointOne = true;
 
+
+		char options[256];
+		int computeCapability = 0;
+		if (platformId == OPENCL_PLATFORM_NVIDIA) {
+			cl_uint computeCapabilityMajor;
+			cl_uint computeCapabilityMinor;
+			clGetDeviceInfo(device(), CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV, sizeof(cl_uint), &computeCapabilityMajor, NULL);
+			clGetDeviceInfo(device(), CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV, sizeof(cl_uint), &computeCapabilityMinor, NULL);
+
+			computeCapability = computeCapabilityMajor * 10 + computeCapabilityMinor;
+			int maxregs = computeCapability >= 35 ? 72 : 63;
+			//printf("-cl-nv-maxrregcount=%d -cl-nv-arch sm_%d -cl-nv-verbose", maxregs, computeCapability);
+			sprintf(options, "-cl-nv-verbose -cl-nv-maxrregcount=%d", maxregs);// , computeCapability);
+		}
+
 		// create context
 		m_context = cl::Context(vector<cl::Device>(&device, &device + 1));
 		m_queue = cl::CommandQueue(m_context, device);
@@ -379,9 +398,12 @@ bool ethash_cl_miner::init(
 		addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
 		addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
 		addDefinition(code, "PLATFORM", platformId);
+		addDefinition(code, "COMPUTE", computeCapability);
 
 		//debugf("%s", code.c_str());
 
+
+		
 		// create miner OpenCL program
 		cl::Program::Sources sources;
 		sources.push_back({ code.c_str(), code.size() });
@@ -389,7 +411,7 @@ bool ethash_cl_miner::init(
 		cl::Program program(m_context, sources);
 		try
 		{
-			program.build({ device });
+			program.build({ device }, options);
 			ETHCL_LOG("Printing program log");
 			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
 		}

@@ -1,8 +1,7 @@
-// author Tim Hughes <tim@twistedfury.com>
-// Tested on Radeon HD 7850
-// Hashrate: 15940347 hashes/s
-// Bandwidth: 124533 MB/s
-// search kernel should fit in <= 84 VGPRS (3 wavefronts)
+#define OPENCL_PLATFORM_UNKNOWN 0
+#define OPENCL_PLATFORM_NVIDIA  1
+#define OPENCL_PLATFORM_AMD		2
+
 
 #define THREADS_PER_HASH (128 / 16)
 #define HASHES_PER_LOOP (GROUP_SIZE / THREADS_PER_HASH)
@@ -36,7 +35,7 @@ __constant uint2 const Keccak_f1600_RC[24] = {
 	(uint2)(0x80008008, 0x80000000),
 };
 
-#if PLATFORM == 1 // CUDA
+#if PLATFORM == OPENCL_PLATFORM_NVIDIA && COMPUTE >= 35
 static uint2 ROL2(const uint2 a, const int offset) {
 	uint2 result;
 	if (offset >= 32) {
@@ -49,7 +48,7 @@ static uint2 ROL2(const uint2 a, const int offset) {
 	}
 	return result;
 }
-#elif PLATFORM == 2 // APP
+#elif PLATFORM == OPENCL_PLATFORM_AMD
 #pragma OPENCL EXTENSION cl_amd_media_ops : enable
 static uint2 ROL2(const uint2 vv, const int r)
 {
@@ -259,7 +258,9 @@ typedef union {
 	uint  uints[16];
 } compute_hash_share;
 
+#if PLATFORM != OPENCL_PLATFORM_NVIDIA // use maxrregs on nv
 __attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
+#endif
 __kernel void ethash_search(
 	__global volatile uint* restrict g_output,
 	__constant hash32_t const* g_header,
