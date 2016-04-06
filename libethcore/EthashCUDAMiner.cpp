@@ -219,11 +219,13 @@ bool EthashCUDAMiner::configureGPU(
 	uint64_t _currentBlock
 	)
 {
+	
 	if (_blockSize != 32 && _blockSize != 64 && _blockSize != 128)
 	{
 		cout << "Given localWorkSize of " << toString(_blockSize) << "is invalid. Must be either 32,64 or 128" << endl;
 		return false;
 	}
+	
 	if (!ethash_cuda_miner::configureGPU(
 		s_devices,
 		_blockSize,
