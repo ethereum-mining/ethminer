@@ -835,7 +835,7 @@ private:
 			f.start("cuda");
 		EthashProofOfWork::WorkPackage current;
 		EthashAux::FullType dag;
-		while (true)
+		while (m_running)
 			try
 			{
 				bool completed = false;
@@ -909,13 +909,20 @@ private:
 			}
 			catch (jsonrpc::JsonRpcException&)
 			{
-				for (auto i = 3; --i; this_thread::sleep_for(chrono::seconds(1)))
-					cerr << "JSON-RPC problem. Probably couldn't connect. Retrying in " << i << "... \r";
-				cerr << endl;
+				if (m_maxFarmRetries > 0)
+				{
+					for (auto i = 3; --i; this_thread::sleep_for(chrono::seconds(1)))
+						cerr << "JSON-RPC problem. Probably couldn't connect. Retrying in " << i << "... \r";
+					cerr << endl;
+				}
+				else
+				{
+					cerr << "JSON-RPC problem. Probably couldn't connect." << endl;
+				}
 				if (m_farmFailOverURL != "")
 				{
 					m_farmRetries++;
-					if (m_farmRetries == m_maxFarmRetries)
+					if (m_farmRetries >= m_maxFarmRetries)
 					{
 						if (_remote == m_farmURL) {
 							_remote = m_farmFailOverURL;
@@ -926,6 +933,10 @@ private:
 							prpc = &rpc;
 						}
 						m_farmRetries = 0;
+					}
+					if (_remote == "exit")
+					{
+						m_running = false;
 					}
 				}
 			}
@@ -976,6 +987,7 @@ private:
 	DAGEraseMode m_eraseMode = DAGEraseMode::None;
 
 	/// Mining options
+	bool m_running = true;
 	MinerType m_minerType = MinerType::CPU;
 	unsigned m_openclPlatform = 0;
 	unsigned m_openclDevice = 0;

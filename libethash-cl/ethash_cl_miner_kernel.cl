@@ -1,6 +1,6 @@
 #define OPENCL_PLATFORM_UNKNOWN 0
 #define OPENCL_PLATFORM_NVIDIA  1
-#define OPENCL_PLATFORM_AMD		2
+#define OPENCL_PLATFORM_AMD			2
 
 
 #define THREADS_PER_HASH (128 / 16)
@@ -79,10 +79,19 @@ static uint2 ROL2(const uint2 v, const int n)
 }
 #endif
 
+static void chi(uint2 * a, const uint n, const uint2 * t)
+{
+	a[n+0] = bitselect(t[n + 0] ^ t[n + 2], t[n + 0], t[n + 1]);
+	a[n+1] = bitselect(t[n + 1] ^ t[n + 3], t[n + 1], t[n + 2]);
+	a[n+2] = bitselect(t[n + 2] ^ t[n + 4], t[n + 2], t[n + 3]);
+	a[n+3] = bitselect(t[n + 3] ^ t[n + 0], t[n + 3], t[n + 4]);
+	a[n+4] = bitselect(t[n + 4] ^ t[n + 1], t[n + 4], t[n + 0]);
+}
+
 static void keccak_f1600_round(uint2* a, uint r)
 {
 	uint2 t[25];
-	uint2 u, v;
+	uint2 u;
 
 	// Theta
 	t[0] = a[0] ^ a[5] ^ a[10] ^ a[15] ^ a[20];
@@ -122,66 +131,47 @@ static void keccak_f1600_round(uint2* a, uint r)
 	a[24] ^= u;
 
 	// Rho Pi
-	u = a[1];
-	t[0] = a[0];
-	t[1] = ROL2(a[6], 44);
-	t[6] = ROL2(a[9], 20);
-	t[9] = ROL2(a[22], 61);
-	t[22] = ROL2(a[14], 39);
-	t[14] = ROL2(a[20], 18);
+
+	t[0]  = a[0];
+	t[10] = ROL2(a[1], 1);
 	t[20] = ROL2(a[2], 62);
-	t[2] = ROL2(a[12], 43);
-	t[12] = ROL2(a[13], 25);
-	t[13] = ROL2(a[19], 8);
-	t[19] = ROL2(a[23], 56);
-	t[23] = ROL2(a[15], 41);
+	t[5]  = ROL2(a[3], 28);
 	t[15] = ROL2(a[4], 27);
-	t[4] = ROL2(a[24], 14);
-	t[24] = ROL2(a[21], 2);
-	t[21] = ROL2(a[8], 55);
-	t[8] = ROL2(a[16], 45);
+	
 	t[16] = ROL2(a[5], 36);
-	t[5] = ROL2(a[3], 28);
-	t[3] = ROL2(a[18], 21);
-	t[18] = ROL2(a[17], 15);
+	t[1]  = ROL2(a[6], 44);
+  t[11] = ROL2(a[7], 6);
+	t[21] = ROL2(a[8], 55);
+	t[6]  = ROL2(a[9], 20);
+	
+	t[7]  = ROL2(a[10], 3);
 	t[17] = ROL2(a[11], 10);
-	t[11] = ROL2(a[7], 6);
-	t[7] = ROL2(a[10], 3);
-	t[10] = ROL2(u, 1);
+	t[2]  = ROL2(a[12], 43);
+	t[12] = ROL2(a[13], 25);
+	t[22] = ROL2(a[14], 39);
+	
+	t[23] = ROL2(a[15], 41);
+	t[8]  = ROL2(a[16], 45);
+	t[18] = ROL2(a[17], 15);
+	t[3]  = ROL2(a[18], 21);
+	t[13] = ROL2(a[19], 8);
+	
+	t[14] = ROL2(a[20], 18);
+	t[24] = ROL2(a[21], 2);
+	t[9]  = ROL2(a[22], 61);
+	t[19] = ROL2(a[23], 56);
+	t[4]  = ROL2(a[24], 14);
 
 	// Chi
-	a[0] = bitselect(t[0] ^ t[2], t[0], t[1]);
-	a[1] = bitselect(t[1] ^ t[3], t[1], t[2]);
-	a[2] = bitselect(t[2] ^ t[4], t[2], t[3]);
-	a[3] = bitselect(t[3] ^ t[0], t[3], t[4]);
-	a[4] = bitselect(t[4] ^ t[1], t[4], t[0]);
+	chi(a, 0, t);
 
 	// Iota
 	a[0] ^= Keccak_f1600_RC[r];
 
-	a[5] = bitselect(t[5] ^ t[7], t[5], t[6]);
-	a[6] = bitselect(t[6] ^ t[8], t[6], t[7]);
-	a[7] = bitselect(t[7] ^ t[9], t[7], t[8]);
-	a[8] = bitselect(t[8] ^ t[5], t[8], t[9]);
-	a[9] = bitselect(t[9] ^ t[6], t[9], t[5]);
-
-	a[10] = bitselect(t[10] ^ t[12], t[10], t[11]);
-	a[11] = bitselect(t[11] ^ t[13], t[11], t[12]);
-	a[12] = bitselect(t[12] ^ t[14], t[12], t[13]);
-	a[13] = bitselect(t[13] ^ t[10], t[13], t[14]);
-	a[14] = bitselect(t[14] ^ t[11], t[14], t[10]);
-
-	a[15] = bitselect(t[15] ^ t[17], t[15], t[16]);
-	a[16] = bitselect(t[16] ^ t[18], t[16], t[17]);
-	a[17] = bitselect(t[17] ^ t[19], t[17], t[18]);
-	a[18] = bitselect(t[18] ^ t[15], t[18], t[19]);
-	a[19] = bitselect(t[19] ^ t[16], t[19], t[15]);
-
-	a[20] = bitselect(t[20] ^ t[22], t[20], t[21]);
-	a[21] = bitselect(t[21] ^ t[23], t[21], t[22]);
-	a[22] = bitselect(t[22] ^ t[24], t[22], t[23]);
-	a[23] = bitselect(t[23] ^ t[20], t[23], t[24]);
-	a[24] = bitselect(t[24] ^ t[21], t[24], t[20]);
+	chi(a, 5, t);
+	chi(a, 10, t);
+	chi(a, 15, t);
+	chi(a, 20, t);
 }
 
 static void keccak_f1600_no_absorb(uint2* a, uint out_size, uint isolate)
@@ -192,9 +182,9 @@ static void keccak_f1600_no_absorb(uint2* a, uint out_size, uint isolate)
 	// better with surrounding code, however I haven't done this
 	// without causing the AMD compiler to blow up the VGPR usage.
 
-	uint r = 0;
-	uint o = 25;
-	do
+	
+	//uint o = 25;
+	for (uint r = 0; r < 24;)
 	{
 		// This dynamic branch stops the AMD compiler unrolling the loop
 		// and additionally saves about 33% of the VGPRs, enough to gain another
@@ -206,10 +196,10 @@ static void keccak_f1600_no_absorb(uint2* a, uint out_size, uint isolate)
 		if (isolate)
 		{
 			keccak_f1600_round(a, r++);
-			if (r == 23) o = out_size;
+			//if (r == 23) o = out_size;
 		}
 	} 
-	while (r < 24);
+	
 
 	// final round optimised for digest size
 	//keccak_f1600_round(a, 23, out_size);
