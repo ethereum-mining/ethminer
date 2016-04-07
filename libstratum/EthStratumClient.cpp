@@ -16,8 +16,6 @@ EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType
 	m_connected = false;
 	m_precompute = true;
 	m_pending = 0;
-	
-
 	p_farm = f;
 	connect();
 }
@@ -119,13 +117,16 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 }
 
 void EthStratumClient::readline() {
-
+	m_mtx.lock();
 	if (m_pending == 0) {
 		async_read_until(m_socket, m_responseBuffer, "\n",
 			boost::bind(&EthStratumClient::readResponse, this,
 			boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
+	
 		m_pending++;
+		
 	}
+	m_mtx.unlock();
 }
 
 void EthStratumClient::handleResponse(const boost::system::error_code& ec) {
@@ -141,7 +142,9 @@ void EthStratumClient::handleResponse(const boost::system::error_code& ec) {
 
 void EthStratumClient::readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred)
 {
+	m_mtx.lock();
 	m_pending = m_pending > 0 ? m_pending - 1 : 0;
+	m_mtx.unlock();
 
 	if (!ec)
 	{
