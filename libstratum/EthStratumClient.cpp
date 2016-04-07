@@ -43,11 +43,13 @@ void EthStratumClient::connect()
 
 void EthStratumClient::reconnect()
 {
+	/*
 	if (p_farm->isMining())
 	{
 		cnote << "Stopping farm";
 		p_farm->stop();
 	}
+	*/
 	m_socket.close();
 	m_io_service.reset();
 	m_authorized = false;
@@ -92,14 +94,16 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 	{
 		m_connected = true;
 		cnote << "Connected to stratum server " << m_host << ":" << m_port;
-		cnote << "Starting farm";
-		if (m_minerType == MinerType::CPU)
-			p_farm->start("cpu");
-		else if (m_minerType == MinerType::CL)
-			p_farm->start("opencl");
-		else if (m_minerType == MinerType::CUDA)
-			p_farm->start("cuda");
-
+		if (!p_farm->isMining())
+		{
+			cnote << "Starting farm";
+			if (m_minerType == MinerType::CPU)
+				p_farm->start("cpu");
+			else if (m_minerType == MinerType::CL)
+				p_farm->start("opencl");
+			else if (m_minerType == MinerType::CUDA)
+				p_farm->start("cuda");
+		}
 		std::ostream os(&m_requestBuffer);
 		os << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n";
 
