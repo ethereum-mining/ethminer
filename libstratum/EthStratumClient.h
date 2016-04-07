@@ -48,6 +48,7 @@ private:
 	bool   m_connected;
 	bool   m_precompute;
 
+	boost::mutex m_mtx;
 	int m_pending;
 	string m_response;
 

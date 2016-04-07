@@ -11,7 +11,7 @@
 #include "dagger_shuffled.cuh"
 
 __global__ void 
-__launch_bounds__(128, 7)
+__launch_bounds__(896, 1)
 ethash_search(
 	volatile uint32_t* g_output,
 	uint64_t start_nonce
