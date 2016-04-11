@@ -120,10 +120,23 @@ public:
 			m_farmURL = argv[++i];
 			m_activeFarmURL = m_farmURL;
 		}
-		else if ((arg == "-FF" || arg == "--farm-failover") && i + 1 < argc)
+		else if ((arg == "-FF" || arg == "-FS" || arg == "--farm-failover" || arg == "--stratum-failover") && i + 1 < argc)
 		{
-			mode = OperationMode::Farm;
-			m_farmFailOverURL = argv[++i];
+			string url = argv[++i];
+			if (mode == OperationMode::Stratum)
+			{
+				size_t p = url.find_last_of(":");
+				if (p > 0)
+				{
+					m_farmFailOverURL = url.substr(0, p);
+					if (p + 1 <= url.length())
+						m_fport = url.substr(p + 1);
+				}
+				else
+				{
+					m_farmFailOverURL = url;
+				}
+			}
 		}
 		else if (arg == "--farm-recheck" && i + 1 < argc)
 			try {
@@ -168,6 +181,14 @@ public:
 			if (p + 1 <= userpass.length())
 				m_pass = userpass.substr(p+1);
 		}
+		else if ((arg == "-FO" || arg == "--failover-userpass") && i + 1 < argc)
+		{
+			string userpass = string(argv[++i]);
+			size_t p = userpass.find_first_of(":");
+			m_fuser = userpass.substr(0, p);
+			if (p + 1 <= userpass.length())
+				m_fpass = userpass.substr(p + 1);
+		}
 		else if ((arg == "-u" || arg == "--user") && i + 1 < argc)
 		{
 			m_user = string(argv[++i]);
@@ -179,6 +200,18 @@ public:
 		else if ((arg == "-o" || arg == "--port") && i + 1 < argc)
 		{
 			m_port = string(argv[++i]);
+		}
+		else if ((arg == "-fu" || arg == "--failover-user") && i + 1 < argc)
+		{
+			m_fuser = string(argv[++i]);
+		}
+		else if ((arg == "-fp" || arg == "--failover-pass") && i + 1 < argc)
+		{
+			m_fpass = string(argv[++i]);
+		}
+		else if ((arg == "-fo" || arg == "--failover-port") && i + 1 < argc)
+		{
+			m_fport = string(argv[++i]);
 		}
 #endif
 		else if (arg == "--opencl-platform" && i + 1 < argc)
@@ -536,11 +569,11 @@ public:
 			doBenchmark(m_minerType, m_phoneHome, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
 		else if (mode == OperationMode::Farm)
 			doFarm(m_minerType, m_activeFarmURL, m_farmRecheckPeriod);
-		else if (mode == OperationMode::Simulation)
+		else if (mode == OperationMode::Simulation) 
 			doSimulation(m_minerType);
 #if ETH_STRATUM || !ETH_TRUE
 		else if (mode == OperationMode::Stratum)
-			doStratum(m_minerType, m_farmRecheckPeriod, m_farmURL, m_port, m_user, m_pass);
+			doStratum();
 #endif
 	}
 
@@ -922,9 +955,13 @@ private:
 				if (m_farmFailOverURL != "")
 				{
 					m_farmRetries++;
-					if (m_farmRetries >= m_maxFarmRetries)
+					if (m_farmRetries > m_maxFarmRetries)
 					{
-						if (_remote == m_farmURL) {
+						if (_remote == "exit")
+						{
+							m_running = false;
+						}
+						else if (_remote == m_farmURL) {
 							_remote = m_farmFailOverURL;
 							prpc = &rpcFailover;
 						}
@@ -934,10 +971,7 @@ private:
 						}
 						m_farmRetries = 0;
 					}
-					if (_remote == "exit")
-					{
-						m_running = false;
-					}
+					
 				}
 			}
 #endif
@@ -945,7 +979,7 @@ private:
 	}
 
 #if ETH_STRATUM || !ETH_TRUE
-	void doStratum(MinerType _m, unsigned _recheckPeriod, string const & host, string const & port, string const & user, string const & pass)
+	void doStratum()
 	{
 		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
 		sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); } };
@@ -956,8 +990,18 @@ private:
 		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 		GenericFarm<EthashProofOfWork> f;
-		EthStratumClient client(&f, _m, host, port, user, pass);
-
+		EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries);
+		if (m_farmFailOverURL != "")
+		{
+			if (m_fuser != "")
+			{
+				client.setFailover(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
+			}
+			else
+			{
+				client.setFailover(m_farmFailOverURL, m_fport);
+			}
+		}
 		f.setSealers(sealers);
 
 		f.onSolutionFound([&](EthashProofOfWork::Solution sol)
@@ -966,7 +1010,7 @@ private:
 			return false;
 		});
 		 
-		while (true)
+		while (client.isRunning())
 		{
 			auto mp = f.miningProgress();
 			f.resetMiningProgress();
@@ -977,7 +1021,7 @@ private:
 				else
 					minelog << "Waiting for work package...";
 			}
-			this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
+			this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
 		}
 	}
 #endif
@@ -1027,6 +1071,8 @@ private:
 	/// Farm params
 	string m_farmURL = "http://127.0.0.1:8545";
 	string m_farmFailOverURL = "";
+	
+
 	string m_activeFarmURL = m_farmURL;
 	unsigned m_farmRetries = 0;
 	unsigned m_maxFarmRetries = 3;
@@ -1037,6 +1083,9 @@ private:
 	string m_user;
 	string m_pass;
 	string m_port;
+	string m_fuser = "";
+	string m_fpass = "";
+	string m_fport = "";
 #endif
 
 };
