@@ -17,12 +17,23 @@ using boost::asio::ip::tcp;
 using namespace dev;
 using namespace dev::eth;
 
+typedef struct {
+	string host;
+	string port;
+	string user;
+	string pass;
+} cred_t;
+
 class EthStratumClient
 {
 public:
-	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass);
+	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries);
 	~EthStratumClient();
 
+	void setFailover(string const & host, string const & port);
+	void setFailover(string const & host, string const & port, string const & user, string const & pass);
+
+	bool isRunning() { return m_running; }
 	bool isConnected() { return m_connected; }
 	h256 currentHeaderHash() { return m_current.headerHash; }
 	bool current() { return m_current; }
@@ -40,13 +51,18 @@ private:
 	void processReponse(Json::Value& responseObject);
 	
 	MinerType m_minerType;
-	string m_host;
-	string m_port;
-	string m_user;
-	string m_pass;
-	bool   m_authorized;
-	bool   m_connected;
-	bool   m_precompute;
+
+	cred_t * p_active;
+	cred_t m_primary;
+	cred_t m_failover;
+
+	bool m_authorized;
+	bool m_connected;
+	bool m_precompute;
+	bool m_running = true;
+
+	int	m_retries = 0;
+	int	m_maxRetries;
 
 	boost::mutex m_mtx;
 	int m_pending;
