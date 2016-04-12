@@ -140,7 +140,7 @@ static void keccak_f1600_round(uint2* a, uint r)
 	
 	t[16] = ROL2(a[5], 36);
 	t[1]  = ROL2(a[6], 44);
-  t[11] = ROL2(a[7], 6);
+	t[11] = ROL2(a[7], 6);
 	t[21] = ROL2(a[8], 55);
 	t[6]  = ROL2(a[9], 20);
 	

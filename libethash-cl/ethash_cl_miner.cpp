@@ -376,7 +376,6 @@ bool ethash_cl_miner::init(
 
 			computeCapability = computeCapabilityMajor * 10 + computeCapabilityMinor;
 			int maxregs = computeCapability >= 35 ? 72 : 63;
-			//printf("-cl-nv-maxrregcount=%d -cl-nv-arch sm_%d -cl-nv-verbose", maxregs, computeCapability);
 			sprintf(options, "-cl-nv-verbose -cl-nv-maxrregcount=%d", maxregs);// , computeCapability);
 		}
 
