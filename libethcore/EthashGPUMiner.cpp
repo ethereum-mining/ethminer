@@ -220,7 +220,7 @@ bool EthashGPUMiner::configureGPU(
 		cout << "Given localWorkSize of " << toString(_localWorkSize) << "is invalid. Must be either 32,64,128 or 256" << endl;
 		return false;
 	}
-	*/
+	*/ 
 	if (!ethash_cl_miner::configureGPU(
 			_platformId,
 			_localWorkSize,
