@@ -27,7 +27,7 @@ typedef struct {
 class EthStratumClient
 {
 public:
-	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries);
+	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, bool const & precompute);
 	~EthStratumClient();
 
 	void setFailover(string const & host, string const & port);
