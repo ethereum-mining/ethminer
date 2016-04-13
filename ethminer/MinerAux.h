@@ -123,6 +123,7 @@ public:
 		else if ((arg == "-FF" || arg == "-FS" || arg == "--farm-failover" || arg == "--stratum-failover") && i + 1 < argc)
 		{
 			string url = argv[++i];
+
 			if (mode == OperationMode::Stratum)
 			{
 				size_t p = url.find_last_of(":");
@@ -136,6 +137,10 @@ public:
 				{
 					m_farmFailOverURL = url;
 				}
+			}
+			else
+			{
+				m_farmFailOverURL = url;
 			}
 		}
 		else if (arg == "--farm-recheck" && i + 1 < argc)
@@ -1087,9 +1092,8 @@ private:
 	string m_port;
 	string m_fuser = "";
 	string m_fpass = "";
-	string m_fport = "";
 #endif
-
+	string m_fport = "";
 };
 
 char MinerCLI::s_dagDir[256] = "";
