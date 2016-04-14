@@ -1,73 +1,105 @@
-## Ethereum C++ Client.
+## ethminer-genoil
 
-[![Join the chat at https://gitter.im/ethereum/cpp-ethereum](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereum/cpp-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+What is ethminer-0.9.41-genoil-1.x.x? 
 
-By Gav Wood et al*, 2013, 2014, 2015.
+Formerly known as Genoil's CUDA miner, ethminer-0.9.41-genoil-1.x.x is a fork of the stock ethminer version 0.9.41. While native CUDA support is its most significant difference, it has the following additional features:
 
-          | Linux   | OSX | Windows
-----------|---------|-----|--------
-develop   | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20develop%20branch)](https://build.ethdev.com/builders/Linux%20C%2B%2B%20develop%20branch/builds/-1) | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=OSX%20C%2B%2B%20develop%20branch)](https://build.ethdev.com/builders/OSX%20C%2B%2B%20develop%20branch/builds/-1) | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=Windows%20C%2B%2B%20develop%20branch)](https://build.ethdev.com/builders/Windows%20C%2B%2B%20develop%20branch/builds/-1)
-master    | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20master%20branch)](https://build.ethdev.com/builders/Linux%20C%2B%2B%20master%20branch/builds/-1) | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=OSX%20C%2B%2B%20master%20branch)](https://build.ethdev.com/builders/OSX%20C%2B%2B%20master%20branch/builds/-1) | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=Windows%20C%2B%2B%20master%20branch)](https://build.ethdev.com/builders/Windows%20C%2B%2B%20master%20branch/builds/-1)
-evmjit    | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20develop%20evmjit)](https://build.ethdev.com/builders/Linux%20C%2B%2B%20develop%20evmjit/builds/-1) | [![Build+Status](https://build.ethdev.com/buildstatusimage?builder=OSX%20C%2B%2B%20develop%20evmjit)](https://build.ethdev.com/builders/OSX%20C%2B%2B%20develop%20evmjit/builds/-1) | N/A
+- realistic benchmarking against arbitrary epoch/DAG/blocknumber
+- custom DAG storage directory
+- auto DAG directory cleanup
+- stratum mining without proxy
+- OpenCL devices picking
+- farm failover (getwork + stratum)
 
-[![Stories in Ready](https://badge.waffle.io/ethereum/cpp-ethereum.png?label=ready&title=Ready)](http://waffle.io/ethereum/cpp-ethereum)
+### Usage
 
-Ethereum is based on a design in an original whitepaper by Vitalik Buterin. This implementation is based on the formal specification of a refinement of that idea detailed in the 'yellow paper' by Gavin Wood. Contributors, builders and testers include:
+ethminer is a command line program. This means you launch it either from a Windows command prompt or Linux console, or create shortcuts to predefined command lines using a Linux Bash script or Windows batch/cmd file.
+for a full list of available command, please run 
 
-- *arkpar* (**Arkadiy Paronyan**) Mix, PV61/BlockQueue
-- *debris* (**Marek Kotewicz**) JSONRPC, web3.js
-- *CJentzsch* (**Christoph Jentzsch**) tests, lots of tests
-- *LefterisJP* (**Lefteris Karapetsas**) Solidity, libethash
-- *chriseth* (**Christian Reitwiessner**) Solidity
-- *subtly* (**Alex Leverington**) libp2p, rlpx
-- *yann300* (**Yann Levreau**) Mix
-- *LianaHus* (**Liana Husikyan**) Solidity
-- *chfast* (**Paweł Bylica**) EVMJIT
-- *cubedro* (**Marian Oancea**) web3.js
-- *gluk256* (**Vlad Gluhovsky**) Whisper
-- *programmerTim* (**Tim Hughes**) libethash-cl
+```
+ethminer --help
+```
 
-And let's not forget: Caktux (neth, ongoing CI), Eric Lombrozo (original MinGW32 cross-compilation), Marko Simovic (original CI).
+### F.A.Q
 
-### Building
+1. Why is my hashrate with Nvidia cards on Windows 10 so low?
+The new WDDM 2.0 driver on Windows 10 uses a different way of addressing the GPU. This is good for a lot of things, but not for ETH mining. There is a way of mining ETH at Win7/8/Linux speeds on Win10, by downgrading the GPU driver to a Win7 one (350.12 recommended) and using a [build that was created using CUDA 6.5](releases/cuda-6.5).
 
-See the [Wiki](https://github.com/ethereum/cpp-ethereum/wiki) for build instructions, compatibility information and build tips. 
+2. And what about the GTX750Ti?
+Unfortunately the issue is a bit more serious on the GTX750Ti, already causing suboptimal performance on Win7 and Linux. Apparently about 5MH/s can still be reached on Linux, which, depending on ETH price, could still be profitable, considering the relatively low power draw.
 
-### Testing
+3. Are AMD cards also affected by this issue?
+Yes, but in a different way. While Nvidia cards have thresholds (i.e 2GB for 9x0 / Win7) of the DAG file size after which performance will drop steeply, on AMD cards the hashrate also drops with increasing DAG size, but more in a linear pattern. 
 
-To run the tests, make sure you clone the tests repository from github.com/ethereum to tests as a sibling to cpp-ethereum.
+4. Can I still mine ETH with my 2GB GPU?
+2GB should be sufficient for a while, altough it's become a bit uncertain if we'll stay below 2GB until the switch to PoS. I don't keep an exact list of all supported GPU's, but generally speaking the following cards should be ok:
+AMD HD78xx, HD79xx, R9 2xx, R9 3xx, Fury.
+Nvidia Geforce 6x0, 7x0, 8x0, 9x0, TITAN
+Quadro, Tesla & FirePro's with similar silicon should be fine too.
 
-### Yet To Do
+5. Can I buy a private kernel from you that hashes faster?
+No.
 
-See [TODO](https://github.com/ethereum/cpp-ethereum/wiki/TODO)
+6. What are the optimal launch parameters?
+The default parameters are fine in most scenario's (CUDA). For OpenCL it varies a bit more. Just play around with the numbers and use powers of 2. GPU's like powers of 2. 
 
-### License
+7. Is your miner faster than the stock miner?
+In CUDA yes, in OpenCL only on Nvidia .
 
-All new contributions are under the [MIT license](http://opensource.org/licenses/MIT).
-See [LICENSE](LICENSE). Some old contributions are under the [GPLv3 license](http://www.gnu.org/licenses/gpl-3.0.en.html). See [GPLV3_LICENSE](GPLV3_LICENSE).
+### Building on Windows
 
-### Contributing
+- download or clone this repository
+- download and install Visual Studio 12 2013 and CMake
+- run [getstuff.bat](extdep/getstuff.bat) in [cpp-ethereum/extdep](extdep) 
+- open a command prompt and navigate to cpp-ethereum directory
+- ``` mkdir build 
+cd build
+cmake -DBUNDLE=cudaminer -G "Visual Studio 12 2013 Win64" ..
+```
+- if you don't want/need CUDA support, use "miner" instead of "cudaminer". This will only compile OpenCL support
+- to speed up compilation a bit, you can add -DCOMPUTE=xx , where x is your CUDA GPU Compute version * 10. i.e -DCOMPUTE=52 for a GTX970.  
+- you may disable stratum support by adding -DSTRATUM=0
+- When CMake completes without errors, opn ethereum.sln created in the build directory in Visual Studio
+- Set "ethminer" as startup project by right-clicking on it in the project pane
+- Build. Run
 
-All new contributions are added under the MIT License. Please refer to the `LICENSE` file in the root directory.
-To state that you accept this fact for all of your contributions please add yourself to the list of external contributors like in the example below.
+### Building on Ubuntu
 
-#### External Contributors
-I hereby place all my contributions in this codebase under an MIT
-licence, as specified [here](http://opensource.org/licenses/MIT).
-- *Name Surname* (**email@domain**)
+Note: this section was copied from [ethpool](https://ethpool.freshdesk.com/support/solutions/articles/8000032853-how-to-compile-genoils-cuda-miner-on-ubuntu)
 
-#### Contribution guideline
-
-Please add yourself in the `@author` doxygen  section of the file your are adding/editing
-with the same wording as the one you listed yourself in the external contributors section above,
-only replacing the word **contribution** by **file**
-
-All development goes in develop branch - please don't submit pull requests to master.
-
-Please read [CodingStandards.txt](CodingStandards.txt) thoroughly before making alterations to the code base. Please do *NOT* use an editor that automatically reformats whitespace away from astylerc or the formatting guidelines as described in [CodingStandards.txt](CodingStandards.txt).
-
-libweb3jsonrpc/abstractwebthreestubserver.h is autogenerated from the jsonrpcstub executable that comes with the libjsonrpc library (json-rpc-cpp project). It shouldn't be maually altered.
+Ubuntu 14.04. OpenCL only (for AMD cards)
 
 ```bash
-jsonrpcstub spec.json --cpp-server=AbstractWebThreeStubServer
+sudo apt-get update
+sudo apt-get -y install software-properties-common
+add-apt-repository -y ppa:ethereum/ethereum
+sudo apt-get update
+sudo apt-get install git cmake libcryptopp-dev libleveldb-dev libjsoncpp-dev libjson-rpc-cpp-dev libboost-all-dev libgmp-dev libreadline-dev libcurl4-gnutls-dev ocl-icd-libopencl1 opencl-headers mesa-common-dev libmicrohttpd-dev build-essential -y
+git clone https://github.com/Genoil/cpp-ethereum/
+cd cpp-ethereum/
+mkdir build
+cd build
+cmake -DBUNDLE=miner ..
+make -j8
 ```
+
+You can then find the executable in the ethminer subfolder
+
+Ubuntu 14.04. OpenCL + CUDA (for NVIDIA cards)
+
+```bash
+wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_7.5-18_amd64.deb
+sudo dpkg -i cuda-repo-ubuntu1404_7.5-18_amd64.deb
+sudo apt-get -y install software-properties-common
+sudo add-apt-repository -y ppa:ethereum/ethereum
+sudo apt-get update
+sudo apt-get install git cmake libcryptopp-dev libleveldb-dev libjsoncpp-dev libjson-rpc-cpp-dev libboost-all-dev libgmp-dev libreadline-dev libcurl4-gnutls-dev ocl-icd-libopencl1 opencl-headers mesa-common-dev libmicrohttpd-dev build-essential cuda -y
+git clone https://github.com/Genoil/cpp-ethereum/
+cd cpp-ethereum/
+mkdir build
+cd build
+cmake -DBUNDLE=miner ..
+make -j8
+```
+
+You can then find the executable in the ethminer subfolder
