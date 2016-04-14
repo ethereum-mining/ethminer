@@ -1096,4 +1096,4 @@ private:
 	string m_fport = "";
 };
 
-char MinerCLI::s_dagDir[256] = "";
+char MinerCLI::s_dagDir[256] = ""; 
