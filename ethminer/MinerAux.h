@@ -205,8 +205,9 @@ public:
 			{
 				try
 				{
-					m_openclDevices[m_openclDeviceCount++] = stol(argv[++i]);
-				}
+					m_openclDevices[m_openclDeviceCount] = stol(argv[++i]);
+					++m_openclDeviceCount;
+                }
 				catch (...)
 				{
 					i--;
@@ -248,7 +249,8 @@ public:
 			{
 				try
 				{
-					m_cudaDevices[m_cudaDeviceCount++] = stol(argv[++i]);
+					m_cudaDevices[m_cudaDeviceCount] = stol(argv[++i]);
+					++m_cudaDeviceCount;
 				}
 				catch (...)
 				{
