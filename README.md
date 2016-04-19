@@ -52,7 +52,7 @@ In CUDA yes, in OpenCL only on Nvidia .
 - download and install Visual Studio 12 2013 and CMake
 - run [getstuff.bat](extdep/getstuff.bat) in [cpp-ethereum/extdep](extdep) 
 - open a command prompt and navigate to cpp-ethereum directory
-- ``` mkdir build 
+``` mkdir build 
 cd build
 cmake -DBUNDLE=cudaminer -G "Visual Studio 12 2013 Win64" ..
 ```
