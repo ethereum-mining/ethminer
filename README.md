@@ -61,7 +61,7 @@ cmake -DBUNDLE=cudaminer -G "Visual Studio 12 2013 Win64" ..
 
 - if you don't want/need CUDA support, use "miner" instead of "cudaminer". This will only compile OpenCL support
 - to speed up compilation a bit, you can add -DCOMPUTE=xx , where x is your CUDA GPU Compute version * 10. i.e -DCOMPUTE=52 for a GTX970.  
-- you may disable stratum support by adding -DSTRATUM=0
+- you may disable stratum support by adding -DETH_STRATUM=0
 - When CMake completes without errors, opn ethereum.sln created in the build directory in Visual Studio
 - Set "ethminer" as startup project by right-clicking on it in the project pane
 - Build. Run
