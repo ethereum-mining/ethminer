@@ -52,10 +52,12 @@ In CUDA yes, in OpenCL only on Nvidia .
 - download and install Visual Studio 12 2013 and CMake
 - run [getstuff.bat](extdep/getstuff.bat) in [cpp-ethereum/extdep](extdep) 
 - open a command prompt and navigate to cpp-ethereum directory
-- ``` mkdir build 
+
+``` mkdir build 
 cd build
 cmake -DBUNDLE=cudaminer -G "Visual Studio 12 2013 Win64" ..
 ```
+
 - if you don't want/need CUDA support, use "miner" instead of "cudaminer". This will only compile OpenCL support
 - to speed up compilation a bit, you can add -DCOMPUTE=xx , where x is your CUDA GPU Compute version * 10. i.e -DCOMPUTE=52 for a GTX970.  
 - you may disable stratum support by adding -DSTRATUM=0
