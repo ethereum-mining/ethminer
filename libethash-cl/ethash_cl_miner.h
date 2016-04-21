@@ -6,10 +6,10 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
-#include "cl.hpp"
+#include "CL/cl.hpp"
 #pragma clang diagnostic pop
 #else
-#include "cl.hpp"
+#include "CL/cl.hpp"
 #endif
 
 #include <time.h>
