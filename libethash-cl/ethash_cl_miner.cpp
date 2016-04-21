@@ -376,9 +376,11 @@ bool ethash_cl_miner::init(
 
 			computeCapability = computeCapabilityMajor * 10 + computeCapabilityMinor;
 			int maxregs = computeCapability >= 35 ? 72 : 63;
-			sprintf(options, "-cl-nv-verbose -cl-nv-maxrregcount=%d", maxregs);// , computeCapability);
+			sprintf(options, "-cl-nv-maxrregcount=%d", maxregs);// , computeCapability);
 		}
-
+		else {
+			sprintf(options, "");
+		}
 		// create context
 		m_context = cl::Context(vector<cl::Device>(&device, &device + 1));
 		m_queue = cl::CommandQueue(m_context, device);
