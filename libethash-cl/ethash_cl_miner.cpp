@@ -376,7 +376,10 @@ bool ethash_cl_miner::init(
 
 			computeCapability = computeCapabilityMajor * 10 + computeCapabilityMinor;
 			int maxregs = computeCapability >= 35 ? 72 : 63;
-			sprintf(options, "-cl-nv-verbose -cl-nv-maxrregcount=%d", maxregs);// , computeCapability);
+			sprintf(options, "-cl-nv-maxrregcount=%d", maxregs);// , computeCapability);
+		}
+		else {
+			sprintf(options, "");
 		}
 
 		// create context
@@ -399,10 +402,6 @@ bool ethash_cl_miner::init(
 		addDefinition(code, "PLATFORM", platformId);
 		addDefinition(code, "COMPUTE", computeCapability);
 
-		//debugf("%s", code.c_str());
-
-
-		
 		// create miner OpenCL program
 		cl::Program::Sources sources;
 		sources.push_back({ code.c_str(), code.size() });
@@ -439,6 +438,10 @@ bool ethash_cl_miner::init(
 		ETHCL_LOG("Creating buffer for header.");
 		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
+		m_searchKernel.setArg(1, m_header);
+		m_searchKernel.setArg(2, m_dag);
+		m_searchKernel.setArg(5, ~0u);
+
 		// create mining buffers
 		for (unsigned i = 0; i != c_bufferCount; ++i)
 		{
@@ -454,15 +457,16 @@ bool ethash_cl_miner::init(
 	return true;
 }
 
+typedef struct 
+{
+	uint64_t start_nonce;
+	unsigned buf;
+} pending_batch;
+
 void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook)
 {
 	try
 	{
-		struct pending_batch
-		{
-			uint64_t start_nonce;
-			unsigned buf;
-		};
 		queue<pending_batch> pending;
 
 		// this can't be a static because in MacOSX OpenCL implementation a segfault occurs when a static is passed to OpenCL functions
@@ -481,13 +485,9 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 #endif
 			m_queue.finish();
 
-		
-		m_searchKernel.setArg(1, m_header);
-		m_searchKernel.setArg(2, m_dag );
 		// pass these to stop the compiler unrolling the loops
 		m_searchKernel.setArg(4, target);
-		m_searchKernel.setArg(5, ~0u);
-
+		
 		unsigned buf = 0;
 		random_device engine;
 		uint64_t start_nonce = uniform_int_distribution<uint64_t>()(engine);
