@@ -54,6 +54,28 @@ inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 	return _out;
 }
 
+class SolutionStats {
+public:
+	void accepted() { accepts++;  }
+	void rejected() { rejects++;  }
+	void failed()   { failures++; }
+
+	void reset() { accepts = rejects = failures = 0; }
+
+	unsigned getAccepts()  { return accepts; }
+	unsigned getRejects()  { return rejects; }
+	unsigned getFailures() { return failures; }
+private:
+	unsigned accepts  = 0;
+	unsigned rejects  = 0;
+	unsigned failures = 0; 
+};
+
+inline std::ostream& operator<<(std::ostream& os, SolutionStats s)
+{
+	return os << "[A" << s.getAccepts() << ":R" << s.getRejects() << ":F" << s.getFailures() << "]";
+}
+
 template <class PoW> class GenericMiner;
 
 /**

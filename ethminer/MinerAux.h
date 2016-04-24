@@ -940,13 +940,19 @@ private:
 				if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
 				{
 					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
-					if (ok)
+					if (ok) {
 						cnote << "B-) Submitted and accepted.";
-					else
+						f.acceptedSolution();
+					}
+					else {
 						cwarn << ":-( Not accepted.";
+						f.rejectedSolution();
+					}
 				}
-				else
+				else {
+					f.failedSolution();
 					cwarn << "FAILURE: GPU gave incorrect result!";
+				}
 				current.reset();
 			}
 			catch (jsonrpc::JsonRpcException&)
@@ -1026,7 +1032,7 @@ private:
 			if (client.isConnected())
 			{
 				if (client.current())
-					minelog << "Mining on PoWhash" << client.currentHeaderHash() << ": " << mp;
+					minelog << "Mining on PoWhash" << client.currentHeaderHash() << ": " << mp << f.getSolutionStats();
 				else
 					minelog << "Waiting for work package...";
 			}
