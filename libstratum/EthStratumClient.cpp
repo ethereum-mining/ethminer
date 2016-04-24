@@ -259,10 +259,14 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		cnote << "Authorized worker " << p_active->user;
 		break;
 	case 4:
- 		if (responseObject.get("result", false).asBool())
+		if (responseObject.get("result", false).asBool()) {
 			cnote << "B-) Submitted and accepted.";
-		else
+			p_farm->acceptedSolution();
+		}
+		else {
 			cwarn << ":-( Not accepted.";
+			p_farm->rejectedSolution();
+		}
 		break;
 	default:
 		string method = responseObject.get("method", "").asString();
@@ -346,9 +350,10 @@ bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
 			boost::asio::placeholders::error));
 		return true;
 	}
-	else
+	else {
 		cwarn << "FAILURE: GPU gave incorrect result!";
-	
+		p_farm->rejectedSolution();
+	}
 	return false;
 }
 

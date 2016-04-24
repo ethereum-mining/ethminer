@@ -146,6 +146,22 @@ public:
 		resetTimer();
 	}
 
+	SolutionStats getSolutionStats() {
+		return m_solutionStats;
+	}
+
+	void failedSolution() {
+		m_solutionStats.failed();
+	}
+
+	void acceptedSolution() {
+		m_solutionStats.accepted();
+	}
+
+	void rejectedSolution() {
+		m_solutionStats.rejected();
+	}
+
 	using SolutionFound = std::function<bool(Solution const&)>;
 
 	/**
@@ -200,7 +216,11 @@ private:
 
 	std::map<std::string, SealerDescriptor> m_sealers;
 	std::string m_lastSealer;
-};
+
+	mutable SharedMutex x_solutionStats;
+	mutable SolutionStats m_solutionStats;
+
+}; 
 
 }
 }
