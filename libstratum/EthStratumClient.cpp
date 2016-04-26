@@ -22,6 +22,7 @@ EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType
 	m_maxRetries = retries;
 
 	p_farm = f;
+	p_worktimer = nullptr;
 	connect();
 }
 
@@ -74,7 +75,10 @@ void EthStratumClient::reconnect()
 	m_socket.close();
 	m_authorized = false;
 	m_connected = false;
-
+	if (p_worktimer) {
+		p_worktimer->cancel();
+		p_worktimer = nullptr;
+	}
 	if (!m_failover.host.empty())
 	{
 		m_retries++;
@@ -306,10 +310,15 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						EthashAux::computeFull(sha3(seedHash), true);
 					if (headerHash != m_current.headerHash)
 					{
+						if (p_worktimer)
+							p_worktimer->cancel();
 						m_current.headerHash = h256(sHeaderHash);
 						m_current.seedHash = seedHash;
 						m_current.boundary = h256(sShareTarget);// , h256::AlignRight);
 						p_farm->setWork(m_current);
+
+						p_worktimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout));
+						p_worktimer->async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
 					}
 				}
 			}
@@ -328,6 +337,16 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		break;
 	}
 
+}
+
+void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec) {
+	if (!ec) {
+		cnote << "No new work received in" << m_worktimeout << "seconds. Reconnecting...";
+		// keep this thread alive until reconnection.
+		p_worktimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout));
+		p_worktimer->async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+		reconnect();
+	}
 }
 
 bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
