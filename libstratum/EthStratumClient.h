@@ -44,7 +44,8 @@ private:
 	void disconnect();
 	void resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
 	void connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
-	
+	void work_timeout_handler(const boost::system::error_code& ec);
+
 	void readline();
 	void handleResponse(const boost::system::error_code& ec);
 	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
@@ -63,6 +64,7 @@ private:
 
 	int	m_retries = 0;
 	int	m_maxRetries;
+	int m_worktimeout = 10;
 
 	boost::mutex m_mtx;
 	int m_pending;
@@ -78,4 +80,7 @@ private:
 
 	boost::asio::streambuf m_requestBuffer;
 	boost::asio::streambuf m_responseBuffer;
+
+	boost::asio::deadline_timer * p_worktimer;
+
 };
