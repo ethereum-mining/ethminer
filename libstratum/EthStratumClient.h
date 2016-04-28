@@ -27,7 +27,7 @@ typedef struct {
 class EthStratumClient
 {
 public:
-	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, bool const & precompute);
+	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, bool const & precompute);
 	~EthStratumClient();
 
 	void setFailover(string const & host, string const & port);
@@ -38,9 +38,10 @@ public:
 	h256 currentHeaderHash() { return m_current.headerHash; }
 	bool current() { return m_current; }
 	bool submit(EthashProofOfWork::Solution solution);
+	void reconnect();
 private:
 	void connect();
-	void reconnect();
+	
 	void disconnect();
 	void resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
 	void connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
@@ -64,7 +65,7 @@ private:
 
 	int	m_retries = 0;
 	int	m_maxRetries;
-	int m_worktimeout = 10;
+	int m_worktimeout = 60;
 
 	boost::mutex m_mtx;
 	int m_pending;

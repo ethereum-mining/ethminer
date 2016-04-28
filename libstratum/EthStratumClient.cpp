@@ -1,10 +1,10 @@
 
 #include "EthStratumClient.h"
-
+#include <libdevcore/Log.h>
 using boost::asio::ip::tcp;
 
 
-EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, bool const & precompute)
+EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, bool const & precompute)
 	: m_socket(m_io_service)
 {
 	m_minerType = m;
@@ -20,6 +20,7 @@ EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType
 	m_precompute = precompute;
 	m_pending = 0;
 	m_maxRetries = retries;
+	m_worktimeout = worktimeout;
 
 	p_farm = f;
 	p_worktimer = nullptr;
@@ -71,14 +72,18 @@ void EthStratumClient::reconnect()
 		p_farm->stop();
 	}
 	*/
-	m_io_service.reset();
-	m_socket.close();
-	m_authorized = false;
-	m_connected = false;
 	if (p_worktimer) {
 		p_worktimer->cancel();
 		p_worktimer = nullptr;
 	}
+
+	m_io_service.reset();
+	m_socket.close();
+	m_authorized = false;
+	m_connected = false;
+	
+
+	
 	if (!m_failover.host.empty())
 	{
 		m_retries++;
@@ -138,6 +143,8 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 
 void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
 {
+	dev::setThreadName("stratum");
+
 	if (!ec)
 	{
 		m_connected = true;
@@ -188,12 +195,14 @@ void EthStratumClient::handleResponse(const boost::system::error_code& ec) {
 	}
 	else
 	{
+		dev::setThreadName("stratum");
 		cwarn << "Handle response failed: " << ec.message();
 	}
 }
 
 void EthStratumClient::readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred)
 {
+	dev::setThreadName("stratum");
 	m_mtx.lock();
 	m_pending = m_pending > 0 ? m_pending - 1 : 0;
 	m_mtx.unlock();
@@ -222,12 +231,14 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 		{
 			cwarn << "Discarding incomplete response";
 		}
-		readline();
+		if (m_connected)
+			readline();
 	}
 	else
 	{
 		cwarn << "Read response failed: " << ec.message();
-		reconnect();
+		if (m_connected)
+			reconnect();
 	}
 }
 
@@ -292,10 +303,10 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 				if (sHeaderHash != "" && sSeedHash != "" && sShareTarget != "")
 				{
-					cnote << "Received new job #" + m_job;
-					cnote << "Header hash: " + sHeaderHash;
-					cnote << "Seed hash: " + sSeedHash;
-					cnote << "Share target: " + sShareTarget;
+					cnote << "Received new job #" + m_job.substr(0,8);
+					//cnote << "Header hash: " + sHeaderHash;
+					//cnote << "Seed hash: " + sSeedHash;
+					//cnote << "Share target: " + sShareTarget;
 
 					h256 seedHash = h256(sSeedHash);
 					h256 headerHash = h256(sHeaderHash);
@@ -341,10 +352,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec) {
 	if (!ec) {
-		cnote << "No new work received in" << m_worktimeout << "seconds. Reconnecting...";
-		// keep this thread alive until reconnection.
-		p_worktimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout));
-		p_worktimer->async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+		cnote << "No new work received in" << m_worktimeout << "seconds.";
 		reconnect();
 	}
 }
