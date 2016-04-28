@@ -67,11 +67,12 @@ private:
 	int	m_maxRetries;
 	int m_worktimeout = 60;
 
-	boost::mutex m_mtx;
+	boost::mutex x_pending;
 	int m_pending;
 	string m_response;
 
 	GenericFarm<EthashProofOfWork> * p_farm;
+	boost::mutex x_current;
 	EthashProofOfWork::WorkPackage m_current;
 	string m_job;
 	EthashAux::FullType m_dag;

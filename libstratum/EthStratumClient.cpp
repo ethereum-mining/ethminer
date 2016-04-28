@@ -176,7 +176,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 }
 
 void EthStratumClient::readline() {
-	m_mtx.lock();
+	x_pending.lock();
 	if (m_pending == 0) {
 		async_read_until(m_socket, m_responseBuffer, "\n",
 			boost::bind(&EthStratumClient::readResponse, this,
@@ -185,7 +185,7 @@ void EthStratumClient::readline() {
 		m_pending++;
 		
 	}
-	m_mtx.unlock();
+	x_pending.unlock();
 }
 
 void EthStratumClient::handleResponse(const boost::system::error_code& ec) {
@@ -203,9 +203,9 @@ void EthStratumClient::handleResponse(const boost::system::error_code& ec) {
 void EthStratumClient::readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred)
 {
 	dev::setThreadName("stratum");
-	m_mtx.lock();
+	x_pending.lock();
 	m_pending = m_pending > 0 ? m_pending - 1 : 0;
-	m_mtx.unlock();
+	x_pending.unlock();
 
 	if (!ec)
 	{
@@ -321,15 +321,18 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						EthashAux::computeFull(sha3(seedHash), true);
 					if (headerHash != m_current.headerHash)
 					{
+						x_current.lock();
 						if (p_worktimer)
 							p_worktimer->cancel();
+
 						m_current.headerHash = h256(sHeaderHash);
 						m_current.seedHash = seedHash;
 						m_current.boundary = h256(sShareTarget);// , h256::AlignRight);
 						p_farm->setWork(m_current);
-
+						x_current.unlock();
 						p_worktimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout));
 						p_worktimer->async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+
 					}
 				}
 			}
@@ -358,29 +361,32 @@ void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec)
 }
 
 bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
-
+	x_current.lock();
 	cnote << "Solution found; Submitting to" << p_active->host << "...";
 	cnote << "  Nonce:" << "0x"+solution.nonce.hex();
-	cnote << "  Mixhash:" << "0x" + solution.mixHash.hex();
-	cnote << "  Header-hash:" << "0x" + m_current.headerHash.hex();
-	cnote << "  Seedhash:" << "0x" + m_current.seedHash.hex();
-	cnote << "  Target: " << "0x" + h256(m_current.boundary).hex();
-	cnote << "  Ethash: " << "0x" + h256(EthashAux::eval(m_current.seedHash, m_current.headerHash, solution.nonce).value).hex();
+	//cnote << "  Mixhash:" << "0x" + solution.mixHash.hex();
+	//cnote << "  Header-hash:" << "0x" + m_current.headerHash.hex();
+	//cnote << "  Seedhash:" << "0x" + m_current.seedHash.hex();
+	//cnote << "  Target: " << "0x" + h256(m_current.boundary).hex();
+	//cnote << "  Ethash: " << "0x" + h256(EthashAux::eval(m_current.seedHash, m_current.headerHash, solution.nonce).value).hex();
+	
 	if (EthashAux::eval(m_current.seedHash, m_current.headerHash, solution.nonce).value < m_current.boundary)
 	{
 		string json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" + p_active->user + "\",\"" + m_job + "\",\"0x" + solution.nonce.hex() + "\",\"0x" + m_current.headerHash.hex() + "\",\"0x" + solution.mixHash.hex() + "\"]}\n";
 		std::ostream os(&m_requestBuffer);
 		os << json;
-
+		x_current.unlock();
 		async_write(m_socket, m_requestBuffer,
 			boost::bind(&EthStratumClient::handleResponse, this,
 			boost::asio::placeholders::error));
 		return true;
 	}
 	else {
+		x_current.unlock();
 		cwarn << "FAILURE: GPU gave incorrect result!";
 		p_farm->rejectedSolution();
 	}
+	
 	return false;
 }
 
