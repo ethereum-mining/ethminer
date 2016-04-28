@@ -90,7 +90,7 @@ inline std::string credits()
 class BadArgument: public Exception {};
 struct MiningChannel: public LogChannel
 {
-	static const char* name() { return EthGreen "miner"; }
+	static const char* name() { return EthGreen "  m"; }
 	static const int verbosity = 2;
 	static const bool debug = false;
 };
@@ -218,6 +218,11 @@ public:
 		{
 			m_fport = string(argv[++i]);
 		}
+		else if ((arg == "--work-timeout") && i + 1 < argc)
+		{
+			m_worktimeout = atoi(argv[++i]);
+		}
+		
 #endif
 		else if (arg == "--opencl-platform" && i + 1 < argc)
 			try {
@@ -598,6 +603,7 @@ public:
 			<< "	-FS, --failover-stratum <host:port>  Failover stratum server at host:port" << endl
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
+			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 60. Don't set lower than max. avg. block time" << endl
 #endif
 #if ETH_JSONRPC || ETH_STRATUM || !ETH_TRUE
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
@@ -892,7 +898,7 @@ private:
 					auto mp = f.miningProgress();
 					f.resetMiningProgress();
 					if (current)
-						minelog << "Mining on PoWhash" << current.headerHash << ": " << mp;
+						minelog << "Mining on PoWhash" << "#" + (current.headerHash.hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
 					else
 						minelog << "Getting work package...";
 
@@ -1005,7 +1011,7 @@ private:
 		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 		GenericFarm<EthashProofOfWork> f;
-		EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_precompute);
+		EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_precompute);
 		if (m_farmFailOverURL != "")
 		{
 			if (m_fuser != "")
@@ -1032,7 +1038,7 @@ private:
 			if (client.isConnected())
 			{
 				if (client.current())
-					minelog << "Mining on PoWhash" << client.currentHeaderHash() << ": " << mp << f.getSolutionStats();
+					minelog << "Mining on PoWhash" << "#"+(client.currentHeaderHash().hex().substr(0,8)) << ": " << mp << f.getSolutionStats();
 				else
 					minelog << "Waiting for work package...";
 			}
@@ -1092,6 +1098,7 @@ private:
 	unsigned m_farmRetries = 0;
 	unsigned m_maxFarmRetries = 3;
 	unsigned m_farmRecheckPeriod = 500;
+	int m_worktimeout = 60;
 	bool m_precompute = true;
 
 #if ETH_STRATUM || !ETH_TRUE
