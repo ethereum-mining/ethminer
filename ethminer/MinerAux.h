@@ -881,7 +881,7 @@ private:
 			f.start("opencl");
 		else if (_m == MinerType::CUDA)
 			f.start("cuda");
-		EthashProofOfWork::WorkPackage current;
+		EthashProofOfWork::WorkPackage current, solved;
 		EthashAux::FullType dag;
 		while (m_running)
 			try
@@ -891,6 +891,9 @@ private:
 				f.onSolutionFound([&](EthashProofOfWork::Solution sol)
 				{
 					solution = sol;
+					solved.headerHash = current.headerHash;
+					solved.boundary = current.boundary;
+					solved.seedHash = current.seedHash;
 					return completed = true;
 				});
 				for (unsigned i = 0; !completed; ++i)
@@ -939,13 +942,13 @@ private:
 				cnote << "Solution found; Submitting to" << _remote << "...";
 				cnote << "  Nonce:" << solution.nonce.hex();
 				cnote << "  Mixhash:" << solution.mixHash.hex();
-				cnote << "  Header-hash:" << current.headerHash.hex();
-				cnote << "  Seedhash:" << current.seedHash.hex();
-				cnote << "  Target: " << h256(current.boundary).hex();
-				cnote << "  Ethash: " << h256(EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value).hex();
-				if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
+				cnote << "  Header-hash:" << solved.headerHash.hex();
+				cnote << "  Seedhash:" << solved.seedHash.hex();
+				cnote << "  Target: " << h256(solved.boundary).hex();
+				cnote << "  Ethash: " << h256(EthashAux::eval(solved.seedHash, solved.headerHash, solution.nonce).value).hex();
+				if (EthashAux::eval(solved.seedHash, solved.headerHash, solution.nonce).value < solved.boundary)
 				{
-					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
+					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(solved.headerHash), "0x" + toString(solution.mixHash));
 					if (ok) {
 						cnote << "B-) Submitted and accepted.";
 						f.acceptedSolution();
