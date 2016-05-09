@@ -144,11 +144,11 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
 {
 	dev::setThreadName("stratum");
-
+	
 	if (!ec)
 	{
 		m_connected = true;
-		cnote << "Connected to stratum server " << p_active->host << ":" << p_active->port;
+		cnote << "Connected to stratum server " << i->host_name() << ":" << p_active->port;
 		if (!p_farm->isMining())
 		{
 			cnote << "Starting farm";
@@ -207,7 +207,7 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 	m_pending = m_pending > 0 ? m_pending - 1 : 0;
 	x_pending.unlock();
 
-	if (!ec)
+	if (!ec && bytes_transferred)
 	{
 		std::istream is(&m_responseBuffer);
 		std::string response;
@@ -294,12 +294,13 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				string sHeaderHash = params.get((Json::Value::ArrayIndex)1, "").asString();
 				string sSeedHash = params.get((Json::Value::ArrayIndex)2, "").asString();
 				string sShareTarget = params.get((Json::Value::ArrayIndex)3, "").asString();
-				bool cleanJobs = params.get((Json::Value::ArrayIndex)4, "").asBool();
-
-				if (sShareTarget.length() < 66)
-					sShareTarget = "0x" + string(66 - sShareTarget.length(), '0') + sShareTarget.substr(2);
-
+				//bool cleanJobs = params.get((Json::Value::ArrayIndex)4, "").asBool();
+				
+				// coinmine.pl fix
 				int l = sShareTarget.length();
+				if (l < 66)
+					sShareTarget = "0x" + string(66 - l, '0') + sShareTarget.substr(2);
+								
 
 				if (sHeaderHash != "" && sSeedHash != "" && sShareTarget != "")
 				{
@@ -314,11 +315,17 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 
 					if (seedHash != m_current.seedHash)
+					{
 						cnote << "Grabbing DAG for" << seedHash;
+					}
 					if (!(dag = EthashAux::full(seedHash, true, [&](unsigned _pc){ cout << "\rCreating DAG. " << _pc << "% done..." << flush; return 0; })))
+					{
 						BOOST_THROW_EXCEPTION(DAGCreationFailure());
+					}
 					if (m_precompute)
+					{
 						EthashAux::computeFull(sha3(seedHash), true);
+					}
 					if (headerHash != m_current.headerHash)
 					{
 						x_current.lock();
