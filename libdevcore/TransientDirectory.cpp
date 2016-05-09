@@ -60,5 +60,7 @@ TransientDirectory::~TransientDirectory()
 	ec.clear();
 	fs::remove_all(m_path, ec);
 	if (!ec)
+	{
 		cwarn << "Failed to delete directory '" << m_path << "': " << ec.message();
+	}
 }
