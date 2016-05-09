@@ -379,7 +379,7 @@ bool ethash_cl_miner::init(
 			sprintf(options, "-cl-nv-maxrregcount=%d", maxregs);// , computeCapability);
 		}
 		else {
-			sprintf(options, "");
+			sprintf(options, "%s", "");
 		}
 
 		// create context
@@ -493,7 +493,6 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		uint64_t start_nonce = uniform_int_distribution<uint64_t>()(engine);
 		for (;; start_nonce += m_globalWorkSize)
 		{
-			auto t = chrono::high_resolution_clock::now();
 			// supply output buffer to kernel
 			m_searchKernel.setArg(0, m_searchBuffer[buf]);
 			m_searchKernel.setArg(3, start_nonce);

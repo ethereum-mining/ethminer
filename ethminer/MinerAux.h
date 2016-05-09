@@ -912,11 +912,17 @@ private:
 					h256 hh(v[0].asString());
 					h256 newSeedHash(v[1].asString());
 					if (current.seedHash != newSeedHash)
+					{
 						minelog << "Grabbing DAG for" << newSeedHash;
+					}
 					if (!(dag = EthashAux::full(newSeedHash, true, [&](unsigned _pc){ cout << "\rCreating DAG. " << _pc << "% done..." << flush; return 0; })))
+					{
 						BOOST_THROW_EXCEPTION(DAGCreationFailure());
+					}
 					if (m_precompute)
+					{
 						EthashAux::computeFull(sha3(newSeedHash), true);
+					}
 					if (hh != current.headerHash)
 					{
 						current.headerHash = hh;
