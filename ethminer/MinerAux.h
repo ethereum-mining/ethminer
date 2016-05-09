@@ -145,6 +145,7 @@ public:
 		}
 		else if (arg == "--farm-recheck" && i + 1 < argc)
 			try {
+				m_farmRecheckSet = true;
 				m_farmRecheckPeriod = stol(argv[++i]);
 			}
 			catch (...)
@@ -233,17 +234,7 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-		else if (arg == "--opencl-device" && i + 1 < argc)
-			try {
-				m_openclDevice = stol(argv[++i]);
-				m_miningThreads = 1;
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		else if (arg == "--opencl-devices")
+		else if (arg == "--opencl-devices" || arg == "--opencl-device")
 			while (m_openclDeviceCount < 16 && i + 1 < argc)
 			{
 				try
@@ -1013,6 +1004,9 @@ private:
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
+		if (!m_farmRecheckSet)
+			m_farmRecheckPeriod = m_defaultStratumFarmRecheckPeriod;
+		
 		GenericFarm<EthashProofOfWork> f;
 		EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_precompute);
 		if (m_farmFailOverURL != "")
@@ -1101,6 +1095,8 @@ private:
 	unsigned m_farmRetries = 0;
 	unsigned m_maxFarmRetries = 3;
 	unsigned m_farmRecheckPeriod = 500;
+	unsigned m_defaultStratumFarmRecheckPeriod = 2000;
+	bool m_farmRecheckSet = false;
 	int m_worktimeout = 60;
 	bool m_precompute = true;
 
