@@ -30,6 +30,10 @@
 #include <libdevcore/Worker.h>
 #include <libethcore/Common.h>
 
+#define MINER_WAIT_STATE_UNKNOWN 0
+#define MINER_WAIT_STATE_WORK	 1
+#define MINER_WAIT_STATE_DAG	 2
+
 namespace dev
 {
 
@@ -60,20 +64,29 @@ public:
 	void rejected() { rejects++;  }
 	void failed()   { failures++; }
 
-	void reset() { accepts = rejects = failures = 0; }
+	void acceptedStale() { acceptedStales++; }
+	void rejectedStale() { rejectedStales++; }
 
-	unsigned getAccepts()  { return accepts; }
-	unsigned getRejects()  { return rejects; }
-	unsigned getFailures() { return failures; }
+
+	void reset() { accepts = rejects = failures = acceptedStales = rejectedStales = 0; }
+
+	unsigned getAccepts()			{ return accepts; }
+	unsigned getRejects()			{ return rejects; }
+	unsigned getFailures()			{ return failures; }
+	unsigned getAcceptedStales()	{ return acceptedStales; }
+	unsigned getRejectedStales()	{ return rejectedStales; }
 private:
 	unsigned accepts  = 0;
 	unsigned rejects  = 0;
 	unsigned failures = 0; 
+
+	unsigned acceptedStales = 0;
+	unsigned rejectedStales = 0;
 };
 
 inline std::ostream& operator<<(std::ostream& os, SolutionStats s)
 {
-	return os << "[A" << s.getAccepts() << ":R" << s.getRejects() << ":F" << s.getFailures() << "]";
+	return os << "[A" << s.getAccepts() << "+" << s.getAcceptedStales() << ":R" << s.getRejects() << "+" << s.getRejectedStales() << ":F" << s.getFailures() << "]";
 }
 
 template <class PoW> class GenericMiner;
