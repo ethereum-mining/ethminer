@@ -268,6 +268,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		m_authorized = responseObject.get("result", Json::Value::null).asBool();
 		if (!m_authorized)
 		{
+			cnote << "Worker not authorized:" << p_active->user;
 			disconnect();
 			return;
 		}
@@ -276,11 +277,11 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 	case 4:
 		if (responseObject.get("result", false).asBool()) {
 			cnote << "B-) Submitted and accepted.";
-			p_farm->acceptedSolution();
+			p_farm->acceptedSolution(m_stale);
 		}
 		else {
 			cwarn << ":-( Not accepted.";
-			p_farm->rejectedSolution();
+			p_farm->rejectedSolution(m_stale);
 		}
 		break;
 	default:
@@ -290,7 +291,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			params = responseObject.get("params", Json::Value::null);
 			if (params.isArray())
 			{
-				m_job = params.get((Json::Value::ArrayIndex)0, "").asString();
+				string job = params.get((Json::Value::ArrayIndex)0, "").asString();
 				string sHeaderHash = params.get((Json::Value::ArrayIndex)1, "").asString();
 				string sSeedHash = params.get((Json::Value::ArrayIndex)2, "").asString();
 				string sShareTarget = params.get((Json::Value::ArrayIndex)3, "").asString();
@@ -304,7 +305,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 				if (sHeaderHash != "" && sSeedHash != "" && sShareTarget != "")
 				{
-					cnote << "Received new job #" + m_job.substr(0,8);
+					cnote << "Received new job #" + job.substr(0,8);
 					//cnote << "Header hash: " + sHeaderHash;
 					//cnote << "Seed hash: " + sSeedHash;
 					//cnote << "Share target: " + sShareTarget;
@@ -318,7 +319,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					{
 						cnote << "Grabbing DAG for" << seedHash;
 					}
-					if (!(dag = EthashAux::full(seedHash, true, [&](unsigned _pc){ cout << "\rCreating DAG. " << _pc << "% done..." << flush; return 0; })))
+					if (!(dag = EthashAux::full(seedHash, true, [&](unsigned _pc){ m_waitState = _pc < 100 ? MINER_WAIT_STATE_DAG : MINER_WAIT_STATE_WORK;  cnote << "Creating DAG. " << _pc << "% done..."; return 0; })))
 					{
 						BOOST_THROW_EXCEPTION(DAGCreationFailure());
 					}
@@ -332,9 +333,16 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						if (p_worktimer)
 							p_worktimer->cancel();
 
+						m_previous.headerHash = m_current.headerHash;
+						m_previous.seedHash = m_current.seedHash;
+						m_previous.boundary = m_current.boundary;
+						m_previousJob = m_job;
+
 						m_current.headerHash = h256(sHeaderHash);
 						m_current.seedHash = seedHash;
 						m_current.boundary = h256(sShareTarget);// , h256::AlignRight);
+						m_job = job;
+
 						p_farm->setWork(m_current);
 						x_current.unlock();
 						p_worktimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout));
@@ -369,6 +377,7 @@ void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec)
 
 bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
 	x_current.lock();
+	x_stale.lock();
 	cnote << "Solution found; Submitting to" << p_active->host << "...";
 	cnote << "  Nonce:" << "0x"+solution.nonce.hex();
 	//cnote << "  Mixhash:" << "0x" + solution.mixHash.hex();
@@ -382,6 +391,21 @@ bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
 		string json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" + p_active->user + "\",\"" + m_job + "\",\"0x" + solution.nonce.hex() + "\",\"0x" + m_current.headerHash.hex() + "\",\"0x" + solution.mixHash.hex() + "\"]}\n";
 		std::ostream os(&m_requestBuffer);
 		os << json;
+		m_stale = false;
+		x_stale.unlock();
+		x_current.unlock();
+		async_write(m_socket, m_requestBuffer,
+			boost::bind(&EthStratumClient::handleResponse, this,
+			boost::asio::placeholders::error));
+		return true;
+	}
+	else if (EthashAux::eval(m_previous.seedHash, m_previous.headerHash, solution.nonce).value < m_previous.boundary)
+	{
+		string json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" + p_active->user + "\",\"" + m_previousJob + "\",\"0x" + solution.nonce.hex() + "\",\"0x" + m_previous.headerHash.hex() + "\",\"0x" + solution.mixHash.hex() + "\"]}\n";
+		std::ostream os(&m_requestBuffer);
+		os << json;
+		m_stale = true;
+		x_stale.unlock();
 		x_current.unlock();
 		async_write(m_socket, m_requestBuffer,
 			boost::bind(&EthStratumClient::handleResponse, this,
@@ -389,9 +413,11 @@ bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
 		return true;
 	}
 	else {
+		m_stale = false;
+		x_stale.unlock();
 		x_current.unlock();
 		cwarn << "FAILURE: GPU gave incorrect result!";
-		p_farm->rejectedSolution();
+		p_farm->failedSolution();
 	}
 	
 	return false;
