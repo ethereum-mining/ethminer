@@ -37,6 +37,7 @@ public:
 	bool isConnected() { return m_connected; }
 	h256 currentHeaderHash() { return m_current.headerHash; }
 	bool current() { return m_current; }
+	unsigned waitState() { return m_waitState; }
 	bool submit(EthashProofOfWork::Solution solution);
 	void reconnect();
 private:
@@ -67,6 +68,8 @@ private:
 	int	m_maxRetries;
 	int m_worktimeout = 60;
 
+	int m_waitState = MINER_WAIT_STATE_WORK;
+
 	boost::mutex x_pending;
 	int m_pending;
 	string m_response;
@@ -74,7 +77,13 @@ private:
 	GenericFarm<EthashProofOfWork> * p_farm;
 	boost::mutex x_current;
 	EthashProofOfWork::WorkPackage m_current;
+	EthashProofOfWork::WorkPackage m_previous;
+
+	boost::mutex x_stale;
+	bool m_stale = false;
+
 	string m_job;
+	string m_previousJob;
 	EthashAux::FullType m_dag;
 
 	boost::asio::io_service m_io_service;

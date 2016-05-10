@@ -872,7 +872,8 @@ private:
 			f.start("opencl");
 		else if (_m == MinerType::CUDA)
 			f.start("cuda");
-		EthashProofOfWork::WorkPackage current, solved;
+		EthashProofOfWork::WorkPackage current, previous;
+		boost::mutex x_current;
 		EthashAux::FullType dag;
 		while (m_running)
 			try
@@ -882,9 +883,6 @@ private:
 				f.onSolutionFound([&](EthashProofOfWork::Solution sol)
 				{
 					solution = sol;
-					solved.headerHash = current.headerHash;
-					solved.boundary = current.boundary;
-					solved.seedHash = current.seedHash;
 					return completed = true;
 				});
 				for (unsigned i = 0; !completed; ++i)
@@ -925,6 +923,7 @@ private:
 					}
 					if (hh != current.headerHash)
 					{
+						x_current.lock();
 						current.headerHash = hh;
 						current.seedHash = newSeedHash;
 						current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
@@ -933,26 +932,39 @@ private:
 						minelog << "  Seedhash:" << current.seedHash.hex();
 						minelog << "  Target: " << h256(current.boundary).hex();
 						f.setWork(current);
+						x_current.unlock();
 					}
 					this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 				}
 				cnote << "Solution found; Submitting to" << _remote << "...";
 				cnote << "  Nonce:" << solution.nonce.hex();
-				cnote << "  Mixhash:" << solution.mixHash.hex();
-				cnote << "  Header-hash:" << solved.headerHash.hex();
-				cnote << "  Seedhash:" << solved.seedHash.hex();
-				cnote << "  Target: " << h256(solved.boundary).hex();
-				cnote << "  Ethash: " << h256(EthashAux::eval(solved.seedHash, solved.headerHash, solution.nonce).value).hex();
-				if (EthashAux::eval(solved.seedHash, solved.headerHash, solution.nonce).value < solved.boundary)
+				//cnote << "  Mixhash:" << solution.mixHash.hex();
+				//cnote << "  Header-hash:" << current.headerHash.hex();
+				//cnote << "  Seedhash:" << solved.seedHash.hex();
+				//cnote << "  Target: " << h256(solved.boundary).hex();
+				//cnote << "  Ethash: " << h256(EthashAux::eval(solved.seedHash, solved.headerHash, solution.nonce).value).hex();
+				if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
 				{
-					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(solved.headerHash), "0x" + toString(solution.mixHash));
+					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
 					if (ok) {
 						cnote << "B-) Submitted and accepted.";
-						f.acceptedSolution();
+						f.acceptedSolution(false);
 					}
 					else {
 						cwarn << ":-( Not accepted.";
-						f.rejectedSolution();
+						f.rejectedSolution(false);
+					}
+				}
+				else if (EthashAux::eval(previous.seedHash, previous.headerHash, solution.nonce).value < previous.boundary)
+				{
+					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(previous.headerHash), "0x" + toString(solution.mixHash));
+					if (ok) {
+						cnote << "B-) Submitted and accepted.";
+						f.acceptedSolution(true);
+					}
+					else {
+						cwarn << ":-( Not accepted.";
+						f.rejectedSolution(true);
 					}
 				}
 				else {
@@ -1042,7 +1054,7 @@ private:
 			{
 				if (client.current())
 					minelog << "Mining on PoWhash" << "#"+(client.currentHeaderHash().hex().substr(0,8)) << ": " << mp << f.getSolutionStats();
-				else
+				else if (client.waitState() == MINER_WAIT_STATE_WORK)
 					minelog << "Waiting for work package...";
 			}
 			this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
