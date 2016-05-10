@@ -52,6 +52,15 @@
 #define CL_MEM_HOST_READ_ONLY 0
 #endif
 
+// apple fix
+#ifndef CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV
+#define CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV       0x4000
+#endif
+
+#ifndef CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV
+#define CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV       0x4001
+#endif
+
 #undef min
 #undef max
 
