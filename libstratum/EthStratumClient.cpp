@@ -407,6 +407,7 @@ bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
 		m_stale = true;
 		x_stale.unlock();
 		x_current.unlock();
+		cwarn << "Submitting stale solution.";
 		async_write(m_socket, m_requestBuffer,
 			boost::bind(&EthStratumClient::handleResponse, this,
 			boost::asio::placeholders::error));
