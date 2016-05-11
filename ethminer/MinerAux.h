@@ -1115,7 +1115,7 @@ private:
 	unsigned m_farmRecheckPeriod = 500;
 	unsigned m_defaultStratumFarmRecheckPeriod = 2000;
 	bool m_farmRecheckSet = false;
-	int m_worktimeout = 60;
+	int m_worktimeout = 90;
 	bool m_precompute = true;
 
 #if ETH_STRATUM || !ETH_TRUE

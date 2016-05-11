@@ -79,7 +79,6 @@ private:
 	EthashProofOfWork::WorkPackage m_current;
 	EthashProofOfWork::WorkPackage m_previous;
 
-	boost::mutex x_stale;
 	bool m_stale = false;
 
 	string m_job;
