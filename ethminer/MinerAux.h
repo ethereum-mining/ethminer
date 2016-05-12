@@ -90,7 +90,7 @@ inline std::string credits()
 class BadArgument: public Exception {};
 struct MiningChannel: public LogChannel
 {
-	static const char* name() { return EthGreen "miner"; }
+	static const char* name() { return EthGreen "  m"; }
 	static const int verbosity = 2;
 	static const bool debug = false;
 };
@@ -145,6 +145,7 @@ public:
 		}
 		else if (arg == "--farm-recheck" && i + 1 < argc)
 			try {
+				m_farmRecheckSet = true;
 				m_farmRecheckPeriod = stol(argv[++i]);
 			}
 			catch (...)
@@ -218,6 +219,11 @@ public:
 		{
 			m_fport = string(argv[++i]);
 		}
+		else if ((arg == "--work-timeout") && i + 1 < argc)
+		{
+			m_worktimeout = atoi(argv[++i]);
+		}
+		
 #endif
 		else if (arg == "--opencl-platform" && i + 1 < argc)
 			try {
@@ -228,17 +234,7 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-		else if (arg == "--opencl-device" && i + 1 < argc)
-			try {
-				m_openclDevice = stol(argv[++i]);
-				m_miningThreads = 1;
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		else if (arg == "--opencl-devices")
+		else if (arg == "--opencl-devices" || arg == "--opencl-device")
 			while (m_openclDeviceCount < 16 && i + 1 < argc)
 			{
 				try
@@ -598,6 +594,7 @@ public:
 			<< "	-FS, --failover-stratum <host:port>  Failover stratum server at host:port" << endl
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
+			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 60. Don't set lower than max. avg. block time" << endl
 #endif
 #if ETH_JSONRPC || ETH_STRATUM || !ETH_TRUE
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
@@ -875,7 +872,8 @@ private:
 			f.start("opencl");
 		else if (_m == MinerType::CUDA)
 			f.start("cuda");
-		EthashProofOfWork::WorkPackage current;
+		EthashProofOfWork::WorkPackage current, previous;
+		boost::mutex x_current;
 		EthashAux::FullType dag;
 		while (m_running)
 			try
@@ -892,7 +890,7 @@ private:
 					auto mp = f.miningProgress();
 					f.resetMiningProgress();
 					if (current)
-						minelog << "Mining on PoWhash" << current.headerHash << ": " << mp;
+						minelog << "Mining on PoWhash" << "#" + (current.headerHash.hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
 					else
 						minelog << "Getting work package...";
 
@@ -912,41 +910,69 @@ private:
 					h256 hh(v[0].asString());
 					h256 newSeedHash(v[1].asString());
 					if (current.seedHash != newSeedHash)
+					{
 						minelog << "Grabbing DAG for" << newSeedHash;
+					}
 					if (!(dag = EthashAux::full(newSeedHash, true, [&](unsigned _pc){ cout << "\rCreating DAG. " << _pc << "% done..." << flush; return 0; })))
+					{
 						BOOST_THROW_EXCEPTION(DAGCreationFailure());
+					}
 					if (m_precompute)
+					{
 						EthashAux::computeFull(sha3(newSeedHash), true);
+					}
 					if (hh != current.headerHash)
 					{
+						x_current.lock();
+						previous.headerHash = current.headerHash;
+						previous.seedHash = current.seedHash;
+						previous.boundary = current.boundary;
 						current.headerHash = hh;
 						current.seedHash = newSeedHash;
 						current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
-						minelog << "Got work package:";
-						minelog << "  Header-hash:" << current.headerHash.hex();
-						minelog << "  Seedhash:" << current.seedHash.hex();
-						minelog << "  Target: " << h256(current.boundary).hex();
+						minelog << "Got work package: #" + current.headerHash.hex().substr(0,8);
+						//minelog << "  Seedhash:" << current.seedHash.hex();
+						//minelog << "  Target: " << h256(current.boundary).hex();
 						f.setWork(current);
+						x_current.unlock();
 					}
 					this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 				}
 				cnote << "Solution found; Submitting to" << _remote << "...";
 				cnote << "  Nonce:" << solution.nonce.hex();
-				cnote << "  Mixhash:" << solution.mixHash.hex();
-				cnote << "  Header-hash:" << current.headerHash.hex();
-				cnote << "  Seedhash:" << current.seedHash.hex();
-				cnote << "  Target: " << h256(current.boundary).hex();
-				cnote << "  Ethash: " << h256(EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value).hex();
+				//cnote << "  Mixhash:" << solution.mixHash.hex();
+				//cnote << "  Header-hash:" << current.headerHash.hex();
+				//cnote << "  Seedhash:" << solved.seedHash.hex();
+				//cnote << "  Target: " << h256(solved.boundary).hex();
+				//cnote << "  Ethash: " << h256(EthashAux::eval(solved.seedHash, solved.headerHash, solution.nonce).value).hex();
 				if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
 				{
 					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
-					if (ok)
+					if (ok) {
 						cnote << "B-) Submitted and accepted.";
-					else
+						f.acceptedSolution(false);
+					}
+					else {
 						cwarn << ":-( Not accepted.";
+						f.rejectedSolution(false);
+					}
 				}
-				else
+				else if (EthashAux::eval(previous.seedHash, previous.headerHash, solution.nonce).value < previous.boundary)
+				{
+					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(previous.headerHash), "0x" + toString(solution.mixHash));
+					if (ok) {
+						cnote << "B-) Submitted and accepted.";
+						f.acceptedSolution(true);
+					}
+					else {
+						cwarn << ":-( Not accepted.";
+						f.rejectedSolution(true);
+					}
+				}
+				else {
+					f.failedSolution();
 					cwarn << "FAILURE: GPU gave incorrect result!";
+				}
 				current.reset();
 			}
 			catch (jsonrpc::JsonRpcException&)
@@ -998,8 +1024,11 @@ private:
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
+		if (!m_farmRecheckSet)
+			m_farmRecheckPeriod = m_defaultStratumFarmRecheckPeriod;
+		
 		GenericFarm<EthashProofOfWork> f;
-		EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_precompute);
+		EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_precompute);
 		if (m_farmFailOverURL != "")
 		{
 			if (m_fuser != "")
@@ -1026,8 +1055,8 @@ private:
 			if (client.isConnected())
 			{
 				if (client.current())
-					minelog << "Mining on PoWhash" << client.currentHeaderHash() << ": " << mp;
-				else
+					minelog << "Mining on PoWhash" << "#"+(client.currentHeaderHash().hex().substr(0,8)) << ": " << mp << f.getSolutionStats();
+				else if (client.waitState() == MINER_WAIT_STATE_WORK)
 					minelog << "Waiting for work package...";
 			}
 			this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
@@ -1086,6 +1115,9 @@ private:
 	unsigned m_farmRetries = 0;
 	unsigned m_maxFarmRetries = 3;
 	unsigned m_farmRecheckPeriod = 500;
+	unsigned m_defaultStratumFarmRecheckPeriod = 2000;
+	bool m_farmRecheckSet = false;
+	int m_worktimeout = 90;
 	bool m_precompute = true;
 
 #if ETH_STRATUM || !ETH_TRUE
