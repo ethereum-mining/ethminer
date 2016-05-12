@@ -149,7 +149,8 @@ void EthashCUDAMiner::workLoop()
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
 		WorkPackage w = work();
-		cnote << "workLoop" << !!m_miner << m_minerSeed << w.seedHash;
+		//cnote << "seedhash" << "#" + m_minerSeed.hex().substr(0, 16);
+		cnote << "set work to" << "#" + w.headerHash.hex().substr(0, 8) + ", target " << "#" + w.boundary.hex().substr(0, 16);
 		if (!m_miner || m_minerSeed != w.seedHash)
 		{
 			cnote << "Initialising miner...";

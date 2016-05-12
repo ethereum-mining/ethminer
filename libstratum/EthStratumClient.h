@@ -27,7 +27,7 @@ typedef struct {
 class EthStratumClient
 {
 public:
-	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, bool const & precompute);
+	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, bool const & precompute);
 	~EthStratumClient();
 
 	void setFailover(string const & host, string const & port);
@@ -37,14 +37,17 @@ public:
 	bool isConnected() { return m_connected; }
 	h256 currentHeaderHash() { return m_current.headerHash; }
 	bool current() { return m_current; }
+	unsigned waitState() { return m_waitState; }
 	bool submit(EthashProofOfWork::Solution solution);
+	void reconnect();
 private:
 	void connect();
-	void reconnect();
+	
 	void disconnect();
 	void resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
 	void connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
-	
+	void work_timeout_handler(const boost::system::error_code& ec);
+
 	void readline();
 	void handleResponse(const boost::system::error_code& ec);
 	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
@@ -63,14 +66,23 @@ private:
 
 	int	m_retries = 0;
 	int	m_maxRetries;
+	int m_worktimeout = 60;
 
-	boost::mutex m_mtx;
+	int m_waitState = MINER_WAIT_STATE_WORK;
+
+	boost::mutex x_pending;
 	int m_pending;
 	string m_response;
 
 	GenericFarm<EthashProofOfWork> * p_farm;
+	boost::mutex x_current;
 	EthashProofOfWork::WorkPackage m_current;
+	EthashProofOfWork::WorkPackage m_previous;
+
+	bool m_stale = false;
+
 	string m_job;
+	string m_previousJob;
 	EthashAux::FullType m_dag;
 
 	boost::asio::io_service m_io_service;
@@ -78,4 +90,7 @@ private:
 
 	boost::asio::streambuf m_requestBuffer;
 	boost::asio::streambuf m_responseBuffer;
+
+	boost::asio::deadline_timer * p_worktimer;
+
 };
