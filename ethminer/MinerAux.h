@@ -924,13 +924,15 @@ private:
 					if (hh != current.headerHash)
 					{
 						x_current.lock();
+						previous.headerHash = current.headerHash;
+						previous.seedHash = current.seedHash;
+						previous.boundary = current.boundary;
 						current.headerHash = hh;
 						current.seedHash = newSeedHash;
 						current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
-						minelog << "Got work package:";
-						minelog << "  Header-hash:" << current.headerHash.hex();
-						minelog << "  Seedhash:" << current.seedHash.hex();
-						minelog << "  Target: " << h256(current.boundary).hex();
+						minelog << "Got work package: #" + current.headerHash.hex().substr(0,8);
+						//minelog << "  Seedhash:" << current.seedHash.hex();
+						//minelog << "  Target: " << h256(current.boundary).hex();
 						f.setWork(current);
 						x_current.unlock();
 					}
