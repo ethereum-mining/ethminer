@@ -225,6 +225,7 @@ public:
 		}
 		
 #endif
+#if ETH_ETHASHCL || !ETH_TRUE
 		else if (arg == "--opencl-platform" && i + 1 < argc)
 			try {
 				m_openclPlatform = stol(argv[++i]);
@@ -248,6 +249,7 @@ public:
 					break;
 				}
 			}
+#endif
 #if ETH_ETHASHCL || ETH_ETHASHCUDA || !ETH_TRUE
 		else if ((arg == "--cl-global-work" || arg == "--cuda-grid-size")  && i + 1 < argc)
 			try {
