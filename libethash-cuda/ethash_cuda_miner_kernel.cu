@@ -12,12 +12,16 @@
 
 #if __CUDA_ARCH__ < SHUFFLE_MIN_VER
 #include "dagger_shared.cuh"
+#define TPB		128
+#define BPSM	4
 #else
 #include "dagger_shuffled.cuh"
+#define TPB		896
+#define BPSM	1
 #endif
 
 __global__ void 
-__launch_bounds__(896, 1)
+__launch_bounds__(TPB, BPSM)
 ethash_search(
 	volatile uint32_t* g_output,
 	uint64_t start_nonce
