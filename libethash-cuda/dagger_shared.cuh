@@ -1,13 +1,13 @@
 #include "ethash_cuda_miner_kernel_globals.h"
 #include "ethash_cuda_miner_kernel.h"
-#include "keccak.cuh"
+#include "keccak_u64.cuh"
 #include "fnv.cuh"
 
 #define copy(dst, src, count) for (int i = 0; i != count; ++i) { (dst)[i] = (src)[i]; }
 
 typedef union {
 	uint4	 uint4s[4];
-	uint2	 uint2s[8];
+	uint64_t ulongs[8];
 	uint32_t uints[16];
 } compute_hash_share;
 
@@ -17,8 +17,8 @@ __device__ uint64_t compute_hash(
 	)
 {
 	// sha3_512(header .. nonce)
-	uint2 state[25];
-	state[4] = vectorize(nonce);
+	uint64_t state[25];
+	state[4] = nonce;
 	keccak_f1600_init(state);
 	
 	// Threads work together in this phase in groups of 8.
@@ -33,7 +33,7 @@ __device__ uint64_t compute_hash(
 	{
 		// share init with other threads
 		if (i == thread_id)
-			copy(share[hash_id].uint2s, state, 8);
+			copy(share[hash_id].ulongs, state, 8);
 
 		__syncthreads();
 
@@ -68,7 +68,7 @@ __device__ uint64_t compute_hash(
 		__syncthreads();
 
 		if (i == thread_id)
-			copy(state + 8, share[hash_id].uint2s, 4);
+			copy(state + 8, share[hash_id].ulongs, 4);
 
 		__syncthreads();
 	}
