@@ -3,10 +3,11 @@
 #include "keccak.cuh"
 #include "fnv.cuh"
 
-#define ACCESSES 64
-#define THREADS_PER_HASH (128 / 16)
+#define HASHES_PER_LOOP (GROUP_SIZE / THREADS_PER_HASH)
 
-__device__ uint64_t compute_hash_shuffle(
+typedef bool compute_hash_share;
+
+__device__ uint64_t compute_hash(
 	uint64_t nonce
 	)
 {
