@@ -337,7 +337,7 @@ uint64_t shl_t64(uint64_t x, uint32_t n)
 }
 
 #ifndef USE_ROT_ASM_OPT
-#define USE_ROT_ASM_OPT 1
+#define USE_ROT_ASM_OPT 2
 #endif
 
 // 64-bit ROTATE RIGHT
