@@ -26,8 +26,6 @@ __device__ uint64_t compute_hash(
 	const int hash_id = threadIdx.x  >> 3;
 
 	extern __shared__  compute_hash_share share[];
-
-	uint4 mix;
 	
 	for (int i = 0; i < THREADS_PER_HASH; i++)
 	{
