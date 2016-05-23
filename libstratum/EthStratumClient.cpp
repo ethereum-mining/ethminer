@@ -65,25 +65,16 @@ void EthStratumClient::connect()
 
 void EthStratumClient::reconnect()
 {
-	/*
-	if (p_farm->isMining())
-	{
-		cnote << "Stopping farm";
-		p_farm->stop();
-	}
-	*/
 	if (p_worktimer) {
 		p_worktimer->cancel();
 		p_worktimer = nullptr;
 	}
 
 	m_io_service.reset();
-	m_socket.close();
+	//m_socket.close(); // leads to crashes on Linux
 	m_authorized = false;
 	m_connected = false;
-	
-
-	
+		
 	if (!m_failover.host.empty())
 	{
 		m_retries++;
@@ -329,7 +320,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					}
 					if (headerHash != m_current.headerHash)
 					{
-						//x_current.lock();
+						x_current.lock();
 						if (p_worktimer)
 							p_worktimer->cancel();
 
@@ -344,7 +335,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						m_job = job;
 
 						p_farm->setWork(m_current);
-						//x_current.unlock();
+						x_current.unlock();
 						p_worktimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout));
 						p_worktimer->async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
 
