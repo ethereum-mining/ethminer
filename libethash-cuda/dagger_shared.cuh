@@ -1,9 +1,5 @@
 #include "ethash_cuda_miner_kernel_globals.h"
 #include "ethash_cuda_miner_kernel.h"
-#include "keccak_u64.cuh"
-#include "fnv.cuh"
-
-#define copy(dst, src, count) for (int i = 0; i != count; ++i) { (dst)[i] = (src)[i]; }
 
 typedef union {
 	uint4	 uint4s[4];

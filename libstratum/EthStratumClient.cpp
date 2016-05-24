@@ -305,7 +305,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					h256 headerHash = h256(sHeaderHash);
 					EthashAux::FullType dag;
 
-
+					/*
 					if (seedHash != m_current.seedHash)
 					{
 						cnote << "Grabbing DAG for" << seedHash;
@@ -318,6 +318,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					{
 						EthashAux::computeFull(sha3(seedHash), true);
 					}
+					*/
+
 					if (headerHash != m_current.headerHash)
 					{
 						x_current.lock();
