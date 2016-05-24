@@ -1,7 +1,5 @@
 #include "ethash_cuda_miner_kernel_globals.h"
 #include "ethash_cuda_miner_kernel.h"
-#include "keccak.cuh"
-#include "fnv.cuh"
 
 #define HASHES_PER_LOOP (GROUP_SIZE / THREADS_PER_HASH)
 

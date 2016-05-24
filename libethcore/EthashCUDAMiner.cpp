@@ -112,16 +112,8 @@ EthashCUDAMiner::EthashCUDAMiner(ConstructionInfo const& _ci) :
 	Worker("cudaminer" + toString(index())),
 m_hook( new EthashCUDAHook(this))
 {
-/*
-#if defined(WIN32)
-	SYSTEM_INFO sysinfo;
-	GetSystemInfo(&sysinfo);
-	int num_cpus = sysinfo.dwNumberOfProcessors;
-	SetThreadAffinityMask(GetCurrentThread(), 1 << (index() % num_cpus));
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
-#endif
-*/
 }
+
 EthashCUDAMiner::~EthashCUDAMiner()
 {
 	pause();
@@ -149,8 +141,7 @@ void EthashCUDAMiner::workLoop()
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
 		WorkPackage w = work();
-		//cnote << "seedhash" << "#" + m_minerSeed.hex().substr(0, 16);
-		cnote << "set work to" << "#" + w.headerHash.hex().substr(0, 8) + ", target " << "#" + w.boundary.hex().substr(0, 16);
+		cnote << "set work; seed: " << "#" + w.seedHash.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 16);
 		if (!m_miner || m_minerSeed != w.seedHash)
 		{
 			cnote << "Initialising miner...";
@@ -161,7 +152,9 @@ void EthashCUDAMiner::workLoop()
 
 			unsigned device = s_devices[index()] > -1 ? s_devices[index()] : index();
 
+			/*
 			EthashAux::FullType dag;
+
 			while (true)
 			{
 				if ((dag = EthashAux::full(w.seedHash, true)))
@@ -175,8 +168,14 @@ void EthashCUDAMiner::workLoop()
 				cnote << "Awaiting DAG";
 				this_thread::sleep_for(chrono::milliseconds(500));
 			}
-			bytesConstRef dagData = dag->data();
-			m_miner->init(dagData.data(), dagData.size(), device);
+			*/
+
+			EthashAux::LightType light;
+			light = EthashAux::light(w.seedHash);
+			//bytesConstRef dagData = dag->data();
+			bytesConstRef lightData = light->data();
+			
+			m_miner->init(light->light, lightData.data(), lightData.size(), device);
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
