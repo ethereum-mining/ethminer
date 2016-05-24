@@ -51,7 +51,7 @@ public:
 		uint64_t _currentBlock
 	);
 
-	bool ethash_cl_miner::init(
+	bool init(
 		ethash_light_t _light,
 		uint8_t const* _lightData,
 		uint64_t _lightSize,
