@@ -34,11 +34,13 @@ public:
 		unsigned _scheduleFlag,
 		uint64_t _currentBlock
 		);
-	bool init(
+	/*bool init(
 		uint8_t const* _dag,
 		uint64_t _dagSize,
 		unsigned _deviceId = 0
-		);
+		);*/
+	bool init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId);
+
 	void finish();
 	void search(uint8_t const* header, uint64_t target, search_hook& hook);
 

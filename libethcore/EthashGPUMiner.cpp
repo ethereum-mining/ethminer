@@ -150,6 +150,7 @@ void EthashGPUMiner::workLoop()
 
 			unsigned device = s_devices[index()] > -1 ? s_devices[index()] : index();
 
+			/*
 			EthashAux::FullType dag;
 			while (true)
 			{
@@ -164,8 +165,13 @@ void EthashGPUMiner::workLoop()
 				cnote << "Awaiting DAG";
 				this_thread::sleep_for(chrono::milliseconds(500));
 			}
-			bytesConstRef dagData = dag->data();
-			m_miner->init(dagData.data(), dagData.size(), s_platformId, device);
+			*/
+
+			EthashAux::LightType light;
+			light = EthashAux::light(w.seedHash);
+			bytesConstRef lightData = light->data();
+
+			m_miner->init(light->light, lightData.data(), lightData.size(), s_platformId,  device);
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);

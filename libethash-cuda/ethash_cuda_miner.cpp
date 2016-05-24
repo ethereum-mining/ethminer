@@ -199,7 +199,7 @@ void ethash_cuda_miner::finish()
 	CUDA_SAFE_CALL(cudaDeviceReset());
 }
 
-bool ethash_cuda_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned _deviceId)
+bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId)
 {
 	try
 	{
@@ -224,25 +224,38 @@ bool ethash_cuda_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned _d
 		m_search_buf = new volatile uint32_t *[s_numStreams];
 		m_streams = new cudaStream_t[s_numStreams];
 
-		uint32_t dagSize128 = (unsigned)(_dagSize / ETHASH_MIX_BYTES);
+		uint64_t dagSize = ethash_get_datasize(_light->block_number);
+		uint32_t dagSize128   = (unsigned)(dagSize / ETHASH_MIX_BYTES);
+		uint32_t lightSize64 = (unsigned)(_lightSize / sizeof(node));
+
+		// create buffer for cache
+		hash64_t * light;
+		CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightSize));
+		// copy dag to CPU.
+		CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), _lightData, _lightSize, cudaMemcpyHostToDevice));
 
 		// create buffer for dag
 		hash128_t * dag;
-		CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), _dagSize));
+		CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
 		// copy dag to CPU.
-		CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), _dag, _dagSize, cudaMemcpyHostToDevice));
+		//CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), _dag, _dagSize, cudaMemcpyHostToDevice));
 
+		
 		// create mining buffers
 		for (unsigned i = 0; i != s_numStreams; ++i)
 		{
 			CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], SEARCH_RESULT_BUFFER_SIZE * sizeof(uint32_t)));
 			CUDA_SAFE_CALL(cudaStreamCreate(&m_streams[i]));
 		}
-		set_constants(dag, dagSize128);
+		set_constants(dag, dagSize128, light, lightSize64);
 		memset(&m_current_header, 0, sizeof(hash32_t));
 		m_current_target = 0;
 		m_current_nonce = 0;
 		m_current_index = 0;
+
+		cout << "Generating DAG..." << endl;
+		ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0]);
+
 		return true;
 	}
 	catch (runtime_error)

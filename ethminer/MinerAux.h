@@ -362,6 +362,7 @@ public:
 		}
 		else if (arg == "--current-block" && i + 1 < argc)
 			m_currentBlock = stol(argv[++i]);
+		/*
 		else if ((arg == "-R" || arg == "--dag-dir") && i + 1 < argc)
 		{
 			strcpy(s_dagDir, argv[++i]);
@@ -395,6 +396,7 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
+		*/
 		else if ((arg == "-w" || arg == "--check-pow") && i + 4 < argc)
 		{
 			string m;
@@ -494,6 +496,7 @@ public:
 
 	void execute()
 	{
+		/*
 		EthashAux::setDAGDirName(s_dagDir);
 		EthashAux::setDAGEraseMode(m_eraseMode);
 		EthashAux::eraseDAGs();
@@ -501,6 +504,7 @@ public:
 		{
 			m_eraseMode = DAGEraseMode::None;
 		}
+		*/
 
 		if (m_shouldListDevices)
 		{
@@ -596,7 +600,7 @@ public:
 			<< "	-FS, --failover-stratum <host:port>  Failover stratum server at host:port" << endl
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
-			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 60. Don't set lower than max. avg. block time" << endl
+			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
 #endif
 #if ETH_JSONRPC || ETH_STRATUM || !ETH_TRUE
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
@@ -615,14 +619,14 @@ public:
 #if ETH_JSONRPC || !ETH_TRUE
 			<< "    --phone-home <on/off>  When benchmarking, publish results (default: off)" << endl
 #endif
-			<< "DAG file management:" << endl
-			<< "    -D,--create-dag <number>  Create the DAG in preparation for mining on given block and exit." << endl
-			<< "    -R <s>, --dag-dir <s> Store/Load DAG files in/from the specified directory. Useful for running multiple instances with different configurations." << endl
-			<< "    -E <mode>, --erase-dags <mode> Erase unneeded DAG files. Default is 'none'. Possible values are:" << endl
-			<< "        none  - don't erase DAG files (default)" << endl
-			<< "        old   - erase all DAG files older than current epoch" << endl
-			<< "		bench - like old, but keep epoch 0 for benchmarking" << endl
-			<< "        all   - erase all DAG files. After deleting all files, setting changes to none." << endl
+//			<< "DAG file management:" << endl
+//			<< "    -D,--create-dag <number>  Create the DAG in preparation for mining on given block and exit." << endl
+//			<< "    -R <s>, --dag-dir <s> Store/Load DAG files in/from the specified directory. Useful for running multiple instances with different configurations." << endl
+//			<< "    -E <mode>, --erase-dags <mode> Erase unneeded DAG files. Default is 'none'. Possible values are:" << endl
+//			<< "        none  - don't erase DAG files (default)" << endl
+//			<< "        old   - erase all DAG files older than current epoch" << endl
+//			<< "		bench - like old, but keep epoch 0 for benchmarking" << endl
+//			<< "        all   - erase all DAG files. After deleting all files, setting changes to none." << endl
 			<< "Mining configuration:" << endl
 			<< "    -C,--cpu  When mining, use the CPU." << endl
 			<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
@@ -691,7 +695,7 @@ private:
 		cout << "Benchmarking on platform: " << platformInfo << endl;
 
 		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
-		genesis.prep();
+		//genesis.prep();
 
 		genesis.setDifficulty(u256(1) << 63);
 		f.setWork(genesis);
@@ -774,7 +778,7 @@ private:
 		cout << "Running mining simulation on platform: " << platformInfo << endl;
 
 		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
-		genesis.prep();
+		//genesis.prep();
 
 		genesis.setDifficulty(u256(1) << difficulty);
 		f.setWork(genesis);
@@ -911,6 +915,7 @@ private:
 					Json::Value v = prpc->eth_getWork();
 					h256 hh(v[0].asString());
 					h256 newSeedHash(v[1].asString());
+					/*
 					if (current.seedHash != newSeedHash)
 					{
 						minelog << "Grabbing DAG for" << newSeedHash;
@@ -923,6 +928,7 @@ private:
 					{
 						EthashAux::computeFull(sha3(newSeedHash), true);
 					}
+					*/
 					if (hh != current.headerHash)
 					{
 						x_current.lock();
@@ -1104,7 +1110,7 @@ private:
 
 	/// Benchmarking params
 	bool m_phoneHome = false;
-	unsigned m_benchmarkWarmup = 3;
+	unsigned m_benchmarkWarmup = 15;
 	unsigned m_benchmarkTrial = 3;
 	unsigned m_benchmarkTrials = 5;
 	unsigned m_benchmarkBlock = 0;
@@ -1119,7 +1125,7 @@ private:
 	unsigned m_farmRecheckPeriod = 500;
 	unsigned m_defaultStratumFarmRecheckPeriod = 2000;
 	bool m_farmRecheckSet = false;
-	int m_worktimeout = 90;
+	int m_worktimeout = 180;
 	bool m_precompute = true;
 
 #if ETH_STRATUM || !ETH_TRUE
