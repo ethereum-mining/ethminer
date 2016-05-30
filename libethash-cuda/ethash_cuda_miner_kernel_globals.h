@@ -1,6 +1,8 @@
 #ifndef _ETHASH_CUDA_MINER_KERNEL_GLOBALS_H_
 #define _ETHASH_CUDA_MINER_KERNEL_GLOBALS_H_
 
+#define SHUFFLE_MIN_VER 300
+
 //#include "cuda_helper.h"
 
 __constant__ uint32_t d_dag_size;

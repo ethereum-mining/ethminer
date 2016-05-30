@@ -49,6 +49,7 @@ void set_target(
 void run_ethash_search(
 	uint32_t search_batch_size,
 	uint32_t workgroup_size,
+	uint32_t sharedbytes,
 	cudaStream_t stream,
 	volatile uint32_t* g_output,
 	uint64_t start_nonce

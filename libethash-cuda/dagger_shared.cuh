@@ -44,13 +44,12 @@ __device__ uint64_t compute_hash(
 
 		for (uint32_t a = 0; a < ACCESSES; a += 4)
 		{
-			bool update_share = thread_id == ((a >> 2) & (THREADS_PER_HASH - 1));
+			int t = bfe(a, 2u, 3u);
 
-			for (uint32_t i = 0; i != 4; ++i)
+			for (uint32_t b = 0; b < 4; b++)
 			{
-				if (update_share)
-				{
-					*share0 = fnv(init0 ^ (a + i), ((uint32_t *)&mix)[i]) % d_dag_size;
+				if (thread_id == t) {
+					*share0 = fnv(init0 ^ (a + b), ((uint32_t *)&mix)[b]) % d_dag_size;
 				}
 				__syncthreads();
 
