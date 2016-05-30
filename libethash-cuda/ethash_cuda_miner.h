@@ -58,6 +58,8 @@ private:
 	uint64_t m_current_nonce;
 	uint64_t m_current_index;
 
+	uint32_t m_sharedBytes;
+
 	volatile uint32_t ** m_search_buf;
 	cudaStream_t  * m_streams;
 

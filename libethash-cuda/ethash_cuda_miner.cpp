@@ -253,6 +253,9 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		m_current_nonce = 0;
 		m_current_index = 0;
 
+		m_sharedBytes = device_props.major * 100 < SHUFFLE_MIN_VER ? (64 * s_blockSize) / 8 : 0 ;
+
+
 		cout << "Generating DAG..." << endl;
 		ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0]);
 
@@ -307,7 +310,7 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 			for (unsigned int j = 0; j < found_count; j++)
 				nonces[j] = nonce_base + buffer[j + 1];
 		}
-		run_ethash_search(s_gridSize, s_blockSize, stream, buffer, m_current_nonce);
+		run_ethash_search(s_gridSize, s_blockSize, m_sharedBytes, stream, buffer, m_current_nonce);
 		if (m_current_index >= s_numStreams)
 		{
 			exit = found_count && hook.found(nonces, found_count);

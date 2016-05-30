@@ -10,6 +10,7 @@
 #include <device_launch_parameters.h>
 #define __launch_bounds__(max_tpb, min_blocks)
 #define asm("a" : "=l"(result) : "l"(a))
+#define __CUDA_ARCH__ 520 // highlight shuffle code by default.
 
 uint32_t __byte_perm(uint32_t x, uint32_t y, uint32_t z);
 uint32_t __shfl(uint32_t x, uint32_t y, uint32_t z);
