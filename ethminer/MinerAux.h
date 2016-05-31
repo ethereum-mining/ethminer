@@ -60,6 +60,7 @@
 #endif
 #if ETH_STRATUM || !ETH_TRUE
 #include <libstratum/EthStratumClient.h>
+#include <libstratum/EthStratumClientV2.h>
 #endif
 using namespace std;
 using namespace dev;
@@ -186,6 +187,19 @@ public:
 			m_user = userpass.substr(0, p);
 			if (p + 1 <= userpass.length())
 				m_pass = userpass.substr(p+1);
+		}
+		else if ((arg == "-SV" || arg == "--stratum-version") && i + 1 < argc)
+		{
+			try {
+				m_stratumClientVersion = atoi(argv[++i]);
+				if (m_stratumClientVersion > 2) m_stratumClientVersion = 2;
+				else if (m_stratumClientVersion < 1) m_stratumClientVersion = 1;
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
 		}
 		else if ((arg == "-FO" || arg == "--failover-userpass") && i + 1 < argc)
 		{
@@ -601,6 +615,7 @@ public:
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
 			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
+			<< "    -SV, --stratum-version <n>  Stratum client version. Defaults to 1 (async client). Use 2 to test new synchronous client."	
 #endif
 #if ETH_JSONRPC || ETH_STRATUM || !ETH_TRUE
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
@@ -619,14 +634,6 @@ public:
 #if ETH_JSONRPC || !ETH_TRUE
 			<< "    --phone-home <on/off>  When benchmarking, publish results (default: off)" << endl
 #endif
-//			<< "DAG file management:" << endl
-//			<< "    -D,--create-dag <number>  Create the DAG in preparation for mining on given block and exit." << endl
-//			<< "    -R <s>, --dag-dir <s> Store/Load DAG files in/from the specified directory. Useful for running multiple instances with different configurations." << endl
-//			<< "    -E <mode>, --erase-dags <mode> Erase unneeded DAG files. Default is 'none'. Possible values are:" << endl
-//			<< "        none  - don't erase DAG files (default)" << endl
-//			<< "        old   - erase all DAG files older than current epoch" << endl
-//			<< "		bench - like old, but keep epoch 0 for benchmarking" << endl
-//			<< "        all   - erase all DAG files. After deleting all files, setting changes to none." << endl
 			<< "Mining configuration:" << endl
 			<< "    -C,--cpu  When mining, use the CPU." << endl
 			<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
@@ -915,20 +922,7 @@ private:
 					Json::Value v = prpc->eth_getWork();
 					h256 hh(v[0].asString());
 					h256 newSeedHash(v[1].asString());
-					/*
-					if (current.seedHash != newSeedHash)
-					{
-						minelog << "Grabbing DAG for" << newSeedHash;
-					}
-					if (!(dag = EthashAux::full(newSeedHash, true, [&](unsigned _pc){ cout << "\rCreating DAG. " << _pc << "% done..." << flush; return 0; })))
-					{
-						BOOST_THROW_EXCEPTION(DAGCreationFailure());
-					}
-					if (m_precompute)
-					{
-						EthashAux::computeFull(sha3(newSeedHash), true);
-					}
-					*/
+
 					if (hh != current.headerHash)
 					{
 						x_current.lock();
@@ -948,11 +942,6 @@ private:
 				}
 				cnote << "Solution found; Submitting to" << _remote << "...";
 				cnote << "  Nonce:" << solution.nonce.hex();
-				//cnote << "  Mixhash:" << solution.mixHash.hex();
-				//cnote << "  Header-hash:" << current.headerHash.hex();
-				//cnote << "  Seedhash:" << solved.seedHash.hex();
-				//cnote << "  Target: " << h256(solved.boundary).hex();
-				//cnote << "  Ethash: " << h256(EthashAux::eval(solved.seedHash, solved.headerHash, solution.nonce).value).hex();
 				if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
 				{
 					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
@@ -1036,39 +1025,79 @@ private:
 			m_farmRecheckPeriod = m_defaultStratumFarmRecheckPeriod;
 		
 		GenericFarm<EthashProofOfWork> f;
-		EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_precompute);
-		if (m_farmFailOverURL != "")
-		{
-			if (m_fuser != "")
-			{
-				client.setFailover(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
-			}
-			else
-			{
-				client.setFailover(m_farmFailOverURL, m_fport);
-			}
-		}
-		f.setSealers(sealers);
 
-		f.onSolutionFound([&](EthashProofOfWork::Solution sol)
-		{
-			client.submit(sol);
-			return false;
-		});
-		 
-		while (client.isRunning())
-		{
-			auto mp = f.miningProgress();
-			f.resetMiningProgress();
-			if (client.isConnected())
+		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
+		if (m_stratumClientVersion == 1) {
+			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_precompute);
+			if (m_farmFailOverURL != "")
 			{
-				if (client.current())
-					minelog << "Mining on PoWhash" << "#"+(client.currentHeaderHash().hex().substr(0,8)) << ": " << mp << f.getSolutionStats();
-				else if (client.waitState() == MINER_WAIT_STATE_WORK)
-					minelog << "Waiting for work package...";
+				if (m_fuser != "")
+				{
+					client.setFailover(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
+				}
+				else
+				{
+					client.setFailover(m_farmFailOverURL, m_fport);
+				}
 			}
-			this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
+			f.setSealers(sealers);
+
+			f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+			{
+				client.submit(sol);
+				return false;
+			});
+
+			while (client.isRunning())
+			{
+				auto mp = f.miningProgress();
+				f.resetMiningProgress();
+				if (client.isConnected())
+				{
+					if (client.current())
+						minelog << "Mining on PoWhash" << "#" + (client.currentHeaderHash().hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
+					else if (client.waitState() == MINER_WAIT_STATE_WORK)
+						minelog << "Waiting for work package...";
+				}
+				this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
+			}
 		}
+		else if (m_stratumClientVersion == 2) {
+			EthStratumClientV2 client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout);
+			if (m_farmFailOverURL != "")
+			{
+				if (m_fuser != "")
+				{
+					client.setFailover(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
+				}
+				else
+				{
+					client.setFailover(m_farmFailOverURL, m_fport);
+				}
+			}
+			f.setSealers(sealers);
+
+			f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+			{
+				client.submit(sol);
+				return false;
+			});
+
+			while (client.isRunning())
+			{
+				auto mp = f.miningProgress();
+				f.resetMiningProgress();
+				if (client.isConnected())
+				{
+					if (client.current())
+						minelog << "Mining on PoWhash" << "#" + (client.currentHeaderHash().hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
+					else if (client.waitState() == MINER_WAIT_STATE_WORK)
+						minelog << "Waiting for work package...";
+				}
+				this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
+			}
+		}
+
 	}
 #endif
 
@@ -1129,6 +1158,7 @@ private:
 	bool m_precompute = true;
 
 #if ETH_STRATUM || !ETH_TRUE
+	int m_stratumClientVersion = 1;
 	string m_user;
 	string m_pass;
 	string m_port;

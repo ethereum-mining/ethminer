@@ -256,8 +256,8 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		m_sharedBytes = device_props.major * 100 < SHUFFLE_MIN_VER ? (64 * s_blockSize) / 8 : 0 ;
 
 
-		cout << "Generating DAG..." << endl;
-		ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0]);
+		cout << "Generating DAG for GPU #" << device_num << endl;
+		ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], device_num);
 
 		return true;
 	}

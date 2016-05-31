@@ -152,24 +152,6 @@ void EthashCUDAMiner::workLoop()
 
 			unsigned device = s_devices[index()] > -1 ? s_devices[index()] : index();
 
-			/*
-			EthashAux::FullType dag;
-
-			while (true)
-			{
-				if ((dag = EthashAux::full(w.seedHash, true)))
-					break;
-				if (shouldStop())
-				{
-					delete m_miner;
-					m_miner = nullptr;
-					return;
-				}
-				cnote << "Awaiting DAG";
-				this_thread::sleep_for(chrono::milliseconds(500));
-			}
-			*/
-
 			EthashAux::LightType light;
 			light = EthashAux::light(w.seedHash);
 			//bytesConstRef dagData = dag->data();
