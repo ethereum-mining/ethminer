@@ -1,11 +1,12 @@
 
-#include "EthStratumClient.h"
+#include "EthStratumClientV2.h"
 #include <libdevcore/Log.h>
 using boost::asio::ip::tcp;
 
 
-EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, bool const & precompute)
-	: m_socket(m_io_service)
+EthStratumClientV2::EthStratumClientV2(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout)
+	: Worker("stratum"), 
+	  m_socket(m_io_service)
 {
 	m_minerType = m;
 	m_primary.host = host;
@@ -17,27 +18,25 @@ EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType
 
 	m_authorized = false;
 	m_connected = false;
-	m_precompute = precompute;
-	m_pending = 0;
 	m_maxRetries = retries;
 	m_worktimeout = worktimeout;
 
 	p_farm = f;
 	p_worktimer = nullptr;
-	connect();
+	startWorking();
 }
 
-EthStratumClient::~EthStratumClient()
+EthStratumClientV2::~EthStratumClientV2()
 {
 
 }
 
-void EthStratumClient::setFailover(string const & host, string const & port)
+void EthStratumClientV2::setFailover(string const & host, string const & port)
 {
 	setFailover(host, port, p_active->user, p_active->pass);
 }
 
-void EthStratumClient::setFailover(string const & host, string const & port, string const & user, string const & pass)
+void EthStratumClientV2::setFailover(string const & host, string const & port, string const & user, string const & pass)
 {
 	m_failover.host = host;
 	m_failover.port = port;
@@ -45,25 +44,85 @@ void EthStratumClient::setFailover(string const & host, string const & port, str
 	m_failover.pass = pass;
 }
 
-void EthStratumClient::connect()
+void EthStratumClientV2::workLoop() 
 {
-	
-	tcp::resolver r(m_io_service);
-	tcp::resolver::query q(p_active->host, p_active->port);
-	
-	r.async_resolve(q, boost::bind(&EthStratumClient::resolve_handler,
-																	this, boost::asio::placeholders::error,
-																	boost::asio::placeholders::iterator));
-	
+	while (true)
+	{
+		if (!m_connected)
+		{
+			m_io_service.run();
+			connect();
+		}
+		read_until(m_socket, m_responseBuffer, "\n");
+		std::istream is(&m_responseBuffer);
+		std::string response;
+		getline(is, response);
+
+		if (response.front() == '{' && response.back() == '}')
+		{
+			Json::Value responseObject;
+			Json::Reader reader;
+			if (reader.parse(response.c_str(), responseObject))
+			{
+				processReponse(responseObject);
+				m_response = response;
+			}
+			else
+			{
+				cwarn << "Parse response failed: " << reader.getFormattedErrorMessages();
+			}
+		}
+		else
+		{
+			cwarn << "Discarding incomplete response";
+		}
+	}
+}
+
+
+void EthStratumClientV2::connect()
+{
 	cnote << "Connecting to stratum server " << p_active->host + ":" + p_active->port;
 
-	boost::thread t(boost::bind(&boost::asio::io_service::run, &m_io_service));
-	
+	tcp::resolver r(m_io_service);
+	tcp::resolver::query q(p_active->host, p_active->port);
+	tcp::resolver::iterator endpoint_iterator = r.resolve(q);
+	tcp::resolver::iterator end;
+
+	boost::system::error_code error = boost::asio::error::host_not_found;
+	while (error && endpoint_iterator != end)
+	{
+		m_socket.close();
+		m_socket.connect(*endpoint_iterator++, error);
+	}
+	if (error)
+	{
+		cerr << "Could not connect to stratum server " << p_active->host + ":" + p_active->port + ", " << error.message();
+		reconnect();
+	}
+	else
+	{
+		cnote << "Connected!";
+		m_connected = true;
+		if (!p_farm->isMining())
+		{
+			cnote << "Starting farm";
+			if (m_minerType == MinerType::CPU)
+				p_farm->start("cpu");
+			else if (m_minerType == MinerType::CL)
+				p_farm->start("opencl");
+			else if (m_minerType == MinerType::CUDA)
+				p_farm->start("cuda");
+		}
+		std::ostream os(&m_requestBuffer);
+		os << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n";
+		write(m_socket, m_requestBuffer);
+	}
 }
 
 #define BOOST_ASIO_ENABLE_CANCELIO 
 
-void EthStratumClient::reconnect()
+void EthStratumClientV2::reconnect()
 {
 	if (p_worktimer) {
 		p_worktimer->cancel();
@@ -103,7 +162,7 @@ void EthStratumClient::reconnect()
 	connect();
 }
 
-void EthStratumClient::disconnect()
+void EthStratumClientV2::disconnect()
 {
 	cnote << "Disconnecting";
 	m_connected = false;
@@ -117,123 +176,7 @@ void EthStratumClient::disconnect()
 	m_io_service.stop();
 }
 
-void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
-{
-	if (!ec)
-	{
-		async_connect(m_socket, i, boost::bind(&EthStratumClient::connect_handler,
-																					this, boost::asio::placeholders::error,
-																					boost::asio::placeholders::iterator));
-	}
-	else
-	{
-		cerr << "Could not resolve host" << p_active->host + ":" + p_active->port + ", " << ec.message();
-		reconnect();
-	}
-}
-
-void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
-{
-	dev::setThreadName("stratum");
-	
-	if (!ec)
-	{
-		m_connected = true;
-		cnote << "Connected to stratum server " << i->host_name() << ":" << p_active->port;
-		if (!p_farm->isMining())
-		{
-			cnote << "Starting farm";
-			if (m_minerType == MinerType::CPU)
-				p_farm->start("cpu");
-			else if (m_minerType == MinerType::CL)
-				p_farm->start("opencl");
-			else if (m_minerType == MinerType::CUDA)
-				p_farm->start("cuda");
-		}
-		std::ostream os(&m_requestBuffer);
-		os << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n";
-
-		
-		async_write(m_socket, m_requestBuffer,
-			boost::bind(&EthStratumClient::handleResponse, this,
-									boost::asio::placeholders::error));
-	}
-	else
-	{
-		cwarn << "Could not connect to stratum server " << p_active->host << ":" << p_active->port << ", " << ec.message();
-		reconnect();
-	}
-
-}
-
-void EthStratumClient::readline() {
-	x_pending.lock();
-	if (m_pending == 0) {
-		async_read_until(m_socket, m_responseBuffer, "\n",
-			boost::bind(&EthStratumClient::readResponse, this,
-			boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
-	
-		m_pending++;
-		
-	}
-	x_pending.unlock();
-}
-
-void EthStratumClient::handleResponse(const boost::system::error_code& ec) {
-	if (!ec)
-	{
-		readline();
-	}
-	else
-	{
-		dev::setThreadName("stratum");
-		cwarn << "Handle response failed: " << ec.message();
-	}
-}
-
-void EthStratumClient::readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred)
-{
-	dev::setThreadName("stratum");
-	x_pending.lock();
-	m_pending = m_pending > 0 ? m_pending - 1 : 0;
-	x_pending.unlock();
-
-	if (!ec && bytes_transferred)
-	{
-		std::istream is(&m_responseBuffer);
-		std::string response;
-		getline(is, response);
-
-		if (response.front() == '{' && response.back() == '}') 
-		{
-			Json::Value responseObject;
-			Json::Reader reader;
-			if (reader.parse(response.c_str(), responseObject))
-			{
-				processReponse(responseObject);
-				m_response = response;
-			}
-			else
-			{
-				cwarn << "Parse response failed: " << reader.getFormattedErrorMessages();
-			}
-		}
-		else
-		{
-			cwarn << "Discarding incomplete response";
-		}
-		if (m_connected)
-			readline();
-	}
-	else
-	{
-		cwarn << "Read response failed: " << ec.message();
-		if (m_connected)
-			reconnect();
-	}
-}
-
-void EthStratumClient::processReponse(Json::Value& responseObject)
+void EthStratumClientV2::processReponse(Json::Value& responseObject)
 {
 	Json::Value error = responseObject.get("error", new Json::Value);
 	if (error.isArray())
@@ -251,9 +194,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 		os << "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"" << p_active->user << "\",\"" << p_active->pass << "\"]}\n";
 
-		async_write(m_socket, m_requestBuffer,
-			boost::bind(&EthStratumClient::handleResponse, this,
-			boost::asio::placeholders::error));
+		write(m_socket, m_requestBuffer);
 		break;
 	case 2:
 		m_authorized = responseObject.get("result", Json::Value::null).asBool();
@@ -323,7 +264,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						p_farm->setWork(m_current);
 						//x_current.unlock();
 						p_worktimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout));
-						p_worktimer->async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+						p_worktimer->async_wait(boost::bind(&EthStratumClientV2::work_timeout_handler, this, boost::asio::placeholders::error));
 
 					}
 				}
@@ -336,29 +277,27 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		else if (method == "client.get_version")
 		{
 			os << "{\"error\": null, \"id\" : " << id << ", \"result\" : \"" << ETH_PROJECT_VERSION << "\"}\n";
-			async_write(m_socket, m_requestBuffer,
-				boost::bind(&EthStratumClient::handleResponse, this,
-				boost::asio::placeholders::error));
+			write(m_socket, m_requestBuffer);
 		}
 		break;
 	}
 
 }
 
-void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec) {
+void EthStratumClientV2::work_timeout_handler(const boost::system::error_code& ec) {
 	if (!ec) {
 		cnote << "No new work received in" << m_worktimeout << "seconds.";
 		reconnect();
 	}
 }
 
-bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
-	x_current.lock();
+bool EthStratumClientV2::submit(EthashProofOfWork::Solution solution) {
+//	x_current.lock();
 	EthashProofOfWork::WorkPackage tempWork(m_current);
 	string temp_job = m_job;
 	EthashProofOfWork::WorkPackage tempPreviousWork(m_previous);
 	string temp_previous_job = m_previousJob;
-	x_current.unlock();
+//	x_current.unlock();
 
 	cnote << "Solution found; Submitting to" << p_active->host << "...";
 	cnote << "  Nonce:" << "0x" + solution.nonce.hex();
@@ -369,9 +308,7 @@ bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
 		std::ostream os(&m_requestBuffer);
 		os << json;
 		m_stale = false;
-		async_write(m_socket, m_requestBuffer,
-			boost::bind(&EthStratumClient::handleResponse, this,
-			boost::asio::placeholders::error));
+		write(m_socket, m_requestBuffer);
 		return true;
 	}
 	else if (EthashAux::eval(tempPreviousWork.seedHash, tempPreviousWork.headerHash, solution.nonce).value < tempPreviousWork.boundary)
@@ -381,9 +318,7 @@ bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
 		os << json;
 		m_stale = true;
 		cwarn << "Submitting stale solution.";
-		async_write(m_socket, m_requestBuffer,
-			boost::bind(&EthStratumClient::handleResponse, this,
-			boost::asio::placeholders::error));
+		write(m_socket, m_requestBuffer);
 		return true;
 	}
 	else {
