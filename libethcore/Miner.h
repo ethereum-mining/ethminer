@@ -24,6 +24,7 @@
 #include <thread>
 #include <list>
 #include <atomic>
+#include <string>
 #include <boost/timer.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
@@ -33,6 +34,15 @@
 #define MINER_WAIT_STATE_UNKNOWN 0
 #define MINER_WAIT_STATE_WORK	 1
 #define MINER_WAIT_STATE_DAG	 2
+
+using namespace std;
+
+typedef struct {
+	string host;
+	string port;
+	string user;
+	string pass;
+} cred_t;
 
 namespace dev
 {
