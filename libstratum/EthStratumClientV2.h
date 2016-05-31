@@ -63,6 +63,7 @@ private:
 	string m_response;
 
 	GenericFarm<EthashProofOfWork> * p_farm;
+	mutex x_current;
 	EthashProofOfWork::WorkPackage m_current;
 	EthashProofOfWork::WorkPackage m_previous;
 
