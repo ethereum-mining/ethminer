@@ -46,35 +46,41 @@ void EthStratumClientV2::setFailover(string const & host, string const & port, s
 
 void EthStratumClientV2::workLoop() 
 {
-	while (true)
+	while (m_running)
 	{
-		if (!m_connected)
-		{
-			m_io_service.run();
-			connect();
-		}
-		read_until(m_socket, m_responseBuffer, "\n");
-		std::istream is(&m_responseBuffer);
-		std::string response;
-		getline(is, response);
-
-		if (response.front() == '{' && response.back() == '}')
-		{
-			Json::Value responseObject;
-			Json::Reader reader;
-			if (reader.parse(response.c_str(), responseObject))
+		try {
+			if (!m_connected)
 			{
-				processReponse(responseObject);
-				m_response = response;
+				m_io_service.run();
+				connect();
+			}
+			read_until(m_socket, m_responseBuffer, "\n");
+			std::istream is(&m_responseBuffer);
+			std::string response;
+			getline(is, response);
+
+			if (response.front() == '{' && response.back() == '}')
+			{
+				Json::Value responseObject;
+				Json::Reader reader;
+				if (reader.parse(response.c_str(), responseObject))
+				{
+					processReponse(responseObject);
+					m_response = response;
+				}
+				else
+				{
+					cwarn << "Parse response failed: " << reader.getFormattedErrorMessages();
+				}
 			}
 			else
 			{
-				cwarn << "Parse response failed: " << reader.getFormattedErrorMessages();
+				cwarn << "Discarding incomplete response";
 			}
 		}
-		else
-		{
-			cwarn << "Discarding incomplete response";
+		catch (std::exception const& _e) {
+			cwarn << _e.what();
+			reconnect();
 		}
 	}
 }
@@ -158,8 +164,6 @@ void EthStratumClientV2::reconnect()
 	cnote << "Reconnecting in 3 seconds...";
 	boost::asio::deadline_timer     timer(m_io_service, boost::posix_time::seconds(3));
 	timer.wait();
-
-	connect();
 }
 
 void EthStratumClientV2::disconnect()
@@ -238,9 +242,6 @@ void EthStratumClientV2::processReponse(Json::Value& responseObject)
 				if (sHeaderHash != "" && sSeedHash != "" && sShareTarget != "")
 				{
 					cnote << "Received new job #" + job.substr(0,8);
-					//cnote << "Header hash: " + sHeaderHash;
-					//cnote << "Seed hash: " + sSeedHash;
-					//cnote << "Share target: " + sShareTarget;
 
 					h256 seedHash = h256(sSeedHash);
 					h256 headerHash = h256(sHeaderHash);
@@ -258,7 +259,7 @@ void EthStratumClientV2::processReponse(Json::Value& responseObject)
 
 						m_current.headerHash = h256(sHeaderHash);
 						m_current.seedHash = seedHash;
-						m_current.boundary = h256(sShareTarget);// , h256::AlignRight);
+						m_current.boundary = h256(sShareTarget);
 						m_job = job;
 
 						p_farm->setWork(m_current);
@@ -292,12 +293,12 @@ void EthStratumClientV2::work_timeout_handler(const boost::system::error_code& e
 }
 
 bool EthStratumClientV2::submit(EthashProofOfWork::Solution solution) {
-//	x_current.lock();
+	x_current.lock();
 	EthashProofOfWork::WorkPackage tempWork(m_current);
 	string temp_job = m_job;
 	EthashProofOfWork::WorkPackage tempPreviousWork(m_previous);
 	string temp_previous_job = m_previousJob;
-//	x_current.unlock();
+	x_current.unlock();
 
 	cnote << "Solution found; Submitting to" << p_active->host << "...";
 	cnote << "  Nonce:" << "0x" + solution.nonce.hex();
