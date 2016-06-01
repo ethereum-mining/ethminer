@@ -374,43 +374,12 @@ public:
 		{
 			m_minerType = MinerType::CUDA;
 		}
+		else if (arg == "-X" || arg == "--cuda-opencl")
+		{
+			m_minerType = MinerType::Mixed;
+		}
 		else if (arg == "--current-block" && i + 1 < argc)
 			m_currentBlock = stol(argv[++i]);
-		/*
-		else if ((arg == "-R" || arg == "--dag-dir") && i + 1 < argc)
-		{
-			strcpy(s_dagDir, argv[++i]);
-		}
-		else if ((arg == "-E" || arg == "--erase-dags") && i + 1 < argc)
-		{
-			string m = string(argv[++i]);
-			if (m == "none") m_eraseMode = DAGEraseMode::None;
-			else if (m == "old") m_eraseMode = DAGEraseMode::Old;
-			else if (m == "bench") m_eraseMode = DAGEraseMode::Bench;
-			else if (m == "all") m_eraseMode = DAGEraseMode::All;
-			else
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		}
-		else if (arg == "--no-precompute")
-			m_precompute = false;
-		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
-		{
-			string m = boost::to_lower_copy(string(argv[++i]));
-			mode = OperationMode::DAGInit;
-			try
-			{
-				m_initDAG = stol(m);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << m << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		}
-		*/
 		else if ((arg == "-w" || arg == "--check-pow") && i + 4 < argc)
 		{
 			string m;
@@ -510,24 +479,14 @@ public:
 
 	void execute()
 	{
-		/*
-		EthashAux::setDAGDirName(s_dagDir);
-		EthashAux::setDAGEraseMode(m_eraseMode);
-		EthashAux::eraseDAGs();
-		if (m_eraseMode == DAGEraseMode::All)
-		{
-			m_eraseMode = DAGEraseMode::None;
-		}
-		*/
-
 		if (m_shouldListDevices)
 		{
 #if ETH_ETHASHCL || !ETH_TRUE
-			if (m_minerType == MinerType::CL)
+			if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 				EthashGPUMiner::listDevices();
 #endif
 #if ETH_ETHASHCUDA || !ETH_TRUE
-			if (m_minerType == MinerType::CUDA)
+			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 				EthashCUDAMiner::listDevices();
 #endif
 			if (m_minerType == MinerType::CPU)
@@ -537,7 +496,7 @@ public:
 
 		if (m_minerType == MinerType::CPU)
 			EthashCPUMiner::setNumInstances(m_miningThreads);
-		else if (m_minerType == MinerType::CL)
+		else if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 		{
 #if ETH_ETHASHCL || !ETH_TRUE
 			if (m_openclDeviceCount > 0)
@@ -562,7 +521,7 @@ public:
 			exit(1);
 #endif
 		}
-		else if (m_minerType == MinerType::CUDA)
+		else if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 		{
 #if ETH_ETHASHCUDA || !ETH_TRUE
 			if (m_cudaDeviceCount > 0)
@@ -707,11 +666,11 @@ private:
 		genesis.setDifficulty(u256(1) << 63);
 		f.setWork(genesis);
 		if (_m == MinerType::CPU)
-			f.start("cpu");
+			f.start("cpu", false);
 		else if (_m == MinerType::CL)
-			f.start("opencl");
+			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
-			f.start("cuda");
+			f.start("cuda", false);
 
 		map<uint64_t, WorkingProgress> results;
 		uint64_t mean = 0;
@@ -791,11 +750,11 @@ private:
 		f.setWork(genesis);
 
 		if (_m == MinerType::CPU)
-			f.start("cpu");
+			f.start("cpu", false);
 		else if (_m == MinerType::CL)
-			f.start("opencl");
+			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
-			f.start("cuda");
+			f.start("cuda", false);
 
 		int time = 0;
 
@@ -817,13 +776,7 @@ private:
 				this_thread::sleep_for(chrono::milliseconds(1000));
 				time++;
 			}
-			//cnote << "Solution found";
 			cnote << "Difficulty:" << difficulty << "  Nonce:" << solution.nonce.hex();
-			//cnote << "  Mixhash:" << solution.mixHash.hex();
-			//cnote << "  Header-hash:" << current.headerHash.hex();
-			//cnote << "  Seedhash:" << current.seedHash.hex();
-			//cnote << "  Target: " << h256(current.boundary).hex();
-			//cnote << "  Ethash: " << h256(EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value).hex();
 			if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
 			{
 				cnote << "SUCCESS: GPU gave correct result!";
@@ -880,11 +833,11 @@ private:
 		GenericFarm<EthashProofOfWork> f;
 		f.setSealers(sealers);
 		if (_m == MinerType::CPU)
-			f.start("cpu");
+			f.start("cpu", false);
 		else if (_m == MinerType::CL)
-			f.start("opencl");
+			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
-			f.start("cuda");
+			f.start("cuda", false);
 		EthashProofOfWork::WorkPackage current, previous;
 		boost::mutex x_current;
 		EthashAux::FullType dag;
@@ -933,8 +886,6 @@ private:
 						current.seedHash = newSeedHash;
 						current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
 						minelog << "Got work package: #" + current.headerHash.hex().substr(0,8);
-						//minelog << "  Seedhash:" << current.seedHash.hex();
-						//minelog << "  Target: " << h256(current.boundary).hex();
 						f.setWork(current);
 						x_current.unlock();
 					}

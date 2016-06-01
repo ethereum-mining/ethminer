@@ -54,7 +54,8 @@ enum class MinerType
 {
 	CPU,
 	CL,
-	CUDA
+	CUDA,
+	Mixed
 };
 
 struct MineInfo: public WorkingProgress {};

@@ -144,11 +144,15 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 		{
 			cnote << "Starting farm";
 			if (m_minerType == MinerType::CPU)
-				p_farm->start("cpu");
+				p_farm->start("cpu", false);
 			else if (m_minerType == MinerType::CL)
-				p_farm->start("opencl");
+				p_farm->start("opencl", false);
 			else if (m_minerType == MinerType::CUDA)
-				p_farm->start("cuda");
+				p_farm->start("cuda", false);
+			else if (m_minerType == MinerType::Mixed) {
+				p_farm->start("cuda", false);
+				p_farm->start("opencl", true);
+			}
 		}
 		std::ostream os(&m_requestBuffer);
 		os << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n";
