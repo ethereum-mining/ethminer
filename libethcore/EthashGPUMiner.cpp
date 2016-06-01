@@ -107,7 +107,7 @@ int EthashGPUMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
 
 EthashGPUMiner::EthashGPUMiner(ConstructionInfo const& _ci):
 	GenericMiner<EthashProofOfWork>(_ci),
-	Worker("gpuminer" + toString(index())),
+	Worker("openclminer" + toString(index())),
 	m_hook(new EthashCLHook(this))
 {
 }
