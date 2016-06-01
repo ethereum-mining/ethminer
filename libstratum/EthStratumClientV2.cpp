@@ -51,8 +51,10 @@ void EthStratumClientV2::workLoop()
 		try {
 			if (!m_connected)
 			{
-				m_io_service.run();
+				//m_io_service.run();
+				//boost::thread t(boost::bind(&boost::asio::io_service::run, &m_io_service));
 				connect();
+				
 			}
 			read_until(m_socket, m_responseBuffer, "\n");
 			std::istream is(&m_responseBuffer);
@@ -126,8 +128,6 @@ void EthStratumClientV2::connect()
 	}
 }
 
-#define BOOST_ASIO_ENABLE_CANCELIO 
-
 void EthStratumClientV2::reconnect()
 {
 	if (p_worktimer) {
@@ -135,7 +135,7 @@ void EthStratumClientV2::reconnect()
 		p_worktimer = nullptr;
 	}
 
-	m_io_service.reset();
+	//m_io_service.reset();
 	//m_socket.close(); // leads to crashes on Linux
 	m_authorized = false;
 	m_connected = false;
@@ -177,7 +177,7 @@ void EthStratumClientV2::disconnect()
 		p_farm->stop();
 	}
 	m_socket.close();
-	m_io_service.stop();
+	//m_io_service.stop();
 }
 
 void EthStratumClientV2::processReponse(Json::Value& responseObject)
@@ -249,8 +249,8 @@ void EthStratumClientV2::processReponse(Json::Value& responseObject)
 					if (headerHash != m_current.headerHash)
 					{
 						//x_current.lock();
-						if (p_worktimer)
-							p_worktimer->cancel();
+						//if (p_worktimer)
+						//	p_worktimer->cancel();
 
 						m_previous.headerHash = m_current.headerHash;
 						m_previous.seedHash = m_current.seedHash;
@@ -264,9 +264,8 @@ void EthStratumClientV2::processReponse(Json::Value& responseObject)
 
 						p_farm->setWork(m_current);
 						//x_current.unlock();
-						p_worktimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout));
-						p_worktimer->async_wait(boost::bind(&EthStratumClientV2::work_timeout_handler, this, boost::asio::placeholders::error));
-
+						//p_worktimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout));
+						//p_worktimer->async_wait(boost::bind(&EthStratumClientV2::work_timeout_handler, this, boost::asio::placeholders::error));
 					}
 				}
 			}

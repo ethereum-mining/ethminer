@@ -1,4 +1,4 @@
-
+ 
 #include "EthStratumClient.h"
 #include <libdevcore/Log.h>
 using boost::asio::ip::tcp;
