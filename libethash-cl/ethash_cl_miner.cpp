@@ -205,6 +205,7 @@ bool ethash_cl_miner::configureGPU(
 	s_initialGlobalWorkSize = _globalWorkSize;
 	s_allowCPU = _allowCPU;
 	s_extraRequiredGPUMem = _extraGPUMemory;
+
 	// by default let's only consider the DAG of the first epoch
 	uint64_t dagSize = ethash_get_datasize(_currentBlock);
 	uint64_t requiredSize =  dagSize + _extraGPUMemory;

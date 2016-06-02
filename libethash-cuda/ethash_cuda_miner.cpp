@@ -231,15 +231,12 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		// create buffer for cache
 		hash64_t * light;
 		CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightSize));
-		// copy dag to CPU.
+		// copy dag cache to CPU.
 		CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), _lightData, _lightSize, cudaMemcpyHostToDevice));
 
 		// create buffer for dag
 		hash128_t * dag;
 		CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
-		// copy dag to CPU.
-		//CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), _dag, _dagSize, cudaMemcpyHostToDevice));
-
 		
 		// create mining buffers
 		for (unsigned i = 0; i != s_numStreams; ++i)
