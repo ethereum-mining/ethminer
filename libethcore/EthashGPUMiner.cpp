@@ -142,6 +142,13 @@ void EthashGPUMiner::workLoop()
 		cnote << "set work; seed: " << "#" + w.seedHash.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 16);
 		if (!m_miner || m_minerSeed != w.seedHash)
 		{
+			if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
+			{
+				while (s_dagLoadIndex < index()) {
+					this_thread::sleep_for(chrono::seconds(1));
+				}
+			}
+
 			cnote << "Initialising miner...";
 			m_minerSeed = w.seedHash;
 
@@ -172,6 +179,7 @@ void EthashGPUMiner::workLoop()
 			bytesConstRef lightData = light->data();
 
 			m_miner->init(light->light, lightData.data(), lightData.size(), s_platformId,  device);
+			s_dagLoadIndex++;
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
@@ -213,27 +221,25 @@ bool EthashGPUMiner::configureGPU(
 	unsigned _deviceId,
 	bool _allowCPU,
 	unsigned _extraGPUMemory,
-	uint64_t _currentBlock
+	uint64_t _currentBlock,
+	unsigned _dagLoadMode
 )
 {
+	s_dagLoadMode = _dagLoadMode;
+
 	s_platformId = _platformId;
 	s_deviceId = _deviceId;
 
 	_localWorkSize = ((_localWorkSize + 7) / 8) * 8;
-	/*
-	if (_localWorkSize != 32 && _localWorkSize != 64 && _localWorkSize != 128 && _localWorkSize != 256)
-	{
-		cout << "Given localWorkSize of " << toString(_localWorkSize) << "is invalid. Must be either 32,64,128 or 256" << endl;
-		return false;
-	}
-	*/ 
+
 	if (!ethash_cl_miner::configureGPU(
 			_platformId,
 			_localWorkSize,
 			_globalWorkSizeMultiplier * _localWorkSize,
 			_allowCPU,
 			_extraGPUMemory,
-			_currentBlock)
+			_currentBlock
+			)
 	)
 	{
 		cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
