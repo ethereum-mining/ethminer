@@ -4,7 +4,7 @@
 using boost::asio::ip::tcp;
 
 
-EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, bool const & precompute)
+EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout)
 	: m_socket(m_io_service)
 {
 	m_minerType = m;
@@ -17,7 +17,6 @@ EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType
 
 	m_authorized = false;
 	m_connected = false;
-	m_precompute = precompute;
 	m_pending = 0;
 	m_maxRetries = retries;
 	m_worktimeout = worktimeout;

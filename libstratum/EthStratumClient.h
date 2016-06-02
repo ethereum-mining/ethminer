@@ -21,7 +21,7 @@ using namespace dev::eth;
 class EthStratumClient
 {
 public:
-	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, bool const & precompute);
+	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout);
 	~EthStratumClient();
 
 	void setFailover(string const & host, string const & port);

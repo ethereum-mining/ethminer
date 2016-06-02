@@ -32,6 +32,7 @@ namespace dev
 namespace eth
 {
 
+
 struct DAGChannel: public LogChannel { static const char* name(); static const int verbosity = 1; };
 
 /// Proof of work definition for Ethash.
@@ -73,6 +74,7 @@ struct EthashProofOfWork
 	static const unsigned defaultGlobalWorkSizeMultiplier;
 	/// Default value of the milliseconds per global work size (per batch)
 	static const unsigned defaultMSPerBatch;
+
 };
 
 enum class DAGEraseMode
