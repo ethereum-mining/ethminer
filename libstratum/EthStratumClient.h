@@ -28,7 +28,7 @@ public:
 	void setFailover(string const & host, string const & port, string const & user, string const & pass);
 
 	bool isRunning() { return m_running; }
-	bool isConnected() { return m_connected; }
+	bool isConnected() { return m_connected && m_authorized; }
 	h256 currentHeaderHash() { return m_current.headerHash; }
 	bool current() { return m_current; }
 	unsigned waitState() { return m_waitState; }
