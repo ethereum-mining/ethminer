@@ -1008,7 +1008,12 @@ private:
 
 			f.onSolutionFound([&](EthashProofOfWork::Solution sol)
 			{
-				client.submit(sol);
+				if (client.isConnected()) {
+					client.submit(sol);
+				}
+				else {
+					cwarn << "Can't submit solution: Not connected";
+				}
 				return false;
 			});
 
