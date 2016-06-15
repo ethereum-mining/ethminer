@@ -38,6 +38,7 @@
 
 #define DAG_LOAD_MODE_PARALLEL	 0
 #define DAG_LOAD_MODE_SEQUENTIAL 1
+#define DAG_LOAD_MODE_SINGLE	 2
 
 
 using namespace std;
@@ -218,7 +219,9 @@ protected:
 	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
 
 	static unsigned s_dagLoadMode;
-	static unsigned s_dagLoadIndex;
+	static volatile unsigned s_dagLoadIndex;
+	static unsigned s_dagCreateDevice;
+	static volatile void* s_dagInHostMemory;
 private:
 	FarmFace* m_farm = nullptr;
 	unsigned m_index;
