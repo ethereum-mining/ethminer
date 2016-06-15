@@ -201,6 +201,10 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
+		else if (arg == "-ES" || arg == "--ethereum-stratum")
+		{
+			m_ethereumStratum = true;
+		}
 		else if ((arg == "-FO" || arg == "--failover-userpass") && i + 1 < argc)
 		{
 			string userpass = string(argv[++i]);
@@ -330,6 +334,11 @@ public:
 			string mode = argv[++i];
 			if (mode == "parallel") m_dagLoadMode = DAG_LOAD_MODE_PARALLEL;
 			else if (mode == "sequential") m_dagLoadMode = DAG_LOAD_MODE_SEQUENTIAL;
+			else if (mode == "single")
+			{
+				m_dagLoadMode = DAG_LOAD_MODE_SINGLE;
+				m_dagCreateDevice = stol(argv[++i]);
+			}
 			else
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
@@ -531,7 +540,8 @@ public:
 					m_clAllowCPU,
 					m_extraGPUMemory,
 					0,
-					m_dagLoadMode
+					m_dagLoadMode,
+					m_dagCreateDevice
 				))
 				exit(1);
 			EthashGPUMiner::setNumInstances(m_miningThreads);
@@ -557,7 +567,8 @@ public:
 				m_extraGPUMemory,
 				m_cudaSchedule,
 				0,
-				m_dagLoadMode
+				m_dagLoadMode,
+				m_dagCreateDevice
 				))
 				exit(1);
 #else
@@ -592,7 +603,8 @@ public:
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
 			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
-			<< "    -SV, --stratum-version <n>  Stratum client version. Defaults to 1 (async client). Use 2 to test new synchronous client."
+			<< "    -SV, --stratum-version <n>  Stratum client version. Defaults to 1 (async client). Use 2 to test new synchronous client." << endl
+			<< "    -ES, --ethereum-stratum  Use EthereumStratum/1.0.0 mode." << endl
 #endif
 #if ETH_JSONRPC || ETH_STRATUM || !ETH_TRUE
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
@@ -618,6 +630,7 @@ public:
 			<< "    -L, --dag-load-mode <mode> DAG generation mode." << endl
 			<< "        parallel    - load DAG on all GPUs at the same time (default)" << endl
 			<< "        sequential  - load DAG on GPUs one after another. Use this when the miner crashes during DAG generation" << endl
+			<< "        single <n>  - generate DAG on device n, then copy to other devices" << endl
 #if ETH_ETHASHCL || !ETH_TRUE
 			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. default: 0" << endl
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
@@ -992,7 +1005,7 @@ private:
 
 		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
 		if (m_stratumClientVersion == 1) {
-			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout);
+			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_ethereumStratum);
 			if (m_farmFailOverURL != "")
 			{
 				if (m_fuser != "")
@@ -1032,7 +1045,7 @@ private:
 			}
 		}
 		else if (m_stratumClientVersion == 2) {
-			EthStratumClientV2 client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout);
+			EthStratumClientV2 client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_ethereumStratum);
 			if (m_farmFailOverURL != "")
 			{
 				if (m_fuser != "")
@@ -1100,6 +1113,7 @@ private:
 	// default value was 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
 	unsigned m_extraGPUMemory = 0;// 350000000; don't assume miners run desktops...
 	unsigned m_dagLoadMode = 0; // parallel
+	unsigned m_dagCreateDevice = 0;
 	/// Benchmarking params
 	bool m_phoneHome = false;
 	unsigned m_benchmarkWarmup = 15;
@@ -1121,6 +1135,7 @@ private:
 
 #if ETH_STRATUM || !ETH_TRUE
 	int m_stratumClientVersion = 1;
+	bool m_ethereumStratum = false;
 	string m_user;
 	string m_pass;
 	string m_port;

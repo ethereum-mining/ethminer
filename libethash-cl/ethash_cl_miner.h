@@ -59,7 +59,7 @@ public:
 		unsigned _deviceId
 		);
 	void finish();
-	void search(uint8_t const* _header, uint64_t _target, search_hook& _hook);
+	void search(uint8_t const* _header, uint64_t _target, search_hook& _hook, bool _ethStratum, uint64_t _startN);
 
 	/* -- default values -- */
 	/// Default value of the local work size. Also known as workgroup size.
