@@ -144,6 +144,13 @@ void EthashCUDAMiner::workLoop()
 		cnote << "set work; seed: " << "#" + w.seedHash.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 16);
 		if (!m_miner || m_minerSeed != w.seedHash)
 		{
+			if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
+			{
+				while (s_dagLoadIndex < index()) {
+					this_thread::sleep_for(chrono::seconds(1));
+				}
+			}
+
 			cnote << "Initialising miner...";
 			m_minerSeed = w.seedHash;
 
@@ -152,30 +159,13 @@ void EthashCUDAMiner::workLoop()
 
 			unsigned device = s_devices[index()] > -1 ? s_devices[index()] : index();
 
-			/*
-			EthashAux::FullType dag;
-
-			while (true)
-			{
-				if ((dag = EthashAux::full(w.seedHash, true)))
-					break;
-				if (shouldStop())
-				{
-					delete m_miner;
-					m_miner = nullptr;
-					return;
-				}
-				cnote << "Awaiting DAG";
-				this_thread::sleep_for(chrono::milliseconds(500));
-			}
-			*/
-
 			EthashAux::LightType light;
 			light = EthashAux::light(w.seedHash);
 			//bytesConstRef dagData = dag->data();
 			bytesConstRef lightData = light->data();
 			
 			m_miner->init(light->light, lightData.data(), lightData.size(), device);
+			s_dagLoadIndex++;
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
@@ -216,17 +206,13 @@ bool EthashCUDAMiner::configureGPU(
 	unsigned _numStreams,
 	unsigned _extraGPUMemory,
 	unsigned _scheduleFlag,
-	uint64_t _currentBlock
+	uint64_t _currentBlock,
+	unsigned _dagLoadMode
 	)
 {
+	s_dagLoadMode = _dagLoadMode;
 	_blockSize = ((_blockSize + 7) / 8) * 8;
-	/*
-	if (_blockSize != 32 && _blockSize != 64 && _blockSize != 128)
-	{
-		cout << "Given localWorkSize of " << toString(_blockSize) << "is invalid. Must be either 32,64 or 128" << endl;
-		return false;
-	}
-	*/
+
 	if (!ethash_cuda_miner::configureGPU(
 		s_devices,
 		_blockSize,

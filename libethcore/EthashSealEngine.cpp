@@ -59,7 +59,7 @@ void EthashSealEngine::generateSeal(BlockInfo const& _bi)
 {
 	m_sealing = Ethash::BlockHeader(_bi);
 	m_farm.setWork(m_sealing);
-	m_farm.start(m_sealer);
+	m_farm.start(m_sealer, false);
 	m_farm.setWork(m_sealing);		// TODO: take out one before or one after...
 	bytes shouldPrecompute = option("precomputeDAG");
 	if (!shouldPrecompute.empty() && shouldPrecompute[0] == 1)

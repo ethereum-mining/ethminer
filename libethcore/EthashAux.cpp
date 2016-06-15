@@ -52,6 +52,8 @@ const unsigned EthashProofOfWork::defaultGlobalWorkSizeMultiplier = 4096; // * C
 const unsigned EthashProofOfWork::defaultMSPerBatch = 0;
 const EthashProofOfWork::WorkPackage EthashProofOfWork::NullWorkPackage = EthashProofOfWork::WorkPackage();
 
+//unsigned EthashProofOfWork::s_dagLoadMode = 0;
+
 EthashAux::~EthashAux()
 {
 }

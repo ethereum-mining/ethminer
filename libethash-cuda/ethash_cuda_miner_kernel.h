@@ -59,7 +59,8 @@ void ethash_generate_dag(
 	uint64_t dag_size,
 	uint32_t blocks,
 	uint32_t threads,
-	cudaStream_t stream
+	cudaStream_t stream,
+	int device
 	);
 
 
