@@ -199,7 +199,7 @@ void ethash_cuda_miner::finish()
 	CUDA_SAFE_CALL(cudaDeviceReset());
 }
 
-bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId)
+bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, volatile void** hostDAG)
 {
 	try
 	{
@@ -229,10 +229,14 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		uint32_t lightSize64 = (unsigned)(_lightSize / sizeof(node));
 
 		// create buffer for cache
-		hash64_t * light;
-		CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightSize));
-		// copy dag cache to CPU.
-		CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), _lightData, _lightSize, cudaMemcpyHostToDevice));
+		hash64_t * light = NULL;
+
+		if (!*hostDAG)
+		{
+			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightSize));
+			// copy dag cache to CPU.
+			CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), _lightData, _lightSize, cudaMemcpyHostToDevice));
+		}
 
 		// create buffer for dag
 		hash128_t * dag;
@@ -252,9 +256,28 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 
 		m_sharedBytes = device_props.major * 100 < SHUFFLE_MIN_VER ? (64 * s_blockSize) / 8 : 0 ;
 
+		if (!*hostDAG)
+		{
+			cout << "Generating DAG for GPU #" << device_num << endl;
+			ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], device_num);
 
-		cout << "Generating DAG for GPU #" << device_num << endl;
-		ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], device_num);
+			if (_cpyToHost)
+			{
+				uint8_t* memoryDAG = new uint8_t[dagSize];
+				if (!memoryDAG) throw std::runtime_error("Failed to init host memory for DAG, not enough memory?");
+
+				cout << "Copying DAG from GPU #" << device_num << " to host" << endl;
+				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
+
+				*hostDAG = (void*)memoryDAG;
+			}
+		}
+		else
+		{
+			cout << "Copying DAG from host to GPU #" << device_num << endl;
+			const void* hdag = (const void*)(*hostDAG);
+			CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
+		}
 
 		return true;
 	}
@@ -264,7 +287,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 	}
 }
 
-void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_hook& hook)
+void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN)
 {
 	bool initialize = false;
 	bool exit = false;
@@ -280,14 +303,34 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 		set_target(m_current_target);
 		initialize = true;
 	}
-	if (initialize)
+	if (_ethStratum)
 	{
-		random_device engine;
-		m_current_nonce = uniform_int_distribution<uint64_t>()(engine);
-		m_current_index = 0;
-		CUDA_SAFE_CALL(cudaDeviceSynchronize());
-		for (unsigned int i = 0; i < s_numStreams; i++)
-			m_search_buf[i][0] = 0;
+		if (initialize)
+		{
+			m_starting_nonce = 0;
+			m_current_index = 0;
+			CUDA_SAFE_CALL(cudaDeviceSynchronize());
+			for (unsigned int i = 0; i < s_numStreams; i++)
+				m_search_buf[i][0] = 0;
+		}
+		if (m_starting_nonce != _startN)
+		{
+			// reset nonce counter
+			m_starting_nonce = _startN;
+			m_current_nonce = m_starting_nonce;
+		}
+	}
+	else
+	{
+		if (initialize)
+		{
+			random_device engine;
+			m_current_nonce = uniform_int_distribution<uint64_t>()(engine);
+			m_current_index = 0;
+			CUDA_SAFE_CALL(cudaDeviceSynchronize());
+			for (unsigned int i = 0; i < s_numStreams; i++)
+				m_search_buf[i][0] = 0;
+		}
 	}
 	uint64_t batch_size = s_gridSize * s_blockSize;
 	for (; !exit; m_current_index++, m_current_nonce += batch_size)

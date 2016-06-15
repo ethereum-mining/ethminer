@@ -35,10 +35,10 @@ public:
 		uint64_t _currentBlock
 		);
 
-	bool init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId);
+	bool init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, volatile void** hostDAG);
 
 	void finish();
-	void search(uint8_t const* header, uint64_t target, search_hook& hook);
+	void search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN);
 
 	/* -- default values -- */
 	/// Default value of the block size. Also known as workgroup size.
@@ -52,6 +52,7 @@ private:
 	hash32_t m_current_header;
 	uint64_t m_current_target;
 	uint64_t m_current_nonce;
+	uint64_t m_starting_nonce;
 	uint64_t m_current_index;
 
 	uint32_t m_sharedBytes;

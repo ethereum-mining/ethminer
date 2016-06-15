@@ -53,7 +53,8 @@ public:
 		bool _allowCPU,
 		unsigned _extraGPUMemory,
 		uint64_t _currentBlock,
-		unsigned _dagLoadMode
+		unsigned _dagLoadMode,
+		unsigned _dagCreateDevice
 	);
 	static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
 	static void setDevices(unsigned * _devices, unsigned _selectedDeviceCount)

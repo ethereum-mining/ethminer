@@ -183,7 +183,10 @@ void EthashGPUMiner::workLoop()
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
-		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook);
+		uint64_t startN;
+		if (w.exSizeBits >= 0)
+			startN = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
+		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook, (w.exSizeBits >= 0), startN);
 	}
 	catch (cl::Error const& _e)
 	{
@@ -222,10 +225,12 @@ bool EthashGPUMiner::configureGPU(
 	bool _allowCPU,
 	unsigned _extraGPUMemory,
 	uint64_t _currentBlock,
-	unsigned _dagLoadMode
+	unsigned _dagLoadMode,
+	unsigned _dagCreateDevice
 )
 {
 	s_dagLoadMode = _dagLoadMode;
+	s_dagCreateDevice = _dagCreateDevice;
 
 	s_platformId = _platformId;
 	s_deviceId = _deviceId;
