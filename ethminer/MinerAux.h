@@ -60,6 +60,7 @@
 #endif
 #if ETH_STRATUM || !ETH_TRUE
 #include <libstratum/EthStratumClient.h>
+#include <libstratum/EthStratumClientV2.h>
 #endif
 using namespace std;
 using namespace dev;
@@ -187,6 +188,19 @@ public:
 			if (p + 1 <= userpass.length())
 				m_pass = userpass.substr(p+1);
 		}
+		else if ((arg == "-SV" || arg == "--stratum-version") && i + 1 < argc)
+		{
+			try {
+				m_stratumClientVersion = atoi(argv[++i]);
+				if (m_stratumClientVersion > 2) m_stratumClientVersion = 2;
+				else if (m_stratumClientVersion < 1) m_stratumClientVersion = 1;
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
 		else if ((arg == "-FO" || arg == "--failover-userpass") && i + 1 < argc)
 		{
 			string userpass = string(argv[++i]);
@@ -311,6 +325,18 @@ public:
 		else if (arg == "--cuda-streams" && i + 1 < argc)
 			m_numStreams = stol(argv[++i]);
 #endif
+		else if ((arg == "-L" || arg == "--dag-load-mode") && i + 1 < argc)
+		{
+			string mode = argv[++i];
+			if (mode == "parallel") m_dagLoadMode = DAG_LOAD_MODE_PARALLEL;
+			else if (mode == "sequential") m_dagLoadMode = DAG_LOAD_MODE_SEQUENTIAL;
+			else
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
+		/*
 		else if (arg == "--phone-home" && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -324,6 +350,7 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
+		*/
 		else if (arg == "--benchmark-warmup" && i + 1 < argc)
 			try {
 				m_benchmarkWarmup = stol(argv[++i]);
@@ -360,43 +387,13 @@ public:
 		{
 			m_minerType = MinerType::CUDA;
 		}
+		else if (arg == "-X" || arg == "--cuda-opencl")
+		{
+			m_minerType = MinerType::Mixed;
+		}
+		/*
 		else if (arg == "--current-block" && i + 1 < argc)
 			m_currentBlock = stol(argv[++i]);
-		/*
-		else if ((arg == "-R" || arg == "--dag-dir") && i + 1 < argc)
-		{
-			strcpy(s_dagDir, argv[++i]);
-		}
-		else if ((arg == "-E" || arg == "--erase-dags") && i + 1 < argc)
-		{
-			string m = string(argv[++i]);
-			if (m == "none") m_eraseMode = DAGEraseMode::None;
-			else if (m == "old") m_eraseMode = DAGEraseMode::Old;
-			else if (m == "bench") m_eraseMode = DAGEraseMode::Bench;
-			else if (m == "all") m_eraseMode = DAGEraseMode::All;
-			else
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		}
-		else if (arg == "--no-precompute")
-			m_precompute = false;
-		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
-		{
-			string m = boost::to_lower_copy(string(argv[++i]));
-			mode = OperationMode::DAGInit;
-			try
-			{
-				m_initDAG = stol(m);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << m << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		}
-		*/
 		else if ((arg == "-w" || arg == "--check-pow") && i + 4 < argc)
 		{
 			string m;
@@ -434,6 +431,7 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
+		*/
 		else if (arg == "-M" || arg == "--benchmark")
 		{
 			mode = OperationMode::Benchmark;
@@ -496,24 +494,14 @@ public:
 
 	void execute()
 	{
-		/*
-		EthashAux::setDAGDirName(s_dagDir);
-		EthashAux::setDAGEraseMode(m_eraseMode);
-		EthashAux::eraseDAGs();
-		if (m_eraseMode == DAGEraseMode::All)
-		{
-			m_eraseMode = DAGEraseMode::None;
-		}
-		*/
-
 		if (m_shouldListDevices)
 		{
 #if ETH_ETHASHCL || !ETH_TRUE
-			if (m_minerType == MinerType::CL)
+			if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 				EthashGPUMiner::listDevices();
 #endif
 #if ETH_ETHASHCUDA || !ETH_TRUE
-			if (m_minerType == MinerType::CUDA)
+			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 				EthashCUDAMiner::listDevices();
 #endif
 			if (m_minerType == MinerType::CPU)
@@ -522,8 +510,11 @@ public:
 		}
 
 		if (m_minerType == MinerType::CPU)
-			EthashCPUMiner::setNumInstances(m_miningThreads);
-		else if (m_minerType == MinerType::CL)
+		{
+			cout << "CPU mining is no longer supported in this miner. Use -G (opencl) or -U (cuda) flag to select GPU platform." << endl;
+			exit(0);
+		}
+		else if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 		{
 #if ETH_ETHASHCL || !ETH_TRUE
 			if (m_openclDeviceCount > 0)
@@ -539,7 +530,8 @@ public:
 					m_openclDevice,
 					m_clAllowCPU,
 					m_extraGPUMemory,
-					m_currentBlock
+					0,
+					m_dagLoadMode
 				))
 				exit(1);
 			EthashGPUMiner::setNumInstances(m_miningThreads);
@@ -548,7 +540,7 @@ public:
 			exit(1);
 #endif
 		}
-		else if (m_minerType == MinerType::CUDA)
+		else if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 		{
 #if ETH_ETHASHCUDA || !ETH_TRUE
 			if (m_cudaDeviceCount > 0)
@@ -564,7 +556,8 @@ public:
 				m_numStreams,
 				m_extraGPUMemory,
 				m_cudaSchedule,
-				m_currentBlock
+				0,
+				m_dagLoadMode
 				))
 				exit(1);
 #else
@@ -572,9 +565,7 @@ public:
 			exit(1);
 #endif
 		}
-		if (mode == OperationMode::DAGInit)
-			doInitDAG(m_initDAG);
-		else if (mode == OperationMode::Benchmark)
+		if (mode == OperationMode::Benchmark)
 			doBenchmark(m_minerType, m_phoneHome, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
 		else if (mode == OperationMode::Farm)
 			doFarm(m_minerType, m_activeFarmURL, m_farmRecheckPeriod);
@@ -601,13 +592,11 @@ public:
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
 			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
+			<< "    -SV, --stratum-version <n>  Stratum client version. Defaults to 1 (async client). Use 2 to test new synchronous client."
 #endif
 #if ETH_JSONRPC || ETH_STRATUM || !ETH_TRUE
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
-			<< "    --no-precompute  Don't precompute the next epoch's DAG." << endl
 #endif
-			<< "Ethash verify mode:" << endl
-			<< "    -w,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
 			<< endl
 			<< "Benchmarking mode:" << endl
 			<< "    -M [<n>],--benchmark [<n>] Benchmark for mining and exit; Optionally specify block number to benchmark against specific DAG." << endl
@@ -616,28 +605,19 @@ public:
 			<< "    --benchmark-trials <n>  Set the duration of warmup for the benchmark tests (default: 5)." << endl
 			<< "Simulation mode:" << endl
 			<< "    -Z [<n>],--simulation [<n>] Mining test mode. Used to validate kernel optimizations. Optionally specify block number." << endl
-#if ETH_JSONRPC || !ETH_TRUE
-			<< "    --phone-home <on/off>  When benchmarking, publish results (default: off)" << endl
-#endif
-//			<< "DAG file management:" << endl
-//			<< "    -D,--create-dag <number>  Create the DAG in preparation for mining on given block and exit." << endl
-//			<< "    -R <s>, --dag-dir <s> Store/Load DAG files in/from the specified directory. Useful for running multiple instances with different configurations." << endl
-//			<< "    -E <mode>, --erase-dags <mode> Erase unneeded DAG files. Default is 'none'. Possible values are:" << endl
-//			<< "        none  - don't erase DAG files (default)" << endl
-//			<< "        old   - erase all DAG files older than current epoch" << endl
-//			<< "		bench - like old, but keep epoch 0 for benchmarking" << endl
-//			<< "        all   - erase all DAG files. After deleting all files, setting changes to none." << endl
 			<< "Mining configuration:" << endl
-			<< "    -C,--cpu  When mining, use the CPU." << endl
 			<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
 			<< "    -U,--cuda  When mining use the GPU via CUDA." << endl
+			<< "    -X,--cuda-opencl Use OpenCL + CUDA in a system with mixed AMD/Nvidia cards. May require setting --opencl-platform 1" << endl
 			<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
 			<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
 			<< "    --opencl-devices <0 1 ..n> Select which OpenCL devices to mine on. Default is to use all" << endl
 			<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
 			<< "    --allow-opencl-cpu Allows CPU to be considered as an OpenCL device if the OpenCL platform supports it." << endl
 			<< "    --list-devices List the detected OpenCL/CUDA devices and exit. Should be combined with -G or -U flag" << endl
-			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." << endl
+			<< "    -L, --dag-load-mode <mode> DAG generation mode." << endl
+			<< "        parallel    - load DAG on all GPUs at the same time (default)" << endl
+			<< "        sequential  - load DAG on GPUs one after another. Use this when the miner crashes during DAG generation" << endl
 #if ETH_ETHASHCL || !ETH_TRUE
 			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. default: 0" << endl
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
@@ -659,7 +639,6 @@ public:
 	}
 
 	MinerType minerType() const { return m_minerType; }
-	bool shouldPrecompute() const { return m_precompute; }
 
 private:
 	void doInitDAG(unsigned _n)
@@ -700,11 +679,11 @@ private:
 		genesis.setDifficulty(u256(1) << 63);
 		f.setWork(genesis);
 		if (_m == MinerType::CPU)
-			f.start("cpu");
+			f.start("cpu", false);
 		else if (_m == MinerType::CL)
-			f.start("opencl");
+			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
-			f.start("cuda");
+			f.start("cuda", false);
 
 		map<uint64_t, WorkingProgress> results;
 		uint64_t mean = 0;
@@ -784,11 +763,11 @@ private:
 		f.setWork(genesis);
 
 		if (_m == MinerType::CPU)
-			f.start("cpu");
+			f.start("cpu", false);
 		else if (_m == MinerType::CL)
-			f.start("opencl");
+			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
-			f.start("cuda");
+			f.start("cuda", false);
 
 		int time = 0;
 
@@ -810,13 +789,7 @@ private:
 				this_thread::sleep_for(chrono::milliseconds(1000));
 				time++;
 			}
-			//cnote << "Solution found";
 			cnote << "Difficulty:" << difficulty << "  Nonce:" << solution.nonce.hex();
-			//cnote << "  Mixhash:" << solution.mixHash.hex();
-			//cnote << "  Header-hash:" << current.headerHash.hex();
-			//cnote << "  Seedhash:" << current.seedHash.hex();
-			//cnote << "  Target: " << h256(current.boundary).hex();
-			//cnote << "  Ethash: " << h256(EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value).hex();
 			if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
 			{
 				cnote << "SUCCESS: GPU gave correct result!";
@@ -873,11 +846,11 @@ private:
 		GenericFarm<EthashProofOfWork> f;
 		f.setSealers(sealers);
 		if (_m == MinerType::CPU)
-			f.start("cpu");
+			f.start("cpu", false);
 		else if (_m == MinerType::CL)
-			f.start("opencl");
+			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
-			f.start("cuda");
+			f.start("cuda", false);
 		EthashProofOfWork::WorkPackage current, previous;
 		boost::mutex x_current;
 		EthashAux::FullType dag;
@@ -915,20 +888,7 @@ private:
 					Json::Value v = prpc->eth_getWork();
 					h256 hh(v[0].asString());
 					h256 newSeedHash(v[1].asString());
-					/*
-					if (current.seedHash != newSeedHash)
-					{
-						minelog << "Grabbing DAG for" << newSeedHash;
-					}
-					if (!(dag = EthashAux::full(newSeedHash, true, [&](unsigned _pc){ cout << "\rCreating DAG. " << _pc << "% done..." << flush; return 0; })))
-					{
-						BOOST_THROW_EXCEPTION(DAGCreationFailure());
-					}
-					if (m_precompute)
-					{
-						EthashAux::computeFull(sha3(newSeedHash), true);
-					}
-					*/
+
 					if (hh != current.headerHash)
 					{
 						x_current.lock();
@@ -939,8 +899,6 @@ private:
 						current.seedHash = newSeedHash;
 						current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
 						minelog << "Got work package: #" + current.headerHash.hex().substr(0,8);
-						//minelog << "  Seedhash:" << current.seedHash.hex();
-						//minelog << "  Target: " << h256(current.boundary).hex();
 						f.setWork(current);
 						x_current.unlock();
 					}
@@ -948,11 +906,6 @@ private:
 				}
 				cnote << "Solution found; Submitting to" << _remote << "...";
 				cnote << "  Nonce:" << solution.nonce.hex();
-				//cnote << "  Mixhash:" << solution.mixHash.hex();
-				//cnote << "  Header-hash:" << current.headerHash.hex();
-				//cnote << "  Seedhash:" << solved.seedHash.hex();
-				//cnote << "  Target: " << h256(solved.boundary).hex();
-				//cnote << "  Ethash: " << h256(EthashAux::eval(solved.seedHash, solved.headerHash, solution.nonce).value).hex();
 				if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
 				{
 					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
@@ -1036,45 +989,89 @@ private:
 			m_farmRecheckPeriod = m_defaultStratumFarmRecheckPeriod;
 		
 		GenericFarm<EthashProofOfWork> f;
-		EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_precompute);
-		if (m_farmFailOverURL != "")
-		{
-			if (m_fuser != "")
-			{
-				client.setFailover(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
-			}
-			else
-			{
-				client.setFailover(m_farmFailOverURL, m_fport);
-			}
-		}
-		f.setSealers(sealers);
 
-		f.onSolutionFound([&](EthashProofOfWork::Solution sol)
-		{
-			client.submit(sol);
-			return false;
-		});
-		 
-		while (client.isRunning())
-		{
-			auto mp = f.miningProgress();
-			f.resetMiningProgress();
-			if (client.isConnected())
+		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
+		if (m_stratumClientVersion == 1) {
+			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout);
+			if (m_farmFailOverURL != "")
 			{
-				if (client.current())
-					minelog << "Mining on PoWhash" << "#"+(client.currentHeaderHash().hex().substr(0,8)) << ": " << mp << f.getSolutionStats();
-				else if (client.waitState() == MINER_WAIT_STATE_WORK)
-					minelog << "Waiting for work package...";
+				if (m_fuser != "")
+				{
+					client.setFailover(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
+				}
+				else
+				{
+					client.setFailover(m_farmFailOverURL, m_fport);
+				}
 			}
-			this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
+			f.setSealers(sealers);
+
+			f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+			{
+				if (client.isConnected()) {
+					client.submit(sol);
+				}
+				else {
+					cwarn << "Can't submit solution: Not connected";
+				}
+				return false;
+			});
+
+			while (client.isRunning())
+			{
+				auto mp = f.miningProgress();
+				f.resetMiningProgress();
+				if (client.isConnected())
+				{
+					if (client.current())
+						minelog << "Mining on PoWhash" << "#" + (client.currentHeaderHash().hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
+					else if (client.waitState() == MINER_WAIT_STATE_WORK)
+						minelog << "Waiting for work package...";
+				}
+				this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
+			}
 		}
+		else if (m_stratumClientVersion == 2) {
+			EthStratumClientV2 client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout);
+			if (m_farmFailOverURL != "")
+			{
+				if (m_fuser != "")
+				{
+					client.setFailover(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
+				}
+				else
+				{
+					client.setFailover(m_farmFailOverURL, m_fport);
+				}
+			}
+			f.setSealers(sealers);
+
+			f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+			{
+				client.submit(sol);
+				return false;
+			});
+
+			while (client.isRunning())
+			{
+				auto mp = f.miningProgress();
+				f.resetMiningProgress();
+				if (client.isConnected())
+				{
+					if (client.current())
+						minelog << "Mining on PoWhash" << "#" + (client.currentHeaderHash().hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
+					else if (client.waitState() == MINER_WAIT_STATE_WORK)
+						minelog << "Waiting for work package...";
+				}
+				this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
+			}
+		}
+
 	}
 #endif
 
 	/// Operating mode.
 	OperationMode mode;
-	DAGEraseMode m_eraseMode = DAGEraseMode::None;
 
 	/// Mining options
 	bool m_running = true;
@@ -1100,14 +1097,9 @@ private:
 	unsigned m_numStreams = ethash_cuda_miner::c_defaultNumStreams;
 	unsigned m_cudaSchedule = 4; // sync
 #endif
-	uint64_t m_currentBlock = 0;
-	static char s_dagDir[256];
 	// default value was 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
 	unsigned m_extraGPUMemory = 0;// 350000000; don't assume miners run desktops...
-
-	/// DAG initialisation param.
-	unsigned m_initDAG = 0;
-
+	unsigned m_dagLoadMode = 0; // parallel
 	/// Benchmarking params
 	bool m_phoneHome = false;
 	unsigned m_benchmarkWarmup = 15;
@@ -1126,9 +1118,9 @@ private:
 	unsigned m_defaultStratumFarmRecheckPeriod = 2000;
 	bool m_farmRecheckSet = false;
 	int m_worktimeout = 180;
-	bool m_precompute = true;
 
 #if ETH_STRATUM || !ETH_TRUE
+	int m_stratumClientVersion = 1;
 	string m_user;
 	string m_pass;
 	string m_port;
@@ -1137,5 +1129,3 @@ private:
 #endif
 	string m_fport = "";
 };
-
-char MinerCLI::s_dagDir[256] = ""; 

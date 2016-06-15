@@ -24,6 +24,7 @@
 #include <thread>
 #include <list>
 #include <atomic>
+#include <string>
 #include <boost/timer.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
@@ -33,6 +34,20 @@
 #define MINER_WAIT_STATE_UNKNOWN 0
 #define MINER_WAIT_STATE_WORK	 1
 #define MINER_WAIT_STATE_DAG	 2
+
+
+#define DAG_LOAD_MODE_PARALLEL	 0
+#define DAG_LOAD_MODE_SEQUENTIAL 1
+
+
+using namespace std;
+
+typedef struct {
+	string host;
+	string port;
+	string user;
+	string pass;
+} cred_t;
 
 namespace dev
 {
@@ -44,7 +59,8 @@ enum class MinerType
 {
 	CPU,
 	CL,
-	CUDA
+	CUDA,
+	Mixed
 };
 
 struct MineInfo: public WorkingProgress {};
@@ -90,6 +106,7 @@ inline std::ostream& operator<<(std::ostream& os, SolutionStats s)
 }
 
 template <class PoW> class GenericMiner;
+
 
 /**
  * @brief Class for hosting one or more Miners.
@@ -162,6 +179,7 @@ public:
 
 protected:
 
+
 	// REQUIRED TO BE REIMPLEMENTED BY A SUBCLASS:
 
 	/**
@@ -199,6 +217,8 @@ protected:
 
 	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
 
+	static unsigned s_dagLoadMode;
+	static unsigned s_dagLoadIndex;
 private:
 	FarmFace* m_farm = nullptr;
 	unsigned m_index;
@@ -207,6 +227,9 @@ private:
 
 	WorkPackage m_work;
 	mutable Mutex x_work;
+
+	
+	bool m_dagLoaded = false;
 };
 
 }

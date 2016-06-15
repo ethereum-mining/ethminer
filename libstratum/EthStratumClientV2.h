@@ -5,9 +5,11 @@
 #include <json/json.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/FixedHash.h>
+#include <libdevcore/Worker.h>
 #include <libethcore/Farm.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
+
 #include "BuildInfo.h"
 
 
@@ -17,12 +19,11 @@ using boost::asio::ip::tcp;
 using namespace dev;
 using namespace dev::eth;
 
-
-class EthStratumClient
+class EthStratumClientV2 : public Worker
 {
 public:
-	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout);
-	~EthStratumClient();
+	EthStratumClientV2(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout);
+	~EthStratumClientV2();
 
 	void setFailover(string const & host, string const & port);
 	void setFailover(string const & host, string const & port, string const & user, string const & pass);
@@ -35,16 +36,12 @@ public:
 	bool submit(EthashProofOfWork::Solution solution);
 	void reconnect();
 private:
+	void workLoop() override;
 	void connect();
 	
 	void disconnect();
-	void resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
-	void connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
 	void work_timeout_handler(const boost::system::error_code& ec);
 
-	void readline();
-	void handleResponse(const boost::system::error_code& ec);
-	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
 	void processReponse(Json::Value& responseObject);
 	
 	MinerType m_minerType;
@@ -55,7 +52,6 @@ private:
 
 	bool m_authorized;
 	bool m_connected;
-	bool m_precompute;
 	bool m_running = true;
 
 	int	m_retries = 0;
@@ -64,12 +60,10 @@ private:
 
 	int m_waitState = MINER_WAIT_STATE_WORK;
 
-	boost::mutex x_pending;
-	int m_pending;
 	string m_response;
 
 	GenericFarm<EthashProofOfWork> * p_farm;
-	boost::mutex x_current;
+	mutex x_current;
 	EthashProofOfWork::WorkPackage m_current;
 	EthashProofOfWork::WorkPackage m_previous;
 
