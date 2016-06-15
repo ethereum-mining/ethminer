@@ -53,7 +53,8 @@ namespace eth
 			unsigned _numStreams,
 			unsigned _extraGPUMemory,
 			unsigned _scheduleFlag,
-			uint64_t _currentBlock
+			uint64_t _currentBlock,
+			unsigned _dagLoadMode
 			);
 		static void setNumInstances(unsigned _instances) 
 		{ 
@@ -84,6 +85,7 @@ namespace eth
 		static unsigned s_deviceId;
 		static unsigned s_numInstances;
 		static int s_devices[16];
+
 	};
 }
 }

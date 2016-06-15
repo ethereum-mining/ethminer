@@ -205,6 +205,7 @@ bool ethash_cl_miner::configureGPU(
 	s_initialGlobalWorkSize = _globalWorkSize;
 	s_allowCPU = _allowCPU;
 	s_extraRequiredGPUMem = _extraGPUMemory;
+
 	// by default let's only consider the DAG of the first epoch
 	uint64_t dagSize = ethash_get_datasize(_currentBlock);
 	uint64_t requiredSize =  dagSize + _extraGPUMemory;
@@ -485,7 +486,7 @@ bool ethash_cl_miner::init(
 			m_dagKernel.setArg(0, i * m_globalWorkSize);
 			m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, m_globalWorkSize, s_workgroupSize);
 			m_queue.finish();
-			printf("%.0f%%\n", 100.0f * (float)i / (float)fullRuns);
+			printf("OPENCL#%d: %.0f%%\n", _deviceId, 100.0f * (float)i / (float)fullRuns);
 		}
 
 	}
