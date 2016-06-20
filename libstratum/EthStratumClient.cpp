@@ -470,9 +470,12 @@ bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
 	x_current.unlock();
 
 	cnote << "Solution found; Submitting to" << p_active->host << "...";
-	string minernonce = solution.nonce.hex().substr(m_extraNonceHexSize, 16 - m_extraNonceHexSize);
+
+	string minernonce;
 	if (!m_ethereumStratum)
 		cnote << "  Nonce:" << "0x" + solution.nonce.hex();
+	else
+		minernonce = solution.nonce.hex().substr(m_extraNonceHexSize, 16 - m_extraNonceHexSize);
 
 	if (EthashAux::eval(tempWork.seedHash, tempWork.headerHash, solution.nonce).value < tempWork.boundary)
 	{
