@@ -21,7 +21,7 @@ using namespace dev::eth;
 class EthStratumClient
 {
 public:
-	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, bool ethstratum);
+	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email);
 	~EthStratumClient();
 
 	void setFailover(string const & host, string const & port);
@@ -53,9 +53,10 @@ private:
 	cred_t m_primary;
 	cred_t m_failover;
 
+	string m_worker; // eth-proxy only;
+
 	bool m_authorized;
 	bool m_connected;
-	bool m_precompute;
 	bool m_running = true;
 
 	int	m_retries = 0;
@@ -87,7 +88,8 @@ private:
 
 	boost::asio::deadline_timer * p_worktimer;
 
-	bool m_ethereumStratum;
+	int m_protocol;
+	string m_email;
 
 	double m_nextWorkDifficulty;
 
