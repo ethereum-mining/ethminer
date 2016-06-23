@@ -188,7 +188,7 @@ public:
 			if (p + 1 <= userpass.length())
 				m_pass = userpass.substr(p+1);
 		}
-		else if ((arg == "-SV" || arg == "--stratum-version") && i + 1 < argc)
+		else if ((arg == "-SC" || arg == "--stratum-client") && i + 1 < argc)
 		{
 			try {
 				m_stratumClientVersion = atoi(argv[++i]);
@@ -201,9 +201,27 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
-		else if (arg == "-ES" || arg == "--ethereum-stratum")
+		else if ((arg == "-SP" || arg == "--stratum-protocol") && i + 1 < argc)
 		{
-			m_ethereumStratum = true;
+			try {
+				m_stratumProtocol = atoi(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
+		else if ((arg == "-SE" || arg == "--stratum-email") && i + 1 < argc)
+		{
+			try {
+				m_email = string(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
 		}
 		else if ((arg == "-FO" || arg == "--failover-userpass") && i + 1 < argc)
 		{
@@ -400,47 +418,6 @@ public:
 		{
 			m_minerType = MinerType::Mixed;
 		}
-		/*
-		else if (arg == "--current-block" && i + 1 < argc)
-			m_currentBlock = stol(argv[++i]);
-		else if ((arg == "-w" || arg == "--check-pow") && i + 4 < argc)
-		{
-			string m;
-			try
-			{
-				Ethash::BlockHeader bi;
-				m = boost::to_lower_copy(string(argv[++i]));
-				h256 powHash(m);
-				m = boost::to_lower_copy(string(argv[++i]));
-				h256 seedHash;
-				if (m.size() == 64 || m.size() == 66)
-					seedHash = h256(m);
-				else
-					seedHash = EthashAux::seedHash(stol(m));
-				m = boost::to_lower_copy(string(argv[++i]));
-				bi.setDifficulty(u256(m));
-				auto boundary = bi.boundary();
-				m = boost::to_lower_copy(string(argv[++i]));
-				bi.setNonce(h64(m));
-				auto r = EthashAux::eval(seedHash, powHash, bi.nonce());
-				bool valid = r.value < boundary;
-				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
-				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
-				cout << "  where " << boundary << " = 2^256 / " << bi.difficulty() << endl;
-				cout << "  and " << r.value << " = ethash(" << powHash << ", " << bi.nonce() << ")" << endl;
-				cout << "  with seed as " << seedHash << endl;
-				if (valid)
-					cout << "(mixHash = " << r.mixHash << ")" << endl;
-				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(bi.seedHash())->data()) << endl;
-				exit(0);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << m << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		}
-		*/
 		else if (arg == "-M" || arg == "--benchmark")
 		{
 			mode = OperationMode::Benchmark;
@@ -603,8 +580,12 @@ public:
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
 			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
-			<< "    -SV, --stratum-version <n>  Stratum client version. Defaults to 1 (async client). Use 2 to test new synchronous client." << endl
-			<< "    -ES, --ethereum-stratum  Use EthereumStratum/1.0.0 mode." << endl
+			<< "    -SC, --stratum-client <n>  Stratum client version. Defaults to 1 (async client). Use 2 to use the new synchronous client." << endl
+			<< "    -SP, --stratum-protocol <n> Choose which stratum protocol to use:" << endl
+			<< "        0: official stratum spec: ethpool, ethermine, coinotron, mph, nanopool (default)" << endl
+			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool" << endl
+			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
+			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 #endif
 #if ETH_JSONRPC || ETH_STRATUM || !ETH_TRUE
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
@@ -930,6 +911,7 @@ private:
 						cwarn << ":-( Not accepted.";
 						f.rejectedSolution(false);
 					}
+					//exit(0);
 				}
 				else if (EthashAux::eval(previous.seedHash, previous.headerHash, solution.nonce).value < previous.boundary)
 				{
@@ -942,6 +924,7 @@ private:
 						cwarn << ":-( Not accepted.";
 						f.rejectedSolution(true);
 					}
+					//exit(0);
 				}
 				else {
 					f.failedSolution();
@@ -1005,7 +988,7 @@ private:
 
 		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
 		if (m_stratumClientVersion == 1) {
-			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_ethereumStratum);
+			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
 			if (m_farmFailOverURL != "")
 			{
 				if (m_fuser != "")
@@ -1045,7 +1028,7 @@ private:
 			}
 		}
 		else if (m_stratumClientVersion == 2) {
-			EthStratumClientV2 client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_ethereumStratum);
+			EthStratumClientV2 client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
 			if (m_farmFailOverURL != "")
 			{
 				if (m_fuser != "")
@@ -1135,12 +1118,13 @@ private:
 
 #if ETH_STRATUM || !ETH_TRUE
 	int m_stratumClientVersion = 1;
-	bool m_ethereumStratum = false;
+	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
 	string m_user;
 	string m_pass;
 	string m_port;
 	string m_fuser = "";
 	string m_fpass = "";
+	string m_email = "";
 #endif
 	string m_fport = "";
 };
