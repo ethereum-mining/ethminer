@@ -45,11 +45,6 @@ setx GPU_SINGLE_ALLOC_PERCENT 100
 setx GPU_MAX_ALLOC_PERCENT = 100
 ```
 
-I don't keep an exact list of all supported GPU's, but generally speaking the following cards should be ok:
-AMD HD78xx, HD79xx, R9 2xx, R9 3xx, Fury.
-Nvidia Geforce 6x0, 7x0, 8x0, 9x0, 10x0, TITAN series
-Quadro, Tesla & FirePro's with similar silicon should be fine too.
-
 5. Can I buy a private kernel from you that hashes faster?
 No.
 
@@ -64,7 +59,7 @@ In CUDA yes, in OpenCL only on Nvidia .
 The master branch always contains the stable release. Currently that's 1.1.7. Then you may find branches like 110, 108, 120, whuich are either archives of previous major versions or beta releases of upcoming work.
 
 
-# Releases
+### Releases
 
 Windows x64 binaries can be found in the /releases folder.
 
