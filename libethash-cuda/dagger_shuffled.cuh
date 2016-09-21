@@ -1,12 +1,8 @@
 #include "ethash_cuda_miner_kernel_globals.h"
 #include "ethash_cuda_miner_kernel.h"
-#include "keccak.cuh"
-#include "fnv.cuh"
+#include "cuda_helper.h"
 
-#define ACCESSES 64
-#define THREADS_PER_HASH (128 / 16)
-
-__device__ uint64_t compute_hash_shuffle(
+__device__ uint64_t compute_hash(
 	uint64_t nonce
 	)
 {
@@ -19,7 +15,6 @@ __device__ uint64_t compute_hash_shuffle(
 	
 	// Threads work together in this phase in groups of 8.
 	const int thread_id  = threadIdx.x &  (THREADS_PER_HASH - 1);
-	const int start_lane = threadIdx.x & ~(THREADS_PER_HASH - 1);
 	const int mix_idx    = thread_id & 3;
 
 	uint4 mix;
@@ -47,11 +42,11 @@ __device__ uint64_t compute_hash_shuffle(
 				mix = vectorize2(shuffle[6], shuffle[7]);
 		}
 		
-		uint32_t init0 = __shfl(shuffle[0].x, start_lane);
+		uint32_t init0 = __shfl(shuffle[0].x, 0, THREADS_PER_HASH);
 
 		for (uint32_t a = 0; a < ACCESSES; a += 4)
 		{
-			int t = ((a >> 2) & (THREADS_PER_HASH - 1));
+			int t = bfe(a, 2u, 3u);
 
 			for (uint32_t b = 0; b < 4; b++)
 			{
@@ -60,8 +55,7 @@ __device__ uint64_t compute_hash_shuffle(
 					shuffle[0].x = fnv(init0 ^ (a + b), ((uint32_t *)&mix)[b]) % d_dag_size;
 				}
 				shuffle[0].x = __shfl(shuffle[0].x, t, THREADS_PER_HASH);
-
-				mix = fnv4(mix, (&d_dag[shuffle[0].x])->uint4s[thread_id]);
+				mix = fnv4(mix, d_dag[shuffle[0].x].uint4s[thread_id]);
 			}
 		}
 

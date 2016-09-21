@@ -67,7 +67,7 @@ public:
 	void setWork(WorkPackage const& _wp)
 	{
 		WriteGuard l(x_minerWork);
-		if (_wp.headerHash == m_work.headerHash)
+		if (_wp.headerHash == m_work.headerHash && _wp.startNonce == m_work.startNonce)
 			return;
 		m_work = _wp;
 		for (auto const& m: m_miners)
@@ -80,7 +80,7 @@ public:
 	/**
 	 * @brief Start a number of miners.
 	 */
-	bool start(std::string const& _sealer)
+	bool start(std::string const& _sealer, bool mixed)
 	{
 		WriteGuard l(x_minerWork);
 		if (!m_miners.empty() && m_lastSealer == _sealer)
@@ -88,10 +88,23 @@ public:
 		if (!m_sealers.count(_sealer))
 			return false;
 
-		m_miners.clear();
+		if (!mixed)
+		{
+			m_miners.clear();
+		}
 		auto ins = m_sealers[_sealer].instances();
-		m_miners.reserve(ins);
-		for (unsigned i = 0; i < ins; ++i)
+		unsigned start = 0;
+		if (!mixed)
+		{
+			m_miners.reserve(ins);
+		}
+		else
+		{
+			start = m_miners.size();
+			ins += start;
+			m_miners.reserve(ins);
+		}
+		for (unsigned i = start; i < ins; ++i)
 		{
 			m_miners.push_back(std::shared_ptr<Miner>(m_sealers[_sealer].create(std::make_pair(this, i))));
 			m_miners.back()->setWork(m_work);

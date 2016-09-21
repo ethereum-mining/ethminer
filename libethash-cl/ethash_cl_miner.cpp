@@ -205,6 +205,7 @@ bool ethash_cl_miner::configureGPU(
 	s_initialGlobalWorkSize = _globalWorkSize;
 	s_allowCPU = _allowCPU;
 	s_extraRequiredGPUMem = _extraGPUMemory;
+
 	// by default let's only consider the DAG of the first epoch
 	uint64_t dagSize = ethash_get_datasize(_currentBlock);
 	uint64_t requiredSize =  dagSize + _extraGPUMemory;
@@ -324,9 +325,11 @@ void ethash_cl_miner::finish()
 		m_queue.finish();
 }
 
+
 bool ethash_cl_miner::init(
-	uint8_t const* _dag,
-	uint64_t _dagSize,
+	ethash_light_t _light, 
+	uint8_t const* _lightData, 
+	uint64_t _lightSize,
 	unsigned _platformId,
 	unsigned _deviceId
 )
@@ -399,12 +402,17 @@ bool ethash_cl_miner::init(
 		if (m_globalWorkSize % s_workgroupSize != 0)
 			m_globalWorkSize = ((m_globalWorkSize / s_workgroupSize) + 1) * s_workgroupSize;
 
+		uint64_t dagSize = ethash_get_datasize(_light->block_number);
+		uint32_t dagSize128 = (unsigned)(dagSize / ETHASH_MIX_BYTES);
+		uint32_t lightSize64 = (unsigned)(_lightSize / sizeof(node));
+
 		// patch source code
 		// note: ETHASH_CL_MINER_KERNEL is simply ethash_cl_miner_kernel.cl compiled
 		// into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
 		string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
 		addDefinition(code, "GROUP_SIZE", s_workgroupSize);
-		addDefinition(code, "DAG_SIZE", (unsigned)(_dagSize / ETHASH_MIX_BYTES));
+		addDefinition(code, "DAG_SIZE", dagSize128);
+		addDefinition(code, "LIGHT_SIZE", lightSize64);
 		addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
 		addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
 		addDefinition(code, "PLATFORM", platformId);
@@ -430,16 +438,19 @@ bool ethash_cl_miner::init(
 		// create buffer for dag
 		try
 		{
-			ETHCL_LOG("Creating one big buffer for the DAG");
-			m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize);
-			ETHCL_LOG("Loading single big chunk kernels");
+			ETHCL_LOG("Creating cache buffer");
+			m_light = cl::Buffer(m_context, CL_MEM_READ_ONLY, _lightSize);
+			ETHCL_LOG("Creating DAG buffer");
+			m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, dagSize);
+			ETHCL_LOG("Loading kernels");
 			m_searchKernel = cl::Kernel(program, "ethash_search");
-			ETHCL_LOG("Mapping one big chunk.");
-			m_queue.enqueueWriteBuffer(m_dag, CL_TRUE, 0, _dagSize, _dag);
+			m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
+			ETHCL_LOG("Writing cache buffer");
+			m_queue.enqueueWriteBuffer(m_light, CL_TRUE, 0, _lightSize, _lightData);
 		}
 		catch (cl::Error const& err)
 		{
-			ETHCL_LOG("Allocating/mapping single buffer failed with: " << err.what() << "(" << err.err() << "). GPU can't allocate the DAG in a single chunk. Bailing.");
+			ETHCL_LOG("Allocating/mapping DAG buffer failed with: " << err.what() << "(" << err.err() << "). GPU can't allocate the DAG in a single chunk. Bailing.");
 			return false;
 		}
 		// create buffer for header
@@ -456,6 +467,28 @@ bool ethash_cl_miner::init(
 			ETHCL_LOG("Creating mining buffer " << i);
 			m_searchBuffer[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_maxSearchResults + 1) * sizeof(uint32_t));
 		}
+
+		ETHCL_LOG("Generating DAG data");
+
+		uint32_t const work = (uint32_t)(dagSize / sizeof(node));
+		//while (work < blocks * threads) blocks /= 2;
+
+		uint32_t fullRuns = work / m_globalWorkSize;
+		uint32_t const restWork = work % m_globalWorkSize;
+		if (restWork > 0) fullRuns++;
+
+		m_dagKernel.setArg(1, m_light);
+		m_dagKernel.setArg(2, m_dag);
+		m_dagKernel.setArg(3, ~0u);
+
+		for (uint32_t i = 0; i < fullRuns; i++)
+		{
+			m_dagKernel.setArg(0, i * m_globalWorkSize);
+			m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, m_globalWorkSize, s_workgroupSize);
+			m_queue.finish();
+			printf("OPENCL#%d: %.0f%%\n", _deviceId, 100.0f * (float)i / (float)fullRuns);
+		}
+
 	}
 	catch (cl::Error const& err)
 	{
@@ -471,7 +504,7 @@ typedef struct
 	unsigned buf;
 } pending_batch;
 
-void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook)
+void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN)
 {
 	try
 	{
@@ -498,7 +531,9 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		
 		unsigned buf = 0;
 		random_device engine;
-		uint64_t start_nonce = uniform_int_distribution<uint64_t>()(engine);
+		uint64_t start_nonce;
+		if (_ethStratum) start_nonce = _startN;
+		else start_nonce = uniform_int_distribution<uint64_t>()(engine);
 		for (;; start_nonce += m_globalWorkSize)
 		{
 			// supply output buffer to kernel

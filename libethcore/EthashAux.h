@@ -32,6 +32,7 @@ namespace dev
 namespace eth
 {
 
+
 struct DAGChannel: public LogChannel { static const char* name(); static const int verbosity = 1; };
 
 /// Proof of work definition for Ethash.
@@ -52,17 +53,20 @@ struct EthashProofOfWork
 	struct WorkPackage
 	{
 		WorkPackage() = default;
-		WorkPackage(Ethash::BlockHeader const& _bh):
+		WorkPackage(Ethash::BlockHeader const& _bh) :
 			boundary(_bh.boundary()),
 			headerHash(_bh.hashWithout()),
 			seedHash(_bh.seedHash())
-		{}
+		{ }
 		void reset() { headerHash = h256(); }
 		operator bool() const { return headerHash != h256(); }
 
 		h256 boundary;
 		h256 headerHash;	///< When h256() means "pause until notified a new work package is available".
 		h256 seedHash;
+
+		uint64_t startNonce = 0;
+		int exSizeBits = -1;
 	};
 
 	static const WorkPackage NullWorkPackage;
@@ -73,6 +77,7 @@ struct EthashProofOfWork
 	static const unsigned defaultGlobalWorkSizeMultiplier;
 	/// Default value of the milliseconds per global work size (per batch)
 	static const unsigned defaultMSPerBatch;
+
 };
 
 enum class DAGEraseMode
