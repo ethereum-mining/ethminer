@@ -63,6 +63,14 @@ The master branch always contains the stable release. Currently that's 1.1.7. Th
 
 Windows x64 binaries can be found in the /releases folder.
 
+
+### Build options
+
+- if you don't want/need CUDA support, use "-DBUNDLE=cminer" instead of "-DBUNDLE=ccudaminer". This will only compile OpenCL support
+- to speed up compilation a bit or to support older CUDA shader models, you can add -DCOMPUTE=xx , where x is your CUDA GPU Compute version * 10. i.e -DCOMPUTE=52 for a GTX970.  
+- you may disable stratum support by adding -DETH_STRATUM=0
+
+
 ### Building on Windows
 
 - download or clone this repository
@@ -76,9 +84,6 @@ cd build
 cmake -DBUNDLE=cudaminer -G "Visual Studio 12 2013 Win64" ..
 ```
 
-- if you don't want/need CUDA support, use "miner" instead of "cudaminer". This will only compile OpenCL support
-- to speed up compilation a bit, you can add -DCOMPUTE=xx , where x is your CUDA GPU Compute version * 10. i.e -DCOMPUTE=52 for a GTX970.  
-- you may disable stratum support by adding -DETH_STRATUM=0
 - When CMake completes without errors, opn ethereum.sln created in the build directory in Visual Studio
 - Set "ethminer" as startup project by right-clicking on it in the project pane
 - Build. Run
@@ -123,3 +128,4 @@ make -j8
 ```
 
 You can then find the executable in the ethminer subfolder
+
