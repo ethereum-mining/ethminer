@@ -66,7 +66,7 @@ Windows x64 binaries can be found in the /releases folder.
 
 ### Build options
 
-- if you don't want/need CUDA support, use "-DBUNDLE=cminer" instead of "-DBUNDLE=ccudaminer". This will only compile OpenCL support
+- if you don't want/need CUDA support, use "-DBUNDLE=miner" instead of "-DBUNDLE=cudaminer". This will only compile OpenCL support
 - to speed up compilation a bit or to support older CUDA shader models, you can add -DCOMPUTE=xx , where x is your CUDA GPU Compute version * 10. i.e -DCOMPUTE=52 for a GTX970.  
 - you may disable stratum support by adding -DETH_STRATUM=0
 
