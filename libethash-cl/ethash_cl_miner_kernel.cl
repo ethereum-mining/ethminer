@@ -1,11 +1,36 @@
 #define OPENCL_PLATFORM_UNKNOWN 0
 #define OPENCL_PLATFORM_NVIDIA  1
-#define OPENCL_PLATFORM_AMD			2
+#define OPENCL_PLATFORM_AMD		2
 
+#ifndef ACCESSES
+#define ACCESSES 64
+#endif
+
+#ifndef GROUP_SIZE
+#define GROUP_SIZE 128
+#endif
+
+#ifndef MAX_OUTPUTS
+#define MAX_OUTPUTS 63U
+#endif
+
+#ifndef PLATFORM
+#define PLATFORM 2
+#endif
+
+#ifndef DAG_SIZE
+#define DAG_SIZE 8388593
+#endif
+
+#ifndef LIGHT_SIZE
+#define LIGHT_SIZE 262139
+#endif
+
+#define ETHASH_DATASET_PARENTS 256
+#define NODE_WORDS (64/4)
 
 #define THREADS_PER_HASH (128 / 16)
 #define HASHES_PER_LOOP (GROUP_SIZE / THREADS_PER_HASH)
-
 #define FNV_PRIME	0x01000193
 
 __constant uint2 const Keccak_f1600_RC[24] = {
@@ -176,8 +201,6 @@ static void keccak_f1600_round(uint2* a, uint r)
 
 static void keccak_f1600_no_absorb(uint2* a, uint out_size, uint isolate)
 {
-
-
 	// Originally I unrolled the first and last rounds to interface
 	// better with surrounding code, however I haven't done this
 	// without causing the AMD compiler to blow up the VGPR usage.
@@ -226,6 +249,18 @@ typedef struct
 {
 	ulong ulongs[32 / sizeof(ulong)];
 } hash32_t;
+
+typedef union {
+	uint	 words[64 / sizeof(uint)];
+	uint2	 uint2s[64 / sizeof(uint2)];
+	uint4	 uint4s[64 / sizeof(uint4)];
+} hash64_t;
+
+typedef union {
+	uint	 words[200 / sizeof(uint)];
+	uint2	 uint2s[200 / sizeof(uint2)];
+	uint4	 uint4s[200 / sizeof(uint4)];
+} hash200_t;
 
 typedef struct
 {
@@ -333,4 +368,36 @@ __kernel void ethash_search(
 		uint slot = min(MAX_OUTPUTS, atomic_inc(&g_output[0]) + 1);
 		g_output[slot] = gid;
 	}
+}
+
+static void SHA3_512(uint2* s, uint isolate)
+{
+	for (uint i = 8; i != 25; ++i)
+	{
+		s[i] = (uint2){ 0, 0 };
+	}
+	s[8].x = 0x00000001;
+	s[8].y = 0x80000000;
+	keccak_f1600_no_absorb(s, 8, isolate);
+}
+
+__kernel void ethash_calculate_dag_item(uint start, __global hash64_t const* g_light, __global hash64_t * g_dag, uint isolate)
+{
+	uint const node_index = start + get_global_id(0);
+	if (node_index > DAG_SIZE * 2) return;
+
+	hash200_t dag_node;
+	copy(dag_node.uint4s, g_light[node_index % LIGHT_SIZE].uint4s, 4);
+	dag_node.words[0] ^= node_index;
+	SHA3_512(dag_node.uint2s, isolate);
+
+	for (uint i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
+		uint parent_index = fnv(node_index ^ i, dag_node.words[i % NODE_WORDS]) % LIGHT_SIZE;
+
+		for (uint w = 0; w != 4; ++w) {
+			dag_node.uint4s[w] = fnv4(dag_node.uint4s[w], g_light[parent_index].uint4s[w]);
+		}
+	}
+	SHA3_512(dag_node.uint2s, isolate);
+	copy(g_dag[node_index].uint4s, dag_node.uint4s, 4);
 }

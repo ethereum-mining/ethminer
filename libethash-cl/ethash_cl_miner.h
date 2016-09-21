@@ -52,13 +52,14 @@ public:
 	);
 
 	bool init(
-		uint8_t const* _dag,
-		uint64_t _dagSize,
-		unsigned _platformId = 0,
-		unsigned _deviceId = 0
-	);
+		ethash_light_t _light,
+		uint8_t const* _lightData,
+		uint64_t _lightSize,
+		unsigned _platformId,
+		unsigned _deviceId
+		);
 	void finish();
-	void search(uint8_t const* _header, uint64_t _target, search_hook& _hook);
+	void search(uint8_t const* _header, uint64_t _target, search_hook& _hook, bool _ethStratum, uint64_t _startN);
 
 	/* -- default values -- */
 	/// Default value of the local work size. Also known as workgroup size.
@@ -74,7 +75,9 @@ private:
 	cl::Context m_context;
 	cl::CommandQueue m_queue;
 	cl::Kernel m_searchKernel;
+	cl::Kernel m_dagKernel;
 	cl::Buffer m_dag;
+	cl::Buffer m_light;
 	cl::Buffer m_header;
 	cl::Buffer m_searchBuffer[c_bufferCount];
 	unsigned m_globalWorkSize;

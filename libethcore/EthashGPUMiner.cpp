@@ -107,7 +107,7 @@ int EthashGPUMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
 
 EthashGPUMiner::EthashGPUMiner(ConstructionInfo const& _ci):
 	GenericMiner<EthashProofOfWork>(_ci),
-	Worker("gpuminer" + toString(index())),
+	Worker("openclminer" + toString(index())),
 	m_hook(new EthashCLHook(this))
 {
 }
@@ -139,9 +139,16 @@ void EthashGPUMiner::workLoop()
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
 		WorkPackage w = work();
-		cnote << "set work to:" << "#" + w.headerHash.hex().substr(0, 8) + ", target " << "#" + w.boundary.hex().substr(0, 16);
+		cnote << "set work; seed: " << "#" + w.seedHash.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
 		if (!m_miner || m_minerSeed != w.seedHash)
 		{
+			if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
+			{
+				while (s_dagLoadIndex < index()) {
+					this_thread::sleep_for(chrono::seconds(1));
+				}
+			}
+
 			cnote << "Initialising miner...";
 			m_minerSeed = w.seedHash;
 
@@ -150,6 +157,7 @@ void EthashGPUMiner::workLoop()
 
 			unsigned device = s_devices[index()] > -1 ? s_devices[index()] : index();
 
+			/*
 			EthashAux::FullType dag;
 			while (true)
 			{
@@ -164,12 +172,21 @@ void EthashGPUMiner::workLoop()
 				cnote << "Awaiting DAG";
 				this_thread::sleep_for(chrono::milliseconds(500));
 			}
-			bytesConstRef dagData = dag->data();
-			m_miner->init(dagData.data(), dagData.size(), s_platformId, device);
+			*/
+
+			EthashAux::LightType light;
+			light = EthashAux::light(w.seedHash);
+			bytesConstRef lightData = light->data();
+
+			m_miner->init(light->light, lightData.data(), lightData.size(), s_platformId,  device);
+			s_dagLoadIndex++;
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
-		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook);
+		uint64_t startN;
+		if (w.exSizeBits >= 0)
+			startN = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
+		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook, (w.exSizeBits >= 0), startN);
 	}
 	catch (cl::Error const& _e)
 	{
@@ -207,27 +224,27 @@ bool EthashGPUMiner::configureGPU(
 	unsigned _deviceId,
 	bool _allowCPU,
 	unsigned _extraGPUMemory,
-	uint64_t _currentBlock
+	uint64_t _currentBlock,
+	unsigned _dagLoadMode,
+	unsigned _dagCreateDevice
 )
 {
+	s_dagLoadMode = _dagLoadMode;
+	s_dagCreateDevice = _dagCreateDevice;
+
 	s_platformId = _platformId;
 	s_deviceId = _deviceId;
 
 	_localWorkSize = ((_localWorkSize + 7) / 8) * 8;
-	/*
-	if (_localWorkSize != 32 && _localWorkSize != 64 && _localWorkSize != 128 && _localWorkSize != 256)
-	{
-		cout << "Given localWorkSize of " << toString(_localWorkSize) << "is invalid. Must be either 32,64,128 or 256" << endl;
-		return false;
-	}
-	*/ 
+
 	if (!ethash_cl_miner::configureGPU(
 			_platformId,
 			_localWorkSize,
 			_globalWorkSizeMultiplier * _localWorkSize,
 			_allowCPU,
 			_extraGPUMemory,
-			_currentBlock)
+			_currentBlock
+			)
 	)
 	{
 		cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;

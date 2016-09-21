@@ -199,7 +199,7 @@ void ethash_cuda_miner::finish()
 	CUDA_SAFE_CALL(cudaDeviceReset());
 }
 
-bool ethash_cuda_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned _deviceId)
+bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, volatile void** hostDAG)
 {
 	try
 	{
@@ -224,25 +224,61 @@ bool ethash_cuda_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned _d
 		m_search_buf = new volatile uint32_t *[s_numStreams];
 		m_streams = new cudaStream_t[s_numStreams];
 
-		uint32_t dagSize128 = (unsigned)(_dagSize / ETHASH_MIX_BYTES);
+		uint64_t dagSize = ethash_get_datasize(_light->block_number);
+		uint32_t dagSize128   = (unsigned)(dagSize / ETHASH_MIX_BYTES);
+		uint32_t lightSize64 = (unsigned)(_lightSize / sizeof(node));
+
+		// create buffer for cache
+		hash64_t * light = NULL;
+
+		if (!*hostDAG)
+		{
+			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightSize));
+			// copy dag cache to CPU.
+			CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), _lightData, _lightSize, cudaMemcpyHostToDevice));
+		}
 
 		// create buffer for dag
 		hash128_t * dag;
-		CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), _dagSize));
-		// copy dag to CPU.
-		CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), _dag, _dagSize, cudaMemcpyHostToDevice));
-
+		CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
+		
 		// create mining buffers
 		for (unsigned i = 0; i != s_numStreams; ++i)
 		{
 			CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], SEARCH_RESULT_BUFFER_SIZE * sizeof(uint32_t)));
 			CUDA_SAFE_CALL(cudaStreamCreate(&m_streams[i]));
 		}
-		set_constants(dag, dagSize128);
+		set_constants(dag, dagSize128, light, lightSize64);
 		memset(&m_current_header, 0, sizeof(hash32_t));
 		m_current_target = 0;
 		m_current_nonce = 0;
 		m_current_index = 0;
+
+		m_sharedBytes = device_props.major * 100 < SHUFFLE_MIN_VER ? (64 * s_blockSize) / 8 : 0 ;
+
+		if (!*hostDAG)
+		{
+			cout << "Generating DAG for GPU #" << device_num << endl;
+			ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], device_num);
+
+			if (_cpyToHost)
+			{
+				uint8_t* memoryDAG = new uint8_t[dagSize];
+				if (!memoryDAG) throw std::runtime_error("Failed to init host memory for DAG, not enough memory?");
+
+				cout << "Copying DAG from GPU #" << device_num << " to host" << endl;
+				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
+
+				*hostDAG = (void*)memoryDAG;
+			}
+		}
+		else
+		{
+			cout << "Copying DAG from host to GPU #" << device_num << endl;
+			const void* hdag = (const void*)(*hostDAG);
+			CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
+		}
+
 		return true;
 	}
 	catch (runtime_error)
@@ -251,7 +287,7 @@ bool ethash_cuda_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned _d
 	}
 }
 
-void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_hook& hook)
+void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN)
 {
 	bool initialize = false;
 	bool exit = false;
@@ -267,14 +303,34 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 		set_target(m_current_target);
 		initialize = true;
 	}
-	if (initialize)
+	if (_ethStratum)
 	{
-		random_device engine;
-		m_current_nonce = uniform_int_distribution<uint64_t>()(engine);
-		m_current_index = 0;
-		CUDA_SAFE_CALL(cudaDeviceSynchronize());
-		for (unsigned int i = 0; i < s_numStreams; i++)
-			m_search_buf[i][0] = 0;
+		if (initialize)
+		{
+			m_starting_nonce = 0;
+			m_current_index = 0;
+			CUDA_SAFE_CALL(cudaDeviceSynchronize());
+			for (unsigned int i = 0; i < s_numStreams; i++)
+				m_search_buf[i][0] = 0;
+		}
+		if (m_starting_nonce != _startN)
+		{
+			// reset nonce counter
+			m_starting_nonce = _startN;
+			m_current_nonce = m_starting_nonce;
+		}
+	}
+	else
+	{
+		if (initialize)
+		{
+			random_device engine;
+			m_current_nonce = uniform_int_distribution<uint64_t>()(engine);
+			m_current_index = 0;
+			CUDA_SAFE_CALL(cudaDeviceSynchronize());
+			for (unsigned int i = 0; i < s_numStreams; i++)
+				m_search_buf[i][0] = 0;
+		}
 	}
 	uint64_t batch_size = s_gridSize * s_blockSize;
 	for (; !exit; m_current_index++, m_current_nonce += batch_size)
@@ -294,7 +350,7 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 			for (unsigned int j = 0; j < found_count; j++)
 				nonces[j] = nonce_base + buffer[j + 1];
 		}
-		run_ethash_search(s_gridSize, s_blockSize, stream, buffer, m_current_nonce);
+		run_ethash_search(s_gridSize, s_blockSize, m_sharedBytes, stream, buffer, m_current_nonce);
 		if (m_current_index >= s_numStreams)
 		{
 			exit = found_count && hook.found(nonces, found_count);

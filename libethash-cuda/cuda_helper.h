@@ -10,6 +10,7 @@
 #include <device_launch_parameters.h>
 #define __launch_bounds__(max_tpb, min_blocks)
 #define asm("a" : "=l"(result) : "l"(a))
+#define __CUDA_ARCH__ 520 // highlight shuffle code by default.
 
 uint32_t __byte_perm(uint32_t x, uint32_t y, uint32_t z);
 uint32_t __shfl(uint32_t x, uint32_t y, uint32_t z);
@@ -337,7 +338,7 @@ uint64_t shl_t64(uint64_t x, uint32_t n)
 }
 
 #ifndef USE_ROT_ASM_OPT
-#define USE_ROT_ASM_OPT 1
+#define USE_ROT_ASM_OPT 2
 #endif
 
 // 64-bit ROTATE RIGHT
