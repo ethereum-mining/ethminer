@@ -2,6 +2,30 @@
 #define OPENCL_PLATFORM_NVIDIA  1
 #define OPENCL_PLATFORM_AMD		2
 
+#ifndef ACCESSES
+#define ACCESSES 64
+#endif
+
+#ifndef GROUP_SIZE
+#define GROUP_SIZE 128
+#endif
+
+#ifndef MAX_OUTPUTS
+#define MAX_OUTPUTS 63U
+#endif
+
+#ifndef PLATFORM
+#define PLATFORM 2
+#endif
+
+#ifndef DAG_SIZE
+#define DAG_SIZE 8388593
+#endif
+
+#ifndef LIGHT_SIZE
+#define LIGHT_SIZE 262139
+#endif
+
 #define ETHASH_DATASET_PARENTS 256
 #define NODE_WORDS (64/4)
 
