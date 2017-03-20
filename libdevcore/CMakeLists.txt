@@ -5,20 +5,18 @@ aux_source_directory(. SRC_LIST)
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
 include_directories(BEFORE ..)
 include_directories(${Boost_INCLUDE_DIRS})
-include_directories(${DB_INCLUDE_DIRS})
 
 set(EXECUTABLE devcore)
 
 file(GLOB HEADERS "*.h")
 
-add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
+add_library(devcore ${SRC_LIST} ${HEADERS})
 
 target_link_libraries(${EXECUTABLE} ${Boost_THREAD_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${Boost_RANDOM_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${Boost_FILESYSTEM_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${Boost_SYSTEM_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${JSONCPP_LIBRARIES})
-target_link_libraries(${EXECUTABLE} ${DB_LIBRARIES})
 
 # transitive dependencies for windows executables
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
