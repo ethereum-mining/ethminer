@@ -49,15 +49,10 @@
 #if ETH_ETHASHCUDA || !ETH_TRUE
 #include <libethash-cuda/ethash_cuda_miner.h>
 #endif
-#if ETH_JSONRPC || !ETH_TRUE
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #include <jsonrpccpp/client/connectors/httpclient.h>
-#endif
 #include "BuildInfo.h"
-#if ETH_JSONRPC || !ETH_TRUE
-#include "PhoneHome.h"
 #include "FarmClient.h"
-#endif
 #if ETH_STRATUM || !ETH_TRUE
 #include <libstratum/EthStratumClient.h>
 #include <libstratum/EthStratumClientV2.h>
@@ -554,7 +549,7 @@ public:
 #endif
 		}
 		if (mode == OperationMode::Benchmark)
-			doBenchmark(m_minerType, m_phoneHome, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
+			doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
 		else if (mode == OperationMode::Farm)
 			doFarm(m_minerType, m_activeFarmURL, m_farmRecheckPeriod);
 		else if (mode == OperationMode::Simulation) 
@@ -645,7 +640,7 @@ private:
 
 	
 
-	void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
+	void doBenchmark(MinerType _m, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
 	{
 		Ethash::BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
@@ -709,23 +704,6 @@ private:
 		cout << "min/mean/max: " << results.begin()->second.rate() << "/" << (mean / _trials) << "/" << results.rbegin()->second.rate() << " H/s" << endl;
 		cout << "inner mean: " << innerMean << " H/s" << endl;
 
-		(void)_phoneHome;
-#if ETH_JSONRPC || !ETH_TRUE
-		if (_phoneHome)
-		{
-			cout << "Phoning home to find world ranking..." << endl;
-			jsonrpc::HttpClient client("http://gav.ethdev.com:3000");
-			PhoneHome rpc(client);
-			try
-			{
-				unsigned ranking = rpc.report_benchmark(platformInfo, innerMean);
-				cout << "Ranked: " << ranking << " of all benchmarks." << endl;
-			}
-			catch (...)
-			{
-			}
-		}
-#endif
 		exit(0);
 	}
 
@@ -1098,7 +1076,6 @@ private:
 	unsigned m_dagLoadMode = 0; // parallel
 	unsigned m_dagCreateDevice = 0;
 	/// Benchmarking params
-	bool m_phoneHome = false;
 	unsigned m_benchmarkWarmup = 15;
 	unsigned m_benchmarkTrial = 3;
 	unsigned m_benchmarkTrials = 5;
