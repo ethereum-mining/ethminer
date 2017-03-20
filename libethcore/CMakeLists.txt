@@ -10,20 +10,14 @@ if (ETHASHCUDA)
 	include_directories(${CUDA_INCLUDE_DIRS})
 endif ()
 
-set(EXECUTABLE ethcore)
-
 file(GLOB HEADERS "*.h")
 
 add_library(ethcore ${SRC_LIST} ${HEADERS})
-
-target_link_libraries(${EXECUTABLE} ethash pthread)
+target_link_libraries(ethcore ethash pthread)
 
 if (ETHASHCL)
-	target_link_libraries(${EXECUTABLE} ethash-cl)
+	target_link_libraries(ethcore ethash-cl)
 endif ()
 if (ETHASHCUDA)
-	target_link_libraries(${EXECUTABLE} ethash-cuda)
+	target_link_libraries(ethcore ethash-cuda)
 endif ()
-
-install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
-install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
