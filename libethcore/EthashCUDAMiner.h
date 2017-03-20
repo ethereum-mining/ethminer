@@ -22,7 +22,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #pragma once
-#if ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCUDA
 
 #include "libdevcore/Worker.h"
 #include "EthashAux.h"

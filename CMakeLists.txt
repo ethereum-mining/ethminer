@@ -29,8 +29,6 @@ set(D_CMAKE_BUILD_TYPE "Release")
 set(D_ETHASHCL ON)
 set(D_ETHASHCUDA OFF)
 set(D_JSONRPC ON)
-set(D_OLYMPIC OFF)
-set(D_MINER ON)
 set(D_ETHSTRATUM OFF)
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
@@ -51,26 +49,6 @@ function(configureProject)
 	if (ETHSTRATUM)
 		add_definitions(-DETH_STRATUM)
 	endif()
-
-	if (FATDB)
-		add_definitions(-DETH_FATDB)
-	endif()
-
-	if (GUI)
-		add_definitions(-DETH_GUI)
-	endif()
-
-	if (CURL_FOUND)
-		add_definitions(-DETH_CURL)
-	endif()
-
-	if (OLYMPIC)
-		add_definitions(-DETH_OLYMPIC)
-	else()
-		add_definitions(-DETH_FRONTIER)
-	endif()
-
-	add_definitions(-DETH_TRUE)
 endfunction()
 
 set(CPPETHEREUM 1)
@@ -108,7 +86,7 @@ function(createBuildInfo)
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		COMMAND ${CMAKE_COMMAND} -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
 			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}"
-			-DPROJECT_VERSION="${PROJECT_VERSION}" -DGENOIL_VERSION="${GENOIL_VERSION}" -DETH_FATDB="${FATDB}"
+			-DPROJECT_VERSION="${PROJECT_VERSION}" -DGENOIL_VERSION="${GENOIL_VERSION}"
 			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
 		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -133,10 +111,8 @@ endmacro()
 
 # Normalise build options
 eth_format_option(JSONRPC)
-eth_format_option(MINER)
 eth_format_option(ETHASHCL)
 eth_format_option(ETHASHCUDA)
-eth_format_option(OLYMPIC)
 eth_format_option(ETHSTRATUM)
 
 # Default CMAKE_BUILD_TYPE accordingly.
@@ -160,11 +136,8 @@ message("-- TARGET_PLATFORM  Target platform                          ${TARGET_P
 message("--------------------------------------------------------------- features")
 message("--                  Chromium support                         ${ETH_HAVE_WEBENGINE}")
 message("--                  HTTP Request support                     ${CURL_FOUND}")
-message("-- FATDB            Full database exploring                  ${FATDB}")
 message("-- JSONRPC          JSON-RPC support                         ${JSONRPC}")
-message("-- OLYMPIC          Default to the Olympic network           ${OLYMPIC}")
 message("------------------------------------------------------------- components")
-message("-- MINER            Build miner                              ${MINER}")
 message("-- ETHASHCL         Build OpenCL components                  ${ETHASHCL}")
 message("-- ETHASHCUDA       Build CUDA components                    ${ETHASHCUDA}")
 message("-- ETHSTRATUM       Build Stratum components                 ${ETHSTRATUM}")
@@ -186,18 +159,16 @@ createBuildInfo()
 
 add_subdirectory(libdevcore)
 
-if (MINER)
-	add_subdirectory(libethash)
-	if (ETHASHCL)
-		add_subdirectory(libethash-cl)
-	endif ()
-	if (ETHASHCUDA)
-		add_subdirectory(libethash-cuda)
-	endif ()
-	if(ETHSTRATUM)
-		add_subdirectory(libstratum)
-	endif()
+add_subdirectory(libethash)
+if (ETHASHCL)
+	add_subdirectory(libethash-cl)
 endif ()
+if (ETHASHCUDA)
+	add_subdirectory(libethash-cuda)
+endif ()
+if(ETHSTRATUM)
+	add_subdirectory(libstratum)
+endif()
 
 add_subdirectory(libethcore)
 add_subdirectory(ethminer)
