@@ -41,10 +41,6 @@ message(STATUS "ctest path: ${CTEST_COMMAND}")
 
 # Dependencies must have a version number, to ensure reproducible build. The version provided here is the one that is in the extdep repository. If you use system libraries, version numbers may be different.
 
-find_package (CryptoPP 5.6.2 REQUIRED)
-message(" - CryptoPP header: ${CRYPTOPP_INCLUDE_DIRS}")
-message(" - CryptoPP lib   : ${CRYPTOPP_LIBRARIES}")
-
 # TODO the Jsoncpp package does not yet check for correct version number
 find_package (Jsoncpp 0.60 REQUIRED)
 message(" - Jsoncpp header: ${JSONCPP_INCLUDE_DIRS}")
