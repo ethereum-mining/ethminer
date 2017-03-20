@@ -45,10 +45,6 @@ find_package (CryptoPP 5.6.2 REQUIRED)
 message(" - CryptoPP header: ${CRYPTOPP_INCLUDE_DIRS}")
 message(" - CryptoPP lib   : ${CRYPTOPP_LIBRARIES}")
 
-find_package (LevelDB REQUIRED)
-message(" - LevelDB header: ${LEVELDB_INCLUDE_DIRS}")
-message(" - LevelDB lib: ${LEVELDB_LIBRARIES}")
-
 # TODO the Jsoncpp package does not yet check for correct version number
 find_package (Jsoncpp 0.60 REQUIRED)
 message(" - Jsoncpp header: ${JSONCPP_INCLUDE_DIRS}")
