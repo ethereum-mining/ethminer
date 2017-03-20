@@ -34,48 +34,17 @@ namespace dev
 namespace eth
 {
 
-/// The network id.
-enum class Network
-{
-	Olympic = 0,
-	Frontier = 1,
-	Turbo = 2
-};
-extern Network c_network;
-
-Network resetNetwork(Network _n);
-
 /// An Ethereum address: 20 bytes.
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
 using Address = h160;
 
 DEV_SIMPLE_EXCEPTION(InvalidAddress);
 
-/// Get information concerning the currency denominations.
-std::vector<std::pair<u256, std::string>> const& units();
-
 /// The log bloom's size (2048-bit).
 using LogBloom = h2048;
 
 /// Many log blooms.
 using LogBlooms = std::vector<LogBloom>;
-
-template <size_t n> inline u256 exp10()
-{
-	return exp10<n - 1>() * u256(10);
-}
-
-template <> inline u256 exp10<0>()
-{
-	return u256(1);
-}
-
-// The various denominations; here for ease of use where needed within code.
-static const u256 ether = exp10<18>();
-static const u256 finney = exp10<15>();
-static const u256 szabo = exp10<12>();
-static const u256 shannon = exp10<9>();
-static const u256 wei = exp10<0>();
 
 using Nonce = h64;
 
