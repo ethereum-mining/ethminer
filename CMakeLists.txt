@@ -1,17 +1,10 @@
 # cmake global
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.0)
 
-set(PROJECT_VERSION "0.9.41")
 set(GENOIL_VERSION "1.1.7")
-if (${CMAKE_VERSION} VERSION_GREATER 3.0)
-	cmake_policy(SET CMP0042 OLD) 	# fix MACOSX_RPATH
-	cmake_policy(SET CMP0048 NEW) 	# allow VERSION argument in project()
-	project(ethereum VERSION ${PROJECT_VERSION})
-else()
-	project(ethereum)
-endif()
-
-set(CMAKE_AUTOMOC ON)
+cmake_policy(SET CMP0042 OLD) 	# fix MACOSX_RPATH
+cmake_policy(SET CMP0048 NEW) 	# allow VERSION argument in project()
+project(ethereum VERSION 0.9.41)
 
 # link_directories interprate relative paths with respect to CMAKE_CURRENT_SOURCE_DIR
 cmake_policy(SET CMP0015 NEW)
@@ -21,10 +14,7 @@ cmake_policy(SET CMP0015 NEW)
 cmake_policy(SET CMP0020 NEW)
 
 # 3.1 and above
-if ((${CMAKE_MAJOR_VERSION} GREATER 2) AND (${CMAKE_MINOR_VERSION} GREATER 0))
-	# implicitly dereference variables (deprecated in 3.1)
-	cmake_policy(SET CMP0054 NEW)
-endif()
+cmake_policy(SET CMP0054 NEW)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -39,9 +29,6 @@ set(D_CMAKE_BUILD_TYPE "Release")
 set(D_ETHASHCL ON)
 set(D_ETHASHCUDA OFF)
 set(D_JSONRPC ON)
-set(D_VMTRACE OFF)
-set(D_PARANOID OFF)
-set(D_PROFILING OFF)
 set(D_OLYMPIC OFF)
 set(D_MINER ON)
 set(D_ETHSTRATUM OFF)
@@ -52,13 +39,6 @@ endif ()
 
 # propagates CMake configuration options to the compiler
 function(configureProject)
-	if (PARANOID)
-		add_definitions(-DETH_PARANOIA)
-	endif ()
-
-	if (VMTRACE)
-		add_definitions(-DETH_VMTRACE)
-	endif ()
 
 	if (ETHASHCL)
 		add_definitions(-DETH_ETHASHCL)
@@ -114,10 +94,6 @@ function(createBuildInfo)
 
 	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/int")
 
-	if (PARANOID)
-		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/PARA")
-	endif ()
-
 	#cmake build type may be not specified when using msvc
 	if (CMAKE_BUILD_TYPE)
 		set(_cmake_build_type ${CMAKE_BUILD_TYPE})
@@ -145,28 +121,6 @@ endfunction()
 
 ######################################################################################################
 
-
-# Clear invalid option
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
-	if (PARANOID)
-		message("Paranoia requires debug - disabling for release build.")
-		set(PARANOID OFF)
-	endif ()
-	if (VMTRACE)
-		message("VM Tracing requires debug - disabling for release build.")
-		set (VMTRACE OFF)
-	endif ()
-endif ()
-
-# Force chromium.
-set (ETH_HAVE_WEBENGINE 1)
-
-# Backwards compatibility
-if (HEADLESS)
-	message("*** WARNING: -DHEADLESS=1 option is DEPRECATED! Use -DBUNDLE=minimal or -DGUI=0")
-	set(GUI OFF)
-endif ()
-
 macro(eth_format_option O)
 	if (${${O}})
 		set(${O} ON)
@@ -178,19 +132,12 @@ macro(eth_format_option O)
 endmacro()
 
 # Normalise build options
-eth_format_option(PARANOID)
-eth_format_option(VMTRACE)
 eth_format_option(JSONRPC)
 eth_format_option(MINER)
-eth_format_option(PROFILING)
 eth_format_option(ETHASHCL)
 eth_format_option(ETHASHCUDA)
 eth_format_option(OLYMPIC)
 eth_format_option(ETHSTRATUM)
-
-if (GUI)
-	set(JSONRPC ON)
-endif()
 
 # Default CMAKE_BUILD_TYPE accordingly.
 set(CMAKE_BUILD_TYPE CACHE STRING ${D_CMAKE_BUILD_TYPE})
@@ -213,8 +160,6 @@ message("-- TARGET_PLATFORM  Target platform                          ${TARGET_P
 message("--------------------------------------------------------------- features")
 message("--                  Chromium support                         ${ETH_HAVE_WEBENGINE}")
 message("--                  HTTP Request support                     ${CURL_FOUND}")
-message("-- VMTRACE          VM execution tracing                     ${VMTRACE}")
-message("-- PROFILING        Profiling support                        ${PROFILING}")
 message("-- FATDB            Full database exploring                  ${FATDB}")
 message("-- JSONRPC          JSON-RPC support                         ${JSONRPC}")
 message("-- OLYMPIC          Default to the Olympic network           ${OLYMPIC}")
