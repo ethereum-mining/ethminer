@@ -54,19 +54,14 @@ find_package (Jsoncpp 0.60 REQUIRED)
 message(" - Jsoncpp header: ${JSONCPP_INCLUDE_DIRS}")
 message(" - Jsoncpp lib   : ${JSONCPP_LIBRARIES}")
 
-# TODO get rid of -DETH_JSONRPC
-# TODO add EXACT once we commit ourselves to cmake 3.x
-if (JSONRPC)
-	find_package (json_rpc_cpp 0.4 REQUIRED)
-	message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
-	message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
-	add_definitions(-DETH_JSONRPC)
+find_package (json_rpc_cpp 0.4 REQUIRED)
+message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
+message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
 
- 	find_package(MHD)
-	message(" - microhttpd header: ${MHD_INCLUDE_DIRS}")
-	message(" - microhttpd lib   : ${MHD_LIBRARIES}")
-	message(" - microhttpd dll   : ${MHD_DLLS}")
-endif() #JSONRPC
+find_package(MHD)
+message(" - microhttpd header: ${MHD_INCLUDE_DIRS}")
+message(" - microhttpd lib   : ${MHD_LIBRARIES}")
+message(" - microhttpd dll   : ${MHD_DLLS}")
 
 # curl is only requried for tests
 # TODO specify min curl version, on windows we are currently using 7.29
