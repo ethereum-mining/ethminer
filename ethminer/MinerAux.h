@@ -34,7 +34,6 @@
 #include <boost/optional.hpp>
 
 #include <libdevcore/FileSystem.h>
-#include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/CommonJS.h>
@@ -563,12 +562,10 @@ public:
 	static void streamHelp(ostream& _out)
 	{
 		_out
-#if ETH_JSONRPC || !ETH_TRUE
 			<< "Work farming mode:" << endl
 			<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
 			<< "    -FF,-FO, --farm-failover, --stratum-failover <url> Failover getwork/stratum URL (default: disabled)" << endl
 			<< "	--farm-retries <n> Number of retries until switch to failover (default: 3)" << endl
-#endif
 #if ETH_STRATUM || !ETH_TRUE
 			<< "	-S, --stratum <host:port>  Put into stratum mode with the stratum server at host:port" << endl
 			<< "	-FS, --failover-stratum <host:port>  Failover stratum server at host:port" << endl
@@ -582,7 +579,7 @@ public:
 			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 #endif
-#if ETH_JSONRPC || ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM || !ETH_TRUE
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 #endif
 			<< endl
@@ -806,7 +803,6 @@ private:
 		(void)_m;
 		(void)_remote;
 		(void)_recheckPeriod;
-#if ETH_JSONRPC || !ETH_TRUE
 		jsonrpc::HttpClient client(m_farmURL);
 		:: FarmClient rpc(client);
 		jsonrpc::HttpClient failoverClient(m_farmFailOverURL);
@@ -944,7 +940,6 @@ private:
 					
 				}
 			}
-#endif
 		exit(0);
 	}
 
