@@ -21,7 +21,7 @@
  * Determines the PoW algorithm.
  */
 
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 
 #include "EthashGPUMiner.h"
 #include <thread>

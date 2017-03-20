@@ -21,7 +21,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 * Determines the PoW algorithm.
 */
 
-#if ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCUDA
 
 #if defined(WIN32)
 #include <Windows.h>
