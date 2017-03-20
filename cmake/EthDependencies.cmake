@@ -68,46 +68,11 @@ if (JSONRPC)
 	message(" - microhttpd dll   : ${MHD_DLLS}")
 endif() #JSONRPC
 
-# TODO readline package does not yet check for correct version number
-# TODO make readline package dependent on cmake options
-# TODO get rid of -DETH_READLINE
-find_package (Readline 6.3.8)
-if (READLINE_FOUND)
-	message (" - readline header: ${READLINE_INCLUDE_DIRS}")
-	message (" - readline lib   : ${READLINE_LIBRARIES}")
-	add_definitions(-DETH_READLINE)
-endif ()
-
-# TODO miniupnpc package does not yet check for correct version number
-# TODO make miniupnpc package dependent on cmake options
-# TODO get rid of -DMINIUPNPC
-find_package (Miniupnpc 1.8.2013)
-if (MINIUPNPC_FOUND)
-	message (" - miniupnpc header: ${MINIUPNPC_INCLUDE_DIRS}")
-	message (" - miniupnpc lib   : ${MINIUPNPC_LIBRARIES}")
-	add_definitions(-DETH_MINIUPNPC)
-endif()
-
-# TODO gmp package does not yet check for correct version number
-# TODO it is also not required in msvc build
-find_package (Gmp 6.0.0)
-if (GMP_FOUND)
-	message(" - gmp header: ${GMP_INCLUDE_DIRS}")
-	message(" - gmp lib   : ${GMP_LIBRARIES}")
-endif()
-
 # curl is only requried for tests
 # TODO specify min curl version, on windows we are currently using 7.29
 find_package (CURL)
 message(" - curl header: ${CURL_INCLUDE_DIRS}")
 message(" - curl lib   : ${CURL_LIBRARIES}")
-
-# cpuid required for eth
-find_package (Cpuid)
-if (CPUID_FOUND)
-	message(" - cpuid header: ${CPUID_INCLUDE_DIRS}")
-	message(" - cpuid lib   : ${CPUID_LIBRARIES}")
-endif()
 
 find_package (OpenCL)
 if (OpenCL_FOUND)

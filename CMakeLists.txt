@@ -80,10 +80,6 @@ function(configureProject)
 		add_definitions(-DETH_GUI)
 	endif()
 
-	if (CPUID_FOUND)
-		add_definitions(-DETH_CPUID)
-	endif()
-
 	if (CURL_FOUND)
 		add_definitions(-DETH_CURL)
 	endif()
@@ -216,7 +212,6 @@ message("-- CMAKE_BUILD_TYPE Build type                               ${CMAKE_BU
 message("-- TARGET_PLATFORM  Target platform                          ${TARGET_PLATFORM}")
 message("--------------------------------------------------------------- features")
 message("--                  Chromium support                         ${ETH_HAVE_WEBENGINE}")
-message("--                  Hardware identification support          ${CPUID_FOUND}")
 message("--                  HTTP Request support                     ${CURL_FOUND}")
 message("-- VMTRACE          VM execution tracing                     ${VMTRACE}")
 message("-- PROFILING        Profiling support                        ${PROFILING}")
