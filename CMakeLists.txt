@@ -239,9 +239,6 @@ include(EthExecutableHelper)
 message("creating build info...")
 createBuildInfo()
 
-set(DB_INCLUDE_DIRS ${LEVELDB_INCLUDE_DIRS})
-set(DB_LIBRARIES ${LEVELDB_LIBRARIES})
-
 add_subdirectory(libdevcore)
 
 if (MINER)

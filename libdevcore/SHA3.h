@@ -24,8 +24,8 @@
 #pragma once
 
 #include <string>
-#include <libdevcore/FixedHash.h>
-#include <libdevcore/vector_ref.h>
+#include "FixedHash.h"
+#include "vector_ref.h"
 
 namespace dev
 {

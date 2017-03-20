@@ -19,7 +19,7 @@
  * @date 2014
  */
 
-#include <libdevcore/Common.h>
+#include "Common.h"
 #include "MemoryDB.h"
 using namespace std;
 using namespace dev;

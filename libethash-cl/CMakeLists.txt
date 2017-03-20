@@ -23,7 +23,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(..)
 add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
-target_include_directories(${EXECUTABLE} PUBLIC ${OpenCL_INCLUDE_DIR})
+target_include_directories(${EXECUTABLE} PUBLIC SYSTEM ${OpenCL_INCLUDE_DIR})
 target_link_libraries(${EXECUTABLE} ${OpenCL_LIBRARIES} ethash)
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
