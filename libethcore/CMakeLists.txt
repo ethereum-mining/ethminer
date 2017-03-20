@@ -14,7 +14,7 @@ set(EXECUTABLE ethcore)
 
 file(GLOB HEADERS "*.h")
 
-add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
+add_library(ethcore ${SRC_LIST} ${HEADERS})
 
 target_link_libraries(${EXECUTABLE} ethash pthread)
 
