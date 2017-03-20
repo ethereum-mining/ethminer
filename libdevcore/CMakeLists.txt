@@ -1,7 +1,4 @@
 cmake_policy(SET CMP0015 NEW)
-set(CMAKE_AUTOMOC OFF)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 
 aux_source_directory(. SRC_LIST)
 
@@ -20,9 +17,7 @@ target_link_libraries(${EXECUTABLE} ${Boost_THREAD_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${Boost_RANDOM_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${Boost_FILESYSTEM_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${Boost_SYSTEM_LIBRARIES})
-if (JSONRPC)
-	target_link_libraries(${EXECUTABLE} ${JSONCPP_LIBRARIES})
-endif()
+target_link_libraries(${EXECUTABLE} ${JSONCPP_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${DB_LIBRARIES})
 
 # transitive dependencies for windows executables
