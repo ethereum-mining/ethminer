@@ -35,7 +35,6 @@
 #include <signal.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
-#include <libdevcore/FileSystem.h>
 #include "MinerAux.h"
 using namespace std;
 using namespace dev;

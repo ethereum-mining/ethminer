@@ -12,8 +12,8 @@ file(GLOB HEADERS "*.h")
 
 add_library(devcore ${SRC_LIST} ${HEADERS})
 
-target_link_libraries(${EXECUTABLE} ${Boost_THREAD_LIBRARIES})
-target_link_libraries(${EXECUTABLE} ${Boost_RANDOM_LIBRARIES})
+target_link_libraries(devcore ${Boost_THREAD_LIBRARIES})
+target_link_libraries(devcore ${Boost_RANDOM_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${Boost_FILESYSTEM_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${Boost_SYSTEM_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${JSONCPP_LIBRARIES})
