@@ -25,17 +25,7 @@ else()
 	list(APPEND FILES io_posix.c)
 endif()
 
-if (NOT CRYPTOPP_FOUND)
-	find_package(CryptoPP 5.6.2)
-endif()
-
-if (CRYPTOPP_FOUND)
-	add_definitions(-DWITH_CRYPTOPP)
-	include_directories( ${CRYPTOPP_INCLUDE_DIRS} )
-	list(APPEND FILES sha3_cryptopp.cpp sha3_cryptopp.h)
-else()
-	list(APPEND FILES sha3.c sha3.h)
-endif()
+list(APPEND FILES sha3.c sha3.h)
 
 add_library(${LIBRARY} ${FILES})
 
