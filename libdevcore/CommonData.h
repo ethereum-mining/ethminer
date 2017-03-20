@@ -76,22 +76,11 @@ inline std::string asString(bytes const& _b)
 	return std::string((char const*)_b.data(), (char const*)(_b.data() + _b.size()));
 }
 
-/// Converts byte array ref to a string containing the same (binary) data. Unless
-/// the byte array happens to contain ASCII data, this won't be printable.
-inline std::string asString(bytesConstRef _b)
-{
-	return std::string((char const*)_b.data(), (char const*)(_b.data() + _b.size()));
-}
-
 /// Converts a string to a byte array containing the string's (byte) data.
 inline bytes asBytes(std::string const& _b)
 {
 	return bytes((byte const*)_b.data(), (byte const*)(_b.data() + _b.size()));
 }
-
-/// Converts a string into the big-endian base-16 stream of integers (NOT ASCII).
-/// @example asNibbles("A")[0] == 4 && asNibbles("A")[1] == 1
-bytes asNibbles(bytesConstRef const& _s);
 
 
 // Big-endian to/from host endian conversion functions.
@@ -167,34 +156,11 @@ inline std::string toHex(u256 val, HexPrefix prefix = HexPrefix::DontAdd)
 	return (prefix == HexPrefix::Add) ? "0x" + str : str;
 }
 
-inline std::string toCompactHex(u256 val, HexPrefix prefix = HexPrefix::DontAdd, unsigned _min = 0)
-{
-	std::string str = toHex(toCompactBigEndian(val, _min));
-	return (prefix == HexPrefix::Add) ? "0x" + str : str;
-}
-
 // Algorithms for string and string-like collections.
 
 /// Escapes a string into the C-string representation.
 /// @p _all if true will escape all characters, not just the unprintable ones.
 std::string escaped(std::string const& _s, bool _all = true);
-
-/// Determines the length of the common prefix of the two collections given.
-/// @returns the number of elements both @a _t and @a _u share, in order, at the beginning.
-/// @example commonPrefix("Hello world!", "Hello, world!") == 5
-template <class T, class _U>
-unsigned commonPrefix(T const& _t, _U const& _u)
-{
-	unsigned s = std::min<unsigned>(_t.size(), _u.size());
-	for (unsigned i = 0;; ++i)
-		if (i == s || _t[i] != _u[i])
-			return i;
-	return s;
-}
-
-/// Creates a random, printable, word.
-std::string randomWord();
-
 
 // General datatype convenience functions.
 
