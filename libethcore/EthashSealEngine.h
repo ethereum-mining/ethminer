@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Sealer.h"
 #include "Ethash.h"
 #include "EthashAux.h"
 
@@ -32,24 +31,17 @@ namespace dev
 namespace eth
 {
 
-class EthashSealEngine: public SealEngineBase<Ethash>
+class EthashSealEngine
 {
 	friend class Ethash;
 
 public:
 	EthashSealEngine();
 
-	strings sealers() const override;
-	void setSealer(std::string const& _sealer) override { m_sealer = _sealer; }
-	void cancelGeneration() override { m_farm.stop(); }
-	void generateSeal(BlockInfo const& _bi) override;
-	void onSealGenerated(std::function<void(bytes const&)> const& _f) override;
+	strings sealers() const;
 
 private:
-	bool m_opencl = false;
 	eth::GenericFarm<EthashProofOfWork> m_farm;
-	std::string m_sealer = "cpu";
-	Ethash::BlockHeader m_sealing;
 };
 
 }
