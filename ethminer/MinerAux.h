@@ -62,25 +62,6 @@ using namespace boost::algorithm;
 
 #undef RETURN
 
-bool isTrue(std::string const& _m)
-{
-	return _m == "on" || _m == "yes" || _m == "true" || _m == "1";
-}
-
-bool isFalse(std::string const& _m)
-{
-	return _m == "off" || _m == "no" || _m == "false" || _m == "0";
-}
-
-inline std::string credits()
-{
-	std::ostringstream out;
-	out
-		<< "Ethereum (++) " << dev::Version << endl
-		<< "  Code by Gav Wood et al, (c) 2013, 2014, 2015." << endl;
-	return out.str();
-}
-
 class BadArgument: public Exception {};
 struct MiningChannel: public LogChannel
 {

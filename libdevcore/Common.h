@@ -237,72 +237,11 @@ private:
 #define DEV_INVARIANT_CHECK_HERE (void)0;
 #endif
 
-/// Simple scope-based timer helper.
-class TimerHelper
-{
-public:
-	TimerHelper(std::string const& _id, unsigned _msReportWhenGreater = 0): m_t(std::chrono::high_resolution_clock::now()), m_id(_id), m_ms(_msReportWhenGreater) {}
-	~TimerHelper();
-
-private:
-	std::chrono::high_resolution_clock::time_point m_t;
-	std::string m_id;
-	unsigned m_ms;
-};
-
-class Timer
-{
-public:
-	Timer() { restart(); }
-
-	std::chrono::high_resolution_clock::duration duration() const { return std::chrono::high_resolution_clock::now() - m_t; }
-	double elapsed() const { return std::chrono::duration_cast<std::chrono::microseconds>(duration()).count() / 1000000.0; }
-	void restart() { m_t = std::chrono::high_resolution_clock::now(); }
-
-private:
-	std::chrono::high_resolution_clock::time_point m_t;
-};
-
-#define DEV_TIMED(S) for (::std::pair<::dev::TimerHelper, bool> __eth_t(S, true); __eth_t.second; __eth_t.second = false)
-#define DEV_TIMED_SCOPE(S) ::dev::TimerHelper __eth_t(S)
-#if WIN32
-#define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__FUNCSIG__)
-#else
-#define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__PRETTY_FUNCTION__)
-#endif
-
-#define DEV_TIMED_ABOVE(S, MS) for (::std::pair<::dev::TimerHelper, bool> __eth_t(::dev::TimerHelper(S, MS), true); __eth_t.second; __eth_t.second = false)
-#define DEV_TIMED_SCOPE_ABOVE(S, MS) ::dev::TimerHelper __eth_t(S, MS)
-#if WIN32
-#define DEV_TIMED_FUNCTION_ABOVE(MS) DEV_TIMED_SCOPE_ABOVE(__FUNCSIG__, MS)
-#else
-#define DEV_TIMED_FUNCTION_ABOVE(MS) DEV_TIMED_SCOPE_ABOVE(__PRETTY_FUNCTION__, MS)
-#endif
-
-#ifdef _MSC_VER
-// TODO.
-#define DEV_UNUSED
-#else
-#define DEV_UNUSED __attribute__((unused))
-#endif
-
-enum class WithExisting: int
-{
-	Trust = 0,
-	Verify,
-	Rescue,
-	Kill
-};
 
 }
 
 namespace std
 {
-
-inline dev::WithExisting max(dev::WithExisting _a, dev::WithExisting _b)
-{
-	return static_cast<dev::WithExisting>(max(static_cast<int>(_a), static_cast<int>(_b)));
-}
 
 template <> struct hash<dev::u256>
 {
