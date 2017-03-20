@@ -33,7 +33,6 @@
 #include <boost/algorithm/string/trim_all.hpp>
 #include <boost/optional.hpp>
 
-#include <libdevcore/FileSystem.h>
 #include <libethcore/Exceptions.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/CommonJS.h>

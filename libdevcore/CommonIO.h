@@ -37,7 +37,6 @@
 #include <iostream>
 #include <chrono>
 #include "Common.h"
-#include "Base64.h"
 
 namespace dev
 {
