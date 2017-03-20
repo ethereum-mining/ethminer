@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 
 #include "libdevcore/Worker.h"
 #include "EthashAux.h"

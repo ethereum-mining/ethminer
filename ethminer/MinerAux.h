@@ -41,17 +41,17 @@
 #include <libethcore/EthashGPUMiner.h>
 #include <libethcore/EthashCPUMiner.h>
 #include <libethcore/Farm.h>
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 #include <libethash-cl/ethash_cl_miner.h>
 #endif
-#if ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCUDA
 #include <libethash-cuda/ethash_cuda_miner.h>
 #endif
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include "BuildInfo.h"
 #include "FarmClient.h"
-#if ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM
 #include <libstratum/EthStratumClient.h>
 #include <libstratum/EthStratumClientV2.h>
 #endif
@@ -156,7 +156,7 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-#if ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM
 		else if ((arg == "-S" || arg == "--stratum") && i + 1 < argc)
 		{
 			mode = OperationMode::Stratum;
@@ -254,7 +254,7 @@ public:
 		}
 		
 #endif
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 		else if (arg == "--opencl-platform" && i + 1 < argc)
 			try {
 				m_openclPlatform = stol(argv[++i]);
@@ -279,7 +279,7 @@ public:
 				}
 			}
 #endif
-#if ETH_ETHASHCL || ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCL || ETH_ETHASHCUDA
 		else if ((arg == "--cl-global-work" || arg == "--cuda-grid-size")  && i + 1 < argc)
 			try {
 				m_globalWorkSizeMultiplier = stol(argv[++i]);
@@ -303,11 +303,11 @@ public:
 		else if ((arg == "--cl-extragpu-mem" || arg == "--cuda-extragpu-mem") && i + 1 < argc)
 			m_extraGPUMemory = 1000000 * stol(argv[++i]);
 #endif
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 		else if (arg == "--allow-opencl-cpu")
 			m_clAllowCPU = true;
 #endif
-#if ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCUDA
 		else if (arg == "--cuda-devices")
 		{
 			while (m_cudaDeviceCount < 16 && i + 1 < argc)
@@ -475,11 +475,11 @@ public:
 	{
 		if (m_shouldListDevices)
 		{
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 			if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 				EthashGPUMiner::listDevices();
 #endif
-#if ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCUDA
 			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 				EthashCUDAMiner::listDevices();
 #endif
@@ -495,7 +495,7 @@ public:
 		}
 		else if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 		{
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 			if (m_openclDeviceCount > 0)
 			{
 				EthashGPUMiner::setDevices(m_openclDevices, m_openclDeviceCount);
@@ -522,7 +522,7 @@ public:
 		}
 		else if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 		{
-#if ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCUDA
 			if (m_cudaDeviceCount > 0)
 			{
 				EthashCUDAMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
@@ -552,7 +552,7 @@ public:
 			doFarm(m_minerType, m_activeFarmURL, m_farmRecheckPeriod);
 		else if (mode == OperationMode::Simulation) 
 			doSimulation(m_minerType);
-#if ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM
 		else if (mode == OperationMode::Stratum)
 			doStratum();
 #endif
@@ -565,7 +565,7 @@ public:
 			<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
 			<< "    -FF,-FO, --farm-failover, --stratum-failover <url> Failover getwork/stratum URL (default: disabled)" << endl
 			<< "	--farm-retries <n> Number of retries until switch to failover (default: 3)" << endl
-#if ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM
 			<< "	-S, --stratum <host:port>  Put into stratum mode with the stratum server at host:port" << endl
 			<< "	-FS, --failover-stratum <host:port>  Failover stratum server at host:port" << endl
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
@@ -578,7 +578,7 @@ public:
 			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 #endif
-#if ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 #endif
 			<< endl
@@ -603,12 +603,12 @@ public:
 			<< "        parallel    - load DAG on all GPUs at the same time (default)" << endl
 			<< "        sequential  - load DAG on GPUs one after another. Use this when the miner crashes during DAG generation" << endl
 			<< "        single <n>  - generate DAG on device n, then copy to other devices" << endl
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. default: 0" << endl
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
 			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << toString(ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier) << " * " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
 #endif
-#if ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCUDA
 			<< "    --cuda-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
 			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(ethash_cuda_miner::c_defaultBlockSize) << endl
 			<< "    --cuda-grid-size Set the CUDA grid size. Default is " << toString(ethash_cuda_miner::c_defaultGridSize) << endl
@@ -942,7 +942,7 @@ private:
 		exit(0);
 	}
 
-#if ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM
 	void doStratum()
 	{
 		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
@@ -1049,15 +1049,15 @@ private:
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 	bool m_clAllowCPU = false;
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 	unsigned m_openclDeviceCount = 0;
 	unsigned m_openclDevices[16];
-#if !ETH_ETHASHCUDA || !ETH_TRUE
+#if !ETH_ETHASHCUDA
 	unsigned m_globalWorkSizeMultiplier = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = ethash_cl_miner::c_defaultLocalWorkSize;
 #endif
 #endif
-#if ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCUDA
 	unsigned m_globalWorkSizeMultiplier = ethash_cuda_miner::c_defaultGridSize;
 	unsigned m_localWorkSize = ethash_cuda_miner::c_defaultBlockSize;
 	unsigned m_cudaDeviceCount = 0;
@@ -1087,7 +1087,7 @@ private:
 	bool m_farmRecheckSet = false;
 	int m_worktimeout = 180;
 
-#if ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM
 	int m_stratumClientVersion = 1;
 	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
 	string m_user;
