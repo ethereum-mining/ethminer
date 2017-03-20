@@ -79,8 +79,6 @@ public:
 		void setNonce(Nonce const& _n) { m_nonce = _n; noteDirty(); }
 		void setMixHash(h256 const& _n) { m_mixHash = _n; noteDirty(); }
 
-		StringHashMap jsInfo() const;
-
 	protected:
 		BlockHeaderRaw() = default;
 		BlockHeaderRaw(BlockInfo const& _bi): BlockInfo(_bi) {}

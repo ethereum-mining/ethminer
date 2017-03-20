@@ -31,7 +31,6 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
-#include <libdevcore/CommonJS.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
 #include "BlockInfo.h"
@@ -168,11 +167,6 @@ bool Ethash::BlockHeaderRaw::verify() const
 void Ethash::BlockHeaderRaw::prep(std::function<int(unsigned)> const& _f) const
 {
 	EthashAux::full(seedHash(), true, _f);
-}
-
-StringHashMap Ethash::BlockHeaderRaw::jsInfo() const
-{
-	return { { "nonce", toJS(m_nonce) }, { "seedHash", toJS(seedHash()) }, { "mixHash", toJS(m_mixHash) } };
 }
 
 void Ethash::manuallySetWork(SealEngineFace* _engine, BlockHeader const& _work)
