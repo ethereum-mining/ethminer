@@ -54,11 +54,6 @@ find_package (json_rpc_cpp 0.4 REQUIRED)
 message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
 message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
 
-find_package(MHD)
-message(" - microhttpd header: ${MHD_INCLUDE_DIRS}")
-message(" - microhttpd lib   : ${MHD_LIBRARIES}")
-message(" - microhttpd dll   : ${MHD_DLLS}")
-
 # curl is only requried for tests
 # TODO specify min curl version, on windows we are currently using 7.29
 find_package (CURL)
