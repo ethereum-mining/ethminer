@@ -20,7 +20,7 @@ file(GLOB HEADERS "*.h")
 
 add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
-target_link_libraries(${EXECUTABLE} ethash)
+target_link_libraries(${EXECUTABLE} ethash pthread)
 
 if (ETHASHCL)
 	target_link_libraries(${EXECUTABLE} ethash-cl)
