@@ -98,11 +98,3 @@ bytes dev::fromHex(std::string const& _s, WhenError _throw)
 	}
 	return ret;
 }
-
-std::string dev::toString(string32 const& _s)
-{
-	std::string ret;
-	for (unsigned i = 0; i < 32 && _s[i]; ++i)
-		ret.push_back(_s[i]);
-	return ret;
-}

@@ -145,15 +145,5 @@ private:
 	for (GenericGuardBool<Guard, Mutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
 #define DEV_READ_GUARDED(MUTEX) \
 	for (GenericGuardBool<ReadGuard, SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
-#define DEV_WRITE_GUARDED(MUTEX) \
-	for (GenericGuardBool<WriteGuard, SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
-#define DEV_RECURSIVE_GUARDED(MUTEX) \
-	for (GenericGuardBool<RecursiveGuard, RecursiveMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
-#define DEV_UNGUARDED(MUTEX) \
-	for (GenericUnguardBool<Mutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
-#define DEV_READ_UNGUARDED(MUTEX) \
-	for (GenericUnguardSharedBool<SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
-#define DEV_WRITE_UNGUARDED(MUTEX) \
-	for (GenericUnguardBool<SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
 
 }
