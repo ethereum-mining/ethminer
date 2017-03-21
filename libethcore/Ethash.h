@@ -26,7 +26,6 @@
 #include <chrono>
 #include <thread>
 #include <cstdint>
-#include <libdevcore/CommonIO.h>
 #include "Common.h"
 #include "Miner.h"
 #include "Farm.h"

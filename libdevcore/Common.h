@@ -237,6 +237,14 @@ private:
 #define DEV_INVARIANT_CHECK_HERE (void)0;
 #endif
 
+/// Converts arbitrary value to string representation using std::stringstream.
+template <class _T>
+std::string toString(_T const& _t)
+{
+	std::ostringstream o;
+	o << _t;
+	return o.str();
+}
 
 }
 
