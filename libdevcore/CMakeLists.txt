@@ -1,6 +1,6 @@
 cmake_policy(SET CMP0015 NEW)
 
-aux_source_directory(. SRC_LIST)
+aux_source_directory(. SOURCES)
 
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
 include_directories(BEFORE ..)
@@ -10,7 +10,7 @@ set(EXECUTABLE devcore)
 
 file(GLOB HEADERS "*.h")
 
-add_library(devcore ${SRC_LIST} ${HEADERS})
+add_library(devcore ${SOURCES} ${HEADERS})
 
 target_link_libraries(devcore ${Boost_THREAD_LIBRARIES})
 target_link_libraries(devcore ${Boost_RANDOM_LIBRARIES})
