@@ -44,14 +44,11 @@ const char* DAGChannel::name() { return EthGreen "DAG"; }
 
 EthashAux* dev::eth::EthashAux::s_this = nullptr;
 char  dev::eth::EthashAux::s_dagDirName[256] = "";
-dev::eth::DAGEraseMode dev::eth::EthashAux::s_dagEraseMode = DAGEraseMode::None;
 
 const unsigned EthashProofOfWork::defaultLocalWorkSize = 64;
 const unsigned EthashProofOfWork::defaultGlobalWorkSizeMultiplier = 4096; // * CL_DEFAULT_LOCAL_WORK_SIZE
 const unsigned EthashProofOfWork::defaultMSPerBatch = 0;
 const EthashProofOfWork::WorkPackage EthashProofOfWork::NullWorkPackage = EthashProofOfWork::WorkPackage();
-
-//unsigned EthashProofOfWork::s_dagLoadMode = 0;
 
 EthashAux::~EthashAux()
 {
@@ -64,80 +61,9 @@ EthashAux* EthashAux::get()
     return s_this;
 }
 
-uint64_t EthashAux::cacheSize(BlockInfo const& _header)
-{
-	return ethash_get_cachesize((uint64_t)_header.number());
-}
-
-uint64_t EthashAux::dataSize(uint64_t _blockNumber)
-{
-	return ethash_get_datasize(_blockNumber);
-}
-
-
-void EthashAux::setDAGDirName(const char * custom_dir_name)
-{
-	char strbuf[256];
-	if (strcmp(custom_dir_name, "") != 0)
-		strcpy(strbuf, custom_dir_name);
-	else
-		ethash_get_default_dirname(strbuf, 256);
-
-	strcpy(s_dagDirName, strbuf);
-}
-
 char * EthashAux::dagDirName()
 {
 	return s_dagDirName;
-}
-
-void EthashAux::setDAGEraseMode(DAGEraseMode mode)
-{
-	s_dagEraseMode = mode;
-}
-
-void EthashAux::eraseDAGs()
-{
-	if (s_dagEraseMode == DAGEraseMode::None) return;
-
-	path p(s_dagDirName);
-	
-	if (!is_directory(p))
-	{
-		cnote << "Can't clean up DAG directory:" << s_dagDirName << "does not exist (yet).";
-		return;
-	}
-
-	vector<path> files;
-
-	directory_iterator end_itr;
-
-	for (directory_iterator itr(p); itr != end_itr; ++itr)
-	{
-		if (is_regular_file(itr->path())) {
-			files.push_back(itr->path());
-		}
-	}
-
-	std::sort(files.begin(), files.end(),
-		[](const path& p1, const path& p2)
-	{
-		return file_size(p1) < file_size(p2);
-	});
-
-	size_t dagcount = files.size();
-	size_t dagcounter = 0;
-	for (std::vector<path>::const_iterator path = files.begin(); path != files.end(); ++path)
-	{
-		if (s_dagEraseMode == DAGEraseMode::Bench && path->filename() == "full-R23-0000000000000000") {}
-		else if ((s_dagEraseMode == DAGEraseMode::Old || s_dagEraseMode == DAGEraseMode::Bench) && dagcount - dagcounter <= 2) {}
-		else
-		{
-			cnote << "Deleting DAG file " << path->string();
-			remove(*path);
-		}
-		dagcounter++;
-	}
 }
 
 h256 EthashAux::seedHash(unsigned _number)
@@ -183,12 +109,6 @@ uint64_t EthashAux::number(h256 const& _seedHash)
 	else
 		epoch = epochIter->second;
 	return epoch * ETHASH_EPOCH_LENGTH;
-}
-
-void EthashAux::killCache(h256 const& _s)
-{
-	WriteGuard l(x_lights);
-	m_lights.erase(_s);
 }
 
 EthashAux::LightType EthashAux::light(h256 const& _seedHash)
@@ -255,20 +175,15 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bool _createIfMissing
 
 	DEV_GUARDED(get()->x_fulls)
 		if ((ret = get()->m_fulls[_seedHash].lock()))
-		{
-			get()->m_lastUsedFull = ret;
 			return ret;
-		}
 
 	if (_createIfMissing || computeFull(_seedHash, false) == 100)
 	{
 		s_dagCallback = _f;
-//		cnote << "Loading from libethash...";
 		ret = make_shared<FullAllocation>(l->light, dagCallbackShim);
-//		cnote << "Done loading.";
 
 		DEV_GUARDED(get()->x_fulls)
-			get()->m_fulls[_seedHash] = get()->m_lastUsedFull = ret;
+			get()->m_fulls[_seedHash] = ret;
 	}
 
 	return ret;
@@ -286,7 +201,6 @@ unsigned EthashAux::computeFull(h256 const& _seedHash, bool _createIfMissing)
 
 	if (FullType ret = get()->m_fulls[_seedHash].lock())
 	{
-		get()->m_lastUsedFull = ret;
 		return 100;
 	}
 
@@ -297,7 +211,6 @@ unsigned EthashAux::computeFull(h256 const& _seedHash, bool _createIfMissing)
 		get()->m_fullGenerator = unique_ptr<thread>(new thread([=](){
 			cnote << "Loading full DAG of seedhash: " << _seedHash;
 			get()->full(_seedHash, true, [](unsigned p){ get()->m_fullProgress = p; return 0; });
-			eraseDAGs();
 			cnote << "Full DAG loaded";
 			get()->m_fullProgress = 0;
 			get()->m_generatingFullNumber = NotGenerating;
