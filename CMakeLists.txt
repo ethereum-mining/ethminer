@@ -1,10 +1,9 @@
-# cmake global
 cmake_minimum_required(VERSION 3.0)
 
 set(GENOIL_VERSION "1.1.7")
 cmake_policy(SET CMP0042 OLD) 	# fix MACOSX_RPATH
 cmake_policy(SET CMP0048 NEW) 	# allow VERSION argument in project()
-project(ethereum VERSION 0.9.41)
+project(ethminer VERSION 0.9.41)
 
 # link_directories interprate relative paths with respect to CMAKE_CURRENT_SOURCE_DIR
 cmake_policy(SET CMP0015 NEW)
