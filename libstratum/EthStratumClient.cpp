@@ -395,7 +395,6 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						cnote << "Received new job #" + job;
 
 						h256 seedHash = h256(sSeedHash);
-						h256 headerHash = h256(sHeaderHash);
 
 						m_previous.headerHash = m_current.headerHash;
 						m_previous.seedHash = m_current.seedHash;

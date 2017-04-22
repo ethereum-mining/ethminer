@@ -26,7 +26,6 @@
 #include <string>
 #include "FixedHash.h"
 #include "CommonData.h"
-#include "CommonIO.h"
 
 namespace dev
 {

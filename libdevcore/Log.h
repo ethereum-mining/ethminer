@@ -33,7 +33,6 @@
 #pragma GCC diagnostic pop
 #include "vector_ref.h"
 #include "Common.h"
-#include "CommonIO.h"
 #include "CommonData.h"
 #include "FixedHash.h"
 #include "Terminal.h"
@@ -70,27 +69,6 @@ private:
 	static const int c_null = -1;
 	int m_old;
 };
-
-template <class Channel>
-class LogOverride: LogOverrideAux
-{
-public:
-	LogOverride(bool _value): LogOverrideAux(&typeid(Channel), _value) {}
-};
-
-bool isChannelVisible(std::type_info const* _ch, bool _default);
-template <class Channel> bool isChannelVisible() { return isChannelVisible(&typeid(Channel), Channel::verbosity <= g_logVerbosity); }
-
-/// Temporary changes system's verbosity for specific function. Restores the old verbosity when function returns.
-/// Not thread-safe, use with caution!
-struct VerbosityHolder
-{
-	VerbosityHolder(int _temporaryValue): oldLogVerbosity(g_logVerbosity) { g_logVerbosity = _temporaryValue; }
-	~VerbosityHolder() { g_logVerbosity = oldLogVerbosity; }
-	int oldLogVerbosity;
-};
-
-#define ETH_THREAD_CONTEXT(name) for (std::pair<dev::ThreadContext, bool> __eth_thread_context(name, true); p.second; p.second = false)
 
 class ThreadContext
 {

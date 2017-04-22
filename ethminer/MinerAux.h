@@ -33,8 +33,6 @@
 #include <boost/algorithm/string/trim_all.hpp>
 #include <boost/optional.hpp>
 
-#include <libdevcore/FileSystem.h>
-#include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/CommonJS.h>
@@ -43,22 +41,17 @@
 #include <libethcore/EthashGPUMiner.h>
 #include <libethcore/EthashCPUMiner.h>
 #include <libethcore/Farm.h>
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 #include <libethash-cl/ethash_cl_miner.h>
 #endif
-#if ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCUDA
 #include <libethash-cuda/ethash_cuda_miner.h>
 #endif
-#if ETH_JSONRPC || !ETH_TRUE
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #include <jsonrpccpp/client/connectors/httpclient.h>
-#endif
 #include "BuildInfo.h"
-#if ETH_JSONRPC || !ETH_TRUE
-#include "PhoneHome.h"
 #include "FarmClient.h"
-#endif
-#if ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM
 #include <libstratum/EthStratumClient.h>
 #include <libstratum/EthStratumClientV2.h>
 #endif
@@ -68,25 +61,6 @@ using namespace dev::eth;
 using namespace boost::algorithm;
 
 #undef RETURN
-
-bool isTrue(std::string const& _m)
-{
-	return _m == "on" || _m == "yes" || _m == "true" || _m == "1";
-}
-
-bool isFalse(std::string const& _m)
-{
-	return _m == "off" || _m == "no" || _m == "false" || _m == "0";
-}
-
-inline std::string credits()
-{
-	std::ostringstream out;
-	out
-		<< "Ethereum (++) " << dev::Version << endl
-		<< "  Code by Gav Wood et al, (c) 2013, 2014, 2015." << endl;
-	return out.str();
-}
 
 class BadArgument: public Exception {};
 struct MiningChannel: public LogChannel
@@ -163,7 +137,7 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-#if ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM
 		else if ((arg == "-S" || arg == "--stratum") && i + 1 < argc)
 		{
 			mode = OperationMode::Stratum;
@@ -261,7 +235,7 @@ public:
 		}
 		
 #endif
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 		else if (arg == "--opencl-platform" && i + 1 < argc)
 			try {
 				m_openclPlatform = stol(argv[++i]);
@@ -286,7 +260,7 @@ public:
 				}
 			}
 #endif
-#if ETH_ETHASHCL || ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCL || ETH_ETHASHCUDA
 		else if ((arg == "--cl-global-work" || arg == "--cuda-grid-size")  && i + 1 < argc)
 			try {
 				m_globalWorkSizeMultiplier = stol(argv[++i]);
@@ -310,11 +284,11 @@ public:
 		else if ((arg == "--cl-extragpu-mem" || arg == "--cuda-extragpu-mem") && i + 1 < argc)
 			m_extraGPUMemory = 1000000 * stol(argv[++i]);
 #endif
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 		else if (arg == "--allow-opencl-cpu")
 			m_clAllowCPU = true;
 #endif
-#if ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCUDA
 		else if (arg == "--cuda-devices")
 		{
 			while (m_cudaDeviceCount < 16 && i + 1 < argc)
@@ -482,11 +456,11 @@ public:
 	{
 		if (m_shouldListDevices)
 		{
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 			if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 				EthashGPUMiner::listDevices();
 #endif
-#if ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCUDA
 			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 				EthashCUDAMiner::listDevices();
 #endif
@@ -502,7 +476,7 @@ public:
 		}
 		else if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 		{
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 			if (m_openclDeviceCount > 0)
 			{
 				EthashGPUMiner::setDevices(m_openclDevices, m_openclDeviceCount);
@@ -529,7 +503,7 @@ public:
 		}
 		else if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 		{
-#if ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCUDA
 			if (m_cudaDeviceCount > 0)
 			{
 				EthashCUDAMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
@@ -554,12 +528,12 @@ public:
 #endif
 		}
 		if (mode == OperationMode::Benchmark)
-			doBenchmark(m_minerType, m_phoneHome, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
+			doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
 		else if (mode == OperationMode::Farm)
 			doFarm(m_minerType, m_activeFarmURL, m_farmRecheckPeriod);
 		else if (mode == OperationMode::Simulation) 
 			doSimulation(m_minerType);
-#if ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM
 		else if (mode == OperationMode::Stratum)
 			doStratum();
 #endif
@@ -568,13 +542,11 @@ public:
 	static void streamHelp(ostream& _out)
 	{
 		_out
-#if ETH_JSONRPC || !ETH_TRUE
 			<< "Work farming mode:" << endl
 			<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
 			<< "    -FF,-FO, --farm-failover, --stratum-failover <url> Failover getwork/stratum URL (default: disabled)" << endl
 			<< "	--farm-retries <n> Number of retries until switch to failover (default: 3)" << endl
-#endif
-#if ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM
 			<< "	-S, --stratum <host:port>  Put into stratum mode with the stratum server at host:port" << endl
 			<< "	-FS, --failover-stratum <host:port>  Failover stratum server at host:port" << endl
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
@@ -587,7 +559,7 @@ public:
 			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 #endif
-#if ETH_JSONRPC || ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 #endif
 			<< endl
@@ -612,12 +584,12 @@ public:
 			<< "        parallel    - load DAG on all GPUs at the same time (default)" << endl
 			<< "        sequential  - load DAG on GPUs one after another. Use this when the miner crashes during DAG generation" << endl
 			<< "        single <n>  - generate DAG on device n, then copy to other devices" << endl
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. default: 0" << endl
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
 			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << toString(ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier) << " * " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
 #endif
-#if ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCUDA
 			<< "    --cuda-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
 			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(ethash_cuda_miner::c_defaultBlockSize) << endl
 			<< "    --cuda-grid-size Set the CUDA grid size. Default is " << toString(ethash_cuda_miner::c_defaultGridSize) << endl
@@ -645,7 +617,7 @@ private:
 
 	
 
-	void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
+	void doBenchmark(MinerType _m, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
 	{
 		Ethash::BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
@@ -709,23 +681,6 @@ private:
 		cout << "min/mean/max: " << results.begin()->second.rate() << "/" << (mean / _trials) << "/" << results.rbegin()->second.rate() << " H/s" << endl;
 		cout << "inner mean: " << innerMean << " H/s" << endl;
 
-		(void)_phoneHome;
-#if ETH_JSONRPC || !ETH_TRUE
-		if (_phoneHome)
-		{
-			cout << "Phoning home to find world ranking..." << endl;
-			jsonrpc::HttpClient client("http://gav.ethdev.com:3000");
-			PhoneHome rpc(client);
-			try
-			{
-				unsigned ranking = rpc.report_benchmark(platformInfo, innerMean);
-				cout << "Ranked: " << ranking << " of all benchmarks." << endl;
-			}
-			catch (...)
-			{
-			}
-		}
-#endif
 		exit(0);
 	}
 
@@ -828,7 +783,6 @@ private:
 		(void)_m;
 		(void)_remote;
 		(void)_recheckPeriod;
-#if ETH_JSONRPC || !ETH_TRUE
 		jsonrpc::HttpClient client(m_farmURL);
 		:: FarmClient rpc(client);
 		jsonrpc::HttpClient failoverClient(m_farmFailOverURL);
@@ -966,11 +920,10 @@ private:
 					
 				}
 			}
-#endif
 		exit(0);
 	}
 
-#if ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM
 	void doStratum()
 	{
 		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
@@ -1077,15 +1030,15 @@ private:
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 	bool m_clAllowCPU = false;
-#if ETH_ETHASHCL || !ETH_TRUE
+#if ETH_ETHASHCL
 	unsigned m_openclDeviceCount = 0;
 	unsigned m_openclDevices[16];
-#if !ETH_ETHASHCUDA || !ETH_TRUE
+#if !ETH_ETHASHCUDA
 	unsigned m_globalWorkSizeMultiplier = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = ethash_cl_miner::c_defaultLocalWorkSize;
 #endif
 #endif
-#if ETH_ETHASHCUDA || !ETH_TRUE
+#if ETH_ETHASHCUDA
 	unsigned m_globalWorkSizeMultiplier = ethash_cuda_miner::c_defaultGridSize;
 	unsigned m_localWorkSize = ethash_cuda_miner::c_defaultBlockSize;
 	unsigned m_cudaDeviceCount = 0;
@@ -1098,7 +1051,6 @@ private:
 	unsigned m_dagLoadMode = 0; // parallel
 	unsigned m_dagCreateDevice = 0;
 	/// Benchmarking params
-	bool m_phoneHome = false;
 	unsigned m_benchmarkWarmup = 15;
 	unsigned m_benchmarkTrial = 3;
 	unsigned m_benchmarkTrials = 5;
@@ -1116,7 +1068,7 @@ private:
 	bool m_farmRecheckSet = false;
 	int m_worktimeout = 180;
 
-#if ETH_STRATUM || !ETH_TRUE
+#if ETH_STRATUM
 	int m_stratumClientVersion = 1;
 	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
 	string m_user;

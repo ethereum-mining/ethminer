@@ -30,7 +30,6 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
-#include <libdevcore/FileSystem.h>
 #include <libethash/internal.h>
 #include <libethash/io.h>
 #include "BlockInfo.h"

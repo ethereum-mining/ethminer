@@ -3,7 +3,7 @@
 # C++11 check and activation
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 
-	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra -Wno-error=parentheses -pedantic -DSHAREDLIB -fPIC ${CMAKE_CXX_FLAGS}")
+	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra -Wno-error=parentheses -pedantic${CMAKE_CXX_FLAGS}")
 	set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG")
 	set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG -DETH_RELEASE")
 	set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -DNDEBUG -DETH_RELEASE")
@@ -17,7 +17,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 
-	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra -DSHAREDLIB -fPIC")
+	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra")
 	set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG")
 	set(CMAKE_CXX_FLAGS_DEBUGSAN       "-O1 -g -fsanitize=address,integer,undefined -fsanitize-blacklist=${CMAKE_SOURCE_DIR}/sanitizer-blacklist.txt -fno-omit-frame-pointer -DETH_DEBUG")
 	set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG -DETH_RELEASE")
@@ -51,45 +51,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	# warning LNK4099: pdb was not found with lib
 	# stack size 16MB
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ignore:4099,4075 /STACK:16777216")
-
-	# windows likes static
-	if (NOT ETH_STATIC)
-		message("Forcing static linkage for MSVC.")
-		set(ETH_STATIC 1)
-	endif ()
 else ()
 	message(WARNING "Your compiler is not tested, if you run into any issues, we'd welcome any patches.")
 endif ()
 
-if (PROFILING AND (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")))
-	set(CMAKE_CXX_FLAGS "-g ${CMAKE_CXX_FLAGS}")
-	set(CMAKE_C_FLAGS "-g ${CMAKE_C_FLAGS}")
-	add_definitions(-DETH_PROFILING_GPERF)
-	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lprofiler")
-#	set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -lprofiler")
-	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lprofiler")
-endif ()
-
-if (PROFILING AND (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")))
-        set(CMAKE_CXX_FLAGS "-g --coverage ${CMAKE_CXX_FLAGS}")
-        set(CMAKE_C_FLAGS "-g --coverage ${CMAKE_C_FLAGS}")
-        set(CMAKE_SHARED_LINKER_FLAGS "--coverage ${CMAKE_SHARED_LINKER_FLAGS} -lprofiler")
-        set(CMAKE_EXE_LINKER_FLAGS "--coverage ${CMAKE_EXE_LINKER_FLAGS} -lprofiler")
-endif ()
-
-if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang"))
-	option(USE_LD_GOLD "Use GNU gold linker" ON)
-	if (USE_LD_GOLD)
-		execute_process(COMMAND ${CMAKE_C_COMPILER} -fuse-ld=gold -Wl,--version ERROR_QUIET OUTPUT_VARIABLE LD_VERSION)
-		if ("${LD_VERSION}" MATCHES "GNU gold")
-			set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fuse-ld=gold")
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fuse-ld=gold")
-		endif ()
-	endif ()
-endif ()
-
-if(ETH_STATIC)
-	set(BUILD_SHARED_LIBS OFF)
-else()
-	set(BUILD_SHARED_LIBS ON)
-endif(ETH_STATIC)
