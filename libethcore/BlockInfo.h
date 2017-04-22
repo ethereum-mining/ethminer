@@ -111,10 +111,6 @@ public:
 	}
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
 
-	void verifyInternals(bytesConstRef _block) const;
-	void verifyParent(BlockInfo const& _parent) const;
-	void populateFromParent(BlockInfo const& parent);
-
 	u256 calculateDifficulty(BlockInfo const& _parent) const;
 	u256 childGasLimit(u256 const& _gasFloorTarget = UndefinedU256) const;
 	h256 const& boundary() const;
@@ -208,23 +204,6 @@ public:
 	void populate(bytesConstRef _data, Strictness _s, h256 const& _h = h256(), BlockDataType _bdt = BlockData)
 	{
 		populateFromHeader(_bdt == BlockData ? BlockInfo::extractHeader(_data) : RLP(_data), _s, _h);
-	}
-
-	void populateFromParent(BlockHeaderPolished const& _parent)
-	{
-		noteDirty();
-		BlockInfo::m_parentHash = _parent.hash();
-		BlockInfo::populateFromParent(_parent);
-		BlockInfoSub::populateFromParent(_parent);
-	}
-
-	// TODO: consider making private.
-	void verifyParent(BlockHeaderPolished const& _parent)
-	{
-		if (BlockInfo::parentHash() && BlockInfo::parentHash() != _parent.hash())
-			BOOST_THROW_EXCEPTION(InvalidParentHash());
-		BlockInfo::verifyParent(_parent);
-		BlockInfoSub::verifyParent(_parent);
 	}
 
 	// deprecated for public API - use constructor.

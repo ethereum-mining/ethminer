@@ -22,16 +22,18 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
-#include <libdevcore/TrieDB.h>
-#include <libdevcore/TrieHash.h>
 #include <libethcore/Common.h>
-#include <libethcore/Params.h>
 #include "EthashAux.h"
 #include "Exceptions.h"
 #include "BlockInfo.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+
+namespace
+{
+h256 const EmptyTrie = sha3(rlp(""));
+}
 
 BlockInfo::BlockInfo(): m_timestamp(Invalid256)
 {
@@ -136,93 +138,4 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s)
 
 	if (_s != CheckNothing && m_gasUsed > m_gasLimit)
 		BOOST_THROW_EXCEPTION(TooMuchGasUsed() << RequirementError(bigint(m_gasLimit), bigint(m_gasUsed)));
-}
-
-struct BlockInfoDiagnosticsChannel: public LogChannel { static const char* name() { return EthBlue "▧" EthWhite " ◌"; } static const int verbosity = 9; };
-
-void BlockInfo::verifyInternals(bytesConstRef _block) const
-{
-	RLP root(_block);
-
-	auto txList = root[1];
-	auto expectedRoot = trieRootOver(txList.itemCount(), [&](unsigned i){ return rlp(i); }, [&](unsigned i){ return txList[i].data().toBytes(); });
-
-	clog(BlockInfoDiagnosticsChannel) << "Expected trie root:" << toString(expectedRoot);
-	if (m_transactionsRoot != expectedRoot)
-	{
-		MemoryDB tm;
-		GenericTrieDB<MemoryDB> transactionsTrie(&tm);
-		transactionsTrie.init();
-
-		vector<bytesConstRef> txs;
-
-		for (unsigned i = 0; i < txList.itemCount(); ++i)
-		{
-			RLPStream k;
-			k << i;
-
-			transactionsTrie.insert(&k.out(), txList[i].data());
-
-			txs.push_back(txList[i].data());
-			cdebug << toHex(k.out()) << toHex(txList[i].data());
-		}
-		cdebug << "trieRootOver" << expectedRoot;
-		cdebug << "orderedTrieRoot" << orderedTrieRoot(txs);
-		cdebug << "TrieDB" << transactionsTrie.root();
-		cdebug << "Contents:";
-		for (auto const& t: txs)
-			cdebug << toHex(t);
-
-		BOOST_THROW_EXCEPTION(InvalidTransactionsRoot() << Hash256RequirementError(expectedRoot, m_transactionsRoot));
-	}
-	clog(BlockInfoDiagnosticsChannel) << "Expected uncle hash:" << toString(sha3(root[2].data()));
-	if (m_sha3Uncles != sha3(root[2].data()))
-		BOOST_THROW_EXCEPTION(InvalidUnclesHash() << Hash256RequirementError(sha3(root[2].data()), m_sha3Uncles));
-}
-
-void BlockInfo::populateFromParent(BlockInfo const& _parent)
-{
-	m_stateRoot = _parent.stateRoot();
-	m_number = _parent.m_number + 1;
-	m_parentHash = _parent.m_hash;
-	m_gasLimit = _parent.childGasLimit();
-	m_gasUsed = 0;
-	m_difficulty = calculateDifficulty(_parent);
-}
-
-u256 BlockInfo::childGasLimit(u256 const& _gasFloorTarget) const
-{
-	u256 gasFloorTarget =
-		_gasFloorTarget == UndefinedU256 ? c_gasFloorTarget : _gasFloorTarget;
-
-	if (m_gasLimit < gasFloorTarget)
-		return min<u256>(gasFloorTarget, m_gasLimit + m_gasLimit / c_gasLimitBoundDivisor - 1);
-	else
-		return max<u256>(gasFloorTarget, m_gasLimit - m_gasLimit / c_gasLimitBoundDivisor + 1 + (m_gasUsed * 6 / 5) / c_gasLimitBoundDivisor);
-}
-
-u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
-{
-	const unsigned c_expDiffPeriod = 100000;
-
-	if (!m_number)
-		throw GenesisBlockCannotBeCalculated();
-	u256 o = max<u256>(c_minimumDifficulty, m_timestamp >= _parent.m_timestamp + c_durationLimit ? _parent.m_difficulty - (_parent.m_difficulty / c_difficultyBoundDivisor) : (_parent.m_difficulty + (_parent.m_difficulty / c_difficultyBoundDivisor)));
-	unsigned periodCount = unsigned(_parent.number() + 1) / c_expDiffPeriod;
-	if (periodCount > 1)
-		o = max<u256>(c_minimumDifficulty, o + (u256(1) << (periodCount - 2)));	// latter will eventually become huge, so ensure it's a bigint.
-	return o;
-}
-
-void BlockInfo::verifyParent(BlockInfo const& _parent) const
-{
-	// Check timestamp is after previous timestamp.
-	if (m_parentHash)
-	{
-		if (m_timestamp <= _parent.m_timestamp)
-			BOOST_THROW_EXCEPTION(InvalidTimestamp());
-
-		if (m_number != _parent.m_number + 1)
-			BOOST_THROW_EXCEPTION(InvalidNumber());
-	}
 }

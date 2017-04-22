@@ -25,7 +25,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <libdevcore/RLP.h>
-#include "picosha2.h"
 using namespace std;
 using namespace dev;
 
