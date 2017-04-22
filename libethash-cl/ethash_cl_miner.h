@@ -1,15 +1,24 @@
 #pragma once
 
-#define __CL_ENABLE_EXCEPTIONS
-#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+#define CL_HPP_TARGET_OPENCL_VERSION 120
+#define CL_HPP_MINIMUM_OPENCL_VERSION 110
+#define CL_HPP_ENABLE_EXCEPTIONS 1
 
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wignored-qualifiers"
+#pragma GCC diagnostic ignored "-Wignored-attributes"
+#endif
+
 #include "CL/cl.hpp"
+
+#if defined(__clang__)
 #pragma clang diagnostic pop
-#else
-#include "CL/cl.hpp"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
 #endif
 
 #include <time.h>

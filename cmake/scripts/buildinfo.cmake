@@ -9,12 +9,6 @@
 # example usage:
 # cmake -DETH_SOURCE_DIR=. -DETH_DST_DIR=build -DETH_BUILD_TYPE=Debug -DETH_BUILD_PLATFORM=mac -P scripts/buildinfo.cmake
 
-if (ETH_FATDB)
-	set(ETH_FATDB 1)
-else()
-	set(ETH_FATDB 0)
-endif()
-
 if (NOT ETH_BUILD_TYPE)
 	set(ETH_BUILD_TYPE "unknown")
 endif()

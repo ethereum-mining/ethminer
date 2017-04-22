@@ -149,160 +149,22 @@ using u256HashMap = std::unordered_map<u256, u256>;
 // String types.
 using strings = std::vector<std::string>;
 
-// Fixed-length string types.
-using string32 = std::array<char, 32>;
-static const string32 ZeroString32 = {{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }};
-
 // Null/Invalid values for convenience.
 static const u256 Invalid256 = ~(u256)0;
-static const bytes NullBytes;
-static const std::map<u256, u256> EmptyMapU256U256;
 
-/// Interprets @a _u as a two's complement signed number and returns the resulting s256.
-inline s256 u2s(u256 _u)
+/// Converts arbitrary value to string representation using std::stringstream.
+template <class _T>
+std::string toString(_T const& _t)
 {
-	static const bigint c_end = bigint(1) << 256;
-	if (boost::multiprecision::bit_test(_u, 255))
-		return s256(-(c_end - _u));
-	else
-		return s256(_u);
+	std::ostringstream o;
+	o << _t;
+	return o.str();
 }
-
-/// @returns the two's complement signed representation of the signed number _u.
-inline u256 s2u(s256 _u)
-{
-	static const bigint c_end = bigint(1) << 256;
-    if (_u >= 0)
-		return u256(_u);
-    else
-		return u256(c_end + _u);
-}
-
-/// @returns the smallest n >= 0 such that (1 << n) >= _x
-inline unsigned int toLog2(u256 _x)
-{
-	unsigned ret;
-	for (ret = 0; _x >>= 1; ++ret) {}
-	return ret;
-}
-
-/// @returns the absolute distance between _a and _b.
-template <class N>
-inline N diff(N const& _a, N const& _b)
-{
-	return std::max(_a, _b) - std::min(_a, _b);
-}
-
-/// RAII utility class whose destructor calls a given function.
-class ScopeGuard
-{
-public:
-	ScopeGuard(std::function<void(void)> _f): m_f(_f) {}
-	~ScopeGuard() { m_f(); }
-
-private:
-	std::function<void(void)> m_f;
-};
-
-/// Inheritable for classes that have invariants.
-class HasInvariants
-{
-public:
-	/// Reimplement to specify the invariants.
-	virtual bool invariants() const = 0;
-};
-
-/// RAII checker for invariant assertions.
-class InvariantChecker
-{
-public:
-	InvariantChecker(HasInvariants* _this, char const* _fn, char const* _file, int _line): m_this(_this), m_function(_fn), m_file(_file), m_line(_line) { checkInvariants(_this, _fn , _file, _line, true); }
-	~InvariantChecker() { checkInvariants(m_this, m_function, m_file, m_line, false); }
-	/// Check invariants are met, throw if not.
-	static void checkInvariants(HasInvariants const* _this, char const* _fn, char const* _file, int line, bool _pre);
-
-private:
-	HasInvariants const* m_this;
-	char const* m_function;
-	char const* m_file;
-	int m_line;
-};
-
-/// Scope guard for invariant check in a class derived from HasInvariants.
-#if ETH_DEBUG
-#define DEV_INVARIANT_CHECK ::dev::InvariantChecker __dev_invariantCheck(this, BOOST_CURRENT_FUNCTION, __FILE__, __LINE__)
-#define DEV_INVARIANT_CHECK_HERE ::dev::InvariantChecker::checkInvariants(this, BOOST_CURRENT_FUNCTION, __FILE__, __LINE__, true)
-#else
-#define DEV_INVARIANT_CHECK (void)0;
-#define DEV_INVARIANT_CHECK_HERE (void)0;
-#endif
-
-/// Simple scope-based timer helper.
-class TimerHelper
-{
-public:
-	TimerHelper(std::string const& _id, unsigned _msReportWhenGreater = 0): m_t(std::chrono::high_resolution_clock::now()), m_id(_id), m_ms(_msReportWhenGreater) {}
-	~TimerHelper();
-
-private:
-	std::chrono::high_resolution_clock::time_point m_t;
-	std::string m_id;
-	unsigned m_ms;
-};
-
-class Timer
-{
-public:
-	Timer() { restart(); }
-
-	std::chrono::high_resolution_clock::duration duration() const { return std::chrono::high_resolution_clock::now() - m_t; }
-	double elapsed() const { return std::chrono::duration_cast<std::chrono::microseconds>(duration()).count() / 1000000.0; }
-	void restart() { m_t = std::chrono::high_resolution_clock::now(); }
-
-private:
-	std::chrono::high_resolution_clock::time_point m_t;
-};
-
-#define DEV_TIMED(S) for (::std::pair<::dev::TimerHelper, bool> __eth_t(S, true); __eth_t.second; __eth_t.second = false)
-#define DEV_TIMED_SCOPE(S) ::dev::TimerHelper __eth_t(S)
-#if WIN32
-#define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__FUNCSIG__)
-#else
-#define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__PRETTY_FUNCTION__)
-#endif
-
-#define DEV_TIMED_ABOVE(S, MS) for (::std::pair<::dev::TimerHelper, bool> __eth_t(::dev::TimerHelper(S, MS), true); __eth_t.second; __eth_t.second = false)
-#define DEV_TIMED_SCOPE_ABOVE(S, MS) ::dev::TimerHelper __eth_t(S, MS)
-#if WIN32
-#define DEV_TIMED_FUNCTION_ABOVE(MS) DEV_TIMED_SCOPE_ABOVE(__FUNCSIG__, MS)
-#else
-#define DEV_TIMED_FUNCTION_ABOVE(MS) DEV_TIMED_SCOPE_ABOVE(__PRETTY_FUNCTION__, MS)
-#endif
-
-#ifdef _MSC_VER
-// TODO.
-#define DEV_UNUSED
-#else
-#define DEV_UNUSED __attribute__((unused))
-#endif
-
-enum class WithExisting: int
-{
-	Trust = 0,
-	Verify,
-	Rescue,
-	Kill
-};
 
 }
 
 namespace std
 {
-
-inline dev::WithExisting max(dev::WithExisting _a, dev::WithExisting _b)
-{
-	return static_cast<dev::WithExisting>(max(static_cast<int>(_a), static_cast<int>(_b)));
-}
 
 template <> struct hash<dev::u256>
 {
