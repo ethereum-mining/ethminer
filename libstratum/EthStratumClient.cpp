@@ -299,7 +299,7 @@ void EthStratumClient::processExtranonce(std::string& enonce)
 
 void EthStratumClient::processReponse(Json::Value& responseObject)
 {
-	Json::Value error = responseObject.get("error", new Json::Value);
+	Json::Value error = responseObject.get("error", {});
 	if (error.isArray())
 	{
 		string msg = error.get(1, "Unknown error").asString();
