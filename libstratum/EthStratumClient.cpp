@@ -72,18 +72,16 @@ void EthStratumClient::setFailover(string const & host, string const & port, str
 
 void EthStratumClient::connect()
 {
-	
 	tcp::resolver r(m_io_service);
 	tcp::resolver::query q(p_active->host, p_active->port);
 	
 	r.async_resolve(q, boost::bind(&EthStratumClient::resolve_handler,
-																	this, boost::asio::placeholders::error,
-																	boost::asio::placeholders::iterator));
-	
+					this, boost::asio::placeholders::error,
+					boost::asio::placeholders::iterator));
+
 	cnote << "Connecting to stratum server " << p_active->host + ":" + p_active->port;
 
-	boost::thread t(boost::bind(&boost::asio::io_service::run, &m_io_service));
-	
+	std::thread t(boost::bind(&boost::asio::io_service::run, &m_io_service));
 }
 
 #define BOOST_ASIO_ENABLE_CANCELIO 
