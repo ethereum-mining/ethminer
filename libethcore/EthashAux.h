@@ -142,7 +142,7 @@ private:
 	static EthashAux* s_this;
 	static char s_dagDirName[256];
 
-	SharedMutex x_lights;
+	Mutex x_lights;
 	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;
 
 	Mutex x_fulls;
@@ -154,8 +154,6 @@ private:
 	Mutex x_epochs;
 	std::unordered_map<h256, unsigned> m_epochs;
 	h256s m_seedHashes;
-
-	
 };
 
 }

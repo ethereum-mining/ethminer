@@ -66,7 +66,7 @@ public:
 	 */
 	void setWork(WorkPackage const& _wp)
 	{
-		WriteGuard l(x_minerWork);
+		Guard l(x_minerWork);
 		if (_wp.headerHash == m_work.headerHash && _wp.startNonce == m_work.startNonce)
 			return;
 		m_work = _wp;
@@ -82,7 +82,7 @@ public:
 	 */
 	bool start(std::string const& _sealer, bool mixed)
 	{
-		WriteGuard l(x_minerWork);
+		Guard l(x_minerWork);
 		if (!m_miners.empty() && m_lastSealer == _sealer)
 			return true;
 		if (!m_sealers.count(_sealer))
@@ -119,7 +119,7 @@ public:
 	 */
 	void stop()
 	{
-		WriteGuard l(x_minerWork);
+		Guard l(x_minerWork);
 		m_miners.clear();
 		m_work.reset();
 		m_isMining = false;
@@ -139,11 +139,11 @@ public:
 		WorkingProgress p;
 		p.ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_lastStart).count();
 		{
-			ReadGuard l2(x_minerWork);
+			Guard l2(x_minerWork);
 			for (auto const& i: m_miners)
 				p.hashes += i->hashCount();
 		}
-		ReadGuard l(x_progress);
+		Guard l(x_progress);
 		m_progress = p;
 		return m_progress;
 	}
@@ -153,7 +153,7 @@ public:
 	 */
 	void resetMiningProgress()
 	{
-		DEV_READ_GUARDED(x_minerWork)
+		DEV_GUARDED(x_minerWork)
 			for (auto const& i: m_miners)
 				i->resetHashCount();
 		resetTimer();
@@ -198,7 +198,7 @@ public:
 	 */
 	void onSolutionFound(SolutionFound const& _handler) { m_onSolutionFound = _handler; }
 
-	WorkPackage work() const { ReadGuard l(x_minerWork); return m_work; }
+	WorkPackage work() const { Guard l(x_minerWork); return m_work; }
 
 private:
 	/**
@@ -229,13 +229,13 @@ private:
 		m_lastStart = std::chrono::steady_clock::now();
 	}
 
-	mutable SharedMutex x_minerWork;
+	mutable Mutex x_minerWork;
 	std::vector<std::shared_ptr<Miner>> m_miners;
 	WorkPackage m_work;
 
 	std::atomic<bool> m_isMining = {false};
 
-	mutable SharedMutex x_progress;
+	mutable Mutex x_progress;
 	mutable WorkingProgress m_progress;
 	std::chrono::steady_clock::time_point m_lastStart;
 
@@ -244,7 +244,6 @@ private:
 	std::map<std::string, SealerDescriptor> m_sealers;
 	std::string m_lastSealer;
 
-	mutable SharedMutex x_solutionStats;
 	mutable SolutionStats m_solutionStats;
 
 }; 

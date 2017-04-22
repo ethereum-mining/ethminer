@@ -113,10 +113,9 @@ uint64_t EthashAux::number(h256 const& _seedHash)
 
 EthashAux::LightType EthashAux::light(h256 const& _seedHash)
 {
-	UpgradableGuard l(get()->x_lights);
+	Guard l(get()->x_lights);
 	if (get()->m_lights.count(_seedHash))
 		return get()->m_lights.at(_seedHash);
-	UpgradeGuard l2(l);
 	return (get()->m_lights[_seedHash] = make_shared<LightAllocation>(_seedHash));
 }
 
