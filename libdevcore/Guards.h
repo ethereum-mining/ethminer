@@ -36,37 +36,16 @@ namespace dev
 
 using Mutex = std::mutex;
 using RecursiveMutex = std::recursive_mutex;
-using SharedMutex = boost::shared_mutex;
 
 using Guard = std::lock_guard<std::mutex>;
 using UniqueGuard = std::unique_lock<std::mutex>;
 using RecursiveGuard = std::lock_guard<std::recursive_mutex>;
-using ReadGuard = boost::shared_lock<boost::shared_mutex>;
-using UpgradableGuard = boost::upgrade_lock<boost::shared_mutex>;
-using UpgradeGuard = boost::upgrade_to_unique_lock<boost::shared_mutex>;
-using WriteGuard = boost::unique_lock<boost::shared_mutex>;
 
 template <class GuardType, class MutexType>
 struct GenericGuardBool: GuardType
 {
 	GenericGuardBool(MutexType& _m): GuardType(_m) {}
 	bool b = true;
-};
-template <class MutexType>
-struct GenericUnguardBool
-{
-	GenericUnguardBool(MutexType& _m): m(_m) { m.unlock(); }
-	~GenericUnguardBool() { m.lock(); }
-	bool b = true;
-	MutexType& m;
-};
-template <class MutexType>
-struct GenericUnguardSharedBool
-{
-	GenericUnguardSharedBool(MutexType& _m): m(_m) { m.unlock_shared(); }
-	~GenericUnguardSharedBool() { m.lock_shared(); }
-	bool b = true;
-	MutexType& m;
 };
 
 /** @brief Simple lock that waits for release without making context switch */
@@ -143,7 +122,5 @@ private:
 
 #define DEV_GUARDED(MUTEX) \
 	for (GenericGuardBool<Guard, Mutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
-#define DEV_READ_GUARDED(MUTEX) \
-	for (GenericGuardBool<ReadGuard, SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
 
 }
