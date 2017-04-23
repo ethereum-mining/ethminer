@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.0)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
+if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+	# The default toolchain file configures compilers and build environment.
+	# This configuration is also used by hunter to build dependencies.
+	# CMake will cache this value, not need to explictly specify CACHE param.
+	set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/toolchain.cmake)
+endif()
+
 include(HunterGate)
 HunterGate(
 	URL "https://github.com/ruslo/hunter/archive/v0.18.44.tar.gz"
@@ -130,6 +137,9 @@ set(TARGET_PLATFORM CACHE STRING ${CMAKE_SYSTEM_NAME})
 if ("x${TARGET_PLATFORM}" STREQUAL "x")
 	set(TARGET_PLATFORM ${CMAKE_SYSTEM_NAME})
 endif ()
+
+hunter_add_package(Boost COMPONENTS system)
+find_package(Boost CONFIG REQUIRED COMPONENTS system)
 
 include(EthDependencies)
 
