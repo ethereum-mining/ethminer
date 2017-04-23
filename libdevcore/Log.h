@@ -131,7 +131,6 @@ public:
 	void append(std::string const& _t) { m_sstr << EthGreen "\"" + _t + "\"" EthReset; }
 	void append(bytes const& _t) { m_sstr << EthYellow "%" << toHex(_t) << EthReset; }
 	void append(bytesConstRef _t) { m_sstr << EthYellow "%" << toHex(_t) << EthReset; }
-	void append(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> const& _t);
 	template <class T> void append(std::vector<T> const& _t)
 	{
 		m_sstr << EthWhite "[" EthReset;
