@@ -800,7 +800,7 @@ private:
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
 		EthashProofOfWork::WorkPackage current, previous;
-		boost::mutex x_current;
+		std::mutex x_current;
 		EthashAux::FullType dag;
 		while (m_running)
 			try

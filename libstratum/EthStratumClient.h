@@ -65,11 +65,11 @@ private:
 
 	int m_waitState = MINER_WAIT_STATE_WORK;
 
-	boost::mutex x_pending;
+	std::mutex x_pending;
 	int m_pending;
 
 	GenericFarm<EthashProofOfWork> * p_farm;
-	boost::mutex x_current;
+	std::mutex x_current;
 	EthashProofOfWork::WorkPackage m_current;
 	EthashProofOfWork::WorkPackage m_previous;
 
