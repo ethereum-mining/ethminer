@@ -67,7 +67,6 @@ private:
 
 	boost::mutex x_pending;
 	int m_pending;
-	string m_response;
 
 	GenericFarm<EthashProofOfWork> * p_farm;
 	boost::mutex x_current;
@@ -78,8 +77,8 @@ private:
 
 	string m_job;
 	string m_previousJob;
-	EthashAux::FullType m_dag;
 
+	std::thread m_serviceThread;  ///< The IO service thread.
 	boost::asio::io_service m_io_service;
 	tcp::socket m_socket;
 
