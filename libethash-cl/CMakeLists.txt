@@ -1,5 +1,3 @@
-set(EXECUTABLE ethash-cl)
-
 # A custom command and target to turn the OpenCL kernel into a byte array header
 # The normal build depends on it properly and if the kernel file is changed, then
 # a rebuild of libethash-cl should be triggered
@@ -19,11 +17,16 @@ aux_source_directory(. SRC_LIST)
 file(GLOB OUR_HEADERS "*.h")
 set(HEADERS ${OUR_HEADERS} ${CMAKE_CURRENT_BINARY_DIR}/ethash_cl_miner_kernel.h)
 
+if(NOT APPLE)
+# TODO: Take cl.hpp also from hunter.
+	hunter_add_package(OpenCL)
+endif()
+find_package(OpenCL REQUIRED)
+
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(..)
-add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
-target_include_directories(${EXECUTABLE} PUBLIC SYSTEM ${OpenCL_INCLUDE_DIR})
-target_link_libraries(${EXECUTABLE} ${OpenCL_LIBRARIES} ethash)
 
-install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
-install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
+add_library(ethash-cl ${SRC_LIST} ${HEADERS})
+target_link_libraries(ethash-cl PUBLIC ethash)
+target_link_libraries(ethash-cl PRIVATE ${OpenCL_LIBRARY})
+target_include_directories(ethash-cl PRIVATE SYSTEM ${OpenCL_INCLUDE_DIR})
