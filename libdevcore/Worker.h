@@ -24,6 +24,7 @@
 #include <string>
 #include <thread>
 #include <atomic>
+#include <cassert>
 #include "Guards.h"
 
 namespace dev

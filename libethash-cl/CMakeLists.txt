@@ -20,7 +20,6 @@ file(GLOB OUR_HEADERS "*.h")
 set(HEADERS ${OUR_HEADERS} ${CMAKE_CURRENT_BINARY_DIR}/ethash_cl_miner_kernel.h)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${Boost_INCLUDE_DIRS})
 include_directories(..)
 add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 target_include_directories(${EXECUTABLE} PUBLIC SYSTEM ${OpenCL_INCLUDE_DIR})
