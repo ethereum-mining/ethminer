@@ -11,8 +11,10 @@ matrix:
           osx_image: xcode8.3
 cache:
     ccache: true
+    directories:
+        - $HOME/.hunter
 install:
-    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo add-apt-repository -y ppa:ethereum/ethereum; sudo apt-get update; sudo apt-get install -y --no-install-recommends --allow-unauthenticated libjson-rpc-cpp-dev libjsoncpp-dev libcurl4-openssl-dev libmicrohttpd-dev mesa-common-dev ocl-icd-libopencl1 opencl-headers; fi
+    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo add-apt-repository -y ppa:ethereum/ethereum; sudo apt-get update; sudo apt-get install -y --no-install-recommends --allow-unauthenticated libjson-rpc-cpp-dev libjsoncpp-dev; fi
     - if [ "$TRAVIS_OS_NAME" = "osx"   ]; then brew install libjson-rpc-cpp jsoncpp; fi
 script:
     - cmake -DETHASHCUDA=Off -DETHSTRATUM=On -DETHASHCL=On -H. -Bbuild

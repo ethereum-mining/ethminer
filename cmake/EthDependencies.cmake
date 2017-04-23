@@ -39,12 +39,6 @@ find_package (CURL)
 message(" - curl header: ${CURL_INCLUDE_DIRS}")
 message(" - curl lib   : ${CURL_LIBRARIES}")
 
-find_package (OpenCL)
-if (OpenCL_FOUND)
-	message(" - opencl header: ${OpenCL_INCLUDE_DIRS}")
-	message(" - opencl lib   : ${OpenCL_LIBRARIES}")
-endif()
-
 find_package (CUDA)
 if (CUDA_FOUND)
 	message(" - CUDA header: ${CUDA_INCLUDE_DIRS}")
