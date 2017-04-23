@@ -120,13 +120,7 @@ public:
 
 	static h256 seedHash(unsigned _number);
 	static uint64_t number(h256 const& _seedHash);
-	static uint64_t cacheSize(BlockInfo const& _header);
-	static uint64_t dataSize(uint64_t _blockNumber);
-	static void setDAGDirName(const char * custom_dir_name);
 	static char * dagDirName();
-
-	static void setDAGEraseMode(DAGEraseMode mode);
-	static void eraseDAGs();
 
 	static LightType light(h256 const& _seedHash);
 
@@ -145,21 +139,14 @@ public:
 private:
 	EthashAux() {}
 
-	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result.
-
-	void killCache(h256 const& _s);
-
 	static EthashAux* s_this;
 	static char s_dagDirName[256];
-	static DAGEraseMode s_dagEraseMode;
 
-	SharedMutex x_lights;
+	Mutex x_lights;
 	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;
 
 	Mutex x_fulls;
-	std::condition_variable m_fullsChanged;
 	std::unordered_map<h256, std::weak_ptr<FullAllocation>> m_fulls;
-	FullType m_lastUsedFull;
 	std::unique_ptr<std::thread> m_fullGenerator;
 	uint64_t m_generatingFullNumber = NotGenerating;
 	unsigned m_fullProgress;
@@ -167,8 +154,6 @@ private:
 	Mutex x_epochs;
 	std::unordered_map<h256, unsigned> m_epochs;
 	h256s m_seedHashes;
-
-	
 };
 
 }
