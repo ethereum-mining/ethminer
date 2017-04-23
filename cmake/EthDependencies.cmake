@@ -93,7 +93,7 @@ elseif (UNIX)
 
 endif()
 
-find_package(Boost 1.54.0 REQUIRED COMPONENTS random)
+find_package(Boost 1.54.0 REQUIRED COMPONENTS system)
 
 message(" - boost header: ${Boost_INCLUDE_DIRS}")
 message(" - boost lib   : ${Boost_LIBRARIES}")
