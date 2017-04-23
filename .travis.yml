@@ -14,7 +14,7 @@ cache:
     directories:
         - $HOME/.hunter
 install:
-    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo add-apt-repository -y ppa:ethereum/ethereum; sudo apt-get update; sudo apt-get install -y --no-install-recommends --allow-unauthenticated libjson-rpc-cpp-dev libjsoncpp-dev libmicrohttpd-dev; fi
+    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo add-apt-repository -y ppa:ethereum/ethereum; sudo apt-get update; sudo apt-get install -y --no-install-recommends --allow-unauthenticated libjson-rpc-cpp-dev libjsoncpp-dev; fi
     - if [ "$TRAVIS_OS_NAME" = "osx"   ]; then brew install libjson-rpc-cpp jsoncpp; fi
 script:
     - cmake -DETHASHCUDA=Off -DETHSTRATUM=On -DETHASHCL=On -H. -Bbuild

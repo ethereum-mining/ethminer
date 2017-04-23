@@ -47,7 +47,6 @@
 #if ETH_ETHASHCUDA
 #include <libethash-cuda/ethash_cuda_miner.h>
 #endif
-#include <jsonrpccpp/server/connectors/httpserver.h>
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include "BuildInfo.h"
 #include "FarmClient.h"
