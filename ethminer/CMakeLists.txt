@@ -1,5 +1,4 @@
 cmake_policy(SET CMP0015 NEW)
-set(CMAKE_AUTOMOC OFF)
 
 aux_source_directory(. SRC_LIST)
 
@@ -22,8 +21,6 @@ add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 add_dependencies(${EXECUTABLE} BuildInfo.h)
 
-target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARIES})
-
 if (JSONRPC)
 	target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_CLIENT_LIBRARIES})
 	target_link_libraries(${EXECUTABLE} ${CURL_LIBRARIES})
@@ -40,13 +37,5 @@ if (ETHSTRATUM)
 target_link_libraries(${EXECUTABLE} ethstratum)
 endif()
 
-if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
-	eth_copy_dlls("${EXECUTABLE}" OpenCL_DLLS)
-endif()
-
-
-if (APPLE)
-	install(TARGETS ${EXECUTABLE} DESTINATION bin)
-else()
-	eth_install_executable(${EXECUTABLE})
-endif()
+include(GNUInstallDirs)
+install(TARGETS ethminer DESTINATION ${CMAKE_INSTALL_BINDIR})
