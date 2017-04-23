@@ -54,7 +54,8 @@ EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType
 
 EthStratumClient::~EthStratumClient()
 {
-
+	m_io_service.stop();
+	m_serviceThread.join();
 }
 
 void EthStratumClient::setFailover(string const & host, string const & port)
@@ -81,7 +82,7 @@ void EthStratumClient::connect()
 
 	cnote << "Connecting to stratum server " << p_active->host + ":" + p_active->port;
 
-	std::thread t(boost::bind(&boost::asio::io_service::run, &m_io_service));
+	m_serviceThread = std::thread{boost::bind(&boost::asio::io_service::run, &m_io_service)};
 }
 
 #define BOOST_ASIO_ENABLE_CANCELIO 
@@ -145,8 +146,8 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	if (!ec)
 	{
 		async_connect(m_socket, i, boost::bind(&EthStratumClient::connect_handler,
-																					this, boost::asio::placeholders::error,
-																					boost::asio::placeholders::iterator));
+						this, boost::asio::placeholders::error,
+						boost::asio::placeholders::iterator));
 	}
 	else
 	{
@@ -265,7 +266,6 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 			if (reader.parse(response.c_str(), responseObject))
 			{
 				processReponse(responseObject);
-				m_response = response;
 			}
 			else 
 			{
