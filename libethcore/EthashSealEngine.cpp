@@ -22,7 +22,6 @@
  */
 
 #include "EthashSealEngine.h"
-#include "EthashCPUMiner.h"
 #include "EthashGPUMiner.h"
 #include "EthashCUDAMiner.h"
 using namespace std;
@@ -32,7 +31,6 @@ using namespace eth;
 EthashSealEngine::EthashSealEngine()
 {
 	map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
-	sealers["cpu"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashCPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCPUMiner(ci); }};
 #if ETH_ETHASHCL
 	sealers["opencl"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
 #endif
