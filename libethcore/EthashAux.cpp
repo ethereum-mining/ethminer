@@ -22,7 +22,6 @@
 #include "EthashAux.h"
 
 #include <boost/detail/endian.hpp>
-#include <boost/filesystem.hpp>
 #include <chrono>
 #include <array>
 #include <thread>
@@ -38,7 +37,6 @@ using namespace std;
 using namespace chrono;
 using namespace dev;
 using namespace eth;
-using namespace boost::filesystem;
 
 const char* DAGChannel::name() { return EthGreen "DAG"; }
 
