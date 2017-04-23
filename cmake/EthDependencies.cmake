@@ -19,23 +19,6 @@ include_directories(${ETH_GENERATED_DIR})
 # custom cmake scripts
 set(ETH_SCRIPTS_DIR ${CMAKE_CURRENT_LIST_DIR}/scripts)
 
-# Qt5 requires opengl
-# TODO use proper version of windows SDK (32 vs 64)
-# TODO make it possible to use older versions of windows SDK (7.0+ should also work)
-# TODO it windows SDK is NOT FOUND, throw ERROR
-# from https://github.com/rpavlik/cmake-modules/blob/master/FindWindowsSDK.cmake
-if (WIN32)
-	find_package(WINDOWSSDK REQUIRED)
-	message(" - WindowsSDK dirs: ${WINDOWSSDK_DIRS}")
-	set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${WINDOWSSDK_DIRS})
-endif()
-
-# homebrew installs qts in opt
-if (APPLE)
-	set (CMAKE_PREFIX_PATH "/usr/local/opt/qt5" ${CMAKE_PREFIX_PATH})
-	set (CMAKE_PREFIX_PATH "/usr/local/opt/v8-315" ${CMAKE_PREFIX_PATH})
-endif()
-
 find_program(CTEST_COMMAND ctest)
 message(STATUS "ctest path: ${CTEST_COMMAND}")
 
@@ -71,32 +54,6 @@ endif()
 # find location of jsonrpcstub
 find_program(ETH_JSON_RPC_STUB jsonrpcstub)
 message(" - jsonrpcstub location    : ${ETH_JSON_RPC_STUB}")
-
-# use multithreaded boost libraries, with -mt suffix
-set(Boost_USE_MULTITHREADED ON)
-
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-
-# TODO hanlde other msvc versions or it will fail find them
-	set(Boost_COMPILER -vc120)
-# use static boost libraries *.lib
-	set(Boost_USE_STATIC_LIBS ON)
-
-elseif (APPLE)
-
-# use static boost libraries *.a
-	set(Boost_USE_STATIC_LIBS ON)
-
-elseif (UNIX)
-# use dynamic boost libraries .dll
-	set(Boost_USE_STATIC_LIBS OFF)
-
-endif()
-
-find_package(Boost 1.54.0 REQUIRED COMPONENTS thread date_time system regex chrono filesystem unit_test_framework program_options random)
-
-message(" - boost header: ${Boost_INCLUDE_DIRS}")
-message(" - boost lib   : ${Boost_LIBRARIES}")
 
 if (APPLE)
 	link_directories(/usr/local/lib)
