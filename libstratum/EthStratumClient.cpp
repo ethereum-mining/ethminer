@@ -54,7 +54,8 @@ EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType
 
 EthStratumClient::~EthStratumClient()
 {
-
+	m_io_service.stop();
+	m_serviceThread.join();
 }
 
 void EthStratumClient::setFailover(string const & host, string const & port)
@@ -72,18 +73,16 @@ void EthStratumClient::setFailover(string const & host, string const & port, str
 
 void EthStratumClient::connect()
 {
-	
 	tcp::resolver r(m_io_service);
 	tcp::resolver::query q(p_active->host, p_active->port);
 	
 	r.async_resolve(q, boost::bind(&EthStratumClient::resolve_handler,
-																	this, boost::asio::placeholders::error,
-																	boost::asio::placeholders::iterator));
-	
+					this, boost::asio::placeholders::error,
+					boost::asio::placeholders::iterator));
+
 	cnote << "Connecting to stratum server " << p_active->host + ":" + p_active->port;
 
-	boost::thread t(boost::bind(&boost::asio::io_service::run, &m_io_service));
-	
+	m_serviceThread = std::thread{boost::bind(&boost::asio::io_service::run, &m_io_service)};
 }
 
 #define BOOST_ASIO_ENABLE_CANCELIO 
@@ -147,8 +146,8 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	if (!ec)
 	{
 		async_connect(m_socket, i, boost::bind(&EthStratumClient::connect_handler,
-																					this, boost::asio::placeholders::error,
-																					boost::asio::placeholders::iterator));
+						this, boost::asio::placeholders::error,
+						boost::asio::placeholders::iterator));
 	}
 	else
 	{
@@ -267,7 +266,6 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 			if (reader.parse(response.c_str(), responseObject))
 			{
 				processReponse(responseObject);
-				m_response = response;
 			}
 			else 
 			{
@@ -301,7 +299,7 @@ void EthStratumClient::processExtranonce(std::string& enonce)
 
 void EthStratumClient::processReponse(Json::Value& responseObject)
 {
-	Json::Value error = responseObject.get("error", new Json::Value);
+	Json::Value error = responseObject.get("error", {});
 	if (error.isArray())
 	{
 		string msg = error.get(1, "Unknown error").asString();

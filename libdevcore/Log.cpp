@@ -82,7 +82,7 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
 {
 	Guard l(x_logOverride);
 	auto it = s_logOverride.find(_info);
-	if ((it != s_logOverride.end() && it->second == true) || (it == s_logOverride.end() && (int)_v <= g_logVerbosity))
+	if ((it != s_logOverride.end() && it->second) || (it == s_logOverride.end() && (int)_v <= g_logVerbosity))
 	{
 		time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 		char buf[24];
@@ -104,9 +104,13 @@ void LogOutputStreamBase::append(boost::asio::ip::basic_endpoint<boost::asio::ip
 /// Associate a name with each thread for nice logging.
 struct ThreadLocalLogName
 {
-	ThreadLocalLogName(std::string const& _name) { m_name.reset(new string(_name)); }
-	boost::thread_specific_ptr<std::string> m_name;
+	ThreadLocalLogName(char const* _name) { name = _name; }
+	thread_local static char const* name;
 };
+
+thread_local char const* ThreadLocalLogName::name;
+
+thread_local static std::vector<std::string> logContexts;
 
 /// Associate a name with each thread for nice logging.
 struct ThreadLocalLogContext
@@ -115,26 +119,21 @@ struct ThreadLocalLogContext
 
 	void push(std::string const& _name)
 	{
-		if (!m_contexts.get())
-			m_contexts.reset(new vector<string>);
-		m_contexts->push_back(_name);
+		logContexts.push_back(_name);
 	}
 
 	void pop()
 	{
-		m_contexts->pop_back();
+		logContexts.pop_back();
 	}
 
 	string join(string const& _prior)
 	{
 		string ret;
-		if (m_contexts.get())
-			for (auto const& i: *m_contexts)
-				ret += _prior + i;
+		for (auto const& i: logContexts)
+			ret += _prior + i;
 		return ret;
 	}
-
-	boost::thread_specific_ptr<std::vector<std::string>> m_contexts;
 };
 
 ThreadLocalLogContext g_logThreadContext;
