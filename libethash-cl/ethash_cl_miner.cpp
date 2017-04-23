@@ -31,7 +31,6 @@
 #include <queue>
 #include <vector>
 #include <random>
-#include <random>
 #include <atomic>
 #include <sstream>
 #include <libethash/util.h>
