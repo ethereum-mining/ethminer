@@ -1,8 +1,17 @@
 cmake_minimum_required(VERSION 3.0)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+
+include(HunterGate)
+HunterGate(
+	URL "https://github.com/ruslo/hunter/archive/v0.18.44.tar.gz"
+	SHA1 "a78f0b377b8e53c038f12fc18b0c02564c4534c8"
+)
+
 
 set(GENOIL_VERSION "1.1.7")
 cmake_policy(SET CMP0042 OLD) 	# fix MACOSX_RPATH
 cmake_policy(SET CMP0048 NEW) 	# allow VERSION argument in project()
+
 project(ethminer VERSION 0.9.41)
 
 # link_directories interprate relative paths with respect to CMAKE_CURRENT_SOURCE_DIR
@@ -14,8 +23,6 @@ cmake_policy(SET CMP0020 NEW)
 
 # 3.1 and above
 cmake_policy(SET CMP0054 NEW)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 ######################################################################################################
 
