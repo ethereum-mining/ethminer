@@ -188,8 +188,6 @@ template <class BlockInfoSub>
 class BlockHeaderPolished: public BlockInfoSub
 {
 public:
-	static const unsigned Fields = BlockInfoSub::BasicFields + BlockInfoSub::SealFields;
-
 	BlockHeaderPolished() {}
 	BlockHeaderPolished(BlockInfo const& _bi): BlockInfoSub(_bi) {}
 	explicit BlockHeaderPolished(bytes const& _data, Strictness _s = IgnoreSeal, h256 const& _h = h256(), BlockDataType _bdt = BlockData) { populate(&_data, _s, _h, _bdt); }
