@@ -33,12 +33,6 @@ find_package (json_rpc_cpp 0.4 REQUIRED)
 message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
 message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
 
-# curl is only requried for tests
-# TODO specify min curl version, on windows we are currently using 7.29
-find_package (CURL)
-message(" - curl header: ${CURL_INCLUDE_DIRS}")
-message(" - curl lib   : ${CURL_LIBRARIES}")
-
 find_package (CUDA)
 if (CUDA_FOUND)
 	message(" - CUDA header: ${CUDA_INCLUDE_DIRS}")
