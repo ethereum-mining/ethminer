@@ -22,13 +22,6 @@ set(ETH_SCRIPTS_DIR ${CMAKE_CURRENT_LIST_DIR}/scripts)
 find_program(CTEST_COMMAND ctest)
 message(STATUS "ctest path: ${CTEST_COMMAND}")
 
-# Dependencies must have a version number, to ensure reproducible build. The version provided here is the one that is in the extdep repository. If you use system libraries, version numbers may be different.
-
-# TODO the Jsoncpp package does not yet check for correct version number
-find_package (Jsoncpp 0.60 REQUIRED)
-message(" - Jsoncpp header: ${JSONCPP_INCLUDE_DIRS}")
-message(" - Jsoncpp lib   : ${JSONCPP_LIBRARIES}")
-
 find_package (json_rpc_cpp 0.4 REQUIRED)
 message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
 message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
@@ -42,8 +35,3 @@ endif()
 # find location of jsonrpcstub
 find_program(ETH_JSON_RPC_STUB jsonrpcstub)
 message(" - jsonrpcstub location    : ${ETH_JSON_RPC_STUB}")
-
-if (APPLE)
-	link_directories(/usr/local/lib)
-	include_directories(/usr/local/include)
-endif()
