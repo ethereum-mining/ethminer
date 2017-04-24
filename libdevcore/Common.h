@@ -62,8 +62,6 @@ namespace dev
 
 extern char const* Version;
 
-static const std::string EmptyString;
-
 // Binary data types.
 using bytes = std::vector<byte>;
 using bytesRef = vector_ref<byte>;
@@ -124,18 +122,6 @@ using u160s = std::vector<u160>;
 using u256Set = std::set<u256>;
 using u160Set = std::set<u160>;
 
-extern const u256 UndefinedU256;
-
-// Map types.
-using StringMap = std::map<std::string, std::string>;
-using BytesMap = std::map<bytes, bytes>;
-using u256Map = std::map<u256, u256>;
-using HexMap = std::map<bytes, bytes>;
-
-// Hash types.
-using StringHashMap = std::unordered_map<std::string, std::string>;
-using u256HashMap = std::unordered_map<u256, u256>;
-
 // String types.
 using strings = std::vector<std::string>;
 
@@ -150,20 +136,5 @@ std::string toString(_T const& _t)
 	o << _t;
 	return o.str();
 }
-
-}
-
-namespace std
-{
-
-template <> struct hash<dev::u256>
-{
-	size_t operator()(dev::u256 const& _a) const
-	{
-		unsigned size = _a.backend().size();
-		auto limbs = _a.backend().limbs();
-		return boost::hash_range(limbs, limbs + size);
-	}
-};
 
 }
