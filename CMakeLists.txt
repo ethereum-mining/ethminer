@@ -170,10 +170,6 @@ set(CMAKE_THREAD_LIBS_INIT pthread)
 endif()
 
 include(EthCompilerSettings)
-message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
-
-# this must be an include, as a function it would mess up with variable scope!
-include(EthExecutableHelper)
 
 message("creating build info...")
 createBuildInfo()
