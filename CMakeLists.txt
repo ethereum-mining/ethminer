@@ -144,6 +144,8 @@ find_package(Boost CONFIG REQUIRED COMPONENTS system)
 hunter_add_package(jsoncpp)
 find_package(jsoncpp CONFIG REQUIRED)
 
+include(ProjectJsonRpcCpp)
+
 include(EthDependencies)
 
 configureProject()

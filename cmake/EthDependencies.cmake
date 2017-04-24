@@ -22,16 +22,8 @@ set(ETH_SCRIPTS_DIR ${CMAKE_CURRENT_LIST_DIR}/scripts)
 find_program(CTEST_COMMAND ctest)
 message(STATUS "ctest path: ${CTEST_COMMAND}")
 
-find_package (json_rpc_cpp 0.4 REQUIRED)
-message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
-message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
-
 find_package (CUDA)
 if (CUDA_FOUND)
 	message(" - CUDA header: ${CUDA_INCLUDE_DIRS}")
 	message(" - CUDA lib   : ${CUDA_LIBRARIES}")
 endif()
-
-# find location of jsonrpcstub
-find_program(ETH_JSON_RPC_STUB jsonrpcstub)
-message(" - jsonrpcstub location    : ${ETH_JSON_RPC_STUB}")
