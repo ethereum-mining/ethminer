@@ -141,6 +141,9 @@ endif ()
 hunter_add_package(Boost COMPONENTS system)
 find_package(Boost CONFIG REQUIRED COMPONENTS system)
 
+hunter_add_package(jsoncpp)
+find_package(jsoncpp CONFIG REQUIRED)
+
 include(EthDependencies)
 
 configureProject()
