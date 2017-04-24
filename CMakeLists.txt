@@ -141,6 +141,11 @@ endif ()
 hunter_add_package(Boost COMPONENTS system)
 find_package(Boost CONFIG REQUIRED COMPONENTS system)
 
+hunter_add_package(jsoncpp)
+find_package(jsoncpp CONFIG REQUIRED)
+
+include(ProjectJsonRpcCpp)
+
 include(EthDependencies)
 
 configureProject()
@@ -165,10 +170,6 @@ set(CMAKE_THREAD_LIBS_INIT pthread)
 endif()
 
 include(EthCompilerSettings)
-message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
-
-# this must be an include, as a function it would mess up with variable scope!
-include(EthExecutableHelper)
 
 message("creating build info...")
 createBuildInfo()
