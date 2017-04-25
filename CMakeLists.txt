@@ -8,6 +8,7 @@ if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
 	set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/toolchain.cmake)
 endif()
 
+set(HUNTER_CONFIGURATION_TYPES Release)
 include(HunterGate)
 HunterGate(
 	URL "https://github.com/ruslo/hunter/archive/v0.18.44.tar.gz"
