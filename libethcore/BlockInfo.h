@@ -111,8 +111,6 @@ public:
 	}
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
 
-	u256 calculateDifficulty(BlockInfo const& _parent) const;
-	u256 childGasLimit(u256 const& _gasFloorTarget = UndefinedU256) const;
 	h256 const& boundary() const;
 
 	h256 const& parentHash() const { return m_parentHash; }

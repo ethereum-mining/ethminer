@@ -35,7 +35,6 @@
 
 #include <libethcore/Exceptions.h>
 #include <libdevcore/SHA3.h>
-#include <libdevcore/CommonJS.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/EthashCUDAMiner.h>
 #include <libethcore/EthashGPUMiner.h>
@@ -68,6 +67,14 @@ struct MiningChannel: public LogChannel
 	static const bool debug = false;
 };
 #define minelog clog(MiningChannel)
+
+inline std::string toJS(unsigned long _n)
+{
+	std::string h = toHex(toCompactBigEndian(_n, 1));
+	// remove first 0, if it is necessary;
+	std::string res = h[0] != '0' ? h : h.substr(1);
+	return "0x" + res;
+}
 
 class MinerCLI
 {
@@ -250,7 +257,7 @@ public:
 				{
 					m_openclDevices[m_openclDeviceCount] = stol(argv[++i]);
 					++m_openclDeviceCount;
-                }
+				}
 				catch (...)
 				{
 					i--;
@@ -335,21 +342,6 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
-		/*
-		else if (arg == "--phone-home" && i + 1 < argc)
-		{
-			string m = argv[++i];
-			if (isTrue(m))
-				m_phoneHome = true;
-			else if (isFalse(m))
-				m_phoneHome = false;
-			else
-			{
-				cerr << "Bad " << arg << " option: " << m << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		}
-		*/
 		else if (arg == "--benchmark-warmup" && i + 1 < argc)
 			try {
 				m_benchmarkWarmup = stol(argv[++i]);
@@ -820,7 +812,7 @@ private:
 
 					try
 					{
-						prpc->eth_submitHashrate(toJS((u256)rate), "0x" + id.hex());
+						prpc->eth_submitHashrate(toJS(rate), "0x" + id.hex());
 					}
 					catch (jsonrpc::JsonRpcException const& _e)
 					{
