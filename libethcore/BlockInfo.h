@@ -79,7 +79,6 @@ DEV_SIMPLE_EXCEPTION(GenesisBlockCannotBeCalculated);
  */
 class BlockInfo
 {
-	friend class BlockChain;
 public:
 	static const unsigned BasicFields = 13;
 
@@ -87,8 +86,6 @@ public:
 	explicit BlockInfo(bytesConstRef _data, Strictness _s = CheckEverything, h256 const& _hashWith = h256(), BlockDataType _bdt = BlockData);
 	explicit BlockInfo(bytes const& _data, Strictness _s = CheckEverything, h256 const& _hashWith = h256(), BlockDataType _bdt = BlockData): BlockInfo(&_data, _s, _hashWith, _bdt) {}
 
-	static h256 headerHashFromBlock(bytes const& _block) { return headerHashFromBlock(&_block); }
-	static h256 headerHashFromBlock(bytesConstRef _block);
 	static RLP extractHeader(bytesConstRef _block);
 
 	explicit operator bool() const { return m_timestamp != Invalid256; }
@@ -116,16 +113,7 @@ public:
 	h256 const& parentHash() const { return m_parentHash; }
 	h256 const& sha3Uncles() const { return m_sha3Uncles; }
 
-	void setParentHash(h256 const& _v) { m_parentHash = _v; noteDirty(); }
-	void setSha3Uncles(h256 const& _v) { m_sha3Uncles = _v; noteDirty(); }
-	void setTimestamp(u256 const& _v) { m_timestamp = _v; noteDirty(); }
-	void setCoinbaseAddress(Address const& _v) { m_coinbaseAddress = _v; noteDirty(); }
-	void setRoots(h256 const& _t, h256 const& _r, h256 const& _u, h256 const& _s) { m_transactionsRoot = _t; m_receiptsRoot = _r; m_stateRoot = _s; m_sha3Uncles = _u; noteDirty(); }
-	void setGasUsed(u256 const& _v) { m_gasUsed = _v; noteDirty(); }
 	void setNumber(u256 const& _v) { m_number = _v; noteDirty(); }
-	void setGasLimit(u256 const& _v) { m_gasLimit = _v; noteDirty(); }
-	void setExtraData(bytes const& _v) { m_extraData = _v; noteDirty(); }
-	void setLogBloom(LogBloom const& _v) { m_logBloom = _v; noteDirty(); }
 	void setDifficulty(u256 const& _v) { m_difficulty = _v; noteDirty(); }
 
 	Address const& beneficiary() const { return m_coinbaseAddress; }
@@ -174,14 +162,6 @@ private:
 	mutable h256 m_boundary;					///< 2^256 / difficulty
 };
 
-inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
-{
-	_out << _bi.hashWithout() << " " << _bi.parentHash() << " " << _bi.sha3Uncles() << " " << _bi.beneficiary() << " " << _bi.stateRoot() << " " << _bi.transactionsRoot() << " " <<
-			_bi.receiptsRoot() << " " << _bi.logBloom() << " " << _bi.difficulty() << " " << _bi.number() << " " << _bi.gasLimit() << " " <<
-			_bi.gasUsed() << " " << _bi.timestamp();
-	return _out;
-}
-
 template <class BlockInfoSub>
 class BlockHeaderPolished: public BlockInfoSub
 {
@@ -190,10 +170,6 @@ public:
 	BlockHeaderPolished(BlockInfo const& _bi): BlockInfoSub(_bi) {}
 	explicit BlockHeaderPolished(bytes const& _data, Strictness _s = IgnoreSeal, h256 const& _h = h256(), BlockDataType _bdt = BlockData) { populate(&_data, _s, _h, _bdt); }
 	explicit BlockHeaderPolished(bytesConstRef _data, Strictness _s = IgnoreSeal, h256 const& _h = h256(), BlockDataType _bdt = BlockData) { populate(_data, _s, _h, _bdt); }
-
-	// deprecated - just use constructor instead.
-	static BlockHeaderPolished fromHeader(bytes const& _data, Strictness _s = IgnoreSeal, h256 const& _h = h256()) { return BlockHeaderPolished(_data, _s, _h, HeaderData); }
-	static BlockHeaderPolished fromHeader(bytesConstRef _data, Strictness _s = IgnoreSeal, h256 const& _h = h256()) { return BlockHeaderPolished(_data, _s, _h, HeaderData); }
 
 	// deprecated for public API - use constructor.
 	// TODO: make private.
@@ -242,13 +218,6 @@ public:
 		BlockInfo::streamRLPFields(_s);
 		if (_i == WithProof)
 			BlockInfoSub::streamRLPFields(_s);
-	}
-
-	bytes sealFieldsRLP() const
-	{
-		RLPStream s;
-		BlockInfoSub::streamRLPFields(s);
-		return s.out();
 	}
 };
 
