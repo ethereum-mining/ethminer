@@ -88,11 +88,6 @@ void BlockInfo::streamRLPFields(RLPStream& _s) const
 		<< m_difficulty << m_number << m_gasLimit << m_gasUsed << m_timestamp << m_extraData;
 }
 
-h256 BlockInfo::headerHashFromBlock(bytesConstRef _block)
-{
-	return sha3(RLP(_block)[0].data());
-}
-
 RLP BlockInfo::extractHeader(bytesConstRef _block)
 {
 	RLP root(_block);

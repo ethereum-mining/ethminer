@@ -58,7 +58,6 @@ public:
 	public:
 		h256 const& seedHash() const;
 		Nonce const& nonce() const { return m_nonce; }
-		h256 const& mixHash() const { return m_mixHash; }
 
 	protected:
 		BlockHeaderRaw() = default;
