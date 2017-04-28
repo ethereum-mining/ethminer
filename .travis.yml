@@ -13,6 +13,6 @@ cache:
     directories:
         - $HOME/.hunter
 script:
-    - cmake -DETHASHCUDA=Off -DETHSTRATUM=On -DETHASHCL=On -H. -Bbuild
+    - cmake -DHUNTER_STATUS_DEBUG=ON -DETHASHCUDA=Off -DETHSTRATUM=On -DETHASHCL=On -H. -Bbuild
     - cmake --build build
     - build/ethminer/ethminer --list-devices -G
