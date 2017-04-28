@@ -11,8 +11,8 @@ endif()
 set(HUNTER_CONFIGURATION_TYPES Release)
 include(HunterGate)
 HunterGate(
-	URL "https://github.com/ruslo/hunter/archive/v0.18.44.tar.gz"
-	SHA1 "a78f0b377b8e53c038f12fc18b0c02564c4534c8"
+	URL "https://github.com/ruslo/hunter/archive/v0.18.46.tar.gz"
+	SHA1 "e368cbf2a98cf8b8fa7a379fde74eca8ded425e3"
 )
 
 
