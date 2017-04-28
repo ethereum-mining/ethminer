@@ -231,9 +231,6 @@ private:
 
 	WorkPackage m_work;
 	mutable Mutex x_work;
-
-	
-	bool m_dagLoaded = false;
 };
 
 }
