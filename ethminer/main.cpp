@@ -32,6 +32,8 @@
 #include <fstream>
 #include <iostream>
 #include "MinerAux.h"
+#include "BuildInfo.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -57,7 +59,7 @@ void help()
 void version()
 {
 	cout << "ethminer version " << ETH_PROJECT_VERSION << endl;
-	cout << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE) << endl;
+	cout << "Build: " << ETH_BUILD_PLATFORM << "/" << ETH_BUILD_TYPE << endl;
 	exit(0);
 }
 
