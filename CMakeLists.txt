@@ -92,8 +92,6 @@ function(createBuildInfo)
 		set(_cmake_build_type "${CMAKE_CFG_INTDIR}")
 	endif()
 
-	message("createBuildInfo()")
-
 	# Generate header file containing useful build information
 	add_custom_target(BuildInfo.h ALL
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -103,9 +101,6 @@ function(createBuildInfo)
 			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
 		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
-	set(CMAKE_INCLUDE_CURRENT_DIR ON)
-	set(SRC_LIST BuildInfo.h)
 endfunction()
 
 
