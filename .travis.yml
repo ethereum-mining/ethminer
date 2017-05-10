@@ -6,13 +6,20 @@ matrix:
     include:
         - os: linux
           dist: trusty
+          sudo: required
+          env: CUDA=ON
         - os: osx
           osx_image: xcode8.3
+          env: CUDA=OFF
 cache:
-    ccache: true
     directories:
         - $HOME/.hunter
+before_install:
+    - if [[ "$CUDA" = ON ]]; then source scripts/install-cuda-trusty.sh; fi
 script:
-    - cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=Off -DETHSTRATUM=On -DETHASHCL=On -H. -Bbuild
+    - cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHSTRATUM=ON -DETHASHCL=ON -H. -Bbuild
     - cmake --build build
     - build/ethminer/ethminer --list-devices -G
+    - build/ethminer/ethminer --list-devices -U
+    - if [ "$TRAVIS_OS_NAME" = linux ]; then ldd build/ethminer/ethminer; fi
+    - if [ "$TRAVIS_OS_NAME" = osx ]; then otool -L build/ethminer/ethminer; fi
