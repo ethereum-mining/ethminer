@@ -16,11 +16,10 @@ HunterGate(
 )
 
 
-set(GENOIL_VERSION "1.1.7")
 cmake_policy(SET CMP0042 OLD) 	# fix MACOSX_RPATH
 cmake_policy(SET CMP0048 NEW) 	# allow VERSION argument in project()
 
-project(ethminer VERSION 0.9.41)
+project(ethminer VERSION 0.10.0)
 
 # link_directories interprate relative paths with respect to CMAKE_CURRENT_SOURCE_DIR
 cmake_policy(SET CMP0015 NEW)
@@ -65,8 +64,6 @@ function(configureProject)
 	endif()
 endfunction()
 
-set(CPPETHEREUM 1)
-
 function(createBuildInfo)
 	# Set build platform; to be written to BuildInfo.h
 	set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}")
@@ -93,20 +90,15 @@ function(createBuildInfo)
 		set(_cmake_build_type "${CMAKE_CFG_INTDIR}")
 	endif()
 
-	message("createBuildInfo()")
-
 	# Generate header file containing useful build information
 	add_custom_target(BuildInfo.h ALL
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		COMMAND ${CMAKE_COMMAND} -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
 			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}"
-			-DPROJECT_VERSION="${PROJECT_VERSION}" -DGENOIL_VERSION="${GENOIL_VERSION}"
+			-DPROJECT_VERSION="${PROJECT_VERSION}"
 			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
 		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
-	set(CMAKE_INCLUDE_CURRENT_DIR ON)
-	set(SRC_LIST BuildInfo.h)
 endfunction()
 
 
@@ -124,7 +116,6 @@ macro(eth_format_option O)
 endmacro()
 
 # Normalise build options
-eth_format_option(JSONRPC)
 eth_format_option(ETHASHCL)
 eth_format_option(ETHASHCUDA)
 eth_format_option(ETHSTRATUM)
@@ -155,10 +146,6 @@ message("-----------------------------------------------------------------------
 message("--                  CMake Version                            ${CMAKE_VERSION}")
 message("-- CMAKE_BUILD_TYPE Build type                               ${CMAKE_BUILD_TYPE}")
 message("-- TARGET_PLATFORM  Target platform                          ${TARGET_PLATFORM}")
-message("--------------------------------------------------------------- features")
-message("--                  Chromium support                         ${ETH_HAVE_WEBENGINE}")
-message("--                  HTTP Request support                     ${CURL_FOUND}")
-message("-- JSONRPC          JSON-RPC support                         ${JSONRPC}")
 message("------------------------------------------------------------- components")
 message("-- ETHASHCL         Build OpenCL components                  ${ETHASHCL}")
 message("-- ETHASHCUDA       Build CUDA components                    ${ETHASHCUDA}")
@@ -166,13 +153,8 @@ message("-- ETHSTRATUM       Build Stratum components                 ${ETHSTRAT
 message("------------------------------------------------------------------------")
 message("")
 
-if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "MSVC")
-set(CMAKE_THREAD_LIBS_INIT pthread)
-endif()
-
 include(EthCompilerSettings)
 
-message("creating build info...")
 createBuildInfo()
 
 add_subdirectory(libdevcore)

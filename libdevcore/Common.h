@@ -48,10 +48,6 @@
 // CryptoPP defines byte in the global namespace, so must we.
 using byte = uint8_t;
 
-// Quote a given token stream to turn it into a string.
-#define DEV_QUOTED_HELPER(s) #s
-#define DEV_QUOTED(s) DEV_QUOTED_HELPER(s)
-
 #define DEV_IGNORE_EXCEPTIONS(X) try { X; } catch (...) {}
 
 #define DEV_IF_NO_ELSE(X) if(!(X)){}else
@@ -59,8 +55,6 @@ using byte = uint8_t;
 
 namespace dev
 {
-
-extern char const* Version;
 
 // Binary data types.
 using bytes = std::vector<byte>;
