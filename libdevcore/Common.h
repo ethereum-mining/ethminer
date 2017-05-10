@@ -60,8 +60,6 @@ using byte = uint8_t;
 namespace dev
 {
 
-extern char const* Version;
-
 // Binary data types.
 using bytes = std::vector<byte>;
 using bytesRef = vector_ref<byte>;
