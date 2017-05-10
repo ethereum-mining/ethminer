@@ -16,11 +16,10 @@ HunterGate(
 )
 
 
-set(GENOIL_VERSION "1.1.7")
 cmake_policy(SET CMP0042 OLD) 	# fix MACOSX_RPATH
 cmake_policy(SET CMP0048 NEW) 	# allow VERSION argument in project()
 
-project(ethminer VERSION 0.9.41)
+project(ethminer VERSION 0.10.0)
 
 # link_directories interprate relative paths with respect to CMAKE_CURRENT_SOURCE_DIR
 cmake_policy(SET CMP0015 NEW)
@@ -100,7 +99,7 @@ function(createBuildInfo)
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		COMMAND ${CMAKE_COMMAND} -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
 			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}"
-			-DPROJECT_VERSION="${PROJECT_VERSION}" -DGENOIL_VERSION="${GENOIL_VERSION}"
+			-DPROJECT_VERSION="${PROJECT_VERSION}"
 			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
 		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
