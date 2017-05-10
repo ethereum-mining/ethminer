@@ -181,17 +181,24 @@ unsigned ethash_cuda_miner::s_scheduleFlag = 0;
 
 void ethash_cuda_miner::listDevices()
 {
-	string outString = "\nListing CUDA devices.\nFORMAT: [deviceID] deviceName\n";
-	for (unsigned int i = 0; i < getNumDevices(); i++)
+	try
 	{
-		cudaDeviceProp props;
-		CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
+		string outString = "\nListing CUDA devices.\nFORMAT: [deviceID] deviceName\n";
+		for (unsigned int i = 0; i < getNumDevices(); i++)
+		{
+			cudaDeviceProp props;
+			CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
 
-		outString += "[" + to_string(i) + "] " + string(props.name) + "\n";
-		outString += "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) + "\n";
-		outString += "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
+			outString += "[" + to_string(i) + "] " + string(props.name) + "\n";
+			outString += "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) + "\n";
+			outString += "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
+		}
+		ETHCUDA_LOG(outString);
 	}
-	ETHCUDA_LOG(outString);
+	catch(std::runtime_error const& err)
+	{
+		std::cerr << err.what();
+	}
 }
 
 void ethash_cuda_miner::finish()
@@ -281,7 +288,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 
 		return true;
 	}
-	catch (runtime_error)
+	catch (runtime_error const&)
 	{
 		return false;
 	}
