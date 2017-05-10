@@ -17,16 +17,17 @@ aux_source_directory(. SRC_LIST)
 file(GLOB OUR_HEADERS "*.h")
 set(HEADERS ${OUR_HEADERS} ${CMAKE_CURRENT_BINARY_DIR}/ethash_cl_miner_kernel.h)
 
-if(NOT APPLE)
-# TODO: Take cl.hpp also from hunter.
+if(APPLE)
+	# On macOS use system OpenCL library.
+	find_package(OpenCL REQUIRED)
+else()
 	hunter_add_package(OpenCL)
+	find_package(OpenCL CONFIG REQUIRED)
 endif()
-find_package(OpenCL REQUIRED)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(..)
 
 add_library(ethash-cl ${SRC_LIST} ${HEADERS})
 target_link_libraries(ethash-cl PUBLIC ethash)
-target_link_libraries(ethash-cl PRIVATE ${OpenCL_LIBRARY})
-target_include_directories(ethash-cl PRIVATE SYSTEM ${OpenCL_INCLUDE_DIR})
+target_link_libraries(ethash-cl PRIVATE OpenCL::OpenCL)
