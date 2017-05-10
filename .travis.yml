@@ -13,7 +13,7 @@ matrix:
           env: CUDA=OFF
 cache:
     directories:
-        - $HOME/.hunter
+        - $HOME/.hunter/_Base/Cache
 before_install:
     - if [[ "$CUDA" = ON ]]; then source scripts/install-cuda-trusty.sh; fi
 script:
