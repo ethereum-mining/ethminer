@@ -56,29 +56,24 @@ void help()
 
 void version()
 {
-	cout << "ethminer version " << dev::Version << endl;
+	cout << "ethminer version " << ETH_PROJECT_VERSION << endl;
 	cout << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
 
 int main(int argc, char** argv)
 {
-	cout << "Genoil's ethminer " << ETH_PROJECT_VERSION << endl;
-	cout << "=====================================================================" << endl;
-	cout << "Forked from github.com/ethereum/cpp-ethereum" << endl;
-	cout << "CUDA kernel ported from Tim Hughes' OpenCL kernel" << endl;
-	cout << "With contributions from nicehash, nerdralph, RoBiK and sp_ " << endl << endl;
-	cout << "Please consider a donation to:" << endl;
-	cout << "ETH: 0xeb9310b185455f863f526dab3d245809f6854b4d" << endl << endl;
-
 	MinerCLI m(MinerCLI::OperationMode::Farm);
 
 	for (int i = 1; i < argc; ++i)
 	{
-		string arg = argv[i];
+		// Mining options:
 		if (m.interpretOption(i, argc, argv))
-		{}
-		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
+			continue;
+
+		// Standard options:
+		string arg = argv[i];
+		if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
 			g_logVerbosity = atoi(argv[++i]);
 		else if (arg == "-h" || arg == "--help")
 			help();
@@ -95,4 +90,3 @@ int main(int argc, char** argv)
 
 	return 0;
 }
-
