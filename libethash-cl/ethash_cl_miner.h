@@ -10,7 +10,6 @@
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wignored-qualifiers"
-#pragma GCC diagnostic ignored "-Wignored-attributes"
 #endif
 
 #include "CL/cl.hpp"
