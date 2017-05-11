@@ -33,31 +33,22 @@ cmake_policy(SET CMP0054 NEW)
 
 ######################################################################################################
 
-# note: The value "default" which provides the defaults is just a fake value
-# which lets us keep the default values of all build options and is set at
-# the beginning of this file.
+# Default CMAKE_BUILD_TYPE.
+set(CMAKE_BUILD_TYPE CACHE STRING Release)
 
-#defaults:
-set(D_ETHASHCL ON)
-set(D_ETHASHCUDA OFF)
-set(D_JSONRPC ON)
-set(D_ETHSTRATUM OFF)
+option(ETHASHCL "Build with OpenCL mining" ON)
+option(ETHASHCUDA "Build with CUDA mining" OFF)
+option(ETHSTRATUM "Build with Stratum protocol support" ON)
 
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
-	set(CMAKE_BUILD_TYPE ${D_CMAKE_BUILD_TYPE})
-endif ()
 
 # propagates CMake configuration options to the compiler
 function(configureProject)
-
 	if (ETHASHCL)
 		add_definitions(-DETH_ETHASHCL)
 	endif()
-
 	if (ETHASHCUDA)
 		add_definitions(-DETH_ETHASHCUDA)
 	endif()
-
 	if (ETHSTRATUM)
 		add_definitions(-DETH_STRATUM)
 	endif()
@@ -99,27 +90,6 @@ function(createBuildInfo)
 endfunction()
 
 
-
-######################################################################################################
-
-macro(eth_format_option O)
-	if (${${O}})
-		set(${O} ON)
-	elseif ("${${O}}" STREQUAL "" AND ${D_${O}})
-		set(${O} ON)
-	else()
-		set(${O} OFF)
-	endif()
-endmacro()
-
-# Normalise build options
-eth_format_option(ETHASHCL)
-eth_format_option(ETHASHCUDA)
-eth_format_option(ETHSTRATUM)
-
-# Default CMAKE_BUILD_TYPE accordingly.
-set(CMAKE_BUILD_TYPE CACHE STRING Release)
-
 hunter_add_package(Boost COMPONENTS system)
 find_package(Boost CONFIG REQUIRED COMPONENTS system)
 
@@ -145,7 +115,6 @@ include(EthCompilerSettings)
 createBuildInfo()
 
 add_subdirectory(libdevcore)
-
 add_subdirectory(libethash)
 if (ETHASHCL)
 	add_subdirectory(libethash-cl)
@@ -156,6 +125,5 @@ endif ()
 if(ETHSTRATUM)
 	add_subdirectory(libstratum)
 endif()
-
 add_subdirectory(libethcore)
 add_subdirectory(ethminer)
