@@ -23,7 +23,7 @@ set(OUTFILE "${ETH_DST_DIR}/BuildInfo.h")
 
 configure_file("${INFILE}" "${TMPFILE}")
 
-
+include(CMakeParseArguments)
 macro(replace_if_different SOURCE DST)
 	set(extra_macro_args ${ARGN})
 	set(options CREATE)
