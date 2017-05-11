@@ -4,10 +4,6 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(BEFORE ..)
 
-if (ETHASHCUDA)
-	include_directories(${CUDA_INCLUDE_DIRS})
-endif ()
-
 set(EXECUTABLE ethminer)
 
 file(GLOB HEADERS "*.h")

@@ -33,32 +33,22 @@ cmake_policy(SET CMP0054 NEW)
 
 ######################################################################################################
 
-# note: The value "default" which provides the defaults is just a fake value
-# which lets us keep the default values of all build options and is set at
-# the beginning of this file.
+# Default CMAKE_BUILD_TYPE.
+set(CMAKE_BUILD_TYPE CACHE STRING Release)
 
-#defaults:
-set(D_CMAKE_BUILD_TYPE "Release")
-set(D_ETHASHCL ON)
-set(D_ETHASHCUDA OFF)
-set(D_JSONRPC ON)
-set(D_ETHSTRATUM OFF)
+option(ETHASHCL "Build with OpenCL mining" ON)
+option(ETHASHCUDA "Build with CUDA mining" OFF)
+option(ETHSTRATUM "Build with Stratum protocol support" ON)
 
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
-	set(CMAKE_BUILD_TYPE ${D_CMAKE_BUILD_TYPE})
-endif ()
 
 # propagates CMake configuration options to the compiler
 function(configureProject)
-
 	if (ETHASHCL)
 		add_definitions(-DETH_ETHASHCL)
 	endif()
-
 	if (ETHASHCUDA)
 		add_definitions(-DETH_ETHASHCUDA)
 	endif()
-
 	if (ETHSTRATUM)
 		add_definitions(-DETH_STRATUM)
 	endif()
@@ -66,7 +56,7 @@ endfunction()
 
 function(createBuildInfo)
 	# Set build platform; to be written to BuildInfo.h
-	set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}")
+	set(ETH_BUILD_PLATFORM "${CMAKE_SYSTEM_NAME}")
 	if (CMAKE_COMPILER_IS_MINGW)
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/mingw")
 	elseif (CMAKE_COMPILER_IS_MSYS)
@@ -81,8 +71,6 @@ function(createBuildInfo)
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/unknown")
 	endif ()
 
-	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/int")
-
 	#cmake build type may be not specified when using msvc
 	if (CMAKE_BUILD_TYPE)
 		set(_cmake_build_type ${CMAKE_BUILD_TYPE})
@@ -96,39 +84,11 @@ function(createBuildInfo)
 		COMMAND ${CMAKE_COMMAND} -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
 			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}"
 			-DPROJECT_VERSION="${PROJECT_VERSION}"
-			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
+			-P cmake/scripts/buildinfo.cmake
 		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
 endfunction()
 
-
-
-######################################################################################################
-
-macro(eth_format_option O)
-	if (${${O}})
-		set(${O} ON)
-	elseif ("${${O}}" STREQUAL "" AND ${D_${O}})
-		set(${O} ON)
-	else()
-		set(${O} OFF)
-	endif()
-endmacro()
-
-# Normalise build options
-eth_format_option(ETHASHCL)
-eth_format_option(ETHASHCUDA)
-eth_format_option(ETHSTRATUM)
-
-# Default CMAKE_BUILD_TYPE accordingly.
-set(CMAKE_BUILD_TYPE CACHE STRING ${D_CMAKE_BUILD_TYPE})
-
-# Default TARGET_PLATFORM to ${CMAKE_SYSTEM_NAME}
-# change this once we support cross compiling
-set(TARGET_PLATFORM CACHE STRING ${CMAKE_SYSTEM_NAME})
-if ("x${TARGET_PLATFORM}" STREQUAL "x")
-	set(TARGET_PLATFORM ${CMAKE_SYSTEM_NAME})
-endif ()
 
 hunter_add_package(Boost COMPONENTS system)
 find_package(Boost CONFIG REQUIRED COMPONENTS system)
@@ -138,14 +98,11 @@ find_package(jsoncpp CONFIG REQUIRED)
 
 include(ProjectJsonRpcCpp)
 
-include(EthDependencies)
-
 configureProject()
 
 message("------------------------------------------------------------------------")
-message("--                  CMake Version                            ${CMAKE_VERSION}")
-message("-- CMAKE_BUILD_TYPE Build type                               ${CMAKE_BUILD_TYPE}")
-message("-- TARGET_PLATFORM  Target platform                          ${TARGET_PLATFORM}")
+message("-- CMake ${CMAKE_VERSION}")
+message("-- Build ${CMAKE_BUILD_TYPE} / ${CMAKE_SYSTEM_NAME}")
 message("------------------------------------------------------------- components")
 message("-- ETHASHCL         Build OpenCL components                  ${ETHASHCL}")
 message("-- ETHASHCUDA       Build CUDA components                    ${ETHASHCUDA}")
@@ -158,7 +115,6 @@ include(EthCompilerSettings)
 createBuildInfo()
 
 add_subdirectory(libdevcore)
-
 add_subdirectory(libethash)
 if (ETHASHCL)
 	add_subdirectory(libethash-cl)
@@ -169,6 +125,5 @@ endif ()
 if(ETHSTRATUM)
 	add_subdirectory(libstratum)
 endif()
-
 add_subdirectory(libethcore)
 add_subdirectory(ethminer)
