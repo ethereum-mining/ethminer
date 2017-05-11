@@ -96,7 +96,7 @@ function(createBuildInfo)
 		COMMAND ${CMAKE_COMMAND} -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
 			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}"
 			-DPROJECT_VERSION="${PROJECT_VERSION}"
-			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
+			-P cmake/scripts/buildinfo.cmake
 		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
 endfunction()
@@ -138,14 +138,11 @@ find_package(jsoncpp CONFIG REQUIRED)
 
 include(ProjectJsonRpcCpp)
 
-include(EthDependencies)
-
 configureProject()
 
 message("------------------------------------------------------------------------")
-message("--                  CMake Version                            ${CMAKE_VERSION}")
-message("-- CMAKE_BUILD_TYPE Build type                               ${CMAKE_BUILD_TYPE}")
-message("-- TARGET_PLATFORM  Target platform                          ${TARGET_PLATFORM}")
+message("-- CMake ${CMAKE_VERSION}")
+message("-- Build ${CMAKE_BUILD_TYPE} / ${CMAKE_SYSTEM_NAME}")
 message("------------------------------------------------------------- components")
 message("-- ETHASHCL         Build OpenCL components                  ${ETHASHCL}")
 message("-- ETHASHCUDA       Build CUDA components                    ${ETHASHCUDA}")
