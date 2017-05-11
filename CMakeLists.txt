@@ -38,7 +38,6 @@ cmake_policy(SET CMP0054 NEW)
 # the beginning of this file.
 
 #defaults:
-set(D_CMAKE_BUILD_TYPE "Release")
 set(D_ETHASHCL ON)
 set(D_ETHASHCUDA OFF)
 set(D_JSONRPC ON)
@@ -66,7 +65,7 @@ endfunction()
 
 function(createBuildInfo)
 	# Set build platform; to be written to BuildInfo.h
-	set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}")
+	set(ETH_BUILD_PLATFORM "${CMAKE_SYSTEM_NAME}")
 	if (CMAKE_COMPILER_IS_MINGW)
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/mingw")
 	elseif (CMAKE_COMPILER_IS_MSYS)
@@ -80,8 +79,6 @@ function(createBuildInfo)
 	else ()
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/unknown")
 	endif ()
-
-	set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/int")
 
 	#cmake build type may be not specified when using msvc
 	if (CMAKE_BUILD_TYPE)
@@ -121,14 +118,7 @@ eth_format_option(ETHASHCUDA)
 eth_format_option(ETHSTRATUM)
 
 # Default CMAKE_BUILD_TYPE accordingly.
-set(CMAKE_BUILD_TYPE CACHE STRING ${D_CMAKE_BUILD_TYPE})
-
-# Default TARGET_PLATFORM to ${CMAKE_SYSTEM_NAME}
-# change this once we support cross compiling
-set(TARGET_PLATFORM CACHE STRING ${CMAKE_SYSTEM_NAME})
-if ("x${TARGET_PLATFORM}" STREQUAL "x")
-	set(TARGET_PLATFORM ${CMAKE_SYSTEM_NAME})
-endif ()
+set(CMAKE_BUILD_TYPE CACHE STRING Release)
 
 hunter_add_package(Boost COMPONENTS system)
 find_package(Boost CONFIG REQUIRED COMPONENTS system)
