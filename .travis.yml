@@ -17,7 +17,7 @@ cache:
 before_install:
     - if [[ "$CUDA" = ON ]]; then source scripts/install-cuda-trusty.sh; fi
 script:
-    - cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHSTRATUM=ON -DETHASHCL=ON -H. -Bbuild
+    - cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -H. -Bbuild
     - cmake --build build
     - build/ethminer/ethminer --list-devices -G
     - build/ethminer/ethminer --list-devices -U
