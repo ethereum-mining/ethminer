@@ -8,7 +8,7 @@ if (ETHASHCUDA)
 endif ()
 
 add_library(ethcore ${SOURCES} ${HEADERS})
-target_link_libraries(ethcore ethash devcore pthread)
+target_link_libraries(ethcore ethash devcore)
 
 if (ETHASHCL)
 	target_link_libraries(ethcore ethash-cl)
