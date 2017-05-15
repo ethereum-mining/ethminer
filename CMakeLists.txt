@@ -8,8 +8,8 @@ set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type on single-configuration ge
 set(HUNTER_CONFIGURATION_TYPES Release)
 include(HunterGate)
 HunterGate(
-	URL "https://github.com/ruslo/hunter/archive/v0.18.46.tar.gz"
-	SHA1 "e368cbf2a98cf8b8fa7a379fde74eca8ded425e3"
+	URL "https://github.com/ruslo/hunter/archive/v0.18.57.tar.gz"
+	SHA1 "435b09a4eec7fd58486bfb61efb1044ddb85c0f0"
 	LOCAL
 )
 
@@ -91,7 +91,8 @@ find_package(Boost CONFIG REQUIRED COMPONENTS system)
 hunter_add_package(jsoncpp)
 find_package(jsoncpp CONFIG REQUIRED)
 
-include(ProjectJsonRpcCpp)
+hunter_add_package(libjson-rpc-cpp)
+find_package(libjson-rpc-cpp CONFIG REQUIRED)
 
 configureProject()
 

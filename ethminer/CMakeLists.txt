@@ -14,7 +14,7 @@ add_dependencies(${EXECUTABLE} BuildInfo.h)
 
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} ethash)
-target_link_libraries(${EXECUTABLE} devcore JsonRpcCpp::Client)
+target_link_libraries(${EXECUTABLE} devcore libjson-rpc-cpp::client)
 
 if (ETHSTRATUM)
 target_link_libraries(${EXECUTABLE} ethstratum)
