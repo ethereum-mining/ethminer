@@ -1,12 +1,9 @@
 cmake_minimum_required(VERSION 3.0)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-	# The default toolchain file configures compilers and build environment.
-	# This configuration is also used by hunter to build dependencies.
-	# CMake will cache this value, not need to explictly specify CACHE param.
-	set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/toolchain.cmake)
-endif()
+set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/toolchain.cmake CACHE FILEPATH "CMake toolchain file")
+
+set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type on single-configuration generators")
 
 set(HUNTER_CONFIGURATION_TYPES Release)
 include(HunterGate)
@@ -32,9 +29,6 @@ cmake_policy(SET CMP0020 NEW)
 cmake_policy(SET CMP0054 NEW)
 
 ######################################################################################################
-
-# Default CMAKE_BUILD_TYPE.
-set(CMAKE_BUILD_TYPE CACHE STRING Release)
 
 option(ETHASHCL "Build with OpenCL mining" ON)
 option(ETHASHCUDA "Build with CUDA mining" OFF)
