@@ -6,7 +6,7 @@ os: Visual Studio 2015
 configuration:
   - Release
 cache:
-  - c:/.hunter/_Base/Cache
+  - C:/.hunter/_Base/Cache
 install:
 before_build:
   - cmake -G "Visual Studio 14 2015 Win64" -H. -Bbuild
@@ -15,5 +15,5 @@ build:
   parallel: true
   verbosity: minimal
 artifacts:
-  - path: build/Release/ethminer/ethminer.exe
+  - path: build/ethminer/Release/ethminer.exe
     name: ethminer
