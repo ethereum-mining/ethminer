@@ -22,5 +22,5 @@ script:
     - cmake --build build
     - build/ethminer/ethminer --list-devices -G
     - build/ethminer/ethminer --list-devices -U
-    - if [ "$TRAVIS_OS_NAME" = linux ]; then ldd build/ethminer/ethminer; fi
+    - if [ "$TRAVIS_OS_NAME" = linux ]; then ldd -v build/ethminer/ethminer; fi
     - if [ "$TRAVIS_OS_NAME" = osx ]; then otool -L build/ethminer/ethminer; fi
