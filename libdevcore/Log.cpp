@@ -162,18 +162,18 @@ string dev::getThreadName()
 	buffer[127] = 0;
 	return buffer;
 #else
-	return g_logThreadName.m_name.get() ? *g_logThreadName.m_name.get() : "<unknown>";
+	return ThreadLocalLogName::name ? ThreadLocalLogName::name : "<unknown>";
 #endif
 }
 
-void dev::setThreadName(string const& _n)
+void dev::setThreadName(char const* _n)
 {
 #if defined(__linux__)
 	pthread_setname_np(pthread_self(), _n.c_str());
 #elif defined(__APPLE__)
 	pthread_setname_np(_n.c_str());
 #else
-	g_logThreadName.m_name.reset(new std::string(_n));
+	ThreadLocalLogName::name = _n;
 #endif
 }
 
