@@ -1,11 +1,3 @@
-set(LIBRARY ethash)
-
-if (CPPETHEREUM)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
-endif ()
-
-set(CMAKE_BUILD_TYPE Release)
-
 if (NOT MSVC)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
 endif()
@@ -27,10 +19,5 @@ endif()
 
 list(APPEND FILES sha3.c sha3.h)
 
-add_library(${LIBRARY} ${FILES})
+add_library(ethash ${FILES})
 
-if (CRYPTOPP_FOUND)
-	TARGET_LINK_LIBRARIES(${LIBRARY} ${CRYPTOPP_LIBRARIES})
-endif()
-
-install( TARGETS ${LIBRARY} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
