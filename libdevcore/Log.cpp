@@ -169,9 +169,9 @@ string dev::getThreadName()
 void dev::setThreadName(char const* _n)
 {
 #if defined(__linux__)
-	pthread_setname_np(pthread_self(), _n.c_str());
+	pthread_setname_np(pthread_self(), _n);
 #elif defined(__APPLE__)
-	pthread_setname_np(_n.c_str());
+	pthread_setname_np(_n);
 #else
 	ThreadLocalLogName::name = _n;
 #endif
