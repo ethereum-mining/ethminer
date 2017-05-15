@@ -1,6 +1,7 @@
 language: cpp
 branches:
     only:
+        - /^v\d+\..+$/
         - master
 matrix:
     include:
@@ -24,3 +25,14 @@ script:
     - build/ethminer/ethminer --list-devices -U
     - if [ "$TRAVIS_OS_NAME" = linux ]; then ldd -v build/ethminer/ethminer; fi
     - if [ "$TRAVIS_OS_NAME" = osx ]; then otool -L build/ethminer/ethminer; fi
+    - cmake --build build --target package
+
+deploy:
+  provider: releases
+  api_key:
+    secure: "KfYTW8o20BUEZc57vF3H4+qXgpDsMeWk3N4IQtNKkdhFzEUzQaXi1WHRtvcR5kq+rvDiXwy0fELglDZpCSa4wfQvM5fKlb7WPQgkyRZyCpwnXlqvb6dL8KxJekQHZ5fFpzc/ow0dx/UqzJgv+cWDnBEK/gl+9j+vt9oq1nV1LSaxmtO3Qs7y+ffq5Tbzo06q6/CfeyOZi23g+AYtnoEBKwYqa807atWM6cJpudPmyhYHQFgaQZMfzk44z/MnJb7nxtkqcx57KWaY2EHlFj6yrHMcXWyM8j+P0ZBwUbOpHkWvBpgmDKR2J3u0WmiJDDo3E6K0g9QgbAnF5+yqvpBC5kaSHAaicJ3+7ghSgo18Eea0BkLbmb0t93h5NJfRhg0GDjgG3LkHao9ALM35x3OXG38JI6bOLd6jSV2Vkg8qLWAZjP1TUb/4VTIFnyITSv+xrY7ZP9D0XcRybZ5Z0YnaI/J6NFJct9ICAlQ6cHkS0MO6PICTSbZbKhbDZP0Lt6iDDUeje5+uvPAl0uuzuciSqEM77JWYN/edOXurgkfljEny3P96AW70gUUBTVEE+4tjng4DMLHCH/1Jg/WfMPfSVC3AUR0WbvjMki6veMt37fy8Jys8gFpwZbMG3cCSkYXDDFWF/Q+p2v6pX76CZZz+LxO2XcZ7x4bw+c7AGzRWV7c="
+  file_glob: true
+  file: build/ethminer-*.tar.gz
+  skip_cleanup: true
+  on:
+    tags: true
