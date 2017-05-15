@@ -28,11 +28,6 @@
 #pragma warning(disable:4244)
 #endif
 
-#ifdef _MSC_VER
-#define _ALLOW_KEYWORD_MACROS
-#define noexcept throw()
-#endif
-
 #include <map>
 #include <unordered_map>
 #include <vector>

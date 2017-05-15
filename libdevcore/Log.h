@@ -76,7 +76,7 @@ public:
 };
 
 /// Set the current thread's log name.
-void setThreadName(std::string const& _n);
+void setThreadName(char const* _n);
 
 /// Set the current thread's log name.
 std::string getThreadName();
