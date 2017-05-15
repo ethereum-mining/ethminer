@@ -25,9 +25,12 @@ uint2 chi(const uint2 a, const uint2 b, const uint2 c) {
 	return a ^ (~b) & c;
 }
 
-__device__ __forceinline__ void keccak_f1600_init(uint2* s)
+__device__ __forceinline__ void keccak_f1600_init(uint2* state)
 {
+	uint2 s[25];
 	uint2 t[5], u, v;
+
+	s[4] = state[4];
 
 	devectorize2(d_header.uint4s[0], s[0], s[1]);
 	devectorize2(d_header.uint4s[1], s[2], s[3]);
@@ -328,12 +331,22 @@ __device__ __forceinline__ void keccak_f1600_init(uint2* s)
 
 	/* iota: a[0,0] ^= round constant */
 	s[0] ^= vectorize(keccak_round_constants[23]);
+
+	for(uint32_t i=0; i<12; i++)
+	{
+	    state[i] = s[i];
+	}
 }
 
-__device__ __forceinline__ uint64_t keccak_f1600_final(uint2* s)
+__device__ __forceinline__ uint64_t keccak_f1600_final(uint2* state)
 {
+	uint2 s[25];
 	uint2 t[5], u, v;
 
+	for (uint32_t i = 0; i<12; i++)
+	{
+		s[i] = state[i];
+	}
 	for (uint32_t i = 12; i < 25; i++)
 	{
 		s[i] = make_uint2(0, 0);
