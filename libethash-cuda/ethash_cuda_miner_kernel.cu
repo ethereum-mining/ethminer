@@ -26,7 +26,6 @@
 #endif
 
 __global__ void 
-//__launch_bounds__(TPB, BPSM)
 ethash_search(
 	volatile uint32_t* g_output,
 	uint64_t start_nonce
@@ -56,7 +55,6 @@ void run_ethash_search(
 #define NODE_WORDS (64/4)
 
 __global__ void
-//__launch_bounds__(128, 7)
 ethash_calculate_dag_item(uint32_t start)
 {
 	uint32_t const node_index = start + blockIdx.x * blockDim.x + threadIdx.x;
