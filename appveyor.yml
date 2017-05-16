@@ -10,10 +10,9 @@ cache:
 install:
 before_build:
   - cmake -G "Visual Studio 14 2015 Win64" -H. -Bbuild
-build:
-  project: c:/projects/ethminer/build/ethminer.sln
-  parallel: true
-  verbosity: minimal
+build_script:
+  - cmake --build build --config Release
+after_build:
+  - cmake --build build --config Release --target package
 artifacts:
-  - path: build/ethminer/Release/ethminer.exe
-    name: ethminer
+  - path: build/ethminer-*.zip
