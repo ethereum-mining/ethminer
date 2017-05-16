@@ -16,13 +16,9 @@
 #if __CUDA_ARCH__ < SHUFFLE_MIN_VER
 #include "keccak_u64.cuh"
 #include "dagger_shared.cuh"
-#define TPB		128
-#define BPSM	4
 #else
 #include "keccak.cuh"
 #include "dagger_shuffled.cuh"
-#define TPB		896
-#define BPSM	1
 #endif
 
 __global__ void 
