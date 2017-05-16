@@ -14,6 +14,7 @@ matrix:
 cache:
     directories:
         - $HOME/.hunter/_Base/Cache
+        - $HOME/.local
 before_install:
     - if [[ "$CUDA" = ON ]]; then source scripts/install-cuda-trusty.sh; fi
     - if [ "$TRAVIS_OS_NAME" = linux ]; then scripts/install_cmake.sh; fi
