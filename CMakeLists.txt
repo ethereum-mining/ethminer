@@ -14,10 +14,8 @@ HunterGate(
 )
 
 
-cmake_policy(SET CMP0042 OLD) 	# fix MACOSX_RPATH
-cmake_policy(SET CMP0048 NEW) 	# allow VERSION argument in project()
-
-project(ethminer VERSION 0.10.0)
+project(ethminer)
+set(PROJECT_VERSION 0.10.0a2)
 
 # link_directories interprate relative paths with respect to CMAKE_CURRENT_SOURCE_DIR
 cmake_policy(SET CMP0015 NEW)
@@ -123,3 +121,14 @@ if(ETHSTRATUM)
 endif()
 add_subdirectory(libethcore)
 add_subdirectory(ethminer)
+
+
+if(WIN32)
+	set(CPACK_GENERATOR ZIP)
+else()
+	set(CPACK_GENERATOR TGZ)
+endif()
+set(CPACK_PACKAGE_FILE_NAME ${PROJECT_NAME}-${PROJECT_VERSION}-${CMAKE_SYSTEM_NAME})
+set(CPACK_PACKAGE_CHECKSUM SHA256)
+set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE)
+include(CPack)
