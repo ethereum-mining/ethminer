@@ -2,6 +2,7 @@ version: "{build}"
 branches:
   only:
     - master
+    - /v\d+\..+/
 os: Visual Studio 2015
 configuration:
   - Release
@@ -10,10 +11,29 @@ cache:
 install:
 before_build:
   - cmake -G "Visual Studio 14 2015 Win64" -H. -Bbuild
-build:
-  project: c:/projects/ethminer/build/ethminer.sln
-  parallel: true
-  verbosity: minimal
+build_script:
+  - cmake --build build --config Release
+after_build:
+  - cmake --build build --config Release --target package
+
 artifacts:
-  - path: build/ethminer/Release/ethminer.exe
+  - path: build/ethminer-*.zip
     name: ethminer
+
+before_deploy:
+  # Read variables dumped by CMake configuration.
+  - ps: . build/variables.ps1
+deploy:
+  # Create GitHub release, also set the release name and description.
+  provider: GitHub
+  tag: $(appveyor_repo_tag_name)
+  release: ethminer $(ethminer_version)
+  description: ''
+  force_update: true  # Force update in case Travis CI created the release before.
+  prerelease: $(ethminer_version_is_prerelease)
+  draft: false
+  artifact: ethminer
+  auth_token:
+    secure: uDRcvbW+9GIyKlZ9guJfWOQ6jg0An6eULg6mEkYgdKn/GVNpYSKvO5oHxP0U8a+e
+  on:
+    appveyor_repo_tag: true
