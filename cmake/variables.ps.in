@@ -1,0 +1,2 @@
+$ethminer_version=@PROJECT_VERSION@
+$ethminer_version_is_prerelease=@PROJECT_VERSION_IS_PRERELEASE@

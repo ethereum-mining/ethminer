@@ -132,3 +132,14 @@ set(CPACK_PACKAGE_FILE_NAME ${PROJECT_NAME}-${PROJECT_VERSION}-${CMAKE_SYSTEM_NA
 set(CPACK_PACKAGE_CHECKSUM SHA256)
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE)
 include(CPack)
+
+
+# Export some variables for CIs
+if(PROJECT_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
+	set(PROJECT_VERSION_IS_PRERELEASE false)
+else()
+	set(PROJECT_VERSION_IS_PRERELEASE true)
+endif()
+message("Prerelease: ${PROJECT_VERSION_IS_PRERELEASE}")
+configure_file(cmake/variables.sh.in variables.sh)
+configure_file(cmake/variables.ps.in variables.ps)
