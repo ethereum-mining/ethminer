@@ -332,7 +332,7 @@ __device__ __forceinline__ void keccak_f1600_init(uint2* state)
 	/* iota: a[0,0] ^= round constant */
 	s[0] ^= vectorize(keccak_round_constants[23]);
 
-	for(int i=0; i<12; ++i)
+	for(int i = 0; i < 12; ++i)
 	    state[i] = s[i];
 }
 
@@ -341,7 +341,7 @@ __device__ __forceinline__ uint64_t keccak_f1600_final(uint2* state)
 	uint2 s[25];
 	uint2 t[5], u, v;
 
-	for (int i = 0; i<12; ++i)
+	for (int i = 0; i < 12; ++i)
 		s[i] = state[i];
 
 	for (uint32_t i = 12; i < 25; i++)
