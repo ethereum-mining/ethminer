@@ -19,15 +19,19 @@ after_build:
 artifacts:
   - path: build/ethminer-*.zip
     name: ethminer
+
+before_deploy:
+  - . build/variables.ps
+  - echo ethminer $ethminer_version (prerelease $ethminer_version_is_prerelease)
 deploy:
-  tag: $(appveyor_repo_tag_name)
+  release: ethminer $ethminer_version
   description: ''
   provider: GitHub
   auth_token:
     secure: uDRcvbW+9GIyKlZ9guJfWOQ6jg0An6eULg6mEkYgdKn/GVNpYSKvO5oHxP0U8a+e
   artifact: ethminer
-  draft: false
-  prerelease: true
-  force_update: true
+  draft: true
+  prerelease: $ethminer_version_is_prerelease
+  force_update: false
   on:
     appveyor_repo_tag: true
