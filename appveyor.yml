@@ -21,17 +21,19 @@ artifacts:
     name: ethminer
 
 before_deploy:
-  - . build/variables.ps
-  - echo ethminer $ethminer_version (prerelease $ethminer_version_is_prerelease)
+  # Read variables dumped by CMake configuration.
+  - ps: . build/variables.ps1
 deploy:
-  release: ethminer $ethminer_version
-  description: ''
+  # Create GitHub release, also set the release name and description.
   provider: GitHub
+  tag: $(appveyor_repo_tag_name)
+  release: ethminer $(ethminer_version)
+  description: ''
+  force_update: true  # Force update in case Travis CI created the release before.
+  prerelease: $(ethminer_version_is_prerelease)
+  draft: false
+  artifact: ethminer
   auth_token:
     secure: uDRcvbW+9GIyKlZ9guJfWOQ6jg0An6eULg6mEkYgdKn/GVNpYSKvO5oHxP0U8a+e
-  artifact: ethminer
-  draft: true
-  prerelease: $ethminer_version_is_prerelease
-  force_update: false
   on:
     appveyor_repo_tag: true

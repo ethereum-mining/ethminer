@@ -15,7 +15,7 @@ HunterGate(
 
 
 project(ethminer)
-set(PROJECT_VERSION 0.10.0rc8)
+set(PROJECT_VERSION 0.10.1)
 
 # link_directories interprate relative paths with respect to CMAKE_CURRENT_SOURCE_DIR
 cmake_policy(SET CMP0015 NEW)
@@ -142,4 +142,4 @@ else()
 endif()
 message("Prerelease: ${PROJECT_VERSION_IS_PRERELEASE}")
 configure_file(cmake/variables.sh.in variables.sh)
-configure_file(cmake/variables.ps.in variables.ps)
+configure_file(cmake/variables.ps1.in variables.ps1)
