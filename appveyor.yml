@@ -3,7 +3,7 @@ branches:
   only:
     - master
     - /v\d+\..+/
-clone_depth: 20
+shallow_clone: true
 os: Visual Studio 2015
 configuration:
   - Release
