@@ -7,6 +7,7 @@ shallow_clone: true
 os: Visual Studio 2015
 configuration:
   - Release
+  - RelWithDebInfo
 cache:
   - C:/.hunter/_Base/Cache
 
@@ -15,12 +16,12 @@ install: |
   7z x CUDA-v8.0-WindowsServer2012.zip -oC:/
   set PATH=%PATH%;C:/CUDA/v8.0/bin
   nvcc -V
-before_build:  
+before_build:
   - cmake -G "Visual Studio 14 2015 Win64" -H. -Bbuild -DETHASHCUDA=ON
 build_script:
-  - cmake --build build --config Release
+  - cmake --build build --config %CONFIGURATION%
 after_build:
-  - cmake --build build --config Release --target package
+  - cmake --build build --config %CONFIGURATION% --target package
 
 artifacts:
   - path: build/ethminer-*.zip
