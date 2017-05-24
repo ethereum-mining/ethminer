@@ -25,13 +25,12 @@
 #include <libethash/ethash.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
-#include "Ethash.h"
+#include "BlockInfo.h"
 
 namespace dev
 {
 namespace eth
 {
-
 
 struct DAGChannel: public LogChannel { static const char* name(); static const int verbosity = 1; };
 
@@ -53,7 +52,7 @@ struct EthashProofOfWork
 	struct WorkPackage
 	{
 		WorkPackage() = default;
-		WorkPackage(Ethash::BlockHeader const& _bh) :
+		WorkPackage(BlockHeader const& _bh) :
 			boundary(_bh.boundary()),
 			headerHash(_bh.hashWithout()),
 			seedHash(_bh.seedHash())
@@ -91,8 +90,6 @@ enum class DAGEraseMode
 class EthashAux
 {
 public:
-	~EthashAux();
-
 	static EthashAux* get();
 
 	struct LightAllocation

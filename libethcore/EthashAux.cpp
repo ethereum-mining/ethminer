@@ -33,6 +33,7 @@
 #include <libethash/io.h>
 #include "BlockInfo.h"
 #include "Exceptions.h"
+
 using namespace std;
 using namespace chrono;
 using namespace dev;
@@ -48,8 +49,11 @@ const unsigned EthashProofOfWork::defaultGlobalWorkSizeMultiplier = 4096; // * C
 const unsigned EthashProofOfWork::defaultMSPerBatch = 0;
 const EthashProofOfWork::WorkPackage EthashProofOfWork::NullWorkPackage = EthashProofOfWork::WorkPackage();
 
-EthashAux::~EthashAux()
+h256 const& BlockHeaderRaw::seedHash() const
 {
+	if (!m_seedHash)
+		m_seedHash = EthashAux::seedHash((unsigned)m_number);
+	return m_seedHash;
 }
 
 EthashAux* EthashAux::get()
