@@ -23,7 +23,7 @@ public:
 	ethash_cuda_miner();
 
 	static std::string platform_info(unsigned _deviceId = 0);
-	static unsigned getNumDevices();
+	static int getNumDevices();
 	static void listDevices();
 	static bool configureGPU(
 		int *	 _devices,
