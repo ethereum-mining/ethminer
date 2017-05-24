@@ -41,8 +41,6 @@
 #include "ethash_cuda_miner_kernel_globals.h"
 
 
-#define ETHASH_BYTES 32
-
 // workaround lame platforms
 
 #undef min
@@ -106,11 +104,23 @@ std::string ethash_cuda_miner::platform_info(unsigned _deviceId)
 	return "{ \"platform\": \"CUDA " + std::string(platform) + "\", \"device\": \"" + std::string(device_props.name) + "\", \"version\": \"Compute " + std::string(compute) + "\" }";
 }
 
-unsigned ethash_cuda_miner::getNumDevices()
+int ethash_cuda_miner::getNumDevices()
 {
-	int device_count;
-	CUDA_SAFE_CALL(cudaGetDeviceCount(&device_count));
-	return device_count;
+	int deviceCount = 0;
+	cudaError_t err = cudaGetDeviceCount(&deviceCount);
+	if (err == cudaSuccess)
+		return deviceCount;
+
+	if (err == cudaErrorInsufficientDriver)
+	{
+		int driverVersion;
+		cudaDriverGetVersion(&driverVersion);
+		if (driverVersion == 0)
+			throw std::runtime_error{"No CUDA driver found"};
+		throw std::runtime_error{"Insufficient CUDA driver: " + std::to_string(driverVersion)};
+	}
+
+	throw std::runtime_error{cudaGetErrorString(err)};
 }
 
 bool ethash_cuda_miner::configureGPU(
@@ -138,8 +148,8 @@ bool ethash_cuda_miner::configureGPU(
 		// by default let's only consider the DAG of the first epoch
 		uint64_t dagSize = ethash_get_datasize(_currentBlock);
 		uint64_t requiredSize = dagSize + _extraGPUMemory;
-		unsigned devicesCount = getNumDevices();
-		for (unsigned int i = 0; i < devicesCount; i++)
+		int devicesCount = getNumDevices();
+		for (int i = 0; i < devicesCount; i++)
 		{
 			
 			if (_devices[i] != -1)
@@ -184,7 +194,8 @@ void ethash_cuda_miner::listDevices()
 	try
 	{
 		string outString = "\nListing CUDA devices.\nFORMAT: [deviceID] deviceName\n";
-		for (unsigned int i = 0; i < getNumDevices(); i++)
+		int numDevices = getNumDevices();
+		for (int i = 0; i < numDevices; ++i)
 		{
 			cudaDeviceProp props;
 			CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
@@ -197,7 +208,7 @@ void ethash_cuda_miner::listDevices()
 	}
 	catch(std::runtime_error const& err)
 	{
-		std::cerr << err.what();
+		std::cerr << err.what() << '\n';
 	}
 }
 
