@@ -103,14 +103,14 @@ std::string ethash_cuda_miner::platform_info(unsigned _deviceId)
 
 int ethash_cuda_miner::getNumDevices()
 {
-	int deviceCount = 0;
+	int deviceCount = -1;
 	cudaError_t err = cudaGetDeviceCount(&deviceCount);
 	if (err == cudaSuccess)
 		return deviceCount;
 
 	if (err == cudaErrorInsufficientDriver)
 	{
-		int driverVersion;
+		int driverVersion = -1;
 		cudaDriverGetVersion(&driverVersion);
 		if (driverVersion == 0)
 			throw std::runtime_error{"No CUDA driver found"};
