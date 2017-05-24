@@ -49,15 +49,11 @@ const unsigned EthashProofOfWork::defaultGlobalWorkSizeMultiplier = 4096; // * C
 const unsigned EthashProofOfWork::defaultMSPerBatch = 0;
 const EthashProofOfWork::WorkPackage EthashProofOfWork::NullWorkPackage = EthashProofOfWork::WorkPackage();
 
-h256 const& Ethash::BlockHeaderRaw::seedHash() const
+h256 const& BlockHeaderRaw::seedHash() const
 {
 	if (!m_seedHash)
 		m_seedHash = EthashAux::seedHash((unsigned)m_number);
 	return m_seedHash;
-}
-
-EthashAux::~EthashAux()
-{
 }
 
 EthashAux* EthashAux::get()
