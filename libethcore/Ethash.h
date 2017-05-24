@@ -53,7 +53,6 @@ public:
 
 	class BlockHeaderRaw: public BlockInfo
 	{
-		friend class EthashSealEngine;
 
 	public:
 		h256 const& seedHash() const;
