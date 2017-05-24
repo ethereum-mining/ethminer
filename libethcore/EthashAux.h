@@ -25,15 +25,41 @@
 #include <libethash/ethash.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
-#include "Ethash.h"
+#include "BlockInfo.h"
 
 namespace dev
 {
 namespace eth
 {
 
-
 struct DAGChannel: public LogChannel { static const char* name(); static const int verbosity = 1; };
+
+class Ethash
+{
+public:
+	using Nonce = h64;
+
+	class BlockHeaderRaw: public BlockInfo
+	{
+
+	public:
+		h256 const& seedHash() const;
+		Nonce const& nonce() const { return m_nonce; }
+
+	protected:
+		BlockHeaderRaw() = default;
+		BlockHeaderRaw(BlockInfo const& _bi): BlockInfo(_bi) {}
+
+		void clear() { m_mixHash = h256(); m_nonce = Nonce(); }
+
+	private:
+		Nonce m_nonce;
+		h256 m_mixHash;
+
+		mutable h256 m_seedHash;
+	};
+	using BlockHeader = BlockHeaderPolished<BlockHeaderRaw>;
+};
 
 /// Proof of work definition for Ethash.
 struct EthashProofOfWork

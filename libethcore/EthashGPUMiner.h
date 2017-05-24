@@ -24,14 +24,17 @@
 #pragma once
 #if ETH_ETHASHCL
 
-#include "libdevcore/Worker.h"
+#include <libdevcore/Worker.h>
 #include "EthashAux.h"
 #include "Miner.h"
+
+class ethash_cl_miner;
 
 namespace dev
 {
 namespace eth
 {
+class EthashCLHook;
 
 class EthashGPUMiner: public GenericMiner<EthashProofOfWork>, Worker
 {
