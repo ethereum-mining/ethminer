@@ -21,7 +21,11 @@ before_build:
 build_script:
   - cmake --build build --config %CONFIGURATION%
 after_build:
-  - cmake --build build --config %CONFIGURATION% --target package
+  ps: |
+    cmake --build build --config $env:configuration --target package
+    if ($env:configuration -ne "Release") {
+      Get-Item build/ethminer-*-Windows.* | Rename-Item -NewName { $_.name -Replace 'ethminer','ethminer-dbg' }
+    }
 
 artifacts:
   - path: build/ethminer-*.zip
