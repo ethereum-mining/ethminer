@@ -608,7 +608,7 @@ private:
 
 	void doBenchmark(MinerType _m, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
 	{
-		Ethash::BlockHeader genesis;
+		BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
 		genesis.setDifficulty(1 << 18);
 		cdebug << genesis.boundary();
@@ -674,7 +674,7 @@ private:
 
 	void doSimulation(MinerType _m, int difficulty = 20)
 	{
-		Ethash::BlockHeader genesis;
+		BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
 		genesis.setDifficulty(1 << 18);
 		cdebug << genesis.boundary();
