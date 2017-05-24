@@ -28,10 +28,14 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include "EthashAux.h"
 #include "Miner.h"
 
+class ethash_cuda_miner;
+
 namespace dev
 {
 namespace eth
 {
+class EthashCUDAHook;
+
 	class EthashCUDAMiner : public GenericMiner<EthashProofOfWork>, Worker
 	{
 		friend class dev::eth::EthashCUDAHook;
