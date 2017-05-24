@@ -25,15 +25,12 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
-#include <assert.h>
 #include <queue>
 #include <random>
 #include <atomic>
 #include <sstream>
-#include <vector>
 #include <chrono>
 #include <thread>
-#include <libethash/util.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
 #include <cuda_runtime.h>
@@ -154,7 +151,7 @@ bool ethash_cuda_miner::configureGPU(
 			
 			if (_devices[i] != -1)
 			{
-				int deviceId = min((int)devicesCount - 1, _devices[i]);
+				int deviceId = min(devicesCount - 1, _devices[i]);
 				cudaDeviceProp props;
 				CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, deviceId));
 				if (props.totalGlobalMem >= requiredSize)
@@ -282,8 +279,6 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 			if (_cpyToHost)
 			{
 				uint8_t* memoryDAG = new uint8_t[dagSize];
-				if (!memoryDAG) throw std::runtime_error("Failed to init host memory for DAG, not enough memory?");
-
 				cout << "Copying DAG from GPU #" << device_num << " to host" << endl;
 				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
 
@@ -353,7 +348,7 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 	uint64_t batch_size = s_gridSize * s_blockSize;
 	for (; !exit; m_current_index++, m_current_nonce += batch_size)
 	{
-		unsigned int stream_index = m_current_index % s_numStreams;
+		auto stream_index = m_current_index % s_numStreams;
 		cudaStream_t stream = m_streams[stream_index];
 		volatile uint32_t* buffer = m_search_buf[stream_index];
 		uint32_t found_count = 0;
