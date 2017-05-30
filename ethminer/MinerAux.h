@@ -604,13 +604,13 @@ private:
 		genesis.setDifficulty(1 << 18);
 		cdebug << genesis.boundary();
 
-		GenericFarm f;
-		map<string, GenericFarm::SealerDescriptor> sealers;
+		Farm f;
+		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = GenericFarm::SealerDescriptor{&EthashGPUMiner::instances, [](GenericMiner::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
+		sealers["opencl"] = Farm::SealerDescriptor{&EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = GenericFarm::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 		f.setSealers(sealers);
 		f.onSolutionFound([&](EthashProofOfWork::Solution) { return false; });
@@ -670,13 +670,13 @@ private:
 		genesis.setDifficulty(1 << 18);
 		cdebug << genesis.boundary();
 
-		GenericFarm f;
-		map<string, GenericFarm::SealerDescriptor> sealers;
+		Farm f;
+		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = GenericFarm::SealerDescriptor{ &EthashGPUMiner::instances, [](GenericMiner::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
+		sealers["opencl"] = Farm::SealerDescriptor{ &EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = GenericFarm::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 		f.setSealers(sealers);
 
@@ -750,12 +750,12 @@ private:
 
 	void doFarm(MinerType _m, string & _remote, unsigned _recheckPeriod)
 	{
-		map<string, GenericFarm::SealerDescriptor> sealers;
+		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = GenericFarm::SealerDescriptor{&EthashGPUMiner::instances, [](GenericMiner::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
+		sealers["opencl"] = Farm::SealerDescriptor{&EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = GenericFarm::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 		(void)_m;
 		(void)_remote;
@@ -768,7 +768,7 @@ private:
 		FarmClient * prpc = &rpc;
 
 		h256 id = h256::random();
-		GenericFarm f;
+		Farm f;
 		f.setSealers(sealers);
 		if (_m == MinerType::CPU)
 			f.start("cpu", false);
@@ -902,17 +902,17 @@ private:
 #if ETH_STRATUM
 	void doStratum()
 	{
-		map<string, GenericFarm::SealerDescriptor> sealers;
+		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = GenericFarm::SealerDescriptor{ &EthashGPUMiner::instances, [](GenericMiner::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
+		sealers["opencl"] = Farm::SealerDescriptor{ &EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = GenericFarm::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 		if (!m_farmRecheckSet)
 			m_farmRecheckPeriod = m_defaultStratumFarmRecheckPeriod;
 
-		GenericFarm f;
+		Farm f;
 
 		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
 		if (m_stratumClientVersion == 1) {

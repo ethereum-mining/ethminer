@@ -36,7 +36,7 @@ namespace eth
 {
 class EthashCUDAHook;
 
-	class EthashCUDAMiner : public GenericMiner, Worker
+	class EthashCUDAMiner : public Miner, Worker
 	{
 		friend class dev::eth::EthashCUDAHook;
 
@@ -80,7 +80,7 @@ class EthashCUDAHook;
 		void workLoop() override;
 		bool report(uint64_t _nonce);
 
-		using GenericMiner::accumulateHashes;
+		using Miner::accumulateHashes;
 
 		EthashCUDAHook* m_hook = nullptr;
 		ethash_cuda_miner* m_miner = nullptr;
