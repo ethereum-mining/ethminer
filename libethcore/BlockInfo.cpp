@@ -22,7 +22,6 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
-#include <libethcore/Common.h>
 #include "EthashAux.h"
 #include "Exceptions.h"
 #include "BlockInfo.h"

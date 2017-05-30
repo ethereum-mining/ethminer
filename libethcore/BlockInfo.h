@@ -24,13 +24,22 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
-#include "Common.h"
 #include "Exceptions.h"
 
 namespace dev
 {
 namespace eth
 {
+
+/// An Ethereum address: 20 bytes.
+using Address = h160;
+
+/// The log bloom's size (2048-bit).
+using LogBloom = h2048;
+
+using Nonce = h64;
+
+using BlockNumber = unsigned;
 
 enum IncludeProof
 {
