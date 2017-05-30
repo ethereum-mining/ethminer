@@ -22,7 +22,7 @@ using namespace dev::eth;
 class EthStratumClientV2 : public Worker
 {
 public:
-	EthStratumClientV2(GenericFarm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email);
+	EthStratumClientV2(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email);
 	~EthStratumClientV2();
 
 	void setFailover(string const & host, string const & port);
@@ -64,7 +64,7 @@ private:
 
 	string m_response;
 
-	GenericFarm* p_farm;
+	Farm* p_farm;
 	mutex x_current;
 	EthashProofOfWork::WorkPackage m_current;
 	EthashProofOfWork::WorkPackage m_previous;

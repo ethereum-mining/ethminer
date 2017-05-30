@@ -41,20 +41,19 @@ namespace eth
  * Miners ask for work, then submit proofs
  * @threadsafe
  */
-class GenericFarm: public GenericFarmFace
+class Farm: public FarmFace
 {
 public:
 	using WorkPackage = EthashProofOfWork::WorkPackage;
 	using Solution = EthashProofOfWork::Solution;
-	using Miner = GenericMiner;
 
 	struct SealerDescriptor
 	{
 		std::function<unsigned()> instances;
-		std::function<Miner*(typename Miner::ConstructionInfo ci)> create;
+		std::function<Miner*(Miner::ConstructionInfo ci)> create;
 	};
 
-	~GenericFarm()
+	~Farm()
 	{
 		stop();
 	}

@@ -27,7 +27,7 @@ static void diffToTarget(uint32_t *target, double diff)
 }
 
 
-EthStratumClientV2::EthStratumClientV2(GenericFarm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email)
+EthStratumClientV2::EthStratumClientV2(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email)
 	: Worker("stratum"), 
 	  m_socket(m_io_service)
 {
