@@ -20,34 +20,12 @@
  */
 
 #include "EthashAux.h"
-
-#include <boost/detail/endian.hpp>
-#include <chrono>
-#include <array>
-#include <thread>
-#include <libdevcore/Common.h>
-#include <libdevcore/Guards.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/SHA3.h>
 #include <libethash/internal.h>
-#include <libethash/io.h>
-#include "BlockInfo.h"
-#include "Exceptions.h"
 
 using namespace std;
 using namespace chrono;
 using namespace dev;
 using namespace eth;
-
-const char* DAGChannel::name() { return EthGreen "DAG"; }
-
-EthashAux* dev::eth::EthashAux::s_this = nullptr;
-char  dev::eth::EthashAux::s_dagDirName[256] = "";
-
-const unsigned EthashProofOfWork::defaultLocalWorkSize = 64;
-const unsigned EthashProofOfWork::defaultGlobalWorkSizeMultiplier = 4096; // * CL_DEFAULT_LOCAL_WORK_SIZE
-const unsigned EthashProofOfWork::defaultMSPerBatch = 0;
-const EthashProofOfWork::WorkPackage EthashProofOfWork::NullWorkPackage = EthashProofOfWork::WorkPackage();
 
 h256 const& BlockHeaderRaw::seedHash() const
 {
@@ -58,14 +36,8 @@ h256 const& BlockHeaderRaw::seedHash() const
 
 EthashAux* EthashAux::get()
 {
-    static std::once_flag flag;
-    std::call_once(flag, []{s_this = new EthashAux();});
-    return s_this;
-}
-
-char * EthashAux::dagDirName()
-{
-	return s_dagDirName;
+	static EthashAux instance;
+	return &instance;
 }
 
 h256 EthashAux::seedHash(unsigned _number)
@@ -82,12 +54,8 @@ h256 EthashAux::seedHash(unsigned _number)
 			n = get()->m_seedHashes.size() - 1;
 		}
 		get()->m_seedHashes.resize(epoch + 1);
-//		cdebug << "Searching for seedHash of epoch " << epoch;
 		for (; n <= epoch; ++n, ret = sha3(ret))
-		{
 			get()->m_seedHashes[n] = ret;
-//			cdebug << "Epoch" << n << "is" << ret;
-		}
 	}
 	return get()->m_seedHashes[epoch];
 }
@@ -99,7 +67,6 @@ uint64_t EthashAux::number(h256 const& _seedHash)
 	auto epochIter = get()->m_epochs.find(_seedHash);
 	if (epochIter == get()->m_epochs.end())
 	{
-		//		cdebug << "Searching for seedHash " << _seedHash;
 		for (h256 h; h != _seedHash && epoch < 2048; ++epoch, h = sha3(h), get()->m_epochs[h] = epoch) {}
 		if (epoch == 2048)
 		{
@@ -140,97 +107,6 @@ bytesConstRef EthashAux::LightAllocation::data() const
 	return bytesConstRef((byte const*)light->cache, size);
 }
 
-EthashAux::FullAllocation::FullAllocation(ethash_light_t _light, ethash_callback_t _cb)
-{
-//	cdebug << "About to call ethash_full_new...";
-	full = ethash_full_new(_light, EthashAux::dagDirName(), _cb);
-//	cdebug << "Called OK.";
-	if (!full)
-	{
-		clog(DAGChannel) << "DAG Generation Failure. Reason: "  << strerror(errno);
-		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("ethash_full_new"));
-	}
-}
-
-EthashAux::FullAllocation::~FullAllocation()
-{
-	ethash_full_delete(full);
-}
-
-bytesConstRef EthashAux::FullAllocation::data() const
-{
-	return bytesConstRef((byte const*)ethash_full_dag(full), size());
-}
-
-static std::function<int(unsigned)> s_dagCallback;
-static int dagCallbackShim(unsigned _p)
-{
-	clog(DAGChannel) << "Generating DAG file. Progress: " << toString(_p) << "%";
-	return s_dagCallback ? s_dagCallback(_p) : 0;
-}
-
-EthashAux::FullType EthashAux::full(h256 const& _seedHash, bool _createIfMissing, function<int(unsigned)> const& _f)
-{
-	FullType ret;
-	auto l = light(_seedHash);
-
-	DEV_GUARDED(get()->x_fulls)
-		if ((ret = get()->m_fulls[_seedHash].lock()))
-			return ret;
-
-	if (_createIfMissing || computeFull(_seedHash, false) == 100)
-	{
-		s_dagCallback = _f;
-		ret = make_shared<FullAllocation>(l->light, dagCallbackShim);
-
-		DEV_GUARDED(get()->x_fulls)
-			get()->m_fulls[_seedHash] = ret;
-	}
-
-	return ret;
-}
-
-unsigned EthashAux::computeFull(h256 const& _seedHash, bool _createIfMissing)
-{
-	Guard l(get()->x_fulls);
-	uint64_t blockNumber;
-
-	DEV_IF_THROWS(blockNumber = EthashAux::number(_seedHash))
-	{
-		return 0;
-	}
-
-	if (FullType ret = get()->m_fulls[_seedHash].lock())
-	{
-		return 100;
-	}
-
-	if (_createIfMissing && (!get()->m_fullGenerator || !get()->m_fullGenerator->joinable()))
-	{
-		get()->m_fullProgress = 0;
-		get()->m_generatingFullNumber = blockNumber / ETHASH_EPOCH_LENGTH * ETHASH_EPOCH_LENGTH;
-		get()->m_fullGenerator = unique_ptr<thread>(new thread([=](){
-			cnote << "Loading full DAG of seedhash: " << _seedHash;
-			get()->full(_seedHash, true, [](unsigned p){ get()->m_fullProgress = p; return 0; });
-			cnote << "Full DAG loaded";
-			get()->m_fullProgress = 0;
-			get()->m_generatingFullNumber = NotGenerating;
-		}));
-	}
-
-	return (get()->m_generatingFullNumber == blockNumber) ? get()->m_fullProgress : 0;
-}
-
-
-
-EthashProofOfWork::Result EthashAux::FullAllocation::compute(h256 const& _headerHash, Nonce const& _nonce) const
-{
-	ethash_return_value_t r = ethash_full_compute(full, *(ethash_h256_t*)_headerHash.data(), (uint64_t)(u64)_nonce);
-	if (!r.success)
-		BOOST_THROW_EXCEPTION(DAGCreationFailure());
-	return EthashProofOfWork::Result{h256((uint8_t*)&r.result, h256::ConstructFromPointer), h256((uint8_t*)&r.mix_hash, h256::ConstructFromPointer)};
-}
-
 EthashProofOfWork::Result EthashAux::LightAllocation::compute(h256 const& _headerHash, Nonce const& _nonce) const
 {
 	ethash_return_value r = ethash_light_compute(light, *(ethash_h256_t*)_headerHash.data(), (uint64_t)(u64)_nonce);
@@ -239,13 +115,14 @@ EthashProofOfWork::Result EthashAux::LightAllocation::compute(h256 const& _heade
 	return EthashProofOfWork::Result{h256((uint8_t*)&r.result, h256::ConstructFromPointer), h256((uint8_t*)&r.mix_hash, h256::ConstructFromPointer)};
 }
 
-EthashProofOfWork::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
+EthashProofOfWork::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce) noexcept
 {
-	DEV_GUARDED(get()->x_fulls)
-		if (FullType dag = get()->m_fulls[_seedHash].lock())
-			return dag->compute(_headerHash, _nonce);
-	DEV_IF_THROWS(return EthashAux::get()->light(_seedHash)->compute(_headerHash, _nonce))
+	try
 	{
-		return EthashProofOfWork::Result{ ~h256(), h256() };
+		return EthashAux::get()->light(_seedHash)->compute(_headerHash, _nonce);
+	}
+	catch(...)
+	{
+		return EthashProofOfWork::Result{~h256(), h256()};
 	}
 }

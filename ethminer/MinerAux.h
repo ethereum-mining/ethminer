@@ -596,15 +596,6 @@ public:
 	MinerType minerType() const { return m_minerType; }
 
 private:
-	void doInitDAG(unsigned _n)
-	{
-		h256 seedHash = EthashAux::seedHash(_n);
-		cout << "Initializing DAG for epoch beginning #" << (_n / 30000 * 30000) << " (seedhash " << seedHash.abridged() << "). This will take a while." << endl;
-		EthashAux::full(seedHash, true);
-		exit(0);
-	}
-
-
 
 	void doBenchmark(MinerType _m, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
 	{
@@ -787,7 +778,6 @@ private:
 			f.start("cuda", false);
 		EthashProofOfWork::WorkPackage current, previous;
 		std::mutex x_current;
-		EthashAux::FullType dag;
 		while (m_running)
 			try
 			{
