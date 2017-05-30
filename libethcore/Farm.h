@@ -41,13 +41,12 @@ namespace eth
  * Miners ask for work, then submit proofs
  * @threadsafe
  */
-template <class PoW>
-class GenericFarm: public GenericFarmFace<PoW>
+class GenericFarm: public GenericFarmFace
 {
 public:
-	using WorkPackage = typename PoW::WorkPackage;
-	using Solution = typename PoW::Solution;
-	using Miner = GenericMiner<PoW>;
+	using WorkPackage = EthashProofOfWork::WorkPackage;
+	using Solution = EthashProofOfWork::Solution;
+	using Miner = GenericMiner;
 
 	struct SealerDescriptor
 	{

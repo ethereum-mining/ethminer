@@ -36,7 +36,7 @@ namespace eth
 {
 class EthashCLHook;
 
-class EthashGPUMiner: public GenericMiner<EthashProofOfWork>, Worker
+class EthashGPUMiner: public GenericMiner, Worker
 {
 	friend class dev::eth::EthashCLHook;
 
@@ -76,7 +76,7 @@ private:
 	void workLoop() override;
 	bool report(uint64_t _nonce);
 
-	using GenericMiner<EthashProofOfWork>::accumulateHashes;
+	using GenericMiner::accumulateHashes;
 
 	EthashCLHook* m_hook = nullptr;
 	ethash_cl_miner* m_miner = nullptr;
