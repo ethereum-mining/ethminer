@@ -26,7 +26,6 @@
 #include <atomic>
 #include <libdevcore/Common.h>
 #include <libdevcore/Worker.h>
-#include <libethcore/Common.h>
 #include <libethcore/Miner.h>
 #include <libethcore/BlockInfo.h>
 
