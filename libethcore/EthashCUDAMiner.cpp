@@ -108,7 +108,7 @@ unsigned EthashCUDAMiner::s_numInstances = 0;
 int EthashCUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
 EthashCUDAMiner::EthashCUDAMiner(ConstructionInfo const& _ci) :
-	GenericMiner<EthashProofOfWork>(_ci),
+	GenericMiner(_ci),
 	Worker("cudaminer" + toString(index())),
 m_hook( new EthashCUDAHook(this))
 {

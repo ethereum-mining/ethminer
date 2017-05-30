@@ -4,16 +4,12 @@
 using namespace dev;
 using namespace eth;
 
-template <>
-unsigned dev::eth::GenericMiner<dev::eth::EthashProofOfWork>::s_dagLoadMode = 0;
+unsigned dev::eth::GenericMiner::s_dagLoadMode = 0;
 
-template <>
-volatile unsigned dev::eth::GenericMiner<dev::eth::EthashProofOfWork>::s_dagLoadIndex = 0;
+volatile unsigned dev::eth::GenericMiner::s_dagLoadIndex = 0;
 
-template <>
-unsigned dev::eth::GenericMiner<dev::eth::EthashProofOfWork>::s_dagCreateDevice = 0;
+unsigned dev::eth::GenericMiner::s_dagCreateDevice = 0;
 
-template <>
-volatile void* dev::eth::GenericMiner<dev::eth::EthashProofOfWork>::s_dagInHostMemory = NULL;
+volatile void* dev::eth::GenericMiner::s_dagInHostMemory = NULL;
 
 

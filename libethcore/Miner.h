@@ -30,6 +30,7 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
 #include <libethcore/Common.h>
+#include "EthashAux.h"
 
 #define MINER_WAIT_STATE_UNKNOWN 0
 #define MINER_WAIT_STATE_WORK	 1
@@ -66,8 +67,6 @@ enum class MinerType
 	CUDA,
 	Mixed
 };
-
-struct MineInfo: public WorkingProgress {};
 
 inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 {
@@ -109,7 +108,7 @@ inline std::ostream& operator<<(std::ostream& os, SolutionStats s)
 	return os << "[A" << s.getAccepts() << "+" << s.getAcceptedStales() << ":R" << s.getRejects() << "+" << s.getRejectedStales() << ":F" << s.getFailures() << "]";
 }
 
-template <class PoW> class GenericMiner;
+class GenericMiner;
 
 
 /**
@@ -117,14 +116,14 @@ template <class PoW> class GenericMiner;
  * @warning Must be implemented in a threadsafe manner since it will be called from multiple
  * miner threads.
  */
-template <class PoW> class GenericFarmFace
+class GenericFarmFace
 {
 public:
-	using WorkPackage = typename PoW::WorkPackage;
-	using Solution = typename PoW::Solution;
-	using Miner = GenericMiner<PoW>;
+	using WorkPackage = EthashProofOfWork::WorkPackage;
+	using Solution = EthashProofOfWork::Solution;
+	using Miner = GenericMiner;
 
-	virtual ~GenericFarmFace() {}
+	virtual ~GenericFarmFace() = default;
 
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
@@ -140,12 +139,12 @@ public:
  * @brief A miner - a member and adoptee of the Farm.
  * @warning Not threadsafe. It is assumed Farm will synchronise calls to/from this class.
  */
-template <class PoW> class GenericMiner
+class GenericMiner
 {
 public:
-	using WorkPackage = typename PoW::WorkPackage;
-	using Solution = typename PoW::Solution;
-	using FarmFace = GenericFarmFace<PoW>;
+	using WorkPackage = EthashProofOfWork::WorkPackage;
+	using Solution = EthashProofOfWork::Solution;
+	using FarmFace = GenericFarmFace;
 	using ConstructionInfo = std::pair<FarmFace*, unsigned>;
 
 	GenericMiner(ConstructionInfo const& _ci):
