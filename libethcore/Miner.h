@@ -108,7 +108,7 @@ inline std::ostream& operator<<(std::ostream& os, SolutionStats s)
 	return os << "[A" << s.getAccepts() << "+" << s.getAcceptedStales() << ":R" << s.getRejects() << "+" << s.getRejectedStales() << ":F" << s.getFailures() << "]";
 }
 
-class GenericMiner;
+class Miner;
 
 
 /**
@@ -116,14 +116,13 @@ class GenericMiner;
  * @warning Must be implemented in a threadsafe manner since it will be called from multiple
  * miner threads.
  */
-class GenericFarmFace
+class FarmFace
 {
 public:
 	using WorkPackage = EthashProofOfWork::WorkPackage;
 	using Solution = EthashProofOfWork::Solution;
-	using Miner = GenericMiner;
 
-	virtual ~GenericFarmFace() = default;
+	virtual ~FarmFace() = default;
 
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
@@ -139,19 +138,18 @@ public:
  * @brief A miner - a member and adoptee of the Farm.
  * @warning Not threadsafe. It is assumed Farm will synchronise calls to/from this class.
  */
-class GenericMiner
+class Miner
 {
 public:
 	using WorkPackage = EthashProofOfWork::WorkPackage;
 	using Solution = EthashProofOfWork::Solution;
-	using FarmFace = GenericFarmFace;
 	using ConstructionInfo = std::pair<FarmFace*, unsigned>;
 
-	GenericMiner(ConstructionInfo const& _ci):
+	Miner(ConstructionInfo const& _ci):
 		m_farm(_ci.first),
 		m_index(_ci.second)
 	{}
-	virtual ~GenericMiner() {}
+	virtual ~Miner() {}
 
 	// API FOR THE FARM TO CALL IN WITH
 
