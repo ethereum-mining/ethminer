@@ -73,7 +73,6 @@ private:
 
 	string m_job;
 	string m_previousJob;
-	EthashAux::FullType m_dag;
 
 	boost::asio::io_service m_io_service;
 	tcp::socket m_socket;
