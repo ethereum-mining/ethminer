@@ -44,9 +44,6 @@ namespace eth
 class Farm: public FarmFace
 {
 public:
-	using WorkPackage = EthashProofOfWork::WorkPackage;
-	using Solution = EthashProofOfWork::Solution;
-
 	struct SealerDescriptor
 	{
 		std::function<unsigned()> instances;

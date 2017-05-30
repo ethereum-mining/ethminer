@@ -32,39 +32,35 @@ namespace dev
 namespace eth
 {
 
-/// Proof of work definition for Ethash.
-struct EthashProofOfWork
+struct Solution
 {
-	struct Solution
-	{
-		Nonce nonce;
-		h256 mixHash;
-	};
+	Nonce nonce;
+	h256 mixHash;
+};
 
-	struct Result
-	{
-		h256 value;
-		h256 mixHash;
-	};
+struct Result
+{
+	h256 value;
+	h256 mixHash;
+};
 
-	struct WorkPackage
-	{
-		WorkPackage() = default;
-		WorkPackage(BlockHeader const& _bh) :
-			boundary(_bh.boundary()),
-			headerHash(_bh.hashWithout()),
-			seedHash(_bh.seedHash())
-		{ }
-		void reset() { headerHash = h256(); }
-		operator bool() const { return headerHash != h256(); }
+struct WorkPackage
+{
+	WorkPackage() = default;
+	WorkPackage(BlockHeader const& _bh) :
+		boundary(_bh.boundary()),
+		headerHash(_bh.hashWithout()),
+		seedHash(_bh.seedHash())
+	{ }
+	void reset() { headerHash = h256(); }
+	operator bool() const { return headerHash != h256(); }
 
-		h256 boundary;
-		h256 headerHash;	///< When h256() means "pause until notified a new work package is available".
-		h256 seedHash;
+	h256 boundary;
+	h256 headerHash;	///< When h256() means "pause until notified a new work package is available".
+	h256 seedHash;
 
-		uint64_t startNonce = 0;
-		int exSizeBits = -1;
-	};
+	uint64_t startNonce = 0;
+	int exSizeBits = -1;
 };
 
 class EthashAux
@@ -77,7 +73,7 @@ public:
 		LightAllocation(h256 const& _seedHash);
 		~LightAllocation();
 		bytesConstRef data() const;
-		EthashProofOfWork::Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
+		Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
 		ethash_light_t light;
 		uint64_t size;
 	};
@@ -89,7 +85,7 @@ public:
 
 	static LightType light(h256 const& _seedHash);
 
-	static EthashProofOfWork::Result eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce) noexcept;
+	static Result eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce) noexcept;
 
 private:
 	EthashAux() = default;

@@ -613,7 +613,7 @@ private:
 		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 		f.setSealers(sealers);
-		f.onSolutionFound([&](EthashProofOfWork::Solution) { return false; });
+		f.onSolutionFound([&](Solution) { return false; });
 
 		string platformInfo = _m == MinerType::CPU ? "CPU" : (_m == MinerType::CL ? "CL" : "CUDA");
 		cout << "Benchmarking on platform: " << platformInfo << endl;
@@ -698,11 +698,11 @@ private:
 
 		int time = 0;
 
-		EthashProofOfWork::WorkPackage current = EthashProofOfWork::WorkPackage(genesis);
+		WorkPackage current = WorkPackage(genesis);
 		while (true) {
 			bool completed = false;
-			EthashProofOfWork::Solution solution;
-			f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+			Solution solution;
+			f.onSolutionFound([&](Solution sol)
 			{
 				solution = sol;
 				return completed = true;
@@ -776,14 +776,14 @@ private:
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
-		EthashProofOfWork::WorkPackage current, previous;
+		WorkPackage current, previous;
 		std::mutex x_current;
 		while (m_running)
 			try
 			{
 				bool completed = false;
-				EthashProofOfWork::Solution solution;
-				f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+				Solution solution;
+				f.onSolutionFound([&](Solution sol)
 				{
 					solution = sol;
 					return completed = true;
@@ -930,7 +930,7 @@ private:
 			}
 			f.setSealers(sealers);
 
-			f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+			f.onSolutionFound([&](Solution sol)
 			{
 				if (client.isConnected()) {
 					client.submit(sol);
@@ -974,7 +974,7 @@ private:
 			}
 			f.setSealers(sealers);
 
-			f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+			f.onSolutionFound([&](Solution sol)
 			{
 				client.submit(sol);
 				return false;

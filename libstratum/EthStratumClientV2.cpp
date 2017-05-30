@@ -446,11 +446,11 @@ void EthStratumClientV2::work_timeout_handler(const boost::system::error_code& e
 	}
 }
 
-bool EthStratumClientV2::submit(EthashProofOfWork::Solution solution) {
+bool EthStratumClientV2::submit(Solution solution) {
 	x_current.lock();
-	EthashProofOfWork::WorkPackage tempWork(m_current);
+	WorkPackage tempWork(m_current);
 	string temp_job = m_job;
-	EthashProofOfWork::WorkPackage tempPreviousWork(m_previous);
+	WorkPackage tempPreviousWork(m_previous);
 	string temp_previous_job = m_previousJob;
 	x_current.unlock();
 

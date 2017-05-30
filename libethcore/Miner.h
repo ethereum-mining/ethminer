@@ -119,15 +119,11 @@ class Miner;
 class FarmFace
 {
 public:
-	using WorkPackage = EthashProofOfWork::WorkPackage;
-	using Solution = EthashProofOfWork::Solution;
-
 	virtual ~FarmFace() = default;
 
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
 	 * @param _p The solution.
-	 * @param _wp The WorkPackage that the Solution is for; this will be reset if the work is accepted.
 	 * @param _finder The miner that found it.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
@@ -141,8 +137,6 @@ public:
 class Miner
 {
 public:
-	using WorkPackage = EthashProofOfWork::WorkPackage;
-	using Solution = EthashProofOfWork::Solution;
 	using ConstructionInfo = std::pair<FarmFace*, unsigned>;
 
 	Miner(ConstructionInfo const& _ci):

@@ -33,7 +33,7 @@ public:
 	h256 currentHeaderHash() { return m_current.headerHash; }
 	bool current() { return m_current; }
 	unsigned waitState() { return m_waitState; }
-	bool submit(EthashProofOfWork::Solution solution);
+	bool submit(Solution solution);
 	void reconnect();
 private:
 	void workLoop() override;
@@ -66,8 +66,8 @@ private:
 
 	Farm* p_farm;
 	mutex x_current;
-	EthashProofOfWork::WorkPackage m_current;
-	EthashProofOfWork::WorkPackage m_previous;
+	WorkPackage m_current;
+	WorkPackage m_previous;
 
 	bool m_stale = false;
 
