@@ -29,7 +29,6 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
-#include <libethcore/Common.h>
 #include "EthashAux.h"
 
 #define MINER_WAIT_STATE_UNKNOWN 0
@@ -66,6 +65,14 @@ enum class MinerType
 	CL,
 	CUDA,
 	Mixed
+};
+
+/// Describes the progress of a mining operation.
+struct WorkingProgress
+{
+	uint64_t hashes = 0;		///< Total number of hashes computed.
+	uint64_t ms = 0;			///< Total number of milliseconds of mining thus far.
+	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
 };
 
 inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
