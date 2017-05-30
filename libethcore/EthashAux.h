@@ -32,8 +32,6 @@ namespace dev
 namespace eth
 {
 
-struct DAGChannel: public LogChannel { static const char* name(); static const int verbosity = 1; };
-
 /// Proof of work definition for Ethash.
 struct EthashProofOfWork
 {
@@ -67,24 +65,6 @@ struct EthashProofOfWork
 		uint64_t startNonce = 0;
 		int exSizeBits = -1;
 	};
-
-	static const WorkPackage NullWorkPackage;
-
-	/// Default value of the local work size. Also known as workgroup size.
-	static const unsigned defaultLocalWorkSize;
-	/// Default value of the global work size as a multiplier of the local work size
-	static const unsigned defaultGlobalWorkSizeMultiplier;
-	/// Default value of the milliseconds per global work size (per batch)
-	static const unsigned defaultMSPerBatch;
-
-};
-
-enum class DAGEraseMode
-{
-	None,
-	Old,
-	Bench,
-	All
 };
 
 class EthashAux
@@ -102,51 +82,20 @@ public:
 		uint64_t size;
 	};
 
-	struct FullAllocation
-	{
-		FullAllocation(ethash_light_t _light, ethash_callback_t _cb);
-		~FullAllocation();
-		EthashProofOfWork::Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
-		bytesConstRef data() const;
-		uint64_t size() const { return ethash_full_dag_size(full); }
-		ethash_full_t full;
-	};
-
 	using LightType = std::shared_ptr<LightAllocation>;
-	using FullType = std::shared_ptr<FullAllocation>;
 
 	static h256 seedHash(unsigned _number);
 	static uint64_t number(h256 const& _seedHash);
-	static char * dagDirName();
 
 	static LightType light(h256 const& _seedHash);
 
-	static const uint64_t NotGenerating = (uint64_t)-1;
-	/// Kicks off generation of DAG for @a _seedHash and @returns false or @returns true if ready.
-	static unsigned computeFull(h256 const& _seedHash, bool _createIfMissing = true);
-	/// Information on the generation progress.
-	static std::pair<uint64_t, unsigned> fullGeneratingProgress() { return std::make_pair(get()->m_generatingFullNumber, get()->m_fullProgress); }
-	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result or empty pointer if not existing and _createIfMissing is false.
-	static FullType full(h256 const& _seedHash, bool _createIfMissing = false, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
-	
-
-
-	static EthashProofOfWork::Result eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce);
+	static EthashProofOfWork::Result eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce) noexcept;
 
 private:
-	EthashAux() {}
-
-	static EthashAux* s_this;
-	static char s_dagDirName[256];
+	EthashAux() = default;
 
 	Mutex x_lights;
-	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;
-
-	Mutex x_fulls;
-	std::unordered_map<h256, std::weak_ptr<FullAllocation>> m_fulls;
-	std::unique_ptr<std::thread> m_fullGenerator;
-	uint64_t m_generatingFullNumber = NotGenerating;
-	unsigned m_fullProgress;
+	std::unordered_map<h256, LightType> m_lights;
 
 	Mutex x_epochs;
 	std::unordered_map<h256, unsigned> m_epochs;
