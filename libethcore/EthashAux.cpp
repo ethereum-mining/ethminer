@@ -107,15 +107,15 @@ bytesConstRef EthashAux::LightAllocation::data() const
 	return bytesConstRef((byte const*)light->cache, size);
 }
 
-EthashProofOfWork::Result EthashAux::LightAllocation::compute(h256 const& _headerHash, Nonce const& _nonce) const
+Result EthashAux::LightAllocation::compute(h256 const& _headerHash, Nonce const& _nonce) const
 {
 	ethash_return_value r = ethash_light_compute(light, *(ethash_h256_t*)_headerHash.data(), (uint64_t)(u64)_nonce);
 	if (!r.success)
 		BOOST_THROW_EXCEPTION(DAGCreationFailure());
-	return EthashProofOfWork::Result{h256((uint8_t*)&r.result, h256::ConstructFromPointer), h256((uint8_t*)&r.mix_hash, h256::ConstructFromPointer)};
+	return Result{h256((uint8_t*)&r.result, h256::ConstructFromPointer), h256((uint8_t*)&r.mix_hash, h256::ConstructFromPointer)};
 }
 
-EthashProofOfWork::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce) noexcept
+Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce) noexcept
 {
 	try
 	{
@@ -123,6 +123,6 @@ EthashProofOfWork::Result EthashAux::eval(h256 const& _seedHash, h256 const& _he
 	}
 	catch(...)
 	{
-		return EthashProofOfWork::Result{~h256(), h256()};
+		return Result{~h256(), h256()};
 	}
 }
