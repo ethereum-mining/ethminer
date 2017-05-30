@@ -21,7 +21,7 @@ using namespace dev::eth;
 class EthStratumClient
 {
 public:
-	EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email);
+	EthStratumClient(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email);
 	~EthStratumClient();
 
 	void setFailover(string const & host, string const & port);
@@ -32,7 +32,7 @@ public:
 	h256 currentHeaderHash() { return m_current.headerHash; }
 	bool current() { return m_current; }
 	unsigned waitState() { return m_waitState; }
-	bool submit(EthashProofOfWork::Solution solution);
+	bool submit(Solution solution);
 	void reconnect();
 private:
 	void connect();
@@ -68,10 +68,10 @@ private:
 	std::mutex x_pending;
 	int m_pending;
 
-	GenericFarm<EthashProofOfWork> * p_farm;
+	Farm* p_farm;
 	std::mutex x_current;
-	EthashProofOfWork::WorkPackage m_current;
-	EthashProofOfWork::WorkPackage m_previous;
+	WorkPackage m_current;
+	WorkPackage m_previous;
 
 	bool m_stale = false;
 

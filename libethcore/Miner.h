@@ -29,7 +29,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
-#include <libethcore/Common.h>
+#include "EthashAux.h"
 
 #define MINER_WAIT_STATE_UNKNOWN 0
 #define MINER_WAIT_STATE_WORK	 1
@@ -67,7 +67,13 @@ enum class MinerType
 	Mixed
 };
 
-struct MineInfo: public WorkingProgress {};
+/// Describes the progress of a mining operation.
+struct WorkingProgress
+{
+	uint64_t hashes = 0;		///< Total number of hashes computed.
+	uint64_t ms = 0;			///< Total number of milliseconds of mining thus far.
+	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
+};
 
 inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 {
@@ -109,7 +115,7 @@ inline std::ostream& operator<<(std::ostream& os, SolutionStats s)
 	return os << "[A" << s.getAccepts() << "+" << s.getAcceptedStales() << ":R" << s.getRejects() << "+" << s.getRejectedStales() << ":F" << s.getFailures() << "]";
 }
 
-template <class PoW> class GenericMiner;
+class Miner;
 
 
 /**
@@ -117,19 +123,14 @@ template <class PoW> class GenericMiner;
  * @warning Must be implemented in a threadsafe manner since it will be called from multiple
  * miner threads.
  */
-template <class PoW> class GenericFarmFace
+class FarmFace
 {
 public:
-	using WorkPackage = typename PoW::WorkPackage;
-	using Solution = typename PoW::Solution;
-	using Miner = GenericMiner<PoW>;
-
-	virtual ~GenericFarmFace() {}
+	virtual ~FarmFace() = default;
 
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
 	 * @param _p The solution.
-	 * @param _wp The WorkPackage that the Solution is for; this will be reset if the work is accepted.
 	 * @param _finder The miner that found it.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
@@ -140,19 +141,16 @@ public:
  * @brief A miner - a member and adoptee of the Farm.
  * @warning Not threadsafe. It is assumed Farm will synchronise calls to/from this class.
  */
-template <class PoW> class GenericMiner
+class Miner
 {
 public:
-	using WorkPackage = typename PoW::WorkPackage;
-	using Solution = typename PoW::Solution;
-	using FarmFace = GenericFarmFace<PoW>;
 	using ConstructionInfo = std::pair<FarmFace*, unsigned>;
 
-	GenericMiner(ConstructionInfo const& _ci):
+	Miner(ConstructionInfo const& _ci):
 		m_farm(_ci.first),
 		m_index(_ci.second)
 	{}
-	virtual ~GenericMiner() {}
+	virtual ~Miner() {}
 
 	// API FOR THE FARM TO CALL IN WITH
 
