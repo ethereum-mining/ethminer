@@ -604,16 +604,16 @@ private:
 		genesis.setDifficulty(1 << 18);
 		cdebug << genesis.boundary();
 
-		GenericFarm<EthashProofOfWork> f;
-		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
+		Farm f;
+		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
+		sealers["opencl"] = Farm::SealerDescriptor{&EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 		f.setSealers(sealers);
-		f.onSolutionFound([&](EthashProofOfWork::Solution) { return false; });
+		f.onSolutionFound([&](Solution) { return false; });
 
 		string platformInfo = _m == MinerType::CPU ? "CPU" : (_m == MinerType::CL ? "CL" : "CUDA");
 		cout << "Benchmarking on platform: " << platformInfo << endl;
@@ -670,13 +670,13 @@ private:
 		genesis.setDifficulty(1 << 18);
 		cdebug << genesis.boundary();
 
-		GenericFarm<EthashProofOfWork> f;
-		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
+		Farm f;
+		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
+		sealers["opencl"] = Farm::SealerDescriptor{ &EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 		f.setSealers(sealers);
 
@@ -698,11 +698,11 @@ private:
 
 		int time = 0;
 
-		EthashProofOfWork::WorkPackage current = EthashProofOfWork::WorkPackage(genesis);
+		WorkPackage current = WorkPackage(genesis);
 		while (true) {
 			bool completed = false;
-			EthashProofOfWork::Solution solution;
-			f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+			Solution solution;
+			f.onSolutionFound([&](Solution sol)
 			{
 				solution = sol;
 				return completed = true;
@@ -750,12 +750,12 @@ private:
 
 	void doFarm(MinerType _m, string & _remote, unsigned _recheckPeriod)
 	{
-		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
+		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{&EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
+		sealers["opencl"] = Farm::SealerDescriptor{&EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 		(void)_m;
 		(void)_remote;
@@ -768,7 +768,7 @@ private:
 		FarmClient * prpc = &rpc;
 
 		h256 id = h256::random();
-		GenericFarm<EthashProofOfWork> f;
+		Farm f;
 		f.setSealers(sealers);
 		if (_m == MinerType::CPU)
 			f.start("cpu", false);
@@ -776,14 +776,14 @@ private:
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
-		EthashProofOfWork::WorkPackage current, previous;
+		WorkPackage current, previous;
 		std::mutex x_current;
 		while (m_running)
 			try
 			{
 				bool completed = false;
-				EthashProofOfWork::Solution solution;
-				f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+				Solution solution;
+				f.onSolutionFound([&](Solution sol)
 				{
 					solution = sol;
 					return completed = true;
@@ -902,17 +902,17 @@ private:
 #if ETH_STRATUM
 	void doStratum()
 	{
-		map<string, GenericFarm<EthashProofOfWork>::SealerDescriptor> sealers;
+		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashGPUMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
+		sealers["opencl"] = Farm::SealerDescriptor{ &EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = GenericFarm<EthashProofOfWork>::SealerDescriptor{ &EthashCUDAMiner::instances, [](GenericMiner<EthashProofOfWork>::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
 #endif
 		if (!m_farmRecheckSet)
 			m_farmRecheckPeriod = m_defaultStratumFarmRecheckPeriod;
 
-		GenericFarm<EthashProofOfWork> f;
+		Farm f;
 
 		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
 		if (m_stratumClientVersion == 1) {
@@ -930,7 +930,7 @@ private:
 			}
 			f.setSealers(sealers);
 
-			f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+			f.onSolutionFound([&](Solution sol)
 			{
 				if (client.isConnected()) {
 					client.submit(sol);
@@ -974,7 +974,7 @@ private:
 			}
 			f.setSealers(sealers);
 
-			f.onSolutionFound([&](EthashProofOfWork::Solution sol)
+			f.onSolutionFound([&](Solution sol)
 			{
 				client.submit(sol);
 				return false;

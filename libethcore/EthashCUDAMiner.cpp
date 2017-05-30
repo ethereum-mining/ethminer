@@ -108,7 +108,7 @@ unsigned EthashCUDAMiner::s_numInstances = 0;
 int EthashCUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
 EthashCUDAMiner::EthashCUDAMiner(ConstructionInfo const& _ci) :
-	GenericMiner<EthashProofOfWork>(_ci),
+	Miner(_ci),
 	Worker("cudaminer" + toString(index())),
 m_hook( new EthashCUDAHook(this))
 {
@@ -124,7 +124,7 @@ EthashCUDAMiner::~EthashCUDAMiner()
 bool EthashCUDAMiner::report(uint64_t _nonce)
 {
 	Nonce n = (Nonce)(u64)_nonce;
-	EthashProofOfWork::Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
+	Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
 	if (r.value < work().boundary)
 		return submitProof(Solution{ n, r.mixHash });
 	return false;
