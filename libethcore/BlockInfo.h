@@ -50,12 +50,6 @@ enum Strictness
 	CheckNothing
 };
 
-enum BlockDataType
-{
-	HeaderData,
-	BlockData
-};
-
 DEV_SIMPLE_EXCEPTION(NoHashRecorded);
 DEV_SIMPLE_EXCEPTION(GenesisBlockCannotBeCalculated);
 
@@ -86,8 +80,8 @@ public:
 	static const unsigned BasicFields = 13;
 
 	BlockInfo();
-	explicit BlockInfo(bytesConstRef _data, Strictness _s = CheckEverything, h256 const& _hashWith = h256(), BlockDataType _bdt = BlockData);
-	explicit BlockInfo(bytes const& _data, Strictness _s = CheckEverything, h256 const& _hashWith = h256(), BlockDataType _bdt = BlockData): BlockInfo(&_data, _s, _hashWith, _bdt) {}
+	explicit BlockInfo(bytesConstRef _data, Strictness _s = CheckEverything, h256 const& _hashWith = h256());
+	explicit BlockInfo(bytes const& _data, Strictness _s = CheckEverything, h256 const& _hashWith = h256()): BlockInfo(&_data, _s, _hashWith) {}
 
 	static RLP extractHeader(bytesConstRef _block);
 
@@ -171,14 +165,14 @@ class BlockHeaderPolished: public BlockInfoSub
 public:
 	BlockHeaderPolished() {}
 	BlockHeaderPolished(BlockInfo const& _bi): BlockInfoSub(_bi) {}
-	explicit BlockHeaderPolished(bytes const& _data, Strictness _s = IgnoreSeal, h256 const& _h = h256(), BlockDataType _bdt = BlockData) { populate(&_data, _s, _h, _bdt); }
-	explicit BlockHeaderPolished(bytesConstRef _data, Strictness _s = IgnoreSeal, h256 const& _h = h256(), BlockDataType _bdt = BlockData) { populate(_data, _s, _h, _bdt); }
+	explicit BlockHeaderPolished(bytes const& _data, Strictness _s = IgnoreSeal, h256 const& _h = h256()) { populate(&_data, _s, _h); }
+	explicit BlockHeaderPolished(bytesConstRef _data, Strictness _s = IgnoreSeal, h256 const& _h = h256()) { populate(_data, _s, _h); }
 
 	// deprecated for public API - use constructor.
 	// TODO: make private.
-	void populate(bytesConstRef _data, Strictness _s, h256 const& _h = h256(), BlockDataType _bdt = BlockData)
+	void populate(bytesConstRef _data, Strictness _s, h256 const& _h = h256())
 	{
-		populateFromHeader(_bdt == BlockData ? BlockInfo::extractHeader(_data) : RLP(_data), _s, _h);
+		populateFromHeader(BlockInfo::extractHeader(_data), _s, _h);
 	}
 
 	// deprecated for public API - use constructor.
