@@ -76,44 +76,12 @@ public:
 
 	explicit operator bool() const { return m_timestamp != Invalid256; }
 
-	bool operator==(BlockHeader const& _cmp) const
-	{
-		return m_parentHash == _cmp.parentHash() &&
-			m_sha3Uncles == _cmp.sha3Uncles() &&
-			m_coinbaseAddress == _cmp.beneficiary() &&
-			m_stateRoot == _cmp.stateRoot() &&
-			m_transactionsRoot == _cmp.transactionsRoot() &&
-			m_receiptsRoot == _cmp.receiptsRoot() &&
-			m_logBloom == _cmp.logBloom() &&
-			m_difficulty == _cmp.difficulty() &&
-			m_number == _cmp.number() &&
-			m_gasLimit == _cmp.gasLimit() &&
-			m_gasUsed == _cmp.gasUsed() &&
-			m_timestamp == _cmp.timestamp() &&
-			m_extraData == _cmp.extraData();
-	}
-	bool operator!=(BlockHeader const& _cmp) const { return !operator==(_cmp); }
-
 	h256 const& boundary() const;
-
-	h256 const& parentHash() const { return m_parentHash; }
-	h256 const& sha3Uncles() const { return m_sha3Uncles; }
 
 	void setNumber(u256 const& _v) { m_number = _v; noteDirty(); }
 	void setDifficulty(u256 const& _v) { m_difficulty = _v; noteDirty(); }
 
-	Address const& beneficiary() const { return m_coinbaseAddress; }
-	h256 const& stateRoot() const { return m_stateRoot; }
-	h256 const& transactionsRoot() const { return m_transactionsRoot; }
-	h256 const& receiptsRoot() const { return m_receiptsRoot; }
-	LogBloom const& logBloom() const { return m_logBloom; }
 	u256 const& number() const { return m_number; }
-	u256 const& gasLimit() const { return m_gasLimit; }
-	u256 const& gasUsed() const { return m_gasUsed; }
-	u256 const& timestamp() const { return m_timestamp; }
-	bytes const& extraData() const { return m_extraData; }
-
-	u256 const& difficulty() const { return m_difficulty; }		// TODO: pull out into BlockHeader
 
 	/// sha3 of the header only.
 	h256 const& hashWithout() const;
@@ -140,7 +108,7 @@ private:
 	u256 m_timestamp = Invalid256;
 	bytes m_extraData;
 
-	u256 m_difficulty;		// TODO: pull out into BlockHeader
+	u256 m_difficulty;
 
 	mutable h256 m_hashWithout;					///< SHA3 hash of the block header! Not serialised.
 	mutable h256 m_boundary;					///< 2^256 / difficulty
