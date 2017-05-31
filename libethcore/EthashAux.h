@@ -25,7 +25,7 @@
 #include <libethash/ethash.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
-#include "BlockInfo.h"
+#include "BlockHeader.h"
 
 namespace dev
 {
