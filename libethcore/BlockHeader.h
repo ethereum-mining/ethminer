@@ -69,20 +69,20 @@ enum Strictness
  * The default constructor creates an empty object, which can be tested against with the boolean
  * conversion operator.
  */
-class BlockInfo
+class BlockHeader
 {
 public:
 	static const unsigned BasicFields = 13;
 
-	BlockInfo();
-	explicit BlockInfo(bytesConstRef _data, Strictness _s = CheckEverything, h256 const& _hashWith = h256());
-	explicit BlockInfo(bytes const& _data, Strictness _s = CheckEverything, h256 const& _hashWith = h256()): BlockInfo(&_data, _s, _hashWith) {}
+	BlockHeader() = default;
+	explicit BlockHeader(bytesConstRef _data, Strictness _s = CheckEverything, h256 const& _hashWith = h256());
+	explicit BlockHeader(bytes const& _data, Strictness _s = CheckEverything, h256 const& _hashWith = h256()): BlockHeader(&_data, _s, _hashWith) {}
 
 	static RLP extractHeader(bytesConstRef _block);
 
 	explicit operator bool() const { return m_timestamp != Invalid256; }
 
-	bool operator==(BlockInfo const& _cmp) const
+	bool operator==(BlockHeader const& _cmp) const
 	{
 		return m_parentHash == _cmp.parentHash() &&
 			m_sha3Uncles == _cmp.sha3Uncles() &&
@@ -98,7 +98,7 @@ public:
 			m_timestamp == _cmp.timestamp() &&
 			m_extraData == _cmp.extraData();
 	}
-	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
+	bool operator!=(BlockHeader const& _cmp) const { return !operator==(_cmp); }
 
 	h256 const& boundary() const;
 
@@ -124,10 +124,12 @@ public:
 	/// sha3 of the header only.
 	h256 const& hashWithout() const;
 
-	void clear();
 	void noteDirty() const { m_hashWithout = m_boundary = m_hash = h256(); }
 
-protected:
+	h256 const& seedHash() const;
+	Nonce const& nonce() const { return m_nonce; }
+
+private:
 	void populateFromHeader(RLP const& _header, Strictness _s = IgnoreSeal);
 	void streamRLPFields(RLPStream& _s) const;
 
@@ -148,42 +150,12 @@ protected:
 
 	u256 m_difficulty;		// TODO: pull out into BlockHeader
 
-private:
 	mutable h256 m_hashWithout;					///< SHA3 hash of the block header! Not serialised.
 	mutable h256 m_boundary;					///< 2^256 / difficulty
-};
 
-class BlockHeaderRaw: public BlockInfo
-{
-public:
-	h256 const& seedHash() const;
-	Nonce const& nonce() const { return m_nonce; }
-
-protected:
-	BlockHeaderRaw() = default;
-	BlockHeaderRaw(BlockInfo const& _bi): BlockInfo(_bi) {}
-
-	void clear() { m_mixHash = h256(); m_nonce = Nonce(); }
-
-private:
 	Nonce m_nonce;
-	h256 m_mixHash;
-
 	mutable h256 m_seedHash;
 };
-
-class BlockHeaderPolished: public BlockHeaderRaw
-{
-public:
-	BlockHeaderPolished() {}
-	BlockHeaderPolished(BlockInfo const& _bi): BlockHeaderRaw(_bi) {}
-
-	void clear() { BlockInfo::clear(); BlockHeaderRaw::clear(); BlockHeaderRaw::noteDirty(); }
-	void noteDirty() const { BlockInfo::noteDirty(); BlockHeaderRaw::noteDirty(); }
-
-};
-
-using BlockHeader = BlockHeaderPolished;
 
 }
 }
