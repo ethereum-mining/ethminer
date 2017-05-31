@@ -41,12 +41,6 @@ using Nonce = h64;
 
 using BlockNumber = unsigned;
 
-enum IncludeProof
-{
-	WithoutProof = 0,
-	WithProof = 1
-};
-
 enum Strictness
 {
 	CheckEverything,
@@ -207,26 +201,25 @@ public:
 	void clear() { BlockInfo::clear(); BlockInfoSub::clear(); BlockInfoSub::noteDirty(); }
 	void noteDirty() const { BlockInfo::noteDirty(); BlockInfoSub::noteDirty(); }
 
-	h256 headerHash(IncludeProof _i = WithProof) const
+	h256 headerHash() const
 	{
 		RLPStream s;
-		streamRLP(s, _i);
+		streamRLP(s);
 		return sha3(s.out());
 	}
 
 	h256 const& hash() const
 	{
 		if (!BlockInfo::m_hash)
-			BlockInfo::m_hash = headerHash(WithProof);
+			BlockInfo::m_hash = headerHash();
 		return BlockInfo::m_hash;
 	}
 
-	void streamRLP(RLPStream& _s, IncludeProof _i = WithProof) const
+	void streamRLP(RLPStream& _s) const
 	{
-		_s.appendList(BlockInfo::BasicFields + (_i == WithProof ? BlockInfoSub::SealFields : 0));
+		_s.appendList(BlockInfo::BasicFields + BlockInfoSub::SealFields);
 		BlockInfo::streamRLPFields(_s);
-		if (_i == WithProof)
-			BlockInfoSub::streamRLPFields(_s);
+		BlockInfoSub::streamRLPFields(_s);
 	}
 };
 
