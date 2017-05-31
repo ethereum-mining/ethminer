@@ -153,6 +153,25 @@ private:
 	mutable h256 m_boundary;					///< 2^256 / difficulty
 };
 
+class BlockHeaderRaw: public BlockInfo
+{
+public:
+	h256 const& seedHash() const;
+	Nonce const& nonce() const { return m_nonce; }
+
+protected:
+	BlockHeaderRaw() = default;
+	BlockHeaderRaw(BlockInfo const& _bi): BlockInfo(_bi) {}
+
+	void clear() { m_mixHash = h256(); m_nonce = Nonce(); }
+
+private:
+	Nonce m_nonce;
+	h256 m_mixHash;
+
+	mutable h256 m_seedHash;
+};
+
 template <class BlockInfoSub>
 class BlockHeaderPolished: public BlockInfoSub
 {
@@ -209,25 +228,6 @@ public:
 		BlockInfo::streamRLPFields(_s);
 		BlockInfoSub::streamRLPFields(_s);
 	}
-};
-
-class BlockHeaderRaw: public BlockInfo
-{
-public:
-	h256 const& seedHash() const;
-	Nonce const& nonce() const { return m_nonce; }
-
-protected:
-	BlockHeaderRaw() = default;
-	BlockHeaderRaw(BlockInfo const& _bi): BlockInfo(_bi) {}
-
-	void clear() { m_mixHash = h256(); m_nonce = Nonce(); }
-
-private:
-	Nonce m_nonce;
-	h256 m_mixHash;
-
-	mutable h256 m_seedHash;
 };
 
 using BlockHeader = BlockHeaderPolished<BlockHeaderRaw>;
