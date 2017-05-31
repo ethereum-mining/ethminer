@@ -27,7 +27,7 @@ using namespace chrono;
 using namespace dev;
 using namespace eth;
 
-h256 const& BlockHeaderRaw::seedHash() const
+h256 const& BlockHeader::seedHash() const
 {
 	if (!m_seedHash)
 		m_seedHash = EthashAux::seedHash((unsigned)m_number);

@@ -19,58 +19,31 @@
  * @date 2014
  */
 
+#include "BlockHeader.h"
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
 #include "EthashAux.h"
-#include "Exceptions.h"
-#include "BlockInfo.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-namespace
+
+BlockHeader::BlockHeader(bytesConstRef _block)
 {
-h256 const EmptyTrie = sha3(rlp(""));
+	RLP header = extractHeader(_block);
+	populateFromHeader(header);
 }
 
-BlockInfo::BlockInfo(): m_timestamp(Invalid256)
-{
-}
-
-BlockInfo::BlockInfo(bytesConstRef _block, Strictness _s, h256 const& _hashWith, BlockDataType _bdt)
-{
-	RLP header = _bdt == BlockData ? extractHeader(_block) : RLP(_block);
-	m_hash = _hashWith ? _hashWith : sha3(header.data());
-	populateFromHeader(header, _s);
-}
-
-void BlockInfo::clear()
-{
-	m_parentHash = h256();
-	m_sha3Uncles = EmptyListSHA3;
-	m_coinbaseAddress = Address();
-	m_stateRoot = EmptyTrie;
-	m_transactionsRoot = EmptyTrie;
-	m_receiptsRoot = EmptyTrie;
-	m_logBloom = LogBloom();
-	m_difficulty = 0;
-	m_number = 0;
-	m_gasLimit = 0;
-	m_gasUsed = 0;
-	m_timestamp = 0;
-	m_extraData.clear();
-	noteDirty();
-}
-
-h256 const& BlockInfo::boundary() const
+h256 const& BlockHeader::boundary() const
 {
 	if (!m_boundary && m_difficulty)
 		m_boundary = (h256)(u256)((bigint(1) << 256) / m_difficulty);
 	return m_boundary;
 }
 
-h256 const& BlockInfo::hashWithout() const
+h256 const& BlockHeader::hashWithout() const
 {
 	if (!m_hashWithout)
 	{
@@ -81,13 +54,13 @@ h256 const& BlockInfo::hashWithout() const
 	return m_hashWithout;
 }
 
-void BlockInfo::streamRLPFields(RLPStream& _s) const
+void BlockHeader::streamRLPFields(RLPStream& _s) const
 {
 	_s	<< m_parentHash << m_sha3Uncles << m_coinbaseAddress << m_stateRoot << m_transactionsRoot << m_receiptsRoot << m_logBloom
 		<< m_difficulty << m_number << m_gasLimit << m_gasUsed << m_timestamp << m_extraData;
 }
 
-RLP BlockInfo::extractHeader(bytesConstRef _block)
+RLP BlockHeader::extractHeader(bytesConstRef _block)
 {
 	RLP root(_block);
 	if (!root.isList())
@@ -102,7 +75,7 @@ RLP BlockInfo::extractHeader(bytesConstRef _block)
 	return header;
 }
 
-void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s)
+void BlockHeader::populateFromHeader(RLP const& _header)
 {
 	int field = 0;
 	try
@@ -130,6 +103,6 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s)
 	if (m_number > ~(unsigned)0)
 		BOOST_THROW_EXCEPTION(InvalidNumber());
 
-	if (_s != CheckNothing && m_gasUsed > m_gasLimit)
+	if (m_gasUsed > m_gasLimit)
 		BOOST_THROW_EXCEPTION(TooMuchGasUsed() << RequirementError(bigint(m_gasLimit), bigint(m_gasUsed)));
 }

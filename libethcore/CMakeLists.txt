@@ -1,6 +1,7 @@
 file(GLOB SOURCES "*.cpp")
 file(GLOB HEADERS "*.h")
 
+
 include_directories(BEFORE ..)
 
 add_library(ethcore ${SOURCES} ${HEADERS})
