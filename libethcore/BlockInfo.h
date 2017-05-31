@@ -44,14 +44,9 @@ using BlockNumber = unsigned;
 enum Strictness
 {
 	CheckEverything,
-	JustSeal,
-	QuickNonce,
 	IgnoreSeal,
 	CheckNothing
 };
-
-DEV_SIMPLE_EXCEPTION(NoHashRecorded);
-DEV_SIMPLE_EXCEPTION(GenesisBlockCannotBeCalculated);
 
 /** @brief Encapsulation of a block header.
  * Class to contain all of a block header's data. It is able to parse a block header and populate
@@ -128,7 +123,6 @@ public:
 
 	/// sha3 of the header only.
 	h256 const& hashWithout() const;
-	h256 const& hash() const { if (m_hash) return m_hash; BOOST_THROW_EXCEPTION(NoHashRecorded()); }
 
 	void clear();
 	void noteDirty() const { m_hashWithout = m_boundary = m_hash = h256(); }
