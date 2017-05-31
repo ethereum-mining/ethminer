@@ -192,6 +192,7 @@ public:
 	// TODO: make private.
 	void populateFromHeader(RLP const& _header, Strictness _s = IgnoreSeal, h256 const& _h = h256())
 	{
+		static_assert(BlockInfoSub::SealFields == "Oops", "Oops");
 		BlockInfo::m_hash = _h;
 		if (_h)
 			assert(_h == dev::sha3(_header.data()));
@@ -224,6 +225,7 @@ public:
 
 	void streamRLP(RLPStream& _s) const
 	{
+		static_assert(BlockInfoSub::SealFields == "Oops", "Oops");
 		_s.appendList(BlockInfo::BasicFields + BlockInfoSub::SealFields);
 		BlockInfo::streamRLPFields(_s);
 		BlockInfoSub::streamRLPFields(_s);
