@@ -172,67 +172,18 @@ private:
 	mutable h256 m_seedHash;
 };
 
-template <class BlockInfoSub>
-class BlockHeaderPolished: public BlockInfoSub
+class BlockHeaderPolished: public BlockHeaderRaw
 {
 public:
 	BlockHeaderPolished() {}
-	BlockHeaderPolished(BlockInfo const& _bi): BlockInfoSub(_bi) {}
-	explicit BlockHeaderPolished(bytes const& _data, Strictness _s = IgnoreSeal, h256 const& _h = h256()) { populate(&_data, _s, _h); }
-	explicit BlockHeaderPolished(bytesConstRef _data, Strictness _s = IgnoreSeal, h256 const& _h = h256()) { populate(_data, _s, _h); }
+	BlockHeaderPolished(BlockInfo const& _bi): BlockHeaderRaw(_bi) {}
 
-	// deprecated for public API - use constructor.
-	// TODO: make private.
-	void populate(bytesConstRef _data, Strictness _s, h256 const& _h = h256())
-	{
-		populateFromHeader(BlockInfo::extractHeader(_data), _s, _h);
-	}
+	void clear() { BlockInfo::clear(); BlockHeaderRaw::clear(); BlockHeaderRaw::noteDirty(); }
+	void noteDirty() const { BlockInfo::noteDirty(); BlockHeaderRaw::noteDirty(); }
 
-	// deprecated for public API - use constructor.
-	// TODO: make private.
-	void populateFromHeader(RLP const& _header, Strictness _s = IgnoreSeal, h256 const& _h = h256())
-	{
-		static_assert(BlockInfoSub::SealFields == "Oops", "Oops");
-		BlockInfo::m_hash = _h;
-		if (_h)
-			assert(_h == dev::sha3(_header.data()));
-		else
-			BlockInfo::m_hash = dev::sha3(_header.data());
-
-		if (_header.itemCount() != BlockInfo::BasicFields + BlockInfoSub::SealFields)
-			BOOST_THROW_EXCEPTION(InvalidBlockHeaderItemCount());
-
-		BlockInfo::populateFromHeader(_header, _s);
-		BlockInfoSub::populateFromHeader(_header, _s);
-	}
-
-	void clear() { BlockInfo::clear(); BlockInfoSub::clear(); BlockInfoSub::noteDirty(); }
-	void noteDirty() const { BlockInfo::noteDirty(); BlockInfoSub::noteDirty(); }
-
-	h256 headerHash() const
-	{
-		RLPStream s;
-		streamRLP(s);
-		return sha3(s.out());
-	}
-
-	h256 const& hash() const
-	{
-		if (!BlockInfo::m_hash)
-			BlockInfo::m_hash = headerHash();
-		return BlockInfo::m_hash;
-	}
-
-	void streamRLP(RLPStream& _s) const
-	{
-		static_assert(BlockInfoSub::SealFields == "Oops", "Oops");
-		_s.appendList(BlockInfo::BasicFields + BlockInfoSub::SealFields);
-		BlockInfo::streamRLPFields(_s);
-		BlockInfoSub::streamRLPFields(_s);
-	}
 };
 
-using BlockHeader = BlockHeaderPolished<BlockHeaderRaw>;
+using BlockHeader = BlockHeaderPolished;
 
 }
 }
