@@ -30,11 +30,10 @@ using namespace dev;
 using namespace dev::eth;
 
 
-BlockHeader::BlockHeader(bytesConstRef _block, Strictness _s, h256 const& _hashWith)
+BlockHeader::BlockHeader(bytesConstRef _block)
 {
 	RLP header = extractHeader(_block);
-	m_hash = _hashWith ? _hashWith : sha3(header.data());
-	populateFromHeader(header, _s);
+	populateFromHeader(header);
 }
 
 h256 const& BlockHeader::boundary() const
@@ -76,7 +75,7 @@ RLP BlockHeader::extractHeader(bytesConstRef _block)
 	return header;
 }
 
-void BlockHeader::populateFromHeader(RLP const& _header, Strictness _s)
+void BlockHeader::populateFromHeader(RLP const& _header)
 {
 	int field = 0;
 	try
@@ -104,6 +103,6 @@ void BlockHeader::populateFromHeader(RLP const& _header, Strictness _s)
 	if (m_number > ~(unsigned)0)
 		BOOST_THROW_EXCEPTION(InvalidNumber());
 
-	if (_s != CheckNothing && m_gasUsed > m_gasLimit)
+	if (m_gasUsed > m_gasLimit)
 		BOOST_THROW_EXCEPTION(TooMuchGasUsed() << RequirementError(bigint(m_gasLimit), bigint(m_gasUsed)));
 }

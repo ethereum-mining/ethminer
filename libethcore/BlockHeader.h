@@ -41,12 +41,6 @@ using Nonce = h64;
 
 using BlockNumber = unsigned;
 
-enum Strictness
-{
-	CheckEverything,
-	IgnoreSeal,
-	CheckNothing
-};
 
 /** @brief Encapsulation of a block header.
  * Class to contain all of a block header's data. It is able to parse a block header and populate
@@ -75,8 +69,8 @@ public:
 	static const unsigned BasicFields = 13;
 
 	BlockHeader() = default;
-	explicit BlockHeader(bytesConstRef _data, Strictness _s = CheckEverything, h256 const& _hashWith = h256());
-	explicit BlockHeader(bytes const& _data, Strictness _s = CheckEverything, h256 const& _hashWith = h256()): BlockHeader(&_data, _s, _hashWith) {}
+	explicit BlockHeader(bytesConstRef _data);
+	explicit BlockHeader(bytes const& _data): BlockHeader(&_data) {}
 
 	static RLP extractHeader(bytesConstRef _block);
 
@@ -124,16 +118,14 @@ public:
 	/// sha3 of the header only.
 	h256 const& hashWithout() const;
 
-	void noteDirty() const { m_hashWithout = m_boundary = m_hash = h256(); }
+	void noteDirty() const { m_hashWithout = m_boundary = h256(); }
 
 	h256 const& seedHash() const;
 	Nonce const& nonce() const { return m_nonce; }
 
 private:
-	void populateFromHeader(RLP const& _header, Strictness _s = IgnoreSeal);
+	void populateFromHeader(RLP const& _header);
 	void streamRLPFields(RLPStream& _s) const;
-
-	mutable h256 m_hash;						///< SHA3 hash of the block header! Not serialised.
 
 	h256 m_parentHash;
 	h256 m_sha3Uncles;
