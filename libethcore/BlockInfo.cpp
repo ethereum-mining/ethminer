@@ -38,9 +38,9 @@ BlockInfo::BlockInfo(): m_timestamp(Invalid256)
 {
 }
 
-BlockInfo::BlockInfo(bytesConstRef _block, Strictness _s, h256 const& _hashWith, BlockDataType _bdt)
+BlockInfo::BlockInfo(bytesConstRef _block, Strictness _s, h256 const& _hashWith)
 {
-	RLP header = _bdt == BlockData ? extractHeader(_block) : RLP(_block);
+	RLP header = extractHeader(_block);
 	m_hash = _hashWith ? _hashWith : sha3(header.data());
 	populateFromHeader(header, _s);
 }
