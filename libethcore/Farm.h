@@ -27,7 +27,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Worker.h>
 #include <libethcore/Miner.h>
-#include <libethcore/BlockInfo.h>
+#include <libethcore/BlockHeader.h>
 
 namespace dev
 {
