@@ -15,7 +15,7 @@ HunterGate(
 
 
 project(ethminer)
-set(PROJECT_VERSION 0.10.0rc3)
+set(PROJECT_VERSION 0.10.0rc4)
 
 # link_directories interprate relative paths with respect to CMAKE_CURRENT_SOURCE_DIR
 cmake_policy(SET CMP0015 NEW)
