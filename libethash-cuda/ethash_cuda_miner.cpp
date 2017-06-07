@@ -205,7 +205,7 @@ void ethash_cuda_miner::listDevices()
 	}
 	catch(std::runtime_error const& err)
 	{
-		std::cerr << err.what() << '\n';
+		std::cerr << "CUDA error: " << err.what() << '\n';
 	}
 }
 
