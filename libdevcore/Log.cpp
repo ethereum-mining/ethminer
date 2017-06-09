@@ -21,8 +21,6 @@
 
 #include "Log.h"
 
-#include <string>
-#include <iostream>
 #include <thread>
 #ifdef __APPLE__
 #include <pthread.h>
@@ -41,23 +39,6 @@ mutex x_logOverride;
 /// If a channel has no entry, then it will output as long as its verbosity (LogChannel::verbosity) is less than
 /// or equal to the currently output verbosity (g_logVerbosity).
 static map<type_info const*, bool> s_logOverride;
-
-LogOverrideAux::LogOverrideAux(std::type_info const* _ch, bool _value):
-	m_ch(_ch)
-{
-	Guard l(x_logOverride);
-	m_old = s_logOverride.count(_ch) ? (int)s_logOverride[_ch] : c_null;
-	s_logOverride[m_ch] = _value;
-}
-
-LogOverrideAux::~LogOverrideAux()
-{
-	Guard l(x_logOverride);
-	if (m_old == c_null)
-		s_logOverride.erase(m_ch);
-	else
-		s_logOverride[m_ch] = (bool)m_old;
-}
 
 #ifdef _WIN32
 const char* LogChannel::name() { return EthGray "..."; }

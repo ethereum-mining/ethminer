@@ -24,16 +24,19 @@
 #pragma once
 #if ETH_ETHASHCL
 
-#include "libdevcore/Worker.h"
+#include <libdevcore/Worker.h>
 #include "EthashAux.h"
 #include "Miner.h"
+
+class ethash_cl_miner;
 
 namespace dev
 {
 namespace eth
 {
+class EthashCLHook;
 
-class EthashGPUMiner: public GenericMiner<EthashProofOfWork>, Worker
+class EthashGPUMiner: public Miner, Worker
 {
 	friend class dev::eth::EthashCLHook;
 
@@ -73,7 +76,7 @@ private:
 	void workLoop() override;
 	bool report(uint64_t _nonce);
 
-	using GenericMiner<EthashProofOfWork>::accumulateHashes;
+	using Miner::accumulateHashes;
 
 	EthashCLHook* m_hook = nullptr;
 	ethash_cl_miner* m_miner = nullptr;

@@ -25,23 +25,18 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
-#include <assert.h>
 #include <queue>
 #include <random>
 #include <atomic>
 #include <sstream>
-#include <vector>
 #include <chrono>
 #include <thread>
-#include <libethash/util.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
 #include <cuda_runtime.h>
 #include "ethash_cuda_miner.h"
 #include "ethash_cuda_miner_kernel_globals.h"
 
-
-#define ETHASH_BYTES 32
 
 // workaround lame platforms
 
@@ -106,11 +101,23 @@ std::string ethash_cuda_miner::platform_info(unsigned _deviceId)
 	return "{ \"platform\": \"CUDA " + std::string(platform) + "\", \"device\": \"" + std::string(device_props.name) + "\", \"version\": \"Compute " + std::string(compute) + "\" }";
 }
 
-unsigned ethash_cuda_miner::getNumDevices()
+int ethash_cuda_miner::getNumDevices()
 {
-	int device_count;
-	CUDA_SAFE_CALL(cudaGetDeviceCount(&device_count));
-	return device_count;
+	int deviceCount = -1;
+	cudaError_t err = cudaGetDeviceCount(&deviceCount);
+	if (err == cudaSuccess)
+		return deviceCount;
+
+	if (err == cudaErrorInsufficientDriver)
+	{
+		int driverVersion = -1;
+		cudaDriverGetVersion(&driverVersion);
+		if (driverVersion == 0)
+			throw std::runtime_error{"No CUDA driver found"};
+		throw std::runtime_error{"Insufficient CUDA driver: " + std::to_string(driverVersion)};
+	}
+
+	throw std::runtime_error{cudaGetErrorString(err)};
 }
 
 bool ethash_cuda_miner::configureGPU(
@@ -138,13 +145,13 @@ bool ethash_cuda_miner::configureGPU(
 		// by default let's only consider the DAG of the first epoch
 		uint64_t dagSize = ethash_get_datasize(_currentBlock);
 		uint64_t requiredSize = dagSize + _extraGPUMemory;
-		unsigned devicesCount = getNumDevices();
-		for (unsigned int i = 0; i < devicesCount; i++)
+		int devicesCount = getNumDevices();
+		for (int i = 0; i < devicesCount; i++)
 		{
 			
 			if (_devices[i] != -1)
 			{
-				int deviceId = min((int)devicesCount - 1, _devices[i]);
+				int deviceId = min(devicesCount - 1, _devices[i]);
 				cudaDeviceProp props;
 				CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, deviceId));
 				if (props.totalGlobalMem >= requiredSize)
@@ -184,7 +191,8 @@ void ethash_cuda_miner::listDevices()
 	try
 	{
 		string outString = "\nListing CUDA devices.\nFORMAT: [deviceID] deviceName\n";
-		for (unsigned int i = 0; i < getNumDevices(); i++)
+		int numDevices = getNumDevices();
+		for (int i = 0; i < numDevices; ++i)
 		{
 			cudaDeviceProp props;
 			CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
@@ -197,7 +205,7 @@ void ethash_cuda_miner::listDevices()
 	}
 	catch(std::runtime_error const& err)
 	{
-		std::cerr << err.what();
+		std::cerr << "CUDA error: " << err.what() << '\n';
 	}
 }
 
@@ -271,8 +279,6 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 			if (_cpyToHost)
 			{
 				uint8_t* memoryDAG = new uint8_t[dagSize];
-				if (!memoryDAG) throw std::runtime_error("Failed to init host memory for DAG, not enough memory?");
-
 				cout << "Copying DAG from GPU #" << device_num << " to host" << endl;
 				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
 
@@ -342,7 +348,7 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 	uint64_t batch_size = s_gridSize * s_blockSize;
 	for (; !exit; m_current_index++, m_current_nonce += batch_size)
 	{
-		unsigned int stream_index = m_current_index % s_numStreams;
+		auto stream_index = m_current_index % s_numStreams;
 		cudaStream_t stream = m_streams[stream_index];
 		volatile uint32_t* buffer = m_search_buf[stream_index];
 		uint32_t found_count = 0;

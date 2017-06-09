@@ -22,7 +22,7 @@ using namespace dev::eth;
 class EthStratumClientV2 : public Worker
 {
 public:
-	EthStratumClientV2(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email);
+	EthStratumClientV2(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email);
 	~EthStratumClientV2();
 
 	void setFailover(string const & host, string const & port);
@@ -33,7 +33,7 @@ public:
 	h256 currentHeaderHash() { return m_current.headerHash; }
 	bool current() { return m_current; }
 	unsigned waitState() { return m_waitState; }
-	bool submit(EthashProofOfWork::Solution solution);
+	bool submit(Solution solution);
 	void reconnect();
 private:
 	void workLoop() override;
@@ -64,16 +64,15 @@ private:
 
 	string m_response;
 
-	GenericFarm<EthashProofOfWork> * p_farm;
+	Farm* p_farm;
 	mutex x_current;
-	EthashProofOfWork::WorkPackage m_current;
-	EthashProofOfWork::WorkPackage m_previous;
+	WorkPackage m_current;
+	WorkPackage m_previous;
 
 	bool m_stale = false;
 
 	string m_job;
 	string m_previousJob;
-	EthashAux::FullType m_dag;
 
 	boost::asio::io_service m_io_service;
 	tcp::socket m_socket;

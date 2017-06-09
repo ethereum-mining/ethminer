@@ -27,7 +27,7 @@ static void diffToTarget(uint32_t *target, double diff)
 }
 
 
-EthStratumClientV2::EthStratumClientV2(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email)
+EthStratumClientV2::EthStratumClientV2(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email)
 	: Worker("stratum"), 
 	  m_socket(m_io_service)
 {
@@ -446,11 +446,11 @@ void EthStratumClientV2::work_timeout_handler(const boost::system::error_code& e
 	}
 }
 
-bool EthStratumClientV2::submit(EthashProofOfWork::Solution solution) {
+bool EthStratumClientV2::submit(Solution solution) {
 	x_current.lock();
-	EthashProofOfWork::WorkPackage tempWork(m_current);
+	WorkPackage tempWork(m_current);
 	string temp_job = m_job;
-	EthashProofOfWork::WorkPackage tempPreviousWork(m_previous);
+	WorkPackage tempPreviousWork(m_previous);
 	string temp_previous_job = m_previousJob;
 	x_current.unlock();
 

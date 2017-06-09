@@ -33,7 +33,6 @@
 #include <random>
 #include <atomic>
 #include <sstream>
-#include <libethash/util.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
 #include "ethash_cl_miner.h"

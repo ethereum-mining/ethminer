@@ -52,18 +52,6 @@ extern int g_logVerbosity;
 /// The current method that the logging system uses to output the log messages. Defaults to simpleDebugOut().
 extern std::function<void(std::string const&, char const*)> g_logPost;
 
-class LogOverrideAux
-{
-protected:
-	LogOverrideAux(std::type_info const* _ch, bool _value);
-	~LogOverrideAux();
-
-private:
-	std::type_info const* m_ch;
-	static const int c_null = -1;
-	int m_old;
-};
-
 class ThreadContext
 {
 public:
