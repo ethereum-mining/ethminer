@@ -27,7 +27,7 @@ static void diffToTarget(uint32_t *target, double diff)
 }
 
 
-EthStratumClient::EthStratumClient(GenericFarm<EthashProofOfWork> * f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email)
+EthStratumClient::EthStratumClient(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email)
 	: m_socket(m_io_service)
 {
 	m_minerType = m;
@@ -82,7 +82,16 @@ void EthStratumClient::connect()
 
 	cnote << "Connecting to stratum server " << p_active->host + ":" + p_active->port;
 
-	m_serviceThread = std::thread{boost::bind(&boost::asio::io_service::run, &m_io_service)};
+	if (m_serviceThread.joinable())
+	{
+		// If the service thread have been created try to reset the service.
+		m_io_service.reset();
+	}
+	else
+	{
+		// Otherwise, if the first time here, create new thread.
+		m_serviceThread = std::thread{boost::bind(&boost::asio::io_service::run, &m_io_service)};
+	}
 }
 
 #define BOOST_ASIO_ENABLE_CANCELIO 
@@ -121,7 +130,7 @@ void EthStratumClient::reconnect()
 	}
 	
 	cnote << "Reconnecting in 3 seconds...";
-	boost::asio::deadline_timer     timer(m_io_service, boost::posix_time::seconds(3));
+	boost::asio::deadline_timer timer(m_io_service, boost::posix_time::seconds(3));
 	timer.wait();
 
 	connect();
@@ -495,11 +504,11 @@ void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec)
 	}
 }
 
-bool EthStratumClient::submit(EthashProofOfWork::Solution solution) {
+bool EthStratumClient::submit(Solution solution) {
 	x_current.lock();
-	EthashProofOfWork::WorkPackage tempWork(m_current);
+	WorkPackage tempWork(m_current);
 	string temp_job = m_job;
-	EthashProofOfWork::WorkPackage tempPreviousWork(m_previous);
+	WorkPackage tempPreviousWork(m_previous);
 	string temp_previous_job = m_previousJob;
 	x_current.unlock();
 

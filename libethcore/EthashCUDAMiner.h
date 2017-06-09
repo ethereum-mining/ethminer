@@ -28,11 +28,15 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include "EthashAux.h"
 #include "Miner.h"
 
+class ethash_cuda_miner;
+
 namespace dev
 {
 namespace eth
 {
-	class EthashCUDAMiner : public GenericMiner<EthashProofOfWork>, Worker
+class EthashCUDAHook;
+
+	class EthashCUDAMiner : public Miner, Worker
 	{
 		friend class dev::eth::EthashCUDAHook;
 
@@ -76,7 +80,7 @@ namespace eth
 		void workLoop() override;
 		bool report(uint64_t _nonce);
 
-		using GenericMiner<EthashProofOfWork>::accumulateHashes;
+		using Miner::accumulateHashes;
 
 		EthashCUDAHook* m_hook = nullptr;
 		ethash_cuda_miner* m_miner = nullptr;

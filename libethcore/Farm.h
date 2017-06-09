@@ -26,9 +26,8 @@
 #include <atomic>
 #include <libdevcore/Common.h>
 #include <libdevcore/Worker.h>
-#include <libethcore/Common.h>
 #include <libethcore/Miner.h>
-#include <libethcore/BlockInfo.h>
+#include <libethcore/BlockHeader.h>
 
 namespace dev
 {
@@ -41,21 +40,16 @@ namespace eth
  * Miners ask for work, then submit proofs
  * @threadsafe
  */
-template <class PoW>
-class GenericFarm: public GenericFarmFace<PoW>
+class Farm: public FarmFace
 {
 public:
-	using WorkPackage = typename PoW::WorkPackage;
-	using Solution = typename PoW::Solution;
-	using Miner = GenericMiner<PoW>;
-
 	struct SealerDescriptor
 	{
 		std::function<unsigned()> instances;
-		std::function<Miner*(typename Miner::ConstructionInfo ci)> create;
+		std::function<Miner*(Miner::ConstructionInfo ci)> create;
 	};
 
-	~GenericFarm()
+	~Farm()
 	{
 		stop();
 	}
