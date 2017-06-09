@@ -69,7 +69,7 @@ cmake --build .
 ### CMake build options
 
 - `-DETHASHCL=ON` - enable OpenCL mining, `ON` by default,
-- `-DETHASHCUDA=OFF` - enable CUDA mining, `OFF` by default,
+- `-DETHASHCUDA=ON` - enable CUDA mining, `OFF` by default,
 - `-DETHSTRATUM=ON` - build with Stratum protocol support, `ON` by default.
 
 [CMake]: https://cmake.org

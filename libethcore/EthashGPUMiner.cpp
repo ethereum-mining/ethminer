@@ -27,6 +27,7 @@
 #include <thread>
 #include <chrono>
 #include <libethash-cl/ethash_cl_miner.h>
+
 using namespace std;
 using namespace dev;
 using namespace eth;
@@ -106,7 +107,7 @@ unsigned EthashGPUMiner::s_numInstances = 0;
 int EthashGPUMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
 EthashGPUMiner::EthashGPUMiner(ConstructionInfo const& _ci):
-	GenericMiner<EthashProofOfWork>(_ci),
+	Miner(_ci),
 	Worker("openclminer" + toString(index())),
 	m_hook(new EthashCLHook(this))
 {
@@ -122,7 +123,7 @@ EthashGPUMiner::~EthashGPUMiner()
 bool EthashGPUMiner::report(uint64_t _nonce)
 {
 	Nonce n = (Nonce)(u64)_nonce;
-	EthashProofOfWork::Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
+	Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
 	if (r.value < work().boundary)
 		return submitProof(Solution{n, r.mixHash});
 	return false;
@@ -156,23 +157,6 @@ void EthashGPUMiner::workLoop()
 			m_miner = new ethash_cl_miner;
 
 			unsigned device = s_devices[index()] > -1 ? s_devices[index()] : index();
-
-			/*
-			EthashAux::FullType dag;
-			while (true)
-			{
-				if ((dag = EthashAux::full(w.seedHash, true)))
-					break;
-				if (shouldStop())
-				{
-					delete m_miner;
-					m_miner = nullptr;
-					return;
-				}
-				cnote << "Awaiting DAG";
-				this_thread::sleep_for(chrono::milliseconds(500));
-			}
-			*/
 
 			EthashAux::LightType light;
 			light = EthashAux::light(w.seedHash);
