@@ -61,7 +61,6 @@ namespace eth
 
 enum class MinerType
 {
-	CPU,
 	CL,
 	CUDA,
 	Mixed

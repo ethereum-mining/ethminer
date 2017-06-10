@@ -102,7 +102,6 @@ private:
 }
 
 unsigned EthashGPUMiner::s_platformId = 0;
-unsigned EthashGPUMiner::s_deviceId = 0;
 unsigned EthashGPUMiner::s_numInstances = 0;
 int EthashGPUMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
@@ -186,11 +185,6 @@ void EthashGPUMiner::pause()
 	stopWorking();
 }
 
-std::string EthashGPUMiner::platformInfo()
-{
-	return ethash_cl_miner::platform_info(s_platformId, s_deviceId);
-}
-
 unsigned EthashGPUMiner::getNumDevices()
 {
 	return ethash_cl_miner::getNumDevices(s_platformId);
@@ -205,7 +199,6 @@ bool EthashGPUMiner::configureGPU(
 	unsigned _localWorkSize,
 	unsigned _globalWorkSizeMultiplier,
 	unsigned _platformId,
-	unsigned _deviceId,
 	unsigned _extraGPUMemory,
 	uint64_t _currentBlock,
 	unsigned _dagLoadMode,
@@ -216,7 +209,6 @@ bool EthashGPUMiner::configureGPU(
 	s_dagCreateDevice = _dagCreateDevice;
 
 	s_platformId = _platformId;
-	s_deviceId = _deviceId;
 
 	_localWorkSize = ((_localWorkSize + 7) / 8) * 8;
 

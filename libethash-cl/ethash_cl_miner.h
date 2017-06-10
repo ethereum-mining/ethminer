@@ -43,10 +43,7 @@ public:
 	~ethash_cl_miner();
 
 	static bool searchForAllDevices(unsigned _platformId, std::function<bool(cl::Device const&)> _callback);
-	static void doForAllDevices(unsigned _platformId, std::function<void(cl::Device const&)> _callback);
-	static void doForAllDevices(std::function<void(cl::Device const&)> _callback);
 	static unsigned getNumDevices(unsigned _platformId = 0);
-	static std::string platform_info(unsigned _platformId = 0, unsigned _deviceId = 0);
 	static void listDevices();
 	static bool configureGPU(
 		unsigned _platformId,
@@ -92,7 +89,4 @@ private:
 	static unsigned s_workgroupSize;
 	/// The initial global work size for the searches
 	static unsigned s_initialGlobalWorkSize;
-	/// GPU memory required for other things, like window rendering e.t.c.
-	/// User can set it via the --cl-extragpu-mem argument.
-	static unsigned s_extraRequiredGPUMem;
 };
