@@ -230,17 +230,17 @@ static void keccak_f1600_no_absorb(uint2* a, uint out_size, uint isolate)
 
 #define copy(dst, src, count) for (uint i = 0; i != count; ++i) { (dst)[i] = (src)[i]; }
 
-static uint fnv(uint x, uint y)
+static inline uint fnv(uint x, uint y)
 {
 	return x * FNV_PRIME ^ y;
 }
 
-static uint4 fnv4(uint4 x, uint4 y)
+static inline uint4 fnv4(uint4 x, uint4 y)
 {
 	return x * FNV_PRIME ^ y;
 }
 
-static uint fnv_reduce(uint4 v)
+static inline uint fnv_reduce(uint4 v)
 {
 	return fnv(fnv(fnv(v.x, v.y), v.z), v.w);
 }
@@ -273,6 +273,12 @@ typedef union {
 	uint  uints[16];
 } compute_hash_share;
 
+typedef union
+{
+  uint words[32];
+  uint4 uint4s[8];
+} mix_t;
+
 #if PLATFORM != OPENCL_PLATFORM_NVIDIA // use maxrregs on nv
 __attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
 #endif
@@ -287,13 +293,11 @@ __kernel void ethash_search(
 	uint isolate
 	)
 {
-	//__local compute_hash_share share[HASHES_PER_LOOP];
-  __local compute_hash_share share[GROUP_SIZE];
+  __local static compute_hash_share share[GROUP_SIZE];
+  __local static mix_t mix[GROUP_SIZE];
 
-	__private size_t gid = get_global_id(0);
-  __private size_t lid = get_local_id(0);
-
-	// Compute one init hash per work item.
+	__private size_t const gid = get_global_id(0);
+  __private size_t const lid = get_local_id(0);
 
 	// sha3_512(header .. nonce)
 	ulong state[25];
@@ -311,43 +315,43 @@ __kernel void ethash_search(
 	keccak_f1600_no_absorb((uint2*)state, 8, isolate);
 
   // Initialize mix with state
-  copy(share[lid].ulongs, state, 8);
+  //copy(share[lid].ulongs, state, 8);
+  copy(share[lid].uint4s, (uint4 *)state, 4);
 
-  // 128 byte mix
-  uint4 mix[8];
-
-	mix[0] = share[lid].uint4s[0];
-	mix[1] = share[lid].uint4s[1];
-	mix[2] = share[lid].uint4s[2];
-	mix[3] = share[lid].uint4s[3];
-	mix[4] = share[lid].uint4s[0];
-	mix[5] = share[lid].uint4s[1];
-	mix[6] = share[lid].uint4s[2];
-	mix[7] = share[lid].uint4s[3];
+	mix[lid].uint4s[0] = share[lid].uint4s[0];
+	mix[lid].uint4s[1] = share[lid].uint4s[1];
+	mix[lid].uint4s[2] = share[lid].uint4s[2];
+	mix[lid].uint4s[3] = share[lid].uint4s[3];
+	mix[lid].uint4s[4] = share[lid].uint4s[0];
+	mix[lid].uint4s[5] = share[lid].uint4s[1];
+	mix[lid].uint4s[6] = share[lid].uint4s[2];
+	mix[lid].uint4s[7] = share[lid].uint4s[3];
 
 	uint init0 = share[lid].uints[0];
+
   for(uint i=0;i<ACCESSES;i++)
   {
-    uint p = fnv(i ^ init0, ((uint *)&mix)[i%32]) % DAG_SIZE;
+    uint p;
+    p = fnv(i ^ init0, mix[lid].words[i%32]) % DAG_SIZE;
 
-    mix[0] = fnv4(mix[0], g_dag[p].uint4s[0]);
-    mix[1] = fnv4(mix[1], g_dag[p].uint4s[1]);
-    mix[2] = fnv4(mix[2], g_dag[p].uint4s[2]);
-    mix[3] = fnv4(mix[3], g_dag[p].uint4s[3]);
-    mix[4] = fnv4(mix[4], g_dag[p].uint4s[4]);
-    mix[5] = fnv4(mix[5], g_dag[p].uint4s[5]);
-    mix[6] = fnv4(mix[6], g_dag[p].uint4s[6]);
-    mix[7] = fnv4(mix[7], g_dag[p].uint4s[7]);
+    mix[lid].uint4s[0] = fnv4(mix[lid].uint4s[0], g_dag[p].uint4s[0]);
+    mix[lid].uint4s[1] = fnv4(mix[lid].uint4s[1], g_dag[p].uint4s[1]);
+    mix[lid].uint4s[2] = fnv4(mix[lid].uint4s[2], g_dag[p].uint4s[2]);
+    mix[lid].uint4s[3] = fnv4(mix[lid].uint4s[3], g_dag[p].uint4s[3]);
+    mix[lid].uint4s[4] = fnv4(mix[lid].uint4s[4], g_dag[p].uint4s[4]);
+    mix[lid].uint4s[5] = fnv4(mix[lid].uint4s[5], g_dag[p].uint4s[5]);
+    mix[lid].uint4s[6] = fnv4(mix[lid].uint4s[6], g_dag[p].uint4s[6]);
+    mix[lid].uint4s[7] = fnv4(mix[lid].uint4s[7], g_dag[p].uint4s[7]);
   }
 
-  share[lid].uints[0] = fnv_reduce(mix[0]);
-  share[lid].uints[1] = fnv_reduce(mix[1]);
-  share[lid].uints[2] = fnv_reduce(mix[2]);
-  share[lid].uints[3] = fnv_reduce(mix[3]);
-  share[lid].uints[4] = fnv_reduce(mix[4]);
-  share[lid].uints[5] = fnv_reduce(mix[5]);
-  share[lid].uints[6] = fnv_reduce(mix[6]);
-  share[lid].uints[7] = fnv_reduce(mix[7]);
+  share[lid].uints[0] = fnv_reduce(mix[lid].uint4s[0]);
+  share[lid].uints[1] = fnv_reduce(mix[lid].uint4s[1]);
+  share[lid].uints[2] = fnv_reduce(mix[lid].uint4s[2]);
+  share[lid].uints[3] = fnv_reduce(mix[lid].uint4s[3]);
+  share[lid].uints[4] = fnv_reduce(mix[lid].uint4s[4]);
+  share[lid].uints[5] = fnv_reduce(mix[lid].uint4s[5]);
+  share[lid].uints[6] = fnv_reduce(mix[lid].uint4s[6]);
+  share[lid].uints[7] = fnv_reduce(mix[lid].uint4s[7]);
 
   copy(state + 8, share[lid].ulongs, 4);
 
