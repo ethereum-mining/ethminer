@@ -126,6 +126,8 @@ bool EthashGPUMiner::report(uint64_t _nonce)
 	Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
 	if (r.value < work().boundary)
 		return submitProof(Solution{n, r.mixHash});
+
+  fprintf(stderr, "GPU reported invalid nonce\n");
 	return false;
 }
 
