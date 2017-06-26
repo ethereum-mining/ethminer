@@ -222,18 +222,6 @@ unsigned ethash_cl_miner::s_extraRequiredGPUMem;
 unsigned ethash_cl_miner::s_workgroupSize = ethash_cl_miner::c_defaultLocalWorkSize;
 unsigned ethash_cl_miner::s_initialGlobalWorkSize = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier * ethash_cl_miner::c_defaultLocalWorkSize;
 
-bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return false;
-	for (unsigned i = 0; i < platforms.size(); ++i)
-		if (searchForAllDevices(i, _callback))
-			return true;
-
-	return false;
-}
-
 bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, function<bool(cl::Device const&)> _callback)
 {
 	vector<cl::Platform> platforms = getPlatforms();
