@@ -54,7 +54,6 @@ public:
 		unsigned _platformId,
 		unsigned _localWorkSize,
 		unsigned _globalWorkSize,
-		bool _allowCPU,
 		unsigned _extraGPUMemory,
 		uint64_t _currentBlock
 	);
@@ -97,8 +96,6 @@ private:
 	static unsigned s_initialGlobalWorkSize;
 	/// The target milliseconds per batch for the search. If 0, then no adjustment will happen
 	static unsigned s_msPerBatch;
-	/// Allow CPU to appear as an OpenCL device or not. Default is false
-	static bool s_allowCPU;
 	/// GPU memory required for other things, like window rendering e.t.c.
 	/// User can set it via the --cl-extragpu-mem argument.
 	static unsigned s_extraRequiredGPUMem;
