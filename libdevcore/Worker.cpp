@@ -92,9 +92,8 @@ void Worker::stopWorking()
 		}
 }
 
-void Worker::terminate()
+Worker::~Worker()
 {
-//	cnote << "stopWorking for thread" << m_name;
 	DEV_GUARDED(x_work)
 		if (m_work)
 		{

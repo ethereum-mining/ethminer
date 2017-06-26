@@ -1,5 +1,5 @@
-file(GLOB SOURCES "*.cpp")
 file(GLOB HEADERS "*.h")
+file(GLOB SOURCES "*.cpp")
 
 find_package(Threads)
 
