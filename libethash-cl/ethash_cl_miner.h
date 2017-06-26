@@ -27,7 +27,7 @@
 class ethash_cl_miner
 {
 private:
-	enum { c_maxSearchResults = 63, c_bufferCount = 2, c_hashBatchSize = 1024 };
+	enum { c_maxSearchResults = 63, c_bufferCount = 2 };
 
 public:
 	struct search_hook
@@ -94,8 +94,6 @@ private:
 	static unsigned s_workgroupSize;
 	/// The initial global work size for the searches
 	static unsigned s_initialGlobalWorkSize;
-	/// The target milliseconds per batch for the search. If 0, then no adjustment will happen
-	static unsigned s_msPerBatch;
 	/// GPU memory required for other things, like window rendering e.t.c.
 	/// User can set it via the --cl-extragpu-mem argument.
 	static unsigned s_extraRequiredGPUMem;
