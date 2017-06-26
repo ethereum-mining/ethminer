@@ -165,14 +165,6 @@ std::vector<cl::Device> ethash_cl_miner::getDevices(std::vector<cl::Platform> co
 	return devices;
 }
 
-unsigned ethash_cl_miner::getNumPlatforms()
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return 0;
-	return platforms.size();
-}
-
 unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
 {
 	vector<cl::Platform> platforms = getPlatforms();

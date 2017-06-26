@@ -46,7 +46,6 @@ public:
 	static bool searchForAllDevices(std::function<bool(cl::Device const&)> _callback);
 	static void doForAllDevices(unsigned _platformId, std::function<void(cl::Device const&)> _callback);
 	static void doForAllDevices(std::function<void(cl::Device const&)> _callback);
-	static unsigned getNumPlatforms();
 	static unsigned getNumDevices(unsigned _platformId = 0);
 	static std::string platform_info(unsigned _platformId = 0, unsigned _deviceId = 0);
 	static void listDevices();
