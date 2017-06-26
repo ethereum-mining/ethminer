@@ -29,11 +29,8 @@ namespace dev
 {
 
 using Mutex = std::mutex;
-using RecursiveMutex = std::recursive_mutex;
-
 using Guard = std::lock_guard<std::mutex>;
 using UniqueGuard = std::unique_lock<std::mutex>;
-using RecursiveGuard = std::lock_guard<std::recursive_mutex>;
 
 template <class GuardType, class MutexType>
 struct GenericGuardBool: GuardType
