@@ -51,6 +51,7 @@ class EthashCUDAHook;
 		static std::string platformInfo();
 		static unsigned getNumDevices();
 		static void listDevices();
+                static void setParallelHash(unsigned _parallelHash);
 		static bool configureGPU(
 			unsigned _blockSize,
 			unsigned _gridSize,
