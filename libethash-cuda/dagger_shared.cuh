@@ -8,6 +8,7 @@ typedef union {
 } compute_hash_share;
 
 
+template <uint32_t _PARALLEL_HASH>
 __device__ uint64_t compute_hash(
 	uint64_t nonce
 	)
@@ -65,7 +66,7 @@ __device__ uint64_t compute_hash(
 
 		__syncthreads();
 	}
-	
+
 	// keccak_256(keccak_512(header..nonce) .. mix);
 	return keccak_f1600_final(state);
 }

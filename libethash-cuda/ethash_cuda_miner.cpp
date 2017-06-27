@@ -180,7 +180,13 @@ bool ethash_cuda_miner::configureGPU(
 	}
 }
 
+void ethash_cuda_miner::setParallelHash(unsigned _parallelHash)
+{
+  m_parallelHash = _parallelHash;
+}
+
 unsigned ethash_cuda_miner::s_extraRequiredGPUMem;
+unsigned ethash_cuda_miner::m_parallelHash = 4;
 unsigned ethash_cuda_miner::s_blockSize = ethash_cuda_miner::c_defaultBlockSize;
 unsigned ethash_cuda_miner::s_gridSize = ethash_cuda_miner::c_defaultGridSize;
 unsigned ethash_cuda_miner::s_numStreams = ethash_cuda_miner::c_defaultNumStreams;
@@ -363,7 +369,7 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 			for (unsigned int j = 0; j < found_count; j++)
 				nonces[j] = nonce_base + buffer[j + 1];
 		}
-		run_ethash_search(s_gridSize, s_blockSize, m_sharedBytes, stream, buffer, m_current_nonce);
+		run_ethash_search(s_gridSize, s_blockSize, m_sharedBytes, stream, buffer, m_current_nonce, m_parallelHash);
 		if (m_current_index >= s_numStreams)
 		{
 			exit = found_count && hook.found(nonces, found_count);
