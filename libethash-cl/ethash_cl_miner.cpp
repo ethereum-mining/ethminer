@@ -84,8 +84,6 @@ static std::atomic_flag s_logSpin = ATOMIC_FLAG_INIT;
 #else
 #define ETHCL_LOG(_contents) cout << "[OPENCL]:" << _contents << endl
 #endif
-// Types of OpenCL devices we are interested in
-#define ETHCL_QUERIED_DEVICE_TYPES (CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR)
 
 static void addDefinition(string& _source, char const* _id, unsigned _value)
 {
@@ -154,7 +152,7 @@ std::vector<cl::Device> ethash_cl_miner::getDevices(std::vector<cl::Platform> co
 	try
 	{
 		_platforms[platform_num].getDevices(
-			s_allowCPU ? CL_DEVICE_TYPE_ALL : ETHCL_QUERIED_DEVICE_TYPES,
+			CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR,
 			&devices
 		);
 	}
@@ -165,14 +163,6 @@ std::vector<cl::Device> ethash_cl_miner::getDevices(std::vector<cl::Platform> co
 			throw err;
 	}
 	return devices;
-}
-
-unsigned ethash_cl_miner::getNumPlatforms()
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return 0;
-	return platforms.size();
 }
 
 unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
@@ -194,14 +184,12 @@ bool ethash_cl_miner::configureGPU(
 	unsigned _platformId,
 	unsigned _localWorkSize,
 	unsigned _globalWorkSize,
-	bool _allowCPU,
 	unsigned _extraGPUMemory,
 	uint64_t _currentBlock
 )
 {
 	s_workgroupSize = _localWorkSize;
 	s_initialGlobalWorkSize = _globalWorkSize;
-	s_allowCPU = _allowCPU;
 	s_extraRequiredGPUMem = _extraGPUMemory;
 
 	// by default let's only consider the DAG of the first epoch
@@ -230,22 +218,9 @@ bool ethash_cl_miner::configureGPU(
 	);
 }
 
-bool ethash_cl_miner::s_allowCPU = false;
 unsigned ethash_cl_miner::s_extraRequiredGPUMem;
 unsigned ethash_cl_miner::s_workgroupSize = ethash_cl_miner::c_defaultLocalWorkSize;
 unsigned ethash_cl_miner::s_initialGlobalWorkSize = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier * ethash_cl_miner::c_defaultLocalWorkSize;
-
-bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return false;
-	for (unsigned i = 0; i < platforms.size(); ++i)
-		if (searchForAllDevices(i, _callback))
-			return true;
-
-	return false;
-}
 
 bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, function<bool(cl::Device const&)> _callback)
 {
