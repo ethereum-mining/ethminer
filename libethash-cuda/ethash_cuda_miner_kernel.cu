@@ -16,24 +16,20 @@
 #if __CUDA_ARCH__ < SHUFFLE_MIN_VER
 #include "keccak_u64.cuh"
 #include "dagger_shared.cuh"
-#define TPB		128
-#define BPSM	4
 #else
 #include "keccak.cuh"
 #include "dagger_shuffled.cuh"
-#define TPB		896
-#define BPSM	1
 #endif
 
+template <uint32_t _PARALLEL_HASH>
 __global__ void 
-__launch_bounds__(TPB, BPSM)
 ethash_search(
 	volatile uint32_t* g_output,
 	uint64_t start_nonce
 	)
 {
 	uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;	
-	uint64_t hash = compute_hash(start_nonce + gid);
+        uint64_t hash = compute_hash<_PARALLEL_HASH>(start_nonce + gid);
 	if (cuda_swab64(hash) > d_target) return;
 	uint32_t index = atomicInc(const_cast<uint32_t*>(g_output), SEARCH_RESULT_BUFFER_SIZE - 1) + 1;
 	g_output[index] = gid;
@@ -45,18 +41,30 @@ void run_ethash_search(
 	uint32_t sharedbytes,
 	cudaStream_t stream,
 	volatile uint32_t* g_output,
-	uint64_t start_nonce
+	uint64_t start_nonce,
+	uint32_t parallelHash
 )
 {
-	ethash_search << <blocks, threads, sharedbytes, stream >> >(g_output, start_nonce);
+	switch (parallelHash)
+	{
+		case 1: ethash_search <1> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
+		case 2: ethash_search <2> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
+		case 3: ethash_search <3> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
+		case 4: ethash_search <4> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
+		case 5: ethash_search <5> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
+		case 6: ethash_search <6> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
+		case 7: ethash_search <7> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
+		case 8: ethash_search <8> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
+		default: ethash_search <4> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
+	}
 	CUDA_SAFE_CALL(cudaGetLastError());
 }
 
 #define ETHASH_DATASET_PARENTS 256
 #define NODE_WORDS (64/4)
 
+
 __global__ void
-__launch_bounds__(128, 7)
 ethash_calculate_dag_item(uint32_t start)
 {
 	uint32_t const node_index = start + blockIdx.x * blockDim.x + threadIdx.x;
