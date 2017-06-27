@@ -34,6 +34,7 @@ public:
 		unsigned _scheduleFlag,
 		uint64_t _currentBlock
 		);
+        static void setParallelHash(unsigned _parallelHash);
 
 	bool init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, volatile void** hostDAG);
 
@@ -72,4 +73,5 @@ private:
 	/// GPU memory required for other things, like window rendering e.t.c.
 	/// User can set it via the --cl-extragpu-mem argument.
 	static unsigned s_extraRequiredGPUMem;
+	static unsigned m_parallelHash;
 };

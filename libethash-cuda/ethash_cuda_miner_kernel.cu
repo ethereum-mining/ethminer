@@ -21,6 +21,7 @@
 #include "dagger_shuffled.cuh"
 #endif
 
+template <uint32_t _PARALLEL_HASH>
 __global__ void 
 ethash_search(
 	volatile uint32_t* g_output,
@@ -28,7 +29,7 @@ ethash_search(
 	)
 {
 	uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;	
-	uint64_t hash = compute_hash(start_nonce + gid);
+        uint64_t hash = compute_hash<_PARALLEL_HASH>(start_nonce + gid);
 	if (cuda_swab64(hash) > d_target) return;
 	uint32_t index = atomicInc(const_cast<uint32_t*>(g_output), SEARCH_RESULT_BUFFER_SIZE - 1) + 1;
 	g_output[index] = gid;
@@ -40,15 +41,36 @@ void run_ethash_search(
 	uint32_t sharedbytes,
 	cudaStream_t stream,
 	volatile uint32_t* g_output,
-	uint64_t start_nonce
+	uint64_t start_nonce,
+        uint32_t parallelHash
 )
 {
-	ethash_search << <blocks, threads, sharedbytes, stream >> >(g_output, start_nonce);
+
+        //printf("parallelHash = %d\n", parallelHash);
+        if(parallelHash == 1)
+            ethash_search <1> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce);
+        else if(parallelHash == 2)
+            ethash_search <2> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce);
+        else if(parallelHash == 3)
+            ethash_search <3> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce);
+        else if(parallelHash == 4)
+            ethash_search <4> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce);
+        else if(parallelHash == 5)
+            ethash_search <5> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce);
+        else if(parallelHash == 6)
+            ethash_search <6> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce);
+        else if(parallelHash == 7)
+            ethash_search <7> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce);
+        else if(parallelHash == 8)
+            ethash_search <8> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce);
+        else
+            ethash_search <1> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); 
 	CUDA_SAFE_CALL(cudaGetLastError());
 }
 
 #define ETHASH_DATASET_PARENTS 256
 #define NODE_WORDS (64/4)
+
 
 __global__ void
 ethash_calculate_dag_item(uint32_t start)
