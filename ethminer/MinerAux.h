@@ -309,6 +309,21 @@ public:
 				}
 			}
 		}
+                else if (arg == "--cuda-parallel-hash" && i + 1 < argc)
+                {
+                        try {
+                                m_parallelHash = stol(argv[++i]);
+                                if (m_parallelHash == 0 || m_parallelHash > 8)
+                                {
+                                    throw BadArgument();
+                                }
+                        }
+                        catch (...)
+                        {
+                                cerr << "Bad " << arg << " option: " << argv[i] << endl;
+                                BOOST_THROW_EXCEPTION(BadArgument());
+                        }
+                }
 		else if (arg == "--cuda-schedule" && i + 1 < argc)
 		{
 			string mode = argv[++i];
@@ -511,6 +526,8 @@ public:
 				m_dagCreateDevice
 				))
 				exit(1);
+
+                        EthashCUDAMiner::setParallelHash(m_parallelHash);
 #else
 			cerr << "Selected CUDA mining without having compiled with -DETHASHCUDA=1 or -DBUNDLE=cudaminer" << endl;
 			exit(1);
@@ -589,6 +606,7 @@ public:
 			<< "        yield - Instruct CUDA to yield its thread when waiting for results from the device." << endl
 			<< "        sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device." << endl
 			<< "    --cuda-devices <0 1 ..n> Select which CUDA GPUs to mine on. Default is to use all" << endl
+			<< "    --cude-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achive better performance. Default=4" << endl
 #endif
 			;
 	}
@@ -1035,6 +1053,7 @@ private:
 	unsigned m_dagCreateDevice = 0;
 	/// Benchmarking params
 	unsigned m_benchmarkWarmup = 15;
+	unsigned m_parallelHash    = 4;
 	unsigned m_benchmarkTrial = 3;
 	unsigned m_benchmarkTrials = 5;
 	unsigned m_benchmarkBlock = 0;

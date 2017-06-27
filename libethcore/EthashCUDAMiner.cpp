@@ -261,4 +261,9 @@ bool EthashCUDAMiner::configureGPU(
 	return true;
 }
 
+void EthashCUDAMiner::setParallelHash(unsigned _parallelHash)
+{
+  ethash_cuda_miner::setParallelHash(_parallelHash);
+}
+
 #endif
