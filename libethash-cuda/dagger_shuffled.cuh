@@ -2,8 +2,6 @@
 #include "ethash_cuda_miner_kernel.h"
 #include "cuda_helper.h"
 
-//#define PARALLEL_HASH 4
-
 template <uint32_t _PARALLEL_HASH>
 __device__ __forceinline__ uint64_t compute_hash(
 	uint64_t nonce

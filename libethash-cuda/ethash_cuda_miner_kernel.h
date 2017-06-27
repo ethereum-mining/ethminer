@@ -53,7 +53,7 @@ void run_ethash_search(
 	cudaStream_t stream,
 	volatile uint32_t* g_output,
 	uint64_t start_nonce,
-        uint32_t parallelHash
+	uint32_t parallelHash
 	);
 
 void ethash_generate_dag(
