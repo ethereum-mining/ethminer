@@ -309,14 +309,13 @@ public:
 				}
 			}
 		}
-                else if (arg == "--cuda-parallel-hash")
+                else if (arg == "--cuda-parallel-hash" && i + 1 < argc)
                 {
                         try {
                                 m_parallelHash = stol(argv[++i]);
-                                if(m_parallelHash == 0 || m_parallelHash>8)
+                                if (m_parallelHash == 0 || m_parallelHash > 8)
                                 {
-                                        cerr << "Bad " << arg << " option: " << argv[i] << endl;
-                                        BOOST_THROW_EXCEPTION(BadArgument());
+                                    throw BadArgument();
                                 }
                         }
                         catch (...)
