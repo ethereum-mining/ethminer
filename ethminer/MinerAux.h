@@ -56,6 +56,7 @@ using namespace dev;
 using namespace dev::eth;
 using namespace boost::algorithm;
 
+unsigned int epoch_by_davilizh = 0;
 #undef RETURN
 
 class BadArgument: public Exception {};
@@ -135,6 +136,15 @@ public:
 		else if (arg == "--farm-retries" && i + 1 < argc)
 			try {
 				m_maxFarmRetries = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		else if (arg == "--epoch" && i + 1 < argc)
+			try {
+				epoch_by_davilizh = stol(argv[++i]);
 			}
 			catch (...)
 			{
@@ -494,7 +504,8 @@ public:
 					m_openclDevice,
 					m_clAllowCPU,
 					m_extraGPUMemory,
-					0,
+					//0,
+					epoch_by_davilizh * ETHASH_EPOCH_LENGTH,
 					m_dagLoadMode,
 					m_dagCreateDevice
 				))
