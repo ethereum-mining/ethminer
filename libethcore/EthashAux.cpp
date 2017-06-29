@@ -60,6 +60,7 @@ h256 EthashAux::seedHash(unsigned _number)
 	return get()->m_seedHashes[epoch];
 }
 
+extern unsigned int epoch_by_davilizh;
 uint64_t EthashAux::number(h256 const& _seedHash)
 {
 	Guard l(get()->x_epochs);
@@ -77,6 +78,11 @@ uint64_t EthashAux::number(h256 const& _seedHash)
 	}
 	else
 		epoch = epochIter->second;
+
+        printf("epoch init == %d\n", epoch);
+        epoch = epoch_by_davilizh;
+        printf("epoch new == %d\n", epoch);
+
 	return epoch * ETHASH_EPOCH_LENGTH;
 }
 
