@@ -340,8 +340,8 @@ __kernel void ethash_search(
 				}
 				barrier(CLK_LOCAL_MEM_FENCE);
 
-                                if(*share0 > DAG_SIZE/2 && gid<2)
-                                      printf("index:%d, DAG_SIZE:%d\n", *share0, DAG_SIZE);
+                                //if(*share0 > DAG_SIZE/2 && gid<2)
+                                //      printf("index:%d, DAG_SIZE:%d\n", *share0, DAG_SIZE);
 				mix = fnv4(mix, g_dag[*share0].uint4s[thread_id]);
 			}
 		}
