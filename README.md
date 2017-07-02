@@ -64,6 +64,7 @@ This project uses [CMake] and [Hunter] package manager.
 mkdir build; cd build
 cmake ..
 cmake --build .
+make
 ```
 
 ### CMake build options
