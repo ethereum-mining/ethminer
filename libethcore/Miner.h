@@ -61,10 +61,9 @@ namespace eth
 
 enum class MinerType
 {
-	CPU,
+	Mixed,
 	CL,
-	CUDA,
-	Mixed
+	CUDA
 };
 
 /// Describes the progress of a mining operation.
