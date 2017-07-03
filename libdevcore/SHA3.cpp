@@ -20,14 +20,12 @@
  */
 
 #include "SHA3.h"
-#include "RLP.h"
+
 using namespace std;
 using namespace dev;
 
 namespace dev
 {
-
-h256 EmptyListSHA3 = sha3(rlpList());
 
 namespace keccak
 {

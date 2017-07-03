@@ -23,9 +23,6 @@
 using namespace std;
 using namespace dev;
 
-bytes dev::RLPNull = rlp("");
-bytes dev::RLPEmptyList = rlpList();
-
 RLP::RLP(bytesConstRef _d, Strictness _s):
 	m_data(_d)
 {
@@ -131,7 +128,7 @@ bool RLP::isInt() const
 	requireGood();
 	byte n = m_data[0];
 	if (n < c_rlpDataImmLenStart)
-		return !!n;
+		return n != 0;
 	else if (n == c_rlpDataImmLenStart)
 		return true;
 	else if (n <= c_rlpDataIndLenZero)
@@ -146,8 +143,6 @@ bool RLP::isInt() const
 			BOOST_THROW_EXCEPTION(BadRLP());
 		return m_data[1 + n - c_rlpDataIndLenZero] != 0;
 	}
-	else
-		return false;
 	return false;
 }
 
@@ -364,10 +359,4 @@ static void streamOut(std::ostream& _out, dev::RLP const& _d, unsigned _depth = 
 		}
 		_out << " ]";
 	}
-}
-
-std::ostream& dev::operator<<(std::ostream& _out, RLP const& _d)
-{
-	streamOut(_out, _d);
-	return _out;
 }
