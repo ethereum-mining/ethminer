@@ -25,7 +25,7 @@ project (where GPU mining has been discontinued). Then hugely improved in
 
 - [Install](#install)
   - [Building from source](#building-from-source)
-  - [CMake build options](#cmake-build-options)
+  - [CMake configuration options](#cmake-configuration-options)
 - [Usage](#usage)
 - [Contribute](#contribute)
 - [F.A.Q.](#faq)
@@ -35,8 +35,8 @@ project (where GPU mining has been discontinued). Then hugely improved in
 
 [![Releases](https://img.shields.io/github/downloads/atom/atom/total.svg)][Releases]
 
-Standalone executables for Linux, macOS and Windows are provided in
-[the Releases section][Releases].
+Standalone **executables** for _Linux_, _macOS_ and _Windows_ are provided in
+the [Releases] section.
 Download an archive for your operating system and unpack the content to a place
 accessible from command line. The ethminer is ready to go.
 
@@ -44,13 +44,39 @@ accessible from command line. The ethminer is ready to go.
 
 This project uses [CMake] and [Hunter] package manager.
 
-```sh
-mkdir build; cd build
-cmake ..
-cmake --build .
-```
+1. Create a build directory.
 
-### CMake build options
+   ```sh
+   mkdir build; cd build
+   ```
+
+2. Configure the project with CMake. Check out additional
+   [configuration options](#cmake-configuration-options).
+
+   ```sh
+   cmake ..
+   ```
+
+3. Build the project using [CMake Build Tool Mode]. This is a portable variant
+   of `make`.
+
+   ```sh
+   cmake --build .
+   ```
+
+4. _(Optional, Linux only)_ Install the built executable.
+
+   ```sh
+   sudo make install
+   ```
+
+### CMake configuration options
+
+Pass these options to CMake configuration command, e.g.
+
+```sh
+cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
+```
 
 - `-DETHASHCL=ON` - enable OpenCL mining, `ON` by default,
 - `-DETHASHCUDA=ON` - enable CUDA mining, `OFF` by default,
@@ -106,6 +132,7 @@ All bug reports, pull requests and code reviews are very much welcome.
 
 
 [CMake]: https://cmake.org
+[CMake Build Tool Mode]: https://cmake.org/cmake/help/latest/manual/cmake.1.html#build-tool-mode
 [cpp-ethereum]: https://github.com/ethereum/cpp-ethereum
 [Genoil's fork]: https://github.com/Genoil/cpp-ethereum
 [Gitter]: https://gitter.im/ethereum-mining/ethminer
