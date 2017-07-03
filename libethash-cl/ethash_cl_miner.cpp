@@ -29,7 +29,7 @@
 #include <iostream>
 #include <assert.h>
 #include <queue>
-#include <vector>
+#include <memory>
 #include <random>
 #include <atomic>
 #include <sstream>
@@ -37,8 +37,6 @@
 #include <libethash/internal.h>
 #include "ethash_cl_miner.h"
 #include "ethash_cl_miner_kernel.h"
-
-#define ETHASH_BYTES 32
 
 #define OPENCL_PLATFORM_UNKNOWN 0
 #define OPENCL_PLATFORM_NVIDIA  1
@@ -123,28 +121,6 @@ std::vector<cl::Platform> ethash_cl_miner::getPlatforms()
 	return platforms;
 }
 
-string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return {};
-	// get GPU device of the selected platform
-	unsigned platform_num = min<unsigned>(_platformId, platforms.size() - 1);
-	vector<cl::Device> devices = getDevices(platforms, _platformId);
-	if (devices.empty())
-	{
-		ETHCL_LOG("No OpenCL devices found.");
-		return {};
-	}
-
-	// use selected default device
-	unsigned device_num = min<unsigned>(_deviceId, devices.size() - 1);
-	cl::Device& device = devices[device_num];
-	string device_version = device.getInfo<CL_DEVICE_VERSION>();
-
-	return "{ \"platform\": \"" + platforms[platform_num].getInfo<CL_PLATFORM_NAME>() + "\", \"device\": \"" + device.getInfo<CL_DEVICE_NAME>() + "\", \"version\": \"" + device_version + "\" }";
-}
-
 std::vector<cl::Device> ethash_cl_miner::getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId)
 {
 	vector<cl::Device> devices;
@@ -190,7 +166,6 @@ bool ethash_cl_miner::configureGPU(
 {
 	s_workgroupSize = _localWorkSize;
 	s_initialGlobalWorkSize = _globalWorkSize;
-	s_extraRequiredGPUMem = _extraGPUMemory;
 
 	// by default let's only consider the DAG of the first epoch
 	uint64_t dagSize = ethash_get_datasize(_currentBlock);
@@ -218,7 +193,6 @@ bool ethash_cl_miner::configureGPU(
 	);
 }
 
-unsigned ethash_cl_miner::s_extraRequiredGPUMem;
 unsigned ethash_cl_miner::s_workgroupSize = ethash_cl_miner::c_defaultLocalWorkSize;
 unsigned ethash_cl_miner::s_initialGlobalWorkSize = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier * ethash_cl_miner::c_defaultLocalWorkSize;
 
@@ -238,37 +212,28 @@ bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, function<bool(cl
 	return false;
 }
 
-void ethash_cl_miner::doForAllDevices(function<void(cl::Device const&)> _callback)
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return;
-	for (unsigned i = 0; i < platforms.size(); ++i)
-		doForAllDevices(i, _callback);
-}
-
-void ethash_cl_miner::doForAllDevices(unsigned _platformId, function<void(cl::Device const&)> _callback)
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return;
-	if (_platformId >= platforms.size())
-		return;
-
-	vector<cl::Device> devices = getDevices(platforms, _platformId);
-	for (cl::Device const& device: devices)
-		_callback(device);
-}
-
 void ethash_cl_miner::listDevices()
 {
+//	cl_uint numPlatforms = 0;
+//	cl_int r = clGetPlatformIDs(0, nullptr, &numPlatforms);
+//	assert(r == CL_SUCCESS);
+//	std::unique_ptr<cl_platform_id[]> platformIds{new cl_platform_id[numPlatforms]};
+//	r = clGetPlatformIDs(numPlatforms, platformIds.get(), nullptr);
+//	assert(r == CL_SUCCESS);
+
 	string outString ="\nListing OpenCL devices.\nFORMAT: [deviceID] deviceName\n";
-	unsigned int i = 0;
-	doForAllDevices([&outString, &i](cl::Device const _device)
+	vector<cl::Platform> platforms = getPlatforms();
+	if (platforms.empty())
+		return;
+	int index = 0;
+	for (unsigned i = 0; i < platforms.size(); ++i)
+	{
+		vector<cl::Device> devices = getDevices(platforms, i);
+		for (cl::Device const& device: devices)
 		{
-			outString += "[" + to_string(i) + "] " + _device.getInfo<CL_DEVICE_NAME>() + "\n";
+			outString += "[" + to_string(index) + "] " + device.getInfo<CL_DEVICE_NAME>() + "\n";
 			outString += "\tCL_DEVICE_TYPE: ";
-			switch (_device.getInfo<CL_DEVICE_TYPE>())
+			switch (device.getInfo<CL_DEVICE_TYPE>())
 			{
 			case CL_DEVICE_TYPE_CPU:
 				outString += "CPU\n";
@@ -283,12 +248,12 @@ void ethash_cl_miner::listDevices()
 				outString += "DEFAULT\n";
 				break;
 			}
-			outString += "\tCL_DEVICE_GLOBAL_MEM_SIZE: " + to_string(_device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()) + "\n";
-			outString += "\tCL_DEVICE_MAX_MEM_ALLOC_SIZE: " + to_string(_device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>()) + "\n";
-			outString += "\tCL_DEVICE_MAX_WORK_GROUP_SIZE: " + to_string(_device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>()) + "\n";
-			++i;
+			outString += "\tCL_DEVICE_GLOBAL_MEM_SIZE: " + to_string(device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()) + "\n";
+			outString += "\tCL_DEVICE_MAX_MEM_ALLOC_SIZE: " + to_string(device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>()) + "\n";
+			outString += "\tCL_DEVICE_MAX_WORK_GROUP_SIZE: " + to_string(device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>()) + "\n";
+			++index;
 		}
-	);
+	}
 	ETHCL_LOG(outString);
 }
 

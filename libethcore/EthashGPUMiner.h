@@ -45,14 +45,12 @@ public:
 	~EthashGPUMiner();
 
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
-	static std::string platformInfo();
 	static unsigned getNumDevices();
 	static void listDevices();
 	static bool configureGPU(
 		unsigned _localWorkSize,
 		unsigned _globalWorkSizeMultiplier,
 		unsigned _platformId,
-		unsigned _deviceId,
 		unsigned _extraGPUMemory,
 		uint64_t _currentBlock,
 		unsigned _dagLoadMode,
@@ -82,7 +80,6 @@ private:
 
 	h256 m_minerSeed;		///< Last seed in m_miner
 	static unsigned s_platformId;
-	static unsigned s_deviceId;
 	static unsigned s_numInstances;
 	static int s_devices[16];
 
