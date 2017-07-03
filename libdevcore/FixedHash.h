@@ -51,9 +51,6 @@ public:
 	enum ConstructFromPointerType { ConstructFromPointer };
 
 	/// Method to convert from a string.
-	enum ConstructFromStringType { FromHex, FromBinary };
-
-	/// Method to convert from a string.
 	enum ConstructFromHashType { AlignLeft, AlignRight, FailIfDifferent };
 
 	/// Construct an empty hash.
@@ -78,7 +75,7 @@ public:
 	explicit FixedHash(byte const* _bs, ConstructFromPointerType) { memcpy(m_data.data(), _bs, N); }
 
 	/// Explicitly construct, copying from a  string.
-	explicit FixedHash(std::string const& _s, ConstructFromStringType _t = FromHex, ConstructFromHashType _ht = FailIfDifferent): FixedHash(_t == FromHex ? fromHex(_s, WhenError::Throw) : dev::asBytes(_s), _ht) {}
+	explicit FixedHash(std::string const& _s): FixedHash(fromHex(_s, WhenError::Throw), FailIfDifferent) {}
 
 	/// Convert to arithmetic type.
 	operator Arith() const { return fromBigEndian<Arith>(m_data); }
