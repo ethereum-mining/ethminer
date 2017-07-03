@@ -522,9 +522,9 @@ public:
 				))
 				exit(1);
 
-                        EthashCUDAMiner::setParallelHash(m_parallelHash);
+			EthashCUDAMiner::setParallelHash(m_parallelHash);
 #else
-			cerr << "Selected CUDA mining without having compiled with -DETHASHCUDA=1 or -DBUNDLE=cudaminer" << endl;
+			cerr << "CUDA support disabled. Configure project build with -DETHASHCUDA=ON" << endl;
 			exit(1);
 #endif
 		}
