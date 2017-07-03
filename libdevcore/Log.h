@@ -44,13 +44,10 @@ public:
 };
 
 /// A simple log-output function that prints log messages to stdout.
-void simpleDebugOut(std::string const&, char const*);
+void simpleDebugOut(std::string const&);
 
 /// The logging system's current verbosity.
 extern int g_logVerbosity;
-
-/// The current method that the logging system uses to output the log messages. Defaults to simpleDebugOut().
-extern std::function<void(std::string const&, char const*)> g_logPost;
 
 class ThreadContext
 {
@@ -208,7 +205,7 @@ public:
 	LogOutputStream(): LogOutputStreamBase(Id::name(), &typeid(Id), Id::verbosity, _AutoSpacing) {}
 
 	/// Destructor. Posts the accrued log entry to the g_logPost function.
-	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) g_logPost(m_sstr.str(), Id::name()); }
+	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) simpleDebugOut(m_sstr.str()); }
 
 	LogOutputStream& operator<<(std::string const& _t) { if (Id::verbosity <= g_logVerbosity) { if (_AutoSpacing && m_sstr.str().size() && m_sstr.str().back() != ' ') m_sstr << " "; comment(_t); } return *this; }
 
