@@ -288,10 +288,6 @@ public:
 		else if ((arg == "--cl-extragpu-mem" || arg == "--cuda-extragpu-mem") && i + 1 < argc)
 			m_extraGPUMemory = 1000000 * stol(argv[++i]);
 #endif
-#if ETH_ETHASHCL
-		else if (arg == "--allow-opencl-cpu")
-			m_clAllowCPU = true;
-#endif
 #if ETH_ETHASHCUDA
 		else if (arg == "--cuda-devices")
 		{
@@ -492,7 +488,6 @@ public:
 					m_globalWorkSizeMultiplier,
 					m_openclPlatform,
 					m_openclDevice,
-					m_clAllowCPU,
 					m_extraGPUMemory,
 					0,
 					m_dagLoadMode,
@@ -527,9 +522,9 @@ public:
 				))
 				exit(1);
 
-                        EthashCUDAMiner::setParallelHash(m_parallelHash);
+			EthashCUDAMiner::setParallelHash(m_parallelHash);
 #else
-			cerr << "Selected CUDA mining without having compiled with -DETHASHCUDA=1 or -DBUNDLE=cudaminer" << endl;
+			cerr << "CUDA support disabled. Configure project build with -DETHASHCUDA=ON" << endl;
 			exit(1);
 #endif
 		}
@@ -584,7 +579,6 @@ public:
 			<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
 			<< "    --opencl-devices <0 1 ..n> Select which OpenCL devices to mine on. Default is to use all" << endl
 			<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
-			<< "    --allow-opencl-cpu Allows CPU to be considered as an OpenCL device if the OpenCL platform supports it." << endl
 			<< "    --list-devices List the detected OpenCL/CUDA devices and exit. Should be combined with -G or -U flag" << endl
 			<< "    -L, --dag-load-mode <mode> DAG generation mode." << endl
 			<< "        parallel    - load DAG on all GPUs at the same time (default)" << endl
@@ -606,7 +600,7 @@ public:
 			<< "        yield - Instruct CUDA to yield its thread when waiting for results from the device." << endl
 			<< "        sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device." << endl
 			<< "    --cuda-devices <0 1 ..n> Select which CUDA GPUs to mine on. Default is to use all" << endl
-			<< "    --cude-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achive better performance. Default=4" << endl
+			<< "    --cuda-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achive better performance. Default=4" << endl
 #endif
 			;
 	}
@@ -1030,7 +1024,6 @@ private:
 	unsigned m_openclDevice = 0;
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
-	bool m_clAllowCPU = false;
 #if ETH_ETHASHCL
 	unsigned m_openclDeviceCount = 0;
 	unsigned m_openclDevices[16];
