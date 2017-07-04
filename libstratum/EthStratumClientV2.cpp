@@ -141,9 +141,7 @@ void EthStratumClientV2::connect()
 		if (!p_farm->isMining())
 		{
 			cnote << "Starting farm";
-			if (m_minerType == MinerType::CPU)
-				p_farm->start("cpu", false);
-			else if (m_minerType == MinerType::CL)
+			if (m_minerType == MinerType::CL)
 				p_farm->start("opencl", false);
 			else if (m_minerType == MinerType::CUDA)
 				p_farm->start("cuda", false);
