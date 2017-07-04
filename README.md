@@ -24,9 +24,12 @@ project (where GPU mining has been discontinued). Then hugely improved in
 ## Table of Contents
 
 - [Install](#install)
+- [Usage](#usage)
+- [Build](#build)
+  - [Continuous Integration and development builds](#continuous-integration-and-development-builds)
   - [Building from source](#building-from-source)
   - [CMake configuration options](#cmake-configuration-options)
-- [Usage](#usage)
+- [Maintainer](#maintainer)  
 - [Contribute](#contribute)
 - [F.A.Q.](#faq)
 
@@ -39,6 +42,28 @@ Standalone **executables** for _Linux_, _macOS_ and _Windows_ are provided in
 the [Releases] section.
 Download an archive for your operating system and unpack the content to a place
 accessible from command line. The ethminer is ready to go.
+
+
+## Usage
+
+The **ethminer** is a command line program. This means you launch it either
+from a Windows command prompt or Linux console, or create shortcuts to
+predefined command lines using a Linux Bash script or Windows batch/cmd file.
+For a full list of available command, please run
+
+```sh
+ethminer --help
+```
+
+
+## Build
+
+### Continuous Integration and development builds
+
+| CI            | OS            | Status  | Development builds |
+| ------------- | ------------- | -----   | -----------------  |
+| [Travis CI]   | Linux, macOS  | [![Travis CI](https://img.shields.io/travis/ethereum-mining/ethminer.svg)][Travis CI]    | ✗ No build artifacts, [Amazon S3 is needed] for this |
+| [AppVeyor]    | Windows       | [![AppVeyor](https://img.shields.io/appveyor/ci/ethereum-mining/ethminer.svg)][AppVeyor] | ✓ Build artifacts available for all PRs and branches |
 
 ### Building from source
 
@@ -83,21 +108,16 @@ cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 - `-DETHSTRATUM=ON` - build with Stratum protocol support, `ON` by default.
 
 
-## Usage
+## Maintainer
 
-The **ethminer** is a command line program. This means you launch it either
-from a Windows command prompt or Linux console, or create shortcuts to
-predefined command lines using a Linux Bash script or Windows batch/cmd file.
-For a full list of available command, please run
+[![Gitter](https://img.shields.io/gitter/room/ethereum-mining/ethminer.svg)][Gitter]
 
-```sh
-ethminer --help
-```
+- Paweł Bylica [@chfast](https://github.com/chfast)
 
 
 ## Contribute
 
-[![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)][Gitter]
+[![Gitter](https://img.shields.io/gitter/room/ethereum-mining/ethminer.svg)][Gitter]
 
 To meet the community join [the ethminer channel on Gitter][Gitter].
 
@@ -131,6 +151,8 @@ All bug reports, pull requests and code reviews are very much welcome.
    The default parameters are fine in most scenario's (CUDA). For OpenCL it varies a bit more. Just play around with the numbers and use powers of 2. GPU's like powers of 2.
 
 
+[Amazon S3 is needed]: https://docs.travis-ci.com/user/uploading-artifacts/
+[AppVeyor]: https://ci.appveyor.com/project/ethereum-mining/ethminer
 [CMake]: https://cmake.org
 [CMake Build Tool Mode]: https://cmake.org/cmake/help/latest/manual/cmake.1.html#build-tool-mode
 [cpp-ethereum]: https://github.com/ethereum/cpp-ethereum
@@ -138,3 +160,4 @@ All bug reports, pull requests and code reviews are very much welcome.
 [Gitter]: https://gitter.im/ethereum-mining/ethminer
 [Hunter]: https://docs.hunter.sh
 [Releases]: https://github.com/ethereum-mining/ethminer/releases
+[Travis CI]: https://travis-ci.org/ethereum-mining/ethminer
