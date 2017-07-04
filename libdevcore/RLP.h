@@ -100,9 +100,6 @@ public:
 	/// No value.
 	bool isNull() const { return m_data.size() == 0; }
 
-	/// Contains a zero-length string or zero-length list.
-	bool isEmpty() const { return !isNull() && (m_data[0] == c_rlpDataImmLenStart || m_data[0] == c_rlpListStart); }
-
 	/// String value.
 	bool isData() const { return !isNull() && m_data[0] < c_rlpListStart; }
 
@@ -118,7 +115,6 @@ public:
 
 	/// @returns the number of bytes in the data, or zero if it isn't data.
 	size_t size() const { return isData() ? length() : 0; }
-	size_t sizeStrict() const { if (!isData()) BOOST_THROW_EXCEPTION(BadCast()); return length(); }
 
 	/// Equality operators; does best-effort conversion and checks for equality.
 	bool operator==(char const* _s) const { return isData() && toString() == _s; }
@@ -189,12 +185,8 @@ public:
 
 	/// Converts to bytearray. @returns the empty byte array if not a string.
 	bytes toBytes() const { if (!isData()) return bytes(); return bytes(payload().data(), payload().data() + length()); }
-	/// Converts to bytearray. @returns the empty byte array if not a string.
-	bytesConstRef toBytesConstRef() const { if (!isData()) return bytesConstRef(); return payload().cropped(0, length()); }
 	/// Converts to string. @returns the empty string if not a string.
 	std::string toString() const { if (!isData()) return std::string(); return payload().cropped(0, length()).toString(); }
-	/// Converts to string. @throws BadCast if not a string.
-	std::string toStringStrict() const { if (!isData()) BOOST_THROW_EXCEPTION(BadCast()); return payload().cropped(0, length()).toString(); }
 
 	template <class T>
 	std::vector<T> toVector() const
@@ -213,16 +205,6 @@ public:
 	std::set<T> toSet() const
 	{
 		std::set<T> ret;
-		if (isList())
-			for (auto const& i: *this)
-				ret.insert((T)i);
-		return ret;
-	}
-
-	template <class T>
-	std::unordered_set<T> toUnorderedSet() const
-	{
-		std::unordered_set<T> ret;
 		if (isList())
 			for (auto const& i: *this)
 				ret.insert((T)i);
@@ -369,20 +351,14 @@ public:
 	/// Appends a sequence of data to the stream as a list.
 	template <class _T> RLPStream& append(std::vector<_T> const& _s) { return appendVector(_s); }
 	template <class _T> RLPStream& appendVector(std::vector<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
-	template <class _T, size_t S> RLPStream& append(std::array<_T, S> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
-	template <class _T> RLPStream& append(std::set<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
-	template <class _T> RLPStream& append(std::unordered_set<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
-	template <class T, class U> RLPStream& append(std::pair<T, U> const& _s) { appendList(2); append(_s.first); append(_s.second); return *this; }
 
 	/// Appends a list.
 	RLPStream& appendList(size_t _items);
 	RLPStream& appendList(bytesConstRef _rlp);
 	RLPStream& appendList(bytes const& _rlp) { return appendList(&_rlp); }
-	RLPStream& appendList(RLPStream const& _s) { return appendList(&_s.out()); }
 
 	/// Appends raw (pre-serialised) RLP data. Use with caution.
 	RLPStream& appendRaw(bytesConstRef _rlp, size_t _itemCount = 1);
-	RLPStream& appendRaw(bytes const& _rlp, size_t _itemCount = 1) { return appendRaw(&_rlp, _itemCount); }
 
 	/// Shift operators for appending data items.
 	template <class T> RLPStream& operator<<(T _data) { return append(_data); }
@@ -392,12 +368,6 @@ public:
 
 	/// Read the byte stream.
 	bytes const& out() const { if(!m_listStack.empty()) BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("listStack is not empty")); return m_out; }
-
-	/// Invalidate the object and steal the output byte stream.
-	bytes&& invalidate() { if(!m_listStack.empty()) BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("listStack is not empty")); return std::move(m_out); }
-
-	/// Swap the contents of the output stream out for some other byte array.
-	void swapOut(bytes& _dest) { if(!m_listStack.empty()) BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("listStack is not empty")); swap(m_out, _dest); }
 
 private:
 	void noteAppended(size_t _itemCount = 1);
@@ -420,29 +390,5 @@ private:
 
 	std::vector<std::pair<size_t, size_t>> m_listStack;
 };
-
-template <class _T> void rlpListAux(RLPStream& _out, _T _t) { _out << _t; }
-template <class _T, class ... _Ts> void rlpListAux(RLPStream& _out, _T _t, _Ts ... _ts) { rlpListAux(_out << _t, _ts...); }
-
-/// Export a single item in RLP format, returning a byte array.
-template <class _T> bytes rlp(_T _t) { return (RLPStream() << _t).out(); }
-
-/// Export a list of items in RLP format, returning a byte array.
-inline bytes rlpList() { return RLPStream(0).out(); }
-template <class ... _Ts> bytes rlpList(_Ts ... _ts)
-{
-	RLPStream out(sizeof ...(_Ts));
-	rlpListAux(out, _ts...);
-	return out.out();
-}
-
-/// The empty string in RLP format.
-extern bytes RLPNull;
-
-/// The empty list in RLP format.
-extern bytes RLPEmptyList;
-
-/// Human readable version of RLP.
-std::ostream& operator<<(std::ostream& _out, dev::RLP const& _d);
 
 }
