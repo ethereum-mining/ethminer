@@ -81,7 +81,6 @@ public:
 	enum class OperationMode
 	{
 		None,
-		DAGInit,
 		Benchmark,
 		Simulation,
 		Farm,
@@ -380,8 +379,6 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-		else if (arg == "-C" || arg == "--cpu")
-			m_minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
 			m_minerType = MinerType::CL;
 		else if (arg == "-U" || arg == "--cuda")
@@ -464,17 +461,10 @@ public:
 			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 				EthashCUDAMiner::listDevices();
 #endif
-			if (m_minerType == MinerType::CPU)
-				cout << "--list-devices should be combined with GPU mining flag (-G for OpenCL or -U for CUDA)" << endl;
 			exit(0);
 		}
 
-		if (m_minerType == MinerType::CPU)
-		{
-			cout << "CPU mining is no longer supported in this miner. Use -G (opencl) or -U (cuda) flag to select GPU platform." << endl;
-			exit(0);
-		}
-		else if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
+		if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 		{
 #if ETH_ETHASHCL
 			if (m_openclDeviceCount > 0)
@@ -522,9 +512,9 @@ public:
 				))
 				exit(1);
 
-                        EthashCUDAMiner::setParallelHash(m_parallelHash);
+			EthashCUDAMiner::setParallelHash(m_parallelHash);
 #else
-			cerr << "Selected CUDA mining without having compiled with -DETHASHCUDA=1 or -DBUNDLE=cudaminer" << endl;
+			cerr << "CUDA support disabled. Configure project build with -DETHASHCUDA=ON" << endl;
 			exit(1);
 #endif
 		}
@@ -605,8 +595,6 @@ public:
 			;
 	}
 
-	MinerType minerType() const { return m_minerType; }
-
 private:
 
 	void doBenchmark(MinerType _m, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
@@ -627,7 +615,7 @@ private:
 		f.setSealers(sealers);
 		f.onSolutionFound([&](Solution) { return false; });
 
-		string platformInfo = _m == MinerType::CPU ? "CPU" : (_m == MinerType::CL ? "CL" : "CUDA");
+		string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
 		cout << "Benchmarking on platform: " << platformInfo << endl;
 
 		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
@@ -635,9 +623,7 @@ private:
 
 		genesis.setDifficulty(u256(1) << 63);
 		f.setWork(genesis);
-		if (_m == MinerType::CPU)
-			f.start("cpu", false);
-		else if (_m == MinerType::CL)
+		if (_m == MinerType::CL)
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
@@ -692,7 +678,7 @@ private:
 #endif
 		f.setSealers(sealers);
 
-		string platformInfo = _m == MinerType::CPU ? "CPU" : (_m == MinerType::CL ? "CL" : "CUDA");
+		string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
 		cout << "Running mining simulation on platform: " << platformInfo << endl;
 
 		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
@@ -701,9 +687,7 @@ private:
 		genesis.setDifficulty(u256(1) << difficulty);
 		f.setWork(genesis);
 
-		if (_m == MinerType::CPU)
-			f.start("cpu", false);
-		else if (_m == MinerType::CL)
+		if (_m == MinerType::CL)
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
@@ -782,9 +766,7 @@ private:
 		h256 id = h256::random();
 		Farm f;
 		f.setSealers(sealers);
-		if (_m == MinerType::CPU)
-			f.start("cpu", false);
-		else if (_m == MinerType::CL)
+		if (_m == MinerType::CL)
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
@@ -1019,7 +1001,7 @@ private:
 
 	/// Mining options
 	bool m_running = true;
-	MinerType m_minerType = MinerType::CPU;
+	MinerType m_minerType = MinerType::Mixed;
 	unsigned m_openclPlatform = 0;
 	unsigned m_openclDevice = 0;
 	unsigned m_miningThreads = UINT_MAX;
