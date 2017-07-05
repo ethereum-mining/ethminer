@@ -65,6 +65,11 @@ ethminer --help
 | [Travis CI]   | Linux, macOS  | [![Travis CI](https://img.shields.io/travis/ethereum-mining/ethminer.svg)][Travis CI]    | ✗ No build artifacts, [Amazon S3 is needed] for this |
 | [AppVeyor]    | Windows       | [![AppVeyor](https://img.shields.io/appveyor/ci/ethereum-mining/ethminer.svg)][AppVeyor] | ✓ Build artifacts available for all PRs and branches |
 
+The AppVeyor system automatically builds an exe for every commit. The latest version is alway available [on the landing page](https://ci.appveyor.com/project/ethereum-mining/ethminer) or you can [browse the history](https://ci.appveyor.com/project/ethereum-mining/ethminer/history) to access the build for any commit.
+
+To download the exe under 'Job name' select 'Configuration: release' and select 'Artifacts' then you can download the zip.
+
+
 ### Building from source
 
 This project uses [CMake] and [Hunter] package manager.
