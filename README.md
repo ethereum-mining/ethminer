@@ -67,7 +67,7 @@ ethminer --help
 
 The AppVeyor system automatically builds a Windows .exe for every commit. The latest version is alway available [on the landing page](https://ci.appveyor.com/project/ethereum-mining/ethminer) or you can [browse the history](https://ci.appveyor.com/project/ethereum-mining/ethminer/history) to access previous builds.
 
-To download the .exe on a build under 'Job name' select 'Configuration: release', choose 'Artifacts' then download the zip.
+To download the .exe on a build under 'JOB NAME' select 'Configuration: Release', choose 'ARTIFACTS' then download the zip file.
 
 
 ### Building from source
