@@ -1,13 +1,16 @@
+/**
+ * Modified by Matt Thompson (twitter @inet_ntoa github @wtfuzz) to use single unrolled method of
+ * DAG RAM mixing in a single thread, rather than spreading the mixer across 8 threads.
+ * This yields a 2x performance improvement on a Mac Pro with dual ATI FirePro D500 GPUs,
+ * and is untested on other OpenCL hardware.
+ */
+
 #define OPENCL_PLATFORM_UNKNOWN 0
 #define OPENCL_PLATFORM_NVIDIA  1
 #define OPENCL_PLATFORM_AMD		2
 
 #ifndef ACCESSES
 #define ACCESSES 64
-#endif
-
-#ifndef GROUP_SIZE
-#define GROUP_SIZE 128
 #endif
 
 #ifndef MAX_OUTPUTS
@@ -18,10 +21,6 @@
 #define PLATFORM 2
 #endif
 
-#ifndef DAG_SIZE
-#define DAG_SIZE 8388593
-#endif
-
 #ifndef LIGHT_SIZE
 #define LIGHT_SIZE 262139
 #endif
@@ -29,7 +28,8 @@
 #define ETHASH_DATASET_PARENTS 256
 #define NODE_WORDS (64/4)
 
-#define THREADS_PER_HASH (128 / 16)
+//#define THREADS_PER_HASH (128 / 16)
+#define THREADS_PER_HASH 1
 #define HASHES_PER_LOOP (GROUP_SIZE / THREADS_PER_HASH)
 #define FNV_PRIME	0x01000193
 
@@ -230,17 +230,17 @@ static void keccak_f1600_no_absorb(uint2* a, uint out_size, uint isolate)
 
 #define copy(dst, src, count) for (uint i = 0; i != count; ++i) { (dst)[i] = (src)[i]; }
 
-static uint fnv(uint x, uint y)
+static inline uint fnv(uint x, uint y)
 {
 	return x * FNV_PRIME ^ y;
 }
 
-static uint4 fnv4(uint4 x, uint4 y)
+static inline uint4 fnv4(uint4 x, uint4 y)
 {
 	return x * FNV_PRIME ^ y;
 }
 
-static uint fnv_reduce(uint4 v)
+static inline uint fnv_reduce(uint4 v)
 {
 	return fnv(fnv(fnv(v.x, v.y), v.z), v.w);
 }
@@ -273,9 +273,17 @@ typedef union {
 	uint  uints[16];
 } compute_hash_share;
 
+typedef union
+{
+  uint words[32];
+  uint4 uint4s[8];
+} mix_t;
+
 #if PLATFORM != OPENCL_PLATFORM_NVIDIA // use maxrregs on nv
 __attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
 #endif
+
+
 __kernel void ethash_search(
 	__global volatile uint* restrict g_output,
 	__constant hash32_t const* g_header,
@@ -285,11 +293,11 @@ __kernel void ethash_search(
 	uint isolate
 	)
 {
-	__local compute_hash_share share[HASHES_PER_LOOP];
+  __local static compute_hash_share share[GROUP_SIZE];
+  __local static mix_t mix[GROUP_SIZE];
 
-	uint const gid = get_global_id(0);
-
-	// Compute one init hash per work item.
+	__private size_t const gid = get_global_id(0);
+  __private size_t const lid = get_local_id(0);
 
 	// sha3_512(header .. nonce)
 	ulong state[25];
@@ -303,55 +311,49 @@ __kernel void ethash_search(
 	state[5] = 0x0000000000000001;
 	state[8] = 0x8000000000000000;
 
+  // Produce 64 byte hash in state
 	keccak_f1600_no_absorb((uint2*)state, 8, isolate);
-	
-	// Threads work together in this phase in groups of 8.
-	uint const thread_id = gid & 7;
-	uint const hash_id = (gid % GROUP_SIZE) >> 3;
 
-	for (int i = 0; i < THREADS_PER_HASH; i++)
-	{
-		// share init with other threads
-		if (i == thread_id)
-			copy(share[hash_id].ulongs, state, 8);
+  // Initialize mix with state
+  //copy(share[lid].ulongs, state, 8);
+  copy(share[lid].uint4s, (uint4 *)state, 4);
 
-		barrier(CLK_LOCAL_MEM_FENCE);
+	mix[lid].uint4s[0] = share[lid].uint4s[0];
+	mix[lid].uint4s[1] = share[lid].uint4s[1];
+	mix[lid].uint4s[2] = share[lid].uint4s[2];
+	mix[lid].uint4s[3] = share[lid].uint4s[3];
+	mix[lid].uint4s[4] = share[lid].uint4s[0];
+	mix[lid].uint4s[5] = share[lid].uint4s[1];
+	mix[lid].uint4s[6] = share[lid].uint4s[2];
+	mix[lid].uint4s[7] = share[lid].uint4s[3];
 
-		uint4 mix = share[hash_id].uint4s[thread_id & 3];
-		barrier(CLK_LOCAL_MEM_FENCE);
+	uint init0 = share[lid].uints[0];
 
-		__local uint *share0 = share[hash_id].uints;
+  for(uint i=0;i<ACCESSES;i++)
+  {
+    uint p;
+    p = fnv(i ^ init0, mix[lid].words[i%32]) % DAG_SIZE;
 
-		// share init0
-		if (thread_id == 0)
-			*share0 = mix.x;
-		barrier(CLK_LOCAL_MEM_FENCE);
-		uint init0 = *share0;
+    mix[lid].uint4s[0] = fnv4(mix[lid].uint4s[0], g_dag[p].uint4s[0]);
+    mix[lid].uint4s[1] = fnv4(mix[lid].uint4s[1], g_dag[p].uint4s[1]);
+    mix[lid].uint4s[2] = fnv4(mix[lid].uint4s[2], g_dag[p].uint4s[2]);
+    mix[lid].uint4s[3] = fnv4(mix[lid].uint4s[3], g_dag[p].uint4s[3]);
+    mix[lid].uint4s[4] = fnv4(mix[lid].uint4s[4], g_dag[p].uint4s[4]);
+    mix[lid].uint4s[5] = fnv4(mix[lid].uint4s[5], g_dag[p].uint4s[5]);
+    mix[lid].uint4s[6] = fnv4(mix[lid].uint4s[6], g_dag[p].uint4s[6]);
+    mix[lid].uint4s[7] = fnv4(mix[lid].uint4s[7], g_dag[p].uint4s[7]);
+  }
 
-		for (uint a = 0; a < ACCESSES; a += 4)
-		{
-			bool update_share = thread_id == ((a >> 2) & (THREADS_PER_HASH - 1));
+  share[lid].uints[0] = fnv_reduce(mix[lid].uint4s[0]);
+  share[lid].uints[1] = fnv_reduce(mix[lid].uint4s[1]);
+  share[lid].uints[2] = fnv_reduce(mix[lid].uint4s[2]);
+  share[lid].uints[3] = fnv_reduce(mix[lid].uint4s[3]);
+  share[lid].uints[4] = fnv_reduce(mix[lid].uint4s[4]);
+  share[lid].uints[5] = fnv_reduce(mix[lid].uint4s[5]);
+  share[lid].uints[6] = fnv_reduce(mix[lid].uint4s[6]);
+  share[lid].uints[7] = fnv_reduce(mix[lid].uint4s[7]);
 
-			for (uint i = 0; i != 4; ++i)
-			{
-				if (update_share)
-				{
-					*share0 = fnv(init0 ^ (a + i), ((uint *)&mix)[i]) % DAG_SIZE;
-				}
-				barrier(CLK_LOCAL_MEM_FENCE);
-
-				mix = fnv4(mix, g_dag[*share0].uint4s[thread_id]);
-			}
-		}
-
-		share[hash_id].uints[thread_id] = fnv_reduce(mix);
-		barrier(CLK_LOCAL_MEM_FENCE);
-
-		if (i == thread_id)
-			copy(state + 8, share[hash_id].ulongs, 4);
-
-		barrier(CLK_LOCAL_MEM_FENCE);
-	}
+  copy(state + 8, share[lid].ulongs, 4);
 
 	for (uint i = 13; i != 25; ++i)
 	{
