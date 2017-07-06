@@ -122,10 +122,11 @@ EthashGPUMiner::~EthashGPUMiner()
 
 bool EthashGPUMiner::report(uint64_t _nonce)
 {
+	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	Nonce n = (Nonce)(u64)_nonce;
-	Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
-	if (r.value < work().boundary)
-		return submitProof(Solution{n, r.mixHash, work().headerHash, work().seedHash, work().boundary});
+	Result r = EthashAux::eval(w.seedHash, w.headerHash, n);
+	if (r.value < w.boundary)
+		return submitProof(Solution{n, r.mixHash, w.headerHash, w.seedHash, w.boundary});
 	return false;
 }
 
