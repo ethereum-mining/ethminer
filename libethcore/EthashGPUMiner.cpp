@@ -125,7 +125,7 @@ bool EthashGPUMiner::report(uint64_t _nonce)
 	Nonce n = (Nonce)(u64)_nonce;
 	Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
 	if (r.value < work().boundary)
-		return submitProof(Solution{n, r.mixHash});
+		return submitProof(Solution{n, r.mixHash, work().headerHash, work().seedHash, work().boundary});
 	return false;
 }
 
