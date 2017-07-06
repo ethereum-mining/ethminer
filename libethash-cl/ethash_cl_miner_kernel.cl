@@ -60,6 +60,10 @@ __constant uint2 const Keccak_f1600_RC[24] = {
 	(uint2)(0x80008008, 0x80000000),
 };
 
+#ifdef cl_clang_storage_class_specifiers
+#pragma OPENCL EXTENSION cl_clang_storage_class_specifiers : enable
+#endif
+
 #if PLATFORM == OPENCL_PLATFORM_NVIDIA && COMPUTE >= 35
 static uint2 ROL2(const uint2 a, const int offset) {
 	uint2 result;
