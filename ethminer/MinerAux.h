@@ -770,7 +770,7 @@ private:
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
-		WorkPackage current, previous;
+		WorkPackage current;
 		std::mutex x_current;
 		while (m_running)
 			try
@@ -810,9 +810,6 @@ private:
 					if (hh != current.headerHash)
 					{
 						x_current.lock();
-						previous.headerHash = current.headerHash;
-						previous.seedHash = current.seedHash;
-						previous.boundary = current.boundary;
 						current.headerHash = hh;
 						current.seedHash = newSeedHash;
 						current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
@@ -824,9 +821,11 @@ private:
 				}
 				cnote << "Solution found; Submitting to" << _remote << "...";
 				cnote << "  Nonce:" << solution.nonce.hex();
-				if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
+				cnote << "  headerHash:" << solution.headerHash.hex();
+				cnote << "  mixHash:" << solution.mixHash.hex();
+				if (EthashAux::eval(solution.seedHash, solution.headerHash, solution.nonce).value < solution.boundary)
 				{
-					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
+					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
 					if (ok) {
 						cnote << "B-) Submitted and accepted.";
 						f.acceptedSolution(false);
@@ -834,19 +833,6 @@ private:
 					else {
 						cwarn << ":-( Not accepted.";
 						f.rejectedSolution(false);
-					}
-					//exit(0);
-				}
-				else if (EthashAux::eval(previous.seedHash, previous.headerHash, solution.nonce).value < previous.boundary)
-				{
-					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(previous.headerHash), "0x" + toString(solution.mixHash));
-					if (ok) {
-						cnote << "B-) Submitted and accepted.";
-						f.acceptedSolution(true);
-					}
-					else {
-						cwarn << ":-( Not accepted.";
-						f.rejectedSolution(true);
 					}
 					//exit(0);
 				}
