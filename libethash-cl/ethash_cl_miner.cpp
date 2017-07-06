@@ -502,15 +502,47 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				for (unsigned i = 0; i != num_found; ++i)
 					nonces[i] = batch.start_nonce + results[i + 1];
 
-				m_queue.enqueueUnmapMemObject(m_searchBuffer[batch.buf], results);
-				bool exit = num_found && hook.found(nonces, num_found);
-				exit |= hook.searched(batch.start_nonce, m_globalWorkSize); // always report searched before exit
-				if (exit)
-					break;
+				m_queue.enqueueUnmapMemObject(m_searchBuffer[batch.buf], results);				
+				//bool exit = num_found && hook.found(nonces, num_found);
+				// should not exit when a nonce is found.
+				// instead, continue mining on the same header
+				bool exit = false;
+				
+				if (num_found) {
+					// only call hook.found to report solutions
+					bool found_result = hook.found(nonces, num_found);
+				}
+				
+				// check if new work is pending
+				bool pendingNewWork = hook.searched(batch.start_nonce, m_globalWorkSize);
 
-				// reset search buffer if we're still going
-				if (num_found)
-					m_queue.enqueueWriteBuffer(m_searchBuffer[batch.buf], true, 0, 4, &c_zero);
+				if (pendingNewWork) {
+					JobForGPU new_work = hook.getNewWork();
+					
+					// routine below is copy/pasted from above
+					m_queue.enqueueWriteBuffer(m_header, false, 0, 32, new_work.header);
+					for (unsigned i = 0; i != c_bufferCount; ++i)
+						m_queue.enqueueWriteBuffer(m_searchBuffer[i], false, 0, 4, &c_zero);
+						
+					#if CL_VERSION_1_2 && 0
+							cl::Event pre_return_event;
+							if (!m_opencl_1_1)
+								m_queue.enqueueBarrierWithWaitList(NULL, &pre_return_event);
+							else
+					#endif
+								m_queue.finish();
+					
+					// TODO: check if target is different before bothering to set it?
+					m_searchKernel.setArg(4, new_work.target);
+					
+					if (_ethStratum) start_nonce = new_work.startN;
+					else start_nonce = uniform_int_distribution<uint64_t>()(engine);
+				} else {
+					// reset search buffer if we're still going
+					if (num_found) {
+						m_queue.enqueueWriteBuffer(m_searchBuffer[batch.buf], true, 0, 4, &c_zero);
+					}
+				}
 
 				pending.pop();
 			}

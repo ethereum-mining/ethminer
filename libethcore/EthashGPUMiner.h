@@ -27,6 +27,7 @@
 #include <libdevcore/Worker.h>
 #include "EthashAux.h"
 #include "Miner.h"
+#include <libethash-cl/ethash_cl_miner.h>
 
 class ethash_cl_miner;
 
@@ -74,6 +75,7 @@ protected:
 private:
 	void workLoop() override;
 	bool report(uint64_t _nonce);
+	JobForGPU getWork();
 
 	using Miner::accumulateHashes;
 

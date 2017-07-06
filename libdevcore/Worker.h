@@ -55,6 +55,9 @@ protected:
 	/// Stop worker thread; causes call to stopWorking().
 	void stopWorking();
 	
+	/// Returns if worker thread is present.
+ 	bool isWorking() const { Guard l(x_work); return m_state == WorkerState::Started; }
+	
 	/// Called after thread is started from startWorking().
 	virtual void startedWorking() {}
 	

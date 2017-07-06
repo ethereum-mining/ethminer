@@ -65,6 +65,12 @@ public:
 		UniqueGuard l(x_all);
 		m_aborted = m_abort = false;
 	}
+	
+	void notifyNewWork()
+	{
+		UniqueGuard l(x_all);
+		m_workIsNew = true;
+	}
 
 protected:
 	virtual bool found(uint64_t const* _nonces, uint32_t _count) override
@@ -80,13 +86,32 @@ protected:
 		(void) _startNonce;
 		UniqueGuard l(x_all);
 		m_owner->accumulateHashes(_count);
-		if (m_abort || m_owner->shouldStop())
-			return (m_aborted = true);
-		return false;
+		//if (m_abort || m_owner->shouldStop())
+		//	return (m_aborted = true);
+		//return false;
+		// TODO: still need a way to stop the GPU thread
+		
+		if (m_workIsNew) {
+			return true;
+		} else {
+			return false;
+		}
+		
+	}
+	
+	virtual JobForGPU getNewWork()
+	{
+		UniqueGuard l(x_all);
+		m_workIsNew = false;
+		JobForGPU new_work = m_owner->getWork();
+		printf("new_work header: %02x%02x \n", new_work.header[0], new_work.header[1]);
+		
+		return new_work;
 	}
 
 private:
 	Mutex x_all;
+	bool m_workIsNew = false;
 	bool m_abort = false;
 	Notified<bool> m_aborted = {true};
 	EthashGPUMiner* m_owner = nullptr;
@@ -114,6 +139,19 @@ EthashGPUMiner::~EthashGPUMiner()
 	delete m_hook;
 }
 
+JobForGPU EthashGPUMiner::getWork()
+{
+	WorkPackage w_kick = work();
+	uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w_kick.boundary >> 192);
+	uint64_t startN;
+	if (w_kick.exSizeBits >= 0)
+		startN = w_kick.startNonce | ((uint64_t)index() << (64 - 4 - w_kick.exSizeBits)); // this can support up to 16 devices
+
+	JobForGPU new_work = {w_kick.headerHash.data(), upper64OfBoundary, startN};
+	
+	return new_work;
+}
+
 bool EthashGPUMiner::report(uint64_t _nonce)
 {
 	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
@@ -126,7 +164,14 @@ bool EthashGPUMiner::report(uint64_t _nonce)
 void EthashGPUMiner::kickOff()
 {
 	m_hook->reset();
-	startWorking();
+	
+	if (isWorking()) {
+		// if already mining, notify of new pending work
+		m_hook->notifyNewWork();
+	} else {
+		// first time running.
+		startWorking();
+	}
 }
 
 namespace
@@ -188,8 +233,11 @@ void EthashGPUMiner::workLoop()
 
 void EthashGPUMiner::pause()
 {
-	m_hook->abort();
-	stopWorking();
+	if (!isWorking()) {
+		// only happens on first pause/kickoff cycle
+		m_hook->abort();
+		stopWorking();
+	}
 }
 
 std::string EthashGPUMiner::platformInfo()
