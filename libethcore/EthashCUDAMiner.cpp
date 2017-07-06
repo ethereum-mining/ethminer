@@ -23,14 +23,9 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #if ETH_ETHASHCUDA
 
-#if defined(WIN32)
-#include <Windows.h>
-#endif
-
 #include "EthashCUDAMiner.h"
-#include <thread>
-#include <chrono>
 #include <libethash-cuda/ethash_cuda_miner.h>
+
 using namespace std;
 using namespace dev;
 using namespace eth;
@@ -123,10 +118,12 @@ EthashCUDAMiner::~EthashCUDAMiner()
 
 bool EthashCUDAMiner::report(uint64_t _nonce)
 {
+	// FIXME: This code is exactly the same as in EthashGPUMiner.
+	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	Nonce n = (Nonce)(u64)_nonce;
-	Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
-	if (r.value < work().boundary)
-		return submitProof(Solution{ n, r.mixHash });
+	Result r = EthashAux::eval(w.seedHash, w.headerHash, n);
+	if (r.value < w.boundary)
+		return submitProof(Solution{n, r.mixHash, w.headerHash, w.seedHash, w.boundary});
 	return false;
 }
 
@@ -263,7 +260,7 @@ bool EthashCUDAMiner::configureGPU(
 
 void EthashCUDAMiner::setParallelHash(unsigned _parallelHash)
 {
-  ethash_cuda_miner::setParallelHash(_parallelHash);
+	ethash_cuda_miner::setParallelHash(_parallelHash);
 }
 
 #endif
