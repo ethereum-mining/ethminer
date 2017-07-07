@@ -34,7 +34,7 @@ namespace eth
 
 struct Solution
 {
-	Nonce nonce;
+	uint64_t nonce;
 	h256 mixHash;
 	h256 headerHash;
 	h256 seedHash;
@@ -76,7 +76,7 @@ public:
 		LightAllocation(h256 const& _seedHash);
 		~LightAllocation();
 		bytesConstRef data() const;
-		Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
+		Result compute(h256 const& _headerHash, uint64_t _nonce) const;
 		ethash_light_t light;
 		uint64_t size;
 	};
@@ -88,7 +88,7 @@ public:
 
 	static LightType light(h256 const& _seedHash);
 
-	static Result eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce) noexcept;
+	static Result eval(h256 const& _seedHash, h256 const& _headerHash, uint64_t  _nonce) noexcept;
 
 private:
 	EthashAux() = default;

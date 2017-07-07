@@ -120,10 +120,9 @@ bool EthashCUDAMiner::report(uint64_t _nonce)
 {
 	// FIXME: This code is exactly the same as in EthashGPUMiner.
 	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
-	Nonce n = (Nonce)(u64)_nonce;
-	Result r = EthashAux::eval(w.seedHash, w.headerHash, n);
+	Result r = EthashAux::eval(w.seedHash, w.headerHash, _nonce);
 	if (r.value < w.boundary)
-		return submitProof(Solution{n, r.mixHash, w.headerHash, w.seedHash, w.boundary});
+		return submitProof(Solution{_nonce, r.mixHash, w.headerHash, w.seedHash, w.boundary});
 	return false;
 }
 
