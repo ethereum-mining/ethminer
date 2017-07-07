@@ -46,7 +46,7 @@ public:
 	struct SealerDescriptor
 	{
 		std::function<unsigned()> instances;
-		std::function<Miner*(Miner::ConstructionInfo ci)> create;
+		std::function<Miner*(FarmFace&, unsigned)> create;
 	};
 
 	~Farm()
@@ -100,7 +100,7 @@ public:
 		}
 		for (unsigned i = start; i < ins; ++i)
 		{
-			m_miners.push_back(std::shared_ptr<Miner>(m_sealers[_sealer].create(std::make_pair(this, i))));
+			m_miners.push_back(std::shared_ptr<Miner>(m_sealers[_sealer].create(*this, i)));
 			m_miners.back()->setWork(m_work);
 		}
 		m_isMining = true;

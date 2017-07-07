@@ -102,12 +102,11 @@ unsigned EthashCUDAMiner::s_deviceId = 0;
 unsigned EthashCUDAMiner::s_numInstances = 0;
 int EthashCUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
-EthashCUDAMiner::EthashCUDAMiner(ConstructionInfo const& _ci) :
-	Miner(_ci),
-	Worker("cudaminer" + toString(index())),
-m_hook( new EthashCUDAHook(this))
-{
-}
+EthashCUDAMiner::EthashCUDAMiner(FarmFace& _farm, unsigned _index) :
+	Miner(_farm, _index),
+	Worker("CUDA" + std::to_string(_index)),
+	m_hook(new EthashCUDAHook(this))  // FIXME!
+{}
 
 EthashCUDAMiner::~EthashCUDAMiner()
 {

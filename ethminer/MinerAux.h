@@ -607,10 +607,10 @@ private:
 		Farm f;
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{&EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
+		sealers["opencl"] = Farm::SealerDescriptor{&EthashGPUMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashGPUMiner(_farm, _index); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
 #endif
 		f.setSealers(sealers);
 		f.onSolutionFound([&](Solution) { return false; });
@@ -671,10 +671,10 @@ private:
 		Farm f;
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{ &EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
+		sealers["opencl"] = Farm::SealerDescriptor{ &EthashGPUMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashGPUMiner(_farm, _index); } };
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
 #endif
 		f.setSealers(sealers);
 
@@ -744,10 +744,10 @@ private:
 	{
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{&EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
+		sealers["opencl"] = Farm::SealerDescriptor{&EthashGPUMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashGPUMiner(_farm, _index); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
 #endif
 		(void)_m;
 		(void)_remote;
@@ -880,10 +880,10 @@ private:
 	{
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{ &EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
+		sealers["opencl"] = Farm::SealerDescriptor{ &EthashGPUMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashGPUMiner(_farm, _index); } };
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
 #endif
 		if (!m_farmRecheckSet)
 			m_farmRecheckPeriod = m_defaultStratumFarmRecheckPeriod;

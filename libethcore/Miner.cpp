@@ -24,10 +24,7 @@ bool Miner::report(uint64_t _nonce)
 	if (r.value >= w.boundary)
 		return false;
 
-	if (!m_farm)
-		return true;
-
-	if (m_farm->submitProof(Solution{_nonce, r.mixHash, w.headerHash, w.seedHash, w.boundary}, this))
+	if (m_farm.submitProof(Solution{_nonce, r.mixHash, w.headerHash, w.seedHash, w.boundary}, this))
 	{
 		// TODO: Even if the proof submitted, should be reset the work
 		// package here and stop mining?

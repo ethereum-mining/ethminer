@@ -143,13 +143,12 @@ public:
 class Miner
 {
 public:
-	using ConstructionInfo = std::pair<FarmFace*, unsigned>;
-
-	Miner(ConstructionInfo const& _ci):
-		m_farm(_ci.first),
-		m_index(_ci.second)
+	Miner(FarmFace& _farm, unsigned _index):
+		m_farm(_farm),
+		m_index(_index)
 	{}
-	virtual ~Miner() {}
+
+	virtual ~Miner() = default;
 
 	// API FOR THE FARM TO CALL IN WITH
 
@@ -205,8 +204,8 @@ protected:
 	static unsigned s_dagCreateDevice;
 	static volatile void* s_dagInHostMemory;
 private:
-	FarmFace* m_farm = nullptr;
-	unsigned m_index;
+	FarmFace& m_farm;
+	unsigned m_index = 0;
 
 	uint64_t m_hashCount = 0;
 

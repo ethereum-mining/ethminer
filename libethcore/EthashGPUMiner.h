@@ -41,7 +41,7 @@ class EthashGPUMiner: public Miner, Worker
 	friend class dev::eth::EthashCLHook;
 
 public:
-	EthashGPUMiner(ConstructionInfo const& _ci);
+	EthashGPUMiner(FarmFace& _farm, unsigned _index);
 	~EthashGPUMiner();
 
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
