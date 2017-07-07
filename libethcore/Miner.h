@@ -140,13 +140,12 @@ public:
 class Miner
 {
 public:
-	using ConstructionInfo = std::pair<FarmFace*, unsigned>;
-
-	Miner(ConstructionInfo const& _ci):
-		m_farm(_ci.first),
-		m_index(_ci.second)
+	Miner(FarmFace& _farm, unsigned _index):
+		m_farm(_farm),
+		m_index(_index)
 	{}
-	virtual ~Miner() {}
+
+	virtual ~Miner() = default;
 
 	void setWork(WorkPackage const& _work)
 	{
@@ -195,8 +194,7 @@ protected:
 	 */
 	void submitProof(Solution const& _s)
 	{
-		assert(m_farm);
-		m_farm->submitProof(_s);
+		m_farm.submitProof(_s);
 	}
 
 	WorkPackage const& work() const { Guard l(x_work); return m_work; }
@@ -208,8 +206,8 @@ protected:
 	static unsigned s_dagCreateDevice;
 	static volatile void* s_dagInHostMemory;
 private:
-	FarmFace* m_farm = nullptr;
-	unsigned m_index;
+	FarmFace& m_farm;
+	unsigned m_index = 0;
 
 	uint64_t m_hashCount = 0;
 
