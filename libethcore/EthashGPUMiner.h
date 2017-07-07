@@ -36,7 +36,7 @@ namespace eth
 {
 class EthashCLHook;
 
-class EthashGPUMiner: public Miner, Worker
+class EthashGPUMiner: public Miner
 {
 	friend class dev::eth::EthashCLHook;
 

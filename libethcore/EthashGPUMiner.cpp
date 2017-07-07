@@ -97,8 +97,7 @@ unsigned EthashGPUMiner::s_numInstances = 0;
 int EthashGPUMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
 EthashGPUMiner::EthashGPUMiner(FarmFace& _farm, unsigned _index):
-	Miner(_farm, _index),
-	Worker("OpenCL" + std::to_string(index())),
+	Miner("OpenCL", _farm, _index),
 	m_hook(new EthashCLHook(*this))
 {}
 

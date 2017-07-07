@@ -140,12 +140,13 @@ public:
  * @brief A miner - a member and adoptee of the Farm.
  * @warning Not threadsafe. It is assumed Farm will synchronise calls to/from this class.
  */
-class Miner
+class Miner: public Worker
 {
 public:
-	Miner(FarmFace& _farm, unsigned _index):
-		m_farm(_farm),
-		m_index(_index)
+	Miner(std::string const& _name, FarmFace& _farm, size_t _index):
+		Worker(_name + std::to_string(_index)),
+		m_index(_index),
+		m_farm(_farm)
 	{}
 
 	virtual ~Miner() = default;
@@ -173,7 +174,7 @@ public:
 
 	void resetHashCount() { m_hashCount = 0; }
 
-	unsigned index() const { return m_index; }
+	size_t index() const { return m_index; }
 
 protected:
 
@@ -204,8 +205,8 @@ protected:
 	static unsigned s_dagCreateDevice;
 	static volatile void* s_dagInHostMemory;
 private:
+	const size_t m_index = 0;
 	FarmFace& m_farm;
-	unsigned m_index = 0;
 
 	uint64_t m_hashCount = 0;
 

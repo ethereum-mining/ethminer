@@ -36,7 +36,7 @@ namespace eth
 {
 class EthashCUDAHook;
 
-	class EthashCUDAMiner : public Miner, Worker
+	class EthashCUDAMiner: public Miner
 	{
 		friend class dev::eth::EthashCUDAHook;
 
@@ -51,7 +51,7 @@ class EthashCUDAHook;
 		static std::string platformInfo();
 		static unsigned getNumDevices();
 		static void listDevices();
-                static void setParallelHash(unsigned _parallelHash);
+		static void setParallelHash(unsigned _parallelHash);
 		static bool configureGPU(
 			unsigned _blockSize,
 			unsigned _gridSize,
