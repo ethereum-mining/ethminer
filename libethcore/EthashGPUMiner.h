@@ -38,8 +38,6 @@ class EthashCLHook;
 
 class EthashGPUMiner: public Miner
 {
-	friend class dev::eth::EthashCLHook;
-
 public:
 	EthashGPUMiner(FarmFace& _farm, unsigned _index);
 	~EthashGPUMiner();

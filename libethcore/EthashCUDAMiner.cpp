@@ -37,7 +37,7 @@ namespace eth
 	class EthashCUDAHook : public MinerHook
 	{
 	public:
-		EthashCUDAHook(EthashCUDAMiner& _owner): m_owner(_owner) {}
+		EthashCUDAHook(Miner& _owner): m_owner(_owner) {}
 
 		EthashCUDAHook(EthashCUDAHook const&) = delete;
 
@@ -85,7 +85,7 @@ namespace eth
 		Mutex x_all;
 		bool m_abort = false;
 		Notified<bool> m_aborted = { true };
-		EthashCUDAMiner& m_owner;
+		Miner& m_owner;
 	};
 }
 }

@@ -38,8 +38,6 @@ class EthashCUDAHook;
 
 	class EthashCUDAMiner: public Miner
 	{
-		friend class dev::eth::EthashCUDAHook;
-
 	public:
 		EthashCUDAMiner(FarmFace& _farm, unsigned _index);
 		~EthashCUDAMiner();

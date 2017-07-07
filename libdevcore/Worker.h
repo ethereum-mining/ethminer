@@ -41,6 +41,9 @@ enum class WorkerState
 
 class Worker
 {
+public:
+	bool shouldStop() const { return m_state != WorkerState::Started; }
+
 protected:
 	Worker(std::string const& _name = "anon", unsigned _idleWaitMs = 30): m_name(_name), m_idleWaitMs(_idleWaitMs) {}
 
@@ -63,7 +66,6 @@ protected:
 
 	/// Overrides doWork(); should call shouldStop() often and exit when true.
 	virtual void workLoop();
-	bool shouldStop() const { return m_state != WorkerState::Started; }
 	
 	/// Called when is to be stopped, just prior to thread being joined.
 	virtual void doneWorking() {}

@@ -37,9 +37,7 @@ namespace eth
 class EthashCLHook: public MinerHook
 {
 public:
-	EthashCLHook(EthashGPUMiner& _owner): m_owner(_owner) {}
-
-	EthashCLHook(EthashCLHook const&) = delete;
+	EthashCLHook(Miner& _owner): m_owner(_owner) {}
 
 	void abort()
 	{
@@ -85,7 +83,7 @@ private:
 	Mutex x_all;
 	bool m_abort = false;
 	Notified<bool> m_aborted = {true};
-	EthashGPUMiner& m_owner;
+	Miner& m_owner;
 };
 
 }

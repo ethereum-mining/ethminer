@@ -176,6 +176,10 @@ public:
 
 	size_t index() const { return m_index; }
 
+	bool report(uint64_t _nonce);
+
+	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
+
 protected:
 
 
@@ -195,10 +199,6 @@ protected:
 	// AVAILABLE FOR A SUBCLASS TO CALL:
 
 	WorkPackage const& work() const { Guard l(x_work); return m_work; }
-
-	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
-
-	bool report(uint64_t _nonce);
 
 	static unsigned s_dagLoadMode;
 	static volatile unsigned s_dagLoadIndex;

@@ -8,7 +8,11 @@ namespace eth
 class MinerHook
 {
 public:
+	MinerHook() = default;
 	virtual ~MinerHook() = default;
+
+	MinerHook(MinerHook const&) = delete;
+	MinerHook& operator=(MinerHook const&) = delete;
 
 	// reports progress, return true to abort
 	virtual bool found(uint64_t const* nonces, uint32_t count) = 0;
