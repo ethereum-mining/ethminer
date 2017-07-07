@@ -73,7 +73,6 @@ protected:
 
 private:
 	void workLoop() override;
-	bool report(uint64_t _nonce);
 
 	using Miner::accumulateHashes;
 

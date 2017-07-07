@@ -114,15 +114,6 @@ EthashGPUMiner::~EthashGPUMiner()
 	delete m_hook;
 }
 
-bool EthashGPUMiner::report(uint64_t _nonce)
-{
-	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
-	Result r = EthashAux::eval(w.seedHash, w.headerHash, _nonce);
-	if (r.value < w.boundary)
-		return submitProof(Solution{_nonce, r.mixHash, w.headerHash, w.seedHash, w.boundary});
-	return false;
-}
-
 void EthashGPUMiner::kickOff()
 {
 	m_hook->reset();

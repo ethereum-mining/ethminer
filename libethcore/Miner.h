@@ -194,29 +194,11 @@ protected:
 
 	// AVAILABLE FOR A SUBCLASS TO CALL:
 
-	/**
-	 * @brief Notes that the Miner found a solution.
-	 * @param _s The solution.
-	 * @return true if the solution was correct and that the miner should pause.
-	 */
-	bool submitProof(Solution const& _s)
-	{
-		if (!m_farm)
-			return true;
-		if (m_farm->submitProof(_s, this))
-		{
-			// TODO: Even if the proof submitted, should be reset the work
-			// package here and stop mining?
-			Guard l(x_work);
-			m_work.reset();
-			return true;
-		}
-		return false;
-	}
-
 	WorkPackage const& work() const { Guard l(x_work); return m_work; }
 
 	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
+
+	bool report(uint64_t _nonce);
 
 	static unsigned s_dagLoadMode;
 	static volatile unsigned s_dagLoadIndex;
