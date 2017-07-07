@@ -137,6 +137,13 @@ inline std::string toHex(u256 val, HexPrefix prefix = HexPrefix::DontAdd)
 	return (prefix == HexPrefix::Add) ? "0x" + str : str;
 }
 
+inline std::string toHex(uint64_t _n)
+{
+	std::ostringstream ss;
+	ss << std::hex << _n;
+	return ss.str();
+}
+
 // Algorithms for string and string-like collections.
 
 /// Escapes a string into the C-string representation.
