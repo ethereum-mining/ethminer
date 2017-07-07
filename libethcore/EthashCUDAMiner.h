@@ -27,6 +27,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include "libdevcore/Worker.h"
 #include "EthashAux.h"
 #include "Miner.h"
+#include "MinerHook.h"
 
 class ethash_cuda_miner;
 
@@ -34,7 +35,6 @@ namespace dev
 {
 namespace eth
 {
-class EthashCUDAHook;
 
 	class EthashCUDAMiner: public Miner
 	{
@@ -80,7 +80,7 @@ class EthashCUDAHook;
 
 		using Miner::accumulateHashes;
 
-		EthashCUDAHook* m_hook = nullptr;
+		MinerHook* m_hook = nullptr;
 		ethash_cuda_miner* m_miner = nullptr;
 
 		h256 m_minerSeed;		///< Last seed in m_miner

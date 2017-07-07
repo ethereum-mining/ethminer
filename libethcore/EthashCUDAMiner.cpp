@@ -25,70 +25,11 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "EthashCUDAMiner.h"
 #include <libethash-cuda/ethash_cuda_miner.h>
+#include <libethcore/MinerHook.h>
 
 using namespace std;
 using namespace dev;
 using namespace eth;
-
-namespace dev
-{
-namespace eth
-{
-	class EthashCUDAHook : public MinerHook
-	{
-	public:
-		EthashCUDAHook(Miner& _owner): m_owner(_owner) {}
-
-		EthashCUDAHook(EthashCUDAHook const&) = delete;
-
-		void abort()
-		{
-			{
-				UniqueGuard l(x_all);
-				if (m_aborted)
-					return;
-
-				m_abort = true;
-			}
-			// m_abort is true so now searched()/found() will return true to abort the search.
-			// we hang around on this thread waiting for them to point out that they have aborted since
-			// otherwise we may end up deleting this object prior to searched()/found() being called.
-			m_aborted.wait(true);
-		}
-
-		void reset()
-		{
-			UniqueGuard l(x_all);
-			m_aborted = m_abort = false;
-		}
-
-	protected:
-		virtual bool found(uint64_t const* _nonces, uint32_t _count) override
-		{
-			for (uint32_t i = 0; i < _count; ++i)
-				if (m_owner.report(_nonces[i]))
-					return (m_aborted = true);
-			return m_owner.shouldStop();
-		}
-
-		virtual bool searched(uint64_t _startNonce, uint32_t _count) override
-		{
-			(void) _startNonce;  // FIXME: unusued arg.
-			UniqueGuard l(x_all);
-			m_owner.accumulateHashes(_count);
-			if (m_abort || m_owner.shouldStop())
-				return (m_aborted = true);
-			return false;
-		}
-
-	private:
-		Mutex x_all;
-		bool m_abort = false;
-		Notified<bool> m_aborted = { true };
-		Miner& m_owner;
-	};
-}
-}
 
 unsigned EthashCUDAMiner::s_platformId = 0;
 unsigned EthashCUDAMiner::s_deviceId = 0;
@@ -97,7 +38,7 @@ int EthashCUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -
 
 EthashCUDAMiner::EthashCUDAMiner(FarmFace& _farm, unsigned _index) :
 	Miner("CUDA", _farm, _index),
-	m_hook(new EthashCUDAHook(*this))  // FIXME!
+	m_hook(new MinerHook(*this))  // FIXME!
 {}
 
 EthashCUDAMiner::~EthashCUDAMiner()

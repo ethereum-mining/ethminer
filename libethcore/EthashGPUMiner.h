@@ -27,6 +27,7 @@
 #include <libdevcore/Worker.h>
 #include "EthashAux.h"
 #include "Miner.h"
+#include "MinerHook.h"
 
 class ethash_cl_miner;
 
@@ -34,7 +35,6 @@ namespace dev
 {
 namespace eth
 {
-class EthashCLHook;
 
 class EthashGPUMiner: public Miner
 {
@@ -74,7 +74,7 @@ private:
 
 	using Miner::accumulateHashes;
 
-	EthashCLHook* m_hook = nullptr;
+	MinerHook* m_hook = nullptr;
 	ethash_cl_miner* m_miner = nullptr;
 
 	h256 m_minerSeed;		///< Last seed in m_miner
