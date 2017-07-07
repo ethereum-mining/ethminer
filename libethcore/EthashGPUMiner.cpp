@@ -24,11 +24,8 @@
 #if ETH_ETHASHCL
 
 #include "EthashGPUMiner.h"
-#include <thread>
-#include <chrono>
 #include <libethash-cl/ethash_cl_miner.h>
 
-using namespace std;
 using namespace dev;
 using namespace eth;
 
@@ -72,7 +69,6 @@ public:
 protected:
 	virtual bool found(uint64_t const* _nonces, uint32_t _count) override
 	{
-//		dev::operator <<(std::cerr << "Found nonces: ", vector<uint64_t>(_nonces, _nonces + _count)) << std::endl;
 		for (uint32_t i = 0; i < _count; ++i)
 			if (m_owner->report(_nonces[i]))
 				return (m_aborted = true);
@@ -81,10 +77,9 @@ protected:
 
 	virtual bool searched(uint64_t _startNonce, uint32_t _count) override
 	{
+		(void) _startNonce;
 		UniqueGuard l(x_all);
-//		std::cerr << "Searched " << _count << " from " << _startNonce << std::endl;
 		m_owner->accumulateHashes(_count);
-		m_last = _startNonce + _count;
 		if (m_abort || m_owner->shouldStop())
 			return (m_aborted = true);
 		return false;
@@ -92,7 +87,6 @@ protected:
 
 private:
 	Mutex x_all;
-	uint64_t m_last;
 	bool m_abort = false;
 	Notified<bool> m_aborted = {true};
 	EthashGPUMiner* m_owner = nullptr;
@@ -123,10 +117,9 @@ EthashGPUMiner::~EthashGPUMiner()
 bool EthashGPUMiner::report(uint64_t _nonce)
 {
 	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
-	Nonce n = (Nonce)(u64)_nonce;
-	Result r = EthashAux::eval(w.seedHash, w.headerHash, n);
+	Result r = EthashAux::eval(w.seedHash, w.headerHash, _nonce);
 	if (r.value < w.boundary)
-		return submitProof(Solution{n, r.mixHash, w.headerHash, w.seedHash, w.boundary});
+		return submitProof(Solution{_nonce, r.mixHash, w.headerHash, w.seedHash, w.boundary});
 	return false;
 }
 
