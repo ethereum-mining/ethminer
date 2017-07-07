@@ -51,31 +51,13 @@
 #define CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV       0x4001
 #endif
 
-#undef min
-#undef max
-
 using namespace std;
 
 unsigned const ethash_cl_miner::c_defaultLocalWorkSize = 64;
 unsigned const ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier = 4096; // * CL_DEFAULT_LOCAL_WORK_SIZE
 
 // TODO: If at any point we can use libdevcore in here then we should switch to using a LogChannel
-#if defined(_WIN32)
-extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char* lpOutputString);
-static std::atomic_flag s_logSpin = ATOMIC_FLAG_INIT;
-#define ETHCL_LOG(_contents) \
-	do \
-	{ \
-		std::stringstream ss; \
-		ss << _contents; \
-		while (s_logSpin.test_and_set(std::memory_order_acquire)) {} \
-		OutputDebugStringA(ss.str().c_str()); \
-		cerr << ss.str() << endl << flush; \
-		s_logSpin.clear(std::memory_order_release); \
-	} while (false)
-#else
-#define ETHCL_LOG(_contents) cout << "[OPENCL]:" << _contents << endl
-#endif
+#define ETHCL_LOG(_contents) std::cout << "[OpenCL] " << _contents << std::endl
 
 static void addDefinition(string& _source, char const* _id, unsigned _value)
 {
