@@ -51,12 +51,12 @@
 #include <libstratum/EthStratumClient.h>
 #include <libstratum/EthStratumClientV2.h>
 #endif
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace boost::algorithm;
 
-#undef RETURN
 
 class BadArgument: public Exception {};
 struct MiningChannel: public LogChannel
@@ -712,7 +712,7 @@ private:
 				this_thread::sleep_for(chrono::milliseconds(1000));
 				time++;
 			}
-			cnote << "Difficulty:" << difficulty << "  Nonce:" << solution.nonce.hex();
+			cnote << "Difficulty:" << difficulty << "  Nonce:" << solution.nonce;
 			if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
 			{
 				cnote << "SUCCESS: GPU gave correct result!";
@@ -820,7 +820,7 @@ private:
 					this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 				}
 				cnote << "Solution found; Submitting to" << _remote << "...";
-				cnote << "  Nonce:" << solution.nonce.hex();
+				cnote << "  Nonce:" << solution.nonce;
 				cnote << "  headerHash:" << solution.headerHash.hex();
 				cnote << "  mixHash:" << solution.mixHash.hex();
 				if (EthashAux::eval(solution.seedHash, solution.headerHash, solution.nonce).value < solution.boundary)
