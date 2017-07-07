@@ -41,7 +41,7 @@ class EthashCUDAHook;
 		friend class dev::eth::EthashCUDAHook;
 
 	public:
-		EthashCUDAMiner(ConstructionInfo const& _ci);
+		EthashCUDAMiner(FarmFace& _farm, unsigned _index);
 		~EthashCUDAMiner();
 
 		static unsigned instances() 

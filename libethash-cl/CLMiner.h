@@ -76,7 +76,7 @@ public:
 	/// Default value of the global work size as a multiplier of the local work size
 	static const unsigned c_defaultGlobalWorkSizeMultiplier = 8192;
 
-	CLMiner(ConstructionInfo const& _ci);
+	CLMiner(FarmFace& _farm, unsigned _index);
 	~CLMiner();
 
 	bool searched(uint32_t _count);
