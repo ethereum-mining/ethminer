@@ -91,12 +91,7 @@ protected:
 		//return false;
 		// TODO: still need a way to stop the GPU thread
 		
-		if (m_workIsNew) {
-			return true;
-		} else {
-			return false;
-		}
-		
+		return m_workIsNew;
 	}
 	
 	virtual JobForGPU getNewWork()

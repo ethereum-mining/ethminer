@@ -523,14 +523,9 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 					m_queue.enqueueWriteBuffer(m_header, false, 0, 32, new_work.header);
 					for (unsigned i = 0; i != c_bufferCount; ++i)
 						m_queue.enqueueWriteBuffer(m_searchBuffer[i], false, 0, 4, &c_zero);
-						
-					#if CL_VERSION_1_2 && 0
-							cl::Event pre_return_event;
-							if (!m_opencl_1_1)
-								m_queue.enqueueBarrierWithWaitList(NULL, &pre_return_event);
-							else
-					#endif
-								m_queue.finish();
+
+					// TODO: Shouldn't it be at the end of the loop body?
+					m_queue.finish();
 					
 					// TODO: check if target is different before bothering to set it?
 					m_searchKernel.setArg(4, new_work.target);
