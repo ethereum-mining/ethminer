@@ -80,7 +80,7 @@ namespace eth
 
 		using Miner::accumulateHashes;
 
-		MinerHook* m_hook = nullptr;
+		MinerHook m_hook;
 		ethash_cuda_miner* m_miner = nullptr;
 
 		h256 m_minerSeed;		///< Last seed in m_miner

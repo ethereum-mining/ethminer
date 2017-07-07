@@ -181,8 +181,6 @@ public:
 	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
 
 protected:
-
-
 	// REQUIRED TO BE REIMPLEMENTED BY A SUBCLASS:
 
 	/**

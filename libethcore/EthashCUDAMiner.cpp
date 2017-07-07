@@ -38,19 +38,18 @@ int EthashCUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -
 
 EthashCUDAMiner::EthashCUDAMiner(FarmFace& _farm, unsigned _index) :
 	Miner("CUDA", _farm, _index),
-	m_hook(new MinerHook(*this))  // FIXME!
+	m_hook(*this)
 {}
 
 EthashCUDAMiner::~EthashCUDAMiner()
 {
 	pause();
 	delete m_miner;
-	delete m_hook;
 }
 
 void EthashCUDAMiner::kickOff()
 {
-	m_hook->reset();
+	m_hook.reset();
 	startWorking();
 }
 
@@ -117,7 +116,7 @@ void EthashCUDAMiner::workLoop()
 		uint64_t startN = w.startNonce;
 		if (w.exSizeBits >= 0)
 			startN = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
-		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook, (w.exSizeBits >= 0), startN);
+		m_miner->search(w.headerHash.data(), upper64OfBoundary, m_hook, (w.exSizeBits >= 0), startN);
 	}
 	catch (std::runtime_error const& _e)
 	{
@@ -129,7 +128,7 @@ void EthashCUDAMiner::workLoop()
 
 void EthashCUDAMiner::pause()
 {
-	m_hook->abort();
+	m_hook.abort();
 	stopWorking();
 }
 

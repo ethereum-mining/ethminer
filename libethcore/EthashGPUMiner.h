@@ -74,7 +74,7 @@ private:
 
 	using Miner::accumulateHashes;
 
-	MinerHook* m_hook = nullptr;
+	MinerHook m_hook;
 	ethash_cl_miner* m_miner = nullptr;
 
 	h256 m_minerSeed;		///< Last seed in m_miner

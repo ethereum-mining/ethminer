@@ -36,19 +36,18 @@ int EthashGPUMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
 
 EthashGPUMiner::EthashGPUMiner(FarmFace& _farm, unsigned _index):
 	Miner("OpenCL", _farm, _index),
-	m_hook(new MinerHook(*this))
+	m_hook(*this)
 {}
 
 EthashGPUMiner::~EthashGPUMiner()
 {
 	pause();
 	delete m_miner;
-	delete m_hook;
 }
 
 void EthashGPUMiner::kickOff()
 {
-	m_hook->reset();
+	m_hook.reset();
 	startWorking();
 }
 
@@ -99,7 +98,7 @@ void EthashGPUMiner::workLoop()
 			startNonce = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
 		else
 			startNonce = randomNonce();
-		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook, startNonce);
+		m_miner->search(w.headerHash.data(), upper64OfBoundary, m_hook, startNonce);
 	}
 	catch (cl::Error const& _e)
 	{
@@ -111,7 +110,7 @@ void EthashGPUMiner::workLoop()
 
 void EthashGPUMiner::pause()
 {
-	m_hook->abort();
+	m_hook.abort();
 	stopWorking();
 }
 
