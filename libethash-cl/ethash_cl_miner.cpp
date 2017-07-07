@@ -445,7 +445,7 @@ typedef struct
 	unsigned buf;
 } pending_batch;
 
-void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN)
+void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, uint64_t _startN)
 {
 	try
 	{
@@ -465,11 +465,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		m_searchKernel.setArg(4, target);
 		
 		unsigned buf = 0;
-		random_device engine;
-		uint64_t start_nonce;
-		if (_ethStratum) start_nonce = _startN;
-		else start_nonce = uniform_int_distribution<uint64_t>()(engine);
-		for (;; start_nonce += m_globalWorkSize)
+		for (uint64_t start_nonce = _startN;; start_nonce += m_globalWorkSize)
 		{
 			// supply output buffer to kernel
 			m_searchKernel.setArg(0, m_searchBuffer[buf]);
