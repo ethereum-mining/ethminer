@@ -728,11 +728,7 @@ private:
 			genesis.setDifficulty(u256(1) << difficulty);
 			genesis.noteDirty();
 
-			h256 hh;
-			std::random_device engine;
-			hh.randomize(engine);
-
-			current.headerHash = hh;
+			current.headerHash = h256::random();
 			current.boundary = genesis.boundary();
 			minelog << "Generated random work package:";
 			minelog << "  Header-hash:" << current.headerHash.hex();
@@ -825,7 +821,7 @@ private:
 				cnote << "  mixHash:" << solution.mixHash.hex();
 				if (EthashAux::eval(solution.seedHash, solution.headerHash, solution.nonce).value < solution.boundary)
 				{
-					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
+					bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
 					if (ok) {
 						cnote << "B-) Submitted and accepted.";
 						f.acceptedSolution(false);
