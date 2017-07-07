@@ -34,7 +34,7 @@ namespace dev
 {
 namespace eth
 {
-	class EthashCUDAHook : public ethash_cuda_miner::search_hook
+	class EthashCUDAHook : public MinerHook
 	{
 	public:
 		EthashCUDAHook(EthashCUDAMiner& _owner): m_owner(_owner) {}

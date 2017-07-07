@@ -23,6 +23,7 @@
 #include <time.h>
 #include <functional>
 #include <libethash/ethash.h>
+#include <libethcore/MinerHook.h>
 
 class ethash_cl_miner
 {
@@ -30,15 +31,6 @@ private:
 	enum { c_maxSearchResults = 63, c_bufferCount = 2 };
 
 public:
-	struct search_hook
-	{
-		virtual ~search_hook(); // always a virtual destructor for a class with virtuals.
-
-		// reports progress, return true to abort
-		virtual bool found(uint64_t const* nonces, uint32_t count) = 0;
-		virtual bool searched(uint64_t start_nonce, uint32_t count) = 0;
-	};
-
 	ethash_cl_miner() = default;
 	~ethash_cl_miner();
 
@@ -64,7 +56,7 @@ public:
 		unsigned _deviceId
 		);
 	void finish();
-	void search(uint8_t const* _header, uint64_t _target, search_hook& _hook, uint64_t _startN);
+	void search(uint8_t const* _header, uint64_t _target, dev::eth::MinerHook& _hook, uint64_t _startN);
 
 	/* -- default values -- */
 	/// Default value of the local work size. Also known as workgroup size.

@@ -66,8 +66,6 @@ static void addDefinition(string& _source, char const* _id, unsigned _value)
 	_source.insert(_source.begin(), buf, buf + strlen(buf));
 }
 
-ethash_cl_miner::search_hook::~search_hook() {}
-
 ethash_cl_miner::~ethash_cl_miner()
 {
 	finish();
@@ -445,7 +443,7 @@ typedef struct
 	unsigned buf;
 } pending_batch;
 
-void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, uint64_t _startN)
+void ethash_cl_miner::search(uint8_t const* header, uint64_t target, dev::eth::MinerHook& hook, uint64_t _startN)
 {
 	try
 	{

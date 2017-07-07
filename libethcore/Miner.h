@@ -25,7 +25,6 @@
 #include <list>
 #include <atomic>
 #include <string>
-#include <boost/timer.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
@@ -135,6 +134,7 @@ public:
 	 */
 	virtual bool submitProof(Solution const& _p, Miner* _finder) = 0;
 };
+
 
 /**
  * @brief A miner - a member and adoptee of the Farm.

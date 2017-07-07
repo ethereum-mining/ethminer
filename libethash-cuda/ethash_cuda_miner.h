@@ -1,24 +1,13 @@
 #pragma once
 
-//#include <cuda_runtime.h>
-
 #include <time.h>
 #include <functional>
 #include <libethash/ethash.h>
+#include <libethcore/MinerHook.h>
 #include "ethash_cuda_miner_kernel.h"
 
 class ethash_cuda_miner
 {
-public:
-	struct search_hook
-	{
-		virtual ~search_hook(); // always a virtual destructor for a class with virtuals.
-
-		// reports progress, return true to abort
-		virtual bool found(uint64_t const* nonces, uint32_t count) = 0;
-		virtual bool searched(uint64_t start_nonce, uint32_t count) = 0;
-	};
-
 public:
 	ethash_cuda_miner();
 
@@ -39,7 +28,7 @@ public:
 	bool init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, volatile void** hostDAG);
 
 	void finish();
-	void search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN);
+	void search(uint8_t const* header, uint64_t target, dev::eth::MinerHook& hook, bool _ethStratum, uint64_t _startN);
 
 	/* -- default values -- */
 	/// Default value of the block size. Also known as workgroup size.

@@ -34,7 +34,7 @@ namespace dev
 namespace eth
 {
 
-class EthashCLHook: public ethash_cl_miner::search_hook
+class EthashCLHook: public MinerHook
 {
 public:
 	EthashCLHook(EthashGPUMiner& _owner): m_owner(_owner) {}

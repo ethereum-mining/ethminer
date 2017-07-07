@@ -36,6 +36,7 @@
 #include <cuda_runtime.h>
 #include "ethash_cuda_miner.h"
 #include "ethash_cuda_miner_kernel_globals.h"
+#include <libethcore/MinerHook.h>
 
 
 // workaround lame platforms
@@ -65,8 +66,6 @@ static std::atomic_flag s_logSpin = ATOMIC_FLAG_INIT;
 #else
 #define ETHCUDA_LOG(_contents) cout << "[CUDA]:" << _contents << endl
 #endif
-
-ethash_cuda_miner::search_hook::~search_hook() {}
 
 ethash_cuda_miner::ethash_cuda_miner()
 {
@@ -306,7 +305,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 	}
 }
 
-void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN)
+void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, dev::eth::MinerHook& hook, bool _ethStratum, uint64_t _startN)
 {
 	bool initialize = false;
 	bool exit = false;
