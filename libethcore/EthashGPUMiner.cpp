@@ -138,7 +138,7 @@ JobForGPU EthashGPUMiner::getWork()
 {
 	WorkPackage w_kick = work();
 	uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w_kick.boundary >> 192);
-	uint64_t startN;
+	uint64_t startN = 0;
 	if (w_kick.exSizeBits >= 0)
 		startN = w_kick.startNonce | ((uint64_t)index() << (64 - 4 - w_kick.exSizeBits)); // this can support up to 16 devices
 
