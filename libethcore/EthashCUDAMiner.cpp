@@ -37,7 +37,8 @@ namespace eth
 	class EthashCUDAHook : public ethash_cuda_miner::search_hook
 	{
 	public:
-		EthashCUDAHook(EthashCUDAMiner* _owner) : m_owner(_owner) {}
+		EthashCUDAHook(EthashCUDAMiner& _owner): m_owner(_owner) {}
+
 		EthashCUDAHook(EthashCUDAHook const&) = delete;
 
 		void abort()
@@ -46,7 +47,6 @@ namespace eth
 				UniqueGuard l(x_all);
 				if (m_aborted)
 					return;
-				//		cdebug << "Attempting to abort";
 
 				m_abort = true;
 			}
@@ -54,10 +54,6 @@ namespace eth
 			// we hang around on this thread waiting for them to point out that they have aborted since
 			// otherwise we may end up deleting this object prior to searched()/found() being called.
 			m_aborted.wait(true);
-			//		for (unsigned timeout = 0; timeout < 100 && !m_aborted; ++timeout)
-			//			std::this_thread::sleep_for(chrono::milliseconds(30));
-			//		if (!m_aborted)
-			//			cwarn << "Couldn't abort. Abandoning OpenCL process.";
 		}
 
 		void reset()
@@ -69,30 +65,27 @@ namespace eth
 	protected:
 		virtual bool found(uint64_t const* _nonces, uint32_t _count) override
 		{
-			//		dev::operator <<(std::cerr << "Found nonces: ", vector<uint64_t>(_nonces, _nonces + _count)) << std::endl;
 			for (uint32_t i = 0; i < _count; ++i)
-				if (m_owner->report(_nonces[i]))
+				if (m_owner.report(_nonces[i]))
 					return (m_aborted = true);
-			return m_owner->shouldStop();
+			return m_owner.shouldStop();
 		}
 
 		virtual bool searched(uint64_t _startNonce, uint32_t _count) override
 		{
+			(void) _startNonce;  // FIXME: unusued arg.
 			UniqueGuard l(x_all);
-			//		std::cerr << "Searched " << _count << " from " << _startNonce << std::endl;
-			m_owner->accumulateHashes(_count);
-			m_last = _startNonce + _count;
-			if (m_abort || m_owner->shouldStop())
+			m_owner.accumulateHashes(_count);
+			if (m_abort || m_owner.shouldStop())
 				return (m_aborted = true);
 			return false;
 		}
 
 	private:
 		Mutex x_all;
-		uint64_t m_last;
 		bool m_abort = false;
 		Notified<bool> m_aborted = { true };
-		EthashCUDAMiner* m_owner = nullptr;
+		EthashCUDAMiner& m_owner;
 	};
 }
 }
@@ -105,7 +98,7 @@ int EthashCUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -
 EthashCUDAMiner::EthashCUDAMiner(FarmFace& _farm, unsigned _index) :
 	Miner(_farm, _index),
 	Worker("CUDA" + std::to_string(_index)),
-	m_hook(new EthashCUDAHook(this))  // FIXME!
+	m_hook(new EthashCUDAHook(*this))  // FIXME!
 {}
 
 EthashCUDAMiner::~EthashCUDAMiner()
