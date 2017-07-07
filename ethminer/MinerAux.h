@@ -920,7 +920,7 @@ private:
 					{
 						minelog << "Mining on" << client.currentHeaderHash() << ": " << mp << f.getSolutionStats();
 					}
-					else if (client.waitState() == MINER_WAIT_STATE_WORK)
+					else
 					{
 						minelog << "Waiting for work package...";
 					}
