@@ -67,7 +67,7 @@ namespace dev
 namespace eth
 {
 
-class CLMiner: public Miner, Worker
+class CLMiner: public Miner
 {
 public:
 	/* -- default values -- */

@@ -115,8 +115,7 @@ unsigned CLMiner::s_numInstances = 0;
 int CLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
 CLMiner::CLMiner(FarmFace& _farm, unsigned _index):
-	Miner(_farm, _index),
-	Worker("cl-" + std::to_string(_index))
+	Miner("cl-", _farm, _index)
 {}
 
 CLMiner::~CLMiner()

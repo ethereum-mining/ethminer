@@ -100,8 +100,7 @@ unsigned EthashCUDAMiner::s_numInstances = 0;
 int EthashCUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
 EthashCUDAMiner::EthashCUDAMiner(FarmFace& _farm, unsigned _index) :
-	Miner(_farm, _index),
-	Worker("CUDA" + std::to_string(_index)),
+	Miner("CUDA", _farm, _index),
 	m_hook(new EthashCUDAHook(this))  // FIXME!
 {}
 
