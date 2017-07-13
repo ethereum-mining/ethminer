@@ -37,8 +37,6 @@ using Address = h160;
 /// The log bloom's size (2048-bit).
 using LogBloom = h2048;
 
-using Nonce = h64;
-
 using BlockNumber = unsigned;
 
 
@@ -89,7 +87,7 @@ public:
 	void noteDirty() const { m_hashWithout = m_boundary = h256(); }
 
 	h256 const& seedHash() const;
-	Nonce const& nonce() const { return m_nonce; }
+	uint64_t nonce() const { return m_nonce; }
 
 private:
 	void populateFromHeader(RLP const& _header);
@@ -113,7 +111,7 @@ private:
 	mutable h256 m_hashWithout;					///< SHA3 hash of the block header! Not serialised.
 	mutable h256 m_boundary;					///< 2^256 / difficulty
 
-	Nonce m_nonce;
+	uint64_t m_nonce;
 	mutable h256 m_seedHash;
 };
 

@@ -24,11 +24,8 @@
 #if ETH_ETHASHCL
 
 #include "EthashGPUMiner.h"
-#include <thread>
-#include <chrono>
 #include <libethash-cl/ethash_cl_miner.h>
 
-using namespace std;
 using namespace dev;
 using namespace eth;
 
@@ -72,7 +69,6 @@ public:
 protected:
 	virtual bool found(uint64_t const* _nonces, uint32_t _count) override
 	{
-//		dev::operator <<(std::cerr << "Found nonces: ", vector<uint64_t>(_nonces, _nonces + _count)) << std::endl;
 		for (uint32_t i = 0; i < _count; ++i)
 			if (m_owner->report(_nonces[i]))
 				return (m_aborted = true);
@@ -81,10 +77,9 @@ protected:
 
 	virtual bool searched(uint64_t _startNonce, uint32_t _count) override
 	{
+		(void) _startNonce;
 		UniqueGuard l(x_all);
-//		std::cerr << "Searched " << _count << " from " << _startNonce << std::endl;
 		m_owner->accumulateHashes(_count);
-		m_last = _startNonce + _count;
 		if (m_abort || m_owner->shouldStop())
 			return (m_aborted = true);
 		return false;
@@ -92,7 +87,6 @@ protected:
 
 private:
 	Mutex x_all;
-	uint64_t m_last;
 	bool m_abort = false;
 	Notified<bool> m_aborted = {true};
 	EthashGPUMiner* m_owner = nullptr;
@@ -122,10 +116,10 @@ EthashGPUMiner::~EthashGPUMiner()
 
 bool EthashGPUMiner::report(uint64_t _nonce)
 {
-	Nonce n = (Nonce)(u64)_nonce;
-	Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
-	if (r.value < work().boundary)
-		return submitProof(Solution{n, r.mixHash});
+	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
+	Result r = EthashAux::eval(w.seedHash, w.headerHash, _nonce);
+	if (r.value < w.boundary)
+		return submitProof(Solution{_nonce, r.mixHash, w.headerHash, w.seedHash, w.boundary});
 	return false;
 }
 
@@ -133,6 +127,15 @@ void EthashGPUMiner::kickOff()
 {
 	m_hook->reset();
 	startWorking();
+}
+
+namespace
+{
+uint64_t randomNonce()
+{
+	static std::mt19937_64 s_gen(std::random_device{}());
+	return std::uniform_int_distribution<uint64_t>{}(s_gen);
+}
 }
 
 void EthashGPUMiner::workLoop()
@@ -167,10 +170,13 @@ void EthashGPUMiner::workLoop()
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
-		uint64_t startN = 0;
+
+		uint64_t startNonce = 0;
 		if (w.exSizeBits >= 0)
-			startN = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
-		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook, (w.exSizeBits >= 0), startN);
+			startNonce = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
+		else
+			startNonce = randomNonce();
+		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook, startNonce);
 	}
 	catch (cl::Error const& _e)
 	{
@@ -206,7 +212,6 @@ bool EthashGPUMiner::configureGPU(
 	unsigned _globalWorkSizeMultiplier,
 	unsigned _platformId,
 	unsigned _deviceId,
-	bool _allowCPU,
 	unsigned _extraGPUMemory,
 	uint64_t _currentBlock,
 	unsigned _dagLoadMode,
@@ -225,7 +230,6 @@ bool EthashGPUMiner::configureGPU(
 			_platformId,
 			_localWorkSize,
 			_globalWorkSizeMultiplier * _localWorkSize,
-			_allowCPU,
 			_extraGPUMemory,
 			_currentBlock
 			)

@@ -30,13 +30,6 @@
 namespace dev
 {
 
-enum class IfRunning
-{
-	Fail,
-	Join,
-	Detach
-};
-
 enum class WorkerState
 {
 	Starting,
@@ -51,30 +44,16 @@ class Worker
 protected:
 	Worker(std::string const& _name = "anon", unsigned _idleWaitMs = 30): m_name(_name), m_idleWaitMs(_idleWaitMs) {}
 
-	/// Move-constructor.
-	Worker(Worker&& _m) { std::swap(m_name, _m.m_name); }
+	Worker(Worker const&) = delete;
+	Worker& operator=(Worker const&) = delete;
 
-	/// Move-assignment.
-	Worker& operator=(Worker&& _m)
-	{
-		assert(&_m != this);
-		std::swap(m_name, _m.m_name);
-		return *this;
-	}
-
-	virtual ~Worker() { terminate(); }
-
-	/// Allows changing worker name if work is stopped.
-	void setName(std::string _n) { if (!isWorking()) m_name = _n; }
+	virtual ~Worker();
 
 	/// Starts worker thread; causes startedWorking() to be called.
 	void startWorking();
 	
 	/// Stop worker thread; causes call to stopWorking().
 	void stopWorking();
-
-	/// Returns if worker thread is present.
-	bool isWorking() const { Guard l(x_work); return m_state == WorkerState::Started; }
 	
 	/// Called after thread is started from startWorking().
 	virtual void startedWorking() {}
@@ -89,13 +68,7 @@ protected:
 	/// Called when is to be stopped, just prior to thread being joined.
 	virtual void doneWorking() {}
 
-	/// Blocks caller into worker thread has finished.
-//	void join() const { Guard l(x_work); try { if (m_work) m_work->join(); } catch (...) {} }
-
 private:
-	/// Stop and never start again.
-	void terminate();
-
 	std::string m_name;
 
 	unsigned m_idleWaitMs = 0;

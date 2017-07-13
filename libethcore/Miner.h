@@ -61,10 +61,9 @@ namespace eth
 
 enum class MinerType
 {
-	CPU,
+	Mixed,
 	CL,
-	CUDA,
-	Mixed
+	CUDA
 };
 
 /// Describes the progress of a mining operation.
@@ -206,6 +205,8 @@ protected:
 			return true;
 		if (m_farm->submitProof(_s, this))
 		{
+			// TODO: Even if the proof submitted, should be reset the work
+			// package here and stop mining?
 			Guard l(x_work);
 			m_work.reset();
 			return true;

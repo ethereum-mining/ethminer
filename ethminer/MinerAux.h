@@ -51,6 +51,7 @@
 #include <libstratum/EthStratumClient.h>
 #include <libstratum/EthStratumClientV2.h>
 #endif
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -82,7 +83,6 @@ public:
 	enum class OperationMode
 	{
 		None,
-		DAGInit,
 		Benchmark,
 		Simulation,
 		Farm,
@@ -298,10 +298,6 @@ public:
 		else if ((arg == "--cl-extragpu-mem" || arg == "--cuda-extragpu-mem") && i + 1 < argc)
 			m_extraGPUMemory = 1000000 * stol(argv[++i]);
 #endif
-#if ETH_ETHASHCL
-		else if (arg == "--allow-opencl-cpu")
-			m_clAllowCPU = true;
-#endif
 #if ETH_ETHASHCUDA
 		else if (arg == "--cuda-devices")
 		{
@@ -394,8 +390,6 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-		else if (arg == "-C" || arg == "--cpu")
-			m_minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
 			m_minerType = MinerType::CL;
 		else if (arg == "-U" || arg == "--cuda")
@@ -478,17 +472,10 @@ public:
 			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 				EthashCUDAMiner::listDevices();
 #endif
-			if (m_minerType == MinerType::CPU)
-				cout << "--list-devices should be combined with GPU mining flag (-G for OpenCL or -U for CUDA)" << endl;
 			exit(0);
 		}
 
-		if (m_minerType == MinerType::CPU)
-		{
-			cout << "CPU mining is no longer supported in this miner. Use -G (opencl) or -U (cuda) flag to select GPU platform." << endl;
-			exit(0);
-		}
-		else if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
+		if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 		{
 #if ETH_ETHASHCL
 			if (m_openclDeviceCount > 0)
@@ -502,7 +489,6 @@ public:
 					m_globalWorkSizeMultiplier,
 					m_openclPlatform,
 					m_openclDevice,
-					m_clAllowCPU,
 					m_extraGPUMemory,
 					//0,
 					epoch_by_davilizh * ETHASH_EPOCH_LENGTH,
@@ -538,9 +524,9 @@ public:
 				))
 				exit(1);
 
-                        EthashCUDAMiner::setParallelHash(m_parallelHash);
+			EthashCUDAMiner::setParallelHash(m_parallelHash);
 #else
-			cerr << "Selected CUDA mining without having compiled with -DETHASHCUDA=1 or -DBUNDLE=cudaminer" << endl;
+			cerr << "CUDA support disabled. Configure project build with -DETHASHCUDA=ON" << endl;
 			exit(1);
 #endif
 		}
@@ -595,7 +581,6 @@ public:
 			<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
 			<< "    --opencl-devices <0 1 ..n> Select which OpenCL devices to mine on. Default is to use all" << endl
 			<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
-			<< "    --allow-opencl-cpu Allows CPU to be considered as an OpenCL device if the OpenCL platform supports it." << endl
 			<< "    --list-devices List the detected OpenCL/CUDA devices and exit. Should be combined with -G or -U flag" << endl
 			<< "    -L, --dag-load-mode <mode> DAG generation mode." << endl
 			<< "        parallel    - load DAG on all GPUs at the same time (default)" << endl
@@ -617,12 +602,10 @@ public:
 			<< "        yield - Instruct CUDA to yield its thread when waiting for results from the device." << endl
 			<< "        sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device." << endl
 			<< "    --cuda-devices <0 1 ..n> Select which CUDA GPUs to mine on. Default is to use all" << endl
-			<< "    --cude-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achive better performance. Default=4" << endl
+			<< "    --cuda-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achive better performance. Default=4" << endl
 #endif
 			;
 	}
-
-	MinerType minerType() const { return m_minerType; }
 
 private:
 
@@ -644,7 +627,7 @@ private:
 		f.setSealers(sealers);
 		f.onSolutionFound([&](Solution) { return false; });
 
-		string platformInfo = _m == MinerType::CPU ? "CPU" : (_m == MinerType::CL ? "CL" : "CUDA");
+		string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
 		cout << "Benchmarking on platform: " << platformInfo << endl;
 
 		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
@@ -652,9 +635,7 @@ private:
 
 		genesis.setDifficulty(u256(1) << 63);
 		f.setWork(genesis);
-		if (_m == MinerType::CPU)
-			f.start("cpu", false);
-		else if (_m == MinerType::CL)
+		if (_m == MinerType::CL)
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
@@ -709,7 +690,7 @@ private:
 #endif
 		f.setSealers(sealers);
 
-		string platformInfo = _m == MinerType::CPU ? "CPU" : (_m == MinerType::CL ? "CL" : "CUDA");
+		string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
 		cout << "Running mining simulation on platform: " << platformInfo << endl;
 
 		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
@@ -718,9 +699,7 @@ private:
 		genesis.setDifficulty(u256(1) << difficulty);
 		f.setWork(genesis);
 
-		if (_m == MinerType::CPU)
-			f.start("cpu", false);
-		else if (_m == MinerType::CL)
+		if (_m == MinerType::CL)
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
@@ -745,7 +724,7 @@ private:
 				this_thread::sleep_for(chrono::milliseconds(1000));
 				time++;
 			}
-			cnote << "Difficulty:" << difficulty << "  Nonce:" << solution.nonce.hex();
+			cnote << "Difficulty:" << difficulty << "  Nonce:" << solution.nonce;
 			if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
 			{
 				cnote << "SUCCESS: GPU gave correct result!";
@@ -761,11 +740,7 @@ private:
 			genesis.setDifficulty(u256(1) << difficulty);
 			genesis.noteDirty();
 
-			h256 hh;
-			std::random_device engine;
-			hh.randomize(engine);
-
-			current.headerHash = hh;
+			current.headerHash = h256::random();
 			current.boundary = genesis.boundary();
 			minelog << "Generated random work package:";
 			minelog << "  Header-hash:" << current.headerHash.hex();
@@ -799,13 +774,11 @@ private:
 		h256 id = h256::random();
 		Farm f;
 		f.setSealers(sealers);
-		if (_m == MinerType::CPU)
-			f.start("cpu", false);
-		else if (_m == MinerType::CL)
+		if (_m == MinerType::CL)
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
-		WorkPackage current, previous;
+		WorkPackage current;
 		std::mutex x_current;
 		while (m_running)
 			try
@@ -845,9 +818,6 @@ private:
 					if (hh != current.headerHash)
 					{
 						x_current.lock();
-						previous.headerHash = current.headerHash;
-						previous.seedHash = current.seedHash;
-						previous.boundary = current.boundary;
 						current.headerHash = hh;
 						current.seedHash = newSeedHash;
 						current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
@@ -858,10 +828,12 @@ private:
 					this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 				}
 				cnote << "Solution found; Submitting to" << _remote << "...";
-				cnote << "  Nonce:" << solution.nonce.hex();
-				if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
+				cnote << "  Nonce:" << solution.nonce;
+				cnote << "  headerHash:" << solution.headerHash.hex();
+				cnote << "  mixHash:" << solution.mixHash.hex();
+				if (EthashAux::eval(solution.seedHash, solution.headerHash, solution.nonce).value < solution.boundary)
 				{
-					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
+					bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
 					if (ok) {
 						cnote << "B-) Submitted and accepted.";
 						f.acceptedSolution(false);
@@ -869,19 +841,6 @@ private:
 					else {
 						cwarn << ":-( Not accepted.";
 						f.rejectedSolution(false);
-					}
-					//exit(0);
-				}
-				else if (EthashAux::eval(previous.seedHash, previous.headerHash, solution.nonce).value < previous.boundary)
-				{
-					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(previous.headerHash), "0x" + toString(solution.mixHash));
-					if (ok) {
-						cnote << "B-) Submitted and accepted.";
-						f.acceptedSolution(true);
-					}
-					else {
-						cwarn << ":-( Not accepted.";
-						f.rejectedSolution(true);
 					}
 					//exit(0);
 				}
@@ -1036,12 +995,11 @@ private:
 
 	/// Mining options
 	bool m_running = true;
-	MinerType m_minerType = MinerType::CPU;
+	MinerType m_minerType = MinerType::Mixed;
 	unsigned m_openclPlatform = 0;
 	unsigned m_openclDevice = 0;
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
-	bool m_clAllowCPU = false;
 #if ETH_ETHASHCL
 	unsigned m_openclDeviceCount = 0;
 	unsigned m_openclDevices[16];

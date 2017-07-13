@@ -3,6 +3,7 @@ branches:
     only:
         - /^v\d+\..+$/
         - master
+        - /^release.*$/
 matrix:
     include:
         - os: linux
