@@ -148,7 +148,7 @@ void set_constants(
 	uint32_t _light_size
 	)
 {
-        cout<<"set_constants d_dag_size:"<<d_dag_size<<endl;
+        printf("set_constants d_dag_size: %d\n", d_dag_size);
 	CUDA_SAFE_CALL(cudaMemcpyToSymbol(d_dag, &_dag, sizeof(hash128_t *)));
 	CUDA_SAFE_CALL(cudaMemcpyToSymbol(d_dag_size, &_dag_size, sizeof(uint32_t)));
 	CUDA_SAFE_CALL(cudaMemcpyToSymbol(d_light, &_light, sizeof(hash64_t *)));
