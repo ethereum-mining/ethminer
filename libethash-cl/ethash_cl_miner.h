@@ -24,6 +24,13 @@
 #include <functional>
 #include <libethash/ethash.h>
 
+struct JobForGPU
+{
+	uint8_t const* header;
+	uint64_t target;
+	uint64_t startN;
+};
+
 class ethash_cl_miner
 {
 private:
@@ -37,6 +44,7 @@ public:
 		// reports progress, return true to abort
 		virtual bool found(uint64_t const* nonces, uint32_t count) = 0;
 		virtual bool searched(uint64_t start_nonce, uint32_t count) = 0;
+		virtual JobForGPU getNewWork() = 0;
 	};
 
 	ethash_cl_miner() = default;

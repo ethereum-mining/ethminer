@@ -486,7 +486,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 			// execute it!
 			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, s_workgroupSize);
 
-			pending.push({ start_nonce, buf });
+			pending.push({start_nonce, buf});
 			buf = (buf + 1) % c_bufferCount;
 
 			// read results
@@ -502,15 +502,44 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 				for (unsigned i = 0; i != num_found; ++i)
 					nonces[i] = batch.start_nonce + results[i + 1];
 
-				m_queue.enqueueUnmapMemObject(m_searchBuffer[batch.buf], results);
-				bool exit = num_found && hook.found(nonces, num_found);
-				exit |= hook.searched(batch.start_nonce, m_globalWorkSize); // always report searched before exit
-				if (exit)
-					break;
+				m_queue.enqueueUnmapMemObject(m_searchBuffer[batch.buf], results);				
+				//bool exit = num_found && hook.found(nonces, num_found);
+				// should not exit when a nonce is found.
+				// instead, continue mining on the same header
+				bool exit = false;
+				
+				if (num_found) {
+					// only call hook.found to report solutions
+					bool found_result = hook.found(nonces, num_found);
+				}
+				
+				// check if new work is pending
+				bool pendingNewWork = hook.searched(batch.start_nonce, m_globalWorkSize);
 
-				// reset search buffer if we're still going
-				if (num_found)
-					m_queue.enqueueWriteBuffer(m_searchBuffer[batch.buf], true, 0, 4, &c_zero);
+				if (pendingNewWork) {
+					JobForGPU new_work = hook.getNewWork();
+					
+					// routine below is copy/pasted from above
+					m_queue.enqueueWriteBuffer(m_header, false, 0, 32, new_work.header);
+					for (unsigned i = 0; i != c_bufferCount; ++i)
+						m_queue.enqueueWriteBuffer(m_searchBuffer[i], false, 0, 4, &c_zero);
+
+					// TODO: Shouldn't it be at the end of the loop body?
+					m_queue.finish();
+					
+					// TODO: check if target is different before bothering to set it?
+					m_searchKernel.setArg(4, new_work.target);
+
+					// Set "start nonce" if provided by stratum.
+					// FIXME: start_nonce will be bumped at the end of the loop.
+					if (new_work.startN)
+						start_nonce = new_work.startN;
+				} else {
+					// reset search buffer if we're still going
+					if (num_found) {
+						m_queue.enqueueWriteBuffer(m_searchBuffer[batch.buf], true, 0, 4, &c_zero);
+					}
+				}
 
 				pending.pop();
 			}
