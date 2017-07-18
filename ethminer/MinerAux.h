@@ -712,7 +712,9 @@ private:
 				this_thread::sleep_for(chrono::milliseconds(1000));
 				time++;
 			}
-			cnote << "Difficulty:" << difficulty << "  Nonce:" << solution.nonce;
+			string nonceHex = toHex(solution.nonce);
+			cnote << "Difficulty:" << difficulty << "  Nonce:" << nonceHex;
+
 			if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
 			{
 				cnote << "SUCCESS: GPU gave correct result!";
@@ -815,13 +817,14 @@ private:
 					}
 					this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 				}
+				string nonceHex = toHex(solution.nonce);
 				cnote << "Solution found; Submitting to" << _remote << "...";
-				cnote << "  Nonce:" << solution.nonce;
+				cnote << "  Nonce:" << nonceHex;
 				cnote << "  headerHash:" << solution.headerHash.hex();
 				cnote << "  mixHash:" << solution.mixHash.hex();
 				if (EthashAux::eval(solution.seedHash, solution.headerHash, solution.nonce).value < solution.boundary)
 				{
-					bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
+					bool ok = prpc->eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
 					if (ok) {
 						cnote << "B-) Submitted and accepted.";
 						f.acceptedSolution(false);
