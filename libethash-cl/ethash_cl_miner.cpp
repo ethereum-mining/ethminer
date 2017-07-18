@@ -415,17 +415,12 @@ bool ethash_cl_miner::init(
 		m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
 
 		// create mining buffers
-		for (unsigned i = 0; i != c_bufferCount; ++i)
-		{
-			ETHCL_LOG("Creating mining buffer " << i);
-			m_searchBuffer[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_maxSearchResults + 1) * sizeof(uint32_t));
-		}
+		ETHCL_LOG("Creating mining buffer");
+		m_searchBuffer = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_maxSearchResults + 1) * sizeof(uint32_t));
 
 		ETHCL_LOG("Generating DAG data");
 
 		uint32_t const work = (uint32_t)(dagSize / sizeof(node));
-		//while (work < blocks * threads) blocks /= 2;
-
 		uint32_t fullRuns = work / m_globalWorkSize;
 		uint32_t const restWork = work % m_globalWorkSize;
 		if (restWork > 0) fullRuns++;
@@ -461,58 +456,46 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 {
 	try
 	{
-		queue<pending_batch> pending;
-
 		// this can't be a static because in MacOSX OpenCL implementation a segfault occurs when a static is passed to OpenCL functions
 		uint32_t const c_zero = 0;
 
 		// update header constant buffer
 		m_queue.enqueueWriteBuffer(m_header, false, 0, 32, header);
-		for (unsigned i = 0; i != c_bufferCount; ++i)
-			m_queue.enqueueWriteBuffer(m_searchBuffer[i], false, 0, 4, &c_zero);
+		m_queue.enqueueWriteBuffer(m_searchBuffer, false, 0, sizeof(c_zero), &c_zero);
 
 		m_queue.finish();
 
+		// supply output buffer to kernel
+		m_searchKernel.setArg(0, m_searchBuffer);
+
 		m_searchKernel.setArg(4, target);
 		
-		unsigned buf = 0;
 		for (uint64_t start_nonce = _startN;; start_nonce += m_globalWorkSize)
 		{
-			// supply output buffer to kernel
-			m_searchKernel.setArg(0, m_searchBuffer[buf]);
 			m_searchKernel.setArg(3, start_nonce);
 
 			// execute it!
 			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, s_workgroupSize);
 
-			pending.push({ start_nonce, buf });
-			buf = (buf + 1) % c_bufferCount;
-
 			// read results
-			if (pending.size() == c_bufferCount)
-			{
-				pending_batch const& batch = pending.front();
 
-				// could use pinned host pointer instead
-				uint32_t* results = (uint32_t*)m_queue.enqueueMapBuffer(m_searchBuffer[batch.buf], true, CL_MAP_READ, 0, (1 + c_maxSearchResults) * sizeof(uint32_t));
-				unsigned num_found = min<unsigned>(results[0], c_maxSearchResults);
+			// TODO: could use pinned host pointer instead.
+			uint32_t* results = (uint32_t*)m_queue.enqueueMapBuffer(m_searchBuffer, true, CL_MAP_READ, 0, (1 + c_maxSearchResults) * sizeof(uint32_t));
+			unsigned num_found = min<unsigned>(results[0], c_maxSearchResults);
 
-				uint64_t nonces[c_maxSearchResults];
-				for (unsigned i = 0; i != num_found; ++i)
-					nonces[i] = batch.start_nonce + results[i + 1];
+			uint64_t nonces[c_maxSearchResults];
+			for (unsigned i = 0; i != num_found; ++i)
+				nonces[i] = start_nonce + results[i + 1];
 
-				m_queue.enqueueUnmapMemObject(m_searchBuffer[batch.buf], results);
-				bool exit = num_found && hook.found(nonces, num_found);
-				exit |= hook.searched(batch.start_nonce, m_globalWorkSize); // always report searched before exit
-				if (exit)
-					break;
+			m_queue.enqueueUnmapMemObject(m_searchBuffer, results);
+			bool exit = num_found && hook.found(nonces, num_found);
+			exit |= hook.searched(start_nonce, m_globalWorkSize); // always report searched before exit
+			if (exit)
+				break;
 
-				// reset search buffer if we're still going
-				if (num_found)
-					m_queue.enqueueWriteBuffer(m_searchBuffer[batch.buf], true, 0, 4, &c_zero);
-
-				pending.pop();
-			}
+			// reset search buffer if we're still going
+			if (num_found)
+				m_queue.enqueueWriteBuffer(m_searchBuffer, true, 0, sizeof(c_zero), &c_zero);
 		}
 	}
 	catch (cl::Error const& err)

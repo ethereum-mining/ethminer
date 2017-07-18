@@ -27,7 +27,7 @@
 class ethash_cl_miner
 {
 private:
-	enum { c_maxSearchResults = 63, c_bufferCount = 1 };
+	enum { c_maxSearchResults = 63 };
 
 public:
 	struct search_hook
@@ -84,7 +84,7 @@ private:
 	cl::Buffer m_dag;
 	cl::Buffer m_light;
 	cl::Buffer m_header;
-	cl::Buffer m_searchBuffer[c_bufferCount];
+	cl::Buffer m_searchBuffer;
 	unsigned m_globalWorkSize;
 
 	/// The local work size for the search
