@@ -27,7 +27,7 @@
 class ethash_cl_miner
 {
 private:
-	enum { c_maxSearchResults = 63, c_bufferCount = 2 };
+	enum { c_maxSearchResults = 1 };
 
 public:
 	struct search_hook
@@ -40,7 +40,6 @@ public:
 	};
 
 	ethash_cl_miner() = default;
-	~ethash_cl_miner();
 
 	static bool searchForAllDevices(unsigned _platformId, std::function<bool(cl::Device const&)> _callback);
 	static void doForAllDevices(unsigned _platformId, std::function<void(cl::Device const&)> _callback);
@@ -63,7 +62,6 @@ public:
 		unsigned _platformId,
 		unsigned _deviceId
 		);
-	void finish();
 	void search(uint8_t const* _header, uint64_t _target, search_hook& _hook, uint64_t _startN);
 
 	/* -- default values -- */
@@ -84,7 +82,7 @@ private:
 	cl::Buffer m_dag;
 	cl::Buffer m_light;
 	cl::Buffer m_header;
-	cl::Buffer m_searchBuffer[c_bufferCount];
+	cl::Buffer m_searchBuffer;
 	unsigned m_globalWorkSize;
 
 	/// The local work size for the search
