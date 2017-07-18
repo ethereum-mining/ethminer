@@ -67,19 +67,44 @@ enum class MinerType
 };
 
 /// Describes the progress of a mining operation.
-struct WorkingProgress
+struct MinerWorkingProgress
 {
 	uint64_t hashes = 0;		///< Total number of hashes computed.
 	uint64_t ms = 0;			///< Total number of milliseconds of mining thus far.
 	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
 };
 
-inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
+inline std::ostream& operator<<(std::ostream& _out, MinerWorkingProgress _p)
 {
 	float mh = _p.rate() / 1000000.0f;
 	char mhs[16];
 	sprintf(mhs, "%.2f", mh);
 	_out << std::string(mhs) + "MH/s";
+	return _out;
+}
+
+struct FarmWorkingProgress
+{
+	uint64_t hashes = 0;		///< Total number of hashes computed.
+	uint64_t ms = 0;			///< Total number of milliseconds of mining thus far.
+	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
+
+	std::vector<MinerWorkingProgress> minersProgress;
+};
+
+inline std::ostream& operator<<(std::ostream& _out, FarmWorkingProgress _p)
+{
+	float mh = _p.rate() / 1000000.0f;
+	char mhs[16];
+	sprintf(mhs, "%.2f", mh);
+	_out << "Total: " << std::string(mhs) + "MH/s";
+
+	int gpuIndex=0;
+	for (auto const& i: _p.minersProgress)
+	{
+		_out << " GPU" << gpuIndex++ << ": " << i;
+	}
+
 	return _out;
 }
 

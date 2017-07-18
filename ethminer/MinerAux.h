@@ -628,7 +628,7 @@ private:
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
 
-		map<uint64_t, WorkingProgress> results;
+		map<uint64_t, FarmWorkingProgress> results;
 		uint64_t mean = 0;
 		uint64_t innerMean = 0;
 		for (unsigned i = 0; i <= _trials; ++i)
@@ -783,7 +783,10 @@ private:
 					auto mp = f.miningProgress();
 					f.resetMiningProgress();
 					if (current)
-						minelog << "Mining on PoWhash" << "#" + (current.headerHash.hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
+					{
+						minelog << "Mining on PoWhash" << "#" + (current.headerHash.hex().substr(0, 8)) << f.getSolutionStats();
+						minelog << mp;
+					}
 					else
 						minelog << "Getting work package...";
 
@@ -823,11 +826,11 @@ private:
 				{
 					bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
 					if (ok) {
-						cnote << "B-) Submitted and accepted.";
+						cnote << EthLime << "B-) Submitted and accepted.";
 						f.acceptedSolution(false);
 					}
 					else {
-						cwarn << ":-( Not accepted.";
+						cwarn << EthRed << ":-( Not accepted.";
 						f.rejectedSolution(false);
 					}
 					//exit(0);
@@ -925,7 +928,8 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << "Mining on PoWhash" << "#" + (client.currentHeaderHash().hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
+						minelog << "Mining on PoWhash" << "#" + (client.currentHeaderHash().hex().substr(0, 8)) << f.getSolutionStats();
+						minelog << mp;
 					}
 					else if (client.waitState() == MINER_WAIT_STATE_WORK)
 					{
@@ -964,7 +968,8 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << "Mining on PoWhash" << "#" + (client.currentHeaderHash().hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
+						minelog << "Mining on PoWhash" << "#" + (client.currentHeaderHash().hex().substr(0, 8)) << f.getSolutionStats();
+						minelog << mp;
 					}
 					else if (client.waitState() == MINER_WAIT_STATE_WORK)
 					{
