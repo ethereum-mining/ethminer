@@ -41,6 +41,7 @@
 #define OPENCL_PLATFORM_UNKNOWN 0
 #define OPENCL_PLATFORM_NVIDIA  1
 #define OPENCL_PLATFORM_AMD		2
+#define OPENCL_PLATFORM_CLOVER  3
 
 // apple fix
 #ifndef CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV
@@ -298,6 +299,11 @@ bool ethash_cl_miner::init(
 		{
 			platformId = OPENCL_PLATFORM_AMD;
 		}
+		else if (platformName == "Clover")
+		{
+			platformId = OPENCL_PLATFORM_CLOVER;
+		}
+
 		// get GPU device of the default platform
 		vector<cl::Device> devices = getDevices(platforms, _platformId);
 		if (devices.empty())
@@ -311,12 +317,18 @@ bool ethash_cl_miner::init(
 		string device_version = device.getInfo<CL_DEVICE_VERSION>();
 		ETHCL_LOG("Device:   " << device.getInfo<CL_DEVICE_NAME>() << " / " << device_version);
 
-
 		string clVer = device_version.substr(7, 3);
 		if (clVer == "1.0" || clVer == "1.1")
 		{
-			ETHCL_LOG("OpenCL " << clVer << " not supported - minimum required version is 1.2");
-			return false;
+			if (platformId == OPENCL_PLATFORM_CLOVER)
+			{
+				ETHCL_LOG("OpenCL " << clVer << " not supported, but platform Clover might work nevertheless. USE AT OWN RISK!");
+			}
+			else
+			{
+				ETHCL_LOG("OpenCL " << clVer << " not supported - minimum required version is 1.2");
+				return false;
+			}
 		}
 
 		char options[256];
