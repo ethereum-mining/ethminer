@@ -412,7 +412,7 @@ bool ethash_cl_miner::init(
 
 		m_searchKernel.setArg(1, m_header);
 		m_searchKernel.setArg(2, m_dag);
-		m_searchKernel.setArg(5, ~0u);
+		m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
 
 		// create mining buffers
 		for (unsigned i = 0; i != c_bufferCount; ++i)
@@ -473,7 +473,6 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 
 		m_queue.finish();
 
-		// pass these to stop the compiler unrolling the loops
 		m_searchKernel.setArg(4, target);
 		
 		unsigned buf = 0;
