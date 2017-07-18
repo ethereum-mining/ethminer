@@ -50,6 +50,7 @@ else
         exit 1
     fi
     mkdir -p "$PREFIX"
+    echo "Unpacking CMake to $PREFIX..."
     tar xzf "$TMPFILE" -C "$PREFIX" --strip 1
     rm $TMPFILE
 fi
