@@ -14,22 +14,13 @@
   You should have received a copy of the GNU General Public License
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ethash_cl_miner.cpp
-* @author Tim Hughes <tim@twistedfury.com>
-* @date 2015
-*/
-
-
-#define _CRT_SECURE_NO_WARNINGS
 
 #include <cstdio>
 #include <cstdlib>
 #include <chrono>
 #include <fstream>
 #include <iostream>
-#include <assert.h>
 #include <queue>
-#include <vector>
 #include <random>
 #include <atomic>
 #include <sstream>
@@ -40,7 +31,7 @@
 
 #define OPENCL_PLATFORM_UNKNOWN 0
 #define OPENCL_PLATFORM_NVIDIA  1
-#define OPENCL_PLATFORM_AMD		2
+#define OPENCL_PLATFORM_AMD     2
 #define OPENCL_PLATFORM_CLOVER  3
 
 // apple fix
@@ -68,11 +59,6 @@ static void addDefinition(string& _source, char const* _id, unsigned _value)
 }
 
 ethash_cl_miner::search_hook::~search_hook() {}
-
-ethash_cl_miner::~ethash_cl_miner()
-{
-	finish();
-}
 
 std::vector<cl::Platform> ethash_cl_miner::getPlatforms()
 {
@@ -262,12 +248,6 @@ void ethash_cl_miner::listDevices()
 	ETHCL_LOG(outString);
 }
 
-void ethash_cl_miner::finish()
-{
-	if (m_queue())
-		m_queue.finish();
-}
-
 
 bool ethash_cl_miner::init(
 	ethash_light_t _light, 
@@ -341,7 +321,7 @@ bool ethash_cl_miner::init(
 
 			computeCapability = computeCapabilityMajor * 10 + computeCapabilityMinor;
 			int maxregs = computeCapability >= 35 ? 72 : 63;
-			sprintf(options, "-cl-nv-maxrregcount=%d", maxregs);// , computeCapability);
+			sprintf(options, "-cl-nv-maxrregcount=%d", maxregs);
 		}
 		else {
 			sprintf(options, "%s", "");
@@ -446,20 +426,14 @@ bool ethash_cl_miner::init(
 	return true;
 }
 
-typedef struct 
-{
-	uint64_t start_nonce;
-	unsigned buf;
-} pending_batch;
 
 void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, uint64_t start_nonce)
 {
+	// Memory for zero-ing buffers. Cannot be static because crashes on macOS.
+	uint32_t const c_zero = 0;
 	try
 	{
-		// this can't be a static because in MacOSX OpenCL implementation a segfault occurs when a static is passed to OpenCL functions
-		uint32_t const c_zero = 0;
-
-		// update header constant buffer
+		// Update header constant buffer.
 		m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, 32, header);
 		m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
 
