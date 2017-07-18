@@ -40,7 +40,6 @@ public:
 	};
 
 	ethash_cl_miner() = default;
-	~ethash_cl_miner();
 
 	static bool searchForAllDevices(unsigned _platformId, std::function<bool(cl::Device const&)> _callback);
 	static void doForAllDevices(unsigned _platformId, std::function<void(cl::Device const&)> _callback);
@@ -63,7 +62,6 @@ public:
 		unsigned _platformId,
 		unsigned _deviceId
 		);
-	void finish();
 	void search(uint8_t const* _header, uint64_t _target, search_hook& _hook, uint64_t _startN);
 
 	/* -- default values -- */
