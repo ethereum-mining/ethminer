@@ -452,7 +452,7 @@ typedef struct
 	unsigned buf;
 } pending_batch;
 
-void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, uint64_t _startN)
+void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, uint64_t start_nonce)
 {
 	try
 	{
@@ -466,12 +466,8 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		m_searchKernel.setArg(0, m_searchBuffer);  // Supply output buffer to kernel.
 		m_searchKernel.setArg(4, target);
 		
-		for (uint64_t start_nonce = _startN;; start_nonce += m_globalWorkSize)
+		while (true)
 		{
-			// Run the kernel.
-			m_searchKernel.setArg(3, start_nonce);
-			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, s_workgroupSize);
-
 			// Read results.
 			// TODO: could use pinned host pointer instead.
 			uint32_t results[c_maxSearchResults + 1];
@@ -486,8 +482,15 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 			if (num_found)
 				m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
 
-			// Report results. It takes some time because ethash must be
-			// re-evaluated on CPU.
+			// Increase start nonce for following kernel execution.
+			start_nonce += m_globalWorkSize;
+
+			// Run the kernel.
+			m_searchKernel.setArg(3, start_nonce);
+			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, s_workgroupSize);
+
+			// Report results while the kernel is running.
+			// It takes some time because ethash must be re-evaluated on CPU.
 			bool exit = num_found && hook.found(nonces, num_found);
 			exit |= hook.searched(start_nonce, m_globalWorkSize); // always report searched before exit
 			if (exit)
