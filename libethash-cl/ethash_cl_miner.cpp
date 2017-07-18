@@ -14,22 +14,13 @@
   You should have received a copy of the GNU General Public License
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ethash_cl_miner.cpp
-* @author Tim Hughes <tim@twistedfury.com>
-* @date 2015
-*/
-
-
-#define _CRT_SECURE_NO_WARNINGS
 
 #include <cstdio>
 #include <cstdlib>
 #include <chrono>
 #include <fstream>
 #include <iostream>
-#include <assert.h>
 #include <queue>
-#include <vector>
 #include <random>
 #include <atomic>
 #include <sstream>
@@ -40,7 +31,7 @@
 
 #define OPENCL_PLATFORM_UNKNOWN 0
 #define OPENCL_PLATFORM_NVIDIA  1
-#define OPENCL_PLATFORM_AMD		2
+#define OPENCL_PLATFORM_AMD     2
 #define OPENCL_PLATFORM_CLOVER  3
 
 // apple fix
@@ -68,11 +59,6 @@ static void addDefinition(string& _source, char const* _id, unsigned _value)
 }
 
 ethash_cl_miner::search_hook::~search_hook() {}
-
-ethash_cl_miner::~ethash_cl_miner()
-{
-	finish();
-}
 
 std::vector<cl::Platform> ethash_cl_miner::getPlatforms()
 {
@@ -262,12 +248,6 @@ void ethash_cl_miner::listDevices()
 	ETHCL_LOG(outString);
 }
 
-void ethash_cl_miner::finish()
-{
-	if (m_queue())
-		m_queue.finish();
-}
-
 
 bool ethash_cl_miner::init(
 	ethash_light_t _light, 
@@ -341,7 +321,7 @@ bool ethash_cl_miner::init(
 
 			computeCapability = computeCapabilityMajor * 10 + computeCapabilityMinor;
 			int maxregs = computeCapability >= 35 ? 72 : 63;
-			sprintf(options, "-cl-nv-maxrregcount=%d", maxregs);// , computeCapability);
+			sprintf(options, "-cl-nv-maxrregcount=%d", maxregs);
 		}
 		else {
 			sprintf(options, "%s", "");
@@ -412,20 +392,15 @@ bool ethash_cl_miner::init(
 
 		m_searchKernel.setArg(1, m_header);
 		m_searchKernel.setArg(2, m_dag);
-		m_searchKernel.setArg(5, ~0u);
+		m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
 
 		// create mining buffers
-		for (unsigned i = 0; i != c_bufferCount; ++i)
-		{
-			ETHCL_LOG("Creating mining buffer " << i);
-			m_searchBuffer[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_maxSearchResults + 1) * sizeof(uint32_t));
-		}
+		ETHCL_LOG("Creating mining buffer");
+		m_searchBuffer = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_maxSearchResults + 1) * sizeof(uint32_t));
 
 		ETHCL_LOG("Generating DAG data");
 
 		uint32_t const work = (uint32_t)(dagSize / sizeof(node));
-		//while (work < blocks * threads) blocks /= 2;
-
 		uint32_t fullRuns = work / m_globalWorkSize;
 		uint32_t const restWork = work % m_globalWorkSize;
 		if (restWork > 0) fullRuns++;
@@ -451,68 +426,53 @@ bool ethash_cl_miner::init(
 	return true;
 }
 
-typedef struct 
-{
-	uint64_t start_nonce;
-	unsigned buf;
-} pending_batch;
 
-void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, uint64_t _startN)
+void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, uint64_t start_nonce)
 {
+	// Memory for zero-ing buffers. Cannot be static because crashes on macOS.
+	uint32_t const c_zero = 0;
 	try
 	{
-		queue<pending_batch> pending;
+		// Update header constant buffer.
+		m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, 32, header);
+		m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
 
-		// this can't be a static because in MacOSX OpenCL implementation a segfault occurs when a static is passed to OpenCL functions
-		uint32_t const c_zero = 0;
-
-		// update header constant buffer
-		m_queue.enqueueWriteBuffer(m_header, false, 0, 32, header);
-		for (unsigned i = 0; i != c_bufferCount; ++i)
-			m_queue.enqueueWriteBuffer(m_searchBuffer[i], false, 0, 4, &c_zero);
-
-		m_queue.finish();
-
-		// pass these to stop the compiler unrolling the loops
+		m_searchKernel.setArg(0, m_searchBuffer);  // Supply output buffer to kernel.
 		m_searchKernel.setArg(4, target);
 		
-		unsigned buf = 0;
-		for (uint64_t start_nonce = _startN;; start_nonce += m_globalWorkSize)
+		while (true)
 		{
-			// supply output buffer to kernel
-			m_searchKernel.setArg(0, m_searchBuffer[buf]);
-			m_searchKernel.setArg(3, start_nonce);
+			// Read results.
+			// TODO: could use pinned host pointer instead.
+			uint32_t results[c_maxSearchResults + 1];
+			m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, 0, sizeof(results), &results);
+			unsigned num_found = min<unsigned>(results[0], c_maxSearchResults);
 
-			// execute it!
+			uint64_t nonces[c_maxSearchResults];
+			for (unsigned i = 0; i != num_found; ++i)
+				nonces[i] = start_nonce + results[i + 1];
+
+			// Reset search buffer if any solution found.
+			if (num_found)
+				m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
+
+			// Increase start nonce for following kernel execution.
+			start_nonce += m_globalWorkSize;
+
+			// Run the kernel.
+			m_searchKernel.setArg(3, start_nonce);
 			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, s_workgroupSize);
 
-			pending.push({ start_nonce, buf });
-			buf = (buf + 1) % c_bufferCount;
-
-			// read results
-			if (pending.size() == c_bufferCount)
+			// Report results while the kernel is running.
+			// It takes some time because ethash must be re-evaluated on CPU.
+			bool exit = num_found && hook.found(nonces, num_found);
+			exit |= hook.searched(start_nonce, m_globalWorkSize); // always report searched before exit
+			if (exit)
 			{
-				pending_batch const& batch = pending.front();
-
-				// could use pinned host pointer instead
-				uint32_t* results = (uint32_t*)m_queue.enqueueMapBuffer(m_searchBuffer[batch.buf], true, CL_MAP_READ, 0, (1 + c_maxSearchResults) * sizeof(uint32_t));
-				unsigned num_found = min<unsigned>(results[0], c_maxSearchResults);
-
-				uint64_t nonces[c_maxSearchResults];
-				for (unsigned i = 0; i != num_found; ++i)
-					nonces[i] = batch.start_nonce + results[i + 1];
-
-				m_queue.enqueueUnmapMemObject(m_searchBuffer[batch.buf], results);
-				bool exit = num_found && hook.found(nonces, num_found);
-				exit |= hook.searched(batch.start_nonce, m_globalWorkSize); // always report searched before exit
-				if (exit)
-					break;
-
-				// reset search buffer if we're still going
-				if (num_found)
-					m_queue.enqueueWriteBuffer(m_searchBuffer[batch.buf], true, 0, 4, &c_zero);
-
-				pending.pop();
+				// Make sure the last buffer write has finished --
+				// it reads local variable.
+				m_queue.finish();
+				break;
 			}
 		}
 	}
