@@ -8,9 +8,9 @@ set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type on single-configuration ge
 set(HUNTER_CONFIGURATION_TYPES Release)
 include(HunterGate)
 HunterGate(
-	URL "https://github.com/ruslo/hunter/archive/v0.18.57.tar.gz"
-	SHA1 "435b09a4eec7fd58486bfb61efb1044ddb85c0f0"
-	LOCAL
+    URL "https://github.com/ruslo/hunter/archive/v0.19.14.tar.gz"
+    SHA1 "d4216c82be9c273ce2567b35f75356da045b884f"
+    LOCAL
 )
 
 
