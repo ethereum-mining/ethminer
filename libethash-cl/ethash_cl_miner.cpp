@@ -482,15 +482,21 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 			for (unsigned i = 0; i != num_found; ++i)
 				nonces[i] = start_nonce + results[i + 1];
 
-			// Report results.
-			bool exit = num_found && hook.found(nonces, num_found);
-			exit |= hook.searched(start_nonce, m_globalWorkSize); // always report searched before exit
-			if (exit)
-				break;
-
 			// Reset search buffer if any solution found.
 			if (num_found)
 				m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
+
+			// Report results. It takes some time because ethash must be
+			// re-evaluated on CPU.
+			bool exit = num_found && hook.found(nonces, num_found);
+			exit |= hook.searched(start_nonce, m_globalWorkSize); // always report searched before exit
+			if (exit)
+			{
+				// Make sure the last buffer write has finished --
+				// it reads local variable.
+				m_queue.finish();
+				break;
+			}
 		}
 	}
 	catch (cl::Error const& err)
