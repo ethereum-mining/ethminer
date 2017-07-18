@@ -486,7 +486,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 			// execute it!
 			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, s_workgroupSize);
 
-			pending.push({ start_nonce, buf });
+			pending.push({start_nonce, buf});
 			buf = (buf + 1) % c_bufferCount;
 
 			// read results
@@ -529,9 +529,11 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 					
 					// TODO: check if target is different before bothering to set it?
 					m_searchKernel.setArg(4, new_work.target);
-					
-					if (_ethStratum) start_nonce = new_work.startN;
-					else start_nonce = uniform_int_distribution<uint64_t>()(engine);
+
+					// Set "start nonce" if provided by stratum.
+					// FIXME: start_nonce will be bumped at the end of the loop.
+					if (new_work.startN)
+						start_nonce = new_work.startN;
 				} else {
 					// reset search buffer if we're still going
 					if (num_found) {
