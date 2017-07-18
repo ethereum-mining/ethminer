@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: gcc:6
+      - image: nvidia/cuda:8.0-devel
     branches:
       only:
         - master
@@ -13,11 +13,11 @@ jobs:
       - checkout
       - run: pwd
       - run: ls
+      - run: apt-get update && apt-get install -qy mesa-common-dev curl
       - run: scripts/install_cmake.sh --prefix /usr
-      - run: apt-get update && apt-get install -qy mesa-common-dev
       - restore_cache:
           key: hunter
-      - run: cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=OFF -H. -Bbuild
+      - run: cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=ON -H. -Bbuild
       - save_cache:
           key: hunter
           paths:
