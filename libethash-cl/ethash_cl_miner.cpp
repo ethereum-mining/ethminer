@@ -460,42 +460,37 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		uint32_t const c_zero = 0;
 
 		// update header constant buffer
-		m_queue.enqueueWriteBuffer(m_header, false, 0, 32, header);
-		m_queue.enqueueWriteBuffer(m_searchBuffer, false, 0, sizeof(c_zero), &c_zero);
+		m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, 32, header);
+		m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
 
-		m_queue.finish();
-
-		// supply output buffer to kernel
-		m_searchKernel.setArg(0, m_searchBuffer);
-
+		m_searchKernel.setArg(0, m_searchBuffer);  // Supply output buffer to kernel.
 		m_searchKernel.setArg(4, target);
 		
 		for (uint64_t start_nonce = _startN;; start_nonce += m_globalWorkSize)
 		{
+			// Run the kernel.
 			m_searchKernel.setArg(3, start_nonce);
-
-			// execute it!
 			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, s_workgroupSize);
 
-			// read results
-
+			// Read results.
 			// TODO: could use pinned host pointer instead.
-			uint32_t* results = (uint32_t*)m_queue.enqueueMapBuffer(m_searchBuffer, true, CL_MAP_READ, 0, (1 + c_maxSearchResults) * sizeof(uint32_t));
+			uint32_t results[c_maxSearchResults + 1];
+			m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, 0, sizeof(results), &results);
 			unsigned num_found = min<unsigned>(results[0], c_maxSearchResults);
 
 			uint64_t nonces[c_maxSearchResults];
 			for (unsigned i = 0; i != num_found; ++i)
 				nonces[i] = start_nonce + results[i + 1];
 
-			m_queue.enqueueUnmapMemObject(m_searchBuffer, results);
+			// Report results.
 			bool exit = num_found && hook.found(nonces, num_found);
 			exit |= hook.searched(start_nonce, m_globalWorkSize); // always report searched before exit
 			if (exit)
 				break;
 
-			// reset search buffer if we're still going
+			// Reset search buffer if any solution found.
 			if (num_found)
-				m_queue.enqueueWriteBuffer(m_searchBuffer, true, 0, sizeof(c_zero), &c_zero);
+				m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
 		}
 	}
 	catch (cl::Error const& err)
