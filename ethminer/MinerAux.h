@@ -37,9 +37,9 @@
 #include <libdevcore/SHA3.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/EthashCUDAMiner.h>
-#include <libethcore/EthashGPUMiner.h>
 #include <libethcore/Farm.h>
 #if ETH_ETHASHCL
+#include <libethash-cl/EthashGPUMiner.h>
 #include <libethash-cl/ethash_cl_miner.h>
 #endif
 #if ETH_ETHASHCUDA
