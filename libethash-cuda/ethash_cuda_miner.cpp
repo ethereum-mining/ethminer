@@ -125,7 +125,6 @@ bool ethash_cuda_miner::configureGPU(
 	unsigned _blockSize,
 	unsigned _gridSize,
 	unsigned _numStreams,
-	unsigned _extraGPUMemory,
 	unsigned _scheduleFlag,
 	uint64_t _currentBlock
 	)
@@ -134,7 +133,6 @@ bool ethash_cuda_miner::configureGPU(
 	{
 		s_blockSize = _blockSize;
 		s_gridSize = _gridSize;
-		s_extraRequiredGPUMem = _extraGPUMemory;
 		s_numStreams = _numStreams;
 		s_scheduleFlag = _scheduleFlag;
 
@@ -144,7 +142,6 @@ bool ethash_cuda_miner::configureGPU(
 
 		// by default let's only consider the DAG of the first epoch
 		uint64_t dagSize = ethash_get_datasize(_currentBlock);
-		uint64_t requiredSize = dagSize + _extraGPUMemory;
 		int devicesCount = getNumDevices();
 		for (int i = 0; i < devicesCount; i++)
 		{
@@ -154,7 +151,7 @@ bool ethash_cuda_miner::configureGPU(
 				int deviceId = min(devicesCount - 1, _devices[i]);
 				cudaDeviceProp props;
 				CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, deviceId));
-				if (props.totalGlobalMem >= requiredSize)
+				if (props.totalGlobalMem >= dagSize)
 				{
 					ETHCUDA_LOG(
 						"Found suitable CUDA device [" << string(props.name)
@@ -165,8 +162,8 @@ bool ethash_cuda_miner::configureGPU(
 				{
 					ETHCUDA_LOG(
 						"CUDA device " << string(props.name)
-						<< " has insufficient GPU memory." << to_string(props.totalGlobalMem) <<
-						" bytes of memory found < " << to_string(requiredSize) << " bytes of memory required"
+						<< " has insufficient GPU memory." << props.totalGlobalMem <<
+						" bytes of memory found < " << dagSize << " bytes of memory required"
 						);
 					return false;
 				}
@@ -185,7 +182,6 @@ void ethash_cuda_miner::setParallelHash(unsigned _parallelHash)
   m_parallelHash = _parallelHash;
 }
 
-unsigned ethash_cuda_miner::s_extraRequiredGPUMem;
 unsigned ethash_cuda_miner::m_parallelHash = 4;
 unsigned ethash_cuda_miner::s_blockSize = ethash_cuda_miner::c_defaultBlockSize;
 unsigned ethash_cuda_miner::s_gridSize = ethash_cuda_miner::c_defaultGridSize;
