@@ -140,7 +140,6 @@ private:
 }
 
 unsigned CLMiner::s_platformId = 0;
-unsigned CLMiner::s_deviceId = 0;
 unsigned CLMiner::s_numInstances = 0;
 int CLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
@@ -294,7 +293,6 @@ bool CLMiner::configureGPU(
 	unsigned _localWorkSize,
 	unsigned _globalWorkSizeMultiplier,
 	unsigned _platformId,
-	unsigned _deviceId,
 	uint64_t _currentBlock,
 	unsigned _dagLoadMode,
 	unsigned _dagCreateDevice
@@ -304,7 +302,6 @@ bool CLMiner::configureGPU(
 	s_dagCreateDevice = _dagCreateDevice;
 
 	s_platformId = _platformId;
-	s_deviceId = _deviceId;
 
 	_localWorkSize = ((_localWorkSize + 7) / 8) * 8;
 	s_workgroupSize = _localWorkSize;

@@ -56,7 +56,6 @@ public:
 		unsigned _localWorkSize,
 		unsigned _globalWorkSizeMultiplier,
 		unsigned _platformId,
-		unsigned _deviceId,
 		uint64_t _currentBlock,
 		unsigned _dagLoadMode,
 		unsigned _dagCreateDevice
@@ -85,7 +84,6 @@ private:
 
 	h256 m_minerSeed;		///< Last seed in m_miner
 	static unsigned s_platformId;
-	static unsigned s_deviceId;
 	static unsigned s_numInstances;
 	static int s_devices[16];
 
