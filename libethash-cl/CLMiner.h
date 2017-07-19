@@ -35,13 +35,13 @@ namespace eth
 {
 class EthashCLHook;
 
-class EthashGPUMiner: public Miner, Worker
+class CLMiner: public Miner, Worker
 {
 	friend class dev::eth::EthashCLHook;
 
 public:
-	EthashGPUMiner(ConstructionInfo const& _ci);
-	~EthashGPUMiner();
+	CLMiner(ConstructionInfo const& _ci);
+	~CLMiner();
 
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 	static std::string platformInfo();

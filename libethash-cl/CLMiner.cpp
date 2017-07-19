@@ -21,7 +21,7 @@
  * Determines the PoW algorithm.
  */
 
-#include "EthashGPUMiner.h"
+#include "CLMiner.h"
 #include <libethash-cl/ethash_cl_miner.h>
 
 using namespace dev;
@@ -35,7 +35,7 @@ namespace eth
 class EthashCLHook: public ethash_cl_miner::search_hook
 {
 public:
-	EthashCLHook(EthashGPUMiner* _owner): m_owner(_owner) {}
+	EthashCLHook(CLMiner* _owner): m_owner(_owner) {}
 	EthashCLHook(EthashCLHook const&) = delete;
 
 	void abort()
@@ -87,32 +87,32 @@ private:
 	Mutex x_all;
 	bool m_abort = false;
 	Notified<bool> m_aborted = {true};
-	EthashGPUMiner* m_owner = nullptr;
+	CLMiner* m_owner = nullptr;
 };
 
 }
 }
 
-unsigned EthashGPUMiner::s_platformId = 0;
-unsigned EthashGPUMiner::s_deviceId = 0;
-unsigned EthashGPUMiner::s_numInstances = 0;
-int EthashGPUMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+unsigned CLMiner::s_platformId = 0;
+unsigned CLMiner::s_deviceId = 0;
+unsigned CLMiner::s_numInstances = 0;
+int CLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
-EthashGPUMiner::EthashGPUMiner(ConstructionInfo const& _ci):
+CLMiner::CLMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
 	Worker("openclminer" + toString(index())),
 	m_hook(new EthashCLHook(this))
 {
 }
 
-EthashGPUMiner::~EthashGPUMiner()
+CLMiner::~CLMiner()
 {
 	pause();
 	delete m_miner;
 	delete m_hook;
 }
 
-bool EthashGPUMiner::report(uint64_t _nonce)
+bool CLMiner::report(uint64_t _nonce)
 {
 	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	Result r = EthashAux::eval(w.seedHash, w.headerHash, _nonce);
@@ -121,7 +121,7 @@ bool EthashGPUMiner::report(uint64_t _nonce)
 	return false;
 }
 
-void EthashGPUMiner::kickOff()
+void CLMiner::kickOff()
 {
 	m_hook->reset();
 	startWorking();
@@ -136,7 +136,7 @@ uint64_t randomNonce()
 }
 }
 
-void EthashGPUMiner::workLoop()
+void CLMiner::workLoop()
 {
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
@@ -184,28 +184,28 @@ void EthashGPUMiner::workLoop()
 	}
 }
 
-void EthashGPUMiner::pause()
+void CLMiner::pause()
 {
 	m_hook->abort();
 	stopWorking();
 }
 
-std::string EthashGPUMiner::platformInfo()
+std::string CLMiner::platformInfo()
 {
 	return ethash_cl_miner::platform_info(s_platformId, s_deviceId);
 }
 
-unsigned EthashGPUMiner::getNumDevices()
+unsigned CLMiner::getNumDevices()
 {
 	return ethash_cl_miner::getNumDevices(s_platformId);
 }
 
-void EthashGPUMiner::listDevices()
+void CLMiner::listDevices()
 {
 	return ethash_cl_miner::listDevices();
 }
 
-bool EthashGPUMiner::configureGPU(
+bool CLMiner::configureGPU(
 	unsigned _localWorkSize,
 	unsigned _globalWorkSizeMultiplier,
 	unsigned _platformId,

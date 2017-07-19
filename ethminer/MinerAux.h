@@ -39,7 +39,7 @@
 #include <libethcore/EthashCUDAMiner.h>
 #include <libethcore/Farm.h>
 #if ETH_ETHASHCL
-#include <libethash-cl/EthashGPUMiner.h>
+#include <libethash-cl/CLMiner.h>
 #include <libethash-cl/ethash_cl_miner.h>
 #endif
 #if ETH_ETHASHCUDA
@@ -453,7 +453,7 @@ public:
 		{
 #if ETH_ETHASHCL
 			if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
-				EthashGPUMiner::listDevices();
+				CLMiner::listDevices();
 #endif
 #if ETH_ETHASHCUDA
 			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
@@ -467,11 +467,11 @@ public:
 #if ETH_ETHASHCL
 			if (m_openclDeviceCount > 0)
 			{
-				EthashGPUMiner::setDevices(m_openclDevices, m_openclDeviceCount);
+				CLMiner::setDevices(m_openclDevices, m_openclDeviceCount);
 				m_miningThreads = m_openclDeviceCount;
 			}
 
-			if (!EthashGPUMiner::configureGPU(
+			if (!CLMiner::configureGPU(
 					m_localWorkSize,
 					m_globalWorkSizeMultiplier,
 					m_openclPlatform,
@@ -481,7 +481,7 @@ public:
 					m_dagCreateDevice
 				))
 				exit(1);
-			EthashGPUMiner::setNumInstances(m_miningThreads);
+			CLMiner::setNumInstances(m_miningThreads);
 #else
 			cerr << "Selected GPU mining without having compiled with -DETHASHCL=1" << endl;
 			exit(1);
@@ -602,7 +602,7 @@ private:
 		Farm f;
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{&EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
+		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](Miner::ConstructionInfo ci){ return new CLMiner(ci); }};
 #endif
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
@@ -666,7 +666,7 @@ private:
 		Farm f;
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{ &EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
+		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](Miner::ConstructionInfo ci){ return new CLMiner(ci); } };
 #endif
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
@@ -739,7 +739,7 @@ private:
 	{
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{&EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
+		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](Miner::ConstructionInfo ci){ return new CLMiner(ci); }};
 #endif
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
@@ -875,7 +875,7 @@ private:
 	{
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{ &EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
+		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](Miner::ConstructionInfo ci){ return new CLMiner(ci); } };
 #endif
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
