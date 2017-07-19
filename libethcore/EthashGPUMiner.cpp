@@ -24,8 +24,12 @@
 #if ETH_ETHASHCL
 
 #include "EthashGPUMiner.h"
+#include <thread>
+#include <chrono>
 #include <libethash-cl/ethash_cl_miner.h>
 
+
+using namespace std;
 using namespace dev;
 using namespace eth;
 

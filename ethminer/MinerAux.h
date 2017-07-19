@@ -57,6 +57,7 @@ using namespace dev;
 using namespace dev::eth;
 using namespace boost::algorithm;
 
+#undef RETURN
 
 class BadArgument: public Exception {};
 struct MiningChannel: public LogChannel
@@ -714,7 +715,6 @@ private:
 			}
 			string nonceHex = toHex(solution.nonce);
 			cnote << "Difficulty:" << difficulty << "  Nonce:" << nonceHex;
-
 			if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
 			{
 				cnote << "SUCCESS: GPU gave correct result!";
