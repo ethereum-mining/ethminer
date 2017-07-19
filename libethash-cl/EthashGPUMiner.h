@@ -22,11 +22,10 @@
  */
 
 #pragma once
-#if ETH_ETHASHCL
 
 #include <libdevcore/Worker.h>
-#include "EthashAux.h"
-#include "Miner.h"
+#include <libethcore/EthashAux.h>
+#include <libethcore/Miner.h>
 
 class ethash_cl_miner;
 
@@ -89,5 +88,3 @@ private:
 
 }
 }
-
-#endif
