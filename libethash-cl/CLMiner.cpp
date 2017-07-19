@@ -35,6 +35,47 @@ namespace eth
 unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
 
+// FIXME: Make local
+std::vector<cl::Platform> getPlatforms()
+{
+	vector<cl::Platform> platforms;
+	try
+	{
+		cl::Platform::get(&platforms);
+	}
+	catch(cl::Error const& err)
+	{
+#if defined(CL_PLATFORM_NOT_FOUND_KHR)
+		if (err.err() == CL_PLATFORM_NOT_FOUND_KHR)
+			cwarn << "No OpenCL platforms found";
+		else
+#endif
+			throw err;
+	}
+	return platforms;
+}
+
+// FIXME: Make local
+std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId)
+{
+	vector<cl::Device> devices;
+	unsigned platform_num = min<unsigned>(_platformId, _platforms.size() - 1);
+	try
+	{
+		_platforms[platform_num].getDevices(
+			CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR,
+			&devices
+		);
+	}
+	catch (cl::Error const& err)
+	{
+		// if simply no devices found return empty vector
+		if (err.err() != CL_DEVICE_NOT_FOUND)
+			throw err;
+	}
+	return devices;
+}
+
 
 class EthashCLHook: public ethash_cl_miner::search_hook
 {
@@ -201,7 +242,17 @@ std::string CLMiner::platformInfo()
 
 unsigned CLMiner::getNumDevices()
 {
-	return ethash_cl_miner::getNumDevices(s_platformId);
+	vector<cl::Platform> platforms = getPlatforms();
+	if (platforms.empty())
+		return 0;
+
+	vector<cl::Device> devices = getDevices(platforms, s_platformId);
+	if (devices.empty())
+	{
+		cwarn << "No OpenCL devices found.";
+		return 0;
+	}
+	return devices.size();
 }
 
 void CLMiner::listDevices()

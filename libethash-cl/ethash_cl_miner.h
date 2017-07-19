@@ -41,7 +41,6 @@ public:
 
 	ethash_cl_miner() = default;
 
-	static unsigned getNumDevices(unsigned _platformId = 0);
 	static std::string platform_info(unsigned _platformId = 0, unsigned _deviceId = 0);
 	static void listDevices();
 	static bool configureGPU(
@@ -61,10 +60,6 @@ public:
 	void search(uint8_t const* _header, uint64_t _target, search_hook& _hook, uint64_t _startN);
 
 private:
-
-	static std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId);
-	static std::vector<cl::Platform> getPlatforms();
-
 	cl::Context m_context;
 	cl::CommandQueue m_queue;
 	cl::Kernel m_searchKernel;

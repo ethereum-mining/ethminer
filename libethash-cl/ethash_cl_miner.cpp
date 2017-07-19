@@ -45,6 +45,16 @@
 
 using namespace std;
 
+namespace dev
+{
+namespace eth
+{
+std::vector<cl::Platform> getPlatforms();
+std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId);
+}
+}
+using namespace dev::eth;
+
 // TODO: If at any point we can use libdevcore in here then we should switch to using a LogChannel
 #define ETHCL_LOG(_contents) std::cout << "[OpenCL] " << _contents << std::endl
 
@@ -56,25 +66,6 @@ static void addDefinition(string& _source, char const* _id, unsigned _value)
 }
 
 ethash_cl_miner::search_hook::~search_hook() {}
-
-std::vector<cl::Platform> ethash_cl_miner::getPlatforms()
-{
-	vector<cl::Platform> platforms;
-	try
-	{
-		cl::Platform::get(&platforms);
-	}
-	catch(cl::Error const& err)
-	{
-#if defined(CL_PLATFORM_NOT_FOUND_KHR)
-		if (err.err() == CL_PLATFORM_NOT_FOUND_KHR)
-			ETHCL_LOG("No OpenCL platforms found");
-		else
-#endif
-			throw err;
-	}
-	return platforms;
-}
 
 string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
 {
@@ -96,41 +87,6 @@ string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
 	string device_version = device.getInfo<CL_DEVICE_VERSION>();
 
 	return "{ \"platform\": \"" + platforms[platform_num].getInfo<CL_PLATFORM_NAME>() + "\", \"device\": \"" + device.getInfo<CL_DEVICE_NAME>() + "\", \"version\": \"" + device_version + "\" }";
-}
-
-std::vector<cl::Device> ethash_cl_miner::getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId)
-{
-	vector<cl::Device> devices;
-	unsigned platform_num = min<unsigned>(_platformId, _platforms.size() - 1);
-	try
-	{
-		_platforms[platform_num].getDevices(
-			CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR,
-			&devices
-		);
-	}
-	catch (cl::Error const& err)
-	{
-		// if simply no devices found return empty vector
-		if (err.err() != CL_DEVICE_NOT_FOUND)
-			throw err;
-	}
-	return devices;
-}
-
-unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return 0;
-
-	vector<cl::Device> devices = getDevices(platforms, _platformId);
-	if (devices.empty())
-	{
-		ETHCL_LOG("No OpenCL devices found.");
-		return 0;
-	}
-	return devices.size();
 }
 
 bool ethash_cl_miner::configureGPU(
