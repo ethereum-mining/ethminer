@@ -212,7 +212,6 @@ bool EthashGPUMiner::configureGPU(
 	unsigned _globalWorkSizeMultiplier,
 	unsigned _platformId,
 	unsigned _deviceId,
-	unsigned _extraGPUMemory,
 	uint64_t _currentBlock,
 	unsigned _dagLoadMode,
 	unsigned _dagCreateDevice
@@ -230,7 +229,6 @@ bool EthashGPUMiner::configureGPU(
 			_platformId,
 			_localWorkSize,
 			_globalWorkSizeMultiplier * _localWorkSize,
-			_extraGPUMemory,
 			_currentBlock
 			)
 	)

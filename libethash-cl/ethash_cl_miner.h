@@ -51,7 +51,6 @@ public:
 		unsigned _platformId,
 		unsigned _localWorkSize,
 		unsigned _globalWorkSize,
-		unsigned _extraGPUMemory,
 		uint64_t _currentBlock
 	);
 
@@ -89,7 +88,4 @@ private:
 	static unsigned s_workgroupSize;
 	/// The initial global work size for the searches
 	static unsigned s_initialGlobalWorkSize;
-	/// GPU memory required for other things, like window rendering e.t.c.
-	/// User can set it via the --cl-extragpu-mem argument.
-	static unsigned s_extraRequiredGPUMem;
 };
