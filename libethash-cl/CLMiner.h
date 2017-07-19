@@ -33,7 +33,51 @@ namespace dev
 {
 namespace eth
 {
-class EthashCLHook;
+
+class CLMiner;
+
+class EthashCLHook
+{
+public:
+	EthashCLHook(CLMiner* _owner): m_owner(_owner) {}
+	EthashCLHook(EthashCLHook const&) = delete;
+
+	void abort()
+	{
+		{
+			UniqueGuard l(x_all);
+			if (m_aborted)
+				return;
+//		cdebug << "Attempting to abort";
+
+			m_abort = true;
+		}
+		// m_abort is true so now searched()/found() will return true to abort the search.
+		// we hang around on this thread waiting for them to point out that they have aborted since
+		// otherwise we may end up deleting this object prior to searched()/found() being called.
+		m_aborted.wait(true);
+//		for (unsigned timeout = 0; timeout < 100 && !m_aborted; ++timeout)
+//			std::this_thread::sleep_for(chrono::milliseconds(30));
+//		if (!m_aborted)
+//			cwarn << "Couldn't abort. Abandoning OpenCL process.";
+	}
+
+	void reset()
+	{
+		UniqueGuard l(x_all);
+		m_aborted = m_abort = false;
+	}
+
+	bool found(uint64_t const* _nonces, uint32_t _count);
+
+	bool searched(uint64_t _startNonce, uint32_t _count);
+
+private:
+	Mutex x_all;
+	bool m_abort = false;
+	Notified<bool> m_aborted = {true};
+	CLMiner* m_owner = nullptr;
+};
 
 class CLMiner: public Miner, Worker
 {
