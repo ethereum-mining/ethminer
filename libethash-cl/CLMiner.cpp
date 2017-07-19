@@ -22,7 +22,8 @@
  */
 
 #include "CLMiner.h"
-#include <libethash-cl/ethash_cl_miner.h>
+#include <libethash/internal.h>
+#include "ethash_cl_miner.h"
 
 using namespace dev;
 using namespace eth;
@@ -308,10 +309,34 @@ bool CLMiner::configureGPU(
 	_localWorkSize = ((_localWorkSize + 7) / 8) * 8;
 	s_workgroupSize = _localWorkSize;
 	s_initialGlobalWorkSize = _globalWorkSizeMultiplier * _localWorkSize;
-	if (!ethash_cl_miner::configureGPU(_platformId, _currentBlock))
-	{
-		cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
+
+	uint64_t dagSize = ethash_get_datasize(_currentBlock);
+
+	vector<cl::Platform> platforms = getPlatforms();
+	if (platforms.empty())
 		return false;
+	if (_platformId >= platforms.size())
+		return false;
+
+	vector<cl::Device> devices = getDevices(platforms, _platformId);
+	for (auto const& device: devices)
+	{
+		cl_ulong result = 0;
+		device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
+		if (result >= dagSize)
+		{
+			cnote <<
+				"Found suitable OpenCL device [" << device.getInfo<CL_DEVICE_NAME>()
+												 << "] with " << result << " bytes of GPU memory";
+			return true;
+		}
+
+		cnote <<
+			"OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
+							 << " has insufficient GPU memory." << result <<
+							 " bytes of memory found < " << dagSize << " bytes of memory required";
 	}
-	return true;
+
+	cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
+	return false;
 }
