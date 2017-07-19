@@ -37,9 +37,15 @@ class EthashCLHook;
 
 class CLMiner: public Miner, Worker
 {
+public:
+	/* -- default values -- */
+	/// Default value of the local work size. Also known as workgroup size.
+	static const unsigned c_defaultLocalWorkSize = 128;
+	/// Default value of the global work size as a multiplier of the local work size
+	static const unsigned c_defaultGlobalWorkSizeMultiplier = 8192;
+
 	friend class dev::eth::EthashCLHook;
 
-public:
 	CLMiner(ConstructionInfo const& _ci);
 	~CLMiner();
 
@@ -83,6 +89,11 @@ private:
 	static unsigned s_deviceId;
 	static unsigned s_numInstances;
 	static int s_devices[16];
+
+	/// The local work size for the search
+	static unsigned s_workgroupSize;
+	/// The initial global work size for the searches
+	static unsigned s_initialGlobalWorkSize;
 
 };
 
