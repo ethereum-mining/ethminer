@@ -41,7 +41,6 @@ public:
 
 	ethash_cl_miner() = default;
 
-	static bool searchForAllDevices(unsigned _platformId, std::function<bool(cl::Device const&)> _callback);
 	static void doForAllDevices(unsigned _platformId, std::function<void(cl::Device const&)> _callback);
 	static void doForAllDevices(std::function<void(cl::Device const&)> _callback);
 	static unsigned getNumDevices(unsigned _platformId = 0);
