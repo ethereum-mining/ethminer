@@ -53,7 +53,6 @@ public:
 		unsigned _globalWorkSizeMultiplier,
 		unsigned _platformId,
 		unsigned _deviceId,
-		unsigned _extraGPUMemory,
 		uint64_t _currentBlock,
 		unsigned _dagLoadMode,
 		unsigned _dagCreateDevice
