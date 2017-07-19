@@ -105,46 +105,6 @@ bool ethash_cl_miner::configureGPU(
 	return false;
 }
 
-void ethash_cl_miner::listDevices()
-{
-	string outString ="\nListing OpenCL devices.\nFORMAT: [deviceID] deviceName\n";
-	unsigned int i = 0;
-
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return;
-	for (unsigned j = 0; j < platforms.size(); ++j)
-	{
-		vector<cl::Device> devices = getDevices(platforms, j);
-		for (auto const& device: devices)
-		{
-			outString += "[" + to_string(i) + "] " + device.getInfo<CL_DEVICE_NAME>() + "\n";
-			outString += "\tCL_DEVICE_TYPE: ";
-			switch (device.getInfo<CL_DEVICE_TYPE>())
-			{
-			case CL_DEVICE_TYPE_CPU:
-				outString += "CPU\n";
-				break;
-			case CL_DEVICE_TYPE_GPU:
-				outString += "GPU\n";
-				break;
-			case CL_DEVICE_TYPE_ACCELERATOR:
-				outString += "ACCELERATOR\n";
-				break;
-			default:
-				outString += "DEFAULT\n";
-				break;
-			}
-			outString += "\tCL_DEVICE_GLOBAL_MEM_SIZE: " + to_string(device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()) + "\n";
-			outString += "\tCL_DEVICE_MAX_MEM_ALLOC_SIZE: " + to_string(device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>()) + "\n";
-			outString += "\tCL_DEVICE_MAX_WORK_GROUP_SIZE: " + to_string(device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>()) + "\n";
-			++i;
-		}
-	}
-	ETHCL_LOG(outString);
-}
-
-
 bool ethash_cl_miner::init(
 	ethash_light_t _light, 
 	uint8_t const* _lightData, 
