@@ -24,21 +24,14 @@
 #include <functional>
 #include <libethash/ethash.h>
 
+namespace dev { namespace eth { class EthashCLHook; }}
+
 class ethash_cl_miner
 {
 private:
 	enum { c_maxSearchResults = 1 };
 
 public:
-	struct search_hook
-	{
-		virtual ~search_hook(); // always a virtual destructor for a class with virtuals.
-
-		// reports progress, return true to abort
-		virtual bool found(uint64_t const* nonces, uint32_t count) = 0;
-		virtual bool searched(uint64_t start_nonce, uint32_t count) = 0;
-	};
-
 	ethash_cl_miner() = default;
 
 	bool init(
@@ -50,7 +43,7 @@ public:
 		unsigned _workgroupSize,
 		unsigned initialGlobalWorkSize
 		);
-	void search(uint8_t const* _header, uint64_t _target, search_hook& _hook, uint64_t _startN);
+	void search(uint8_t const* _header, uint64_t _target, dev::eth::EthashCLHook& _hook, uint64_t _startN);
 
 private:
 	cl::Context m_context;
