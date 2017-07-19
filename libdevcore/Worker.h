@@ -42,7 +42,7 @@ enum class WorkerState
 class Worker
 {
 protected:
-	Worker(std::string const& _name = "anon", unsigned _idleWaitMs = 30): m_name(_name), m_idleWaitMs(_idleWaitMs) {}
+	Worker(std::string const& _name): m_name(_name) {}
 
 	Worker(Worker const&) = delete;
 	Worker& operator=(Worker const&) = delete;
@@ -57,12 +57,9 @@ protected:
 	
 	/// Called after thread is started from startWorking().
 	virtual void startedWorking() {}
-	
-	/// Called continuously following sleep for m_idleWaitMs.
-	virtual void doWork() {}
 
-	/// Overrides doWork(); should call shouldStop() often and exit when true.
-	virtual void workLoop();
+	virtual void workLoop() = 0;
+
 	bool shouldStop() const { return m_state != WorkerState::Started; }
 	
 	/// Called when is to be stopped, just prior to thread being joined.
@@ -71,8 +68,6 @@ protected:
 private:
 	std::string m_name;
 
-	unsigned m_idleWaitMs = 0;
-	
 	mutable Mutex x_work;						///< Lock for the network existance.
 	std::unique_ptr<std::thread> m_work;		///< The network thread.
 	std::atomic<WorkerState> m_state = {WorkerState::Starting};
