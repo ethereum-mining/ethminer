@@ -41,11 +41,6 @@ public:
 
 	ethash_cl_miner() = default;
 
-	static bool configureGPU(
-		unsigned _platformId,
-		uint64_t _currentBlock
-	);
-
 	bool init(
 		ethash_light_t _light,
 		uint8_t const* _lightData,

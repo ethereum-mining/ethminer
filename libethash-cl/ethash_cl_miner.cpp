@@ -67,44 +67,6 @@ static void addDefinition(string& _source, char const* _id, unsigned _value)
 
 ethash_cl_miner::search_hook::~search_hook() {}
 
-bool ethash_cl_miner::configureGPU(
-	unsigned _platformId,
-	uint64_t _currentBlock
-)
-{
-	// by default let's only consider the DAG of the first epoch
-	uint64_t dagSize = ethash_get_datasize(_currentBlock);
-
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return false;
-	if (_platformId >= platforms.size())
-		return false;
-
-	vector<cl::Device> devices = getDevices(platforms, _platformId);
-	for (auto const& device: devices)
-	{
-		cl_ulong result = 0;
-		device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
-		if (result >= dagSize)
-		{
-			ETHCL_LOG(
-				"Found suitable OpenCL device [" << device.getInfo<CL_DEVICE_NAME>()
-												 << "] with " << result << " bytes of GPU memory"
-			);
-			return true;
-		}
-
-		ETHCL_LOG(
-			"OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
-							 << " has insufficient GPU memory." << result <<
-							 " bytes of memory found < " << dagSize << " bytes of memory required"
-		);
-	}
-
-	return false;
-}
-
 bool ethash_cl_miner::init(
 	ethash_light_t _light, 
 	uint8_t const* _lightData, 
