@@ -28,6 +28,7 @@
 #include <libethash/internal.h>
 #include "ethash_cl_miner.h"
 #include "ethash_cl_miner_kernel.h"
+#include "CLMiner.h"
 
 #define OPENCL_PLATFORM_UNKNOWN 0
 #define OPENCL_PLATFORM_NVIDIA  1
@@ -64,8 +65,6 @@ static void addDefinition(string& _source, char const* _id, unsigned _value)
 	sprintf(buf, "#define %s %uu\n", _id, _value);
 	_source.insert(_source.begin(), buf, buf + strlen(buf));
 }
-
-ethash_cl_miner::search_hook::~search_hook() {}
 
 bool ethash_cl_miner::init(
 	ethash_light_t _light, 
@@ -248,7 +247,7 @@ bool ethash_cl_miner::init(
 }
 
 
-void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, uint64_t start_nonce)
+void ethash_cl_miner::search(uint8_t const* header, uint64_t target, EthashCLHook& hook, uint64_t start_nonce)
 {
 	// Memory for zero-ing buffers. Cannot be static because crashes on macOS.
 	uint32_t const c_zero = 0;
