@@ -140,31 +140,7 @@ bool ethash_cl_miner::configureGPU(
 {
 	// by default let's only consider the DAG of the first epoch
 	uint64_t dagSize = ethash_get_datasize(_currentBlock);
-	return searchForAllDevices(_platformId, [dagSize](cl::Device const& _device) -> bool
-		{
-			cl_ulong result;
-			_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
-			if (result >= dagSize)
-			{
-				ETHCL_LOG(
-					"Found suitable OpenCL device [" << _device.getInfo<CL_DEVICE_NAME>()
-					<< "] with " << result << " bytes of GPU memory"
-				);
-				return true;
-			}
 
-			ETHCL_LOG(
-				"OpenCL device " << _device.getInfo<CL_DEVICE_NAME>()
-				<< " has insufficient GPU memory." << result <<
-				" bytes of memory found < " << dagSize << " bytes of memory required"
-			);
-			return false;
-		}
-	);
-}
-
-bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, function<bool(cl::Device const&)> _callback)
-{
 	vector<cl::Platform> platforms = getPlatforms();
 	if (platforms.empty())
 		return false;
@@ -172,9 +148,25 @@ bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, function<bool(cl
 		return false;
 
 	vector<cl::Device> devices = getDevices(platforms, _platformId);
-	for (cl::Device const& device: devices)
-		if (_callback(device))
+	for (auto const& device: devices)
+	{
+		cl_ulong result = 0;
+		device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
+		if (result >= dagSize)
+		{
+			ETHCL_LOG(
+				"Found suitable OpenCL device [" << device.getInfo<CL_DEVICE_NAME>()
+												 << "] with " << result << " bytes of GPU memory"
+			);
 			return true;
+		}
+
+		ETHCL_LOG(
+			"OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
+							 << " has insufficient GPU memory." << result <<
+							 " bytes of memory found < " << dagSize << " bytes of memory required"
+		);
+	}
 
 	return false;
 }
