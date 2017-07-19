@@ -171,37 +171,22 @@ bool ethash_cl_miner::configureGPU(
 	return false;
 }
 
-void ethash_cl_miner::doForAllDevices(function<void(cl::Device const&)> _callback)
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return;
-	for (unsigned i = 0; i < platforms.size(); ++i)
-		doForAllDevices(i, _callback);
-}
-
-void ethash_cl_miner::doForAllDevices(unsigned _platformId, function<void(cl::Device const&)> _callback)
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return;
-	if (_platformId >= platforms.size())
-		return;
-
-	vector<cl::Device> devices = getDevices(platforms, _platformId);
-	for (cl::Device const& device: devices)
-		_callback(device);
-}
-
 void ethash_cl_miner::listDevices()
 {
 	string outString ="\nListing OpenCL devices.\nFORMAT: [deviceID] deviceName\n";
 	unsigned int i = 0;
-	doForAllDevices([&outString, &i](cl::Device const _device)
+
+	vector<cl::Platform> platforms = getPlatforms();
+	if (platforms.empty())
+		return;
+	for (unsigned j = 0; j < platforms.size(); ++j)
+	{
+		vector<cl::Device> devices = getDevices(platforms, j);
+		for (auto const& device: devices)
 		{
-			outString += "[" + to_string(i) + "] " + _device.getInfo<CL_DEVICE_NAME>() + "\n";
+			outString += "[" + to_string(i) + "] " + device.getInfo<CL_DEVICE_NAME>() + "\n";
 			outString += "\tCL_DEVICE_TYPE: ";
-			switch (_device.getInfo<CL_DEVICE_TYPE>())
+			switch (device.getInfo<CL_DEVICE_TYPE>())
 			{
 			case CL_DEVICE_TYPE_CPU:
 				outString += "CPU\n";
@@ -216,12 +201,12 @@ void ethash_cl_miner::listDevices()
 				outString += "DEFAULT\n";
 				break;
 			}
-			outString += "\tCL_DEVICE_GLOBAL_MEM_SIZE: " + to_string(_device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()) + "\n";
-			outString += "\tCL_DEVICE_MAX_MEM_ALLOC_SIZE: " + to_string(_device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>()) + "\n";
-			outString += "\tCL_DEVICE_MAX_WORK_GROUP_SIZE: " + to_string(_device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>()) + "\n";
+			outString += "\tCL_DEVICE_GLOBAL_MEM_SIZE: " + to_string(device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()) + "\n";
+			outString += "\tCL_DEVICE_MAX_MEM_ALLOC_SIZE: " + to_string(device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>()) + "\n";
+			outString += "\tCL_DEVICE_MAX_WORK_GROUP_SIZE: " + to_string(device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>()) + "\n";
 			++i;
 		}
-	);
+	}
 	ETHCL_LOG(outString);
 }
 
