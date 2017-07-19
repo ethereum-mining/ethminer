@@ -41,7 +41,6 @@ public:
 
 	ethash_cl_miner() = default;
 
-	static void listDevices();
 	static bool configureGPU(
 		unsigned _platformId,
 		uint64_t _currentBlock
