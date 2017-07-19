@@ -48,7 +48,6 @@ public:
 			UniqueGuard l(x_all);
 			if (m_aborted)
 				return;
-//		cdebug << "Attempting to abort";
 
 			m_abort = true;
 		}
@@ -56,10 +55,6 @@ public:
 		// we hang around on this thread waiting for them to point out that they have aborted since
 		// otherwise we may end up deleting this object prior to searched()/found() being called.
 		m_aborted.wait(true);
-//		for (unsigned timeout = 0; timeout < 100 && !m_aborted; ++timeout)
-//			std::this_thread::sleep_for(chrono::milliseconds(30));
-//		if (!m_aborted)
-//			cwarn << "Couldn't abort. Abandoning OpenCL process.";
 	}
 
 	void reset()
@@ -123,7 +118,7 @@ private:
 
 	using Miner::accumulateHashes;
 
-	EthashCLHook* m_hook = nullptr;
+	EthashCLHook m_hook;
 	ethash_cl_miner* m_miner = nullptr;
 
 	h256 m_minerSeed;		///< Last seed in m_miner
