@@ -109,7 +109,7 @@ bytesConstRef EthashAux::LightAllocation::data() const
 
 Result EthashAux::LightAllocation::compute(h256 const& _headerHash, uint64_t _nonce) const
 {
-	ethash_return_value r = ethash_light_compute(light, *(ethash_h256_t*)_headerHash.data(), _nonce);
+	ethash_return_value r = ethash_light_compute(light, *(ethash_h256_t*)_headerHash.data(), (uint64_t)_nonce);
 	if (!r.success)
 		BOOST_THROW_EXCEPTION(DAGCreationFailure());
 	return Result{h256((uint8_t*)&r.result, h256::ConstructFromPointer), h256((uint8_t*)&r.mix_hash, h256::ConstructFromPointer)};
