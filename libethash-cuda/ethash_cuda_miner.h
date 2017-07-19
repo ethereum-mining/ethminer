@@ -30,7 +30,6 @@ public:
 		unsigned _blockSize,
 		unsigned _gridSize,
 		unsigned _numStreams,
-		unsigned _extraGPUMemory,
 		unsigned _scheduleFlag,
 		uint64_t _currentBlock
 		);
@@ -70,8 +69,5 @@ private:
 	/// CUDA schedule flag
 	static unsigned s_scheduleFlag;
 
-	/// GPU memory required for other things, like window rendering e.t.c.
-	/// User can set it via the --cl-extragpu-mem argument.
-	static unsigned s_extraRequiredGPUMem;
 	static unsigned m_parallelHash;
 };
