@@ -52,9 +52,7 @@ void Worker::startWorking()
 
 				try
 				{
-					startedWorking();
 					workLoop();
-					doneWorking();
 				}
 				catch (std::exception const& _e)
 				{
