@@ -284,8 +284,6 @@ public:
 			}
 		else if (arg == "--list-devices")
 			m_shouldListDevices = true;
-		else if ((arg == "--cl-extragpu-mem" || arg == "--cuda-extragpu-mem") && i + 1 < argc)
-			m_extraGPUMemory = 1000000 * stol(argv[++i]);
 #endif
 #if ETH_ETHASHCUDA
 		else if (arg == "--cuda-devices")
@@ -478,7 +476,6 @@ public:
 					m_globalWorkSizeMultiplier,
 					m_openclPlatform,
 					m_openclDevice,
-					m_extraGPUMemory,
 					0,
 					m_dagLoadMode,
 					m_dagCreateDevice
@@ -504,7 +501,6 @@ public:
 				m_localWorkSize,
 				m_globalWorkSizeMultiplier,
 				m_numStreams,
-				m_extraGPUMemory,
 				m_cudaSchedule,
 				0,
 				m_dagLoadMode,
@@ -575,7 +571,6 @@ public:
 			<< "        sequential  - load DAG on GPUs one after another. Use this when the miner crashes during DAG generation" << endl
 			<< "        single <n>  - generate DAG on device n, then copy to other devices" << endl
 #if ETH_ETHASHCL
-			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. default: 0" << endl
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
 			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << toString(ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier) << " * " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
 #endif
@@ -1005,7 +1000,6 @@ private:
 	unsigned m_cudaSchedule = 4; // sync
 #endif
 	// default value was 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
-	unsigned m_extraGPUMemory = 0;// 350000000; don't assume miners run desktops...
 	unsigned m_dagLoadMode = 0; // parallel
 	unsigned m_dagCreateDevice = 0;
 	/// Benchmarking params
