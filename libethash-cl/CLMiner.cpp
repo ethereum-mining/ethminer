@@ -105,7 +105,7 @@ int CLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -
 CLMiner::CLMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
 	Worker("openclminer" + toString(index())),
-	m_hook(new EthashCLHook(this))
+	m_hook(this)
 {
 }
 
@@ -113,7 +113,6 @@ CLMiner::~CLMiner()
 {
 	pause();
 	delete m_miner;
-	delete m_hook;
 }
 
 bool CLMiner::report(uint64_t _nonce)
@@ -127,7 +126,7 @@ bool CLMiner::report(uint64_t _nonce)
 
 void CLMiner::kickOff()
 {
-	m_hook->reset();
+	m_hook.reset();
 	startWorking();
 }
 
@@ -178,7 +177,7 @@ void CLMiner::workLoop()
 			startNonce = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
 		else
 			startNonce = randomNonce();
-		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook, startNonce);
+		m_miner->search(w.headerHash.data(), upper64OfBoundary, m_hook, startNonce);
 	}
 	catch (cl::Error const& _e)
 	{
@@ -190,7 +189,7 @@ void CLMiner::workLoop()
 
 void CLMiner::pause()
 {
-	m_hook->abort();
+	m_hook.abort();
 	stopWorking();
 }
 
