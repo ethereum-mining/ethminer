@@ -49,8 +49,6 @@ public:
 	static void listDevices();
 	static bool configureGPU(
 		unsigned _platformId,
-		unsigned _localWorkSize,
-		unsigned _globalWorkSize,
 		uint64_t _currentBlock
 	);
 
@@ -59,15 +57,11 @@ public:
 		uint8_t const* _lightData,
 		uint64_t _lightSize,
 		unsigned _platformId,
-		unsigned _deviceId
+		unsigned _deviceId,
+		unsigned _workgroupSize,
+		unsigned initialGlobalWorkSize
 		);
 	void search(uint8_t const* _header, uint64_t _target, search_hook& _hook, uint64_t _startN);
-
-	/* -- default values -- */
-	/// Default value of the local work size. Also known as workgroup size.
-	static unsigned const c_defaultLocalWorkSize;
-	/// Default value of the global work size as a multiplier of the local work size
-	static unsigned const c_defaultGlobalWorkSizeMultiplier;
 
 private:
 
@@ -82,10 +76,6 @@ private:
 	cl::Buffer m_light;
 	cl::Buffer m_header;
 	cl::Buffer m_searchBuffer;
-	unsigned m_globalWorkSize;
-
-	/// The local work size for the search
-	static unsigned s_workgroupSize;
-	/// The initial global work size for the searches
-	static unsigned s_initialGlobalWorkSize;
+	unsigned m_globalWorkSize = 0;
+	unsigned m_workgroupSize = 0;
 };
