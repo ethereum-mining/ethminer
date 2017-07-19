@@ -235,11 +235,6 @@ void CLMiner::pause()
 	stopWorking();
 }
 
-std::string CLMiner::platformInfo()
-{
-	return ethash_cl_miner::platform_info(s_platformId, s_deviceId);
-}
-
 unsigned CLMiner::getNumDevices()
 {
 	vector<cl::Platform> platforms = getPlatforms();

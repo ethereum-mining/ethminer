@@ -41,7 +41,6 @@ public:
 
 	ethash_cl_miner() = default;
 
-	static std::string platform_info(unsigned _platformId = 0, unsigned _deviceId = 0);
 	static void listDevices();
 	static bool configureGPU(
 		unsigned _platformId,
