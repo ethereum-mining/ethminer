@@ -40,7 +40,6 @@
 #include <libethcore/Farm.h>
 #if ETH_ETHASHCL
 #include <libethash-cl/CLMiner.h>
-#include <libethash-cl/ethash_cl_miner.h>
 #endif
 #if ETH_ETHASHCUDA
 #include <libethash-cuda/ethash_cuda_miner.h>
@@ -571,8 +570,8 @@ public:
 			<< "        sequential  - load DAG on GPUs one after another. Use this when the miner crashes during DAG generation" << endl
 			<< "        single <n>  - generate DAG on device n, then copy to other devices" << endl
 #if ETH_ETHASHCL
-			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
-			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << toString(ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier) << " * " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
+			<< "    --cl-local-work Set the OpenCL local work size. Default is " << CLMiner::c_defaultLocalWorkSize << endl
+			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << CLMiner::c_defaultGlobalWorkSizeMultiplier << " * " << CLMiner::c_defaultLocalWorkSize << endl
 #endif
 #if ETH_ETHASHCUDA
 			<< "    --cuda-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
@@ -987,8 +986,8 @@ private:
 	unsigned m_openclDeviceCount = 0;
 	unsigned m_openclDevices[16];
 #if !ETH_ETHASHCUDA
-	unsigned m_globalWorkSizeMultiplier = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier;
-	unsigned m_localWorkSize = ethash_cl_miner::c_defaultLocalWorkSize;
+	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
+	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
 #endif
 #endif
 #if ETH_ETHASHCUDA

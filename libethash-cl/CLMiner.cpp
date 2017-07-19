@@ -32,6 +32,10 @@ namespace dev
 namespace eth
 {
 
+unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
+unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
+
+
 class EthashCLHook: public ethash_cl_miner::search_hook
 {
 public:
@@ -163,7 +167,7 @@ void CLMiner::workLoop()
 			light = EthashAux::light(w.seedHash);
 			bytesConstRef lightData = light->data();
 
-			m_miner->init(light->light, lightData.data(), lightData.size(), s_platformId,  device);
+			m_miner->init(light->light, lightData.data(), lightData.size(), s_platformId,  device, s_workgroupSize, s_initialGlobalWorkSize);
 			s_dagLoadIndex++;
 		}
 
@@ -222,14 +226,9 @@ bool CLMiner::configureGPU(
 	s_deviceId = _deviceId;
 
 	_localWorkSize = ((_localWorkSize + 7) / 8) * 8;
-
-	if (!ethash_cl_miner::configureGPU(
-			_platformId,
-			_localWorkSize,
-			_globalWorkSizeMultiplier * _localWorkSize,
-			_currentBlock
-			)
-	)
+	s_workgroupSize = _localWorkSize;
+	s_initialGlobalWorkSize = _globalWorkSizeMultiplier * _localWorkSize;
+	if (!ethash_cl_miner::configureGPU(_platformId, _currentBlock))
 	{
 		cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
 		return false;
