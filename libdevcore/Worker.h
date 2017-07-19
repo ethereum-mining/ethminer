@@ -54,16 +54,10 @@ protected:
 	
 	/// Stop worker thread; causes call to stopWorking().
 	void stopWorking();
-	
-	/// Called after thread is started from startWorking().
-	virtual void startedWorking() {}
 
 	virtual void workLoop() = 0;
 
 	bool shouldStop() const { return m_state != WorkerState::Started; }
-	
-	/// Called when is to be stopped, just prior to thread being joined.
-	virtual void doneWorking() {}
 
 private:
 	std::string m_name;
