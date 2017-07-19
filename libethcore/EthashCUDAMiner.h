@@ -56,7 +56,6 @@ class EthashCUDAHook;
 			unsigned _blockSize,
 			unsigned _gridSize,
 			unsigned _numStreams,
-			unsigned _extraGPUMemory,
 			unsigned _scheduleFlag,
 			uint64_t _currentBlock,
 			unsigned _dagLoadMode,

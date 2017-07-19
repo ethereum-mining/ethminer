@@ -140,22 +140,19 @@ bool ethash_cl_miner::configureGPU(
 	unsigned _platformId,
 	unsigned _localWorkSize,
 	unsigned _globalWorkSize,
-	unsigned _extraGPUMemory,
 	uint64_t _currentBlock
 )
 {
 	s_workgroupSize = _localWorkSize;
 	s_initialGlobalWorkSize = _globalWorkSize;
-	s_extraRequiredGPUMem = _extraGPUMemory;
 
 	// by default let's only consider the DAG of the first epoch
 	uint64_t dagSize = ethash_get_datasize(_currentBlock);
-	uint64_t requiredSize =  dagSize + _extraGPUMemory;
-	return searchForAllDevices(_platformId, [&requiredSize](cl::Device const& _device) -> bool
+	return searchForAllDevices(_platformId, [dagSize](cl::Device const& _device) -> bool
 		{
 			cl_ulong result;
 			_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
-			if (result >= requiredSize)
+			if (result >= dagSize)
 			{
 				ETHCL_LOG(
 					"Found suitable OpenCL device [" << _device.getInfo<CL_DEVICE_NAME>()
@@ -167,14 +164,13 @@ bool ethash_cl_miner::configureGPU(
 			ETHCL_LOG(
 				"OpenCL device " << _device.getInfo<CL_DEVICE_NAME>()
 				<< " has insufficient GPU memory." << result <<
-				" bytes of memory found < " << requiredSize << " bytes of memory required"
+				" bytes of memory found < " << dagSize << " bytes of memory required"
 			);
 			return false;
 		}
 	);
 }
 
-unsigned ethash_cl_miner::s_extraRequiredGPUMem;
 unsigned ethash_cl_miner::s_workgroupSize = ethash_cl_miner::c_defaultLocalWorkSize;
 unsigned ethash_cl_miner::s_initialGlobalWorkSize = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier * ethash_cl_miner::c_defaultLocalWorkSize;
 
