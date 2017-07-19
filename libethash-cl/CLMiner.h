@@ -50,7 +50,6 @@ public:
 	~CLMiner();
 
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
-	static std::string platformInfo();
 	static unsigned getNumDevices();
 	static void listDevices();
 	static bool configureGPU(

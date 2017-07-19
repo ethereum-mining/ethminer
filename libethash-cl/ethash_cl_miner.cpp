@@ -67,28 +67,6 @@ static void addDefinition(string& _source, char const* _id, unsigned _value)
 
 ethash_cl_miner::search_hook::~search_hook() {}
 
-string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return {};
-	// get GPU device of the selected platform
-	unsigned platform_num = min<unsigned>(_platformId, platforms.size() - 1);
-	vector<cl::Device> devices = getDevices(platforms, _platformId);
-	if (devices.empty())
-	{
-		ETHCL_LOG("No OpenCL devices found.");
-		return {};
-	}
-
-	// use selected default device
-	unsigned device_num = min<unsigned>(_deviceId, devices.size() - 1);
-	cl::Device& device = devices[device_num];
-	string device_version = device.getInfo<CL_DEVICE_VERSION>();
-
-	return "{ \"platform\": \"" + platforms[platform_num].getInfo<CL_PLATFORM_NAME>() + "\", \"device\": \"" + device.getInfo<CL_DEVICE_NAME>() + "\", \"version\": \"" + device_version + "\" }";
-}
-
 bool ethash_cl_miner::configureGPU(
 	unsigned _platformId,
 	uint64_t _currentBlock
