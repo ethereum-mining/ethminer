@@ -474,7 +474,6 @@ public:
 					m_localWorkSize,
 					m_globalWorkSizeMultiplier,
 					m_openclPlatform,
-					m_openclDevice,
 					0,
 					m_dagLoadMode,
 					m_dagCreateDevice
@@ -979,7 +978,6 @@ private:
 	bool m_running = true;
 	MinerType m_minerType = MinerType::Mixed;
 	unsigned m_openclPlatform = 0;
-	unsigned m_openclDevice = 0;
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 #if ETH_ETHASHCL
