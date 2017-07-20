@@ -79,7 +79,6 @@ public:
 	CLMiner(ConstructionInfo const& _ci);
 	~CLMiner();
 
-	bool found(uint64_t nonce);
 	bool searched(uint32_t _count);
 
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
@@ -108,7 +107,7 @@ protected:
 
 private:
 	void workLoop() override;
-	bool report(uint64_t _nonce);
+	void report(uint64_t _nonce);
 
 	bool init(const h256& seed);
 

@@ -98,18 +98,11 @@ std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, 
 
 }
 
-bool CLMiner::found(uint64_t nonce)
-{
-	if (report(nonce))
-		return (m_hook_aborted = true);
-	return shouldStop();
-}
-
 bool CLMiner::searched(uint32_t _count)
 {
 	UniqueGuard l(x_hook);
 	accumulateHashes(_count);
-	if (m_hook_abort || shouldStop())
+	if (m_hook_abort)
 		return (m_hook_aborted = true);
 	return false;
 }
@@ -131,13 +124,14 @@ CLMiner::~CLMiner()
 	pause();
 }
 
-bool CLMiner::report(uint64_t _nonce)
+void CLMiner::report(uint64_t _nonce)
 {
+	assert(_nonce != 0);
 	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
+	// TODO: Why re-evaluating?
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
-		return submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
-	return false;
+		submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
 }
 
 void CLMiner::kickOff()
@@ -222,9 +216,12 @@ void CLMiner::workLoop()
 
 			// Report results while the kernel is running.
 			// It takes some time because ethash must be re-evaluated on CPU.
-			bool exit = nonce && found(nonce);
-			exit |= searched(m_globalWorkSize); // always report searched before exit
-			if (exit)
+			if (nonce)
+				report(nonce);
+
+			// Report searched and check if stop
+			bool exit = searched(m_globalWorkSize);
+			if (exit || shouldStop())
 			{
 				// Make sure the last buffer write has finished --
 				// it reads local variable.
