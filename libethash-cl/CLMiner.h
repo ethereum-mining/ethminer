@@ -85,7 +85,10 @@ private:
 
 	ethash_cl_miner* m_miner = nullptr;
 
-	h256 m_minerSeed;		///< Last seed in m_miner
+	/// The seed the miner was initialized with.
+	/// Init with non-zero hash to distinct from the seed of epoch 0.
+	h256 m_minerSeed = h256{1u};
+
 	static unsigned s_platformId;
 	static unsigned s_numInstances;
 	static int s_devices[16];
