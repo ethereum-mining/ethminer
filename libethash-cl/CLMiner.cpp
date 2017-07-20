@@ -432,19 +432,16 @@ bool CLMiner::init(
 		addDefinition(code, "COMPUTE", computeCapability);
 
 		// create miner OpenCL program
-		cl::Program::Sources sources;
-		sources.push_back({ code.c_str(), code.size() });
-
+		cl::Program::Sources sources{{std::move(code)}};
 		cl::Program program(m_context, sources);
 		try
 		{
-			program.build({ device }, options);
-			ETHCL_LOG("Printing program log");
-			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
+			program.build({device}, options);
+			cllog << "Build info:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
 		}
 		catch (cl::Error const&)
 		{
-			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
+			cwarn << "Build info:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
 			return false;
 		}
 
