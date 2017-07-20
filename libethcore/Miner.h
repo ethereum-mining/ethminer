@@ -128,10 +128,9 @@ public:
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
 	 * @param _p The solution.
-	 * @param _finder The miner that found it.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
-	virtual bool submitProof(Solution const& _p, Miner* _finder) = 0;
+	virtual bool submitProof(Solution const& _p) = 0;
 };
 
 /**
@@ -149,11 +148,9 @@ public:
 	{}
 	virtual ~Miner() {}
 
-	// API FOR THE FARM TO CALL IN WITH
-
-	void setWork(WorkPackage const& _work = WorkPackage())
+	void setWork(WorkPackage const& _work)
 	{
-		auto old = m_work;
+		bool running = !!m_work;
 		{
 			Guard l(x_work);
 			m_work = _work;
@@ -163,7 +160,7 @@ public:
 			pause();
 			kickOff();
 		}
-		else if (!_work && !!old)
+		else if (!_work && running)
 			pause();
 		m_hashCount = 0;
 	}
@@ -199,13 +196,7 @@ protected:
 	void submitProof(Solution const& _s)
 	{
 		assert(m_farm);
-		if (m_farm->submitProof(_s, this))
-		{
-			// TODO: Even if the proof submitted, should be reset the work
-			// package here and stop mining?
-			Guard l(x_work);
-			m_work.reset();
-		}
+		m_farm->submitProof(_s);
 	}
 
 	WorkPackage const& work() const { Guard l(x_work); return m_work; }
