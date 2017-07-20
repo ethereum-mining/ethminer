@@ -244,7 +244,7 @@ void CLMiner::workLoop()
 	}
 	catch (cl::Error const& _e)
 	{
-		cwarn << "Error GPU mining: " << _e.what() << "(" << _e.err() << ")";
+		cwarn << "OpenCL Error:" << _e.what() << _e.err();
 	}
 }
 
