@@ -38,7 +38,25 @@ unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMult
 
 constexpr size_t c_maxSearchResults = 1;
 
-// FIXME: Make local
+struct CLChannel: public LogChannel
+{
+	static const char* name() { return EthOrange " cl"; }
+	static const int verbosity = 2;
+	static const bool debug = false;
+};
+#define cllog clog(CLChannel)
+#define ETHCL_LOG(_contents) cllog << _contents
+
+namespace
+{
+
+void addDefinition(string& _source, char const* _id, unsigned _value)
+{
+	char buf[256];
+	sprintf(buf, "#define %s %uu\n", _id, _value);
+	_source.insert(_source.begin(), buf, buf + strlen(buf));
+}
+
 std::vector<cl::Platform> getPlatforms()
 {
 	vector<cl::Platform> platforms;
@@ -58,7 +76,6 @@ std::vector<cl::Platform> getPlatforms()
 	return platforms;
 }
 
-// FIXME: Make local
 std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId)
 {
 	vector<cl::Device> devices;
@@ -77,6 +94,8 @@ std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, 
 			throw err;
 	}
 	return devices;
+}
+
 }
 
 bool CLMiner::found(uint64_t const* _nonces, uint32_t _count)
@@ -106,7 +125,7 @@ int CLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -
 
 CLMiner::CLMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
-	Worker("openclminer" + toString(index()))
+	Worker("cl-" + std::to_string(_ci.second))
 {}
 
 CLMiner::~CLMiner()
@@ -176,7 +195,7 @@ void CLMiner::workLoop()
 			startNonce = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
 		else
 			startNonce = randomNonce();
-		search(w.headerHash.data(), upper64OfBoundary, *this, startNonce);
+		search(w.headerHash.data(), upper64OfBoundary, startNonce);
 	}
 	catch (cl::Error const& _e)
 	{
@@ -486,7 +505,7 @@ bool CLMiner::init(
 }
 
 
-void CLMiner::search(uint8_t const* header, uint64_t target, CLMiner& hook, uint64_t start_nonce)
+void CLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_nonce)
 {
 	// Memory for zero-ing buffers. Cannot be static because crashes on macOS.
 	uint32_t const c_zero = 0;
@@ -523,8 +542,8 @@ void CLMiner::search(uint8_t const* header, uint64_t target, CLMiner& hook, uint
 
 		// Report results while the kernel is running.
 		// It takes some time because ethash must be re-evaluated on CPU.
-		bool exit = num_found && hook.found(nonces, num_found);
-		exit |= hook.searched(start_nonce, m_globalWorkSize); // always report searched before exit
+		bool exit = num_found && found(nonces, num_found);
+		exit |= searched(start_nonce, m_globalWorkSize); // always report searched before exit
 		if (exit)
 		{
 			// Make sure the last buffer write has finished --

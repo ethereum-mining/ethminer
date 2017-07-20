@@ -61,21 +61,11 @@
 #define OPENCL_PLATFORM_AMD     2
 #define OPENCL_PLATFORM_CLOVER  3
 
-class ethash_cl_miner;
 
 namespace dev
 {
 namespace eth
 {
-
-#define ETHCL_LOG(_contents) std::cout << "[OpenCL] " << _contents << std::endl
-
-static void addDefinition(string& _source, char const* _id, unsigned _value)
-{
-	char buf[256];
-	sprintf(buf, "#define %s %uu\n", _id, _value);
-	_source.insert(_source.begin(), buf, buf + strlen(buf));
-}
 
 class CLMiner: public Miner, Worker
 {
@@ -130,7 +120,7 @@ private:
 		unsigned initialGlobalWorkSize
 	);
 
-	void search(uint8_t const* _header, uint64_t _target, dev::eth::CLMiner& _hook, uint64_t _startN);
+	void search(uint8_t const* _header, uint64_t _target, uint64_t _startN);
 
 	Mutex x_hook;
 	bool m_hook_abort = false;
