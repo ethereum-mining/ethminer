@@ -110,15 +110,7 @@ private:
 	void workLoop() override;
 	bool report(uint64_t _nonce);
 
-	bool init(
-		ethash_light_t _light,
-		uint8_t const* _lightData,
-		uint64_t _lightSize,
-		unsigned _platformId,
-		unsigned _deviceId,
-		unsigned _workgroupSize,
-		unsigned initialGlobalWorkSize
-	);
+	bool init(const h256& seed);
 
 	Mutex x_hook;
 	bool m_hook_abort = false;
