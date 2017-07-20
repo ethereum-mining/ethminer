@@ -14,7 +14,6 @@ add_custom_command(
 add_custom_target(clbin2h DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/ethash_cl_miner_kernel.h ${CMAKE_CURRENT_SOURCE_DIR}/ethash_cl_miner_kernel.cl)
 
 set(SOURCES
-	ethash_cl_miner.h ethash_cl_miner.cpp
 	CLMiner.h CLMiner.cpp
 	${CMAKE_CURRENT_BINARY_DIR}/ethash_cl_miner_kernel.h
 )

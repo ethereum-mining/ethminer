@@ -23,7 +23,7 @@
 
 #include "CLMiner.h"
 #include <libethash/internal.h>
-#include "ethash_cl_miner.h"
+#include "ethash_cl_miner_kernel.h"
 
 using namespace dev;
 using namespace eth;
@@ -35,6 +35,8 @@ namespace eth
 
 unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
+
+constexpr size_t c_maxSearchResults = 1;
 
 // FIXME: Make local
 std::vector<cl::Platform> getPlatforms()
@@ -105,14 +107,11 @@ int CLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -
 CLMiner::CLMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
 	Worker("openclminer" + toString(index()))
-{
-	m_miner = new ethash_cl_miner;
-}
+{}
 
 CLMiner::~CLMiner()
 {
 	pause();
-	delete m_miner;
 }
 
 bool CLMiner::report(uint64_t _nonce)
@@ -166,7 +165,7 @@ void CLMiner::workLoop()
 			light = EthashAux::light(w.seedHash);
 			bytesConstRef lightData = light->data();
 
-			m_miner->init(light->light, lightData.data(), lightData.size(), s_platformId,  device, s_workgroupSize, s_initialGlobalWorkSize);
+			init(light->light, lightData.data(), lightData.size(), s_platformId,  device, s_workgroupSize, s_initialGlobalWorkSize);
 			s_dagLoadIndex++;
 		}
 
@@ -177,7 +176,7 @@ void CLMiner::workLoop()
 			startNonce = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
 		else
 			startNonce = randomNonce();
-		m_miner->search(w.headerHash.data(), upper64OfBoundary, *this, startNonce);
+		search(w.headerHash.data(), upper64OfBoundary, *this, startNonce);
 	}
 	catch (cl::Error const& _e)
 	{
@@ -302,4 +301,235 @@ bool CLMiner::configureGPU(
 
 	cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
 	return false;
+}
+
+
+bool CLMiner::init(
+	ethash_light_t _light,
+	uint8_t const* _lightData,
+	uint64_t _lightSize,
+	unsigned _platformId,
+	unsigned _deviceId,
+	unsigned _workgroupSize,
+	unsigned _initialGlobalWorkSize
+)
+{
+	// get all platforms
+	try
+	{
+		vector<cl::Platform> platforms = getPlatforms();
+		if (platforms.empty())
+			return false;
+
+		// use selected platform
+		_platformId = min<unsigned>(_platformId, platforms.size() - 1);
+
+		string platformName = platforms[_platformId].getInfo<CL_PLATFORM_NAME>();
+		ETHCL_LOG("Platform: " << platformName);
+
+		int platformId = OPENCL_PLATFORM_UNKNOWN;
+		if (platformName == "NVIDIA CUDA")
+		{
+			platformId = OPENCL_PLATFORM_NVIDIA;
+		}
+		else if (platformName == "AMD Accelerated Parallel Processing")
+		{
+			platformId = OPENCL_PLATFORM_AMD;
+		}
+		else if (platformName == "Clover")
+		{
+			platformId = OPENCL_PLATFORM_CLOVER;
+		}
+
+		// get GPU device of the default platform
+		vector<cl::Device> devices = getDevices(platforms, _platformId);
+		if (devices.empty())
+		{
+			ETHCL_LOG("No OpenCL devices found.");
+			return false;
+		}
+
+		// use selected device
+		cl::Device& device = devices[min<unsigned>(_deviceId, devices.size() - 1)];
+		string device_version = device.getInfo<CL_DEVICE_VERSION>();
+		ETHCL_LOG("Device:   " << device.getInfo<CL_DEVICE_NAME>() << " / " << device_version);
+
+		string clVer = device_version.substr(7, 3);
+		if (clVer == "1.0" || clVer == "1.1")
+		{
+			if (platformId == OPENCL_PLATFORM_CLOVER)
+			{
+				ETHCL_LOG("OpenCL " << clVer << " not supported, but platform Clover might work nevertheless. USE AT OWN RISK!");
+			}
+			else
+			{
+				ETHCL_LOG("OpenCL " << clVer << " not supported - minimum required version is 1.2");
+				return false;
+			}
+		}
+
+		char options[256];
+		int computeCapability = 0;
+		if (platformId == OPENCL_PLATFORM_NVIDIA) {
+			cl_uint computeCapabilityMajor;
+			cl_uint computeCapabilityMinor;
+			clGetDeviceInfo(device(), CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV, sizeof(cl_uint), &computeCapabilityMajor, NULL);
+			clGetDeviceInfo(device(), CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV, sizeof(cl_uint), &computeCapabilityMinor, NULL);
+
+			computeCapability = computeCapabilityMajor * 10 + computeCapabilityMinor;
+			int maxregs = computeCapability >= 35 ? 72 : 63;
+			sprintf(options, "-cl-nv-maxrregcount=%d", maxregs);
+		}
+		else {
+			sprintf(options, "%s", "");
+		}
+		// create context
+		m_context = cl::Context(vector<cl::Device>(&device, &device + 1));
+		m_queue = cl::CommandQueue(m_context, device);
+
+		// make sure that global work size is evenly divisible by the local workgroup size
+		m_workgroupSize = _workgroupSize;
+		m_globalWorkSize = _initialGlobalWorkSize;
+		if (m_globalWorkSize % _workgroupSize != 0)
+			m_globalWorkSize = ((m_globalWorkSize / _workgroupSize) + 1) * _workgroupSize;
+
+		uint64_t dagSize = ethash_get_datasize(_light->block_number);
+		uint32_t dagSize128 = (unsigned)(dagSize / ETHASH_MIX_BYTES);
+		uint32_t lightSize64 = (unsigned)(_lightSize / sizeof(node));
+
+		// patch source code
+		// note: ETHASH_CL_MINER_KERNEL is simply ethash_cl_miner_kernel.cl compiled
+		// into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
+		string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
+		addDefinition(code, "GROUP_SIZE", _workgroupSize);
+		addDefinition(code, "DAG_SIZE", dagSize128);
+		addDefinition(code, "LIGHT_SIZE", lightSize64);
+		addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
+		addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
+		addDefinition(code, "PLATFORM", platformId);
+		addDefinition(code, "COMPUTE", computeCapability);
+
+		// create miner OpenCL program
+		cl::Program::Sources sources;
+		sources.push_back({ code.c_str(), code.size() });
+
+		cl::Program program(m_context, sources);
+		try
+		{
+			program.build({ device }, options);
+			ETHCL_LOG("Printing program log");
+			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
+		}
+		catch (cl::Error const&)
+		{
+			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
+			return false;
+		}
+
+		// create buffer for dag
+		try
+		{
+			ETHCL_LOG("Creating cache buffer");
+			m_light = cl::Buffer(m_context, CL_MEM_READ_ONLY, _lightSize);
+			ETHCL_LOG("Creating DAG buffer");
+			m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, dagSize);
+			ETHCL_LOG("Loading kernels");
+			m_searchKernel = cl::Kernel(program, "ethash_search");
+			m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
+			ETHCL_LOG("Writing cache buffer");
+			m_queue.enqueueWriteBuffer(m_light, CL_TRUE, 0, _lightSize, _lightData);
+		}
+		catch (cl::Error const& err)
+		{
+			ETHCL_LOG("Allocating/mapping DAG buffer failed with: " << err.what() << "(" << err.err() << "). GPU can't allocate the DAG in a single chunk. Bailing.");
+			return false;
+		}
+		// create buffer for header
+		ETHCL_LOG("Creating buffer for header.");
+		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
+
+		m_searchKernel.setArg(1, m_header);
+		m_searchKernel.setArg(2, m_dag);
+		m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
+
+		// create mining buffers
+		ETHCL_LOG("Creating mining buffer");
+		m_searchBuffer = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_maxSearchResults + 1) * sizeof(uint32_t));
+
+		ETHCL_LOG("Generating DAG data");
+
+		uint32_t const work = (uint32_t)(dagSize / sizeof(node));
+		uint32_t fullRuns = work / m_globalWorkSize;
+		uint32_t const restWork = work % m_globalWorkSize;
+		if (restWork > 0) fullRuns++;
+
+		m_dagKernel.setArg(1, m_light);
+		m_dagKernel.setArg(2, m_dag);
+		m_dagKernel.setArg(3, ~0u);
+
+		for (uint32_t i = 0; i < fullRuns; i++)
+		{
+			m_dagKernel.setArg(0, i * m_globalWorkSize);
+			m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, m_globalWorkSize, _workgroupSize);
+			m_queue.finish();
+			printf("OPENCL#%d: %.0f%%\n", _deviceId, 100.0f * (float)i / (float)fullRuns);
+		}
+
+	}
+	catch (cl::Error const& err)
+	{
+		ETHCL_LOG(err.what() << "(" << err.err() << ")");
+		return false;
+	}
+	return true;
+}
+
+
+void CLMiner::search(uint8_t const* header, uint64_t target, CLMiner& hook, uint64_t start_nonce)
+{
+	// Memory for zero-ing buffers. Cannot be static because crashes on macOS.
+	uint32_t const c_zero = 0;
+
+	// Update header constant buffer.
+	m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, 32, header);
+	m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
+
+	m_searchKernel.setArg(0, m_searchBuffer);  // Supply output buffer to kernel.
+	m_searchKernel.setArg(4, target);
+
+	while (true)
+	{
+		// Read results.
+		// TODO: could use pinned host pointer instead.
+		uint32_t results[c_maxSearchResults + 1];
+		m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, 0, sizeof(results), &results);
+		unsigned num_found = min<unsigned>(results[0], c_maxSearchResults);
+
+		uint64_t nonces[c_maxSearchResults];
+		for (unsigned i = 0; i != num_found; ++i)
+			nonces[i] = start_nonce + results[i + 1];
+
+		// Reset search buffer if any solution found.
+		if (num_found)
+			m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
+
+		// Increase start nonce for following kernel execution.
+		start_nonce += m_globalWorkSize;
+
+		// Run the kernel.
+		m_searchKernel.setArg(3, start_nonce);
+		m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
+
+		// Report results while the kernel is running.
+		// It takes some time because ethash must be re-evaluated on CPU.
+		bool exit = num_found && hook.found(nonces, num_found);
+		exit |= hook.searched(start_nonce, m_globalWorkSize); // always report searched before exit
+		if (exit)
+		{
+			// Make sure the last buffer write has finished --
+			// it reads local variable.
+			m_queue.finish();
+			break;
+		}
+	}
 }
