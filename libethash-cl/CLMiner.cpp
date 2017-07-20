@@ -134,9 +134,9 @@ CLMiner::~CLMiner()
 bool CLMiner::report(uint64_t _nonce)
 {
 	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
-	Result r = EthashAux::eval(w.seedHash, w.headerHash, _nonce);
+	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
-		return submitProof(Solution{_nonce, r.mixHash, w.headerHash, w.seedHash, w.boundary});
+		return submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
 	return false;
 }
 
@@ -160,25 +160,25 @@ uint64_t randomNonce()
 
 void CLMiner::workLoop()
 {
+	// Memory for zero-ing buffers. Cannot be static because crashes on macOS.
+	uint32_t const c_zero = 0;
+
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
-		WorkPackage w = work();
-		cllog << "Set work. Header" << w.headerHash << "target" << w.boundary.hex().substr(0, 12);
-		if (m_minerSeed != w.seedHash)
+		const WorkPackage w = work();
+		cllog << "Set work. Header" << w.header << "target" << w.boundary.hex().substr(0, 12);
+		if (m_seed != w.seed)
 		{
 			if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
 			{
-				while (s_dagLoadIndex < index()) {
+				while (s_dagLoadIndex < index())
 					this_thread::sleep_for(chrono::seconds(1));
-				}
+				++s_dagLoadIndex;
 			}
 
-			cllog << "Initialising miner with seed" << w.seedHash;
-
-			init(w.seedHash);
-			m_minerSeed = w.seedHash;
-
-			s_dagLoadIndex++;
+			cllog << "Initialising miner with seed" << w.seed;
+			init(w.seed);
+			m_seed = w.seed;
 		}
 
 		uint64_t startNonce = 0;
@@ -190,12 +190,8 @@ void CLMiner::workLoop()
 		// Upper 64 bits of the boundary.
 		const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
 
-		const byte* header = w.headerHash.data();
-		// Memory for zero-ing buffers. Cannot be static because crashes on macOS.
-		uint32_t const c_zero = 0;
-
 		// Update header constant buffer.
-		m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, 32, header);
+		m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, w.header.size, w.header.data());
 		m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
 
 		m_searchKernel.setArg(0, m_searchBuffer);  // Supply output buffer to kernel.

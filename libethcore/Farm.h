@@ -61,7 +61,7 @@ public:
 	void setWork(WorkPackage const& _wp)
 	{
 		Guard l(x_minerWork);
-		if (_wp.headerHash == m_work.headerHash && _wp.startNonce == m_work.startNonce)
+		if (_wp.header == m_work.header && _wp.startNonce == m_work.startNonce)
 			return;
 		m_work = _wp;
 		for (auto const& m: m_miners)

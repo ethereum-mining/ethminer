@@ -129,7 +129,7 @@ private:
 
 	/// The seed the miner was initialized with.
 	/// Init with non-zero hash to distinct from the seed of epoch 0.
-	h256 m_minerSeed = h256{1u};
+	h256 m_seed = h256{1u};
 
 	static unsigned s_platformId;
 	static unsigned s_numInstances;
