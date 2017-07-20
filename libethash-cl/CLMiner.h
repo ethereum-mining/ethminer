@@ -79,8 +79,8 @@ public:
 	CLMiner(ConstructionInfo const& _ci);
 	~CLMiner();
 
-	bool found(uint64_t const* _nonces, uint32_t _count);
-	bool searched(uint64_t _startNonce, uint32_t _count);
+	bool found(uint64_t nonce);
+	bool searched(uint32_t _count);
 
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 	static unsigned getNumDevices();
