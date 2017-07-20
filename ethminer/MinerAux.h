@@ -776,7 +776,7 @@ private:
 					auto mp = f.miningProgress();
 					f.resetMiningProgress();
 					if (current)
-						minelog << "Mining on PoWhash" << "#" + (current.headerHash.hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
+						minelog << "Mining on" << current.headerHash << ": " << mp << f.getSolutionStats();
 					else
 						minelog << "Getting work package...";
 
@@ -918,7 +918,7 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << "Mining on PoWhash" << "#" + (client.currentHeaderHash().hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
+						minelog << "Mining on" << client.currentHeaderHash() << ": " << mp << f.getSolutionStats();
 					}
 					else if (client.waitState() == MINER_WAIT_STATE_WORK)
 					{
@@ -957,7 +957,7 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << "Mining on PoWhash" << "#" + (client.currentHeaderHash().hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
+						minelog << "Mining on" << client.currentHeaderHash() << ": " << mp << f.getSolutionStats();
 					}
 					else if (client.waitState() == MINER_WAIT_STATE_WORK)
 					{

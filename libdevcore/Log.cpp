@@ -72,7 +72,7 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
 		static char const* c_sep1 = EthReset EthBlack "|" EthNavy;
 		static char const* c_sep2 = EthReset EthBlack "|" EthTeal;
 		static char const* c_end = EthReset "  ";
-		m_sstr << _id << c_begin << buf << c_sep1 << getThreadName() << ThreadContext::join(c_sep2) << c_end;
+		m_sstr << _id << c_begin << buf << c_sep1 << std::left << std::setw(8) << getThreadName() << ThreadContext::join(c_sep2) << c_end;
 	}
 }
 

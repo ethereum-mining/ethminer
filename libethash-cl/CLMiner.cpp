@@ -165,7 +165,7 @@ void CLMiner::workLoop()
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
 		WorkPackage w = work();
-		cnote << "set work; seed: " << "#" + w.seedHash.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
+		cllog << "Set work. Header" << w.headerHash << "target" << w.boundary.hex().substr(0, 12);
 		if (m_minerSeed != w.seedHash)
 		{
 			if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
@@ -175,7 +175,7 @@ void CLMiner::workLoop()
 				}
 			}
 
-			cnote << "Initialising miner with seed" << w.seedHash;
+			cllog << "Initialising miner with seed" << w.seedHash;
 			m_minerSeed = w.seedHash;
 
 			unsigned device = s_devices[index()] > -1 ? s_devices[index()] : index();
@@ -195,6 +195,8 @@ void CLMiner::workLoop()
 			startNonce = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
 		else
 			startNonce = randomNonce();
+
+
 		search(w.headerHash.data(), upper64OfBoundary, startNonce);
 	}
 	catch (cl::Error const& _e)
@@ -476,7 +478,7 @@ bool CLMiner::init(
 		ETHCL_LOG("Creating mining buffer");
 		m_searchBuffer = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_maxSearchResults + 1) * sizeof(uint32_t));
 
-		ETHCL_LOG("Generating DAG data");
+		cllog << "Generating DAG";
 
 		uint32_t const work = (uint32_t)(dagSize / sizeof(node));
 		uint32_t fullRuns = work / m_globalWorkSize;
@@ -492,13 +494,13 @@ bool CLMiner::init(
 			m_dagKernel.setArg(0, i * m_globalWorkSize);
 			m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, m_globalWorkSize, _workgroupSize);
 			m_queue.finish();
-			printf("OPENCL#%d: %.0f%%\n", _deviceId, 100.0f * (float)i / (float)fullRuns);
+			cllog << "DAG" << int(100.0f * i / fullRuns) << '%';
 		}
 
 	}
 	catch (cl::Error const& err)
 	{
-		ETHCL_LOG(err.what() << "(" << err.err() << ")");
+		cwarn << err.what() << "(" << err.err() << ")";
 		return false;
 	}
 	return true;
