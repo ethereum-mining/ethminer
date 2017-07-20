@@ -174,15 +174,10 @@ void CLMiner::workLoop()
 			}
 
 			cllog << "Initialising miner with seed" << w.seedHash;
+
+			init(w.seedHash);
 			m_minerSeed = w.seedHash;
 
-			unsigned device = s_devices[index()] > -1 ? s_devices[index()] : index();
-
-			EthashAux::LightType light;
-			light = EthashAux::light(w.seedHash);
-			bytesConstRef lightData = light->data();
-
-			init(light->light, lightData.data(), lightData.size(), s_platformId,  device, s_workgroupSize, s_initialGlobalWorkSize);
 			s_dagLoadIndex++;
 		}
 
@@ -368,16 +363,10 @@ bool CLMiner::configureGPU(
 }
 
 
-bool CLMiner::init(
-	ethash_light_t _light,
-	uint8_t const* _lightData,
-	uint64_t _lightSize,
-	unsigned _platformId,
-	unsigned _deviceId,
-	unsigned _workgroupSize,
-	unsigned _initialGlobalWorkSize
-)
+bool CLMiner::init(const h256& seed)
 {
+	EthashAux::LightType light = EthashAux::light(seed);
+
 	// get all platforms
 	try
 	{
@@ -386,9 +375,9 @@ bool CLMiner::init(
 			return false;
 
 		// use selected platform
-		_platformId = min<unsigned>(_platformId, platforms.size() - 1);
+		unsigned platformIdx = min<unsigned>(s_platformId, platforms.size() - 1);
 
-		string platformName = platforms[_platformId].getInfo<CL_PLATFORM_NAME>();
+		string platformName = platforms[platformIdx].getInfo<CL_PLATFORM_NAME>();
 		ETHCL_LOG("Platform: " << platformName);
 
 		int platformId = OPENCL_PLATFORM_UNKNOWN;
@@ -406,7 +395,7 @@ bool CLMiner::init(
 		}
 
 		// get GPU device of the default platform
-		vector<cl::Device> devices = getDevices(platforms, _platformId);
+		vector<cl::Device> devices = getDevices(platforms, platformIdx);
 		if (devices.empty())
 		{
 			ETHCL_LOG("No OpenCL devices found.");
@@ -414,7 +403,8 @@ bool CLMiner::init(
 		}
 
 		// use selected device
-		cl::Device& device = devices[min<unsigned>(_deviceId, devices.size() - 1)];
+		unsigned deviceId = s_devices[index()] > -1 ? s_devices[index()] : index();
+		cl::Device& device = devices[min<unsigned>(deviceId, devices.size() - 1)];
 		string device_version = device.getInfo<CL_DEVICE_VERSION>();
 		ETHCL_LOG("Device:   " << device.getInfo<CL_DEVICE_NAME>() << " / " << device_version);
 
@@ -452,21 +442,21 @@ bool CLMiner::init(
 		m_queue = cl::CommandQueue(m_context, device);
 
 		// make sure that global work size is evenly divisible by the local workgroup size
-		m_workgroupSize = _workgroupSize;
-		m_globalWorkSize = _initialGlobalWorkSize;
-		if (m_globalWorkSize % _workgroupSize != 0)
-			m_globalWorkSize = ((m_globalWorkSize / _workgroupSize) + 1) * _workgroupSize;
+		m_workgroupSize = s_workgroupSize;
+		m_globalWorkSize = s_initialGlobalWorkSize;
+		if (m_globalWorkSize % m_workgroupSize != 0)
+			m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
 
-		uint64_t dagSize = ethash_get_datasize(_light->block_number);
+		uint64_t dagSize = ethash_get_datasize(light->light->block_number);
 		uint32_t dagSize128 = (unsigned)(dagSize / ETHASH_MIX_BYTES);
-		uint32_t lightSize64 = (unsigned)(_lightSize / sizeof(node));
+		uint32_t lightSize64 = (unsigned)(light->data().size() / sizeof(node));
 
 		// patch source code
 		// note: CLMiner_kernel is simply ethash_cl_miner_kernel.cl compiled
 		// into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
 		// TODO: Just use C++ raw string literal.
 		string code(CLMiner_kernel, CLMiner_kernel + sizeof(CLMiner_kernel));
-		addDefinition(code, "GROUP_SIZE", _workgroupSize);
+		addDefinition(code, "GROUP_SIZE", m_workgroupSize);
 		addDefinition(code, "DAG_SIZE", dagSize128);
 		addDefinition(code, "LIGHT_SIZE", lightSize64);
 		addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
@@ -492,14 +482,14 @@ bool CLMiner::init(
 		try
 		{
 			ETHCL_LOG("Creating cache buffer");
-			m_light = cl::Buffer(m_context, CL_MEM_READ_ONLY, _lightSize);
+			m_light = cl::Buffer(m_context, CL_MEM_READ_ONLY, light->data().size());
 			ETHCL_LOG("Creating DAG buffer");
 			m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, dagSize);
 			ETHCL_LOG("Loading kernels");
 			m_searchKernel = cl::Kernel(program, "ethash_search");
 			m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
 			ETHCL_LOG("Writing cache buffer");
-			m_queue.enqueueWriteBuffer(m_light, CL_TRUE, 0, _lightSize, _lightData);
+			m_queue.enqueueWriteBuffer(m_light, CL_TRUE, 0, light->data().size(), light->data().data());
 		}
 		catch (cl::Error const& err)
 		{
@@ -532,7 +522,7 @@ bool CLMiner::init(
 		for (uint32_t i = 0; i < fullRuns; i++)
 		{
 			m_dagKernel.setArg(0, i * m_globalWorkSize);
-			m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, m_globalWorkSize, _workgroupSize);
+			m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
 			m_queue.finish();
 			cllog << "DAG" << int(100.0f * i / fullRuns) << '%';
 		}
