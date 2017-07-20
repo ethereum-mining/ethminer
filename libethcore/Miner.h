@@ -31,9 +31,7 @@
 #include <libdevcore/Worker.h>
 #include "EthashAux.h"
 
-#define MINER_WAIT_STATE_UNKNOWN 0
 #define MINER_WAIT_STATE_WORK	 1
-#define MINER_WAIT_STATE_DAG	 2
 
 
 #define DAG_LOAD_MODE_PARALLEL	 0
