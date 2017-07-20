@@ -45,8 +45,8 @@
 
 using namespace std;
 
-unsigned const ethash_cl_miner::c_defaultLocalWorkSize = 64;
-unsigned const ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier = 4096; // * CL_DEFAULT_LOCAL_WORK_SIZE
+unsigned const ethash_cl_miner::c_defaultLocalWorkSize = 128;
+unsigned const ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier = 8192; // * CL_DEFAULT_LOCAL_WORK_SIZE
 
 // TODO: If at any point we can use libdevcore in here then we should switch to using a LogChannel
 #define ETHCL_LOG(_contents) std::cout << "[OpenCL] " << _contents << std::endl
