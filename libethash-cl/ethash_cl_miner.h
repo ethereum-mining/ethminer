@@ -24,7 +24,7 @@
 #include <functional>
 #include <libethash/ethash.h>
 
-namespace dev { namespace eth { class EthashCLHook; }}
+namespace dev { namespace eth { class CLMiner; }}
 
 class ethash_cl_miner
 {
@@ -43,7 +43,7 @@ public:
 		unsigned _workgroupSize,
 		unsigned initialGlobalWorkSize
 		);
-	void search(uint8_t const* _header, uint64_t _target, dev::eth::EthashCLHook& _hook, uint64_t _startN);
+	void search(uint8_t const* _header, uint64_t _target, dev::eth::CLMiner& _hook, uint64_t _startN);
 
 private:
 	cl::Context m_context;
