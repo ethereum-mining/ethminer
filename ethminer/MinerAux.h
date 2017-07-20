@@ -829,7 +829,6 @@ private:
 					f.failedSolution();
 					cwarn << "FAILURE: GPU gave incorrect result!";
 				}
-				current.reset();
 			}
 			catch (jsonrpc::JsonRpcException&)
 			{
