@@ -79,7 +79,7 @@ std::vector<cl::Platform> getPlatforms()
 std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId)
 {
 	vector<cl::Device> devices;
-	unsigned platform_num = min<unsigned>(_platformId, _platforms.size() - 1);
+	size_t platform_num = min<size_t>(_platformId, _platforms.size() - 1);
 	try
 	{
 		_platforms[platform_num].getDevices(
