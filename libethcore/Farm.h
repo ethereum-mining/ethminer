@@ -115,7 +115,6 @@ public:
 	{
 		Guard l(x_minerWork);
 		m_miners.clear();
-		m_work.reset();
 		m_isMining = false;
 	}
 	
@@ -201,21 +200,10 @@ private:
 	 * @param _wp The WorkPackage that the Solution is for.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
-	bool submitProof(Solution const& _s, Miner* _m) override
+	bool submitProof(Solution const& _s) override
 	{
-		if (m_onSolutionFound && m_onSolutionFound(_s))
-		{
-			if (x_minerWork.try_lock())
-			{
-				for (std::shared_ptr<Miner> const& m: m_miners)
-					if (m.get() != _m)
-						m->setWork();
-				m_work.reset();
-				x_minerWork.unlock();
-				return true;
-			}
-		}
-		return false;
+		assert(m_onSolutionFound);
+		return m_onSolutionFound(_s);
 	}
 
 	void resetTimer()
