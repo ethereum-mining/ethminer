@@ -173,9 +173,6 @@ public:
 
 protected:
 
-
-	// REQUIRED TO BE REIMPLEMENTED BY A SUBCLASS:
-
 	/**
 	 * @brief Begin working on a given work package, discarding any previous work.
 	 * @param _work The package for which to find a solution.
@@ -187,16 +184,7 @@ protected:
 	 */
 	virtual void pause() = 0;
 
-	// AVAILABLE FOR A SUBCLASS TO CALL:
-
-	/**
-	 * @brief Notes that the Miner found a solution.
-	 * @param _s The solution.
-	 */
-	void submitProof(Solution const& _s)
-	{
-		m_farm.submitProof(_s);
-	}
+	FarmFace& farm() { return m_farm; }
 
 	WorkPackage const& work() const { Guard l(x_work); return m_work; }
 

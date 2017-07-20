@@ -117,7 +117,7 @@ void EthashCUDAMiner::report(uint64_t _nonce)
 	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
-		submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
+		farm().submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
 }
 
 void EthashCUDAMiner::kickOff()
