@@ -114,9 +114,8 @@ unsigned CLMiner::s_platformId = 0;
 unsigned CLMiner::s_numInstances = 0;
 int CLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
-CLMiner::CLMiner(ConstructionInfo const& _ci):
-	Miner(_ci),
-	Worker("cl-" + std::to_string(_ci.second))
+CLMiner::CLMiner(FarmFace& _farm, unsigned _index):
+	Miner("cl-", _farm, _index)
 {}
 
 CLMiner::~CLMiner()
@@ -131,7 +130,7 @@ void CLMiner::report(uint64_t _nonce)
 	// TODO: Why re-evaluating?
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
-		submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
+		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
 	else
 		cwarn << "Invalid solution";
 }
@@ -167,7 +166,7 @@ void CLMiner::workLoop()
 		{
 			if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
 			{
-				while (s_dagLoadIndex < index())
+				while (s_dagLoadIndex < index)
 					this_thread::sleep_for(chrono::seconds(1));
 				++s_dagLoadIndex;
 			}
@@ -179,7 +178,7 @@ void CLMiner::workLoop()
 
 		uint64_t startNonce = 0;
 		if (w.exSizeBits >= 0)
-			startNonce = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
+			startNonce = w.startNonce | ((uint64_t)index << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
 		else
 			startNonce = randomNonce();
 
@@ -398,7 +397,7 @@ bool CLMiner::init(const h256& seed)
 		}
 
 		// use selected device
-		unsigned deviceId = s_devices[index()] > -1 ? s_devices[index()] : index();
+		unsigned deviceId = s_devices[index] > -1 ? s_devices[index] : index;
 		cl::Device& device = devices[min<unsigned>(deviceId, devices.size() - 1)];
 		string device_version = device.getInfo<CL_DEVICE_VERSION>();
 		ETHCL_LOG("Device:   " << device.getInfo<CL_DEVICE_NAME>() << " / " << device_version);

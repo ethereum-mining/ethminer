@@ -37,7 +37,8 @@ namespace eth
 	class EthashCUDAHook : public ethash_cuda_miner::search_hook
 	{
 	public:
-		EthashCUDAHook(EthashCUDAMiner* _owner) : m_owner(_owner) {}
+		EthashCUDAHook(EthashCUDAMiner& _owner): m_owner(_owner) {}
+
 		EthashCUDAHook(EthashCUDAHook const&) = delete;
 
 		void abort()
@@ -46,7 +47,6 @@ namespace eth
 				UniqueGuard l(x_all);
 				if (m_aborted)
 					return;
-				//		cdebug << "Attempting to abort";
 
 				m_abort = true;
 			}
@@ -54,10 +54,6 @@ namespace eth
 			// we hang around on this thread waiting for them to point out that they have aborted since
 			// otherwise we may end up deleting this object prior to searched()/found() being called.
 			m_aborted.wait(true);
-			//		for (unsigned timeout = 0; timeout < 100 && !m_aborted; ++timeout)
-			//			std::this_thread::sleep_for(chrono::milliseconds(30));
-			//		if (!m_aborted)
-			//			cwarn << "Couldn't abort. Abandoning OpenCL process.";
 		}
 
 		void reset()
@@ -69,27 +65,25 @@ namespace eth
 	protected:
 		virtual bool found(uint64_t const* _nonces, uint32_t _count) override
 		{
-			m_owner->report(_nonces[0]);
-			return m_owner->shouldStop();
+			m_owner.report(_nonces[0]);
+			return m_owner.shouldStop();
 		}
 
 		virtual bool searched(uint64_t _startNonce, uint32_t _count) override
 		{
+			(void) _startNonce;  // FIXME: unusued arg.
 			UniqueGuard l(x_all);
-			//		std::cerr << "Searched " << _count << " from " << _startNonce << std::endl;
-			m_owner->accumulateHashes(_count);
-			m_last = _startNonce + _count;
-			if (m_abort || m_owner->shouldStop())
+			m_owner.accumulateHashes(_count);
+			if (m_abort || m_owner.shouldStop())
 				return (m_aborted = true);
 			return false;
 		}
 
 	private:
 		Mutex x_all;
-		uint64_t m_last;
 		bool m_abort = false;
 		Notified<bool> m_aborted = { true };
-		EthashCUDAMiner* m_owner = nullptr;
+		EthashCUDAMiner& m_owner;
 	};
 }
 }
@@ -99,12 +93,10 @@ unsigned EthashCUDAMiner::s_deviceId = 0;
 unsigned EthashCUDAMiner::s_numInstances = 0;
 int EthashCUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
-EthashCUDAMiner::EthashCUDAMiner(ConstructionInfo const& _ci) :
-	Miner(_ci),
-	Worker("cudaminer" + toString(index())),
-m_hook( new EthashCUDAHook(this))
-{
-}
+EthashCUDAMiner::EthashCUDAMiner(FarmFace& _farm, unsigned _index) :
+	Miner("CUDA", _farm, _index),
+	m_hook(new EthashCUDAHook(*this))  // FIXME!
+{}
 
 EthashCUDAMiner::~EthashCUDAMiner()
 {
@@ -119,7 +111,7 @@ void EthashCUDAMiner::report(uint64_t _nonce)
 	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
-		submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
+		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
 }
 
 void EthashCUDAMiner::kickOff()
@@ -136,11 +128,11 @@ void EthashCUDAMiner::workLoop()
 		cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
 		if (!m_miner || m_minerSeed != w.seed)
 		{
-			unsigned device = s_devices[index()] > -1 ? s_devices[index()] : index();
+			unsigned device = s_devices[index] > -1 ? s_devices[index] : index;
 
 			if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
 			{
-				while (s_dagLoadIndex < index()) {
+				while (s_dagLoadIndex < index) {
 					this_thread::sleep_for(chrono::seconds(1));
 				}
 			}
@@ -190,7 +182,7 @@ void EthashCUDAMiner::workLoop()
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
 		uint64_t startN = w.startNonce;
 		if (w.exSizeBits >= 0)
-			startN = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
+			startN = w.startNonce | ((uint64_t)index << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
 		m_miner->search(w.header.data(), upper64OfBoundary, *m_hook, (w.exSizeBits >= 0), startN);
 	}
 	catch (std::runtime_error const& _e)
