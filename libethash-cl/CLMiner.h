@@ -27,13 +27,45 @@
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
 
-class ethash_cl_miner;
+#define CL_HPP_TARGET_OPENCL_VERSION 120
+#define CL_HPP_MINIMUM_OPENCL_VERSION 110
+#define CL_HPP_ENABLE_EXCEPTIONS 1
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wignored-qualifiers"
+#endif
+
+#include "CL/cl.hpp"
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+
+// apple fix
+#ifndef CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV
+#define CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV       0x4000
+#endif
+
+#ifndef CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV
+#define CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV       0x4001
+#endif
+
+#define OPENCL_PLATFORM_UNKNOWN 0
+#define OPENCL_PLATFORM_NVIDIA  1
+#define OPENCL_PLATFORM_AMD     2
+#define OPENCL_PLATFORM_CLOVER  3
+
 
 namespace dev
 {
 namespace eth
 {
-class EthashCLHook;
 
 class CLMiner: public Miner, Worker
 {
@@ -44,10 +76,11 @@ public:
 	/// Default value of the global work size as a multiplier of the local work size
 	static const unsigned c_defaultGlobalWorkSizeMultiplier = 8192;
 
-	friend class dev::eth::EthashCLHook;
-
 	CLMiner(ConstructionInfo const& _ci);
 	~CLMiner();
+
+	bool found(uint64_t nonce);
+	bool searched(uint32_t _count);
 
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 	static unsigned getNumDevices();
@@ -77,12 +110,27 @@ private:
 	void workLoop() override;
 	bool report(uint64_t _nonce);
 
-	using Miner::accumulateHashes;
+	bool init(const h256& seed);
 
-	EthashCLHook* m_hook = nullptr;
-	ethash_cl_miner* m_miner = nullptr;
+	Mutex x_hook;
+	bool m_hook_abort = false;
+	Notified<bool> m_hook_aborted = {true};
 
-	h256 m_minerSeed;		///< Last seed in m_miner
+	cl::Context m_context;
+	cl::CommandQueue m_queue;
+	cl::Kernel m_searchKernel;
+	cl::Kernel m_dagKernel;
+	cl::Buffer m_dag;
+	cl::Buffer m_light;
+	cl::Buffer m_header;
+	cl::Buffer m_searchBuffer;
+	unsigned m_globalWorkSize = 0;
+	unsigned m_workgroupSize = 0;
+
+	/// The seed the miner was initialized with.
+	/// Init with non-zero hash to distinct from the seed of epoch 0.
+	h256 m_seed = h256{1u};
+
 	static unsigned s_platformId;
 	static unsigned s_numInstances;
 	static int s_devices[16];

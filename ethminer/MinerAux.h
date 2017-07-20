@@ -706,7 +706,7 @@ private:
 				time++;
 			}
 			cnote << "Difficulty:" << difficulty << "  Nonce:" << solution.nonce;
-			if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
+			if (EthashAux::eval(current.seed, current.header, solution.nonce).value < current.boundary)
 			{
 				cnote << "SUCCESS: GPU gave correct result!";
 			}
@@ -721,11 +721,11 @@ private:
 			genesis.setDifficulty(u256(1) << difficulty);
 			genesis.noteDirty();
 
-			current.headerHash = h256::random();
+			current.header = h256::random();
 			current.boundary = genesis.boundary();
 			minelog << "Generated random work package:";
-			minelog << "  Header-hash:" << current.headerHash.hex();
-			minelog << "  Seedhash:" << current.seedHash.hex();
+			minelog << "  Header-hash:" << current.header.hex();
+			minelog << "  Seedhash:" << current.seed.hex();
 			minelog << "  Target: " << h256(current.boundary).hex();
 			f.setWork(current);
 
@@ -776,7 +776,7 @@ private:
 					auto mp = f.miningProgress();
 					f.resetMiningProgress();
 					if (current)
-						minelog << "Mining on PoWhash" << "#" + (current.headerHash.hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
+						minelog << "Mining on" << current.header << ": " << mp << f.getSolutionStats();
 					else
 						minelog << "Getting work package...";
 
@@ -796,13 +796,13 @@ private:
 					h256 hh(v[0].asString());
 					h256 newSeedHash(v[1].asString());
 
-					if (hh != current.headerHash)
+					if (hh != current.header)
 					{
 						x_current.lock();
-						current.headerHash = hh;
-						current.seedHash = newSeedHash;
+						current.header = hh;
+						current.seed = newSeedHash;
 						current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
-						minelog << "Got work package: #" + current.headerHash.hex().substr(0,8);
+						minelog << "Got work package: #" + current.header.hex().substr(0,8);
 						f.setWork(current);
 						x_current.unlock();
 					}
@@ -918,7 +918,7 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << "Mining on PoWhash" << "#" + (client.currentHeaderHash().hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
+						minelog << "Mining on" << client.currentHeaderHash() << ": " << mp << f.getSolutionStats();
 					}
 					else if (client.waitState() == MINER_WAIT_STATE_WORK)
 					{
@@ -957,7 +957,7 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << "Mining on PoWhash" << "#" + (client.currentHeaderHash().hex().substr(0, 8)) << ": " << mp << f.getSolutionStats();
+						minelog << "Mining on" << client.currentHeaderHash() << ": " << mp << f.getSolutionStats();
 					}
 					else if (client.waitState() == MINER_WAIT_STATE_WORK)
 					{
