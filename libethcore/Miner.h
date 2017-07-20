@@ -137,16 +137,16 @@ public:
  * @brief A miner - a member and adoptee of the Farm.
  * @warning Not threadsafe. It is assumed Farm will synchronise calls to/from this class.
  */
-class Miner
+class Miner: public Worker
 {
 public:
-	using ConstructionInfo = std::pair<FarmFace*, unsigned>;
-
-	Miner(ConstructionInfo const& _ci):
-		m_farm(_ci.first),
-		m_index(_ci.second)
+	Miner(std::string const& _name, FarmFace& _farm, size_t _index):
+		Worker(_name + std::to_string(_index)),
+		index(_index),
+		farm(_farm)
 	{}
-	virtual ~Miner() {}
+
+	virtual ~Miner() = default;
 
 	void setWork(WorkPackage const& _work)
 	{
@@ -169,12 +169,7 @@ public:
 
 	void resetHashCount() { m_hashCount = 0; }
 
-	unsigned index() const { return m_index; }
-
 protected:
-
-
-	// REQUIRED TO BE REIMPLEMENTED BY A SUBCLASS:
 
 	/**
 	 * @brief Begin working on a given work package, discarding any previous work.
@@ -187,18 +182,6 @@ protected:
 	 */
 	virtual void pause() = 0;
 
-	// AVAILABLE FOR A SUBCLASS TO CALL:
-
-	/**
-	 * @brief Notes that the Miner found a solution.
-	 * @param _s The solution.
-	 */
-	void submitProof(Solution const& _s)
-	{
-		assert(m_farm);
-		m_farm->submitProof(_s);
-	}
-
 	WorkPackage const& work() const { Guard l(x_work); return m_work; }
 
 	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
@@ -207,10 +190,11 @@ protected:
 	static volatile unsigned s_dagLoadIndex;
 	static unsigned s_dagCreateDevice;
 	static volatile void* s_dagInHostMemory;
-private:
-	FarmFace* m_farm = nullptr;
-	unsigned m_index;
 
+	const size_t index = 0;
+	FarmFace& farm;
+
+private:
 	uint64_t m_hashCount = 0;
 
 	WorkPackage m_work;
