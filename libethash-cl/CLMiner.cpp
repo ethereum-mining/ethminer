@@ -98,17 +98,15 @@ std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, 
 
 }
 
-bool CLMiner::found(uint64_t const* _nonces, uint32_t _count)
+bool CLMiner::found(uint64_t nonce)
 {
-	for (uint32_t i = 0; i < _count; ++i)
-		if (report(_nonces[i]))
-			return (m_hook_aborted = true);
+	if (report(nonce))
+		return (m_hook_aborted = true);
 	return shouldStop();
 }
 
-bool CLMiner::searched(uint64_t _startNonce, uint32_t _count)
+bool CLMiner::searched(uint32_t _count)
 {
-	(void) _startNonce;
 	UniqueGuard l(x_hook);
 	accumulateHashes(_count);
 	if (m_hook_abort || shouldStop())
@@ -214,15 +212,15 @@ void CLMiner::workLoop()
 			// TODO: could use pinned host pointer instead.
 			uint32_t results[c_maxSearchResults + 1];
 			m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, 0, sizeof(results), &results);
-			unsigned num_found = min<unsigned>(results[0], c_maxSearchResults);
 
-			uint64_t nonces[c_maxSearchResults];
-			for (unsigned i = 0; i != num_found; ++i)
-				nonces[i] = startNonce + results[i + 1];
-
-			// Reset search buffer if any solution found.
-			if (num_found)
+			uint64_t nonce = 0;
+			if (results[0] > 0)
+			{
+				// Ignore results except the first one.
+				nonce = startNonce + results[1];
+				// Reset search buffer if any solution found.
 				m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
+			}
 
 			// Increase start nonce for following kernel execution.
 			startNonce += m_globalWorkSize;
@@ -233,8 +231,8 @@ void CLMiner::workLoop()
 
 			// Report results while the kernel is running.
 			// It takes some time because ethash must be re-evaluated on CPU.
-			bool exit = num_found && found(nonces, num_found);
-			exit |= searched(startNonce, m_globalWorkSize); // always report searched before exit
+			bool exit = nonce && found(nonce);
+			exit |= searched(m_globalWorkSize); // always report searched before exit
 			if (exit)
 			{
 				// Make sure the last buffer write has finished --
