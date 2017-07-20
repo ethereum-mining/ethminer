@@ -37,10 +37,9 @@
 #include <libdevcore/SHA3.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/EthashCUDAMiner.h>
-#include <libethcore/EthashGPUMiner.h>
 #include <libethcore/Farm.h>
 #if ETH_ETHASHCL
-#include <libethash-cl/ethash_cl_miner.h>
+#include <libethash-cl/CLMiner.h>
 #endif
 #if ETH_ETHASHCUDA
 #include <libethash-cuda/ethash_cuda_miner.h>
@@ -453,7 +452,7 @@ public:
 		{
 #if ETH_ETHASHCL
 			if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
-				EthashGPUMiner::listDevices();
+				CLMiner::listDevices();
 #endif
 #if ETH_ETHASHCUDA
 			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
@@ -467,21 +466,20 @@ public:
 #if ETH_ETHASHCL
 			if (m_openclDeviceCount > 0)
 			{
-				EthashGPUMiner::setDevices(m_openclDevices, m_openclDeviceCount);
+				CLMiner::setDevices(m_openclDevices, m_openclDeviceCount);
 				m_miningThreads = m_openclDeviceCount;
 			}
 
-			if (!EthashGPUMiner::configureGPU(
+			if (!CLMiner::configureGPU(
 					m_localWorkSize,
 					m_globalWorkSizeMultiplier,
 					m_openclPlatform,
-					m_openclDevice,
 					0,
 					m_dagLoadMode,
 					m_dagCreateDevice
 				))
 				exit(1);
-			EthashGPUMiner::setNumInstances(m_miningThreads);
+			CLMiner::setNumInstances(m_miningThreads);
 #else
 			cerr << "Selected GPU mining without having compiled with -DETHASHCL=1" << endl;
 			exit(1);
@@ -571,8 +569,8 @@ public:
 			<< "        sequential  - load DAG on GPUs one after another. Use this when the miner crashes during DAG generation" << endl
 			<< "        single <n>  - generate DAG on device n, then copy to other devices" << endl
 #if ETH_ETHASHCL
-			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
-			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << toString(ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier) << " * " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
+			<< "    --cl-local-work Set the OpenCL local work size. Default is " << CLMiner::c_defaultLocalWorkSize << endl
+			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << CLMiner::c_defaultGlobalWorkSizeMultiplier << " * " << CLMiner::c_defaultLocalWorkSize << endl
 #endif
 #if ETH_ETHASHCUDA
 			<< "    --cuda-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
@@ -602,7 +600,7 @@ private:
 		Farm f;
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{&EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
+		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](Miner::ConstructionInfo ci){ return new CLMiner(ci); }};
 #endif
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
@@ -666,7 +664,7 @@ private:
 		Farm f;
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{ &EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
+		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](Miner::ConstructionInfo ci){ return new CLMiner(ci); } };
 #endif
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
@@ -739,7 +737,7 @@ private:
 	{
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{&EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
+		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](Miner::ConstructionInfo ci){ return new CLMiner(ci); }};
 #endif
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
@@ -875,7 +873,7 @@ private:
 	{
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{ &EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
+		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](Miner::ConstructionInfo ci){ return new CLMiner(ci); } };
 #endif
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
@@ -980,15 +978,14 @@ private:
 	bool m_running = true;
 	MinerType m_minerType = MinerType::Mixed;
 	unsigned m_openclPlatform = 0;
-	unsigned m_openclDevice = 0;
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 #if ETH_ETHASHCL
 	unsigned m_openclDeviceCount = 0;
 	unsigned m_openclDevices[16];
 #if !ETH_ETHASHCUDA
-	unsigned m_globalWorkSizeMultiplier = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier;
-	unsigned m_localWorkSize = ethash_cl_miner::c_defaultLocalWorkSize;
+	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
+	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
 #endif
 #endif
 #if ETH_ETHASHCUDA

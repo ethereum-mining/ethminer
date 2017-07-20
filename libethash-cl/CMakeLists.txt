@@ -13,9 +13,11 @@ add_custom_command(
 )
 add_custom_target(clbin2h DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/ethash_cl_miner_kernel.h ${CMAKE_CURRENT_SOURCE_DIR}/ethash_cl_miner_kernel.cl)
 
-aux_source_directory(. SRC_LIST)
-file(GLOB OUR_HEADERS "*.h")
-set(HEADERS ${OUR_HEADERS} ${CMAKE_CURRENT_BINARY_DIR}/ethash_cl_miner_kernel.h)
+set(SOURCES
+	ethash_cl_miner.h ethash_cl_miner.cpp
+	CLMiner.h CLMiner.cpp
+	${CMAKE_CURRENT_BINARY_DIR}/ethash_cl_miner_kernel.h
+)
 
 if(APPLE)
 	# On macOS use system OpenCL library.
@@ -28,6 +30,6 @@ endif()
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(..)
 
-add_library(ethash-cl ${SRC_LIST} ${HEADERS})
-target_link_libraries(ethash-cl PUBLIC ethash)
+add_library(ethash-cl ${SOURCES})
+target_link_libraries(ethash-cl PUBLIC ethcore ethash)
 target_link_libraries(ethash-cl PRIVATE OpenCL::OpenCL)

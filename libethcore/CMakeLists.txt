@@ -1,10 +1,16 @@
-file(GLOB SOURCES "*.cpp")
-file(GLOB HEADERS "*.h")
+set(SOURCES
+	BlockHeader.h BlockHeader.cpp
+	EthashAux.h EthashAux.cpp
+	EthashCUDAMiner.h EthashCUDAMiner.cpp
+	Exceptions.h
+	Farm.h
+	Miner.h Miner.cpp
+)
 
 
 include_directories(BEFORE ..)
 
-add_library(ethcore ${SOURCES} ${HEADERS})
+add_library(ethcore ${SOURCES})
 target_link_libraries(ethcore ethash devcore)
 
 if(ETHASHCL)

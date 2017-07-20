@@ -41,39 +41,18 @@ public:
 
 	ethash_cl_miner() = default;
 
-	static bool searchForAllDevices(unsigned _platformId, std::function<bool(cl::Device const&)> _callback);
-	static void doForAllDevices(unsigned _platformId, std::function<void(cl::Device const&)> _callback);
-	static void doForAllDevices(std::function<void(cl::Device const&)> _callback);
-	static unsigned getNumDevices(unsigned _platformId = 0);
-	static std::string platform_info(unsigned _platformId = 0, unsigned _deviceId = 0);
-	static void listDevices();
-	static bool configureGPU(
-		unsigned _platformId,
-		unsigned _localWorkSize,
-		unsigned _globalWorkSize,
-		uint64_t _currentBlock
-	);
-
 	bool init(
 		ethash_light_t _light,
 		uint8_t const* _lightData,
 		uint64_t _lightSize,
 		unsigned _platformId,
-		unsigned _deviceId
+		unsigned _deviceId,
+		unsigned _workgroupSize,
+		unsigned initialGlobalWorkSize
 		);
 	void search(uint8_t const* _header, uint64_t _target, search_hook& _hook, uint64_t _startN);
 
-	/* -- default values -- */
-	/// Default value of the local work size. Also known as workgroup size.
-	static unsigned const c_defaultLocalWorkSize;
-	/// Default value of the global work size as a multiplier of the local work size
-	static unsigned const c_defaultGlobalWorkSizeMultiplier;
-
 private:
-
-	static std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId);
-	static std::vector<cl::Platform> getPlatforms();
-
 	cl::Context m_context;
 	cl::CommandQueue m_queue;
 	cl::Kernel m_searchKernel;
@@ -82,10 +61,6 @@ private:
 	cl::Buffer m_light;
 	cl::Buffer m_header;
 	cl::Buffer m_searchBuffer;
-	unsigned m_globalWorkSize;
-
-	/// The local work size for the search
-	static unsigned s_workgroupSize;
-	/// The initial global work size for the searches
-	static unsigned s_initialGlobalWorkSize;
+	unsigned m_globalWorkSize = 0;
+	unsigned m_workgroupSize = 0;
 };
