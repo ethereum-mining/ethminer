@@ -140,7 +140,7 @@ inline std::string toHex(u256 val, HexPrefix prefix = HexPrefix::DontAdd)
 inline std::string toHex(uint64_t _n)
 {
 	std::ostringstream ss;
-	ss << std::hex << _n;
+	ss << std::hex << std::setfill('0') << std::setw(sizeof(_n) * 2) << _n;
 	return ss.str();
 }
 
