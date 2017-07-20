@@ -34,46 +34,6 @@ namespace dev
 namespace eth
 {
 
-class CLMiner;
-
-class EthashCLHook
-{
-public:
-	EthashCLHook(CLMiner* _owner): m_owner(_owner) {}
-	EthashCLHook(EthashCLHook const&) = delete;
-
-	void abort()
-	{
-		{
-			UniqueGuard l(x_all);
-			if (m_aborted)
-				return;
-
-			m_abort = true;
-		}
-		// m_abort is true so now searched()/found() will return true to abort the search.
-		// we hang around on this thread waiting for them to point out that they have aborted since
-		// otherwise we may end up deleting this object prior to searched()/found() being called.
-		m_aborted.wait(true);
-	}
-
-	void reset()
-	{
-		UniqueGuard l(x_all);
-		m_aborted = m_abort = false;
-	}
-
-	bool found(uint64_t const* _nonces, uint32_t _count);
-
-	bool searched(uint64_t _startNonce, uint32_t _count);
-
-private:
-	Mutex x_all;
-	bool m_abort = false;
-	Notified<bool> m_aborted = {true};
-	CLMiner* m_owner = nullptr;
-};
-
 class CLMiner: public Miner, Worker
 {
 public:
@@ -83,10 +43,11 @@ public:
 	/// Default value of the global work size as a multiplier of the local work size
 	static const unsigned c_defaultGlobalWorkSizeMultiplier = 8192;
 
-	friend class dev::eth::EthashCLHook;
-
 	CLMiner(ConstructionInfo const& _ci);
 	~CLMiner();
+
+	bool found(uint64_t const* _nonces, uint32_t _count);
+	bool searched(uint64_t _startNonce, uint32_t _count);
 
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 	static unsigned getNumDevices();
@@ -118,7 +79,10 @@ private:
 
 	using Miner::accumulateHashes;
 
-	EthashCLHook m_hook;
+	Mutex x_hook;
+	bool m_hook_abort = false;
+	Notified<bool> m_hook_aborted = {true};
+
 	ethash_cl_miner* m_miner = nullptr;
 
 	h256 m_minerSeed;		///< Last seed in m_miner

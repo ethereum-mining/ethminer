@@ -77,21 +77,21 @@ std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, 
 	return devices;
 }
 
-bool EthashCLHook::found(uint64_t const* _nonces, uint32_t _count)
+bool CLMiner::found(uint64_t const* _nonces, uint32_t _count)
 {
 	for (uint32_t i = 0; i < _count; ++i)
-		if (m_owner->report(_nonces[i]))
-			return (m_aborted = true);
-	return m_owner->shouldStop();
+		if (report(_nonces[i]))
+			return (m_hook_aborted = true);
+	return shouldStop();
 }
 
-bool EthashCLHook::searched(uint64_t _startNonce, uint32_t _count)
+bool CLMiner::searched(uint64_t _startNonce, uint32_t _count)
 {
 	(void) _startNonce;
-	UniqueGuard l(x_all);
-	m_owner->accumulateHashes(_count);
-	if (m_abort || m_owner->shouldStop())
-		return (m_aborted = true);
+	UniqueGuard l(x_hook);
+	accumulateHashes(_count);
+	if (m_hook_abort || shouldStop())
+		return (m_hook_aborted = true);
 	return false;
 }
 
@@ -104,8 +104,7 @@ int CLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -
 
 CLMiner::CLMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
-	Worker("openclminer" + toString(index())),
-	m_hook(this)
+	Worker("openclminer" + toString(index()))
 {
 }
 
@@ -126,7 +125,10 @@ bool CLMiner::report(uint64_t _nonce)
 
 void CLMiner::kickOff()
 {
-	m_hook.reset();
+	{
+		UniqueGuard l(x_hook);
+		m_hook_aborted = m_hook_abort = false;
+	}
 	startWorking();
 }
 
@@ -177,7 +179,7 @@ void CLMiner::workLoop()
 			startNonce = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
 		else
 			startNonce = randomNonce();
-		m_miner->search(w.headerHash.data(), upper64OfBoundary, m_hook, startNonce);
+		m_miner->search(w.headerHash.data(), upper64OfBoundary, *this, startNonce);
 	}
 	catch (cl::Error const& _e)
 	{
@@ -189,7 +191,17 @@ void CLMiner::workLoop()
 
 void CLMiner::pause()
 {
-	m_hook.abort();
+	{
+		UniqueGuard l(x_hook);
+		if (m_hook_aborted)
+			return;
+
+		m_hook_abort = true;
+	}
+	// m_abort is true so now searched()/found() will return true to abort the search.
+	// we hang around on this thread waiting for them to point out that they have aborted since
+	// otherwise we may end up deleting this object prior to searched()/found() being called.
+	m_hook_aborted.wait(true);
 	stopWorking();
 }
 
