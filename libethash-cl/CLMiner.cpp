@@ -188,16 +188,61 @@ void CLMiner::workLoop()
 			s_dagLoadIndex++;
 		}
 
-		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
-
 		uint64_t startNonce = 0;
 		if (w.exSizeBits >= 0)
 			startNonce = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
 		else
 			startNonce = randomNonce();
 
+		// Upper 64 bits of the boundary.
+		const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
 
-		search(w.headerHash.data(), upper64OfBoundary, startNonce);
+		const byte* header = w.headerHash.data();
+		// Memory for zero-ing buffers. Cannot be static because crashes on macOS.
+		uint32_t const c_zero = 0;
+
+		// Update header constant buffer.
+		m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, 32, header);
+		m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
+
+		m_searchKernel.setArg(0, m_searchBuffer);  // Supply output buffer to kernel.
+		m_searchKernel.setArg(4, target);
+
+		while (true)
+		{
+			// Read results.
+			// TODO: could use pinned host pointer instead.
+			uint32_t results[c_maxSearchResults + 1];
+			m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, 0, sizeof(results), &results);
+			unsigned num_found = min<unsigned>(results[0], c_maxSearchResults);
+
+			uint64_t nonces[c_maxSearchResults];
+			for (unsigned i = 0; i != num_found; ++i)
+				nonces[i] = startNonce + results[i + 1];
+
+			// Reset search buffer if any solution found.
+			if (num_found)
+				m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
+
+			// Increase start nonce for following kernel execution.
+			startNonce += m_globalWorkSize;
+
+			// Run the kernel.
+			m_searchKernel.setArg(3, startNonce);
+			m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
+
+			// Report results while the kernel is running.
+			// It takes some time because ethash must be re-evaluated on CPU.
+			bool exit = num_found && found(nonces, num_found);
+			exit |= searched(startNonce, m_globalWorkSize); // always report searched before exit
+			if (exit)
+			{
+				// Make sure the last buffer write has finished --
+				// it reads local variable.
+				m_queue.finish();
+				break;
+			}
+		}
 	}
 	catch (cl::Error const& _e)
 	{
@@ -501,54 +546,4 @@ bool CLMiner::init(
 		return false;
 	}
 	return true;
-}
-
-
-void CLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_nonce)
-{
-	// Memory for zero-ing buffers. Cannot be static because crashes on macOS.
-	uint32_t const c_zero = 0;
-
-	// Update header constant buffer.
-	m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, 32, header);
-	m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
-
-	m_searchKernel.setArg(0, m_searchBuffer);  // Supply output buffer to kernel.
-	m_searchKernel.setArg(4, target);
-
-	while (true)
-	{
-		// Read results.
-		// TODO: could use pinned host pointer instead.
-		uint32_t results[c_maxSearchResults + 1];
-		m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, 0, sizeof(results), &results);
-		unsigned num_found = min<unsigned>(results[0], c_maxSearchResults);
-
-		uint64_t nonces[c_maxSearchResults];
-		for (unsigned i = 0; i != num_found; ++i)
-			nonces[i] = start_nonce + results[i + 1];
-
-		// Reset search buffer if any solution found.
-		if (num_found)
-			m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
-
-		// Increase start nonce for following kernel execution.
-		start_nonce += m_globalWorkSize;
-
-		// Run the kernel.
-		m_searchKernel.setArg(3, start_nonce);
-		m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
-
-		// Report results while the kernel is running.
-		// It takes some time because ethash must be re-evaluated on CPU.
-		bool exit = num_found && found(nonces, num_found);
-		exit |= searched(start_nonce, m_globalWorkSize); // always report searched before exit
-		if (exit)
-		{
-			// Make sure the last buffer write has finished --
-			// it reads local variable.
-			m_queue.finish();
-			break;
-		}
-	}
 }
