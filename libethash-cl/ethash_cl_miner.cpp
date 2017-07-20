@@ -247,7 +247,7 @@ bool ethash_cl_miner::init(
 }
 
 
-void ethash_cl_miner::search(uint8_t const* header, uint64_t target, EthashCLHook& hook, uint64_t start_nonce)
+void ethash_cl_miner::search(uint8_t const* header, uint64_t target, CLMiner& hook, uint64_t start_nonce)
 {
 	// Memory for zero-ing buffers. Cannot be static because crashes on macOS.
 	uint32_t const c_zero = 0;
