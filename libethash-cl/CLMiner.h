@@ -120,8 +120,6 @@ private:
 		unsigned initialGlobalWorkSize
 	);
 
-	void search(uint8_t const* _header, uint64_t _target, uint64_t _startN);
-
 	Mutex x_hook;
 	bool m_hook_abort = false;
 	Notified<bool> m_hook_aborted = {true};
