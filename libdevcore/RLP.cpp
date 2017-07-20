@@ -337,26 +337,3 @@ void RLPStream::pushCount(size_t _count, byte _base)
 	m_out.push_back((byte)(br + _base));	// max 8 bytes.
 	pushInt(_count, br);
 }
-
-static void streamOut(std::ostream& _out, dev::RLP const& _d, unsigned _depth = 0)
-{
-	if (_depth > 64)
-		_out << "<max-depth-reached>";
-	else if (_d.isNull())
-		_out << "null";
-	else if (_d.isInt())
-		_out << std::showbase << std::hex << std::nouppercase << _d.toInt<bigint>(RLP::LaissezFaire) << dec;
-	else if (_d.isData())
-		_out << escaped(_d.toString(), false);
-	else if (_d.isList())
-	{
-		_out << "[";
-		int j = 0;
-		for (auto i: _d)
-		{
-			_out << (j++ ? ", " : " ");
-			streamOut(_out, i, _depth + 1);
-		}
-		_out << " ]";
-	}
-}
