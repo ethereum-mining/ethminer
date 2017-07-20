@@ -27,47 +27,42 @@ using namespace chrono;
 using namespace dev;
 using namespace eth;
 
-h256 const& BlockHeader::seedHash() const
-{
-	if (!m_seedHash)
-		m_seedHash = EthashAux::seedHash((unsigned)m_number);
-	return m_seedHash;
-}
-
-EthashAux* EthashAux::get()
+EthashAux& EthashAux::get()
 {
 	static EthashAux instance;
-	return &instance;
+	return instance;
 }
 
 h256 EthashAux::seedHash(unsigned _number)
 {
 	unsigned epoch = _number / ETHASH_EPOCH_LENGTH;
-	Guard l(get()->x_epochs);
-	if (epoch >= get()->m_seedHashes.size())
+	EthashAux& ethash = EthashAux::get();
+	Guard l(ethash.x_epochs);
+	if (epoch >= ethash.m_seedHashes.size())
 	{
 		h256 ret;
 		unsigned n = 0;
-		if (!get()->m_seedHashes.empty())
+		if (!ethash.m_seedHashes.empty())
 		{
-			ret = get()->m_seedHashes.back();
-			n = get()->m_seedHashes.size() - 1;
+			ret = ethash.m_seedHashes.back();
+			n = ethash.m_seedHashes.size() - 1;
 		}
-		get()->m_seedHashes.resize(epoch + 1);
+		ethash.m_seedHashes.resize(epoch + 1);
 		for (; n <= epoch; ++n, ret = sha3(ret))
-			get()->m_seedHashes[n] = ret;
+			ethash.m_seedHashes[n] = ret;
 	}
-	return get()->m_seedHashes[epoch];
+	return ethash.m_seedHashes[epoch];
 }
 
 uint64_t EthashAux::number(h256 const& _seedHash)
 {
-	Guard l(get()->x_epochs);
+	EthashAux& ethash = EthashAux::get();
+	Guard l(ethash.x_epochs);
 	unsigned epoch = 0;
-	auto epochIter = get()->m_epochs.find(_seedHash);
-	if (epochIter == get()->m_epochs.end())
+	auto epochIter = ethash.m_epochs.find(_seedHash);
+	if (epochIter == ethash.m_epochs.end())
 	{
-		for (h256 h; h != _seedHash && epoch < 2048; ++epoch, h = sha3(h), get()->m_epochs[h] = epoch) {}
+		for (h256 h; h != _seedHash && epoch < 2048; ++epoch, h = sha3(h), ethash.m_epochs[h] = epoch) {}
 		if (epoch == 2048)
 		{
 			std::ostringstream error;
@@ -82,10 +77,13 @@ uint64_t EthashAux::number(h256 const& _seedHash)
 
 EthashAux::LightType EthashAux::light(h256 const& _seedHash)
 {
-	Guard l(get()->x_lights);
-	if (get()->m_lights.count(_seedHash))
-		return get()->m_lights.at(_seedHash);
-	return (get()->m_lights[_seedHash] = make_shared<LightAllocation>(_seedHash));
+	// TODO: Use epoch number instead of seed hash?
+
+	EthashAux& ethash = EthashAux::get();
+	Guard l(ethash.x_lights);
+	if (ethash.m_lights.count(_seedHash))
+		return ethash.m_lights.at(_seedHash);
+	return (ethash.m_lights[_seedHash] = make_shared<LightAllocation>(_seedHash));
 }
 
 EthashAux::LightAllocation::LightAllocation(h256 const& _seedHash)
@@ -119,7 +117,7 @@ Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, uint64_t 
 {
 	try
 	{
-		return EthashAux::get()->light(_seedHash)->compute(_headerHash, _nonce);
+		return get().light(_seedHash)->compute(_headerHash, _nonce);
 	}
 	catch(...)
 	{
