@@ -117,7 +117,7 @@ void EthashCUDAMiner::report(uint64_t _nonce)
 	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
-		farm().submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
+		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
 }
 
 void EthashCUDAMiner::kickOff()
@@ -134,11 +134,11 @@ void EthashCUDAMiner::workLoop()
 		cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
 		if (!m_miner || m_minerSeed != w.seed)
 		{
-			unsigned device = s_devices[index()] > -1 ? s_devices[index()] : index();
+			unsigned device = s_devices[index] > -1 ? s_devices[index] : index;
 
 			if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
 			{
-				while (s_dagLoadIndex < index()) {
+				while (s_dagLoadIndex < index) {
 					this_thread::sleep_for(chrono::seconds(1));
 				}
 			}
@@ -188,7 +188,7 @@ void EthashCUDAMiner::workLoop()
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
 		uint64_t startN = w.startNonce;
 		if (w.exSizeBits >= 0)
-			startN = w.startNonce | ((uint64_t)index() << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
+			startN = w.startNonce | ((uint64_t)index << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
 		m_miner->search(w.header.data(), upper64OfBoundary, *m_hook, (w.exSizeBits >= 0), startN);
 	}
 	catch (std::runtime_error const& _e)

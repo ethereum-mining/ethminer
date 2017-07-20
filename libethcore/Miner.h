@@ -142,8 +142,8 @@ class Miner: public Worker
 public:
 	Miner(std::string const& _name, FarmFace& _farm, size_t _index):
 		Worker(_name + std::to_string(_index)),
-		m_index(_index),
-		m_farm(_farm)
+		index(_index),
+		farm(_farm)
 	{}
 
 	virtual ~Miner() = default;
@@ -169,8 +169,6 @@ public:
 
 	void resetHashCount() { m_hashCount = 0; }
 
-	size_t index() const { return m_index; }
-
 protected:
 
 	/**
@@ -184,8 +182,6 @@ protected:
 	 */
 	virtual void pause() = 0;
 
-	FarmFace& farm() { return m_farm; }
-
 	WorkPackage const& work() const { Guard l(x_work); return m_work; }
 
 	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
@@ -194,10 +190,11 @@ protected:
 	static volatile unsigned s_dagLoadIndex;
 	static unsigned s_dagCreateDevice;
 	static volatile void* s_dagInHostMemory;
-private:
-	const size_t m_index = 0;
-	FarmFace& m_farm;
 
+	const size_t index = 0;
+	FarmFace& farm;
+
+private:
 	uint64_t m_hashCount = 0;
 
 	WorkPackage m_work;
