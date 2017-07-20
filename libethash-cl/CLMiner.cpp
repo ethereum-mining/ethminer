@@ -23,7 +23,7 @@
 
 #include "CLMiner.h"
 #include <libethash/internal.h>
-#include "ethash_cl_miner_kernel.h"
+#include "CLMiner_kernel.h"
 
 using namespace dev;
 using namespace eth;
@@ -398,9 +398,10 @@ bool CLMiner::init(
 		uint32_t lightSize64 = (unsigned)(_lightSize / sizeof(node));
 
 		// patch source code
-		// note: ETHASH_CL_MINER_KERNEL is simply ethash_cl_miner_kernel.cl compiled
+		// note: CLMiner_kernel is simply ethash_cl_miner_kernel.cl compiled
 		// into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
-		string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
+		// TODO: Just use C++ raw string literal.
+		string code(CLMiner_kernel, CLMiner_kernel + sizeof(CLMiner_kernel));
 		addDefinition(code, "GROUP_SIZE", _workgroupSize);
 		addDefinition(code, "DAG_SIZE", dagSize128);
 		addDefinition(code, "LIGHT_SIZE", lightSize64);
