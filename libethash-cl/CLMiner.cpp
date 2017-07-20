@@ -130,7 +130,7 @@ void CLMiner::report(uint64_t _nonce)
 	// TODO: Why re-evaluating?
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
-		submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
+		farm().submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
 	else
 		cwarn << "Invalid solution";
 }
