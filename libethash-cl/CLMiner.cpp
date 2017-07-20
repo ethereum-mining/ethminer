@@ -21,10 +21,9 @@
  * Determines the PoW algorithm.
  */
 
-#if ETH_ETHASHCL
-
-#include "EthashGPUMiner.h"
-#include <libethash-cl/ethash_cl_miner.h>
+#include "CLMiner.h"
+#include <libethash/internal.h>
+#include "ethash_cl_miner.h"
 
 using namespace dev;
 using namespace eth;
@@ -34,10 +33,55 @@ namespace dev
 namespace eth
 {
 
+unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
+unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
+
+// FIXME: Make local
+std::vector<cl::Platform> getPlatforms()
+{
+	vector<cl::Platform> platforms;
+	try
+	{
+		cl::Platform::get(&platforms);
+	}
+	catch(cl::Error const& err)
+	{
+#if defined(CL_PLATFORM_NOT_FOUND_KHR)
+		if (err.err() == CL_PLATFORM_NOT_FOUND_KHR)
+			cwarn << "No OpenCL platforms found";
+		else
+#endif
+			throw err;
+	}
+	return platforms;
+}
+
+// FIXME: Make local
+std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId)
+{
+	vector<cl::Device> devices;
+	unsigned platform_num = min<unsigned>(_platformId, _platforms.size() - 1);
+	try
+	{
+		_platforms[platform_num].getDevices(
+			CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR,
+			&devices
+		);
+	}
+	catch (cl::Error const& err)
+	{
+		// if simply no devices found return empty vector
+		if (err.err() != CL_DEVICE_NOT_FOUND)
+			throw err;
+	}
+	return devices;
+}
+
+
 class EthashCLHook: public ethash_cl_miner::search_hook
 {
 public:
-	EthashCLHook(EthashGPUMiner* _owner): m_owner(_owner) {}
+	EthashCLHook(CLMiner* _owner): m_owner(_owner) {}
 	EthashCLHook(EthashCLHook const&) = delete;
 
 	void abort()
@@ -89,32 +133,31 @@ private:
 	Mutex x_all;
 	bool m_abort = false;
 	Notified<bool> m_aborted = {true};
-	EthashGPUMiner* m_owner = nullptr;
+	CLMiner* m_owner = nullptr;
 };
 
 }
 }
 
-unsigned EthashGPUMiner::s_platformId = 0;
-unsigned EthashGPUMiner::s_deviceId = 0;
-unsigned EthashGPUMiner::s_numInstances = 0;
-int EthashGPUMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+unsigned CLMiner::s_platformId = 0;
+unsigned CLMiner::s_numInstances = 0;
+int CLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
-EthashGPUMiner::EthashGPUMiner(ConstructionInfo const& _ci):
+CLMiner::CLMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
 	Worker("openclminer" + toString(index())),
 	m_hook(new EthashCLHook(this))
 {
 }
 
-EthashGPUMiner::~EthashGPUMiner()
+CLMiner::~CLMiner()
 {
 	pause();
 	delete m_miner;
 	delete m_hook;
 }
 
-bool EthashGPUMiner::report(uint64_t _nonce)
+bool CLMiner::report(uint64_t _nonce)
 {
 	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	Result r = EthashAux::eval(w.seedHash, w.headerHash, _nonce);
@@ -123,7 +166,7 @@ bool EthashGPUMiner::report(uint64_t _nonce)
 	return false;
 }
 
-void EthashGPUMiner::kickOff()
+void CLMiner::kickOff()
 {
 	m_hook->reset();
 	startWorking();
@@ -138,7 +181,7 @@ uint64_t randomNonce()
 }
 }
 
-void EthashGPUMiner::workLoop()
+void CLMiner::workLoop()
 {
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
@@ -165,7 +208,7 @@ void EthashGPUMiner::workLoop()
 			light = EthashAux::light(w.seedHash);
 			bytesConstRef lightData = light->data();
 
-			m_miner->init(light->light, lightData.data(), lightData.size(), s_platformId,  device);
+			m_miner->init(light->light, lightData.data(), lightData.size(), s_platformId,  device, s_workgroupSize, s_initialGlobalWorkSize);
 			s_dagLoadIndex++;
 		}
 
@@ -186,32 +229,70 @@ void EthashGPUMiner::workLoop()
 	}
 }
 
-void EthashGPUMiner::pause()
+void CLMiner::pause()
 {
 	m_hook->abort();
 	stopWorking();
 }
 
-std::string EthashGPUMiner::platformInfo()
+unsigned CLMiner::getNumDevices()
 {
-	return ethash_cl_miner::platform_info(s_platformId, s_deviceId);
+	vector<cl::Platform> platforms = getPlatforms();
+	if (platforms.empty())
+		return 0;
+
+	vector<cl::Device> devices = getDevices(platforms, s_platformId);
+	if (devices.empty())
+	{
+		cwarn << "No OpenCL devices found.";
+		return 0;
+	}
+	return devices.size();
 }
 
-unsigned EthashGPUMiner::getNumDevices()
+void CLMiner::listDevices()
 {
-	return ethash_cl_miner::getNumDevices(s_platformId);
+	string outString ="\nListing OpenCL devices.\nFORMAT: [deviceID] deviceName\n";
+	unsigned int i = 0;
+
+	vector<cl::Platform> platforms = getPlatforms();
+	if (platforms.empty())
+		return;
+	for (unsigned j = 0; j < platforms.size(); ++j)
+	{
+		vector<cl::Device> devices = getDevices(platforms, j);
+		for (auto const& device: devices)
+		{
+			outString += "[" + to_string(i) + "] " + device.getInfo<CL_DEVICE_NAME>() + "\n";
+			outString += "\tCL_DEVICE_TYPE: ";
+			switch (device.getInfo<CL_DEVICE_TYPE>())
+			{
+			case CL_DEVICE_TYPE_CPU:
+				outString += "CPU\n";
+				break;
+			case CL_DEVICE_TYPE_GPU:
+				outString += "GPU\n";
+				break;
+			case CL_DEVICE_TYPE_ACCELERATOR:
+				outString += "ACCELERATOR\n";
+				break;
+			default:
+				outString += "DEFAULT\n";
+				break;
+			}
+			outString += "\tCL_DEVICE_GLOBAL_MEM_SIZE: " + to_string(device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()) + "\n";
+			outString += "\tCL_DEVICE_MAX_MEM_ALLOC_SIZE: " + to_string(device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>()) + "\n";
+			outString += "\tCL_DEVICE_MAX_WORK_GROUP_SIZE: " + to_string(device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>()) + "\n";
+			++i;
+		}
+	}
+	std::cout << outString;
 }
 
-void EthashGPUMiner::listDevices()
-{
-	return ethash_cl_miner::listDevices();
-}
-
-bool EthashGPUMiner::configureGPU(
+bool CLMiner::configureGPU(
 	unsigned _localWorkSize,
 	unsigned _globalWorkSizeMultiplier,
 	unsigned _platformId,
-	unsigned _deviceId,
 	uint64_t _currentBlock,
 	unsigned _dagLoadMode,
 	unsigned _dagCreateDevice
@@ -221,22 +302,38 @@ bool EthashGPUMiner::configureGPU(
 	s_dagCreateDevice = _dagCreateDevice;
 
 	s_platformId = _platformId;
-	s_deviceId = _deviceId;
 
 	_localWorkSize = ((_localWorkSize + 7) / 8) * 8;
+	s_workgroupSize = _localWorkSize;
+	s_initialGlobalWorkSize = _globalWorkSizeMultiplier * _localWorkSize;
 
-	if (!ethash_cl_miner::configureGPU(
-			_platformId,
-			_localWorkSize,
-			_globalWorkSizeMultiplier * _localWorkSize,
-			_currentBlock
-			)
-	)
-	{
-		cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
+	uint64_t dagSize = ethash_get_datasize(_currentBlock);
+
+	vector<cl::Platform> platforms = getPlatforms();
+	if (platforms.empty())
 		return false;
-	}
-	return true;
-}
+	if (_platformId >= platforms.size())
+		return false;
 
-#endif
+	vector<cl::Device> devices = getDevices(platforms, _platformId);
+	for (auto const& device: devices)
+	{
+		cl_ulong result = 0;
+		device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
+		if (result >= dagSize)
+		{
+			cnote <<
+				"Found suitable OpenCL device [" << device.getInfo<CL_DEVICE_NAME>()
+												 << "] with " << result << " bytes of GPU memory";
+			return true;
+		}
+
+		cnote <<
+			"OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
+							 << " has insufficient GPU memory." << result <<
+							 " bytes of memory found < " << dagSize << " bytes of memory required";
+	}
+
+	cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
+	return false;
+}

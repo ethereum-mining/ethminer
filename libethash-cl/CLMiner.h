@@ -22,11 +22,10 @@
  */
 
 #pragma once
-#if ETH_ETHASHCL
 
 #include <libdevcore/Worker.h>
-#include "EthashAux.h"
-#include "Miner.h"
+#include <libethcore/EthashAux.h>
+#include <libethcore/Miner.h>
 
 class ethash_cl_miner;
 
@@ -36,23 +35,27 @@ namespace eth
 {
 class EthashCLHook;
 
-class EthashGPUMiner: public Miner, Worker
+class CLMiner: public Miner, Worker
 {
+public:
+	/* -- default values -- */
+	/// Default value of the local work size. Also known as workgroup size.
+	static const unsigned c_defaultLocalWorkSize = 128;
+	/// Default value of the global work size as a multiplier of the local work size
+	static const unsigned c_defaultGlobalWorkSizeMultiplier = 8192;
+
 	friend class dev::eth::EthashCLHook;
 
-public:
-	EthashGPUMiner(ConstructionInfo const& _ci);
-	~EthashGPUMiner();
+	CLMiner(ConstructionInfo const& _ci);
+	~CLMiner();
 
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
-	static std::string platformInfo();
 	static unsigned getNumDevices();
 	static void listDevices();
 	static bool configureGPU(
 		unsigned _localWorkSize,
 		unsigned _globalWorkSizeMultiplier,
 		unsigned _platformId,
-		unsigned _deviceId,
 		uint64_t _currentBlock,
 		unsigned _dagLoadMode,
 		unsigned _dagCreateDevice
@@ -81,13 +84,15 @@ private:
 
 	h256 m_minerSeed;		///< Last seed in m_miner
 	static unsigned s_platformId;
-	static unsigned s_deviceId;
 	static unsigned s_numInstances;
 	static int s_devices[16];
+
+	/// The local work size for the search
+	static unsigned s_workgroupSize;
+	/// The initial global work size for the searches
+	static unsigned s_initialGlobalWorkSize;
 
 };
 
 }
 }
-
-#endif
