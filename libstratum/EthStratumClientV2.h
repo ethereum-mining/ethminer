@@ -30,7 +30,7 @@ public:
 
 	bool isRunning() { return m_running; }
 	bool isConnected() { return m_connected && m_authorized; }
-	h256 currentHeaderHash() { return m_current.headerHash; }
+	h256 currentHeaderHash() { return m_current.header; }
 	bool current() { return m_current; }
 	unsigned waitState() { return m_waitState; }
 	bool submit(Solution solution);
