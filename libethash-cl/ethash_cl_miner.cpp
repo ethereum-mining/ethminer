@@ -45,8 +45,15 @@
 
 using namespace std;
 
-unsigned const ethash_cl_miner::c_defaultLocalWorkSize = 128;
-unsigned const ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier = 8192; // * CL_DEFAULT_LOCAL_WORK_SIZE
+namespace dev
+{
+namespace eth
+{
+std::vector<cl::Platform> getPlatforms();
+std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId);
+}
+}
+using namespace dev::eth;
 
 // TODO: If at any point we can use libdevcore in here then we should switch to using a LogChannel
 #define ETHCL_LOG(_contents) std::cout << "[OpenCL] " << _contents << std::endl
@@ -60,197 +67,14 @@ static void addDefinition(string& _source, char const* _id, unsigned _value)
 
 ethash_cl_miner::search_hook::~search_hook() {}
 
-std::vector<cl::Platform> ethash_cl_miner::getPlatforms()
-{
-	vector<cl::Platform> platforms;
-	try
-	{
-		cl::Platform::get(&platforms);
-	}
-	catch(cl::Error const& err)
-	{
-#if defined(CL_PLATFORM_NOT_FOUND_KHR)
-		if (err.err() == CL_PLATFORM_NOT_FOUND_KHR)
-			ETHCL_LOG("No OpenCL platforms found");
-		else
-#endif
-			throw err;
-	}
-	return platforms;
-}
-
-string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return {};
-	// get GPU device of the selected platform
-	unsigned platform_num = min<unsigned>(_platformId, platforms.size() - 1);
-	vector<cl::Device> devices = getDevices(platforms, _platformId);
-	if (devices.empty())
-	{
-		ETHCL_LOG("No OpenCL devices found.");
-		return {};
-	}
-
-	// use selected default device
-	unsigned device_num = min<unsigned>(_deviceId, devices.size() - 1);
-	cl::Device& device = devices[device_num];
-	string device_version = device.getInfo<CL_DEVICE_VERSION>();
-
-	return "{ \"platform\": \"" + platforms[platform_num].getInfo<CL_PLATFORM_NAME>() + "\", \"device\": \"" + device.getInfo<CL_DEVICE_NAME>() + "\", \"version\": \"" + device_version + "\" }";
-}
-
-std::vector<cl::Device> ethash_cl_miner::getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId)
-{
-	vector<cl::Device> devices;
-	unsigned platform_num = min<unsigned>(_platformId, _platforms.size() - 1);
-	try
-	{
-		_platforms[platform_num].getDevices(
-			CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR,
-			&devices
-		);
-	}
-	catch (cl::Error const& err)
-	{
-		// if simply no devices found return empty vector
-		if (err.err() != CL_DEVICE_NOT_FOUND)
-			throw err;
-	}
-	return devices;
-}
-
-unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return 0;
-
-	vector<cl::Device> devices = getDevices(platforms, _platformId);
-	if (devices.empty())
-	{
-		ETHCL_LOG("No OpenCL devices found.");
-		return 0;
-	}
-	return devices.size();
-}
-
-bool ethash_cl_miner::configureGPU(
-	unsigned _platformId,
-	unsigned _localWorkSize,
-	unsigned _globalWorkSize,
-	uint64_t _currentBlock
-)
-{
-	s_workgroupSize = _localWorkSize;
-	s_initialGlobalWorkSize = _globalWorkSize;
-
-	// by default let's only consider the DAG of the first epoch
-	uint64_t dagSize = ethash_get_datasize(_currentBlock);
-	return searchForAllDevices(_platformId, [dagSize](cl::Device const& _device) -> bool
-		{
-			cl_ulong result;
-			_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
-			if (result >= dagSize)
-			{
-				ETHCL_LOG(
-					"Found suitable OpenCL device [" << _device.getInfo<CL_DEVICE_NAME>()
-					<< "] with " << result << " bytes of GPU memory"
-				);
-				return true;
-			}
-
-			ETHCL_LOG(
-				"OpenCL device " << _device.getInfo<CL_DEVICE_NAME>()
-				<< " has insufficient GPU memory." << result <<
-				" bytes of memory found < " << dagSize << " bytes of memory required"
-			);
-			return false;
-		}
-	);
-}
-
-unsigned ethash_cl_miner::s_workgroupSize = ethash_cl_miner::c_defaultLocalWorkSize;
-unsigned ethash_cl_miner::s_initialGlobalWorkSize = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier * ethash_cl_miner::c_defaultLocalWorkSize;
-
-bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, function<bool(cl::Device const&)> _callback)
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return false;
-	if (_platformId >= platforms.size())
-		return false;
-
-	vector<cl::Device> devices = getDevices(platforms, _platformId);
-	for (cl::Device const& device: devices)
-		if (_callback(device))
-			return true;
-
-	return false;
-}
-
-void ethash_cl_miner::doForAllDevices(function<void(cl::Device const&)> _callback)
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return;
-	for (unsigned i = 0; i < platforms.size(); ++i)
-		doForAllDevices(i, _callback);
-}
-
-void ethash_cl_miner::doForAllDevices(unsigned _platformId, function<void(cl::Device const&)> _callback)
-{
-	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return;
-	if (_platformId >= platforms.size())
-		return;
-
-	vector<cl::Device> devices = getDevices(platforms, _platformId);
-	for (cl::Device const& device: devices)
-		_callback(device);
-}
-
-void ethash_cl_miner::listDevices()
-{
-	string outString ="\nListing OpenCL devices.\nFORMAT: [deviceID] deviceName\n";
-	unsigned int i = 0;
-	doForAllDevices([&outString, &i](cl::Device const _device)
-		{
-			outString += "[" + to_string(i) + "] " + _device.getInfo<CL_DEVICE_NAME>() + "\n";
-			outString += "\tCL_DEVICE_TYPE: ";
-			switch (_device.getInfo<CL_DEVICE_TYPE>())
-			{
-			case CL_DEVICE_TYPE_CPU:
-				outString += "CPU\n";
-				break;
-			case CL_DEVICE_TYPE_GPU:
-				outString += "GPU\n";
-				break;
-			case CL_DEVICE_TYPE_ACCELERATOR:
-				outString += "ACCELERATOR\n";
-				break;
-			default:
-				outString += "DEFAULT\n";
-				break;
-			}
-			outString += "\tCL_DEVICE_GLOBAL_MEM_SIZE: " + to_string(_device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()) + "\n";
-			outString += "\tCL_DEVICE_MAX_MEM_ALLOC_SIZE: " + to_string(_device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>()) + "\n";
-			outString += "\tCL_DEVICE_MAX_WORK_GROUP_SIZE: " + to_string(_device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>()) + "\n";
-			++i;
-		}
-	);
-	ETHCL_LOG(outString);
-}
-
-
 bool ethash_cl_miner::init(
 	ethash_light_t _light, 
 	uint8_t const* _lightData, 
 	uint64_t _lightSize,
 	unsigned _platformId,
-	unsigned _deviceId
+	unsigned _deviceId,
+	unsigned _workgroupSize,
+	unsigned _initialGlobalWorkSize
 )
 {
 	// get all platforms
@@ -327,9 +151,10 @@ bool ethash_cl_miner::init(
 		m_queue = cl::CommandQueue(m_context, device);
 
 		// make sure that global work size is evenly divisible by the local workgroup size
-		m_globalWorkSize = s_initialGlobalWorkSize;
-		if (m_globalWorkSize % s_workgroupSize != 0)
-			m_globalWorkSize = ((m_globalWorkSize / s_workgroupSize) + 1) * s_workgroupSize;
+		m_workgroupSize = _workgroupSize;
+		m_globalWorkSize = _initialGlobalWorkSize;
+		if (m_globalWorkSize % _workgroupSize != 0)
+			m_globalWorkSize = ((m_globalWorkSize / _workgroupSize) + 1) * _workgroupSize;
 
 		uint64_t dagSize = ethash_get_datasize(_light->block_number);
 		uint32_t dagSize128 = (unsigned)(dagSize / ETHASH_MIX_BYTES);
@@ -339,7 +164,7 @@ bool ethash_cl_miner::init(
 		// note: ETHASH_CL_MINER_KERNEL is simply ethash_cl_miner_kernel.cl compiled
 		// into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
 		string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
-		addDefinition(code, "GROUP_SIZE", s_workgroupSize);
+		addDefinition(code, "GROUP_SIZE", _workgroupSize);
 		addDefinition(code, "DAG_SIZE", dagSize128);
 		addDefinition(code, "LIGHT_SIZE", lightSize64);
 		addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
@@ -408,7 +233,7 @@ bool ethash_cl_miner::init(
 		for (uint32_t i = 0; i < fullRuns; i++)
 		{
 			m_dagKernel.setArg(0, i * m_globalWorkSize);
-			m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, m_globalWorkSize, s_workgroupSize);
+			m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, m_globalWorkSize, _workgroupSize);
 			m_queue.finish();
 			printf("OPENCL#%d: %.0f%%\n", _deviceId, 100.0f * (float)i / (float)fullRuns);
 		}
@@ -456,7 +281,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 
 		// Run the kernel.
 		m_searchKernel.setArg(3, start_nonce);
-		m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, s_workgroupSize);
+		m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
 
 		// Report results while the kernel is running.
 		// It takes some time because ethash must be re-evaluated on CPU.
