@@ -69,10 +69,7 @@ namespace eth
 	protected:
 		virtual bool found(uint64_t const* _nonces, uint32_t _count) override
 		{
-			//		dev::operator <<(std::cerr << "Found nonces: ", vector<uint64_t>(_nonces, _nonces + _count)) << std::endl;
-			for (uint32_t i = 0; i < _count; ++i)
-				if (m_owner->report(_nonces[i]))
-					return (m_aborted = true);
+			m_owner->report(_nonces[0]);
 			return m_owner->shouldStop();
 		}
 
@@ -116,14 +113,13 @@ EthashCUDAMiner::~EthashCUDAMiner()
 	delete m_hook;
 }
 
-bool EthashCUDAMiner::report(uint64_t _nonce)
+void EthashCUDAMiner::report(uint64_t _nonce)
 {
 	// FIXME: This code is exactly the same as in EthashGPUMiner.
 	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
-		return submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
-	return false;
+		submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
 }
 
 void EthashCUDAMiner::kickOff()
