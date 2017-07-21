@@ -24,6 +24,7 @@
 #include <fstream>
 #include <iostream>
 #include "MinerAux.h"
+#include "BuildInfo.h"
 
 using namespace std;
 using namespace dev;
