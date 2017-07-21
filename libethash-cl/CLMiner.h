@@ -1,25 +1,7 @@
-/*
-	This file is part of cpp-ethereum.
-
-	cpp-ethereum is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	cpp-ethereum is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
-*/
-/** @file EthashGPUMiner.h
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- *
- * Determines the PoW algorithm.
- */
+/// OpenCL miner implementation.
+///
+/// @file
+/// @copyright GNU General Public License
 
 #pragma once
 
@@ -27,27 +9,10 @@
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
 
-#define CL_HPP_TARGET_OPENCL_VERSION 120
-#define CL_HPP_MINIMUM_OPENCL_VERSION 110
-#define CL_HPP_ENABLE_EXCEPTIONS 1
-
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#elif defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wignored-qualifiers"
-#endif
-
+#define __CL_ENABLE_EXCEPTIONS true
 #include "CL/cl.hpp"
 
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#elif defined(__GNUC__)
-#pragma GCC diagnostic pop
-#endif
-
-// apple fix
+// macOS OpenCL fix:
 #ifndef CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV
 #define CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV       0x4000
 #endif
