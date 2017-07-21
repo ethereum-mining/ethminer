@@ -24,6 +24,7 @@ cache:
 before_install:
     - if [[ "$CUDA" = ON ]]; then source scripts/install-cuda-trusty.sh; fi
     - if [ "$TRAVIS_OS_NAME" = linux ]; then scripts/install_cmake.sh; fi
+    - pip3 install --user requests
 script:
     - cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -H. -Bbuild
     - cmake --build build -- -j4
