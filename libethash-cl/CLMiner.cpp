@@ -457,19 +457,19 @@ bool CLMiner::init(const h256& seed)
 		// create buffer for dag
 		try
 		{
-			ETHCL_LOG("Creating cache buffer");
+			cllog << "Creating light cache buffer, size" << light->data().size();
 			m_light = cl::Buffer(m_context, CL_MEM_READ_ONLY, light->data().size());
-			ETHCL_LOG("Creating DAG buffer");
+			cllog << "Creating DAG buffer, size" << dagSize;
 			m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, dagSize);
-			ETHCL_LOG("Loading kernels");
+			cllog << "Loading kernels";
 			m_searchKernel = cl::Kernel(program, "ethash_search");
 			m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
-			ETHCL_LOG("Writing cache buffer");
+			cllog << "Writing light cache buffer";
 			m_queue.enqueueWriteBuffer(m_light, CL_TRUE, 0, light->data().size(), light->data().data());
 		}
 		catch (cl::Error const& err)
 		{
-			ETHCL_LOG("Allocating/mapping DAG buffer failed with: " << err.what() << "(" << err.err() << "). GPU can't allocate the DAG in a single chunk. Bailing.");
+			cwarn << "Creating DAG buffer failed:" << err.what() << err.err();
 			return false;
 		}
 		// create buffer for header
