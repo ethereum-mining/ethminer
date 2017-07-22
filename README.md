@@ -6,9 +6,7 @@
 
 > Ethereum miner with OpenCL, CUDA and stratum support
 
-The ethminer is an Ethereum GPU mining worker. It origins in [cpp-ethereum]
-project (where GPU mining has been discontinued). Then hugely improved in
-[Genoil's fork].
+The ethminer is an Ethereum GPU mining worker. This is the actively maintained version of ethminer. It originates from [cpp-ethereum] project (where GPU mining has been discontinued) and builds on the improvements made in [Genoil's fork]. See [FAQ](#faq) for more details.
 
 ### Features
 
@@ -124,7 +122,7 @@ cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 
 [![Gitter](https://img.shields.io/gitter/room/ethereum-mining/ethminer.svg)][Gitter]
 
-To meet the community join [the ethminer channel on Gitter][Gitter].
+To meet the community, ask general questions and chat about ethminer join [the ethminer channel on Gitter][Gitter].
 
 All bug reports, pull requests and code reviews are very much welcome.
 
@@ -154,6 +152,15 @@ All bug reports, pull requests and code reviews are very much welcome.
 5. What are the optimal launch parameters?
 
    The default parameters are fine in most scenario's (CUDA). For OpenCL it varies a bit more. Just play around with the numbers and use powers of 2. GPU's like powers of 2.
+   
+7. What does the ```--cuda-parallel-hash``` flag do?
+
+   @davilizh made improvements to the CUDA kernel hashing process and added this flag to allow changing the number of tasks it runs in parallel. These improvements were optimised for GTX 1060 GPUs which saw a large increase in hashrate, GTX 1070 and GTX 1080/Ti GPUs saw some, but less, improvement. The default value is 4 (which does not need to be set with the flag) and in most cases this will provide the best performance.
+
+6. What is ethminer's relationship with [Genoil's fork]?
+
+   [Genoil's fork] was the original source of this version, but as Genoil is no longer consistently maintaining that fork it became almost impossible for developers to get new code merged there. In the interests of progressing development without waiting for reviews this fork should be considered the active one and Genoil's as legacy code.
+
 
 
 [Amazon S3 is needed]: https://docs.travis-ci.com/user/uploading-artifacts/
