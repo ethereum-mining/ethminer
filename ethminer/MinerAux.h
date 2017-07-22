@@ -573,7 +573,6 @@ public:
 			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << CLMiner::c_defaultGlobalWorkSizeMultiplier << " * " << CLMiner::c_defaultLocalWorkSize << endl
 #endif
 #if ETH_ETHASHCUDA
-			<< "    --cuda-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
 			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(ethash_cuda_miner::c_defaultBlockSize) << endl
 			<< "    --cuda-grid-size Set the CUDA grid size. Default is " << toString(ethash_cuda_miner::c_defaultGridSize) << endl
 			<< "    --cuda-streams Set the number of CUDA streams. Default is " << toString(ethash_cuda_miner::c_defaultNumStreams) << endl
@@ -995,7 +994,6 @@ private:
 	unsigned m_numStreams = ethash_cuda_miner::c_defaultNumStreams;
 	unsigned m_cudaSchedule = 4; // sync
 #endif
-	// default value was 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
 	unsigned m_dagLoadMode = 0; // parallel
 	unsigned m_dagCreateDevice = 0;
 	/// Benchmarking params
