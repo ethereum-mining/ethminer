@@ -776,8 +776,10 @@ private:
 					auto mp = f.miningProgress();
 					f.resetMiningProgress();
 					if (current)
+					{
 						minelog << "Mining on" << current.header << f.getSolutionStats();
 						minelog << mp;
+					}
 					else
 						minelog << "Getting work package...";
 
