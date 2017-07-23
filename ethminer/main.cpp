@@ -20,14 +20,6 @@
  * Ethereum client.
  */
 
-// Solves the problem of including windows.h before including winsock.h
-// as detailed here:
-// http://stackoverflow.com/questions/1372480/c-redefinition-header-files-winsock2-h
-#if defined(_WIN32)
-#define _WINSOCKAPI_
-#include <windows.h>
-#endif
-
 #include <thread>
 #include <fstream>
 #include <iostream>
@@ -39,7 +31,6 @@ using namespace dev;
 using namespace dev::eth;
 using namespace boost::algorithm;
 
-#undef RETURN
 
 void help()
 {
@@ -65,6 +56,11 @@ void version()
 
 int main(int argc, char** argv)
 {
+	// Set env vars controlling GPU driver behavior.
+	setenv("GPU_MAX_HEAP_SIZE", "100");
+	setenv("GPU_MAX_ALLOC_PERCENT", "100");
+	setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
+
 	MinerCLI m(MinerCLI::OperationMode::Farm);
 
 	for (int i = 1; i < argc; ++i)

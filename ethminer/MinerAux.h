@@ -37,10 +37,9 @@
 #include <libdevcore/SHA3.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/EthashCUDAMiner.h>
-#include <libethcore/EthashGPUMiner.h>
 #include <libethcore/Farm.h>
 #if ETH_ETHASHCL
-#include <libethash-cl/ethash_cl_miner.h>
+#include <libethash-cl/CLMiner.h>
 #endif
 #if ETH_ETHASHCUDA
 #include <libethash-cuda/ethash_cuda_miner.h>
@@ -284,8 +283,6 @@ public:
 			}
 		else if (arg == "--list-devices")
 			m_shouldListDevices = true;
-		else if ((arg == "--cl-extragpu-mem" || arg == "--cuda-extragpu-mem") && i + 1 < argc)
-			m_extraGPUMemory = 1000000 * stol(argv[++i]);
 #endif
 #if ETH_ETHASHCUDA
 		else if (arg == "--cuda-devices")
@@ -455,7 +452,7 @@ public:
 		{
 #if ETH_ETHASHCL
 			if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
-				EthashGPUMiner::listDevices();
+				CLMiner::listDevices();
 #endif
 #if ETH_ETHASHCUDA
 			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
@@ -469,22 +466,20 @@ public:
 #if ETH_ETHASHCL
 			if (m_openclDeviceCount > 0)
 			{
-				EthashGPUMiner::setDevices(m_openclDevices, m_openclDeviceCount);
+				CLMiner::setDevices(m_openclDevices, m_openclDeviceCount);
 				m_miningThreads = m_openclDeviceCount;
 			}
 
-			if (!EthashGPUMiner::configureGPU(
+			if (!CLMiner::configureGPU(
 					m_localWorkSize,
 					m_globalWorkSizeMultiplier,
 					m_openclPlatform,
-					m_openclDevice,
-					m_extraGPUMemory,
 					0,
 					m_dagLoadMode,
 					m_dagCreateDevice
 				))
 				exit(1);
-			EthashGPUMiner::setNumInstances(m_miningThreads);
+			CLMiner::setNumInstances(m_miningThreads);
 #else
 			cerr << "Selected GPU mining without having compiled with -DETHASHCL=1" << endl;
 			exit(1);
@@ -504,7 +499,6 @@ public:
 				m_localWorkSize,
 				m_globalWorkSizeMultiplier,
 				m_numStreams,
-				m_extraGPUMemory,
 				m_cudaSchedule,
 				0,
 				m_dagLoadMode,
@@ -575,9 +569,8 @@ public:
 			<< "        sequential  - load DAG on GPUs one after another. Use this when the miner crashes during DAG generation" << endl
 			<< "        single <n>  - generate DAG on device n, then copy to other devices" << endl
 #if ETH_ETHASHCL
-			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. default: 0" << endl
-			<< "    --cl-local-work Set the OpenCL local work size. Default is " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
-			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << toString(ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier) << " * " << toString(ethash_cl_miner::c_defaultLocalWorkSize) << endl
+			<< "    --cl-local-work Set the OpenCL local work size. Default is " << CLMiner::c_defaultLocalWorkSize << endl
+			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << CLMiner::c_defaultGlobalWorkSizeMultiplier << " * " << CLMiner::c_defaultLocalWorkSize << endl
 #endif
 #if ETH_ETHASHCUDA
 			<< "    --cuda-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." << endl
@@ -607,10 +600,10 @@ private:
 		Farm f;
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{&EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
+		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
 #endif
 		f.setSealers(sealers);
 		f.onSolutionFound([&](Solution) { return false; });
@@ -671,10 +664,10 @@ private:
 		Farm f;
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{ &EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
+		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); } };
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
 #endif
 		f.setSealers(sealers);
 
@@ -713,7 +706,7 @@ private:
 				time++;
 			}
 			cnote << "Difficulty:" << difficulty << "  Nonce:" << solution.nonce;
-			if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
+			if (EthashAux::eval(current.seed, current.header, solution.nonce).value < current.boundary)
 			{
 				cnote << "SUCCESS: GPU gave correct result!";
 			}
@@ -728,11 +721,11 @@ private:
 			genesis.setDifficulty(u256(1) << difficulty);
 			genesis.noteDirty();
 
-			current.headerHash = h256::random();
+			current.header = h256::random();
 			current.boundary = genesis.boundary();
 			minelog << "Generated random work package:";
-			minelog << "  Header-hash:" << current.headerHash.hex();
-			minelog << "  Seedhash:" << current.seedHash.hex();
+			minelog << "  Header-hash:" << current.header.hex();
+			minelog << "  Seedhash:" << current.seed.hex();
 			minelog << "  Target: " << h256(current.boundary).hex();
 			f.setWork(current);
 
@@ -744,10 +737,10 @@ private:
 	{
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{&EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); }};
+		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
 #endif
 		(void)_m;
 		(void)_remote;
@@ -783,10 +776,8 @@ private:
 					auto mp = f.miningProgress();
 					f.resetMiningProgress();
 					if (current)
-					{
-						minelog << "Mining on PoWhash" << "#" + (current.headerHash.hex().substr(0, 8)) << f.getSolutionStats();
+						minelog << "Mining on" << current.header << f.getSolutionStats();
 						minelog << mp;
-					}
 					else
 						minelog << "Getting work package...";
 
@@ -806,13 +797,13 @@ private:
 					h256 hh(v[0].asString());
 					h256 newSeedHash(v[1].asString());
 
-					if (hh != current.headerHash)
+					if (hh != current.header)
 					{
 						x_current.lock();
-						current.headerHash = hh;
-						current.seedHash = newSeedHash;
+						current.header = hh;
+						current.seed = newSeedHash;
 						current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
-						minelog << "Got work package: #" + current.headerHash.hex().substr(0,8);
+						minelog << "Got work package: #" + current.header.hex().substr(0,8);
 						f.setWork(current);
 						x_current.unlock();
 					}
@@ -839,7 +830,6 @@ private:
 					f.failedSolution();
 					cwarn << "FAILURE: GPU gave incorrect result!";
 				}
-				current.reset();
 			}
 			catch (jsonrpc::JsonRpcException&)
 			{
@@ -883,10 +873,10 @@ private:
 	{
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{ &EthashGPUMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashGPUMiner(ci); } };
+		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); } };
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](Miner::ConstructionInfo ci){ return new EthashCUDAMiner(ci); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
 #endif
 		if (!m_farmRecheckSet)
 			m_farmRecheckPeriod = m_defaultStratumFarmRecheckPeriod;
@@ -928,10 +918,10 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << "Mining on PoWhash" << "#" + (client.currentHeaderHash().hex().substr(0, 8)) << f.getSolutionStats();
+						minelog << "Mining on" << client.currentHeaderHash() << f.getSolutionStats();
 						minelog << mp;
 					}
-					else if (client.waitState() == MINER_WAIT_STATE_WORK)
+					else
 					{
 						minelog << "Waiting for work package...";
 					}
@@ -968,7 +958,7 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << "Mining on PoWhash" << "#" + (client.currentHeaderHash().hex().substr(0, 8)) << f.getSolutionStats();
+						minelog << "Mining on" << client.currentHeaderHash() << f.getSolutionStats();
 						minelog << mp;
 					}
 					else if (client.waitState() == MINER_WAIT_STATE_WORK)
@@ -990,15 +980,14 @@ private:
 	bool m_running = true;
 	MinerType m_minerType = MinerType::Mixed;
 	unsigned m_openclPlatform = 0;
-	unsigned m_openclDevice = 0;
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 #if ETH_ETHASHCL
 	unsigned m_openclDeviceCount = 0;
 	unsigned m_openclDevices[16];
 #if !ETH_ETHASHCUDA
-	unsigned m_globalWorkSizeMultiplier = ethash_cl_miner::c_defaultGlobalWorkSizeMultiplier;
-	unsigned m_localWorkSize = ethash_cl_miner::c_defaultLocalWorkSize;
+	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
+	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
 #endif
 #endif
 #if ETH_ETHASHCUDA
@@ -1010,7 +999,6 @@ private:
 	unsigned m_cudaSchedule = 4; // sync
 #endif
 	// default value was 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
-	unsigned m_extraGPUMemory = 0;// 350000000; don't assume miners run desktops...
 	unsigned m_dagLoadMode = 0; // parallel
 	unsigned m_dagCreateDevice = 0;
 	/// Benchmarking params

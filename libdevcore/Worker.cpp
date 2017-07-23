@@ -52,9 +52,7 @@ void Worker::startWorking()
 
 				try
 				{
-					startedWorking();
 					workLoop();
-					doneWorking();
 				}
 				catch (std::exception const& _e)
 				{
@@ -101,14 +99,4 @@ Worker::~Worker()
 			m_work->join();
 			m_work.reset();
 		}
-}
-
-void Worker::workLoop()
-{
-	while (m_state == WorkerState::Started)
-	{
-		if (m_idleWaitMs)
-			this_thread::sleep_for(chrono::milliseconds(m_idleWaitMs));
-		doWork();
-	}
 }

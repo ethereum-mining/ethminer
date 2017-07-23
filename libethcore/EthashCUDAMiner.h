@@ -36,12 +36,12 @@ namespace eth
 {
 class EthashCUDAHook;
 
-	class EthashCUDAMiner : public Miner, Worker
+	class EthashCUDAMiner: public Miner
 	{
 		friend class dev::eth::EthashCUDAHook;
 
 	public:
-		EthashCUDAMiner(ConstructionInfo const& _ci);
+		EthashCUDAMiner(FarmFace& _farm, unsigned _index);
 		~EthashCUDAMiner();
 
 		static unsigned instances() 
@@ -51,12 +51,11 @@ class EthashCUDAHook;
 		static std::string platformInfo();
 		static unsigned getNumDevices();
 		static void listDevices();
-                static void setParallelHash(unsigned _parallelHash);
+		static void setParallelHash(unsigned _parallelHash);
 		static bool configureGPU(
 			unsigned _blockSize,
 			unsigned _gridSize,
 			unsigned _numStreams,
-			unsigned _extraGPUMemory,
 			unsigned _scheduleFlag,
 			uint64_t _currentBlock,
 			unsigned _dagLoadMode,
@@ -79,7 +78,7 @@ class EthashCUDAHook;
 
 	private:
 		void workLoop() override;
-		bool report(uint64_t _nonce);
+		void report(uint64_t _nonce);
 
 		using Miner::accumulateHashes;
 

@@ -31,9 +31,7 @@
 #include <libdevcore/Worker.h>
 #include "EthashAux.h"
 
-#define MINER_WAIT_STATE_UNKNOWN 0
 #define MINER_WAIT_STATE_WORK	 1
-#define MINER_WAIT_STATE_DAG	 2
 
 
 #define DAG_LOAD_MODE_PARALLEL	 0
@@ -155,32 +153,29 @@ public:
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
 	 * @param _p The solution.
-	 * @param _finder The miner that found it.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
-	virtual bool submitProof(Solution const& _p, Miner* _finder) = 0;
+	virtual bool submitProof(Solution const& _p) = 0;
 };
 
 /**
  * @brief A miner - a member and adoptee of the Farm.
  * @warning Not threadsafe. It is assumed Farm will synchronise calls to/from this class.
  */
-class Miner
+class Miner: public Worker
 {
 public:
-	using ConstructionInfo = std::pair<FarmFace*, unsigned>;
-
-	Miner(ConstructionInfo const& _ci):
-		m_farm(_ci.first),
-		m_index(_ci.second)
+	Miner(std::string const& _name, FarmFace& _farm, size_t _index):
+		Worker(_name + std::to_string(_index)),
+		index(_index),
+		farm(_farm)
 	{}
-	virtual ~Miner() {}
 
-	// API FOR THE FARM TO CALL IN WITH
+	virtual ~Miner() = default;
 
-	void setWork(WorkPackage const& _work = WorkPackage())
+	void setWork(WorkPackage const& _work)
 	{
-		auto old = m_work;
+		bool running = !!m_work;
 		{
 			Guard l(x_work);
 			m_work = _work;
@@ -190,7 +185,7 @@ public:
 			pause();
 			kickOff();
 		}
-		else if (!_work && !!old)
+		else if (!_work && running)
 			pause();
 		m_hashCount = 0;
 	}
@@ -199,12 +194,7 @@ public:
 
 	void resetHashCount() { m_hashCount = 0; }
 
-	unsigned index() const { return m_index; }
-
 protected:
-
-
-	// REQUIRED TO BE REIMPLEMENTED BY A SUBCLASS:
 
 	/**
 	 * @brief Begin working on a given work package, discarding any previous work.
@@ -217,28 +207,6 @@ protected:
 	 */
 	virtual void pause() = 0;
 
-	// AVAILABLE FOR A SUBCLASS TO CALL:
-
-	/**
-	 * @brief Notes that the Miner found a solution.
-	 * @param _s The solution.
-	 * @return true if the solution was correct and that the miner should pause.
-	 */
-	bool submitProof(Solution const& _s)
-	{
-		if (!m_farm)
-			return true;
-		if (m_farm->submitProof(_s, this))
-		{
-			// TODO: Even if the proof submitted, should be reset the work
-			// package here and stop mining?
-			Guard l(x_work);
-			m_work.reset();
-			return true;
-		}
-		return false;
-	}
-
 	WorkPackage const& work() const { Guard l(x_work); return m_work; }
 
 	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
@@ -247,10 +215,11 @@ protected:
 	static volatile unsigned s_dagLoadIndex;
 	static unsigned s_dagCreateDevice;
 	static volatile void* s_dagInHostMemory;
-private:
-	FarmFace* m_farm = nullptr;
-	unsigned m_index;
 
+	const size_t index = 0;
+	FarmFace& farm;
+
+private:
 	uint64_t m_hashCount = 0;
 
 	WorkPackage m_work;

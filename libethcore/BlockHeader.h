@@ -86,7 +86,6 @@ public:
 
 	void noteDirty() const { m_hashWithout = m_boundary = h256(); }
 
-	h256 const& seedHash() const;
 	uint64_t nonce() const { return m_nonce; }
 
 private:

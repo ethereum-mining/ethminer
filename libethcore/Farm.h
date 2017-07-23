@@ -46,7 +46,7 @@ public:
 	struct SealerDescriptor
 	{
 		std::function<unsigned()> instances;
-		std::function<Miner*(Miner::ConstructionInfo ci)> create;
+		std::function<Miner*(FarmFace&, unsigned)> create;
 	};
 
 	~Farm()
@@ -61,7 +61,7 @@ public:
 	void setWork(WorkPackage const& _wp)
 	{
 		Guard l(x_minerWork);
-		if (_wp.headerHash == m_work.headerHash && _wp.startNonce == m_work.startNonce)
+		if (_wp.header == m_work.header && _wp.startNonce == m_work.startNonce)
 			return;
 		m_work = _wp;
 		for (auto const& m: m_miners)
@@ -100,7 +100,7 @@ public:
 		}
 		for (unsigned i = start; i < ins; ++i)
 		{
-			m_miners.push_back(std::shared_ptr<Miner>(m_sealers[_sealer].create(std::make_pair(this, i))));
+			m_miners.push_back(std::shared_ptr<Miner>(m_sealers[_sealer].create(*this, i)));
 			m_miners.back()->setWork(m_work);
 		}
 		m_isMining = true;
@@ -115,7 +115,6 @@ public:
 	{
 		Guard l(x_minerWork);
 		m_miners.clear();
-		m_work.reset();
 		m_isMining = false;
 	}
 	
@@ -207,21 +206,10 @@ private:
 	 * @param _wp The WorkPackage that the Solution is for.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
-	bool submitProof(Solution const& _s, Miner* _m) override
+	bool submitProof(Solution const& _s) override
 	{
-		if (m_onSolutionFound && m_onSolutionFound(_s))
-		{
-			if (x_minerWork.try_lock())
-			{
-				for (std::shared_ptr<Miner> const& m: m_miners)
-					if (m.get() != _m)
-						m->setWork();
-				m_work.reset();
-				x_minerWork.unlock();
-				return true;
-			}
-		}
-		return false;
+		assert(m_onSolutionFound);
+		return m_onSolutionFound(_s);
 	}
 
 	void resetTimer()

@@ -10,7 +10,7 @@ configuration:
   - Release
   - RelWithDebInfo
 cache:
-  - C:/.hunter/_Base/Cache -> cmake/Hunter/config.cmake
+  - C:/.hunter/_Base/Cache -> CMakeLists.txt
 
 install: |
   appveyor DownloadFile https://github.com/ethereum/cpp-dependencies/releases/download/cache/CUDA-v8.0-WindowsServer2012.zip

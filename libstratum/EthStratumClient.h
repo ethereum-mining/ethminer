@@ -29,9 +29,8 @@ public:
 
 	bool isRunning() { return m_running; }
 	bool isConnected() { return m_connected && m_authorized; }
-	h256 currentHeaderHash() { return m_current.headerHash; }
+	h256 currentHeaderHash() { return m_current.header; }
 	bool current() { return m_current; }
-	unsigned waitState() { return m_waitState; }
 	bool submit(Solution solution);
 	void reconnect();
 private:
@@ -62,8 +61,6 @@ private:
 	int	m_retries = 0;
 	int	m_maxRetries;
 	int m_worktimeout = 60;
-
-	int m_waitState = MINER_WAIT_STATE_WORK;
 
 	std::mutex x_pending;
 	int m_pending;

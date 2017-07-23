@@ -3,6 +3,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/toolchain.cmake CACHE FILEPATH "CMake toolchain file")
 
+set(CMAKE_CONFIGURATION_TYPES Release RelWithDebInfo Debug)
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type on single-configuration generators")
 
 set(HUNTER_CONFIGURATION_TYPES Release)
@@ -15,7 +16,7 @@ HunterGate(
 
 
 project(ethminer)
-set(PROJECT_VERSION 0.12.0.dev0)
+set(PROJECT_VERSION 0.12.0.dev1)
 
 # link_directories interprate relative paths with respect to CMAKE_CURRENT_SOURCE_DIR
 cmake_policy(SET CMP0015 NEW)
