@@ -41,7 +41,7 @@ enum class WorkerState
 
 class Worker
 {
-protected:
+public:
 	Worker(std::string const& _name): m_name(_name) {}
 
 	Worker(Worker const&) = delete;
@@ -55,11 +55,11 @@ protected:
 	/// Stop worker thread; causes call to stopWorking().
 	void stopWorking();
 
-	virtual void workLoop() = 0;
-
 	bool shouldStop() const { return m_state != WorkerState::Started; }
 
 private:
+	virtual void workLoop() = 0;
+
 	std::string m_name;
 
 	mutable Mutex x_work;						///< Lock for the network existance.
