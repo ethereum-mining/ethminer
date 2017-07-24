@@ -143,7 +143,14 @@ void CLMiner::workLoop()
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
 		const WorkPackage w = work();
-		cllog << "Set work. Header" << w.header << "target" << w.boundary.hex().substr(0, 12);
+
+		if (!w)
+		{
+			cllog << "No work. Pause.";
+			return;
+		}
+
+		cllog << "Set work. Header" << w.header << "target" << w.boundary.hex();
 		if (m_seed != w.seed)
 		{
 			if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)

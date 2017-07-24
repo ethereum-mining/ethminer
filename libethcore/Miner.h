@@ -155,6 +155,7 @@ public:
 			Guard l(x_work);
 			m_work = _work;
 		}
+		assert(!!_work);
 		if (!!_work)
 		{
 			pause();
