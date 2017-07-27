@@ -10,9 +10,9 @@ set(HUNTER_CONFIGURATION_TYPES Release)
 set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache")
 include(HunterGate)
 HunterGate(
-    URL "https://github.com/ruslo/hunter/archive/v0.19.14.tar.gz"
-    SHA1 "d4216c82be9c273ce2567b35f75356da045b884f"
-    LOCAL
+	URL "https://github.com/ruslo/hunter/archive/v0.19.49.tar.gz"
+	SHA1 "dd8a16d1beeede2159c58f4cd478ac010545686b"
+	LOCAL
 )
 
 find_package(PythonInterp 3)
