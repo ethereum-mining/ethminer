@@ -1,5 +1,4 @@
 language: cpp
-python: "3.5"
 env:
   global:
     - secure: "fHPxJHwBxb7yTxmGm9pKLbZh0r3Xd7PAfoiiOMPOkFYbsQUJQ+Xbj7eDdpJYN9aTFmsEE6WiidUet6TvWUlC2c2Wr3vb16D0ANgnFGap2BXWrpsJQpn7m9jIs86z7jzIbZoc3Xf24ohpwba3XivI0j33F0RLRbVcsRUo/Km46kuejBg9Qef7+oFIWQYCYgbWoGmKJv030RlUgFgwnIR1vD7K09A3zm6rYJTCvP9swr3XBO8dzWuL/+vfX+xHxkNPFCzq0ETVf2VSD8giIeAmKEQoiTWzieeGZvdnknY2kWVySgAkw8wVC8+N4N0MhvagzrtWzGsjnQQCWlc6QL4naOTb36z7wAg0iFtGvuhEN2OJhtGDW9vyhiVn+sAsu0fq7MH0idG1FrWc3lL5ogqdqbCpdbekCGSphhtRxqkD/iDfEiY4QaO/9OMlaTxUUQsgGIXAB+UZFlBO0TVYu+TkhYr2nk2cmhvGhz5tqsWpiks0oKbySYxuLcDMO20FzEKqQsroCLo70LKOW5CkFBDUCpp+WXgaFnxbyxw6G4Zl+EVZpBXPb35+oRjVv0Gs2ubGjlmEZzfzVZkjBqAjJ7c5eHEIUizyPAgxQVQaj+cV1s5aHpWPOLGvTLYJkEvRVSG0oSDdiH1wtVHuf/7rTZsupxHGVvbohZGHxiIZHfOwYZc="
@@ -25,7 +24,7 @@ cache:
 before_install:
     - if [[ "$CUDA" = ON ]]; then source scripts/install-cuda-trusty.sh; fi
     - if [ "$TRAVIS_OS_NAME" = linux ]; then scripts/install_cmake.sh; fi
-    - if [ "$TRAVIS_OS_NAME" = osx ]; then brew install python3; pip3 install requests; fi
+    - pip install requests
 script:
     - cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -H. -Bbuild
     - cmake --build build -- -j4
