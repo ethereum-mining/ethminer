@@ -15,7 +15,7 @@ HunterGate(
 	LOCAL
 )
 
-find_package(PythonInterp 3)
+find_package(PythonInterp)
 if(PYTHONINTERP_FOUND)
 	hunter_gate_self(
 		"${HUNTER_CACHED_ROOT}"
