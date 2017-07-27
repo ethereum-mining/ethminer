@@ -7,7 +7,7 @@ jobs:
       - checkout
       - run: pwd
       - run: ls
-      - run: apt-get update && apt-get install -qy mesa-common-dev curl
+      - run: apt-get update && apt-get install -qy mesa-common-dev curl libidn11-dev
       - run: scripts/install_cmake.sh --prefix /usr
       - restore_cache:
           key: hunter
