@@ -614,11 +614,11 @@ private:
 		//genesis.prep();
 
 		genesis.setDifficulty(u256(1) << 63);
-		f.setWork(genesis);
 		if (_m == MinerType::CL)
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
+		f.setWork(genesis);
 
 		map<uint64_t, WorkingProgress> results;
 		uint64_t mean = 0;
@@ -677,12 +677,12 @@ private:
 		//genesis.prep();
 
 		genesis.setDifficulty(u256(1) << difficulty);
-		f.setWork(genesis);
 
 		if (_m == MinerType::CL)
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
+		f.setWork(genesis);
 
 		int time = 0;
 
