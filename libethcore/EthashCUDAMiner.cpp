@@ -125,6 +125,9 @@ void EthashCUDAMiner::workLoop()
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
 		WorkPackage w = work();
+		if (!w)
+			return;
+
 		cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
 		if (!m_miner || m_minerSeed != w.seed)
 		{
@@ -162,7 +165,7 @@ void EthashCUDAMiner::workLoop()
 			light = EthashAux::light(w.seed);
 			//bytesConstRef dagData = dag->data();
 			bytesConstRef lightData = light->data();
-			
+
 			m_miner->init(light->light, lightData.data(), lightData.size(), device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE), &s_dagInHostMemory);
 			s_dagLoadIndex++;
 
