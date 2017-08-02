@@ -123,13 +123,7 @@ void CLMiner::report(uint64_t _nonce)
 }
 
 void CLMiner::kickOff()
-{
-	{
-		UniqueGuard l(x_hook);
-		m_hook_aborted = m_hook_abort = false;
-	}
-	startWorking();
-}
+{}
 
 namespace
 {
@@ -243,20 +237,7 @@ void CLMiner::workLoop()
 }
 
 void CLMiner::pause()
-{
-	{
-		UniqueGuard l(x_hook);
-		if (m_hook_aborted)
-			return;
-
-		m_hook_abort = true;
-	}
-	// m_abort is true so now searched()/found() will return true to abort the search.
-	// we hang around on this thread waiting for them to point out that they have aborted since
-	// otherwise we may end up deleting this object prior to searched()/found() being called.
-	m_hook_aborted.wait(true);
-	stopWorking();
-}
+{}
 
 unsigned CLMiner::getNumDevices()
 {
