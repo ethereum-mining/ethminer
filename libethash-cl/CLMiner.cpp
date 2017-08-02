@@ -98,7 +98,12 @@ int CLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -
 
 CLMiner::CLMiner(FarmFace& _farm, unsigned _index):
 	Miner("cl-", _farm, _index)
-{}
+{
+	// FIXME: Move m_current to local var in the work loop.
+	// Init with non-zero hashes to distinct from the seed of epoch 0 and empty work.
+	m_current.header = h256{1u};
+	m_current.seed = h256{1u};
+}
 
 CLMiner::~CLMiner()
 {
@@ -140,49 +145,60 @@ void CLMiner::workLoop()
 	// Memory for zero-ing buffers. Cannot be static because crashes on macOS.
 	uint32_t const c_zero = 0;
 
+	uint64_t startNonce = 0;
+
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
-		const WorkPackage w = work();
-
-		if (!w)
-		{
-			cllog << "No work. Pause.";
-			return;
-		}
-
-		cllog << "Set work. Header" << w.header << "target" << w.boundary.hex();
-		if (m_seed != w.seed)
-		{
-			if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
-			{
-				while (s_dagLoadIndex < index)
-					this_thread::sleep_for(chrono::seconds(1));
-				++s_dagLoadIndex;
-			}
-
-			cllog << "Initialising miner with seed" << w.seed;
-			init(w.seed);
-			m_seed = w.seed;
-		}
-
-		uint64_t startNonce = 0;
-		if (w.exSizeBits >= 0)
-			startNonce = w.startNonce | ((uint64_t)index << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
-		else
-			startNonce = randomNonce();
-
-		// Upper 64 bits of the boundary.
-		const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
-
-		// Update header constant buffer.
-		m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, w.header.size, w.header.data());
-		m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
-
-		m_searchKernel.setArg(0, m_searchBuffer);  // Supply output buffer to kernel.
-		m_searchKernel.setArg(4, target);
-
 		while (true)
 		{
+			const WorkPackage w = work();
+
+			if (m_current.header != w.header)
+			{
+				// New work received. Update GPU data.
+
+				if (!w)
+				{
+					cllog << "No work. Pause for 3 s.";
+					std::this_thread::sleep_for(std::chrono::seconds(3));
+					continue;
+				}
+
+				cllog << "New work: header" << w.header << "target" << w.boundary.hex();
+
+				if (m_current.seed != w.seed)
+				{
+					if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
+					{
+						while (s_dagLoadIndex < index)
+							this_thread::sleep_for(chrono::seconds(1));
+						++s_dagLoadIndex;
+					}
+
+					cllog << "New seed" << w.seed;
+					init(w.seed);
+				}
+
+				// Upper 64 bits of the boundary.
+				const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
+				assert(target > 0);
+
+				// Update header constant buffer.
+				m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, w.header.size, w.header.data());
+				m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
+
+				m_searchKernel.setArg(0, m_searchBuffer);  // Supply output buffer to kernel.
+				m_searchKernel.setArg(4, target);
+
+				// FIXME: This logic should be move out of here.
+				if (w.exSizeBits >= 0)
+					startNonce = w.startNonce | ((uint64_t)index << (64 - 4 - w.exSizeBits)); // This can support up to 16 devices.
+				else
+					startNonce = randomNonce();
+
+				m_current = w;
+			}
+
 			// Read results.
 			// TODO: could use pinned host pointer instead.
 			uint32_t results[c_maxSearchResults + 1];
