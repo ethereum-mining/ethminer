@@ -150,20 +150,13 @@ public:
 
 	void setWork(WorkPackage const& _work)
 	{
-		bool running = !!m_work;
 		{
 			Guard l(x_work);
 			m_work = _work;
 			workSwitchStart = std::chrono::high_resolution_clock::now();
 		}
-		assert(!!_work);
-		if (!!_work)
-		{
-			pause();
-			kickOff();
-		}
-		else if (!_work && running)
-			pause();
+		pause();
+		kickOff();
 		m_hashCount = 0;
 	}
 

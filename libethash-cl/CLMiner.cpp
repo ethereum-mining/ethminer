@@ -131,7 +131,6 @@ void CLMiner::workLoop()
 	current.header = h256{1u};
 	current.seed = h256{1u};
 
-	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
 		while (true)
 		{
