@@ -80,8 +80,6 @@ class EthashCUDAHook;
 		void workLoop() override;
 		void report(uint64_t _nonce);
 
-		using Miner::accumulateHashes;
-
 		EthashCUDAHook* m_hook = nullptr;
 		ethash_cuda_miner* m_miner = nullptr;
 

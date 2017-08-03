@@ -45,8 +45,6 @@ public:
 	CLMiner(FarmFace& _farm, unsigned _index);
 	~CLMiner();
 
-	bool searched(uint32_t _count);
-
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 	static unsigned getNumDevices();
 	static void listDevices();
@@ -76,10 +74,6 @@ private:
 	void report(uint64_t _nonce);
 
 	bool init(const h256& seed);
-
-	Mutex x_hook;
-	bool m_hook_abort = false;
-	Notified<bool> m_hook_aborted = {true};
 
 	cl::Context m_context;
 	cl::CommandQueue m_queue;

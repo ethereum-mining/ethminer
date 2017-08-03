@@ -80,15 +80,6 @@ std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, 
 
 }
 
-bool CLMiner::searched(uint32_t _count)
-{
-	UniqueGuard l(x_hook);
-	accumulateHashes(_count);
-	if (m_hook_abort)
-		return (m_hook_aborted = true);
-	return false;
-}
-
 }
 }
 
@@ -224,9 +215,11 @@ void CLMiner::workLoop()
 			if (nonce)
 				report(nonce);
 
-			// Report searched and check if stop
-			bool exit = searched(m_globalWorkSize);
-			if (exit || shouldStop())
+			// Report hash count
+			addHashCount(m_globalWorkSize);
+
+			// Check if we should stop.
+			if (shouldStop())
 			{
 				// Make sure the last buffer write has finished --
 				// it reads local variable.

@@ -186,7 +186,7 @@ protected:
 
 	WorkPackage work() const { Guard l(x_work); return m_work; }
 
-	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
+	void addHashCount(uint64_t _n) { m_hashCount += _n; }
 
 	static unsigned s_dagLoadMode;
 	static volatile unsigned s_dagLoadIndex;
