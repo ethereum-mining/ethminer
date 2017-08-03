@@ -96,14 +96,13 @@ CLMiner::~CLMiner()
 	pause();
 }
 
-void CLMiner::report(uint64_t _nonce)
+void CLMiner::report(uint64_t _nonce, WorkPackage const& _w)
 {
 	assert(_nonce != 0);
-	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	// TODO: Why re-evaluating?
-	Result r = EthashAux::eval(w.seed, w.header, _nonce);
-	if (r.value < w.boundary)
-		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
+	Result r = EthashAux::eval(_w.seed, _w.header, _nonce);
+	if (r.value < _w.boundary)
+		farm.submitProof(Solution{_nonce, r.mixHash, _w.header, _w.seed, _w.boundary});
 	else
 		cwarn << "Invalid solution";
 }
@@ -212,8 +211,8 @@ void CLMiner::workLoop()
 
 			// Report results while the kernel is running.
 			// It takes some time because ethash must be re-evaluated on CPU.
-			if (nonce)
-				report(nonce);
+			if (nonce != 0)
+				report(nonce, current);
 
 			// Report hash count
 			addHashCount(m_globalWorkSize);
