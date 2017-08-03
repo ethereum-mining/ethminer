@@ -184,7 +184,7 @@ protected:
 	 */
 	virtual void pause() = 0;
 
-	WorkPackage const& work() const { Guard l(x_work); return m_work; }
+	WorkPackage work() const { Guard l(x_work); return m_work; }
 
 	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
 
