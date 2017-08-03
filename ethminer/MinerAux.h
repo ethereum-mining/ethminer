@@ -618,7 +618,7 @@ private:
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
-		f.setWork(genesis);
+		f.setWork(WorkPackage{genesis});
 
 		map<uint64_t, WorkingProgress> results;
 		uint64_t mean = 0;
@@ -682,11 +682,11 @@ private:
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
-		f.setWork(genesis);
 
 		int time = 0;
 
 		WorkPackage current = WorkPackage(genesis);
+		f.setWork(current);
 		while (true) {
 			bool completed = false;
 			Solution solution;

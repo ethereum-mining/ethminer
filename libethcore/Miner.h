@@ -154,6 +154,7 @@ public:
 		{
 			Guard l(x_work);
 			m_work = _work;
+			workSwitchStart = std::chrono::high_resolution_clock::now();
 		}
 		assert(!!_work);
 		if (!!_work)
@@ -183,7 +184,7 @@ protected:
 	 */
 	virtual void pause() = 0;
 
-	WorkPackage const& work() const { Guard l(x_work); return m_work; }
+	WorkPackage work() const { Guard l(x_work); return m_work; }
 
 	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
 
@@ -194,6 +195,7 @@ protected:
 
 	const size_t index = 0;
 	FarmFace& farm;
+	std::chrono::high_resolution_clock::time_point workSwitchStart;
 
 private:
 	uint64_t m_hashCount = 0;

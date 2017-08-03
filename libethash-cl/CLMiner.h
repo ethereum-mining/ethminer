@@ -92,9 +92,7 @@ private:
 	unsigned m_globalWorkSize = 0;
 	unsigned m_workgroupSize = 0;
 
-	/// The seed the miner was initialized with.
-	/// Init with non-zero hash to distinct from the seed of epoch 0.
-	h256 m_seed = h256{1u};
+	WorkPackage m_current;
 
 	static unsigned s_platformId;
 	static unsigned s_numInstances;
