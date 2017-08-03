@@ -86,8 +86,6 @@ private:
 	unsigned m_globalWorkSize = 0;
 	unsigned m_workgroupSize = 0;
 
-	WorkPackage m_current;
-
 	static unsigned s_platformId;
 	static unsigned s_numInstances;
 	static int s_devices[16];

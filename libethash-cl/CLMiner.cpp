@@ -89,12 +89,7 @@ int CLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -
 
 CLMiner::CLMiner(FarmFace& _farm, unsigned _index):
 	Miner("cl-", _farm, _index)
-{
-	// FIXME: Move m_current to local var in the work loop.
-	// Init with non-zero hashes to distinct from the seed of epoch 0 and empty work.
-	m_current.header = h256{1u};
-	m_current.seed = h256{1u};
-}
+{}
 
 CLMiner::~CLMiner()
 {
@@ -132,13 +127,18 @@ void CLMiner::workLoop()
 
 	uint64_t startNonce = 0;
 
+	// The work package currently processed by GPU.
+	WorkPackage current;
+	current.header = h256{1u};
+	current.seed = h256{1u};
+
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
 		while (true)
 		{
 			const WorkPackage w = work();
 
-			if (m_current.header != w.header)
+			if (current.header != w.header)
 			{
 				// New work received. Update GPU data.
 				auto localSwitchStart = std::chrono::high_resolution_clock::now();
@@ -152,7 +152,7 @@ void CLMiner::workLoop()
 
 				cllog << "New work: header" << w.header << "target" << w.boundary.hex();
 
-				if (m_current.seed != w.seed)
+				if (current.seed != w.seed)
 				{
 					if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
 					{
@@ -182,7 +182,7 @@ void CLMiner::workLoop()
 				else
 					startNonce = randomNonce();
 
-				m_current = w;
+				current = w;
 				auto switchEnd = std::chrono::high_resolution_clock::now();
 				auto globalSwitchTime = std::chrono::duration_cast<std::chrono::milliseconds>(switchEnd - workSwitchStart).count();
 				auto localSwitchTime = std::chrono::duration_cast<std::chrono::microseconds>(switchEnd - localSwitchStart).count();
