@@ -73,7 +73,7 @@ namespace eth
 		{
 			(void) _startNonce;  // FIXME: unusued arg.
 			UniqueGuard l(x_all);
-			m_owner.accumulateHashes(_count);
+			m_owner.addHashCount(_count);
 			if (m_abort || m_owner.shouldStop())
 				return (m_aborted = true);
 			return false;

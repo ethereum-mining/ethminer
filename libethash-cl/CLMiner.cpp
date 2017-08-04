@@ -80,15 +80,6 @@ std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, 
 
 }
 
-bool CLMiner::searched(uint32_t _count)
-{
-	UniqueGuard l(x_hook);
-	accumulateHashes(_count);
-	if (m_hook_abort)
-		return (m_hook_aborted = true);
-	return false;
-}
-
 }
 }
 
@@ -98,26 +89,20 @@ int CLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -
 
 CLMiner::CLMiner(FarmFace& _farm, unsigned _index):
 	Miner("cl-", _farm, _index)
-{
-	// FIXME: Move m_current to local var in the work loop.
-	// Init with non-zero hashes to distinct from the seed of epoch 0 and empty work.
-	m_current.header = h256{1u};
-	m_current.seed = h256{1u};
-}
+{}
 
 CLMiner::~CLMiner()
 {
 	pause();
 }
 
-void CLMiner::report(uint64_t _nonce)
+void CLMiner::report(uint64_t _nonce, WorkPackage const& _w)
 {
 	assert(_nonce != 0);
-	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	// TODO: Why re-evaluating?
-	Result r = EthashAux::eval(w.seed, w.header, _nonce);
-	if (r.value < w.boundary)
-		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
+	Result r = EthashAux::eval(_w.seed, _w.header, _nonce);
+	if (r.value < _w.boundary)
+		farm.submitProof(Solution{_nonce, r.mixHash, _w.header, _w.seed, _w.boundary});
 	else
 		cwarn << "Invalid solution";
 }
@@ -141,13 +126,17 @@ void CLMiner::workLoop()
 
 	uint64_t startNonce = 0;
 
-	// take local copy of work since it may end up being overwritten by kickOff/pause.
+	// The work package currently processed by GPU.
+	WorkPackage current;
+	current.header = h256{1u};
+	current.seed = h256{1u};
+
 	try {
 		while (true)
 		{
 			const WorkPackage w = work();
 
-			if (m_current.header != w.header)
+			if (current.header != w.header)
 			{
 				// New work received. Update GPU data.
 				auto localSwitchStart = std::chrono::high_resolution_clock::now();
@@ -161,7 +150,7 @@ void CLMiner::workLoop()
 
 				cllog << "New work: header" << w.header << "target" << w.boundary.hex();
 
-				if (m_current.seed != w.seed)
+				if (current.seed != w.seed)
 				{
 					if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
 					{
@@ -191,7 +180,7 @@ void CLMiner::workLoop()
 				else
 					startNonce = randomNonce();
 
-				m_current = w;
+				current = w;
 				auto switchEnd = std::chrono::high_resolution_clock::now();
 				auto globalSwitchTime = std::chrono::duration_cast<std::chrono::milliseconds>(switchEnd - workSwitchStart).count();
 				auto localSwitchTime = std::chrono::duration_cast<std::chrono::microseconds>(switchEnd - localSwitchStart).count();
@@ -221,12 +210,14 @@ void CLMiner::workLoop()
 
 			// Report results while the kernel is running.
 			// It takes some time because ethash must be re-evaluated on CPU.
-			if (nonce)
-				report(nonce);
+			if (nonce != 0)
+				report(nonce, current);
 
-			// Report searched and check if stop
-			bool exit = searched(m_globalWorkSize);
-			if (exit || shouldStop())
+			// Report hash count
+			addHashCount(m_globalWorkSize);
+
+			// Check if we should stop.
+			if (shouldStop())
 			{
 				// Make sure the last buffer write has finished --
 				// it reads local variable.

@@ -45,8 +45,6 @@ public:
 	CLMiner(FarmFace& _farm, unsigned _index);
 	~CLMiner();
 
-	bool searched(uint32_t _count);
-
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 	static unsigned getNumDevices();
 	static void listDevices();
@@ -73,13 +71,9 @@ protected:
 
 private:
 	void workLoop() override;
-	void report(uint64_t _nonce);
+	void report(uint64_t _nonce, WorkPackage const& _w);
 
 	bool init(const h256& seed);
-
-	Mutex x_hook;
-	bool m_hook_abort = false;
-	Notified<bool> m_hook_aborted = {true};
 
 	cl::Context m_context;
 	cl::CommandQueue m_queue;
@@ -91,8 +85,6 @@ private:
 	cl::Buffer m_searchBuffer;
 	unsigned m_globalWorkSize = 0;
 	unsigned m_workgroupSize = 0;
-
-	WorkPackage m_current;
 
 	static unsigned s_platformId;
 	static unsigned s_numInstances;
