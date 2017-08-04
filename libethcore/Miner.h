@@ -150,20 +150,13 @@ public:
 
 	void setWork(WorkPackage const& _work)
 	{
-		bool running = !!m_work;
 		{
 			Guard l(x_work);
 			m_work = _work;
 			workSwitchStart = std::chrono::high_resolution_clock::now();
 		}
-		assert(!!_work);
-		if (!!_work)
-		{
-			pause();
-			kickOff();
-		}
-		else if (!_work && running)
-			pause();
+		pause();
+		kickOff();
 		m_hashCount = 0;
 	}
 
@@ -186,7 +179,7 @@ protected:
 
 	WorkPackage work() const { Guard l(x_work); return m_work; }
 
-	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
+	void addHashCount(uint64_t _n) { m_hashCount += _n; }
 
 	static unsigned s_dagLoadMode;
 	static volatile unsigned s_dagLoadIndex;
