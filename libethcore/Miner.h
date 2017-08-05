@@ -70,6 +70,9 @@ struct WorkingProgress
 	uint64_t hashes = 0;		///< Total number of hashes computed.
 	uint64_t ms = 0;			///< Total number of milliseconds of mining thus far.
 	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
+
+	std::vector<uint64_t> minersHashes;
+	uint64_t minerRate(const uint64_t hashCount) const { return ms == 0 ? 0 : hashCount * 1000 / ms; }
 };
 
 inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
@@ -77,7 +80,16 @@ inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 	float mh = _p.rate() / 1000000.0f;
 	char mhs[16];
 	sprintf(mhs, "%.2f", mh);
-	_out << std::string(mhs) + "MH/s";
+	_out << "Total: " << std::string(mhs) + "MH/s";
+
+	int gpuIndex=0;
+	for (auto const& i: _p.minersHashes)
+	{
+		mh = _p.minerRate(i) / 1000000.0f;
+		sprintf(mhs, "%.2f", mh);
+		_out << " GPU" << gpuIndex++ << ": " << std::string(mhs) + "MH/s";
+	}
+
 	return _out;
 }
 
