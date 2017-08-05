@@ -100,8 +100,12 @@ public:
 		}
 		for (unsigned i = start; i < ins; ++i)
 		{
+			// TODO: Improve miners creation, use unique_ptr.
 			m_miners.push_back(std::shared_ptr<Miner>(m_sealers[_sealer].create(*this, i)));
-			m_miners.back()->setWork(m_work);
+
+			// Start miners' threads. They should pause waiting for new work
+			// package.
+			m_miners.back()->startWorking();
 		}
 		m_isMining = true;
 		m_lastSealer = _sealer;
