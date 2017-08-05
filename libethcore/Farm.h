@@ -127,23 +127,21 @@ public:
 	 * @brief Get information on the progress of mining this work package.
 	 * @return The progress with mining so far.
 	 */
-	FarmWorkingProgress const& miningProgress() const
+	WorkingProgress const& miningProgress() const
 	{
-		FarmWorkingProgress fp;
-		fp.ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_lastStart).count();
+		WorkingProgress p;
+		p.ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_lastStart).count();
 		{
 			Guard l2(x_minerWork);
 			for (auto const& i: m_miners)
 			{
-				MinerWorkingProgress mp;
-				mp.hashes = i->hashCount();
-				mp.ms = fp.ms;
-				fp.hashes += i->hashCount();
-				fp.minersProgress.push_back(mp);
+				uint64_t minerHashCount = i->hashCount();
+				p.hashes += minerHashCount;
+				p.minersHashes.push_back(minerHashCount);
 			}
 		}
 		Guard l(x_progress);
-		m_progress = fp;
+		m_progress = p;
 		return m_progress;
 	}
 
@@ -224,7 +222,7 @@ private:
 	std::atomic<bool> m_isMining = {false};
 
 	mutable Mutex x_progress;
-	mutable FarmWorkingProgress m_progress;
+	mutable WorkingProgress m_progress;
 	std::chrono::steady_clock::time_point m_lastStart;
 
 	SolutionFound m_onSolutionFound;

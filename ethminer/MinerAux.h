@@ -621,7 +621,7 @@ private:
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
 
-		map<uint64_t, FarmWorkingProgress> results;
+		map<uint64_t, WorkingProgress> results;
 		uint64_t mean = 0;
 		uint64_t innerMean = 0;
 		for (unsigned i = 0; i <= _trials; ++i)
