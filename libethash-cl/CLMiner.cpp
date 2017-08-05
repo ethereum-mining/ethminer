@@ -22,7 +22,11 @@ constexpr size_t c_maxSearchResults = 1;
 
 struct CLChannel: public LogChannel
 {
-	static const char* name() { static std::stringstream ss; ss << EthOrange << " cl"; return ss.str().c_str(); }
+#ifdef _WIN32
+	static const char* name() { return " cl"; }
+#else
+	static const char* name() { return EthOrange " cl"; }
+#endif
 	static const int verbosity = 2;
 	static const bool debug = false;
 };
