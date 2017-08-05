@@ -7,72 +7,73 @@ namespace con
 
 #ifdef _WIN32
 
-#define EthReset ""       // Text Reset
+char* EthEscapeSequence(char* escapeSequence);
 
-#define EthReset ""       // Text Reset
+#define EthReset dev::con::EthEscapeSequence("\x1b[0m")       // Text Reset
 
-	// Regular Colors
-#define EthBlack	""    // Black
-#define EthCoal		""    // Black
-#define EthGray		""    // White
-#define EthWhite	""    // White
-#define EthMaroon	""    // Red
-#define EthRed		""    // Red
-#define EthGreen	""    // Green
-#define EthLime		""    // Green
-#define EthOrange	""    // Yellow
-#define EthYellow	""    // Yellow
-#define EthNavy		""    // Blue
-#define EthBlue		""    // Blue
-#define EthViolet	""    // Purple
-#define EthPurple	""    // Purple
-#define EthTeal		""    // Cyan
-#define EthCyan		""    // Cyan
+// Regular Colors
+#define EthBlack dev::con::EthEscapeSequence("\x1b[30m")        // Black
+#define EthCoal dev::con::EthEscapeSequence("\x1b[90m")       // Black
+#define EthGray dev::con::EthEscapeSequence("\x1b[37m")        // White
+#define EthWhite dev::con::EthEscapeSequence("\x1b[97m")       // White
+#define EthMaroon dev::con::EthEscapeSequence("\x1b[31m")          // Red
+#define EthRed dev::con::EthEscapeSequence("\x1b[91m")         // Red
+#define EthGreen dev::con::EthEscapeSequence("\x1b[32m")        // Green
+#define EthLime dev::con::EthEscapeSequence("\x1b[92m")       // Green
+#define EthOrange dev::con::EthEscapeSequence("\x1b[33m")       // Yellow
+#define EthYellow dev::con::EthEscapeSequence("\x1b[93m")      // Yellow
+#define EthNavy dev::con::EthEscapeSequence("\x1b[34m")         // Blue
+#define EthBlue dev::con::EthEscapeSequence("\x1b[94m")        // Blue
+#define EthViolet dev::con::EthEscapeSequence("\x1b[35m")       // Purple
+#define EthPurple dev::con::EthEscapeSequence("\x1b[95m")      // Purple
+#define EthTeal dev::con::EthEscapeSequence("\x1b[36m")         // Cyan
+#define EthCyan dev::con::EthEscapeSequence("\x1b[96m")        // Cyan
 
-#define EthBlackBold	""      // Black
-#define EthCoalBold		""      // Black
-#define EthGrayBold		""      // White
-#define EthWhiteBold	""      // White
-#define EthMaroonBold	""      // Red
-#define EthRedBold		""      // Red
-#define EthGreenBold	""      // Green
-#define EthLimeBold		""      // Green
-#define EthOrangeBold	""      // Yellow
-#define EthYellowBold	""      // Yellow
-#define EthNavyBold		""      // Blue
-#define EthBlueBold		""      // Blue
-#define EthVioletBold	""      // Purple
-#define EthPurpleBold	""      // Purple
-#define EthTealBold		""      // Cyan
-#define EthCyanBold		""      // Cyan
+#define EthBlackBold dev::con::EthEscapeSequence("\x1b[1;30m")       // Black
+#define EthCoalBold dev::con::EthEscapeSequence("\x1b[1;90m")      // Black
+#define EthGrayBold dev::con::EthEscapeSequence("\x1b[1;37m")       // White
+#define EthWhiteBold dev::con::EthEscapeSequence("\x1b[1;97m")      // White
+#define EthMaroonBold dev::con::EthEscapeSequence("\x1b[1;31m")         // Red
+#define EthRedBold dev::con::EthEscapeSequence("\x1b[1;91m")        // Red
+#define EthGreenBold dev::con::EthEscapeSequence("\x1b[1;32m")       // Green
+#define EthLimeBold dev::con::EthEscapeSequence("\x1b[1;92m")      // Green
+#define EthOrangeBold dev::con::EthEscapeSequence("\x1b[1;33m")      // Yellow
+#define EthYellowBold dev::con::EthEscapeSequence("\x1b[1;93m")     // Yellow
+#define EthNavyBold dev::con::EthEscapeSequence("\x1b[1;34m")        // Blue
+#define EthBlueBold dev::con::EthEscapeSequence("\x1b[1;94m")       // Blue
+#define EthVioletBold dev::con::EthEscapeSequence("\x1b[1;35m")      // Purple
+#define EthPurpleBold dev::con::EthEscapeSequence("\x1b[1;95m")     // Purple
+#define EthTealBold dev::con::EthEscapeSequence("\x1b[1;36m")        // Cyan
+#define EthCyanBold dev::con::EthEscapeSequence("\x1b[1;96m")       // Cyan
 
-	// Background
-#define EthOnBlack		""       // Black
-#define EthOnCoal		""		 // Black
-#define EthOnGray		""       // White
-#define EthOnWhite		""		 // White
-#define EthOnMaroon		""       // Red
-#define EthOnRed		""       // Red
-#define EthOnGreen		""       // Green
-#define EthOnLime		""		 // Green
-#define EthOnOrange		""       // Yellow
-#define EthOnYellow		""		 // Yellow
-#define EthOnNavy		""       // Blue
-#define EthOnBlue		""		 // Blue
-#define EthOnViolet		""       // Purple
-#define EthOnPurple		""		 // Purple
-#define EthOnTeal		""       // Cyan
-#define EthOnCyan		""		 // Cyan
+// Background
+#define EthOnBlack dev::con::EthEscapeSequence("\x1b[40m")       // Black
+#define EthOnCoal dev::con::EthEscapeSequence("\x1b[100m")   // Black
+#define EthOnGray dev::con::EthEscapeSequence("\x1b[47m")       // White
+#define EthOnWhite dev::con::EthEscapeSequence("\x1b[107m")   // White
+#define EthOnMaroon dev::con::EthEscapeSequence("\x1b[41m")         // Red
+#define EthOnRed dev::con::EthEscapeSequence("\x1b[101m")     // Red
+#define EthOnGreen dev::con::EthEscapeSequence("\x1b[42m")       // Green
+#define EthOnLime dev::con::EthEscapeSequence("\x1b[102m")   // Green
+#define EthOnOrange dev::con::EthEscapeSequence("\x1b[43m")      // Yellow
+#define EthOnYellow dev::con::EthEscapeSequence("\x1b[103m")  // Yellow
+#define EthOnNavy dev::con::EthEscapeSequence("\x1b[44m")        // Blue
+#define EthOnBlue dev::con::EthEscapeSequence("\x1b[104m")    // Blue
+#define EthOnViolet dev::con::EthEscapeSequence("\x1b[45m")      // Purple
+#define EthOnPurple dev::con::EthEscapeSequence("\x1b[105m")  // Purple
+#define EthOnTeal dev::con::EthEscapeSequence("\x1b[46m")        // Cyan
+#define EthOnCyan dev::con::EthEscapeSequence("\x1b[106m")    // Cyan
 
-	// Underline
-#define EthBlackUnder	""       // Black
-#define EthGrayUnder	""       // White
-#define EthMaroonUnder	""       // Red
-#define EthGreenUnder	""       // Green
-#define EthOrangeUnder	""       // Yellow
-#define EthNavyUnder	""       // Blue
-#define EthVioletUnder	""       // Purple
-#define EthTealUnder	""       // Cyan
+// Underline
+#define EthBlackUnder dev::con::EthEscapeSequence("\x1b[4;30m")       // Black
+#define EthGrayUnder dev::con::EthEscapeSequence("\x1b[4;37m")       // White
+#define EthMaroonUnder dev::con::EthEscapeSequence("\x1b[4;31m")      // Red
+#define EthGreenUnder dev::con::EthEscapeSequence("\x1b[4;32m")       // Green
+#define EthOrangeUnder dev::con::EthEscapeSequence("\x1b[4;33m")      // Yellow
+#define EthNavyUnder dev::con::EthEscapeSequence("\x1b[4;34m")        // Blue
+#define EthVioletUnder dev::con::EthEscapeSequence("\x1b[4;35m")      // Purple
+#define EthTealUnder dev::con::EthEscapeSequence("\x1b[4;36m")        // Cyan
+
 
 #else
 

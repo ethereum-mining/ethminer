@@ -41,12 +41,12 @@ mutex x_logOverride;
 static map<type_info const*, bool> s_logOverride;
 
 #ifdef _WIN32
-const char* LogChannel::name() { return EthGray "..."; }
-const char* LeftChannel::name() { return EthNavy "<--"; }
-const char* RightChannel::name() { return EthGreen "-->"; }
-const char* WarnChannel::name() { return EthOnRed EthBlackBold "  X"; }
-const char* NoteChannel::name() { return EthBlue "  i"; }
-const char* DebugChannel::name() { return EthWhite "  D"; }
+const char* LogChannel::name() { std::stringstream ss; ss << EthGray << "..."; return ss.str().c_str(); }
+const char* LeftChannel::name() { std::stringstream ss; ss << EthNavy << "<--"; return ss.str().c_str(); }
+const char* RightChannel::name() { std::stringstream ss; ss << EthGreen << "-->"; return ss.str().c_str(); }
+const char* WarnChannel::name() { std::stringstream ss; ss << EthOnRed << EthBlackBold << "  X"; return ss.str().c_str(); }
+const char* NoteChannel::name() { std::stringstream ss; ss << EthBlue << "  i"; return ss.str().c_str(); }
+const char* DebugChannel::name() { std::stringstream ss; ss << EthWhite << "  D"; return ss.str().c_str(); }
 #else
 const char* LogChannel::name() { return EthGray "···"; }
 const char* LeftChannel::name() { return EthNavy "◀▬▬"; }
@@ -68,11 +68,16 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
 		char buf[24];
 		if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
 			buf[0] = '\0'; // empty if case strftime fails
+#ifdef _WIN32
+		std::stringstream sstr; sstr << EthReset << EthBlack << "|" << EthTeal;
+		m_sstr << _id << "  " << EthViolet << buf << EthReset << EthBlack << "|" << EthNavy << std::left << std::setw(8) << getThreadName() << ThreadContext::join(sstr.str()) << EthReset << "  ";
+#else
 		static char const* c_begin = "  " EthViolet;
 		static char const* c_sep1 = EthReset EthBlack "|" EthNavy;
 		static char const* c_sep2 = EthReset EthBlack "|" EthTeal;
 		static char const* c_end = EthReset "  ";
 		m_sstr << _id << c_begin << buf << c_sep1 << std::left << std::setw(8) << getThreadName() << ThreadContext::join(c_sep2) << c_end;
+#endif
 	}
 }
 

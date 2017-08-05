@@ -60,7 +60,11 @@ using namespace boost::algorithm;
 class BadArgument: public Exception {};
 struct MiningChannel: public LogChannel
 {
+#ifdef _WIN32
+	static const char* name() { return "  m"; }
+#else
 	static const char* name() { return EthGreen "  m"; }
+#endif
 	static const int verbosity = 2;
 	static const bool debug = false;
 };
@@ -775,7 +779,10 @@ private:
 					auto mp = f.miningProgress();
 					f.resetMiningProgress();
 					if (current)
-						minelog << "Mining on" << current.header << ": " << mp << f.getSolutionStats();
+					{
+						minelog << "Mining on" << current.header << f.getSolutionStats();
+						minelog << mp;
+					}
 					else
 						minelog << "Getting work package...";
 
@@ -815,11 +822,11 @@ private:
 				{
 					bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
 					if (ok) {
-						cnote << "B-) Submitted and accepted.";
+						cnote << EthLime << "B-) Submitted and accepted.";
 						f.acceptedSolution(false);
 					}
 					else {
-						cwarn << ":-( Not accepted.";
+						cwarn << EthRed << ":-( Not accepted.";
 						f.rejectedSolution(false);
 					}
 					//exit(0);
@@ -916,7 +923,8 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << "Mining on" << client.currentHeaderHash() << ": " << mp << f.getSolutionStats();
+						minelog << "Mining on" << client.currentHeaderHash() << f.getSolutionStats();
+						minelog << mp;
 					}
 					else
 					{
@@ -955,7 +963,8 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << "Mining on" << client.currentHeaderHash() << ": " << mp << f.getSolutionStats();
+						minelog << "Mining on" << client.currentHeaderHash() << f.getSolutionStats();
+						minelog << mp;
 					}
 					else if (client.waitState() == MINER_WAIT_STATE_WORK)
 					{
