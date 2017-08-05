@@ -60,7 +60,7 @@ using namespace boost::algorithm;
 class BadArgument: public Exception {};
 struct MiningChannel: public LogChannel
 {
-	static const char* name() { return EthGreen "  m"; }
+	static const char* name() { std::stringstream ss; ss << EthGreen << "  m"; return ss.str().c_str(); }
 	static const int verbosity = 2;
 	static const bool debug = false;
 };
