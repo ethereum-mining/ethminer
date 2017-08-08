@@ -822,7 +822,7 @@ private:
 						f.acceptedSolution(false);
 					}
 					else {
-						cwarn << EthRed << ":-( Not accepted.";
+						cwarn << ":-( Not accepted.";
 						f.rejectedSolution(false);
 					}
 					//exit(0);
