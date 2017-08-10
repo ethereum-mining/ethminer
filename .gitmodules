@@ -2,3 +2,6 @@
 	path = evmjit
 	url = https://github.com/ethereum/evmjit
 	branch = develop
+[submodule "cmake/Hunter/disabled-mode"]
+	path = cmake/Hunter/disabled-mode
+	url = https://github.com/hunter-packages/disabled-mode
