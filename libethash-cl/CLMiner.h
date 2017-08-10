@@ -10,8 +10,11 @@
 #include <libethcore/Miner.h>
 
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS true
-#define __CL_ENABLE_EXCEPTIONS true
-#include "CL/cl.hpp"
+#define CL_HPP_ENABLE_EXCEPTIONS true
+#define CL_HPP_CL_1_2_DEFAULT_BUILD true
+#define CL_HPP_TARGET_OPENCL_VERSION 120
+#define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#include "CL/cl2.hpp"
 
 // macOS OpenCL fix:
 #ifndef CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV
