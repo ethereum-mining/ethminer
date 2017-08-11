@@ -23,6 +23,7 @@
 #include <thread>
 #include <fstream>
 #include <iostream>
+#include <signal.h>
 #include "MinerAux.h"
 #include "BuildInfo.h"
 
@@ -31,6 +32,13 @@ using namespace dev;
 using namespace dev::eth;
 using namespace boost::algorithm;
 
+#ifdef _WIN32
+void signalHandler(int sig)
+{
+	dev::con::ResetTerminalColor();
+	exit(0);
+}
+#endif
 
 void help()
 {
@@ -56,6 +64,12 @@ void version()
 
 int main(int argc, char** argv)
 {
+#ifdef _WIN32
+	// Signal handlers to reset terminal color on exit
+	signal(SIGINT, signalHandler);
+	signal(SIGTERM, signalHandler);
+#endif
+
 	// Set env vars controlling GPU driver behavior.
 	setenv("GPU_MAX_HEAP_SIZE", "100");
 	setenv("GPU_MAX_ALLOC_PERCENT", "100");
