@@ -359,7 +359,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		break;
 	case 4:
 		if (responseObject.get("result", false).asBool()) {
-			cnote << EthLime << "B-) Submitted and accepted.";
+			cnote << EthLime << "B-) Submitted and accepted." << EthReset;
 			p_farm->acceptedSolution(m_stale);
 		}
 		else {
