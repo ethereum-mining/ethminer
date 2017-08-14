@@ -78,21 +78,33 @@ This project uses [CMake] and [Hunter] package manager.
    mkdir build; cd build
    ```
 
-2. Configure the project with CMake. Check out additional
+1. Configure the project with CMake. Check out additional
    [configuration options](#cmake-configuration-options).
 
    ```sh
    cmake ..
    ```
+   e.g. incantation for Ubuntu 17.04 "Zesty" with CUDA, without CL, and addressing the
+   problems of requiring an older version of gcc and error "relocation R_X86_64_32S
+   against.bss' can not be used when making a shared object" mentioned in [this
+   issue](https://github.com/ethereum-mining/ethminer/issues/38).
+   ```sh
+   sudo apt install nvidia-{cuda-toolkit,opencl-dev} g{cc,++}-4.9 && \
+   cmake .. \
+    -DETHASHCUDA=ON \
+    -DETHASHCL=OFF \
+    -DCUDA_NVCC_FLAGS="-ccbin gcc-4.9" \
+    -DCMAKE_CXX_FLAGS="-fPIC"
+   ```
 
-3. Build the project using [CMake Build Tool Mode]. This is a portable variant
+1. Build the project using [CMake Build Tool Mode]. This is a portable variant
    of `make`.
 
    ```sh
    cmake --build .
    ```
 
-4. _(Optional, Linux only)_ Install the built executable.
+1. _(Optional, Linux only)_ Install the built executable.
 
    ```sh
    sudo make install
@@ -125,7 +137,6 @@ cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 - `-DETHASHCL=ON` - enable OpenCL mining, `ON` by default,
 - `-DETHASHCUDA=ON` - enable CUDA mining, `OFF` by default,
 - `-DETHSTRATUM=ON` - build with Stratum protocol support, `ON` by default.
-
 
 ## Maintainer
 
