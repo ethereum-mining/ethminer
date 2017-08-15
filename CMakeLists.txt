@@ -58,6 +58,7 @@ cmake_policy(SET CMP0054 NEW)
 option(ETHASHCL "Build with OpenCL mining" ON)
 option(ETHASHCUDA "Build with CUDA mining" OFF)
 option(ETHSTRATUM "Build with Stratum protocol support" ON)
+option(ETHDBUS "Build with D-Bus support" OFF)
 
 
 # propagates CMake configuration options to the compiler
@@ -70,6 +71,9 @@ function(configureProject)
 	endif()
 	if (ETHSTRATUM)
 		add_definitions(-DETH_STRATUM)
+	endif()
+	if (ETHDBUS)
+		add_definitions(-DETH_DBUS)
 	endif()
 endfunction()
 
@@ -127,6 +131,7 @@ message("------------------------------------------------------------- component
 message("-- ETHASHCL         Build OpenCL components                  ${ETHASHCL}")
 message("-- ETHASHCUDA       Build CUDA components                    ${ETHASHCUDA}")
 message("-- ETHSTRATUM       Build Stratum components                 ${ETHSTRATUM}")
+message("-- ETHDBUS          Build D-Bus components                   ${ETHDBUS}")
 message("------------------------------------------------------------------------")
 message("")
 
