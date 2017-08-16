@@ -98,6 +98,22 @@ This project uses [CMake] and [Hunter] package manager.
    sudo make install
    ```
 
+#### OpenCL support on Linux
+
+If you're planning to use [OpenCL on Linux](https://github.com/ruslo/hunter/wiki/pkg.opencl#pitfalls)
+you have to install OpenGL libraries. E.g. on Ubuntu run:
+
+```sh
+sudo apt-get install mesa-common-dev
+```
+
+#### Disable Hunter
+
+If you want to install dependencies yourself or use system package manager
+you can disable Hunter by adding
+[-DHUNTER_ENABLED=OFF](https://docs.hunter.sh/en/latest/reference/user-variables.html#hunter-enabled)
+to configuration options.
+
 ### CMake configuration options
 
 Pass these options to CMake configuration command, e.g.
