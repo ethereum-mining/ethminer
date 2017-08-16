@@ -9,8 +9,6 @@ namespace con
 
 #define EthReset ""       // Text Reset
 
-#define EthReset ""       // Text Reset
-
 	// Regular Colors
 #define EthBlack	""    // Black
 #define EthCoal		""    // Black
