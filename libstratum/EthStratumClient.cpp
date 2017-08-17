@@ -160,7 +160,7 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	}
 	else
 	{
-		cerr << "Could not resolve host" << p_active->host + ":" + p_active->port + ", " << ec.message();
+		cerr << "Could not resolve host " << p_active->host + ":" + p_active->port + ", " << ec.message();
 		reconnect();
 	}
 }
