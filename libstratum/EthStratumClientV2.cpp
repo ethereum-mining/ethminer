@@ -444,6 +444,16 @@ void EthStratumClientV2::work_timeout_handler(const boost::system::error_code& e
 	}
 }
 
+bool EthStratumClientV2::submitHashrate(string const & rate) {
+	h256 id = h256::random();
+	// There is no stratum method to submit the hashrate so we use the rpc variant.
+	string json = "{\"id\": 6, \"jsonrpc\":\"2.0\", \"method\": \"eth_submitHashrate\", \"params\": [\"" + rate + "\",\"0x" + id.hex() + "\"]}\n";
+	std::ostream os(&m_requestBuffer);
+	os << json;
+	write(m_socket, m_requestBuffer);
+	return true;
+}
+
 bool EthStratumClientV2::submit(Solution solution) {
 	x_current.lock();
 	WorkPackage tempWork(m_current);

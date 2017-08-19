@@ -33,6 +33,7 @@ public:
 	h256 currentHeaderHash() { return m_current.header; }
 	bool current() { return static_cast<bool>(m_current); }
 	unsigned waitState() { return m_waitState; }
+	bool submitHashrate(string const & rate);
 	bool submit(Solution solution);
 	void reconnect();
 private:

@@ -31,6 +31,7 @@ public:
 	bool isConnected() { return m_connected && m_authorized; }
 	h256 currentHeaderHash() { return m_current.header; }
 	bool current() { return static_cast<bool>(m_current); }
+	bool submitHashrate(string const & rate);
 	bool submit(Solution solution);
 	void reconnect();
 private:

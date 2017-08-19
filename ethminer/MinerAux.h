@@ -926,6 +926,9 @@ private:
 					{
 						minelog << "Waiting for work package...";
 					}
+					
+					auto rate = mp.rate();
+					client.submitHashrate(toJS(rate));
 				}
 				this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
 			}
@@ -966,6 +969,9 @@ private:
 					{
 						minelog << "Waiting for work package...";
 					}
+					
+					auto rate = mp.rate();
+					client.submitHashrate(toJS(rate));
 				}
 				this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
 			}
