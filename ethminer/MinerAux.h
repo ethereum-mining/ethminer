@@ -777,8 +777,10 @@ private:
 				{
 					auto mp = f.miningProgress();
 					f.resetMiningProgress();
-					if (current){
-						minelog << "Mining on" << current.header << ": " << mp << f.getSolutionStats();
+					if (current)
+					{
+						minelog << "Mining on" << current.header << f.getSolutionStats();
+						minelog << mp;
 #if ETH_DBUS
 						dbusint.send(toString(mp).c_str());
 #endif
@@ -822,7 +824,7 @@ private:
 				{
 					bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
 					if (ok) {
-						cnote << "B-) Submitted and accepted.";
+						cnote << EthLime << "B-) Submitted and accepted." << EthReset;
 						f.acceptedSolution(false);
 					}
 					else {
@@ -923,7 +925,8 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << "Mining on" << client.currentHeaderHash() << ": " << mp << f.getSolutionStats();
+						minelog << "Mining on" << client.currentHeaderHash() << f.getSolutionStats();
+						minelog << mp;
 #if ETH_DBUS
 						dbusint.send(toString(mp).c_str());
 #endif
@@ -965,7 +968,8 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << "Mining on" << client.currentHeaderHash() << ": " << mp << f.getSolutionStats();
+						minelog << "Mining on" << client.currentHeaderHash() << f.getSolutionStats();
+						minelog << mp;
 #if ETH_DBUS
 						dbusint.send(toString(mp).c_str());
 #endif
