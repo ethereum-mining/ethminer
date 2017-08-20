@@ -138,7 +138,11 @@ public:
 		{
 			Guard l2(x_minerWork);
 			for (auto const& i: m_miners)
-				p.hashes += i->hashCount();
+			{
+				uint64_t minerHashCount = i->hashCount();
+				p.hashes += minerHashCount;
+				p.minersHashes.push_back(minerHashCount);
+			}
 		}
 		Guard l(x_progress);
 		m_progress = p;
