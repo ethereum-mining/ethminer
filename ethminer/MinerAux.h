@@ -552,7 +552,7 @@ public:
 			<< "    -M [<n>],--benchmark [<n>] Benchmark for mining and exit; Optionally specify block number to benchmark against specific DAG." << endl
 			<< "    --benchmark-warmup <seconds>  Set the duration of warmup for the benchmark tests (default: 3)." << endl
 			<< "    --benchmark-trial <seconds>  Set the duration for each trial for the benchmark tests (default: 3)." << endl
-			<< "    --benchmark-trials <n>  Set the duration of warmup for the benchmark tests (default: 5)." << endl
+			<< "    --benchmark-trials <n>  Set the number of benchmark trials to run (default: 5)." << endl
 			<< "Simulation mode:" << endl
 			<< "    -Z [<n>],--simulation [<n>] Mining test mode. Used to validate kernel optimizations. Optionally specify block number." << endl
 			<< "Mining configuration:" << endl
@@ -582,7 +582,7 @@ public:
 			<< "        yield - Instruct CUDA to yield its thread when waiting for results from the device." << endl
 			<< "        sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device." << endl
 			<< "    --cuda-devices <0 1 ..n> Select which CUDA GPUs to mine on. Default is to use all" << endl
-			<< "    --cuda-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achive better performance. Default=4" << endl
+			<< "    --cuda-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achieve better performance. Default=4" << endl
 #endif
 			;
 	}
