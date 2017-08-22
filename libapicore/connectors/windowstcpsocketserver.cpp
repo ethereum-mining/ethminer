@@ -17,7 +17,7 @@
 #include <sstream>
 #include <iostream>
 #include <string>
-#include <libdevcore/Log.h>
+
 #include <jsonrpccpp/common/specificationparser.h>
 
 using namespace jsonrpc;
@@ -28,7 +28,11 @@ using namespace std;
 #define DELIMITER_CHAR char(0x0A)
 #endif //DELIMITER_CHAR
 
-WindowsTcpSocketServer::WindowsTcpSocketServer(const std::string& ipToBind, const unsigned int &port) : AbstractServerConnector(), ipToBind(ipToBind), port(port), running(false)
+WindowsTcpSocketServer::WindowsTcpSocketServer(const std::string& ipToBind, const unsigned int &port) :
+        AbstractServerConnector(),
+	ipToBind(ipToBind),
+	port(port),
+	running(false)
 {
 }
 
@@ -68,7 +72,6 @@ bool WindowsTcpSocketServer::StartListening()
 		{
 			return false;
 		}
-				
 		//Launch listening loop there
 		this->running = true;
 		HANDLE ret = CreateThread(NULL, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(&(WindowsTcpSocketServer::LaunchLoop)), reinterpret_cast<LPVOID>(this), 0, &(this->listenning_thread));
@@ -270,7 +273,6 @@ struct ServerSocketInitializer
 {
 	ServerSocketInitializer()
 	{
-		cwarn << "INIT!";
 		WSADATA init;
 		if(WSAStartup(MAKEWORD(2, 2), &init) != 0)
 		{
