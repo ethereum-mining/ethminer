@@ -623,6 +623,7 @@ private:
 #endif
 		f.setSealers(sealers);
 		f.onSolutionFound([&](Solution) { return false; });
+		f.onMinerRestart([&](){ });
 
 		string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
 		cout << "Benchmarking on platform: " << platformInfo << endl;
@@ -712,6 +713,7 @@ private:
 				solution = sol;
 				return completed = true;
 			});
+			f.onMinerRestart([&](){ });
 			for (unsigned i = 0; !completed; ++i)
 			{
 				auto mp = f.miningProgress();
@@ -792,6 +794,7 @@ private:
 					solution = sol;
 					return completed = true;
 				});
+				f.onMinerRestart([&](){ });
 				for (unsigned i = 0; !completed; ++i)
 				{
 					auto mp = f.miningProgress();
@@ -938,6 +941,9 @@ private:
 				}
 				return false;
 			});
+			f.onMinerRestart([&](){ 
+				client.reconnect();
+			});
 
 			while (client.isRunning())
 			{
@@ -984,6 +990,9 @@ private:
 			{
 				client.submit(sol);
 				return false;
+			});
+			f.onMinerRestart([&](){ 
+				client.reconnect();
 			});
 
 			while (client.isRunning())
