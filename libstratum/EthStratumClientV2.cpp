@@ -47,6 +47,8 @@ EthStratumClientV2::EthStratumClientV2(Farm* f, MinerType m, string const & host
 	m_protocol = protocol;
 	m_email = email;
 
+	m_submit_hashrate_id = h256::random().hex();
+	
 	p_farm = f;
 	p_worktimer = nullptr;
 	startWorking();
@@ -445,9 +447,8 @@ void EthStratumClientV2::work_timeout_handler(const boost::system::error_code& e
 }
 
 bool EthStratumClientV2::submitHashrate(string const & rate) {
-	h256 id = h256::random();
 	// There is no stratum method to submit the hashrate so we use the rpc variant.
-	string json = "{\"id\": 6, \"jsonrpc\":\"2.0\", \"method\": \"eth_submitHashrate\", \"params\": [\"" + rate + "\",\"0x" + id.hex() + "\"]}\n";
+	string json = "{\"id\": 6, \"jsonrpc\":\"2.0\", \"method\": \"eth_submitHashrate\", \"params\": [\"" + rate + "\",\"0x" + this->m_submit_hashrate_id + "\"]}\n";
 	std::ostream os(&m_requestBuffer);
 	os << json;
 	write(m_socket, m_requestBuffer);

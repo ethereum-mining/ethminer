@@ -90,6 +90,8 @@ private:
 
 	h64 m_extraNonce;
 	int m_extraNonceHexSize;
+	
+	string m_submit_hashrate_id;
 
 	void processExtranonce(std::string& enonce);
 };
