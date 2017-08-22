@@ -15,8 +15,6 @@
 #endif
 #include <string>
 
-#include <libdevcore/Log.h>
-
 using namespace jsonrpc;
 using namespace std;
 

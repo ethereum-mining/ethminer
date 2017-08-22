@@ -16,7 +16,7 @@ class Api
         Api(const unsigned int &port, Farm &farm);
 	private:
 		ApiServer *m_server;
-		TcpSocketServer &m_connection;
+		TcpSocketServer m_connection;
 		Farm &m_farm;
 };
 
