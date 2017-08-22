@@ -25,6 +25,9 @@ if(ETHDBUS)
 	target_link_libraries(${EXECUTABLE} ${DBUS_LIBRARIES})
 endif()
 
+if(APICORE)
+	target_link_libraries(${EXECUTABLE} apicore)
+endif()
 
 if(ETHSTRATUM)
     target_link_libraries(${EXECUTABLE} ethstratum)
