@@ -63,7 +63,7 @@ bool LinuxTcpSocketServer::StartListening()
 		inet_aton(this->ipToBind.c_str(), &(this->address.sin_addr));
 		this->address.sin_port = htons(this->port);
 
-		if(bind(this->socket_fd, reinterpret_cast<struct sockaddr *>(&(this->address)), sizeof(struct sockaddr_in)) != 0)
+		if(::bind(this->socket_fd, reinterpret_cast<struct sockaddr *>(&(this->address)), sizeof(struct sockaddr_in)) != 0)
 		{
 			return false;
 		}
