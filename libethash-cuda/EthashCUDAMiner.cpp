@@ -21,10 +21,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 * Determines the PoW algorithm.
 */
 
-#if ETH_ETHASHCUDA
-
 #include "EthashCUDAMiner.h"
-#include <libethash-cuda/ethash_cuda_miner.h>
 
 using namespace std;
 using namespace dev;
@@ -87,7 +84,6 @@ namespace eth
 	};
 }
 }
-
 unsigned EthashCUDAMiner::s_platformId = 0;
 unsigned EthashCUDAMiner::s_deviceId = 0;
 unsigned EthashCUDAMiner::s_numInstances = 0;
@@ -250,5 +246,3 @@ void EthashCUDAMiner::setParallelHash(unsigned _parallelHash)
 {
 	ethash_cuda_miner::setParallelHash(_parallelHash);
 }
-
-#endif

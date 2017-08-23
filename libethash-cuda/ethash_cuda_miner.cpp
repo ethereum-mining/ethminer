@@ -33,10 +33,10 @@
 #include <thread>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
+#include <libdevcore/Log.h>
 #include <cuda_runtime.h>
 #include "ethash_cuda_miner.h"
 #include "ethash_cuda_miner_kernel_globals.h"
-
 
 // workaround lame platforms
 
@@ -44,27 +44,21 @@
 #undef max
 
 using namespace std;
+using namespace dev;
+
+struct CUDAChannel: public LogChannel
+{
+	static const char* name() { return EthOrange " cu"; }
+	static const int verbosity = 2;
+	static const bool debug = false;
+};
+#define cudalog clog(CUDAChannel)
+#define ETHCUDA_LOG(_contents) cudalog << _contents
+
 
 unsigned const ethash_cuda_miner::c_defaultBlockSize = 128;
 unsigned const ethash_cuda_miner::c_defaultGridSize = 8192; // * CL_DEFAULT_LOCAL_WORK_SIZE
 unsigned const ethash_cuda_miner::c_defaultNumStreams = 2;
-
-#if defined(_WIN32)
-extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char* lpOutputString);
-static std::atomic_flag s_logSpin = ATOMIC_FLAG_INIT;
-#define ETHCUDA_LOG(_contents) \
-	do \
-			{ \
-		std::stringstream ss; \
-		ss << _contents; \
-						while (s_logSpin.test_and_set(std::memory_order_acquire)) {} \
-		OutputDebugStringA(ss.str().c_str()); \
-		cout << ss.str() << endl << flush; \
-		s_logSpin.clear(std::memory_order_release); \
-			} while (false)
-#else
-#define ETHCUDA_LOG(_contents) cout << "[CUDA]:" << _contents << endl
-#endif
 
 ethash_cuda_miner::search_hook::~search_hook() {}
 
@@ -136,9 +130,7 @@ bool ethash_cuda_miner::configureGPU(
 		s_numStreams = _numStreams;
 		s_scheduleFlag = _scheduleFlag;
 
-		ETHCUDA_LOG(
-			"Using grid size " << s_gridSize << ", block size " << s_blockSize << endl
-			);
+		cudalog << "Using grid size " << s_gridSize << ", block size " << s_blockSize;
 
 		// by default let's only consider the DAG of the first epoch
 		uint64_t dagSize = ethash_get_datasize(_currentBlock);
@@ -153,18 +145,11 @@ bool ethash_cuda_miner::configureGPU(
 				CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, deviceId));
 				if (props.totalGlobalMem >= dagSize)
 				{
-					ETHCUDA_LOG(
-						"Found suitable CUDA device [" << string(props.name)
-						<< "] with " << props.totalGlobalMem << " bytes of GPU memory"
-						);
+					cudalog <<  "Found suitable CUDA device [" << string(props.name) << "] with " << props.totalGlobalMem << " bytes of GPU memory";
 				}
 				else
 				{
-					ETHCUDA_LOG(
-						"CUDA device " << string(props.name)
-						<< " has insufficient GPU memory." << props.totalGlobalMem <<
-						" bytes of memory found < " << dagSize << " bytes of memory required"
-						);
+					cudalog <<  "CUDA device " << string(props.name) << " has insufficient GPU memory." << props.totalGlobalMem << " bytes of memory found < " << dagSize << " bytes of memory required";
 					return false;
 				}
 			}
@@ -207,7 +192,7 @@ void ethash_cuda_miner::listDevices()
 	}
 	catch(std::runtime_error const& err)
 	{
-		std::cerr << "CUDA error: " << err.what() << '\n';
+		cwarn << "CUDA error: " << err.what();
 	}
 }
 
@@ -231,7 +216,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		cudaDeviceProp device_props;
 		CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, device_num));
 
-		cout << "Using device: " << device_props.name << " (Compute " << device_props.major << "." << device_props.minor << ")" << endl;
+		cudalog << "Using device: " << device_props.name << " (Compute " << device_props.major << "." << device_props.minor << ")";
 
 		CUDA_SAFE_CALL(cudaSetDevice(device_num));
 		CUDA_SAFE_CALL(cudaDeviceReset());
@@ -275,13 +260,13 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 
 		if (!*hostDAG)
 		{
-			cout << "Generating DAG for GPU #" << device_num << endl;
+			cudalog << "Generating DAG for GPU #" << device_num;
 			ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], device_num);
 
 			if (_cpyToHost)
 			{
 				uint8_t* memoryDAG = new uint8_t[dagSize];
-				cout << "Copying DAG from GPU #" << device_num << " to host" << endl;
+				cudalog << "Copying DAG from GPU #" << device_num << " to host";
 				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
 
 				*hostDAG = (void*)memoryDAG;
@@ -289,7 +274,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		}
 		else
 		{
-			cout << "Copying DAG from host to GPU #" << device_num << endl;
+			cudalog << "Copying DAG from host to GPU #" << device_num;
 			const void* hdag = (const void*)(*hostDAG);
 			CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
 		}

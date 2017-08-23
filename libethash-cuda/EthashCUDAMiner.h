@@ -20,15 +20,12 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 *
 * Determines the PoW algorithm.
 */
-
 #pragma once
-#if ETH_ETHASHCUDA
 
-#include "libdevcore/Worker.h"
-#include "EthashAux.h"
-#include "Miner.h"
-
-class ethash_cuda_miner;
+#include <libdevcore/Worker.h>
+#include <libethcore/EthashAux.h>
+#include <libethcore/Miner.h>
+#include "ethash_cuda_miner.h"
 
 namespace dev
 {
@@ -92,5 +89,3 @@ class EthashCUDAHook;
 	};
 }
 }
-
-#endif

@@ -36,13 +36,12 @@
 #include <libethcore/Exceptions.h>
 #include <libdevcore/SHA3.h>
 #include <libethcore/EthashAux.h>
-#include <libethcore/EthashCUDAMiner.h>
 #include <libethcore/Farm.h>
 #if ETH_ETHASHCL
 #include <libethash-cl/CLMiner.h>
 #endif
 #if ETH_ETHASHCUDA
-#include <libethash-cuda/ethash_cuda_miner.h>
+#include <libethash-cuda/EthashCUDAMiner.h>
 #endif
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include "FarmClient.h"
