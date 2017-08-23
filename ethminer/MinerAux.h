@@ -235,6 +235,10 @@ public:
 		{
 			m_worktimeout = atoi(argv[++i]);
 		}
+		else if ((arg == "-RH" || arg == "--report-hashrate") && i + 1 < argc)
+		{
+			m_report_stratum_hashrate = true;
+		}
 
 #endif
 #if ETH_ETHASHCL
@@ -542,9 +546,8 @@ public:
 			<< "        0: official stratum spec: ethpool, ethermine, coinotron, mph, nanopool (default)" << endl
 			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool" << endl
 			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
+			<< "    -RH, --report-hashrate Report current hashrate to pool (please only enable on pools supporting this)" << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
-#endif
-#if ETH_STRATUM
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 #endif
 			<< endl
@@ -926,6 +929,11 @@ private:
 					{
 						minelog << "Waiting for work package...";
 					}
+					
+					if (this->m_report_stratum_hashrate) {
+						auto rate = mp.rate();
+						client.submitHashrate(toJS(rate));
+					}
 				}
 				this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
 			}
@@ -965,6 +973,11 @@ private:
 					else if (client.waitState() == MINER_WAIT_STATE_WORK)
 					{
 						minelog << "Waiting for work package...";
+					}
+					
+					if (this->m_report_stratum_hashrate) {
+						auto rate = mp.rate();
+						client.submitHashrate(toJS(rate));
 					}
 				}
 				this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
@@ -1021,6 +1034,7 @@ private:
 	int m_worktimeout = 180;
 
 #if ETH_STRATUM
+	bool m_report_stratum_hashrate = false;
 	int m_stratumClientVersion = 1;
 	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
 	string m_user;
