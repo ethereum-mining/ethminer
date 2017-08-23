@@ -778,12 +778,9 @@ private:
 					auto mp = f.miningProgress();
 					f.resetMiningProgress();
 					if (current)
-					{
-						minelog << "Mining on" << current.header << f.getSolutionStats();
-						minelog << mp;
-					}
+						minelog << mp << f.getSolutionStats();
 					else
-						minelog << "Getting work package...";
+						minelog << "Waiting for work package...";
 
 					auto rate = mp.rate();
 
@@ -922,8 +919,7 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << "Mining on" << client.currentHeaderHash() << f.getSolutionStats();
-						minelog << mp;
+						minelog << mp << f.getSolutionStats();
 					}
 					else
 					{
@@ -967,8 +963,7 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << "Mining on" << client.currentHeaderHash() << f.getSolutionStats();
-						minelog << mp;
+						minelog << mp << f.getSolutionStats();
 					}
 					else if (client.waitState() == MINER_WAIT_STATE_WORK)
 					{

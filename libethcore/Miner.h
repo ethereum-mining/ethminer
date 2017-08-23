@@ -78,15 +78,15 @@ struct WorkingProgress
 inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 {
 	float mh = _p.rate() / 1000000.0f;
-	_out << "Total: " << std::fixed << std::setprecision(2) << mh << "MH/s ( ";
+	_out << "Speed "
+		 << EthTealBold << std::fixed << std::setw(6) << std::setprecision(2) << mh << EthReset
+		 << " Mh/s    ";
 
-	int gpuIndex=0;
-	for (auto const& i: _p.minersHashes)
+	for (size_t i = 0; i < _p.minersHashes.size(); ++i)
 	{
-		mh = _p.minerRate(i) / 1000000.0f;
-		_out << EthBlue << gpuIndex++ << ":" << EthReset << std::fixed << std::setprecision(2) << mh << " ";
+		mh = _p.minerRate(_p.minersHashes[i]) / 1000000.0f;
+		_out << "gpu/" << i << " " << EthTeal << std::fixed << std::setw(5) << std::setprecision(2) << mh << EthReset << "  ";
 	}
-	_out << ")";
 
 	return _out;
 }
