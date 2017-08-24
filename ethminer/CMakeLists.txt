@@ -14,7 +14,7 @@ add_dependencies(${EXECUTABLE} BuildInfo.h)
 
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} ethash)
-target_link_libraries(${EXECUTABLE} devcore libjson-rpc-cpp::client)
+target_link_libraries(${EXECUTABLE} devcore)
 
 if(ETHDBUS)
 	find_package(PkgConfig)

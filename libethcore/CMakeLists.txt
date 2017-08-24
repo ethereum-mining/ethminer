@@ -4,6 +4,7 @@ set(SOURCES
 	Exceptions.h
 	Farm.h
 	Miner.h Miner.cpp
+        PoolClient.h
 )
 
 
