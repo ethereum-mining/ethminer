@@ -31,8 +31,9 @@ public:
 	bool isRunning() { return m_running; }
 	bool isConnected() { return m_connected && m_authorized; }
 	h256 currentHeaderHash() { return m_current.header; }
-	bool current() { return m_current; }
+	bool current() { return static_cast<bool>(m_current); }
 	unsigned waitState() { return m_waitState; }
+	bool submitHashrate(string const & rate);
 	bool submit(Solution solution);
 	void reconnect();
 private:
@@ -89,6 +90,8 @@ private:
 
 	h64 m_extraNonce;
 	int m_extraNonceHexSize;
+	
+	string m_submit_hashrate_id;
 
 	void processExtranonce(std::string& enonce);
 };

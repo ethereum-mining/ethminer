@@ -70,14 +70,24 @@ struct WorkingProgress
 	uint64_t hashes = 0;		///< Total number of hashes computed.
 	uint64_t ms = 0;			///< Total number of milliseconds of mining thus far.
 	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
+
+	std::vector<uint64_t> minersHashes;
+	uint64_t minerRate(const uint64_t hashCount) const { return ms == 0 ? 0 : hashCount * 1000 / ms; }
 };
 
 inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 {
 	float mh = _p.rate() / 1000000.0f;
-	char mhs[16];
-	sprintf(mhs, "%.2f", mh);
-	_out << std::string(mhs) + "MH/s";
+	_out << "Speed "
+		 << EthTealBold << std::fixed << std::setw(6) << std::setprecision(2) << mh << EthReset
+		 << " Mh/s    ";
+
+	for (size_t i = 0; i < _p.minersHashes.size(); ++i)
+	{
+		mh = _p.minerRate(_p.minersHashes[i]) / 1000000.0f;
+		_out << "gpu/" << i << " " << EthTeal << std::fixed << std::setw(5) << std::setprecision(2) << mh << EthReset << "  ";
+	}
+
 	return _out;
 }
 
@@ -150,18 +160,13 @@ public:
 
 	void setWork(WorkPackage const& _work)
 	{
-		bool running = !!m_work;
 		{
 			Guard l(x_work);
 			m_work = _work;
+			workSwitchStart = std::chrono::high_resolution_clock::now();
 		}
-		if (!!_work)
-		{
-			pause();
-			kickOff();
-		}
-		else if (!_work && running)
-			pause();
+		pause();
+		kickOff();
 		m_hashCount = 0;
 	}
 
@@ -182,9 +187,9 @@ protected:
 	 */
 	virtual void pause() = 0;
 
-	WorkPackage const& work() const { Guard l(x_work); return m_work; }
+	WorkPackage work() const { Guard l(x_work); return m_work; }
 
-	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
+	void addHashCount(uint64_t _n) { m_hashCount += _n; }
 
 	static unsigned s_dagLoadMode;
 	static volatile unsigned s_dagLoadIndex;
@@ -193,6 +198,7 @@ protected:
 
 	const size_t index = 0;
 	FarmFace& farm;
+	std::chrono::high_resolution_clock::time_point workSwitchStart;
 
 private:
 	uint64_t m_hashCount = 0;

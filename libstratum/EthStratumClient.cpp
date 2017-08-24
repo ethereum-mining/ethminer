@@ -47,6 +47,8 @@ EthStratumClient::EthStratumClient(Farm* f, MinerType m, string const & host, st
 	m_protocol = protocol;
 	m_email = email;
 
+	m_submit_hashrate_id = h256::random().hex();
+	
 	p_farm = f;
 	p_worktimer = nullptr;
 	connect();
@@ -160,7 +162,7 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	}
 	else
 	{
-		cerr << "Could not resolve host" << p_active->host + ":" + p_active->port + ", " << ec.message();
+		cerr << "Could not resolve host " << p_active->host + ":" + p_active->port + ", " << ec.message();
 		reconnect();
 	}
 }
@@ -359,7 +361,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		break;
 	case 4:
 		if (responseObject.get("result", false).asBool()) {
-			cnote << "B-) Submitted and accepted.";
+			cnote << EthLime << "B-) Submitted and accepted." << EthReset;
 			p_farm->acceptedSolution(m_stale);
 		}
 		else {
@@ -500,6 +502,15 @@ void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec)
 		cnote << "No new work received in" << m_worktimeout << "seconds.";
 		reconnect();
 	}
+}
+
+bool EthStratumClient::submitHashrate(string const & rate) {
+	// There is no stratum method to submit the hashrate so we use the rpc variant.
+	string json = "{\"id\": 6, \"jsonrpc\":\"2.0\", \"method\": \"eth_submitHashrate\", \"params\": [\"" + rate + "\",\"0x" + this->m_submit_hashrate_id + "\"]}\n";
+	std::ostream os(&m_requestBuffer);
+	os << json;
+	write(m_socket, m_requestBuffer);
+	return true;
 }
 
 bool EthStratumClient::submit(Solution solution) {

@@ -80,15 +80,6 @@ std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, 
 
 }
 
-bool CLMiner::searched(uint32_t _count)
-{
-	UniqueGuard l(x_hook);
-	accumulateHashes(_count);
-	if (m_hook_abort)
-		return (m_hook_aborted = true);
-	return false;
-}
-
 }
 }
 
@@ -105,26 +96,19 @@ CLMiner::~CLMiner()
 	pause();
 }
 
-void CLMiner::report(uint64_t _nonce)
+void CLMiner::report(uint64_t _nonce, WorkPackage const& _w)
 {
 	assert(_nonce != 0);
-	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	// TODO: Why re-evaluating?
-	Result r = EthashAux::eval(w.seed, w.header, _nonce);
-	if (r.value < w.boundary)
-		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
+	Result r = EthashAux::eval(_w.seed, _w.header, _nonce);
+	if (r.value < _w.boundary)
+		farm.submitProof(Solution{_nonce, r.mixHash, _w.header, _w.seed, _w.boundary});
 	else
 		cwarn << "Invalid solution";
 }
 
 void CLMiner::kickOff()
-{
-	{
-		UniqueGuard l(x_hook);
-		m_hook_aborted = m_hook_abort = false;
-	}
-	startWorking();
-}
+{}
 
 namespace
 {
@@ -140,42 +124,69 @@ void CLMiner::workLoop()
 	// Memory for zero-ing buffers. Cannot be static because crashes on macOS.
 	uint32_t const c_zero = 0;
 
-	// take local copy of work since it may end up being overwritten by kickOff/pause.
+	uint64_t startNonce = 0;
+
+	// The work package currently processed by GPU.
+	WorkPackage current;
+	current.header = h256{1u};
+	current.seed = h256{1u};
+
 	try {
-		const WorkPackage w = work();
-		cllog << "Set work. Header" << w.header << "target" << w.boundary.hex().substr(0, 12);
-		if (m_seed != w.seed)
-		{
-			if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
-			{
-				while (s_dagLoadIndex < index)
-					this_thread::sleep_for(chrono::seconds(1));
-				++s_dagLoadIndex;
-			}
-
-			cllog << "Initialising miner with seed" << w.seed;
-			init(w.seed);
-			m_seed = w.seed;
-		}
-
-		uint64_t startNonce = 0;
-		if (w.exSizeBits >= 0)
-			startNonce = w.startNonce | ((uint64_t)index << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
-		else
-			startNonce = randomNonce();
-
-		// Upper 64 bits of the boundary.
-		const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
-
-		// Update header constant buffer.
-		m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, w.header.size, w.header.data());
-		m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
-
-		m_searchKernel.setArg(0, m_searchBuffer);  // Supply output buffer to kernel.
-		m_searchKernel.setArg(4, target);
-
 		while (true)
 		{
+			const WorkPackage w = work();
+
+			if (current.header != w.header)
+			{
+				// New work received. Update GPU data.
+				auto localSwitchStart = std::chrono::high_resolution_clock::now();
+
+				if (!w)
+				{
+					cllog << "No work. Pause for 3 s.";
+					std::this_thread::sleep_for(std::chrono::seconds(3));
+					continue;
+				}
+
+				cllog << "New work: header" << w.header << "target" << w.boundary.hex();
+
+				if (current.seed != w.seed)
+				{
+					if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
+					{
+						while (s_dagLoadIndex < index)
+							this_thread::sleep_for(chrono::seconds(1));
+						++s_dagLoadIndex;
+					}
+
+					cllog << "New seed" << w.seed;
+					init(w.seed);
+				}
+
+				// Upper 64 bits of the boundary.
+				const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
+				assert(target > 0);
+
+				// Update header constant buffer.
+				m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, w.header.size, w.header.data());
+				m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
+
+				m_searchKernel.setArg(0, m_searchBuffer);  // Supply output buffer to kernel.
+				m_searchKernel.setArg(4, target);
+
+				// FIXME: This logic should be move out of here.
+				if (w.exSizeBits >= 0)
+					startNonce = w.startNonce | ((uint64_t)index << (64 - 4 - w.exSizeBits)); // This can support up to 16 devices.
+				else
+					startNonce = randomNonce();
+
+				current = w;
+				auto switchEnd = std::chrono::high_resolution_clock::now();
+				auto globalSwitchTime = std::chrono::duration_cast<std::chrono::milliseconds>(switchEnd - workSwitchStart).count();
+				auto localSwitchTime = std::chrono::duration_cast<std::chrono::microseconds>(switchEnd - localSwitchStart).count();
+				cllog << "Switch time" << globalSwitchTime << "ms /" << localSwitchTime << "us";
+			}
+
 			// Read results.
 			// TODO: could use pinned host pointer instead.
 			uint32_t results[c_maxSearchResults + 1];
@@ -199,12 +210,14 @@ void CLMiner::workLoop()
 
 			// Report results while the kernel is running.
 			// It takes some time because ethash must be re-evaluated on CPU.
-			if (nonce)
-				report(nonce);
+			if (nonce != 0)
+				report(nonce, current);
 
-			// Report searched and check if stop
-			bool exit = searched(m_globalWorkSize);
-			if (exit || shouldStop())
+			// Report hash count
+			addHashCount(m_globalWorkSize);
+
+			// Check if we should stop.
+			if (shouldStop())
 			{
 				// Make sure the last buffer write has finished --
 				// it reads local variable.
@@ -220,20 +233,7 @@ void CLMiner::workLoop()
 }
 
 void CLMiner::pause()
-{
-	{
-		UniqueGuard l(x_hook);
-		if (m_hook_aborted)
-			return;
-
-		m_hook_abort = true;
-	}
-	// m_abort is true so now searched()/found() will return true to abort the search.
-	// we hang around on this thread waiting for them to point out that they have aborted since
-	// otherwise we may end up deleting this object prior to searched()/found() being called.
-	m_hook_aborted.wait(true);
-	stopWorking();
-}
+{}
 
 unsigned CLMiner::getNumDevices()
 {
