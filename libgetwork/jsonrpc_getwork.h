@@ -7,16 +7,18 @@
 
 #include <jsonrpccpp/client.h>
 
-class JsonrpcGetwork : public jsonrpc::Client
+class JsonrpcGetwork
 {
     public:
-        JsonrpcGetwork(jsonrpc::IClientConnector &conn, jsonrpc::clientVersion_t type = jsonrpc::JSONRPC_CLIENT_V2) : jsonrpc::Client(conn, type) {}
+        JsonrpcGetwork(jsonrpc::IClientConnector* conn) {
+			this->client = new jsonrpc::Client(*conn);
+		}
 
         Json::Value eth_getWork() throw (jsonrpc::JsonRpcException)
         {
             Json::Value p;
             p = Json::nullValue;
-            Json::Value result = this->CallMethod("eth_getWork",p);
+            Json::Value result = this->client->CallMethod("eth_getWork",p);
             if (result.isArray())
                 return result;
             else
@@ -28,7 +30,7 @@ class JsonrpcGetwork : public jsonrpc::Client
             p.append(param1);
             p.append(param2);
             p.append(param3);
-            Json::Value result = this->CallMethod("eth_submitWork",p);
+            Json::Value result = this->client->CallMethod("eth_submitWork",p);
             if (result.isBool())
                 return result.asBool();
             else
@@ -39,7 +41,7 @@ class JsonrpcGetwork : public jsonrpc::Client
             Json::Value p;
             p.append(param1);
             p.append(param2);
-            Json::Value result = this->CallMethod("eth_submitHashrate",p);
+            Json::Value result = this->client->CallMethod("eth_submitHashrate",p);
             if (result.isBool())
                 return result.asBool();
             else
@@ -49,7 +51,7 @@ class JsonrpcGetwork : public jsonrpc::Client
         {
             Json::Value p;
             p = Json::nullValue;
-            Json::Value result = this->CallMethod("eth_awaitNewWork",p);
+            Json::Value result = this->client->CallMethod("eth_awaitNewWork",p);
             if (result.isArray())
                 return result;
             else
@@ -59,12 +61,14 @@ class JsonrpcGetwork : public jsonrpc::Client
         {
             Json::Value p;
             p = Json::nullValue;
-            Json::Value result = this->CallMethod("eth_progress",p);
+            Json::Value result = this->client->CallMethod("eth_progress",p);
             if (result.isBool())
                 return result.asBool();
             else
                 throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString());
         }
+private:
+	jsonrpc::Client* client;
 };
 
 #endif //JSONRPC_CPP_STUB_GETWORK_H_

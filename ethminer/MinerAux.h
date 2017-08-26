@@ -43,8 +43,6 @@
 #if ETH_ETHASHCUDA
 #include <libethash-cuda/CUDAMiner.h>
 #endif
-#include <jsonrpccpp/client/connectors/httpclient.h>
-#include "FarmClient.h"
 #if ETH_STRATUM
 #include <libstratum/EthStratumClient.h>
 #include <libstratum/EthStratumClientV2.h>
@@ -52,6 +50,7 @@
 #if ETH_DBUS
 #include "DBusInt.h"
 #endif
+#include <libgetwork\EthGetworkClient.h>
 
 using namespace std;
 using namespace dev;
@@ -739,6 +738,58 @@ private:
 
 	void doFarm(MinerType _m, string & _remote, unsigned _recheckPeriod)
 	{
+		// Init code is PoolClient implementation specific
+		EthGetworkClient getworkClient(m_farmRecheckPeriod);
+
+		// Specific client to PoolClient
+		PoolClient *client = &getworkClient;
+		// All other calls should be base PoolClient calls
+
+		client->onConnected([&]()
+		{
+			// handle fallback logic here
+			// handle startup of GPU workers here (aka farm.start)
+			cnote << "Connected";
+		});
+		client->onDisconnected([&]()
+		{
+			// handle fallback logic here
+			cnote << "Disconnected";
+		});
+		client->onWorkReceived([&](WorkPackage const& wp) {
+			// handle setting package to GPU workers (aka farm.setWork)
+			cnote << "Got new package from POOL";
+		});
+		client->onSolutionAccepted([&](bool const& stale)
+		{
+			// handle increase of counters
+			cnote << "SolutionAccepted" << stale;
+		});
+		client->onSolutionRejected([&](bool const& stale)
+		{
+			// handle increase of counters
+			cnote << "SolutionRejected" << stale;
+		});
+
+		/*
+		farm.onSolutionFound([&](Solution sol)
+		{
+			// actually check if solution is valid or stale
+			client->submitSolution(sol, false);
+			return false;
+		})
+		*/;
+
+		client->setConnection(m_farmURL);
+		client->connect();
+
+		// Run CLI in loop
+		while (m_running) {
+			cnote << "STILL RUNNING ;)";
+			this_thread::sleep_for(chrono::seconds(10));
+		}
+		
+		/*
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
 		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
@@ -873,6 +924,7 @@ private:
 
 				}
 			}
+		*/
 		exit(0);
 	}
 

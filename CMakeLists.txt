@@ -150,6 +150,7 @@ endif ()
 if(ETHSTRATUM)
 	add_subdirectory(libstratum)
 endif()
+add_subdirectory(libgetwork)
 add_subdirectory(libethcore)
 add_subdirectory(ethminer)
 
