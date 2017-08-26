@@ -784,7 +784,7 @@ private:
 					{
 						minelog << mp << f.getSolutionStats();
 #if ETH_DBUS
-						dbusint.send(toString(mp).c_str());
+						dbusint.send(toString(mp).data());
 #endif
 					}
 					else
@@ -929,7 +929,7 @@ private:
 					{
 						minelog << mp << f.getSolutionStats();
 #if ETH_DBUS
-						dbusint.send(toString(mp).c_str());
+						dbusint.send(toString(mp).data());
 #endif
 					}
 					else
@@ -976,7 +976,7 @@ private:
 					{
 						minelog << mp << f.getSolutionStats();
 #if ETH_DBUS
-						dbusint.send(toString(mp).c_str());
+						dbusint.send(toString(mp).data());
 #endif
 					}
 					else if (client.waitState() == MINER_WAIT_STATE_WORK)
