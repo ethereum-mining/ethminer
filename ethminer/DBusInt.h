@@ -26,7 +26,7 @@ public:
 		{
 			DBusMessage *msg;
 			msg = dbus_message_new_signal("/eth/miner/hash", "eth.miner.monitor", "Hash");
-			if (msg == NULL)
+			if (msg == nullptr)
 			{
 				cerr << "Message is null!" << endl;
 			}
