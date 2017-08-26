@@ -89,20 +89,20 @@ This project uses [CMake] and [Hunter] package manager.
    against.bss' can not be used when making a shared object" mentioned in [this
    issue](https://github.com/ethereum-mining/ethminer/issues/38).
    ```sh
-   sudo apt install nvidia-opencl-dev g{cc,++}-4.9 && \
+   sudo apt install nvidia-opencl-dev g{cc,++}-5 && \
    cmake .. \
     -DETHASHCL=OFF \
-    -DCUDA_NVCC_FLAGS="-ccbin gcc-4.9" \
+    -DCUDA_NVCC_FLAGS="-ccbin gcc-5" \
     -DCMAKE_CXX_FLAGS="-fPIC"
    ```
 
    Alternatively, the same as above with CUDA enabled:
    ```sh
-   sudo apt install nvidia-{cuda-toolkit,opencl-dev} g{cc,++}-4.9 && \
+   sudo apt install nvidia-{cuda-toolkit,opencl-dev} g{cc,++}-5 && \
    cmake .. \
     -DETHASHCUDA=ON \
     -DETHASHCL=OFF \
-    -DCUDA_NVCC_FLAGS="-ccbin gcc-4.9" \
+    -DCUDA_NVCC_FLAGS="-ccbin gcc-5" \
     -DCMAKE_CXX_FLAGS="-fPIC"
    ```
 
