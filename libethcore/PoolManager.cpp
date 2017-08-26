@@ -11,33 +11,60 @@ PoolManager::PoolManager(PoolClient * client, std::map<std::string, Farm::Sealer
 
 	p_client->onConnected([&]()
 	{
-		// handle startup of GPU workers here (aka farm.start)
-		cnote << "onConnected";
+		m_reconnectTry = 0;
+		cnote << "Connected to " << m_connections[m_activeConnectionIdx].host();
+		if (!p_farm->isMining())
+		{
+			cnote << "Spinning up miners...";
+			if (m_minerType == MinerType::CL)
+				p_farm->start("opencl", false);
+			else if (m_minerType == MinerType::CUDA)
+				p_farm->start("cuda", false);
+			else if (m_minerType == MinerType::Mixed) {
+				p_farm->start("cuda", false);
+				p_farm->start("opencl", true);
+			}
+		}
 	});
 	p_client->onDisconnected([&]()
 	{
-		cnote << "onDisconnected";
+		cnote << "Disconnected from " << m_connections[m_activeConnectionIdx].host();
+		if (p_farm->isMining())
+		{
+			cnote << "Shutting down miners...";
+			p_farm->stop();
+		}
 		tryReconnect();
 	});
-	p_client->onWorkReceived([&](WorkPackage const& wp) {
-		// handle setting package to GPU workers (aka farm.setWork)
-		cnote << "Got new package from POOL";
+	p_client->onWorkReceived([&](WorkPackage const& wp)
+	{
+		cnote << "Received new job #" << wp.header.hex().substr(0, 8) << "from " << m_connections[m_activeConnectionIdx].host();
+		p_farm->setWork(wp);
 	});
 	p_client->onSolutionAccepted([&](bool const& stale)
 	{
-		// handle increase of counters
-		cnote << "SolutionAccepted" << stale;
+		cnote << EthLime << "B-) Submitted and accepted." << EthReset << (stale ? " (stale)" : "");
+		p_farm->acceptedSolution(stale);
 	});
 	p_client->onSolutionRejected([&](bool const& stale)
 	{
-		// handle increase of counters
-		cnote << "SolutionRejected" << stale;
+		cwarn << ":-( Not accepted." << (stale ? " (stale)" : "");
+		p_farm->rejectedSolution(stale);
 	});
 
 	p_farm->onSolutionFound([&](Solution sol)
 	{
-		// actually check if solution is valid or stale
-		p_client->submitSolution(sol, false);
+		cnote << "Solution found; Submitting to" << m_connections[m_activeConnectionIdx].host() << "...";
+		cnote << "  Nonce:" << toHex(sol.nonce);
+		//cnote << "  headerHash:" << sol.headerHash.hex();
+		//cnote << "  mixHash:" << sol.mixHash.hex();
+		if (EthashAux::eval(sol.seedHash, sol.headerHash, sol.nonce).value < sol.boundary) {
+			p_client->submitSolution(sol);
+		}
+		else {
+			p_farm->failedSolution();
+			cwarn << "FAILURE: GPU gave incorrect result!";
+		}
 		return false;
 	});
 }
@@ -58,6 +85,9 @@ void PoolManager::addConnection(string const & host, string const & port, string
 void PoolManager::clearConnections()
 {
 	m_connections.clear();
+	if (p_client && p_client->isConnected()) {
+		p_client->disconnect();
+	}
 }
 
 
@@ -71,10 +101,20 @@ void PoolManager::start()
 	}
 }
 
+bool PoolManager::hasWork()
+{
+	return false;
+}
+
 void PoolManager::tryReconnect()
 {
 	for (auto i = 4; --i; this_thread::sleep_for(chrono::seconds(1))) {
 		cwarn << "Retrying in " << i << "... \r";
+	}
+
+	if (m_connections.size() <= 0) {
+		cwarn << "Manager has no connections defined!";
+		return;
 	}
 
 	// We do not need awesome logic here, we jst have one connection anyways

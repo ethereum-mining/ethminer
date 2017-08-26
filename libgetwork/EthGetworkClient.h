@@ -22,8 +22,11 @@ public:
 	void connect();
 	void disconnect();
 
+	bool isRunning() { return m_running; }
+	bool isConnected() { return m_connected; }
+
 	void submitHashrate(string const & rate);
-	void submitSolution(Solution solution, bool const & stale);
+	void submitSolution(Solution solution);
 
 private:
 	bool m_justConnected = false;

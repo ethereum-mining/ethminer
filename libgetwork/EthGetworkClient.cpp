@@ -80,7 +80,7 @@ void EthGetworkClient::submitHashrate(string const & rate)
 	}
 }
 
-void EthGetworkClient::submitSolution(Solution solution, bool const & stale)
+void EthGetworkClient::submitSolution(Solution solution)
 {
 	if (!m_connected) {
 		return;
@@ -91,11 +91,11 @@ void EthGetworkClient::submitSolution(Solution solution, bool const & stale)
 		bool accepted = p_client->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
 		if (accepted) {
 			if (m_onSolutionAccepted) {
-				m_onSolutionAccepted(stale);
+				m_onSolutionAccepted(false);
 			}
 		} else {
 			if (m_onSolutionRejected) {
-				m_onSolutionRejected(stale);
+				m_onSolutionRejected(false);
 			}
 		}
 	}

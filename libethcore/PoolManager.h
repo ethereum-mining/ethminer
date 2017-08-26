@@ -34,6 +34,13 @@ namespace dev
 			void clearConnections();
 			void start();
 			void setReconnectTries(unsigned const & reconnectTries) { m_reconnectTries = reconnectTries; };
+			bool isConnected() { return p_client->isConnected(); };
+			bool isRunning() { return p_client->isRunning(); };
+			bool isMining() { return p_farm->isMining(); };
+			bool hasWork();
+			WorkingProgress const& miningProgress() const { return p_farm->miningProgress(); };
+			SolutionStats solutionStats() { return p_farm->getSolutionStats(); };
+
 		private:
 			unsigned m_reconnectTries = 3;
 			unsigned m_reconnectTry = 0;

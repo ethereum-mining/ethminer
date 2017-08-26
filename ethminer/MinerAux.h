@@ -522,14 +522,10 @@ public:
 		}
 		if (mode == OperationMode::Benchmark)
 			doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
-		else if (mode == OperationMode::Farm)
-			doFarm(m_minerType, m_activeFarmURL, m_farmRecheckPeriod);
 		else if (mode == OperationMode::Simulation)
 			doSimulation(m_minerType);
-#if ETH_STRATUM
-		else if (mode == OperationMode::Stratum)
-			doStratum();
-#endif
+		else 
+			doMiner();
 	}
 
 	static void streamHelp(ostream& _out)
@@ -739,7 +735,7 @@ private:
 	}
 
 
-	void doFarm(MinerType _m, string & _remote, unsigned _recheckPeriod)
+	void doMiner()
 	{
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
@@ -749,11 +745,43 @@ private:
 		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index) { return new EthashCUDAMiner(_farm, _index); } };
 #endif
 
-		// Init code is PoolClient implementation specific
-		EthGetworkClient getworkClient(m_farmRecheckPeriod);
-		
+		PoolClient *client = nullptr;
+
+		if (mode == OperationMode::Stratum) {
+
+#if ETH_STRATUM
+			if (m_stratumClientVersion == 1) {
+				client = new EthStratumClient(m_worktimeout, m_stratumProtocol, m_email);
+			}
+
+			/*
+			else if (m_stratumClientVersion == 2) {
+				client = new EthStratumClientV2(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
+			}
+			*/
+#else
+			cwarn << "Invalid OperationMode, stratum not enabled";
+			exit(1);
+#endif
+		}
+		else if (mode == OperationMode::Farm) {
+// #if ETH_GETWORK
+			client = new EthGetworkClient(m_farmRecheckPeriod);
+// #endif
+		}
+		else {
+			cwarn << "Invalid OperationMode";
+			exit(1);
+		}
+
+		// Should not happen!
+		if (!client) {
+			cwarn << "Invalid PoolClient";
+			exit(1);
+		}
+
 		// Create PoolManager
-		PoolManager *mgr = new PoolManager(&getworkClient, sealers, m_minerType);
+		PoolManager *mgr = new PoolManager(client, sealers, m_minerType);
 		mgr->setReconnectTries(m_maxFarmRetries);
 		mgr->addConnection(m_farmURL, m_port, m_user, m_pass);
 		if (!m_farmFailOverURL.empty()) {
@@ -765,10 +793,17 @@ private:
 
 		// Run CLI in loop
 		while (m_running) {
-			cnote << "STILL RUNNING ;)";
-			this_thread::sleep_for(chrono::seconds(10));
+			if (mgr->isConnected()) {
+				auto mp = mgr->miningProgress();
+				minelog << mp << mgr->solutionStats();
+			}
+			this_thread::sleep_for(chrono::seconds(5));
 		}
-		
+		exit(0);
+	}
+
+	void OLDdoFarm(MinerType _m, string & _remote, unsigned _recheckPeriod)
+		{
 		/*
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
@@ -904,13 +939,14 @@ private:
 
 				}
 			}
+			exit(0);
 		*/
-		exit(0);
 	}
 
 #if ETH_STRATUM
-	void doStratum()
+	void OLDdoStratum()
 	{
+		/*
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
 		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); } };
@@ -1023,8 +1059,9 @@ private:
 				this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
 			}
 		}
-
+		*/
 	}
+
 #endif
 
 	/// Operating mode.

@@ -19,10 +19,9 @@ namespace dev
 			virtual void disconnect() = 0;
 
 			virtual void submitHashrate(string const & rate) = 0;
-			virtual void submitSolution(Solution solution, bool const & stale) = 0;
-
-			bool isRunning() { return m_running; }
-			bool isConnected() { return m_connected && m_authorized; }
+			virtual void submitSolution(Solution solution) = 0;
+			virtual bool isRunning() = 0 ;
+			virtual bool isConnected() = 0;
 
 			using SolutionAccepted = std::function<void(bool const&)>;
 			using SolutionRejected = std::function<void(bool const&)>;
