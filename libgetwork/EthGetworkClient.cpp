@@ -25,14 +25,11 @@ void EthGetworkClient::connect()
 		p_client = new ::JsonrpcGetwork(new jsonrpc::HttpClient(m_host));
 	}
 
+	cnote << "connect to " << m_host;
+
 	m_client_id = h256::random();
 	m_connection_changed = false;
-	m_connected = true;
-
-	// Since we do not have a real connected state with getwork, we just fake it.
-	if (m_onConnected) {
-		m_onConnected();
-	}
+	m_justConnected = true; // We set a fake flag, that we can check with workhandler if connection works
 
 	// Start getWorkThread
 	if (p_worktimer) {
@@ -51,6 +48,7 @@ void EthGetworkClient::connect()
 void EthGetworkClient::disconnect()
 {
 	m_connected = false;
+	m_justConnected = false;
 
 	// Stop getWorkThread
 	if (p_worktimer) {
@@ -109,7 +107,7 @@ void EthGetworkClient::submitSolution(Solution solution, bool const & stale)
 }
 
 void EthGetworkClient::getWorkHandler(const boost::system::error_code& ec) {
-	if (!m_connected) {
+	if (!m_connected && !m_justConnected) {
 		return;
 	}
 
@@ -124,6 +122,13 @@ void EthGetworkClient::getWorkHandler(const boost::system::error_code& ec) {
 			newWorkPackage.header = h256(v[0].asString());
 			newWorkPackage.seed = h256(v[1].asString());
 
+			// Since we do not have a real connected state with getwork, we just fake it.
+			// If getting work succeeds we know that the connection works
+			if (m_justConnected && m_onConnected) {
+				m_justConnected = false;
+				m_onConnected();
+			}
+			
 			// Check if header changes so the new workpackage is really new
 			if (newWorkPackage.header != m_prevWorkPackage.header) {
 				m_prevWorkPackage.header = newWorkPackage.header;

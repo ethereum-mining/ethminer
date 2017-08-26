@@ -1,3 +1,6 @@
+#ifndef ETH_GETWORK_CLIENT_H_
+#define ETH_GETWORK_CLIENT_H_
+
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libethcore/PoolClient.h>
 #include <iostream>
@@ -23,6 +26,7 @@ public:
 	void submitSolution(Solution solution, bool const & stale);
 
 private:
+	bool m_justConnected = false;
 	h256 m_client_id;
 	JsonrpcGetwork *p_client;
 	WorkPackage m_prevWorkPackage;
@@ -34,3 +38,5 @@ private:
 
 	void getWorkHandler(const boost::system::error_code& ec);
 };
+
+#endif

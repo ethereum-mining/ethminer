@@ -5,6 +5,7 @@ set(SOURCES
 	Farm.h
 	Miner.h Miner.cpp
         PoolClient.h PoolClient.cpp
+	PoolManager.h PoolManager.cpp
 )
 
 

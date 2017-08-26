@@ -50,7 +50,10 @@
 #if ETH_DBUS
 #include "DBusInt.h"
 #endif
+// #if ETH_GETWORK
 #include <libgetwork\EthGetworkClient.h>
+// #endif
+#include <libethcore\PoolManager.h>
 
 using namespace std;
 using namespace dev;
@@ -738,50 +741,27 @@ private:
 
 	void doFarm(MinerType _m, string & _remote, unsigned _recheckPeriod)
 	{
+		map<string, Farm::SealerDescriptor> sealers;
+#if ETH_ETHASHCL
+		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index) { return new CLMiner(_farm, _index); } };
+#endif
+#if ETH_ETHASHCUDA
+		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index) { return new EthashCUDAMiner(_farm, _index); } };
+#endif
+
 		// Init code is PoolClient implementation specific
 		EthGetworkClient getworkClient(m_farmRecheckPeriod);
+		
+		// Create PoolManager
+		PoolManager *mgr = new PoolManager(&getworkClient, sealers, m_minerType);
+		mgr->setReconnectTries(m_maxFarmRetries);
+		mgr->addConnection(m_farmURL, m_port, m_user, m_pass);
+		if (!m_farmFailOverURL.empty()) {
+			mgr->addConnection(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
+		}
 
-		// Specific client to PoolClient
-		PoolClient *client = &getworkClient;
-		// All other calls should be base PoolClient calls
-
-		client->onConnected([&]()
-		{
-			// handle fallback logic here
-			// handle startup of GPU workers here (aka farm.start)
-			cnote << "Connected";
-		});
-		client->onDisconnected([&]()
-		{
-			// handle fallback logic here
-			cnote << "Disconnected";
-		});
-		client->onWorkReceived([&](WorkPackage const& wp) {
-			// handle setting package to GPU workers (aka farm.setWork)
-			cnote << "Got new package from POOL";
-		});
-		client->onSolutionAccepted([&](bool const& stale)
-		{
-			// handle increase of counters
-			cnote << "SolutionAccepted" << stale;
-		});
-		client->onSolutionRejected([&](bool const& stale)
-		{
-			// handle increase of counters
-			cnote << "SolutionRejected" << stale;
-		});
-
-		/*
-		farm.onSolutionFound([&](Solution sol)
-		{
-			// actually check if solution is valid or stale
-			client->submitSolution(sol, false);
-			return false;
-		})
-		*/;
-
-		client->setConnection(m_farmURL);
-		client->connect();
+		// Start PoolManager
+		mgr->start();
 
 		// Run CLI in loop
 		while (m_running) {
@@ -1083,7 +1063,12 @@ private:
 	/// Farm params
 	string m_farmURL = "http://127.0.0.1:8545";
 	string m_farmFailOverURL = "";
-
+	string m_user;
+	string m_pass;
+	string m_port;
+	string m_fuser = "";
+	string m_fpass = "";
+	string m_fport = "";
 
 	string m_activeFarmURL = m_farmURL;
 	unsigned m_farmRetries = 0;
@@ -1097,11 +1082,6 @@ private:
 	bool m_report_stratum_hashrate = false;
 	int m_stratumClientVersion = 1;
 	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
-	string m_user;
-	string m_pass;
-	string m_port;
-	string m_fuser = "";
-	string m_fpass = "";
 	string m_email = "";
 #endif
 	string m_fport = "";
