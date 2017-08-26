@@ -25,7 +25,7 @@ void EthGetworkClient::connect()
 		p_client = new ::JsonrpcGetwork(new jsonrpc::HttpClient(m_host));
 	}
 
-	cnote << "connect to " << m_host;
+//	cnote << "connect to " << m_host;
 
 	m_client_id = h256::random();
 	m_connection_changed = false;
@@ -69,6 +69,8 @@ void EthGetworkClient::submitHashrate(string const & rate)
 		return;
 	}
 
+	dev::setThreadName("getwork");
+
 	try
 	{
 		p_client->eth_submitHashrate(rate, "0x" + m_client_id.hex());
@@ -85,6 +87,8 @@ void EthGetworkClient::submitSolution(Solution solution)
 	if (!m_connected) {
 		return;
 	}
+
+	dev::setThreadName("getwork");
 
 	try
 	{
@@ -111,7 +115,7 @@ void EthGetworkClient::getWorkHandler(const boost::system::error_code& ec) {
 		return;
 	}
 
-	cnote << "GET WORK";
+	dev::setThreadName("getwork");
 
 	if (!ec) {
 		try
@@ -126,6 +130,7 @@ void EthGetworkClient::getWorkHandler(const boost::system::error_code& ec) {
 			// If getting work succeeds we know that the connection works
 			if (m_justConnected && m_onConnected) {
 				m_justConnected = false;
+				m_connected = true;
 				m_onConnected();
 			}
 			
