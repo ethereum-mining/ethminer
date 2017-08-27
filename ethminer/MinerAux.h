@@ -751,7 +751,7 @@ private:
 
 #if ETH_STRATUM
 			if (m_stratumClientVersion == 1) {
-				client = new EthStratumClient(m_worktimeout, m_stratumProtocol, m_email);
+				client = new EthStratumClient(m_worktimeout, m_stratumProtocol, m_email, m_report_stratum_hashrate);
 			}
 
 			/*
@@ -796,6 +796,9 @@ private:
 			if (mgr->isConnected()) {
 				auto mp = mgr->miningProgress();
 				minelog << mp << mgr->solutionStats();
+			}
+			else {
+				minelog << "not-connected";
 			}
 			this_thread::sleep_for(chrono::seconds(5));
 		}

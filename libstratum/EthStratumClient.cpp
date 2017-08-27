@@ -27,7 +27,7 @@ static void diffToTarget(uint32_t *target, double diff)
 }
 
 
-EthStratumClient::EthStratumClient(int const & worktimeout, int const & protocol, string const & email) : PoolClient(), m_socket(m_io_service)
+EthStratumClient::EthStratumClient(int const & worktimeout, int const & protocol, string const & email, bool const & submitHashrate) : PoolClient(), m_socket(m_io_service)
 {
 	m_authorized = false;
 	m_connected = false;
@@ -37,6 +37,7 @@ EthStratumClient::EthStratumClient(int const & worktimeout, int const & protocol
 	m_protocol = protocol;
 	m_email = email;
 
+	m_submit_hashrate = submitHashrate;
 	m_submit_hashrate_id = h256::random().hex();
 	
 	p_worktimer = nullptr;
@@ -456,6 +457,9 @@ void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec)
 
 void EthStratumClient::submitHashrate(string const & rate)
 {
+	if (!m_submit_hashrate) {
+		return;
+	}
 	// There is no stratum method to submit the hashrate so we use the rpc variant.
 	string json = "{\"id\": 6, \"jsonrpc\":\"2.0\", \"method\": \"eth_submitHashrate\", \"params\": [\"" + rate + "\",\"0x" + this->m_submit_hashrate_id + "\"]}\n";
 	std::ostream os(&m_requestBuffer);

@@ -3,7 +3,8 @@
 using namespace dev;
 using namespace eth;
 
-PoolManager::PoolManager(PoolClient * client, std::map<std::string, Farm::SealerDescriptor> const & _sealers, MinerType const & minerType) : m_minerType(minerType)
+PoolManager::PoolManager(PoolClient * client, std::map<std::string, Farm::SealerDescriptor> const & _sealers, MinerType const & minerType) 
+	: m_minerType(minerType), Worker("main")
 {
 	p_client = client;
 	p_farm = new Farm();
@@ -12,7 +13,7 @@ PoolManager::PoolManager(PoolClient * client, std::map<std::string, Farm::Sealer
 	p_client->onConnected([&]()
 	{
 		m_reconnectTry = 0;
-		cnote << "Connected to " << m_connections[m_activeConnectionIdx].host();
+		cnote << "Connected to " + m_connections[m_activeConnectionIdx].host();
 		if (!p_farm->isMining())
 		{
 			cnote << "Spinning up miners...";
@@ -28,7 +29,7 @@ PoolManager::PoolManager(PoolClient * client, std::map<std::string, Farm::Sealer
 	});
 	p_client->onDisconnected([&]()
 	{
-		cnote << "Disconnected from " << m_connections[m_activeConnectionIdx].host();
+		cnote << "Disconnected from " + m_connections[m_activeConnectionIdx].host();
 		if (p_farm->isMining())
 		{
 			cnote << "Shutting down miners...";
@@ -38,7 +39,7 @@ PoolManager::PoolManager(PoolClient * client, std::map<std::string, Farm::Sealer
 	});
 	p_client->onWorkReceived([&](WorkPackage const& wp)
 	{
-		cnote << "Received new job #" << wp.header.hex().substr(0, 8) << "from " << m_connections[m_activeConnectionIdx].host();
+		cnote << "Received new job #" + wp.header.hex().substr(0, 8) + " from " + m_connections[m_activeConnectionIdx].host();
 		p_farm->setWork(wp);
 	});
 	p_client->onSolutionAccepted([&](bool const& stale)
@@ -54,7 +55,7 @@ PoolManager::PoolManager(PoolClient * client, std::map<std::string, Farm::Sealer
 
 	p_farm->onSolutionFound([&](Solution sol)
 	{
-		cnote << "Solution found; Submitting to" << m_connections[m_activeConnectionIdx].host() << "...";
+		cnote << "Solution found; Submitting to " + m_connections[m_activeConnectionIdx].host() << "...";
 		cnote << "  Nonce:" << toHex(sol.nonce);
 		//cnote << "  headerHash:" << sol.headerHash.hex();
 		//cnote << "  mixHash:" << sol.mixHash.hex();
@@ -63,10 +64,43 @@ PoolManager::PoolManager(PoolClient * client, std::map<std::string, Farm::Sealer
 		}
 		else {
 			p_farm->failedSolution();
-			cwarn << "FAILURE: GPU gave incorrect result!";
+			cwarn << ":-( Failure: GPU gave incorrect result!";
 		}
 		return false;
 	});
+}
+
+void PoolManager::stop()
+{
+	m_running = false;
+	stopWorking();
+}
+
+void PoolManager::workLoop()
+{
+	while (m_running)
+	{
+		this_thread::sleep_for(chrono::seconds(1));
+		m_hashrateSmoothTimePassed++;
+		m_hashrateReportingTimePassed++;
+		m_miningProgress = p_farm->miningProgress();
+
+		// Hashrate reporting
+		if (m_hashrateReportingTimePassed > m_hashrateReportingTime) {
+			
+			std::string h = toHex(toCompactBigEndian(m_miningProgress.rate(), 1));
+			std::string res = h[0] != '0' ? h : h.substr(1);
+
+			p_client->submitHashrate("0x" + res);
+			m_hashrateReportingTimePassed = 0;
+		}
+
+		// Reset MiningProgress every now and then
+		if (m_hashrateSmoothTimePassed > m_hashrateSmoothTime) {
+			p_farm->resetMiningProgress();
+			m_hashrateSmoothTimePassed = 0;
+		}
+	}
 }
 
 void PoolManager::addConnection(string const & host, string const & port, string const & user, string const & pass)
@@ -90,10 +124,13 @@ void PoolManager::clearConnections()
 	}
 }
 
-
 void PoolManager::start()
 {
 	if (m_connections.size() > 0) {
+		m_running = true;
+		startWorking();
+
+		// Try to connect to pool
 		p_client->connect();
 	}
 	else {
@@ -101,20 +138,16 @@ void PoolManager::start()
 	}
 }
 
-bool PoolManager::hasWork()
-{
-	return false;
-}
-
 void PoolManager::tryReconnect()
 {
-	for (auto i = 4; --i; this_thread::sleep_for(chrono::seconds(1))) {
-		cwarn << "Retrying in " << i << "... \r";
-	}
-
+	// No connections available, so why bother trying to reconnect
 	if (m_connections.size() <= 0) {
 		cwarn << "Manager has no connections defined!";
 		return;
+	}
+
+	for (auto i = 4; --i; this_thread::sleep_for(chrono::seconds(1))) {
+		cwarn << "Retrying in " << i << "... \r";
 	}
 
 	// We do not need awesome logic here, we jst have one connection anyways

@@ -22,7 +22,7 @@ using namespace dev::eth;
 class EthStratumClient : public PoolClient
 {
 public:
-	EthStratumClient(int const & worktimeout, int const & protocol, string const & email);
+	EthStratumClient(int const & worktimeout, int const & protocol, string const & email, bool const & submitHashrate);
 	~EthStratumClient();
 
 	h256 currentHeaderHash() { return m_current.header; }
@@ -88,6 +88,7 @@ private:
 	h64 m_extraNonce;
 	int m_extraNonceHexSize;
 	
+	bool m_submit_hashrate = false;
 	string m_submit_hashrate_id;
 
 	void processExtranonce(std::string& enonce);
