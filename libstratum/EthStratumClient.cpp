@@ -457,7 +457,7 @@ void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec)
 
 void EthStratumClient::submitHashrate(string const & rate)
 {
-	if (!m_submit_hashrate) {
+	if (!m_submit_hashrate || !m_connected) {
 		return;
 	}
 	// There is no stratum method to submit the hashrate so we use the rpc variant.

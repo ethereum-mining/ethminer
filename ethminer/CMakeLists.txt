@@ -15,7 +15,6 @@ add_dependencies(${EXECUTABLE} BuildInfo.h)
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} ethash)
 target_link_libraries(${EXECUTABLE} devcore)
-target_link_libraries(${EXECUTABLE} ethgetwork)
 
 if(ETHDBUS)
 	find_package(PkgConfig)
@@ -29,6 +28,9 @@ endif()
 
 if(ETHSTRATUM)
     target_link_libraries(${EXECUTABLE} ethstratum)
+endif()
+if(ETHGETWORK)
+    target_link_libraries(${EXECUTABLE} ethgetwork)
 endif()
 
 include(GNUInstallDirs)

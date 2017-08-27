@@ -59,6 +59,7 @@ option(ETHASHCL "Build with OpenCL mining" ON)
 option(ETHASHCUDA "Build with CUDA mining" OFF)
 option(ETHSTRATUM "Build with Stratum protocol support" ON)
 option(ETHDBUS "Build with D-Bus support" OFF)
+option(ETHGETWORK "Build with Getwork protocol support" ON)
 
 
 # propagates CMake configuration options to the compiler
@@ -74,6 +75,9 @@ function(configureProject)
 	endif()
 	if (ETHDBUS)
 		add_definitions(-DETH_DBUS)
+	endif()
+	if (ETHGETWORK)
+		add_definitions(-DETH_GETWORK)
 	endif()
 endfunction()
 
@@ -132,6 +136,7 @@ message("-- ETHASHCL         Build OpenCL components                  ${ETHASHCL
 message("-- ETHASHCUDA       Build CUDA components                    ${ETHASHCUDA}")
 message("-- ETHSTRATUM       Build Stratum components                 ${ETHSTRATUM}")
 message("-- ETHDBUS          Build D-Bus components                   ${ETHDBUS}")
+message("-- ETHGETWORK       Build Getwork components                 ${ETHGETWORK}")
 message("------------------------------------------------------------------------")
 message("")
 
@@ -150,7 +155,9 @@ endif ()
 if(ETHSTRATUM)
 	add_subdirectory(libstratum)
 endif()
+if (ETHGETWORK)
 add_subdirectory(libgetwork)
+endif()
 add_subdirectory(libethcore)
 add_subdirectory(ethminer)
 

@@ -50,9 +50,9 @@
 #if ETH_DBUS
 #include "DBusInt.h"
 #endif
-// #if ETH_GETWORK
+#if ETH_GETWORK
 #include <libgetwork\EthGetworkClient.h>
-// #endif
+#endif
 #include <libethcore\PoolManager.h>
 
 using namespace std;
@@ -95,13 +95,7 @@ public:
 	bool interpretOption(int& i, int argc, char** argv)
 	{
 		string arg = argv[i];
-		if ((arg == "-F" || arg == "--farm") && i + 1 < argc)
-		{
-			mode = OperationMode::Farm;
-			m_farmURL = argv[++i];
-			m_activeFarmURL = m_farmURL;
-		}
-		else if ((arg == "-FF" || arg == "-FS" || arg == "--farm-failover" || arg == "--stratum-failover") && i + 1 < argc)
+		if ((arg == "-FF" || arg == "-FS" || arg == "--farm-failover" || arg == "--stratum-failover") && i + 1 < argc)
 		{
 			string url = argv[++i];
 
@@ -124,6 +118,13 @@ public:
 				m_farmFailOverURL = url;
 			}
 		}
+#if ETH_GETWORK
+		else if ((arg == "-F" || arg == "--farm") && i + 1 < argc)
+		{
+			mode = OperationMode::Farm;
+			m_farmURL = argv[++i];
+			m_activeFarmURL = m_farmURL;
+		}
 		else if (arg == "--farm-recheck" && i + 1 < argc)
 			try {
 				m_farmRecheckSet = true;
@@ -143,6 +144,7 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
+#endif
 #if ETH_STRATUM
 		else if ((arg == "-S" || arg == "--stratum") && i + 1 < argc)
 		{
@@ -243,7 +245,6 @@ public:
 		{
 			m_report_stratum_hashrate = true;
 		}
-
 #endif
 #if ETH_ETHASHCL
 		else if (arg == "--opencl-platform" && i + 1 < argc)
@@ -532,9 +533,12 @@ public:
 	{
 		_out
 			<< "Work farming mode:" << endl
+#if ETH_GETWORK
 			<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
-			<< "    -FF,-FO, --farm-failover, --stratum-failover <url> Failover getwork/stratum URL (default: disabled)" << endl
 			<< "	--farm-retries <n> Number of retries until switch to failover (default: 3)" << endl
+			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500)." << endl
+#endif
+			<< "    -FF,-FO, --farm-failover, --stratum-failover <url> Failover getwork/stratum URL (default: disabled)" << endl
 #if ETH_STRATUM
 			<< "	-S, --stratum <host:port>  Put into stratum mode with the stratum server at host:port" << endl
 			<< "	-FS, --failover-stratum <host:port>  Failover stratum server at host:port" << endl
@@ -548,7 +552,6 @@ public:
 			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
 			<< "    -RH, --report-hashrate Report current hashrate to pool (please only enable on pools supporting this)" << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
-			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 #endif
 			<< endl
 			<< "Benchmarking mode:" << endl
@@ -562,9 +565,11 @@ public:
 			<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
 			<< "    -U,--cuda  When mining use the GPU via CUDA." << endl
 			<< "    -X,--cuda-opencl Use OpenCL + CUDA in a system with mixed AMD/Nvidia cards. May require setting --opencl-platform 1" << endl
+#if ETH_ETHASHCL
 			<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
 			<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
 			<< "    --opencl-devices <0 1 ..n> Select which OpenCL devices to mine on. Default is to use all" << endl
+#endif
 			<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
 			<< "    --list-devices List the detected OpenCL/CUDA devices and exit. Should be combined with -G or -U flag" << endl
 			<< "    -L, --dag-load-mode <mode> DAG generation mode." << endl
@@ -722,7 +727,6 @@ private:
 			time = 0;
 			genesis.setDifficulty(u256(1) << difficulty);
 			genesis.noteDirty();
-
 			current.header = h256::random();
 			current.boundary = genesis.boundary();
 			minelog << "Generated random work package:";
@@ -765,9 +769,12 @@ private:
 #endif
 		}
 		else if (mode == OperationMode::Farm) {
-// #if ETH_GETWORK
+#if ETH_GETWORK
 			client = new EthGetworkClient(m_farmRecheckPeriod);
-// #endif
+#else
+			cwarn << "Invalid OperationMode, farm (getwork) not enabled";
+			exit(1);
+#endif
 		}
 		else {
 			cwarn << "Invalid OperationMode";
