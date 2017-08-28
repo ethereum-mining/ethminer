@@ -41,7 +41,7 @@
 #include <libethash-cl/CLMiner.h>
 #endif
 #if ETH_ETHASHCUDA
-#include <libethash-cuda/EthashCUDAMiner.h>
+#include <libethash-cuda/CUDAMiner.h>
 #endif
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include "FarmClient.h"
@@ -459,7 +459,7 @@ public:
 #endif
 #if ETH_ETHASHCUDA
 			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
-				EthashCUDAMiner::listDevices();
+				CUDAMiner::listDevices();
 #endif
 			exit(0);
 		}
@@ -493,12 +493,12 @@ public:
 #if ETH_ETHASHCUDA
 			if (m_cudaDeviceCount > 0)
 			{
-				EthashCUDAMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
+				CUDAMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
 				m_miningThreads = m_cudaDeviceCount;
 			}
 
-			EthashCUDAMiner::setNumInstances(m_miningThreads);
-			if (!EthashCUDAMiner::configureGPU(
+			CUDAMiner::setNumInstances(m_miningThreads);
+			if (!CUDAMiner::configureGPU(
 				m_localWorkSize,
 				m_globalWorkSizeMultiplier,
 				m_numStreams,
@@ -509,7 +509,7 @@ public:
 				))
 				exit(1);
 
-			EthashCUDAMiner::setParallelHash(m_parallelHash);
+			CUDAMiner::setParallelHash(m_parallelHash);
 #else
 			cerr << "CUDA support disabled. Configure project build with -DETHASHCUDA=ON" << endl;
 			exit(1);
@@ -604,7 +604,7 @@ private:
 		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
 #endif
 		f.setSealers(sealers);
 		f.onSolutionFound([&](Solution) { return false; });
@@ -668,7 +668,7 @@ private:
 		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); } };
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
 #endif
 		f.setSealers(sealers);
 
@@ -741,7 +741,7 @@ private:
 		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
 #endif
 		(void)_m;
 		(void)_remote;
@@ -876,7 +876,7 @@ private:
 		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); } };
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
 #endif
 		if (!m_farmRecheckSet)
 			m_farmRecheckPeriod = m_defaultStratumFarmRecheckPeriod;
