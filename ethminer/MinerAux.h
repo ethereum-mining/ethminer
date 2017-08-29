@@ -49,6 +49,9 @@
 #include <libstratum/EthStratumClient.h>
 #include <libstratum/EthStratumClientV2.h>
 #endif
+#if ETH_DBUS
+#include "DBusInt.h"
+#endif
 
 using namespace std;
 using namespace dev;
@@ -777,7 +780,12 @@ private:
 					auto mp = f.miningProgress();
 					f.resetMiningProgress();
 					if (current)
+					{
 						minelog << mp << f.getSolutionStats();
+#if ETH_DBUS
+						dbusint.send(toString(mp).data());
+#endif
+					}
 					else
 						minelog << "Waiting for work package...";
 
@@ -919,6 +927,9 @@ private:
 					if (client.current())
 					{
 						minelog << mp << f.getSolutionStats();
+#if ETH_DBUS
+						dbusint.send(toString(mp).data());
+#endif
 					}
 					else
 					{
@@ -963,6 +974,9 @@ private:
 					if (client.current())
 					{
 						minelog << mp << f.getSolutionStats();
+#if ETH_DBUS
+						dbusint.send(toString(mp).data());
+#endif
 					}
 					else if (client.waitState() == MINER_WAIT_STATE_WORK)
 					{
@@ -1039,4 +1053,8 @@ private:
 	string m_email = "";
 #endif
 	string m_fport = "";
+
+#if ETH_DBUS
+	DBusInt dbusint;
+#endif
 };
