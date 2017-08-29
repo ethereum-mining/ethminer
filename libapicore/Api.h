@@ -4,7 +4,7 @@
 #include "ApiServer.h"
 #include <libethcore/Farm.h>
 #include <libethcore/Miner.h>
-#include "connectors/tcpsocketserver.h"
+#include <jsonrpccpp/server/connectors/tcpsocketserver.h>
 
 using namespace jsonrpc;
 using namespace dev;
