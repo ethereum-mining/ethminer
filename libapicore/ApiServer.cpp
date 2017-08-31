@@ -1,11 +1,13 @@
 #include "ApiServer.h"
 #include "BuildInfo.h"
 
-ApiServer::ApiServer(AbstractServerConnector *conn, serverVersion_t type, Farm &farm) : AbstractServer(*conn, type), m_farm(farm)
+ApiServer::ApiServer(AbstractServerConnector *conn, serverVersion_t type, Farm &farm, bool &readonly) : AbstractServer(*conn, type), m_farm(farm)
 {
 	this->bindAndAddMethod(Procedure("miner_getstat1", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::getMinerStat1);
-	this->bindAndAddMethod(Procedure("miner_restart", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::doMinerRestart);
-	this->bindAndAddMethod(Procedure("miner_reboot", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::doMinerReboot);
+	if (!readonly) {
+		this->bindAndAddMethod(Procedure("miner_restart", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::doMinerRestart);
+		this->bindAndAddMethod(Procedure("miner_reboot", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::doMinerReboot);
+	}
 }
 
 void ApiServer::getMinerStat1(const Json::Value& request, Json::Value& response)

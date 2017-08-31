@@ -599,7 +599,7 @@ public:
 			<< "    --cuda-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achieve better performance. Default=4" << endl
 #endif
 #if API_CORE
-			<< "    --api-port Set the api port, the miner should listen to. Use 0 to disable. Default=0" << endl
+			<< "    --api-port Set the api port, the miner should listen to. Use 0 to disable. Default=0, use negative numbers to run in readonly mode. for example -3333." << endl
 #endif
 			;
 	}
