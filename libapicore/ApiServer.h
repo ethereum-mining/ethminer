@@ -13,7 +13,7 @@ using namespace std::chrono;
 class ApiServer : public AbstractServer<ApiServer>
 {
     public:
-		ApiServer(AbstractServerConnector &conn, serverVersion_t type, Farm &farm);
+		ApiServer(AbstractServerConnector *conn, serverVersion_t type, Farm &farm);
 	private:
 		steady_clock::time_point m_started = steady_clock::now();
 		Farm &m_farm;
