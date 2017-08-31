@@ -51,9 +51,9 @@
 #include "DBusInt.h"
 #endif
 #if ETH_GETWORK
-#include <libgetwork\EthGetworkClient.h>
+#include <libgetwork/EthGetworkClient.h>
 #endif
-#include <libethcore\PoolManager.h>
+#include <libethcore/PoolManager.h>
 
 using namespace std;
 using namespace dev;
