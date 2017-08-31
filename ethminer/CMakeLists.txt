@@ -14,20 +14,13 @@ add_dependencies(${EXECUTABLE} BuildInfo.h)
 
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} ethash)
-target_link_libraries(${EXECUTABLE} devcore libjson-rpc-cpp::client)
-
-if(ETHDBUS)
-	find_package(PkgConfig)
-	set( ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/lib/x86_64-linux-gnu/pkgconfig" )
-	pkg_check_modules(DBUS dbus-1)
-	include_directories(${DBUS_INCLUDE_DIRS})
-	link_directories(${DBUS_LIBRARY_DIRS})
-	target_link_libraries(${EXECUTABLE} ${DBUS_LIBRARIES})
-endif()
-
+target_link_libraries(${EXECUTABLE} devcore)
 
 if(ETHSTRATUM)
     target_link_libraries(${EXECUTABLE} ethstratum)
+endif()
+if(ETHGETWORK)
+    target_link_libraries(${EXECUTABLE} ethgetwork)
 endif()
 
 include(GNUInstallDirs)
