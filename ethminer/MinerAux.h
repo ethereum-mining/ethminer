@@ -746,7 +746,7 @@ private:
 		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index) { return new CLMiner(_farm, _index); } };
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index) { return new EthashCUDAMiner(_farm, _index); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index) { return new CUDAMiner(_farm, _index); } };
 #endif
 
 		PoolClient *client = nullptr;
@@ -1131,7 +1131,6 @@ private:
 	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
 	string m_email = "";
 #endif
-	string m_fport = "";
 
 #if ETH_DBUS
 	DBusInt dbusint;
