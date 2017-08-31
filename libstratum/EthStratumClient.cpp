@@ -465,7 +465,6 @@ void EthStratumClient::submitHashrate(string const & rate)
 	std::ostream os(&m_requestBuffer);
 	os << json;
 	write(m_socket, m_requestBuffer);
-	return;
 }
 
 void EthStratumClient::submitSolution(Solution solution)

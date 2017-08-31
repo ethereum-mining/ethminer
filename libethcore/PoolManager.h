@@ -8,6 +8,9 @@
 #include "Farm.h"
 #include "Miner.h"
 #include "PoolClient.h"
+#if ETH_DBUS
+#include "DBusInt.h"
+#endif
 
 using namespace std;
 using namespace boost::asio;
@@ -48,7 +51,7 @@ namespace dev
 
 		private:
 			WorkingProgress m_miningProgress;
-			unsigned m_hashrateSmoothTime = 20;
+			unsigned m_hashrateSmoothTime = 30;
 			unsigned m_hashrateSmoothTimePassed = 0;
 
 			unsigned m_hashrateReportingTime = 10;
@@ -64,6 +67,10 @@ namespace dev
 			PoolClient *p_client;
 			Farm *p_farm;
 			MinerType m_minerType;
+
+#if ETH_DBUS
+			DBusInt dbusint;
+#endif
 
 			void tryReconnect();
 		};

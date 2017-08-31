@@ -73,7 +73,6 @@ PoolManager::PoolManager(PoolClient * client, std::map<std::string, Farm::Sealer
 void PoolManager::stop()
 {
 	m_running = false;
-	stopWorking();
 }
 
 void PoolManager::workLoop()
@@ -84,6 +83,10 @@ void PoolManager::workLoop()
 		m_hashrateSmoothTimePassed++;
 		m_hashrateReportingTimePassed++;
 		m_miningProgress = p_farm->miningProgress();
+
+#if ETH_DBUS
+		dbusint.send(toString(mp).data());
+#endif
 
 		// Hashrate reporting
 		if (m_hashrateReportingTimePassed > m_hashrateReportingTime) {
