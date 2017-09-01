@@ -12,11 +12,11 @@ using namespace dev::eth;
 
 class Api
 {
-    public:
-        Api(const int &port, Farm &farm);
-	private:
-		ApiServer *m_server;
-		Farm &m_farm;
+public:
+	Api(const int &port, Farm &farm);
+private:
+	ApiServer *m_server;
+	Farm &m_farm;
 };
 
 #endif //_API_H_

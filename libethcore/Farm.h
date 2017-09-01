@@ -131,8 +131,9 @@ public:
 		stop();
 		start(m_lastSealer, b_lastMixed);
 		
-		assert(m_onMinerRestart);
-		m_onMinerRestart();
+		if (m_onMinerRestart) {
+			m_onMinerRestart();
+		}
 	}
 		
 	bool isMining() const

@@ -12,6 +12,8 @@ ApiServer::ApiServer(AbstractServerConnector *conn, serverVersion_t type, Farm &
 
 void ApiServer::getMinerStat1(const Json::Value& request, Json::Value& response)
 {
+	(void) request; // unused
+	
 	auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(steady_clock::now() - this->m_started);
 	
 	SolutionStats s = this->m_farm.getSolutionStats();
@@ -52,10 +54,16 @@ void ApiServer::getMinerStat1(const Json::Value& request, Json::Value& response)
 
 void ApiServer::doMinerRestart(const Json::Value& request, Json::Value& response)
 {
+	(void) request; // unused
+	(void) response; // unused
+	
 	this->m_farm.restart();
 }
 
 void ApiServer::doMinerReboot(const Json::Value& request, Json::Value& response)
 {
+	(void) request; // unused
+	(void) response; // unused
+	
 	// Not supported
 }

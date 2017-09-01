@@ -59,7 +59,7 @@ option(ETHASHCL "Build with OpenCL mining" ON)
 option(ETHASHCUDA "Build with CUDA mining" OFF)
 option(ETHSTRATUM "Build with Stratum protocol support" ON)
 option(ETHDBUS "Build with D-Bus support" OFF)
-option(APICORE "Build with API Server support" OFF)
+option(APICORE "Build with API Server support" ON)
 
 # propagates CMake configuration options to the compiler
 function(configureProject)
