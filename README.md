@@ -78,7 +78,7 @@ This project uses [CMake] and [Hunter] package manager.
    mkdir build; cd build
    ```
 
-1. Configure the project with CMake. Check out additional
+2. Configure the project with CMake. Check out additional
    [configuration options](#cmake-configuration-options).
 
    ```sh
@@ -106,14 +106,14 @@ This project uses [CMake] and [Hunter] package manager.
     -DCMAKE_CXX_FLAGS="-fPIC"
    ```
 
-1. Build the project using [CMake Build Tool Mode]. This is a portable variant
+3. Build the project using [CMake Build Tool Mode]. This is a portable variant
    of `make`.
 
    ```sh
    cmake --build .
    ```
 
-1. _(Optional, Linux only)_ Install the built executable.
+4. _(Optional, Linux only)_ Install the built executable.
 
    ```sh
    sudo make install
