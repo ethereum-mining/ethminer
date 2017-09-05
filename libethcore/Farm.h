@@ -109,6 +109,7 @@ public:
 		}
 		m_isMining = true;
 		m_lastSealer = _sealer;
+		b_lastMixed = mixed;
 		resetTimer();
 		return true;
 	}
@@ -122,6 +123,19 @@ public:
 		m_isMining = false;
 	}
 	
+	/**
+	 * @brief Stop all mining activities and Starts them again
+	 */
+	void restart()
+	{
+		stop();
+		start(m_lastSealer, b_lastMixed);
+		
+		if (m_onMinerRestart) {
+			m_onMinerRestart();
+		}
+	}
+		
 	bool isMining() const
 	{
 		return m_isMining;
@@ -191,6 +205,7 @@ public:
 	}
 
 	using SolutionFound = std::function<bool(Solution const&)>;
+	using MinerRestart = std::function<void()>;
 
 	/**
 	 * @brief Provides a valid header based upon that received previously with setWork().
@@ -198,6 +213,7 @@ public:
 	 * @return true if the header was good and that the Farm should pause until more work is submitted.
 	 */
 	void onSolutionFound(SolutionFound const& _handler) { m_onSolutionFound = _handler; }
+	void onMinerRestart(MinerRestart const& _handler) { m_onMinerRestart = _handler; }
 
 	WorkPackage work() const { Guard l(x_minerWork); return m_work; }
 
@@ -230,9 +246,11 @@ private:
 	std::chrono::steady_clock::time_point m_lastStart;
 
 	SolutionFound m_onSolutionFound;
+	MinerRestart m_onMinerRestart;
 
 	std::map<std::string, SealerDescriptor> m_sealers;
 	std::string m_lastSealer;
+	bool b_lastMixed = false;
 
 	mutable SolutionStats m_solutionStats;
 

@@ -21,7 +21,7 @@ install: |
   nvcc -V
   pip install requests
 before_build:
-  - cmake -G "Visual Studio 14 2015 Win64" -H. -Bbuild -DETHASHCUDA=ON
+  - cmake -G "Visual Studio 14 2015 Win64" -H. -Bbuild -DETHASHCUDA=ON -DAPICORE=ON
 build_script:
   - cmake --build build --config %CONFIGURATION%
 after_build:
