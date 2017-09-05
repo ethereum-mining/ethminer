@@ -52,6 +52,9 @@
 #if ETH_DBUS
 #include "DBusInt.h"
 #endif
+#if API_CORE
+#include <libapicore/Api.h>
+#endif
 
 using namespace std;
 using namespace dev;
@@ -242,6 +245,12 @@ public:
 			m_report_stratum_hashrate = true;
 		}
 
+#endif
+#if API_CORE
+		else if ((arg == "--api-port") && i + 1 < argc)
+		{
+			m_api_port = atoi(argv[++i]);
+		}
 #endif
 #if ETH_ETHASHCL
 		else if (arg == "--opencl-platform" && i + 1 < argc)
@@ -589,6 +598,9 @@ public:
 			<< "    --cuda-devices <0 1 ..n> Select which CUDA GPUs to mine on. Default is to use all" << endl
 			<< "    --cuda-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achieve better performance. Default=4" << endl
 #endif
+#if API_CORE
+			<< "    --api-port Set the api port, the miner should listen to. Use 0 to disable. Default=0, use negative numbers to run in readonly mode. for example -3333." << endl
+#endif
 			;
 	}
 
@@ -758,6 +770,11 @@ private:
 
 		h256 id = h256::random();
 		Farm f;
+		
+#if API_CORE
+		Api api(this->m_api_port, f);
+#endif
+		
 		f.setSealers(sealers);
 		if (_m == MinerType::CL)
 			f.start("opencl", false);
@@ -890,7 +907,11 @@ private:
 			m_farmRecheckPeriod = m_defaultStratumFarmRecheckPeriod;
 
 		Farm f;
-
+		
+#if API_CORE
+		Api api(this->m_api_port, f);
+#endif
+	
 		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
 		if (m_stratumClientVersion == 1) {
 			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
@@ -916,6 +937,9 @@ private:
 					cwarn << "Can't submit solution: Not connected";
 				}
 				return false;
+			});
+			f.onMinerRestart([&](){ 
+				client.reconnect();
 			});
 
 			while (client.isRunning())
@@ -963,6 +987,9 @@ private:
 			{
 				client.submit(sol);
 				return false;
+			});
+			f.onMinerRestart([&](){ 
+				client.reconnect();
 			});
 
 			while (client.isRunning())
@@ -1040,6 +1067,9 @@ private:
 	unsigned m_defaultStratumFarmRecheckPeriod = 2000;
 	bool m_farmRecheckSet = false;
 	int m_worktimeout = 180;
+#if API_CORE
+	int m_api_port = 0;
+#endif	
 
 #if ETH_STRATUM
 	bool m_report_stratum_hashrate = false;
