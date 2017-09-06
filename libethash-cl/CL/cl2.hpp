@@ -1740,6 +1740,7 @@ protected:
     static bool isReferenceCountable(cl_device_id device)
     {
         bool retVal = false;
+        (void)device;
 #if CL_HPP_TARGET_OPENCL_VERSION >= 120
 #if CL_HPP_MINIMUM_OPENCL_VERSION < 120
         if (device != NULL) {
@@ -1826,9 +1827,7 @@ public:
 
     cl_type& operator ()() { return object_; }
 
-    const cl_type get() const { return object_; }
-
-    cl_type get() { return object_; }
+    cl_type get() const { return object_; }
 
 protected:
     template<typename Func, typename U>
