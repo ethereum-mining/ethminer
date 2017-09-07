@@ -276,6 +276,19 @@ public:
 					break;
 				}
 			}
+		else if(arg == "--cl-parallel-hash" && i + 1 < argc) {
+			try {
+				m_openclParallelHash = stol(argv[i++]);
+				if(m_openclParallelHash != 1 && m_openclParallelHash != 2 &&
+				   m_openclParallelHash != 4 && m_openclParallelHash != 8) {
+					BOOST_THROW_EXCEPTION(BadArgument());
+				} 
+			}
+			catch(...) {
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
 #endif
 #if ETH_ETHASHCL || ETH_ETHASHCUDA
 		else if ((arg == "--cl-global-work" || arg == "--cuda-grid-size")  && i + 1 < argc)
@@ -484,7 +497,8 @@ public:
 				CLMiner::setDevices(m_openclDevices, m_openclDeviceCount);
 				m_miningThreads = m_openclDeviceCount;
 			}
-
+			
+			CLMiner::setThreadsPerHash(m_openclParallelHash);
 			if (!CLMiner::configureGPU(
 					m_localWorkSize,
 					m_globalWorkSizeMultiplier,
@@ -585,6 +599,7 @@ public:
 #if ETH_ETHASHCL
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << CLMiner::c_defaultLocalWorkSize << endl
 			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << CLMiner::c_defaultGlobalWorkSizeMultiplier << " * " << CLMiner::c_defaultLocalWorkSize << endl
+			<< "    --cl-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achieve better performance. Default=8" << endl
 #endif
 #if ETH_ETHASHCUDA
 			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(ethash_cuda_miner::c_defaultBlockSize) << endl
@@ -1034,6 +1049,7 @@ private:
 #if ETH_ETHASHCL
 	unsigned m_openclDeviceCount = 0;
 	unsigned m_openclDevices[16];
+	unsigned m_openclParallelHash = 8;
 #if !ETH_ETHASHCUDA
 	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;

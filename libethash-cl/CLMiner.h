@@ -60,6 +60,7 @@ public:
 		unsigned _dagCreateDevice
 	);
 	static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
+	static void setThreadsPerHash(unsigned _threadsPerHash){s_threadsPerHash = _threadsPerHash; }
 	static void setDevices(unsigned * _devices, unsigned _selectedDeviceCount)
 	{
 		for (unsigned i = 0; i < _selectedDeviceCount; i++)
@@ -91,6 +92,7 @@ private:
 
 	static unsigned s_platformId;
 	static unsigned s_numInstances;
+	static unsigned s_threadsPerHash;
 	static int s_devices[16];
 
 	/// The local work size for the search
