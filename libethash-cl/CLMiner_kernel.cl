@@ -53,6 +53,8 @@
     #define LN_THREAD_PER_HASH  3
     #define ACCESS_INCREMENT    4
     #define ACCESS_SHIFT        2
+#else
+	#error "Invalid THREADS_PER_HASH, it needs to be 1, 2, 4 or 8"
 #endif
 
 #define FNV_PRIME	0x01000193
