@@ -224,8 +224,10 @@ public:
 		p.hashes = 0;
 		{
 			Guard l2(x_minerWork);
-			for (auto const& i : m_miners)
+			for (auto const& i : m_miners) {
+				(void) i; // unused
 				p.minersHashes.push_back(0);
+			}
 		}
 
 		for (auto const& cp : m_lastProgresses) {
