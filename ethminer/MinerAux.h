@@ -278,7 +278,7 @@ public:
 			}
 		else if(arg == "--cl-parallel-hash" && i + 1 < argc) {
 			try {
-				m_openclParallelHash = stol(argv[i++]);
+				m_openclParallelHash = stol(argv[++i]);
 				if(m_openclParallelHash != 1 && m_openclParallelHash != 2 &&
 				   m_openclParallelHash != 4 && m_openclParallelHash != 8) {
 					BOOST_THROW_EXCEPTION(BadArgument());
