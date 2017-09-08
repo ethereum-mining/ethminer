@@ -150,7 +150,7 @@ public:
 		p_hashrateTimer = nullptr;
 	}
 
-	void Farm::collectHashRate()
+	void collectHashRate()
 	{
 		WorkingProgress p;
 		Guard l2(x_minerWork);
@@ -184,7 +184,7 @@ public:
 		}
 	}
 
-	void Farm::processHashRate(const boost::system::error_code& ec) {
+	void processHashRate(const boost::system::error_code& ec) {
 
 		if (!ec) {
 			collectHashRate();
@@ -231,7 +231,7 @@ public:
 		for (auto const& cp : m_lastProgresses) {
 			p.ms += cp.ms;
 			p.hashes += cp.hashes;
-			for (int i = 0; i < cp.minersHashes.size(); i++)
+			for (unsigned int i = 0; i < cp.minersHashes.size(); i++)
 			{
 				p.minersHashes.at(i) += cp.minersHashes.at(i);
 			}
