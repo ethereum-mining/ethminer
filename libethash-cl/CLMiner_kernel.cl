@@ -363,13 +363,9 @@ __kernel void ethash_search(
                 mem_fence(CLK_LOCAL_MEM_FENCE);
 
 #if THREADS_PER_HASH == 2
-#define MIX_2THREAD(p, i)  p = FNV(p, g_dag[share->uints[0]].uint16s[thread_id][i]);
-                MIX_2THREAD(mix.s0, 0); MIX_2THREAD(mix.s1, 1); MIX_2THREAD(mix.s2, 2);
-                MIX_2THREAD(mix.s3, 3); MIX_2THREAD(mix.s4, 4); MIX_2THREAD(mix.s5, 5);
-                MIX_2THREAD(mix.s6, 6); MIX_2THREAD(mix.s7, 7); MIX_2THREAD(mix.s8, 8);
-                MIX_2THREAD(mix.s9, 9); MIX_2THREAD(mix.sa,10); MIX_2THREAD(mix.sb,11);
-                MIX_2THREAD(mix.sc,12); MIX_2THREAD(mix.sd,13); MIX_2THREAD(mix.se,14);
-                MIX_2THREAD(mix.sf,15); 
+                #pragma unroll
+                for(uint i = 0; i < 16; i++) 
+                	((uint *)&mix)[i] = FNV(((uint *)&mix)[i], g_dag[share->uints[0]].uint16s[thread_id][i]);
 #elif THREADS_PER_HASH == 4
                 mix = FNV(mix, g_dag[share->uints[0]].uint8s[thread_id]);
 #elif THREADS_PER_HASH == 8
