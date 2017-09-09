@@ -188,7 +188,7 @@ void ethash_cuda_miner::listDevices()
 			outString += "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) + "\n";
 			outString += "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
 		}
-		ETHCUDA_LOG(outString);
+		std::cout << outString;
 	}
 	catch(std::runtime_error const& err)
 	{
