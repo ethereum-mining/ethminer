@@ -365,7 +365,7 @@ __kernel void ethash_search(
 #if THREADS_PER_HASH == 2
                 #pragma unroll
                 for(uint i = 0; i < 16; i++) 
-                	((uint *)&mix)[i] = FNV(((uint *)&mix)[i], g_dag[share->uints[0]].uint16s[thread_id][i]);
+                	((uint *)&mix)[i] = FNV(((uint *)&mix)[i], g_dag[share->uints[0]].uints[16*thread_id + i]);
 #elif THREADS_PER_HASH == 4
                 mix = FNV(mix, g_dag[share->uints[0]].uint8s[thread_id]);
 #elif THREADS_PER_HASH == 8
