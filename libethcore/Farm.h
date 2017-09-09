@@ -321,7 +321,6 @@ private:
 	std::thread m_serviceThread;  ///< The IO service thread.
 	boost::asio::io_service m_io_service;
 	boost::asio::deadline_timer * p_hashrateTimer = nullptr;
-	//void processHashRate(const boost::system::error_code& ec);
 	std::vector<WorkingProgress> m_lastProgresses;
 
 	mutable SolutionStats m_solutionStats;
