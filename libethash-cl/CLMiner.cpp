@@ -252,7 +252,7 @@ unsigned CLMiner::getNumDevices()
 
 void CLMiner::listDevices()
 {
-	string outString ="\nListing OpenCL devices.\nFORMAT: [deviceID] deviceName\n";
+	string outString ="\nListing OpenCL devices.\nFORMAT: [platformID] [deviceID] deviceName\n";
 	unsigned int i = 0;
 
 	vector<cl::Platform> platforms = getPlatforms();
@@ -260,10 +260,11 @@ void CLMiner::listDevices()
 		return;
 	for (unsigned j = 0; j < platforms.size(); ++j)
 	{
+		i = 0;
 		vector<cl::Device> devices = getDevices(platforms, j);
 		for (auto const& device: devices)
 		{
-			outString += "[" + to_string(i) + "] " + device.getInfo<CL_DEVICE_NAME>() + "\n";
+			outString += "[" + to_string(j) + "] [" + to_string(i) + "] " + device.getInfo<CL_DEVICE_NAME>() + "\n";
 			outString += "\tCL_DEVICE_TYPE: ";
 			switch (device.getInfo<CL_DEVICE_TYPE>())
 			{
