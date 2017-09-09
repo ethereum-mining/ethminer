@@ -15,7 +15,6 @@ class ApiServer : public AbstractServer<ApiServer>
 public:
 	ApiServer(AbstractServerConnector *conn, serverVersion_t type, Farm &farm, bool &readonly);
 private:
-	steady_clock::time_point m_started = steady_clock::now();
 	Farm &m_farm;
 	void getMinerStat1(const Json::Value& request, Json::Value& response);
 	void doMinerRestart(const Json::Value& request, Json::Value& response);

@@ -217,6 +217,24 @@ public:
 
 	WorkPackage work() const { Guard l(x_minerWork); return m_work; }
 
+	std::chrono::steady_clock::time_point farmLaunched() {
+		return m_farm_launched;
+	}
+
+	string farmLaunchedFormatted() {
+		auto d = std::chrono::steady_clock::now() - m_farm_launched;
+		int hsize = 3;
+		auto hhh = std::chrono::duration_cast<std::chrono::hours>(d);
+		if (hhh.count() < 100) {
+			hsize = 2;
+		}
+		d -= hhh;
+		auto mm = std::chrono::duration_cast<std::chrono::minutes>(d);
+		std::ostringstream stream;
+		stream << "Time: " << std::setfill('0') << std::setw(hsize) << hhh.count() << ':' << std::setfill('0') << std::setw(2) << mm.count();
+		return stream.str();
+	}
+
 private:
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
@@ -253,7 +271,7 @@ private:
 	bool b_lastMixed = false;
 
 	mutable SolutionStats m_solutionStats;
-
+	std::chrono::steady_clock::time_point m_farm_launched = std::chrono::steady_clock::now();
 }; 
 
 }
