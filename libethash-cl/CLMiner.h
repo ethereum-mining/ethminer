@@ -83,7 +83,7 @@ private:
 	cl::CommandQueue m_queue;
 	cl::Kernel m_searchKernel;
 	cl::Kernel m_dagKernel;
-	cl::Buffer m_dag;
+	cl::Buffer m_dag[2];
 	cl::Buffer m_light;
 	cl::Buffer m_header;
 	cl::Buffer m_searchBuffer;
