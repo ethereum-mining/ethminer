@@ -169,13 +169,15 @@ All bug reports, pull requests and code reviews are very much welcome.
 
    The default parameters are fine in most scenario's (CUDA). For OpenCL it varies a bit more. Just play around with the numbers and use powers of 2. GPU's like powers of 2.
    
-7. What does the ```--cuda-parallel-hash``` flag do?
+6. What does the ```--cuda-parallel-hash``` flag do?
 
    @davilizh made improvements to the CUDA kernel hashing process and added this flag to allow changing the number of tasks it runs in parallel. These improvements were optimised for GTX 1060 GPUs which saw a large increase in hashrate, GTX 1070 and GTX 1080/Ti GPUs saw some, but less, improvement. The default value is 4 (which does not need to be set with the flag) and in most cases this will provide the best performance.
 
-6. What is ethminer's relationship with [Genoil's fork]?
+7. What is ethminer's relationship with [Genoil's fork]?
 
    [Genoil's fork] was the original source of this version, but as Genoil is no longer consistently maintaining that fork it became almost impossible for developers to get new code merged there. In the interests of progressing development without waiting for reviews this fork should be considered the active one and Genoil's as legacy code.
+
+
 
 
 
