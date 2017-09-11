@@ -284,10 +284,11 @@ __attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
 __kernel void ethash_search(
 	__global volatile uint* restrict g_output,
 	__constant hash32_t const* g_header,
-	__global hash128_t const* g_dag,
+	__global hash128_t const* g_dag0,
 	ulong start_nonce,
 	ulong target,
-	uint isolate
+	uint isolate,
+    __global hash128_t const* g_dag1
 	)
 {
 	__local compute_hash_share share[HASHES_PER_LOOP];
@@ -344,8 +345,11 @@ __kernel void ethash_search(
 					*share0 = fnv(init0 ^ (a + i), ((uint *)&mix)[i]) % DAG_SIZE;
 				}
 				barrier(CLK_LOCAL_MEM_FENCE);
-
-				mix = fnv4(mix, g_dag[*share0].uint4s[thread_id]);
+                if(*share0 < DAG_SIZE * 64) {
+                    mix = fnv4(mix, g_dag0[*share0 % (DAG_SIZE * 64)].uint4s[thread_id]);
+                } else {
+                    mix = fnv4(mix, g_dag1[*share0 % (DAG_SIZE * 64)].uint4s[thread_id]);                
+                }
 			}
 		}
 
@@ -386,7 +390,7 @@ static void SHA3_512(uint2* s, uint isolate)
 	keccak_f1600_no_absorb(s, 8, isolate);
 }
 
-__kernel void ethash_calculate_dag_item(uint start, __global hash64_t const* g_light, __global hash64_t * g_dag, uint isolate)
+__kernel void ethash_calculate_dag_item(uint start, __global hash64_t const* g_light, __global hash64_t * g_dag0, uint isolate, __global hash64_t * g_dag1)
 {
 	uint const node_index = start + get_global_id(0);
 	if (node_index > DAG_SIZE * 2) return;
@@ -404,5 +408,9 @@ __kernel void ethash_calculate_dag_item(uint start, __global hash64_t const* g_l
 		}
 	}
 	SHA3_512(dag_node.uint2s, isolate);
-	copy(g_dag[node_index].uint4s, dag_node.uint4s, 4);
+    if(node_index < DAG_SIZE * 64) {
+        copy(g_dag0[node_index % (DAG_SIZE * 64)].uint4s, dag_node.uint4s, 4);
+    } else {
+        copy(g_dag1[node_index % (DAG_SIZE * 64)].uint4s, dag_node.uint4s, 4);
+    }
 }
