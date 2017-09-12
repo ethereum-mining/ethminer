@@ -188,7 +188,7 @@ void ethash_cuda_miner::listDevices()
 			outString += "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) + "\n";
 			outString += "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
 		}
-		ETHCUDA_LOG(outString);
+		std::cout << outString;
 	}
 	catch(std::runtime_error const& err)
 	{
@@ -216,7 +216,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		cudaDeviceProp device_props;
 		CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, device_num));
 
-		cudalog << "Using device: " << device_props.name << " (Compute " << device_props.major << "." << device_props.minor << ")";
+		cudalog << "Using device: " << device_props.name << " (Compute " + to_string(device_props.major) + "." + to_string(device_props.minor) + ")";
 
 		CUDA_SAFE_CALL(cudaSetDevice(device_num));
 		CUDA_SAFE_CALL(cudaDeviceReset());
