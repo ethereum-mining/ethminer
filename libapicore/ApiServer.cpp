@@ -14,7 +14,7 @@ void ApiServer::getMinerStat1(const Json::Value& request, Json::Value& response)
 {
 	(void) request; // unused
 	
-	auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(steady_clock::now() - this->m_started);
+	auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(steady_clock::now() - this->m_farm.farmLaunched());
 	
 	SolutionStats s = this->m_farm.getSolutionStats();
 	WorkingProgress p = this->m_farm.miningProgress();
