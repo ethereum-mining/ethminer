@@ -804,7 +804,7 @@ private:
 					f.resetMiningProgress();
 					if (current)
 					{
-						minelog << mp << f.getSolutionStats();
+						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
 #if ETH_DBUS
 						dbusint.send(toString(mp).data());
 #endif
@@ -956,7 +956,7 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << mp << f.getSolutionStats();
+						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
 #if ETH_DBUS
 						dbusint.send(toString(mp).data());
 #endif
