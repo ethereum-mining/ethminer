@@ -776,10 +776,16 @@ private:
 #endif
 		
 		f.setSealers(sealers);
+
 		if (_m == MinerType::CL)
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
+		else if (_m == MinerType::Mixed) {
+			f.start("cuda", false);
+			f.start("opencl", true);
+		}
+
 		WorkPackage current;
 		std::mutex x_current;
 		while (m_running)
