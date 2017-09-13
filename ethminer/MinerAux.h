@@ -276,7 +276,7 @@ public:
 					break;
 				}
 			}
-		else if(arg == "--cl-threads-per-hash" && i + 1 < argc) {
+		else if(arg == "--cl-parallel-hash" && i + 1 < argc) {
 			try {
 				m_openclThreadsPerHash = stol(argv[++i]);
 				if(m_openclThreadsPerHash != 1 && m_openclThreadsPerHash != 2 &&
@@ -599,7 +599,7 @@ public:
 #if ETH_ETHASHCL
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << CLMiner::c_defaultLocalWorkSize << endl
 			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << CLMiner::c_defaultGlobalWorkSizeMultiplier << " * " << CLMiner::c_defaultLocalWorkSize << endl
-			<< "    --cl-threads-per-hash <1 2 ..8> Define how many threads to associate per hash. Default=8" << endl
+			<< "    --cl-parallel-hash <1 2 ..8> Define how many threads to associate per hash. Default=8" << endl
 #endif
 #if ETH_ETHASHCUDA
 			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(ethash_cuda_miner::c_defaultBlockSize) << endl
