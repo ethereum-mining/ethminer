@@ -213,6 +213,17 @@ public:
 		return m_isMining;
 	}
 
+	HwMonitors const& hwmonitors() const
+	{
+		HwMonitors hws;
+		for (auto const& i : m_miners) {
+			hws.minerMonitors.push_back(i->hwmon());
+		}
+		Guard l(x_hwmons);
+		m_hwmons = hws;
+		return m_hwmons;
+	}
+
 	/**
 	 * @brief Get information on the progress of mining this work package.
 	 * @return The progress with mining so far.
@@ -326,6 +337,9 @@ private:
 
 	mutable Mutex x_progress;
 	mutable WorkingProgress m_progress;
+
+	mutable Mutex x_hwmons;
+	mutable HwMonitors m_hwmons;
 
 	SolutionFound m_onSolutionFound;
 	MinerRestart m_onMinerRestart;

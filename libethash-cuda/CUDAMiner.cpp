@@ -213,6 +213,15 @@ void CUDAMiner::listDevices()
 	return ethash_cuda_miner::listDevices();
 }
 
+HwMonitor CUDAMiner::hwmon()
+{
+	HwMonitor hw;
+	if (m_miner) {
+		hw = m_miner->hwmon();
+	}
+	return hw;
+}
+
 bool CUDAMiner::configureGPU(
 	unsigned _blockSize,
 	unsigned _gridSize,

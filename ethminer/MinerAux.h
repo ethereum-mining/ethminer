@@ -968,6 +968,7 @@ private:
 					if (client.current())
 					{
 						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
+						minelog << f.hwmonitors();
 #if ETH_DBUS
 						dbusint.send(toString(mp).data());
 #endif

@@ -68,7 +68,7 @@ public:
 			s_devices[i] = _devices[i];
 		}
 	}
-
+	HwMonitor hwmon() override;
 protected:
 	void kickOff() override;
 	void pause() override;
