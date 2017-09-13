@@ -64,6 +64,32 @@ enum class MinerType
 	CUDA
 };
 
+struct HwMonitor
+{
+	int tempC = 0;
+	int fanP = 0;
+};
+
+inline std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
+{
+	return os << "t=" << _hw.tempC << "C fan=" << _hw.fanP << "%";
+}
+
+struct HwMonitors
+{
+	std::vector<HwMonitor> minerMonitors;
+};
+
+inline std::ostream& operator<<(std::ostream& _out, HwMonitors _hws)
+{
+	for (size_t i = 0; i < _hws.minerMonitors.size(); ++i)
+	{
+		HwMonitor hw = _hws.minerMonitors[i];
+		_out << "gpu/" << i << " " << EthTeal << hw << EthReset << "  ";
+	}
+	return _out;
+}
+
 /// Describes the progress of a mining operation.
 struct WorkingProgress
 {
@@ -173,6 +199,8 @@ public:
 	uint64_t hashCount() const { return m_hashCount; }
 
 	void resetHashCount() { m_hashCount = 0; }
+
+	virtual HwMonitor hwmon() = 0;
 
 protected:
 

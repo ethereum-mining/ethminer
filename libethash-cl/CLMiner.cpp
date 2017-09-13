@@ -340,6 +340,11 @@ bool CLMiner::configureGPU(
 	return false;
 }
 
+HwMonitor CLMiner::hwmon()
+{
+	HwMonitor hw;
+	return hw;
+}
 
 bool CLMiner::init(const h256& seed)
 {
