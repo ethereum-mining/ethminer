@@ -41,7 +41,7 @@ endif()
 
 
 project(ethminer)
-set(PROJECT_VERSION 0.12.0rc1)
+set(PROJECT_VERSION 0.13.0.dev0)
 
 # link_directories interprate relative paths with respect to CMAKE_CURRENT_SOURCE_DIR
 cmake_policy(SET CMP0015 NEW)
