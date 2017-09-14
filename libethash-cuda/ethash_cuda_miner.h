@@ -6,8 +6,8 @@
 #include <functional>
 #include <libethash/ethash.h>
 #include <libethcore/Miner.h>
+#include <libhwmon/wrapnvml.h>
 #include "ethash_cuda_miner_kernel.h"
-#include "wrapnvml.h"
 
 class ethash_cuda_miner
 {
