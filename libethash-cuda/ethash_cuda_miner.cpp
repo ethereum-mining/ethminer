@@ -366,8 +366,8 @@ dev::eth::HwMonitor ethash_cuda_miner::hwmon()
 	dev::eth::HwMonitor hw;
 	if (nvmlh) {
 		unsigned int tempC = 0, fanpcnt = 0;
-		wrap_nvml_get_tempC(nvmlh, m_device_num, &tempC);
-		wrap_nvml_get_fanpcnt(nvmlh, m_device_num, &fanpcnt);
+		wrap_nvml_get_tempC(nvmlh, nvmlh->cuda_nvml_device_id[m_device_num], &tempC);
+		wrap_nvml_get_fanpcnt(nvmlh, nvmlh->cuda_nvml_device_id[m_device_num], &fanpcnt);
 		hw.tempC = tempC;
 		hw.fanP = fanpcnt;
 	}
