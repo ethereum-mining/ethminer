@@ -12,42 +12,17 @@
  *
  * John E. Stone - john.stone@gmail.com
  *
+ * Modified to work with ethminer by
+ * 
+ * Philipp Andreas - github@smurfy.de
  */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "wraphelper.h"
 #include "wrapnvml.h"
 #if ETH_ETHASHCUDA
 #include "cuda_runtime.h"
-#endif
-
-/*
- * Wrappers to emulate dlopen() on other systems like Windows
- */
-#if defined(_MSC_VER) || defined(_WIN32) || defined(_WIN64)
-#include <windows.h>
-static void *wrap_dlopen(const char *filename) {
-  return (void *)LoadLibrary(filename);
-}
-static void *wrap_dlsym(void *h, const char *sym) {
-  return (void *)GetProcAddress((HINSTANCE)h, sym);
-}
-static int wrap_dlclose(void *h) {
-  /* FreeLibrary returns nonzero on success */
-  return (!FreeLibrary((HINSTANCE)h));
-}
-#else
-/* assume we can use dlopen itself... */
-#include <dlfcn.h>
-static void *wrap_dlopen(const char *filename) {
-  return dlopen(filename, RTLD_NOW);
-}
-static void *wrap_dlsym(void *h, const char *sym) {
-  return dlsym(h, sym);
-}
-static int wrap_dlclose(void *h) {
-  return dlclose(h);
-}
 #endif
 
 #if defined(__cplusplus)
