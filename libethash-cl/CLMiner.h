@@ -8,6 +8,8 @@
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
+#include <libhwmon/wrapnvml.h>
+#include <libhwmon/wrapadl.h>
 
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS true
 #define CL_HPP_ENABLE_EXCEPTIONS true
@@ -99,6 +101,9 @@ private:
 	static unsigned s_workgroupSize;
 	/// The initial global work size for the searches
 	static unsigned s_initialGlobalWorkSize;
+
+	wrap_nvml_handle *nvmlh = NULL;
+	wrap_adl_handle *adlh = NULL;
 
 };
 
