@@ -17,7 +17,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "wrapnvml.h"
+#if ETH_ETHASHCUDA
 #include "cuda_runtime.h"
+#endif
 
 /*
  * Wrappers to emulate dlopen() on other systems like Windows
@@ -133,6 +135,7 @@ wrap_nvml_handle * wrap_nvml_create() {
   nvmlh->nvmlInit();
   nvmlh->nvmlDeviceGetCount(&nvmlh->nvml_gpucount);
 
+#if ETH_ETHASHCUDA
   /* Query CUDA device count, in case it doesn't agree with NVML, since  */
   /* CUDA will only report GPUs with compute capability greater than 1.0 */ 
   if (cudaGetDeviceCount(&nvmlh->cuda_gpucount) != cudaSuccess) {
@@ -143,8 +146,10 @@ wrap_nvml_handle * wrap_nvml_create() {
     free(nvmlh);
     return NULL;
   }
-
+#endif
   nvmlh->devs = (wrap_nvmlDevice_t *) calloc(nvmlh->nvml_gpucount, sizeof(wrap_nvmlDevice_t));
+
+#if ETH_ETHASHCUDA
   nvmlh->nvml_pci_domain_id = (unsigned int*) calloc(nvmlh->nvml_gpucount, sizeof(unsigned int));
   nvmlh->nvml_pci_bus_id = (unsigned int*) calloc(nvmlh->nvml_gpucount, sizeof(unsigned int));
   nvmlh->nvml_pci_device_id = (unsigned int*) calloc(nvmlh->nvml_gpucount, sizeof(unsigned int));
@@ -190,6 +195,8 @@ wrap_nvml_handle * wrap_nvml_create() {
     }
   }
 
+#endif
+
   return nvmlh;
 }
 
@@ -214,10 +221,9 @@ int wrap_cuda_get_gpucount(wrap_nvml_handle *nvmlh, int *gpucount) {
 }
 
 int wrap_nvml_get_gpu_name(wrap_nvml_handle *nvmlh,
-                           int cudaindex, 
+                           int gpuindex,
                            char *namebuf,
                            int bufsize) {
-  int gpuindex = nvmlh->cuda_nvml_device_id[cudaindex];
   if (gpuindex < 0 || gpuindex >= nvmlh->nvml_gpucount)
     return -1;
 
@@ -229,9 +235,8 @@ int wrap_nvml_get_gpu_name(wrap_nvml_handle *nvmlh,
 
 
 int wrap_nvml_get_tempC(wrap_nvml_handle *nvmlh,
-                        int cudaindex, unsigned int *tempC) {
+                        int gpuindex, unsigned int *tempC) {
   wrap_nvmlReturn_t rc;
-  int gpuindex = nvmlh->cuda_nvml_device_id[cudaindex];
   if (gpuindex < 0 || gpuindex >= nvmlh->nvml_gpucount)
     return -1;
 
@@ -245,9 +250,8 @@ int wrap_nvml_get_tempC(wrap_nvml_handle *nvmlh,
 
 
 int wrap_nvml_get_fanpcnt(wrap_nvml_handle *nvmlh,
-                          int cudaindex, unsigned int *fanpcnt) {
+                          int gpuindex, unsigned int *fanpcnt) {
   wrap_nvmlReturn_t rc;
-  int gpuindex = nvmlh->cuda_nvml_device_id[cudaindex];
   if (gpuindex < 0 || gpuindex >= nvmlh->nvml_gpucount)
     return -1;
 
@@ -261,9 +265,8 @@ int wrap_nvml_get_fanpcnt(wrap_nvml_handle *nvmlh,
 
 
 int wrap_nvml_get_power_usage(wrap_nvml_handle *nvmlh,
-                              int cudaindex,
+                              int gpuindex,
                               unsigned int *milliwatts) {
-  int gpuindex = nvmlh->cuda_nvml_device_id[cudaindex];
   if (gpuindex < 0 || gpuindex >= nvmlh->nvml_gpucount)
     return -1;
 
