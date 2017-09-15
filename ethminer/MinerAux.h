@@ -244,6 +244,10 @@ public:
 		{
 			m_report_stratum_hashrate = true;
 		}
+		else if ((arg == "-HWMON") && i + 1 < argc)
+		{
+			m_show_hwmonitors = true;
+		}
 
 #endif
 #if API_CORE
@@ -572,6 +576,7 @@ public:
 			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for hashrate reporting to work with nanopool)" << endl
 			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
 			<< "    -RH, --report-hashrate Report current hashrate to pool (please only enable on pools supporting this)" << endl
+			<< "    -HWMON Displays gpu temp and fan percent." << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 #endif
@@ -817,6 +822,8 @@ private:
 					if (current)
 					{
 						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
+						if (m_show_hwmonitors)
+							minelog << f.hwmonitors();
 #if ETH_DBUS
 						dbusint.send(toString(mp).data());
 #endif
@@ -968,7 +975,8 @@ private:
 					if (client.current())
 					{
 						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
-						minelog << f.hwmonitors();
+						if (m_show_hwmonitors)
+							minelog << f.hwmonitors();
 #if ETH_DBUS
 						dbusint.send(toString(mp).data());
 #endif
@@ -1085,6 +1093,7 @@ private:
 	unsigned m_defaultStratumFarmRecheckPeriod = 2000;
 	bool m_farmRecheckSet = false;
 	int m_worktimeout = 180;
+	bool m_show_hwmonitors = false;
 #if API_CORE
 	int m_api_port = 0;
 #endif	
