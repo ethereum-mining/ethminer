@@ -47,10 +47,10 @@ wrap_nvml_handle * wrap_nvml_create() {
 #define  libnvidia_ml "%PROGRAMFILES%/NVIDIA Corporation/NVSMI/nvml.dll"
 #elif defined(__linux) && (defined(__i386__) || defined(__ARM_ARCH_7A__))
   /* 32-bit linux assumed */
-#define  libnvidia_ml "/usr/lib32/libnvidia-ml.so"
+#define  libnvidia_ml "libnvidia-ml.so"
 #elif defined(__linux)
   /* 64-bit linux assumed */
-#define  libnvidia_ml "/usr/lib/libnvidia-ml.so"
+#define  libnvidia_ml "libnvidia-ml.so"
 #else
 #error "Unrecognized platform: need NVML DLL path for this platform..."
 #endif
