@@ -463,7 +463,6 @@ bool CLMiner::init(const h256& seed)
 			cllog << "Creating light cache buffer, size" << light->data().size();
 			m_light = cl::Buffer(m_context, CL_MEM_READ_ONLY, light->data().size());
 			cllog << "Creating DAG buffer, size" << dagSize;
-			m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, dagSize);
 			cllog << "Loading kernels";
 			m_searchKernel = cl::Kernel(program, "ethash_search");
 			m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
@@ -480,7 +479,6 @@ bool CLMiner::init(const h256& seed)
 		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
 		m_searchKernel.setArg(1, m_header);
-		m_searchKernel.setArg(2, m_dag);
 		m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
 
 		// create mining buffers
@@ -495,7 +493,6 @@ bool CLMiner::init(const h256& seed)
 		if (restWork > 0) fullRuns++;
 
 		m_dagKernel.setArg(1, m_light);
-		m_dagKernel.setArg(2, m_dag);
 		m_dagKernel.setArg(3, ~0u);
 
 		for (uint32_t i = 0; i < fullRuns; i++)
