@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-void* __stdcall ADL_Main_Memory_Alloc(int iSize)
+void* ADL_API_CALL ADL_Main_Memory_Alloc(int iSize)
 {
 	void* lpBuffer = malloc(iSize);
 	return lpBuffer;
@@ -20,7 +20,6 @@ void* __stdcall ADL_Main_Memory_Alloc(int iSize)
 
 wrap_adl_handle * wrap_adl_create()
 {
-	int i = 0;
 	wrap_adl_handle *adlh = NULL;
 
 #if defined(_WIN64)
