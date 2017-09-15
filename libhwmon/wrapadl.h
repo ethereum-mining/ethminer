@@ -18,7 +18,15 @@ typedef enum wrap_adlReturn_enum {
 typedef void * wrap_adlDevice_t;
 
 // Some ADL defines and structs from adl sdk
-typedef void* (__stdcall *ADL_MAIN_MALLOC_CALLBACK)(int);
+#if defined (__MSC_VER)
+#define ADL_API_CALL __cdecl
+#elif defined (_WIN32) || defined (__WIN32__)
+#define ADL_API_CALL __stdcall
+#else
+#define ADL_API_CALL
+#endif
+
+typedef void* (ADL_API_CALL *ADL_MAIN_MALLOC_CALLBACK)(int);
 
 #define ADL_MAX_PATH                                    256
 typedef struct AdapterInfo
