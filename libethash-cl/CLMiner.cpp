@@ -352,6 +352,12 @@ HwMonitor CLMiner::hwmon()
 		wrap_adl_get_tempC(adlh, index, &tempC);
 		wrap_adl_get_fanpcnt(adlh, index, &fanpcnt);
 	}
+#if defined(__linux)
+	if (sysfsh) {
+		wrap_amdsysfs_get_tempC(sysfsh, index, &tempC);
+		wrap_amdsysfs_get_fanpcnt(sysfsh, index, &fanpcnt);
+	}
+#endif
 	hw.tempC = tempC;
 	hw.fanP = fanpcnt;
 	return hw;
@@ -384,6 +390,9 @@ bool CLMiner::init(const h256& seed)
 		{
 			platformId = OPENCL_PLATFORM_AMD;
 			adlh = wrap_adl_create();
+#if defined(__linux)
+			sysfsh = wrap_amdsysfs_create();
+#endif
 		}
 		else if (platformName == "Clover")
 		{

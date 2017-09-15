@@ -10,6 +10,9 @@
 #include <libethcore/Miner.h>
 #include <libhwmon/wrapnvml.h>
 #include <libhwmon/wrapadl.h>
+#if defined(__linux)
+#include <libhwmon/wrapamdsysfs.h>
+#endif
 
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS true
 #define CL_HPP_ENABLE_EXCEPTIONS true
@@ -104,7 +107,9 @@ private:
 
 	wrap_nvml_handle *nvmlh = NULL;
 	wrap_adl_handle *adlh = NULL;
-
+#if defined(__linux)
+	wrap_amdsysfs_handle *sysfsh = NULL;
+#endif
 };
 
 }

@@ -2,6 +2,7 @@ set(SOURCES
     wraphelper.h
     wrapnvml.h wrapnvml.cpp
     wrapadl.h wrapadl.cpp
+    wrapamdsysfs.h wrapamdsysfs.cpp
 )
 
 add_library(hwmon ${SOURCES})
