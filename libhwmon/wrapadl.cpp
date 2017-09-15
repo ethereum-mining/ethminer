@@ -30,10 +30,10 @@ wrap_adl_handle * wrap_adl_create()
 #define  libatiadlxx "atiadlxx.dll"
 #elif defined(__linux) && (defined(__i386__) || defined(__ARM_ARCH_7A__))
 	/* 32-bit linux assumed */
-#define  libatiadlxx "/usr/lib32/libatiadlxx.so"
+#define  libatiadlxx "libatiadlxx.so"
 #elif defined(__linux)
 	/* 64-bit linux assumed */
-#define  libatiadlxx "/usr/lib/libatiadlxx.so"
+#define  libatiadlxx "libatiadlxx.so"
 #else
 #error "Unrecognized platform: need NVML DLL path for this platform..."
 #endif
