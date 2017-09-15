@@ -343,8 +343,6 @@ __kernel void ethash_search(
         uint8 mix = share->uint8s[thread_id & 1];
 #elif THREADS_PER_HASH == 8
         uint4 mix = share->uint4s[thread_id & 3];
-#elif THREADS_PER_HASH == 16
-        uint8 mix = share->uints[thread_id & 7];
 #endif
         mem_fence(CLK_LOCAL_MEM_FENCE);
  
