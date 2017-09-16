@@ -179,7 +179,7 @@ All bug reports, pull requests and code reviews are very much welcome.
 
 8. Can I CPU Mine?
  
-  No, use geth, the go program made for etherum by etherum.
+  No, use geth, the go program made for ethereum by ethereum.
 
 
 [Amazon S3 is needed]: https://docs.travis-ci.com/user/uploading-artifacts/
