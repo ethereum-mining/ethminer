@@ -17,6 +17,7 @@ namespace eth
 
 unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
+unsigned CLMiner::s_threadsPerHash = 8;
 
 constexpr size_t c_maxSearchResults = 1;
 
@@ -188,7 +189,7 @@ void CLMiner::workLoop()
           }
 
           // Read results.
-          uint32_t *results = (uint32_t*)m_queue.enqueueMapBuffer(m_searchBuffer, CL_TRUE, CL_MAP_READ, 0, sizeof(results));
+          uint32_t *results = (uint32_t*)m_queue.enqueueMapBuffer(m_searchBuffer, CL_TRUE, CL_MAP_READ, 0, (c_maxSearchResults +1) * sizeof(uint32_t));
 
           uint64_t nonce = 0;
           if (results[0] > 0)
@@ -214,6 +215,7 @@ void CLMiner::workLoop()
           // Report hash count
           addHashCount(m_globalWorkSize);
 
+          // Unmap results buffer.
           m_queue.enqueueUnmapMemObject(m_searchBuffer, results);
           // Check if we should stop.
           if (shouldStop())
@@ -439,6 +441,7 @@ bool CLMiner::init(const h256& seed)
         addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
         addDefinition(code, "PLATFORM", platformId);
         addDefinition(code, "COMPUTE", computeCapability);
+        addDefinition(code, "THREADS_PER_HASH", s_threadsPerHash);
 
         // create miner OpenCL program
         cl::Program::Sources sources{{code.data(), code.size()}};
