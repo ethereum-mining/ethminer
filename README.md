@@ -163,7 +163,7 @@ All bug reports, pull requests and code reviews are very much welcome.
 
 4. Can I still mine ETH with my 2GB GPU?
 
-   No. Your VRAM must be above the DAG size (CUrrently about 2.15 GB.)
+   Not really, your VRAM must be above the DAG size (Currently about 2.15 GB.) to get best preformance, without it severe hash loss will occur.
 
 5. What are the optimal launch parameters?
 
