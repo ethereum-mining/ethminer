@@ -188,9 +188,7 @@ void CLMiner::workLoop()
 			}
 
 			// Read results.
-			// TODO: could use pinned host pointer instead.
-			uint32_t results[c_maxSearchResults + 1];
-			m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, 0, sizeof(results), &results);
+			uint32_t *results = (uint32_t*)m_queue.enqueueMapBuffer(m_searchBuffer, CL_TRUE, CL_MAP_READ, 0, (c_maxSearchResults +1) * sizeof(uint32_t));
 
 			uint64_t nonce = 0;
 			if (results[0] > 0)
@@ -216,6 +214,9 @@ void CLMiner::workLoop()
 			// Report hash count
 			addHashCount(m_globalWorkSize);
 
+			// Unmap buffer
+			m_queue.enqueueUnmapMemObject(m_searchBuffer, results);
+			
 			// Check if we should stop.
 			if (shouldStop())
 			{
