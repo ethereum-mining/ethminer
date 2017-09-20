@@ -14,17 +14,14 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file EthashCUDAMiner.cpp
+/** @file CUDAMiner.cpp
 * @author Gav Wood <i@gavwood.com>
 * @date 2014
 *
 * Determines the PoW algorithm.
 */
 
-#if ETH_ETHASHCUDA
-
-#include "EthashCUDAMiner.h"
-#include <libethash-cuda/ethash_cuda_miner.h>
+#include "CUDAMiner.h"
 
 using namespace std;
 using namespace dev;
@@ -37,7 +34,7 @@ namespace eth
 	class EthashCUDAHook : public ethash_cuda_miner::search_hook
 	{
 	public:
-		EthashCUDAHook(EthashCUDAMiner& _owner): m_owner(_owner) {}
+		EthashCUDAHook(CUDAMiner& _owner): m_owner(_owner) {}
 
 		EthashCUDAHook(EthashCUDAHook const&) = delete;
 
@@ -83,29 +80,28 @@ namespace eth
 		Mutex x_all;
 		bool m_abort = false;
 		Notified<bool> m_aborted = { true };
-		EthashCUDAMiner& m_owner;
+		CUDAMiner& m_owner;
 	};
 }
 }
+unsigned CUDAMiner::s_platformId = 0;
+unsigned CUDAMiner::s_deviceId = 0;
+unsigned CUDAMiner::s_numInstances = 0;
+int CUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
-unsigned EthashCUDAMiner::s_platformId = 0;
-unsigned EthashCUDAMiner::s_deviceId = 0;
-unsigned EthashCUDAMiner::s_numInstances = 0;
-int EthashCUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
-
-EthashCUDAMiner::EthashCUDAMiner(FarmFace& _farm, unsigned _index) :
+CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
 	Miner("CUDA", _farm, _index),
 	m_hook(new EthashCUDAHook(*this))  // FIXME!
 {}
 
-EthashCUDAMiner::~EthashCUDAMiner()
+CUDAMiner::~CUDAMiner()
 {
 	pause();
 	delete m_miner;
 	delete m_hook;
 }
 
-void EthashCUDAMiner::report(uint64_t _nonce)
+void CUDAMiner::report(uint64_t _nonce)
 {
 	// FIXME: This code is exactly the same as in EthashGPUMiner.
 	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
@@ -114,13 +110,13 @@ void EthashCUDAMiner::report(uint64_t _nonce)
 		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
 }
 
-void EthashCUDAMiner::kickOff()
+void CUDAMiner::kickOff()
 {
 	m_hook->reset();
 	startWorking();
 }
 
-void EthashCUDAMiner::workLoop()
+void CUDAMiner::workLoop()
 {
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
@@ -196,28 +192,28 @@ void EthashCUDAMiner::workLoop()
 	}
 }
 
-void EthashCUDAMiner::pause()
+void CUDAMiner::pause()
 {
 	m_hook->abort();
 	stopWorking();
 }
 
-std::string EthashCUDAMiner::platformInfo()
+std::string CUDAMiner::platformInfo()
 {
 	return ethash_cuda_miner::platform_info(s_deviceId);
 }
 
-unsigned EthashCUDAMiner::getNumDevices()
+unsigned CUDAMiner::getNumDevices()
 {
 	return ethash_cuda_miner::getNumDevices();
 }
 
-void EthashCUDAMiner::listDevices()
+void CUDAMiner::listDevices()
 {
 	return ethash_cuda_miner::listDevices();
 }
 
-bool EthashCUDAMiner::configureGPU(
+bool CUDAMiner::configureGPU(
 	unsigned _blockSize,
 	unsigned _gridSize,
 	unsigned _numStreams,
@@ -246,9 +242,7 @@ bool EthashCUDAMiner::configureGPU(
 	return true;
 }
 
-void EthashCUDAMiner::setParallelHash(unsigned _parallelHash)
+void CUDAMiner::setParallelHash(unsigned _parallelHash)
 {
 	ethash_cuda_miner::setParallelHash(_parallelHash);
 }
-
-#endif

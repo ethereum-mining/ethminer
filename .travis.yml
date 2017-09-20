@@ -26,7 +26,7 @@ before_install:
     - if [ "$TRAVIS_OS_NAME" = linux ]; then scripts/install_cmake.sh; fi
     - pip install requests
 script:
-    - cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -H. -Bbuild
+    - cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -DAPICORE=ON -H. -Bbuild
     - cmake --build build -- -j4
     - build/ethminer/ethminer --list-devices -G
     - build/ethminer/ethminer --list-devices -U
