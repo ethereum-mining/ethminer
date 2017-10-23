@@ -2,6 +2,7 @@
 #define _ETHASH_CUDA_MINER_KERNEL_GLOBALS_H_
 
 #define SHUFFLE_MIN_VER 300
+#define SHUFFLE_DEPRECATED 900
 
 //#include "cuda_helper.h"
 
