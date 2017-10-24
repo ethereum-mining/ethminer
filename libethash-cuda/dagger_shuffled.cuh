@@ -30,7 +30,7 @@ __device__ __forceinline__ uint64_t compute_hash(
 			uint2 shuffle[8];
 			for (int j = 0; j < 8; j++) 
 			{
-#if __CUDA_ARCH__ < SHUFFLE_DEPRECATED
+#if CUDA_VERSION < SHUFFLE_DEPRECATED
 				shuffle[j].x = __shfl(state[j].x, i+p, THREADS_PER_HASH);
 				shuffle[j].y = __shfl(state[j].y, i+p, THREADS_PER_HASH);
 #else
@@ -45,7 +45,7 @@ __device__ __forceinline__ uint64_t compute_hash(
 				case 2: mix[p] = vectorize2(shuffle[4], shuffle[5]); break;
 				case 3: mix[p] = vectorize2(shuffle[6], shuffle[7]); break;
 			}
-#if __CUDA_ARCH__ < SHUFFLE_DEPRECATED
+#if CUDA_VERSION < SHUFFLE_DEPRECATED
 			init0[p] = __shfl(shuffle[0].x, 0, THREADS_PER_HASH);
 #else
 			init0[p] = __shfl_sync(0xFFFFFFFF,shuffle[0].x, 0, THREADS_PER_HASH);
@@ -61,7 +61,7 @@ __device__ __forceinline__ uint64_t compute_hash(
 				for (int p = 0; p < _PARALLEL_HASH; p++)
 				{
 					offset[p] = fnv(init0[p] ^ (a + b), ((uint32_t *)&mix[p])[b]) % d_dag_size;
-#if __CUDA_ARCH__ < SHUFFLE_DEPRECATED
+#if CUDA_VERSION < SHUFFLE_DEPRECATED
 					offset[p] = __shfl(offset[p], t, THREADS_PER_HASH);
 #else
 					offset[p] = __shfl_sync(0xFFFFFFFF,offset[p], t, THREADS_PER_HASH);
@@ -85,7 +85,7 @@ __device__ __forceinline__ uint64_t compute_hash(
 			uint32_t thread_mix = fnv_reduce(mix[p]);
 
 			// update mix accross threads
-#if __CUDA_ARCH__ < SHUFFLE_DEPRECATED
+#if CUDA_VERSION < SHUFFLE_DEPRECATED
 			shuffle[0].x = __shfl(thread_mix, 0, THREADS_PER_HASH);
 			shuffle[0].y = __shfl(thread_mix, 1, THREADS_PER_HASH);
 			shuffle[1].x = __shfl(thread_mix, 2, THREADS_PER_HASH);
