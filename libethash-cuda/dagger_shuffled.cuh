@@ -34,8 +34,8 @@ __device__ __forceinline__ uint64_t compute_hash(
 				shuffle[j].x = __shfl(state[j].x, i+p, THREADS_PER_HASH);
 				shuffle[j].y = __shfl(state[j].y, i+p, THREADS_PER_HASH);
 #else
-				shuffle[j].x = __shfl_sync(state[j].x, i+p, THREADS_PER_HASH);
-				shuffle[j].y = __shfl_sync(state[j].y, i+p, THREADS_PER_HASH);
+				shuffle[j].x = __shfl_sync(0xFFFFFFFF,state[j].x, i+p, THREADS_PER_HASH);
+				shuffle[j].y = __shfl_sync(0xFFFFFFFF,state[j].y, i+p, THREADS_PER_HASH);
 #endif
 			}
 			switch (mix_idx)
@@ -48,7 +48,7 @@ __device__ __forceinline__ uint64_t compute_hash(
 #if __CUDA_ARCH__ < SHUFFLE_DEPRECATED
 			init0[p] = __shfl(shuffle[0].x, 0, THREADS_PER_HASH);
 #else
-			init0[p] = __shfl_sync(shuffle[0].x, 0, THREADS_PER_HASH);
+			init0[p] = __shfl_sync(0xFFFFFFFF,shuffle[0].x, 0, THREADS_PER_HASH);
 #endif
 		}
 
@@ -64,7 +64,7 @@ __device__ __forceinline__ uint64_t compute_hash(
 #if __CUDA_ARCH__ < SHUFFLE_DEPRECATED
 					offset[p] = __shfl(offset[p], t, THREADS_PER_HASH);
 #else
-					offset[p] = __shfl_sync(offset[p], t, THREADS_PER_HASH);
+					offset[p] = __shfl_sync(0xFFFFFFFF,offset[p], t, THREADS_PER_HASH);
 #endif
 				}
 				#pragma unroll
@@ -95,14 +95,14 @@ __device__ __forceinline__ uint64_t compute_hash(
 			shuffle[3].x = __shfl(thread_mix, 6, THREADS_PER_HASH);
 			shuffle[3].y = __shfl(thread_mix, 7, THREADS_PER_HASH);
 #else
-			shuffle[0].x = __shfl_sync(thread_mix, 0, THREADS_PER_HASH);
-			shuffle[0].y = __shfl_sync(thread_mix, 1, THREADS_PER_HASH);
-			shuffle[1].x = __shfl_sync(thread_mix, 2, THREADS_PER_HASH);
-			shuffle[1].y = __shfl_sync(thread_mix, 3, THREADS_PER_HASH);
-			shuffle[2].x = __shfl_sync(thread_mix, 4, THREADS_PER_HASH);
-			shuffle[2].y = __shfl_sync(thread_mix, 5, THREADS_PER_HASH);
-			shuffle[3].x = __shfl_sync(thread_mix, 6, THREADS_PER_HASH);
-			shuffle[3].y = __shfl_sync(thread_mix, 7, THREADS_PER_HASH);
+			shuffle[0].x = __shfl_sync(0xFFFFFFFF,thread_mix, 0, THREADS_PER_HASH);
+			shuffle[0].y = __shfl_sync(0xFFFFFFFF,thread_mix, 1, THREADS_PER_HASH);
+			shuffle[1].x = __shfl_sync(0xFFFFFFFF,thread_mix, 2, THREADS_PER_HASH);
+			shuffle[1].y = __shfl_sync(0xFFFFFFFF,thread_mix, 3, THREADS_PER_HASH);
+			shuffle[2].x = __shfl_sync(0xFFFFFFFF,thread_mix, 4, THREADS_PER_HASH);
+			shuffle[2].y = __shfl_sync(0xFFFFFFFF,thread_mix, 5, THREADS_PER_HASH);
+			shuffle[3].x = __shfl_sync(0xFFFFFFFF,thread_mix, 6, THREADS_PER_HASH);
+			shuffle[3].y = __shfl_sync(0xFFFFFFFF,thread_mix, 7, THREADS_PER_HASH);
 #endif
 			if ((i+p) == thread_id) {
 				//move mix into state:
