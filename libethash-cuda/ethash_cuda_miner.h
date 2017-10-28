@@ -54,6 +54,7 @@ private:
 	uint64_t m_current_nonce;
 	uint64_t m_starting_nonce;
 	uint64_t m_current_index;
+	uint64_t m_current_dagSize;
 
 	uint32_t m_sharedBytes;
 
