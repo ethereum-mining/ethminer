@@ -100,7 +100,7 @@ ethash_calculate_dag_item(uint32_t start)
 #else
 				uint4 s4 = make_uint4(__shfl_sync(0xFFFFFFFF,p4.x, w, 4), __shfl_sync(0xFFFFFFFF,p4.y, w, 4), __shfl_sync(0xFFFFFFFF,p4.z, w, 4), __shfl_sync(0xFFFFFFFF,p4.w, w, 4));
 #endif
-				if (t == thread_id) {
+				if (t == thread_id) { //potential performance leak (branching in warp)
 					dag_node.uint4s[w] = fnv4(dag_node.uint4s[w], s4);
 				}
 			}
