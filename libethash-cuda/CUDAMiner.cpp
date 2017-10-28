@@ -116,73 +116,85 @@ void CUDAMiner::kickOff()
 	startWorking();
 }
 
-void CUDAMiner::workLoop()
+void CUDAMiner::initDevice(WorkPackage w)
 {
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
-		WorkPackage w = work();
-		if (!w)
-			return;
-
-		cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
-		if (!m_miner || m_minerSeed != w.seed)
+		unsigned device = s_devices[index] > -1 ? s_devices[index] : index;
+		if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
 		{
-			unsigned device = s_devices[index] > -1 ? s_devices[index] : index;
-
-			if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
+			while (s_dagLoadIndex < index) {
+				this_thread::sleep_for(chrono::milliseconds(100)); //changed this from 1 second
+			}
+		}
+		else if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
+		{
+			if (device != s_dagCreateDevice)
 			{
-				while (s_dagLoadIndex < index) {
-					this_thread::sleep_for(chrono::seconds(1));
+				// wait until DAG is created on selected device
+				while (s_dagInHostMemory == NULL) {
+					this_thread::sleep_for(chrono::milliseconds(100));//changed this from 1 second
 				}
 			}
-			else if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
+			else
 			{
-				if (device != s_dagCreateDevice)
-				{
-					// wait until DAG is created on selected device
-					while (s_dagInHostMemory == NULL) {
-						this_thread::sleep_for(chrono::seconds(1));
-					}
-				}
-				else
-				{
-					// reset load index
-					s_dagLoadIndex = 0;
-				}
-			}
-
-			cnote << "Initialising miner...";
-			m_minerSeed = w.seed;
-
-			delete m_miner;
-			m_miner = new ethash_cuda_miner;
-
-			EthashAux::LightType light;
-			light = EthashAux::light(w.seed);
-			//bytesConstRef dagData = dag->data();
-			bytesConstRef lightData = light->data();
-
-			m_miner->init(light->light, lightData.data(), lightData.size(), device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE), &s_dagInHostMemory);
-			s_dagLoadIndex++;
-
-			if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
-			{
-				if (s_dagLoadIndex >= s_numInstances && s_dagInHostMemory)
-				{
-					// all devices have loaded DAG, we can free now
-					delete[] s_dagInHostMemory;
-					s_dagInHostMemory = NULL;
-
-					cout << "Freeing DAG from host" << endl;
-				}
+				// reset load index
+				s_dagLoadIndex = 0;
 			}
 		}
 
+		cnote << "Initialising miner...";
+		m_minerSeed = w.seed;
+
+		delete m_miner;
+		m_miner = new ethash_cuda_miner;
+
+		EthashAux::LightType light;
+		light = EthashAux::light(w.seed);
+		//bytesConstRef dagData = dag->data();
+		bytesConstRef lightData = light->data();
+
+		m_miner->init(light->light, lightData.data(), lightData.size(), device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE), &s_dagInHostMemory);
+		s_dagLoadIndex++;
+
+		if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
+		{
+			if (s_dagLoadIndex >= s_numInstances && s_dagInHostMemory)
+			{
+				// all devices have loaded DAG, we can free now
+				delete[] s_dagInHostMemory;
+				s_dagInHostMemory = NULL;
+				cout << "Freeing DAG from host" << endl;
+			}
+		}
+
+	}
+	catch (std::runtime_error const& _e)
+	{
+		delete m_miner;
+		m_miner = nullptr;
+		cwarn << "Error CUDA mining: " << _e.what();
+	}
+}
+
+void CUDAMiner::workLoop()
+{
+	try
+	{
+		WorkPackage w = work();
+		if(!w)
+			return;
+		cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
+		if (!m_miner || m_minerSeed != w.seed)
+		{
+			initDevice(w);
+		}
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
 		uint64_t startN = w.startNonce;
 		if (w.exSizeBits >= 0)
 			startN = w.startNonce | ((uint64_t)index << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
 		m_miner->search(w.header.data(), upper64OfBoundary, *m_hook, (w.exSizeBits >= 0), startN);
+
 	}
 	catch (std::runtime_error const& _e)
 	{
