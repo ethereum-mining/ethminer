@@ -205,23 +205,18 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 {
 	try
 	{
-		int device_count = getNumDevices();
+		unsigned device_count = getNumDevices();
 
 		if (device_count == 0)
 			return false;
 
 		// use selected device
-		int device_num = std::min<int>((int)_deviceId, device_count - 1);
+		int device_num = _deviceId < device_count -1 ? _deviceId : device_count - 1;
 
 		cudaDeviceProp device_props;
 		CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, device_num));
 
 		cudalog << "Using device: " << device_props.name << " (Compute " + to_string(device_props.major) + "." + to_string(device_props.minor) + ")";
-
-		CUDA_SAFE_CALL(cudaSetDevice(device_num));
-		CUDA_SAFE_CALL(cudaDeviceReset());
-		CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
-		CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
 		m_search_buf = new volatile uint32_t *[s_numStreams];
 		m_streams = new cudaStream_t[s_numStreams];
@@ -230,13 +225,27 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		uint32_t dagSize128   = (unsigned)(dagSize / ETHASH_MIX_BYTES);
 		uint32_t lightSize64 = (unsigned)(_lightSize / sizeof(node));
 
+		if(dagSize != m_current_dagSize)
+		{
+			//We need to reset the device
+		}else
+		{
+			//We only need to reset the light 
+		}
+		CUDA_SAFE_CALL(cudaSetDevice(device_num));
+		CUDA_SAFE_CALL(cudaDeviceReset());
+		CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
+		CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+
+
+
 		// create buffer for cache
 		hash64_t * light = NULL;
 
 		if (!*hostDAG)
 		{
 			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightSize));
-			// copy dag cache to CPU.
+			// copy lightData to device
 			CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), _lightData, _lightSize, cudaMemcpyHostToDevice));
 		}
 
@@ -278,7 +287,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 			const void* hdag = (const void*)(*hostDAG);
 			CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
 		}
-
+		m_current_dagSize = dagSize;
 		return true;
 	}
 	catch (runtime_error const&)
