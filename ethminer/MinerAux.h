@@ -102,7 +102,7 @@ public:
 			m_farmURL = argv[++i];
 			m_activeFarmURL = m_farmURL;
 		}
-		else if ((arg == "-FF" || arg == "-FS" || arg == "--farm-failover" || arg == "--stratum-failover") && i + 1 < argc)
+		else if ((arg == "-FF" || arg == "-SF" || arg == "-FS" || arg == "--farm-failover" || arg == "--stratum-failover") && i + 1 < argc)
 		{
 			string url = argv[++i];
 
@@ -562,7 +562,7 @@ public:
 			<< "	--farm-retries <n> Number of retries until switch to failover (default: 3)" << endl
 #if ETH_STRATUM
 			<< "	-S, --stratum <host:port>  Put into stratum mode with the stratum server at host:port" << endl
-			<< "	-FS, --failover-stratum <host:port>  Failover stratum server at host:port" << endl
+			<< "	-SF, --stratum-failover <host:port>  Failover stratum server at host:port" << endl
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
 			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
