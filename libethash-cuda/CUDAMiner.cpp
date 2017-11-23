@@ -116,7 +116,7 @@ void CUDAMiner::kickOff()
 	startWorking();
 }
 
-void CUDAMiner::initDevice(WorkPackage w)
+bool CUDAMiner::init(const h256& seed)
 {
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
@@ -144,13 +144,13 @@ void CUDAMiner::initDevice(WorkPackage w)
 		}
 
 		cnote << "Initialising miner...";
-		m_minerSeed = w.seed;
+		m_minerSeed = seed;
 
 		delete m_miner;
 		m_miner = new ethash_cuda_miner;
 
 		EthashAux::LightType light;
-		light = EthashAux::light(w.seed);
+		light = EthashAux::light(seed);
 		//bytesConstRef dagData = dag->data();
 		bytesConstRef lightData = light->data();
 
@@ -167,34 +167,49 @@ void CUDAMiner::initDevice(WorkPackage w)
 				cout << "Freeing DAG from host" << endl;
 			}
 		}
-
+		return true;
 	}
 	catch (std::runtime_error const& _e)
 	{
 		delete m_miner;
 		m_miner = nullptr;
 		cwarn << "Error CUDA mining: " << _e.what();
+		return false;
 	}
 }
 
 void CUDAMiner::workLoop()
 {
+	WorkPackage current;
+	current.header = h256{1u};
+	current.seed = h256{1u};
 	try
 	{
-		WorkPackage w = work();
-		if(!w)
-			return;
-		cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
-		if (!m_miner || m_minerSeed != w.seed)
+		while(true)
 		{
-			initDevice(w);
+			WorkPackage w = work();
+			if(current.header != w.header)
+			{
+				if(!w)
+				{
+					cnote << "No work. Pause for 3 s.";
+					std::this_thread::sleep_for(std::chrono::seconds(3));
+					continue;
+				}
+				
+				cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
+				if (current.seed != w.seed || !m_miner)
+				{
+					init(w.seed);
+				}
+			}
+			
+			uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
+			uint64_t startN = w.startNonce;
+			if (w.exSizeBits >= 0)
+				startN = w.startNonce | ((uint64_t)index << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
+			m_miner->search(w.header.data(), upper64OfBoundary, *m_hook, (w.exSizeBits >= 0), startN);
 		}
-		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
-		uint64_t startN = w.startNonce;
-		if (w.exSizeBits >= 0)
-			startN = w.startNonce | ((uint64_t)index << (64 - 4 - w.exSizeBits)); // this can support up to 16 devices
-		m_miner->search(w.header.data(), upper64OfBoundary, *m_hook, (w.exSizeBits >= 0), startN);
-
 	}
 	catch (std::runtime_error const& _e)
 	{
