@@ -259,7 +259,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 			CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], SEARCH_RESULT_BUFFER_SIZE * sizeof(uint32_t)));
 			CUDA_SAFE_CALL(cudaStreamCreate(&m_streams[i]));
 		}
-		set_constants(dag, dagSize128, light, lightSize64);
+		set_constants(dag, dagSize128, light, lightSize64); //in ethash_cuda_miner_kernel.cu
 		memset(&m_current_header, 0, sizeof(hash32_t));
 		m_current_target = 0;
 		m_current_nonce = 0;
