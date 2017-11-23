@@ -16,7 +16,7 @@ matrix:
           sudo: required
           env: CUDA=ON
         - os: osx
-          osx_image: xcode8.3
+          osx_image: xcode9.1
           env: CUDA=OFF
 cache:
     directories:
@@ -24,7 +24,7 @@ cache:
 before_install:
     - if [[ "$CUDA" = ON ]]; then source scripts/install-cuda-trusty.sh; fi
     - if [ "$TRAVIS_OS_NAME" = linux ]; then scripts/install_cmake.sh; fi
-    - pip install requests
+    - sudo pip install requests
 script:
     - cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -DAPICORE=ON -H. -Bbuild
     - cmake --build build -- -j4
