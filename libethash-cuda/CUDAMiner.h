@@ -78,6 +78,8 @@ class EthashCUDAHook;
 		void report(uint64_t _nonce);
 		void initDevice(WorkPackage w);
 
+		bool init(const h256& seed);
+
 		EthashCUDAHook* m_hook = nullptr;
 		ethash_cuda_miner* m_miner = nullptr;
 
