@@ -85,11 +85,21 @@ ethash_calculate_dag_item(uint32_t start)
 		}
 #else
 		for (uint32_t t = 0; t < 4; t++) {
-			uint32_t shuffle_index = __shfl(parent_index, t, 4);
-			uint4 p4 = d_light[shuffle_index].uint4s[thread_id];
 
+#if CUDA_VERSION < SHUFFLE_DEPRECATED
+			uint32_t shuffle_index = __shfl(parent_index, t, 4);
+#else
+			uint32_t shuffle_index = __shfl_sync(0xFFFFFFFF,parent_index, t, 4);
+#endif
+
+			uint4 p4 = d_light[shuffle_index].uint4s[thread_id];
 			for (int w = 0; w < 4; w++) {
+
+#if CUDA_VERSION < SHUFFLE_DEPRECATED
 				uint4 s4 = make_uint4(__shfl(p4.x, w, 4), __shfl(p4.y, w, 4), __shfl(p4.z, w, 4), __shfl(p4.w, w, 4));
+#else
+				uint4 s4 = make_uint4(__shfl_sync(0xFFFFFFFF,p4.x, w, 4), __shfl_sync(0xFFFFFFFF,p4.y, w, 4), __shfl_sync(0xFFFFFFFF,p4.z, w, 4), __shfl_sync(0xFFFFFFFF,p4.w, w, 4));
+#endif
 				if (t == thread_id) {
 					dag_node.uint4s[w] = fnv4(dag_node.uint4s[w], s4);
 				}
@@ -107,11 +117,18 @@ ethash_calculate_dag_item(uint32_t start)
 	}
 #else
 	for (uint32_t t = 0; t < 4; t++) {
-
+#if CUDA_VERSION < SHUFFLE_DEPRECATED
 		uint32_t shuffle_index = __shfl(node_index, t, 4);
+#else
+		uint32_t shuffle_index = __shfl_sync(node_index, t, 4);
+#endif
 		uint4 s[4];
 		for (uint32_t w = 0; w < 4; w++) {
+#if CUDA_VERSION < SHUFFLE_DEPRECATED
 			s[w] = make_uint4(__shfl(dag_node.uint4s[w].x, t, 4), __shfl(dag_node.uint4s[w].y, t, 4), __shfl(dag_node.uint4s[w].z, t, 4), __shfl(dag_node.uint4s[w].w, t, 4));
+#else
+			s[w] = make_uint4(__shfl_sync(dag_node.uint4s[w].x, t, 4), __shfl_sync(dag_node.uint4s[w].y, t, 4), __shfl_sync(dag_node.uint4s[w].z, t, 4), __shfl_sync(dag_node.uint4s[w].w, t, 4));
+#endif
 		}
 		dag_nodes[shuffle_index].uint4s[thread_id] = s[thread_id];
 	}
