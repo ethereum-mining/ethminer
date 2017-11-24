@@ -15,8 +15,6 @@ typedef enum wrap_adlReturn_enum {
 	WRAPADL_OK= 0
 } wrap_adlReturn_t;
 
-typedef void * wrap_adlDevice_t;
-
 // Some ADL defines and structs from adl sdk
 #if defined (__MSC_VER)
 #define ADL_API_CALL __cdecl
@@ -112,12 +110,15 @@ typedef struct ADLFanSpeedValue
 typedef struct {
 	void *adl_dll;
 	int adl_gpucount;
-	wrap_adlDevice_t *devs;
+	int *phys_logi_device_id;
+	LPAdapterInfo devs;
 	wrap_adlReturn_t(*adlMainControlCreate)(ADL_MAIN_MALLOC_CALLBACK, int);
 	wrap_adlReturn_t(*adlAdapterNumberOfAdapters)(int *);
 	wrap_adlReturn_t(*adlAdapterAdapterInfoGet)(LPAdapterInfo, int);
+	wrap_adlReturn_t(*adlAdapterAdapterIdGet)(int, int*);
 	wrap_adlReturn_t(*adlOverdrive5TemperatureGet)(int, int, ADLTemperature*);
 	wrap_adlReturn_t(*adlOverdrive5FanSpeedGet)(int, int, ADLFanSpeedValue*);
+	wrap_adlReturn_t(*adlMainControlRefresh)(void);
 	wrap_adlReturn_t(*adlMainControlDestory)(void);
 } wrap_adl_handle;
 
@@ -125,6 +126,8 @@ wrap_adl_handle * wrap_adl_create();
 int wrap_adl_destory(wrap_adl_handle *adlh);
 
 int wrap_adl_get_gpucount(wrap_adl_handle *adlh, int *gpucount);
+
+int wrap_adl_get_gpu_name(wrap_adl_handle *adlh, int gpuindex, char *namebuf, int bufsize);
 
 int wrap_adl_get_tempC(wrap_adl_handle *adlh, int gpuindex, unsigned int *tempC);
 
