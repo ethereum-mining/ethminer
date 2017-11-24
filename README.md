@@ -163,7 +163,7 @@ All bug reports, pull requests and code reviews are very much welcome.
 
 4. Can I still mine ETH with my 2GB GPU?
 
-   No.
+   Not really, your VRAM must be above the DAG size (Currently about 2.15 GB.) to get best performance. Without it severe hash loss will occur.
 
 5. What are the optimal launch parameters?
 
@@ -177,6 +177,9 @@ All bug reports, pull requests and code reviews are very much welcome.
 
    [Genoil's fork] was the original source of this version, but as Genoil is no longer consistently maintaining that fork it became almost impossible for developers to get new code merged there. In the interests of progressing development without waiting for reviews this fork should be considered the active one and Genoil's as legacy code.
 
+8. Can I CPU Mine?
+ 
+  No, use geth, the go program made for ethereum by ethereum.
 
 
 
