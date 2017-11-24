@@ -52,7 +52,9 @@ wrap_nvml_handle * wrap_nvml_create() {
   /* 64-bit linux assumed */
 #define  libnvidia_ml "libnvidia-ml.so"
 #else
-#error "Unrecognized platform: need NVML DLL path for this platform..."
+#define  libnvidia_ml ""
+#warning "Unrecognized platform: need NVML DLL path for this platform..."
+return NULL;
 #endif
 
 #if WIN32
