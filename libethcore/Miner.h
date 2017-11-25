@@ -72,22 +72,7 @@ struct HwMonitor
 
 inline std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
 {
-	return os << "t=" << _hw.tempC << "C fan=" << _hw.fanP << "%";
-}
-
-struct HwMonitors
-{
-	std::vector<HwMonitor> minerMonitors;
-};
-
-inline std::ostream& operator<<(std::ostream& _out, HwMonitors _hws)
-{
-	for (size_t i = 0; i < _hws.minerMonitors.size(); ++i)
-	{
-		HwMonitor hw = _hws.minerMonitors[i];
-		_out << "gpu/" << i << " " << EthTeal << hw << EthReset << "  ";
-	}
-	return _out;
+	return os << _hw.tempC << "C " << _hw.fanP << "%";
 }
 
 /// Describes the progress of a mining operation.
@@ -98,6 +83,7 @@ struct WorkingProgress
 	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
 
 	std::vector<uint64_t> minersHashes;
+	std::vector<HwMonitor> minerMonitors;
 	uint64_t minerRate(const uint64_t hashCount) const { return ms == 0 ? 0 : hashCount * 1000 / ms; }
 };
 
@@ -111,7 +97,10 @@ inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 	for (size_t i = 0; i < _p.minersHashes.size(); ++i)
 	{
 		mh = _p.minerRate(_p.minersHashes[i]) / 1000000.0f;
-		_out << "gpu/" << i << " " << EthTeal << std::fixed << std::setw(5) << std::setprecision(2) << mh << EthReset << "  ";
+		_out << "gpu/" << i << " " << EthTeal << std::fixed << std::setw(5) << std::setprecision(2) << mh << EthReset;
+		if (_p.minerMonitors.size() == _p.minersHashes.size())
+			_out << " " << EthTeal << _p.minerMonitors[i] << EthReset;
+		_out << "  ";
 	}
 
 	return _out;
