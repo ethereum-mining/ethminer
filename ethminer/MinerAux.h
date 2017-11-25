@@ -818,12 +818,10 @@ private:
 				});
 				for (unsigned i = 0; !completed; ++i)
 				{
-					auto mp = f.miningProgress();
+					auto mp = f.miningProgress(m_show_hwmonitors);
 					if (current)
 					{
 						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
-						if (m_show_hwmonitors)
-							minelog << f.hwmonitors();
 #if ETH_DBUS
 						dbusint.send(toString(mp).data());
 #endif
@@ -969,14 +967,12 @@ private:
 
 			while (client.isRunning())
 			{
-				auto mp = f.miningProgress();
+				auto mp = f.miningProgress(m_show_hwmonitors);
 				if (client.isConnected())
 				{
 					if (client.current())
 					{
 						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
-						if (m_show_hwmonitors)
-							minelog << f.hwmonitors();
 #if ETH_DBUS
 						dbusint.send(toString(mp).data());
 #endif
@@ -1020,7 +1016,7 @@ private:
 
 			while (client.isRunning())
 			{
-				auto mp = f.miningProgress();
+				auto mp = f.miningProgress(m_show_hwmonitors);
 				if (client.isConnected())
 				{
 					if (client.current())
