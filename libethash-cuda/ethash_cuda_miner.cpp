@@ -211,14 +211,16 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 			return false;
 
 		// use selected device
-		int device_num = std::min<int>((int)_deviceId, device_count - 1);
+		m_device_num = std::min<int>((int)_deviceId, device_count - 1);
+
+		nvmlh = wrap_nvml_create();
 
 		cudaDeviceProp device_props;
-		CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, device_num));
+		CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, m_device_num));
 
 		cudalog << "Using device: " << device_props.name << " (Compute " + to_string(device_props.major) + "." + to_string(device_props.minor) + ")";
 
-		CUDA_SAFE_CALL(cudaSetDevice(device_num));
+		CUDA_SAFE_CALL(cudaSetDevice(m_device_num));
 		CUDA_SAFE_CALL(cudaDeviceReset());
 		CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
 		CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
@@ -260,13 +262,13 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 
 		if (!*hostDAG)
 		{
-			cudalog << "Generating DAG for GPU #" << device_num;
-			ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], device_num);
+			cudalog << "Generating DAG for GPU #" << m_device_num;
+			ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], m_device_num);
 
 			if (_cpyToHost)
 			{
 				uint8_t* memoryDAG = new uint8_t[dagSize];
-				cudalog << "Copying DAG from GPU #" << device_num << " to host";
+				cudalog << "Copying DAG from GPU #" << m_device_num << " to host";
 				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
 
 				*hostDAG = (void*)memoryDAG;
@@ -274,7 +276,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		}
 		else
 		{
-			cudalog << "Copying DAG from host to GPU #" << device_num;
+			cudalog << "Copying DAG from host to GPU #" << m_device_num;
 			const void* hdag = (const void*)(*hostDAG);
 			CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
 		}
@@ -357,5 +359,18 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 			exit |= hook.searched(nonce_base, batch_size);
 		}
 	}
+}
+
+dev::eth::HwMonitor ethash_cuda_miner::hwmon()
+{
+	dev::eth::HwMonitor hw;
+	if (nvmlh) {
+		unsigned int tempC = 0, fanpcnt = 0;
+		wrap_nvml_get_tempC(nvmlh, nvmlh->cuda_nvml_device_id[m_device_num], &tempC);
+		wrap_nvml_get_fanpcnt(nvmlh, nvmlh->cuda_nvml_device_id[m_device_num], &fanpcnt);
+		hw.tempC = tempC;
+		hw.fanP = fanpcnt;
+	}
+	return hw;
 }
 
