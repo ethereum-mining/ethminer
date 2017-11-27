@@ -187,7 +187,8 @@ void CUDAMiner::workLoop()
 	{
 		while(true)
 		{
-			WorkPackage w = work();
+			const WorkPackage w = work();
+			
 			if(current.header != w.header)
 			{
 				if(!w)
@@ -203,7 +204,7 @@ void CUDAMiner::workLoop()
 					init(w.seed);
 				}
 			}
-			
+			current = w;
 			uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
 			uint64_t startN = w.startNonce;
 			if (w.exSizeBits >= 0)
