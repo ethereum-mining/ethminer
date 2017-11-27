@@ -19,6 +19,7 @@ else()
 		"-gencode arch=compute_60,code=sm_60"
 		"-gencode arch=compute_61,code=sm_61"
 		"-gencode arch=compute_62,code=sm_62"
+		"-gencode arch=compute_70,code=sm_70"
 	)
 endif()
 
@@ -29,4 +30,3 @@ cuda_add_library(ethash-cuda STATIC ${sources} ${headers})
 target_link_libraries(ethash-cuda ethcore ethash hwmon)
 target_include_directories(ethash-cuda PUBLIC ${CUDA_INCLUDE_DIRS})
 target_include_directories(ethash-cuda PRIVATE .. ${CMAKE_CURRENT_BINARY_DIR})
-
