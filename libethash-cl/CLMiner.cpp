@@ -340,6 +340,28 @@ bool CLMiner::configureGPU(
 	return false;
 }
 
+HwMonitor CLMiner::hwmon()
+{
+	HwMonitor hw;
+	unsigned int tempC = 0, fanpcnt = 0;
+	if (nvmlh) {
+		wrap_nvml_get_tempC(nvmlh, index, &tempC);
+		wrap_nvml_get_fanpcnt(nvmlh, index, &fanpcnt);
+	}
+	if (adlh) {
+		wrap_adl_get_tempC(adlh, index, &tempC);
+		wrap_adl_get_fanpcnt(adlh, index, &fanpcnt);
+	}
+#if defined(__linux)
+	if (sysfsh) {
+		wrap_amdsysfs_get_tempC(sysfsh, index, &tempC);
+		wrap_amdsysfs_get_fanpcnt(sysfsh, index, &fanpcnt);
+	}
+#endif
+	hw.tempC = tempC;
+	hw.fanP = fanpcnt;
+	return hw;
+}
 
 bool CLMiner::init(const h256& seed)
 {
@@ -362,10 +384,15 @@ bool CLMiner::init(const h256& seed)
 		if (platformName == "NVIDIA CUDA")
 		{
 			platformId = OPENCL_PLATFORM_NVIDIA;
+			nvmlh = wrap_nvml_create();
 		}
 		else if (platformName == "AMD Accelerated Parallel Processing")
 		{
 			platformId = OPENCL_PLATFORM_AMD;
+			adlh = wrap_adl_create();
+#if defined(__linux)
+			sysfsh = wrap_amdsysfs_create();
+#endif
 		}
 		else if (platformName == "Clover")
 		{
