@@ -14,10 +14,10 @@ environment:
   GITHUB_USER_PASSWORD:
     secure: VnpF1MH5MEFvUI5MiMMMFlmbDdst+bfom5ZFVgalYPp/SYDhbejjXJm9Dla/IgpC
 
-install: |
-  appveyor DownloadFile https://github.com/ethereum/cpp-dependencies/releases/download/cache/CUDA-v8.0-WindowsServer2012.zip
-  7z x CUDA-v8.0-WindowsServer2012.zip -oC:/
-  set PATH=%PATH%;C:/CUDA/v8.0/bin
+install: | # Download CUDA Windows installer (local) and extract /compiler/* to /CUDA/vX.0/ zip archive.
+  appveyor DownloadFile https://github.com/ethereum/cpp-dependencies/releases/download/cache/CUDA-v9.0-WindowsServer2012.zip
+  7z x CUDA-v9.0-WindowsServer2012.zip -oC:/
+  set PATH=%PATH%;C:/CUDA/v9.0/bin
   nvcc -V
   pip install requests
 before_build:
