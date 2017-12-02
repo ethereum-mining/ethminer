@@ -54,9 +54,12 @@ private:
 	uint64_t m_current_nonce;
 	uint64_t m_starting_nonce;
 	uint64_t m_current_index;
-	uint64_t m_current_dagSize;
 
 	uint32_t m_sharedBytes;
+	
+	///Constants on GPU
+	hash128_t* m_dag;
+	uint32_t m_dag_size;
 
 	volatile uint32_t ** m_search_buf;
 	cudaStream_t  * m_streams;
