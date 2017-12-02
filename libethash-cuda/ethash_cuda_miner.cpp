@@ -17,6 +17,8 @@
 /** @file ethash_cuda_miner.cpp
 * @author Genoil <jw@meneer.net>
 * @date 2015
+* @coauthor MariusVanDerWijden
+* @date 2017
 */
 
 
@@ -225,20 +227,6 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		uint32_t dagSize128   = (unsigned)(dagSize / ETHASH_MIX_BYTES);
 		uint32_t lightSize64 = (unsigned)(_lightSize / sizeof(node));
 
-		if(dagSize != m_current_dagSize)
-		{
-			//We need to reset the device
-		}else
-		{
-			//We only need to reset the light 
-		}
-		CUDA_SAFE_CALL(cudaSetDevice(device_num));
-		CUDA_SAFE_CALL(cudaDeviceReset());
-		CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
-		CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
-
-
-
 		// create buffer for cache
 		hash64_t * light = NULL;
 
@@ -248,46 +236,61 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 			// copy lightData to device
 			CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), _lightData, _lightSize, cudaMemcpyHostToDevice));
 		}
-
-		// create buffer for dag
-		hash128_t * dag;
-		CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
 		
-		// create mining buffers
-		for (unsigned i = 0; i != s_numStreams; ++i)
+		
+		hash128_t * dag = m_dag;
+		if(dagSize128 != m_dag_size || !dag)
 		{
-			CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], SEARCH_RESULT_BUFFER_SIZE * sizeof(uint32_t)));
-			CUDA_SAFE_CALL(cudaStreamCreate(&m_streams[i]));
+			//We need to reset the device and recreate the dag
+			CUDA_SAFE_CALL(cudaSetDevice(device_num));
+			CUDA_SAFE_CALL(cudaDeviceReset());
+			CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
+			CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+			
+			// create buffer for dag
+			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
+			
+			// create mining buffers
+			for (unsigned i = 0; i != s_numStreams; ++i)
+			{
+				CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], SEARCH_RESULT_BUFFER_SIZE * sizeof(uint32_t)));
+				CUDA_SAFE_CALL(cudaStreamCreate(&m_streams[i]));
+			}
+			
+			memset(&m_current_header, 0, sizeof(hash32_t));
+			m_current_target = 0;
+			m_current_nonce = 0;
+			m_current_index = 0;
+
+			m_sharedBytes = device_props.major * 100 < SHUFFLE_MIN_VER ? (64 * s_blockSize) / 8 : 0 ;
+
+			if (!*hostDAG)
+			{
+				cudalog << "Generating DAG for GPU #" << device_num;
+				ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], device_num);
+
+				if (_cpyToHost)
+				{
+					uint8_t* memoryDAG = new uint8_t[dagSize];
+					cudalog << "Copying DAG from GPU #" << device_num << " to host";
+					CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
+
+					*hostDAG = (void*)memoryDAG;
+				}
+			}
+			else
+			{
+				cudalog << "Copying DAG from host to GPU #" << device_num;
+				const void* hdag = (const void*)(*hostDAG);
+				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
+			}
+		}else
+		{
+			//We only need to reset the light 
 		}
 		set_constants(dag, dagSize128, light, lightSize64); //in ethash_cuda_miner_kernel.cu
-		memset(&m_current_header, 0, sizeof(hash32_t));
-		m_current_target = 0;
-		m_current_nonce = 0;
-		m_current_index = 0;
-
-		m_sharedBytes = device_props.major * 100 < SHUFFLE_MIN_VER ? (64 * s_blockSize) / 8 : 0 ;
-
-		if (!*hostDAG)
-		{
-			cudalog << "Generating DAG for GPU #" << device_num;
-			ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], device_num);
-
-			if (_cpyToHost)
-			{
-				uint8_t* memoryDAG = new uint8_t[dagSize];
-				cudalog << "Copying DAG from GPU #" << device_num << " to host";
-				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
-
-				*hostDAG = (void*)memoryDAG;
-			}
-		}
-		else
-		{
-			cudalog << "Copying DAG from host to GPU #" << device_num;
-			const void* hdag = (const void*)(*hostDAG);
-			CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
-		}
-		m_current_dagSize = dagSize;
+		m_dag = dag;
+		m_dag_size = dagSize128;
 		return true;
 	}
 	catch (runtime_error const&)
