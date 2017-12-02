@@ -17,6 +17,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 /** @file CUDAMiner.cpp
 * @author Gav Wood <i@gavwood.com>
 * @date 2014
+* @author MariusVanDerWijden
+* @date 2017
 *
 * Determines the PoW algorithm.
 */
@@ -112,8 +114,8 @@ void CUDAMiner::report(uint64_t _nonce)
 
 void CUDAMiner::kickOff()
 {
-	m_hook->reset();
-	startWorking();
+	//m_hook->reset();
+	//startWorking();
 }
 
 bool CUDAMiner::init(const h256& seed)
@@ -146,8 +148,10 @@ bool CUDAMiner::init(const h256& seed)
 		cnote << "Initialising miner...";
 		m_minerSeed = seed;
 
-		delete m_miner;
-		m_miner = new ethash_cuda_miner;
+		//delete m_miner;
+		//m_miner = new ethash_cuda_miner;
+		if(!m_miner)
+			m_miner = new ethash_cuda_miner;
 
 		EthashAux::LightType light;
 		light = EthashAux::light(seed);
@@ -189,7 +193,7 @@ void CUDAMiner::workLoop()
 		{
 			const WorkPackage w = work();
 			
-			if(current.header != w.header)
+			if(!m_miner || current.header != w.header)
 			{
 				if(!w)
 				{
@@ -199,9 +203,10 @@ void CUDAMiner::workLoop()
 				}
 				
 				cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
-				if (current.seed != w.seed || !m_miner)
+				if (!m_miner || current.seed != w.seed)
 				{
-					init(w.seed);
+					if(!init(w.seed))
+						break;
 				}
 			}
 			current = w;
@@ -222,8 +227,8 @@ void CUDAMiner::workLoop()
 
 void CUDAMiner::pause()
 {
-	m_hook->abort();
-	stopWorking();
+	//m_hook->abort();
+	//stopWorking();
 }
 
 std::string CUDAMiner::platformInfo()
