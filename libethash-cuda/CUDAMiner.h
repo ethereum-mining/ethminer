@@ -69,10 +69,10 @@ class EthashCUDAHook;
 				s_devices[i] = _devices[i];
 			}
 		}
+		HwMonitor hwmon() override;
 	protected:
 		void kickOff() override;
 		void pause() override;
-
 	private:
 		void workLoop() override;
 		void report(uint64_t _nonce);
