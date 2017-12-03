@@ -64,7 +64,8 @@ namespace eth
 	protected:
 		virtual bool found(uint64_t const* _nonces, uint32_t _count) override
 		{
-			m_owner.report(_nonces[0]);
+			for(int i = 0; i < _count; i++)
+				m_owner.report(_nonces[i]); //changed this to report all found nonces
 			return m_owner.shouldStop();
 		}
 
@@ -195,7 +196,7 @@ void CUDAMiner::workLoop()
 			
 			if(!m_miner || current.header != w.header)
 			{
-				if(!w)
+				if(!w || w.header == h256())
 				{
 					cnote << "No work. Pause for 3 s.";
 					std::this_thread::sleep_for(std::chrono::seconds(3));
