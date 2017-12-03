@@ -213,7 +213,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 			return false;
 
 		// use selected device
-		int device_num = _deviceId < device_count -1 ? _deviceId : device_count - 1;
+		unsigned device_num = _deviceId < device_count -1 ? _deviceId : device_count - 1;
 
 		cudaDeviceProp device_props;
 		CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, device_num));
