@@ -124,7 +124,7 @@ void CUDAMiner::workLoop()
 		if (!w)
 			return;
 
-		cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
+		cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 22);
 		if (!m_miner || m_minerSeed != w.seed)
 		{
 			unsigned device = s_devices[index] > -1 ? s_devices[index] : index;
