@@ -17,7 +17,7 @@ void ApiServer::getMinerStat1(const Json::Value& request, Json::Value& response)
 	auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(steady_clock::now() - this->m_farm.farmLaunched());
 	
 	SolutionStats s = this->m_farm.getSolutionStats();
-	WorkingProgress p = this->m_farm.miningProgress();
+	WorkingProgress p = this->m_farm.miningProgress(true);
 	
 	ostringstream totalMhEth; 
 	ostringstream totalMhDcr; 
@@ -37,7 +37,14 @@ void ApiServer::getMinerStat1(const Json::Value& request, Json::Value& response)
 	{
 		detailedMhEth << std::fixed << std::setprecision(0) << (p.minerRate(i) / 1000.0f) << (((numGpus -1) > gpuIndex) ? ";" : "");
 		detailedMhDcr << "off" << (((numGpus -1) > gpuIndex) ? ";" : ""); // DualMining not supported
-		tempAndFans << "50;50" <<(((numGpus -1) > gpuIndex) ? ";" : ""); // Fetching Temp and Fans not supported
+		gpuIndex++;
+	}
+
+	gpuIndex = 0;
+	numGpus = p.minerMonitors.size();
+	for (auto const& i : p.minerMonitors)
+	{
+		tempAndFans << i.tempC << ";" << i.fanP << (((numGpus - 1) > gpuIndex) ? "; " : ""); // Fetching Temp and Fans
 		gpuIndex++;
 	}
 

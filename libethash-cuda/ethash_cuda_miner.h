@@ -5,6 +5,8 @@
 #include <time.h>
 #include <functional>
 #include <libethash/ethash.h>
+#include <libethcore/Miner.h>
+#include <libhwmon/wrapnvml.h>
 #include "ethash_cuda_miner_kernel.h"
 
 class ethash_cuda_miner
@@ -39,6 +41,7 @@ public:
 
 	void finish();
 	void search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN);
+	dev::eth::HwMonitor hwmon();
 
 	/* -- default values -- */
 	/// Default value of the block size. Also known as workgroup size.
@@ -54,12 +57,12 @@ private:
 	uint64_t m_current_nonce;
 	uint64_t m_starting_nonce;
 	uint64_t m_current_index;
-
 	uint32_t m_sharedBytes;
 	
 	///Constants on GPU
 	hash128_t* m_dag;
 	uint32_t m_dag_size;
+	int m_device_num;
 
 	volatile uint32_t ** m_search_buf;
 	cudaStream_t  * m_streams;
@@ -74,4 +77,6 @@ private:
 	static unsigned s_scheduleFlag;
 
 	static unsigned m_parallelHash;
+
+	wrap_nvml_handle *nvmlh = NULL;
 };

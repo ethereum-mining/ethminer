@@ -64,6 +64,17 @@ enum class MinerType
 	CUDA
 };
 
+struct HwMonitor
+{
+	int tempC = 0;
+	int fanP = 0;
+};
+
+inline std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
+{
+	return os << _hw.tempC << "C " << _hw.fanP << "%";
+}
+
 /// Describes the progress of a mining operation.
 struct WorkingProgress
 {
@@ -72,6 +83,7 @@ struct WorkingProgress
 	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
 
 	std::vector<uint64_t> minersHashes;
+	std::vector<HwMonitor> minerMonitors;
 	uint64_t minerRate(const uint64_t hashCount) const { return ms == 0 ? 0 : hashCount * 1000 / ms; }
 };
 
@@ -85,7 +97,10 @@ inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 	for (size_t i = 0; i < _p.minersHashes.size(); ++i)
 	{
 		mh = _p.minerRate(_p.minersHashes[i]) / 1000000.0f;
-		_out << "gpu/" << i << " " << EthTeal << std::fixed << std::setw(5) << std::setprecision(2) << mh << EthReset << "  ";
+		_out << "gpu/" << i << " " << EthTeal << std::fixed << std::setw(5) << std::setprecision(2) << mh << EthReset;
+		if (_p.minerMonitors.size() == _p.minersHashes.size())
+			_out << " " << EthTeal << _p.minerMonitors[i] << EthReset;
+		_out << "  ";
 	}
 
 	return _out;
@@ -173,6 +188,8 @@ public:
 	uint64_t hashCount() const { return m_hashCount; }
 
 	void resetHashCount() { m_hashCount = 0; }
+
+	virtual HwMonitor hwmon() = 0;
 
 protected:
 

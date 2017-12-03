@@ -217,7 +217,7 @@ public:
 	 * @brief Get information on the progress of mining this work package.
 	 * @return The progress with mining so far.
 	 */
-	WorkingProgress const& miningProgress() const
+	WorkingProgress const& miningProgress(bool hwmon = false) const
 	{
 		WorkingProgress p;
 		p.ms = 0;
@@ -225,8 +225,9 @@ public:
 		{
 			Guard l2(x_minerWork);
 			for (auto const& i : m_miners) {
-				(void) i; // unused
 				p.minersHashes.push_back(0);
+				if (hwmon)
+					p.minerMonitors.push_back(i->hwmon());
 			}
 		}
 
@@ -326,6 +327,8 @@ private:
 
 	mutable Mutex x_progress;
 	mutable WorkingProgress m_progress;
+
+	mutable Mutex x_hwmons;
 
 	SolutionFound m_onSolutionFound;
 	MinerRestart m_onMinerRestart;
