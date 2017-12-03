@@ -145,6 +145,7 @@ createBuildInfo()
 
 add_subdirectory(libdevcore)
 add_subdirectory(libethash)
+add_subdirectory(libhwmon)
 if (ETHASHCL)
 	add_subdirectory(libethash-cl)
 endif ()
