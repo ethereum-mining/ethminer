@@ -152,7 +152,8 @@ void ethash_generate_dag(
 	for (uint32_t i = 0; i < fullRuns; i++)
 	{
 		ethash_calculate_dag_item <<<blocks, threads, 0, stream >>>(i * blocks * threads);
-		CUDA_SAFE_CALL(cudaDeviceSynchronize());
+		printf("CUDA#%d: %.0f%%\n",device, 100.0f * (float)i / (float)fullRuns); //TODO delete this
+		CUDA_SAFE_CALL(cudaDeviceSynchronize()); //illegal mem access	
 		printf("CUDA#%d: %.0f%%\n",device, 100.0f * (float)i / (float)fullRuns);
 	}
 	//printf("GPU#%d 100%%\n");
