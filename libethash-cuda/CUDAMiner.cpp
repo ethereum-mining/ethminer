@@ -124,27 +124,6 @@ bool CUDAMiner::init(const h256& seed)
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
 		unsigned device = s_devices[index] > -1 ? s_devices[index] : index;
-		if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
-		{
-			while (s_dagLoadIndex < index) {
-				this_thread::sleep_for(chrono::milliseconds(100)); //changed this from 1 second
-			}
-		}
-		else if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
-		{
-			if (device != s_dagCreateDevice)
-			{
-				// wait until DAG is created on selected device
-				while (s_dagInHostMemory == NULL) {
-					this_thread::sleep_for(chrono::milliseconds(100));//changed this from 1 second
-				}
-			}
-			else
-			{
-				// reset load index
-				s_dagLoadIndex = 0;
-			}
-		}
 
 		cnote << "Initialising miner...";
 		m_minerSeed = seed;
@@ -206,6 +185,28 @@ void CUDAMiner::workLoop()
 				cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
 				if (!m_miner || current.seed != w.seed)
 				{
+					unsigned device = s_devices[index] > -1 ? s_devices[index] : index;
+					if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
+					{
+						while (s_dagLoadIndex < index) {
+							this_thread::sleep_for(chrono::milliseconds(100)); 
+						}
+					}
+					else if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
+					{
+						if (device != s_dagCreateDevice)
+						{
+							// wait until DAG is created on selected device
+							while (s_dagInHostMemory == NULL) {
+								this_thread::sleep_for(chrono::milliseconds(100));
+							}
+						}
+						else
+						{
+							// reset load index
+							s_dagLoadIndex = 0;
+						}
+					}
 					if(!init(w.seed))
 						break;
 				}
