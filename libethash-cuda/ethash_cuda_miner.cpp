@@ -203,7 +203,7 @@ void ethash_cuda_miner::finish()
 	CUDA_SAFE_CALL(cudaDeviceReset());
 }
 
-bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, volatile void** hostDAG)
+bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, volatile void** hostDAG, bool reloadDag)
 {
 	try
 	{
@@ -230,12 +230,13 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 
 		// create buffer for cache
 		hash64_t * light = NULL;
+		hash128_t * dag = m_dag;
 		
-		if(dagSize128 != m_dag_size || !dag || s_dagLoadIndex < index)
+		CUDA_SAFE_CALL(cudaSetDevice(device_num));
+		if(dagSize128 != m_dag_size || !dag || reloadDag)
 		{
 			//We need to reset the device and recreate the dag  
 			//move this before light alloc!!!
-			CUDA_SAFE_CALL(cudaSetDevice(device_num));
 			CUDA_SAFE_CALL(cudaDeviceReset());
 			CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
 			CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
@@ -249,8 +250,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		}
 		
 		
-		hash128_t * dag = m_dag;
-		if(dagSize128 != m_dag_size || !dag || s_dagLoadIndex < index)
+		if(dagSize128 != m_dag_size || !dag || reloadDag)
 		{
 			
 			// create buffer for dag
