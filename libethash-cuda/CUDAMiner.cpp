@@ -138,7 +138,8 @@ bool CUDAMiner::init(const h256& seed)
 		//bytesConstRef dagData = dag->data();
 		bytesConstRef lightData = light->data();
 
-		m_miner->init(light->light, lightData.data(), lightData.size(), device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE), &s_dagInHostMemory, s_dagLoadIndex < index);
+		m_miner->init(light->light, lightData.data(), lightData.size(), 
+			device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE), &s_dagInHostMemory, device == 0);
 		s_dagLoadIndex++;
 
 		if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
@@ -184,8 +185,9 @@ void CUDAMiner::workLoop()
 				
 				cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
 				if (!m_miner || current.seed != w.seed)
-				{
+				{/*
 					unsigned device = s_devices[index] > -1 ? s_devices[index] : index;
+					
 					if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
 					{
 						while (s_dagLoadIndex < index) {
@@ -206,7 +208,7 @@ void CUDAMiner::workLoop()
 							// reset load index
 							s_dagLoadIndex = 0;
 						}
-					}
+					}*/
 					if(!init(w.seed))
 						break;
 				}
