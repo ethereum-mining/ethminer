@@ -288,10 +288,12 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 				}else{
 					while(!*hostDAG)
 						this_thread::sleep_for(chrono::milliseconds(100)); 
+					goto cpyDag;
 				}
 			}
 			else
 			{
+cpyDag:
 				cudalog << "Copying DAG from host to GPU #" << device_num;
 				const void* hdag = (const void*)(*hostDAG);
 				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
