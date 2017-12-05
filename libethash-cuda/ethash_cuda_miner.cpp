@@ -255,7 +255,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		{
 			// create buffer for dag
 			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
-			
+			set_constants(dag, dagSize128, light, lightSize64); //in ethash_cuda_miner_kernel.cu
 			// create mining buffers
 			for (unsigned i = 0; i != s_numStreams; ++i)
 			{
@@ -300,7 +300,6 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		{
 			//We only need to reset the light 
 		}
-		set_constants(dag, dagSize128, light, lightSize64); //in ethash_cuda_miner_kernel.cu
 		m_dag = dag;
 		m_dag_size = dagSize128;
 		return true;
