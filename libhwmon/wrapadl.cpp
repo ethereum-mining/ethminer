@@ -167,7 +167,7 @@ int wrap_adl_get_tempC(wrap_adl_handle *adlh, int gpuindex, unsigned int *tempC)
 		return -1;
 	}
 	*tempC = unsigned(temperature->iTemperature / 1000);
-	free(temperature);
+	delete temperature;
 	return 0;
 }
 
@@ -184,7 +184,7 @@ int wrap_adl_get_fanpcnt(wrap_adl_handle *adlh, int gpuindex, unsigned int *fanp
 		return -1;
 	}
 	*fanpcnt = unsigned(fan->iFanSpeed);
-	free(fan);
+	delete fan;
 	return 0;
 }
 
