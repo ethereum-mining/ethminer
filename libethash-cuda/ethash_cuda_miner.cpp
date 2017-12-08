@@ -242,7 +242,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		if(dagSize128 != m_dag_size || !dag)
 		{
 			//We need to reset the device and recreate the dag  
-			cudalog << "Resetting device: ";
+			cudalog << "Resetting device";
 			CUDA_SAFE_CALL(cudaDeviceReset());
 			CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
 			CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
