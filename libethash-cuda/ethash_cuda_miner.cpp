@@ -17,7 +17,7 @@
 /** @file ethash_cuda_miner.cpp
 * @author Genoil <jw@meneer.net>
 * @date 2015
-* @coauthor MariusVanDerWijden
+* @author MariusVanDerWijden
 * @date 2017
 */
 
@@ -68,6 +68,9 @@ ethash_cuda_miner::ethash_cuda_miner()
 {
 	int devicesCount = getNumDevices();
 	m_light = new hash64_t*[devicesCount];
+	for(int i = 0; i < devicesCount; i++)
+		m_light[i] = nullptr;
+	m_dag = nullptr;
 }
 
 std::string ethash_cuda_miner::platform_info(unsigned _deviceId)
@@ -205,7 +208,7 @@ void ethash_cuda_miner::finish()
 	CUDA_SAFE_CALL(cudaDeviceReset());
 }
 
-bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, volatile void** hostDAG, bool genDag)
+bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, volatile void** hostDAG)
 {
 	try
 	{
@@ -246,8 +249,8 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		}
 
 		if(!light){ 
-			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightSize));
 			cudalog << "Allocating light with size: " << _lightSize;
+			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightSize));
 		}
 		// copy lightData to device
 		CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), _lightData, _lightSize, cudaMemcpyHostToDevice));
@@ -261,6 +264,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		if(dagSize128 != m_dag_size || !dag)
 		{
 			// create mining buffers
+			cudalog << "Generating mining buffers";
 			for (unsigned i = 0; i != s_numStreams; ++i)
 			{
 				CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], SEARCH_RESULT_BUFFER_SIZE * sizeof(uint32_t)));
@@ -276,7 +280,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 
 			if (!*hostDAG)
 			{
-				if(genDag || !_cpyToHost){ //if !cpyToHost -> All devices shall generate their DAG
+				if(device_num == 0 || !_cpyToHost){ //if !cpyToHost -> All devices shall generate their DAG
 					cudalog << "Generating DAG for GPU #" << device_num << " with dagSize: " 
 							<< dagSize <<" gridSize: " << s_gridSize << " &m_streams[0]: " << &m_streams[0];
 					ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], device_num);
