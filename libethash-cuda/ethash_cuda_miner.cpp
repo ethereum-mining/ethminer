@@ -66,6 +66,8 @@ ethash_cuda_miner::search_hook::~search_hook() {}
 
 ethash_cuda_miner::ethash_cuda_miner()
 {
+	int devicesCount = getNumDevices();
+	m_light = new hash64_t*[devicesCount];
 }
 
 std::string ethash_cuda_miner::platform_info(unsigned _deviceId)
@@ -229,7 +231,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		uint32_t lightSize64 = (unsigned)(_lightSize / sizeof(node));
 
 		// create buffer for cache
-		hash64_t * light = NULL;
+		hash64_t * light = m_light[device_num];
 		hash128_t * dag = m_dag;
 		
 		CUDA_SAFE_CALL(cudaSetDevice(device_num));
@@ -243,9 +245,13 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 			CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 		}
 
-		CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightSize));
+		if(!light){ 
+			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightSize));
+			cudalog << "Allocating light with size: " << _lightSize;
+		}
 		// copy lightData to device
 		CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), _lightData, _lightSize, cudaMemcpyHostToDevice));
+		m_light[device_num] = light;
 		
 		if(dagSize128 != m_dag_size || !dag) // create buffer for dag
 			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
