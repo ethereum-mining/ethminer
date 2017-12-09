@@ -62,6 +62,7 @@ namespace eth
 	protected:
 		virtual bool found(uint64_t const* _nonces, uint32_t _count) override
 		{
+			(void)_count;
 			m_owner.report(_nonces[0]);
 			return m_owner.shouldStop();
 		}
@@ -170,7 +171,7 @@ void CUDAMiner::workLoop()
 				if (s_dagLoadIndex >= s_numInstances && s_dagInHostMemory)
 				{
 					// all devices have loaded DAG, we can free now
-					delete[] s_dagInHostMemory;
+					delete [] (uint8_t *)s_dagInHostMemory;
 					s_dagInHostMemory = NULL;
 
 					cout << "Freeing DAG from host" << endl;
