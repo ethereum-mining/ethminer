@@ -163,7 +163,7 @@ void CUDAMiner::workLoop()
 			//bytesConstRef dagData = dag->data();
 			bytesConstRef lightData = light->data();
 
-			m_miner->init(light->light, lightData.data(), lightData.size(), device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE), &s_dagInHostMemory);
+			m_miner->init(light->light, lightData.data(), lightData.size(), device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE), s_dagInHostMemory);
 			s_dagLoadIndex++;
 
 			if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
@@ -171,7 +171,7 @@ void CUDAMiner::workLoop()
 				if (s_dagLoadIndex >= s_numInstances && s_dagInHostMemory)
 				{
 					// all devices have loaded DAG, we can free now
-					delete [] (uint8_t *)s_dagInHostMemory;
+					delete [] s_dagInHostMemory;
 					s_dagInHostMemory = NULL;
 
 					cout << "Freeing DAG from host" << endl;

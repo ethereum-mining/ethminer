@@ -209,9 +209,9 @@ protected:
 	void addHashCount(uint64_t _n) { m_hashCount += _n; }
 
 	static unsigned s_dagLoadMode;
-	static volatile unsigned s_dagLoadIndex;
+	static atomic<unsigned> s_dagLoadIndex;
 	static unsigned s_dagCreateDevice;
-	static volatile void* s_dagInHostMemory;
+	static atomic<uint8_t*> s_dagInHostMemory;
 
 	const size_t index = 0;
 	FarmFace& farm;
