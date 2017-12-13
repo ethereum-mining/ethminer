@@ -23,7 +23,6 @@
 
 #include <thread>
 #include <list>
-#include <atomic>
 #include <string>
 #include <boost/timer.hpp>
 #include <libdevcore/Common.h>
@@ -209,9 +208,9 @@ protected:
 	void addHashCount(uint64_t _n) { m_hashCount += _n; }
 
 	static unsigned s_dagLoadMode;
-	static atomic<unsigned> s_dagLoadIndex;
+	static unsigned s_dagLoadIndex;
 	static unsigned s_dagCreateDevice;
-	static atomic<uint8_t*> s_dagInHostMemory;
+	static uint8_t* s_dagInHostMemory;
 
 	const size_t index = 0;
 	FarmFace& farm;

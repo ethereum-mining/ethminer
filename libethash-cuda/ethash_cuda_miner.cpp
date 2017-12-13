@@ -27,7 +27,6 @@
 #include <iostream>
 #include <queue>
 #include <random>
-#include <atomic>
 #include <sstream>
 #include <chrono>
 #include <thread>
@@ -201,7 +200,7 @@ void ethash_cuda_miner::finish()
 	CUDA_SAFE_CALL(cudaDeviceReset());
 }
 
-bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, atomic<uint8_t*>&hostDAG)
+bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t* &hostDAG)
 {
 	try
 	{
