@@ -114,7 +114,7 @@ void CUDAMiner::report(uint64_t _nonce)
 
 void CUDAMiner::kickOff()
 {
-	//m_hook->reset();
+	m_hook->reset();
 	//startWorking();
 }
 
@@ -173,7 +173,7 @@ void CUDAMiner::workLoop()
 		{
 			const WorkPackage w = work();
 			
-			if(!m_miner || current.seed != w.seed)
+			if(!m_miner || current.header != w.header)
 			{
 				if(!w || w.header == h256())
 				{
@@ -192,7 +192,7 @@ void CUDAMiner::workLoop()
 			}
 			uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)current.boundary >> 192);
 			uint64_t startN = current.startNonce;
-			if (current.exSizeBits >= 0)
+			if (current.exSizeBits >= 0) 
 				startN = current.startNonce | ((uint64_t)index << (64 - 4 - current.exSizeBits)); // this can support up to 16 devices
 			m_miner->search(current.header.data(), upper64OfBoundary, *m_hook, (current.exSizeBits >= 0), startN);
 		}
@@ -207,7 +207,7 @@ void CUDAMiner::workLoop()
 
 void CUDAMiner::pause()
 {
-	//m_hook->abort();
+	m_hook->abort();
 	//stopWorking();
 }
 
