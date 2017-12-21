@@ -173,7 +173,7 @@ void CUDAMiner::workLoop()
 		{
 			const WorkPackage w = work();
 			
-			if(!m_miner || current.header != w.header)
+			if(!m_miner || current.header != w.header || current.seed != w.seed)
 			{
 				if(!w || w.header == h256())
 				{
