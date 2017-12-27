@@ -857,19 +857,23 @@ private:
 					}
 					this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 				}
-				cnote << "Solution found; Submitting to" << _remote << "...";
-				cnote << "  Nonce:" << solution.nonce;
-				cnote << "  headerHash:" << solution.headerHash.hex();
-				cnote << "  mixHash:" << solution.mixHash.hex();
 				if (EthashAux::eval(solution.seedHash, solution.headerHash, solution.nonce).value < solution.boundary)
 				{
 					bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
 					if (ok) {
-						cnote << EthLime << "B-) Submitted and accepted." << EthReset;
+						cnote << "Solution found; Submitted to" << _remote << "...";
+						cnote << "  Nonce:" << solution.nonce;
+						cnote << "  headerHash:" << solution.headerHash.hex();
+						cnote << "  mixHash:" << solution.mixHash.hex();
+						cnote << EthLime << "Accepted." << EthReset;
 						f.acceptedSolution(false);
 					}
 					else {
-						cwarn << ":-( Not accepted.";
+						cwarn << "Solution found; Submitted to" << _remote << "...";
+						cwarn << "  Nonce:" << solution.nonce;
+						cwarn << "  headerHash:" << solution.headerHash.hex();
+						cwarn << "  mixHash:" << solution.mixHash.hex();
+						cwarn << "Not accepted.";
 						f.rejectedSolution(false);
 					}
 					//exit(0);

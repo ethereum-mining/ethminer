@@ -27,7 +27,6 @@
 #include <iostream>
 #include <queue>
 #include <random>
-#include <atomic>
 #include <sstream>
 #include <chrono>
 #include <thread>
@@ -201,7 +200,7 @@ void ethash_cuda_miner::finish()
 	CUDA_SAFE_CALL(cudaDeviceReset());
 }
 
-bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, volatile void** hostDAG)
+bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t* &hostDAG)
 {
 	try
 	{
@@ -235,7 +234,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		// create buffer for cache
 		hash64_t * light = NULL;
 
-		if (!*hostDAG)
+		if (!hostDAG)
 		{
 			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightSize));
 			// copy dag cache to CPU.
@@ -260,7 +259,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 
 		m_sharedBytes = device_props.major * 100 < SHUFFLE_MIN_VER ? (64 * s_blockSize) / 8 : 0 ;
 
-		if (!*hostDAG)
+		if (!hostDAG)
 		{
 			cudalog << "Generating DAG for GPU #" << m_device_num;
 			ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], m_device_num);
@@ -271,13 +270,13 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 				cudalog << "Copying DAG from GPU #" << m_device_num << " to host";
 				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
 
-				*hostDAG = (void*)memoryDAG;
+				hostDAG = memoryDAG;
 			}
 		}
 		else
 		{
 			cudalog << "Copying DAG from host to GPU #" << m_device_num;
-			const void* hdag = (const void*)(*hostDAG);
+			const void* hdag = (const void*)hostDAG;
 			CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
 		}
 
@@ -355,7 +354,7 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 		run_ethash_search(s_gridSize, s_blockSize, m_sharedBytes, stream, buffer, m_current_nonce, m_parallelHash);
 		if (m_current_index >= s_numStreams)
 		{
-			exit = found_count && hook.found(nonces, found_count);
+			exit = found_count && hook.found(nonces);
 			exit |= hook.searched(nonce_base, batch_size);
 		}
 	}
