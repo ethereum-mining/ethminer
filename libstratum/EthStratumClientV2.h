@@ -14,8 +14,6 @@
 
 
 using namespace std;
-using namespace boost::asio;
-using boost::asio::ip::tcp;
 using namespace dev;
 using namespace dev::eth;
 
@@ -76,7 +74,7 @@ private:
 	string m_previousJob;
 
 	boost::asio::io_service m_io_service;
-	tcp::socket m_socket;
+	boost::asio::ip::tcp::socket m_socket;
 
 	boost::asio::streambuf m_requestBuffer;
 	boost::asio::streambuf m_responseBuffer;
