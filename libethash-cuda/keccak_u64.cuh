@@ -32,6 +32,7 @@ __device__ __forceinline__ void keccak_f1600_init(uint64_t * s)
 	devectorize4(d_header.uint4s[0], s[0], s[1]);
 	devectorize4(d_header.uint4s[1], s[2], s[3]);
 
+	#pragma unroll
 	for (uint32_t i = 5; i < 25; i++)
 	{
 		s[i] = 0;
@@ -332,6 +333,7 @@ __device__ __forceinline__ uint64_t keccak_f1600_final(uint64_t* s)
 {
 	uint64_t t[5], u, v;
 
+	#pragma unroll
 	for (uint32_t i = 12; i < 25; i++)
 	{
 		s[i] = 0;
@@ -594,6 +596,7 @@ __device__ __forceinline__ void SHA3_512(uint2* s2) {
 
 	uint64_t t[5], u, v;
 
+	#pragma unroll
 	for (uint32_t i = 9; i < 25; i++)
 	{
 		s[i] = 0;
