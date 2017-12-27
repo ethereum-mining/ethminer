@@ -31,8 +31,6 @@
 #include <libethcore/Miner.h>
 #include <libethcore/BlockHeader.h>
 
-using namespace boost::asio;
-
 namespace dev
 {
 
