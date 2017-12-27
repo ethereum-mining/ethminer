@@ -59,7 +59,6 @@
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
-using namespace boost::algorithm;
 
 
 class BadArgument: public Exception {};
