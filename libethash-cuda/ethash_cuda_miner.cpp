@@ -233,20 +233,23 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		uint32_t dagSize128   = (unsigned)(dagSize / ETHASH_MIX_BYTES);
 		uint32_t lightSize64 = (unsigned)(_lightSize / sizeof(node));
 
-		// create buffer for cache
-		hash64_t * light = m_light[device_num];
-		hash128_t * dag = m_dag;
+		
 		
 		CUDA_SAFE_CALL(cudaSetDevice(device_num));
 		cudalog << "Set Device to current";
-		if(dagSize128 != m_dag_size || !dag)
+		if(dagSize128 != m_dag_size || !m_dag)
 		{
 			//We need to reset the device and recreate the dag  
 			cudalog << "Resetting device";
 			CUDA_SAFE_CALL(cudaDeviceReset());
 			CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
 			CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+			m_light[device_num] = nullptr;
+			m_dag = nullptr;
 		}
+		// create buffer for cache
+		hash128_t * dag = m_dag;
+		hash64_t * light = m_light[device_num];
 
 		if(!light){ 
 			cudalog << "Allocating light with size: " << _lightSize;
@@ -264,7 +267,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		if(dagSize128 != m_dag_size || !dag)
 		{
 			// create mining buffers
-			cudalog << "Generating mining buffers";
+			cudalog << "Generating mining buffers"; //TODO whats up with this?
 			for (unsigned i = 0; i != s_numStreams; ++i)
 			{
 				CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], SEARCH_RESULT_BUFFER_SIZE * sizeof(uint32_t)));
@@ -322,6 +325,7 @@ cpyDag:
 
 void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN)
 {
+	cudalog << "Starting search on "<< target << " startNonce: "<<_startN;
 	bool initialize = false;
 	bool exit = false;
 	if (memcmp(&m_current_header, header, sizeof(hash32_t)))
