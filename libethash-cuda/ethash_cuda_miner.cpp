@@ -325,7 +325,6 @@ cpyDag:
 
 void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN)
 {
-	cudalog << "Starting search on "<< target << " startNonce: "<<_startN;
 	bool initialize = false;
 	bool exit = false;
 	if (memcmp(&m_current_header, header, sizeof(hash32_t)))
