@@ -280,7 +280,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 
 			m_sharedBytes = device_props.major * 100 < SHUFFLE_MIN_VER ? (64 * s_blockSize) / 8 : 0 ;
 
-			if (!*hostDAG)
+			if (!hostDAG)
 			{
 				if(device_num == 0 || !_cpyToHost){ //if !cpyToHost -> All devices shall generate their DAG
 					cudalog << "Generating DAG for GPU #" << device_num << " with dagSize: " 
@@ -293,10 +293,10 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 						cudalog << "Copying DAG from GPU #" << device_num << " to host";
 						CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
 
-						*hostDAG = (void*)memoryDAG;
+						hostDAG = memoryDAG;
 					}
 				}else{
-					while(!*hostDAG)
+					while(!hostDAG)
 						this_thread::sleep_for(chrono::milliseconds(100)); 
 					goto cpyDag;
 				}
@@ -305,7 +305,7 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 			{
 cpyDag:
 				cudalog << "Copying DAG from host to GPU #" << device_num;
-				const void* hdag = (const void*)(*hostDAG);
+				const void* hdag = (const void*)hostDAG;
 				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
 			}
 		}
