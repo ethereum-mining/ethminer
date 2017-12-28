@@ -580,7 +580,7 @@ public:
 			<< "    -HWMON Displays gpu temp and fan percent." << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
-			<< "    --check-results Double check GPU results. This will delay share submission." << endl
+			<< "    --check-results  Double check GPU results. This will delay share submission." << endl
 #endif
 			<< endl
 			<< "Benchmarking mode:" << endl
