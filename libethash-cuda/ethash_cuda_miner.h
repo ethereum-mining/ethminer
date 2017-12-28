@@ -22,21 +22,20 @@ public:
 	};
 
 public:
-	ethash_cuda_miner();
+	explicit ethash_cuda_miner(size_t numDevices);
 
-	static int getNumDevices();
-	static void listDevices();
 	static bool configureGPU(
-		int *	 _devices,
+		size_t numDevices,
+		const int* _devices,
 		unsigned _blockSize,
 		unsigned _gridSize,
 		unsigned _numStreams,
 		unsigned _scheduleFlag,
 		uint64_t _currentBlock
 		);
-        static void setParallelHash(unsigned _parallelHash);
+	static void setParallelHash(unsigned _parallelHash);
 
-	bool init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t * &hostDAG, unsigned dagCreateDevice);
+	bool init(size_t numDevices, ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t * &hostDAG, unsigned dagCreateDevice);
 
 	void search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN);
 	dev::eth::HwMonitor hwmon();
