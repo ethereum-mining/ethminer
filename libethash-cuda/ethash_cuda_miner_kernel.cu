@@ -49,11 +49,7 @@ void run_ethash_search(
 	{
 		case 1: ethash_search <1> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
 		case 2: ethash_search <2> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
-		case 3: ethash_search <3> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
 		case 4: ethash_search <4> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
-		case 5: ethash_search <5> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
-		case 6: ethash_search <6> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
-		case 7: ethash_search <7> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
 		case 8: ethash_search <8> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
 		default: ethash_search <4> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
 	}
