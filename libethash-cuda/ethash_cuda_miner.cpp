@@ -63,10 +63,7 @@ ethash_cuda_miner::search_hook::~search_hook() {}
 
 ethash_cuda_miner::ethash_cuda_miner()
 {
-	int deviceCount = getNumDevices();
-	m_light = std::vector<hash64_t*>(deviceCount);
-	for(int i = 0; i < deviceCount; i++)
-		m_light[i] = nullptr;
+	m_light.resize(getNumDevices());
 }
 
 std::string ethash_cuda_miner::platform_info(unsigned _deviceId)
