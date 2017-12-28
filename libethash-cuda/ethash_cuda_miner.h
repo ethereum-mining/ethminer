@@ -64,7 +64,7 @@ private:
 	hash128_t* m_dag = nullptr;
 	hash64_t ** m_light = nullptr;
 	uint32_t m_dag_size = -1;
-	int m_device_num;
+	uint32_t m_device_num;
 	
 	
 
