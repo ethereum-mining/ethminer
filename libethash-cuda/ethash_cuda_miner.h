@@ -17,7 +17,7 @@ public:
 		virtual ~search_hook(); // always a virtual destructor for a class with virtuals.
 
 		// reports progress, return true to abort
-		virtual bool found(uint64_t const* nonces, uint32_t count) = 0;
+		virtual bool found(uint64_t const* nonces) = 0;
 		virtual bool searched(uint64_t start_nonce, uint32_t count) = 0;
 	};
 
@@ -37,7 +37,7 @@ public:
 		);
         static void setParallelHash(unsigned _parallelHash);
 
-	bool init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, volatile void** hostDAG);
+	bool init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t * &hostDAG);
 
 	void finish();
 	void search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN);

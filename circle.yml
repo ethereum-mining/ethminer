@@ -2,18 +2,16 @@ version: 2
 jobs:
   build:
     docker:
-      - image: nvidia/cuda:8.0-devel
+      - image: nvidia/cuda:9.0-devel-ubuntu17.04
     steps:
       - checkout
-      - run: pwd
-      - run: ls
-      - run: apt-get update && apt-get install -qy mesa-common-dev curl libidn11-dev
-      - run: scripts/install_cmake.sh --prefix /usr
+
+      - run: apt-get update && apt-get install -qy cmake mesa-common-dev libidn11-dev
       - restore_cache:
-          key: hunter
+          key: hunter-v3
       - run: cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=ON -DAPICORE=ON -H. -Bbuild
       - save_cache:
-          key: hunter
+          key: hunter-v3
           paths:
             - /root/.hunter/_Base/Cache
       - run: cmake --build build -- -j4
