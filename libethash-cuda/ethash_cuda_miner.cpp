@@ -66,35 +66,6 @@ ethash_cuda_miner::ethash_cuda_miner()
 	m_light.resize(getNumDevices());
 }
 
-std::string ethash_cuda_miner::platform_info(unsigned _deviceId)
-{
-	int runtime_version;
-	int device_count;
-
-	device_count = getNumDevices();
-
-	if (device_count == 0)
-		return std::string();
-
-	CUDA_SAFE_CALL(cudaRuntimeGetVersion(&runtime_version));
-
-	// use selected default device
-	int device_num = std::min<int>((int)_deviceId, device_count - 1);
-	cudaDeviceProp device_props;
-
-	CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, device_num));
-
-	char platform[5];
-	int version_major = runtime_version / 1000;
-	int version_minor = (runtime_version - (version_major * 1000)) / 10;
-	sprintf(platform, "%d.%d", version_major, version_minor);
-
-	char compute[5];
-	sprintf(compute, "%d.%d", device_props.major, device_props.minor);
-
-	return "{ \"platform\": \"CUDA " + std::string(platform) + "\", \"device\": \"" + std::string(device_props.name) + "\", \"version\": \"Compute " + std::string(compute) + "\" }";
-}
-
 int ethash_cuda_miner::getNumDevices()
 {
 	int deviceCount = -1;
@@ -194,11 +165,6 @@ void ethash_cuda_miner::listDevices()
 	{
 		cwarn << "CUDA error: " << err.what();
 	}
-}
-
-void ethash_cuda_miner::finish()
-{
-	CUDA_SAFE_CALL(cudaDeviceReset());
 }
 
 bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t* &hostDAG, unsigned dagCreateDevice)
