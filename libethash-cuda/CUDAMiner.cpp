@@ -89,7 +89,8 @@ int CUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 
 CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
 	Miner("CUDA", _farm, _index),
-	m_hook(new EthashCUDAHook(*this))  // FIXME!
+	m_hook(new EthashCUDAHook(*this)),
+	m_miner(getNumDevices())
 {}
 
 CUDAMiner::~CUDAMiner()
@@ -131,7 +132,7 @@ bool CUDAMiner::init(const h256& seed)
 		light = EthashAux::light(seed);
 		bytesConstRef lightData = light->data();
 
-		m_miner.init(light->light, lightData.data(), lightData.size(), 
+		m_miner.init(getNumDevices(), light->light, lightData.data(), lightData.size(), 
 			device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE), s_dagInHostMemory, s_dagCreateDevice);
 		s_dagLoadIndex++;
     
@@ -208,12 +209,44 @@ void CUDAMiner::pause()
 
 unsigned CUDAMiner::getNumDevices()
 {
-	return ethash_cuda_miner::getNumDevices();
+	int deviceCount = -1;
+	cudaError_t err = cudaGetDeviceCount(&deviceCount);
+	if (err == cudaSuccess)
+		return deviceCount;
+
+	if (err == cudaErrorInsufficientDriver)
+	{
+		int driverVersion = -1;
+		cudaDriverGetVersion(&driverVersion);
+		if (driverVersion == 0)
+			throw std::runtime_error{"No CUDA driver found"};
+		throw std::runtime_error{"Insufficient CUDA driver: " + std::to_string(driverVersion)};
+	}
+
+	throw std::runtime_error{cudaGetErrorString(err)};
 }
 
 void CUDAMiner::listDevices()
 {
-	return ethash_cuda_miner::listDevices();
+	try
+	{
+		string outString = "\nListing CUDA devices.\nFORMAT: [deviceID] deviceName\n";
+		int numDevices = getNumDevices();
+		for (int i = 0; i < numDevices; ++i)
+		{
+			cudaDeviceProp props;
+			CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
+
+			outString += "[" + to_string(i) + "] " + string(props.name) + "\n";
+			outString += "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) + "\n";
+			outString += "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
+		}
+		std::cout << outString;
+	}
+	catch(std::runtime_error const& err)
+	{
+		cwarn << "CUDA error: " << err.what();
+	}
 }
 
 HwMonitor CUDAMiner::hwmon()
@@ -236,6 +269,7 @@ bool CUDAMiner::configureGPU(
 	_blockSize = ((_blockSize + 7) / 8) * 8;
 
 	if (!ethash_cuda_miner::configureGPU(
+		getNumDevices(),
 		s_devices,
 		_blockSize,
 		_gridSize,
