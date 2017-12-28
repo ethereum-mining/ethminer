@@ -17,8 +17,6 @@
 /** @file ethash_cuda_miner.cpp
 * @author Genoil <jw@meneer.net>
 * @date 2015
-* @author MariusVanDerWijden
-* @date 2017
 */
 
 
@@ -69,7 +67,11 @@ ethash_cuda_miner::ethash_cuda_miner()
 	m_light = new hash64_t*[devicesCount];
 	for(int i = 0; i < devicesCount; i++)
 		m_light[i] = nullptr;
-	m_dag = nullptr;
+}
+
+ethash_cuda_miner::~ethash_cuda_miner()
+{
+	delete[] m_light;
 }
 
 std::string ethash_cuda_miner::platform_info(unsigned _deviceId)
@@ -243,8 +245,10 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 			CUDA_SAFE_CALL(cudaDeviceReset());
 			CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
 			CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+			//We need to reset the light and the Dag for the following code to reallocate
+			//since cudaDeviceReset() free's all previous allocated memory
 			m_light[device_num] = nullptr;
-			m_dag = nullptr;
+			m_dag = nullptr; 
 		}
 		// create buffer for cache
 		hash128_t * dag = m_dag;
