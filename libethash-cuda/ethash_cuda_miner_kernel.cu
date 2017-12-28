@@ -104,8 +104,9 @@ ethash_calculate_dag_item(uint32_t start)
 					dag_node.uint4s[w] = fnv4(dag_node.uint4s[w], s4);
 				}
 			}
-
 		}
+
+
 #endif		
 	}
 	SHA3_512(dag_node.uint2s);

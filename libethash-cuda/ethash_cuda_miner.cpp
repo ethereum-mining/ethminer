@@ -63,6 +63,7 @@ ethash_cuda_miner::search_hook::~search_hook() {}
 
 ethash_cuda_miner::ethash_cuda_miner()
 {
+	m_light.resize(getNumDevices());
 }
 
 std::string ethash_cuda_miner::platform_info(unsigned _deviceId)
@@ -204,25 +205,19 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 {
 	try
 	{
-		int device_count = getNumDevices();
+		unsigned device_count = getNumDevices();
 
 		if (device_count == 0)
 			return false;
 
 		// use selected device
-		m_device_num = std::min<int>((int)_deviceId, device_count - 1);
-
+		m_device_num = _deviceId < device_count -1 ? _deviceId : device_count - 1;
 		nvmlh = wrap_nvml_create();
 
 		cudaDeviceProp device_props;
 		CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, m_device_num));
 
 		cudalog << "Using device: " << device_props.name << " (Compute " + to_string(device_props.major) + "." + to_string(device_props.minor) + ")";
-
-		CUDA_SAFE_CALL(cudaSetDevice(m_device_num));
-		CUDA_SAFE_CALL(cudaDeviceReset());
-		CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
-		CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
 		m_search_buf = new volatile uint32_t *[s_numStreams];
 		m_streams = new cudaStream_t[s_numStreams];
@@ -231,55 +226,88 @@ bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, u
 		uint32_t dagSize128   = (unsigned)(dagSize / ETHASH_MIX_BYTES);
 		uint32_t lightSize64 = (unsigned)(_lightSize / sizeof(node));
 
-		// create buffer for cache
-		hash64_t * light = NULL;
-
-		if (!hostDAG)
-		{
-			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightSize));
-			// copy dag cache to CPU.
-			CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), _lightData, _lightSize, cudaMemcpyHostToDevice));
-		}
-
-		// create buffer for dag
-		hash128_t * dag;
-		CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
 		
-		// create mining buffers
-		for (unsigned i = 0; i != s_numStreams; ++i)
+		
+		CUDA_SAFE_CALL(cudaSetDevice(m_device_num));
+		cudalog << "Set Device to current";
+		if(dagSize128 != m_dag_size || !m_dag)
 		{
-			CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], SEARCH_RESULT_BUFFER_SIZE * sizeof(uint32_t)));
-			CUDA_SAFE_CALL(cudaStreamCreate(&m_streams[i]));
+			//We need to reset the device and recreate the dag  
+			cudalog << "Resetting device";
+			CUDA_SAFE_CALL(cudaDeviceReset());
+			CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
+			CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+			//We need to reset the light and the Dag for the following code to reallocate
+			//since cudaDeviceReset() free's all previous allocated memory
+			m_light[m_device_num] = nullptr;
+			m_dag = nullptr; 
 		}
-		set_constants(dag, dagSize128, light, lightSize64);
-		memset(&m_current_header, 0, sizeof(hash32_t));
-		m_current_target = 0;
-		m_current_nonce = 0;
-		m_current_index = 0;
+		// create buffer for cache
+		hash128_t * dag = m_dag;
+		hash64_t * light = m_light[m_device_num];
 
-		m_sharedBytes = device_props.major * 100 < SHUFFLE_MIN_VER ? (64 * s_blockSize) / 8 : 0 ;
-
-		if (!hostDAG)
+		if(!light){ 
+			cudalog << "Allocating light with size: " << _lightSize;
+			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightSize));
+		}
+		// copy lightData to device
+		CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), _lightData, _lightSize, cudaMemcpyHostToDevice));
+		m_light[m_device_num] = light;
+		
+		if(dagSize128 != m_dag_size || !dag) // create buffer for dag
+			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
+			
+		set_constants(dag, dagSize128, light, lightSize64); //in ethash_cuda_miner_kernel.cu
+		
+		if(dagSize128 != m_dag_size || !dag)
 		{
-			cudalog << "Generating DAG for GPU #" << m_device_num;
-			ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], m_device_num);
-
-			if (_cpyToHost)
+			// create mining buffers
+			cudalog << "Generating mining buffers"; //TODO whats up with this?
+			for (unsigned i = 0; i != s_numStreams; ++i)
 			{
-				uint8_t* memoryDAG = new uint8_t[dagSize];
-				cudalog << "Copying DAG from GPU #" << m_device_num << " to host";
-				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
+				CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], SEARCH_RESULT_BUFFER_SIZE * sizeof(uint32_t)));
+				CUDA_SAFE_CALL(cudaStreamCreate(&m_streams[i]));
+			}
+			
+			memset(&m_current_header, 0, sizeof(hash32_t));
+			m_current_target = 0;
+			m_current_nonce = 0;
+			m_current_index = 0;
 
-				hostDAG = memoryDAG;
+			m_sharedBytes = device_props.major * 100 < SHUFFLE_MIN_VER ? (64 * s_blockSize) / 8 : 0 ;
+
+			if (!hostDAG)
+			{
+				if(m_device_num == 0 || !_cpyToHost){ //if !cpyToHost -> All devices shall generate their DAG
+					cudalog << "Generating DAG for GPU #" << m_device_num << " with dagSize: " 
+							<< dagSize <<" gridSize: " << s_gridSize << " &m_streams[0]: " << &m_streams[0];
+					ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], m_device_num);
+
+					if (_cpyToHost)
+					{
+						uint8_t* memoryDAG = new uint8_t[dagSize];
+						cudalog << "Copying DAG from GPU #" << m_device_num << " to host";
+						CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
+
+						hostDAG = memoryDAG;
+					}
+				}else{
+					while(!hostDAG)
+						this_thread::sleep_for(chrono::milliseconds(100)); 
+					goto cpyDag;
+				}
+			}
+			else
+			{
+cpyDag:
+				cudalog << "Copying DAG from host to GPU #" << m_device_num;
+				const void* hdag = (const void*)hostDAG;
+				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
 			}
 		}
-		else
-		{
-			cudalog << "Copying DAG from host to GPU #" << m_device_num;
-			const void* hdag = (const void*)hostDAG;
-			CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
-		}
-
+    
+		m_dag = dag;
+		m_dag_size = dagSize128;
 		return true;
 	}
 	catch (runtime_error const&)
