@@ -29,7 +29,6 @@
 #include <iostream>
 #include <queue>
 #include <random>
-#include <atomic>
 #include <sstream>
 #include <chrono>
 #include <thread>
@@ -208,7 +207,7 @@ void ethash_cuda_miner::finish()
 	CUDA_SAFE_CALL(cudaDeviceReset());
 }
 
-bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, volatile void** hostDAG)
+bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t* &hostDAG)
 {
 	try
 	{
@@ -309,10 +308,8 @@ cpyDag:
 				const void* hdag = (const void*)(*hostDAG);
 				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
 			}
-		}else
-		{
-			//We only need to reset the light 
 		}
+    
 		m_dag = dag;
 		m_dag_size = dagSize128;
 		return true;
@@ -389,7 +386,7 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 		run_ethash_search(s_gridSize, s_blockSize, m_sharedBytes, stream, buffer, m_current_nonce, m_parallelHash);
 		if (m_current_index >= s_numStreams)
 		{
-			exit = found_count && hook.found(nonces, found_count);
+			exit = found_count && hook.found(nonces);
 			exit |= hook.searched(nonce_base, batch_size);
 		}
 	}

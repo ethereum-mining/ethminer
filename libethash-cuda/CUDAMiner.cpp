@@ -62,7 +62,7 @@ namespace eth
 		}
 
 	protected:
-		virtual bool found(uint64_t const* _nonces, uint32_t _count) override
+		virtual bool found(uint64_t const* _nonces) override
 		{
 			m_owner.report(_nonces[0]);
 			return m_owner.shouldStop();
@@ -140,7 +140,7 @@ bool CUDAMiner::init(const h256& seed)
 		m_miner->init(light->light, lightData.data(), lightData.size(), 
 			device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE), &s_dagInHostMemory);
 		s_dagLoadIndex++;
-
+    
 		if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
 		{
 			if (s_dagLoadIndex >= s_numInstances && s_dagInHostMemory)
