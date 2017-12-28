@@ -24,7 +24,6 @@ public:
 public:
 	ethash_cuda_miner();
 
-	static std::string platform_info(unsigned _deviceId = 0);
 	static int getNumDevices();
 	static void listDevices();
 	static bool configureGPU(
@@ -39,7 +38,6 @@ public:
 
 	bool init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t * &hostDAG, unsigned dagCreateDevice);
 
-	void finish();
 	void search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN);
 	dev::eth::HwMonitor hwmon();
 
@@ -81,5 +79,5 @@ private:
 
 	static unsigned m_parallelHash;
 
-	wrap_nvml_handle *nvmlh = NULL;
+	wrap_nvml_handle *nvmlh = nullptr;
 };
