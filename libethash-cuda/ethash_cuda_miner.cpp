@@ -61,32 +61,11 @@ unsigned const ethash_cuda_miner::c_defaultNumStreams = 2;
 
 ethash_cuda_miner::search_hook::~search_hook() {}
 
-ethash_cuda_miner::ethash_cuda_miner()
-{
-	m_light.resize(getNumDevices());
-}
-
-int ethash_cuda_miner::getNumDevices()
-{
-	int deviceCount = -1;
-	cudaError_t err = cudaGetDeviceCount(&deviceCount);
-	if (err == cudaSuccess)
-		return deviceCount;
-
-	if (err == cudaErrorInsufficientDriver)
-	{
-		int driverVersion = -1;
-		cudaDriverGetVersion(&driverVersion);
-		if (driverVersion == 0)
-			throw std::runtime_error{"No CUDA driver found"};
-		throw std::runtime_error{"Insufficient CUDA driver: " + std::to_string(driverVersion)};
-	}
-
-	throw std::runtime_error{cudaGetErrorString(err)};
-}
+ethash_cuda_miner::ethash_cuda_miner(size_t numDevices) : m_light(numDevices) {}
 
 bool ethash_cuda_miner::configureGPU(
-	int *	 _devices,
+	size_t numDevices,
+	const int* _devices,
 	unsigned _blockSize,
 	unsigned _gridSize,
 	unsigned _numStreams,
@@ -105,10 +84,9 @@ bool ethash_cuda_miner::configureGPU(
 
 		// by default let's only consider the DAG of the first epoch
 		uint64_t dagSize = ethash_get_datasize(_currentBlock);
-		int devicesCount = getNumDevices();
+		int devicesCount = static_cast<int>(numDevices);
 		for (int i = 0; i < devicesCount; i++)
 		{
-			
 			if (_devices[i] != -1)
 			{
 				int deviceId = min(devicesCount - 1, _devices[i]);
@@ -144,40 +122,15 @@ unsigned ethash_cuda_miner::s_gridSize = ethash_cuda_miner::c_defaultGridSize;
 unsigned ethash_cuda_miner::s_numStreams = ethash_cuda_miner::c_defaultNumStreams;
 unsigned ethash_cuda_miner::s_scheduleFlag = 0;
 
-void ethash_cuda_miner::listDevices()
+bool ethash_cuda_miner::init(size_t numDevices, ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t* &hostDAG, unsigned dagCreateDevice)
 {
 	try
 	{
-		string outString = "\nListing CUDA devices.\nFORMAT: [deviceID] deviceName\n";
-		int numDevices = getNumDevices();
-		for (int i = 0; i < numDevices; ++i)
-		{
-			cudaDeviceProp props;
-			CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
-
-			outString += "[" + to_string(i) + "] " + string(props.name) + "\n";
-			outString += "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) + "\n";
-			outString += "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
-		}
-		std::cout << outString;
-	}
-	catch(std::runtime_error const& err)
-	{
-		cwarn << "CUDA error: " << err.what();
-	}
-}
-
-bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t* &hostDAG, unsigned dagCreateDevice)
-{
-	try
-	{
-		unsigned device_count = getNumDevices();
-
-		if (device_count == 0)
+		if (numDevices == 0)
 			return false;
 
 		// use selected device
-		m_device_num = _deviceId < device_count -1 ? _deviceId : device_count - 1;
+		m_device_num = _deviceId < numDevices -1 ? _deviceId : numDevices - 1;
 		nvmlh = wrap_nvml_create();
 
 		cudaDeviceProp device_props;
