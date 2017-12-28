@@ -182,7 +182,7 @@ void CUDAMiner::workLoop()
 					continue;
 				}
 				
-				cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
+				//cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
 				if (!m_miner || current.seed != w.seed)
 				{
 					if(!init(w.seed))
