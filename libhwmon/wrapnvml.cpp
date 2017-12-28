@@ -159,9 +159,9 @@ return NULL;
     if (cudaGetDeviceProperties(&props, i) == cudaSuccess) {
       int j;
       for (j=0; j<nvmlh->nvml_gpucount; j++) {
-        if ((nvmlh->nvml_pci_domain_id[j] == props.pciDomainID) &&
-            (nvmlh->nvml_pci_bus_id[j]    == props.pciBusID) &&
-            (nvmlh->nvml_pci_device_id[j] == props.pciDeviceID)) {
+        if ((nvmlh->nvml_pci_domain_id[j] == (unsigned int)props.pciDomainID) &&
+            (nvmlh->nvml_pci_bus_id[j]    == (unsigned int)props.pciBusID) &&
+            (nvmlh->nvml_pci_device_id[j] == (unsigned int)props.pciDeviceID)) {
 #if 0
           printf("CUDA GPU[%d] matches NVML GPU[%d]\n", i, j);
 #endif
