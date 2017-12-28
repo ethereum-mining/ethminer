@@ -23,6 +23,7 @@ public:
 
 public:
 	ethash_cuda_miner();
+	~ethash_cuda_miner();
 
 	static std::string platform_info(unsigned _deviceId = 0);
 	static int getNumDevices();
@@ -60,9 +61,9 @@ private:
 	uint32_t m_sharedBytes;
 	
 	///Constants on GPU
-	hash128_t* m_dag;
-	hash64_t ** m_light;
-	uint32_t m_dag_size;
+	hash128_t* m_dag = nullptr;
+	hash64_t ** m_light = nullptr;
+	uint32_t m_dag_size = -1;
 	int m_device_num;
 	
 	
