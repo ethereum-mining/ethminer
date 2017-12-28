@@ -472,6 +472,8 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
+		else if (arg == "--check-results")
+			m_checkResults = true;
 		else
 			return false;
 		return true;
@@ -578,6 +580,7 @@ public:
 			<< "    -HWMON Displays gpu temp and fan percent." << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
+			<< "    --check-results Double check GPU results. This will delay share submission." << endl
 #endif
 			<< endl
 			<< "Benchmarking mode:" << endl
@@ -940,7 +943,7 @@ private:
 	
 		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
 		if (m_stratumClientVersion == 1) {
-			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
+			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email, m_checkResults);
 			if (m_farmFailOverURL != "")
 			{
 				if (m_fuser != "")
@@ -994,7 +997,7 @@ private:
 			}
 		}
 		else if (m_stratumClientVersion == 2) {
-			EthStratumClientV2 client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
+			EthStratumClientV2 client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email, m_checkResults);
 			if (m_farmFailOverURL != "")
 			{
 				if (m_fuser != "")
@@ -1107,6 +1110,7 @@ private:
 	string m_fuser = "";
 	string m_fpass = "";
 	string m_email = "";
+	bool m_checkResults = false; // double check
 #endif
 	string m_fport = "";
 
