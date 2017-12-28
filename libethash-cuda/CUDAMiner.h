@@ -62,7 +62,7 @@ class EthashCUDAHook;
 		{ 
 			s_numInstances = std::min<unsigned>(_instances, getNumDevices());
 		}
-		static void setDevices(unsigned * _devices, unsigned _selectedDeviceCount) 
+		static void setDevices(const unsigned* _devices, unsigned _selectedDeviceCount)
 		{
 			for (unsigned i = 0; i < _selectedDeviceCount; i++) 
 			{
@@ -76,12 +76,11 @@ class EthashCUDAHook;
 	private:
 		void workLoop() override;
 		void report(uint64_t _nonce);
-		void initDevice(WorkPackage w);
 
 		bool init(const h256& seed);
 
 		EthashCUDAHook* m_hook = nullptr;
-		ethash_cuda_miner* m_miner = nullptr;
+		ethash_cuda_miner m_miner;
 
 		h256 m_minerSeed;		///< Last seed in m_miner
 		static unsigned s_platformId;
