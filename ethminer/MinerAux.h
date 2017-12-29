@@ -60,6 +60,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+
 class BadArgument: public Exception {};
 struct MiningChannel: public LogChannel
 {
@@ -361,8 +362,6 @@ public:
 		}
 		else if (arg == "--cuda-streams" && i + 1 < argc)
 			m_numStreams = stol(argv[++i]);
-		else if (arg == "--cuda-check-results")
-			g_checkResults = true;
 #endif
 		else if ((arg == "-L" || arg == "--dag-load-mode") && i + 1 < argc)
 		{
@@ -617,7 +616,6 @@ public:
 			<< "        sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device." << endl
 			<< "    --cuda-devices <0 1 ..n> Select which CUDA GPUs to mine on. Default is to use all" << endl
 			<< "    --cuda-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achieve better performance. Default=4" << endl
-			<< "    --cuda-check-results  Double check GPU results. This will delay share submission." << endl
 #endif
 #if API_CORE
 			<< "    --api-port Set the api port, the miner should listen to. Use 0 to disable. Default=0, use negative numbers to run in readonly mode. for example -3333." << endl

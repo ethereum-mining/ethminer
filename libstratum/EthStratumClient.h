@@ -15,6 +15,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+
 class EthStratumClient
 {
 public:
