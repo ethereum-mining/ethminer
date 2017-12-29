@@ -4,8 +4,6 @@
 #include <libethash/endian.h>
 using boost::asio::ip::tcp;
 
-extern bool g_checkResults;
-
 static void diffToTarget(uint32_t *target, double diff)
 {
 	uint32_t target2[8];

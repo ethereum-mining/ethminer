@@ -42,6 +42,8 @@
 
 using byte = uint8_t;
 
+extern bool g_checkResults; // Declared in main.cpp
+
 namespace dev
 {
 

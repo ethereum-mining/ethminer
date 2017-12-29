@@ -10,8 +10,6 @@
 using namespace dev;
 using namespace eth;
 
-extern bool g_checkResults;
-
 namespace dev
 {
 namespace eth

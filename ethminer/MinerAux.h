@@ -60,8 +60,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-extern bool g_checkResults;
-
 class BadArgument: public Exception {};
 struct MiningChannel: public LogChannel
 {
