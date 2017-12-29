@@ -10,6 +10,8 @@
 using namespace dev;
 using namespace eth;
 
+extern bool g_checkResults;
+
 namespace dev
 {
 namespace eth
@@ -101,8 +103,8 @@ void CLMiner::report(uint64_t _nonce, WorkPackage const& _w)
 {
 	assert(_nonce != 0);
 	// TODO: Why re-evaluating?
-	Result r = EthashAux::eval(_w.seed, _w.header, _nonce);
-	if (r.value < _w.boundary)
+	Result r;
+	if (!g_checkResults || ((r = EthashAux::eval(_w.seed, _w.header, _nonce)).value < _w.boundary))
 		farm.submitProof(Solution{_nonce, r.mixHash, _w.header, _w.seed, _w.boundary});
 	else
 		cwarn << "Invalid solution";

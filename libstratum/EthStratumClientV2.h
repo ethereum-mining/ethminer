@@ -20,7 +20,7 @@ using namespace dev::eth;
 class EthStratumClientV2 : public Worker
 {
 public:
-	EthStratumClientV2(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email, bool checkResults);
+	EthStratumClientV2(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email);
 	~EthStratumClientV2();
 
 	void setFailover(string const & host, string const & port);
@@ -92,6 +92,4 @@ private:
 	string m_submit_hashrate_id;
 
 	void processExtranonce(std::string& enonce);
-
-	bool m_checkResults;
 };

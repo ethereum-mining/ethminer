@@ -54,6 +54,8 @@ void version()
 	exit(0);
 }
 
+bool g_checkResults = false;
+
 int main(int argc, char** argv)
 {
 	// Set env vars controlling GPU driver behavior.

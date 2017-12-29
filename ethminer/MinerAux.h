@@ -60,6 +60,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+extern bool g_checkResults;
 
 class BadArgument: public Exception {};
 struct MiningChannel: public LogChannel
@@ -473,7 +474,7 @@ public:
 			}
 		}
 		else if (arg == "--check-results")
-			m_checkResults = true;
+			g_checkResults = true;
 		else
 			return false;
 		return true;
@@ -943,7 +944,7 @@ private:
 	
 		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
 		if (m_stratumClientVersion == 1) {
-			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email, m_checkResults);
+			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
 			if (m_farmFailOverURL != "")
 			{
 				if (m_fuser != "")
@@ -997,7 +998,7 @@ private:
 			}
 		}
 		else if (m_stratumClientVersion == 2) {
-			EthStratumClientV2 client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email, m_checkResults);
+			EthStratumClientV2 client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
 			if (m_farmFailOverURL != "")
 			{
 				if (m_fuser != "")
@@ -1110,7 +1111,6 @@ private:
 	string m_fuser = "";
 	string m_fpass = "";
 	string m_email = "";
-	bool m_checkResults = false; // double check
 #endif
 	string m_fport = "";
 

@@ -4,6 +4,7 @@
 #include <libethash/endian.h>
 using boost::asio::ip::tcp;
 
+extern bool g_checkResults;
 
 static void diffToTarget(uint32_t *target, double diff)
 {
@@ -27,7 +28,7 @@ static void diffToTarget(uint32_t *target, double diff)
 }
 
 
-EthStratumClientV2::EthStratumClientV2(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email, bool checkResults)
+EthStratumClientV2::EthStratumClientV2(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email)
 	: Worker("stratum"), 
 	  m_socket(m_io_service)
 {
@@ -51,8 +52,6 @@ EthStratumClientV2::EthStratumClientV2(Farm* f, MinerType m, string const & host
 	
 	p_farm = f;
 	p_worktimer = nullptr;
-	m_checkResults = checkResults;
-
 	startWorking();
 }
 
@@ -474,7 +473,7 @@ bool EthStratumClientV2::submit(Solution solution) {
 		minernonce = nonceHex.substr(m_extraNonceHexSize, 16 - m_extraNonceHexSize);
 	}
 
-	if (!m_checkResults || EthashAux::eval(tempWork.seed, tempWork.header, solution.nonce).value < tempWork.boundary)
+	if (!g_checkResults || EthashAux::eval(tempWork.seed, tempWork.header, solution.nonce).value < tempWork.boundary)
 	{
 		string json;
 		switch (m_protocol) {
