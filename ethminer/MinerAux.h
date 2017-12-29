@@ -361,6 +361,8 @@ public:
 		}
 		else if (arg == "--cuda-streams" && i + 1 < argc)
 			m_numStreams = stol(argv[++i]);
+		else if (arg == "--cuda-check-results")
+			g_checkResults = true;
 #endif
 		else if ((arg == "-L" || arg == "--dag-load-mode") && i + 1 < argc)
 		{
@@ -471,8 +473,6 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
-		else if (arg == "--check-results")
-			g_checkResults = true;
 		else
 			return false;
 		return true;
@@ -579,7 +579,6 @@ public:
 			<< "    -HWMON Displays gpu temp and fan percent." << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
-			<< "    --check-results  Double check GPU results. This will delay share submission." << endl
 #endif
 			<< endl
 			<< "Benchmarking mode:" << endl
@@ -618,6 +617,7 @@ public:
 			<< "        sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device." << endl
 			<< "    --cuda-devices <0 1 ..n> Select which CUDA GPUs to mine on. Default is to use all" << endl
 			<< "    --cuda-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achieve better performance. Default=4" << endl
+			<< "    --cuda-check-results  Double check GPU results. This will delay share submission." << endl
 #endif
 #if API_CORE
 			<< "    --api-port Set the api port, the miner should listen to. Use 0 to disable. Default=0, use negative numbers to run in readonly mode. for example -3333." << endl
