@@ -63,7 +63,7 @@ namespace eth
 		virtual bool found(uint64_t const* _nonces, uint32_t count) override
 		{
 			for (uint32_t i = 0; i < count; i++)
-				m_owner.report(_nonces[0]);
+				m_owner.report(_nonces[i]);
 			return m_owner.shouldStop();
 		}
 
