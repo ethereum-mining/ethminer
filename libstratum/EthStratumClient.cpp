@@ -365,7 +365,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			p_farm->acceptedSolution(m_stale);
 		}
 		else {
-			cwarn << "Rejected.";
+			cwarn << EthYellow << "Rejected." << EthReset;
 			p_farm->rejectedSolution(m_stale);
 		}
 		break;
