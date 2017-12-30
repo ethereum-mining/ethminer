@@ -532,65 +532,29 @@ bool EthStratumClient::submit(Solution solution) {
 		minernonce = nonceHex.substr(m_extraNonceHexSize, 16 - m_extraNonceHexSize);
 	}
 
-	if (EthashAux::eval(tempWork.seed, tempWork.header, solution.nonce).value < tempWork.boundary)
-	{
-		string json;
+	string json;
 
-		switch (m_protocol) {
-			case STRATUM_PROTOCOL_STRATUM:
-				json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" + p_active->user + "\",\"" + temp_job + "\",\"0x" + nonceHex + "\",\"0x" + tempWork.header.hex() + "\",\"0x" + solution.mixHash.hex() + "\"]}\n";
-				break;
-			case STRATUM_PROTOCOL_ETHPROXY:
-				json = "{\"id\": 4, \"worker\":\"" + m_worker + "\", \"method\": \"eth_submitWork\", \"params\": [\"0x" + nonceHex + "\",\"0x" + tempWork.header.hex() + "\",\"0x" + solution.mixHash.hex() + "\"]}\n";
-				break;
-			case STRATUM_PROTOCOL_ETHEREUMSTRATUM:
-				json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" + p_active->user + "\",\"" + temp_job + "\",\"" + minernonce + "\"]}\n";
-				break;
-		}
-
-		std::ostream os(&m_requestBuffer);
-		os << json;
-		m_stale = false;
-		async_write(m_socket, m_requestBuffer,
-			boost::bind(&EthStratumClient::handleResponse, this,
-			boost::asio::placeholders::error));
-		cnote << "Solution found; Submitted to" << p_active->host;
-		if (m_protocol != STRATUM_PROTOCOL_ETHEREUMSTRATUM) {
-			cnote << "Nonce:" << "0x" + nonceHex;
-		}
-		return true;
-	}
-	else if (EthashAux::eval(tempPreviousWork.seed, tempPreviousWork.header, solution.nonce).value < tempPreviousWork.boundary)
-	{
-		string json;
-
-		switch (m_protocol) {
+	switch (m_protocol) {
 		case STRATUM_PROTOCOL_STRATUM:
-			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" + p_active->user + "\",\"" + temp_previous_job + "\",\"0x" + nonceHex + "\",\"0x" + tempPreviousWork.header.hex() + "\",\"0x" + solution.mixHash.hex() + "\"]}\n";
+			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" + p_active->user + "\",\"" + temp_job + "\",\"0x" + nonceHex + "\",\"0x" + tempWork.header.hex() + "\",\"0x" + solution.mixHash.hex() + "\"]}\n";
 			break;
 		case STRATUM_PROTOCOL_ETHPROXY:
-			json = "{\"id\": 4, \"worker\":\"" + m_worker + "\", \"method\": \"eth_submitWork\", \"params\": [\"0x" + nonceHex + "\",\"0x" + tempPreviousWork.header.hex() + "\",\"0x" + solution.mixHash.hex() + "\"]}\n";
+			json = "{\"id\": 4, \"worker\":\"" + m_worker + "\", \"method\": \"eth_submitWork\", \"params\": [\"0x" + nonceHex + "\",\"0x" + tempWork.header.hex() + "\",\"0x" + solution.mixHash.hex() + "\"]}\n";
 			break;
 		case STRATUM_PROTOCOL_ETHEREUMSTRATUM:
-			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" + p_active->user + "\",\"" + temp_previous_job + "\",\"" + minernonce + "\"]}\n";
+			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" + p_active->user + "\",\"" + temp_job + "\",\"" + minernonce + "\"]}\n";
 			break;
-		}
-
-		std::ostream os(&m_requestBuffer);
-		os << json;
-		m_stale = true;
-		async_write(m_socket, m_requestBuffer,
-			boost::bind(&EthStratumClient::handleResponse, this,
-			boost::asio::placeholders::error));
-		cwarn << "Submitted stale solution.";
-		return true;
-	}
-	else {
-		m_stale = false;
-		cwarn << "FAILURE: GPU gave incorrect result!";
-		p_farm->failedSolution();
 	}
 
-	return false;
+	std::ostream os(&m_requestBuffer);
+	os << json;
+	m_stale = false;
+	async_write(m_socket, m_requestBuffer,
+		boost::bind(&EthStratumClient::handleResponse, this,
+		boost::asio::placeholders::error));
+	cnote << "Solution found; Submitted to" << p_active->host;
+	if (m_protocol != STRATUM_PROTOCOL_ETHEREUMSTRATUM) {
+		cnote << "Nonce:" << "0x" + nonceHex;
+	}
+	return true;
 }
-
