@@ -32,18 +32,12 @@ ethash_search(
         uint64_t hash = compute_hash<_PARALLEL_HASH>(start_nonce + gid);
 	if (cuda_swab64(hash) > d_target) return;
 	// found a valid result. Make sure there's enough room to store it
-	uint32_t last_index = g_output[0];
-	if (last_index >= SEARCH_RESULT_BUFFER_SIZE - 1) // Ran out of result space
-		return;
-	uint32_t index;
-	do
+	uint32_t index = atomicInc(const_cast<uint32_t*>(g_output), SEARCH_RESULT_BUFFER_SIZE + 1) + 1;
+	if (index >= SEARCH_RESULT_BUFFER_SIZE)
 	{
-		index = last_index + 1;
-		last_index = atomicCAS(const_cast<uint32_t*>(g_output), last_index, index);
-		if (last_index >= SEARCH_RESULT_BUFFER_SIZE - 1)
-			return;
-	} while (last_index != index - 1);
-	// Finally, store the valid result
+		atomicDec(const_cast<uint32_t*>(g_output), SEARCH_RESULT_BUFFER_SIZE + 1);
+		return;
+	}
 	g_output[index] = gid;
 }
 
