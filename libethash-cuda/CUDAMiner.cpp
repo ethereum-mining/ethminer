@@ -60,9 +60,10 @@ namespace eth
 		}
 
 	protected:
-		virtual bool found(uint64_t const* _nonces) override
+		virtual bool found(uint64_t const* _nonces, uint32_t count) override
 		{
-			m_owner.report(_nonces[0]);
+			for (uint32_t i = 0; i < count; i++)
+				m_owner.report(_nonces[0]);
 			return m_owner.shouldStop();
 		}
 
