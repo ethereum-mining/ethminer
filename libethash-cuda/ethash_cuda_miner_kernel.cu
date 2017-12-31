@@ -156,7 +156,10 @@ void ethash_generate_dag(
 	{
 		ethash_calculate_dag_item <<<blocks, threads, 0, stream >>>(i * blocks * threads);
 		CUDA_SAFE_CALL(cudaDeviceSynchronize());
+#if defined(__CUDACC_DEBUG__)
+		//This might be useful for debug, but just slows startup 
 		printf("CUDA#%d: %.0f%%\n",device, 100.0f * (float)i / (float)fullRuns);
+#endif
 	}
 	//printf("GPU#%d 100%%\n");
 	CUDA_SAFE_CALL(cudaGetLastError());
