@@ -402,13 +402,6 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 						h256 seedHash = h256(sSeedHash);
 
-						m_previous.header = m_current.header;
-						m_previous.seed = m_current.seed;
-						m_previous.boundary = m_current.boundary;
-						m_previous.startNonce = m_current.startNonce;
-						m_previous.exSizeBits = m_previous.exSizeBits;
-						m_previousJob = m_job;
-
 						m_current.header = h256(sHeaderHash);
 						m_current.seed = seedHash;
 						m_current.boundary = h256();
@@ -446,11 +439,6 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 							//x_current.lock();
 							if (p_worktimer)
 								p_worktimer->cancel();
-
-							m_previous.header = m_current.header;
-							m_previous.seed = m_current.seed;
-							m_previous.boundary = m_current.boundary;
-							m_previousJob = m_job;
 
 							m_current.header = h256(sHeaderHash);
 							m_current.seed = seedHash;
@@ -522,8 +510,6 @@ bool EthStratumClient::submit(Solution solution) {
 	x_current.lock();
 	WorkPackage tempWork(m_current);
 	string temp_job = m_job;
-	WorkPackage tempPreviousWork(m_previous);
-	string temp_previous_job = m_previousJob;
 	x_current.unlock();
 
 	string minernonce;

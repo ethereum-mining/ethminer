@@ -67,12 +67,10 @@ private:
 	Farm* p_farm;
 	std::mutex x_current;
 	WorkPackage m_current;
-	WorkPackage m_previous;
 
 	bool m_stale = false;
 
 	string m_job;
-	string m_previousJob;
 
 	std::thread m_serviceThread;  ///< The IO service thread.
 	boost::asio::io_service m_io_service;
@@ -95,3 +93,4 @@ private:
 
 	void processExtranonce(std::string& enonce);
 };
+
