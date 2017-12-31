@@ -380,7 +380,7 @@ void EthStratumClientV2::processReponse(Json::Value& responseObject)
 						if (headerHash != m_current.header)
 						{
 							x_current.lock();
-							m_current.header = h256(sHeaderHash);
+							m_current.header = headerHash;
 							m_current.seed = h256(sSeedHash);
 							m_current.boundary = h256(sShareTarget);
 							m_job = job;
