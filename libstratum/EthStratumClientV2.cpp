@@ -344,15 +344,15 @@ void EthStratumClientV2::processReponse(Json::Value& responseObject)
 
 					if (sHeaderHash != "" && sSeedHash != "")
 					{
-						h256 seedHash = h256(sSeedHash);
-
+						x_current.lock();
 						m_current.header = h256(sHeaderHash);
-						m_current.seed = seedHash;
+						m_current.seed = h256(sSeedHash);
 						m_current.boundary = h256();
 						diffToTarget((uint32_t*)m_current.boundary.data(), m_nextWorkDifficulty);
 						m_current.startNonce = ethash_swap_u64(*((uint64_t*)m_extraNonce.data()));
 						m_current.exSizeBits = m_extraNonceHexSize * 4;
 						m_job = job;
+						x_current.unlock();
 
 						p_farm->setWork(m_current);
 						cnote << "Received new job #" + job.substr(0, 8)
@@ -375,24 +375,18 @@ void EthStratumClientV2::processReponse(Json::Value& responseObject)
 					if (sHeaderHash != "" && sSeedHash != "" && sShareTarget != "")
 					{
 
-						h256 seedHash = h256(sSeedHash);
 						h256 headerHash = h256(sHeaderHash);
 
 						if (headerHash != m_current.header)
 						{
-							//x_current.lock();
-							//if (p_worktimer)
-							//	p_worktimer->cancel();
-
+							x_current.lock();
 							m_current.header = h256(sHeaderHash);
-							m_current.seed = seedHash;
+							m_current.seed = h256(sSeedHash);
 							m_current.boundary = h256(sShareTarget);
 							m_job = job;
+							x_current.unlock();
 
 							p_farm->setWork(m_current);
-							//x_current.unlock();
-							//p_worktimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout));
-							//p_worktimer->async_wait(boost::bind(&EthStratumClientV2::work_timeout_handler, this, boost::asio::placeholders::error));
 						}
 						cnote << "Received new job #" + job.substr(0, 8)
 							<< " seed: " << "#" + m_current.seed.hex().substr(0, 32)
