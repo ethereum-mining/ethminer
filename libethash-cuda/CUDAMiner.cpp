@@ -62,8 +62,6 @@ namespace eth
 	protected:
 		virtual bool found(uint64_t const* _nonces, uint32_t count) override
 		{
-			if (count >= SEARCH_RESULT_BUFFER_SIZE)
-				count = SEARCH_RESULT_BUFFER_SIZE - 1;
 			for (uint32_t i = 0; i < count; i++)
 				m_owner.report(_nonces[i]);
 			return m_owner.shouldStop();
