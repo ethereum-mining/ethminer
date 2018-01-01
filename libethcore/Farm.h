@@ -135,17 +135,19 @@ public:
 	 */
 	void stop()
 	{
-		Guard l(x_minerWork);
-		m_miners.clear();
-		m_isMining = false;
-
-		if (p_hashrateTimer) {
-			p_hashrateTimer->cancel();
+		{
+			Guard l(x_minerWork);
+			m_miners.clear();
+			m_isMining = false;
 		}
 
 		m_io_service.stop();
 		m_serviceThread.join();
-		p_hashrateTimer = nullptr;
+
+		if (p_hashrateTimer) {
+			p_hashrateTimer->cancel();
+			p_hashrateTimer = nullptr;
+		}
 	}
 
 	void collectHashRate()
