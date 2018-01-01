@@ -180,6 +180,10 @@ public:
 			workSwitchStart = std::chrono::high_resolution_clock::now();
 		}
 		pause();
+	}
+
+	void startWork()
+	{
 		kickOff();
 		m_hashCount = 0;
 	}

@@ -47,6 +47,10 @@ namespace eth
 
 				m_abort = true;
 			}
+		}
+
+		void waitForAbort()
+		{
 			// m_abort is true so now searched()/found() will return true to abort the search.
 			// we hang around on this thread waiting for them to point out that they have aborted since
 			// otherwise we may end up deleting this object prior to searched()/found() being called.
@@ -62,8 +66,10 @@ namespace eth
 	protected:
 		virtual bool found(uint64_t const* _nonces, uint32_t count) override
 		{
-			for (uint32_t i = 0; i < count; i++)
-				m_owner.report(_nonces[i]);
+			// discard stale solutions
+			if (!m_aborted)
+				for (uint32_t i = 0; i < count; i++)
+					m_owner.report(_nonces[i]);
 			return m_owner.shouldStop();
 		}
 
@@ -98,6 +104,7 @@ CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
 CUDAMiner::~CUDAMiner()
 {
 	pause();
+	m_hook->waitForAbort();
 	delete m_miner;
 	delete m_hook;
 }
@@ -113,6 +120,7 @@ void CUDAMiner::report(uint64_t _nonce)
 
 void CUDAMiner::kickOff()
 {
+	m_hook->waitForAbort();
 	m_hook->reset();
 }
 

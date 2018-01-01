@@ -233,8 +233,7 @@ void CLMiner::workLoop()
 	}
 }
 
-void CLMiner::pause()
-{}
+void CLMiner::pause() {}
 
 unsigned CLMiner::getNumDevices()
 {
