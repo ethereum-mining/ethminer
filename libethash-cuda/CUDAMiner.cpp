@@ -96,6 +96,7 @@ CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
 
 CUDAMiner::~CUDAMiner()
 {
+	stopWorking();
 	pause();
 	delete m_miner;
 	delete m_hook;
@@ -189,7 +190,7 @@ void CUDAMiner::workLoop()
 			if (current.exSizeBits >= 0) 
 				startN = current.startNonce | ((uint64_t)index << (64 - 4 - current.exSizeBits)); // this can support up to 16 devices
 			m_miner->search(current.header.data(), upper64OfBoundary, *m_hook, (current.exSizeBits >= 0), startN);
-			
+
 			// Check if we should stop.
 			if (shouldStop())
 			{
