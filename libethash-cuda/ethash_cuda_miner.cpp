@@ -177,7 +177,74 @@ unsigned ethash_cuda_miner::s_gridSize = ethash_cuda_miner::c_defaultGridSize;
 unsigned ethash_cuda_miner::s_numStreams = ethash_cuda_miner::c_defaultNumStreams;
 unsigned ethash_cuda_miner::s_scheduleFlag = 0;
 
-void ethash_cuda_miner::listDevices()
+unsigned *ethash_cuda_miner::getDevicesOrderedByPciInfo(void)
+{
+	struct device_properties {
+		unsigned device;
+		cudaDeviceProp props;
+	};
+
+	struct device_properties device_props[16];
+	unsigned numDevices = getNumDevices();
+	unsigned *r;
+
+	for (unsigned device = 0; device < numDevices; ++device)
+	{
+		device_props[device].device = device;
+		CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props[device].props, device));
+	}
+
+	/* sort the device_props by all 3 available pci fields */
+	for (unsigned i = 0; i < numDevices - 1; ++i)
+	{
+		for (unsigned j = i + 1; j < numDevices; ++j)
+		{
+			if (device_props[i].props.pciDomainID < device_props[j].props.pciDomainID)
+				continue;
+			if (device_props[i].props.pciDomainID == device_props[j].props.pciDomainID)
+			{
+				if (device_props[i].props.pciBusID < device_props[j].props.pciBusID)
+					continue;
+				if (device_props[i].props.pciBusID == device_props[j].props.pciBusID)
+				{
+					if (device_props[i].props.pciDeviceID < device_props[j].props.pciDeviceID)
+						continue;
+					if (device_props[i].props.pciDeviceID == device_props[j].props.pciDeviceID)
+						continue;
+				}
+			}
+			/* swap device_props[i] with device_props[j] */
+			{
+				struct device_properties swp;
+				swp = device_props[i];
+				device_props[i] = device_props[j];
+				device_props[j] = swp;
+			}
+		}
+	}
+
+	r = (unsigned *) malloc(sizeof(unsigned) * numDevices);
+	if (r)
+	{
+		for (unsigned device = 0; device < numDevices; ++device)
+		{
+			r[device] = device_props[device].device;
+#if 0
+			if (!device)
+				std::cout << "cuda device list by pci bus:";
+			else
+				std::cout << ",";
+			std::cout << " " << to_string(r[device]);
+			if (device == numDevices-1)
+				std::cout << endl;
+#endif
+		}
+	}
+	return r;
+}
+
+
+void ethash_cuda_miner::listDevices(unsigned *_devices)
 {
 	try
 	{
@@ -187,15 +254,21 @@ void ethash_cuda_miner::listDevices()
 
 		for (int i = 0; i < numDevices; ++i)
 		{
+			unsigned device;
 			string bpciIdBuff_s;
 			cudaDeviceProp props;
-			CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
+
+			if (_devices)
+				device = _devices[i];
+			else
+				device = i;
+			CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, device));
 
 			sprintf(pciIdBuff, "%04x:%02x:%02x",
 			        props.pciDomainID, props.pciBusID, props.pciDeviceID);
 			bpciIdBuff_s = pciIdBuff;
 
-			outString += "[" + to_string(i) + "] " + string(props.name) + "\n";
+			outString += "[" + to_string(device) + "] " + string(props.name) + "\n";
 			outString += "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) + "\n";
 			outString += "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
 			outString += "\tPciID: " + bpciIdBuff_s + "\n";

@@ -49,6 +49,8 @@ class EthashCUDAHook;
 		static unsigned getNumDevices();
 		static void listDevices();
 		static void setParallelHash(unsigned _parallelHash);
+		static void setDevicesEnumMode(unsigned _devicesEnumMode);
+		static unsigned getDeviceUsingEnumMode(unsigned _device);
 		static bool configureGPU(
 			unsigned _blockSize,
 			unsigned _gridSize,
@@ -87,8 +89,9 @@ class EthashCUDAHook;
 		static unsigned s_platformId;
 		static unsigned s_deviceId;
 		static unsigned s_numInstances;
+		static unsigned s_devicesEnumMode;
+		static unsigned *s_devicesEnumByPci;
 		static int s_devices[ETHHASH_MAX_CUDA_DEVICES];
-
 	};
 }
 }

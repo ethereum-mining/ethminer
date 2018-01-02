@@ -87,6 +87,8 @@ namespace eth
 unsigned CUDAMiner::s_platformId = 0;
 unsigned CUDAMiner::s_deviceId = 0;
 unsigned CUDAMiner::s_numInstances = 0;
+unsigned CUDAMiner::s_devicesEnumMode = 0;
+unsigned *CUDAMiner::s_devicesEnumByPci = NULL;
 int CUDAMiner::s_devices[ETHHASH_MAX_CUDA_DEVICES] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
 CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
@@ -99,6 +101,11 @@ CUDAMiner::~CUDAMiner()
 	pause();
 	delete m_miner;
 	delete m_hook;
+	if (s_devicesEnumByPci)
+	{
+		free(s_devicesEnumByPci);
+		s_devicesEnumByPci = NULL;
+	}
 }
 
 void CUDAMiner::report(uint64_t _nonce)
@@ -120,6 +127,8 @@ bool CUDAMiner::init(const h256& seed)
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
 		unsigned device = s_devices[index] > -1 ? s_devices[index] : index;
+
+		device = getDeviceUsingEnumMode(device);
 
 		cnote << "Initialising miner...";
 		m_minerSeed = seed;
@@ -222,7 +231,7 @@ unsigned CUDAMiner::getNumDevices()
 
 void CUDAMiner::listDevices()
 {
-	return ethash_cuda_miner::listDevices();
+	return ethash_cuda_miner::listDevices(s_devicesEnumByPci);
 }
 
 HwMonitor CUDAMiner::hwmon()
@@ -266,4 +275,37 @@ bool CUDAMiner::configureGPU(
 void CUDAMiner::setParallelHash(unsigned _parallelHash)
 {
 	ethash_cuda_miner::setParallelHash(_parallelHash);
+}
+
+void CUDAMiner::setDevicesEnumMode(unsigned _cudaDevicesEnumMode)
+{
+	switch(_cudaDevicesEnumMode)
+	{
+		case 0:
+			if (s_devicesEnumByPci)
+				free(s_devicesEnumByPci);
+			s_devicesEnumByPci = NULL;
+			break;
+
+		case 1:
+			if (s_devicesEnumByPci)
+				free(s_devicesEnumByPci);
+			s_devicesEnumByPci = ethash_cuda_miner::getDevicesOrderedByPciInfo();
+			break;
+	}
+	s_devicesEnumMode = _cudaDevicesEnumMode;
+}
+
+unsigned CUDAMiner::getDeviceUsingEnumMode(unsigned _device)
+{
+	switch(s_devicesEnumMode)
+	{
+		case 0:
+			return _device;
+		case 1:
+			return s_devicesEnumByPci[_device];
+		default:
+			assert(1 == 0); // May never happen
+			return _device;
+	}
 }

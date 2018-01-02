@@ -332,6 +332,17 @@ public:
 				}
 			}
 		}
+		else if (arg == "--cuda-devices-enum")
+		{
+			string mode = argv[++i];
+			if (mode == "default") m_cudaDevicesEnumMode = 0;
+			else if (mode == "pci") m_cudaDevicesEnumMode = 1;
+			else
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
 		else if (arg == "--cuda-parallel-hash" && i + 1 < argc)
 		{
 				try {
@@ -487,7 +498,10 @@ public:
 #endif
 #if ETH_ETHASHCUDA
 			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
+			{
+				CUDAMiner::setDevicesEnumMode(m_cudaDevicesEnumMode);
 				CUDAMiner::listDevices();
+			}
 #endif
 			exit(0);
 		}
@@ -520,6 +534,7 @@ public:
 		else if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 		{
 #if ETH_ETHASHCUDA
+			CUDAMiner::setDevicesEnumMode(m_cudaDevicesEnumMode);
 			if (m_cudaDeviceCount > 0)
 			{
 				CUDAMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
@@ -615,6 +630,9 @@ public:
 			<< "        yield - Instruct CUDA to yield its thread when waiting for results from the device." << endl
 			<< "        sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device." << endl
 			<< "    --cuda-devices <0 1 ..n> Select which CUDA GPUs to mine on. Default is to use all" << endl
+			<< "    --cuda-devices-enum Enumerate devices ordered:" << endl
+			<< "        default - as Nvidea driver returns" << endl
+			<< "        pci     - by pciDomainID/pciBusID/pciDeviceID (like nvidia-smi)" << endl
 			<< "    --cuda-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achieve better performance. Default=4" << endl
 #endif
 #if API_CORE
@@ -1068,6 +1086,7 @@ private:
 	unsigned m_globalWorkSizeMultiplier = ethash_cuda_miner::c_defaultGridSize;
 	unsigned m_localWorkSize = ethash_cuda_miner::c_defaultBlockSize;
 	unsigned m_cudaDeviceCount = 0;
+	unsigned m_cudaDevicesEnumMode = 0; // 0=enumeratation from Nvidea driver, 1=PciId
 	unsigned m_cudaDevices[ETHHASH_MAX_CUDA_DEVICES];
 	unsigned m_numStreams = ethash_cuda_miner::c_defaultNumStreams;
 	unsigned m_cudaSchedule = 4; // sync

@@ -30,7 +30,8 @@ public:
 
 	static std::string platform_info(unsigned _deviceId = 0);
 	static int getNumDevices();
-	static void listDevices();
+	static void listDevices(unsigned *_devices);
+	static unsigned *getDevicesOrderedByPciInfo();
 	static bool configureGPU(
 		int *	 _devices,
 		unsigned _blockSize,
