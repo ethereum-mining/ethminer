@@ -374,16 +374,22 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 		{
 			CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 			found_count = buffer[0];
-			if (found_count)
+			if (found_count) {
 				buffer[0] = 0;
-			for (unsigned int j = 0; j < found_count; j++)
-				nonces[j] = nonce_base + buffer[j + 1];
+				// guard against overflow. Eventhough CUDA will
+				// stop storing shares past the end of the buffer,
+				// it continues to count all valid shares.
+				if (found_count >= SEARCH_RESULT_BUFFER_SIZE)
+					found_count = SEARCH_RESULT_BUFFER_SIZE - 1;
+				for (unsigned int j = 0; j < found_count; j++)
+					nonces[j] = nonce_base + buffer[j + 1];
+			}
 		}
 		run_ethash_search(s_gridSize, s_blockSize, m_sharedBytes, stream, buffer, m_current_nonce, m_parallelHash);
 		if (m_current_index >= s_numStreams)
 		{
-			exit = found_count && hook.found(nonces);
-			exit |= hook.searched(nonce_base, batch_size);
+			exit = found_count && hook.found(nonces, found_count);
+			exit |= hook.searched(batch_size);
 		}
 	}
 }

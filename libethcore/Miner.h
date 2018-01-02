@@ -175,11 +175,16 @@ public:
 	void setWork(WorkPackage const& _work)
 	{
 		{
-			Guard l(x_work);
+			x_work.lock();
 			m_work = _work;
 			workSwitchStart = std::chrono::high_resolution_clock::now();
+			x_work.unlock();
 		}
 		pause();
+	}
+
+	void startWork()
+	{
 		kickOff();
 		m_hashCount = 0;
 	}
@@ -203,7 +208,14 @@ protected:
 	 */
 	virtual void pause() = 0;
 
-	WorkPackage work() const { Guard l(x_work); return m_work; }
+	WorkPackage work() const
+	{
+		WorkPackage work;
+		x_work.lock();
+		work = m_work;
+		x_work.unlock();
+		return work;
+	}
 
 	void addHashCount(uint64_t _n) { m_hashCount += _n; }
 
