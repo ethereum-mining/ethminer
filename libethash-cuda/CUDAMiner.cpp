@@ -131,10 +131,10 @@ bool CUDAMiner::init(const h256& seed)
 		light = EthashAux::light(seed);
 		bytesConstRef lightData = light->data();
 
-		m_miner->init(light->light, lightData.data(), lightData.size(), 
+		m_miner->init(light->light, lightData.data(), lightData.size(),
 			device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE), s_dagInHostMemory);
 		s_dagLoadIndex++;
-    
+
 		if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
 		{
 			if (s_dagLoadIndex >= s_numInstances && s_dagInHostMemory)
@@ -166,7 +166,7 @@ void CUDAMiner::workLoop()
 		while(true)
 		{
 			const WorkPackage w = work();
-			
+
 			if(!m_miner || current.header != w.header || current.seed != w.seed)
 			{
 				if(!w || w.header == h256())
@@ -175,7 +175,7 @@ void CUDAMiner::workLoop()
 					std::this_thread::sleep_for(std::chrono::seconds(3));
 					continue;
 				}
-				
+
 				//cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
 				if (!m_miner || current.seed != w.seed)
 				{
@@ -186,10 +186,10 @@ void CUDAMiner::workLoop()
 			}
 			uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)current.boundary >> 192);
 			uint64_t startN = current.startNonce;
-			if (current.exSizeBits >= 0) 
+			if (current.exSizeBits >= 0)
 				startN = current.startNonce | ((uint64_t)index << (64 - 4 - current.exSizeBits)); // this can support up to 16 devices
 			m_miner->search(current.header.data(), upper64OfBoundary, *m_hook, (current.exSizeBits >= 0), startN);
-			
+
 			// Check if we should stop.
 			if (shouldStop())
 			{

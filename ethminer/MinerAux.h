@@ -285,7 +285,7 @@ public:
 				if(m_openclThreadsPerHash != 1 && m_openclThreadsPerHash != 2 &&
 				   m_openclThreadsPerHash != 4 && m_openclThreadsPerHash != 8) {
 					BOOST_THROW_EXCEPTION(BadArgument());
-				} 
+				}
 			}
 			catch(...) {
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
@@ -500,7 +500,7 @@ public:
 				CLMiner::setDevices(m_openclDevices, m_openclDeviceCount);
 				m_miningThreads = m_openclDeviceCount;
 			}
-			
+
 			CLMiner::setThreadsPerHash(m_openclThreadsPerHash);
 			if (!CLMiner::configureGPU(
 					m_localWorkSize,
@@ -787,11 +787,11 @@ private:
 
 		h256 id = h256::random();
 		Farm f;
-		
+
 #if API_CORE
 		Api api(this->m_api_port, f);
 #endif
-		
+
 		f.setSealers(sealers);
 
 		if (_m == MinerType::CL)
@@ -933,11 +933,11 @@ private:
 			m_farmRecheckPeriod = m_defaultStratumFarmRecheckPeriod;
 
 		Farm f;
-		
+
 #if API_CORE
 		Api api(this->m_api_port, f);
 #endif
-	
+
 		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
 		if (m_stratumClientVersion == 1) {
 			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
@@ -964,7 +964,7 @@ private:
 				}
 				return false;
 			});
-			f.onMinerRestart([&](){ 
+			f.onMinerRestart([&](){
 				client.reconnect();
 			});
 
@@ -984,7 +984,7 @@ private:
 					{
 						minelog << "Waiting for work package...";
 					}
-					
+
 					if (this->m_report_stratum_hashrate) {
 						auto rate = mp.rate();
 						client.submitHashrate(toJS(rate));
@@ -1013,7 +1013,7 @@ private:
 				client.submit(sol);
 				return false;
 			});
-			f.onMinerRestart([&](){ 
+			f.onMinerRestart([&](){
 				client.reconnect();
 			});
 
@@ -1033,7 +1033,7 @@ private:
 					{
 						minelog << "Waiting for work package...";
 					}
-					
+
 					if (this->m_report_stratum_hashrate) {
 						auto rate = mp.rate();
 						client.submitHashrate(toJS(rate));
@@ -1095,7 +1095,7 @@ private:
 	bool m_show_hwmonitors = false;
 #if API_CORE
 	int m_api_port = 0;
-#endif	
+#endif
 
 #if ETH_STRATUM
 	bool m_report_stratum_hashrate = false;

@@ -58,14 +58,14 @@ private:
 	uint64_t m_starting_nonce;
 	uint64_t m_current_index;
 	uint32_t m_sharedBytes;
-	
+
 	///Constants on GPU
 	hash128_t* m_dag = nullptr;
 	std::vector<hash64_t*> m_light;
 	uint32_t m_dag_size = -1;
 	uint32_t m_device_num;
-	
-	
+
+
 
 	volatile uint32_t ** m_search_buf;
 	cudaStream_t  * m_streams;

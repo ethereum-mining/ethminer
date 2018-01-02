@@ -41,9 +41,9 @@ class EthashCUDAHook;
 		CUDAMiner(FarmFace& _farm, unsigned _index);
 		~CUDAMiner();
 
-		static unsigned instances() 
-		{ 
-			return s_numInstances > 0 ? s_numInstances : 1; 
+		static unsigned instances()
+		{
+			return s_numInstances > 0 ? s_numInstances : 1;
 		}
 		static std::string platformInfo();
 		static unsigned getNumDevices();
@@ -58,13 +58,13 @@ class EthashCUDAHook;
 			unsigned _dagLoadMode,
 			unsigned _dagCreateDevice
 			);
-		static void setNumInstances(unsigned _instances) 
-		{ 
+		static void setNumInstances(unsigned _instances)
+		{
 			s_numInstances = std::min<unsigned>(_instances, getNumDevices());
 		}
-		static void setDevices(unsigned * _devices, unsigned _selectedDeviceCount) 
+		static void setDevices(unsigned * _devices, unsigned _selectedDeviceCount)
 		{
-			for (unsigned i = 0; i < _selectedDeviceCount; i++) 
+			for (unsigned i = 0; i < _selectedDeviceCount; i++)
 			{
 				s_devices[i] = _devices[i];
 			}
@@ -87,7 +87,7 @@ class EthashCUDAHook;
 		static unsigned s_platformId;
 		static unsigned s_deviceId;
 		static unsigned s_numInstances;
-		static int s_devices[16];
+		static int s_devices[ETHHASH_MAX_CUDA_DEVICES];
 
 	};
 }

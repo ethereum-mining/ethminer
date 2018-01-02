@@ -9,11 +9,11 @@ __device__ __forceinline__ uint64_t compute_hash(
 {
 	// sha3_512(header .. nonce)
 	uint2 state[12];
-	
+
 	state[4] = vectorize(nonce);
 
 	keccak_f1600_init(state);
-	
+
 	// Threads work together in this phase in groups of 8.
 	const int thread_id  = threadIdx.x &  (THREADS_PER_HASH - 1);
 	const int mix_idx    = thread_id & 3;
@@ -23,12 +23,12 @@ __device__ __forceinline__ uint64_t compute_hash(
 		uint4 mix[_PARALLEL_HASH];
 		uint32_t offset[_PARALLEL_HASH];
 		uint32_t init0[_PARALLEL_HASH];
-	
+
 		// share init among threads
 		for (int p = 0; p < _PARALLEL_HASH; p++)
 		{
 			uint2 shuffle[8];
-			for (int j = 0; j < 8; j++) 
+			for (int j = 0; j < 8; j++)
 			{
 #if CUDA_VERSION < SHUFFLE_DEPRECATED
 				shuffle[j].x = __shfl(state[j].x, i+p, THREADS_PER_HASH);
@@ -75,7 +75,7 @@ __device__ __forceinline__ uint64_t compute_hash(
 					mix[p] = fnv4(mix[p], d_dag[offset[p]].uint4s[thread_id]);
 				}
 
-                                
+
 			}
 		}
 
@@ -113,7 +113,7 @@ __device__ __forceinline__ uint64_t compute_hash(
 			}
 		}
 	}
-	
+
 	// keccak_256(keccak_512(header..nonce) .. mix);
 	return keccak_f1600_final(state);
 }

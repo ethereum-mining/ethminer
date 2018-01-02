@@ -17,13 +17,13 @@ __device__ uint64_t compute_hash(
 	uint64_t state[25];
 	state[4] = nonce;
 	keccak_f1600_init(state);
-	
+
 	// Threads work together in this phase in groups of 8.
 	const int thread_id  = threadIdx.x &  (THREADS_PER_HASH - 1);
 	const int hash_id = threadIdx.x  >> 3;
 
 	extern __shared__  compute_hash_share share[];
-	
+
 	for (int i = 0; i < THREADS_PER_HASH; i++)
 	{
 		// share init with other threads

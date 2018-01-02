@@ -229,7 +229,7 @@ __device__ __forceinline__ void keccak_f1600_init(uint64_t * s)
 		s[10] = ROTL64(u, 1);
 
 		/* chi: a[i,j] ^= ~b[i,j+1] & b[i,j+2] */
-			
+
 		u = s[0]; v = s[1];
 		s[0] = chi(s[0], s[1], s[2]);
 		s[1] = chi(s[1], s[2], s[3]);
@@ -237,14 +237,14 @@ __device__ __forceinline__ void keccak_f1600_init(uint64_t * s)
 		s[3] = chi(s[3], s[4], u);
 		s[4] = chi(s[4], u, v);
 
-		u = s[5]; v = s[6]; 
+		u = s[5]; v = s[6];
 		s[5] = chi(s[5], s[6], s[7]);
 		s[6] = chi(s[6], s[7], s[8]);
 		s[7] = chi(s[7], s[8], s[9]);
 		s[8] = chi(s[8], s[9], u);
 		s[9] = chi(s[9], u, v);
 
-		u = s[10]; v = s[11]; 
+		u = s[10]; v = s[11];
 		s[10] = chi(s[10], s[11], s[12]);
 		s[11] = chi(s[11], s[12], s[13]);
 		s[12] = chi(s[12], s[13], s[14]);
@@ -338,7 +338,7 @@ __device__ __forceinline__ uint64_t keccak_f1600_final(uint64_t* s)
 	}
 	s[12] = 0x0000000000000001;
 	s[16] = 0x8000000000000000;
-	
+
 	/* theta: c = a[0,i] ^ a[1,i] ^ .. a[4,i] */
 	t[0] = xor3(s[0], s[5], s[10]);
 	t[1] = xor3(s[1], s[6], s[11]) ^ s[16];
@@ -530,7 +530,7 @@ __device__ __forceinline__ uint64_t keccak_f1600_final(uint64_t* s)
 
 		/* chi: a[i,j] ^= ~b[i,j+1] & b[i,j+2] */
 		u = s[0]; v = s[1];
-		s[0] = chi(s[0], s[1], s[2]);	
+		s[0] = chi(s[0], s[1], s[2]);
 		s[1] = chi(s[1], s[2], s[3]);
 		s[2] = chi(s[2], s[3], s[4]);
 		s[3] = chi(s[3], s[4], u);

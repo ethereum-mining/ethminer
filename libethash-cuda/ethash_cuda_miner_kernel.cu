@@ -22,13 +22,13 @@
 #endif
 
 template <uint32_t _PARALLEL_HASH>
-__global__ void 
+__global__ void
 ethash_search(
 	volatile uint32_t* g_output,
 	uint64_t start_nonce
 	)
 {
-	uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;	
+	uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;
         uint64_t hash = compute_hash<_PARALLEL_HASH>(start_nonce + gid);
 	if (cuda_swab64(hash) > d_target) return;
 	uint32_t index = atomicInc(const_cast<uint32_t*>(g_output), SEARCH_RESULT_BUFFER_SIZE - 1) + 1;
@@ -103,7 +103,7 @@ ethash_calculate_dag_item(uint32_t start)
 		}
 
 
-#endif		
+#endif
 	}
 	SHA3_512(dag_node.uint2s);
 	hash64_t * dag_nodes = (hash64_t *)d_dag;
@@ -129,7 +129,7 @@ ethash_calculate_dag_item(uint32_t start)
 		}
 		dag_nodes[shuffle_index].uint4s[thread_id] = s[thread_id];
 	}
-#endif		 
+#endif
 }
 
 void ethash_generate_dag(
