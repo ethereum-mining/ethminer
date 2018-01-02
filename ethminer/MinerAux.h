@@ -1068,7 +1068,7 @@ private:
 	unsigned m_globalWorkSizeMultiplier = ethash_cuda_miner::c_defaultGridSize;
 	unsigned m_localWorkSize = ethash_cuda_miner::c_defaultBlockSize;
 	unsigned m_cudaDeviceCount = 0;
-	unsigned m_cudaDevices[16];
+	unsigned m_cudaDevices[ETHHASH_MAX_CUDA_DEVICES];
 	unsigned m_numStreams = ethash_cuda_miner::c_defaultNumStreams;
 	unsigned m_cudaSchedule = 4; // sync
 #endif

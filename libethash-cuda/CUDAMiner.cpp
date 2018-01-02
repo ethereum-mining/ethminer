@@ -87,7 +87,7 @@ namespace eth
 unsigned CUDAMiner::s_platformId = 0;
 unsigned CUDAMiner::s_deviceId = 0;
 unsigned CUDAMiner::s_numInstances = 0;
-int CUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+int CUDAMiner::s_devices[ETHHASH_MAX_CUDA_DEVICES] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
 CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
 	Miner("CUDA", _farm, _index),

@@ -22,6 +22,7 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 
+#include <assert.h>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -100,7 +101,10 @@ int ethash_cuda_miner::getNumDevices()
 	int deviceCount = -1;
 	cudaError_t err = cudaGetDeviceCount(&deviceCount);
 	if (err == cudaSuccess)
+	{
+		assert(deviceCount <= ETHHASH_MAX_CUDA_DEVICES);
 		return deviceCount;
+	}
 
 	if (err == cudaErrorInsufficientDriver)
 	{
