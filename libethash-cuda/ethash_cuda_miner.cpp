@@ -389,7 +389,7 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 		if (m_current_index >= s_numStreams)
 		{
 			exit = found_count && hook.found(nonces, found_count);
-			exit |= hook.searched(nonce_base, batch_size);
+			exit |= hook.searched(batch_size);
 		}
 	}
 }

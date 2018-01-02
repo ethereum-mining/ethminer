@@ -18,7 +18,7 @@ public:
 
 		// reports progress, return true to abort
 		virtual bool found(uint64_t const* nonces, uint32_t count) = 0;
-		virtual bool searched(uint64_t start_nonce, uint32_t count) = 0;
+		virtual bool searched(uint32_t count) = 0;
 	};
 
 public:

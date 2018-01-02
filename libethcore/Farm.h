@@ -66,14 +66,16 @@ public:
 		collectHashRate();
 
 		// Set work to each miner
-		Guard l(x_minerWork);
-		if (_wp.header == m_work.header && _wp.startNonce == m_work.startNonce)
-			return;
-		m_work = _wp;
-		for (auto const& m: m_miners)
-			m->setWork(m_work);
-		for (auto const& m: m_miners)
-			m->startWork();
+		x_minerWork.lock();
+		if ((_wp.header != m_work.header) || (_wp.startNonce != m_work.startNonce))
+		{
+			m_work = _wp;
+			for (auto const& m: m_miners)
+				m->setWork(m_work);
+			for (auto const& m: m_miners)
+				m->startWork();
+		}
+		x_minerWork.unlock();
 	}
 
 	void setSealers(std::map<std::string, SealerDescriptor> const& _sealers) { m_sealers = _sealers; }
@@ -83,11 +85,17 @@ public:
 	 */
 	bool start(std::string const& _sealer, bool mixed)
 	{
-		Guard l(x_minerWork);
+		x_minerWork.lock();
 		if (!m_miners.empty() && m_lastSealer == _sealer)
+		{
+			x_minerWork.unlock();
 			return true;
+		}
 		if (!m_sealers.count(_sealer))
+		{
+			x_minerWork.unlock();
 			return false;
+		}
 
 		if (!mixed)
 		{
@@ -128,7 +136,7 @@ public:
 				m_serviceThread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };
 			}
 		}
-
+		x_minerWork.unlock();
 		return true;
 	}
 
@@ -137,23 +145,23 @@ public:
 	 */
 	void stop()
 	{
-		Guard l(x_minerWork);
+		x_minerWork.lock();
 		m_miners.clear();
 		m_isMining = false;
 
-		if (p_hashrateTimer) {
+		if (p_hashrateTimer)
 			p_hashrateTimer->cancel();
-		}
 
 		m_io_service.stop();
 		m_serviceThread.join();
 		p_hashrateTimer = nullptr;
+		x_minerWork.unlock();
 	}
 
 	void collectHashRate()
 	{
 		WorkingProgress p;
-		Guard l2(x_minerWork);
+		x_minerWork.lock();
 		p.ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_lastStart).count();
 		//Collect
 		for (auto const& i : m_miners)
@@ -182,6 +190,7 @@ public:
 		if (allMs > m_hashrateSmoothInterval) {
 			m_lastProgresses.erase(m_lastProgresses.begin());
 		}
+		x_minerWork.unlock();
 	}
 
 	void processHashRate(const boost::system::error_code& ec) {
@@ -223,12 +232,13 @@ public:
 		p.ms = 0;
 		p.hashes = 0;
 		{
-			Guard l2(x_minerWork);
+			x_minerWork.lock();
 			for (auto const& i : m_miners) {
 				p.minersHashes.push_back(0);
 				if (hwmon)
 					p.minerMonitors.push_back(i->hwmon());
 			}
+			x_minerWork.unlock();
 		}
 
 		for (auto const& cp : m_lastProgresses) {
@@ -240,7 +250,6 @@ public:
 			}
 		}
 
-		Guard l(x_progress);
 		m_progress = p;
 		return m_progress;
 	}
@@ -286,7 +295,14 @@ public:
 	void onSolutionFound(SolutionFound const& _handler) { m_onSolutionFound = _handler; }
 	void onMinerRestart(MinerRestart const& _handler) { m_onMinerRestart = _handler; }
 
-	WorkPackage work() const { Guard l(x_minerWork); return m_work; }
+	WorkPackage work() const
+	{
+		WorkPackage pkg;
+		x_minerWork.lock();
+		pkg = m_work;
+		x_minerWork.unlock();
+		return pkg;
+	}
 
 	std::chrono::steady_clock::time_point farmLaunched() {
 		return m_farm_launched;
@@ -325,7 +341,6 @@ private:
 
 	std::atomic<bool> m_isMining = {false};
 
-	mutable Mutex x_progress;
 	mutable WorkingProgress m_progress;
 
 	mutable Mutex x_hwmons;

@@ -40,13 +40,10 @@ namespace eth
 
 		void abort()
 		{
-			{
-				UniqueGuard l(x_all);
-				if (m_aborted)
-					return;
-
+			m_guard.lock();
+			if (!m_aborted)
 				m_abort = true;
-			}
+			m_guard.unlock();
 		}
 
 		void waitForAbort()
@@ -59,35 +56,40 @@ namespace eth
 
 		void reset()
 		{
-			UniqueGuard l(x_all);
+			m_guard.lock();
 			m_aborted = m_abort = false;
+			m_guard.unlock();
 		}
 
 	protected:
 		virtual bool found(uint64_t const* _nonces, uint32_t count) override
 		{
 			// discard stale solutions
-			if (!m_aborted)
+			if (!m_abort)
 				for (uint32_t i = 0; i < count; i++)
 					m_owner.report(_nonces[i]);
 			return m_owner.shouldStop();
 		}
 
-		virtual bool searched(uint64_t _startNonce, uint32_t _count) override
+		virtual bool searched(uint32_t _count) override
 		{
-			(void) _startNonce;  // FIXME: unusued arg.
-			UniqueGuard l(x_all);
 			m_owner.addHashCount(_count);
+			bool ret = false;
+			m_guard.lock();
 			if (m_abort || m_owner.shouldStop())
-				return (m_aborted = true);
-			return false;
+			{
+				m_aborted = true;
+				ret = true;
+			}
+			m_guard.unlock();
+			return ret;
 		}
 
 	private:
-		Mutex x_all;
 		bool m_abort = false;
 		Notified<bool> m_aborted = { true };
 		CUDAMiner& m_owner;
+		mutex m_guard;
 	};
 }
 }
