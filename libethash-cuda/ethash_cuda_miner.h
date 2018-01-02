@@ -9,6 +9,10 @@
 #include <libhwmon/wrapnvml.h>
 #include "ethash_cuda_miner_kernel.h"
 
+#ifndef ETHHASH_MAX_CUDA_DEVICES
+#define ETHHASH_MAX_CUDA_DEVICES 16
+#endif
+
 class ethash_cuda_miner
 {
 public:
@@ -35,7 +39,7 @@ public:
 		unsigned _scheduleFlag,
 		uint64_t _currentBlock
 		);
-        static void setParallelHash(unsigned _parallelHash);
+	static void setParallelHash(unsigned _parallelHash);
 
 	bool init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t * &hostDAG);
 

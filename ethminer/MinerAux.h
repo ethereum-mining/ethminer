@@ -332,21 +332,21 @@ public:
 				}
 			}
 		}
-                else if (arg == "--cuda-parallel-hash" && i + 1 < argc)
-                {
-                        try {
-                                m_parallelHash = stol(argv[++i]);
-                                if (m_parallelHash == 0 || m_parallelHash > 8)
-                                {
-                                    throw BadArgument();
-                                }
-                        }
-                        catch (...)
-                        {
-                                cerr << "Bad " << arg << " option: " << argv[i] << endl;
-                                BOOST_THROW_EXCEPTION(BadArgument());
-                        }
-                }
+		else if (arg == "--cuda-parallel-hash" && i + 1 < argc)
+		{
+				try {
+						m_parallelHash = stol(argv[++i]);
+						if (m_parallelHash == 0 || m_parallelHash > 8)
+						{
+							throw BadArgument();
+						}
+				}
+				catch (...)
+				{
+						cerr << "Bad " << arg << " option: " << argv[i] << endl;
+						BOOST_THROW_EXCEPTION(BadArgument());
+				}
+		}
 		else if (arg == "--cuda-schedule" && i + 1 < argc)
 		{
 			string mode = argv[++i];
