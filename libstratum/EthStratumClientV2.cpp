@@ -472,7 +472,7 @@ bool EthStratumClientV2::submit(Solution solution) {
 		minernonce = nonceHex.substr(m_extraNonceHexSize, 16 - m_extraNonceHexSize);
 	}
 
-	if (~solution.stale)
+	if (!solution.stale)
 	{
 		string json;
 		switch (m_protocol) {
