@@ -39,6 +39,7 @@ struct Solution
 	h256 headerHash;
 	h256 seedHash;
 	h256 boundary;
+	bool stale;
 };
 
 struct Result

@@ -31,7 +31,8 @@ ethash_search(
 	uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;	
         uint64_t hash = compute_hash<_PARALLEL_HASH>(start_nonce + gid);
 	if (cuda_swab64(hash) > d_target) return;
-	uint32_t index = atomicInc(const_cast<uint32_t*>(g_output), SEARCH_RESULT_BUFFER_SIZE - 1) + 1;
+	uint32_t index = atomicInc(const_cast<uint32_t*>(g_output), 0xffffffff) + 1;
+	if (index > SEARCH_RESULT_BUFFER_SIZE -1) return;
 	g_output[index] = gid;
 }
 
@@ -149,9 +150,7 @@ void ethash_generate_dag(
 	{
 		ethash_calculate_dag_item <<<blocks, threads, 0, stream >>>(i * blocks * threads);
 		CUDA_SAFE_CALL(cudaDeviceSynchronize());
-		printf("CUDA#%d: %.0f%%\n",device, 100.0f * (float)i / (float)fullRuns);
 	}
-	//printf("GPU#%d 100%%\n");
 	CUDA_SAFE_CALL(cudaGetLastError());
 }
 
