@@ -862,7 +862,7 @@ private:
 					cnote << "  Nonce:" << solution.nonce;
 					cnote << "  headerHash:" << solution.headerHash.hex();
 					cnote << "  mixHash:" << solution.mixHash.hex();
-					cnote << EthLime << "Accepted." << EthReset;
+					cnote << EthLime << " Accepted." << EthReset;
 					f.acceptedSolution(solution.stale);
 				}
 				else {
@@ -870,7 +870,7 @@ private:
 					cwarn << "  Nonce:" << solution.nonce;
 					cwarn << "  headerHash:" << solution.headerHash.hex();
 					cwarn << "  mixHash:" << solution.mixHash.hex();
-					cwarn << "Not accepted.";
+					cwarn << EthYellow << " Rejected." << EthReset;
 					f.rejectedSolution(solution.stale);
 				}
 			}

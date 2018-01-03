@@ -66,7 +66,6 @@ private:
 	Farm* p_farm;
 	mutex x_current;
 	WorkPackage m_current;
-	WorkPackage m_previous;
 
 	bool m_stale = false;
 
