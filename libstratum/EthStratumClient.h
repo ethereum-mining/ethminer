@@ -67,7 +67,6 @@ private:
 	Farm* p_farm;
 	std::mutex x_current;
 	WorkPackage m_current;
-	WorkPackage m_previous;
 
 	bool m_stale = false;
 
