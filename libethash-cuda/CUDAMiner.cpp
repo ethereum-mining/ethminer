@@ -114,6 +114,12 @@ void CUDAMiner::report(uint64_t _nonce)
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
 		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary, m_hook->isStale()});
+	else
+	{
+		farm.failedSolution();
+		cwarn << "FAILURE: GPU gave incorrect result!";
+
+	}
 }
 
 void CUDAMiner::kickOff()
