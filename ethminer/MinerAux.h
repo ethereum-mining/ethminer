@@ -858,22 +858,21 @@ private:
 				}
 				bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
 				if (ok) {
-					cnote << "Solution found; Submitted to" << _remote << "...";
+					cnote << "Solution found; Submitted to" << _remote;
 					cnote << "  Nonce:" << solution.nonce;
 					cnote << "  headerHash:" << solution.headerHash.hex();
 					cnote << "  mixHash:" << solution.mixHash.hex();
 					cnote << EthLime << "Accepted." << EthReset;
-					f.acceptedSolution(false);
+					f.acceptedSolution(solution.stale);
 				}
 				else {
-					cwarn << "Solution found; Submitted to" << _remote << "...";
+					cwarn << "Solution found; Submitted to" << _remote;
 					cwarn << "  Nonce:" << solution.nonce;
 					cwarn << "  headerHash:" << solution.headerHash.hex();
 					cwarn << "  mixHash:" << solution.mixHash.hex();
 					cwarn << "Not accepted.";
-					f.rejectedSolution(false);
+					f.rejectedSolution(solution.stale);
 				}
-					//exit(0);
 			}
 			catch (jsonrpc::JsonRpcException&)
 			{
