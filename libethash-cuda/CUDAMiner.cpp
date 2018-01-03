@@ -60,17 +60,19 @@ namespace eth
 
 
 	protected:
-		virtual bool found(uint64_t const* _nonces, uint32_t count) override
+		void found(uint64_t const* _nonces, uint32_t count) override
 		{
 			for (uint32_t i = 0; i < count; i++)
 				m_owner.report(_nonces[i]);
-			return m_owner.shouldStop();
 		}
 
-		virtual bool searched(uint32_t _count) override
+		void searched(uint32_t _count) override
 		{
-			UniqueGuard l(x_all);
 			m_owner.addHashCount(_count);
+		}
+
+		bool shouldStop() override
+		{
 			if (m_abort || m_owner.shouldStop())
 				return (m_aborted = true);
 			return false;
