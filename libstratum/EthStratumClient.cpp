@@ -402,11 +402,6 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 						h256 seedHash = h256(sSeedHash);
 
-						m_previous.header = m_current.header;
-						m_previous.seed = m_current.seed;
-						m_previous.boundary = m_current.boundary;
-						m_previous.startNonce = m_current.startNonce;
-						m_previous.exSizeBits = m_previous.exSizeBits;
 						m_previousJob = m_job;
 
 						m_current.header = h256(sHeaderHash);
@@ -447,9 +442,6 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 							if (p_worktimer)
 								p_worktimer->cancel();
 
-							m_previous.header = m_current.header;
-							m_previous.seed = m_current.seed;
-							m_previous.boundary = m_current.boundary;
 							m_previousJob = m_job;
 
 							m_current.header = h256(sHeaderHash);
