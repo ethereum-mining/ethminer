@@ -155,6 +155,7 @@ public:
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
 	virtual bool submitProof(Solution const& _p) = 0;
+	virtual void failedSolution() = 0;
 };
 
 /**
