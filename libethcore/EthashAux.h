@@ -39,6 +39,7 @@ struct Solution
 	h256 headerHash;
 	h256 seedHash;
 	h256 boundary;
+	h256 job;
 	bool stale;
 };
 
@@ -96,6 +97,7 @@ struct WorkPackage
 	h256 boundary;
 	h256 header;	///< When h256() means "pause until notified a new work package is available".
 	h256 seed;
+	h256 job;
 
 	uint64_t startNonce = 0;
 	int exSizeBits = -1;
