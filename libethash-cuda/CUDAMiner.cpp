@@ -113,7 +113,7 @@ void CUDAMiner::report(uint64_t _nonce)
 	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
-		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary, m_hook->isStale()});
+		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary, w.job, m_hook->isStale()});
 	else
 	{
 		farm.failedSolution();
@@ -154,7 +154,7 @@ bool CUDAMiner::init(const h256& seed)
 				// all devices have loaded DAG, we can free now
 				delete[] s_dagInHostMemory;
 				s_dagInHostMemory = NULL;
-				cout << "Freeing DAG from host" << endl;
+				cnote << "Freeing DAG from host";
 			}
 		}
 		return true;
