@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <fstream>
 #include <sys/types.h>
+#include <regex>
 #if defined(__linux)
 #include <dirent.h>
 #endif
@@ -215,13 +216,26 @@ int wrap_amdsysfs_get_power_usage(wrap_amdsysfs_handle *sysfsh, int index, unsig
 	if (gpuindex < 0 || index >= sysfsh->sysfs_gpucount)
 		return -1;
 
-	int hwmonindex = sysfsh->sysfs_hwmon_id[index];
-	if (hwmonindex < 0)
-		return -1;
+	char dbuf[120];
+	snprintf(dbuf, 120, "/sys/kernel/debug/dri/%u/amdgpu_pm_info", gpuindex);
 
-	// Have no clue how to retrieve radeon power consumption
-	// If you do, plug it in here
-	*powerMw = 0;
-	return 0;
+	std::ifstream ifs(dbuf, std::ios::binary);
+	std::string line;
+
+	while (std::getline(ifs, line))
+	{
+		std::smatch sm;
+		std::regex regex(R"(([\d|\.]+) W \(average GPU\))");
+		if (std::regex_search(line, sm, regex)) {
+			if (sm.size() == 2) {
+				double watt = atof(sm.str(1).c_str());
+				*powerMw = (unsigned int)(watt * 1000);
+				return 0;
+			}
+		}
+		
+	}
+
+	return -1;
 }
 

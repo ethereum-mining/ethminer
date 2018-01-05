@@ -308,7 +308,7 @@ void CLMiner::workLoop()
 			if (current.header != w.header)
 			{
 				// New work received. Update GPU data.
-				//auto localSwitchStart = std::chrono::high_resolution_clock::now();
+				auto localSwitchStart = std::chrono::high_resolution_clock::now();
 
 				if (!w)
 				{
@@ -350,10 +350,10 @@ void CLMiner::workLoop()
 					startNonce = randomNonce();
 
 				current = w;
-				//auto switchEnd = std::chrono::high_resolution_clock::now();
-				//auto globalSwitchTime = std::chrono::duration_cast<std::chrono::milliseconds>(switchEnd - workSwitchStart).count();
-				//auto localSwitchTime = std::chrono::duration_cast<std::chrono::microseconds>(switchEnd - localSwitchStart).count();
-				//cllog << "Switch time" << globalSwitchTime << "ms /" << localSwitchTime << "us";
+				auto switchEnd = std::chrono::high_resolution_clock::now();
+				auto globalSwitchTime = std::chrono::duration_cast<std::chrono::milliseconds>(switchEnd - workSwitchStart).count();
+				auto localSwitchTime = std::chrono::duration_cast<std::chrono::microseconds>(switchEnd - localSwitchStart).count();
+				cllog << "Switch time" << globalSwitchTime << "ms /" << localSwitchTime << "us";
 			}
 
 			// Read results.
