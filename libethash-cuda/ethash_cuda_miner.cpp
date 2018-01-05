@@ -151,6 +151,12 @@ bool ethash_cuda_miner::init(size_t numDevices, ethash_light_t _light, uint8_t c
 		cudalog << "Set Device to current";
 		if(dagSize128 != m_dag_size || !m_dag)
 		{
+			//Check whether the current device has sufficient memory everytime we recreate the dag
+			if (device_props.totalGlobalMem < dagSize)
+			{
+				cudalog <<  "CUDA device " << string(device_props.name) << " has insufficient GPU memory." << device_props.totalGlobalMem << " bytes of memory found < " << dagSize << " bytes of memory required";
+				return false;
+			}
 			//We need to reset the device and recreate the dag  
 			cudalog << "Resetting device";
 			CUDA_SAFE_CALL(cudaDeviceReset());
