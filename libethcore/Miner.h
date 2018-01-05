@@ -102,12 +102,12 @@ inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 	if (_p.minerMonitors.size() == _p.minersHashes.size())
 		_out
 			<< EthTealBold << std::fixed << std::setw(4) << (power ? power / 1000 : '?') << EthReset
-			<< " Watts  ";
+			<< " Watts ";
 
 	for (size_t i = 0; i < _p.minersHashes.size(); ++i)
 	{
 		mh = _p.minerRate(_p.minersHashes[i]) / 1000000.0f;
-		_out << "gpu/" << i << " " << EthTeal << std::fixed << std::setw(5) << std::setprecision(2) << mh << EthReset;
+		_out << " gpu/" << i << " " << EthTeal << std::fixed << std::setw(5) << std::setprecision(2) << mh << EthReset;
 		if (_p.minerMonitors.size() == _p.minersHashes.size())
 			_out << " " << EthTeal << _p.minerMonitors[i] << EthReset;
 	}
