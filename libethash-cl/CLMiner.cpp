@@ -5,7 +5,8 @@
 
 #include "CLMiner.h"
 #include <libethash/internal.h>
-#include "CLMiner_kernel.h"
+#include "CLMiner_kernel_stable.h"
+#include "CLMiner_kernel_unstable.h"
 
 using namespace dev;
 using namespace eth;
@@ -18,6 +19,7 @@ namespace eth
 unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_threadsPerHash = 8;
+CLKernelName CLMiner::s_clKernelName = CLMiner::c_defaultKernelName;
 
 constexpr size_t c_maxSearchResults = 1;
 
@@ -626,10 +628,20 @@ bool CLMiner::init(const h256& seed)
 		uint32_t lightSize64 = (unsigned)(light->data().size() / sizeof(node));
 
 		// patch source code
-		// note: CLMiner_kernel is simply ethash_cl_miner_kernel.cl compiled
+		// note: The kernels here are simply compiled version of the respective .cl kernels
 		// into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
+		// See libethash-cl/CMakeLists.txt: add_custom_command()
 		// TODO: Just use C++ raw string literal.
-		string code(CLMiner_kernel, CLMiner_kernel + sizeof(CLMiner_kernel));
+		string code;
+
+		if ( s_clKernelName == CLKernelName::Unstable ) {
+			cllog << "OpenCL kernel: Unstable kernel";
+			code = string(CLMiner_kernel_unstable, CLMiner_kernel_unstable + sizeof(CLMiner_kernel_unstable));
+		}
+		else { //if(s_clKernelName == CLKernelName::Stable)
+			cllog << "OpenCL kernel: Stable kernel";
+			code = string(CLMiner_kernel_stable, CLMiner_kernel_stable + sizeof(CLMiner_kernel_stable));
+		}
 		addDefinition(code, "GROUP_SIZE", m_workgroupSize);
 		addDefinition(code, "DAG_SIZE", dagSize128);
 		addDefinition(code, "LIGHT_SIZE", lightSize64);
