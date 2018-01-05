@@ -65,13 +65,14 @@ enum class MinerType
 
 struct HwMonitor
 {
-	int tempC = 0;
-	int fanP = 0;
+	unsigned tempC = 0;
+	unsigned fanP = 0;
+	unsigned powerMw = 0;
 };
 
 inline std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
 {
-	return os << _hw.tempC << "C " << _hw.fanP << "%";
+	return os << _hw.tempC << "C " << _hw.fanP << "% " << (_hw.powerMw ? _hw.powerMw / 1000 : '?') << "W ";
 }
 
 /// Describes the progress of a mining operation.
@@ -89,9 +90,19 @@ struct WorkingProgress
 inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 {
 	float mh = _p.rate() / 1000000.0f;
+
+	int power = 0;
+	if (_p.minerMonitors.size() == _p.minersHashes.size())
+		for (size_t i = 0; i < _p.minersHashes.size(); ++i)
+			power += _p.minerMonitors[i].powerMw;
+
 	_out << "Speed "
-		 << EthTealBold << std::fixed << std::setw(6) << std::setprecision(2) << mh << EthReset
-		 << " Mh/s    ";
+		<< EthTealBold << std::fixed << std::setw(6) << std::setprecision(2) << mh << EthReset
+		<< " Mh/s ";
+	if (_p.minerMonitors.size() == _p.minersHashes.size())
+		_out
+			<< EthTealBold << std::fixed << std::setw(4) << (power ? power / 1000 : '?') << EthReset
+			<< " Watts  ";
 
 	for (size_t i = 0; i < _p.minersHashes.size(); ++i)
 	{
@@ -99,7 +110,6 @@ inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 		_out << "gpu/" << i << " " << EthTeal << std::fixed << std::setw(5) << std::setprecision(2) << mh << EthReset;
 		if (_p.minerMonitors.size() == _p.minersHashes.size())
 			_out << " " << EthTeal << _p.minerMonitors[i] << EthReset;
-		_out << "  ";
 	}
 
 	return _out;

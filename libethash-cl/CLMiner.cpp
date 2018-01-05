@@ -308,7 +308,7 @@ void CLMiner::workLoop()
 			if (current.header != w.header)
 			{
 				// New work received. Update GPU data.
-				auto localSwitchStart = std::chrono::high_resolution_clock::now();
+				//auto localSwitchStart = std::chrono::high_resolution_clock::now();
 
 				if (!w)
 				{
@@ -317,7 +317,7 @@ void CLMiner::workLoop()
 					continue;
 				}
 
-				cllog << "New work: header" << w.header << "target" << w.boundary.hex();
+				//cllog << "New work: header" << w.header << "target" << w.boundary.hex();
 
 				if (current.seed != w.seed)
 				{
@@ -350,10 +350,10 @@ void CLMiner::workLoop()
 					startNonce = randomNonce();
 
 				current = w;
-				auto switchEnd = std::chrono::high_resolution_clock::now();
-				auto globalSwitchTime = std::chrono::duration_cast<std::chrono::milliseconds>(switchEnd - workSwitchStart).count();
-				auto localSwitchTime = std::chrono::duration_cast<std::chrono::microseconds>(switchEnd - localSwitchStart).count();
-				cllog << "Switch time" << globalSwitchTime << "ms /" << localSwitchTime << "us";
+				//auto switchEnd = std::chrono::high_resolution_clock::now();
+				//auto globalSwitchTime = std::chrono::duration_cast<std::chrono::milliseconds>(switchEnd - workSwitchStart).count();
+				//auto localSwitchTime = std::chrono::duration_cast<std::chrono::microseconds>(switchEnd - localSwitchStart).count();
+				//cllog << "Switch time" << globalSwitchTime << "ms /" << localSwitchTime << "us";
 			}
 
 			// Read results.
@@ -511,23 +511,24 @@ bool CLMiner::configureGPU(
 HwMonitor CLMiner::hwmon()
 {
 	HwMonitor hw;
-	unsigned int tempC = 0, fanpcnt = 0;
+	hw.tempC = 0; hw.fanP = 0; hw.powerMw = 0;
 	if (nvmlh) {
-		wrap_nvml_get_tempC(nvmlh, index, &tempC);
-		wrap_nvml_get_fanpcnt(nvmlh, index, &fanpcnt);
+		wrap_nvml_get_tempC(nvmlh, index, &hw.tempC);
+		wrap_nvml_get_fanpcnt(nvmlh, index, &hw.fanP);
+		wrap_nvml_get_power_usage(nvmlh, index, &hw.powerMw);
 	}
 	if (adlh) {
-		wrap_adl_get_tempC(adlh, index, &tempC);
-		wrap_adl_get_fanpcnt(adlh, index, &fanpcnt);
+		wrap_adl_get_tempC(adlh, index, &hw.tempC);
+		wrap_adl_get_fanpcnt(adlh, index, &hw.fanP);
+		wrap_adl_get_power_usage(adlh, index, &hw.powerMw);
 	}
 #if defined(__linux)
 	if (sysfsh) {
-		wrap_amdsysfs_get_tempC(sysfsh, index, &tempC);
-		wrap_amdsysfs_get_fanpcnt(sysfsh, index, &fanpcnt);
+		wrap_amdsysfs_get_tempC(sysfsh, index, &hw.tempC);
+		wrap_amdsysfs_get_fanpcnt(sysfsh, index, &hw.fanP);
+		wrap_amdsysfs_get_power_usage(sysfsh, index, &hw.powerMw);
 	}
 #endif
-	hw.tempC = tempC;
-	hw.fanP = fanpcnt;
 	return hw;
 }
 
@@ -699,7 +700,7 @@ bool CLMiner::init(const h256& seed)
 			m_dagKernel.setArg(0, i * m_globalWorkSize);
 			m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
 			m_queue.finish();
-			cllog << "DAG" << int(100.0f * i / fullRuns) << '%';
+			//cllog << "DAG" << int(100.0f * i / fullRuns) << '%';
 		}
 
 	}
@@ -710,3 +711,4 @@ bool CLMiner::init(const h256& seed)
 	}
 	return true;
 }
+

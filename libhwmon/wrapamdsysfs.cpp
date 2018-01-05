@@ -207,3 +207,21 @@ int wrap_amdsysfs_get_fanpcnt(wrap_amdsysfs_handle *sysfsh, int index, unsigned 
 	*fanpcnt = double(pwm - pwmMin) / double(pwmMax - pwmMin) * 100.0;
 	return 0;
 }
+
+
+int wrap_amdsysfs_get_power_usage(wrap_amdsysfs_handle *sysfsh, int index, unsigned int *powerMw)
+{
+	int gpuindex = sysfsh->card_sysfs_device_id[index];
+	if (gpuindex < 0 || index >= sysfsh->sysfs_gpucount)
+		return -1;
+
+	int hwmonindex = sysfsh->sysfs_hwmon_id[index];
+	if (hwmonindex < 0)
+		return -1;
+
+	// Have no clue how to retrieve radeon power consumption
+	// If you do, plug it in here
+	*powerMw = 0;
+	return 0;
+}
+

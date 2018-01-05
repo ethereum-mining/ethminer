@@ -133,6 +133,8 @@ int wrap_adl_get_tempC(wrap_adl_handle *adlh, int gpuindex, unsigned int *tempC)
 
 int wrap_adl_get_fanpcnt(wrap_adl_handle *adlh, int gpuindex, unsigned int *fanpcnt);
 
+int wrap_adl_get_power_usage(wrap_adl_handle *adlh, int gpuindex, unsigned int *powerMw);
+
 #if defined(__cplusplus)
 }
 #endif
