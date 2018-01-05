@@ -188,6 +188,15 @@ int wrap_adl_get_fanpcnt(wrap_adl_handle *adlh, int gpuindex, unsigned int *fanp
 	return 0;
 }
 
+int wrap_adl_get_power_usage(wrap_adl_handle *adlh, int gpuindex, unsigned int *powerMw)
+{
+	(void)adlh;
+	(void) gpuindex;
+	// I have no radeon GPUs. If you can figure out how
+	// to retrieve power consumption, plug it in here
+	*powerMw = 0;
+	return 0;
+}
 #if defined(__cplusplus)
 }
 #endif
