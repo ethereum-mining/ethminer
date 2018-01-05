@@ -145,7 +145,7 @@ bool CUDAMiner::init(const h256& seed)
 		bytesConstRef lightData = light->data();
 
 		m_miner->init(light->light, lightData.data(), lightData.size(), 
-			device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE), s_dagInHostMemory);
+			device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE), s_dagInHostMemory, s_dagCreateDevice);
 		s_dagLoadIndex++;
     
 		if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
