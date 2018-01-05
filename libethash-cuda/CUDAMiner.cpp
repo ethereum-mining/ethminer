@@ -14,12 +14,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file CUDAMiner.cpp
-* @author Gav Wood <i@gavwood.com>
-* @date 2014
-*
-* Determines the PoW algorithm.
-*/
 
 #include "CUDAMiner.h"
 
@@ -66,17 +60,19 @@ namespace eth
 
 
 	protected:
-		virtual bool found(uint64_t const* _nonces, uint32_t count) override
+		void found(uint64_t const* _nonces, uint32_t count) override
 		{
 			for (uint32_t i = 0; i < count; i++)
 				m_owner.report(_nonces[i]);
-			return m_owner.shouldStop();
 		}
 
-		virtual bool searched(uint32_t _count) override
+		void searched(uint32_t _count) override
 		{
-			UniqueGuard l(x_all);
 			m_owner.addHashCount(_count);
+		}
+
+		bool shouldStop() override
+		{
 			if (m_abort || m_owner.shouldStop())
 				return (m_aborted = true);
 			return false;
@@ -90,21 +86,19 @@ namespace eth
 	};
 }
 }
-unsigned CUDAMiner::s_platformId = 0;
-unsigned CUDAMiner::s_deviceId = 0;
 unsigned CUDAMiner::s_numInstances = 0;
 int CUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
 CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
 	Miner("CUDA", _farm, _index),
-	m_hook(new EthashCUDAHook(*this))  // FIXME!
+	m_hook(new EthashCUDAHook(*this)),
+	m_miner(getNumDevices())
 {}
 
 CUDAMiner::~CUDAMiner()
 {
 	stopWorking();
 	pause();
-	delete m_miner;
 	delete m_hook;
 }
 
@@ -135,16 +129,12 @@ bool CUDAMiner::init(const h256& seed)
 		unsigned device = s_devices[index] > -1 ? s_devices[index] : index;
 
 		cnote << "Initialising miner...";
-		m_minerSeed = seed;
-
-		if(!m_miner)
-			m_miner = new ethash_cuda_miner;
 
 		EthashAux::LightType light;
 		light = EthashAux::light(seed);
 		bytesConstRef lightData = light->data();
 
-		m_miner->init(light->light, lightData.data(), lightData.size(), 
+		m_miner.init(getNumDevices(), light->light, lightData.data(), lightData.size(), 
 			device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE), s_dagInHostMemory, s_dagCreateDevice);
 		s_dagLoadIndex++;
     
@@ -162,8 +152,6 @@ bool CUDAMiner::init(const h256& seed)
 	}
 	catch (std::runtime_error const& _e)
 	{
-		delete m_miner;
-		m_miner = nullptr;
 		cwarn << "Error CUDA mining: " << _e.what();
 		return false;
 	}
@@ -180,7 +168,7 @@ void CUDAMiner::workLoop()
 		{
 			const WorkPackage w = work();
 			
-			if(!m_miner || current.header != w.header || current.seed != w.seed)
+			if (current.header != w.header || current.seed != w.seed)
 			{
 				if(!w || w.header == h256())
 				{
@@ -190,7 +178,7 @@ void CUDAMiner::workLoop()
 				}
 				
 				//cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
-				if (!m_miner || current.seed != w.seed)
+				if (current.seed != w.seed)
 				{
 					if(!init(w.seed))
 						break;
@@ -201,7 +189,7 @@ void CUDAMiner::workLoop()
 			uint64_t startN = current.startNonce;
 			if (current.exSizeBits >= 0) 
 				startN = current.startNonce | ((uint64_t)index << (64 - 4 - current.exSizeBits)); // this can support up to 16 devices
-			m_miner->search(current.header.data(), upper64OfBoundary, *m_hook, (current.exSizeBits >= 0), startN);
+			m_miner.search(current.header.data(), upper64OfBoundary, *m_hook, (current.exSizeBits >= 0), startN);
 
 			// Check if we should stop.
 			if (shouldStop())
@@ -212,8 +200,6 @@ void CUDAMiner::workLoop()
 	}
 	catch (std::runtime_error const& _e)
 	{
-		delete m_miner;
-		m_miner = nullptr;
 		cwarn << "Error CUDA mining: " << _e.what();
 	}
 }
@@ -223,28 +209,51 @@ void CUDAMiner::pause()
 	m_hook->abort();
 }
 
-std::string CUDAMiner::platformInfo()
-{
-	return ethash_cuda_miner::platform_info(s_deviceId);
-}
-
 unsigned CUDAMiner::getNumDevices()
 {
-	return ethash_cuda_miner::getNumDevices();
+	int deviceCount = -1;
+	cudaError_t err = cudaGetDeviceCount(&deviceCount);
+	if (err == cudaSuccess)
+		return deviceCount;
+
+	if (err == cudaErrorInsufficientDriver)
+	{
+		int driverVersion = -1;
+		cudaDriverGetVersion(&driverVersion);
+		if (driverVersion == 0)
+			throw std::runtime_error{"No CUDA driver found"};
+		throw std::runtime_error{"Insufficient CUDA driver: " + std::to_string(driverVersion)};
+	}
+
+	throw std::runtime_error{cudaGetErrorString(err)};
 }
 
 void CUDAMiner::listDevices()
 {
-	return ethash_cuda_miner::listDevices();
+	try
+	{
+		string outString = "\nListing CUDA devices.\nFORMAT: [deviceID] deviceName\n";
+		int numDevices = getNumDevices();
+		for (int i = 0; i < numDevices; ++i)
+		{
+			cudaDeviceProp props;
+			CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
+
+			outString += "[" + to_string(i) + "] " + string(props.name) + "\n";
+			outString += "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) + "\n";
+			outString += "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
+		}
+		std::cout << outString;
+	}
+	catch(std::runtime_error const& err)
+	{
+		cwarn << "CUDA error: " << err.what();
+	}
 }
 
 HwMonitor CUDAMiner::hwmon()
 {
-	HwMonitor hw;
-	if (m_miner) {
-		hw = m_miner->hwmon();
-	}
-	return hw;
+	return m_miner.hwmon();
 }
 
 bool CUDAMiner::configureGPU(
@@ -262,6 +271,7 @@ bool CUDAMiner::configureGPU(
 	_blockSize = ((_blockSize + 7) / 8) * 8;
 
 	if (!ethash_cuda_miner::configureGPU(
+		getNumDevices(),
 		s_devices,
 		_blockSize,
 		_gridSize,
