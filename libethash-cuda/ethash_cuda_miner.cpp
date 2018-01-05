@@ -61,61 +61,11 @@ unsigned const ethash_cuda_miner::c_defaultNumStreams = 2;
 
 ethash_cuda_miner::search_hook::~search_hook() {}
 
-ethash_cuda_miner::ethash_cuda_miner()
-{
-	m_light.resize(getNumDevices());
-}
-
-std::string ethash_cuda_miner::platform_info(unsigned _deviceId)
-{
-	int runtime_version;
-	int device_count;
-
-	device_count = getNumDevices();
-
-	if (device_count == 0)
-		return std::string();
-
-	CUDA_SAFE_CALL(cudaRuntimeGetVersion(&runtime_version));
-
-	// use selected default device
-	int device_num = std::min<int>((int)_deviceId, device_count - 1);
-	cudaDeviceProp device_props;
-
-	CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, device_num));
-
-	char platform[5];
-	int version_major = runtime_version / 1000;
-	int version_minor = (runtime_version - (version_major * 1000)) / 10;
-	sprintf(platform, "%d.%d", version_major, version_minor);
-
-	char compute[5];
-	sprintf(compute, "%d.%d", device_props.major, device_props.minor);
-
-	return "{ \"platform\": \"CUDA " + std::string(platform) + "\", \"device\": \"" + std::string(device_props.name) + "\", \"version\": \"Compute " + std::string(compute) + "\" }";
-}
-
-int ethash_cuda_miner::getNumDevices()
-{
-	int deviceCount = -1;
-	cudaError_t err = cudaGetDeviceCount(&deviceCount);
-	if (err == cudaSuccess)
-		return deviceCount;
-
-	if (err == cudaErrorInsufficientDriver)
-	{
-		int driverVersion = -1;
-		cudaDriverGetVersion(&driverVersion);
-		if (driverVersion == 0)
-			throw std::runtime_error{"No CUDA driver found"};
-		throw std::runtime_error{"Insufficient CUDA driver: " + std::to_string(driverVersion)};
-	}
-
-	throw std::runtime_error{cudaGetErrorString(err)};
-}
+ethash_cuda_miner::ethash_cuda_miner(size_t numDevices) : m_light(numDevices) {}
 
 bool ethash_cuda_miner::configureGPU(
-	int *	 _devices,
+	size_t numDevices,
+	const int* _devices,
 	unsigned _blockSize,
 	unsigned _gridSize,
 	unsigned _numStreams,
@@ -134,10 +84,9 @@ bool ethash_cuda_miner::configureGPU(
 
 		// by default let's only consider the DAG of the first epoch
 		uint64_t dagSize = ethash_get_datasize(_currentBlock);
-		int devicesCount = getNumDevices();
+		int devicesCount = static_cast<int>(numDevices);
 		for (int i = 0; i < devicesCount; i++)
 		{
-			
 			if (_devices[i] != -1)
 			{
 				int deviceId = min(devicesCount - 1, _devices[i]);
@@ -173,45 +122,15 @@ unsigned ethash_cuda_miner::s_gridSize = ethash_cuda_miner::c_defaultGridSize;
 unsigned ethash_cuda_miner::s_numStreams = ethash_cuda_miner::c_defaultNumStreams;
 unsigned ethash_cuda_miner::s_scheduleFlag = 0;
 
-void ethash_cuda_miner::listDevices()
+bool ethash_cuda_miner::init(size_t numDevices, ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t* &hostDAG, unsigned dagCreateDevice)
 {
 	try
 	{
-		string outString = "\nListing CUDA devices.\nFORMAT: [deviceID] deviceName\n";
-		int numDevices = getNumDevices();
-		for (int i = 0; i < numDevices; ++i)
-		{
-			cudaDeviceProp props;
-			CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
-
-			outString += "[" + to_string(i) + "] " + string(props.name) + "\n";
-			outString += "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) + "\n";
-			outString += "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
-		}
-		std::cout << outString;
-	}
-	catch(std::runtime_error const& err)
-	{
-		cwarn << "CUDA error: " << err.what();
-	}
-}
-
-void ethash_cuda_miner::finish()
-{
-	CUDA_SAFE_CALL(cudaDeviceReset());
-}
-
-bool ethash_cuda_miner::init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t* &hostDAG, unsigned dagCreateDevice)
-{
-	try
-	{
-		unsigned device_count = getNumDevices();
-
-		if (device_count == 0)
+		if (numDevices == 0)
 			return false;
 
 		// use selected device
-		m_device_num = _deviceId < device_count -1 ? _deviceId : device_count - 1;
+		m_device_num = _deviceId < numDevices -1 ? _deviceId : numDevices - 1;
 		nvmlh = wrap_nvml_create();
 
 		cudaDeviceProp device_props;
@@ -384,7 +303,12 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 		}
 		run_ethash_search(s_gridSize, s_blockSize, m_sharedBytes, stream, buffer, m_current_nonce, m_parallelHash);
 		if (m_current_index >= s_numStreams)
-			exit = (found_count && hook.found(nonces, found_count)) || hook.searched(batch_size);
+		{
+			if (found_count)
+				hook.found(nonces, found_count);
+			hook.searched(batch_size);
+			exit = hook.shouldStop();
+		}
 	}
 }
 
