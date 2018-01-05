@@ -59,16 +59,22 @@ namespace eth
 			m_aborted = m_abort = false;
 		}
 
-	protected:
-		virtual bool found(uint64_t const* _nonces) override
+		bool isStale()
 		{
-			m_owner.report(_nonces[0]);
+			return m_abort;
+		}
+
+
+	protected:
+		virtual bool found(uint64_t const* _nonces, uint32_t count) override
+		{
+			for (uint32_t i = 0; i < count; i++)
+				m_owner.report(_nonces[i]);
 			return m_owner.shouldStop();
 		}
 
-		virtual bool searched(uint64_t _startNonce, uint32_t _count) override
+		virtual bool searched(uint32_t _count) override
 		{
-			(void) _startNonce;  // FIXME: unusued arg.
 			UniqueGuard l(x_all);
 			m_owner.addHashCount(_count);
 			if (m_abort || m_owner.shouldStop())
@@ -108,7 +114,13 @@ void CUDAMiner::report(uint64_t _nonce)
 	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
-		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary});
+		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary, w.job, m_hook->isStale()});
+	else
+	{
+		farm.failedSolution();
+		cwarn << "FAILURE: GPU gave incorrect result!";
+
+	}
 }
 
 void CUDAMiner::kickOff()
@@ -143,7 +155,7 @@ bool CUDAMiner::init(const h256& seed)
 				// all devices have loaded DAG, we can free now
 				delete[] s_dagInHostMemory;
 				s_dagInHostMemory = NULL;
-				cout << "Freeing DAG from host" << endl;
+				cnote << "Freeing DAG from host";
 			}
 		}
 		return true;
