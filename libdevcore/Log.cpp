@@ -60,7 +60,6 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
 	m_autospacing(_autospacing),
 	m_verbosity(_v)
 {
-	Guard l(x_logOverride);
 	auto it = s_logOverride.find(_info);
 	if ((it != s_logOverride.end() && it->second) || (it == s_logOverride.end() && (int)_v <= g_logVerbosity))
 	{
@@ -155,5 +154,6 @@ void dev::setThreadName(char const* _n)
 
 void dev::simpleDebugOut(std::string const& _s)
 {
+	Guard l(x_logOverride);
 	std::cerr << _s << '\n';
 }
