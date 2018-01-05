@@ -41,6 +41,11 @@ namespace dev
 namespace eth
 {
 
+enum CLKernelName {
+	Stable,
+	Unstable,
+};
+
 class CLMiner: public Miner
 {
 public:
@@ -49,6 +54,9 @@ public:
 	static const unsigned c_defaultLocalWorkSize = 128;
 	/// Default value of the global work size as a multiplier of the local work size
 	static const unsigned c_defaultGlobalWorkSizeMultiplier = 8192;
+
+	/// Default value of the kernel is the original one
+	static const CLKernelName c_defaultKernelName = CLKernelName::Stable;
 
 	CLMiner(FarmFace& _farm, unsigned _index);
 	~CLMiner();
@@ -73,6 +81,7 @@ public:
 			s_devices[i] = _devices[i];
 		}
 	}
+	static void setCLKernel(unsigned _clKernel) { s_clKernelName = _clKernel == 1 ? CLKernelName::Unstable : CLKernelName::Stable; }
 	HwMonitor hwmon() override;
 protected:
 	void kickOff() override;
@@ -98,6 +107,7 @@ private:
 	static unsigned s_platformId;
 	static unsigned s_numInstances;
 	static unsigned s_threadsPerHash;
+	static CLKernelName s_clKernelName;
 	static int s_devices[16];
 
 	/// The local work size for the search
