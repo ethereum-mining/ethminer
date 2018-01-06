@@ -30,6 +30,12 @@
 #define ETHASH_DATASET_PARENTS 256
 #define NODE_WORDS (64/4)
 
+//this kernel supports only exactly 8 threads
+//overwrite whatever is incoming
+#ifdef THREADS_PER_HASH
+#undef THREADS_PER_HASH
+#endif
+
 #define THREADS_PER_HASH (128 / 16)
 #define HASHES_PER_LOOP (GROUP_SIZE / THREADS_PER_HASH)
 #define FNV_PRIME	0x01000193
