@@ -640,6 +640,12 @@ bool CLMiner::init(const h256& seed)
 		}
 		else { //if(s_clKernelName == CLKernelName::Stable)
 			cllog << "OpenCL kernel: Stable kernel";
+
+			//CLMiner_kernel_stable.cl will do a #undef THREADS_PER_HASH
+			if(s_threadsPerHash != 8) {
+				cwarn << "The current stable OpenCL kernel only supports exactly 8 threads. Thread parameter will be ignored.";
+			}
+
 			code = string(CLMiner_kernel_stable, CLMiner_kernel_stable + sizeof(CLMiner_kernel_stable));
 		}
 		addDefinition(code, "GROUP_SIZE", m_workgroupSize);
