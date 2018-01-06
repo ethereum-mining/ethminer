@@ -1,6 +1,6 @@
 #define OPENCL_PLATFORM_UNKNOWN 0
 #define OPENCL_PLATFORM_NVIDIA  1
-#define OPENCL_PLATFORM_AMD		2
+#define OPENCL_PLATFORM_AMD     2
 #define OPENCL_PLATFORM_CLOVER  3
 
 #ifndef ACCESSES
@@ -16,7 +16,7 @@
 #endif
 
 #ifndef PLATFORM
-#define PLATFORM 2
+#define PLATFORM OPENCL_PLATFORM_AMD
 #endif
 
 #ifndef DAG_SIZE
