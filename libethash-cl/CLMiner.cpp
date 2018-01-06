@@ -531,9 +531,10 @@ HwMonitor CLMiner::hwmon()
 	return hw;
 }
 
-
+std::mutex CLMiner::initMtx;
 bool CLMiner::init(const h256& seed)
 {
+	std::lock_guard<std::mutex> initLock(initMtx);
 	EthashAux::LightType light = EthashAux::light(seed);
 
 	// get all platforms
