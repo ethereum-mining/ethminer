@@ -83,7 +83,6 @@ private:
 	void report(uint64_t _nonce, WorkPackage const& _w);
 
 	bool init(const h256& seed);
-	static std::mutex initMtx;
 
 	cl::Context m_context;
 	cl::CommandQueue m_queue;
