@@ -17,29 +17,27 @@ public:
 		virtual ~search_hook(); // always a virtual destructor for a class with virtuals.
 
 		// reports progress, return true to abort
-		virtual bool found(uint64_t const* nonces) = 0;
-		virtual bool searched(uint64_t start_nonce, uint32_t count) = 0;
+		virtual void found(uint64_t const* nonces, uint32_t count) = 0;
+		virtual void searched(uint32_t count) = 0;
+		virtual bool shouldStop() = 0;
 	};
 
 public:
-	ethash_cuda_miner();
+	explicit ethash_cuda_miner(size_t numDevices);
 
-	static std::string platform_info(unsigned _deviceId = 0);
-	static int getNumDevices();
-	static void listDevices();
 	static bool configureGPU(
-		int *	 _devices,
+		size_t numDevices,
+		const int* _devices,
 		unsigned _blockSize,
 		unsigned _gridSize,
 		unsigned _numStreams,
 		unsigned _scheduleFlag,
 		uint64_t _currentBlock
 		);
-        static void setParallelHash(unsigned _parallelHash);
+	static void setParallelHash(unsigned _parallelHash);
 
-	bool init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t * &hostDAG);
+	bool init(size_t numDevices, ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t * &hostDAG, unsigned dagCreateDevice);
 
-	void finish();
 	void search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN);
 	dev::eth::HwMonitor hwmon();
 
@@ -81,5 +79,5 @@ private:
 
 	static unsigned m_parallelHash;
 
-	wrap_nvml_handle *nvmlh = NULL;
+	wrap_nvml_handle *nvmlh = nullptr;
 };
