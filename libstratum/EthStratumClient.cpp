@@ -434,7 +434,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 								p_worktimer->expires_from_now(boost::posix_time::seconds(m_worktimeout));
 							}
 							else
-								p_worktimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout));
+								p_worktimer = unique_ptr<boost::asio::deadline_timer>(new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout)));
 
 							m_current.header = h256(sHeaderHash);
 							m_current.seed = h256(sSeedHash);
