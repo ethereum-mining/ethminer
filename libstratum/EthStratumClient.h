@@ -76,7 +76,7 @@ private:
 	boost::asio::streambuf m_requestBuffer;
 	boost::asio::streambuf m_responseBuffer;
 
-	boost::asio::deadline_timer * p_worktimer;
+	unique_ptr<boost::asio::deadline_timer> p_worktimer = nullptr;
 
 	int m_protocol;
 	string m_email;
