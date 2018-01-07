@@ -28,7 +28,8 @@ static void diffToTarget(uint32_t *target, double diff)
 
 
 EthStratumClient::EthStratumClient(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email)
-	: m_socket(m_io_service)
+        :       m_socket(m_io_service),
+	        m_worktimer(m_io_service, boost::posix_time::seconds(99999)) // effectively set it to infinity
 {
 	m_minerType = m;
 	m_primary.host = host;
@@ -43,8 +44,6 @@ EthStratumClient::EthStratumClient(Farm* f, MinerType m, string const & host, st
 	m_pending = 0;
 	m_maxRetries = retries;
 	m_worktimeout = worktimeout;
-	p_worktimer = unique_ptr<boost::asio::deadline_timer>(new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout)));
-	p_worktimer->cancel();
 
 	m_protocol = protocol;
 	m_email = email;
@@ -101,7 +100,7 @@ void EthStratumClient::connect()
 
 void EthStratumClient::reconnect()
 {
-	p_worktimer->cancel();
+	m_worktimer.cancel();
 
 	m_io_service.reset();
 	//m_socket.close(); // leads to crashes on Linux
@@ -429,8 +428,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 						if (headerHash != m_current.header)
 						{
-							p_worktimer->cancel();
-                            p_worktimer->expires_from_now(boost::posix_time::seconds(m_worktimeout));
+							m_worktimer.cancel();
+                                                        m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
 
 							m_current.header = h256(sHeaderHash);
 							m_current.seed = h256(sSeedHash);
