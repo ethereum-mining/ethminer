@@ -36,6 +36,10 @@
 #endif
 #define HASHES_PER_LOOP (GROUP_SIZE / THREADS_PER_HASH)
 
+#ifdef cl_clang_storage_class_specifiers
+    #pragma OPENCL EXTENSION cl_clang_storage_class_specifiers : enable
+#endif
+
 // Check for valid THREADS_PER_HASH param
 #if THREADS_PER_HASH == 1
     #define LN_THREAD_PER_HASH  0
