@@ -101,8 +101,7 @@ void EthStratumClient::connect()
 
 void EthStratumClient::reconnect()
 {
-	if (p_worktimer)
-		p_worktimer->cancel();
+	p_worktimer->cancel();
 
 	m_io_service.reset();
 	//m_socket.close(); // leads to crashes on Linux
