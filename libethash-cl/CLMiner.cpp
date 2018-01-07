@@ -531,11 +531,9 @@ HwMonitor CLMiner::hwmon()
 	return hw;
 }
 
+
 bool CLMiner::init(const h256& seed)
 {
-	static std::mutex mtx;
-	std::lock_guard<std::mutex> initLock(mtx);
-
 	EthashAux::LightType light = EthashAux::light(seed);
 
 	// get all platforms
@@ -552,22 +550,28 @@ bool CLMiner::init(const h256& seed)
 		ETHCL_LOG("Platform: " << platformName);
 
 		int platformId = OPENCL_PLATFORM_UNKNOWN;
-		if (platformName == "NVIDIA CUDA")
 		{
-			platformId = OPENCL_PLATFORM_NVIDIA;
-			nvmlh = wrap_nvml_create();
-		}
-		else if (platformName == "AMD Accelerated Parallel Processing")
-		{
-			platformId = OPENCL_PLATFORM_AMD;
-			adlh = wrap_adl_create();
+			// this mutex prevents race conditions when calling the adl wrapper since it is apparently not thread safe
+			static std::mutex mtx;
+			std::lock_guard<std::mutex> lock(mtx);
+
+			if (platformName == "NVIDIA CUDA")
+			{
+				platformId = OPENCL_PLATFORM_NVIDIA;
+				nvmlh = wrap_nvml_create();
+			}
+			else if (platformName == "AMD Accelerated Parallel Processing")
+			{
+				platformId = OPENCL_PLATFORM_AMD;
+				adlh = wrap_adl_create();
 #if defined(__linux)
-			sysfsh = wrap_amdsysfs_create();
+				sysfsh = wrap_amdsysfs_create();
 #endif
-		}
-		else if (platformName == "Clover")
-		{
-			platformId = OPENCL_PLATFORM_CLOVER;
+			}
+			else if (platformName == "Clover")
+			{
+				platformId = OPENCL_PLATFORM_CLOVER;
+			}
 		}
 
 		// get GPU device of the default platform
