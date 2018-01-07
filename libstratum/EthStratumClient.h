@@ -65,14 +65,9 @@ private:
 	int m_pending;
 
 	Farm* p_farm;
-	std::mutex x_current;
 	WorkPackage m_current;
-	WorkPackage m_previous;
 
 	bool m_stale = false;
-
-	string m_job;
-	string m_previousJob;
 
 	std::thread m_serviceThread;  ///< The IO service thread.
 	boost::asio::io_service m_io_service;
@@ -81,7 +76,7 @@ private:
 	boost::asio::streambuf m_requestBuffer;
 	boost::asio::streambuf m_responseBuffer;
 
-	boost::asio::deadline_timer * p_worktimer;
+	boost::asio::deadline_timer m_worktimer;
 
 	int m_protocol;
 	string m_email;
