@@ -29,7 +29,7 @@ static void diffToTarget(uint32_t *target, double diff)
 
 EthStratumClient::EthStratumClient(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email)
         :       m_socket(m_io_service),
-	        m_worktimer(m_io_service, boost::posix_time::seconds(99999)) // effectively set it to infinity
+	        m_worktimer(m_io_service)
 {
 	m_minerType = m;
 	m_primary.host = host;
