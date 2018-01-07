@@ -445,7 +445,10 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 								<< " seed: " << "#" + m_current.seed.hex().substr(0, 32)
 								<< " target: " << "#" + m_current.boundary.hex().substr(0, 24);
 
-							p_worktimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout));
+							if (p_worktimer == nullptr)
+								p_worktimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout));
+							else
+								p_worktimer->expires_from_now(boost::posix_time::seconds(m_worktimeout));
 							p_worktimer->async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
 
 						}
