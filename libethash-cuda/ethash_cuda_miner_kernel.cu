@@ -31,7 +31,8 @@ ethash_search(
 	uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;	
         uint64_t hash = compute_hash<_PARALLEL_HASH>(start_nonce + gid);
 	if (cuda_swab64(hash) > d_target) return;
-	uint32_t index = atomicInc(const_cast<uint32_t*>(g_output), SEARCH_RESULT_BUFFER_SIZE - 1) + 1;
+	uint32_t index = atomicInc(const_cast<uint32_t*>(g_output), 0xffffffff) + 1;
+	if (index > SEARCH_RESULT_BUFFER_SIZE -1) return;
 	g_output[index] = gid;
 }
 
@@ -49,11 +50,7 @@ void run_ethash_search(
 	{
 		case 1: ethash_search <1> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
 		case 2: ethash_search <2> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
-		case 3: ethash_search <3> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
 		case 4: ethash_search <4> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
-		case 5: ethash_search <5> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
-		case 6: ethash_search <6> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
-		case 7: ethash_search <7> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
 		case 8: ethash_search <8> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
 		default: ethash_search <4> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
 	}
@@ -153,9 +150,7 @@ void ethash_generate_dag(
 	{
 		ethash_calculate_dag_item <<<blocks, threads, 0, stream >>>(i * blocks * threads);
 		CUDA_SAFE_CALL(cudaDeviceSynchronize());
-		printf("CUDA#%d: %.0f%%\n",device, 100.0f * (float)i / (float)fullRuns);
 	}
-	//printf("GPU#%d 100%%\n");
 	CUDA_SAFE_CALL(cudaGetLastError());
 }
 
