@@ -43,6 +43,8 @@ EthStratumClient::EthStratumClient(Farm* f, MinerType m, string const & host, st
 	m_pending = 0;
 	m_maxRetries = retries;
 	m_worktimeout = worktimeout;
+	p_worktimer = unique_ptr<boost::asio::deadline_timer>(new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout)));
+	p_worktimer->cancel();
 
 	m_protocol = protocol;
 	m_email = email;
@@ -50,7 +52,6 @@ EthStratumClient::EthStratumClient(Farm* f, MinerType m, string const & host, st
 	m_submit_hashrate_id = h256::random().hex();
 	
 	p_farm = f;
-	p_worktimer = nullptr;
 	connect();
 }
 
@@ -429,12 +430,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 						if (headerHash != m_current.header)
 						{
-							if (p_worktimer) {
-								p_worktimer->cancel();
-								p_worktimer->expires_from_now(boost::posix_time::seconds(m_worktimeout));
-							}
-							else
-								p_worktimer = unique_ptr<boost::asio::deadline_timer>(new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(m_worktimeout)));
+							p_worktimer->cancel();
+							p_worktimer->expires_from_now(boost::posix_time::seconds(m_worktimeout));
 
 							m_current.header = h256(sHeaderHash);
 							m_current.seed = h256(sSeedHash);
