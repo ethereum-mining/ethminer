@@ -33,7 +33,7 @@ using namespace dev;
 
 // Logging
 int dev::g_logVerbosity = 5;
-static mutex x_logOverride;
+static mutex x_logGuard;
 
 /// Map of Log Channel types to bool, false forces the channel to be disabled, true forces it to be enabled.
 /// If a channel has no entry, then it will output as long as its verbosity (LogChannel::verbosity) is less than
@@ -60,7 +60,7 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
 	m_autospacing(_autospacing),
 	m_verbosity(_v)
 {
-	x_logOverride.lock();
+	x_logGuard.lock();
 	auto it = s_logOverride.find(_info);
 	if ((it != s_logOverride.end() && it->second) || (it == s_logOverride.end() && (int)_v <= g_logVerbosity))
 	{
@@ -78,7 +78,7 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
 
 LogOutputStreamBase::~LogOutputStreamBase()
 {
-	x_logOverride.unlock();
+	x_logGuard.unlock();
 }
 
 /// Associate a name with each thread for nice logging.
