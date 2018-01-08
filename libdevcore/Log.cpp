@@ -25,7 +25,7 @@
 #ifdef __APPLE__
 #include <pthread.h>
 #endif
-#include "Guards.h"
+#include <mutex>
 using namespace std;
 using namespace dev;
 
@@ -33,7 +33,7 @@ using namespace dev;
 
 // Logging
 int dev::g_logVerbosity = 5;
-mutex x_logOverride;
+static mutex x_logOverride;
 
 /// Map of Log Channel types to bool, false forces the channel to be disabled, true forces it to be enabled.
 /// If a channel has no entry, then it will output as long as its verbosity (LogChannel::verbosity) is less than
@@ -60,7 +60,7 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
 	m_autospacing(_autospacing),
 	m_verbosity(_v)
 {
-	Guard l(x_logOverride);
+	x_logOverride.lock();
 	auto it = s_logOverride.find(_info);
 	if ((it != s_logOverride.end() && it->second) || (it == s_logOverride.end() && (int)_v <= g_logVerbosity))
 	{
@@ -74,6 +74,11 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
 		static char const* c_end = EthReset "  ";
 		m_sstr << _id << c_begin << buf << c_sep1 << std::left << std::setw(8) << getThreadName() << ThreadContext::join(c_sep2) << c_end;
 	}
+}
+
+LogOutputStreamBase::~LogOutputStreamBase()
+{
+	x_logOverride.unlock();
 }
 
 /// Associate a name with each thread for nice logging.
