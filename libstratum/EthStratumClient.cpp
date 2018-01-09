@@ -429,7 +429,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						if (headerHash != m_current.header)
 						{
 							m_worktimer.cancel();
-                                                        m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
+                            m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
+                            m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
 
 							m_current.header = h256(sHeaderHash);
 							m_current.seed = h256(sSeedHash);
