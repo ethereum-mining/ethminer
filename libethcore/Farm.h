@@ -306,6 +306,16 @@ public:
 		return stream.str();
 	}
 
+    void set_pool_addresses(string primaryUrl, string primaryPort, string failoverUrl, string failoverPort) {
+        m_pool_addresses = primaryUrl + ":" + primaryPort;
+        if (failoverUrl != "")
+            m_pool_addresses += ";" + failoverUrl + ":" + failoverPort;
+    }
+
+    string get_pool_addresses() {
+        return m_pool_addresses;
+    }
+
 private:
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
@@ -346,6 +356,8 @@ private:
 
 	mutable SolutionStats m_solutionStats;
 	std::chrono::steady_clock::time_point m_farm_launched = std::chrono::steady_clock::now();
+
+    string m_pool_addresses;
 }; 
 
 }
