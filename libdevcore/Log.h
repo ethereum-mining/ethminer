@@ -87,6 +87,7 @@ class LogOutputStreamBase
 {
 public:
 	LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v, bool _autospacing);
+	virtual ~LogOutputStreamBase();
 
 	void comment(std::string const& _t)
 	{
