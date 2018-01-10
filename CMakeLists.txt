@@ -143,6 +143,7 @@ add_subdirectory(libethash)
 add_subdirectory(libethcore)
 add_subdirectory(libhwmon)
 add_subdirectory(libstratum)
+add_subdirectory(libgetwork)
 
 if (ETHASHCL)
 	add_subdirectory(libethash-cl)

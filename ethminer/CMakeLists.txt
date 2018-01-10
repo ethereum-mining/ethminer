@@ -29,6 +29,9 @@ if(APICORE)
 	target_link_libraries(${EXECUTABLE} apicore)
 endif()
 
+target_link_libraries(${EXECUTABLE} ethstratum)
+target_link_libraries(${EXECUTABLE} ethgetwork)
+
 include(GNUInstallDirs)
 install(TARGETS ethminer DESTINATION ${CMAKE_INSTALL_BINDIR})
 if(MSVC)

@@ -43,9 +43,11 @@
 #if ETH_ETHASHCUDA
 #include <libethash-cuda/CUDAMiner.h>
 #endif
-#include <jsonrpccpp/client/connectors/httpclient.h>
-#include "FarmClient.h"
+#include <libethcore/PoolManager.h>
 #include <libstratum/EthStratumClient.h>
+#include <libstratum/EthStratumClientV2.h>
+#include <libgetwork/EthGetworkClient.h>
+
 #if ETH_DBUS
 #include "DBusInt.h"
 #endif
@@ -589,7 +591,7 @@ public:
 		if (mode == OperationMode::Benchmark)
 			doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
 		else if (mode == OperationMode::Farm)
-			doFarm(m_minerType, m_activeFarmURL, m_farmRecheckPeriod);
+			doMiner();
 		else if (mode == OperationMode::Simulation)
 			doSimulation(m_minerType);
 		else if (mode == OperationMode::Stratum)
@@ -600,10 +602,8 @@ public:
 	{
 		_out
 			<< "Work farming mode:" << endl
-			<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
 			<< "    -FF,-FO, --farm-failover, --stratum-failover <url> Failover getwork/stratum URL (default: disabled)" << endl
 			<< "	--farm-retries <n> Number of retries until switch to failover (default: 3)" << endl
-			<< "	-S, --stratum <host:port>  Put into stratum mode with the stratum server at host:port" << endl
 			<< "	-SF, --stratum-failover <host:port>  Failover stratum server at host:port" << endl
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
@@ -817,153 +817,71 @@ private:
 		}
 	}
 
-
-	void doFarm(MinerType _m, string & _remote, unsigned _recheckPeriod)
+	void doMiner()
 	{
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
+		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index) { return new CLMiner(_farm, _index); } };
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
-#endif
-		(void)_m;
-		(void)_remote;
-		(void)_recheckPeriod;
-		jsonrpc::HttpClient client(m_farmURL);
-		:: FarmClient rpc(client);
-		jsonrpc::HttpClient failoverClient(m_farmFailOverURL);
-		::FarmClient rpcFailover(failoverClient);
-
-		FarmClient * prpc = &rpc;
-
-		h256 id = h256::random();
-		Farm f;
-		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
-
-#if API_CORE
-		Api api(this->m_api_port, f);
+		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index) { return new CUDAMiner(_farm, _index); } };
 #endif
 
-		f.setSealers(sealers);
+		PoolClient *client = nullptr;
 
-		if (_m == MinerType::CL)
-			f.start("opencl", false);
-		else if (_m == MinerType::CUDA)
-			f.start("cuda", false);
-		else if (_m == MinerType::Mixed) {
-			f.start("cuda", false);
-			f.start("opencl", true);
+		if (mode == OperationMode::Stratum) {
+			// Not Yet
+		}
+		else if (mode == OperationMode::Farm) {
+			client = new EthGetworkClient(m_farmRecheckPeriod);
+		}
+		else {
+			cwarn << "Invalid OperationMode";
+			exit(1);
 		}
 
-		WorkPackage current;
-		std::mutex x_current;
-		while (m_running)
-			try
-			{
-				bool completed = false;
-				Solution solution;
-				f.onSolutionFound([&](Solution sol)
-				{
-					solution = sol;
-					return completed = true;
-				});
-				for (unsigned i = 0; !completed; ++i)
-				{
-					auto mp = f.miningProgress(m_show_hwmonitors);
-					if (current)
-					{
-						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
-#if ETH_DBUS
-						dbusint.send(toString(mp).data());
+		// Should not happen!
+		if (!client) {
+			cwarn << "Invalid PoolClient";
+			exit(1);
+		}
+
+		PoolManager *mgr = new PoolManager(client, sealers, m_minerType);
+		mgr->setReconnectTries(m_maxFarmRetries);
+		mgr->addConnection(m_farmURL, m_port, m_user, m_pass);
+		if (!m_farmFailOverURL.empty()) {
+			mgr->addConnection(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
+		}
+
+
+#if API_CORE
+		Api api(this->m_api_port, *mgr->getFarm());
 #endif
-					}
-					else
-						minelog << "Waiting for work package...";
 
-					auto rate = mp.rate();
+		// Start PoolManager
+		mgr->start();
 
-					try
-					{
-						prpc->eth_submitHashrate(toJS(rate), "0x" + id.hex());
-					}
-					catch (jsonrpc::JsonRpcException const& _e)
-					{
-						cwarn << "Failed to submit hashrate.";
-						cwarn << boost::diagnostic_information(_e);
-					}
+		// Run CLI in loop
+		while (m_running) {
+			if (mgr->isConnected()) {
+				auto mp = mgr->getFarm()->miningProgress(m_show_hwmonitors);
+				minelog << mp << mgr->getFarm()->getSolutionStats() << mgr->getFarm()->farmLaunchedFormatted();
 
-					Json::Value v = prpc->eth_getWork();
-					h256 hh(v[0].asString());
-					h256 newSeedHash(v[1].asString());
-
-					if (hh != current.header)
-					{
-						x_current.lock();
-						current.header = hh;
-						current.seed = newSeedHash;
-						current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
-						minelog << "Got work package: #" + current.header.hex().substr(0,8);
-						f.setWork(current);
-						x_current.unlock();
-					}
-					this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
-				}
-				bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.work.header), "0x" + toString(solution.mixHash));
-				if (ok) {
-					cnote << "Solution found; Submitted to" << _remote;
-					cnote << "  Nonce:" << solution.nonce;
-					cnote << "  headerHash:" << solution.work.header.hex();
-					cnote << "  mixHash:" << solution.mixHash.hex();
-					cnote << EthLime << " Accepted." << EthReset;
-					f.acceptedSolution(solution.stale);
-				}
-				else {
-					cwarn << "Solution found; Submitted to" << _remote;
-					cwarn << "  Nonce:" << solution.nonce;
-					cwarn << "  headerHash:" << solution.work.header.hex();
-					cwarn << "  mixHash:" << solution.mixHash.hex();
-					cwarn << EthYellow << " Rejected." << EthReset;
-					f.rejectedSolution(solution.stale);
-				}
+#if ETH_DBUS
+				dbusint.send(toString(mp).data());
+#endif
 			}
-			catch (jsonrpc::JsonRpcException&)
-			{
-				if (m_maxFarmRetries > 0)
-				{
-					for (auto i = 3; --i; this_thread::sleep_for(chrono::seconds(1)))
-						cerr << "JSON-RPC problem. Probably couldn't connect. Retrying in " << i << "... \r";
-					cerr << endl;
-				}
-				else
-				{
-					cerr << "JSON-RPC problem. Probably couldn't connect." << endl;
-				}
-				if (m_farmFailOverURL != "")
-				{
-					m_farmRetries++;
-					if (m_farmRetries > m_maxFarmRetries)
-					{
-						if (_remote == "exit")
-						{
-							m_running = false;
-						}
-						else if (_remote == m_farmURL) {
-							_remote = m_farmFailOverURL;
-							prpc = &rpcFailover;
-						}
-						else {
-							_remote = m_farmURL;
-							prpc = &rpc;
-						}
-						m_farmRetries = 0;
-					}
-
-				}
+			else {
+				minelog << "not-connected";
 			}
+			this_thread::sleep_for(chrono::seconds(5));
+		}
+
+		mgr->stop();
+
 		exit(0);
 	}
-
+	
 	void doStratum()
 	{
 		map<string, Farm::SealerDescriptor> sealers;
