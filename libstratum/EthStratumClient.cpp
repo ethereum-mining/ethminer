@@ -362,7 +362,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			p_farm->acceptedSolution(m_stale);
 		}
 		else {
-			cwarn << "Rejected.";
+			cwarn << EthYellow << "Rejected." EthReset;
 			p_farm->rejectedSolution(m_stale);
 		}
 		break;
@@ -397,8 +397,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					if (sHeaderHash != "" && sSeedHash != "")
 					{
 						m_worktimer.cancel();
-                        m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
-                        m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+                                                m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
+                                                m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
 
 						m_current.header = h256(sHeaderHash);
 						m_current.seed = h256(sSeedHash);
@@ -409,9 +409,17 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						m_current.job = h256(job);
 
 						p_farm->setWork(m_current);
-						cnote << "Received new job #" + job.substr(0, 8)
-							<< " seed: " << "#" + m_current.seed.hex().substr(0, 32)
-							<< " target: " << "#" + m_current.boundary.hex().substr(0, 24);
+						cnote << EthWhite << "Received new job #" + job.substr(0, 8) << EthReset;
+                                                if (m_lastSeed != m_current.seed)
+                                                {
+                                                        m_lastSeed = m_current.seed;
+							cnote << "Received new seed: " << "#" + m_current.seed.hex();
+                                                }
+                                                if (m_lastBound != m_current.boundary)
+                                                {
+							m_lastBound = m_current.boundary;
+                                                        cnote << "Received new target: " << "#" + m_current.boundary.hex();
+                                                }
 					}
 				}
 				else
@@ -433,8 +441,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						if (headerHash != m_current.header)
 						{
 							m_worktimer.cancel();
-                            m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
-                            m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+                                                        m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
+                                                        m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
 
 							m_current.header = h256(sHeaderHash);
 							m_current.seed = h256(sSeedHash);
@@ -442,10 +450,18 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 							m_current.job = h256(job);
 
 							p_farm->setWork(m_current);
-							cnote << "Received new job #" + job.substr(0, 8)
-								<< " seed: " << "#" + m_current.seed.hex().substr(0, 32)
-								<< " target: " << "#" + m_current.boundary.hex().substr(0, 24);
-						}
+                                                        cnote << EthWhite << "Received new job #" + job.substr(0, 8) << EthReset;
+                                                        if (m_lastSeed != m_current.seed)
+                                                        {
+                                                                m_lastSeed = m_current.seed;
+                                                                cnote << "Received new seed: " << "#" + m_current.seed.hex();
+                                                        }
+                                                        if (m_lastBound != m_current.boundary)
+                                                        {
+                                                                m_lastBound = m_current.boundary;
+                                                                cnote << "Received new target: " << "#" + m_current.boundary.hex();
+                                                        }
+                                                }
 					}
 				}
 			}
@@ -527,14 +543,11 @@ bool EthStratumClient::submit(Solution solution) {
 		boost::asio::placeholders::error));
 	if (m_stale)
 	{
-		cwarn << "Stale solution found. Submitted to" << p_active->host;
+		cwarn << "Stale solution submitted to" << p_active->host << " nonce" << "0x" + nonceHex;
 	}
 	else
 	{
-		cnote << "Solution found; Submitted to" << p_active->host;
-	}
-	if (m_protocol != STRATUM_PROTOCOL_ETHEREUMSTRATUM) {
-		cnote << "Nonce:" << "0x" + nonceHex;
+		cnote << "Solution submitted to" << p_active->host << " nonce" << "0x" + nonceHex;
 	}
 	return true;
 }

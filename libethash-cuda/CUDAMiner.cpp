@@ -112,7 +112,7 @@ void CUDAMiner::report(uint64_t _nonce)
 	else
 	{
 		farm.failedSolution();
-		cwarn << "FAILURE: GPU gave incorrect result!";
+		cwarn << EthRed << "GPU gave incorrect result!" << EthReset;
 
 	}
 }

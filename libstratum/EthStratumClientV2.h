@@ -87,4 +87,7 @@ private:
 	string m_submit_hashrate_id;
 
 	void processExtranonce(std::string& enonce);
+
+    h256 m_lastSeed = h256();
+    h256 m_lastBound = h256();
 };

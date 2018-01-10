@@ -47,7 +47,7 @@ using namespace dev;
 
 struct CUDAChannel: public LogChannel
 {
-	static const char* name() { return EthOrange " cu"; }
+	static const char* name() { return EthOrange "cu"; }
 	static const int verbosity = 2;
 	static const bool debug = false;
 };
@@ -205,14 +205,16 @@ bool ethash_cuda_miner::init(size_t numDevices, ethash_light_t _light, uint8_t c
 			{
 				if((m_device_num == dagCreateDevice) || !_cpyToHost){ //if !cpyToHost -> All devices shall generate their DAG
 					cudalog << "Generating DAG for GPU #" << m_device_num << " with dagSize: " 
-							<< dagSize <<" gridSize: " << s_gridSize << " &m_streams[0]: " << &m_streams[0];
+							<< dagSize <<" gridSize: " << s_gridSize;
 					ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], m_device_num);
+					cudalog << "DAG for GPU #" << m_device_num << " generated";
 
 					if (_cpyToHost)
 					{
 						uint8_t* memoryDAG = new uint8_t[dagSize];
 						cudalog << "Copying DAG from GPU #" << m_device_num << " to host";
 						CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
+					    cudalog << "DAG from GPU #" << m_device_num << " copied" ;
 
 						hostDAG = memoryDAG;
 					}
@@ -228,6 +230,7 @@ cpyDag:
 				cudalog << "Copying DAG from host to GPU #" << m_device_num;
 				const void* hdag = (const void*)hostDAG;
 				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
+			    cudalog << "DAG copied to GPU #" << m_device_num ;
 			}
 		}
     
