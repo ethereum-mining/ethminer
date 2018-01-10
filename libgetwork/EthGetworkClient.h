@@ -4,13 +4,10 @@
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libethcore/PoolClient.h>
 #include <iostream>
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
 #include <libdevcore/Worker.h>
 #include "jsonrpc_getwork.h"
 
 using namespace std;
-using namespace boost::asio;
 using namespace dev;
 using namespace eth;
 

@@ -1,4 +1,5 @@
 #include "EthGetworkClient.h"
+#include <chrono>
 
 using namespace std;
 using namespace dev;
@@ -65,7 +66,7 @@ void EthGetworkClient::workLoop()
 			if (m_solutionToSubmit.nonce) {
 				try
 				{
-					bool accepted = p_client->eth_submitWork("0x" + toHex(m_solutionToSubmit.nonce), "0x" + toString(m_solutionToSubmit.headerHash), "0x" + toString(m_solutionToSubmit.mixHash));
+					bool accepted = p_client->eth_submitWork("0x" + toHex(m_solutionToSubmit.nonce), "0x" + toString(m_solutionToSubmit.work.header), "0x" + toString(m_solutionToSubmit.mixHash));
 					if (accepted) {
 						if (m_onSolutionAccepted) {
 							m_onSolutionAccepted(false);

@@ -846,26 +846,30 @@ private:
 			exit(1);
 		}
 
-		PoolManager *mgr = new PoolManager(client, sealers, m_minerType);
-		mgr->setReconnectTries(m_maxFarmRetries);
-		mgr->addConnection(m_farmURL, m_port, m_user, m_pass);
+		//sealers, m_minerType
+		Farm f;
+		f.setSealers(sealers);
+
+		PoolManager mgr(client, f, m_minerType);
+		mgr.setReconnectTries(m_maxFarmRetries);
+		mgr.addConnection(m_farmURL, m_port, m_user, m_pass);
 		if (!m_farmFailOverURL.empty()) {
-			mgr->addConnection(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
+			mgr.addConnection(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
 		}
 
 
 #if API_CORE
-		Api api(this->m_api_port, *mgr->getFarm());
+		Api api(this->m_api_port, f);
 #endif
 
 		// Start PoolManager
-		mgr->start();
+		mgr.start();
 
 		// Run CLI in loop
 		while (m_running) {
-			if (mgr->isConnected()) {
-				auto mp = mgr->getFarm()->miningProgress(m_show_hwmonitors);
-				minelog << mp << mgr->getFarm()->getSolutionStats() << mgr->getFarm()->farmLaunchedFormatted();
+			if (mgr.isConnected()) {
+				auto mp = f.miningProgress(m_show_hwmonitors);
+				minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
 
 #if ETH_DBUS
 				dbusint.send(toString(mp).data());
@@ -877,7 +881,7 @@ private:
 			this_thread::sleep_for(chrono::seconds(5));
 		}
 
-		mgr->stop();
+		mgr.stop();
 
 		exit(0);
 	}

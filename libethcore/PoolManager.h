@@ -2,8 +2,6 @@
 #define POOL_MANAGER_H_
 
 #include <iostream>
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
 #include <libdevcore/Worker.h>
 #include "Farm.h"
 #include "Miner.h"
@@ -13,7 +11,6 @@
 #endif
 
 using namespace std;
-using namespace boost::asio;
 
 namespace dev
 {
@@ -37,7 +34,7 @@ namespace dev
 		class PoolManager : public Worker
 		{
 		public:
-			PoolManager(PoolClient *client, std::map<std::string, Farm::SealerDescriptor> const& _sealers, MinerType const &minerType);
+			PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType);
 			void addConnection(string const & host, string const & port, string const & user, string const & pass);
 			void clearConnections();
 			void start();
@@ -45,8 +42,6 @@ namespace dev
 			void setReconnectTries(unsigned const & reconnectTries) { m_reconnectTries = reconnectTries; };
 			bool isConnected() { return p_client->isConnected(); };
 			bool isRunning() { return p_client->isRunning(); };
-			bool isMining() { return p_farm->isMining(); };
-			Farm * getFarm() { return p_farm; };
 
 		private:
 			unsigned m_hashrateReportingTime = 10;
@@ -60,7 +55,7 @@ namespace dev
 			unsigned m_activeConnectionIdx = 0;
 
 			PoolClient *p_client;
-			Farm *p_farm;
+			Farm &m_farm;
 			MinerType m_minerType;
 			void tryReconnect();
 		};

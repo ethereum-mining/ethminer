@@ -1,59 +1,58 @@
 #include "PoolManager.h"
+#include <chrono>
 
+using namespace std;
 using namespace dev;
 using namespace eth;
 
-PoolManager::PoolManager(PoolClient * client, std::map<std::string, Farm::SealerDescriptor> const & _sealers, MinerType const & minerType) 
-	: m_minerType(minerType), Worker("main")
+PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType) : Worker("main"), m_farm(farm), m_minerType(minerType)
 {
 	p_client = client;
-	p_farm = new Farm();
-	p_farm->setSealers(_sealers);
 
 	p_client->onConnected([&]()
 	{
 		m_reconnectTry = 0;
 		cnote << "Connected to " + m_connections[m_activeConnectionIdx].host();
-		if (!p_farm->isMining())
+		if (!m_farm.isMining())
 		{
 			cnote << "Spinning up miners...";
 			if (m_minerType == MinerType::CL)
-				p_farm->start("opencl", false);
+				m_farm.start("opencl", false);
 			else if (m_minerType == MinerType::CUDA)
-				p_farm->start("cuda", false);
+				m_farm.start("cuda", false);
 			else if (m_minerType == MinerType::Mixed) {
-				p_farm->start("cuda", false);
-				p_farm->start("opencl", true);
+				m_farm.start("cuda", false);
+				m_farm.start("opencl", true);
 			}
 		}
 	});
 	p_client->onDisconnected([&]()
 	{
 		cnote << "Disconnected from " + m_connections[m_activeConnectionIdx].host();
-		if (p_farm->isMining())
+		if (m_farm.isMining())
 		{
 			cnote << "Shutting down miners...";
-			p_farm->stop();
+			m_farm.stop();
 		}
 		tryReconnect();
 	});
 	p_client->onWorkReceived([&](WorkPackage const& wp)
 	{
 		cnote << "Received new job #" + wp.header.hex().substr(0, 8) + " from " + m_connections[m_activeConnectionIdx].host();
-		p_farm->setWork(wp);
+		m_farm.setWork(wp);
 	});
 	p_client->onSolutionAccepted([&](bool const& stale)
 	{
 		cnote << EthLime << "B-) Submitted and accepted." << EthReset << (stale ? " (stale)" : "");
-		p_farm->acceptedSolution(stale);
+		m_farm.acceptedSolution(stale);
 	});
 	p_client->onSolutionRejected([&](bool const& stale)
 	{
 		cwarn << ":-( Not accepted." << (stale ? " (stale)" : "");
-		p_farm->rejectedSolution(stale);
+		m_farm.rejectedSolution(stale);
 	});
 
-	p_farm->onSolutionFound([&](Solution sol)
+	m_farm.onSolutionFound([&](Solution sol)
 	{
 		cnote << "Solution found; Submitting to " + m_connections[m_activeConnectionIdx].host() << "...";
 		cnote << "  Nonce:" << toHex(sol.nonce);
@@ -67,6 +66,9 @@ PoolManager::PoolManager(PoolClient * client, std::map<std::string, Farm::Sealer
 void PoolManager::stop()
 {
 	m_running = false;
+
+	if (m_farm.isMining())
+		m_farm.stop();
 }
 
 void PoolManager::workLoop()
@@ -77,7 +79,7 @@ void PoolManager::workLoop()
 		m_hashrateReportingTimePassed++;
 		// Hashrate reporting
 		if (m_hashrateReportingTimePassed > m_hashrateReportingTime) {
-			auto mp = p_farm->miningProgress();
+			auto mp = m_farm.miningProgress();
 			std::string h = toHex(toCompactBigEndian(mp.rate(), 1));
 			std::string res = h[0] != '0' ? h : h.substr(1);
 
