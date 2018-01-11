@@ -16,19 +16,21 @@ void ApiServer::getMinerStat1(const Json::Value& request, Json::Value& response)
 	
 	auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(steady_clock::now() - this->m_farm.farmLaunched());
 	
-	SolutionStats s = this->m_farm.getSolutionStats();
-	WorkingProgress p = this->m_farm.miningProgress(true);
+	SolutionStats s = m_farm.getSolutionStats();
+	WorkingProgress p = m_farm.miningProgress(true);
 	
 	ostringstream totalMhEth; 
 	ostringstream totalMhDcr; 
 	ostringstream detailedMhEth;
 	ostringstream detailedMhDcr;
 	ostringstream tempAndFans;
+	ostringstream poolAddresses;
 	ostringstream invalidStats;
 	
 	totalMhEth << std::fixed << std::setprecision(0) << (p.rate() / 1000.0f) << ";" << s.getAccepts() << ";" << s.getRejects();
 	totalMhDcr << "0;0;0"; // DualMining not supported
 	invalidStats << s.getFailures() << ";0"; // Invalid + Pool switches
+    poolAddresses << m_farm.get_pool_addresses(); 
 	invalidStats << ";0;0"; // DualMining not supported
 	
 	int gpuIndex = 0;
@@ -55,7 +57,7 @@ void ApiServer::getMinerStat1(const Json::Value& request, Json::Value& response)
 	response[4] = totalMhDcr.str();              // total DCR hashrate in MH/s, number of DCR shares, number of DCR rejected shares.
 	response[5] = detailedMhDcr.str();           // detailed DCR hashrate for all GPUs.
 	response[6] = tempAndFans.str();             // Temperature and Fan speed(%) pairs for all GPUs.
-	response[7] = "";                            // current mining pool. For dual mode, there will be two pools here.
+	response[7] = poolAddresses.str();           // current mining pool. For dual mode, there will be two pools here.
 	response[8] = invalidStats.str();            // number of ETH invalid shares, number of ETH pool switches, number of DCR invalid shares, number of DCR pool switches.
 }
 
