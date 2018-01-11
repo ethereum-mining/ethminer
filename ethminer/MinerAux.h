@@ -654,6 +654,7 @@ private:
 		cdebug << genesis.boundary();
 
 		Farm f;
+		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
 		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
@@ -717,6 +718,7 @@ private:
 		cdebug << genesis.boundary();
 
 		Farm f;
+		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
 		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); } };
@@ -808,6 +810,7 @@ private:
 
 		h256 id = h256::random();
 		Farm f;
+		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
 		
 #if API_CORE
 		Api api(this->m_api_port, f);
@@ -946,6 +949,7 @@ private:
 			m_farmRecheckPeriod = m_defaultStratumFarmRecheckPeriod;
 
 		Farm f;
+		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
 		
 #if API_CORE
 		Api api(this->m_api_port, f);
