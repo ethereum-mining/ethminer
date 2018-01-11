@@ -41,7 +41,7 @@ wrap_adl_handle * wrap_adl_create()
 return NULL;
 #endif
 
-#if WIN32
+#ifdef _WIN32
 	char tmp[512];
 	ExpandEnvironmentStringsA(libatiadlxx, tmp, sizeof(tmp));
 #else
@@ -90,14 +90,14 @@ return NULL;
 		return NULL;
 	}
 
-	adlh->adlMainControlCreate(ADL_Main_Memory_Alloc, 1); 
+	adlh->adlMainControlCreate(ADL_Main_Memory_Alloc, 1);
 	adlh->adlMainControlRefresh();
 
 	int logicalGpuCount = 0;
 	adlh->adlAdapterNumberOfAdapters(&logicalGpuCount);
 
 	adlh->phys_logi_device_id = (int*)calloc(logicalGpuCount, sizeof(int));
-	
+
 	adlh->adl_gpucount = 0;
 	int last_adapter = 0;
 	if (logicalGpuCount > 0) {
