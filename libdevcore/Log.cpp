@@ -153,9 +153,8 @@ void dev::setThreadName(char const* _n)
 #endif
 }
 
-void dev::simpleDebugOut(std::string const& _s)
+void dev::simpleDebugOut(std::string _s)
 {
-        string s = _s;
-        s.push_back('\n');
-        std::cerr << s;
+        _s.push_back('\n');
+        std::cerr << _s;
 }

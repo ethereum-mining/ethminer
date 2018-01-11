@@ -44,7 +44,7 @@ public:
 };
 
 /// A simple log-output function that prints log messages to stdout.
-void simpleDebugOut(std::string const&);
+void simpleDebugOut(std::string);
 
 /// The logging system's current verbosity.
 extern int g_logVerbosity;
