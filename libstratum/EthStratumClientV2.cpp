@@ -29,7 +29,9 @@ static void diffToTarget(uint32_t *target, double diff)
 
 EthStratumClientV2::EthStratumClientV2(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email)
 	: Worker("stratum"), 
-	  m_socket(m_io_service)
+	  m_socket(m_io_service),
+      m_worktimer(m_io_service)
+
 {
 	m_minerType = m;
 	m_primary.host = host;
@@ -50,7 +52,6 @@ EthStratumClientV2::EthStratumClientV2(Farm* f, MinerType m, string const & host
 	m_submit_hashrate_id = h256::random().hex();
 	
 	p_farm = f;
-	p_worktimer = nullptr;
 	startWorking();
 }
 
@@ -190,10 +191,7 @@ void EthStratumClientV2::connect()
 
 void EthStratumClientV2::reconnect()
 {
-	if (p_worktimer) {
-		p_worktimer->cancel();
-		p_worktimer = nullptr;
-	}
+	m_worktimer.cancel();
 
 	//m_io_service.reset();
 	//m_socket.close(); // leads to crashes on Linux
@@ -344,6 +342,10 @@ void EthStratumClientV2::processReponse(Json::Value& responseObject)
 
 					if (sHeaderHash != "" && sSeedHash != "")
 					{
+                        m_worktimer.cancel();
+                        m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
+                        m_worktimer.async_wait(boost::bind(&EthStratumClientV2::work_timeout_handler, this, boost::asio::placeholders::error));
+
 						m_current.header = h256(sHeaderHash);
 						m_current.seed = h256(sSeedHash);
 						m_current.boundary = h256();
@@ -372,6 +374,9 @@ void EthStratumClientV2::processReponse(Json::Value& responseObject)
 
 					if (sHeaderHash != "" && sSeedHash != "" && sShareTarget != "")
 					{
+                        m_worktimer.cancel();
+                        m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
+                        m_worktimer.async_wait(boost::bind(&EthStratumClientV2::work_timeout_handler, this, boost::asio::placeholders::error));
 
 						h256 headerHash = h256(sHeaderHash);
 
