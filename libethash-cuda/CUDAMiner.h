@@ -72,6 +72,7 @@ class EthashCUDAHook;
 	protected:
 		void kickOff() override;
 		void pause() override;
+		void waitPaused() override;
 	private:
 		void workLoop() override;
 		void report(uint64_t _nonce);
