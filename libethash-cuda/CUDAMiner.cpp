@@ -41,6 +41,10 @@ namespace eth
 
 				m_abort = true;
 			}
+                }
+
+                void wait()
+                {
 			// m_abort is true so now searched()/found() will return true to abort the search.
 			// we hang around on this thread waiting for them to point out that they have aborted since
 			// otherwise we may end up deleting this object prior to searched()/found() being called.
@@ -207,6 +211,11 @@ void CUDAMiner::workLoop()
 void CUDAMiner::pause()
 {
 	m_hook->abort();
+}
+
+void CUDAMiner::waitPaused()
+{
+	m_hook->wait();
 }
 
 unsigned CUDAMiner::getNumDevices()
