@@ -181,6 +181,11 @@ public:
 			workSwitchStart = std::chrono::high_resolution_clock::now();
 		}
 		pause();
+	}
+
+	void startWork()
+	{
+		waitPaused();
 		kickOff();
 		m_hashCount = 0;
 	}
@@ -203,6 +208,7 @@ protected:
 	 * @brief No work left to be done. Pause until told to kickOff().
 	 */
 	virtual void pause() = 0;
+	virtual void waitPaused() = 0;
 
 	WorkPackage work() const { Guard l(x_work); return m_work; }
 
