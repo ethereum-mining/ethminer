@@ -143,6 +143,13 @@ To meet the community, ask general questions and chat about ethminer join [the e
 All bug reports, pull requests and code reviews are very much welcome.
 
 
+## Coverage
+
+| Type      | Status |
+|-----------|--------|
+| License   | [![License](https://img.shields.io/badge/%20License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
+
+
 ## F.A.Q
 
 1. Why is my hashrate with Nvidia cards on Windows 10 so low?
