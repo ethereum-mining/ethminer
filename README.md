@@ -147,6 +147,7 @@ All bug reports, pull requests and code reviews are very much welcome.
 
 | Type      | Status |
 |-----------|--------|
+| Coverity  | [![Coverity Status](https://scan.coverity.com/projects/14847/badge.svg)](https://scan.coverity.com/projects/ethereum-mining-ethminer)
 | License   | [![License](https://img.shields.io/badge/%20License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
 
 
