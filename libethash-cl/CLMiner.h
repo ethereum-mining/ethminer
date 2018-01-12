@@ -86,6 +86,7 @@ public:
 protected:
 	void kickOff() override;
 	void pause() override;
+	void waitPaused() override;
 
 private:
 	void workLoop() override;
