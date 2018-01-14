@@ -9,6 +9,14 @@
 #include <libhwmon/wrapnvml.h>
 #include "ethash_cuda_miner_kernel.h"
 
+namespace dev
+{
+namespace eth
+{
+class WorkPackage;
+}
+}
+
 class ethash_cuda_miner
 {
 public:
@@ -17,7 +25,7 @@ public:
 		virtual ~search_hook(); // always a virtual destructor for a class with virtuals.
 
 		// reports progress, return true to abort
-		virtual void found(uint64_t const* nonces, uint32_t count) = 0;
+		virtual void found(uint64_t const* nonces, uint32_t count, const dev::eth::WorkPackage& w) = 0;
 		virtual void searched(uint32_t count) = 0;
 		virtual bool shouldStop() = 0;
 	};
@@ -38,7 +46,7 @@ public:
 
 	bool init(size_t numDevices, ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t * &hostDAG, unsigned dagCreateDevice);
 
-	void search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN);
+	void search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN, const dev::eth::WorkPackage& w);
 	dev::eth::HwMonitor hwmon();
 
 	/* -- default values -- */
