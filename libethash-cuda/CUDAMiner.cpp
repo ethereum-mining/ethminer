@@ -170,7 +170,7 @@ void CUDAMiner::workLoop()
 	{
 		while(true)
 		{
-			const WorkPackage w = work();
+			const WorkPackage w = getWork();
 			
 			if (current.header != w.header || current.seed != w.seed)
 			{
