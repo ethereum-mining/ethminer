@@ -64,10 +64,10 @@ namespace eth
 
 
 	protected:
-		void found(uint64_t const* _nonces, uint32_t count) override
+		void found(uint64_t const* _nonces, uint32_t count, const WorkPackage& w) override
 		{
 			for (uint32_t i = 0; i < count; i++)
-				m_owner.report(_nonces[i]);
+				m_owner.report(_nonces[i], w);
 		}
 
 		void searched(uint32_t _count) override
@@ -106,18 +106,16 @@ CUDAMiner::~CUDAMiner()
 	delete m_hook;
 }
 
-void CUDAMiner::report(uint64_t _nonce)
+void CUDAMiner::report(uint64_t _nonce, const WorkPackage& w)
 {
 	// FIXME: This code is exactly the same as in EthashGPUMiner.
-	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
 		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary, w.job, m_hook->isStale()});
 	else
 	{
 		farm.failedSolution();
-		cwarn << EthRed << "GPU gave incorrect result!" << EthReset;
-
+		cwarn << EthRed "GPU gave incorrect result!" EthReset;
 	}
 }
 
@@ -193,7 +191,7 @@ void CUDAMiner::workLoop()
 			uint64_t startN = current.startNonce;
 			if (current.exSizeBits >= 0) 
 				startN = current.startNonce | ((uint64_t)index << (64 - 4 - current.exSizeBits)); // this can support up to 16 devices
-			m_miner.search(current.header.data(), upper64OfBoundary, *m_hook, (current.exSizeBits >= 0), startN);
+			m_miner.search(current.header.data(), upper64OfBoundary, *m_hook, (current.exSizeBits >= 0), startN, w);
 
 			// Check if we should stop.
 			if (shouldStop())
