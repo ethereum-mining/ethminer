@@ -109,7 +109,7 @@ CUDAMiner::~CUDAMiner()
 void CUDAMiner::report(uint64_t _nonce)
 {
 	// FIXME: This code is exactly the same as in EthashGPUMiner.
-	WorkPackage &w = work();  // No need to copy, use reference.
+	WorkPackage w = work();  // Copy work package to avoid repeated mutex lock.
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
 		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary, w.job, m_hook->isStale()});
@@ -170,7 +170,7 @@ void CUDAMiner::workLoop()
 	{
 		while(true)
 		{
-			const WorkPackage w = work();
+			const WorkPackage w = getWork();
 			
 			if (current.header != w.header || current.seed != w.seed)
 			{

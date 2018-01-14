@@ -175,8 +175,12 @@ public:
 
 	void setWork(WorkPackage const& _work)
 	{
-		m_work = _work;
-		workSwitchStart = std::chrono::high_resolution_clock::now();
+		{
+			Guard l(x_work);
+			m_nextwork = _work;
+                        m_newwork = true;
+			workSwitchStart = std::chrono::high_resolution_clock::now();
+		}
 		pause();
 	}
 
@@ -207,8 +211,17 @@ protected:
 	virtual void pause() = 0;
 	virtual void waitPaused() = 0;
 
-	WorkPackage work() const { return m_work; }
-	WorkPackage &work() { return m_work; }
+	WorkPackage work() const { Guard l(x_work); return m_work; }
+	WorkPackage getWork()
+        {
+                Guard l(x_work);
+                if (m_newwork)
+                {
+                        m_newwork = false;
+                        m_work = m_nextwork;
+                }
+                return m_work;
+        }
 
 	void addHashCount(uint64_t _n) { m_hashCount += _n; }
 
@@ -225,6 +238,10 @@ private:
 	uint64_t m_hashCount = 0;
 
 	WorkPackage m_work;
+	WorkPackage m_nextwork;
+        bool m_newwork = false;
+
+	mutable Mutex x_work;
 };
 
 }

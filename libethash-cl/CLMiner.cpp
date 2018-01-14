@@ -306,7 +306,7 @@ void CLMiner::workLoop()
 	try {
 		while (true)
 		{
-			const WorkPackage w = work();
+			const WorkPackage w = getWork();
 
 			if (current.header != w.header)
 			{
