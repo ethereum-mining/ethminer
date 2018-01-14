@@ -288,8 +288,6 @@ public:
 	void onSolutionFound(SolutionFound const& _handler) { m_onSolutionFound = _handler; }
 	void onMinerRestart(MinerRestart const& _handler) { m_onMinerRestart = _handler; }
 
-	WorkPackage work() const { Guard l(x_minerWork); return m_work; }
-
 	std::chrono::steady_clock::time_point farmLaunched() {
 		return m_farm_launched;
 	}
