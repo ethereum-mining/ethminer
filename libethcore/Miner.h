@@ -175,11 +175,15 @@ public:
 
 	void setWork(WorkPackage const& _work)
 	{
-		{
-			Guard l(x_work);
-			m_work = _work;
-			workSwitchStart = std::chrono::high_resolution_clock::now();
-		}
+		if (m_currentWorkIndex != m_lastWorkIndex)
+			return; // no choice but to drop this one. since the miner
+				// hasn't consumed the previous one and circulating
+				// the pointer now might cause a race.
+				// This occurs when DAG creation is in progress.
+		unsigned next = m_currentWorkIndex ^ 1;
+		m_work[next] = _work;
+		m_currentWorkIndex = next; // Make the new work visible to the work() method
+		workSwitchStart = std::chrono::high_resolution_clock::now();
 		pause();
 	}
 
@@ -210,7 +214,12 @@ protected:
 	virtual void pause() = 0;
 	virtual void waitPaused() = 0;
 
-	WorkPackage work() const { Guard l(x_work); return m_work; }
+	WorkPackage work()
+	{
+		if (m_lastWorkIndex != m_currentWorkIndex)
+			m_lastWorkIndex = m_lastWorkIndex ^ 1;
+		return m_work[m_lastWorkIndex];
+	}
 
 	void addHashCount(uint64_t _n) { m_hashCount += _n; }
 
@@ -226,8 +235,10 @@ protected:
 private:
 	uint64_t m_hashCount = 0;
 
-	WorkPackage m_work;
-	mutable Mutex x_work;
+	WorkPackage m_work[2];
+	unsigned m_currentWorkIndex = 0;
+	unsigned m_lastWorkIndex = 0;
+
 };
 
 }
