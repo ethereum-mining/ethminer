@@ -241,7 +241,7 @@ cpyDag:
 	}
 }
 
-void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN)
+void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN, const dev::eth::WorkPackage& w)
 {
 	bool initialize = false;
 	bool exit = false;
@@ -311,7 +311,7 @@ void ethash_cuda_miner::search(uint8_t const* header, uint64_t target, search_ho
 		if (m_current_index >= s_numStreams)
 		{
 			if (found_count)
-				hook.found(nonces, found_count);
+				hook.found(nonces, found_count, w);
 			hook.searched(batch_size);
 			exit = hook.shouldStop();
 		}

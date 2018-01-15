@@ -75,7 +75,7 @@ class EthashCUDAHook;
 		void waitPaused() override;
 	private:
 		void workLoop() override;
-		void report(uint64_t _nonce);
+		void report(uint64_t _nonce, const WorkPackage& work);
 
 		bool init(const h256& seed);
 
