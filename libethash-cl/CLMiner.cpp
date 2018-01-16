@@ -709,8 +709,6 @@ bool CLMiner::init(const h256& seed)
 		ETHCL_LOG("Creating mining buffer");
 		m_searchBuffer = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_maxSearchResults + 1) * sizeof(uint32_t));
 
-		cllog << "Generating DAG";
-
 		uint32_t const work = (uint32_t)(dagSize / sizeof(node));
 		uint32_t fullRuns = work / m_globalWorkSize;
 		uint32_t const restWork = work % m_globalWorkSize;
@@ -720,14 +718,19 @@ bool CLMiner::init(const h256& seed)
 		m_dagKernel.setArg(2, m_dag);
 		m_dagKernel.setArg(3, ~0u);
 
+		auto startDAG = std::chrono::steady_clock::now();
 		for (uint32_t i = 0; i < fullRuns; i++)
 		{
 			m_dagKernel.setArg(0, i * m_globalWorkSize);
 			m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
 			m_queue.finish();
-			cllog << "DAG" << int(100.0f * i / fullRuns) << '%';
 		}
+		auto endDAG = std::chrono::steady_clock::now();
 
+		auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(endDAG-startDAG);
+		char gb[16];
+		sprintf(gb, "%.2f", (float)dagSize / (1024 * 1024 * 1024));
+		cnote << string(gb) + "GB of DAG data generated in" << dagTime.count() << "ms.";
 	}
 	catch (cl::Error const& err)
 	{
