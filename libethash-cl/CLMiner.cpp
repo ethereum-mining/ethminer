@@ -351,7 +351,6 @@ void CLMiner::workLoop()
 				else
 					startNonce = randomNonce();
 
-				current = w;
 				auto switchEnd = std::chrono::high_resolution_clock::now();
 				auto globalSwitchTime = std::chrono::duration_cast<std::chrono::milliseconds>(switchEnd - workSwitchStart).count();
 				auto localSwitchTime = std::chrono::duration_cast<std::chrono::microseconds>(switchEnd - localSwitchStart).count();
@@ -367,13 +366,10 @@ void CLMiner::workLoop()
 			if (results[0] > 0)
 			{
 				// Ignore results except the first one.
-				nonce = startNonce + results[1];
+				nonce = current.startNonce + results[1];
 				// Reset search buffer if any solution found.
 				m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
 			}
-
-			// Increase start nonce for following kernel execution.
-			startNonce += m_globalWorkSize;
 
 			// Run the kernel.
 			m_searchKernel.setArg(3, startNonce);
@@ -383,6 +379,11 @@ void CLMiner::workLoop()
 			// It takes some time because ethash must be re-evaluated on CPU.
 			if (nonce != 0)
 				report(nonce, current);
+
+			current = w;        // kernel now processing newest work
+            current.startNonce = startNonce;
+			// Increase start nonce for following kernel execution.
+			startNonce += m_globalWorkSize;
 
 			// Report hash count
 			addHashCount(m_globalWorkSize);
