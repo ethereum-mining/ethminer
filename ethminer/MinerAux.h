@@ -535,7 +535,7 @@ public:
 			exit(1);
 #endif
 		}
-		else if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
+		if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 		{
 #if ETH_ETHASHCUDA
 			if (m_cudaDeviceCount > 0)
