@@ -381,7 +381,7 @@ void CLMiner::workLoop()
 				report(nonce, current);
 
 			current = w;        // kernel now processing newest work
-            current.startNonce = startNonce;
+			current.startNonce = startNonce;
 			// Increase start nonce for following kernel execution.
 			startNonce += m_globalWorkSize;
 
