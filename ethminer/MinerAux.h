@@ -239,7 +239,7 @@ public:
 		{
 			m_worktimeout = atoi(argv[++i]);
 		}
-		else if ((arg == "-RH" || arg == "--report-hashrate") && i + 1 < argc)
+		else if ((arg == "-RH" || arg == "--report-hashrate"))
 		{
 			m_report_stratum_hashrate = true;
 		}
