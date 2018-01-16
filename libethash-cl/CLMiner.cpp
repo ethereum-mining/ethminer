@@ -740,9 +740,8 @@ bool CLMiner::init(const h256& seed)
 		auto endDAG = std::chrono::steady_clock::now();
 
 		auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(endDAG-startDAG);
-		char gb[16];
-		sprintf(gb, "%.2f", (float)dagSize / (1024 * 1024 * 1024));
-		cnote << string(gb) + "GB of DAG data generated in" << dagTime.count() << "ms.";
+		float gb = (float)dagSize / (1024 * 1024 * 1024);
+		cnote << gb << " GB of DAG data generated in" << dagTime.count() << "ms.";
 	}
 	catch (cl::Error const& err)
 	{
