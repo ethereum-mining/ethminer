@@ -679,6 +679,18 @@ bool CLMiner::init(const h256& seed)
 			return false;
 		}
 
+		//check whether the current dag fits in memory everytime we recreate the DAG
+		cl_ulong result = 0;
+		device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
+		if (result < dagSize)
+		{
+			cnote <<
+			"OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
+							 << " has insufficient GPU memory." << result <<
+							 " bytes of memory found < " << dagSize << " bytes of memory required";	
+			return false;
+		}
+
 		// create buffer for dag
 		try
 		{
