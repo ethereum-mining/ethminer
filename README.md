@@ -179,7 +179,7 @@ All bug reports, pull requests and code reviews are very much welcome.
 
 8. Can I CPU Mine?
  
-  No, use geth, the go program made for ethereum by ethereum.
+   No, use geth, the go program made for ethereum by ethereum.
 
 
 
