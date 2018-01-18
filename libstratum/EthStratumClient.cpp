@@ -358,11 +358,11 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		break;
 	case 4:
 		if (responseObject.get("result", false).asBool()) {
-			cnote << EthLime << "Accepted." << EthReset;
+			cnote << EthLime "Accepted." EthReset;
 			p_farm->acceptedSolution(m_stale);
 		}
 		else {
-			cwarn << EthYellow << "Rejected." EthReset;
+			cwarn << EthYellow "Rejected." EthReset;
 			p_farm->rejectedSolution(m_stale);
 		}
 		break;
@@ -409,7 +409,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						m_current.job = h256(job);
 
 						p_farm->setWork(m_current);
-						cnote << EthWhite << "Received new job #" + job.substr(0, 8) << EthReset;
+						cnote << string(EthWhite "Received new job #") + job.substr(0, 8) + EthReset;
                                                 if (m_lastSeed != m_current.seed)
                                                 {
                                                         m_lastSeed = m_current.seed;
@@ -450,7 +450,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 							m_current.job = h256(job);
 
 							p_farm->setWork(m_current);
-                                                        cnote << EthWhite << "Received new job #" + job.substr(0, 8) << EthReset;
+                                                        cnote << string(EthWhite "Received new job #") + job.substr(0, 8) + EthReset;
                                                         if (m_lastSeed != m_current.seed)
                                                         {
                                                                 m_lastSeed = m_current.seed;

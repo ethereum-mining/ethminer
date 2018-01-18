@@ -303,7 +303,7 @@ void EthStratumClientV2::processReponse(Json::Value& responseObject)
 		break;
 	case 4:
 		if (responseObject.get("result", false).asBool()) {
-			cnote << EthLime << "Accepted." << EthReset;
+			cnote << EthLime "Accepted." EthReset;
 			p_farm->acceptedSolution(m_stale);
 		}
 		else {
@@ -355,7 +355,7 @@ void EthStratumClientV2::processReponse(Json::Value& responseObject)
 						m_current.job = h256(job);
 
 						p_farm->setWork(m_current);
-                                                cnote << EthWhite << "Received new job #" + job.substr(0, 8) << EthReset;
+                                                cnote << string(EthWhite "Received new job #") + job.substr(0, 8) << EthReset;
                                                 if (m_lastSeed != m_current.seed)
                                                 {
                                                         m_lastSeed = m_current.seed;
@@ -396,16 +396,16 @@ void EthStratumClientV2::processReponse(Json::Value& responseObject)
 							m_current.job = h256(job);
 
 							p_farm->setWork(m_current);
-                                                        cnote << EthWhite << "Received new job #" + job.substr(0, 8) << EthReset;
+                                                        cnote << string(EthWhite "Received new job #") + job.substr(0, 8) << EthReset;
                                                         if (m_lastSeed != m_current.seed)
                                                         {
                                                                 m_lastSeed = m_current.seed;
-                                                                cnote << "Received new seed: " << "#" + m_current.seed.hex();
+                                                                cnote << "Received new seed: #" + m_current.seed.hex();
                                                         }
                                                         if (m_lastBound != m_current.boundary)
                                                         {
                                                                 m_lastBound = m_current.boundary;
-                                                                cnote << "Received new target: " << "#" + m_current.boundary.hex();
+                                                                cnote << "Received new target: #" + m_current.boundary.hex();
                                                         }
 						}
 					}
@@ -483,11 +483,11 @@ bool EthStratumClientV2::submit(Solution solution) {
 	write(m_socket, m_requestBuffer);
 	if (m_stale)
 	{
-		cwarn << "Stale solution submitted to" << p_active->host << " nonce" << "0x" + nonceHex;
+		cwarn << "Stale solution submitted to" << p_active->host << " nonce 0x" + nonceHex;
 	}
 	else
 	{
-		cnote << "Solution submitted to" << p_active->host << " nonce" << "0x" + nonceHex;
+		cnote << "Solution submitted to" << p_active->host << " nonce 0x" + nonceHex;
 	}
 	return true;
 }

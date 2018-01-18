@@ -886,13 +886,13 @@ private:
 				}
 				bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
 				if (ok) {
-					cnote << "Solution submitted to" << _remote << " nonce" << "0x" + solution.nonce;
-					cnote << EthLime << "Accepted." << EthReset;
+					cnote << "Solution submitted to" << _remote << " nonce 0x" + solution.nonce;
+					cnote << EthLime "Accepted." EthReset;
 					f.acceptedSolution(solution.stale);
 				}
 				else {
-					cnote << "Solution submitted to" << _remote << " nonce" << "0x" + solution.nonce;
-					cwarn << EthYellow << "Rejected." << EthReset;
+					cnote << "Solution submitted to" << _remote << " nonce 0x" + solution.nonce;
+					cwarn << EthYellow "Rejected." EthReset;
 					f.rejectedSolution(solution.stale);
 				}
 			}
