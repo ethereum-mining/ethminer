@@ -41,19 +41,15 @@ mutex x_logOverride;
 static map<type_info const*, bool> s_logOverride;
 
 #ifdef _WIN32
-const char* LogChannel::name() { return EthGray "..."; }
-const char* LeftChannel::name() { return EthNavy "<--"; }
-const char* RightChannel::name() { return EthGreen "-->"; }
-const char* WarnChannel::name() { return EthOnRed EthBlackBold "  X"; }
-const char* NoteChannel::name() { return EthBlue "  i"; }
-const char* DebugChannel::name() { return EthWhite "  D"; }
+const char* LogChannel::name() { return EthGray " ."; }
+const char* WarnChannel::name() { return EthRed " x"; }
+const char* NoteChannel::name() { return EthBlue " i"; }
+const char* DebugChannel::name() { return EthWhite " ?"; }
 #else
-const char* LogChannel::name() { return EthGray "···"; }
-const char* LeftChannel::name() { return EthNavy "◀▬▬"; }
-const char* RightChannel::name() { return EthGreen "▬▬▶"; }
-const char* WarnChannel::name() { return EthOnRed EthBlackBold "  ✘"; }
-const char* NoteChannel::name() { return EthBlue "  ℹ"; }
-const char* DebugChannel::name() { return EthWhite "  ◇"; }
+const char* LogChannel::name() { return EthGray " ."; }
+const char* WarnChannel::name() { return EthRed " ✘"; }
+const char* NoteChannel::name() { return EthBlue " ℹ"; }
+const char* DebugChannel::name() { return EthWhite " ❓"; }
 #endif
 
 LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v, bool _autospacing):
@@ -68,7 +64,7 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
 		char buf[24];
 		if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
 			buf[0] = '\0'; // empty if case strftime fails
-		static char const* c_begin = "  " EthViolet;
+		static char const* c_begin = " " EthViolet;
 		static char const* c_sep1 = EthReset EthBlack "|" EthNavy;
 		static char const* c_sep2 = EthReset EthBlack "|" EthTeal;
 		static char const* c_end = EthReset "  ";

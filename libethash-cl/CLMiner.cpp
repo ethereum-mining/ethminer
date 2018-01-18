@@ -25,7 +25,7 @@ constexpr size_t c_maxSearchResults = 1;
 
 struct CLChannel: public LogChannel
 {
-	static const char* name() { return EthOrange " cl"; }
+	static const char* name() { return EthOrange "cl"; }
 	static const int verbosity = 2;
 	static const bool debug = false;
 };
@@ -274,7 +274,7 @@ void CLMiner::report(uint64_t _nonce, WorkPackage const& _w)
 		farm.submitProof(Solution{_nonce, r.mixHash, _w.header, _w.seed, _w.boundary, _w.job, false});
 	else {
 		farm.failedSolution();
-		cwarn << "FAILURE: GPU gave incorrect result!";
+		cwarn << EthRed << "GPU gave incorrect result!" << EthReset;
 	}
 }
 

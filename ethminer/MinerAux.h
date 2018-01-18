@@ -64,7 +64,11 @@ using namespace dev::eth;
 class BadArgument: public Exception {};
 struct MiningChannel: public LogChannel
 {
-	static const char* name() { return EthGreen "  m"; }
+#ifdef _WIN32
+	static const char* name() { return EthGreen " m"; }
+#else
+	static const char* name() { return EthGreen " ⚒"; }
+#endif
 	static const int verbosity = 2;
 	static const bool debug = false;
 };
@@ -882,19 +886,13 @@ private:
 				}
 				bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
 				if (ok) {
-					cnote << "Solution found; Submitted to" << _remote;
-					cnote << "  Nonce:" << solution.nonce;
-					cnote << "  headerHash:" << solution.headerHash.hex();
-					cnote << "  mixHash:" << solution.mixHash.hex();
-					cnote << EthLime << " Accepted." << EthReset;
+					cnote << "Solution submitted to" << _remote << " nonce 0x" + solution.nonce;
+					cnote << EthLime "Accepted." EthReset;
 					f.acceptedSolution(solution.stale);
 				}
 				else {
-					cwarn << "Solution found; Submitted to" << _remote;
-					cwarn << "  Nonce:" << solution.nonce;
-					cwarn << "  headerHash:" << solution.headerHash.hex();
-					cwarn << "  mixHash:" << solution.mixHash.hex();
-					cwarn << EthYellow << " Rejected." << EthReset;
+					cnote << "Solution submitted to" << _remote << " nonce 0x" + solution.nonce;
+					cwarn << EthYellow "Rejected." EthReset;
 					f.rejectedSolution(solution.stale);
 				}
 			}
