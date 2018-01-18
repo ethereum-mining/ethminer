@@ -16,17 +16,23 @@ matrix:
           sudo: required
           env: CUDA=ON
         - os: osx
-          osx_image: xcode8.3
+          osx_image: xcode9.1
           env: CUDA=OFF
 cache:
     directories:
         - $HOME/.local
-before_install:
-    - if [[ "$CUDA" = ON ]]; then source scripts/install-cuda-trusty.sh; fi
-    - if [ "$TRAVIS_OS_NAME" = linux ]; then scripts/install_cmake.sh; fi
-    - pip install requests
+before_install: |
+    if [ "$CUDA" = ON ]; then
+      . scripts/install-cuda-ubuntu1604.sh
+    fi
+    if [ "$TRAVIS_OS_NAME" = linux ]; then
+      scripts/install_cmake.sh
+      sudo pip install --upgrade requests pyopenssl
+    elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
+      sudo pip install requests
+    fi
 script:
-    - cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -H. -Bbuild
+    - cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -DAPICORE=ON -H. -Bbuild
     - cmake --build build -- -j4
     - build/ethminer/ethminer --list-devices -G
     - build/ethminer/ethminer --list-devices -U

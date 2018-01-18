@@ -158,6 +158,6 @@ void dev::simpleDebugOut(std::string const& _s)
 #ifdef _WIN32
 	dev::con::HandleLogOutput(_s);
 #else
-	std::cerr << _s << '\n';
+	std::cerr << _s + '\n';
 #endif
 }

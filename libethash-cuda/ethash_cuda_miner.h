@@ -5,7 +5,17 @@
 #include <time.h>
 #include <functional>
 #include <libethash/ethash.h>
+#include <libethcore/Miner.h>
+#include <libhwmon/wrapnvml.h>
 #include "ethash_cuda_miner_kernel.h"
+
+namespace dev
+{
+namespace eth
+{
+class WorkPackage;
+}
+}
 
 class ethash_cuda_miner
 {
@@ -15,30 +25,29 @@ public:
 		virtual ~search_hook(); // always a virtual destructor for a class with virtuals.
 
 		// reports progress, return true to abort
-		virtual bool found(uint64_t const* nonces, uint32_t count) = 0;
-		virtual bool searched(uint64_t start_nonce, uint32_t count) = 0;
+		virtual void found(uint64_t const* nonces, uint32_t count, const dev::eth::WorkPackage& w) = 0;
+		virtual void searched(uint32_t count) = 0;
+		virtual bool shouldStop() = 0;
 	};
 
 public:
-	ethash_cuda_miner();
+	explicit ethash_cuda_miner(size_t numDevices);
 
-	static std::string platform_info(unsigned _deviceId = 0);
-	static int getNumDevices();
-	static void listDevices();
 	static bool configureGPU(
-		int *	 _devices,
+		size_t numDevices,
+		const int* _devices,
 		unsigned _blockSize,
 		unsigned _gridSize,
 		unsigned _numStreams,
 		unsigned _scheduleFlag,
 		uint64_t _currentBlock
 		);
-        static void setParallelHash(unsigned _parallelHash);
+	static void setParallelHash(unsigned _parallelHash);
 
-	bool init(ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, volatile void** hostDAG);
+	bool init(size_t numDevices, ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t * &hostDAG, unsigned dagCreateDevice);
 
-	void finish();
-	void search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN);
+	void search(uint8_t const* header, uint64_t target, search_hook& hook, bool _ethStratum, uint64_t _startN, const dev::eth::WorkPackage& w);
+	dev::eth::HwMonitor hwmon();
 
 	/* -- default values -- */
 	/// Default value of the block size. Also known as workgroup size.
@@ -54,8 +63,15 @@ private:
 	uint64_t m_current_nonce;
 	uint64_t m_starting_nonce;
 	uint64_t m_current_index;
-
 	uint32_t m_sharedBytes;
+	
+	///Constants on GPU
+	hash128_t* m_dag = nullptr;
+	std::vector<hash64_t*> m_light;
+	uint32_t m_dag_size = -1;
+	uint32_t m_device_num;
+	
+	
 
 	volatile uint32_t ** m_search_buf;
 	cudaStream_t  * m_streams;
@@ -70,4 +86,6 @@ private:
 	static unsigned s_scheduleFlag;
 
 	static unsigned m_parallelHash;
+
+	wrap_nvml_handle *nvmlh = nullptr;
 };

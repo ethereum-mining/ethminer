@@ -1,6 +1,6 @@
 #define OPENCL_PLATFORM_UNKNOWN 0
 #define OPENCL_PLATFORM_NVIDIA  1
-#define OPENCL_PLATFORM_AMD		2
+#define OPENCL_PLATFORM_AMD     2
 #define OPENCL_PLATFORM_CLOVER  3
 
 #ifndef ACCESSES
@@ -16,7 +16,7 @@
 #endif
 
 #ifndef PLATFORM
-#define PLATFORM 2
+#define PLATFORM OPENCL_PLATFORM_AMD
 #endif
 
 #ifndef DAG_SIZE
@@ -29,6 +29,12 @@
 
 #define ETHASH_DATASET_PARENTS 256
 #define NODE_WORDS (64/4)
+
+//this kernel supports only exactly 8 threads
+//overwrite whatever is incoming
+#ifdef THREADS_PER_HASH
+#undef THREADS_PER_HASH
+#endif
 
 #define THREADS_PER_HASH (128 / 16)
 #define HASHES_PER_LOOP (GROUP_SIZE / THREADS_PER_HASH)

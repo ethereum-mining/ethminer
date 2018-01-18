@@ -98,6 +98,22 @@ This project uses [CMake] and [Hunter] package manager.
    sudo make install
    ```
 
+#### OpenCL support on Linux
+
+If you're planning to use [OpenCL on Linux](https://github.com/ruslo/hunter/wiki/pkg.opencl#pitfalls)
+you have to install OpenGL libraries. E.g. on Ubuntu run:
+
+```sh
+sudo apt-get install mesa-common-dev
+```
+
+#### Disable Hunter
+
+If you want to install dependencies yourself or use system package manager
+you can disable Hunter by adding
+[-DHUNTER_ENABLED=OFF](https://docs.hunter.sh/en/latest/reference/user-variables.html#hunter-enabled)
+to configuration options.
+
 ### CMake configuration options
 
 Pass these options to CMake configuration command, e.g.
@@ -147,19 +163,24 @@ All bug reports, pull requests and code reviews are very much welcome.
 
 4. Can I still mine ETH with my 2GB GPU?
 
-   No.
+   Not really, your VRAM must be above the DAG size (Currently about 2.15 GB.) to get best performance. Without it severe hash loss will occur.
 
 5. What are the optimal launch parameters?
 
    The default parameters are fine in most scenario's (CUDA). For OpenCL it varies a bit more. Just play around with the numbers and use powers of 2. GPU's like powers of 2.
    
-7. What does the ```--cuda-parallel-hash``` flag do?
+6. What does the ```--cuda-parallel-hash``` flag do?
 
    @davilizh made improvements to the CUDA kernel hashing process and added this flag to allow changing the number of tasks it runs in parallel. These improvements were optimised for GTX 1060 GPUs which saw a large increase in hashrate, GTX 1070 and GTX 1080/Ti GPUs saw some, but less, improvement. The default value is 4 (which does not need to be set with the flag) and in most cases this will provide the best performance.
 
-6. What is ethminer's relationship with [Genoil's fork]?
+7. What is ethminer's relationship with [Genoil's fork]?
 
    [Genoil's fork] was the original source of this version, but as Genoil is no longer consistently maintaining that fork it became almost impossible for developers to get new code merged there. In the interests of progressing development without waiting for reviews this fork should be considered the active one and Genoil's as legacy code.
+
+8. Can I CPU Mine?
+ 
+   No, use geth, the go program made for ethereum by ethereum.
+
 
 
 

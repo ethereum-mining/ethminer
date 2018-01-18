@@ -12,8 +12,6 @@
 
 
 using namespace std;
-using namespace boost::asio;
-using boost::asio::ip::tcp;
 using namespace dev;
 using namespace dev::eth;
 
@@ -31,14 +29,15 @@ public:
 	bool isConnected() { return m_connected && m_authorized; }
 	h256 currentHeaderHash() { return m_current.header; }
 	bool current() { return static_cast<bool>(m_current); }
+	bool submitHashrate(string const & rate);
 	bool submit(Solution solution);
 	void reconnect();
 private:
 	void connect();
 	
 	void disconnect();
-	void resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
-	void connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i);
+	void resolve_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
+	void connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
 	void work_timeout_handler(const boost::system::error_code& ec);
 
 	void readline();
@@ -66,23 +65,18 @@ private:
 	int m_pending;
 
 	Farm* p_farm;
-	std::mutex x_current;
 	WorkPackage m_current;
-	WorkPackage m_previous;
 
 	bool m_stale = false;
 
-	string m_job;
-	string m_previousJob;
-
 	std::thread m_serviceThread;  ///< The IO service thread.
 	boost::asio::io_service m_io_service;
-	tcp::socket m_socket;
+	boost::asio::ip::tcp::socket m_socket;
 
 	boost::asio::streambuf m_requestBuffer;
 	boost::asio::streambuf m_responseBuffer;
 
-	boost::asio::deadline_timer * p_worktimer;
+	boost::asio::deadline_timer m_worktimer;
 
 	int m_protocol;
 	string m_email;
@@ -91,6 +85,8 @@ private:
 
 	h64 m_extraNonce;
 	int m_extraNonceHexSize;
+	
+	string m_submit_hashrate_id;
 
 	void processExtranonce(std::string& enonce);
 };

@@ -35,13 +35,12 @@
 #include <libethcore/Exceptions.h>
 #include <libdevcore/SHA3.h>
 #include <libethcore/EthashAux.h>
-#include <libethcore/EthashCUDAMiner.h>
 #include <libethcore/Farm.h>
 #if ETH_ETHASHCL
 #include <libethash-cl/CLMiner.h>
 #endif
 #if ETH_ETHASHCUDA
-#include <libethash-cuda/ethash_cuda_miner.h>
+#include <libethash-cuda/CUDAMiner.h>
 #endif
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include "FarmClient.h"
@@ -49,11 +48,16 @@
 #include <libstratum/EthStratumClient.h>
 #include <libstratum/EthStratumClientV2.h>
 #endif
+#if ETH_DBUS
+#include "DBusInt.h"
+#endif
+#if API_CORE
+#include <libapicore/Api.h>
+#endif
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
-using namespace boost::algorithm;
 
 
 class BadArgument: public Exception {};
@@ -96,7 +100,7 @@ public:
 			m_farmURL = argv[++i];
 			m_activeFarmURL = m_farmURL;
 		}
-		else if ((arg == "-FF" || arg == "-FS" || arg == "--farm-failover" || arg == "--stratum-failover") && i + 1 < argc)
+		else if ((arg == "-FF" || arg == "-SF" || arg == "-FS" || arg == "--farm-failover" || arg == "--stratum-failover") && i + 1 < argc)
 		{
 			string url = argv[++i];
 
@@ -234,7 +238,21 @@ public:
 		{
 			m_worktimeout = atoi(argv[++i]);
 		}
+		else if ((arg == "-RH" || arg == "--report-hashrate"))
+		{
+			m_report_stratum_hashrate = true;
+		}
+		else if ((arg == "-HWMON") && i + 1 < argc)
+		{
+			m_show_hwmonitors = true;
+		}
 
+#endif
+#if API_CORE
+		else if ((arg == "--api-port") && i + 1 < argc)
+		{
+			m_api_port = atoi(argv[++i]);
+		}
 #endif
 #if ETH_ETHASHCL
 		else if (arg == "--opencl-platform" && i + 1 < argc)
@@ -260,6 +278,31 @@ public:
 					break;
 				}
 			}
+		else if(arg == "--cl-parallel-hash" && i + 1 < argc) {
+			try {
+				m_openclThreadsPerHash = stol(argv[++i]);
+				if(m_openclThreadsPerHash != 1 && m_openclThreadsPerHash != 2 &&
+				   m_openclThreadsPerHash != 4 && m_openclThreadsPerHash != 8) {
+					BOOST_THROW_EXCEPTION(BadArgument());
+				} 
+			}
+			catch(...) {
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
+		else if (arg == "--cl-kernel" && i + 1 < argc)
+		{
+			try
+			{
+				m_openclSelectedKernel = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
 #endif
 #if ETH_ETHASHCL || ETH_ETHASHCUDA
 		else if ((arg == "--cl-global-work" || arg == "--cuda-grid-size")  && i + 1 < argc)
@@ -455,7 +498,7 @@ public:
 #endif
 #if ETH_ETHASHCUDA
 			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
-				EthashCUDAMiner::listDevices();
+				CUDAMiner::listDevices();
 #endif
 			exit(0);
 		}
@@ -468,6 +511,9 @@ public:
 				CLMiner::setDevices(m_openclDevices, m_openclDeviceCount);
 				m_miningThreads = m_openclDeviceCount;
 			}
+			
+			CLMiner::setCLKernel(m_openclSelectedKernel);
+			CLMiner::setThreadsPerHash(m_openclThreadsPerHash);
 
 			if (!CLMiner::configureGPU(
 					m_localWorkSize,
@@ -484,17 +530,17 @@ public:
 			exit(1);
 #endif
 		}
-		else if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
+		if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 		{
 #if ETH_ETHASHCUDA
 			if (m_cudaDeviceCount > 0)
 			{
-				EthashCUDAMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
+				CUDAMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
 				m_miningThreads = m_cudaDeviceCount;
 			}
 
-			EthashCUDAMiner::setNumInstances(m_miningThreads);
-			if (!EthashCUDAMiner::configureGPU(
+			CUDAMiner::setNumInstances(m_miningThreads);
+			if (!CUDAMiner::configureGPU(
 				m_localWorkSize,
 				m_globalWorkSizeMultiplier,
 				m_numStreams,
@@ -505,7 +551,7 @@ public:
 				))
 				exit(1);
 
-			EthashCUDAMiner::setParallelHash(m_parallelHash);
+			CUDAMiner::setParallelHash(m_parallelHash);
 #else
 			cerr << "CUDA support disabled. Configure project build with -DETHASHCUDA=ON" << endl;
 			exit(1);
@@ -532,18 +578,18 @@ public:
 			<< "	--farm-retries <n> Number of retries until switch to failover (default: 3)" << endl
 #if ETH_STRATUM
 			<< "	-S, --stratum <host:port>  Put into stratum mode with the stratum server at host:port" << endl
-			<< "	-FS, --failover-stratum <host:port>  Failover stratum server at host:port" << endl
+			<< "	-SF, --stratum-failover <host:port>  Failover stratum server at host:port" << endl
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
 			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
 			<< "    -SC, --stratum-client <n>  Stratum client version. Defaults to 1 (async client). Use 2 to use the new synchronous client." << endl
 			<< "    -SP, --stratum-protocol <n> Choose which stratum protocol to use:" << endl
 			<< "        0: official stratum spec: ethpool, ethermine, coinotron, mph, nanopool (default)" << endl
-			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool" << endl
+			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for hashrate reporting to work with nanopool)" << endl
 			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
+			<< "    -RH, --report-hashrate Report current hashrate to pool (please only enable on pools supporting this)" << endl
+			<< "    -HWMON Displays gpu temp and fan percent." << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
-#endif
-#if ETH_STRATUM
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 #endif
 			<< endl
@@ -551,7 +597,7 @@ public:
 			<< "    -M [<n>],--benchmark [<n>] Benchmark for mining and exit; Optionally specify block number to benchmark against specific DAG." << endl
 			<< "    --benchmark-warmup <seconds>  Set the duration of warmup for the benchmark tests (default: 3)." << endl
 			<< "    --benchmark-trial <seconds>  Set the duration for each trial for the benchmark tests (default: 3)." << endl
-			<< "    --benchmark-trials <n>  Set the duration of warmup for the benchmark tests (default: 5)." << endl
+			<< "    --benchmark-trials <n>  Set the number of benchmark trials to run (default: 5)." << endl
 			<< "Simulation mode:" << endl
 			<< "    -Z [<n>],--simulation [<n>] Mining test mode. Used to validate kernel optimizations. Optionally specify block number." << endl
 			<< "Mining configuration:" << endl
@@ -568,10 +614,17 @@ public:
 			<< "        sequential  - load DAG on GPUs one after another. Use this when the miner crashes during DAG generation" << endl
 			<< "        single <n>  - generate DAG on device n, then copy to other devices" << endl
 #if ETH_ETHASHCL
+			<< " OpenCL configuration:" << endl
+			<< "    --cl-kernel <n>  Use a different OpenCL kernel (default: use stable kernel)" << endl
+			<< "        0: stable kernel" << endl
+			<< "        1: unstable kernel" << endl
+//			<< "        2: experimental kernel" << endl
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << CLMiner::c_defaultLocalWorkSize << endl
 			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << CLMiner::c_defaultGlobalWorkSizeMultiplier << " * " << CLMiner::c_defaultLocalWorkSize << endl
+			<< "    --cl-parallel-hash <1 2 ..8> Define how many threads to associate per hash. Default=8" << endl
 #endif
 #if ETH_ETHASHCUDA
+			<< " CUDA configuration:" << endl
 			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(ethash_cuda_miner::c_defaultBlockSize) << endl
 			<< "    --cuda-grid-size Set the CUDA grid size. Default is " << toString(ethash_cuda_miner::c_defaultGridSize) << endl
 			<< "    --cuda-streams Set the number of CUDA streams. Default is " << toString(ethash_cuda_miner::c_defaultNumStreams) << endl
@@ -581,7 +634,11 @@ public:
 			<< "        yield - Instruct CUDA to yield its thread when waiting for results from the device." << endl
 			<< "        sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device." << endl
 			<< "    --cuda-devices <0 1 ..n> Select which CUDA GPUs to mine on. Default is to use all" << endl
-			<< "    --cuda-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achive better performance. Default=4" << endl
+			<< "    --cuda-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achieve better performance. Default=4" << endl
+#endif
+#if API_CORE
+			<< " API core configuration:" << endl
+			<< "    --api-port Set the api port, the miner should listen to. Use 0 to disable. Default=0, use negative numbers to run in readonly mode. for example -3333." << endl
 #endif
 			;
 	}
@@ -596,12 +653,13 @@ private:
 		cdebug << genesis.boundary();
 
 		Farm f;
+		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
 		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
 #endif
 		f.setSealers(sealers);
 		f.onSolutionFound([&](Solution) { return false; });
@@ -631,7 +689,6 @@ private:
 			this_thread::sleep_for(chrono::seconds(i ? _trialDuration : _warmupDuration));
 
 			auto mp = f.miningProgress();
-			f.resetMiningProgress();
 			if (!i)
 				continue;
 			auto rate = mp.rate();
@@ -660,12 +717,13 @@ private:
 		cdebug << genesis.boundary();
 
 		Farm f;
+		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
 		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); } };
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
 #endif
 		f.setSealers(sealers);
 
@@ -697,7 +755,6 @@ private:
 			for (unsigned i = 0; !completed; ++i)
 			{
 				auto mp = f.miningProgress();
-				f.resetMiningProgress();
 
 				cnote << "Mining on difficulty " << difficulty << " " << mp;
 				this_thread::sleep_for(chrono::milliseconds(1000));
@@ -738,7 +795,7 @@ private:
 		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
 #endif
 		(void)_m;
 		(void)_remote;
@@ -752,11 +809,23 @@ private:
 
 		h256 id = h256::random();
 		Farm f;
+		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
+		
+#if API_CORE
+		Api api(this->m_api_port, f);
+#endif
+		
 		f.setSealers(sealers);
+
 		if (_m == MinerType::CL)
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
+		else if (_m == MinerType::Mixed) {
+			f.start("cuda", false);
+			f.start("opencl", true);
+		}
+
 		WorkPackage current;
 		std::mutex x_current;
 		while (m_running)
@@ -771,12 +840,16 @@ private:
 				});
 				for (unsigned i = 0; !completed; ++i)
 				{
-					auto mp = f.miningProgress();
-					f.resetMiningProgress();
+					auto mp = f.miningProgress(m_show_hwmonitors);
 					if (current)
-						minelog << "Mining on" << current.header << ": " << mp << f.getSolutionStats();
+					{
+						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
+#if ETH_DBUS
+						dbusint.send(toString(mp).data());
+#endif
+					}
 					else
-						minelog << "Getting work package...";
+						minelog << "Waiting for work package...";
 
 					auto rate = mp.rate();
 
@@ -806,26 +879,22 @@ private:
 					}
 					this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 				}
-				cnote << "Solution found; Submitting to" << _remote << "...";
-				cnote << "  Nonce:" << solution.nonce;
-				cnote << "  headerHash:" << solution.headerHash.hex();
-				cnote << "  mixHash:" << solution.mixHash.hex();
-				if (EthashAux::eval(solution.seedHash, solution.headerHash, solution.nonce).value < solution.boundary)
-				{
-					bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
-					if (ok) {
-						cnote << "B-) Submitted and accepted.";
-						f.acceptedSolution(false);
-					}
-					else {
-						cwarn << ":-( Not accepted.";
-						f.rejectedSolution(false);
-					}
-					//exit(0);
+				bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
+				if (ok) {
+					cnote << "Solution found; Submitted to" << _remote;
+					cnote << "  Nonce:" << solution.nonce;
+					cnote << "  headerHash:" << solution.headerHash.hex();
+					cnote << "  mixHash:" << solution.mixHash.hex();
+					cnote << EthLime << " Accepted." << EthReset;
+					f.acceptedSolution(solution.stale);
 				}
 				else {
-					f.failedSolution();
-					cwarn << "FAILURE: GPU gave incorrect result!";
+					cwarn << "Solution found; Submitted to" << _remote;
+					cwarn << "  Nonce:" << solution.nonce;
+					cwarn << "  headerHash:" << solution.headerHash.hex();
+					cwarn << "  mixHash:" << solution.mixHash.hex();
+					cwarn << EthYellow << " Rejected." << EthReset;
+					f.rejectedSolution(solution.stale);
 				}
 			}
 			catch (jsonrpc::JsonRpcException&)
@@ -873,13 +942,18 @@ private:
 		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); } };
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &EthashCUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new EthashCUDAMiner(_farm, _index); } };
+		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
 #endif
 		if (!m_farmRecheckSet)
 			m_farmRecheckPeriod = m_defaultStratumFarmRecheckPeriod;
 
 		Farm f;
-
+		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
+		
+#if API_CORE
+		Api api(this->m_api_port, f);
+#endif
+	
 		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
 		if (m_stratumClientVersion == 1) {
 			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
@@ -906,20 +980,30 @@ private:
 				}
 				return false;
 			});
+			f.onMinerRestart([&](){ 
+				client.reconnect();
+			});
 
 			while (client.isRunning())
 			{
-				auto mp = f.miningProgress();
-				f.resetMiningProgress();
+				auto mp = f.miningProgress(m_show_hwmonitors);
 				if (client.isConnected())
 				{
 					if (client.current())
 					{
-						minelog << "Mining on" << client.currentHeaderHash() << ": " << mp << f.getSolutionStats();
+						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
+#if ETH_DBUS
+						dbusint.send(toString(mp).data());
+#endif
 					}
 					else
 					{
 						minelog << "Waiting for work package...";
+					}
+					
+					if (this->m_report_stratum_hashrate) {
+						auto rate = mp.rate();
+						client.submitHashrate(toJS(rate));
 					}
 				}
 				this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
@@ -945,20 +1029,30 @@ private:
 				client.submit(sol);
 				return false;
 			});
+			f.onMinerRestart([&](){ 
+				client.reconnect();
+			});
 
 			while (client.isRunning())
 			{
-				auto mp = f.miningProgress();
-				f.resetMiningProgress();
+				auto mp = f.miningProgress(m_show_hwmonitors);
 				if (client.isConnected())
 				{
 					if (client.current())
 					{
-						minelog << "Mining on" << client.currentHeaderHash() << ": " << mp << f.getSolutionStats();
+						minelog << mp << f.getSolutionStats();
+#if ETH_DBUS
+						dbusint.send(toString(mp).data());
+#endif
 					}
 					else if (client.waitState() == MINER_WAIT_STATE_WORK)
 					{
 						minelog << "Waiting for work package...";
+					}
+					
+					if (this->m_report_stratum_hashrate) {
+						auto rate = mp.rate();
+						client.submitHashrate(toJS(rate));
 					}
 				}
 				this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
@@ -978,8 +1072,10 @@ private:
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 #if ETH_ETHASHCL
+	unsigned m_openclSelectedKernel = 0;  ///< A numeric value for the selected OpenCL kernel
 	unsigned m_openclDeviceCount = 0;
 	unsigned m_openclDevices[16];
+	unsigned m_openclThreadsPerHash = 8;
 #if !ETH_ETHASHCUDA
 	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
@@ -1013,8 +1109,13 @@ private:
 	unsigned m_defaultStratumFarmRecheckPeriod = 2000;
 	bool m_farmRecheckSet = false;
 	int m_worktimeout = 180;
+	bool m_show_hwmonitors = false;
+#if API_CORE
+	int m_api_port = 0;
+#endif	
 
 #if ETH_STRATUM
+	bool m_report_stratum_hashrate = false;
 	int m_stratumClientVersion = 1;
 	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
 	string m_user;
@@ -1025,4 +1126,8 @@ private:
 	string m_email = "";
 #endif
 	string m_fport = "";
+
+#if ETH_DBUS
+	DBusInt dbusint;
+#endif
 };

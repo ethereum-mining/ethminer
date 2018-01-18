@@ -14,21 +14,18 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file EthashCUDAMiner.h
+/** @file CUDAMiner.h
 * @author Gav Wood <i@gavwood.com>
 * @date 2014
 *
 * Determines the PoW algorithm.
 */
-
 #pragma once
-#if ETH_ETHASHCUDA
 
-#include "libdevcore/Worker.h"
-#include "EthashAux.h"
-#include "Miner.h"
-
-class ethash_cuda_miner;
+#include <libdevcore/Worker.h>
+#include <libethcore/EthashAux.h>
+#include <libethcore/Miner.h>
+#include "ethash_cuda_miner.h"
 
 namespace dev
 {
@@ -36,19 +33,18 @@ namespace eth
 {
 class EthashCUDAHook;
 
-	class EthashCUDAMiner: public Miner
+	class CUDAMiner: public Miner
 	{
 		friend class dev::eth::EthashCUDAHook;
 
 	public:
-		EthashCUDAMiner(FarmFace& _farm, unsigned _index);
-		~EthashCUDAMiner();
+		CUDAMiner(FarmFace& _farm, unsigned _index);
+		~CUDAMiner() override;
 
 		static unsigned instances() 
 		{ 
 			return s_numInstances > 0 ? s_numInstances : 1; 
 		}
-		static std::string platformInfo();
 		static unsigned getNumDevices();
 		static void listDevices();
 		static void setParallelHash(unsigned _parallelHash);
@@ -65,32 +61,30 @@ class EthashCUDAHook;
 		{ 
 			s_numInstances = std::min<unsigned>(_instances, getNumDevices());
 		}
-		static void setDevices(unsigned * _devices, unsigned _selectedDeviceCount) 
+		static void setDevices(const unsigned* _devices, unsigned _selectedDeviceCount)
 		{
 			for (unsigned i = 0; i < _selectedDeviceCount; i++) 
 			{
 				s_devices[i] = _devices[i];
 			}
 		}
+		HwMonitor hwmon() override;
 	protected:
 		void kickOff() override;
 		void pause() override;
-
+		void waitPaused() override;
 	private:
 		void workLoop() override;
-		void report(uint64_t _nonce);
+		void report(uint64_t _nonce, const WorkPackage& work);
+
+		bool init(const h256& seed);
 
 		EthashCUDAHook* m_hook = nullptr;
-		ethash_cuda_miner* m_miner = nullptr;
+		ethash_cuda_miner m_miner;
 
-		h256 m_minerSeed;		///< Last seed in m_miner
-		static unsigned s_platformId;
-		static unsigned s_deviceId;
 		static unsigned s_numInstances;
 		static int s_devices[16];
 
 	};
 }
 }
-
-#endif

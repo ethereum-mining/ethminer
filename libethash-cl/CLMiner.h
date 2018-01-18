@@ -8,10 +8,18 @@
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
+#include <libhwmon/wrapnvml.h>
+#include <libhwmon/wrapadl.h>
+#if defined(__linux)
+#include <libhwmon/wrapamdsysfs.h>
+#endif
 
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS true
-#define __CL_ENABLE_EXCEPTIONS true
-#include "CL/cl.hpp"
+#define CL_HPP_ENABLE_EXCEPTIONS true
+#define CL_HPP_CL_1_2_DEFAULT_BUILD true
+#define CL_HPP_TARGET_OPENCL_VERSION 120
+#define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#include "CL/cl2.hpp"
 
 // macOS OpenCL fix:
 #ifndef CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV
@@ -33,6 +41,11 @@ namespace dev
 namespace eth
 {
 
+enum CLKernelName {
+	Stable,
+	Unstable,
+};
+
 class CLMiner: public Miner
 {
 public:
@@ -41,6 +54,9 @@ public:
 	static const unsigned c_defaultLocalWorkSize = 128;
 	/// Default value of the global work size as a multiplier of the local work size
 	static const unsigned c_defaultGlobalWorkSizeMultiplier = 8192;
+
+	/// Default value of the kernel is the original one
+	static const CLKernelName c_defaultKernelName = CLKernelName::Stable;
 
 	CLMiner(FarmFace& _farm, unsigned _index);
 	~CLMiner();
@@ -57,6 +73,7 @@ public:
 		unsigned _dagCreateDevice
 	);
 	static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
+	static void setThreadsPerHash(unsigned _threadsPerHash){s_threadsPerHash = _threadsPerHash; }
 	static void setDevices(unsigned * _devices, unsigned _selectedDeviceCount)
 	{
 		for (unsigned i = 0; i < _selectedDeviceCount; i++)
@@ -64,10 +81,12 @@ public:
 			s_devices[i] = _devices[i];
 		}
 	}
-
+	static void setCLKernel(unsigned _clKernel) { s_clKernelName = _clKernel == 1 ? CLKernelName::Unstable : CLKernelName::Stable; }
+	HwMonitor hwmon() override;
 protected:
 	void kickOff() override;
 	void pause() override;
+	void waitPaused() override;
 
 private:
 	void workLoop() override;
@@ -88,6 +107,8 @@ private:
 
 	static unsigned s_platformId;
 	static unsigned s_numInstances;
+	static unsigned s_threadsPerHash;
+	static CLKernelName s_clKernelName;
 	static int s_devices[16];
 
 	/// The local work size for the search
@@ -95,6 +116,11 @@ private:
 	/// The initial global work size for the searches
 	static unsigned s_initialGlobalWorkSize;
 
+	wrap_nvml_handle *nvmlh = NULL;
+	wrap_adl_handle *adlh = NULL;
+#if defined(__linux)
+	wrap_amdsysfs_handle *sysfsh = NULL;
+#endif
 };
 
 }
