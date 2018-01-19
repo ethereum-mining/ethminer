@@ -626,9 +626,9 @@ public:
 #endif
 #if ETH_ETHASHCUDA
 			<< " CUDA configuration:" << endl
-			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(ethash_cuda_miner::c_defaultBlockSize) << endl
-			<< "    --cuda-grid-size Set the CUDA grid size. Default is " << toString(ethash_cuda_miner::c_defaultGridSize) << endl
-			<< "    --cuda-streams Set the number of CUDA streams. Default is " << toString(ethash_cuda_miner::c_defaultNumStreams) << endl
+			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(CUDAMiner::c_defaultBlockSize) << endl
+			<< "    --cuda-grid-size Set the CUDA grid size. Default is " << toString(CUDAMiner::c_defaultGridSize) << endl
+			<< "    --cuda-streams Set the number of CUDA streams. Default is " << toString(CUDAMiner::c_defaultNumStreams) << endl
 			<< "    --cuda-schedule <mode> Set the schedule mode for CUDA threads waiting for CUDA devices to finish work. Default is 'sync'. Possible values are:" << endl
 			<< "        auto  - Uses a heuristic based on the number of active CUDA contexts in the process C and the number of logical processors in the system P. If C > P, then yield else spin." << endl
 			<< "        spin  - Instruct CUDA to actively spin when waiting for results from the device." << endl
@@ -1083,11 +1083,11 @@ private:
 #endif
 #endif
 #if ETH_ETHASHCUDA
-	unsigned m_globalWorkSizeMultiplier = ethash_cuda_miner::c_defaultGridSize;
-	unsigned m_localWorkSize = ethash_cuda_miner::c_defaultBlockSize;
+	unsigned m_globalWorkSizeMultiplier = CUDAMiner::c_defaultGridSize;
+	unsigned m_localWorkSize = CUDAMiner::c_defaultBlockSize;
 	unsigned m_cudaDeviceCount = 0;
 	unsigned m_cudaDevices[16];
-	unsigned m_numStreams = ethash_cuda_miner::c_defaultNumStreams;
+	unsigned m_numStreams = CUDAMiner::c_defaultNumStreams;
 	unsigned m_cudaSchedule = 4; // sync
 #endif
 	unsigned m_dagLoadMode = 0; // parallel
