@@ -15,6 +15,9 @@ You should have received a copy of the GNU General Public License
 along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#undef min
+#undef max
+
 #include "CUDAMiner.h"
 
 using namespace std;
@@ -24,8 +27,17 @@ using namespace eth;
 unsigned CUDAMiner::s_numInstances = 0;
 int CUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
+struct CUDAChannel: public LogChannel
+{
+	static const char* name() { return EthOrange " cu"; }
+	static const int verbosity = 2;
+	static const bool debug = false;
+};
+#define cudalog clog(CUDAChannel)
+#define ETHCUDA_LOG(_contents) cudalog << _contents
+
 CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
-	Miner("CUDA", _farm, _index),
+	Miner("cuda-", _farm, _index),
 	m_light(getNumDevices())
 {}
 
@@ -40,7 +52,7 @@ void CUDAMiner::report(uint64_t _nonce, const WorkPackage& w)
 	// FIXME: This code is exactly the same as in EthashGPUMiner.
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
-		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary, w.job, hook_isStale()});
+		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary, w.job, m_abort});
 	else
 	{
 		farm.failedSolution();
@@ -50,7 +62,8 @@ void CUDAMiner::report(uint64_t _nonce, const WorkPackage& w)
 
 void CUDAMiner::kickOff()
 {
-	hook_reset();
+        UniqueGuard l(x_all);
+        m_aborted = m_abort = false;
 }
 
 bool CUDAMiner::init(const h256& seed)
@@ -120,7 +133,7 @@ void CUDAMiner::workLoop()
 			uint64_t startN = current.startNonce;
 			if (current.exSizeBits >= 0) 
 				startN = current.startNonce | ((uint64_t)index << (64 - 4 - current.exSizeBits)); // this can support up to 16 devices
-			cuda_search(current.header.data(), upper64OfBoundary, (current.exSizeBits >= 0), startN, w);
+			search(current.header.data(), upper64OfBoundary, (current.exSizeBits >= 0), startN, w);
 
 			// Check if we should stop.
 			if (shouldStop())
@@ -142,6 +155,17 @@ void CUDAMiner::pause()
 		return;
 
 	m_abort = true;
+}
+
+void CUDAMiner::setNumInstances(unsigned _instances)
+{
+        s_numInstances = std::min<unsigned>(_instances, getNumDevices());
+}
+
+void CUDAMiner::setDevices(const unsigned* _devices, unsigned _selectedDeviceCount)
+{
+        for (unsigned i = 0; i < _selectedDeviceCount; i++)
+                s_devices[i] = _devices[i];
 }
 
 void CUDAMiner::waitPaused()
@@ -240,24 +264,6 @@ void CUDAMiner::setParallelHash(unsigned _parallelHash)
 {
   	m_parallelHash = _parallelHash;
 }
-
-// workaround lame platforms
-
-#undef min
-#undef max
-
-using namespace std;
-using namespace dev;
-
-struct CUDAChannel: public LogChannel
-{
-	static const char* name() { return EthOrange " cu"; }
-	static const int verbosity = 2;
-	static const bool debug = false;
-};
-#define cudalog clog(CUDAChannel)
-#define ETHCUDA_LOG(_contents) cudalog << _contents
-
 
 unsigned const CUDAMiner::c_defaultBlockSize = 128;
 unsigned const CUDAMiner::c_defaultGridSize = 8192; // * CL_DEFAULT_LOCAL_WORK_SIZE
@@ -436,7 +442,7 @@ cpyDag:
 	}
 }
 
-void CUDAMiner::cuda_search(
+void CUDAMiner::search(
 	uint8_t const* header,
 	uint64_t target,
 	bool _ethStratum,
