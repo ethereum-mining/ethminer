@@ -26,7 +26,7 @@
 #include "ethash.h"
 #include "fnv.h"
 #include "endian.h"
-#include "internal.h"
+#include "litehash.h"
 #include "data_sizes.h"
 #include "sha3.h"
 

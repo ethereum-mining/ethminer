@@ -3,7 +3,7 @@ if (NOT MSVC)
 endif()
 
 set(FILES
-	internal.c
+	litehash.c
 	ethash.h
 	endian.h
 	compiler.h
