@@ -503,22 +503,26 @@ bool EthStratumClient::submitHashrate(string const & rate) {
 
 bool EthStratumClient::submit(Solution solution) {
 
-	string minernonce;
 	string nonceHex = toHex(solution.nonce);
-	if (m_protocol == STRATUM_PROTOCOL_ETHEREUMSTRATUM)
-		minernonce = nonceHex.substr(m_extraNonceHexSize, 16 - m_extraNonceHexSize);
-
 	string json;
 
 	switch (m_protocol) {
 		case STRATUM_PROTOCOL_STRATUM:
-			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" + p_active->user + "\",\"" + solution.job.hex() + "\",\"0x" + nonceHex + "\",\"0x" + solution.headerHash.hex() + "\",\"0x" + solution.mixHash.hex() + "\"]}\n";
+			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" +
+				p_active->user + "\",\"" + solution.job.hex() + "\",\"0x" +
+				nonceHex + "\",\"0x" + solution.headerHash.hex() + "\",\"0x" +
+				solution.mixHash.hex() + "\"]}\n";
 			break;
 		case STRATUM_PROTOCOL_ETHPROXY:
-			json = "{\"id\": 4, \"worker\":\"" + m_worker + "\", \"method\": \"eth_submitWork\", \"params\": [\"0x" + nonceHex + "\",\"0x" + solution.headerHash.hex() + "\",\"0x" + solution.mixHash.hex() + "\"]}\n";
+			json = "{\"id\": 4, \"worker\":\"" +
+				m_worker + "\", \"method\": \"eth_submitWork\", \"params\": [\"0x" +
+				nonceHex + "\",\"0x" + solution.headerHash.hex() + "\",\"0x" +
+				solution.mixHash.hex() + "\"]}\n";
 			break;
 		case STRATUM_PROTOCOL_ETHEREUMSTRATUM:
-			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" + p_active->user + "\",\"" + solution.job.hex().substr(0, 8) + "\",\"" + minernonce + "\"]}\n";
+			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" +
+				p_active->user + "\",\"" + solution.job.hex().substr(0, 8) + "\",\"" +
+				nonceHex.substr(m_extraNonceHexSize, 16 - m_extraNonceHexSize) + "\"]}\n";
 			break;
 	}
 	std::ostream os(&m_requestBuffer);
