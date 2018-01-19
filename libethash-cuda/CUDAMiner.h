@@ -65,17 +65,8 @@ namespace eth
 			unsigned _dagLoadMode,
 			unsigned _dagCreateDevice
 			);
-		static void setNumInstances(unsigned _instances) 
-		{ 
-			s_numInstances = std::min<unsigned>(_instances, getNumDevices());
-		}
-		static void setDevices(const unsigned* _devices, unsigned _selectedDeviceCount)
-		{
-			for (unsigned i = 0; i < _selectedDeviceCount; i++) 
-			{
-				s_devices[i] = _devices[i];
-			}
-		}
+		static void setNumInstances(unsigned _instances);
+		static void setDevices(const unsigned* _devices, unsigned _selectedDeviceCount);
 		HwMonitor hwmon() override;
 		static bool cuda_configureGPU(
 			size_t numDevices,
@@ -91,7 +82,7 @@ namespace eth
 
 		bool cuda_init(size_t numDevices, ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t * &hostDAG, unsigned dagCreateDevice);
 
-		void cuda_search(uint8_t const* header, uint64_t target, bool _ethStratum, uint64_t _startN, const dev::eth::WorkPackage& w);
+		void search(uint8_t const* header, uint64_t target, bool _ethStratum, uint64_t _startN, const dev::eth::WorkPackage& w);
 		dev::eth::HwMonitor cuda_hwmon();
 
 		/* -- default values -- */
@@ -101,17 +92,6 @@ namespace eth
 		static unsigned const c_defaultGridSize;
 		// default number of CUDA streams
 		static unsigned const c_defaultNumStreams;
-
-		void hook_reset()
-		{
-			UniqueGuard l(x_all);
-			m_aborted = m_abort = false;
-		}
-
-		bool hook_isStale()
-		{
-			return m_abort;
-		}
 
 	protected:
 		void kickOff() override;
