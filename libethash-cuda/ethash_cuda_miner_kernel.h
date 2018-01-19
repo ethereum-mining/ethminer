@@ -9,9 +9,6 @@
 #define ACCESSES 64
 #define THREADS_PER_HASH (128 / 16)
 
-#define SHUFFLE_MIN_VER 300 //__CUDA_ARCH_
-#define SHUFFLE_DEPRECATED 9000 //CUDA_VERSION
-
 typedef struct
 {
 	uint4 uint4s[32 / sizeof(uint4)];
