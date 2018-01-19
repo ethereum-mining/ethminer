@@ -407,7 +407,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						m_current.startNonce = ethash_swap_u64(*((uint64_t*)m_extraNonce.data()));
 						m_current.exSizeBits = m_extraNonceHexSize * 4;
 						if (m_protocol == STRATUM_PROTOCOL_ETHEREUMSTRATUM)
-							job = job + "00000000000000000000000000000000000000000000000000000000";
+							job = job + string(64 - 8, '0');
 						m_current.job = h256(job);
 
 						p_farm->setWork(m_current);
@@ -442,7 +442,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 							m_current.seed = h256(sSeedHash);
 							m_current.boundary = h256(sShareTarget);
 							if (m_protocol == STRATUM_PROTOCOL_ETHEREUMSTRATUM)
-								job = job + "00000000000000000000000000000000000000000000000000000000";
+								job = job + string(64 - 8, '0');
 							m_current.job = h256(job);
 
 							p_farm->setWork(m_current);
