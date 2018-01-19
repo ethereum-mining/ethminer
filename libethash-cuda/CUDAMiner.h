@@ -22,7 +22,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <libethcore/Miner.h>
 #include <libhwmon/wrapnvml.h>
 #include "ethash_cuda_miner_kernel.h"
-#include "libethash/internal.h"
+#include "libethash/litehash.h"
 
 namespace dev
 {
