@@ -20,7 +20,7 @@
  */
 
 #include "EthashAux.h"
-#include <libethash/litehash.h>
+#include <libethash/internal.h>
 
 using namespace std;
 using namespace chrono;
