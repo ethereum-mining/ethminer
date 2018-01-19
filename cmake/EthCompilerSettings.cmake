@@ -27,6 +27,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
 	# enable parallel compilation
 	# specify Exception Handling Model in msvc
+	# enable LTCG for faster builds
 	# disable unknown pragma warning (4068)
 	# disable unsafe function warning (4996)
 	# disable decorated name length exceeded, name was truncated (4503)
@@ -41,6 +42,9 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	add_compile_options(/MP /EHsc /GL /wd4068 /wd4996 /wd4503 /wd4267 /wd4180 /wd4290 /wd4244 /wd4800 -D_WIN32_WINNT=0x0501 /DNOMINMAX)
 	# disable empty object file warning
 	set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /LTCG /ignore:4221")
+	# enable LTCG for faster builds
+	# enable RELEASE so that the executable file has its checksum set
+	# enable unused references removal
 	# warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification
 	# warning LNK4099: pdb was not found with lib
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /LTCG /RELEASE /OPT:REF /OPT:ICF /ignore:4099,4075")
