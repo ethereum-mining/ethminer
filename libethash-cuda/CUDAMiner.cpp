@@ -22,33 +22,7 @@ using namespace dev;
 using namespace eth;
 
 unsigned CUDAMiner::s_numInstances = 0;
-int CUDAMiner::s_devices[16] = {
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
-};
-
-#undef min
-#undef max
-
-using namespace std;
-using namespace dev;
-
-struct CUDAChannel: public LogChannel
-{
-	static const char* name() { return EthOrange " cu"; }
-	static const int verbosity = 2;
-	static const bool debug = false;
-};
-#define cudalog clog(CUDAChannel)
-
-unsigned const CUDAMiner::c_defaultBlockSize = 	128;
-unsigned const CUDAMiner::c_defaultGridSize = 	8192; // * CL_DEFAULT_LOCAL_WORK_SIZE
-unsigned const CUDAMiner::c_defaultNumStreams = 2;
-
-unsigned CUDAMiner::m_parallelHash = 	4;
-unsigned CUDAMiner::s_blockSize = 		CUDAMiner::c_defaultBlockSize;
-unsigned CUDAMiner::s_gridSize = 		CUDAMiner::c_defaultGridSize;
-unsigned CUDAMiner::s_numStreams = 		CUDAMiner::c_defaultNumStreams;
-unsigned CUDAMiner::s_scheduleFlag = 	0;
+int CUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
 CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
 	Miner("CUDA", _farm, _index),
@@ -61,43 +35,22 @@ CUDAMiner::~CUDAMiner()
 	pause();
 }
 
-unsigned CUDAMiner::instances() 
-{ 
-	return s_numInstances > 0 ? s_numInstances : 1; 
-}
-
-void CUDAMiner::setNumInstances(unsigned _instances) 
-{ 
-	s_numInstances = std::min<unsigned>(_instances, getNumDevices());
-}
-
-void CUDAMiner::setDevices(const unsigned* _devices, unsigned _selectedDeviceCount)
-{
-	for (unsigned i = 0; i < _selectedDeviceCount; i++) 
-		s_devices[i] = _devices[i];
-}
-
 void CUDAMiner::report(uint64_t _nonce, const WorkPackage& w)
 {
+	// FIXME: This code is exactly the same as in EthashGPUMiner.
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
-		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary, w.job, m_abort});
+		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary, w.job, hook_isStale()});
 	else
 	{
 		farm.failedSolution();
-		cwarn << "GPU gave incorrect result!";
+		cwarn << "FAILURE: GPU gave incorrect result!";
 	}
 }
 
-void CUDAMiner::found(uint64_t const* _nonces, uint32_t count, const WorkPackage& w)
+void CUDAMiner::kickOff()
 {
-	for (uint32_t i = 0; i < count; i++)
-		report(_nonces[i], w);
-}
-
-void CUDAMiner::searched(uint32_t _count)
-{
-	addHashCount(_count);
+	hook_reset();
 }
 
 bool CUDAMiner::init(const h256& seed)
@@ -167,7 +120,7 @@ void CUDAMiner::workLoop()
 			uint64_t startN = current.startNonce;
 			if (current.exSizeBits >= 0) 
 				startN = current.startNonce | ((uint64_t)index << (64 - 4 - current.exSizeBits)); // this can support up to 16 devices
-			search(current.header.data(), upper64OfBoundary, (current.exSizeBits >= 0), startN, w);
+			cuda_search(current.header.data(), upper64OfBoundary, (current.exSizeBits >= 0), startN, w);
 
 			// Check if we should stop.
 			if (shouldStop())
@@ -180,19 +133,6 @@ void CUDAMiner::workLoop()
 	{
 		cwarn << "Error CUDA mining: " << _e.what();
 	}
-}
-
-void CUDAMiner::kickOff()
-{
-	UniqueGuard l(x_all);
-	m_aborted = m_abort = false;
-}
-
-bool CUDAMiner::shouldStop()
-{
-	if (m_abort || Miner::shouldStop())
-		return (m_aborted = true);
-	return false;
 }
 
 void CUDAMiner::pause()
@@ -267,6 +207,62 @@ HwMonitor CUDAMiner::hwmon()
 	return hw;
 }
 
+bool CUDAMiner::configureGPU(
+	unsigned _blockSize,
+	unsigned _gridSize,
+	unsigned _numStreams,
+	unsigned _scheduleFlag,
+	uint64_t _currentBlock,
+	unsigned _dagLoadMode,
+	unsigned _dagCreateDevice
+	)
+{
+	s_dagLoadMode = _dagLoadMode;
+	s_dagCreateDevice = _dagCreateDevice;
+
+	if (!cuda_configureGPU(
+		getNumDevices(),
+		s_devices,
+		((_blockSize + 7) / 8) * 8,
+		_gridSize,
+		_numStreams,
+		_scheduleFlag,
+		_currentBlock)
+		)
+	{
+		cout << "No CUDA device with sufficient memory was found. Can't CUDA mine. Remove the -U argument" << endl;
+		return false;
+	}
+	return true;
+}
+
+void CUDAMiner::setParallelHash(unsigned _parallelHash)
+{
+  	m_parallelHash = _parallelHash;
+}
+
+// workaround lame platforms
+
+#undef min
+#undef max
+
+using namespace std;
+using namespace dev;
+
+struct CUDAChannel: public LogChannel
+{
+	static const char* name() { return EthOrange " cu"; }
+	static const int verbosity = 2;
+	static const bool debug = false;
+};
+#define cudalog clog(CUDAChannel)
+#define ETHCUDA_LOG(_contents) cudalog << _contents
+
+
+unsigned const CUDAMiner::c_defaultBlockSize = 128;
+unsigned const CUDAMiner::c_defaultGridSize = 8192; // * CL_DEFAULT_LOCAL_WORK_SIZE
+unsigned const CUDAMiner::c_defaultNumStreams = 2;
+
 bool CUDAMiner::cuda_configureGPU(
 	size_t numDevices,
 	const int* _devices,
@@ -315,39 +311,11 @@ bool CUDAMiner::cuda_configureGPU(
 	}
 }
 
-bool CUDAMiner::configureGPU(
-	unsigned _blockSize,
-	unsigned _gridSize,
-	unsigned _numStreams,
-	unsigned _scheduleFlag,
-	uint64_t _currentBlock,
-	unsigned _dagLoadMode,
-	unsigned _dagCreateDevice
-	)
-{
-	s_dagLoadMode = _dagLoadMode;
-	s_dagCreateDevice = _dagCreateDevice;
-
-	if (!cuda_configureGPU(
-		getNumDevices(),
-		s_devices,
-		((_blockSize + 7) / 8) * 8,
-		_gridSize,
-		_numStreams,
-		_scheduleFlag,
-		_currentBlock)
-		)
-	{
-		cout << "No CUDA device with sufficient memory was found. Can't CUDA mine. Remove the -U argument" << endl;
-		return false;
-	}
-	return true;
-}
-
-void CUDAMiner::setParallelHash(unsigned _parallelHash)
-{
-  	m_parallelHash = _parallelHash;
-}
+unsigned CUDAMiner::m_parallelHash = 4;
+unsigned CUDAMiner::s_blockSize = CUDAMiner::c_defaultBlockSize;
+unsigned CUDAMiner::s_gridSize = CUDAMiner::c_defaultGridSize;
+unsigned CUDAMiner::s_numStreams = CUDAMiner::c_defaultNumStreams;
+unsigned CUDAMiner::s_scheduleFlag = 0;
 
 bool CUDAMiner::cuda_init(size_t numDevices, ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t* &hostDAG, unsigned dagCreateDevice)
 {
@@ -468,7 +436,7 @@ cpyDag:
 	}
 }
 
-void CUDAMiner::search(
+void CUDAMiner::cuda_search(
 	uint8_t const* header,
 	uint64_t target,
 	bool _ethStratum,
@@ -545,7 +513,7 @@ void CUDAMiner::search(
 			if (found_count)
 				found(nonces, found_count, w);
 			searched(batch_size);
-			exit = shouldStop();
+			exit = cuda_shouldStop();
 		}
 	}
 }
