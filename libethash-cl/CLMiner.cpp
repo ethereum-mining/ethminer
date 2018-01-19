@@ -4,7 +4,7 @@
 /// @copyright GNU General Public License
 
 #include "CLMiner.h"
-#include <libethash/litehash.h>
+#include <libethash/internal.h>
 #include "CLMiner_kernel_stable.h"
 #include "CLMiner_kernel_unstable.h"
 
