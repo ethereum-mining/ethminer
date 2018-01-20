@@ -666,7 +666,7 @@ bool CLMiner::init(const h256& seed)
 
 		// create miner OpenCL program
 		cl::Program::Sources sources{{code.data(), code.size()}};
-		cl::Program program(m_context, sources);
+		cl::Program program(m_context, sources), binaryProgram;
 		try
 		{
 			program.build({device}, options);
@@ -676,6 +676,12 @@ bool CLMiner::init(const h256& seed)
 		{
 			cwarn << "Build info:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
 			return false;
+		}
+
+		// If we have a binary kernel, we load it in tandem with the opencl,
+		// that way, we can use the dag generate opencl code
+		if(s_clKernelName >= CLKernelName::Binary) {
+
 		}
 
 		//check whether the current dag fits in memory everytime we recreate the DAG
@@ -698,7 +704,12 @@ bool CLMiner::init(const h256& seed)
 			cllog << "Creating DAG buffer, size" << dagSize;
 			m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, dagSize);
 			cllog << "Loading kernels";
-			m_searchKernel = cl::Kernel(program, "ethash_search");
+
+			if(s_clKernelName >= CLKernelName::Binary) {
+				m_searchKernel = cl::Kernel(binaryProgram, "ethash_search");
+			}else{
+				m_searchKernel = cl::Kernel(binary, "ethash_search");
+			}
 			m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
 			cllog << "Writing light cache buffer";
 			m_queue.enqueueWriteBuffer(m_light, CL_TRUE, 0, light->data().size(), light->data().data());
@@ -712,9 +723,20 @@ bool CLMiner::init(const h256& seed)
 		ETHCL_LOG("Creating buffer for header.");
 		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
+
 		m_searchKernel.setArg(1, m_header);
 		m_searchKernel.setArg(2, m_dag);
 		m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
+		
+		if(s_clKernelName >= CLKernelName::Binary) {
+			m_searchKernel.setArg(6, dagSize128);
+
+			if(s_clKernelName == CLKernelName::BinaryExp){
+				// Setup for reduction
+				uint32_t factor = (1 << 32)/dagSize128;
+				m_searchKernel.setArg(7, factor);
+			}
+		}
 
 		// create mining buffers
 		ETHCL_LOG("Creating mining buffer");

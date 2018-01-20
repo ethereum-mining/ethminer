@@ -42,8 +42,10 @@ namespace eth
 {
 
 enum CLKernelName {
-	Stable,
+	Stable = 0,
 	Unstable,
+	Binary,
+	BinaryExp
 };
 
 class CLMiner: public Miner
