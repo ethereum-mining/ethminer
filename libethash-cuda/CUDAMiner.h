@@ -98,24 +98,6 @@ namespace eth
 		void pause() override;
 		void waitPaused() override;
 
-		void found(uint64_t const* _nonces, uint32_t count, const WorkPackage& w)
-		{
-			for (uint32_t i = 0; i < count; i++)
-				report(_nonces[i], w);
-		}
-
-		void searched(uint32_t _count)
-		{
-			addHashCount(_count);
-		}
-
-		bool cuda_shouldStop()
-		{
-			if (m_abort || shouldStop())
-				return (m_aborted = true);
-			return false;
-		}
-
 	private:
 		Mutex x_all;
 		bool m_abort = false;
