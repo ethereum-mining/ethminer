@@ -587,8 +587,8 @@ bool CLMiner::init(const h256& seed)
 
 		// use selected device
 		unsigned deviceId = s_devices[index] > -1 ? s_devices[index] : index;
-		string deviceName = device.getInfo<CL_DEVICE_NAME>();
 		cl::Device& device = devices[min<unsigned>(deviceId, devices.size() - 1)];
+		string deviceName = device.getInfo<CL_DEVICE_NAME>();
 		string device_version = device.getInfo<CL_DEVICE_VERSION>();
 		ETHCL_LOG("Device:   " <<  deviceName << " / " << device_version);
 
@@ -750,7 +750,7 @@ bool CLMiner::init(const h256& seed)
 			if(s_clKernelName >= CLKernelName::Binary && loadedBinary) {
 				m_searchKernel = cl::Kernel(binaryProgram, "ethash_search");
 			}else{
-				m_searchKernel = cl::Kernel(binary, "ethash_search");
+				m_searchKernel = cl::Kernel(program, "ethash_search");
 			}
 			m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
 			cllog << "Writing light cache buffer";
@@ -775,7 +775,7 @@ bool CLMiner::init(const h256& seed)
 
 			if(s_clKernelName == CLKernelName::BinaryExp){
 				// Setup for reduction
-				uint32_t factor = (1 << 32)/dagSize128;
+				uint32_t factor = (1UL << 32)/dagSize128;
 				m_searchKernel.setArg(7, factor);
 			}
 		}

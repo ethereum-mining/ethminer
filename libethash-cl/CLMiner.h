@@ -10,6 +10,9 @@
 #include <libethcore/Miner.h>
 #include <libhwmon/wrapnvml.h>
 #include <libhwmon/wrapadl.h>
+
+#include <fstream>
+
 #if defined(__linux)
 #include <libhwmon/wrapamdsysfs.h>
 #endif
