@@ -25,7 +25,10 @@ using namespace dev;
 using namespace eth;
 
 unsigned CUDAMiner::s_numInstances = 0;
-int CUDAMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+
+int CUDAMiner::s_devices[16] = {
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+};
 
 struct CUDAChannel: public LogChannel
 {
@@ -33,6 +36,7 @@ struct CUDAChannel: public LogChannel
 	static const int verbosity = 2;
 	static const bool debug = false;
 };
+
 #define cudalog clog(CUDAChannel)
 #define ETHCUDA_LOG(_contents) cudalog << _contents
 
@@ -44,26 +48,7 @@ CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
 CUDAMiner::~CUDAMiner()
 {
 	stopWorking();
-	pause();
-}
-
-void CUDAMiner::report(uint64_t _nonce, const WorkPackage& w)
-{
-	// FIXME: This code is exactly the same as in EthashGPUMiner.
-	Result r = EthashAux::eval(w.seed, w.header, _nonce);
-	if (r.value < w.boundary)
-		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary, w.job, w.job_len, m_abort});
-	else
-	{
-		farm.failedSolution();
-		cwarn << "FAILURE: GPU gave incorrect result!";
-	}
-}
-
-void CUDAMiner::kickOff()
-{
-        UniqueGuard l(x_all);
-        m_aborted = m_abort = false;
+	kick_miner();
 }
 
 bool CUDAMiner::init(const h256& seed)
@@ -148,13 +133,11 @@ void CUDAMiner::workLoop()
 	}
 }
 
-void CUDAMiner::pause()
+void CUDAMiner::kick_miner()
 {
 	UniqueGuard l(x_all);
-	if (m_aborted)
-		return;
-
-	m_abort = true;
+	if (!m_abort)
+		m_abort = true;
 }
 
 void CUDAMiner::setNumInstances(unsigned _instances)
@@ -166,14 +149,6 @@ void CUDAMiner::setDevices(const unsigned* _devices, unsigned _selectedDeviceCou
 {
         for (unsigned i = 0; i < _selectedDeviceCount; i++)
                 s_devices[i] = _devices[i];
-}
-
-void CUDAMiner::waitPaused()
-{
-	// m_abort is true so now searched()/found() will return true to abort the search.
-	// we hang around on this thread waiting for them to point out that they have aborted since
-	// otherwise we may end up deleting this object prior to searched()/found() being called.
-	m_aborted.wait(true);
 }
 
 unsigned CUDAMiner::getNumDevices()
@@ -323,7 +298,15 @@ unsigned CUDAMiner::s_gridSize = CUDAMiner::c_defaultGridSize;
 unsigned CUDAMiner::s_numStreams = CUDAMiner::c_defaultNumStreams;
 unsigned CUDAMiner::s_scheduleFlag = 0;
 
-bool CUDAMiner::cuda_init(size_t numDevices, ethash_light_t _light, uint8_t const* _lightData, uint64_t _lightSize, unsigned _deviceId, bool _cpyToHost, uint8_t* &hostDAG, unsigned dagCreateDevice)
+bool CUDAMiner::cuda_init(
+	size_t numDevices,
+	ethash_light_t _light,
+	uint8_t const* _lightData,
+	uint64_t _lightSize,
+	unsigned _deviceId,
+	bool _cpyToHost,
+	uint8_t* &hostDAG,
+	unsigned dagCreateDevice)
 {
 	try
 	{
@@ -450,7 +433,6 @@ void CUDAMiner::search(
 	const dev::eth::WorkPackage& w)
 {
 	bool initialize = false;
-	bool exit = false;
 	if (memcmp(&m_current_header, header, sizeof(hash32_t)))
 	{
 		m_current_header = *reinterpret_cast<hash32_t const *>(header);
@@ -493,13 +475,15 @@ void CUDAMiner::search(
 		}
 	}
 	uint64_t batch_size = s_gridSize * s_blockSize;
-	for (; !exit; m_current_index++, m_current_nonce += batch_size)
+	while (true)
 	{
+		m_current_index++;
+		m_current_nonce += batch_size;
 		auto stream_index = m_current_index % s_numStreams;
 		cudaStream_t stream = m_streams[stream_index];
 		volatile uint32_t* buffer = m_search_buf[stream_index];
 		uint32_t found_count = 0;
-		uint64_t nonces[SEARCH_RESULT_BUFFER_SIZE - 1];
+		uint64_t nonces[SEARCH_RESULT_BUFFER_SIZE];
 		uint64_t nonce_base = m_current_nonce - s_numStreams * batch_size;
 		if (m_current_index >= s_numStreams)
 		{
@@ -509,17 +493,33 @@ void CUDAMiner::search(
 				buffer[0] = 0;
 				if (found_count > (SEARCH_RESULT_BUFFER_SIZE - 1))
 					found_count = SEARCH_RESULT_BUFFER_SIZE - 1;
-				for (unsigned int j = 0; j < found_count; j++)
-					nonces[j] = nonce_base + buffer[j + 1];
+				for (unsigned int j = 1; j <= found_count; j++)
+					nonces[j] = nonce_base + buffer[j];
 			}
 		}
 		run_ethash_search(s_gridSize, s_blockSize, m_sharedBytes, stream, buffer, m_current_nonce, m_parallelHash);
 		if (m_current_index >= s_numStreams)
 		{
 			if (found_count)
-				found(nonces, found_count, w);
-			searched(batch_size);
-			exit = cuda_shouldStop();
+			{
+				for (uint32_t i = 1; i <= found_count; i++)
+				{
+					Result r = EthashAux::eval(w.seed, w.header, nonces[i]);
+					if (r.value < w.boundary)
+						farm.submitProof(Solution{nonces[i], r.mixHash, w.header, w.seed, w.boundary, w.job, w.job_len, m_abort});
+					else
+					{
+						farm.failedSolution();
+						cwarn << "GPU gave incorrect result!";
+					}
+				}
+			}
+			addHashCount(batch_size);
+			if (m_abort || shouldStop())
+			{
+				m_abort = false;
+				break;
+			}
 		}
 	}
 }
