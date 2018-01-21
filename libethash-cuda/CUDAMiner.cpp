@@ -450,7 +450,6 @@ void CUDAMiner::search(
 	const dev::eth::WorkPackage& w)
 {
 	bool initialize = false;
-	bool exit = false;
 	if (memcmp(&m_current_header, header, sizeof(hash32_t)))
 	{
 		m_current_header = *reinterpret_cast<hash32_t const *>(header);
@@ -493,14 +492,17 @@ void CUDAMiner::search(
 		}
 	}
 	uint64_t batch_size = s_gridSize * s_blockSize;
-	for (; !exit; m_current_index++, m_current_nonce += batch_size)
+	while (true)
 	{
-		auto stream_index = m_current_index % s_numStreams;
+		m_current_index++;
+		m_current_nonce += batch_size;
+		auto stream_index = m_current_index & (s_numStreams - 1); // numstreams is always power of 2
 		cudaStream_t stream = m_streams[stream_index];
 		volatile uint32_t* buffer = m_search_buf[stream_index];
 		uint32_t found_count = 0;
-		uint64_t nonces[SEARCH_RESULT_BUFFER_SIZE - 1];
+		uint64_t nonces[SEARCH_RESULT_BUFFER_SIZE];
 		uint64_t nonce_base = m_current_nonce - s_numStreams * batch_size;
+
 		if (m_current_index >= s_numStreams)
 		{
 			CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
@@ -509,17 +511,22 @@ void CUDAMiner::search(
 				buffer[0] = 0;
 				if (found_count > (SEARCH_RESULT_BUFFER_SIZE - 1))
 					found_count = SEARCH_RESULT_BUFFER_SIZE - 1;
-				for (unsigned int j = 0; j < found_count; j++)
-					nonces[j] = nonce_base + buffer[j + 1];
+				for (unsigned int j = 1; j <= found_count; j++)
+					nonces[j] = nonce_base + buffer[j];
 			}
 		}
 		run_ethash_search(s_gridSize, s_blockSize, m_sharedBytes, stream, buffer, m_current_nonce, m_parallelHash);
 		if (m_current_index >= s_numStreams)
 		{
 			if (found_count)
-				found(nonces, found_count, w);
-			searched(batch_size);
-			exit = cuda_shouldStop();
+				for (uint32_t i = 1; i <= found_count; i++)
+					report(nonces[i], w);
+			addHashCount(batch_size);
+			if (m_abort || shouldStop())
+			{
+				m_aborted = true;
+				break;
+			}
 		}
 	}
 }
