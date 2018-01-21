@@ -262,7 +262,7 @@ CLMiner::CLMiner(FarmFace& _farm, unsigned _index):
 
 CLMiner::~CLMiner()
 {
-	pause();
+	kick_miner();
 }
 
 void CLMiner::report(uint64_t _nonce, WorkPackage const& _w)
@@ -277,9 +277,6 @@ void CLMiner::report(uint64_t _nonce, WorkPackage const& _w)
 		cwarn << "FAILURE: GPU gave incorrect result!";
 	}
 }
-
-void CLMiner::kickOff()
-{}
 
 namespace
 {
@@ -403,9 +400,7 @@ void CLMiner::workLoop()
 	}
 }
 
-void CLMiner::pause() {}
-
-void CLMiner::waitPaused() {}
+void CLMiner::kick_miner() {}
 
 unsigned CLMiner::getNumDevices()
 {
