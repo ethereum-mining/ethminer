@@ -52,7 +52,7 @@ void CUDAMiner::report(uint64_t _nonce, const WorkPackage& w)
 	// FIXME: This code is exactly the same as in EthashGPUMiner.
 	Result r = EthashAux::eval(w.seed, w.header, _nonce);
 	if (r.value < w.boundary)
-		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary, w.job, m_abort});
+		farm.submitProof(Solution{_nonce, r.mixHash, w.header, w.seed, w.boundary, w.job, w.job_len, m_abort});
 	else
 	{
 		farm.failedSolution();

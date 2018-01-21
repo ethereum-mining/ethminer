@@ -406,12 +406,13 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						diffToTarget((uint32_t*)m_current.boundary.data(), m_nextWorkDifficulty);
 						m_current.startNonce = ethash_swap_u64(*((uint64_t*)m_extraNonce.data()));
 						m_current.exSizeBits = m_extraNonceHexSize * 4;
+						m_current.job_len = job.size();
 						if (m_protocol == STRATUM_PROTOCOL_ETHEREUMSTRATUM)
-							job = job + string(64 - 8, '0');
+							job.resize(64, '0');
 						m_current.job = h256(job);
 
 						p_farm->setWork(m_current);
-						cnote << "Received new job #" + job.substr(0, 8)
+						cnote << "Received new job #" + job.substr(0, m_current.job_len)
 							<< " seed: " << "#" + m_current.seed.hex().substr(0, 32)
 							<< " target: " << "#" + m_current.boundary.hex().substr(0, 24);
 					}
@@ -441,12 +442,10 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 							m_current.header = h256(sHeaderHash);
 							m_current.seed = h256(sSeedHash);
 							m_current.boundary = h256(sShareTarget);
-							if (m_protocol == STRATUM_PROTOCOL_ETHEREUMSTRATUM)
-								job = job + string(64 - 8, '0');
 							m_current.job = h256(job);
 
 							p_farm->setWork(m_current);
-							cnote << "Received new job #" + job.substr(0, 8)
+							cnote << "Received new job #" + job.substr(0, m_current.job_len)
 								<< " seed: " << "#" + m_current.seed.hex().substr(0, 32)
 								<< " target: " << "#" + m_current.boundary.hex().substr(0, 24);
 						}
@@ -521,7 +520,7 @@ bool EthStratumClient::submit(Solution solution) {
 			break;
 		case STRATUM_PROTOCOL_ETHEREUMSTRATUM:
 			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" +
-				p_active->user + "\",\"" + solution.job.hex().substr(0, 8) + "\",\"" +
+				p_active->user + "\",\"" + solution.job.hex().substr(0, solution.job_len) + "\",\"" +
 				nonceHex.substr(m_extraNonceHexSize, 16 - m_extraNonceHexSize) + "\"]}\n";
 			break;
 	}
