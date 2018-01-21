@@ -645,9 +645,9 @@ bool CLMiner::init(const h256& seed)
 		if ( s_clKernelName == CLKernelName::Unstable ) {
 			cllog << "OpenCL kernel: Unstable kernel";
 			code = string(CLMiner_kernel_unstable, CLMiner_kernel_unstable + sizeof(CLMiner_kernel_unstable));
-		}
-		else { //if(s_clKernelName == CLKernelName::Stable)
-			cllog << "OpenCL kernel: Stable kernel";
+
+		} else { // Binary or "Stable" kernel, we use the "stable" kernel as a fallback if the binary one cant be loaded
+			cllog << "OpenCL kernel: " <<  (s_clKernelName == CLKernelName::Binary ?  "Binary" : "Stable") << " kernel";
 
 			//CLMiner_kernel_stable.cl will do a #undef THREADS_PER_HASH
 			if(s_threadsPerHash != 8) {
@@ -771,13 +771,9 @@ bool CLMiner::init(const h256& seed)
 		m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
 		
 		if(s_clKernelName >= CLKernelName::Binary && loadedBinary) {
+			uint32_t factor = (1UL << 32)/dagSize128;
 			m_searchKernel.setArg(6, dagSize128);
-
-			if(s_clKernelName == CLKernelName::BinaryExp){
-				// Setup for reduction
-				uint32_t factor = (1UL << 32)/dagSize128;
-				m_searchKernel.setArg(7, factor);
-			}
+			m_searchKernel.setArg(7, factor);
 		}
 
 		// create mining buffers

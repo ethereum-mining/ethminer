@@ -44,11 +44,10 @@ namespace dev
 namespace eth
 {
 
-enum CLKernelName {
+enum CLKernelName : unsigned int {
 	Stable = 0,
 	Unstable,
 	Binary,
-	BinaryExp
 };
 
 class CLMiner: public Miner
@@ -86,7 +85,7 @@ public:
 			s_devices[i] = _devices[i];
 		}
 	}
-	static void setCLKernel(unsigned _clKernel) { s_clKernelName = _clKernel == 1 ? CLKernelName::Unstable : CLKernelName::Stable; }
+	static void setCLKernel(unsigned _clKernel) { s_clKernelName = _clKernel > CLKernelName::Binary ? CLKernelName::Stable : (CLKernelName)_clKernel; }
 	HwMonitor hwmon() override;
 protected:
 	void kickOff() override;
