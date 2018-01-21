@@ -351,7 +351,6 @@ void CLMiner::workLoop()
 				else
 					startNonce = randomNonce();
 
-				current = w;
 				auto switchEnd = std::chrono::high_resolution_clock::now();
 				auto globalSwitchTime = std::chrono::duration_cast<std::chrono::milliseconds>(switchEnd - workSwitchStart).count();
 				auto localSwitchTime = std::chrono::duration_cast<std::chrono::microseconds>(switchEnd - localSwitchStart).count();
@@ -367,13 +366,10 @@ void CLMiner::workLoop()
 			if (results[0] > 0)
 			{
 				// Ignore results except the first one.
-				nonce = startNonce + results[1];
+				nonce = current.startNonce + results[1];
 				// Reset search buffer if any solution found.
 				m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
 			}
-
-			// Increase start nonce for following kernel execution.
-			startNonce += m_globalWorkSize;
 
 			// Run the kernel.
 			m_searchKernel.setArg(3, startNonce);
@@ -383,6 +379,11 @@ void CLMiner::workLoop()
 			// It takes some time because ethash must be re-evaluated on CPU.
 			if (nonce != 0)
 				report(nonce, current);
+
+			current = w;        // kernel now processing newest work
+			current.startNonce = startNonce;
+			// Increase start nonce for following kernel execution.
+			startNonce += m_globalWorkSize;
 
 			// Report hash count
 			addHashCount(m_globalWorkSize);
@@ -720,8 +721,6 @@ bool CLMiner::init(const h256& seed)
 		ETHCL_LOG("Creating mining buffer");
 		m_searchBuffer = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_maxSearchResults + 1) * sizeof(uint32_t));
 
-		cllog << "Generating DAG";
-
 		uint32_t const work = (uint32_t)(dagSize / sizeof(node));
 		uint32_t fullRuns = work / m_globalWorkSize;
 		uint32_t const restWork = work % m_globalWorkSize;
@@ -731,14 +730,18 @@ bool CLMiner::init(const h256& seed)
 		m_dagKernel.setArg(2, m_dag);
 		m_dagKernel.setArg(3, ~0u);
 
+		auto startDAG = std::chrono::steady_clock::now();
 		for (uint32_t i = 0; i < fullRuns; i++)
 		{
 			m_dagKernel.setArg(0, i * m_globalWorkSize);
 			m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
 			m_queue.finish();
-			cllog << "DAG" << int(100.0f * i / fullRuns) << '%';
 		}
+		auto endDAG = std::chrono::steady_clock::now();
 
+		auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(endDAG-startDAG);
+		float gb = (float)dagSize / (1024 * 1024 * 1024);
+		cnote << gb << " GB of DAG data generated in" << dagTime.count() << "ms.";
 	}
 	catch (cl::Error const& err)
 	{
