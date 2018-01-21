@@ -5,7 +5,11 @@
 #include <stdint.h>
 #include <cuda_runtime.h>
 
-#define SEARCH_RESULT_BUFFER_SIZE 64
+// It is virtually impossible to get more than
+// one solution per stream hash calculation
+// Leave room for up to 3 results.
+#define SEARCH_RESULT_BUFFER_SIZE 4
+
 #define ACCESSES 64
 #define THREADS_PER_HASH (128 / 16)
 #define SHUFFLE_MIN_VER 300 //__CUDA_ARCH_
