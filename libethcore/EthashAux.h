@@ -40,6 +40,7 @@ struct Solution
 	h256 seedHash;
 	h256 boundary;
 	h256 job;
+	int job_len;
 	bool stale;
 };
 
@@ -101,6 +102,7 @@ struct WorkPackage
 
 	uint64_t startNonce = 0;
 	int exSizeBits = -1;
+	int job_len = 8;
 };
 
 }
