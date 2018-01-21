@@ -135,7 +135,6 @@ void CUDAMiner::workLoop()
 
 void CUDAMiner::kick_miner()
 {
-	UniqueGuard l(x_all);
 	if (!m_abort)
 		m_abort = true;
 }
