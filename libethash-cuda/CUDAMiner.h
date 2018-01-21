@@ -106,7 +106,7 @@ protected:
 	void kick_miner() override;
 
 private:
-	volatile bool m_abort = false;
+	bool m_abort = false;
 
 	void workLoop() override;
 
