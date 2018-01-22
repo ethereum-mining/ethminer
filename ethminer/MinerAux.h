@@ -619,7 +619,7 @@ public:
 			<< "    --cl-kernel <n>  Use a different OpenCL kernel (default: use stable kernel)" << endl
 			<< "        0: stable kernel" << endl
 			<< "        1: unstable kernel" << endl
-//			<< "        2: experimental kernel" << endl
+			<< "        2: binary kernel (if available binary or else fallback to stable)" << endl
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << CLMiner::c_defaultLocalWorkSize << endl
 			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << CLMiner::c_defaultGlobalWorkSizeMultiplier << " * " << CLMiner::c_defaultLocalWorkSize << endl
 			<< "    --cl-parallel-hash <1 2 ..8> Define how many threads to associate per hash. Default=8" << endl
