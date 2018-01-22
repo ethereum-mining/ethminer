@@ -180,14 +180,7 @@ public:
 			m_work = _work;
 			workSwitchStart = std::chrono::high_resolution_clock::now();
 		}
-		pause();
-	}
-
-	void startWork()
-	{
-		waitPaused();
-		kickOff();
-		m_hashCount = 0;
+		kick_miner();
 	}
 
 	uint64_t hashCount() const { return m_hashCount; }
@@ -196,19 +189,14 @@ public:
 
 	virtual HwMonitor hwmon() = 0;
 
-protected:
+	unsigned Index() { return index; };
 
-	/**
-	 * @brief Begin working on a given work package, discarding any previous work.
-	 * @param _work The package for which to find a solution.
-	 */
-	virtual void kickOff() = 0;
+protected:
 
 	/**
 	 * @brief No work left to be done. Pause until told to kickOff().
 	 */
-	virtual void pause() = 0;
-	virtual void waitPaused() = 0;
+	virtual void kick_miner() = 0;
 
 	WorkPackage work() const { Guard l(x_work); return m_work; }
 
