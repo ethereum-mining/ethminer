@@ -589,8 +589,9 @@ bool CLMiner::init(const h256& seed)
 		// use selected device
 		unsigned deviceId = s_devices[index] > -1 ? s_devices[index] : index;
 		cl::Device& device = devices[min<unsigned>(deviceId, devices.size() - 1)];
+		string deviceName = device.getInfo<CL_DEVICE_NAME>();
 		string device_version = device.getInfo<CL_DEVICE_VERSION>();
-		ETHCL_LOG("Device:   " << device.getInfo<CL_DEVICE_NAME>() << " / " << device_version);
+		ETHCL_LOG("Device:   " <<  deviceName << " / " << device_version);
 
 		string clVer = device_version.substr(7, 3);
 		if (clVer == "1.0" || clVer == "1.1")
@@ -645,9 +646,9 @@ bool CLMiner::init(const h256& seed)
 		if ( s_clKernelName == CLKernelName::Unstable ) {
 			cllog << "OpenCL kernel: Unstable kernel";
 			code = string(CLMiner_kernel_unstable, CLMiner_kernel_unstable + sizeof(CLMiner_kernel_unstable));
-		}
-		else { //if(s_clKernelName == CLKernelName::Stable)
-			cllog << "OpenCL kernel: Stable kernel";
+
+		} else { // Binary or "Stable" kernel, we use the "stable" kernel as a fallback if the binary one cant be loaded
+			cllog << "OpenCL kernel: " <<  (s_clKernelName == CLKernelName::Binary ?  "Binary" : "Stable") << " kernel";
 
 			//CLMiner_kernel_stable.cl will do a #undef THREADS_PER_HASH
 			if(s_threadsPerHash != 8) {
@@ -667,7 +668,7 @@ bool CLMiner::init(const h256& seed)
 
 		// create miner OpenCL program
 		cl::Program::Sources sources{{code.data(), code.size()}};
-		cl::Program program(m_context, sources);
+		cl::Program program(m_context, sources), binaryProgram;
 		try
 		{
 			program.build({device}, options);
@@ -677,6 +678,53 @@ bool CLMiner::init(const h256& seed)
 		{
 			cwarn << "Build info:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
 			return false;
+		}
+
+		/* If we have a binary kernel, we load it in tandem with the opencl,
+		   that way, we can use the dag generate opencl code */
+		bool loadedBinary = false;
+
+		if(s_clKernelName >= CLKernelName::Binary) {
+			std::ifstream kernel_file;
+			vector<unsigned char> bin_data;
+			std::stringstream fname_strm;
+
+			/* Open kernels/{devicename}.bin */
+			std::transform(deviceName.begin(), deviceName.end(), deviceName.begin(), ::tolower);
+			fname_strm << "kernels/" << deviceName << ".bin";
+
+			kernel_file.open(
+					fname_strm.str(),
+					ios::in | ios::binary
+			);
+
+			if(kernel_file.good()) {
+
+				/* Load the data vector with file data */
+				kernel_file.unsetf(std::ios::skipws);
+				bin_data.insert(bin_data.begin(),
+					std::istream_iterator<unsigned char>(kernel_file),
+					std::istream_iterator<unsigned char>());
+
+				/* Setup the program */
+				cl::Program::Binaries blobs({bin_data});
+				cl::Program program(m_context, { device }, blobs);
+				try
+				{
+					program.build({ device }, options);
+					cllog << "Build info success:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+					binaryProgram = program;
+					loadedBinary = true;
+				}
+				catch (cl::Error const&)
+				{
+					cwarn << "Build info:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+				}
+			} else {
+				cwarn << "Instructed to load binary kernel, but failed to load kernel:";
+				cwarn << fname_strm.str();
+				cwarn << "Falling back to OpenCL kernel...";
+			}
 		}
 
 		//check whether the current dag fits in memory everytime we recreate the DAG
@@ -699,7 +747,12 @@ bool CLMiner::init(const h256& seed)
 			cllog << "Creating DAG buffer, size" << dagSize;
 			m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, dagSize);
 			cllog << "Loading kernels";
-			m_searchKernel = cl::Kernel(program, "ethash_search");
+
+			if(s_clKernelName >= CLKernelName::Binary && loadedBinary) {
+				m_searchKernel = cl::Kernel(binaryProgram, "ethash_search");
+			}else{
+				m_searchKernel = cl::Kernel(program, "ethash_search");
+			}
 			m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
 			cllog << "Writing light cache buffer";
 			m_queue.enqueueWriteBuffer(m_light, CL_TRUE, 0, light->data().size(), light->data().data());
@@ -713,9 +766,16 @@ bool CLMiner::init(const h256& seed)
 		ETHCL_LOG("Creating buffer for header.");
 		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
+
 		m_searchKernel.setArg(1, m_header);
 		m_searchKernel.setArg(2, m_dag);
 		m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
+		
+		if(s_clKernelName >= CLKernelName::Binary && loadedBinary) {
+			uint32_t factor = (1UL << 32)/dagSize128;
+			m_searchKernel.setArg(6, dagSize128);
+			m_searchKernel.setArg(7, factor);
+		}
 
 		// create mining buffers
 		ETHCL_LOG("Creating mining buffer");

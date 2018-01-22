@@ -10,6 +10,9 @@
 #include <libethcore/Miner.h>
 #include <libhwmon/wrapnvml.h>
 #include <libhwmon/wrapadl.h>
+
+#include <fstream>
+
 #if defined(__linux)
 #include <libhwmon/wrapamdsysfs.h>
 #endif
@@ -41,9 +44,10 @@ namespace dev
 namespace eth
 {
 
-enum CLKernelName {
-	Stable,
+enum CLKernelName : unsigned int {
+	Stable = 0,
 	Unstable,
+	Binary,
 };
 
 class CLMiner: public Miner
@@ -81,7 +85,7 @@ public:
 			s_devices[i] = _devices[i];
 		}
 	}
-	static void setCLKernel(unsigned _clKernel) { s_clKernelName = _clKernel == 1 ? CLKernelName::Unstable : CLKernelName::Stable; }
+	static void setCLKernel(unsigned _clKernel) { s_clKernelName = _clKernel > CLKernelName::Binary ? CLKernelName::Stable : (CLKernelName)_clKernel; }
 	HwMonitor hwmon() override;
 protected:
 	void kickOff() override;
