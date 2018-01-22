@@ -84,9 +84,7 @@ public:
 	static void setCLKernel(unsigned _clKernel) { s_clKernelName = _clKernel == 1 ? CLKernelName::Unstable : CLKernelName::Stable; }
 	HwMonitor hwmon() override;
 protected:
-	void kickOff() override;
-	void pause() override;
-	void waitPaused() override;
+	void kick_miner() override;
 
 private:
 	void workLoop() override;
