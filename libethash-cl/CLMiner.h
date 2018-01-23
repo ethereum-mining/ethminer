@@ -88,9 +88,7 @@ public:
 	static void setCLKernel(unsigned _clKernel) { s_clKernelName = _clKernel > CLKernelName::Binary ? CLKernelName::Stable : (CLKernelName)_clKernel; }
 	HwMonitor hwmon() override;
 protected:
-	void kickOff() override;
-	void pause() override;
-	void waitPaused() override;
+	void kick_miner() override;
 
 private:
 	void workLoop() override;

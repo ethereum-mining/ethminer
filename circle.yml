@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: nvidia/cuda:9.0-devel-ubuntu17.04
+      - image: nvidia/cuda:9.1-devel-ubuntu16.04
     steps:
       - checkout
 
