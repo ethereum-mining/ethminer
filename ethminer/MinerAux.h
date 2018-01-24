@@ -304,6 +304,18 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
+		else if (arg == "--cl-wavetweak" && i + 1 < argc) 
+		{
+			try
+			{
+				m_openclWavetweak = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
 #endif
 #if ETH_ETHASHCL || ETH_ETHASHCUDA
 		else if ((arg == "--cl-global-work" || arg == "--cuda-grid-size")  && i + 1 < argc)
@@ -514,6 +526,7 @@ public:
 			}
 			
 			CLMiner::setCLKernel(m_openclSelectedKernel);
+			CLMiner::setKernelTweak(m_openclWavetweak);
 			CLMiner::setThreadsPerHash(m_openclThreadsPerHash);
 
 			if (!CLMiner::configureGPU(
@@ -1077,6 +1090,7 @@ private:
 	unsigned m_openclDeviceCount = 0;
 	unsigned m_openclDevices[16];
 	unsigned m_openclThreadsPerHash = 8;
+	unsigned m_openclWavetweak = 7;
 #if !ETH_ETHASHCUDA
 	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
