@@ -527,7 +527,7 @@ bool EthStratumClient::submit(Solution solution) {
 		boost::asio::placeholders::error));
 	if (m_stale)
 	{
-		cwarn << EthYellow "Stale solution submitted to" + p_active->host + EthReset;
+		cwarn << EthYellow "Stale solution submitted to " + p_active->host + EthReset;
 	}
 	else
 	{
