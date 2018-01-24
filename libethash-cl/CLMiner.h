@@ -78,6 +78,7 @@ public:
 	);
 	static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
 	static void setThreadsPerHash(unsigned _threadsPerHash){s_threadsPerHash = _threadsPerHash; }
+	static void setKernelTweak(unsigned _tweakValue) { s_threadTweak = _tweakValue; }
 	static void setDevices(unsigned * _devices, unsigned _selectedDeviceCount)
 	{
 		for (unsigned i = 0; i < _selectedDeviceCount; i++)
@@ -110,6 +111,7 @@ private:
 	static unsigned s_platformId;
 	static unsigned s_numInstances;
 	static unsigned s_threadsPerHash;
+	static uint32_t s_threadTweak;
 	static CLKernelName s_clKernelName;
 	static int s_devices[16];
 
@@ -117,6 +119,7 @@ private:
 	static unsigned s_workgroupSize;
 	/// The initial global work size for the searches
 	static unsigned s_initialGlobalWorkSize;
+
 
 	wrap_nvml_handle *nvmlh = NULL;
 	wrap_adl_handle *adlh = NULL;
