@@ -465,8 +465,7 @@ void CUDAMiner::search(
 	{
 		if (initialize)
 		{
-			random_device engine;
-			m_current_nonce = uniform_int_distribution<uint64_t>()(engine);
+			m_current_nonce = get_start_nonce();
 			m_current_index = 0;
 			CUDA_SAFE_CALL(cudaDeviceSynchronize());
 			for (unsigned int i = 0; i < s_numStreams; i++)
