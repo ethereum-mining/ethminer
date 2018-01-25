@@ -156,6 +156,7 @@ public:
 	 */
 	virtual bool submitProof(Solution const& _p) = 0;
 	virtual void failedSolution() = 0;
+	virtual uint64_t get_nonce_scrambler() = 0;
 };
 
 /**
@@ -190,6 +191,12 @@ public:
 	virtual HwMonitor hwmon() = 0;
 
 	unsigned Index() { return index; };
+
+	uint64_t get_start_nonce()
+	{
+		// Each GPU is given a non-overlapping 2^40 range to search
+		return farm.get_nonce_scrambler() + ((uint64_t) index << 40);
+	}
 
 protected:
 
