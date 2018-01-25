@@ -278,15 +278,6 @@ void CLMiner::report(uint64_t _nonce, WorkPackage const& _w)
 	}
 }
 
-namespace
-{
-uint64_t randomNonce()
-{
-	static std::mt19937_64 s_gen(std::random_device{}());
-	return std::uniform_int_distribution<uint64_t>{}(s_gen);
-}
-}
-
 void CLMiner::workLoop()
 {
 	// Memory for zero-ing buffers. Cannot be static because crashes on macOS.
@@ -346,7 +337,7 @@ void CLMiner::workLoop()
 				if (w.exSizeBits >= 0)
 					startNonce = w.startNonce | ((uint64_t)index << (64 - 4 - w.exSizeBits)); // This can support up to 16 devices.
 				else
-					startNonce = randomNonce();
+					startNonce = get_start_nonce();
 
 				auto switchEnd = std::chrono::high_resolution_clock::now();
 				auto globalSwitchTime = std::chrono::duration_cast<std::chrono::milliseconds>(switchEnd - workSwitchStart).count();
