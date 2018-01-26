@@ -285,7 +285,7 @@ public:
 				if(m_openclThreadsPerHash != 1 && m_openclThreadsPerHash != 2 &&
 				   m_openclThreadsPerHash != 4 && m_openclThreadsPerHash != 8) {
 					BOOST_THROW_EXCEPTION(BadArgument());
-				} 
+				}
 			}
 			catch(...) {
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
@@ -308,7 +308,14 @@ public:
 #if ETH_ETHASHCL || ETH_ETHASHCUDA
 		else if ((arg == "--cl-global-work" || arg == "--cuda-grid-size")  && i + 1 < argc)
 			try {
-				m_globalWorkSizeMultiplier = stol(argv[++i]);
+				if (arg == "--cl-global-work")
+				{
+				    m_globalWorkSizeMultiplier_CL = stol(argv[++i]);
+				}
+				else
+				{
+					  m_globalWorkSizeMultiplier_CUDA = stol(argv[++i]);
+				}
 			}
 			catch (...)
 			{
@@ -317,7 +324,14 @@ public:
 			}
 		else if ((arg == "--cl-local-work" || arg == "--cuda-block-size") && i + 1 < argc)
 			try {
-				m_localWorkSize = stol(argv[++i]);
+				if (arg == "--cl-local-work")
+				{
+					m_localWorkSize_CL = stol(argv[++i]);
+				}
+				else
+				{
+					m_localWorkSize_CUDA = stol(argv[++i]);
+				}
 			}
 			catch (...)
 			{
@@ -512,13 +526,13 @@ public:
 				CLMiner::setDevices(m_openclDevices, m_openclDeviceCount);
 				m_miningThreads = m_openclDeviceCount;
 			}
-			
+
 			CLMiner::setCLKernel(m_openclSelectedKernel);
 			CLMiner::setThreadsPerHash(m_openclThreadsPerHash);
 
 			if (!CLMiner::configureGPU(
-					m_localWorkSize,
-					m_globalWorkSizeMultiplier,
+					m_localWorkSize_CL,
+					m_globalWorkSizeMultiplier_CL,
 					m_openclPlatform,
 					0,
 					m_dagLoadMode,
@@ -542,8 +556,8 @@ public:
 
 			CUDAMiner::setNumInstances(m_miningThreads);
 			if (!CUDAMiner::configureGPU(
-				m_localWorkSize,
-				m_globalWorkSizeMultiplier,
+				m_localWorkSize_CUDA,
+				m_globalWorkSizeMultiplier_CUDA,
 				m_numStreams,
 				m_cudaSchedule,
 				0,
@@ -811,11 +825,11 @@ private:
 		h256 id = h256::random();
 		Farm f;
 		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
-		
+
 #if API_CORE
 		Api api(this->m_api_port, f);
 #endif
-		
+
 		f.setSealers(sealers);
 
 		if (_m == MinerType::CL)
@@ -950,11 +964,11 @@ private:
 
 		Farm f;
 		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
-		
+
 #if API_CORE
 		Api api(this->m_api_port, f);
 #endif
-	
+
 		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
 		if (m_stratumClientVersion == 1) {
 			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
@@ -981,7 +995,7 @@ private:
 				}
 				return false;
 			});
-			f.onMinerRestart([&](){ 
+			f.onMinerRestart([&](){
 				client.reconnect();
 			});
 
@@ -1001,7 +1015,7 @@ private:
 					{
 						minelog << "Waiting for work package...";
 					}
-					
+
 					if (this->m_report_stratum_hashrate) {
 						auto rate = mp.rate();
 						client.submitHashrate(toJS(rate));
@@ -1030,7 +1044,7 @@ private:
 				client.submit(sol);
 				return false;
 			});
-			f.onMinerRestart([&](){ 
+			f.onMinerRestart([&](){
 				client.reconnect();
 			});
 
@@ -1050,7 +1064,7 @@ private:
 					{
 						minelog << "Waiting for work package...";
 					}
-					
+
 					if (this->m_report_stratum_hashrate) {
 						auto rate = mp.rate();
 						client.submitHashrate(toJS(rate));
@@ -1077,14 +1091,12 @@ private:
 	unsigned m_openclDeviceCount = 0;
 	unsigned m_openclDevices[16];
 	unsigned m_openclThreadsPerHash = 8;
-#if !ETH_ETHASHCUDA
-	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
-	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
 #endif
-#endif
+unsigned m_globalWorkSizeMultiplier_CL = CLMiner::c_defaultGlobalWorkSizeMultiplier;
+unsigned m_localWorkSize_CL = CLMiner::c_defaultLocalWorkSize;
+unsigned m_globalWorkSizeMultiplier_CUDA = CUDAMiner::c_defaultGridSize;
+unsigned m_localWorkSize_CUDA = CUDAMiner::c_defaultBlockSize;
 #if ETH_ETHASHCUDA
-	unsigned m_globalWorkSizeMultiplier = CUDAMiner::c_defaultGridSize;
-	unsigned m_localWorkSize = CUDAMiner::c_defaultBlockSize;
 	unsigned m_cudaDeviceCount = 0;
 	unsigned m_cudaDevices[16];
 	unsigned m_numStreams = CUDAMiner::c_defaultNumStreams;
@@ -1113,7 +1125,7 @@ private:
 	bool m_show_hwmonitors = false;
 #if API_CORE
 	int m_api_port = 0;
-#endif	
+#endif
 
 #if ETH_STRATUM
 	bool m_report_stratum_hashrate = false;
