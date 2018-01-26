@@ -1092,10 +1092,10 @@ private:
 	unsigned m_openclDevices[16];
 	unsigned m_openclThreadsPerHash = 8;
 #endif
-unsigned m_globalWorkSizeMultiplier_CL = CLMiner::c_defaultGlobalWorkSizeMultiplier;
-unsigned m_localWorkSize_CL = CLMiner::c_defaultLocalWorkSize;
-unsigned m_globalWorkSizeMultiplier_CUDA = CUDAMiner::c_defaultGridSize;
-unsigned m_localWorkSize_CUDA = CUDAMiner::c_defaultBlockSize;
+	unsigned m_globalWorkSizeMultiplier_CL = CLMiner::c_defaultGlobalWorkSizeMultiplier;
+	unsigned m_localWorkSize_CL = CLMiner::c_defaultLocalWorkSize;
+	unsigned m_globalWorkSizeMultiplier_CUDA = CUDAMiner::c_defaultGridSize;
+	unsigned m_localWorkSize_CUDA = CUDAMiner::c_defaultBlockSize;
 #if ETH_ETHASHCUDA
 	unsigned m_cudaDeviceCount = 0;
 	unsigned m_cudaDevices[16];
