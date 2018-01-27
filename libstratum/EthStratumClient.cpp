@@ -40,7 +40,6 @@ EthStratumClient::EthStratumClient(Farm* f, MinerType m, string const & host, st
 	p_active = &m_primary;
 
 	m_authorized = false;
-	m_connected = false;
 	m_pending = 0;
 	m_maxRetries = retries;
 	m_worktimeout = worktimeout;
@@ -105,7 +104,7 @@ void EthStratumClient::reconnect()
 	m_io_service.reset();
 	//m_socket.close(); // leads to crashes on Linux
 	m_authorized = false;
-	m_connected = false;
+	m_connected.store(false, std::memory_order_relaxed);
 		
 	if (!m_failover.host.empty())
 	{
@@ -138,7 +137,7 @@ void EthStratumClient::reconnect()
 void EthStratumClient::disconnect()
 {
 	cnote << "Disconnecting";
-	m_connected = false;
+	m_connected.store(false, std::memory_order_relaxed);
 	m_running = false;
 	if (p_farm->isMining())
 	{
@@ -170,7 +169,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 	
 	if (!ec)
 	{
-		m_connected = true;
+		m_connected.store(true, std::memory_order_relaxed);
 		cnote << "Connected to stratum server " + i->host_name() + ":" + p_active->port;
 		if (!p_farm->isMining())
 		{
@@ -282,13 +281,13 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 		{
 			cwarn << "Discarding incomplete response";
 		}
-		if (m_connected)
+		if (m_connected.load(std::memory_order_relaxed))
 			readline();
 	}
 	else
 	{
 		cwarn << "Read response failed: " + ec.message();
-		if (m_connected)
+		if (m_connected.load(std::memory_order_relaxed))
 			reconnect();
 	}
 }
