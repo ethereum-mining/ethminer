@@ -30,7 +30,6 @@ extern "C" {
 #endif
 
 wrap_nvml_handle * wrap_nvml_create() {
-  int i=0;
   wrap_nvml_handle *nvmlh = NULL;
 
   /*
@@ -134,13 +133,13 @@ return NULL;
   nvmlh->cuda_nvml_device_id = (int*) calloc(nvmlh->cuda_gpucount, sizeof(int));
 
   /* Obtain GPU device handles we're going to need repeatedly... */
-  for (i=0; i<nvmlh->nvml_gpucount; i++) {
+  for (int i=0; i<nvmlh->nvml_gpucount; i++) {
     nvmlh->nvmlDeviceGetHandleByIndex(i, &nvmlh->devs[i]);
   }
 
   /* Query PCI info for each NVML device, and build table for mapping of */
   /* CUDA device IDs to NVML device IDs and vice versa                   */
-  for (i=0; i<nvmlh->nvml_gpucount; i++) {
+  for (int i=0; i<nvmlh->nvml_gpucount; i++) {
     wrap_nvmlPciInfo_t pciinfo;
     nvmlh->nvmlDeviceGetPciInfo(nvmlh->devs[i], &pciinfo);
     nvmlh->nvml_pci_domain_id[i] = pciinfo.domain;
@@ -149,10 +148,10 @@ return NULL;
   }
 
   /* build mapping of NVML device IDs to CUDA IDs */
-  for (i=0; i<nvmlh->nvml_gpucount; i++) {
+  for (int i=0; i<nvmlh->nvml_gpucount; i++) {
     nvmlh->nvml_cuda_device_id[i] = -1;
   }
-  for (i=0; i<nvmlh->cuda_gpucount; i++) {
+  for (int i=0; i<nvmlh->cuda_gpucount; i++) {
     cudaDeviceProp props;
     nvmlh->cuda_nvml_device_id[i] = -1;
 
