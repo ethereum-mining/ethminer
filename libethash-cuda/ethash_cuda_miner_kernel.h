@@ -8,7 +8,9 @@
 // It is virtually impossible to get more than
 // one solution per stream hash calculation
 // Leave room for up to 3 results.
-#define SEARCH_RESULT_BUFFER_SIZE 4
+#define SEARCH_RESULT_ENTRIES 4
+// One word for gid and 8 for mix hash
+#define SEARCH_RESULT_BUFFER_SIZE (SEARCH_RESULT_ENTRIES * 9)
 
 #define ACCESSES 64
 #define THREADS_PER_HASH (128 / 16)
@@ -71,16 +73,16 @@ void ethash_generate_dag(
 	);
 
 
-#define CUDA_SAFE_CALL(call)								\
-do {														\
-	cudaError_t err = call;									\
-	if (cudaSuccess != err) {								\
+#define CUDA_SAFE_CALL(call)						\
+do {									\
+	cudaError_t err = call;						\
+	if (cudaSuccess != err) {					\
 		const char * errorString = cudaGetErrorString(err);	\
-		fprintf(stderr,										\
+		fprintf(stderr,						\
 			"CUDA error in func '%s' at line %i : %s.\n",	\
-			__FUNCTION__, __LINE__, errorString);			\
-		throw std::runtime_error(errorString);				\
-	}														\
+			__FUNCTION__, __LINE__, errorString);		\
+		throw std::runtime_error(errorString);			\
+	}								\
 } while (0)
 
 #endif
