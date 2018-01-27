@@ -4,7 +4,8 @@
 
 template <uint32_t _PARALLEL_HASH>
 __device__ __forceinline__ uint64_t compute_hash(
-	uint64_t nonce
+	uint64_t nonce,
+	uint2 *mix_hash
 	)
 {
 	// sha3_512(header .. nonce)
@@ -113,6 +114,10 @@ __device__ __forceinline__ uint64_t compute_hash(
 			}
 		}
 	}
+	mix_hash[0] = state[8];
+	mix_hash[1] = state[9];
+	mix_hash[2] = state[10];
+	mix_hash[3] = state[11];
 	
 	// keccak_256(keccak_512(header..nonce) .. mix);
 	return keccak_f1600_final(state);
