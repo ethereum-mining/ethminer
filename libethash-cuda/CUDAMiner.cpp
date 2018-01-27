@@ -484,7 +484,8 @@ void CUDAMiner::search(
 		cudaStream_t stream = m_streams[stream_index];
 		volatile uint32_t* buffer = m_search_buf[stream_index];
 		uint32_t found_count = 0;
-		uint64_t nonces[SEARCH_RESULT_BUFFER_SIZE];
+		uint64_t nonces[SEARCH_RESULT_ENTRIES];
+		uint32_t mixes[SEARCH_RESULT_ENTRIES][8];
 		uint64_t nonce_base = m_current_nonce - s_numStreams * batch_size;
 		if (m_current_index >= s_numStreams)
 		{
@@ -492,29 +493,27 @@ void CUDAMiner::search(
 			found_count = buffer[0];
 			if (found_count) {
 				buffer[0] = 0;
-				if (found_count > (SEARCH_RESULT_BUFFER_SIZE - 1))
-					found_count = SEARCH_RESULT_BUFFER_SIZE - 1;
-				for (unsigned int j = 1; j <= found_count; j++)
+				if (found_count >= SEARCH_RESULT_ENTRIES)
+					found_count = SEARCH_RESULT_ENTRIES - 1;
+				for (unsigned int j = 1; j <= found_count; j++) {
 					nonces[j] = nonce_base + buffer[j];
+					mixes[j][0] = buffer[j + (SEARCH_RESULT_ENTRIES * 1)];
+					mixes[j][1] = buffer[j + (SEARCH_RESULT_ENTRIES * 2)];
+					mixes[j][2] = buffer[j + (SEARCH_RESULT_ENTRIES * 3)];
+					mixes[j][3] = buffer[j + (SEARCH_RESULT_ENTRIES * 4)];
+					mixes[j][4] = buffer[j + (SEARCH_RESULT_ENTRIES * 5)];
+					mixes[j][5] = buffer[j + (SEARCH_RESULT_ENTRIES * 6)];
+					mixes[j][6] = buffer[j + (SEARCH_RESULT_ENTRIES * 7)];
+					mixes[j][7] = buffer[j + (SEARCH_RESULT_ENTRIES * 8)];
+				}
 			}
 		}
 		run_ethash_search(s_gridSize, s_blockSize, m_sharedBytes, stream, buffer, m_current_nonce, m_parallelHash);
 		if (m_current_index >= s_numStreams)
 		{
 			if (found_count)
-			{
 				for (uint32_t i = 1; i <= found_count; i++)
-				{
-					Result r = EthashAux::eval(w.seed, w.header, nonces[i]);
-					if (r.value < w.boundary)
-						farm.submitProof(Solution{nonces[i], r.mixHash, w.header, w.seed, w.boundary, w.job, w.job_len, m_abort});
-					else
-					{
-						farm.failedSolution();
-						cwarn << "GPU gave incorrect result!";
-					}
-				}
-			}
+					farm.submitProof(Solution{nonces[i], *((h256 *)mixes[i]), w.header, w.seed, w.boundary, w.job, w.job_len, m_abort});
 			addHashCount(batch_size);
 			if (m_abort || shouldStop())
 			{
