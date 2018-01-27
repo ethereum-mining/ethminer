@@ -42,8 +42,7 @@ struct CUDAChannel: public LogChannel
 
 CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
 	Miner("cuda-", _farm, _index),
-	m_light(getNumDevices())
-{}
+	m_light(getNumDevices()) {}
 
 CUDAMiner::~CUDAMiner()
 {
@@ -135,8 +134,9 @@ void CUDAMiner::workLoop()
 
 void CUDAMiner::kick_miner()
 {
-	if (!m_abort)
-		m_abort = true;
+	bool f = false;
+	// weak if ok here. If it fails it's because it was already true!
+	m_abort.compare_exchange_weak(f, true);
 }
 
 void CUDAMiner::setNumInstances(unsigned _instances)
@@ -513,9 +513,14 @@ void CUDAMiner::search(
 				}
 			}
 			addHashCount(batch_size);
-			if (m_abort || shouldStop())
+			bool t = true;
+			if (m_abort.compare_exchange_weak(t, false))
+				break;
+			if (shouldStop())
 			{
-				m_abort = false;
+				// shutting down. don't want to get stuck here
+				// use weak exchange.
+				m_abort.compare_exchange_weak(t, false);
 				break;
 			}
 		}
