@@ -28,12 +28,21 @@ ethash_search(
 	uint64_t start_nonce
 	)
 {
-	uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;	
-        uint64_t hash = compute_hash<_PARALLEL_HASH>(start_nonce + gid);
+	uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;
+	uint2 mix[4];
+        uint64_t hash = compute_hash<_PARALLEL_HASH>(start_nonce + gid, mix);
 	if (cuda_swab64(hash) > d_target) return;
 	uint32_t index = atomicInc(const_cast<uint32_t*>(g_output), 0xffffffff) + 1;
-	if (index > SEARCH_RESULT_BUFFER_SIZE -1) return;
+	if (index >= SEARCH_RESULT_ENTRIES) return;
 	g_output[index] = gid;
+	g_output[index + (SEARCH_RESULT_ENTRIES * 1)] = mix[0].x;
+	g_output[index + (SEARCH_RESULT_ENTRIES * 2)] = mix[0].y;
+	g_output[index + (SEARCH_RESULT_ENTRIES * 3)] = mix[1].x;
+	g_output[index + (SEARCH_RESULT_ENTRIES * 4)] = mix[1].y;
+	g_output[index + (SEARCH_RESULT_ENTRIES * 5)] = mix[2].x;
+	g_output[index + (SEARCH_RESULT_ENTRIES * 6)] = mix[2].y;
+	g_output[index + (SEARCH_RESULT_ENTRIES * 7)] = mix[3].x;
+	g_output[index + (SEARCH_RESULT_ENTRIES * 8)] = mix[3].y;
 }
 
 void run_ethash_search(
