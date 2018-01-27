@@ -481,7 +481,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec) {
 	if (!ec) {
-		cnote << "No new work received in " + m_worktimeout << " seconds.";
+		cnote << "No new work received in " << m_worktimeout << " seconds.";
 		reconnect();
 	}
 }
