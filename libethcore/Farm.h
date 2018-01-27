@@ -259,7 +259,7 @@ public:
 		return m_solutionStats;
 	}
 
-	void failedSolution() {
+	void failedSolution() override {
 		m_solutionStats.failed();
 	}
 
@@ -326,7 +326,7 @@ public:
 		return m_pool_addresses;
 	}
 
-	uint64_t get_nonce_scrambler()
+	uint64_t get_nonce_scrambler() override
 	{
 		return m_nonce_scrambler;
 	}
