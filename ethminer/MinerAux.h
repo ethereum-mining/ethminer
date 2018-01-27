@@ -45,10 +45,8 @@
 #endif
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include "FarmClient.h"
-#if ETH_STRATUM
 #include <libstratum/EthStratumClient.h>
 #include <libstratum/EthStratumClientV2.h>
-#endif
 #if ETH_DBUS
 #include "DBusInt.h"
 #endif
@@ -143,7 +141,6 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-#if ETH_STRATUM
 		else if ((arg == "-S" || arg == "--stratum") && i + 1 < argc)
 		{
 			mode = OperationMode::Stratum;
@@ -248,7 +245,6 @@ public:
 			m_show_hwmonitors = true;
 		}
 
-#endif
 #if API_CORE
 		else if ((arg == "--api-port") && i + 1 < argc)
 		{
@@ -564,10 +560,8 @@ public:
 			doFarm(m_minerType, m_activeFarmURL, m_farmRecheckPeriod);
 		else if (mode == OperationMode::Simulation)
 			doSimulation(m_minerType);
-#if ETH_STRATUM
 		else if (mode == OperationMode::Stratum)
 			doStratum();
-#endif
 	}
 
 	static void streamHelp(ostream& _out)
@@ -577,7 +571,6 @@ public:
 			<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
 			<< "    -FF,-FO, --farm-failover, --stratum-failover <url> Failover getwork/stratum URL (default: disabled)" << endl
 			<< "	--farm-retries <n> Number of retries until switch to failover (default: 3)" << endl
-#if ETH_STRATUM
 			<< "	-S, --stratum <host:port>  Put into stratum mode with the stratum server at host:port" << endl
 			<< "	-SF, --stratum-failover <host:port>  Failover stratum server at host:port" << endl
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
@@ -592,7 +585,6 @@ public:
 			<< "    -HWMON Displays gpu temp and fan percent." << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
-#endif
 			<< endl
 			<< "Benchmarking mode:" << endl
 			<< "    -M [<n>],--benchmark [<n>] Benchmark for mining and exit; Optionally specify block number to benchmark against specific DAG." << endl
@@ -935,7 +927,6 @@ private:
 		exit(0);
 	}
 
-#if ETH_STRATUM
 	void doStratum()
 	{
 		map<string, Farm::SealerDescriptor> sealers;
@@ -1061,7 +1052,6 @@ private:
 		}
 
 	}
-#endif
 
 	/// Operating mode.
 	OperationMode mode;
@@ -1115,7 +1105,6 @@ private:
 	int m_api_port = 0;
 #endif	
 
-#if ETH_STRATUM
 	bool m_report_stratum_hashrate = false;
 	int m_stratumClientVersion = 1;
 	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
@@ -1125,7 +1114,6 @@ private:
 	string m_fuser = "";
 	string m_fpass = "";
 	string m_email = "";
-#endif
 	string m_fport = "";
 
 #if ETH_DBUS
