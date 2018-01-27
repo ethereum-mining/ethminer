@@ -285,7 +285,7 @@ public:
 				if(m_openclThreadsPerHash != 1 && m_openclThreadsPerHash != 2 &&
 				   m_openclThreadsPerHash != 4 && m_openclThreadsPerHash != 8) {
 					BOOST_THROW_EXCEPTION(BadArgument());
-				} 
+				}
 			}
 			catch(...) {
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
@@ -304,30 +304,55 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
+		else if ( arg == "--cl-global-work"  && i + 1 < argc)
+		{
+			try 
+			{
+				m_globalWorkSizeMultiplier = stol(argv[++i]);
+					  
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
+		else if ( arg == "--cl-local-work" && i + 1 < argc)
+			try 
+			{
+					m_localWorkSize = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}		
 #endif
 #if ETH_ETHASHCL || ETH_ETHASHCUDA
-		else if ((arg == "--cl-global-work" || arg == "--cuda-grid-size")  && i + 1 < argc)
-			try {
-				m_globalWorkSizeMultiplier = stol(argv[++i]);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		else if ((arg == "--cl-local-work" || arg == "--cuda-block-size") && i + 1 < argc)
-			try {
-				m_localWorkSize = stol(argv[++i]);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
 		else if (arg == "--list-devices")
 			m_shouldListDevices = true;
 #endif
 #if ETH_ETHASHCUDA
+		else if ( arg == "--cuda-grid-size" && i + 1 < argc)
+			try
+			{
+				m_localGridSize = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		else if ( arg == "--cuda-block-size" && i + 1 < argc)
+			try 
+			{
+				m_globalBlockSize= stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
 		else if (arg == "--cuda-devices")
 		{
 			while (m_cudaDeviceCount < 16 && i + 1 < argc)
@@ -512,7 +537,7 @@ public:
 				CLMiner::setDevices(m_openclDevices, m_openclDeviceCount);
 				m_miningThreads = m_openclDeviceCount;
 			}
-			
+
 			CLMiner::setCLKernel(m_openclSelectedKernel);
 			CLMiner::setThreadsPerHash(m_openclThreadsPerHash);
 
@@ -542,8 +567,8 @@ public:
 
 			CUDAMiner::setNumInstances(m_miningThreads);
 			if (!CUDAMiner::configureGPU(
-				m_localWorkSize,
-				m_globalWorkSizeMultiplier,
+				m_localGridSize,
+				m_globalBlockSize,
 				m_numStreams,
 				m_cudaSchedule,
 				0,
@@ -811,11 +836,11 @@ private:
 		h256 id = h256::random();
 		Farm f;
 		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
-		
+
 #if API_CORE
 		Api api(this->m_api_port, f);
 #endif
-		
+
 		f.setSealers(sealers);
 
 		if (_m == MinerType::CL)
@@ -950,11 +975,11 @@ private:
 
 		Farm f;
 		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
-		
+
 #if API_CORE
 		Api api(this->m_api_port, f);
 #endif
-	
+
 		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
 		if (m_stratumClientVersion == 1) {
 			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
@@ -981,7 +1006,7 @@ private:
 				}
 				return false;
 			});
-			f.onMinerRestart([&](){ 
+			f.onMinerRestart([&](){
 				client.reconnect();
 			});
 
@@ -1001,7 +1026,7 @@ private:
 					{
 						minelog << "Waiting for work package...";
 					}
-					
+
 					if (this->m_report_stratum_hashrate) {
 						auto rate = mp.rate();
 						client.submitHashrate(toJS(rate));
@@ -1030,7 +1055,7 @@ private:
 				client.submit(sol);
 				return false;
 			});
-			f.onMinerRestart([&](){ 
+			f.onMinerRestart([&](){
 				client.reconnect();
 			});
 
@@ -1050,7 +1075,7 @@ private:
 					{
 						minelog << "Waiting for work package...";
 					}
-					
+
 					if (this->m_report_stratum_hashrate) {
 						auto rate = mp.rate();
 						client.submitHashrate(toJS(rate));
@@ -1077,18 +1102,16 @@ private:
 	unsigned m_openclDeviceCount = 0;
 	unsigned m_openclDevices[16];
 	unsigned m_openclThreadsPerHash = 8;
-#if !ETH_ETHASHCUDA
 	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
 #endif
-#endif
 #if ETH_ETHASHCUDA
-	unsigned m_globalWorkSizeMultiplier = CUDAMiner::c_defaultGridSize;
-	unsigned m_localWorkSize = CUDAMiner::c_defaultBlockSize;
 	unsigned m_cudaDeviceCount = 0;
 	unsigned m_cudaDevices[16];
 	unsigned m_numStreams = CUDAMiner::c_defaultNumStreams;
 	unsigned m_cudaSchedule = 4; // sync
+	unsigned m_localGridSize = CUDAMiner::c_defaultGridSize;
+	unsigned m_globalBlockSize = CUDAMiner::c_defaultBlockSize;
 #endif
 	unsigned m_dagLoadMode = 0; // parallel
 	unsigned m_dagCreateDevice = 0;
@@ -1113,7 +1136,7 @@ private:
 	bool m_show_hwmonitors = false;
 #if API_CORE
 	int m_api_port = 0;
-#endif	
+#endif
 
 #if ETH_STRATUM
 	bool m_report_stratum_hashrate = false;
