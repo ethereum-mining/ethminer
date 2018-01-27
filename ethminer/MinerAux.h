@@ -304,44 +304,55 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
+		else if ( arg == "--cl-global-work"  && i + 1 < argc)
+		{
+			try 
+			{
+				m_globalWorkSizeMultiplier = stol(argv[++i]);
+					  
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
+		else if ( arg == "--cl-local-work" && i + 1 < argc)
+			try 
+			{
+					m_localWorkSize = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}		
 #endif
 #if ETH_ETHASHCL || ETH_ETHASHCUDA
-		else if ((arg == "--cl-global-work" || arg == "--cuda-grid-size")  && i + 1 < argc)
-			try {
-				if (arg == "--cl-global-work")
-				{
-				    m_globalWorkSizeMultiplier_CL = stol(argv[++i]);
-				}
-				else
-				{
-					  m_globalWorkSizeMultiplier_CUDA = stol(argv[++i]);
-				}
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		else if ((arg == "--cl-local-work" || arg == "--cuda-block-size") && i + 1 < argc)
-			try {
-				if (arg == "--cl-local-work")
-				{
-					m_localWorkSize_CL = stol(argv[++i]);
-				}
-				else
-				{
-					m_localWorkSize_CUDA = stol(argv[++i]);
-				}
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
 		else if (arg == "--list-devices")
 			m_shouldListDevices = true;
 #endif
 #if ETH_ETHASHCUDA
+		else if ( arg == "--cuda-grid-size" && i + 1 < argc)
+			try
+			{
+				m_localGridSize = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		else if ( arg == "--cuda-block-size" && i + 1 < argc)
+			try 
+			{
+				m_globalBlockSize= stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
 		else if (arg == "--cuda-devices")
 		{
 			while (m_cudaDeviceCount < 16 && i + 1 < argc)
@@ -531,8 +542,8 @@ public:
 			CLMiner::setThreadsPerHash(m_openclThreadsPerHash);
 
 			if (!CLMiner::configureGPU(
-					m_localWorkSize_CL,
-					m_globalWorkSizeMultiplier_CL,
+					m_localWorkSize,
+					m_globalWorkSizeMultiplier,
 					m_openclPlatform,
 					0,
 					m_dagLoadMode,
@@ -556,8 +567,8 @@ public:
 
 			CUDAMiner::setNumInstances(m_miningThreads);
 			if (!CUDAMiner::configureGPU(
-				m_localWorkSize_CUDA,
-				m_globalWorkSizeMultiplier_CUDA,
+				m_localGridSize,
+				m_globalBlockSize,
 				m_numStreams,
 				m_cudaSchedule,
 				0,
@@ -1091,16 +1102,16 @@ private:
 	unsigned m_openclDeviceCount = 0;
 	unsigned m_openclDevices[16];
 	unsigned m_openclThreadsPerHash = 8;
+	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
+	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
 #endif
-	unsigned m_globalWorkSizeMultiplier_CL = CLMiner::c_defaultGlobalWorkSizeMultiplier;
-	unsigned m_localWorkSize_CL = CLMiner::c_defaultLocalWorkSize;
-	unsigned m_globalWorkSizeMultiplier_CUDA = CUDAMiner::c_defaultGridSize;
-	unsigned m_localWorkSize_CUDA = CUDAMiner::c_defaultBlockSize;
 #if ETH_ETHASHCUDA
 	unsigned m_cudaDeviceCount = 0;
 	unsigned m_cudaDevices[16];
 	unsigned m_numStreams = CUDAMiner::c_defaultNumStreams;
 	unsigned m_cudaSchedule = 4; // sync
+	unsigned m_localGridSize = CUDAMiner::c_defaultGridSize;
+	unsigned m_globalBlockSize = CUDAMiner::c_defaultBlockSize;
 #endif
 	unsigned m_dagLoadMode = 0; // parallel
 	unsigned m_dagCreateDevice = 0;
