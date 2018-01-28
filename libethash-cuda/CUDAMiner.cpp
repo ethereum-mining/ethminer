@@ -134,9 +134,7 @@ void CUDAMiner::workLoop()
 
 void CUDAMiner::kick_miner()
 {
-	bool f = false;
-	// weak if ok here. If it fails it's because it was already true!
-	m_abort.compare_exchange_weak(f, true);
+	m_abort.store(true, std::memory_order_relaxed);
 }
 
 void CUDAMiner::setNumInstances(unsigned _instances)
@@ -518,9 +516,7 @@ void CUDAMiner::search(
 				break;
 			if (shouldStop())
 			{
-				// shutting down. don't want to get stuck here
-				// use weak exchange.
-				m_abort.compare_exchange_weak(t, false);
+				m_abort.store(false, std::memory_order_relaxed);
 				break;
 			}
 		}
