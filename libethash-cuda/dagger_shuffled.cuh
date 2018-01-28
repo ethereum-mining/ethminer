@@ -104,3 +104,4 @@ __device__ __forceinline__ bool compute_hash(
 
 	return false;
 }
+
