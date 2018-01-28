@@ -30,8 +30,7 @@ ethash_search(
 {
 	uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;
 	uint2 mix[4];
-	uint64_t target = d_target;
-        if (compute_hash<_PARALLEL_HASH>(start_nonce + gid, target, mix))
+        if (compute_hash<_PARALLEL_HASH>(start_nonce + gid, d_target, mix))
 		return;
 	uint32_t index = atomicInc(const_cast<uint32_t*>(g_output), 0xffffffff) + 1;
 	if (index >= SEARCH_RESULT_ENTRIES)
