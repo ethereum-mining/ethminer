@@ -108,8 +108,6 @@ void CUDAMiner::workLoop()
 					std::this_thread::sleep_for(std::chrono::seconds(3));
 					continue;
 				}
-				
-				//cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
 				if (current.seed != w.seed)
 				{
 					if(!init(w.seed))
@@ -513,7 +511,15 @@ void CUDAMiner::search(
 		{
 			if (found_count)
 				for (uint32_t i = 1; i <= found_count; i++)
-					farm.submitProof(Solution{nonces[i], *((h256 *)mixes[i]), w.header, w.seed, w.boundary, w.job, w.job_len, m_abort});
+					farm.submitProof(
+						Solution{nonces[i],
+						*((const h256 *)mixes[i]),
+						w.header, // todo: just pass w, instead of 5 separate pieces
+						w.seed,
+						w.boundary,
+						w.job,
+						w.job_len,
+						m_abort});
 			addHashCount(batch_size);
 			if (m_abort || shouldStop())
 			{
