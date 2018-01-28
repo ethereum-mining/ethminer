@@ -26,7 +26,7 @@ public:
 	void setFailover(string const & host, string const & port, string const & user, string const & pass);
 
 	bool isRunning() { return m_running; }
-	bool isConnected() { return m_connected && m_authorized; }
+	bool isConnected() { return m_connected.load(std::memory_order_relaxed) && m_authorized; }
 	h256 currentHeaderHash() { return m_current.header; }
 	bool current() { return static_cast<bool>(m_current); }
 	bool submitHashrate(string const & rate);
@@ -54,7 +54,7 @@ private:
 	string m_worker; // eth-proxy only;
 
 	bool m_authorized;
-	bool m_connected;
+	std::atomic<bool> m_connected = {false};
 	bool m_running = true;
 
 	int	m_retries = 0;
