@@ -512,11 +512,7 @@ void CUDAMiner::search(
 					farm.submitProof(
 						Solution{nonces[i],
 						*((const h256 *)mixes[i]),
-						w.header, // todo: just pass w, instead of 5 separate pieces
-						w.seed,
-						w.boundary,
-						w.job,
-						w.job_len,
+						w,
 						m_abort});
 			addHashCount(batch_size);
 			if (m_abort || shouldStop())
