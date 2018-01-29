@@ -42,8 +42,7 @@ struct CUDAChannel: public LogChannel
 
 CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
 	Miner("cuda-", _farm, _index),
-	m_light(getNumDevices())
-{}
+	m_light(getNumDevices()) {}
 
 CUDAMiner::~CUDAMiner()
 {
@@ -136,8 +135,7 @@ void CUDAMiner::workLoop()
 
 void CUDAMiner::kick_miner()
 {
-	if (!m_abort)
-		m_abort = true;
+	m_abort.store(true, std::memory_order_relaxed);
 }
 
 void CUDAMiner::setNumInstances(unsigned _instances)
@@ -515,9 +513,12 @@ void CUDAMiner::search(
 						w,
 						m_abort});
 			addHashCount(batch_size);
-			if (m_abort || shouldStop())
+			bool t = true;
+			if (m_abort.compare_exchange_strong(t, false))
+				break;
+			if (shouldStop())
 			{
-				m_abort = false;
+				m_abort.store(false, std::memory_order_relaxed);
 				break;
 			}
 		}
