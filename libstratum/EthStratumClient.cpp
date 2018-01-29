@@ -494,7 +494,7 @@ bool EthStratumClient::submitHashrate(string const & rate) {
 	return true;
 }
 
-bool EthStratumClient::submit(Solution solution) {
+void EthStratumClient::submit(Solution solution) {
 
 	string nonceHex = toHex(solution.nonce);
 	string json;
@@ -502,19 +502,19 @@ bool EthStratumClient::submit(Solution solution) {
 	switch (m_protocol) {
 		case STRATUM_PROTOCOL_STRATUM:
 			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" +
-				p_active->user + "\",\"" + solution.job.hex() + "\",\"0x" +
-				nonceHex + "\",\"0x" + solution.headerHash.hex() + "\",\"0x" +
+				p_active->user + "\",\"" + solution.work.job.hex() + "\",\"0x" +
+				nonceHex + "\",\"0x" + solution.work.header.hex() + "\",\"0x" +
 				solution.mixHash.hex() + "\"]}\n";
 			break;
 		case STRATUM_PROTOCOL_ETHPROXY:
 			json = "{\"id\": 4, \"worker\":\"" +
 				m_worker + "\", \"method\": \"eth_submitWork\", \"params\": [\"0x" +
-				nonceHex + "\",\"0x" + solution.headerHash.hex() + "\",\"0x" +
+				nonceHex + "\",\"0x" + solution.work.header.hex() + "\",\"0x" +
 				solution.mixHash.hex() + "\"]}\n";
 			break;
 		case STRATUM_PROTOCOL_ETHEREUMSTRATUM:
 			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" +
-				p_active->user + "\",\"" + solution.job.hex().substr(0, solution.job_len) + "\",\"" +
+				p_active->user + "\",\"" + solution.work.job.hex().substr(0, solution.work.job_len) + "\",\"" +
 				nonceHex.substr(m_extraNonceHexSize, 16 - m_extraNonceHexSize) + "\"]}\n";
 			break;
 	}
@@ -535,6 +535,5 @@ bool EthStratumClient::submit(Solution solution) {
 	if (m_protocol != STRATUM_PROTOCOL_ETHEREUMSTRATUM) {
 		cnote << "Nonce: 0x" + nonceHex;
 	}
-	return true;
 }
 
