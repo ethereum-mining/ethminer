@@ -42,8 +42,7 @@ struct CUDAChannel: public LogChannel
 
 CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
 	Miner("cuda-", _farm, _index),
-	m_light(getNumDevices())
-{}
+	m_light(getNumDevices()) {}
 
 CUDAMiner::~CUDAMiner()
 {
@@ -108,8 +107,6 @@ void CUDAMiner::workLoop()
 					std::this_thread::sleep_for(std::chrono::seconds(3));
 					continue;
 				}
-				
-				//cnote << "set work; seed: " << "#" + w.seed.hex().substr(0, 8) + ", target: " << "#" + w.boundary.hex().substr(0, 12);
 				if (current.seed != w.seed)
 				{
 					if(!init(w.seed))
@@ -138,8 +135,7 @@ void CUDAMiner::workLoop()
 
 void CUDAMiner::kick_miner()
 {
-	if (!m_abort)
-		m_abort = true;
+	m_abort.store(true, std::memory_order_relaxed);
 }
 
 void CUDAMiner::setNumInstances(unsigned _instances)
@@ -324,7 +320,7 @@ bool CUDAMiner::cuda_init(
 
 		cudalog << "Using device: " << device_props.name << " (Compute " + to_string(device_props.major) + "." + to_string(device_props.minor) + ")";
 
-		m_search_buf = new volatile uint32_t *[s_numStreams];
+		m_search_buf = new volatile search_results *[s_numStreams];
 		m_streams = new cudaStream_t[s_numStreams];
 
 		uint64_t dagSize = ethash_get_datasize(_light->block_number);
@@ -376,7 +372,7 @@ bool CUDAMiner::cuda_init(
 			cudalog << "Generating mining buffers"; //TODO whats up with this?
 			for (unsigned i = 0; i != s_numStreams; ++i)
 			{
-				CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], SEARCH_RESULT_BUFFER_SIZE * sizeof(uint32_t)));
+				CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(search_results)));
 				CUDA_SAFE_CALL(cudaStreamCreate(&m_streams[i]));
 			}
 			
@@ -384,8 +380,6 @@ bool CUDAMiner::cuda_init(
 			m_current_target = 0;
 			m_current_nonce = 0;
 			m_current_index = 0;
-
-			m_sharedBytes = device_props.major * 100 < SHUFFLE_MIN_VER ? (64 * s_blockSize) / 8 : 0 ;
 
 			if (!hostDAG)
 			{
@@ -455,7 +449,7 @@ void CUDAMiner::search(
 			m_current_index = 0;
 			CUDA_SAFE_CALL(cudaDeviceSynchronize());
 			for (unsigned int i = 0; i < s_numStreams; i++)
-				m_search_buf[i][0] = 0;
+				m_search_buf[i]->count = 0;
 		}
 		if (m_starting_nonce != _startN)
 		{
@@ -472,7 +466,7 @@ void CUDAMiner::search(
 			m_current_index = 0;
 			CUDA_SAFE_CALL(cudaDeviceSynchronize());
 			for (unsigned int i = 0; i < s_numStreams; i++)
-				m_search_buf[i][0] = 0;
+				m_search_buf[i]->count = 0;
 		}
 	}
 	uint64_t batch_size = s_gridSize * s_blockSize;
@@ -482,42 +476,49 @@ void CUDAMiner::search(
 		m_current_nonce += batch_size;
 		auto stream_index = m_current_index % s_numStreams;
 		cudaStream_t stream = m_streams[stream_index];
-		volatile uint32_t* buffer = m_search_buf[stream_index];
+		volatile search_results* buffer = m_search_buf[stream_index];
 		uint32_t found_count = 0;
-		uint64_t nonces[SEARCH_RESULT_ENTRIES];
-		uint32_t mixes[SEARCH_RESULT_ENTRIES][8];
+		uint64_t nonces[SEARCH_RESULTS];
+		uint32_t mixes[SEARCH_RESULTS][8];
 		uint64_t nonce_base = m_current_nonce - s_numStreams * batch_size;
 		if (m_current_index >= s_numStreams)
 		{
 			CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
-			found_count = buffer[0];
+			found_count = buffer->count;
 			if (found_count) {
-				buffer[0] = 0;
-				if (found_count >= SEARCH_RESULT_ENTRIES)
-					found_count = SEARCH_RESULT_ENTRIES - 1;
-				for (unsigned int j = 1; j <= found_count; j++) {
-					nonces[j] = nonce_base + buffer[j];
-					mixes[j][0] = buffer[j + (SEARCH_RESULT_ENTRIES * 1)];
-					mixes[j][1] = buffer[j + (SEARCH_RESULT_ENTRIES * 2)];
-					mixes[j][2] = buffer[j + (SEARCH_RESULT_ENTRIES * 3)];
-					mixes[j][3] = buffer[j + (SEARCH_RESULT_ENTRIES * 4)];
-					mixes[j][4] = buffer[j + (SEARCH_RESULT_ENTRIES * 5)];
-					mixes[j][5] = buffer[j + (SEARCH_RESULT_ENTRIES * 6)];
-					mixes[j][6] = buffer[j + (SEARCH_RESULT_ENTRIES * 7)];
-					mixes[j][7] = buffer[j + (SEARCH_RESULT_ENTRIES * 8)];
+				buffer->count = 0;
+				if (found_count > SEARCH_RESULTS)
+					found_count = SEARCH_RESULTS;
+				for (unsigned int j = 0; j < found_count; j++) {
+					nonces[j] = nonce_base + buffer->result[j].gid;
+					mixes[j][0] = buffer->result[j].mix[0];
+					mixes[j][1] = buffer->result[j].mix[1];
+					mixes[j][2] = buffer->result[j].mix[2];
+					mixes[j][3] = buffer->result[j].mix[3];
+					mixes[j][4] = buffer->result[j].mix[4];
+					mixes[j][5] = buffer->result[j].mix[5];
+					mixes[j][6] = buffer->result[j].mix[6];
+					mixes[j][7] = buffer->result[j].mix[7];
 				}
 			}
 		}
-		run_ethash_search(s_gridSize, s_blockSize, m_sharedBytes, stream, buffer, m_current_nonce, m_parallelHash);
+		run_ethash_search(s_gridSize, s_blockSize, stream, buffer, m_current_nonce, m_parallelHash);
 		if (m_current_index >= s_numStreams)
 		{
 			if (found_count)
-				for (uint32_t i = 1; i <= found_count; i++)
-					farm.submitProof(Solution{nonces[i], *((h256 *)mixes[i]), w.header, w.seed, w.boundary, w.job, w.job_len, m_abort});
+				for (uint32_t i = 0; i < found_count; i++)
+					farm.submitProof(
+						Solution{nonces[i],
+						*((const h256 *)mixes[i]),
+						w,
+						m_abort});
 			addHashCount(batch_size);
-			if (m_abort || shouldStop())
+			bool t = true;
+			if (m_abort.compare_exchange_strong(t, false))
+				break;
+			if (shouldStop())
 			{
-				m_abort = false;
+				m_abort.store(false, std::memory_order_relaxed);
 				break;
 			}
 		}

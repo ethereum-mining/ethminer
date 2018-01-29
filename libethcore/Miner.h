@@ -154,7 +154,7 @@ public:
 	 * @param _p The solution.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
-	virtual bool submitProof(Solution const& _p) = 0;
+	virtual void submitProof(Solution const& _p) = 0;
 	virtual void failedSolution() = 0;
 	virtual uint64_t get_nonce_scrambler() = 0;
 };

@@ -3,8 +3,9 @@
 #include "cuda_helper.h"
 
 template <uint32_t _PARALLEL_HASH>
-__device__ __forceinline__ uint64_t compute_hash(
+__device__ __forceinline__ bool compute_hash(
 	uint64_t nonce,
+	uint64_t target,
 	uint2 *mix_hash
 	)
 {
@@ -31,13 +32,8 @@ __device__ __forceinline__ uint64_t compute_hash(
 			uint2 shuffle[8];
 			for (int j = 0; j < 8; j++) 
 			{
-#if CUDA_VERSION < SHUFFLE_DEPRECATED
-				shuffle[j].x = __shfl(state[j].x, i+p, THREADS_PER_HASH);
-				shuffle[j].y = __shfl(state[j].y, i+p, THREADS_PER_HASH);
-#else
 				shuffle[j].x = __shfl_sync(0xFFFFFFFF,state[j].x, i+p, THREADS_PER_HASH);
 				shuffle[j].y = __shfl_sync(0xFFFFFFFF,state[j].y, i+p, THREADS_PER_HASH);
-#endif
 			}
 			switch (mix_idx)
 			{
@@ -46,11 +42,7 @@ __device__ __forceinline__ uint64_t compute_hash(
 				case 2: mix[p] = vectorize2(shuffle[4], shuffle[5]); break;
 				case 3: mix[p] = vectorize2(shuffle[6], shuffle[7]); break;
 			}
-#if CUDA_VERSION < SHUFFLE_DEPRECATED
-			init0[p] = __shfl(shuffle[0].x, 0, THREADS_PER_HASH);
-#else
 			init0[p] = __shfl_sync(0xFFFFFFFF,shuffle[0].x, 0, THREADS_PER_HASH);
-#endif
 		}
 
 		for (uint32_t a = 0; a < ACCESSES; a += 4)
@@ -62,11 +54,7 @@ __device__ __forceinline__ uint64_t compute_hash(
 				for (int p = 0; p < _PARALLEL_HASH; p++)
 				{
 					offset[p] = fnv(init0[p] ^ (a + b), ((uint32_t *)&mix[p])[b]) % d_dag_size;
-#if CUDA_VERSION < SHUFFLE_DEPRECATED
-					offset[p] = __shfl(offset[p], t, THREADS_PER_HASH);
-#else
 					offset[p] = __shfl_sync(0xFFFFFFFF,offset[p], t, THREADS_PER_HASH);
-#endif
 				}
 				#pragma unroll
 				for (int p = 0; p < _PARALLEL_HASH; p++)
@@ -86,16 +74,6 @@ __device__ __forceinline__ uint64_t compute_hash(
 			uint32_t thread_mix = fnv_reduce(mix[p]);
 
 			// update mix accross threads
-#if CUDA_VERSION < SHUFFLE_DEPRECATED
-			shuffle[0].x = __shfl(thread_mix, 0, THREADS_PER_HASH);
-			shuffle[0].y = __shfl(thread_mix, 1, THREADS_PER_HASH);
-			shuffle[1].x = __shfl(thread_mix, 2, THREADS_PER_HASH);
-			shuffle[1].y = __shfl(thread_mix, 3, THREADS_PER_HASH);
-			shuffle[2].x = __shfl(thread_mix, 4, THREADS_PER_HASH);
-			shuffle[2].y = __shfl(thread_mix, 5, THREADS_PER_HASH);
-			shuffle[3].x = __shfl(thread_mix, 6, THREADS_PER_HASH);
-			shuffle[3].y = __shfl(thread_mix, 7, THREADS_PER_HASH);
-#else
 			shuffle[0].x = __shfl_sync(0xFFFFFFFF,thread_mix, 0, THREADS_PER_HASH);
 			shuffle[0].y = __shfl_sync(0xFFFFFFFF,thread_mix, 1, THREADS_PER_HASH);
 			shuffle[1].x = __shfl_sync(0xFFFFFFFF,thread_mix, 2, THREADS_PER_HASH);
@@ -104,7 +82,7 @@ __device__ __forceinline__ uint64_t compute_hash(
 			shuffle[2].y = __shfl_sync(0xFFFFFFFF,thread_mix, 5, THREADS_PER_HASH);
 			shuffle[3].x = __shfl_sync(0xFFFFFFFF,thread_mix, 6, THREADS_PER_HASH);
 			shuffle[3].y = __shfl_sync(0xFFFFFFFF,thread_mix, 7, THREADS_PER_HASH);
-#endif
+
 			if ((i+p) == thread_id) {
 				//move mix into state:
 				state[8] = shuffle[0];
@@ -114,11 +92,16 @@ __device__ __forceinline__ uint64_t compute_hash(
 			}
 		}
 	}
+
+	// keccak_256(keccak_512(header..nonce) .. mix);
+	if (cuda_swab64(keccak_f1600_final(state)) > target)
+		return true;
+
 	mix_hash[0] = state[8];
 	mix_hash[1] = state[9];
 	mix_hash[2] = state[10];
 	mix_hash[3] = state[11];
-	
-	// keccak_256(keccak_512(header..nonce) .. mix);
-	return keccak_f1600_final(state);
+
+	return false;
 }
+
