@@ -1,6 +1,0 @@
-﻿  Building Custom Rule C:/Users/denni/Desktop/ethminer-master/libethcore/CMakeLists.txt
-  CMake does not need to re-run because C:/Users/denni/Desktop/ethminer-master/build64/libethcore/CMakeFiles/generate.stamp is up-to-date.
-  BlockHeader.cpp
-  EthashAux.cpp
-  Miner.cpp
-  ethcore.vcxproj -> C:\Users\denni\Desktop\ethminer-master\build64\libethcore\Debug\ethcore.lib

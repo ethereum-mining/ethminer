@@ -1,6 +1,0 @@
-﻿  Building Custom Rule C:/Users/denni/Desktop/ethminer-master/libhwmon/CMakeLists.txt
-  CMake does not need to re-run because C:/Users/denni/Desktop/ethminer-master/build64/libhwmon/CMakeFiles/generate.stamp is up-to-date.
-  wrapnvml.cpp
-  wrapadl.cpp
-  wrapamdsysfs.cpp
-  hwmon.vcxproj -> C:\Users\denni\Desktop\ethminer-master\build64\libhwmon\Debug\hwmon.lib

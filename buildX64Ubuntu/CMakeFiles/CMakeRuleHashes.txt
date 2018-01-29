@@ -1,0 +1,9 @@
+# Hashes of file build rules.
+a49139a8ca064187121a9adfb8d23971 CMakeFiles/BuildInfo.h
+7217513b97e379686b8f2ecf4b712e62 CMakeFiles/hunter_upload_cache
+a2ca4f17405b46185ef02bdf8a224ca7 libethash-cl/CLMiner_kernel_fpga.h
+9fd8783b1c028968a95836bf9e5e69e6 libethash-cl/CLMiner_kernel_stable.h
+3e817cd394c025763703c7fefd974778 libethash-cl/CLMiner_kernel_unstable.h
+cb74d61e94ade26a12d6ad6c3aec96e2 libethash-cl/CMakeFiles/clbin2h_fpga
+cb74d61e94ade26a12d6ad6c3aec96e2 libethash-cl/CMakeFiles/clbin2h_stable
+cb74d61e94ade26a12d6ad6c3aec96e2 libethash-cl/CMakeFiles/clbin2h_unstable

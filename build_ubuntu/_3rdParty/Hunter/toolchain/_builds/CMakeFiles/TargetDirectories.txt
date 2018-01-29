@@ -1,2 +1,0 @@
-/mnt/c/Users/denni/Desktop/ethminer-master/build_ubuntu/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/edit_cache.dir
-/mnt/c/Users/denni/Desktop/ethminer-master/build_ubuntu/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/rebuild_cache.dir

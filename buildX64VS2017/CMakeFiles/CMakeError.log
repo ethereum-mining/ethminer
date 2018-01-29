@@ -1,0 +1,38 @@
+Determining if the include file pthread.h exists failed with the following output:
+Change Dir: I:/ethNipper/buildX64VS2017/CMakeFiles/CMakeTmp
+
+Run Build Command:"C:/Program Files (x86)/Microsoft Visual Studio/Preview/Community/MSBuild/15.0/Bin/MSBuild.exe" "cmTC_c59b0.vcxproj" "/p:Configuration=Debug" "/p:VisualStudioVersion=15.0"
+Microsoft (R)-Buildmodul, Version 15.5.180.51428 für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+Der Buildvorgang wurde am 29.01.2018 10:31:20 gestartet.
+Projekt "I:\ethNipper\buildX64VS2017\CMakeFiles\CMakeTmp\cmTC_c59b0.vcxproj" auf Knoten "1" (Standardziele).
+PrepareForBuild:
+  Das Verzeichnis "cmTC_c59b0.dir\Debug\" wird erstellt.
+  Das Verzeichnis "I:\ethNipper\buildX64VS2017\CMakeFiles\CMakeTmp\Debug\" wird erstellt.
+  Das Verzeichnis "cmTC_c59b0.dir\Debug\cmTC_c59b0.tlog\" wird erstellt.
+InitializeBuildStatus:
+  "cmTC_c59b0.dir\Debug\cmTC_c59b0.tlog\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
+ClCompile:
+  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\CL.exe /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_c59b0.dir\Debug\\" /Fd"cmTC_c59b0.dir\Debug\vc141.pdb" /Gd /TC /FC /errorReport:queue I:\ethNipper\buildX64VS2017\CMakeFiles\CMakeTmp\CheckIncludeFile.c
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.12.25907 für x64
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  
+  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_c59b0.dir\Debug\\" /Fd"cmTC_c59b0.dir\Debug\vc141.pdb" /Gd /TC /FC /errorReport:queue I:\ethNipper\buildX64VS2017\CMakeFiles\CMakeTmp\CheckIncludeFile.c
+  CheckIncludeFile.c
+  
+i:\ethnipper\buildx64vs2017\cmakefiles\cmaketmp\checkincludefile.c(1): fatal error C1083: Datei (Include) kann nicht geöffnet werden: "pthread.h": No such file or directory [I:\ethNipper\buildX64VS2017\CMakeFiles\CMakeTmp\cmTC_c59b0.vcxproj]
+Die Erstellung des Projekts "I:\ethNipper\buildX64VS2017\CMakeFiles\CMakeTmp\cmTC_c59b0.vcxproj" ist abgeschlossen (Standardziele) -- FEHLER.
+
+Fehler beim Buildvorgang.
+
+"I:\ethNipper\buildX64VS2017\CMakeFiles\CMakeTmp\cmTC_c59b0.vcxproj" (Standardziel) (1) ->
+(ClCompile Ziel) -> 
+  i:\ethnipper\buildx64vs2017\cmakefiles\cmaketmp\checkincludefile.c(1): fatal error C1083: Datei (Include) kann nicht geöffnet werden: "pthread.h": No such file or directory [I:\ethNipper\buildX64VS2017\CMakeFiles\CMakeTmp\cmTC_c59b0.vcxproj]
+
+    0 Warnung(en)
+    1 Fehler
+
+Verstrichene Zeit 00:00:00.76
+
+

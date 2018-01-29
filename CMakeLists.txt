@@ -57,10 +57,7 @@ cmake_policy(SET CMP0054 NEW)
 
 option(ETHASHCL "Build with OpenCL mining" ON)
 option(ETHASHCUDA "Build with CUDA mining" OFF)
-<<<<<<< HEAD
 option(ETHSTRATUM "Build with Stratum protocol support" ON)
-=======
->>>>>>> 00a0e54fc1298f76da7236ea8665e6bbe2e7ff37
 option(ETHDBUS "Build with D-Bus support" OFF)
 option(APICORE "Build with API Server support" ON)
 
@@ -72,12 +69,9 @@ function(configureProject)
 	if (ETHASHCUDA)
 		add_definitions(-DETH_ETHASHCUDA)
 	endif()
-<<<<<<< HEAD
 	if (ETHSTRATUM)
 		add_definitions(-DETH_STRATUM)
 	endif()
-=======
->>>>>>> 00a0e54fc1298f76da7236ea8665e6bbe2e7ff37
 	if (ETHDBUS)
 		add_definitions(-DETH_DBUS)
 	endif()
@@ -139,10 +133,7 @@ message("-- Build ${CMAKE_BUILD_TYPE} / ${CMAKE_SYSTEM_NAME}")
 message("------------------------------------------------------------- components")
 message("-- ETHASHCL         Build OpenCL components                  ${ETHASHCL}")
 message("-- ETHASHCUDA       Build CUDA components                    ${ETHASHCUDA}")
-<<<<<<< HEAD
 message("-- ETHSTRATUM       Build Stratum components                 ${ETHSTRATUM}")
-=======
->>>>>>> 00a0e54fc1298f76da7236ea8665e6bbe2e7ff37
 message("-- ETHDBUS          Build D-Bus components                   ${ETHDBUS}")
 message("-- APICORE          Build API Server components              ${APICORE}")
 message("------------------------------------------------------------------------")
@@ -154,34 +145,20 @@ createBuildInfo()
 
 add_subdirectory(libdevcore)
 add_subdirectory(libethash)
-<<<<<<< HEAD
 add_subdirectory(libhwmon)
-=======
 add_subdirectory(libethcore)
-add_subdirectory(libhwmon)
-add_subdirectory(libstratum)
-
->>>>>>> 00a0e54fc1298f76da7236ea8665e6bbe2e7ff37
 if (ETHASHCL)
 	add_subdirectory(libethash-cl)
 endif ()
 if (ETHASHCUDA)
 	add_subdirectory(libethash-cuda)
 endif ()
-<<<<<<< HEAD
 if(ETHSTRATUM)
 	add_subdirectory(libstratum)
 endif()
 if (APICORE)
 	add_subdirectory(libapicore)
 endif()
-add_subdirectory(libethcore)
-=======
-if (APICORE)
-	add_subdirectory(libapicore)
-endif()
-
->>>>>>> 00a0e54fc1298f76da7236ea8665e6bbe2e7ff37
 add_subdirectory(ethminer)
 
 

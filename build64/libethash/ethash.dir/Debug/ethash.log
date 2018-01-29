@@ -1,5 +1,0 @@
-﻿  Building Custom Rule C:/Users/denni/Desktop/ethminer-master/libethash/CMakeLists.txt
-  CMake does not need to re-run because C:/Users/denni/Desktop/ethminer-master/build64/libethash/CMakeFiles/generate.stamp is up-to-date.
-  internal.c
-  sha3.c
-  ethash.vcxproj -> C:\Users\denni\Desktop\ethminer-master\build64\libethash\Debug\ethash.lib

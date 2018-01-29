@@ -1,0 +1,5 @@
+﻿  Building Custom Rule I:/ethNipper/libapicore/CMakeLists.txt
+  CMake does not need to re-run because I:/ethNipper/buildX64VS2017/libapicore/CMakeFiles/generate.stamp is up-to-date.
+  Api.cpp
+  ApiServer.cpp
+  apicore.vcxproj -> I:\ethNipper\buildX64VS2017\libapicore\Debug\apicore.lib

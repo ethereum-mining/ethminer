@@ -417,58 +417,46 @@ unsigned CLMiner::getNumDevices()
 void CLMiner::listDevices()
 {
 	string outString ="\nListing OpenCL devices.\n";
-	unsigned int i = 0;
-	string platformName = "";
-	
+	std::cout << outString;
+	//List Platforms
 	vector<cl::Platform> platforms = getPlatforms();
-	if (platforms.empty())
-		return;
-	for (unsigned j = 0; j < platforms.size(); ++j)
-	{
-		try {
-			i = 0;
+	if (platforms.size() > 0) {
+		for (unsigned j = 0; j < platforms.size(); ++j)
+		{
+			//Platform Name
 			string platformName = platforms[j].getInfo<CL_PLATFORM_NAME>();
-			outString += "OpenCL Platform [" + to_string(j) + "]" + platformName + "\n";
-			if (platformName != "NVIDIA CUDA") {
-				vector<cl::Device> devices = getDevices(platforms, j);
-				for (auto const& device : devices)
-				{
-					outString += "\t[" + to_string(i) + "]";
-					switch (device.getInfo<CL_DEVICE_TYPE>())
-					{
-					case CL_DEVICE_TYPE_CPU:
-						outString += "CPU";
-						break;
-					case CL_DEVICE_TYPE_GPU:
-						outString += "GPU";
-						break;
-					case CL_DEVICE_TYPE_ACCELERATOR:
-						outString += "ACC";
-						break;
-					default:
-						outString += "---";
-						break;
+			outString = "[" + to_string(j) + "]OpenCL " + platforms[j].getInfo<CL_PLATFORM_NAME>() + "\n";
+			std::cout << outString;
+			if (platformName == "AMD Accelerated Parallel Processing" ) {
+				//List Devices
+				try {
+					vector<cl::Device> devices = getDevices(platforms, j);
+					if (devices.size() > 0) {
+						for (unsigned i = 0; i < devices.size(); ++i)
+						{
+							outString = "  [" + to_string(i) + "]";
+							outString += " " + devices[i].getInfo<CL_DEVICE_NAME>();
+							//outString += "\t" + device.getInfo<CL_DEVICE_VENDOR>();
+							outString += "\t" + devices[i].getInfo<CL_DEVICE_OPENCL_C_VERSION>();
+							outString += "\tRAM: " + to_string(devices[i].getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() / 1024 / 1024) + "MB";
+							outString += "\tCU: " + to_string(devices[i].getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>());
+							outString += "\tWS: " + to_string(devices[i].getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>());
+							outString += "\t" + to_string(devices[i].getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>()) + "Hz";
+							int epoch = 162;
+							int dagsize = 256 * 64 * 162;
+							int cu = devices[i].getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+							int clock = devices[i].getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
+							outString += "\t~" + to_string((cu * clock * 1200) / dagsize) + "MH/s\n";
+							std::cout << outString;
+						}
 					}
-					outString += " " + device.getInfo<CL_DEVICE_NAME>();
-					//outString += "\t" + device.getInfo<CL_DEVICE_VENDOR>();
-					outString += "\t" + device.getInfo<CL_DEVICE_OPENCL_C_VERSION>();
-					outString += "\tRAM: " + to_string(device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() / 1024 / 1024) + "MB";
-					outString += "\tCUs: " + to_string(device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>());
-					outString += "\t" + to_string(device.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>()) + "Hz";
-					int epoch = 162;
-					int dagsize = 256 * 64 * 162;
-					int cu = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
-					int clock = device.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
-					outString += "\t~" + to_string((cu * clock *1200) / dagsize) + "MH/s\n";
-					++i;
+				}
+				catch (int e) {
+					std::cout << boost::current_exception_diagnostic_information() << std::endl;
 				}
 			}
 		}
-		catch (int e) {
-				outString += "ERROR:\n";
-		}
 	}
-	std::cout << outString;
 }
 
 bool CLMiner::configureGPU(

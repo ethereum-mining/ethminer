@@ -1,0 +1,2 @@
+/mnt/i/ethNipper/buildX64Ubuntu/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/edit_cache.dir
+/mnt/i/ethNipper/buildX64Ubuntu/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/rebuild_cache.dir

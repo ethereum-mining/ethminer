@@ -45,6 +45,7 @@ extern "C" {
         #include <CL/cl.h>
 #endif
 #include <CL/cl_ext_intelfpga.h>
+#include <AOCLUtils/aocl_utils.h>
 
 /* cl_khr_fp16 extension - no extension #define since it has no functions  */
 #define CL_DEVICE_HALF_FP_CONFIG                    0x1033

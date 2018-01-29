@@ -1,9 +1,0 @@
-﻿  Building Custom Rule C:/Users/denni/Desktop/ethminer-master/libdevcore/CMakeLists.txt
-  CMake does not need to re-run because C:/Users/denni/Desktop/ethminer-master/build64/libdevcore/CMakeFiles/generate.stamp is up-to-date.
-  CommonData.cpp
-  FixedHash.cpp
-  Log.cpp
-  RLP.cpp
-  SHA3.cpp
-  Worker.cpp
-  devcore.vcxproj -> C:\Users\denni\Desktop\ethminer-master\build64\libdevcore\Debug\devcore.lib

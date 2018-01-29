@@ -1,4 +1,0 @@
-﻿  wrapadl.cpp
-  wrapamdsysfs.cpp
-  wrapnvml.cpp
-  hwmon.vcxproj -> C:\Users\denni\Desktop\ethminer-master\build64\libhwmon\Release\hwmon.lib

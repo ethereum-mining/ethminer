@@ -1,0 +1,5 @@
+﻿LINK : warning LNK4075: /INCREMENTAL wird aufgrund der Angabe von /LTCG ignoriert.
+  Code wird generiert.
+  Codegenerierung ist abgeschlossen.
+  ethminer.vcxproj -> I:\ethNipper\buildX64VS2017\ethminer\RelWithDebInfo\ethminer.exe
+  ethminer.vcxproj -> I:/ethNipper/buildX64VS2017/ethminer/RelWithDebInfo/ethminer.pdb (Full PDB)

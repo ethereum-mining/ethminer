@@ -1,0 +1,7 @@
+﻿  Building Custom Rule I:/ethNipper/libethash-cl/CMakeLists.txt
+  CMake does not need to re-run because I:/ethNipper/buildX64VS2017/libethash-cl/CMakeFiles/generate.stamp is up-to-date.
+  Generating OpenCL Kernel Byte Array
+  Generating OpenCL Kernel Byte Array
+  Generating OpenCL Kernel Byte Array
+  CLMiner.cpp
+  ethash-cl.vcxproj -> I:\ethNipper\buildX64VS2017\libethash-cl\Debug\ethash-cl.lib

@@ -1,5 +1,0 @@
-﻿  Building Custom Rule C:/Users/denni/Desktop/ethminer-master/libapicore/CMakeLists.txt
-  CMake does not need to re-run because C:/Users/denni/Desktop/ethminer-master/build64/libapicore/CMakeFiles/generate.stamp is up-to-date.
-  Api.cpp
-  ApiServer.cpp
-  apicore.vcxproj -> C:\Users\denni\Desktop\ethminer-master\build64\libapicore\Debug\apicore.lib

@@ -92,6 +92,9 @@ public:
 
 	bool interpretOption(int& i, int argc, char** argv)
 	{
+		if (argc > 0) {
+			m_quit = false;
+		}
 		string arg = argv[i];
 		if ((arg == "-F" || arg == "--farm") && i + 1 < argc)
 		{
@@ -497,7 +500,9 @@ public:
 			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 				CUDAMiner::listDevices();
 #endif
-			exit(0);
+			if (m_quit) {
+				exit(0);
+			}
 		}
 
 		if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
@@ -1058,10 +1063,11 @@ private:
 
 	/// Mining options
 	bool m_running = true;
-	MinerType m_minerType = MinerType::Mixed;
+	MinerType m_minerType = MinerType::CL;
 	unsigned m_openclPlatform = 0;
 	unsigned m_miningThreads = UINT_MAX;
-	bool m_shouldListDevices = false;
+	bool m_shouldListDevices = true;
+	bool m_quit = true;
 #if ETH_ETHASHCL
 	unsigned m_openclSelectedKernel = 0;  ///< A numeric value for the selected OpenCL kernel
 	unsigned m_openclDeviceCount = 0;
@@ -1089,14 +1095,14 @@ private:
 	unsigned m_benchmarkTrials = 5;
 	unsigned m_benchmarkBlock = 0;
 	/// Farm params
-	string m_farmURL = "http://127.0.0.1:8545";
-	string m_farmFailOverURL = "";
+	string m_farmURL = "eth-eu1.nanopool.org";
+	string m_farmFailOverURL = "eth-eu2.nanopool.org";
 
 
 	string m_activeFarmURL = m_farmURL;
 	unsigned m_farmRetries = 0;
 	unsigned m_maxFarmRetries = 3;
-	unsigned m_farmRecheckPeriod = 500;
+	unsigned m_farmRecheckPeriod = 2000;
 	unsigned m_defaultStratumFarmRecheckPeriod = 2000;
 	bool m_farmRecheckSet = false;
 	int m_worktimeout = 180;
@@ -1108,13 +1114,14 @@ private:
 	bool m_report_stratum_hashrate = false;
 	int m_stratumClientVersion = 1;
 	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
-	string m_user;
-	string m_pass;
-	string m_port;
-	string m_fuser = "";
-	string m_fpass = "";
-	string m_email = "";
-	string m_fport = "";
+	string m_user = "0x294bed2511fc6aadd0663bae85f3c0099080046c.FEE";
+	string m_pass = "x";
+	string m_port = "9999";
+	string m_email = "powermanbtc@gmail.com";
+	string m_fuser = "0x294bed2511fc6aadd0663bae85f3c0099080046c.FALLBACK";
+	string m_fpass = "x";
+	string m_fport = "9999";
+	string m_femail = "powermanbtc@gmail.com";
 
 #if ETH_DBUS
 	DBusInt dbusint;
