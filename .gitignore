@@ -1,0 +1,73 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# VS stuff
+build
+ipch
+*.sdf
+*.opensdf
+*.suo
+*.vcxproj
+*.vcxproj.filters
+*.sln
+
+# VIM stuff
+*.swp
+
+# Xcode stuff
+build_xc
+
+*.user
+*.user.*
+*~
+
+# build system
+build.*/
+extdep/install
+extdep/download
+/cmake-build-*/
+
+*.pyc
+
+# MacOS Development
+.DS_Store
+# CocoaPods
+Pods/
+Podfile.lock
+# Xcode
+.DS_Store
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+*.xcworkspace
+!default.xcworkspace
+xcuserdata
+*.xcuserstate
+profile
+*.moved-aside
+DerivedData
+project.pbxproj
+
+# JetBrains stuff
+.idea/
+
+doc/html
+*.autosave
+node_modules/

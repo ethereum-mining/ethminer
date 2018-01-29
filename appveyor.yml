@@ -1,0 +1,57 @@
+version: "{build}"
+branches:
+  only:
+    - master
+    - /v\d+\..+/
+    - /release.*/
+    - appveyor
+shallow_clone: true
+os: Visual Studio 2015
+configuration:
+  - Release
+  - RelWithDebInfo
+environment:
+  GITHUB_USER_PASSWORD:
+    secure: VnpF1MH5MEFvUI5MiMMMFlmbDdst+bfom5ZFVgalYPp/SYDhbejjXJm9Dla/IgpC
+
+install: | # Download CUDA Windows installer (local) and extract /compiler/* to /CUDA/vX.0/ zip archive.
+  appveyor DownloadFile https://github.com/ethereum/cpp-dependencies/releases/download/cache/CUDA-v9.0-WindowsServer2012.zip
+  7z x CUDA-v9.0-WindowsServer2012.zip -oC:/
+  set PATH=%PATH%;C:/CUDA/v9.0/bin
+  nvcc -V
+  pip install requests
+before_build:
+  - cmake -G "Visual Studio 14 2015 Win64" -H. -Bbuild -DETHASHCUDA=ON -DAPICORE=ON
+build_script:
+  - cmake --build build --config %CONFIGURATION%
+after_build:
+  ps: |
+    cmake --build build --config $env:configuration --target package
+    if ($env:configuration -ne "Release") {
+      Get-Item build/ethminer-*-Windows.* | Rename-Item -NewName { $_.name -Replace 'ethminer','ethminer-dbg' }
+    }
+    if (-not $env:appveyor_pull_request_number) {
+      cmake --build build --target hunter_upload_cache
+    }
+
+artifacts:
+  - path: build/ethminer-*.zip
+    name: ethminer
+
+before_deploy:
+  # Read variables dumped by CMake configuration.
+  - ps: . build/variables.ps1
+deploy:
+  # Create GitHub release, also set the release name and description.
+  provider: GitHub
+  tag: $(appveyor_repo_tag_name)
+  release: ethminer $(ethminer_version)
+  description: ''
+  force_update: true  # Force update in case Travis CI created the release before.
+  prerelease: $(ethminer_version_is_prerelease)
+  draft: false
+  artifact: ethminer
+  auth_token:
+    secure: uDRcvbW+9GIyKlZ9guJfWOQ6jg0An6eULg6mEkYgdKn/GVNpYSKvO5oHxP0U8a+e
+  on:
+    appveyor_repo_tag: true

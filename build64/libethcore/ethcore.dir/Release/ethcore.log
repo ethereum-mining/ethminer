@@ -1,0 +1,4 @@
+﻿  BlockHeader.cpp
+  EthashAux.cpp
+  Miner.cpp
+  ethcore.vcxproj -> C:\Users\denni\Desktop\ethminer-master\build64\libethcore\Release\ethcore.lib

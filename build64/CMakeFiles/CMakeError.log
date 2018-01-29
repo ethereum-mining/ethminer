@@ -1,0 +1,38 @@
+Determining if the include file pthread.h exists failed with the following output:
+Change Dir: C:/Users/denni/Desktop/ethminer-master/build64/CMakeFiles/CMakeTmp
+
+Run Build Command:"C:/Program Files (x86)/MSBuild/14.0/bin/MSBuild.exe" "cmTC_7abf9.vcxproj" "/p:Configuration=Debug" "/p:VisualStudioVersion=14.0"
+Microsoft (R)-Buildmodul, Version 14.0.25420.1
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+Der Buildvorgang wurde am 10.01.2018 20:35:14 gestartet.
+Projekt "C:\Users\denni\Desktop\ethminer-master\build64\CMakeFiles\CMakeTmp\cmTC_7abf9.vcxproj" auf Knoten "1" (Standardziele).
+PrepareForBuild:
+  Das Verzeichnis "cmTC_7abf9.dir\Debug\" wird erstellt.
+  Das Verzeichnis "C:\Users\denni\Desktop\ethminer-master\build64\CMakeFiles\CMakeTmp\Debug\" wird erstellt.
+  Das Verzeichnis "cmTC_7abf9.dir\Debug\cmTC_7abf9.tlog\" wird erstellt.
+InitializeBuildStatus:
+  "cmTC_7abf9.dir\Debug\cmTC_7abf9.tlog\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
+ClCompile:
+  C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\x86_amd64\CL.exe /c /Zi /W3 /WX- /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_7abf9.dir\Debug\\" /Fd"cmTC_7abf9.dir\Debug\vc140.pdb" /Gd /TC /errorReport:queue "C:\Users\denni\Desktop\ethminer-master\build64\CMakeFiles\CMakeTmp\CheckIncludeFile.c"
+  Microsoft (R) C/C++ Optimizing Compiler Version 19.00.24215.1 for x64
+  Copyright (C) Microsoft Corporation.  All rights reserved.
+  
+  cl /c /Zi /W3 /WX- /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_7abf9.dir\Debug\\" /Fd"cmTC_7abf9.dir\Debug\vc140.pdb" /Gd /TC /errorReport:queue "C:\Users\denni\Desktop\ethminer-master\build64\CMakeFiles\CMakeTmp\CheckIncludeFile.c"
+  
+  CheckIncludeFile.c
+C:\Users\denni\Desktop\ethminer-master\build64\CMakeFiles\CMakeTmp\CheckIncludeFile.c(1): fatal error C1083: Cannot open include file: 'pthread.h': No such file or directory [C:\Users\denni\Desktop\ethminer-master\build64\CMakeFiles\CMakeTmp\cmTC_7abf9.vcxproj]
+Die Erstellung des Projekts "C:\Users\denni\Desktop\ethminer-master\build64\CMakeFiles\CMakeTmp\cmTC_7abf9.vcxproj" ist abgeschlossen (Standardziele) -- FEHLER.
+
+Fehler beim Buildvorgang.
+
+"C:\Users\denni\Desktop\ethminer-master\build64\CMakeFiles\CMakeTmp\cmTC_7abf9.vcxproj" (Standardziel) (1) ->
+(ClCompile Ziel) -> 
+  C:\Users\denni\Desktop\ethminer-master\build64\CMakeFiles\CMakeTmp\CheckIncludeFile.c(1): fatal error C1083: Cannot open include file: 'pthread.h': No such file or directory [C:\Users\denni\Desktop\ethminer-master\build64\CMakeFiles\CMakeTmp\cmTC_7abf9.vcxproj]
+
+    0 Warnung(en)
+    1 Fehler
+
+Verstrichene Zeit 00:00:00.43
+
+

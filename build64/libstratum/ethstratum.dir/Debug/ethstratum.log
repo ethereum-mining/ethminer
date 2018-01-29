@@ -1,0 +1,5 @@
+﻿  Building Custom Rule C:/Users/denni/Desktop/ethminer-master/libstratum/CMakeLists.txt
+  CMake does not need to re-run because C:/Users/denni/Desktop/ethminer-master/build64/libstratum/CMakeFiles/generate.stamp is up-to-date.
+  EthStratumClient.cpp
+  EthStratumClientV2.cpp
+  ethstratum.vcxproj -> C:\Users\denni\Desktop\ethminer-master\build64\libstratum\Debug\ethstratum.lib
