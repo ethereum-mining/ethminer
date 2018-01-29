@@ -172,18 +172,19 @@ void CUDAMiner::listDevices()
 {
 	try
 	{
-		string outString = "\nListing CUDA devices.\nFORMAT: [deviceID] deviceName\n";
+		cout << "\nListing CUDA devices.\nFORMAT: [deviceID] deviceName\n";
 		int numDevices = getNumDevices();
 		for (int i = 0; i < numDevices; ++i)
 		{
 			cudaDeviceProp props;
 			CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
 
-			outString += "[" + to_string(i) + "] " + string(props.name) + "\n";
-			outString += "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) + "\n";
-			outString += "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
+			cout << "[" + to_string(i) + "] " + string(props.name) + "\n";
+			cout << "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) + "\n";
+			cout << "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
+			cout << "\tPci: " << setw(4) << setfill('0') << hex << props.pciDomainID << ':' << setw(2)
+				<< props.pciBusID << ':' << setw(2) << props.pciDeviceID << '\n';
 		}
-		std::cout << outString;
 	}
 	catch(std::runtime_error const& err)
 	{
