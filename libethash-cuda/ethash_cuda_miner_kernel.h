@@ -5,6 +5,14 @@
 #include <stdint.h>
 #include <cuda_runtime.h>
 
+#define SHUFFLE_DEPRECATED 9 //CUDA_VERSION
+
+#if __CUDACC_VER_MAJOR__ < SHUFFLE_DEPRECATED
+#define SHFL(_a, _b, _c)  __shfl((_a), (_b), (_c))
+#else
+#define SHFL(_a, _b, _c)  __shfl_sync(0xffffffff, (_a), (_b), (_c))
+#endif
+
 // It is virtually impossible to get more than
 // one solution per stream hash calculation
 // Leave room for up to 4 results. A power
