@@ -34,6 +34,8 @@
 #define OPENCL_PLATFORM_NVIDIA  1
 #define OPENCL_PLATFORM_AMD     2
 #define OPENCL_PLATFORM_CLOVER  3
+#define OPENCL_PLATFORM_INTELFPGA  4
+#define OPENCL_PLATFORM_ALTERAFPGA  5
 
 
 namespace dev
@@ -44,6 +46,8 @@ namespace eth
 enum CLKernelName {
 	Stable,
 	Unstable,
+	Fpga,
+	Custom,
 };
 
 class CLMiner: public Miner
@@ -51,7 +55,7 @@ class CLMiner: public Miner
 public:
 	/* -- default values -- */
 	/// Default value of the local work size. Also known as workgroup size.
-	static const unsigned c_defaultLocalWorkSize = 128;
+	static const unsigned c_defaultLocalWorkSize = 256;
 	/// Default value of the global work size as a multiplier of the local work size
 	static const unsigned c_defaultGlobalWorkSizeMultiplier = 8192;
 
@@ -81,7 +85,23 @@ public:
 			s_devices[i] = _devices[i];
 		}
 	}
-	static void setCLKernel(unsigned _clKernel) { s_clKernelName = _clKernel == 1 ? CLKernelName::Unstable : CLKernelName::Stable; }
+	static void setCLKernel(unsigned _clKernel) { 
+		if (_clKernel == 0) {
+			s_clKernelName = CLKernelName::Stable;
+		}
+		else if (_clKernel == 1) {
+			s_clKernelName = CLKernelName::Unstable;
+		}
+		else if (_clKernel == 2) {
+			s_clKernelName = CLKernelName::Fpga;
+		}
+		else if (_clKernel == 3) {
+			s_clKernelName = CLKernelName::Custom;
+		}
+		else {
+			s_clKernelName = CLKernelName::Stable;
+		}
+	}
 	HwMonitor hwmon() override;
 protected:
 	void kick_miner() override;

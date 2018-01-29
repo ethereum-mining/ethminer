@@ -7,6 +7,11 @@
 #include <libethash/internal.h>
 #include "CLMiner_kernel_stable.h"
 #include "CLMiner_kernel_unstable.h"
+#include "CLMiner_kernel_fpga.h"
+
+#include <string>
+#include <fstream>
+#include <streambuf>
 
 using namespace dev;
 using namespace eth;
@@ -411,39 +416,56 @@ unsigned CLMiner::getNumDevices()
 
 void CLMiner::listDevices()
 {
-	string outString ="\nListing OpenCL devices.\nFORMAT: [platformID] [deviceID] deviceName\n";
+	string outString ="\nListing OpenCL devices.\n";
 	unsigned int i = 0;
-
+	string platformName = "";
+	
 	vector<cl::Platform> platforms = getPlatforms();
 	if (platforms.empty())
 		return;
 	for (unsigned j = 0; j < platforms.size(); ++j)
 	{
-		i = 0;
-		vector<cl::Device> devices = getDevices(platforms, j);
-		for (auto const& device: devices)
-		{
-			outString += "[" + to_string(j) + "] [" + to_string(i) + "] " + device.getInfo<CL_DEVICE_NAME>() + "\n";
-			outString += "\tCL_DEVICE_TYPE: ";
-			switch (device.getInfo<CL_DEVICE_TYPE>())
-			{
-			case CL_DEVICE_TYPE_CPU:
-				outString += "CPU\n";
-				break;
-			case CL_DEVICE_TYPE_GPU:
-				outString += "GPU\n";
-				break;
-			case CL_DEVICE_TYPE_ACCELERATOR:
-				outString += "ACCELERATOR\n";
-				break;
-			default:
-				outString += "DEFAULT\n";
-				break;
+		try {
+			i = 0;
+			string platformName = platforms[j].getInfo<CL_PLATFORM_NAME>();
+			outString += "OpenCL Platform [" + to_string(j) + "]" + platformName + "\n";
+			if (platformName != "NVIDIA CUDA") {
+				vector<cl::Device> devices = getDevices(platforms, j);
+				for (auto const& device : devices)
+				{
+					outString += "\t[" + to_string(i) + "]";
+					switch (device.getInfo<CL_DEVICE_TYPE>())
+					{
+					case CL_DEVICE_TYPE_CPU:
+						outString += "CPU";
+						break;
+					case CL_DEVICE_TYPE_GPU:
+						outString += "GPU";
+						break;
+					case CL_DEVICE_TYPE_ACCELERATOR:
+						outString += "ACC";
+						break;
+					default:
+						outString += "---";
+						break;
+					}
+					outString += " " + device.getInfo<CL_DEVICE_NAME>();
+					//outString += "\t" + device.getInfo<CL_DEVICE_VENDOR>();
+					outString += "\t" + device.getInfo<CL_DEVICE_OPENCL_C_VERSION>();
+					outString += "\tRAM: " + to_string(device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() / 1024 / 1024) + "MB";
+					outString += "\tCUs: " + to_string(device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>());
+					outString += "\t" + to_string(device.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>()) + "Hz";
+					int epoch = 162;
+					int dagsize = 256 * 64 * 162;
+					int cu = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+					int clock = device.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
+					outString += "\t~" + to_string((cu * clock *1200) / dagsize) + "MH/s\n";
+					++i;
+				}
 			}
-			outString += "\tCL_DEVICE_GLOBAL_MEM_SIZE: " + to_string(device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()) + "\n";
-			outString += "\tCL_DEVICE_MAX_MEM_ALLOC_SIZE: " + to_string(device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>()) + "\n";
-			outString += "\tCL_DEVICE_MAX_WORK_GROUP_SIZE: " + to_string(device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>()) + "\n";
-			++i;
+		}
+		catch (int e) {
+				outString += "ERROR:\n";
 		}
 	}
 	std::cout << outString;
@@ -558,6 +580,14 @@ bool CLMiner::init(const h256& seed)
 				sysfsh = wrap_amdsysfs_create();
 #endif
 			}
+			else if (platformName == "INTELFPGA_CL")
+			{
+				platformId = OPENCL_PLATFORM_INTELFPGA;
+			}
+			else if (platformName == "ALTERAFPGA_CL")
+			{
+				platformId = OPENCL_PLATFORM_ALTERAFPGA;
+			}
 			else if (platformName == "Clover")
 			{
 				platformId = OPENCL_PLATFORM_CLOVER;
@@ -631,24 +661,43 @@ bool CLMiner::init(const h256& seed)
 		if ( s_clKernelName == CLKernelName::Unstable ) {
 			cllog << "OpenCL kernel: Unstable kernel";
 			code = string(CLMiner_kernel_unstable, CLMiner_kernel_unstable + sizeof(CLMiner_kernel_unstable));
-		}
-		else { //if(s_clKernelName == CLKernelName::Stable)
+		} else if (s_clKernelName == CLKernelName::Fpga) {
+			cllog << "OpenCL kernel: FPGA kernel";
+			code = string(CLMiner_kernel_fpga, CLMiner_kernel_fpga + sizeof(CLMiner_kernel_fpga));
+		} else if (s_clKernelName == CLKernelName::Custom) {
+			cllog << "OpenCL kernel: Custom kernel (kernel.cl)";
+			std::ifstream t("kernel.cl");
+			std::string ckernel;
+			t.seekg(0, std::ios::end);
+			ckernel.reserve(t.tellg());
+			t.seekg(0, std::ios::beg);
+			ckernel.assign((std::istreambuf_iterator<char>(t)),
+			std::istreambuf_iterator<char>());
+			code = ckernel;
+		} else { //if(s_clKernelName == CLKernelName::Stable)
 			cllog << "OpenCL kernel: Stable kernel";
-
 			//CLMiner_kernel_stable.cl will do a #undef THREADS_PER_HASH
 			if(s_threadsPerHash != 8) {
 				cwarn << "The current stable OpenCL kernel only supports exactly 8 threads. Thread parameter will be ignored.";
 			}
-
 			code = string(CLMiner_kernel_stable, CLMiner_kernel_stable + sizeof(CLMiner_kernel_stable));
 		}
+
+		cllog << "OpenCL kernel: GROUP_SIZE" << m_workgroupSize;
 		addDefinition(code, "GROUP_SIZE", m_workgroupSize);
+		cllog << "OpenCL kernel: DAG_SIZE" << dagSize128;
 		addDefinition(code, "DAG_SIZE", dagSize128);
+		cllog << "OpenCL kernel: LIGHT_SIZE" << lightSize64;
 		addDefinition(code, "LIGHT_SIZE", lightSize64);
+		cllog << "OpenCL kernel: ACCESSES" << ETHASH_ACCESSES;
 		addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
+		cllog << "OpenCL kernel: MAX_OUTPUTS" << c_maxSearchResults;
 		addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
+		cllog << "OpenCL kernel: PLATFORM" << platformId;
 		addDefinition(code, "PLATFORM", platformId);
+		cllog << "OpenCL kernel: COMPUTE" << computeCapability;
 		addDefinition(code, "COMPUTE", computeCapability);
+		cllog << "OpenCL kernel: THREADS_PER_HASH" << s_threadsPerHash;
 		addDefinition(code, "THREADS_PER_HASH", s_threadsPerHash);
 
 		// create miner OpenCL program
