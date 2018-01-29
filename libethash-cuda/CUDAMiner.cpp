@@ -512,7 +512,7 @@ void CUDAMiner::search(
 			}
 			addHashCount(batch_size);
 			bool t = true;
-			if (m_abort.compare_exchange_weak(t, false))
+			if (m_abort.compare_exchange_strong(t, false))
 				break;
 			if (shouldStop())
 			{
