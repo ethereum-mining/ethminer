@@ -27,23 +27,10 @@ add_custom_command(
 )
 add_custom_target(clbin2h_unstable DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/CLMiner_kernel_unstable.h ${CMAKE_CURRENT_SOURCE_DIR}/CLMiner_kernel_unstable.cl)
 
-add_custom_command(
-	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/CLMiner_kernel_fpga.h
-	COMMAND ${CMAKE_COMMAND} ARGS
-	-DBIN2H_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/CLMiner_kernel_fpga.cl"
-	-DBIN2H_VARIABLE_NAME=CLMiner_kernel_fpga
-	-DBIN2H_HEADER_FILE="${CMAKE_CURRENT_BINARY_DIR}/CLMiner_kernel_fpga.h"
-	-P "${CMAKE_CURRENT_SOURCE_DIR}/bin2h.cmake"
-	COMMENT "Generating OpenCL Kernel Byte Array"
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/CLMiner_kernel_fpga.cl
-)
-add_custom_target(clbin2h_fpga DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/CLMiner_kernel_fpga.h ${CMAKE_CURRENT_SOURCE_DIR}/CLMiner_kernel_fpga.cl)
-
 set(SOURCES
 	CLMiner.h CLMiner.cpp
 	${CMAKE_CURRENT_BINARY_DIR}/CLMiner_kernel_stable.h
 	${CMAKE_CURRENT_BINARY_DIR}/CLMiner_kernel_unstable.h
-	${CMAKE_CURRENT_BINARY_DIR}/CLMiner_kernel_fpga.h
 )
 
 if(APPLE)

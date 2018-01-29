@@ -7,11 +7,6 @@
 #include <libethash/internal.h>
 #include "CLMiner_kernel_stable.h"
 #include "CLMiner_kernel_unstable.h"
-#include "CLMiner_kernel_fpga.h"
-
-#include <string>
-#include <fstream>
-#include <streambuf>
 
 using namespace dev;
 using namespace eth;
@@ -267,7 +262,7 @@ CLMiner::CLMiner(FarmFace& _farm, unsigned _index):
 
 CLMiner::~CLMiner()
 {
-	pause();
+	kick_miner();
 }
 
 void CLMiner::report(uint64_t _nonce, WorkPackage const& _w)
@@ -276,23 +271,11 @@ void CLMiner::report(uint64_t _nonce, WorkPackage const& _w)
 	// TODO: Why re-evaluating?
 	Result r = EthashAux::eval(_w.seed, _w.header, _nonce);
 	if (r.value < _w.boundary)
-		farm.submitProof(Solution{_nonce, r.mixHash, _w.header, _w.seed, _w.boundary, _w.job, false});
+		farm.submitProof(Solution{_nonce, r.mixHash, _w.header, _w.seed, _w.boundary, _w.job, _w.job_len, false});
 	else {
 		farm.failedSolution();
 		cwarn << "FAILURE: GPU gave incorrect result!";
 	}
-}
-
-void CLMiner::kickOff()
-{}
-
-namespace
-{
-uint64_t randomNonce()
-{
-	static std::mt19937_64 s_gen(std::random_device{}());
-	return std::uniform_int_distribution<uint64_t>{}(s_gen);
-}
 }
 
 void CLMiner::workLoop()
@@ -354,9 +337,8 @@ void CLMiner::workLoop()
 				if (w.exSizeBits >= 0)
 					startNonce = w.startNonce | ((uint64_t)index << (64 - 4 - w.exSizeBits)); // This can support up to 16 devices.
 				else
-					startNonce = randomNonce();
+					startNonce = get_start_nonce();
 
-				current = w;
 				auto switchEnd = std::chrono::high_resolution_clock::now();
 				auto globalSwitchTime = std::chrono::duration_cast<std::chrono::milliseconds>(switchEnd - workSwitchStart).count();
 				auto localSwitchTime = std::chrono::duration_cast<std::chrono::microseconds>(switchEnd - localSwitchStart).count();
@@ -372,13 +354,10 @@ void CLMiner::workLoop()
 			if (results[0] > 0)
 			{
 				// Ignore results except the first one.
-				nonce = startNonce + results[1];
+				nonce = current.startNonce + results[1];
 				// Reset search buffer if any solution found.
 				m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
 			}
-
-			// Increase start nonce for following kernel execution.
-			startNonce += m_globalWorkSize;
 
 			// Run the kernel.
 			m_searchKernel.setArg(3, startNonce);
@@ -388,6 +367,11 @@ void CLMiner::workLoop()
 			// It takes some time because ethash must be re-evaluated on CPU.
 			if (nonce != 0)
 				report(nonce, current);
+
+			current = w;        // kernel now processing newest work
+			current.startNonce = startNonce;
+			// Increase start nonce for following kernel execution.
+			startNonce += m_globalWorkSize;
 
 			// Report hash count
 			addHashCount(m_globalWorkSize);
@@ -408,8 +392,7 @@ void CLMiner::workLoop()
 	}
 }
 
-void CLMiner::pause()
-{}
+void CLMiner::kick_miner() {}
 
 unsigned CLMiner::getNumDevices()
 {
@@ -428,56 +411,39 @@ unsigned CLMiner::getNumDevices()
 
 void CLMiner::listDevices()
 {
-	string outString ="\nListing OpenCL devices.\n";
+	string outString ="\nListing OpenCL devices.\nFORMAT: [platformID] [deviceID] deviceName\n";
 	unsigned int i = 0;
-	string platformName = "";
-	
+
 	vector<cl::Platform> platforms = getPlatforms();
 	if (platforms.empty())
 		return;
 	for (unsigned j = 0; j < platforms.size(); ++j)
 	{
-		try {
-			i = 0;
-			string platformName = platforms[j].getInfo<CL_PLATFORM_NAME>();
-			outString += "OpenCL Platform [" + to_string(j) + "]" + platformName + "\n";
-			if (platformName != "NVIDIA CUDA") {
-				vector<cl::Device> devices = getDevices(platforms, j);
-				for (auto const& device : devices)
-				{
-					outString += "\t[" + to_string(i) + "]";
-					switch (device.getInfo<CL_DEVICE_TYPE>())
-					{
-					case CL_DEVICE_TYPE_CPU:
-						outString += "CPU";
-						break;
-					case CL_DEVICE_TYPE_GPU:
-						outString += "GPU";
-						break;
-					case CL_DEVICE_TYPE_ACCELERATOR:
-						outString += "ACC";
-						break;
-					default:
-						outString += "---";
-						break;
-					}
-					outString += " " + device.getInfo<CL_DEVICE_NAME>();
-					//outString += "\t" + device.getInfo<CL_DEVICE_VENDOR>();
-					outString += "\t" + device.getInfo<CL_DEVICE_OPENCL_C_VERSION>();
-					outString += "\tRAM: " + to_string(device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() / 1024 / 1024) + "MB";
-					outString += "\tCUs: " + to_string(device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>());
-					outString += "\t" + to_string(device.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>()) + "Hz";
-					int epoch = 162;
-					int dagsize = 256 * 64 * 162;
-					int cu = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
-					int clock = device.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
-					outString += "\t~" + to_string((cu * clock *1200) / dagsize) + "MH/s\n";
-					++i;
-				}
+		i = 0;
+		vector<cl::Device> devices = getDevices(platforms, j);
+		for (auto const& device: devices)
+		{
+			outString += "[" + to_string(j) + "] [" + to_string(i) + "] " + device.getInfo<CL_DEVICE_NAME>() + "\n";
+			outString += "\tCL_DEVICE_TYPE: ";
+			switch (device.getInfo<CL_DEVICE_TYPE>())
+			{
+			case CL_DEVICE_TYPE_CPU:
+				outString += "CPU\n";
+				break;
+			case CL_DEVICE_TYPE_GPU:
+				outString += "GPU\n";
+				break;
+			case CL_DEVICE_TYPE_ACCELERATOR:
+				outString += "ACCELERATOR\n";
+				break;
+			default:
+				outString += "DEFAULT\n";
+				break;
 			}
-		}
-		catch (int e) {
-				outString += "ERROR:\n";
+			outString += "\tCL_DEVICE_GLOBAL_MEM_SIZE: " + to_string(device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()) + "\n";
+			outString += "\tCL_DEVICE_MAX_MEM_ALLOC_SIZE: " + to_string(device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>()) + "\n";
+			outString += "\tCL_DEVICE_MAX_WORK_GROUP_SIZE: " + to_string(device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>()) + "\n";
+			++i;
 		}
 	}
 	std::cout << outString;
@@ -518,7 +484,7 @@ bool CLMiner::configureGPU(
 		{
 			cnote <<
 				"Found suitable OpenCL device [" << device.getInfo<CL_DEVICE_NAME>()
-												 << "] with " << result/1024/1024 << " bytes of GPU memory";
+												 << "] with " << result << " bytes of GPU memory";
 			return true;
 		}
 
@@ -535,7 +501,7 @@ bool CLMiner::configureGPU(
 HwMonitor CLMiner::hwmon()
 {
 	HwMonitor hw;
-	unsigned int tempC = 0, fanpcnt = 0, activity = 0;
+	unsigned int tempC = 0, fanpcnt = 0;
 	if (nvmlh) {
 		wrap_nvml_get_tempC(nvmlh, index, &tempC);
 		wrap_nvml_get_fanpcnt(nvmlh, index, &fanpcnt);
@@ -543,7 +509,6 @@ HwMonitor CLMiner::hwmon()
 	if (adlh) {
 		wrap_adl_get_tempC(adlh, index, &tempC);
 		wrap_adl_get_fanpcnt(adlh, index, &fanpcnt);
-		wrap_adl_get_activity(adlh, index, &activity);
 	}
 #if defined(__linux)
 	if (sysfsh) {
@@ -553,7 +518,6 @@ HwMonitor CLMiner::hwmon()
 #endif
 	hw.tempC = tempC;
 	hw.fanP = fanpcnt;
-	hw.coreF = activity;
 	return hw;
 }
 
@@ -584,27 +548,15 @@ bool CLMiner::init(const h256& seed)
 			if (platformName == "NVIDIA CUDA")
 			{
 				platformId = OPENCL_PLATFORM_NVIDIA;
-#if ETH_ETHASHCUDA
 				nvmlh = wrap_nvml_create();
-#endif
 			}
 			else if (platformName == "AMD Accelerated Parallel Processing")
 			{
 				platformId = OPENCL_PLATFORM_AMD;
-#if ETH_ETHASHCL
 				adlh = wrap_adl_create();
-#endif
 #if defined(__linux)
 				sysfsh = wrap_amdsysfs_create();
 #endif
-			}
-			else if (platformName == "INTELFPGA_CL")
-			{
-				platformId = OPENCL_PLATFORM_INTELFPGA;
-			}
-			else if (platformName == "ALTERAFPGA_CL")
-			{
-				platformId = OPENCL_PLATFORM_ALTERAFPGA;
 			}
 			else if (platformName == "Clover")
 			{
@@ -679,43 +631,24 @@ bool CLMiner::init(const h256& seed)
 		if ( s_clKernelName == CLKernelName::Unstable ) {
 			cllog << "OpenCL kernel: Unstable kernel";
 			code = string(CLMiner_kernel_unstable, CLMiner_kernel_unstable + sizeof(CLMiner_kernel_unstable));
-		} else if (s_clKernelName == CLKernelName::Fpga) {
-			cllog << "OpenCL kernel: FPGA kernel";
-			code = string(CLMiner_kernel_fpga, CLMiner_kernel_fpga + sizeof(CLMiner_kernel_fpga));
-		} else if (s_clKernelName == CLKernelName::Custom) {
-			cllog << "OpenCL kernel: Custom kernel (kernel.cl)";
-			std::ifstream t("kernel.cl");
-			std::string ckernel;
-			t.seekg(0, std::ios::end);
-			ckernel.reserve(t.tellg());
-			t.seekg(0, std::ios::beg);
-			ckernel.assign((std::istreambuf_iterator<char>(t)),
-			std::istreambuf_iterator<char>());
-			code = ckernel;
-		} else { //if(s_clKernelName == CLKernelName::Stable)
+		}
+		else { //if(s_clKernelName == CLKernelName::Stable)
 			cllog << "OpenCL kernel: Stable kernel";
+
 			//CLMiner_kernel_stable.cl will do a #undef THREADS_PER_HASH
 			if(s_threadsPerHash != 8) {
 				cwarn << "The current stable OpenCL kernel only supports exactly 8 threads. Thread parameter will be ignored.";
 			}
+
 			code = string(CLMiner_kernel_stable, CLMiner_kernel_stable + sizeof(CLMiner_kernel_stable));
 		}
-
-		cllog << "OpenCL kernel: GROUP_SIZE" << m_workgroupSize;
 		addDefinition(code, "GROUP_SIZE", m_workgroupSize);
-		cllog << "OpenCL kernel: DAG_SIZE" << dagSize128;
 		addDefinition(code, "DAG_SIZE", dagSize128);
-		cllog << "OpenCL kernel: LIGHT_SIZE" << lightSize64;
 		addDefinition(code, "LIGHT_SIZE", lightSize64);
-		cllog << "OpenCL kernel: ACCESSES" << ETHASH_ACCESSES;
 		addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
-		cllog << "OpenCL kernel: MAX_OUTPUTS" << c_maxSearchResults;
 		addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
-		cllog << "OpenCL kernel: PLATFORM" << platformId;
 		addDefinition(code, "PLATFORM", platformId);
-		cllog << "OpenCL kernel: COMPUTE" << computeCapability;
 		addDefinition(code, "COMPUTE", computeCapability);
-		cllog << "OpenCL kernel: THREADS_PER_HASH" << s_threadsPerHash;
 		addDefinition(code, "THREADS_PER_HASH", s_threadsPerHash);
 
 		// create miner OpenCL program
@@ -729,6 +662,18 @@ bool CLMiner::init(const h256& seed)
 		catch (cl::Error const&)
 		{
 			cwarn << "Build info:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+			return false;
+		}
+
+		//check whether the current dag fits in memory everytime we recreate the DAG
+		cl_ulong result = 0;
+		device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
+		if (result < dagSize)
+		{
+			cnote <<
+			"OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
+							 << " has insufficient GPU memory." << result <<
+							 " bytes of memory found < " << dagSize << " bytes of memory required";	
 			return false;
 		}
 
@@ -762,8 +707,6 @@ bool CLMiner::init(const h256& seed)
 		ETHCL_LOG("Creating mining buffer");
 		m_searchBuffer = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_maxSearchResults + 1) * sizeof(uint32_t));
 
-		cllog << "Generating DAG";
-
 		uint32_t const work = (uint32_t)(dagSize / sizeof(node));
 		uint32_t fullRuns = work / m_globalWorkSize;
 		uint32_t const restWork = work % m_globalWorkSize;
@@ -773,14 +716,18 @@ bool CLMiner::init(const h256& seed)
 		m_dagKernel.setArg(2, m_dag);
 		m_dagKernel.setArg(3, ~0u);
 
+		auto startDAG = std::chrono::steady_clock::now();
 		for (uint32_t i = 0; i < fullRuns; i++)
 		{
 			m_dagKernel.setArg(0, i * m_globalWorkSize);
 			m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
 			m_queue.finish();
-			cllog << "DAG" << int(100.0f * i / fullRuns) << '%';
 		}
+		auto endDAG = std::chrono::steady_clock::now();
 
+		auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(endDAG-startDAG);
+		float gb = (float)dagSize / (1024 * 1024 * 1024);
+		cnote << gb << " GB of DAG data generated in" << dagTime.count() << "ms.";
 	}
 	catch (cl::Error const& err)
 	{

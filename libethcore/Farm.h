@@ -51,6 +51,16 @@ public:
 		std::function<Miner*(FarmFace&, unsigned)> create;
 	};
 
+	Farm()
+	{
+		// Given that all nonces are equally likely to solve the problem
+		// we could reasonably always start the nonce search ranges
+		// at a fixed place, but that would be boring. Provide a once
+		// per run randomized start place, without creating much overhead.
+		random_device engine;
+		m_nonce_scrambler = uniform_int_distribution<uint64_t>()(engine);
+	}
+
 	~Farm()
 	{
 		stop();
@@ -249,7 +259,7 @@ public:
 		return m_solutionStats;
 	}
 
-	void failedSolution() {
+	void failedSolution() override {
 		m_solutionStats.failed();
 	}
 
@@ -306,15 +316,20 @@ public:
 		return stream.str();
 	}
 
-    void set_pool_addresses(string primaryUrl, string primaryPort, string failoverUrl, string failoverPort) {
-        m_pool_addresses = primaryUrl + ":" + primaryPort;
-        if (failoverUrl != "")
-            m_pool_addresses += ";" + failoverUrl + ":" + failoverPort;
-    }
+	void set_pool_addresses(string primaryUrl, string primaryPort, string failoverUrl, string failoverPort) {
+		m_pool_addresses = primaryUrl + ":" + primaryPort;
+		if (failoverUrl != "")
+			m_pool_addresses += ";" + failoverUrl + ":" + failoverPort;
+	}
 
-    string get_pool_addresses() {
-        return m_pool_addresses;
-    }
+	string get_pool_addresses() {
+		return m_pool_addresses;
+	}
+
+	uint64_t get_nonce_scrambler() override
+	{
+		return m_nonce_scrambler;
+	}
 
 private:
 	/**
@@ -357,7 +372,8 @@ private:
 	mutable SolutionStats m_solutionStats;
 	std::chrono::steady_clock::time_point m_farm_launched = std::chrono::steady_clock::now();
 
-    string m_pool_addresses;
+    	string m_pool_addresses;
+	uint64_t m_nonce_scrambler;
 }; 
 
 }

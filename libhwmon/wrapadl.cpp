@@ -41,7 +41,7 @@ wrap_adl_handle * wrap_adl_create()
 return NULL;
 #endif
 
-#if WIN32
+#ifdef _WIN32
 	char tmp[512];
 	ExpandEnvironmentStringsA(libatiadlxx, tmp, sizeof(tmp));
 #else
@@ -70,8 +70,6 @@ return NULL;
 		wrap_dlsym(adlh->adl_dll, "ADL_Overdrive5_FanSpeed_Get");
 	adlh->adlMainControlRefresh = (wrap_adlReturn_t(*)(void))
 		wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Refresh");
-	adlh->adlOverdrive5CurrentActivityGet = (wrap_adlReturn_t(*)(int, int, ADLPMActivity*))
-		wrap_dlsym(adlh->adl_dll, "ADL_Overdrive5_CurrentActivity_Get");
 	adlh->adlMainControlDestory = (wrap_adlReturn_t(*)(void))
 		wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Destroy");
 
@@ -82,7 +80,6 @@ return NULL;
 		adlh->adlAdapterAdapterInfoGet == NULL ||
 		adlh->adlAdapterAdapterIdGet == NULL ||
 		adlh->adlOverdrive5TemperatureGet == NULL ||
-		adlh->adlOverdrive5CurrentActivityGet == NULL ||
 		adlh->adlOverdrive5FanSpeedGet == NULL
 		) {
 #if 0
@@ -93,14 +90,14 @@ return NULL;
 		return NULL;
 	}
 
-	adlh->adlMainControlCreate(ADL_Main_Memory_Alloc, 1); 
+	adlh->adlMainControlCreate(ADL_Main_Memory_Alloc, 1);
 	adlh->adlMainControlRefresh();
 
 	int logicalGpuCount = 0;
 	adlh->adlAdapterNumberOfAdapters(&logicalGpuCount);
 
 	adlh->phys_logi_device_id = (int*)calloc(logicalGpuCount, sizeof(int));
-	
+
 	adlh->adl_gpucount = 0;
 	int last_adapter = 0;
 	if (logicalGpuCount > 0) {
@@ -188,23 +185,6 @@ int wrap_adl_get_fanpcnt(wrap_adl_handle *adlh, int gpuindex, unsigned int *fanp
 	}
 	*fanpcnt = unsigned(fan->iFanSpeed);
 	delete fan;
-	return 0;
-}
-
-int wrap_adl_get_activity(wrap_adl_handle *adlh, int gpuindex, unsigned int *activity)
-{
-	wrap_adlReturn_t rc;
-	if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount)
-		return -1;
-
-	ADLPMActivity *act = new ADLPMActivity();
-	rc = adlh->adlOverdrive5CurrentActivityGet(adlh->phys_logi_device_id[gpuindex], 0, act);
-	if (rc != WRAPADL_OK) {
-		return -1;
-	}
-
-	*activity = unsigned(act->iEngineClock);
-	delete act;
 	return 0;
 }
 

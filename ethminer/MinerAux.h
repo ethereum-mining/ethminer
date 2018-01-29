@@ -45,10 +45,8 @@
 #endif
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include "FarmClient.h"
-#if ETH_STRATUM
 #include <libstratum/EthStratumClient.h>
 #include <libstratum/EthStratumClientV2.h>
-#endif
 #if ETH_DBUS
 #include "DBusInt.h"
 #endif
@@ -94,7 +92,6 @@ public:
 
 	bool interpretOption(int& i, int argc, char** argv)
 	{
-		m_shouldListDevices = false;
 		string arg = argv[i];
 		if ((arg == "-F" || arg == "--farm") && i + 1 < argc)
 		{
@@ -144,7 +141,6 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-#if ETH_STRATUM
 		else if ((arg == "-S" || arg == "--stratum") && i + 1 < argc)
 		{
 			mode = OperationMode::Stratum;
@@ -240,7 +236,7 @@ public:
 		{
 			m_worktimeout = atoi(argv[++i]);
 		}
-		else if ((arg == "-RH" || arg == "--report-hashrate") && i + 1 < argc)
+		else if ((arg == "-RH" || arg == "--report-hashrate"))
 		{
 			m_report_stratum_hashrate = true;
 		}
@@ -249,7 +245,6 @@ public:
 			m_show_hwmonitors = true;
 		}
 
-#endif
 #if API_CORE
 		else if ((arg == "--api-port") && i + 1 < argc)
 		{
@@ -532,7 +527,7 @@ public:
 			exit(1);
 #endif
 		}
-		else if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
+		if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 		{
 #if ETH_ETHASHCUDA
 			if (m_cudaDeviceCount > 0)
@@ -565,10 +560,8 @@ public:
 			doFarm(m_minerType, m_activeFarmURL, m_farmRecheckPeriod);
 		else if (mode == OperationMode::Simulation)
 			doSimulation(m_minerType);
-#if ETH_STRATUM
 		else if (mode == OperationMode::Stratum)
 			doStratum();
-#endif
 	}
 
 	static void streamHelp(ostream& _out)
@@ -578,7 +571,6 @@ public:
 			<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
 			<< "    -FF,-FO, --farm-failover, --stratum-failover <url> Failover getwork/stratum URL (default: disabled)" << endl
 			<< "	--farm-retries <n> Number of retries until switch to failover (default: 3)" << endl
-#if ETH_STRATUM
 			<< "	-S, --stratum <host:port>  Put into stratum mode with the stratum server at host:port" << endl
 			<< "	-SF, --stratum-failover <host:port>  Failover stratum server at host:port" << endl
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
@@ -593,7 +585,6 @@ public:
 			<< "    -HWMON Displays gpu temp and fan percent." << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
-#endif
 			<< endl
 			<< "Benchmarking mode:" << endl
 			<< "    -M [<n>],--benchmark [<n>] Benchmark for mining and exit; Optionally specify block number to benchmark against specific DAG." << endl
@@ -603,13 +594,9 @@ public:
 			<< "Simulation mode:" << endl
 			<< "    -Z [<n>],--simulation [<n>] Mining test mode. Used to validate kernel optimizations. Optionally specify block number." << endl
 			<< "Mining configuration:" << endl
-#if ETH_ETHASHCL
 			<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
-#endif
-#if ETH_ETHASHCUDA
 			<< "    -U,--cuda  When mining use the GPU via CUDA." << endl
 			<< "    -X,--cuda-opencl Use OpenCL + CUDA in a system with mixed AMD/Nvidia cards. May require setting --opencl-platform 1" << endl
-#endif
 			<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
 			<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
 			<< "    --opencl-devices <0 1 ..n> Select which OpenCL devices to mine on. Default is to use all" << endl
@@ -624,16 +611,16 @@ public:
 			<< "    --cl-kernel <n>  Use a different OpenCL kernel (default: use stable kernel)" << endl
 			<< "        0: stable kernel" << endl
 			<< "        1: unstable kernel" << endl
-			<< "        2: fpga kernel" << endl
+//			<< "        2: experimental kernel" << endl
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << CLMiner::c_defaultLocalWorkSize << endl
 			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << CLMiner::c_defaultGlobalWorkSizeMultiplier << " * " << CLMiner::c_defaultLocalWorkSize << endl
 			<< "    --cl-parallel-hash <1 2 ..8> Define how many threads to associate per hash. Default=8" << endl
 #endif
 #if ETH_ETHASHCUDA
 			<< " CUDA configuration:" << endl
-			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(ethash_cuda_miner::c_defaultBlockSize) << endl
-			<< "    --cuda-grid-size Set the CUDA grid size. Default is " << toString(ethash_cuda_miner::c_defaultGridSize) << endl
-			<< "    --cuda-streams Set the number of CUDA streams. Default is " << toString(ethash_cuda_miner::c_defaultNumStreams) << endl
+			<< "    --cuda-block-size Set the CUDA block work size. Default is " << toString(CUDAMiner::c_defaultBlockSize) << endl
+			<< "    --cuda-grid-size Set the CUDA grid size. Default is " << toString(CUDAMiner::c_defaultGridSize) << endl
+			<< "    --cuda-streams Set the number of CUDA streams. Default is " << toString(CUDAMiner::c_defaultNumStreams) << endl
 			<< "    --cuda-schedule <mode> Set the schedule mode for CUDA threads waiting for CUDA devices to finish work. Default is 'sync'. Possible values are:" << endl
 			<< "        auto  - Uses a heuristic based on the number of active CUDA contexts in the process C and the number of logical processors in the system P. If C > P, then yield else spin." << endl
 			<< "        spin  - Instruct CUDA to actively spin when waiting for results from the device." << endl
@@ -793,6 +780,7 @@ private:
 		}
 	}
 
+
 	void doFarm(MinerType _m, string & _remote, unsigned _recheckPeriod)
 	{
 		map<string, Farm::SealerDescriptor> sealers;
@@ -822,21 +810,13 @@ private:
 		
 		f.setSealers(sealers);
 
-		if (_m == MinerType::CL) {
-#if ETH_ETHASHCL
-			f.start("opencl", true);
-#endif
-		} else if (_m == MinerType::CUDA) {
-#if ETH_ETHASHCUDA
+		if (_m == MinerType::CL)
+			f.start("opencl", false);
+		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
-#endif
-		} else if (_m == MinerType::Mixed) {
-#if ETH_ETHASHCL
-			f.start("opencl", true);
-#endif
-#if ETH_ETHASHCUDA
+		else if (_m == MinerType::Mixed) {
 			f.start("cuda", false);
-#endif
+			f.start("opencl", true);
 		}
 
 		WorkPackage current;
@@ -947,16 +927,6 @@ private:
 		exit(0);
 	}
 
-	void clearScreen() {
-#if defined(_WIN32)
-		system("CLS");
-#endif
-#if defined(__linux)
-		system("clear");
-#endif
-	}
-
-#if ETH_STRATUM
 	void doStratum()
 	{
 		map<string, Farm::SealerDescriptor> sealers;
@@ -1008,7 +978,6 @@ private:
 
 			while (client.isRunning())
 			{
-				//clearScreen();
 				auto mp = f.miningProgress(m_show_hwmonitors);
 				if (client.isConnected())
 				{
@@ -1083,17 +1052,16 @@ private:
 		}
 
 	}
-#endif
 
 	/// Operating mode.
 	OperationMode mode;
 
 	/// Mining options
 	bool m_running = true;
-	MinerType m_minerType = MinerType::CL;
+	MinerType m_minerType = MinerType::Mixed;
 	unsigned m_openclPlatform = 0;
 	unsigned m_miningThreads = UINT_MAX;
-	bool m_shouldListDevices = true;
+	bool m_shouldListDevices = false;
 #if ETH_ETHASHCL
 	unsigned m_openclSelectedKernel = 0;  ///< A numeric value for the selected OpenCL kernel
 	unsigned m_openclDeviceCount = 0;
@@ -1105,11 +1073,11 @@ private:
 #endif
 #endif
 #if ETH_ETHASHCUDA
-	unsigned m_globalWorkSizeMultiplier = ethash_cuda_miner::c_defaultGridSize;
-	unsigned m_localWorkSize = ethash_cuda_miner::c_defaultBlockSize;
+	unsigned m_globalWorkSizeMultiplier = CUDAMiner::c_defaultGridSize;
+	unsigned m_localWorkSize = CUDAMiner::c_defaultBlockSize;
 	unsigned m_cudaDeviceCount = 0;
 	unsigned m_cudaDevices[16];
-	unsigned m_numStreams = ethash_cuda_miner::c_defaultNumStreams;
+	unsigned m_numStreams = CUDAMiner::c_defaultNumStreams;
 	unsigned m_cudaSchedule = 4; // sync
 #endif
 	unsigned m_dagLoadMode = 0; // parallel
@@ -1121,8 +1089,9 @@ private:
 	unsigned m_benchmarkTrials = 5;
 	unsigned m_benchmarkBlock = 0;
 	/// Farm params
-	string m_farmURL = "eth-eu1.nanopool.org";
-	string m_farmFailOverURL = "eth-eu2.nanopool.org";
+	string m_farmURL = "http://127.0.0.1:8545";
+	string m_farmFailOverURL = "";
+
 
 	string m_activeFarmURL = m_farmURL;
 	unsigned m_farmRetries = 0;
@@ -1136,18 +1105,16 @@ private:
 	int m_api_port = 0;
 #endif	
 
-#if ETH_STRATUM
-	bool m_report_stratum_hashrate = true;
+	bool m_report_stratum_hashrate = false;
 	int m_stratumClientVersion = 1;
 	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
-	string m_user  = "0x294bed2511fc6aadd0663bae85f3c0099080046c.FEE";
-	string m_pass  = "x";
-	string m_port  = "9999";
-	string m_fuser = "0x294bed2511fc6aadd0663bae85f3c0099080046c.FALLBACK";
-	string m_fpass = "x";
-	string m_email = "powermanbtc@gmail.com";
-#endif
-	string m_fport = "9999";
+	string m_user;
+	string m_pass;
+	string m_port;
+	string m_fuser = "";
+	string m_fpass = "";
+	string m_email = "";
+	string m_fport = "";
 
 #if ETH_DBUS
 	DBusInt dbusint;

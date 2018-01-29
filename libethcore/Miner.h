@@ -67,12 +67,11 @@ struct HwMonitor
 {
 	int tempC = 0;
 	int fanP = 0;
-	int coreF = 0;
 };
 
 inline std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
 {
-	return os << _hw.tempC << "C " << _hw.fanP << "% " << _hw.coreF << "GHz";
+	return os << _hw.tempC << "C " << _hw.fanP << "%";
 }
 
 /// Describes the progress of a mining operation.
@@ -157,6 +156,7 @@ public:
 	 */
 	virtual bool submitProof(Solution const& _p) = 0;
 	virtual void failedSolution() = 0;
+	virtual uint64_t get_nonce_scrambler() = 0;
 };
 
 /**
@@ -181,33 +181,33 @@ public:
 			m_work = _work;
 			workSwitchStart = std::chrono::high_resolution_clock::now();
 		}
-		pause();
-		kickOff();
-		m_hashCount = 0;
+		kick_miner();
 	}
 
-	uint64_t hashCount() const { return m_hashCount; }
+	uint64_t hashCount() const { return m_hashCount.load(std::memory_order_relaxed); }
 
-	void resetHashCount() { m_hashCount = 0; }
+	void resetHashCount() { m_hashCount.store(0, std::memory_order_relaxed); }
 
 	virtual HwMonitor hwmon() = 0;
+
+	unsigned Index() { return index; };
+
+	uint64_t get_start_nonce()
+	{
+		// Each GPU is given a non-overlapping 2^40 range to search
+		return farm.get_nonce_scrambler() + ((uint64_t) index << 40);
+	}
 
 protected:
 
 	/**
-	 * @brief Begin working on a given work package, discarding any previous work.
-	 * @param _work The package for which to find a solution.
-	 */
-	virtual void kickOff() = 0;
-
-	/**
 	 * @brief No work left to be done. Pause until told to kickOff().
 	 */
-	virtual void pause() = 0;
+	virtual void kick_miner() = 0;
 
 	WorkPackage work() const { Guard l(x_work); return m_work; }
 
-	void addHashCount(uint64_t _n) { m_hashCount += _n; }
+	void addHashCount(uint64_t _n) { m_hashCount.fetch_add(_n, std::memory_order_relaxed); }
 
 	static unsigned s_dagLoadMode;
 	static unsigned s_dagLoadIndex;
@@ -219,7 +219,7 @@ protected:
 	std::chrono::high_resolution_clock::time_point workSwitchStart;
 
 private:
-	uint64_t m_hashCount = 0;
+	std::atomic<uint64_t> m_hashCount = {0};
 
 	WorkPackage m_work;
 	mutable Mutex x_work;

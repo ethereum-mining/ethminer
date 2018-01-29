@@ -103,20 +103,6 @@ typedef struct ADLFanSpeedValue
 	int iFlags;
 } ADLFanSpeedValue;
 
-typedef struct ADLPMActivity
-{
-	int iSize;
-	int iEngineClock;
-	int iMemoryClock;
-	int iVddc;
-	int iActivityPercent;
-	int iCurrentPerformanceLevel;
-	int iCurrentBusSpeed;
-	int iCurrentBusLanes;
-	int iMaximumBusLanes;
-	int iReserved;
-} ADLPMActivity;
-
 /*
 * Handle to hold the function pointers for the entry points we need,
 * and the shared library itself.
@@ -132,7 +118,6 @@ typedef struct {
 	wrap_adlReturn_t(*adlAdapterAdapterIdGet)(int, int*);
 	wrap_adlReturn_t(*adlOverdrive5TemperatureGet)(int, int, ADLTemperature*);
 	wrap_adlReturn_t(*adlOverdrive5FanSpeedGet)(int, int, ADLFanSpeedValue*);
-	wrap_adlReturn_t(*adlOverdrive5CurrentActivityGet)(int, int, ADLPMActivity*);
 	wrap_adlReturn_t(*adlMainControlRefresh)(void);
 	wrap_adlReturn_t(*adlMainControlDestory)(void);
 } wrap_adl_handle;
@@ -147,8 +132,6 @@ int wrap_adl_get_gpu_name(wrap_adl_handle *adlh, int gpuindex, char *namebuf, in
 int wrap_adl_get_tempC(wrap_adl_handle *adlh, int gpuindex, unsigned int *tempC);
 
 int wrap_adl_get_fanpcnt(wrap_adl_handle *adlh, int gpuindex, unsigned int *fanpcnt);
-
-int wrap_adl_get_activity(wrap_adl_handle *adlh, int gpuindex, unsigned int *activity);
 
 #if defined(__cplusplus)
 }
