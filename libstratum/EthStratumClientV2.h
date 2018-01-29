@@ -32,7 +32,7 @@ public:
 	bool current() { return static_cast<bool>(m_current); }
 	unsigned waitState() { return m_waitState; }
 	bool submitHashrate(string const & rate);
-	bool submit(Solution solution);
+	void submit(Solution solution);
 	void reconnect();
 private:
 	void workLoop() override;
