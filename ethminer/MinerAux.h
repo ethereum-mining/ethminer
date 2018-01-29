@@ -872,11 +872,11 @@ private:
 					}
 					this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 				}
-				bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
+				bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.work.header), "0x" + toString(solution.mixHash));
 				if (ok) {
 					cnote << "Solution found; Submitted to" << _remote;
 					cnote << "  Nonce:" << solution.nonce;
-					cnote << "  headerHash:" << solution.headerHash.hex();
+					cnote << "  headerHash:" << solution.work.header.hex();
 					cnote << "  mixHash:" << solution.mixHash.hex();
 					cnote << EthLime << " Accepted." << EthReset;
 					f.acceptedSolution(solution.stale);
@@ -884,7 +884,7 @@ private:
 				else {
 					cwarn << "Solution found; Submitted to" << _remote;
 					cwarn << "  Nonce:" << solution.nonce;
-					cwarn << "  headerHash:" << solution.headerHash.hex();
+					cwarn << "  headerHash:" << solution.work.header.hex();
 					cwarn << "  mixHash:" << solution.mixHash.hex();
 					cwarn << EthYellow << " Rejected." << EthReset;
 					f.rejectedSolution(solution.stale);
