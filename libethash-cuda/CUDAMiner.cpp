@@ -174,14 +174,23 @@ void CUDAMiner::listDevices()
 	{
 		string outString = "\nListing CUDA devices.\nFORMAT: [deviceID] deviceName\n";
 		int numDevices = getNumDevices();
+		char pciIdBuff[8 + 1 + 8 + 1 + 8 + 1]; /* int can need max 8 characters in hexnotation */
+
 		for (int i = 0; i < numDevices; ++i)
 		{
+			string bpciIdBuff_s;
 			cudaDeviceProp props;
+			
 			CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
+
+			sprintf(pciIdBuff, "%04x:%02x:%02x",
+			        props.pciDomainID, props.pciBusID, props.pciDeviceID);
+			bpciIdBuff_s = pciIdBuff;
 
 			outString += "[" + to_string(i) + "] " + string(props.name) + "\n";
 			outString += "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) + "\n";
 			outString += "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
+			outString += "\tPCI: " + bpciIdBuff_s + "\n";
 		}
 		std::cout << outString;
 	}
