@@ -30,9 +30,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include "ethash_cuda_miner_kernel.h"
 #include "libethash/internal.h"
 
-#define SHUFFLE_MIN_VER 300 //__CUDA_ARCH_
-#define SHUFFLE_DEPRECATED 9000 //CUDA_VERSION
-
 namespace dev
 {
 namespace eth
@@ -106,7 +103,7 @@ protected:
 	void kick_miner() override;
 
 private:
-	bool m_abort = false;
+	atomic<bool> m_abort = {false};
 
 	void workLoop() override;
 
@@ -117,7 +114,6 @@ private:
 	uint64_t m_current_nonce;
 	uint64_t m_starting_nonce;
 	uint64_t m_current_index;
-	uint32_t m_sharedBytes;
 
 	///Constants on GPU
 	hash128_t* m_dag = nullptr;
@@ -125,7 +121,7 @@ private:
 	uint32_t m_dag_size = -1;
 	uint32_t m_device_num;
 
-	volatile uint32_t ** m_search_buf;
+	volatile search_results** m_search_buf;
 	cudaStream_t  * m_streams;
 
 	/// The local work size for the search

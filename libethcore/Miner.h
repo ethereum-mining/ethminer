@@ -154,7 +154,7 @@ public:
 	 * @param _p The solution.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
-	virtual bool submitProof(Solution const& _p) = 0;
+	virtual void submitProof(Solution const& _p) = 0;
 	virtual void failedSolution() = 0;
 	virtual uint64_t get_nonce_scrambler() = 0;
 };
@@ -184,9 +184,9 @@ public:
 		kick_miner();
 	}
 
-	uint64_t hashCount() const { return m_hashCount; }
+	uint64_t hashCount() const { return m_hashCount.load(std::memory_order_relaxed); }
 
-	void resetHashCount() { m_hashCount = 0; }
+	void resetHashCount() { m_hashCount.store(0, std::memory_order_relaxed); }
 
 	virtual HwMonitor hwmon() = 0;
 
@@ -207,7 +207,7 @@ protected:
 
 	WorkPackage work() const { Guard l(x_work); return m_work; }
 
-	void addHashCount(uint64_t _n) { m_hashCount += _n; }
+	void addHashCount(uint64_t _n) { m_hashCount.fetch_add(_n, std::memory_order_relaxed); }
 
 	static unsigned s_dagLoadMode;
 	static unsigned s_dagLoadIndex;
@@ -219,7 +219,7 @@ protected:
 	std::chrono::high_resolution_clock::time_point workSwitchStart;
 
 private:
-	uint64_t m_hashCount = 0;
+	std::atomic<uint64_t> m_hashCount = {0};
 
 	WorkPackage m_work;
 	mutable Mutex x_work;

@@ -40,7 +40,6 @@ EthStratumClient::EthStratumClient(Farm* f, MinerType m, string const & host, st
 	p_active = &m_primary;
 
 	m_authorized = false;
-	m_connected = false;
 	m_pending = 0;
 	m_maxRetries = retries;
 	m_worktimeout = worktimeout;
@@ -105,7 +104,7 @@ void EthStratumClient::reconnect()
 	m_io_service.reset();
 	//m_socket.close(); // leads to crashes on Linux
 	m_authorized = false;
-	m_connected = false;
+	m_connected.store(false, std::memory_order_relaxed);
 		
 	if (!m_failover.host.empty())
 	{
@@ -138,7 +137,7 @@ void EthStratumClient::reconnect()
 void EthStratumClient::disconnect()
 {
 	cnote << "Disconnecting";
-	m_connected = false;
+	m_connected.store(false, std::memory_order_relaxed);
 	m_running = false;
 	if (p_farm->isMining())
 	{
@@ -170,7 +169,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 	
 	if (!ec)
 	{
-		m_connected = true;
+		m_connected.store(true, std::memory_order_relaxed);
 		cnote << "Connected to stratum server " + i->host_name() + ":" + p_active->port;
 		if (!p_farm->isMining())
 		{
@@ -282,13 +281,13 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 		{
 			cwarn << "Discarding incomplete response";
 		}
-		if (m_connected)
+		if (m_connected.load(std::memory_order_relaxed))
 			readline();
 	}
 	else
 	{
 		cwarn << "Read response failed: " + ec.message();
-		if (m_connected)
+		if (m_connected.load(std::memory_order_relaxed))
 			reconnect();
 	}
 }
@@ -495,7 +494,7 @@ bool EthStratumClient::submitHashrate(string const & rate) {
 	return true;
 }
 
-bool EthStratumClient::submit(Solution solution) {
+void EthStratumClient::submit(Solution solution) {
 
 	string nonceHex = toHex(solution.nonce);
 	string json;
@@ -503,19 +502,19 @@ bool EthStratumClient::submit(Solution solution) {
 	switch (m_protocol) {
 		case STRATUM_PROTOCOL_STRATUM:
 			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" +
-				p_active->user + "\",\"" + solution.job.hex() + "\",\"0x" +
-				nonceHex + "\",\"0x" + solution.headerHash.hex() + "\",\"0x" +
+				p_active->user + "\",\"" + solution.work.job.hex() + "\",\"0x" +
+				nonceHex + "\",\"0x" + solution.work.header.hex() + "\",\"0x" +
 				solution.mixHash.hex() + "\"]}\n";
 			break;
 		case STRATUM_PROTOCOL_ETHPROXY:
 			json = "{\"id\": 4, \"worker\":\"" +
 				m_worker + "\", \"method\": \"eth_submitWork\", \"params\": [\"0x" +
-				nonceHex + "\",\"0x" + solution.headerHash.hex() + "\",\"0x" +
+				nonceHex + "\",\"0x" + solution.work.header.hex() + "\",\"0x" +
 				solution.mixHash.hex() + "\"]}\n";
 			break;
 		case STRATUM_PROTOCOL_ETHEREUMSTRATUM:
 			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" +
-				p_active->user + "\",\"" + solution.job.hex().substr(0, solution.job_len) + "\",\"" +
+				p_active->user + "\",\"" + solution.work.job.hex().substr(0, solution.work.job_len) + "\",\"" +
 				nonceHex.substr(m_extraNonceHexSize, 16 - m_extraNonceHexSize) + "\"]}\n";
 			break;
 	}
@@ -536,6 +535,5 @@ bool EthStratumClient::submit(Solution solution) {
 	if (m_protocol != STRATUM_PROTOCOL_ETHEREUMSTRATUM) {
 		cnote << "Nonce: 0x" + nonceHex;
 	}
-	return true;
 }
 

@@ -45,10 +45,8 @@
 #endif
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include "FarmClient.h"
-#if ETH_STRATUM
 #include <libstratum/EthStratumClient.h>
 #include <libstratum/EthStratumClientV2.h>
-#endif
 #if ETH_DBUS
 #include "DBusInt.h"
 #endif
@@ -143,7 +141,6 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-#if ETH_STRATUM
 		else if ((arg == "-S" || arg == "--stratum") && i + 1 < argc)
 		{
 			mode = OperationMode::Stratum;
@@ -248,7 +245,6 @@ public:
 			m_show_hwmonitors = true;
 		}
 
-#endif
 #if API_CORE
 		else if ((arg == "--api-port") && i + 1 < argc)
 		{
@@ -285,7 +281,7 @@ public:
 				if(m_openclThreadsPerHash != 1 && m_openclThreadsPerHash != 2 &&
 				   m_openclThreadsPerHash != 4 && m_openclThreadsPerHash != 8) {
 					BOOST_THROW_EXCEPTION(BadArgument());
-				} 
+				}
 			}
 			catch(...) {
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
@@ -316,30 +312,55 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
+		else if ( arg == "--cl-global-work"  && i + 1 < argc)
+		{
+			try
+			{
+				m_globalWorkSizeMultiplier = stol(argv[++i]);
+
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
+		else if ( arg == "--cl-local-work" && i + 1 < argc)
+			try
+			{
+					m_localWorkSize = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
 #endif
 #if ETH_ETHASHCL || ETH_ETHASHCUDA
-		else if ((arg == "--cl-global-work" || arg == "--cuda-grid-size")  && i + 1 < argc)
-			try {
-				m_globalWorkSizeMultiplier = stol(argv[++i]);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		else if ((arg == "--cl-local-work" || arg == "--cuda-block-size") && i + 1 < argc)
-			try {
-				m_localWorkSize = stol(argv[++i]);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
 		else if (arg == "--list-devices")
 			m_shouldListDevices = true;
 #endif
 #if ETH_ETHASHCUDA
+		else if ( arg == "--cuda-grid-size" && i + 1 < argc)
+			try
+			{
+				m_cudaGridSize = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		else if ( arg == "--cuda-block-size" && i + 1 < argc)
+			try
+			{
+				m_cudaBlockSize= stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
 		else if (arg == "--cuda-devices")
 		{
 			while (m_cudaDeviceCount < 16 && i + 1 < argc)
@@ -524,7 +545,7 @@ public:
 				CLMiner::setDevices(m_openclDevices, m_openclDeviceCount);
 				m_miningThreads = m_openclDeviceCount;
 			}
-			
+
 			CLMiner::setCLKernel(m_openclSelectedKernel);
 			CLMiner::setKernelTweak(m_openclWavetweak);
 			CLMiner::setThreadsPerHash(m_openclThreadsPerHash);
@@ -555,8 +576,8 @@ public:
 
 			CUDAMiner::setNumInstances(m_miningThreads);
 			if (!CUDAMiner::configureGPU(
-				m_localWorkSize,
-				m_globalWorkSizeMultiplier,
+				m_cudaBlockSize,
+				m_cudaGridSize,
 				m_numStreams,
 				m_cudaSchedule,
 				0,
@@ -577,10 +598,8 @@ public:
 			doFarm(m_minerType, m_activeFarmURL, m_farmRecheckPeriod);
 		else if (mode == OperationMode::Simulation)
 			doSimulation(m_minerType);
-#if ETH_STRATUM
 		else if (mode == OperationMode::Stratum)
 			doStratum();
-#endif
 	}
 
 	static void streamHelp(ostream& _out)
@@ -590,7 +609,6 @@ public:
 			<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
 			<< "    -FF,-FO, --farm-failover, --stratum-failover <url> Failover getwork/stratum URL (default: disabled)" << endl
 			<< "	--farm-retries <n> Number of retries until switch to failover (default: 3)" << endl
-#if ETH_STRATUM
 			<< "	-S, --stratum <host:port>  Put into stratum mode with the stratum server at host:port" << endl
 			<< "	-SF, --stratum-failover <host:port>  Failover stratum server at host:port" << endl
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
@@ -605,7 +623,6 @@ public:
 			<< "    -HWMON Displays gpu temp and fan percent." << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
-#endif
 			<< endl
 			<< "Benchmarking mode:" << endl
 			<< "    -M [<n>],--benchmark [<n>] Benchmark for mining and exit; Optionally specify block number to benchmark against specific DAG." << endl
@@ -825,11 +842,11 @@ private:
 		h256 id = h256::random();
 		Farm f;
 		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
-		
+
 #if API_CORE
 		Api api(this->m_api_port, f);
 #endif
-		
+
 		f.setSealers(sealers);
 
 		if (_m == MinerType::CL)
@@ -894,11 +911,11 @@ private:
 					}
 					this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 				}
-				bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.headerHash), "0x" + toString(solution.mixHash));
+				bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.work.header), "0x" + toString(solution.mixHash));
 				if (ok) {
 					cnote << "Solution found; Submitted to" << _remote;
 					cnote << "  Nonce:" << solution.nonce;
-					cnote << "  headerHash:" << solution.headerHash.hex();
+					cnote << "  headerHash:" << solution.work.header.hex();
 					cnote << "  mixHash:" << solution.mixHash.hex();
 					cnote << EthLime << " Accepted." << EthReset;
 					f.acceptedSolution(solution.stale);
@@ -906,7 +923,7 @@ private:
 				else {
 					cwarn << "Solution found; Submitted to" << _remote;
 					cwarn << "  Nonce:" << solution.nonce;
-					cwarn << "  headerHash:" << solution.headerHash.hex();
+					cwarn << "  headerHash:" << solution.work.header.hex();
 					cwarn << "  mixHash:" << solution.mixHash.hex();
 					cwarn << EthYellow << " Rejected." << EthReset;
 					f.rejectedSolution(solution.stale);
@@ -949,7 +966,6 @@ private:
 		exit(0);
 	}
 
-#if ETH_STRATUM
 	void doStratum()
 	{
 		map<string, Farm::SealerDescriptor> sealers;
@@ -964,11 +980,11 @@ private:
 
 		Farm f;
 		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
-		
+
 #if API_CORE
 		Api api(this->m_api_port, f);
 #endif
-	
+
 		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
 		if (m_stratumClientVersion == 1) {
 			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
@@ -995,7 +1011,7 @@ private:
 				}
 				return false;
 			});
-			f.onMinerRestart([&](){ 
+			f.onMinerRestart([&](){
 				client.reconnect();
 			});
 
@@ -1015,7 +1031,7 @@ private:
 					{
 						minelog << "Waiting for work package...";
 					}
-					
+
 					if (this->m_report_stratum_hashrate) {
 						auto rate = mp.rate();
 						client.submitHashrate(toJS(rate));
@@ -1044,7 +1060,7 @@ private:
 				client.submit(sol);
 				return false;
 			});
-			f.onMinerRestart([&](){ 
+			f.onMinerRestart([&](){
 				client.reconnect();
 			});
 
@@ -1064,7 +1080,7 @@ private:
 					{
 						minelog << "Waiting for work package...";
 					}
-					
+
 					if (this->m_report_stratum_hashrate) {
 						auto rate = mp.rate();
 						client.submitHashrate(toJS(rate));
@@ -1075,7 +1091,6 @@ private:
 		}
 
 	}
-#endif
 
 	/// Operating mode.
 	OperationMode mode;
@@ -1096,14 +1111,13 @@ private:
 	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
 #endif
-#endif
 #if ETH_ETHASHCUDA
-	unsigned m_globalWorkSizeMultiplier = CUDAMiner::c_defaultGridSize;
-	unsigned m_localWorkSize = CUDAMiner::c_defaultBlockSize;
 	unsigned m_cudaDeviceCount = 0;
 	unsigned m_cudaDevices[16];
 	unsigned m_numStreams = CUDAMiner::c_defaultNumStreams;
 	unsigned m_cudaSchedule = 4; // sync
+	unsigned m_cudaGridSize = CUDAMiner::c_defaultGridSize;
+	unsigned m_cudaBlockSize = CUDAMiner::c_defaultBlockSize;
 #endif
 	unsigned m_dagLoadMode = 0; // parallel
 	unsigned m_dagCreateDevice = 0;
@@ -1128,9 +1142,8 @@ private:
 	bool m_show_hwmonitors = false;
 #if API_CORE
 	int m_api_port = 0;
-#endif	
+#endif
 
-#if ETH_STRATUM
 	bool m_report_stratum_hashrate = false;
 	int m_stratumClientVersion = 1;
 	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
@@ -1140,7 +1153,6 @@ private:
 	string m_fuser = "";
 	string m_fpass = "";
 	string m_email = "";
-#endif
 	string m_fport = "";
 
 #if ETH_DBUS

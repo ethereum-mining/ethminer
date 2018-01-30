@@ -12,56 +12,50 @@
 
 #define copy(dst, src, count) for (int i = 0; i != count; ++i) { (dst)[i] = (src)[i]; }
 
-
-#if __CUDA_ARCH__ < SHUFFLE_MIN_VER
-#include "keccak_u64.cuh"
-#include "dagger_shared.cuh"
-#else
 #include "keccak.cuh"
 #include "dagger_shuffled.cuh"
-#endif
 
 template <uint32_t _PARALLEL_HASH>
 __global__ void 
 ethash_search(
-	volatile uint32_t* g_output,
+	volatile search_results* g_output,
 	uint64_t start_nonce
 	)
 {
 	uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;
 	uint2 mix[4];
-        uint64_t hash = compute_hash<_PARALLEL_HASH>(start_nonce + gid, mix);
-	if (cuda_swab64(hash) > d_target) return;
-	uint32_t index = atomicInc(const_cast<uint32_t*>(g_output), 0xffffffff) + 1;
-	if (index >= SEARCH_RESULT_ENTRIES) return;
-	g_output[index] = gid;
-	g_output[index + (SEARCH_RESULT_ENTRIES * 1)] = mix[0].x;
-	g_output[index + (SEARCH_RESULT_ENTRIES * 2)] = mix[0].y;
-	g_output[index + (SEARCH_RESULT_ENTRIES * 3)] = mix[1].x;
-	g_output[index + (SEARCH_RESULT_ENTRIES * 4)] = mix[1].y;
-	g_output[index + (SEARCH_RESULT_ENTRIES * 5)] = mix[2].x;
-	g_output[index + (SEARCH_RESULT_ENTRIES * 6)] = mix[2].y;
-	g_output[index + (SEARCH_RESULT_ENTRIES * 7)] = mix[3].x;
-	g_output[index + (SEARCH_RESULT_ENTRIES * 8)] = mix[3].y;
+        if (compute_hash<_PARALLEL_HASH>(start_nonce + gid, d_target, mix))
+		return;
+	uint32_t index = atomicInc((uint32_t *)&g_output->count, 0xffffffff);
+	if (index >= SEARCH_RESULTS)
+		return;
+	g_output->result[index].gid = gid;
+	g_output->result[index].mix[0] = mix[0].x;
+	g_output->result[index].mix[1] = mix[0].y;
+	g_output->result[index].mix[2] = mix[1].x;
+	g_output->result[index].mix[3] = mix[1].y;
+	g_output->result[index].mix[4] = mix[2].x;
+	g_output->result[index].mix[5] = mix[2].y;
+	g_output->result[index].mix[6] = mix[3].x;
+	g_output->result[index].mix[7] = mix[3].y;
 }
 
 void run_ethash_search(
 	uint32_t blocks,
 	uint32_t threads,
-	uint32_t sharedbytes,
 	cudaStream_t stream,
-	volatile uint32_t* g_output,
+	volatile search_results* g_output,
 	uint64_t start_nonce,
 	uint32_t parallelHash
 )
 {
 	switch (parallelHash)
 	{
-		case 1: ethash_search <1> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
-		case 2: ethash_search <2> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
-		case 4: ethash_search <4> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
-		case 8: ethash_search <8> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
-		default: ethash_search <4> <<<blocks, threads, sharedbytes, stream >>>(g_output, start_nonce); break;
+		case 1: ethash_search <1> <<<blocks, threads, 0, stream >>>(g_output, start_nonce); break;
+		case 2: ethash_search <2> <<<blocks, threads, 0, stream >>>(g_output, start_nonce); break;
+		case 4: ethash_search <4> <<<blocks, threads, 0, stream >>>(g_output, start_nonce); break;
+		case 8: ethash_search <8> <<<blocks, threads, 0, stream >>>(g_output, start_nonce); break;
+		default: ethash_search <4> <<<blocks, threads, 0, stream >>>(g_output, start_nonce); break;
 	}
 	CUDA_SAFE_CALL(cudaGetLastError());
 }
@@ -85,61 +79,31 @@ ethash_calculate_dag_item(uint32_t start)
 
 	for (uint32_t i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
 		uint32_t parent_index = fnv(node_index ^ i, dag_node.words[i % NODE_WORDS]) % d_light_size;
-#if __CUDA_ARCH__ < SHUFFLE_MIN_VER
-		for (unsigned w = 0; w != 4; ++w) {
-			dag_node.uint4s[w] = fnv4(dag_node.uint4s[w], d_light[parent_index].uint4s[w]);
-		}
-#else
 		for (uint32_t t = 0; t < 4; t++) {
 
-#if CUDA_VERSION < SHUFFLE_DEPRECATED
-			uint32_t shuffle_index = __shfl(parent_index, t, 4);
-#else
 			uint32_t shuffle_index = __shfl_sync(0xFFFFFFFF,parent_index, t, 4);
-#endif
 
 			uint4 p4 = d_light[shuffle_index].uint4s[thread_id];
 			for (int w = 0; w < 4; w++) {
 
-#if CUDA_VERSION < SHUFFLE_DEPRECATED
-				uint4 s4 = make_uint4(__shfl(p4.x, w, 4), __shfl(p4.y, w, 4), __shfl(p4.z, w, 4), __shfl(p4.w, w, 4));
-#else
 				uint4 s4 = make_uint4(__shfl_sync(0xFFFFFFFF,p4.x, w, 4), __shfl_sync(0xFFFFFFFF,p4.y, w, 4), __shfl_sync(0xFFFFFFFF,p4.z, w, 4), __shfl_sync(0xFFFFFFFF,p4.w, w, 4));
-#endif
 				if (t == thread_id) {
 					dag_node.uint4s[w] = fnv4(dag_node.uint4s[w], s4);
 				}
 			}
 		}
-
-
-#endif		
 	}
 	SHA3_512(dag_node.uint2s);
 	hash64_t * dag_nodes = (hash64_t *)d_dag;
 
-#if __CUDA_ARCH__ < SHUFFLE_MIN_VER
-	for (uint32_t i = 0; i < 4; i++) {
-		dag_nodes[node_index].uint4s[i] =  dag_node.uint4s[i];
-	}
-#else
 	for (uint32_t t = 0; t < 4; t++) {
-#if CUDA_VERSION < SHUFFLE_DEPRECATED
-		uint32_t shuffle_index = __shfl(node_index, t, 4);
-#else
 		uint32_t shuffle_index = __shfl_sync(0xFFFFFFFF,node_index, t, 4);
-#endif
 		uint4 s[4];
 		for (uint32_t w = 0; w < 4; w++) {
-#if CUDA_VERSION < SHUFFLE_DEPRECATED
-			s[w] = make_uint4(__shfl(dag_node.uint4s[w].x, t, 4), __shfl(dag_node.uint4s[w].y, t, 4), __shfl(dag_node.uint4s[w].z, t, 4), __shfl(dag_node.uint4s[w].w, t, 4));
-#else
 			s[w] = make_uint4(__shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].x, t, 4), __shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].y, t, 4), __shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].z, t, 4), __shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].w, t, 4));
-#endif
 		}
 		dag_nodes[shuffle_index].uint4s[thread_id] = s[thread_id];
 	}
-#endif		 
 }
 
 void ethash_generate_dag(
