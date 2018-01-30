@@ -1,5 +1,3 @@
-﻿  Building Custom Rule I:/ethNipper/libethash/CMakeLists.txt
-  CMake does not need to re-run because I:/ethNipper/buildX64VS2017/libethash/CMakeFiles/generate.stamp is up-to-date.
-  internal.c
+﻿  internal.c
   sha3.c
   ethash.vcxproj -> I:\ethNipper\buildX64VS2017\libethash\Release\ethash.lib

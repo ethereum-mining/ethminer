@@ -1,3 +1,8 @@
-﻿  Code wird generiert.
-  Codegenerierung ist abgeschlossen.
-  ethminer.vcxproj -> I:\ethNipper\buildX64VS2017\ethminer\Release\ethminer.exe
+﻿main.obj : error LNK2001: Nicht aufgelöstes externes Symbol ""private: static int * dev::eth::OCLMiner::s_devices" (?s_devices@OCLMiner@eth@dev@@0PAHA)".
+main.obj : error LNK2001: Nicht aufgelöstes externes Symbol ""private: static unsigned int dev::eth::OCLMiner::s_threadsPerHash" (?s_threadsPerHash@OCLMiner@eth@dev@@0IA)".
+main.obj : error LNK2001: Nicht aufgelöstes externes Symbol ""private: static unsigned int dev::eth::OCLMiner::s_numInstances" (?s_numInstances@OCLMiner@eth@dev@@0IA)".
+main.obj : error LNK2001: Nicht aufgelöstes externes Symbol ""public: static bool __cdecl dev::eth::OCLMiner::configureGPU(unsigned int,unsigned int,unsigned int,unsigned __int64,unsigned int,unsigned int)" (?configureGPU@OCLMiner@eth@dev@@SA_NIII_KII@Z)".
+main.obj : error LNK2001: Nicht aufgelöstes externes Symbol ""public: static void __cdecl dev::eth::OCLMiner::listDevices(void)" (?listDevices@OCLMiner@eth@dev@@SAXXZ)".
+main.obj : error LNK2001: Nicht aufgelöstes externes Symbol ""public: static unsigned int __cdecl dev::eth::OCLMiner::getNumDevices(void)" (?getNumDevices@OCLMiner@eth@dev@@SAIXZ)".
+main.obj : error LNK2001: Nicht aufgelöstes externes Symbol ""private: static enum dev::eth::OCLKernelName dev::eth::OCLMiner::s_clKernelName" (?s_clKernelName@OCLMiner@eth@dev@@0W4OCLKernelName@23@A)".
+I:\ethNipper\buildX64VS2017\ethminer\Release\ethminer.exe : fatal error LNK1120: 7 nicht aufgelöste Externe

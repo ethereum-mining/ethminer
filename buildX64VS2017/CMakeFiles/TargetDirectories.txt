@@ -19,9 +19,11 @@ I:/ethNipper/buildX64VS2017/libethcore/CMakeFiles/INSTALL.dir
 I:/ethNipper/buildX64VS2017/libethash-cl/CMakeFiles/clbin2h_stable.dir
 I:/ethNipper/buildX64VS2017/libethash-cl/CMakeFiles/clbin2h_unstable.dir
 I:/ethNipper/buildX64VS2017/libethash-cl/CMakeFiles/ethash-cl.dir
-I:/ethNipper/buildX64VS2017/libethash-cl/CMakeFiles/clbin2h_fpga.dir
 I:/ethNipper/buildX64VS2017/libethash-cl/CMakeFiles/PACKAGE.dir
 I:/ethNipper/buildX64VS2017/libethash-cl/CMakeFiles/INSTALL.dir
+I:/ethNipper/buildX64VS2017/libethash-ocl/CMakeFiles/PACKAGE.dir
+I:/ethNipper/buildX64VS2017/libethash-ocl/CMakeFiles/ethash-ocl.dir
+I:/ethNipper/buildX64VS2017/libethash-ocl/CMakeFiles/INSTALL.dir
 I:/ethNipper/buildX64VS2017/libstratum/CMakeFiles/ethstratum.dir
 I:/ethNipper/buildX64VS2017/libstratum/CMakeFiles/PACKAGE.dir
 I:/ethNipper/buildX64VS2017/libstratum/CMakeFiles/INSTALL.dir

@@ -1,4 +1,3 @@
-﻿  Generating OpenCL Kernel Byte Array
-  CLMiner.cpp
-I:\ethNipper\libethash-cl\CLMiner.cpp(467): warning C4101: "e": Unreferenzierte lokale Variable
+﻿  CLMiner.cpp
+I:\ethNipper\libethash-cl\CLMiner.cpp(453): warning C4101: "e": Unreferenzierte lokale Variable
   ethash-cl.vcxproj -> I:\ethNipper\buildX64VS2017\libethash-cl\Release\ethash-cl.lib

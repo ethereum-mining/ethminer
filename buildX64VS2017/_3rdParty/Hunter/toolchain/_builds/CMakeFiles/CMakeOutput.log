@@ -9,7 +9,7 @@ The output was:
 Microsoft (R)-Buildmodul, Version 15.5.180.51428 f�r .NET Framework
 Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
 
-Der Buildvorgang wurde am 29.01.2018 10:39:54 gestartet.
+Der Buildvorgang wurde am 30.01.2018 11:37:29 gestartet.
 Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\3.10.1\CompilerIdC\CompilerIdC.vcxproj" auf Knoten "1" (Standardziele).
 PrepareForBuild:
   Das Verzeichnis "Debug\" wird erstellt.
@@ -35,7 +35,7 @@ Der Buildvorgang wurde erfolgreich ausgef�hrt.
     0 Warnung(en)
     0 Fehler
 
-Verstrichene Zeit 00:00:01.06
+Verstrichene Zeit 00:00:01.28
 
 
 Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
@@ -54,7 +54,7 @@ The output was:
 Microsoft (R)-Buildmodul, Version 15.5.180.51428 f�r .NET Framework
 Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
 
-Der Buildvorgang wurde am 29.01.2018 10:39:55 gestartet.
+Der Buildvorgang wurde am 30.01.2018 11:37:31 gestartet.
 Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\3.10.1\CompilerIdCXX\CompilerIdCXX.vcxproj" auf Knoten "1" (Standardziele).
 PrepareForBuild:
   Das Verzeichnis "Debug\" wird erstellt.
@@ -80,7 +80,7 @@ Der Buildvorgang wurde erfolgreich ausgef�hrt.
     0 Warnung(en)
     0 Fehler
 
-Verstrichene Zeit 00:00:01.06
+Verstrichene Zeit 00:00:01.21
 
 
 Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -92,153 +92,153 @@ The CXX compiler identification is MSVC, found in "I:/ethNipper/buildX64VS2017/_
 Determining if the C compiler works passed with the following output:
 Change Dir: I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp
 
-Run Build Command:"C:/Program Files (x86)/Microsoft Visual Studio/Preview/Community/MSBuild/15.0/Bin/MSBuild.exe" "cmTC_4987b.vcxproj" "/p:Configuration=Debug" "/p:VisualStudioVersion=15.0"
+Run Build Command:"C:/Program Files (x86)/Microsoft Visual Studio/Preview/Community/MSBuild/15.0/Bin/MSBuild.exe" "cmTC_506f4.vcxproj" "/p:Configuration=Debug" "/p:VisualStudioVersion=15.0"
 Microsoft (R)-Buildmodul, Version 15.5.180.51428 für .NET Framework
 Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
 
-Der Buildvorgang wurde am 29.01.2018 10:39:57 gestartet.
-Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_4987b.vcxproj" auf Knoten "1" (Standardziele).
+Der Buildvorgang wurde am 30.01.2018 11:37:32 gestartet.
+Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_506f4.vcxproj" auf Knoten "1" (Standardziele).
 PrepareForBuild:
-  Das Verzeichnis "cmTC_4987b.dir\Debug\" wird erstellt.
+  Das Verzeichnis "cmTC_506f4.dir\Debug\" wird erstellt.
   Das Verzeichnis "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\" wird erstellt.
-  Das Verzeichnis "cmTC_4987b.dir\Debug\cmTC_4987b.tlog\" wird erstellt.
+  Das Verzeichnis "cmTC_506f4.dir\Debug\cmTC_506f4.tlog\" wird erstellt.
 InitializeBuildStatus:
-  "cmTC_4987b.dir\Debug\cmTC_4987b.tlog\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
+  "cmTC_506f4.dir\Debug\cmTC_506f4.tlog\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
 ClCompile:
-  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\CL.exe /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_4987b.dir\Debug\\" /Fd"cmTC_4987b.dir\Debug\vc141.pdb" /Gd /TC /FC /errorReport:queue I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\testCCompiler.c
+  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\CL.exe /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_506f4.dir\Debug\\" /Fd"cmTC_506f4.dir\Debug\vc141.pdb" /Gd /TC /FC /errorReport:queue I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\testCCompiler.c
   Microsoft (R) C/C++-Optimierungscompiler Version 19.12.25907 für x64
   Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
   
-  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_4987b.dir\Debug\\" /Fd"cmTC_4987b.dir\Debug\vc141.pdb" /Gd /TC /FC /errorReport:queue I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\testCCompiler.c
+  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_506f4.dir\Debug\\" /Fd"cmTC_506f4.dir\Debug\vc141.pdb" /Gd /TC /FC /errorReport:queue I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\testCCompiler.c
   testCCompiler.c
   
 Link:
-  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\link.exe /ERRORREPORT:QUEUE /OUT:"I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_4987b.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_4987b.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_4987b.lib" /MACHINE:X64  /machine:x64 cmTC_4987b.dir\Debug\testCCompiler.obj
-  cmTC_4987b.vcxproj -> I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_4987b.exe
+  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\link.exe /ERRORREPORT:QUEUE /OUT:"I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_506f4.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_506f4.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_506f4.lib" /MACHINE:X64  /machine:x64 cmTC_506f4.dir\Debug\testCCompiler.obj
+  cmTC_506f4.vcxproj -> I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_506f4.exe
 FinalizeBuildStatus:
-  Die Datei "cmTC_4987b.dir\Debug\cmTC_4987b.tlog\unsuccessfulbuild" wird gelöscht.
-  Aktualisieren des Timestamps von "cmTC_4987b.dir\Debug\cmTC_4987b.tlog\cmTC_4987b.lastbuildstate".
-Die Erstellung von Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_4987b.vcxproj" ist abgeschlossen (Standardziele).
+  Die Datei "cmTC_506f4.dir\Debug\cmTC_506f4.tlog\unsuccessfulbuild" wird gelöscht.
+  Aktualisieren des Timestamps von "cmTC_506f4.dir\Debug\cmTC_506f4.tlog\cmTC_506f4.lastbuildstate".
+Die Erstellung von Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_506f4.vcxproj" ist abgeschlossen (Standardziele).
 
 Der Buildvorgang wurde erfolgreich ausgeführt.
     0 Warnung(en)
     0 Fehler
 
-Verstrichene Zeit 00:00:01.20
+Verstrichene Zeit 00:00:01.29
 
 
 Detecting C compiler ABI info compiled with the following output:
 Change Dir: I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp
 
-Run Build Command:"C:/Program Files (x86)/Microsoft Visual Studio/Preview/Community/MSBuild/15.0/Bin/MSBuild.exe" "cmTC_58c8a.vcxproj" "/p:Configuration=Debug" "/p:VisualStudioVersion=15.0"
+Run Build Command:"C:/Program Files (x86)/Microsoft Visual Studio/Preview/Community/MSBuild/15.0/Bin/MSBuild.exe" "cmTC_abd92.vcxproj" "/p:Configuration=Debug" "/p:VisualStudioVersion=15.0"
 Microsoft (R)-Buildmodul, Version 15.5.180.51428 für .NET Framework
 Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
 
-Der Buildvorgang wurde am 29.01.2018 10:39:58 gestartet.
-Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_58c8a.vcxproj" auf Knoten "1" (Standardziele).
+Der Buildvorgang wurde am 30.01.2018 11:37:34 gestartet.
+Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_abd92.vcxproj" auf Knoten "1" (Standardziele).
 PrepareForBuild:
-  Das Verzeichnis "cmTC_58c8a.dir\Debug\" wird erstellt.
+  Das Verzeichnis "cmTC_abd92.dir\Debug\" wird erstellt.
   Das Verzeichnis "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\" wird erstellt.
-  Das Verzeichnis "cmTC_58c8a.dir\Debug\cmTC_58c8a.tlog\" wird erstellt.
+  Das Verzeichnis "cmTC_abd92.dir\Debug\cmTC_abd92.tlog\" wird erstellt.
 InitializeBuildStatus:
-  "cmTC_58c8a.dir\Debug\cmTC_58c8a.tlog\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
+  "cmTC_abd92.dir\Debug\cmTC_abd92.tlog\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
 ClCompile:
-  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\CL.exe /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_58c8a.dir\Debug\\" /Fd"cmTC_58c8a.dir\Debug\vc141.pdb" /Gd /TC /FC /errorReport:queue "C:\Program Files\CMake\share\cmake-3.10\Modules\CMakeCCompilerABI.c"
+  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\CL.exe /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_abd92.dir\Debug\\" /Fd"cmTC_abd92.dir\Debug\vc141.pdb" /Gd /TC /FC /errorReport:queue "C:\Program Files\CMake\share\cmake-3.10\Modules\CMakeCCompilerABI.c"
   Microsoft (R) C/C++-Optimierungscompiler Version 19.12.25907 für x64
   Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
   
-  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_58c8a.dir\Debug\\" /Fd"cmTC_58c8a.dir\Debug\vc141.pdb" /Gd /TC /FC /errorReport:queue "C:\Program Files\CMake\share\cmake-3.10\Modules\CMakeCCompilerABI.c"
+  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_abd92.dir\Debug\\" /Fd"cmTC_abd92.dir\Debug\vc141.pdb" /Gd /TC /FC /errorReport:queue "C:\Program Files\CMake\share\cmake-3.10\Modules\CMakeCCompilerABI.c"
   CMakeCCompilerABI.c
   
 Link:
-  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\link.exe /ERRORREPORT:QUEUE /OUT:"I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_58c8a.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_58c8a.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_58c8a.lib" /MACHINE:X64  /machine:x64 cmTC_58c8a.dir\Debug\CMakeCCompilerABI.obj
-  cmTC_58c8a.vcxproj -> I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_58c8a.exe
+  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\link.exe /ERRORREPORT:QUEUE /OUT:"I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_abd92.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_abd92.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_abd92.lib" /MACHINE:X64  /machine:x64 cmTC_abd92.dir\Debug\CMakeCCompilerABI.obj
+  cmTC_abd92.vcxproj -> I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_abd92.exe
 FinalizeBuildStatus:
-  Die Datei "cmTC_58c8a.dir\Debug\cmTC_58c8a.tlog\unsuccessfulbuild" wird gelöscht.
-  Aktualisieren des Timestamps von "cmTC_58c8a.dir\Debug\cmTC_58c8a.tlog\cmTC_58c8a.lastbuildstate".
-Die Erstellung von Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_58c8a.vcxproj" ist abgeschlossen (Standardziele).
+  Die Datei "cmTC_abd92.dir\Debug\cmTC_abd92.tlog\unsuccessfulbuild" wird gelöscht.
+  Aktualisieren des Timestamps von "cmTC_abd92.dir\Debug\cmTC_abd92.tlog\cmTC_abd92.lastbuildstate".
+Die Erstellung von Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_abd92.vcxproj" ist abgeschlossen (Standardziele).
 
 Der Buildvorgang wurde erfolgreich ausgeführt.
     0 Warnung(en)
     0 Fehler
 
-Verstrichene Zeit 00:00:01.22
+Verstrichene Zeit 00:00:01.24
 
 
 Determining if the CXX compiler works passed with the following output:
 Change Dir: I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp
 
-Run Build Command:"C:/Program Files (x86)/Microsoft Visual Studio/Preview/Community/MSBuild/15.0/Bin/MSBuild.exe" "cmTC_3e77b.vcxproj" "/p:Configuration=Debug" "/p:VisualStudioVersion=15.0"
+Run Build Command:"C:/Program Files (x86)/Microsoft Visual Studio/Preview/Community/MSBuild/15.0/Bin/MSBuild.exe" "cmTC_fe018.vcxproj" "/p:Configuration=Debug" "/p:VisualStudioVersion=15.0"
 Microsoft (R)-Buildmodul, Version 15.5.180.51428 für .NET Framework
 Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
 
-Der Buildvorgang wurde am 29.01.2018 10:40:00 gestartet.
-Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_3e77b.vcxproj" auf Knoten "1" (Standardziele).
+Der Buildvorgang wurde am 30.01.2018 11:37:36 gestartet.
+Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_fe018.vcxproj" auf Knoten "1" (Standardziele).
 PrepareForBuild:
-  Das Verzeichnis "cmTC_3e77b.dir\Debug\" wird erstellt.
+  Das Verzeichnis "cmTC_fe018.dir\Debug\" wird erstellt.
   Das Verzeichnis "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\" wird erstellt.
-  Das Verzeichnis "cmTC_3e77b.dir\Debug\cmTC_3e77b.tlog\" wird erstellt.
+  Das Verzeichnis "cmTC_fe018.dir\Debug\cmTC_fe018.tlog\" wird erstellt.
 InitializeBuildStatus:
-  "cmTC_3e77b.dir\Debug\cmTC_3e77b.tlog\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
+  "cmTC_fe018.dir\Debug\cmTC_fe018.tlog\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
 ClCompile:
-  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\CL.exe /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_3e77b.dir\Debug\\" /Fd"cmTC_3e77b.dir\Debug\vc141.pdb" /Gd /TP /FC /errorReport:queue I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\testCXXCompiler.cxx
+  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\CL.exe /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_fe018.dir\Debug\\" /Fd"cmTC_fe018.dir\Debug\vc141.pdb" /Gd /TP /FC /errorReport:queue I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\testCXXCompiler.cxx
   Microsoft (R) C/C++-Optimierungscompiler Version 19.12.25907 für x64
   Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
   
-  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_3e77b.dir\Debug\\" /Fd"cmTC_3e77b.dir\Debug\vc141.pdb" /Gd /TP /FC /errorReport:queue I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\testCXXCompiler.cxx
+  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_fe018.dir\Debug\\" /Fd"cmTC_fe018.dir\Debug\vc141.pdb" /Gd /TP /FC /errorReport:queue I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\testCXXCompiler.cxx
   testCXXCompiler.cxx
   
 Link:
-  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\link.exe /ERRORREPORT:QUEUE /OUT:"I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_3e77b.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_3e77b.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_3e77b.lib" /MACHINE:X64  /machine:x64 cmTC_3e77b.dir\Debug\testCXXCompiler.obj
-  cmTC_3e77b.vcxproj -> I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_3e77b.exe
+  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\link.exe /ERRORREPORT:QUEUE /OUT:"I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_fe018.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_fe018.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_fe018.lib" /MACHINE:X64  /machine:x64 cmTC_fe018.dir\Debug\testCXXCompiler.obj
+  cmTC_fe018.vcxproj -> I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_fe018.exe
 FinalizeBuildStatus:
-  Die Datei "cmTC_3e77b.dir\Debug\cmTC_3e77b.tlog\unsuccessfulbuild" wird gelöscht.
-  Aktualisieren des Timestamps von "cmTC_3e77b.dir\Debug\cmTC_3e77b.tlog\cmTC_3e77b.lastbuildstate".
-Die Erstellung von Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_3e77b.vcxproj" ist abgeschlossen (Standardziele).
+  Die Datei "cmTC_fe018.dir\Debug\cmTC_fe018.tlog\unsuccessfulbuild" wird gelöscht.
+  Aktualisieren des Timestamps von "cmTC_fe018.dir\Debug\cmTC_fe018.tlog\cmTC_fe018.lastbuildstate".
+Die Erstellung von Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_fe018.vcxproj" ist abgeschlossen (Standardziele).
 
 Der Buildvorgang wurde erfolgreich ausgeführt.
     0 Warnung(en)
     0 Fehler
 
-Verstrichene Zeit 00:00:01.25
+Verstrichene Zeit 00:00:01.30
 
 
 Detecting CXX compiler ABI info compiled with the following output:
 Change Dir: I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp
 
-Run Build Command:"C:/Program Files (x86)/Microsoft Visual Studio/Preview/Community/MSBuild/15.0/Bin/MSBuild.exe" "cmTC_93ea7.vcxproj" "/p:Configuration=Debug" "/p:VisualStudioVersion=15.0"
+Run Build Command:"C:/Program Files (x86)/Microsoft Visual Studio/Preview/Community/MSBuild/15.0/Bin/MSBuild.exe" "cmTC_62f21.vcxproj" "/p:Configuration=Debug" "/p:VisualStudioVersion=15.0"
 Microsoft (R)-Buildmodul, Version 15.5.180.51428 für .NET Framework
 Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
 
-Der Buildvorgang wurde am 29.01.2018 10:40:01 gestartet.
-Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_93ea7.vcxproj" auf Knoten "1" (Standardziele).
+Der Buildvorgang wurde am 30.01.2018 11:37:37 gestartet.
+Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_62f21.vcxproj" auf Knoten "1" (Standardziele).
 PrepareForBuild:
-  Das Verzeichnis "cmTC_93ea7.dir\Debug\" wird erstellt.
+  Das Verzeichnis "cmTC_62f21.dir\Debug\" wird erstellt.
   Das Verzeichnis "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\" wird erstellt.
-  Das Verzeichnis "cmTC_93ea7.dir\Debug\cmTC_93ea7.tlog\" wird erstellt.
+  Das Verzeichnis "cmTC_62f21.dir\Debug\cmTC_62f21.tlog\" wird erstellt.
 InitializeBuildStatus:
-  "cmTC_93ea7.dir\Debug\cmTC_93ea7.tlog\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
+  "cmTC_62f21.dir\Debug\cmTC_62f21.tlog\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
 ClCompile:
-  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\CL.exe /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_93ea7.dir\Debug\\" /Fd"cmTC_93ea7.dir\Debug\vc141.pdb" /Gd /TP /FC /errorReport:queue "C:\Program Files\CMake\share\cmake-3.10\Modules\CMakeCXXCompilerABI.cpp"
+  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\CL.exe /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_62f21.dir\Debug\\" /Fd"cmTC_62f21.dir\Debug\vc141.pdb" /Gd /TP /FC /errorReport:queue "C:\Program Files\CMake\share\cmake-3.10\Modules\CMakeCXXCompilerABI.cpp"
   Microsoft (R) C/C++-Optimierungscompiler Version 19.12.25907 für x64
   Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
   
-  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_93ea7.dir\Debug\\" /Fd"cmTC_93ea7.dir\Debug\vc141.pdb" /Gd /TP /FC /errorReport:queue "C:\Program Files\CMake\share\cmake-3.10\Modules\CMakeCXXCompilerABI.cpp"
+  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_62f21.dir\Debug\\" /Fd"cmTC_62f21.dir\Debug\vc141.pdb" /Gd /TP /FC /errorReport:queue "C:\Program Files\CMake\share\cmake-3.10\Modules\CMakeCXXCompilerABI.cpp"
   CMakeCXXCompilerABI.cpp
   
 Link:
-  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\link.exe /ERRORREPORT:QUEUE /OUT:"I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_93ea7.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_93ea7.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_93ea7.lib" /MACHINE:X64  /machine:x64 cmTC_93ea7.dir\Debug\CMakeCXXCompilerABI.obj
-  cmTC_93ea7.vcxproj -> I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_93ea7.exe
+  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\link.exe /ERRORREPORT:QUEUE /OUT:"I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_62f21.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_62f21.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_62f21.lib" /MACHINE:X64  /machine:x64 cmTC_62f21.dir\Debug\CMakeCXXCompilerABI.obj
+  cmTC_62f21.vcxproj -> I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_62f21.exe
 FinalizeBuildStatus:
-  Die Datei "cmTC_93ea7.dir\Debug\cmTC_93ea7.tlog\unsuccessfulbuild" wird gelöscht.
-  Aktualisieren des Timestamps von "cmTC_93ea7.dir\Debug\cmTC_93ea7.tlog\cmTC_93ea7.lastbuildstate".
-Die Erstellung von Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_93ea7.vcxproj" ist abgeschlossen (Standardziele).
+  Die Datei "cmTC_62f21.dir\Debug\cmTC_62f21.tlog\unsuccessfulbuild" wird gelöscht.
+  Aktualisieren des Timestamps von "cmTC_62f21.dir\Debug\cmTC_62f21.tlog\cmTC_62f21.lastbuildstate".
+Die Erstellung von Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_62f21.vcxproj" ist abgeschlossen (Standardziele).
 
 Der Buildvorgang wurde erfolgreich ausgeführt.
     0 Warnung(en)
     0 Fehler
 
-Verstrichene Zeit 00:00:01.26
+Verstrichene Zeit 00:00:01.30
 
 
 
@@ -246,39 +246,39 @@ Verstrichene Zeit 00:00:01.26
 Detecting CXX [] compiler features compiled with the following output:
 Change Dir: I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp
 
-Run Build Command:"C:/Program Files (x86)/Microsoft Visual Studio/Preview/Community/MSBuild/15.0/Bin/MSBuild.exe" "cmTC_dfd87.vcxproj" "/p:Configuration=Debug" "/p:VisualStudioVersion=15.0"
+Run Build Command:"C:/Program Files (x86)/Microsoft Visual Studio/Preview/Community/MSBuild/15.0/Bin/MSBuild.exe" "cmTC_ed39f.vcxproj" "/p:Configuration=Debug" "/p:VisualStudioVersion=15.0"
 Microsoft (R)-Buildmodul, Version 15.5.180.51428 für .NET Framework
 Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
 
-Der Buildvorgang wurde am 29.01.2018 10:40:03 gestartet.
-Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_dfd87.vcxproj" auf Knoten "1" (Standardziele).
+Der Buildvorgang wurde am 30.01.2018 11:37:39 gestartet.
+Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_ed39f.vcxproj" auf Knoten "1" (Standardziele).
 PrepareForBuild:
-  Das Verzeichnis "cmTC_dfd87.dir\Debug\" wird erstellt.
+  Das Verzeichnis "cmTC_ed39f.dir\Debug\" wird erstellt.
   Das Verzeichnis "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\" wird erstellt.
-  Das Verzeichnis "cmTC_dfd87.dir\Debug\cmTC_dfd87.tlog\" wird erstellt.
+  Das Verzeichnis "cmTC_ed39f.dir\Debug\cmTC_ed39f.tlog\" wird erstellt.
 InitializeBuildStatus:
-  "cmTC_dfd87.dir\Debug\cmTC_dfd87.tlog\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
+  "cmTC_ed39f.dir\Debug\cmTC_ed39f.tlog\unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
 ClCompile:
-  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\CL.exe /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_dfd87.dir\Debug\\" /Fd"cmTC_dfd87.dir\Debug\vc141.pdb" /Gd /TP /FC /errorReport:queue I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\feature_tests.cxx
+  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\CL.exe /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_ed39f.dir\Debug\\" /Fd"cmTC_ed39f.dir\Debug\vc141.pdb" /Gd /TP /FC /errorReport:queue I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\feature_tests.cxx
   Microsoft (R) C/C++-Optimierungscompiler Version 19.12.25907 für x64
   Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
   
-  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_dfd87.dir\Debug\\" /Fd"cmTC_dfd87.dir\Debug\vc141.pdb" /Gd /TP /FC /errorReport:queue I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\feature_tests.cxx
+  cl /c /Zi /W3 /WX- /diagnostics:classic /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_ed39f.dir\Debug\\" /Fd"cmTC_ed39f.dir\Debug\vc141.pdb" /Gd /TP /FC /errorReport:queue I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\feature_tests.cxx
   feature_tests.cxx
   
 Link:
-  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\link.exe /ERRORREPORT:QUEUE /OUT:"I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_dfd87.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_dfd87.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_dfd87.lib" /MACHINE:X64  /machine:x64 cmTC_dfd87.dir\Debug\feature_tests.obj
-  cmTC_dfd87.vcxproj -> I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_dfd87.exe
+  C:\Program Files (x86)\Microsoft Visual Studio\Preview\Community\VC\Tools\MSVC\14.12.25907\bin\HostX86\x64\link.exe /ERRORREPORT:QUEUE /OUT:"I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_ed39f.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_ed39f.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"I:/ethNipper/buildX64VS2017/_3rdParty/Hunter/toolchain/_builds/CMakeFiles/CMakeTmp/Debug/cmTC_ed39f.lib" /MACHINE:X64  /machine:x64 cmTC_ed39f.dir\Debug\feature_tests.obj
+  cmTC_ed39f.vcxproj -> I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\Debug\cmTC_ed39f.exe
 FinalizeBuildStatus:
-  Die Datei "cmTC_dfd87.dir\Debug\cmTC_dfd87.tlog\unsuccessfulbuild" wird gelöscht.
-  Aktualisieren des Timestamps von "cmTC_dfd87.dir\Debug\cmTC_dfd87.tlog\cmTC_dfd87.lastbuildstate".
-Die Erstellung von Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_dfd87.vcxproj" ist abgeschlossen (Standardziele).
+  Die Datei "cmTC_ed39f.dir\Debug\cmTC_ed39f.tlog\unsuccessfulbuild" wird gelöscht.
+  Aktualisieren des Timestamps von "cmTC_ed39f.dir\Debug\cmTC_ed39f.tlog\cmTC_ed39f.lastbuildstate".
+Die Erstellung von Projekt "I:\ethNipper\buildX64VS2017\_3rdParty\Hunter\toolchain\_builds\CMakeFiles\CMakeTmp\cmTC_ed39f.vcxproj" ist abgeschlossen (Standardziele).
 
 Der Buildvorgang wurde erfolgreich ausgeführt.
     0 Warnung(en)
     0 Fehler
 
-Verstrichene Zeit 00:00:01.24
+Verstrichene Zeit 00:00:01.30
 
 
     Feature record: CXX_FEATURE:1cxx_aggregate_default_initializers

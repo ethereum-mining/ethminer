@@ -1,5 +1,3 @@
-﻿  Building Custom Rule I:/ethNipper/libstratum/CMakeLists.txt
-  CMake does not need to re-run because I:/ethNipper/buildX64VS2017/libstratum/CMakeFiles/generate.stamp is up-to-date.
-  EthStratumClient.cpp
+﻿  EthStratumClient.cpp
   EthStratumClientV2.cpp
   ethstratum.vcxproj -> I:\ethNipper\buildX64VS2017\libstratum\Release\ethstratum.lib

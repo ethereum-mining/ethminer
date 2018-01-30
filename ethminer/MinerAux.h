@@ -40,6 +40,9 @@
 #if ETH_ETHASHCL
 #include <libethash-cl/CLMiner.h>
 #endif
+#if ETH_ETHASHOCL
+#include <libethash-ocl/OCLMiner.h>
+#endif
 #if ETH_ETHASHCUDA
 #include <libethash-cuda/CUDAMiner.h>
 #endif
@@ -304,7 +307,7 @@ public:
 			}
 		}
 #endif
-#if ETH_ETHASHCL || ETH_ETHASHCUDA
+#if ETH_ETHASHCL || ETH_ETHASHCUDA || ETH_ETHASHOCL
 		else if ((arg == "--cl-global-work" || arg == "--cuda-grid-size")  && i + 1 < argc)
 			try {
 				m_globalWorkSizeMultiplier = stol(argv[++i]);
@@ -428,6 +431,12 @@ public:
 		{
 			m_minerType = MinerType::Mixed;
 		}
+#if ETH_ETHASHOCL
+		else if (arg == "--fpga" || arg == "--opencl")
+		{
+			m_minerType = MinerType::Fpga;
+		}
+#endif
 		else if (arg == "-M" || arg == "--benchmark")
 		{
 			mode = OperationMode::Benchmark;
@@ -500,6 +509,10 @@ public:
 			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 				CUDAMiner::listDevices();
 #endif
+#if ETH_ETHASHOCL
+			if (m_minerType == MinerType::Fpga || m_minerType == MinerType::Mixed)
+				OCLMiner::listDevices();
+#endif
 			if (m_quit) {
 				exit(0);
 			}
@@ -556,6 +569,33 @@ public:
 			CUDAMiner::setParallelHash(m_parallelHash);
 #else
 			cerr << "CUDA support disabled. Configure project build with -DETHASHCUDA=ON" << endl;
+			exit(1);
+#endif
+		}
+		if (m_minerType == MinerType::Fpga || m_minerType == MinerType::Mixed)
+		{
+#if ETH_ETHASHOCL
+			if (m_openclDeviceCount > 0)
+			{
+				OCLMiner::setDevices(m_openclDevices, m_openclDeviceCount);
+				m_miningThreads = m_openclDeviceCount;
+			}
+
+			OCLMiner::setCLKernel(m_openclSelectedKernel);
+			OCLMiner::setThreadsPerHash(m_openclThreadsPerHash);
+
+			if (!OCLMiner::configureGPU(
+				m_localWorkSize,
+				m_globalWorkSizeMultiplier,
+				m_openclPlatform,
+				0,
+				m_dagLoadMode,
+				m_dagCreateDevice
+			))
+			exit(1);
+			OCLMiner::setNumInstances(m_miningThreads);
+#else
+			cerr << "Selected FPGA mining without having compiled with -DETHASHOCL=1" << endl;
 			exit(1);
 #endif
 		}
@@ -1063,7 +1103,7 @@ private:
 
 	/// Mining options
 	bool m_running = true;
-	MinerType m_minerType = MinerType::CL;
+	MinerType m_minerType = MinerType::Mixed;
 	unsigned m_openclPlatform = 0;
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = true;

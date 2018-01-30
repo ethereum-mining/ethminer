@@ -1,6 +1,4 @@
-﻿  Building Custom Rule I:/ethNipper/libhwmon/CMakeLists.txt
-  CMake does not need to re-run because I:/ethNipper/buildX64VS2017/libhwmon/CMakeFiles/generate.stamp is up-to-date.
-  wrapnvml.cpp
+﻿  wrapnvml.cpp
   wrapadl.cpp
   wrapamdsysfs.cpp
   hwmon.vcxproj -> I:\ethNipper\buildX64VS2017\libhwmon\Release\hwmon.lib

@@ -1,6 +1,4 @@
-﻿  Building Custom Rule I:/ethNipper/libdevcore/CMakeLists.txt
-  CMake does not need to re-run because I:/ethNipper/buildX64VS2017/libdevcore/CMakeFiles/generate.stamp is up-to-date.
-  CommonData.cpp
+﻿  CommonData.cpp
   FixedHash.cpp
   Log.cpp
   RLP.cpp

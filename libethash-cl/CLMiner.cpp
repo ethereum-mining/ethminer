@@ -7,7 +7,6 @@
 #include <libethash/internal.h>
 #include "CLMiner_kernel_stable.h"
 #include "CLMiner_kernel_unstable.h"
-#include "CLMiner_kernel_fpga.h"
 
 #include <string>
 #include <fstream>
@@ -425,9 +424,9 @@ void CLMiner::listDevices()
 		{
 			//Platform Name
 			string platformName = platforms[j].getInfo<CL_PLATFORM_NAME>();
-			outString = "[" + to_string(j) + "]OpenCL " + platforms[j].getInfo<CL_PLATFORM_NAME>() + "\n";
-			std::cout << outString;
 			if (platformName == "AMD Accelerated Parallel Processing" ) {
+				outString = "[" + to_string(j) + "]OpenCL " + platforms[j].getInfo<CL_PLATFORM_NAME>() + "\n";
+				std::cout << outString;
 				//List Devices
 				try {
 					vector<cl::Device> devices = getDevices(platforms, j);
@@ -568,11 +567,11 @@ bool CLMiner::init(const h256& seed)
 				sysfsh = wrap_amdsysfs_create();
 #endif
 			}
-			else if (platformName == "INTELFPGA_CL")
+			else if (platformName == "Intel SDK for OpenCL")
 			{
 				platformId = OPENCL_PLATFORM_INTELFPGA;
 			}
-			else if (platformName == "ALTERAFPGA_CL")
+			else if (platformName == "Altera SDK for OpenCL")
 			{
 				platformId = OPENCL_PLATFORM_ALTERAFPGA;
 			}
@@ -645,29 +644,45 @@ bool CLMiner::init(const h256& seed)
 		// See libethash-cl/CMakeLists.txt: add_custom_command()
 		// TODO: Just use C++ raw string literal.
 		string code;
-
-		if ( s_clKernelName == CLKernelName::Unstable ) {
+		if(s_clKernelName == CLKernelName::Stable) {
+			cllog << "OpenCL kernel: Stable kernel";
+			code = string(CLMiner_kernel_stable, CLMiner_kernel_stable + sizeof(CLMiner_kernel_stable));
+		} else if ( s_clKernelName == CLKernelName::Unstable ) {
 			cllog << "OpenCL kernel: Unstable kernel";
 			code = string(CLMiner_kernel_unstable, CLMiner_kernel_unstable + sizeof(CLMiner_kernel_unstable));
-		} else if (s_clKernelName == CLKernelName::Fpga) {
-			cllog << "OpenCL kernel: FPGA kernel";
-			code = string(CLMiner_kernel_fpga, CLMiner_kernel_fpga + sizeof(CLMiner_kernel_fpga));
 		} else if (s_clKernelName == CLKernelName::Custom) {
-			cllog << "OpenCL kernel: Custom kernel (kernel.cl)";
-			std::ifstream t("kernel.cl");
-			std::string ckernel;
-			t.seekg(0, std::ios::end);
-			ckernel.reserve(t.tellg());
-			t.seekg(0, std::ios::beg);
-			ckernel.assign((std::istreambuf_iterator<char>(t)),
-			std::istreambuf_iterator<char>());
-			code = ckernel;
-		} else { //if(s_clKernelName == CLKernelName::Stable)
-			cllog << "OpenCL kernel: Stable kernel";
-			//CLMiner_kernel_stable.cl will do a #undef THREADS_PER_HASH
-			if(s_threadsPerHash != 8) {
-				cwarn << "The current stable OpenCL kernel only supports exactly 8 threads. Thread parameter will be ignored.";
+			string kernelname = device.getInfo<CL_DEVICE_NAME>() + ".cl";
+			cllog << "OpenCL kernel: Custom '" + kernelname + "'";
+			std::ifstream t(kernelname);
+			if (t.good()) {
+				std::string ckernel;
+				t.seekg(0, std::ios::end);
+				ckernel.reserve(t.tellg());
+				t.seekg(0, std::ios::beg);
+				ckernel.assign((std::istreambuf_iterator<char>(t)),
+				std::istreambuf_iterator<char>());
+				code = ckernel;
+				cllog << "OpenCL kernel: Custom '" + kernelname +"'";
+			} else {
+				cllog << "OpenCL kernel: Custom '" + kernelname + "' not found";
+				std::ifstream t("kernel.cl");
+				if (t.good()) {
+					std::string ckernel;
+					t.seekg(0, std::ios::end);
+					ckernel.reserve(t.tellg());
+					t.seekg(0, std::ios::beg);
+					ckernel.assign((std::istreambuf_iterator<char>(t)),
+					std::istreambuf_iterator<char>());
+					code = ckernel;
+					cllog << "OpenCL kernel: Fallback 'kernel.cl'";
+				} else {
+					cllog << "OpenCL kernel: Fallback 'kernel.cl' not found";
+					cllog << "OpenCL kernel: Stable kernel";
+					code = string(CLMiner_kernel_stable, CLMiner_kernel_stable + sizeof(CLMiner_kernel_stable));
+				}
 			}
+		} else {
+			cllog << "OpenCL kernel: Default Stable kernel";
 			code = string(CLMiner_kernel_stable, CLMiner_kernel_stable + sizeof(CLMiner_kernel_stable));
 		}
 

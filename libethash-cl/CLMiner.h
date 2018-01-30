@@ -46,7 +46,6 @@ namespace eth
 enum CLKernelName {
 	Stable,
 	Unstable,
-	Fpga,
 	Custom,
 };
 
@@ -93,9 +92,6 @@ public:
 			s_clKernelName = CLKernelName::Unstable;
 		}
 		else if (_clKernel == 2) {
-			s_clKernelName = CLKernelName::Fpga;
-		}
-		else if (_clKernel == 3) {
 			s_clKernelName = CLKernelName::Custom;
 		}
 		else {
