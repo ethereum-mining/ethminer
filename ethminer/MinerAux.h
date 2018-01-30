@@ -1107,7 +1107,6 @@ private:
 	unsigned m_openclDevices[16];
 	unsigned m_openclThreadsPerHash = 8;
 	unsigned m_openclWavetweak = 7;
-#if !ETH_ETHASHCUDA
 	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
 #endif
