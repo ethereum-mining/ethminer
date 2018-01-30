@@ -35,6 +35,7 @@ build_xc
 
 # build system
 build.*/
+buildX64*/
 buildX64Ubuntu*/
 buildX64VS2017*/
 extdep/install
