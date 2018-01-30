@@ -1,2 +1,0 @@
-/usr/bin/ar qc libdevcore.a  CMakeFiles/devcore.dir/CommonData.cpp.o CMakeFiles/devcore.dir/FixedHash.cpp.o CMakeFiles/devcore.dir/Log.cpp.o CMakeFiles/devcore.dir/RLP.cpp.o CMakeFiles/devcore.dir/SHA3.cpp.o CMakeFiles/devcore.dir/Worker.cpp.o
-/usr/bin/ranlib libdevcore.a

@@ -35,7 +35,7 @@ using namespace boost::algorithm;
 void help()
 {
 	cout
-		<< "Usage ethNipper (OPENCL/FPGA) [OPTIONS]" << endl
+		<< "Usage ethNipper (FPGA OpenCL) [OPTIONS]" << endl
 		<< "Options:" << endl << endl;
 	MinerCLI::streamHelp(cout);
 	cout

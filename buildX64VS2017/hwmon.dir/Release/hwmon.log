@@ -1,4 +1,0 @@
-﻿  wrapnvml.cpp
-  wrapadl.cpp
-  wrapamdsysfs.cpp
-  hwmon.vcxproj -> I:\ethNipper\buildX64VS2017\libhwmon\Release\hwmon.lib

@@ -1,6 +1,0 @@
-﻿  CLMiner.cpp
-I:\ethNipper\libethash-cl\CLMiner.cpp(453): warning C4101: "e": Unreferenzierte lokale Variable
-I:\ethNipper\libethash-cl\CLMiner.cpp(649): error C2065: "CLMiner_kernel_stable": nichtdeklarierter Bezeichner
-I:\ethNipper\libethash-cl\CLMiner.cpp(652): error C2065: "CLMiner_kernel_unstable": nichtdeklarierter Bezeichner
-I:\ethNipper\libethash-cl\CLMiner.cpp(681): error C2065: "CLMiner_kernel_stable": nichtdeklarierter Bezeichner
-I:\ethNipper\libethash-cl\CLMiner.cpp(686): error C2065: "CLMiner_kernel_stable": nichtdeklarierter Bezeichner

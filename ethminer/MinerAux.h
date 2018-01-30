@@ -91,7 +91,9 @@ public:
 		Stratum
 	};
 
-	MinerCLI(OperationMode _mode = OperationMode::None): mode(_mode) {}
+	MinerCLI(OperationMode _mode = OperationMode::None): mode(_mode) {
+
+	}
 
 	bool interpretOption(int& i, int argc, char** argv)
 	{
@@ -665,6 +667,9 @@ public:
 			<< "    -Z [<n>],--simulation [<n>] Mining test mode. Used to validate kernel optimizations. Optionally specify block number." << endl
 			<< "Mining configuration:" << endl
 			<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
+#if ETH_ETHASHOCL
+			<< "       --fpga  When mining use the FPGA Accelerator via OpenCL." << endl
+#endif
 			<< "    -U,--cuda  When mining use the GPU via CUDA." << endl
 			<< "    -X,--cuda-opencl Use OpenCL + CUDA in a system with mixed AMD/Nvidia cards. May require setting --opencl-platform 1" << endl
 			<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
@@ -857,6 +862,9 @@ private:
 #if ETH_ETHASHCL
 		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
 #endif
+#if ETH_ETHASHOCL
+		sealers["fpga"] = Farm::SealerDescriptor{ &OCLMiner::instances, [](FarmFace& _farm, unsigned _index) { return new OCLMiner(_farm, _index); } };
+#endif
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
 #endif
@@ -884,9 +892,12 @@ private:
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
+		else if (_m == MinerType::Fpga)
+			f.start("fpga", false);
 		else if (_m == MinerType::Mixed) {
 			f.start("cuda", false);
 			f.start("opencl", true);
+			f.start("fpga", false);
 		}
 
 		WorkPackage current;
@@ -1003,6 +1014,9 @@ private:
 #if ETH_ETHASHCL
 		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); } };
 #endif
+#if ETH_ETHASHOCL
+		sealers["fpga"] = Farm::SealerDescriptor{ &OCLMiner::instances, [](FarmFace& _farm, unsigned _index) { return new OCLMiner(_farm, _index); } };
+#endif
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
 #endif
@@ -1015,7 +1029,6 @@ private:
 #if API_CORE
 		Api api(this->m_api_port, f);
 #endif
-
 		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
 		if (m_stratumClientVersion == 1) {
 			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
@@ -1046,7 +1059,7 @@ private:
 				client.reconnect();
 			});
 
-			while (client.isRunning())
+			while (client.isRunning() && m_running == true)
 			{
 				auto mp = f.miningProgress(m_show_hwmonitors);
 				if (client.isConnected())

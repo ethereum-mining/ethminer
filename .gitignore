@@ -35,6 +35,8 @@ build_xc
 
 # build system
 build.*/
+buildX64Ubuntu*/
+buildX64VS2017*/
 extdep/install
 extdep/download
 /cmake-build-*/

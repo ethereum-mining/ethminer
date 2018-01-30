@@ -1,2 +1,0 @@
-/usr/bin/ar qc libethcore.a  CMakeFiles/ethcore.dir/BlockHeader.cpp.o CMakeFiles/ethcore.dir/EthashAux.cpp.o CMakeFiles/ethcore.dir/Miner.cpp.o
-/usr/bin/ranlib libethcore.a

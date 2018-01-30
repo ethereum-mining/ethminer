@@ -1,2 +1,0 @@
-/usr/bin/ar qc libethash-cl.a  CMakeFiles/ethash-cl.dir/CLMiner.cpp.o
-/usr/bin/ranlib libethash-cl.a

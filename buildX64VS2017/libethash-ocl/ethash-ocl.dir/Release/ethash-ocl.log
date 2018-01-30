@@ -1,3 +1,0 @@
-﻿  OCLMiner.cpp
-I:\ethNipper\libethash-ocl\OCLMiner.cpp(451): warning C4101: "e": Unreferenzierte lokale Variable
-  ethash-ocl.vcxproj -> I:\ethNipper\buildX64VS2017\libethash-ocl\Release\ethash-ocl.lib

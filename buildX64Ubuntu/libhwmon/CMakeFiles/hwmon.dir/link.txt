@@ -1,2 +1,0 @@
-/usr/bin/ar qc libhwmon.a  CMakeFiles/hwmon.dir/wrapnvml.cpp.o CMakeFiles/hwmon.dir/wrapadl.cpp.o CMakeFiles/hwmon.dir/wrapamdsysfs.cpp.o
-/usr/bin/ranlib libhwmon.a
