@@ -386,7 +386,7 @@ bool CUDAMiner::cuda_init(
 			{
 				if((m_device_num == dagCreateDevice) || !_cpyToHost){ //if !cpyToHost -> All devices shall generate their DAG
 					cudalog << "Generating DAG for GPU #" << m_device_num << " with dagSize: " 
-							<< dagSize <<" gridSize: " << s_gridSize << " &m_streams[0]: " << &m_streams[0];
+							<< dagSize <<" gridSize: " << s_gridSize;
 					ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], m_device_num);
 
 					if (_cpyToHost)
