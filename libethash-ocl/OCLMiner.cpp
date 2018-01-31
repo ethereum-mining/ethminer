@@ -236,7 +236,7 @@ std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, 
 	try
 	{
 		_platforms[platform_num].getDevices(
-			CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR,
+			CL_DEVICE_TYPE_ACCELERATOR,
 			&devices
 		);
 	}
@@ -432,18 +432,7 @@ void OCLMiner::listDevices()
 						for (unsigned i = 0; i < devices.size(); ++i)
 						{
 							outString = "  [" + to_string(i) + "]";
-							outString += " " + devices[i].getInfo<CL_DEVICE_NAME>();
-							//outString += "\t" + device.getInfo<CL_DEVICE_VENDOR>();
-							outString += "\t" + devices[i].getInfo<CL_DEVICE_OPENCL_C_VERSION>();
-							outString += "\tRAM: " + to_string(devices[i].getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() / 1024 / 1024) + "MB";
-							outString += "\tCU: " + to_string(devices[i].getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>());
-							outString += "\tWS: " + to_string(devices[i].getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>());
-							outString += "\t" + to_string(devices[i].getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>()) + "Hz";
-							int epoch = 162;
-							int dagsize = 256 * 64 * 162;
-							int cu = devices[i].getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
-							int clock = devices[i].getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
-							outString += "\t~" + to_string((cu * clock * 1200) / dagsize) + "MH/s\n";
+							outString += " " + devices[i].getInfo<CL_DEVICE_NAME>() + "\n";
 							std::cout << outString;
 						}
 					}
@@ -509,20 +498,6 @@ HwMonitor OCLMiner::hwmon()
 {
 	HwMonitor hw;
 	unsigned int tempC = 0, fanpcnt = 0;
-	if (nvmlh) {
-		wrap_nvml_get_tempC(nvmlh, index, &tempC);
-		wrap_nvml_get_fanpcnt(nvmlh, index, &fanpcnt);
-	}
-	if (adlh) {
-		wrap_adl_get_tempC(adlh, index, &tempC);
-		wrap_adl_get_fanpcnt(adlh, index, &fanpcnt);
-	}
-#if defined(__linux)
-	if (sysfsh) {
-		wrap_amdsysfs_get_tempC(sysfsh, index, &tempC);
-		wrap_amdsysfs_get_fanpcnt(sysfsh, index, &fanpcnt);
-	}
-#endif
 	hw.tempC = tempC;
 	hw.fanP = fanpcnt;
 	return hw;
@@ -551,31 +526,13 @@ bool OCLMiner::init(const h256& seed)
 			// this mutex prevents race conditions when calling the adl wrapper since it is apparently not thread safe
 			static std::mutex mtx;
 			std::lock_guard<std::mutex> lock(mtx);
-
-			if (platformName == "NVIDIA CUDA")
-			{
-				platformId = OPENCL_PLATFORM_NVIDIA;
-				nvmlh = wrap_nvml_create();
-			}
-			else if (platformName == "AMD Accelerated Parallel Processing")
-			{
-				platformId = OPENCL_PLATFORM_AMD;
-				adlh = wrap_adl_create();
-#if defined(__linux)
-				sysfsh = wrap_amdsysfs_create();
-#endif
-			}
-			else if (platformName == "Intel SDK for OpenCL")
+			if (platformName == "Intel SDK for OpenCL")
 			{
 				platformId = OPENCL_PLATFORM_INTELFPGA;
 			}
 			else if (platformName == "Altera SDK for OpenCL")
 			{
 				platformId = OPENCL_PLATFORM_ALTERAFPGA;
-			}
-			else if (platformName == "Clover")
-			{
-				platformId = OPENCL_PLATFORM_CLOVER;
 			}
 		}
 
@@ -593,35 +550,9 @@ bool OCLMiner::init(const h256& seed)
 		string device_version = device.getInfo<CL_DEVICE_VERSION>();
 		ETHCL_LOG("Device:   " << device.getInfo<CL_DEVICE_NAME>() << " / " << device_version);
 
-		string clVer = device_version.substr(7, 3);
-		if (clVer == "1.0" || clVer == "1.1")
-		{
-			if (platformId == OPENCL_PLATFORM_CLOVER)
-			{
-				ETHCL_LOG("OpenCL " << clVer << " not supported, but platform Clover might work nevertheless. USE AT OWN RISK!");
-			}
-			else
-			{
-				ETHCL_LOG("OpenCL " << clVer << " not supported - minimum required version is 1.2");
-				return false;
-			}
-		}
-
 		char options[256];
 		int computeCapability = 0;
-		if (platformId == OPENCL_PLATFORM_NVIDIA) {
-			cl_uint computeCapabilityMajor;
-			cl_uint computeCapabilityMinor;
-			clGetDeviceInfo(device(), CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV, sizeof(cl_uint), &computeCapabilityMajor, NULL);
-			clGetDeviceInfo(device(), CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV, sizeof(cl_uint), &computeCapabilityMinor, NULL);
-
-			computeCapability = computeCapabilityMajor * 10 + computeCapabilityMinor;
-			int maxregs = computeCapability >= 35 ? 72 : 63;
-			sprintf(options, "-cl-nv-maxrregcount=%d", maxregs);
-		}
-		else {
-			sprintf(options, "%s", "");
-		}
+		
 		// create context
 		m_context = cl::Context(vector<cl::Device>(&device, &device + 1));
 		m_queue = cl::CommandQueue(m_context, device);

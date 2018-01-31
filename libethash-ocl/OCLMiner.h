@@ -37,7 +37,6 @@
 #define OPENCL_PLATFORM_INTELFPGA  4
 #define OPENCL_PLATFORM_ALTERAFPGA  5
 
-
 namespace dev
 {
 namespace eth

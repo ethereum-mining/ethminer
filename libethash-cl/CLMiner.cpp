@@ -567,14 +567,6 @@ bool CLMiner::init(const h256& seed)
 				sysfsh = wrap_amdsysfs_create();
 #endif
 			}
-			else if (platformName == "Intel SDK for OpenCL")
-			{
-				platformId = OPENCL_PLATFORM_INTELFPGA;
-			}
-			else if (platformName == "Altera SDK for OpenCL")
-			{
-				platformId = OPENCL_PLATFORM_ALTERAFPGA;
-			}
 			else if (platformName == "Clover")
 			{
 				platformId = OPENCL_PLATFORM_CLOVER;

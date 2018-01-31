@@ -148,9 +148,12 @@ void EthStratumClientV2::connect()
 				p_farm->start("opencl", false);
 			else if (m_minerType == MinerType::CUDA)
 				p_farm->start("cuda", false);
+			else if (m_minerType == MinerType::Fpga)
+				p_farm->start("fpga", false);
 			else if (m_minerType == MinerType::Mixed) {
 				p_farm->start("cuda", false);
 				p_farm->start("opencl", true);
+				p_farm->start("fpga", false);
 			}
 		}
 		std::ostream os(&m_requestBuffer);
