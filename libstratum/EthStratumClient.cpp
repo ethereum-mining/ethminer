@@ -359,11 +359,11 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			using namespace std::chrono;
 			auto ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_time);
 			if (responseObject.get("result", false).asBool()) {
-				cnote << EthLime "**Accepted." EthReset " in" << ms.count() << "ms.";
+				cnote << EthLime "**Accepted" EthReset " in" << ms.count() << "ms.";
 				p_farm->acceptedSolution(m_stale);
 			}
 			else {
-				cwarn << EthRed "**Rejected." EthReset " in" << ms.count() << "ms.";
+				cwarn << EthRed "**Rejected" EthReset " in" << ms.count() << "ms.";
 				p_farm->rejectedSolution(m_stale);
 			}
 		}
