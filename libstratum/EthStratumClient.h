@@ -89,4 +89,6 @@ private:
 	string m_submit_hashrate_id;
 
 	void processExtranonce(std::string& enonce);
+
+	std::chrono::steady_clock::time_point m_submit_time;
 };
