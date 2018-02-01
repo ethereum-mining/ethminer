@@ -41,6 +41,11 @@ the [Releases] section.
 Download an archive for your operating system and unpack the content to a place
 accessible from command line. The ethminer is ready to go.
 
+| Builds | Release | Date |
+| ------ | ------- | ---- |
+| Last    | [![GitHub release](https://img.shields.io/github/release/ethereum-mining/ethminer/all.svg)](https://github.com/ethereum-mining/ethminer/releases) | [![GitHub Release Date](https://img.shields.io/github/release-date-pre/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) |
+| Stable  | [![GitHub release](https://img.shields.io/github/release/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) | [![GitHub Release Date](https://img.shields.io/github/release-date/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) | 
+
 
 ## Usage
 
