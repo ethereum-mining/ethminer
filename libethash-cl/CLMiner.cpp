@@ -432,7 +432,13 @@ void CLMiner::listDevices()
 				outString += "CPU\n";
 				break;
 			case CL_DEVICE_TYPE_GPU:
-				outString += "GPU\n";
+				{
+					cl_uint maxCus;
+					clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(maxCus), &maxCus, NULL);
+					stringstream ss;
+					ss << maxCus;
+					outString += "GPU #CUs = " + ss.str() + '\n';
+				}
 				break;
 			case CL_DEVICE_TYPE_ACCELERATOR:
 				outString += "ACCELERATOR\n";
@@ -466,6 +472,7 @@ bool CLMiner::configureGPU(
 
 	_localWorkSize = ((_localWorkSize + 7) / 8) * 8;
 	s_workgroupSize = _localWorkSize;
+
 	s_initialGlobalWorkSize = _globalWorkSizeMultiplier * _localWorkSize;
 
 	uint64_t dagSize = ethash_get_datasize(_currentBlock);
@@ -613,9 +620,19 @@ bool CLMiner::init(const h256& seed)
 		m_context = cl::Context(vector<cl::Device>(&device, &device + 1));
 		m_queue = cl::CommandQueue(m_context, device);
 
-		// make sure that global work size is evenly divisible by the local workgroup size
 		m_workgroupSize = s_workgroupSize;
 		m_globalWorkSize = s_initialGlobalWorkSize;
+		// Adjust globalWorkSize if not secified
+		if (s_initialGlobalWorkSize == 0)
+		{
+			cl_uint maxCus;
+			clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(maxCus), &maxCus, NULL);
+			m_globalWorkSize = s_threadsPerHash * maxCus * s_workgroupSize;
+			cllog << "Global work size not specified, set to " << m_globalWorkSize;
+			cllog << "Based on TPH " << s_threadsPerHash << " LW " << s_workgroupSize << " CU " << maxCus;
+		}
+
+		// make sure that global work size is evenly divisible by the local workgroup size
 		if (m_globalWorkSize % m_workgroupSize != 0)
 			m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
 
