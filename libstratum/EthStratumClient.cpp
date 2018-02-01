@@ -355,13 +355,17 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		cnote << "Authorized worker " + p_active->user;
 		break;
 	case 4:
-		if (responseObject.get("result", false).asBool()) {
-			cnote << EthLime "**Accepted." EthReset;
-			p_farm->acceptedSolution(m_stale);
-		}
-		else {
-			cwarn << EthRed "**Rejected." EthReset;
-			p_farm->rejectedSolution(m_stale);
+		{
+			using namespace std::chrono;
+			auto ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_time);
+			if (responseObject.get("result", false).asBool()) {
+				cnote << EthLime "**Accepted" EthReset " in" << ms.count() << "ms.";
+				p_farm->acceptedSolution(m_stale);
+			}
+			else {
+				cwarn << EthRed "**Rejected" EthReset " in" << ms.count() << "ms.";
+				p_farm->rejectedSolution(m_stale);
+			}
 		}
 		break;
 	default:
@@ -524,6 +528,7 @@ void EthStratumClient::submit(Solution solution) {
 	async_write(m_socket, m_requestBuffer,
 		boost::bind(&EthStratumClient::handleResponse, this,
 		boost::asio::placeholders::error));
+	m_submit_time = std::chrono::steady_clock::now();
 	if (m_stale)
 	{
 		cwarn << EthYellow "Stale solution submitted to " + p_active->host + EthReset;
