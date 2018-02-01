@@ -81,7 +81,6 @@ struct WorkingProgress
 	uint64_t hashes = 0;		///< Total number of hashes computed.
 	uint64_t ms = 0;			///< Total number of milliseconds of mining thus far.
 	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
-
 	std::vector<uint64_t> minersHashes;
 	std::vector<HwMonitor> minerMonitors;
 	uint64_t minerRate(const uint64_t hashCount) const { return ms == 0 ? 0 : hashCount * 1000 / ms; }

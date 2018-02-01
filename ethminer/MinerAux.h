@@ -855,7 +855,6 @@ private:
 		}
 	}
 
-
 	void doFarm(MinerType _m, string & _remote, unsigned _recheckPeriod)
 	{
 		map<string, Farm::SealerDescriptor> sealers;
