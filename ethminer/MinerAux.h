@@ -168,8 +168,10 @@ public:
 		{
 			try {
 				m_stratumClientVersion = atoi(argv[++i]);
-				if (m_stratumClientVersion > 2) m_stratumClientVersion = 2;
-				else if (m_stratumClientVersion < 1) m_stratumClientVersion = 1;
+				if (m_stratumClientVersion != 1) {
+					cerr << "Stratum " << m_stratumClientVersion << " not supported" << endl;
+					throw BadArgument();
+				}
 			}
 			catch (...)
 			{
