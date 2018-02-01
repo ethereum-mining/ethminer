@@ -1,6 +1,5 @@
 set(SOURCES
     EthStratumClient.h EthStratumClient.cpp
-    EthStratumClientV2.h EthStratumClientV2.cpp
 )
 
 add_library(ethstratum ${SOURCES})
