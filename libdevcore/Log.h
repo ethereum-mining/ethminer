@@ -101,10 +101,10 @@ public:
 		m_logTag = LogTag::None;
 	}
 
-	void append(unsigned long _t) { m_sstr << EthBlue << _t << EthReset; }
-	void append(long _t) { m_sstr << EthBlue << _t << EthReset; }
-	void append(unsigned int _t) { m_sstr << EthBlue << _t << EthReset; }
-	void append(int _t) { m_sstr << EthBlue << _t << EthReset; }
+	void append(unsigned long _t) { m_sstr << EthWhite << _t << EthReset; }
+	void append(long _t) { m_sstr << EthWhite << _t << EthReset; }
+	void append(unsigned int _t) { m_sstr << EthWhite << _t << EthReset; }
+	void append(int _t) { m_sstr << EthWhite << _t << EthReset; }
 	void append(bigint const& _t) { m_sstr << EthNavy << _t << EthReset; }
 	void append(u256 const& _t) { m_sstr << EthNavy << _t << EthReset; }
 	void append(u160 const& _t) { m_sstr << EthNavy << _t << EthReset; }
