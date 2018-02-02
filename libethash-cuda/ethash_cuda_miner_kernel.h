@@ -1,6 +1,7 @@
 #ifndef _ETHASH_CUDA_MINER_KERNEL_H_
 #define _ETHASH_CUDA_MINER_KERNEL_H_
 
+#include <stdexcept>
 #include <stdio.h>
 #include <stdint.h>
 #include <cuda_runtime.h>
@@ -77,7 +78,6 @@ void ethash_generate_dag(
 	cudaStream_t stream,
 	int device
 	);
-
 
 #define CUDA_SAFE_CALL(call)						\
 do {									\
