@@ -236,6 +236,7 @@ public:
         for (auto const& i : m_miners)
         {
             p.minersHashes.push_back(0);
+			p.minersNames.push_back(i->Name());
             if (hwmon)
                 p.minerMonitors.push_back(i->hwmon());
         }

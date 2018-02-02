@@ -257,7 +257,7 @@ std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, 
 unsigned OCLMiner::s_platformId = 0;
 unsigned OCLMiner::s_numInstances = 0;
 int OCLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
-
+string OCLMiner::s_devicenames[16] = { "OCL0", "OCL1", "OCL2", "OCL3", "OCL4", "OCL5", "OCL6", "OCL7", "OCL8", "OCL9", "OCL10", "OCL11", "OCL12", "OCL13", "OCL14", "OCL15" };
 OCLMiner::OCLMiner(FarmFace& _farm, unsigned _index):
 	Miner("ocl-", _farm, _index)
 {}
@@ -413,7 +413,7 @@ unsigned OCLMiner::getNumDevices()
 
 void OCLMiner::listDevices()
 {
-	string outString ="\nListing OpenCL devices.\n";
+	string outString ="\nListing OpenCL devices (OCLMiner).\n";
 	std::cout << outString;
 	//List Platforms
 	vector<cl::Platform> platforms = getPlatforms();
@@ -423,7 +423,7 @@ void OCLMiner::listDevices()
 			//Platform Name
 			string platformName = platforms[j].getInfo<CL_PLATFORM_NAME>();
 			if (platformName == "Altera SDK for OpenCL" ) {
-				outString = "[" + to_string(j) + "]OpenCL " + platforms[j].getInfo<CL_PLATFORM_NAME>() + "\n";
+				outString = "[" + to_string(j) + "]Platform: OpenCL '" + platforms[j].getInfo<CL_PLATFORM_NAME>() + "'\n";
 				std::cout << outString;
 				//List Devices
 				try {
@@ -432,9 +432,23 @@ void OCLMiner::listDevices()
 						for (unsigned i = 0; i < devices.size(); ++i)
 						{
 							outString = "  [" + to_string(i) + "]";
-							outString += " " + devices[i].getInfo<CL_DEVICE_NAME>() + "\n";
+							outString += devices[i].getInfo<CL_DEVICE_NAME>();
+							outString += "\t" + devices[i].getInfo<CL_DEVICE_OPENCL_C_VERSION>();
+							outString += "\tRAM: " + to_string(devices[i].getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() / 1024 / 1024) + "MB";
+							//outString += "\tCU: " + to_string(devices[i].getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>());
+							//outString += "\tWS: " + to_string(devices[i].getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>());
+							outString += "\t" + to_string(devices[i].getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>()) + "Hz";
+							outString += "\t(" + devices[i].getInfo<CL_DEVICE_VENDOR>() + ")";
+							int epoch = 162;
+							int dagsize = 256 * 64 * 162;
+							int cu = devices[i].getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+							int clock = devices[i].getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
+							outString += "\t~" + to_string((cu * clock * 1200) / dagsize) + "MH/s\n";
 							std::cout << outString;
 						}
+					} else {
+						outString = "  [-] no devices found\n";
+						std::cout << outString;
 					}
 				}
 				catch (int e) {
@@ -503,6 +517,9 @@ HwMonitor OCLMiner::hwmon()
 	return hw;
 }
 
+string OCLMiner::Name() {
+	return s_devicenames[index];
+}
 
 bool OCLMiner::init(const h256& seed)
 {
@@ -548,7 +565,11 @@ bool OCLMiner::init(const h256& seed)
 		unsigned deviceId = s_devices[index] > -1 ? s_devices[index] : index;
 		cl::Device& device = devices[min<unsigned>(deviceId, devices.size() - 1)];
 		string device_version = device.getInfo<CL_DEVICE_VERSION>();
-		ETHCL_LOG("Device:   " << device.getInfo<CL_DEVICE_NAME>() << " / " << device_version);
+		string device_name = device.getInfo<CL_DEVICE_NAME>() + " "
+			+ to_string(device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>()) + "CU "
+			+ to_string(device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() / 1024 / 1024) + "MB";
+		s_devicenames[index] = device_name;
+		ETHCL_LOG("Device:   " << device_name << " / " << device_version);
 
 		char options[256];
 		int computeCapability = 0;

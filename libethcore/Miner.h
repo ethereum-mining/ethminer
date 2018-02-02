@@ -72,7 +72,7 @@ struct HwMonitor
 
 inline std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
 {
-	return os << _hw.tempC << "C " << _hw.fanP << "%";
+	return os <<  std::fixed << std::setw(3) << _hw.tempC << "C " << std::fixed << std::setw(3) << _hw.fanP << "%";
 }
 
 /// Describes the progress of a mining operation.
@@ -81,6 +81,7 @@ struct WorkingProgress
 	uint64_t hashes = 0;		///< Total number of hashes computed.
 	uint64_t ms = 0;			///< Total number of milliseconds of mining thus far.
 	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
+	std::vector<string> minersNames;
 	std::vector<uint64_t> minersHashes;
 	std::vector<HwMonitor> minerMonitors;
 	uint64_t minerRate(const uint64_t hashCount) const { return ms == 0 ? 0 : hashCount * 1000 / ms; }
@@ -91,15 +92,20 @@ inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 	float mh = _p.rate() / 1000000.0f;
 	_out << "Speed "
 		 << EthTealBold << std::fixed << std::setw(6) << std::setprecision(2) << mh << EthReset
-		 << " Mh/s    ";
+		 << "Mh/s\n";
 
 	for (size_t i = 0; i < _p.minersHashes.size(); ++i)
 	{
 		mh = _p.minerRate(_p.minersHashes[i]) / 1000000.0f;
-		_out << "Device[" << i << "] " << EthTeal << std::fixed << std::setw(5) << std::setprecision(2) << mh << EthReset;
-		if (_p.minerMonitors.size() == _p.minersHashes.size())
-			_out << " " << EthTeal << _p.minerMonitors[i] << EthReset;
-		_out << "  ";
+		_out << "\t\t\t[" << i << "]" << _p.minersNames[i] << " -";
+		if (_p.minerMonitors.size() == _p.minersHashes.size()) {
+			_out << EthTeal << _p.minerMonitors[i] << EthReset;
+		}
+		else {
+			_out << EthTeal << "          " << EthReset;
+		}
+		_out << " -      " << EthTeal << std::fixed << std::setw(6) << std::setprecision(2) << mh << "Mh/s " << EthReset;
+		_out << "\n";
 	}
 
 	return _out;
@@ -189,6 +195,8 @@ public:
 	void resetHashCount() { m_hashCount.store(0, std::memory_order_relaxed); }
 
 	virtual HwMonitor hwmon() = 0;
+
+	virtual string Name() = 0;
 
 	unsigned Index() { return index; };
 

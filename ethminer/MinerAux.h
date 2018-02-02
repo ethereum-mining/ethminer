@@ -916,7 +916,7 @@ private:
 					auto mp = f.miningProgress(m_show_hwmonitors);
 					if (current)
 					{
-						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
+						minelog << mp << "\t\t\t" << f.getSolutionStats() << f.farmLaunchedFormatted();
 #if ETH_DBUS
 						dbusint.send(toString(mp).data());
 #endif
@@ -1065,7 +1065,7 @@ private:
 				{
 					if (client.current())
 					{
-						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
+						minelog << f.farmLaunchedFormatted() << "\t" << f.getSolutionStats() << mp;
 #if ETH_DBUS
 						dbusint.send(toString(mp).data());
 #endif

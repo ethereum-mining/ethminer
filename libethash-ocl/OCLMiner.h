@@ -85,6 +85,7 @@ public:
 		s_clKernelName = OCLKernelName::Fpga;
 	}
 	HwMonitor hwmon() override;
+	string Name() override;
 protected:
 	void kick_miner() override;
 
@@ -110,6 +111,7 @@ private:
 	static unsigned s_threadsPerHash;
 	static OCLKernelName s_clKernelName;
 	static int s_devices[16];
+	static string s_devicenames[16];
 
 	/// The local work size for the search
 	static unsigned s_workgroupSize;
