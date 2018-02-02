@@ -40,9 +40,12 @@
 #if ETH_ETHASHCL
 #include <libethash-cl/CLMiner.h>
 #endif
+<<<<<<< HEAD
 #if ETH_ETHASHOCL
 #include <libethash-ocl/OCLMiner.h>
 #endif
+=======
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 #if ETH_ETHASHCUDA
 #include <libethash-cuda/CUDAMiner.h>
 #endif
@@ -91,6 +94,7 @@ public:
 		Stratum
 	};
 
+<<<<<<< HEAD
 	MinerCLI(OperationMode _mode = OperationMode::None): mode(_mode) {
 
 	}
@@ -100,6 +104,12 @@ public:
 		if (argc > 0) {
 			m_quit = false;
 		}
+=======
+	MinerCLI(OperationMode _mode = OperationMode::None): mode(_mode) {}
+
+	bool interpretOption(int& i, int argc, char** argv)
+	{
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 		string arg = argv[i];
 		if ((arg == "-F" || arg == "--farm") && i + 1 < argc)
 		{
@@ -458,12 +468,15 @@ public:
 		{
 			m_minerType = MinerType::Mixed;
 		}
+<<<<<<< HEAD
 #if ETH_ETHASHOCL
 		else if (arg == "--fpga" || arg == "--opencl")
 		{
 			m_minerType = MinerType::Fpga;
 		}
 #endif
+=======
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 		else if (arg == "-M" || arg == "--benchmark")
 		{
 			mode = OperationMode::Benchmark;
@@ -536,6 +549,7 @@ public:
 			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 				CUDAMiner::listDevices();
 #endif
+<<<<<<< HEAD
 #if ETH_ETHASHOCL
 			if (m_minerType == MinerType::Fpga || m_minerType == MinerType::Mixed)
 				OCLMiner::listDevices();
@@ -543,6 +557,9 @@ public:
 			if (m_quit) {
 				exit(0);
 			}
+=======
+			exit(0);
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 		}
 
 		if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
@@ -599,6 +616,7 @@ public:
 			exit(1);
 #endif
 		}
+<<<<<<< HEAD
 		if (m_minerType == MinerType::Fpga || m_minerType == MinerType::Mixed)
 		{
 #if ETH_ETHASHOCL
@@ -626,6 +644,8 @@ public:
 			exit(1);
 #endif
 		}
+=======
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 		if (mode == OperationMode::Benchmark)
 			doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
 		else if (mode == OperationMode::Farm)
@@ -667,9 +687,12 @@ public:
 			<< "    -Z [<n>],--simulation [<n>] Mining test mode. Used to validate kernel optimizations. Optionally specify block number." << endl
 			<< "Mining configuration:" << endl
 			<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
+<<<<<<< HEAD
 #if ETH_ETHASHOCL
 			<< "       --fpga  When mining use the FPGA Accelerator via OpenCL." << endl
 #endif
+=======
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 			<< "    -U,--cuda  When mining use the GPU via CUDA." << endl
 			<< "    -X,--cuda-opencl Use OpenCL + CUDA in a system with mixed AMD/Nvidia cards. May require setting --opencl-platform 1" << endl
 			<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
@@ -855,15 +878,22 @@ private:
 		}
 	}
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 	void doFarm(MinerType _m, string & _remote, unsigned _recheckPeriod)
 	{
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
 		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
 #endif
+<<<<<<< HEAD
 #if ETH_ETHASHOCL
 		sealers["fpga"] = Farm::SealerDescriptor{ &OCLMiner::instances, [](FarmFace& _farm, unsigned _index) { return new OCLMiner(_farm, _index); } };
 #endif
+=======
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
 #endif
@@ -891,12 +921,18 @@ private:
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
+<<<<<<< HEAD
 		else if (_m == MinerType::Fpga)
 			f.start("fpga", false);
 		else if (_m == MinerType::Mixed) {
 			f.start("cuda", false);
 			f.start("opencl", true);
 			f.start("fpga", false);
+=======
+		else if (_m == MinerType::Mixed) {
+			f.start("cuda", false);
+			f.start("opencl", true);
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 		}
 
 		WorkPackage current;
@@ -916,7 +952,11 @@ private:
 					auto mp = f.miningProgress(m_show_hwmonitors);
 					if (current)
 					{
+<<<<<<< HEAD
 						minelog << mp << "\t\t\t" << f.getSolutionStats() << f.farmLaunchedFormatted();
+=======
+						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 #if ETH_DBUS
 						dbusint.send(toString(mp).data());
 #endif
@@ -1013,9 +1053,12 @@ private:
 #if ETH_ETHASHCL
 		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); } };
 #endif
+<<<<<<< HEAD
 #if ETH_ETHASHOCL
 		sealers["fpga"] = Farm::SealerDescriptor{ &OCLMiner::instances, [](FarmFace& _farm, unsigned _index) { return new OCLMiner(_farm, _index); } };
 #endif
+=======
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 #if ETH_ETHASHCUDA
 		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
 #endif
@@ -1028,6 +1071,10 @@ private:
 #if API_CORE
 		Api api(this->m_api_port, f);
 #endif
+<<<<<<< HEAD
+=======
+
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 		// this is very ugly, but if Stratum Client V2 tunrs out to be a success, V1 will be completely removed anyway
 		if (m_stratumClientVersion == 1) {
 			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
@@ -1058,14 +1105,22 @@ private:
 				client.reconnect();
 			});
 
+<<<<<<< HEAD
 			while (client.isRunning() && m_running == true)
+=======
+			while (client.isRunning())
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 			{
 				auto mp = f.miningProgress(m_show_hwmonitors);
 				if (client.isConnected())
 				{
 					if (client.current())
 					{
+<<<<<<< HEAD
 						minelog << f.farmLaunchedFormatted() << "\t" << f.getSolutionStats() << mp;
+=======
+						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 #if ETH_DBUS
 						dbusint.send(toString(mp).data());
 #endif
@@ -1143,8 +1198,12 @@ private:
 	MinerType m_minerType = MinerType::Mixed;
 	unsigned m_openclPlatform = 0;
 	unsigned m_miningThreads = UINT_MAX;
+<<<<<<< HEAD
 	bool m_shouldListDevices = true;
 	bool m_quit = true;
+=======
+	bool m_shouldListDevices = false;
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 #if ETH_ETHASHCL
 	unsigned m_openclSelectedKernel = 0;  ///< A numeric value for the selected OpenCL kernel
 	unsigned m_openclDeviceCount = 0;
@@ -1170,14 +1229,23 @@ private:
 	unsigned m_benchmarkTrials = 5;
 	unsigned m_benchmarkBlock = 0;
 	/// Farm params
+<<<<<<< HEAD
 	string m_farmURL = "eth-eu1.nanopool.org";
 	string m_farmFailOverURL = "eth-eu2.nanopool.org";
+=======
+	string m_farmURL = "http://127.0.0.1:8545";
+	string m_farmFailOverURL = "";
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 
 
 	string m_activeFarmURL = m_farmURL;
 	unsigned m_farmRetries = 0;
 	unsigned m_maxFarmRetries = 3;
+<<<<<<< HEAD
 	unsigned m_farmRecheckPeriod = 2000;
+=======
+	unsigned m_farmRecheckPeriod = 500;
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 	unsigned m_defaultStratumFarmRecheckPeriod = 2000;
 	bool m_farmRecheckSet = false;
 	int m_worktimeout = 180;
@@ -1189,6 +1257,7 @@ private:
 	bool m_report_stratum_hashrate = false;
 	int m_stratumClientVersion = 1;
 	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
+<<<<<<< HEAD
 	string m_user = "0x294bed2511fc6aadd0663bae85f3c0099080046c.FEE";
 	string m_pass = "x";
 	string m_port = "9999";
@@ -1197,6 +1266,15 @@ private:
 	string m_fpass = "x";
 	string m_fport = "9999";
 	string m_femail = "powermanbtc@gmail.com";
+=======
+	string m_user;
+	string m_pass;
+	string m_port;
+	string m_fuser = "";
+	string m_fpass = "";
+	string m_email = "";
+	string m_fport = "";
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 
 #if ETH_DBUS
 	DBusInt dbusint;

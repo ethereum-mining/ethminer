@@ -605,6 +605,7 @@ bool CLMiner::init(const h256& seed)
 		unsigned deviceId = s_devices[index] > -1 ? s_devices[index] : index;
 		cl::Device& device = devices[min<unsigned>(deviceId, devices.size() - 1)];
 		string device_version = device.getInfo<CL_DEVICE_VERSION>();
+
 		string device_name = device.getInfo<CL_DEVICE_NAME>() + " " 
 			+ to_string(device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>()) + "CU "
 			+ to_string(device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() / 1024 / 1024) + "MB";
@@ -660,6 +661,7 @@ bool CLMiner::init(const h256& seed)
 		// See libethash-cl/CMakeLists.txt: add_custom_command()
 		// TODO: Just use C++ raw string literal.
 		string code;
+
 		if(s_clKernelName == CLKernelName::Stable) {
 			cllog << "OpenCL kernel: Stable kernel";
 			code = string(CLMiner_kernel_stable, CLMiner_kernel_stable + sizeof(CLMiner_kernel_stable));

@@ -55,6 +55,7 @@ public:
 	/* -- default values -- */
 	/// Default value of the local work size. Also known as workgroup size.
 	static const unsigned c_defaultLocalWorkSize = 256;
+
 	/// Default value of the global work size as a multiplier of the local work size
 	static const unsigned c_defaultGlobalWorkSizeMultiplier = 8192;
 
@@ -125,6 +126,7 @@ private:
 	static unsigned s_threadsPerHash;
 	static CLKernelName s_clKernelName;
 	static int s_devices[16];
+
 	static string s_devicenames[16];
 
 	/// The local work size for the search

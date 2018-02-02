@@ -37,7 +37,11 @@ build_xc
 *~
 
 # build system
+<<<<<<< HEAD
 build*/
+=======
+build.*/
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 extdep/install
 extdep/download
 /cmake-build-*/

@@ -61,7 +61,7 @@ enum class MinerType
 	Mixed,
 	CL,
 	CUDA,
-	Fpga
+	Fpga,
 };
 
 struct HwMonitor
@@ -93,7 +93,6 @@ inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 	_out << "Speed "
 		 << EthTealBold << std::fixed << std::setw(6) << std::setprecision(2) << mh << EthReset
 		 << "Mh/s\n";
-
 	for (size_t i = 0; i < _p.minersHashes.size(); ++i)
 	{
 		mh = _p.minerRate(_p.minersHashes[i]) / 1000000.0f;

@@ -154,6 +154,7 @@ void EthStratumClientV2::connect()
 				p_farm->start("cuda", false);
 				p_farm->start("opencl", true);
 				p_farm->start("fpga", false);
+
 			}
 		}
 		std::ostream os(&m_requestBuffer);

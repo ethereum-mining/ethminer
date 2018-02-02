@@ -39,10 +39,17 @@ if(HUNTER_ENABLED)
 	endif()
 endif()
 
+<<<<<<< HEAD
 
 project(ethminer)
 set(PROJECT_VERSION 0.14.0.dev1)
 
+=======
+
+project(ethminer)
+set(PROJECT_VERSION 0.14.0.dev1)
+
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 # link_directories interprate relative paths with respect to CMAKE_CURRENT_SOURCE_DIR
 cmake_policy(SET CMP0015 NEW)
 
@@ -55,10 +62,15 @@ cmake_policy(SET CMP0054 NEW)
 
 ######################################################################################################
 
+<<<<<<< HEAD
 option(ETHASHCL "Build with OpenCL GPU mining" ON)
 option(ETHASHOCL "Build with OpenCL FPGA mining" ON)
 option(ETHASHCUDA "Build with CUDA mining" OFF)
 option(ETHSTRATUM "Build with Stratum protocol support" ON)
+=======
+option(ETHASHCL "Build with OpenCL mining" ON)
+option(ETHASHCUDA "Build with CUDA mining" OFF)
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 option(ETHDBUS "Build with D-Bus support" OFF)
 option(APICORE "Build with API Server support" ON)
 
@@ -67,6 +79,7 @@ function(configureProject)
 	if (ETHASHCL)
 		add_definitions(-DETH_ETHASHCL)
 	endif()
+<<<<<<< HEAD
 	if (ETHASHOCL)
 		add_definitions(-DETH_ETHASHOCL)
 	endif()
@@ -76,6 +89,11 @@ function(configureProject)
 	if (ETHSTRATUM)
 		add_definitions(-DETH_STRATUM)
 	endif()
+=======
+	if (ETHASHCUDA)
+		add_definitions(-DETH_ETHASHCUDA)
+	endif()
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 	if (ETHDBUS)
 		add_definitions(-DETH_DBUS)
 	endif()
@@ -135,10 +153,15 @@ message("-----------------------------------------------------------------------
 message("-- CMake ${CMAKE_VERSION}")
 message("-- Build ${CMAKE_BUILD_TYPE} / ${CMAKE_SYSTEM_NAME}")
 message("------------------------------------------------------------- components")
+<<<<<<< HEAD
 message("-- ETHASHCL         Build OpenCL GPU components              ${ETHASHCL}")
 message("-- ETHASHOCL        Build OpenCL FPGA components             ${ETHASHOCL}")
 message("-- ETHASHCUDA       Build CUDA components                    ${ETHASHCUDA}")
 message("-- ETHSTRATUM       Build Stratum components                 ${ETHSTRATUM}")
+=======
+message("-- ETHASHCL         Build OpenCL components                  ${ETHASHCL}")
+message("-- ETHASHCUDA       Build CUDA components                    ${ETHASHCUDA}")
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 message("-- ETHDBUS          Build D-Bus components                   ${ETHDBUS}")
 message("-- APICORE          Build API Server components              ${APICORE}")
 message("------------------------------------------------------------------------")
@@ -150,6 +173,7 @@ createBuildInfo()
 
 add_subdirectory(libdevcore)
 add_subdirectory(libethash)
+<<<<<<< HEAD
 add_subdirectory(libhwmon)
 add_subdirectory(libethcore)
 if (ETHASHCL)
@@ -167,6 +191,22 @@ endif()
 if (APICORE)
 	add_subdirectory(libapicore)
 endif()
+=======
+add_subdirectory(libethcore)
+add_subdirectory(libhwmon)
+add_subdirectory(libstratum)
+
+if (ETHASHCL)
+	add_subdirectory(libethash-cl)
+endif ()
+if (ETHASHCUDA)
+	add_subdirectory(libethash-cuda)
+endif ()
+if (APICORE)
+	add_subdirectory(libapicore)
+endif()
+
+>>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 add_subdirectory(ethminer)
 
 
