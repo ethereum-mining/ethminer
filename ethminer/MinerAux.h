@@ -625,7 +625,7 @@ public:
 
 private:
 
-	void doBenchmark(MinerType _m, unsigned _warmupDuration = 15, unsigned _trialDuration = 10, unsigned _trials = 10)
+	void doBenchmark(MinerType _m, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
 	{
 		BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
