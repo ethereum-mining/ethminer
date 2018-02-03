@@ -625,12 +625,11 @@ public:
 
 private:
 
-	void doBenchmark(MinerType _m, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
+	void doBenchmark(MinerType _m, unsigned _warmupDuration = 15, unsigned _trialDuration = 10, unsigned _trials = 10)
 	{
 		BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
-		genesis.setDifficulty(1 << 18);
-		cdebug << genesis.boundary();
+		genesis.setDifficulty(1 << 64);
 
 		Farm f;
 		map<string, Farm::SealerDescriptor> sealers;
@@ -649,22 +648,26 @@ private:
 		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
 		//genesis.prep();
 
-		genesis.setDifficulty(u256(1) << 63);
 		if (_m == MinerType::CL)
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
-		f.setWork(WorkPackage{genesis});
+
+		WorkPackage current = WorkPackage(genesis);
+		
 
 		map<uint64_t, WorkingProgress> results;
 		uint64_t mean = 0;
 		uint64_t innerMean = 0;
 		for (unsigned i = 0; i <= _trials; ++i)
 		{
+			current.header = h256::random();
+			current.boundary = genesis.boundary();
+			f.setWork(current);	
 			if (!i)
 				cout << "Warming up..." << endl;
 			else
-				cout << "Trial " << i << "... " << flush;
+				cout << "Trial " << i << "... " << flush <<endl;
 			this_thread::sleep_for(chrono::seconds(i ? _trialDuration : _warmupDuration));
 
 			auto mp = f.miningProgress();
@@ -676,7 +679,6 @@ private:
 			results[rate] = mp;
 			mean += rate;
 		}
-		f.stop();
 		int j = -1;
 		for (auto const& r: results)
 			if (++j > 0 && j < (int)_trials - 1)
@@ -692,8 +694,7 @@ private:
 	{
 		BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
-		genesis.setDifficulty(1 << 18);
-		cdebug << genesis.boundary();
+		genesis.setDifficulty(u256(1) << difficulty);
 
 		Farm f;
 		map<string, Farm::SealerDescriptor> sealers;
@@ -711,7 +712,7 @@ private:
 		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
 		//genesis.prep();
 
-		genesis.setDifficulty(u256(1) << difficulty);
+		
 
 		if (_m == MinerType::CL)
 			f.start("opencl", false);
