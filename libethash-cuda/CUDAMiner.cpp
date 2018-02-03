@@ -92,6 +92,7 @@ void CUDAMiner::workLoop()
 	WorkPackage current;
 	current.header = h256{1u};
 	current.seed = h256{1u};
+
 	try
 	{
 		while(true)
@@ -108,10 +109,8 @@ void CUDAMiner::workLoop()
 					continue;
 				}
 				if (current.seed != w.seed)
-				{
 					if(!init(w.seed))
 						break;
-				}
 				current = w;
 			}
 			uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)current.boundary >> 192);
@@ -122,10 +121,14 @@ void CUDAMiner::workLoop()
 
 			// Check if we should stop.
 			if (shouldStop())
-			{
 				break;
-			}
 		}
+	}
+	catch (cuda_runtime_error const& _e)
+	{
+		cwarn << "Fatal GPU error: " << _e.what();
+		cwarn << "Terminating.";
+		exit(-1);
 	}
 	catch (std::runtime_error const& _e)
 	{
