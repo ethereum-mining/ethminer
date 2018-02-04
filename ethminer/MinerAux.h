@@ -45,7 +45,6 @@
 #endif
 #include <libpoolprotocols/PoolManager.h>
 #include <libpoolprotocols/stratum/EthStratumClient.h>
-#include <libpoolprotocols/stratum/EthStratumClientV2.h>
 #include <libpoolprotocols/getwork/EthGetworkClient.h>
 
 #if ETH_DBUS
@@ -602,8 +601,10 @@ public:
 	{
 		_out
 			<< "Work farming mode:" << endl
+			<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
 			<< "    -FF,-FO, --farm-failover, --stratum-failover <url> Failover getwork/stratum URL (default: disabled)" << endl
 			<< "	--farm-retries <n> Number of retries until switch to failover (default: 3)" << endl
+			<< "	-S, --stratum <host:port>  Put into stratum mode with the stratum server at host:port" << endl
 			<< "	-SF, --stratum-failover <host:port>  Failover stratum server at host:port" << endl
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
@@ -821,10 +822,10 @@ private:
 	{
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index) { return new CLMiner(_farm, _index); } };
+		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index) { return new CUDAMiner(_farm, _index); } };
+		sealers["cuda"] = Farm::SealerDescriptor{&CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); }};
 #endif
 
 		PoolClient *client = nullptr;

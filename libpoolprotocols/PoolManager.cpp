@@ -43,20 +43,25 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 	});
 	p_client->onSolutionAccepted([&](bool const& stale)
 	{
-		cnote << EthLime << "B-) Submitted and accepted." << EthReset << (stale ? " (stale)" : "");
+		using namespace std::chrono;
+		auto ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_time);
+		cnote << EthLime "**Accepted" EthReset << (stale ? " (stale)" : "") << " in" << ms.count() << "ms.";
 		m_farm.acceptedSolution(stale);
 	});
 	p_client->onSolutionRejected([&](bool const& stale)
 	{
-		cwarn << ":-( Not accepted." << (stale ? " (stale)" : "");
+		using namespace std::chrono;
+		auto ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_time);
+		cwarn << EthRed "**Rejected" EthReset << (stale ? " (stale)" : "") << " in" << ms.count() << "ms.";
 		m_farm.rejectedSolution(stale);
 	});
 
 	m_farm.onSolutionFound([&](Solution sol)
 	{
+		m_submit_time = std::chrono::steady_clock::now();
 		cnote << "Solution found; Submitting to " + m_connections[m_activeConnectionIdx].host() << "...";
 		cnote << "  Nonce:" << toHex(sol.nonce);
-		//cnote << "  headerHash:" << sol.headerHash.hex();
+		//cnote << "  headerHash:" << sol.work.header.hex();
 		//cnote << "  mixHash:" << sol.mixHash.hex();
 		p_client->submitSolution(sol);
 		return false;
