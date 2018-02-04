@@ -1,8 +1,8 @@
 #ifndef POOL_CLIENT_H_
 #define POOL_CLIENT_H_
 
-#include "Farm.h"
-#include "Miner.h"
+#include <libethcore/Farm.h>
+#include <libethcore/Miner.h>
 
 using namespace std;
 

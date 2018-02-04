@@ -3,8 +3,9 @@
 
 #include <iostream>
 #include <libdevcore/Worker.h>
-#include "Farm.h"
-#include "Miner.h"
+#include <libethcore/Farm.h>
+#include <libethcore/Miner.h>
+
 #include "PoolClient.h"
 #if ETH_DBUS
 #include "DBusInt.h"

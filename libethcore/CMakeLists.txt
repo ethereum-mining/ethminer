@@ -4,8 +4,6 @@ set(SOURCES
 	Exceptions.h
 	Farm.h
 	Miner.h Miner.cpp
-	PoolManager.h PoolManager.cpp
-	PoolClient.h PoolClient.cpp
 )
 
 include_directories(BEFORE ..)

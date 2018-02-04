@@ -2,10 +2,10 @@
 #define ETH_GETWORK_CLIENT_H_
 
 #include <jsonrpccpp/client/connectors/httpclient.h>
-#include <libethcore/PoolClient.h>
 #include <iostream>
 #include <libdevcore/Worker.h>
 #include "jsonrpc_getwork.h"
+#include "../PoolClient.h"
 
 using namespace std;
 using namespace dev;

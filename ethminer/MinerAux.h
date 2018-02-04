@@ -43,10 +43,10 @@
 #if ETH_ETHASHCUDA
 #include <libethash-cuda/CUDAMiner.h>
 #endif
-#include <libethcore/PoolManager.h>
-#include <libstratum/EthStratumClient.h>
-#include <libstratum/EthStratumClientV2.h>
-#include <libgetwork/EthGetworkClient.h>
+#include <libpoolprotocols/PoolManager.h>
+#include <libpoolprotocols/stratum/EthStratumClient.h>
+#include <libpoolprotocols/stratum/EthStratumClientV2.h>
+#include <libpoolprotocols/getwork/EthGetworkClient.h>
 
 #if ETH_DBUS
 #include "DBusInt.h"
