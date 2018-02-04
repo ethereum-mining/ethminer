@@ -92,6 +92,7 @@ void CUDAMiner::workLoop()
 	WorkPackage current;
 	current.header = h256{1u};
 	current.seed = h256{1u};
+
 	try
 	{
 		while(true)
@@ -108,10 +109,8 @@ void CUDAMiner::workLoop()
 					continue;
 				}
 				if (current.seed != w.seed)
-				{
 					if(!init(w.seed))
 						break;
-				}
 				current = w;
 			}
 			uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)current.boundary >> 192);
@@ -122,10 +121,14 @@ void CUDAMiner::workLoop()
 
 			// Check if we should stop.
 			if (shouldStop())
-			{
 				break;
-			}
 		}
+	}
+	catch (cuda_runtime_error const& _e)
+	{
+		cwarn << "Fatal GPU error: " << _e.what();
+		cwarn << "Terminating.";
+		exit(-1);
 	}
 	catch (std::runtime_error const& _e)
 	{
@@ -212,7 +215,8 @@ bool CUDAMiner::configureGPU(
 	unsigned _scheduleFlag,
 	uint64_t _currentBlock,
 	unsigned _dagLoadMode,
-	unsigned _dagCreateDevice
+	unsigned _dagCreateDevice,
+	bool _noeval
 	)
 {
 	s_dagLoadMode = _dagLoadMode;
@@ -225,7 +229,8 @@ bool CUDAMiner::configureGPU(
 		_gridSize,
 		_numStreams,
 		_scheduleFlag,
-		_currentBlock)
+		_currentBlock,
+		_noeval)
 		)
 	{
 		cout << "No CUDA device with sufficient memory was found. Can't CUDA mine. Remove the -U argument" << endl;
@@ -250,7 +255,8 @@ bool CUDAMiner::cuda_configureGPU(
 	unsigned _gridSize,
 	unsigned _numStreams,
 	unsigned _scheduleFlag,
-	uint64_t _currentBlock
+	uint64_t _currentBlock,
+	bool _noeval
 	)
 {
 	try
@@ -259,6 +265,7 @@ bool CUDAMiner::cuda_configureGPU(
 		s_gridSize = _gridSize;
 		s_numStreams = _numStreams;
 		s_scheduleFlag = _scheduleFlag;
+		s_noeval = _noeval;
 
 		cudalog << "Using grid size " << s_gridSize << ", block size " << s_blockSize;
 
@@ -296,6 +303,7 @@ unsigned CUDAMiner::s_blockSize = CUDAMiner::c_defaultBlockSize;
 unsigned CUDAMiner::s_gridSize = CUDAMiner::c_defaultGridSize;
 unsigned CUDAMiner::s_numStreams = CUDAMiner::c_defaultNumStreams;
 unsigned CUDAMiner::s_scheduleFlag = 0;
+bool CUDAMiner::s_noeval = false;
 
 bool CUDAMiner::cuda_init(
 	size_t numDevices,
@@ -492,14 +500,16 @@ void CUDAMiner::search(
 					found_count = SEARCH_RESULTS;
 				for (unsigned int j = 0; j < found_count; j++) {
 					nonces[j] = nonce_base + buffer->result[j].gid;
-					mixes[j][0] = buffer->result[j].mix[0];
-					mixes[j][1] = buffer->result[j].mix[1];
-					mixes[j][2] = buffer->result[j].mix[2];
-					mixes[j][3] = buffer->result[j].mix[3];
-					mixes[j][4] = buffer->result[j].mix[4];
-					mixes[j][5] = buffer->result[j].mix[5];
-					mixes[j][6] = buffer->result[j].mix[6];
-					mixes[j][7] = buffer->result[j].mix[7];
+					if (s_noeval) {
+						mixes[j][0] = buffer->result[j].mix[0];
+						mixes[j][1] = buffer->result[j].mix[1];
+						mixes[j][2] = buffer->result[j].mix[2];
+						mixes[j][3] = buffer->result[j].mix[3];
+						mixes[j][4] = buffer->result[j].mix[4];
+						mixes[j][5] = buffer->result[j].mix[5];
+						mixes[j][6] = buffer->result[j].mix[6];
+						mixes[j][7] = buffer->result[j].mix[7];
+					}
 				}
 			}
 		}
@@ -508,11 +518,20 @@ void CUDAMiner::search(
 		{
 			if (found_count)
 				for (uint32_t i = 0; i < found_count; i++)
-					farm.submitProof(
-						Solution{nonces[i],
-						*((const h256 *)mixes[i]),
-						w,
-						m_abort});
+					if (s_noeval)
+						farm.submitProof(Solution{nonces[i], *((const h256 *)mixes[i]), w, m_abort});
+					else
+					{
+						Result r = EthashAux::eval(w.seed, w.header, nonces[i]);
+						if (r.value < w.boundary)
+							farm.submitProof(Solution{nonces[i], r.mixHash, w, m_abort});
+						else
+						{
+							farm.failedSolution();
+							cwarn << "GPU gave incorrect result!";
+						}
+					}
+
 			addHashCount(batch_size);
 			bool t = true;
 			if (m_abort.compare_exchange_strong(t, false))

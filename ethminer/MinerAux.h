@@ -168,8 +168,10 @@ public:
 		{
 			try {
 				m_stratumClientVersion = atoi(argv[++i]);
-				if (m_stratumClientVersion > 2) m_stratumClientVersion = 2;
-				else if (m_stratumClientVersion < 1) m_stratumClientVersion = 1;
+				if (m_stratumClientVersion != 1) {
+					cerr << "Stratum " << m_stratumClientVersion << " not supported" << endl;
+					throw BadArgument();
+				}
 			}
 			catch (...)
 			{
@@ -407,6 +409,8 @@ public:
 		}
 		else if (arg == "--cuda-streams" && i + 1 < argc)
 			m_numStreams = stol(argv[++i]);
+		else if (arg == "--cuda-noeval")
+			m_cudaNoEval = true;
 #endif
 		else if ((arg == "-L" || arg == "--dag-load-mode") && i + 1 < argc)
 		{
@@ -585,7 +589,8 @@ public:
 				m_cudaSchedule,
 				0,
 				m_dagLoadMode,
-				m_dagCreateDevice
+				m_dagCreateDevice,
+				m_cudaNoEval
 				))
 				exit(1);
 
@@ -617,7 +622,7 @@ public:
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
 			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
-			<< "    -SC, --stratum-client <n>  Stratum client version. Defaults to 1 (async client). Use 2 to use the new synchronous client." << endl
+			<< "    -SC, --stratum-client <n>  Stratum client version. Version 1 support only." << endl
 			<< "    -SP, --stratum-protocol <n> Choose which stratum protocol to use:" << endl
 			<< "        0: official stratum spec: ethpool, ethermine, coinotron, mph, nanopool (default)" << endl
 			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for hashrate reporting to work with nanopool)" << endl
@@ -671,6 +676,10 @@ public:
 			<< "        sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device." << endl
 			<< "    --cuda-devices <0 1 ..n> Select which CUDA GPUs to mine on. Default is to use all" << endl
 			<< "    --cuda-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achieve better performance. Default=4" << endl
+			<< "    --cuda-noeval  bypass host software re-evalution of GPU solutions." << endl
+			<< "        This will trim some milliseconds off the time it takes to send a result to the pool." << endl
+			<< "        Use at your own risk! If GPU generates errored results they WILL be forwarded to the pool" << endl
+			<< "        Not recommended at high overclock." << endl
 #endif
 #if API_CORE
 			<< " API core configuration:" << endl
@@ -685,8 +694,7 @@ private:
 	{
 		BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
-		genesis.setDifficulty(1 << 18);
-		cdebug << genesis.boundary();
+		genesis.setDifficulty(1 << 64);
 
 		Farm f;
 		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
@@ -706,22 +714,26 @@ private:
 		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
 		//genesis.prep();
 
-		genesis.setDifficulty(u256(1) << 63);
 		if (_m == MinerType::CL)
 			f.start("opencl", false);
 		else if (_m == MinerType::CUDA)
 			f.start("cuda", false);
-		f.setWork(WorkPackage{genesis});
+
+		WorkPackage current = WorkPackage(genesis);
+		
 
 		map<uint64_t, WorkingProgress> results;
 		uint64_t mean = 0;
 		uint64_t innerMean = 0;
 		for (unsigned i = 0; i <= _trials; ++i)
 		{
+			current.header = h256::random();
+			current.boundary = genesis.boundary();
+			f.setWork(current);	
 			if (!i)
 				cout << "Warming up..." << endl;
 			else
-				cout << "Trial " << i << "... " << flush;
+				cout << "Trial " << i << "... " << flush <<endl;
 			this_thread::sleep_for(chrono::seconds(i ? _trialDuration : _warmupDuration));
 
 			auto mp = f.miningProgress();
@@ -733,7 +745,6 @@ private:
 			results[rate] = mp;
 			mean += rate;
 		}
-		f.stop();
 		int j = -1;
 		for (auto const& r: results)
 			if (++j > 0 && j < (int)_trials - 1)
@@ -749,8 +760,7 @@ private:
 	{
 		BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
-		genesis.setDifficulty(1 << 18);
-		cdebug << genesis.boundary();
+		genesis.setDifficulty(u256(1) << difficulty);
 
 		Farm f;
 		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
@@ -769,7 +779,7 @@ private:
 		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
 		//genesis.prep();
 
-		genesis.setDifficulty(u256(1) << difficulty);
+		
 
 		if (_m == MinerType::CL)
 			f.start("opencl", false);
@@ -1068,6 +1078,7 @@ private:
 	unsigned m_cudaSchedule = 4; // sync
 	unsigned m_cudaGridSize = CUDAMiner::c_defaultGridSize;
 	unsigned m_cudaBlockSize = CUDAMiner::c_defaultBlockSize;
+	bool m_cudaNoEval = false;
 #endif
 	unsigned m_dagLoadMode = 0; // parallel
 	unsigned m_dagCreateDevice = 0;

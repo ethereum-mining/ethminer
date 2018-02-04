@@ -1,7 +1,9 @@
 #ifndef _ETHASH_CUDA_MINER_KERNEL_H_
 #define _ETHASH_CUDA_MINER_KERNEL_H_
 
-#include <stdio.h>
+#include <stdexcept>
+#include <string>
+#include <sstream>
 #include <stdint.h>
 #include <cuda_runtime.h>
 
@@ -78,17 +80,24 @@ void ethash_generate_dag(
 	int device
 	);
 
+struct cuda_runtime_error : public virtual std::runtime_error
+{
+	cuda_runtime_error( std::string msg ) : std::runtime_error(msg) {}
+};
 
-#define CUDA_SAFE_CALL(call)						\
-do {									\
-	cudaError_t err = call;						\
-	if (cudaSuccess != err) {					\
-		const char * errorString = cudaGetErrorString(err);	\
-		fprintf(stderr,						\
-			"CUDA error in func '%s' at line %i : %s.\n",	\
-			__FUNCTION__, __LINE__, errorString);		\
-		throw std::runtime_error(errorString);			\
-	}								\
+#define CUDA_SAFE_CALL(call)				\
+do {							\
+	cudaError_t err = call;				\
+	if (cudaSuccess != err) {			\
+		std::stringstream ss;			\
+		ss << "CUDA error in func " 		\
+			<< __FUNCTION__ 		\
+			<< " at line "			\
+			<< __LINE__			\
+			<< ' '				\
+			<< cudaGetErrorString(err);	\
+		throw cuda_runtime_error(ss.str());	\
+	}						\
 } while (0)
 
 #endif
