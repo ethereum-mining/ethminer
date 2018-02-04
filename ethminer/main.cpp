@@ -26,6 +26,10 @@
 #include "MinerAux.h"
 #include "BuildInfo.h"
 
+#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
+#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
+#endif
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -60,6 +64,26 @@ int main(int argc, char** argv)
 	setenv("GPU_MAX_HEAP_SIZE", "100");
 	setenv("GPU_MAX_ALLOC_PERCENT", "100");
 	setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
+
+#if defined(_WIN32)
+    // Set output mode to handle virtual terminal sequences
+	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (hOut == INVALID_HANDLE_VALUE)
+	{
+		return GetLastError();
+	}
+	
+	DWORD dwMode = 0;
+	if (!GetConsoleMode(hOut, &dwMode))
+	{
+		return GetLastError();
+	}
+	dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+	if (!SetConsoleMode(hOut, dwMode))
+	{
+		return GetLastError();
+	}
+#endif
 
 	MinerCLI m(MinerCLI::OperationMode::Farm);
 
