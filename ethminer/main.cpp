@@ -66,22 +66,17 @@ int main(int argc, char** argv)
 	setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
 
 #if defined(_WIN32)
-    // Set output mode to handle virtual terminal sequences
+	// Set output mode to handle virtual terminal sequences
+	// Only works on Windows 10, but most user should use it anyways
 	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	if (hOut == INVALID_HANDLE_VALUE)
+	if (hOut != INVALID_HANDLE_VALUE)
 	{
-		return GetLastError();
-	}
-	
-	DWORD dwMode = 0;
-	if (!GetConsoleMode(hOut, &dwMode))
-	{
-		return GetLastError();
-	}
-	dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-	if (!SetConsoleMode(hOut, dwMode))
-	{
-		return GetLastError();
+		DWORD dwMode = 0;
+		if (GetConsoleMode(hOut, &dwMode))
+		{
+			dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+			SetConsoleMode(hOut, dwMode);
+		}
 	}
 #endif
 
