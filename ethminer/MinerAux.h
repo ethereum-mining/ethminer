@@ -26,7 +26,6 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
-#include <signal.h>
 #include <random>
 
 #include <boost/algorithm/string.hpp>
