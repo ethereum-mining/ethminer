@@ -20,7 +20,6 @@ public:
 	void connect();
 	void disconnect();
 
-	bool isRunning() { return m_running; }
 	bool isConnected() { return m_connected; }
 
 	void submitHashrate(string const & rate);
@@ -39,3 +38,4 @@ private:
 };
 
 #endif
+

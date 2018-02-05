@@ -20,7 +20,6 @@ namespace dev
 
 			virtual void submitHashrate(string const & rate) = 0;
 			virtual void submitSolution(Solution solution) = 0;
-			virtual bool isRunning() = 0 ;
 			virtual bool isConnected() = 0;
 
 			using SolutionAccepted = std::function<void(bool const&)>;
@@ -38,7 +37,6 @@ namespace dev
 		protected:
 			bool m_authorized = false;
 			bool m_connected = false;
-			bool m_running = true;
 			string m_host;
 			string m_port;
 			string m_user;
@@ -55,3 +53,4 @@ namespace dev
 }
 
 #endif
+

@@ -42,7 +42,6 @@ namespace dev
 			void stop();
 			void setReconnectTries(unsigned const & reconnectTries) { m_reconnectTries = reconnectTries; };
 			bool isConnected() { return p_client->isConnected(); };
-			bool isRunning() { return p_client->isRunning(); };
 
 		private:
 			unsigned m_hashrateReportingTime = 10;
@@ -65,3 +64,4 @@ namespace dev
 }
 
 #endif
+
