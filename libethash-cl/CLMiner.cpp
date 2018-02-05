@@ -262,6 +262,7 @@ CLMiner::CLMiner(FarmFace& _farm, unsigned _index):
 
 CLMiner::~CLMiner()
 {
+	stopWorking();
 	kick_miner();
 }
 
