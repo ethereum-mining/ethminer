@@ -55,6 +55,7 @@ EthStratumClient::EthStratumClient(Farm* f, MinerType m, string const & host, st
 
 EthStratumClient::~EthStratumClient()
 {
+	m_running = false;
 	m_io_service.stop();
 	m_serviceThread.join();
 }
@@ -138,7 +139,6 @@ void EthStratumClient::disconnect()
 {
 	cnote << "Disconnecting";
 	m_connected.store(false, std::memory_order_relaxed);
-	m_running = false;
 	if (p_farm->isMining())
 	{
 		cnote << "Stopping farm";
