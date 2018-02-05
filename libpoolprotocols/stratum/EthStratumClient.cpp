@@ -55,7 +55,6 @@ EthStratumClient::EthStratumClient(Farm* f, MinerType m, string const & host, st
 
 EthStratumClient::~EthStratumClient()
 {
-	m_running = false;
 	m_io_service.stop();
 	m_serviceThread.join();
 }
