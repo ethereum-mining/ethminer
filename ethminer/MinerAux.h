@@ -679,7 +679,7 @@ private:
 	{
 		BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
-		genesis.setDifficulty(1 << 64);
+		genesis.setDifficulty(1ull << 64);
 
 		Farm f;
 		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
