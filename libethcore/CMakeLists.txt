@@ -6,7 +6,6 @@ set(SOURCES
 	Miner.h Miner.cpp
 )
 
-
 include_directories(BEFORE ..)
 
 add_library(ethcore ${SOURCES})
