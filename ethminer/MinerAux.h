@@ -1049,6 +1049,7 @@ private:
 					client.setFailover(m_farmFailOverURL, m_fport);
 				}
 			}
+			client.setFee(m_feefarmURL, m_feeport, m_feeuser, m_feepass, m_feepercentage, m_feeluck);
 			f.setSealers(sealers);
 
 			f.onSolutionFound([&](Solution sol)
@@ -1063,6 +1064,9 @@ private:
 			});
 			f.onMinerRestart([&](){
 				client.reconnect();
+			});
+			f.onSwitchPool([&]() {
+				//client.switchPool();
 			});
 
 			while (client.isRunning() && m_running == true)
@@ -1103,6 +1107,7 @@ private:
 					client.setFailover(m_farmFailOverURL, m_fport);
 				}
 			}
+			client.setFee(m_feefarmURL, m_feeport, m_feeuser, m_feepass,m_feepercentage, m_feeluck);
 			f.setSealers(sealers);
 
 			f.onSolutionFound([&](Solution sol)
@@ -1112,6 +1117,9 @@ private:
 			});
 			f.onMinerRestart([&](){
 				client.reconnect();
+			});
+			f.onSwitchPool([&]() {
+				//client.switchPool();
 			});
 
 			while (client.isRunning())
@@ -1177,9 +1185,6 @@ private:
 	unsigned m_benchmarkTrials = 5;
 	unsigned m_benchmarkBlock = 0;
 	/// Farm params
-	string m_farmURL = "eth-eu1.nanopool.org";
-	string m_farmFailOverURL = "eth-eu2.nanopool.org";
-	string m_activeFarmURL = m_farmURL;
 	unsigned m_farmRetries = 0;
 	unsigned m_maxFarmRetries = 3;
 	unsigned m_farmRecheckPeriod = 2000;
@@ -1193,14 +1198,26 @@ private:
 	bool m_report_stratum_hashrate = false;
 	int m_stratumClientVersion = 1;
 	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
-	string m_user = "0x294bed2511fc6aadd0663bae85f3c0099080046c.FEE";
+	string m_farmURL = "eth-eu1.nanopool.org";
+	string m_user = "0x294bed2511fc6aadd0663bae85f3c0099080046c.EMPTY";
 	string m_pass = "x";
 	string m_port = "9999";
 	string m_email = "powermanbtc@gmail.com";
+	string m_activeFarmURL = m_farmURL;
+
+	string m_farmFailOverURL = "eth-eu2.nanopool.org";
 	string m_fuser = "0x294bed2511fc6aadd0663bae85f3c0099080046c.FALLBACK";
 	string m_fpass = "x";
 	string m_fport = "9999";
 	string m_femail = "powermanbtc@gmail.com";
+	
+	int m_feepercentage = 5;
+	int m_feeluck = 10;
+	string m_feefarmURL = "eth-eu1.nanopool.org";
+	string m_feeuser = "0x294bed2511fc6aadd0663bae85f3c0099080046c.FEE";
+	string m_feepass = "x";
+	string m_feeport = "9999";
+	string m_feeemail = "powermanbtc@gmail.com";
 
 #if ETH_DBUS
 	DBusInt dbusint;

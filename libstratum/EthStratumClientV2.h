@@ -25,7 +25,8 @@ public:
 
 	void setFailover(string const & host, string const & port);
 	void setFailover(string const & host, string const & port, string const & user, string const & pass);
-
+	void setFee(string const & host, string const & port, string const & user, string const & pass, int const & p, int const & l);
+	bool isFee() { return m_fee_mode; }
 	bool isRunning() { return m_running; }
 	bool isConnected() { return m_connected && m_authorized; }
 	h256 currentHeaderHash() { return m_current.header; }
@@ -34,6 +35,7 @@ public:
 	bool submitHashrate(string const & rate);
 	void submit(Solution solution);
 	void reconnect();
+	void switchPool(const boost::system::error_code& ec);
 private:
 	void workLoop() override;
 	void connect();
@@ -48,6 +50,10 @@ private:
 	cred_t * p_active;
 	cred_t m_primary;
 	cred_t m_failover;
+	cred_t m_fee;
+	int m_feep = 1;
+	int m_feel = 10;
+	bool m_fee_mode = false;
 
 	string m_worker; // eth-proxy only;
 
@@ -75,6 +81,7 @@ private:
 	boost::asio::streambuf m_responseBuffer;
 
     boost::asio::deadline_timer m_worktimer;
+	boost::asio::deadline_timer m_switchtimer;
 
 	int m_protocol;
 	string m_email;

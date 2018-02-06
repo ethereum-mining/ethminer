@@ -169,11 +169,10 @@ public:
         WorkingProgress p;
         p.ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastStart).count();
         m_lastStart = now;
-
         // Collect
         for (auto const& i : m_miners)
         {
-            uint64_t minerHashCount = i->hashCount();
+			uint64_t minerHashCount = i->hashCount();
             p.hashes += minerHashCount;
             p.minersHashes.push_back(minerHashCount);
         }
@@ -217,10 +216,25 @@ public:
 			m_onMinerRestart();
 		}
 	}
+
+	void switchPool()
+	{
+		stop();
+		start(m_lastSealer, b_lastMixed);
+
+		if (m_onSwitchPool) {
+			m_onSwitchPool();
+		}
+	}
 		
 	bool isMining() const
 	{
 		return m_isMining;
+	}
+
+	bool isFee() const
+	{
+		return m_isFee;
 	}
 
     /**
@@ -233,6 +247,7 @@ public:
         WorkingProgress p;
         p.ms = 0;
         p.hashes = 0;
+		p.fee_mode = m_isFee;
         for (auto const& i : m_miners)
         {
             p.minersHashes.push_back(0);
@@ -287,6 +302,7 @@ public:
 
 	using SolutionFound = std::function<void(Solution const&)>;
 	using MinerRestart = std::function<void()>;
+	using SwitchPool = std::function<void()>;
 
 	/**
 	 * @brief Provides a valid header based upon that received previously with setWork().
@@ -295,6 +311,7 @@ public:
 	 */
 	void onSolutionFound(SolutionFound const& _handler) { m_onSolutionFound = _handler; }
 	void onMinerRestart(MinerRestart const& _handler) { m_onMinerRestart = _handler; }
+	void onSwitchPool(SwitchPool const& _handler) { m_onSwitchPool = _handler; }
 
 	WorkPackage work() const { Guard l(x_minerWork); return m_work; }
 
@@ -348,12 +365,14 @@ private:
 	std::vector<std::shared_ptr<Miner>> m_miners;
 	WorkPackage m_work;
 
-	std::atomic<bool> m_isMining = {false};
+	std::atomic<bool> m_isMining = { false };
+	std::atomic<bool> m_isFee = { false };
 
 	mutable WorkingProgress m_progress;
 
 	SolutionFound m_onSolutionFound;
 	MinerRestart m_onMinerRestart;
+	SwitchPool m_onSwitchPool;
 
 	std::map<std::string, SealerDescriptor> m_sealers;
 	std::string m_lastSealer;

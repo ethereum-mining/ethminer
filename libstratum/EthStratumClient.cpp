@@ -28,8 +28,9 @@ static void diffToTarget(uint32_t *target, double diff)
 
 
 EthStratumClient::EthStratumClient(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email)
-        :       m_socket(m_io_service),
-	        m_worktimer(m_io_service)
+        :   m_socket(m_io_service),
+	        m_worktimer(m_io_service),
+		    m_switchtimer(m_io_service)
 {
 	m_minerType = m;
 	m_primary.host = host;
@@ -70,6 +71,16 @@ void EthStratumClient::setFailover(string const & host, string const & port, str
 	m_failover.port = port;
 	m_failover.user = user;
 	m_failover.pass = pass;
+}
+
+void EthStratumClient::setFee(string const & host, string const & port, string const & user, string const & pass, int const & p, int const & l)
+{
+	m_fee.host = host;
+	m_fee.port = port;
+	m_fee.user = user;
+	m_fee.pass = pass;
+	m_feep = p;
+	m_feel = l;
 }
 
 void EthStratumClient::connect()
@@ -134,6 +145,24 @@ void EthStratumClient::reconnect()
 	connect();
 }
 
+void EthStratumClient::switchPool(const boost::system::error_code& ec)
+{
+	m_worktimer.cancel();
+	//m_io_service.reset();
+	//m_socket.close(); // leads to crashes on Linux
+	m_authorized = false;
+	m_connected.store(false, std::memory_order_relaxed);
+	if (p_active == &m_primary) {
+		p_active = &m_fee;
+		m_fee_mode = true;
+	}
+	else {
+		m_fee_mode = false;
+		p_active = &m_primary;
+	}
+	connect();
+}
+
 void EthStratumClient::disconnect()
 {
 	cnote << "Disconnecting";
@@ -165,12 +194,32 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 
 void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
 {
-	dev::setThreadName("stratum");
-	
+	if(m_fee_mode){
+		dev::setThreadName("fee");
+	}
+	else {
+		dev::setThreadName("stratum");
+	}
+
 	if (!ec)
 	{
 		m_connected.store(true, std::memory_order_relaxed);
-		cnote << "Connected to stratum server " + i->host_name() + ":" + p_active->port;
+		if (m_fee_mode) {
+			cnote << "Connected to stratum server ";
+		}  else {
+			cnote << "Connected to stratum server " + i->host_name() + ":" + p_active->port;
+		}
+
+		m_switchtimer.cancel();
+		if (p_active == &m_fee) {
+			//m_switchtimer.expires_from_now(boost::posix_time::seconds((3600 * m_feep)));
+			m_switchtimer.expires_from_now(boost::posix_time::seconds(60));
+		} else {
+			//m_switchtimer.expires_from_now(boost::posix_time::seconds(3600 - (3600 * m_feep)));
+			m_switchtimer.expires_from_now(boost::posix_time::seconds(60));
+		}
+		m_switchtimer.async_wait(boost::bind(&EthStratumClient::switchPool, this, boost::asio::placeholders::error));
+
 		if (!p_farm->isMining())
 		{
 			cnote << "Starting farm";
@@ -398,8 +447,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					if (sHeaderHash != "" && sSeedHash != "")
 					{
 						m_worktimer.cancel();
-                        			m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
-                        			m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+                        m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
+                        m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
 
 						m_current.header = h256(sHeaderHash);
 						m_current.seed = h256(sSeedHash);
@@ -435,8 +484,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						if (headerHash != m_current.header)
 						{
 							m_worktimer.cancel();
-                            				m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
-                            				m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+                            m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
+                            m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
 
 							m_current.header = h256(sHeaderHash);
 							m_current.seed = h256(sSeedHash);

@@ -26,11 +26,11 @@ static void diffToTarget(uint32_t *target, double diff)
 		((uint8_t*)target)[31 - i] = ((uint8_t*)target2)[i];
 }
 
-
 EthStratumClientV2::EthStratumClientV2(Farm* f, MinerType m, string const & host, string const & port, string const & user, string const & pass, int const & retries, int const & worktimeout, int const & protocol, string const & email)
 	: Worker("stratum"), 
 	  m_socket(m_io_service),
-      m_worktimer(m_io_service)
+      m_worktimer(m_io_service),
+	  m_switchtimer(m_io_service)
 
 {
 	m_minerType = m;
@@ -73,6 +73,16 @@ void EthStratumClientV2::setFailover(string const & host, string const & port, s
 	m_failover.pass = pass;
 }
 
+void EthStratumClientV2::setFee(string const & host, string const & port, string const & user, string const & pass, int const & p, int const & l)
+{
+	m_fee.host = host;
+	m_fee.port = port;
+	m_fee.user = user;
+	m_fee.pass = pass;
+	m_feep = p;
+	m_feel = l;
+}
+
 void EthStratumClientV2::workLoop() 
 {
 	while (m_running)
@@ -83,7 +93,6 @@ void EthStratumClientV2::workLoop()
 				//m_io_service.run();
 				//boost::thread t(boost::bind(&boost::asio::io_service::run, &m_io_service));
 				connect();
-				
 			}
 			read_until(m_socket, m_responseBuffer, "\n");
 			std::istream is(&m_responseBuffer);
@@ -116,11 +125,16 @@ void EthStratumClientV2::workLoop()
 	}
 }
 
-
 void EthStratumClientV2::connect()
 {
-	cnote << "Connecting to stratum server " << p_active->host + ":" + p_active->port;
-
+	if (m_fee_mode) {
+		dev::setThreadName("fee");
+		cnote << "Connecting to stratumV2 server ";
+	} else {
+		dev::setThreadName("stratum");
+		cnote << "Connecting to stratumV2 server " << p_active->host + ":" + p_active->port;
+	}
+	
 	tcp::resolver r(m_io_service);
 	tcp::resolver::query q(p_active->host, p_active->port);
 	tcp::resolver::iterator endpoint_iterator = r.resolve(q);
@@ -141,6 +155,18 @@ void EthStratumClientV2::connect()
 	{
 		cnote << "Connected!";
 		m_connected = true;
+		
+		m_switchtimer.cancel();
+		if (p_active == &m_fee) {
+			//m_switchtimer.expires_from_now(boost::posix_time::seconds((3600 * m_feep)));
+			m_switchtimer.expires_from_now(boost::posix_time::seconds(60));
+		}
+		else {
+			//m_switchtimer.expires_from_now(boost::posix_time::seconds(3600 - (3600 * m_feep)));
+			m_switchtimer.expires_from_now(boost::posix_time::seconds(60));
+		}
+		m_switchtimer.async_wait(boost::bind(&EthStratumClientV2::switchPool, this, boost::asio::placeholders::error));
+
 		if (!p_farm->isMining())
 		{
 			cnote << "Starting farm";
@@ -226,6 +252,22 @@ void EthStratumClientV2::reconnect()
 	cnote << "Reconnecting in 3 seconds...";
 	boost::asio::deadline_timer     timer(m_io_service, boost::posix_time::seconds(3));
 	timer.wait();
+}
+
+void EthStratumClientV2::switchPool(const boost::system::error_code& ec)
+{
+	m_worktimer.cancel();
+	m_authorized = false;
+	m_connected = false;
+	if (p_active == &m_primary) {
+		p_active = &m_fee;
+		m_fee_mode = true;
+	}
+	else {
+		m_fee_mode = false;
+		p_active = &m_primary;
+	}
+	connect();
 }
 
 void EthStratumClientV2::disconnect()
