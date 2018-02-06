@@ -6,7 +6,7 @@
 #include "CLMiner.h"
 #include <libethash/internal.h>
 #include "CLMiner_kernel_stable.h"
-#include "CLMiner_kernel_unstable.h"
+#include "CLMiner_kernel_experimental.h"
 
 using namespace dev;
 using namespace eth;
@@ -630,7 +630,7 @@ bool CLMiner::init(const h256& seed)
 
 		if ( s_clKernelName == CLKernelName::Unstable ) {
 			cllog << "OpenCL kernel: Unstable kernel";
-			code = string(CLMiner_kernel_unstable, CLMiner_kernel_unstable + sizeof(CLMiner_kernel_unstable));
+			code = string(CLMiner_kernel_experimental, CLMiner_kernel_experimental + sizeof(CLMiner_kernel_experimental));
 		}
 		else { //if(s_clKernelName == CLKernelName::Stable)
 			cllog << "OpenCL kernel: Stable kernel";
