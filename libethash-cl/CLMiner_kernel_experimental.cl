@@ -32,7 +32,7 @@
 
 // Either 8, 4, 2, or 1
 #ifndef THREADS_PER_HASH
-    #define THREADS_PER_HASH 1
+    #define THREADS_PER_HASH 2
 #endif
 #define HASHES_PER_LOOP (GROUP_SIZE / THREADS_PER_HASH)
 
