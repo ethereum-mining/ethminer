@@ -34,16 +34,10 @@ using namespace boost::algorithm;
 
 void help()
 {
-	cout
-<<<<<<< HEAD
-		<< "Usage ethNipper (FPGA OpenCL) [OPTIONS]" << endl
-=======
-		<< "Usage ethminer [OPTIONS]" << endl
->>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
+	cout << "Usage ethNipper (FPGA OpenCL) [OPTIONS]" << endl
 		<< "Options:" << endl << endl;
 	MinerCLI::streamHelp(cout);
-	cout
-		<< "General Options:" << endl
+	cout << "General Options:" << endl
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 8)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 		<< "    -h,--help  Show this help message and exit." << endl
@@ -53,7 +47,6 @@ void help()
 
 void version()
 {
-<<<<<<< HEAD
 	cout << "ethNipper Version: " << ETH_PROJECT_VERSION << endl;
 	cout << "Build: " << ETH_BUILD_PLATFORM << "/" << ETH_BUILD_TYPE << endl;
 	cout << "-- OpenCL CPU Kernel --" << endl;
@@ -67,10 +60,6 @@ void version()
 	cout << "GPU: ATi/AMD Vega            (RX Vega64)" << endl;
 	cout << "-- OpenCL FPGA Kernel --" << endl;
 	cout << "ACC: Altera/Intel Stratix V  (Terasic TR5-F45M)" << endl;
-=======
-	cout << "ethminer version " << ETH_PROJECT_VERSION << endl;
-	cout << "Build: " << ETH_BUILD_PLATFORM << "/" << ETH_BUILD_TYPE << endl;
->>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 	exit(0);
 }
 
@@ -104,9 +93,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-<<<<<<< HEAD
-	m.execute();
-=======
+
 	try
 	{
 		m.execute();
@@ -116,7 +103,6 @@ int main(int argc, char** argv)
 		std::cerr << "Error: " << ex.what() << "\n";
 		return 1;
 	}
->>>>>>> d7d14d64648833064eef1cd52de7dec65641c1c7
 
 	return 0;
 }
