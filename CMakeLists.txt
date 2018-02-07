@@ -142,7 +142,7 @@ add_subdirectory(libdevcore)
 add_subdirectory(libethash)
 add_subdirectory(libethcore)
 add_subdirectory(libhwmon)
-add_subdirectory(libstratum)
+add_subdirectory(libpoolprotocols)
 
 if (ETHASHCL)
 	add_subdirectory(libethash-cl)

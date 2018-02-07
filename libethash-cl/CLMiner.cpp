@@ -6,7 +6,7 @@
 #include "CLMiner.h"
 #include <libethash/internal.h>
 #include "CLMiner_kernel_stable.h"
-#include "CLMiner_kernel_unstable.h"
+#include "CLMiner_kernel_experimental.h"
 
 using namespace dev;
 using namespace eth;
@@ -647,12 +647,15 @@ bool CLMiner::init(const h256& seed)
 		// TODO: Just use C++ raw string literal.
 		string code;
 
-		if ( s_clKernelName == CLKernelName::Unstable ) {
-			cllog << "OpenCL kernel: Unstable kernel";
-			code = string(CLMiner_kernel_unstable, CLMiner_kernel_unstable + sizeof(CLMiner_kernel_unstable));
-
-		} else { // Binary or "Stable" kernel, we use the "stable" kernel as a fallback if the binary one cant be loaded
+		if { // Binary or "Stable" kernel, we use the "stable" kernel as a fallback if the binary one cant be loaded
 			cllog << "OpenCL kernel: " <<  (s_clKernelName == CLKernelName::Binary ?  "Binary" : "Stable") << " kernel";
+	        }
+		else {
+                        cllog << "OpenCL kernel: Experimental kernel";
+			code = string(CLMiner_kernel_experimental, CLMiner_kernel_experimental + sizeof(CLMiner_kernel_experimental));
+		}
+		else {
+			cllog << "OpenCL kernel: Stable kernel";
 
 			//CLMiner_kernel_stable.cl will do a #undef THREADS_PER_HASH
 			if(s_threadsPerHash != 8) {

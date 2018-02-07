@@ -43,9 +43,10 @@
 #if ETH_ETHASHCUDA
 #include <libethash-cuda/CUDAMiner.h>
 #endif
-#include <jsonrpccpp/client/connectors/httpclient.h>
-#include "FarmClient.h"
-#include <libstratum/EthStratumClient.h>
+#include <libpoolprotocols/PoolManager.h>
+#include <libpoolprotocols/stratum/EthStratumClient.h>
+#include <libpoolprotocols/getwork/EthGetworkClient.h>
+
 #if ETH_DBUS
 #include "DBusInt.h"
 #endif
@@ -603,7 +604,7 @@ public:
 		if (mode == OperationMode::Benchmark)
 			doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
 		else if (mode == OperationMode::Farm)
-			doFarm(m_minerType, m_activeFarmURL, m_farmRecheckPeriod);
+			doMiner();
 		else if (mode == OperationMode::Simulation)
 			doSimulation(m_minerType);
 		else if (mode == OperationMode::Stratum)
@@ -656,8 +657,8 @@ public:
 			<< " OpenCL configuration:" << endl
 			<< "    --cl-kernel <n>  Use a different OpenCL kernel (default: use stable kernel)" << endl
 			<< "        0: stable kernel" << endl
-			<< "        1: unstable kernel" << endl
-			<< "        2: experimental kernel" << endl
+			<< "        1: experimental kernel" << endl
+			<< "        2: binary kernel" << endl
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << CLMiner::c_defaultLocalWorkSize << endl
 			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << CLMiner::c_defaultGlobalWorkSizeMultiplier << " * " << CLMiner::c_defaultLocalWorkSize << endl
 			<< "        You may also specify auto for optimal Radeon value based on configuration." << endl
@@ -694,7 +695,7 @@ private:
 	{
 		BlockHeader genesis;
 		genesis.setNumber(m_benchmarkBlock);
-		genesis.setDifficulty(1 << 64);
+		genesis.setDifficulty(u256(1) << 64);
 
 		Farm f;
 		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
@@ -833,153 +834,75 @@ private:
 		}
 	}
 
-
-	void doFarm(MinerType _m, string & _remote, unsigned _recheckPeriod)
+	void doMiner()
 	{
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
 		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
 #endif
 #if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
+		sealers["cuda"] = Farm::SealerDescriptor{&CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); }};
 #endif
-		(void)_m;
-		(void)_remote;
-		(void)_recheckPeriod;
-		jsonrpc::HttpClient client(m_farmURL);
-		:: FarmClient rpc(client);
-		jsonrpc::HttpClient failoverClient(m_farmFailOverURL);
-		::FarmClient rpcFailover(failoverClient);
 
-		FarmClient * prpc = &rpc;
+		PoolClient *client = nullptr;
 
-		h256 id = h256::random();
+		if (mode == OperationMode::Stratum) {
+			// Not Yet
+		}
+		else if (mode == OperationMode::Farm) {
+			client = new EthGetworkClient(m_farmRecheckPeriod);
+		}
+		else {
+			cwarn << "Invalid OperationMode";
+			exit(1);
+		}
+
+		// Should not happen!
+		if (!client) {
+			cwarn << "Invalid PoolClient";
+			exit(1);
+		}
+
+		//sealers, m_minerType
 		Farm f;
-		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
+		f.setSealers(sealers);
+
+		PoolManager mgr(client, f, m_minerType);
+		mgr.setReconnectTries(m_maxFarmRetries);
+		mgr.addConnection(m_farmURL, m_port, m_user, m_pass);
+		if (!m_farmFailOverURL.empty()) {
+			mgr.addConnection(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
+		}
+
 
 #if API_CORE
 		Api api(this->m_api_port, f);
 #endif
 
-		f.setSealers(sealers);
+		// Start PoolManager
+		mgr.start();
 
-		if (_m == MinerType::CL)
-			f.start("opencl", false);
-		else if (_m == MinerType::CUDA)
-			f.start("cuda", false);
-		else if (_m == MinerType::Mixed) {
-			f.start("cuda", false);
-			f.start("opencl", true);
+		// Run CLI in loop
+		while (m_running) {
+			if (mgr.isConnected()) {
+				auto mp = f.miningProgress(m_show_hwmonitors);
+				minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
+
+#if ETH_DBUS
+				dbusint.send(toString(mp).data());
+#endif
+			}
+			else {
+				minelog << "not-connected";
+			}
+			this_thread::sleep_for(chrono::seconds(5));
 		}
 
-		WorkPackage current;
-		std::mutex x_current;
-		while (m_running)
-			try
-			{
-				bool completed = false;
-				Solution solution;
-				f.onSolutionFound([&](Solution sol)
-				{
-					solution = sol;
-					return completed = true;
-				});
-				for (unsigned i = 0; !completed; ++i)
-				{
-					auto mp = f.miningProgress(m_show_hwmonitors);
-					if (current)
-					{
-						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
-#if ETH_DBUS
-						dbusint.send(toString(mp).data());
-#endif
-					}
-					else
-						minelog << "Waiting for work package...";
+		mgr.stop();
 
-					auto rate = mp.rate();
-
-					try
-					{
-						prpc->eth_submitHashrate(toJS(rate), "0x" + id.hex());
-					}
-					catch (jsonrpc::JsonRpcException const& _e)
-					{
-						cwarn << "Failed to submit hashrate.";
-						cwarn << boost::diagnostic_information(_e);
-					}
-
-					Json::Value v = prpc->eth_getWork();
-					h256 hh(v[0].asString());
-					h256 newSeedHash(v[1].asString());
-
-					if (hh != current.header)
-					{
-						x_current.lock();
-						current.header = hh;
-						current.seed = newSeedHash;
-						current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
-						minelog << "Got work package: #" + current.header.hex().substr(0,8);
-						f.setWork(current);
-						x_current.unlock();
-					}
-					this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
-				}
-				bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.work.header), "0x" + toString(solution.mixHash));
-				if (ok) {
-					cnote << "Solution found; Submitted to" << _remote;
-					cnote << "  Nonce:" << solution.nonce;
-					cnote << "  headerHash:" << solution.work.header.hex();
-					cnote << "  mixHash:" << solution.mixHash.hex();
-					cnote << EthLime << " Accepted." << EthReset;
-					f.acceptedSolution(solution.stale);
-				}
-				else {
-					cwarn << "Solution found; Submitted to" << _remote;
-					cwarn << "  Nonce:" << solution.nonce;
-					cwarn << "  headerHash:" << solution.work.header.hex();
-					cwarn << "  mixHash:" << solution.mixHash.hex();
-					cwarn << EthYellow << " Rejected." << EthReset;
-					f.rejectedSolution(solution.stale);
-				}
-			}
-			catch (jsonrpc::JsonRpcException&)
-			{
-				if (m_maxFarmRetries > 0)
-				{
-					for (auto i = 3; --i; this_thread::sleep_for(chrono::seconds(1)))
-						cerr << "JSON-RPC problem. Probably couldn't connect. Retrying in " << i << "... \r";
-					cerr << endl;
-				}
-				else
-				{
-					cerr << "JSON-RPC problem. Probably couldn't connect." << endl;
-				}
-				if (m_farmFailOverURL != "")
-				{
-					m_farmRetries++;
-					if (m_farmRetries > m_maxFarmRetries)
-					{
-						if (_remote == "exit")
-						{
-							m_running = false;
-						}
-						else if (_remote == m_farmURL) {
-							_remote = m_farmFailOverURL;
-							prpc = &rpcFailover;
-						}
-						else {
-							_remote = m_farmURL;
-							prpc = &rpc;
-						}
-						m_farmRetries = 0;
-					}
-
-				}
-			}
 		exit(0);
 	}
-
+	
 	void doStratum()
 	{
 		map<string, Farm::SealerDescriptor> sealers;
@@ -1027,7 +950,7 @@ private:
 				client.reconnect();
 			});
 
-			while (client.isRunning())
+			while (true)
 			{
 				auto mp = f.miningProgress(m_show_hwmonitors);
 				if (client.isConnected())
