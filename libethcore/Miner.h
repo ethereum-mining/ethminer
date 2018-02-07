@@ -63,6 +63,19 @@ enum class MinerType
 	CUDA
 };
 
+enum class HwMonitorInfoType
+{
+	UNKNOWN,
+	NVIDIA,
+	AMD
+};
+
+struct HwMonitorInfo
+{
+	HwMonitorInfoType deviceType;
+	int deviceIndex;
+};
+
 struct HwMonitor
 {
 	int tempC = 0;
@@ -113,7 +126,6 @@ public:
 
 	void acceptedStale() { acceptedStales++; }
 	void rejectedStale() { rejectedStales++; }
-
 
 	void reset() { accepts = rejects = failures = acceptedStales = rejectedStales = 0; }
 
@@ -188,9 +200,8 @@ public:
 
 	void resetHashCount() { m_hashCount.store(0, std::memory_order_relaxed); }
 
-	virtual HwMonitor hwmon() = 0;
-
 	unsigned Index() { return index; };
+	HwMonitorInfo hwmonInfo() { return m_hwmoninfo; }
 
 	uint64_t get_start_nonce()
 	{
@@ -217,7 +228,7 @@ protected:
 	const size_t index = 0;
 	FarmFace& farm;
 	std::chrono::high_resolution_clock::time_point workSwitchStart;
-
+	HwMonitorInfo m_hwmoninfo;
 private:
 	std::atomic<uint64_t> m_hashCount = {0};
 

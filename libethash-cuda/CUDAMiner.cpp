@@ -195,19 +195,6 @@ void CUDAMiner::listDevices()
 	}
 }
 
-HwMonitor CUDAMiner::hwmon()
-{
-	dev::eth::HwMonitor hw;
-	if (nvmlh) {
-		unsigned int tempC = 0, fanpcnt = 0;
-		wrap_nvml_get_tempC(nvmlh, nvmlh->cuda_nvml_device_id[m_device_num], &tempC);
-		wrap_nvml_get_fanpcnt(nvmlh, nvmlh->cuda_nvml_device_id[m_device_num], &fanpcnt);
-		hw.tempC = tempC;
-		hw.fanP = fanpcnt;
-	}
-	return hw;
-}
-
 bool CUDAMiner::configureGPU(
 	unsigned _blockSize,
 	unsigned _gridSize,
@@ -322,7 +309,8 @@ bool CUDAMiner::cuda_init(
 
 		// use selected device
 		m_device_num = _deviceId < numDevices -1 ? _deviceId : numDevices - 1;
-		nvmlh = wrap_nvml_create();
+		m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
+		m_hwmoninfo.deviceIndex = m_device_num;
 
 		cudaDeviceProp device_props;
 		CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, m_device_num));

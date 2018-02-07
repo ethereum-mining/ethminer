@@ -8,11 +8,6 @@
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
-#include <libhwmon/wrapnvml.h>
-#include <libhwmon/wrapadl.h>
-#if defined(__linux)
-#include <libhwmon/wrapamdsysfs.h>
-#endif
 
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS true
 #define CL_HPP_ENABLE_EXCEPTIONS true
@@ -82,7 +77,6 @@ public:
 		}
 	}
 	static void setCLKernel(unsigned _clKernel) { s_clKernelName = _clKernel == 1 ? CLKernelName::Experimental : CLKernelName::Stable; }
-	HwMonitor hwmon() override;
 protected:
 	void kick_miner() override;
 
@@ -113,12 +107,6 @@ private:
 	static unsigned s_workgroupSize;
 	/// The initial global work size for the searches
 	static unsigned s_initialGlobalWorkSize;
-
-	wrap_nvml_handle *nvmlh = NULL;
-	wrap_adl_handle *adlh = NULL;
-#if defined(__linux)
-	wrap_amdsysfs_handle *sysfsh = NULL;
-#endif
 };
 
 }
