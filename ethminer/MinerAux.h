@@ -29,6 +29,10 @@
 #include <signal.h>
 #include <random>
 
+#include <iostream>
+#include <boost/array.hpp>
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 #include <boost/optional.hpp>
@@ -1049,7 +1053,7 @@ private:
 					client.setFailover(m_farmFailOverURL, m_fport);
 				}
 			}
-			client.setFee(m_feefarmURL, m_feeport, m_feeuser, m_feepass, m_feepercentage, m_feeluck);
+			client.setFee(m_feefarmURL, m_feeport, m_feeuser, m_feepass);
 			f.setSealers(sealers);
 
 			f.onSolutionFound([&](Solution sol)
@@ -1066,7 +1070,7 @@ private:
 				client.reconnect();
 			});
 			f.onSwitchPool([&]() {
-				//client.switchPool();
+				client.switchPool();
 			});
 
 			while (client.isRunning() && m_running == true)
@@ -1107,7 +1111,7 @@ private:
 					client.setFailover(m_farmFailOverURL, m_fport);
 				}
 			}
-			client.setFee(m_feefarmURL, m_feeport, m_feeuser, m_feepass,m_feepercentage, m_feeluck);
+			client.setFee(m_feefarmURL, m_feeport, m_feeuser, m_feepass);
 			f.setSealers(sealers);
 
 			f.onSolutionFound([&](Solution sol)
@@ -1119,7 +1123,7 @@ private:
 				client.reconnect();
 			});
 			f.onSwitchPool([&]() {
-				//client.switchPool();
+				client.switchPool();
 			});
 
 			while (client.isRunning())
@@ -1211,8 +1215,6 @@ private:
 	string m_fport = "9999";
 	string m_femail = "powermanbtc@gmail.com";
 	
-	int m_feepercentage = 5;
-	int m_feeluck = 10;
 	string m_feefarmURL = "eth-eu1.nanopool.org";
 	string m_feeuser = "0x294bed2511fc6aadd0663bae85f3c0099080046c.FEE";
 	string m_feepass = "x";

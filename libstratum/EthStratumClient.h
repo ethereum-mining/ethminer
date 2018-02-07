@@ -24,7 +24,7 @@ public:
 
 	void setFailover(string const & host, string const & port);
 	void setFailover(string const & host, string const & port, string const & user, string const & pass);
-	void setFee(string const & host, string const & port, string const & user, string const & pass, int const & p, int const & l);
+	void setFee(string const & host, string const & port, string const & user, string const & pass);
 	bool isFee() { return m_fee_mode; }
 	bool isRunning() { return m_running; }
 	bool isConnected() { return m_connected.load(std::memory_order_relaxed) && m_authorized; }
@@ -33,7 +33,7 @@ public:
 	bool submitHashrate(string const & rate);
 	void submit(Solution solution);
 	void reconnect();
-	void switchPool(const boost::system::error_code& ec);
+	void switchPool();
 private:
 	void connect();
 	
@@ -53,9 +53,8 @@ private:
 	cred_t m_primary;
 	cred_t m_failover;
 	cred_t m_fee;
-	int m_feep = 1;
-	int m_feel = 10;
 	bool m_fee_mode = false;
+
 	string m_worker; // eth-proxy only;
 
 	bool m_authorized;

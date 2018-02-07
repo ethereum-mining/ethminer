@@ -82,6 +82,7 @@ struct WorkingProgress
 	uint64_t ms = 0;			///< Total number of milliseconds of mining thus far.
 	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
 	bool fee_mode = false;
+	int fee_timer = 0;
 	std::vector<string> minersNames;
 	std::vector<uint64_t> minersHashes;
 	std::vector<HwMonitor> minerMonitors;
@@ -95,21 +96,21 @@ inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 		 << EthTealBold << std::fixed << std::setw(6) << std::setprecision(2) << mh << EthReset
 		 << "Mh/s";
 	if (_p.fee_mode) {
-		_out << " Fee\n";
+		_out << "    Fee (" << _p.fee_timer << "s)\n";
 	} else {
-		_out << " No-Fee\n";
+		_out << " No-Fee (" << _p.fee_timer << "s)\n";
 	}
 	for (size_t i = 0; i < _p.minersHashes.size(); ++i)
 	{
 		mh = _p.minerRate(_p.minersHashes[i]) / 1000000.0f;
-		_out << "\t\t\t[" << i << "]" << _p.minersNames[i] << " -";
+		_out << "\t\t\t[" << i << "]" << std::fixed << std::setw(10) << _p.minersNames[i] << " -";
 		if (_p.minerMonitors.size() == _p.minersHashes.size()) {
-			_out << EthTeal << _p.minerMonitors[i] << EthReset;
+			_out << EthTeal << std::fixed << std::setw(10) << _p.minerMonitors[i] << EthReset;
 		}
 		else {
-			_out << EthTeal << "          " << EthReset;
+			_out << EthTeal << std::fixed << std::setw(10) << " " << EthReset;
 		}
-		_out << " -      " << EthTeal << std::fixed << std::setw(6) << std::setprecision(2) << mh << "Mh/s " << EthReset;
+		_out << " - " << EthTeal << std::fixed << std::setw(6) << std::setprecision(2) << mh << "Mh/s " << EthReset;
 		_out << "\n";
 	}
 

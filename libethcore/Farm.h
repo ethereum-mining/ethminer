@@ -23,6 +23,8 @@
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/date_time/posix_time/posix_time_io.hpp>
 #include <thread>
 #include <list>
 #include <atomic>
@@ -126,6 +128,10 @@ public:
 		m_lastSealer = _sealer;
 		b_lastMixed = mixed;
 
+		if (!p_feetimer) {
+			p_feetimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::seconds(60*5));
+			p_feetimer->async_wait(boost::bind(&Farm::switchPool, this, boost::asio::placeholders::error));
+		}
 		if (!p_hashrateTimer) {
 			p_hashrateTimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::milliseconds(1000));
 			p_hashrateTimer->async_wait(boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error));
@@ -217,14 +223,21 @@ public:
 		}
 	}
 
-	void switchPool()
+	void switchPool(const boost::system::error_code& error)
 	{
-		stop();
-		start(m_lastSealer, b_lastMixed);
-
+		p_feetimer->cancel();
 		if (m_onSwitchPool) {
 			m_onSwitchPool();
+			if (m_isFee == true) {
+				m_isFee = false;
+				p_feetimer->expires_from_now(boost::posix_time::seconds(60*58));
+			}
+			else {
+				m_isFee = true;
+				p_feetimer->expires_from_now(boost::posix_time::seconds(60*2));
+			}
 		}
+		p_feetimer->async_wait(boost::bind(&Farm::switchPool, this, boost::asio::placeholders::error));
 	}
 		
 	bool isMining() const
@@ -248,6 +261,12 @@ public:
         p.ms = 0;
         p.hashes = 0;
 		p.fee_mode = m_isFee;
+		if (p_feetimer) {
+			p.fee_timer = p_feetimer->expires_from_now().total_seconds();
+		}
+		else {
+			p.fee_timer = 0;
+		}
         for (auto const& i : m_miners)
         {
             p.minersHashes.push_back(0);
@@ -383,12 +402,13 @@ private:
 	std::thread m_serviceThread;  ///< The IO service thread.
 	boost::asio::io_service m_io_service;
 	boost::asio::deadline_timer * p_hashrateTimer = nullptr;
+	boost::asio::deadline_timer * p_feetimer = nullptr;
 	std::vector<WorkingProgress> m_lastProgresses;
 
 	mutable SolutionStats m_solutionStats;
 	std::chrono::steady_clock::time_point m_farm_launched = std::chrono::steady_clock::now();
 
-    	string m_pool_addresses;
+    string m_pool_addresses;
 	uint64_t m_nonce_scrambler;
 }; 
 
