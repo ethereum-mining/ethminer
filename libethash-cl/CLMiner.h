@@ -81,7 +81,7 @@ public:
 			s_devices[i] = _devices[i];
 		}
 	}
-	static void setCLKernel(unsigned _clKernel) { s_clKernelName = _clKernel == 1 ? CLKernelName::Unstable : CLKernelName::Stable; }
+	static void setCLKernel(unsigned _clKernel) { s_clKernelName = _clKernel == 1 ? CLKernelName::Experimental : CLKernelName::Stable; }
 	HwMonitor hwmon() override;
 protected:
 	void kick_miner() override;
