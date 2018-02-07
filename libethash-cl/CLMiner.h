@@ -46,7 +46,7 @@ namespace eth
 
 enum CLKernelName : unsigned int {
 	Stable = 0,
-	Unstable,
+	Experimental,
 	Binary,
 };
 
