@@ -33,8 +33,8 @@ public:
 	void reconnect();
 private:
 	void connect();
-	
 	void disconnect();
+
 	void resolve_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
 	void connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
 	void work_timeout_handler(const boost::system::error_code& ec);
@@ -54,7 +54,6 @@ private:
 
 	bool m_authorized;
 	std::atomic<bool> m_connected = {false};
-	bool m_running = true;
 
 	int	m_retries = 0;
 	int	m_maxRetries;

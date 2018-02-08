@@ -60,11 +60,11 @@ public:
 		bool _noeval
 		);
 	static void setNumInstances(unsigned _instances);
-	static void setDevices(const unsigned* _devices, unsigned _selectedDeviceCount);
+	static void setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount);
 	HwMonitor hwmon() override;
 	static bool cuda_configureGPU(
 		size_t numDevices,
-		const int* _devices,
+		const vector<int>& _devices,
 		unsigned _blockSize,
 		unsigned _gridSize,
 		unsigned _numStreams,
@@ -140,7 +140,7 @@ private:
 	wrap_nvml_handle *nvmlh = nullptr;
 
 	static unsigned s_numInstances;
-	static int s_devices[16];
+	static vector<int> s_devices;
 
 	static bool s_noeval;
 };

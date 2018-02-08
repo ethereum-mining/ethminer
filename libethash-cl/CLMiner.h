@@ -74,7 +74,7 @@ public:
 	);
 	static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
 	static void setThreadsPerHash(unsigned _threadsPerHash){s_threadsPerHash = _threadsPerHash; }
-	static void setDevices(unsigned * _devices, unsigned _selectedDeviceCount)
+	static void setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount)
 	{
 		for (unsigned i = 0; i < _selectedDeviceCount; i++)
 		{
@@ -107,7 +107,7 @@ private:
 	static unsigned s_numInstances;
 	static unsigned s_threadsPerHash;
 	static CLKernelName s_clKernelName;
-	static int s_devices[16];
+	static vector<int> s_devices;
 
 	/// The local work size for the search
 	static unsigned s_workgroupSize;
