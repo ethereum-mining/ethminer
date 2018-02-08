@@ -254,7 +254,7 @@ std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, 
 
 unsigned CLMiner::s_platformId = 0;
 unsigned CLMiner::s_numInstances = 0;
-int CLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+vector<int> CLMiner::s_devices(MAX_MINERS, -1);
 
 CLMiner::CLMiner(FarmFace& _farm, unsigned _index):
 	Miner("cl-", _farm, _index)
@@ -335,7 +335,10 @@ void CLMiner::workLoop()
 
 				// FIXME: This logic should be move out of here.
 				if (w.exSizeBits >= 0)
-					startNonce = w.startNonce | ((uint64_t)index << (64 - 4 - w.exSizeBits)); // This can support up to 16 devices.
+				{
+					// This can support up to 2^c_log2MaxMiners devices.
+					startNonce = w.startNonce | ((uint64_t)index << (64 - LOG2_MAX_MINERS - w.exSizeBits));
+				}
 				else
 					startNonce = get_start_nonce();
 

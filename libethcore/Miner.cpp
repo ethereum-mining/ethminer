@@ -12,4 +12,3 @@ unsigned dev::eth::Miner::s_dagCreateDevice = 0;
 
 uint8_t* dev::eth::Miner::s_dagInHostMemory = NULL;
 
-

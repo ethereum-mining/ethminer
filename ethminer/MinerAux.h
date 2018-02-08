@@ -264,7 +264,7 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		else if (arg == "--opencl-devices" || arg == "--opencl-device")
-			while (m_openclDeviceCount < 16 && i + 1 < argc)
+			while (m_openclDeviceCount < MAX_MINERS && i + 1 < argc)
 			{
 				try
 				{
@@ -353,7 +353,7 @@ public:
 			}
 		else if (arg == "--cuda-devices")
 		{
-			while (m_cudaDeviceCount < 16 && i + 1 < argc)
+			while (m_cudaDeviceCount < MAX_MINERS && i + 1 < argc)
 			{
 				try
 				{
@@ -971,25 +971,25 @@ private:
 #if ETH_ETHASHCL
 	unsigned m_openclSelectedKernel = 0;  ///< A numeric value for the selected OpenCL kernel
 	unsigned m_openclDeviceCount = 0;
-	unsigned m_openclDevices[16];
+	vector<unsigned> m_openclDevices;
 	unsigned m_openclThreadsPerHash = 8;
 	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
 #endif
 #if ETH_ETHASHCUDA
 	unsigned m_cudaDeviceCount = 0;
-	unsigned m_cudaDevices[16];
+	vector<unsigned> m_cudaDevices;
 	unsigned m_numStreams = CUDAMiner::c_defaultNumStreams;
 	unsigned m_cudaSchedule = 4; // sync
 	unsigned m_cudaGridSize = CUDAMiner::c_defaultGridSize;
 	unsigned m_cudaBlockSize = CUDAMiner::c_defaultBlockSize;
 	bool m_cudaNoEval = false;
+	unsigned m_parallelHash    = 4;
 #endif
 	unsigned m_dagLoadMode = 0; // parallel
 	unsigned m_dagCreateDevice = 0;
 	/// Benchmarking params
 	unsigned m_benchmarkWarmup = 15;
-	unsigned m_parallelHash    = 4;
 	unsigned m_benchmarkTrial = 3;
 	unsigned m_benchmarkTrials = 5;
 	unsigned m_benchmarkBlock = 0;
@@ -999,7 +999,6 @@ private:
 
 
 	string m_activeFarmURL = m_farmURL;
-	unsigned m_farmRetries = 0;
 	unsigned m_maxFarmRetries = 3;
 	unsigned m_farmRecheckPeriod = 500;
 	unsigned m_defaultStratumFarmRecheckPeriod = 2000;
