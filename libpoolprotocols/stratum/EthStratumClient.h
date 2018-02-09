@@ -76,6 +76,8 @@ private:
 
 	boost::asio::deadline_timer m_worktimer;
 
+	boost::asio::ip::tcp::resolver m_resolver;
+
 	int m_protocol;
 	string m_email;
 
