@@ -1,6 +1,8 @@
 #ifndef ETH_GETWORK_CLIENT_H_
 #define ETH_GETWORK_CLIENT_H_
 
+#pragma once
+
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <iostream>
 #include <libdevcore/Worker.h>

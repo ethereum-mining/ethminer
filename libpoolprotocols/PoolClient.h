@@ -1,6 +1,8 @@
 #ifndef POOL_CLIENT_H_
 #define POOL_CLIENT_H_
 
+#pragma once
+
 #include <libethcore/Farm.h>
 #include <libethcore/Miner.h>
 
