@@ -20,6 +20,7 @@
  */
 
 #include "Log.h"
+#include <regex>
 
 #include <thread>
 #ifdef __APPLE__
@@ -33,6 +34,8 @@ using namespace dev;
 
 // Logging
 int dev::g_logVerbosity = 5;
+bool dev::g_useColor = true;
+
 mutex x_logOverride;
 
 /// Map of Log Channel types to bool, false forces the channel to be disabled, true forces it to be enabled.
@@ -155,5 +158,12 @@ void dev::setThreadName(char const* _n)
 
 void dev::simpleDebugOut(std::string const& _s)
 {
-        std::cerr << _s + '\n';
+	if (g_useColor)
+	{
+		std::cerr << _s + '\n';
+		return;
+	}
+	
+	static std::regex reg("\x1B[[0-9;]*[a-zA-Z]");
+	std::cerr << std::regex_replace(_s + "\n", reg, string(""));
 }

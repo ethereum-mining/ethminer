@@ -65,17 +65,24 @@ int main(int argc, char** argv)
 	setenv("GPU_MAX_ALLOC_PERCENT", "100");
 	setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
 
+	if (getenv("NO_COLOR"))
+		g_useColor = false;
 #if defined(_WIN32)
-	// Set output mode to handle virtual terminal sequences
-	// Only works on Windows 10, but most user should use it anyways
-	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	if (hOut != INVALID_HANDLE_VALUE)
+	if (g_useColor)
 	{
-		DWORD dwMode = 0;
-		if (GetConsoleMode(hOut, &dwMode))
+		g_useColor = false;
+		// Set output mode to handle virtual terminal sequences
+		// Only works on Windows 10, but most user should use it anyways
+		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+		if (hOut != INVALID_HANDLE_VALUE)
 		{
-			dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-			SetConsoleMode(hOut, dwMode);
+			DWORD dwMode = 0;
+			if (GetConsoleMode(hOut, &dwMode))
+			{
+				dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+				if (SetConsoleMode(hOut, dwMode))
+					g_useColor = true;
+			}
 		}
 	}
 #endif
