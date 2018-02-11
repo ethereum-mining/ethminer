@@ -1,5 +1,4 @@
-#ifndef CUDA_HELPER_H
-#define CUDA_HELPER_H
+#pragma once
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -1023,9 +1022,4 @@ uint32_t bfi(uint32_t x, uint32_t a, uint32_t bit, uint32_t numBits) {
 	asm("bfi.b32 %0, %1, %2, %3,%4;" : "=r"(ret) : "r"(x), "r"(a), "r"(bit), "r"(numBits));
 	return ret;
 }
-
-
-
-#endif // #ifndef CUDA_HELPER_H
-
 

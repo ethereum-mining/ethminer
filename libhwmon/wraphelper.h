@@ -1,6 +1,9 @@
 /*
 * Wrappers to emulate dlopen() on other systems like Windows
 */
+
+#pragma once
+
 #if defined(_MSC_VER) || defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 static void *wrap_dlopen(const char *filename) {

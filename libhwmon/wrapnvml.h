@@ -14,8 +14,7 @@
  *
  */
 
-#ifndef _WRAPNVML_H_
-#define _WRAPNVML_H_
+#pragma once
 
 #if defined(__cplusplus)
 extern "C" {
@@ -124,4 +123,3 @@ int wrap_nvml_get_power_usage(wrap_nvml_handle *nvmlh,
 }
 #endif
 
-#endif

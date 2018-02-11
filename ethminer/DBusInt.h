@@ -1,3 +1,5 @@
+#pragma once
+
 #include <dbus/dbus.h>
 
 using namespace std;

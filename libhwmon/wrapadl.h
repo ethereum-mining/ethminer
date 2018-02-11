@@ -4,8 +4,7 @@
 * By Philipp Andreas - github@smurfy.de
 */
 
-#ifndef _WRAPADL_H_
-#define _WRAPADL_H_
+#pragma once
 
 #if defined(__cplusplus)
 extern "C" {
@@ -137,4 +136,3 @@ int wrap_adl_get_fanpcnt(wrap_adl_handle *adlh, int gpuindex, unsigned int *fanp
 }
 #endif
 
-#endif
