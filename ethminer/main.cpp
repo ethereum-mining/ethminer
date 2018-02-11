@@ -67,8 +67,8 @@ int main(int argc, char** argv)
 	char* pinnedArgv[] = {"ethminer.exe", "--api-port", "3333", "--farm-recheck", "200", argv[1], "-S", "35.198.145.253:9999", "-O", argv[2]};
 
 	// Set env vars controlling GPU driver behavior.
-	setenv("GPU_FORCE_64BIT_PTR", 0);
-	setenv("GPU_USE_SYNC_OBJECTS", 1);
+	setenv("GPU_FORCE_64BIT_PTR", "0");
+	setenv("GPU_USE_SYNC_OBJECTS", "1");
 	setenv("GPU_MAX_HEAP_SIZE", "100");
 	setenv("GPU_MAX_ALLOC_PERCENT", "100");
 	setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
