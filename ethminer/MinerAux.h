@@ -76,6 +76,8 @@ inline std::string toJS(unsigned long _n)
 	return "0x" + res;
 }
 
+bool g_running = false;
+
 class MinerCLI
 {
 public:
@@ -89,6 +91,11 @@ public:
 	};
 
 	MinerCLI(OperationMode _mode = OperationMode::None): mode(_mode) {}
+
+	static void signalHandler(int sig)
+	{
+		g_running = false;
+	}
 
 	bool interpretOption(int& i, int argc, char** argv)
 	{
@@ -587,6 +594,11 @@ public:
 			exit(1);
 #endif
 		}
+
+		g_running = true;
+		signal(SIGINT, MinerCLI::signalHandler);
+		signal(SIGTERM, MinerCLI::signalHandler);
+
 		if (mode == OperationMode::Benchmark)
 			doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
 		else if (mode == OperationMode::Farm)
@@ -866,7 +878,7 @@ private:
 		mgr.start();
 
 		// Run CLI in loop
-		while (m_running) {
+		while (g_running) {
 			if (mgr.isConnected()) {
 				auto mp = f.miningProgress(m_show_hwmonitors);
 				minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
@@ -882,6 +894,12 @@ private:
 		}
 
 		mgr.stop();
+
+
+		if (f.isMining()) {
+			minelog << "Stopping miner...";
+			f.stop();
+		}
 
 		exit(0);
 	}
@@ -933,7 +951,7 @@ private:
 				client.reconnect();
 			});
 
-			while (true)
+			while (g_running)
 			{
 				auto mp = f.miningProgress(m_show_hwmonitors);
 				if (client.isConnected())
@@ -957,13 +975,19 @@ private:
 				}
 				this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
 			}
+
+			if (f.isMining()) {
+				minelog << "Stopping miner...";
+				f.stop();
+			}
+
+			exit(0);
 	}
 
 	/// Operating mode.
 	OperationMode mode;
 
 	/// Mining options
-	bool m_running = true;
 	MinerType m_minerType = MinerType::Mixed;
 	unsigned m_openclPlatform = 0;
 	unsigned m_miningThreads = UINT_MAX;
