@@ -72,7 +72,7 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
 		static char const* c_sep1 = EthReset EthBlack "|" EthNavy;
 		static char const* c_sep2 = EthReset EthBlack "|" EthTeal;
 		static char const* c_end = EthReset "  ";
-		m_sstr << _id << c_begin << buf << c_sep1 << std::left << std::setw(8) << getThreadName() << ThreadContext::join(c_sep2) << c_end;
+		m_sstr << _id << c_begin << buf << c_sep1 << std::left << std::setw(8) << getThreadName() << c_sep2 << c_end;
 	}
 }
 
@@ -85,50 +85,7 @@ struct ThreadLocalLogName
 
 thread_local char const* ThreadLocalLogName::name;
 
-thread_local static std::vector<std::string> logContexts;
-
-/// Associate a name with each thread for nice logging.
-struct ThreadLocalLogContext
-{
-	ThreadLocalLogContext() = default;
-
-	void push(std::string const& _name)
-	{
-		logContexts.push_back(_name);
-	}
-
-	void pop()
-	{
-		logContexts.pop_back();
-	}
-
-	string join(string const& _prior)
-	{
-		string ret;
-		for (auto const& i: logContexts)
-			ret += _prior + i;
-		return ret;
-	}
-};
-
-ThreadLocalLogContext g_logThreadContext;
-
 ThreadLocalLogName g_logThreadName("main");
-
-void dev::ThreadContext::push(string const& _n)
-{
-	g_logThreadContext.push(_n);
-}
-
-void dev::ThreadContext::pop()
-{
-	g_logThreadContext.pop();
-}
-
-string dev::ThreadContext::join(string const& _prior)
-{
-	return g_logThreadContext.join(_prior);
-}
 
 string dev::getThreadName()
 {
