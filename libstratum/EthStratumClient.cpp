@@ -528,16 +528,15 @@ void EthStratumClient::submit(Solution solution) {
 		boost::bind(&EthStratumClient::handleResponse, this,
 		boost::asio::placeholders::error));
 	m_submit_time = std::chrono::steady_clock::now();
+	unsigned n = (m_protocol == STRATUM_PROTOCOL_ETHEREUMSTRATUM) ? m_extraNonceHexSize : 0;
+	string sub_nonce = nonceHex.substr(n, 16 - n);
 	if (m_stale)
 	{
-		cwarn << EthYellow "Stale solution submitted to " + p_active->host + EthReset;
+		cwarn << string(EthYellow "Stale nonce 0x") + sub_nonce + " submitted to " + p_active->host + EthReset;
 	}
 	else
 	{
-		cnote << "Solution submitted to " + p_active->host;
-	}
-	if (m_protocol != STRATUM_PROTOCOL_ETHEREUMSTRATUM) {
-		cnote << "Nonce: 0x" + nonceHex;
+		cnote << string("Nonce 0x") +  sub_nonce + " submitted to " + p_active->host;
 	}
 }
 
