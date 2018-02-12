@@ -43,10 +43,12 @@ void help()
 		<< "Options:" << endl << endl;
 	MinerCLI::streamHelp(cout);
 	cout
-		<< "General Options:" << endl
+		<< " General Options:" << endl
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 8)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 		<< "    -h,--help  Show this help message and exit." << endl
+		<< " Envionment variables:" << endl
+		<< "     NO_COLOR - set to any value to disable color output. Unset to re-enable color output." << endl
 		;
 	exit(0);
 }
