@@ -94,6 +94,7 @@ public:
 
 	static void signalHandler(int sig)
 	{
+		(void)sig;
 		g_running = false;
 	}
 
@@ -536,8 +537,10 @@ public:
 			exit(0);
 		}
 
-		minelog << "ethminer version " << ETH_PROJECT_VERSION;
-		minelog << "Build: " << ETH_BUILD_PLATFORM << "/" << ETH_BUILD_TYPE;
+		minelog << "ethminer version " << ETH_PROJECT_VERSION
+			<< ", Build: " << ETH_BUILD_PLATFORM << "/" << ETH_BUILD_TYPE
+			<< ", Branch: " << GIT_BRANCH << ", Commit: " << GIT_COMMIT_HASH;
+
 
 		if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 		{

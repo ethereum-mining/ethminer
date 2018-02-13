@@ -55,8 +55,10 @@ void help()
 
 void version()
 {
-	cout << "ethminer version " << ETH_PROJECT_VERSION << endl;
-	cout << "Build: " << ETH_BUILD_PLATFORM << "/" << ETH_BUILD_TYPE << endl;
+	cout << "ethminer version " << ETH_PROJECT_VERSION
+		<< ", Build: " << ETH_BUILD_PLATFORM << "/" << ETH_BUILD_TYPE
+		<< ", Branch: " << GIT_BRANCH << ", Commit: " << GIT_COMMIT_HASH << endl;
+
 	exit(0);
 }
 
