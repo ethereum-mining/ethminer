@@ -263,21 +263,23 @@ public:
 				HwMonitorInfo hwInfo = i->hwmonInfo();
 				HwMonitor hw;
 				unsigned int tempC = 0, fanpcnt = 0;
-				if (hwInfo.deviceType == HwMonitorInfoType::NVIDIA && nvmlh) {
-					wrap_nvml_get_tempC(nvmlh, hwInfo.deviceIndex, &tempC);
-					wrap_nvml_get_fanpcnt(nvmlh, hwInfo.deviceIndex, &fanpcnt);
-				} 
-				else if (hwInfo.deviceType == HwMonitorInfoType::AMD && adlh) {
-					wrap_adl_get_tempC(adlh, hwInfo.deviceIndex, &tempC);
-					wrap_adl_get_fanpcnt(adlh, hwInfo.deviceIndex, &fanpcnt);
-				}
+				if (hwInfo.deviceIndex >= 0) {
+					if (hwInfo.deviceType == HwMonitorInfoType::NVIDIA && nvmlh) {
+						wrap_nvml_get_tempC(nvmlh, hwInfo.deviceIndex, &tempC);
+						wrap_nvml_get_fanpcnt(nvmlh, hwInfo.deviceIndex, &fanpcnt);
+					}
+					else if (hwInfo.deviceType == HwMonitorInfoType::AMD && adlh) {
+						wrap_adl_get_tempC(adlh, hwInfo.deviceIndex, &tempC);
+						wrap_adl_get_fanpcnt(adlh, hwInfo.deviceIndex, &fanpcnt);
+					}
 #if defined(__linux)
-				// Overwrite with sysfs data if present
-				if (hwInfo.deviceType == HwMonitorInfoType::AMD && sysfsh) {
-					wrap_amdsysfs_get_tempC(sysfsh, hwInfo.deviceIndex, &tempC);
-					wrap_amdsysfs_get_fanpcnt(sysfsh, hwInfo.deviceIndex, &fanpcnt);
-				}
+					// Overwrite with sysfs data if present
+					if (hwInfo.deviceType == HwMonitorInfoType::AMD && sysfsh) {
+						wrap_amdsysfs_get_tempC(sysfsh, hwInfo.deviceIndex, &tempC);
+						wrap_amdsysfs_get_fanpcnt(sysfsh, hwInfo.deviceIndex, &fanpcnt);
+					}
 #endif
+				}
 				hw.tempC = tempC;
 				hw.fanP = fanpcnt;
 				p.minerMonitors.push_back(hw);

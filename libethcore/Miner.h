@@ -72,8 +72,8 @@ enum class HwMonitorInfoType
 
 struct HwMonitorInfo
 {
-	HwMonitorInfoType deviceType;
-	int deviceIndex;
+	HwMonitorInfoType deviceType = HwMonitorInfoType::UNKNOWN;
+	int deviceIndex = -1;
 };
 
 struct HwMonitor
