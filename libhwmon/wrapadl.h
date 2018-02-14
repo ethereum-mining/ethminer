@@ -118,11 +118,11 @@ typedef struct {
 	wrap_adlReturn_t(*adlOverdrive5TemperatureGet)(int, int, ADLTemperature*);
 	wrap_adlReturn_t(*adlOverdrive5FanSpeedGet)(int, int, ADLFanSpeedValue*);
 	wrap_adlReturn_t(*adlMainControlRefresh)(void);
-	wrap_adlReturn_t(*adlMainControlDestory)(void);
+	wrap_adlReturn_t(*adlMainControlDestroy)(void);
 } wrap_adl_handle;
 
 wrap_adl_handle * wrap_adl_create();
-int wrap_adl_destory(wrap_adl_handle *adlh);
+int wrap_adl_destroy(wrap_adl_handle *adlh);
 
 int wrap_adl_get_gpucount(wrap_adl_handle *adlh, int *gpucount);
 

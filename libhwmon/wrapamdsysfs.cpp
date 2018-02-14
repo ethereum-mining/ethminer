@@ -144,7 +144,7 @@ wrap_amdsysfs_handle * wrap_amdsysfs_create()
 
 	return sysfsh;
 }
-int wrap_amdsysfs_destory(wrap_amdsysfs_handle *sysfsh)
+int wrap_amdsysfs_destroy(wrap_amdsysfs_handle *sysfsh)
 {
 	free(sysfsh);
 	return 0;

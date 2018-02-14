@@ -77,10 +77,10 @@ public:
 	{
 		// Deinit HWMON
 		if (adlh)
-			wrap_adl_destory(adlh);
+			wrap_adl_destroy(adlh);
 #if defined(__linux)
 		if (sysfsh)
-			wrap_amdsysfs_destory(sysfsh);
+			wrap_amdsysfs_destroy(sysfsh);
 #endif
 		if (nvmlh)
 			wrap_nvml_destroy(nvmlh);
