@@ -93,7 +93,7 @@ void CUDAMiner::workLoop()
 
 	try
 	{
-		while(true)
+		while(!shouldStop())
 		{
 	                // take local copy of work since it may end up being overwritten.
 			const WorkPackage w = work();
@@ -119,10 +119,6 @@ void CUDAMiner::workLoop()
 				startN = current.startNonce | ((uint64_t)index << (64 - LOG2_MAX_MINERS - current.exSizeBits));
 			}
 			search(current.header.data(), upper64OfBoundary, (current.exSizeBits >= 0), startN, w);
-
-			// Check if we should stop.
-			if (shouldStop())
-				break;
 		}
 	}
 	catch (cuda_runtime_error const& _e)

@@ -147,6 +147,14 @@ public:
 	{
 		{
 			Guard l(x_minerWork);
+			// miners do not get deleted (->destructed->stopped) by clearing vector,
+			// m_miners vector contains shared_ptr objects, those are not freed on clear
+			for (auto const& m : m_miners)
+			{
+				// call destructor functions
+				m->stopWorking();
+				//m->kick_miner();
+			}
 			m_miners.clear();
 			m_isMining = false;
 		}
