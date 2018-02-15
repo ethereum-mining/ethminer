@@ -2,22 +2,46 @@
 
 include(EthCheckCXXFlags)
 
+# Get the latest abbreviated commit hash of the working branch
+# 1st see if local build
+execute_process(
+	COMMAND git log -1 --format=%h
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	OUTPUT_VARIABLE LAST_COMMIT
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Now override if building in CI
+if (DEFINED ENV{CIRCLE_SHA1})
+	set(LAST_COMMIT "$ENV{CIRCLE_SHA1}")
+endif()
+
+if (DEFINED ENV{APPVEYOR_PULL_REQUEST_HEAD_COMMIT})
+	set(LAST_COMMIT "$ENV{APPVEYOR_PULL_REQUEST_HEAD_COMMIT}")
+endif()
+
+if (DEFINED ENV{TRAVIS_PULL_REQUEST_SHA})
+	set(LAST_COMMIT "$ENV{TRAVIS_PULL_REQUEST_SHA}")
+endif()
+
 # C++11 check and activation
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unknown-pragmas -Wextra -Wno-error=parentheses -pedantic")
 
-    eth_add_cxx_compiler_flag_if_supported(-ffunction-sections)
-    eth_add_cxx_compiler_flag_if_supported(-fdata-sections)
-    eth_add_cxx_linker_flag_if_supported(-Wl,--gc-sections)
+	eth_add_cxx_compiler_flag_if_supported(-ffunction-sections)
+	eth_add_cxx_compiler_flag_if_supported(-fdata-sections)
+	eth_add_cxx_linker_flag_if_supported(-Wl,--gc-sections)
+	add_definitions("-DLAST_COMMIT=\"${LAST_COMMIT}\"")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unknown-pragmas -Wextra")
 
-    eth_add_cxx_compiler_flag_if_supported(-ffunction-sections)
-    eth_add_cxx_compiler_flag_if_supported(-fdata-sections)
-    eth_add_cxx_linker_flag_if_supported(-Wl,--gc-sections)
+	eth_add_cxx_compiler_flag_if_supported(-ffunction-sections)
+	eth_add_cxx_compiler_flag_if_supported(-fdata-sections)
+	eth_add_cxx_linker_flag_if_supported(-Wl,--gc-sections)
+	add_definitions("-DLAST_COMMIT=\"${LAST_COMMIT}\"")
 
 	if ("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++ -fcolor-diagnostics -Qunused-arguments")
@@ -48,6 +72,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	# warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification
 	# warning LNK4099: pdb was not found with lib
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /LTCG /RELEASE /OPT:REF /OPT:ICF /ignore:4099,4075")
+	add_definitions("/DLAST_COMMIT=\"${LAST_COMMIT}\"")
 else ()
 	message(WARNING "Your compiler is not tested, if you run into any issues, we'd welcome any patches.")
 endif ()
