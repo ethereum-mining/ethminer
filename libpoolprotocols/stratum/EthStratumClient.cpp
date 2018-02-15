@@ -56,6 +56,7 @@ EthStratumClient::EthStratumClient(Farm* f, MinerType m, string const & host, st
 
 EthStratumClient::~EthStratumClient()
 {
+	m_running = false;
 	m_io_service.stop();
 	m_serviceThread.join();
 }
@@ -145,6 +146,7 @@ void EthStratumClient::disconnect()
 	}
 	m_socket.close();
 	m_io_service.stop();
+	m_running = false;
 }
 
 void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
@@ -168,6 +170,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 	
 	if (!ec)
 	{
+		m_running = true;
 		m_connected.store(true, std::memory_order_relaxed);
 		cnote << "Connected to stratum server " + i->host_name() + ":" + p_active->port;
 		if (!p_farm->isMining())

@@ -951,7 +951,7 @@ private:
 				client.reconnect();
 			});
 
-			while (g_running)
+			while (client.isRunning())
 			{
 				auto mp = f.miningProgress(m_show_hwmonitors);
 				if (client.isConnected())

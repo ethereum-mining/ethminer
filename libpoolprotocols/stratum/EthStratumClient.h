@@ -27,6 +27,7 @@ public:
 	void setFailover(string const & host, string const & port);
 	void setFailover(string const & host, string const & port, string const & user, string const & pass);
 
+	bool isRunning() { return m_running; }
 	bool isConnected() { return m_connected.load(std::memory_order_relaxed) && m_authorized; }
 	h256 currentHeaderHash() { return m_current.header; }
 	bool current() { return static_cast<bool>(m_current); }
@@ -56,6 +57,7 @@ private:
 
 	bool m_authorized;
 	std::atomic<bool> m_connected = {false};
+	bool m_running = true;
 
 	int	m_retries = 0;
 	int	m_maxRetries;
