@@ -538,6 +538,7 @@ public:
 
 		minelog << "ethminer version " << ETH_PROJECT_VERSION;
 		minelog << "Build: " << ETH_BUILD_PLATFORM << "/" << ETH_BUILD_TYPE;
+		minelog << "Last commit: " << LAST_COMMIT;
 
 		if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 		{
