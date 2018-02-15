@@ -210,9 +210,6 @@ public:
 	 */
 	void restart()
 	{
-		stop();
-		start(m_lastSealer, b_lastMixed);
-		
 		if (m_onMinerRestart) {
 			m_onMinerRestart();
 		}

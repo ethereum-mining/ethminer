@@ -601,12 +601,10 @@ public:
 
 		if (mode == OperationMode::Benchmark)
 			doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
-		else if (mode == OperationMode::Farm)
+		else if (mode == OperationMode::Farm || mode == OperationMode::Stratum)
 			doMiner();
 		else if (mode == OperationMode::Simulation)
 			doSimulation(m_minerType);
-		else if (mode == OperationMode::Stratum)
-			doStratum();
 	}
 
 	static void streamHelp(ostream& _out)
@@ -842,7 +840,7 @@ private:
 		PoolClient *client = nullptr;
 
 		if (mode == OperationMode::Stratum) {
-			// Not Yet
+			client = new EthStratumClient(m_worktimeout, m_stratumProtocol, m_email, m_report_stratum_hashrate);
 		}
 		else if (mode == OperationMode::Farm) {
 			client = new EthGetworkClient(m_farmRecheckPeriod);
@@ -866,7 +864,10 @@ private:
 		mgr.setReconnectTries(m_maxFarmRetries);
 		mgr.addConnection(m_farmURL, m_port, m_user, m_pass);
 		if (!m_farmFailOverURL.empty()) {
-			mgr.addConnection(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
+			if (!m_fuser.empty())
+				mgr.addConnection(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
+			else
+				mgr.addConnection(m_farmFailOverURL, m_fport, m_user, m_pass);
 		}
 
 
@@ -895,93 +896,7 @@ private:
 
 		mgr.stop();
 
-
-		if (f.isMining()) {
-			minelog << "Stopping miner...";
-			f.stop();
-		}
-
 		exit(0);
-	}
-	
-	void doStratum()
-	{
-		map<string, Farm::SealerDescriptor> sealers;
-#if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); } };
-#endif
-#if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
-#endif
-		if (!m_farmRecheckSet)
-			m_farmRecheckPeriod = m_defaultStratumFarmRecheckPeriod;
-
-		Farm f;
-		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
-
-#if API_CORE
-		Api api(this->m_api_port, f);
-#endif
-
-			EthStratumClient client(&f, m_minerType, m_farmURL, m_port, m_user, m_pass, m_maxFarmRetries, m_worktimeout, m_stratumProtocol, m_email);
-			if (m_farmFailOverURL != "")
-			{
-				if (m_fuser != "")
-				{
-					client.setFailover(m_farmFailOverURL, m_fport, m_fuser, m_fpass);
-				}
-				else
-				{
-					client.setFailover(m_farmFailOverURL, m_fport);
-				}
-			}
-			f.setSealers(sealers);
-
-			f.onSolutionFound([&](Solution sol)
-			{
-				if (client.isConnected()) {
-					client.submit(sol);
-				}
-				else {
-					cwarn << "Can't submit solution: Not connected";
-				}
-				return false;
-			});
-			f.onMinerRestart([&](){
-				client.reconnect();
-			});
-
-			while (g_running)
-			{
-				auto mp = f.miningProgress(m_show_hwmonitors);
-				if (client.isConnected())
-				{
-					if (client.current())
-					{
-						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
-#if ETH_DBUS
-						dbusint.send(toString(mp).data());
-#endif
-					}
-					else
-					{
-						minelog << "Waiting for work package...";
-					}
-
-					if (this->m_report_stratum_hashrate) {
-						auto rate = mp.rate();
-						client.submitHashrate(toJS(rate));
-					}
-				}
-				this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
-			}
-
-			if (f.isMining()) {
-				minelog << "Stopping miner...";
-				f.stop();
-			}
-
-			exit(0);
 	}
 
 	/// Operating mode.
