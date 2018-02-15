@@ -70,11 +70,11 @@ return NULL;
 		wrap_dlsym(adlh->adl_dll, "ADL_Overdrive5_FanSpeed_Get");
 	adlh->adlMainControlRefresh = (wrap_adlReturn_t(*)(void))
 		wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Refresh");
-	adlh->adlMainControlDestory = (wrap_adlReturn_t(*)(void))
+	adlh->adlMainControlDestroy = (wrap_adlReturn_t(*)(void))
 		wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Destroy");
 
 	if (adlh->adlMainControlCreate == NULL ||
-		adlh->adlMainControlDestory == NULL ||
+		adlh->adlMainControlDestroy == NULL ||
 		adlh->adlMainControlRefresh == NULL ||
 		adlh->adlAdapterNumberOfAdapters == NULL ||
 		adlh->adlAdapterAdapterInfoGet == NULL ||
@@ -131,9 +131,9 @@ return NULL;
 	return adlh;
 }
 
-int wrap_adl_destory(wrap_adl_handle *adlh)
+int wrap_adl_destroy(wrap_adl_handle *adlh)
 {
-	adlh->adlMainControlDestory();
+	adlh->adlMainControlDestroy();
 	wrap_dlclose(adlh->adl_dll);
 	free(adlh);
 	return 0;

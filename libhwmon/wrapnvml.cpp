@@ -125,7 +125,6 @@ return NULL;
 #endif
   nvmlh->devs = (wrap_nvmlDevice_t *) calloc(nvmlh->nvml_gpucount, sizeof(wrap_nvmlDevice_t));
 
-#if ETH_ETHASHCUDA
   nvmlh->nvml_pci_domain_id = (unsigned int*) calloc(nvmlh->nvml_gpucount, sizeof(unsigned int));
   nvmlh->nvml_pci_bus_id = (unsigned int*) calloc(nvmlh->nvml_gpucount, sizeof(unsigned int));
   nvmlh->nvml_pci_device_id = (unsigned int*) calloc(nvmlh->nvml_gpucount, sizeof(unsigned int));
@@ -151,6 +150,7 @@ return NULL;
   for (int i=0; i<nvmlh->nvml_gpucount; i++) {
     nvmlh->nvml_cuda_device_id[i] = -1;
   }
+#if ETH_ETHASHCUDA
   for (int i=0; i<nvmlh->cuda_gpucount; i++) {
     cudaDeviceProp props;
     nvmlh->cuda_nvml_device_id[i] = -1;
