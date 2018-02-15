@@ -32,7 +32,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	eth_add_cxx_compiler_flag_if_supported(-ffunction-sections)
 	eth_add_cxx_compiler_flag_if_supported(-fdata-sections)
 	eth_add_cxx_linker_flag_if_supported(-Wl,--gc-sections)
-	add_definitions(-DLAST_COMMIT=\"${LAST_COMMIT}\")
+	add_definitions(-D"LAST_COMMIT=\"${LAST_COMMIT}\"")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 
@@ -41,7 +41,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 	eth_add_cxx_compiler_flag_if_supported(-ffunction-sections)
 	eth_add_cxx_compiler_flag_if_supported(-fdata-sections)
 	eth_add_cxx_linker_flag_if_supported(-Wl,--gc-sections)
-	add_definitions(-DLAST_COMMIT=\"${LAST_COMMIT}\")
+	add_definitions(-D"LAST_COMMIT=\"${LAST_COMMIT}\"")
 
 	if ("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++ -fcolor-diagnostics -Qunused-arguments")
@@ -72,7 +72,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	# warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification
 	# warning LNK4099: pdb was not found with lib
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /LTCG /RELEASE /OPT:REF /OPT:ICF /ignore:4099,4075")
-	add_definitions(/D LAST_COMMIT=\"${LAST_COMMIT}\")
+	add_definitions(/D "LAST_COMMIT=\"${LAST_COMMIT}\"")
 else ()
 	message(WARNING "Your compiler is not tested, if you run into any issues, we'd welcome any patches.")
 endif ()
