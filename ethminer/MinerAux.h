@@ -46,6 +46,7 @@
 #include <libpoolprotocols/PoolManager.h>
 #include <libpoolprotocols/stratum/EthStratumClient.h>
 #include <libpoolprotocols/getwork/EthGetworkClient.h>
+#include <libpoolprotocols/testing/SimulateClient.h>
 
 #if ETH_DBUS
 #include "DBusInt.h"
@@ -601,10 +602,8 @@ public:
 
 		if (mode == OperationMode::Benchmark)
 			doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
-		else if (mode == OperationMode::Farm || mode == OperationMode::Stratum)
+		else if (mode == OperationMode::Farm || mode == OperationMode::Stratum || mode == OperationMode::Simulation)
 			doMiner();
-		else if (mode == OperationMode::Simulation)
-			doSimulation(m_minerType);
 	}
 
 	static void streamHelp(ostream& _out)
@@ -749,84 +748,7 @@ private:
 
 		exit(0);
 	}
-
-	void doSimulation(MinerType _m, int difficulty = 20)
-	{
-		BlockHeader genesis;
-		genesis.setNumber(m_benchmarkBlock);
-		genesis.setDifficulty(u256(1) << difficulty);
-
-		Farm f;
-		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
-		map<string, Farm::SealerDescriptor> sealers;
-#if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); } };
-#endif
-#if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
-#endif
-		f.setSealers(sealers);
-
-		string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
-		cout << "Running mining simulation on platform: " << platformInfo << endl;
-
-		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
-		//genesis.prep();
-
-		
-
-		if (_m == MinerType::CL)
-			f.start("opencl", false);
-		else if (_m == MinerType::CUDA)
-			f.start("cuda", false);
-
-		int time = 0;
-
-		WorkPackage current = WorkPackage(genesis);
-		f.setWork(current);
-		while (true) {
-			bool completed = false;
-			Solution solution;
-			f.onSolutionFound([&](Solution sol)
-			{
-				solution = sol;
-				return completed = true;
-			});
-			for (unsigned i = 0; !completed; ++i)
-			{
-				auto mp = f.miningProgress();
-
-				cnote << "Mining on difficulty " << difficulty << " " << mp;
-				this_thread::sleep_for(chrono::milliseconds(1000));
-				time++;
-			}
-			cnote << "Difficulty:" << difficulty << "  Nonce:" << solution.nonce;
-			if (EthashAux::eval(current.seed, current.header, solution.nonce).value < current.boundary)
-			{
-				cnote << "SUCCESS: GPU gave correct result!";
-			}
-			else
-				cwarn << "FAILURE: GPU gave incorrect result!";
-
-			if (time < 12)
-				difficulty++;
-			else if (time > 18)
-				difficulty--;
-			time = 0;
-			genesis.setDifficulty(u256(1) << difficulty);
-			genesis.noteDirty();
-
-			current.header = h256::random();
-			current.boundary = genesis.boundary();
-			minelog << "Generated random work package:";
-			minelog << "  Header-hash:" << current.header.hex();
-			minelog << "  Seedhash:" << current.seed.hex();
-			minelog << "  Target: " << h256(current.boundary).hex();
-			f.setWork(current);
-
-		}
-	}
-
+	
 	void doMiner()
 	{
 		map<string, Farm::SealerDescriptor> sealers;
@@ -844,6 +766,9 @@ private:
 		}
 		else if (mode == OperationMode::Farm) {
 			client = new EthGetworkClient(m_farmRecheckPeriod);
+		}
+		else if (mode == OperationMode::Simulation) {
+			client = new SimulateClient(20, m_benchmarkBlock);
 		}
 		else {
 			cwarn << "Invalid OperationMode";
