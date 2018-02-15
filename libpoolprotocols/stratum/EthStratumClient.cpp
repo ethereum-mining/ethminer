@@ -101,8 +101,6 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 {
 	if (!ec)
 	{
-		//cnote << "Connecting to stratum server " + p_active->host + ":" + p_active->port;
-
 		tcp::resolver::iterator end;
 		async_connect(m_socket, i, end, boost::bind(&EthStratumClient::connect_handler,
 						this, boost::asio::placeholders::error,
