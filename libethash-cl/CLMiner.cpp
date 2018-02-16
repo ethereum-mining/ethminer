@@ -19,6 +19,7 @@ namespace eth
 unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_threadsPerHash = 8;
+bool Miner::s_exit = false;
 CLKernelName CLMiner::s_clKernelName = CLMiner::c_defaultKernelName;
 
 constexpr size_t c_maxSearchResults = 1;
@@ -393,6 +394,8 @@ void CLMiner::workLoop()
 	catch (cl::Error const& _e)
 	{
 		cwarn << ethCLErrorHelper("OpenCL Error", _e);
+		if(s_exit)
+			exit(1);
 	}
 }
 
@@ -459,11 +462,13 @@ bool CLMiner::configureGPU(
 	unsigned _platformId,
 	uint64_t _currentBlock,
 	unsigned _dagLoadMode,
-	unsigned _dagCreateDevice
+	unsigned _dagCreateDevice,
+	bool _exit
 )
 {
 	s_dagLoadMode = _dagLoadMode;
 	s_dagCreateDevice = _dagCreateDevice;
+	s_exit = _exit;
 
 	s_platformId = _platformId;
 
@@ -710,6 +715,8 @@ bool CLMiner::init(const h256& seed)
 	catch (cl::Error const& err)
 	{
 		cwarn << ethCLErrorHelper("OpenCL init failed", err);
+		if(s_exit)
+			exit(1);
 		return false;
 	}
 	return true;

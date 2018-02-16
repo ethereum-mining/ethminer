@@ -55,7 +55,8 @@ public:
 		uint64_t _currentBlock,
 		unsigned _dagLoadMode,
 		unsigned _dagCreateDevice,
-		bool _noeval
+		bool _noeval,
+		bool _exit
 		);
 	static void setNumInstances(unsigned _instances);
 	static void setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount);

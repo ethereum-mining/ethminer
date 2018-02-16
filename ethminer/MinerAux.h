@@ -253,6 +253,10 @@ public:
 		{
 			m_show_hwmonitors = true;
 		}
+		else if ((arg == "--exit"))
+		{
+			m_exit = true;
+		}
 
 #if API_CORE
 		else if ((arg == "--api-port") && i + 1 < argc)
@@ -557,7 +561,8 @@ public:
 					m_openclPlatform,
 					0,
 					m_dagLoadMode,
-					m_dagCreateDevice
+					m_dagCreateDevice,
+					m_exit
 				))
 				exit(1);
 			CLMiner::setNumInstances(m_miningThreads);
@@ -584,7 +589,8 @@ public:
 				0,
 				m_dagLoadMode,
 				m_dagCreateDevice,
-				m_cudaNoEval
+				m_cudaNoEval,
+				m_exit
 				))
 				exit(1);
 
@@ -626,6 +632,7 @@ public:
 			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
 			<< "    -RH, --report-hashrate Report current hashrate to pool (please only enable on pools supporting this)" << endl
 			<< "    -HWMON Displays gpu temp and fan percent." << endl
+			<< "    --exit Stops the miner whenever an error is encountered" << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 			<< endl
@@ -927,6 +934,7 @@ private:
 #endif
 	unsigned m_dagLoadMode = 0; // parallel
 	unsigned m_dagCreateDevice = 0;
+	bool m_exit = false;
 	/// Benchmarking params
 	unsigned m_benchmarkWarmup = 15;
 	unsigned m_benchmarkTrial = 3;
