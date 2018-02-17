@@ -308,8 +308,6 @@ void CLMiner::workLoop()
 					continue;
 				}
 
-				cllog << "New work: header" << w.header << "target" << w.boundary.hex();
-
 				if (current.seed != w.seed)
 				{
 					if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
@@ -598,11 +596,12 @@ bool CLMiner::init(const h256& seed)
 			clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cl_uint), &maxCUs, nullptr);
 			uint32_t multiplier = maxCUs * s_threadsPerHash * s_workgroupSize;
 			cllog << string(EthYellow) + "Global work multiplier is 0. Calculating optimal value" + EthReset;
-			cllog << "Compute Units: " << maxCUs << ", Threads per hash: " << s_threadsPerHash << ", Work group size: " << s_workgroupSize << ", Global work multiplier = " << multiplier;
+			cllog << "Compute Units: " << maxCUs << " Threads per hash: " << s_threadsPerHash << " Work group size: " << s_workgroupSize << " Global work multiplier = " << multiplier;
 			m_globalWorkSize = multiplier * s_workgroupSize;
 		}
-		if (m_globalWorkSize % m_workgroupSize != 0)
-			m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
+		else
+			if (m_globalWorkSize % m_workgroupSize != 0)
+				m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
 
 		uint64_t dagSize = ethash_get_datasize(light->light->block_number);
 		uint32_t dagSize128 = (unsigned)(dagSize / ETHASH_MIX_BYTES);
