@@ -599,18 +599,15 @@ bool CLMiner::init(const h256& seed)
 		m_workgroupSize = s_workgroupSize;
 		m_globalWorkSize = s_initialGlobalWorkSize;
 
-		if (m_globalWorkSize == 0)
-		{
-			cl_uint maxCUs;
-			clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cl_uint), &maxCUs, nullptr);
-			uint32_t multiplier = maxCUs * s_threadsPerHash * s_workgroupSize;
-			cllog << string(EthYellow) + "Global work multiplier is 0. Calculating optimal value" + EthReset;
-			cllog << "Compute Units: " << maxCUs << " Threads per hash: " << s_threadsPerHash << " Work group size: " << s_workgroupSize << " Global work multiplier = " << multiplier;
-			m_globalWorkSize = multiplier * s_workgroupSize;
-		}
-		else
-			if (m_globalWorkSize % m_workgroupSize != 0)
-				m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
+		// Adjust global work size according to number of CUs
+		cl_uint maxCUs;
+		clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cl_uint), &maxCUs, nullptr);
+		cllog << string(EthYellow) + "Global work size adjusted for " << maxCUs << " CUs";
+		cllog << string(EthYellow) + "Specified Global work size: " << m_globalWorkSize;
+		m_globalWorkSize = (m_globalWorkSize * maxCUs) / 36;
+		cllog << string(EthYellow) + "Adjusted global work size: " << m_globalWorkSize;
+		if (m_globalWorkSize % m_workgroupSize != 0)
+			m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
 
 		uint64_t dagSize = ethash_get_datasize(light->light->block_number);
 		uint32_t dagSize128 = (unsigned)(dagSize / ETHASH_MIX_BYTES);
