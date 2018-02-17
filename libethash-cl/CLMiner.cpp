@@ -596,10 +596,10 @@ bool CLMiner::init(const h256& seed)
 		{
 			cl_uint maxCUs;
 			clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cl_uint), &maxCUs, nullptr);
-			uint32_t global_work = maxCUs * s_threadsPerHash * s_workgroupSize;
+			uint32_t multiplier = maxCUs * s_threadsPerHash * s_workgroupSize;
 			cllog << string(EthYellow) + "Global work multiplier is 0. Calculating optimal value" + EthReset;
-			cllog << "Compute Units: " << maxCUs << ", Threads per hash: " << s_threadsPerHash << ", Work group size: " << s_workgroupSize << ", Global work multiplier = " << global_work;
-			m_globalWorkSize = global_work * s_workgroupSize;
+			cllog << "Compute Units: " << maxCUs << ", Threads per hash: " << s_threadsPerHash << ", Work group size: " << s_workgroupSize << ", Global work multiplier = " << multiplier;
+			m_globalWorkSize = multiplier * s_workgroupSize;
 		}
 		if (m_globalWorkSize % m_workgroupSize != 0)
 			m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
