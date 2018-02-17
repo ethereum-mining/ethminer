@@ -8,14 +8,6 @@
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
-#include <libhwmon/wrapnvml.h>
-#include <libhwmon/wrapadl.h>
-
-#include <fstream>
-
-#if defined(__linux)
-#include <libhwmon/wrapamdsysfs.h>
-#endif
 
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS true
 #define CL_HPP_ENABLE_EXCEPTIONS true
@@ -63,7 +55,7 @@ public:
 	static const CLKernelName c_defaultKernelName = CLKernelName::Stable;
 
 	CLMiner(FarmFace& _farm, unsigned _index);
-	~CLMiner();
+	~CLMiner() override;
 
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 	static unsigned getNumDevices();
@@ -79,15 +71,14 @@ public:
 	static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
 	static void setThreadsPerHash(unsigned _threadsPerHash){s_threadsPerHash = _threadsPerHash; }
 	static void setKernelTweak(unsigned _tweakValue) { s_threadTweak = _tweakValue; }
-	static void setDevices(unsigned * _devices, unsigned _selectedDeviceCount)
+	static void setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount)
 	{
 		for (unsigned i = 0; i < _selectedDeviceCount; i++)
 		{
 			s_devices[i] = _devices[i];
 		}
 	}
-	static void setCLKernel(unsigned _clKernel) { s_clKernelName = _clKernel > CLKernelName::Binary ? CLKernelName::Stable : (CLKernelName)_clKernel; }
-	HwMonitor hwmon() override;
+	static void setCLKernel(unsigned _clKernel) { s_clKernelName = _clKernel > CLKernelName::Binary ? CLKernelName::Experimental : (CLKernelName)_clKernel; }
 protected:
 	void kick_miner() override;
 
@@ -113,20 +104,12 @@ private:
 	static unsigned s_threadsPerHash;
 	static uint32_t s_threadTweak;
 	static CLKernelName s_clKernelName;
-	static int s_devices[16];
+	static vector<int> s_devices;
 
 	/// The local work size for the search
 	static unsigned s_workgroupSize;
 	/// The initial global work size for the searches
 	static unsigned s_initialGlobalWorkSize;
-
-
-	wrap_nvml_handle *nvmlh = NULL;
-	wrap_adl_handle *adlh = NULL;
-#if defined(__linux)
-	wrap_amdsysfs_handle *sysfsh = NULL;
-#endif
-};
-
-}
+		};
+	}
 }

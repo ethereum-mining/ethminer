@@ -1,6 +1,8 @@
 #ifndef POOL_MANAGER_H_
 #define POOL_MANAGER_H_
 
+#pragma once
+
 #include <iostream>
 #include <libdevcore/Worker.h>
 #include <libethcore/Farm.h>

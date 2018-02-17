@@ -1,5 +1,4 @@
-#ifndef _API_H_
-#define _API_H_
+#pragma once
 
 #include "ApiServer.h"
 #include <libethcore/Farm.h>
@@ -19,4 +18,3 @@ private:
 	Farm &m_farm;
 };
 
-#endif //_API_H_

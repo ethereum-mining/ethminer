@@ -26,9 +26,7 @@ using namespace eth;
 
 unsigned CUDAMiner::s_numInstances = 0;
 
-int CUDAMiner::s_devices[16] = {
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
-};
+vector<int> CUDAMiner::s_devices(MAX_MINERS, -1);
 
 struct CUDAChannel: public LogChannel
 {
@@ -115,8 +113,11 @@ void CUDAMiner::workLoop()
 			}
 			uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)current.boundary >> 192);
 			uint64_t startN = current.startNonce;
-			if (current.exSizeBits >= 0) 
-				startN = current.startNonce | ((uint64_t)index << (64 - 4 - current.exSizeBits)); // this can support up to 16 devices
+			if (current.exSizeBits >= 0)
+			{
+				// this can support up to 2^c_log2Max_miners devices
+				startN = current.startNonce | ((uint64_t)index << (64 - LOG2_MAX_MINERS - current.exSizeBits));
+			}
 			search(current.header.data(), upper64OfBoundary, (current.exSizeBits >= 0), startN, w);
 
 			// Check if we should stop.
@@ -146,7 +147,7 @@ void CUDAMiner::setNumInstances(unsigned _instances)
         s_numInstances = std::min<unsigned>(_instances, getNumDevices());
 }
 
-void CUDAMiner::setDevices(const unsigned* _devices, unsigned _selectedDeviceCount)
+void CUDAMiner::setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount)
 {
         for (unsigned i = 0; i < _selectedDeviceCount; i++)
                 s_devices[i] = _devices[i];
@@ -195,19 +196,6 @@ void CUDAMiner::listDevices()
 	}
 }
 
-HwMonitor CUDAMiner::hwmon()
-{
-	dev::eth::HwMonitor hw;
-	if (nvmlh) {
-		unsigned int tempC = 0, fanpcnt = 0;
-		wrap_nvml_get_tempC(nvmlh, nvmlh->cuda_nvml_device_id[m_device_num], &tempC);
-		wrap_nvml_get_fanpcnt(nvmlh, nvmlh->cuda_nvml_device_id[m_device_num], &fanpcnt);
-		hw.tempC = tempC;
-		hw.fanP = fanpcnt;
-	}
-	return hw;
-}
-
 bool CUDAMiner::configureGPU(
 	unsigned _blockSize,
 	unsigned _gridSize,
@@ -250,7 +238,7 @@ unsigned const CUDAMiner::c_defaultNumStreams = 2;
 
 bool CUDAMiner::cuda_configureGPU(
 	size_t numDevices,
-	const int* _devices,
+	const vector<int>& _devices,
 	unsigned _blockSize,
 	unsigned _gridSize,
 	unsigned _numStreams,
@@ -322,7 +310,8 @@ bool CUDAMiner::cuda_init(
 
 		// use selected device
 		m_device_num = _deviceId < numDevices -1 ? _deviceId : numDevices - 1;
-		nvmlh = wrap_nvml_create();
+		m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
+		m_hwmoninfo.deviceIndex = m_device_num;
 
 		cudaDeviceProp device_props;
 		CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, m_device_num));

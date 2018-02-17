@@ -63,6 +63,19 @@ enum class MinerType
 	CUDA
 };
 
+enum class HwMonitorInfoType
+{
+	UNKNOWN,
+	NVIDIA,
+	AMD
+};
+
+struct HwMonitorInfo
+{
+	HwMonitorInfoType deviceType = HwMonitorInfoType::UNKNOWN;
+	int deviceIndex = -1;
+};
+
 struct HwMonitor
 {
 	int tempC = 0;
@@ -114,7 +127,6 @@ public:
 	void acceptedStale() { acceptedStales++; }
 	void rejectedStale() { rejectedStales++; }
 
-
 	void reset() { accepts = rejects = failures = acceptedStales = rejectedStales = 0; }
 
 	unsigned getAccepts()			{ return accepts; }
@@ -163,9 +175,13 @@ public:
  * @brief A miner - a member and adoptee of the Farm.
  * @warning Not threadsafe. It is assumed Farm will synchronise calls to/from this class.
  */
+#define LOG2_MAX_MINERS 5u
+#define MAX_MINERS (1u << LOG2_MAX_MINERS)
+
 class Miner: public Worker
 {
 public:
+
 	Miner(std::string const& _name, FarmFace& _farm, size_t _index):
 		Worker(_name + std::to_string(_index)),
 		index(_index),
@@ -188,9 +204,8 @@ public:
 
 	void resetHashCount() { m_hashCount.store(0, std::memory_order_relaxed); }
 
-	virtual HwMonitor hwmon() = 0;
-
 	unsigned Index() { return index; };
+	HwMonitorInfo hwmonInfo() { return m_hwmoninfo; }
 
 	uint64_t get_start_nonce()
 	{
@@ -217,7 +232,7 @@ protected:
 	const size_t index = 0;
 	FarmFace& farm;
 	std::chrono::high_resolution_clock::time_point workSwitchStart;
-
+	HwMonitorInfo m_hwmoninfo;
 private:
 	std::atomic<uint64_t> m_hashCount = {0};
 

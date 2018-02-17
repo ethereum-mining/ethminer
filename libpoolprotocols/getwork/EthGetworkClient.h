@@ -1,6 +1,8 @@
 #ifndef ETH_GETWORK_CLIENT_H_
 #define ETH_GETWORK_CLIENT_H_
 
+#pragma once
+
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <iostream>
 #include <libdevcore/Worker.h>
@@ -17,13 +19,13 @@ public:
 	EthGetworkClient(unsigned const & farmRecheckPeriod);
 	~EthGetworkClient();
 
-	void connect();
-	void disconnect();
+	void connect() override;
+	void disconnect() override;
 
-	bool isConnected() { return m_connected; }
+	bool isConnected() override { return m_connected; }
 
-	void submitHashrate(string const & rate);
-	void submitSolution(Solution solution);
+	void submitHashrate(string const & rate) override;
+	void submitSolution(Solution solution) override;
 
 private:
 	void workLoop() override;

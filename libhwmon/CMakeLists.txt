@@ -6,7 +6,13 @@ set(SOURCES
 )
 
 add_library(hwmon ${SOURCES})
-target_link_libraries(hwmon devcore)
+set(HWMON_LINK_LIBRARIES devcore)
+
+if (UNIX)
+	list(APPEND HWMON_LINK_LIBRARIES dl)
+endif ()
+
+target_link_libraries(hwmon ${HWMON_LINK_LIBRARIES})
 target_include_directories(hwmon PRIVATE ..)
 
 if (ETHASHCUDA)

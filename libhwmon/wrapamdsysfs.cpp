@@ -49,6 +49,7 @@ wrap_amdsysfs_handle * wrap_amdsysfs_create()
 
 	unsigned int gpucount = 0;
 	struct dirent* dire;
+	errno = 0;
 	while ((dire = readdir(dirp)) != nullptr)
 	{
 		if (::strncmp(dire->d_name, "card", 4) != 0)
@@ -144,7 +145,7 @@ wrap_amdsysfs_handle * wrap_amdsysfs_create()
 
 	return sysfsh;
 }
-int wrap_amdsysfs_destory(wrap_amdsysfs_handle *sysfsh)
+int wrap_amdsysfs_destroy(wrap_amdsysfs_handle *sysfsh)
 {
 	free(sysfsh);
 	return 0;

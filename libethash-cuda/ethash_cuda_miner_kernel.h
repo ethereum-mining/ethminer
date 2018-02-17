@@ -1,5 +1,4 @@
-#ifndef _ETHASH_CUDA_MINER_KERNEL_H_
-#define _ETHASH_CUDA_MINER_KERNEL_H_
+#pragma once
 
 #include <stdexcept>
 #include <string>
@@ -100,4 +99,3 @@ do {							\
 	}						\
 } while (0)
 
-#endif

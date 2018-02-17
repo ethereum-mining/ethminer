@@ -4,8 +4,7 @@
 * By Philipp Andreas - github@smurfy.de
 */
 
-#ifndef _WRAPAMDSYSFS_H_
-#define _WRAPAMDSYSFS_H_
+#pragma once
 
 typedef struct {
 	int sysfs_gpucount;
@@ -14,7 +13,7 @@ typedef struct {
 } wrap_amdsysfs_handle;
 
 wrap_amdsysfs_handle * wrap_amdsysfs_create();
-int wrap_amdsysfs_destory(wrap_amdsysfs_handle *sysfsh);
+int wrap_amdsysfs_destroy(wrap_amdsysfs_handle *sysfsh);
 
 int wrap_amdsysfs_get_gpucount(wrap_amdsysfs_handle *sysfsh, int *gpucount);
 
@@ -22,4 +21,3 @@ int wrap_amdsysfs_get_tempC(wrap_amdsysfs_handle *sysfsh, int index, unsigned in
 
 int wrap_amdsysfs_get_fanpcnt(wrap_amdsysfs_handle *sysfsh, int index, unsigned int *fanpcnt);
 
-#endif
