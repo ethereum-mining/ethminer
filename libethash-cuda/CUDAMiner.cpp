@@ -302,7 +302,6 @@ unsigned CUDAMiner::s_gridSize = CUDAMiner::c_defaultGridSize;
 unsigned CUDAMiner::s_numStreams = CUDAMiner::c_defaultNumStreams;
 unsigned CUDAMiner::s_scheduleFlag = 0;
 bool CUDAMiner::s_noeval = false;
-bool Miner::s_exit = false;
 
 bool CUDAMiner::cuda_init(
 	size_t numDevices,

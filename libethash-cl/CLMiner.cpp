@@ -19,7 +19,6 @@ namespace eth
 unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_threadsPerHash = 8;
-bool Miner::s_exit = false;
 CLKernelName CLMiner::s_clKernelName = CLMiner::c_defaultKernelName;
 
 constexpr size_t c_maxSearchResults = 1;
