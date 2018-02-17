@@ -592,6 +592,14 @@ bool CLMiner::init(const h256& seed)
 		// make sure that global work size is evenly divisible by the local workgroup size
 		m_workgroupSize = s_workgroupSize;
 		m_globalWorkSize = s_initialGlobalWorkSize;
+
+		// Adjust global work size according to number of CUs
+		cl_uint maxCUs;
+		clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cl_uint), &maxCUs, nullptr);
+		cllog << string(EthYellow) + "Global work size adjusted for " << maxCUs << " CUs";
+		cllog << string(EthYellow) + "Specified Global work size: " << m_globalWorkSize;
+		m_globalWorkSize = (m_globalWorkSize * maxCUs) / 36;
+		cllog << string(EthYellow) + "Adjusted global work size: " << m_globalWorkSize;
 		if (m_globalWorkSize % m_workgroupSize != 0)
 			m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
 
