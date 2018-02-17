@@ -309,8 +309,6 @@ void CLMiner::workLoop()
 					continue;
 				}
 
-				cllog << "New work: header" << w.header << "target" << w.boundary.hex();
-
 				if (current.seed != w.seed)
 				{
 					if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
@@ -600,19 +598,19 @@ bool CLMiner::init(const h256& seed)
 
 		m_workgroupSize = s_workgroupSize;
 		m_globalWorkSize = s_initialGlobalWorkSize;
-		// Adjust globalWorkSize if not secified
-		if (s_initialGlobalWorkSize == 0)
-		{
-			cl_uint maxCus;
-			clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(maxCus), &maxCus, NULL);
-			m_globalWorkSize = s_threadsPerHash * maxCus * s_workgroupSize;
-			cllog << "Global work size not specified, set to " << m_globalWorkSize;
-			cllog << "Based on TPH " << s_threadsPerHash << " LW " << s_workgroupSize << " CU " << maxCus;
-		}
 
-		// make sure that global work size is evenly divisible by the local workgroup size
-		if (m_globalWorkSize % m_workgroupSize != 0)
-			m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
+		if (m_globalWorkSize == 0)
+		{
+			cl_uint maxCUs;
+			clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cl_uint), &maxCUs, nullptr);
+			uint32_t multiplier = maxCUs * s_threadsPerHash * s_workgroupSize;
+			cllog << string(EthYellow) + "Global work multiplier is 0. Calculating optimal value" + EthReset;
+			cllog << "Compute Units: " << maxCUs << " Threads per hash: " << s_threadsPerHash << " Work group size: " << s_workgroupSize << " Global work multiplier = " << multiplier;
+			m_globalWorkSize = multiplier * s_workgroupSize;
+		}
+		else
+			if (m_globalWorkSize % m_workgroupSize != 0)
+				m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
 
 		uint64_t dagSize = ethash_get_datasize(light->light->block_number);
 		uint32_t dagSize128 = (unsigned)(dagSize / ETHASH_MIX_BYTES);
