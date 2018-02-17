@@ -247,7 +247,7 @@ public:
      * @brief Get information on the progress of mining this work package.
      * @return The progress with mining so far.
      */
-    WorkingProgress const& miningProgress(bool hwmon = false) const
+    WorkingProgress const& miningProgress(bool hwmon = false, bool power = false) const
     {
         std::lock_guard<std::mutex> lock(x_minerWork);
         WorkingProgress p;
@@ -259,26 +259,38 @@ public:
 			if (hwmon) {
 				HwMonitorInfo hwInfo = i->hwmonInfo();
 				HwMonitor hw;
-				unsigned int tempC = 0, fanpcnt = 0;
+				unsigned int tempC = 0, fanpcnt = 0, powerW = 0;
 				if (hwInfo.deviceIndex >= 0) {
 					if (hwInfo.deviceType == HwMonitorInfoType::NVIDIA && nvmlh) {
 						wrap_nvml_get_tempC(nvmlh, hwInfo.deviceIndex, &tempC);
 						wrap_nvml_get_fanpcnt(nvmlh, hwInfo.deviceIndex, &fanpcnt);
+						if(power) {
+							wrap_nvml_get_power_usage(nvmlh, hwInfo.deviceIndex, &powerW);
+						}
 					}
 					else if (hwInfo.deviceType == HwMonitorInfoType::AMD && adlh) {
 						wrap_adl_get_tempC(adlh, hwInfo.deviceIndex, &tempC);
 						wrap_adl_get_fanpcnt(adlh, hwInfo.deviceIndex, &fanpcnt);
+						//TODO
+						//if(power) {
+						//wrap_adl_get_power_usage(adlh, hwInfo.deviceIndex, &powerW);
+						//}
 					}
 #if defined(__linux)
 					// Overwrite with sysfs data if present
 					if (hwInfo.deviceType == HwMonitorInfoType::AMD && sysfsh) {
 						wrap_amdsysfs_get_tempC(sysfsh, hwInfo.deviceIndex, &tempC);
 						wrap_amdsysfs_get_fanpcnt(sysfsh, hwInfo.deviceIndex, &fanpcnt);
+						//TODO
+						//if(power) {
+						//wrap_amdsysfs_get_power_usage(sysfsh, hwInfo.deviceIndex, &powerW);
+						//}
 					}
 #endif
 				}
 				hw.tempC = tempC;
 				hw.fanP = fanpcnt;
+				hw.powrW = powerW/((double)1000.0);
 				p.minerMonitors.push_back(hw);
 			}
         }

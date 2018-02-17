@@ -71,3 +71,6 @@ project.pbxproj
 doc/html
 *.autosave
 node_modules/
+
+# vscode
+.vscode/

@@ -252,6 +252,7 @@ public:
 		else if ((arg == "-HWMON") && i + 1 < argc)
 		{
 			m_show_hwmonitors = true;
+			m_show_power = (bool)atoi(argv[++i]);
 		}
 
 #if API_CORE
@@ -625,7 +626,9 @@ public:
 			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for hashrate reporting to work with nanopool)" << endl
 			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
 			<< "    -RH, --report-hashrate Report current hashrate to pool (please only enable on pools supporting this)" << endl
-			<< "    -HWMON Displays gpu temp and fan percent." << endl
+			<< "    -HWMON Displays gpu temp, fan percent and power usage." << endl
+			<< "        0: Displays only temp and fan percent" << endl
+			<< "        1: Also displays power usage (only NVIDIA)" << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 			<< endl
@@ -881,7 +884,7 @@ private:
 		// Run CLI in loop
 		while (g_running) {
 			if (mgr.isConnected()) {
-				auto mp = f.miningProgress(m_show_hwmonitors);
+				auto mp = f.miningProgress(m_show_hwmonitors, m_show_power);
 				minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
 
 #if ETH_DBUS
@@ -944,6 +947,7 @@ private:
 	bool m_farmRecheckSet = false;
 	int m_worktimeout = 180;
 	bool m_show_hwmonitors = false;
+	bool m_show_power = false;
 #if API_CORE
 	int m_api_port = 0;
 #endif
