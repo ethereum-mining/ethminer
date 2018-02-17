@@ -9,6 +9,8 @@
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
 
+#include <fstream>
+
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS true
 #define CL_HPP_ENABLE_EXCEPTIONS true
 #define CL_HPP_CL_1_2_DEFAULT_BUILD true
