@@ -628,7 +628,7 @@ public:
 			<< "    -RH, --report-hashrate Report current hashrate to pool (please only enable on pools supporting this)" << endl
 			<< "    -HWMON Displays gpu temp, fan percent and power usage." << endl
 			<< "        0: Displays only temp and fan percent" << endl
-			<< "        1: Also displays power usage (only NVIDIA)" << endl
+			<< "        1: Also displays power usage" << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 			<< endl
