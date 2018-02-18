@@ -214,10 +214,7 @@ int wrap_adl_get_power_usage(wrap_adl_handle *adlh, int gpuindex, unsigned int* 
 	}
 	int* power = new int;
 	rc = adlh->adl2Overdrive6CurrentPowerGet(adlh->context, adlh->phys_logi_device_id[gpuindex], 0, power);
-	int fraction = 	(*power) & 0x00FF; //last 8 bits seem to be decimal part
-	int number = 	((*power) & 0xFF00) >> 8; //first 8 bits are the integer part
-	double watts = number + (double)(fraction / (double)256.0);
-	*miliwatts = (unsigned int)(watts * 1000);
+	*miliwatts = *power * 3.90625;
 	return rc;
 }
 
