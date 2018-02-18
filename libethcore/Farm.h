@@ -283,10 +283,9 @@ public:
 					if (hwInfo.deviceType == HwMonitorInfoType::AMD && sysfsh) {
 						wrap_amdsysfs_get_tempC(sysfsh, hwInfo.deviceIndex, &tempC);
 						wrap_amdsysfs_get_fanpcnt(sysfsh, hwInfo.deviceIndex, &fanpcnt);
-						//TODO
-						//if(power) {
-						//wrap_amdsysfs_get_power_usage(sysfsh, hwInfo.deviceIndex, &powerW);
-						//}
+						if(power) {
+							wrap_amdsysfs_get_power_usage(sysfsh, hwInfo.deviceIndex, &powerW);
+						}
 					}
 #endif
 				}
