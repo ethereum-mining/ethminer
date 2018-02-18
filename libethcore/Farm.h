@@ -285,6 +285,7 @@ public:
 						wrap_amdsysfs_get_fanpcnt(sysfsh, hwInfo.deviceIndex, &fanpcnt);
 						if(power) {
 							wrap_amdsysfs_get_power_usage(sysfsh, hwInfo.deviceIndex, &powerW);
+							hw.powerW = powerW/((double)1000.0);
 						}
 					}
 #endif
