@@ -94,6 +94,7 @@ public:
 
 	static void signalHandler(int sig)
 	{
+		(void)sig;
 		g_running = false;
 	}
 

@@ -1,5 +1,5 @@
 set(SOURCES
-    wraphelper.h
+    wraphelper.cpp wraphelper.h
     wrapnvml.h wrapnvml.cpp
     wrapadl.h wrapadl.cpp
     wrapamdsysfs.h wrapamdsysfs.cpp
