@@ -74,56 +74,23 @@ void ApiServer::getMinerStatHR(const Json::Value& request, Json::Value& response
 	
 	ostringstream version; 
 	ostringstream runtime; 
-	ostringstream ethhashrate; 
-	ostringstream ethshares; 
-	ostringstream ethrejects;  
-	ostringstream ethinvalid; 
-	ostringstream ethpoolsw;
-	ostringstream dcrhashrate; 
-	ostringstream dcrshares; 
-	ostringstream dcrrejects;   
-	ostringstream dcrinvalid; 
-	ostringstream dcrpoolsw;
-	ostringstream totalMhEth; 
-	ostringstream totalMhDcr; 
 	Json::Value detailedMhEth;
 	Json::Value detailedMhDcr;
-	ostringstream detailedMhEthStr;
-	ostringstream detailedMhDcrStr;
 	Json::Value temps;
 	Json::Value fans;
 	Json::Value powers;
-	ostringstream tempStr;
-	ostringstream fanStr;
-	ostringstream powerStr;
 	ostringstream poolAddresses;
-	ostringstream invalidStats;
 	
 	version << ETH_PROJECT_VERSION ;
 	runtime << toString(runningTime.count());
-
-	ethhashrate << std::fixed << std::setprecision(1) << (p.rate() / 1000.0f) << "h/s";
-	ethshares << std::fixed << std::setprecision(1) << s.getAccepts();
-	ethrejects << std::fixed << std::setprecision(1) << s.getRejects();	
-	dcrhashrate << std::fixed << std::setprecision(1) << 0.0 << "h/s"; // Not supported 
-	dcrshares << std::fixed << std::setprecision(1) << 0.0; // Not supported 
-	dcrrejects << std::fixed << std::setprecision(1) << 0.0; // Not supported 
-	ethinvalid << s.getFailures() ; // Invalid 
-	ethpoolsw << 0; // Pool switches
-	dcrinvalid << 0; // Not supported 
-	dcrpoolsw << 0; // Not supported 
     poolAddresses << m_farm.get_pool_addresses(); 
 	
 	int gpuIndex = 0;
 	int numGpus = p.minersHashes.size();
 	for (auto const& i: p.minersHashes)
 	{
-		detailedMhEthStr.str("");
-		detailedMhDcrStr.str("");
-		detailedMhEthStr << std::fixed << std::setprecision(1) << (p.minerRate(i) / 1000.0f) << "h/s";
-		detailedMhDcrStr << "off"; // DualMining not supported
-		detailedMhEth[gpuIndex] = detailedMhEthStr.str();
-		detailedMhDcr[gpuIndex] = detailedMhDcrStr.str();
+		detailedMhEth[gpuIndex] = (p.minerRate(i) / 1000.0f);
+		//detailedMhDcr[gpuIndex] = "off"; //Not supported
 		gpuIndex++;
 	}
 
@@ -131,34 +98,21 @@ void ApiServer::getMinerStatHR(const Json::Value& request, Json::Value& response
 	numGpus = p.minerMonitors.size();
 	for (auto const& i : p.minerMonitors)
 	{
-		tempStr.str("");
-		fanStr.str("");
-		powerStr.str("");
-		tempStr << std::fixed << std::setprecision(1) << i.tempC << "C"; // Fetching Temps 
-		fanStr << std::fixed << std::setprecision(1) << i.fanP << "%"; // Fetching Fans
-		powerStr << std::fixed << std::setprecision(1) << i.powerW << "W"; // Fetching Power
-		temps[gpuIndex] = tempStr.str(); // Fetching Temps 
-		fans[gpuIndex] = fanStr.str(); // Fetching Fans
-		powers[gpuIndex] = powerStr.str(); // Fetching Power
+		temps[gpuIndex] = i.tempC ; // Fetching Temps 
+		fans[gpuIndex] = i.fanP; // Fetching Fans
+		powers[gpuIndex] =  i.powerW; // Fetching Power
 		gpuIndex++;
 	}
 
 	response["version"] = version.str();		// miner version.
 	response["runtime"] = runtime.str();		// running time, in minutes.
 	// total ETH hashrate in MH/s, number of ETH shares, number of ETH rejected shares.
-	response["ethhashrate"] = ethhashrate.str();
+	response["ethhashrate"] = (p.rate() / 1000.0f);
 	response["ethhashrates"] = detailedMhEth;  
-	response["ethshares"] 	= ethshares.str(); 
-	response["ethrejected"] = ethrejects.str();   
-	response["ethinvalid"] 	= ethinvalid.str(); 
-	response["ethpoolsw"] 	= ethpoolsw.str();          
-	// DCR not supported
-	// response["dcrhashrate"] = dcrhashrate.str();
-	// response["dcrhashrates"] = detailedMhDcr;   
-	// response["dcrshares"] 	= dcrshares.str(); 
-	// response["dcrrejected"] = dcrrejects.str();       
-	// response["dcrinvalid"] 	= dcrinvalid.str(); 
-	// response["dcrpoolsw"] 	= dcrpoolsw.str();       
+	response["ethshares"] 	= s.getAccepts(); 
+	response["ethrejected"] = s.getRejects();   
+	response["ethinvalid"] 	= s.getFailures(); 
+	response["ethpoolsw"] 	= 0;             
 	// Hardware Info
 	response["temperatures"] = temps;             		// Temperatures(C) for all GPUs
 	response["fanpercentages"] = fans;             		// Fans speed(%) for all GPUs
