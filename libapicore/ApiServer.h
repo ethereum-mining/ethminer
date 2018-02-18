@@ -16,7 +16,7 @@ public:
 private:
 	Farm &m_farm;
 	void getMinerStat1(const Json::Value& request, Json::Value& response);
-	void getMinerStat2(const Json::Value& request, Json::Value& response);
+	void getMinerStatReadable(const Json::Value& request, Json::Value& response);
 	void doMinerRestart(const Json::Value& request, Json::Value& response);
 	void doMinerReboot(const Json::Value& request, Json::Value& response);
 };

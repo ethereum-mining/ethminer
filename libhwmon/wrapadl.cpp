@@ -206,13 +206,17 @@ int wrap_adl_get_fanpcnt(wrap_adl_handle *adlh, int gpuindex, unsigned int *fanp
 	return 0;
 }
 
-int wrap_adl_get_power_usage(wrap_adl_handle *adlh, int gpuindex, unsigned int *power)
+int wrap_adl_get_power_usage(wrap_adl_handle *adlh, int gpuindex, unsigned int* miliwatts)
 {
 	wrap_adlReturn_t rc;
 	if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount){
 		return -1;
 	}
-	rc = adlh->adl2Overdrive6CurrentPowerGet(adlh->context, adlh->phys_logi_device_id[gpuindex], 0, (int*)power);
+	int* power = new int;
+	rc = adlh->adl2Overdrive6CurrentPowerGet(adlh->context, adlh->phys_logi_device_id[gpuindex], 0, power);
+	double watts = adlf2double(*power);
+	unsigned int res = (unsigned int)(watts * 1000);
+	*miliwatts = res;
 	return rc;
 }
 

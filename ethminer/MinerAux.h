@@ -626,7 +626,7 @@ public:
 			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for hashrate reporting to work with nanopool)" << endl
 			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
 			<< "    -RH, --report-hashrate Report current hashrate to pool (please only enable on pools supporting this)" << endl
-			<< "    -HWMON Displays gpu temp, fan percent and power usage." << endl
+			<< "    -HWMON Displays gpu temp, fan percent and power usage. Note: In linux, the program uses sysfs, which may require running with root priviledges." << endl
 			<< "        0: Displays only temp and fan percent" << endl
 			<< "        1: Also displays power usage" << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl

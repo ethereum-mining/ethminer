@@ -4,7 +4,7 @@
 ApiServer::ApiServer(AbstractServerConnector *conn, serverVersion_t type, Farm &farm, bool &readonly) : AbstractServer(*conn, type), m_farm(farm)
 {
 	this->bindAndAddMethod(Procedure("miner_getstat1", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::getMinerStat1);
-	this->bindAndAddMethod(Procedure("miner_getstat2", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::getMinerStat2);	
+	this->bindAndAddMethod(Procedure("miner_getstatreadable", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::getMinerStatReadable);	
 	if (!readonly) {
 		this->bindAndAddMethod(Procedure("miner_restart", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::doMinerRestart);
 		this->bindAndAddMethod(Procedure("miner_reboot", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::doMinerReboot);
@@ -62,7 +62,7 @@ void ApiServer::getMinerStat1(const Json::Value& request, Json::Value& response)
 	response[8] = invalidStats.str();            // number of ETH invalid shares, number of ETH pool switches, number of DCR invalid shares, number of DCR pool switches.
 }
 
-void ApiServer::getMinerStat2(const Json::Value& request, Json::Value& response)
+void ApiServer::getMinerStatReadable(const Json::Value& request, Json::Value& response)
 {
 	(void) request; // unused
 	
@@ -98,7 +98,7 @@ void ApiServer::getMinerStat2(const Json::Value& request, Json::Value& response)
 	numGpus = p.minerMonitors.size();
 	for (auto const& i : p.minerMonitors)
 	{
-		tempAndFans << i.tempC << ";" << i.fanP << ";" << i.powerW << (((numGpus - 1) > gpuIndex) ? "; " : ""); // Fetching Temp and Fans
+		tempAndFans << i.tempC << "C;" << i.fanP << "%;" << i.powerW << (((numGpus - 1) > gpuIndex) ? "W; " : "W"); // Fetching Temp and Fans
 		gpuIndex++;
 	}
 

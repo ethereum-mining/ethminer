@@ -275,7 +275,7 @@ public:
 						wrap_adl_get_fanpcnt(adlh, hwInfo.deviceIndex, &fanpcnt);
 						if(power) {
 							wrap_adl_get_power_usage(adlh, hwInfo.deviceIndex, &powerW);
-							hw.powerW = adlf2double(powerW);
+							hw.powerW = powerW/((double)1000.0);
 						}
 					}
 #if defined(__linux)
