@@ -89,12 +89,21 @@ This project uses [CMake] and [Hunter] package manager.
    ```sh
    cmake ..
    ```
+   Note: In Windows, it is possible to have issues with VS 2017 compilers, in that case, use VS 2017 installer to get VS 2015 compilers and use:
+   ```sh
+   cmake .. -G "Visual Studio 15 2017 Win64" -Tv140
+   ```
+
 
 3. Build the project using [CMake Build Tool Mode]. This is a portable variant
    of `make`.
 
    ```sh
    cmake --build .
+   ```
+   Note: In Windows, it is possible to have compiler issues if you don't specify build config. In that case use:
+   ```sh
+   cmake --build . --config Release
    ```
 
 4. _(Optional, Linux only)_ Install the built executable.

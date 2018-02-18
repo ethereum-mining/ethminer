@@ -259,6 +259,7 @@ public:
 			if (hwmon) {
 				HwMonitorInfo hwInfo = i->hwmonInfo();
 				HwMonitor hw;
+				hw.powerW = 0.0;
 				unsigned int tempC = 0, fanpcnt = 0, powerW = 0;
 				if (hwInfo.deviceIndex >= 0) {
 					if (hwInfo.deviceType == HwMonitorInfoType::NVIDIA && nvmlh) {
@@ -266,15 +267,16 @@ public:
 						wrap_nvml_get_fanpcnt(nvmlh, hwInfo.deviceIndex, &fanpcnt);
 						if(power) {
 							wrap_nvml_get_power_usage(nvmlh, hwInfo.deviceIndex, &powerW);
+							hw.powerW = powerW/((double)1000.0);
 						}
 					}
 					else if (hwInfo.deviceType == HwMonitorInfoType::AMD && adlh) {
 						wrap_adl_get_tempC(adlh, hwInfo.deviceIndex, &tempC);
 						wrap_adl_get_fanpcnt(adlh, hwInfo.deviceIndex, &fanpcnt);
-						//TODO
-						//if(power) {
-						//wrap_adl_get_power_usage(adlh, hwInfo.deviceIndex, &powerW);
-						//}
+						if(power) {
+							wrap_adl_get_power_usage(adlh, hwInfo.deviceIndex, &powerW);
+							hw.powerW = adlf2double(powerW);
+						}
 					}
 #if defined(__linux)
 					// Overwrite with sysfs data if present
@@ -290,7 +292,6 @@ public:
 				}
 				hw.tempC = tempC;
 				hw.fanP = fanpcnt;
-				hw.powrW = powerW/((double)1000.0);
 				p.minerMonitors.push_back(hw);
 			}
         }

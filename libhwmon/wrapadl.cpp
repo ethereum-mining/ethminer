@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "wraphelper.h"
 #include "wrapadl.h"
 
 #if defined(__cplusplus)
@@ -72,6 +71,15 @@ return NULL;
 		wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Refresh");
 	adlh->adlMainControlDestroy = (wrap_adlReturn_t(*)(void))
 		wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Destroy");
+	adlh->adl2MainControlCreate = (wrap_adlReturn_t(*)(ADL_MAIN_MALLOC_CALLBACK, int, ADL_CONTEXT_HANDLE*))
+		wrap_dlsym(adlh->adl_dll, "ADL2_Main_Control_Create");
+	adlh->adl2MainControlDestroy = (wrap_adlReturn_t(*)(ADL_CONTEXT_HANDLE))
+		wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Destroy");
+	adlh->adl2Overdrive6CurrentPowerGet = (wrap_adlReturn_t(*)(ADL_CONTEXT_HANDLE, int, int, int*))
+		wrap_dlsym(adlh->adl_dll, "ADL2_Overdrive6_CurrentPower_Get");
+	adlh->adl2MainControlRefresh = (wrap_adlReturn_t(*)(ADL_CONTEXT_HANDLE))
+		wrap_dlsym(adlh->adl_dll, "ADL2_Main_Control_Refresh");
+
 
 	if (adlh->adlMainControlCreate == NULL ||
 		adlh->adlMainControlDestroy == NULL ||
@@ -80,7 +88,11 @@ return NULL;
 		adlh->adlAdapterAdapterInfoGet == NULL ||
 		adlh->adlAdapterAdapterIdGet == NULL ||
 		adlh->adlOverdrive5TemperatureGet == NULL ||
-		adlh->adlOverdrive5FanSpeedGet == NULL
+		adlh->adlOverdrive5FanSpeedGet == NULL ||
+		adlh->adl2MainControlCreate == NULL ||
+		adlh->adl2MainControlRefresh == NULL ||
+		adlh->adl2MainControlDestroy == NULL ||
+		adlh->adl2Overdrive6CurrentPowerGet == NULL
 		) {
 #if 0
 		printf("Failed to obtain all required ADL function pointers\n");
@@ -92,6 +104,11 @@ return NULL;
 
 	adlh->adlMainControlCreate(ADL_Main_Memory_Alloc, 1);
 	adlh->adlMainControlRefresh();
+
+	adlh->context = NULL;
+
+	adlh->adl2MainControlCreate(ADL_Main_Memory_Alloc, 1, &(adlh->context));
+	adlh->adl2MainControlRefresh(adlh->context);
 
 	int logicalGpuCount = 0;
 	adlh->adlAdapterNumberOfAdapters(&logicalGpuCount);
@@ -134,6 +151,7 @@ return NULL;
 int wrap_adl_destroy(wrap_adl_handle *adlh)
 {
 	adlh->adlMainControlDestroy();
+	adlh->adl2MainControlDestroy(adlh->context);
 	wrap_dlclose(adlh->adl_dll);
 	free(adlh);
 	return 0;
@@ -186,6 +204,16 @@ int wrap_adl_get_fanpcnt(wrap_adl_handle *adlh, int gpuindex, unsigned int *fanp
 	*fanpcnt = unsigned(fan->iFanSpeed);
 	delete fan;
 	return 0;
+}
+
+int wrap_adl_get_power_usage(wrap_adl_handle *adlh, int gpuindex, unsigned int *power)
+{
+	wrap_adlReturn_t rc;
+	if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount){
+		return -1;
+	}
+	rc = adlh->adl2Overdrive6CurrentPowerGet(adlh->context, adlh->phys_logi_device_id[gpuindex], 0, (int*)power);
+	return rc;
 }
 
 #if defined(__cplusplus)
