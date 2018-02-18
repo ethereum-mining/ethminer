@@ -4,7 +4,7 @@
 ApiServer::ApiServer(AbstractServerConnector *conn, serverVersion_t type, Farm &farm, bool &readonly) : AbstractServer(*conn, type), m_farm(farm)
 {
 	this->bindAndAddMethod(Procedure("miner_getstat1", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::getMinerStat1);
-	this->bindAndAddMethod(Procedure("miner_getstatreadable", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::getMinerStatReadable);	
+	this->bindAndAddMethod(Procedure("miner_getstathr", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::getMinerStatHR);	
 	if (!readonly) {
 		this->bindAndAddMethod(Procedure("miner_restart", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::doMinerRestart);
 		this->bindAndAddMethod(Procedure("miner_reboot", PARAMS_BY_NAME, JSON_OBJECT, NULL), &ApiServer::doMinerReboot);
@@ -62,10 +62,11 @@ void ApiServer::getMinerStat1(const Json::Value& request, Json::Value& response)
 	response[8] = invalidStats.str();            // number of ETH invalid shares, number of ETH pool switches, number of DCR invalid shares, number of DCR pool switches.
 }
 
-void ApiServer::getMinerStatReadable(const Json::Value& request, Json::Value& response)
+void ApiServer::getMinerStatHR(const Json::Value& request, Json::Value& response)
 {
 	(void) request; // unused
 	
+	//TODO:give key-value format
 	auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(steady_clock::now() - this->m_farm.farmLaunched());
 	
 	SolutionStats s = m_farm.getSolutionStats();
