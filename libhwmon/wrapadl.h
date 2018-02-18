@@ -2,13 +2,17 @@
 * Wrapper for ADL, inspired by wrapnvml from John E. Stone
 * 
 * By Philipp Andreas - github@smurfy.de
+* ADL power by Davesmacer
 */
+
+#include "wraphelper.h"
 
 #pragma once
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
 
 typedef enum wrap_adlReturn_enum {
 	WRAPADL_OK= 0
@@ -24,6 +28,13 @@ typedef enum wrap_adlReturn_enum {
 #endif
 
 typedef void* (ADL_API_CALL *ADL_MAIN_MALLOC_CALLBACK)(int);
+/// \brief Handle to ADL client context.
+///
+///  ADL clients obtain context handle from initial call to \ref ADL2_Main_Control_Create.
+///  Clients have to pass the handle to each subsequent ADL call and finally destroy
+///  the context with call to \ref ADL2_Main_Control_Destroy
+/// \nosubgrouping
+typedef void* ADL_CONTEXT_HANDLE;
 
 #define ADL_MAX_PATH                                    256
 typedef struct AdapterInfo
@@ -111,6 +122,7 @@ typedef struct {
 	int adl_gpucount;
 	int *phys_logi_device_id;
 	LPAdapterInfo devs;
+	ADL_CONTEXT_HANDLE context;
 	wrap_adlReturn_t(*adlMainControlCreate)(ADL_MAIN_MALLOC_CALLBACK, int);
 	wrap_adlReturn_t(*adlAdapterNumberOfAdapters)(int *);
 	wrap_adlReturn_t(*adlAdapterAdapterInfoGet)(LPAdapterInfo, int);
@@ -119,6 +131,10 @@ typedef struct {
 	wrap_adlReturn_t(*adlOverdrive5FanSpeedGet)(int, int, ADLFanSpeedValue*);
 	wrap_adlReturn_t(*adlMainControlRefresh)(void);
 	wrap_adlReturn_t(*adlMainControlDestroy)(void);
+	wrap_adlReturn_t(*adl2MainControlCreate)(ADL_MAIN_MALLOC_CALLBACK, int, ADL_CONTEXT_HANDLE* );
+	wrap_adlReturn_t(*adl2MainControlDestroy)(ADL_CONTEXT_HANDLE);
+	wrap_adlReturn_t(*adl2Overdrive6CurrentPowerGet)(ADL_CONTEXT_HANDLE, int, int, int*);
+	wrap_adlReturn_t(*adl2MainControlRefresh)(ADL_CONTEXT_HANDLE);
 } wrap_adl_handle;
 
 wrap_adl_handle * wrap_adl_create();
@@ -131,6 +147,9 @@ int wrap_adl_get_gpu_name(wrap_adl_handle *adlh, int gpuindex, char *namebuf, in
 int wrap_adl_get_tempC(wrap_adl_handle *adlh, int gpuindex, unsigned int *tempC);
 
 int wrap_adl_get_fanpcnt(wrap_adl_handle *adlh, int gpuindex, unsigned int *fanpcnt);
+
+int wrap_adl_get_power_usage(wrap_adl_handle *adlh, int gpuindex, unsigned int *milliwatts);
+
 
 #if defined(__cplusplus)
 }
