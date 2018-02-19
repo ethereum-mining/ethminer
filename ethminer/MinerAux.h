@@ -249,12 +249,12 @@ public:
 		{
 			m_report_stratum_hashrate = true;
 		}
-		else if ((arg == "-HWMON") && i + 1 < argc)
+		else if (arg == "-HWMON")
 		{
 			m_show_hwmonitors = true;
-			m_show_power = (bool)atoi(argv[++i]);
+			if ((i + 1 < argc) && (*argv[i + 1] != '-'))
+				m_show_power = (bool)atoi(argv[++i]);
 		}
-
 #if API_CORE
 		else if ((arg == "--api-port") && i + 1 < argc)
 		{
@@ -626,8 +626,8 @@ public:
 			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for hashrate reporting to work with nanopool)" << endl
 			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
 			<< "    -RH, --report-hashrate Report current hashrate to pool (please only enable on pools supporting this)" << endl
-			<< "    -HWMON Displays gpu temp, fan percent and power usage. Note: In linux, the program uses sysfs, which may require running with root priviledges." << endl
-			<< "        0: Displays only temp and fan percent" << endl
+			<< "    -HWMON [n] Displays gpu temp, fan percent and power usage. Note: In linux, the program uses sysfs, which may require running with root priviledges." << endl
+			<< "        0: Displays only temp and fan percent (default)" << endl
 			<< "        1: Also displays power usage" << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
