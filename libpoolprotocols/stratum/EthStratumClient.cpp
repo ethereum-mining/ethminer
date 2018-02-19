@@ -115,6 +115,8 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 
 void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
 {
+	(void)i;
+
 	dev::setThreadName("stratum");
 	
 	if (!ec)
