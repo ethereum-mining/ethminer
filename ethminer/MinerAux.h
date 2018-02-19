@@ -94,6 +94,7 @@ public:
 
 	static void signalHandler(int sig)
 	{
+		(void)sig;
 		g_running = false;
 	}
 
@@ -961,7 +962,6 @@ private:
 	string m_activeFarmURL = m_farmURL;
 	unsigned m_maxFarmRetries = 3;
 	unsigned m_farmRecheckPeriod = 500;
-	unsigned m_defaultStratumFarmRecheckPeriod = 2000;
 	bool m_farmRecheckSet = false;
 	int m_worktimeout = 180;
 	bool m_show_hwmonitors = false;
