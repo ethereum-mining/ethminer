@@ -80,11 +80,18 @@ struct HwMonitor
 {
 	int tempC = 0;
 	int fanP = 0;
+	double powerW = 0;
 };
 
 inline std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
 {
-	return os << _hw.tempC << "C " << _hw.fanP << "%";
+	string power = "";
+	if(_hw.powerW != 0){
+		ostringstream stream;
+		stream << fixed << setprecision(2) << _hw.powerW << "W";
+		power = stream.str();
+	}
+	return os << _hw.tempC << "C " << _hw.fanP << "% " << power;
 }
 
 /// Describes the progress of a mining operation.
