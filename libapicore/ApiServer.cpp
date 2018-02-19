@@ -89,7 +89,7 @@ void ApiServer::getMinerStatHR(const Json::Value& request, Json::Value& response
 	int numGpus = p.minersHashes.size();
 	for (auto const& i: p.minersHashes)
 	{
-		detailedMhEth[gpuIndex] = (p.minerRate(i) / 1000.0f);
+		detailedMhEth[gpuIndex] = (p.minerRate(i));
 		//detailedMhDcr[gpuIndex] = "off"; //Not supported
 		gpuIndex++;
 	}
@@ -107,7 +107,7 @@ void ApiServer::getMinerStatHR(const Json::Value& request, Json::Value& response
 	response["version"] = version.str();		// miner version.
 	response["runtime"] = runtime.str();		// running time, in minutes.
 	// total ETH hashrate in MH/s, number of ETH shares, number of ETH rejected shares.
-	response["ethhashrate"] = (p.rate() / 1000.0f);
+	response["ethhashrate"] = (p.rate());
 	response["ethhashrates"] = detailedMhEth;  
 	response["ethshares"] 	= s.getAccepts(); 
 	response["ethrejected"] = s.getRejects();   
