@@ -328,6 +328,7 @@ bool CUDAMiner::cuda_init(
 		// use selected device
 		m_device_num = _deviceId < numDevices -1 ? _deviceId : numDevices - 1;
 		m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
+		m_hwmoninfo.indexSource = HwMonitorIndexSource::CUDA;
 		m_hwmoninfo.deviceIndex = m_device_num;
 
 		cudaDeviceProp device_props;

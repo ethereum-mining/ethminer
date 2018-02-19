@@ -70,10 +70,19 @@ enum class HwMonitorInfoType
 	AMD
 };
 
+enum class HwMonitorIndexSource
+{
+	UNKNOWN,
+	OPENCL,
+	CUDA
+};
+
 struct HwMonitorInfo
 {
 	HwMonitorInfoType deviceType = HwMonitorInfoType::UNKNOWN;
+	HwMonitorIndexSource indexSource = HwMonitorIndexSource::UNKNOWN;
 	int deviceIndex = -1;
+
 };
 
 struct HwMonitor
