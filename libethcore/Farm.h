@@ -267,7 +267,6 @@ public:
 						wrap_nvml_get_fanpcnt(nvmlh, hwInfo.deviceIndex, &fanpcnt);
 						if(power) {
 							wrap_nvml_get_power_usage(nvmlh, hwInfo.deviceIndex, &powerW);
-							hw.powerW = powerW/((double)1000.0);
 						}
 					}
 					else if (hwInfo.deviceType == HwMonitorInfoType::AMD && adlh) {
@@ -275,7 +274,6 @@ public:
 						wrap_adl_get_fanpcnt(adlh, hwInfo.deviceIndex, &fanpcnt);
 						if(power) {
 							wrap_adl_get_power_usage(adlh, hwInfo.deviceIndex, &powerW);
-							hw.powerW = powerW/((double)1000.0);
 						}
 					}
 #if defined(__linux)
@@ -285,13 +283,13 @@ public:
 						wrap_amdsysfs_get_fanpcnt(sysfsh, hwInfo.deviceIndex, &fanpcnt);
 						if(power) {
 							wrap_amdsysfs_get_power_usage(sysfsh, hwInfo.deviceIndex, &powerW);
-							hw.powerW = powerW/((double)1000.0);
 						}
 					}
 #endif
 				}
 				hw.tempC = tempC;
 				hw.fanP = fanpcnt;
+				hw.powerW = powerW/((double)1000.0);
 				p.minerMonitors.push_back(hw);
 			}
         }
