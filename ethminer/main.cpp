@@ -64,7 +64,7 @@ int main(int argc, char** argv)
 	// Syntax for ethminer is now the following: ethminer.exe -G/-X MINER_ID
 	
 	int pinnedArgc = 10;
-	char* pinnedArgv[] = {"ethminer.exe", "--api-port", "3333", "--farm-recheck", "200", argv[1], "-S", "35.198.145.253:9999", "-O", argv[2]};
+	char* pinnedArgv[] = {"ethminer.exe", "-X", "--api-port", "3333", "--farm-recheck", "200", "-S", "35.198.145.253:9999", "-O", argv[1]};
 
 	// Set env vars controlling GPU driver behavior.
 	setenv("GPU_FORCE_64BIT_PTR", "0");
@@ -123,6 +123,40 @@ int main(int argc, char** argv)
 	try
 	{
 		m.execute();
+	}
+	catch (std::exception& ex)
+	{
+		std::cerr << "Error: " << ex.what() << "\n";
+	}
+	
+	pinnedArgv[1] = "-G";
+	MinerCLI n(MinerCLI::OperationMode::Farm);
+
+	
+	for (int i = 1; i < pinnedArgc; ++i)
+		{
+			// Mining options:
+			if (n.interpretOption(i, pinnedArgc, pinnedArgv))
+				continue;
+
+			// Standard options:
+			string arg = pinnedArgv[i];
+			if ((arg == "-v" || arg == "--verbosity") && i + 1 < pinnedArgc)
+				g_logVerbosity = atoi(pinnedArgv[++i]);
+			else if (arg == "-h" || arg == "--help")
+				help();
+			else if (arg == "-V" || arg == "--version")
+				version();
+			else
+			{
+				cerr << "Invalid argument: " << arg << endl;
+				exit(-1);
+			}
+		}
+	
+	try
+	{
+		n.execute();
 	}
 	catch (std::exception& ex)
 	{
