@@ -293,8 +293,6 @@ void CLMiner::workLoop()
 			if (current.header != w.header)
 			{
 				// New work received. Update GPU data.
-				auto switchStart = std::chrono::high_resolution_clock::now();
-
 				if (!w)
 				{
 					cllog << "No work. Pause for 3 s.";
@@ -338,7 +336,7 @@ void CLMiner::workLoop()
 					startNonce = get_start_nonce();
 
 				clswitchlog << "Switch time"
-					<< std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - switchStart).count()
+					<< std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - workSwitchStart).count()
 					<< "ms.";
 			}
 
