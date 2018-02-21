@@ -63,19 +63,22 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
 	m_autospacing(_autospacing),
 	m_verbosity(_v)
 {
-	Guard l(x_logOverride);
-	auto it = s_logOverride.find(_info);
-	if ((it != s_logOverride.end() && it->second) || (it == s_logOverride.end() && (int)_v <= g_logVerbosity))
+	if ((int)_v <= g_logVerbosity)
 	{
-		time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-		char buf[24];
-		if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
-			buf[0] = '\0'; // empty if case strftime fails
-		static char const* c_begin = "  " EthViolet;
-		static char const* c_sep1 = EthReset EthBlack "|" EthNavy;
-		static char const* c_sep2 = EthReset EthBlack "|" EthTeal;
-		static char const* c_end = EthReset "  ";
-		m_sstr << _id << c_begin << buf << c_sep1 << std::left << std::setw(8) << getThreadName() << c_sep2 << c_end;
+		Guard l(x_logOverride);
+		auto it = s_logOverride.find(_info);
+		if ((it != s_logOverride.end() && it->second) || it == s_logOverride.end())
+		{
+			time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+			char buf[24];
+			if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
+				buf[0] = '\0'; // empty if case strftime fails
+			static char const* c_begin = "  " EthViolet;
+			static char const* c_sep1 = EthReset EthBlack "|" EthNavy;
+			static char const* c_sep2 = EthReset EthBlack "|" EthTeal;
+			static char const* c_end = EthReset "  ";
+			m_sstr << _id << c_begin << buf << c_sep1 << std::left << std::setw(8) << getThreadName() << c_sep2 << c_end;
+		}
 	}
 }
 
