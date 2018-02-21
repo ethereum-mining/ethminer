@@ -34,8 +34,8 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 	});
 	p_client->onWorkReceived([&](WorkPackage const& wp)
 	{
-		cnote << "Received new job #" + wp.header.hex().substr(0, 8) + " from " + m_connections[m_activeConnectionIdx].host();
 		m_farm.setWork(wp);
+		cnote << "Received new job #" + wp.header.hex().substr(0, 8) + " from " + m_connections[m_activeConnectionIdx].host();
 	});
 	p_client->onSolutionAccepted([&](bool const& stale)
 	{
