@@ -119,6 +119,8 @@ private:
 	uint32_t m_dag_size = -1;
 	uint32_t m_device_num;
 
+	std::chrono::time_point<std::chrono::high_resolution_clock> m_switch_start;
+
 	volatile search_results** m_search_buf;
 	cudaStream_t  * m_streams;
 
@@ -137,6 +139,7 @@ private:
 	static vector<int> s_devices;
 
 	static bool s_noeval;
+
 };
 
 
