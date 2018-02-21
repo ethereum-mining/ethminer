@@ -29,7 +29,14 @@ struct CLChannel: public LogChannel
 	static const int verbosity = 2;
 	static const bool debug = false;
 };
+struct CLSwitchChannel: public LogChannel
+{
+	static const char* name() { return EthOrange " cl"; }
+	static const int verbosity = 6;
+	static const bool debug = false;
+};
 #define cllog clog(CLChannel)
+#define clswitchlog clog(CLSwitchChannel)
 #define ETHCL_LOG(_contents) cllog << _contents
 
 /**
@@ -285,7 +292,7 @@ void CLMiner::workLoop()
 			if (current.header != w.header)
 			{
 				// New work received. Update GPU data.
-				auto localSwitchStart = std::chrono::high_resolution_clock::now();
+				auto switchStart = std::chrono::high_resolution_clock::now();
 
 				if (!w)
 				{
@@ -326,10 +333,9 @@ void CLMiner::workLoop()
 				else
 					startNonce = get_start_nonce();
 
-				auto switchEnd = std::chrono::high_resolution_clock::now();
-				auto globalSwitchTime = std::chrono::duration_cast<std::chrono::milliseconds>(switchEnd - workSwitchStart).count();
-				auto localSwitchTime = std::chrono::duration_cast<std::chrono::microseconds>(switchEnd - localSwitchStart).count();
-				cllog << "Switch time" << globalSwitchTime << "ms /" << localSwitchTime << "us";
+				clswitchlog << "Switch time"
+					<< std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - switchStart).count()
+					<< "ms.";
 			}
 
 			// Read results.
