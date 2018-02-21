@@ -88,7 +88,7 @@ inline std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
 	string power = "";
 	if(_hw.powerW != 0){
 		ostringstream stream;
-		stream << fixed << setprecision(2) << _hw.powerW << "W";
+		stream << fixed << setprecision(0) << _hw.powerW << "W";
 		power = stream.str();
 	}
 	return os << _hw.tempC << "C " << _hw.fanP << "% " << power;

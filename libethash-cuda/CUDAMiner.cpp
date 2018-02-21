@@ -35,8 +35,15 @@ struct CUDAChannel: public LogChannel
 	static const bool debug = false;
 };
 
+struct CUDASwitchChannel: public LogChannel
+{
+	static const char* name() { return EthOrange " cu"; }
+	static const int verbosity = 6;
+	static const bool debug = false;
+};
+
 #define cudalog clog(CUDAChannel)
-#define ETHCUDA_LOG(_contents) cudalog << _contents
+#define cudaswitchlog clog(CUDASwitchChannel)
 
 CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
 	Miner("cuda-", _farm, _index),
@@ -479,7 +486,7 @@ void CUDAMiner::search(
 				m_search_buf[i]->count = 0;
 		}
 	}
-	uint64_t batch_size = s_gridSize * s_blockSize;
+	const uint32_t batch_size = s_gridSize * s_blockSize;
 	while (true)
 	{
 		m_current_index++;
@@ -535,8 +542,12 @@ void CUDAMiner::search(
 
 			addHashCount(batch_size);
 			bool t = true;
-			if (m_abort.compare_exchange_strong(t, false))
+			if (m_abort.compare_exchange_strong(t, false)) {
+				cudaswitchlog << "Switch time "
+					<< std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - workSwitchStart).count()
+					<< "ms.";
 				break;
+			}
 			if (shouldStop())
 			{
 				m_abort.store(false, std::memory_order_relaxed);
