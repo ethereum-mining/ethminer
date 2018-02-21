@@ -44,7 +44,7 @@ void help()
 	MinerCLI::streamHelp(cout);
 	cout
 		<< " General Options:" << endl
-		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 8)." << endl
+		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 5). Set to 9 for switch time logging." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 		<< "    -h,--help  Show this help message and exit." << endl
 		<< " Envionment variables:" << endl
