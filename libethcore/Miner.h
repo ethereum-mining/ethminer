@@ -241,7 +241,7 @@ protected:
 	std::chrono::high_resolution_clock::time_point workSwitchStart;
 	HwMonitorInfo m_hwmoninfo;
 private:
-	std::atomic<uint32_t> m_hashCount = {0};
+	std::atomic<uint64_t> m_hashCount = {0};
 
 	WorkPackage m_work;
 	mutable Mutex x_work;
