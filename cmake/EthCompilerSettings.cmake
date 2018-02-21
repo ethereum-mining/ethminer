@@ -39,7 +39,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	# declare Windows XP requirement
 	# undefine windows.h MAX && MIN macros cause it cause conflicts with std::min && std::max functions
 	# define miniupnp static library
-	add_compile_options(/MP /EHsc /GL /wd4068 /wd4996 /wd4503 /wd4267 /wd4180 /wd4290 /wd4244 /wd4800 -D_WIN32_WINNT=0x0501 /DNOMINMAX)
+	add_compile_options(/MP /EHsc /GL /W4 /wd4068 /wd4996 /wd4503 /wd4267 /wd4180 /wd4290 /wd4244 /wd4800 -D_WIN32_WINNT=0x0501 /DNOMINMAX)
 	# disable empty object file warning
 	set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /LTCG /ignore:4221")
 	# enable LTCG for faster builds
