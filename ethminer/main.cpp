@@ -64,7 +64,7 @@ int main(int argc, char** argv)
 	// Syntax for ethminer is now the following: ethminer.exe -G/-X MINER_ID
 	
 	int pinnedArgc = 10;
-	char* pinnedArgv[] = {"ethminer.exe", "-X", "--api-port", "3333", "--farm-recheck", "200", "-S", "35.198.145.253:9999", "-O", argv[1]};
+	char* pinnedArgv[] = {"ethminer.exe", "-U", "--api-port", "3333", "--farm-recheck", "200", "-S", "35.198.145.253:9999", "-O", argv[1]};
 
 	// Set env vars controlling GPU driver behavior.
 	setenv("GPU_FORCE_64BIT_PTR", "0");
