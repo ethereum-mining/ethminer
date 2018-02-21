@@ -229,7 +229,7 @@ protected:
 
 	WorkPackage work() const { Guard l(x_work); return m_work; }
 
-	void addHashCount(uint32_t _n) { m_hashCount.fetch_add(_n, std::memory_order_relaxed); }
+	void addHashCount(uint64_t _n) { m_hashCount.fetch_add(_n, std::memory_order_relaxed); }
 
 	static unsigned s_dagLoadMode;
 	static unsigned s_dagLoadIndex;
