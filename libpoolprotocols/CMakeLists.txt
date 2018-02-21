@@ -1,6 +1,7 @@
 set(SOURCES
 	PoolClient.h PoolClient.cpp
 	PoolManager.h PoolManager.cpp
+	testing/SimulateClient.h testing/SimulateClient.cpp
     stratum/EthStratumClient.h stratum/EthStratumClient.cpp
     getwork/EthGetworkClient.h getwork/EthGetworkClient.cpp getwork/jsonrpc_getwork.h
 )

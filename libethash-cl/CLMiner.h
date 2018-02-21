@@ -86,7 +86,6 @@ protected:
 
 private:
 	void workLoop() override;
-	void report(uint64_t _nonce, WorkPackage const& _w);
 
 	bool init(const h256& seed);
 

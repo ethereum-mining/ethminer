@@ -55,16 +55,8 @@ __device__ __forceinline__ bool compute_hash(
 				{
 					offset[p] = fnv(init0[p] ^ (a + b), ((uint32_t *)&mix[p])[b]) % d_dag_size;
 					offset[p] = __shfl_sync(0xFFFFFFFF,offset[p], t, THREADS_PER_HASH);
-				}
-				#pragma unroll
-				for (int p = 0; p < _PARALLEL_HASH; p++)
-				{
-                                        //if(blockIdx.x == 0 && threadIdx.x==0 && offset[p] > (d_dag_size>>1)) //larger than half
-                                        //    printf("d_dag_size = %d offset[p] = %d\n", d_dag_size, offset[p]);
 					mix[p] = fnv4(mix[p], d_dag[offset[p]].uint4s[thread_id]);
 				}
-
-                                
 			}
 		}
 
