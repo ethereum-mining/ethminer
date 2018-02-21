@@ -147,7 +147,6 @@ void CUDAMiner::workLoop()
 void CUDAMiner::kick_miner()
 {
 	m_abort.store(true, std::memory_order_relaxed);
-	m_switch_start = std::chrono::high_resolution_clock::now();
 }
 
 void CUDAMiner::setNumInstances(unsigned _instances)
@@ -533,7 +532,7 @@ void CUDAMiner::search(
 			bool t = true;
 			if (m_abort.compare_exchange_strong(t, false)) {
 				cudaswitchlog << "Switch time "
-					<< std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_switch_start).count()
+					<< std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - workSwitchStart).count()
 					<< "ms.";
 				break;
 			}
