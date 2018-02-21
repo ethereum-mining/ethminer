@@ -251,6 +251,15 @@ public:
 		{
 			m_report_stratum_hashrate = true;
 		}
+		else if (arg == "--display-interval" && i + 1 < argc)
+			try {
+			m_displayInterval = stol(argv[++i]);
+		}
+		catch (...)
+		{
+			cerr << "Bad " << arg << " option: " << argv[i] << endl;
+			BOOST_THROW_EXCEPTION(BadArgument());
+		}
 		else if (arg == "-HWMON")
 		{
 			m_show_hwmonitors = true;
@@ -648,6 +657,7 @@ public:
 			<< "    --opencl-devices <0 1 ..n> Select which OpenCL devices to mine on. Default is to use all" << endl
 			<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
 			<< "    --list-devices List the detected OpenCL/CUDA devices and exit. Should be combined with -G or -U flag" << endl
+			<< "    --display-interval <n> Set mining stats display interval in seconds. (default: every 5 seconds)" << endl			
 			<< "    -L, --dag-load-mode <mode> DAG generation mode." << endl
 			<< "        parallel    - load DAG on all GPUs at the same time (default)" << endl
 			<< "        sequential  - load DAG on GPUs one after another. Use this when the miner crashes during DAG generation" << endl
@@ -820,7 +830,7 @@ private:
 			else {
 				minelog << "not-connected";
 			}
-			this_thread::sleep_for(chrono::seconds(5));
+			this_thread::sleep_for(chrono::seconds(m_displayInterval));
 		}
 
 		mgr.stop();
@@ -869,6 +879,7 @@ private:
 	string m_activeFarmURL = m_farmURL;
 	unsigned m_maxFarmRetries = 3;
 	unsigned m_farmRecheckPeriod = 500;
+	unsigned m_displayInterval = 5;
 	bool m_farmRecheckSet = false;
 	int m_worktimeout = 180;
 	bool m_show_hwmonitors = false;
