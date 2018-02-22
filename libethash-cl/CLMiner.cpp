@@ -657,6 +657,7 @@ bool CLMiner::init(const h256& seed)
 		/* If we have a binary kernel, we load it in tandem with the opencl,
 		   that way, we can use the dag generate opencl code */
 		bool loadedBinary = false;
+                unsigned int computeUnits = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
 
 		if(s_clKernelName >= CLKernelName::Binary) {
 			std::ifstream kernel_file;
@@ -694,6 +695,9 @@ bool CLMiner::init(const h256& seed)
 				{
 					cwarn << "Build info:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
 				}
+
+                                computeUnits = computeUnits == 14 ? 36 : computeUnits;
+                                m_globalWorkSize = (computeUnits << 14)*8;
 			} else {
 				cwarn << "Instructed to load binary kernel, but failed to load kernel:";
 				cwarn << fname_strm.str();
@@ -744,12 +748,13 @@ bool CLMiner::init(const h256& seed)
 		m_searchKernel.setArg(1, m_header);
 		m_searchKernel.setArg(2, m_dag);
 		m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
-		
+
 		if(s_clKernelName >= CLKernelName::Binary && loadedBinary) {
-			uint32_t factor = (1UL << 32)/dagSize128;
+			const uint32_t epoch = light->light->block_number/ETHASH_EPOCH_LENGTH;
 			m_searchKernel.setArg(6, dagSize128);
-			m_searchKernel.setArg(7, factor);
-			m_searchKernel.setArg(8, s_threadTweak);
+			m_searchKernel.setArg(7, modulo_optimization[epoch].factor);
+			m_searchKernel.setArg(8, modulo_optimization[epoch].shift);
+			m_searchKernel.setArg(9, s_threadTweak);
 		}
 
 		// create mining buffers
