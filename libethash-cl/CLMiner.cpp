@@ -29,7 +29,14 @@ struct CLChannel: public LogChannel
 	static const int verbosity = 2;
 	static const bool debug = false;
 };
+struct CLSwitchChannel: public LogChannel
+{
+	static const char* name() { return EthOrange " cl"; }
+	static const int verbosity = 6;
+	static const bool debug = false;
+};
 #define cllog clog(CLChannel)
+#define clswitchlog clog(CLSwitchChannel)
 #define ETHCL_LOG(_contents) cllog << _contents
 
 /**
@@ -266,19 +273,6 @@ CLMiner::~CLMiner()
 	kick_miner();
 }
 
-void CLMiner::report(uint64_t _nonce, WorkPackage const& _w)
-{
-	assert(_nonce != 0);
-	// TODO: Why re-evaluating?
-	Result r = EthashAux::eval(_w.seed, _w.header, _nonce);
-	if (r.value < _w.boundary)
-		farm.submitProof(Solution{_nonce, r.mixHash, _w, false});
-	else {
-		farm.failedSolution();
-		cwarn << "FAILURE: GPU gave incorrect result!";
-	}
-}
-
 void CLMiner::workLoop()
 {
 	// Memory for zero-ing buffers. Cannot be static because crashes on macOS.
@@ -299,8 +293,6 @@ void CLMiner::workLoop()
 			if (current.header != w.header)
 			{
 				// New work received. Update GPU data.
-				auto localSwitchStart = std::chrono::high_resolution_clock::now();
-
 				if (!w)
 				{
 					cllog << "No work. Pause for 3 s.";
@@ -308,7 +300,7 @@ void CLMiner::workLoop()
 					continue;
 				}
 
-				cllog << "New work: header" << w.header << "target" << w.boundary.hex();
+				//cllog << "New work: header" << w.header << "target" << w.boundary.hex();
 
 				if (current.seed != w.seed)
 				{
@@ -343,10 +335,9 @@ void CLMiner::workLoop()
 				else
 					startNonce = get_start_nonce();
 
-				auto switchEnd = std::chrono::high_resolution_clock::now();
-				auto globalSwitchTime = std::chrono::duration_cast<std::chrono::milliseconds>(switchEnd - workSwitchStart).count();
-				auto localSwitchTime = std::chrono::duration_cast<std::chrono::microseconds>(switchEnd - localSwitchStart).count();
-				cllog << "Switch time" << globalSwitchTime << "ms /" << localSwitchTime << "us";
+				clswitchlog << "Switch time"
+					<< std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - workSwitchStart).count()
+					<< "ms.";
 			}
 
 			// Read results.
@@ -369,8 +360,15 @@ void CLMiner::workLoop()
 
 			// Report results while the kernel is running.
 			// It takes some time because ethash must be re-evaluated on CPU.
-			if (nonce != 0)
-				report(nonce, current);
+			if (nonce != 0) {
+				Result r = EthashAux::eval(current.seed, current.header, nonce);
+				if (r.value < current.boundary)
+					farm.submitProof(Solution{nonce, r.mixHash, current, current.header != w.header});
+				else {
+					farm.failedSolution();
+					cwarn << "FAILURE: GPU gave incorrect result!";
+				}
+			}
 
 			current = w;        // kernel now processing newest work
 			current.startNonce = startNonce;

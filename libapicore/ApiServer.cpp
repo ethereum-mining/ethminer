@@ -86,7 +86,6 @@ void ApiServer::getMinerStatHR(const Json::Value& request, Json::Value& response
     poolAddresses << m_farm.get_pool_addresses(); 
 	
 	int gpuIndex = 0;
-	int numGpus = p.minersHashes.size();
 	for (auto const& i: p.minersHashes)
 	{
 		detailedMhEth[gpuIndex] = (p.minerRate(i));
@@ -95,7 +94,6 @@ void ApiServer::getMinerStatHR(const Json::Value& request, Json::Value& response
 	}
 
 	gpuIndex = 0;
-	numGpus = p.minerMonitors.size();
 	for (auto const& i : p.minerMonitors)
 	{
 		temps[gpuIndex] = i.tempC ; // Fetching Temps 

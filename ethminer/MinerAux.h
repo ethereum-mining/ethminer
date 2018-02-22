@@ -46,6 +46,7 @@
 #include <libpoolprotocols/PoolManager.h>
 #include <libpoolprotocols/stratum/EthStratumClient.h>
 #include <libpoolprotocols/getwork/EthGetworkClient.h>
+#include <libpoolprotocols/testing/SimulateClient.h>
 
 #if ETH_DBUS
 #include "DBusInt.h"
@@ -250,12 +251,21 @@ public:
 		{
 			m_report_stratum_hashrate = true;
 		}
-		else if ((arg == "-HWMON") && i + 1 < argc)
+		else if (arg == "--display-interval" && i + 1 < argc)
+			try {
+			m_displayInterval = stol(argv[++i]);
+		}
+		catch (...)
+		{
+			cerr << "Bad " << arg << " option: " << argv[i] << endl;
+			BOOST_THROW_EXCEPTION(BadArgument());
+		}
+		else if (arg == "-HWMON")
 		{
 			m_show_hwmonitors = true;
-			m_show_power = (bool)atoi(argv[++i]);
+			if ((i + 1 < argc) && (*argv[i + 1] != '-'))
+				m_show_power = (bool)atoi(argv[++i]);
 		}
-
 #if API_CORE
 		else if ((arg == "--api-port") && i + 1 < argc)
 		{
@@ -603,10 +613,8 @@ public:
 
 		if (mode == OperationMode::Benchmark)
 			doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
-		else if (mode == OperationMode::Farm || mode == OperationMode::Stratum)
+		else if (mode == OperationMode::Farm || mode == OperationMode::Stratum || mode == OperationMode::Simulation)
 			doMiner();
-		else if (mode == OperationMode::Simulation)
-			doSimulation(m_minerType);
 	}
 
 	static void streamHelp(ostream& _out)
@@ -627,8 +635,8 @@ public:
 			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for hashrate reporting to work with nanopool)" << endl
 			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
 			<< "    -RH, --report-hashrate Report current hashrate to pool (please only enable on pools supporting this)" << endl
-			<< "    -HWMON Displays gpu temp, fan percent and power usage. Note: In linux, the program uses sysfs, which may require running with root priviledges." << endl
-			<< "        0: Displays only temp and fan percent" << endl
+			<< "    -HWMON [n] Displays gpu temp, fan percent and power usage. Note: In linux, the program uses sysfs, which may require running with root priviledges." << endl
+			<< "        0: Displays only temp and fan percent (default)" << endl
 			<< "        1: Also displays power usage" << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
@@ -649,6 +657,7 @@ public:
 			<< "    --opencl-devices <0 1 ..n> Select which OpenCL devices to mine on. Default is to use all" << endl
 			<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
 			<< "    --list-devices List the detected OpenCL/CUDA devices and exit. Should be combined with -G or -U flag" << endl
+			<< "    --display-interval <n> Set mining stats display interval in seconds. (default: every 5 seconds)" << endl			
 			<< "    -L, --dag-load-mode <mode> DAG generation mode." << endl
 			<< "        parallel    - load DAG on all GPUs at the same time (default)" << endl
 			<< "        sequential  - load DAG on GPUs one after another. Use this when the miner crashes during DAG generation" << endl
@@ -753,84 +762,7 @@ private:
 
 		exit(0);
 	}
-
-	void doSimulation(MinerType _m, int difficulty = 20)
-	{
-		BlockHeader genesis;
-		genesis.setNumber(m_benchmarkBlock);
-		genesis.setDifficulty(u256(1) << difficulty);
-
-		Farm f;
-		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
-		map<string, Farm::SealerDescriptor> sealers;
-#if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); } };
-#endif
-#if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
-#endif
-		f.setSealers(sealers);
-
-		string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
-		cout << "Running mining simulation on platform: " << platformInfo << endl;
-
-		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
-		//genesis.prep();
-
-		
-
-		if (_m == MinerType::CL)
-			f.start("opencl", false);
-		else if (_m == MinerType::CUDA)
-			f.start("cuda", false);
-
-		int time = 0;
-
-		WorkPackage current = WorkPackage(genesis);
-		f.setWork(current);
-		while (true) {
-			bool completed = false;
-			Solution solution;
-			f.onSolutionFound([&](Solution sol)
-			{
-				solution = sol;
-				return completed = true;
-			});
-			for (unsigned i = 0; !completed; ++i)
-			{
-				auto mp = f.miningProgress();
-
-				cnote << "Mining on difficulty " << difficulty << " " << mp;
-				this_thread::sleep_for(chrono::milliseconds(1000));
-				time++;
-			}
-			cnote << "Difficulty:" << difficulty << "  Nonce:" << solution.nonce;
-			if (EthashAux::eval(current.seed, current.header, solution.nonce).value < current.boundary)
-			{
-				cnote << "SUCCESS: GPU gave correct result!";
-			}
-			else
-				cwarn << "FAILURE: GPU gave incorrect result!";
-
-			if (time < 12)
-				difficulty++;
-			else if (time > 18)
-				difficulty--;
-			time = 0;
-			genesis.setDifficulty(u256(1) << difficulty);
-			genesis.noteDirty();
-
-			current.header = h256::random();
-			current.boundary = genesis.boundary();
-			minelog << "Generated random work package:";
-			minelog << "  Header-hash:" << current.header.hex();
-			minelog << "  Seedhash:" << current.seed.hex();
-			minelog << "  Target: " << h256(current.boundary).hex();
-			f.setWork(current);
-
-		}
-	}
-
+	
 	void doMiner()
 	{
 		map<string, Farm::SealerDescriptor> sealers;
@@ -848,6 +780,9 @@ private:
 		}
 		else if (mode == OperationMode::Farm) {
 			client = new EthGetworkClient(m_farmRecheckPeriod);
+		}
+		else if (mode == OperationMode::Simulation) {
+			client = new SimulateClient(20, m_benchmarkBlock);
 		}
 		else {
 			cwarn << "Invalid OperationMode";
@@ -895,7 +830,7 @@ private:
 			else {
 				minelog << "not-connected";
 			}
-			this_thread::sleep_for(chrono::seconds(5));
+			this_thread::sleep_for(chrono::seconds(m_displayInterval));
 		}
 
 		mgr.stop();
@@ -944,6 +879,7 @@ private:
 	string m_activeFarmURL = m_farmURL;
 	unsigned m_maxFarmRetries = 3;
 	unsigned m_farmRecheckPeriod = 500;
+	unsigned m_displayInterval = 5;
 	bool m_farmRecheckSet = false;
 	int m_worktimeout = 180;
 	bool m_show_hwmonitors = false;
