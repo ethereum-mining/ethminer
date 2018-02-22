@@ -39,13 +39,13 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		{
 			using namespace boost::multiprecision;
 
-			static const vector<string> k = {"", "kilo", "mega", "giga", "tera", "peta"};
+			static const char* k[] = {"", "kilo", "mega", "giga", "tera", "peta"};
 			m_lastBoundary = wp.boundary;
 			static const uint512_t dividend("0x10000000000000000000000000000000000000000000000000000000000000000");
 			const uint256_t divisor(string("0x") + m_lastBoundary.hex());
 			uint32_t i = 0;
 			double diff = double(dividend / divisor);
-			while ((diff > 1000.0) && (i < (k.size() - 2)))
+			while ((diff > 1000.0) && (i < ((sizeof(k) / sizeof(char *)) - 2)))
 			{
 				i++;
 				diff = diff / 1000.0;
