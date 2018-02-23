@@ -47,11 +47,28 @@ EthStratumClient::EthStratumClient(int const & worktimeout, int const & protocol
 
 	if (secureMode != StratumSecure::NONE) {
 
-		boost::asio::ssl::context ctx(boost::asio::ssl::context::tlsv12);
-		//ctx.load_verify_file("ca.pem");
+		boost::asio::ssl::context::method method = boost::asio::ssl::context::tls;
+		if (secureMode == StratumSecure::TLS12)
+			method = boost::asio::ssl::context::tlsv12;
+
+		boost::asio::ssl::context ctx(method);
 		m_securesocket = new boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(m_io_service, ctx);
 		m_socket = &m_securesocket->next_layer();
-		//m_securesocket->set_verify_mode(boost::asio::ssl::verify_peer);
+
+		if (secureMode != StratumSecure::ALLOW_SELFSIGNED) {
+			m_securesocket->set_verify_mode(boost::asio::ssl::verify_peer);
+			try {
+				ctx.load_verify_file("ca.pem");
+			}
+			catch (...) {
+				dev::setThreadName("stratum");
+				cwarn << "Failed to load ca.pem, please make sure this file is accessable.";
+				cwarn << "If you get certificate verification errors you can try:";
+				cwarn << "* Make sure the file is accessable";
+				cwarn << "* Download a pem from here: https://curl.haxx.se/docs/caextract.html and save it as ca.pem";
+				cwarn << "* Disable certificate verification";
+			}
+		}
 	}
 	else {
 		m_socket = new boost::asio::ip::tcp::socket(m_io_service);
@@ -133,7 +150,7 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	}
 	else
 	{
-		cerr << "Could not resolve host " << p_active->host + ":" + p_active->port + ", " << ec.message();
+		cwarn << "Could not resolve host " << p_active->host + ":" + p_active->port + ", " << ec.message();
 		disconnect();
 	}
 }
@@ -147,7 +164,7 @@ void EthStratumClient::handshake_handler(const boost::system::error_code& ec)
 		subscribe();
 	}
 	else {
-		cerr << "SSL Handshake failed: " + ec.message();
+		cwarn << "SSL Handshake failed: " + ec.message();
 		disconnect();
 	}
 }

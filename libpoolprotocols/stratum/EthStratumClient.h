@@ -22,9 +22,9 @@ using namespace dev::eth;
 enum class StratumSecure
 {
 	NONE,
-	FORCE_TLS12,
-	FORCE_TLS10,
-	ALLOW_UNSIGNED
+	TLS12,
+	TLS,
+	ALLOW_SELFSIGNED
 };
 
 

@@ -200,6 +200,18 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
+		else if (arg == "--stratum-ssl")
+		{
+			m_stratumSecure = StratumSecure::TLS12;
+			if ((i + 1 < argc) && (*argv[i + 1] != '-')) {
+				int secMode = atoi(argv[++i]);
+				if (secMode == 1)
+					m_stratumSecure = StratumSecure::TLS;
+				if (secMode == 2)
+					m_stratumSecure = StratumSecure::ALLOW_SELFSIGNED;
+			}
+				
+		}
 		else if ((arg == "-SE" || arg == "--stratum-email") && i + 1 < argc)
 		{
 			try {
@@ -636,6 +648,10 @@ public:
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
 			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
 			<< "    -SC, --stratum-client <n>  Stratum client version. Version 1 support only." << endl
+			<< "    --stratum-ssl [<n>]  Use encryption to connect to stratum server." << endl
+			<< "        0: Force TLS1.2 (default)" << endl
+			<< "        1: Allow any TLS version" << endl
+			<< "        2: Allow self-signed or invalid certs and any TLS version" << endl
 			<< "    -SP, --stratum-protocol <n> Choose which stratum protocol to use:" << endl
 			<< "        0: official stratum spec: ethpool, ethermine, coinotron, mph, nanopool (default)" << endl
 			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for hashrate reporting to work with nanopool)" << endl
@@ -783,7 +799,7 @@ private:
 		PoolClient *client = nullptr;
 
 		if (mode == OperationMode::Stratum) {
-			client = new EthStratumClient(m_worktimeout, m_stratumProtocol, m_email, m_report_stratum_hashrate, StratumSecure::FORCE_TLS12);
+			client = new EthStratumClient(m_worktimeout, m_stratumProtocol, m_email, m_report_stratum_hashrate, m_stratumSecure);
 		}
 		else if (mode == OperationMode::Farm) {
 			client = new EthGetworkClient(m_farmRecheckPeriod);
@@ -850,6 +866,7 @@ private:
 
 	/// Mining options
 	MinerType m_minerType = MinerType::Mixed;
+	StratumSecure m_stratumSecure = StratumSecure::NONE;
 	unsigned m_openclPlatform = 0;
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
