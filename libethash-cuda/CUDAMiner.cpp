@@ -88,6 +88,8 @@ bool CUDAMiner::init(const h256& seed)
 	catch (std::runtime_error const& _e)
 	{
 		cwarn << "Error CUDA mining: " << _e.what();
+		if(s_exit)
+			exit(1);
 		return false;
 	}
 }
@@ -141,6 +143,8 @@ void CUDAMiner::workLoop()
 	catch (std::runtime_error const& _e)
 	{
 		cwarn << "Error CUDA mining: " << _e.what();
+		if(s_exit)
+			exit(1);
 	}
 }
 
@@ -200,6 +204,8 @@ void CUDAMiner::listDevices()
 	catch(std::runtime_error const& err)
 	{
 		cwarn << "CUDA error: " << err.what();
+		if(s_exit)
+			exit(1);
 	}
 }
 
@@ -211,11 +217,13 @@ bool CUDAMiner::configureGPU(
 	uint64_t _currentBlock,
 	unsigned _dagLoadMode,
 	unsigned _dagCreateDevice,
-	bool _noeval
+	bool _noeval,
+	bool _exit
 	)
 {
 	s_dagLoadMode = _dagLoadMode;
 	s_dagCreateDevice = _dagCreateDevice;
+	s_exit  = _exit;
 
 	if (!cuda_configureGPU(
 		getNumDevices(),
@@ -289,6 +297,8 @@ bool CUDAMiner::cuda_configureGPU(
 	}
 	catch (runtime_error)
 	{
+		if(s_exit)
+			exit(1);
 		return false;
 	}
 }
@@ -422,6 +432,8 @@ cpyDag:
 	}
 	catch (runtime_error const&)
 	{
+		if(s_exit)
+			exit(1);
 		return false;
 	}
 }

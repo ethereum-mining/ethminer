@@ -68,7 +68,8 @@ public:
 		unsigned _platformId,
 		uint64_t _currentBlock,
 		unsigned _dagLoadMode,
-		unsigned _dagCreateDevice
+		unsigned _dagCreateDevice,
+		bool _exit
 	);
 	static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
 	static void setThreadsPerHash(unsigned _threadsPerHash){s_threadsPerHash = _threadsPerHash; }
