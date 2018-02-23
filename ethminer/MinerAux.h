@@ -266,6 +266,10 @@ public:
 			if ((i + 1 < argc) && (*argv[i + 1] != '-'))
 				m_show_power = (bool)atoi(argv[++i]);
 		}
+		else if ((arg == "--exit"))
+		{
+			m_exit = true;
+		}
 #if API_CORE
 		else if ((arg == "--api-port") && i + 1 < argc)
 		{
@@ -569,7 +573,8 @@ public:
 					m_openclPlatform,
 					0,
 					m_dagLoadMode,
-					m_dagCreateDevice
+					m_dagCreateDevice,
+					m_exit
 				))
 				exit(1);
 			CLMiner::setNumInstances(m_miningThreads);
@@ -596,7 +601,8 @@ public:
 				0,
 				m_dagLoadMode,
 				m_dagCreateDevice,
-				m_cudaNoEval
+				m_cudaNoEval,
+				m_exit
 				))
 				exit(1);
 
@@ -638,6 +644,7 @@ public:
 			<< "    -HWMON [n] Displays gpu temp, fan percent and power usage. Note: In linux, the program uses sysfs, which may require running with root priviledges." << endl
 			<< "        0: Displays only temp and fan percent (default)" << endl
 			<< "        1: Also displays power usage" << endl
+			<< "    --exit Stops the miner whenever an error is encountered" << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 			<< endl
@@ -866,6 +873,7 @@ private:
 #endif
 	unsigned m_dagLoadMode = 0; // parallel
 	unsigned m_dagCreateDevice = 0;
+	bool m_exit = false;
 	/// Benchmarking params
 	unsigned m_benchmarkWarmup = 15;
 	unsigned m_benchmarkTrial = 3;
