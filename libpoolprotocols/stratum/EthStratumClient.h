@@ -3,6 +3,7 @@
 #include <iostream>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <boost/bind.hpp>
 #include <json/json.h>
 #include <libdevcore/Log.h>
@@ -18,11 +19,19 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+enum class StratumSecure
+{
+	NONE,
+	TLS12,
+	TLS,
+	ALLOW_SELFSIGNED
+};
+
 
 class EthStratumClient : public PoolClient
 {
 public:
-	EthStratumClient(int const & worktimeout, int const & protocol, string const & email, bool const & submitHashrate);
+	EthStratumClient(int const & worktimeout, int const & protocol, string const & email, bool const & submitHashrate, StratumSecure const & secureMode);
 	~EthStratumClient();
 
 	void connect();
@@ -40,9 +49,11 @@ private:
 
 	void resolve_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
 	void connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
+	void handshake_handler(const boost::system::error_code& ec);
 	void work_timeout_handler(const boost::system::error_code& ec);
 
 	void readline();
+	void subscribe();
 	void handleResponse(const boost::system::error_code& ec);
 	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
 	void processReponse(Json::Value& responseObject);
@@ -67,7 +78,9 @@ private:
 
 	std::thread m_serviceThread;  ///< The IO service thread.
 	boost::asio::io_service m_io_service;
-	boost::asio::ip::tcp::socket m_socket;
+	StratumSecure m_secureMode;
+	boost::asio::ip::tcp::socket *m_socket;
+	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> *m_securesocket;
 
 	boost::asio::streambuf m_requestBuffer;
 	boost::asio::streambuf m_responseBuffer;
