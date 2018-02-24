@@ -216,7 +216,7 @@ bool CUDAMiner::configureGPU(
 	unsigned _scheduleFlag,
 	uint64_t _currentBlock,
 	unsigned _dagLoadMode,
-	unsigned _dagDevice,
+	unsigned _dagCreateDevice,
 	bool _noeval
 	)
 {
