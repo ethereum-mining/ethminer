@@ -2,6 +2,11 @@
 #include "EthStratumClient.h"
 #include <libdevcore/Log.h>
 #include <libethash/endian.h>
+
+#ifdef _WIN32
+#include <wincrypt.h>
+#endif
+
 using boost::asio::ip::tcp;
 
 
@@ -57,17 +62,32 @@ EthStratumClient::EthStratumClient(int const & worktimeout, int const & protocol
 
 		if (secureMode != StratumSecure::ALLOW_SELFSIGNED) {
 			m_securesocket->set_verify_mode(boost::asio::ssl::verify_peer);
-			try {
-				ctx.load_verify_file("ca.pem");
+
+#ifdef _WIN32
+			HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
+			if (hStore == NULL) {
+				return;
 			}
-			catch (...) {
-				dev::setThreadName("stratum");
-				cwarn << "Failed to load ca.pem, please make sure this file is accessable.";
-				cwarn << "If you get certificate verification errors you can try:";
-				cwarn << "* Make sure the file is accessable";
-				cwarn << "* Download a pem from here: https://curl.haxx.se/docs/caextract.html and save it as ca.pem";
-				cwarn << "* Disable certificate verification";
+
+			X509_STORE *store = X509_STORE_new();
+			PCCERT_CONTEXT pContext = NULL;
+			while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != NULL) {
+				X509 *x509 = d2i_X509(NULL,
+					(const unsigned char **)&pContext->pbCertEncoded,
+					pContext->cbCertEncoded);
+				if (x509 != NULL) {
+					X509_STORE_add_cert(store, x509);
+					X509_free(x509);
+				}
 			}
+
+			CertFreeCertificateContext(pContext);
+			CertCloseStore(hStore, 0);
+
+			SSL_CTX_set_cert_store(ctx.native_handle(), store);
+#else
+			ctx.set_default_verify_paths();
+#endif
 		}
 	}
 	else {
