@@ -118,6 +118,11 @@ void EthStratumClient::connect()
 			SSL_CTX_set_cert_store(ctx.native_handle(), store);
 #else
 			ctx.set_default_verify_paths();
+			try {
+				ctx.load_verify_file("/etc/ssl/certs/ca-certificates.crt");
+			}
+			catch (...) {
+			}
 #endif
 		}
 	}
@@ -207,6 +212,17 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 			m_securesocket->handshake(boost::asio::ssl::stream_base::client, hec);
 			if (hec) {
 				cwarn << "SSL/TLS Handshake failed: " << hec.message();
+				if (hec.value() == 337047686) { // certificate verification failed
+					cwarn << "This can have multiple reasons:";
+					cwarn << "* Root certs are either not installed or not found";
+					cwarn << "* Pool uses a self-signed certificate";
+					cwarn << "Possible fixes:";
+					cwarn << "* Make sure the file '/etc/ssl/certs/ca-certificates.crt' exists and is accessable";
+					cwarn << "* Export the correct path via 'export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt' to the correct file";
+					cwarn << "  On most systems you can install the 'ca-certificates' package";
+					cwarn << "  You can also get the latest file here: https://curl.haxx.se/docs/caextract.html";
+					cwarn << "* Disable certificate verification all-together via command-line option.";
+				}
 				disconnect();
 				return;
 			}
