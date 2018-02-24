@@ -264,7 +264,8 @@ bool CUDAMiner::cuda_configureGPU(
 	{
 		s_blockSize = _blockSize;
 		s_gridSize = _gridSize;
-		_numStreams *= 0.8;
+		_numStreams *= 10;
+		_numStreams /= 8;
 		s_numStreams = _numStreams;
 		s_scheduleFlag = _scheduleFlag;
 		s_noeval = _noeval;
