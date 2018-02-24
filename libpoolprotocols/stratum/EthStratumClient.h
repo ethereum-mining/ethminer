@@ -49,11 +49,9 @@ private:
 
 	void resolve_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
 	void connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
-	void handshake_handler(const boost::system::error_code& ec);
 	void work_timeout_handler(const boost::system::error_code& ec);
 
 	void readline();
-	void subscribe();
 	void handleResponse(const boost::system::error_code& ec);
 	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
 	void processReponse(Json::Value& responseObject);
