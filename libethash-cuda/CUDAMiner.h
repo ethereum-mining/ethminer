@@ -102,7 +102,7 @@ protected:
 	void kick_miner() override;
 
 private:
-	atomic<bool> m_abort = {false};
+	atomic<bool> m_new_work = {false};
 
 	void workLoop() override;
 
