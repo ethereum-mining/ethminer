@@ -117,11 +117,14 @@ void EthStratumClient::connect()
 
 			SSL_CTX_set_cert_store(ctx.native_handle(), store);
 #else
-			ctx.set_default_verify_paths();
+			char *certPath = getenv("SSL_CERT_FILE");
 			try {
-				ctx.load_verify_file("/etc/ssl/certs/ca-certificates.crt");
+				ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
 			}
 			catch (...) {
+				cwarn << "Failed to load ca certificates. Either the file '/etc/ssl/certs/ca-certificates.crt' does not exist";
+				cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or inaccessable file.";
+				cwarn << "It is possible that certificate verification can fail.";
 			}
 #endif
 		}
