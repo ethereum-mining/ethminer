@@ -11,7 +11,6 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 
 	p_client->onConnected([&]()
 	{
-		m_reconnectTry = 0;
 		cnote << "Connected to " + m_connections[m_activeConnectionIdx].host();
 		if (!m_farm.isMining())
 		{
@@ -34,6 +33,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 	});
 	p_client->onWorkReceived([&](WorkPackage const& wp)
 	{
+		m_reconnectTry = 0;
 		m_farm.setWork(wp);
 		cnote << "Received new job #" + wp.header.hex().substr(0, 8) + " from " + m_connections[m_activeConnectionIdx].host();
 	});
