@@ -628,8 +628,8 @@ bool CLMiner::init(const h256& seed)
 		// TODO: Just use C++ raw string literal.
 		string code;
 
-		if ( s_clKernelName == CLKernelName::Unstable ) {
-			cllog << "OpenCL kernel: Unstable kernel";
+		if ( s_clKernelName == CLKernelName::Experimental ) {
+			cllog << "OpenCL kernel: Experimental kernel";
 			code = string(CLMiner_kernel_experimental, CLMiner_kernel_experimental + sizeof(CLMiner_kernel_experimental));
 		}
 		else { //if(s_clKernelName == CLKernelName::Stable)
