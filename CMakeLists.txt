@@ -1,18 +1,19 @@
 cmake_minimum_required(VERSION 3.3)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/toolchain.cmake CACHE FILEPATH "CMake toolchain file")
+include(cmake/cable/bootstrap.cmake)
 
-set(CMAKE_CONFIGURATION_TYPES Release RelWithDebInfo Debug)
-set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type on single-configuration generators")
+include(CableBuildType)
+include(CableToolchains)
+
+cable_configure_toolchain(DEFAULT cxx11)
 
 set(HUNTER_CONFIGURATION_TYPES Release)
 set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache")
 include(HunterGate)
 HunterGate(
-	URL "https://github.com/ruslo/hunter/archive/v0.19.213.tar.gz"
-	SHA1 "59b2b880178bdc1e9cce83f279f1d88feefa07a2"
-	LOCAL
+    URL "https://github.com/ruslo/hunter/archive/v0.19.213.tar.gz"
+    SHA1 "59b2b880178bdc1e9cce83f279f1d88feefa07a2"
+    LOCAL
 )
 
 if(HUNTER_ENABLED)
@@ -42,6 +43,8 @@ endif()
 
 project(ethminer)
 set(PROJECT_VERSION 0.14.0.dev2)
+
+cable_set_build_type(DEFAULT Release CONFIGURATION_TYPES Release RelWithDebInfo Debug)
 
 # link_directories interprate relative paths with respect to CMAKE_CURRENT_SOURCE_DIR
 cmake_policy(SET CMP0015 NEW)
@@ -134,6 +137,7 @@ message("-- APICORE          Build API Server components              ${APICORE}
 message("------------------------------------------------------------------------")
 message("")
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(EthCompilerSettings)
 
 createBuildInfo()

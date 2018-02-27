@@ -77,13 +77,19 @@ To download the .exe on a build under 'JOB NAME' select 'Configuration: Release'
 
 This project uses [CMake] and [Hunter] package manager.
 
-1. Create a build directory.
+1. Make sure git submodules are up to date
+
+   ```sh
+   git submodule update --init --recursive
+   ```
+
+2. Create a build directory.
 
    ```sh
    mkdir build; cd build
    ```
 
-2. Configure the project with CMake. Check out additional
+3. Configure the project with CMake. Check out additional
    [configuration options](#cmake-configuration-options).
 
    ```sh
@@ -96,7 +102,7 @@ This project uses [CMake] and [Hunter] package manager.
    cmake .. -G "Visual Studio 15 2017 Win64" -Tv140
    ```
 
-3. Build the project using [CMake Build Tool Mode]. This is a portable variant
+4. Build the project using [CMake Build Tool Mode]. This is a portable variant
    of `make`.
 
    ```sh
@@ -109,7 +115,7 @@ This project uses [CMake] and [Hunter] package manager.
    cmake --build . --config Release
    ```
 
-4. _(Optional, Linux only)_ Install the built executable.
+5. _(Optional, Linux only)_ Install the built executable.
 
    ```sh
    sudo make install
