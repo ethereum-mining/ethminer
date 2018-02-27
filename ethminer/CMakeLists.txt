@@ -10,11 +10,7 @@ file(GLOB HEADERS "*.h")
 
 add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
-add_dependencies(${EXECUTABLE} BuildInfo.h)
-
-target_link_libraries(${EXECUTABLE} ethcore)
-target_link_libraries(${EXECUTABLE} ethash)
-target_link_libraries(${EXECUTABLE} poolprotocols devcore libjson-rpc-cpp::client)
+target_link_libraries(ethminer PRIVATE ethcore ethash poolprotocols devcore ethminer-buildinfo)
 
 if(ETHDBUS)
 	find_package(PkgConfig)
@@ -26,7 +22,7 @@ if(ETHDBUS)
 endif()
 
 if(APICORE)
-	target_link_libraries(${EXECUTABLE} apicore)
+	target_link_libraries(ethminer PRIVATE apicore)
 endif()
 
 include(GNUInstallDirs)

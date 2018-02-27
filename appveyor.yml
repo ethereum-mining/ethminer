@@ -5,7 +5,7 @@ branches:
     - /v\d+\..+/
     - /release.*/
     - appveyor
-shallow_clone: true
+clone_depth: 1
 os: Visual Studio 2015
 configuration:
   - Release
@@ -15,6 +15,7 @@ environment:
     secure: VnpF1MH5MEFvUI5MiMMMFlmbDdst+bfom5ZFVgalYPp/SYDhbejjXJm9Dla/IgpC
 
 install: | # Download CUDA Windows installer (local) and extract /compiler/* to /CUDA/vX.0/ zip archive.
+  git submodule update --init --recursive
   appveyor DownloadFile https://github.com/ethereum/cpp-dependencies/releases/download/cache/CUDA-v9.0-WindowsServer2012.zip
   7z x CUDA-v9.0-WindowsServer2012.zip -oC:/
   set PATH=%PATH%;C:/CUDA/v9.0/bin
