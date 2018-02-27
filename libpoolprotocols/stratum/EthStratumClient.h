@@ -3,6 +3,7 @@
 #include <iostream>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <boost/bind.hpp>
 #include <json/json.h>
 #include <libdevcore/Log.h>
@@ -11,18 +12,25 @@
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
 #include "../PoolClient.h"
-#include "BuildInfo.h"
 
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+enum class StratumSecure
+{
+	NONE,
+	TLS12,
+	TLS,
+	ALLOW_SELFSIGNED
+};
+
 
 class EthStratumClient : public PoolClient
 {
 public:
-	EthStratumClient(int const & worktimeout, int const & protocol, string const & email, bool const & submitHashrate);
+	EthStratumClient(int const & worktimeout, int const & protocol, string const & email, bool const & submitHashrate, StratumSecure const & secureMode);
 	~EthStratumClient();
 
 	void connect();
@@ -67,7 +75,9 @@ private:
 
 	std::thread m_serviceThread;  ///< The IO service thread.
 	boost::asio::io_service m_io_service;
-	boost::asio::ip::tcp::socket m_socket;
+	StratumSecure m_secureMode;
+	boost::asio::ip::tcp::socket *m_socket;
+	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> *m_securesocket;
 
 	boost::asio::streambuf m_requestBuffer;
 	boost::asio::streambuf m_responseBuffer;

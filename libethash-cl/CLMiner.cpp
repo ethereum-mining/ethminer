@@ -391,6 +391,8 @@ void CLMiner::workLoop()
 	catch (cl::Error const& _e)
 	{
 		cwarn << ethCLErrorHelper("OpenCL Error", _e);
+		if(s_exit)
+			exit(1);
 	}
 }
 
@@ -457,11 +459,13 @@ bool CLMiner::configureGPU(
 	unsigned _platformId,
 	uint64_t _currentBlock,
 	unsigned _dagLoadMode,
-	unsigned _dagCreateDevice
+	unsigned _dagCreateDevice,
+	bool _exit
 )
 {
 	s_dagLoadMode = _dagLoadMode;
 	s_dagCreateDevice = _dagCreateDevice;
+	s_exit = _exit;
 
 	s_platformId = _platformId;
 
@@ -708,6 +712,8 @@ bool CLMiner::init(const h256& seed)
 	catch (cl::Error const& err)
 	{
 		cwarn << ethCLErrorHelper("OpenCL init failed", err);
+		if(s_exit)
+			exit(1);
 		return false;
 	}
 	return true;

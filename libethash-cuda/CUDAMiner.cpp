@@ -88,6 +88,8 @@ bool CUDAMiner::init(const h256& seed)
 	catch (std::runtime_error const& _e)
 	{
 		cwarn << "Error CUDA mining: " << _e.what();
+		if(s_exit)
+			exit(1);
 		return false;
 	}
 }
@@ -141,12 +143,14 @@ void CUDAMiner::workLoop()
 	catch (std::runtime_error const& _e)
 	{
 		cwarn << "Error CUDA mining: " << _e.what();
+		if(s_exit)
+			exit(1);
 	}
 }
 
 void CUDAMiner::kick_miner()
 {
-	m_abort.store(true, std::memory_order_relaxed);
+	m_new_work.store(true, std::memory_order_relaxed);
 }
 
 void CUDAMiner::setNumInstances(unsigned _instances)
@@ -200,6 +204,8 @@ void CUDAMiner::listDevices()
 	catch(std::runtime_error const& err)
 	{
 		cwarn << "CUDA error: " << err.what();
+		if(s_exit)
+			exit(1);
 	}
 }
 
@@ -211,11 +217,13 @@ bool CUDAMiner::configureGPU(
 	uint64_t _currentBlock,
 	unsigned _dagLoadMode,
 	unsigned _dagCreateDevice,
-	bool _noeval
+	bool _noeval,
+	bool _exit
 	)
 {
 	s_dagLoadMode = _dagLoadMode;
 	s_dagCreateDevice = _dagCreateDevice;
+	s_exit  = _exit;
 
 	if (!cuda_configureGPU(
 		getNumDevices(),
@@ -289,6 +297,8 @@ bool CUDAMiner::cuda_configureGPU(
 	}
 	catch (runtime_error)
 	{
+		if(s_exit)
+			exit(1);
 		return false;
 	}
 }
@@ -422,6 +432,8 @@ cpyDag:
 	}
 	catch (runtime_error const&)
 	{
+		if(s_exit)
+			exit(1);
 		return false;
 	}
 }
@@ -515,12 +527,12 @@ void CUDAMiner::search(
 			if (found_count)
 				for (uint32_t i = 0; i < found_count; i++)
 					if (s_noeval)
-						farm.submitProof(Solution{nonces[i], *((const h256 *)mixes[i]), w, m_abort});
+						farm.submitProof(Solution{nonces[i], *((const h256 *)mixes[i]), w, m_new_work});
 					else
 					{
 						Result r = EthashAux::eval(w.seed, w.header, nonces[i]);
 						if (r.value < w.boundary)
-							farm.submitProof(Solution{nonces[i], r.mixHash, w, m_abort});
+							farm.submitProof(Solution{nonces[i], r.mixHash, w, m_new_work});
 						else
 						{
 							farm.failedSolution();
@@ -530,7 +542,7 @@ void CUDAMiner::search(
 
 			addHashCount(batch_size);
 			bool t = true;
-			if (m_abort.compare_exchange_strong(t, false)) {
+			if (m_new_work.compare_exchange_strong(t, false)) {
 				cudaswitchlog << "Switch time "
 					<< std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - workSwitchStart).count()
 					<< "ms.";
@@ -538,7 +550,7 @@ void CUDAMiner::search(
 			}
 			if (shouldStop())
 			{
-				m_abort.store(false, std::memory_order_relaxed);
+				m_new_work.store(false, std::memory_order_relaxed);
 				break;
 			}
 		}

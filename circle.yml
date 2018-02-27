@@ -4,9 +4,11 @@ jobs:
     docker:
       - image: nvidia/cuda:9.1-devel-ubuntu16.04
     steps:
-      - checkout
+      - run: apt-get update && apt-get install -qy git cmake mesa-common-dev libidn11-dev
 
-      - run: apt-get update && apt-get install -qy cmake mesa-common-dev libidn11-dev
+      - checkout
+      - run: git submodule update --init --recursive
+
       - restore_cache:
           key: hunter-v3
       - run: cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=ON -DAPICORE=ON -H. -Bbuild

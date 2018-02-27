@@ -37,6 +37,7 @@
 #include <libdevcore/SHA3.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Farm.h>
+#include <ethminer-buildinfo.h>
 #if ETH_ETHASHCL
 #include <libethash-cl/CLMiner.h>
 #endif
@@ -176,18 +177,7 @@ public:
 		}
 		else if ((arg == "-SC" || arg == "--stratum-client") && i + 1 < argc)
 		{
-			try {
-				m_stratumClientVersion = atoi(argv[++i]);
-				if (m_stratumClientVersion != 1) {
-					cerr << "Stratum " << m_stratumClientVersion << " not supported" << endl;
-					throw BadArgument();
-				}
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
+			cerr << "The argument " << arg << " has been removed. There is only one stratum client now." << endl;
 		}
 		else if ((arg == "-SP" || arg == "--stratum-protocol") && i + 1 < argc)
 		{
@@ -199,6 +189,18 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
+		}
+		else if (arg == "--stratum-ssl")
+		{
+			m_stratumSecure = StratumSecure::TLS12;
+			if ((i + 1 < argc) && (*argv[i + 1] != '-')) {
+				int secMode = atoi(argv[++i]);
+				if (secMode == 1)
+					m_stratumSecure = StratumSecure::TLS;
+				if (secMode == 2)
+					m_stratumSecure = StratumSecure::ALLOW_SELFSIGNED;
+			}
+				
 		}
 		else if ((arg == "-SE" || arg == "--stratum-email") && i + 1 < argc)
 		{
@@ -265,6 +267,10 @@ public:
 			m_show_hwmonitors = true;
 			if ((i + 1 < argc) && (*argv[i + 1] != '-'))
 				m_show_power = (bool)atoi(argv[++i]);
+		}
+		else if ((arg == "--exit"))
+		{
+			m_exit = true;
 		}
 #if API_CORE
 		else if ((arg == "--api-port") && i + 1 < argc)
@@ -548,8 +554,9 @@ public:
 			exit(0);
 		}
 
-		minelog << "ethminer version " << ETH_PROJECT_VERSION;
-		minelog << "Build: " << ETH_BUILD_PLATFORM << "/" << ETH_BUILD_TYPE;
+		auto* build = ethminer_get_buildinfo();
+		minelog << "ethminer version " << build->project_version;
+		minelog << "Build: " << build->system_name << "/" << build->build_type;
 
 		if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 		{
@@ -569,7 +576,8 @@ public:
 					m_openclPlatform,
 					0,
 					m_dagLoadMode,
-					m_dagCreateDevice
+					m_dagCreateDevice,
+					m_exit
 				))
 				exit(1);
 			CLMiner::setNumInstances(m_miningThreads);
@@ -596,7 +604,8 @@ public:
 				0,
 				m_dagLoadMode,
 				m_dagCreateDevice,
-				m_cudaNoEval
+				m_cudaNoEval,
+				m_exit
 				))
 				exit(1);
 
@@ -629,7 +638,10 @@ public:
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
 			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
-			<< "    -SC, --stratum-client <n>  Stratum client version. Version 1 support only." << endl
+			<< "    --stratum-ssl [<n>]  Use encryption to connect to stratum server." << endl
+			<< "        0: Force TLS1.2 (default)" << endl
+			<< "        1: Allow any TLS version" << endl
+			<< "        2: Allow self-signed or invalid certs and any TLS version" << endl
 			<< "    -SP, --stratum-protocol <n> Choose which stratum protocol to use:" << endl
 			<< "        0: official stratum spec: ethpool, ethermine, coinotron, mph, nanopool (default)" << endl
 			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for hashrate reporting to work with nanopool)" << endl
@@ -638,6 +650,7 @@ public:
 			<< "    -HWMON [n] Displays gpu temp, fan percent and power usage. Note: In linux, the program uses sysfs, which may require running with root priviledges." << endl
 			<< "        0: Displays only temp and fan percent (default)" << endl
 			<< "        1: Also displays power usage" << endl
+			<< "    --exit Stops the miner whenever an error is encountered" << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 			<< endl
@@ -776,7 +789,7 @@ private:
 		PoolClient *client = nullptr;
 
 		if (mode == OperationMode::Stratum) {
-			client = new EthStratumClient(m_worktimeout, m_stratumProtocol, m_email, m_report_stratum_hashrate);
+			client = new EthStratumClient(m_worktimeout, m_stratumProtocol, m_email, m_report_stratum_hashrate, m_stratumSecure);
 		}
 		else if (mode == OperationMode::Farm) {
 			client = new EthGetworkClient(m_farmRecheckPeriod);
@@ -843,6 +856,7 @@ private:
 
 	/// Mining options
 	MinerType m_minerType = MinerType::Mixed;
+	StratumSecure m_stratumSecure = StratumSecure::NONE;
 	unsigned m_openclPlatform = 0;
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
@@ -866,6 +880,7 @@ private:
 #endif
 	unsigned m_dagLoadMode = 0; // parallel
 	unsigned m_dagCreateDevice = 0;
+	bool m_exit = false;
 	/// Benchmarking params
 	unsigned m_benchmarkWarmup = 15;
 	unsigned m_benchmarkTrial = 3;
@@ -889,7 +904,6 @@ private:
 #endif
 
 	bool m_report_stratum_hashrate = false;
-	int m_stratumClientVersion = 1;
 	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
 	string m_user;
 	string m_pass;
