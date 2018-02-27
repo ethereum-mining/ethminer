@@ -150,7 +150,7 @@ void CUDAMiner::workLoop()
 
 void CUDAMiner::kick_miner()
 {
-	m_abort.store(true, std::memory_order_relaxed);
+	m_new_work.store(true, std::memory_order_relaxed);
 }
 
 void CUDAMiner::setNumInstances(unsigned _instances)
@@ -527,12 +527,12 @@ void CUDAMiner::search(
 			if (found_count)
 				for (uint32_t i = 0; i < found_count; i++)
 					if (s_noeval)
-						farm.submitProof(Solution{nonces[i], *((const h256 *)mixes[i]), w, m_abort});
+						farm.submitProof(Solution{nonces[i], *((const h256 *)mixes[i]), w, m_new_work});
 					else
 					{
 						Result r = EthashAux::eval(w.seed, w.header, nonces[i]);
 						if (r.value < w.boundary)
-							farm.submitProof(Solution{nonces[i], r.mixHash, w, m_abort});
+							farm.submitProof(Solution{nonces[i], r.mixHash, w, m_new_work});
 						else
 						{
 							farm.failedSolution();
@@ -542,7 +542,7 @@ void CUDAMiner::search(
 
 			addHashCount(batch_size);
 			bool t = true;
-			if (m_abort.compare_exchange_strong(t, false)) {
+			if (m_new_work.compare_exchange_strong(t, false)) {
 				cudaswitchlog << "Switch time "
 					<< std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - workSwitchStart).count()
 					<< "ms.";
@@ -550,7 +550,7 @@ void CUDAMiner::search(
 			}
 			if (shouldStop())
 			{
-				m_abort.store(false, std::memory_order_relaxed);
+				m_new_work.store(false, std::memory_order_relaxed);
 				break;
 			}
 		}

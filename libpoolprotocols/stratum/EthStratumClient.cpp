@@ -2,6 +2,11 @@
 #include "EthStratumClient.h"
 #include <libdevcore/Log.h>
 #include <libethash/endian.h>
+
+#ifdef _WIN32
+#include <wincrypt.h>
+#endif
+
 using boost::asio::ip::tcp;
 
 
@@ -44,36 +49,6 @@ EthStratumClient::EthStratumClient(int const & worktimeout, int const & protocol
 	m_submit_hashrate_id = h256::random().hex();
 
 	m_secureMode = secureMode;
-
-	if (secureMode != StratumSecure::NONE) {
-
-		boost::asio::ssl::context::method method = boost::asio::ssl::context::tls;
-		if (secureMode == StratumSecure::TLS12)
-			method = boost::asio::ssl::context::tlsv12;
-
-		boost::asio::ssl::context ctx(method);
-		m_securesocket = new boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(m_io_service, ctx);
-		m_socket = &m_securesocket->next_layer();
-
-		if (secureMode != StratumSecure::ALLOW_SELFSIGNED) {
-			m_securesocket->set_verify_mode(boost::asio::ssl::verify_peer);
-			try {
-				ctx.load_verify_file("ca.pem");
-			}
-			catch (...) {
-				dev::setThreadName("stratum");
-				cwarn << "Failed to load ca.pem, please make sure this file is accessable.";
-				cwarn << "If you get certificate verification errors you can try:";
-				cwarn << "* Make sure the file is accessable";
-				cwarn << "* Download a pem from here: https://curl.haxx.se/docs/caextract.html and save it as ca.pem";
-				cwarn << "* Disable certificate verification";
-			}
-		}
-	}
-	else {
-		m_socket = new boost::asio::ip::tcp::socket(m_io_service);
-	}
-
 }
 
 EthStratumClient::~EthStratumClient()
@@ -82,10 +57,12 @@ EthStratumClient::~EthStratumClient()
 	m_serviceThread.join();
 
 	if (m_secureMode != StratumSecure::NONE) {
-		delete m_securesocket;
+		if (m_securesocket) 
+			delete m_securesocket;
 	}
 	else {
-		delete m_socket;
+		if (m_socket)
+			delete m_socket;
 	}
 }
 
@@ -103,6 +80,58 @@ void EthStratumClient::connect()
 	tcp::resolver::query q(p_active->host, p_active->port);
 
 	//cnote << "Resolving stratum server " + p_active->host + ":" + p_active->port;
+
+	if (m_secureMode != StratumSecure::NONE) {
+
+		boost::asio::ssl::context::method method = boost::asio::ssl::context::tls;
+		if (m_secureMode == StratumSecure::TLS12)
+			method = boost::asio::ssl::context::tlsv12;
+
+		boost::asio::ssl::context ctx(method);
+		m_securesocket = new boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(m_io_service, ctx);
+		m_socket = &m_securesocket->next_layer();
+
+		if (m_secureMode != StratumSecure::ALLOW_SELFSIGNED) {
+			m_securesocket->set_verify_mode(boost::asio::ssl::verify_peer);
+
+#ifdef _WIN32
+			HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
+			if (hStore == NULL) {
+				return;
+			}
+
+			X509_STORE *store = X509_STORE_new();
+			PCCERT_CONTEXT pContext = NULL;
+			while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != NULL) {
+				X509 *x509 = d2i_X509(NULL,
+					(const unsigned char **)&pContext->pbCertEncoded,
+					pContext->cbCertEncoded);
+				if (x509 != NULL) {
+					X509_STORE_add_cert(store, x509);
+					X509_free(x509);
+				}
+			}
+
+			CertFreeCertificateContext(pContext);
+			CertCloseStore(hStore, 0);
+
+			SSL_CTX_set_cert_store(ctx.native_handle(), store);
+#else
+			char *certPath = getenv("SSL_CERT_FILE");
+			try {
+				ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
+			}
+			catch (...) {
+				cwarn << "Failed to load ca certificates. Either the file '/etc/ssl/certs/ca-certificates.crt' does not exist";
+				cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or inaccessable file.";
+				cwarn << "It is possible that certificate verification can fail.";
+			}
+#endif
+		}
+	}
+	else {
+		m_socket = new boost::asio::ip::tcp::socket(m_io_service);
+	}
 
 	m_resolver.async_resolve(q, boost::bind(&EthStratumClient::resolve_handler,
 		this, boost::asio::placeholders::error,
@@ -126,8 +155,20 @@ void EthStratumClient::disconnect()
 {
 	m_worktimer.cancel();
 
+	if (m_secureMode != StratumSecure::NONE) {
+		boost::system::error_code sec;
+		m_securesocket->shutdown(sec);
+	}
+
 	m_io_service.stop();
 	m_socket->close();
+
+	if (m_secureMode != StratumSecure::NONE) {
+		delete m_securesocket;
+	}
+	else {
+		delete m_socket;
+	}
 
 	m_authorized = false;
 	m_connected.store(false, std::memory_order_relaxed);
@@ -142,7 +183,6 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	if (!ec)
 	{
 		//cnote << "Connecting to stratum server " + p_active->host + ":" + p_active->port;
-
 		tcp::resolver::iterator end;
 		async_connect(*m_socket, i, end, boost::bind(&EthStratumClient::connect_handler,
 						this, boost::asio::placeholders::error,
@@ -151,20 +191,6 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	else
 	{
 		cwarn << "Could not resolve host " << p_active->host + ":" + p_active->port + ", " << ec.message();
-		disconnect();
-	}
-}
-
-void EthStratumClient::handshake_handler(const boost::system::error_code& ec)
-{
-	dev::setThreadName("stratum");
-
-	if (!ec)
-	{
-		subscribe();
-	}
-	else {
-		cwarn << "SSL Handshake failed: " + ec.message();
 		disconnect();
 	}
 }
@@ -185,11 +211,68 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 		}
 
 		if (m_secureMode != StratumSecure::NONE) {
-			m_securesocket->async_handshake(boost::asio::ssl::stream_base::client, boost::bind(&EthStratumClient::handshake_handler,
-				this, boost::asio::placeholders::error));
+			boost::system::error_code hec;
+			m_securesocket->handshake(boost::asio::ssl::stream_base::client, hec);
+			if (hec) {
+				cwarn << "SSL/TLS Handshake failed: " << hec.message();
+				if (hec.value() == 337047686) { // certificate verification failed
+					cwarn << "This can have multiple reasons:";
+					cwarn << "* Root certs are either not installed or not found";
+					cwarn << "* Pool uses a self-signed certificate";
+					cwarn << "Possible fixes:";
+					cwarn << "* Make sure the file '/etc/ssl/certs/ca-certificates.crt' exists and is accessable";
+					cwarn << "* Export the correct path via 'export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt' to the correct file";
+					cwarn << "  On most systems you can install the 'ca-certificates' package";
+					cwarn << "  You can also get the latest file here: https://curl.haxx.se/docs/caextract.html";
+					cwarn << "* Disable certificate verification all-together via command-line option.";
+				}
+				disconnect();
+				return;
+			}
+		}
+
+		std::ostream os(&m_requestBuffer);
+
+		string user;
+		size_t p;
+
+		switch (m_protocol) {
+			case STRATUM_PROTOCOL_STRATUM:
+				m_authorized = true;
+				os << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n";
+				break;
+			case STRATUM_PROTOCOL_ETHPROXY:
+				p = p_active->user.find_first_of(".");
+				user = p_active->user.substr(0, p);
+				if (p + 1 <= p_active->user.length())
+					m_worker = p_active->user.substr(p + 1);
+				else
+					m_worker = "";
+
+				if (m_email.empty())
+				{
+					os << "{\"id\": 1, \"worker\":\"" << m_worker << "\", \"method\": \"eth_submitLogin\", \"params\": [\"" << user << "\"]}\n";
+				}
+				else
+				{
+					os << "{\"id\": 1, \"worker\":\"" << m_worker << "\", \"method\": \"eth_submitLogin\", \"params\": [\"" << user << "\", \"" << m_email << "\"]}\n";
+				}
+				break;
+			case STRATUM_PROTOCOL_ETHEREUMSTRATUM:
+				m_authorized = true;
+				os << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"ethminer/" << ETH_PROJECT_VERSION << "\",\"EthereumStratum/1.0.0\"]}\n";
+				break;
+		}
+
+		if (m_secureMode != StratumSecure::NONE) {
+			async_write(*m_securesocket, m_requestBuffer,
+				boost::bind(&EthStratumClient::handleResponse, this,
+					boost::asio::placeholders::error));
 		}
 		else {
-			subscribe();
+			async_write(*m_socket, m_requestBuffer,
+				boost::bind(&EthStratumClient::handleResponse, this,
+					boost::asio::placeholders::error));
 		}
 	}
 	else
@@ -199,55 +282,6 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 	}
 
 }
-
-
-void EthStratumClient::subscribe()
-{
-	std::ostream os(&m_requestBuffer);
-
-	string user;
-	size_t p;
-
-	switch (m_protocol) {
-	case STRATUM_PROTOCOL_STRATUM:
-		m_authorized = true;
-		os << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n";
-		break;
-	case STRATUM_PROTOCOL_ETHPROXY:
-		p = p_active->user.find_first_of(".");
-		user = p_active->user.substr(0, p);
-		if (p + 1 <= p_active->user.length())
-			m_worker = p_active->user.substr(p + 1);
-		else
-			m_worker = "";
-
-		if (m_email.empty())
-		{
-			os << "{\"id\": 1, \"worker\":\"" << m_worker << "\", \"method\": \"eth_submitLogin\", \"params\": [\"" << user << "\"]}\n";
-		}
-		else
-		{
-			os << "{\"id\": 1, \"worker\":\"" << m_worker << "\", \"method\": \"eth_submitLogin\", \"params\": [\"" << user << "\", \"" << m_email << "\"]}\n";
-		}
-		break;
-	case STRATUM_PROTOCOL_ETHEREUMSTRATUM:
-		m_authorized = true;
-		os << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"ethminer/" << ETH_PROJECT_VERSION << "\",\"EthereumStratum/1.0.0\"]}\n";
-		break;
-	}
-
-	if (m_secureMode != StratumSecure::NONE) {
-		async_write(*m_securesocket, m_requestBuffer,
-			boost::bind(&EthStratumClient::handleResponse, this,
-				boost::asio::placeholders::error));
-	}
-	else {
-		async_write(*m_socket, m_requestBuffer,
-			boost::bind(&EthStratumClient::handleResponse, this,
-				boost::asio::placeholders::error));
-	}
-}
-
 
 void EthStratumClient::readline() {
 	x_pending.lock();

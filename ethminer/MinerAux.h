@@ -176,18 +176,7 @@ public:
 		}
 		else if ((arg == "-SC" || arg == "--stratum-client") && i + 1 < argc)
 		{
-			try {
-				m_stratumClientVersion = atoi(argv[++i]);
-				if (m_stratumClientVersion != 1) {
-					cerr << "Stratum " << m_stratumClientVersion << " not supported" << endl;
-					throw BadArgument();
-				}
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
+			cerr << "The argument " << arg << " has been removed. There is only one stratum client now." << endl;
 		}
 		else if ((arg == "-SP" || arg == "--stratum-protocol") && i + 1 < argc)
 		{
@@ -661,7 +650,6 @@ public:
 			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
 			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
-			<< "    -SC, --stratum-client <n>  Stratum client version. Version 1 support only." << endl
 			<< "    --stratum-ssl [<n>]  Use encryption to connect to stratum server." << endl
 			<< "        0: Force TLS1.2 (default)" << endl
 			<< "        1: Allow any TLS version" << endl
@@ -932,7 +920,6 @@ private:
 #endif
 
 	bool m_report_stratum_hashrate = false;
-	int m_stratumClientVersion = 1;
 	int m_stratumProtocol = STRATUM_PROTOCOL_STRATUM;
 	string m_user;
 	string m_pass;
