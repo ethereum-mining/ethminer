@@ -102,7 +102,6 @@ void EthStratumClient::reconnect()
 	m_worktimer.cancel();
 
 	m_io_service.reset();
-	//m_socket.close(); // leads to crashes on Linux
 	m_authorized = false;
 	m_connected.store(false, std::memory_order_relaxed);
 		
@@ -385,6 +384,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 		if (method == "mining.notify")
 		{
+			m_retries = 0;
 			params = responseObject.get(workattr.c_str(), Json::Value::null);
 			if (params.isArray())
 			{
