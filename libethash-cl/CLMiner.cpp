@@ -625,8 +625,9 @@ bool CLMiner::init(const h256& seed)
 		if ( s_clKernelName == CLKernelName::Experimental ) {
 			cllog << "OpenCL kernel: Experimental kernel";
 			code = string(CLMiner_kernel_experimental, CLMiner_kernel_experimental + sizeof(CLMiner_kernel_experimental));
-		} else { // Binary or "Stable" kernel, we use the "stable" kernel as a fallback if the binary one cant be loaded
-			cllog << "OpenCL kernel: " <<  (s_clKernelName == CLKernelName::Binary ?  "Binary" : "Stable") << " kernel";
+		}
+		else { // Fallback to experimental kernel if binary loader fails
+			cllog << "OpenCL kernel: " <<  (s_clKernelName == CLKernelName::Binary ?  "Binary" : "Experimental") << " kernel";
 
 			//CLMiner_kernel_stable.cl will do a #undef THREADS_PER_HASH
 			if(s_threadsPerHash != 8) {
