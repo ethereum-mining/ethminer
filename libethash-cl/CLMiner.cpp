@@ -745,8 +745,11 @@ bool CLMiner::init(const h256& seed)
 			return false;
 		}
 		// create buffer for header
+		//ETHCL_LOG("Creating buffer for header.");
+		//m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 		ETHCL_LOG("Creating buffer for header.");
-		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
+		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, sizeof(Keccak_RC_kernel));
+		m_queue.enqueueWriteBuffer(m_header, CL_TRUE, 0, sizeof(Keccak_RC_kernel), Keccak_RC_kernel);
 
 
 		m_searchKernel.setArg(1, m_header);
