@@ -102,19 +102,12 @@ public:
 		{
 			string url = argv[++i];
 
-			if (mode == OperationMode::Stratum)
+			size_t p = url.find_last_of(":");
+			if (p > 0)
 			{
-				size_t p = url.find_last_of(":");
-				if (p > 0)
-				{
-					m_farmFailOverURL = url.substr(0, p);
-					if (p + 1 <= url.length())
-						m_fport = url.substr(p + 1);
-				}
-				else
-				{
-					m_farmFailOverURL = url;
-				}
+				m_farmFailOverURL = url.substr(0, p);
+				if (p + 1 <= url.length())
+					m_fport = url.substr(p + 1);
 			}
 			else
 			{
@@ -163,21 +156,6 @@ public:
 			m_user = userpass.substr(0, p);
 			if (p + 1 <= userpass.length())
 				m_pass = userpass.substr(p+1);
-		}
-		else if ((arg == "-SC" || arg == "--stratum-client") && i + 1 < argc)
-		{
-			try {
-				m_stratumClientVersion = atoi(argv[++i]);
-				if (m_stratumClientVersion != 1) {
-					cerr << "Stratum " << m_stratumClientVersion << " not supported" << endl;
-					throw BadArgument();
-				}
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
 		}
 		else if ((arg == "-SP" || arg == "--stratum-protocol") && i + 1 < argc)
 		{
@@ -415,34 +393,6 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
-		else if (arg == "--benchmark-warmup" && i + 1 < argc)
-			try {
-				m_benchmarkWarmup = stol(argv[++i]);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		else if (arg == "--benchmark-trial" && i + 1 < argc)
-			try {
-				m_benchmarkTrial = stol(argv[++i]);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		else if (arg == "--benchmark-trials" && i + 1 < argc)
-			try
-			{
-				m_benchmarkTrials = stol(argv[++i]);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
 		else if (arg == "-G" || arg == "--opencl")
 			m_minerType = MinerType::CL;
 		else if (arg == "-U" || arg == "--cuda")
@@ -452,49 +402,6 @@ public:
 		else if (arg == "-X" || arg == "--cuda-opencl")
 		{
 			m_minerType = MinerType::Mixed;
-		}
-		else if (arg == "-M" || arg == "--benchmark")
-		{
-			mode = OperationMode::Benchmark;
-			if (i + 1 < argc)
-			{
-				string m = boost::to_lower_copy(string(argv[++i]));
-				try
-				{
-					m_benchmarkBlock = stol(m);
-				}
-				catch (...)
-				{
-					if (argv[i][0] == 45) { // check next arg
-						i--;
-					}
-					else {
-						cerr << "Bad " << arg << " option: " << argv[i] << endl;
-						BOOST_THROW_EXCEPTION(BadArgument());
-					}
-				}
-			}
-		}
-		else if (arg == "-Z" || arg == "--simulation") {
-			mode = OperationMode::Simulation;
-			if (i + 1 < argc)
-			{
-				string m = boost::to_lower_copy(string(argv[++i]));
-				try
-				{
-					m_benchmarkBlock = stol(m);
-				}
-				catch (...)
-				{
-					if (argv[i][0] == 45) { // check next arg
-						i--;
-					}
-					else {
-						cerr << "Bad " << arg << " option: " << argv[i] << endl;
-						BOOST_THROW_EXCEPTION(BadArgument());
-					}
-				}
-			}
 		}
 		else if ((arg == "-t" || arg == "--mining-threads") && i + 1 < argc)
 		{
@@ -586,14 +493,7 @@ public:
 			exit(1);
 #endif
 		}
-		if (mode == OperationMode::Benchmark)
-			doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
-		else if (mode == OperationMode::Farm)
-			doFarm(m_minerType, m_activeFarmURL, m_farmRecheckPeriod);
-		else if (mode == OperationMode::Simulation)
-			doSimulation(m_minerType);
-		else if (mode == OperationMode::Stratum)
-			doStratum();
+		doStratum();
 	}
 
 	static void streamHelp(ostream& _out)
@@ -672,296 +572,6 @@ public:
 	}
 
 private:
-
-	void doBenchmark(MinerType _m, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
-	{
-		BlockHeader genesis;
-		genesis.setNumber(m_benchmarkBlock);
-		genesis.setDifficulty(u256(1) << 64);
-
-		Farm f;
-		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
-		map<string, Farm::SealerDescriptor> sealers;
-#if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
-#endif
-#if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
-#endif
-		f.setSealers(sealers);
-		f.onSolutionFound([&](Solution) { return false; });
-
-		string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
-		cout << "Benchmarking on platform: " << platformInfo << endl;
-
-		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
-		//genesis.prep();
-
-		if (_m == MinerType::CL)
-			f.start("opencl", false);
-		else if (_m == MinerType::CUDA)
-			f.start("cuda", false);
-
-		WorkPackage current = WorkPackage(genesis);
-		
-
-		map<uint64_t, WorkingProgress> results;
-		uint64_t mean = 0;
-		uint64_t innerMean = 0;
-		for (unsigned i = 0; i <= _trials; ++i)
-		{
-			current.header = h256::random();
-			current.boundary = genesis.boundary();
-			f.setWork(current);	
-			if (!i)
-				cout << "Warming up..." << endl;
-			else
-				cout << "Trial " << i << "... " << flush <<endl;
-			this_thread::sleep_for(chrono::seconds(i ? _trialDuration : _warmupDuration));
-
-			auto mp = f.miningProgress();
-			if (!i)
-				continue;
-			auto rate = mp.rate();
-
-			cout << rate << endl;
-			results[rate] = mp;
-			mean += rate;
-		}
-		int j = -1;
-		for (auto const& r: results)
-			if (++j > 0 && j < (int)_trials - 1)
-				innerMean += r.second.rate();
-		innerMean /= (_trials - 2);
-		cout << "min/mean/max: " << results.begin()->second.rate() << "/" << (mean / _trials) << "/" << results.rbegin()->second.rate() << " H/s" << endl;
-		cout << "inner mean: " << innerMean << " H/s" << endl;
-
-		exit(0);
-	}
-
-	void doSimulation(MinerType _m, int difficulty = 20)
-	{
-		BlockHeader genesis;
-		genesis.setNumber(m_benchmarkBlock);
-		genesis.setDifficulty(u256(1) << difficulty);
-
-		Farm f;
-		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
-		map<string, Farm::SealerDescriptor> sealers;
-#if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{ &CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); } };
-#endif
-#if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
-#endif
-		f.setSealers(sealers);
-
-		string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
-		cout << "Running mining simulation on platform: " << platformInfo << endl;
-
-		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
-		//genesis.prep();
-
-		
-
-		if (_m == MinerType::CL)
-			f.start("opencl", false);
-		else if (_m == MinerType::CUDA)
-			f.start("cuda", false);
-
-		int time = 0;
-
-		WorkPackage current = WorkPackage(genesis);
-		f.setWork(current);
-		while (true) {
-			bool completed = false;
-			Solution solution;
-			f.onSolutionFound([&](Solution sol)
-			{
-				solution = sol;
-				return completed = true;
-			});
-			for (unsigned i = 0; !completed; ++i)
-			{
-				auto mp = f.miningProgress();
-
-				cnote << "Mining on difficulty " << difficulty << " " << mp;
-				this_thread::sleep_for(chrono::milliseconds(1000));
-				time++;
-			}
-			cnote << "Difficulty:" << difficulty << "  Nonce:" << solution.nonce;
-			if (EthashAux::eval(current.seed, current.header, solution.nonce).value < current.boundary)
-			{
-				cnote << "SUCCESS: GPU gave correct result!";
-			}
-			else
-				cwarn << "FAILURE: GPU gave incorrect result!";
-
-			if (time < 12)
-				difficulty++;
-			else if (time > 18)
-				difficulty--;
-			time = 0;
-			genesis.setDifficulty(u256(1) << difficulty);
-			genesis.noteDirty();
-
-			current.header = h256::random();
-			current.boundary = genesis.boundary();
-			minelog << "Generated random work package:";
-			minelog << "  Header-hash:" << current.header.hex();
-			minelog << "  Seedhash:" << current.seed.hex();
-			minelog << "  Target: " << h256(current.boundary).hex();
-			f.setWork(current);
-
-		}
-	}
-
-
-	void doFarm(MinerType _m, string & _remote, unsigned _recheckPeriod)
-	{
-		map<string, Farm::SealerDescriptor> sealers;
-#if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
-#endif
-#if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{ &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); } };
-#endif
-		(void)_m;
-		(void)_remote;
-		(void)_recheckPeriod;
-		jsonrpc::HttpClient client(m_farmURL);
-		:: FarmClient rpc(client);
-		jsonrpc::HttpClient failoverClient(m_farmFailOverURL);
-		::FarmClient rpcFailover(failoverClient);
-
-		FarmClient * prpc = &rpc;
-
-		h256 id = h256::random();
-		Farm f;
-		f.set_pool_addresses(m_farmURL, m_port, m_farmFailOverURL, m_fport);
-
-#if API_CORE
-		Api api(this->m_api_port, f);
-#endif
-
-		f.setSealers(sealers);
-
-		if (_m == MinerType::CL)
-			f.start("opencl", false);
-		else if (_m == MinerType::CUDA)
-			f.start("cuda", false);
-		else if (_m == MinerType::Mixed) {
-			f.start("cuda", false);
-			f.start("opencl", true);
-		}
-
-		WorkPackage current;
-		std::mutex x_current;
-		while (m_running)
-			try
-			{
-				bool completed = false;
-				Solution solution;
-				f.onSolutionFound([&](Solution sol)
-				{
-					solution = sol;
-					return completed = true;
-				});
-				for (unsigned i = 0; !completed; ++i)
-				{
-					auto mp = f.miningProgress(m_show_hwmonitors);
-					if (current)
-					{
-						minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
-#if ETH_DBUS
-						dbusint.send(toString(mp).data());
-#endif
-					}
-					else
-						minelog << "Waiting for work package...";
-
-					auto rate = mp.rate();
-
-					try
-					{
-						prpc->eth_submitHashrate(toJS(rate), "0x" + id.hex());
-					}
-					catch (jsonrpc::JsonRpcException const& _e)
-					{
-						cwarn << "Failed to submit hashrate.";
-						cwarn << boost::diagnostic_information(_e);
-					}
-
-					Json::Value v = prpc->eth_getWork();
-					h256 hh(v[0].asString());
-					h256 newSeedHash(v[1].asString());
-
-					if (hh != current.header)
-					{
-						x_current.lock();
-						current.header = hh;
-						current.seed = newSeedHash;
-						current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
-						minelog << "Got work package: #" + current.header.hex().substr(0,8);
-						f.setWork(current);
-						x_current.unlock();
-					}
-					this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
-				}
-				bool ok = prpc->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.work.header), "0x" + toString(solution.mixHash));
-				if (ok) {
-					cnote << "Solution found; Submitted to" << _remote;
-					cnote << "  Nonce:" << solution.nonce;
-					cnote << "  headerHash:" << solution.work.header.hex();
-					cnote << "  mixHash:" << solution.mixHash.hex();
-					cnote << EthLime << " Accepted." << EthReset;
-					f.acceptedSolution(solution.stale);
-				}
-				else {
-					cwarn << "Solution found; Submitted to" << _remote;
-					cwarn << "  Nonce:" << solution.nonce;
-					cwarn << "  headerHash:" << solution.work.header.hex();
-					cwarn << "  mixHash:" << solution.mixHash.hex();
-					cwarn << EthYellow << " Rejected." << EthReset;
-					f.rejectedSolution(solution.stale);
-				}
-			}
-			catch (jsonrpc::JsonRpcException&)
-			{
-				if (m_maxFarmRetries > 0)
-				{
-					for (auto i = 3; --i; this_thread::sleep_for(chrono::seconds(1)))
-						cerr << "JSON-RPC problem. Probably couldn't connect. Retrying in " << i << "... \r";
-					cerr << endl;
-				}
-				else
-				{
-					cerr << "JSON-RPC problem. Probably couldn't connect." << endl;
-				}
-				if (m_farmFailOverURL != "")
-				{
-					m_farmRetries++;
-					if (m_farmRetries > m_maxFarmRetries)
-					{
-						if (_remote == "exit")
-						{
-							m_running = false;
-						}
-						else if (_remote == m_farmURL) {
-							_remote = m_farmFailOverURL;
-							prpc = &rpcFailover;
-						}
-						else {
-							_remote = m_farmURL;
-							prpc = &rpc;
-						}
-						m_farmRetries = 0;
-					}
-
-				}
-			}
-		exit(0);
-	}
 
 	void doStratum()
 	{
