@@ -24,7 +24,7 @@
 #include <fstream>
 #include <iostream>
 #include "MinerAux.h"
-#include "BuildInfo.h"
+#include <ethminer-buildinfo.h>
 
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
@@ -55,9 +55,10 @@ void help()
 
 void version()
 {
-	cout << "ethminer version " << ETH_PROJECT_VERSION << endl;
-	cout << "Build: " << ETH_BUILD_PLATFORM << "/" << ETH_BUILD_TYPE << endl;
-	exit(0);
+    auto* bi = ethminer_get_buildinfo();
+    cout << "ethminer version " << bi->project_version << "+git." << bi->git_commit_hash << endl;
+    cout << "Build: " << bi->system_name << "/" << bi->build_type << "/" << bi->compiler_id << endl;
+    exit(0);
 }
 
 int main(int argc, char** argv)

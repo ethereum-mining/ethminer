@@ -2,6 +2,7 @@
 #include "EthStratumClient.h"
 #include <libdevcore/Log.h>
 #include <libethash/endian.h>
+#include <ethminer-buildinfo.h>
 
 #ifdef _WIN32
 #include <wincrypt.h>
@@ -260,7 +261,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 				break;
 			case STRATUM_PROTOCOL_ETHEREUMSTRATUM:
 				m_authorized = true;
-				os << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"ethminer/" << ETH_PROJECT_VERSION << "\",\"EthereumStratum/1.0.0\"]}\n";
+				os << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"ethminer/" << ethminer_get_buildinfo()->project_version << "\",\"EthereumStratum/1.0.0\"]}\n";
 				break;
 		}
 
@@ -545,7 +546,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		}
 		else if (method == "client.get_version")
 		{
-			os << "{\"error\": null, \"id\" : " << id << ", \"result\" : \"" << ETH_PROJECT_VERSION << "\"}\n";
+			os << "{\"error\": null, \"id\" : " << id << ", \"result\" : \"" << ethminer_get_buildinfo()->project_version << "\"}\n";
 			if (m_secureMode != StratumSecure::NONE) {
 				async_write(*m_securesocket, m_requestBuffer,
 					boost::bind(&EthStratumClient::handleResponse, this,

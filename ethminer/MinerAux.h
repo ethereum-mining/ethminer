@@ -37,6 +37,7 @@
 #include <libdevcore/SHA3.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Farm.h>
+#include <ethminer-buildinfo.h>
 #if ETH_ETHASHCL
 #include <libethash-cl/CLMiner.h>
 #endif
@@ -553,8 +554,9 @@ public:
 			exit(0);
 		}
 
-		minelog << "ethminer version " << ETH_PROJECT_VERSION;
-		minelog << "Build: " << ETH_BUILD_PLATFORM << "/" << ETH_BUILD_TYPE;
+		auto* build = ethminer_get_buildinfo();
+		minelog << "ethminer version " << build->project_version;
+		minelog << "Build: " << build->system_name << "/" << build->build_type;
 
 		if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 		{
