@@ -12,7 +12,6 @@
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
 #include "../PoolClient.h"
-#include "BuildInfo.h"
 
 
 using namespace std;

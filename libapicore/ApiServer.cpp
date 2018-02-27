@@ -1,5 +1,6 @@
 #include "ApiServer.h"
-#include "BuildInfo.h"
+
+#include <ethminer-buildinfo.h>
 
 ApiServer::ApiServer(AbstractServerConnector *conn, serverVersion_t type, Farm &farm, bool &readonly) : AbstractServer(*conn, type), m_farm(farm)
 {
@@ -51,7 +52,7 @@ void ApiServer::getMinerStat1(const Json::Value& request, Json::Value& response)
 		gpuIndex++;
 	}
 
-	response[0] = ETH_PROJECT_VERSION;           //miner version.
+	response[0] = ethminer_get_buildinfo()->project_version;  //miner version.
 	response[1] = toString(runningTime.count()); // running time, in minutes.
 	response[2] = totalMhEth.str();              // total ETH hashrate in MH/s, number of ETH shares, number of ETH rejected shares.
 	response[3] = detailedMhEth.str();           // detailed ETH hashrate for all GPUs.
@@ -81,7 +82,7 @@ void ApiServer::getMinerStatHR(const Json::Value& request, Json::Value& response
 	Json::Value powers;
 	ostringstream poolAddresses;
 	
-	version << ETH_PROJECT_VERSION ;
+	version << ethminer_get_buildinfo()->project_version;
 	runtime << toString(runningTime.count());
     poolAddresses << m_farm.get_pool_addresses(); 
 	
