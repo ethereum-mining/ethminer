@@ -26,12 +26,14 @@ namespace dev
 
 			using SolutionAccepted = std::function<void(bool const&)>;
 			using SolutionRejected = std::function<void(bool const&)>;
+			using SolutionStale = std::function<void()>;
 			using Disconnected = std::function<void()>;
 			using Connected = std::function<void()>;
 			using WorkReceived = std::function<void(WorkPackage const&)>;
 
 			void onSolutionAccepted(SolutionAccepted const& _handler) { m_onSolutionAccepted = _handler; }
 			void onSolutionRejected(SolutionRejected const& _handler) { m_onSolutionRejected = _handler; }
+			void onSolutionStale(SolutionStale const& _handler) { m_onSolutionStale = _handler; }
 			void onDisconnected(Disconnected const& _handler) { m_onDisconnected = _handler; }
 			void onConnected(Connected const& _handler) { m_onConnected = _handler; }
 			void onWorkReceived(WorkReceived const& _handler) { m_onWorkReceived = _handler; }
@@ -47,6 +49,7 @@ namespace dev
 
 			SolutionAccepted m_onSolutionAccepted;
 			SolutionRejected m_onSolutionRejected;
+			SolutionStale m_onSolutionStale;
 			Disconnected m_onDisconnected;
 			Connected m_onConnected;
 			WorkReceived m_onWorkReceived;
