@@ -4,15 +4,11 @@
 * By Philipp Andreas - github@smurfy.de
 * ADL power by Davesmacer
 */
-
-#include "wraphelper.h"
-
 #pragma once
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
 
 typedef enum wrap_adlReturn_enum {
 	WRAPADL_OK= 0
@@ -120,9 +116,13 @@ typedef struct ADLFanSpeedValue
 typedef struct {
 	void *adl_dll;
 	int adl_gpucount;
+	int log_gpucount;
+	int opencl_gpucount;
 	int *phys_logi_device_id;
 	LPAdapterInfo devs;
 	ADL_CONTEXT_HANDLE context;
+	int *adl_opencl_device_id;          /* map ADL dev to OPENCL dev */
+	int *opencl_adl_device_id;          /* map OPENCL dev to ADL dev */
 	wrap_adlReturn_t(*adlMainControlCreate)(ADL_MAIN_MALLOC_CALLBACK, int);
 	wrap_adlReturn_t(*adlAdapterNumberOfAdapters)(int *);
 	wrap_adlReturn_t(*adlAdapterAdapterInfoGet)(LPAdapterInfo, int);
@@ -143,6 +143,8 @@ int wrap_adl_destroy(wrap_adl_handle *adlh);
 int wrap_adl_get_gpucount(wrap_adl_handle *adlh, int *gpucount);
 
 int wrap_adl_get_gpu_name(wrap_adl_handle *adlh, int gpuindex, char *namebuf, int bufsize);
+
+int wrap_adl_get_gpu_pci_id(wrap_adl_handle *adlh, int gpuindex, char *idbuf, int bufsize);
 
 int wrap_adl_get_tempC(wrap_adl_handle *adlh, int gpuindex, unsigned int *tempC);
 
