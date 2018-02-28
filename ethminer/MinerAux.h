@@ -556,7 +556,8 @@ public:
 
 		auto* build = ethminer_get_buildinfo();
 		minelog << "ethminer version " << build->project_version;
-		minelog << "Build: " << build->system_name << "/" << build->build_type;
+		minelog << "Build: " << build->system_name << "/" << build->build_type
+			 << "+git." << string(build->git_commit_hash).substr(0, 8);
 
 		if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 		{
