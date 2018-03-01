@@ -414,7 +414,7 @@ unsigned CLMiner::getNumDevices()
 
 void CLMiner::listDevices()
 {
-	string outString ="\nListing OpenCL devices.\nFORMAT: [platformID] [deviceID] deviceName\n";
+	string outString ="\nListing OpenCL devices.\nFORMAT: [platformID] [deviceID] device.getInfo<CL_DEVICE_VERSION>()\n";
 	unsigned int i = 0;
 
 	vector<cl::Platform> platforms = getPlatforms();
@@ -565,7 +565,7 @@ bool CLMiner::init(const h256& seed)
 		m_hwmoninfo.deviceIndex = deviceId % devices.size();
 		cl::Device& device = devices[deviceId % devices.size()];
 		string device_version = device.getInfo<CL_DEVICE_VERSION>();
-		ETHCL_LOG("Device:   " <<  deviceName << " / " << device_version);
+		ETHCL_LOG("Device:   " << device.getInfo<CL_DEVICE_NAME>() << " / " << device_version);
 
 		string clVer = device_version.substr(7, 3);
 		if (clVer == "1.0" || clVer == "1.1")
@@ -671,9 +671,9 @@ bool CLMiner::init(const h256& seed)
 			vector<unsigned char> bin_data;
 			std::stringstream fname_strm;
 
-			/* Open kernels/{devicename}.bin */
-			std::transform(deviceName.begin(), deviceName.end(), deviceName.begin(), ::tolower);
-			fname_strm << "kernels/" << deviceName << ".bin";
+			/* Open kernels/{device.getInfo<CL_DEVICE_VERSION>}.bin */
+			std::transform(device.getInfo<CL_DEVICE_VERSION>().begin(), device.getInfo<CL_DEVICE_VERSION>().end(), device.getInfo<CL_DEVICE_VERSION>().begin(), ::tolower);
+			fname_strm << "kernels/" << device.getInfo<CL_DEVICE_VERSION>() << ".bin";
 
 			kernel_file.open(
 					fname_strm.str(),
