@@ -365,10 +365,6 @@ public:
 		}
 	}
 
-	void staleSolution() {
-		m_solutionStats.addStale();
-	}
-
 	using SolutionFound = std::function<void(Solution const&)>;
 	using MinerRestart = std::function<void()>;
 

@@ -143,13 +143,6 @@ public:
 	void acceptedStale() { acceptedStales++; }
 	void rejectedStale() { rejectedStales++; }
 
-	void addStale()
-	{
-		if (accepts)
-			accepts --;
-		acceptedStales++;
-	}
-
 	void reset() { accepts = rejects = failures = acceptedStales = rejectedStales = 0; }
 
 	unsigned getAccepts()			{ return accepts; }

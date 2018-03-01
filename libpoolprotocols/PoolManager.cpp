@@ -74,10 +74,6 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		cwarn << EthRed "**Rejected" EthReset << (stale ? " (stale)" : "") << " in" << ms.count() << "ms.";
 		m_farm.rejectedSolution(stale);
 	});
-	p_client->onSolutionStale([&]()
-	{
-		m_farm.staleSolution();
-	});
 
 	m_farm.onSolutionFound([&](Solution sol)
 	{

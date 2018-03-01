@@ -466,11 +466,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			if (params.isArray())
 			{
 				string job = params.get((Json::Value::ArrayIndex)0, "").asString();
-				if (m_response_pending && m_onSolutionStale)
-				{
-					m_onSolutionStale();
-					cwarn << "Valid share rescinded and counted as stale";
-				}
+				if (m_response_pending)
+					m_stale = true;
 				if (m_protocol == STRATUM_PROTOCOL_ETHEREUMSTRATUM)
 				{
 					string sSeedHash = params.get((Json::Value::ArrayIndex)1, "").asString();
@@ -609,10 +606,10 @@ void EthStratumClient::submitSolution(Solution solution) {
 
 	m_responsetimer.cancel();
 
-	if (m_response_pending && m_onSolutionStale)
+	if (m_response_pending)
 	{
-		// Late response, decrement valids and increment stales;
-		m_onSolutionStale();
+		// Late response;
+		m_stale = true;
 	}
 
 	switch (m_protocol) {
