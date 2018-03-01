@@ -537,11 +537,13 @@ bool CLMiner::init(const h256& seed)
 			{
 				platformId = OPENCL_PLATFORM_NVIDIA;
 				m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
+				m_hwmoninfo.indexSource = HwMonitorIndexSource::OPENCL;
 			}
 			else if (platformName == "AMD Accelerated Parallel Processing")
 			{
 				platformId = OPENCL_PLATFORM_AMD;
 				m_hwmoninfo.deviceType = HwMonitorInfoType::AMD;
+				m_hwmoninfo.indexSource = HwMonitorIndexSource::OPENCL;
 			}
 			else if (platformName == "Clover")
 			{
@@ -558,10 +560,10 @@ bool CLMiner::init(const h256& seed)
 		}
 
 		// use selected device
-		unsigned deviceId = s_devices[index] > -1 ? s_devices[index] : index;
-		m_hwmoninfo.deviceIndex = deviceId;
-		cl::Device& device = devices[min<unsigned>(deviceId, devices.size() - 1)];
-		string deviceName = device.getInfo<CL_DEVICE_NAME>();
+		int idx = index % devices.size();
+		unsigned deviceId = s_devices[idx] > -1 ? s_devices[idx] : index;
+		m_hwmoninfo.deviceIndex = deviceId % devices.size();
+		cl::Device& device = devices[deviceId % devices.size()];
 		string device_version = device.getInfo<CL_DEVICE_VERSION>();
 		ETHCL_LOG("Device:   " <<  deviceName << " / " << device_version);
 

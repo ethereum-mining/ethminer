@@ -49,6 +49,7 @@ private:
 	void resolve_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
 	void connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
 	void work_timeout_handler(const boost::system::error_code& ec);
+	void response_timeout_handler(const boost::system::error_code& ec);
 
 	void readline();
 	void handleResponse(const boost::system::error_code& ec);
@@ -83,6 +84,8 @@ private:
 	boost::asio::streambuf m_responseBuffer;
 
 	boost::asio::deadline_timer m_worktimer;
+	boost::asio::deadline_timer m_responsetimer;
+	bool m_response_pending = false;
 
 	boost::asio::ip::tcp::resolver m_resolver;
 

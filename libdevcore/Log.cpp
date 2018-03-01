@@ -125,5 +125,5 @@ void dev::simpleDebugOut(std::string const& _s)
 	}
 	
 	static std::regex reg("\x1B[[0-9;]*[a-zA-Z]");
-	std::cerr << std::regex_replace(_s + "\n", reg, string(""));
+	std::cerr << std::regex_replace(_s + '\n', reg, string(""));
 }
