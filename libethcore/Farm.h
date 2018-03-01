@@ -56,7 +56,7 @@ public:
 		std::function<Miner*(FarmFace&, unsigned)> create;
 	};
 
-	Farm()
+	Farm(): m_hashrateTimer(m_io_service)
 	{
 		// Given that all nonces are equally likely to solve the problem
 		// we could reasonably always start the nonce search ranges
@@ -150,16 +150,17 @@ public:
 		m_lastSealer = _sealer;
 		b_lastMixed = mixed;
 
-		if (!p_hashrateTimer) {
-			p_hashrateTimer = new boost::asio::deadline_timer(m_io_service, boost::posix_time::milliseconds(1000));
-			p_hashrateTimer->async_wait(boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error));
-			if (m_serviceThread.joinable()) {
-				m_io_service.reset();
-			}
-			else {
-				m_serviceThread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };
-			}
+		// Start hashrate collector
+		m_hashrateTimer.cancel();
+		m_hashrateTimer.expires_from_now(boost::posix_time::milliseconds(1000));
+		m_hashrateTimer.async_wait(boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error));
+
+		if (m_serviceThread.joinable()) {
+			m_io_service.reset();
+			m_serviceThread.join();
 		}
+
+		m_serviceThread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };
 
 		return true;
 	}
@@ -175,13 +176,10 @@ public:
 			m_isMining = false;
 		}
 
+		m_hashrateTimer.cancel();
 		m_io_service.stop();
-		m_serviceThread.join();
 
-		if (p_hashrateTimer) {
-			p_hashrateTimer->cancel();
-			p_hashrateTimer = nullptr;
-		}
+		m_lastProgresses.clear();
 	}
 
     void collectHashRate()
@@ -222,11 +220,12 @@ public:
 
 		if (!ec) {
 			collectHashRate();
-		}
 
-		// Restart timer 	
-		p_hashrateTimer->expires_at(p_hashrateTimer->expires_at() + boost::posix_time::milliseconds(1000));
-		p_hashrateTimer->async_wait(boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error));
+			// Restart timer 	
+			m_hashrateTimer.cancel();
+			m_hashrateTimer.expires_from_now(boost::posix_time::milliseconds(1000));
+			m_hashrateTimer.async_wait(boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error));
+		}
 	}
 	
 	/**
@@ -443,7 +442,7 @@ private:
 	int m_hashrateSmoothInterval = 10000;
 	std::thread m_serviceThread;  ///< The IO service thread.
 	boost::asio::io_service m_io_service;
-	boost::asio::deadline_timer * p_hashrateTimer = nullptr;
+	boost::asio::deadline_timer m_hashrateTimer;
 	std::vector<WorkingProgress> m_lastProgresses;
 
 	mutable SolutionStats m_solutionStats;

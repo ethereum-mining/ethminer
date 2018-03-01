@@ -42,6 +42,12 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 	p_client->onDisconnected([&]()
 	{
 		cnote << "Disconnected from " + m_connections[m_activeConnectionIdx].host();
+
+		if (m_farm.isMining()) {
+			cnote << "Shutting down miners...";
+			m_farm.stop();
+		}
+
 		if (m_running)
 			tryReconnect();
 	});
@@ -88,12 +94,29 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		return false;
 	});
 	m_farm.onMinerRestart([&]() {
-		cwarn << "Miner restart currently not supported!";
+		dev::setThreadName("main");
+		cnote << "Restart miners...";
+
+		if (m_farm.isMining()) {
+			cnote << "Shutting down miners...";
+			m_farm.stop();
+		}
+
+		cnote << "Spinning up miners...";
+		if (m_minerType == MinerType::CL)
+			m_farm.start("opencl", false);
+		else if (m_minerType == MinerType::CUDA)
+			m_farm.start("cuda", false);
+		else if (m_minerType == MinerType::Mixed) {
+			m_farm.start("cuda", false);
+			m_farm.start("opencl", true);
+		}
 	});
 }
 
 void PoolManager::stop()
 {
+	cnote << "Shutting down...";
 	m_running = false;
 
 	if (p_client->isConnected())
@@ -169,7 +192,7 @@ void PoolManager::tryReconnect()
 	}
 
 	for (auto i = 4; --i; this_thread::sleep_for(chrono::seconds(1))) {
-		cwarn << "Retrying in " << i << "... \r";
+		cnote << "Retrying in " << i << "... \r";
 	}
 
 	// We do not need awesome logic here, we jst have one connection anyways
