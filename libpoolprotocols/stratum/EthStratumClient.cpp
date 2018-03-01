@@ -606,12 +606,6 @@ void EthStratumClient::submitSolution(Solution solution) {
 
 	m_responsetimer.cancel();
 
-	if (m_response_pending)
-	{
-		// Late response;
-		m_stale = true;
-	}
-
 	switch (m_protocol) {
 		case STRATUM_PROTOCOL_STRATUM:
 			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" +
