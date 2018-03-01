@@ -116,16 +116,18 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 
 void PoolManager::stop()
 {
-	cnote << "Shutting down...";
-	m_running = false;
+	if (m_running) {
+		cnote << "Shutting down...";
+		m_running = false;
 
-	if (p_client->isConnected())
-		p_client->disconnect();
+		if (p_client->isConnected())
+			p_client->disconnect();
 
-	if (m_farm.isMining())
-	{
-		cnote << "Shutting down miners...";
-		m_farm.stop();
+		if (m_farm.isMining())
+		{
+			cnote << "Shutting down miners...";
+			m_farm.stop();
+		}
 	}
 }
 
@@ -214,8 +216,16 @@ void PoolManager::tryReconnect()
 			m_activeConnectionIdx = 0;
 		}
 		PoolConnection newConnection = m_connections[m_activeConnectionIdx];
-		p_client->setConnection(newConnection.host(), newConnection.port(), newConnection.user(), newConnection.pass());
-		m_farm.set_pool_addresses(newConnection.host(), newConnection.port(), "", "");
-		p_client->connect();
+
+		if (newConnection.host() == "exit") {
+			dev::setThreadName("main");
+			cnote << "Exiting because reconnecting is not possible.";
+			stop();
+		}
+		else {
+			p_client->setConnection(newConnection.host(), newConnection.port(), newConnection.user(), newConnection.pass());
+			m_farm.set_pool_addresses(newConnection.host(), newConnection.port(), "", "");
+			p_client->connect();
+		}
 	}
 }

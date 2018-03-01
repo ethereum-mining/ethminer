@@ -183,6 +183,7 @@ void EthStratumClient::disconnect()
 
 void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
 {
+	dev::setThreadName("stratum");
 	if (!ec)
 	{
 		//cnote << "Connecting to stratum server " + p_active->host + ":" + p_active->port;
