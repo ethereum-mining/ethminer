@@ -198,6 +198,13 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	}
 }
 
+void EthStratumClient::reset_work_timeout()
+{
+	m_worktimer.cancel();
+	m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
+	m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+}
+
 void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
 {
 	(void)i;
@@ -233,6 +240,9 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 				return;
 			}
 		}
+
+		// Successfully connected so we start our work timeout timer
+		reset_work_timeout();
 
 		std::ostream os(&m_requestBuffer);
 
@@ -475,9 +485,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 					if (sHeaderHash != "" && sSeedHash != "")
 					{
-						m_worktimer.cancel();
-                        			m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
-                        			m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+						reset_work_timeout();
 
 						m_current.header = h256(sHeaderHash);
 						m_current.seed = h256(sSeedHash);
@@ -513,9 +521,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 						if (headerHash != m_current.header)
 						{
-							m_worktimer.cancel();
-                            				m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
-                            				m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+							reset_work_timeout();
 
 							m_current.header = h256(sHeaderHash);
 							m_current.seed = h256(sSeedHash);

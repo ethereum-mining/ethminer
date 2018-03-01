@@ -51,6 +51,7 @@ private:
 	void work_timeout_handler(const boost::system::error_code& ec);
 	void response_timeout_handler(const boost::system::error_code& ec);
 
+	void reset_work_timeout();
 	void readline();
 	void handleResponse(const boost::system::error_code& ec);
 	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
