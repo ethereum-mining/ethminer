@@ -1,4 +1,3 @@
- 
 #include "EthStratumClient.h"
 #include <libdevcore/Log.h>
 #include <libethash/endian.h>
@@ -37,6 +36,7 @@ EthStratumClient::EthStratumClient(int const & worktimeout, int const & protocol
 	 m_socket(nullptr),
 	 m_securesocket(nullptr),
 	 m_worktimer(m_io_service),
+	 m_responsetimer(m_io_service),
 	 m_resolver(m_io_service)
 {
 	m_authorized = false;
@@ -155,6 +155,8 @@ void EthStratumClient::connect()
 void EthStratumClient::disconnect()
 {
 	m_worktimer.cancel();
+	m_responsetimer.cancel();
+	m_response_pending = false;
 
 	if (m_secureMode != StratumSecure::NONE) {
 		boost::system::error_code sec;
@@ -428,6 +430,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		break;
 	case 4:
 		{
+			m_responsetimer.cancel();
+			m_response_pending = false;
 			if (responseObject.get("result", false).asBool()) {
 				if (m_onSolutionAccepted) {
 					m_onSolutionAccepted(m_stale);
@@ -462,7 +466,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			if (params.isArray())
 			{
 				string job = params.get((Json::Value::ArrayIndex)0, "").asString();
-
+				if (m_response_pending)
+					m_stale = true;
 				if (m_protocol == STRATUM_PROTOCOL_ETHEREUMSTRATUM)
 				{
 					string sSeedHash = params.get((Json::Value::ArrayIndex)1, "").asString();
@@ -565,7 +570,14 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec) {
 	if (!ec) {
-		cnote << "No new work received in " << m_worktimeout << " seconds.";
+		cwarn << "No new work received in " << m_worktimeout << " seconds.";
+		disconnect();
+	}
+}
+
+void EthStratumClient::response_timeout_handler(const boost::system::error_code& ec) {
+	if (!ec) {
+		cwarn << "No no response received in 2 seconds.";
 		disconnect();
 	}
 }
@@ -591,6 +603,8 @@ void EthStratumClient::submitSolution(Solution solution) {
 
 	string nonceHex = toHex(solution.nonce);
 	string json;
+
+	m_responsetimer.cancel();
 
 	switch (m_protocol) {
 		case STRATUM_PROTOCOL_STRATUM:
@@ -624,5 +638,8 @@ void EthStratumClient::submitSolution(Solution solution) {
 			boost::bind(&EthStratumClient::handleResponse, this,
 				boost::asio::placeholders::error));
 	}
+	m_response_pending = true;
+	m_responsetimer.expires_from_now(boost::posix_time::seconds(2));
+	m_responsetimer.async_wait(boost::bind(&EthStratumClient::response_timeout_handler, this, boost::asio::placeholders::error));
 }
 
