@@ -173,13 +173,21 @@ void EthStratumClient::disconnect()
 	m_responsetimer.cancel();
 	m_response_pending = false;
 
-	if (m_secureMode != StratumSecure::NONE) {
-		boost::system::error_code sec;
-		m_securesocket->shutdown(sec);
-	}
+	try {
+		if (m_secureMode != StratumSecure::NONE) {
+			boost::system::error_code sec;
+			m_securesocket->shutdown(sec);
+		}
 
-	m_io_service.stop();
-	m_socket->close();
+		m_io_service.stop();
+#ifdef _WIN32
+		boost::system::error_code ec;
+		m_socket->close(ec); // Don't call on linux, causes crash
+#endif
+	}
+	catch (std::exception const& _e) {
+		cwarn << "Error while disconnecting:" << _e.what();
+	}
 
 	if (m_secureMode != StratumSecure::NONE) {
 		delete m_securesocket;
@@ -379,9 +387,10 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 	}
 	else
 	{
-		cwarn << "Read response failed: " + ec.message();
-		if (m_connected.load(std::memory_order_relaxed))
+		if (m_connected.load(std::memory_order_relaxed)) {
+			cwarn << "Read response failed: " + ec.message();
 			disconnect();
+		}
 	}
 }
 
