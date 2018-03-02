@@ -49,6 +49,7 @@ void help()
 		<< "    -h,--help  Show this help message and exit." << endl
 		<< " Envionment variables:" << endl
 		<< "     NO_COLOR - set to any value to disable color output. Unset to re-enable color output." << endl
+		<< "     SYSLOG   - set to any value to strip time and disable color from output, for logging under systemd" << endl
 		;
 	exit(0);
 }
@@ -68,6 +69,11 @@ int main(int argc, char** argv)
 	setenv("GPU_MAX_ALLOC_PERCENT", "100");
 	setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
 
+	if (getenv("SYSLOG"))
+	{
+		g_syslog = true;
+		g_useColor = false;
+	}
 	if (getenv("NO_COLOR"))
 		g_useColor = false;
 #if defined(_WIN32)

@@ -35,6 +35,7 @@ using namespace dev;
 // Logging
 int dev::g_logVerbosity = 5;
 bool dev::g_useColor = true;
+bool dev::g_syslog = false;
 
 mutex x_logOverride;
 
@@ -77,7 +78,13 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
 			static char const* c_sep1 = EthReset EthBlack "|" EthNavy;
 			static char const* c_sep2 = EthReset EthBlack "|" EthTeal;
 			static char const* c_end = EthReset "  ";
-			m_sstr << _id << c_begin << buf << c_sep1 << std::left << std::setw(8) << getThreadName() << c_sep2 << c_end;
+			if (g_syslog) 
+			{
+				c_begin = "  " EthNavy;
+				m_sstr << c_begin << std::left << std::setw(8) << getThreadName() << c_sep2 << c_end;
+			} else {
+				m_sstr << _id << c_begin << buf << c_sep1 << std::left << std::setw(8) << getThreadName() << c_sep2 << c_end;
+			}
 		}
 	}
 }
