@@ -18,19 +18,13 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-enum class StratumSecure
-{
-	NONE,
-	TLS12,
-	TLS,
-	ALLOW_SELFSIGNED
-};
-
-
 class EthStratumClient : public PoolClient
 {
 public:
-	EthStratumClient(int const & worktimeout, int const & protocol, string const & email, bool const & submitHashrate, StratumSecure const & secureMode);
+
+	typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
+
+	EthStratumClient(int const & worktimeout, string const & email, bool const & submitHashrate);
 	~EthStratumClient();
 
 	void connect();
@@ -56,9 +50,7 @@ private:
 	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
 	void processReponse(Json::Value& responseObject);
 
-	cred_t * p_active;
-	cred_t m_primary;
-	cred_t m_failover;
+	PoolConnection m_connection;
 
 	string m_worker; // eth-proxy only;
 
@@ -76,7 +68,6 @@ private:
 
 	std::thread m_serviceThread;  ///< The IO service thread.
 	boost::asio::io_service m_io_service;
-	StratumSecure m_secureMode;
 	boost::asio::ip::tcp::socket *m_socket;
 	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> *m_securesocket;
 
@@ -89,7 +80,6 @@ private:
 
 	boost::asio::ip::tcp::resolver m_resolver;
 
-	int m_protocol;
 	string m_email;
 
 	double m_nextWorkDifficulty;
