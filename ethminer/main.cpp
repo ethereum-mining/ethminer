@@ -69,9 +69,9 @@ int main(int argc, char** argv)
 	// Set env vars controlling GPU driver behavior.
 	setenv("GPU_FORCE_64BIT_PTR", "0");
 	setenv("GPU_USE_SYNC_OBJECTS", "1");
-	setenv("GPU_MAX_HEAP_SIZE", "100");
-	setenv("GPU_MAX_ALLOC_PERCENT", "100");
-	setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
+	setenv("GPU_MAX_HEAP_SIZE", "90");
+	setenv("GPU_MAX_ALLOC_PERCENT", "90");
+	setenv("GPU_SINGLE_ALLOC_PERCENT", "90");
 	
 
 #if defined(_WIN32)
