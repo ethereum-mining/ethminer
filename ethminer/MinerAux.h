@@ -743,19 +743,19 @@ public:
 	{
 		_out
 			<< "Work farming mode:" << endl
-			<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
-			<< "    -FF,-FO, --farm-failover, --stratum-failover <url> Failover getwork/stratum URL (default: disabled)" << endl
+			<< "    -F,--farm <url>  (deprecated) Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
+			<< "    -FF,-FO, --farm-failover, --stratum-failover <url> (deprecated) Failover getwork/stratum URL (default: disabled)" << endl
 			<< "	--farm-retries <n> Number of retries until switch to failover (default: 3)" << endl
-			<< "	-S, --stratum <host:port>  Put into stratum mode with the stratum server at host:port" << endl
-			<< "	-SF, --stratum-failover <host:port>  Failover stratum server at host:port" << endl
-			<< "    -O, --userpass <username.workername:password> Stratum login credentials" << endl
-			<< "    -FO, --failover-userpass <username.workername:password> Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
+			<< "	-S, --stratum <host:port>  (deprecated) Put into stratum mode with the stratum server at host:port" << endl
+			<< "	-SF, --stratum-failover <host:port>  (deprecated) Failover stratum server at host:port" << endl
+			<< "    -O, --userpass <username.workername:password> (deprecated) Stratum login credentials" << endl
+			<< "    -FO, --failover-userpass <username.workername:password> (deprecated) Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
 			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
-			<< "    --stratum-ssl [<n>]  Use encryption to connect to stratum server." << endl
+			<< "    --stratum-ssl [<n>]  (deprecated) Use encryption to connect to stratum server." << endl
 			<< "        0: Force TLS1.2 (default)" << endl
 			<< "        1: Allow any TLS version" << endl
 			<< "        2: Allow self-signed or invalid certs and any TLS version" << endl
-			<< "    -SP, --stratum-protocol <n> Choose which stratum protocol to use:" << endl
+			<< "    -SP, --stratum-protocol <n> (deprecated) Choose which stratum protocol to use:" << endl
 			<< "        0: official stratum spec: ethpool, ethermine, coinotron, mph, nanopool (default)" << endl
 			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for hashrate reporting to work with nanopool)" << endl
 			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
