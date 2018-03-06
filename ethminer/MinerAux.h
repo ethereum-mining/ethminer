@@ -142,6 +142,8 @@ public:
 		{
 			deprecated(arg);
 			string url = argv[++i];
+			if (url == "exit") // add fake port # to exit url
+				url = "exit:1";
 			URI uri;
 			try {
 				uri = url;
@@ -341,6 +343,8 @@ public:
 		{
 			m_newParameters = true;
 			string url = argv[++i];
+			if (url == "exit") // add fake scheme and port to 'exit' url
+				url = "stratum://exit:1";
 			URI uri;
 			try {
 				uri = url;
