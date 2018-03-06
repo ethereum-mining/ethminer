@@ -287,7 +287,7 @@ void CLMiner::workLoop()
 	current.seed = h256{1u};
 
 	try {
-		while (true)
+		while (!shouldStop())
 		{
 			const WorkPackage w = work();
 
@@ -376,16 +376,11 @@ void CLMiner::workLoop()
 
 			// Report hash count
 			addHashCount(m_globalWorkSize);
-
-			// Check if we should stop.
-			if (shouldStop())
-			{
-				// Make sure the last buffer write has finished --
-				// it reads local variable.
-				m_queue.finish();
-				break;
-			}
 		}
+
+		// Make sure the last buffer write has finished --
+		// it reads local variable.
+		m_queue.finish();
 	}
 	catch (cl::Error const& _e)
 	{

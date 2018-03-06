@@ -134,6 +134,21 @@ void EthStratumClient::connect()
 		m_socket = new boost::asio::ip::tcp::socket(m_io_service);
 	}
 
+	// Activate keep alive to detect disconnects
+	unsigned int keepAlive = 10000;
+
+#if defined _WIN32 || defined WIN32 || defined OS_WIN64 || defined _WIN64 || defined WIN64 || defined WINNT
+	int32_t timeout = keepAlive;
+	setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+	setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
+#else
+	struct timeval tv;
+	tv.tv_sec = keepAlive / 1000;
+	tv.tv_usec = keepAlive % 1000;
+	setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+	setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+#endif
+
 	m_resolver.async_resolve(q, boost::bind(&EthStratumClient::resolve_handler,
 		this, boost::asio::placeholders::error,
 		boost::asio::placeholders::iterator));
@@ -157,14 +172,20 @@ void EthStratumClient::disconnect()
 	m_worktimer.cancel();
 	m_responsetimer.cancel();
 	m_response_pending = false;
+	m_linkdown = true;
 
-	if (m_secureMode != StratumSecure::NONE) {
-		boost::system::error_code sec;
-		m_securesocket->shutdown(sec);
+	try {
+		if (m_secureMode != StratumSecure::NONE) {
+			boost::system::error_code sec;
+			m_securesocket->shutdown(sec);
+		}
+
+		m_socket->close();
+		m_io_service.stop();
 	}
-
-	m_io_service.stop();
-	m_socket->close();
+	catch (std::exception const& _e) {
+		cwarn << "Error while disconnecting:" << _e.what();
+	}
 
 	if (m_secureMode != StratumSecure::NONE) {
 		delete m_securesocket;
@@ -183,6 +204,7 @@ void EthStratumClient::disconnect()
 
 void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
 {
+	dev::setThreadName("stratum");
 	if (!ec)
 	{
 		//cnote << "Connecting to stratum server " + p_active->host + ":" + p_active->port;
@@ -198,6 +220,13 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	}
 }
 
+void EthStratumClient::reset_work_timeout()
+{
+	m_worktimer.cancel();
+	m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
+	m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+}
+
 void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
 {
 	(void)i;
@@ -207,6 +236,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 	if (!ec)
 	{
 		m_connected.store(true, std::memory_order_relaxed);
+		m_linkdown = false;
 
 		//cnote << "Connected to stratum server " + i->host_name() + ":" + p_active->port;
 		if (m_onConnected) {
@@ -233,6 +263,9 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 				return;
 			}
 		}
+
+		// Successfully connected so we start our work timeout timer
+		reset_work_timeout();
 
 		std::ostream os(&m_requestBuffer);
 
@@ -353,9 +386,10 @@ void EthStratumClient::readResponse(const boost::system::error_code& ec, std::si
 	}
 	else
 	{
-		cwarn << "Read response failed: " + ec.message();
-		if (m_connected.load(std::memory_order_relaxed))
+		if (m_connected.load(std::memory_order_relaxed)) {
+			cwarn << "Read response failed: " + ec.message();
 			disconnect();
+		}
 	}
 }
 
@@ -475,9 +509,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 					if (sHeaderHash != "" && sSeedHash != "")
 					{
-						m_worktimer.cancel();
-                        			m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
-                        			m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+						reset_work_timeout();
 
 						m_current.header = h256(sHeaderHash);
 						m_current.seed = h256(sSeedHash);
@@ -513,9 +545,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 						if (headerHash != m_current.header)
 						{
-							m_worktimer.cancel();
-                            				m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
-                            				m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+							reset_work_timeout();
 
 							m_current.header = h256(sHeaderHash);
 							m_current.seed = h256(sSeedHash);
@@ -583,7 +613,7 @@ void EthStratumClient::response_timeout_handler(const boost::system::error_code&
 }
 
 void EthStratumClient::submitHashrate(string const & rate) {
-	if (!m_submit_hashrate || !m_connected.load(std::memory_order_relaxed)) {
+	if (!m_submit_hashrate || m_linkdown) {
 		return;
 	}
 
