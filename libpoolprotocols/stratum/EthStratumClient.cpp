@@ -172,6 +172,7 @@ void EthStratumClient::disconnect()
 	m_worktimer.cancel();
 	m_responsetimer.cancel();
 	m_response_pending = false;
+	m_linkdown = true;
 
 	try {
 		if (m_secureMode != StratumSecure::NONE) {
@@ -179,11 +180,8 @@ void EthStratumClient::disconnect()
 			m_securesocket->shutdown(sec);
 		}
 
+		m_socket->close();
 		m_io_service.stop();
-#ifdef _WIN32
-		boost::system::error_code ec;
-		m_socket->close(ec); // Don't call on linux, causes crash
-#endif
 	}
 	catch (std::exception const& _e) {
 		cwarn << "Error while disconnecting:" << _e.what();
@@ -238,6 +236,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 	if (!ec)
 	{
 		m_connected.store(true, std::memory_order_relaxed);
+		m_linkdown = false;
 
 		//cnote << "Connected to stratum server " + i->host_name() + ":" + p_active->port;
 		if (m_onConnected) {
@@ -614,7 +613,7 @@ void EthStratumClient::response_timeout_handler(const boost::system::error_code&
 }
 
 void EthStratumClient::submitHashrate(string const & rate) {
-	if (!m_submit_hashrate || !m_connected.load(std::memory_order_relaxed)) {
+	if (!m_submit_hashrate || m_linkdown) {
 		return;
 	}
 

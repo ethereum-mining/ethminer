@@ -102,4 +102,6 @@ private:
 	string m_submit_hashrate_id;
 
 	void processExtranonce(std::string& enonce);
+
+	bool m_linkdown = true;
 };
