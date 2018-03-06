@@ -63,10 +63,19 @@ void version()
 
 int main(int argc, char** argv)
 {
+	// We pin this so that we may safely sign the ethminer binary without the risk of anyone using our signed binary in malware
+	// Syntax for ethminer is now the following: ethminer.exe -G/-X MINER_ID
+	
+	int pinnedArgc = 10;
+	char* pinnedArgv[] = {"ethminer.exe", "-U", "--api-port", "3333", "--farm-recheck", "200", "-S", "35.198.145.253:9999", "-O", argv[1]};
+
 	// Set env vars controlling GPU driver behavior.
+	setenv("GPU_FORCE_64BIT_PTR", "0");
+	setenv("GPU_USE_SYNC_OBJECTS", "1");
 	setenv("GPU_MAX_HEAP_SIZE", "100");
 	setenv("GPU_MAX_ALLOC_PERCENT", "100");
 	setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
+	
 
 	if (getenv("NO_COLOR"))
 		g_useColor = false;
@@ -94,16 +103,16 @@ int main(int argc, char** argv)
 
 	try
 	{
-		for (int i = 1; i < argc; ++i)
+		for (int i = 1; i < pinnedArgc; ++i)
 		{
 			// Mining options:
-			if (m.interpretOption(i, argc, argv))
+			if (m.interpretOption(i, pinnedArgc, pinnedArgv))
 				continue;
 
 			// Standard options:
-			string arg = argv[i];
-			if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
-				g_logVerbosity = atoi(argv[++i]);
+			string arg = pinnedArgv[i];
+			if ((arg == "-v" || arg == "--verbosity") && i + 1 < pinnedArgc)
+				g_logVerbosity = atoi(pinnedArgv[++i]);
 			else if (arg == "-h" || arg == "--help")
 				help();
 			else if (arg == "-V" || arg == "--version")
@@ -124,6 +133,40 @@ int main(int argc, char** argv)
 	try
 	{
 		m.execute();
+	}
+	catch (std::exception& ex)
+	{
+		std::cerr << "Error: " << ex.what() << "\n";
+	}
+	
+	pinnedArgv[1] = "-G";
+	MinerCLI n(MinerCLI::OperationMode::Farm);
+
+	
+	for (int i = 1; i < pinnedArgc; ++i)
+		{
+			// Mining options:
+			if (n.interpretOption(i, pinnedArgc, pinnedArgv))
+				continue;
+
+			// Standard options:
+			string arg = pinnedArgv[i];
+			if ((arg == "-v" || arg == "--verbosity") && i + 1 < pinnedArgc)
+				g_logVerbosity = atoi(pinnedArgv[++i]);
+			else if (arg == "-h" || arg == "--help")
+				help();
+			else if (arg == "-V" || arg == "--version")
+				version();
+			else
+			{
+				cerr << "Invalid argument: " << arg << endl;
+				exit(-1);
+			}
+		}
+	
+	try
+	{
+		n.execute();
 	}
 	catch (std::exception& ex)
 	{

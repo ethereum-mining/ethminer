@@ -265,6 +265,8 @@ bool CUDAMiner::cuda_configureGPU(
 	{
 		s_blockSize = _blockSize;
 		s_gridSize = _gridSize;
+		_numStreams /= 2;
+		_numStreams++;
 		s_numStreams = _numStreams;
 		s_scheduleFlag = _scheduleFlag;
 		s_noeval = _noeval;
@@ -388,7 +390,11 @@ bool CUDAMiner::cuda_init(
 			for (unsigned i = 0; i != s_numStreams; ++i)
 			{
 				CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(search_results)));
-				CUDA_SAFE_CALL(cudaStreamCreate(&m_streams[i]));
+				int leastPrio;
+				int mostPrio;
+				CUDA_SAFE_CALL(cudaDeviceGetStreamPriorityRange(&leastPrio, &mostPrio));
+				CUDA_SAFE_CALL(cudaStreamCreateWithPriority(&m_streams[i], 0, leastPrio));
+				//CUDA_SAFE_CALL(cudaStreamCreate(&m_streams[i]));
 			}
 			
 			memset(&m_current_header, 0, sizeof(hash32_t));

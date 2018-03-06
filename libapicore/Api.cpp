@@ -13,7 +13,7 @@ Api::Api(const int &port, Farm &farm): m_farm(farm)
 	}
 
 	if (portNumber > 0) {
-		TcpSocketServer *conn = new TcpSocketServer("0.0.0.0", portNumber);
+		TcpSocketServer *conn = new TcpSocketServer("127.0.0.1", portNumber);
 		this->m_server = new ApiServer(conn, JSONRPC_SERVER_V2, this->m_farm, readonly);
 		this->m_server->StartListening();
 	}
