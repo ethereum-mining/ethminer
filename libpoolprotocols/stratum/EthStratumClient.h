@@ -44,10 +44,12 @@ private:
 	void connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
 	void work_timeout_handler(const boost::system::error_code& ec);
 	void response_timeout_handler(const boost::system::error_code& ec);
+	void hashrate_event_handler(const boost::system::error_code& ec);
 
 	void reset_work_timeout();
 	void readline();
 	void handleResponse(const boost::system::error_code& ec);
+	void handleHashrateResponse(const boost::system::error_code& ec);
 	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
 	void processReponse(Json::Value& responseObject);
 
@@ -77,11 +79,13 @@ private:
 
 	boost::asio::deadline_timer m_worktimer;
 	boost::asio::deadline_timer m_responsetimer;
+	boost::asio::deadline_timer m_hashrate_event;
 	bool m_response_pending = false;
 
 	boost::asio::ip::tcp::resolver m_resolver;
 
 	string m_email;
+	string m_rate;
 
 	double m_nextWorkDifficulty;
 

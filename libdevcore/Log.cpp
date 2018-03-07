@@ -20,7 +20,6 @@
  */
 
 #include "Log.h"
-#include <regex>
 
 #include <thread>
 #ifdef __APPLE__
@@ -123,7 +122,17 @@ void dev::simpleDebugOut(std::string const& _s)
 		std::cerr << _s + '\n';
 		return;
 	}
-	
-	static std::regex reg("\x1B[[0-9;]*[a-zA-Z]");
-	std::cerr << std::regex_replace(_s + '\n', reg, string(""));
+	bool skip = false;
+	std::stringstream ss;
+	for (auto it : _s)
+	{
+		if (!skip && it == '\x1b')
+			skip = true;
+		else if (skip && it == 'm')
+			skip = false;
+		else if (!skip)
+			ss << it;
+	}
+	ss << '\n';
+	std::cerr << ss.str();
 }
