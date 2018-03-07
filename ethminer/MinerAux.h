@@ -237,7 +237,8 @@ public:
 		{
 			deprecated(arg);
 			try {
-				m_stratumProtocol = (EthStratumClient::StratumProtocol)atoi(argv[++i]);
+				m_endpoints[k_primary_ep_ix].Version((EthStratumClient::StratumProtocol)atoi(argv[++i]));
+				m_endpoints[k_secondary_ep_ix].Version(m_endpoints[k_primary_ep_ix].Version());
 			}
 			catch (...)
 			{
@@ -1034,7 +1035,6 @@ private:
 #endif
 
 	bool m_report_stratum_hashrate = false;
-	EthStratumClient::StratumProtocol m_stratumProtocol = EthStratumClient::STRATUM;
 	string m_email;
 	bool m_legacyParameters = false;
 	bool m_newParameters = false;

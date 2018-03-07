@@ -48,7 +48,7 @@ namespace dev
 			// But URI attributes are read only, and to support legacy arameters
 			// we need to update these connection attributes individually.
 		        string m_host;
-			unsigned short m_port;
+			unsigned short m_port = 0;
 			string m_user;
 			string m_pass;
 			SecureLevel m_secLevel = SecureLevel::NONE;
