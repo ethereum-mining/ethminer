@@ -43,7 +43,7 @@ endif()
 
 
 project(ethminer)
-set(PROJECT_VERSION 0.14.0.dev3)
+set(PROJECT_VERSION 0.0.1)
 
 cable_set_build_type(DEFAULT Release CONFIGURATION_TYPES Release RelWithDebInfo Debug)
 
@@ -89,6 +89,9 @@ find_package(jsoncpp CONFIG REQUIRED)
 hunter_add_package(libjson-rpc-cpp)
 find_package(libjson-rpc-cpp CONFIG REQUIRED)
 
+hunter_add_package(CppNetlibUri)
+find_package(CppNetlibUri CONFIG REQUIRED)
+
 configureProject()
 
 message("------------------------------------------------------------------------")
@@ -126,11 +129,7 @@ endif()
 add_subdirectory(ethminer)
 
 
-if(WIN32)
-	set(CPACK_GENERATOR ZIP)
-else()
-	set(CPACK_GENERATOR TGZ)
-endif()
+set(CPACK_GENERATOR ZIP)
 set(CPACK_PACKAGE_FILE_NAME ${PROJECT_NAME}-${PROJECT_VERSION}-${CMAKE_SYSTEM_NAME})
 set(CPACK_PACKAGE_CHECKSUM SHA256)
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE)

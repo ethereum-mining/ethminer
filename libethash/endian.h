@@ -3,10 +3,7 @@
 #include <stdint.h>
 #include "compiler.h"
 
-#if defined(__MINGW32__) || defined(_WIN32)
-  # define LITTLE_ENDIAN 1234
-  # define BYTE_ORDER    LITTLE_ENDIAN
-#elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__)
   # include <sys/endian.h>
 #elif defined(__OpenBSD__) || defined(__SVR4)
   # include <sys/types.h>
@@ -24,11 +21,7 @@
 # include <endian.h>
 #endif
 
-#if defined(_WIN32)
-#include <stdlib.h>
-#define ethash_swap_u32(input_) _byteswap_ulong(input_)
-#define ethash_swap_u64(input_) _byteswap_uint64(input_)
-#elif defined(__APPLE__)
+#if defined(__APPLE__)
 #include <libkern/OSByteOrder.h>
 #define ethash_swap_u32(input_) OSSwapInt32(input_)
 #define ethash_swap_u64(input_) OSSwapInt64(input_)

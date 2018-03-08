@@ -200,11 +200,7 @@ __device__ __forceinline__ uint64_t cuda_swab64(const uint64_t x)
 #endif
 
 
-#ifdef _WIN64
-#define USE_XOR_ASM_OPTS 0
-#else
 #define USE_XOR_ASM_OPTS 1
-#endif
 
 #if USE_XOR_ASM_OPTS
 // device asm for whirpool
