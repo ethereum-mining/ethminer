@@ -28,6 +28,7 @@
 #include <iostream>
 #include <signal.h>
 #include <random>
+#include <list>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
@@ -92,7 +93,7 @@ public:
 		Stratum
 	};
 
-	MinerCLI() {m_endpoints.reserve(k_max_endpoints);}
+	MinerCLI() {}
 
 	static void signalHandler(int sig)
 	{
@@ -100,81 +101,10 @@ public:
 		g_running = false;
 	}
 
-	void deprecated(const string& arg)
-	{
-		cerr << "Warning: " << arg << " is deprecated. Use the -P parameter instead." << endl;
-		m_legacyParameters = true;
-	}
-
 	bool interpretOption(int& i, int argc, char** argv)
 	{
 		string arg = argv[i];
-		if ((arg == "-F" || arg == "--farm") && i + 1 < argc)
-		{
-			deprecated(arg);
-			m_mode = OperationMode::Farm;
-			string url = argv[++i];
-			URI uri;
-			try {
-				uri = url;
-			}
-			catch (...)
-			{
-				cerr << "Bad endpoint address: " << url << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-
-			if (uri.Host().length())
-			{
-				m_endpoints[k_primary_ep_ix].Host(uri.Host());
-				if (uri.Port())
-					m_endpoints[k_primary_ep_ix].Port(uri.Port());
-				else
-					m_endpoints[k_primary_ep_ix].Port(80);
-			}
-			else
-			{
-				cerr << "Bad endpoint address: " << url << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		}
-		else if ((arg == "-FF" || arg == "-SF" || arg == "-FS" || arg == "--farm-failover" || arg == "--stratum-failover") && i + 1 < argc)
-		{
-			deprecated(arg);
-			string url = argv[++i];
-			if (url == "exit") // add fake port # to exit url
-				url = "exit:1";
-			URI uri;
-			try {
-				uri = url;
-			}
-			catch (...)
-			{
-				cerr << "Bad endpoint address: " << url << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-
-			if (uri.Host().length())
-			{
-				m_endpoints[k_secondary_ep_ix].Host(uri.Host());
-				if (m_mode == OperationMode::Stratum)
-				{
-					if (uri.Port())
-						m_endpoints[k_secondary_ep_ix].Port(uri.Port());
-					else
-					{
-						cerr << "Bad endpoint address: " << url << endl;
-						BOOST_THROW_EXCEPTION(BadArgument());
-					}
-				}
-			}
-			else
-			{
-				cerr << "Bad endpoint address: " << url << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		}
-		else if (arg == "--farm-recheck" && i + 1 < argc)
+		if (arg == "--farm-recheck" && i + 1 < argc)
 			try {
 				m_farmRecheckSet = true;
 				m_farmRecheckPeriod = stol(argv[++i]);
@@ -193,76 +123,7 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-		else if ((arg == "-S" || arg == "--stratum") && i + 1 < argc)
-		{
-			deprecated(arg);
-			m_mode = OperationMode::Stratum;
-
-			string url = string(argv[++i]);
-			URI uri;
-			try {
-				uri = url;
-			}
-			catch (...)
-			{
-				cerr << "Bad endpoint address: " << url << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-
-			if (uri.Host().length() && uri.Port())
-			{
-				m_endpoints[k_primary_ep_ix].Host(uri.Host());
-				m_endpoints[k_primary_ep_ix].Port(uri.Port());
-			}
-			else
-			{
-				cerr << "Bad endpoint address: " << url << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		}
-		else if ((arg == "-O" || arg == "--userpass") && i + 1 < argc)
-		{
-			deprecated(arg);
-			string userpass = string(argv[++i]);
-			size_t p = userpass.find_first_of(":");
-			m_endpoints[k_primary_ep_ix].User(userpass.substr(0, p));
-			if (p + 1 <= userpass.length())
-				m_endpoints[k_primary_ep_ix].Pass(userpass.substr(p+1));
-		}
-		else if ((arg == "-SC" || arg == "--stratum-client") && i + 1 < argc)
-		{
-			cerr << "The argument " << arg << " has been removed. There is only one stratum client now." << endl;
-		}
-		else if ((arg == "-SP" || arg == "--stratum-protocol") && i + 1 < argc)
-		{
-			deprecated(arg);
-			try {
-				m_endpoints[k_primary_ep_ix].Version((EthStratumClient::StratumProtocol)atoi(argv[++i]));
-				m_endpoints[k_secondary_ep_ix].Version(m_endpoints[k_primary_ep_ix].Version());
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-		}
-		else if (arg == "--stratum-ssl")
-		{
-			deprecated(arg);
-			SecureLevel secLevel = SecureLevel::TLS12;
-			if ((i + 1 < argc) && (*argv[i + 1] != '-')) {
-				int secMode = atoi(argv[++i]);
-				if (secMode == 1)
-					secLevel = SecureLevel::TLS;
-				if (secMode == 2)
-					secLevel = SecureLevel::ALLOW_SELFSIGNED;
-			}
-			m_endpoints[k_primary_ep_ix].SecLevel(secLevel);
-			m_endpoints[k_secondary_ep_ix].SecLevel(secLevel);
-				
-		}
 		else if ((arg == "-SE" || arg == "--stratum-email") && i + 1 < argc)
-		{
 			try {
 				m_email = string(argv[++i]);
 			}
@@ -271,56 +132,11 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-		}
-		else if ((arg == "-FO" || arg == "--failover-userpass") && i + 1 < argc)
-		{
-			deprecated(arg);
-			string userpass = string(argv[++i]);
-			size_t p = userpass.find_first_of(":");
-			m_endpoints[k_secondary_ep_ix].User(userpass.substr(0, p));
-			if (p + 1 <= userpass.length())
-				m_endpoints[k_secondary_ep_ix].Pass(userpass.substr(p + 1));
-		}
-		else if ((arg == "-u" || arg == "--user") && i + 1 < argc)
-		{
-			deprecated(arg);
-			m_endpoints[k_primary_ep_ix].User(string(argv[++i]));
-		}
-		else if ((arg == "-p" || arg == "--pass") && i + 1 < argc)
-		{
-			deprecated(arg);
-			m_endpoints[k_primary_ep_ix].Pass(string(argv[++i]));
-		}
-		else if ((arg == "-o" || arg == "--port") && i + 1 < argc)
-		{
-			deprecated(arg);
-			m_endpoints[k_primary_ep_ix].Port(atoi(argv[++i]));
-		}
-		else if ((arg == "-fu" || arg == "--failover-user") && i + 1 < argc)
-		{
-			deprecated(arg);
-			m_endpoints[k_secondary_ep_ix].User(string(argv[++i]));
-		}
-		else if ((arg == "-fp" || arg == "--failover-pass") && i + 1 < argc)
-		{
-			deprecated(arg);
-			m_endpoints[k_secondary_ep_ix].Pass(string(argv[++i]));
-		}
-		else if ((arg == "-fo" || arg == "--failover-port") && i + 1 < argc)
-		{
-			deprecated(arg);
-			m_endpoints[k_secondary_ep_ix].Port(atoi(argv[++i]));
-		}
 		else if ((arg == "--work-timeout") && i + 1 < argc)
-		{
 			m_worktimeout = atoi(argv[++i]);
-		}
 		else if ((arg == "-RH" || arg == "--report-hashrate"))
-		{
 			m_report_stratum_hashrate = true;
-		}
 		else if (arg == "--display-interval" && i + 1 < argc)
-		{
 			try {
 				m_displayInterval = stol(argv[++i]);
 			}
@@ -329,7 +145,6 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-		}
 		else if (arg == "-HWMON")
 		{
 			m_show_hwmonitors = true;
@@ -342,7 +157,6 @@ public:
 		}
 		else if ((arg == "-P") && (i + 1 < argc))
 		{
-			m_newParameters = true;
 			string url = argv[++i];
 			if (url == "exit") // add fake scheme and port to 'exit' url
 				url = "stratum://exit:1";
@@ -359,12 +173,7 @@ public:
 				cerr << "Unknown URI scheme " << uri.Scheme() << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-			if (m_ep_ix >= k_max_endpoints)
-			{
-				cerr << "Too many endpoints. Maximum is " << k_max_endpoints << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-			m_endpoints[m_ep_ix] = PoolConnection(uri);
+			m_endpoints.push_front(PoolConnection(uri));
 			
 			OperationMode mode = OperationMode::None;
 			switch (uri.ProtoFamily())
@@ -382,7 +191,6 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 			m_mode = mode;
-			m_ep_ix++;
 		}
 #if API_CORE
 		else if ((arg == "--api-port") && i + 1 < argc)
@@ -648,11 +456,6 @@ public:
 		}
 		else
 			return false;
-		if (m_legacyParameters && m_newParameters)
-		{
-			cerr << "Deprecated parameters and the -P parameter are imcompatible. Please migrate to using the -P parameter." << endl;
-			BOOST_THROW_EXCEPTION(BadArgument());
-		}
 		return true;
 	}
 
@@ -943,16 +746,8 @@ private:
 		PoolManager mgr(client, f, m_minerType);
 		mgr.setReconnectTries(m_maxFarmRetries);
 
-		if (m_legacyParameters && !m_endpoints[k_secondary_ep_ix].User().empty()) {
-			m_endpoints[k_secondary_ep_ix].User(m_endpoints[k_primary_ep_ix].User());
-			m_endpoints[k_secondary_ep_ix].Pass(m_endpoints[k_primary_ep_ix].Pass());
-		}
-		for (unsigned i = 0; i < k_max_endpoints; i++)
-		{
-			if (m_endpoints[i].Host().empty())
-				break;
-			mgr.addConnection(m_endpoints[i]);
-		}
+		for ( auto ep : m_endpoints)
+			mgr.addConnection(ep);
 
 #if API_CORE
 		Api api(this->m_api_port, f);
@@ -1017,11 +812,7 @@ private:
 	unsigned m_benchmarkTrials = 5;
 	unsigned m_benchmarkBlock = 0;
 
-	vector<PoolConnection> m_endpoints;
-	const unsigned k_max_endpoints = 6;
-	const unsigned k_primary_ep_ix = 0;
-	const unsigned k_secondary_ep_ix = 1;
-	unsigned m_ep_ix = 0;
+	list<PoolConnection> m_endpoints;
 
 	unsigned m_maxFarmRetries = 3;
 	unsigned m_farmRecheckPeriod = 500;
@@ -1036,8 +827,6 @@ private:
 
 	bool m_report_stratum_hashrate = false;
 	string m_email;
-	bool m_legacyParameters = false;
-	bool m_newParameters = false;
 
 #if ETH_DBUS
 	DBusInt dbusint;
