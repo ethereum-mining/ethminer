@@ -471,28 +471,6 @@
 # define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 #endif
 
-#ifdef _WIN32
-
-#include <malloc.h>
-
-#if defined(CL_HPP_USE_DX_INTEROP)
-#include <CL/cl_d3d10.h>
-#include <CL/cl_dx9_media_sharing.h>
-#endif
-#endif // _WIN32
-
-#if defined(_MSC_VER)
-#include <intrin.h>
-#endif // _MSC_VER 
- 
- // Check for a valid C++ version
-
-// Need to do both tests here because for some reason __cplusplus is not 
-// updated in visual studio
-#if (!defined(_MSC_VER) && __cplusplus < 201103L) || (defined(_MSC_VER) && _MSC_VER < 1700)
-#error Visual studio 2013 or another C++11-supporting compiler required
-#endif
-
 // 
 #if defined(CL_HPP_USE_CL_DEVICE_FISSION) || defined(CL_HPP_USE_CL_SUB_GROUPS_KHR)
 #include <CL/cl_ext.h>

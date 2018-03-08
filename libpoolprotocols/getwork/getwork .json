@@ -1,7 +1,0 @@
-[
-	{ "name": "eth_getWork", "params": [], "order": [], "returns": []},
-	{ "name": "eth_submitWork", "params": ["", "", ""], "order": [], "returns": true},
-	{ "name": "eth_submitHashrate", "params": ["", ""], "order": [], "returns": true},
-	{ "name": "eth_awaitNewWork", "params": [], "order": [], "returns": []},
-	{ "name": "eth_progress", "params": [], "order": [], "returns": true}
-]

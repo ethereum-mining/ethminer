@@ -100,12 +100,5 @@ bytes dev::fromHex(std::string const& _s, WhenError _throw)
 
 bool dev::setenv(const char name[], const char value[], bool override)
 {
-#if _WIN32
-	if (!override && std::getenv(name) != nullptr)
-		return true;
-
-	return ::_putenv_s(name, value) == 0;
-#else
 	return ::setenv(name, value, override ? 1 : 0) == 0;
-#endif
 }
