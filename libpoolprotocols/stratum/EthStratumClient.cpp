@@ -231,6 +231,20 @@ void EthStratumClient::reset_work_timeout()
 	m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
 }
 
+void EthStratumClient::async_write_with_response()
+{
+	if (m_connection.SecLevel() != SecureLevel::NONE) {
+		async_write(*m_securesocket, m_requestBuffer,
+			boost::bind(&EthStratumClient::handleResponse, this,
+				boost::asio::placeholders::error));
+	}
+	else {
+		async_write(*m_socket, m_requestBuffer,
+			boost::bind(&EthStratumClient::handleResponse, this,
+				boost::asio::placeholders::error));
+	}
+}
+
 void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
 {
 	(void)i;
@@ -304,16 +318,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 				break;
 		}
 
-		if (m_connection.SecLevel() != SecureLevel::NONE) {
-			async_write(*m_securesocket, m_requestBuffer,
-				boost::bind(&EthStratumClient::handleResponse, this,
-					boost::asio::placeholders::error));
-		}
-		else {
-			async_write(*m_socket, m_requestBuffer,
-				boost::bind(&EthStratumClient::handleResponse, this,
-					boost::asio::placeholders::error));
-		}
+		async_write_with_response();
 	}
 	else
 	{
@@ -448,16 +453,9 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			m_authorized = true;
 			os << "{\"id\": 5, \"method\": \"eth_getWork\", \"params\": []}\n"; // not strictly required but it does speed up initialization
 		}
-		if (m_connection.SecLevel() != SecureLevel::NONE) {
-			async_write(*m_securesocket, m_requestBuffer,
-				boost::bind(&EthStratumClient::handleResponse, this,
-					boost::asio::placeholders::error));
-		}
-		else {
-			async_write(*m_socket, m_requestBuffer,
-				boost::bind(&EthStratumClient::handleResponse, this,
-					boost::asio::placeholders::error));
-		}
+
+		async_write_with_response();
+
 		break;
 	case 2:
 		// nothing to do...
@@ -592,16 +590,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		else if (method == "client.get_version")
 		{
 			os << "{\"error\": null, \"id\" : " << id << ", \"result\" : \"" << ethminer_get_buildinfo()->project_version << "\"}\n";
-			if (m_connection.SecLevel() != SecureLevel::NONE) {
-				async_write(*m_securesocket, m_requestBuffer,
-					boost::bind(&EthStratumClient::handleResponse, this,
-						boost::asio::placeholders::error));
-			}
-			else {
-				async_write(*m_socket, m_requestBuffer,
-					boost::bind(&EthStratumClient::handleResponse, this,
-						boost::asio::placeholders::error));
-			}
+			async_write_with_response();
 		}
 		break;
 	}
@@ -682,16 +671,9 @@ void EthStratumClient::submitSolution(Solution solution) {
 	std::ostream os(&m_requestBuffer);
 	os << json;
 	m_stale = solution.stale;
-	if (m_connection.SecLevel() != SecureLevel::NONE) {
-		async_write(*m_securesocket, m_requestBuffer,
-			boost::bind(&EthStratumClient::handleResponse, this,
-				boost::asio::placeholders::error));
-	}
-	else {
-		async_write(*m_socket, m_requestBuffer,
-			boost::bind(&EthStratumClient::handleResponse, this,
-				boost::asio::placeholders::error));
-	}
+
+	async_write_with_response();
+
 	m_response_pending = true;
 	m_responsetimer.expires_from_now(boost::posix_time::seconds(2));
 	m_responsetimer.async_wait(boost::bind(&EthStratumClient::response_timeout_handler, this, boost::asio::placeholders::error));

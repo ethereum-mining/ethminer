@@ -52,6 +52,7 @@ private:
 	void handleHashrateResponse(const boost::system::error_code& ec);
 	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
 	void processReponse(Json::Value& responseObject);
+	void async_write_with_response();
 
 	PoolConnection m_connection;
 
