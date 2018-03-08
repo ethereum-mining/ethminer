@@ -12,18 +12,19 @@ typedef struct {
 } SchemeAttributes;
 
 static std::map<std::string, SchemeAttributes> s_schemes = {
-	{"stratum+tcp",	{ProtocolFamily::STRATUM, SecureLevel::NONE,  0}},
-	{"stratum1+tcp",{ProtocolFamily::STRATUM, SecureLevel::NONE,  1}},
-	{"stratum2+tcp",{ProtocolFamily::STRATUM, SecureLevel::NONE,  2}},
-	{"stratum+tls",	{ProtocolFamily::STRATUM, SecureLevel::TLS12, 0}},
-	{"stratum1+tls",{ProtocolFamily::STRATUM, SecureLevel::TLS12, 1}},
-	{"stratum2+tls",{ProtocolFamily::STRATUM, SecureLevel::TLS12, 2}},
-	{"stratum+ssl",	{ProtocolFamily::STRATUM, SecureLevel::TLS12, 0}},
-	{"stratum1+ssl",{ProtocolFamily::STRATUM, SecureLevel::TLS12, 1}},
-	{"stratum2+ssl",{ProtocolFamily::STRATUM, SecureLevel::TLS12, 2}},
-	{"getwork+rpc",	{ProtocolFamily::GETWORK, SecureLevel::NONE,  0}},
-	{"http",	{ProtocolFamily::GETWORK, SecureLevel::NONE,  0}},
-	{"rpc+http",	{ProtocolFamily::GETWORK, SecureLevel::NONE,  0}}
+	{"stratum+tcp",	  {ProtocolFamily::STRATUM, SecureLevel::NONE,  0}},
+	{"stratum1+tcp",  {ProtocolFamily::STRATUM, SecureLevel::NONE,  1}},
+	{"stratum2+tcp",  {ProtocolFamily::STRATUM, SecureLevel::NONE,  2}},
+	{"stratum+tls",	  {ProtocolFamily::STRATUM, SecureLevel::TLS,   0}},
+	{"stratum1+tls",  {ProtocolFamily::STRATUM, SecureLevel::TLS,   1}},
+	{"stratum2+tls",  {ProtocolFamily::STRATUM, SecureLevel::TLS,   2}},
+	{"stratum+tls12", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 0}},
+	{"stratum1+tls12",{ProtocolFamily::STRATUM, SecureLevel::TLS12, 1}},
+	{"stratum2+tls12",{ProtocolFamily::STRATUM, SecureLevel::TLS12, 2}},
+	{"stratum+ssl",	  {ProtocolFamily::STRATUM, SecureLevel::TLS12, 0}},
+	{"stratum1+ssl",  {ProtocolFamily::STRATUM, SecureLevel::TLS12, 1}},
+	{"stratum2+ssl",  {ProtocolFamily::STRATUM, SecureLevel::TLS12, 2}},
+	{"http",	  {ProtocolFamily::GETWORK, SecureLevel::NONE,  0}}
 };
 
 URI::URI() {}

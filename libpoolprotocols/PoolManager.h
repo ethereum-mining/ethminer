@@ -32,7 +32,7 @@ namespace dev
 			bool isRunning() { return m_running; };
 
 		private:
-			unsigned m_hashrateReportingTime = 10;
+			unsigned m_hashrateReportingTime = 60;
 			unsigned m_hashrateReportingTimePassed = 0;
 
 			bool m_running = false;
