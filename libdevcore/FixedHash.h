@@ -42,11 +42,7 @@ class FixedHash
 {
 public:
 
-#if defined(_WIN32)
-	const char* k_ellipsis = "...";
-#else
 	const char* k_ellipsis = "\342\200\246";
-#endif
 
 	/// The corresponding arithmetic type.
 	using Arith = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;

@@ -3,10 +3,6 @@
 #include <libethash/endian.h>
 #include <ethminer-buildinfo.h>
 
-#ifdef _WIN32
-#include <wincrypt.h>
-#endif
-
 using boost::asio::ip::tcp;
 
 
@@ -97,29 +93,6 @@ void EthStratumClient::connect()
 		if (m_connection.SecLevel() != SecureLevel::ALLOW_SELFSIGNED) {
 			m_securesocket->set_verify_mode(boost::asio::ssl::verify_peer);
 
-#ifdef _WIN32
-			HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
-			if (hStore == NULL) {
-				return;
-			}
-
-			X509_STORE *store = X509_STORE_new();
-			PCCERT_CONTEXT pContext = NULL;
-			while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != NULL) {
-				X509 *x509 = d2i_X509(NULL,
-					(const unsigned char **)&pContext->pbCertEncoded,
-					pContext->cbCertEncoded);
-				if (x509 != NULL) {
-					X509_STORE_add_cert(store, x509);
-					X509_free(x509);
-				}
-			}
-
-			CertFreeCertificateContext(pContext);
-			CertCloseStore(hStore, 0);
-
-			SSL_CTX_set_cert_store(ctx.native_handle(), store);
-#else
 			char *certPath = getenv("SSL_CERT_FILE");
 			try {
 				ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
@@ -129,7 +102,6 @@ void EthStratumClient::connect()
 				cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or inaccessable file.";
 				cwarn << "It is possible that certificate verification can fail.";
 			}
-#endif
 		}
 	}
 	else {
@@ -139,23 +111,17 @@ void EthStratumClient::connect()
 	// Activate keep alive to detect disconnects
 	unsigned int keepAlive = 10000;
 
-#if defined _WIN32 || defined WIN32 || defined OS_WIN64 || defined _WIN64 || defined WIN64 || defined WINNT
-	int32_t timeout = keepAlive;
-	setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
-	setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
-#else
 	struct timeval tv;
 	tv.tv_sec = keepAlive / 1000;
 	tv.tv_usec = keepAlive % 1000;
 	setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 	setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
-#endif
 
 	m_resolver.async_resolve(q, boost::bind(&EthStratumClient::resolve_handler,
 		this, boost::asio::placeholders::error,
 		boost::asio::placeholders::iterator));
 
-    if (m_serviceThread.joinable())
+	if (m_serviceThread.joinable())
 	{
 		// If the service thread have been created try to reset the service.
 		m_io_service.reset();

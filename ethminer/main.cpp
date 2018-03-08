@@ -70,25 +70,6 @@ int main(int argc, char** argv)
 
 	if (getenv("NO_COLOR"))
 		g_useColor = false;
-#if defined(_WIN32)
-	if (g_useColor)
-	{
-		g_useColor = false;
-		// Set output mode to handle virtual terminal sequences
-		// Only works on Windows 10, but most user should use it anyways
-		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-		if (hOut != INVALID_HANDLE_VALUE)
-		{
-			DWORD dwMode = 0;
-			if (GetConsoleMode(hOut, &dwMode))
-			{
-				dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-				if (SetConsoleMode(hOut, dwMode))
-					g_useColor = true;
-			}
-		}
-	}
-#endif
 
 	MinerCLI m;
 
