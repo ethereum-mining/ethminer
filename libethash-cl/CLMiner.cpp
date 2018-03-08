@@ -19,6 +19,7 @@ namespace eth
 unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_threadsPerHash = 8;
+unsigned CLMiner::s_threadTweak = 7;
 CLKernelName CLMiner::s_clKernelName = CLMiner::c_defaultKernelName;
 
 constexpr size_t c_maxSearchResults = 1;
@@ -300,8 +301,6 @@ void CLMiner::workLoop()
 					continue;
 				}
 
-				//cllog << "New work: header" << w.header << "target" << w.boundary.hex();
-
 				if (current.seed != w.seed)
 				{
 					if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
@@ -410,7 +409,7 @@ unsigned CLMiner::getNumDevices()
 
 void CLMiner::listDevices()
 {
-	string outString ="\nListing OpenCL devices.\nFORMAT: [platformID] [deviceID] deviceName\n";
+	string outString ="\nListing OpenCL devices.\nFORMAT: [platformID] [deviceID] device.getInfo<CL_DEVICE_VERSION>()\n";
 	unsigned int i = 0;
 
 	vector<cl::Platform> platforms = getPlatforms();
@@ -430,7 +429,13 @@ void CLMiner::listDevices()
 				outString += "CPU\n";
 				break;
 			case CL_DEVICE_TYPE_GPU:
-				outString += "GPU\n";
+				{
+					cl_uint maxCus;
+					clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(maxCus), &maxCus, NULL);
+					stringstream ss;
+					ss << maxCus;
+					outString += "GPU #CUs = " + ss.str() + '\n';
+				}
 				break;
 			case CL_DEVICE_TYPE_ACCELERATOR:
 				outString += "ACCELERATOR\n";
@@ -466,6 +471,7 @@ bool CLMiner::configureGPU(
 
 	_localWorkSize = ((_localWorkSize + 7) / 8) * 8;
 	s_workgroupSize = _localWorkSize;
+
 	s_initialGlobalWorkSize = _globalWorkSizeMultiplier * _localWorkSize;
 
 	uint64_t dagSize = ethash_get_datasize(_currentBlock);
@@ -589,9 +595,16 @@ bool CLMiner::init(const h256& seed)
 		m_context = cl::Context(vector<cl::Device>(&device, &device + 1));
 		m_queue = cl::CommandQueue(m_context, device);
 
-		// make sure that global work size is evenly divisible by the local workgroup size
 		m_workgroupSize = s_workgroupSize;
 		m_globalWorkSize = s_initialGlobalWorkSize;
+
+		// Adjust global work size according to number of CUs
+		cl_uint maxCUs;
+		clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cl_uint), &maxCUs, nullptr);
+		cllog << string(EthYellow) + "Global work size adjusted for " << maxCUs << " CUs";
+		cllog << string(EthYellow) + "Specified Global work size: " << m_globalWorkSize;
+		m_globalWorkSize = (m_globalWorkSize * maxCUs) / 36;
+		cllog << string(EthYellow) + "Adjusted global work size: " << m_globalWorkSize;
 		if (m_globalWorkSize % m_workgroupSize != 0)
 			m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
 
@@ -610,8 +623,8 @@ bool CLMiner::init(const h256& seed)
 			cllog << "OpenCL kernel: Experimental kernel";
 			code = string(CLMiner_kernel_experimental, CLMiner_kernel_experimental + sizeof(CLMiner_kernel_experimental));
 		}
-		else { //if(s_clKernelName == CLKernelName::Stable)
-			cllog << "OpenCL kernel: Stable kernel";
+		else { // Fallback to experimental kernel if binary loader fails
+			cllog << "OpenCL kernel: " <<  (s_clKernelName == CLKernelName::Binary ?  "Binary" : "Experimental") << " kernel";
 
 			//CLMiner_kernel_stable.cl will do a #undef THREADS_PER_HASH
 			if(s_threadsPerHash != 8) {
@@ -631,7 +644,7 @@ bool CLMiner::init(const h256& seed)
 
 		// create miner OpenCL program
 		cl::Program::Sources sources{{code.data(), code.size()}};
-		cl::Program program(m_context, sources);
+		cl::Program program(m_context, sources), binaryProgram;
 		try
 		{
 			program.build({device}, options);
@@ -641,6 +654,57 @@ bool CLMiner::init(const h256& seed)
 		{
 			cwarn << "Build info:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
 			return false;
+		}
+
+		/* If we have a binary kernel, we load it in tandem with the opencl,
+		   that way, we can use the dag generate opencl code */
+		bool loadedBinary = false;
+                unsigned int computeUnits = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+
+		if(s_clKernelName >= CLKernelName::Binary) {
+			std::ifstream kernel_file;
+			vector<unsigned char> bin_data;
+			std::stringstream fname_strm;
+
+			/* Open kernels/{device.getInfo<CL_DEVICE_VERSION>}.bin */
+			std::transform(device.getInfo<CL_DEVICE_VERSION>().begin(), device.getInfo<CL_DEVICE_VERSION>().end(), device.getInfo<CL_DEVICE_VERSION>().begin(), ::tolower);
+			fname_strm << "kernels/" << device.getInfo<CL_DEVICE_VERSION>() << ".bin";
+
+			kernel_file.open(
+					fname_strm.str(),
+					ios::in | ios::binary
+			);
+
+			if(kernel_file.good()) {
+
+				/* Load the data vector with file data */
+				kernel_file.unsetf(std::ios::skipws);
+				bin_data.insert(bin_data.begin(),
+					std::istream_iterator<unsigned char>(kernel_file),
+					std::istream_iterator<unsigned char>());
+
+				/* Setup the program */
+				cl::Program::Binaries blobs({bin_data});
+				cl::Program program(m_context, { device }, blobs);
+				try
+				{
+					program.build({ device }, options);
+					cllog << "Build info success:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+					binaryProgram = program;
+					loadedBinary = true;
+				}
+				catch (cl::Error const&)
+				{
+					cwarn << "Build info:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+				}
+
+                                computeUnits = computeUnits == 14 ? 36 : computeUnits;
+                                m_globalWorkSize = (computeUnits << 14)*8;
+			} else {
+				cwarn << "Instructed to load binary kernel, but failed to load kernel:";
+				cwarn << fname_strm.str();
+				cwarn << "Falling back to OpenCL kernel...";
+			}
 		}
 
 		//check whether the current dag fits in memory everytime we recreate the DAG
@@ -663,7 +727,12 @@ bool CLMiner::init(const h256& seed)
 			cllog << "Creating DAG buffer, size" << dagSize;
 			m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, dagSize);
 			cllog << "Loading kernels";
-			m_searchKernel = cl::Kernel(program, "ethash_search");
+
+			if(s_clKernelName >= CLKernelName::Binary && loadedBinary) {
+				m_searchKernel = cl::Kernel(binaryProgram, "ethash_search");
+			}else{
+				m_searchKernel = cl::Kernel(program, "ethash_search");
+			}
 			m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
 			cllog << "Writing light cache buffer";
 			m_queue.enqueueWriteBuffer(m_light, CL_TRUE, 0, light->data().size(), light->data().data());
@@ -674,12 +743,24 @@ bool CLMiner::init(const h256& seed)
 			return false;
 		}
 		// create buffer for header
+		//ETHCL_LOG("Creating buffer for header.");
+		//m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 		ETHCL_LOG("Creating buffer for header.");
-		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
+		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, sizeof(Keccak_RC_kernel));
+		m_queue.enqueueWriteBuffer(m_header, CL_TRUE, 0, sizeof(Keccak_RC_kernel), Keccak_RC_kernel);
+
 
 		m_searchKernel.setArg(1, m_header);
 		m_searchKernel.setArg(2, m_dag);
 		m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
+
+		if(s_clKernelName >= CLKernelName::Binary && loadedBinary) {
+			const uint32_t epoch = light->light->block_number/ETHASH_EPOCH_LENGTH;
+			m_searchKernel.setArg(6, dagSize128);
+			m_searchKernel.setArg(7, modulo_optimization[epoch].factor);
+			m_searchKernel.setArg(8, modulo_optimization[epoch].shift);
+			m_searchKernel.setArg(9, s_threadTweak);
+		}
 
 		// create mining buffers
 		ETHCL_LOG("Creating mining buffer");

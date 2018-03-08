@@ -227,12 +227,25 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
+		else if (arg == "--cl-wavetweak" && i + 1 < argc) 
+		{
+			try
+			{
+				m_openclWavetweak = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
 		else if ( arg == "--cl-global-work"  && i + 1 < argc)
 		{
 			try
 			{
-				m_globalWorkSizeMultiplier = stol(argv[++i]);
-
+				i++;
+				m_globalWorkSizeMultiplier =
+					(strcmp(argv[i], "auto") == 0) ? 0 : stol(argv[i]);
 			}
 			catch (...)
 			{
@@ -426,6 +439,7 @@ public:
 			}
 
 			CLMiner::setCLKernel(m_openclSelectedKernel);
+			CLMiner::setKernelTweak(m_openclWavetweak);
 			CLMiner::setThreadsPerHash(m_openclThreadsPerHash);
 
 			if (!CLMiner::configureGPU(
@@ -515,9 +529,12 @@ public:
 			<< "    --cl-kernel <n>  Use a different OpenCL kernel (default: use stable kernel)" << endl
 			<< "        0: stable kernel" << endl
 			<< "        1: experimental kernel" << endl
+			<< "        2: binary kernel" << endl
 			<< "    --cl-local-work Set the OpenCL local work size. Default is " << CLMiner::c_defaultLocalWorkSize << endl
 			<< "    --cl-global-work Set the OpenCL global work size as a multiple of the local work size. Default is " << CLMiner::c_defaultGlobalWorkSizeMultiplier << " * " << CLMiner::c_defaultLocalWorkSize << endl
+			<< "        You may also specify auto for optimal Radeon value based on configuration." << endl
 			<< "    --cl-parallel-hash <1 2 ..8> Define how many threads to associate per hash. Default=8" << endl
+			<< "    --cl-wavetweak 0-100 " << endl
 #endif
 #if ETH_ETHASHCUDA
 			<< " CUDA configuration:" << endl
@@ -607,6 +624,7 @@ private:
 	unsigned m_openclDeviceCount = 0;
 	vector<unsigned> m_openclDevices = vector<unsigned>(MAX_MINERS, -1);
 	unsigned m_openclThreadsPerHash = 8;
+	unsigned m_openclWavetweak = 7;
 	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
 #endif
