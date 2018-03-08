@@ -8,7 +8,6 @@ namespace dev
 {
 
 enum class SecureLevel {NONE = 0, TLS12, TLS, ALLOW_SELFSIGNED};
-enum class ProtocolFamily {GETWORK = 0, STRATUM};
 
 class URI : network::uri
 {
@@ -22,12 +21,11 @@ public:
 	std::string	User() const;
 	std::string	Pswd() const;
 	SecureLevel	ProtoSecureLevel() const;
-	ProtocolFamily	ProtoFamily() const;
 	unsigned	ProtoVersion() const;
 
 	bool		KnownScheme();
 
-	static std::string KnownSchemes(ProtocolFamily family);
+	static std::string KnownSchemes();
 
 private:
 	network::uri   m_uri;

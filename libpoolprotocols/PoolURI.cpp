@@ -6,25 +6,24 @@
 using namespace dev;
 
 typedef struct {
-	ProtocolFamily family;
 	SecureLevel secure;
 	unsigned version;
 } SchemeAttributes;
 
 static std::map<std::string, SchemeAttributes> s_schemes = {
-	{"stratum+tcp",	  {ProtocolFamily::STRATUM, SecureLevel::NONE,  0}},
-	{"stratum1+tcp",  {ProtocolFamily::STRATUM, SecureLevel::NONE,  1}},
-	{"stratum2+tcp",  {ProtocolFamily::STRATUM, SecureLevel::NONE,  2}},
-	{"stratum+tls",	  {ProtocolFamily::STRATUM, SecureLevel::TLS,   0}},
-	{"stratum1+tls",  {ProtocolFamily::STRATUM, SecureLevel::TLS,   1}},
-	{"stratum2+tls",  {ProtocolFamily::STRATUM, SecureLevel::TLS,   2}},
-	{"stratum+tls12", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 0}},
-	{"stratum1+tls12",{ProtocolFamily::STRATUM, SecureLevel::TLS12, 1}},
-	{"stratum2+tls12",{ProtocolFamily::STRATUM, SecureLevel::TLS12, 2}},
-	{"stratum+ssl",	  {ProtocolFamily::STRATUM, SecureLevel::TLS12, 0}},
-	{"stratum1+ssl",  {ProtocolFamily::STRATUM, SecureLevel::TLS12, 1}},
-	{"stratum2+ssl",  {ProtocolFamily::STRATUM, SecureLevel::TLS12, 2}},
-	{"http",	  {ProtocolFamily::GETWORK, SecureLevel::NONE,  0}}
+	{"stratum+tcp",	  {SecureLevel::NONE,  0}},
+	{"stratum1+tcp",  {SecureLevel::NONE,  1}},
+	{"stratum2+tcp",  {SecureLevel::NONE,  2}},
+	{"stratum+tls",	  {SecureLevel::TLS,   0}},
+	{"stratum1+tls",  {SecureLevel::TLS,   1}},
+	{"stratum2+tls",  {SecureLevel::TLS,   2}},
+	{"stratum+tls12", {SecureLevel::TLS12, 0}},
+	{"stratum1+tls12",{SecureLevel::TLS12, 1}},
+	{"stratum2+tls12",{SecureLevel::TLS12, 2}},
+	{"stratum+ssl",	  {SecureLevel::TLS12, 0}},
+	{"stratum1+ssl",  {SecureLevel::TLS12, 1}},
+	{"stratum2+ssl",  {SecureLevel::TLS12, 2}},
+	{"http",	  {SecureLevel::NONE,  0}}
 };
 
 URI::URI() {}
@@ -44,13 +43,6 @@ bool URI::KnownScheme()
 	return s_schemes.find(s) != s_schemes.end();
 }
 
-ProtocolFamily URI::ProtoFamily() const
-{
-	std::string s(*m_uri.scheme());
-	boost::trim(s);
-	return s_schemes[s].family;
-}
-
 unsigned URI::ProtoVersion() const
 {
 	std::string s(*m_uri.scheme());
@@ -65,12 +57,11 @@ SecureLevel URI::ProtoSecureLevel() const
 	return s_schemes[s].secure;
 }
 
-std::string URI::KnownSchemes(ProtocolFamily family)
+std::string URI::KnownSchemes()
 {
 	std::string schemes;
 	for(const auto&s : s_schemes)
-		if (s.second.family == family)
-			schemes += s.first + " ";
+		schemes += s.first + " ";
 	boost::trim(schemes);
 	return schemes;
 }

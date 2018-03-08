@@ -47,9 +47,6 @@
 #endif
 #include <libpoolprotocols/PoolManager.h>
 #include <libpoolprotocols/stratum/EthStratumClient.h>
-#include <libpoolprotocols/getwork/EthGetworkClient.h>
-#include <libpoolprotocols/testing/SimulateClient.h>
-
 #if ETH_DBUS
 #include "DBusInt.h"
 #endif
@@ -173,24 +170,7 @@ public:
 				cerr << "Unknown URI scheme " << uri.Scheme() << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
-			m_endpoints.push_front(PoolConnection(uri));
-			
-			OperationMode mode = OperationMode::None;
-			switch (uri.ProtoFamily())
-			{
-			case ProtocolFamily::STRATUM:
-				mode = OperationMode::Stratum;
-				break;
-			case ProtocolFamily::GETWORK:
-				mode = OperationMode::Farm;
-				break;
-			}
-			if ((m_mode != OperationMode::None) && (m_mode != mode))
-			{
-				cerr << "Mixed stratum and getwork enpoints not supported." << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
-			}
-			m_mode = mode;
+			m_endpoints.push_back(PoolConnection(uri));
 		}
 #if API_CORE
 		else if ((arg == "--api-port") && i + 1 < argc)
@@ -399,49 +379,6 @@ public:
 		{
 			m_minerType = MinerType::Mixed;
 		}
-		else if (arg == "-M" || arg == "--benchmark")
-		{
-			m_mode = OperationMode::Benchmark;
-			if (i + 1 < argc)
-			{
-				string m = boost::to_lower_copy(string(argv[++i]));
-				try
-				{
-					m_benchmarkBlock = stol(m);
-				}
-				catch (...)
-				{
-					if (argv[i][0] == 45) { // check next arg
-						i--;
-					}
-					else {
-						cerr << "Bad " << arg << " option: " << argv[i] << endl;
-						BOOST_THROW_EXCEPTION(BadArgument());
-					}
-				}
-			}
-		}
-		else if (arg == "-Z" || arg == "--simulation") {
-			m_mode = OperationMode::Simulation;
-			if (i + 1 < argc)
-			{
-				string m = boost::to_lower_copy(string(argv[++i]));
-				try
-				{
-					m_benchmarkBlock = stol(m);
-				}
-				catch (...)
-				{
-					if (argv[i][0] == 45) { // check next arg
-						i--;
-					}
-					else {
-						cerr << "Bad " << arg << " option: " << argv[i] << endl;
-						BOOST_THROW_EXCEPTION(BadArgument());
-					}
-				}
-			}
-		}
 		else if ((arg == "-t" || arg == "--mining-threads") && i + 1 < argc)
 		{
 			try
@@ -541,54 +478,24 @@ public:
 		signal(SIGINT, MinerCLI::signalHandler);
 		signal(SIGTERM, MinerCLI::signalHandler);
 
-		if (m_mode == OperationMode::Benchmark)
-			doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
-		else if (m_mode == OperationMode::Farm || m_mode == OperationMode::Stratum || m_mode == OperationMode::Simulation)
-			doMiner();
+		doMiner();
 	}
 
 	static void streamHelp(ostream& _out)
 	{
 		_out
-			<< "Work farming mode:" << endl
-			<< "    -F,--farm <url>  (deprecated) Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
-			<< "    -FF,-FO, --farm-failover, --stratum-failover <url> (deprecated) Failover getwork/stratum URL (default: disabled)" << endl
-			<< "	--farm-retries <n> Number of retries until switch to failover (default: 3)" << endl
-			<< "	-S, --stratum <host:port>  (deprecated) Put into stratum mode with the stratum server at host:port" << endl
-			<< "	-SF, --stratum-failover <host:port>  (deprecated) Failover stratum server at host:port" << endl
-			<< "    -O, --userpass <username.workername:password> (deprecated) Stratum login credentials" << endl
-			<< "    -FO, --failover-userpass <username.workername:password> (deprecated) Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
 			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
-			<< "    --stratum-ssl [<n>]  (deprecated) Use encryption to connect to stratum server." << endl
-			<< "        0: Force TLS1.2 (default)" << endl
-			<< "        1: Allow any TLS version" << endl
-			<< "        2: Allow self-signed or invalid certs and any TLS version" << endl
-			<< "    -SP, --stratum-protocol <n> (deprecated) Choose which stratum protocol to use:" << endl
-			<< "        0: official stratum spec: ethpool, ethermine, coinotron, mph, nanopool (default)" << endl
-			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for hashrate reporting to work with nanopool)" << endl
-			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
 			<< "    -RH, --report-hashrate Report current hashrate to pool (please only enable on pools supporting this)" << endl
 			<< "    -HWMON [<n>], Displays gpu temp, fan percent and power usage. Note: In linux, the program uses sysfs, which may require running with root priviledges." << endl
 			<< "        0: Displays only temp and fan percent (default)" << endl
 			<< "        1: Also displays power usage" << endl
 			<< "    --exit Stops the miner whenever an error is encountered" << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
-			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 			<< "    -P URL Specify a pool URL. Can be used multiple times. The 1st for for the primary pool, and the 2nd for the failover pool." << endl
 			<< "        URL takes the form: scheme://user[:password]@hostname:port." << endl
-			<< "        for getwork use one of the following schemes:" << endl
-			<< "          " << URI::KnownSchemes(ProtocolFamily::GETWORK) << endl
-			<< "        for stratum use one of the following schemes: "<< endl
-			<< "          " << URI::KnownSchemes(ProtocolFamily::STRATUM) << endl
+			<< "        supported schemes: " << URI::KnownSchemes() << endl
 			<< "        Example: stratum+ssl://0x012345678901234567890234567890123.miner1@ethermine.org:5555" << endl
 			<< endl
-			<< "Benchmarking mode:" << endl
-			<< "    -M [<n>],--benchmark [<n>] Benchmark for mining and exit; Optionally specify block number to benchmark against specific DAG." << endl
-			<< "    --benchmark-warmup <seconds>  Set the duration of warmup for the benchmark tests (default: 3)." << endl
-			<< "    --benchmark-trial <seconds>  Set the duration for each trial for the benchmark tests (default: 3)." << endl
-			<< "    --benchmark-trials <n>  Set the number of benchmark trials to run (default: 5)." << endl
-			<< "Simulation mode:" << endl
-			<< "    -Z [<n>],--simulation [<n>] Mining test mode. Used to validate kernel optimizations. Optionally specify block number." << endl
 			<< "Mining configuration:" << endl
 			<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
 			<< "    -U,--cuda  When mining use the GPU via CUDA." << endl
@@ -638,75 +545,6 @@ public:
 
 private:
 
-	void doBenchmark(MinerType _m, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
-	{
-		BlockHeader genesis;
-		genesis.setNumber(m_benchmarkBlock);
-		genesis.setDifficulty(u256(1) << 64);
-
-		Farm f;
-		map<string, Farm::SealerDescriptor> sealers;
-#if ETH_ETHASHCL
-		sealers["opencl"] = Farm::SealerDescriptor{
-			&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }
-		};
-#endif
-#if ETH_ETHASHCUDA
-		sealers["cuda"] = Farm::SealerDescriptor{
-			&CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); }
-		};
-#endif
-		f.setSealers(sealers);
-		f.onSolutionFound([&](Solution) { return false; });
-
-		string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
-		cout << "Benchmarking on platform: " << platformInfo << endl;
-
-		cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
-		//genesis.prep();
-
-		if (_m == MinerType::CL)
-			f.start("opencl", false);
-		else if (_m == MinerType::CUDA)
-			f.start("cuda", false);
-
-		WorkPackage current = WorkPackage(genesis);
-		
-
-		map<uint64_t, WorkingProgress> results;
-		uint64_t mean = 0;
-		uint64_t innerMean = 0;
-		for (unsigned i = 0; i <= _trials; ++i)
-		{
-			current.header = h256::random();
-			current.boundary = genesis.boundary();
-			f.setWork(current);	
-			if (!i)
-				cout << "Warming up..." << endl;
-			else
-				cout << "Trial " << i << "... " << flush <<endl;
-			this_thread::sleep_for(chrono::seconds(i ? _trialDuration : _warmupDuration));
-
-			auto mp = f.miningProgress();
-			if (!i)
-				continue;
-			auto rate = mp.rate();
-
-			cout << rate << endl;
-			results[rate] = mp;
-			mean += rate;
-		}
-		int j = -1;
-		for (auto const& r: results)
-			if (++j > 0 && j < (int)_trials - 1)
-				innerMean += r.second.rate();
-		innerMean /= (_trials - 2);
-		cout << "min/mean/max: " << results.begin()->second.rate() << "/" << (mean / _trials) << "/" << results.rbegin()->second.rate() << " H/s" << endl;
-		cout << "inner mean: " << innerMean << " H/s" << endl;
-
-		exit(0);
-	}
-	
 	void doMiner()
 	{
 		map<string, Farm::SealerDescriptor> sealers;
@@ -719,25 +557,7 @@ private:
 
 		PoolClient *client = nullptr;
 
-		if (m_mode == OperationMode::Stratum) {
-			client = new EthStratumClient(m_worktimeout, m_email, m_report_stratum_hashrate);
-		}
-		else if (m_mode == OperationMode::Farm) {
-			client = new EthGetworkClient(m_farmRecheckPeriod);
-		}
-		else if (m_mode == OperationMode::Simulation) {
-			client = new SimulateClient(20, m_benchmarkBlock);
-		}
-		else {
-			cwarn << "Invalid OperationMode";
-			exit(1);
-		}
-
-		// Should not happen!
-		if (!client) {
-			cwarn << "Invalid PoolClient";
-			exit(1);
-		}
+		client = new EthStratumClient(m_worktimeout, m_email, m_report_stratum_hashrate);
 
 		//sealers, m_minerType
 		Farm f;
@@ -776,9 +596,6 @@ private:
 
 		exit(0);
 	}
-
-	/// Operating mode.
-	OperationMode m_mode = OperationMode::None;
 
 	/// Mining options
 	MinerType m_minerType = MinerType::Mixed;
