@@ -48,15 +48,7 @@ EthStratumClient::EthStratumClient(int const & worktimeout, int const & protocol
 	m_email = email;
 
 	m_submit_hashrate = submitHashrate;
-	if (m_submit_hashrate) {
-		m_submit_hashrate_id = h256::random().hex();
-
-		// This timer is set to never expire. This is intentional since
-		// boost asio does not support events, this timer will
-		// serve an equivalent role when cancelled.
-		m_hashrate_event.expires_at(boost::posix_time::pos_infin);
-		m_hashrate_event.async_wait(boost::bind(&EthStratumClient::hashrate_event_handler, this, boost::asio::placeholders::error));
-	}
+	m_submit_hashrate_id = h256::random().hex();
 
 	m_secureMode = secureMode;
 }
@@ -613,22 +605,20 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 void EthStratumClient::hashrate_event_handler(const boost::system::error_code& ec)
 {
-	(void)ec;
-
-	if (!m_linkdown) {
-		// There is no stratum method to submit the hashrate so we use the rpc variant.
-		string json = "{\"id\": 6, \"jsonrpc\":\"2.0\", \"method\": \"eth_submitHashrate\", \"params\": [\"" + m_rate + "\",\"0x" + this->m_submit_hashrate_id + "\"]}\n";
-		std::ostream os(&m_requestBuffer);
-		os << json;
-		if (m_secureMode != StratumSecure::NONE)
-			async_write(*m_securesocket, m_requestBuffer,
-				boost::bind(&EthStratumClient::handleHashrateResponse, this, boost::asio::placeholders::error));
-		else
-			async_write(*m_socket, m_requestBuffer,
-				boost::bind(&EthStratumClient::handleHashrateResponse, this, boost::asio::placeholders::error));
+	if (ec || m_linkdown) {
+		return;
 	}
 
-	m_hashrate_event.async_wait(boost::bind(&EthStratumClient::hashrate_event_handler, this, boost::asio::placeholders::error));
+	// There is no stratum method to submit the hashrate so we use the rpc variant.
+	string json = "{\"id\": 6, \"jsonrpc\":\"2.0\", \"method\": \"eth_submitHashrate\", \"params\": [\"" + m_rate + "\",\"0x" + this->m_submit_hashrate_id + "\"]}\n";
+	std::ostream os(&m_requestBuffer);
+	os << json;
+	if (m_secureMode != StratumSecure::NONE)
+		async_write(*m_securesocket, m_requestBuffer,
+			boost::bind(&EthStratumClient::handleHashrateResponse, this, boost::asio::placeholders::error));
+	else
+		async_write(*m_socket, m_requestBuffer,
+			boost::bind(&EthStratumClient::handleHashrateResponse, this, boost::asio::placeholders::error));
 }
 
 void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec) {
@@ -650,11 +640,10 @@ void EthStratumClient::submitHashrate(string const & rate) {
 		return;
 	}
 
-	// Called by the pool manager thread.
-	// We cancel the timer that will serve as event
-	// to the stratum client.
 	m_rate = rate;
 	m_hashrate_event.cancel();
+	m_hashrate_event.expires_from_now(boost::posix_time::milliseconds(100));
+	m_hashrate_event.async_wait(boost::bind(&EthStratumClient::hashrate_event_handler, this, boost::asio::placeholders::error));
 }
 
 void EthStratumClient::submitSolution(Solution solution) {
