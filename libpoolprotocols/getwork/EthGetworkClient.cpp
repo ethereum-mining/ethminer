@@ -22,7 +22,9 @@ EthGetworkClient::~EthGetworkClient()
 void EthGetworkClient::connect()
 {
 	if (m_connection_changed) {
-		p_client = new ::JsonrpcGetwork(new jsonrpc::HttpClient(m_host));
+		stringstream ss;
+		ss <<  "http://" + m_conn.Host() << ':' << m_conn.Port();
+		p_client = new ::JsonrpcGetwork(new jsonrpc::HttpClient(ss.str()));
 	}
 
 //	cnote << "connect to " << m_host;

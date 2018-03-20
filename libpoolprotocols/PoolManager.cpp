@@ -25,7 +25,9 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 
 	p_client->onConnected([&]()
 	{
-		cnote << "Connected to " + m_connections[m_activeConnectionIdx].host();
+		stringstream ssPort;
+		ssPort << m_connections[m_activeConnectionIdx].Port();
+		cnote << "Connected to " << m_connections[m_activeConnectionIdx].Host() + ':' + ssPort.str();
 		if (!m_farm.isMining())
 		{
 			cnote << "Spinning up miners...";
@@ -41,7 +43,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 	});
 	p_client->onDisconnected([&]()
 	{
-		cnote << "Disconnected from " + m_connections[m_activeConnectionIdx].host();
+		cnote << "Disconnected from " + m_connections[m_activeConnectionIdx].Host();
 
 		if (m_farm.isMining()) {
 			cnote << "Shutting down miners...";
@@ -64,7 +66,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 			const uint256_t divisor(string("0x") + m_lastBoundary.hex());
 			cnote << "New pool difficulty:" << EthWhite << diffToDisplay(double(dividend / divisor)) << EthReset;
 		}
-		cnote << "Received new job" << wp.header << "from " + m_connections[m_activeConnectionIdx].host();
+		cnote << "Received new job" << wp.header << "from " + m_connections[m_activeConnectionIdx].Host();
 	});
 	p_client->onSolutionAccepted([&](bool const& stale)
 	{
@@ -86,9 +88,9 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		m_submit_time = std::chrono::steady_clock::now();
 
 		if (sol.stale)
-			cnote << string(EthYellow "Stale nonce 0x") + toHex(sol.nonce) + " submitted to " + m_connections[m_activeConnectionIdx].host();
+			cnote << string(EthYellow "Stale nonce 0x") + toHex(sol.nonce) + " submitted to " + m_connections[m_activeConnectionIdx].Host();
 		else
-			cnote << string("Nonce 0x") + toHex(sol.nonce) + " submitted to " + m_connections[m_activeConnectionIdx].host();
+			cnote << string("Nonce 0x") + toHex(sol.nonce) + " submitted to " + m_connections[m_activeConnectionIdx].Host();
 
 		p_client->submitSolution(sol);
 		return false;
@@ -149,24 +151,23 @@ void PoolManager::workLoop()
 	}
 }
 
-void PoolManager::addConnection(string const & host, string const & port, string const & user, string const & pass)
+void PoolManager::addConnection(PoolConnection &conn)
 {
-	if (host.empty())
+	if (conn.Host().empty())
 		return;
 
-	PoolConnection connection(host, port, user, pass);
-	m_connections.push_back(connection);
+	m_connections.push_back(conn);
 
 	if (m_connections.size() == 1) {
-		p_client->setConnection(host, port, user, pass);
-		m_farm.set_pool_addresses(host, port, "", "");
+		p_client->setConnection(conn);
+		m_farm.set_pool_addresses(conn.Host(), conn.Port());
 	}
 }
 
 void PoolManager::clearConnections()
 {
 	m_connections.clear();
-	m_farm.set_pool_addresses("", "", "", "");
+	m_farm.set_pool_addresses("", 0);
 	if (p_client && p_client->isConnected())
 		p_client->disconnect();
 }
@@ -215,16 +216,14 @@ void PoolManager::tryReconnect()
 		if (m_activeConnectionIdx >= m_connections.size()) {
 			m_activeConnectionIdx = 0;
 		}
-		PoolConnection newConnection = m_connections[m_activeConnectionIdx];
-
-		if (newConnection.host() == "exit") {
+		if (m_connections[m_activeConnectionIdx].Host() == "exit") {
 			dev::setThreadName("main");
 			cnote << "Exiting because reconnecting is not possible.";
 			stop();
 		}
 		else {
-			p_client->setConnection(newConnection.host(), newConnection.port(), newConnection.user(), newConnection.pass());
-			m_farm.set_pool_addresses(newConnection.host(), newConnection.port(), "", "");
+			p_client->setConnection(m_connections[m_activeConnectionIdx]);
+			m_farm.set_pool_addresses(m_connections[m_activeConnectionIdx].Host(), m_connections[m_activeConnectionIdx].Port());
 			p_client->connect();
 		}
 	}

@@ -19,26 +19,11 @@ namespace dev
 {
 	namespace eth
 	{
-		class PoolConnection
-		{
-		public:
-			PoolConnection(string const & host, string const & port, string const & user, string const & pass) : m_host(host), m_port(port), m_user(user), m_pass(pass) {};
-			string host() { return m_host; };
-			string port() { return m_port; };
-			string user() { return m_user; };
-			string pass() { return m_pass; };
-		private:
-			string m_host = "";
-			string m_port = "";
-			string m_user = "";
-			string m_pass = "";
-		};
-
 		class PoolManager : public Worker
 		{
 		public:
 			PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType);
-			void addConnection(string const & host, string const & port, string const & user, string const & pass);
+			void addConnection(PoolConnection &conn);
 			void clearConnections();
 			void start();
 			void stop();
@@ -47,7 +32,7 @@ namespace dev
 			bool isRunning() { return m_running; };
 
 		private:
-			unsigned m_hashrateReportingTime = 10;
+			unsigned m_hashrateReportingTime = 60;
 			unsigned m_hashrateReportingTimePassed = 0;
 
 			bool m_running = false;
