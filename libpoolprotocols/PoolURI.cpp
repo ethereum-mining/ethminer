@@ -102,7 +102,6 @@ unsigned short URI::Port() const
 
 std::string URI::User() const
 {
-	std::stringstream ss;
 	std::string s(*m_uri.user_info());
 	boost::trim(s);
 	if (s == "--")
