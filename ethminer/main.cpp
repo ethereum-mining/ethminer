@@ -90,7 +90,7 @@ int main(int argc, char** argv)
 	}
 #endif
 
-	MinerCLI m(MinerCLI::OperationMode::Farm);
+	MinerCLI m;
 
 	try
 	{

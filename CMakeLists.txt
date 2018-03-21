@@ -43,7 +43,7 @@ endif()
 
 
 project(ethminer)
-set(PROJECT_VERSION 0.14.0.dev4)
+set(PROJECT_VERSION 0.15.0.dev0)
 
 cable_set_build_type(DEFAULT Release CONFIGURATION_TYPES Release RelWithDebInfo Debug)
 
@@ -88,6 +88,9 @@ find_package(jsoncpp CONFIG REQUIRED)
 
 hunter_add_package(libjson-rpc-cpp)
 find_package(libjson-rpc-cpp CONFIG REQUIRED)
+
+hunter_add_package(CppNetlibUri)
+find_package(CppNetlibUri CONFIG REQUIRED)
 
 configureProject()
 
