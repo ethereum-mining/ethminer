@@ -48,8 +48,6 @@ EthStratumClient::EthStratumClient(int const & worktimeout, string const & email
 
 	m_submit_hashrate = submitHashrate;
 	m_submit_hashrate_id = h256::random().hex();
-
-	m_secureMode = secureMode;
 }
 
 EthStratumClient::~EthStratumClient()
