@@ -377,11 +377,11 @@ void CLMiner::workLoop()
 
 			// Report hash count
 			addHashCount(m_globalWorkSize);
-		}
 
-		// Make sure the last buffer write has finished --
-		// it reads local variable.
-		m_queue.finish();
+			// Make sure the last buffer write has finished --
+			// it reads local variable.
+			m_queue.finish();
+		}
 	}
 	catch (cl::Error const& _e)
 	{
