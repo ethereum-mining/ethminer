@@ -324,7 +324,7 @@ public:
         {
             p.ms += cp.ms;
             p.hashes += cp.hashes;
-            for (unsigned int i = 0; i < cp.minersHashes.size(); i++)
+            for (unsigned int i = 0; i < cp.minersHashes.size() && i < p.minersHashes.size(); i++)
             {
                 p.minersHashes.at(i) += cp.minersHashes.at(i);
             }
