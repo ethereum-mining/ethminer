@@ -92,7 +92,7 @@ public:
 		Stratum
 	};
 
-	MinerCLI() {m_endpoints.reserve(k_max_endpoints);}
+	MinerCLI() {m_endpoints.resize(k_max_endpoints);}
 
 	static void signalHandler(int sig)
 	{
