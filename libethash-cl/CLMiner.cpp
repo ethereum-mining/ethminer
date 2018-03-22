@@ -6,7 +6,7 @@
 #include "CLMiner.h"
 #include <libethash/internal.h>
 #include "CLMiner_kernel_stable.h"
-#include "CLMiner_kernel_unstable.h"
+#include "CLMiner_kernel_experimental.h"
 
 using namespace dev;
 using namespace eth;
@@ -29,7 +29,14 @@ struct CLChannel: public LogChannel
 	static const int verbosity = 2;
 	static const bool debug = false;
 };
+struct CLSwitchChannel: public LogChannel
+{
+	static const char* name() { return EthOrange " cl"; }
+	static const int verbosity = 6;
+	static const bool debug = false;
+};
 #define cllog clog(CLChannel)
+#define clswitchlog clog(CLSwitchChannel)
 #define ETHCL_LOG(_contents) cllog << _contents
 
 /**
@@ -254,7 +261,7 @@ std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, 
 
 unsigned CLMiner::s_platformId = 0;
 unsigned CLMiner::s_numInstances = 0;
-int CLMiner::s_devices[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+vector<int> CLMiner::s_devices(MAX_MINERS, -1);
 
 CLMiner::CLMiner(FarmFace& _farm, unsigned _index):
 	Miner("cl-", _farm, _index)
@@ -262,20 +269,8 @@ CLMiner::CLMiner(FarmFace& _farm, unsigned _index):
 
 CLMiner::~CLMiner()
 {
+	stopWorking();
 	kick_miner();
-}
-
-void CLMiner::report(uint64_t _nonce, WorkPackage const& _w)
-{
-	assert(_nonce != 0);
-	// TODO: Why re-evaluating?
-	Result r = EthashAux::eval(_w.seed, _w.header, _nonce);
-	if (r.value < _w.boundary)
-		farm.submitProof(Solution{_nonce, r.mixHash, _w, false});
-	else {
-		farm.failedSolution();
-		cwarn << "FAILURE: GPU gave incorrect result!";
-	}
 }
 
 void CLMiner::workLoop()
@@ -291,15 +286,13 @@ void CLMiner::workLoop()
 	current.seed = h256{1u};
 
 	try {
-		while (true)
+		while (!shouldStop())
 		{
 			const WorkPackage w = work();
 
 			if (current.header != w.header)
 			{
 				// New work received. Update GPU data.
-				auto localSwitchStart = std::chrono::high_resolution_clock::now();
-
 				if (!w)
 				{
 					cllog << "No work. Pause for 3 s.";
@@ -307,7 +300,7 @@ void CLMiner::workLoop()
 					continue;
 				}
 
-				cllog << "New work: header" << w.header << "target" << w.boundary.hex();
+				//cllog << "New work: header" << w.header << "target" << w.boundary.hex();
 
 				if (current.seed != w.seed)
 				{
@@ -335,14 +328,16 @@ void CLMiner::workLoop()
 
 				// FIXME: This logic should be move out of here.
 				if (w.exSizeBits >= 0)
-					startNonce = w.startNonce | ((uint64_t)index << (64 - 4 - w.exSizeBits)); // This can support up to 16 devices.
+				{
+					// This can support up to 2^c_log2MaxMiners devices.
+					startNonce = w.startNonce | ((uint64_t)index << (64 - LOG2_MAX_MINERS - w.exSizeBits));
+				}
 				else
 					startNonce = get_start_nonce();
 
-				auto switchEnd = std::chrono::high_resolution_clock::now();
-				auto globalSwitchTime = std::chrono::duration_cast<std::chrono::milliseconds>(switchEnd - workSwitchStart).count();
-				auto localSwitchTime = std::chrono::duration_cast<std::chrono::microseconds>(switchEnd - localSwitchStart).count();
-				cllog << "Switch time" << globalSwitchTime << "ms /" << localSwitchTime << "us";
+				clswitchlog << "Switch time"
+					<< std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - workSwitchStart).count()
+					<< "ms.";
 			}
 
 			// Read results.
@@ -365,8 +360,15 @@ void CLMiner::workLoop()
 
 			// Report results while the kernel is running.
 			// It takes some time because ethash must be re-evaluated on CPU.
-			if (nonce != 0)
-				report(nonce, current);
+			if (nonce != 0) {
+				Result r = EthashAux::eval(current.seed, current.header, nonce);
+				if (r.value < current.boundary)
+					farm.submitProof(Solution{nonce, r.mixHash, current, current.header != w.header});
+				else {
+					farm.failedSolution();
+					cwarn << "FAILURE: GPU gave incorrect result!";
+				}
+			}
 
 			current = w;        // kernel now processing newest work
 			current.startNonce = startNonce;
@@ -375,20 +377,17 @@ void CLMiner::workLoop()
 
 			// Report hash count
 			addHashCount(m_globalWorkSize);
-
-			// Check if we should stop.
-			if (shouldStop())
-			{
-				// Make sure the last buffer write has finished --
-				// it reads local variable.
-				m_queue.finish();
-				break;
-			}
 		}
+
+		// Make sure the last buffer write has finished --
+		// it reads local variable.
+		m_queue.finish();
 	}
 	catch (cl::Error const& _e)
 	{
 		cwarn << ethCLErrorHelper("OpenCL Error", _e);
+		if(s_exit)
+			exit(1);
 	}
 }
 
@@ -455,11 +454,13 @@ bool CLMiner::configureGPU(
 	unsigned _platformId,
 	uint64_t _currentBlock,
 	unsigned _dagLoadMode,
-	unsigned _dagCreateDevice
+	unsigned _dagCreateDevice,
+	bool _exit
 )
 {
 	s_dagLoadMode = _dagLoadMode;
 	s_dagCreateDevice = _dagCreateDevice;
+	s_exit = _exit;
 
 	s_platformId = _platformId;
 
@@ -498,30 +499,6 @@ bool CLMiner::configureGPU(
 	return false;
 }
 
-HwMonitor CLMiner::hwmon()
-{
-	HwMonitor hw;
-	unsigned int tempC = 0, fanpcnt = 0;
-	if (nvmlh) {
-		wrap_nvml_get_tempC(nvmlh, index, &tempC);
-		wrap_nvml_get_fanpcnt(nvmlh, index, &fanpcnt);
-	}
-	if (adlh) {
-		wrap_adl_get_tempC(adlh, index, &tempC);
-		wrap_adl_get_fanpcnt(adlh, index, &fanpcnt);
-	}
-#if defined(__linux)
-	if (sysfsh) {
-		wrap_amdsysfs_get_tempC(sysfsh, index, &tempC);
-		wrap_amdsysfs_get_fanpcnt(sysfsh, index, &fanpcnt);
-	}
-#endif
-	hw.tempC = tempC;
-	hw.fanP = fanpcnt;
-	return hw;
-}
-
-
 bool CLMiner::init(const h256& seed)
 {
 	EthashAux::LightType light = EthashAux::light(seed);
@@ -548,15 +525,14 @@ bool CLMiner::init(const h256& seed)
 			if (platformName == "NVIDIA CUDA")
 			{
 				platformId = OPENCL_PLATFORM_NVIDIA;
-				nvmlh = wrap_nvml_create();
+				m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
+				m_hwmoninfo.indexSource = HwMonitorIndexSource::OPENCL;
 			}
 			else if (platformName == "AMD Accelerated Parallel Processing")
 			{
 				platformId = OPENCL_PLATFORM_AMD;
-				adlh = wrap_adl_create();
-#if defined(__linux)
-				sysfsh = wrap_amdsysfs_create();
-#endif
+				m_hwmoninfo.deviceType = HwMonitorInfoType::AMD;
+				m_hwmoninfo.indexSource = HwMonitorIndexSource::OPENCL;
 			}
 			else if (platformName == "Clover")
 			{
@@ -573,8 +549,10 @@ bool CLMiner::init(const h256& seed)
 		}
 
 		// use selected device
-		unsigned deviceId = s_devices[index] > -1 ? s_devices[index] : index;
-		cl::Device& device = devices[min<unsigned>(deviceId, devices.size() - 1)];
+		int idx = index % devices.size();
+		unsigned deviceId = s_devices[idx] > -1 ? s_devices[idx] : index;
+		m_hwmoninfo.deviceIndex = deviceId % devices.size();
+		cl::Device& device = devices[deviceId % devices.size()];
 		string device_version = device.getInfo<CL_DEVICE_VERSION>();
 		ETHCL_LOG("Device:   " << device.getInfo<CL_DEVICE_NAME>() << " / " << device_version);
 
@@ -628,9 +606,9 @@ bool CLMiner::init(const h256& seed)
 		// TODO: Just use C++ raw string literal.
 		string code;
 
-		if ( s_clKernelName == CLKernelName::Unstable ) {
-			cllog << "OpenCL kernel: Unstable kernel";
-			code = string(CLMiner_kernel_unstable, CLMiner_kernel_unstable + sizeof(CLMiner_kernel_unstable));
+		if ( s_clKernelName == CLKernelName::Experimental ) {
+			cllog << "OpenCL kernel: Experimental kernel";
+			code = string(CLMiner_kernel_experimental, CLMiner_kernel_experimental + sizeof(CLMiner_kernel_experimental));
 		}
 		else { //if(s_clKernelName == CLKernelName::Stable)
 			cllog << "OpenCL kernel: Stable kernel";
@@ -732,6 +710,8 @@ bool CLMiner::init(const h256& seed)
 	catch (cl::Error const& err)
 	{
 		cwarn << ethCLErrorHelper("OpenCL init failed", err);
+		if(s_exit)
+			exit(1);
 		return false;
 	}
 	return true;

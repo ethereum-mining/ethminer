@@ -48,6 +48,7 @@ void simpleDebugOut(std::string const&);
 
 /// The logging system's current verbosity.
 extern int g_logVerbosity;
+extern bool g_useColor;
 
 class ThreadContext
 {
@@ -111,7 +112,7 @@ public:
 	void append(double _t) { m_sstr << EthBlue << _t << EthReset; }
 	template <unsigned N> void append(FixedHash<N> const& _t) { m_sstr << EthTeal "#" << _t.abridged() << EthReset; }
 	void append(h160 const& _t) { m_sstr << EthRed "@" << _t.abridged() << EthReset; }
-	void append(h256 const& _t) { m_sstr << EthCyan "#" << _t.abridged() << EthReset; }
+	void append(h256 const& _t) { m_sstr << EthWhite "#" << _t.abridged() << EthReset; }
 	void append(h512 const& _t) { m_sstr << EthTeal "##" << _t.abridged() << EthReset; }
 	void append(std::string const& _t) { m_sstr << EthGreen "\"" + _t + "\"" EthReset; }
 	void append(bytes const& _t) { m_sstr << EthYellow "%" << toHex(_t) << EthReset; }

@@ -1,5 +1,4 @@
-#ifndef CUDA_HELPER_H
-#define CUDA_HELPER_H
+#pragma once
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -200,36 +199,7 @@ __device__ __forceinline__ uint64_t cuda_swab64(const uint64_t x)
 			(((uint64_t)(x) & 0x00000000000000ffULL) << 56)))
 #endif
 
-/*********************************************************************/
-// Macros to catch CUDA errors in CUDA runtime calls
 
-#define CUDA_SAFE_CALL(call)                                          \
-do {                                                                  \
-	cudaError_t err = call;                                           \
-	if (cudaSuccess != err) {                                         \
-		fprintf(stderr, "Cuda error in func '%s' at line %i : %s.\n", \
-		         __FUNCTION__, __LINE__, cudaGetErrorString(err) );   \
-		exit(EXIT_FAILURE);                                           \
-	}                                                                 \
-} while (0)
-
-#define CUDA_CALL_OR_RET(call) do {                                   \
-	cudaError_t err = call;                                           \
-	if (cudaSuccess != err) {                                         \
-		cudaReportHardwareFailure(thr_id, err, __FUNCTION__);         \
-		return;                                                       \
-	}                                                                 \
-} while (0)
-
-#define CUDA_CALL_OR_RET_X(call, ret) do {                            \
-	cudaError_t err = call;                                           \
-	if (cudaSuccess != err) {                                         \
-		cudaReportHardwareFailure(thr_id, err, __FUNCTION__);         \
-		return ret;                                                   \
-	}                                                                 \
-} while (0)
-
-/*********************************************************************/
 #ifdef _WIN64
 #define USE_XOR_ASM_OPTS 0
 #else
@@ -1052,9 +1022,4 @@ uint32_t bfi(uint32_t x, uint32_t a, uint32_t bit, uint32_t numBits) {
 	asm("bfi.b32 %0, %1, %2, %3,%4;" : "=r"(ret) : "r"(x), "r"(a), "r"(bit), "r"(numBits));
 	return ret;
 }
-
-
-
-#endif // #ifndef CUDA_HELPER_H
-
 

@@ -33,6 +33,8 @@ using namespace dev;
 
 // Logging
 int dev::g_logVerbosity = 5;
+bool dev::g_useColor = true;
+
 mutex x_logOverride;
 
 /// Map of Log Channel types to bool, false forces the channel to be disabled, true forces it to be enabled.
@@ -60,19 +62,22 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
 	m_autospacing(_autospacing),
 	m_verbosity(_v)
 {
-	Guard l(x_logOverride);
-	auto it = s_logOverride.find(_info);
-	if ((it != s_logOverride.end() && it->second) || (it == s_logOverride.end() && (int)_v <= g_logVerbosity))
+	if ((int)_v <= g_logVerbosity)
 	{
-		time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-		char buf[24];
-		if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
-			buf[0] = '\0'; // empty if case strftime fails
-		static char const* c_begin = "  " EthViolet;
-		static char const* c_sep1 = EthReset EthBlack "|" EthNavy;
-		static char const* c_sep2 = EthReset EthBlack "|" EthTeal;
-		static char const* c_end = EthReset "  ";
-		m_sstr << _id << c_begin << buf << c_sep1 << std::left << std::setw(8) << getThreadName() << ThreadContext::join(c_sep2) << c_end;
+		Guard l(x_logOverride);
+		auto it = s_logOverride.find(_info);
+		if ((it != s_logOverride.end() && it->second) || it == s_logOverride.end())
+		{
+			time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+			char buf[24];
+			if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
+				buf[0] = '\0'; // empty if case strftime fails
+			static char const* c_begin = "  " EthViolet;
+			static char const* c_sep1 = EthReset EthBlack "|" EthNavy;
+			static char const* c_sep2 = EthReset EthBlack "|" EthTeal;
+			static char const* c_end = EthReset "  ";
+			m_sstr << _id << c_begin << buf << c_sep1 << std::left << std::setw(8) << getThreadName() << c_sep2 << c_end;
+		}
 	}
 }
 
@@ -85,50 +90,7 @@ struct ThreadLocalLogName
 
 thread_local char const* ThreadLocalLogName::name;
 
-thread_local static std::vector<std::string> logContexts;
-
-/// Associate a name with each thread for nice logging.
-struct ThreadLocalLogContext
-{
-	ThreadLocalLogContext() = default;
-
-	void push(std::string const& _name)
-	{
-		logContexts.push_back(_name);
-	}
-
-	void pop()
-	{
-		logContexts.pop_back();
-	}
-
-	string join(string const& _prior)
-	{
-		string ret;
-		for (auto const& i: logContexts)
-			ret += _prior + i;
-		return ret;
-	}
-};
-
-ThreadLocalLogContext g_logThreadContext;
-
 ThreadLocalLogName g_logThreadName("main");
-
-void dev::ThreadContext::push(string const& _n)
-{
-	g_logThreadContext.push(_n);
-}
-
-void dev::ThreadContext::pop()
-{
-	g_logThreadContext.pop();
-}
-
-string dev::ThreadContext::join(string const& _prior)
-{
-	return g_logThreadContext.join(_prior);
-}
 
 string dev::getThreadName()
 {
@@ -155,5 +117,22 @@ void dev::setThreadName(char const* _n)
 
 void dev::simpleDebugOut(std::string const& _s)
 {
-        std::cerr << _s + '\n';
+	if (g_useColor)
+	{
+		std::cerr << _s + '\n';
+		return;
+	}
+	bool skip = false;
+	std::stringstream ss;
+	for (auto it : _s)
+	{
+		if (!skip && it == '\x1b')
+			skip = true;
+		else if (skip && it == 'm')
+			skip = false;
+		else if (!skip)
+			ss << it;
+	}
+	ss << '\n';
+	std::cerr << ss.str();
 }

@@ -27,7 +27,7 @@ The ethminer is an Ethereum GPU mining worker. This is the actively maintained v
   - [Continuous Integration and development builds](#continuous-integration-and-development-builds)
   - [Building from source](#building-from-source)
   - [CMake configuration options](#cmake-configuration-options)
-- [Maintainer](#maintainer)  
+- [Maintainer](#maintainer)
 - [Contribute](#contribute)
 - [F.A.Q.](#faq)
 
@@ -44,7 +44,7 @@ accessible from command line. The ethminer is ready to go.
 | Builds | Release | Date |
 | ------ | ------- | ---- |
 | Last    | [![GitHub release](https://img.shields.io/github/release/ethereum-mining/ethminer/all.svg)](https://github.com/ethereum-mining/ethminer/releases) | [![GitHub Release Date](https://img.shields.io/github/release-date-pre/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) |
-| Stable  | [![GitHub release](https://img.shields.io/github/release/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) | [![GitHub Release Date](https://img.shields.io/github/release-date/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) | 
+| Stable  | [![GitHub release](https://img.shields.io/github/release/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) | [![GitHub Release Date](https://img.shields.io/github/release-date/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) |
 
 
 ## Usage
@@ -77,27 +77,45 @@ To download the .exe on a build under 'JOB NAME' select 'Configuration: Release'
 
 This project uses [CMake] and [Hunter] package manager.
 
-1. Create a build directory.
+1. Make sure git submodules are up to date
+
+   ```sh
+   git submodule update --init --recursive
+   ```
+
+2. Create a build directory.
 
    ```sh
    mkdir build; cd build
    ```
 
-2. Configure the project with CMake. Check out additional
+3. Configure the project with CMake. Check out additional
    [configuration options](#cmake-configuration-options).
 
    ```sh
    cmake ..
    ```
 
-3. Build the project using [CMake Build Tool Mode]. This is a portable variant
+   Note: In Windows, it is possible to have issues with VS 2017 compilers, in that case, use VS 2017 installer to get VS 2015 compilers and use:
+
+   ```sh
+   cmake .. -G "Visual Studio 15 2017 Win64" -Tv140
+   ```
+
+4. Build the project using [CMake Build Tool Mode]. This is a portable variant
    of `make`.
 
    ```sh
    cmake --build .
    ```
 
-4. _(Optional, Linux only)_ Install the built executable.
+   Note: In Windows, it is possible to have compiler issues if you don't specify build config. In that case use:
+
+   ```sh
+   cmake --build . --config Release
+   ```
+
+5. _(Optional, Linux only)_ Install the built executable.
 
    ```sh
    sudo make install
@@ -128,8 +146,7 @@ cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 ```
 
 - `-DETHASHCL=ON` - enable OpenCL mining, `ON` by default,
-- `-DETHASHCUDA=ON` - enable CUDA mining, `OFF` by default,
-- `-DETHSTRATUM=ON` - build with Stratum protocol support, `ON` by default.
+- `-DETHASHCUDA=ON` - enable CUDA mining, `OFF` by default.
 
 
 ## Maintainer
@@ -178,29 +195,28 @@ Licensed under the [GNU General Public License, Version 3](LICENSE).
 5. What are the optimal launch parameters?
 
    The default parameters are fine in most scenario's (CUDA). For OpenCL it varies a bit more. Just play around with the numbers and use powers of 2. GPU's like powers of 2.
-   
-6. What does the ```--cuda-parallel-hash``` flag do?
 
-   @davilizh made improvements to the CUDA kernel hashing process and added this flag to allow changing the number of tasks it runs in parallel. These improvements were optimised for GTX 1060 GPUs which saw a large increase in hashrate, GTX 1070 and GTX 1080/Ti GPUs saw some, but less, improvement. The default value is 4 (which does not need to be set with the flag) and in most cases this will provide the best performance.
+6. What does the `--cuda-parallel-hash` flag do?
+
+   [@davilizh](https://github.com/davilizh) made improvements to the CUDA kernel hashing process and added this flag to allow changing the number of tasks it runs in parallel. These improvements were optimised for GTX 1060 GPUs which saw a large increase in hashrate, GTX 1070 and GTX 1080/Ti GPUs saw some, but less, improvement. The default value is 4 (which does not need to be set with the flag) and in most cases this will provide the best performance.
 
 7. What is ethminer's relationship with [Genoil's fork]?
 
    [Genoil's fork] was the original source of this version, but as Genoil is no longer consistently maintaining that fork it became almost impossible for developers to get new code merged there. In the interests of progressing development without waiting for reviews this fork should be considered the active one and Genoil's as legacy code.
 
 8. Can I CPU Mine?
- 
-   No, use geth, the go program made for ethereum by ethereum.
 
+   No, use geth, the go program made for ethereum by ethereum.
 
 
 
 [Amazon S3 is needed]: https://docs.travis-ci.com/user/uploading-artifacts/
 [AppVeyor]: https://ci.appveyor.com/project/ethereum-mining/ethminer
-[CMake]: https://cmake.org
+[CMake]: https://cmake.org/
 [CMake Build Tool Mode]: https://cmake.org/cmake/help/latest/manual/cmake.1.html#build-tool-mode
 [cpp-ethereum]: https://github.com/ethereum/cpp-ethereum
 [Genoil's fork]: https://github.com/Genoil/cpp-ethereum
 [Gitter]: https://gitter.im/ethereum-mining/ethminer
-[Hunter]: https://docs.hunter.sh
+[Hunter]: https://docs.hunter.sh/
 [Releases]: https://github.com/ethereum-mining/ethminer/releases
 [Travis CI]: https://travis-ci.org/ethereum-mining/ethminer

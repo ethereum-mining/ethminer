@@ -1,5 +1,4 @@
-#ifndef _APISERVER_H_
-#define _APISERVER_H_
+#pragma once
 
 #include <libethcore/Farm.h>
 #include <libethcore/Miner.h>
@@ -17,8 +16,8 @@ public:
 private:
 	Farm &m_farm;
 	void getMinerStat1(const Json::Value& request, Json::Value& response);
+	void getMinerStatHR(const Json::Value& request, Json::Value& response);
 	void doMinerRestart(const Json::Value& request, Json::Value& response);
 	void doMinerReboot(const Json::Value& request, Json::Value& response);
 };
 
-#endif //_APISERVER_H_

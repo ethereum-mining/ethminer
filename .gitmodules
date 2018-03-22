@@ -5,3 +5,7 @@
 [submodule "cmake/Hunter/disabled-mode"]
 	path = cmake/Hunter/disabled-mode
 	url = https://github.com/hunter-packages/disabled-mode
+[submodule "cmake/cable"]
+	path = cmake/cable
+	url = https://github.com/ethereum/cable
+	branch = master
