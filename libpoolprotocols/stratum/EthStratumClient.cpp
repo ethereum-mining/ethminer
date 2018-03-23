@@ -265,7 +265,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 					cwarn << "* Root certs are either not installed or not found";
 					cwarn << "* Pool uses a self-signed certificate";
 					cwarn << "Possible fixes:";
-					cwarn << "* Make sure the file '/etc/ssl/certs/ca-certificates.crt' exists and is accessable";
+					cwarn << "* Make sure the file '/etc/ssl/certs/ca-certificates.crt' exists and is accessible";
 					cwarn << "* Export the correct path via 'export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt' to the correct file";
 					cwarn << "  On most systems you can install the 'ca-certificates' package";
 					cwarn << "  You can also get the latest file here: https://curl.haxx.se/docs/caextract.html";

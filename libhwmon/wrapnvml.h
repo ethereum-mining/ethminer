@@ -111,7 +111,7 @@ int wrap_nvml_get_fanpcnt(wrap_nvml_handle *nvmlh,
                           int gpuindex, unsigned int *fanpcnt);
 
 /* 
- * Query the current GPU power usage in millwatts from the CUDA device ID
+ * Query the current GPU power usage in milliwatts from the CUDA device ID
  *
  * This feature is only available on recent GPU generations and may be
  * limited in some cases only to Tesla series GPUs.

@@ -45,7 +45,7 @@ namespace dev
 
 		private:
 			// Normally we'd replace the following with a single URI variable
-			// But URI attributes are read only, and to support legacy arameters
+			// But URI attributes are read only, and to support legacy parameters
 			// we need to update these connection attributes individually.
 		        string m_host;
 			unsigned short m_port = 0;

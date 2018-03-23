@@ -47,7 +47,7 @@ void help()
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 5). Set to 9 for switch time logging." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 		<< "    -h,--help  Show this help message and exit." << endl
-		<< " Envionment variables:" << endl
+		<< " Environment variables:" << endl
 		<< "     NO_COLOR - set to any value to disable color output. Unset to re-enable color output." << endl
 		;
 	exit(0);
@@ -75,7 +75,7 @@ int main(int argc, char** argv)
 	{
 		g_useColor = false;
 		// Set output mode to handle virtual terminal sequences
-		// Only works on Windows 10, but most user should use it anyways
+		// Only works on Windows 10, but most users should use it anyway
 		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
 		if (hOut != INVALID_HANDLE_VALUE)
 		{

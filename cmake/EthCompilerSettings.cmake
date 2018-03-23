@@ -37,8 +37,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	# disable conversion from 'type1' to 'type2', possible loss of data (4244)
 	# disable forcing value to bool 'true' or 'false' (performance warning) (4800)
 	# declare Windows XP requirement
-	# undefine windows.h MAX && MIN macros cause it cause conflicts with std::min && std::max functions
-	# define miniupnp static library
+	# undefine windows.h MAX & MIN macros because they cause conflicts with std::min & std::max functions
 	add_compile_options(/MP /EHsc /GL /wd4068 /wd4996 /wd4503 /wd4267 /wd4180 /wd4290 /wd4244 /wd4800 -D_WIN32_WINNT=0x0501 /DNOMINMAX)
 	# disable empty object file warning
 	set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /LTCG /ignore:4221")

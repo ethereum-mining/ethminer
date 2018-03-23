@@ -348,7 +348,7 @@ bool CUDAMiner::cuda_init(
 		cudalog << "Set Device to current";
 		if(dagSize128 != m_dag_size || !m_dag)
 		{
-			//Check whether the current device has sufficient memory everytime we recreate the dag
+			//Check whether the current device has sufficient memory every time we recreate the dag
 			if (device_props.totalGlobalMem < dagSize)
 			{
 				cudalog <<  "CUDA device " << string(device_props.name) << " has insufficient GPU memory." << device_props.totalGlobalMem << " bytes of memory found < " << dagSize << " bytes of memory required";
@@ -360,7 +360,7 @@ bool CUDAMiner::cuda_init(
 			CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
 			CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 			//We need to reset the light and the Dag for the following code to reallocate
-			//since cudaDeviceReset() free's all previous allocated memory
+			//since cudaDeviceReset() frees all previous allocated memory
 			m_light[m_device_num] = nullptr;
 			m_dag = nullptr; 
 		}
@@ -384,7 +384,7 @@ bool CUDAMiner::cuda_init(
 		if(dagSize128 != m_dag_size || !dag)
 		{
 			// create mining buffers
-			cudalog << "Generating mining buffers"; //TODO whats up with this?
+			cudalog << "Generating mining buffers";
 			for (unsigned i = 0; i != s_numStreams; ++i)
 			{
 				CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(search_results)));

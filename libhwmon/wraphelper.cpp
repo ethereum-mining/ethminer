@@ -12,7 +12,7 @@ void *wrap_dlsym(void *h, const char *sym) {
 	return (void *)GetProcAddress((HINSTANCE)h, sym);
 }
 int wrap_dlclose(void *h) {
-	/* FreeLibrary returns nonzero on success */
+	/* FreeLibrary returns non-zero on success */
 	return (!FreeLibrary((HINSTANCE)h));
 }
 #else
