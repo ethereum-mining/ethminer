@@ -1,6 +1,7 @@
 #include <map>
 #include <boost/optional/optional_io.hpp>
 #include <boost/algorithm/string.hpp>
+#include <network/uri/detail/decode.hpp>
 #include <libpoolprotocols/PoolURI.h>
 
 using namespace dev;
@@ -47,6 +48,7 @@ bool URI::KnownScheme()
 ProtocolFamily URI::ProtoFamily() const
 {
 	std::string s(*m_uri.scheme());
+	s = network::detail::decode(s);
 	boost::trim(s);
 	return s_schemes[s].family;
 }
@@ -54,6 +56,7 @@ ProtocolFamily URI::ProtoFamily() const
 unsigned URI::ProtoVersion() const
 {
 	std::string s(*m_uri.scheme());
+	s = network::detail::decode(s);
 	boost::trim(s);
 	return s_schemes[s].version;
 }
@@ -61,6 +64,7 @@ unsigned URI::ProtoVersion() const
 SecureLevel URI::ProtoSecureLevel() const
 {
 	std::string s(*m_uri.scheme());
+	s = network::detail::decode(s);
 	boost::trim(s);
 	return s_schemes[s].secure;
 }
@@ -78,6 +82,7 @@ std::string URI::KnownSchemes(ProtocolFamily family)
 std::string URI::Scheme() const
 {
 	std::string s(*m_uri.scheme());
+	s = network::detail::decode(s);
 	boost::trim(s);
 	return s;
 }
@@ -85,6 +90,7 @@ std::string URI::Scheme() const
 std::string URI::Host() const
 {
 	std::string s(*m_uri.host());
+	s = network::detail::decode(s);
 	boost::trim(s);
 	if (s == "--")
 		return "";
@@ -94,6 +100,7 @@ std::string URI::Host() const
 unsigned short URI::Port() const
 {
 	std::string s(*m_uri.port());
+	s = network::detail::decode(s);
 	boost::trim(s);
 	if (s == "--")
 		return 0;
@@ -103,6 +110,7 @@ unsigned short URI::Port() const
 std::string URI::User() const
 {
 	std::string s(*m_uri.user_info());
+	s = network::detail::decode(s);
 	boost::trim(s);
 	if (s == "--")
 		return "";
@@ -115,6 +123,7 @@ std::string URI::User() const
 std::string URI::Pswd() const
 {
 	std::string s(*m_uri.user_info());
+	s = network::detail::decode(s);
 	boost::trim(s);
 	if (s == "--")
 		return "";
