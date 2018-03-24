@@ -23,11 +23,6 @@
 
 #pragma once
 
-// way to many unsigned to size_t warnings in 32 bit build
-#ifdef _M_IX86
-#pragma warning(disable:4244)
-#endif
-
 #include <map>
 #include <unordered_map>
 #include <vector>
