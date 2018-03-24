@@ -65,7 +65,7 @@ __device__ __forceinline__ bool compute_hash(
 			uint2 shuffle[4];
 			uint32_t thread_mix = fnv_reduce(mix[p]);
 
-			// update mix accross threads
+			// update mix across threads
 			shuffle[0].x = __shfl_sync(0xFFFFFFFF,thread_mix, 0, THREADS_PER_HASH);
 			shuffle[0].y = __shfl_sync(0xFFFFFFFF,thread_mix, 1, THREADS_PER_HASH);
 			shuffle[1].x = __shfl_sync(0xFFFFFFFF,thread_mix, 2, THREADS_PER_HASH);

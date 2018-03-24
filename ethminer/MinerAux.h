@@ -378,7 +378,7 @@ public:
 			}
 			if ((m_mode != OperationMode::None) && (m_mode != mode))
 			{
-				cerr << "Mixed stratum and getwork enpoints not supported." << endl;
+				cerr << "Mixed stratum and getwork endpoints not supported." << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 			m_mode = mode;
@@ -650,7 +650,7 @@ public:
 			return false;
 		if (m_legacyParameters && m_newParameters)
 		{
-			cerr << "Deprecated parameters and the -P parameter are imcompatible. Please migrate to using the -P parameter." << endl;
+			cerr << "Deprecated parameters and the -P parameter are incompatible. Please migrate to using the -P parameter." << endl;
 			BOOST_THROW_EXCEPTION(BadArgument());
 		}
 		return true;
@@ -765,7 +765,7 @@ public:
 			<< "        1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for hashrate reporting to work with nanopool)" << endl
 			<< "        2: EthereumStratum/1.0.0: nicehash" << endl
 			<< "    -RH, --report-hashrate Report current hashrate to pool (please only enable on pools supporting this)" << endl
-			<< "    -HWMON [<n>], Displays gpu temp, fan percent and power usage. Note: In linux, the program uses sysfs, which may require running with root priviledges." << endl
+			<< "    -HWMON [<n>], Displays gpu temp, fan percent and power usage. Note: In linux, the program uses sysfs, which may require running with root privileges." << endl
 			<< "        0: Displays only temp and fan percent (default)" << endl
 			<< "        1: Also displays power usage" << endl
 			<< "    --exit Stops the miner whenever an error is encountered" << endl
@@ -821,7 +821,7 @@ public:
 			<< "        sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device." << endl
 			<< "    --cuda-devices <0 1 ..n> Select which CUDA GPUs to mine on. Default is to use all" << endl
 			<< "    --cuda-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achieve better performance. Default=4" << endl
-			<< "    --cuda-noeval  bypass host software re-evalution of GPU solutions." << endl
+			<< "    --cuda-noeval  bypass host software re-evaluation of GPU solutions." << endl
 			<< "        This will trim some milliseconds off the time it takes to send a result to the pool." << endl
 			<< "        Use at your own risk! If GPU generates errored results they WILL be forwarded to the pool" << endl
 			<< "        Not recommended at high overclock." << endl

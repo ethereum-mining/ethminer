@@ -162,7 +162,7 @@ inline unsigned bytesRequired(T _i)
 	return i;
 }
 
-/// Sets enviromental variable.
+/// Sets environment variable.
 ///
 /// Portable wrapper for setenv / _putenv C library functions.
 bool setenv(const char name[], const char value[], bool override = false);
