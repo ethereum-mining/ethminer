@@ -382,6 +382,7 @@ void CLMiner::workLoop()
 			// it reads local variable.
 			m_queue.finish();
 		}
+		m_queue.finish();
 	}
 	catch (cl::Error const& _e)
 	{
