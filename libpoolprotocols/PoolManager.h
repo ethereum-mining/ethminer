@@ -1,6 +1,3 @@
-#ifndef POOL_MANAGER_H_
-#define POOL_MANAGER_H_
-
 #pragma once
 
 #include <iostream>
@@ -51,6 +48,3 @@ namespace dev
 		};
 	}
 }
-
-#endif
-
