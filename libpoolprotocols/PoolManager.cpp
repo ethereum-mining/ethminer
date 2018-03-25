@@ -198,7 +198,7 @@ void PoolManager::tryReconnect()
 		cnote << "Retrying in " << i << "... \r";
 	}
 
-	// We do not need awesome logic here, we jst have one connection anyways
+	// We do not need awesome logic here, we just have one connection anyway
 	if (m_connections.size() == 1) {
 		p_client->connect();
 		return;

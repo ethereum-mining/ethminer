@@ -1,9 +1,9 @@
 #pragma once
 
-#include <network/uri.hpp>
 #include <string>
+#include <network/uri.hpp>
 
-// A simple URI parser specifically for mining pool enpoints
+// A simple URI parser specifically for mining pool endpoints
 namespace dev
 {
 

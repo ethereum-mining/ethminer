@@ -48,12 +48,6 @@ EthStratumClient::EthStratumClient(int const & worktimeout, string const & email
 
 	m_submit_hashrate = submitHashrate;
 	m_submit_hashrate_id = h256::random().hex();
-
-	// This timer is set to never expire. This is intentional since
-	// boost asio does not support events, this timer will
-	// serve an equivalent role when cancelled.
-	m_hashrate_event.expires_at(boost::posix_time::pos_infin);
-	m_hashrate_event.async_wait(boost::bind(&EthStratumClient::hashrate_event_handler, this, boost::asio::placeholders::error));
 }
 
 EthStratumClient::~EthStratumClient()
@@ -271,7 +265,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 					cwarn << "* Root certs are either not installed or not found";
 					cwarn << "* Pool uses a self-signed certificate";
 					cwarn << "Possible fixes:";
-					cwarn << "* Make sure the file '/etc/ssl/certs/ca-certificates.crt' exists and is accessable";
+					cwarn << "* Make sure the file '/etc/ssl/certs/ca-certificates.crt' exists and is accessible";
 					cwarn << "* Export the correct path via 'export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt' to the correct file";
 					cwarn << "  On most systems you can install the 'ca-certificates' package";
 					cwarn << "  You can also get the latest file here: https://curl.haxx.se/docs/caextract.html";
@@ -599,9 +593,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 void EthStratumClient::hashrate_event_handler(const boost::system::error_code& ec)
 {
-	(void)ec;
-
-	if (!m_submit_hashrate || m_linkdown) {
+	if (ec || m_linkdown) {
 		return;
 	}
 
@@ -616,8 +608,6 @@ void EthStratumClient::hashrate_event_handler(const boost::system::error_code& e
 	else
 		async_write(*m_socket, m_requestBuffer,
 			boost::bind(&EthStratumClient::handleHashrateResponse, this, boost::asio::placeholders::error));
-	m_hashrate_event.expires_at(boost::posix_time::pos_infin);
-	m_hashrate_event.async_wait(boost::bind(&EthStratumClient::hashrate_event_handler, this, boost::asio::placeholders::error));
 }
 
 void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec) {
@@ -635,11 +625,14 @@ void EthStratumClient::response_timeout_handler(const boost::system::error_code&
 }
 
 void EthStratumClient::submitHashrate(string const & rate) {
-	// Called by the pool manager thread.
-	// We cancel the timer that will serve as event
-	// to the stratum client.
+	if (!m_submit_hashrate || m_linkdown) {
+		return;
+	}
+
 	m_rate = rate;
 	m_hashrate_event.cancel();
+	m_hashrate_event.expires_from_now(boost::posix_time::milliseconds(100));
+	m_hashrate_event.async_wait(boost::bind(&EthStratumClient::hashrate_event_handler, this, boost::asio::placeholders::error));
 }
 
 void EthStratumClient::submitSolution(Solution solution) {
