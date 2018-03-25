@@ -1,6 +1,3 @@
-#ifndef POOL_CLIENT_H_
-#define POOL_CLIENT_H_
-
 #pragma once
 
 #include <boost/asio/ip/address.hpp>
@@ -99,6 +96,3 @@ namespace dev
 		};
 	}
 }
-
-#endif
-
