@@ -509,7 +509,7 @@ void CUDAMiner::search(
 				for (unsigned int j = 0; j < found_count; j++) {
 					nonces[j] = nonce_base + buffer->result[j].gid;
 					if (s_noeval)
-						memcpy(mixes[j].data(), (const void *)buffer->result[j].mix, sizeof(buffer->result[j].mix));
+						memcpy(mixes[j].data(), (void *)&buffer->result[j].mix, sizeof(buffer->result[j].mix));
 				}
 			}
 		}
