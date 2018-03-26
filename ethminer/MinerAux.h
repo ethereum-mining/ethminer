@@ -334,9 +334,9 @@ public:
 		{
 			m_show_hwmonitors = true;
 			if ((i + 1 < argc) && (*argv[i + 1] != '-'))
-				m_show_power = (bool)atoi(argv[++i]);
+				m_show_power = atoi(argv[++i]) != 0;
 		}
-		else if ((arg == "--exit"))
+		else if (arg == "--exit")
 		{
 			m_exit = true;
 		}

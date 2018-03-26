@@ -17,8 +17,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#define _CRT_SECURE_NO_WARNINGS
-
 #include <time.h>
 #include <functional>
 #include <libethash/ethash.h>

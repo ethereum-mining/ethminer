@@ -1,13 +1,14 @@
 find_package(CUDA REQUIRED)
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};--ptxas-options=-v;-use_fast_math;-lineinfo)
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};--ptxas-options=-v;-use_fast_math)
 
 if (NOT MSVC)
 	list(APPEND CUDA_NVCC_FLAGS "--disable-warnings")
 endif()
 
-list(APPEND CUDA_NVCC_FLAGS_RELEASE -O3)
-list(APPEND CUDA_NVCC_FLAGS_DEBUG -G)
+list(APPEND CUDA_NVCC_FLAGS_DEBUG "-G")
+list(APPEND CUDA_NVCC_FLAGS_RELEASE "-O3;-lineinfo")
+list(APPEND CUDA_NVCC_FLAGS_RELWITHDEBINFO "${CUDA_NVCC_FLAGS_RELEASE}")
 
 if(COMPUTE AND (COMPUTE GREATER 0))
 	list(APPEND CUDA_NVCC_FLAGS "-gencode arch=compute_${COMPUTE},code=sm_${COMPUTE}")
