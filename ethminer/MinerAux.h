@@ -870,7 +870,7 @@ private:
 		WorkPackage current = WorkPackage(genesis);
 		
 
-		map<uint64_t, WorkingProgress> results;
+		list<uint64_t> results;
 		uint64_t mean = 0;
 		uint64_t innerMean = 0;
 		for (unsigned i = 0; i <= _trials; ++i)
@@ -890,15 +890,16 @@ private:
 			auto rate = mp.rate();
 
 			cout << rate << endl;
-			results[rate] = mp;
+			results.push_back(rate);
 			mean += rate;
 		}
-		int j = -1;
-		for (auto const& r: results)
-			if (++j > 0 && j < (int)_trials - 1)
-				innerMean += r.second.rate();
+		results.sort();
+		cout << "min/mean/max: " << results.front() << "/" << (mean / _trials) << "/" << results.back() << " H/s" << endl;
+		results.pop_front();
+		results.pop_back();
+		for (auto it = results.begin(); it != results.end(); it++)
+			innerMean += *it;
 		innerMean /= (_trials - 2);
-		cout << "min/mean/max: " << results.begin()->second.rate() << "/" << (mean / _trials) << "/" << results.rbegin()->second.rate() << " H/s" << endl;
 		cout << "inner mean: " << innerMean << " H/s" << endl;
 
 		exit(0);
