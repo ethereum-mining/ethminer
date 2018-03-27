@@ -312,7 +312,7 @@ int wrap_amdsysfs_get_fanpcnt(wrap_amdsysfs_handle *sysfsh, int index, unsigned 
 		gpuindex, hwmonindex);
 	getFileContentValue(dbuf, pwmMin);
 
-	*fanpcnt = double(pwm - pwmMin) / double(pwmMax - pwmMin) * 100.0;
+	*fanpcnt = (unsigned int)(double(pwm - pwmMin) / double(pwmMax - pwmMin) * 100.0);
 	return 0;
 }
 
