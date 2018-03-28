@@ -870,7 +870,8 @@ private:
 		WorkPackage current = WorkPackage(genesis);
 		
 
-		list<uint64_t> results;
+		vector<uint64_t> results;
+		results.reserve(_trials);
 		uint64_t mean = 0;
 		uint64_t innerMean = 0;
 		for (unsigned i = 0; i <= _trials; ++i)
@@ -893,11 +894,9 @@ private:
 			results.push_back(rate);
 			mean += rate;
 		}
-		results.sort();
+		sort(results.begin(), results.end());
 		cout << "min/mean/max: " << results.front() << "/" << (mean / _trials) << "/" << results.back() << " H/s" << endl;
-		results.pop_front();
-		results.pop_back();
-		for (auto it = results.begin(); it != results.end(); it++)
+		for (auto it = results.begin()+1; it != results.end()-1; it++)
 			innerMean += *it;
 		innerMean /= (_trials - 2);
 		cout << "inner mean: " << innerMean << " H/s" << endl;
