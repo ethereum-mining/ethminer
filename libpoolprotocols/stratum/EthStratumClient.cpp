@@ -33,12 +33,11 @@ static void diffToTarget(uint32_t *target, double diff)
 
 
 EthStratumClient::EthStratumClient(int const & worktimeout, string const & email, bool const & submitHashrate) : PoolClient(),
-	m_socket(nullptr),
-	m_securesocket(nullptr),
+        m_socket(nullptr),
 	m_worktimer(m_io_service),
 	m_responsetimer(m_io_service),
 	m_hashrate_event(m_io_service),
-	m_resolver(m_io_service)
+        m_resolver(m_io_service)
 {
 	m_authorized = false;
 	m_pending = 0;
@@ -54,15 +53,6 @@ EthStratumClient::~EthStratumClient()
 {
 	m_io_service.stop();
 	m_serviceThread.join();
-
-	if (m_connection.SecLevel() != SecureLevel::NONE) {
-		if (m_securesocket) 
-			delete m_securesocket;
-	}
-	else {
-		if (m_socket)
-			delete m_socket;
-	}
 }
 
 void EthStratumClient::connect()
@@ -85,7 +75,7 @@ void EthStratumClient::connect()
 			method = boost::asio::ssl::context::tlsv12;
 
 		boost::asio::ssl::context ctx(method);
-		m_securesocket = new boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(m_io_service, ctx);
+		m_securesocket = std::make_shared<boost::asio::ssl::stream<boost::asio::ip::tcp::socket> >(m_io_service, ctx);
 		m_socket = &m_securesocket->next_layer();
 
 		if (m_connection.SecLevel() != SecureLevel::ALLOW_SELFSIGNED) {
@@ -127,7 +117,8 @@ void EthStratumClient::connect()
 		}
 	}
 	else {
-		m_socket = new boost::asio::ip::tcp::socket(m_io_service);
+	  m_nonsecuresocket = std::make_shared<boost::asio::ip::tcp::socket>(m_io_service);
+	  m_socket = m_nonsecuresocket.get();
 	}
 
 	// Activate keep alive to detect disconnects
@@ -182,14 +173,6 @@ void EthStratumClient::disconnect()
 	catch (std::exception const& _e) {
 		cwarn << "Error while disconnecting:" << _e.what();
 	}
-
-	if (m_connection.SecLevel() != SecureLevel::NONE) {
-		delete m_securesocket;
-	}
-	else {
-		delete m_socket;
-	}
-
 	m_authorized = false;
 	m_connected.store(false, std::memory_order_relaxed);
 
@@ -233,7 +216,7 @@ void EthStratumClient::async_write_with_response()
 				boost::asio::placeholders::error));
 	}
 	else {
-		async_write(*m_socket, m_requestBuffer,
+		async_write(*m_nonsecuresocket, m_requestBuffer,
 			boost::bind(&EthStratumClient::handleResponse, this,
 				boost::asio::placeholders::error));
 	}
@@ -606,7 +589,7 @@ void EthStratumClient::hashrate_event_handler(const boost::system::error_code& e
 		async_write(*m_securesocket, m_requestBuffer,
 			boost::bind(&EthStratumClient::handleHashrateResponse, this, boost::asio::placeholders::error));
 	else
-		async_write(*m_socket, m_requestBuffer,
+		async_write(*m_nonsecuresocket, m_requestBuffer,
 			boost::bind(&EthStratumClient::handleHashrateResponse, this, boost::asio::placeholders::error));
 }
 
