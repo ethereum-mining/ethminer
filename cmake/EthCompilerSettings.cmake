@@ -33,12 +33,10 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	# enable parallel compilation
 	# specify Exception Handling Model
 	# enable LTCG for faster builds
-	# disable qualifier applied to function type has no meaning; ignored (4180)
-	# disable conversion from 'type1' to 'type2', possible loss of data (4244)
-	# disable conversion from 'size_t' to 'type', possible loss of data (4267)
-	# disable C++ exception specification ignored except to indicate a function is not __declspec(nothrow) (4290)
-	# disable decorated name length exceeded, name was truncated (4503)
-	add_compile_options(/MP /EHsc /GL /wd4180 /wd4244 /wd4267 /wd4290 /wd4503)
+	# disable conversion from 'size_t' to 'type', possible loss of data (C4267)
+	# disable C++ exception specification ignored except to indicate a function is not __declspec(nothrow) (C4290)
+	# disable decorated name length exceeded, name was truncated (C4503)
+	add_compile_options(/MP /EHsc /GL /wd4267 /wd4290 /wd4503)
 
 	# enable LTCG for faster builds
 	set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /LTCG")

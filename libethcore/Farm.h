@@ -208,7 +208,7 @@ public:
             m_lastProgresses.push_back(p);
 
         // We smooth the hashrate over the last x seconds
-        int allMs = 0;
+        uint64_t allMs = 0;
         for (auto const& cp : m_lastProgresses)
             allMs += cp.ms;
 
@@ -439,7 +439,7 @@ private:
 	bool b_lastMixed = false;
 
 	std::chrono::steady_clock::time_point m_lastStart;
-	int m_hashrateSmoothInterval = 10000;
+	uint64_t m_hashrateSmoothInterval = 10000;
 	std::thread m_serviceThread;  ///< The IO service thread.
 	boost::asio::io_service m_io_service;
 	boost::asio::deadline_timer m_hashrateTimer;
