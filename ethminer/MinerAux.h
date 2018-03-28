@@ -896,10 +896,14 @@ private:
 		}
 		sort(results.begin(), results.end());
 		cout << "min/mean/max: " << results.front() << "/" << (mean / _trials) << "/" << results.back() << " H/s" << endl;
-		for (auto it = results.begin()+1; it != results.end()-1; it++)
-			innerMean += *it;
-		innerMean /= (_trials - 2);
-		cout << "inner mean: " << innerMean << " H/s" << endl;
+		if (results.size() > 2) {
+			for (auto it = results.begin()+1; it != results.end()-1; it++)
+				innerMean += *it;
+			innerMean /= (_trials - 2);
+			cout << "inner mean: " << innerMean << " H/s" << endl;
+		}
+		else
+			cout << "inner mean: n/a" << endl;
 
 		exit(0);
 	}
