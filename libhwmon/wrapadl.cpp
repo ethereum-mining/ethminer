@@ -287,7 +287,7 @@ int wrap_adl_get_power_usage(wrap_adl_handle *adlh, int gpuindex, unsigned int* 
 
 	int power = 0;
 	rc = adlh->adl2Overdrive6CurrentPowerGet(adlh->context, adlh->phys_logi_device_id[gpuindex], 0, &power);
-	*miliwatts = power * 3.90625;
+	*miliwatts = (unsigned int)(power * 3.90625);
 	return rc;
 }
 

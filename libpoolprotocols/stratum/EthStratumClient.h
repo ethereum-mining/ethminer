@@ -73,7 +73,12 @@ private:
 	std::thread m_serviceThread;  ///< The IO service thread.
 	boost::asio::io_service m_io_service;
 	boost::asio::ip::tcp::socket *m_socket;
-	boost::asio::ssl::stream<boost::asio::ip::tcp::socket> *m_securesocket;
+	// Use shared ptrs to avoid crashes due to async_writes
+	// see https://stackoverflow.com/questions/41526553/can-async-write-cause-segmentation-fault-when-this-is-deleted
+	std::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket> >
+	  m_securesocket;
+	std::shared_ptr<boost::asio::ip::tcp::socket>
+	  m_nonsecuresocket;
 
 	boost::asio::streambuf m_requestBuffer;
 	boost::asio::streambuf m_responseBuffer;

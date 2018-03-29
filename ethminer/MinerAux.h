@@ -334,7 +334,7 @@ public:
 		{
 			m_show_hwmonitors = true;
 			if ((i + 1 < argc) && (*argv[i + 1] != '-'))
-				m_show_power = (bool)atoi(argv[++i]);
+				m_show_power = atoi(argv[++i]) != 0;
 		}
 		else if ((arg == "--exit"))
 		{
@@ -870,7 +870,8 @@ private:
 		WorkPackage current = WorkPackage(genesis);
 		
 
-		map<uint64_t, WorkingProgress> results;
+		vector<uint64_t> results;
+		results.reserve(_trials);
 		uint64_t mean = 0;
 		uint64_t innerMean = 0;
 		for (unsigned i = 0; i <= _trials; ++i)
@@ -890,16 +891,19 @@ private:
 			auto rate = mp.rate();
 
 			cout << rate << endl;
-			results[rate] = mp;
+			results.push_back(rate);
 			mean += rate;
 		}
-		int j = -1;
-		for (auto const& r: results)
-			if (++j > 0 && j < (int)_trials - 1)
-				innerMean += r.second.rate();
-		innerMean /= (_trials - 2);
-		cout << "min/mean/max: " << results.begin()->second.rate() << "/" << (mean / _trials) << "/" << results.rbegin()->second.rate() << " H/s" << endl;
-		cout << "inner mean: " << innerMean << " H/s" << endl;
+		sort(results.begin(), results.end());
+		cout << "min/mean/max: " << results.front() << "/" << (mean / _trials) << "/" << results.back() << " H/s" << endl;
+		if (results.size() > 2) {
+			for (auto it = results.begin()+1; it != results.end()-1; it++)
+				innerMean += *it;
+			innerMean /= (_trials - 2);
+			cout << "inner mean: " << innerMean << " H/s" << endl;
+		}
+		else
+			cout << "inner mean: n/a" << endl;
 
 		exit(0);
 	}
