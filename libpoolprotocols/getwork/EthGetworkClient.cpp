@@ -95,7 +95,7 @@ void EthGetworkClient::workLoop()
 				Json::Value v = p_client->eth_getWork();
 				WorkPackage newWorkPackage;
 				newWorkPackage.header = h256(v[0].asString());
-				newWorkPackage.seed = h256(v[1].asString());
+				newWorkPackage.epoch = EthashAux::toEpoch(h256(v[1].asString()));
 
 				// Since we do not have a real connected state with getwork, we just fake it.
 				// If getting work succeeds we know that the connection works
@@ -108,7 +108,7 @@ void EthGetworkClient::workLoop()
 				// Check if header changes so the new workpackage is really new
 				if (newWorkPackage.header != m_prevWorkPackage.header) {
 					m_prevWorkPackage.header = newWorkPackage.header;
-					m_prevWorkPackage.seed = newWorkPackage.seed;
+					m_prevWorkPackage.epoch = newWorkPackage.epoch;
 					m_prevWorkPackage.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
 
 					if (m_onWorkReceived) {

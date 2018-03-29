@@ -489,15 +489,15 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					m_stale = true;
 				if (m_connection.Version() == EthStratumClient::ETHEREUMSTRATUM)
 				{
-					string sSeedHash = params.get((Json::Value::ArrayIndex)1, "").asString();
-					string sHeaderHash = params.get((Json::Value::ArrayIndex)2, "").asString();
+					string sSeedHash = params.get(1, "").asString();
+					string sHeaderHash = params.get(2, "").asString();
 
 					if (sHeaderHash != "" && sSeedHash != "")
 					{
 						reset_work_timeout();
 
 						m_current.header = h256(sHeaderHash);
-						m_current.seed = h256(sSeedHash);
+						m_current.epoch = EthashAux::toEpoch(h256(sSeedHash));
 						m_current.boundary = h256();
 						diffToTarget((uint32_t*)m_current.boundary.data(), m_nextWorkDifficulty);
 						m_current.startNonce = ethash_swap_u64(*((uint64_t*)m_extraNonce.data()));
@@ -533,7 +533,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 							reset_work_timeout();
 
 							m_current.header = h256(sHeaderHash);
-							m_current.seed = h256(sSeedHash);
+							m_current.epoch = EthashAux::toEpoch(h256(sSeedHash));
 							m_current.boundary = h256(sShareTarget);
 							m_current.job = h256(job);
 

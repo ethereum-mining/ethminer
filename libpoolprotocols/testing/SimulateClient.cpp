@@ -49,7 +49,7 @@ void SimulateClient::submitSolution(Solution solution)
 {
 	m_uppDifficulty = true;
 	cnote << "Difficulty:" << m_difficulty;
-	if (EthashAux::eval(solution.work.seed, solution.work.header, solution.nonce).value < solution.work.boundary)
+	if (EthashAux::eval(solution.work.epoch, solution.work.header, solution.nonce).value < solution.work.boundary)
 	{
 		if (m_onSolutionAccepted) {
 			m_onSolutionAccepted(false);
