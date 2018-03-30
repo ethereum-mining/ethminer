@@ -84,7 +84,7 @@ protected:
 private:
 	void workLoop() override;
 
-	bool init(const h256& seed);
+	bool init(int epoch);
 
 	cl::Context m_context;
 	cl::CommandQueue m_queue;

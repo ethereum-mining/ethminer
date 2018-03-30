@@ -55,7 +55,7 @@ CUDAMiner::~CUDAMiner()
 	kick_miner();
 }
 
-bool CUDAMiner::init(const h256& seed)
+bool CUDAMiner::init(int epoch)
 {
 	try {
 		if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
@@ -66,7 +66,7 @@ bool CUDAMiner::init(const h256& seed)
 		cnote << "Initialising miner " << index;
 
 		EthashAux::LightType light;
-		light = EthashAux::light(seed);
+		light = EthashAux::light(epoch);
 		bytesConstRef lightData = light->data();
 
 		cuda_init(getNumDevices(), light->light, lightData.data(), lightData.size(), 
@@ -98,7 +98,6 @@ void CUDAMiner::workLoop()
 {
 	WorkPackage current;
 	current.header = h256{1u};
-	current.seed = h256{1u};
 
 	try
 	{
@@ -107,7 +106,7 @@ void CUDAMiner::workLoop()
 	                // take local copy of work since it may end up being overwritten.
 			const WorkPackage w = work();
 			
-			if (current.header != w.header || current.seed != w.seed)
+			if (current.header != w.header || current.epoch != w.epoch)
 			{
 				if(!w || w.header == h256())
 				{
@@ -115,8 +114,8 @@ void CUDAMiner::workLoop()
 					std::this_thread::sleep_for(std::chrono::seconds(3));
 					continue;
 				}
-				if (current.seed != w.seed)
-					if(!init(w.seed))
+				if (current.epoch != w.epoch)
+					if(!init(w.epoch))
 						break;
 				current = w;
 			}
@@ -516,23 +515,25 @@ void CUDAMiner::search(
 		run_ethash_search(s_gridSize, s_blockSize, stream, buffer, m_current_nonce, m_parallelHash);
 		if (m_current_index >= s_numStreams)
 		{
-			if (found_count)
-				for (uint32_t i = 0; i < found_count; i++)
-					if (s_noeval)
-						farm.submitProof(Solution{nonces[i], mixes[i], w, m_new_work});
-					else
-					{
-						Result r = EthashAux::eval(w.seed, w.header, nonces[i]);
-						if (r.value < w.boundary)
-							farm.submitProof(Solution{nonces[i], r.mixHash, w, m_new_work});
-						else
-						{
-							farm.failedSolution();
-							cwarn << "GPU gave incorrect result!";
-						}
-					}
+            if (found_count)
+            {
+                for (uint32_t i = 0; i < found_count; i++)
+                    if (s_noeval)
+                        farm.submitProof(Solution{nonces[i], mixes[i], w, m_new_work});
+                    else
+                    {
+                        Result r = EthashAux::eval(w.epoch, w.header, nonces[i]);
+                        if (r.value < w.boundary)
+                            farm.submitProof(Solution{nonces[i], r.mixHash, w, m_new_work});
+                        else
+                        {
+                            farm.failedSolution();
+                            cwarn << "GPU gave incorrect result!";
+                        }
+                    }
+            }
 
-			addHashCount(batch_size);
+            addHashCount(batch_size);
 			bool t = true;
 			if (m_new_work.compare_exchange_strong(t, false)) {
 				cudaswitchlog << "Switch time "

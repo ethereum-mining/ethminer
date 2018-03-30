@@ -14,10 +14,6 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file EthashAux.cpp
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- */
 
 #pragma once
 
@@ -43,7 +39,7 @@ class EthashAux
 public:
 	struct LightAllocation
 	{
-		LightAllocation(h256 const& _seedHash);
+		explicit LightAllocation(int epoch);
 		~LightAllocation();
 		bytesConstRef data() const;
 		Result compute(h256 const& _headerHash, uint64_t _nonce) const;
@@ -53,44 +49,41 @@ public:
 
 	using LightType = std::shared_ptr<LightAllocation>;
 
-	static h256 seedHash(unsigned _number);
-	static uint64_t number(h256 const& _seedHash);
+	static int toEpoch(h256 const& _seedHash);
 
-	static LightType light(h256 const& _seedHash);
+	static LightType light(int epoch);
 
-	static Result eval(h256 const& _seedHash, h256 const& _headerHash, uint64_t  _nonce) noexcept;
+	static Result eval(int epoch, h256 const& _headerHash, uint64_t  _nonce) noexcept;
 
 private:
-	EthashAux() = default;
-	static EthashAux& get();
+    EthashAux() = default;
+    static EthashAux& get();
 
-	Mutex x_lights;
-	std::unordered_map<h256, LightType> m_lights;
+    Mutex x_lights;
+    std::unordered_map<int, LightType> m_lights;
 
-	Mutex x_epochs;
-	std::unordered_map<h256, unsigned> m_epochs;
-	h256s m_seedHashes;
+    int m_cached_epoch = 0;
+    h256 m_cached_seed;  // Seed for epoch 0 is the null hash.
 };
 
 struct WorkPackage
 {
-	WorkPackage() = default;
-	explicit WorkPackage(BlockHeader const& _bh) :
-		boundary(_bh.boundary()),
-		header(_bh.hashWithout()),
-		seed(EthashAux::seedHash(static_cast<unsigned>(_bh.number())))
-	{ }
-	void reset() { header = h256(); }
-	explicit operator bool() const { return header != h256(); }
+    WorkPackage() = default;
+    explicit WorkPackage(BlockHeader const& _bh)
+      : boundary(_bh.boundary()),
+        header(_bh.hashWithout()),
+        epoch(static_cast<int>(_bh.number()) / ETHASH_EPOCH_LENGTH)
+    {}
+    explicit operator bool() const { return header != h256(); }
 
-	h256 boundary;
-	h256 header;	///< When h256() means "pause until notified a new work package is available".
-	h256 seed;
-	h256 job;
+    h256 boundary;
+    h256 header;  ///< When h256() means "pause until notified a new work package is available".
+    h256 job;
+    int epoch = -1;
 
-	uint64_t startNonce = 0;
-	int exSizeBits = -1;
-	int job_len = 8;
+    uint64_t startNonce = 0;
+    int exSizeBits = -1;
+    int job_len = 8;
 };
 
 struct Solution

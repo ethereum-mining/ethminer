@@ -104,7 +104,7 @@ private:
 
 	void workLoop() override;
 
-	bool init(const h256& seed);
+	bool init(int epoch);
 
 	hash32_t m_current_header;
 	uint64_t m_current_target;

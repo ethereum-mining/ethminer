@@ -283,7 +283,6 @@ void CLMiner::workLoop()
 	// The work package currently processed by GPU.
 	WorkPackage current;
 	current.header = h256{1u};
-	current.seed = h256{1u};
 
 	try {
 		while (!shouldStop())
@@ -302,7 +301,7 @@ void CLMiner::workLoop()
 
 				//cllog << "New work: header" << w.header << "target" << w.boundary.hex();
 
-				if (current.seed != w.seed)
+				if (current.epoch != w.epoch)
 				{
 					if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
 					{
@@ -311,8 +310,8 @@ void CLMiner::workLoop()
 						++s_dagLoadIndex;
 					}
 
-					cllog << "New seed" << w.seed;
-					init(w.seed);
+					cllog << "New epoch: " << w.epoch;
+					init(w.epoch);
 				}
 
 				// Upper 64 bits of the boundary.
@@ -361,7 +360,7 @@ void CLMiner::workLoop()
 			// Report results while the kernel is running.
 			// It takes some time because ethash must be re-evaluated on CPU.
 			if (nonce != 0) {
-				Result r = EthashAux::eval(current.seed, current.header, nonce);
+				Result r = EthashAux::eval(current.epoch, current.header, nonce);
 				if (r.value < current.boundary)
 					farm.submitProof(Solution{nonce, r.mixHash, current, current.header != w.header});
 				else {
@@ -499,9 +498,9 @@ bool CLMiner::configureGPU(
 	return false;
 }
 
-bool CLMiner::init(const h256& seed)
+bool CLMiner::init(int epoch)
 {
-	EthashAux::LightType light = EthashAux::light(seed);
+	EthashAux::LightType light = EthashAux::light(epoch);
 
 	// get all platforms
 	try
