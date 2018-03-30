@@ -62,8 +62,8 @@ private:
     Mutex x_lights;
     std::unordered_map<int, LightType> m_lights;
 
-    Mutex x_epochs;
-    std::unordered_map<h256, unsigned> m_epochs;
+    int m_cached_epoch = 0;
+    h256 m_cached_seed;  // Seed for epoch 0 is the null hash.
 };
 
 struct WorkPackage
