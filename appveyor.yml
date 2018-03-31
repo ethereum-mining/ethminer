@@ -14,14 +14,14 @@ environment:
   GITHUB_USER_PASSWORD:
     secure: VnpF1MH5MEFvUI5MiMMMFlmbDdst+bfom5ZFVgalYPp/SYDhbejjXJm9Dla/IgpC
 
-install: | # Download CUDA Windows installer (local) and extract /compiler/* to /CUDA/vX.0/ zip archive.
+# Download CUDA Windows installer (local) and extract /compiler/* to /CUDA/vX.0/ zip archive.
+install: |
   git submodule update --init --recursive
   appveyor DownloadFile https://github.com/ethereum/cpp-dependencies/releases/download/cache/CUDA-v9.0-WindowsServer2012.zip
-  7z x CUDA-v9.0-WindowsServer2012.zip -oC:/
-  set PATH=%PATH%;C:/CUDA/v9.0/bin
-  nvcc -V
-  set PATH=C:\Python36-x64;C:\Python36-x64\Scripts;%PATH%
+  7z x CUDA-v9.0-WindowsServer2012.zip -oC:\
+  set PATH=C:\Python36-x64;C:\Python36-x64\Scripts;%PATH%;C:\CUDA\v9.0\bin
   pip install requests
+  nvcc -V
 before_build:
   - cmake -G "Visual Studio 14 2015 Win64" -H. -Bbuild -DETHASHCUDA=ON -DAPICORE=ON
 build_script:
