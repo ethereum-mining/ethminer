@@ -1,7 +1,7 @@
 language: cpp
 env:
   global:
-    - secure: "fHPxJHwBxb7yTxmGm9pKLbZh0r3Xd7PAfoiiOMPOkFYbsQUJQ+Xbj7eDdpJYN9aTFmsEE6WiidUet6TvWUlC2c2Wr3vb16D0ANgnFGap2BXWrpsJQpn7m9jIs86z7jzIbZoc3Xf24ohpwba3XivI0j33F0RLRbVcsRUo/Km46kuejBg9Qef7+oFIWQYCYgbWoGmKJv030RlUgFgwnIR1vD7K09A3zm6rYJTCvP9swr3XBO8dzWuL/+vfX+xHxkNPFCzq0ETVf2VSD8giIeAmKEQoiTWzieeGZvdnknY2kWVySgAkw8wVC8+N4N0MhvagzrtWzGsjnQQCWlc6QL4naOTb36z7wAg0iFtGvuhEN2OJhtGDW9vyhiVn+sAsu0fq7MH0idG1FrWc3lL5ogqdqbCpdbekCGSphhtRxqkD/iDfEiY4QaO/9OMlaTxUUQsgGIXAB+UZFlBO0TVYu+TkhYr2nk2cmhvGhz5tqsWpiks0oKbySYxuLcDMO20FzEKqQsroCLo70LKOW5CkFBDUCpp+WXgaFnxbyxw6G4Zl+EVZpBXPb35+oRjVv0Gs2ubGjlmEZzfzVZkjBqAjJ7c5eHEIUizyPAgxQVQaj+cV1s5aHpWPOLGvTLYJkEvRVSG0oSDdiH1wtVHuf/7rTZsupxHGVvbohZGHxiIZHfOwYZc="
+    - secure: "Pu2hPyp3Ym3hmkW9iXVZObfE7tA3ITSaeR05VguJ9czJAMgaT7LmEN4LDoR2sQHbRAv+8QngbNUFpglzvZLIBIEefyEA39DThZptkKJ+hCUerRajfmXywSXCwPC7A1uTEY1YoUDlGvxVZA3Z7f17GFtKtDuHjLSWmrxHAM6wjK+qCweEq0umJJ+N+2DX2UpVLlWgYoknYSGipfjHRBEgPp4NRh08yvpDTFYSVQeL0qL7LbyAtkx6qhLCK6JZ2CsP3INQOoRwc8jP6VIFbuoHl3lkOzayNM49/e9wDdZ8FGqp0HjUFi7EYi/78Uvje7CrgdCiSVwoHbtAvcyPYcxu+qXzwh4AxslRL7UJtOzTbRaXfJvqt2oqtttFjD0Dk/iwnAthg7Su6UohivcUVj/9p1X1KdDbLJcoTag/MBcZP7VJDgnHjyqYwVciT1ZV0RWfuLBI584vFMTlsdzFXt384mUTCN02BOnRnw3Miq4a5irFXnDy23TdGersk7b//FPIBIhPv/wxCjUkJzTmt7ska5jACb/FHUoOyrE5mQLSVZbh/zlsIKf8yWZy7q7caowmwyPYZtAqNZWj1JmVs2c+0RmX2c76kCTHX4ocCcDx1QqV49/+R1Ah+pA7X7kcr9MklzL9z/lkAA7z5SF/UzdoGfBNicMKz5hUFixBqZ04ATw="
 branches:
     only:
         - /^v\d+\..+$/
@@ -28,7 +28,7 @@ before_install: |
     fi
     if [ "$TRAVIS_OS_NAME" = linux ]; then
       scripts/install_cmake.sh
-      pyenv local 3.6
+      pyenv global 3.6
       pip install --user requests
     elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
       HOMEBREW_NO_AUTO_UPDATE=1 brew install -q python3
@@ -44,12 +44,6 @@ script:
     - cmake --build build --target package
 
 deploy:
-  - provider: script
-    script: make -C build hunter_upload_cache
-    skip_cleanup: true
-    on:
-      all_branches: true
-
   - provider: releases
     api_key:
       secure: "KfYTW8o20BUEZc57vF3H4+qXgpDsMeWk3N4IQtNKkdhFzEUzQaXi1WHRtvcR5kq+rvDiXwy0fELglDZpCSa4wfQvM5fKlb7WPQgkyRZyCpwnXlqvb6dL8KxJekQHZ5fFpzc/ow0dx/UqzJgv+cWDnBEK/gl+9j+vt9oq1nV1LSaxmtO3Qs7y+ffq5Tbzo06q6/CfeyOZi23g+AYtnoEBKwYqa807atWM6cJpudPmyhYHQFgaQZMfzk44z/MnJb7nxtkqcx57KWaY2EHlFj6yrHMcXWyM8j+P0ZBwUbOpHkWvBpgmDKR2J3u0WmiJDDo3E6K0g9QgbAnF5+yqvpBC5kaSHAaicJ3+7ghSgo18Eea0BkLbmb0t93h5NJfRhg0GDjgG3LkHao9ALM35x3OXG38JI6bOLd6jSV2Vkg8qLWAZjP1TUb/4VTIFnyITSv+xrY7ZP9D0XcRybZ5Z0YnaI/J6NFJct9ICAlQ6cHkS0MO6PICTSbZbKhbDZP0Lt6iDDUeje5+uvPAl0uuzuciSqEM77JWYN/edOXurgkfljEny3P96AW70gUUBTVEE+4tjng4DMLHCH/1Jg/WfMPfSVC3AUR0WbvjMki6veMt37fy8Jys8gFpwZbMG3cCSkYXDDFWF/Q+p2v6pX76CZZz+LxO2XcZ7x4bw+c7AGzRWV7c="

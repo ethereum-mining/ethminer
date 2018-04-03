@@ -5,13 +5,14 @@ branches:
     - /v\d+\..+/
     - /release.*/
     - appveyor
+    - hunter
 clone_depth: 1
 os: Visual Studio 2015
 configuration:
   - Release
   - RelWithDebInfo
 environment:
-  GITHUB_USER_PASSWORD:
+  HUNTER_CACHE_TOKEN:
     secure: VnpF1MH5MEFvUI5MiMMMFlmbDdst+bfom5ZFVgalYPp/SYDhbejjXJm9Dla/IgpC
 
 install: | # Download CUDA Windows installer (local) and extract /compiler/* to /CUDA/vX.0/ zip archive.
@@ -31,9 +32,6 @@ after_build:
     cmake --build build --config $env:configuration --target package
     if ($env:configuration -ne "Release") {
       Get-Item build/ethminer-*-Windows.* | Rename-Item -NewName { $_.name -Replace 'ethminer','ethminer-dbg' }
-    }
-    if (-not $env:appveyor_pull_request_number) {
-      cmake --build build --target hunter_upload_cache
     }
 
 artifacts:
