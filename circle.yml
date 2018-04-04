@@ -4,18 +4,12 @@ jobs:
     docker:
       - image: nvidia/cuda:9.1-devel-ubuntu16.04
     steps:
-      - run: apt-get update && apt-get install -qy git cmake mesa-common-dev libidn11-dev
+      - run: apt-get update && apt-get install -qy git cmake mesa-common-dev libidn11-dev python3-requests
 
       - checkout
       - run: git submodule update --init --recursive
 
-      - restore_cache:
-          key: hunter-v3
       - run: cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=ON -DAPICORE=ON -H. -Bbuild
-      - save_cache:
-          key: hunter-v3
-          paths:
-            - /root/.hunter/_Base/Cache
       - run: cmake --build build -- -j4
       - store_artifacts:
           path: build/ethminer/ethminer

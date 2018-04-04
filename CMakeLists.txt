@@ -5,42 +5,18 @@ include(cmake/cable/bootstrap.cmake)
 include(CableBuildInfo)
 include(CableBuildType)
 include(CableToolchains)
+include(HunterGate)
+
+include(defaults/HunterCacheServers)
 
 cable_configure_toolchain(DEFAULT cxx11)
 
 set(HUNTER_CONFIGURATION_TYPES Release)
-set(HUNTER_CACHE_SERVERS "https://github.com/ethereum/hunter-cache")
-include(HunterGate)
 HunterGate(
-    URL "https://github.com/ruslo/hunter/archive/v0.19.213.tar.gz"
-    SHA1 "59b2b880178bdc1e9cce83f279f1d88feefa07a2"
+    URL "https://github.com/ruslo/hunter/archive/v0.20.34.tar.gz"
+    SHA1 "2f04d1beffdf39db1c40d8347beb8c10bbe9b8ed"
     LOCAL
 )
-
-if(HUNTER_ENABLED)
-	find_package(PythonInterp 3)
-	if(PYTHONINTERP_FOUND)
-		hunter_gate_self(
-			"${HUNTER_CACHED_ROOT}"
-			"${HUNTER_VERSION}"
-			"${HUNTER_SHA1}"
-			hunter_dir
-		)
-		set(hunter_upload_script "${hunter_dir}/maintenance/upload-cache-to-github.py")
-		set(hunter_cache_dir "${HUNTER_GATE_ROOT}/_Base/Cache")
-		set(hunter_tmp_dir "${HUNTER_GATE_ROOT}/tmp")
-		add_custom_target(
-			hunter_upload_cache
-			${PYTHON_EXECUTABLE} ${hunter_upload_script}
-			--username hunter-cache-bot
-			--repo-owner ethereum
-			--repo hunter-cache
-			--cache-dir ${hunter_cache_dir}
-			--temp-dir ${hunter_tmp_dir}
-		)
-	endif()
-endif()
-
 
 project(ethminer)
 set(PROJECT_VERSION 0.15.0.dev0)
