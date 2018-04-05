@@ -23,13 +23,13 @@ install: |
   set PATH=C:\Python36-x64;C:\Python36-x64\Scripts;%PATH%;C:\CUDA\v9.0\bin
   pip install requests
   nvcc -V
-before_build:
-  - cmake -G "Visual Studio 14 2015 Win64" -H. -Bbuild -DETHASHCUDA=ON -DAPICORE=ON
+
 build_script:
-  - cmake --build build --config %CONFIGURATION%
+  - cmake -G "Visual Studio 14 2015 Win64" -H. -Bbuild -DETHASHCUDA=ON -DAPICORE=ON -DHUNTER_JOBS_NUMBER=%NUMBER_OF_PROCESSORS%
+  - cmake --build build --config %CONFIGURATION% --target package
+
 after_build:
   ps: |
-    cmake --build build --config $env:configuration --target package
     if ($env:configuration -ne "Release") {
       Get-Item build/ethminer-*-Windows.* | Rename-Item -NewName { $_.name -Replace 'ethminer','ethminer-dbg' }
     }

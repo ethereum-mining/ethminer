@@ -36,12 +36,11 @@ before_install: |
     fi
 script:
     - cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -DAPICORE=ON -H. -Bbuild
-    - cmake --build build -- -j4
+    - cmake --build build --target package -- -j4
     - build/ethminer/ethminer --list-devices -G
     - build/ethminer/ethminer --list-devices -U
     - if [ "$TRAVIS_OS_NAME" = linux ]; then ldd -v build/ethminer/ethminer; fi
     - if [ "$TRAVIS_OS_NAME" = osx ]; then otool -L build/ethminer/ethminer; fi
-    - cmake --build build --target package
 
 deploy:
   - provider: releases
