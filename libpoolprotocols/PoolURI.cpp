@@ -4,6 +4,8 @@
 #include <network/uri/detail/decode.hpp>
 #include <libpoolprotocols/PoolURI.h>
 
+#include <iostream>
+
 using namespace dev;
 
 typedef struct {
@@ -25,10 +27,8 @@ static std::map<std::string, SchemeAttributes> s_schemes = {
 	{"stratum+ssl",	  {ProtocolFamily::STRATUM, SecureLevel::TLS12, 0}},
 	{"stratum1+ssl",  {ProtocolFamily::STRATUM, SecureLevel::TLS12, 1}},
 	{"stratum2+ssl",  {ProtocolFamily::STRATUM, SecureLevel::TLS12, 2}},
-	{"http",	  {ProtocolFamily::GETWORK, SecureLevel::NONE,  0}}
+	{"http",		  {ProtocolFamily::GETWORK, SecureLevel::NONE,  0}}
 };
-
-URI::URI() {}
 
 URI::URI(const std::string uri)
 {
@@ -40,6 +40,8 @@ URI::URI(const std::string uri)
 
 bool URI::KnownScheme()
 {
+	if (!m_uri.scheme())
+		return false;
 	std::string s(*m_uri.scheme());
 	boost::trim(s);
 	return s_schemes.find(s) != s_schemes.end();
@@ -47,6 +49,8 @@ bool URI::KnownScheme()
 
 ProtocolFamily URI::ProtoFamily() const
 {
+	if (!m_uri.scheme())
+		return ProtocolFamily::STRATUM;
 	std::string s(*m_uri.scheme());
 	s = network::detail::decode(s);
 	boost::trim(s);
@@ -55,6 +59,8 @@ ProtocolFamily URI::ProtoFamily() const
 
 unsigned URI::ProtoVersion() const
 {
+	if (!m_uri.scheme())
+		return 0;
 	std::string s(*m_uri.scheme());
 	s = network::detail::decode(s);
 	boost::trim(s);
@@ -63,6 +69,8 @@ unsigned URI::ProtoVersion() const
 
 SecureLevel URI::ProtoSecureLevel() const
 {
+	if (!m_uri.scheme())
+		return SecureLevel::NONE;
 	std::string s(*m_uri.scheme());
 	s = network::detail::decode(s);
 	boost::trim(s);
@@ -81,6 +89,8 @@ std::string URI::KnownSchemes(ProtocolFamily family)
 
 std::string URI::Scheme() const
 {
+	if (!m_uri.scheme())
+		return "";
 	std::string s(*m_uri.scheme());
 	s = network::detail::decode(s);
 	boost::trim(s);
@@ -89,31 +99,41 @@ std::string URI::Scheme() const
 
 std::string URI::Host() const
 {
+	if (!m_uri.host())
+		return "";
 	std::string s(*m_uri.host());
 	s = network::detail::decode(s);
 	boost::trim(s);
-	if (s == "--")
+	return s;
+}
+
+std::string URI::Path() const
+{
+	if (!m_uri.path())
 		return "";
+	std::string s(*m_uri.path());
+	s = network::detail::decode(s);
+	boost::trim(s);
 	return s;
 }
 
 unsigned short URI::Port() const
 {
+	if (!m_uri.port())
+		return 0;
 	std::string s(*m_uri.port());
 	s = network::detail::decode(s);
 	boost::trim(s);
-	if (s == "--")
-		return 0;
 	return (unsigned short)atoi(s.c_str());
 }
 
 std::string URI::User() const
 {
+	if (!m_uri.user_info())
+		return "";
 	std::string s(*m_uri.user_info());
 	s = network::detail::decode(s);
 	boost::trim(s);
-	if (s == "--")
-		return "";
 	size_t f = s.find(":");
 	if (f == std::string::npos)
 		return s;
@@ -122,13 +142,14 @@ std::string URI::User() const
 
 std::string URI::Pswd() const
 {
+	if (!m_uri.user_info())
+		return "";
 	std::string s(*m_uri.user_info());
 	s = network::detail::decode(s);
 	boost::trim(s);
-	if (s == "--")
-		return "";
 	size_t f = s.find(":");
 	if (f == std::string::npos)
 		return "";
 	return s.substr(f + 1);
 }
+

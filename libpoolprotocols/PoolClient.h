@@ -17,22 +17,24 @@ namespace dev
 		public:
 			PoolConnection() {};
 			PoolConnection(const URI &uri)
-			      : m_host(uri.Host()),
+			  : m_host(uri.Host()),
 				m_port(uri.Port()),
 				m_user(uri.User()),
 				m_pass(uri.Pswd()),
 				m_secLevel(uri.ProtoSecureLevel()),
-				m_version(uri.ProtoVersion()) {};
+				m_version(uri.ProtoVersion()),
+				m_path(uri.Path()) {};
 			string Host() const { return m_host; };
+			string Path() const { return m_path; };
 			unsigned short Port() const { return m_port; };
 			string User() const { return m_user; };
 			string Pass() const { return m_pass; };
 			SecureLevel SecLevel() const { return m_secLevel; };
 			boost::asio::ip::address Address() const { return m_address; };
 			unsigned Version() const { return m_version; };
-			
 
 			void Host(string host) { m_host = host; };
+			void Path(string path) { m_path = path; };
 			void Port(unsigned short port) { m_port = port; };
 			void User(string user) { m_user = user; };
 			void Pass(string pass) { m_pass = pass; };
@@ -44,12 +46,13 @@ namespace dev
 			// Normally we'd replace the following with a single URI variable
 			// But URI attributes are read only, and to support legacy parameters
 			// we need to update these connection attributes individually.
-		        string m_host;
+		    string m_host;
 			unsigned short m_port = 0;
 			string m_user;
 			string m_pass;
 			SecureLevel m_secLevel = SecureLevel::NONE;
 			unsigned m_version = 0;
+		    string m_path;
 
 			boost::asio::ip::address m_address;
 		};
