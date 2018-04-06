@@ -13,11 +13,12 @@ enum class ProtocolFamily {GETWORK = 0, STRATUM};
 class URI : network::uri
 {
 public:
-	URI();
+	URI() {};
 	URI(const std::string uri);
 
 	std::string	Scheme() const;
 	std::string	Host() const;
+	std::string	Path() const;
 	unsigned short	Port() const;
 	std::string	User() const;
 	std::string	Pswd() const;
@@ -30,7 +31,7 @@ public:
 	static std::string KnownSchemes(ProtocolFamily family);
 
 private:
-	network::uri   m_uri;
+	network::uri m_uri;
 };
 
 }

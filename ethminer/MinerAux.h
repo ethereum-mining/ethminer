@@ -127,6 +127,7 @@ public:
 			if (uri.Host().length())
 			{
 				m_endpoints[k_primary_ep_ix].Host(uri.Host());
+				m_endpoints[k_primary_ep_ix].Path(uri.Path());
 				if (uri.Port())
 					m_endpoints[k_primary_ep_ix].Port(uri.Port());
 				else
@@ -157,6 +158,7 @@ public:
 			if (uri.Host().length())
 			{
 				m_endpoints[k_secondary_ep_ix].Host(uri.Host());
+				m_endpoints[k_secondary_ep_ix].Path(uri.Path());
 				if (m_mode == OperationMode::Stratum)
 				{
 					if (uri.Port())
