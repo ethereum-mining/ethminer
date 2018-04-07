@@ -374,11 +374,10 @@ __kernel void ethash_search(
 	// keccak_256(keccak_512(header..nonce) .. mix);
 	keccak_f1600_no_absorb((uint2*)state, 1, isolate);
 
-	if (as_ulong(as_uchar8(state[0]).s76543210) < target)
-	{
-		uint slot = min(MAX_OUTPUTS, atomic_inc(&g_output[0]) + 1);
-		g_output[slot] = gid;
-	}
+	if (as_ulong(as_uchar8(state[0]).s76543210) > target)
+		return;
+	uint slot = min(MAX_OUTPUTS, atomic_inc(&g_output[0]) + 1);
+	g_output[slot] = gid;
 }
 
 static void SHA3_512(uint2* s, uint isolate)
