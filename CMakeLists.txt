@@ -43,7 +43,7 @@ endif()
 
 
 project(ethminer)
-set(PROJECT_VERSION 0.14.0rc3)
+set(PROJECT_VERSION 0.14.0rc4)
 
 cable_set_build_type(DEFAULT Release CONFIGURATION_TYPES Release RelWithDebInfo Debug)
 
