@@ -173,6 +173,16 @@ void EthStratumClient::disconnect()
 	catch (std::exception const& _e) {
 		cwarn << "Error while disconnecting:" << _e.what();
 	}
+
+        if (m_connection.SecLevel() != SecureLevel::NONE) {
+                if (m_securesocket)
+                        m_securesocket = nullptr;
+        }
+        else {
+                if (m_socket)
+                        m_socket = nullptr;
+        }
+
 	m_authorized = false;
 	m_connected.store(false, std::memory_order_relaxed);
 
