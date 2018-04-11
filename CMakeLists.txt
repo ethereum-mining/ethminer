@@ -85,6 +85,8 @@ message("")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(EthCompilerSettings)
 
+include(ProjectEthash)
+
 cable_add_buildinfo_library(PREFIX ethminer)
 
 add_subdirectory(libdevcore)

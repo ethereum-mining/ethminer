@@ -3,6 +3,8 @@
 #include <libethash/endian.h>
 #include <ethminer-buildinfo.h>
 
+#include <ethash/ethash.hpp>
+
 #ifdef _WIN32
 #include <wincrypt.h>
 #endif
@@ -506,8 +508,9 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					{
 						reset_work_timeout();
 
-						m_current.header = h256(sHeaderHash);
-						m_current.epoch = EthashAux::toEpoch(h256(sSeedHash));
+                        m_current.epoch = ethash::find_epoch_number(
+                            ethash::hash256::from_bytes(h256{sSeedHash}.data()));
+                        m_current.header = h256(sHeaderHash);
 						m_current.boundary = h256();
 						diffToTarget((uint32_t*)m_current.boundary.data(), m_nextWorkDifficulty);
 						m_current.startNonce = ethash_swap_u64(*((uint64_t*)m_extraNonce.data()));
@@ -543,8 +546,9 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 							reset_work_timeout();
 
 							m_current.header = h256(sHeaderHash);
-							m_current.epoch = EthashAux::toEpoch(h256(sSeedHash));
-							m_current.boundary = h256(sShareTarget);
+                            m_current.epoch = ethash::find_epoch_number(
+                                ethash::hash256::from_bytes(h256{sSeedHash}.data()));
+                            m_current.boundary = h256(sShareTarget);
 							m_current.job = h256(job);
 
 							if (m_onWorkReceived) {

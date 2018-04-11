@@ -29,35 +29,8 @@ EthashAux& EthashAux::get()
 	return instance;
 }
 
-int EthashAux::toEpoch(h256 const& _seedHash)
-{
-    EthashAux& ethash = EthashAux::get();
-
-    if (_seedHash != ethash.m_cached_seed)
-    {
-        // Find epoch number corresponding to given seed hash.
-        int epoch = 0;
-        for (h256 h; h != _seedHash && epoch < 2048; ++epoch, h = sha3(h))
-        {
-        }
-        if (epoch == 2048)
-        {
-            std::ostringstream error;
-            error << "apparent epoch number for " << _seedHash << " is too high; max is " << 2048;
-            throw std::invalid_argument(error.str());
-        }
-
-        ethash.m_cached_seed = _seedHash;
-        ethash.m_cached_epoch = epoch;
-    }
-
-    return ethash.m_cached_epoch;
-}
-
 EthashAux::LightType EthashAux::light(int epoch)
 {
-    // TODO: Use epoch number instead of seed hash?
-
     EthashAux& ethash = EthashAux::get();
 
     Guard l(ethash.x_lights);

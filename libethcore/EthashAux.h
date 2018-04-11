@@ -51,8 +51,6 @@ public:
 
 	using LightType = std::shared_ptr<LightAllocation>;
 
-	static int toEpoch(h256 const& _seedHash);
-
 	static LightType light(int epoch);
 
 	static Result eval(int epoch, h256 const& _headerHash, uint64_t  _nonce) noexcept;
@@ -63,9 +61,6 @@ private:
 
     Mutex x_lights;
     std::unordered_map<int, LightType> m_lights;
-
-    int m_cached_epoch = 0;
-    h256 m_cached_seed;  // Seed for epoch 0 is the null hash.
 };
 
 struct WorkPackage

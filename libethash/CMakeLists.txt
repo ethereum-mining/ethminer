@@ -9,4 +9,4 @@ add_library(
     sha3.c
     sha3.h
 )
-target_compile_options(ethash-legacy PRIVATE -std=gnu99)
+set_target_properties(ethash-legacy PROPERTIES C_STANDARD 99)
