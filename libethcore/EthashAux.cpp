@@ -18,6 +18,8 @@
 #include "EthashAux.h"
 #include <libethash/internal.h>
 
+#include <ethash/ethash.hpp>
+
 using namespace std;
 using namespace chrono;
 using namespace dev;
@@ -69,12 +71,9 @@ Result EthashAux::LightAllocation::compute(h256 const& _headerHash, uint64_t _no
 
 Result EthashAux::eval(int epoch, h256 const& _headerHash, uint64_t _nonce) noexcept
 {
-	try
-	{
-		return get().light(epoch)->compute(_headerHash, _nonce);
-	}
-	catch(...)
-	{
-		return Result{~h256(), h256()};
-	}
+    auto headerHash = ethash::hash256::from_bytes(_headerHash.data());
+    auto result = ethash::managed::hash(epoch, headerHash, _nonce);
+    h256 mix{reinterpret_cast<byte*>(result.mix_hash.bytes), h256::ConstructFromPointer};
+    h256 final{reinterpret_cast<byte*>(result.final_hash.bytes), h256::ConstructFromPointer};
+    return {final, mix};
 }
