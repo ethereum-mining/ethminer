@@ -23,6 +23,8 @@
 #include <libdevcore/Worker.h>
 #include "BlockHeader.h"
 
+#include <unordered_map>
+
 namespace dev
 {
 namespace eth
