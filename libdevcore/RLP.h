@@ -180,7 +180,6 @@ public:
 	template <unsigned _N> explicit operator FixedHash<_N>() const { return toHash<FixedHash<_N>>(); }
 	template <class T, class U> explicit operator std::pair<T, U>() const { return toPair<T, U>(); }
 	template <class T> explicit operator std::vector<T>() const { return toVector<T>(); }
-	template <class T> explicit operator std::set<T>() const { return toSet<T>(); }
 	template <class T, size_t N> explicit operator std::array<T, N>() const { return toArray<T, N>(); }
 
 	/// Converts to bytearray. @returns the empty byte array if not a string.
@@ -199,16 +198,6 @@ public:
 				ret.push_back((T)i);
 		 }
 		 return ret;
-	}
-
-	template <class T>
-	std::set<T> toSet() const
-	{
-		std::set<T> ret;
-		if (isList())
-			for (auto const& i: *this)
-				ret.insert((T)i);
-		return ret;
 	}
 
 	template <class T, class U>

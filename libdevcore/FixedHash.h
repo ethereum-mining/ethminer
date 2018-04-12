@@ -195,10 +195,6 @@ using h64 = FixedHash<8>;
 using h512s = std::vector<h512>;
 using h256s = std::vector<h256>;
 using h160s = std::vector<h160>;
-using h256Set = std::set<h256>;
-using h160Set = std::set<h160>;
-using h256Hash = std::unordered_set<h256>;
-using h160Hash = std::unordered_set<h160>;
 
 inline std::string toString(h256s const& _bs)
 {
