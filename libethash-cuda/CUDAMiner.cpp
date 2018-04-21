@@ -15,10 +15,9 @@ You should have received a copy of the GNU General Public License
 along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#undef min
-#undef max
-
 #include "CUDAMiner.h"
+
+#include <ethash/ethash.hpp>
 
 using namespace std;
 using namespace dev;
@@ -65,12 +64,8 @@ bool CUDAMiner::init(int epoch)
 
         cnote << "Initialising miner " << index;
 
-        EthashAux::LightType light;
-        light = EthashAux::light(epoch);
-        bytesConstRef lightData = light->data();
-
-        cuda_init(getNumDevices(), light->light, lightData.data(), lightData.size(), 
-            device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE), s_dagInHostMemory, s_dagCreateDevice);
+        cuda_init(getNumDevices(), epoch, device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE),
+            s_dagInHostMemory, s_dagCreateDevice);
         s_dagLoadIndex++;
     
         if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
@@ -212,7 +207,6 @@ bool CUDAMiner::configureGPU(
     unsigned _gridSize,
     unsigned _numStreams,
     unsigned _scheduleFlag,
-    uint64_t _currentBlock,
     unsigned _dagLoadMode,
     unsigned _dagCreateDevice,
     bool _noeval,
@@ -230,7 +224,6 @@ bool CUDAMiner::configureGPU(
         _gridSize,
         _numStreams,
         _scheduleFlag,
-        _currentBlock,
         _noeval)
         )
     {
@@ -256,7 +249,6 @@ bool CUDAMiner::cuda_configureGPU(
     unsigned _gridSize,
     unsigned _numStreams,
     unsigned _scheduleFlag,
-    uint64_t _currentBlock,
     bool _noeval
     )
 {
@@ -271,7 +263,8 @@ bool CUDAMiner::cuda_configureGPU(
         cudalog << "Using grid size " << s_gridSize << ", block size " << s_blockSize;
 
         // by default let's only consider the DAG of the first epoch
-        uint64_t dagSize = ethash_get_datasize(_currentBlock);
+        const auto dagSize =
+            ethash::get_full_dataset_size(ethash::calculate_full_dataset_num_items(0));
         int devicesCount = static_cast<int>(numDevices);
         for (int i = 0; i < devicesCount; i++)
         {
@@ -310,9 +303,7 @@ bool CUDAMiner::s_noeval = false;
 
 bool CUDAMiner::cuda_init(
     size_t numDevices,
-    ethash_light_t _light,
-    uint8_t const* _lightData,
-    uint64_t _lightSize,
+    int epoch,
     unsigned _deviceId,
     bool _cpyToHost,
     uint8_t* &hostDAG,
@@ -337,15 +328,15 @@ bool CUDAMiner::cuda_init(
         m_search_buf = new volatile search_results *[s_numStreams];
         m_streams = new cudaStream_t[s_numStreams];
 
-        uint64_t dagSize = ethash_get_datasize(_light->block_number);
-        uint32_t dagSize128   = (unsigned)(dagSize / ETHASH_MIX_BYTES);
-        uint32_t lightSize64 = (unsigned)(_lightSize / sizeof(node));
+        const auto& context = ethash::managed::get_epoch_context(epoch);
+        const auto lightNumItems = context.light_cache_num_items;
+        const auto lightSize = ethash::get_light_cache_size(lightNumItems);
+        const auto dagNumItems = context.full_dataset_num_items;
+        const auto dagSize = ethash::get_full_dataset_size(dagNumItems);
 
-        
-        
         CUDA_SAFE_CALL(cudaSetDevice(m_device_num));
         cudalog << "Set Device to current";
-        if(dagSize128 != m_dag_size || !m_dag)
+        if (dagNumItems != m_dag_size || !m_dag)
         {
             //Check whether the current device has sufficient memory every time we recreate the dag
             if (device_props.totalGlobalMem < dagSize)
@@ -368,19 +359,19 @@ bool CUDAMiner::cuda_init(
         hash64_t * light = m_light[m_device_num];
 
         if(!light){ 
-            cudalog << "Allocating light with size: " << _lightSize;
-            CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightSize));
+            cudalog << "Allocating light with size: " << lightSize;
+            CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), lightSize));
         }
         // copy lightData to device
-        CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), _lightData, _lightSize, cudaMemcpyHostToDevice));
+        CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), context.light_cache, lightSize, cudaMemcpyHostToDevice));
         m_light[m_device_num] = light;
-        
-        if(dagSize128 != m_dag_size || !dag) // create buffer for dag
+
+        if (dagNumItems != m_dag_size || !dag)  // create buffer for dag
             CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
             
-        set_constants(dag, dagSize128, light, lightSize64); //in ethash_cuda_miner_kernel.cu
-        
-        if(dagSize128 != m_dag_size || !dag)
+        set_constants(dag, dagNumItems, light, lightNumItems); //in ethash_cuda_miner_kernel.cu
+
+        if (dagNumItems != m_dag_size || !dag)
         {
             // create mining buffers
             cudalog << "Generating mining buffers";
@@ -426,7 +417,7 @@ cpyDag:
         }
     
         m_dag = dag;
-        m_dag_size = dagSize128;
+        m_dag_size = dagNumItems;
         return true;
     }
     catch (runtime_error const&)
