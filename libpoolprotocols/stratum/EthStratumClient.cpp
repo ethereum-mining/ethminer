@@ -1,6 +1,5 @@
 #include "EthStratumClient.h"
 #include <libdevcore/Log.h>
-#include <libethash/endian.h>
 #include <ethminer-buildinfo.h>
 
 #include <ethash/ethash.hpp>
@@ -10,6 +9,13 @@
 #endif
 
 using boost::asio::ip::tcp;
+
+static uint64_t bswap(uint64_t val)
+{
+    val = ((val << 8) & 0xFF00FF00FF00FF00ULL) | ((val >> 8) & 0x00FF00FF00FF00FFULL);
+    val = ((val << 16) & 0xFFFF0000FFFF0000ULL) | ((val >> 16) & 0x0000FFFF0000FFFFULL);
+    return (val << 32) | (val >> 32);
+}
 
 
 static void diffToTarget(uint32_t *target, double diff)
@@ -509,11 +515,11 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						reset_work_timeout();
 
                         m_current.epoch = ethash::find_epoch_number(
-                            ethash::hash256::from_bytes(h256{sSeedHash}.data()));
+                            ethash::hash256_from_bytes(h256{sSeedHash}.data()));
                         m_current.header = h256(sHeaderHash);
 						m_current.boundary = h256();
 						diffToTarget((uint32_t*)m_current.boundary.data(), m_nextWorkDifficulty);
-						m_current.startNonce = ethash_swap_u64(*((uint64_t*)m_extraNonce.data()));
+						m_current.startNonce = bswap(*((uint64_t*)m_extraNonce.data()));
 						m_current.exSizeBits = m_extraNonceHexSize * 4;
 						m_current.job_len = job.size();
 						if (m_connection.Version() == EthStratumClient::ETHEREUMSTRATUM)
@@ -547,7 +553,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 							m_current.header = h256(sHeaderHash);
                             m_current.epoch = ethash::find_epoch_number(
-                                ethash::hash256::from_bytes(h256{sSeedHash}.data()));
+                                ethash::hash256_from_bytes(h256{sSeedHash}.data()));
                             m_current.boundary = h256(sShareTarget);
 							m_current.job = h256(job);
 

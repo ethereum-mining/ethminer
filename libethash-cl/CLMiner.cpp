@@ -588,10 +588,10 @@ bool CLMiner::init(int epoch)
             m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
 
         const auto& context = ethash::managed::get_epoch_context(epoch);
-        const auto lightNumItems = ethash::get_light_cache_num_items(context);
-        const auto dagNumItems = ethash::get_full_dataset_num_items(context);
+        const auto lightNumItems = context.light_cache_num_items;
+        const auto lightSize = ethash::get_light_cache_size(lightNumItems);
+        const auto dagNumItems = context.full_dataset_num_items;
         const auto dagSize = ethash::get_full_dataset_size(dagNumItems);
-        const auto lightRef = ethash::managed::get_light_cache_data(epoch);
 
         // patch source code
         // note: The kernels here are simply compiled version of the respective .cl kernels
@@ -617,7 +617,7 @@ bool CLMiner::init(int epoch)
         addDefinition(code, "GROUP_SIZE", m_workgroupSize);
         addDefinition(code, "DAG_SIZE", dagNumItems);
         addDefinition(code, "LIGHT_SIZE", lightNumItems);
-        addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
+        addDefinition(code, "ACCESSES", 64);
         addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
         addDefinition(code, "PLATFORM", platformId);
         addDefinition(code, "COMPUTE", computeCapability);
@@ -652,15 +652,15 @@ bool CLMiner::init(int epoch)
         // create buffer for dag
         try
         {
-            cllog << "Creating light cache buffer, size" << lightRef.size;
-            m_light = cl::Buffer(m_context, CL_MEM_READ_ONLY, lightRef.size);
+            cllog << "Creating light cache buffer, size" << lightSize;
+            m_light = cl::Buffer(m_context, CL_MEM_READ_ONLY, lightSize);
             cllog << "Creating DAG buffer, size" << dagSize;
             m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, dagSize);
             cllog << "Loading kernels";
             m_searchKernel = cl::Kernel(program, "ethash_search");
             m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
             cllog << "Writing light cache buffer";
-            m_queue.enqueueWriteBuffer(m_light, CL_TRUE, 0, lightRef.size, lightRef.data);
+            m_queue.enqueueWriteBuffer(m_light, CL_TRUE, 0, lightSize, context.light_cache);
         }
         catch (cl::Error const& err)
         {

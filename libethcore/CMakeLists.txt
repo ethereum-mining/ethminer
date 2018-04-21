@@ -9,7 +9,7 @@ set(SOURCES
 include_directories(BEFORE ..)
 
 add_library(ethcore ${SOURCES})
-target_link_libraries(ethcore PUBLIC devcore PRIVATE hwmon ethash-legacy ethash::ethash)
+target_link_libraries(ethcore PUBLIC devcore ethash::ethash PRIVATE hwmon)
 
 if(ETHASHCL)
 	target_link_libraries(ethcore PRIVATE ethash-cl)

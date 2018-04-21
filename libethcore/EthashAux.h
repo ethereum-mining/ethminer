@@ -17,13 +17,11 @@
 
 #pragma once
 
-#include <condition_variable>
-#include <libethash/ethash.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/Worker.h>
 #include "BlockHeader.h"
 
-#include <unordered_map>
+#include <libdevcore/Worker.h>
+
+#include <ethash/ethash.hpp>
 
 namespace dev
 {
@@ -39,28 +37,7 @@ struct Result
 class EthashAux
 {
 public:
-	struct LightAllocation
-	{
-		explicit LightAllocation(int epoch);
-		~LightAllocation();
-		bytesConstRef data() const;
-		Result compute(h256 const& _headerHash, uint64_t _nonce) const;
-		ethash_light_t light;
-		uint64_t size;
-	};
-
-	using LightType = std::shared_ptr<LightAllocation>;
-
-	static LightType light(int epoch);
-
 	static Result eval(int epoch, h256 const& _headerHash, uint64_t  _nonce) noexcept;
-
-private:
-    EthashAux() = default;
-    static EthashAux& get();
-
-    Mutex x_lights;
-    std::unordered_map<int, LightType> m_lights;
 };
 
 struct WorkPackage
@@ -69,7 +46,7 @@ struct WorkPackage
     explicit WorkPackage(BlockHeader const& _bh)
       : boundary(_bh.boundary()),
         header(_bh.hashWithout()),
-        epoch(static_cast<int>(_bh.number()) / ETHASH_EPOCH_LENGTH)
+        epoch(ethash::get_epoch_number(static_cast<int>(_bh.number())))
     {}
     explicit operator bool() const { return header != h256(); }
 

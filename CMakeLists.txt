@@ -90,7 +90,6 @@ include(ProjectEthash)
 cable_add_buildinfo_library(PREFIX ethminer)
 
 add_subdirectory(libdevcore)
-add_subdirectory(libethash)
 add_subdirectory(libethcore)
 add_subdirectory(libhwmon)
 add_subdirectory(libpoolprotocols)

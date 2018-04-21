@@ -721,7 +721,6 @@ public:
 				m_cudaGridSize,
 				m_numStreams,
 				m_cudaSchedule,
-				0,
 				m_dagLoadMode,
 				m_dagCreateDevice,
 				m_cudaNoEval,

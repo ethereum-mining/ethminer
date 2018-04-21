@@ -17,14 +17,13 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <time.h>
-#include <functional>
-#include <libethash/ethash.h>
+#include "ethash_cuda_miner_kernel.h"
+
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
-#include "ethash_cuda_miner_kernel.h"
-#include "libethash/internal.h"
+
+#include <functional>
 
 namespace dev
 {
@@ -50,7 +49,6 @@ public:
 		unsigned _gridSize,
 		unsigned _numStreams,
 		unsigned _scheduleFlag,
-		uint64_t _currentBlock,
 		unsigned _dagLoadMode,
 		unsigned _dagCreateDevice,
 		bool _noeval,
@@ -65,17 +63,12 @@ public:
 		unsigned _gridSize,
 		unsigned _numStreams,
 		unsigned _scheduleFlag,
-		uint64_t _currentBlock,
 		bool _noeval
 		);
 
-	static void cuda_setParallelHash(unsigned _parallelHash);
-
 	bool cuda_init(
 		size_t numDevices,
-		ethash_light_t _light,
-		uint8_t const* _lightData,
-		uint64_t _lightSize,
+		int epoch,
 		unsigned _deviceId,
 		bool _cpyToHost,
 		uint8_t * &hostDAG,
@@ -115,7 +108,7 @@ private:
 	///Constants on GPU
 	hash128_t* m_dag = nullptr;
 	std::vector<hash64_t*> m_light;
-	uint32_t m_dag_size = -1;
+	int m_dag_size = -1;
 	uint32_t m_device_num;
 
 	volatile search_results** m_search_buf;

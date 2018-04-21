@@ -101,7 +101,7 @@ void EthGetworkClient::workLoop()
 				WorkPackage newWorkPackage;
 				newWorkPackage.header = h256(v[0].asString());
                 newWorkPackage.epoch = ethash::find_epoch_number(
-                    ethash::hash256::from_bytes(h256{v[1].asString()}.data()));
+                    ethash::hash256_from_bytes(h256{v[1].asString()}.data()));
 
                 // Since we do not have a real connected state with getwork, we just fake it.
 				// If getting work succeeds we know that the connection works
