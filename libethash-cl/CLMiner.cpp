@@ -617,7 +617,7 @@ bool CLMiner::init(int epoch)
         addDefinition(code, "GROUP_SIZE", m_workgroupSize);
         addDefinition(code, "DAG_SIZE", dagNumItems);
         addDefinition(code, "LIGHT_SIZE", lightNumItems);
-        addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
+        addDefinition(code, "ACCESSES", 64);
         addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
         addDefinition(code, "PLATFORM", platformId);
         addDefinition(code, "COMPUTE", computeCapability);

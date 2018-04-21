@@ -17,13 +17,13 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <time.h>
-#include <functional>
-#include <libethash/ethash.h>
+#include "ethash_cuda_miner_kernel.h"
+
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
-#include "ethash_cuda_miner_kernel.h"
+
+#include <functional>
 
 namespace dev
 {
