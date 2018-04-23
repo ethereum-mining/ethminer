@@ -165,11 +165,14 @@ void EthStratumClient::disconnect()
 	m_linkdown = true;
 
 	try {
+
+		
+		boost::system::error_code sec;
 		if (m_connection.SecLevel() != SecureLevel::NONE) {
-			boost::system::error_code sec;
 			m_securesocket->shutdown(sec);
 		}
 
+		m_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, sec);
 		m_socket->close();
 		m_io_service.stop();
 	}
