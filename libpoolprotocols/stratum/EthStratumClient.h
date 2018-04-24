@@ -58,6 +58,7 @@ private:
 
 	string m_worker; // eth-proxy only;
 
+	bool m_subscribed;
 	bool m_authorized;
 	std::atomic<bool> m_connected = {false};
 
@@ -85,7 +86,7 @@ private:
 
 	boost::asio::deadline_timer m_worktimer;
 	boost::asio::deadline_timer m_responsetimer;
-	boost::asio::deadline_timer m_hashrate_event;
+	boost::asio::deadline_timer m_hashratetimer;
 	bool m_response_pending = false;
 
 	boost::asio::ip::tcp::resolver m_resolver;
