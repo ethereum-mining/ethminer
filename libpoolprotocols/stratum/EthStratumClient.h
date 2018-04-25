@@ -47,7 +47,6 @@ private:
 	void connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
 	void work_timeout_handler(const boost::system::error_code& ec);
 	void response_timeout_handler(const boost::system::error_code& ec);
-	void hashrate_event_handler(const boost::system::error_code& ec);
 
 	void reset_work_timeout();
 	void readline();
@@ -90,7 +89,6 @@ private:
 
 	boost::asio::deadline_timer m_worktimer;
 	boost::asio::deadline_timer m_responsetimer;
-	boost::asio::deadline_timer m_hashratetimer;
 	bool m_response_pending = false;
 
 	boost::asio::ip::tcp::resolver m_resolver;

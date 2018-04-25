@@ -36,7 +36,6 @@ EthStratumClient::EthStratumClient(int const & worktimeout, string const & email
 	m_socket(nullptr),
 	m_worktimer(m_io_service),
 	m_responsetimer(m_io_service),
-	m_hashratetimer(m_io_service),
 	m_resolver(m_io_service)
 {
 	m_pending = 0;
@@ -45,7 +44,8 @@ EthStratumClient::EthStratumClient(int const & worktimeout, string const & email
 	m_email = email;
 
 	m_submit_hashrate = submitHashrate;
-	m_submit_hashrate_id = h256::random().hex();
+	if (m_submit_hashrate)
+		m_submit_hashrate_id = h256::random().hex();
 }
 
 EthStratumClient::~EthStratumClient()
@@ -160,7 +160,6 @@ void EthStratumClient::disconnect()
 		return;
 
 	m_worktimer.cancel();
-	m_hashratetimer.cancel();
 	m_responsetimer.cancel();
 	m_response_pending = false;
 	m_linkdown = true;
@@ -614,25 +613,6 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 }
 
-void EthStratumClient::hashrate_event_handler(const boost::system::error_code& ec)
-{
-	if (ec || m_linkdown) {
-		return;
-	}
-
-	// There is no stratum method to submit the hashrate so we use the rpc variant.
-	string json = "{\"id\": 6, \"jsonrpc\":\"2.0\", \"method\": \"eth_submitHashrate\", \"params\": [\"" + m_rate + "\",\"0x" + this->m_submit_hashrate_id + "\"]}\n";
-	std::ostream os(&m_requestBuffer);
-	os << json;
-
-	if (m_connection.SecLevel() != SecureLevel::NONE)
-		async_write(*m_securesocket, m_requestBuffer,
-			boost::bind(&EthStratumClient::handleHashrateResponse, this, boost::asio::placeholders::error));
-	else
-		async_write(*m_nonsecuresocket, m_requestBuffer,
-			boost::bind(&EthStratumClient::handleHashrateResponse, this, boost::asio::placeholders::error));
-}
-
 void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec) {
 	if (!ec) {
 		cwarn << "No new work received in " << m_worktimeout << " seconds.";
@@ -655,10 +635,18 @@ void EthStratumClient::submitHashrate(string const & rate) {
 		return;
 	}
 
-	
-	m_hashratetimer.cancel();
-	m_hashratetimer.expires_from_now(boost::posix_time::milliseconds(100));
-	m_hashratetimer.async_wait(boost::bind(&EthStratumClient::hashrate_event_handler, this, boost::asio::placeholders::error));
+	// There is no stratum method to submit the hashrate so we use the rpc variant.
+	string json = "{\"id\": 6, \"jsonrpc\":\"2.0\", \"method\": \"eth_submitHashrate\", \"params\": [\"" + m_rate + "\",\"0x" + this->m_submit_hashrate_id + "\"]}\n";
+	std::ostream os(&m_requestBuffer);
+	os << json;
+
+	if (m_connection.SecLevel() != SecureLevel::NONE)
+		async_write(*m_securesocket, m_requestBuffer,
+			boost::bind(&EthStratumClient::handleHashrateResponse, this, boost::asio::placeholders::error));
+	else
+		async_write(*m_nonsecuresocket, m_requestBuffer,
+			boost::bind(&EthStratumClient::handleHashrateResponse, this, boost::asio::placeholders::error));
+
 }
 
 void EthStratumClient::submitSolution(Solution solution) {
