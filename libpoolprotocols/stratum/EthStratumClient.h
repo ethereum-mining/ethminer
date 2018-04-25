@@ -30,8 +30,11 @@ public:
 	void connect();
 	void disconnect();
 	
-	bool isConnected() { return m_connected.load(std::memory_order_relaxed) && m_authorized; }
-	
+	// Connected and Connection Statuses
+	bool isConnected() { return m_connected.load(std::memory_order_relaxed); }
+	bool isSubscribed() { return m_subscribed.load(std::memory_order_relaxed); }
+	bool isAuthorized() { return m_authorized.load(std::memory_order_relaxed); }
+
 	void submitHashrate(string const & rate);
 	void submitSolution(Solution solution);
 
@@ -58,9 +61,10 @@ private:
 
 	string m_worker; // eth-proxy only;
 
-	bool m_subscribed;
-	bool m_authorized;
-	std::atomic<bool> m_connected = {false};
+	std::atomic<bool> m_subscribed = { false };
+	std::atomic<bool> m_authorized = { false };
+	std::atomic<bool> m_connected = { false };
+
 
 	int m_worktimeout = 60;
 

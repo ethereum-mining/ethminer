@@ -39,8 +39,6 @@ EthStratumClient::EthStratumClient(int const & worktimeout, string const & email
 	m_hashratetimer(m_io_service),
 	m_resolver(m_io_service)
 {
-	m_subscribed = false;
-	m_authorized = false;
 	m_pending = 0;
 	m_worktimeout = worktimeout;
 
@@ -61,6 +59,8 @@ void EthStratumClient::connect()
 	m_connection = m_conn;
 
 	m_connected.store(false, std::memory_order_relaxed);
+	m_subscribed.store(false, std::memory_order_relaxed);
+	m_authorized.store(false, std::memory_order_relaxed);
 
 	stringstream ssPort;
 	ssPort << m_connection.Port();
@@ -190,8 +190,8 @@ void EthStratumClient::disconnect()
                     m_socket = nullptr;
     }
 
-	m_authorized = false;
-	m_subscribed = false;
+	m_subscribed.store(false, std::memory_order_relaxed);
+	m_authorized.store(false, std::memory_order_relaxed);
 	m_connected.store(false, std::memory_order_relaxed);
 
 	if (m_onDisconnected) {
@@ -288,9 +288,11 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 		size_t p;
 
 		switch (m_connection.Version()) {
+
 			case EthStratumClient::STRATUM:
 				os << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n";
 				break;
+
 			case EthStratumClient::ETHPROXY:
 				p = m_connection.User().find_first_of(".");
 				user = m_connection.User().substr(0, p);
@@ -308,6 +310,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 					os << "{\"id\": 1, \"worker\":\"" << m_worker << "\", \"method\": \"eth_submitLogin\", \"params\": [\"" << user << "\", \"" << m_email << "\"]}\n";
 				}
 				break;
+
 			case EthStratumClient::ETHEREUMSTRATUM:
 				os << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"ethminer/" << ethminer_get_buildinfo()->project_version << "\",\"EthereumStratum/1.0.0\"]}\n";
 				break;
@@ -426,44 +429,52 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 	switch (id)
 	{
 		case 1:
-		if (m_connection.Version() == EthStratumClient::ETHEREUMSTRATUM)
-		{
-			m_nextWorkDifficulty = 1;
-			params = responseObject.get("result", Json::Value::null);
-			if (params.isArray())
-			{
-				std::string enonce = params.get((Json::Value::ArrayIndex)1, "").asString();
-				processExtranonce(enonce);
-			}
 
-			os << "{\"id\": 2, \"method\": \"mining.extranonce.subscribe\", \"params\": []}\n";
-		}
-		if (m_connection.Version() != EthStratumClient::ETHPROXY)
-		{
-			m_subscribed = responseObject.get("result", Json::Value::null).asBool();
-			if (!m_subscribed)
-			{
-				cnote << "Could not subscribe to stratum server";
-				disconnect();
-				return;
+			switch (m_connection.Version()) {
+
+			case EthStratumClient::STRATUM:
+
+				m_subscribed.store(responseObject.get("result", Json::Value::null).asBool(), std::memory_order_relaxed);
+				if (!m_subscribed)
+				{
+					cnote << "Could not subscribe to stratum server";
+					disconnect();
+					return;
+				}
+				cnote << "Subscribed to stratum server";
+				os << "{\"id\": 3, \"method\": \"mining.authorize\", \"params\": [\"" << m_connection.User() << "\",\"" << m_connection.Pass() << "\"]}\n";
+				break;
+
+			case EthStratumClient::ETHPROXY:
+
+				os << "{\"id\": 5, \"method\": \"eth_getWork\", \"params\": []}\n"; // not strictly required but it does speed up initialization
+				break;
+
+			case EthStratumClient::ETHEREUMSTRATUM:
+
+				m_nextWorkDifficulty = 1;
+				params = responseObject.get("result", Json::Value::null);
+				if (params.isArray())
+				{
+					std::string enonce = params.get((Json::Value::ArrayIndex)1, "").asString();
+					processExtranonce(enonce);
+				}
+
+				os << "{\"id\": 2, \"method\": \"mining.extranonce.subscribe\", \"params\": []}\n";
+				break;
 			}
-			cnote << "Subscribed to stratum server";
-			os << "{\"id\": 3, \"method\": \"mining.authorize\", \"params\": [\"" << m_connection.User() << "\",\"" << m_connection.Pass() << "\"]}\n";
-		}
-		else
-		{
-			m_authorized = true;
-			os << "{\"id\": 5, \"method\": \"eth_getWork\", \"params\": []}\n"; // not strictly required but it does speed up initialization
-		}
 
 		async_write_with_response();
-
 		break;
+
 	case 2:
+
 		// nothing to do...
 		break;
+
 	case 3:
-		m_authorized = responseObject.get("result", Json::Value::null).asBool();
+
+		m_authorized.store(responseObject.get("result", Json::Value::null).asBool(), std::memory_order_relaxed);
 		if (!m_authorized)
 		{
 			cnote << "Worker not authorized:" + m_connection.User();
@@ -472,7 +483,9 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		}
 		cnote << "Authorized worker " + m_connection.User();
 		break;
+
 	case 4:
+
 		{
 			m_responsetimer.cancel();
 			m_response_pending = false;
@@ -488,7 +501,9 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			}
 		}
 		break;
+
 	default:
+
 		string method, workattr;
 		unsigned index;
 		if (m_connection.Version() != EthStratumClient::ETHPROXY)
@@ -633,11 +648,14 @@ void EthStratumClient::response_timeout_handler(const boost::system::error_code&
 }
 
 void EthStratumClient::submitHashrate(string const & rate) {
-	if (!m_submit_hashrate || m_linkdown) {
+	
+	m_rate = rate;
+	
+	if (!m_submit_hashrate || m_linkdown ) {
 		return;
 	}
 
-	m_rate = rate;
+	
 	m_hashratetimer.cancel();
 	m_hashratetimer.expires_from_now(boost::posix_time::milliseconds(100));
 	m_hashratetimer.async_wait(boost::bind(&EthStratumClient::hashrate_event_handler, this, boost::asio::placeholders::error));
