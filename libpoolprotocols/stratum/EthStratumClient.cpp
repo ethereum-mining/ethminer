@@ -347,10 +347,6 @@ void EthStratumClient::readline() {
 	x_pending.unlock();
 }
 
-void EthStratumClient::handleHashrateResponse(const boost::system::error_code& ec) {
-	(void)ec;
-}
-
 void EthStratumClient::handleResponse(const boost::system::error_code& ec) {
 	if (!ec)
 	{
@@ -642,10 +638,10 @@ void EthStratumClient::submitHashrate(string const & rate) {
 
 	if (m_connection.SecLevel() != SecureLevel::NONE)
 		async_write(*m_securesocket, m_requestBuffer,
-			boost::bind(&EthStratumClient::handleHashrateResponse, this, boost::asio::placeholders::error));
+			boost::bind(&EthStratumClient::handleResponse, this, boost::asio::placeholders::error));
 	else
 		async_write(*m_nonsecuresocket, m_requestBuffer,
-			boost::bind(&EthStratumClient::handleHashrateResponse, this, boost::asio::placeholders::error));
+			boost::bind(&EthStratumClient::handleResponse, this, boost::asio::placeholders::error));
 
 }
 
