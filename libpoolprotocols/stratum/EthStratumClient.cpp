@@ -180,14 +180,14 @@ void EthStratumClient::disconnect()
 		cwarn << "Error while disconnecting:" << _e.what();
 	}
 
+	// m_securesocket is a secure stream (not the socket itself)
     if (m_connection.SecLevel() != SecureLevel::NONE) {
             if (m_securesocket)
                     m_securesocket = nullptr;
     }
-    else {
-            if (m_socket)
-                    m_socket = nullptr;
-    }
+    if (m_socket)
+            m_socket = nullptr;
+
 
 	m_subscribed.store(false, std::memory_order_relaxed);
 	m_authorized.store(false, std::memory_order_relaxed);
