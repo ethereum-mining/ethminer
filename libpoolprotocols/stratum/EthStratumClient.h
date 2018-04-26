@@ -49,11 +49,14 @@ private:
 	void response_timeout_handler(const boost::system::error_code& ec);
 
 	void reset_work_timeout();
-	void readline();
-	void handleResponse(const boost::system::error_code& ec);
-	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
 	void processReponse(Json::Value& responseObject);
-	void async_write_with_response();
+
+
+	std::string m_recvddata = "";
+	void recvSocketData();
+	void onRecvSocketDataCompleted(const boost::system::error_code& ec, std::size_t bytes_transferred);
+	void sendSocketData(string const & data);
+	void onSendSocketDataCompleted(const boost::system::error_code& ec);
 
 	PoolConnection m_connection;
 
@@ -62,7 +65,7 @@ private:
 	std::atomic<bool> m_subscribed = { false };
 	std::atomic<bool> m_authorized = { false };
 	std::atomic<bool> m_connected = { false };
-
+	std::atomic<bool> m_disconnecting = { false };
 
 	int m_worktimeout = 60;
 
@@ -76,6 +79,7 @@ private:
 	std::thread m_serviceThread;  ///< The IO service thread.
 	boost::asio::io_service m_io_service;
 	boost::asio::ip::tcp::socket *m_socket;
+
 	// Use shared ptrs to avoid crashes due to async_writes
 	// see https://stackoverflow.com/questions/41526553/can-async-write-cause-segmentation-fault-when-this-is-deleted
 	std::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket> >
@@ -83,8 +87,9 @@ private:
 	std::shared_ptr<boost::asio::ip::tcp::socket>
 	  m_nonsecuresocket;
 
-	boost::asio::streambuf m_requestBuffer;
-	boost::asio::streambuf m_responseBuffer;
+	boost::asio::streambuf m_sendBuffer;
+	boost::asio::streambuf m_recvBuffer;
+	int m_recvBufferSize = 1024;
 
 	boost::asio::deadline_timer m_worktimer;
 	boost::asio::deadline_timer m_responsetimer;
