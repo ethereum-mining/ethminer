@@ -461,6 +461,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						reset_work_timeout();
 
                         m_current.header = h256(sHeaderHash);
+						m_current.seed = h256(sSeedHash);
 						m_current.boundary = h256();
 						diffToTarget((uint32_t*)m_current.boundary.data(), m_nextWorkDifficulty);
 						m_current.startNonce = bswap(*((uint64_t*)m_extraNonce.data()));
@@ -496,6 +497,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 							reset_work_timeout();
 
 							m_current.header = h256(sHeaderHash);
+							m_current.seed = h256(sSeedHash);
                             m_current.boundary = h256(sShareTarget);
 							m_current.job = h256(job);
 
@@ -588,23 +590,30 @@ void EthStratumClient::submitSolution(Solution solution) {
 	m_responsetimer.cancel();
 
 	switch (m_connection.Version()) {
+
 		case EthStratumClient::STRATUM:
+
 			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" +
 				m_connection.User() + "\",\"" + solution.work.job.hex() + "\",\"0x" +
 				nonceHex + "\",\"0x" + solution.work.header.hex() + "\",\"0x" +
 				solution.mixHash.hex() + "\"]}";
 			break;
+
 		case EthStratumClient::ETHPROXY:
+
 			json = "{\"id\": 4, \"worker\":\"" +
 				m_worker + "\", \"method\": \"eth_submitWork\", \"params\": [\"0x" +
 				nonceHex + "\",\"0x" + solution.work.header.hex() + "\",\"0x" +
 				solution.mixHash.hex() + "\"]}";
 			break;
+
 		case EthStratumClient::ETHEREUMSTRATUM:
+
 			json = "{\"id\": 4, \"method\": \"mining.submit\", \"params\": [\"" +
 				m_connection.User() + "\",\"" + solution.work.job.hex().substr(0, solution.work.job_len) + "\",\"" +
 				nonceHex.substr(m_extraNonceHexSize, 16 - m_extraNonceHexSize) + "\"]}";
 			break;
+
 	}
 
 	sendSocketData(json);
@@ -619,18 +628,9 @@ void EthStratumClient::submitSolution(Solution solution) {
 
 void EthStratumClient::recvSocketData() {
 	
-	if (m_connection.SecLevel() != SecureLevel::NONE) {
-
-		async_read_until(*m_securesocket, m_recvBuffer, "\n",
-			boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
-				boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
-	}
-	else {
-
-		async_read_until(*m_nonsecuresocket, m_recvBuffer, "\n",
-			boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
-				boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
-	}
+	async_read_until(*m_socket, m_recvBuffer, "\n",
+		boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
+			boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
 	
 }
 
@@ -681,7 +681,7 @@ void EthStratumClient::sendSocketData(string const & data) {
 		return;
 	
 	std::ostream os(&m_sendBuffer);
-	os << (data+"\n");
+	os << data << "\n";
 	
     async_write(*m_socket, m_sendBuffer, boost::bind(&EthStratumClient::onSendSocketDataCompleted, this, boost::asio::placeholders::error));
 
