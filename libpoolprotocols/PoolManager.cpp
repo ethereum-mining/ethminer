@@ -25,9 +25,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 
 	p_client->onConnected([&]()
 	{
-		stringstream ssPort;
-		ssPort << m_connections[m_activeConnectionIdx].Port();
-		cnote << "Connected to " << m_connections[m_activeConnectionIdx].Host() + ':' + ssPort.str();
+		cnote << "Connected to " << m_connections[m_activeConnectionIdx].Host() << '@' << m_connections[m_activeConnectionIdx].Endpoint();
 		if (!m_farm.isMining())
 		{
 			cnote << "Spinning up miners...";
@@ -66,7 +64,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 			const uint256_t divisor(string("0x") + m_lastBoundary.hex());
 			cnote << "New pool difficulty:" << EthWhite << diffToDisplay(double(dividend / divisor)) << EthReset;
 		}
-		cnote << "Received new job" << wp.header << "from " + m_connections[m_activeConnectionIdx].Host();
+		cnote << "Received new job" << wp.header << "from" << m_connections[m_activeConnectionIdx].Host() << "@" << m_connections[m_activeConnectionIdx].Endpoint();
 	});
 	p_client->onSolutionAccepted([&](bool const& stale)
 	{

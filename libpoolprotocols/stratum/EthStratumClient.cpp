@@ -41,6 +41,7 @@ static void diffToTarget(uint32_t *target, double diff)
 
 EthStratumClient::EthStratumClient(int const & worktimeout, string const & email, bool const & submitHashrate) : PoolClient(),
 	m_socket(nullptr),
+	m_conntimer(m_io_service),
 	m_worktimer(m_io_service),
 	m_responsetimer(m_io_service),
 	m_resolver(m_io_service)
@@ -68,11 +69,8 @@ void EthStratumClient::connect()
 	m_subscribed.store(false, std::memory_order_relaxed);
 	m_authorized.store(false, std::memory_order_relaxed);
 
-	stringstream ssPort;
-	ssPort << m_connection.Port();
-	tcp::resolver::query q(m_connection.Host(), ssPort.str());
 
-	//cnote << "Resolving stratum server " + m_connection.host + ":" + m_connection.port;
+	// Prepare Socket
 
 	if (m_connection.SecLevel() != SecureLevel::NONE) {
 
@@ -142,15 +140,17 @@ void EthStratumClient::connect()
 	setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 #endif
 
-	// TODO
-	// Resolve and connect asynchronously is a nonsense as, in any case,
-	// we can't do absolutely nothing with this client until we're properly connected
-	// Use async ONLY on socket IO
-	m_resolver.async_resolve(q, boost::bind(&EthStratumClient::resolve_handler,
-		this, boost::asio::placeholders::error,
-		boost::asio::placeholders::iterator));
+	// Begin resolve and connect
+	tcp::resolver::query q(m_connection.Host(), toString(m_connection.Port()));
+	m_resolver.async_resolve(q,
+		boost::bind(&EthStratumClient::resolve_handler,
+			this, boost::asio::placeholders::error,
+			boost::asio::placeholders::iterator));
 
-    if (m_serviceThread.joinable())
+
+	// IMPORTANT !!
+	// Reset io_service *before* starting async io 
+	if (m_serviceThread.joinable())
 	{
 		// If the service thread have been created try to reset the service.
 		m_io_service.reset();
@@ -158,8 +158,11 @@ void EthStratumClient::connect()
 	else
 	{
 		// Otherwise, if the first time here, create new thread.
-		m_serviceThread = std::thread{boost::bind(&boost::asio::io_service::run, &m_io_service)};
+		m_serviceThread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };
 	}
+
+
+
 }
 
 #define BOOST_ASIO_ENABLE_CANCELIO 
@@ -174,6 +177,7 @@ void EthStratumClient::disconnect()
 		m_disconnecting.store(true, std::memory_order::memory_order_relaxed);
 	}
 
+	m_conntimer.cancel();
 	m_worktimer.cancel();
 	m_responsetimer.cancel();
 	m_response_pending = false;
@@ -214,11 +218,14 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	dev::setThreadName("stratum");
 	if (!ec)
 	{
-		//cnote << "Connecting to stratum server " + m_connection.Host() + ":" + m_connection.Port();
-		tcp::resolver::iterator end;
-		async_connect(*m_socket, i, end, boost::bind(&EthStratumClient::connect_handler,
-						this, boost::asio::placeholders::error,
-						boost::asio::placeholders::iterator));
+
+		// Start Connection Process and set timeout timer
+		start_connect(i);
+		m_conntimer.async_wait(boost::bind(&EthStratumClient::check_connect_timeout, this, boost::asio::placeholders::error));
+
+		//async_connect(*m_socket, i, boost::bind(&EthStratumClient::connect_handler,
+		//				this, boost::asio::placeholders::error,
+		//				boost::asio::placeholders::iterator));
 	}
 	else
 	{
@@ -234,14 +241,87 @@ void EthStratumClient::reset_work_timeout()
 	m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
 }
 
+void EthStratumClient::start_connect(tcp::resolver::iterator endpoint_iter)
+{
+	if (endpoint_iter != tcp::resolver::iterator()) {
+
+		cnote << "Trying endpoint" << endpoint_iter->endpoint();
+		
+		// Set timeout of 2 seconds
+		m_conntimer.expires_from_now(boost::posix_time::seconds(2));
+
+		// Start connecting async
+		m_socket->async_connect(endpoint_iter->endpoint(), 
+			boost::bind(&EthStratumClient::connect_handler, this, _1, endpoint_iter));
+
+	}
+	else {
+
+		cwarn << "No more endpoints to try";
+		disconnect();
+
+	}
+}
+
+// https://www.boost.org/doc/libs/1_45_0/doc/html/boost_asio/example/timeouts/async_tcp_client.cpp
+
+void EthStratumClient::check_connect_timeout(const boost::system::error_code& ec)
+{
+	(void)ec;
+
+	// Check whether the deadline has passed. We compare the deadline against
+	// the current time since a new asynchronous operation may have moved the
+	// deadline before this actor had a chance to run.
+	if (!isConnected()) {
+		if (m_conntimer.expires_at() <= boost::asio::deadline_timer::traits_type::now())
+		{
+			// The deadline has passed. The socket is closed so that any outstanding
+			// asynchronous operations are cancelled.
+			cwarn << "TMO";
+			m_socket->close();
+
+			// There is no longer an active deadline. The expiry is set to positive
+			// infinity so that the actor takes no action until a new deadline is set.
+			m_conntimer.expires_at(boost::posix_time::pos_infin);
+		}
+		// Put the actor back to sleep.
+		m_conntimer.async_wait(boost::bind(&EthStratumClient::check_connect_timeout, this, boost::asio::placeholders::error));
+	}
+
+}
+
+
 void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
 {
-	(void)i;
-
-	dev::setThreadName("stratum");
 	
-	if (!ec)
-	{
+	dev::setThreadName("stratum");
+
+	// Timeout has run before
+	if (!m_socket->is_open()) {
+
+		cwarn << "Connection to " << m_connection.Host() << "@" << (i)->endpoint() << " FAILED [ Timeout ]";
+
+		// Try the next available endpoint.
+		start_connect(++i);
+
+	} else if (ec) {
+
+		cwarn << "Connection to " << m_connection.Host() << "@" << (i)->endpoint() << " FAILED [ " << ec.message() << "]";
+		
+		// We need to close the socket used in the previous connection attempt
+		// before starting a new one.
+		m_socket->close();
+
+		// Try the next available endpoint.
+		start_connect(++i);
+
+	}
+	else {
+
+		m_conntimer.cancel();
+		m_connection.Endpoint((i)->endpoint());
+		cnote << "Connected to " << m_connection.Host() << "@" << m_connection.Endpoint();
+
 		if (m_connection.SecLevel() != SecureLevel::NONE) {
 			boost::system::error_code hec;
 			m_securesocket->handshake(boost::asio::ssl::stream_base::client, hec);
@@ -311,11 +391,6 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 				break;
 		}
 
-	}
-	else
-	{
-		cwarn << "Could not connect to stratum server " << m_connection.Host() << ':' << m_connection.Port() << ", " << ec.message();
-		disconnect();
 	}
 
 }
@@ -628,7 +703,7 @@ void EthStratumClient::recvSocketData() {
 	
 	async_read_until(*m_socket, m_recvBuffer, "\n",
 		boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
-			boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
+			_1, boost::asio::placeholders::bytes_transferred));
 	
 }
 
@@ -681,7 +756,7 @@ void EthStratumClient::sendSocketData(string const & data) {
 	std::ostream os(&m_sendBuffer);
 	os << data << "\n";
 	
-    async_write(*m_socket, m_sendBuffer, boost::bind(&EthStratumClient::onSendSocketDataCompleted, this, boost::asio::placeholders::error));
+    async_write(*m_socket, m_sendBuffer, boost::bind(&EthStratumClient::onSendSocketDataCompleted, this, _1));
 
 }
 

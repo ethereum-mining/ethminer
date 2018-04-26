@@ -44,6 +44,8 @@ public:
 private:
 
 	void resolve_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
+	void start_connect(boost::asio::ip::tcp::resolver::iterator endpoint_iter);
+	void check_connect_timeout(const boost::system::error_code& ec);
 	void connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
 	void work_timeout_handler(const boost::system::error_code& ec);
 	void response_timeout_handler(const boost::system::error_code& ec);
@@ -67,6 +69,7 @@ private:
 	std::atomic<bool> m_disconnecting = { false };
 
 	int m_worktimeout = 60;
+	
 
 	WorkPackage m_current;
 
@@ -87,6 +90,7 @@ private:
 	boost::asio::streambuf m_recvBuffer;
 	int m_recvBufferSize = 1024;
 
+	boost::asio::deadline_timer m_conntimer;
 	boost::asio::deadline_timer m_worktimer;
 	boost::asio::deadline_timer m_responsetimer;
 	bool m_response_pending = false;
