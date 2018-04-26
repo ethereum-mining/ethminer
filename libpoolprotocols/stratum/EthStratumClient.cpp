@@ -45,9 +45,8 @@ EthStratumClient::EthStratumClient(int const & worktimeout, string const & email
 	m_responsetimer(m_io_service),
 	m_resolver(m_io_service)
 {
-	m_pending = 0;
-	m_worktimeout = worktimeout;
 
+	m_worktimeout = worktimeout;
 	m_email = email;
 
 	m_submit_hashrate = submitHashrate;
@@ -178,7 +177,6 @@ void EthStratumClient::disconnect()
 	m_worktimer.cancel();
 	m_responsetimer.cancel();
 	m_response_pending = false;
-	m_recvddata.clear();
 
 	try {
 		

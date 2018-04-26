@@ -50,9 +50,8 @@ private:
 
 	void reset_work_timeout();
 	void processReponse(Json::Value& responseObject);
+	void processExtranonce(std::string& enonce);
 
-
-	std::string m_recvddata = "";
 	void recvSocketData();
 	void onRecvSocketDataCompleted(const boost::system::error_code& ec, std::size_t bytes_transferred);
 	void sendSocketData(string const & data);
@@ -68,9 +67,6 @@ private:
 	std::atomic<bool> m_disconnecting = { false };
 
 	int m_worktimeout = 60;
-
-	std::mutex x_pending;
-	int m_pending;
 
 	WorkPackage m_current;
 
@@ -108,7 +104,7 @@ private:
 	bool m_submit_hashrate = false;
 	string m_submit_hashrate_id;
 
-	void processExtranonce(std::string& enonce);
 
-	bool m_linkdown = true;
+
+
 };
