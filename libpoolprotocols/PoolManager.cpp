@@ -64,7 +64,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 			const uint256_t divisor(string("0x") + m_lastBoundary.hex());
 			cnote << "New pool difficulty:" << EthWhite << diffToDisplay(double(dividend / divisor)) << EthReset;
 		}
-		cnote << "New job" << wp.header << "  " + m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
+		cnote << "New job" << wp.header << "  " + m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
 	});
 	p_client->onSolutionAccepted([&](bool const& stale)
 	{
