@@ -34,6 +34,7 @@ public:
 	bool isConnected() { return m_connected.load(std::memory_order_relaxed); }
 	bool isSubscribed() { return m_subscribed.load(std::memory_order_relaxed); }
 	bool isAuthorized() { return m_authorized.load(std::memory_order_relaxed); }
+	string ActiveEndPoint() { return " [" + toString(m_endpoint) + "]"; };
 
 	void submitHashrate(string const & rate);
 	void submitSolution(Solution solution);
@@ -59,7 +60,6 @@ private:
 	void sendSocketData(string const & data);
 	void onSendSocketDataCompleted(const boost::system::error_code& ec);
 
-	PoolConnection m_connection;
 
 	string m_worker; // eth-proxy only;
 
@@ -107,8 +107,5 @@ private:
 	
 	bool m_submit_hashrate = false;
 	string m_submit_hashrate_id;
-
-
-
 
 };

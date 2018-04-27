@@ -31,7 +31,7 @@ namespace dev
 			string User() const { return m_user; };
 			string Pass() const { return m_pass; };
 			SecureLevel SecLevel() const { return m_secLevel; };
-			boost::asio::ip::tcp::endpoint Endpoint() const { return m_endpoint; };
+			
 			unsigned Version() const { return m_version; };
 
 			void Host(string host) { m_host = host; };
@@ -41,8 +41,6 @@ namespace dev
 			void Pass(string pass) { m_pass = pass; };
 			void SecLevel(SecureLevel secLevel) { m_secLevel = secLevel; };
 			void Version(unsigned version) { m_version = version; };
-			void Endpoint(boost::asio::ip::tcp::endpoint value) { m_endpoint = value; };
-
 
 		private:
 
@@ -56,7 +54,6 @@ namespace dev
 			SecureLevel m_secLevel = SecureLevel::NONE;
 			unsigned m_version = 0;
 		    string m_path;
-			boost::asio::ip::tcp::endpoint m_endpoint;
 						
 		};
 
@@ -75,6 +72,7 @@ namespace dev
 			virtual void submitHashrate(string const & rate) = 0;
 			virtual void submitSolution(Solution solution) = 0;
 			virtual bool isConnected() = 0;
+			virtual string ActiveEndPoint() = 0;
 
 			using SolutionAccepted = std::function<void(bool const&)>;
 			using SolutionRejected = std::function<void(bool const&)>;
@@ -91,8 +89,10 @@ namespace dev
 		protected:
 			bool m_authorized = false;
 			bool m_connected = false;
-			PoolConnection m_conn;
 			bool m_connection_changed = false;
+			boost::asio::ip::tcp::endpoint m_endpoint;
+
+			PoolConnection m_conn;
 
 			SolutionAccepted m_onSolutionAccepted;
 			SolutionRejected m_onSolutionRejected;
