@@ -73,7 +73,7 @@ void EthStratumClient::connect()
 
 	if (m_conn.SecLevel() != SecureLevel::NONE) {
 
-		boost::asio::ssl::context::method method = boost::asio::ssl::context::tls;
+		boost::asio::ssl::context::method method = boost::asio::ssl::context::tls_client;
 		if (m_conn.SecLevel() == SecureLevel::TLS12)
 			method = boost::asio::ssl::context::tlsv12;
 
@@ -320,11 +320,12 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 		m_conntimer.cancel();
 		m_endpoint = (i)->endpoint();
 
-		// cnote << "Connected to " << m_connection.Host() << "@" << m_connection.Endpoint();
 
 		if (m_conn.SecLevel() != SecureLevel::NONE) {
+
 			boost::system::error_code hec;
 			m_securesocket->handshake(boost::asio::ssl::stream_base::client, hec);
+
 			if (hec) {
 				cwarn << "SSL/TLS Handshake failed: " << hec.message();
 				if (hec.value() == 337047686) { // certificate verification failed
@@ -338,7 +339,13 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 					cwarn << "  You can also get the latest file here: https://curl.haxx.se/docs/caextract.html";
 					cwarn << "* Disable certificate verification all-together via command-line option.";
 				}
-				disconnect();
+
+				// Do not trigger a full disconnection but, instead, let the loop
+				// continue with another IP (if any). 
+				// Disconnection is triggered on no more IP available
+
+				m_socket->close();
+				start_connect(++i);
 				return;
 			}
 		}
@@ -346,15 +353,10 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 		// This should be done *after* a valid connection which may fail
 		// on secure connection.
 		m_connected.store(true, std::memory_order_relaxed);
-
-		//cnote << "Connected to stratum server " + i->host_name() + ":" + m_connection.port;
 		if (m_onConnected) { m_onConnected(); }
 
 		// Successfully connected so we start our work timeout timer
 		reset_work_timeout();
-
-		// Begin receive data
-		recvSocketData();
 
 		string user;
 		size_t p;
@@ -390,6 +392,9 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 				sendSocketData( "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"ethminer/" + toString(ethminer_get_buildinfo()->project_version) + "\",\"EthereumStratum/1.0.0\"]}");
 				break;
 		}
+
+		// Begin receive data
+		recvSocketData();
 
 	}
 
@@ -748,7 +753,7 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
 	else
 	{
 		if (isConnected()) {
-			cwarn << "Socket read failed: " + ec.message();
+			cwarn << "Socket read failed:" << ec.message();
 			disconnect();
 		}
 	}
@@ -765,7 +770,18 @@ void EthStratumClient::sendSocketData(string const & data) {
 	std::ostream os(&m_sendBuffer);
 	os << data << "\n";
 	
-    async_write(*m_socket, m_sendBuffer, boost::bind(&EthStratumClient::onSendSocketDataCompleted, this, _1));
+	if (m_conn.SecLevel() != SecureLevel::NONE) {
+
+		async_write(*m_securesocket, m_sendBuffer,
+			boost::bind(&EthStratumClient::onSendSocketDataCompleted, this, boost::asio::placeholders::error));
+
+	}
+	else {
+
+		async_write(*m_nonsecuresocket, m_sendBuffer,
+			boost::bind(&EthStratumClient::onSendSocketDataCompleted, this, boost::asio::placeholders::error));
+
+	}
 
 }
 
