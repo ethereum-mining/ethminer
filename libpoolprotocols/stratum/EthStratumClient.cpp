@@ -183,6 +183,7 @@ void EthStratumClient::disconnect()
 	try {
 		
 		boost::system::error_code sec;
+
 		if (m_conn.SecLevel() != SecureLevel::NONE) {
 			m_securesocket->shutdown(sec);
 		}
@@ -221,9 +222,6 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 		start_connect(i);
 		m_conntimer.async_wait(boost::bind(&EthStratumClient::check_connect_timeout, this, boost::asio::placeholders::error));
 
-		//async_connect(*m_socket, i, boost::bind(&EthStratumClient::connect_handler,
-		//				this, boost::asio::placeholders::error,
-		//				boost::asio::placeholders::iterator));
 	}
 	else
 	{
@@ -260,8 +258,6 @@ void EthStratumClient::start_connect(tcp::resolver::iterator endpoint_iter)
 
 	}
 }
-
-// https://www.boost.org/doc/libs/1_45_0/doc/html/boost_asio/example/timeouts/async_tcp_client.cpp
 
 void EthStratumClient::check_connect_timeout(const boost::system::error_code& ec)
 {
@@ -309,6 +305,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 		
 		// We need to close the socket used in the previous connection attempt
 		// before starting a new one.
+		// In case of error, in fact, boost does not close the socket
 		m_socket->close();
 
 		// Try the next available endpoint.
