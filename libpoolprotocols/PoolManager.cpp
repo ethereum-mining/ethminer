@@ -183,6 +183,7 @@ void PoolManager::start()
 		startWorking();
 
 		// Try to connect to pool
+		cnote << "Selected pool" << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
 		p_client->connect();
 	}
 	else {
@@ -204,6 +205,8 @@ void PoolManager::tryReconnect()
 
 	// We do not need awesome logic here, we just have one connection anyway
 	if (m_connections.size() == 1) {
+
+		cnote << "Selected pool" << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
 		p_client->connect();
 		return;
 	}
@@ -211,7 +214,9 @@ void PoolManager::tryReconnect()
 	// Fallback logic, tries current connection multiple times and then switches to
 	// one of the other connections.
 	if (m_reconnectTries > m_reconnectTry) {
+
 		m_reconnectTry++;
+		cnote << "Selected pool" << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
 		p_client->connect();
 	}
 	else {
@@ -228,6 +233,7 @@ void PoolManager::tryReconnect()
 		else {
 			p_client->setConnection(m_connections[m_activeConnectionIdx]);
 			m_farm.set_pool_addresses(m_connections[m_activeConnectionIdx].Host(), m_connections[m_activeConnectionIdx].Port());
+			cnote << "Selected pool" << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
 			p_client->connect();
 		}
 	}
