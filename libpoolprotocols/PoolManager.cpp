@@ -25,9 +25,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 
 	p_client->onConnected([&]()
 	{
-		stringstream ssPort;
-		ssPort << m_connections[m_activeConnectionIdx].Port();
-		cnote << "Connected to " << m_connections[m_activeConnectionIdx].Host() + ':' + ssPort.str();
+		cnote << "Connected to " << m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
 		if (!m_farm.isMining())
 		{
 			cnote << "Spinning up miners...";
@@ -43,7 +41,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 	});
 	p_client->onDisconnected([&]()
 	{
-		cnote << "Disconnected from " + m_connections[m_activeConnectionIdx].Host();
+		cnote << "Disconnected from " + m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
 
 		if (m_farm.isMining()) {
 			cnote << "Shutting down miners...";
@@ -66,20 +64,26 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 			const uint256_t divisor(string("0x") + m_lastBoundary.hex());
 			cnote << "New pool difficulty:" << EthWhite << diffToDisplay(double(dividend / divisor)) << EthReset;
 		}
-		cnote << "Received new job" << wp.header << "from " + m_connections[m_activeConnectionIdx].Host();
+		cnote << "New job" << wp.header << "  " + m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
 	});
 	p_client->onSolutionAccepted([&](bool const& stale)
 	{
 		using namespace std::chrono;
 		auto ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_time);
-		cnote << EthLime "**Accepted" EthReset << (stale ? " (stale)" : "") << " in" << ms.count() << "ms.";
+		std::stringstream ss;
+		ss << std::setw(4) << std::setfill(' ') << ms.count();
+		ss << "ms." << "   " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
+		cnote << EthLime "**Accepted" EthReset << (stale ? "(stale)" : "") << ss.str();
 		m_farm.acceptedSolution(stale);
 	});
 	p_client->onSolutionRejected([&](bool const& stale)
 	{
 		using namespace std::chrono;
 		auto ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_time);
-		cwarn << EthRed "**Rejected" EthReset << (stale ? " (stale)" : "") << " in" << ms.count() << "ms.";
+		std::stringstream ss;
+		ss << std::setw(4) << std::setfill(' ') << ms.count();
+		ss << "ms." << "   " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
+		cwarn << EthLime "**Rejected" EthReset << (stale ? "(stale)" : "") << ss.str();
 		m_farm.rejectedSolution(stale);
 	});
 
@@ -88,9 +92,9 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		m_submit_time = std::chrono::steady_clock::now();
 
 		if (sol.stale)
-			cnote << string(EthYellow "Stale nonce 0x") + toHex(sol.nonce) + " submitted to " + m_connections[m_activeConnectionIdx].Host();
+			cnote << string(EthYellow "Stale nonce 0x") + toHex(sol.nonce);
 		else
-			cnote << string("Nonce 0x") + toHex(sol.nonce) + " submitted to " + m_connections[m_activeConnectionIdx].Host();
+			cnote << string("Nonce 0x") + toHex(sol.nonce);
 
 		p_client->submitSolution(sol);
 		return false;
@@ -179,6 +183,7 @@ void PoolManager::start()
 		startWorking();
 
 		// Try to connect to pool
+		cnote << "Selected pool" << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
 		p_client->connect();
 	}
 	else {
@@ -200,6 +205,8 @@ void PoolManager::tryReconnect()
 
 	// We do not need awesome logic here, we just have one connection anyway
 	if (m_connections.size() == 1) {
+
+		cnote << "Selected pool" << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
 		p_client->connect();
 		return;
 	}
@@ -207,7 +214,9 @@ void PoolManager::tryReconnect()
 	// Fallback logic, tries current connection multiple times and then switches to
 	// one of the other connections.
 	if (m_reconnectTries > m_reconnectTry) {
+
 		m_reconnectTry++;
+		cnote << "Selected pool" << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
 		p_client->connect();
 	}
 	else {
@@ -224,6 +233,7 @@ void PoolManager::tryReconnect()
 		else {
 			p_client->setConnection(m_connections[m_activeConnectionIdx]);
 			m_farm.set_pool_addresses(m_connections[m_activeConnectionIdx].Host(), m_connections[m_activeConnectionIdx].Port());
+			cnote << "Selected pool" << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
 			p_client->connect();
 		}
 	}

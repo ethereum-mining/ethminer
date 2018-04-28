@@ -30,8 +30,12 @@ public:
 	void connect();
 	void disconnect();
 	
-	bool isConnected() { return m_connected.load(std::memory_order_relaxed) && m_authorized; }
-	
+	// Connected and Connection Statuses
+	bool isConnected() { return m_connected.load(std::memory_order_relaxed); }
+	bool isSubscribed() { return m_subscribed.load(std::memory_order_relaxed); }
+	bool isAuthorized() { return m_authorized.load(std::memory_order_relaxed); }
+	string ActiveEndPoint() { return " [" + toString(m_endpoint) + "]"; };
+
 	void submitHashrate(string const & rate);
 	void submitSolution(Solution solution);
 
@@ -41,30 +45,31 @@ public:
 private:
 
 	void resolve_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
+	void start_connect(boost::asio::ip::tcp::resolver::iterator endpoint_iter);
+	void check_connect_timeout(const boost::system::error_code& ec);
 	void connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
 	void work_timeout_handler(const boost::system::error_code& ec);
 	void response_timeout_handler(const boost::system::error_code& ec);
-	void hashrate_event_handler(const boost::system::error_code& ec);
 
 	void reset_work_timeout();
-	void readline();
-	void handleResponse(const boost::system::error_code& ec);
-	void handleHashrateResponse(const boost::system::error_code& ec);
-	void readResponse(const boost::system::error_code& ec, std::size_t bytes_transferred);
 	void processReponse(Json::Value& responseObject);
-	void async_write_with_response();
+	void processExtranonce(std::string& enonce);
 
-	PoolConnection m_connection;
+	void recvSocketData();
+	void onRecvSocketDataCompleted(const boost::system::error_code& ec, std::size_t bytes_transferred);
+	void sendSocketData(string const & data);
+	void onSendSocketDataCompleted(const boost::system::error_code& ec);
+
 
 	string m_worker; // eth-proxy only;
 
-	bool m_authorized;
-	std::atomic<bool> m_connected = {false};
+	std::atomic<bool> m_subscribed = { false };
+	std::atomic<bool> m_authorized = { false };
+	std::atomic<bool> m_connected = { false };
+	std::atomic<bool> m_disconnecting = { false };
 
 	int m_worktimeout = 60;
-
-	std::mutex x_pending;
-	int m_pending;
+	
 
 	WorkPackage m_current;
 
@@ -73,6 +78,7 @@ private:
 	std::thread m_serviceThread;  ///< The IO service thread.
 	boost::asio::io_service m_io_service;
 	boost::asio::ip::tcp::socket *m_socket;
+
 	// Use shared ptrs to avoid crashes due to async_writes
 	// see https://stackoverflow.com/questions/41526553/can-async-write-cause-segmentation-fault-when-this-is-deleted
 	std::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket> >
@@ -80,12 +86,13 @@ private:
 	std::shared_ptr<boost::asio::ip::tcp::socket>
 	  m_nonsecuresocket;
 
-	boost::asio::streambuf m_requestBuffer;
-	boost::asio::streambuf m_responseBuffer;
+	boost::asio::streambuf m_sendBuffer;
+	boost::asio::streambuf m_recvBuffer;
+	int m_recvBufferSize = 1024;
 
+	boost::asio::deadline_timer m_conntimer;
 	boost::asio::deadline_timer m_worktimer;
 	boost::asio::deadline_timer m_responsetimer;
-	boost::asio::deadline_timer m_hashrate_event;
 	bool m_response_pending = false;
 
 	boost::asio::ip::tcp::resolver m_resolver;
@@ -101,7 +108,4 @@ private:
 	bool m_submit_hashrate = false;
 	string m_submit_hashrate_id;
 
-	void processExtranonce(std::string& enonce);
-
-	bool m_linkdown = true;
 };
