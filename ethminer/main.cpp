@@ -14,11 +14,6 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file main.cpp
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- * Ethereum client.
- */
 
 #include <thread>
 #include <fstream>
@@ -56,8 +51,8 @@ void help()
 void version()
 {
     auto* bi = ethminer_get_buildinfo();
-    cout << "ethminer version " << bi->project_version << "+git." << string(bi->git_commit_hash).substr(0, 7) << endl;
-    cout << "Build: " << bi->system_name << "/" << bi->build_type << "/" << bi->compiler_id << endl;
+    cout << "ethminer " << bi->project_version << "\nBuild: " << bi->system_name << "/"
+         << bi->build_type << "/" << bi->compiler_id << "\n";
     exit(0);
 }
 
