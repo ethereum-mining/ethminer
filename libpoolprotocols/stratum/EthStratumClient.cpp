@@ -164,6 +164,9 @@ void EthStratumClient::connect()
 
 void EthStratumClient::disconnect()
 {
+	if (!m_connected.load(std::memory_order_relaxed))
+		return;
+
 	m_worktimer.cancel();
 	m_responsetimer.cancel();
 	m_response_pending = false;
