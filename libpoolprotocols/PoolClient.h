@@ -5,6 +5,7 @@
 #include <libethcore/Farm.h>
 #include <libethcore/Miner.h>
 #include <libpoolprotocols/PoolURI.h>
+#include <queue>
 
 using namespace std;
 
@@ -30,7 +31,7 @@ namespace dev
 			string User() const { return m_user; };
 			string Pass() const { return m_pass; };
 			SecureLevel SecLevel() const { return m_secLevel; };
-			boost::asio::ip::address Address() const { return m_address; };
+			
 			unsigned Version() const { return m_version; };
 
 			void Host(string host) { m_host = host; };
@@ -39,10 +40,10 @@ namespace dev
 			void User(string user) { m_user = user; };
 			void Pass(string pass) { m_pass = pass; };
 			void SecLevel(SecureLevel secLevel) { m_secLevel = secLevel; };
-			void Address(boost::asio::ip::address address) { m_address = address; };
 			void Version(unsigned version) { m_version = version; };
 
 		private:
+
 			// Normally we'd replace the following with a single URI variable
 			// But URI attributes are read only, and to support legacy parameters
 			// we need to update these connection attributes individually.
@@ -53,8 +54,7 @@ namespace dev
 			SecureLevel m_secLevel = SecureLevel::NONE;
 			unsigned m_version = 0;
 		    string m_path;
-
-			boost::asio::ip::address m_address;
+						
 		};
 
 		class PoolClient
@@ -72,6 +72,7 @@ namespace dev
 			virtual void submitHashrate(string const & rate) = 0;
 			virtual void submitSolution(Solution solution) = 0;
 			virtual bool isConnected() = 0;
+			virtual string ActiveEndPoint() = 0;
 
 			using SolutionAccepted = std::function<void(bool const&)>;
 			using SolutionRejected = std::function<void(bool const&)>;
@@ -88,8 +89,10 @@ namespace dev
 		protected:
 			bool m_authorized = false;
 			bool m_connected = false;
-			PoolConnection m_conn;
 			bool m_connection_changed = false;
+			boost::asio::ip::tcp::endpoint m_endpoint;
+
+			PoolConnection m_conn;
 
 			SolutionAccepted m_onSolutionAccepted;
 			SolutionRejected m_onSolutionRejected;

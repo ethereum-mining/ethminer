@@ -21,6 +21,7 @@ public:
 	void disconnect() override;
 
 	bool isConnected() override { return m_connected; }
+	string ActiveEndPoint() { return ""; };
 
 	void submitHashrate(string const & rate) override;
 	void submitSolution(Solution solution) override;
