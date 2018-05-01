@@ -17,11 +17,12 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include "ethash_cuda_miner_kernel.h"
-
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
+#include <libprogpow/ProgPow.h>
+#include <cuda.h>
+#include "CUDAMiner_cuda.h"
 
 #include <functional>
 
@@ -53,6 +54,8 @@ private:
 
     void workLoop() override;
 
+    CUmodule m_module;
+    CUfunction m_kernel;
     std::vector<volatile Search_results*> m_search_buf;
     std::vector<cudaStream_t> m_streams;
     uint64_t m_current_target = 0;
@@ -64,6 +67,9 @@ private:
 
     uint64_t m_allocated_memory_dag = 0; // dag_size is a uint64_t in EpochContext struct
     size_t m_allocated_memory_light_cache = 0;
+
+    void compileKernel(uint64_t block_number, uint64_t dag_words);
+
 };
 
 
