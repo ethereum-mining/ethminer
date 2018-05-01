@@ -149,7 +149,12 @@ void PoolManager::workLoop()
 			std::string h = toHex(toCompactBigEndian(mp.rate(), 1));
 			std::string res = h[0] != '0' ? h : h.substr(1);
 
-			p_client->submitHashrate("0x" + res);
+			// Should be 32 bytes
+			// https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_submithashrate
+			std::ostringstream ss;
+			ss << std::setw(64) << std::setfill('0') << res;
+
+			p_client->submitHashrate("0x" + ss.str());
 			m_hashrateReportingTimePassed = 0;
 		}
 	}

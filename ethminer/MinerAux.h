@@ -961,6 +961,13 @@ private:
 			mgr.addConnection(m_endpoints[i]);
 		}
 
+		// If we are in simulation mode we add a fake connection
+		if (m_mode == OperationMode::Simulation) {
+			PoolConnection con(URI("http://-:0"));
+			mgr.clearConnections();
+			mgr.addConnection(con);
+		}
+
 #if API_CORE
 		Api api(this->m_api_port, f);
 #endif

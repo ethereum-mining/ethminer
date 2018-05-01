@@ -31,7 +31,11 @@ public:
 	void disconnect();
 	
 	// Connected and Connection Statuses
-	bool isConnected() { return m_connected.load(std::memory_order_relaxed); }
+	bool isConnected()
+	{
+		return m_connected.load(std::memory_order_relaxed) &&
+				!m_disconnecting.load(std::memory_order_relaxed);
+	}
 	bool isSubscribed() { return m_subscribed.load(std::memory_order_relaxed); }
 	bool isAuthorized() { return m_authorized.load(std::memory_order_relaxed); }
 	string ActiveEndPoint() { return " [" + toString(m_endpoint) + "]"; };
@@ -57,19 +61,25 @@ private:
 
 	void recvSocketData();
 	void onRecvSocketDataCompleted(const boost::system::error_code& ec, std::size_t bytes_transferred);
-	void sendSocketData(string const & data);
+	void sendSocketData(Json::Value const & jReq);
 	void onSendSocketDataCompleted(const boost::system::error_code& ec);
 
 
-	string m_worker; // eth-proxy only;
+	string m_worker; // eth-proxy only; No ! It's for all !!!
 
 	std::atomic<bool> m_subscribed = { false };
 	std::atomic<bool> m_authorized = { false };
 	std::atomic<bool> m_connected = { false };
 	std::atomic<bool> m_disconnecting = { false };
 
-	int m_worktimeout = 60;
+	// Fixed 120 seconds to trigger a work_timeout
+	int m_worktimeout = 120;
 	
+	// Fixed 2 seconds timeout for a response to a submission of solution
+	int m_responsetimeout = 2;
+
+	// Fixed 3 seconds timeout for a connection attempt
+	int m_conntimeout = 3;
 
 	WorkPackage m_current;
 
@@ -88,6 +98,7 @@ private:
 
 	boost::asio::streambuf m_sendBuffer;
 	boost::asio::streambuf m_recvBuffer;
+	Json::FastWriter m_jWriter;
 	int m_recvBufferSize = 1024;
 
 	boost::asio::deadline_timer m_conntimer;
