@@ -31,7 +31,7 @@ public:
 	void disconnect();
 	
 	// Connected and Connection Statuses
-	bool isConnected() { return m_connected.load(std::memory_order_relaxed); }
+	bool isConnected() { return (m_disconnecting.load(std::memory_order_relaxed) ? false : m_connected.load(std::memory_order_relaxed)); }
 	bool isSubscribed() { return m_subscribed.load(std::memory_order_relaxed); }
 	bool isAuthorized() { return m_authorized.load(std::memory_order_relaxed); }
 	string ActiveEndPoint() { return " [" + toString(m_endpoint) + "]"; };
