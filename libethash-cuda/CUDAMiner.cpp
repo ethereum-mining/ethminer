@@ -299,7 +299,6 @@ unsigned CUDAMiner::s_blockSize = CUDAMiner::c_defaultBlockSize;
 unsigned CUDAMiner::s_gridSize = CUDAMiner::c_defaultGridSize;
 unsigned CUDAMiner::s_numStreams = CUDAMiner::c_defaultNumStreams;
 unsigned CUDAMiner::s_scheduleFlag = 0;
-bool CUDAMiner::s_noeval = false;
 
 bool CUDAMiner::cuda_init(
     size_t numDevices,
@@ -514,7 +513,7 @@ void CUDAMiner::search(
                     else
                     {
                         Result r = EthashAux::eval(w.epoch, w.header, nonces[i]);
-                        if (r.value < w.boundary)
+                        if (r.value <= w.boundary)
                             farm.submitProof(Solution{nonces[i], r.mixHash, w, m_new_work});
                         else
                         {

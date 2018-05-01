@@ -536,9 +536,9 @@ public:
 		}
 		else if (arg == "--cuda-streams" && i + 1 < argc)
 			m_numStreams = stol(argv[++i]);
-		else if (arg == "--cuda-noeval")
-			m_cudaNoEval = true;
 #endif
+		else if (arg == "--noeval")
+			m_noEval = true;
 		else if ((arg == "-L" || arg == "--dag-load-mode") && i + 1 < argc)
 		{
 			string mode = argv[++i];
@@ -696,6 +696,7 @@ public:
 					0,
 					m_dagLoadMode,
 					m_dagCreateDevice,
+					m_noEval,
 					m_exit
 				))
 				exit(1);
@@ -722,7 +723,7 @@ public:
 				m_cudaSchedule,
 				m_dagLoadMode,
 				m_dagCreateDevice,
-				m_cudaNoEval,
+				m_noEval,
 				m_exit
 				))
 				exit(1);
@@ -821,7 +822,7 @@ public:
 			<< "        sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device." << endl
 			<< "    --cuda-devices <0 1 ..n> Select which CUDA GPUs to mine on. Default is to use all" << endl
 			<< "    --cuda-parallel-hash <1 2 ..8> Define how many hashes to calculate in a kernel, can be scaled to achieve better performance. Default=4" << endl
-			<< "    --cuda-noeval  bypass host software re-evaluation of GPU solutions." << endl
+			<< "    --noeval  bypass host software re-evaluation of GPU solutions." << endl
 			<< "        This will trim some milliseconds off the time it takes to send a result to the pool." << endl
 			<< "        Use at your own risk! If GPU generates errored results they WILL be forwarded to the pool" << endl
 			<< "        Not recommended at high overclock." << endl
@@ -1009,9 +1010,9 @@ private:
 	unsigned m_cudaSchedule = 4; // sync
 	unsigned m_cudaGridSize = CUDAMiner::c_defaultGridSize;
 	unsigned m_cudaBlockSize = CUDAMiner::c_defaultBlockSize;
-	bool m_cudaNoEval = false;
 	unsigned m_parallelHash    = 4;
 #endif
+	bool m_noEval = false;
 	unsigned m_dagLoadMode = 0; // parallel
 	unsigned m_dagCreateDevice = 0;
 	bool m_exit = false;

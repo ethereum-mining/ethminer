@@ -266,12 +266,17 @@ typedef union {
     uint16  uint16s[200 / sizeof(uint16)];
 } hash200_t;
 
+typedef struct {
+    unsigned count;
+    unsigned gid;
+    ulong mix[4];
+} search_results;
 
 #if PLATFORM != OPENCL_PLATFORM_NVIDIA // use maxrregs on nv
 __attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
 #endif
 __kernel void ethash_search(
-    __global volatile uint* restrict g_output,
+    __global volatile search_results* restrict g_output,
     __constant hash32_t const* g_header,
     __global hash128_t const* g_dag,
     ulong start_nonce,
@@ -400,6 +405,12 @@ __kernel void ethash_search(
     }
  #endif
 
+    ulong mixhash[4];
+    mixhash[0] = state[8];
+    mixhash[1] = state[9];
+    mixhash[2] = state[10];
+    mixhash[3] = state[11];
+
     for (uint i = 13; i != 25; ++i) {
         state[i] = 0;
     }
@@ -411,8 +422,13 @@ __kernel void ethash_search(
 
     if (as_ulong(as_uchar8(state[0]).s76543210) > target)
 		return;
-    uint slot = min(MAX_OUTPUTS, atomic_inc(&g_output[0]) + 1);
-    g_output[slot] = gid;
+    if (atomic_inc(&g_output->count))
+        return;
+    g_output->gid = gid;
+    g_output->mix[0] = mixhash[0];
+    g_output->mix[1] = mixhash[1];
+    g_output->mix[2] = mixhash[2];
+    g_output->mix[3] = mixhash[3];
 }
 
 __kernel void ethash_calculate_dag_item(uint start, __global hash64_t const* g_light, __global hash64_t * g_dag, uint isolate)
