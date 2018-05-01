@@ -368,7 +368,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 			m_worker = m_conn.User().substr(p + 1);
 		else
 			// Some marketing ?
-			m_worker = ("ethminer " + toString(ethminer_get_buildinfo()->project_version));
+			m_worker = "ethminer " + std::string(ethminer_get_buildinfo()->project_version);
 
 		switch (m_conn.Version()) {
 
@@ -390,7 +390,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 
 			case EthStratumClient::ETHEREUMSTRATUM:
 
-				jReq["params"].append("ethminer " + toString(ethminer_get_buildinfo()->project_version));
+				jReq["params"].append("ethminer " + std::string(ethminer_get_buildinfo()->project_version));
 				jReq["params"].append("EthereumStratum/1.0.0");
 
 				break;
@@ -673,9 +673,18 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						processExtranonce(enonce);
 					}
 
+					// Notify we're ready for extra nonce subscribtion on the fly
+					// reply to this message should not perform any logic
 					jReq["id"] = unsigned(2);
 					jReq["method"] = "mining.extranonce.subscribe";
 					jReq["params"] = Json::Value(Json::arrayValue);
+					sendSocketData(jReq);
+
+					// Eventually request authorization
+					jReq["id"] = unsigned(3);
+					jReq["method"] = "mining.authorize";
+					jReq["params"].append(m_conn.User());
+					jReq["params"].append(m_conn.Pass());
 
 				}
 
@@ -688,14 +697,15 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 		case 2:
 
-			// ETHEREUMSTRATUM *after* first mining.extranonce.subscribe
-			jReq["id"] = unsigned(3);
-			jReq["jsonrpc"] = "2.0";
-			jReq["method"] = "mining.authorize";
-			jReq["params"] = Json::Value(Json::arrayValue);
-			jReq["params"].append(m_conn.User());
-			jReq["params"].append(m_conn.Pass());
-			sendSocketData(jReq);
+			// This is the reponse to mining.extranonce.subscribe
+			// according to this 
+			// https://github.com/nicehash/Specifications/blob/master/NiceHash_extranonce_subscribe_extension.txt
+			// In all cases, client does not perform any logic when receiving back these replies.
+			// With mining.extranonce.subscribe subscription, client should handle extranonce1
+			// changes correctly
+
+			// Nothing to do here.
+
 			break;
 
 		case 3:
@@ -795,7 +805,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 	}
 
 
-	// Handle unsolicited requests FROM pool
+	// Handle unsolicited messages FROM pool 
+	// AKA notifications
 	if (_isNotification) {
 
 		Json::Value jReq;
