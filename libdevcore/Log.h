@@ -49,6 +49,7 @@ void simpleDebugOut(std::string const&);
 /// The logging system's current verbosity.
 extern int g_logVerbosity;
 extern bool g_useColor;
+extern bool g_syslog;
 
 class ThreadContext
 {
