@@ -127,9 +127,6 @@ private:
 
 	static unsigned s_numInstances;
 	static vector<int> s_devices;
-
-	static bool s_noeval;
-
 };
 
 

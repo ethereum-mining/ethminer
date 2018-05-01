@@ -274,6 +274,13 @@ CLMiner::~CLMiner()
     kick_miner();
 }
 
+
+typedef struct {
+    unsigned count;
+    unsigned gid;
+    unsigned mix[8];
+} search_results;
+
 void CLMiner::workLoop()
 {
     // Memory for zero-ing buffers. Cannot be static because crashes on macOS.
@@ -341,15 +348,12 @@ void CLMiner::workLoop()
             }
 
             // Read results.
-            // TODO: could use pinned host pointer instead.
-            uint32_t results[c_maxSearchResults + 1];
+			search_results results;
+
             m_queue.enqueueReadBuffer(m_searchBuffer, CL_TRUE, 0, sizeof(results), &results);
 
-            uint64_t nonce = 0;
-            if (results[0] > 0)
+            if (results.count)
             {
-                // Ignore results except the first one.
-                nonce = current.startNonce + results[1];
                 // Reset search buffer if any solution found.
                 m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(c_zero), &c_zero);
             }
@@ -359,14 +363,21 @@ void CLMiner::workLoop()
             m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
 
             // Report results while the kernel is running.
-            // It takes some time because ethash must be re-evaluated on CPU.
-            if (nonce != 0) {
-                Result r = EthashAux::eval(current.epoch, current.header, nonce);
-                if (r.value < current.boundary)
-                    farm.submitProof(Solution{nonce, r.mixHash, current, current.header != w.header});
+            if (results.count) {
+                uint64_t nonce = current.startNonce + results.gid;
+                if (!s_noeval) {
+                    Result r = EthashAux::eval(current.epoch, current.header, nonce);
+                    if (r.value <= current.boundary)
+                        farm.submitProof(Solution{nonce, r.mixHash, current, current.header != w.header});
+                    else {
+                        farm.failedSolution();
+                        cwarn << "GPU gave incorrect result!";
+                    }
+                }
                 else {
-                    farm.failedSolution();
-                    cwarn << "FAILURE: GPU gave incorrect result!";
+                    h256 mix;
+                    memcpy(mix.data(), results.mix, sizeof(results.mix));
+                    farm.submitProof(Solution{nonce, mix, current, current.header != w.header});
                 }
             }
 
@@ -450,8 +461,10 @@ void CLMiner::listDevices()
 }
 
 bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
-    unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice, bool _exit)
+    unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice,
+	bool _noeval, bool _exit)
 {
+	s_noeval = _noeval;
     s_dagLoadMode = _dagLoadMode;
     s_dagCreateDevice = _dagCreateDevice;
     s_exit = _exit;
@@ -677,7 +690,7 @@ bool CLMiner::init(int epoch)
 
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");
-        m_searchBuffer = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_maxSearchResults + 1) * sizeof(uint32_t));
+        m_searchBuffer = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, sizeof(search_results));
 
         const auto workItems = dagNumItems * 2;  // GPU computes partial 512-bit DAG items.
         uint32_t fullRuns = workItems / m_globalWorkSize;

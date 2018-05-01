@@ -284,11 +284,17 @@ typedef union {
 	uint  uints[16];
 } compute_hash_share;
 
+typedef struct {
+    unsigned count;
+    unsigned gid;
+    ulong mix[4];
+} search_results;
+
 #if PLATFORM != OPENCL_PLATFORM_NVIDIA // use maxrregs on nv
 __attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
 #endif
 __kernel void ethash_search(
-	__global volatile uint* restrict g_output,
+	__global volatile search_results* restrict g_output,
 	__constant hash32_t const* g_header,
 	__global hash128_t const* g_dag,
 	ulong start_nonce,
@@ -364,6 +370,12 @@ __kernel void ethash_search(
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
 
+    ulong mixhash[4];
+    mixhash[0] = state[8];
+    mixhash[1] = state[9];
+    mixhash[2] = state[10];
+    mixhash[3] = state[11];
+
 	for (uint i = 13; i != 25; ++i)
 	{
 		state[i] = 0;
@@ -374,10 +386,15 @@ __kernel void ethash_search(
 	// keccak_256(keccak_512(header..nonce) .. mix);
 	keccak_f1600_no_absorb((uint2*)state, 1, isolate);
 
-	if (as_ulong(as_uchar8(state[0]).s76543210) > target)
-		return;
-	uint slot = min(MAX_OUTPUTS, atomic_inc(&g_output[0]) + 1);
-	g_output[slot] = gid;
+    if (as_ulong(as_uchar8(state[0]).s76543210) > target)
+        return;
+    if (atomic_inc(&g_output->count))
+        return;
+    g_output->gid = gid;
+    g_output->mix[0] = mixhash[0];
+    g_output->mix[1] = mixhash[1];
+    g_output->mix[2] = mixhash[2];
+    g_output->mix[3] = mixhash[3];
 }
 
 static void SHA3_512(uint2* s, uint isolate)

@@ -61,7 +61,7 @@ public:
 	static void listDevices();
     static bool configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
         unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice,
-        bool _exit);
+        bool _noeval, bool _exit);
     static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
 	static void setThreadsPerHash(unsigned _threadsPerHash){s_threadsPerHash = _threadsPerHash; }
 	static void setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount)
