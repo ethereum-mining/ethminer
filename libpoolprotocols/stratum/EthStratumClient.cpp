@@ -168,7 +168,9 @@ void EthStratumClient::connect()
 void EthStratumClient::disconnect()
 {
 	// Prevent unnecessary recursion
-	if (m_disconnecting.load(std::memory_order::memory_order_relaxed)) {
+	if (
+		m_disconnecting.load(std::memory_order::memory_order_relaxed) || 
+		!m_connected.load(std::memory_order::memory_order_relaxed)) {
 		return;
 	}
 	else {
@@ -885,7 +887,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 							m_current.header = h256(sHeaderHash);
 							m_current.seed = h256(sSeedHash);
-		                          m_current.boundary = h256(sShareTarget);
+							m_current.boundary = h256(sShareTarget);
 							m_current.job = h256(job);
 
 							if (m_onWorkReceived) {
