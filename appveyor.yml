@@ -6,7 +6,7 @@ branches:
     - /release.*/
     - appveyor
     - hunter
-clone_depth: 1
+clone_depth: 100
 os: Visual Studio 2015
 configuration:
   - Release
