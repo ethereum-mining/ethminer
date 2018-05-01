@@ -962,6 +962,7 @@ void EthStratumClient::response_timeout_handler(const boost::system::error_code&
 
 	if (!ec) {
 		if (isConnected()) {
+			cwarn << "No response received in" << m_responsetimeout << "seconds.";
 			disconnect();
 		}
 	}
