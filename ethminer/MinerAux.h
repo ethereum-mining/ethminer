@@ -536,6 +536,8 @@ public:
 		}
 		else if (arg == "--cuda-streams" && i + 1 < argc)
 			m_numStreams = stol(argv[++i]);
+		else if (arg == "--cuda-noeval")
+			m_noEval = true;
 #endif
 		else if (arg == "--noeval")
 			m_noEval = true;
