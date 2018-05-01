@@ -16,6 +16,10 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <libethcore/Farm.h>
+#include "CUDAMiner.h"
+#include "CUDAMiner_kernel.h"
+#include <nvrtc.h>
+
 #include <ethash/ethash.hpp>
 
 #include "CUDAMiner.h"
@@ -80,37 +84,41 @@ bool CUDAMiner::init(int epoch)
                        to_string(device_props.minor) + ")";
 
         const auto& context = ethash::get_global_epoch_context(epoch);
-        const auto lightNumItems = context.light_cache_num_items;
-        const auto lightSize = ethash::get_light_cache_size(lightNumItems);
-        const auto dagNumItems = context.full_dataset_num_items;
-        const auto dagSize = ethash::get_full_dataset_size(dagNumItems);
+        const auto lightWords = context.light_cache_num_items;
+        const auto lightSize = ethash::get_light_cache_size(lightWords);
+        const auto dagWords = context.full_dataset_num_items;
+        const auto dagBytes = ethash::get_full_dataset_size(dagWords);
 
         CUDA_SAFE_CALL(cudaSetDevice(m_device_num));
         cudalog << "Set Device to current";
-        if (dagNumItems != m_dag_size || !m_dag)
+        if (dagWords != m_dag_words || !m_dag)
         {
             // Check whether the current device has sufficient memory every time we recreate the dag
-            if (device_props.totalGlobalMem < dagSize)
+            if (device_props.totalGlobalMem < dagBytes)
             {
                 cudalog << "CUDA device " << string(device_props.name)
                         << " has insufficient GPU memory. "
                         << FormattedMemSize(device_props.totalGlobalMem) << " of memory found, "
-                        << FormattedMemSize(dagSize) << " of memory required";
+                        << FormattedMemSize(dagBytes) << " of memory required";
                 return false;
             }
             // We need to reset the device and recreate the dag
             cudalog << "Resetting device";
             CUDA_SAFE_CALL(cudaDeviceReset());
-            CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
-            CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+            CUdevice device;
+            CUcontext context;
+            cuDeviceGet(&device, m_device_num);
+            cuCtxCreate(&context, s_scheduleFlag, device);
             // We need to reset the light and the Dag for the following code to reallocate
             // since cudaDeviceReset() frees all previous allocated memory
             m_light[m_device_num] = nullptr;
             m_dag = nullptr;
         }
         // create buffer for cache
-        hash128_t* dag = m_dag;
+        hash64_t * dag = m_dag;
         hash64_t* light = m_light[m_device_num];
+
+        compileKernel(_light->block_number, dagWords);
 
         if (!light)
         {
@@ -122,12 +130,10 @@ bool CUDAMiner::init(int epoch)
             cudaMemcpyHostToDevice));
         m_light[m_device_num] = light;
 
-        if (dagNumItems != m_dag_size || !dag)  // create buffer for dag
-            CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
+        if (dagWords != m_dag_words || !dag)  // create buffer for dag
+            CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagBytes));
 
-        set_constants(dag, dagNumItems, light, lightNumItems);  // in ethash_cuda_miner_kernel.cu
-
-        if (dagNumItems != m_dag_size || !dag)
+        if (dagWords != m_dag_words || !dag)
         {
             // create mining buffers
             cudalog << "Generating mining buffers";
@@ -144,12 +150,12 @@ bool CUDAMiner::init(int epoch)
                 if ((m_device_num == s_dagCreateDevice) || (s_dagLoadMode != DAG_LOAD_MODE_SINGLE))
                 {
                     cudalog << "Generating DAG for GPU #" << m_device_num
-                            << " with dagSize: " << FormattedMemSize(dagSize) << " ("
-                            << FormattedMemSize(device_props.totalGlobalMem - dagSize - lightSize)
+                            << " with dagBytes: " << FormattedMemSize(dagBytes) << " ("
+                            << FormattedMemSize(device_props.totalGlobalMem - dagBytes - lightSize)
                             << " left)";
                     auto startDAG = std::chrono::steady_clock::now();
 
-                    ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0]);
+                    ethash_generate_dag(dag, dagBytes, light, lightWords, s_gridSize, s_blockSize, m_streams[0], m_device_num);
 
                     cudalog << "Generated DAG for GPU" << m_device_num << " in: "
                             << std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -159,9 +165,9 @@ bool CUDAMiner::init(int epoch)
 
                     if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
                     {
-                        uint8_t* memoryDAG = new uint8_t[dagSize];
+                        uint8_t* memoryDAG = new uint8_t[dagBytes];
                         cudalog << "Copying DAG from GPU #" << m_device_num << " to host";
-                        CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize,
+                        CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagBytes,
                             cudaMemcpyDeviceToHost));
 
                         s_dagInHostMemory = memoryDAG;
@@ -180,12 +186,12 @@ bool CUDAMiner::init(int epoch)
                 cudalog << "Copying DAG from host to GPU #" << m_device_num;
                 const void* hdag = (const void*)s_dagInHostMemory;
                 CUDA_SAFE_CALL(cudaMemcpy(
-                    reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
+                    reinterpret_cast<void*>(dag), hdag, dagBytes, cudaMemcpyHostToDevice));
             }
         }
 
         m_dag = dag;
-        m_dag_size = dagNumItems;
+        m_dag_words = dagWords;
 
         s_dagLoadIndex++;
 
@@ -199,6 +205,12 @@ bool CUDAMiner::init(int epoch)
                 cnote << "Freeing DAG from host";
             }
         }
+    }
+    catch (cuda_runtime_error const& _e)
+    {
+        cwarn << "Fatal GPU error: " << _e.what();
+        cwarn << "Terminating.";
+        exit(-1);
     }
     catch (std::runtime_error const& _e)
     {
@@ -335,8 +347,8 @@ void CUDAMiner::listDevices()
     }
 }
 
-unsigned const CUDAMiner::c_defaultBlockSize = 128;
-unsigned const CUDAMiner::c_defaultGridSize = 8192;  // * CL_DEFAULT_LOCAL_WORK_SIZE
+unsigned const CUDAMiner::c_defaultBlockSize = 512;
+unsigned const CUDAMiner::c_defaultGridSize = 1024; // * CL_DEFAULT_LOCAL_WORK_SIZE
 unsigned const CUDAMiner::c_defaultNumStreams = 2;
 
 bool CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
@@ -385,8 +397,15 @@ bool CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _
         }
         return true;
     }
-    catch (runtime_error)
+    catch (cuda_runtime_error const& _e)
     {
+        cwarn << "Fatal GPU error: " << _e.what();
+        cwarn << "Terminating.";
+        exit(-1);
+    }
+    catch (std::runtime_error const& _e)
+    {
+        cwarn << "Error CUDA mining: " << _e.what();
         if (s_exit)
             exit(1);
         return false;
@@ -400,17 +419,109 @@ void CUDAMiner::setParallelHash(unsigned _parallelHash)
     m_parallelHash = _parallelHash;
 }
 
+#include <iostream>
+#include <fstream>
+
+void CUDAMiner::compileKernel(
+    uint64_t block_number,
+    uint64_t dag_words)
+{
+    const char* name = "progpow_search";
+
+    std::string text = ProgPow::getKern(block_number, ProgPow::KERNEL_CUDA);
+    text += std::string(CUDAMiner_kernel, sizeof(CUDAMiner_kernel));
+
+    ofstream write;
+    write.open("kernel.cu");
+    write << text;
+    write.close();
+
+    nvrtcProgram prog;
+    NVRTC_SAFE_CALL(
+        nvrtcCreateProgram(
+            &prog,         // prog
+            text.c_str(),  // buffer
+            "kernel.cu",    // name
+            0,             // numHeaders
+            NULL,          // headers
+            NULL));        // includeNames
+
+    NVRTC_SAFE_CALL(nvrtcAddNameExpression(prog, name));
+    cudaDeviceProp device_props;
+    CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, m_device_num));
+    std::string op_arch = "--gpu-architecture=compute_" + to_string(device_props.major) + to_string(device_props.minor);
+    std::string op_dag = "-DPROGPOW_DAG_WORDS=" + to_string(dag_words);
+
+    const char *opts[] = {
+        op_arch.c_str(),
+        op_dag.c_str(),
+        "-lineinfo"
+    };
+    nvrtcResult compileResult = nvrtcCompileProgram(
+        prog,  // prog
+        3,     // numOptions
+        opts); // options
+    // Obtain compilation log from the program.
+    size_t logSize;
+    NVRTC_SAFE_CALL(nvrtcGetProgramLogSize(prog, &logSize));
+    char *log = new char[logSize];
+    NVRTC_SAFE_CALL(nvrtcGetProgramLog(prog, log));
+    cudalog << "Compile log: " << log;
+    delete[] log;
+    NVRTC_SAFE_CALL(compileResult);
+    // Obtain PTX from the program.
+    size_t ptxSize;
+    NVRTC_SAFE_CALL(nvrtcGetPTXSize(prog, &ptxSize));
+    char *ptx = new char[ptxSize];
+    NVRTC_SAFE_CALL(nvrtcGetPTX(prog, ptx));
+    write.open("kernel.ptx");
+    write << ptx;
+    write.close();
+    // Load the generated PTX and get a handle to the kernel.
+    char *jitInfo = new char[32 * 1024];
+    char *jitErr = new char[32 * 1024];
+    CUjit_option jitOpt[] = {
+        CU_JIT_INFO_LOG_BUFFER,
+        CU_JIT_ERROR_LOG_BUFFER,
+        CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES,
+        CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES,
+        CU_JIT_LOG_VERBOSE,
+        CU_JIT_GENERATE_LINE_INFO
+    };
+    void *jitOptVal[] = {
+        jitInfo,
+        jitErr,
+        (void*)(32 * 1024),
+        (void*)(32 * 1024),
+        (void*)(1),
+        (void*)(1)
+    };
+    CU_SAFE_CALL(cuModuleLoadDataEx(&m_module, ptx, 6, jitOpt, jitOptVal));
+    cudalog << "JIT info: \n" << jitInfo;
+    cudalog << "JIT err: \n" << jitErr;
+    delete[] ptx;
+    delete[] jitInfo;
+    delete[] jitErr;
+    // Find the mangled name
+    const char* mangledName;
+    NVRTC_SAFE_CALL(nvrtcGetLoweredName(prog, name, &mangledName));
+    cudalog << "Mangled name: " << mangledName;
+    CU_SAFE_CALL(cuModuleGetFunction(&m_kernel, m_module, mangledName));
+    cudalog << "done compiling";
+    // Destroy the program.
+    NVRTC_SAFE_CALL(nvrtcDestroyProgram(&prog));
+}
 
 void CUDAMiner::search(
     uint8_t const* header, uint64_t target, uint64_t current_nonce, const dev::eth::WorkPackage& w)
 {
     uint64_t stream_nonce;
-    set_header(*reinterpret_cast<hash32_t const*>(header));
     if (m_current_target != target)
     {
-        set_target(target);
         m_current_target = target;
     }
+
+    hash32_t current_header = *reinterpret_cast<hash32_t const *>(header);
 
     // Nonces processed in one pass by a single stream
     const uint32_t batch_size = s_gridSize * s_blockSize;
@@ -428,7 +539,13 @@ void CUDAMiner::search(
         buffer.count = 0;
 
         // Run the batch for this stream
-        run_ethash_search(s_gridSize, s_blockSize, stream, &buffer, stream_nonce, m_parallelHash);
+        void *args[] = {&current_nonce, &current_header, &m_current_target, &m_dag, &buffer};
+        CU_SAFE_CALL(cuLaunchKernel(m_kernel,
+            s_gridSize, 1, 1,   // grid dim
+            s_blockSize, 1, 1,  // block dim
+            0,                  // shared mem
+            stream,             // stream
+            args, 0));          // arguments
     }
 
     // process stream batches until we get new work.
@@ -497,8 +614,13 @@ void CUDAMiner::search(
             // unless we are done for this round.
             if (!done)
             {
-                run_ethash_search(
-                    s_gridSize, s_blockSize, stream, &buffer, stream_nonce + streams_batch_size, m_parallelHash);
+                void *args[] = {&current_nonce, &current_header, &m_current_target, &m_dag, &buffer};
+                CU_SAFE_CALL(cuLaunchKernel(m_kernel,
+                    s_gridSize, 1, 1,   // grid dim
+                    s_blockSize, 1, 1,  // block dim
+                    0,                  // shared mem
+                    stream,             // stream
+                    args, 0));          // arguments
             }
 
             found_count = save_buf.count;

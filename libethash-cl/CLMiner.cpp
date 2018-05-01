@@ -6,6 +6,8 @@
 #include <boost/dll.hpp>
 
 #include <libethcore/Farm.h>
+#include "CLMiner.h"
+#include "CLMiner_kernel.h"
 #include <ethash/ethash.hpp>
 
 #include "CLMiner.h"
@@ -682,21 +684,26 @@ bool CLMiner::init(int epoch)
         const auto& context = ethash::get_global_epoch_context(epoch);
         const auto lightNumItems = context.light_cache_num_items;
         const auto lightSize = ethash::get_light_cache_size(lightNumItems);
+        const auto lightWords = ethash::get_light_cache_num_items(context);
         m_dagItems = context.full_dataset_num_items;
-        const auto dagSize = ethash::get_full_dataset_size(m_dagItems);
+        const auto dagBytes = ethash::get_full_dataset_size(m_dagItems);
+        const auto lightRef = ethash::managed::get_light_cache_data(epoch);
+        uint32_t dagWords = (unsigned)(dagBytes / ETHASH_MIX_BYTES);
 
         // patch source code
         // note: The kernels here are simply compiled version of the respective .cl kernels
         // into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
         // See libethash-cl/CMakeLists.txt: add_custom_command()
         // TODO: Just use C++ raw string literal.
-        string code;
 
-        cllog << "OpenCL kernel";
-        code = string(ethash_cl, ethash_cl + sizeof(ethash_cl));
+        std::string code = ProgPow::getKern(light->light->block_number, ProgPow::KERNEL_CL);
+        code += string(CLMiner_kernel, sizeof(CLMiner_kernel));
 
         addDefinition(code, "WORKSIZE", m_workgroupSize);
-        addDefinition(code, "ACCESSES", 64);
+        addDefinition(code, "GROUP_SIZE", m_workgroupSize);
+        addDefinition(code, "LIGHT_WORDS", lightWords);
+        addDefinition(code, "PROGPOW_DAG_BYTES", dagBytes);
+        addDefinition(code, "PROGPOW_DAG_WORDS", dagWords);
         addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
         addDefinition(code, "PLATFORM", platformId);
         addDefinition(code, "COMPUTE", computeCapability);
@@ -789,10 +796,10 @@ bool CLMiner::init(int epoch)
         // check whether the current dag fits in memory everytime we recreate the DAG
         cl_ulong result = 0;
         m_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
-        if (result < dagSize)
+        if (result < dagBytes)
         {
             cnote << "OpenCL device " << device_name << " has insufficient GPU memory."
-                  << FormattedMemSize(result) << " of memory found, " << FormattedMemSize(dagSize)
+                  << FormattedMemSize(result) << " of memory found, " << FormattedMemSize(dagBytes)
                   << " of memory required";
             return false;
         }
@@ -803,10 +810,10 @@ bool CLMiner::init(int epoch)
             cllog << "Creating light cache buffer, size: " << FormattedMemSize(lightSize);
             m_light.clear();
             m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, lightSize));
-            cllog << "Creating DAG buffer, size: " << FormattedMemSize(dagSize)
-                  << ", free: " << FormattedMemSize(result - lightSize - dagSize);
+            cllog << "Creating DAG buffer, size: " << FormattedMemSize(dagBytes)
+                  << ", free: " << FormattedMemSize(result - lightSize - dagBytes);
             m_dag.clear();
-            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, dagSize));
+            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, dagBytes));
             cllog << "Loading kernels";
 
             // If we have a binary kernel to use, let's try it
@@ -870,7 +877,7 @@ bool CLMiner::init(int epoch)
         auto endDAG = std::chrono::steady_clock::now();
 
         auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(endDAG - startDAG);
-        cnote << FormattedMemSize(dagSize) << " of DAG data generated in " << dagTime.count()
+        cnote << FormattedMemSize(dagBytes) << " of DAG data generated in " << dagTime.count()
               << " ms.";
     }
     catch (cl::Error const& err)
