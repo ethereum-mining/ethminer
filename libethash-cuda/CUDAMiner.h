@@ -17,11 +17,12 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include "ethash_cuda_miner_kernel.h"
-
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
+#include <libprogpow/ProgPow.h>
+#include <cuda.h>
+#include "CUDAMiner_cuda.h"
 
 #include <functional>
 
@@ -67,11 +68,13 @@ private:
     bool init(int epoch);
 
     /// Constants on GPU
-    hash128_t* m_dag = nullptr;
+    hash64_t* m_dag = nullptr;
     std::vector<hash64_t*> m_light;
-    int m_dag_size = -1;
+    uint32_t m_dag_words = -1;
     uint32_t m_device_num = 0;
 
+    CUmodule m_module;
+    CUfunction m_kernel;
     std::vector<volatile Search_results*> m_search_buf;
     std::vector<cudaStream_t> m_streams;
     uint64_t m_current_target = 0;
@@ -89,6 +92,9 @@ private:
 
     static unsigned s_numInstances;
     static vector<int> s_devices;
+
+    void compileKernel(uint64_t block_number, uint64_t dag_words);
+
 };
 
 
