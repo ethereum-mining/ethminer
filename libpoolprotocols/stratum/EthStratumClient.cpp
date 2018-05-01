@@ -715,7 +715,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 			if (!m_authorized)
 			{
-				cnote << "Worker not authorized:" + m_conn.User();
+				cnote << "Worker not authorized" << m_conn.User() << _errReason;
 				disconnect();
 				return;
 			
