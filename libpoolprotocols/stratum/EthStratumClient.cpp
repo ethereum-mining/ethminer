@@ -245,7 +245,6 @@ void EthStratumClient::start_connect(tcp::resolver::iterator endpoint_iter)
 
 		cnote << ("Trying " + toString(endpoint_iter->endpoint()) + " ...");
 		
-		// Set timeout of 2 seconds
 		m_conntimer.expires_from_now(boost::posix_time::seconds(m_conntimeout));
 
 		// Start connecting async
@@ -963,7 +962,6 @@ void EthStratumClient::response_timeout_handler(const boost::system::error_code&
 
 	if (!ec) {
 		if (isConnected()) {
-			cwarn << "No response received in 2 seconds.";
 			disconnect();
 		}
 	}
