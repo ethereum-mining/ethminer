@@ -192,17 +192,14 @@ public:
         p.ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastStart).count();
         m_lastStart = now;
 
-        // Collect
+        // Collect & Reset
         for (auto const& i : m_miners)
         {
             uint64_t minerHashCount = i->hashCount();
+			i->resetHashCount();
             p.hashes += minerHashCount;
             p.minersHashes.push_back(minerHashCount);
         }
-
-        // Reset
-        for (auto const& i : m_miners)
-            i->resetHashCount();
 
         if (p.hashes > 0)
             m_lastProgresses.push_back(p);
