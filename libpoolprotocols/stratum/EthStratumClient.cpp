@@ -200,8 +200,8 @@ void EthStratumClient::disconnect()
 			cwarn << "Error while disconnecting:" << _e.what();
 		}
 
-		if (m_securesocket) { m_securesocket = nullptr; }
-		if (m_nonsecuresocket) { m_nonsecuresocket = nullptr; }
+		m_securesocket = nullptr;
+		m_nonsecuresocket = nullptr;
 		m_socket = nullptr;
 	}
 
