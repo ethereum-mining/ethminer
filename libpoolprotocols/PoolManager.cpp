@@ -15,7 +15,7 @@ static string diffToDisplay(double diff)
 		diff = diff / 1000.0;
 	}
 	stringstream ss;
-	ss << fixed << setprecision(4) << diff << ' ' << k[i]; 
+	ss << fixed << setprecision(2) << diff << ' ' << k[i]; 
 	return ss.str();
 }
 
