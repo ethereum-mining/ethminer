@@ -107,7 +107,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		}
 		else {
 
-			cnote << string("Nonce 0x") + toHex(sol.nonce) << "wasted. Waiting for connection ...";
+			cnote << string(EthRed "Nonce 0x") + toHex(sol.nonce) << "wasted. Waiting for connection ...";
 
 		}
 
