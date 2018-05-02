@@ -635,6 +635,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					jReq["params"].append(m_conn.User() + m_conn.Path());
 					jReq["params"].append(m_conn.Pass());
 
+
 				}
 
 				break;
@@ -774,7 +775,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 			if (!_isSuccess) {
 
-				if (!m_authorized && !m_subscribed) {
+				if (!m_subscribed) {
 
 					// Subscription pending
 					cnote << "Subscription failed:" << _errReason;
@@ -782,7 +783,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					return;
 
 				}
-				else if (m_authorized && !m_subscribed) {
+				else if (m_subscribed && !m_authorized) {
 
 					// Authorization pending
 					cnote << "Worker not authorized:" << _errReason;
