@@ -169,7 +169,9 @@ void EthStratumClient::connect()
 void EthStratumClient::disconnect()
 {
 	// Prevent unnecessary recursion
-	if (m_disconnecting.load(std::memory_order::memory_order_relaxed)) {
+	if (
+		m_disconnecting.load(std::memory_order::memory_order_relaxed) || 
+		!m_connected.load(std::memory_order::memory_order_relaxed)) {
 		return;
 	}
 	else {
@@ -181,26 +183,22 @@ void EthStratumClient::disconnect()
 	m_responsetimer.cancel();
 	m_response_pending = false;
 
-	if (m_socket && m_socket->is_open()) {
-
-		try {
+	try {
 		
-			boost::system::error_code sec;
+		boost::system::error_code sec;
 
-			if (m_conn.SecLevel() != SecureLevel::NONE) {
-				m_securesocket->shutdown(sec);
-			}
-			else {
-				m_nonsecuresocket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, sec);
-			}
-
-			m_socket->close();
-			m_io_service.stop();
+		if (m_conn.SecLevel() != SecureLevel::NONE) {
+			m_securesocket->shutdown(sec);
 		}
-		catch (std::exception const& _e) {
-			cwarn << "Error while disconnecting:" << _e.what();
+		else {
+			m_nonsecuresocket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, sec);
 		}
 
+		m_socket->close();
+		m_io_service.stop();
+	}
+	catch (std::exception const& _e) {
+		cwarn << "Error while disconnecting:" << _e.what();
 	}
 
     if (m_securesocket) { m_securesocket = nullptr; }
@@ -210,12 +208,11 @@ void EthStratumClient::disconnect()
 	m_subscribed.store(false, std::memory_order_relaxed);
 	m_authorized.store(false, std::memory_order_relaxed);
 
+	if (m_onDisconnected) { m_onDisconnected();	}
+
 	// Release locking flag and set connection status
 	m_connected.store(false, std::memory_order_relaxed);
 	m_disconnecting.store(false, std::memory_order::memory_order_relaxed);
-
-	if (m_onDisconnected) { m_onDisconnected();	}
-
 }
 
 void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)

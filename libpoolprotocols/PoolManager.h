@@ -29,12 +29,10 @@ namespace dev
 			bool isRunning() { return m_running; };
 
 		private:
-
 			unsigned m_hashrateReportingTime = 60;
 			unsigned m_hashrateReportingTimePassed = 0;
 
-			std::atomic<bool> m_running = { false };
-
+			bool m_running = false;
 			void workLoop() override;
 			unsigned m_reconnectTries = 3;
 			unsigned m_reconnectTry = 0;

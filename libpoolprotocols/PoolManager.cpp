@@ -48,8 +48,8 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 			m_farm.stop();
 		}
 
-		if (this->m_running.load(std::memory_order_relaxed)) tryReconnect();
-
+		if (m_running)
+			tryReconnect();
 	});
 	p_client->onWorkReceived([&](WorkPackage const& wp)
 	{
@@ -122,9 +122,9 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 
 void PoolManager::stop()
 {
-	if (m_running.load(std::memory_order_relaxed)) {
+	if (m_running) {
 		cnote << "Shutting down...";
-		m_running.store(false, std::memory_order_relaxed);
+		m_running = false;
 
 		if (p_client->isConnected())
 			p_client->disconnect();
@@ -139,7 +139,7 @@ void PoolManager::stop()
 
 void PoolManager::workLoop()
 {
-	while (m_running.load(std::memory_order_relaxed))
+	while (m_running)
 	{
 		this_thread::sleep_for(chrono::seconds(1));
 		m_hashrateReportingTimePassed++;
@@ -184,7 +184,7 @@ void PoolManager::clearConnections()
 void PoolManager::start()
 {
 	if (m_connections.size() > 0) {
-		m_running.store(true, std::memory_order_relaxed);
+		m_running = true;
 		startWorking();
 
 		// Try to connect to pool
@@ -198,7 +198,6 @@ void PoolManager::start()
 
 void PoolManager::tryReconnect()
 {
-
 	// No connections available, so why bother trying to reconnect
 	if (m_connections.size() <= 0) {
 		cwarn << "Manager has no connections defined!";
