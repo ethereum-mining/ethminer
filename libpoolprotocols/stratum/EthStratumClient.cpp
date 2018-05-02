@@ -374,7 +374,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 		else
 			// Some marketing ?
 			m_worker = "ethminer " + std::string(ethminer_get_buildinfo()->project_version);
-
+		
 		switch (m_conn.Version()) {
 
 			case EthStratumClient::STRATUM:
@@ -628,7 +628,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					jReq["jsonrpc"] = "2.0";
 					jReq["method"] = "mining.authorize";
 					jReq["params"] = Json::Value(Json::arrayValue);
-					jReq["params"].append(m_conn.User());
+					jReq["params"].append(m_conn.User() + m_conn.Path());
 					jReq["params"].append(m_conn.Pass());
 
 				}
