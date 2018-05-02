@@ -202,7 +202,7 @@ void EthStratumClient::disconnect()
 
 		if (m_securesocket) { m_securesocket = nullptr; }
 		if (m_nonsecuresocket) { m_nonsecuresocket = nullptr; }
-		if (m_socket) { m_socket = nullptr; }
+		m_socket = nullptr;
 	}
 
 
