@@ -374,7 +374,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 			if (p + 1 <= m_conn.User().length())
 				m_worker = m_conn.User().substr(p + 1);
 			else
-				m_worker.clear();
+				m_worker = "";
 
 		}
 		
