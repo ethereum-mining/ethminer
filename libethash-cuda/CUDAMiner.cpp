@@ -423,8 +423,6 @@ void CUDAMiner::search(
     uint64_t _startN,
     const dev::eth::WorkPackage& w)
 {
-    uint64_t current_nonce;
-
     set_header(*reinterpret_cast<hash32_t const *>(header));
     if (m_current_target != target) {
         set_target(target);
@@ -432,7 +430,7 @@ void CUDAMiner::search(
     }
 
     // choose the starting nonce
-    current_nonce = _ethStratum ? _startN : get_start_nonce();
+    uint64_t current_nonce = _ethStratum ? _startN : get_start_nonce();
 
     // clear all the stream search result buffers
     for (unsigned int i = 0; i < s_numStreams; i++)
@@ -458,15 +456,15 @@ void CUDAMiner::search(
         if (current_index >= s_numStreams)
             current_index = 0;
         cudaStream_t stream = m_streams[current_index];
-        volatile search_results* buffer = m_search_buf[current_index];
-        uint64_t nonces[SEARCH_RESULTS];
-        h256 mixes[SEARCH_RESULTS];
+        buffer = m_search_buf[current_index];
         // Wait for stream batch to complete
         CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
         // See if we got solutions in this batch
         uint32_t found_count = buffer->count;
         if (found_count) {
             buffer->count = 0;
+            uint64_t nonces[SEARCH_RESULTS];
+            h256 mixes[SEARCH_RESULTS];
             // handle the highly unlikely possibility that there are more
             // solutions found than we can handle
             if (found_count > SEARCH_RESULTS)
