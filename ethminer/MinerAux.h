@@ -775,12 +775,14 @@ public:
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 			<< "    -P URL Specify a pool URL. Can be used multiple times. The 1st for for the primary pool, and the 2nd for the failover pool." << endl
-			<< "        URL takes the form: scheme://user[:password]@hostname:port." << endl
+			<< "        URL takes the form: scheme://user[:password]@hostname:port[/emailaddress]." << endl
 			<< "        for getwork use one of the following schemes:" << endl
 			<< "          " << URI::KnownSchemes(ProtocolFamily::GETWORK) << endl
 			<< "        for stratum use one of the following schemes: "<< endl
 			<< "          " << URI::KnownSchemes(ProtocolFamily::STRATUM) << endl
-			<< "        Example: stratum+ssl://0x012345678901234567890234567890123.miner1@ethermine.org:5555" << endl
+			<< "        Example 1 : stratum+ssl://0x012345678901234567890234567890123.miner1@ethermine.org:5555" << endl
+			<< "        Example 2 : stratum1+tcp://0x012345678901234567890234567890123.miner1@nanopool.org:9999/john.doe@gmail.com" << endl
+			<< "        Example 3 : stratum1+tcp://0x012345678901234567890234567890123@nanopool.org:9999/miner1/john.doe@gmail.com" << endl
 			<< endl
 			<< "Benchmarking mode:" << endl
 			<< "    -M [<n>],--benchmark [<n>] Benchmark for mining and exit; Optionally specify block number to benchmark against specific DAG." << endl

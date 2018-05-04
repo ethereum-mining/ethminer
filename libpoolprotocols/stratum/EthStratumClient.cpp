@@ -210,11 +210,13 @@ void EthStratumClient::disconnect()
 	m_subscribed.store(false, std::memory_order_relaxed);
 	m_authorized.store(false, std::memory_order_relaxed);
 
-	if (m_onDisconnected) { m_onDisconnected();	}
-
 	// Release locking flag and set connection status
 	m_connected.store(false, std::memory_order_relaxed);
 	m_disconnecting.store(false, std::memory_order::memory_order_relaxed);
+
+	// Trigger handlers
+	if (m_onDisconnected) { m_onDisconnected();	}
+
 }
 
 void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
@@ -367,13 +369,17 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 		jReq["params"] = Json::Value(Json::arrayValue);
 
 		p = m_conn.User().find_first_of(".");
-		user = m_conn.User().substr(0, p);
-		if (p + 1 <= m_conn.User().length())
-			m_worker = m_conn.User().substr(p + 1);
-		else
-			// Some marketing ?
-			m_worker = "ethminer " + std::string(ethminer_get_buildinfo()->project_version);
+		if (p != string::npos) {
 
+			user = m_conn.User().substr(0, p);
+			if (p + 1 <= m_conn.User().length())
+				m_worker = m_conn.User().substr(p + 1);
+			else
+				m_worker.clear();
+
+		}
+		
+		
 		switch (m_conn.Version()) {
 
 			case EthStratumClient::STRATUM:
@@ -386,8 +392,8 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 
 
 				jReq["method"] = "eth_submitLogin";
-				jReq["worker"] = m_worker;
-				jReq["params"].append(user);
+				if (m_worker.length()) jReq["worker"] = m_worker;
+				jReq["params"].append(m_conn.User() + m_conn.Path());
 				if (!m_email.empty()) jReq["params"].append(m_email);
 
 				break;
@@ -627,8 +633,9 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					jReq["jsonrpc"] = "2.0";
 					jReq["method"] = "mining.authorize";
 					jReq["params"] = Json::Value(Json::arrayValue);
-					jReq["params"].append(m_conn.User());
+					jReq["params"].append(m_conn.User() + m_conn.Path());
 					jReq["params"].append(m_conn.Pass());
+
 
 				}
 
@@ -687,7 +694,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					// Eventually request authorization
 					jReq["id"] = unsigned(3);
 					jReq["method"] = "mining.authorize";
-					jReq["params"].append(m_conn.User());
+					jReq["params"].append(m_conn.User() + m_conn.Path());
 					jReq["params"].append(m_conn.Pass());
 
 				}
@@ -769,7 +776,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 			if (!_isSuccess) {
 
-				if (!m_authorized && !m_subscribed) {
+				if (!m_subscribed) {
 
 					// Subscription pending
 					cnote << "Subscription failed:" << _errReason;
@@ -777,7 +784,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					return;
 
 				}
-				else if (m_authorized && !m_subscribed) {
+				else if (m_subscribed && !m_authorized) {
 
 					// Authorization pending
 					cnote << "Worker not authorized:" << _errReason;
@@ -991,7 +998,7 @@ void EthStratumClient::submitHashrate(string const & rate) {
 	Json::Value jReq;
 	jReq["id"] = unsigned(9);
 	jReq["jsonrpc"] = "2.0";
-	jReq["worker"] = m_worker;
+	if (m_worker.length()) jReq["worker"] = m_worker;
 	jReq["method"] = "eth_submitHashrate";
 	jReq["params"] = Json::Value(Json::arrayValue);
 	jReq["params"].append(m_rate);
@@ -1025,7 +1032,7 @@ void EthStratumClient::submitSolution(Solution solution) {
 			jReq["params"].append("0x" + nonceHex);
 			jReq["params"].append("0x" + solution.work.header.hex());
 			jReq["params"].append("0x" + solution.mixHash.hex());
-			jReq["worker"] = m_worker;
+			if (m_worker.length()) jReq["worker"] = m_worker;
 
 			break;
 
@@ -1035,7 +1042,7 @@ void EthStratumClient::submitSolution(Solution solution) {
 			jReq["params"].append("0x" + nonceHex);
 			jReq["params"].append("0x" + solution.work.header.hex());
 			jReq["params"].append("0x" + solution.mixHash.hex());
-			jReq["worker"] = m_worker;
+			if (m_worker.length()) jReq["worker"] = m_worker;
 
 			break;
 
