@@ -15,7 +15,7 @@ static string diffToDisplay(double diff)
 		diff = diff / 1000.0;
 	}
 	stringstream ss;
-	ss << fixed << setprecision(4) << diff << ' ' << k[i]; 
+	ss << fixed << setprecision(2) << diff << ' ' << k[i]; 
 	return ss.str();
 }
 
@@ -89,14 +89,28 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 
 	m_farm.onSolutionFound([&](Solution sol)
 	{
-		m_submit_time = std::chrono::steady_clock::now();
+		// Solution should passthrough only if client is
+		// properly connected. Otherwise we'll have the bad behavior
+		// to log nonce submission but receive no response
 
-		if (sol.stale)
-			cnote << string(EthYellow "Stale nonce 0x") + toHex(sol.nonce);
-		else
-			cnote << string("Nonce 0x") + toHex(sol.nonce);
+		if (p_client->isConnected()) {
 
-		p_client->submitSolution(sol);
+			m_submit_time = std::chrono::steady_clock::now();
+
+			if (sol.stale)
+				cnote << string(EthYellow "Stale nonce 0x") + toHex(sol.nonce);
+			else
+				cnote << string("Nonce 0x") + toHex(sol.nonce);
+
+			p_client->submitSolution(sol);
+
+		}
+		else {
+
+			cnote << string(EthRed "Nonce 0x") + toHex(sol.nonce) << "wasted. Waiting for connection ...";
+
+		}
+
 		return false;
 	});
 	m_farm.onMinerRestart([&]() {
