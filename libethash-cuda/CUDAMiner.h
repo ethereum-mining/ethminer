@@ -99,12 +99,6 @@ private:
 
 	bool init(int epoch);
 
-	hash32_t m_current_header;
-	uint64_t m_current_target;
-	uint64_t m_current_nonce;
-	uint64_t m_starting_nonce;
-	uint64_t m_current_index;
-
 	///Constants on GPU
 	hash128_t* m_dag = nullptr;
 	std::vector<hash64_t*> m_light;
@@ -113,6 +107,7 @@ private:
 
 	volatile search_results** m_search_buf;
 	cudaStream_t  * m_streams;
+	uint64_t m_current_target;
 
 	/// The local work size for the search
 	static unsigned s_blockSize;
