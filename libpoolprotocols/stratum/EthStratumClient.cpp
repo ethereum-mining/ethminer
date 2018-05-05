@@ -477,8 +477,28 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			_id = responseObject.get("id", 0).asUInt();
 			_isSuccess = !responseObject.get("result", Json::Value::null).empty();
 			if (!_isSuccess) {
-				if (responseObject.isMember("error")) {
-					_errReason = responseObject.get("error", "Unknown error").asString();
+
+				if (responseObject.isMember("error") && !responseObject.get("error", Json::Value::null).isNull()) {
+
+					if (responseObject["error"].isConvertibleTo(Json::ValueType::stringValue)) {
+						_errReason = responseObject.get("error", "Unknown error").asString();
+					}
+					else if (responseObject["error"].isConvertibleTo(Json::ValueType::arrayValue))
+					{
+						for (auto i : responseObject["error"]) {
+							_errReason += i.asString() + " ";
+						}
+					}
+					else if (responseObject["error"].isConvertibleTo(Json::ValueType::objectValue))
+					{
+						for (Json::Value::iterator i = responseObject["error"].begin(); i != responseObject["error"].end(); ++i)
+						{
+							Json::Value k = i.key();
+							Json::Value v = (*i);
+							_errReason += (std::string)i.name() + ":" + v.asString() + " ";
+						}
+					}
+
 				}
 				else {
 					_errReason = "Unknown error";
@@ -554,11 +574,31 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		if (!responseObject.isMember("method")) {
 
 			_id = responseObject.get("id", 0).asUInt();
-			_isSuccess = !responseObject.isMember("error");
+			_isSuccess = !responseObject.isMember("error") || responseObject.get("error", Json::Value::null).isNull();
 
 			if (!_isSuccess) {
-				if (responseObject.isMember("error")) {
-					_errReason = responseObject.get("error", "Unknown error").asString();
+
+				if (!responseObject.get("error", Json::Value::null).isNull()) {
+
+					if (responseObject["error"].isConvertibleTo(Json::ValueType::stringValue)) {
+						_errReason = responseObject.get("error", "Unknown error").asString();
+					}
+					else if (responseObject["error"].isConvertibleTo(Json::ValueType::arrayValue))
+					{
+						for (auto i : responseObject["error"]) {
+							_errReason += i.asString() + " ";
+						}
+					}
+					else if (responseObject["error"].isConvertibleTo(Json::ValueType::objectValue))
+					{
+						for (Json::Value::iterator i = responseObject["error"].begin(); i != responseObject["error"].end(); ++i)
+						{
+							Json::Value k = i.key();
+							Json::Value v = (*i);
+							_errReason += (std::string)i.name() + ":" + v.asString() + " ";
+						}
+					}
+
 				}
 				else {
 					_errReason = "Unknown error";
@@ -750,6 +790,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					}
 				}
 				else {
+					cwarn << "Error :" + _errReason;
 					if (m_onSolutionRejected) {
 						m_onSolutionRejected(m_stale);
 					}
