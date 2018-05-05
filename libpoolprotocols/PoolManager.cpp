@@ -62,18 +62,64 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 			m_lastBoundary = wp.boundary;
 			static const uint512_t dividend("0x10000000000000000000000000000000000000000000000000000000000000000");
 			const uint256_t divisor(string("0x") + m_lastBoundary.hex());
-			cnote << "New pool difficulty:" << EthWhite << diffToDisplay(double(dividend / divisor)) << EthReset;
+			m_difficulty = double(dividend / divisor);
+			cnote << "New pool difficulty:" << EthWhite << diffToDisplay(m_difficulty) << EthReset;
 		}
 		cnote << "New job" << wp.header << "  " + m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
 	});
 	p_client->onSolutionAccepted([&](bool const& stale)
 	{
 		using namespace std::chrono;
-		auto ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_time);
+		auto now = steady_clock::now();
+		auto ms = duration_cast<milliseconds>(now - m_submit_time);
 		std::stringstream ss;
 		ss << std::setw(4) << std::setfill(' ') << ms.count();
 		ss << "ms." << "   " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
 		cnote << EthLime "**Accepted" EthReset << (stale ? "(stale)" : "") << ss.str();
+		if (!stale) {
+			ss.str("");
+			auto windowStart10 = now - minutes(10);
+			auto windowStart60 = now - hours(1);
+			auto windowStart360 = now - hours(6);
+			size_t s10, s60, s360;
+			m_10_accepts.push_back(now);
+			while (m_10_accepts.size() && (m_10_accepts.front() <= windowStart10)) {
+				m_60_accepts.push_back(m_10_accepts.front());
+				m_10_accepts.pop_front();
+			}
+			while (m_60_accepts.size() && (m_60_accepts.front() <= windowStart60)) {
+				m_360_accepts.push_back(m_60_accepts.front());
+				m_60_accepts.pop_front();
+			}
+			while (m_360_accepts.size() && (m_360_accepts.front() <= windowStart360))
+				m_360_accepts.pop_front();
+			s10 = m_10_accepts.size();
+			s60 = m_60_accepts.size();
+			s360 = m_360_accepts.size();
+			if (windowStart10 < m_farm.farmLaunched())
+				windowStart10 = m_farm.farmLaunched();
+			auto secs = duration_cast<seconds>(now - windowStart10);
+			double EHR = (s10 * m_difficulty) / secs.count();
+			ss << fixed << setprecision(2) << secs.count() / 60.0 << " min. SMA "
+				<< setprecision(1) << EHR / 1000000.0 << " MH/S";
+			if (s60) {
+				if (windowStart60 < m_farm.farmLaunched())
+					windowStart60 = m_farm.farmLaunched();
+				secs = duration_cast<seconds>(now - windowStart60);
+				EHR = ((s60 + s10)  * m_difficulty) / secs.count();
+				ss <<  ", " << fixed << setprecision(2) << secs.count() / 3600.0 << " hr. SMA "
+					<< EHR / 1000000.0 << " MH/S";
+				if (s360) {
+					if (windowStart360 < m_farm.farmLaunched())
+						windowStart360 = m_farm.farmLaunched();
+					secs = duration_cast<seconds>(now - windowStart360);
+					EHR = ((s360 + s60 + s10) * m_difficulty) / secs.count();
+					ss <<  ", " << fixed << setprecision(2) << secs.count() / 3600.0 << " hr. SMA "
+						<< EHR / 1000000.0 << " MH/S";
+				}
+			}
+			cnote << EthLime "Effective hash rate " EthReset << ss.str();
+		}
 		m_farm.acceptedSolution(stale);
 	});
 	p_client->onSolutionRejected([&](bool const& stale)

@@ -99,7 +99,6 @@ private:
 	boost::asio::streambuf m_sendBuffer;
 	boost::asio::streambuf m_recvBuffer;
 	Json::FastWriter m_jWriter;
-	int m_recvBufferSize = 1024;
 
 	boost::asio::deadline_timer m_conntimer;
 	boost::asio::deadline_timer m_worktimer;

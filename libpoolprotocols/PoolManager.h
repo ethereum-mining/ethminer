@@ -43,7 +43,11 @@ namespace dev
 			PoolClient *p_client;
 			Farm &m_farm;
 			MinerType m_minerType;
+			double m_difficulty;
 			std::chrono::steady_clock::time_point m_submit_time;
+			std::list<std::chrono::steady_clock::time_point> m_10_accepts;
+			std::list<std::chrono::steady_clock::time_point> m_60_accepts;
+			std::list<std::chrono::steady_clock::time_point> m_360_accepts;
 			void tryReconnect();
 		};
 	}
