@@ -451,70 +451,74 @@ void CUDAMiner::search(
     }
 
     // process stream batches until we get new work.
-    for (;; current_index++, current_nonce += batch_size)
-    {
-        if (current_index >= s_numStreams)
-            current_index = 0;
-        cudaStream_t stream = m_streams[current_index];
-        buffer = m_search_buf[current_index];
-        // Wait for stream batch to complete
-        CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
-        // See if we got solutions in this batch
-        uint32_t found_count = buffer->count;
-        if (found_count) {
-            buffer->count = 0;
-            uint64_t nonces[SEARCH_RESULTS];
-            h256 mixes[SEARCH_RESULTS];
-            // handle the highly unlikely possibility that there are more
-            // solutions found than we can handle
-            if (found_count > SEARCH_RESULTS)
-                found_count = SEARCH_RESULTS;
-            uint64_t nonce_base = current_nonce - streams_batch_size;
-            // stash the solutions, so we can reuse the search buffer
-            for (unsigned int j = 0; j < found_count; j++) {
-                nonces[j] = nonce_base + buffer->result[j].gid;
-                if (s_noeval)
-                    memcpy(mixes[j].data(), (void *)&buffer->result[j].mix, sizeof(buffer->result[j].mix));
+    bool done = false;
+    bool stop = false;
+    while (!done) {
+        for (current_index = 0; current_index < s_numStreams; current_index++, current_nonce += batch_size) {
+            cudaStream_t stream = m_streams[current_index];
+            buffer = m_search_buf[current_index];
+            // Wait for stream batch to complete
+            CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
+            if (shouldStop()) {
+                m_new_work.store(false, std::memory_order_relaxed);
+                done = true;
+                stop = true;
             }
-            // restart the stream on the next batch of nonces
-            run_ethash_search(s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
-            // Pass the solutions up to the higher level
-            for (uint32_t i = 0; i < found_count; i++)
-                if (s_noeval)
-                    farm.submitProof(Solution{nonces[i], mixes[i], w, m_new_work});
-                else
-                {
-                    Result r = EthashAux::eval(w.epoch, w.header, nonces[i]);
-                    if (r.value <= w.boundary)
-                        farm.submitProof(Solution{nonces[i], r.mixHash, w, m_new_work});
+            bool t = true;
+            if (m_new_work.compare_exchange_strong(t, false))
+                done = true;
+
+            // See if we got solutions in this batch
+            uint32_t found_count = buffer->count;
+            if (found_count) {
+                buffer->count = 0;
+                uint64_t nonces[SEARCH_RESULTS];
+                h256 mixes[SEARCH_RESULTS];
+                // handle the highly unlikely possibility that there are more
+                // solutions found than we can handle
+                if (found_count > SEARCH_RESULTS)
+                    found_count = SEARCH_RESULTS;
+                uint64_t nonce_base = current_nonce - streams_batch_size;
+                // stash the solutions, so we can reuse the search buffer
+                for (unsigned int j = 0; j < found_count; j++) {
+                    nonces[j] = nonce_base + buffer->result[j].gid;
+                    if (s_noeval)
+                        memcpy(mixes[j].data(), (void *)&buffer->result[j].mix, sizeof(buffer->result[j].mix));
+                }
+                // restart the stream on the next batch of nonces
+                if (!done)
+                    run_ethash_search(s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
+                // Pass the solutions up to the higher level
+                for (uint32_t i = 0; i < found_count; i++)
+                    if (s_noeval)
+                        farm.submitProof(Solution{nonces[i], mixes[i], w, m_new_work});
                     else
                     {
-                        farm.failedSolution();
-                        cwarn << "GPU gave incorrect result!";
+                        Result r = EthashAux::eval(w.epoch, w.header, nonces[i]);
+                        if (r.value <= w.boundary)
+                            farm.submitProof(Solution{nonces[i], r.mixHash, w, m_new_work});
+                        else
+                        {
+                            farm.failedSolution();
+                            cwarn << "GPU gave incorrect result!";
+                        }
                     }
-                }
-        }
-        else {
-            // restart the stream on the next batch of nonces
-            run_ethash_search(s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
-        }
-
-        addHashCount(batch_size);
-        bool t = true;
-        if (m_new_work.compare_exchange_strong(t, false)) {
-            if (g_logVerbosity >= 6) {
-                cudalog << "Switch time "
-                    << std::chrono::duration_cast<std::chrono::milliseconds>
-                        (std::chrono::high_resolution_clock::now() - workSwitchStart).count()
-                    << "ms.";
             }
-            break;
+            else {
+                // restart the stream on the next batch of nonces
+                if (!done)
+                    run_ethash_search(s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
+            }
+
+            addHashCount(batch_size);
+
         }
-        if (shouldStop())
-        {
-            m_new_work.store(false, std::memory_order_relaxed);
-            break;
-        }
+    }
+    if (!stop && (g_logVerbosity >= 6)) {
+        cudalog << "Switch time "
+            << std::chrono::duration_cast<std::chrono::milliseconds>
+                (std::chrono::high_resolution_clock::now() - workSwitchStart).count()
+            << "ms.";
     }
 }
 
