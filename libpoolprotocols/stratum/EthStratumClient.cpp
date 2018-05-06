@@ -415,6 +415,40 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 
 }
 
+string EthStratumClient::processError(Json::Value& responseObject)
+{
+	string retVar = "";
+
+	if (responseObject.isMember("error") && !responseObject.get("error", Json::Value::null).isNull()) {
+
+		if (responseObject["error"].isConvertibleTo(Json::ValueType::stringValue)) {
+			retVar = responseObject.get("error", "Unknown error").asString();
+		}
+		else if (responseObject["error"].isConvertibleTo(Json::ValueType::arrayValue))
+		{
+			for (auto i : responseObject["error"]) {
+				retVar += i.asString() + " ";
+			}
+		}
+		else if (responseObject["error"].isConvertibleTo(Json::ValueType::objectValue))
+		{
+			for (Json::Value::iterator i = responseObject["error"].begin(); i != responseObject["error"].end(); ++i)
+			{
+				Json::Value k = i.key();
+				Json::Value v = (*i);
+				retVar += (std::string)i.name() + ":" + v.asString() + " ";
+			}
+		}
+
+	}
+	else {
+		retVar = "Unknown error";
+	}
+
+	return retVar;
+
+}
+
 void EthStratumClient::processExtranonce(std::string& enonce)
 {
 	m_extraNonceHexSize = enonce.length();
@@ -474,16 +508,11 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		// error - An Error object if there was an error invoking the method.It must be null if there was no error.
 
 		if (responseObject.isMember("result")) {
+
 			_id = responseObject.get("id", 0).asUInt();
 			_isSuccess = !responseObject.get("result", Json::Value::null).empty();
-			if (!_isSuccess) {
-				if (responseObject.isMember("error")) {
-					_errReason = responseObject.get("error", "Unknown error").asString();
-				}
-				else {
-					_errReason = "Unknown error";
-				}
-			}
+			_errReason = (_isSuccess ? "" : processError(responseObject));
+
 		}
 		
 		// http://www.jsonrpc.org/specification_v1#a1.3Notification
@@ -554,17 +583,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		if (!responseObject.isMember("method")) {
 
 			_id = responseObject.get("id", 0).asUInt();
-			_isSuccess = !responseObject.isMember("error");
-
-			if (!_isSuccess) {
-				if (responseObject.isMember("error")) {
-					_errReason = responseObject.get("error", "Unknown error").asString();
-				}
-				else {
-					_errReason = "Unknown error";
-				}
-			}
-
+			_isSuccess = (!responseObject.isMember("error") || responseObject.get("error", Json::Value::null).isNull());
+			_errReason = (_isSuccess ? "" : processError(responseObject));
 
 		}
 
@@ -750,6 +770,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					}
 				}
 				else {
+					cwarn << "Error :" + _errReason;
 					if (m_onSolutionRejected) {
 						m_onSolutionRejected(m_stale);
 					}
@@ -970,7 +991,7 @@ void EthStratumClient::response_timeout_handler(const boost::system::error_code&
 	dev::setThreadName("stratum");
 
 	if (!ec) {
-		if (isConnected()) {
+		if (isConnected() && m_response_pending) {
 			cwarn << "No response received in" << m_responsetimeout << "seconds.";
 			disconnect();
 		}

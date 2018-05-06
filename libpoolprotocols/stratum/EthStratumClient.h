@@ -57,6 +57,7 @@ private:
 
 	void reset_work_timeout();
 	void processReponse(Json::Value& responseObject);
+	string processError(Json::Value& erroresponseObject);
 	void processExtranonce(std::string& enonce);
 
 	void recvSocketData();
