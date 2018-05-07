@@ -83,7 +83,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		std::stringstream ss;
 		ss << std::setw(4) << std::setfill(' ') << ms.count();
 		ss << "ms." << "   " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
-		cwarn << EthLime "**Rejected" EthReset << (stale ? "(stale)" : "") << ss.str();
+		cwarn << EthRed "**Rejected" EthReset << (stale ? "(stale)" : "") << ss.str();
 		m_farm.rejectedSolution(stale);
 	});
 
