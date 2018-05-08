@@ -506,21 +506,21 @@ public:
 				}
 			}
 		}
-                else if (arg == "--cuda-parallel-hash" && i + 1 < argc)
-                {
-                        try {
-                                m_parallelHash = stol(argv[++i]);
-                                if (m_parallelHash == 0 || m_parallelHash > 8)
-                                {
-                                    throw BadArgument();
-                                }
-                        }
-                        catch (...)
+        else if (arg == "--cuda-parallel-hash" && i + 1 < argc)
+        {
+                try {
+                        m_parallelHash = stol(argv[++i]);
+                        if (m_parallelHash == 0 || m_parallelHash > 8)
                         {
-                                cerr << "Bad " << arg << " option: " << argv[i] << endl;
-                                BOOST_THROW_EXCEPTION(BadArgument());
+                            throw BadArgument();
                         }
                 }
+                catch (...)
+                {
+                        cerr << "Bad " << arg << " option: " << argv[i] << endl;
+                        BOOST_THROW_EXCEPTION(BadArgument());
+                }
+        }
 		else if (arg == "--cuda-schedule" && i + 1 < argc)
 		{
 			string mode = argv[++i];
@@ -549,7 +549,17 @@ public:
 			else if (mode == "single")
 			{
 				m_dagLoadMode = DAG_LOAD_MODE_SINGLE;
-				m_dagCreateDevice = stol(argv[++i]);
+
+				try {
+					m_dagCreateDevice = stol(argv[++i]);
+				}
+				catch (...)
+				{
+					cerr << "Bad " << arg << " option: " << argv[i] << endl;
+					i--;
+					BOOST_THROW_EXCEPTION(BadArgument());
+				}
+
 			}
 			else
 			{
