@@ -331,6 +331,9 @@ public:
 			try
 			{
 				m_responsetimeout = stoi(argv[++i]);
+				// Do not allow less than 2 seconds 
+				// or we may keep disconnecting and reconnecting
+				m_responsetimeout = (m_responsetimeout < 2 ? 2 : m_responsetimeout);
 			}
 			catch (...)
 			{
