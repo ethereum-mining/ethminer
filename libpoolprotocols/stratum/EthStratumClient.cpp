@@ -367,11 +367,15 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 		jReq["method"] = "mining.subscribe";
 		jReq["params"] = Json::Value(Json::arrayValue);
 
-		m_worker = "";
+		m_worker.clear();
 		p = m_conn.User().find_first_of(".");
 		if (p != string::npos) {
 			user = m_conn.User().substr(0, p);
-			m_worker = m_conn.User().substr(p + 1);
+
+			// There should be at least one char after dot
+			// returned p is zero based
+			if (p < (m_conn.User().length() -1))
+				m_worker = m_conn.User().substr(++p);
 		}
 		else
 			user = m_conn.User();
@@ -661,7 +665,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				m_subscribed.store(_isSuccess, std::memory_order_relaxed);
 				if (!m_subscribed)
 				{
-					cnote << "Could not login to ethproxy server";
+					cnote << "Could not login to ethproxy server:" << _errReason;
 					disconnect();
 					return;
 				}
@@ -683,7 +687,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				m_subscribed.store(_isSuccess, std::memory_order_relaxed);
 				if (!m_subscribed)
 				{
-					cnote << "Could not subscribe to stratum server";
+					cnote << "Could not subscribe to stratum server:" << _errReason;
 					disconnect();
 					return;
 				}
