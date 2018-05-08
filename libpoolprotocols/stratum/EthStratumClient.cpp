@@ -368,18 +368,15 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 		jReq["method"] = "mining.subscribe";
 		jReq["params"] = Json::Value(Json::arrayValue);
 
+		m_worker = "";
 		p = m_conn.User().find_first_of(".");
 		if (p != string::npos) {
-
 			user = m_conn.User().substr(0, p);
-			if (p + 1 <= m_conn.User().length())
-				m_worker = m_conn.User().substr(p + 1);
-			else
-				m_worker.clear();
-
+			m_worker = m_conn.User().substr(p + 1);
 		}
-		
-		
+		else
+			user = m_conn.User();
+
 		switch (m_conn.Version()) {
 
 			case EthStratumClient::STRATUM:
@@ -390,10 +387,9 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 
 			case EthStratumClient::ETHPROXY:
 
-
 				jReq["method"] = "eth_submitLogin";
 				if (m_worker.length()) jReq["worker"] = m_worker;
-				jReq["params"].append(m_conn.User() + m_conn.Path());
+				jReq["params"].append(user + m_conn.Path());
 				if (!m_email.empty()) jReq["params"].append(m_email);
 
 				break;
