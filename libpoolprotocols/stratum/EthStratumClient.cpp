@@ -40,7 +40,7 @@ static void diffToTarget(uint32_t *target, double diff)
 }
 
 
-EthStratumClient::EthStratumClient(int const & worktimeout, string const & email, bool const & submitHashrate) : PoolClient(),
+EthStratumClient::EthStratumClient(int const & worktimeout, int const & responsetimeout, string const & email, bool const & submitHashrate) : PoolClient(),
 	m_socket(nullptr),
 	m_conntimer(m_io_service),
 	m_worktimer(m_io_service),
@@ -49,6 +49,7 @@ EthStratumClient::EthStratumClient(int const & worktimeout, string const & email
 {
 
 	m_worktimeout = worktimeout;
+	m_responsetimeout = responsetimeout;
 	m_email = email;
 
 	m_submit_hashrate = submitHashrate;
@@ -250,7 +251,7 @@ void EthStratumClient::start_connect(tcp::resolver::iterator endpoint_iter)
 
 		cnote << ("Trying " + toString(endpoint_iter->endpoint()) + " ...");
 		
-		m_conntimer.expires_from_now(boost::posix_time::seconds(m_conntimeout));
+		m_conntimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
 
 		// Start connecting async
 		m_socket->async_connect(endpoint_iter->endpoint(), 

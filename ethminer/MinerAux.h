@@ -315,7 +315,29 @@ public:
 		}
 		else if ((arg == "--work-timeout") && i + 1 < argc)
 		{
-			m_worktimeout = atoi(argv[++i]);
+			try
+			{
+				m_worktimeout = atoi(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+			
+		}
+		else if ((arg == "--response-timeout") && i + 1 < argc)
+		{
+			try
+			{
+				m_responsetimeout = atoi(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+
 		}
 		else if ((arg == "-RH" || arg == "--report-hashrate"))
 		{
@@ -769,6 +791,7 @@ public:
 			<< "    -O, --userpass <username.workername:password> (deprecated) Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> (deprecated) Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
 			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
+			<< "    --response-timeout <n> reconnect/failover after n seconds delay for response from (stratum) pool. Defaults to 2. Also affects connection timeout" << endl
 			<< "    --stratum-ssl [<n>]  (deprecated) Use encryption to connect to stratum server." << endl
 			<< "        0: Force TLS1.2 (default)" << endl
 			<< "        1: Allow any TLS version" << endl
@@ -936,7 +959,7 @@ private:
 		PoolClient *client = nullptr;
 
 		if (m_mode == OperationMode::Stratum) {
-			client = new EthStratumClient(m_worktimeout, m_email, m_report_stratum_hashrate);
+			client = new EthStratumClient(m_worktimeout, m_responsetimeout, m_email, m_report_stratum_hashrate);
 		}
 		else if (m_mode == OperationMode::Farm) {
 			client = new EthGetworkClient(m_farmRecheckPeriod);
@@ -1053,7 +1076,12 @@ private:
 	unsigned m_farmRecheckPeriod = 500;
 	unsigned m_displayInterval = 5;
 	bool m_farmRecheckSet = false;
+	
+	// Number of seconds to wait before triggering a no work timeout from pool
 	int m_worktimeout = 180;
+	// Number of seconds to wait before triggering a response timeout from pool
+	int m_responsetimeout = 2;
+
 	bool m_show_hwmonitors = false;
 	bool m_show_power = false;
 #if API_CORE

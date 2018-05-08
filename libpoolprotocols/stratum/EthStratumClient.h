@@ -24,7 +24,7 @@ public:
 
 	typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
 
-	EthStratumClient(int const & worktimeout, string const & email, bool const & submitHashrate);
+	EthStratumClient(int const & worktimeout, int const & responsetimeout, string const & email, bool const & submitHashrate);
 	~EthStratumClient();
 
 	void connect();
@@ -73,14 +73,11 @@ private:
 	std::atomic<bool> m_connected = { false };
 	std::atomic<bool> m_disconnecting = { false };
 
-	// Fixed 120 seconds to trigger a work_timeout
-	int m_worktimeout = 120;
+	// 180 seconds to trigger a work_timeout (overwritten in constructor)
+	int m_worktimeout = 180;
 	
-	// Fixed 2 seconds timeout for a response to a submission of solution
+	// 2 seconds timeout for responses and connection (overwritten in constructor)
 	int m_responsetimeout = 2;
-
-	// Fixed 3 seconds timeout for a connection attempt
-	int m_conntimeout = 3;
 
 	WorkPackage m_current;
 
