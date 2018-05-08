@@ -57,7 +57,7 @@ private:
 
 	void reset_work_timeout();
 	void processReponse(Json::Value& responseObject);
-	string processError(Json::Value& erroresponseObject);
+	std::string processError(Json::Value& erroresponseObject);
 	void processExtranonce(std::string& enonce);
 
 	void recvSocketData();
@@ -97,7 +97,6 @@ private:
 	boost::asio::streambuf m_sendBuffer;
 	boost::asio::streambuf m_recvBuffer;
 	Json::FastWriter m_jWriter;
-	int m_recvBufferSize = 1024;
 
 	boost::asio::deadline_timer m_conntimer;
 	boost::asio::deadline_timer m_worktimer;
@@ -115,6 +114,6 @@ private:
 	int m_extraNonceHexSize;
 	
 	bool m_submit_hashrate = false;
-	string m_submit_hashrate_id;
+	std::string m_submit_hashrate_id;
 
 };

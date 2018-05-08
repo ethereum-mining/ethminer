@@ -417,9 +417,9 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 
 }
 
-string EthStratumClient::processError(Json::Value& responseObject)
+std::string EthStratumClient::processError(Json::Value& responseObject)
 {
-	string retVar = "";
+	std::string retVar = "";
 
 	if (responseObject.isMember("error") && !responseObject.get("error", Json::Value::null).isNull()) {
 
@@ -1134,7 +1134,13 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
 	else
 	{
 		if (isConnected()) {
-			cwarn << "Socket read failed:" << ec.message();
+			if (ec == boost::asio::error::eof)
+			{
+				cnote << "Connection remotely closed by" << m_conn.Host();
+			}
+			else {
+				cwarn << "Socket read failed:" << ec.message();
+			}
 			disconnect();
 		}
 	}
