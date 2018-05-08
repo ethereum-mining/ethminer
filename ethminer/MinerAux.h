@@ -317,7 +317,7 @@ public:
 		{
 			try
 			{
-				m_worktimeout = atoi(argv[++i]);
+				m_worktimeout = stoi(argv[++i]);
 			}
 			catch (...)
 			{
@@ -330,7 +330,7 @@ public:
 		{
 			try
 			{
-				m_responsetimeout = atoi(argv[++i]);
+				m_responsetimeout = stoi(argv[++i]);
 			}
 			catch (...)
 			{
