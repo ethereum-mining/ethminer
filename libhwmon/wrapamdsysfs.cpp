@@ -20,6 +20,8 @@
 #include <dirent.h>
 #endif
 
+#include <libdevcore/Log.h>
+
 #include "wraphelper.h"
 #include "wrapamdsysfs.h"
 
@@ -316,31 +318,39 @@ int wrap_amdsysfs_get_fanpcnt(wrap_amdsysfs_handle *sysfsh, int index, unsigned 
 	return 0;
 }
 
-int wrap_amdsysfs_get_power_usage(wrap_amdsysfs_handle *sysfsh, int index, unsigned int *milliwatts)
+int wrap_amdsysfs_get_power_usage(wrap_amdsysfs_handle* sysfsh, int index, unsigned int* milliwatts)
 {
-	int gpuindex = sysfsh->card_sysfs_device_id[index];
-	if (gpuindex < 0 || index >= sysfsh->sysfs_gpucount)
-		return -1;
+    try
+    {
+        int gpuindex = sysfsh->card_sysfs_device_id[index];
+        if (gpuindex < 0 || index >= sysfsh->sysfs_gpucount)
+            return -1;
 
-	char dbuf[120];
-	snprintf(dbuf, 120, "/sys/kernel/debug/dri/%u/amdgpu_pm_info", gpuindex);
+        char dbuf[120];
+        snprintf(dbuf, 120, "/sys/kernel/debug/dri/%u/amdgpu_pm_info", gpuindex);
 
-	std::ifstream ifs(dbuf, std::ios::binary);
-	std::string line;
+        std::ifstream ifs(dbuf, std::ios::binary);
+        std::string line;
 
-	while (std::getline(ifs, line))
-	{
-		std::smatch sm;
-		std::regex regex(R"(([\d|\.]+) W \(average GPU\))");
-		if (std::regex_search(line, sm, regex)) {
-			if (sm.size() == 2) {
-				double watt = atof(sm.str(1).c_str());
-				*milliwatts = (unsigned int)(watt * 1000);
-				return 0;
-			}
-		}
+        while (std::getline(ifs, line))
+        {
+            std::smatch sm;
+            std::regex regex(R"(([\d|\.]+) W \(average GPU\))");
+            if (std::regex_search(line, sm, regex))
+            {
+                if (sm.size() == 2)
+                {
+                    double watt = atof(sm.str(1).c_str());
+                    *milliwatts = (unsigned int)(watt * 1000);
+                    return 0;
+                }
+            }
+        }
+    }
+    catch (const std::exception& ex)
+    {
+        cwarn << "Error in amdsysfs_get_power_usage: " << ex.what();
+    }
 
-	}
-
-	return -1;
+    return -1;
 }
