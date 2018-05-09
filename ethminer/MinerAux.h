@@ -794,7 +794,7 @@ public:
 			<< "    -O, --userpass <username.workername:password> (deprecated) Stratum login credentials" << endl
 			<< "    -FO, --failover-userpass <username.workername:password> (deprecated) Failover stratum login credentials (optional, will use normal credentials when omitted)" << endl
 			<< "    --work-timeout <n> reconnect/failover after n seconds of working on the same (stratum) job. Defaults to 180. Don't set lower than max. avg. block time" << endl
-			<< "    --response-timeout <n> reconnect/failover after n seconds delay for response from (stratum) pool. Defaults to 2. Also affects connection timeout" << endl
+			<< "    --response-timeout <n> reconnect/failover after n seconds delay for response from (stratum) pool. Also affects connection timeout. Minimum value 2. Default 2." << endl
 			<< "    --stratum-ssl [<n>]  (deprecated) Use encryption to connect to stratum server." << endl
 			<< "        0: Force TLS1.2 (default)" << endl
 			<< "        1: Allow any TLS version" << endl

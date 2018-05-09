@@ -40,19 +40,18 @@ static void diffToTarget(uint32_t *target, double diff)
 }
 
 
-EthStratumClient::EthStratumClient(int const & worktimeout, int const & responsetimeout, string const & email, bool const & submitHashrate) : PoolClient(),
+EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate) : PoolClient(),
 	m_socket(nullptr),
 	m_conntimer(m_io_service),
 	m_worktimer(m_io_service),
 	m_responsetimer(m_io_service),
-	m_resolver(m_io_service)
+	m_resolver(m_io_service),
+	m_worktimeout(worktimeout),
+	m_responsetimeout(responsetimeout),
+	m_email(email),
+	m_submit_hashrate(submitHashrate)
 {
 
-	m_worktimeout = worktimeout;
-	m_responsetimeout = responsetimeout;
-	m_email = email;
-
-	m_submit_hashrate = submitHashrate;
 	if (m_submit_hashrate)
 		m_submit_hashrate_id = h256::random().hex();
 }
@@ -419,7 +418,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 
 std::string EthStratumClient::processError(Json::Value& responseObject)
 {
-	std::string retVar = "";
+	std::string retVar;
 
 	if (responseObject.isMember("error") && !responseObject.get("error", Json::Value::null).isNull()) {
 

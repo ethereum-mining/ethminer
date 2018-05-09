@@ -24,7 +24,7 @@ public:
 
 	typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
 
-	EthStratumClient(int const & worktimeout, int const & responsetimeout, string const & email, bool const & submitHashrate);
+	EthStratumClient(int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate);
 	~EthStratumClient();
 
 	void connect();
