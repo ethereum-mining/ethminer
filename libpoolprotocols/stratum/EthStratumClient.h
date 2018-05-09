@@ -24,7 +24,7 @@ public:
 
 	typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
 
-	EthStratumClient(int const & worktimeout, string const & email, bool const & submitHashrate);
+	EthStratumClient(int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate);
 	~EthStratumClient();
 
 	void connect();
@@ -57,7 +57,7 @@ private:
 
 	void reset_work_timeout();
 	void processReponse(Json::Value& responseObject);
-	string processError(Json::Value& erroresponseObject);
+	std::string processError(Json::Value& erroresponseObject);
 	void processExtranonce(std::string& enonce);
 
 	void recvSocketData();
@@ -73,14 +73,11 @@ private:
 	std::atomic<bool> m_connected = { false };
 	std::atomic<bool> m_disconnecting = { false };
 
-	// Fixed 120 seconds to trigger a work_timeout
-	int m_worktimeout = 120;
+	// 180 seconds to trigger a work_timeout (overwritten in constructor)
+	int m_worktimeout = 180;
 	
-	// Fixed 2 seconds timeout for a response to a submission of solution
+	// 2 seconds timeout for responses and connection (overwritten in constructor)
 	int m_responsetimeout = 2;
-
-	// Fixed 3 seconds timeout for a connection attempt
-	int m_conntimeout = 3;
 
 	WorkPackage m_current;
 
@@ -100,7 +97,6 @@ private:
 	boost::asio::streambuf m_sendBuffer;
 	boost::asio::streambuf m_recvBuffer;
 	Json::FastWriter m_jWriter;
-	int m_recvBufferSize = 1024;
 
 	boost::asio::deadline_timer m_conntimer;
 	boost::asio::deadline_timer m_worktimer;
@@ -118,6 +114,6 @@ private:
 	int m_extraNonceHexSize;
 	
 	bool m_submit_hashrate = false;
-	string m_submit_hashrate_id;
+	std::string m_submit_hashrate_id;
 
 };
