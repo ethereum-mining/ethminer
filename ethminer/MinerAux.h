@@ -54,6 +54,7 @@
 #endif
 #if API_CORE
 #include <libapicore/Api.h>
+#include <libapicore/httpServer.h>
 #endif
 
 using namespace std;
@@ -390,6 +391,10 @@ public:
 		else if ((arg == "--api-port") && i + 1 < argc)
 		{
 			m_api_port = atoi(argv[++i]);
+		}
+		else if ((arg == "--http-port") && i + 1 < argc)
+		{
+			m_http_port = atoi(argv[++i]);
 		}
 #endif
 #if ETH_ETHASHCL
@@ -844,6 +849,7 @@ public:
 #if API_CORE
 			<< " API core configuration:" << endl
 			<< "    --api-port Set the api port, the miner should listen to. Use 0 to disable. Default=0, use negative numbers to run in readonly mode. for example -3333." << endl
+			<< "    --http-port Set the web api port, the miner should listen to. Use 0 to disable. Default=0. Data shown depends on HWMON setting." << endl
 #endif
 			;
 	}
@@ -982,6 +988,7 @@ private:
 
 #if API_CORE
 		Api api(this->m_api_port, f);
+        http_server.run(m_http_port, &f, m_show_hwmonitors, m_show_power);
 #endif
 
 		// Start PoolManager
@@ -1058,6 +1065,7 @@ private:
 	bool m_show_power = false;
 #if API_CORE
 	int m_api_port = 0;
+	int m_http_port = 0;
 #endif
 
 	bool m_report_stratum_hashrate = false;
