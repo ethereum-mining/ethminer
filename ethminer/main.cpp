@@ -104,7 +104,17 @@ int main(int argc, char** argv)
 			// Standard options:
 			string arg = argv[i];
 			if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
-				g_logVerbosity = atoi(argv[++i]);
+			{
+				try
+				{
+					g_logVerbosity = stoul(argv[++i]);
+				}
+				catch (...)
+				{
+					cerr << "Invalid verbosity: " << argv[i] << endl;
+					exit(-1);
+				}
+			}
 			else if (arg == "-h" || arg == "--help")
 				help();
 			else if (arg == "-V" || arg == "--version")

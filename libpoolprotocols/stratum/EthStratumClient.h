@@ -73,11 +73,11 @@ private:
 	std::atomic<bool> m_connected = { false };
 	std::atomic<bool> m_disconnecting = { false };
 
-	// 180 seconds to trigger a work_timeout (overwritten in constructor)
-	int m_worktimeout = 180;
+	// seconds to trigger a work_timeout (overwritten in constructor)
+	int m_worktimeout;
 	
-	// 2 seconds timeout for responses and connection (overwritten in constructor)
-	int m_responsetimeout = 2;
+	// seconds timeout for responses and connection (overwritten in constructor)
+	int m_responsetimeout;
 
 	WorkPackage m_current;
 
@@ -113,7 +113,7 @@ private:
 	h64 m_extraNonce;
 	int m_extraNonceHexSize;
 	
-	bool m_submit_hashrate = false;
+	bool m_submit_hashrate;
 	std::string m_submit_hashrate_id;
 
 };
