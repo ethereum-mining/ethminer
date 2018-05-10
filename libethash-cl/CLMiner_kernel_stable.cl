@@ -326,7 +326,7 @@ __kernel void ethash_search(
 	uint const thread_id = gid & 7;
 	uint const hash_id = (gid % GROUP_SIZE) >> 3;
 
-	for (int i = 0; i < THREADS_PER_HASH; i++)
+	for (uint i = 0; i < THREADS_PER_HASH; i++)
 	{
 		// share init with other threads
 		if (i == thread_id)
