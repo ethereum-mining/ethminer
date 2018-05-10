@@ -34,7 +34,6 @@
 #include <boost/optional.hpp>
 
 #include <libethcore/Exceptions.h>
-#include <libdevcore/SHA3.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Farm.h>
 #include <ethminer-buildinfo.h>

@@ -3,10 +3,11 @@
 /// Licensed under GNU General Public License, Version 3. See the LICENSE file.
 
 #include "BlockHeader.h"
-#include "EthashAux.h"
+
 #include <libdevcore/Common.h>
-#include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
+
+#include <ethash/keccak.hpp>
 
 namespace dev
 {
@@ -25,7 +26,9 @@ h256 const& BlockHeader::hashWithout() const
     {
         RLPStream s(BasicFields);
         streamRLPFields(s);
-        m_hashWithout = sha3(s.out());
+        const bytes& rlp = s.out();
+        auto hash = ethash::keccak256(rlp.data(), rlp.size());
+        m_hashWithout = h256{hash.bytes, h256::ConstructFromPointer};
     }
     return m_hashWithout;
 }
