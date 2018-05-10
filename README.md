@@ -148,7 +148,7 @@ void fill_mix(
 }
 ```
 
-The main search algorithm uses keccak_f800 to generate a seed, expands the seed, does a sequence of loads and random math on the mix data, and then compresses the result into a final keccak_f800 for target comparison.
+The main search algorithm uses the Keccak sponge function (a width of 800 bits, with a bitrate of 448, and a capacity of 352) to generate a seed, expands the seed, does a sequence of loads and random math on the mix data, and then compresses the result into a final Keccak permutation (with the same parameters as the first) for target comparison.
 
 ```cpp
 
