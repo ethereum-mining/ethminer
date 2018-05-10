@@ -41,13 +41,13 @@ static void diffToTarget(uint32_t *target, double diff)
 
 
 EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate) : PoolClient(),
+	m_worktimeout(worktimeout),
+	m_responsetimeout(responsetimeout),
 	m_socket(nullptr),
 	m_conntimer(m_io_service),
 	m_worktimer(m_io_service),
 	m_responsetimer(m_io_service),
 	m_resolver(m_io_service),
-	m_worktimeout(worktimeout),
-	m_responsetimeout(responsetimeout),
 	m_email(email),
 	m_submit_hashrate(submitHashrate)
 {

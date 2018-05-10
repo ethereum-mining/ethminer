@@ -197,10 +197,20 @@ wrap_amdsysfs_handle * wrap_amdsysfs_create()
 								}
 								if (prev < pciId.length())
 									pciParts.push_back(pciId.substr(prev, std::string::npos));
+
 								//Format -- DDDD:BB:dd.FF 
-								iBus = atoi(pciParts[1].c_str());
-								iDevice = atoi(pciParts[2].c_str());
-								iFunction = atoi(pciParts[3].c_str());
+								//??? Above comment doesn't match following statements!!!
+								try {
+									iBus = std::stoul(pciParts[1].c_str());
+									iDevice = std::stoul(pciParts[2].c_str());
+									iFunction = std::stoul(pciParts[3].c_str());
+								}
+								catch (...)
+								{
+									iBus = -1;
+									iDevice = -1;
+									iFunction = -1;
+								}
 								break;
 							}
 						}

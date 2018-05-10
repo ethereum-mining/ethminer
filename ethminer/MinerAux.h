@@ -239,30 +239,55 @@ public:
 		else if ((arg == "-SP" || arg == "--stratum-protocol") && i + 1 < argc)
 		{
 			deprecated(arg);
+			unsigned version;
 			try {
-				m_endpoints[k_primary_ep_ix].Version((EthStratumClient::StratumProtocol)atoi(argv[++i]));
-				m_endpoints[k_secondary_ep_ix].Version(m_endpoints[k_primary_ep_ix].Version());
+				version = stoul(argv[++i]);
 			}
 			catch (...)
 			{
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
+			if (version > 2)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+			m_endpoints[k_primary_ep_ix].Version((EthStratumClient::StratumProtocol)version);
+			m_endpoints[k_secondary_ep_ix].Version(m_endpoints[k_primary_ep_ix].Version());
 		}
 		else if (arg == "--stratum-ssl")
 		{
 			deprecated(arg);
 			SecureLevel secLevel = SecureLevel::TLS12;
 			if ((i + 1 < argc) && (*argv[i + 1] != '-')) {
-				int secMode = atoi(argv[++i]);
-				if (secMode == 1)
+				unsigned secMode;
+				try
+				{
+					secMode = stoul(argv[++i]);
+				}
+				catch (...)
+				{
+					cerr << "Bad " << arg << " option: " << argv[i] << endl;
+					BOOST_THROW_EXCEPTION(BadArgument());
+				}
+				switch (secMode)
+				{
+				case 0:
+					break;
+				case 1:
 					secLevel = SecureLevel::TLS;
-				if (secMode == 2)
+					break;
+				case 2:
 					secLevel = SecureLevel::ALLOW_SELFSIGNED;
+					break;
+				default:
+					cerr << "Bad " << arg << " value: " << secMode << endl;
+					BOOST_THROW_EXCEPTION(BadArgument());
+				}
 			}
 			m_endpoints[k_primary_ep_ix].SecLevel(secLevel);
 			m_endpoints[k_secondary_ep_ix].SecLevel(secLevel);
-				
 		}
 		else if ((arg == "-SE" || arg == "--stratum-email") && i + 1 < argc)
 		{
@@ -297,7 +322,22 @@ public:
 		else if ((arg == "-o" || arg == "--port") && i + 1 < argc)
 		{
 			deprecated(arg);
-			m_endpoints[k_primary_ep_ix].Port(atoi(argv[++i]));
+			unsigned port;
+			try
+			{
+				port = stoul(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+			if (port > 0xffff)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+			m_endpoints[k_primary_ep_ix].Port((unsigned short)port);
 		}
 		else if ((arg == "-fu" || arg == "--failover-user") && i + 1 < argc)
 		{
@@ -312,7 +352,22 @@ public:
 		else if ((arg == "-fo" || arg == "--failover-port") && i + 1 < argc)
 		{
 			deprecated(arg);
-			m_endpoints[k_secondary_ep_ix].Port(atoi(argv[++i]));
+			unsigned port;
+			try
+			{
+				port = stoul(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+			if (port > 0xffff)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+			m_endpoints[k_secondary_ep_ix].Port((unsigned short)port);
 		}
 		else if ((arg == "--work-timeout") && i + 1 < argc)
 		{
@@ -362,7 +417,15 @@ public:
 		{
 			m_show_hwmonitors = true;
 			if ((i + 1 < argc) && (*argv[i + 1] != '-'))
-				m_show_power = atoi(argv[++i]) != 0;
+				try
+				{
+					m_show_power = stoul(argv[++i]) != 0;
+				}
+				catch (...)
+				{
+					cerr << "Bad " << arg << " option: " << argv[i] << endl;
+					BOOST_THROW_EXCEPTION(BadArgument());
+				}
 		}
 		else if ((arg == "--exit"))
 		{
@@ -415,11 +478,28 @@ public:
 #if API_CORE
 		else if ((arg == "--api-port") && i + 1 < argc)
 		{
-			m_api_port = atoi(argv[++i]);
+			try
+			{
+				// can be negative
+				m_api_port = stoi(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
 		}
 		else if ((arg == "--http-port") && i + 1 < argc)
 		{
-			m_http_port = atoi(argv[++i]);
+			try
+			{
+				m_http_port = stoul(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
 		}
 #endif
 #if ETH_ETHASHCL
@@ -542,7 +622,7 @@ public:
                         m_parallelHash = stol(argv[++i]);
                         if (m_parallelHash == 0 || m_parallelHash > 8)
                         {
-                            throw BadArgument();
+                            BOOST_THROW_EXCEPTION(BadArgument());
                         }
                 }
                 catch (...)

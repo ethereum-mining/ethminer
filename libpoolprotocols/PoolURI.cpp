@@ -124,7 +124,13 @@ unsigned short URI::Port() const
 	std::string s(*m_uri.port());
 	s = network::detail::decode(s);
 	boost::trim(s);
-	return (unsigned short)atoi(s.c_str());
+	try {
+		return (unsigned short)std::stoul(s.c_str());
+	}
+	catch (...)
+	{
+		return 0;
+	}
 }
 
 std::string URI::User() const
