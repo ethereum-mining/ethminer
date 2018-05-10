@@ -24,7 +24,6 @@ typedef struct
 
 // Implementation based on:
 // https://github.com/mjosaarinen/tiny_sha3/blob/master/sha3.c
-// converted from 64->32 bit words
 
 __constant const uint32_t keccakf_rndc[24] = {
     0x00000001, 0x00008082, 0x0000808a, 0x80008000, 0x0000808b, 0x80000001,
@@ -33,6 +32,7 @@ __constant const uint32_t keccakf_rndc[24] = {
     0x0000800a, 0x8000000a, 0x80008081, 0x00008080, 0x80000001, 0x80008008
 };
 
+// Implementation of the Keccakf transformation with a width of 800
 void keccak_f800_round(uint32_t st[25], const int r)
 {
 
@@ -77,6 +77,8 @@ void keccak_f800_round(uint32_t st[25], const int r)
     st[0] ^= keccakf_rndc[r];
 }
 
+// Implementation of the Keccak sponge construction (with padding omitted)
+// The width is 800, with a bitrate of 448, and a capacity of 352.
 uint64_t keccak_f800(__constant hash32_t const* g_header, uint64_t seed, uint32_t result[4])
 {
     uint32_t st[25];
