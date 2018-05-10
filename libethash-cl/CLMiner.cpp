@@ -484,6 +484,7 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMult
         return false;
 
     vector<cl::Device> devices = getDevices(platforms, _platformId);
+    bool foundSuitableDevice = false;
     for (auto const& device: devices)
     {
         cl_ulong result = 0;
@@ -493,15 +494,20 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMult
             cnote <<
                 "Found suitable OpenCL device [" << device.getInfo<CL_DEVICE_NAME>()
                                                  << "] with " << result << " bytes of GPU memory";
-            return true;
-        }
-
+            foundSuitableDevice = true;
+        } 
+        else 
+        {
         cnote <<
             "OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
                              << " has insufficient GPU memory." << result <<
                              " bytes of memory found < " << dagSize << " bytes of memory required";
+        }
     }
-
+    if (foundSuitableDevice) 
+    {
+        return true;
+    }
     cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
     return false;
 }
