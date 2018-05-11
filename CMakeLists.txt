@@ -69,6 +69,9 @@ find_package(libjson-rpc-cpp CONFIG REQUIRED)
 hunter_add_package(CppNetlibUri)
 find_package(CppNetlibUri CONFIG REQUIRED)
 
+hunter_add_package(ethash)
+find_package(ethash CONFIG REQUIRED)
+
 configureProject()
 
 message("------------------------------------------------------------------------")
@@ -84,8 +87,6 @@ message("")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(EthCompilerSettings)
-
-include(ProjectEthash)
 
 cable_add_buildinfo_library(PREFIX ethminer)
 
