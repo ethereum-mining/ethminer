@@ -51,9 +51,7 @@ The hashing core can execute the required sequence of ops in much less time, and
 # Scrypt and NeoScrypt
 * Potential ASIC efficiency gain ~ 1000X
 
-Scrypt and NeoScrypt are similar mathematically to SHA, but with the addition of a scratch pad between 32kb and 128kb in size.  This scratch pad is small enough to trivially fit on an ASIC next to the math core.  The implementation of the math core would be very similar to SHA, with similar efficiency gains.
-
-A weakness of both algorithms is they are vulnerable to a Time/Memory Tradeoff attack.  This means the implementation can have half the memory at the cost of <2x as much computation.
+Scrypt and NeoScrypt are similar to SHA in their arithmetic and bitwise operations used. Unfortunately, popular coins such as Litecoin only use a scratchpad size between 32kb and 128kb for their PoW mining algorithm. This scratch pad is small enough to trivially fit on an ASIC next to the math core. The implementation of the math core would be very similar to SHA, with similar efficiency gains.
 
 # X11 and X16R
 * Potential ASIC efficiency gain ~ 1000X
