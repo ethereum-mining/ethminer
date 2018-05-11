@@ -146,7 +146,7 @@ cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 ```
 
 - `-DETHASHCL=ON` - enable OpenCL mining, `ON` by default,
-- `-DETHASHCUDA=ON` - enable CUDA mining, `OFF` by default.
+- `-DETHASHCUDA=ON` - enable CUDA mining, `ON` by default.
 
 
 ## Maintainer
