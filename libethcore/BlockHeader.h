@@ -8,7 +8,6 @@
 
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
-#include <libdevcore/SHA3.h>
 
 namespace dev
 {

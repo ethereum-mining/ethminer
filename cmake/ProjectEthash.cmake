@@ -9,7 +9,7 @@ ExternalProject_Add(
     ethash-project
     PREFIX ${prefix}
     GIT_REPOSITORY https://github.com/chfast/ethash
-    GIT_TAG 09b50e66b868b114e89f4b649099edc3b899e91e
+    GIT_TAG 9a978bb52a68d5593a908fd00ddd691b67883194
     CMAKE_ARGS
     -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
     -DETHASH_BUILD_TESTS=OFF
