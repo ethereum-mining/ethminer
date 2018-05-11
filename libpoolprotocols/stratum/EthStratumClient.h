@@ -31,11 +31,8 @@ public:
 	void disconnect();
 	
 	// Connected and Connection Statuses
-	bool isConnected()
-	{
-		return m_connected.load(std::memory_order_relaxed) &&
-				!m_disconnecting.load(std::memory_order_relaxed);
-	}
+	bool isConnected() override { return m_connected.load(std::memory_order_relaxed) && !isPendingState(); }
+	bool isPendingState() override { return m_connecting.load(std::memory_order_relaxed) || m_disconnecting.load(std::memory_order_relaxed);  }
 	bool isSubscribed() { return m_subscribed.load(std::memory_order_relaxed); }
 	bool isAuthorized() { return m_authorized.load(std::memory_order_relaxed); }
 	string ActiveEndPoint() { return " [" + toString(m_endpoint) + "]"; };
@@ -72,6 +69,7 @@ private:
 	std::atomic<bool> m_authorized = { false };
 	std::atomic<bool> m_connected = { false };
 	std::atomic<bool> m_disconnecting = { false };
+	std::atomic<bool> m_connecting = { false };
 
 	// seconds to trigger a work_timeout (overwritten in constructor)
 	int m_worktimeout;

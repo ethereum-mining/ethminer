@@ -65,6 +65,15 @@ EthStratumClient::~EthStratumClient()
 void EthStratumClient::connect()
 {
 
+	// Prevent unnecessary and potentially dangerous recursion
+	if (m_connecting.load(std::memory_order::memory_order_relaxed)) {
+		return;
+	}
+	else {
+		m_connecting.store(true, std::memory_order::memory_order_relaxed);
+	}
+
+
 	m_connected.store(false, std::memory_order_relaxed);
 	m_subscribed.store(false, std::memory_order_relaxed);
 	m_authorized.store(false, std::memory_order_relaxed);
@@ -260,6 +269,7 @@ void EthStratumClient::start_connect(tcp::resolver::iterator endpoint_iter)
 	else {
 
 		cwarn << "No more addresses to try !";
+		m_connecting.store(false, std::memory_order_relaxed);
 		disconnect();
 
 	}
@@ -323,6 +333,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 		// Immediately set connected flag to prevent 
 		// occurrence of subsequents timeouts (if any)
 		m_connected.store(true, std::memory_order_relaxed);
+		m_connecting.store(false, std::memory_order_relaxed);
 		m_conntimer.cancel();
 
 		m_endpoint = (i)->endpoint();

@@ -72,6 +72,7 @@ namespace dev
 			virtual void submitHashrate(string const & rate) = 0;
 			virtual void submitSolution(Solution solution) = 0;
 			virtual bool isConnected() = 0;
+			virtual bool isPendingState() = 0;
 			virtual string ActiveEndPoint() = 0;
 
 			using SolutionAccepted = std::function<void(bool const&)>;

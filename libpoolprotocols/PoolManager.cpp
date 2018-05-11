@@ -19,12 +19,17 @@ static string diffToDisplay(double diff)
 	return ss.str();
 }
 
-PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType) : Worker("main"), m_farm(farm), m_minerType(minerType)
+PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType, unsigned maxTries) : Worker("main"), 
+	m_farm(farm),
+	m_minerType(minerType)
 {
+
 	p_client = client;
+	m_maxConnectionAttempts = maxTries;
 
 	p_client->onConnected([&]()
 	{
+		m_connectionAttempt = 0;
 		cnote << "Connected to " << m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
 		if (!m_farm.isMining())
 		{
@@ -39,6 +44,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 			}
 		}
 	});
+
 	p_client->onDisconnected([&]()
 	{
 		cnote << "Disconnected from " + m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
@@ -48,12 +54,11 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 			m_farm.stop();
 		}
 
-		if (m_running)
-			tryReconnect();
 	});
+
 	p_client->onWorkReceived([&](WorkPackage const& wp)
 	{
-		m_reconnectTry = 0;
+		
 		m_farm.setWork(wp);
 		if (wp.boundary != m_lastBoundary)
 		{
@@ -66,6 +71,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		}
 		cnote << "New job" << wp.header << "  " + m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
 	});
+
 	p_client->onSolutionAccepted([&](bool const& stale)
 	{
 		using namespace std::chrono;
@@ -76,6 +82,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		cnote << EthLime "**Accepted" EthReset << (stale ? "(stale)" : "") << ss.str();
 		m_farm.acceptedSolution(stale);
 	});
+
 	p_client->onSolutionRejected([&](bool const& stale)
 	{
 		using namespace std::chrono;
@@ -113,6 +120,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 
 		return false;
 	});
+
 	m_farm.onMinerRestart([&]() {
 		dev::setThreadName("main");
 		cnote << "Restart miners...";
@@ -136,28 +144,74 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 
 void PoolManager::stop()
 {
-	if (m_running) {
-		cnote << "Shutting down...";
-		m_running = false;
 
-		if (p_client->isConnected())
-			p_client->disconnect();
+	m_running = false;
+	stopWorking();
 
-		if (m_farm.isMining())
-		{
-			cnote << "Shutting down miners...";
-			m_farm.stop();
-		}
+	cnote << "Shutting down...";
+
+	if (p_client->isConnected())
+		p_client->disconnect();
+
+	if (m_farm.isMining())
+	{
+		cnote << "Shutting down miners...";
+		m_farm.stop();
 	}
+
 }
 
 void PoolManager::workLoop()
 {
+
 	while (m_running)
 	{
-		this_thread::sleep_for(chrono::seconds(1));
+
+		// Take action only if not pending state (connecting/disconnecting)
+		// Otherwise do nothing and wait until connection state is NOT pending
+		if (!p_client->isPendingState()) {
+
+			if (!p_client->isConnected()) {
+
+				// Rotate connections if above max attempts threshold
+				if (m_connectionAttempt >= m_maxConnectionAttempts) {
+
+					m_connectionAttempt = 0;
+					m_activeConnectionIdx++;
+					if (m_activeConnectionIdx == m_connections.size()) {
+						m_activeConnectionIdx = 0;
+					}
+
+				}
+
+				if (m_connections[m_activeConnectionIdx].Host() != "exit") {
+
+					// Count connectionAttempts
+					m_connectionAttempt++;
+
+					// Invoke connections
+					p_client->setConnection(m_connections[m_activeConnectionIdx]);
+					m_farm.set_pool_addresses(m_connections[m_activeConnectionIdx].Host(), m_connections[m_activeConnectionIdx].Port());
+					cnote << "Selected pool" << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
+					p_client->connect();
+
+				}
+				else {
+
+					dev::setThreadName("main");
+					cnote << "No more failover connections.";
+					m_running = false;
+
+				}
+
+
+			}
+
+		}
+
+
+		// Hashrate reporting		
 		m_hashrateReportingTimePassed++;
-		// Hashrate reporting
 		if (m_hashrateReportingTimePassed > m_hashrateReportingTime) {
 			auto mp = m_farm.miningProgress();
 			std::string h = toHex(toCompactBigEndian(mp.rate(), 1));
@@ -171,7 +225,12 @@ void PoolManager::workLoop()
 			p_client->submitHashrate("0x" + ss.str());
 			m_hashrateReportingTimePassed = 0;
 		}
+
+
+		this_thread::sleep_for(chrono::seconds(1));
+
 	}
+
 }
 
 void PoolManager::addConnection(PoolConnection &conn)
@@ -181,18 +240,13 @@ void PoolManager::addConnection(PoolConnection &conn)
 
 	m_connections.push_back(conn);
 
-	if (m_connections.size() == 1) {
-		p_client->setConnection(conn);
-		m_farm.set_pool_addresses(conn.Host(), conn.Port());
-	}
 }
 
 void PoolManager::clearConnections()
 {
 	m_connections.clear();
 	m_farm.set_pool_addresses("", 0);
-	if (p_client && p_client->isConnected())
-		p_client->disconnect();
+
 }
 
 void PoolManager::start()
@@ -200,60 +254,8 @@ void PoolManager::start()
 	if (m_connections.size() > 0) {
 		m_running = true;
 		startWorking();
-
-		// Try to connect to pool
-		cnote << "Selected pool" << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
-		p_client->connect();
 	}
 	else {
 		cwarn << "Manager has no connections defined!";
-	}
-}
-
-void PoolManager::tryReconnect()
-{
-	// No connections available, so why bother trying to reconnect
-	if (m_connections.size() <= 0) {
-		cwarn << "Manager has no connections defined!";
-		return;
-	}
-
-	for (auto i = 4; --i; this_thread::sleep_for(chrono::seconds(1))) {
-		cnote << "Retrying in " << i << "... \r";
-	}
-
-	// We do not need awesome logic here, we just have one connection anyway
-	if (m_connections.size() == 1) {
-
-		cnote << "Selected pool" << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
-		p_client->connect();
-		return;
-	}
-	
-	// Fallback logic, tries current connection multiple times and then switches to
-	// one of the other connections.
-	if (m_reconnectTries > m_reconnectTry) {
-
-		m_reconnectTry++;
-		cnote << "Selected pool" << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
-		p_client->connect();
-	}
-	else {
-		m_reconnectTry = 0;
-		m_activeConnectionIdx++;
-		if (m_activeConnectionIdx >= m_connections.size()) {
-			m_activeConnectionIdx = 0;
-		}
-		if (m_connections[m_activeConnectionIdx].Host() == "exit") {
-			dev::setThreadName("main");
-			cnote << "Exiting because reconnecting is not possible.";
-			stop();
-		}
-		else {
-			p_client->setConnection(m_connections[m_activeConnectionIdx]);
-			m_farm.set_pool_addresses(m_connections[m_activeConnectionIdx].Host(), m_connections[m_activeConnectionIdx].Port());
-			cnote << "Selected pool" << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
-			p_client->connect();
-		}
 	}
 }

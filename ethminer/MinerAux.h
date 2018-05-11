@@ -435,7 +435,7 @@ public:
 			m_newParameters = true;
 			string url = argv[++i];
 			if (url == "exit") // add fake scheme and port to 'exit' url
-				url = "stratum://exit:1";
+				url = "stratum+tcp://-:x@exit:0";
 			URI uri;
 			try {
 				uri = url;
@@ -1070,8 +1070,7 @@ private:
 		Farm f;
 		f.setSealers(sealers);
 
-		PoolManager mgr(client, f, m_minerType);
-		mgr.setReconnectTries(m_maxFarmRetries);
+		PoolManager mgr(client, f, m_minerType, m_maxFarmRetries);
 
 		if (m_legacyParameters && !m_endpoints[k_secondary_ep_ix].User().empty()) {
 			m_endpoints[k_secondary_ep_ix].User(m_endpoints[k_primary_ep_ix].User());
@@ -1116,7 +1115,7 @@ private:
 		}
 
 		mgr.stop();
-
+		cnote << "Terminated !";
 		exit(0);
 	}
 
