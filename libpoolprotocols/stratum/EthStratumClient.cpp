@@ -161,7 +161,7 @@ void EthStratumClient::connect()
 	if (m_serviceThread.joinable())
 	{
 		// If the service thread have been created try to reset the service.
-		m_io_service.reset();
+		if (m_io_service.stopped())	m_io_service.reset();
 	}
 	else
 	{
@@ -204,7 +204,7 @@ void EthStratumClient::disconnect()
 			}
 
 			m_socket->close();
-			m_io_service.stop();
+			// m_io_service.stop();
 		}
 		catch (std::exception const& _e) {
 			cwarn << "Error while disconnecting:" << _e.what();
