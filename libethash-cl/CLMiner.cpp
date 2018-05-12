@@ -600,11 +600,21 @@ bool CLMiner::init(int epoch)
         m_context = cl::Context(vector<cl::Device>(&device, &device + 1));
         m_queue = cl::CommandQueue(m_context, device);
 
-        // make sure that global work size is evenly divisible by the local workgroup size
         m_workgroupSize = s_workgroupSize;
         m_globalWorkSize = s_initialGlobalWorkSize;
-        if (m_globalWorkSize % m_workgroupSize != 0)
-            m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
+
+        unsigned int computeUnits;
+		clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(computeUnits), &computeUnits, NULL);
+        // Apparently some 36 CU devices return a bogus 14!!!
+        computeUnits = computeUnits == 14 ? 36 : computeUnits;
+		if ((platformId == OPENCL_PLATFORM_AMD) && (computeUnits != 36)) {
+			m_globalWorkSize = (m_globalWorkSize * computeUnits) / 36;
+			// make sure that global work size is evenly divisible by the local workgroup size
+			if (m_globalWorkSize % m_workgroupSize != 0)
+				m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
+			cnote << "Adjusting CL work multiplier for " << computeUnits << " CUs."
+				<< "Adjusted work multiplier: " << m_globalWorkSize / m_workgroupSize;
+		}
 
         const auto& context = ethash::managed::get_epoch_context(epoch);
         const auto lightNumItems = context.light_cache_num_items;
