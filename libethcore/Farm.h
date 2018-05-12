@@ -157,17 +157,11 @@ public:
 
 		if (m_serviceThread.joinable()) {
 
-			if (m_io_service.stopped()) m_io_service.reset();
-
-			// m_io_service.reset();						// This causes all pending polls to service to return immediately without invoking bound handlers
-			// m_serviceThread.join();						// This causes the io_service to lock complete and eventually can be safely destroyed.
-		}
-		else
-		{
-			m_serviceThread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };
+			 m_io_service.reset();					
+			 m_serviceThread.join();
 		}
 
-		
+		m_serviceThread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };
 
 		return true;
 	}
@@ -184,7 +178,7 @@ public:
 		}
 
 		m_hashrateTimer.cancel();
-		// m_io_service.stop();
+		m_io_service.stop();
 
 		m_lastProgresses.clear();
 	}

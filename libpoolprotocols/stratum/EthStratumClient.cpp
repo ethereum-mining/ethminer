@@ -160,14 +160,14 @@ void EthStratumClient::connect()
 	// IMPORTANT !!
 	if (m_serviceThread.joinable())
 	{
-		// If the service thread have been created try to reset the service.
-		if (m_io_service.stopped())	m_io_service.reset();
+		m_io_service.reset();
+		m_serviceThread.join();
 	}
-	else
-	{
+	//else
+	//{
 		// Otherwise, if the first time here, create new thread.
 		m_serviceThread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };
-	}
+	//}
 
 
 
@@ -222,6 +222,9 @@ void EthStratumClient::disconnect()
 	// Release locking flag and set connection status
 	m_connected.store(false, std::memory_order_relaxed);
 	m_disconnecting.store(false, std::memory_order::memory_order_relaxed);
+
+	// Stop io_service
+	m_io_service.stop();
 
 	// Trigger handlers
 	if (m_onDisconnected) { m_onDisconnected();	}
