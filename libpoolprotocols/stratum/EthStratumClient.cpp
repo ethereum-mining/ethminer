@@ -1105,21 +1105,27 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
 
 	if (!ec && bytes_transferred > 0) {
 
-		// Extract received message
-		m_recvBuffer[bytes_transferred] = 0;
+		// Extract received message(s)
+		char* cp = m_recvBuffer;
+		char* const cp_end = cp + bytes_transferred;
+		*cp_end = 0;
+		while (cp < cp_end) {
+			char* cp2 = ::strchr(cp, '\n');
+			if (cp2)
+				*cp2 = 0;
+			if (::strlen(cp)) {
 
-		if (::strlen(m_recvBuffer)) {
-
-			// Test validity of chunk and process
-			Json::Value jMsg;
-			Json::Reader jRdr;
-			if (jRdr.parse(m_recvBuffer, jMsg)) {
-				processReponse(jMsg);
+				// Test validity of chunk and process
+				Json::Value jMsg;
+				Json::Reader jRdr;
+				if (jRdr.parse(cp, jMsg))
+					processReponse(jMsg);
+				else
+					cwarn << "Got invalid Json message :" + jRdr.getFormattedErrorMessages();
 			}
-			else {
-				cwarn << "Got invalid Json message :" + jRdr.getFormattedErrorMessages();
-			}
-
+			if (cp2 == NULL)
+				break;
+			cp = cp2 + 1;
 		}
 
 		// Eventually keep reading from socket
