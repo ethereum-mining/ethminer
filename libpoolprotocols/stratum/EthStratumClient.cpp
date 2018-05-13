@@ -1114,7 +1114,6 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
 			if (cp2)
 				*cp2 = 0;
 			if (::strlen(cp)) {
-
 				// Test validity of chunk and process
 				Json::Value jMsg;
 				Json::Reader jRdr;
