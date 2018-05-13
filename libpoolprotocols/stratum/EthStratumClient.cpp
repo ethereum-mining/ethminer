@@ -1087,14 +1087,12 @@ void EthStratumClient::submitSolution(Solution solution) {
 void EthStratumClient::recvSocketData() {
 	
 	if (m_conn.SecLevel() != SecureLevel::NONE) {
-
-		async_read_until(*m_securesocket, m_recvBuffer, "\n",
+		m_securesocket->async_read_some(boost::asio::buffer(m_recvBuffer, sizeof(m_recvBuffer) - 1),
 			boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
 				boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
 	}
 	else {
-
-		async_read_until(*m_nonsecuresocket, m_recvBuffer, "\n",
+		m_nonsecuresocket->async_read_some(boost::asio::buffer(m_recvBuffer, sizeof(m_recvBuffer) - 1),
 			boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
 				boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
 	}
@@ -1108,16 +1106,14 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
 	if (!ec && bytes_transferred > 0) {
 
 		// Extract received message
-		std::istream is(&m_recvBuffer);
-		std::string message;
-		getline(is, message);
+		m_recvBuffer[bytes_transferred] = 0;
 
-		if (!message.empty()) {
+		if (::strlen(m_recvBuffer)) {
 
 			// Test validity of chunk and process
 			Json::Value jMsg;
 			Json::Reader jRdr;
-			if (jRdr.parse(message, jMsg)) {
+			if (jRdr.parse(m_recvBuffer, jMsg)) {
 				processReponse(jMsg);
 			}
 			else {

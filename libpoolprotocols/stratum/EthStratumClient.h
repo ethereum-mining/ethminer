@@ -95,7 +95,7 @@ private:
 	  m_nonsecuresocket;
 
 	boost::asio::streambuf m_sendBuffer;
-	boost::asio::streambuf m_recvBuffer;
+	char m_recvBuffer[1024];
 	Json::FastWriter m_jWriter;
 
 	boost::asio::deadline_timer m_conntimer;
