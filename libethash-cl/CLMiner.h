@@ -59,7 +59,7 @@ public:
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 	static unsigned getNumDevices();
 	static void listDevices();
-    static bool configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
+    static bool configureGPU(unsigned _localWorkSize, int _globalWorkSizeMultiplier,
         unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice,
         bool _noeval, bool _exit);
     static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
@@ -101,6 +101,8 @@ private:
 	static unsigned s_workgroupSize;
 	/// The initial global work size for the searches
 	static unsigned s_initialGlobalWorkSize;
+	static bool s_adjustWorkSize;
+
 };
 
 }

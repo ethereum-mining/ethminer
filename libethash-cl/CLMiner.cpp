@@ -21,6 +21,7 @@ unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_threadsPerHash = 8;
 CLKernelName CLMiner::s_clKernelName = CLMiner::c_defaultKernelName;
+bool CLMiner::s_adjustWorkSize = false;
 
 constexpr size_t c_maxSearchResults = 1;
 
@@ -460,7 +461,7 @@ void CLMiner::listDevices()
     std::cout << outString;
 }
 
-bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
+bool CLMiner::configureGPU(unsigned _localWorkSize, int _globalWorkSizeMultiplier,
     unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice,
 	bool _noeval, bool _exit)
 {
@@ -473,6 +474,10 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMult
 
     _localWorkSize = ((_localWorkSize + 7) / 8) * 8;
     s_workgroupSize = _localWorkSize;
+	if (_globalWorkSizeMultiplier < 0) {
+		s_adjustWorkSize = true;
+		_globalWorkSizeMultiplier = -_globalWorkSizeMultiplier;
+	}
     s_initialGlobalWorkSize = _globalWorkSizeMultiplier * _localWorkSize;
 
     auto dagSize = ethash::get_full_dataset_size(ethash::calculate_full_dataset_num_items(epoch));
@@ -603,18 +608,20 @@ bool CLMiner::init(int epoch)
         m_workgroupSize = s_workgroupSize;
         m_globalWorkSize = s_initialGlobalWorkSize;
 
-        unsigned int computeUnits;
-		clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(computeUnits), &computeUnits, NULL);
-        // Apparently some 36 CU devices return a bogus 14!!!
-        computeUnits = computeUnits == 14 ? 36 : computeUnits;
-		if ((platformId == OPENCL_PLATFORM_AMD) && (computeUnits != 36)) {
-			m_globalWorkSize = (m_globalWorkSize * computeUnits) / 36;
-			// make sure that global work size is evenly divisible by the local workgroup size
-			if (m_globalWorkSize % m_workgroupSize != 0)
-				m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
-			cnote << "Adjusting CL work multiplier for " << computeUnits << " CUs."
-				<< "Adjusted work multiplier: " << m_globalWorkSize / m_workgroupSize;
-		}
+        if (s_adjustWorkSize) {
+            unsigned int computeUnits;
+	    	clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(computeUnits), &computeUnits, NULL);
+            // Apparently some 36 CU devices return a bogus 14!!!
+            computeUnits = computeUnits == 14 ? 36 : computeUnits;
+		    if ((platformId == OPENCL_PLATFORM_AMD) && (computeUnits != 36)) {
+		    	m_globalWorkSize = (m_globalWorkSize * computeUnits) / 36;
+		    	// make sure that global work size is evenly divisible by the local workgroup size
+		    	if (m_globalWorkSize % m_workgroupSize != 0)
+		    		m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
+		    	cnote << "Adjusting CL work multiplier for " << computeUnits << " CUs."
+		    		<< "Adjusted work multiplier: " << m_globalWorkSize / m_workgroupSize;
+		    }
+        }
 
         const auto& context = ethash::managed::get_epoch_context(epoch);
         const auto lightNumItems = context.light_cache_num_items;
