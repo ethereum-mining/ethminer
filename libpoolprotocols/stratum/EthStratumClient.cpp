@@ -188,21 +188,22 @@ void EthStratumClient::disconnect()
 	m_responsetimer.cancel();
 	m_response_pending = false;
 
-	if (m_socket && m_socket->is_open()) { 
+	//if (m_socket && m_socket->is_open()) { 
 
 		try {
 		
 			boost::system::error_code sec;
 
 			if (m_conn.SecLevel() != SecureLevel::NONE) {
+				m_securesocket->lowest_layer().shutdown(tcp::socket::shutdown_both);
 				m_securesocket->shutdown(sec);
 			}
 			else {
-				m_nonsecuresocket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, sec);
+				m_nonsecuresocket->shutdown(tcp::socket::shutdown_both);
 			}
 
 			m_socket->close();
-			// m_io_service.stop();
+
 		}
 		catch (std::exception const& _e) {
 			cwarn << "Error while disconnecting:" << _e.what();
@@ -211,7 +212,7 @@ void EthStratumClient::disconnect()
 		m_securesocket = nullptr;
 		m_nonsecuresocket = nullptr;
 		m_socket = nullptr;
-	}
+	// }
 
 
 	m_subscribed.store(false, std::memory_order_relaxed);
@@ -1144,7 +1145,7 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
 	}
 	else
 	{
-		if (isConnected()) {
+		
 			if (ec == boost::asio::error::eof)
 			{
 				cnote << "Connection remotely closed by" << m_conn.Host();
@@ -1152,8 +1153,9 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
 			else {
 				cwarn << "Socket read failed:" << ec.message();
 			}
-			disconnect();
-		}
+			if (isConnected()) {
+				disconnect();
+			}
 	}
 
 }
