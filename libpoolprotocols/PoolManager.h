@@ -16,7 +16,7 @@ namespace dev
 {
 	namespace eth
 	{
-		class PoolManager : public Worker
+		class PoolManager
 		{
 		public:
 			PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType, unsigned maxTries);
@@ -32,7 +32,7 @@ namespace dev
 			unsigned m_hashrateReportingTimePassed = 0;
 
 			bool m_running = false;
-			void workLoop() override;
+			void workLoop();
 
 			unsigned m_connectionAttempt = 0;
 			unsigned m_maxConnectionAttempts = 0;

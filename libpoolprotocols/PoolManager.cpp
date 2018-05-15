@@ -19,7 +19,7 @@ static string diffToDisplay(double diff)
 	return ss.str();
 }
 
-PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType, unsigned maxTries) : Worker("main"), 
+PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType, unsigned maxTries) :
 	m_farm(farm),
 	m_minerType(minerType)
 {
@@ -146,8 +146,7 @@ void PoolManager::stop()
 {
 
 	m_running = false;
-	stopWorking();
-
+	
 	cnote << "Shutting down...";
 
 	if (p_client->isConnected())
@@ -253,7 +252,7 @@ void PoolManager::start()
 {
 	if (m_connections.size() > 0) {
 		m_running = true;
-		startWorking();
+		new thread(bind(&PoolManager::workLoop, this));
 	}
 	else {
 		cwarn << "Manager has no connections defined!";

@@ -40,14 +40,14 @@ static void diffToTarget(uint32_t *target, double diff)
 }
 
 
-EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate) : PoolClient(),
+EthStratumClient::EthStratumClient(boost::asio::io_service& io_service, int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate) : PoolClient(),
 	m_worktimeout(worktimeout),
 	m_responsetimeout(responsetimeout),
 	m_socket(nullptr),
-	m_conntimer(m_io_service),
-	m_worktimer(m_io_service),
-	m_responsetimer(m_io_service),
-	m_resolver(m_io_service),
+	m_conntimer(io_service),
+	m_worktimer(io_service),
+	m_responsetimer(io_service),
+	m_resolver(io_service),
 	m_email(email),
 	m_submit_hashrate(submitHashrate)
 {
@@ -58,8 +58,8 @@ EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, string 
 
 EthStratumClient::~EthStratumClient()
 {
-	m_io_service.stop();
-	m_serviceThread.join();
+	//m_io_service.stop();
+	//m_serviceThread.join();
 }
 
 void EthStratumClient::connect()
@@ -88,7 +88,7 @@ void EthStratumClient::connect()
 			method = boost::asio::ssl::context::tlsv12;
 
 		boost::asio::ssl::context ctx(method);
-		m_securesocket = std::make_shared<boost::asio::ssl::stream<boost::asio::ip::tcp::socket> >(m_io_service, ctx);
+		m_securesocket = std::make_shared<boost::asio::ssl::stream<boost::asio::ip::tcp::socket> >(m_conntimer.get_io_service(), ctx);
 		m_socket = &m_securesocket->next_layer();
 
 		if (m_conn.SecLevel() != SecureLevel::ALLOW_SELFSIGNED) {
@@ -130,7 +130,7 @@ void EthStratumClient::connect()
 		}
 	}
 	else {
-	  m_nonsecuresocket = std::make_shared<boost::asio::ip::tcp::socket>(m_io_service);
+	  m_nonsecuresocket = std::make_shared<boost::asio::ip::tcp::socket>(m_conntimer.get_io_service());
 	  m_socket = m_nonsecuresocket.get();
 	}
 
@@ -151,23 +151,21 @@ void EthStratumClient::connect()
 
 	// Begin resolve and connect
 	tcp::resolver::query q(m_conn.Host(), toString(m_conn.Port()));
+	m_resolver.cancel();
 	m_resolver.async_resolve(q,
 		boost::bind(&EthStratumClient::resolve_handler,
 			this, boost::asio::placeholders::error,
 			boost::asio::placeholders::iterator));
 
-
 	// IMPORTANT !!
-	if (m_serviceThread.joinable())
-	{
-		m_io_service.reset();
-		m_serviceThread.join();
-	}
-	//else
+	//if (m_serviceThread.joinable())
 	//{
-		// Otherwise, if the first time here, create new thread.
-		m_serviceThread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };
+	//	if (!m_io_service.stopped()) m_io_service.stop();
+	//	m_serviceThread.join();
+	//	m_io_service.reset();
+	//	
 	//}
+	//m_serviceThread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };
 
 
 
@@ -224,7 +222,7 @@ void EthStratumClient::disconnect()
 	m_disconnecting.store(false, std::memory_order::memory_order_relaxed);
 
 	// Stop io_service
-	m_io_service.stop();
+	// m_io_service.stop();
 
 	// Trigger handlers
 	if (m_onDisconnected) { m_onDisconnected();	}

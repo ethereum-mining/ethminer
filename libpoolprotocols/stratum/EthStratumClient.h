@@ -24,7 +24,7 @@ public:
 
 	typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
 
-	EthStratumClient(int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate);
+	EthStratumClient(boost::asio::io_service& io_service, int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate);
 	~EthStratumClient();
 
 	void connect();
@@ -81,8 +81,8 @@ private:
 
 	bool m_stale = false;
 
-	std::thread m_serviceThread;  ///< The IO service thread.
-	boost::asio::io_service m_io_service;
+	//std::thread m_serviceThread;  ///< The IO service thread.
+	//boost::asio::io_service m_io_service;
 	boost::asio::ip::tcp::socket *m_socket;
 
 	// Use shared ptrs to avoid crashes due to async_writes
