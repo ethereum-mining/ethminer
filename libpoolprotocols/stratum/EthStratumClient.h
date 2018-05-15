@@ -95,7 +95,8 @@ private:
 	  m_nonsecuresocket;
 
 	boost::asio::streambuf m_sendBuffer;
-	boost::asio::streambuf m_recvBuffer;
+	// Use max IP MTU size buffer for receives.
+	char m_recvBuffer[1500];
 	Json::FastWriter m_jWriter;
 
 	boost::asio::deadline_timer m_conntimer;

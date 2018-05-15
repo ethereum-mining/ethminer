@@ -1087,14 +1087,12 @@ void EthStratumClient::submitSolution(Solution solution) {
 void EthStratumClient::recvSocketData() {
 	
 	if (m_conn.SecLevel() != SecureLevel::NONE) {
-
-		async_read_until(*m_securesocket, m_recvBuffer, "\n",
+		m_securesocket->async_read_some(boost::asio::buffer(m_recvBuffer, sizeof(m_recvBuffer) - 1),
 			boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
 				boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
 	}
 	else {
-
-		async_read_until(*m_nonsecuresocket, m_recvBuffer, "\n",
+		m_nonsecuresocket->async_read_some(boost::asio::buffer(m_recvBuffer, sizeof(m_recvBuffer) - 1),
 			boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
 				boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
 	}
@@ -1107,23 +1105,26 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
 
 	if (!ec && bytes_transferred > 0) {
 
-		// Extract received message
-		std::istream is(&m_recvBuffer);
-		std::string message;
-		getline(is, message);
-
-		if (!message.empty()) {
-
-			// Test validity of chunk and process
-			Json::Value jMsg;
-			Json::Reader jRdr;
-			if (jRdr.parse(message, jMsg)) {
-				processReponse(jMsg);
+		// Extract received message(s)
+		char* cp = m_recvBuffer;
+		char* const cp_end = cp + bytes_transferred;
+		*cp_end = 0;
+		while (cp < cp_end) {
+			char* cp2 = ::strchr(cp, '\n');
+			if (cp2)
+				*cp2 = 0;
+			if (::strlen(cp)) {
+				// Test validity of chunk and process
+				Json::Value jMsg;
+				Json::Reader jRdr;
+				if (jRdr.parse(cp, jMsg))
+					processReponse(jMsg);
+				else
+					cwarn << "Got invalid Json message :" + jRdr.getFormattedErrorMessages();
 			}
-			else {
-				cwarn << "Got invalid Json message :" + jRdr.getFormattedErrorMessages();
-			}
-
+			if (cp2 == NULL)
+				break;
+			cp = cp2 + 1;
 		}
 
 		// Eventually keep reading from socket
