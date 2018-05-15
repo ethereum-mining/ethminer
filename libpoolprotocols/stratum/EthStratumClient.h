@@ -61,6 +61,7 @@ private:
 	void onRecvSocketDataCompleted(const boost::system::error_code& ec, std::size_t bytes_transferred);
 	void sendSocketData(Json::Value const & jReq);
 	void onSendSocketDataCompleted(const boost::system::error_code& ec);
+	void onSSLShutdownCompleted(const boost::system::error_code& ec);
 
 
 	string m_worker; // eth-proxy only; No ! It's for all !!!

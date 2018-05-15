@@ -195,22 +195,32 @@ void EthStratumClient::disconnect()
 			boost::system::error_code sec;
 
 			if (m_conn.SecLevel() != SecureLevel::NONE) {
-				m_securesocket->lowest_layer().shutdown(tcp::socket::shutdown_both);
-				m_securesocket->shutdown(sec);
+
+				// Some light breaks the dark ?
+				// https://stackoverflow.com/questions/25587403/boost-asio-ssl-async-shutdown-always-finishes-with-an-error
+
+				m_securesocket->async_shutdown(boost::bind(&EthStratumClient::onSSLShutdownCompleted, this, boost::asio::placeholders::error));
+				
+				std::ostream os(&m_sendBuffer);
+				os << "dummy data";
+				async_write(*m_securesocket, m_sendBuffer,
+					boost::bind(&EthStratumClient::onSendSocketDataCompleted, this, boost::asio::placeholders::error));
+				m_securesocket->get_io_service().run();
+
 			}
 			else {
+				
 				m_nonsecuresocket->shutdown(tcp::socket::shutdown_both);
+				m_socket->close();
 			}
-
-			m_socket->close();
 
 		}
 		catch (std::exception const& _e) {
 			cwarn << "Error while disconnecting:" << _e.what();
 		}
 
-		m_securesocket = nullptr;
-		m_nonsecuresocket = nullptr;
+		// m_securesocket = nullptr;
+		m_nonsecuresocket.reset();
 		m_socket = nullptr;
 	// }
 
@@ -418,6 +428,9 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec, tcp:
 
 				break;
 		}
+
+		// Clear send buffer
+		m_sendBuffer.consume(1024);
 
 		// Send first message
 		sendSocketData(jReq);
@@ -1047,7 +1060,8 @@ void EthStratumClient::submitSolution(Solution solution) {
 	string nonceHex = toHex(solution.nonce);
 
 	m_responsetimer.cancel();
-	m_responsetimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
+	//m_responsetimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
+	m_responsetimer.expires_from_now(boost::posix_time::milliseconds(5));
 	m_responsetimer.async_wait(boost::bind(&EthStratumClient::response_timeout_handler, this, boost::asio::placeholders::error));
 
 	Json::Value jReq;
@@ -1189,10 +1203,31 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
 	dev::setThreadName("stratum");
 
 	if (ec) {
+
+		cnote << "onSendSocketDataCompleted" << ec.message();
+
+		if ((ec.category() == boost::asio::error::get_ssl_category()) && (SSL_R_PROTOCOL_IS_SHUTDOWN == ERR_GET_REASON(ec.value()))) {
+			
+			m_securesocket->lowest_layer().shutdown(tcp::socket::shutdown_both);
+			m_securesocket->lowest_layer().close();
+
+		}
+
 		if (isConnected()) {
 			cwarn << "Socket write failed: " + ec.message();
 			disconnect();
 		}
 	}
+
+}
+
+void EthStratumClient::onSSLShutdownCompleted(const boost::system::error_code& ec) {
+
+	(void)ec;
+
+	cnote << "onSSLShutdownCompleted";
+
+	m_securesocket->lowest_layer().shutdown(tcp::socket::shutdown_both);
+	m_securesocket->lowest_layer().close();
 
 }
