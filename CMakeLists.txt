@@ -9,13 +9,13 @@ include(HunterGate)
 
 include(defaults/HunterCacheServers)
 
-cable_configure_toolchain(DEFAULT cxx11)
+cable_configure_toolchain(DEFAULT cxx11-c99)
 
 set(HUNTER_CONFIGURATION_TYPES Release CACHE STRING "Build type of Hunter packages")
 set(HUNTER_JOBS_NUMBER 6 CACHE STRING "Number of parallel builds used by Hunter")
 HunterGate(
-    URL "https://github.com/ruslo/hunter/archive/v0.20.34.tar.gz"
-    SHA1 "2f04d1beffdf39db1c40d8347beb8c10bbe9b8ed"
+    URL "https://github.com/ruslo/hunter/archive/v0.20.73.tar.gz"
+    SHA1 "5cd594b2bb12b2d66983a40b230f760187abbe5a"
     LOCAL
 )
 
@@ -69,6 +69,9 @@ find_package(libjson-rpc-cpp CONFIG REQUIRED)
 hunter_add_package(CppNetlibUri)
 find_package(CppNetlibUri CONFIG REQUIRED)
 
+hunter_add_package(ethash)
+find_package(ethash CONFIG REQUIRED)
+
 configureProject()
 
 message("------------------------------------------------------------------------")
@@ -84,8 +87,6 @@ message("")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(EthCompilerSettings)
-
-include(ProjectEthash)
 
 cable_add_buildinfo_library(PREFIX ethminer)
 
