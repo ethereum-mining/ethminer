@@ -156,8 +156,11 @@ public:
 		m_hashrateTimer.async_wait(boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error));
 
 		if (m_serviceThread.joinable()) {
-			m_io_service.reset();
+			 
+			m_io_service.stop();
 			m_serviceThread.join();
+			m_io_service.reset();					
+			 
 		}
 
 		m_serviceThread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };

@@ -24,18 +24,15 @@ public:
 
 	typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
 
-	EthStratumClient(int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate);
+	EthStratumClient(boost::asio::io_service& io_service, int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate);
 	~EthStratumClient();
 
 	void connect();
 	void disconnect();
 	
 	// Connected and Connection Statuses
-	bool isConnected()
-	{
-		return m_connected.load(std::memory_order_relaxed) &&
-				!m_disconnecting.load(std::memory_order_relaxed);
-	}
+	bool isConnected() override { return m_connected.load(std::memory_order_relaxed) && !isPendingState(); }
+	bool isPendingState() override { return m_connecting.load(std::memory_order_relaxed) || m_disconnecting.load(std::memory_order_relaxed);  }
 	bool isSubscribed() { return m_subscribed.load(std::memory_order_relaxed); }
 	bool isAuthorized() { return m_authorized.load(std::memory_order_relaxed); }
 	string ActiveEndPoint() { return " [" + toString(m_endpoint) + "]"; };
@@ -64,6 +61,7 @@ private:
 	void onRecvSocketDataCompleted(const boost::system::error_code& ec, std::size_t bytes_transferred);
 	void sendSocketData(Json::Value const & jReq);
 	void onSendSocketDataCompleted(const boost::system::error_code& ec);
+	void onSSLShutdownCompleted(const boost::system::error_code& ec);
 
 
 	string m_worker; // eth-proxy only; No ! It's for all !!!
@@ -72,6 +70,7 @@ private:
 	std::atomic<bool> m_authorized = { false };
 	std::atomic<bool> m_connected = { false };
 	std::atomic<bool> m_disconnecting = { false };
+	std::atomic<bool> m_connecting = { false };
 
 	// seconds to trigger a work_timeout (overwritten in constructor)
 	int m_worktimeout;
@@ -83,8 +82,8 @@ private:
 
 	bool m_stale = false;
 
-	std::thread m_serviceThread;  ///< The IO service thread.
-	boost::asio::io_service m_io_service;
+	//std::thread m_serviceThread;  ///< The IO service thread.
+	//boost::asio::io_service m_io_service;
 	boost::asio::ip::tcp::socket *m_socket;
 
 	// Use shared ptrs to avoid crashes due to async_writes

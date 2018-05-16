@@ -32,8 +32,6 @@ void EthGetworkClient::connect()
 		p_client = new ::JsonrpcGetwork(new jsonrpc::HttpClient(ss.str()));
 	}
 
-//	cnote << "connect to " << m_host;
-
 	m_client_id = h256::random();
 	m_connection_changed = false;
 	m_justConnected = true; // We set a fake flag, that we can check with workhandler if connection works

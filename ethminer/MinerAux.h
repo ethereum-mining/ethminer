@@ -435,7 +435,7 @@ public:
 			m_newParameters = true;
 			string url = argv[++i];
 			if (url == "exit") // add fake scheme and port to 'exit' url
-				url = "stratum://exit:1";
+				url = "stratum+tcp://-:x@exit:0";
 			URI uri;
 			try {
 				uri = url;
@@ -1038,6 +1038,12 @@ private:
 	
 	void doMiner()
 	{
+
+		// Start io_service
+		boost::asio::io_service::work work(m_io_service);
+		m_io_thread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };
+
+
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
 		sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CLMiner(_farm, _index); }};
@@ -1049,7 +1055,7 @@ private:
 		PoolClient *client = nullptr;
 
 		if (m_mode == OperationMode::Stratum) {
-			client = new EthStratumClient(m_worktimeout, m_responsetimeout, m_email, m_report_stratum_hashrate);
+			client = new EthStratumClient(m_io_service, m_worktimeout, m_responsetimeout, m_email, m_report_stratum_hashrate);
 		}
 		else if (m_mode == OperationMode::Farm) {
 			client = new EthGetworkClient(m_farmRecheckPeriod);
@@ -1072,8 +1078,7 @@ private:
 		Farm f;
 		f.setSealers(sealers);
 
-		PoolManager mgr(client, f, m_minerType);
-		mgr.setReconnectTries(m_maxFarmRetries);
+		PoolManager mgr(client, f, m_minerType, m_maxFarmRetries);
 
 		if (m_legacyParameters && !m_endpoints[k_secondary_ep_ix].User().empty()) {
 			m_endpoints[k_secondary_ep_ix].User(m_endpoints[k_primary_ep_ix].User());
@@ -1098,6 +1103,7 @@ private:
         http_server.run(m_http_port, &f, m_show_hwmonitors, m_show_power);
 #endif
 
+
 		// Start PoolManager
 		mgr.start();
 
@@ -1119,8 +1125,18 @@ private:
 
 		mgr.stop();
 
+		// Stop io_service 
+		m_io_service.stop();
+		m_io_thread.join();
+
+		cnote << "Terminated !";
 		exit(0);
 	}
+
+
+	// Boost io_service
+	boost::asio::io_service m_io_service;
+	std::thread m_io_thread;
 
 	/// Operating mode.
 	OperationMode m_mode = OperationMode::None;
