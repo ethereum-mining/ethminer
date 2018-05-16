@@ -511,7 +511,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		if (responseObject.isMember("result")) {
 
 			_id = responseObject.get("id", 0).asUInt();
-			_isSuccess = !responseObject.get("result", Json::Value::null).empty();
+			_isSuccess = responseObject.get("error", Json::Value::null).empty();
 			_errReason = (_isSuccess ? "" : processError(responseObject));
 
 		}
@@ -626,14 +626,17 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 	if (!_isNotification) {
 
 		Json::Value jReq;
-		Json::Value jPrm;
+		Json::Value jResult = responseObject.get("result", Json::Value::null);
+		bool authSuccessful = false;
+		bool submitSuccessful = false;
 
 		switch (_id)
 		{
 
 		case 1:
-
-			// Response to "mining.subscribe"
+			// Response to "mining.subscribe" (https://en.bitcoin.it/wiki/Stratum_mining_protocol#mining.subscribe)
+			// Result should be an array with multiple dimensions, we only care about the data if EthStratumClient::ETHEREUMSTRATUM
+	
 			switch (m_conn.Version()) {
 
 			case EthStratumClient::STRATUM:
@@ -655,8 +658,6 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					jReq["params"] = Json::Value(Json::arrayValue);
 					jReq["params"].append(m_conn.User() + m_conn.Path());
 					jReq["params"].append(m_conn.Pass());
-
-
 				}
 
 				break;
@@ -697,10 +698,9 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					cnote << "Subscribed to stratum server";
 
 					m_nextWorkDifficulty = 1;
-					jPrm = responseObject.get(((_rpcVer==1) ? "result":"params"), Json::Value::null);
-
-					if (!jPrm.empty() && jPrm.isArray()) {
-						std::string enonce = jPrm.get((Json::Value::ArrayIndex)1, "").asString();
+					
+					if (!jResult.empty() && jResult.isArray()) {
+						std::string enonce = jResult.get((Json::Value::ArrayIndex)1, "").asString();
 						processExtranonce(enonce);
 					}
 
@@ -741,8 +741,11 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 		case 3:
 
-			// Response to "mining.authorize"
-			m_authorized.store(_isSuccess, std::memory_order_relaxed);
+			// Response to "mining.authorize" (https://en.bitcoin.it/wiki/Stratum_mining_protocol#mining.authorize)
+			// Result should be boolean, some pools also throw an error, so _isSuccess can be false
+			authSuccessful = (!_isSuccess) ? false : ((!jResult.empty() && jResult.isBool()) ? jResult.asBool() : false);
+
+			m_authorized.store(authSuccessful, std::memory_order_relaxed);
 
 			if (!m_authorized)
 			{
@@ -752,37 +755,39 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			
 			}
 			else {
-
 				cnote << "Authorized worker " + m_conn.User();
-
 			}
 			
 			break;
 
 		case 4:
 
-			// Response to solution submission mining.submit (4)
+			// Response to solution submission mining.submit  (https://en.bitcoin.it/wiki/Stratum_mining_protocol#mining.submit)
+			// Result should be boolean, some pools also throw an error, so _isSuccess can be false
+			submitSuccessful = (!_isSuccess) ? false : ((!jResult.empty() && jResult.isBool()) ? jResult.asBool() : false);
 			{
 				m_responsetimer.cancel();
 				m_response_pending = false;
-				if (_isSuccess) {
+				if (submitSuccessful) {
 					if (m_onSolutionAccepted) {
 						m_onSolutionAccepted(m_stale);
 					}
 				}
 				else {
-					cwarn << "Error :" + _errReason;
+					if (!_errReason.empty()) {
+						cwarn << "Solution rejected with the following error: " + _errReason;
+					}
 					if (m_onSolutionRejected) {
 						m_onSolutionRejected(m_stale);
 					}
 				}
 			}
 			break;
-
 		case 9:
 
 			// Response to hashrate submit
 			// Shall we do anyting ?
+			// Hashrate submit is actually out of stratum spec
 			if (!_isSuccess) {
 				cwarn << "Submit hashRate failed:" << _errReason;
 			}
