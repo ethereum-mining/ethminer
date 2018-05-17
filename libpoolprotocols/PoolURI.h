@@ -7,10 +7,10 @@
 namespace dev
 {
 
-enum class SecureLevel {NONE = 0, TLS12, TLS, ALLOW_SELFSIGNED};
+enum class SecureLevel {NONE = 0, TLS12, TLS};
 enum class ProtocolFamily {GETWORK = 0, STRATUM};
 
-class URI : network::uri
+class URI
 {
 public:
 	URI() {};
@@ -21,10 +21,10 @@ public:
 	std::string	Path() const;
 	unsigned short	Port() const;
 	std::string	User() const;
-	std::string	Pswd() const;
-	SecureLevel	ProtoSecureLevel() const;
-	ProtocolFamily	ProtoFamily() const;
-	unsigned	ProtoVersion() const;
+	std::string	Pass() const;
+	SecureLevel	SecLevel() const;
+	ProtocolFamily	Family() const;
+	unsigned	Version() const;
 
 	bool		KnownScheme();
 

@@ -174,11 +174,8 @@ void PoolManager::workLoop()
 	}
 }
 
-void PoolManager::addConnection(PoolConnection &conn)
+void PoolManager::addConnection(URI &conn)
 {
-	if (conn.Host().empty())
-		return;
-
 	m_connections.push_back(conn);
 
 	if (m_connections.size() == 1) {

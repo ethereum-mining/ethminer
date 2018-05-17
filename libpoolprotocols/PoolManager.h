@@ -20,7 +20,7 @@ namespace dev
 		{
 		public:
 			PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType);
-			void addConnection(PoolConnection &conn);
+			void addConnection(URI &conn);
 			void clearConnections();
 			void start();
 			void stop();
@@ -36,7 +36,7 @@ namespace dev
 			void workLoop() override;
 			unsigned m_reconnectTries = 3;
 			unsigned m_reconnectTry = 0;
-			std::vector <PoolConnection> m_connections;
+			std::vector <URI> m_connections;
 			unsigned m_activeConnectionIdx = 0;
 			h256 m_lastBoundary = h256();
 
