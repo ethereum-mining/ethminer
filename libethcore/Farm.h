@@ -36,6 +36,8 @@
 #include <libhwmon/wrapamdsysfs.h>
 #endif
 
+extern bool g_keepworking;
+
 namespace dev
 {
 
