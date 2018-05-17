@@ -176,9 +176,6 @@ void PoolManager::workLoop()
 
 void PoolManager::addConnection(PoolConnection &conn)
 {
-	if (conn.Host().empty())
-		return;
-
 	m_connections.push_back(conn);
 
 	if (m_connections.size() == 1) {
