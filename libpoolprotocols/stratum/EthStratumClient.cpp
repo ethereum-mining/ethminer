@@ -82,43 +82,41 @@ void EthStratumClient::connect()
 		m_securesocket = std::make_shared<boost::asio::ssl::stream<boost::asio::ip::tcp::socket> >(m_io_service, ctx);
 		m_socket = &m_securesocket->next_layer();
 
-		if (m_conn.SecLevel() != SecureLevel::ALLOW_SELFSIGNED) {
-			m_securesocket->set_verify_mode(boost::asio::ssl::verify_peer);
+		m_securesocket->set_verify_mode(boost::asio::ssl::verify_peer);
 
 #ifdef _WIN32
-			HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
-			if (hStore == NULL) {
-				return;
-			}
-
-			X509_STORE *store = X509_STORE_new();
-			PCCERT_CONTEXT pContext = NULL;
-			while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != NULL) {
-				X509 *x509 = d2i_X509(NULL,
-					(const unsigned char **)&pContext->pbCertEncoded,
-					pContext->cbCertEncoded);
-				if (x509 != NULL) {
-					X509_STORE_add_cert(store, x509);
-					X509_free(x509);
-				}
-			}
-
-			CertFreeCertificateContext(pContext);
-			CertCloseStore(hStore, 0);
-
-			SSL_CTX_set_cert_store(ctx.native_handle(), store);
-#else
-			char *certPath = getenv("SSL_CERT_FILE");
-			try {
-				ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
-			}
-			catch (...) {
-				cwarn << "Failed to load ca certificates. Either the file '/etc/ssl/certs/ca-certificates.crt' does not exist";
-				cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or inaccessable file.";
-				cwarn << "It is possible that certificate verification can fail.";
-			}
-#endif
+		HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
+		if (hStore == NULL) {
+			return;
 		}
+
+		X509_STORE *store = X509_STORE_new();
+		PCCERT_CONTEXT pContext = NULL;
+		while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != NULL) {
+			X509 *x509 = d2i_X509(NULL,
+				(const unsigned char **)&pContext->pbCertEncoded,
+				pContext->cbCertEncoded);
+			if (x509 != NULL) {
+				X509_STORE_add_cert(store, x509);
+				X509_free(x509);
+			}
+		}
+
+		CertFreeCertificateContext(pContext);
+		CertCloseStore(hStore, 0);
+
+		SSL_CTX_set_cert_store(ctx.native_handle(), store);
+#else
+		char *certPath = getenv("SSL_CERT_FILE");
+		try {
+			ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
+		}
+		catch (...) {
+			cwarn << "Failed to load ca certificates. Either the file '/etc/ssl/certs/ca-certificates.crt' does not exist";
+			cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or inaccessable file.";
+			cwarn << "It is possible that certificate verification can fail.";
+		}
+#endif
 	}
 	else {
 	  m_nonsecuresocket = std::make_shared<boost::asio::ip::tcp::socket>(m_io_service);
