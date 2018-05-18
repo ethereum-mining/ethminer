@@ -178,6 +178,7 @@ public:
 
 		m_hashrateTimer.cancel();
 		m_io_service.stop();
+		m_serviceThread.join();
 
 		m_lastProgresses.clear();
 	}

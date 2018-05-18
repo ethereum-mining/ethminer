@@ -197,7 +197,7 @@ public:
 		{
 			string url = argv[++i];
 			if (url == "exit") // add fake scheme and port to 'exit' url
-				url = "stratum://exit:1";
+				url = "stratum+tcp://-:x@exit:0";
 			URI uri;
 			try {
 				uri = url;
@@ -809,8 +809,7 @@ private:
 		Farm f;
 		f.setSealers(sealers);
 
-		PoolManager mgr(client, f, m_minerType);
-		mgr.setReconnectTries(m_maxFarmRetries);
+		PoolManager mgr(client, f, m_minerType, m_maxFarmRetries);
 
 		// If we are in simulation mode we add a fake connection
 		if (m_mode == OperationMode::Simulation) {
@@ -848,7 +847,7 @@ private:
 		}
 
 		mgr.stop();
-
+		cnote << "Terminated !";
 		exit(0);
 	}
 
