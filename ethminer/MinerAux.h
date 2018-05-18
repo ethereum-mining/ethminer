@@ -79,6 +79,7 @@ inline std::string toJS(unsigned long _n)
 }
 
 bool g_running = false;
+bool g_keepworking = false;
 
 class MinerCLI
 {
@@ -159,6 +160,10 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 
+		}
+		else if ((arg == "-KW" || arg == "--keep-working"))
+		{
+			g_keepworking = true;
 		}
 		else if ((arg == "-RH" || arg == "--report-hashrate"))
 		{
@@ -629,6 +634,7 @@ public:
 			<< "        0: Displays only temp and fan percent (default)" << endl
 			<< "        1: Also displays power usage" << endl
 			<< "    --exit Stops the miner whenever an error is encountered" << endl
+			<< "    -KW, --keep-working Do not stop working if server connection lost. Avoids DAG regeneration but continues using power while disconnected." << endl
 			<< "    -SE, --stratum-email <s> Email address used in eth-proxy (optional)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500). When using stratum, use a high value (i.e. 2000) to get more stable hashrate output" << endl
 			<< "    -P URL Specify a pool URL. Can be used multiple times. The 1st for for the primary pool, and the 2nd for the failover pool." << endl

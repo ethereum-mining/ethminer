@@ -102,8 +102,11 @@ void CUDAMiner::workLoop()
                     continue;
                 }
                 if (current.epoch != w.epoch)
+		{
+		    cudalog << "New epoch: " << w.epoch;
                     if(!init(w.epoch))
                         break;
+		}
                 current = w;
             }
             uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)current.boundary >> 192);

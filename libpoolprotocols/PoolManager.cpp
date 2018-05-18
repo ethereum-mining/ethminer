@@ -43,7 +43,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 	{
 		cnote << "Disconnected from " + m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
 
-		if (m_farm.isMining()) {
+		if (m_farm.isMining() && !g_keepworking) {
 			cnote << "Shutting down miners...";
 			m_farm.stop();
 		}
