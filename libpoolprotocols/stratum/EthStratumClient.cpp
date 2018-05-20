@@ -74,7 +74,7 @@ void EthStratumClient::connect()
 	if (!m_serviceThread.joinable()) {
 
 		m_io_work_timer.expires_from_now(boost::posix_time::seconds(60));
-		m_io_work_timer.async_wait(boost::bind(&EthStratumClient::io_work_timer_handler, this, boost::asio::placeholders::error));
+		m_io_work_timer.async_wait(boost::bind(&EthStratumClient::io_work_timer_handler, shared_from_this(), boost::asio::placeholders::error));
 
 		// Start io service
 		m_serviceThread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };
@@ -168,7 +168,7 @@ void EthStratumClient::connect()
 		tcp::resolver::query q(m_conn.Host(), toString(m_conn.Port()));
 		m_resolver.async_resolve(q,
 			boost::bind(&EthStratumClient::resolve_handler,
-				this, boost::asio::placeholders::error,
+				shared_from_this(), boost::asio::placeholders::error,
 				boost::asio::placeholders::iterator));
 
 	}
@@ -228,10 +228,10 @@ void EthStratumClient::disconnect()
 				// This will initiate the exchange of "close_notify" message among parties.
 				// If both client and server are connected then we expect the handler with success
 				// As there may be a connection issue we also endorse a timeout
-				m_securesocket->async_shutdown(boost::bind(&EthStratumClient::onSSLShutdownCompleted, this, boost::asio::placeholders::error));
+				m_securesocket->async_shutdown(boost::bind(&EthStratumClient::onSSLShutdownCompleted, shared_from_this(), boost::asio::placeholders::error));
 
 				m_conntimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
-				m_conntimer.async_wait(boost::bind(&EthStratumClient::check_connect_timeout, this, boost::asio::placeholders::error));
+				m_conntimer.async_wait(boost::bind(&EthStratumClient::check_connect_timeout, shared_from_this(), boost::asio::placeholders::error));
 
 
 				// Rest of disconnection is performed asynchronously
@@ -321,7 +321,7 @@ void EthStratumClient::reset_work_timeout()
 {
 	m_worktimer.cancel();
 	m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
-	m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error));
+	m_worktimer.async_wait(boost::bind(&EthStratumClient::work_timeout_handler, shared_from_this(), boost::asio::placeholders::error));
 	//m_worktimer.async_wait(&work_timeout_handler);
 
 }
@@ -339,15 +339,15 @@ void EthStratumClient::start_connect()
 		cnote << ("Trying " + toString(m_endpoint) + " ...");
 
 		m_conntimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
-		m_conntimer.async_wait(boost::bind(&EthStratumClient::check_connect_timeout, this, boost::asio::placeholders::error));
+		m_conntimer.async_wait(boost::bind(&EthStratumClient::check_connect_timeout, shared_from_this(), boost::asio::placeholders::error));
 		
 		// Start connecting async
 		if (m_conn.SecLevel() != SecureLevel::NONE) {
-			m_securesocket->lowest_layer().async_connect(m_endpoint, boost::bind(&EthStratumClient::connect_handler, this, _1));
+			m_securesocket->lowest_layer().async_connect(m_endpoint, boost::bind(&EthStratumClient::connect_handler, shared_from_this(), _1));
 		}
 		else {
 			m_socket->async_connect(m_endpoint,
-				boost::bind(&EthStratumClient::connect_handler, this, _1));
+				boost::bind(&EthStratumClient::connect_handler, shared_from_this(), _1));
 		}
 
 
@@ -416,7 +416,7 @@ void EthStratumClient::check_connect_timeout(const boost::system::error_code& ec
 			m_conntimer.expires_at(boost::posix_time::pos_infin);
 		}
 		// Put the actor back to sleep.
-		m_conntimer.async_wait(boost::bind(&EthStratumClient::check_connect_timeout, this, boost::asio::placeholders::error));
+		m_conntimer.async_wait(boost::bind(&EthStratumClient::check_connect_timeout, shared_from_this(), boost::asio::placeholders::error));
 	}
 
 }
@@ -1124,7 +1124,7 @@ void EthStratumClient::io_work_timer_handler(const boost::system::error_code& ec
 		// This does absolutely nothing aside resubmitting timer
 		// ensuring io_service's queue has always something to do
 		m_io_work_timer.expires_from_now(boost::posix_time::seconds(60));
-		m_io_work_timer.async_wait(boost::bind(&EthStratumClient::io_work_timer_handler, this, boost::asio::placeholders::error));
+		m_io_work_timer.async_wait(boost::bind(&EthStratumClient::io_work_timer_handler, shared_from_this(), boost::asio::placeholders::error));
 
 	}
 
@@ -1188,7 +1188,7 @@ void EthStratumClient::submitSolution(Solution solution) {
 
 	m_responsetimer.cancel();
 	m_responsetimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
-	m_responsetimer.async_wait(boost::bind(&EthStratumClient::response_timeout_handler, this, boost::asio::placeholders::error));
+	m_responsetimer.async_wait(boost::bind(&EthStratumClient::response_timeout_handler, shared_from_this(), boost::asio::placeholders::error));
 
 	Json::Value jReq;
 
@@ -1242,13 +1242,13 @@ void EthStratumClient::recvSocketData() {
 	if (m_conn.SecLevel() != SecureLevel::NONE) {
 
 		async_read_until(*m_securesocket, m_recvBuffer, "\n",
-			boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
+			boost::bind(&EthStratumClient::onRecvSocketDataCompleted, shared_from_this(),
 				boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
 	}
 	else {
 
 		async_read_until(*m_nonsecuresocket, m_recvBuffer, "\n",
-			boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
+			boost::bind(&EthStratumClient::onRecvSocketDataCompleted, shared_from_this(),
 				boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
 	}
 
@@ -1329,13 +1329,13 @@ void EthStratumClient::sendSocketData(Json::Value const & jReq) {
 	if (m_conn.SecLevel() != SecureLevel::NONE) {
 
 		async_write(*m_securesocket, m_sendBuffer,
-			boost::bind(&EthStratumClient::onSendSocketDataCompleted, this, boost::asio::placeholders::error));
+			boost::bind(&EthStratumClient::onSendSocketDataCompleted, shared_from_this(), boost::asio::placeholders::error));
 
 	}
 	else {
 
 		async_write(*m_nonsecuresocket, m_sendBuffer,
-			boost::bind(&EthStratumClient::onSendSocketDataCompleted, this, boost::asio::placeholders::error));
+			boost::bind(&EthStratumClient::onSendSocketDataCompleted, shared_from_this(), boost::asio::placeholders::error));
 
 	}
 

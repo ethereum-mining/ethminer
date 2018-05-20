@@ -19,7 +19,7 @@ static string diffToDisplay(double diff)
 	return ss.str();
 }
 
-PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType, unsigned maxTries) : Worker("main"), m_farm(farm), m_minerType(minerType)
+PoolManager::PoolManager(EthStratumClient::pointer client, Farm &farm, MinerType const & minerType, unsigned maxTries) : m_farm(farm), m_minerType(minerType)
 {
 	p_client = client;
 	m_maxConnectionAttempts = maxTries;
@@ -143,11 +143,10 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 
 void PoolManager::stop()
 {
-	if (m_running) {
+	if (m_running.load(std::memory_order_relaxed)) {
 		cnote << "Shutting down...";
-		m_running = false;
+		m_running.store(false, std::memory_order_relaxed);
 		if (p_client->isConnected()) { p_client->disconnect(); }
-		stopWorking();
 
 		if (m_farm.isMining())
 		{
@@ -159,7 +158,7 @@ void PoolManager::stop()
 
 void PoolManager::workLoop()
 {
-	while (m_running)
+	while (m_running.load(std::memory_order_relaxed))
 	{
 
 		// Take action only if not pending state (connecting/disconnecting)
@@ -195,7 +194,8 @@ void PoolManager::workLoop()
 
 					dev::setThreadName("main");
 					cnote << "No more failover connections.";
-					m_running = false;
+					m_running.store(false, std::memory_order_relaxed);
+					continue;
 				}
 
 			}
@@ -241,8 +241,8 @@ void PoolManager::clearConnections()
 void PoolManager::start()
 {
 	if (m_connections.size() > 0) {
-		m_running = true;
-		startWorking();
+		m_running.store (true, std::memory_order_relaxed);
+		m_workThread = std::thread{ boost::bind(&PoolManager::workLoop, this) };
 	}
 	else {
 		cwarn << "Manager has no connections defined!";

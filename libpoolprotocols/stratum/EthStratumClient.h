@@ -4,6 +4,8 @@
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 #include <boost/bind.hpp>
 #include <json/json.h>
 #include <libdevcore/Log.h>
@@ -18,9 +20,16 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-class EthStratumClient : public PoolClient
+class EthStratumClient : public PoolClient, public boost::enable_shared_from_this<EthStratumClient>
 {
 public:
+
+	typedef boost::shared_ptr<EthStratumClient> pointer;
+
+	static pointer create(int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate) 
+	{
+		return pointer(new EthStratumClient(worktimeout, responsetimeout, email, submitHashrate));
+	};
 
 	typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
 

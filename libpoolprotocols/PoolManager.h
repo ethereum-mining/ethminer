@@ -6,6 +6,12 @@
 #include <libethcore/Miner.h>
 
 #include "PoolClient.h"
+#include "stratum/EthStratumClient.h"
+#include "getwork/EthGetworkClient.h"
+#include "testing/SimulateClient.h"
+
+
+
 #if ETH_DBUS
 #include "DBusInt.h"
 #endif
@@ -16,10 +22,10 @@ namespace dev
 {
 	namespace eth
 	{
-		class PoolManager : public Worker
+		class PoolManager
 		{
 		public:
-			PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType, unsigned maxTries);
+			PoolManager(EthStratumClient::pointer client, Farm &farm, MinerType const & minerType, unsigned maxTries);
 			void addConnection(URI &conn);
 			void clearConnections();
 			void start();
@@ -31,18 +37,20 @@ namespace dev
 			unsigned m_hashrateReportingTime = 60;
 			unsigned m_hashrateReportingTimePassed = 0;
 
-			bool m_running = false;
-			void workLoop() override;
+			std::atomic<bool> m_running = { false };
+			void workLoop();
 
 			unsigned m_connectionAttempt = 0;
 			unsigned m_maxConnectionAttempts = 0;
 			unsigned m_activeConnectionIdx = 0;
 
 			std::vector <URI> m_connections;
+			std::thread m_workThread;
 
 			h256 m_lastBoundary = h256();
 
-			PoolClient *p_client;
+			EthStratumClient::pointer p_client;
+			//PoolClient *p_client;
 			Farm &m_farm;
 			MinerType m_minerType;
 			std::chrono::steady_clock::time_point m_submit_time;

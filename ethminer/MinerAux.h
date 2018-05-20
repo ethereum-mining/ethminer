@@ -783,27 +783,29 @@ private:
 		sealers["cuda"] = Farm::SealerDescriptor{&CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); }};
 #endif
 
-		PoolClient *client = nullptr;
+		EthStratumClient::pointer client = EthStratumClient::create(m_worktimeout, m_responsetimeout, m_email, m_report_stratum_hashrate);
 
-		if (m_mode == OperationMode::Stratum) {
-			client = new EthStratumClient(m_worktimeout, m_responsetimeout, m_email, m_report_stratum_hashrate);
-		}
-		else if (m_mode == OperationMode::Farm) {
-			client = new EthGetworkClient(m_farmRecheckPeriod);
-		}
-		else if (m_mode == OperationMode::Simulation) {
-			client = new SimulateClient(20, m_benchmarkBlock);
-		}
-		else {
-			cwarn << "Invalid OperationMode";
-			exit(1);
-		}
+		//PoolClient *client = nullptr;
 
-		// Should not happen!
-		if (!client) {
-			cwarn << "Invalid PoolClient";
-			exit(1);
-		}
+		//if (m_mode == OperationMode::Stratum) {
+		//	client = new EthStratumClient(m_worktimeout, m_responsetimeout, m_email, m_report_stratum_hashrate);
+		//}
+		//else if (m_mode == OperationMode::Farm) {
+		//	client = new EthGetworkClient(m_farmRecheckPeriod);
+		//}
+		//else if (m_mode == OperationMode::Simulation) {
+		//	client = new SimulateClient(20, m_benchmarkBlock);
+		//}
+		//else {
+		//	cwarn << "Invalid OperationMode";
+		//	exit(1);
+		//}
+
+		//// Should not happen!
+		//if (!client) {
+		//	cwarn << "Invalid PoolClient";
+		//	exit(1);
+		//}
 
 		//sealers, m_minerType
 		Farm f;
