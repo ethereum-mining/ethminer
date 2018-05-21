@@ -513,7 +513,7 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, int _globalWorkSizeMultiplie
     {
         return true;
     }
-    cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
+    cout << "No GPU device with sufficient memory was found" << endl;
     return false;
 }
 
