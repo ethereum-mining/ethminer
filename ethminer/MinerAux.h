@@ -400,7 +400,7 @@ public:
 			}
 		}
 		else if (arg == "--cuda-streams" && i + 1 < argc)
-			m_numStreams = stol(argv[++i]);
+			m_numStreams = static_cast<unsigned>(stoul(argv[++i]));
 		else if (arg == "--cuda-noeval")
 			m_noEval = true;
 #endif
