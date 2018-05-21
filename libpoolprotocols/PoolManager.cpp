@@ -28,6 +28,20 @@ PoolManager::PoolManager(EthStratumClient::pointer client, Farm &farm, MinerType
 	{
 		m_connectionAttempt = 0;
 		cnote << "Connected to " << m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
+
+		if (!m_farm.isMining())
+		{
+			cnote << "Spinning up miners...";
+			if (m_minerType == MinerType::CL)
+				m_farm.start("opencl", false);
+			else if (m_minerType == MinerType::CUDA)
+				m_farm.start("cuda", false);
+			else if (m_minerType == MinerType::Mixed) {
+				m_farm.start("cuda", false);
+				m_farm.start("opencl", true);
+			}
+		}
+
 	});
 
 	p_client->onDisconnected([&]()
@@ -36,7 +50,7 @@ PoolManager::PoolManager(EthStratumClient::pointer client, Farm &farm, MinerType
 
 		if (m_farm.isMining()) {
 			cnote << "Shutting down miners...";
-			m_farm.stop();
+			// m_farm.stop();
 		}
 
 	});
@@ -53,19 +67,6 @@ PoolManager::PoolManager(EthStratumClient::pointer client, Farm &farm, MinerType
 			static const uint512_t dividend("0x10000000000000000000000000000000000000000000000000000000000000000");
 			const uint256_t divisor(string("0x") + m_lastBoundary.hex());
 			cnote << "New pool difficulty:" << EthWhite << diffToDisplay(double(dividend / divisor)) << EthReset;
-		}
-
-		if (!m_farm.isMining())
-		{
-			cnote << "Spinning up miners...";
-			if (m_minerType == MinerType::CL)
-				m_farm.start("opencl", false);
-			else if (m_minerType == MinerType::CUDA)
-				m_farm.start("cuda", false);
-			else if (m_minerType == MinerType::Mixed) {
-				m_farm.start("cuda", false);
-				m_farm.start("opencl", true);
-			}
 		}
 
 		m_farm.setWork(wp);

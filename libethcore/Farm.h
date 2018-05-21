@@ -177,8 +177,8 @@ public:
 		}
 
 		m_hashrateTimer.cancel();
-		m_io_service.stop();
-		m_serviceThread.join();
+		//m_io_service.stop();
+		//m_serviceThread.join();
 
 		m_lastProgresses.clear();
 	}
@@ -446,7 +446,7 @@ private:
 	mutable SolutionStats m_solutionStats;
 	std::chrono::steady_clock::time_point m_farm_launched = std::chrono::steady_clock::now();
 
-    	string m_pool_addresses;
+    string m_pool_addresses;
 	uint64_t m_nonce_scrambler;
 
 	wrap_nvml_handle *nvmlh = NULL;

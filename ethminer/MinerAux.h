@@ -788,7 +788,7 @@ private:
 		//PoolClient *client = nullptr;
 
 		//if (m_mode == OperationMode::Stratum) {
-		//	client = new EthStratumClient(m_worktimeout, m_responsetimeout, m_email, m_report_stratum_hashrate);
+		//	// client = new EthStratumClient(m_worktimeout, m_responsetimeout, m_email, m_report_stratum_hashrate);
 		//}
 		//else if (m_mode == OperationMode::Farm) {
 		//	client = new EthGetworkClient(m_farmRecheckPeriod);

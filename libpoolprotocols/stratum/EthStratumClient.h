@@ -98,14 +98,13 @@ private:
 	boost::asio::io_service m_io_service;						// The IO service itself
 	boost::asio::io_service::work m_io_work;					// The IO work which prevents io_service.run() to return on no work thus terminating thread
 	boost::asio::deadline_timer m_io_work_timer;				// A dummy timer to keep io_service with something to do
+	boost::asio::io_service::strand m_io_strand;
 	boost::asio::ip::tcp::socket *m_socket;
 
 	// Use shared ptrs to avoid crashes due to async_writes
 	// see https://stackoverflow.com/questions/41526553/can-async-write-cause-segmentation-fault-when-this-is-deleted
-	std::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket> >
-	  m_securesocket;
-	std::shared_ptr<boost::asio::ip::tcp::socket>
-	  m_nonsecuresocket;
+	std::shared_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>	m_securesocket;
+	std::shared_ptr<boost::asio::ip::tcp::socket> m_nonsecuresocket;
 
 	boost::asio::streambuf m_sendBuffer;
 	boost::asio::streambuf m_recvBuffer;
