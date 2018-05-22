@@ -276,6 +276,11 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	{
 		dev::setThreadName("stratum");
 		cwarn << "Could not resolve host " << m_conn.Host() << ", " << ec.message();
+
+		// Release locking flag and set connection status
+		m_connected.store(false, std::memory_order_relaxed);
+		m_disconnecting.store(false, std::memory_order::memory_order_relaxed);
+
 		// Trigger handlers
 		if (m_onDisconnected) { m_onDisconnected(); }
 
