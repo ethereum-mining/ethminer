@@ -188,27 +188,24 @@ void PoolManager::workLoop()
 				// Rotate connections if above max attempts threshold
 				if (m_connectionAttempt >= m_maxConnectionAttempts) {
 
-					unsigned lastConnectionIdx = m_activeConnectionIdx;
-
 					m_connectionAttempt = 0;
 					m_activeConnectionIdx++;
 					if (m_activeConnectionIdx == m_connections.size()) {
 						m_activeConnectionIdx = 0;
 					}
 
-					if (lastConnectionIdx != m_activeConnectionIdx) {
-
-						// Stop mining if applicable as we're switching
-						if (m_farm.isMining()) {
-							cnote << "Shutting down miners...";
-							m_farm.stop();
-						}
+					// Stop mining if applicable as we're switching
+					if (m_farm.isMining()) {
+						cnote << "Shutting down miners...";
+						m_farm.stop();
 
 						// Give some time to mining threads to shutdown
 						for (auto i = 4; --i; this_thread::sleep_for(chrono::seconds(1))) {
 							cnote << "Retrying in " << i << "... \r";
 						}
+
 					}
+
 
 
 				}
