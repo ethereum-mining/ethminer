@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.5)
 
 include(cmake/cable/bootstrap.cmake)
 
@@ -9,13 +9,13 @@ include(HunterGate)
 
 include(defaults/HunterCacheServers)
 
-cable_configure_toolchain(DEFAULT cxx11-c99)
+cable_configure_toolchain(DEFAULT cxx11)
 
 set(HUNTER_CONFIGURATION_TYPES Release CACHE STRING "Build type of Hunter packages")
 set(HUNTER_JOBS_NUMBER 6 CACHE STRING "Number of parallel builds used by Hunter")
 HunterGate(
-    URL "https://github.com/ruslo/hunter/archive/v0.20.73.tar.gz"
-    SHA1 "5cd594b2bb12b2d66983a40b230f760187abbe5a"
+    URL "https://github.com/ruslo/hunter/archive/v0.21.9.tar.gz"
+    SHA1 "0056188988906abb63a06c6f1aaef01832c62b74"
     LOCAL
 )
 
