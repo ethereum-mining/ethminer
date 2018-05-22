@@ -56,7 +56,10 @@ public:
 		std::function<Miner*(FarmFace&, unsigned)> create;
 	};
 
-	Farm(): m_hashrateTimer(m_io_service)
+	Farm(boost::asio::io_service & io_service): 
+		m_io_service(io_service),
+		m_io_strand(io_service),
+		m_hashrateTimer(io_service)
 	{
 		// Given that all nonces are equally likely to solve the problem
 		// we could reasonably always start the nonce search ranges
@@ -153,14 +156,14 @@ public:
 		// Start hashrate collector
 		m_hashrateTimer.cancel();
 		m_hashrateTimer.expires_from_now(boost::posix_time::milliseconds(1000));
-		m_hashrateTimer.async_wait(boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error));
+		m_hashrateTimer.async_wait(m_io_strand.wrap(boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error)));
 
-		if (m_serviceThread.joinable()) {
-			m_io_service.reset();
-			m_serviceThread.join();
-		}
+		//if (m_serviceThread.joinable()) {
+		//	m_io_service.reset();
+		//	m_serviceThread.join();
+		//}
 
-		m_serviceThread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };
+		//m_serviceThread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };
 
 		return true;
 	}
@@ -177,8 +180,6 @@ public:
 		}
 
 		m_hashrateTimer.cancel();
-		//m_io_service.stop();
-		//m_serviceThread.join();
 
 		m_lastProgresses.clear();
 	}
@@ -220,9 +221,8 @@ public:
 			collectHashRate();
 
 			// Restart timer 	
-			m_hashrateTimer.cancel();
 			m_hashrateTimer.expires_from_now(boost::posix_time::milliseconds(1000));
-			m_hashrateTimer.async_wait(boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error));
+			m_hashrateTimer.async_wait(m_io_strand.wrap(boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error)));
 		}
 	}
 	
@@ -438,8 +438,11 @@ private:
 
 	std::chrono::steady_clock::time_point m_lastStart;
 	uint64_t m_hashrateSmoothInterval = 10000;
-	std::thread m_serviceThread;  ///< The IO service thread.
-	boost::asio::io_service m_io_service;
+
+	// std::thread m_serviceThread;  ///< The IO service thread.
+
+	boost::asio::io_service & m_io_service;							// The IO service reference passed in the constructor
+	boost::asio::io_service::strand m_io_strand;
 	boost::asio::deadline_timer m_hashrateTimer;
 	std::vector<WorkingProgress> m_lastProgresses;
 

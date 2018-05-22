@@ -19,7 +19,7 @@ static string diffToDisplay(double diff)
 	return ss.str();
 }
 
-PoolManager::PoolManager(EthStratumClient::pointer client, Farm &farm, MinerType const & minerType, unsigned maxTries) : m_farm(farm), m_minerType(minerType)
+PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType, unsigned maxTries) : m_farm(farm), m_minerType(minerType)
 {
 	p_client = client;
 	m_maxConnectionAttempts = maxTries;
@@ -48,10 +48,14 @@ PoolManager::PoolManager(EthStratumClient::pointer client, Farm &farm, MinerType
 	{
 		cnote << "Disconnected from " + m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
 
-		if (m_farm.isMining()) {
-			cnote << "Shutting down miners...";
-			// m_farm.stop();
-		}
+		// Do not stop mining here
+		// Workloop will determine if we're trying a fast reconnect to same pool
+		// or if we're switching to failover(s)
+
+		//if (m_farm.isMining()) {
+		//	cnote << "Shutting down miners...";
+		//	m_farm.stop();
+		//}
 
 	});
 
@@ -145,15 +149,28 @@ PoolManager::PoolManager(EthStratumClient::pointer client, Farm &farm, MinerType
 void PoolManager::stop()
 {
 	if (m_running.load(std::memory_order_relaxed)) {
+		
 		cnote << "Shutting down...";
-		m_running.store(false, std::memory_order_relaxed);
-		if (p_client->isConnected()) { p_client->disconnect(); }
 
-		if (m_farm.isMining())
-		{
-			cnote << "Shutting down miners...";
-			m_farm.stop();
+		m_running.store(false, std::memory_order_relaxed);
+		if (p_client->isConnected()) 
+		{ 
+
+			// Disconnection will also trigger
+			// stop for mining
+			p_client->disconnect(); 
+
 		}
+		else {
+
+			if (m_farm.isMining())
+			{
+				cnote << "Shutting down miners...";
+				m_farm.stop();
+			}
+
+		}
+
 	}
 }
 
@@ -171,11 +188,28 @@ void PoolManager::workLoop()
 				// Rotate connections if above max attempts threshold
 				if (m_connectionAttempt >= m_maxConnectionAttempts) {
 
+					unsigned lastConnectionIdx = m_activeConnectionIdx;
+
 					m_connectionAttempt = 0;
 					m_activeConnectionIdx++;
 					if (m_activeConnectionIdx == m_connections.size()) {
 						m_activeConnectionIdx = 0;
 					}
+
+					if (lastConnectionIdx != m_activeConnectionIdx) {
+
+						// Stop mining if applicable as we're switching
+						if (m_farm.isMining()) {
+							cnote << "Shutting down miners...";
+							m_farm.stop();
+						}
+
+						// Give some time to mining threads to shutdown
+						for (auto i = 4; --i; this_thread::sleep_for(chrono::seconds(1))) {
+							cnote << "Retrying in " << i << "... \r";
+						}
+					}
+
 
 				}
 
@@ -195,6 +229,13 @@ void PoolManager::workLoop()
 
 					dev::setThreadName("main");
 					cnote << "No more failover connections.";
+
+					// Stop mining if applicable
+					if (m_farm.isMining()) {
+						cnote << "Shutting down miners...";
+						m_farm.stop();
+					}
+
 					m_running.store(false, std::memory_order_relaxed);
 					continue;
 				}

@@ -4,8 +4,6 @@
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
 #include <boost/bind.hpp>
 #include <json/json.h>
 #include <libdevcore/Log.h>
@@ -20,20 +18,13 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-class EthStratumClient : public PoolClient, public boost::enable_shared_from_this<EthStratumClient>
+class EthStratumClient : public PoolClient
 {
 public:
 
-	typedef boost::shared_ptr<EthStratumClient> pointer;
-
-	static pointer create(int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate) 
-	{
-		return pointer(new EthStratumClient(worktimeout, responsetimeout, email, submitHashrate));
-	};
-
 	typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
 
-	EthStratumClient(int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate);
+	EthStratumClient(boost::asio::io_service & io_service, int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate);
 	~EthStratumClient();
 
 	void connect();
@@ -61,7 +52,6 @@ private:
 	void start_connect();
 	void check_connect_timeout(const boost::system::error_code& ec);
 	void connect_handler(const boost::system::error_code& ec);
-	void io_work_timer_handler(const boost::system::error_code& ec);
 	void work_timeout_handler(const boost::system::error_code& ec);
 	void response_timeout_handler(const boost::system::error_code& ec);
 
@@ -94,10 +84,7 @@ private:
 
 	bool m_stale = false;
 
-	std::thread m_serviceThread;								// The IO service thread.
-	boost::asio::io_service m_io_service;						// The IO service itself
-	boost::asio::io_service::work m_io_work;					// The IO work which prevents io_service.run() to return on no work thus terminating thread
-	boost::asio::deadline_timer m_io_work_timer;				// A dummy timer to keep io_service with something to do
+	boost::asio::io_service & m_io_service;						// The IO service reference passed in the constructor
 	boost::asio::io_service::strand m_io_strand;
 	boost::asio::ip::tcp::socket *m_socket;
 
