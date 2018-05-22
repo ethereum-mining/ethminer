@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Install the core CUDA_VER toolkit for a ubuntu-trusty (14.04) system. Requires the
-# CUDA_VER environment variable to be set to the required version.
+# Install the core CUDA_VER toolkit for Ubuntu 16.04.
+# Requires the CUDA_VER environment variable to be set to the required version.
 #
 # Since this script updates environment variables, to execute correctly you must
 # 'source' this script, rather than executing it in a sub-process.
@@ -10,7 +10,7 @@
 
 set -e
 
-export CUDA_VER=9.0.176-1
+export CUDA_VER=9.2.88-1
 sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
 wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-repo-ubuntu1604_${CUDA_VER}_amd64.deb
 sudo dpkg -i cuda-repo-ubuntu1604_${CUDA_VER}_amd64.deb
