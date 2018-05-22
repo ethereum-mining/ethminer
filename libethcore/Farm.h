@@ -57,7 +57,6 @@ public:
 	};
 
 	Farm(boost::asio::io_service & io_service): 
-		m_io_service(io_service),
 		m_io_strand(io_service),
 		m_hashrateTimer(io_service)
 	{
@@ -441,7 +440,6 @@ private:
 
 	// std::thread m_serviceThread;  ///< The IO service thread.
 
-	boost::asio::io_service & m_io_service;							// The IO service reference passed in the constructor
 	boost::asio::io_service::strand m_io_strand;
 	boost::asio::deadline_timer m_hashrateTimer;
 	std::vector<WorkingProgress> m_lastProgresses;

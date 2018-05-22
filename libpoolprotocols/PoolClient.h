@@ -16,6 +16,9 @@ namespace dev
 		class PoolClient
 		{
 		public:
+			virtual ~PoolClient() noexcept = default;
+
+
 			void setConnection(URI &conn)
 			{
 				m_conn = conn;

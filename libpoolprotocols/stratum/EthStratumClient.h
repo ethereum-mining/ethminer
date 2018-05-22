@@ -27,8 +27,8 @@ public:
 	EthStratumClient(boost::asio::io_service & io_service, int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate);
 	~EthStratumClient();
 
-	void connect();
-	void disconnect();
+	void connect() override;
+	void disconnect() override;
 	
 	// Connected and Connection Statuses
 	bool isConnected() override { return m_connected.load(std::memory_order_relaxed) && !isPendingState(); }
@@ -36,10 +36,10 @@ public:
 
 	bool isSubscribed() { return m_subscribed.load(std::memory_order_relaxed); }
 	bool isAuthorized() { return m_authorized.load(std::memory_order_relaxed); }
-	string ActiveEndPoint() { return " [" + toString(m_endpoint) + "]"; };
+	string ActiveEndPoint() override { return " [" + toString(m_endpoint) + "]"; };
 
-	void submitHashrate(string const & rate);
-	void submitSolution(Solution solution);
+	void submitHashrate(string const & rate) override;
+	void submitSolution(Solution solution) override;
 
 	h256 currentHeaderHash() { return m_current.header; }
 	bool current() { return static_cast<bool>(m_current); }
