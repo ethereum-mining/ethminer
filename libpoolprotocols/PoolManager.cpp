@@ -46,6 +46,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 
 	p_client->onDisconnected([&]()
 	{
+		dev::setThreadName("main");
 		cnote << "Disconnected from " + m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
 
 		// Do not stop mining here
@@ -183,6 +184,8 @@ void PoolManager::workLoop()
 		// Otherwise do nothing and wait until connection state is NOT pending
 		if (!p_client->isPendingState()) {
 
+			dev::setThreadName("main");
+
 			if (!p_client->isConnected()) {
 
 				// Rotate connections if above max attempts threshold
@@ -224,7 +227,6 @@ void PoolManager::workLoop()
 				}
 				else {
 
-					dev::setThreadName("main");
 					cnote << "No more failover connections.";
 
 					// Stop mining if applicable
