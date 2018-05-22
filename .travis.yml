@@ -29,10 +29,10 @@ before_install: |
     if [ "$TRAVIS_OS_NAME" = linux ]; then
       scripts/install_cmake.sh
       pyenv global 3.6
-      pip install --user requests
+      pip install --user requests gitpython
     elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
       HOMEBREW_NO_AUTO_UPDATE=1 brew install -q python3
-      pip3 install -q requests
+      pip3 install -q requests gitpython
     fi
 script:
     - cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -DAPICORE=ON -H. -Bbuild

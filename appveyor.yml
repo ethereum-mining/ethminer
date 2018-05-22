@@ -21,7 +21,7 @@ install: |
   appveyor DownloadFile https://github.com/ethereum/cpp-dependencies/releases/download/cache/CUDA-v9.0-WindowsServer2012.zip
   7z x CUDA-v9.0-WindowsServer2012.zip -oC:\
   set PATH=C:\Python36-x64;C:\Python36-x64\Scripts;%PATH%;C:\CUDA\v9.0\bin
-  pip install requests
+  pip install requests gitpython
   nvcc -V
 
 build_script:
