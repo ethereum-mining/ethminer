@@ -23,24 +23,27 @@ cache:
     directories:
         - $HOME/.local
 before_install: |
-    if [ "$CUDA" = ON ]; then
-      . scripts/install-cuda-ubuntu1604.sh
-    fi
     if [ "$TRAVIS_OS_NAME" = linux ]; then
+      sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+      sudo apt-get -q update
+      sudo apt-get -qy install g++-7
       scripts/install_cmake.sh
+      . scripts/install-cuda-ubuntu1604.sh
       pyenv global 3.6
       pip install --user requests gitpython
+      export CC=gcc-7
+      export CXX=g++-7
     elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
       HOMEBREW_NO_AUTO_UPDATE=1 brew install -q python3
       pip3 install -q requests gitpython
     fi
-script:
-    - cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -DAPICORE=ON -H. -Bbuild
-    - cmake --build build --target package -- -j4
-    - build/ethminer/ethminer --list-devices -G
-    - build/ethminer/ethminer --list-devices -U
-    - if [ "$TRAVIS_OS_NAME" = linux ]; then ldd -v build/ethminer/ethminer; fi
-    - if [ "$TRAVIS_OS_NAME" = osx ]; then otool -L build/ethminer/ethminer; fi
+script: |
+    cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -DAPICORE=ON -H. -Bbuild
+    cmake --build build --target package -- -j4
+    build/ethminer/ethminer --list-devices -G
+    build/ethminer/ethminer --list-devices -U
+    if [ "$TRAVIS_OS_NAME" = linux ]; then ldd -v build/ethminer/ethminer; fi
+    if [ "$TRAVIS_OS_NAME" = osx ]; then otool -L build/ethminer/ethminer; fi
 
 deploy:
   - provider: releases
