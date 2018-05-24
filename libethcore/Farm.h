@@ -431,8 +431,6 @@ private:
 	std::chrono::steady_clock::time_point m_lastStart;
 	uint64_t m_hashrateSmoothInterval = 10000;
 
-	// std::thread m_serviceThread;  ///< The IO service thread.
-
 	boost::asio::io_service::strand m_io_strand;
 	boost::asio::deadline_timer m_hashrateTimer;
 	std::vector<WorkingProgress> m_lastProgresses;
