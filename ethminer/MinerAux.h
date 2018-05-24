@@ -833,8 +833,6 @@ private:
 		sealers["cuda"] = Farm::SealerDescriptor{&CUDAMiner::instances, [](FarmFace& _farm, unsigned _index){ return new CUDAMiner(_farm, _index); }};
 #endif
 
-		//EthStratumClient::pointer client = EthStratumClient::create(m_worktimeout, m_responsetimeout, m_email, m_report_stratum_hashrate);
-
 		PoolClient *client = nullptr;
 
 		if (m_mode == OperationMode::Stratum) {

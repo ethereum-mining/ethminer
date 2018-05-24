@@ -53,11 +53,6 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		// Workloop will determine if we're trying a fast reconnect to same pool
 		// or if we're switching to failover(s)
 
-		//if (m_farm.isMining()) {
-		//	cnote << "Shutting down miners...";
-		//	m_farm.stop();
-		//}
-
 	});
 
 	p_client->onWorkReceived([&](WorkPackage const& wp)
