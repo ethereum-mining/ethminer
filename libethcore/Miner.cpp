@@ -15,4 +15,3 @@ uint8_t* dev::eth::Miner::s_dagInHostMemory = NULL;
 bool dev::eth::Miner::s_exit = false;
 
 bool dev::eth::Miner::s_noeval = false;
-

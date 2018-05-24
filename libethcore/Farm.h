@@ -50,6 +50,8 @@ namespace eth
 class Farm: public FarmFace
 {
 public:
+	unsigned tstart, tstop;
+
 	struct SealerDescriptor
 	{
 		std::function<unsigned()> instances;
@@ -252,7 +254,8 @@ public:
         p.hashes = 0;
         for (auto const& i : m_miners)
         {
-            p.minersHashes.push_back(0);
+			p.miningIsPaused.push_back(i->is_mining_paused());
+			p.minersHashes.push_back(0);
 			if (hwmon) {
 				HwMonitorInfo hwInfo = i->hwmonInfo();
 				HwMonitor hw;
@@ -310,6 +313,9 @@ public:
 					}
 #endif
 				}
+
+				i->update_temperature(tempC);
+
 				hw.tempC = tempC;
 				hw.fanP = fanpcnt;
 				hw.powerW = powerW/((double)1000.0);
@@ -407,6 +413,22 @@ public:
 		return m_nonce_scrambler;
 	}
 
+	void setTStartTStop(unsigned tstart, unsigned tstop)
+	{
+		m_tstart = tstart;
+		m_tstop = tstop;
+	}
+
+	unsigned get_tstart() override
+	{
+		return m_tstart;
+	}
+
+	unsigned get_tstop() override
+	{
+		return m_tstop;
+	}
+
 private:
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
@@ -447,6 +469,8 @@ private:
 
     	string m_pool_addresses;
 	uint64_t m_nonce_scrambler;
+
+	unsigned m_tstart, m_tstop;
 
 	wrap_nvml_handle *nvmlh = NULL;
 	wrap_adl_handle *adlh = NULL;

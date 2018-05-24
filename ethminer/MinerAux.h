@@ -525,8 +525,57 @@ public:
 				BOOST_THROW_EXCEPTION(BadArgument());
 			}
 		}
+		else if ((arg == "--tstop") && i + 1 < argc)
+		{
+			try
+			{
+				m_tstop = stoul(argv[++i]);
+				if (m_tstop != 0 && (m_tstop < 30 || m_tstop > 100))
+				{
+					cerr << "Bad " << arg << " option: " << argv[i] << endl;
+					BOOST_THROW_EXCEPTION(BadArgument());
+				}
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
+		else if ((arg == "--tstart") && i + 1 < argc)
+		{
+			try
+			{
+				m_tstart = stoul(argv[++i]);
+				if (m_tstart < 30 || m_tstart > 100)
+				{
+					cerr << "Bad " << arg << " option: " << argv[i] << endl;
+					BOOST_THROW_EXCEPTION(BadArgument());
+				}
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				BOOST_THROW_EXCEPTION(BadArgument());
+			}
+		}
 		else
 			return false;
+
+
+		// Sanity check --tstart/--tstop
+		if (m_tstop && m_tstop <= m_tstart)
+		{
+			cerr << "--tstop must be greater than --tstart !" << endl;
+			BOOST_THROW_EXCEPTION(BadArgument());
+		}
+
+		if (m_tstop && !m_show_hwmonitors)
+		{
+			// if we want stop mining at a specific temperature, we have to
+			// monitor the temperature ==> so auto enable HWMON.
+			m_show_hwmonitors = true;
+		}
 		return true;
 	}
 
@@ -690,6 +739,9 @@ public:
 			<< "        Use at your own risk! If GPU generates errored results they WILL be forwarded to the pool" << endl
 			<< "        Not recommended at high overclock." << endl
 #endif
+			<< " Temperature management: (implies -HWMON=0|1)" << endl
+			<< "     --tstop  stop mining on a GPU if temperature equals or greater than option (valid range 30...100)." << endl
+			<< "     --tstart restart mining on a GPU if --tstop stopped the GPU if the temperature is equal or less than option (default 40, valid range 0 or 30...100)." << endl
 #if API_CORE
 			<< " API core configuration:" << endl
 			<< "    --api-port Set the api port, the miner should listen to. Use 0 to disable. Default=0, use negative numbers to run in readonly mode. for example -3333." << endl
@@ -720,6 +772,8 @@ private:
 #endif
 		f.setSealers(sealers);
 		f.onSolutionFound([&](Solution) { return false; });
+
+		f.setTStartTStop(m_tstart, m_tstop);
 
 		string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
 		cout << "Benchmarking on platform: " << platformInfo << endl;
@@ -812,6 +866,8 @@ private:
 		PoolManager mgr(client, f, m_minerType);
 		mgr.setReconnectTries(m_maxFarmRetries);
 
+		f.setTStartTStop(m_tstart, m_tstop);
+
 		// If we are in simulation mode we add a fake connection
 		if (m_mode == OperationMode::Simulation) {
 			URI con(URI("http://-:0"));
@@ -901,6 +957,10 @@ private:
 
 	bool m_show_hwmonitors = false;
 	bool m_show_power = false;
+
+	unsigned m_tstop = 0;
+	unsigned m_tstart = 40;
+
 #if API_CORE
 	int m_api_port = 0;
 	int m_http_port = 0;

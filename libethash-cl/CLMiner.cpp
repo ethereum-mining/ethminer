@@ -296,6 +296,13 @@ void CLMiner::workLoop()
     try {
         while (!shouldStop())
         {
+            if (is_mining_paused())
+            {
+                // cnote << "Paused for 3 s due temperature -tstop.";
+                std::this_thread::sleep_for(std::chrono::seconds(3));
+                continue;
+            }
+
             const WorkPackage w = work();
 
             if (current.header != w.header)

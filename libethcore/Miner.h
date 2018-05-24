@@ -100,6 +100,7 @@ struct WorkingProgress
 	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
 
 	std::vector<uint64_t> minersHashes;
+	std::vector<bool> miningIsPaused;
 	std::vector<HwMonitor> minerMonitors;
 	uint64_t minerRate(const uint64_t hashCount) const { return ms == 0 ? 0 : hashCount * 1000 / ms; }
 };
@@ -114,6 +115,14 @@ inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 	for (size_t i = 0; i < _p.minersHashes.size(); ++i)
 	{
 		mh = _p.minerRate(_p.minersHashes[i]) / 1000000.0f;
+
+		if (_p.miningIsPaused.size() == _p.minersHashes.size()) {
+			// red color if mining is paused on this gpu
+			if (_p.miningIsPaused[i]) {
+				_out << EthRed;
+			}
+		}
+
 		_out << "gpu/" << i << " " << EthTeal << std::fixed << std::setw(5) << std::setprecision(2) << mh << EthReset;
 		if (_p.minerMonitors.size() == _p.minersHashes.size())
 			_out << " " << EthTeal << _p.minerMonitors[i] << EthReset;
@@ -165,7 +174,8 @@ class FarmFace
 {
 public:
 	virtual ~FarmFace() = default;
-
+	virtual unsigned get_tstart() = 0;
+	virtual unsigned get_tstop() = 0;
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
 	 * @param _p The solution.
@@ -218,6 +228,39 @@ public:
 		return farm.get_nonce_scrambler() + ((uint64_t) index << 40);
 	}
 
+	void update_temperature(unsigned temperature)
+	{
+		/*
+		 cnote << "Setting temp" << temperature << " for gpu" << index <<
+		          " tstop=" << farm.get_tstart() << " tstart=" << farm.get_tstop();
+		*/
+		bool _wait_for_tstart_temp = m_wait_for_tstart_temp.load(std::memory_order_relaxed);
+		if(!_wait_for_tstart_temp)
+		{
+			unsigned tstop = farm.get_tstop();
+			if (tstop && temperature >= tstop)
+			{
+				// cnote << "Pause mining due -tstop";
+				m_wait_for_tstart_temp.store(true, std::memory_order_relaxed);
+			}
+		} else {
+			unsigned tstart = farm.get_tstart();
+			if (tstart && temperature <= tstart)
+			{
+				// cnote << "(Re)starting mining due -tstart";
+				m_wait_for_tstart_temp.store(false, std::memory_order_relaxed);
+			}
+		}
+	}
+
+	bool is_mining_paused()
+	{
+		bool _wait_for_tstart_temp = m_wait_for_tstart_temp.load(std::memory_order_relaxed);
+		if (_wait_for_tstart_temp)
+			return true;
+		/* Add here some other reasons why mining on the GPU is paused */
+		return false;
+	}
 protected:
 
 	/**
@@ -241,6 +284,7 @@ protected:
 	std::chrono::high_resolution_clock::time_point workSwitchStart;
 	HwMonitorInfo m_hwmoninfo;
 private:
+	std::atomic<bool> m_wait_for_tstart_temp = { false };
 	std::atomic<uint64_t> m_hashCount = {0};
 
 	WorkPackage m_work;
