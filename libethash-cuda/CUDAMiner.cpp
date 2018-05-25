@@ -454,6 +454,11 @@ void CUDAMiner::search(
     bool done = false;
     bool stop = false;
     while (!done) {
+
+        bool t = true;
+        if (m_new_work.compare_exchange_strong(t, false))
+            done = true;
+
         for (current_index = 0; current_index < s_numStreams; current_index++, current_nonce += batch_size) {
             cudaStream_t stream = m_streams[current_index];
             buffer = m_search_buf[current_index];
@@ -464,10 +469,6 @@ void CUDAMiner::search(
                 done = true;
                 stop = true;
             }
-            bool t = true;
-            if (m_new_work.compare_exchange_strong(t, false))
-                done = true;
-
             // See if we got solutions in this batch
             uint32_t found_count = buffer->count;
             if (found_count) {
