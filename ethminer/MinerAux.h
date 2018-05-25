@@ -32,6 +32,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 #include <boost/optional.hpp>
+#include <thread>
 
 #include <libethcore/Exceptions.h>
 #include <libethcore/EthashAux.h>
@@ -91,6 +92,47 @@ public:
 		Farm,
 		Stratum
 	};
+
+	MinerCLI() : 
+		m_io_work(m_io_service), 
+		m_io_work_timer(m_io_service),
+		m_io_strand(m_io_service)
+	{
+		// Post first deadline timer to give io_service
+		// initial work
+		m_io_work_timer.expires_from_now(boost::posix_time::seconds(60));
+		m_io_work_timer.async_wait(m_io_strand.wrap(boost::bind(&MinerCLI::io_work_timer_handler, this, boost::asio::placeholders::error)));
+
+		// Start io_service in it's own thread
+		m_io_thread = std::thread{ boost::bind(&boost::asio::io_service::run, &m_io_service) };
+
+		// Io service is now live and running
+		// All components using io_service should post to reference of m_io_service
+		// and should not start/stop or even join threads (which heavily time consuming)
+
+
+	}
+
+	void io_work_timer_handler(const boost::system::error_code& ec) {
+
+		if (!ec) {
+
+			// This does absolutely nothing aside resubmitting timer
+			// ensuring io_service's queue has always something to do
+			m_io_work_timer.expires_from_now(boost::posix_time::seconds(120));
+			m_io_work_timer.async_wait(m_io_strand.wrap(boost::bind(&MinerCLI::io_work_timer_handler, this, boost::asio::placeholders::error)));
+
+		}
+
+	}
+
+	void stop_io_service() {
+
+		// Here we stop all io_service's related activities
+		m_io_service.stop();
+		m_io_thread.join();
+
+	}
 
 	static void signalHandler(int sig)
 	{
@@ -197,7 +239,7 @@ public:
 		{
 			string url = argv[++i];
 			if (url == "exit") // add fake scheme and port to 'exit' url
-				url = "stratum://exit:1";
+				url = "stratum+tcp://-:x@exit:0";
 			URI uri;
 			try {
 				uri = url;
@@ -591,6 +633,7 @@ public:
 			if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 				CUDAMiner::listDevices();
 #endif
+			stop_io_service();
 			exit(0);
 		}
 
@@ -611,16 +654,19 @@ public:
 			CLMiner::setThreadsPerHash(m_openclThreadsPerHash);
 
 			if (!CLMiner::configureGPU(
-					m_localWorkSize,
-					m_globalWorkSizeMultiplier,
-					m_openclPlatform,
-					0,
-					m_dagLoadMode,
-					m_dagCreateDevice,
-					m_noEval,
-					m_exit
-				))
+				m_localWorkSize,
+				m_globalWorkSizeMultiplier,
+				m_openclPlatform,
+				0,
+				m_dagLoadMode,
+				m_dagCreateDevice,
+				m_noEval,
+				m_exit
+			)) {
+				stop_io_service();
 				exit(1);
+			};
+
 			CLMiner::setNumInstances(m_miningThreads);
 #else
 			cerr << "Selected GPU mining without having compiled with -DETHASHCL=1" << endl;
@@ -646,12 +692,16 @@ public:
 				m_dagCreateDevice,
 				m_noEval,
 				m_exit
-				))
+			))
+			{
+				stop_io_service();
 				exit(1);
+			}
 
 			CUDAMiner::setParallelHash(m_parallelHash);
 #else
 			cerr << "CUDA support disabled. Configure project build with -DETHASHCUDA=ON" << endl;
+			stop_io_service();
 			exit(1);
 #endif
 		}
@@ -758,7 +808,7 @@ private:
 		genesis.setNumber(m_benchmarkBlock);
 		genesis.setDifficulty(u256(1) << 64);
 
-		Farm f;
+		Farm f(m_io_service);
 		map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
 		sealers["opencl"] = Farm::SealerDescriptor{
@@ -823,7 +873,7 @@ private:
 		}
 		else
 			cout << "inner mean: n/a" << endl;
-
+		stop_io_service();
 		exit(0);
 	}
 	
@@ -840,7 +890,7 @@ private:
 		PoolClient *client = nullptr;
 
 		if (m_mode == OperationMode::Stratum) {
-			client = new EthStratumClient(m_worktimeout, m_responsetimeout, m_email, m_report_stratum_hashrate);
+			client = new EthStratumClient(m_io_service, m_worktimeout, m_responsetimeout, m_email, m_report_stratum_hashrate);
 		}
 		else if (m_mode == OperationMode::Farm) {
 			client = new EthGetworkClient(m_farmRecheckPeriod);
@@ -856,15 +906,15 @@ private:
 		// Should not happen!
 		if (!client) {
 			cwarn << "Invalid PoolClient";
+			stop_io_service();
 			exit(1);
 		}
 
 		//sealers, m_minerType
-		Farm f;
+		Farm f(m_io_service);
 		f.setSealers(sealers);
 
-		PoolManager mgr(client, f, m_minerType);
-		mgr.setReconnectTries(m_maxFarmRetries);
+		PoolManager mgr(client, f, m_minerType, m_maxFarmRetries);
 
 		f.setTStartTStop(m_tstart, m_tstop);
 
@@ -904,12 +954,21 @@ private:
 		}
 
 		mgr.stop();
+		stop_io_service();
 
+		cnote << "Terminated !";
 		exit(0);
 	}
 
 	/// Operating mode.
 	OperationMode m_mode = OperationMode::None;
+
+	/// Global boost's io_service
+	std::thread m_io_thread;									// The IO service thread
+	boost::asio::io_service m_io_service;						// The IO service itself
+	boost::asio::io_service::work m_io_work;					// The IO work which prevents io_service.run() to return on no work thus terminating thread
+	boost::asio::deadline_timer m_io_work_timer;				// A dummy timer to keep io_service with something to do and prevent io shutdown
+	boost::asio::io_service::strand m_io_strand;				// A strand to serialize posts in multithreaded environment
 
 	/// Mining options
 	MinerType m_minerType = MinerType::Mixed;

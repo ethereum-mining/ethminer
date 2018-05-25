@@ -16,6 +16,9 @@ namespace dev
 		class PoolClient
 		{
 		public:
+			virtual ~PoolClient() noexcept = default;
+
+
 			void setConnection(URI &conn)
 			{
 				m_conn = conn;
@@ -28,6 +31,7 @@ namespace dev
 			virtual void submitHashrate(string const & rate) = 0;
 			virtual void submitSolution(Solution solution) = 0;
 			virtual bool isConnected() = 0;
+			virtual bool isPendingState() = 0;
 			virtual string ActiveEndPoint() = 0;
 
 			using SolutionAccepted = std::function<void(bool const&)>;
@@ -46,7 +50,7 @@ namespace dev
 			bool m_authorized = false;
 			bool m_connected = false;
 			bool m_connection_changed = false;
-			boost::asio::ip::tcp::endpoint m_endpoint;
+			boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> m_endpoint;
 
 			URI m_conn;
 
