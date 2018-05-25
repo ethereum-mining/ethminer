@@ -172,14 +172,15 @@ void PoolManager::stop()
 
 void PoolManager::workLoop()
 {
+
+	dev::setThreadName("main");
+
 	while (m_running.load(std::memory_order_relaxed))
 	{
 
 		// Take action only if not pending state (connecting/disconnecting)
 		// Otherwise do nothing and wait until connection state is NOT pending
 		if (!p_client->isPendingState()) {
-
-			dev::setThreadName("main");
 
 			if (!p_client->isConnected()) {
 
@@ -203,8 +204,6 @@ void PoolManager::workLoop()
 						}
 
 					}
-
-
 
 				}
 
