@@ -792,8 +792,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 					cnote << "Subscribed to stratum server";
 
-					m_nextWorkDifficulty = 1;
-					
+					m_nextWorkBoundary = h256("0xffff000000000000000000000000000000000000000000000000000000000000");
+
 					if (!jResult.empty() && jResult.isArray()) {
 						std::string enonce = jResult.get((Json::Value::ArrayIndex)1, "").asString();
 						processExtranonce(enonce);
@@ -982,8 +982,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
                         m_current.epoch = ethash::find_epoch_number(
                             ethash::hash256_from_bytes(h256{sSeedHash}.data()));
                         m_current.header = h256(sHeaderHash);
-						m_current.boundary = h256();
-						diffToTarget((uint32_t*)m_current.boundary.data(), m_nextWorkDifficulty);
+						m_current.boundary = m_nextWorkBoundary;
 						m_current.startNonce = bswap(*((uint64_t*)m_extraNonce.data()));
 						m_current.exSizeBits = m_extraNonceHexSize * 4;
 						m_current.job_len = job.size();
@@ -1035,9 +1034,10 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			jPrm = responseObject.get("params", Json::Value::null);
 			if (jPrm.isArray())
 			{
-				m_nextWorkDifficulty = jPrm.get((Json::Value::ArrayIndex)0, 1).asDouble();
-				if (m_nextWorkDifficulty <= 0.0001) m_nextWorkDifficulty = 0.0001;
-				cnote << "Difficulty set to"  << m_nextWorkDifficulty;
+				double nextWorkDifficulty = jPrm.get((Json::Value::ArrayIndex)0, 1).asDouble();
+				if (nextWorkDifficulty <= 0.0001) nextWorkDifficulty = 0.0001;
+				diffToTarget((uint32_t*)m_nextWorkBoundary.data(), nextWorkDifficulty);
+				cnote << "Difficulty set to"  << nextWorkDifficulty;
 			}
 		}
 		else if (_method == "mining.set_extranonce" && m_conn.Version() == EthStratumClient::ETHEREUMSTRATUM)
@@ -1308,3 +1308,4 @@ void EthStratumClient::onSSLShutdownCompleted(const boost::system::error_code& e
 	m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect_finalize, this)));
 	
 }
+
