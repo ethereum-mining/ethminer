@@ -10,7 +10,10 @@ file(GLOB HEADERS "*.h")
 
 add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
-target_link_libraries(ethminer PRIVATE ethcore poolprotocols devcore ethminer-buildinfo)
+hunter_add_package(CLI11)
+find_package(CLI11 CONFIG REQUIRED)
+
+target_link_libraries(ethminer PRIVATE ethcore poolprotocols devcore ethminer-buildinfo CLI11::CLI11)
 
 if(ETHDBUS)
 	find_package(PkgConfig)

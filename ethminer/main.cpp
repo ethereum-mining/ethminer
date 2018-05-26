@@ -30,33 +30,6 @@ using namespace dev;
 using namespace dev::eth;
 using namespace boost::algorithm;
 
-
-void help()
-{
-	cout
-		<< "Usage ethminer [OPTIONS]" << endl
-		<< "Options:" << endl << endl;
-	MinerCLI::streamHelp(cout);
-	cout
-		<< " General Options:" << endl
-		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 5). Set to 6 or greater for switch time logging." << endl
-		<< "    -V,--version  Show the version and exit." << endl
-		<< "    -h,--help  Show this help message and exit." << endl
-		<< " Environment variables:" << endl
-		<< "     NO_COLOR - set to any value to disable color output. Unset to re-enable color output." << endl
-		<< "     SYSLOG   - set to any value to strip time and disable color from output, for logging under systemd" << endl
-		;
-	exit(0);
-}
-
-void version()
-{
-    auto* bi = ethminer_get_buildinfo();
-    cout << "ethminer " << bi->project_version << "\nBuild: " << bi->system_name << "/"
-         << bi->build_type << "/" << bi->compiler_id << "\n";
-    exit(0);
-}
-
 int main(int argc, char** argv)
 {
 	// Set env vars controlling GPU driver behavior.
@@ -93,44 +66,7 @@ int main(int argc, char** argv)
 
 	MinerCLI m;
 
-	try
-	{
-		for (int i = 1; i < argc; ++i)
-		{
-			// Mining options:
-			if (m.interpretOption(i, argc, argv))
-				continue;
-
-			// Standard options:
-			string arg = argv[i];
-			if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
-			{
-				try
-				{
-					g_logVerbosity = stoul(argv[++i]);
-				}
-				catch (...)
-				{
-					cerr << "Invalid verbosity: " << argv[i] << endl;
-					exit(-1);
-				}
-			}
-			else if (arg == "-h" || arg == "--help")
-				help();
-			else if (arg == "-V" || arg == "--version")
-				version();
-			else
-			{
-				cerr << "Invalid argument: " << arg << endl;
-				exit(-1);
-			}
-		}
-	}
-	catch (BadArgument ex)
-	{
-		std::cerr << "Error: " << ex.what() << "\n";
-		exit(-1);
-	}
+	m.ParseCommandLine(argc, argv);
 
 	try
 	{
