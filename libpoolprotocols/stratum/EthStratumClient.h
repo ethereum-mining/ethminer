@@ -108,7 +108,7 @@ private:
 	string m_email;
 	string m_rate;
 
-	double m_nextWorkDifficulty;
+	h256 m_nextWorkBoundary = h256("0xffff000000000000000000000000000000000000000000000000000000000000");
 
 	h64 m_extraNonce;
 	int m_extraNonceHexSize;
