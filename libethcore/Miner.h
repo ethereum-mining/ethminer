@@ -232,7 +232,7 @@ public:
 	{
 		/*
 		 cnote << "Setting temp" << temperature << " for gpu" << index <<
-		          " tstop=" << farm.get_tstart() << " tstart=" << farm.get_tstop();
+		          " tstop=" << farm.get_tstop() << " tstart=" << farm.get_tstart();
 		*/
 		bool _wait_for_tstart_temp = m_wait_for_tstart_temp.load(std::memory_order_relaxed);
 		if(!_wait_for_tstart_temp)
@@ -240,14 +240,14 @@ public:
 			unsigned tstop = farm.get_tstop();
 			if (tstop && temperature >= tstop)
 			{
-				// cnote << "Pause mining due -tstop";
+				cwarn << "Pause mining on gpu" << index << " due -tstop";
 				m_wait_for_tstart_temp.store(true, std::memory_order_relaxed);
 			}
 		} else {
 			unsigned tstart = farm.get_tstart();
 			if (tstart && temperature <= tstart)
 			{
-				// cnote << "(Re)starting mining due -tstart";
+				cnote << "(Re)starting mining on gpu" << index << " due -tstart";
 				m_wait_for_tstart_temp.store(false, std::memory_order_relaxed);
 			}
 		}
