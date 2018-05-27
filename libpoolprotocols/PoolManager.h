@@ -43,6 +43,7 @@ namespace dev
 			std::thread m_workThread;
 
 			h256 m_lastBoundary = h256();
+			std::list<h256> m_headers;
 
 			PoolClient *p_client;
 			Farm &m_farm;

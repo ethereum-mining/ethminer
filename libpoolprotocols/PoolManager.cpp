@@ -57,6 +57,15 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 
 	p_client->onWorkReceived([&](WorkPackage const& wp)
 	{
+		for (auto h : m_headers)
+			if (h == wp.header)
+			{
+				cwarn << EthYellow "Duplicate job" << wp.header << " discarded" EthReset;
+				return;
+			}
+		m_headers.push_back(wp.header);
+		while (m_headers.size() > 4)
+			m_headers.pop_front();
 
 		cnote << "New job" << wp.header << "  " + m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
 		if (wp.boundary != m_lastBoundary)
