@@ -164,21 +164,7 @@ void PoolManager::stop()
 			// Disconnect client and stop mining
 			p_client->disconnect(); 
 
-			if (m_farm.isMining())
-			{
-				cnote << "Shutting down miners...";
-				m_farm.stop();
-			}
-
-
 		}
-		else {
-
-			if (m_farm.isMining())
-			{
-				cnote << "Shutting down miners...";
-				m_farm.stop();
-			}
 
 		}
 
