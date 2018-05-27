@@ -296,11 +296,10 @@ public:
 			->group(CUDAGroup)
 			->set_type_name("<n>");
 
-		app.add_option("--cuda-parallel-hash", m_cudaParallelHash,
+		app.add_set("--cuda-parallel-hash", m_cudaParallelHash, {1, 2, 4, 8},
 			"Set the number of hashes per kernel (default: 4)")
 			->group(CUDAGroup)
-			->check(CLI::Range(1, 8))
-			->set_type_name("<n>");
+			->set_type_name("<1|2|4|8>");
 
 		string sched = "sync";
 		app.add_set("--cuda-schedule", sched, {"auto", "spin", "yield", "sync"},
@@ -489,7 +488,7 @@ public:
 			m_minerType = MinerType::CUDA;
 		else if (mixed_miner)
 			m_minerType = MinerType::Mixed;
-		else if (bench_opt->count())
+		if (bench_opt->count())
 			m_mode = OperationMode::Benchmark;
 		else if (sim_opt->count())
 			m_mode = OperationMode::Simulation;
