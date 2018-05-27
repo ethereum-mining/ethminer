@@ -154,42 +154,44 @@ public:
 
 		bool help = false;
 		app.set_help_flag();
-		app.add_flag("-h,--help", help, "Show help")->group(CommonGroup);
+		app.add_flag("-h,--help", help, "Show help")
+			->group(CommonGroup);
 
 		bool version = false;
-		app.add_flag("-V,--version", version, "Display program version")->group(CommonGroup);
+		app.add_flag("-V,--version", version, "Show program version")
+			->group(CommonGroup);
 
 		app.add_option("-v,--verbosity", g_logVerbosity,
-			"Log verbosity level")
+			"Set log verbosity level")
 			->group(CommonGroup)
 			->check(CLI::Range(9))
 			->set_type_name("<n>");
 
 		app.add_option("--farm-recheck", m_farmRecheckPeriod,
-			"Leave n ms between checks for changed work (default: 500)")
+			"Set check interval in ms.for changed work (default: 500)")
 			->group(CommonGroup)
 			->check(CLI::Range(1, 99999))
 			->set_type_name("<n>");
 
 		app.add_option("--farm-retries", m_maxFarmRetries,
-			"Number of retries until switch to failover (default: 3)")
+			"Set number of reconnection retries (default: 3)")
 			->group(CommonGroup)
 			->check(CLI::Range(1, 99999))
 			->set_type_name("<n>");
 
 		app.add_option("--stratum-email", m_email,
-			"Email address used in eth-proxy (optional)")
+			"Set email address for eth-proxy")
 			->group(CommonGroup)
 			->set_type_name("<s>");
 
 		app.add_option("--work-timeout", m_worktimeout,
-			"reconnect/failover after n seconds of working on the same (stratum) job (default: 180)")
+			"Set disconnect timeout in seconds of working on the same job (default: 180)")
 			->group(CommonGroup)
 			->check(CLI::Range(1, 99999))
 			->set_type_name("<n>");
 
 		app.add_option("--response-timeout", m_responsetimeout,
-			"reconnect/failover after n seconds delay for response from (stratum) pool (minimum: 2, default: 2)")
+			"Set disconnect timeout in seconds for pool responses (default: 2)")
 			->group(CommonGroup)
 			->check(CLI::Range(2, 999))
 			->set_type_name("<n>");
@@ -199,7 +201,7 @@ public:
 			->group(CommonGroup);
 
 		app.add_option("--display-interval", m_displayInterval,
-			"Set mining stats display interval in seconds (default: 5)")
+			"Set mining stats log interval in seconds (default: 5)")
 			->group(CommonGroup)
 			->check(CLI::Range(1, 99999))
 			->set_type_name("<n>");
@@ -207,10 +209,10 @@ public:
 		unsigned hwmon;
 		auto hwmon_opt = app.add_option("--HWMON", hwmon,
 			"0 - Displays gpu temp, fan percent. 1 - and power usage."
-			" Note: In linux, the program uses sysfs, which may require running with root privileges.");
-			hwmon_opt->group(CommonGroup)
-				->check(CLI::Range(1))
-				->set_type_name("<0|1>");
+			" Note for Linux: The program uses sysfs for power, which requires running with root privileges.");
+		hwmon_opt->group(CommonGroup)
+			->check(CLI::Range(1))
+			->set_type_name("<0|1>");
 
 		app.add_flag("--exit", m_exit,
 			"Stops the miner whenever an error is encountered")
@@ -218,22 +220,22 @@ public:
 
 		vector<string> pools;
 		app.add_option("-P,--pool", pools,
-			"Specify one or more pool URLs")
+			"Specify one or more pool URLs. See below for URL syntax")
 			->group(CommonGroup)
 			->set_type_name("<url>");
 	
 #if API_CORE
 
 		app.add_option("--api-port", m_api_port,
-			"The api port, the miner should listen to. Use 0 to disable. Use negative numbers for readonly mode (default: 0)")
+			"Set the api port, the miner should listen to. Use 0 to disable. Use negative numbers for readonly mode (default: 0)")
 			->group(APIGroup)
 			->check(CLI::Range(-32767, 32767))
 			->set_type_name("<n>");
 
 		app.add_option("--http-port", m_http_port,
-			"The web api port, the miner should listen to. Use 0 to disable. (default: 0). Data shown depends on hwmon setting.")
+			"Set the web api port, the miner should listen to. Use 0 to disable. Data shown depends on hwmon setting. (default: 0)")
 			->group(APIGroup)
-			->check(CLI::Range(1, 32767))
+			->check(CLI::Range(32767))
 			->set_type_name("<n>");
 
 #endif
@@ -250,38 +252,35 @@ public:
 #if ETH_ETHASHCL
 
 		app.add_option("--opencl-platform", m_openclPlatform,
-			"When mining using -G/--opencl use OpenCL platform n (default: 0)")
+			"Use OpenCL platform n (default: 0)")
 			->group(OpenCLGroup)
 			->set_type_name("<n>");
 
 		app.add_option("--opencl-device,--opencl-devices", m_openclDevices,
-			"Select which OpenCL devices to mine on. Default is to use all")
+			"Select list of devices to mine on (default: use all available)")
 			->group(OpenCLGroup)
 			->set_type_name("<n>");
 
-		app.add_set("--cl-parallel-hash", m_openclThreadsPerHash, {1, 2, 4, 8 },
-			"Define how many threads to associate per hash (default: 8)")
+		app.add_set("--cl-parallel-hash", m_openclThreadsPerHash, {1, 2, 4, 8},
+			"Set the number of threads per hash (default: 8)")
 			->group(OpenCLGroup)
 			->set_type_name("<1|2|4|8>");
 
 		app.add_option("--cl-kernel", m_openclSelectedKernel,
-			"Select opencl kernel. (0: stable kernel, 1: experimental kernel)")
+			"Select kernel. 0 stable kernel, 1 experimental kernel (default: 0)")
 			->group(OpenCLGroup)
 			->check(CLI::Range(1))
 			->set_type_name("<0|1>");
 
 		ssHelp.str("");
-		ssHelp <<
-			"The OpenCL global work size multipler of the local work size. (default: " <<
-			CLMiner::c_defaultGlobalWorkSizeMultiplier << ')';
+		ssHelp << "Set the global work size multipler. (default: " << CLMiner::c_defaultGlobalWorkSizeMultiplier << ')';
 		app.add_option("--cl-global-work", m_globalWorkSizeMultiplier, ssHelp.str())
 			->group(OpenCLGroup)
 			->check(CLI::Range(1, 999999999))
 			->set_type_name("<n>");
 
 		ssHelp.str("");
-		ssHelp <<
-			"the OpenCL local work size (default: " << CLMiner::c_defaultLocalWorkSize << ')';
+		ssHelp << "Set the local work size (default: " << CLMiner::c_defaultLocalWorkSize << ')';
 		app.add_option("--cl-local-work", m_localWorkSize, ssHelp.str())
 			->group(OpenCLGroup)
 			->check(CLI::Range(32, 99999))
@@ -292,41 +291,38 @@ public:
 #if ETH_ETHASHCUDA
 
 		ssHelp.str("");
-		ssHelp <<
-			"the CUDA grid size (default: " << toString(CUDAMiner::c_defaultGridSize) << ')';
+		ssHelp << "Set the grid size (default: " << toString(CUDAMiner::c_defaultGridSize) << ')';
 		app.add_option("--cuda-grid-size", m_cudaGridSize, ssHelp.str())
 			->group(CUDAGroup)
 			->check(CLI::Range(1, 999999999))
 			->set_type_name("<n>");
 
 		ssHelp.str("");
-		ssHelp <<
-			"the CUDA block size (default: " << toString(CUDAMiner::c_defaultBlockSize) << ')';
+		ssHelp << "Set the block size (default: " << toString(CUDAMiner::c_defaultBlockSize) << ')';
 		app.add_option("--cuda-block-size", m_cudaBlockSize, ssHelp.str())
 			->group(CUDAGroup)
 			->check(CLI::Range(1, 999999999))
 			->set_type_name("<n>");
 
 		app.add_option("--cuda-devices", m_cudaDevices,
-			"Select which CUDA devices to mine on. Default is to use all")
+			"Select list of devices to mine on (default: use all available)")
 			->group(CUDAGroup)
 			->set_type_name("<n>");
 
 		app.add_option("--cuda-parallel-hash", m_cudaParallelHash,
-			"Define how many hashes to calculate in a kernel (default: 4)")
+			"Set the number of hashes per kernel (default: 4)")
 			->group(CUDAGroup)
 			->check(CLI::Range(1, 8))
 			->set_type_name("<n>");
 
 		string sched = "sync";
 		app.add_set("--cuda-schedule", sched, {"auto", "spin", "yield", "sync"},
-			"CUDA scheduler mode")
+			"Set the scheduler mode (default: sync)")
 			->group(CUDAGroup)
 			->set_type_name("<auto|spin|yield|sync>");
 
 		ssHelp.str("");
-		ssHelp <<
-			"The number of CUDA streams (default: " << toString(CUDAMiner::c_defaultNumStreams)	<< ')';
+		ssHelp << "Set the number of streams (default: " << toString(CUDAMiner::c_defaultNumStreams)	<< ')';
 		app.add_option("--cuda-streams", m_numStreams, ssHelp.str())
 			->group(CUDAGroup)
 			->check(CLI::Range(1, 99))
@@ -338,13 +334,13 @@ public:
 			->group(CommonGroup);
 
 		app.add_option("-L,--dag-load-mode", m_dagLoadMode,
-			"DAG load mode. 0=parallel, 1=sequential, 2=sequential (default: 0)")
+			"Set the DAG load mode. 0=parallel, 1=sequential, 2=sequential (default: 0)")
 			->group(CommonGroup)
 			->check(CLI::Range(2))
 			->set_type_name("<0|1|2>");
 
 		app.add_option("--dag-single-dev", m_dagCreateDevice,
-			"Device to create DAG in single mode (default: 0)")
+			"Set the DAG creation device in single mode (default: 0)")
 			->group(CommonGroup)
 			->set_type_name("<n>");
 
@@ -371,18 +367,18 @@ public:
 
 		bool mixed_miner = false;
 		app.add_flag("-X,--cuda-opencl", mixed_miner,
-			"When mining with mixed AMD and CUDA GPUs")
+			"When mining with mixed AMD(OpenCL) and CUDA GPUs")
 			->group(CommonGroup);
 
 		auto bench_opt = app.add_option("-M,--benchmark", m_benchmarkBlock,
-			"Benchmark for mining and exit; Specify block number to benchmark against specific DAG");
-			bench_opt->group(CommonGroup)
-				->set_type_name("<n>");
+			"Benchmark mining and exit; Specify block number to benchmark against specific DAG (default: 0)");
+		bench_opt->group(CommonGroup)
+			->set_type_name("<n>");
 
 		auto sim_opt = app.add_option("-Z,--simulation", m_benchmarkBlock,
-			"Mining test. Used to validate kernel optimizations. Specify block number");
-			sim_opt->group(CommonGroup)
-				->set_type_name("<n>");
+			"Mining test. Used to validate kernel optimizations. Specify block number (default: 0)");
+		sim_opt->group(CommonGroup)
+			->set_type_name("<n>");
 
 		app.add_option("-t,--mining-threads", m_miningThreads,
 			"Limit number of CPU/GPU miners")
@@ -410,9 +406,9 @@ public:
             << "      " << URI::KnownSchemes(ProtocolFamily::GETWORK) << endl
             << "    for stratum use one of the following schemes: "<< endl
             << "      " << URI::KnownSchemes(ProtocolFamily::STRATUM) << endl
-            << "    Example 1 : stratum+ssl://0x012345678901234567890234567890123.miner1@ethermine.org:5555" << endl
-            << "    Example 2 : stratum1+tcp://0x012345678901234567890234567890123.miner1@nanopool.org:9999/john.doe@gmail.com" << endl
-            << "    Example 3 : stratum1+tcp://0x012345678901234567890234567890123@nanopool.org:9999/miner1/john.doe@gmail.com"
+            << "    Example 1: stratum+ssl://0x012345678901234567890234567890123.miner1@ethermine.org:5555" << endl
+            << "    Example 2: stratum1+tcp://0x012345678901234567890234567890123.miner1@nanopool.org:9999/john.doe@gmail.com" << endl
+            << "    Example 3: stratum1+tcp://0x012345678901234567890234567890123@nanopool.org:9999/miner1/john.doe@gmail.com"
 			<< endl << endl
 			<< "Environment Variables:" << endl
      		<< "    NO_COLOR - set to any value to disable color output. Unset to re-enable color output." << endl
@@ -451,12 +447,12 @@ public:
 			}
 			catch (...) {
 				cerr << "Bad endpoint address: " << url << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
+				exit(-1);
 			}
 			if (!uri.KnownScheme())
 			{
 				cerr << "Unknown URI scheme " << uri.Scheme() << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
+				exit(-1);
 			}
 			m_endpoints.push_back(uri);
 			
@@ -473,7 +469,7 @@ public:
 			if ((m_mode != OperationMode::None) && (m_mode != mode))
 			{
 				cerr << "Mixed stratum and getwork endpoints not supported." << endl;
-				BOOST_THROW_EXCEPTION(BadArgument());
+				exit(-1);
 			}
 			m_mode = mode;
 		}
