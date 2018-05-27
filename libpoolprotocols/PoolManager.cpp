@@ -158,22 +158,14 @@ void PoolManager::stop()
 		cnote << "Shutting down...";
 
 		m_running.store(false, std::memory_order_relaxed);
-		if (p_client->isConnected()) 
-		{ 
 
-			// Disconnection will also trigger
-			// stop for mining
+		if (p_client->isConnected()) 
 			p_client->disconnect(); 
 
-		}
-		else {
-
-			if (m_farm.isMining())
-			{
-				cnote << "Shutting down miners...";
-				m_farm.stop();
-			}
-
+		if (m_farm.isMining())
+		{
+			cnote << "Shutting down miners...";
+			m_farm.stop();
 		}
 
 	}
