@@ -15,11 +15,6 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <thread>
-#include <fstream>
-#include <iostream>
-#include <signal.h>
-
 #include <ethminer-buildinfo.h>
 
 #include <CLI/CLI.hpp>
@@ -392,6 +387,10 @@ public:
             << "      " << URI::KnownSchemes(ProtocolFamily::GETWORK) << endl
             << "    for stratum use one of the following schemes: "<< endl
             << "      " << URI::KnownSchemes(ProtocolFamily::STRATUM) << endl
+			<< "    Stratum variants:" << endl
+			<< "      stratum:  official stratum spec: ethpool, ethermine, coinotron, mph, nanopool (default)" << endl
+			<< "      stratum1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for hashrate reporting to work with nanopool)" << endl
+			<< "      stratum2: EthereumStratum/1.0.0: nicehash" << endl
             << "    Example 1: stratum+ssl://0x012345678901234567890234567890123.miner1@ethermine.org:5555" << endl
             << "    Example 2: stratum1+tcp://0x012345678901234567890234567890123.miner1@nanopool.org:9999/john.doe@gmail.com" << endl
             << "    Example 3: stratum1+tcp://0x012345678901234567890234567890123@nanopool.org:9999/miner1/john.doe@gmail.com"
