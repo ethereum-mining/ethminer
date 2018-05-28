@@ -92,7 +92,7 @@ void CUDAMiner::workLoop()
         {
             if (is_mining_paused())
             {
-                // cnote << "Paused for 3 s due temperature -tstop.";
+                // cnote << "Mining is paused: Waiting for 3s.";
                 std::this_thread::sleep_for(std::chrono::seconds(3));
                 continue;
             }

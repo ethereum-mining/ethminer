@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
+### Added
+- Add --tstop and --tstart option preventing GPU overheating [[#1146](https://github.com/ethereum-mining/ethminer/pull/1146)], [[#1159](https://github.com/ethereum-mining/ethminer/pull/1159)].
+- Added information about ordering CUDA devices in the README.md FAQ [[#1162](https://github.com/ethereum-mining/ethminer/pull/1162)].
 ### Fixed
 - Reconnecting with mining pool improved [[#1135](https://github.com/ethereum-mining/ethminer/pull/1135)].
 - Stratum nicehash. Avoid recalculating target with every job [[#1156](https://github.com/ethereum-mining/ethminer/pull/1156)].

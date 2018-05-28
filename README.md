@@ -208,6 +208,25 @@ Licensed under the [GNU General Public License, Version 3](LICENSE).
 
    No, use geth, the go program made for ethereum by ethereum.
 
+9. CUDA GPU order changes sometimes. What can I do?
+
+   There is an environment var `CUDA_DEVICE_ORDER` which tells the Nvidia CUDA driver how to enumerates the graphic cards.
+   Following values are valid:
+   * FASTEST_FIRST (Default) - causes CUDA to guess which device is fastest using a simple heuristic.
+   * PCI_BUS_ID - orders devices by PCI bus ID in ascending order.
+
+   To prevent some unwanted changes in the order of your CUDA devices you **might set the environment to `PCI_BUS_ID`**.
+   This can be done:
+   * linux:
+     * Adapt /etc/environment file and add a line `CUDA_DEVICE_ORDER=PCI_BUS_ID`
+     * Adapt your start script launching ethminer and add a line `export CUDA_DEVICE_ORDER=PCI_BUS_ID`
+
+   * windows:
+     * Adapt your environment using the control panel (just search `setting environment windows control panel` using your favorite searchengine)
+     * Adapt your start (.bat) file launching ethminer and add a line `setx CUDA_DEVICE_ORDER=PCI_BUS_ID` or `set CUDA_DEVICE_ORDER=PCI_BUS_ID`
+     * For more details about `setx` and `set` see:
+   https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/setx
+
 
 
 [Amazon S3 is needed]: https://docs.travis-ci.com/user/uploading-artifacts/
