@@ -66,14 +66,6 @@ inline std::string toJS(unsigned long _n)
 
 bool g_running = false;
 
-template <class T>
-string with_default(const char* cp, T defaultval)
-{
-	stringstream ss;
-	ss << cp << " (default: " << defaultval << ')';
-	return ss.str();
-}
-
 class MinerCLI
 {
 public:
@@ -154,87 +146,75 @@ public:
 			->group(CommonGroup);
 
 		bool version = false;
-		app.add_flag("-V,--version", version, "Show program version")
+		app.add_flag("-V,--version", version,
+			"Show program version")
 			->group(CommonGroup);
 
 		app.add_option("-v,--verbosity", g_logVerbosity,
-			"Set log verbosity level")
+			"Set log verbosity level", true)
 			->group(CommonGroup)
-			->check(CLI::Range(9))
-			->set_type_name("<n>");
+			->check(CLI::Range(9));
 
 		app.add_option("--farm-recheck", m_farmRecheckPeriod,
-			with_default("Set check interval in ms.for changed work", m_farmRecheckPeriod))
+			"Set check interval in ms.for changed work", true)
 			->group(CommonGroup)
-			->check(CLI::Range(1, 99999))
-			->set_type_name("<n>");
+			->check(CLI::Range(1, 99999));
 
 		app.add_option("--farm-retries", m_maxFarmRetries,
-			with_default("Set number of reconnection retries", m_maxFarmRetries))
+			"Set number of reconnection retries", true)
 			->group(CommonGroup)
-			->check(CLI::Range(1, 99999))
-			->set_type_name("<n>");
+			->check(CLI::Range(1, 99999));
 
 		app.add_option("--stratum-email", m_email,
 			"Set email address for eth-proxy")
-			->group(CommonGroup)
-			->set_type_name("<s>");
+			->group(CommonGroup);
 
 		app.add_option("--work-timeout", m_worktimeout,
-			with_default("Set disconnect timeout in seconds of working on the same job", m_worktimeout))
+			"Set disconnect timeout in seconds of working on the same job", true)
 			->group(CommonGroup)
-			->check(CLI::Range(1, 99999))
-			->set_type_name("<n>");
+			->check(CLI::Range(1, 99999));
 
 		app.add_option("--response-timeout", m_responsetimeout,
-			with_default("Set disconnect timeout in seconds for pool responses", m_responsetimeout))
+			"Set disconnect timeout in seconds for pool responses", true)
 			->group(CommonGroup)
-			->check(CLI::Range(2, 999))
-			->set_type_name("<n>");
+			->check(CLI::Range(2, 999));
 
 		app.add_flag("-R,--report-hashrate", m_report_stratum_hashrate,
 			"Report current hashrate to pool")
 			->group(CommonGroup);
 
 		app.add_option("--display-interval", m_displayInterval,
-			with_default("Set mining stats log interval in seconds", m_displayInterval))
+			"Set mining stats log interval in seconds", true)
 			->group(CommonGroup)
-			->check(CLI::Range(1, 99999))
-			->set_type_name("<n>");
+			->check(CLI::Range(1, 99999));
 
 		unsigned hwmon;
 		auto hwmon_opt = app.add_option("--HWMON", hwmon,
 			"0 - Displays gpu temp, fan percent. 1 - and power usage."
 			" Note for Linux: The program uses sysfs for power, which requires running with root privileges.");
 		hwmon_opt->group(CommonGroup)
-			->check(CLI::Range(1))
-			->set_type_name("<0|1>");
+			->check(CLI::Range(1));
 
 		app.add_flag("--exit", m_exit,
 			"Stops the miner whenever an error is encountered")
 			->group(CommonGroup);
 
 		vector<string> pools;
-		app.add_option("-P,--pool", pools,
+		app.add_option("-P,--pool,pool", pools,
 			"Specify one or more pool URLs. See below for URL syntax")
-			->group(CommonGroup)
-			->set_type_name("<url>");
+			->group(CommonGroup);
 	
 #if API_CORE
 
 		app.add_option("--api-port", m_api_port,
-			with_default("Set the api port, the miner should listen to. Use 0 to disable. Use negative numbers for readonly mode",
-				m_api_port))
+			"Set the api port, the miner should listen to. Use 0 to disable. Use negative numbers for readonly mode", true)
 			->group(APIGroup)
-			->check(CLI::Range(-65535, 65535))
-			->set_type_name("<n>");
+			->check(CLI::Range(-65535, 65535));
 
 		app.add_option("--http-port", m_http_port,
-			with_default("Set the web api port, the miner should listen to. Use 0 to disable. Data shown depends on hwmon setting",
-				m_http_port))
+			"Set the web api port, the miner should listen to. Use 0 to disable. Data shown depends on hwmon setting", true)
 			->group(APIGroup)
-			->check(CLI::Range(65535))
-			->set_type_name("<n>");
+			->check(CLI::Range(65535));
 
 #endif
 
@@ -249,75 +229,63 @@ public:
 #if ETH_ETHASHCL
 
 		app.add_option("--opencl-platform", m_openclPlatform,
-			with_default("Use OpenCL platform n", m_openclPlatform))
-			->group(OpenCLGroup)
-			->set_type_name("<n>");
+			"Use OpenCL platform n", true)
+			->group(OpenCLGroup);
 
 		app.add_option("--opencl-device,--opencl-devices", m_openclDevices,
 			"Select list of devices to mine on (default: use all available)")
-			->group(OpenCLGroup)
-			->set_type_name("<n>");
+			->group(OpenCLGroup);
 
 		app.add_set("--cl-parallel-hash", m_openclThreadsPerHash, {1, 2, 4, 8},
-			with_default("Set the number of threads per hash", m_openclThreadsPerHash))
-			->group(OpenCLGroup)
-			->set_type_name("<1|2|4|8>");
+			"Set the number of threads per hash", true)
+			->group(OpenCLGroup);
 
 		app.add_option("--cl-kernel", m_openclSelectedKernel,
-			with_default("Select kernel. 0 stable kernel, 1 experimental kernel", m_openclSelectedKernel))
+			"Select kernel. 0 stable kernel, 1 experimental kernel", true)
 			->group(OpenCLGroup)
-			->check(CLI::Range(1))
-			->set_type_name("<0|1>");
+			->check(CLI::Range(1));
 
 		app.add_option("--cl-global-work", m_globalWorkSizeMultiplier,
-			with_default("Set the global work size multipler", m_globalWorkSizeMultiplier))
+			"Set the global work size multipler", true)
 			->group(OpenCLGroup)
-			->check(CLI::Range(1, 999999999))
-			->set_type_name("<n>");
+			->check(CLI::Range(1, 999999999));
 
 		app.add_option("--cl-local-work", m_localWorkSize,
-			with_default("Set the local work size", m_localWorkSize))
+			"Set the local work size", true)
 			->group(OpenCLGroup)
-			->check(CLI::Range(32, 99999))
-			->set_type_name("<n>");
+			->check(CLI::Range(32, 99999));
 
 #endif
 
 #if ETH_ETHASHCUDA
 
 		app.add_option("--cuda-grid-size", m_cudaGridSize,
-			with_default("Set the grid size", m_cudaGridSize))
+			"Set the grid size", true)
 			->group(CUDAGroup)
-			->check(CLI::Range(1, 999999999))
-			->set_type_name("<n>");
+			->check(CLI::Range(1, 999999999));
 
 		app.add_option("--cuda-block-size", m_cudaBlockSize,
-			with_default("Set the block size", m_cudaBlockSize))
+			"Set the block size", true)
 			->group(CUDAGroup)
-			->check(CLI::Range(1, 999999999))
-			->set_type_name("<n>");
+			->check(CLI::Range(1, 999999999));
 
 		app.add_option("--cuda-devices", m_cudaDevices,
 			"Select list of devices to mine on (default: use all available)")
-			->group(CUDAGroup)
-			->set_type_name("<n>");
+			->group(CUDAGroup);
 
 		app.add_set("--cuda-parallel-hash", m_cudaParallelHash, {1, 2, 4, 8},
-			with_default("Set the number of hashes per kernel", m_cudaParallelHash))
-			->group(CUDAGroup)
-			->set_type_name("<1|2|4|8>");
+			"Set the number of hashes per kernel", true)
+			->group(CUDAGroup);
 
 		string sched = "sync";
 		app.add_set("--cuda-schedule", sched, {"auto", "spin", "yield", "sync"},
-			with_default("Set the scheduler mode", sched))
-			->group(CUDAGroup)
-			->set_type_name("<auto|spin|yield|sync>");
+			"Set the scheduler mode", true)
+			->group(CUDAGroup);
 
 		app.add_option("--cuda-streams", m_numStreams,
-			with_default("Set the number of streams", m_numStreams))
+			"Set the number of streams", true)
 			->group(CUDAGroup)
-			->check(CLI::Range(1, 99))
-			->set_type_name("<n>");
+			->check(CLI::Range(1, 99));
 
 #endif
 		app.add_flag("--noeval", m_noEval,
@@ -325,26 +293,22 @@ public:
 			->group(CommonGroup);
 
 		app.add_option("-L,--dag-load-mode", m_dagLoadMode,
-			with_default("Set the DAG load mode. 0=parallel, 1=sequential, 2=sequential", m_dagLoadMode))
+			"Set the DAG load mode. 0=parallel, 1=sequential, 2=sequential", true)
 			->group(CommonGroup)
-			->check(CLI::Range(2))
-			->set_type_name("<0|1|2>");
+			->check(CLI::Range(2));
 
 		app.add_option("--dag-single-dev", m_dagCreateDevice,
-			with_default("Set the DAG creation device in single mode", m_dagCreateDevice))
-			->group(CommonGroup)
-			->set_type_name("<n>");
+			"Set the DAG creation device in single mode", true)
+			->group(CommonGroup);
 
 		app.add_option("--benchmark-warmup", m_benchmarkWarmup,
-			with_default("Set the duration in seconds of warmup for the benchmark tests", m_benchmarkWarmup))
-			->group(CommonGroup)
-			->set_type_name("<n>");
+			"Set the duration in seconds of warmup for the benchmark tests", true)
+			->group(CommonGroup);
 
 		app.add_option("--benchmark-trial", m_benchmarkTrial,
-			with_default("Set the number of benchmark trials to run", m_benchmarkTrial))
+			"Set the number of benchmark trials to run", true)
 			->group(CommonGroup)
-			->check(CLI::Range(1, 99))
-			->set_type_name("<n>");
+			->check(CLI::Range(1, 99));
 
 		bool cl_miner = false;
 		app.add_flag("-G,--opencl", cl_miner,
@@ -362,32 +326,22 @@ public:
 			->group(CommonGroup);
 
 		auto bench_opt = app.add_option("-M,--benchmark", m_benchmarkBlock,
-			with_default("Benchmark mining and exit; Specify block number to benchmark against specific DAG", m_benchmarkBlock));
-		bench_opt->group(CommonGroup)
-			->set_type_name("<n>");
+			"Benchmark mining and exit; Specify block number to benchmark against specific DAG", true);
+		bench_opt->group(CommonGroup);
 
 		auto sim_opt = app.add_option("-Z,--simulation", m_benchmarkBlock,
-			with_default("Mining test. Used to validate kernel optimizations. Specify block number", m_benchmarkBlock));
-		sim_opt->group(CommonGroup)
-			->set_type_name("<n>");
-
-		app.add_option("-t,--mining-threads", m_miningThreads,
-			"Limit number of CPU/GPU miners")
-			->group(CommonGroup)
-			->check(CLI::Range(1, 99))
-			->set_type_name("<n>");
+			"Mining test. Used to validate kernel optimizations. Specify block number", true);
+		sim_opt->group(CommonGroup);
 
 		app.add_option("--tstop", m_tstop,
-			"Stop mining on a GPU if temperature exceeds value (valid: 30..100)")
+			"Stop mining on a GPU if temperature exceeds value. 0 is disabled, valid: 30..100", true)
 			->group(CommonGroup)
-			->check(CLI::Range(30, 100))
-			->set_type_name("<n>");
+			->check(CLI::Range(30, 100));
 
 		app.add_option("--tstart", m_tstart,
-			"Restart mining on a GPU if the temperature drops below (default: 40, valid: 30..100)")
+			"Restart mining on a GPU if the temperature drops below, valid: 30..100", true)
 			->group(CommonGroup)
-			->check(CLI::Range(30, 100))
-			->set_type_name("<n>");
+			->check(CLI::Range(30, 100));
 
 		stringstream ssHelp;
 		ssHelp
