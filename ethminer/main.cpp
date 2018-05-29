@@ -66,6 +66,14 @@ inline std::string toJS(unsigned long _n)
 
 bool g_running = false;
 
+template <class T>
+string with_default(const char* cp, T defaultval)
+{
+	stringstream ss;
+	ss << cp << " (default: " << defaultval << ')';
+	return ss.str();
+}
+
 class MinerCLI
 {
 public:
@@ -156,13 +164,13 @@ public:
 			->set_type_name("<n>");
 
 		app.add_option("--farm-recheck", m_farmRecheckPeriod,
-			"Set check interval in ms.for changed work (default: 500)")
+			with_default("Set check interval in ms.for changed work", m_farmRecheckPeriod))
 			->group(CommonGroup)
 			->check(CLI::Range(1, 99999))
 			->set_type_name("<n>");
 
 		app.add_option("--farm-retries", m_maxFarmRetries,
-			"Set number of reconnection retries (default: 3)")
+			with_default("Set number of reconnection retries", m_maxFarmRetries))
 			->group(CommonGroup)
 			->check(CLI::Range(1, 99999))
 			->set_type_name("<n>");
@@ -173,13 +181,13 @@ public:
 			->set_type_name("<s>");
 
 		app.add_option("--work-timeout", m_worktimeout,
-			"Set disconnect timeout in seconds of working on the same job (default: 180)")
+			with_default("Set disconnect timeout in seconds of working on the same job", m_worktimeout))
 			->group(CommonGroup)
 			->check(CLI::Range(1, 99999))
 			->set_type_name("<n>");
 
 		app.add_option("--response-timeout", m_responsetimeout,
-			"Set disconnect timeout in seconds for pool responses (default: 2)")
+			with_default("Set disconnect timeout in seconds for pool responses", m_responsetimeout))
 			->group(CommonGroup)
 			->check(CLI::Range(2, 999))
 			->set_type_name("<n>");
@@ -189,7 +197,7 @@ public:
 			->group(CommonGroup);
 
 		app.add_option("--display-interval", m_displayInterval,
-			"Set mining stats log interval in seconds (default: 5)")
+			with_default("Set mining stats log interval in seconds", m_displayInterval))
 			->group(CommonGroup)
 			->check(CLI::Range(1, 99999))
 			->set_type_name("<n>");
@@ -215,13 +223,15 @@ public:
 #if API_CORE
 
 		app.add_option("--api-port", m_api_port,
-			"Set the api port, the miner should listen to. Use 0 to disable. Use negative numbers for readonly mode (default: 0)")
+			with_default("Set the api port, the miner should listen to. Use 0 to disable. Use negative numbers for readonly mode",
+				m_api_port))
 			->group(APIGroup)
 			->check(CLI::Range(-65535, 65535))
 			->set_type_name("<n>");
 
 		app.add_option("--http-port", m_http_port,
-			"Set the web api port, the miner should listen to. Use 0 to disable. Data shown depends on hwmon setting. (default: 0)")
+			with_default("Set the web api port, the miner should listen to. Use 0 to disable. Data shown depends on hwmon setting",
+				m_http_port))
 			->group(APIGroup)
 			->check(CLI::Range(65535))
 			->set_type_name("<n>");
@@ -235,12 +245,11 @@ public:
 			->group(CommonGroup);
 
 #endif
-		stringstream ssHelp;
 
 #if ETH_ETHASHCL
 
 		app.add_option("--opencl-platform", m_openclPlatform,
-			"Use OpenCL platform n (default: 0)")
+			with_default("Use OpenCL platform n", m_openclPlatform))
 			->group(OpenCLGroup)
 			->set_type_name("<n>");
 
@@ -250,26 +259,24 @@ public:
 			->set_type_name("<n>");
 
 		app.add_set("--cl-parallel-hash", m_openclThreadsPerHash, {1, 2, 4, 8},
-			"Set the number of threads per hash (default: 8)")
+			with_default("Set the number of threads per hash", m_openclThreadsPerHash))
 			->group(OpenCLGroup)
 			->set_type_name("<1|2|4|8>");
 
 		app.add_option("--cl-kernel", m_openclSelectedKernel,
-			"Select kernel. 0 stable kernel, 1 experimental kernel (default: 0)")
+			with_default("Select kernel. 0 stable kernel, 1 experimental kernel", m_openclSelectedKernel))
 			->group(OpenCLGroup)
 			->check(CLI::Range(1))
 			->set_type_name("<0|1>");
 
-		ssHelp.str("");
-		ssHelp << "Set the global work size multipler. (default: " << CLMiner::c_defaultGlobalWorkSizeMultiplier << ')';
-		app.add_option("--cl-global-work", m_globalWorkSizeMultiplier, ssHelp.str())
+		app.add_option("--cl-global-work", m_globalWorkSizeMultiplier,
+			with_default("Set the global work size multipler", m_globalWorkSizeMultiplier))
 			->group(OpenCLGroup)
 			->check(CLI::Range(1, 999999999))
 			->set_type_name("<n>");
 
-		ssHelp.str("");
-		ssHelp << "Set the local work size (default: " << CLMiner::c_defaultLocalWorkSize << ')';
-		app.add_option("--cl-local-work", m_localWorkSize, ssHelp.str())
+		app.add_option("--cl-local-work", m_localWorkSize,
+			with_default("Set the local work size", m_localWorkSize))
 			->group(OpenCLGroup)
 			->check(CLI::Range(32, 99999))
 			->set_type_name("<n>");
@@ -278,16 +285,14 @@ public:
 
 #if ETH_ETHASHCUDA
 
-		ssHelp.str("");
-		ssHelp << "Set the grid size (default: " << toString(CUDAMiner::c_defaultGridSize) << ')';
-		app.add_option("--cuda-grid-size", m_cudaGridSize, ssHelp.str())
+		app.add_option("--cuda-grid-size", m_cudaGridSize,
+			with_default("Set the grid size", m_cudaGridSize))
 			->group(CUDAGroup)
 			->check(CLI::Range(1, 999999999))
 			->set_type_name("<n>");
 
-		ssHelp.str("");
-		ssHelp << "Set the block size (default: " << toString(CUDAMiner::c_defaultBlockSize) << ')';
-		app.add_option("--cuda-block-size", m_cudaBlockSize, ssHelp.str())
+		app.add_option("--cuda-block-size", m_cudaBlockSize,
+			with_default("Set the block size", m_cudaBlockSize))
 			->group(CUDAGroup)
 			->check(CLI::Range(1, 999999999))
 			->set_type_name("<n>");
@@ -298,19 +303,18 @@ public:
 			->set_type_name("<n>");
 
 		app.add_set("--cuda-parallel-hash", m_cudaParallelHash, {1, 2, 4, 8},
-			"Set the number of hashes per kernel (default: 4)")
+			with_default("Set the number of hashes per kernel", m_cudaParallelHash))
 			->group(CUDAGroup)
 			->set_type_name("<1|2|4|8>");
 
 		string sched = "sync";
 		app.add_set("--cuda-schedule", sched, {"auto", "spin", "yield", "sync"},
-			"Set the scheduler mode (default: sync)")
+			with_default("Set the scheduler mode", sched))
 			->group(CUDAGroup)
 			->set_type_name("<auto|spin|yield|sync>");
 
-		ssHelp.str("");
-		ssHelp << "Set the number of streams (default: " << toString(CUDAMiner::c_defaultNumStreams)	<< ')';
-		app.add_option("--cuda-streams", m_numStreams, ssHelp.str())
+		app.add_option("--cuda-streams", m_numStreams,
+			with_default("Set the number of streams", m_numStreams))
 			->group(CUDAGroup)
 			->check(CLI::Range(1, 99))
 			->set_type_name("<n>");
@@ -321,23 +325,23 @@ public:
 			->group(CommonGroup);
 
 		app.add_option("-L,--dag-load-mode", m_dagLoadMode,
-			"Set the DAG load mode. 0=parallel, 1=sequential, 2=sequential (default: 0)")
+			with_default("Set the DAG load mode. 0=parallel, 1=sequential, 2=sequential", m_dagLoadMode))
 			->group(CommonGroup)
 			->check(CLI::Range(2))
 			->set_type_name("<0|1|2>");
 
 		app.add_option("--dag-single-dev", m_dagCreateDevice,
-			"Set the DAG creation device in single mode (default: 0)")
+			with_default("Set the DAG creation device in single mode", m_dagCreateDevice))
 			->group(CommonGroup)
 			->set_type_name("<n>");
 
 		app.add_option("--benchmark-warmup", m_benchmarkWarmup,
-			"Set the duration in seconds of warmup for the benchmark tests (default: 3)")
+			with_default("Set the duration in seconds of warmup for the benchmark tests", m_benchmarkWarmup))
 			->group(CommonGroup)
 			->set_type_name("<n>");
 
 		app.add_option("--benchmark-trial", m_benchmarkTrial,
-			"Set the number of benchmark trials to run (default: 5)")
+			with_default("Set the number of benchmark trials to run", m_benchmarkTrial))
 			->group(CommonGroup)
 			->check(CLI::Range(1, 99))
 			->set_type_name("<n>");
@@ -358,12 +362,12 @@ public:
 			->group(CommonGroup);
 
 		auto bench_opt = app.add_option("-M,--benchmark", m_benchmarkBlock,
-			"Benchmark mining and exit; Specify block number to benchmark against specific DAG (default: 0)");
+			with_default("Benchmark mining and exit; Specify block number to benchmark against specific DAG", m_benchmarkBlock));
 		bench_opt->group(CommonGroup)
 			->set_type_name("<n>");
 
 		auto sim_opt = app.add_option("-Z,--simulation", m_benchmarkBlock,
-			"Mining test. Used to validate kernel optimizations. Specify block number (default: 0)");
+			with_default("Mining test. Used to validate kernel optimizations. Specify block number", m_benchmarkBlock));
 		sim_opt->group(CommonGroup)
 			->set_type_name("<n>");
 
@@ -385,7 +389,7 @@ public:
 			->check(CLI::Range(30, 100))
 			->set_type_name("<n>");
 
-		ssHelp.str("");
+		stringstream ssHelp;
 		ssHelp
             << "Pool URL Specification:" << endl
             << "    URL takes the form: scheme://user[:password]@hostname:port[/emailaddress]." << endl
