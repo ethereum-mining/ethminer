@@ -559,161 +559,50 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 {
 
 	dev::setThreadName("stratum");
-	
-	int _rpcVer = 0;					// Store jsonrpc version to test against
+
+	// Out received message only for debug purpouses
+	if (g_logVerbosity >= 9) {
+		cnote << responseObject;
+	}
+
+	// Store jsonrpc version to test against
+	int _rpcVer = responseObject.isMember("jsonrpc") ? 1 : 2;					
+
 	bool _isNotification = false;		// Wether or not this message is a reply to previous request or is a broadcast notification
 	bool _isSuccess = false;			// Wether or not this is a succesful or failed response (implies _isNotification = false)
 	string _errReason = "";				// Content of the error reason
 	string _method = "";				// The method of the notification (or request from pool)
 	int _id = 0;						// This SHOULD be the same id as the request it is responding to (known exception is ethermine.org using 999)
 
-	if (!responseObject.isMember("jsonrpc")) {
-		_rpcVer = 1;
+
+	// Retrieve essential values
+	_id = responseObject.get("id", unsigned(0)).asUInt();
+	_isSuccess = responseObject.get("error", Json::Value::null).empty();
+	_errReason = (_isSuccess ? "" : processError(responseObject));
+	_method = responseObject.get("method", "").asString();
+	_isNotification = (_id == unsigned(0) || _method != "");
+
+	// Notifications of new jobs are like responses to get_work requests
+	if (_isNotification && _method == "" && m_conn.Version() == EthStratumClient::ETHPROXY && responseObject["result"].isArray()) {
+		_method = "mining.notify";
 	}
-	else {
-		_rpcVer = 2;
-	}
 
+	// Very minimal sanity checks 
+	// - For rpc2 member "jsonrpc" MUST be valued to "2.0"
+	// - For responses ... well ... whatever
+	// - For notifications I must receive "method" member and a not empty "params" or "result" member
+	if (
+		(_rpcVer == 2 && (!responseObject["jsonrpc"].isString() || responseObject.get("jsonrpc", "") != "2.0")) ||
+		(_isNotification && (responseObject["params"].empty() && responseObject["result"].empty()))
+		)
+	{ 
 
-	// Do some sanity checks over received json
-	// Unfortunately most pool implementation is CRAP !
-
-	switch (_rpcVer)
-	{
-
-	case 1:
-
-		if (
-			(!responseObject.isMember("result") && !responseObject.isMember("method")) ||
-			(responseObject.isMember("method") && !responseObject.isMember("params"))
-			)  {
-			cwarn << "Pool sent an invalid jsonrpc (v1) response ...";
-			cwarn << "Do not blame ethminer for this. Ask pool devs to honor http://www.jsonrpc.org/specification_v1 ";
-			cwarn << "Disconnecting ...";
-			disconnect();
-			return;
-		}
-
-
-		// JsonRpc v1
-		// http://www.jsonrpc.org/specification_v1#a1.2Response
-		//
-		// Members of message :
-		// id - This MUST be the same id as the request it is responding to.
-		// result - The Object that was returned by the invoked method.This must be null in case there was an error invoking the method.
-		// error - An Error object if there was an error invoking the method.It must be null if there was no error.
-
-		if (responseObject.isMember("result")) {
-
-			_id = responseObject.get("id", 0).asUInt();
-			_isSuccess = responseObject.get("error", Json::Value::null).empty();
-			_errReason = (_isSuccess ? "" : processError(responseObject));
-
-		}
-		
-		// http://www.jsonrpc.org/specification_v1#a1.3Notification
-		//
-		// Members of message :
-		// id - The request id MUST be null
-		// method - A String containing the name of the method to be invoked.
-		// params - An Array of objects to pass as arguments to the method.
-
-		if (responseObject.isMember("method")) {
-
-			_method = responseObject.get("method", "").asString();
-			_id = responseObject.get("id", 0).asUInt();
-			_isNotification = true;
-			if (responseObject.get("method", Json::Value::null).empty()) {
-				cwarn << "Missing \"method\" value in incoming notification. Discarding ...";
-				return;
-			}
-			else if (!responseObject.isMember("params") || responseObject.get("params", Json::Value::null).empty()) {
-				cwarn << "Missing \"params\" value in incoming notification. Discarding ...";
-				return;
-			}
-			
-		}
-
-
-		break;
-
-	case 2:
-
-		// JsonRpc v2.0
-		// http://www.jsonrpc.org/specification
-		//
-		// Members of message :
-		//
-		//	id
-		//	This member is REQUIRED.
-		//	It MUST be the same as the value of the id member in the Request Object.
-		//	If there was an error in detecting the id in the Request object(e.g.Parse error / Invalid Request), it MUST be Null.
-		//
-		//  jsonrpc
-		//	A String specifying the version of the JSON - RPC protocol.MUST be exactly "2.0".
-		//
-		//	result
-		//	This member is REQUIRED on success.
-		//	This member MUST NOT exist if there was an error invoking the method.
-		//	The value of this member is determined by the method invoked on the Server.
-		//
-		//	error
-		//	This member is REQUIRED on error.
-		//	This member MUST NOT exist if there was no error triggered during invocation.
-		//	The value for this member MUST be an Object as defined in section 5.1.
-
-		if (
-			(responseObject.isMember("error") && (responseObject.get("result", false).asBool() != false)) ||
-			(responseObject.get("jsonrpc", "").asString() != "2.0") ||
-			(responseObject.isMember("method") && (!responseObject.isMember("params") || responseObject.get("params", Json::Value::null).empty()))
-			) {
-			cwarn << "Pool sent an invalid jsonrpc (v2) response ...";
-			cwarn << "Do not blame ethminer for this. Ask pool devs to honor http://www.jsonrpc.org/specification ";
-			cwarn << "Disconnecting ...";
-			disconnect();
-			return;
-
-		}
-
-		// Responses
-		if (!responseObject.isMember("method")) {
-
-			_id = responseObject.get("id", 0).asUInt();
-			_isSuccess = (!responseObject.isMember("error") || responseObject.get("error", Json::Value::null).isNull());
-			_errReason = (_isSuccess ? "" : processError(responseObject));
-
-		}
-
-		// Notifications
-		// A Notification is like a Request/Response object without an "id" member. 
-		// But apparently all pools disregard this CRAP
-
-		if (responseObject.isMember("method")) {
-
-			_id = responseObject.get("id", 0).asUInt();
-			_method = responseObject.get("method", "").asString();
-			_isNotification = true;
-
-			if (_method == "") {
-				cwarn << "Missing \"method\" value in incoming notification. Discarding ...";
-				return;
-			}
-			else if (!responseObject.isMember("params") || responseObject.get("params", Json::Value::null).empty()) {
-				cwarn << "Missing \"params\" value in incoming notification. Discarding ...";
-				return;
-			}
-
-		}
-
-		break;
-
-	default:
-
-		// Should not get here but ready for implementation of possible future versions of jsonrpc
-		cwarn << "Unrecognized jsonrpc syntax. Report the following data:";
-		cwarn << responseObject;
+		cwarn << "Pool sent an invalid jsonrpc message ...";
+		cwarn << "Do not blame ethminer for this. Ask pool devs to honor http://www.jsonrpc.org/ specifications ";
+		cwarn << "Disconnecting ...";
+		disconnect();
 		return;
-		break;
+
 	}
 
 
@@ -722,13 +611,12 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 		Json::Value jReq;
 		Json::Value jResult = responseObject.get("result", Json::Value::null);
-		bool authSuccessful = false;
-		bool submitSuccessful = false;
 
 		switch (_id)
 		{
 
 		case 1:
+
 			// Response to "mining.subscribe" (https://en.bitcoin.it/wiki/Stratum_mining_protocol#mining.subscribe)
 			// Result should be an array with multiple dimensions, we only care about the data if EthStratumClient::ETHEREUMSTRATUM
 	
@@ -838,9 +726,13 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 			// Response to "mining.authorize" (https://en.bitcoin.it/wiki/Stratum_mining_protocol#mining.authorize)
 			// Result should be boolean, some pools also throw an error, so _isSuccess can be false
-			authSuccessful = (!_isSuccess) ? false : ((!jResult.empty() && jResult.isBool()) ? jResult.asBool() : false);
+			// Due to this reevaluate _isSucess
 
-			m_authorized.store(authSuccessful, std::memory_order_relaxed);
+			if (_isSuccess && jResult.isBool()) {
+				_isSuccess = jResult.asBool();
+			}
+
+			m_authorized.store(_isSuccess, std::memory_order_relaxed);
 
 			if (!m_authorized)
 			{
@@ -859,32 +751,48 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 			// Response to solution submission mining.submit  (https://en.bitcoin.it/wiki/Stratum_mining_protocol#mining.submit)
 			// Result should be boolean, some pools also throw an error, so _isSuccess can be false
-			submitSuccessful = (!_isSuccess) ? false : ((!jResult.empty() && jResult.isBool()) ? jResult.asBool() : false);
+			// Due to this reevaluate _isSucess
+
+			if (_isSuccess && jResult.isBool()) {
+				_isSuccess = jResult.asBool();
+			}
+
 			{
 				m_responsetimer.cancel();
 				m_response_pending = false;
-				if (submitSuccessful) {
+				if (_isSuccess) {
 					if (m_onSolutionAccepted) {
 						m_onSolutionAccepted(m_stale);
 					}
 				}
 				else {
-					if (!_errReason.empty()) {
-						cwarn << "Solution rejected with the following error: " + _errReason;
-					}
 					if (m_onSolutionRejected) {
+						cwarn << "Reject reason :" << (_errReason.empty() ? "Unspecified" : _errReason);
 						m_onSolutionRejected(m_stale);
 					}
 				}
 			}
 			break;
+
+
+		case 5:
+
+			// This is the response we get on first get_work request issued 
+			// in mode EthStratumClient::ETHPROXY
+			// thus we change it to a mining.notify notification
+			if (m_conn.Version() == EthStratumClient::ETHPROXY && responseObject["result"].isArray()) {
+				_method = "mining.notify";
+				_isNotification = true;
+			}
+			break;
+
 		case 9:
 
 			// Response to hashrate submit
 			// Shall we do anyting ?
 			// Hashrate submit is actually out of stratum spec
 			if (!_isSuccess) {
-				cwarn << "Submit hashRate failed:" << _errReason;
+				cwarn << "Submit hashRate failed:" << (_errReason.empty() ? "Unspecified error" : _errReason);
 			}
 			break;
 
@@ -900,7 +808,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				if (!m_subscribed) {
 
 					// Subscription pending
-					cnote << "Subscription failed:" << _errReason;
+					cnote << "Subscription failed:" << (_errReason.empty() ? "Unspecified error" : _errReason);
 					disconnect();
 					return;
 
@@ -908,7 +816,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				else if (m_subscribed && !m_authorized) {
 
 					// Authorization pending
-					cnote << "Worker not authorized:" << _errReason;
+					cnote << "Worker not authorized:" << (_errReason.empty() ? "Unspecified error" : _errReason);
 					disconnect();
 					return;
 
@@ -920,18 +828,9 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 		default:
 
-			if (m_conn.Version() == EthStratumClient::ETHPROXY) {
-				_method = "mining.notify";
-				_isNotification = true;
-			}
-			else {
-
-				// Never sent message with such an Id. What is it ?
-				cnote << "Got response for unknown message id [" << _id << "] Discarding ...";
-
-			}
-
+			cnote << "Got response for unknown message id [" << _id << "] Discarding ...";
 			break;
+
 		}
 
 	}
@@ -979,8 +878,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					{
 						reset_work_timeout();
 
-                        m_current.epoch = ethash::find_epoch_number(
-                            ethash::hash256_from_bytes(h256{sSeedHash}.data()));
+                        m_current.epoch = ethash::find_epoch_number(ethash::hash256_from_bytes(h256{sSeedHash}.data()));
                         m_current.header = h256(sHeaderHash);
 						m_current.boundary = m_nextWorkBoundary;
 						m_current.startNonce = bswap(*((uint64_t*)m_extraNonce.data()));
@@ -1265,6 +1163,11 @@ void EthStratumClient::sendSocketData(Json::Value const & jReq) {
 	if (!isConnected())
 		return;
 	
+	// Out received message only for debug purpouses
+	if (g_logVerbosity >= 9) {
+		cnote << jReq;
+	}
+
 	std::ostream os(&m_sendBuffer);
 	os << m_jWriter.write(jReq);		// Do not add lf. It's added by writer.
 	
