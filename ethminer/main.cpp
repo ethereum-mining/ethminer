@@ -217,13 +217,13 @@ public:
 		app.add_option("--api-port", m_api_port,
 			"Set the api port, the miner should listen to. Use 0 to disable. Use negative numbers for readonly mode (default: 0)")
 			->group(APIGroup)
-			->check(CLI::Range(-32767, 32767))
+			->check(CLI::Range(-65535, 65535))
 			->set_type_name("<n>");
 
 		app.add_option("--http-port", m_http_port,
 			"Set the web api port, the miner should listen to. Use 0 to disable. Data shown depends on hwmon setting. (default: 0)")
 			->group(APIGroup)
-			->check(CLI::Range(32767))
+			->check(CLI::Range(65535))
 			->set_type_name("<n>");
 
 #endif
