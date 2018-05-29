@@ -11,7 +11,9 @@
 
 
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wignored-attributes"
+#if __GNUC__ >= 6
+    #pragma GCC diagnostic ignored "-Wignored-attributes"
+#endif
 #pragma GCC diagnostic ignored "-Wmissing-braces"
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS true
 #define CL_HPP_ENABLE_EXCEPTIONS true

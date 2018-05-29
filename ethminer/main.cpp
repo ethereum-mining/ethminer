@@ -128,9 +128,15 @@ public:
 	{
 
 		const char* CommonGroup = "Common Options";
+#if API_CORE
 		const char* APIGroup =    "API Options";
+#endif
+#if ETH_ETHASHCL
 		const char* OpenCLGroup = "OpenCL Options";
+#endif
+#if ETH_ETHASHCUDA
 		const char* CUDAGroup =   "CUDA Options";
+#endif
 
 		CLI::App app("Ethminer - GPU Ethereum miner");
 
