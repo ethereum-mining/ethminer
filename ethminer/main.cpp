@@ -54,15 +54,8 @@ struct MiningChannel: public LogChannel
 	static const int verbosity = 2;
 	static const bool debug = false;
 };
-#define minelog clog(MiningChannel)
 
-inline std::string toJS(unsigned long _n)
-{
-	std::string h = toHex(toCompactBigEndian(_n, 1));
-	// remove first 0, if it is necessary;
-	std::string res = h[0] != '0' ? h : h.substr(1);
-	return "0x" + res;
-}
+#define minelog clog(MiningChannel)
 
 bool g_running = false;
 
@@ -377,7 +370,7 @@ public:
     				exit(0);
 			}
     	} catch(const CLI::ParseError &e) {
-			cerr << endl << e.what() << endl << endl;
+			cerr << endl << e.what() << "\n\n";
 			exit(-1);
     	}
 
@@ -387,6 +380,23 @@ public:
 				m_show_power = true;
 		}
 
+		if (!cl_miner && !cuda_miner && !mixed_miner && !bench_opt->count() && !sim_opt->count())
+		{
+			cerr << endl << "One of -G, -U, -X, -M, or -Z must be specified" << "\n\n";
+			exit(-1);
+		}
+
+		if (cl_miner)
+			m_minerType = MinerType::CL;
+		else if (cuda_miner)
+			m_minerType = MinerType::CUDA;
+		else if (mixed_miner)
+			m_minerType = MinerType::Mixed;
+		if (bench_opt->count())
+			m_mode = OperationMode::Benchmark;
+		else if (sim_opt->count())
+			m_mode = OperationMode::Simulation;
+
 		for (auto url : pools) {
 			if (url == "exit") // add fake scheme and port to 'exit' url
 				url = "stratum+tcp://-:x@exit:0";
@@ -395,12 +405,12 @@ public:
 				uri = url;
 			}
 			catch (...) {
-				cerr << "Bad endpoint address: " << url << endl;
+				cerr << endl << "Bad endpoint address: " << url << "\n\n";
 				exit(-1);
 			}
 			if (!uri.KnownScheme())
 			{
-				cerr << "Unknown URI scheme " << uri.Scheme() << endl;
+				cerr << endl << "Unknown URI scheme " << uri.Scheme() << "\n\n";
 				exit(-1);
 			}
 			m_endpoints.push_back(uri);
@@ -417,10 +427,16 @@ public:
 			}
 			if ((m_mode != OperationMode::None) && (m_mode != mode))
 			{
-				cerr << "Mixed stratum and getwork endpoints not supported." << endl;
+				cerr << endl << "Mixed stratum and getwork endpoints not supported." << "\n\n";
 				exit(-1);
 			}
 			m_mode = mode;
+		}
+
+		if ((m_mode == OperationMode::None) && !m_shouldListDevices)
+		{
+           	cerr << endl << "At least one pool URL must be specified" << "\n\n";
+           	exit(-1);
 		}
 
 #if ETH_ETHASHCL
@@ -439,28 +455,11 @@ public:
 			m_cudaSchedule = 4;
 #endif
 
-		if (!cl_miner && !cuda_miner && !mixed_miner && !bench_opt->count() && !sim_opt->count())
-		{
-			cerr << endl << "One of -G, -U, -X, -M, or -Z must be specified" << endl << endl;
-			exit(-1);
-		}
-
-		if (cl_miner)
-			m_minerType = MinerType::CL;
-		else if (cuda_miner)
-			m_minerType = MinerType::CUDA;
-		else if (mixed_miner)
-			m_minerType = MinerType::Mixed;
-		if (bench_opt->count())
-			m_mode = OperationMode::Benchmark;
-		else if (sim_opt->count())
-			m_mode = OperationMode::Simulation;
 		if (m_tstop && (m_tstop <= m_tstart))
 		{
-			cerr << endl << "tstop must be greater than tstart" << endl << endl;
+			cerr << endl << "tstop must be greater than tstart" << "\n\n";
 			exit(-1);
 		}
-
 		if (m_tstop && !m_show_hwmonitors)
 		{
 			// if we want stop mining at a specific temperature, we have to
@@ -517,7 +516,7 @@ public:
 
 			CLMiner::setNumInstances(m_miningThreads);
 #else
-			cerr << "Selected GPU mining without having compiled with -DETHASHCL=1" << endl;
+			cerr << endl << "Selected GPU mining without having compiled with -DETHASHCL=1" << "\n\n";
 			exit(1);
 #endif
 		}
@@ -548,7 +547,7 @@ public:
 
 			CUDAMiner::setParallelHash(m_cudaParallelHash);
 #else
-			cerr << "CUDA support disabled. Configure project build with -DETHASHCUDA=ON" << endl;
+			cerr << endl << "CUDA support disabled. Configure project build with -DETHASHCUDA=ON" << "\n\n";
 			stop_io_service();
 			exit(1);
 #endif
@@ -558,10 +557,20 @@ public:
 		signal(SIGINT, MinerCLI::signalHandler);
 		signal(SIGTERM, MinerCLI::signalHandler);
 
-		if (m_mode == OperationMode::Benchmark)
+		switch (m_mode) {
+		case OperationMode::Benchmark:
 			doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
-		else if (m_mode == OperationMode::Farm || m_mode == OperationMode::Stratum || m_mode == OperationMode::Simulation)
+			break;
+		case OperationMode::Farm:
+		case OperationMode::Stratum:
+		case OperationMode::Simulation:
 			doMiner();
+			break;
+		default:
+			// Satisfy the compiler, but cannot happen!
+			cerr << endl << "Program logic error" << "\n\n";
+			exit(-1);
+		}
 	}
 
 private:
@@ -840,7 +849,7 @@ int main(int argc, char** argv)
 	}
 	catch (std::exception& ex)
 	{
-		std::cerr << "Error: " << ex.what() << "\n";
+		cerr << "Error: " << ex.what() << "\n\n";
 		return 1;
 	}
 
