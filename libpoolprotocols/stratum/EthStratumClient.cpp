@@ -566,7 +566,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 	}
 
 	// Store jsonrpc version to test against
-	int _rpcVer = responseObject.isMember("jsonrpc") ? 1 : 2;					
+	int _rpcVer = responseObject.isMember("jsonrpc") ? 2 : 1;					
 
 	bool _isNotification = false;		// Wether or not this message is a reply to previous request or is a broadcast notification
 	bool _isSuccess = false;			// Wether or not this is a succesful or failed response (implies _isNotification = false)
