@@ -23,6 +23,7 @@
 
 - [Install](#install)
 - [Usage](#usage)
+  - [Examples connecting some pools](#examples-connecting-some-pools)
 - [Build](#build)
   - [Continuous Integration and development builds](#continuous-integration-and-development-builds)
   - [Building from source](#building-from-source)
@@ -57,7 +58,9 @@ For a full list of available command, please run
 ```sh
 ethminer --help
 ```
+### Examples connecting some pools
 
+Check our [samples](POOLEXSAMPLES_ETH.md) to see how to connect to different pools.
 
 ## Build
 
