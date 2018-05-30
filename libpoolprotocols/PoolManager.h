@@ -1,5 +1,6 @@
 #pragma once
 
+#include <boost/lockfree/queue.hpp>
 #include <iostream>
 #include <libdevcore/Worker.h>
 #include <libethcore/Farm.h>
@@ -48,7 +49,7 @@ namespace dev
 			PoolClient *p_client;
 			Farm &m_farm;
 			MinerType m_minerType;
-			std::chrono::steady_clock::time_point m_submit_time;
+			boost::lockfree::queue<std::chrono::steady_clock::time_point> m_submit_times;
 
 		};
 	}
