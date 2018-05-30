@@ -49,6 +49,11 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		dev::setThreadName("main");
 		cnote << "Disconnected from " + m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
 
+		// Clear queue of submission times as we won't get any further response for them (if any left)
+		while (m_submit_times.size()) {
+			m_submit_times.pop();
+		}
+
 		// Do not stop mining here
 		// Workloop will determine if we're trying a fast reconnect to same pool
 		// or if we're switching to failover(s)
@@ -85,7 +90,14 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 	p_client->onSolutionAccepted([&](bool const& stale)
 	{
 		using namespace std::chrono;
-		auto ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_time);
+		std::chrono::milliseconds ms(0);
+
+		// Pick First item of submission times in queue
+		if (m_submit_times.size()) {
+			ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_times.front());
+			m_submit_times.pop();
+		}
+
 		std::stringstream ss;
 		ss << std::setw(4) << std::setfill(' ') << ms.count();
 		ss << "ms." << "   " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
@@ -96,7 +108,14 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 	p_client->onSolutionRejected([&](bool const& stale)
 	{
 		using namespace std::chrono;
-		auto ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_time);
+		std::chrono::milliseconds ms(0);
+
+		// Pick First item of submission times in queue
+		if (m_submit_times.size()) {
+			ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_times.front());
+			m_submit_times.pop();
+		}
+
 		std::stringstream ss;
 		ss << std::setw(4) << std::setfill(' ') << ms.count();
 		ss << "ms." << "   " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
@@ -112,7 +131,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 
 		if (p_client->isConnected()) {
 
-			m_submit_time = std::chrono::steady_clock::now();
+			m_submit_times.push(std::chrono::steady_clock::now());
 
 			if (sol.stale)
 				cnote << string(EthYellow "Stale nonce 0x") + toHex(sol.nonce);
@@ -263,7 +282,6 @@ void PoolManager::workLoop()
 void PoolManager::addConnection(URI &conn)
 {
 	m_connections.push_back(conn);
-
 }
 
 void PoolManager::clearConnections()

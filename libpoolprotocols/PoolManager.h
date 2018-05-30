@@ -48,7 +48,7 @@ namespace dev
 			PoolClient *p_client;
 			Farm &m_farm;
 			MinerType m_minerType;
-			std::chrono::steady_clock::time_point m_submit_time;
+			std::queue<std::chrono::steady_clock::time_point> m_submit_times;
 
 		};
 	}
