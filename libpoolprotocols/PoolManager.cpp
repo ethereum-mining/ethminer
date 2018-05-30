@@ -19,7 +19,7 @@ static string diffToDisplay(double diff)
 	return ss.str();
 }
 
-PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType, unsigned maxTries) : m_farm(farm), m_minerType(minerType)
+PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType, unsigned maxTries) : m_farm(farm), m_minerType(minerType), m_submit_times(50)
 {
 	p_client = client;
 	m_maxConnectionAttempts = maxTries;
@@ -50,9 +50,9 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		cnote << "Disconnected from " + m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
 
 		// Clear queue of submission times as we won't get any further response for them (if any left)
-		while (m_submit_times.size()) {
-			m_submit_times.pop();
-		}
+		// We need to consume all elements as no clear mehod is provided.
+		std::chrono::steady_clock::time_point m_submit_time;
+		while (m_submit_times.pop(m_submit_time)) {}
 
 		// Do not stop mining here
 		// Workloop will determine if we're trying a fast reconnect to same pool
@@ -90,12 +90,12 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 	p_client->onSolutionAccepted([&](bool const& stale)
 	{
 		using namespace std::chrono;
-		std::chrono::milliseconds ms(0);
+		milliseconds ms(0);
+		steady_clock::time_point m_submit_time;
 
 		// Pick First item of submission times in queue
-		if (m_submit_times.size()) {
-			ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_times.front());
-			m_submit_times.pop();
+		if (m_submit_times.pop(m_submit_time)) {
+			ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_time);
 		}
 
 		std::stringstream ss;
@@ -108,12 +108,12 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 	p_client->onSolutionRejected([&](bool const& stale)
 	{
 		using namespace std::chrono;
-		std::chrono::milliseconds ms(0);
+		milliseconds ms(0);
+		steady_clock::time_point m_submit_time;
 
 		// Pick First item of submission times in queue
-		if (m_submit_times.size()) {
-			ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_times.front());
-			m_submit_times.pop();
+		if (m_submit_times.pop(m_submit_time)) {
+			ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_time);
 		}
 
 		std::stringstream ss;
