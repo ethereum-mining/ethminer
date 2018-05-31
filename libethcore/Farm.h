@@ -99,7 +99,7 @@ public:
 	 */
 	void setWork(WorkPackage const& _wp)
 	{
-		//Collect hashrate before miner reset their work
+		// Collect hashrate before miner reset their work
 		collectHashRate();
 
 		// Set work to each miner
@@ -150,12 +150,12 @@ public:
 			// package.
 			m_miners.back()->startWorking();
 		}
-		m_isMining = true;
+
+		m_isMining.store(true, std::memory_order_relaxed);
 		m_lastSealer = _sealer;
 		b_lastMixed = mixed;
 
 		// Start hashrate collector
-		m_hashrateTimer.cancel();
 		m_hashrateTimer.expires_from_now(boost::posix_time::milliseconds(1000));
 		m_hashrateTimer.async_wait(m_io_strand.wrap(boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error)));
 
@@ -167,19 +167,27 @@ public:
 	 */
 	void stop()
 	{
-		{
-			Guard l(x_minerWork);
-			m_miners.clear();
-			m_isMining = false;
+		// Avoid re-entering if not actually mining.
+		// This, in fact, is also called by destructor
+		if (isMining()) {
+
+			{
+				Guard l(x_minerWork);
+				m_miners.clear();
+				m_isMining.store(false, std::memory_order_relaxed);
+			}
+
+			m_hashrateTimer.cancel();
+
+			m_lastProgresses.clear();
+
 		}
 
-		m_hashrateTimer.cancel();
-
-		m_lastProgresses.clear();
 	}
 
     void collectHashRate()
     {
+
         auto now = std::chrono::steady_clock::now();
 
         std::lock_guard<std::mutex> lock(x_minerWork);
@@ -212,9 +220,15 @@ public:
 	void processHashRate(const boost::system::error_code& ec) {
 
 		if (!ec) {
+
+			// Stop mining causes m_hashrateTimer to cancel but
+			// io_service cannot guarantee this event is cancelled (it may be too close to deadline)
+			// Thus do not process if not mining.
+			if (!isMining()) return;
+
 			collectHashRate();
 
-			// Restart timer 	
+			// Resubmit timer only if actually mining
 			m_hashrateTimer.expires_from_now(boost::posix_time::milliseconds(1000));
 			m_hashrateTimer.async_wait(m_io_strand.wrap(boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error)));
 		}
@@ -232,7 +246,7 @@ public:
 		
 	bool isMining() const
 	{
-		return m_isMining;
+		return m_isMining.load(std::memory_order_relaxed);
 	}
 
     /**
