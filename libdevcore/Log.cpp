@@ -30,9 +30,9 @@ using namespace dev;
 //⊳⊲◀▶■▣▢□▷◁▧▨▩▲◆◉◈◇◎●◍◌○◼☑☒☎☢☣☰☀♽♥♠✩✭❓✔✓✖✕✘✓✔✅⚒⚡⦸⬌∅⁕«««»»»⚙
 
 // Logging
-int dev::g_logVerbosity = 5;
-bool dev::g_useColor = true;
-bool dev::g_syslog = false;
+int g_logVerbosity = 5;
+bool g_useColor = true;
+bool g_syslog = false;
 
 mutex x_logOverride;
 
@@ -43,22 +43,15 @@ static map<type_info const*, bool> s_logOverride;
 
 #ifdef _WIN32
 const char* LogChannel::name() { return EthGray "..."; }
-const char* LeftChannel::name() { return EthNavy "<--"; }
-const char* RightChannel::name() { return EthGreen "-->"; }
 const char* WarnChannel::name() { return EthOnRed EthBlackBold "  X"; }
 const char* NoteChannel::name() { return EthBlue "  i"; }
-const char* DebugChannel::name() { return EthWhite "  D"; }
 #else
 const char* LogChannel::name() { return EthGray "···"; }
-const char* LeftChannel::name() { return EthNavy "◀▬▬"; }
-const char* RightChannel::name() { return EthGreen "▬▬▶"; }
 const char* WarnChannel::name() { return EthOnRed EthBlackBold "  ✘"; }
 const char* NoteChannel::name() { return EthBlue "  ℹ"; }
-const char* DebugChannel::name() { return EthWhite "  ◇"; }
 #endif
 
-LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v, bool _autospacing):
-	m_autospacing(_autospacing),
+LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v):
 	m_verbosity(_v)
 {
 	if ((int)_v <= g_logVerbosity)
