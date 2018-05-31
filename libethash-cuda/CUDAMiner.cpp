@@ -33,7 +33,6 @@ struct CUDAChannel: public LogChannel
     static const int verbosity = 2;
     static const bool debug = false;
 };
-
 #define cudalog clog(CUDAChannel)
 
 CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
@@ -259,7 +258,7 @@ bool CUDAMiner::cuda_configureGPU(
         s_scheduleFlag = _scheduleFlag;
         s_noeval = _noeval;
 
-        cudalog << "Using grid size " << s_gridSize << ", block size " << s_blockSize;
+        cudalog << "Using grid size: " << s_gridSize << ", block size: " << s_blockSize;
 
         // by default let's only consider the DAG of the first epoch
         const auto dagSize =
@@ -278,7 +277,7 @@ bool CUDAMiner::cuda_configureGPU(
                 }
                 else
                 {
-                    cudalog <<  "CUDA device " << string(props.name) << " has insufficient GPU memory." << props.totalGlobalMem << " bytes of memory found < " << dagSize << " bytes of memory required";
+                    cudalog <<  "CUDA device " << string(props.name) << " has insufficient GPU memory. " << props.totalGlobalMem << " bytes of memory found < " << dagSize << " bytes of memory required";
                     return false;
                 }
             }
@@ -339,7 +338,7 @@ bool CUDAMiner::cuda_init(
             //Check whether the current device has sufficient memory every time we recreate the dag
             if (device_props.totalGlobalMem < dagSize)
             {
-                cudalog <<  "CUDA device " << string(device_props.name) << " has insufficient GPU memory." << device_props.totalGlobalMem << " bytes of memory found < " << dagSize << " bytes of memory required";
+                cudalog <<  "CUDA device " << string(device_props.name) << " has insufficient GPU memory. " << device_props.totalGlobalMem << " bytes of memory found < " << dagSize << " bytes of memory required";
                 return false;
             }
             //We need to reset the device and recreate the dag  
@@ -523,10 +522,10 @@ void CUDAMiner::search(
         }
     }
     if (!stop && (g_logVerbosity >= 6)) {
-        cudalog << "Switch time "
+        cudalog << "Switch time: "
             << std::chrono::duration_cast<std::chrono::milliseconds>
                 (std::chrono::high_resolution_clock::now() - workSwitchStart).count()
-            << "ms.";
+            << " ms.";
     }
 }
 

@@ -72,7 +72,8 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		while (m_headers.size() > 4)
 			m_headers.pop_front();
 
-		cnote << "New job" << wp.header << "  " + m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
+		cnote << "New job " EthWhite << wp.header << EthReset " " << m_connections[m_activeConnectionIdx].Host()
+			<< p_client->ActiveEndPoint();
 		if (wp.boundary != m_lastBoundary)
 		{
 			using namespace boost::multiprecision;
@@ -80,7 +81,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 			m_lastBoundary = wp.boundary;
 			static const uint512_t dividend("0x10000000000000000000000000000000000000000000000000000000000000000");
 			const uint256_t divisor(string("0x") + m_lastBoundary.hex());
-			cnote << "New pool difficulty:" << EthWhite << diffToDisplay(double(dividend / divisor)) << EthReset;
+			cnote << "New pool difficulty: " EthWhite << diffToDisplay(double(dividend / divisor)) << EthReset;
 		}
 
 		m_farm.setWork(wp);
@@ -99,8 +100,8 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		}
 
 		std::stringstream ss;
-		ss << std::setw(4) << std::setfill(' ') << ms.count();
-		ss << "ms." << "   " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
+		ss << std::setw(4) << std::setfill(' ') << ms.count()
+			<< " ms." << " " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
 		cnote << EthLime "**Accepted" EthReset << (stale ? "(stale)" : "") << ss.str();
 		m_farm.acceptedSolution(stale);
 	});
@@ -134,17 +135,14 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 			m_submit_times.push(std::chrono::steady_clock::now());
 
 			if (sol.stale)
-				cnote << string(EthYellow "Stale nonce 0x") + toHex(sol.nonce);
+				cnote << string(EthYellow "Stale solution 0x") + toHex(sol.nonce);
 			else
-				cnote << string("Nonce 0x") + toHex(sol.nonce);
+				cnote << string("Solution 0x") + toHex(sol.nonce);
 
 			p_client->submitSolution(sol);
-
 		}
 		else {
-
-			cnote << string(EthRed "Nonce 0x") + toHex(sol.nonce) << "wasted. Waiting for connection ...";
-
+			cnote << string(EthRed "Solution 0x") + toHex(sol.nonce) << " wasted. Waiting for connection ...";
 		}
 
 		return false;
@@ -235,7 +233,7 @@ void PoolManager::workLoop()
 					// Invoke connections
 					p_client->setConnection(m_connections[m_activeConnectionIdx]);
 					m_farm.set_pool_addresses(m_connections[m_activeConnectionIdx].Host(), m_connections[m_activeConnectionIdx].Port());
-					cnote << "Selected pool" << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
+					cnote << "Selected pool " << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
 					p_client->connect();
 
 				}

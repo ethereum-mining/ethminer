@@ -315,8 +315,6 @@ void CLMiner::workLoop()
                     continue;
                 }
 
-                //cllog << "New work: header" << w.header << "target" << w.boundary.hex();
-
                 if (current.epoch != w.epoch)
                 {
                     if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
@@ -350,9 +348,9 @@ void CLMiner::workLoop()
                 else
                     startNonce = get_start_nonce();
 
-                clswitchlog << "Switch time"
+                clswitchlog << "Switch time: "
                     << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - workSwitchStart).count()
-                    << "ms.";
+                    << " ms.";
             }
 
             // Read results.
@@ -672,7 +670,7 @@ bool CLMiner::init(int epoch)
         try
         {
             program.build({device}, options);
-            cllog << "Build info:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+            cllog << "Build info: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
         }
         catch (cl::Error const&)
         {
@@ -695,9 +693,9 @@ bool CLMiner::init(int epoch)
         // create buffer for dag
         try
         {
-            cllog << "Creating light cache buffer, size" << lightSize;
+            cllog << "Creating light cache buffer, size: " << lightSize;
             m_light = cl::Buffer(m_context, CL_MEM_READ_ONLY, lightSize);
-            cllog << "Creating DAG buffer, size" << dagSize;
+            cllog << "Creating DAG buffer, size: " << dagSize;
             m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, dagSize);
             cllog << "Loading kernels";
             m_searchKernel = cl::Kernel(program, "ethash_search");
