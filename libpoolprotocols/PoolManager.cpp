@@ -27,11 +27,11 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 	p_client->onConnected([&]()
 	{
 		m_connectionAttempt = 0;
-		cnote << "Connected to " << m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
+		Log(info) << "Connected to " << m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
 
 		if (!m_farm.isMining())
 		{
-			cnote << "Spinning up miners...";
+			Log(info) << "Spinning up miners...";
 			if (m_minerType == MinerType::CL)
 				m_farm.start("opencl", false);
 			else if (m_minerType == MinerType::CUDA)
@@ -46,8 +46,8 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 
 	p_client->onDisconnected([&]()
 	{
-		dev::setThreadName("main");
-		cnote << "Disconnected from " + m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
+		setThreadName("main");
+		Log(info) << "Disconnected from " + m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
 
 		// Clear queue of submission times as we won't get any further response for them (if any left)
 		// We need to consume all elements as no clear mehod is provided.
@@ -65,14 +65,14 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		for (auto h : m_headers)
 			if (h == wp.header)
 			{
-				cwarn << EthYellow "Duplicate job" << wp.header << " discarded" EthReset;
+				Log(warning) << EthYellow "Duplicate job" << wp.header << " discarded" EthReset;
 				return;
 			}
 		m_headers.push_back(wp.header);
 		while (m_headers.size() > 4)
 			m_headers.pop_front();
 
-		cnote << "New job " EthWhite << wp.header << EthReset " " << m_connections[m_activeConnectionIdx].Host()
+		Log(info) << "Job: " EthWhite << wp.header.abridged() << EthReset " " << m_connections[m_activeConnectionIdx].Host()
 			<< p_client->ActiveEndPoint();
 		if (wp.boundary != m_lastBoundary)
 		{
@@ -81,7 +81,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 			m_lastBoundary = wp.boundary;
 			static const uint512_t dividend("0x10000000000000000000000000000000000000000000000000000000000000000");
 			const uint256_t divisor(string("0x") + m_lastBoundary.hex());
-			cnote << "New pool difficulty: " EthWhite << diffToDisplay(double(dividend / divisor)) << EthReset;
+			Log(info) << "New pool difficulty: " EthWhite << diffToDisplay(double(dividend / divisor)) << EthReset;
 		}
 
 		m_farm.setWork(wp);
@@ -102,7 +102,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		std::stringstream ss;
 		ss << std::setw(4) << std::setfill(' ') << ms.count()
 			<< " ms." << " " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
-		cnote << EthLime "**Accepted" EthReset << (stale ? "(stale)" : "") << ss.str();
+		Log(info) << EthLime "**Accepted" EthReset << (stale ? "(stale)" : "") << ss.str();
 		m_farm.acceptedSolution(stale);
 	});
 
@@ -120,7 +120,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		std::stringstream ss;
 		ss << std::setw(4) << std::setfill(' ') << ms.count();
 		ss << "ms." << "   " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
-		cwarn << EthRed "**Rejected" EthReset << (stale ? "(stale)" : "") << ss.str();
+		Log(warning) << EthRed "**Rejected" EthReset << (stale ? "(stale)" : "") << ss.str();
 		m_farm.rejectedSolution(stale);
 	});
 
@@ -135,28 +135,28 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 			m_submit_times.push(std::chrono::steady_clock::now());
 
 			if (sol.stale)
-				cnote << string(EthYellow "Stale solution 0x") + toHex(sol.nonce);
+				Log(info) << string(EthYellow "Stale solution 0x") + toHex(sol.nonce);
 			else
-				cnote << string("Solution 0x") + toHex(sol.nonce);
+				Log(info) << string("Solution 0x") + toHex(sol.nonce);
 
 			p_client->submitSolution(sol);
 		}
 		else {
-			cnote << string(EthRed "Solution 0x") + toHex(sol.nonce) << " wasted. Waiting for connection ...";
+			Log(info) << string(EthRed "Solution 0x") + toHex(sol.nonce) << " wasted. Waiting for connection ...";
 		}
 
 		return false;
 	});
 	m_farm.onMinerRestart([&]() {
-		dev::setThreadName("main");
-		cnote << "Restart miners...";
+		setThreadName("main");
+		Log(info) << "Restart miners...";
 
 		if (m_farm.isMining()) {
-			cnote << "Shutting down miners...";
+			Log(info) << "Shutting down miners...";
 			m_farm.stop();
 		}
 
-		cnote << "Spinning up miners...";
+		Log(info) << "Spinning up miners...";
 		if (m_minerType == MinerType::CL)
 			m_farm.start("opencl", false);
 		else if (m_minerType == MinerType::CUDA)
@@ -172,7 +172,7 @@ void PoolManager::stop()
 {
 	if (m_running.load(std::memory_order_relaxed)) {
 		
-		cnote << "Shutting down...";
+		Log(info) << "Shutting down...";
 
 		m_running.store(false, std::memory_order_relaxed);
 
@@ -181,7 +181,7 @@ void PoolManager::stop()
 
 		if (m_farm.isMining())
 		{
-			cnote << "Shutting down miners...";
+			Log(info) << "Shutting down miners...";
 			m_farm.stop();
 		}
 
@@ -191,7 +191,7 @@ void PoolManager::stop()
 void PoolManager::workLoop()
 {
 
-	dev::setThreadName("main");
+	setThreadName("main");
 
 	while (m_running.load(std::memory_order_relaxed))
 	{
@@ -213,12 +213,12 @@ void PoolManager::workLoop()
 
 					// Stop mining if applicable as we're switching
 					if (m_farm.isMining()) {
-						cnote << "Shutting down miners...";
+						Log(info) << "Shutting down miners...";
 						m_farm.stop();
 
 						// Give some time to mining threads to shutdown
 						for (auto i = 4; --i; this_thread::sleep_for(chrono::seconds(1))) {
-							cnote << "Retrying in " << i << "... \r";
+							Log(info) << "Retrying in " << i << "... \r";
 						}
 
 					}
@@ -233,17 +233,17 @@ void PoolManager::workLoop()
 					// Invoke connections
 					p_client->setConnection(m_connections[m_activeConnectionIdx]);
 					m_farm.set_pool_addresses(m_connections[m_activeConnectionIdx].Host(), m_connections[m_activeConnectionIdx].Port());
-					cnote << "Selected pool " << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
+					Log(info) << "Selected pool " << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
 					p_client->connect();
 
 				}
 				else {
 
-					cnote << "No more failover connections.";
+					Log(info) << "No more failover connections.";
 
 					// Stop mining if applicable
 					if (m_farm.isMining()) {
-						cnote << "Shutting down miners...";
+						Log(info) << "Shutting down miners...";
 						m_farm.stop();
 					}
 
@@ -297,7 +297,7 @@ void PoolManager::start()
 		m_workThread = std::thread{ boost::bind(&PoolManager::workLoop, this) };
 	}
 	else {
-		cwarn << "Manager has no connections defined!";
+		Log(warning) << "Manager has no connections defined!";
 	}
 }
 

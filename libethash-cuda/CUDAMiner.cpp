@@ -27,14 +27,6 @@ unsigned CUDAMiner::s_numInstances = 0;
 
 vector<int> CUDAMiner::s_devices(MAX_MINERS, -1);
 
-struct CUDAChannel: public LogChannel
-{
-    static const char* name() { return EthOrange " cu"; }
-    static const int verbosity = 2;
-    static const bool debug = false;
-};
-#define cudalog clog(CUDAChannel)
-
 CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index) :
     Miner("cuda-", _farm, _index),
     m_light(getNumDevices()) {}
@@ -53,7 +45,7 @@ bool CUDAMiner::init(int epoch)
                 this_thread::sleep_for(chrono::milliseconds(100));
         unsigned device = s_devices[index] > -1 ? s_devices[index] : index;
 
-        cnote << "Initialising miner " << index;
+        Log(info) << "Initialising miner " << index;
 
         cuda_init(getNumDevices(), epoch, device, (s_dagLoadMode == DAG_LOAD_MODE_SINGLE),
             s_dagInHostMemory, s_dagCreateDevice);
@@ -66,14 +58,14 @@ bool CUDAMiner::init(int epoch)
                 // all devices have loaded DAG, we can free now
                 delete[] s_dagInHostMemory;
                 s_dagInHostMemory = NULL;
-                cnote << "Freeing DAG from host";
+                Log(info) << "Freeing DAG from host";
             }
         }
         return true;
     }
     catch (std::runtime_error const& _e)
     {
-        cwarn << "Error CUDA mining: " << _e.what();
+        Log(error) << "Error CUDA mining: " << _e.what();
         if(s_exit)
             exit(1);
         return false;
@@ -91,7 +83,6 @@ void CUDAMiner::workLoop()
         {
             if (is_mining_paused())
             {
-                // cnote << "Mining is paused: Waiting for 3s.";
                 std::this_thread::sleep_for(std::chrono::seconds(3));
                 continue;
             }
@@ -103,7 +94,7 @@ void CUDAMiner::workLoop()
             {
                 if(!w || w.header == h256())
                 {
-                    cnote << "No work. Pause for 3 s.";
+                    Log(warning) << "No work. Pause for 3 s.";
                     std::this_thread::sleep_for(std::chrono::seconds(3));
                     continue;
                 }
@@ -127,13 +118,12 @@ void CUDAMiner::workLoop()
     }
     catch (cuda_runtime_error const& _e)
     {
-        cwarn << "Fatal GPU error: " << _e.what();
-        cwarn << "Terminating.";
+        Log(fatal) << "Fatal GPU error: " << _e.what();
         exit(-1);
     }
     catch (std::runtime_error const& _e)
     {
-        cwarn << "Error CUDA mining: " << _e.what();
+        Log(error) << "Error CUDA mining: " << _e.what();
         if(s_exit)
             exit(1);
     }
@@ -194,7 +184,7 @@ void CUDAMiner::listDevices()
     }
     catch(std::runtime_error const& err)
     {
-        cwarn << "CUDA error: " << err.what();
+        Log(error) << "CUDA error: " << err.what();
         if(s_exit)
             exit(1);
     }
@@ -258,7 +248,7 @@ bool CUDAMiner::cuda_configureGPU(
         s_scheduleFlag = _scheduleFlag;
         s_noeval = _noeval;
 
-        cudalog << "Using grid size: " << s_gridSize << ", block size: " << s_blockSize;
+        Log(info) << "Using grid size: " << s_gridSize << ", block size: " << s_blockSize;
 
         // by default let's only consider the DAG of the first epoch
         const auto dagSize =
@@ -273,11 +263,11 @@ bool CUDAMiner::cuda_configureGPU(
                 CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, deviceId));
                 if (props.totalGlobalMem >= dagSize)
                 {
-                    cudalog <<  "Found suitable CUDA device [" << string(props.name) << "] with " << props.totalGlobalMem << " bytes of GPU memory";
+                    Log(info) <<  "Found suitable CUDA device [" << string(props.name) << "] with " << props.totalGlobalMem << " bytes of GPU memory";
                 }
                 else
                 {
-                    cudalog <<  "CUDA device " << string(props.name) << " has insufficient GPU memory. " << props.totalGlobalMem << " bytes of memory found < " << dagSize << " bytes of memory required";
+                    Log(info) <<  "CUDA device " << string(props.name) << " has insufficient GPU memory. " << props.totalGlobalMem << " bytes of memory found < " << dagSize << " bytes of memory required";
                     return false;
                 }
             }
@@ -320,7 +310,7 @@ bool CUDAMiner::cuda_init(
         cudaDeviceProp device_props;
         CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, m_device_num));
 
-        cudalog << "Using device: " << device_props.name << " (Compute " + to_string(device_props.major) + "." + to_string(device_props.minor) + ")";
+        Log(info) << "Using device: " << device_props.name << " (Compute " + to_string(device_props.major) + "." + to_string(device_props.minor) + ")";
 
         m_search_buf = new volatile search_results *[s_numStreams];
         m_streams = new cudaStream_t[s_numStreams];
@@ -332,17 +322,17 @@ bool CUDAMiner::cuda_init(
         const auto dagSize = ethash::get_full_dataset_size(dagNumItems);
 
         CUDA_SAFE_CALL(cudaSetDevice(m_device_num));
-        cudalog << "Set Device to current";
+        Log(info) << "Set Device to current";
         if (dagNumItems != m_dag_size || !m_dag)
         {
             //Check whether the current device has sufficient memory every time we recreate the dag
             if (device_props.totalGlobalMem < dagSize)
             {
-                cudalog <<  "CUDA device " << string(device_props.name) << " has insufficient GPU memory. " << device_props.totalGlobalMem << " bytes of memory found < " << dagSize << " bytes of memory required";
+                Log(fatal) <<  "CUDA device " << string(device_props.name) << " has insufficient GPU memory. " << device_props.totalGlobalMem << " bytes of memory found < " << dagSize << " bytes of memory required";
                 return false;
             }
             //We need to reset the device and recreate the dag  
-            cudalog << "Resetting device";
+            Log(info) << "Resetting device";
             CUDA_SAFE_CALL(cudaDeviceReset());
             CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
             CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
@@ -356,7 +346,7 @@ bool CUDAMiner::cuda_init(
         hash64_t * light = m_light[m_device_num];
 
         if(!light){ 
-            cudalog << "Allocating light with size: " << lightSize;
+            Log(info) << "Allocating light with size: " << lightSize;
             CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), lightSize));
         }
         // copy lightData to device
@@ -371,7 +361,7 @@ bool CUDAMiner::cuda_init(
         if (dagNumItems != m_dag_size || !dag)
         {
             // create mining buffers
-            cudalog << "Generating mining buffers";
+            Log(info) << "Generating mining buffers";
             for (unsigned i = 0; i != s_numStreams; ++i)
             {
                 CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(search_results)));
@@ -383,14 +373,14 @@ bool CUDAMiner::cuda_init(
             if (!hostDAG)
             {
                 if((m_device_num == dagCreateDevice) || !_cpyToHost){ //if !cpyToHost -> All devices shall generate their DAG
-                    cudalog << "Generating DAG for GPU #" << m_device_num << " with dagSize: " 
+                    Log(info) << "Generating DAG for GPU #" << m_device_num << " with dagSize: " 
                             << dagSize <<" gridSize: " << s_gridSize;
                     ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0], m_device_num);
 
                     if (_cpyToHost)
                     {
                         uint8_t* memoryDAG = new uint8_t[dagSize];
-                        cudalog << "Copying DAG from GPU #" << m_device_num << " to host";
+                        Log(info) << "Copying DAG from GPU #" << m_device_num << " to host";
                         CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
 
                         hostDAG = memoryDAG;
@@ -404,7 +394,7 @@ bool CUDAMiner::cuda_init(
             else
             {
 cpyDag:
-                cudalog << "Copying DAG from host to GPU #" << m_device_num;
+                Log(info) << "Copying DAG from host to GPU #" << m_device_num;
                 const void* hdag = (const void*)hostDAG;
                 CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
             }
@@ -507,7 +497,7 @@ void CUDAMiner::search(
                         else
                         {
                             farm.failedSolution();
-                            cwarn << "GPU gave incorrect result!";
+                            Log(error) << "GPU gave incorrect result!";
                         }
                     }
             }
@@ -522,7 +512,7 @@ void CUDAMiner::search(
         }
     }
     if (!stop && (g_logVerbosity >= 6)) {
-        cudalog << "Switch time: "
+        Log(info) << "Switch time: "
             << std::chrono::duration_cast<std::chrono::milliseconds>
                 (std::chrono::high_resolution_clock::now() - workSwitchStart).count()
             << " ms.";

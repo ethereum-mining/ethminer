@@ -29,7 +29,6 @@ using namespace dev;
 
 void Worker::startWorking()
 {
-//	cnote << "startWorking for thread" << m_name;
 	Guard l(x_work);
 	if (m_work)
 	{
@@ -42,12 +41,10 @@ void Worker::startWorking()
 		m_work.reset(new thread([&]()
 		{
 			setThreadName(m_name.c_str());
-//			cnote << "Thread begins";
 			while (m_state != WorkerState::Killing)
 			{
 				WorkerState ex = WorkerState::Starting;
 				bool ok = m_state.compare_exchange_strong(ex, WorkerState::Started);
-//				cnote << "Trying to set Started: Thread was" << (unsigned)ex << "; " << ok;
 				(void)ok;
 
 				try
@@ -56,14 +53,10 @@ void Worker::startWorking()
 				}
 				catch (std::exception const& _e)
 				{
-					clog(WarnChannel) << "Exception thrown in Worker thread: " << _e.what();
+					Log(warning) << "Exception thrown in Worker thread: " << _e.what();
 				}
 
-//				ex = WorkerState::Stopping;
-//				m_state.compare_exchange_strong(ex, WorkerState::Stopped);
-
 				ex = m_state.exchange(WorkerState::Stopped);
-//				cnote << "State: Stopped: Thread was" << (unsigned)ex;
 				if (ex == WorkerState::Killing || ex == WorkerState::Starting)
 					m_state.exchange(ex);
 
@@ -71,7 +64,6 @@ void Worker::startWorking()
 					this_thread::sleep_for(chrono::milliseconds(20));
 			}
 		}));
-//		cnote << "Spawning" << m_name;
 	}
 	while (m_state == WorkerState::Starting)
 		this_thread::sleep_for(chrono::microseconds(20));

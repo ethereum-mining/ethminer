@@ -48,16 +48,10 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-struct MiningChannel: public LogChannel
-{
-	static const char* name() { return EthGreen "  m"; }
-	static const int verbosity = 2;
-	static const bool debug = false;
-};
-
-#define minelog clog(MiningChannel)
-
 bool g_running = false;
+bool g_syslog = false;
+bool g_useColor = true;
+
 
 class MinerCLI
 {
@@ -485,8 +479,8 @@ public:
 		}
 
 		auto* build = ethminer_get_buildinfo();
-		minelog << "ethminer " << build->project_version;
-		minelog << "Build: " << build->system_name << "/" << build->build_type;
+		Log(info) << "ethminer " << build->project_version;
+		Log(info) << "Build: " << build->system_name << "/" << build->build_type;
 
 		if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
 		{
@@ -672,13 +666,13 @@ private:
 			client = new SimulateClient(20, m_benchmarkBlock);
 		}
 		else {
-			cwarn << "Invalid OperationMode";
+			Log(error) << "Invalid OperationMode";
 			exit(1);
 		}
 
 		// Should not happen!
 		if (!client) {
-			cwarn << "Invalid PoolClient";
+			Log(error) << "Invalid PoolClient";
 			stop_io_service();
 			exit(1);
 		}
@@ -714,14 +708,14 @@ private:
 		while (g_running && mgr.isRunning()) {
 			if (mgr.isConnected()) {
 				auto mp = f.miningProgress(m_show_hwmonitors, m_show_power);
-				minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
+				Log(info) << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
 
 #if ETH_DBUS
 				dbusint.send(toString(mp).data());
 #endif
 			}
 			else {
-				minelog << "not-connected";
+				Log(info) << "not-connected";
 			}
 			this_thread::sleep_for(chrono::seconds(m_displayInterval));
 		}
@@ -729,7 +723,7 @@ private:
 		mgr.stop();
 		stop_io_service();
 
-		cnote << "Terminated !";
+		Log(info) << "Terminated !";
 		exit(0);
 	}
 
@@ -842,6 +836,8 @@ int main(int argc, char** argv)
 	MinerCLI m;
 
 	m.ParseCommandLine(argc, argv);
+
+	setupLogging();
 
 	try
 	{
