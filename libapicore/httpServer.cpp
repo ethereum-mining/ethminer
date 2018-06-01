@@ -39,7 +39,7 @@ void httpServer::getstat1(stringstream& ss)
     tableHeader(ss, 5);
     ss <<
        "<tr valign=top align=center style=background-color:Yellow>"
-       "<th>GPU</th><th>Hash Rate (mh/s)</th><th>Temperature (C)</th><th>Fan Percent.</th><th>Power (W)</th></tr>";
+       "<th>GPU</th><th>Hash Rate (MH/s)</th><th>Temperature (C)</th><th>Fan Percent.</th><th>Power (W)</th></tr>";
     double hashSum = 0.0;
     double powerSum = 0.0;
     for (unsigned i = 0; i < p.minersHashes.size(); i++) {
