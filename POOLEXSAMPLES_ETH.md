@@ -1,4 +1,4 @@
-# Pool Exsamples for ETH
+# Pool Examples for ETH
 This is a collection of exsamples how to connect ethminer to your favorite ETH pool (alphabetic order).
 
 * Stratum connection is preferred than getwork connection due its better network latency.
@@ -25,6 +25,7 @@ The servers are listed in alphabetical order. To get best results reorder them f
 ## Pools (alphabetic order)
 | Pool Name | Pool Mainpage | Details about connection |
 | -------- | ---------------------------- | - |
+| Stratum | Any Pool | https://github.com/Atrides/eth-proxy  |
 | [2miners.com](#2minerscom) | https://2miners.com/ | https://eth.2miners.com/en/help |
 | [dwarfpool.org](#dwarfpoolorg) | https://dwarfpool.com/ | https://dwarfpool.com/eth |
 | [ethermine.org](#ethermineorg) | https://ethermine.org/ | https://ethermine.org/|
@@ -36,6 +37,11 @@ The servers are listed in alphabetical order. To get best results reorder them f
 | [sparkpool.com](#sparkpoolcom) | https://sparkpool.com/ | https://eth.sparkpool.com/ |
 
 
+### Stratum
+
+  ```
+  -P http://127.0.0.1:4444/rigname
+  ```
 
 ### 2miners.com
 
