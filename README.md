@@ -24,6 +24,7 @@
 - [Install](#install)
 - [Usage](#usage)
   - [Examples connecting some pools](#examples-connecting-some-pools)
+  - [Examples connecting proxy](#examples-connecting-proxy)
 - [Build](#build)
   - [Continuous Integration and development builds](#continuous-integration-and-development-builds)
   - [Building from source](#building-from-source)
@@ -61,6 +62,25 @@ ethminer --help
 ### Examples connecting some pools
 
 Check our [samples](POOLEXSAMPLES_ETH.md) to see how to connect to different pools.
+
+### Examples connecting proxy
+
+Ethminer supports using a proxy server, such as eth-proxy: https://github.com/Atrides/eth-proxy
+
+If multiple miners are running ethminer they can all connect to a single proxy. This increases the efficiency of the mining operation. 
+
+The following syntax can be used to specify a proxy server:
+  
+  ```
+  -P http://(ipaddress of proxy):(port number of proxy)/(additional data)
+  ```
+  
+  Example proxy server usage:
+  
+  ```
+  -P http://127.0.0.1:4444/rig1
+  ```
+
 
 ## Build
 
