@@ -33,8 +33,8 @@
 
 /// The logging system's current verbosity.
 extern int g_logVerbosity;
-extern bool g_useColor;
-extern bool g_syslog;
+extern bool g_logNoColor;
+extern bool g_logSyslog;
 
 namespace dev
 {
@@ -57,7 +57,7 @@ struct LogChannel {
 struct WarnChannel: public LogChannel
 {
 	static const char* name();
-	static const int verbosity = 0;
+	static const int verbosity = 2;
 };
 struct NoteChannel: public LogChannel
 {
@@ -67,12 +67,8 @@ struct NoteChannel: public LogChannel
 class LogOutputStreamBase
 {
 public:
-	LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v);
+	LogOutputStreamBase(char const* _id, unsigned _v);
 
-	template <unsigned N> void append(FixedHash<N> const& _t)
-	{
-		m_sstr << "#" << _t.abridged();
-	}
 	template <class T> void append(T const& _t)
 	{
 		m_sstr << toString(_t);
@@ -90,17 +86,10 @@ class LogOutputStream: LogOutputStreamBase
 public:
 	/// Construct a new object.
 	/// If _term is true the the prefix info is terminated with a ']' character; if not it ends only with a '|' character.
-	LogOutputStream(): LogOutputStreamBase(Id::name(), &typeid(Id), Id::verbosity) {}
+	LogOutputStream(): LogOutputStreamBase(Id::name(), Id::verbosity) {}
 
 	/// Destructor. Posts the accrued log entry to the g_logPost function.
 	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) simpleDebugOut(m_sstr.str()); }
-
-	LogOutputStream& operator<<(std::string const& _t)
-	{
-		if (Id::verbosity <= g_logVerbosity)
-			m_sstr << _t;
-		return *this;
-	}
 
 	/// Shift arbitrary data to the log. Spaces will be added between items as required.
 	template <class T>
