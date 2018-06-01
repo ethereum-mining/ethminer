@@ -359,7 +359,7 @@ int wrap_amdsysfs_get_power_usage(wrap_amdsysfs_handle* sysfsh, int index, unsig
     }
     catch (const std::exception& ex)
     {
-        cwarn << "Error in amdsysfs_get_power_usage: " << ex.what();
+        Log(warning) << "Error in amdsysfs_get_power_usage: " << ex.what();
     }
 
     return -1;

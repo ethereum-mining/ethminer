@@ -1,136 +1,106 @@
-/*
-	This file is part of cpp-ethereum.
-
-	cpp-ethereum is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	cpp-ethereum is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
+#include <iostream>
+#include <boost/core/null_deleter.hpp>
+#include <boost/log/attributes/clock.hpp>
+#include <boost/log/attributes/function.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/sinks/async_frontend.hpp>
+#include <boost/log/sinks/text_ostream_backend.hpp>
+#include <boost/log/sources/global_logger_storage.hpp>
+#include <boost/log/sources/severity_channel_logger.hpp>
+#include <boost/log/support/date_time.hpp>
+#include <boost/log/utility/exception_handler.hpp>
 #include "Log.h"
 
-#include <map>
-#include <thread>
-
-#ifdef __APPLE__
-#include <pthread.h>
-#endif
-#include "Guards.h"
-using namespace std;
-using namespace dev;
-
-//⊳⊲◀▶■▣▢□▷◁▧▨▩▲◆◉◈◇◎●◍◌○◼☑☒☎☢☣☰☀♽♥♠✩✭❓✔✓✖✕✘✓✔✅⚒⚡⦸⬌∅⁕«««»»»⚙
-
-// Logging
 int g_logVerbosity = 5;
-bool g_useColor = true;
-bool g_syslog = false;
 
-mutex x_logOverride;
+namespace logging = boost::log;
+namespace src = logging::sources;
+namespace expr = logging::expressions;
+namespace keywords = logging::keywords;
 
-/// Map of Log Channel types to bool, false forces the channel to be disabled, true forces it to be enabled.
-/// If a channel has no entry, then it will output as long as its verbosity (LogChannel::verbosity) is less than
-/// or equal to the currently output verbosity (g_logVerbosity).
-static map<type_info const*, bool> s_logOverride;
-
-#ifdef _WIN32
-const char* LogChannel::name() { return EthGray "..."; }
-const char* WarnChannel::name() { return EthOnRed EthBlackBold "  X"; }
-const char* NoteChannel::name() { return EthBlue "  i"; }
-#else
-const char* LogChannel::name() { return EthGray "···"; }
-const char* WarnChannel::name() { return EthOnRed EthBlackBold "  ✘"; }
-const char* NoteChannel::name() { return EthBlue "  ℹ"; }
-#endif
-
-LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v):
-	m_verbosity(_v)
-{
-	if ((int)_v <= g_logVerbosity)
+namespace {
+	// Associate a name with each thread for nice logging.
+	struct ThreadLocalLogName
 	{
-		Guard l(x_logOverride);
-		auto it = s_logOverride.find(_info);
-		if ((it != s_logOverride.end() && it->second) || it == s_logOverride.end())
-		{
-			static char const* c_begin = "  " EthViolet;
-			static char const* c_sep1 = EthReset EthBlack "|" EthNavy;
-			static char const* c_sep2 = EthReset EthBlack "|" EthTeal;
-			static char const* c_end = EthReset "  ";
-			if (g_syslog) 
-			{
-				c_begin = "  " EthNavy;
-				m_sstr << c_begin << std::left << std::setw(8) << getThreadName() << c_sep2 << c_end;
-			} else {
-				time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-				char buf[24];
-				if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
-					buf[0] = '\0'; // empty if case strftime fails
-				m_sstr << _id << c_begin << buf << c_sep1 << std::left << std::setw(8) << getThreadName() << c_sep2 << c_end;
-			}
-		}
-	}
+		ThreadLocalLogName(std::string const& _name) { m_name.reset(new std::string(_name)); }
+    	boost::thread_specific_ptr<std::string> m_name;
+	};
+
+	ThreadLocalLogName g_logThreadName("main");
 }
 
-/// Associate a name with each thread for nice logging.
-struct ThreadLocalLogName
+BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", logging::trivial::severity_level)
+BOOST_LOG_ATTRIBUTE_KEYWORD(threadName, "ThreadName", std::string)
+BOOST_LOG_ATTRIBUTE_KEYWORD(timestamp, "TimeStamp", boost::posix_time::ptime)
+
+static void formatter(logging::record_view const& rec, logging::basic_formatting_ostream<char>& strm)
 {
-	ThreadLocalLogName(char const* _name) { name = _name; }
-	thread_local static char const* name;
-};
 
-thread_local char const* ThreadLocalLogName::name;
-
-ThreadLocalLogName g_logThreadName("main");
-
-string dev::getThreadName()
-{
-#if defined(__linux__) || defined(__APPLE__)
-	char buffer[128];
-	pthread_getname_np(pthread_self(), buffer, 127);
-	buffer[127] = 0;
-	return buffer;
-#else
-	return ThreadLocalLogName::name ? ThreadLocalLogName::name : "<unknown>";
-#endif
-}
-
-void dev::setThreadName(char const* _n)
-{
-#if defined(__linux__)
-	pthread_setname_np(pthread_self(), _n);
-#elif defined(__APPLE__)
-	pthread_setname_np(_n);
-#else
-	ThreadLocalLogName::name = _n;
-#endif
-}
-
-void dev::simpleDebugOut(std::string const& _s)
-{
-	if (g_useColor)
-	{
-		std::cerr << _s + '\n';
-		return;
-	}
-	bool skip = false;
+    strm << EthViolet;
+    logging::basic_formatter<char> f =
+		 expr::stream << expr::format_date_time<boost::posix_time::ptime>("TimeStamp", "%H:%M:%S ");
+	f(rec, strm);
+	strm
+		<< EthReset;
 	std::stringstream ss;
-	for (auto it : _s)
-	{
-		if (!skip && it == '\x1b')
-			skip = true;
-		else if (skip && it == 'm')
-			skip = false;
-		else if (!skip)
-			ss << it;
-	}
-	ss << '\n';
-	std::cerr << ss.str();
+	ss << rec[logging::trivial::severity];
+	std::string s = ss.str();
+	const char *cp;
+	if (s == "info")
+		cp = EthGreen "info";
+	else if (s == "warning")
+		cp = EthYellow "warn";
+	else if (s == "error")
+		cp = EthRed "err ";
+	else
+		cp = EthYellow "fail";
+
+	strm
+    	<< cp << EthReset << ' '
+    	<< EthNavy << std::setw(8) << std::left << logging::extract<std::string>("ThreadName", rec) << EthReset " "
+    	<< rec[expr::smessage];
 }
+
+void setupLogging()
+{
+    auto sink = boost::make_shared<logging::sinks::asynchronous_sink<logging::sinks::text_ostream_backend>>();
+
+    boost::shared_ptr<std::ostream> stream{&std::cout, boost::null_deleter{}};
+    sink->locked_backend()->add_stream(stream);
+
+    sink->set_formatter(&formatter);
+
+    logging::core::get()->add_sink(sink);
+
+    logging::core::get()->add_global_attribute(
+        "ThreadName", logging::attributes::make_function(&getThreadName));
+    logging::core::get()->add_global_attribute(
+        "TimeStamp", logging::attributes::local_clock());
+
+    logging::core::get()->set_exception_handler(
+        logging::make_exception_handler<std::exception>([](std::exception const& _ex) {
+        std::cerr << "Exception from the logging library: " << _ex.what() << '\n';
+    }));
+}
+
+std::string getThreadName() {
+#if defined(__GLIBC__) || defined(__APPLE__)
+    char buffer[128];
+    pthread_getname_np(pthread_self(), buffer, 127);
+    buffer[127] = 0;
+    return buffer;
+#else
+    return g_logThreadName.m_name.get() ? *g_logThreadName.m_name.get() : "<unknown>";
+#endif
+}
+
+void setThreadName(std::string const& _n) {
+#if defined(__GLIBC__)
+    pthread_setname_np(pthread_self(), _n.c_str());
+#elif defined(__APPLE__)
+    pthread_setname_np(_n.c_str());
+#else
+    g_logThreadName.m_name.reset(new std::string(_n));
+#endif
+}
+

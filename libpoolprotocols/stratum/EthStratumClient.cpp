@@ -40,7 +40,12 @@ static void diffToTarget(uint32_t *target, double diff)
 }
 
 
-EthStratumClient::EthStratumClient(boost::asio::io_service & io_service, int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate) : PoolClient(),
+EthStratumClient::EthStratumClient(
+		boost::asio::io_service & io_service,
+		int worktimeout,
+		int responsetimeout,
+		string const & email,
+		bool const & submitHashrate) : PoolClient(),
 	m_worktimeout(worktimeout),
 	m_responsetimeout(responsetimeout),
 	m_io_service(io_service),
@@ -123,9 +128,9 @@ void EthStratumClient::connect()
 			ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
 		}
 		catch (...) {
-			cwarn << "Failed to load ca certificates. Either the file '/etc/ssl/certs/ca-certificates.crt' does not exist";
-			cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or inaccessable file.";
-			cwarn << "It is possible that certificate verification can fail.";
+			Log(warning) << "Failed to load ca certificates. Either the file '/etc/ssl/certs/ca-certificates.crt' does not exist";
+			Log(warning) << "or the environment variable SSL_CERT_FILE is set to an invalid or inaccessable file.";
+			Log(warning) << "It is possible that certificate verification can fail.";
 		}
 #endif
 	}
@@ -211,7 +216,7 @@ void EthStratumClient::disconnect()
 
 		}
 		catch (std::exception const& _e) {
-			cwarn << "Error while disconnecting:" << _e.what();
+			Log(warning) << "Error while disconnecting:" << _e.what();
 		}
 
 		disconnect_finalize();
@@ -258,7 +263,7 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 {	
 	if (!ec)
 	{
-		dev::setThreadName("stratum");
+		setThreadName("stratum");
 
 		while (i != tcp::resolver::iterator())
 		{
@@ -274,8 +279,8 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	}
 	else
 	{
-		dev::setThreadName("stratum");
-		cwarn << "Could not resolve host " << m_conn.Host() << ", " << ec.message();
+		setThreadName("stratum");
+		Log(warning) << "Could not resolve host " << m_conn.Host() << ", " << ec.message();
 
 		// Release locking flag and set connection status
 		m_connected.store(false, std::memory_order_relaxed);
@@ -304,8 +309,8 @@ void EthStratumClient::start_connect()
 		m_endpoint = m_endpoints.front();
 		m_endpoints.pop();
 
-		dev::setThreadName("stratum");
-		cnote << ("Trying " + toString(m_endpoint) + " ...");
+		setThreadName("stratum");
+		Log(info) << ("Trying " + toString(m_endpoint) + " ...");
 
 		m_conntimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
 		m_conntimer.async_wait(m_io_strand.wrap(boost::bind(&EthStratumClient::check_connect_timeout, this, boost::asio::placeholders::error)));
@@ -324,9 +329,9 @@ void EthStratumClient::start_connect()
 	else {
 		
 
-		dev::setThreadName("stratum");
+		setThreadName("stratum");
 		m_connecting.store(false, std::memory_order_relaxed);
-		cwarn << "No more ip addresses to try for host:" << m_conn.Host();
+		Log(warning) << "No more ip addresses to try for host:" << m_conn.Host();
 
 		// Trigger handlers
 		if (m_onDisconnected) { m_onDisconnected(); }
@@ -379,19 +384,19 @@ void EthStratumClient::check_connect_timeout(const boost::system::error_code& ec
 void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 {
 	
-	dev::setThreadName("stratum");
+	setThreadName("stratum");
 
 	// Timeout has run before
 	if (!m_socket->is_open()) {
 
-		cwarn << ("Error  " + toString(m_endpoint) + " [Timeout]");
+		Log(warning) << ("Error  " + toString(m_endpoint) + " [Timeout]");
 
 		// Try the next available endpoint.
 		m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::start_connect, this)));
 
 	} else if (ec) {
 
-		cwarn << ("Error  " + toString(m_endpoint) + " [" + ec.message() + "]");
+		Log(warning) << ("Error  " + toString(m_endpoint) + " [" + ec.message() + "]");
 		
 		// We need to close the socket used in the previous connection attempt
 		// before starting a new one.
@@ -418,17 +423,17 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 			m_securesocket->handshake(boost::asio::ssl::stream_base::client, hec);
 
 			if (hec) {
-				cwarn << "SSL/TLS Handshake failed: " << hec.message();
+				Log(warning) << "SSL/TLS Handshake failed: " << hec.message();
 				if (hec.value() == 337047686) { // certificate verification failed
-					cwarn << "This can have multiple reasons:";
-					cwarn << "* Root certs are either not installed or not found";
-					cwarn << "* Pool uses a self-signed certificate";
-					cwarn << "Possible fixes:";
-					cwarn << "* Make sure the file '/etc/ssl/certs/ca-certificates.crt' exists and is accessible";
-					cwarn << "* Export the correct path via 'export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt' to the correct file";
-					cwarn << "  On most systems you can install the 'ca-certificates' package";
-					cwarn << "  You can also get the latest file here: https://curl.haxx.se/docs/caextract.html";
-					cwarn << "* Disable certificate verification all-together via command-line option.";
+					Log(warning) << "This can have multiple reasons:";
+					Log(warning) << "* Root certs are either not installed or not found";
+					Log(warning) << "* Pool uses a self-signed certificate";
+					Log(warning) << "Possible fixes:";
+					Log(warning) << "* Make sure the file '/etc/ssl/certs/ca-certificates.crt' exists and is accessible";
+					Log(warning) << "* Export the correct path via 'export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt' to the correct file";
+					Log(warning) << "  On most systems you can install the 'ca-certificates' package";
+					Log(warning) << "  You can also get the latest file here: https://curl.haxx.se/docs/caextract.html";
+					Log(warning) << "* Disable certificate verification all-together via command-line option.";
 				}
 
 				// Do not trigger a full disconnection but, instead, let the loop
@@ -549,7 +554,7 @@ void EthStratumClient::processExtranonce(std::string& enonce)
 {
 	m_extraNonceHexSize = enonce.length();
 
-	cnote << "Extranonce set to " + enonce;
+	Log(info) << "Extranonce set to " + enonce;
 
 	for (int i = enonce.length(); i < 16; ++i) enonce += "0";
 	m_extraNonce = h64(enonce);
@@ -558,11 +563,11 @@ void EthStratumClient::processExtranonce(std::string& enonce)
 void EthStratumClient::processReponse(Json::Value& responseObject)
 {
 
-	dev::setThreadName("stratum");
+	setThreadName("stratum");
 
 	// Out received message only for debug purpouses
 	if (g_logVerbosity >= 9) {
-		cnote << responseObject;
+		Log(info) << responseObject;
 	}
 
 	// Store jsonrpc version to test against
@@ -597,9 +602,9 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		)
 	{ 
 
-		cwarn << "Pool sent an invalid jsonrpc message ...";
-		cwarn << "Do not blame ethminer for this. Ask pool devs to honor http://www.jsonrpc.org/ specifications ";
-		cwarn << "Disconnecting ...";
+		Log(warning) << "Pool sent an invalid jsonrpc message ...";
+		Log(warning) << "Do not blame ethminer for this. Ask pool devs to honor http://www.jsonrpc.org/ specifications ";
+		Log(warning) << "Disconnecting ...";
 		disconnect();
 		return;
 
@@ -627,13 +632,13 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				m_subscribed.store(_isSuccess, std::memory_order_relaxed);
 				if (!m_subscribed)
 				{
-					cnote << "Could not subscribe to stratum server";
+					Log(info) << "Could not subscribe to stratum server";
 					disconnect();
 					return;
 				}
 				else {
 
-					cnote << "Subscribed to stratum server";
+					Log(info) << "Subscribed to stratum server";
 
 					jReq["id"] = unsigned(3);
 					jReq["jsonrpc"] = "2.0";
@@ -650,13 +655,13 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				m_subscribed.store(_isSuccess, std::memory_order_relaxed);
 				if (!m_subscribed)
 				{
-					cnote << "Could not login to ethproxy server:" << _errReason;
+					Log(info) << "Could not login to ethproxy server:" << _errReason;
 					disconnect();
 					return;
 				}
 				else {
 
-					cnote << "Logged in to eth-proxy server";
+					Log(info) << "Logged in to eth-proxy server";
 					m_authorized.store(true, std::memory_order_relaxed);
 
 					jReq["id"] = unsigned(5);
@@ -672,13 +677,13 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				m_subscribed.store(_isSuccess, std::memory_order_relaxed);
 				if (!m_subscribed)
 				{
-					cnote << "Could not subscribe to stratum server:" << _errReason;
+					Log(info) << "Could not subscribe to stratum server:" << _errReason;
 					disconnect();
 					return;
 				}
 				else {
 
-					cnote << "Subscribed to stratum server";
+					Log(info) << "Subscribed to stratum server";
 
 					m_nextWorkBoundary = h256("0xffff000000000000000000000000000000000000000000000000000000000000");
 
@@ -736,13 +741,13 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 			if (!m_authorized)
 			{
-				cnote << "Worker not authorized" << m_conn.User() << _errReason;
+				Log(info) << "Worker not authorized" << m_conn.User() << _errReason;
 				disconnect();
 				return;
 			
 			}
 			else {
-				cnote << "Authorized worker " + m_conn.User();
+				Log(info) << "Authorized worker " + m_conn.User();
 			}
 			
 			break;
@@ -767,7 +772,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				}
 				else {
 					if (m_onSolutionRejected) {
-						cwarn << "Reject reason :" << (_errReason.empty() ? "Unspecified" : _errReason);
+						Log(warning) << "Reject reason :" << (_errReason.empty() ? "Unspecified" : _errReason);
 						m_onSolutionRejected(m_stale);
 					}
 				}
@@ -792,7 +797,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			// Shall we do anyting ?
 			// Hashrate submit is actually out of stratum spec
 			if (!_isSuccess) {
-				cwarn << "Submit hashRate failed:" << (_errReason.empty() ? "Unspecified error" : _errReason);
+				Log(warning) << "Submit hashRate failed:" << (_errReason.empty() ? "Unspecified error" : _errReason);
 			}
 			break;
 
@@ -808,7 +813,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				if (!m_subscribed) {
 
 					// Subscription pending
-					cnote << "Subscription failed:" << (_errReason.empty() ? "Unspecified error" : _errReason);
+					Log(info) << "Subscription failed:" << (_errReason.empty() ? "Unspecified error" : _errReason);
 					disconnect();
 					return;
 
@@ -816,7 +821,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				else if (m_subscribed && !m_authorized) {
 
 					// Authorization pending
-					cnote << "Worker not authorized:" << (_errReason.empty() ? "Unspecified error" : _errReason);
+					Log(info) << "Worker not authorized:" << (_errReason.empty() ? "Unspecified error" : _errReason);
 					disconnect();
 					return;
 
@@ -828,7 +833,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 		default:
 
-			cnote << "Got response for unknown message id [" << _id << "] Discarding ...";
+			Log(info) << "Got response for unknown message id [" << _id << "] Discarding ...";
 			break;
 
 		}
@@ -935,7 +940,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				double nextWorkDifficulty = jPrm.get((Json::Value::ArrayIndex)0, 1).asDouble();
 				if (nextWorkDifficulty <= 0.0001) nextWorkDifficulty = 0.0001;
 				diffToTarget((uint32_t*)m_nextWorkBoundary.data(), nextWorkDifficulty);
-				cnote << "Difficulty set to"  << nextWorkDifficulty;
+				Log(info) << "Difficulty set to"  << nextWorkDifficulty;
 			}
 		}
 		else if (_method == "mining.set_extranonce" && m_conn.Version() == EthStratumClient::ETHEREUMSTRATUM)
@@ -964,7 +969,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		}
 		else {
 
-			cwarn << "Got unknown method [" << _method << "] from pool. Discarding ...";
+			Log(warning) << "Got unknown method [" << _method << "] from pool. Discarding ...";
 
 		}
 
@@ -977,8 +982,8 @@ void EthStratumClient::work_timeout_handler(const boost::system::error_code& ec)
 	
 	if (!ec) {
 		if (isConnected()) {
-			dev::setThreadName("stratum");
-			cwarn << "No new work received in " << m_worktimeout << " seconds.";
+			setThreadName("stratum");
+			Log(warning) << "No new work received in " << m_worktimeout << " seconds.";
 			disconnect();
 		}
 	}
@@ -989,8 +994,8 @@ void EthStratumClient::response_timeout_handler(const boost::system::error_code&
 
 	if (!ec) {
 		if (isConnected() && m_response_pending) {
-			dev::setThreadName("stratum");
-			cwarn << "No response received in" << m_responsetimeout << "seconds.";
+			setThreadName("stratum");
+			Log(warning) << "No response received in" << m_responsetimeout << "seconds.";
 			disconnect();
 		}
 	}
@@ -1096,7 +1101,7 @@ void EthStratumClient::recvSocketData() {
 
 void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code& ec, std::size_t bytes_transferred) {
 	
-	dev::setThreadName("stratum");
+	setThreadName("stratum");
 
 	// Due to the nature of io_service's queue and
 	// the implementation of the loop this event may trigger
@@ -1121,7 +1126,7 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
 					m_io_service.post(boost::bind(&EthStratumClient::processReponse, this, jMsg));
 				}
 				else {
-					cwarn << "Got invalid Json message :" + jRdr.getFormattedErrorMessages();
+					Log(warning) << "Got invalid Json message :" + jRdr.getFormattedErrorMessages();
 				}
 
 			}
@@ -1142,14 +1147,14 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
 				(ERR_GET_REASON(ec.value()) == SSL_RECEIVED_SHUTDOWN)
 				)
 			{
-				cnote << "SSL Stream remotely closed by" << m_conn.Host();
+				Log(info) << "SSL Stream remotely closed by" << m_conn.Host();
 			} 
 			else if (ec == boost::asio::error::eof)
 			{
-				cnote << "Connection remotely closed by" << m_conn.Host();
+				Log(info) << "Connection remotely closed by" << m_conn.Host();
 			}
 			else {
-				cwarn << "Socket read failed:" << ec.message();
+				Log(warning) << "Socket read failed:" << ec.message();
 			}
 			disconnect();
 		}
@@ -1165,7 +1170,7 @@ void EthStratumClient::sendSocketData(Json::Value const & jReq) {
 	
 	// Out received message only for debug purpouses
 	if (g_logVerbosity >= 9) {
-		cnote << jReq;
+		Log(info) << jReq;
 	}
 
 	std::ostream os(&m_sendBuffer);
@@ -1191,13 +1196,13 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
 	if (ec) {
 
 		if ((ec.category() == boost::asio::error::get_ssl_category()) && (SSL_R_PROTOCOL_IS_SHUTDOWN == ERR_GET_REASON(ec.value()))) {
-			cnote << "SSL Stream error :" << ec.message();
+			Log(info) << "SSL Stream error :" << ec.message();
 			disconnect();
 		}
 
 		if (isConnected()) {
-			dev::setThreadName("stratum");
-			cwarn << "Socket write failed: " + ec.message();
+			setThreadName("stratum");
+			Log(warning) << "Socket write failed: " + ec.message();
 			disconnect();
 		}
 	}
@@ -1207,7 +1212,7 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
 void EthStratumClient::onSSLShutdownCompleted(const boost::system::error_code& ec) {
 	
 	(void)ec;
-	// cnote << "onSSLShutdownCompleted Error code is : " << ec.message();
+	// Log(info) << "onSSLShutdownCompleted Error code is : " << ec.message();
 	m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect_finalize, this)));
 	
 }

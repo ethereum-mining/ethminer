@@ -42,13 +42,13 @@ void SimulateClient::submitHashrate(string const & rate)
 {
 	(void)rate;
 	auto sec = duration_cast<seconds>(steady_clock::now() - m_time);
-	cnote << "On difficulty" << m_difficulty << "for" << sec.count() << "seconds";
+	Log(info) << "On difficulty" << m_difficulty << "for" << sec.count() << "seconds";
 }
 
 void SimulateClient::submitSolution(Solution solution)
 {
 	m_uppDifficulty = true;
-	cnote << "Difficulty:" << m_difficulty;
+	Log(info) << "Difficulty:" << m_difficulty;
 	if (EthashAux::eval(solution.work.epoch, solution.work.header, solution.nonce).value < solution.work.boundary)
 	{
 		if (m_onSolutionAccepted) {
@@ -78,7 +78,7 @@ void SimulateClient::workLoop()
 				m_uppDifficulty = false;
 
 				auto sec = duration_cast<seconds>(steady_clock::now() - m_time);
-				cnote << "Took" << sec.count() << "seconds at" << m_difficulty << "difficulty to find solution";
+				Log(info) << "Took" << sec.count() << "seconds at" << m_difficulty << "difficulty to find solution";
 
 				if (sec.count() < 12) {
 					m_difficulty++;
@@ -87,7 +87,7 @@ void SimulateClient::workLoop()
 					m_difficulty--;
 				}
 				
-				cnote << "Now using difficulty " << m_difficulty;
+				Log(info) << "Now using difficulty " << m_difficulty;
 				m_time = std::chrono::steady_clock::now();
 				if (m_onWorkReceived) {
 					genesis.setDifficulty(u256(1) << m_difficulty);

@@ -89,8 +89,8 @@ void EthGetworkClient::workLoop()
 				}
 				catch (jsonrpc::JsonRpcException const& _e)
 				{
-					cwarn << "Failed to submit solution.";
-					cwarn << boost::diagnostic_information(_e);
+					Log(warning) << "Failed to submit solution.";
+					Log(warning) << boost::diagnostic_information(_e);
 				}
 			}
 
@@ -124,7 +124,7 @@ void EthGetworkClient::workLoop()
 			}
 			catch (jsonrpc::JsonRpcException)
 			{
-				cwarn << "Failed getting work!";
+				Log(warning) << "Failed getting work!";
 				disconnect();
 			}
 
@@ -136,8 +136,8 @@ void EthGetworkClient::workLoop()
 				}
 				catch (jsonrpc::JsonRpcException)
 				{
-					//cwarn << "Failed to submit hashrate.";
-					//cwarn << boost::diagnostic_information(_e);
+					//Log(warning) << "Failed to submit hashrate.";
+					//Log(warning) << boost::diagnostic_information(_e);
 				}
 				m_currentHashrateToSubmit = "";
 			}
