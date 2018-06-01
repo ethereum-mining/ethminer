@@ -714,7 +714,7 @@ private:
 		while (g_running && mgr.isRunning()) {
 			if (mgr.isConnected()) {
 				auto mp = f.miningProgress(m_show_hwmonitors, m_show_power);
-				minelog << mp << f.getSolutionStats() << f.farmLaunchedFormatted();
+				minelog << mp << f.getSolutionStats() << ' ' << f.farmLaunchedFormatted();
 
 #if ETH_DBUS
 				dbusint.send(toString(mp).data());
