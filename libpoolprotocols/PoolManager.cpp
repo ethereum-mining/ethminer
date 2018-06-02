@@ -65,7 +65,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		for (auto h : m_headers)
 			if (h == wp.header)
 			{
-				cwarn << EthYellow "Duplicate job" << wp.header << " discarded" EthReset;
+				cwarn << EthYellow "Duplicate job #" << wp.header.abridged() << " discarded" EthReset;
 				return;
 			}
 		m_headers.push_back(wp.header);
