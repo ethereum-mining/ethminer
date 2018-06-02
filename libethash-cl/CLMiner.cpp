@@ -317,7 +317,6 @@ void CLMiner::workLoop()
                         ++s_dagLoadIndex;
                     }
 
-                    cllog << "New epoch: " << w.epoch;
                     init(w.epoch);
                 }
 

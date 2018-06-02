@@ -118,7 +118,7 @@ void EthGetworkClient::workLoop()
 					m_prevWorkPackage.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
 
 					if (m_onWorkReceived) {
-						m_onWorkReceived(m_prevWorkPackage);
+						m_onWorkReceived(m_prevWorkPackage, true);
 					}
 				}
 			}

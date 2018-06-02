@@ -96,7 +96,7 @@ void SimulateClient::workLoop()
 					current.header = h256::random();
 					current.boundary = genesis.boundary();
 
-					m_onWorkReceived(current);
+					m_onWorkReceived(current, false);
 				}
 			}
 			else {
