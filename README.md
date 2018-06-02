@@ -60,7 +60,7 @@ ethminer --help
 ```
 ### Examples connecting some pools
 
-Check our [samples](POOLEXSAMPLES_ETH.md) to see how to connect to different pools.
+Check our [samples](POOL_EXAMPLES_ETH.md) to see how to connect to different pools.
 
 ## Build
 
