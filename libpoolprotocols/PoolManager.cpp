@@ -72,7 +72,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		while (m_headers.size() > 4)
 			m_headers.pop_front();
 
-		cnote << "New job " EthWhite << wp.header << EthReset " " << m_connections[m_activeConnectionIdx].Host()
+		cnote << "Job: " EthWhite "#"<< wp.header.abridged() << EthReset " " << m_connections[m_activeConnectionIdx].Host()
 			<< p_client->ActiveEndPoint();
 		if (wp.boundary != m_lastBoundary)
 		{
@@ -81,7 +81,7 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 			m_lastBoundary = wp.boundary;
 			static const uint512_t dividend("0x10000000000000000000000000000000000000000000000000000000000000000");
 			const uint256_t divisor(string("0x") + m_lastBoundary.hex());
-			cnote << "New pool difficulty: " EthWhite << diffToDisplay(double(dividend / divisor)) << EthReset;
+			cnote << "Pool difficulty: " EthWhite << diffToDisplay(double(dividend / divisor)) << EthReset;
 		}
 
 		m_farm.setWork(wp);
@@ -118,8 +118,8 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 		}
 
 		std::stringstream ss;
-		ss << std::setw(4) << std::setfill(' ') << ms.count();
-		ss << "ms." << "   " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
+		ss << std::setw(4) << std::setfill(' ') << ms.count()
+			<< "ms." << "   " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
 		cwarn << EthRed "**Rejected" EthReset << (stale ? "(stale)" : "") << ss.str();
 		m_farm.rejectedSolution(stale);
 	});
@@ -135,9 +135,9 @@ PoolManager::PoolManager(PoolClient * client, Farm &farm, MinerType const & mine
 			m_submit_times.push(std::chrono::steady_clock::now());
 
 			if (sol.stale)
-				cnote << string(EthYellow "Stale solution 0x") + toHex(sol.nonce);
+				cwarn << "Stale solution: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
 			else
-				cnote << string("Solution 0x") + toHex(sol.nonce);
+				cnote << "Solution: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
 
 			p_client->submitSolution(sol);
 		}

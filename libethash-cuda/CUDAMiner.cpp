@@ -29,9 +29,8 @@ vector<int> CUDAMiner::s_devices(MAX_MINERS, -1);
 
 struct CUDAChannel: public LogChannel
 {
-    static const char* name() { return EthOrange " cu"; }
+    static const char* name() { return EthOrange "cu"; }
     static const int verbosity = 2;
-    static const bool debug = false;
 };
 #define cudalog clog(CUDAChannel)
 
