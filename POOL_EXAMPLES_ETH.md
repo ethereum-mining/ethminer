@@ -1,5 +1,5 @@
-# Pool Exsamples for ETH
-This is a collection of exsamples how to connect ethminer to your favorite ETH pool (alphabetic order).
+# Pool Examples for ETH
+This is a collection of examples how to connect ethminer to your favorite ETH pool (alphabetic order).
 
 * Stratum connection is preferred than getwork connection due its better network latency.
 * If possible the samples use a protocol which supports reporting of hashrate (`--report-hashrate`) if pool supports this.
