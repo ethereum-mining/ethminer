@@ -243,6 +243,14 @@ public:
 			m_onMinerRestart();
 		}
 	}
+
+	/**
+	* @brief Stop all mining activities and Starts them again (async post)
+	*/
+	void restart_async() 
+	{
+		m_io_strand.get_io_service().post(m_io_strand.wrap(boost::bind(&Farm::restart, this)));
+	}
 		
 	bool isMining() const
 	{
