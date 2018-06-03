@@ -823,6 +823,10 @@ int main(int argc, char** argv)
 	setenv("GPU_MAX_ALLOC_PERCENT", "100");
 	setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
 
+	MinerCLI m;
+
+	m.ParseCommandLine(argc, argv);
+
 	if (getenv("SYSLOG"))
 		g_logSyslog = true;
 	if (g_logSyslog || (getenv("NO_COLOR")))
@@ -846,10 +850,6 @@ int main(int argc, char** argv)
 		}
 	}
 #endif
-
-	MinerCLI m;
-
-	m.ParseCommandLine(argc, argv);
 
 	try
 	{
