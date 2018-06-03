@@ -40,7 +40,7 @@
 #endif
 
 #if API_CORE
-#include <libapicore/Api.h>
+#include <libapicore/ApiServer.h>
 #include <libapicore/httpServer.h>
 #endif
 
@@ -710,8 +710,12 @@ private:
 		}
 
 #if API_CORE
-		Api api(this->m_api_port, f);
+
+		ApiServer api(m_io_service, abs(m_api_port), (m_api_port < 0) ? true : false, f);
+		api.start();
+
         http_server.run(m_http_port, &f, m_show_hwmonitors, m_show_power);
+
 #endif
 
 		// Start PoolManager

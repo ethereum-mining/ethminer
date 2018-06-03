@@ -62,12 +62,6 @@ public:
 		m_io_strand(io_service),
 		m_hashrateTimer(io_service)
 	{
-		// Given that all nonces are equally likely to solve the problem
-		// we could reasonably always start the nonce search ranges
-		// at a fixed place, but that would be boring. Provide a once
-		// per run randomized start place, without creating much overhead.
-		random_device engine;
-		m_nonce_scrambler = uniform_int_distribution<uint64_t>()(engine);
 
 		// Init HWMON
 		adlh = wrap_adl_create();
@@ -75,6 +69,10 @@ public:
 		sysfsh = wrap_amdsysfs_create();
 #endif
 		nvmlh = wrap_nvml_create();
+
+		// Initialize nonce_scrambler
+		shuffle();
+
 	}
 
 	~Farm()
@@ -91,6 +89,20 @@ public:
 
 		// Stop mining
 		stop();
+	}
+
+	/**
+	* @brief Randomizes the nonce scrambler
+	*/
+	void shuffle() {
+
+		// Given that all nonces are equally likely to solve the problem
+		// we could reasonably always start the nonce search ranges
+		// at a fixed place, but that would be boring. Provide a once
+		// per run randomized start place, without creating much overhead.
+		random_device engine;
+		m_nonce_scrambler = uniform_int_distribution<uint64_t>()(engine);
+
 	}
 
 	/**
@@ -243,7 +255,15 @@ public:
 			m_onMinerRestart();
 		}
 	}
-		
+
+	/**
+	* @brief Stop all mining activities and Starts them again (async post)
+	*/
+	void restart_async()
+	{
+		m_io_strand.get_io_service().post(m_io_strand.wrap(boost::bind(&Farm::restart, this)));
+	}
+
 	bool isMining() const
 	{
 		return m_isMining.load(std::memory_order_relaxed);
