@@ -549,9 +549,8 @@ void EthStratumClient::processExtranonce(std::string& enonce)
 {
 	m_extraNonceHexSize = enonce.length();
 
-	cnote << "Extranonce set to " + enonce;
-
-	for (int i = enonce.length(); i < 16; ++i) enonce += "0";
+	cnote << "Extranonce set to " EthWhite << enonce << EthReset " (nicehash)";
+	enonce.append(16 - m_extraNonceHexSize, '0');
 	m_extraNonce = h64(enonce);
 }
 
@@ -889,8 +888,9 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						m_current.job = h256(job);
 
 						if (m_onWorkReceived) {
-							m_onWorkReceived(m_current);
+							m_onWorkReceived(m_current, m_checkForDups);
 						}
+						m_checkForDups = true;
 					}
 				}
 				else
@@ -920,7 +920,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 							m_current.job = h256(job);
 
 							if (m_onWorkReceived) {
-								m_onWorkReceived(m_current);
+								m_onWorkReceived(m_current, true);
 							}
 						}
 					}
@@ -935,7 +935,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				double nextWorkDifficulty = jPrm.get((Json::Value::ArrayIndex)0, 1).asDouble();
 				if (nextWorkDifficulty <= 0.0001) nextWorkDifficulty = 0.0001;
 				diffToTarget((uint32_t*)m_nextWorkBoundary.data(), nextWorkDifficulty);
-				cnote << "Difficulty set to"  << nextWorkDifficulty;
+				cnote << "Difficulty set to " EthWhite << nextWorkDifficulty << EthReset " (nicehash)";
+				m_checkForDups = false;
 			}
 		}
 		else if (_method == "mining.set_extranonce" && m_conn.Version() == EthStratumClient::ETHEREUMSTRATUM)
@@ -945,6 +946,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			{
 				std::string enonce = jPrm.get((Json::Value::ArrayIndex)0, "").asString();
 				processExtranonce(enonce);
+				m_checkForDups = false;
 			}
 		}
 		else if (_method == "client.get_version")

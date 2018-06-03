@@ -38,7 +38,7 @@ namespace dev
 			using SolutionRejected = std::function<void(bool const&)>;
 			using Disconnected = std::function<void()>;
 			using Connected = std::function<void()>;
-			using WorkReceived = std::function<void(WorkPackage const&)>;
+			using WorkReceived = std::function<void(WorkPackage const&, bool checkForDuplicates)>;
 
 			void onSolutionAccepted(SolutionAccepted const& _handler) { m_onSolutionAccepted = _handler; }
 			void onSolutionRejected(SolutionRejected const& _handler) { m_onSolutionRejected = _handler; }

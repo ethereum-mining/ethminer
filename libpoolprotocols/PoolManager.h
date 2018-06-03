@@ -51,6 +51,8 @@ namespace dev
 			MinerType m_minerType;
 			boost::lockfree::queue<std::chrono::steady_clock::time_point> m_submit_times;
 
+			int m_lastEpoch = 0;
+
 		};
 	}
 }
