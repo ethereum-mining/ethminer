@@ -24,18 +24,6 @@ set(PROJECT_VERSION 0.15.0.dev11)
 
 cable_set_build_type(DEFAULT Release CONFIGURATION_TYPES Release RelWithDebInfo)
 
-# link_directories interprets relative paths with respect to CMAKE_CURRENT_SOURCE_DIR
-cmake_policy(SET CMP0015 NEW)
-
-# let cmake autolink dependencies on windows
-# it's specified globally, cause qt libraries requires that on windows and they are also found globally
-cmake_policy(SET CMP0020 NEW)
-
-# 3.1 and above
-cmake_policy(SET CMP0054 NEW)
-
-######################################################################################################
-
 option(ETHASHCL "Build with OpenCL mining" ON)
 option(ETHASHCUDA "Build with CUDA mining" ON)
 option(ETHDBUS "Build with D-Bus support" OFF)
