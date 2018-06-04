@@ -110,18 +110,15 @@ void ethash_generate_dag(
 	uint64_t dag_size,
 	uint32_t blocks,
 	uint32_t threads,
-	cudaStream_t stream,
-	int device
+	cudaStream_t stream
 	)
 {
-	uint32_t const work = (uint32_t)(dag_size / sizeof(hash64_t));
+	const uint32_t work = (uint32_t)(dag_size / sizeof(hash64_t));
+	const uint32_t run = blocks * threads;
 
-	uint32_t fullRuns = work / (blocks * threads);
-	uint32_t const restWork = work % (blocks * threads);
-	if (restWork > 0) fullRuns++;
-	for (uint32_t i = 0; i < fullRuns; i++)
+	for (uint32_t base = 0; base < work; base += run)
 	{
-		ethash_calculate_dag_item <<<blocks, threads, 0, stream >>>(i * blocks * threads);
+		ethash_calculate_dag_item <<<blocks, threads, 0, stream>>>(base);
 		CUDA_SAFE_CALL(cudaDeviceSynchronize());
 	}
 	CUDA_SAFE_CALL(cudaGetLastError());

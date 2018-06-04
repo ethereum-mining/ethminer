@@ -115,7 +115,4 @@ private:
 	
 	bool m_submit_hashrate;
 	std::string m_submit_hashrate_id;
-
-	bool m_checkForDups = true;
-
 };
