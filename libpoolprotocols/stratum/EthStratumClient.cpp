@@ -567,8 +567,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 	// Store jsonrpc version to test against
 	int _rpcVer = responseObject.isMember("jsonrpc") ? 2 : 1;					
 
-	bool _isNotification = false;		// Wether or not this message is a reply to previous request or is a broadcast notification
-	bool _isSuccess = false;			// Wether or not this is a succesful or failed response (implies _isNotification = false)
+	bool _isNotification = false;		// Whether or not this message is a reply to previous request or is a broadcast notification
+	bool _isSuccess = false;			// Whether or not this is a succesful or failed response (implies _isNotification = false)
 	string _errReason = "";				// Content of the error reason
 	string _method = "";				// The method of the notification (or request from pool)
 	int _id = 0;						// This SHOULD be the same id as the request it is responding to (known exception is ethermine.org using 999)
