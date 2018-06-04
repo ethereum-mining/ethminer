@@ -74,6 +74,10 @@ message("-----------------------------------------------------------------------
 message("")
 
 include(EthCompilerSettings)
+if(UNIX AND NOT APPLE)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++")
+endif()
+
 
 cable_add_buildinfo_library(PREFIX ethminer)
 
