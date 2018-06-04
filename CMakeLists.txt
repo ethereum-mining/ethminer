@@ -73,7 +73,6 @@ message("-- APICORE          Build API Server components              ${APICORE}
 message("------------------------------------------------------------------------")
 message("")
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(EthCompilerSettings)
 
 cable_add_buildinfo_library(PREFIX ethminer)
