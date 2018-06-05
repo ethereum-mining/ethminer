@@ -24,7 +24,7 @@ public:
 
 	typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
 
-	EthStratumClient(boost::asio::io_service & io_service, int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate);
+	EthStratumClient(boost::asio::io_service & io_service, int worktimeout, int responsetimeout, string email, bool submitHashrate);
 	~EthStratumClient();
 
 	void connect() override;
