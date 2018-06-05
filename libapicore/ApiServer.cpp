@@ -139,6 +139,13 @@ void ApiConnection::processRequest(Json::Value& requestObject)
 		m_farm.shuffle();
 
 	}
+	else if (_method == "miner_ping")
+	{
+
+		// Replies back to (check for liveness)
+		jRes["result"] = "pong";
+
+	}
 	else if (_method == "miner_restart")
 	{
 		// Send response to client of success
