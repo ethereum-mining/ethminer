@@ -8,7 +8,7 @@ using namespace std;
 using namespace dev;
 using namespace eth;
 
-EthGetworkClient::EthGetworkClient(unsigned const & farmRecheckPeriod, bool const & submitHashrate) : PoolClient(), Worker("getwork"), m_submit_hashrate(submitHashrate)
+EthGetworkClient::EthGetworkClient(unsigned farmRecheckPeriod, bool submitHashrate) : PoolClient(), Worker("getwork"), m_submit_hashrate(submitHashrate)
 {
 	m_farmRecheckPeriod = farmRecheckPeriod;
 	m_authorized = true;

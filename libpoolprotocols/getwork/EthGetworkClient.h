@@ -13,7 +13,7 @@ using namespace eth;
 class EthGetworkClient : public PoolClient, Worker
 {
 public:
-	EthGetworkClient(unsigned const & farmRecheckPeriod, bool const & submitHashrate);
+	EthGetworkClient(unsigned farmRecheckPeriod, bool submitHashrate);
 	~EthGetworkClient();
 
 	void connect() override;
