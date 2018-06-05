@@ -13,7 +13,7 @@ using namespace eth;
 class EthGetworkClient : public PoolClient, Worker
 {
 public:
-	EthGetworkClient(unsigned const & farmRecheckPeriod);
+	EthGetworkClient(unsigned farmRecheckPeriod, bool submitHashrate);
 	~EthGetworkClient();
 
 	void connect() override;
@@ -32,9 +32,12 @@ private:
 	unsigned m_farmRecheckPeriod = 500;
 
 	string m_currentHashrateToSubmit = "";
-	Solution m_solutionToSubmit;
+
 	bool m_justConnected = false;
 	h256 m_client_id;
 	JsonrpcGetwork *p_client;
 	WorkPackage m_prevWorkPackage;
+
+	// Hashrate submission is optional
+	bool m_submit_hashrate;
 };

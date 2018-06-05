@@ -171,7 +171,7 @@ public:
 			->group(CommonGroup)
 			->check(CLI::Range(2, 999));
 
-		app.add_flag("-R,--report-hashrate", m_report_stratum_hashrate,
+		app.add_flag("-R,--report-hashrate", m_report_hashrate,
 			"Report current hashrate to pool")
 			->group(CommonGroup);
 
@@ -670,10 +670,10 @@ private:
 		PoolClient *client = nullptr;
 
 		if (m_mode == OperationMode::Stratum) {
-			client = new EthStratumClient(m_io_service, m_worktimeout, m_responsetimeout, m_email, m_report_stratum_hashrate);
+			client = new EthStratumClient(m_io_service, m_worktimeout, m_responsetimeout, m_email, m_report_hashrate);
 		}
 		else if (m_mode == OperationMode::Farm) {
-			client = new EthGetworkClient(m_farmRecheckPeriod);
+			client = new EthGetworkClient(m_farmRecheckPeriod, m_report_hashrate);
 		}
 		else if (m_mode == OperationMode::Simulation) {
 			client = new SimulateClient(20, m_benchmarkBlock);
@@ -808,7 +808,7 @@ private:
 	unsigned m_http_port = 0;
 #endif
 
-	bool m_report_stratum_hashrate = false;
+	bool m_report_hashrate = false;
 	string m_email;
 
 #if ETH_DBUS
