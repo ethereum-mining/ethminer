@@ -971,6 +971,13 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 			cwarn << "Got unknown method [" << _method << "] from pool. Discarding ...";
 
+			// Respond back to issuer
+			if (_rpcVer == 2) { jReq["jsonrpc"] = "2.0"; }
+			jReq["id"] = toString(_id);
+			jReq["error"] = "Method not found";
+
+			sendSocketData(jReq);
+
 		}
 
 
