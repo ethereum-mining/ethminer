@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Drop duplicate stratum jobs (pool bug workaround) [#1161](https://github.com/ethereum-mining/ethminer/pull/1161).
 - CLI11 command line parsing support added [#1160](https://github.com/ethereum-mining/ethminer/pull/1160).
 - Farm mode (get_work): fixed loss of valid shares and increment in stales [#1215](https://github.com/ethereum-mining/ethminer/pull/1215).
+- Stratum implementation improvements [#1222](https://github.com/ethereum-mining/ethminer/pull/1222).
 - Build fixes & improvements [#1214](https://github.com/ethereum-mining/ethminer/pull/1214).
 
 ### Removed
