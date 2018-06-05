@@ -57,7 +57,7 @@ private:
 	boost::asio::streambuf m_recvBuffer;
 	Json::FastWriter m_jWriter;
 
-	std::atomic<bool> m_readonly = { false };
+	bool m_readonly =  false ;
 	Farm& m_farm;
 
 };
@@ -82,6 +82,7 @@ private:
 	std::thread m_workThread;
 	std::atomic<bool> m_readonly = { false };
 	std::atomic<bool> m_running = { false };
+	int m_portnumber;
 	tcp::acceptor m_acceptor;
 	boost::asio::io_service::strand m_io_strand;
 	std::vector<std::shared_ptr<ApiConnection>> m_sessions;

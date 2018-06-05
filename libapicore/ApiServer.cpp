@@ -3,19 +3,22 @@
 #include <ethminer-buildinfo.h>
 
 ApiServer::ApiServer(boost::asio::io_service& io_service, int portnum, bool readonly, Farm& f) :
-	m_acceptor(io_service, tcp::endpoint(tcp::v4(), portnum)),
+	m_readonly(readonly),
+	m_portnumber(portnum),
+	m_acceptor(io_service),
 	m_io_strand(io_service),
 	m_farm(f)
 {
-	m_readonly.store(readonly, std::memory_order_relaxed);
 }
 
 void ApiServer::start()
 {
 	// cnote << "ApiServer::start";
-	if (m_acceptor.local_endpoint().port() == 0) return;
+	if (m_portnumber == 0) return;
+
 	m_running.store(true, std::memory_order_relaxed);
-	
+	m_acceptor.bind(tcp::endpoint(tcp::v4(), m_portnumber));
+
 	cnote << "Api server listening for connections on port " + to_string(m_acceptor.local_endpoint().port());
 
 	m_workThread = std::thread{ boost::bind(&ApiServer::begin_accept, this) };
@@ -141,7 +144,7 @@ void ApiConnection::processRequest(Json::Value& requestObject)
 		// Send response to client of success
 		// and invoke an async restart
 		// to prevent locking
-		if (m_readonly.load(std::memory_order_relaxed))
+		if (m_readonly)
 		{
 			jRes["error"]["code"] = -32601;
 			jRes["error"]["message"] = "Method not available";
