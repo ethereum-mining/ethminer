@@ -7,7 +7,7 @@ branches:
     - appveyor
     - hunter
 clone_depth: 100
-os: Visual Studio 2015
+os: Visual Studio 2017
 configuration:
   - Release
   - RelWithDebInfo
@@ -25,12 +25,12 @@ install: |
   nvcc -V
 
 build_script:
-  - cmake -G "Visual Studio 14 2015 Win64" -H. -Bbuild -DETHASHCUDA=ON -DAPICORE=ON -DHUNTER_JOBS_NUMBER=%NUMBER_OF_PROCESSORS%
+  - cmake -G "Visual Studio 15 2017 Win64" -H. -Bbuild -T v140,host=x64 -DETHASHCUDA=ON -DAPICORE=ON -DHUNTER_JOBS_NUMBER=%NUMBER_OF_PROCESSORS%
   - cmake --build build --config %CONFIGURATION% --target package
 
 after_build:
   ps: |
-    if ($env:configuration -ne "Release") {
+    if ($env:configuration -eq "RelWithDebInfo") {
       Get-Item build/ethminer-*-Windows.* | Rename-Item -NewName { $_.name -Replace 'ethminer','ethminer-dbg' }
     }
 

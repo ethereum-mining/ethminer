@@ -53,11 +53,12 @@ accessible from command line. The ethminer is ready to go.
 The **ethminer** is a command line program. This means you launch it either
 from a Windows command prompt or Linux console, or create shortcuts to
 predefined command lines using a Linux Bash script or Windows batch/cmd file.
-For a full list of available command, please run
+For a full list of available command, please run:
 
 ```sh
 ethminer --help
 ```
+
 ### Examples connecting some pools
 
 Check our [samples](POOL_EXAMPLES_ETH.md) to see how to connect to different pools.
@@ -102,7 +103,7 @@ This project uses [CMake] and [Hunter] package manager.
    Note: In Windows, it is possible to have issues with VS 2017 compilers, in that case, use VS 2017 installer to get VS 2015 compilers and use:
 
    ```sh
-   cmake .. -G "Visual Studio 15 2017 Win64" -Tv140
+   cmake .. -G "Visual Studio 15 2017 Win64" -Tv140,host=x64
    ```
 
 4. Build the project using [CMake Build Tool Mode]. This is a portable variant
@@ -150,6 +151,8 @@ cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 
 - `-DETHASHCL=ON` - enable OpenCL mining, `ON` by default,
 - `-DETHASHCUDA=ON` - enable CUDA mining, `ON` by default.
+- `-DAPICORE=ON` - enable API Server, `ON` by default.
+- `-DETHDBUS=ON` - enable D-Bus support, `OFF` by default.
 
 
 ## Maintainer
@@ -215,21 +218,21 @@ Licensed under the [GNU General Public License, Version 3](LICENSE).
 
    There is an environment var `CUDA_DEVICE_ORDER` which tells the Nvidia CUDA driver how to enumerates the graphic cards.
    Following values are valid:
+
    * FASTEST_FIRST (Default) - causes CUDA to guess which device is fastest using a simple heuristic.
    * PCI_BUS_ID - orders devices by PCI bus ID in ascending order.
 
    To prevent some unwanted changes in the order of your CUDA devices you **might set the environment to `PCI_BUS_ID`**.
    This can be done:
-   * linux:
+
+   * Linux:
      * Adapt /etc/environment file and add a line `CUDA_DEVICE_ORDER=PCI_BUS_ID`
      * Adapt your start script launching ethminer and add a line `export CUDA_DEVICE_ORDER=PCI_BUS_ID`
 
-   * windows:
-     * Adapt your environment using the control panel (just search `setting environment windows control panel` using your favorite searchengine)
+   * Windows:
+     * Adapt your environment using the control panel (just search `setting environment windows control panel` using your favorite search engine)
      * Adapt your start (.bat) file launching ethminer and add a line `setx CUDA_DEVICE_ORDER=PCI_BUS_ID` or `set CUDA_DEVICE_ORDER=PCI_BUS_ID`
-     * For more details about `setx` and `set` see:
-   https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/setx
-
+     * For more details about `setx` and `set` see <https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/setx>
 
 
 [Amazon S3 is needed]: https://docs.travis-ci.com/user/uploading-artifacts/
