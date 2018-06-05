@@ -25,10 +25,10 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
-	# declare Windows XP requirement
+	# declare Windows Vista requirement
 	# undefine windows.h MAX & MIN macros because they conflict with std::min & std::max functions
 	# disable unsafe CRT Library functions warnings
-	add_definitions(/D_WIN32_WINNT=0x0501 /DNOMINMAX /D_CRT_SECURE_NO_WARNINGS)
+	add_definitions(/D_WIN32_WINNT=0x0600 /DNOMINMAX /D_CRT_SECURE_NO_WARNINGS)
 
 	# enable parallel compilation
 	# specify Exception Handling Model
