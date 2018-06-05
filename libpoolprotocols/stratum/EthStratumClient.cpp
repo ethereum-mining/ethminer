@@ -40,7 +40,7 @@ static void diffToTarget(uint32_t *target, double diff)
 }
 
 
-EthStratumClient::EthStratumClient(boost::asio::io_service & io_service, int worktimeout, int responsetimeout, string const & email, bool const & submitHashrate) : PoolClient(),
+EthStratumClient::EthStratumClient(boost::asio::io_service & io_service, int worktimeout, int responsetimeout, string email, bool submitHashrate) : PoolClient(),
 	m_worktimeout(worktimeout),
 	m_responsetimeout(responsetimeout),
 	m_io_service(io_service),
@@ -970,6 +970,13 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		else {
 
 			cwarn << "Got unknown method [" << _method << "] from pool. Discarding ...";
+
+			// Respond back to issuer
+			if (_rpcVer == 2) { jReq["jsonrpc"] = "2.0"; }
+			jReq["id"] = toString(_id);
+			jReq["error"] = "Method not found";
+
+			sendSocketData(jReq);
 
 		}
 
