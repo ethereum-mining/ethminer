@@ -2,8 +2,9 @@
 
 #include <ethminer-buildinfo.h>
 
-ApiServer::ApiServer(boost::asio::io_service& io_service, int portnum, bool readonly, Farm& f) :
+ApiServer::ApiServer(boost::asio::io_service& io_service, int portnum, bool readonly, string password, Farm& f) :
 	m_readonly(readonly),
+	m_password(std::move(password)),
 	m_portnumber(portnum),
 	m_acceptor(io_service),
 	m_io_strand(io_service),
@@ -17,7 +18,7 @@ void ApiServer::start()
 	if (m_portnumber == 0) return;
 
 	m_running.store(true, std::memory_order_relaxed);
-
+	
 	tcp::endpoint endpoint(tcp::v4(), m_portnumber);
 
 	// Try to bind to port number
@@ -36,7 +37,7 @@ void ApiServer::start()
 		return;
 	}
 
-	cnote << "Api server listening for connections on port " + to_string(m_acceptor.local_endpoint().port());
+	cnote << "Api server listening for connections on port " + to_string(m_acceptor.local_endpoint().port()) << (m_password.empty() ? "" : " Authentication needed");
 	m_workThread = std::thread{ boost::bind(&ApiServer::begin_accept, this) };
 
 }
@@ -60,7 +61,7 @@ void ApiServer::begin_accept()
 	if (!isRunning()) return;
 
 	dev::setThreadName("Api");
-	std::shared_ptr<ApiConnection> session = std::make_shared<ApiConnection>(m_acceptor.get_io_service(), ++lastSessionId, m_readonly, m_farm);
+	std::shared_ptr<ApiConnection> session = std::make_shared<ApiConnection>(m_acceptor.get_io_service(), ++lastSessionId, m_readonly, m_password, m_farm);
 	m_acceptor.async_accept(session->socket(), m_io_strand.wrap(boost::bind(&ApiServer::handle_accept, this, session, boost::asio::placeholders::error)));
 }
 
@@ -142,63 +143,101 @@ void ApiConnection::processRequest(Json::Value& requestObject)
 	std::string _method = requestObject.get("method", "").asString();
 	jRes["id"] = requestObject.get("id", 0).asInt();
 
+	// Check authentication
+	if (!m_is_authenticated) {
+		if (_method == "api_authorize") {
 
-	if (_method == "miner_getstat1")
-	{
-		jRes["result"] = getMinerStat1();
-	}
-	else if (_method == "miner_getstathr")
-	{
-		jRes["result"] = getMinerStatHR();
-	}
-	else if (_method == "miner_shuffle")
-	{
+			if (!requestObject.isMember("params") || requestObject["params"].empty() || !requestObject["params"].isObject()) {
+				jRes["error"]["code"] = -32602;
+				jRes["error"]["message"] = "Missing params object member";
+			}
+			else {
+				Json::Value jPrm = requestObject["params"];
+				if (!jPrm.isMember("password") || jPrm["password"].empty() || !jPrm["password"].isString()) {
+					jRes["error"]["code"] = -32602;
+					jRes["error"]["message"] = "Missing password";
+				}
+				else
+				{
+					if (jPrm.get("password", "").asString() == m_password) {
+						m_is_authenticated = true;
+					}
+					else {
+						jRes["error"]["code"] = -32602;
+						jRes["error"]["message"] = "Invalid password";
+					}
+				}
+			}
 
-		// Gives nonce scrambler a new range
-		cnote << "Miner Shuffle requested";
-		jRes["result"] = true;
-		m_farm.shuffle();
+		}
+		else {
 
-	}
-	else if (_method == "miner_ping")
-	{
-
-		// Replies back to (check for liveness)
-		jRes["result"] = "pong";
-
-	}
-	else if (_method == "miner_restart")
-	{
-		// Send response to client of success
-		// and invoke an async restart
-		// to prevent locking
-		if (m_readonly)
-		{
 			jRes["error"]["code"] = -32601;
-			jRes["error"]["message"] = "Method not available";
+			jRes["error"]["message"] = "Authorization needed";
+
+		}
+	}
+	
+	if (m_is_authenticated)
+	{
+		if (_method == "miner_getstat1")
+		{
+			jRes["result"] = getMinerStat1();
+		}
+		else if (_method == "miner_getstathr")
+		{
+			jRes["result"] = getMinerStatHR();
+		}
+		else if (_method == "miner_shuffle")
+		{
+
+			// Gives nonce scrambler a new range
+			cnote << "Miner Shuffle requested";
+			jRes["result"] = true;
+			m_farm.shuffle();
+
+		}
+		else if (_method == "miner_ping")
+		{
+
+			// Replies back to (check for liveness)
+			jRes["result"] = "pong";
+
+		}
+		else if (_method == "miner_restart")
+		{
+			// Send response to client of success
+			// and invoke an async restart
+			// to prevent locking
+			if (m_readonly)
+			{
+				jRes["error"]["code"] = -32601;
+				jRes["error"]["message"] = "Method not available";
+			}
+			else
+			{
+				cnote << "Miner Restart requested";
+				jRes["result"] = true;
+				m_farm.restart_async();
+			}
+
+		}
+		else if (_method == "miner_reboot")
+		{
+
+			// Not implemented yet
+			jRes["error"]["code"] = -32601;
+			jRes["error"]["message"] = "Method not implemented";
+
 		}
 		else
 		{
-			cnote << "Miner Restart requested";
-			jRes["result"] = true;
-			m_farm.restart_async();
+
+			// Any other method not found
+			jRes["error"]["code"] = -32601;
+			jRes["error"]["message"] = "Method not found";
 		}
 
-	}
-	else if (_method == "miner_reboot")
-	{
-
-		// Not implemented yet
-		jRes["error"]["code"] = -32601;
-		jRes["error"]["message"] = "Method not implemented";
-
-	}
-	else
-	{
-
-		// Any other method not found
-		jRes["error"]["code"] = -32601;
-		jRes["error"]["message"] = "Method not found";
 	}
 
 	// Send response
