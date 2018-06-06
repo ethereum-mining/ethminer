@@ -157,12 +157,15 @@ void ApiConnection::processRequest(Json::Value& requestObject)
             else
             {
                 Json::Value jPrm = requestObject["params"];
+                if (!jPrm.isMember("psw") || jPrm["psw"].empty() ||
+                    !jPrm["psw"].isString())
                 {
                     jRes["error"]["code"] = -32602;
                     jRes["error"]["message"] = "Missing password";
                 }
                 else
                 {
+                    if (jPrm.get("psw", "").asString() == m_password)
                     {
                         m_is_authenticated = true;
                     }
