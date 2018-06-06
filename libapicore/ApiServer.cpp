@@ -61,7 +61,7 @@ void ApiServer::handle_accept(std::shared_ptr<ApiConnection> session, boost::sys
 		});
 		session->start();
 		m_sessions.push_back(session);
-		cnote << "New api session from" << session->socket().remote_endpoint();
+		cnote << "New api session from " << session->socket().remote_endpoint();
 
 	}
 	else {
