@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## Unreleased
 
 
+## 0.15.0rc1
+
+### Fixed
+
+- Restore the ability to auto-config OpenCL work size [#1225](https://github.com/ethereum-mining/ethminer/pull/1225).
+- The API server totally broken fixed [#1227](https://github.com/ethereum-mining/ethminer/pull/1227).
+
+
 ## 0.15.0rc0
 
 ### Added
