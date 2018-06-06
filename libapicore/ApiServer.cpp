@@ -17,17 +17,37 @@ void ApiServer::start()
 	if (m_portnumber == 0) return;
 
 	m_running.store(true, std::memory_order_relaxed);
-	m_acceptor.bind(tcp::endpoint(tcp::v4(), m_portnumber));
+
+	tcp::endpoint endpoint(tcp::v4(), m_portnumber);
+
+	// Try to bind to port number
+	// if exception occurs it may be due to the fact that
+	// requested port is already in use by another service
+	try
+	{
+		m_acceptor.open(endpoint.protocol());
+		m_acceptor.bind(endpoint);
+		m_acceptor.listen(64);
+	}
+	catch (const std::exception& _e)
+	{
+		cwarn << "Could not start API server on port : " + to_string(m_acceptor.local_endpoint().port());
+		cwarn << "Ensure port is not in use by another service";
+		return;
+	}
 
 	cnote << "Api server listening for connections on port " + to_string(m_acceptor.local_endpoint().port());
-
 	m_workThread = std::thread{ boost::bind(&ApiServer::begin_accept, this) };
 
 }
 
 void ApiServer::stop()
 {
+	// Exit if not started
+	if (!m_running.load(std::memory_order_relaxed)) return;
+
 	m_acceptor.cancel();
+	m_acceptor.close();
 	m_running.store(false, std::memory_order_relaxed);
 
 	// Dispose all sessions (if any)
@@ -59,6 +79,7 @@ void ApiServer::handle_accept(std::shared_ptr<ApiConnection> session, boost::sys
 			}
 
 		});
+		dev::setThreadName("Api");
 		session->start();
 		m_sessions.push_back(session);
 		cnote << "New api session from " << session->socket().remote_endpoint();
