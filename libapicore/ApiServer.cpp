@@ -37,7 +37,7 @@ void ApiServer::start()
 		return;
 	}
 
-	cnote << "Api server listening for connections on port " + to_string(m_acceptor.local_endpoint().port()) << (m_password.empty() ? "." : ". Authentication needed.");
+	cnote << "Api server listening on port " + to_string(m_acceptor.local_endpoint().port()) << (m_password.empty() ? "." : ". Authentication needed.");
 	m_workThread = std::thread{ boost::bind(&ApiServer::begin_accept, this) };
 
 }
