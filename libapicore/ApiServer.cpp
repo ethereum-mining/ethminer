@@ -2,115 +2,125 @@
 
 #include <ethminer-buildinfo.h>
 
-ApiServer::ApiServer(boost::asio::io_service& io_service, int portnum, bool readonly, string password, Farm& f) :
-	m_readonly(readonly),
-	m_password(std::move(password)),
-	m_portnumber(portnum),
-	m_acceptor(io_service),
-	m_io_strand(io_service),
-	m_farm(f)
-{
-}
+ApiServer::ApiServer(
+    boost::asio::io_service& io_service, int portnum, bool readonly, string password, Farm& f)
+  : m_readonly(readonly),
+    m_password(std::move(password)),
+    m_portnumber(portnum),
+    m_acceptor(io_service),
+    m_io_strand(io_service),
+    m_farm(f)
+{}
 
 void ApiServer::start()
 {
-	// cnote << "ApiServer::start";
-	if (m_portnumber == 0) return;
+    // cnote << "ApiServer::start";
+    if (m_portnumber == 0)
+        return;
 
-	m_running.store(true, std::memory_order_relaxed);
-	
-	tcp::endpoint endpoint(tcp::v4(), m_portnumber);
+    m_running.store(true, std::memory_order_relaxed);
 
-	// Try to bind to port number
-	// if exception occurs it may be due to the fact that
-	// requested port is already in use by another service
-	try
-	{
-		m_acceptor.open(endpoint.protocol());
-		m_acceptor.bind(endpoint);
-		m_acceptor.listen(64);
-	}
-	catch (const std::exception& _e)
-	{
-		cwarn << "Could not start API server on port : " + to_string(m_acceptor.local_endpoint().port());
-		cwarn << "Ensure port is not in use by another service";
-		return;
-	}
+    tcp::endpoint endpoint(tcp::v4(), m_portnumber);
 
-	cnote << "Api server listening on port " + to_string(m_acceptor.local_endpoint().port()) << (m_password.empty() ? "." : ". Authentication needed.");
-	m_workThread = std::thread{ boost::bind(&ApiServer::begin_accept, this) };
+    // Try to bind to port number
+    // if exception occurs it may be due to the fact that
+    // requested port is already in use by another service
+    try
+    {
+        m_acceptor.open(endpoint.protocol());
+        m_acceptor.bind(endpoint);
+        m_acceptor.listen(64);
+    }
+    catch (const std::exception& _e)
+    {
+        cwarn << "Could not start API server on port : " +
+                     to_string(m_acceptor.local_endpoint().port());
+        cwarn << "Ensure port is not in use by another service";
+        return;
+    }
 
+    cnote << "Api server listening on port " + to_string(m_acceptor.local_endpoint().port())
+          << (m_password.empty() ? "." : ". Authentication needed.");
+    m_workThread = std::thread{boost::bind(&ApiServer::begin_accept, this)};
 }
 
 void ApiServer::stop()
 {
-	// Exit if not started
-	if (!m_running.load(std::memory_order_relaxed)) return;
+    // Exit if not started
+    if (!m_running.load(std::memory_order_relaxed))
+        return;
 
-	m_acceptor.cancel();
-	m_acceptor.close();
-	m_running.store(false, std::memory_order_relaxed);
+    m_acceptor.cancel();
+    m_acceptor.close();
+    m_running.store(false, std::memory_order_relaxed);
 
-	// Dispose all sessions (if any)
-	m_sessions.clear();
-
+    // Dispose all sessions (if any)
+    m_sessions.clear();
 }
 
 void ApiServer::begin_accept()
 {
-	if (!isRunning()) return;
+    if (!isRunning())
+        return;
 
-	dev::setThreadName("Api");
-	std::shared_ptr<ApiConnection> session = std::make_shared<ApiConnection>(m_acceptor.get_io_service(), ++lastSessionId, m_readonly, m_password, m_farm);
-	m_acceptor.async_accept(session->socket(), m_io_strand.wrap(boost::bind(&ApiServer::handle_accept, this, session, boost::asio::placeholders::error)));
+    dev::setThreadName("Api");
+    std::shared_ptr<ApiConnection> session = std::make_shared<ApiConnection>(
+        m_acceptor.get_io_service(), ++lastSessionId, m_readonly, m_password, m_farm);
+    m_acceptor.async_accept(
+        session->socket(), m_io_strand.wrap(boost::bind(&ApiServer::handle_accept, this, session,
+                               boost::asio::placeholders::error)));
 }
 
 void ApiServer::handle_accept(std::shared_ptr<ApiConnection> session, boost::system::error_code ec)
 {
-	// Start new connection
-	// cnote << "ApiServer::handle_accept";
-	if (!ec) {
-		session->onDisconnected([&](int id)
-		{
-			// Destroy pointer to session
-			auto it = find_if(m_sessions.begin(), m_sessions.end(), [&id](const std::shared_ptr<ApiConnection> session) {return session->getId() == id; });
-			if (it != m_sessions.end()) {
-				auto index = std::distance(m_sessions.begin(), it);
-				m_sessions.erase(m_sessions.begin() + index);
-			}
+    // Start new connection
+    // cnote << "ApiServer::handle_accept";
+    if (!ec)
+    {
+        session->onDisconnected([&](int id) {
+            // Destroy pointer to session
+            auto it = find_if(m_sessions.begin(), m_sessions.end(),
+                [&id](const std::shared_ptr<ApiConnection> session) {
+                    return session->getId() == id;
+                });
+            if (it != m_sessions.end())
+            {
+                auto index = std::distance(m_sessions.begin(), it);
+                m_sessions.erase(m_sessions.begin() + index);
+            }
+        });
+        dev::setThreadName("Api");
+        session->start();
+        m_sessions.push_back(session);
+        cnote << "New api session from " << session->socket().remote_endpoint();
+    }
+    else
+    {
+        session.reset();
+    }
 
-		});
-		dev::setThreadName("Api");
-		session->start();
-		m_sessions.push_back(session);
-		cnote << "New api session from " << session->socket().remote_endpoint();
-
-	}
-	else {
-		session.reset();
-	}
-
-	// Resubmit new accept
-	begin_accept();
-
+    // Resubmit new accept
+    begin_accept();
 }
 
 void ApiConnection::disconnect()
 {
-	// cnote << "ApiConnection::disconnect";
+    // cnote << "ApiConnection::disconnect";
 
-	// Cancel pending operations
-	m_socket.cancel();
+    // Cancel pending operations
+    m_socket.cancel();
 
-	if (m_socket.is_open()) {
+    if (m_socket.is_open())
+    {
+        boost::system::error_code ec;
+        m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        m_socket.close(ec);
+    }
 
-		boost::system::error_code ec;
-		m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-		m_socket.close(ec);
-	}
-
-	if (m_onDisconnected) { m_onDisconnected(this->getId()); }
-
+    if (m_onDisconnected)
+    {
+        m_onDisconnected(this->getId());
+    }
 }
 
 void ApiConnection::start()
@@ -243,75 +253,73 @@ void ApiConnection::processRequest(Json::Value& requestObject)
 
 void ApiConnection::recvSocketData()
 {
-	// cnote << "ApiConnection::recvSocketData";
-	boost::asio::async_read_until(m_socket, m_recvBuffer, "\n",
-		m_io_strand.wrap(boost::bind(&ApiConnection::onRecvSocketDataCompleted, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
-
+    // cnote << "ApiConnection::recvSocketData";
+    boost::asio::async_read_until(m_socket, m_recvBuffer, "\n",
+        m_io_strand.wrap(boost::bind(&ApiConnection::onRecvSocketDataCompleted, this,
+            boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
 }
 
 void ApiConnection::onRecvSocketDataCompleted(const boost::system::error_code& ec, std::size_t bytes_transferred)
 {
-	// cnote << "ApiConnection::onRecvSocketDataCompleted";
-	// Due to the nature of io_service's queue and
-	// the implementation of the loop this event may trigger
-	// late after clean disconnection. Check status of connection
-	// before triggering all stack of calls
+    // cnote << "ApiConnection::onRecvSocketDataCompleted";
+    // Due to the nature of io_service's queue and
+    // the implementation of the loop this event may trigger
+    // late after clean disconnection. Check status of connection
+    // before triggering all stack of calls
 
-	if (!ec && bytes_transferred > 0) {
+    if (!ec && bytes_transferred > 0)
+    {
+        // Extract received message
+        std::istream is(&m_recvBuffer);
+        std::string message;
+        getline(is, message);
 
-		// Extract received message
-		std::istream is(&m_recvBuffer);
-		std::string message;
-		getline(is, message);
+        if (m_socket.is_open())
+        {
+            if (!message.empty())
+            {
+                // Test validity of chunk and process
+                Json::Value jMsg;
+                Json::Reader jRdr;
+                if (jRdr.parse(message, jMsg))
+                {
+                    processRequest(jMsg);
+                }
+                else
+                {
+                    Json::Value jRes;
+                    jRes["jsonrpc"] = "2.0";
+                    jRes["id"] = Json::nullValue;
+                    jRes["error"]["code"] = -32700;
+                    jRes["error"]["message"] = "Parse Error";
+                    sendSocketData(jRes);
+                }
+            }
 
-		if (m_socket.is_open()) {
-
-			if (!message.empty()) {
-
-				// Test validity of chunk and process
-				Json::Value jMsg;
-				Json::Reader jRdr;
-				if (jRdr.parse(message, jMsg)) {
-					processRequest(jMsg);
-				}
-				else {
-					Json::Value jRes;
-					jRes["jsonrpc"] = "2.0";
-					jRes["id"] = Json::nullValue;
-					jRes["error"]["code"] = -32700;
-					jRes["error"]["message"] = "Parse Error";
-					sendSocketData(jRes);
-				}
-
-			}
-
-			// Eventually keep reading from socket
-			recvSocketData();
-
-		}
-
-
-	}
-	else
-	{
-		if (m_socket.is_open()) {
-			disconnect();
-		}
-	}
-
+            // Eventually keep reading from socket
+            recvSocketData();
+        }
+    }
+    else
+    {
+        if (m_socket.is_open())
+        {
+            disconnect();
+        }
+    }
 }
 
 void ApiConnection::sendSocketData(Json::Value const & jReq) {
 
-	if (!m_socket.is_open())
-		return;
+    if (!m_socket.is_open())
+        return;
 
-	std::ostream os(&m_sendBuffer);
-	os << m_jWriter.write(jReq);		// Do not add lf. It's added by writer.
+    std::ostream os(&m_sendBuffer);
+    os << m_jWriter.write(jReq);  // Do not add lf. It's added by writer.
 
-	async_write(m_socket, m_sendBuffer,
-		m_io_strand.wrap(boost::bind(&ApiConnection::onSendSocketDataCompleted, this, boost::asio::placeholders::error)));
-
+    async_write(m_socket, m_sendBuffer,
+        m_io_strand.wrap(boost::bind(
+            &ApiConnection::onSendSocketDataCompleted, this, boost::asio::placeholders::error)));
 }
 
 void ApiConnection::onSendSocketDataCompleted(const boost::system::error_code& ec) {
