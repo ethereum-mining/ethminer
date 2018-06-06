@@ -181,7 +181,8 @@ void ApiConnection::processRequest(Json::Value& requestObject)
                     }
                     else
                     {
-                        jRes["error"]["code"] = -32001;
+						// Use error code like http 401 Unauthorized
+                        jRes["error"]["code"] = -401;
                         jRes["error"]["message"] = "Invalid password";
                     }
                 }
@@ -189,7 +190,8 @@ void ApiConnection::processRequest(Json::Value& requestObject)
         }
         else
         {
-            jRes["error"]["code"] = -32601;
+			// Use error code like http 403 Forbidden
+            jRes["error"]["code"] = -403;
             jRes["error"]["message"] = "Authorization needed";
         }
     }
