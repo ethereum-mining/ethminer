@@ -246,9 +246,8 @@ public:
 			->check(CLI::Range(1));
 
 		app.add_option("--cl-global-work", m_globalWorkSizeMultiplier,
-			"Set the global work size multipler", true)
-			->group(OpenCLGroup)
-			->check(CLI::Range(1, 999999999));
+			"Set the global work size multipler. Specify negative value for automatic scaling based on # of compute units", true)
+			->group(OpenCLGroup);
 
 		app.add_option("--cl-local-work", m_localWorkSize,
 			"Set the local work size", true)
@@ -764,7 +763,7 @@ private:
 	unsigned m_openclDeviceCount = 0;
 	vector<unsigned> m_openclDevices;
 	unsigned m_openclThreadsPerHash = 8;
-	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
+	int m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
 #endif
 #if ETH_ETHASHCUDA
