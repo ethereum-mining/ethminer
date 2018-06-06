@@ -17,12 +17,18 @@ class ApiConnection
 {
 public:
 
-	ApiConnection(boost::asio::io_service& io_service, int id, bool readonly, Farm& f) :
+	ApiConnection(boost::asio::io_service& io_service, int id, bool readonly, string password, Farm& f) :
 		m_sessionId(id),
 		m_socket(io_service),
 		m_io_strand(io_service),
 		m_readonly(readonly),
-		m_farm(f) {}
+		m_password(std::move(password)),
+		m_farm(f) 
+	{
+
+		if (!m_password.empty()) m_is_authenticated = false;
+		
+	}
 
 	~ApiConnection() {}
 
@@ -58,7 +64,10 @@ private:
 	Json::FastWriter m_jWriter;
 
 	bool m_readonly =  false ;
+	std::string m_password = "";
 	Farm& m_farm;
+
+	bool m_is_authenticated = true;
 
 };
 
@@ -67,7 +76,7 @@ class ApiServer
 {
 public:
 
-	ApiServer(boost::asio::io_service& io_service, int portnum, bool readonly, Farm& f);
+	ApiServer(boost::asio::io_service& io_service, int portnum, bool readonly, string password, Farm& f);
 	bool isRunning() { return m_running.load(std::memory_order_relaxed); };
 	void start();
 	void stop();
@@ -81,6 +90,7 @@ private:
 
 	std::thread m_workThread;
 	std::atomic<bool> m_readonly = { false };
+	std::string m_password = "";
 	std::atomic<bool> m_running = { false };
 	int m_portnumber;
 	tcp::acceptor m_acceptor;

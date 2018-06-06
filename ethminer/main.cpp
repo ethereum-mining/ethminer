@@ -211,6 +211,11 @@ public:
 			->group(APIGroup)
 			->check(CLI::Range(-65535, 65535));
 
+		app.add_option("--api-password", m_api_password,
+			"Set the password to protect interaction with Api server. If not set any connection is granted access."
+		    "Be advised passwords are sent unencrypted over plain tcp !!")
+			->group(APIGroup);
+
 		app.add_option("--http-port", m_http_port,
 			"Set the web api port, the miner should listen to. Use 0 to disable. Data shown depends on hwmon setting", true)
 			->group(APIGroup)
@@ -710,7 +715,7 @@ private:
 
 #if API_CORE
 
-		ApiServer api(m_io_service, abs(m_api_port), (m_api_port < 0) ? true : false, f);
+		ApiServer api(m_io_service, abs(m_api_port), (m_api_port < 0) ? true : false, m_api_password, f);
 		api.start();
 
         http_server.run(m_http_port, &f, m_show_hwmonitors, m_show_power);
@@ -817,6 +822,7 @@ private:
 
 #if API_CORE
 	int m_api_port = 0;
+	string m_api_password;
 	unsigned m_http_port = 0;
 #endif
 
