@@ -822,7 +822,7 @@ private:
 
 #if API_CORE
 	int m_api_port = 0;
-	string m_api_password = "";
+	string m_api_password;
 	unsigned m_http_port = 0;
 #endif
 
