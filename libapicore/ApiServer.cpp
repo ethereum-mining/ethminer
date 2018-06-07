@@ -184,6 +184,7 @@ void ApiConnection::processRequest(Json::Value& requestObject)
 						// Use error code like http 401 Unauthorized
                         jRes["error"]["code"] = -401;
                         jRes["error"]["message"] = "Invalid password";
+                        cerr << "Invalid API password provided.";
                     }
                 }
             }
