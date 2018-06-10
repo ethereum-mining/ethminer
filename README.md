@@ -16,7 +16,7 @@ The main elements of the algorithm are:
 * Adds reads from a small, low-latency cache that supports random addresses.
 * Increases the DRAM read from 128 bytes to 256 bytes.
 
-While a custom ASIC to implement this algorithm is still possible, the efficiency gains available are minimal.  The majority of of a commodity GPU is required to support the above elements. The only optimizations available are:
+While a custom ASIC to implement this algorithm is still possible, the efficiency gains available are minimal.  The majority of a commodity GPU is required to support the above elements. The only optimizations available are:
 *Remove the graphics pipeline (displays, geometry engines, texturing, etc)
 *Remove floating point math
 
@@ -25,15 +25,15 @@ These would result in minimal, roughly 1.1-1.2x, efficiency gains.  This is much
 ## Rationale for PoW on Commodity Hardware
 With the growth of large mining pools, the control of hashing power has been delegated to the top few pools to provide a steadier economic return for small miners. While some have made the argument that large centralized pools defeats the purpose of “ASIC resistance,” it’s important to note that ASIC based coins are even more centralized for several reasons.
 
-1. No natural distribution: There isn’t a economic purpose for ultra-specialized hardware outside of mining and thus no reason for most people to have it. 
-2. No reserve group: Thus, there’s no reserve pool of hardware or reserve pool of interested parties to jump in when coin price volatile and attractive for manipulation. 
-3. High barrier to entry: Initial miners are those rich enough to invest capital and ecological resources on an unknown experiment a new coins necessarily are. Thus, initial coin distribution through mining will be very limited causing centralized economic bias. 
+1. No natural distribution: There isn’t an economic purpose for ultra-specialized hardware outside of mining and thus no reason for most people to have it. 
+2. No reserve group: Thus, there’s no reserve pool of hardware or reserve pool of interested parties to jump in when coin price is volatile and attractive for manipulation. 
+3. High barrier to entry: Initial miners are those rich enough to invest capital and ecological resources on the unknown experiment a new coin may be. Thus, initial coin distribution through mining will be very limited causing centralized economic bias. 
 4. Delegated centralization vs implementation centralization: While pool centralization is delegated, hardware monoculture is not: only the limiter buyers of this hardware can participate so there isn’t even the possibility of divesting control on short notice.
-5. No obvious decentralization of control even with decentralized mining: Once large custom ASIC makers get into the game, designing back-doored hardware is trivial. ASIC makers have no incentive to be transparent or fair in market participation
+5. No obvious decentralization of control even with decentralized mining: Once large custom ASIC makers get into the game, designing back-doored hardware is trivial. ASIC makers have no incentive to be transparent or fair in market participation.
 
 While the goal of “ASIC resistance” is valuable, the entire concept of “ASIC resistance” is a bit of a fallacy.  CPUs and GPUs are themselves ASICs.  Any algorithm that can run on a commodity ASIC (a CPU or GPU) by definition can have a customized ASIC created for it with slightly less functionality. Some algorithms are intentionally made to be  “ASIC friendly” - where an ASIC implementation is drastically more efficient than the same algorithm running on general purpose hardware. The protection that this offers when the coin is unknown also makes it an attractive target for a dedicate mining ASIC company as soon as it becomes useful.
 
-Therefore, ASIC resistance is the efficiency difference versus hardware that has wider adoption and applicability.  A smaller efficiency difference between custom vs general hardware mean higher resistance and a better algorithm. This efficiency difference is the proper metric to use when comparing the quality of PoW algorithms.  Efficiency could mean absolute performance, performance per watt, or performance per dollar - they are all highly correlated.  If a single entity creates and controls an ASIC that is drastically more efficient, they can gain 51% of the network hashrate and possibly stage an attack.
+Therefore, ASIC resistance is: the efficiency difference of specilized hardware versus hardware that has a wider adoption and applicability.  A smaller efficiency difference between custom vs general hardware mean higher resistance and a better algorithm. This efficiency difference is the proper metric to use when comparing the quality of PoW algorithms.  Efficiency could mean absolute performance, performance per watt, or performance per dollar - they are all highly correlated.  If a single entity creates and controls an ASIC that is drastically more efficient, they can gain 51% of the network hashrate and possibly stage an attack.
 
 ## Review of Existing PoW Algorithms
 
@@ -51,7 +51,7 @@ The hashing core can execute the required sequence of ops in much less time, and
 # Scrypt and NeoScrypt
 * Potential ASIC efficiency gain ~ 1000X
 
-Scrypt and NeoScrypt are similar to SHA in their arithmetic and bitwise operations used. Unfortunately, popular coins such as Litecoin only use a scratchpad size between 32kb and 128kb for their PoW mining algorithm. This scratch pad is small enough to trivially fit on an ASIC next to the math core. The implementation of the math core would be very similar to SHA, with similar efficiency gains.
+Scrypt and NeoScrypt are similar to SHA in the arithmetic and bitwise operations used. Unfortunately, popular coins such as Litecoin only use a scratchpad size between 32kb and 128kb for their PoW mining algorithm. This scratch pad is small enough to trivially fit on an ASIC next to the math core. The implementation of the math core would be very similar to SHA, with similar efficiency gains.
 
 # X11 and X16R
 * Potential ASIC efficiency gain ~ 1000X
@@ -60,7 +60,7 @@ X11 (and similar X##) require an ASIC that has 11 unique hashing cores pipelined
 
 X16R requires the multiple hashing cores to interact through a simple sequencing state machine. Each individual core will have similar efficiency gains and the sequencing logic will take minimal power, area, or time.
 
-The Baikal BK-X is an existing ASIC with multiple hashing cores and a programmable sequencer.  It has been upgraded to enable new algorithms that sequence the hashes in different orders
+The Baikal BK-X is an existing ASIC with multiple hashing cores and a programmable sequencer.  It has been upgraded to enable new algorithms that sequence the hashes in different orders.
 
 # Equihash
 * Potential ASIC efficiency gain ~ 100X
@@ -220,7 +220,7 @@ kiss99_t progPowInit(uint64_t prog_seed, int mix_seq[PROGPOW_REGS])
 }
 ```
 
-The math operations that merge values into the mix data are ones chosen to maintain entropy.
+The math operations that merges values into the mix data are ones chosen to maintain entropy.
 
 ```cpp
 // Merge new data from b into the value in a
