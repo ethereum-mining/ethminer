@@ -25,7 +25,7 @@ These would result in minimal, roughly 1.1-1.2x, efficiency gains.  This is much
 ## Rationale for PoW on Commodity Hardware
 With the growth of large mining pools, the control of hashing power has been delegated to the top few pools to provide a steadier economic return for small miners. While some have made the argument that large centralized pools defeats the purpose of “ASIC resistance,” it’s important to note that ASIC based coins are even more centralized for several reasons.
 
-1. No natural distribution: There isn’t a economic purpose for ultra-specialized hardware outside fof mining and thus no reason for most people to have it. 
+1. No natural distribution: There isn’t a economic purpose for ultra-specialized hardware outside of mining and thus no reason for most people to have it. 
 2. No reserve group: Thus, there’s no reserve pool of hardware or reserve pool of interested parties to jump in when coin price volatile and attractive for manipulation. 
 3. High barrier to entry: Initial miners are those rich enough to invest capital and ecological resources on an unknown experiment a new coins necessarily are. Thus, initial coin distribution through mining will be very limited causing centralized economic bias. 
 4. Delegated centralization vs implementation centralization: While pool centralization is delegated, hardware monoculture is not: only the limiter buyers of this hardware can participate so there isn’t even the possibility of divesting control on short notice.
