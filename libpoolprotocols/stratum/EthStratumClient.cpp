@@ -82,10 +82,10 @@ void EthStratumClient::connect()
 	m_authorized.store(false, std::memory_order_relaxed);
 
 	// Prepare Socket
-	if (m_conn.SecLevel() != SecureLevel::NONE) {
+	if (m_conn->SecLevel() != SecureLevel::NONE) {
 
 		boost::asio::ssl::context::method method = boost::asio::ssl::context::tls_client;
-		if (m_conn.SecLevel() == SecureLevel::TLS12)
+		if (m_conn->SecLevel() == SecureLevel::TLS12)
 			method = boost::asio::ssl::context::tlsv12;
 
 		boost::asio::ssl::context ctx(method);
@@ -154,8 +154,9 @@ void EthStratumClient::connect()
 	// calling the resolver each time is useful as most
 	// load balancer will give Ips in different order
 	m_endpoints = std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>>();
+	m_endpoint = boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>();
 	m_resolver = tcp::resolver(m_io_service);
-	tcp::resolver::query q(m_conn.Host(), toString(m_conn.Port()));
+	tcp::resolver::query q(m_conn->Host(), toString(m_conn->Port()));
 	m_resolver.async_resolve(q,
 		m_io_strand.wrap(boost::bind(&EthStratumClient::resolve_handler, this, boost::asio::placeholders::error, boost::asio::placeholders::iterator)));
 	
@@ -188,7 +189,7 @@ void EthStratumClient::disconnect()
 		
 			boost::system::error_code sec;
 
-			if (m_conn.SecLevel() != SecureLevel::NONE) {
+			if (m_conn->SecLevel() != SecureLevel::NONE) {
 
 				// This will initiate the exchange of "close_notify" message among parties.
 				// If both client and server are connected then we expect the handler with success
@@ -224,7 +225,7 @@ void EthStratumClient::disconnect()
 
 void EthStratumClient::disconnect_finalize() {
 
-	if (m_conn.SecLevel() != SecureLevel::NONE) {
+	if (m_conn->SecLevel() != SecureLevel::NONE) {
 
 		if (m_securesocket->lowest_layer().is_open()) {
 			m_securesocket->lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both);
@@ -275,7 +276,7 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	else
 	{
 		dev::setThreadName("stratum");
-		cwarn << "Could not resolve host " << m_conn.Host() << ", " << ec.message();
+		cwarn << "Could not resolve host " << m_conn->Host() << ", " << ec.message();
 
 		// Release locking flag and set connection status
 		m_connected.store(false, std::memory_order_relaxed);
@@ -311,7 +312,7 @@ void EthStratumClient::start_connect()
 		m_conntimer.async_wait(m_io_strand.wrap(boost::bind(&EthStratumClient::check_connect_timeout, this, boost::asio::placeholders::error)));
 		
 		// Start connecting async
-		if (m_conn.SecLevel() != SecureLevel::NONE) {
+		if (m_conn->SecLevel() != SecureLevel::NONE) {
 			m_securesocket->lowest_layer().async_connect(m_endpoint, m_io_strand.wrap(boost::bind(&EthStratumClient::connect_handler, this, _1)));
 		}
 		else {
@@ -326,7 +327,7 @@ void EthStratumClient::start_connect()
 
 		dev::setThreadName("stratum");
 		m_connecting.store(false, std::memory_order_relaxed);
-		cwarn << "No more ip addresses to try for host:" << m_conn.Host();
+		cwarn << "No more ip addresses to try for host:" << m_conn->Host();
 
 		// Trigger handlers
 		if (m_onDisconnected) { m_onDisconnected(); }
@@ -359,7 +360,7 @@ void EthStratumClient::check_connect_timeout(const boost::system::error_code& ec
 			}
 
 			// This is set for SSL disconnection
-			if (m_disconnecting.load(std::memory_order_relaxed) && (m_conn.SecLevel() != SecureLevel::NONE)) {
+			if (m_disconnecting.load(std::memory_order_relaxed) && (m_conn->SecLevel() != SecureLevel::NONE)) {
 				if (m_securesocket->lowest_layer().is_open()) {
 					m_securesocket->lowest_layer().close();
 				}
@@ -409,7 +410,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 		m_connecting.store(false, std::memory_order_relaxed);
 		m_conntimer.cancel();
 
-		if (m_conn.SecLevel() != SecureLevel::NONE) {
+		if (m_conn->SecLevel() != SecureLevel::NONE) {
 
 			boost::system::error_code hec;
 			m_securesocket->lowest_layer().set_option(boost::asio::socket_base::keep_alive(true));
@@ -464,19 +465,19 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 		jReq["params"] = Json::Value(Json::arrayValue);
 
 		m_worker.clear();
-		p = m_conn.User().find_first_of(".");
+		p = m_conn->User().find_first_of(".");
 		if (p != string::npos) {
-			user = m_conn.User().substr(0, p);
+			user = m_conn->User().substr(0, p);
 
 			// There should be at least one char after dot
 			// returned p is zero based
-			if (p < (m_conn.User().length() -1))
-				m_worker = m_conn.User().substr(++p);
+			if (p < (m_conn->User().length() -1))
+				m_worker = m_conn->User().substr(++p);
 		}
 		else
-			user = m_conn.User();
+			user = m_conn->User();
 
-		switch (m_conn.Version()) {
+		switch (m_conn->Version()) {
 
 			case EthStratumClient::STRATUM:
 
@@ -488,7 +489,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 
 				jReq["method"] = "eth_submitLogin";
 				if (m_worker.length()) jReq["worker"] = m_worker;
-				jReq["params"].append(user + m_conn.Path());
+				jReq["params"].append(user + m_conn->Path());
 				if (!m_email.empty()) jReq["params"].append(m_email);
 
 				break;
@@ -582,7 +583,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 	_isNotification = (_id == unsigned(0) || _method != "");
 
 	// Notifications of new jobs are like responses to get_work requests
-	if (_isNotification && _method == "" && m_conn.Version() == EthStratumClient::ETHPROXY && responseObject["result"].isArray()) {
+	if (_isNotification && _method == "" && m_conn->Version() == EthStratumClient::ETHPROXY && responseObject["result"].isArray()) {
 		_method = "mining.notify";
 	}
 
@@ -619,7 +620,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			// Response to "mining.subscribe" (https://en.bitcoin.it/wiki/Stratum_mining_protocol#mining.subscribe)
 			// Result should be an array with multiple dimensions, we only care about the data if EthStratumClient::ETHEREUMSTRATUM
 	
-			switch (m_conn.Version()) {
+			switch (m_conn->Version()) {
 
 			case EthStratumClient::STRATUM:
 
@@ -638,8 +639,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					jReq["jsonrpc"] = "2.0";
 					jReq["method"] = "mining.authorize";
 					jReq["params"] = Json::Value(Json::arrayValue);
-					jReq["params"].append(m_conn.User() + m_conn.Path());
-					jReq["params"].append(m_conn.Pass());
+					jReq["params"].append(m_conn->User() + m_conn->Path());
+					jReq["params"].append(m_conn->Pass());
 				}
 
 				break;
@@ -696,8 +697,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 					// Eventually request authorization
 					jReq["id"] = unsigned(3);
 					jReq["method"] = "mining.authorize";
-					jReq["params"].append(m_conn.User() + m_conn.Path());
-					jReq["params"].append(m_conn.Pass());
+					jReq["params"].append(m_conn->User() + m_conn->Path());
+					jReq["params"].append(m_conn->Pass());
 
 				}
 
@@ -735,13 +736,13 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 			if (!m_authorized)
 			{
-				cnote << "Worker not authorized" << m_conn.User() << _errReason;
+				cnote << "Worker not authorized" << m_conn->User() << _errReason;
 				disconnect();
 				return;
 			
 			}
 			else {
-				cnote << "Authorized worker " + m_conn.User();
+				cnote << "Authorized worker " + m_conn->User();
 			}
 			
 			break;
@@ -779,7 +780,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			// This is the response we get on first get_work request issued 
 			// in mode EthStratumClient::ETHPROXY
 			// thus we change it to a mining.notify notification
-			if (m_conn.Version() == EthStratumClient::ETHPROXY && responseObject["result"].isArray()) {
+			if (m_conn->Version() == EthStratumClient::ETHPROXY && responseObject["result"].isArray()) {
 				_method = "mining.notify";
 				_isNotification = true;
 			}
@@ -844,7 +845,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 		unsigned prmIdx;
 
-		if (m_conn.Version() == EthStratumClient::ETHPROXY) {
+		if (m_conn->Version() == EthStratumClient::ETHPROXY) {
 
 			jPrm = responseObject.get("result", Json::Value::null);
 			prmIdx = 0;
@@ -868,7 +869,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				if (m_response_pending)
 					m_stale = true;
 
-				if (m_conn.Version() == EthStratumClient::ETHEREUMSTRATUM)
+				if (m_conn->Version() == EthStratumClient::ETHEREUMSTRATUM)
 				{
 					string sSeedHash = jPrm.get(1, "").asString();
 					string sHeaderHash = jPrm.get(2, "").asString();
@@ -883,7 +884,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 						m_current.startNonce = bswap(*((uint64_t*)m_extraNonce.data()));
 						m_current.exSizeBits = m_extraNonceHexSize * 4;
 						m_current.job_len = job.size();
-						if (m_conn.Version() == EthStratumClient::ETHEREUMSTRATUM)
+						if (m_conn->Version() == EthStratumClient::ETHEREUMSTRATUM)
 							job.resize(64, '0');
 						m_current.job = h256(job);
 
@@ -926,7 +927,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				}
 			}
 		}
-		else if (_method == "mining.set_difficulty" && m_conn.Version() == EthStratumClient::ETHEREUMSTRATUM)
+		else if (_method == "mining.set_difficulty" && m_conn->Version() == EthStratumClient::ETHEREUMSTRATUM)
 		{
 			jPrm = responseObject.get("params", Json::Value::null);
 			if (jPrm.isArray())
@@ -940,7 +941,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				}
 			}
 		}
-		else if (_method == "mining.set_extranonce" && m_conn.Version() == EthStratumClient::ETHEREUMSTRATUM)
+		else if (_method == "mining.set_extranonce" && m_conn->Version() == EthStratumClient::ETHEREUMSTRATUM)
 		{
 			jPrm = responseObject.get("params", Json::Value::null);
 			if (jPrm.isArray())
@@ -1050,12 +1051,12 @@ void EthStratumClient::submitSolution(Solution solution) {
 	jReq["method"] = "mining.submit";
 	jReq["params"] = Json::Value(Json::arrayValue);
 
-	switch (m_conn.Version()) {
+	switch (m_conn->Version()) {
 
 		case EthStratumClient::STRATUM:
 			
 			jReq["jsonrpc"] = "2.0";
-			jReq["params"].append(m_conn.User());
+			jReq["params"].append(m_conn->User());
 			jReq["params"].append(solution.work.job.hex());
 			jReq["params"].append("0x" + nonceHex);
 			jReq["params"].append("0x" + solution.work.header.hex());
@@ -1076,7 +1077,7 @@ void EthStratumClient::submitSolution(Solution solution) {
 
 		case EthStratumClient::ETHEREUMSTRATUM:
 
-			jReq["params"].append(m_conn.User());
+			jReq["params"].append(m_conn->User());
 			jReq["params"].append(solution.work.job.hex().substr(0, solution.work.job_len));
 			jReq["params"].append(nonceHex.substr(m_extraNonceHexSize, 16 - m_extraNonceHexSize));
 
@@ -1093,7 +1094,7 @@ void EthStratumClient::submitSolution(Solution solution) {
 
 void EthStratumClient::recvSocketData() {
 	
-	if (m_conn.SecLevel() != SecureLevel::NONE) {
+	if (m_conn->SecLevel() != SecureLevel::NONE) {
 
 		async_read_until(*m_securesocket, m_recvBuffer, "\n",
 			m_io_strand.wrap(boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
@@ -1154,11 +1155,11 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
 				(ERR_GET_REASON(ec.value()) == SSL_RECEIVED_SHUTDOWN)
 				)
 			{
-				cnote << "SSL Stream remotely closed by" << m_conn.Host();
+				cnote << "SSL Stream remotely closed by" << m_conn->Host();
 			} 
 			else if (ec == boost::asio::error::eof)
 			{
-				cnote << "Connection remotely closed by" << m_conn.Host();
+				cnote << "Connection remotely closed by" << m_conn->Host();
 			}
 			else {
 				cwarn << "Socket read failed:" << ec.message();
@@ -1183,7 +1184,7 @@ void EthStratumClient::sendSocketData(Json::Value const & jReq) {
 	std::ostream os(&m_sendBuffer);
 	os << m_jWriter.write(jReq);		// Do not add lf. It's added by writer.
 	
-	if (m_conn.SecLevel() != SecureLevel::NONE) {
+	if (m_conn->SecLevel() != SecureLevel::NONE) {
 
 		async_write(*m_securesocket, m_sendBuffer,
 			m_io_strand.wrap(boost::bind(&EthStratumClient::onSendSocketDataCompleted, this, boost::asio::placeholders::error)));
