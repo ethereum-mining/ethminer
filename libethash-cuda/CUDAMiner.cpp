@@ -126,15 +126,11 @@ void CUDAMiner::workLoop()
     }
     catch (cuda_runtime_error const& _e)
     {
-        cwarn << "Fatal GPU error: " << _e.what();
-        cwarn << "Terminating.";
-        exit(-1);
-    }
-    catch (std::runtime_error const& _e)
-    {
-        cwarn << "Error CUDA mining: " << _e.what();
-        if(s_exit)
-            exit(1);
+        cwarn << "GPU error: " << _e.what();
+		if (s_exit) {
+			cwarn << "Terminating.";
+			exit(1);
+		}
     }
 }
 
