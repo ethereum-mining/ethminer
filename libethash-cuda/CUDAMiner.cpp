@@ -118,7 +118,7 @@ void CUDAMiner::workLoop()
                 // this can support up to 2^c_log2Max_miners devices
                 startN = current.startNonce | ((uint64_t)index << (64 - LOG2_MAX_MINERS - current.exSizeBits));
             }
-            search(current.header.data(), upper64OfBoundary, (current.exSizeBits >= 0), startN, w);
+            search(current.header.data(), upper64OfBoundary, startN, w);
         }
 
         // Reset miner and stop working
@@ -430,7 +430,6 @@ cpyDag:
 void CUDAMiner::search(
     uint8_t const* header,
     uint64_t target,
-    bool _ethStratum,
     uint64_t _startN,
     const dev::eth::WorkPackage& w)
 {
@@ -441,7 +440,7 @@ void CUDAMiner::search(
     }
 
     // choose the starting nonce
-    uint64_t current_nonce = _ethStratum ? _startN : get_start_nonce();
+    uint64_t current_nonce = _startN;
 
     // clear all the stream search result buffers
     for (unsigned int i = 0; i < s_numStreams; i++)
