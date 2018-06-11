@@ -283,7 +283,7 @@ public:
 
 		string sched = "sync";
 		app.add_set("--cuda-schedule", sched, {"auto", "spin", "yield", "sync"},
-			"Set the scheduler mode", true)
+			"Set the scheduler mode. Default \"sync\"", true)
 			->group(CUDAGroup);
 
 		app.add_option("--cuda-streams", m_numStreams,
@@ -297,7 +297,7 @@ public:
 			->group(CommonGroup);
 
 		app.add_option("-L,--dag-load-mode", m_dagLoadMode,
-			"Set the DAG load mode. 0=parallel, 1=sequential, 2=single", true)
+			"Set the DAG load mode. 0=parallel, 1=sequential, 2=single. Default 0", true)
 			->group(CommonGroup)
 			->check(CLI::Range(2));
 
