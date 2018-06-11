@@ -283,7 +283,13 @@ public:
 
 		string sched = "sync";
 		app.add_set("--cuda-schedule", sched, {"auto", "spin", "yield", "sync"},
-			"Set the scheduler mode", true)
+			"Set the scheduler mode."
+			"  auto  - Uses a heuristic based on the number of active CUDA contexts in the process C "
+			"          and the number of logical processors in the system P. If C > P then yield else spin."
+			"  spin  - Instruct CUDA to actively spin when waiting for results from the device."
+			"  yield - Instruct CUDA to yield its thread when waiting for results from the device."
+			"  sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device."
+			"  ", true)
 			->group(CUDAGroup);
 
 		app.add_option("--cuda-streams", m_numStreams,
@@ -297,7 +303,11 @@ public:
 			->group(CommonGroup);
 
 		app.add_option("-L,--dag-load-mode", m_dagLoadMode,
-			"Set the DAG load mode. 0=parallel, 1=sequential, 2=sequential", true)
+			"Set the DAG load mode. 0=parallel, 1=sequential, 2=single."
+			"  parallel    - load DAG on all GPUs at the same time"
+			"  sequential  - load DAG on GPUs one after another. Use this when the miner crashes during DAG generation"
+			"  single      - generate DAG on device, then copy to other devices. Implies --dag-single-dev"
+			"  ", true)
 			->group(CommonGroup)
 			->check(CLI::Range(2));
 

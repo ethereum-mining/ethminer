@@ -116,9 +116,14 @@ void CUDAMiner::workLoop()
             if (current.exSizeBits >= 0)
             {
                 // this can support up to 2^c_log2Max_miners devices
-                startN = current.startNonce | ((uint64_t)index << (64 - LOG2_MAX_MINERS - current.exSizeBits));
+                startN = current.startNonce |
+                         ((uint64_t)index << (64 - LOG2_MAX_MINERS - current.exSizeBits));
             }
-            search(current.header.data(), upper64OfBoundary, (current.exSizeBits >= 0), startN, w);
+            else
+            {
+                startN = get_start_nonce();
+            }
+            search(current.header.data(), upper64OfBoundary, startN, w);
         }
 
         // Reset miner and stop working
@@ -126,15 +131,11 @@ void CUDAMiner::workLoop()
     }
     catch (cuda_runtime_error const& _e)
     {
-        cwarn << "Fatal GPU error: " << _e.what();
-        cwarn << "Terminating.";
-        exit(-1);
-    }
-    catch (std::runtime_error const& _e)
-    {
-        cwarn << "Error CUDA mining: " << _e.what();
-        if(s_exit)
-            exit(1);
+        cwarn << "GPU error: " << _e.what();
+		if (s_exit) {
+			cwarn << "Terminating.";
+			exit(1);
+		}
     }
 }
 
@@ -430,7 +431,6 @@ cpyDag:
 void CUDAMiner::search(
     uint8_t const* header,
     uint64_t target,
-    bool _ethStratum,
     uint64_t _startN,
     const dev::eth::WorkPackage& w)
 {
@@ -441,7 +441,7 @@ void CUDAMiner::search(
     }
 
     // choose the starting nonce
-    uint64_t current_nonce = _ethStratum ? _startN : get_start_nonce();
+    uint64_t current_nonce = _startN;
 
     // clear all the stream search result buffers
     for (unsigned int i = 0; i < s_numStreams; i++)

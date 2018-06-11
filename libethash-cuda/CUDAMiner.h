@@ -77,7 +77,6 @@ public:
 	void search(
 		uint8_t const* header,
 		uint64_t target,
-		bool _ethStratum,
 		uint64_t _startN,
 		const dev::eth::WorkPackage& w);
 
