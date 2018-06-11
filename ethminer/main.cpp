@@ -702,16 +702,21 @@ private:
 
 		f.setTStartTStop(m_tstart, m_tstop);
 
-		// If we are in simulation mode we add a fake connection
-		if (m_mode == OperationMode::Simulation) {
-			URI con(URI("http://-:0"));
-			mgr.clearConnections();
-			mgr.addConnection(con);
-		}
-		else {
-			for (auto conn : m_endpoints)
+        // If we are in simulation mode we add a fake connection
+        if (m_mode == OperationMode::Simulation)
+        {
+            URI con(URI("http://-:0"));
+            mgr.clearConnections();
+            mgr.addConnection(con);
+        }
+        else
+        {
+            for (auto conn : m_endpoints)
+            {
+                cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
                 mgr.addConnection(conn);
-		}
+            }
+        }
 
 #if API_CORE
 

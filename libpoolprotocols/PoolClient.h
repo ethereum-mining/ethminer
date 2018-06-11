@@ -21,7 +21,7 @@ namespace dev
 
 			void setConnection(URI &conn)
 			{
-				m_conn = conn;
+				m_conn = &conn;
 				m_connection_changed = true;
 			}
 
@@ -52,7 +52,7 @@ namespace dev
 			bool m_connection_changed = false;
 			boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> m_endpoint;
 
-			URI m_conn;
+			URI* m_conn = nullptr;
 
 			SolutionAccepted m_onSolutionAccepted;
 			SolutionRejected m_onSolutionRejected;
