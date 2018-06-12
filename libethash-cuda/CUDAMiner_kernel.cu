@@ -95,7 +95,7 @@ __device__ __noinline__ uint64_t keccak_f800(hash32_t header, uint64_t seed, uin
     // last round can be simplified due to partial output
     keccak_f800_round(st, 21);
 
-    return (uint64_t)st[1] << 32 | st[0];
+    return (uint64_t)st[0] << 32 | st[1];
 }
 
 #define fnv1a(h, d) (h = (h ^ d) * 0x1000193)
