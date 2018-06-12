@@ -323,6 +323,7 @@ void PoolManager::check_failover_timeout(const boost::system::error_code& ec)
 		{
 			if (m_activeConnectionIdx != 0)
 			{
+				cnote << "Failover timeout reached, retrying connection to primary pool";
 				p_client->disconnect();
 				m_activeConnectionIdx = 0;
 				m_connectionAttempt = 0;
