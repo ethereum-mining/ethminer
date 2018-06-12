@@ -314,7 +314,7 @@ Json::Value PoolManager::getConnectionsJson()
 	for (size_t i = 0; i < m_connections.size(); i++)
 	{
 		Json::Value JConn;
-		JConn["index"] = i;
+		JConn["index"] = (int)i;
 		JConn["active"] = (i == m_activeConnectionIdx ? true: false);
 		JConn["uri"] = m_connections[i].string();
 		jRes.append(JConn);

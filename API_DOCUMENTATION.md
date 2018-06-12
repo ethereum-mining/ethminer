@@ -1,6 +1,6 @@
 # Ethminer's API documentation
 
-Ethminer offers implements an API (Application Programming Interface) interface which allows to monitor/control some of the run-time values endorsed by this miner. The API interface is available under the following circumstances:
+Ethminer implements an API (Application Programming Interface) interface which allows to monitor/control some of the run-time values endorsed by this miner. The API interface is available under the following circumstances:
 
 * If you're using a binary release downloaded from the [releases](https://github.com/ethereum-mining/ethminer/releases) section of this repository
 * If you build the application from source ensuring you add the compilation switch `-D APICORE=ON`
@@ -62,10 +62,11 @@ This shows the API interface is live and listening on the configured endpoint.
 | [miner_restart](#miner_restart) | Instructs ethminer to stop and restart mining | Yes |
 | miner_reboot | Not yet implemented | Yes
 | [miner_shuffle](#miner_shuffle) | Initializes a new random scramble nonce | Yes
-| [miner_getconnections](#miner_getconnections) | Returns the list of connections held by ethminer | Yes
+| [miner_getconnections](#miner_getconnections) | Returns the list of connections held by ethminer | No
 | [miner_setactiveconnection](#miner_setactiveconnection) | Instruct ethminer to immediately connect to the specified connection | Yes
 | [miner_addconnection](#miner_addconnection) | Provides ethminer with a new connection to use | Yes
 | [miner_removeconnection](#miner_removeconnection) | Removes the given connection from the list of available so it won't be used again | Yes
+| [miner_getscrambleinfo](#miner_getscrambleinfo) | Retrieve information about the nonce segments assigned to each GPU | No
 
 ### api_authorize
 
@@ -405,3 +406,83 @@ You have to pass the `params` member as an object which has member `index` value
 * A success message. In such case you can later reissue [miner_getconnections](#miner_getconnections) method to check the connection has been effectively removed.
 
 **Please note** This method changes the runtime behavior only. If you restart ethminer from a batch file the removed connection will become again again available if provided in the `-P` arguments list.
+
+### miner_getscrambleinfo
+
+When searching for a valid nonce the miner has to find (at least) 1 of possible 2^64 solutions. This would mean that a miner who claims to guarantee to find a solution in the time of 1 block (15 seconds for ethereum) should produce 1230 PH/s (Peta hashes) which, at the time of writing, is more than 4 thousands times the whole hashing power allocated worldwide for Ethereum.
+This gives you an idea of numbers in play. Luckily several factors come in our help: difficulty and time. We can imagine difficulty as a sort of judge who determines how many of those possible solutions are valid. And the block time which allows the miner to stay longer on a sequence of numbers to find the solution.
+This all said it's however impossible for the any miner (no matter if CPU/GPU/ASIC) to cover the most part of this huge range in reasonable amount of time. So we need to resign to examine and test only a small fraction of this range.
+
+Ethminer, at start, randomly chooses a scramble_nonce, a random number picked in the 2^64 range to start checking nonces from. In addition ethminer gives each GPU a unique, non overlapping, range of nonces called _segment_. Segments ensure no GPU does the same job of another GPU thus avoiding two GPU find the same result.
+To accomplish this each segment has a range 2^40 nonces by default. If you want to check which is the scramble_nonce and which are the segments assigned to each GPU you can issue this method :
+
+```
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_getscrambleinfo",
+  "params": 
+  {
+	"index": 2
+  }
+}
+```
+
+and expect a result like this
+
+```
+{
+	"id": 0,
+	"jsonrpc": "2.0",
+	"result": {
+		"noncescrambler": 16704043538687679721,
+		"segments": [{
+			"gpu": 0,
+			"start": 16704043538687679721,
+			"stop": 16704044638199307497
+		}, {
+			"gpu": 1,
+			"start": 16704044638199307497,
+			"stop": 16704046837222563049
+		}, {
+			"gpu": 2,
+			"start": 16704045737710935273,
+			"stop": 16704049036245818601
+		}, {
+			"gpu": 3,
+			"start": 16704046837222563049,
+			"stop": 16704051235269074153
+		}, {
+			"gpu": 4,
+			"start": 16704047936734190825,
+			"stop": 16704053434292329705
+		}, {
+			"gpu": 5,
+			"start": 16704049036245818601,
+			"stop": 16704055633315585257
+		}],
+		"segmentwidth": 40
+	}
+}
+```
+
+Note that segment width is the exponent in the expression `pow(2, segment)`.
+The information hereby exposed may be used in large mining operations to check wether or not two (or more) rigs may result having overlapping segments. The possibility is very remote ... but is there.
+
+### miner_setscrambleinfo
+
+To approach this method you have to read carefully the method [miner_getscrambleinfo](#miner_getscrambleinfo) and what it reports. By the use of this method you can set a new scramble_nonce and/or set a new segment width:
+
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_setscrambleinfo",
+  "params": 
+  {
+	"noncescrambler": 16704043538687679721,			// At least one of these two members
+	"segmentwidth": 38								// or both.
+  }
+}
+
+This will adjust nonce scrambler and segment width assigned to each gpu. This method is intended only for highly skilled people wo do a great job in math to determine the optimal values for large mining operations.
+**Use at your own risk**

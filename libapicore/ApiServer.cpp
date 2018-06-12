@@ -91,9 +91,10 @@ void ApiServer::handle_accept(std::shared_ptr<ApiConnection> session, boost::sys
             }
         });
         dev::setThreadName("Api");
+		m_sessions.push_back(session);
+		cnote << "New api session from " << session->socket().remote_endpoint();
         session->start();
-        m_sessions.push_back(session);
-        cnote << "New api session from " << session->socket().remote_endpoint();
+      
     }
     else
     {
@@ -408,6 +409,72 @@ void ApiConnection::processRequest(Json::Value& requestObject)
 								jRes["result"] = true;
 							}
 						}
+					}
+				}
+			}
+
+		}
+		else if (_method == "miner_getscramblerinfo")
+		{
+
+			jRes["result"] = m_farm.get_nonce_scrambler_json();
+
+		}
+		else if (_method == "miner_setscramblerinfo")
+		{
+			if (m_readonly)
+			{
+				jRes["error"]["code"] = -32601;
+				jRes["error"]["message"] = "Method not available";
+			}
+			else
+			{
+
+				if (!requestObject.isMember("params") || requestObject["params"].empty() ||
+					!requestObject["params"].isObject())
+				{
+					jRes["error"]["code"] = -32600;
+					jRes["error"]["message"] = "Invalid request";
+				}
+				else
+				{
+					Json::Value jPrm = requestObject["params"];
+					if (!jPrm.isMember("noncescrambler") && !jPrm.isMember("segmentwidth")) 
+					{
+						jRes["error"]["code"] = -32602;
+						jRes["error"]["message"] = "Missing parameters";
+					}
+					else
+					{
+						uint64_t nonce = m_farm.get_nonce_scrambler();
+						unsigned exp = m_farm.get_segment_width();
+
+						try
+						{
+							if (!jPrm["noncescrambler"].empty())
+							{
+								nonce = jPrm["noncescrambler"].asLargestUInt();
+							}
+							if (!jPrm["segmentwidth"].empty())
+							{
+								exp = jPrm["segmentwidth"].asUInt();
+							}
+						}
+						catch (...)
+						{
+							jRes["error"]["code"] = -422;
+							jRes["error"]["message"] = "Bad values";
+						}
+
+						if (!jRes.isMember("error"))
+						{
+							if (exp < 10) exp = 10;		// Not below 
+							if (exp > 50) exp = 40;		// Not above 
+							m_farm.set_nonce_scrambler(nonce);
+							m_farm.set_nonce_segment_width(exp);
+							jRes["result"] = true;
+						}
+
 					}
 				}
 			}
