@@ -277,12 +277,51 @@ void PoolManager::addConnection(URI &conn)
 	m_connections.push_back(conn);
 }
 
+void PoolManager::removeConnection(unsigned int idx)
+{
+
+	m_connections.erase(m_connections.begin() + idx);
+	if (m_activeConnectionIdx > idx) 
+	{
+		m_activeConnectionIdx--;
+	}
+}
+
 void PoolManager::clearConnections()
 {
 	m_connections.clear();
 	m_farm.set_pool_addresses("", 0);
 	if (p_client && p_client->isConnected())
 		p_client->disconnect();
+}
+
+void PoolManager::setActiveConnection(unsigned int idx)
+{
+	// Sets the active connection to the requested index
+	if (idx != m_activeConnectionIdx)
+	{
+		m_activeConnectionIdx = idx;
+		m_connectionAttempt = 0;
+		p_client->disconnect();
+	}
+}
+
+Json::Value PoolManager::getConnectionsJson()
+{
+	// Returns the list of configured connections 
+
+	Json::Value jRes;
+	for (size_t i = 0; i < m_connections.size(); i++)
+	{
+		Json::Value JConn;
+		JConn["index"] = i;
+		JConn["active"] = (i == m_activeConnectionIdx ? true: false);
+		JConn["uri"] = m_connections[i].string();
+		jRes.append(JConn);
+	}
+
+	return jRes;
+
 }
 
 void PoolManager::start()

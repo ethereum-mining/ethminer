@@ -62,6 +62,10 @@ This shows the API interface is live and listening on the configured endpoint.
 | [miner_restart](#miner_restart) | Instructs ethminer to stop and restart mining | Yes |
 | miner_reboot | Not yet implemented | Yes
 | [miner_shuffle](#miner_shuffle) | Initializes a new random scramble nonce | Yes
+| [miner_getconnections](#miner_getconnections) | Returns the list of connections held by ethminer | Yes
+| [miner_setactiveconnection](#miner_setactiveconnection) | Instruct ethminer to immediately connect to the specified connection | Yes
+| [miner_addconnection](#miner_addconnection) | Provides ethminer with a new connection to use | Yes
+| [miner_removeconnection](#miner_removeconnection) | Removes the given connection from the list of available so it won't be used again | Yes
 
 ### api_authorize
 
@@ -297,3 +301,107 @@ and expect back a result like this
 ```
 
 which confirms the action has been performed.
+
+### miner_getconnections
+
+When you launch ethminer you provide a list of connections specified by the `-P` argument. If you want to remotely check which is the list of connections ethminer is using you can issue this method:
+
+```
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_getconnections"
+}
+```
+
+and expect back a result like this
+
+```
+{
+	"id": 1,
+	"jsonrpc": "2.0",
+	"result": [{
+		"active": false,
+		"index": 0,
+		"uri": "stratum+tcp://<omitted-ethereum-address>.worker@eu1.ethermine.org:4444"
+	}, {
+		"active": true,
+		"index": 1,
+		"uri": "stratum+tcp://<omitted-ethereum-address>.worker@eu1.ethermine.org:14444"
+	}, {
+		"active": false,
+		"index": 2,
+		"uri": "stratum+tcp://<omitted-ethereum-classic-address>.worker@eu1-etc.ethermine.org:4444"
+	}]
+}
+```
+
+The `result` member contains an array of objects each one with the definition of the connection (in the form of the URI entered with the `-P` argument), it's ordinal index and the indication if it's the currently active connetion.
+
+### miner_setactiveconnection
+
+Given the example above for the method [miner_getconnections](#miner_getconnections) you see there is only one active connection at a time. If you want to control remotely your mining facility and want to force the switch from one connection to another you can issue this method:
+
+```
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_setactiveconnection",
+  "params": 
+  {
+	"index": 0
+  }
+}
+```
+
+You have to pass the `params` member as an object which has member `index` valued to the ordinal index of the connection you want to activate. As a result you expect one of the following :
+* Nothing happens if the provided index is already bound to an _active_ connection
+* If the selected index is not of an active connection then ethminer will disconnect from currently active connection and reconnect immediately to the newly selected connection
+* An error result if the index is out of bounds or the request is not properly formatted
+
+**Please note** This method changes the runtime behavior only. If you restart ethminer from a batch file the active connection will become again the first one of the `-P` arguments list.
+
+### miner_addconnection
+
+If you want to remotely add a new connection to the running instance of ethminer you can use this this method by sending a message like this
+
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_addconnection",
+  "params": 
+  {
+	"uri": "stratum+tcp://<ethaddress>.<workername>@eu1.ethermine.org:4444"
+  }
+}
+
+You have to pass the `params` member as an object which has member `uri` valued exactly the same way you'd add a connection using the `-P` argument. As a result you expect one of the following :
+* An error if the uri is not properly formatted
+* An error if you try to _mix_ stratum mode with getwork mode (which begins with http://)
+* A success message if the newly defined connection has been properly added
+
+Eventually you may want to issue [miner_getconnections](#miner_getconnections) method to identify which is the ordinal position assigned to the newly added connection and make use of [miner_setactiveconnection](#miner_setactiveconnection] method to instruct ethminer to use it immediately.
+
+**Please note** This method changes the runtime behavior only. If you restart ethminer from a batch file the added connection won't be available if not present in the `-P` arguments list.
+
+### miner_removeconnection
+
+Recall once again the example for the method [miner_getconnections](#miner_getconnections). If you wish to remove the third connection (the ethereum classic one) from the list of connections (so it won't be used in case of failover) you can send this method:
+
+```
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_removeconnection",
+  "params": 
+  {
+	"index": 2
+  }
+}
+```
+
+You have to pass the `params` member as an object which has member `index` valued to the ordinal index (zero based) of the connection you want to remove. As a result you expect one of the following :
+* An error if the index is out of bounds **or if the index corresponds to the currently active connection**
+* A success message. In such case you can later reissue [miner_getconnections](#miner_getconnections) method to check the connection has been effectively removed.
+
+**Please note** This method changes the runtime behavior only. If you restart ethminer from a batch file the removed connection will become again again available if provided in the `-P` arguments list.
