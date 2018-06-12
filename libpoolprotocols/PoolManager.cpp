@@ -220,7 +220,7 @@ void PoolManager::workLoop()
 
 					m_connectionAttempt = 0;
 					m_activeConnectionIdx++;
-					if (m_activeConnectionIdx == m_connections.size()) {
+					if (m_activeConnectionIdx >= m_connections.size()) {
 						m_activeConnectionIdx = 0;
 					}
 
