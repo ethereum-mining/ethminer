@@ -410,8 +410,8 @@ You have to pass the `params` member as an object which has member `index` value
 ### miner_getscrambleinfo
 
 When searching for a valid nonce the miner has to find (at least) 1 of possible 2^64 solutions. This would mean that a miner who claims to guarantee to find a solution in the time of 1 block (15 seconds for ethereum) should produce 1230 PH/s (Peta hashes) which, at the time of writing, is more than 4 thousands times the whole hashing power allocated worldwide for Ethereum.
-This gives you an idea of numbers in play. Luckily several factors come in our help: difficulty and time. We can imagine difficulty as a sort of judge who determines how many of those possible solutions are valid. And the block time which allows the miner to stay longer on a sequence of numbers to find the solution.
-This all said it's however impossible for the any miner (no matter if CPU/GPU/ASIC) to cover the most part of this huge range in reasonable amount of time. So we need to resign to examine and test only a small fraction of this range.
+This gives you an idea of numbers in play. Luckily a couple of factors come in our help: difficulty and time. We can imagine difficulty as a sort of judge who determines how many of those possible solutions are valid. And the block time which allows the miner to stay longer on a sequence of numbers to find the solution.
+This all said it's however impossible for any miner (no matter if CPU or GPU or even ASIC) to cover the most part of this huge range in reasonable amount of time. So we need to resign to examine and test only a small fraction of this range.
 
 Ethminer, at start, randomly chooses a scramble_nonce, a random number picked in the 2^64 range to start checking nonces from. In addition ethminer gives each GPU a unique, non overlapping, range of nonces called _segment_. Segments ensure no GPU does the same job of another GPU thus avoiding two GPU find the same result.
 To accomplish this each segment has a range 2^40 nonces by default. If you want to check which is the scramble_nonce and which are the segments assigned to each GPU you can issue this method :
@@ -473,6 +473,7 @@ The information hereby exposed may be used in large mining operations to check w
 
 To approach this method you have to read carefully the method [miner_getscrambleinfo](#miner_getscrambleinfo) and what it reports. By the use of this method you can set a new scramble_nonce and/or set a new segment width:
 
+```
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -483,6 +484,7 @@ To approach this method you have to read carefully the method [miner_getscramble
 	"segmentwidth": 38								// or both.
   }
 }
+```
 
-This will adjust nonce scrambler and segment width assigned to each gpu. This method is intended only for highly skilled people wo do a great job in math to determine the optimal values for large mining operations.
+This will adjust nonce scrambler and segment width assigned to each GPU. This method is intended only for highly skilled people who do a great job in math to determine the optimal values for large mining operations.
 **Use at your own risk**
