@@ -21,7 +21,7 @@ namespace dev
 		class PoolManager
 		{
 		public:
-			PoolManager(PoolClient * client, Farm &farm, MinerType const & minerType, unsigned maxTries);
+			PoolManager(boost::asio::io_service & io_service, PoolClient * client, Farm &farm, MinerType const & minerType, unsigned maxTries, unsigned failovertimeout);
 			void addConnection(URI &conn);
 			void clearConnections();
 			void start();
@@ -32,6 +32,9 @@ namespace dev
 		private:
 			unsigned m_hashrateReportingTime = 60;
 			unsigned m_hashrateReportingTimePassed = 0;
+			unsigned m_failoverTimeout = 0;						// After this amount of time in minutes of mining on a failover pool return to "primary"
+
+			void check_failover_timeout(const boost::system::error_code& ec);
 
 			std::atomic<bool> m_running = { false };
 			void workLoop();
@@ -46,6 +49,8 @@ namespace dev
 			h256 m_lastBoundary = h256();
 			std::list<h256> m_headers;
 
+			boost::asio::io_service::strand m_io_strand;
+			boost::asio::deadline_timer m_failovertimer;
 			PoolClient *p_client;
 			Farm &m_farm;
 			MinerType m_minerType;

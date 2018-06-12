@@ -196,6 +196,11 @@ public:
 			"Specify one or more pool URLs. See below for URL syntax")
 			->group(CommonGroup);
 
+		app.add_option("--failover-timeout", m_failovertimeout,
+			"Set the amount of time in minutes to stay on a failover pool before trying to reconnect to primary. If = 0 then no switch back.", true)
+			->group(CommonGroup)
+			->check(CLI::Range(0, 999));
+
         app.add_flag("--nocolor", g_logNoColor,
             "Display monochrome log")
             ->group(CommonGroup);
@@ -212,7 +217,7 @@ public:
 			->check(CLI::Range(-65535, 65535));
 
 		app.add_option("--api-password", m_api_password,
-			"Set the password to protect interaction with Api server. If not set any connection is granted access."
+			"Set the password to protect interaction with Api server. If not set any connection is granted access. "
 		    "Be advised passwords are sent unencrypted over plain tcp !!")
 			->group(APIGroup);
 
@@ -284,8 +289,8 @@ public:
 		string sched = "sync";
 		app.add_set("--cuda-schedule", sched, {"auto", "spin", "yield", "sync"},
 			"Set the scheduler mode."
-			"  auto  - Uses a heuristic based on the number of active CUDA contexts in the process C "
-			"          and the number of logical processors in the system P. If C > P then yield else spin."
+			"  auto  - Uses a heuristic based on the number of active CUDA contexts in the process C"
+			"          and the number of logical processors in the system P. If C > P then yield else spin.\n"
 			"  spin  - Instruct CUDA to actively spin when waiting for results from the device."
 			"  yield - Instruct CUDA to yield its thread when waiting for results from the device."
 			"  sync  - Instruct CUDA to block the CPU thread on a synchronization primitive when waiting for the results from the device."
@@ -708,7 +713,7 @@ private:
 		Farm f(m_io_service);
 		f.setSealers(sealers);
 
-		PoolManager mgr(client, f, m_minerType, m_maxFarmRetries);
+		PoolManager mgr(m_io_service, client, f, m_minerType, m_maxFarmRetries, m_failovertimeout);
 
 		f.setTStartTStop(m_tstart, m_tstop);
 
@@ -828,6 +833,8 @@ private:
 	unsigned m_worktimeout = 180;
 	// Number of seconds to wait before triggering a response timeout from pool
 	unsigned m_responsetimeout = 2;
+	// Number of minutes to wait on a failover pool before trying to go back to primary. In minutes !!
+	unsigned m_failovertimeout = 0;
 
 	bool m_show_hwmonitors = false;
 	bool m_show_power = false;
