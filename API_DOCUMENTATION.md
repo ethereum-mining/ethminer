@@ -19,7 +19,7 @@ The API interface not only offers monitoring queries but also implements some me
 
 ```
 ./ethminer [...] --api-port -3333
-```  
+```
 
 _Note. The port number in this examples is taken randomly and does not imply a suggested value. You can use any port number you wish while it's not in use by other applications._
 
@@ -27,7 +27,7 @@ To gain further security you may wish to password protect the access to your API
 
 ```
 ./ethminer [...] --api-port -3333 --api-password MySuperSecurePassword!!#123456
-```  
+```
 
 At the time of writing of this document ethminer's API interface does not implement any sort of data encryption over SSL secure channel so **be advised your passwords will be sent as plain text over plain TCP sockets**.
 
@@ -72,7 +72,7 @@ This shows the API interface is live and listening on the configured endpoint.
 
 If your API instance is password protected by the usage of `--api-password` any remote trying to interact with the API interface **must** send this method immediately after connection to get authenticated. The message to send is:
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -85,7 +85,7 @@ If your API instance is password protected by the usage of `--api-password` any 
 
 where the member `psw` **must** contain the very same password configured with `--api-password` argument. As expected result you will get a JsonRpc 2.0 response with positive or negative values. For instance if password do match you will get a response like this
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -95,7 +95,7 @@ where the member `psw` **must** contain the very same password configured with `
 
 or, in case of any error
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -112,7 +112,7 @@ This method is primarily used to check the liveness of the API interface.
 
 To invoke the action:
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -122,7 +122,7 @@ To invoke the action:
 
 and expect back a result like this
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -138,7 +138,7 @@ If you get no response or the socket goes timeout it likely your ethminer's inst
 
 With this method you expect back a collection of statistical data. To issue request:
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -148,11 +148,11 @@ With this method you expect back a collection of statistical data. To issue requ
 
 and expect back a response like this
 
-```
-{  
-   "id":1,
-   "jsonrpc":"2.0",
-   "result":[  
+```js
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": [
     "0.16.0.dev0+commit.41639944",          // The actual release of ethminer
     "48",                                   // Total running time in minutes
     "87221;54;0",                           // ETH hashrate in KH/s, submitted shares, rejected shares
@@ -162,7 +162,7 @@ and expect back a response like this
     "53;90;50;90;56;90;58;90;61;90;60;90",  // Temp and fan speed pairs per GPU
     "eu1.ethermine.org:4444",               // Mining pool currently active
     "0;0;0;0"                               // ETH invalid shares, ETH pool switches, DCR invalid shares, DCR pool switches
-   ]
+  ]
 }
 ```
 
@@ -172,7 +172,7 @@ Some of the arguments here expressed have been set for compatibility with other 
 
 With this method you expect back a collection of statistical data. To issue request:
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -182,25 +182,25 @@ With this method you expect back a collection of statistical data. To issue requ
 
 and expect back a response like this
 
-```
-{  
-   "id":1,
-   "jsonrpc":"2.0",
-   "result":{  
-    "ethhashrate":87563392,             // Overall HashRate in H/s
-    "ethhashrates":[                    // Hashrate per GPU in H/S
-       14681287,
-       14506510,
-       14681287,
-       14506510,
-       14506510,
-       14681287
+```js
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": {
+    "ethhashrate": 87563392,            // Overall HashRate in H/s
+    "ethhashrates": [                   // Hashrate per GPU in H/S
+      14681287,
+      14506510,
+      14681287,
+      14506510,
+      14506510,
+      14681287
     ],
-    "ethinvalid":0,                     // Total number of invalid shares
-    "ethpoolsw":0,                      // Total number of pool switches
-    "ethrejected":0,                    // Total number of rejected shares
-    "ethshares":64,                     // Total number of found and submitted shares
-    "fanpercentages":[                  // Fan percentages per GPU
+    "ethinvalid": 0,                    // Total number of invalid shares
+    "ethpoolsw": 0,                     // Total number of pool switches
+    "ethrejected": 0,                   // Total number of rejected shares
+    "ethshares": 64,                    // Total number of found and submitted shares
+    "fanpercentages": [                 // Fan percentages per GPU
        90,
        90,
        90,
@@ -208,8 +208,8 @@ and expect back a response like this
        90,
        90
     ],
-    "pooladdrs":"eu1.ethermine.org:4444",   // Mining pool currently active
-    "powerusages":[                         // Power draw (in W) per GPU
+    "pooladdrs": "eu1.ethermine.org:4444",  // Mining pool currently active
+    "powerusages": [                        // Power draw (in W) per GPU
        0.0,
        0.0,
        0.0,
@@ -217,8 +217,8 @@ and expect back a response like this
        0.0,
        0.0
     ],
-    "runtime":"59",                     // Total runtime in minutes
-    "temperatures":[                    // Temperatures per GPU  
+    "runtime": "59",                    // Total runtime in minutes
+    "temperatures": [                   // Temperatures per GPU
        53,
        50,
        56,
@@ -226,8 +226,8 @@ and expect back a response like this
        61,
        60
     ],
-    "version":"0.16.0.dev0+commit.41639944" // Running ethminer's version
-   }
+    "version": "0.16.0.dev0+commit.41639944" // Running ethminer's version
+  }
 }
 ```
 
@@ -247,7 +247,7 @@ The invocation of this method **_may_** be useful if you detect one, or more, GP
 
 To invoke the action:
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -257,7 +257,7 @@ To invoke the action:
 
 and expect back a result like this
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -283,7 +283,7 @@ All miner_shuffle method does is to re-initialize a new random scramble nonce to
 
 To invoke the action:
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -293,7 +293,7 @@ To invoke the action:
 
 and expect back a result like this
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -307,7 +307,7 @@ which confirms the action has been performed.
 
 When you launch ethminer you provide a list of connections specified by the `-P` argument. If you want to remotely check which is the list of connections ethminer is using you can issue this method:
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -317,23 +317,27 @@ When you launch ethminer you provide a list of connections specified by the `-P`
 
 and expect back a result like this
 
-```
+```json
 {
-	"id": 1,
-	"jsonrpc": "2.0",
-	"result": [{
-		"active": false,
-		"index": 0,
-		"uri": "stratum+tcp://<omitted-ethereum-address>.worker@eu1.ethermine.org:4444"
-	}, {
-		"active": true,
-		"index": 1,
-		"uri": "stratum+tcp://<omitted-ethereum-address>.worker@eu1.ethermine.org:14444"
-	}, {
-		"active": false,
-		"index": 2,
-		"uri": "stratum+tcp://<omitted-ethereum-classic-address>.worker@eu1-etc.ethermine.org:4444"
-	}]
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "active": false,
+      "index": 0,
+      "uri": "stratum+tcp://<omitted-ethereum-address>.worker@eu1.ethermine.org:4444"
+    },
+    {
+      "active": true,
+      "index": 1,
+      "uri": "stratum+tcp://<omitted-ethereum-address>.worker@eu1.ethermine.org:14444"
+    },
+    {
+      "active": false,
+      "index": 2,
+      "uri": "stratum+tcp://<omitted-ethereum-classic-address>.worker@eu1-etc.ethermine.org:4444"
+    }
+  ]
 }
 ```
 
@@ -343,19 +347,19 @@ The `result` member contains an array of objects each one with the definition of
 
 Given the example above for the method [miner_getconnections](#miner_getconnections) you see there is only one active connection at a time. If you want to control remotely your mining facility and want to force the switch from one connection to another you can issue this method:
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
   "method": "miner_setactiveconnection",
-  "params": 
-  {
-	"index": 0
+  "params": {
+    "index": 0
   }
 }
 ```
 
-You have to pass the `params` member as an object which has member `index` valued to the ordinal index of the connection you want to activate. As a result you expect one of the following :
+You have to pass the `params` member as an object which has member `index` valued to the ordinal index of the connection you want to activate. As a result you expect one of the following:
+
 * Nothing happens if the provided index is already bound to an _active_ connection
 * If the selected index is not of an active connection then ethminer will disconnect from currently active connection and reconnect immediately to the newly selected connection
 * An error result if the index is out of bounds or the request is not properly formatted
@@ -366,42 +370,44 @@ You have to pass the `params` member as an object which has member `index` value
 
 If you want to remotely add a new connection to the running instance of ethminer you can use this this method by sending a message like this
 
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
   "method": "miner_addconnection",
-  "params": 
-  {
-	"uri": "stratum+tcp://<ethaddress>.<workername>@eu1.ethermine.org:4444"
+  "params": {
+    "uri": "stratum+tcp://<ethaddress>.<workername>@eu1.ethermine.org:4444"
   }
 }
+```
 
-You have to pass the `params` member as an object which has member `uri` valued exactly the same way you'd add a connection using the `-P` argument. As a result you expect one of the following :
+You have to pass the `params` member as an object which has member `uri` valued exactly the same way you'd add a connection using the `-P` argument. As a result you expect one of the following:
+
 * An error if the uri is not properly formatted
-* An error if you try to _mix_ stratum mode with getwork mode (which begins with http://)
+* An error if you try to _mix_ stratum mode with getwork mode (which begins with `http://`)
 * A success message if the newly defined connection has been properly added
 
-Eventually you may want to issue [miner_getconnections](#miner_getconnections) method to identify which is the ordinal position assigned to the newly added connection and make use of [miner_setactiveconnection](#miner_setactiveconnection] method to instruct ethminer to use it immediately.
+Eventually you may want to issue [miner_getconnections](#miner_getconnections) method to identify which is the ordinal position assigned to the newly added connection and make use of [miner_setactiveconnection](#miner_setactiveconnection) method to instruct ethminer to use it immediately.
 
 **Please note** This method changes the runtime behavior only. If you restart ethminer from a batch file the added connection won't be available if not present in the `-P` arguments list.
 
 ### miner_removeconnection
 
-Recall once again the example for the method [miner_getconnections](#miner_getconnections). If you wish to remove the third connection (the ethereum classic one) from the list of connections (so it won't be used in case of failover) you can send this method:
+Recall once again the example for the method [miner_getconnections](#miner_getconnections). If you wish to remove the third connection (the Ethereum classic one) from the list of connections (so it won't be used in case of failover) you can send this method:
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
   "method": "miner_removeconnection",
-  "params": 
-  {
-	"index": 2
+  "params": {
+    "index": 2
   }
 }
 ```
 
-You have to pass the `params` member as an object which has member `index` valued to the ordinal index (zero based) of the connection you want to remove. As a result you expect one of the following :
+You have to pass the `params` member as an object which has member `index` valued to the ordinal index (zero based) of the connection you want to remove. As a result you expect one of the following:
+
 * An error if the index is out of bounds **or if the index corresponds to the currently active connection**
 * A success message. In such case you can later reissue [miner_getconnections](#miner_getconnections) method to check the connection has been effectively removed.
 
@@ -409,79 +415,84 @@ You have to pass the `params` member as an object which has member `index` value
 
 ### miner_getscrambleinfo
 
-When searching for a valid nonce the miner has to find (at least) 1 of possible 2^64 solutions. This would mean that a miner who claims to guarantee to find a solution in the time of 1 block (15 seconds for ethereum) should produce 1230 PH/s (Peta hashes) which, at the time of writing, is more than 4 thousands times the whole hashing power allocated worldwide for Ethereum.
+When searching for a valid nonce the miner has to find (at least) 1 of possible 2^64 solutions. This would mean that a miner who claims to guarantee to find a solution in the time of 1 block (15 seconds for Ethereum) should produce 1230 PH/s (Peta hashes) which, at the time of writing, is more than 4 thousands times the whole hashing power allocated worldwide for Ethereum.
 This gives you an idea of numbers in play. Luckily a couple of factors come in our help: difficulty and time. We can imagine difficulty as a sort of judge who determines how many of those possible solutions are valid. And the block time which allows the miner to stay longer on a sequence of numbers to find the solution.
 This all said it's however impossible for any miner (no matter if CPU or GPU or even ASIC) to cover the most part of this huge range in reasonable amount of time. So we need to resign to examine and test only a small fraction of this range.
 
 Ethminer, at start, randomly chooses a scramble_nonce, a random number picked in the 2^64 range to start checking nonces from. In addition ethminer gives each GPU a unique, non overlapping, range of nonces called _segment_. Segments ensure no GPU does the same job of another GPU thus avoiding two GPU find the same result.
-To accomplish this each segment has a range 2^40 nonces by default. If you want to check which is the scramble_nonce and which are the segments assigned to each GPU you can issue this method :
+To accomplish this each segment has a range 2^40 nonces by default. If you want to check which is the scramble_nonce and which are the segments assigned to each GPU you can issue this method:
 
-```
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
   "method": "miner_getscrambleinfo",
-  "params": 
-  {
-	"index": 2
+  "params": {
+    "index": 2
   }
 }
 ```
 
 and expect a result like this
 
-```
+```json
 {
-	"id": 0,
-	"jsonrpc": "2.0",
-	"result": {
-		"noncescrambler": 16704043538687679721,
-		"segments": [{
-			"gpu": 0,
-			"start": 16704043538687679721,
-			"stop": 16704044638199307497
-		}, {
-			"gpu": 1,
-			"start": 16704044638199307497,
-			"stop": 16704046837222563049
-		}, {
-			"gpu": 2,
-			"start": 16704045737710935273,
-			"stop": 16704049036245818601
-		}, {
-			"gpu": 3,
-			"start": 16704046837222563049,
-			"stop": 16704051235269074153
-		}, {
-			"gpu": 4,
-			"start": 16704047936734190825,
-			"stop": 16704053434292329705
-		}, {
-			"gpu": 5,
-			"start": 16704049036245818601,
-			"stop": 16704055633315585257
-		}],
-		"segmentwidth": 40
-	}
+  "id": 0,
+  "jsonrpc": "2.0",
+  "result": {
+    "noncescrambler": 16704043538687679721,
+    "segments": [
+      {
+        "gpu": 0,
+        "start": 16704043538687679721,
+        "stop": 16704044638199307497
+      },
+      {
+        "gpu": 1,
+        "start": 16704044638199307497,
+        "stop": 16704046837222563049
+      },
+      {
+        "gpu": 2,
+        "start": 16704045737710935273,
+        "stop": 16704049036245818601
+      },
+      {
+        "gpu": 3,
+        "start": 16704046837222563049,
+        "stop": 16704051235269074153
+      },
+      {
+        "gpu": 4,
+        "start": 16704047936734190825,
+        "stop": 16704053434292329705
+      },
+      {
+        "gpu": 5,
+        "start": 16704049036245818601,
+        "stop": 16704055633315585257
+      }
+    ],
+    "segmentwidth": 40
+  }
 }
 ```
 
 Note that segment width is the exponent in the expression `pow(2, segment)`.
-The information hereby exposed may be used in large mining operations to check wether or not two (or more) rigs may result having overlapping segments. The possibility is very remote ... but is there.
+The information hereby exposed may be used in large mining operations to check whether or not two (or more) rigs may result having overlapping segments. The possibility is very remote ... but is there.
 
 ### miner_setscrambleinfo
 
 To approach this method you have to read carefully the method [miner_getscrambleinfo](#miner_getscrambleinfo) and what it reports. By the use of this method you can set a new scramble_nonce and/or set a new segment width:
 
-```
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
   "method": "miner_setscrambleinfo",
-  "params": 
-  {
-	"noncescrambler": 16704043538687679721,			// At least one of these two members
-	"segmentwidth": 38								// or both.
+  "params": {
+    "noncescrambler": 16704043538687679721,      // At least one of these two members
+    "segmentwidth": 38                           // or both.
   }
 }
 ```
