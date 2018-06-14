@@ -25,7 +25,7 @@ public:
 	string ActiveEndPoint() override { return ""; };
 
 	void submitHashrate(string const & rate) override;
-	void submitSolution(Solution solution) override;
+	void submitSolution(const Solution& solution) override;
 
 private:
 	void workLoop() override;
@@ -35,7 +35,7 @@ private:
 
 	bool m_justConnected = false;
 	h256 m_client_id;
-	JsonrpcGetwork *p_client;
+	JsonrpcGetwork *p_client = nullptr;
 	WorkPackage m_prevWorkPackage;
 
 	// Hashrate submission is optional

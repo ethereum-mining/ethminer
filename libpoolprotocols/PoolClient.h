@@ -29,7 +29,7 @@ namespace dev
 			virtual void disconnect() = 0;
 
 			virtual void submitHashrate(string const & rate) = 0;
-			virtual void submitSolution(Solution solution) = 0;
+			virtual void submitSolution(const Solution &solution) = 0;
 			virtual bool isConnected() = 0;
 			virtual bool isPendingState() = 0;
 			virtual string ActiveEndPoint() = 0;

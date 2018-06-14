@@ -91,22 +91,28 @@ void dev::setThreadName(char const* _n)
 
 void dev::simpleDebugOut(std::string const& _s)
 {
-	if (!g_logNoColor)
+	try {
+		if (!g_logNoColor)
+		{
+			std::cerr << _s + '\n';
+			return;
+		}
+		bool skip = false;
+		std::stringstream ss;
+		for (auto it : _s)
+		{
+			if (!skip && it == '\x1b')
+				skip = true;
+			else if (skip && it == 'm')
+				skip = false;
+			else if (!skip)
+				ss << it;
+		}
+		ss << '\n';
+		std::cerr << ss.str();
+	}
+	catch(...)
 	{
-		std::cerr << _s + '\n';
 		return;
 	}
-	bool skip = false;
-	std::stringstream ss;
-	for (auto it : _s)
-	{
-		if (!skip && it == '\x1b')
-			skip = true;
-		else if (skip && it == 'm')
-			skip = false;
-		else if (!skip)
-			ss << it;
-	}
-	ss << '\n';
-	std::cerr << ss.str();
 }

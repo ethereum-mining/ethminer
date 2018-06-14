@@ -45,7 +45,7 @@ void SimulateClient::submitHashrate(string const & rate)
 	cnote << "On difficulty" << m_difficulty << "for" << sec.count() << "seconds";
 }
 
-void SimulateClient::submitSolution(Solution solution)
+void SimulateClient::submitSolution(const Solution& solution)
 {
 	m_uppDifficulty = true;
 	cnote << "Difficulty:" << m_difficulty;

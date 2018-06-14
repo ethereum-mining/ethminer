@@ -56,7 +56,7 @@ void EthGetworkClient::submitHashrate(string const & rate)
 
 }
 
-void EthGetworkClient::submitSolution(Solution solution)
+void EthGetworkClient::submitSolution(const Solution& solution)
 {
 	// Immediately send found solution without wait for loop
 	if (m_connected || m_justConnected) {

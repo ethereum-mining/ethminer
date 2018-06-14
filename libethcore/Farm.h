@@ -50,7 +50,7 @@ namespace eth
 class Farm: public FarmFace
 {
 public:
-	unsigned tstart, tstop;
+	unsigned tstart = 0, tstop = 0;
 
 	struct SealerDescriptor
 	{
@@ -497,7 +497,7 @@ private:
     string m_pool_addresses;
 	uint64_t m_nonce_scrambler;
 
-	unsigned m_tstart, m_tstop;
+	unsigned m_tstart = 0, m_tstop = 0;
 
 	wrap_nvml_handle *nvmlh = NULL;
 	wrap_adl_handle *adlh = NULL;
