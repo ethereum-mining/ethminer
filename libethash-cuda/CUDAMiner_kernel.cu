@@ -5,9 +5,9 @@
 typedef struct {
     uint32_t count;
     struct {
-        // One word for gid and 4 for mix hash
+        // One word for gid and 8 for mix hash
         uint32_t gid;
-        uint32_t mix[4];
+        uint32_t mix[8];
     } result[SEARCH_RESULTS];
 } search_results;
 
@@ -73,8 +73,8 @@ __device__ __forceinline__ void keccak_f800_round(uint32_t st[25], const int r)
 }
 
 // Implementation of the Keccak sponge construction (with padding omitted)
-// The width is 800, with a bitrate of 448, and a capacity of 352.
-__device__ __noinline__ uint64_t keccak_f800(hash32_t header, uint64_t seed, uint4 result)
+// The width is 800, with a bitrate of 576, and a capacity of 224.
+__device__ __noinline__ uint64_t keccak_f800(hash32_t header, uint64_t seed, hash32_t result)
 {
     uint32_t st[25];
 
@@ -84,10 +84,8 @@ __device__ __noinline__ uint64_t keccak_f800(hash32_t header, uint64_t seed, uin
         st[i] = header.uint32s[i];
     st[8] = seed;
     st[9] = seed >> 32;
-    st[10] = result.x;
-    st[11] = result.y;
-    st[12] = result.z;
-    st[13] = result.w;
+    for (int i = 0; i < 8; i++)
+        st[10+i] = result.uint32s[i];
 
     for (int r = 0; r < 21; r++) {
         keccak_f800_round(st, r);
@@ -156,8 +154,9 @@ progpow_search(
         c_dag[word + 1] = data >> 32;
     }
 
-    uint4 result;
-    result.x = result.y = result.z = result.w = 0;
+    hash32_t result;
+    for (int i = 0; i < 8; i++)
+        result.uint32s[i] = 0;
     // keccak(header..nonce)
     uint64_t seed = keccak_f800(header, nonce, result);
 
@@ -179,22 +178,22 @@ progpow_search(
 
 
         // Reduce mix data to a single per-lane result
-        uint32_t mix_hash = 0x811c9dc5;
+        uint32_t result_lane = 0x811c9dc5;
         #pragma unroll
         for (int i = 0; i < PROGPOW_REGS; i++)
-            fnv1a(mix_hash, mix[i]);
+            fnv1a(result_lane, mix[i]);
 
-        // Reduce all lanes to a single 128-bit result
-        uint4 result_hash;
-        result_hash.x = result_hash.y = result_hash.z = result_hash.w = 0x811c9dc5;
+        // Reduce all lanes to a single 256-bit result
+        hash32_t result_hash;
         #pragma unroll
-        for (int i = 0; i < PROGPOW_LANES; i += 4)
-        {
-            fnv1a(result_hash.x, __shfl_sync(0xFFFFFFFF, mix_hash, i + 0, PROGPOW_LANES));
-            fnv1a(result_hash.y, __shfl_sync(0xFFFFFFFF, mix_hash, i + 1, PROGPOW_LANES));
-            fnv1a(result_hash.z, __shfl_sync(0xFFFFFFFF, mix_hash, i + 2, PROGPOW_LANES));
-            fnv1a(result_hash.w, __shfl_sync(0xFFFFFFFF, mix_hash, i + 3, PROGPOW_LANES));
-        }
+        for (int i = 0; i < 8; i++)
+            result_hash.uint32s[i] = 0x811c9dc5;
+
+        for (int i = 0; i < PROGPOW_LANES; i += 8)
+            #pragma unroll
+            for (int j = 0; j < 8; j++)
+                fnv1a(result_hash.uint32s[j], __shfl_sync(0xFFFFFFFF, result_lane, i + j, PROGPOW_LANES));
+
         if (h == lane_id)
             result = result_hash;
     }
@@ -208,8 +207,7 @@ progpow_search(
         return;
 
     g_output->result[index].gid = gid;
-    g_output->result[index].mix[0] = result.x;
-    g_output->result[index].mix[1] = result.y;
-    g_output->result[index].mix[2] = result.z;
-    g_output->result[index].mix[3] = result.w;
+    #pragma unroll
+    for (int i = 0; i < 8; i++)
+        g_output->result[index].mix[i] = result.uint32s[i];
 }
