@@ -95,23 +95,30 @@ void CUDAMiner::workLoop()
                 continue;
             }
 
-            // take local copy of work since it may end up being overwritten.
-            const WorkPackage w = work();
-            
-            if (current.header != w.header || current.epoch != w.epoch)
-            {
-                if(!w || w.header == h256())
-                {
-                    cnote << "No work. Pause for 3 s.";
-                    std::this_thread::sleep_for(std::chrono::seconds(3));
-                    continue;
-                }
-                if (current.epoch != w.epoch)
-                    if(!init(w.epoch))
-                        break;
-                current = w;
-            }
-            uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)current.boundary >> 192);
+			// take local copy of work since it may end up being overwritten.
+			const WorkPackage w = work();
+
+			// Take actions in proper order
+
+			// No work ?
+			if (!w || w.header == h256())
+			{
+				cnote << "No work. Pause for 3 s.";
+				std::this_thread::sleep_for(std::chrono::seconds(3));
+				continue;
+			}
+			// Epoch change ?
+			else if (current.epoch != w.epoch)
+			{
+				if (!init(w.epoch))
+					break;
+			}
+
+			// Persist most recent job anyway. No need to do another
+			// conditional check if they're different
+			current = w;
+
+			uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)current.boundary >> 192);
             uint64_t startN = current.startNonce;
             if (current.exSizeBits >= 0)
             {
@@ -123,6 +130,8 @@ void CUDAMiner::workLoop()
             {
                 startN = get_start_nonce();
             }
+
+			// Eventually start searching
             search(current.header.data(), upper64OfBoundary, startN, w);
         }
 
@@ -443,21 +452,22 @@ void CUDAMiner::search(
     // choose the starting nonce
     uint64_t current_nonce = _startN;
 
-    // clear all the stream search result buffers
-    for (unsigned int i = 0; i < s_numStreams; i++)
-        m_search_buf[i]->count = 0;
-
     // Nonces processed in one pass by a single stream
     const uint32_t batch_size = s_gridSize * s_blockSize;
     // Nonces processed in one pass by all streams
     const uint32_t streams_batch_size = batch_size * s_numStreams;
     volatile search_results* buffer;
 
-    // prime each stream
+    // prime each stream and clear search result buffers
     uint32_t current_index;
-    for (current_index = 0; current_index < s_numStreams; current_index++, current_nonce += batch_size) {
+    for (current_index = 0; current_index < s_numStreams;
+         current_index++, current_nonce += batch_size)
+    {
         cudaStream_t stream = m_streams[current_index];
         buffer = m_search_buf[current_index];
+        buffer->count = 0;
+
+        // Run the batch for this stream
         run_ethash_search(s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
     }
 
@@ -469,7 +479,7 @@ void CUDAMiner::search(
         bool t = true;
         if (m_new_work.compare_exchange_strong(t, false))
             done = true;
-
+		
         for (current_index = 0; current_index < s_numStreams; current_index++, current_nonce += batch_size) {
             cudaStream_t stream = m_streams[current_index];
             buffer = m_search_buf[current_index];
