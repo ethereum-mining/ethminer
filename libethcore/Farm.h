@@ -394,7 +394,7 @@ public:
 		}
 	}
 
-	using SolutionFound = std::function<void(Solution const&)>;
+	using SolutionFound = std::function<void(const Solution&)>;
 	using MinerRestart = std::function<void()>;
 
 	/**
