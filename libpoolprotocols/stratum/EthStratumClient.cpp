@@ -173,7 +173,8 @@ void EthStratumClient::disconnect()
 	}
 
 	// Cancel any outstanding async operation
-	m_socket->cancel();
+	if (m_socket)
+		m_socket->cancel();
 
 	m_io_service.post([&] {
 		m_conntimer.cancel();
@@ -1041,7 +1042,7 @@ void EthStratumClient::submitHashrate(string const & rate) {
 
 }
 
-void EthStratumClient::submitSolution(Solution solution) {
+void EthStratumClient::submitSolution(const Solution& solution) {
 
 	string nonceHex = toHex(solution.nonce);
 

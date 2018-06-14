@@ -166,14 +166,14 @@ void CUDAMiner::setDevices(const vector<unsigned>& _devices, unsigned _selectedD
 
 unsigned CUDAMiner::getNumDevices()
 {
-    int deviceCount = -1;
+    int deviceCount;
     cudaError_t err = cudaGetDeviceCount(&deviceCount);
     if (err == cudaSuccess)
         return deviceCount;
 
     if (err == cudaErrorInsufficientDriver)
     {
-        int driverVersion = -1;
+        int driverVersion;
         cudaDriverGetVersion(&driverVersion);
         if (driverVersion == 0)
             throw std::runtime_error{"No CUDA driver found"};

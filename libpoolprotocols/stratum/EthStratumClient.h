@@ -39,7 +39,7 @@ public:
 	string ActiveEndPoint() override { return " [" + toString(m_endpoint) + "]"; };
 
 	void submitHashrate(string const & rate) override;
-	void submitSolution(Solution solution) override;
+	void submitSolution(const Solution &solution) override;
 
 	h256 currentHeaderHash() { return m_current.header; }
 	bool current() { return static_cast<bool>(m_current); }
@@ -111,7 +111,7 @@ private:
 	h256 m_nextWorkBoundary = h256("0xffff000000000000000000000000000000000000000000000000000000000000");
 
 	h64 m_extraNonce;
-	int m_extraNonceHexSize;
+	int m_extraNonceHexSize = 0;
 	
 	bool m_submit_hashrate;
 	std::string m_submit_hashrate_id;

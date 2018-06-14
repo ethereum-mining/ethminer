@@ -25,7 +25,7 @@ public:
 	string ActiveEndPoint() override { return ""; };
 
 	void submitHashrate(string const & rate) override;
-	void submitSolution(Solution solution) override;
+	void submitSolution(const Solution& solution) override;
 
 private:
 	void workLoop() override;

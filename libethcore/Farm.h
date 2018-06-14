@@ -51,7 +51,7 @@ namespace eth
 class Farm: public FarmFace
 {
 public:
-	unsigned tstart, tstop;
+	unsigned tstart = 0, tstop = 0;
 
 	struct SealerDescriptor
 	{
@@ -538,7 +538,7 @@ private:
 	uint64_t m_nonce_scrambler;
 	unsigned int m_nonce_segment_with = 40;				// This is the exponent of the power 2^n which determines the width of each search segment assigned to each gpu
 
-	unsigned m_tstart, m_tstop;
+	unsigned m_tstart = 0, m_tstop = 0;
 
 	wrap_nvml_handle *nvmlh = NULL;
 	wrap_adl_handle *adlh = NULL;
