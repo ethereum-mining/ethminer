@@ -229,8 +229,12 @@ void EthStratumClient::disconnect_finalize() {
 	if (m_conn->SecLevel() != SecureLevel::NONE) {
 
 		if (m_securesocket->lowest_layer().is_open()) {
-			m_securesocket->lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both);
+
+			// Manage error code if layer is already shut down
+			boost::system::error_code ec;
+			m_securesocket->lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
 			m_securesocket->lowest_layer().close();
+
 		}
 		m_securesocket = nullptr;
 		m_socket = nullptr;
