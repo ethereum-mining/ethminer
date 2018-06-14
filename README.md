@@ -160,8 +160,8 @@ bool progpow_search(
 )
 {
     uint32_t mix[PROGPOW_LANES][PROGPOW_REGS];
-    uint32_t result[4];
-    for (int i = 0; i < 4; i++)
+    uint32_t result[8];
+    for (int i = 0; i < 8; i++)
         result[i] = 0;
 
     // keccak(header..nonce)
@@ -184,10 +184,10 @@ bool progpow_search(
             fnv1a(lane_hash[l], mix[l][i]);
     }
     // Reduce all lanes to a single 128-bit result
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 8; i++)
         result[i] = 0x811c9dc5;
     for (int l = 0; l < PROGPOW_LANES; l++)
-        fnv1a(result[l%4], lane_hash[l])
+        fnv1a(result[l%8], lane_hash[l])
 
     // keccak(header .. keccak(header..nonce) .. result);
     return (keccak_f800(header, seed, result) <= target);
