@@ -458,15 +458,16 @@ void CUDAMiner::search(
     const uint32_t streams_batch_size = batch_size * s_numStreams;
     volatile search_results* buffer;
 
-	// prime each stream and clear search result buffers
+    // prime each stream and clear search result buffers
     uint32_t current_index;
-    for (current_index = 0; current_index < s_numStreams; current_index++, current_nonce += batch_size) {
-
+    for (current_index = 0; current_index < s_numStreams;
+         current_index++, current_nonce += batch_size)
+    {
         cudaStream_t stream = m_streams[current_index];
         buffer = m_search_buf[current_index];
-		buffer->count = 0;
+        buffer->count = 0;
 
-		// Run the batch for this stream
+        // Run the batch for this stream
         run_ethash_search(s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
     }
 
@@ -478,7 +479,7 @@ void CUDAMiner::search(
         bool t = true;
         if (m_new_work.compare_exchange_strong(t, false))
             done = true;
-
+		
         for (current_index = 0; current_index < s_numStreams; current_index++, current_nonce += batch_size) {
             cudaStream_t stream = m_streams[current_index];
             buffer = m_search_buf[current_index];
