@@ -2,6 +2,7 @@
 
 #include <boost/lockfree/queue.hpp>
 #include <iostream>
+#include <json/json.h>
 #include <libdevcore/Worker.h>
 #include <libethcore/Farm.h>
 #include <libethcore/Miner.h>
@@ -24,6 +25,9 @@ namespace dev
 			PoolManager(boost::asio::io_service & io_service, PoolClient * client, Farm &farm, MinerType const & minerType, unsigned maxTries, unsigned failovertimeout);
 			void addConnection(URI &conn);
 			void clearConnections();
+			Json::Value getConnectionsJson();
+			void setActiveConnection(unsigned int idx);
+			void removeConnection(unsigned int idx);
 			void start();
 			void stop();
 			bool isConnected() { return p_client->isConnected(); };

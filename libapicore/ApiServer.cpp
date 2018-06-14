@@ -3,13 +3,14 @@
 #include <ethminer-buildinfo.h>
 
 ApiServer::ApiServer(
-    boost::asio::io_service& io_service, int portnum, bool readonly, string password, Farm& f)
+    boost::asio::io_service& io_service, int portnum, bool readonly, string password, Farm& f, PoolManager& mgr)
   : m_readonly(readonly),
     m_password(std::move(password)),
     m_portnumber(portnum),
     m_acceptor(io_service),
     m_io_strand(io_service),
-    m_farm(f)
+    m_farm(f),
+	m_mgr(mgr)
 {}
 
 void ApiServer::start()
@@ -65,7 +66,7 @@ void ApiServer::begin_accept()
 
     dev::setThreadName("Api");
     std::shared_ptr<ApiConnection> session = std::make_shared<ApiConnection>(
-        m_acceptor.get_io_service(), ++lastSessionId, m_readonly, m_password, m_farm);
+        m_acceptor.get_io_service(), ++lastSessionId, m_readonly, m_password, m_farm, m_mgr);
     m_acceptor.async_accept(
         session->socket(), m_io_strand.wrap(boost::bind(&ApiServer::handle_accept, this, session,
                                boost::asio::placeholders::error)));
@@ -90,9 +91,10 @@ void ApiServer::handle_accept(std::shared_ptr<ApiConnection> session, boost::sys
             }
         });
         dev::setThreadName("Api");
+		m_sessions.push_back(session);
+		cnote << "New api session from " << session->socket().remote_endpoint();
         session->start();
-        m_sessions.push_back(session);
-        cnote << "New api session from " << session->socket().remote_endpoint();
+      
     }
     else
     {
@@ -242,6 +244,242 @@ void ApiConnection::processRequest(Json::Value& requestObject)
             jRes["error"]["code"] = -32601;
             jRes["error"]["message"] = "Method not implemented";
         }
+		else if (_method == "miner_getconnections")
+		{
+			// Returns a list of configured pools
+			jRes["result"] = m_mgr.getConnectionsJson();
+		}
+		else if (_method == "miner_addpool")
+		{
+			if (m_readonly)
+			{
+				jRes["error"]["code"] = -32601;
+				jRes["error"]["message"] = "Method not available";
+			}
+			else
+			{
+
+				if (!requestObject.isMember("params") || requestObject["params"].empty() ||
+					!requestObject["params"].isObject())
+				{
+					jRes["error"]["code"] = -32600;
+					jRes["error"]["message"] = "Invalid request";
+				}
+				else
+				{
+					Json::Value jPrm = requestObject["params"];
+					if (!jPrm.isMember("uri") || jPrm["uri"].empty() ||
+						!jPrm["uri"].isString())
+					{
+						jRes["error"]["code"] = -32602;
+						jRes["error"]["message"] = "Missing pool uri";
+					}
+					else
+					{
+						dev::URI uri;
+						try
+						{
+							uri = jPrm.get("uri", "").asString();
+							if (!uri.KnownScheme())
+							{
+								jRes["error"]["code"] = -422;
+								jRes["error"]["message"] = ("Unknown URI scheme " + uri.Scheme());
+							} 
+							else
+							{
+								// Check other pools already present share the same scheme family (stratum or getwork)
+								Json::Value pools = m_mgr.getConnectionsJson();
+								for(Json::Value::ArrayIndex i = 0; i != pools.size(); i++)
+								{
+									dev::URI poolUri = pools[i]["uri"].asString();
+									if (uri.Family() != poolUri.Family()) {
+										jRes["error"]["code"] = -422;
+										jRes["error"]["message"] = "Mixed stratum and getwork endpoints not supported.";
+										break;
+									}
+								}
+
+								// If everything ok then add this new uri
+								if (!jRes.isMember("error"))
+								{
+									m_mgr.addConnection(uri);
+									jRes["result"] = true;
+								}
+
+							}
+						}
+						catch (...)
+						{
+							jRes["error"]["code"] = -422;
+							jRes["error"]["message"] = "Bad URI";
+						}
+
+					}
+				}
+			}
+		}
+		else if (_method == "miner_setactiveconnection")
+		{
+			if (m_readonly)
+			{
+				jRes["error"]["code"] = -32601;
+				jRes["error"]["message"] = "Method not available";
+			}
+			else
+			{
+
+				if (!requestObject.isMember("params") || requestObject["params"].empty() ||
+					!requestObject["params"].isObject())
+				{
+					jRes["error"]["code"] = -32600;
+					jRes["error"]["message"] = "Invalid request";
+				}
+				else
+				{
+					Json::Value jPrm = requestObject["params"];
+					if (!jPrm.isMember("index") || jPrm["index"].empty() ||
+						!jPrm["index"].isInt())
+					{
+						jRes["error"]["code"] = -32602;
+						jRes["error"]["message"] = "Missing pool index";
+					}
+					else
+					{
+						Json::Value pools = m_mgr.getConnectionsJson();
+						if (jPrm["index"].asInt() < 0 || Json::ArrayIndex(jPrm["index"].asInt()) >= pools.size()) 
+						{
+							jRes["error"]["code"] = -422;
+							jRes["error"]["message"] = "Index out of bounds";
+						}
+						else
+						{
+							m_mgr.removeConnection(jPrm["index"].asInt());
+							jRes["result"] = true;
+						}
+					}
+				}
+			}
+
+		}
+		else if (_method == "miner_removeconnection")
+		{
+			if (m_readonly)
+			{
+				jRes["error"]["code"] = -32601;
+				jRes["error"]["message"] = "Method not available";
+			}
+			else
+			{
+
+				if (!requestObject.isMember("params") || requestObject["params"].empty() ||
+					!requestObject["params"].isObject())
+				{
+					jRes["error"]["code"] = -32600;
+					jRes["error"]["message"] = "Invalid request";
+				}
+				else
+				{
+					Json::Value jPrm = requestObject["params"];
+					if (!jPrm.isMember("index") || jPrm["index"].empty() ||
+						!jPrm["index"].isInt())
+					{
+						jRes["error"]["code"] = -32602;
+						jRes["error"]["message"] = "Missing pool index";
+					}
+					else
+					{
+						Json::Value pools = m_mgr.getConnectionsJson();
+						if (jPrm["index"].asInt() < 0 || Json::ArrayIndex(jPrm["index"].asInt()) >= pools.size())
+						{
+							jRes["error"]["code"] = -422;
+							jRes["error"]["message"] = "Index out of bounds";
+						}
+						else
+						{
+							Json::ArrayIndex i(jPrm["index"].asInt());
+							if (pools[i]["active"].asBool()) {
+
+								jRes["error"]["code"] = -460;
+								jRes["error"]["message"] = "Can't delete active connection";
+
+							}
+							else
+							{
+								m_mgr.setActiveConnection(jPrm["index"].asInt());
+								jRes["result"] = true;
+							}
+						}
+					}
+				}
+			}
+
+		}
+		else if (_method == "miner_getscramblerinfo")
+		{
+
+			jRes["result"] = m_farm.get_nonce_scrambler_json();
+
+		}
+		else if (_method == "miner_setscramblerinfo")
+		{
+			if (m_readonly)
+			{
+				jRes["error"]["code"] = -32601;
+				jRes["error"]["message"] = "Method not available";
+			}
+			else
+			{
+
+				if (!requestObject.isMember("params") || requestObject["params"].empty() ||
+					!requestObject["params"].isObject())
+				{
+					jRes["error"]["code"] = -32600;
+					jRes["error"]["message"] = "Invalid request";
+				}
+				else
+				{
+					Json::Value jPrm = requestObject["params"];
+					if (!jPrm.isMember("noncescrambler") && !jPrm.isMember("segmentwidth")) 
+					{
+						jRes["error"]["code"] = -32602;
+						jRes["error"]["message"] = "Missing parameters";
+					}
+					else
+					{
+						uint64_t nonce = m_farm.get_nonce_scrambler();
+						unsigned exp = m_farm.get_segment_width();
+
+						try
+						{
+							if (!jPrm["noncescrambler"].empty())
+							{
+								nonce = jPrm["noncescrambler"].asLargestUInt();
+							}
+							if (!jPrm["segmentwidth"].empty())
+							{
+								exp = jPrm["segmentwidth"].asUInt();
+							}
+						}
+						catch (...)
+						{
+							jRes["error"]["code"] = -422;
+							jRes["error"]["message"] = "Bad values";
+						}
+
+						if (!jRes.isMember("error"))
+						{
+							if (exp < 10) exp = 10;		// Not below 
+							if (exp > 50) exp = 40;		// Not above 
+							m_farm.set_nonce_scrambler(nonce);
+							m_farm.set_nonce_segment_width(exp);
+							jRes["result"] = true;
+						}
+
+					}
+				}
+			}
+
+		}
         else
         {
             // Any other method not found

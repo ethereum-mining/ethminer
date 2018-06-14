@@ -32,6 +32,7 @@
 #include <libethcore/BlockHeader.h>
 #include <libhwmon/wrapnvml.h>
 #include <libhwmon/wrapadl.h>
+#include <json/json.h>
 #if defined(__linux)
 #include <libhwmon/wrapamdsysfs.h>
 #endif
@@ -440,6 +441,45 @@ public:
 		return m_nonce_scrambler;
 	}
 
+	unsigned get_segment_width() override
+	{
+		return m_nonce_segment_with;
+	}
+
+	void set_nonce_scrambler(uint64_t n)
+	{
+		m_nonce_scrambler = n;
+	}
+
+	void set_nonce_segment_width(unsigned n)
+	{
+		m_nonce_segment_with = n;
+	}
+
+	/**
+	* @brief Provides the description of segments each miner is working on
+	* @return a JsonObject
+	*/
+	Json::Value get_nonce_scrambler_json() 
+	{
+		Json::Value jRes;
+		jRes["noncescrambler"] = m_nonce_scrambler;
+		jRes["segmentwidth"] = m_nonce_segment_with;
+		
+		for (size_t i = 0; i < m_miners.size(); i++)
+		{
+			Json::Value jSegment;
+			uint64_t gpustartnonce = m_nonce_scrambler + ((uint64_t)pow(2, m_nonce_segment_with) * i);
+			jSegment["gpu"] = (int)i;
+			jSegment["start"] = gpustartnonce;
+			jSegment["stop"] = uint64_t(gpustartnonce + (uint64_t)(pow(2, 40)*(i+1)));
+			jRes["segments"].append(jSegment);
+
+		}
+
+		return jRes;
+	}
+
 	void setTStartTStop(unsigned tstart, unsigned tstop)
 	{
 		m_tstart = tstart;
@@ -496,6 +536,7 @@ private:
 
     string m_pool_addresses;
 	uint64_t m_nonce_scrambler;
+	unsigned int m_nonce_segment_with = 40;				// This is the exponent of the power 2^n which determines the width of each search segment assigned to each gpu
 
 	unsigned m_tstart, m_tstop;
 

@@ -184,6 +184,7 @@ public:
 	virtual void submitProof(Solution const& _p) = 0;
 	virtual void failedSolution() = 0;
 	virtual uint64_t get_nonce_scrambler() = 0;
+	virtual unsigned get_segment_width() = 0;
 };
 
 /**
@@ -225,7 +226,10 @@ public:
 	uint64_t get_start_nonce()
 	{
 		// Each GPU is given a non-overlapping 2^40 range to search
-		return farm.get_nonce_scrambler() + ((uint64_t) index << 40);
+		// return farm.get_nonce_scrambler() + ((uint64_t) index << 40);
+		
+		// Now segment size is adjustable
+		return farm.get_nonce_scrambler() + (uint64_t)(pow(2, farm.get_segment_width()) * index);
 	}
 
 	void update_temperature(unsigned temperature)
@@ -240,14 +244,14 @@ public:
 			unsigned tstop = farm.get_tstop();
 			if (tstop && temperature >= tstop)
 			{
-				cwarn << "Pause mining on gpu/" << index << " due -tstop";
+				cwarn << "Pause mining on gpu/" << index << " : temperature " << temperature << " is above --tstop " << tstop;
 				m_wait_for_tstart_temp.store(true, std::memory_order_relaxed);
 			}
 		} else {
 			unsigned tstart = farm.get_tstart();
 			if (tstart && temperature <= tstart)
 			{
-				cnote << "(Re)starting mining on gpu/" << index << " due -tstart";
+				cnote << "(Re)starting mining on gpu/" << index << " : temperature " << temperature << " is now below --tstart " << tstart;
 				m_wait_for_tstart_temp.store(false, std::memory_order_relaxed);
 			}
 		}
