@@ -2,6 +2,7 @@
 
 #include <libethcore/Farm.h>
 #include <libethcore/Miner.h>
+#include <libpoolprotocols/PoolManager.h>
 #include <json/json.h>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
@@ -17,13 +18,14 @@ class ApiConnection
 {
 public:
 
-	ApiConnection(boost::asio::io_service& io_service, int id, bool readonly, string password, Farm& f) :
+	ApiConnection(boost::asio::io_service& io_service, int id, bool readonly, string password, Farm& f, PoolManager& mgr) :
 		m_sessionId(id),
 		m_socket(io_service),
 		m_io_strand(io_service),
 		m_readonly(readonly),
 		m_password(std::move(password)),
-		m_farm(f) 
+		m_farm(f),
+		m_mgr(mgr)
 	{
 
 		if (!m_password.empty()) m_is_authenticated = false;
@@ -66,6 +68,7 @@ private:
 	bool m_readonly =  false ;
 	std::string m_password = "";
 	Farm& m_farm;
+	PoolManager& m_mgr;
 
 	bool m_is_authenticated = true;
 
@@ -76,7 +79,7 @@ class ApiServer
 {
 public:
 
-	ApiServer(boost::asio::io_service& io_service, int portnum, bool readonly, string password, Farm& f);
+	ApiServer(boost::asio::io_service& io_service, int portnum, bool readonly, string password, Farm& f, PoolManager& mgr);
 	bool isRunning() { return m_running.load(std::memory_order_relaxed); };
 	void start();
 	void stop();
@@ -98,5 +101,6 @@ private:
 	std::vector<std::shared_ptr<ApiConnection>> m_sessions;
 
 	Farm& m_farm;
+	PoolManager& m_mgr;
 
 };

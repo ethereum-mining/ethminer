@@ -735,7 +735,7 @@ private:
 
 #if API_CORE
 
-		ApiServer api(m_io_service, abs(m_api_port), (m_api_port < 0) ? true : false, m_api_password, f);
+		ApiServer api(m_io_service, abs(m_api_port), (m_api_port < 0) ? true : false, m_api_password, f, mgr);
 		api.start();
 
         http_server.run(m_http_port, &f, m_show_hwmonitors, m_show_power);

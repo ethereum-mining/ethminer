@@ -25,6 +25,7 @@ public:
 	SecureLevel	SecLevel() const;
 	ProtocolFamily	Family() const;
 	unsigned	Version() const;
+	std::string string() { return m_uri.string(); }
 
 	bool		KnownScheme();
 
