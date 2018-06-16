@@ -32,7 +32,7 @@ void ApiServer::start()
         m_acceptor.bind(endpoint);
         m_acceptor.listen(64);
     }
-    catch (const std::exception& _e)
+    catch (const std::exception&)
     {
         cwarn << "Could not start API server on port : " +
                      to_string(m_acceptor.local_endpoint().port());
