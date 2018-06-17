@@ -8,29 +8,29 @@
 
 **Ethminer** is an Ethash GPU mining worker: with ethminer you can mine every coin which relies on an Ethash Proof of Work thus including Ethereum, Ethereum Classic, Metaverse, Musicoin, Ellaism, Pirl, Expanse and others. This is the actively maintained version of ethminer. It originates from [cpp-ethereum] project (where GPU mining has been discontinued) and builds on the improvements made in [Genoil's fork]. See [FAQ](#faq) for more details.
 
-### Features
+## Features
 
-- OpenCL mining
-- Nvidia CUDA mining
-- realistic benchmarking against arbitrary epoch/DAG/blocknumber
-- on-GPU DAG generation (no more DAG files on disk)
-- stratum mining without proxy
-- OpenCL devices picking
-- farm failover (getwork + stratum)
+* OpenCL mining
+* Nvidia CUDA mining
+* realistic benchmarking against arbitrary epoch/DAG/blocknumber
+* on-GPU DAG generation (no more DAG files on disk)
+* stratum mining without proxy
+* OpenCL devices picking
+* farm failover (getwork + stratum)
 
 
 ## Table of Contents
 
-- [Install](#install)
-- [Usage](#usage)
-  - [Examples connecting some pools](#examples-connecting-some-pools)
-- [Build](#build)
-  - [Continuous Integration and development builds](#continuous-integration-and-development-builds)
-  - [Building from source](#building-from-source)
-  - [CMake configuration options](#cmake-configuration-options)
-- [Maintainer](#maintainer)
-- [Contribute](#contribute)
-- [F.A.Q.](#faq)
+* [Install](#install)
+* [Usage](#usage)
+    * [Examples connecting some pools](#examples-connecting-some-pools)
+* [Build](#build)
+    * [Continuous Integration and development builds](#continuous-integration-and-development-builds)
+    * [Building from source](#building-from-source)
+    * [CMake configuration options](#cmake-configuration-options)
+* [Maintainer](#maintainer)
+* [Contribute](#contribute)
+* [F.A.Q.](#faq)
 
 
 ## Install
@@ -44,8 +44,8 @@ accessible from command line. The ethminer is ready to go.
 
 | Builds | Release | Date |
 | ------ | ------- | ---- |
-| Last    | [![GitHub release](https://img.shields.io/github/release/ethereum-mining/ethminer/all.svg)](https://github.com/ethereum-mining/ethminer/releases) | [![GitHub Release Date](https://img.shields.io/github/release-date-pre/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) |
-| Stable  | [![GitHub release](https://img.shields.io/github/release/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) | [![GitHub Release Date](https://img.shields.io/github/release-date/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) |
+| Last   | [![GitHub release](https://img.shields.io/github/release/ethereum-mining/ethminer/all.svg)](https://github.com/ethereum-mining/ethminer/releases) | [![GitHub Release Date](https://img.shields.io/github/release-date-pre/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) |
+| Stable | [![GitHub release](https://img.shields.io/github/release/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) | [![GitHub Release Date](https://img.shields.io/github/release-date/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) |
 
 
 ## Usage
@@ -59,7 +59,7 @@ For a full list of available command, please run:
 ethminer --help
 ```
 
-### Examples connecting some pools
+### Examples connecting to pools
 
 Check our [samples](POOL_EXAMPLES_ETH.md) to see how to connect to different pools.
 
@@ -74,61 +74,92 @@ Check our [samples](POOL_EXAMPLES_ETH.md) to see how to connect to different poo
 
 The AppVeyor system automatically builds a Windows .exe for every commit. The latest version is always available [on the landing page](https://ci.appveyor.com/project/ethereum-mining/ethminer) or you can [browse the history](https://ci.appveyor.com/project/ethereum-mining/ethminer/history) to access previous builds.
 
-To download the .exe on a build under 'JOB NAME' select 'Configuration: Release', choose 'ARTIFACTS' then download the zip file.
+To download the .exe on a build under `JOB NAME` select `Configuration: Release`, choose `ARTIFACTS` then download the zip file.
 
 
 ### Building from source
 
 This project uses [CMake] and [Hunter] package manager.
 
-1. Make sure git submodules are up to date
+1. Make sure git submodules are up to date:
 
-   ```sh
-   git submodule update --init --recursive
-   ```
+    ```sh
+    git submodule update --init --recursive
+    ```
 
-2. Create a build directory.
+2. Create a build directory:
 
-   ```sh
-   mkdir build; cd build
-   ```
+    ```sh
+    mkdir build; cd build
+    ```
 
-3. Configure the project with CMake. Check out additional
-   [configuration options](#cmake-configuration-options).
+3. Configure the project with CMake. Check out the additional [configuration options](#cmake-configuration-options).
 
-   ```sh
-   cmake ..
-   ```
+    ```sh
+    cmake ..
+    ```
 
-   Note: In Windows, it is possible to have issues with VS 2017 compilers, in that case, use VS 2017 installer to get VS 2015 compilers and use:
+    Note: On Windows, it's possible to have issues with VS 2017 default compilers; in that case, use the VS 2017 installer to get the VS 2015 compilers and use:
 
-   ```sh
-   cmake .. -G "Visual Studio 15 2017 Win64" -Tv140,host=x64
-   ```
+    ```sh
+    cmake .. -G "Visual Studio 15 2017 Win64" -T v140
+    ```
 
-4. Build the project using [CMake Build Tool Mode]. This is a portable variant
-   of `make`.
+4. Build the project using [CMake Build Tool Mode]. This is a portable variant of `make`.
 
-   ```sh
-   cmake --build .
-   ```
+    ```sh
+    cmake --build .
+    ```
 
-   Note: In Windows, it is possible to have compiler issues if you don't specify build config. In that case use:
+    Note: On Windows, it is possible to have compiler issues if you don't specify the build config. In that case use:
 
-   ```sh
-   cmake --build . --config Release
-   ```
+    ```sh
+    cmake --build . --config Release
+    ```
+
+    Complete sample Windows batch file - **adapt it to your system**. Assumes that:
+
+    * it's placed one folder up from the ethminer source folder
+    * you have CMake installed
+    * you have VS 2017 with the 140 toolset installed; this is needed because CUDA doesn't compile with the 141 toolset currently
+    * you have Perl installed
+
+    ```bat
+    @echo off
+    setlocal
+
+    rem add MSVC in PATH
+    call "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\Common7\Tools\VsMSBuildCmd.bat"
+
+    rem add Perl in PATH; it's needed for OpenSSL build
+    set "PERL_PATH=C:\Perl\perl\bin"
+    set "PATH=%PERL_PATH%;%PATH%"
+
+    rem switch to this script's working difrectory
+    cd "%~dp0\ethminer\"
+
+    rem clean up old build
+    rem if exist build\ rd /q /s build\
+    mkdir build\
+    cd build\
+
+    cmake -G "Visual Studio 15 2017 Win64" -H. -Bbuild -T v140 -DETHASHCL=ON -DETHASHCUDA=ON -DAPICORE=ON ..
+    cmake --build . --config Release --target package
+
+    endlocal
+    pause
+    ```
 
 5. _(Optional, Linux only)_ Install the built executable.
 
-   ```sh
-   sudo make install
-   ```
+    ```sh
+    sudo make install
+    ```
 
 #### OpenCL support on Linux
 
 If you're planning to use [OpenCL on Linux](https://github.com/ruslo/hunter/wiki/pkg.opencl#pitfalls)
-you have to install OpenGL libraries. E.g. on Ubuntu run:
+you have to install the OpenGL libraries. E.g. on Ubuntu run:
 
 ```sh
 sudo apt-get install mesa-common-dev
@@ -138,7 +169,7 @@ sudo apt-get install mesa-common-dev
 
 If you want to install dependencies yourself or use system package manager
 you can disable Hunter by adding
-[-DHUNTER_ENABLED=OFF](https://docs.hunter.sh/en/latest/reference/user-variables.html#hunter-enabled)
+[`-DHUNTER_ENABLED=OFF`](https://docs.hunter.sh/en/latest/reference/user-variables.html#hunter-enabled)
 to configuration options.
 
 ### CMake configuration options
@@ -149,17 +180,17 @@ Pass these options to CMake configuration command, e.g.
 cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 ```
 
-- `-DETHASHCL=ON` - enable OpenCL mining, `ON` by default,
-- `-DETHASHCUDA=ON` - enable CUDA mining, `ON` by default.
-- `-DAPICORE=ON` - enable API Server, `ON` by default.
-- `-DETHDBUS=ON` - enable D-Bus support, `OFF` by default.
+* `-DETHASHCL=ON` - enable OpenCL mining, `ON` by default,
+* `-DETHASHCUDA=ON` - enable CUDA mining, `ON` by default.
+* `-DAPICORE=ON` - enable API Server, `ON` by default.
+* `-DETHDBUS=ON` - enable D-Bus support, `OFF` by default.
 
 
 ## Maintainer
 
 [![Gitter](https://img.shields.io/gitter/room/ethereum-mining/ethminer.svg)][Gitter]
 
-- Paweł Bylica [@chfast](https://github.com/chfast)
+* Paweł Bylica [@chfast](https://github.com/chfast)
 
 
 ## Contribute
@@ -180,59 +211,58 @@ Licensed under the [GNU General Public License, Version 3](LICENSE).
 
 1. Why is my hashrate with Nvidia cards on Windows 10 so low?
 
-   The new WDDM 2.x driver on Windows 10 uses a different way of addressing the GPU. This is good for a lot of things, but not for ETH mining.
-   For Kepler GPUs: I actually don't know. Please let me know what works best for good old Kepler.
-   For Maxwell 1 GPUs: Unfortunately the issue is a bit more serious on the GTX750Ti, already causing suboptimal performance on Win7 and Linux. Apparently about 4MH/s can still be reached on Linux, which, depending on ETH price, could still be profitable, considering the relatively low power draw.
-   For Maxwell 2 GPUs: There is a way of mining ETH at Win7/8/Linux speeds on Win10, by downgrading the GPU driver to a Win7 one (350.12 recommended) and using a build that was created using CUDA 6.5.
-   For Pascal GPUs: You have to use the latest WDDM 2.1 compatible drivers in combination with Windows 10 Anniversary edition in order to get the full potential of your Pascal GPU.
+    The new WDDM 2.x driver on Windows 10 uses a different way of addressing the GPU. This is good for a lot of things, but not for ETH mining.
+    For Kepler GPUs: I actually don't know. Please let me know what works best for good old Kepler.
+    For Maxwell 1 GPUs: Unfortunately the issue is a bit more serious on the GTX750Ti, already causing suboptimal performance on Win7 and Linux. Apparently about 4MH/s can still be reached on Linux, which, depending on ETH price, could still be profitable, considering the relatively low power draw.
+    For Maxwell 2 GPUs: There is a way of mining ETH at Win7/8/Linux speeds on Win10, by downgrading the GPU driver to a Win7 one (350.12 recommended) and using a build that was created using CUDA 6.5.
+    For Pascal GPUs: You have to use the latest WDDM 2.1 compatible drivers in combination with Windows 10 Anniversary edition in order to get the full potential of your Pascal GPU.
 
 2. Why is a GTX 1080 slower than a GTX 1070?
 
-   Because of the GDDR5X memory, which can't be fully utilized for ETH mining (yet).
+    Because of the GDDR5X memory, which can't be fully utilized for ETH mining (yet).
 
 3. Are AMD cards also affected by slowdowns with increasing DAG size?
 
-   Only GCN 1.0 GPUs (78x0, 79x0, 270, 280), but in a different way. You'll see that on each new epoch (30K blocks), the hashrate will go down a little bit.
+    Only GCN 1.0 GPUs (78x0, 79x0, 270, 280), but in a different way. You'll see that on each new epoch (30K blocks), the hashrate will go down a little bit.
 
 4. Can I still mine ETH with my 2GB GPU?
 
-   Not really, your VRAM must be above the DAG size (Currently about 2.15 GB.) to get best performance. Without it severe hash loss will occur.
+    Not really, your VRAM must be above the DAG size (Currently about 2.15 GB.) to get best performance. Without it severe hash loss will occur.
 
 5. What are the optimal launch parameters?
 
-   The default parameters are fine in most scenario's (CUDA). For OpenCL it varies a bit more. Just play around with the numbers and use powers of 2. GPU's like powers of 2.
+    The default parameters are fine in most scenario's (CUDA). For OpenCL it varies a bit more. Just play around with the numbers and use powers of 2. GPU's like powers of 2.
 
 6. What does the `--cuda-parallel-hash` flag do?
 
-   [@davilizh](https://github.com/davilizh) made improvements to the CUDA kernel hashing process and added this flag to allow changing the number of tasks it runs in parallel. These improvements were optimised for GTX 1060 GPUs which saw a large increase in hashrate, GTX 1070 and GTX 1080/Ti GPUs saw some, but less, improvement. The default value is 4 (which does not need to be set with the flag) and in most cases this will provide the best performance.
+    [@davilizh](https://github.com/davilizh) made improvements to the CUDA kernel hashing process and added this flag to allow changing the number of tasks it runs in parallel. These improvements were optimised for GTX 1060 GPUs which saw a large increase in hashrate, GTX 1070 and GTX 1080/Ti GPUs saw some, but less, improvement. The default value is 4 (which does not need to be set with the flag) and in most cases this will provide the best performance.
 
 7. What is ethminer's relationship with [Genoil's fork]?
 
-   [Genoil's fork] was the original source of this version, but as Genoil is no longer consistently maintaining that fork it became almost impossible for developers to get new code merged there. In the interests of progressing development without waiting for reviews this fork should be considered the active one and Genoil's as legacy code.
+    [Genoil's fork] was the original source of this version, but as Genoil is no longer consistently maintaining that fork it became almost impossible for developers to get new code merged there. In the interests of progressing development without waiting for reviews this fork should be considered the active one and Genoil's as legacy code.
 
 8. Can I CPU Mine?
 
-   No, use geth, the go program made for ethereum by ethereum.
+    No, use geth, the go program made for ethereum by ethereum.
 
 9. CUDA GPU order changes sometimes. What can I do?
 
-   There is an environment var `CUDA_DEVICE_ORDER` which tells the Nvidia CUDA driver how to enumerates the graphic cards.
-   Following values are valid:
+    There is an environment var `CUDA_DEVICE_ORDER` which tells the Nvidia CUDA driver how to enumerates the graphic cards.
+    The following values are valid:
 
-   * FASTEST_FIRST (Default) - causes CUDA to guess which device is fastest using a simple heuristic.
-   * PCI_BUS_ID - orders devices by PCI bus ID in ascending order.
+    * `FASTEST_FIRST` (Default) - causes CUDA to guess which device is fastest using a simple heuristic.
+    * `PCI_BUS_ID` - orders devices by PCI bus ID in ascending order.
 
-   To prevent some unwanted changes in the order of your CUDA devices you **might set the environment to `PCI_BUS_ID`**.
-   This can be done:
+    To prevent some unwanted changes in the order of your CUDA devices you **might set the environment variable to `PCI_BUS_ID`**.
+    This can be done with one of the 2 ways:
 
-   * Linux:
-     * Adapt /etc/environment file and add a line `CUDA_DEVICE_ORDER=PCI_BUS_ID`
-     * Adapt your start script launching ethminer and add a line `export CUDA_DEVICE_ORDER=PCI_BUS_ID`
+    * Linux:
+        * Adapt the `/etc/environment` file and add a line `CUDA_DEVICE_ORDER=PCI_BUS_ID`
+        * Adapt your start script launching ethminer and add a line `export CUDA_DEVICE_ORDER=PCI_BUS_ID`
 
-   * Windows:
-     * Adapt your environment using the control panel (just search `setting environment windows control panel` using your favorite search engine)
-     * Adapt your start (.bat) file launching ethminer and add a line `setx CUDA_DEVICE_ORDER=PCI_BUS_ID` or `set CUDA_DEVICE_ORDER=PCI_BUS_ID`
-     * For more details about `setx` and `set` see <https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/setx>
+    * Windows:
+        * Adapt your environment using the control panel (just search `setting environment windows control panel` using your favorite search engine)
+        * Adapt your start (.bat) file launching ethminer and add a line `set CUDA_DEVICE_ORDER=PCI_BUS_ID` or `setx CUDA_DEVICE_ORDER PCI_BUS_ID`. For more info about `set` see [here](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/set_1), for more info about `setx` see [here](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/setx)
 
 
 [Amazon S3 is needed]: https://docs.travis-ci.com/user/uploading-artifacts/

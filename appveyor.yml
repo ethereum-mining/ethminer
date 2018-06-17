@@ -25,7 +25,7 @@ install: |
   nvcc -V
 
 build_script:
-  - cmake -G "Visual Studio 15 2017 Win64" -H. -Bbuild -T v140,host=x64 -DETHASHCUDA=ON -DAPICORE=ON -DHUNTER_JOBS_NUMBER=%NUMBER_OF_PROCESSORS%
+  - cmake -G "Visual Studio 15 2017 Win64" -H. -Bbuild -T v140 -DETHASHCUDA=ON -DAPICORE=ON -DHUNTER_JOBS_NUMBER=%NUMBER_OF_PROCESSORS%
   - cmake --build build --config %CONFIGURATION% --target package
 
 after_build:
