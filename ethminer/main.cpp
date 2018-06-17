@@ -292,7 +292,7 @@ public:
 			->group(CommonGroup);
 
 		app.add_option("-L,--dag-load-mode", m_dagLoadMode,
-			"Set the DAG load mode. 0=parallel, 1=sequential, 2=sequential", true)
+			"Set the DAG load mode. 0=parallel, 1=sequential, 2=single", true)
 			->group(CommonGroup)
 			->check(CLI::Range(2));
 
