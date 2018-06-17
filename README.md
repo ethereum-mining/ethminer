@@ -28,7 +28,7 @@
     * [Continuous Integration and development builds](#continuous-integration-and-development-builds)
     * [Building from source](#building-from-source)
     * [CMake configuration options](#cmake-configuration-options)
-* [Maintainer](#maintainer)
+* [Maintainers & Authors](#maintainers--authors)
 * [Contribute](#contribute)
 * [F.A.Q.](#faq)
 
@@ -186,11 +186,24 @@ cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 * `-DETHDBUS=ON` - enable D-Bus support, `OFF` by default.
 
 
-## Maintainer
+## Maintainers & Authors
 
 [![Gitter](https://img.shields.io/gitter/room/ethereum-mining/ethminer.svg)][Gitter]
 
-* Paweł Bylica [@chfast](https://github.com/chfast)
+The list of current and past maintainers, authors and contributors to the ethminer project.
+Ordered alphabetically. [Contributors statistics since 2015-08-20].
+
+| Name                  | Contact                                                      |     |
+| --------------------- | ------------------------------------------------------------ | --- |
+| Andrea Lanfranchi     | [@AndreaLanfranchi](https://github.com/AndreaLanfranchi)     |     |
+| EoD                   | [@EoD](https://github.com/EoD)                               |     |
+| Genoil                | [@Genoil](https://github.com/Genoil)                         |     |
+| goobur                | [@goobur](https://github.com/goobur)                         |     |
+| Marius van der Wijden | [@MariusVanDerWijden](https://github.com/MariusVanDerWijden) |     |
+| Paweł Bylica          | [@chfast](https://github.com/chfast)                         | ETH: 0x8FB24C5b5a75887b429d886DBb57fd053D4CF3a2 |
+| Philipp Andreas       | [@smurfy](https://github.com/smurfy)                         |     |
+| Stefan Oberhumer      | [@StefanOberhumer](https://github.com/StefanOberhumer)       |     |
+
 
 
 ## Contribute
@@ -270,6 +283,7 @@ Licensed under the [GNU General Public License, Version 3](LICENSE).
 [CMake]: https://cmake.org/
 [CMake Build Tool Mode]: https://cmake.org/cmake/help/latest/manual/cmake.1.html#build-tool-mode
 [cpp-ethereum]: https://github.com/ethereum/cpp-ethereum
+[Contributors statistics since 2015-08-20]: https://github.com/ethereum-mining/ethminer/graphs/contributors?from=2015-08-20
 [Genoil's fork]: https://github.com/Genoil/cpp-ethereum
 [Gitter]: https://gitter.im/ethereum-mining/ethminer
 [Hunter]: https://docs.hunter.sh/
