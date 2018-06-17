@@ -38,8 +38,6 @@ The servers are listed in alphabetical order. To get best results reorder them f
 | [nicehash.com](#nicehashcom) | <https://www.nicehash.com/> | <https://www.nicehash.com/help/which-stratum-servers-are-available> |
 | [sparkpool.com](#sparkpoolcom) | <https://sparkpool.com/> | <https://eth.sparkpool.com/> |
 
-
-
 ### 2miners.com
 
 ```
@@ -84,7 +82,6 @@ Without email
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@eth-us2.dwarfpool.com:8008
 ```
 
-
 ### ethermine.org
 
 Non-SSL connection:
@@ -105,7 +102,6 @@ SSL connection:
 -P stratum1+ssl://ETH_WALLET.WORKERNAME@us2.ethermine.org:5555
 ```
 
-
 ### ethpool.org
 
  ```
@@ -114,13 +110,11 @@ SSL connection:
  -P stratum1+tcp://ETH_WALLET.WORKERNAME@us1.ethpool.org:3333
  ```
 
-
 ### f2pool.com
 
 ```
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@eth.f2pool.com:8008
 ```
-
 
 ### miningpoolhub.com
 
@@ -130,8 +124,7 @@ SSL connection:
 -P stratum2+tcp://USERNAME.WORKERNAME:WORKERPWD@us-east.ethash-hub.miningpoolhub.com:20535
 ```
 
-HINT: It seems the password is not being verified by the pool so you can use simple 'x' as WORKERPWD.
-
+HINT: It seems the password is not being verified by the pool so you can use a plain `x` as `WORKERPWD`.
 
 ### nanopool.org
 
@@ -155,7 +148,6 @@ Without email:
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@eth-us-west1.nanopool.org:9999
 ```
 
-
 ### nicehash.com
 
 ```
@@ -166,7 +158,6 @@ Without email:
 -P stratum2+tcp://BTC_WALLET.WORKERNAME@daggerhashimoto.jp.nicehash.com:3353
 -P stratum2+tcp://BTC_WALLET.WORKERNAME@daggerhashimoto.usa.nicehash.com:3353
 ```
-
 
 ### sparkpool.com
 

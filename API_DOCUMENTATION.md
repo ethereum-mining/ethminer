@@ -9,7 +9,7 @@ Ethminer implements an API (Application Programming Interface) interface which a
 
 Whenever the above depicted conditions are met you can take advantage of the API support by adding the `--api-port` argument to the command line used to launch ethminer. The format of this argument is `--api-port nnnn` where `nnnn` is any valid TCP port number (1-65535). Examples:
 
-```
+```shell
 ./ethminer [...] --api-port 3333
 ```
 
@@ -17,7 +17,7 @@ This example puts the API interface listening on port 3333 of **any** local IP a
 
 The API interface not only offers monitoring queries but also implements some methods which may affect the functioning of the miner. These latter operations are named _write_ actions: if you want to inhibit the invocation of such methods you may want to put the API interface in **read-only** mode which means only query to **get** data will be allowed and no _write_ methods will be allowed. To do this simply add the - (minus) sign in front of the port number thus transforming the port number into a negative number. Example for read-only mode:
 
-```
+```shell
 ./ethminer [...] --api-port -3333
 ```
 
@@ -25,7 +25,7 @@ _Note. The port number in this examples is taken randomly and does not imply a s
 
 To gain further security you may wish to password protect the access to your API interface simply by adding the `--api-password` argument to the command line sequence, followed by the password you wish. Password may be composed by any printable char and **must not** have spaces. Password checking is **case sensitive**. Example for password protected API interface:
 
-```
+```shell
 ./ethminer [...] --api-port -3333 --api-password MySuperSecurePassword!!#123456
 ```
 
@@ -35,17 +35,17 @@ At the time of writing of this document ethminer's API interface does not implem
 
 Access to API interface is performed through a TCP socket connection to the API endpoint (which is the IP address of the computer running ethminer's API instance at the configured port). For instance if your computer address is 192.168.1.1 and have configured ethminer to run with `--api-port 3333` your endpoint will be 192.168.1.1:3333.
 
-Messages exchanged through this channel must conform the [Jsonrpc v.2 specifications](http://www.jsonrpc.org/specification) so basically you will issue **requests** and will get back **responses**. At the time of writing of this document do not expect any **notification**. All messages must be line feed terminated.
+Messages exchanged through this channel must conform to the [JSON-RPC 2.0 specification](http://www.jsonrpc.org/specification) so basically you will issue **requests** and will get back **responses**. At the time of writing this document do not expect any **notification**. All messages must be line feed terminated.
 
-To quick test if your ethminer's API instance is working properly you can issue this simple command
+To quickly test if your ethminer's API instance is working properly you can issue this simple command:
 
-```
+```shell
 echo '{"id":0,"jsonrpc":"2.0","method":"miner_ping"}' | netcat 192.168.1.1 3333
 ```
 
-and will get back a response like this
+and will get back a response like this:
 
-```
+```shell
 {"id":0,"jsonrpc":"2.0","result":"pong"}
 ```
 
@@ -83,7 +83,7 @@ If your API instance is password protected by the usage of `--api-password` any 
 }
 ```
 
-where the member `psw` **must** contain the very same password configured with `--api-password` argument. As expected result you will get a JsonRpc 2.0 response with positive or negative values. For instance if password do match you will get a response like this
+where the member `psw` **must** contain the very same password configured with `--api-password` argument. As expected result you will get a JSON-RPC 2.0 response with positive or negative values. For instance if the password matches you will get a response like this:
 
 ```json
 {
@@ -93,7 +93,7 @@ where the member `psw` **must** contain the very same password configured with `
 }
 ```
 
-or, in case of any error
+or, in case of any error:
 
 ```json
 {
@@ -120,7 +120,7 @@ To invoke the action:
 }
 ```
 
-and expect back a result like this
+and expect back a result like this:
 
 ```json
 {
@@ -132,11 +132,11 @@ and expect back a result like this
 
 which confirms the action has been performed.
 
-If you get no response or the socket goes timeout it likely your ethminer's instance has become unresponsive (or in worst cases all the OS of your mining rig is unresponsive) and need to be re-started/re-booted.
+If you get no response or the socket timeouts it's likely your ethminer's instance has become unresponsive (or in worst cases the OS of your mining rig is unresponsive) and needs to be re-started/re-booted.
 
 ### miner_getstat1
 
-With this method you expect back a collection of statistical data. To issue request:
+With this method you expect back a collection of statistical data. To issue a request:
 
 ```json
 {
@@ -146,7 +146,7 @@ With this method you expect back a collection of statistical data. To issue requ
 }
 ```
 
-and expect back a response like this
+and expect back a response like this:
 
 ```js
 {
@@ -170,7 +170,7 @@ Some of the arguments here expressed have been set for compatibility with other 
 
 ### miner_getstathr
 
-With this method you expect back a collection of statistical data. To issue request:
+With this method you expect back a collection of statistical data. To issue a request:
 
 ```json
 {
@@ -180,7 +180,7 @@ With this method you expect back a collection of statistical data. To issue requ
 }
 ```
 
-and expect back a response like this
+and expect back a response like this:
 
 ```js
 {
@@ -231,7 +231,7 @@ and expect back a response like this
 }
 ```
 
-This format does not honor any compliance with other miner's format and does not express values from dual mining, which, we reiterate, is not supported by ethminer.
+This format does not honor any compliance with other miners' format and does not express values from dual mining, which, we reiterate, is not supported by ethminer.
 
 ### miner_restart
 
@@ -243,7 +243,7 @@ With this method you instruct ethminer to _restart_ mining. Restarting means:
 * Regenerate DAG files
 * Restart mining
 
-The invocation of this method **_may_** be useful if you detect one, or more, GPU are in error but in a recoverable state (eg. no hashrate but the GPU has not fallen off the bus). In other words this method works like stopping ethminer and restarting it **but without loosing connection to the pool**.
+The invocation of this method **_may_** be useful if you detect one or more GPUs are in error, but in a recoverable state (eg. no hashrate but the GPU has not fallen off the bus). In other words, this method works like stopping ethminer and restarting it **but without loosing connection to the pool**.
 
 To invoke the action:
 
@@ -255,7 +255,7 @@ To invoke the action:
 }
 ```
 
-and expect back a result like this
+and expect back a result like this:
 
 ```json
 {
@@ -267,19 +267,19 @@ and expect back a result like this
 
 which confirms the action has been performed.
 
-**Note** This method is not available if API interface is in read-only mode (see above)
+**Note**: This method is not available if the API interface is in read-only mode (see above).
 
 ### miner_shuffle
 
-The mining process is nothing more that finding the right number (nonce) which, applied to an algorithm (ethash) and some data, gives a result which is below or equal to a given target. This in very very (very) short !
+The mining process is nothing more that finding the right number (nonce) which, applied to an algorithm (ethash) and some data, gives a result which is below or equal to a given target. This is very very (very) short!
 The range of nonces to be searched is a huge number: 2^64 = 18446744073709600000~ possible values. Each one has the same probability to be the _right_ one.
 
-Every time ethminer receives a job from a pool you'd expect the miner to begin searching from the first but that would be boring. So the concept of scramble nonce has been introduced to achieve these goals:
+Every time ethminer receives a job from a pool you'd expect the miner to begin searching from the first, but that would be boring. So the concept of scramble nonce has been introduced to achieve these goals:
 
 * Start the searching from a random point within the range
-* Ensure all GPUs do not search the same data, or, in other words, ensure each GPU searches it's own range of numbers without overlapping with the same numbers of other GPUs
+* Ensure all GPUs do not search the same data, or, in other words, ensure each GPU searches its own range of numbers without overlapping with the same numbers of the other GPUs
 
-All miner_shuffle method does is to re-initialize a new random scramble nonce to start from in next jobs.
+All `miner_shuffle` method does is to re-initialize a new random scramble nonce to start from in next jobs.
 
 To invoke the action:
 
@@ -291,7 +291,7 @@ To invoke the action:
 }
 ```
 
-and expect back a result like this
+and expect back a result like this:
 
 ```json
 {
@@ -305,7 +305,7 @@ which confirms the action has been performed.
 
 ### miner_getconnections
 
-When you launch ethminer you provide a list of connections specified by the `-P` argument. If you want to remotely check which is the list of connections ethminer is using you can issue this method:
+When you launch ethminer you provide a list of connections specified by the `-P` argument. If you want to remotely check which is the list of connections ethminer is using, you can issue this method:
 
 ```json
 {
@@ -315,7 +315,7 @@ When you launch ethminer you provide a list of connections specified by the `-P`
 }
 ```
 
-and expect back a result like this
+and expect back a result like this:
 
 ```json
 {
@@ -341,7 +341,7 @@ and expect back a result like this
 }
 ```
 
-The `result` member contains an array of objects each one with the definition of the connection (in the form of the URI entered with the `-P` argument), it's ordinal index and the indication if it's the currently active connetion.
+The `result` member contains an array of objects, each one with the definition of the connection (in the form of the URI entered with the `-P` argument), its ordinal index and the indication if it's the currently active connetion.
 
 ### miner_setactiveconnection
 
@@ -364,7 +364,7 @@ You have to pass the `params` member as an object which has member `index` value
 * If the selected index is not of an active connection then ethminer will disconnect from currently active connection and reconnect immediately to the newly selected connection
 * An error result if the index is out of bounds or the request is not properly formatted
 
-**Please note** This method changes the runtime behavior only. If you restart ethminer from a batch file the active connection will become again the first one of the `-P` arguments list.
+**Please note** that this method changes the runtime behavior only. If you restart ethminer from a batch file the active connection will become again the first one of the `-P` arguments list.
 
 ### miner_addconnection
 
@@ -389,7 +389,7 @@ You have to pass the `params` member as an object which has member `uri` valued 
 
 Eventually you may want to issue [miner_getconnections](#miner_getconnections) method to identify which is the ordinal position assigned to the newly added connection and make use of [miner_setactiveconnection](#miner_setactiveconnection) method to instruct ethminer to use it immediately.
 
-**Please note** This method changes the runtime behavior only. If you restart ethminer from a batch file the added connection won't be available if not present in the `-P` arguments list.
+**Please note** that this method changes the runtime behavior only. If you restart ethminer from a batch file the added connection won't be available if not present in the `-P` arguments list.
 
 ### miner_removeconnection
 
@@ -411,7 +411,7 @@ You have to pass the `params` member as an object which has member `index` value
 * An error if the index is out of bounds **or if the index corresponds to the currently active connection**
 * A success message. In such case you can later reissue [miner_getconnections](#miner_getconnections) method to check the connection has been effectively removed.
 
-**Please note** This method changes the runtime behavior only. If you restart ethminer from a batch file the removed connection will become again again available if provided in the `-P` arguments list.
+**Please note** that this method changes the runtime behavior only. If you restart ethminer from a batch file the removed connection will become again again available if provided in the `-P` arguments list.
 
 ### miner_getscrambleinfo
 
@@ -433,7 +433,7 @@ To accomplish this each segment has a range 2^40 nonces by default. If you want 
 }
 ```
 
-and expect a result like this
+and expect a result like this:
 
 ```json
 {
