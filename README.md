@@ -277,6 +277,14 @@ Licensed under the [GNU General Public License, Version 3](LICENSE).
         * Adapt your environment using the control panel (just search `setting environment windows control panel` using your favorite search engine)
         * Adapt your start (.bat) file launching ethminer and add a line `set CUDA_DEVICE_ORDER=PCI_BUS_ID` or `setx CUDA_DEVICE_ORDER PCI_BUS_ID`. For more info about `set` see [here](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/set_1), for more info about `setx` see [here](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/setx)
 
+10. Insufficient CUDA driver
+
+    ```shell
+    Error: Insufficient CUDA driver: 9010
+    ```
+
+    You have to upgrade your Nvidia drivers. On Linux, install `nvidia-396` package or newer.
+
 
 [Amazon S3 is needed]: https://docs.travis-ci.com/user/uploading-artifacts/
 [AppVeyor]: https://ci.appveyor.com/project/ethereum-mining/ethminer
