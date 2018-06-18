@@ -41,8 +41,10 @@ const char* NoteChannel::name() { return EthBlue " i"; }
 LogOutputStreamBase::LogOutputStreamBase(char const* _id, unsigned _v):
 	m_verbosity(_v)
 {
+	static std::locale logLocl = std::locale("");
 	if ((int)_v <= g_logVerbosity)
 	{
+		m_sstr.imbue(logLocl);
 		if (g_logSyslog)
 			m_sstr << std::left << std::setw(8) << getThreadName() << " " EthReset;
 		else {

@@ -71,7 +71,7 @@ public:
 
 	template <class T> void append(T const& _t)
 	{
-		m_sstr << toString(_t);
+		m_sstr << _t;
 	}
 
 protected:
