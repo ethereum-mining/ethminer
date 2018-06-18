@@ -88,7 +88,7 @@ Ordered alphabetically. [Contributors statistics since 2015-08-20].
 
 | Name                  | Contact                                                      |     |
 | --------------------- | ------------------------------------------------------------ | --- |
-| Andrea Lanfranchi     | [@AndreaLanfranchi](https://github.com/AndreaLanfranchi)     |     |
+| Andrea Lanfranchi     | [@AndreaLanfranchi](https://github.com/AndreaLanfranchi)     | ETH: 0xa7e593bde6b5900262cf94e4d75fb040f7ff4727 |
 | EoD                   | [@EoD](https://github.com/EoD)                               |     |
 | Genoil                | [@Genoil](https://github.com/Genoil)                         |     |
 | goobur                | [@goobur](https://github.com/goobur)                         |     |
