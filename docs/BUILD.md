@@ -27,8 +27,12 @@ This project uses [CMake] and [Hunter] package manager.
 
 ### Linux
 
-1. GCC version >= TBF
-2. ....
+1. GCC version >= 4.8
+2. DBUS development libs if building with `-DETHDBUS`. E.g. on Ubuntu run:
+
+```shell
+sudo apt install libdbus-1-dev
+```
 
 #### OpenCL support on Linux
 
@@ -42,7 +46,6 @@ sudo apt-get install mesa-common-dev
 ### macOS
 
 1. GCC version >= TBF
-2. ....
 
 ### Windows
 
