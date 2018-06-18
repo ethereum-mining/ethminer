@@ -40,7 +40,7 @@ static void diffToTarget(uint32_t *target, double diff)
 }
 
 
-EthStratumClient::EthStratumClient(boost::asio::io_service & io_service, int worktimeout, int responsetimeout, string email, bool submitHashrate) : PoolClient(),
+EthStratumClient::EthStratumClient(boost::asio::io_service & io_service, int worktimeout, int responsetimeout, const string& email, bool submitHashrate) : PoolClient(),
 	m_worktimeout(worktimeout),
 	m_responsetimeout(responsetimeout),
 	m_io_service(io_service),

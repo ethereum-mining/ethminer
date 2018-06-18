@@ -11,7 +11,7 @@ SimulateClient::SimulateClient(unsigned const & difficulty, unsigned const & blo
 {
 	m_difficulty = difficulty -1;
 	m_block = block;
-	startWorking();
+	
 }
 
 SimulateClient::~SimulateClient()
@@ -21,17 +21,22 @@ SimulateClient::~SimulateClient()
 
 void SimulateClient::connect()
 {
-	m_connected = true;
+	m_connected.store(true, std::memory_order_relaxed);
 	m_uppDifficulty = true;
 
 	if (m_onConnected) {
 		m_onConnected();
 	}
+
+	// No need to worry about starting again.
+	// Worker class prevents that
+	startWorking();
+
 }
 
 void SimulateClient::disconnect()
 {
-	m_connected = false;
+	m_connected.store(false, std::memory_order_relaxed);
 
 	if (m_onDisconnected) {
 		m_onDisconnected();
@@ -73,7 +78,7 @@ void SimulateClient::workLoop()
 	m_time = std::chrono::steady_clock::now();
 	while (true)
 	{
-		if (m_connected) {
+		if (m_connected.load(std::memory_order_relaxed)) {
 			if (m_uppDifficulty) {
 				m_uppDifficulty = false;
 
