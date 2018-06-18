@@ -137,7 +137,7 @@ void EthStratumClient::connect()
 	// Activate keep alive to detect disconnects
 	unsigned int keepAlive = 10000;
 
-#if defined _WIN32 || defined WIN32 || defined OS_WIN64 || defined _WIN64 || defined WIN64 || defined WINNT
+#if defined(_WIN32)
 	int32_t timeout = keepAlive;
 	setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
 	setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
@@ -332,7 +332,7 @@ void EthStratumClient::start_connect()
 
 		dev::setThreadName("stratum");
 		m_connecting.store(false, std::memory_order_relaxed);
-		cwarn << "No more ip addresses to try for host:" << m_conn->Host();
+		cwarn << "No more IP addresses to try for host: " << m_conn->Host();
 
 		// Trigger handlers
 		if (m_onDisconnected) { m_onDisconnected(); }

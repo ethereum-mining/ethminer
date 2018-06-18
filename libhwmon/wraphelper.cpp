@@ -4,7 +4,7 @@
 
 #include "wraphelper.h"
 
-#if defined(_MSC_VER) || defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32)
 void *wrap_dlopen(const char *filename) {
 	return (void *)LoadLibrary(filename);
 }

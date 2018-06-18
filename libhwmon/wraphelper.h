@@ -42,7 +42,7 @@ typedef union
 
 #endif
 
-#if defined(_MSC_VER) || defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32)
 #include <windows.h>
 void *wrap_dlopen(const char *filename);
 void *wrap_dlsym(void *h, const char *sym);

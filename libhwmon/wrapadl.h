@@ -17,7 +17,7 @@ typedef enum wrap_adlReturn_enum {
 // Some ADL defines and structs from adl sdk
 #if defined (__MSC_VER)
 #define ADL_API_CALL __cdecl
-#elif defined (_WIN32) || defined (__WIN32__)
+#elif defined (_WIN32)
 #define ADL_API_CALL __stdcall
 #else
 #define ADL_API_CALL
@@ -59,7 +59,7 @@ typedef struct AdapterInfo
 	int iPresent;
 	// @}
 
-#if defined (_WIN32) || defined (_WIN64)
+#if defined(_WIN32)
 	/// \WIN_STRUCT_MEM
 
 	/// Exist or not; 1 is exist and 0 is not present.
@@ -73,7 +73,7 @@ typedef struct AdapterInfo
 	/// It is generated from EnumDisplayDevices.
 	int iOSDisplayIndex;
 	// @}
-#endif /* (_WIN32) || (_WIN64) */
+#endif /* (_WIN32) */
 
 #if defined (LINUX)
 	/// \LNX_STRUCT_MEM

@@ -24,11 +24,8 @@ wrap_adl_handle * wrap_adl_create()
 {
 	wrap_adl_handle *adlh = NULL;
 
-#if defined(_WIN64)
-	/* 64-bit Windows */
-#define  libatiadlxx "atiadlxx.dll"
-#elif defined(_WIN32) || defined(_MSC_VER)
-	/* 32-bit Windows */
+#if defined(_WIN32)
+	/* Windows */
 #define  libatiadlxx "atiadlxx.dll"
 #elif defined(__linux) && (defined(__i386__) || defined(__ARM_ARCH_7A__))
 	/* 32-bit linux assumed */
