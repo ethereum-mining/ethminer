@@ -87,52 +87,56 @@ void EthGetworkClient::submitSolution(const Solution& solution)
 // Handles all getwork communication.
 void EthGetworkClient::workLoop()
 {
-	while (!shouldStop())
-	{
-		if (m_connected.load(std::memory_order_relaxed)) {
-
-			// Get Work
-			try
-			{
-				Json::Value v = p_client->eth_getWork();
-				WorkPackage newWorkPackage;
-				newWorkPackage.header = h256(v[0].asString());
+    while (!shouldStop())
+    {
+        if (m_connected.load(std::memory_order_relaxed))
+        {
+            // Get Work
+            try
+            {
+                Json::Value v = p_client->eth_getWork();
+                WorkPackage newWorkPackage;
+                newWorkPackage.header = h256(v[0].asString());
                 newWorkPackage.epoch = ethash::find_epoch_number(
                     ethash::hash256_from_bytes(h256{v[1].asString()}.data()));
 
-				// Check if header changes so the new workpackage is really new
-				if (newWorkPackage.header != m_prevWorkPackage.header) {
-					m_prevWorkPackage.header = newWorkPackage.header;
-					m_prevWorkPackage.epoch = newWorkPackage.epoch;
-					m_prevWorkPackage.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
+                // Check if header changes so the new workpackage is really new
+                if (newWorkPackage.header != m_prevWorkPackage.header)
+                {
+                    m_prevWorkPackage.header = newWorkPackage.header;
+                    m_prevWorkPackage.epoch = newWorkPackage.epoch;
+                    m_prevWorkPackage.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
 
-					if (m_onWorkReceived) {
-						m_onWorkReceived(m_prevWorkPackage, true);
-					}
-				}
-			}
-			catch (const jsonrpc::JsonRpcException&)
-			{
-				cwarn << "Failed getting work!";
-				disconnect();
-			}
+                    if (m_onWorkReceived)
+                    {
+                        m_onWorkReceived(m_prevWorkPackage, true);
+                    }
+                }
+            }
+            catch (const jsonrpc::JsonRpcException&)
+            {
+                cwarn << "Failed getting work!";
+                disconnect();
+            }
 
-			// Submit current hashrate if needed
-			if (m_submit_hashrate && !m_currentHashrateToSubmit.empty()) {
-				try
-				{
-					p_client->eth_submitHashrate(m_currentHashrateToSubmit, "0x" + m_client_id.hex());
-				}
-				catch (const jsonrpc::JsonRpcException& _e)
-				{
-					cwarn << "Failed to submit hashrate.";
-					cwarn << boost::diagnostic_information(_e);
-				}
-				m_currentHashrateToSubmit.clear();
-			}
-		}
+            // Submit current hashrate if needed
+            if (m_submit_hashrate && !m_currentHashrateToSubmit.empty())
+            {
+                try
+                {
+                    p_client->eth_submitHashrate(
+                        m_currentHashrateToSubmit, "0x" + m_client_id.hex());
+                }
+                catch (const jsonrpc::JsonRpcException& _e)
+                {
+                    cwarn << "Failed to submit hashrate.";
+                    cwarn << boost::diagnostic_information(_e);
+                }
+                m_currentHashrateToSubmit.clear();
+            }
+        }
 
-		// Sleep for --farm-recheck defined period
-		this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
-	}
+        // Sleep for --farm-recheck defined period
+        this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
+    }
 }
