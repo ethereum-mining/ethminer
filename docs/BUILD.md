@@ -1,8 +1,54 @@
 # Building from source
 
-## General
+## Table of Contents
+
+* [Requirements](#requirements)
+    * [Common](#common)
+    * [Linux](#linux)
+        * [OpenCL support on Linux](#opencl-support-on-linux)
+    * [macOS](#macos)
+    * [Windows](#windows)
+* [CMake configuration options](#cmake-configuration-options)
+* [Disable Hunter](#disable-hunter)
+* [Instructions](#instructions)
+    * [Windows-specific script](#windows-specific-script)
+
+
+## Requirements
 
 This project uses [CMake] and [Hunter] package manager.
+
+### Common
+
+1. [CMake] >= 3.5
+2. [Git](https://git-scm.com/downloads)
+3. [Perl](https://www.perl.org/get.html), needed to build OpenSSL
+4. [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) >= 9.0 (optional, install if you want NVidia CUDA support)
+
+### Linux
+
+1. GCC version >= TBF
+2. ....
+
+#### OpenCL support on Linux
+
+If you're planning to use [OpenCL on Linux](https://github.com/ruslo/hunter/wiki/pkg.opencl#pitfalls)
+you have to install the OpenGL libraries. E.g. on Ubuntu run:
+
+```shell
+sudo apt-get install mesa-common-dev
+```
+
+### macOS
+
+1. GCC version >= TBF
+2. ....
+
+### Windows
+
+1. [Visual Studio 2017](https://www.visualstudio.com/downloads/); Community Edition works fine. **Make sure you install MSVC 2015 toolkit (v140)**
+
+## Instructions
 
 1. Make sure git submodules are up to date:
 
@@ -41,57 +87,42 @@ This project uses [CMake] and [Hunter] package manager.
     cmake --build . --config Release
     ```
 
-    Complete sample Windows batch file - **adapt it to your system**. Assumes that:
-
-    * it's placed one folder up from the ethminer source folder
-    * you have CMake installed
-    * you have VS 2017 with the 140 toolset installed; this is needed because CUDA doesn't compile with the 141 toolset currently
-    * you have Perl installed
-
-    ```bat
-    @echo off
-    setlocal
-
-    rem add MSVC in PATH
-    call "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\Common7\Tools\VsMSBuildCmd.bat"
-
-    rem add Perl in PATH; it's needed for OpenSSL build
-    set "PERL_PATH=C:\Perl\perl\bin"
-    set "PATH=%PERL_PATH%;%PATH%"
-
-    rem switch to ethminer's source folder
-    cd "%~dp0\ethminer\"
-
-    if not exist "build\" mkdir "build\"
-
-    cmake -G "Visual Studio 15 2017 Win64" -H. -Bbuild -T v140 -DETHASHCL=ON -DETHASHCUDA=ON -DAPICORE=ON ..
-    cmake --build . --config Release --target package
-
-    endlocal
-    pause
-    ```
-
 5. _(Optional, Linux only)_ Install the built executable:
 
     ```shell
     sudo make install
     ```
 
-## OpenCL support on Linux
+### Windows-specific script
 
-If you're planning to use [OpenCL on Linux](https://github.com/ruslo/hunter/wiki/pkg.opencl#pitfalls)
-you have to install the OpenGL libraries. E.g. on Ubuntu run:
+Complete sample Windows batch file - **adapt it to your system**. Assumes that:
 
-```shell
-sudo apt-get install mesa-common-dev
+* it's placed one folder up from the ethminer source folder
+* you have CMake installed
+* you have Perl installed
+
+```bat
+@echo off
+setlocal
+
+rem add MSVC in PATH
+call "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\Common7\Tools\VsMSBuildCmd.bat"
+
+rem add Perl in PATH; it's needed for OpenSSL build
+set "PERL_PATH=C:\Perl\perl\bin"
+set "PATH=%PERL_PATH%;%PATH%"
+
+rem switch to ethminer's source folder
+cd "%~dp0\ethminer\"
+
+if not exist "build\" mkdir "build\"
+
+cmake -G "Visual Studio 15 2017 Win64" -H. -Bbuild -T v140 -DETHASHCL=ON -DETHASHCUDA=ON -DAPICORE=ON ..
+cmake --build . --config Release --target package
+
+endlocal
+pause
 ```
-
-## Disable Hunter
-
-If you want to install dependencies yourself or use system package manager
-you can disable Hunter by adding
-[`-DHUNTER_ENABLED=OFF`](https://docs.hunter.sh/en/latest/reference/user-variables.html#hunter-enabled)
-to configuration options.
 
 ## CMake configuration options
 
@@ -105,6 +136,13 @@ cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 * `-DETHASHCUDA=ON` - enable CUDA mining, `ON` by default.
 * `-DAPICORE=ON` - enable API Server, `ON` by default.
 * `-DETHDBUS=ON` - enable D-Bus support, `OFF` by default.
+
+## Disable Hunter
+
+If you want to install dependencies yourself or use system package manager
+you can disable Hunter by adding
+[`-DHUNTER_ENABLED=OFF`](https://docs.hunter.sh/en/latest/reference/user-variables.html#hunter-enabled)
+to configuration options.
 
 
 [CMake]: https://cmake.org/
