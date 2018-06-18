@@ -120,7 +120,7 @@ inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 			}
 		}
 
-		_out << " gpu/" << i << " " << EthTeal << std::fixed << std::setprecision(2) << mh << EthReset;
+		_out << " gpu" << i << " " << EthTeal << std::fixed << std::setprecision(2) << mh << EthReset;
 		if (_p.minerMonitors.size() == _p.minersHashes.size())
 			_out << " " << EthTeal << _p.minerMonitors[i] << EthReset;
 	}
