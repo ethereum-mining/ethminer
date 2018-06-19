@@ -83,13 +83,10 @@ struct HwMonitor
 
 inline std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
 {
-	string power = "";
-	if(_hw.powerW != 0){
-		ostringstream stream;
-		stream << fixed << setprecision(0) << _hw.powerW << "W";
-		power = stream.str();
-	}
-	return os << _hw.tempC << "C " << _hw.fanP << "% " << power;
+	os << _hw.tempC << "C " << _hw.fanP << "%";
+	if(_hw.powerW)
+		os << ' ' << fixed << setprecision(0) << _hw.powerW << "W";
+	return os;
 }
 
 /// Describes the progress of a mining operation.
@@ -109,8 +106,8 @@ inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 {
 	float mh = _p.rate() / 1000000.0f;
 	_out << "Speed "
-		 << EthTealBold << std::fixed << std::setw(6) << std::setprecision(2) << mh << EthReset
-		 << " Mh/s    ";
+		 << EthTealBold << std::fixed << std::setprecision(2) << mh << EthReset
+		 << " Mh/s";
 
 	for (size_t i = 0; i < _p.minersHashes.size(); ++i)
 	{
@@ -123,10 +120,9 @@ inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 			}
 		}
 
-		_out << "gpu/" << i << " " << EthTeal << std::fixed << std::setw(5) << std::setprecision(2) << mh << EthReset;
+		_out << " gpu" << i << " " << EthTeal << std::fixed << std::setprecision(2) << mh << EthReset;
 		if (_p.minerMonitors.size() == _p.minersHashes.size())
 			_out << " " << EthTeal << _p.minerMonitors[i] << EthReset;
-		_out << "  ";
 	}
 
 	return _out;
@@ -139,27 +135,31 @@ public:
 	void failed()   { failures++; }
 
 	void acceptedStale() { acceptedStales++; }
-	void rejectedStale() { rejectedStales++; }
 
-	void reset() { accepts = rejects = failures = acceptedStales = rejectedStales = 0; }
+	void reset() { accepts = rejects = failures = acceptedStales = 0; }
 
 	unsigned getAccepts()			{ return accepts; }
 	unsigned getRejects()			{ return rejects; }
 	unsigned getFailures()			{ return failures; }
 	unsigned getAcceptedStales()	{ return acceptedStales; }
-	unsigned getRejectedStales()	{ return rejectedStales; }
 private:
 	unsigned accepts  = 0;
 	unsigned rejects  = 0;
 	unsigned failures = 0; 
 
 	unsigned acceptedStales = 0;
-	unsigned rejectedStales = 0;
 };
 
 inline std::ostream& operator<<(std::ostream& os, SolutionStats s)
 {
-	return os << "[A" << s.getAccepts() << "+" << s.getAcceptedStales() << ":R" << s.getRejects() << "+" << s.getRejectedStales() << ":F" << s.getFailures() << "]";
+	os << "[A" << s.getAccepts();
+	if (s.getAcceptedStales())
+		os << "+" << s.getAcceptedStales();
+	if (s.getRejects())
+		os << ":R" << s.getRejects();
+	if (s.getFailures())
+		os << ":F" << s.getFailures();
+	return os << "]";
 }
 
 class Miner;

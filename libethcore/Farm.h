@@ -384,15 +384,8 @@ public:
 		}
 	}
 
-	void rejectedSolution(bool _stale) {
-		if (!_stale)
-		{
+	void rejectedSolution() {
 			m_solutionStats.rejected();
-		}
-		else
-		{
-			m_solutionStats.rejectedStale();
-		}
 	}
 
 	using SolutionFound = std::function<void(const Solution&)>;
