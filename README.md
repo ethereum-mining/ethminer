@@ -23,7 +23,7 @@
 
 * [Install](#install)
 * [Usage](#usage)
-    * [Examples connecting some pools](#examples-connecting-some-pools)
+    * [Examples connecting to pools](#examples-connecting-to-pools)
 * [Build](#build)
     * [Continuous Integration and development builds](#continuous-integration-and-development-builds)
     * [Building from source](#building-from-source)
@@ -60,7 +60,7 @@ ethminer --help
 
 ### Examples connecting to pools
 
-Check our [samples](POOL_EXAMPLES_ETH.md) to see how to connect to different pools.
+Check our [samples](docs/POOL_EXAMPLES_ETH.md) to see how to connect to different pools.
 
 ## Build
 
