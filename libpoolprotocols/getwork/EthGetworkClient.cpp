@@ -11,11 +11,10 @@ using namespace eth;
 EthGetworkClient::EthGetworkClient(unsigned farmRecheckPeriod, bool submitHashrate) : PoolClient(), Worker("getwork"), m_submit_hashrate(submitHashrate)
 {
 	m_farmRecheckPeriod = farmRecheckPeriod;
-	m_authorized = true;
-	m_connection_changed = true;
+	m_subscribed.store(true, std::memory_order_relaxed);
+	m_authorized.store(true, std::memory_order_relaxed);
 	if (m_submit_hashrate)
 		m_client_id = h256::random();
-	startWorking();
 }
 
 EthGetworkClient::~EthGetworkClient()
@@ -25,22 +24,25 @@ EthGetworkClient::~EthGetworkClient()
 
 void EthGetworkClient::connect()
 {
-	if (m_connection_changed) {
-		stringstream ss;
-		ss <<  "http://" + m_conn->Host() << ':' << m_conn->Port();
-		if (m_conn->Path().length())
-			ss << m_conn->Path();
-		p_client = new ::JsonrpcGetwork(new jsonrpc::HttpClient(ss.str()));
+    stringstream ss;
+    ss << "http://" + m_conn->Host() << ':' << m_conn->Port();
+    if (m_conn->Path().length())
+        ss << m_conn->Path();
+    p_client = new ::JsonrpcGetwork(new jsonrpc::HttpClient(ss.str()));
+
+	// Since we do not have a real connected state with getwork, we just fake it.
+	if (m_onConnected) {
+		m_onConnected();
 	}
 
-	m_connection_changed = false;
-	m_justConnected = true; // We set a fake flag, that we can check with workhandler if connection works
+	// No need to worry about starting again.
+	// Worker class prevents that
+    startWorking();
 }
 
 void EthGetworkClient::disconnect()
 {
-	m_connected = false;
-	m_justConnected = false;
+	m_connected.store(false, std::memory_order_relaxed);
 
 	// Since we do not have a real connected state with getwork, we just fake it.
 	if (m_onDisconnected) {
@@ -59,7 +61,7 @@ void EthGetworkClient::submitHashrate(string const & rate)
 void EthGetworkClient::submitSolution(const Solution& solution)
 {
 	// Immediately send found solution without wait for loop
-	if (m_connected || m_justConnected) {
+	if (m_connected.load(std::memory_order_relaxed)) {
 		try
 		{
 			bool accepted = p_client->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.work.header), "0x" + toString(solution.mixHash));
@@ -85,60 +87,56 @@ void EthGetworkClient::submitSolution(const Solution& solution)
 // Handles all getwork communication.
 void EthGetworkClient::workLoop()
 {
-	while (true)
-	{
-		if (m_connected || m_justConnected) {
-
-			// Get Work
-			try
-			{
-				Json::Value v = p_client->eth_getWork();
-				WorkPackage newWorkPackage;
-				newWorkPackage.header = h256(v[0].asString());
+    while (!shouldStop())
+    {
+        if (m_connected.load(std::memory_order_relaxed))
+        {
+            // Get Work
+            try
+            {
+                Json::Value v = p_client->eth_getWork();
+                WorkPackage newWorkPackage;
+                newWorkPackage.header = h256(v[0].asString());
                 newWorkPackage.epoch = ethash::find_epoch_number(
                     ethash::hash256_from_bytes(h256{v[1].asString()}.data()));
 
-                // Since we do not have a real connected state with getwork, we just fake it.
-				// If getting work succeeds we know that the connection works
-				if (m_justConnected && m_onConnected) {
-					m_justConnected = false;
-					m_connected = true;
-					m_onConnected();
-				}
+                // Check if header changes so the new workpackage is really new
+                if (newWorkPackage.header != m_prevWorkPackage.header)
+                {
+                    m_prevWorkPackage.header = newWorkPackage.header;
+                    m_prevWorkPackage.epoch = newWorkPackage.epoch;
+                    m_prevWorkPackage.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
 
-				// Check if header changes so the new workpackage is really new
-				if (newWorkPackage.header != m_prevWorkPackage.header) {
-					m_prevWorkPackage.header = newWorkPackage.header;
-					m_prevWorkPackage.epoch = newWorkPackage.epoch;
-					m_prevWorkPackage.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
+                    if (m_onWorkReceived)
+                    {
+                        m_onWorkReceived(m_prevWorkPackage, true);
+                    }
+                }
+            }
+            catch (const jsonrpc::JsonRpcException&)
+            {
+                cwarn << "Failed getting work!";
+                disconnect();
+            }
 
-					if (m_onWorkReceived) {
-						m_onWorkReceived(m_prevWorkPackage, true);
-					}
-				}
-			}
-			catch (const jsonrpc::JsonRpcException&)
-			{
-				cwarn << "Failed getting work!";
-				disconnect();
-			}
+            // Submit current hashrate if needed
+            if (m_submit_hashrate && !m_currentHashrateToSubmit.empty())
+            {
+                try
+                {
+                    p_client->eth_submitHashrate(
+                        m_currentHashrateToSubmit, "0x" + m_client_id.hex());
+                }
+                catch (const jsonrpc::JsonRpcException& _e)
+                {
+                    cwarn << "Failed to submit hashrate.";
+                    cwarn << boost::diagnostic_information(_e);
+                }
+                m_currentHashrateToSubmit.clear();
+            }
+        }
 
-			// Submit current hashrate if needed
-			if (m_submit_hashrate && !m_currentHashrateToSubmit.empty()) {
-				try
-				{
-					p_client->eth_submitHashrate(m_currentHashrateToSubmit, "0x" + m_client_id.hex());
-				}
-				catch (const jsonrpc::JsonRpcException&)
-				{
-					//cwarn << "Failed to submit hashrate.";
-					//cwarn << boost::diagnostic_information(_e);
-				}
-				m_currentHashrateToSubmit.clear();
-			}
-		}
-
-		// Sleep
-		this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
-	}
+        // Sleep for --farm-recheck defined period
+        this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
+    }
 }

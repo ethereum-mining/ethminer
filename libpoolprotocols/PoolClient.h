@@ -22,7 +22,6 @@ namespace dev
 			void setConnection(URI &conn)
 			{
 				m_conn = &conn;
-				m_connection_changed = true;
 			}
 
 			virtual void connect() = 0;
@@ -47,9 +46,10 @@ namespace dev
 			void onWorkReceived(WorkReceived const& _handler) { m_onWorkReceived = _handler; }
 
 		protected:
-			bool m_authorized = false;
-			bool m_connected = false;
-			bool m_connection_changed = false;
+			std::atomic<bool> m_subscribed = { false };
+			std::atomic<bool> m_authorized = { false };
+			std::atomic<bool> m_connected = { false };
+
 			boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> m_endpoint;
 
 			URI* m_conn = nullptr;

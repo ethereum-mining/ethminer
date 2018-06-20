@@ -33,7 +33,6 @@ private:
 
 	string m_currentHashrateToSubmit = "";
 
-	bool m_justConnected = false;
 	h256 m_client_id;
 	JsonrpcGetwork *p_client = nullptr;
 	WorkPackage m_prevWorkPackage;

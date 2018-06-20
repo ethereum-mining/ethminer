@@ -24,7 +24,7 @@ public:
 
 	typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
 
-	EthStratumClient(boost::asio::io_service & io_service, int worktimeout, int responsetimeout, string email, bool submitHashrate);
+	EthStratumClient(boost::asio::io_service & io_service, int worktimeout, int responsetimeout, const string& email, bool submitHashrate);
 	~EthStratumClient();
 
 	void connect() override;
@@ -68,9 +68,6 @@ private:
 
 	string m_worker; // eth-proxy only; No ! It's for all !!!
 
-	std::atomic<bool> m_subscribed = { false };
-	std::atomic<bool> m_authorized = { false };
-	std::atomic<bool> m_connected = { false };
 	std::atomic<bool> m_disconnecting = { false };
 	std::atomic<bool> m_connecting = { false };
 
