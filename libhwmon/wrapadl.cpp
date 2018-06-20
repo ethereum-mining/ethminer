@@ -22,7 +22,7 @@ void* ADL_API_CALL ADL_Main_Memory_Alloc(int iSize)
 
 wrap_adl_handle * wrap_adl_create()
 {
-	wrap_adl_handle *adlh = NULL;
+	wrap_adl_handle *adlh = nullptr;
 
 #if defined(_WIN32)
 	/* Windows */
@@ -36,7 +36,7 @@ wrap_adl_handle * wrap_adl_create()
 #else
 #define  libatiadlxx ""
 #warning "Unrecognized platform: need ADL DLL path for this platform..."
-return NULL;
+return nullptr;
 #endif
 
 #ifdef _WIN32
@@ -47,8 +47,8 @@ return NULL;
 #endif
 
 	void *adl_dll = wrap_dlopen(tmp);
-	if (adl_dll == NULL)
-		return NULL;
+	if (adl_dll == nullptr)
+		return nullptr;
 
 	adlh = (wrap_adl_handle *)calloc(1, sizeof(wrap_adl_handle));
 
@@ -80,31 +80,31 @@ return NULL;
 		wrap_dlsym(adlh->adl_dll, "ADL2_Main_Control_Refresh");
 
 
-	if (adlh->adlMainControlCreate == NULL ||
-		adlh->adlMainControlDestroy == NULL ||
-		adlh->adlMainControlRefresh == NULL ||
-		adlh->adlAdapterNumberOfAdapters == NULL ||
-		adlh->adlAdapterAdapterInfoGet == NULL ||
-		adlh->adlAdapterAdapterIdGet == NULL ||
-		adlh->adlOverdrive5TemperatureGet == NULL ||
-		adlh->adlOverdrive5FanSpeedGet == NULL ||
-		adlh->adl2MainControlCreate == NULL ||
-		adlh->adl2MainControlRefresh == NULL ||
-		adlh->adl2MainControlDestroy == NULL ||
-		adlh->adl2Overdrive6CurrentPowerGet == NULL
+	if (adlh->adlMainControlCreate == nullptr ||
+		adlh->adlMainControlDestroy == nullptr ||
+		adlh->adlMainControlRefresh == nullptr ||
+		adlh->adlAdapterNumberOfAdapters == nullptr ||
+		adlh->adlAdapterAdapterInfoGet == nullptr ||
+		adlh->adlAdapterAdapterIdGet == nullptr ||
+		adlh->adlOverdrive5TemperatureGet == nullptr ||
+		adlh->adlOverdrive5FanSpeedGet == nullptr ||
+		adlh->adl2MainControlCreate == nullptr ||
+		adlh->adl2MainControlRefresh == nullptr ||
+		adlh->adl2MainControlDestroy == nullptr ||
+		adlh->adl2Overdrive6CurrentPowerGet == nullptr
 		) {
 #if 0
 		printf("Failed to obtain all required ADL function pointers\n");
 #endif
 		wrap_dlclose(adlh->adl_dll);
 		free(adlh);
-		return NULL;
+		return nullptr;
 	}
 
 	adlh->adlMainControlCreate(ADL_Main_Memory_Alloc, 1);
 	adlh->adlMainControlRefresh();
 
-	adlh->context = NULL;
+	adlh->context = nullptr;
 
 	adlh->adl2MainControlCreate(ADL_Main_Memory_Alloc, 1, &(adlh->context));
 	adlh->adl2MainControlRefresh(adlh->context);
@@ -174,7 +174,7 @@ return NULL;
 				cl::Device cldev = platdevs[j];
 				cl_device_topology_amd topology;
 				int status = clGetDeviceInfo (cldev(), CL_DEVICE_TOPOLOGY_AMD,
-					sizeof(cl_device_topology_amd), &topology, NULL);
+					sizeof(cl_device_topology_amd), &topology, nullptr);
 				if(status == CL_SUCCESS) {
 					if (topology.raw.type == CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD) {
 						if(adlh->devs[adlh->phys_logi_device_id[i]].iBusNumber == (int)topology.pcie.bus

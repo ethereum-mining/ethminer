@@ -104,10 +104,10 @@ void httpServer::run_thread()
     struct mg_mgr mgr;
     struct mg_connection* c;
 
-    mg_mgr_init(&mgr, NULL);
+    mg_mgr_init(&mgr, nullptr);
     cnote << "Starting web server on port " << m_port;
     c = mg_bind(&mgr, m_port.c_str(), ev_handler);
-    if (c == NULL) {
+    if (c == nullptr) {
         cwarn << "Failed to create web listener";
         return;
     }

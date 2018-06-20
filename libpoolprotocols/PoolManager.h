@@ -9,10 +9,6 @@
 
 #include "PoolClient.h"
 
-#if ETH_DBUS
-#include "DBusInt.h"
-#endif
-
 using namespace std;
 
 namespace dev

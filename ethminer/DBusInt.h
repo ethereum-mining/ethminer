@@ -33,7 +33,7 @@ public:
 				cerr << "Message is null!" << endl;
 			}
 			dbus_message_append_args(msg, DBUS_TYPE_STRING, &hash, DBUS_TYPE_INVALID);
-			if (!dbus_connection_send(conn, msg, NULL)) cerr << "Error sending message!" << endl;
+			if (!dbus_connection_send(conn, msg, nullptr)) cerr << "Error sending message!" << endl;
 			dbus_message_unref(msg);
 		}
 
