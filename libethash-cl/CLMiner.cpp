@@ -663,11 +663,11 @@ bool CLMiner::init(int epoch)
         try
         {
             program.build({device}, options);
-            cwarn << "OpenCL kernel build log:\n"
-                  << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
         }
         catch (cl::BuildError const& buildErr)
         {
+            cwarn << "OpenCL kernel build log:\n"
+                  << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
             cwarn << "OpenCL kernel build error (" << buildErr.err() << "):\n" << buildErr.what();
             return false;
         }
