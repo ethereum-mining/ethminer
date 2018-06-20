@@ -533,10 +533,10 @@ private:
 
 	unsigned m_tstart = 0, m_tstop = 0;
 
-	wrap_nvml_handle *nvmlh = NULL;
-	wrap_adl_handle *adlh = NULL;
+	wrap_nvml_handle *nvmlh = nullptr;
+	wrap_adl_handle *adlh = nullptr;
 #if defined(__linux)
-	wrap_amdsysfs_handle *sysfsh = NULL;
+	wrap_amdsysfs_handle *sysfsh = nullptr;
 #endif
 }; 
 

@@ -30,7 +30,7 @@ extern "C" {
 #endif
 
 wrap_nvml_handle * wrap_nvml_create() {
-  wrap_nvml_handle *nvmlh = NULL;
+  wrap_nvml_handle *nvmlh = nullptr;
 
   /*
    * We use hard-coded library installation locations for the time being...
@@ -50,7 +50,7 @@ wrap_nvml_handle * wrap_nvml_create() {
 #else
 #define  libnvidia_ml ""
 #warning "Unrecognized platform: need NVML DLL path for this platform..."
-return NULL;
+return nullptr;
 #endif
 
 #ifdef _WIN32
@@ -61,8 +61,8 @@ return NULL;
 #endif
 
   void *nvml_dll = wrap_dlopen(tmp);
-  if (nvml_dll == NULL)
-    return NULL;
+  if (nvml_dll == nullptr)
+    return nullptr;
 
   nvmlh = (wrap_nvml_handle *) calloc(1, sizeof(wrap_nvml_handle));
 
@@ -87,22 +87,22 @@ return NULL;
   nvmlh->nvmlShutdown = (wrap_nvmlReturn_t (*)())
     wrap_dlsym(nvmlh->nvml_dll, "nvmlShutdown");
 
-  if (nvmlh->nvmlInit == NULL ||
-      nvmlh->nvmlShutdown == NULL ||
-      nvmlh->nvmlDeviceGetCount == NULL ||
-      nvmlh->nvmlDeviceGetHandleByIndex == NULL ||
-      nvmlh->nvmlDeviceGetPciInfo == NULL ||
-      nvmlh->nvmlDeviceGetName == NULL ||
-      nvmlh->nvmlDeviceGetTemperature == NULL ||
-      nvmlh->nvmlDeviceGetFanSpeed == NULL ||
-      nvmlh->nvmlDeviceGetPowerUsage == NULL
+  if (nvmlh->nvmlInit == nullptr ||
+      nvmlh->nvmlShutdown == nullptr ||
+      nvmlh->nvmlDeviceGetCount == nullptr ||
+      nvmlh->nvmlDeviceGetHandleByIndex == nullptr ||
+      nvmlh->nvmlDeviceGetPciInfo == nullptr ||
+      nvmlh->nvmlDeviceGetName == nullptr ||
+      nvmlh->nvmlDeviceGetTemperature == nullptr ||
+      nvmlh->nvmlDeviceGetFanSpeed == nullptr ||
+      nvmlh->nvmlDeviceGetPowerUsage == nullptr
       ) {
 #if 0
     printf("Failed to obtain all required NVML function pointers\n");
 #endif
     wrap_dlclose(nvmlh->nvml_dll);
     free(nvmlh);
-    return NULL;
+    return nullptr;
   }
 
   nvmlh->nvmlInit();
@@ -117,7 +117,7 @@ return NULL;
 #endif
     wrap_dlclose(nvmlh->nvml_dll);
     free(nvmlh);
-    return NULL;
+    return nullptr;
   }
 #endif
   nvmlh->devs = (wrap_nvmlDevice_t *) calloc(nvmlh->nvml_gpucount, sizeof(wrap_nvmlDevice_t));
@@ -197,9 +197,9 @@ return NULL;
 		cl::Device cldev = platdevs[j];
 		cl_int busId, slotId;
 		int statusB = clGetDeviceInfo (cldev(),  CL_DEVICE_PCI_BUS_ID_NV,
-			sizeof(cl_int), &busId, NULL);
+			sizeof(cl_int), &busId, nullptr);
 		int statusS = clGetDeviceInfo (cldev(),  CL_DEVICE_PCI_SLOT_ID_NV,
-			sizeof(cl_int), &slotId, NULL);
+			sizeof(cl_int), &slotId, nullptr);
 		if(statusB == CL_SUCCESS && statusS == CL_SUCCESS) {
 			if((unsigned)busId == nvmlh->nvml_pci_bus_id[i] && (unsigned)slotId == nvmlh->nvml_pci_device_id[i]) {
 #if 0

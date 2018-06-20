@@ -97,17 +97,17 @@ void EthStratumClient::connect()
 
 #ifdef _WIN32
 		HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
-		if (hStore == NULL) {
+		if (hStore == nullptr) {
 			return;
 		}
 
 		X509_STORE *store = X509_STORE_new();
-		PCCERT_CONTEXT pContext = NULL;
-		while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != NULL) {
-			X509 *x509 = d2i_X509(NULL,
+		PCCERT_CONTEXT pContext = nullptr;
+		while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != nullptr) {
+			X509 *x509 = d2i_X509(nullptr,
 				(const unsigned char **)&pContext->pbCertEncoded,
 				pContext->cbCertEncoded);
-			if (x509 != NULL) {
+			if (x509 != nullptr) {
 				X509_STORE_add_cert(store, x509);
 				X509_free(x509);
 			}

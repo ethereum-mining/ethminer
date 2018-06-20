@@ -42,14 +42,14 @@ static bool getFileContentValue(const char* filename, unsigned int& value)
 
 wrap_amdsysfs_handle * wrap_amdsysfs_create()
 {
-	wrap_amdsysfs_handle *sysfsh = NULL;
+	wrap_amdsysfs_handle *sysfsh = nullptr;
 
 #if defined(__linux)
 	sysfsh = (wrap_amdsysfs_handle *)calloc(1, sizeof(wrap_amdsysfs_handle));
 
 	DIR* dirp = opendir("/sys/class/drm");
 	if (dirp == nullptr)
-		return NULL;
+		return nullptr;
 
 	unsigned int gpucount = 0;
 	struct dirent* dire;
@@ -68,7 +68,7 @@ wrap_amdsysfs_handle * wrap_amdsysfs_create()
 	if (errno != 0)
 	{
 		closedir(dirp);
-		return NULL;
+		return nullptr;
 	}
 	closedir(dirp);
 
@@ -105,7 +105,7 @@ wrap_amdsysfs_handle * wrap_amdsysfs_create()
 		// Should not happen
 		if (sysfsIdx < 0) {
 			free(sysfsh);
-			return NULL;
+			return nullptr;
 		}
 
 		// search hwmon
@@ -114,7 +114,7 @@ wrap_amdsysfs_handle * wrap_amdsysfs_create()
 		DIR* dirp = opendir(dbuf);
 		if (dirp == nullptr) {
 			free(sysfsh);
-			return NULL;
+			return nullptr;
 		}
 		errno = 0;
 		struct dirent* dire;
@@ -135,12 +135,12 @@ wrap_amdsysfs_handle * wrap_amdsysfs_create()
 		{
 			closedir(dirp);
 			free(sysfsh);
-			return NULL;
+			return nullptr;
 		}
 		closedir(dirp);
 		if (hwmonIndex == UINT_MAX) {
 			free(sysfsh);
-			return NULL;
+			return nullptr;
 		}
 
 		sysfsh->sysfs_hwmon_id[i] = hwmonIndex;
@@ -173,7 +173,7 @@ wrap_amdsysfs_handle * wrap_amdsysfs_create()
 				cl::Device cldev = platdevs[j];
 				cl_device_topology_amd topology;
 				int status = clGetDeviceInfo(cldev(), CL_DEVICE_TOPOLOGY_AMD,
-					sizeof(cl_device_topology_amd), &topology, NULL);
+					sizeof(cl_device_topology_amd), &topology, nullptr);
 				if (status == CL_SUCCESS) {
 					if (topology.raw.type == CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD) {
 

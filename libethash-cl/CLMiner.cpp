@@ -589,8 +589,8 @@ bool CLMiner::init(int epoch)
         if (platformId == OPENCL_PLATFORM_NVIDIA) {
             cl_uint computeCapabilityMajor;
             cl_uint computeCapabilityMinor;
-            clGetDeviceInfo(device(), CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV, sizeof(cl_uint), &computeCapabilityMajor, NULL);
-            clGetDeviceInfo(device(), CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV, sizeof(cl_uint), &computeCapabilityMinor, NULL);
+            clGetDeviceInfo(device(), CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV, sizeof(cl_uint), &computeCapabilityMajor, nullptr);
+            clGetDeviceInfo(device(), CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV, sizeof(cl_uint), &computeCapabilityMinor, nullptr);
 
             computeCapability = computeCapabilityMajor * 10 + computeCapabilityMinor;
             int maxregs = computeCapability >= 35 ? 72 : 63;
@@ -608,7 +608,7 @@ bool CLMiner::init(int epoch)
 
         if (s_adjustWorkSize) {
             unsigned int computeUnits;
-	    	clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(computeUnits), &computeUnits, NULL);
+	    	clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(computeUnits), &computeUnits, nullptr);
             // Apparently some 36 CU devices return a bogus 14!!!
             computeUnits = computeUnits == 14 ? 36 : computeUnits;
 		    if ((platformId == OPENCL_PLATFORM_AMD) && (computeUnits != 36)) {

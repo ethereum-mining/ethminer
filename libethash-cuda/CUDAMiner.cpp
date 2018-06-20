@@ -64,7 +64,7 @@ bool CUDAMiner::init(int epoch)
             {
                 // all devices have loaded DAG, we can free now
                 delete[] s_dagInHostMemory;
-                s_dagInHostMemory = NULL;
+                s_dagInHostMemory = nullptr;
                 cnote << "Freeing DAG from host";
             }
         }
