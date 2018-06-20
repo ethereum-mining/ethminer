@@ -465,7 +465,7 @@ public:
 			uint64_t gpustartnonce = m_nonce_scrambler + ((uint64_t)pow(2, m_nonce_segment_with) * i);
 			jSegment["gpu"] = (int)i;
 			jSegment["start"] = gpustartnonce;
-			jSegment["stop"] = uint64_t(gpustartnonce + (uint64_t)(pow(2, 40)*(i+1)));
+			jSegment["stop"] = uint64_t(gpustartnonce + (uint64_t)(pow(2, m_nonce_segment_with)));
 			jRes["segments"].append(jSegment);
 
 		}
