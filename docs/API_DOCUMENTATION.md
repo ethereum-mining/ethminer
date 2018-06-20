@@ -66,7 +66,8 @@ This shows the API interface is live and listening on the configured endpoint.
 | [miner_setactiveconnection](#miner_setactiveconnection) | Instruct ethminer to immediately connect to the specified connection | Yes
 | [miner_addconnection](#miner_addconnection) | Provides ethminer with a new connection to use | Yes
 | [miner_removeconnection](#miner_removeconnection) | Removes the given connection from the list of available so it won't be used again | Yes
-| [miner_getscrambleinfo](#miner_getscrambleinfo) | Retrieve information about the nonce segments assigned to each GPU | No
+| [miner_getscramblerinfo](#miner_getscramblerinfo) | Retrieve information about the nonce segments assigned to each GPU | No
+| [miner_setscramblerinfo](#miner_setscramblerinfo) | Sets information about the nonce segments assigned to each GPU | Yes
 
 ### api_authorize
 
@@ -413,7 +414,7 @@ You have to pass the `params` member as an object which has member `index` value
 
 **Please note** that this method changes the runtime behavior only. If you restart ethminer from a batch file the removed connection will become again again available if provided in the `-P` arguments list.
 
-### miner_getscrambleinfo
+### miner_getscramblerinfo
 
 When searching for a valid nonce the miner has to find (at least) 1 of possible 2^64 solutions. This would mean that a miner who claims to guarantee to find a solution in the time of 1 block (15 seconds for Ethereum) should produce 1230 PH/s (Peta hashes) which, at the time of writing, is more than 4 thousands times the whole hashing power allocated worldwide for Ethereum.
 This gives you an idea of numbers in play. Luckily a couple of factors come in our help: difficulty and time. We can imagine difficulty as a sort of judge who determines how many of those possible solutions are valid. And the block time which allows the miner to stay longer on a sequence of numbers to find the solution.
@@ -426,10 +427,7 @@ To accomplish this each segment has a range 2^40 nonces by default. If you want 
 {
   "id": 1,
   "jsonrpc": "2.0",
-  "method": "miner_getscrambleinfo",
-  "params": {
-    "index": 2
-  }
+  "method": "miner_getscramblerinfo"
 }
 ```
 
@@ -481,7 +479,7 @@ and expect a result like this:
 Note that segment width is the exponent in the expression `pow(2, segment)`.
 The information hereby exposed may be used in large mining operations to check whether or not two (or more) rigs may result having overlapping segments. The possibility is very remote ... but is there.
 
-### miner_setscrambleinfo
+### miner_setscramblerinfo
 
 To approach this method you have to read carefully the method [miner_getscrambleinfo](#miner_getscrambleinfo) and what it reports. By the use of this method you can set a new scramble_nonce and/or set a new segment width:
 
@@ -489,7 +487,7 @@ To approach this method you have to read carefully the method [miner_getscramble
 {
   "id": 1,
   "jsonrpc": "2.0",
-  "method": "miner_setscrambleinfo",
+  "method": "miner_setscramblerinfo",
   "params": {
     "noncescrambler": 16704043538687679721,      // At least one of these two members
     "segmentwidth": 38                           // or both.
