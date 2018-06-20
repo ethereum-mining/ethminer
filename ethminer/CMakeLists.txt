@@ -21,7 +21,7 @@ if(ETHDBUS)
 	pkg_check_modules(DBUS dbus-1)
 	include_directories(${DBUS_INCLUDE_DIRS})
 	link_directories(${DBUS_LIBRARY_DIRS})
-	target_link_libraries(${EXECUTABLE} ${DBUS_LIBRARIES})
+	target_link_libraries(ethminer PRIVATE ${DBUS_LIBRARIES})
 endif()
 
 if(APICORE)
