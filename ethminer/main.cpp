@@ -35,10 +35,6 @@
 #include <libpoolprotocols/getwork/EthGetworkClient.h>
 #include <libpoolprotocols/testing/SimulateClient.h>
 
-#if ETH_DBUS
-#include <DBusInt.h>
-#endif
-
 #if API_CORE
 #include <libapicore/ApiServer.h>
 #include <libapicore/httpServer.h>
@@ -55,6 +51,10 @@ struct MiningChannel: public LogChannel
 };
 
 #define minelog clog(MiningChannel)
+
+#if ETH_DBUS
+#include <ethminer/DBusInt.h>
+#endif
 
 bool g_running = false;
 
@@ -758,7 +758,7 @@ private:
 				minelog << mp << ' ' << f.getSolutionStats() << ' ' << f.farmLaunchedFormatted();
 
 #if ETH_DBUS
-				dbusint.send(toString(mp).data());
+				dbusint.send(toString(mp).c_str());
 #endif
 			}
 			else {
