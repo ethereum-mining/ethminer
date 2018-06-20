@@ -24,20 +24,21 @@ EthGetworkClient::~EthGetworkClient()
 
 void EthGetworkClient::connect()
 {
-	std::string uri = "http://" + m_conn->Host() + ":" + to_string(m_conn->Port());
-	if (m_conn->Path().length())
-	{
-		uri += m_conn->Path();
-	}
+    std::string uri = "http://" + m_conn->Host() + ":" + to_string(m_conn->Port());
+    if (m_conn->Path().length())
+    {
+        uri += m_conn->Path();
+    }
     p_client = new ::JsonrpcGetwork(new jsonrpc::HttpClient(uri));
 
-	// Since we do not have a real connected state with getwork, we just fake it.
-	if (m_onConnected) {
-		m_onConnected();
-	}
+    // Since we do not have a real connected state with getwork, we just fake it.
+    if (m_onConnected)
+    {
+        m_onConnected();
+    }
 
-	// No need to worry about starting again.
-	// Worker class prevents that
+    // No need to worry about starting again.
+    // Worker class prevents that
     startWorking();
 }
 
