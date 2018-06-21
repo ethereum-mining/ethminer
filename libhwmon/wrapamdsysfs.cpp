@@ -110,7 +110,7 @@ wrap_amdsysfs_handle * wrap_amdsysfs_create()
 
 		// search hwmon
 		errno = 0;
-		snprintf(dbuf, 120, "/sys/class/drm/card%u/device/hwmon", sysfsIdx);
+		snprintf(dbuf, 120, "/sys/class/drm/card%d/device/hwmon", sysfsIdx);
 		DIR* dirp = opendir(dbuf);
 		if (dirp == nullptr) {
 			free(sysfsh);
@@ -179,7 +179,7 @@ wrap_amdsysfs_handle * wrap_amdsysfs_create()
 
 						int gpuindex = sysfsh->card_sysfs_device_id[i];
 						char dbuf[120];
-						snprintf(dbuf, 120, "/sys/class/drm/card%u/device/uevent", gpuindex);
+						snprintf(dbuf, 120, "/sys/class/drm/card%d/device/uevent", gpuindex);
 						std::ifstream ifs(dbuf, std::ios::binary);
 						std::string line;
 						int iBus = 0, iDevice = 0, iFunction = 0;
@@ -259,7 +259,7 @@ int wrap_amdsysfs_get_gpu_pci_id(wrap_amdsysfs_handle *sysfsh, int index, char *
 		return -1;
 
 	char dbuf[120];
-	snprintf(dbuf, 120, "/sys/class/drm/card%u/device/uevent", gpuindex);
+	snprintf(dbuf, 120, "/sys/class/drm/card%d/device/uevent", gpuindex);
 
 	std::ifstream ifs(dbuf, std::ios::binary);
 	std::string line;
@@ -287,7 +287,7 @@ int wrap_amdsysfs_get_tempC(wrap_amdsysfs_handle *sysfsh, int index, unsigned in
 		return -1;
 
 	char dbuf[120];
-	snprintf(dbuf, 120, "/sys/class/drm/card%u/device/hwmon/hwmon%u/temp1_input",
+	snprintf(dbuf, 120, "/sys/class/drm/card%d/device/hwmon/hwmon%d/temp1_input",
 		gpuindex, hwmonindex);
 
 	unsigned int temp = 0;
@@ -312,15 +312,15 @@ int wrap_amdsysfs_get_fanpcnt(wrap_amdsysfs_handle *sysfsh, int index, unsigned 
 	unsigned int pwm = 0, pwmMax = 255, pwmMin = 0;
 
 	char dbuf[120];
-	snprintf(dbuf, 120, "/sys/class/drm/card%u/device/hwmon/hwmon%u/pwm1",
+	snprintf(dbuf, 120, "/sys/class/drm/card%d/device/hwmon/hwmon%d/pwm1",
 		gpuindex, hwmonindex);
 	getFileContentValue(dbuf, pwm);
 
-	snprintf(dbuf, 120, "/sys/class/drm/card%u/device/hwmon/hwmon%u/pwm1_max",
+	snprintf(dbuf, 120, "/sys/class/drm/card%d/device/hwmon/hwmon%d/pwm1_max",
 		gpuindex, hwmonindex);
 	getFileContentValue(dbuf, pwmMax);
 
-	snprintf(dbuf, 120, "/sys/class/drm/card%u/device/hwmon/hwmon%u/pwm1_min",
+	snprintf(dbuf, 120, "/sys/class/drm/card%d/device/hwmon/hwmon%d/pwm1_min",
 		gpuindex, hwmonindex);
 	getFileContentValue(dbuf, pwmMin);
 
@@ -337,7 +337,7 @@ int wrap_amdsysfs_get_power_usage(wrap_amdsysfs_handle* sysfsh, int index, unsig
             return -1;
 
         char dbuf[120];
-        snprintf(dbuf, 120, "/sys/kernel/debug/dri/%u/amdgpu_pm_info", gpuindex);
+        snprintf(dbuf, 120, "/sys/kernel/debug/dri/%d/amdgpu_pm_info", gpuindex);
 
         std::ifstream ifs(dbuf, std::ios::binary);
         std::string line;

@@ -80,7 +80,7 @@ void ethash_generate_dag(
 
 struct cuda_runtime_error : public virtual std::runtime_error
 {
-	cuda_runtime_error( std::string msg ) : std::runtime_error(msg) {}
+	cuda_runtime_error( const std::string &msg ) : std::runtime_error(msg) {}
 };
 
 #define CUDA_SAFE_CALL(call)				\

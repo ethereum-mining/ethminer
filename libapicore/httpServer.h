@@ -6,6 +6,7 @@
 class httpServer
 {
 public:
+	httpServer() {};
     void run(unsigned short port, dev::eth::Farm* farm, bool show_hwmonitors, bool show_power);
     void run_thread();
     void getstat1(stringstream& ss);
