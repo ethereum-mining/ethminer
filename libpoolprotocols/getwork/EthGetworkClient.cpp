@@ -25,11 +25,12 @@ EthGetworkClient::~EthGetworkClient()
 
 void EthGetworkClient::connect()
 {
-    stringstream ss;
-    ss << "http://" + m_conn->Host() << ':' << m_conn->Port();
+    std::string uri = "http://" + m_conn->Host() + ":" + to_string(m_conn->Port());
     if (m_conn->Path().length())
-        ss << m_conn->Path();
-    p_client = new ::JsonrpcGetwork(new jsonrpc::HttpClient(ss.str()));
+    {
+        uri += m_conn->Path();
+    }
+    p_client = new ::JsonrpcGetwork(new jsonrpc::HttpClient(uri));
 
     // Set we're connected
     m_connected.store(true, std::memory_order_relaxed);
