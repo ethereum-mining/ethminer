@@ -8,28 +8,31 @@ using namespace std;
 using namespace dev;
 using namespace eth;
 
-EthGetworkClient::EthGetworkClient(unsigned farmRecheckPeriod, bool submitHashrate) : PoolClient(), Worker("getwork"), m_submit_hashrate(submitHashrate)
+EthGetworkClient::EthGetworkClient(unsigned farmRecheckPeriod, bool submitHashrate)
+  : PoolClient(), Worker("getwork"), m_submit_hashrate(submitHashrate)
 {
-	m_farmRecheckPeriod = farmRecheckPeriod;
-	m_subscribed.store(true, std::memory_order_relaxed);
-	m_authorized.store(true, std::memory_order_relaxed);
-	if (m_submit_hashrate)
-		m_client_id = h256::random();
+    m_farmRecheckPeriod = farmRecheckPeriod;
+    m_subscribed.store(true, std::memory_order_relaxed);
+    m_authorized.store(true, std::memory_order_relaxed);
+    if (m_submit_hashrate)
+        m_client_id = h256::random();
 }
 
 EthGetworkClient::~EthGetworkClient()
 {
-	p_client = nullptr;
+    p_client = nullptr;
 }
 
 void EthGetworkClient::connect()
 {
-    std::string uri = "http://" + m_conn->Host() + ":" + to_string(m_conn->Port());
+    stringstream ss;
+    ss << "http://" + m_conn->Host() << ':' << m_conn->Port();
     if (m_conn->Path().length())
-    {
-        uri += m_conn->Path();
-    }
-    p_client = new ::JsonrpcGetwork(new jsonrpc::HttpClient(uri));
+        ss << m_conn->Path();
+    p_client = new ::JsonrpcGetwork(new jsonrpc::HttpClient(ss.str()));
+
+    // Set we're connected
+    m_connected.store(true, std::memory_order_relaxed);
 
     // Since we do not have a real connected state with getwork, we just fake it.
     if (m_onConnected)
@@ -44,46 +47,52 @@ void EthGetworkClient::connect()
 
 void EthGetworkClient::disconnect()
 {
-	m_connected.store(false, std::memory_order_relaxed);
+    m_connected.store(false, std::memory_order_relaxed);
 
-	// Since we do not have a real connected state with getwork, we just fake it.
-	if (m_onDisconnected) {
-		m_onDisconnected();
-	}
+    // Since we do not have a real connected state with getwork, we just fake it.
+    if (m_onDisconnected)
+    {
+        m_onDisconnected();
+    }
 }
 
-void EthGetworkClient::submitHashrate(string const & rate)
+void EthGetworkClient::submitHashrate(string const& rate)
 {
-	// Store the rate in temp var. Will be handled in workLoop
-	// Hashrate submission does not need to be as quick as possible
-	m_currentHashrateToSubmit = rate;
-
+    // Store the rate in temp var. Will be handled in workLoop
+    // Hashrate submission does not need to be as quick as possible
+    m_currentHashrateToSubmit = rate;
 }
 
 void EthGetworkClient::submitSolution(const Solution& solution)
 {
-	// Immediately send found solution without wait for loop
-	if (m_connected.load(std::memory_order_relaxed)) {
-		try
-		{
-			bool accepted = p_client->eth_submitWork("0x" + toHex(solution.nonce), "0x" + toString(solution.work.header), "0x" + toString(solution.mixHash));
-			if (accepted) {
-				if (m_onSolutionAccepted) {
-					m_onSolutionAccepted(false);
-				}
-			}
-			else {
-				if (m_onSolutionRejected) {
-					m_onSolutionRejected(false);
-				}
-			}
-		}
-		catch (jsonrpc::JsonRpcException const& _e)
-		{
-			cwarn << "Failed to submit solution.";
-			cwarn << boost::diagnostic_information(_e);
-		}
-	}
+    // Immediately send found solution without wait for loop
+    if (m_connected.load(std::memory_order_relaxed))
+    {
+        try
+        {
+            bool accepted = p_client->eth_submitWork("0x" + toHex(solution.nonce),
+                "0x" + toString(solution.work.header), "0x" + toString(solution.mixHash));
+            if (accepted)
+            {
+                if (m_onSolutionAccepted)
+                {
+                    m_onSolutionAccepted(false);
+                }
+            }
+            else
+            {
+                if (m_onSolutionRejected)
+                {
+                    m_onSolutionRejected(false);
+                }
+            }
+        }
+        catch (jsonrpc::JsonRpcException const& _e)
+        {
+            cwarn << "Failed to submit solution.";
+            cwarn << boost::diagnostic_information(_e);
+        }
+    }
 }
 
 // Handles all getwork communication.
@@ -140,5 +149,11 @@ void EthGetworkClient::workLoop()
 
         // Sleep for --farm-recheck defined period
         this_thread::sleep_for(chrono::milliseconds(m_farmRecheckPeriod));
+    }
+
+    // Since we do not have a real connected state with getwork, we just fake it.
+    if (m_onDisconnected)
+    {
+        m_onDisconnected();
     }
 }
