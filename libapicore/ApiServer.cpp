@@ -625,13 +625,13 @@ Json::Value ApiConnection::getMinerStat1()
 
 Json::Value ApiConnection::getMinerStatHR()
 {
-	
+
 	//TODO:give key-value format
 	auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(steady_clock::now() - this->m_farm.farmLaunched());
-	
+
 	SolutionStats s = m_farm.getSolutionStats();
 	WorkingProgress p = m_farm.miningProgress(true,true);
-	
+
 	ostringstream version; 
 	ostringstream runtime; 
 	Json::Value detailedMhEth;
@@ -639,31 +639,33 @@ Json::Value ApiConnection::getMinerStatHR()
 	Json::Value temps;
 	Json::Value fans;
 	Json::Value powers;
+	Json::Value ispaused;
 	ostringstream poolAddresses;
-	
+
 	version << ethminer_get_buildinfo()->project_version;
 	runtime << toString(runningTime.count());
-    poolAddresses << m_farm.get_pool_addresses(); 
-	
-	int gpuIndex = 0;
-	for (auto const& i: p.minersHashes)
-	{
-		detailedMhEth[gpuIndex] = (p.minerRate(i));
-		//detailedMhDcr[gpuIndex] = "off"; //Not supported
-		gpuIndex++;
-	}
+	poolAddresses << m_farm.get_pool_addresses(); 
 
-	gpuIndex = 0;
-	for (auto const& i : p.minerMonitors)
+	assert(p.minersHashes.size() == p.minerMonitors.size());
+	assert(p.minersHashes.size() == p.miningIsPaused.size());
+
+	for (unsigned gpuIndex = 0; gpuIndex < p.minersHashes.size(); gpuIndex++)
 	{
-		temps[gpuIndex] = i.tempC ; // Fetching Temps 
-		fans[gpuIndex] = i.fanP; // Fetching Fans
-		powers[gpuIndex] =  i.powerW; // Fetching Power
-		gpuIndex++;
+		auto const& minerhashes = p.minersHashes[gpuIndex];
+		auto const& minermonitors = p.minerMonitors[gpuIndex];
+		auto const& miningispaused = p.miningIsPaused[gpuIndex];
+		
+		detailedMhEth[gpuIndex] = (p.minerRate(minerhashes));
+		//detailedMhDcr[gpuIndex] = "off"; //Not supported
+
+		temps[gpuIndex] = minermonitors.tempC ; // Fetching Temps 
+		fans[gpuIndex] = minermonitors.fanP; // Fetching Fans
+		powers[gpuIndex] =  minermonitors.powerW; // Fetching Power
+
+		ispaused[gpuIndex] = (bool) miningispaused;
 	}
 
 	Json::Value jRes;
-
 	jRes["version"] = version.str();		// miner version.
 	jRes["runtime"] = runtime.str();		// running time, in minutes.
 	// total ETH hashrate in MH/s, number of ETH shares, number of ETH rejected shares.
@@ -678,6 +680,7 @@ Json::Value ApiConnection::getMinerStatHR()
 	jRes["fanpercentages"] = fans;             		// Fans speed(%) for all GPUs
 	jRes["powerusages"] = powers;         			// Power Usages(W) for all GPUs
 	jRes["pooladdrs"] = poolAddresses.str();        // current mining pool. For dual mode, there will be two pools here.
+	jRes["ispaused"] = ispaused;                    // Is mining on GPU paused
 
 	return jRes;
 
