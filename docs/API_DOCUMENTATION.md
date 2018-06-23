@@ -188,13 +188,13 @@ and expect back a response like this:
   "id": 1,
   "jsonrpc": "2.0",
   "result": {
-    "ethhashrate": 87563392,            // Overall HashRate in H/s
+    "ethhashrate": 73056881,            // Overall HashRate in H/s
     "ethhashrates": [                   // Hashrate per GPU in H/S
       14681287,
       14506510,
       14681287,
       14506510,
-      14506510,
+      0,
       14681287
     ],
     "ethinvalid": 0,                    // Total number of invalid shares
@@ -206,7 +206,7 @@ and expect back a response like this:
        90,
        90,
        90,
-       90,
+       100,
        90
     ],
     "pooladdrs": "eu1.ethermine.org:4444",  // Mining pool currently active
@@ -224,8 +224,16 @@ and expect back a response like this:
        50,
        56,
        58,
-       61,
+       68,
        60
+    ],
+    "ispaused": [                       // Is mining paused per GPU
+       false,
+       false,
+       false,
+       false,
+       true,
+       false
     ],
     "version": "0.16.0.dev0+commit.41639944" // Running ethminer's version
   }
