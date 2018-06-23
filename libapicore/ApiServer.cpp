@@ -177,7 +177,22 @@ void ApiConnection::processRequest(Json::Value& requestObject)
                 }
                 else
                 {
-                    if (jPrm.get("psw", "").asString() == m_password)
+                    // max password length that we actually verify 
+                    // (this limit can be removed by introducing a collision-resistant compressing hash,
+                    //  like blake2b/sha3, but 500 should suffice and is much easier to implement)
+                    const int max_length = 500; 
+                    char input_copy[max_length] = {0};
+                    char password_copy[max_length] = {0};
+                    // note: copy() is not O(1) , but i don't think it matters
+                    jPrm.get("psw", "").asString().copy(&input_copy[0], max_length);
+                    // ps, the following line can be optimized to only run once on startup and thus save a minuscule amount of cpu cycles.
+                    m_password.copy(&password_copy[0], max_length);
+                    int result=0;
+                    for (int i = 0; i < max_length; ++i)
+                    {
+                        result |= input_copy[i] ^ password_copy[i];
+                    }
+                    if (result == 0)
                     {
                         m_is_authenticated = true;
                     }
