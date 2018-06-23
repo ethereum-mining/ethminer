@@ -1,5 +1,27 @@
 # Ethminer's API documentation
 
+## Table of Contents
+
+* [Introduction](#introduction)
+* [Activation and Security](#activation-and-security)
+* [Usage](#usage)
+* [List of requests](#list-of-requests)
+    * [api_authorize](#api_authorize)
+    * [miner_ping](#miner_ping)
+    * [miner_getstat1](#miner_getstat1)
+    * [miner_getstathr](#miner_getstathr)
+    * [miner_restart](#miner_restart)
+    * miner_reboot
+    * [miner_shuffle](#miner_shuffle)
+    * [miner_getconnections](#miner_getconnections)
+    * [miner_setactiveconnection](#miner_setactiveconnection)
+    * [miner_addconnection](#miner_addconnection)
+    * [miner_removeconnection](#miner_removeconnection)
+    * [miner_getscramblerinfo](#miner_getscramblerinfo)
+    * [miner_setscramblerinfo](#miner_setscramblerinfo)
+
+## Introduction
+
 Ethminer implements an API (Application Programming Interface) interface which allows to monitor/control some of the run-time values endorsed by this miner. The API interface is available under the following circumstances:
 
 * If you're using a binary release downloaded from the [releases](https://github.com/ethereum-mining/ethminer/releases) section of this repository
@@ -56,9 +78,9 @@ This shows the API interface is live and listening on the configured endpoint.
 |   Method  | Description  | Write Protected |
 | --------- | ------------ | --------------- |
 | [api_authorize](#api_authorize) | Issues the password to authenticate the session | No |
+| [miner_ping](#miner_ping) | Responds back with a "pong" | No |
 | [miner_getstat1](#miner_getstat1) | Request the retrieval of operational data in compatible format | No
 | [miner_getstathr](#miner_getstathr) | Request the retrieval of operational data in Ethminer's format | No
-| [miner_ping](#miner_ping) | Responds back with a "pong" | No |
 | [miner_restart](#miner_restart) | Instructs ethminer to stop and restart mining | Yes |
 | miner_reboot | Not yet implemented | Yes
 | [miner_shuffle](#miner_shuffle) | Initializes a new random scramble nonce | Yes
