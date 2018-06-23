@@ -176,7 +176,7 @@ and expect back a response like this:
   "id": 1,
   "jsonrpc": "2.0",
   "result": [
-    "0.16.0.dev0+commit.41639944",          // The actual release of ethminer
+    "ethminer-0.16.0.dev0+commit.41639944", // Running ethminer's version
     "48",                                   // Total running time in minutes
     "87221;54;0",                           // ETH hashrate in KH/s, submitted shares, rejected shares
     "14683;14508;14508;14508;14508;14508",  // Detailed ETH hashrate in KH/s per GPU
@@ -257,7 +257,7 @@ and expect back a response like this:
        true,
        false
     ],
-    "version": "0.16.0.dev0+commit.41639944" // Running ethminer's version
+    "version": "ethminer-0.16.0.dev0+commit.41639944" // Running ethminer's version
   }
 }
 ```
