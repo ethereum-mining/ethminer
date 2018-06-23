@@ -18,7 +18,7 @@ httpServer http_server;
 
 void httpServer::tableHeader(stringstream& ss, unsigned columns)
 {
-    auto info = ethminer_get_buildinfo();
+    auto version = std::string("ethminer-") + ethminer_get_buildinfo()->project_version;
     char hostName[HOST_NAME_MAX + 1];
     gethostname(hostName, HOST_NAME_MAX + 1);
     string l = m_farm->farmLaunchedFormatted();
@@ -26,7 +26,7 @@ void httpServer::tableHeader(stringstream& ss, unsigned columns)
        "<html><head><title>" << hostName <<
        "</title><style>tr:nth-child(even){background-color:Gainsboro;}</style>"
        "<meta http-equiv=refresh content=30></head><body><table width=\"50%\" border=1 cellpadding=2 cellspacing=0 align=center>"
-       "<tr valign=top align=center style=background-color:Gold><th colspan=" << columns << ">" << info->project_version <<
+       "<tr valign=top align=center style=background-color:Gold><th colspan=" << columns << ">" << version <<
        " on " << hostName << " - " << l << "</th></tr>";
 }
 
