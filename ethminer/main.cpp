@@ -211,6 +211,10 @@ public:
 
 #if API_CORE
 
+		app.add_option("--api-address", m_api_address,
+			"Set the network address the api should listen on. (by default, it listens on every ip address)", true)
+			->group(APIGroup);
+
 		app.add_option("--api-port", m_api_port,
 			"Set the api port, the miner should listen to. Use 0 to disable. Use negative numbers for readonly mode", true)
 			->group(APIGroup)
@@ -220,6 +224,13 @@ public:
 			"Set the password to protect interaction with Api server. If not set any connection is granted access. "
 		    "Be advised passwords are sent unencrypted over plain tcp !!")
 			->group(APIGroup);
+
+// warning, before enabling this code, consider the security implications,
+// if the user is not careful, and only specify "--api-address 127.0.0.1 --api-port 3333 --http-port 3334"
+// or vise-versa, the user may inadvertently listen in on an insecure network without realizing it =/
+//      app.add_option("--http-address", m_http_address,
+//			"Set the network address the http api should listen on. (by default, it listens on every ip address)", true)
+//			->group(APIGroup);*/
 
 		app.add_option("--http-port", m_http_port,
 			"Set the web api port, the miner should listen to. Use 0 to disable. Data shown depends on hwmon setting", true)
@@ -735,10 +746,10 @@ private:
 
 #if API_CORE
 
-		ApiServer api(m_io_service, abs(m_api_port), (m_api_port < 0) ? true : false, m_api_password, f, mgr);
+		ApiServer api(m_io_service, m_api_address, abs(m_api_port), (m_api_port < 0) ? true : false, m_api_password, f, mgr);
 		api.start();
 
-        http_server.run(m_http_port, &f, m_show_hwmonitors, m_show_power);
+        http_server.run(m_api_address, m_http_port, &f, m_show_hwmonitors, m_show_power);
 
 #endif
 
@@ -843,8 +854,10 @@ private:
 	unsigned m_tstart = 40;
 
 #if API_CORE
+	string m_api_address;
 	int m_api_port = 0;
 	string m_api_password;
+	// m_http_address;
 	unsigned m_http_port = 0;
 #endif
 

@@ -35,7 +35,12 @@ Whenever the above depicted conditions are met you can take advantage of the API
 ./ethminer [...] --api-port 3333
 ```
 
-This example puts the API interface listening on port 3333 of **any** local IP address which means the loop-back interface (127.0.0.1/127.0.1.1) and any configured IP address of the network card.
+This example puts the API interface listening on port 3333 of, by default, **any** local IP address which means the loop-back interface (127.0.0.1/127.0.1.1) and any configured IP address of the network card, but you can dictate what address to listen on with the `--api-address` parameter, for example, to only accept localhost connections:
+
+```shell
+./ethminer [...] --api-port 3333 --api-address "127.0.0.1"
+```
+and likewise, if you want to only accept connections from a VPN or a specific network, replace 127.0.0.1 accordingly.
 
 The API interface not only offers monitoring queries but also implements some methods which may affect the functioning of the miner. These latter operations are named _write_ actions: if you want to inhibit the invocation of such methods you may want to put the API interface in **read-only** mode which means only query to **get** data will be allowed and no _write_ methods will be allowed. To do this simply add the - (minus) sign in front of the port number thus transforming the port number into a negative number. Example for read-only mode:
 
