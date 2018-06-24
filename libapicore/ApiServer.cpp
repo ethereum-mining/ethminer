@@ -493,7 +493,64 @@ void ApiConnection::processRequest(Json::Value& requestObject)
 					}
 				}
 			}
+		}
+		else if (_method == "miner_pausegpu")
+		{
+			if (m_readonly)
+			{
+				jRes["error"]["code"] = -32601;
+				jRes["error"]["message"] = "Method not available";
+			}
+			else
+			{
 
+				if (!requestObject.isMember("params") || requestObject["params"].empty() ||
+					!requestObject["params"].isObject())
+				{
+					jRes["error"]["code"] = -32600;
+					jRes["error"]["message"] = "Invalid request";
+				}
+				else
+				{
+					Json::Value jPrm = requestObject["params"];
+					if (!jPrm.isMember("index") || jPrm["index"].empty() || !jPrm["index"].isUInt())
+					{
+						jRes["error"]["code"] = -32602;
+						jRes["error"]["message"] = "Missing gpu index";
+					}
+					else
+					{
+						if (!jPrm.isMember("pause") || jPrm["pause"].empty() || !jPrm["pause"].isBool())
+						{
+							jRes["error"]["code"] = -32602;
+							jRes["error"]["message"] = "Missing boolean value pause";
+						}
+						else
+						{
+							WorkingProgress p = m_farm.miningProgress(false, false);
+							auto index = jPrm["index"].asUInt();
+							if (index >= p.miningIsPaused.size())
+							{
+								jRes["error"]["code"] = -422;
+								jRes["error"]["message"] = "Index out of bounds";
+							}
+							else
+							{
+								auto miner = m_farm.getMiner(index);
+								if (jPrm["pause"].asBool())
+								{
+									miner->set_mining_paused(MinigPauseReason::MINING_PAUSED_API);
+								}
+								else
+								{
+									miner->clear_mining_paused(MinigPauseReason::MINING_PAUSED_API);
+								}
+								jRes["result"] = true;
+							}
+						}
+					}
+				}
+			}
 		}
         else
         {

@@ -94,8 +94,8 @@ inline std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
 typedef enum
 {
 	MINING_NOT_PAUSED              = 0x00000000,
-	MINING_PAUSED_WAIT_FOR_T_START = 0x00000001
-	// MINING_PAUSED_API              = 0x00000002
+	MINING_PAUSED_WAIT_FOR_T_START = 0x00000001,
+	MINING_PAUSED_API              = 0x00000002
 	// MINING_PAUSED_USER             = 0x00000004,
 	// MINING_PAUSED_ERROR            = 0x00000008
 } MinigPauseReason;
@@ -293,6 +293,17 @@ public:
 			}
 		}
 	}
+
+	void set_mining_paused(MinigPauseReason pause_reason)
+	{
+		m_mining_paused.set_mining_paused(pause_reason);
+	}
+
+	void clear_mining_paused(MinigPauseReason pause_reason)
+	{
+		m_mining_paused.clear_mining_paused(pause_reason);
+	}
+
 	bool is_mining_paused()
 	{
 		return m_mining_paused.is_mining_paused();

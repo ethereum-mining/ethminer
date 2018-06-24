@@ -19,6 +19,7 @@
     * [miner_removeconnection](#miner_removeconnection)
     * [miner_getscramblerinfo](#miner_getscramblerinfo)
     * [miner_setscramblerinfo](#miner_setscramblerinfo)
+    * [miner_pausegpu](#miner_pausegpu)
 
 ## Introduction
 
@@ -90,6 +91,7 @@ This shows the API interface is live and listening on the configured endpoint.
 | [miner_removeconnection](#miner_removeconnection) | Removes the given connection from the list of available so it won't be used again | Yes
 | [miner_getscramblerinfo](#miner_getscramblerinfo) | Retrieve information about the nonce segments assigned to each GPU | No
 | [miner_setscramblerinfo](#miner_setscramblerinfo) | Sets information about the nonce segments assigned to each GPU | Yes
+| [miner_pausegpu](#miner_pausegpu) | Pause/Start mining on specific GPU | Yes
 
 ### api_authorize
 
@@ -527,3 +529,33 @@ To approach this method you have to read carefully the method [miner_getscramble
 
 This will adjust nonce scrambler and segment width assigned to each GPU. This method is intended only for highly skilled people who do a great job in math to determine the optimal values for large mining operations.
 **Use at your own risk**
+
+### miner_pausegpu
+
+Pause or (restart) mining on specific GPU.
+This ONLY (re)starts mining if GPU was paused via a previous API call and not if GPU pauses for other reasons.
+
+```json
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_pausegpu",
+  "data": {
+    "index": 0,
+    "pause": true
+  }
+}
+```
+
+and expect a result like this:
+
+```json
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": true
+}
+```
+
+which confirms the action has been performed.
+Again: This ONLY (re)starts mining if GPU was paused via a previous API call and not if GPU pauses for other reasons.
