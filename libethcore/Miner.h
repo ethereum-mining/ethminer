@@ -89,6 +89,43 @@ inline std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
 	return os;
 }
 
+
+/// Pause mining
+typedef enum
+{
+	MINING_NOT_PAUSED              = 0x00000000,
+	MINING_PAUSED_WAIT_FOR_T_START = 0x00000001
+	// MINING_PAUSED_API              = 0x00000002
+	// MINING_PAUSED_USER             = 0x00000004,
+	// MINING_PAUSED_ERROR            = 0x00000008
+} MinigPauseReason;
+
+struct MiningPause
+{
+	std::atomic_uint64_t m_mining_paused_flag = {MinigPauseReason::MINING_NOT_PAUSED};
+
+	void set_mining_paused(MinigPauseReason pause_reason)
+	{
+		m_mining_paused_flag.fetch_or(pause_reason, std::memory_order_seq_cst);
+	}
+
+	void clear_mining_paused(MinigPauseReason pause_reason)
+	{
+		m_mining_paused_flag.fetch_and(~pause_reason, std::memory_order_seq_cst);
+	}
+
+	MinigPauseReason get_mining_paused()
+	{
+		return (MinigPauseReason) m_mining_paused_flag.load(std::memory_order_relaxed);
+	}
+
+	bool is_mining_paused()
+	{
+		return (m_mining_paused_flag.load(std::memory_order_relaxed) != MinigPauseReason::MINING_NOT_PAUSED);
+	}
+};
+
+
 /// Describes the progress of a mining operation.
 struct WorkingProgress
 {
@@ -238,33 +275,29 @@ public:
 		 cnote << "Setting temp" << temperature << " for gpu" << index <<
 		          " tstop=" << farm.get_tstop() << " tstart=" << farm.get_tstart();
 		*/
-		bool _wait_for_tstart_temp = m_wait_for_tstart_temp.load(std::memory_order_relaxed);
+		bool _wait_for_tstart_temp = (m_mining_paused.get_mining_paused() & MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START) == MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START;
 		if(!_wait_for_tstart_temp)
 		{
 			unsigned tstop = farm.get_tstop();
 			if (tstop && temperature >= tstop)
 			{
 				cwarn << "Pause mining on gpu" << index << " : temperature " << temperature << " is above --tstop " << tstop;
-				m_wait_for_tstart_temp.store(true, std::memory_order_relaxed);
+				m_mining_paused.set_mining_paused(MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START);
 			}
 		} else {
 			unsigned tstart = farm.get_tstart();
 			if (tstart && temperature <= tstart)
 			{
 				cnote << "(Re)starting mining on gpu" << index << " : temperature " << temperature << " is now below --tstart " << tstart;
-				m_wait_for_tstart_temp.store(false, std::memory_order_relaxed);
+				m_mining_paused.clear_mining_paused(MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START);
 			}
 		}
 	}
-
 	bool is_mining_paused()
 	{
-		bool _wait_for_tstart_temp = m_wait_for_tstart_temp.load(std::memory_order_relaxed);
-		if (_wait_for_tstart_temp)
-			return true;
-		/* Add here some other reasons why mining on the GPU is paused */
-		return false;
+		return m_mining_paused.is_mining_paused();
 	}
+
 protected:
 
 	/**
@@ -288,9 +321,8 @@ protected:
 	std::chrono::high_resolution_clock::time_point workSwitchStart;
 	HwMonitorInfo m_hwmoninfo;
 private:
-	std::atomic<bool> m_wait_for_tstart_temp = { false };
 	std::atomic<uint64_t> m_hashCount = {0};
-
+	MiningPause m_mining_paused;
 	WorkPackage m_work;
 	mutable Mutex x_work;
 };
