@@ -2,6 +2,20 @@ language: cpp
 env:
   global:
     - secure: "Pu2hPyp3Ym3hmkW9iXVZObfE7tA3ITSaeR05VguJ9czJAMgaT7LmEN4LDoR2sQHbRAv+8QngbNUFpglzvZLIBIEefyEA39DThZptkKJ+hCUerRajfmXywSXCwPC7A1uTEY1YoUDlGvxVZA3Z7f17GFtKtDuHjLSWmrxHAM6wjK+qCweEq0umJJ+N+2DX2UpVLlWgYoknYSGipfjHRBEgPp4NRh08yvpDTFYSVQeL0qL7LbyAtkx6qhLCK6JZ2CsP3INQOoRwc8jP6VIFbuoHl3lkOzayNM49/e9wDdZ8FGqp0HjUFi7EYi/78Uvje7CrgdCiSVwoHbtAvcyPYcxu+qXzwh4AxslRL7UJtOzTbRaXfJvqt2oqtttFjD0Dk/iwnAthg7Su6UohivcUVj/9p1X1KdDbLJcoTag/MBcZP7VJDgnHjyqYwVciT1ZV0RWfuLBI584vFMTlsdzFXt384mUTCN02BOnRnw3Miq4a5irFXnDy23TdGersk7b//FPIBIhPv/wxCjUkJzTmt7ska5jACb/FHUoOyrE5mQLSVZbh/zlsIKf8yWZy7q7caowmwyPYZtAqNZWj1JmVs2c+0RmX2c76kCTHX4ocCcDx1QqV49/+R1Ah+pA7X7kcr9MklzL9z/lkAA7z5SF/UzdoGfBNicMKz5hUFixBqZ04ATw="
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "nkOc/D8eiQSUlHp2jIvw0Ww37vImPfuEZI6txK4tDBJAi1Hr7UgGS4u55Lkxn2NyCdf8Lrhu8xoggrCg2eRXWSmeGESPMNs8XxAHEi9pHalE7gm6hueJ1bq5WrCGBWEhCe5JVq6JHS/c+uYo3DgS+L+8BZW4ht8Fv6VZOGuISDfkMeed8HAwRB30x5ldWSuRYYnlcMhIDCzf6LPVpPHnqKCOxzCG38fFc2ynIwQqtvxLWKP165OxVt4BMaKbThsZICu5ODtcCzH1N3rAhZ0IiD0vW9esA29v/49ncqOOY1XUrFxOzk93v38wXUrtdq1netFBeRDtX+PatIcxbxPFYmBMTIdLxdCLHM4bW5V4it9UGCEbePiHEMWOUmHK0Qey2dUUOwmY7CeRlK/F+QfW+w3K73SxyhBCbR8l5g0U9NFBfMaXksQQ/8oZceJPa1rntVy0d8AOmtwT+gvDj28TroHumLLg3rDRx19yTSTJJ1Fa5xbsxtlGw91gltwEHY/2r3yZ/ZeX+oU7ViyP4cqcUCA2Yx7SeByw1QDQDutJoFz2TxXn7XXpzule3SX7VDyPJYSOJtkgjtn96j6bM0G1sAD2golFzVwAnHiqxygg96wN7H9ACUNVwurPIFrB03o9MAOZTMlOpssSwQU9KUaueCJQgbsjglobg3nf0cVpaZI="
+
+addons:
+  coverity_scan:
+    project:
+      name: "ethereum-mining/ethminer"
+      description: "Ethereum miner with OpenCL, CUDA and stratum support"
+    notification_email: ""
+    build_command_prepend: "cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -DAPICORE=ON -H. -Bbuild"
+    build_command: "cmake --build build --target package -- -j4"
+    branch_pattern: coverity
+
 branches:
     only:
         - /^v\d+\..+$/
@@ -9,7 +23,9 @@ branches:
         - ci
         - travis
         - hunter
+        - coverity
         - /^release.*$/
+
 matrix:
     include:
         - os: linux
@@ -19,10 +35,13 @@ matrix:
         - os: osx
           osx_image: xcode9.1
           env: CUDA=OFF
+
 cache:
     directories:
         - $HOME/.local
+
 before_install: |
+    echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
     if [ "$TRAVIS_OS_NAME" = linux ]; then
       sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
       sudo apt-get -q update
@@ -37,9 +56,10 @@ before_install: |
       HOMEBREW_NO_AUTO_UPDATE=1 brew install -q python3
       pip3 install -q requests gitpython
     fi
+
 script: |
-    cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -DAPICORE=ON -H. -Bbuild
-    cmake --build build --target package -- -j4
+    script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -DAPICORE=ON -H. -Bbuild ; fi
+    script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; cmake --build build --target package -- -j4 ; fi
     build/ethminer/ethminer --list-devices -G
     build/ethminer/ethminer --list-devices -U
     if [ "$TRAVIS_OS_NAME" = linux ]; then ldd -v build/ethminer/ethminer; fi
