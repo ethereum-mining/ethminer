@@ -23,7 +23,6 @@ typedef struct {
 } search_results;
 
 #define ACCESSES 64
-#define THREADS_PER_HASH (128 / 16)
 
 typedef struct
 {
@@ -32,19 +31,21 @@ typedef struct
 
 typedef struct
 {
-	uint4	 uint4s[128 / sizeof(uint4)];
+	uint4 uint4s[128 / sizeof(uint4)];
 } hash128_t;
+
+#define THREADS_PER_HASH (sizeof(hash128_t) / sizeof(uint4))
 
 typedef union {
 	uint32_t words[64 / sizeof(uint32_t)];
-	uint2	 uint2s[64 / sizeof(uint2)];
-	uint4	 uint4s[64 / sizeof(uint4)];
+	uint2    uint2s[64 / sizeof(uint2)];
+	uint4    uint4s[64 / sizeof(uint4)];
 } hash64_t;
 
 typedef union {
 	uint32_t words[200 / sizeof(uint32_t)];
-	uint2	 uint2s[200 / sizeof(uint2)];
-	uint4	 uint4s[200 / sizeof(uint4)];
+	uint2    uint2s[200 / sizeof(uint2)];
+	uint4    uint4s[200 / sizeof(uint4)];
 } hash200_t;
 
 void set_constants(
@@ -83,18 +84,18 @@ struct cuda_runtime_error : public virtual std::runtime_error
 	cuda_runtime_error( const std::string &msg ) : std::runtime_error(msg) {}
 };
 
-#define CUDA_SAFE_CALL(call)				\
-do {							\
-	cudaError_t err = call;				\
-	if (cudaSuccess != err) {			\
-		std::stringstream ss;			\
-		ss << "CUDA error in func " 		\
-			<< __FUNCTION__ 		\
-			<< " at line "			\
-			<< __LINE__			\
-			<< ' '				\
-			<< cudaGetErrorString(err);	\
-		throw cuda_runtime_error(ss.str());	\
-	}						\
+#define CUDA_SAFE_CALL(call) \
+do { \
+	cudaError_t err = call; \
+	if (cudaSuccess != err) { \
+		std::stringstream ss; \
+		ss << "CUDA error in func " \
+			<< __FUNCTION__ \
+			<< " at line " \
+			<< __LINE__ \
+			<< ' ' \
+			<< cudaGetErrorString(err); \
+		throw cuda_runtime_error(ss.str()); \
+	} \
 } while (0)
 
