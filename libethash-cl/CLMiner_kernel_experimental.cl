@@ -434,7 +434,7 @@ __kernel void ethash_search(
 __kernel void ethash_calculate_dag_item(uint start, __global hash64_t const* g_light, __global hash64_t * g_dag, uint isolate)
 {
     uint const node_index = start + get_global_id(0);
-    if (node_index > DAG_SIZE * 2) return;
+    if (node_index >= DAG_SIZE * 2) return;
 
     hash200_t dag_node;
     dag_node.uint16s[0] = g_light[node_index % LIGHT_SIZE].uint16s[0];
