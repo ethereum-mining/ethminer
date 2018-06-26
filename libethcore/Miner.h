@@ -281,14 +281,14 @@ public:
 			unsigned tstop = farm.get_tstop();
 			if (tstop && temperature >= tstop)
 			{
-				cwarn << "Pause mining on gpu" << index << " : temperature " << temperature << " is above --tstop " << tstop;
+				cwarn << "Pause mining on gpu" << index << " : temperature " << temperature << " is equal/above --tstop " << tstop;
 				m_mining_paused.set_mining_paused(MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START);
 			}
 		} else {
 			unsigned tstart = farm.get_tstart();
 			if (tstart && temperature <= tstart)
 			{
-				cnote << "(Re)starting mining on gpu" << index << " : temperature " << temperature << " is now below --tstart " << tstart;
+				cnote << "(Re)starting mining on gpu" << index << " : temperature " << temperature << " is now below/equal --tstart " << tstart;
 				m_mining_paused.clear_mining_paused(MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START);
 			}
 		}
