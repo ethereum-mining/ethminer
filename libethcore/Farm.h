@@ -365,6 +365,11 @@ public:
         return m_progress;
     }
 
+    std::shared_ptr<Miner> getMiner(unsigned index)
+    {
+        return m_miners[index];
+    }
+
 	SolutionStats getSolutionStats() {
 		return m_solutionStats;
 	}
