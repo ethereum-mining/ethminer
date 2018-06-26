@@ -156,7 +156,8 @@ void ethash_generate_dag(
 	}
 	if (base < work)
 	{
-		ethash_calculate_dag_item_single <<<blocks, threads, 0, stream>>>(base);
+		r = (work - base + threads - 1) / threads;
+		ethash_calculate_dag_item_single <<<r, threads, 0, stream>>>(base);
 		CUDA_SAFE_CALL(cudaDeviceSynchronize());
 	}
 	
