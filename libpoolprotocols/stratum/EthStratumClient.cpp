@@ -1008,7 +1008,7 @@ void EthStratumClient::response_timeout_handler(const boost::system::error_code&
 	if (!ec) {
 		if (isConnected() && m_response_pending) {
 			dev::setThreadName("stratum");
-			cwarn << "No response received in" << m_responsetimeout << "seconds.";
+			cwarn << "No response received in " << m_responsetimeout << " seconds.";
 			disconnect();
 		}
 	}
