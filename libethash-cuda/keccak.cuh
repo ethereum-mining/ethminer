@@ -29,18 +29,17 @@ __device__ __forceinline__ void keccak_f1600_init(uint2* state)
 {
 	uint2 s[25];
 	uint2 t[5], u, v;
-
-	s[4] = state[4];
+	const uint2 u2zero = make_uint2(0, 0);
 
 	devectorize2(d_header.uint4s[0], s[0], s[1]);
 	devectorize2(d_header.uint4s[1], s[2], s[3]);
-
-	for (uint32_t i = 5; i < 25; i++)
-	{
-		s[i] = make_uint2(0, 0);
-	}
-	s[5].x = 1;
-	s[8].y = 0x80000000;
+	s[4] = state[4];
+	s[5] = make_uint2(1, 0);
+	s[6] = u2zero;
+	s[7] = u2zero;
+	s[8] = make_uint2(0, 0x80000000);
+	for (uint32_t i = 9; i < 25; i++)
+		s[i] = u2zero;
 
 	/* theta: c = a[0,i] ^ a[1,i] ^ .. a[4,i] */
 	t[0].x = s[0].x ^ s[5].x;
@@ -340,16 +339,18 @@ __device__ __forceinline__ uint64_t keccak_f1600_final(uint2* state)
 {
 	uint2 s[25];
 	uint2 t[5], u, v;
+	const uint2 u2zero = make_uint2(0, 0);
 
 	for (int i = 0; i < 12; ++i)
 		s[i] = state[i];
 
-	for (uint32_t i = 12; i < 25; i++)
-	{
-		s[i] = make_uint2(0, 0);
-	}
-	s[12].x = 1;
-	s[16].y = 0x80000000;
+	s[12] = make_uint2(1, 0);
+	s[13] = u2zero;
+	s[14] = u2zero;
+	s[15] = u2zero;
+	s[16] = make_uint2(0, 0x80000000);
+	for (uint32_t i = 17; i < 25; i++)
+		s[i] = u2zero;
 	
 	/* theta: c = a[0,i] ^ a[1,i] ^ .. a[4,i] */
 	t[0] = xor3(s[0], s[5], s[10]);

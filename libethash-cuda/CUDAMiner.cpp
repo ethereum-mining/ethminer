@@ -398,7 +398,7 @@ bool CUDAMiner::cuda_init(
 
                     ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0]);
 
-                    cudalog << "Generated DAG for GPU #" << m_device_num << " in: "
+                    cudalog << "Generated DAG for GPU" << m_device_num << " in: "
 						<< std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startDAG).count()
 						<< " ms.";
 
