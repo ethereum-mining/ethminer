@@ -411,7 +411,7 @@ static void SHA3_512(uint2* s, uint isolate)
 __kernel void ethash_calculate_dag_item(uint start, __global hash64_t const* g_light, __global hash64_t * g_dag, uint isolate)
 {
 	uint const node_index = start + get_global_id(0);
-	if (node_index > DAG_SIZE * 2) return;
+	if (node_index >= DAG_SIZE * 2) return;
 
 	hash200_t dag_node;
 	copy(dag_node.uint4s, g_light[node_index % LIGHT_SIZE].uint4s, 4);
