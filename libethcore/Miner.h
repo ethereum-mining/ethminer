@@ -102,7 +102,7 @@ typedef enum
 
 struct MiningPause
 {
-	std::atomic_uint64_t m_mining_paused_flag = {MinigPauseReason::MINING_NOT_PAUSED};
+	std::atomic<uint64_t> m_mining_paused_flag = {MinigPauseReason::MINING_NOT_PAUSED};
 
 	void set_mining_paused(MinigPauseReason pause_reason)
 	{
