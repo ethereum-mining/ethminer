@@ -264,7 +264,7 @@ void ApiConnection::processRequest(Json::Value& requestObject)
 			// Returns a list of configured pools
 			jRes["result"] = m_mgr.getConnectionsJson();
 		}
-		else if (_method == "miner_addpool")
+		else if (_method == "miner_addconnection")
 		{
 			if (m_readonly)
 			{
@@ -287,7 +287,7 @@ void ApiConnection::processRequest(Json::Value& requestObject)
 						!jPrm["uri"].isString())
 					{
 						jRes["error"]["code"] = -32602;
-						jRes["error"]["message"] = "Missing pool uri";
+						jRes["error"]["message"] = "Missing connection uri";
 					}
 					else
 					{
