@@ -67,7 +67,7 @@ __global__ void
 ethash_calculate_dag_item(uint32_t start)
 {
 	uint32_t const node_index = start + blockIdx.x * blockDim.x + threadIdx.x;
-	//if (node_index >= d_dag_size * 2) return;
+	if (((node_index/4)*4) >= d_dag_size * 2) return;
 
 	hash200_t dag_node;
 	copy(dag_node.uint4s, d_light[node_index % d_light_size].uint4s, 4);
@@ -101,39 +101,10 @@ ethash_calculate_dag_item(uint32_t start)
 		for (uint32_t w = 0; w < 4; w++) {
 			s[w] = make_uint4(__shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].x, t, 4), __shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].y, t, 4), __shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].z, t, 4), __shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].w, t, 4));
 		}
+		if (shuffle_index < d_dag_size * 2) {
 		dag_nodes[shuffle_index].uint4s[thread_id] = s[thread_id];
 	}
 }
-
-__global__ void
-ethash_calculate_dag_item_single(uint32_t start)
-{
-	// index limited to 4G
-	uint32_t const node_index = start + blockIdx.x * blockDim.x + threadIdx.x;
-	if (node_index >= d_dag_size * 2) return;
-
-	hash200_t dag_node;
-	copy(dag_node.uint4s, d_light[node_index % d_light_size].uint4s, 4);
-	dag_node.words[0] ^= node_index;
-	SHA3_512(dag_node.uint2s);
-
-	const int thread_id = threadIdx.x & 3;
-
-	for (uint32_t i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
-		uint32_t parent_index = fnv(node_index ^ i, dag_node.words[i % NODE_WORDS]) % d_light_size;
-		for (uint32_t t = 0; t < 4; t++) {
-			uint32_t shuffle_index = parent_index % d_light_size;
-			dag_node.uint4s[t] = fnv4(dag_node.uint4s[t], d_light[shuffle_index].uint4s[t]);
-		}
-	}
-	SHA3_512(dag_node.uint2s);
-	hash64_t * dag_nodes = (hash64_t *)d_dag;
-
-	for (uint32_t t = 0; t < 4; t++) {
-		uint32_t shuffle_index;
-		shuffle_index = node_index;
-        dag_nodes[shuffle_index].uint4s[t] = dag_node.uint4s[t];
-	}
 }
 
 void ethash_generate_dag(
@@ -145,22 +116,12 @@ void ethash_generate_dag(
 {
 	const uint32_t work = (uint32_t)(dag_size / sizeof(hash64_t));
 	const uint32_t run = blocks * threads;
-	const uint32_t runs = work / run;
-	uint32_t base = 0;
-	uint32_t r;
-	for (r = 0; r < runs; r++)
+
+	for (uint32_t base = 0; base < work; base += run)
 	{
 		ethash_calculate_dag_item <<<blocks, threads, 0, stream>>>(base);
 		CUDA_SAFE_CALL(cudaDeviceSynchronize());
-		base += run;
 	}
-	if (base < work)
-	{
-		r = (work - base + threads - 1) / threads;
-		ethash_calculate_dag_item_single <<<r, threads, 0, stream>>>(base);
-		CUDA_SAFE_CALL(cudaDeviceSynchronize());
-	}
-	
 	CUDA_SAFE_CALL(cudaGetLastError());
 }
 
