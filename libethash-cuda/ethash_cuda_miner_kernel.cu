@@ -15,7 +15,7 @@
 #include "dagger_shuffled.cuh"
 
 template <uint32_t _PARALLEL_HASH>
-__global__ void 
+__global__ void
 ethash_search(
 	volatile search_results* g_output,
 	uint64_t start_nonce
@@ -52,8 +52,8 @@ void run_ethash_search(
 	{
 		case 1: ethash_search <1> <<<gridSize, blockSize, 0, stream >>>(g_output, start_nonce); break;
 		case 2: ethash_search <2> <<<gridSize, blockSize, 0, stream >>>(g_output, start_nonce); break;
-		case 4: ethash_search <4> <<<gridSize, blockSize, 0, stream >>>(g_output, start_nonce); break;
 		case 8: ethash_search <8> <<<gridSize, blockSize, 0, stream >>>(g_output, start_nonce); break;
+		case 4:
 		default: ethash_search <4> <<<gridSize, blockSize, 0, stream >>>(g_output, start_nonce); break;
 	}
 	CUDA_SAFE_CALL(cudaGetLastError());
@@ -66,73 +66,73 @@ void run_ethash_search(
 __global__ void
 ethash_calculate_dag_item(uint32_t start)
 {
-	uint32_t const node_index = start + blockIdx.x * blockDim.x + threadIdx.x;
-	//if (node_index >= d_dag_size * 2) return;
+	uint32_t node_index = start + blockIdx.x * blockDim.x + threadIdx.x;
+	uint32_t nodes = d_dag_size * 2;
+
+	if (node_index >= nodes)
+		return;
 
 	hash200_t dag_node;
 	copy(dag_node.uint4s, d_light[node_index % d_light_size].uint4s, 4);
 	dag_node.words[0] ^= node_index;
 	SHA3_512(dag_node.uint2s);
 
-	const int thread_id = threadIdx.x & 3;
+	hash64_t * dag_nodes = (hash64_t *)d_dag;
 
-	for (uint32_t i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
-		uint32_t parent_index = fnv(node_index ^ i, dag_node.words[i % NODE_WORDS]) % d_light_size;
-		for (uint32_t t = 0; t < 4; t++) {
+	// Do the last partial warp single threaded
+	if (node_index < (nodes & (~3u)))
+	{
 
-			uint32_t shuffle_index = __shfl_sync(0xFFFFFFFF,parent_index, t, 4);
+		int thread_id = threadIdx.x & 3;
 
-			uint4 p4 = d_light[shuffle_index].uint4s[thread_id];
-			for (int w = 0; w < 4; w++) {
+		for (uint32_t i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
+			uint32_t parent_index = fnv(node_index ^ i, dag_node.words[i % NODE_WORDS]) % d_light_size;
+			for (uint32_t t = 0; t < 4; t++) {
 
-				uint4 s4 = make_uint4(__shfl_sync(0xFFFFFFFF,p4.x, w, 4), __shfl_sync(0xFFFFFFFF,p4.y, w, 4), __shfl_sync(0xFFFFFFFF,p4.z, w, 4), __shfl_sync(0xFFFFFFFF,p4.w, w, 4));
-				if (t == thread_id) {
-					dag_node.uint4s[w] = fnv4(dag_node.uint4s[w], s4);
+				uint32_t shuffle_index = __shfl_sync(0xFFFFFFFF,parent_index, t, 4);
+				uint4 p4 = d_light[shuffle_index].uint4s[thread_id];
+
+				for (int w = 0; w < 4; w++) {
+					uint4 s4 = make_uint4(
+						__shfl_sync(0xFFFFFFFF,p4.x, w, 4),
+						__shfl_sync(0xFFFFFFFF,p4.y, w, 4),
+						__shfl_sync(0xFFFFFFFF,p4.z, w, 4),
+						__shfl_sync(0xFFFFFFFF,p4.w, w, 4));
+					if (t == thread_id) {
+						dag_node.uint4s[w] = fnv4(dag_node.uint4s[w], s4);
+					}
 				}
 			}
 		}
-	}
-	SHA3_512(dag_node.uint2s);
-	hash64_t * dag_nodes = (hash64_t *)d_dag;
+		SHA3_512(dag_node.uint2s);
 
-	for (uint32_t t = 0; t < 4; t++) {
-		uint32_t shuffle_index = __shfl_sync(0xFFFFFFFF,node_index, t, 4);
-		uint4 s[4];
-		for (uint32_t w = 0; w < 4; w++) {
-			s[w] = make_uint4(__shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].x, t, 4), __shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].y, t, 4), __shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].z, t, 4), __shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].w, t, 4));
-		}
-		dag_nodes[shuffle_index].uint4s[thread_id] = s[thread_id];
-	}
-}
-
-__global__ void
-ethash_calculate_dag_item_single(uint32_t start)
-{
-	// index limited to 4G
-	uint32_t const node_index = start + blockIdx.x * blockDim.x + threadIdx.x;
-	if (node_index >= d_dag_size * 2) return;
-
-	hash200_t dag_node;
-	copy(dag_node.uint4s, d_light[node_index % d_light_size].uint4s, 4);
-	dag_node.words[0] ^= node_index;
-	SHA3_512(dag_node.uint2s);
-
-	const int thread_id = threadIdx.x & 3;
-
-	for (uint32_t i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
-		uint32_t parent_index = fnv(node_index ^ i, dag_node.words[i % NODE_WORDS]) % d_light_size;
 		for (uint32_t t = 0; t < 4; t++) {
-			uint32_t shuffle_index = parent_index % d_light_size;
-			dag_node.uint4s[t] = fnv4(dag_node.uint4s[t], d_light[shuffle_index].uint4s[t]);
+			uint32_t shuffle_index = __shfl_sync(0xFFFFFFFF,node_index, t, 4);
+			uint4 s[4];
+			for (uint32_t w = 0; w < 4; w++) {
+				s[w] = make_uint4(
+					__shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].x, t, 4),
+					__shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].y, t, 4),
+					__shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].z, t, 4),
+					__shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].w, t, 4));
+			}
+			dag_nodes[shuffle_index].uint4s[thread_id] = s[thread_id];
 		}
 	}
-	SHA3_512(dag_node.uint2s);
-	hash64_t * dag_nodes = (hash64_t *)d_dag;
+	else
+	{
+		for (uint32_t i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
+			uint32_t parent_index = fnv(node_index ^ i, dag_node.words[i % NODE_WORDS]) % d_light_size;
+			uint32_t shuffle_index = parent_index % d_light_size;
+			for (uint32_t t = 0; t < 4; t++) {
+				dag_node.uint4s[t] = fnv4(dag_node.uint4s[t], d_light[shuffle_index].uint4s[t]);
+			}
+		}
+		SHA3_512(dag_node.uint2s);
 
-	for (uint32_t t = 0; t < 4; t++) {
-		uint32_t shuffle_index;
-		shuffle_index = node_index;
-        dag_nodes[shuffle_index].uint4s[t] = dag_node.uint4s[t];
+		for (uint32_t t = 0; t < 4; t++) {
+			dag_nodes[node_index].uint4s[t] = dag_node.uint4s[t];
+		}
 	}
 }
 
@@ -143,25 +143,13 @@ void ethash_generate_dag(
 	cudaStream_t stream
 	)
 {
-	const uint32_t work = (uint32_t)(dag_size / sizeof(hash64_t));
-	const uint32_t run = blocks * threads;
-	const uint32_t runs = work / run;
-	uint32_t base = 0;
-	uint32_t r;
-	for (r = 0; r < runs; r++)
+	uint32_t work = (uint32_t)(dag_size / sizeof(hash64_t));
+	uint32_t run = blocks * threads;
+	for (uint32_t base = 0; base < work; base += run)
 	{
 		ethash_calculate_dag_item <<<blocks, threads, 0, stream>>>(base);
 		CUDA_SAFE_CALL(cudaDeviceSynchronize());
-		base += run;
 	}
-	if (base < work)
-	{
-		r = (work - base + threads - 1) / threads;
-		ethash_calculate_dag_item_single <<<r, threads, 0, stream>>>(base);
-		CUDA_SAFE_CALL(cudaDeviceSynchronize());
-	}
-	
-	CUDA_SAFE_CALL(cudaGetLastError());
 }
 
 void set_constants(
