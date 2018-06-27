@@ -368,7 +368,7 @@ void ApiConnection::processRequest(Json::Value& requestObject)
 						}
 						else
 						{
-							m_mgr.removeConnection(jPrm["index"].asInt());
+							m_mgr.setActiveConnection(jPrm["index"].asInt());
 							jRes["result"] = true;
 						}
 					}
@@ -420,7 +420,7 @@ void ApiConnection::processRequest(Json::Value& requestObject)
 							}
 							else
 							{
-								m_mgr.setActiveConnection(jPrm["index"].asInt());
+								m_mgr.removeConnection(jPrm["index"].asInt());
 								jRes["result"] = true;
 							}
 						}
