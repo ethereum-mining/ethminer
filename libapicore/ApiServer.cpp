@@ -309,7 +309,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     }
 
     // Check authentication
-    if (!m_is_authenticated)
+    if (!m_is_authenticated || _method == "api_authorize")
     {
         if (_method != "api_authorize")
         {
@@ -318,6 +318,8 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             jResponse["error"]["message"] = "Authorization needed";
             return;
         }
+
+        m_is_authenticated = false; /* we allow api_authorize method even if already authenticated */
 
         Json::Value jRequestParams;
         if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
