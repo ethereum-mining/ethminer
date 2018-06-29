@@ -2,6 +2,158 @@
 
 #include <ethminer-buildinfo.h>
 
+
+/* helper functions getting values from a JSON request */
+static bool getRequestValue(const char *membername, bool& refValue, Json::Value& jRequest, bool optional, Json::Value& jResponse)
+{
+    if (!jRequest.isMember(membername))
+    {
+        if (!optional)
+        {
+            jResponse["error"]["code"] = -32602;
+            jResponse["error"]["message"] = std::string("Missing '") + std::string(membername) + std::string("'");
+        }
+        return optional;
+    }
+    if(!jRequest[membername].isBool())
+    {
+        jResponse["error"]["code"] = -32602;
+        jResponse["error"]["message"] = std::string("Invalid type of value '") + std::string(membername) + std::string("'");
+        return false;
+    }
+    if (jRequest[membername].empty())
+    {
+        jResponse["error"]["code"] = -32602;
+        jResponse["error"]["message"] = std::string("Empty '") + std::string(membername) + std::string("'");
+        return false;
+    }
+    refValue = jRequest[membername].asBool();
+    return true;
+}
+
+static bool getRequestValue(const char *membername, unsigned& refValue, Json::Value& jRequest, bool optional, Json::Value& jResponse)
+{
+    if (!jRequest.isMember(membername))
+    {
+        if (!optional)
+        {
+            jResponse["error"]["code"] = -32602;
+            jResponse["error"]["message"] = std::string("Missing '") + std::string(membername) + std::string("'");
+        }
+        return optional;
+    }
+    if(!jRequest[membername].isUInt())
+    {
+        jResponse["error"]["code"] = -32602;
+        jResponse["error"]["message"] = std::string("Invalid type of value '") + std::string(membername) + std::string("'");
+        return false;
+    }
+    if (jRequest[membername].empty())
+    {
+        jResponse["error"]["code"] = -32602;
+        jResponse["error"]["message"] = std::string("Empty '") + std::string(membername) + std::string("'");
+        return false;
+    }
+    refValue = jRequest[membername].asUInt();
+    return true;
+}
+
+static bool getRequestValue(const char *membername, uint64_t& refValue, Json::Value& jRequest, bool optional, Json::Value& jResponse)
+{
+    if (!jRequest.isMember(membername))
+    {
+        if (!optional)
+        {
+            jResponse["error"]["code"] = -32602;
+            jResponse["error"]["message"] = std::string("Missing '") + std::string(membername) + std::string("'");
+        }
+        return optional;
+    }
+    /* as there is no isUInt64() function we can not check the type */
+    if (jRequest[membername].empty())
+    {
+        jResponse["error"]["code"] = -32602;
+        jResponse["error"]["message"] = std::string("Empty '") + std::string(membername) + std::string("'");
+        return false;
+    }
+    try
+    {
+         refValue =  jRequest[membername].asUInt64();
+    }
+    catch (...)
+    {
+        jRequest["error"]["code"] = -32602;
+        jResponse["error"]["message"] = std::string("Bad value in '") + std::string(membername) + std::string("'");
+        return false;
+    }
+    return true;
+}
+
+static bool getRequestValue(const char *membername, Json::Value& refValue, Json::Value& jRequest, bool optional, Json::Value& jResponse)
+{
+    if (!jRequest.isMember(membername))
+    {
+        if (!optional)
+        {
+            jResponse["error"]["code"] = -32602;
+            jResponse["error"]["message"] = std::string("Missing '") + std::string(membername) + std::string("'");
+        }
+        return optional;
+    }
+    if(!jRequest[membername].isObject())
+    {
+        jResponse["error"]["code"] = -32602;
+        jResponse["error"]["message"] = std::string("Invalid type of value '") + std::string(membername) + std::string("'");
+        return false;
+    }
+    if (jRequest[membername].empty())
+    {
+        jResponse["error"]["code"] = -32602;
+        jResponse["error"]["message"] = std::string("Empty '") + std::string(membername) + std::string("'");
+        return false;
+    }
+    refValue = jRequest[membername];
+    return true;
+}
+
+static bool getRequestValue(const char *membername, std::string& refValue, Json::Value& jRequest, bool optional, Json::Value& jResponse)
+{
+    if (!jRequest.isMember(membername))
+    {
+        if (!optional)
+        {
+            jResponse["error"]["code"] = -32602;
+            jResponse["error"]["message"] = std::string("Missing '") + std::string(membername) + std::string("'");
+        }
+        return optional;
+    }
+    if(!jRequest[membername].isString())
+    {
+        jResponse["error"]["code"] = -32602;
+        jResponse["error"]["message"] = std::string("Invalid type of value '") + std::string(membername) + std::string("'");
+        return false;
+    }
+    if (jRequest[membername].empty())
+    {
+        jResponse["error"]["code"] = -32602;
+        jResponse["error"]["message"] = std::string("Empty '") + std::string(membername) + std::string("'");
+        return false;
+    }
+    refValue = jRequest[membername].asString();
+    return true;
+}
+
+static bool checkApiWriteAccess(bool is_read_only, Json::Value& jResponse)
+{
+    if (is_read_only)
+    {
+        jResponse["error"]["code"] = -32601;
+        jResponse["error"]["message"] = "Method not available";
+    }
+    return !is_read_only;
+}
+
+
 ApiServer::ApiServer(
     boost::asio::io_service& io_service, int portnum, bool readonly, string password, Farm& f, PoolManager& mgr)
   : m_readonly(readonly),
@@ -131,437 +283,323 @@ void ApiConnection::start()
 	recvSocketData();
 }
 
-void ApiConnection::processRequest(Json::Value& requestObject)
+void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse)
 {
-	Json::Value jRes;
-	jRes["jsonrpc"] = "2.0";
+    jResponse["jsonrpc"] = "2.0";
 
-	// Strict sanity checks over jsonrpc v2
-	if (
-		(!requestObject.isMember("jsonrpc") || requestObject["jsonrpc"].empty() || !requestObject["jsonrpc"].isString() || requestObject.get("jsonrpc", ".") != "2.0") ||
-		(!requestObject.isMember("method") || requestObject["method"].empty() || !requestObject["method"].isString()) ||
-		(!requestObject.isMember("id") || requestObject["id"].empty() || !requestObject["id"].isUInt())
-		)
-	{
-		jRes["id"] = Json::nullValue;
-		jRes["error"]["code"] = -32600;
-		jRes["error"]["message"] = "Invalid Request";
-		sendSocketData(jRes);
-		return;
-	}
+    // Strict sanity checks over jsonrpc v2
+    unsigned id;
+    if (!getRequestValue("id", id, jRequest, false, jResponse))
+    {
+        jResponse["id"] = Json::nullValue;
+        jResponse["error"]["code"] = -32600;
+        jResponse["error"]["message"] = "Invalid Request";
+        return;
+    }
+    jResponse["id"] = id;
 
-
-	// Process messages
-	std::string _method = requestObject.get("method", "").asString();
-	jRes["id"] = requestObject.get("id", 0).asInt();
+    std::string jsonrpc;
+    std::string _method;
+    if ( !getRequestValue("jsonrpc", jsonrpc, jRequest, false, jResponse) || jsonrpc != "2.0" ||
+         !getRequestValue("method", _method, jRequest, false, jResponse) )
+    {
+        jResponse["error"]["code"] = -32600;
+        jResponse["error"]["message"] = "Invalid Request";
+        return;
+    }
 
     // Check authentication
-    if (!m_is_authenticated)
+    if (!m_is_authenticated || _method == "api_authorize")
     {
-        if (_method == "api_authorize")
+        if (_method != "api_authorize")
         {
-            if (!requestObject.isMember("params") || requestObject["params"].empty() ||
-                !requestObject["params"].isObject())
-            {
-                jRes["error"]["code"] = -32600;
-                jRes["error"]["message"] = "Invalid request";
-            }
-            else
-            {
-                Json::Value jPrm = requestObject["params"];
-                if (!jPrm.isMember("psw") || jPrm["psw"].empty() ||
-                    !jPrm["psw"].isString())
-                {
-                    jRes["error"]["code"] = -32602;
-                    jRes["error"]["message"] = "Missing password";
-                }
-                else
-                {
-                    // max password length that we actually verify 
-                    // (this limit can be removed by introducing a collision-resistant compressing hash,
-                    //  like blake2b/sha3, but 500 should suffice and is much easier to implement)
-                    const int max_length = 500; 
-                    char input_copy[max_length] = {0};
-                    char password_copy[max_length] = {0};
-                    // note: copy() is not O(1) , but i don't think it matters
-                    jPrm.get("psw", "").asString().copy(&input_copy[0], max_length);
-                    // ps, the following line can be optimized to only run once on startup and thus save a minuscule amount of cpu cycles.
-                    m_password.copy(&password_copy[0], max_length);
-                    int result=0;
-                    for (int i = 0; i < max_length; ++i)
-                    {
-                        result |= input_copy[i] ^ password_copy[i];
-                    }
-                    if (result == 0)
-                    {
-                        m_is_authenticated = true;
-                    }
-                    else
-                    {
-						// Use error code like http 401 Unauthorized
-                        jRes["error"]["code"] = -401;
-                        jRes["error"]["message"] = "Invalid password";
-                        cerr << "Invalid API password provided.";
-                    }
-                }
-            }
+            // Use error code like http 403 Forbidden
+            jResponse["error"]["code"] = -403;
+            jResponse["error"]["message"] = "Authorization needed";
+            return;
+        }
+
+        m_is_authenticated = false; /* we allow api_authorize method even if already authenticated */
+
+        Json::Value jRequestParams;
+        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
+            return;
+
+        std::string psw;
+        if (!getRequestValue("psw", psw, jRequestParams, false, jResponse))
+            return;
+
+        // max password length that we actually verify
+        // (this limit can be removed by introducing a collision-resistant compressing hash,
+        //  like blake2b/sha3, but 500 should suffice and is much easier to implement)
+        const int max_length = 500;
+        char input_copy[max_length] = {0};
+        char password_copy[max_length] = {0};
+        // note: copy() is not O(1) , but i don't think it matters
+        psw.copy(&input_copy[0], max_length);
+        // ps, the following line can be optimized to only run once on startup and thus save a minuscule amount of cpu cycles.
+        m_password.copy(&password_copy[0], max_length);
+        int result=0;
+        for (int i = 0; i < max_length; ++i)
+        {
+            result |= input_copy[i] ^ password_copy[i];
+        }
+
+        if (result == 0)
+        {
+            m_is_authenticated = true;
         }
         else
         {
-			// Use error code like http 403 Forbidden
-            jRes["error"]["code"] = -403;
-            jRes["error"]["message"] = "Authorization needed";
+            // Use error code like http 401 Unauthorized
+            jResponse["error"]["code"] = -401;
+            jResponse["error"]["message"] = "Invalid password";
+            cerr << "Invalid API password provided.";
+            // Should we close the connection in the outer function after invalid password ?
         }
+        /*
+         * possible wait here a fixed time of eg 10s before respond after 5 invalid
+           authentications were submitted to prevent brute force password attacks.
+        */
+        return;
     }
 
-    if (m_is_authenticated)
+    assert(m_is_authenticated);
+
+    if (_method == "miner_getstat1")
     {
-        if (_method == "miner_getstat1")
+        jResponse["result"] = getMinerStat1();
+    }
+
+    else if (_method == "miner_getstathr")
+    {
+        jResponse["result"] = getMinerStatHR();
+    }
+
+    else if (_method == "miner_shuffle")
+    {
+        // Gives nonce scrambler a new range
+        cnote << "Miner Shuffle requested";
+        jResponse["result"] = true;
+        m_farm.shuffle();
+    }
+
+    else if (_method == "miner_ping")
+    {
+        // Replies back to (check for liveness)
+        jResponse["result"] = "pong";
+    }
+
+    else if (_method == "miner_restart")
+    {
+        // Send response to client of success
+        // and invoke an async restart
+        // to prevent locking
+        if (!checkApiWriteAccess(m_readonly, jResponse))
+            return;
+        cnote << "Miner Restart requested";
+        jResponse["result"] = true;
+        m_farm.restart_async();
+    }
+
+    else if (_method == "miner_reboot")
+    {
+        // Not implemented yet
+        jResponse["error"]["code"] = -32601;
+        jResponse["error"]["message"] = "Method not implemented";
+    }
+
+    else if (_method == "miner_getconnections")
+    {
+        // Returns a list of configured pools
+        jResponse["result"] = m_mgr.getConnectionsJson();
+    }
+
+    else if (_method == "miner_addconnection")
+    {
+        if (!checkApiWriteAccess(m_readonly, jResponse))
+            return;
+
+        Json::Value jRequestParams;
+        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
+            return;
+
+        std::string sUri;
+        if (!getRequestValue("uri", sUri, jRequestParams, false, jResponse))
+            return;
+
+        dev::URI uri;
+        try
         {
-            jRes["result"] = getMinerStat1();
-        }
-        else if (_method == "miner_getstathr")
-        {
-            jRes["result"] = getMinerStatHR();
-        }
-        else if (_method == "miner_shuffle")
-        {
-            // Gives nonce scrambler a new range
-            cnote << "Miner Shuffle requested";
-            jRes["result"] = true;
-            m_farm.shuffle();
-        }
-        else if (_method == "miner_ping")
-        {
-            // Replies back to (check for liveness)
-            jRes["result"] = "pong";
-        }
-        else if (_method == "miner_restart")
-        {
-            // Send response to client of success
-            // and invoke an async restart
-            // to prevent locking
-            if (m_readonly)
+            uri = sUri;
+            if (!uri.KnownScheme())
             {
-                jRes["error"]["code"] = -32601;
-                jRes["error"]["message"] = "Method not available";
+                jResponse["error"]["code"] = -422;
+                jResponse["error"]["message"] = ("Unknown URI scheme " + uri.Scheme());
+                return;
             }
-            else
+
+            // Check other pools already present share the same scheme family (stratum or getwork)
+            Json::Value pools = m_mgr.getConnectionsJson();
+            for(Json::Value::ArrayIndex i = 0; i != pools.size(); i++)
             {
-                cnote << "Miner Restart requested";
-                jRes["result"] = true;
-                m_farm.restart_async();
+                dev::URI poolUri = pools[i]["uri"].asString();
+                if (uri.Family() != poolUri.Family())
+                {
+                    jResponse["error"]["code"] = -422;
+                    jResponse["error"]["message"] = "Mixed stratum and getwork endpoints not supported.";
+                    return;
+                }
             }
+
+            // If everything ok then add this new uri
+            m_mgr.addConnection(uri);
+            jResponse["result"] = true;
         }
-        else if (_method == "miner_reboot")
+        catch (...)
         {
-            // Not implemented yet
-            jRes["error"]["code"] = -32601;
-            jRes["error"]["message"] = "Method not implemented";
-        }
-		else if (_method == "miner_getconnections")
-		{
-			// Returns a list of configured pools
-			jRes["result"] = m_mgr.getConnectionsJson();
-		}
-		else if (_method == "miner_addconnection")
-		{
-			if (m_readonly)
-			{
-				jRes["error"]["code"] = -32601;
-				jRes["error"]["message"] = "Method not available";
-			}
-			else
-			{
-
-				if (!requestObject.isMember("params") || requestObject["params"].empty() ||
-					!requestObject["params"].isObject())
-				{
-					jRes["error"]["code"] = -32600;
-					jRes["error"]["message"] = "Invalid request";
-				}
-				else
-				{
-					Json::Value jPrm = requestObject["params"];
-					if (!jPrm.isMember("uri") || jPrm["uri"].empty() ||
-						!jPrm["uri"].isString())
-					{
-						jRes["error"]["code"] = -32602;
-						jRes["error"]["message"] = "Missing connection uri";
-					}
-					else
-					{
-						dev::URI uri;
-						try
-						{
-							uri = jPrm.get("uri", "").asString();
-							if (!uri.KnownScheme())
-							{
-								jRes["error"]["code"] = -422;
-								jRes["error"]["message"] = ("Unknown URI scheme " + uri.Scheme());
-							} 
-							else
-							{
-								// Check other pools already present share the same scheme family (stratum or getwork)
-								Json::Value pools = m_mgr.getConnectionsJson();
-								for(Json::Value::ArrayIndex i = 0; i != pools.size(); i++)
-								{
-									dev::URI poolUri = pools[i]["uri"].asString();
-									if (uri.Family() != poolUri.Family()) {
-										jRes["error"]["code"] = -422;
-										jRes["error"]["message"] = "Mixed stratum and getwork endpoints not supported.";
-										break;
-									}
-								}
-
-								// If everything ok then add this new uri
-								if (!jRes.isMember("error"))
-								{
-									m_mgr.addConnection(uri);
-									jRes["result"] = true;
-								}
-
-							}
-						}
-						catch (...)
-						{
-							jRes["error"]["code"] = -422;
-							jRes["error"]["message"] = "Bad URI";
-						}
-
-					}
-				}
-			}
-		}
-		else if (_method == "miner_setactiveconnection")
-		{
-			if (m_readonly)
-			{
-				jRes["error"]["code"] = -32601;
-				jRes["error"]["message"] = "Method not available";
-			}
-			else
-			{
-
-				if (!requestObject.isMember("params") || requestObject["params"].empty() ||
-					!requestObject["params"].isObject())
-				{
-					jRes["error"]["code"] = -32600;
-					jRes["error"]["message"] = "Invalid request";
-				}
-				else
-				{
-					Json::Value jPrm = requestObject["params"];
-					if (!jPrm.isMember("index") || jPrm["index"].empty() ||
-						!jPrm["index"].isInt())
-					{
-						jRes["error"]["code"] = -32602;
-						jRes["error"]["message"] = "Missing pool index";
-					}
-					else
-					{
-						Json::Value pools = m_mgr.getConnectionsJson();
-						if (jPrm["index"].asInt() < 0 || Json::ArrayIndex(jPrm["index"].asInt()) >= pools.size()) 
-						{
-							jRes["error"]["code"] = -422;
-							jRes["error"]["message"] = "Index out of bounds";
-						}
-						else
-						{
-							m_mgr.setActiveConnection(jPrm["index"].asInt());
-							jRes["result"] = true;
-						}
-					}
-				}
-			}
-
-		}
-		else if (_method == "miner_removeconnection")
-		{
-			if (m_readonly)
-			{
-				jRes["error"]["code"] = -32601;
-				jRes["error"]["message"] = "Method not available";
-			}
-			else
-			{
-
-				if (!requestObject.isMember("params") || requestObject["params"].empty() ||
-					!requestObject["params"].isObject())
-				{
-					jRes["error"]["code"] = -32600;
-					jRes["error"]["message"] = "Invalid request";
-				}
-				else
-				{
-					Json::Value jPrm = requestObject["params"];
-					if (!jPrm.isMember("index") || jPrm["index"].empty() ||
-						!jPrm["index"].isInt())
-					{
-						jRes["error"]["code"] = -32602;
-						jRes["error"]["message"] = "Missing pool index";
-					}
-					else
-					{
-						Json::Value pools = m_mgr.getConnectionsJson();
-						if (jPrm["index"].asInt() < 0 || Json::ArrayIndex(jPrm["index"].asInt()) >= pools.size())
-						{
-							jRes["error"]["code"] = -422;
-							jRes["error"]["message"] = "Index out of bounds";
-						}
-						else
-						{
-							Json::ArrayIndex i(jPrm["index"].asInt());
-							if (pools[i]["active"].asBool()) {
-
-								jRes["error"]["code"] = -460;
-								jRes["error"]["message"] = "Can't delete active connection";
-
-							}
-							else
-							{
-								m_mgr.removeConnection(jPrm["index"].asInt());
-								jRes["result"] = true;
-							}
-						}
-					}
-				}
-			}
-
-		}
-		else if (_method == "miner_getscramblerinfo")
-		{
-
-			jRes["result"] = m_farm.get_nonce_scrambler_json();
-
-		}
-		else if (_method == "miner_setscramblerinfo")
-		{
-			if (m_readonly)
-			{
-				jRes["error"]["code"] = -32601;
-				jRes["error"]["message"] = "Method not available";
-			}
-			else
-			{
-
-				if (!requestObject.isMember("params") || requestObject["params"].empty() ||
-					!requestObject["params"].isObject())
-				{
-					jRes["error"]["code"] = -32600;
-					jRes["error"]["message"] = "Invalid request";
-				}
-				else
-				{
-					Json::Value jPrm = requestObject["params"];
-					if (!jPrm.isMember("noncescrambler") && !jPrm.isMember("segmentwidth")) 
-					{
-						jRes["error"]["code"] = -32602;
-						jRes["error"]["message"] = "Missing parameters";
-					}
-					else
-					{
-						uint64_t nonce = m_farm.get_nonce_scrambler();
-						unsigned exp = m_farm.get_segment_width();
-
-						try
-						{
-							if (!jPrm["noncescrambler"].empty())
-							{
-								nonce = jPrm["noncescrambler"].asLargestUInt();
-							}
-							if (!jPrm["segmentwidth"].empty())
-							{
-								exp = jPrm["segmentwidth"].asUInt();
-							}
-						}
-						catch (...)
-						{
-							jRes["error"]["code"] = -422;
-							jRes["error"]["message"] = "Bad values";
-						}
-
-						if (!jRes.isMember("error"))
-						{
-							if (exp < 10) exp = 10;		// Not below 
-							if (exp > 50) exp = 40;		// Not above 
-							m_farm.set_nonce_scrambler(nonce);
-							m_farm.set_nonce_segment_width(exp);
-							jRes["result"] = true;
-						}
-
-					}
-				}
-			}
-		}
-		else if (_method == "miner_pausegpu")
-		{
-			if (m_readonly)
-			{
-				jRes["error"]["code"] = -32601;
-				jRes["error"]["message"] = "Method not available";
-			}
-			else
-			{
-
-				if (!requestObject.isMember("params") || requestObject["params"].empty() ||
-					!requestObject["params"].isObject())
-				{
-					jRes["error"]["code"] = -32600;
-					jRes["error"]["message"] = "Invalid request";
-				}
-				else
-				{
-					Json::Value jPrm = requestObject["params"];
-					if (!jPrm.isMember("index") || jPrm["index"].empty() || !jPrm["index"].isUInt())
-					{
-						jRes["error"]["code"] = -32602;
-						jRes["error"]["message"] = "Missing gpu index";
-					}
-					else
-					{
-						if (!jPrm.isMember("pause") || jPrm["pause"].empty() || !jPrm["pause"].isBool())
-						{
-							jRes["error"]["code"] = -32602;
-							jRes["error"]["message"] = "Missing boolean value pause";
-						}
-						else
-						{
-							WorkingProgress p = m_farm.miningProgress(false, false);
-							auto index = jPrm["index"].asUInt();
-							if (index >= p.miningIsPaused.size())
-							{
-								jRes["error"]["code"] = -422;
-								jRes["error"]["message"] = "Index out of bounds";
-							}
-							else
-							{
-								auto miner = m_farm.getMiner(index);
-								if (jPrm["pause"].asBool())
-								{
-									miner->set_mining_paused(MinigPauseReason::MINING_PAUSED_API);
-								}
-								else
-								{
-									miner->clear_mining_paused(MinigPauseReason::MINING_PAUSED_API);
-								}
-								jRes["result"] = true;
-							}
-						}
-					}
-				}
-			}
-		}
-        else
-        {
-            // Any other method not found
-            jRes["error"]["code"] = -32601;
-            jRes["error"]["message"] = "Method not found";
+            jResponse["error"]["code"] = -422;
+            jResponse["error"]["message"] = "Bad URI";
         }
     }
 
-    // Send response
-    sendSocketData(jRes);
+    else if (_method == "miner_setactiveconnection")
+    {
+        if (!checkApiWriteAccess(m_readonly, jResponse))
+            return;
+
+        Json::Value jRequestParams;
+        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
+            return;
+
+        unsigned index;
+        if (!getRequestValue("index", index, jRequestParams, false, jResponse))
+            return;
+
+        Json::Value pools = m_mgr.getConnectionsJson();
+        if (index >= pools.size())
+        {
+            jResponse["error"]["code"] = -422;
+            jResponse["error"]["message"] = "Index out of bounds";
+            return;
+        }
+
+        m_mgr.setActiveConnection(index);
+        jResponse["result"] = true;
+    }
+
+    else if (_method == "miner_removeconnection")
+    {
+        if (!checkApiWriteAccess(m_readonly, jResponse))
+            return;
+
+        Json::Value jRequestParams;
+        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
+            return;
+
+        unsigned index;
+        if (!getRequestValue("index", index, jRequestParams, false, jResponse))
+            return;
+
+        Json::Value pools = m_mgr.getConnectionsJson();
+        if (index >= pools.size())
+        {
+            jResponse["error"]["code"] = -422;
+            jResponse["error"]["message"] = "Index out of bounds";
+            return;
+        }
+        if (pools[index]["active"].asBool())
+        {
+            jResponse["error"]["code"] = -460;
+            jResponse["error"]["message"] = "Can't delete active connection";
+            return;
+        }
+
+        m_mgr.removeConnection(index);
+        jResponse["result"] = true;
+    }
+
+    else if (_method == "miner_getscramblerinfo")
+    {
+        jResponse["result"] = m_farm.get_nonce_scrambler_json();
+    }
+
+    else if (_method == "miner_setscramblerinfo")
+    {
+        if (!checkApiWriteAccess(m_readonly, jResponse))
+            return;
+
+        Json::Value jRequestParams;
+        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
+            return;
+
+        bool any_value_provided=false;
+        uint64_t nonce = m_farm.get_nonce_scrambler();
+        unsigned exp = m_farm.get_segment_width();
+
+        if (!getRequestValue("noncescrambler", nonce, jRequestParams, true, jResponse))
+            return;
+        any_value_provided = true;
+
+        if (!getRequestValue("segmentwidth", exp, jRequestParams, true, jResponse))
+            return;
+        any_value_provided = true;
+
+        if (!any_value_provided)
+        {
+            jResponse["error"]["code"] = -32602;
+            jResponse["error"]["message"] = "Missing parameters";
+            return;
+        }
+
+        if (exp < 10) exp = 10;     // Not below
+        if (exp > 50) exp = 40;     // Not above
+        m_farm.set_nonce_scrambler(nonce);
+        m_farm.set_nonce_segment_width(exp);
+        jResponse["result"] = true;
+    }
+
+    else if (_method == "miner_pausegpu")
+    {
+        if (!checkApiWriteAccess(m_readonly, jResponse))
+            return;
+
+        Json::Value jRequestParams;
+        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
+            return;
+
+        unsigned index;
+        if (!getRequestValue("index", index, jRequestParams, false, jResponse))
+            return;
+
+        bool pause;
+        if (!getRequestValue("pause", pause, jRequestParams, false, jResponse))
+            return;
+
+        WorkingProgress p = m_farm.miningProgress(false, false);
+        if (index >= p.miningIsPaused.size())
+        {
+            jResponse["error"]["code"] = -422;
+            jResponse["error"]["message"] = "Index out of bounds";
+            return;
+        }
+
+        auto miner = m_farm.getMiner(index);
+        if (pause)
+        {
+            miner->set_mining_paused(MinigPauseReason::MINING_PAUSED_API);
+        } else {
+            miner->clear_mining_paused(MinigPauseReason::MINING_PAUSED_API);
+        }
+        jResponse["result"] = true;
+    }
+
+    else
+    {
+        // Any other method not found
+        jResponse["error"]["code"] = -32601;
+        jResponse["error"]["message"] = "Method not found";
+    }
 }
 
 void ApiConnection::recvSocketData()
@@ -593,20 +631,20 @@ void ApiConnection::onRecvSocketDataCompleted(const boost::system::error_code& e
             {
                 // Test validity of chunk and process
                 Json::Value jMsg;
+                Json::Value jRes;
                 Json::Reader jRdr;
                 if (jRdr.parse(message, jMsg))
                 {
-                    processRequest(jMsg);
+                    processRequest(jMsg, jRes);
                 }
                 else
                 {
-                    Json::Value jRes;
                     jRes["jsonrpc"] = "2.0";
                     jRes["id"] = Json::nullValue;
                     jRes["error"]["code"] = -32700;
                     jRes["error"]["message"] = "Parse Error";
-                    sendSocketData(jRes);
                 }
+                sendSocketData(jRes);
             }
 
             // Eventually keep reading from socket

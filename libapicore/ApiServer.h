@@ -49,7 +49,7 @@ public:
 private:
 
 	void disconnect();
-	void processRequest(Json::Value& requestObject);
+	void processRequest(Json::Value& jRequest, Json::Value& jResponse);
 	void recvSocketData();
 	void onRecvSocketDataCompleted(const boost::system::error_code& ec, std::size_t bytes_transferred);
 	void sendSocketData(Json::Value const & jReq);
