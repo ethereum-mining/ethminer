@@ -412,6 +412,11 @@ public:
 			exit(-1);
 		}
 
+		if (m_api_port && ((int)m_http_port == m_api_port)) {
+			cerr << endl << "Each server must have it's own port\n\n";
+			exit(-1);
+		}
+
 		if (cl_miner)
 			m_minerType = MinerType::CL;
 		else if (cuda_miner)
