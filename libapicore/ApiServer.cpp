@@ -3,9 +3,10 @@
 #include <ethminer-buildinfo.h>
 
 ApiServer::ApiServer(
-    boost::asio::io_service& io_service, int portnum, bool readonly, string password, Farm& f, PoolManager& mgr)
+    boost::asio::io_service& io_service, string address, int portnum, bool readonly, string password, Farm& f, PoolManager& mgr)
   : m_readonly(readonly),
     m_password(std::move(password)),
+    m_address(address),
     m_portnumber(portnum),
     m_acceptor(io_service),
     m_io_strand(io_service),
@@ -21,7 +22,7 @@ void ApiServer::start()
 
     m_running.store(true, std::memory_order_relaxed);
 
-    tcp::endpoint endpoint(tcp::v4(), m_portnumber);
+    tcp::endpoint endpoint(boost::asio::ip::address::from_string(m_address), m_portnumber);
 
     // Try to bind to port number
     // if exception occurs it may be due to the fact that
