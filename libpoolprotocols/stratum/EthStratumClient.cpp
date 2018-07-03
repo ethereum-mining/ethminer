@@ -661,8 +661,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
                     // member is exactly "EthereumStratum/1.0.0". Otherwise try with another mode
                     if (_isSuccess)
                     {
-                        if (!jResult.isArray() || jResult.size() != 3 ||
-                            jResult.get((Json::Value::ArrayIndex)2, "").asString() !=
+                        if (!jResult.isArray() || !jResult[0].isArray() || jResult[0].size() != 3 ||
+                            jResult[0].get((Json::Value::ArrayIndex)2, "").asString() !=
                                 "EthereumStratum/1.0.0")
                         {
                             // This is not a proper ETHEREUMSTRATUM response.
