@@ -31,8 +31,18 @@ public:
 
 	static std::string KnownSchemes(ProtocolFamily family);
 
+	void SetStratumMode(unsigned mode, bool confirmed) { m_stratumMode = mode; m_stratumModeConfirmed = confirmed; }
+	void SetStratumMode(unsigned mode) { m_stratumMode = mode; }
+	unsigned StratumMode() { return m_stratumMode; }
+	bool StratumModeConfirmed() { return m_stratumModeConfirmed; }
+	bool IsUnrecoverable() { return m_unrecoverable; }
+	void MarkUnrecoverable() { m_unrecoverable = true; }
+
 private:
 	network::uri m_uri;
+	bool m_stratumModeConfirmed = false;
+	unsigned m_stratumMode = 0;
+	bool m_unrecoverable = false;
 };
 
 }
