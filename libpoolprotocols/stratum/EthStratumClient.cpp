@@ -1292,14 +1292,14 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
 				(ERR_GET_REASON(ec.value()) == SSL_RECEIVED_SHUTDOWN)
 				)
 			{
-				cnote << "SSL Stream remotely closed by" << m_conn->Host();
+				cnote << "SSL Stream remotely closed by " << m_conn->Host();
 			} 
 			else if (ec == boost::asio::error::eof)
 			{
-				cnote << "Connection remotely closed by" << m_conn->Host();
+				cnote << "Connection remotely closed by " << m_conn->Host();
 			}
 			else {
-				cwarn << "Socket read failed:" << ec.message();
+				cwarn << "Socket read failed: " << ec.message();
 			}
 			disconnect();
 		}
