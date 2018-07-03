@@ -66,10 +66,10 @@ private:
 	void onSendSocketDataCompleted(const boost::system::error_code& ec);
 	void onSSLShutdownCompleted(const boost::system::error_code& ec);
 
-	string m_user;      // Only user part
-	string m_worker;    // eth-proxy only; No ! It's for all !!!
+    string m_user;    // Only user part
+    string m_worker;  // eth-proxy only; No ! It's for all !!!
 
-	std::atomic<bool> m_disconnecting = { false };
+    std::atomic<bool> m_disconnecting = { false };
 	std::atomic<bool> m_connecting = { false };
 
 	// seconds to trigger a work_timeout (overwritten in constructor)
@@ -82,9 +82,9 @@ private:
 
 	bool m_stale = false;
 
-	boost::asio::io_service & m_io_service;						// The IO service reference passed in the constructor
-	boost::asio::io_service::strand m_io_strand;
-	boost::asio::ip::tcp::socket *m_socket;
+    boost::asio::io_service& m_io_service;  // The IO service reference passed in the constructor
+    boost::asio::io_service::strand m_io_strand;
+    boost::asio::ip::tcp::socket *m_socket;
 
 	// Use shared ptrs to avoid crashes due to async_writes
 	// see https://stackoverflow.com/questions/41526553/can-async-write-cause-segmentation-fault-when-this-is-deleted

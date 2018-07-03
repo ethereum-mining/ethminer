@@ -255,28 +255,27 @@ void EthStratumClient::disconnect_finalize() {
 	m_disconnecting.store(false, std::memory_order::memory_order_relaxed);
 
 
-	// If we got disconnected during autodetection phase 
-	// reissue a connect lowering stratum mode checks
-	if (!m_conn->StratumModeConfirmed())
-	{
-		unsigned l = m_conn->StratumMode();
-		if (l > 0)
-		{
-			l--;
-			m_conn->SetStratumMode(l);
+    // If we got disconnected during autodetection phase
+    // reissue a connect lowering stratum mode checks
+    if (!m_conn->StratumModeConfirmed())
+    {
+        unsigned l = m_conn->StratumMode();
+        if (l > 0)
+        {
+            l--;
+            m_conn->SetStratumMode(l);
 
-			// Repost a new connection attempt
-			m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::connect, this)));
-			cnote << l;
-			return;
+            // Repost a new connection attempt
+            m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::connect, this)));
+            return;
+        }
+    }
 
-		}
-	} 
-
-	// Trigger handlers
-	if (m_onDisconnected) { m_onDisconnected(); }
-
-
+    // Trigger handlers
+    if (m_onDisconnected)
+    {
+        m_onDisconnected();
+    }
 }
 
 void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
