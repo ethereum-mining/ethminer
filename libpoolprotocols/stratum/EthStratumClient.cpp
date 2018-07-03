@@ -479,57 +479,59 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
             m_user = m_conn->User();
         }
 
-		/*
-		If this connection has not gone through an autodetection of stratum mode
-		begin it now.
-		Autodetection process passes all known stratum modes.
-		- 1st pass EthStratumClient::ETHEREUMSTRATUM  (2) 
-		- 2nd pass EthStratumClient::ETHPROXY         (1)
-		- 3rd pass EthStratumClient::STRATUM          (0)
-		*/
+        /*
+        If this connection has not gone through an autodetection of stratum mode
+        begin it now.
+        Autodetection process passes all known stratum modes.
+        - 1st pass EthStratumClient::ETHEREUMSTRATUM  (2)
+        - 2nd pass EthStratumClient::ETHPROXY         (1)
+        - 3rd pass EthStratumClient::STRATUM          (0)
+        */
 
-		Json::Value jReq;
-		jReq["id"] = unsigned(1);
-		jReq["method"] = "mining.subscribe";
-		jReq["params"] = Json::Value(Json::arrayValue);
+        Json::Value jReq;
+        jReq["id"] = unsigned(1);
+        jReq["method"] = "mining.subscribe";
+        jReq["params"] = Json::Value(Json::arrayValue);
 
-		if (!m_conn->StratumModeConfirmed())
-		{
-			m_conn->SetStratumMode(2, false);
-			jReq["params"].append("ethminer " + std::string(ethminer_get_buildinfo()->project_version));
-			jReq["params"].append("EthereumStratum/1.0.0");
+        if (!m_conn->StratumModeConfirmed())
+        {
+            m_conn->SetStratumMode(2, false);
+            jReq["params"].append(
+                "ethminer " + std::string(ethminer_get_buildinfo()->project_version));
+            jReq["params"].append("EthereumStratum/1.0.0");
+        }
+        else
+        {
+            switch (m_conn->StratumMode())
+            {
+            case EthStratumClient::STRATUM:
 
-		}
-		else 
-		{
-			switch (m_conn->StratumMode()) {
+                jReq["jsonrpc"] = "2.0";
 
-			case EthStratumClient::STRATUM:
+                break;
 
-				jReq["jsonrpc"] = "2.0";
+            case EthStratumClient::ETHPROXY:
 
-				break;
+                jReq["method"] = "eth_submitLogin";
+                if (m_worker.length())
+                    jReq["worker"] = m_worker;
+                jReq["params"].append(m_user + m_conn->Path());
+                if (!m_email.empty())
+                    jReq["params"].append(m_email);
 
-			case EthStratumClient::ETHPROXY:
+                break;
 
-				jReq["method"] = "eth_submitLogin";
-				if (m_worker.length()) jReq["worker"] = m_worker;
-				jReq["params"].append(m_user + m_conn->Path());
-				if (!m_email.empty()) jReq["params"].append(m_email);
+            case EthStratumClient::ETHEREUMSTRATUM:
 
-				break;
+                jReq["params"].append(
+                    "ethminer " + std::string(ethminer_get_buildinfo()->project_version));
+                jReq["params"].append("EthereumStratum/1.0.0");
 
-			case EthStratumClient::ETHEREUMSTRATUM:
+                break;
+            }
+        }
 
-				jReq["params"].append("ethminer " + std::string(ethminer_get_buildinfo()->project_version));
-				jReq["params"].append("EthereumStratum/1.0.0");
-
-				break;
-			}
-
-		}
-		
-		// Send first message
+        // Send first message
 		sendSocketData(jReq);
 
 		// Begin receive data
@@ -644,114 +646,113 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 		case 1:
 
-			/*
-			This is the response to very first message after connection.
-			I wish I could manage to have different Ids but apparently ethermine.org always replies
-			to first message with id=1 regardless the id originally sent.
-			*/
-			if (!m_conn->StratumModeConfirmed()) 
-			{
-				switch (m_conn->StratumMode())
-				{
+            /*
+            This is the response to very first message after connection.
+            I wish I could manage to have different Ids but apparently ethermine.org always replies
+            to first message with id=1 regardless the id originally sent.
+            */
+            if (!m_conn->StratumModeConfirmed())
+            {
+                switch (m_conn->StratumMode())
+                {
+                case EthStratumClient::ETHEREUMSTRATUM:
 
-				case EthStratumClient::ETHEREUMSTRATUM:
-					
-					// In case of success we also need to verify third parameter of "result" array member
-					// is exactly "EthereumStratum/1.0.0". Otherwise try with another mode
-					if (_isSuccess)
-					{
-						if (!jResult.isArray() || jResult.size() != 3 || jResult.get((Json::Value::ArrayIndex)2, "").asString() != "EthereumStratum/1.0.0")
-						{
-							// This is not a proper ETHEREUMSTRATUM response.
-							// Proceed with next step of autodetection ETHPROXY compatible
-							m_conn->SetStratumMode(1);
-							jReq["id"] = unsigned(1);
-							jReq["method"] = "eth_submitLogin";
-							jReq["params"] = Json::Value(Json::arrayValue);
-							if (m_worker.length()) jReq["worker"] = m_worker;
-							jReq["params"].append(m_user + m_conn->Path());
-							if (!m_email.empty()) jReq["params"].append(m_email);
+                    // In case of success we also need to verify third parameter of "result" array
+                    // member is exactly "EthereumStratum/1.0.0". Otherwise try with another mode
+                    if (_isSuccess)
+                    {
+                        if (!jResult.isArray() || jResult.size() != 3 ||
+                            jResult.get((Json::Value::ArrayIndex)2, "").asString() !=
+                                "EthereumStratum/1.0.0")
+                        {
+                            // This is not a proper ETHEREUMSTRATUM response.
+                            // Proceed with next step of autodetection ETHPROXY compatible
+                            m_conn->SetStratumMode(1);
+                            jReq["id"] = unsigned(1);
+                            jReq["method"] = "eth_submitLogin";
+                            jReq["params"] = Json::Value(Json::arrayValue);
+                            if (m_worker.length())
+                                jReq["worker"] = m_worker;
+                            jReq["params"].append(m_user + m_conn->Path());
+                            if (!m_email.empty())
+                                jReq["params"].append(m_email);
 
-							sendSocketData(jReq);
-							return;
-						}
-						else
-						{
-							// ETHEREUMSTRATUM is confirmed
-							cnote << "Stratum mode detected : ETHEREUMSTRATUM (NiceHash)";
-							m_conn->SetStratumMode(2, true);
-						}
-					}
-					else
-					{
+                            sendSocketData(jReq);
+                            return;
+                        }
+                        else
+                        {
+                            // ETHEREUMSTRATUM is confirmed
+                            cnote << "Stratum mode detected : ETHEREUMSTRATUM (NiceHash)";
+                            m_conn->SetStratumMode(2, true);
+                        }
+                    }
+                    else
+                    {
+                        // This is not a proper ETHEREUMSTRATUM response.
+                        // Proceed with next step of autodetection ETHPROXY compatible
+                        m_conn->SetStratumMode(1);
+                        jReq["id"] = unsigned(1);
+                        jReq["method"] = "eth_submitLogin";
+                        jReq["params"] = Json::Value(Json::arrayValue);
+                        if (m_worker.length())
+                            jReq["worker"] = m_worker;
+                        jReq["params"].append(m_user + m_conn->Path());
+                        if (!m_email.empty())
+                            jReq["params"].append(m_email);
 
-						// This is not a proper ETHEREUMSTRATUM response.
-						// Proceed with next step of autodetection ETHPROXY compatible
-						m_conn->SetStratumMode(1);
-						jReq["id"] = unsigned(1);
-						jReq["method"] = "eth_submitLogin";
-						jReq["params"] = Json::Value(Json::arrayValue);
-						if (m_worker.length()) jReq["worker"] = m_worker;
-						jReq["params"].append(m_user + m_conn->Path());
-						if (!m_email.empty()) jReq["params"].append(m_email);
+                        sendSocketData(jReq);
+                        return;
+                    }
 
-						sendSocketData(jReq);
-						return;
+                    break;
 
-					}
+                case EthStratumClient::ETHPROXY:
 
-					break;
+                    if (!_isSuccess)
+                    {
+                        // In case of failure try next step which is STRATUM
+                        m_conn->SetStratumMode(0);
+                        jReq["id"] = unsigned(1);
+                        jReq["jsonrpc"] = "2.0";
+                        jReq["method"] = "mining.subscribe";
+                        jReq["params"] = Json::Value(Json::arrayValue);
 
-				case EthStratumClient::ETHPROXY:
+                        sendSocketData(jReq);
+                        return;
+                    }
+                    else
+                    {
+                        // ETHPROXY is confirmed
+                        cnote << "Stratum mode detected : ETHPROXY compatible";
+                        m_conn->SetStratumMode(1, true);
+                    }
 
-					if (!_isSuccess)
-					{
-						// In case of failure try next step which is STRATUM
-						m_conn->SetStratumMode(0);
-						jReq["id"] = unsigned(1);
-						jReq["jsonrpc"] = "2.0";
-						jReq["method"] = "mining.subscribe";
-						jReq["params"] = Json::Value(Json::arrayValue);
+                    break;
 
-						sendSocketData(jReq);
-						return;
-					}
-					else
-					{
-						// ETHPROXY is confirmed
-						cnote << "Stratum mode detected : ETHPROXY compatible";
-						m_conn->SetStratumMode(1, true);
+                case EthStratumClient::STRATUM:
 
-					}
+                    if (!_isSuccess)
+                    {
+                        // In case of failure we can't manage this connection
+                        cwarn << "Unable to find suitable Stratum Mode";
+                        m_conn->MarkUnrecoverable();
+                        disconnect();
+                        return;
+                    }
+                    else
+                    {
+                        // STRATUM is confirmed
+                        cnote << "Stratum mode detected : STRATUM";
+                        m_conn->SetStratumMode(0, true);
+                    }
 
-					break;
-
-				case EthStratumClient::STRATUM:
-
-					if (!_isSuccess)
-					{
-						// In case of failure we can't manage this connection
-						cwarn << "Unable to find suitable Stratum Mode";
-						m_conn->MarkUnrecoverable();
-						disconnect();
-						return;
-
-					}
-					else
-					{
-						// STRATUM is confirmed
-						cnote << "Stratum mode detected : STRATUM";
-						m_conn->SetStratumMode(0, true);
-
-					}
-
-					break;
-
-				}
-			}
+                    break;
+                }
+            }
 
 
-			// Response to "mining.subscribe" (https://en.bitcoin.it/wiki/Stratum_mining_protocol#mining.subscribe)
+            // Response to "mining.subscribe" (https://en.bitcoin.it/wiki/Stratum_mining_protocol#mining.subscribe)
 			// Result should be an array with multiple dimensions, we only care about the data if EthStratumClient::ETHEREUMSTRATUM
 			switch (m_conn->StratumMode()) {
 
