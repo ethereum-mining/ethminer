@@ -157,7 +157,7 @@ static bool parseRequestId(Json::Value& jRequest, Json::Value& jResponse)
 {
     const char *membername = "id";
 
-    // NOTE: all errors has the same code (-32600) indicating this is an invalid request
+    // NOTE: all errors have the same code (-32600) indicating this is an invalid request
 
     // be sure id is there and it's not empty, otherwise raise an error
     if (!jRequest.isMember(membername) || jRequest[membername].empty())
