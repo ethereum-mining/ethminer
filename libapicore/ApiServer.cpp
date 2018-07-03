@@ -155,16 +155,16 @@ static bool checkApiWriteAccess(bool is_read_only, Json::Value& jResponse)
 
 static bool parseRequestId(Json::Value& jRequest, Json::Value& jResponse)
 {
-	const char *membername = "id";
+    const char *membername = "id";
 
-	// NOTE: all errors has the same code (-32600) indicating this is an invalid request
+    // NOTE: all errors has the same code (-32600) indicating this is an invalid request
 
-	// be sure id is there, otherwise raise an error
-	if (!jRequest.isMember(membername))
+    // be sure id is there and it's not empty, otherwise raise an error
+    if (!jRequest.isMember(membername) || jRequest[membername].empty())
     {
         jResponse[membername] = Json::nullValue;
         jResponse["error"]["code"] = -32600;
-        jResponse["error"]["message"] = "Invalid Request (missing id)";
+        jResponse["error"]["message"] = "Invalid Request (missing or empty id)";
         return false;
     }
 
