@@ -254,6 +254,25 @@ void EthStratumClient::disconnect_finalize() {
 	m_connected.store(false, std::memory_order_relaxed);
 	m_disconnecting.store(false, std::memory_order::memory_order_relaxed);
 
+
+	// If we got disconnected during autodetection phase 
+	// reissue a connect lowering stratum mode checks
+	if (!m_conn->StratumModeConfirmed())
+	{
+		unsigned l = m_conn->StratumMode();
+		if (l > 0)
+		{
+			l--;
+			m_conn->SetStratumMode(l);
+
+			// Repost a new connection attempt
+			m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::connect, this)));
+			cnote << l;
+			return;
+
+		}
+	} 
+
 	// Trigger handlers
 	if (m_onDisconnected) { m_onDisconnected(); }
 
@@ -304,14 +323,24 @@ void EthStratumClient::reset_work_timeout()
 void EthStratumClient::start_connect()
 {
 	if (!m_endpoints.empty()) {
+		
+		// If still in the middle of autodetection keep
+		// lastly used endpoint
+		if (m_conn->StratumModeConfirmed() == true)
+		{
+			// Sets active end point and removes
+			// it from queue
+			m_endpoint = m_endpoints.front();
+			m_endpoints.pop();
+		}
+		else
+		{
+			m_endpoint = m_endpoints.front();
+		}
 
-		// Sets active end point and removes
-		// it from queue
-		m_endpoint = m_endpoints.front();
-		m_endpoints.pop();
 
-		dev::setThreadName("stratum");
-		cnote << ("Trying " + toString(m_endpoint) + " ...");
+        dev::setThreadName("stratum");
+        cnote << ("Trying " + toString(m_endpoint) + " ...");
 
 		m_conntimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
 		m_conntimer.async_wait(m_io_strand.wrap(boost::bind(&EthStratumClient::check_connect_timeout, this, boost::asio::placeholders::error)));
@@ -495,10 +524,43 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 
         if (!m_conn->StratumModeConfirmed())
         {
-            m_conn->SetStratumMode(2, false);
-            jReq["params"].append(
-                "ethminer " + std::string(ethminer_get_buildinfo()->project_version));
-            jReq["params"].append("EthereumStratum/1.0.0");
+			switch (m_conn->StratumMode())
+			{
+
+			case 0:
+
+				m_conn->SetStratumMode(0, false);
+				jReq["id"] = unsigned(1);
+				jReq["jsonrpc"] = "2.0";
+				jReq["method"] = "mining.subscribe";
+				jReq["params"] = Json::Value(Json::arrayValue);
+
+			case 1:
+
+				m_conn->SetStratumMode(1, false);
+				jReq["id"] = unsigned(1);
+				jReq["method"] = "eth_submitLogin";
+				jReq["params"] = Json::Value(Json::arrayValue);
+				if (m_worker.length())
+					jReq["worker"] = m_worker;
+				jReq["params"].append(m_user + m_conn->Path());
+				if (!m_email.empty())
+					jReq["params"].append(m_email);
+
+				break;
+
+			case 999:
+			case 2:
+				m_conn->SetStratumMode(2, false);
+				jReq["params"].append(
+					"ethminer " + std::string(ethminer_get_buildinfo()->project_version));
+				jReq["params"].append("EthereumStratum/1.0.0");
+				break;
+
+			default:
+				break;
+			}
+
         }
         else
         {

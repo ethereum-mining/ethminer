@@ -41,7 +41,7 @@ public:
 private:
 	network::uri m_uri;
 	bool m_stratumModeConfirmed = false;
-	unsigned m_stratumMode = 0;
+	unsigned m_stratumMode = 999;			// Initial value 999 means not tested yet
 	bool m_unrecoverable = false;
 };
 
