@@ -168,15 +168,6 @@ static bool parseRequestId(Json::Value& jRequest, Json::Value& jResponse)
         return false;
     }
 
-    // check if it's empty
-    if (jRequest[membername].empty())
-    {
-        jResponse[membername] = Json::nullValue;
-        jResponse["error"]["code"] = -32600;
-        jResponse["error"]["message"] = "Invalid Request (empty id)";
-        return false;
-    }
-
     // try to parse id as Uint
     if(jRequest[membername].isUInt())
     {
