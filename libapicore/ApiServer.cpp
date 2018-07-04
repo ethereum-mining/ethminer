@@ -153,6 +153,41 @@ static bool checkApiWriteAccess(bool is_read_only, Json::Value& jResponse)
     return !is_read_only;
 }
 
+static bool parseRequestId(Json::Value& jRequest, Json::Value& jResponse)
+{
+    const char *membername = "id";
+
+    // NOTE: all errors have the same code (-32600) indicating this is an invalid request
+
+    // be sure id is there and it's not empty, otherwise raise an error
+    if (!jRequest.isMember(membername) || jRequest[membername].empty())
+    {
+        jResponse[membername] = Json::nullValue;
+        jResponse["error"]["code"] = -32600;
+        jResponse["error"]["message"] = "Invalid Request (missing or empty id)";
+        return false;
+    }
+
+    // try to parse id as Uint
+    if(jRequest[membername].isUInt())
+    {
+        jResponse[membername] = jRequest[membername].asUInt();
+        return true;
+    }
+
+    // try to parse id as String
+    if (jRequest[membername].isString())
+    {
+        jResponse[membername] = jRequest[membername].asString();
+        return true;
+    }
+
+    // id has invalid type
+    jResponse[membername] = Json::nullValue;
+    jResponse["error"]["code"] = -32600;
+    jResponse["error"]["message"] = "Invalid Request (id has invalid type)";
+    return false;
+}
 
 ApiServer::ApiServer(
     boost::asio::io_service& io_service, int portnum, bool readonly, string password, Farm& f, PoolManager& mgr)
@@ -288,15 +323,8 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     jResponse["jsonrpc"] = "2.0";
 
     // Strict sanity checks over jsonrpc v2
-    unsigned id;
-    if (!getRequestValue("id", id, jRequest, false, jResponse))
-    {
-        jResponse["id"] = Json::nullValue;
-        jResponse["error"]["code"] = -32600;
-        jResponse["error"]["message"] = "Invalid Request";
-        return;
-    }
-    jResponse["id"] = id;
+    if (!parseRequestId(jRequest, jResponse))
+    	return;
 
     std::string jsonrpc;
     std::string _method;
