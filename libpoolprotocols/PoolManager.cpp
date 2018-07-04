@@ -215,6 +215,18 @@ void PoolManager::workLoop()
 
 			if (!p_client->isConnected()) {
 
+				// If this connection is marked Unrecoverable then discard it
+				if (m_connections[m_activeConnectionIdx].IsUnrecoverable())
+				{
+					m_connections.erase(m_connections.begin() + m_activeConnectionIdx);
+					m_connectionAttempt = 0;
+					if (m_activeConnectionIdx > 0)
+					{
+						m_activeConnectionIdx--;
+					}
+				}
+
+
 				// Rotate connections if above max attempts threshold
 				if (m_connectionAttempt >= m_maxConnectionAttempts) {
 
@@ -238,7 +250,7 @@ void PoolManager::workLoop()
 
 				}
 
-				if (m_connections[m_activeConnectionIdx].Host() != "exit") {
+				if (m_connections[m_activeConnectionIdx].Host() != "exit" && m_connections.size() > 0) {
 
 					// Count connectionAttempts
 					m_connectionAttempt++;
@@ -252,7 +264,7 @@ void PoolManager::workLoop()
 				}
 				else {
 
-					cnote << "No more failover connections.";
+					cnote << "No more connections to try. Exiting ...";
 
 					// Stop mining if applicable
 					if (m_farm.isMining()) {

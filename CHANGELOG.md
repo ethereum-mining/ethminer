@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Basic API authentication to protect exposure of API port to the internet [#1228](https://github.com/ethereum-mining/ethminer/pull/1228).
 - Add `ispaused` information into response of `miner_getstathr` API query [#1232](https://github.com/ethereum-mining/ethminer/pull/1232).
 - API responses return "ethminer-" as version prefix. [#1300](https://github.com/ethereum-mining/ethminer/pull/1300).
+- Stratum mode autodetection. No need to specify stratum+tcp or stratum1+tcp or stratum2+tcp
+- Connection failed due to login errors (wrong address or worker) are marked Unrecoverable and no longer used
 
 ## 0.15.0rc1
 
