@@ -257,7 +257,9 @@ void EthStratumClient::disconnect_finalize() {
 
     // If we got disconnected during autodetection phase
     // reissue a connect lowering stratum mode checks
-    if (!m_conn->StratumModeConfirmed())
+	// m_canconnect flag is used to prevent never-ending loop when
+	// remote endpoint rejects connections attempts persistently since the first
+    if (!m_conn->StratumModeConfirmed() && m_canconnect.load(std::memory_order_relaxed))
     {
         unsigned l = m_conn->StratumMode();
         if (l > 0)
@@ -440,6 +442,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 
 		// Immediately set connecting flag to prevent 
 		// occurrence of subsequents timeouts (if any)
+		m_canconnect.store(true, std::memory_order_relaxed);
 		m_connecting.store(false, std::memory_order_relaxed);
 		m_conntimer.cancel();
 

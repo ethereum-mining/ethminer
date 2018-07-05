@@ -22,6 +22,7 @@ namespace dev
 			void setConnection(URI &conn)
 			{
 				m_conn = &conn;
+				m_canconnect.store(false, std::memory_order_relaxed);
 			}
 
 			virtual void connect() = 0;
@@ -49,6 +50,7 @@ namespace dev
 			std::atomic<bool> m_subscribed = { false };
 			std::atomic<bool> m_authorized = { false };
 			std::atomic<bool> m_connected = { false };
+			std::atomic<bool> m_canconnect = { false };
 
 			boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> m_endpoint;
 
