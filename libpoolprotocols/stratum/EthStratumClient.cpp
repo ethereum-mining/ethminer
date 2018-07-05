@@ -257,8 +257,8 @@ void EthStratumClient::disconnect_finalize() {
 
     // If we got disconnected during autodetection phase
     // reissue a connect lowering stratum mode checks
-	// m_canconnect flag is used to prevent never-ending loop when
-	// remote endpoint rejects connections attempts persistently since the first
+    // m_canconnect flag is used to prevent never-ending loop when
+    // remote endpoint rejects connections attempts persistently since the first
     if (!m_conn->StratumModeConfirmed() && m_canconnect.load(std::memory_order_relaxed))
     {
         unsigned l = m_conn->StratumMode();
