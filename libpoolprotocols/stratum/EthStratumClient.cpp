@@ -536,6 +536,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 				jReq["jsonrpc"] = "2.0";
 				jReq["method"] = "mining.subscribe";
 				jReq["params"] = Json::Value(Json::arrayValue);
+				break;
 
 			case 1:
 
