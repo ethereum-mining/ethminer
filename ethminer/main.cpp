@@ -115,7 +115,67 @@ public:
 		(void)sig;
 		g_running = false;
 	}
-
+#if API_CORE
+	static bool ParseBind(const std::string& inaddr, std::string& outaddr, int& outport, bool advertise_negative_port, std::string& errstr)
+	{
+		std::string addr=inaddr;
+		{
+			std::string portstr=addr.substr((addr.find_last_of(":") == std::string::npos) ? 0 : addr.find_last_of(":") );
+			addr.resize(addr.length() - portstr.length());
+			if(!portstr.empty() && portstr[0] == ':')
+			{
+				portstr=portstr.substr(1);
+			}
+			bool out_of_int_range=false;
+			try
+			{
+				outport=std::stoi(portstr);
+			}
+			catch(const std::out_of_range& ex)
+			{
+				out_of_int_range=true;
+			}
+			catch(...)
+			{
+				errstr=std::string("unable to extract port from string: \"") + portstr + std::string("\"");
+				return false;
+			};
+			if(out_of_int_range || abs(outport) < 1 || abs(outport) > 0xFFFF)
+			{
+				errstr= std::string("port out of range: ") + portstr + ( advertise_negative_port ? std::string(" (must be a non-zero value between -65535 and 65535)") : std::string(" (must be between 1-65535)") );
+				return false;
+			}
+			if(portstr.length() != std::to_string(outport).length())
+			{
+				errstr=std::string("invalid characters found after port specification: \"") + portstr + std::string("\"");
+				return false;
+			}
+		}
+		if(addr.empty())
+		{
+			addr="0.0.0.0";
+		}
+		boost::system::error_code ec;
+		boost::asio::ip::address address=boost::asio::ip::address::from_string( addr, ec );
+		if ( ec )
+		{
+			errstr=std::string("invalid ip address: \"") + addr + std::string("\" - parsing error: ") + ec.message();
+			return false;
+		}
+		outaddr=addr;
+		try
+		{
+			boost::asio::io_service io_service;
+			boost::asio::ip::tcp::acceptor a(io_service, boost::asio::ip::tcp::endpoint(address, abs(outport)));
+		}
+		catch(const std::exception& ex)
+		{
+			errstr=std::string("unable to bind to ") + addr + std::string(":") + std::to_string(abs(outport)) + std::string(" - error message: ") + std::string(ex.what());
+			return false;
+		}
+		return true;
+	}
+#endif
 	void ParseCommandLine (int argc, char** argv)
 	{
 
@@ -210,7 +270,20 @@ public:
             ->group(CommonGroup);
 
 #if API_CORE
-
+		app.add_option("--api-bind", m_api_bind,
+				"Set the api address:port the miner should listen to. Use negative port number for readonly mode", true)
+		->group(APIGroup)
+		->check( [this](const string& bind_arg)->string
+				{
+					string errormsg;
+					if(!MinerCLI::ParseBind(bind_arg, this->m_api_address, this->m_api_port, true, errormsg))
+					{
+						throw CLI::ValidationError("--api-bind",errormsg);
+					}
+					// not sure what to return, and the documentation doesn't say either.
+					// https://github.com/CLIUtils/CLI11/issues/144
+					return string("");
+				});
 		app.add_option("--api-port", m_api_port,
 			"Set the api port, the miner should listen to. Use 0 to disable. Use negative numbers for readonly mode", true)
 			->group(APIGroup)
@@ -220,6 +293,26 @@ public:
 			"Set the password to protect interaction with Api server. If not set any connection is granted access. "
 		    "Be advised passwords are sent unencrypted over plain tcp !!")
 			->group(APIGroup);
+
+		app.add_option("--http-bind", m_http_bind,
+				"Set the web api address:port the miner should listen to.", true)
+		->group(APIGroup)
+		->check( [this](const string& bind_arg)->string
+				{
+					string errormsg;
+					int port;
+					if(!MinerCLI::ParseBind(bind_arg, this->m_http_address, port, false, errormsg))
+					{
+						throw CLI::ValidationError("--http-bind",errormsg);
+					}
+					if(port < 0){
+						throw CLI::ValidationError("--http-bind","the web api does not have read/write modes, specify a positive port number between 1-65535");
+					}
+					this->m_http_port=static_cast<uint16_t>(port);
+					// not sure what to return, and the documentation doesn't say either.
+					// https://github.com/CLIUtils/CLI11/issues/144
+					return string("");
+				});
 
 		app.add_option("--http-port", m_http_port,
 			"Set the web api port, the miner should listen to. Use 0 to disable. Data shown depends on hwmon setting", true)
@@ -735,10 +828,10 @@ private:
 
 #if API_CORE
 
-		ApiServer api(m_io_service, abs(m_api_port), (m_api_port < 0) ? true : false, m_api_password, f, mgr);
+		ApiServer api(m_io_service, m_api_address, abs(m_api_port), (m_api_port < 0) ? true : false, m_api_password, f, mgr);
 		api.start();
 
-        http_server.run(m_http_port, &f, m_show_hwmonitors, m_show_power);
+        http_server.run(m_http_address, m_http_port, &f, m_show_hwmonitors, m_show_power);
 
 #endif
 
@@ -843,9 +936,13 @@ private:
 	unsigned m_tstart = 40;
 
 #if API_CORE
+	string m_api_bind;
+	string m_api_address = "0.0.0.0";
 	int m_api_port = 0;
 	string m_api_password;
-	unsigned m_http_port = 0;
+	string m_http_bind;
+	string m_http_address = "0.0.0.0";
+	uint16_t m_http_port = 0;
 #endif
 
 	bool m_report_hashrate = false;

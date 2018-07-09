@@ -88,12 +88,17 @@ static void ev_handler(struct mg_connection* c, int ev, void* p)
     }
 }
 
-void httpServer::run(unsigned short port, dev::eth::Farm* farm, bool show_hwmonitors, bool show_power)
+void httpServer::run(string address, uint16_t port, dev::eth::Farm* farm, bool show_hwmonitors, bool show_power)
 {
 	if (port == 0)
 		return;
     m_farm = farm;
-    m_port = to_string(port);
+    // admittedly, at this point, it's a bit hacky to call it "m_port" =/
+    if(address.empty()){
+        m_port = to_string(port);
+    } else {
+        m_port = address + string(":") + to_string(port);
+    }
     m_show_hwmonitors = show_hwmonitors;
 	m_show_power = show_power;
     new thread(bind(&httpServer::run_thread, this));

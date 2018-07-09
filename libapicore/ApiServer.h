@@ -79,7 +79,7 @@ class ApiServer
 {
 public:
 
-	ApiServer(boost::asio::io_service& io_service, int portnum, bool readonly, string password, Farm& f, PoolManager& mgr);
+	ApiServer(boost::asio::io_service& io_service, string address, int portnum, bool readonly, string password, Farm& f, PoolManager& mgr);
 	bool isRunning() { return m_running.load(std::memory_order_relaxed); };
 	void start();
 	void stop();
@@ -95,6 +95,7 @@ private:
 	std::atomic<bool> m_readonly = { false };
 	std::string m_password = "";
 	std::atomic<bool> m_running = { false };
+	string m_address;
 	int m_portnumber;
 	tcp::acceptor m_acceptor;
 	boost::asio::io_service::strand m_io_strand;

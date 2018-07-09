@@ -30,18 +30,25 @@ Ethminer implements an API (Application Programming Interface) interface which a
 
 ## Activation and Security
 
-Whenever the above depicted conditions are met you can take advantage of the API support by adding the `--api-port` argument to the command line used to launch ethminer. The format of this argument is `--api-port nnnn` where `nnnn` is any valid TCP port number (1-65535). Examples:
+Whenever the above depicted conditions are met you can take advantage of the API support by adding the `--api-bind` argument to the command line used to launch ethminer. The format of this argument is `--api-bind address:port` where `nnnn` is any valid TCP port number (1-65535) and is required, and the `address` dictates what ip the api will listen on, and is optional, and defaults to "all ipv4 addresses". Examples:
 
 ```shell
-./ethminer [...] --api-port 3333
+./ethminer [...] --api-bind 3333
 ```
 
-This example puts the API interface listening on port 3333 of **any** local IP address which means the loop-back interface (127.0.0.1/127.0.1.1) and any configured IP address of the network card.
+This example puts the API interface listening on port 3333 of **any** local IPv4 address which means the loop-back interface (127.0.0.1/127.0.1.1) and any configured IPv4 address of the network card(s). To only listen to localhost connections (which may be a more secure setting),
+
+```shell
+./ethminer [...] --api-bind 127.0.0.1:3333
+```
+and likewise, to only listen on a specific address, replace `127.0.0.1` accordingly.
+
+
 
 The API interface not only offers monitoring queries but also implements some methods which may affect the functioning of the miner. These latter operations are named _write_ actions: if you want to inhibit the invocation of such methods you may want to put the API interface in **read-only** mode which means only query to **get** data will be allowed and no _write_ methods will be allowed. To do this simply add the - (minus) sign in front of the port number thus transforming the port number into a negative number. Example for read-only mode:
 
 ```shell
-./ethminer [...] --api-port -3333
+./ethminer [...] --api-bind -3333
 ```
 
 _Note. The port number in this examples is taken randomly and does not imply a suggested value. You can use any port number you wish while it's not in use by other applications._
@@ -49,14 +56,14 @@ _Note. The port number in this examples is taken randomly and does not imply a s
 To gain further security you may wish to password protect the access to your API interface simply by adding the `--api-password` argument to the command line sequence, followed by the password you wish. Password may be composed by any printable char and **must not** have spaces. Password checking is **case sensitive**. Example for password protected API interface:
 
 ```shell
-./ethminer [...] --api-port -3333 --api-password MySuperSecurePassword!!#123456
+./ethminer [...] --api-bind -3333 --api-password MySuperSecurePassword!!#123456
 ```
 
 At the time of writing of this document ethminer's API interface does not implement any sort of data encryption over SSL secure channel so **be advised your passwords will be sent as plain text over plain TCP sockets**.
 
 ## Usage
 
-Access to API interface is performed through a TCP socket connection to the API endpoint (which is the IP address of the computer running ethminer's API instance at the configured port). For instance if your computer address is 192.168.1.1 and have configured ethminer to run with `--api-port 3333` your endpoint will be 192.168.1.1:3333.
+Access to API interface is performed through a TCP socket connection to the API endpoint (which is the IP address of the computer running ethminer's API instance at the configured port). For instance if your computer address is 192.168.1.1 and have configured ethminer to run with `--api-bind 3333` your endpoint will be 192.168.1.1:3333.
 
 Messages exchanged through this channel must conform to the [JSON-RPC 2.0 specification](http://www.jsonrpc.org/specification) so basically you will issue **requests** and will get back **responses**. At the time of writing this document do not expect any **notification**. All messages must be line feed terminated.
 
