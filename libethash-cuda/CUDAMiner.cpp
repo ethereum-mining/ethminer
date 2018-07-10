@@ -384,7 +384,7 @@ bool CUDAMiner::cuda_init(
             for (unsigned i = 0; i != s_numStreams; ++i)
             {
                 CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(search_results)));
-                CUDA_SAFE_CALL(cudaStreamCreate(&m_streams[i]));
+                CUDA_SAFE_CALL(cudaStreamCreateWithFlags(&m_streams[i], cudaStreamNonBlocking));
             }
 
             m_current_target = 0;
