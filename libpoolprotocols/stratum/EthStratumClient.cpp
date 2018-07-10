@@ -1414,7 +1414,7 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
             {
                 cwarn << "Socket read failed: " << ec.message();
             }
-            m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this));
+            m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
         }
     }
 
