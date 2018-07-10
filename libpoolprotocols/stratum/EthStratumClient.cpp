@@ -1239,7 +1239,7 @@ void EthStratumClient::response_timeout_handler(const boost::system::error_code&
                 dev::setThreadName("stratum");
                 cwarn << "No response received in " << m_responsetimeout << " seconds.";
                 m_endpoints.pop();
-                m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this));
+                m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
             }
 
             if (m_conn->StratumModeConfirmed() == false && m_conn->IsUnrecoverable() == false)

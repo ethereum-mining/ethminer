@@ -217,6 +217,7 @@ void ApiServer::start()
     try
     {
         m_acceptor.open(endpoint.protocol());
+        m_acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
         m_acceptor.bind(endpoint);
         m_acceptor.listen(64);
     }
