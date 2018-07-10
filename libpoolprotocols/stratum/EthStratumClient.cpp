@@ -680,7 +680,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 	_isSuccess = responseObject.get("error", Json::Value::null).empty();
 	_errReason = (_isSuccess ? "" : processError(responseObject));
 	_method = responseObject.get("method", "").asString();
-	_isNotification = (_id == unsigned(0) || _method != "");
+	_isNotification = ( _method != "" || _id == unsigned(0) );
 
 	// Notifications of new jobs are like responses to get_work requests
 	if (_isNotification && _method == "" && m_conn->StratumMode() == EthStratumClient::ETHPROXY && responseObject["result"].isArray()) {
@@ -1073,24 +1073,29 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 		unsigned prmIdx;
 
-		if (m_conn->StratumMode() == EthStratumClient::ETHPROXY) {
+        if (_method == "mining.notify")
+        {
 
-			jPrm = responseObject.get("result", Json::Value::null);
-			prmIdx = 0;
-		}
-		else
-		{
+            /*
+            Workaraound for Nanopool wrong implementation
+            see issue # 1348
+            */
 
-			jPrm = responseObject.get("params", Json::Value::null);
-			prmIdx = 1;
+		    if (m_conn->StratumMode() == EthStratumClient::ETHPROXY && responseObject.isMember("result")) {
 
-		}
+			    jPrm = responseObject.get("result", Json::Value::null);
+			    prmIdx = 0;
+		    }
+		    else
+		    {
+
+			    jPrm = responseObject.get("params", Json::Value::null);
+			    prmIdx = 1;
+
+		    }
 
 
-		if (_method == "mining.notify")
-		{
-
-			if (jPrm.isArray())
+			if (jPrm.isArray() && !jPrm.empty())
 			{
 				string job = jPrm.get((Json::Value::ArrayIndex)0, "").asString();
 
