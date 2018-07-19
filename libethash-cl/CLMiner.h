@@ -8,7 +8,7 @@
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
-
+#include <fstream>
 
 #pragma GCC diagnostic push
 #if __GNUC__ >= 6
@@ -99,6 +99,8 @@ private:
 	cl::CommandQueue m_queue;
 	cl::Kernel m_searchKernel;
 	cl::Kernel m_dagKernel;
+
+
 	cl::Buffer m_dag;
 	cl::Buffer m_light;
 	cl::Buffer m_header;
