@@ -20,6 +20,8 @@ namespace eth
 unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_threadsPerHash = 8;
+unsigned CLMiner::s_kernelIterations = 1;
+
 CLKernelName CLMiner::s_clKernelName = CLMiner::c_defaultKernelName;
 bool CLMiner::s_adjustWorkSize = false;
 
@@ -498,8 +500,8 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, int _globalWorkSizeMultiplie
                 "Found suitable OpenCL device [" << device.getInfo<CL_DEVICE_NAME>()
                                                  << "] with " << result << " bytes of GPU memory";
             foundSuitableDevice = true;
-        } 
-        else 
+        }
+        else
         {
         cnote <<
             "OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
@@ -507,7 +509,7 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, int _globalWorkSizeMultiplie
                              " bytes of memory found < " << dagSize << " bytes of memory required";
         }
     }
-    if (foundSuitableDevice) 
+    if (foundSuitableDevice)
     {
         return true;
     }
@@ -568,7 +570,8 @@ bool CLMiner::init(int epoch)
         m_hwmoninfo.deviceIndex = deviceId % devices.size();
         cl::Device& device = devices[deviceId % devices.size()];
         string device_version = device.getInfo<CL_DEVICE_VERSION>();
-        ETHCL_LOG("Device:   " << device.getInfo<CL_DEVICE_NAME>() << " / " << device_version);
+        string device_name = device.getInfo<CL_DEVICE_NAME>();
+        ETHCL_LOG("Device:   " << device_name << " / " << device_version);
 
         string clVer = device_version.substr(7, 3);
         if (clVer == "1.0" || clVer == "1.1")
@@ -638,14 +641,18 @@ bool CLMiner::init(int epoch)
             cllog << "OpenCL kernel: Experimental kernel";
             code = string(CLMiner_kernel_experimental, CLMiner_kernel_experimental + sizeof(CLMiner_kernel_experimental));
         }
-        else { //if(s_clKernelName == CLKernelName::Stable)
-            cllog << "OpenCL kernel: Stable kernel";
+        else { //if(s_clKernelName == CLKernelName::Stable || s_clKernelName == CLKernelName::Binary)
+            cllog << (s_clKernelName == CLKernelName::Binary ?
+                        "OpenCL kernel: Binary kernel" :
+                        "OpenCL kernel: Stable kernel");
 
             //CLMiner_kernel_stable.cl will do a #undef THREADS_PER_HASH
             if(s_threadsPerHash != 8) {
-                cwarn << "The current stable OpenCL kernel only supports exactly 8 threads. Thread parameter will be ignored.";
+                cwarn << "The current kernel only supports exactly 8 threads. Thread parameter will be ignored.";
             }
 
+            // Even if we're using the binary kernel, we still need the generate dag
+            // from the CL kernel. For now.
             code = string(CLMiner_kernel_stable, CLMiner_kernel_stable + sizeof(CLMiner_kernel_stable));
         }
         addDefinition(code, "GROUP_SIZE", m_workgroupSize);
@@ -659,7 +666,7 @@ bool CLMiner::init(int epoch)
 
         // create miner OpenCL program
         cl::Program::Sources sources{{code.data(), code.size()}};
-        cl::Program program(m_context, sources);
+        cl::Program program(m_context, sources), binaryProgram;
         try
         {
             program.build({device}, options);
@@ -672,15 +679,60 @@ bool CLMiner::init(int epoch)
             return false;
         }
 
+        /* If we have a binary kernel, we load it in tandem with the opencl,
+		   that way, we can use the dag generate opencl code and fall back on
+           the default kernel if loading fails for whatever reason */
+		bool loadedBinary = false;
+
+        if(s_clKernelName == CLKernelName::Binary) {
+            std::ifstream kernel_file;
+            vector<unsigned char> bin_data;
+            std::stringstream fname_strm;
+
+            /* Open kernels/ethash_{devicename}_lws{local_work_size}.bin */
+            std::transform(device_name.begin(), device_name.end(), device_name.begin(), ::tolower);
+            fname_strm << "kernels/ethash_" << device_name << "_lws" << m_workgroupSize << ".bin";
+            kernel_file.open(fname_strm.str(), ios::in | ios::binary);
+
+            if(kernel_file.good()) {
+                /* Load the data vector with file data */
+                kernel_file.unsetf(std::ios::skipws);
+                bin_data.insert(bin_data.begin(),
+                std::istream_iterator<unsigned char>(kernel_file),
+                std::istream_iterator<unsigned char>());
+
+                /* Setup the program */
+                cl::Program::Binaries blobs({bin_data});
+                cl::Program program(m_context, { device }, blobs);
+                try
+                {
+                    program.build({ device }, options);
+                    cllog << "Build info success:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+                    binaryProgram = program;
+                    loadedBinary = true;
+                }
+                catch (cl::Error const&)
+                {
+                    cwarn << "Build failed! Info:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+                    cwarn << fname_strm.str();
+                    cwarn << "Falling back to OpenCL kernel...";
+                }
+            } else {
+                cwarn << "Instructed to load binary kernel, but failed to load kernel:";
+                cwarn << fname_strm.str();
+                cwarn << "Falling back to OpenCL kernel...";
+            }
+        }
+
         //check whether the current dag fits in memory everytime we recreate the DAG
         cl_ulong result = 0;
         device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
         if (result < dagSize)
         {
             cnote <<
-            "OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
+            "OpenCL device " << device_name
                              << " has insufficient GPU memory." << result <<
-                             " bytes of memory found < " << dagSize << " bytes of memory required";    
+                             " bytes of memory found < " << dagSize << " bytes of memory required";
             return false;
         }
 
@@ -692,8 +744,18 @@ bool CLMiner::init(int epoch)
             cllog << "Creating DAG buffer, size: " << dagSize;
             m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, dagSize);
             cllog << "Loading kernels";
-            m_searchKernel = cl::Kernel(program, "ethash_search");
-            m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
+
+            // If we have a binary kernel to use, let's try it
+            if(s_clKernelName == CLKernelName::Binary && loadedBinary) {
+                m_searchKernel = cl::Kernel(binaryProgram, "ethash_search");
+                // TODO: Load the binary dag builder
+                m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
+            } else {
+                // otherwise just do a normal load
+                m_searchKernel = cl::Kernel(program, "ethash_search");
+                m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
+            }
+
             cllog << "Writing light cache buffer";
             m_queue.enqueueWriteBuffer(m_light, CL_TRUE, 0, lightSize, context.light_cache);
         }
@@ -708,7 +770,14 @@ bool CLMiner::init(int epoch)
 
         m_searchKernel.setArg(1, m_header);
         m_searchKernel.setArg(2, m_dag);
-        m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
+
+        if(s_clKernelName == CLKernelName::Binary && loadedBinary) {
+            m_searchKernel.setArg(5, ~0UL);  // Pass this to stop the compiler unrolling the loops.
+            m_searchKernel.setArg(6, uint32_t(dagNumItems));
+            m_searchKernel.setArg(7, uint32_t(s_kernelIterations));  // Number of iterations
+        }else {
+            m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
+        }
 
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");

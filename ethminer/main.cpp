@@ -70,8 +70,8 @@ public:
 		Stratum
 	};
 
-	MinerCLI() : 
-		m_io_work(m_io_service), 
+	MinerCLI() :
+		m_io_work(m_io_service),
 		m_io_work_timer(m_io_service),
 		m_io_strand(m_io_service)
 	{
@@ -344,9 +344,14 @@ public:
 			->group(OpenCLGroup);
 
 		app.add_option("--cl-kernel", m_openclSelectedKernel,
-			"Select kernel. 0 stable kernel, 1 experimental kernel", true)
+			"Select kernel. 0 stable kernel, 1 experimental kernel, 2 binary kernel", true)
 			->group(OpenCLGroup)
-			->check(CLI::Range(1));
+			->check(CLI::Range(2));
+
+		app.add_option("--cl-iterations", m_openclIterations,
+			"Number of outer iterations to perform before enqeueing on a new nonce", true)
+			->group(OpenCLGroup)
+			->check(CLI::Range(1,99999));
 
 		app.add_option("--cl-global-work", m_globalWorkSizeMultiplier,
 			"Set the global work size multipler. Specify negative value for automatic scaling based on # of compute units", true)
@@ -533,7 +538,7 @@ public:
 				exit(-1);
 			}
 			m_endpoints.push_back(uri);
-			
+
 			OperationMode mode = OperationMode::None;
 			switch (uri.Family())
 			{
@@ -617,6 +622,7 @@ public:
 			}
 
 			CLMiner::setCLKernel(m_openclSelectedKernel);
+			CLMiner::setNumberIterations(m_openclIterations);
 			CLMiner::setThreadsPerHash(m_openclThreadsPerHash);
 
 			if (!CLMiner::configureGPU(
@@ -729,7 +735,7 @@ private:
 			f.start("cuda", false);
 
 		WorkPackage current = WorkPackage(genesis);
-		
+
 
 		vector<uint64_t> results;
 		results.reserve(_trials);
@@ -739,7 +745,7 @@ private:
 		{
 			current.header = h256::random();
 			current.boundary = genesis.boundary();
-			f.setWork(current);	
+			f.setWork(current);
 			if (!i)
 				cout << "Warming up..." << endl;
 			else
@@ -768,7 +774,7 @@ private:
 		stop_io_service();
 		exit(0);
 	}
-	
+
 	void doMiner()
 	{
 		map<string, Farm::SealerDescriptor> sealers;
@@ -857,11 +863,11 @@ private:
 			else {
 				minelog << "not-connected";
 			}
-			
+
 		}
 
 #if API_CORE
-		
+
 		// Stop Api server
 		api.stop();
 
@@ -891,6 +897,7 @@ private:
 	bool m_shouldListDevices = false;
 #if ETH_ETHASHCL
 	unsigned m_openclSelectedKernel = 0;  ///< A numeric value for the selected OpenCL kernel
+	unsigned m_openclIterations = 1;  ///< A numeric value for the number of iterations
 	unsigned m_openclDeviceCount = 0;
 	vector<unsigned> m_openclDevices;
 	unsigned m_openclThreadsPerHash = 8;
@@ -921,7 +928,7 @@ private:
 	unsigned m_maxFarmRetries = 3;
 	unsigned m_farmRecheckPeriod = 500;
 	unsigned m_displayInterval = 5;
-	
+
 	// Number of seconds to wait before triggering a no work timeout from pool
 	unsigned m_worktimeout = 180;
 	// Number of seconds to wait before triggering a response timeout from pool
