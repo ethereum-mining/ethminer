@@ -8,6 +8,7 @@
 #include "CLMiner_kernel_experimental.h"
 
 #include <ethash/ethash.hpp>
+#include <boost/dll.hpp>
 
 using namespace dev;
 using namespace eth;
@@ -390,9 +391,6 @@ void CLMiner::workLoop()
             // Report hash count
             addHashCount(m_globalWorkSize);
 
-            // Make sure the last buffer write has finished --
-            // it reads local variable.
-            m_queue.finish();
         }
         m_queue.finish();
     }
@@ -691,7 +689,9 @@ bool CLMiner::init(int epoch)
 
             /* Open kernels/ethash_{devicename}_lws{local_work_size}.bin */
             std::transform(device_name.begin(), device_name.end(), device_name.begin(), ::tolower);
-            fname_strm << "kernels/ethash_" << device_name << "_lws" << m_workgroupSize << ".bin";
+            fname_strm << boost::dll::program_location().parent_path().string() <<
+				"/kernels/ethash_" << device_name << "_lws" << m_workgroupSize << ".bin";
+			cllog << "Loading binary kernel " << fname_strm.str();
             kernel_file.open(fname_strm.str(), ios::in | ios::binary);
 
             if(kernel_file.good()) {
@@ -770,32 +770,27 @@ bool CLMiner::init(int epoch)
 
         m_searchKernel.setArg(1, m_header);
         m_searchKernel.setArg(2, m_dag);
+        m_searchKernel.setArg(5, ~0UL);  // Pass this to stop the compiler unrolling the loops.
 
         if(s_clKernelName == CLKernelName::Binary && loadedBinary) {
-            m_searchKernel.setArg(5, ~0UL);  // Pass this to stop the compiler unrolling the loops.
             m_searchKernel.setArg(6, uint32_t(dagNumItems));
             m_searchKernel.setArg(7, uint32_t(s_kernelIterations));  // Number of iterations
-        }else {
-            m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
         }
 
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");
         m_searchBuffer = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, sizeof(search_results));
 
-        const auto workItems = dagNumItems * 2;  // GPU computes partial 512-bit DAG items.
-        uint32_t fullRuns = workItems / m_globalWorkSize;
-        uint32_t const restWork = workItems % m_globalWorkSize;
-        if (restWork > 0) fullRuns++;
-
         m_dagKernel.setArg(1, m_light);
         m_dagKernel.setArg(2, m_dag);
         m_dagKernel.setArg(3, ~0u);
 
+        const uint32_t workItems = dagNumItems * 2;  // GPU computes partial 512-bit DAG items.
+
         auto startDAG = std::chrono::steady_clock::now();
-        for (uint32_t i = 0; i < fullRuns; i++)
+        for (uint32_t i = 0; i < workItems; i += m_globalWorkSize)
         {
-            m_dagKernel.setArg(0, i * m_globalWorkSize);
+            m_dagKernel.setArg(0, i);
             m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
             m_queue.finish();
         }

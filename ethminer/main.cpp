@@ -360,7 +360,7 @@ public:
 		app.add_option("--cl-local-work", m_localWorkSize,
 			"Set the local work size", true)
 			->group(OpenCLGroup)
-			->check(CLI::Range(32, 99999));
+			->check(CLI::Range(64, 256));
 
 #endif
 
@@ -564,6 +564,14 @@ public:
 		}
 
 #if ETH_ETHASHCL
+		if ((m_localWorkSize != 64) &&
+			(m_localWorkSize != 128) &&
+			(m_localWorkSize != 192) &&
+			(m_localWorkSize != 256))
+		{
+           	cerr << endl << "opencl local work must be 64, 128, 192 or 256." << "\n\n";
+           	exit(-1);
+		}
 		m_openclDeviceCount = m_openclDevices.size();
 #endif
 

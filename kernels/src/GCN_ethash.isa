@@ -1,0 +1,39 @@
+/**
+ *
+ */
+
+
+.amdcl2
+.64bit
+
+.ifgpu ellesmere
+    .driver_version 200406
+    .include "GCN_ethash_globaldata.isa"
+    .include "GCN3_ethash_search.isa"
+    .ifdef DAGGEN
+        .include "GCN3_ethash_GenerateDAG.isa"
+    .endif
+.elseifgpu tonga
+    .driver_version 200406
+    .include "GCN_ethash_globaldata.isa"
+    .include "GCN3_ethash_search.isa"
+    .ifdef DAGGEN
+        .include "GCN3_ethash_GenerateDAG.isa"
+    .endif
+.elseifgpu baffin
+    .driver_version 200406
+    .include "GCN_ethash_globaldata.isa"
+    .include "GCN3_ethash_search.isa"
+    .ifdef DAGGEN
+        .include "GCN3_ethash_GenerateDAG.isa"
+    .endif
+.elseifgpu gfx901
+    .driver_version 257000
+    .include "GCN_ethash_globaldata.isa"
+    .include "GCN5_ethash_search.isa"
+    .ifdef DAGGEN
+        .include "GCN5_ethash_GenerateDAG.isa"
+    .endif
+.else
+    .error "Unsupported GPU!"
+.endif

@@ -45,8 +45,8 @@ function(configureProject)
 	endif()
 endfunction()
 
-hunter_add_package(Boost COMPONENTS system)
-find_package(Boost CONFIG REQUIRED COMPONENTS system)
+hunter_add_package(Boost COMPONENTS system filesystem)
+find_package(Boost CONFIG REQUIRED COMPONENTS system filesystem)
 
 hunter_add_package(jsoncpp)
 find_package(jsoncpp CONFIG REQUIRED)
@@ -88,6 +88,7 @@ add_subdirectory(libpoolprotocols)
 
 if (ETHASHCL)
 	add_subdirectory(libethash-cl)
+	add_subdirectory(kernels)
 endif ()
 if (ETHASHCUDA)
 	add_subdirectory(libethash-cuda)
