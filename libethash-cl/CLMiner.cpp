@@ -639,14 +639,14 @@ bool CLMiner::init(int epoch)
             cllog << "OpenCL kernel: Experimental kernel";
             code = string(CLMiner_kernel_experimental, CLMiner_kernel_experimental + sizeof(CLMiner_kernel_experimental));
         }
-        else { //if(s_clKernelName == CLKernelName::Stable || s_clKernelName == CLKernelName::Binary_Sgminer)
-            cllog << (s_clKernelName == CLKernelName::Binary_Sgminer ?
+        else { //if(s_clKernelName == CLKernelName::Stable || s_clKernelName == CLKernelName::Binary)
+            cllog << (s_clKernelName == CLKernelName::Binary ?
                         "OpenCL kernel: Binary kernel" :
                         "OpenCL kernel: Stable kernel");
 
             //CLMiner_kernel_stable.cl will do a #undef THREADS_PER_HASH
             if(s_threadsPerHash != 8) {
-                cwarn << "The current stable OpenCL kernel only supports exactly 8 threads. Thread parameter will be ignored.";
+                cwarn << "The current kernel only supports exactly 8 threads. Thread parameter will be ignored.";
             }
 
             // Even if we're using the binary kernel, we still need the generate dag
@@ -682,7 +682,7 @@ bool CLMiner::init(int epoch)
            the default kernel if loading fails for whatever reason */
 		bool loadedBinary = false;
 
-        if(s_clKernelName == CLKernelName::Binary_Sgminer) {
+        if(s_clKernelName == CLKernelName::Binary) {
             std::ifstream kernel_file;
             vector<unsigned char> bin_data;
             std::stringstream fname_strm;
@@ -744,7 +744,7 @@ bool CLMiner::init(int epoch)
             cllog << "Loading kernels";
 
             // If we have a binary kernel to use, let's try it
-            if(s_clKernelName == CLKernelName::Binary_Sgminer && loadedBinary) {
+            if(s_clKernelName == CLKernelName::Binary && loadedBinary) {
                 m_searchKernel = cl::Kernel(binaryProgram, "ethash_search");
                 // TODO: Load the binary dag builder
                 m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
@@ -770,7 +770,7 @@ bool CLMiner::init(int epoch)
         m_searchKernel.setArg(2, m_dag);
         m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
 
-        if(s_clKernelName == CLKernelName::Binary_Sgminer && loadedBinary) {
+        if(s_clKernelName == CLKernelName::Binary && loadedBinary) {
             m_searchKernel.setArg(6, dagNumItems);
             m_searchKernel.setArg(7, 1);  // Number of iterations, set to 1 for now
         }

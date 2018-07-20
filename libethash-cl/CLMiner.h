@@ -46,7 +46,7 @@ namespace eth
 enum CLKernelName {
 	Stable,
 	Experimental,
-    Binary_Sgminer
+    Binary
 };
 
 class CLMiner: public Miner
@@ -84,7 +84,7 @@ public:
 			default: ;
 			case 0: s_clKernelName = CLKernelName::Stable; break;
 			case 1: s_clKernelName = CLKernelName::Experimental; break;
-			case 2: s_clKernelName = CLKernelName::Binary_Sgminer; break;
+			case 2: s_clKernelName = CLKernelName::Binary; break;
 		}
 	}
 protected:
