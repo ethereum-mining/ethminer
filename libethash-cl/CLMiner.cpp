@@ -20,6 +20,8 @@ namespace eth
 unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_threadsPerHash = 8;
+unsigned CLMiner::s_kernelIterations = 1;
+
 CLKernelName CLMiner::s_clKernelName = CLMiner::c_defaultKernelName;
 bool CLMiner::s_adjustWorkSize = false;
 
@@ -772,7 +774,7 @@ bool CLMiner::init(int epoch)
 
         if(s_clKernelName == CLKernelName::Binary && loadedBinary) {
             m_searchKernel.setArg(6, dagNumItems);
-            m_searchKernel.setArg(7, 1);  // Number of iterations, set to 1 for now
+            m_searchKernel.setArg(7, s_kernelIterations);  // Number of iterations
         }
 
         // create mining buffers

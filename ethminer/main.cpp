@@ -348,6 +348,11 @@ public:
 			->group(OpenCLGroup)
 			->check(CLI::Range(2));
 
+		app.add_option("--cl-iterations", m_openclIterations,
+			"Number of outer iterations to perform before enqeueing on a new nonce", true)
+			->group(OpenCLGroup)
+			->check(CLI::Range(1,99999));
+
 		app.add_option("--cl-global-work", m_globalWorkSizeMultiplier,
 			"Set the global work size multipler. Specify negative value for automatic scaling based on # of compute units", true)
 			->group(OpenCLGroup);
@@ -617,6 +622,7 @@ public:
 			}
 
 			CLMiner::setCLKernel(m_openclSelectedKernel);
+			CLMiner::setNumberIterations(m_openclIterations);
 			CLMiner::setThreadsPerHash(m_openclThreadsPerHash);
 
 			if (!CLMiner::configureGPU(
@@ -891,6 +897,7 @@ private:
 	bool m_shouldListDevices = false;
 #if ETH_ETHASHCL
 	unsigned m_openclSelectedKernel = 0;  ///< A numeric value for the selected OpenCL kernel
+	unsigned m_openclIterations = 1;  ///< A numeric value for the number of iterations
 	unsigned m_openclDeviceCount = 0;
 	vector<unsigned> m_openclDevices;
 	unsigned m_openclThreadsPerHash = 8;

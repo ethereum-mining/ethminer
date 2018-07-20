@@ -87,6 +87,7 @@ public:
 			case 2: s_clKernelName = CLKernelName::Binary; break;
 		}
 	}
+    static void setNumberIterations(unsigned _iterations) {s_kernelIterations = _iterations <= 1 ? 1 : _iterations;}
 protected:
 	void kick_miner() override;
 
@@ -100,7 +101,6 @@ private:
 	cl::Kernel m_searchKernel;
 	cl::Kernel m_dagKernel;
 
-
 	cl::Buffer m_dag;
 	cl::Buffer m_light;
 	cl::Buffer m_header;
@@ -112,6 +112,7 @@ private:
 	static unsigned s_numInstances;
 	static unsigned s_threadsPerHash;
 	static CLKernelName s_clKernelName;
+    static unsigned s_kernelIterations;
 	static vector<int> s_devices;
 
 	/// The local work size for the search
