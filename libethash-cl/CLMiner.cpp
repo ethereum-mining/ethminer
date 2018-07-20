@@ -770,11 +770,13 @@ bool CLMiner::init(int epoch)
 
         m_searchKernel.setArg(1, m_header);
         m_searchKernel.setArg(2, m_dag);
-        m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
 
         if(s_clKernelName == CLKernelName::Binary && loadedBinary) {
-            m_searchKernel.setArg(6, dagNumItems);
-            m_searchKernel.setArg(7, s_kernelIterations);  // Number of iterations
+            m_searchKernel.setArg(5, ~0UL);  // Pass this to stop the compiler unrolling the loops.
+            m_searchKernel.setArg(6, uint32_t(dagNumItems));
+            m_searchKernel.setArg(7, uint32_t(s_kernelIterations));  // Number of iterations
+        }else {
+            m_searchKernel.setArg(5, ~0u);  // Pass this to stop the compiler unrolling the loops.
         }
 
         // create mining buffers
