@@ -43,23 +43,14 @@ namespace dev
 namespace eth
 {
 
-enum CLKernelName {
-	Stable,
-	Experimental,
-    Binary
-};
-
 class CLMiner: public Miner
 {
 public:
 	/* -- default values -- */
 	/// Default value of the local work size. Also known as workgroup size.
-	static const unsigned c_defaultLocalWorkSize = 128;
+	static const unsigned c_defaultLocalWorkSize = 192;
 	/// Default value of the global work size as a multiplier of the local work size
-	static const unsigned c_defaultGlobalWorkSizeMultiplier = 8192;
-
-	/// Default value of the kernel is the original one
-	static const CLKernelName c_defaultKernelName = CLKernelName::Stable;
+	static const unsigned c_defaultGlobalWorkSizeMultiplier = 18000;
 
 	CLMiner(FarmFace& _farm, unsigned _index);
 	~CLMiner() override;
@@ -67,24 +58,16 @@ public:
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 	static unsigned getNumDevices();
 	static void listDevices();
-    static bool configureGPU(unsigned _localWorkSize, int _globalWorkSizeMultiplier,
+    static bool configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
         unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice,
-        bool _noeval, bool _exit);
+        bool _noeval, bool _exit, int _kernel);
     static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
-	static void setThreadsPerHash(unsigned _threadsPerHash){s_threadsPerHash = _threadsPerHash; }
+	static void setThreadsPerHash(int _threadsPerHash){s_threadsPerHash = _threadsPerHash; }
 	static void setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount)
 	{
 		for (unsigned i = 0; i < _selectedDeviceCount; i++)
 		{
 			s_devices[i] = _devices[i];
-		}
-	}
-	static void setCLKernel(unsigned _clKernel) {
-		switch (_clKernel) {
-			default: ;
-			case 0: s_clKernelName = CLKernelName::Stable; break;
-			case 1: s_clKernelName = CLKernelName::Experimental; break;
-			case 2: s_clKernelName = CLKernelName::Binary; break;
 		}
 	}
     static void setNumberIterations(unsigned _iterations) {s_kernelIterations = _iterations <= 1 ? 1 : _iterations;}
@@ -101,17 +84,17 @@ private:
 	cl::Kernel m_searchKernel;
 	cl::Kernel m_dagKernel;
 
-	cl::Buffer m_dag;
-	cl::Buffer m_light;
-	cl::Buffer m_header;
-	cl::Buffer m_searchBuffer;
+	vector<cl::Buffer> m_dag;
+	vector<cl::Buffer> m_light;
+	vector<cl::Buffer> m_header;
+	vector<cl::Buffer> m_searchBuffer;
 	unsigned m_globalWorkSize = 0;
 	unsigned m_workgroupSize = 0;
+	unsigned m_dagItems = 0;
 
 	static unsigned s_platformId;
 	static unsigned s_numInstances;
-	static unsigned s_threadsPerHash;
-	static CLKernelName s_clKernelName;
+	static int s_threadsPerHash;
     static unsigned s_kernelIterations;
 	static vector<int> s_devices;
 
@@ -119,7 +102,6 @@ private:
 	static unsigned s_workgroupSize;
 	/// The initial global work size for the searches
 	static unsigned s_initialGlobalWorkSize;
-	static bool s_adjustWorkSize;
 
 };
 

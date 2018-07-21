@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - API responses return "ethminer-" as version prefix. [#1300](https://github.com/ethereum-mining/ethminer/pull/1300).
 - Stratum mode autodetection. No need to specify stratum+tcp or stratum1+tcp or stratum2+tcp
 - Connection failed due to login errors (wrong address or worker) are marked Unrecoverable and no longer used
+- Replaced opencl kernel with opensource jawawawa opencl kernel
+- Added support for jawawawa AMD binary kernels
+- AMD auto kernel selection. Try bin first, if not fall back to opencl.
 
 ## 0.15.0rc1
 

@@ -139,6 +139,7 @@ cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 * `-DETHASHCUDA=ON` - enable CUDA mining, `ON` by default.
 * `-DAPICORE=ON` - enable API Server, `ON` by default.
 * `-DETHDBUS=ON` - enable D-Bus support, `OFF` by default.
+* `-DBINKERN=ON` - install AMD binary kernels, `ON` by default.
 
 ## Disable Hunter
 

@@ -331,6 +331,12 @@ public:
 
 #if ETH_ETHASHCL
 
+		app.add_option("--cl-kernel", m_clKernel,
+			"Ignored parameter. Kernel is auto-selected.", true)
+			->group(OpenCLGroup)
+			->check(CLI::Range(2));
+
+
 		app.add_option("--opencl-platform", m_openclPlatform,
 			"Use OpenCL platform n", true)
 			->group(OpenCLGroup);
@@ -340,13 +346,8 @@ public:
 			->group(OpenCLGroup);
 
 		app.add_set("--cl-parallel-hash", m_openclThreadsPerHash, {1, 2, 4, 8},
-			"Set the number of threads per hash", true)
+			"ignored parameter", true)
 			->group(OpenCLGroup);
-
-		app.add_option("--cl-kernel", m_openclSelectedKernel,
-			"Select kernel. 0 stable kernel, 1 experimental kernel, 2 binary kernel", true)
-			->group(OpenCLGroup)
-			->check(CLI::Range(2));
 
 		app.add_option("--cl-iterations", m_openclIterations,
 			"Number of outer iterations to perform before enqeueing on a new nonce", true)
@@ -354,13 +355,12 @@ public:
 			->check(CLI::Range(1,99999));
 
 		app.add_option("--cl-global-work", m_globalWorkSizeMultiplier,
-			"Set the global work size multipler. Specify negative value for automatic scaling based on # of compute units", true)
+			"Set the global work size multipler.", true)
 			->group(OpenCLGroup);
 
-		app.add_option("--cl-local-work", m_localWorkSize,
+		app.add_set("--cl-local-work", m_localWorkSize, {64, 128, 192, 256},
 			"Set the local work size", true)
-			->group(OpenCLGroup)
-			->check(CLI::Range(64, 256));
+			->group(OpenCLGroup);
 
 #endif
 
@@ -564,14 +564,6 @@ public:
 		}
 
 #if ETH_ETHASHCL
-		if ((m_localWorkSize != 64) &&
-			(m_localWorkSize != 128) &&
-			(m_localWorkSize != 192) &&
-			(m_localWorkSize != 256))
-		{
-           	cerr << endl << "opencl local work must be 64, 128, 192 or 256." << "\n\n";
-           	exit(-1);
-		}
 		m_openclDeviceCount = m_openclDevices.size();
 #endif
 
@@ -629,7 +621,6 @@ public:
 				m_miningThreads = m_openclDeviceCount;
 			}
 
-			CLMiner::setCLKernel(m_openclSelectedKernel);
 			CLMiner::setNumberIterations(m_openclIterations);
 			CLMiner::setThreadsPerHash(m_openclThreadsPerHash);
 
@@ -641,7 +632,8 @@ public:
 				m_dagLoadMode,
 				m_dagCreateDevice,
 				m_noEval,
-				m_exit
+				m_exit,
+				m_clKernel
 			)) {
 				stop_io_service();
 				exit(1);
@@ -904,13 +896,13 @@ private:
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 #if ETH_ETHASHCL
-	unsigned m_openclSelectedKernel = 0;  ///< A numeric value for the selected OpenCL kernel
 	unsigned m_openclIterations = 1;  ///< A numeric value for the number of iterations
 	unsigned m_openclDeviceCount = 0;
 	vector<unsigned> m_openclDevices;
-	unsigned m_openclThreadsPerHash = 8;
-	int m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
+	int m_openclThreadsPerHash = -1;
+	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
+	int m_clKernel = -1;
 #endif
 #if ETH_ETHASHCUDA
 	unsigned m_cudaDeviceCount = 0;
