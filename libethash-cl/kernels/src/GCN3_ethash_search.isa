@@ -1,0 +1,824 @@
+/**
+ * ethash_search for GCN3 arch chips.
+ *
+ * @author Zawawawa
+ */
+
+.kernel ethash_search
+    .config
+        .dims x
+        .cws worksize, 1, 1
+        .sgprsnum 52
+        .vgprsnum 64
+        .localsize worksize*20
+        .floatmode 0xc0
+        .dx10clamp
+        .ieeemode
+        .useargs
+        .usesetup
+        .priority 0
+        .arg _.global_offset_0, "size_t", long
+        .arg _.global_offset_1, "size_t", long
+        .arg _.global_offset_2, "size_t", long
+        .arg _.printf_buffer, "size_t", void*, global, , rdonly
+        .arg _.vqueue_pointer, "size_t", long
+        .arg _.aqlwrap_pointer, "size_t", long
+        .arg output, "uint*", uint*, global, restrict volatile
+        .arg header, "uint2*", uint2*, constant, const, rdonly
+        .arg dag, "ulong8*", ulong8*, global, const, rdonly
+        .arg start_nonce, "ulong", ulong
+        .arg target, "ulong", ulong
+        .arg isolate, "ulong", ulong
+        .arg dag_size, "uint", uint
+        .arg iterations, "uint", uint
+    .text
+        mix0 = %v24
+        mix1 = %v25
+        mix2 = %v26
+        mix3 = %v27
+        mix4 = %v28
+        mix5 = %v29
+        mix6 = %v30
+        mix7 = %v31
+        mix_init0 = %v32
+
+        mix_temp0 = %v33
+        mix_temp1 = %v34
+        mix_temp2 = %v35
+        mix_temp3 = %v36
+        mix_temp4 = %v37
+        mix_double_temp0 = %v[38:39]
+        mix_double_temp1 = %v[40:41]
+        mix_quad_temp0 = %v[42:45]
+        mix_quad_temp1 = %v[46:49]
+
+        state49 = %v49
+        state48 = %v48
+        state47 = %v47
+        state46 = %v46
+        state45 = %v45
+        state44 = %v44
+        state43 = %v43
+        state42 = %v42
+        state41 = %v41
+        state40 = %v40
+        state39 = %v39
+        state38 = %v38
+        state37 = %v37
+        state36 = %v36
+        state35 = %v35
+        state34 = %v34
+        state33 = %v33
+        state32 = %v32
+        state31 = %v31
+        state30 = %v30
+        state29 = %v29
+        state28 = %v28
+        state27 = %v27
+        state26 = %v26
+        state25 = %v25
+        state24 = %v24
+        state23 = %v23
+        state22 = %v22
+        state21 = %v21
+        state20 = %v20
+        state19 = %v19
+        state18 = %v18
+        state17 = %v17
+        state16 = %v16
+
+        state15 = %v15
+        state14 = %v14
+        state13 = %v13
+        state12 = %v12
+        state11 = %v11
+        state10 = %v10
+        state9 = %v9
+        state8 = %v8
+        state7 = %v7
+        state6 = %v6
+        state5 = %v5
+        state4 = %v4
+        state3 = %v3
+        state2 = %v2
+        state1 = %v1
+        state0 = %v0
+
+        temp0 = %v50
+        temp1 = %v51
+        temp2 = %v52
+        temp3 = %v53
+        temp4 = %v54
+        temp5 = %v55
+        temp6 = %v56
+        temp7 = %v57
+        temp8 = %v58
+        temp9 = %v59
+        temp10 = %v60
+        temp11 = %v61
+        temp12 = %v62
+
+        local_id = %v63
+
+        kernarg         = %s[4:5]
+        args            = %s[6:7]
+        group_id        = %s8
+
+        kernarg_global_size = 0xc
+
+        arg_output      = 0x30
+        arg_header      = 0x38
+        arg_dag         = 0x40
+        arg_start_nonce = 0x48
+        arg_target      = 0x50
+        arg_isolate     = 0x58
+        arg_dag_size    = 0x60
+        arg_iterations  = 0x64
+
+        output          = %s[2:3]
+        header          = %s[10:11]
+        dag             = %s[12:13]
+        dag_size        = %s9
+        start_nonce     = %s[14:15]
+        target          = %s[16:17]
+        iterations      = %s18
+        global_size    = %s19
+
+        header_content  = %s[24:31]
+        scalar_temp0    = %s20
+        scalar_temp1    = %s21
+        scalar_temp2    = %s22
+        scalar_temp3    = %s23
+        scalar_double_temp0 = %s[32:33]
+        scalar_double_temp1 = %s[34:35]
+
+        iter            = %s36
+        mix_index       = %s37
+        fnv_prime       = %s38
+        tid             = %s39
+        pass            = %s40
+        keccak_round    = %s41
+        first_work_item_in_group = %s42
+        exec_mask       = %s[46:47]
+
+
+
+        v_mov_b32       local_id, v0
+        s_mov_b32       m0, 0x10000
+        s_mov_b32       fnv_prime, 0x1000193
+
+        s_load_dwordx2  output,         args,    arg_output
+        s_load_dwordx2  header,         args,    arg_header
+        s_load_dwordx2  dag,            args,    arg_dag
+        s_load_dword    dag_size,       args,    arg_dag_size
+        s_load_dwordx2  start_nonce,    args,    arg_start_nonce
+        s_load_dwordx2  target,         args,    arg_target
+        s_load_dword    iterations,     args,    arg_iterations
+        s_load_dword    global_size,    kernarg, kernarg_global_size
+        s_waitcnt       lgkmcnt(0)
+
+
+        s_load_dwordx8  header_content, header,  0x0
+        s_waitcnt       lgkmcnt(0)
+
+
+
+        s_movk_i32      iter, 0
+        s_nop           0
+        s_nop           0
+        s_nop           0
+        s_nop           0
+        s_nop           0
+        s_nop           0
+.iter_loop:
+        v_mov_b32       state7, header_content[7]
+        v_mov_b32       state6, header_content[6]
+        v_mov_b32       state5, header_content[5]
+        v_mov_b32       state4, header_content[4]
+        v_mov_b32       state3, header_content[3]
+        v_mov_b32       state2, header_content[2]
+        v_mov_b32       state1, header_content[1]
+        v_mov_b32       state0, header_content[0]
+
+        s_mul_i32       first_work_item_in_group, group_id, worksize
+
+        v_add_u32       state8, vcc, first_work_item_in_group, local_id
+        v_mov_b32       state9, 0
+        v_mov_b32       temp0, start_nonce[1]
+        v_add_u32       state8, vcc, state8, start_nonce[0]
+        v_addc_u32      state9, vcc, state9, temp0, vcc
+        v_mov_b32       temp0, iter
+        v_mul_lo_u32    temp3, temp0, global_size
+        v_mul_hi_u32    temp4, temp0, global_size
+        v_add_u32       state8, vcc, state8, temp3
+        v_addc_u32      state9, vcc, state9, temp4, vcc
+
+        v_mov_b32       state49, 0
+        v_mov_b32       state48, 0
+        v_mov_b32       state47, 0
+        v_mov_b32       state46, 0
+        v_mov_b32       state45, 0
+        v_mov_b32       state44, 0
+        v_mov_b32       state43, 0
+        v_mov_b32       state42, 0
+        v_mov_b32       state41, 0
+        v_mov_b32       state40, 0
+        v_mov_b32       state39, 0
+        v_mov_b32       state38, 0
+        v_mov_b32       state37, 0
+        v_mov_b32       state36, 0
+        v_mov_b32       state35, 0
+        v_mov_b32       state34, 0
+        v_mov_b32       state33, 0
+        v_mov_b32       state32, 0
+        v_mov_b32       state31, 0
+        v_mov_b32       state30, 0
+        v_mov_b32       state29, 0
+        v_mov_b32       state28, 0
+        v_mov_b32       state27, 0
+        v_mov_b32       state26, 0
+        v_mov_b32       state25, 0
+        v_mov_b32       state24, 0
+        v_mov_b32       state23, 0
+        v_mov_b32       state22, 0
+        v_mov_b32       state21, 0
+        v_mov_b32       state20, 0
+        v_mov_b32       state19, 0
+        v_mov_b32       state18, 0
+        v_mov_b32       state17, 0x80000000
+        v_mov_b32       state16, 0
+        v_mov_b32       state15, 0
+        v_mov_b32       state14, 0
+        v_mov_b32       state13, 0
+        v_mov_b32       state12, 0
+        v_mov_b32       state11, 0
+        v_mov_b32       state10, 1
+
+
+
+        s_movk_i32      pass, 0x0
+        s_movk_i32      keccak_round, 0x0
+        s_nop           0
+        s_nop           0
+        s_nop           0
+        s_nop           0
+        s_nop           0
+        s_nop           0
+        s_nop           0
+.keccak_loop:
+
+
+
+        /*****************/
+        /* Keccak Rounds */
+        /*****************/
+
+        s_mov_b32       scalar_double_temp0[0], keccak_round
+        s_ashr_i32      scalar_double_temp0[1], keccak_round, 31
+        s_lshl_b64      scalar_double_temp0, scalar_double_temp0, 3
+        s_mov_b32       scalar_temp0, .gdata&0xffffffff
+        s_mov_b32       scalar_temp1, .gdata>>32
+        s_add_u32       scalar_double_temp0[0], scalar_temp0, scalar_double_temp0[0]
+        s_addc_u32      scalar_double_temp0[1], scalar_temp1, scalar_double_temp0[1]
+        s_load_dwordx2  scalar_double_temp0, scalar_double_temp0, 0x0
+
+        v_xor_b32       temp0, state0, state10
+        v_xor_b32       temp1, state1, state11
+        v_xor_b32       temp2, state2, state12
+        v_xor_b32       temp3, state3, state13
+        v_xor_b32       temp4, state4, state14
+        v_xor_b32       temp5, state5, state15
+        v_xor_b32       temp6, state6, state16
+        v_xor_b32       temp7, state7, state17
+        v_xor_b32       temp8, state8, state18
+        v_xor_b32       temp9, state9, state19
+        v_xor_b32       temp1, temp1, state21
+        v_xor_b32       temp5, temp5, state25
+        v_xor_b32       temp4, temp4, state24
+        v_xor_b32       temp4, temp4, state34
+        v_xor_b32       temp5, temp5, state35
+        v_xor_b32       temp1, temp1, state31
+        v_xor_b32       temp0, temp0, state20
+        v_xor_b32       temp0, temp0, state30
+        v_xor_b32       temp0, temp0, state40
+        v_xor_b32       temp1, temp1, state41
+        v_xor_b32       temp5, temp5, state45
+        v_xor_b32       temp4, temp4, state44
+        v_xor_b32       temp3, temp3, state23
+        v_xor_b32       temp7, temp7, state27
+        v_xor_b32       temp6, temp6, state26
+        v_xor_b32       temp6, temp6, state36
+        v_xor_b32       temp7, temp7, state37
+        v_xor_b32       temp3, temp3, state33
+        v_xor_b32       temp2, temp2, state22
+        v_xor_b32       temp2, temp2, state32
+        v_xor_b32       temp2, temp2, state42
+        v_xor_b32       temp3, temp3, state43
+        v_xor_b32       temp7, temp7, state47
+        v_xor_b32       temp6, temp6, state46
+        v_xor_b32       temp8, temp8, state28
+        v_xor_b32       temp9, temp9, state29
+        v_xor_b32       temp8, temp8, state38
+        v_xor_b32       temp9, temp9, state39
+        v_xor_b32       temp9, temp9, state49
+        v_xor_b32       temp8, temp8, state48
+        v_alignbit_b32  temp10, temp4, temp5, 31
+        v_alignbit_b32  temp11, temp5, temp4, 31
+        v_xor_b32       temp11, temp1, temp11
+        v_xor_b32       temp10, temp0, temp10
+        v_alignbit_b32  temp12, temp9, temp8, 31
+        v_xor_b32       temp5, temp5, temp12
+        v_alignbit_b32  temp12, temp8, temp9, 31
+        v_xor_b32       temp4, temp4, temp12
+        v_alignbit_b32  temp12, temp0, temp1, 31
+        v_alignbit_b32  temp0, temp1, temp0, 31
+        v_xor_b32       temp0, temp7, temp0
+        v_xor_b32       temp1, temp6, temp12
+        v_alignbit_b32  temp12, temp7, temp6, 31
+        v_alignbit_b32  temp7, temp6, temp7, 31
+        v_xor_b32       temp7, temp7, temp12
+        v_xor_b32       temp12, temp7, temp12
+        v_xor_b32       temp7, temp7, temp12
+        v_xor_b32       temp7, temp3, temp7
+        v_xor_b32       temp12, temp2, temp12
+        v_alignbit_b32  temp6, temp2, temp3, 31
+        v_alignbit_b32  temp3, temp3, temp2, 31
+        v_xor_b32       temp6, temp8, temp6
+        v_xor_b32       state10, temp6, state10
+        v_xor_b32       state30, temp6, state30
+        v_xor_b32       state40, temp6, state40
+        v_mov_b32       temp2, temp7
+        v_xor_b32       temp7, state0, temp6
+        v_xor_b32       state0, temp6, state20
+        v_mov_b32       temp6, temp2
+        v_xor_b32       temp3, temp9, temp3
+        v_xor_b32       state1, state1, temp3
+        v_xor_b32       temp2, temp3, state11
+        v_xor_b32       state2, temp10, state2
+        v_xor_b32       temp8, temp11, state3
+        v_alignbit_b32  temp9, state2, temp8, 31
+        v_alignbit_b32  temp8, temp8, state2, 31
+        v_xor_b32       state20, temp3, state21
+        v_xor_b32       state31, temp3, state31
+        v_xor_b32       temp3, temp3, state41
+        v_xor_b32       state12, temp10, state12
+        v_xor_b32       state3, temp11, state13
+        v_xor_b32       state22, temp10, state22
+        v_xor_b32       state21, temp11, state23
+        v_xor_b32       state32, temp10, state32
+        v_xor_b32       v2, temp11, state33
+        v_xor_b32       state42, temp10, state42
+        v_xor_b32       state43, temp11, state43
+        v_xor_b32       state4, temp12, state4
+        v_xor_b32       state5, temp6, state5
+        v_xor_b32       state14, temp12, state14
+        v_xor_b32       state24, temp12, state24
+        v_xor_b32       temp10, temp6, state25
+        v_xor_b32       state34, temp12, state34
+        v_xor_b32       state35, temp6, state35
+        v_xor_b32       state44, temp12, state44
+        v_xor_b32       temp11, temp6, state45
+        v_xor_b32       temp6, temp6, state15
+        v_xor_b32       state6, temp4, state6
+        v_xor_b32       temp12, temp5, state7
+        v_xor_b32       state16, temp4, state16
+        v_xor_b32       state15, temp5, state17
+        v_xor_b32       state26, temp4, state26
+        v_xor_b32       state25, temp5, state27
+        v_xor_b32       state36, temp4, state36
+        v_xor_b32       v33, temp5, state37
+        v_xor_b32       state46, temp4, state46
+        v_xor_b32       state37, temp5, state47
+        v_xor_b32       state8, temp1, state8
+        v_xor_b32       state11, temp0, state9
+        v_xor_b32       state18, temp1, state18
+        v_xor_b32       state13, temp0, state19
+        v_xor_b32       state28, temp1, state28
+        v_xor_b32       state29, temp0, state29
+        v_xor_b32       state38, temp1, state38
+        v_xor_b32       state27, temp0, state39
+        v_xor_b32       state48, temp1, state48
+        v_xor_b32       state23, temp0, state49
+        v_mov_b32       v7, v2
+        v_alignbit_b32  state2, state3, state12, 20
+        v_alignbit_b32  state3, state12, state3, 20
+        v_alignbit_b32  state12, state18, state13, 12
+        v_alignbit_b32  state13, state13, state18, 12
+        v_alignbit_b32  state18, temp11, state44, 3
+        v_alignbit_b32  state19, state44, temp11, 3
+        v_alignbit_b32  state44, state29, state28, 25
+        v_alignbit_b32  state45, state28, state29, 25
+        v_alignbit_b32  state28, state40, temp3, 14
+        v_alignbit_b32  state29, temp3, state40, 14
+        v_alignbit_b32  state40, state5, state4, 2
+        v_alignbit_b32  state41, state4, state5, 2
+        v_alignbit_b32  state4, temp10, state24, 21
+        v_alignbit_b32  state5, state24, temp10, 21
+        v_alignbit_b32  state24, state26, state25, 7
+        v_alignbit_b32  state25, state25, state26, 7
+        v_alignbyte_b32 state26, state38, state27, 3
+        v_alignbyte_b32 state27, state27, state38, 3
+        v_alignbyte_b32 state38, state37, state46, 1
+        v_alignbyte_b32 state39, state46, state37, 1
+        v_alignbit_b32  state46, state31, state30, 23
+        v_alignbit_b32  state47, state30, state31, 23
+        v_alignbit_b32  state30, state8, state11, 5
+        v_alignbit_b32  state31, state11, state8, 5
+        v_alignbit_b32  state8, state48, state23, 18
+        v_alignbit_b32  state9, state23, state48, 18
+        v_alignbit_b32  state48, state42, state43, 30
+        v_alignbit_b32  state49, state43, state42, 30
+        v_alignbit_b32  state42, state15, state16, 9
+        v_alignbit_b32  state43, state16, state15, 9
+        v_alignbit_b32  state16, v7, state32, 19
+        v_alignbit_b32  state17, state32, v7, 19
+        v_alignbit_b32  state32, temp2, state10, 28
+        v_mov_b32       v7, v33
+        v_alignbit_b32  state33, state10, temp2, 28
+        v_alignbit_b32  state10, state6, temp12, 4
+        v_alignbit_b32  state11, temp12, state6, 4
+        v_alignbit_b32  state6, state36, v7, 11
+        v_alignbit_b32  state7, v7, state36, 11
+        v_alignbit_b32  state36, state34, state35, 17
+        v_alignbit_b32  state37, state35, state34, 17
+        v_alignbit_b32  state34, state22, state21, 22
+        v_alignbit_b32  state35, state21, state22, 22
+        v_alignbit_b32  state22, state14, temp6, 26
+        v_alignbit_b32  state23, temp6, state14, 26
+        v_alignbit_b32  state14, state0, state20, 29
+        v_alignbit_b32  state15, state20, state0, 29
+        v_xor_b32       state0, temp7, state4
+        v_bfi_b32       state0, state2, temp7, state0
+        v_xor_b32       temp0, state1, state5
+        v_bfi_b32       temp0, state3, state1, temp0
+        s_waitcnt       lgkmcnt(0)
+        v_xor_b32       state0, scalar_double_temp0[0], state0
+        v_xor_b32       temp0, scalar_double_temp0[1], temp0
+        v_xor_b32       temp1, state2, state6
+        v_bfi_b32       temp1, state4, state2, temp1
+        v_xor_b32       temp2, state3, state7
+        v_bfi_b32       temp2, state5, state3, temp2
+        v_xor_b32       temp3, state4, state8
+        v_bfi_b32       state4, state6, state4, temp3
+        v_xor_b32       temp3, state5, state9
+        v_bfi_b32       state5, state7, state5, temp3
+        v_xor_b32       temp3, temp7, state6
+        v_bfi_b32       state6, state8, state6, temp3
+        v_xor_b32       temp3, state1, state7
+        v_bfi_b32       state7, state9, state7, temp3
+        v_xor_b32       state2, state2, state8
+        v_bfi_b32       state8, temp7, state8, state2
+        v_xor_b32       state3, state3, state9
+        v_bfi_b32       state9, state1, state9, state3
+        v_xor_b32       state3, state10, state14
+        v_bfi_b32       state3, state12, state10, state3
+        v_xor_b32       state2, state11, state15
+        v_bfi_b32       state2, state13, state11, state2
+        v_xor_b32       state1, state12, state16
+        v_bfi_b32       state1, state14, state12, state1
+        v_xor_b32       temp3, state13, state17
+        v_bfi_b32       temp3, state15, state13, temp3
+        v_xor_b32       temp4, state14, state18
+        v_bfi_b32       state14, state16, state14, temp4
+        v_xor_b32       temp4, state15, state19
+        v_bfi_b32       state15, state17, state15, temp4
+        v_xor_b32       temp4, state10, state16
+        v_bfi_b32       state16, state18, state16, temp4
+        v_xor_b32       temp4, state11, state17
+        v_bfi_b32       state17, state19, state17, temp4
+        v_xor_b32       state12, state12, state18
+        v_bfi_b32       state18, state10, state18, state12
+        v_xor_b32       state13, state13, state19
+        v_bfi_b32       state19, state11, state19, state13
+        v_xor_b32       state13, temp9, state24
+        v_bfi_b32       state13, state22, temp9, state13
+        v_xor_b32       state12, temp8, state25
+        v_bfi_b32       state12, state23, temp8, state12
+        v_xor_b32       state10, state22, state26
+        v_bfi_b32       state10, state24, state22, state10
+        v_xor_b32       temp4, state23, state27
+        v_bfi_b32       temp4, state25, state23, temp4
+        v_xor_b32       temp5, state24, state28
+        v_bfi_b32       state24, state26, state24, temp5
+        v_xor_b32       temp5, state25, state29
+        v_bfi_b32       state25, state27, state25, temp5
+        v_xor_b32       temp5, temp9, state26
+        v_bfi_b32       state26, state28, state26, temp5
+        v_xor_b32       temp5, temp8, state27
+        v_bfi_b32       state27, state29, state27, temp5
+        v_xor_b32       state22, state22, state28
+        v_bfi_b32       state28, temp9, state28, state22
+        v_xor_b32       state22, state23, state29
+        v_bfi_b32       state29, temp8, state29, state22
+        v_xor_b32       state22, state30, state34
+        v_bfi_b32       state22, state32, state30, state22
+        v_xor_b32       temp5, state31, state35
+        v_bfi_b32       temp5, state33, state31, temp5
+        v_xor_b32       temp7, state32, state36
+        v_bfi_b32       temp7, state34, state32, temp7
+        v_xor_b32       temp8, state33, state37
+        v_bfi_b32       temp8, state35, state33, temp8
+        v_xor_b32       temp9, state34, state38
+        v_bfi_b32       state34, state36, state34, temp9
+        v_xor_b32       temp9, state35, state39
+        v_bfi_b32       state35, state37, state35, temp9
+        v_xor_b32       temp9, state30, state36
+        v_bfi_b32       state36, state38, state36, temp9
+        v_xor_b32       temp9, state31, state37
+        v_bfi_b32       state37, state39, state37, temp9
+        v_xor_b32       state32, state32, state38
+        v_bfi_b32       state38, state30, state38, state32
+        v_xor_b32       state32, state33, state39
+        v_bfi_b32       state39, state31, state39, state32
+        v_xor_b32       state32, state40, state44
+        v_bfi_b32       state32, state42, state40, state32
+        v_xor_b32       state30, state41, state45
+        v_bfi_b32       state30, state43, state41, state30
+        v_xor_b32       temp9, state42, state46
+        v_bfi_b32       temp9, state44, state42, temp9
+        v_xor_b32       state11, state43, state47
+        v_bfi_b32       state11, state45, state43, state11
+        v_xor_b32       temp10, state44, state48
+        v_bfi_b32       state44, state46, state44, temp10
+        v_xor_b32       temp10, state45, state49
+        v_bfi_b32       state45, state47, state45, temp10
+        v_xor_b32       temp10, state40, state46
+        v_bfi_b32       state46, state48, state46, temp10
+        v_xor_b32       temp10, state41, state47
+        v_bfi_b32       state47, state49, state47, temp10
+        v_xor_b32       state42, state42, state48
+        v_bfi_b32       state48, state40, state48, state42
+        v_xor_b32       state42, state43, state49
+        v_bfi_b32       state49, state41, state49, state42
+        v_mov_b32       state43, state11
+        v_mov_b32       state42, temp9
+        v_mov_b32       state41, state30
+        v_mov_b32       state40, state32
+        v_mov_b32       state33, temp8
+        v_mov_b32       state32, temp7
+        v_mov_b32       state31, temp5
+        v_mov_b32       state30, state22
+        v_mov_b32       state23, temp4
+        v_mov_b32       state22, state10
+        v_mov_b32       temp4, state12
+        v_mov_b32       temp5, state13
+        v_mov_b32       state13, temp3
+        v_mov_b32       state12, state1
+        v_mov_b32       state11, state2
+        v_mov_b32       state10, state3
+        v_mov_b32       state3, temp2
+        v_mov_b32       state2, temp1
+        v_mov_b32       state21, temp4
+        v_mov_b32       state20, temp5
+        v_mov_b32       state1, temp0
+
+        s_add_u32       keccak_round, keccak_round, 1
+        s_cmp_eq_i32    keccak_round, 24
+        s_cbranch_scc0  .keccak_loop
+
+        s_cmp_lt_i32    pass, 1
+        s_cbranch_scc0  .test
+
+
+
+        /*******/
+        /* MIX */
+        /*******/
+
+        s_movk_i32      tid, 0x0
+        s_nop           0
+        s_nop           0
+.tid_loop:
+        v_lshrrev_b32   mix_temp3, 2, local_id
+        v_lshlrev_b32   mix_temp3, 6, mix_temp3
+        v_and_b32       mix_temp2, 3, local_id
+        v_cmp_eq_i32    vcc, tid, mix_temp2
+        s_and_saveexec_b64 s[46:47], vcc
+        ds_write2_b64   mix_temp3, v[0:1], v[2:3] offset1:1
+        ds_write2_b64   mix_temp3, v[4:5], v[6:7] offset0:2 offset1:3
+        ds_write2_b64   mix_temp3, v[8:9], v[10:11] offset0:4 offset1:5
+        ds_write2_b64   mix_temp3, v[12:13], v[14:15] offset0:6 offset1:7
+        s_mov_b64       exec, s[46:47]
+        s_waitcnt       lgkmcnt(0)
+        s_barrier
+        v_and_b32       mix_temp2, 1, local_id
+        v_lshlrev_b32   mix_temp2, 5, mix_temp2
+        v_add_u32       mix_temp2, vcc, mix_temp3, mix_temp2
+        ds_read2_b64    v[24:27], mix_temp2 offset1:1
+        ds_read2_b64    v[28:31], mix_temp2 offset0:2 offset1:3
+        v_lshrrev_b32   mix_temp3, 2, local_id
+        v_lshlrev_b32   mix_temp3, 6, mix_temp3
+        ds_read_b32     mix_init0, mix_temp3
+        s_waitcnt       lgkmcnt(0)
+        s_barrier
+
+
+
+        v_cvt_f32_u32   mix_temp0, dag_size
+        v_rcp_f32       mix_temp0, mix_temp0
+        v_mul_f32       mix_temp0, 0x4f800000, mix_temp0
+        v_cvt_u32_f32   mix_temp0, mix_temp0
+        v_mul_lo_u32    mix_temp1, dag_size, mix_temp0
+        v_mul_hi_u32    mix_temp2, dag_size, mix_temp0
+        v_sub_u32       mix_temp3, vcc, 0, mix_temp1
+        v_cmp_lg_i32    scalar_double_temp0, 0, mix_temp2
+        v_cndmask_b32   mix_temp1, mix_temp3, mix_temp1, scalar_double_temp0
+        v_mul_hi_u32    mix_temp1, mix_temp1, mix_temp0
+        v_sub_u32       mix_temp3, vcc, mix_temp0, mix_temp1
+        v_add_u32       mix_temp0, vcc, mix_temp0, mix_temp1
+        v_cndmask_b32   temp1, mix_temp0, mix_temp3, scalar_double_temp0
+
+        v_lshlrev_b32   temp2, 2, local_id
+
+        v_and_b32       mix_temp2, 3, local_id
+        v_lshlrev_b32   temp3, 5, mix_temp2
+
+        s_movk_i32      mix_index, 0x0
+        s_nop           0
+        s_nop           0
+        s_nop           0
+.mix_loop:
+        s_bfe_u32       scalar_temp0, mix_index, 0x20003
+        v_and_b32       temp0, 0xfc, local_id
+        v_or_b32        temp0, scalar_temp0, temp0
+        v_lshlrev_b32   temp0, 2, temp0
+
+        s_and_b32       scalar_temp0, mix_index, 0x7
+        s_set_gpr_idx_on scalar_temp0, 1
+        v_mov_b32       mix_temp0, mix0
+        s_set_gpr_idx_off
+        s_mov_b32       m0, 0x10000
+
+        v_xor_b32       mix_temp4, mix_index, mix_init0
+        v_mul_lo_u32    mix_temp4, mix_temp4, fnv_prime
+        v_xor_b32       mix_temp1, mix_temp4, mix_temp0
+        v_mul_hi_u32    mix_temp0, temp1, mix_temp1
+        v_mul_lo_u32    mix_temp0, mix_temp0, dag_size
+        v_sub_u32       mix_temp2, vcc, mix_temp1, mix_temp0
+        v_cmp_ge_u32    scalar_double_temp1, mix_temp1, mix_temp0
+        v_cmp_ge_u32    scalar_double_temp0, mix_temp2, dag_size
+        v_subrev_u32    mix_temp0, vcc, dag_size, mix_temp2
+        s_and_b64       vcc, scalar_double_temp1, scalar_double_temp0
+        v_cndmask_b32   mix_temp0, mix_temp2, mix_temp0, vcc
+        v_add_u32       mix_temp1, vcc, dag_size, mix_temp0
+        v_cndmask_b32   mix_temp0, mix_temp1, mix_temp0, scalar_double_temp1
+
+        ds_write_b32    temp2, mix_temp0 offset:worksize*16
+        ds_read_b32     mix_double_temp0[0], temp0 offset:worksize*16
+        v_mov_b32       mix_double_temp0[1], 0
+        v_mov_b32       mix_double_temp1[0], dag[0]
+        v_mov_b32       mix_double_temp1[1], dag[1]
+        v_add_u32       mix_double_temp1[0], vcc, mix_double_temp1[0], temp3
+        v_addc_u32      mix_double_temp1[1], vcc, mix_double_temp1[1], 0, vcc
+        s_waitcnt       lgkmcnt(0)
+        v_lshlrev_b64   mix_double_temp0, 7, mix_double_temp0
+        v_add_u32       mix_double_temp0[0], vcc, mix_double_temp0[0], mix_double_temp1[0]
+        v_addc_u32      mix_double_temp0[1], vcc, mix_double_temp0[1], mix_double_temp1[1], vcc
+        v_add_u32       mix_double_temp1[0], vcc, mix_double_temp0[0], 16
+        v_addc_u32      mix_double_temp1[1], vcc, mix_double_temp0[1], 0, vcc
+        flat_load_dwordx4 mix_quad_temp0, mix_double_temp0 glc
+        flat_load_dwordx4 mix_quad_temp1, mix_double_temp1 glc
+        v_mul_lo_u32    mix0, mix0, fnv_prime
+        v_mul_lo_u32    mix1, mix1, fnv_prime
+        v_mul_lo_u32    mix2, mix2, fnv_prime
+        v_mul_lo_u32    mix3, mix3, fnv_prime
+        v_mul_lo_u32    mix4, mix4, fnv_prime
+        v_mul_lo_u32    mix5, mix5, fnv_prime
+        v_mul_lo_u32    mix6, mix6, fnv_prime
+        v_mul_lo_u32    mix7, mix7, fnv_prime
+        s_waitcnt       vmcnt(1)
+        s_add_u32       mix_index, mix_index, 1
+        v_xor_b32       mix3, mix3, mix_quad_temp0[3]
+        v_xor_b32       mix2, mix2, mix_quad_temp0[2]
+        v_xor_b32       mix1, mix1, mix_quad_temp0[1]
+        v_xor_b32       mix0, mix0, mix_quad_temp0[0]
+        s_waitcnt       vmcnt(0)
+        v_xor_b32       mix7, mix7, mix_quad_temp1[3]
+        v_xor_b32       mix6, mix6, mix_quad_temp1[2]
+        v_xor_b32       mix5, mix5, mix_quad_temp1[1]
+        v_xor_b32       mix4, mix4, mix_quad_temp1[0]
+
+        s_cmp_ge_u32    mix_index, 64
+        s_cbranch_scc0  .mix_loop
+
+        v_mul_lo_u32    mix_double_temp0[0], mix0, fnv_prime
+        v_xor_b32       mix_double_temp0[0], mix_double_temp0[0], mix1
+        v_mul_lo_u32    mix_double_temp0[0], mix_double_temp0[0], fnv_prime
+        v_xor_b32       mix_double_temp0[0], mix_double_temp0[0], mix2
+        v_mul_lo_u32    mix_double_temp0[0], mix_double_temp0[0], fnv_prime
+        v_xor_b32       mix_double_temp0[0], mix_double_temp0[0], mix3
+        v_mul_lo_u32    mix_double_temp0[1], mix4, fnv_prime
+        v_xor_b32       mix_double_temp0[1], mix_double_temp0[1], mix5
+        v_mul_lo_u32    mix_double_temp0[1], mix_double_temp0[1], fnv_prime
+        v_xor_b32       mix_double_temp0[1], mix_double_temp0[1], mix6
+        v_mul_lo_u32    mix_double_temp0[1], mix_double_temp0[1], fnv_prime
+        v_xor_b32       mix_double_temp0[1], mix_double_temp0[1], mix7
+        v_lshrrev_b32   mix_temp2, 2, local_id
+        v_and_b32       mix_temp3, 3, local_id
+        v_lshlrev_b32   mix_temp2, 6, mix_temp2
+        v_lshlrev_b32   mix_temp3, 3, mix_temp3
+        v_add_u32       mix_temp3, vcc, mix_temp2, mix_temp3
+        ds_write_b64    mix_temp3, mix_double_temp0
+        s_waitcnt       lgkmcnt(0)
+        s_barrier
+        v_and_b32       mix_temp2, 3, local_id
+        v_cmp_eq_i32    vcc, tid, mix_temp2
+        s_and_saveexec_b64 s[46:47], vcc
+        v_lshrrev_b32   mix_temp3, 2, local_id
+        v_lshlrev_b32   mix_temp3, 6, mix_temp3
+        ds_read2_b64    v[16:19], mix_temp3 offset1:1
+        ds_read2_b64    v[20:23], mix_temp3 offset0:2 offset1:3
+        s_waitcnt       lgkmcnt(0)
+        s_mov_b64       exec, s[46:47]
+        s_barrier
+        s_add_u32       tid, tid, 1
+        s_cmp_ge_u32    tid, 4
+        s_cbranch_scc0  .tid_loop
+        s_add_u32       pass, pass, 1
+        s_cmp_ge_i32    pass, 2
+        s_cbranch_scc1  .test
+        v_mov_b32       state49, 0
+        v_mov_b32       state48, 0
+        v_mov_b32       state47, 0
+        v_mov_b32       state46, 0
+        v_mov_b32       state45, 0
+        v_mov_b32       state44, 0
+        v_mov_b32       state43, 0
+        v_mov_b32       state42, 0
+        v_mov_b32       state41, 0
+        v_mov_b32       state40, 0
+        v_mov_b32       state39, 0
+        v_mov_b32       state38, 0
+        v_mov_b32       state37, 0
+        v_mov_b32       state36, 0
+        v_mov_b32       state35, 0
+        v_mov_b32       state34, 0
+        v_mov_b32       state33, 0x80000000
+        v_mov_b32       state32, 0
+        v_mov_b32       state31, 0
+        v_mov_b32       state30, 0
+        v_mov_b32       state29, 0
+        v_mov_b32       state28, 0
+        v_mov_b32       state27, 0
+        v_mov_b32       state26, 0
+        v_mov_b32       state25, 0
+        v_mov_b32       state24, 1
+
+        s_movk_i32      keccak_round, 0x0
+        s_branch        .keccak_loop
+        s_nop           0
+        s_nop           0
+        s_nop           0
+
+
+
+.test:
+        /* gid - Upper 32bits are ignored. */
+        v_mov_b32       temp0, iter
+        v_mul_lo_u32    temp0, temp0, global_size
+        v_add_u32       temp1, vcc, first_work_item_in_group, local_id
+        v_add_u32       temp1, vcc, temp1, temp0
+
+        v_lshlrev_b32   mix_double_temp0[0], 8, state1
+        v_lshlrev_b32   temp0, 8, state0
+
+        v_or_b32        temp0, state0, temp0 src0_sel:byte1
+        s_mov_b32       scalar_temp0, 0x5040203
+        v_perm_b32      mix_double_temp0[1], temp0, state0, scalar_temp0
+        v_or_b32        mix_double_temp0[0], state1, mix_double_temp0[0] src0_sel:byte1
+        v_perm_b32      mix_double_temp0[0], mix_double_temp0[0], state1, scalar_temp0
+        s_waitcnt       lgkmcnt(0)
+        v_cmp_gt_u64    vcc, target, mix_double_temp0
+
+        /* Mask out any threads that don't meet the target filter */
+        s_and_saveexec_b64 s[46:47], vcc
+        s_waitcnt       lgkmcnt(0)
+
+        /* Increment the uint32 value at output */
+        v_mov_b32       temp0, 1
+        v_mov_b32       mix_double_temp0[0], output[0]
+        v_mov_b32       mix_double_temp0[1], output[1]
+        flat_atomic_add temp0, mix_double_temp0, temp0 glc
+        s_waitcnt       vmcnt(0) & lgkmcnt(0)
+
+        /* mix_double_temp0 = (sol_cnt) * 4 -- this is exactly where we
+         * want to inject the solution */
+        v_min_u32       mix_double_temp0[0], 0xfe, temp0
+        v_add_u32       mix_double_temp0[0], vcc, mix_double_temp0[0], 1
+        v_mov_b32       mix_double_temp0[1], 0
+        v_lshlrev_b32   mix_double_temp0[0], 2, mix_double_temp0[0]
+
+        /* add the offset and inject the GID */
+        v_add_u32       mix_double_temp1[0], vcc, output[0], mix_double_temp0[0]
+        v_mov_b32       mix_double_temp0[0], output[1]
+        v_addc_u32      mix_double_temp1[1], vcc, mix_double_temp0[0], mix_double_temp0[1], vcc
+        flat_store_dword mix_double_temp1, temp1
+
+        /* Restore exec mask for threads that don't have a solution */
+        s_mov_b64       exec, s[46:47]
+
+        s_add_u32       iter, iter, 1
+        s_cmp_ge_u32    iter, iterations
+        s_cbranch_scc0  .iter_loop
+
+        s_endpgm

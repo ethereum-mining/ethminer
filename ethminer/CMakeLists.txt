@@ -13,7 +13,7 @@ add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 hunter_add_package(CLI11)
 find_package(CLI11 CONFIG REQUIRED)
 
-target_link_libraries(ethminer PRIVATE ethcore poolprotocols devcore ethminer-buildinfo CLI11::CLI11)
+target_link_libraries(ethminer PRIVATE ethcore poolprotocols devcore ethminer-buildinfo CLI11::CLI11 Boost::system)
 
 if(ETHDBUS)
 	find_package(PkgConfig)
