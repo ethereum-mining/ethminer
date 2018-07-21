@@ -1,7 +1,7 @@
 SDIR=./src
 BUILD=./bin
 
-ASFLAGS=-I$(SDIR)
+ASFLAGS=-I$(SDIR) -DDAGGEN
 AS=clrxasm
 
 .PHONY: all

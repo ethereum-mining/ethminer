@@ -88,7 +88,7 @@ add_subdirectory(libpoolprotocols)
 
 if (ETHASHCL)
 	add_subdirectory(libethash-cl)
-	add_subdirectory(kernels)
+	add_subdirectory(libethash-cl/kernels)
 endif ()
 if (ETHASHCUDA)
 	add_subdirectory(libethash-cuda)
