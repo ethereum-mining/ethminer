@@ -50,7 +50,7 @@ public:
 	/// Default value of the local work size. Also known as workgroup size.
 	static const unsigned c_defaultLocalWorkSize = 192;
 	/// Default value of the global work size as a multiplier of the local work size
-	static const unsigned c_defaultGlobalWorkSizeMultiplier = 18000;
+	static const unsigned c_defaultGlobalWorkSizeMultiplier = 16392;
 
 	CLMiner(FarmFace& _farm, unsigned _index);
 	~CLMiner() override;
@@ -60,9 +60,8 @@ public:
 	static void listDevices();
     static bool configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
         unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice,
-        bool _noeval, bool _exit, int _kernel);
+        bool _noeval, bool _exit, bool _nobinary);
     static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
-	static void setThreadsPerHash(int _threadsPerHash){s_threadsPerHash = _threadsPerHash; }
 	static void setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount)
 	{
 		for (unsigned i = 0; i < _selectedDeviceCount; i++)
@@ -70,7 +69,6 @@ public:
 			s_devices[i] = _devices[i];
 		}
 	}
-    static void setNumberIterations(unsigned _iterations) {s_kernelIterations = _iterations <= 1 ? 1 : _iterations;}
 protected:
 	void kick_miner() override;
 
@@ -94,8 +92,7 @@ private:
 
 	static unsigned s_platformId;
 	static unsigned s_numInstances;
-	static int s_threadsPerHash;
-    static unsigned s_kernelIterations;
+	static bool s_noBinary;
 	static vector<int> s_devices;
 
 	/// The local work size for the search

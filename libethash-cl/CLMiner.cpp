@@ -19,8 +19,6 @@ namespace eth
 
 unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
-int CLMiner::s_threadsPerHash = -1;
-unsigned CLMiner::s_kernelIterations = 1;
 
 constexpr size_t c_maxSearchResults = 255;
 
@@ -256,6 +254,7 @@ std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, 
 unsigned CLMiner::s_platformId = 0;
 unsigned CLMiner::s_numInstances = 0;
 vector<int> CLMiner::s_devices(MAX_MINERS, -1);
+bool CLMiner::s_noBinary = false;
 
 CLMiner::CLMiner(FarmFace& _farm, unsigned _index):
     Miner("cl-", _farm, _index)
@@ -449,19 +448,16 @@ void CLMiner::listDevices()
 
 bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
     unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice,
-	bool _noeval, bool _exit, int _kernel)
+	bool _noeval, bool _exit, bool _nobinary)
 {
 	s_noeval = _noeval;
     s_dagLoadMode = _dagLoadMode;
     s_dagCreateDevice = _dagCreateDevice;
     s_exit = _exit;
+	s_noBinary = _nobinary;
 
 	if (_noeval)
 		cwarn << "--no-eval not yet supported for AMD.";
-	if (_kernel >= 0)
-		cwarn << "--cl-kernel ignored. Auto-selecting kernel";
-	if (s_threadsPerHash >= 0)
-		cwarn << "--cl-parallel-hash ignored.";
 
     s_platformId = _platformId;
 
@@ -653,7 +649,7 @@ bool CLMiner::init(int epoch)
            the default kernel if loading fails for whatever reason */
 		bool loadedBinary = false;
 
-        {
+        if (!s_noBinary) {
             std::ifstream kernel_file;
             vector<unsigned char> bin_data;
             std::stringstream fname_strm;
@@ -750,7 +746,7 @@ bool CLMiner::init(int epoch)
         m_searchKernel.setArg(2, m_dag[0]);
         m_searchKernel.setArg(3, m_dagItems);
         m_searchKernel.setArg(6, ~0u);
-        m_searchKernel.setArg(7, uint32_t(s_kernelIterations));  // Number of iterations
+        m_searchKernel.setArg(7, 1u);  // Number of iterations
 
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");
