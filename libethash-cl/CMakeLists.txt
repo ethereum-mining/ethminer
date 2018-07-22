@@ -6,14 +6,14 @@
 add_custom_command(
 	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ethash.h
 	COMMAND ${CMAKE_COMMAND} ARGS
-	-DBIN2H_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/kernels/ethash.cl"
+	-DBIN2H_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/kernels/cl/ethash.cl"
 	-DBIN2H_VARIABLE_NAME=ethash_cl
 	-DBIN2H_HEADER_FILE="${CMAKE_CURRENT_BINARY_DIR}/ethash.h"
 	-P "${CMAKE_CURRENT_SOURCE_DIR}/bin2h.cmake"
 	COMMENT "Generating OpenCL Kernel Byte Array"
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/kernels/ethash.cl
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/kernels/cl/ethash.cl
 )
-add_custom_target(clbin2h_stable DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/ethash.h ${CMAKE_CURRENT_SOURCE_DIR}/ethash.cl)
+add_custom_target(clbin2h_stable DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/ethash.h ${CMAKE_CURRENT_SOURCE_DIR}/cl/ethash.cl)
 
 set(SOURCES
 	CLMiner.h CLMiner.cpp

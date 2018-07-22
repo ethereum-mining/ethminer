@@ -331,7 +331,8 @@ public:
 
 #if ETH_ETHASHCL
 
-		app.add_option("--cl-kernel", m_clKernel,
+		int clKernel = -1;
+		app.add_option("--cl-kernel", clKernel,
 			"Ignored parameter. Kernel is auto-selected.", true)
 			->group(OpenCLGroup)
 			->check(CLI::Range(2));
@@ -345,14 +346,10 @@ public:
 			"Select list of devices to mine on (default: use all available)")
 			->group(OpenCLGroup);
 
-		app.add_set("--cl-parallel-hash", m_openclThreadsPerHash, {1, 2, 4, 8},
+		int openclThreadsPerHash = -1;
+		app.add_set("--cl-parallel-hash", openclThreadsPerHash, {1, 2, 4, 8},
 			"ignored parameter", true)
 			->group(OpenCLGroup);
-
-		app.add_option("--cl-iterations", m_openclIterations,
-			"Number of outer iterations to perform before enqeueing on a new nonce", true)
-			->group(OpenCLGroup)
-			->check(CLI::Range(1,99999));
 
 		app.add_option("--cl-global-work", m_globalWorkSizeMultiplier,
 			"Set the global work size multipler.", true)
@@ -362,6 +359,9 @@ public:
 			"Set the local work size", true)
 			->group(OpenCLGroup);
 
+		app.add_flag("--cl-nobinary", m_noBinary,
+			"Don't attempt to load binary kernel")
+			->group(OpenCLGroup);
 #endif
 
 #if ETH_ETHASHCUDA
@@ -498,6 +498,13 @@ public:
 			exit(-1);
     	}
 
+#if ETH_ETHASHCL
+		if (clKernel >= 0)
+			clog << "--cl-kernel ignored. Kernel is auto-selected\n";
+		if (openclThreadsPerHash >= 0)
+			clog << "--cl-parallel-hash ignored. No longer applies\n";
+#endif
+
 		if (hwmon_opt->count()) {
 			m_show_hwmonitors = true;
 			if (hwmon)
@@ -621,9 +628,6 @@ public:
 				m_miningThreads = m_openclDeviceCount;
 			}
 
-			CLMiner::setNumberIterations(m_openclIterations);
-			CLMiner::setThreadsPerHash(m_openclThreadsPerHash);
-
 			if (!CLMiner::configureGPU(
 				m_localWorkSize,
 				m_globalWorkSizeMultiplier,
@@ -633,7 +637,7 @@ public:
 				m_dagCreateDevice,
 				m_noEval,
 				m_exit,
-				m_clKernel
+				m_noBinary
 			)) {
 				stop_io_service();
 				exit(1);
@@ -896,13 +900,11 @@ private:
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 #if ETH_ETHASHCL
-	unsigned m_openclIterations = 1;  ///< A numeric value for the number of iterations
 	unsigned m_openclDeviceCount = 0;
 	vector<unsigned> m_openclDevices;
-	int m_openclThreadsPerHash = -1;
 	unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
 	unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
-	int m_clKernel = -1;
+	bool m_noBinary = false;
 #endif
 #if ETH_ETHASHCUDA
 	unsigned m_cudaDeviceCount = 0;

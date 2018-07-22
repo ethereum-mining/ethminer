@@ -1,4 +1,4 @@
-SDIR=./src
+SDIR=./isa
 BUILD=./bin
 
 ASFLAGS=-I$(SDIR)
