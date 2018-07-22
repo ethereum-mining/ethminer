@@ -4,7 +4,7 @@
  * @author Zawawawa
  */
 
-.kernel ethash_search
+.kernel search
     .config
         .dims x
         .cws worksize, 1, 1
@@ -26,11 +26,11 @@
         .arg output, "uint*", uint*, global, restrict volatile
         .arg header, "uint2*", uint2*, constant, const, rdonly
         .arg dag, "ulong8*", ulong8*, global, const, rdonly
+        .arg dag_size, "uint", uint
         .arg start_nonce, "ulong", ulong
         .arg target, "ulong", ulong
-        .arg isolate, "ulong", ulong
-        .arg dag_size, "uint", uint
-        .arg iterations, "uint", uint
+        .arg isolate, "uint", uint
+        .arg itereations, "uint", uint
     .text
         mix0 = %v24
         mix1 = %v25
@@ -86,7 +86,7 @@
         state18 = %v18
         state17 = %v17
         state16 = %v16
-
+        
         state15 = %v15
         state14 = %v14
         state13 = %v13
@@ -104,7 +104,7 @@
         state1 = %v1
         state0 = %v0
 
-        temp0 = %v50
+        temp0 = %v50 
         temp1 = %v51
         temp2 = %v52
         temp3 = %v53
@@ -129,11 +129,11 @@
         arg_output      = 0x30
         arg_header      = 0x38
         arg_dag         = 0x40
-        arg_start_nonce = 0x48
-        arg_target      = 0x50
-        arg_isolate     = 0x58
-        arg_dag_size    = 0x60
-        arg_iterations  = 0x64
+        arg_dag_size    = 0x48
+        arg_start_nonce = 0x50
+        arg_target      = 0x58
+        arg_isolate     = 0x60
+        arg_itereations = 0x64
 
         output          = %s[2:3]
         header          = %s[10:11]
@@ -143,7 +143,7 @@
         target          = %s[16:17]
         iterations      = %s18
         global_size    = %s19
-
+        
         header_content  = %s[24:31]
         scalar_temp0    = %s20
         scalar_temp1    = %s21
@@ -164,20 +164,20 @@
 
 
         v_mov_b32       local_id, v0
-        s_mov_b32       m0, 0x10000
+        s_mov_b32       m0, 0x10000 
         s_mov_b32       fnv_prime, 0x1000193
-
+        
         s_load_dwordx2  output,         args,    arg_output
         s_load_dwordx2  header,         args,    arg_header
         s_load_dwordx2  dag,            args,    arg_dag
         s_load_dword    dag_size,       args,    arg_dag_size
         s_load_dwordx2  start_nonce,    args,    arg_start_nonce
         s_load_dwordx2  target,         args,    arg_target
-        s_load_dword    iterations,     args,    arg_iterations
+        s_load_dword    iterations,     args,    arg_itereations
         s_load_dword    global_size,    kernarg, kernarg_global_size
         s_waitcnt       lgkmcnt(0)
-
-
+        
+        
         s_load_dwordx8  header_content, header,  0x0
         s_waitcnt       lgkmcnt(0)
 
@@ -199,7 +199,7 @@
         v_mov_b32       state2, header_content[2]
         v_mov_b32       state1, header_content[1]
         v_mov_b32       state0, header_content[0]
-
+        
         s_mul_i32       first_work_item_in_group, group_id, worksize
 
         v_add_u32       state8, vcc, first_work_item_in_group, local_id
@@ -281,7 +281,7 @@
         s_add_u32       scalar_double_temp0[0], scalar_temp0, scalar_double_temp0[0]
         s_addc_u32      scalar_double_temp0[1], scalar_temp1, scalar_double_temp0[1]
         s_load_dwordx2  scalar_double_temp0, scalar_double_temp0, 0x0
-
+        
         v_xor_b32       temp0, state0, state10
         v_xor_b32       temp1, state1, state11
         v_xor_b32       temp2, state2, state12
@@ -327,13 +327,13 @@
         v_xor_b32       temp11, temp1, temp11
         v_xor_b32       temp10, temp0, temp10
         v_alignbit_b32  temp12, temp9, temp8, 31
-        v_xor_b32       temp5, temp5, temp12
+        v_xor_b32       temp5, temp5, temp12  
         v_alignbit_b32  temp12, temp8, temp9, 31
         v_xor_b32       temp4, temp4, temp12
         v_alignbit_b32  temp12, temp0, temp1, 31
         v_alignbit_b32  temp0, temp1, temp0, 31
         v_xor_b32       temp0, temp7, temp0
-        v_xor_b32       temp1, temp6, temp12
+        v_xor_b32       temp1, temp6, temp12 
         v_alignbit_b32  temp12, temp7, temp6, 31
         v_alignbit_b32  temp7, temp6, temp7, 31
         v_xor_b32       temp7, temp7, temp12
@@ -366,7 +366,7 @@
         v_xor_b32       state22, temp10, state22
         v_xor_b32       state21, temp11, state23
         v_xor_b32       state32, temp10, state32
-        v_xor_b32       v2, temp11, state33
+        v_xor_b32       v2, temp11, state33      
         v_xor_b32       state42, temp10, state42
         v_xor_b32       state43, temp11, state43
         v_xor_b32       state4, temp12, state4
@@ -386,7 +386,7 @@
         v_xor_b32       state26, temp4, state26
         v_xor_b32       state25, temp5, state27
         v_xor_b32       state36, temp4, state36
-        v_xor_b32       v33, temp5, state37
+        v_xor_b32       v33, temp5, state37 
         v_xor_b32       state46, temp4, state46
         v_xor_b32       state37, temp5, state47
         v_xor_b32       state8, temp1, state8
@@ -398,7 +398,7 @@
         v_xor_b32       state38, temp1, state38
         v_xor_b32       state27, temp0, state39
         v_xor_b32       state48, temp1, state48
-        v_xor_b32       state23, temp0, state49
+        v_xor_b32       state23, temp0, state49 
         v_mov_b32       v7, v2
         v_alignbit_b32  state2, state3, state12, 20
         v_alignbit_b32  state3, state12, state3, 20
@@ -431,7 +431,7 @@
         v_alignbit_b32  state42, state15, state16, 9
         v_alignbit_b32  state43, state16, state15, 9
         v_alignbit_b32  state16, v7, state32, 19
-        v_alignbit_b32  state17, state32, v7, 19
+        v_alignbit_b32  state17, state32, v7, 19      
         v_alignbit_b32  state32, temp2, state10, 28
         v_mov_b32       v7, v33
         v_alignbit_b32  state33, state10, temp2, 28
@@ -575,14 +575,14 @@
         s_add_u32       keccak_round, keccak_round, 1
         s_cmp_eq_i32    keccak_round, 24
         s_cbranch_scc0  .keccak_loop
-
+        
         s_cmp_lt_i32    pass, 1
         s_cbranch_scc0  .test
 
 
 
         /*******/
-        /* MIX */
+        /* MIX */ 
         /*******/
 
         s_movk_i32      tid, 0x0
@@ -648,7 +648,7 @@
         v_mov_b32       mix_temp0, mix0
         s_set_gpr_idx_off
         s_mov_b32       m0, 0x10000
-
+                
         v_xor_b32       mix_temp4, mix_index, mix_init0
         v_mul_lo_u32    mix_temp4, mix_temp4, fnv_prime
         v_xor_b32       mix_temp1, mix_temp4, mix_temp0
@@ -763,7 +763,7 @@
         v_mov_b32       state26, 0
         v_mov_b32       state25, 0
         v_mov_b32       state24, 1
-
+        
         s_movk_i32      keccak_round, 0x0
         s_branch        .keccak_loop
         s_nop           0
@@ -771,7 +771,7 @@
         s_nop           0
 
 
-
+        
 .test:
         /* gid - Upper 32bits are ignored. */
         v_mov_b32       temp0, iter
@@ -789,32 +789,22 @@
         v_perm_b32      mix_double_temp0[0], mix_double_temp0[0], state1, scalar_temp0
         s_waitcnt       lgkmcnt(0)
         v_cmp_gt_u64    vcc, target, mix_double_temp0
-
-        /* Mask out any threads that don't meet the target filter */
         s_and_saveexec_b64 s[46:47], vcc
         s_waitcnt       lgkmcnt(0)
-
-        /* Increment the uint32 value at output */
+        s_add_u32       scalar_double_temp0[0], output[0], 0x3fc
+        s_addc_u32      scalar_double_temp0[1], output[1], 0
         v_mov_b32       temp0, 1
-        v_mov_b32       mix_double_temp0[0], output[0]
-        v_mov_b32       mix_double_temp0[1], output[1]
+        v_mov_b32       mix_double_temp0[0], scalar_double_temp0[0]
+        v_mov_b32       mix_double_temp0[1], scalar_double_temp0[1]
         flat_atomic_add temp0, mix_double_temp0, temp0 glc
         s_waitcnt       vmcnt(0) & lgkmcnt(0)
-
-        /* mix_double_temp0 = (sol_cnt) * 4 -- this is exactly where we
-         * want to inject the solution */
         v_min_u32       mix_double_temp0[0], 0xfe, temp0
-        v_add_u32       mix_double_temp0[0], vcc, mix_double_temp0[0], 1
         v_mov_b32       mix_double_temp0[1], 0
-        v_lshlrev_b32   mix_double_temp0[0], 2, mix_double_temp0[0]
-
-        /* add the offset and inject the GID */
+        v_lshlrev_b64   mix_double_temp0, 2, mix_double_temp0
         v_add_u32       mix_double_temp1[0], vcc, output[0], mix_double_temp0[0]
         v_mov_b32       mix_double_temp0[0], output[1]
         v_addc_u32      mix_double_temp1[1], vcc, mix_double_temp0[0], mix_double_temp0[1], vcc
         flat_store_dword mix_double_temp1, temp1
-
-        /* Restore exec mask for threads that don't have a solution */
         s_mov_b64       exec, s[46:47]
 
         s_add_u32       iter, iter, 1
@@ -822,3 +812,4 @@
         s_cbranch_scc0  .iter_loop
 
         s_endpgm
+
