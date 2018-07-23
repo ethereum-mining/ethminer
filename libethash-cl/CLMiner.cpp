@@ -20,7 +20,7 @@ namespace eth
 unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
 
-constexpr size_t c_maxSearchResults = 255;
+constexpr size_t c_maxSearchResults = 15;
 
 struct CLChannel: public LogChannel
 {
@@ -266,6 +266,17 @@ CLMiner::~CLMiner()
     kick_miner();
 }
 
+typedef struct {
+	uint32_t gid;
+	uint32_t mix[8];
+	uint32_t pad[7];
+} SearchResult;
+
+typedef struct {
+	SearchResult rslt[c_maxSearchResults];
+	uint32_t count;
+} SearchResults;
+
 void CLMiner::workLoop()
 {
     // Memory for zero-ing buffers. Cannot be static because crashes on macOS.
@@ -317,8 +328,7 @@ void CLMiner::workLoop()
 
                 // Update header constant buffer.
                 m_queue.enqueueWriteBuffer(m_header[0], CL_FALSE, 0, w.header.size, w.header.data());
-                m_queue.enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE, c_maxSearchResults * sizeof(uint32_t), sizeof(c_zero), &c_zero);
-
+                m_queue.enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE, offsetof(SearchResults, count), sizeof(c_zero), &c_zero);
                 if (w.exSizeBits >= 0)
                 {
                     // This can support up to 2^c_log2MaxMiners devices.
@@ -342,15 +352,15 @@ void CLMiner::workLoop()
             }
 
             // Read results.
-			uint32_t count, gids[c_maxSearchResults];
+			SearchResults results;
 
-            m_queue.enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, c_maxSearchResults * sizeof(uint32_t), sizeof(count), &count);
+            m_queue.enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, offsetof(SearchResults, count), sizeof(results.count), &results.count);
 
-            if (count)
+            if (results.count)
             {
-            	m_queue.enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0, count * sizeof(uint32_t), gids);
+            	m_queue.enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0, results.count * sizeof(SearchResult), &results);
                 // Reset search buffer if any solution found.
-                m_queue.enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE, c_maxSearchResults * sizeof(uint32_t), sizeof(c_zero), &c_zero);
+                m_queue.enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE, offsetof(SearchResults, count), sizeof(c_zero), &c_zero);
             }
 
             // Run the kernel.
@@ -358,16 +368,24 @@ void CLMiner::workLoop()
             m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
 
             // Report results while the kernel is running.
-            for (uint32_t i = 0; i < count; i++) {
+            for (uint32_t i = 0; i < results.count; i++) {
 				
-                uint64_t nonce = current.startNonce + gids[i];
-                Result r = EthashAux::eval(current.epoch, current.header, nonce);
-                if (r.value <= current.boundary)
-                    farm.submitProof(Solution{nonce, r.mixHash, current, current.header != w.header});
-                else {
-                    farm.failedSolution();
-                    cwarn << "GPU gave incorrect result!";
-                }
+                uint64_t nonce = current.startNonce + results.rslt[i].gid;
+				if (s_noeval) {
+					h256 mix;
+					memcpy(mix.data(), results.rslt[i].mix, sizeof(results.rslt[i].mix));
+					farm.submitProof(Solution{nonce, mix, current, current.header != w.header});
+				}
+				else
+				{
+					Result r = EthashAux::eval(current.epoch, current.header, nonce);
+					if (r.value <= current.boundary)
+						farm.submitProof(Solution{nonce, r.mixHash, current, current.header != w.header});
+					else {
+						farm.failedSolution();
+						cwarn << "GPU gave incorrect result!";
+					}
+				}
             }
 
             current = w;        // kernel now processing newest work
@@ -457,7 +475,7 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMult
 	s_noBinary = _nobinary;
 
 	if (_noeval)
-		cwarn << "--no-eval not yet supported for AMD.";
+		cwarn << "--no-eval may not yet be supported for AMD.";
 
     s_platformId = _platformId;
 
@@ -628,6 +646,10 @@ bool CLMiner::init(int epoch)
         addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
         addDefinition(code, "PLATFORM", platformId);
         addDefinition(code, "COMPUTE", computeCapability);
+		if (platformId == OPENCL_PLATFORM_CLOVER) {
+			addDefinition(code, "LEGACY", 1);
+			s_noBinary = true;
+		}
 
         // create miner OpenCL program
         cl::Program::Sources sources{{code.data(), code.size()}};
@@ -751,7 +773,7 @@ bool CLMiner::init(int epoch)
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");
 		m_searchBuffer.clear();
-        m_searchBuffer.push_back(cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_maxSearchResults + 1) * sizeof(uint32_t)));
+        m_searchBuffer.push_back(cl::Buffer(m_context, CL_MEM_WRITE_ONLY, sizeof(SearchResults)));
 
         m_dagKernel.setArg(1, m_light[0]);
         m_dagKernel.setArg(2, m_dag[0]);

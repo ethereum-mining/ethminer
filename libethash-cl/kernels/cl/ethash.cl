@@ -236,10 +236,20 @@ do { \
 
 #endif
 
+typedef struct {
+    uint gid;
+    uint mix[8];
+    uint pad[7]; // pad to 16  words for easy indexing
+} SearchResult;
+
+typedef struct {
+    SearchResult rslt[MAX_OUTPUTS];
+    uint count;
+} SearchResults;
 
 __attribute__((reqd_work_group_size(WORKSIZE, 1, 1)))
 __kernel void search(
-    __global volatile uint* restrict g_output,
+    __global volatile SearchResults* restrict g_output,
     __constant uint2 const* g_header,
     __global ulong8 const* _g_dag,
     uint dag_size,
@@ -364,8 +374,18 @@ __kernel void search(
         }
 
         if (as_ulong(as_uchar8(state[0]).s76543210) < target) {
-            uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output[MAX_OUTPUTS]));
-            g_output[slot] = gid;
+            uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output->count));
+            g_output->rslt[slot].gid = gid;
+			//TODO: Store mix hash in g_output->rslt[slot].mix
+			// Store bogus values for now
+			g_output->rslt[slot].mix[0] = 0;
+			g_output->rslt[slot].mix[1] = 0;
+			g_output->rslt[slot].mix[2] = 0;
+			g_output->rslt[slot].mix[3] = 0;
+			g_output->rslt[slot].mix[4] = 0;
+			g_output->rslt[slot].mix[5] = 0;
+			g_output->rslt[slot].mix[6] = 0;
+			g_output->rslt[slot].mix[7] = 0;
         }
     }
 }

@@ -791,20 +791,55 @@
         v_cmp_gt_u64    vcc, target, mix_double_temp0
         s_and_saveexec_b64 s[46:47], vcc
         s_waitcnt       lgkmcnt(0)
-        s_add_u32       scalar_double_temp0[0], output[0], 0x3fc
+        s_add_u32       scalar_double_temp0[0], output[0], 0x3c0
         s_addc_u32      scalar_double_temp0[1], output[1], 0
         v_mov_b32       temp0, 1
         v_mov_b32       mix_double_temp0[0], scalar_double_temp0[0]
         v_mov_b32       mix_double_temp0[1], scalar_double_temp0[1]
         flat_atomic_add temp0, mix_double_temp0, temp0 glc
         s_waitcnt       vmcnt(0) & lgkmcnt(0)
-        v_min_u32       mix_double_temp0[0], 0xfe, temp0
+        v_min_u32       mix_double_temp0[0], 0xe, temp0
         v_mov_b32       mix_double_temp0[1], 0
-        v_lshlrev_b64   mix_double_temp0, 2, mix_double_temp0
+        v_lshlrev_b64   mix_double_temp0, 6, mix_double_temp0
         v_add_u32       mix_double_temp1[0], vcc, output[0], mix_double_temp0[0]
         v_mov_b32       mix_double_temp0[0], output[1]
         v_addc_u32      mix_double_temp1[1], vcc, mix_double_temp0[0], mix_double_temp0[1], vcc
         flat_store_dword mix_double_temp1, temp1
+
+		/* TODO: Store mix hash in following 8 words. Store bogus values for now */
+
+		v_add_u32		mix_double_temp1[0], vcc, mix_double_temp1[0], 4
+		v_addc_u32		mix_double_temp1[1], vcc, mix_double_temp1[1], 0, vcc
+        flat_store_dword mix_double_temp1, temp1
+
+		v_add_u32		mix_double_temp1[0], vcc, mix_double_temp1[0], 4
+		v_addc_u32		mix_double_temp1[1], vcc, mix_double_temp1[1], 0, vcc
+        flat_store_dword mix_double_temp1, temp1
+
+		v_add_u32		mix_double_temp1[0], vcc, mix_double_temp1[0], 4
+		v_addc_u32		mix_double_temp1[1], vcc, mix_double_temp1[1], 0, vcc
+        flat_store_dword mix_double_temp1, temp1
+
+		v_add_u32		mix_double_temp1[0], vcc, mix_double_temp1[0], 4
+		v_addc_u32		mix_double_temp1[1], vcc, mix_double_temp1[1], 0, vcc
+        flat_store_dword mix_double_temp1, temp1
+
+		v_add_u32		mix_double_temp1[0], vcc, mix_double_temp1[0], 4
+		v_addc_u32		mix_double_temp1[1], vcc, mix_double_temp1[1], 0, vcc
+        flat_store_dword mix_double_temp1, temp1
+
+		v_add_u32		mix_double_temp1[0], vcc, mix_double_temp1[0], 4
+		v_addc_u32		mix_double_temp1[1], vcc, mix_double_temp1[1], 0, vcc
+        flat_store_dword mix_double_temp1, temp1
+
+		v_add_u32		mix_double_temp1[0], vcc, mix_double_temp1[0], 4
+		v_addc_u32		mix_double_temp1[1], vcc, mix_double_temp1[1], 0, vcc
+        flat_store_dword mix_double_temp1, temp1
+
+		v_add_u32		mix_double_temp1[0], vcc, mix_double_temp1[0], 4
+		v_addc_u32		mix_double_temp1[1], vcc, mix_double_temp1[1], 0, vcc
+        flat_store_dword mix_double_temp1, temp1
+
         s_mov_b64       exec, s[46:47]
 
         s_add_u32       iter, iter, 1
