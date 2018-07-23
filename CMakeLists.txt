@@ -20,7 +20,7 @@ HunterGate(
 )
 
 project(ethminer)
-set(PROJECT_VERSION 0.16.0.dev0)
+set(PROJECT_VERSION 0.16.0.dev1)
 
 cable_set_build_type(DEFAULT Release CONFIGURATION_TYPES Release RelWithDebInfo)
 
