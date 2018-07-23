@@ -246,12 +246,14 @@ __kernel void search(
     ulong start_nonce,
     ulong target,
     uint isolate,
-    uint itereations
-)
+    uint itereations)
 {
     __global hash128_t const* g_dag = (__global hash128_t const*) _g_dag;
 
     for (volatile int iter = 0; iter < itereations; ++iter) {
+		if (g_output[MAX_OUTPUTS]!=0) {
+			return;
+		}
         const uint gid = get_global_id(0) + iter * get_num_groups(0) * WORKSIZE;
         const uint thread_id = get_local_id(0) % 4;
         const uint hash_id = get_local_id(0) / 4;
@@ -362,10 +364,17 @@ __kernel void search(
             state[23] = (uint2)(0);
             state[24] = (uint2)(0);
         }
+		
+		//count hashes
+		//uint32_t should be enough for one cycle
+		//if g_output[MAX_OUTPUTS]==CL_INVALID(0xffffffff) then it is a stale work
+		if (g_output[MAX_OUTPUTS]!=0xffffffff) {
+			atomic_inc(&g_output[MAX_OUTPUTS+1]);
+		}
 
         if (as_ulong(as_uchar8(state[0]).s76543210) < target) {
             uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output[MAX_OUTPUTS]));
-            g_output[slot] = gid;
+			g_output[slot] = gid;
         }
     }
 }

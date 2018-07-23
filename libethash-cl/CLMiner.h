@@ -37,11 +37,17 @@
 #define OPENCL_PLATFORM_AMD     2
 #define OPENCL_PLATFORM_CLOVER  3
 
-
 namespace dev
 {
 namespace eth
 {
+	
+enum class DagState
+{
+	Idle,
+	Initializing,
+	Created
+};
 
 class CLMiner: public Miner
 {
@@ -77,6 +83,8 @@ private:
 
 	bool init(int epoch);
 
+	uint32_t const C_INVALID = 0xffffffff;
+
 	cl::Context m_context;
 	cl::CommandQueue m_queue;
 	cl::Kernel m_searchKernel;
@@ -99,6 +107,13 @@ private:
 	static unsigned s_workgroupSize;
 	/// The initial global work size for the searches
 	static unsigned s_initialGlobalWorkSize;
+	
+	DagState m_dagState = DagState::Idle;
+	
+	WorkPackage current;
+	uint64_t startNonce;
+		
+	cl::CommandQueue m_invalidatingQueue;
 
 };
 
