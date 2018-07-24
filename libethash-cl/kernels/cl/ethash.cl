@@ -236,10 +236,19 @@ do { \
 
 #endif
 
+// NOTE: This struct must match the one defined in CLMiner.cpp
+struct SearchResults {
+    struct {
+        uint gid;
+        uint mix[8];
+        uint pad[7]; // pad to 16 words for easy indexing
+    } rslt[MAX_OUTPUTS];
+    uint count;
+};
 
 __attribute__((reqd_work_group_size(WORKSIZE, 1, 1)))
 __kernel void search(
-    __global volatile uint* restrict g_output,
+    __global struct SearchResults* restrict g_output,
     __constant uint2 const* g_header,
     __global ulong8 const* _g_dag,
     uint dag_size,
@@ -292,6 +301,8 @@ __kernel void search(
         state[22] = (uint2)(0);
         state[23] = (uint2)(0);
         state[24] = (uint2)(0);
+
+        uint2 mixhash[4];
 
         for (volatile int pass = 0; pass < 2; ++pass) {
             KECCAK_PROCESS(state, select(5, 12, pass != 0), select(8, 1, pass != 0), isolate);
@@ -348,6 +359,11 @@ __kernel void search(
                 barrier(CLK_LOCAL_MEM_FENCE);
             }
 
+            mixhash[0] = state[8];
+            mixhash[1] = state[9];
+            mixhash[2] = state[10];
+            mixhash[3] = state[11];
+
             state[12] = as_uint2(0x0000000000000001UL);
             state[13] = (uint2)(0);
             state[14] = (uint2)(0);
@@ -364,8 +380,18 @@ __kernel void search(
         }
 
         if (as_ulong(as_uchar8(state[0]).s76543210) < target) {
-            uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output[MAX_OUTPUTS]));
-            g_output[slot] = gid;
+            uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output->count));
+            g_output->rslt[slot].gid = gid;
+            //TODO: Store mix hash in g_output->rslt[slot].mix
+            // Store bogus values for now
+            g_output->rslt[slot].mix[0] = mixhash[0].s0;
+            g_output->rslt[slot].mix[1] = mixhash[0].s1;
+            g_output->rslt[slot].mix[2] = mixhash[1].s0;
+            g_output->rslt[slot].mix[3] = mixhash[1].s1;
+            g_output->rslt[slot].mix[4] = mixhash[2].s0;
+            g_output->rslt[slot].mix[5] = mixhash[2].s1;
+            g_output->rslt[slot].mix[6] = mixhash[3].s0;
+            g_output->rslt[slot].mix[7] = mixhash[3].s1;
         }
     }
 }

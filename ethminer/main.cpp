@@ -359,9 +359,9 @@ public:
 			"Set the local work size", true)
 			->group(OpenCLGroup);
 
-		app.add_flag("--cl-nobinary", m_noBinary,
-			"Don't attempt to load binary kernel")
-			->group(OpenCLGroup);
+        app.add_flag(
+               "--cl-only", m_noBinary, "Use opencl kernel. Don't attempt to load binary kernel")
+            ->group(OpenCLGroup);
 #endif
 
 #if ETH_ETHASHCUDA

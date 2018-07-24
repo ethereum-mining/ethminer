@@ -20,7 +20,10 @@ namespace eth
 unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
 unsigned CLMiner::s_initialGlobalWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
 
-constexpr size_t c_maxSearchResults = 255;
+// WARNING: Do not change the value of the following constant
+// unless you are prepared to make the neccessary adjustments
+// to the assembly code for the binary kernels.
+const size_t c_maxSearchResults = 15;
 
 struct CLChannel: public LogChannel
 {
@@ -266,6 +269,21 @@ CLMiner::~CLMiner()
     kick_miner();
 }
 
+// NOTE: The following struct must match the one defined in
+// ethash.cl
+struct SearchResults
+{
+    struct
+    {
+        uint32_t gid;
+        // Can't use h256 data type here since h256 contains
+        // more than raw data. Kernel returns raw mix hash.
+        uint32_t mix[8];
+        uint32_t pad[7];  // pad to 16 words for easy indexing
+    } rslt[c_maxSearchResults];
+    uint32_t count;
+};
+
 void CLMiner::workLoop()
 {
     // Memory for zero-ing buffers. Cannot be static because crashes on macOS.
@@ -280,6 +298,9 @@ void CLMiner::workLoop()
     try {
         while (!shouldStop())
         {
+            // Read results.
+            SearchResults results;
+
             if (is_mining_paused())
             {
                 // cnote << "Mining is paused: Waiting for 3s.";
@@ -317,8 +338,8 @@ void CLMiner::workLoop()
 
                 // Update header constant buffer.
                 m_queue.enqueueWriteBuffer(m_header[0], CL_FALSE, 0, w.header.size, w.header.data());
-                m_queue.enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE, c_maxSearchResults * sizeof(uint32_t), sizeof(c_zero), &c_zero);
-
+                // zero the result count
+                m_queue.enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE, offsetof(SearchResults, count), sizeof(c_zero), &c_zero);
                 if (w.exSizeBits >= 0)
                 {
                     // This can support up to 2^c_log2MaxMiners devices.
@@ -328,9 +349,11 @@ void CLMiner::workLoop()
                     startNonce = get_start_nonce();
 
                 if (g_logVerbosity > 5)
-					cllog << "Switch time: "
-                    	<< std::chrono::duration_cast<std::chrono::milliseconds>
-							(std::chrono::high_resolution_clock::now() - workSwitchStart).count() << " ms.";
+                    cllog << "Switch time: "
+                          << std::chrono::duration_cast<std::chrono::milliseconds>(
+                                 std::chrono::high_resolution_clock::now() - workSwitchStart)
+                                 .count()
+                          << " ms.";
 
                 m_searchKernel.setArg(0, m_searchBuffer[0]);  // Supply output buffer to kernel.
                 m_searchKernel.setArg(1, m_header[0]);  // Supply header buffer to kernel.
@@ -341,16 +364,16 @@ void CLMiner::workLoop()
                 m_searchKernel.setArg(7, 1);
             }
 
-            // Read results.
-			uint32_t count, gids[c_maxSearchResults];
+            m_queue.enqueueReadBuffer(m_searchBuffer[0], CL_TRUE,
+                c_maxSearchResults * sizeof(results.rslt[0]), sizeof(results.count),
+                &results.count);
 
-            m_queue.enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, c_maxSearchResults * sizeof(uint32_t), sizeof(count), &count);
-
-            if (count)
+            if (results.count)
             {
-            	m_queue.enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0, count * sizeof(uint32_t), gids);
+                m_queue.enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0,
+                    results.count * sizeof(results.rslt[0]), &results);
                 // Reset search buffer if any solution found.
-                m_queue.enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE, c_maxSearchResults * sizeof(uint32_t), sizeof(c_zero), &c_zero);
+                m_queue.enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE, offsetof(SearchResults, count), sizeof(c_zero), &c_zero);
             }
 
             // Run the kernel.
@@ -358,15 +381,28 @@ void CLMiner::workLoop()
             m_queue.enqueueNDRangeKernel(m_searchKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
 
             // Report results while the kernel is running.
-            for (uint32_t i = 0; i < count; i++) {
-				
-                uint64_t nonce = current.startNonce + gids[i];
-                Result r = EthashAux::eval(current.epoch, current.header, nonce);
-                if (r.value <= current.boundary)
-                    farm.submitProof(Solution{nonce, r.mixHash, current, current.header != w.header});
-                else {
-                    farm.failedSolution();
-                    cwarn << "GPU gave incorrect result!";
+            for (uint32_t i = 0; i < results.count; i++) {
+                uint64_t nonce = current.startNonce + results.rslt[i].gid;
+                if (s_noeval)
+                {
+                    //Result r = EthashAux::eval(current.epoch, current.header, nonce);
+                    h256 mix;
+                    memcpy(mix.data(), results.rslt[i].mix, sizeof(results.rslt[i].mix));
+                    farm.submitProof(Solution{nonce, mix, current, current.header != w.header});
+                    //cwarn << mix;
+                    //cwarn << r.mixHash;
+                }
+                else
+                {
+                    Result r = EthashAux::eval(current.epoch, current.header, nonce);
+                    if (r.value <= current.boundary)
+                        farm.submitProof(
+                            Solution{nonce, r.mixHash, current, current.header != w.header});
+                    else
+                    {
+                        farm.failedSolution();
+                        cwarn << "GPU gave incorrect result!";
+                    }
                 }
             }
 
@@ -447,17 +483,14 @@ void CLMiner::listDevices()
 }
 
 bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
-    unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice,
-	bool _noeval, bool _exit, bool _nobinary)
+    unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice, bool _noeval,
+    bool _exit, bool _nobinary)
 {
-	s_noeval = _noeval;
+    s_noeval = _noeval;
     s_dagLoadMode = _dagLoadMode;
     s_dagCreateDevice = _dagCreateDevice;
     s_exit = _exit;
-	s_noBinary = _nobinary;
-
-	if (_noeval)
-		cwarn << "--no-eval not yet supported for AMD.";
+    s_noBinary = _nobinary;
 
     s_platformId = _platformId;
 
@@ -595,17 +628,19 @@ bool CLMiner::init(int epoch)
         m_globalWorkSize = s_initialGlobalWorkSize;
 
         unsigned int computeUnits;
-    	clGetDeviceInfo(device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(computeUnits), &computeUnits, nullptr);
+        clGetDeviceInfo(
+            device(), CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(computeUnits), &computeUnits, nullptr);
         // Apparently some 36 CU devices return a bogus 14!!!
         computeUnits = computeUnits == 14 ? 36 : computeUnits;
-	    if ((platformId == OPENCL_PLATFORM_AMD) && (computeUnits != 36)) {
-	    	m_globalWorkSize = (m_globalWorkSize * computeUnits) / 36;
-	    	// make sure that global work size is evenly divisible by the local workgroup size
-	    	if (m_globalWorkSize % m_workgroupSize != 0)
-	    		m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
-	    	cnote << "Adjusting CL work multiplier for " << computeUnits << " CUs."
-	    		<< "Adjusted work multiplier: " << m_globalWorkSize / m_workgroupSize;
-	    }
+        if ((platformId == OPENCL_PLATFORM_AMD) && (computeUnits != 36))
+        {
+            m_globalWorkSize = (m_globalWorkSize * computeUnits) / 36;
+            // make sure that global work size is evenly divisible by the local workgroup size
+            if (m_globalWorkSize % m_workgroupSize != 0)
+                m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
+            cnote << "Adjusting CL work multiplier for " << computeUnits << " CUs."
+                  << "Adjusted work multiplier: " << m_globalWorkSize / m_workgroupSize;
+        }
 
         const auto& context = ethash::managed::get_epoch_context(epoch);
         const auto lightNumItems = context.light_cache_num_items;
@@ -628,6 +663,11 @@ bool CLMiner::init(int epoch)
         addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
         addDefinition(code, "PLATFORM", platformId);
         addDefinition(code, "COMPUTE", computeCapability);
+        if (platformId == OPENCL_PLATFORM_CLOVER)
+        {
+            addDefinition(code, "LEGACY", 1);
+            s_noBinary = true;
+        }
 
         // create miner OpenCL program
         cl::Program::Sources sources{{code.data(), code.size()}};
@@ -645,9 +685,9 @@ bool CLMiner::init(int epoch)
         }
 
         /* If we have a binary kernel, we load it in tandem with the opencl,
-		   that way, we can use the dag generate opencl code and fall back on
+           that way, we can use the dag generate opencl code and fall back on
            the default kernel if loading fails for whatever reason */
-		bool loadedBinary = false;
+        bool loadedBinary = false;
 
         if (!s_noBinary) {
             std::ifstream kernel_file;
@@ -656,45 +696,51 @@ bool CLMiner::init(int epoch)
 
             /* Open kernels/ethash_{devicename}_lws{local_work_size}.bin */
             std::transform(device_name.begin(), device_name.end(), device_name.begin(), ::tolower);
-            fname_strm << boost::dll::program_location().parent_path().string() <<
-				"/kernels/ethash_" << device_name << "_lws" << m_workgroupSize << ".bin";
-			cllog << "Loading binary kernel " << fname_strm.str();
-			try {
-            kernel_file.open(fname_strm.str(), ios::in | ios::binary);
+            fname_strm << boost::dll::program_location().parent_path().string()
+                       << "/kernels/ethash_" << device_name << "_lws" << m_workgroupSize << ".bin";
+            cllog << "Loading binary kernel " << fname_strm.str();
+            try
+            {
+                kernel_file.open(fname_strm.str(), ios::in | ios::binary);
 
-            if(kernel_file.good()) {
-                /* Load the data vector with file data */
-                kernel_file.unsetf(std::ios::skipws);
-                bin_data.insert(bin_data.begin(),
-                std::istream_iterator<unsigned char>(kernel_file),
-                std::istream_iterator<unsigned char>());
-
-                /* Setup the program */
-                cl::Program::Binaries blobs({bin_data});
-                cl::Program program(m_context, { device }, blobs);
-                try
+                if (kernel_file.good())
                 {
-                    program.build({ device }, options);
-                    cllog << "Build info success:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
-                    binaryProgram = program;
-                    loadedBinary = true;
+                    /* Load the data vector with file data */
+                    kernel_file.unsetf(std::ios::skipws);
+                    bin_data.insert(bin_data.begin(),
+                        std::istream_iterator<unsigned char>(kernel_file),
+                        std::istream_iterator<unsigned char>());
+
+                    /* Setup the program */
+                    cl::Program::Binaries blobs({bin_data});
+                    cl::Program program(m_context, {device}, blobs);
+                    try
+                    {
+                        program.build({device}, options);
+                        cllog << "Build info success:"
+                              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+                        binaryProgram = program;
+                        loadedBinary = true;
+                    }
+                    catch (cl::Error const&)
+                    {
+                        cwarn << "Build failed! Info:"
+                              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+                        cwarn << fname_strm.str();
+                        cwarn << "Falling back to OpenCL kernel...";
+                    }
                 }
-                catch (cl::Error const&)
+                else
                 {
-                    cwarn << "Build failed! Info:" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
-                    cwarn << fname_strm.str();
+                    cwarn << "Failed to load binary kernel: " << fname_strm.str();
                     cwarn << "Falling back to OpenCL kernel...";
                 }
-            } else {
+            }
+            catch (...)
+            {
                 cwarn << "Failed to load binary kernel: " << fname_strm.str();
                 cwarn << "Falling back to OpenCL kernel...";
             }
-			}
-			catch (...)
-			{
-                cwarn << "Failed to load binary kernel: " << fname_strm.str();
-                cwarn << "Falling back to OpenCL kernel...";
-			}
         }
 
         //check whether the current dag fits in memory everytime we recreate the DAG
@@ -713,10 +759,10 @@ bool CLMiner::init(int epoch)
         try
         {
             cllog << "Creating light cache buffer, size: " << lightSize;
-			m_light.clear();
+            m_light.clear();
             m_light.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, lightSize));
             cllog << "Creating DAG buffer, size: " << dagSize;
-			m_dag.clear();
+            m_dag.clear();
             m_dag.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, dagSize));
             cllog << "Loading kernels";
 
@@ -739,7 +785,7 @@ bool CLMiner::init(int epoch)
         }
         // create buffer for header
         ETHCL_LOG("Creating buffer for header.");
-		m_header.clear();
+        m_header.clear();
         m_header.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, 32));
 
         m_searchKernel.setArg(1, m_header[0]);
@@ -750,8 +796,8 @@ bool CLMiner::init(int epoch)
 
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");
-		m_searchBuffer.clear();
-        m_searchBuffer.push_back(cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_maxSearchResults + 1) * sizeof(uint32_t)));
+        m_searchBuffer.clear();
+        m_searchBuffer.push_back(cl::Buffer(m_context, CL_MEM_WRITE_ONLY, sizeof(SearchResults)));
 
         m_dagKernel.setArg(1, m_light[0]);
         m_dagKernel.setArg(2, m_dag[0]);
@@ -761,21 +807,21 @@ bool CLMiner::init(int epoch)
         const uint32_t workItems = m_dagItems * 2;  // GPU computes partial 512-bit DAG items.
 
         auto startDAG = std::chrono::steady_clock::now();
-		uint32_t start;
+        uint32_t start;
         for (start = 0; start <= workItems - m_globalWorkSize; start += m_globalWorkSize)
         {
             m_dagKernel.setArg(0, start);
             m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
             m_queue.finish();
         }
-		if (start < workItems)
-		{
-			uint32_t groupsLeft = workItems - start;
-			groupsLeft = (groupsLeft + m_workgroupSize - 1) / m_workgroupSize;
+        if (start < workItems)
+        {
+            uint32_t groupsLeft = workItems - start;
+            groupsLeft = (groupsLeft + m_workgroupSize - 1) / m_workgroupSize;
             m_dagKernel.setArg(0, start);
             m_queue.enqueueNDRangeKernel(m_dagKernel, cl::NullRange, groupsLeft * m_workgroupSize, m_workgroupSize);
             m_queue.finish();
-		}
+        }
         auto endDAG = std::chrono::steady_clock::now();
 
         auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(endDAG-startDAG);

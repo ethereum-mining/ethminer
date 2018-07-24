@@ -9,7 +9,7 @@
         .dims x
         .cws worksize, 1, 1
         .sgprsnum 52
-        .vgprsnum 64
+        .vgprsnum 72
         .localsize worksize*20
         .floatmode 0xc0
         .dx10clamp
@@ -119,6 +119,9 @@
         temp12 = %v62
 
         local_id = %v63
+
+        mix_save0       = %v[64:67]
+        mix_save1       = %v[68:71]
 
         kernarg         = %s[4:5]
         args            = %s[6:7]
@@ -737,6 +740,17 @@
         s_add_u32       pass, pass, 1
         s_cmp_ge_i32    pass, 2
         s_cbranch_scc1  .test
+
+        /* stash the mix hash */
+        v_mov_b32       mix_save0[0], state16
+        v_mov_b32       mix_save0[1], state17
+        v_mov_b32       mix_save0[2], state18
+        v_mov_b32       mix_save0[3], state19
+        v_mov_b32       mix_save1[0], state20
+        v_mov_b32       mix_save1[1], state21
+        v_mov_b32       mix_save1[2], state22
+        v_mov_b32       mix_save1[3], state23
+
         v_mov_b32       state49, 0
         v_mov_b32       state48, 0
         v_mov_b32       state47, 0
@@ -791,20 +805,29 @@
         v_cmp_gt_u64    vcc, target, mix_double_temp0
         s_and_saveexec_b64 s[46:47], vcc
         s_waitcnt       lgkmcnt(0)
-        s_add_u32       scalar_double_temp0[0], output[0], 0x3fc
+        s_add_u32       scalar_double_temp0[0], output[0], 0x3c0
         s_addc_u32      scalar_double_temp0[1], output[1], 0
         v_mov_b32       temp0, 1
         v_mov_b32       mix_double_temp0[0], scalar_double_temp0[0]
         v_mov_b32       mix_double_temp0[1], scalar_double_temp0[1]
         flat_atomic_add temp0, mix_double_temp0, temp0 glc
         s_waitcnt       vmcnt(0) & lgkmcnt(0)
-        v_min_u32       mix_double_temp0[0], 0xfe, temp0
+        v_min_u32       mix_double_temp0[0], 0xe, temp0
         v_mov_b32       mix_double_temp0[1], 0
-        v_lshlrev_b64   mix_double_temp0, 2, mix_double_temp0
+        v_lshlrev_b64   mix_double_temp0, 6, mix_double_temp0
         v_add_u32       mix_double_temp1[0], vcc, output[0], mix_double_temp0[0]
         v_mov_b32       mix_double_temp0[0], output[1]
         v_addc_u32      mix_double_temp1[1], vcc, mix_double_temp0[0], mix_double_temp0[1], vcc
         flat_store_dword mix_double_temp1, temp1
+
+        v_add_u32       mix_double_temp1[0], vcc, mix_double_temp1[0], 4
+        v_addc_u32      mix_double_temp1[1], vcc, mix_double_temp1[1], 0, vcc
+        flat_store_dwordx4 mix_double_temp1, mix_save0
+
+        v_add_u32       mix_double_temp1[0], vcc, mix_double_temp1[0], 16
+        v_addc_u32      mix_double_temp1[1], vcc, mix_double_temp1[1], 0, vcc
+        flat_store_dwordx4 mix_double_temp1, mix_save1
+
         s_mov_b64       exec, s[46:47]
 
         s_add_u32       iter, iter, 1
