@@ -30,7 +30,6 @@
         .arg start_nonce, "ulong", ulong
         .arg target, "ulong", ulong
         .arg isolate, "uint", uint
-        .arg itereations, "uint", uint
     .text
         mix0 = %v24
         mix1 = %v25
@@ -133,7 +132,6 @@
         arg_start_nonce = 0x50
         arg_target      = 0x58
         arg_isolate     = 0x60
-        arg_itereations = 0x64
 
         output          = %s[2:3]
         header          = %s[10:11]
@@ -141,7 +139,6 @@
         dag_size        = %s9
         start_nonce     = %s[14:15]
         target          = %s[16:17]
-        iterations      = %s18
         global_size    = %s19
         
         header_content  = %s[24:31]
@@ -152,7 +149,6 @@
         scalar_double_temp0 = %s[32:33]
         scalar_double_temp1 = %s[34:35]
 
-        iter            = %s36
         mix_index       = %s37
         fnv_prime       = %s38
         tid             = %s39
@@ -174,7 +170,6 @@
         s_load_dword    dag_size,       args,    arg_dag_size
         s_load_dwordx2  start_nonce,    args,    arg_start_nonce
         s_load_dwordx2  target,         args,    arg_target
-        s_load_dword    iterations,     args,    arg_itereations
         s_load_dword    global_size,    kernarg, kernarg_global_size
         s_waitcnt       lgkmcnt(0)
         
@@ -184,8 +179,6 @@
 
 
 
-        s_movk_i32      iter, 0
-.iter_loop:
         v_mov_b32       state7, header_content[7]
         v_mov_b32       state6, header_content[6]
         v_mov_b32       state5, header_content[5]
@@ -202,11 +195,6 @@
         v_mov_b32       temp0, start_nonce[1]
         v_add_co_u32       state8, vcc, state8, start_nonce[0]
         v_addc_co_u32      state9, vcc, state9, temp0, vcc
-        v_mov_b32       temp0, iter
-        v_mul_lo_u32    temp3, temp0, global_size
-        v_mul_hi_u32    temp4, temp0, global_size
-        v_add_co_u32       state8, vcc, state8, temp3
-        v_addc_co_u32      state9, vcc, state9, temp4, vcc
 
         v_mov_b32       state49, 0
         v_mov_b32       state48, 0
@@ -764,11 +752,7 @@
 
         
 .test:
-        /* gid - Upper 32bits are ignored. */
-        v_mov_b32       temp0, iter
-        v_mul_lo_u32    temp0, temp0, global_size
-        v_add_co_u32       temp1, vcc, first_work_item_in_group, local_id
-        v_add_co_u32       temp1, vcc, temp1, temp0
+        v_add_co_u32    temp1, vcc, first_work_item_in_group, local_id
 
         v_lshlrev_b32   mix_double_temp0[0], 8, state1
         v_lshlrev_b32   temp0, 8, state0
@@ -806,10 +790,6 @@
         flat_store_dwordx4 mix_double_temp1, mix_save1
 
         s_mov_b64       exec, s[46:47]
-
-        s_add_u32       iter, iter, 1
-        s_cmp_ge_u32    iter, iterations
-        s_cbranch_scc0  .iter_loop
 
         s_endpgm
 

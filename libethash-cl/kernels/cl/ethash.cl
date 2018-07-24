@@ -254,45 +254,118 @@ __kernel void search(
     uint dag_size,
     ulong start_nonce,
     ulong target,
-    uint isolate,
-    uint itereations
+    uint isolate
 )
 {
     __global hash128_t const* g_dag = (__global hash128_t const*) _g_dag;
 
-    for (volatile int iter = 0; iter < itereations; ++iter) {
-        const uint gid = get_global_id(0) + iter * get_num_groups(0) * WORKSIZE;
-        const uint thread_id = get_local_id(0) % 4;
-        const uint hash_id = get_local_id(0) / 4;
+    const uint gid = get_global_id(0);
+    const uint thread_id = get_local_id(0) % 4;
+    const uint hash_id = get_local_id(0) / 4;
 
-        __local compute_hash_share sharebuf[WORKSIZE / 4];
+    __local compute_hash_share sharebuf[WORKSIZE / 4];
 #ifdef LEGACY
-        __local uint buffer[WORKSIZE / 4];
+    __local uint buffer[WORKSIZE / 4];
 #else
-        __local uint buffer[WORKSIZE];
+    __local uint buffer[WORKSIZE];
 #endif
-        __local compute_hash_share * const share = sharebuf + hash_id;
+    __local compute_hash_share * const share = sharebuf + hash_id;
 
+    // sha3_512(header .. nonce)
+    volatile uint2 state[25];
+    state[0] = g_header[0];
+    state[1] = g_header[1];
+    state[2] = g_header[2];
+    state[3] = g_header[3];
+    state[4] = as_uint2(start_nonce + gid);
+    state[5] = as_uint2(0x0000000000000001UL);
+    state[6] = (uint2)(0);
+    state[7] = (uint2)(0);
+    state[8] = as_uint2(0x8000000000000000UL);
+    state[9] = (uint2)(0);
+    state[10] = (uint2)(0);
+    state[11] = (uint2)(0);
+    state[12] = (uint2)(0);
+    state[13] = (uint2)(0);
+    state[14] = (uint2)(0);
+    state[15] = (uint2)(0);
+    state[16] = (uint2)(0);
+    state[17] = (uint2)(0);
+    state[18] = (uint2)(0);
+    state[19] = (uint2)(0);
+    state[20] = (uint2)(0);
+    state[21] = (uint2)(0);
+    state[22] = (uint2)(0);
+    state[23] = (uint2)(0);
+    state[24] = (uint2)(0);
 
-        // sha3_512(header .. nonce)
-        volatile uint2 state[25];
-        state[0] = g_header[0];
-        state[1] = g_header[1];
-        state[2] = g_header[2];
-        state[3] = g_header[3];
-        state[4] = as_uint2(start_nonce + gid);
-        state[5] = as_uint2(0x0000000000000001UL);
-        state[6] = (uint2)(0);
-        state[7] = (uint2)(0);
-        state[8] = as_uint2(0x8000000000000000UL);
-        state[9] = (uint2)(0);
-        state[10] = (uint2)(0);
-        state[11] = (uint2)(0);
-        state[12] = (uint2)(0);
+    uint2 mixhash[4];
+
+    for (volatile int pass = 0; pass < 2; ++pass) {
+        KECCAK_PROCESS(state, select(5, 12, pass != 0), select(8, 1, pass != 0), isolate);
+        if (pass > 0)
+            break;
+
+        uint init0;
+        uint8 mix;
+
+#pragma unroll 1
+        for (volatile uint tid = 0; tid < 4; tid++) {
+            if (tid == thread_id) {
+                share->uint2s[0] = state[0];
+                share->uint2s[1] = state[1];
+                share->uint2s[2] = state[2];
+                share->uint2s[3] = state[3];
+                share->uint2s[4] = state[4];
+                share->uint2s[5] = state[5];
+                share->uint2s[6] = state[6];
+                share->uint2s[7] = state[7];
+            }
+
+            barrier(CLK_LOCAL_MEM_FENCE);
+
+            mix = share->uint8s[thread_id & 1];
+            init0 = share->uints[0];
+
+            barrier(CLK_LOCAL_MEM_FENCE);
+
+#ifdef LEGACY
+            for (uint a = 0; a < (ACCESSES & isolate); a += 8) {
+#else
+#pragma unroll 1
+            for (volatile uint a = 0; a < ACCESSES; a += 8) {
+#endif
+                const uint lane_idx = 4 * hash_id + a / 8 % 4;
+                for (volatile uint x = 0; x < 8; ++x)
+                    MIX(x);
+            }
+
+            barrier(CLK_LOCAL_MEM_FENCE);
+
+            share->uint2s[thread_id] = (uint2)(fnv_reduce(mix.lo), fnv_reduce(mix.hi));
+
+            barrier(CLK_LOCAL_MEM_FENCE);
+
+            if (tid == thread_id) {
+                state[8] = share->uint2s[0];
+                state[9] = share->uint2s[1];
+                state[10] = share->uint2s[2];
+                state[11] = share->uint2s[3];
+            }
+
+            barrier(CLK_LOCAL_MEM_FENCE);
+        }
+
+        mixhash[0] = state[8];
+        mixhash[1] = state[9];
+        mixhash[2] = state[10];
+        mixhash[3] = state[11];
+
+        state[12] = as_uint2(0x0000000000000001UL);
         state[13] = (uint2)(0);
         state[14] = (uint2)(0);
         state[15] = (uint2)(0);
-        state[16] = (uint2)(0);
+        state[16] = as_uint2(0x8000000000000000UL);
         state[17] = (uint2)(0);
         state[18] = (uint2)(0);
         state[19] = (uint2)(0);
@@ -301,98 +374,19 @@ __kernel void search(
         state[22] = (uint2)(0);
         state[23] = (uint2)(0);
         state[24] = (uint2)(0);
+    }
 
-        uint2 mixhash[4];
-
-        for (volatile int pass = 0; pass < 2; ++pass) {
-            KECCAK_PROCESS(state, select(5, 12, pass != 0), select(8, 1, pass != 0), isolate);
-            if (pass > 0)
-                break;
-
-            uint init0;
-            uint8 mix;
-
-#pragma unroll 1
-            for (volatile uint tid = 0; tid < 4; tid++) {
-                if (tid == thread_id) {
-                    share->uint2s[0] = state[0];
-                    share->uint2s[1] = state[1];
-                    share->uint2s[2] = state[2];
-                    share->uint2s[3] = state[3];
-                    share->uint2s[4] = state[4];
-                    share->uint2s[5] = state[5];
-                    share->uint2s[6] = state[6];
-                    share->uint2s[7] = state[7];
-                }
-
-                barrier(CLK_LOCAL_MEM_FENCE);
-
-                mix = share->uint8s[thread_id & 1];
-                init0 = share->uints[0];
-
-                barrier(CLK_LOCAL_MEM_FENCE);
-
-#ifdef LEGACY
-                for (uint a = 0; a < (ACCESSES & isolate); a += 8) {
-#else
-#pragma unroll 1
-                for (volatile uint a = 0; a < ACCESSES; a += 8) {
-#endif
-                    const uint lane_idx = 4 * hash_id + a / 8 % 4;
-                    for (volatile uint x = 0; x < 8; ++x)
-                        MIX(x);
-                }
-
-                barrier(CLK_LOCAL_MEM_FENCE);
-
-                share->uint2s[thread_id] = (uint2)(fnv_reduce(mix.lo), fnv_reduce(mix.hi));
-
-                barrier(CLK_LOCAL_MEM_FENCE);
-
-                if (tid == thread_id) {
-                    state[8] = share->uint2s[0];
-                    state[9] = share->uint2s[1];
-                    state[10] = share->uint2s[2];
-                    state[11] = share->uint2s[3];
-                }
-
-                barrier(CLK_LOCAL_MEM_FENCE);
-            }
-
-            mixhash[0] = state[8];
-            mixhash[1] = state[9];
-            mixhash[2] = state[10];
-            mixhash[3] = state[11];
-
-            state[12] = as_uint2(0x0000000000000001UL);
-            state[13] = (uint2)(0);
-            state[14] = (uint2)(0);
-            state[15] = (uint2)(0);
-            state[16] = as_uint2(0x8000000000000000UL);
-            state[17] = (uint2)(0);
-            state[18] = (uint2)(0);
-            state[19] = (uint2)(0);
-            state[20] = (uint2)(0);
-            state[21] = (uint2)(0);
-            state[22] = (uint2)(0);
-            state[23] = (uint2)(0);
-            state[24] = (uint2)(0);
-        }
-
-        if (as_ulong(as_uchar8(state[0]).s76543210) < target) {
-            uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output->count));
-            g_output->rslt[slot].gid = gid;
-            //TODO: Store mix hash in g_output->rslt[slot].mix
-            // Store bogus values for now
-            g_output->rslt[slot].mix[0] = mixhash[0].s0;
-            g_output->rslt[slot].mix[1] = mixhash[0].s1;
-            g_output->rslt[slot].mix[2] = mixhash[1].s0;
-            g_output->rslt[slot].mix[3] = mixhash[1].s1;
-            g_output->rslt[slot].mix[4] = mixhash[2].s0;
-            g_output->rslt[slot].mix[5] = mixhash[2].s1;
-            g_output->rslt[slot].mix[6] = mixhash[3].s0;
-            g_output->rslt[slot].mix[7] = mixhash[3].s1;
-        }
+    if (as_ulong(as_uchar8(state[0]).s76543210) < target) {
+        uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output->count));
+        g_output->rslt[slot].gid = gid;
+        g_output->rslt[slot].mix[0] = mixhash[0].s0;
+        g_output->rslt[slot].mix[1] = mixhash[0].s1;
+        g_output->rslt[slot].mix[2] = mixhash[1].s0;
+        g_output->rslt[slot].mix[3] = mixhash[1].s1;
+        g_output->rslt[slot].mix[4] = mixhash[2].s0;
+        g_output->rslt[slot].mix[5] = mixhash[2].s1;
+        g_output->rslt[slot].mix[6] = mixhash[3].s0;
+        g_output->rslt[slot].mix[7] = mixhash[3].s1;
     }
 }
 
