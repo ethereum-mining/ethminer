@@ -361,7 +361,6 @@ void CLMiner::workLoop()
                 m_searchKernel.setArg(3, m_dagItems);
                 m_searchKernel.setArg(5, target);
                 m_searchKernel.setArg(6, 0xffffffff);
-                m_searchKernel.setArg(7, 1);
             }
 
             m_queue.enqueueReadBuffer(m_searchBuffer[0], CL_TRUE,
@@ -792,7 +791,6 @@ bool CLMiner::init(int epoch)
         m_searchKernel.setArg(2, m_dag[0]);
         m_searchKernel.setArg(3, m_dagItems);
         m_searchKernel.setArg(6, ~0u);
-        m_searchKernel.setArg(7, 1u);  // Number of iterations
 
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");
