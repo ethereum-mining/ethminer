@@ -492,9 +492,6 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMult
     s_exit = _exit;
     s_noBinary = _nobinary;
 
-    if (_noeval)
-        cwarn << "--noeval may not yet be supported for AMD.";
-
     s_platformId = _platformId;
 
     _localWorkSize = ((_localWorkSize + 7) / 8) * 8;
