@@ -42,6 +42,7 @@ namespace dev
 			unsigned m_connectionAttempt = 0;
 			unsigned m_maxConnectionAttempts = 0;
 			unsigned m_activeConnectionIdx = 0;
+			std::string m_activeConnectionHost = "";
 
 			std::vector <URI> m_connections;
 			std::thread m_workThread;
