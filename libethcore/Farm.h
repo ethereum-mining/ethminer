@@ -201,9 +201,9 @@ public:
     void collectHashRate()
     {
 
-        auto now = std::chrono::steady_clock::now();
-
         std::lock_guard<std::mutex> lock(x_minerWork);
+
+        auto now = std::chrono::steady_clock::now();
 
         WorkingProgress p;
         p.ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastStart).count();
@@ -212,8 +212,7 @@ public:
         // Collect & Reset
         for (auto const& i : m_miners)
         {
-            uint64_t minerHashCount = i->hashCount();
-			i->resetHashCount();
+            auto minerHashCount = i->RetrieveAndClearHashCount();
             p.hashes += minerHashCount;
             p.minersHashes.push_back(minerHashCount);
         }

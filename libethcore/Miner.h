@@ -253,11 +253,16 @@ public:
 		kick_miner();
 	}
 
-	uint64_t hashCount() const { return m_hashCount.load(std::memory_order_relaxed); }
+    uint64_t RetrieveAndClearHashCount()
+    {
+        uint64_t expected;
+        do
+            expected = m_hashCount.load(std::memory_order_relaxed);
+        while (!m_hashCount.compare_exchange_weak(expected, 0, std::memory_order_relaxed));
+        return expected;
+    }
 
-	void resetHashCount() { m_hashCount.store(0, std::memory_order_relaxed); }
-
-	unsigned Index() { return index; };
+    unsigned Index() { return index; };
 	HwMonitorInfo hwmonInfo() { return m_hwmoninfo; }
 
 	uint64_t get_start_nonce()
