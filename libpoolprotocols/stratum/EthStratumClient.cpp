@@ -551,7 +551,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 			case 2:
 				m_conn->SetStratumMode(2, false);
 				jReq["params"].append(
-					"ethminer " + std::string(ethminer_get_buildinfo()->project_version));
+					"ethminer-" + std::string(ethminer_get_buildinfo()->project_version));
 				jReq["params"].append("EthereumStratum/1.0.0");
 				break;
 
@@ -584,7 +584,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
             case EthStratumClient::ETHEREUMSTRATUM:
 
                 jReq["params"].append(
-                    "ethminer " + std::string(ethminer_get_buildinfo()->project_version));
+                    "ethminer-" + std::string(ethminer_get_buildinfo()->project_version));
                 jReq["params"].append("EthereumStratum/1.0.0");
 
                 break;
@@ -1190,7 +1190,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		else if (_method == "client.get_version")
 		{
             jReq["id"] = toString(_id);
-            jReq["result"] = ethminer_get_buildinfo()->project_version;
+            jReq["result"] = std::string("ethminer-") + ethminer_get_buildinfo()->project_version;
 
             if (_rpcVer == 1)
             {
