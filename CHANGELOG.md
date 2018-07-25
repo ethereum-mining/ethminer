@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Replaced opencl kernel with opensource jawawawa opencl kernel
 - Added support for jawawawa AMD binary kernels
 - AMD auto kernel selection. Try bin first, if not fall back to opencl.
+- API: New method `miner_setverbosity`. [#1382](https://github.com/ethereum-mining/ethminer/pull/1382).
 
 ## 0.15.0rc1
 

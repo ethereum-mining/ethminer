@@ -20,6 +20,7 @@
     * [miner_getscramblerinfo](#miner_getscramblerinfo)
     * [miner_setscramblerinfo](#miner_setscramblerinfo)
     * [miner_pausegpu](#miner_pausegpu)
+    * [miner_setverbosity](#miner_setverbosity)
 
 ## Introduction
 
@@ -566,3 +567,28 @@ and expect a result like this:
 
 which confirms the action has been performed.
 Again: This ONLY (re)starts mining if GPU was paused via a previous API call and not if GPU pauses for other reasons.
+
+### miner_setverbosity
+
+Set the verbosity level of ethminer.
+
+```json
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_setverbosity",
+  "data": {
+    "verbosity": 9
+  }
+}
+```
+
+and expect a result like this:
+
+```json
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": true
+}
+```

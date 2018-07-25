@@ -624,6 +624,30 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         jResponse["result"] = true;
     }
 
+    else if (_method == "miner_setverbosity")
+    {
+        if (!checkApiWriteAccess(m_readonly, jResponse))
+            return;
+
+        Json::Value jRequestParams;
+        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
+            return;
+
+        unsigned verbosity;
+        if (!getRequestValue("verbosity", verbosity, jRequestParams, false, jResponse))
+            return;
+
+        if (verbosity > 9)
+        {
+            jResponse["error"]["code"] = -422;
+            jResponse["error"]["message"] = "Verbosity out of bounds (0-9)";
+            return;
+        }
+        cnote << "Setting verbosity level to " << verbosity;
+        g_logVerbosity = verbosity;
+        jResponse["result"] = true;
+    }
+
     else
     {
         // Any other method not found
