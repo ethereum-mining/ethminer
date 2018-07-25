@@ -255,9 +255,7 @@ public:
 
     uint64_t RetrieveAndClearHashCount()
     {
-        uint64_t expected;
-        do
-            expected = m_hashCount.load(std::memory_order_relaxed);
+        auto expected = m_hashCount.load(std::memory_order_relaxed);
         while (!m_hashCount.compare_exchange_weak(expected, 0, std::memory_order_relaxed));
         return expected;
     }
