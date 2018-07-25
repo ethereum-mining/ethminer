@@ -1,6 +1,6 @@
 #include "ApiServer.h"
 
-#include <ethminer-buildinfo.h>
+#include <ethminer/buildinfo.h>
 
 
 /* helper functions getting values from a JSON request */

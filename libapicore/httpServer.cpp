@@ -1,11 +1,15 @@
+#include "httpServer.h"
+#include "libdevcore/Common.h"
+#include "libdevcore/Log.h"
+
+#include <ethminer/buildinfo.h>
+
+#include <mongoose/mongoose.h>
+
+#include <limits.h>
 #include <chrono>
 #include <thread>
-#include <mongoose/mongoose.h>
-#include <limits.h>
-#include "httpServer.h"
-#include "libdevcore/Log.h"
-#include "libdevcore/Common.h"
-#include "ethminer-buildinfo.h"
+
 
 #ifndef HOST_NAME_MAX
 #define HOST_NAME_MAX 255

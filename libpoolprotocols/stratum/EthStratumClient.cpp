@@ -1,6 +1,7 @@
 #include "EthStratumClient.h"
 #include <libdevcore/Log.h>
-#include <ethminer-buildinfo.h>
+
+#include <ethminer/buildinfo.h>
 
 #include <ethash/ethash.hpp>
 
