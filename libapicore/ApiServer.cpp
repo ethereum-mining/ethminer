@@ -750,7 +750,7 @@ Json::Value ApiConnection::getMinerStat1()
 
 	Json::Value jRes;
 
-	jRes[0] = std::string("ethminer-") + ethminer_get_buildinfo()->project_version;  //miner version.
+	jRes[0] = ethminer_get_buildinfo()->project_name_with_version;  //miner version.
 	jRes[1] = toString(runningTime.count()); // running time, in minutes.
 	jRes[2] = totalMhEth.str();              // total ETH hashrate in MH/s, number of ETH shares, number of ETH rejected shares.
 	jRes[3] = detailedMhEth.str();           // detailed ETH hashrate for all GPUs.
@@ -782,7 +782,7 @@ Json::Value ApiConnection::getMinerStatHR()
 	Json::Value ispaused;
 	ostringstream poolAddresses;
 
-	version << "ethminer-" << ethminer_get_buildinfo()->project_version;
+	version << ethminer_get_buildinfo()->project_name_with_version;
 	runtime << toString(runningTime.count());
 	poolAddresses << m_farm.get_pool_addresses(); 
 
