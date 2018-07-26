@@ -26,22 +26,22 @@ install: |
 build_script:
   - cmake -G "Visual Studio 15 2017 Win64" -H. -Bbuild -T v140 -DETHASHCUDA=ON -DAPICORE=ON -DHUNTER_JOBS_NUMBER=%NUMBER_OF_PROCESSORS%
   - cmake --build build --config %CONFIGURATION% --target package
+  - ps: |
+      . build/ethminer/buildinfo.ps1
+      mv build/ethminer.zip build/$env:project_name-$env:project_version-$env:system_name-$env:system_processor.zip
 
 artifacts:
   - path: build/ethminer-*.zip
     name: ethminer
 
-before_deploy:
-  # Read variables dumped by CMake configuration.
-  - ps: . build/variables.ps1
 deploy:
   # Create GitHub release, also set the release name and description.
   provider: GitHub
   tag: $(appveyor_repo_tag_name)
-  release: ethminer $(ethminer_version)
+  release: $(project_name) $(project_version)
   description: ''
   force_update: true  # Force update in case Travis CI created the release before.
-  prerelease: $(ethminer_version_is_prerelease)
+  prerelease: $(project_version_is_prerelease)
   draft: false
   artifact: ethminer
   auth_token:
