@@ -208,7 +208,7 @@ public:
 			->check(CLI::Range(9));
 
 		app.add_option("--farm-recheck", m_farmRecheckPeriod,
-			"Set check interval in ms.for changed work", true)
+			"Set check interval in milliseconds for changed work", true)
 			->group(CommonGroup)
 			->check(CLI::Range(1, 99999));
 
