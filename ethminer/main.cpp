@@ -652,13 +652,22 @@ public:
 		if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
 		{
 #if ETH_ETHASHCUDA
-			if (m_cudaDeviceCount > 0)
+			try
 			{
-				CUDAMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
-				m_miningThreads = m_cudaDeviceCount;
+				if (m_cudaDeviceCount > 0)
+				{
+					CUDAMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
+					m_miningThreads = m_cudaDeviceCount;
+				}
+				CUDAMiner::setNumInstances(m_miningThreads);
+			}
+			catch(std::runtime_error const& err)
+			{
+				cwarn << "CUDA error: " << err.what();
+				stop_io_service();
+				exit(1);
 			}
 
-			CUDAMiner::setNumInstances(m_miningThreads);
 			if (!CUDAMiner::configureGPU(
 				m_cudaBlockSize,
 				m_cudaGridSize,
