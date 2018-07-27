@@ -173,7 +173,7 @@ unsigned CUDAMiner::getNumDevices()
 
     if (err == cudaErrorInsufficientDriver)
     {
-        int driverVersion;
+        int driverVersion = 0;
         cudaDriverGetVersion(&driverVersion);
         if (driverVersion == 0)
             throw std::runtime_error{"No CUDA driver found"};
