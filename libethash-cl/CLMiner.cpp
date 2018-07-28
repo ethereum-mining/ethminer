@@ -360,66 +360,74 @@ void CLMiner::workLoop()
 }
 
 void CLMiner::kick_miner() {
-	
-	uint32_t const c_zero = 0;
-	WorkPackage w = work();
-	if (current.header != w.header)
-		{	
-		if (current.epoch != w.epoch)
-			{
-			// because kick_miner() calls are asynchronous to host code thread, 
-			// we should check if the new work came while DAG is already initialized
-			if (m_dagState != DagState::Initializing) {
-				if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
+	//unsafe, can be competitions in case if two work will come simultaneously
+	new thread([&]() {
+		std::string logTag ="cl-" + std::to_string(Index()) + "_support";
+		dev::setThreadName(logTag.c_str());
+		uint32_t const c_zero = 0;
+		WorkPackage w = work();
+		if (current.header != w.header)
+			{	
+			if (current.epoch != w.epoch)
 				{
-					while (s_dagLoadIndex < index)
-						this_thread::sleep_for(chrono::seconds(1));
-					++s_dagLoadIndex;
-				}
-				m_dagState = DagState::Initializing;
-				if (init(w.epoch)) {
-					m_dagState = DagState::Created;
-				} else {
-					m_dagState = DagState::Idle;
+				// because kick_miner() calls are asynchronous to host code thread, 
+				// we should check if the new work came while DAG is already initialized
+				if (m_dagState != DagState::Initializing) {
+					if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
+					{
+						while (s_dagLoadIndex < index)
+							this_thread::sleep_for(chrono::seconds(1));
+						++s_dagLoadIndex;
+					}
+					m_dagState = DagState::Initializing;
+					if (init(w.epoch)) {
+						m_dagState = DagState::Created;
+					} else {
+						m_dagState = DagState::Idle;
+					}
 				}
 			}
+
+			//simple workaround to remove thread race if the miner is making the init() and after that new work came
+			//can be removed if we won't create new thread for each kick_miner call
+			w = work();
+
+			// Upper 64 bits of the boundary.
+			const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
+			assert(target > 0);
+
+			// Update header constant buffer.				
+			m_queue.enqueueWriteBuffer(m_header[0], CL_FALSE, 0, w.header.size, w.header.data());
+			m_queue.enqueueFillBuffer(m_searchBuffer[0], c_zero,c_maxSearchResults * sizeof(uint32_t), sizeof(c_zero) * 2);
+						
+			current = w;        // kernel now processing newest work
+			if (w.exSizeBits >= 0)
+				{
+				// This can support up to 2^c_log2MaxMiners devices.
+				startNonce = w.startNonce | ((uint64_t)index << (64 - LOG2_MAX_MINERS - w.exSizeBits));
+			}
+			else {
+				startNonce = get_start_nonce();
+			}
+
+			if (g_logVerbosity > 5)
+			cllog << "Switch time: "
+				<< std::chrono::duration_cast<std::chrono::milliseconds>
+					(std::chrono::high_resolution_clock::now() - workSwitchStart).count() << " ms.";
+
+			m_searchKernel.setArg(0, m_searchBuffer[0]);  // Supply output buffer to kernel.
+			m_searchKernel.setArg(1, m_header[0]);  // Supply header buffer to kernel.
+			m_searchKernel.setArg(2, m_dag[0]);  // Supply DAG buffer to kernel.
+			m_searchKernel.setArg(3, m_dagItems);
+			m_searchKernel.setArg(5, target);
+			m_searchKernel.setArg(6, 0xffffffff);
+			m_searchKernel.setArg(7, 1);
+						
+			//set result buffer element at [c_maxSearchResults] position to C_INVALID;
+			m_invalidatingQueue.enqueueWriteBuffer(m_searchBuffer[0], 
+				CL_TRUE, c_maxSearchResults * sizeof(uint32_t), sizeof(C_INVALID), &C_INVALID);
 		}
-
-		// Upper 64 bits of the boundary.
-		const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
-		assert(target > 0);
-
-		// Update header constant buffer.				
-		m_queue.enqueueWriteBuffer(m_header[0], CL_FALSE, 0, w.header.size, w.header.data());
-		m_queue.enqueueFillBuffer(m_searchBuffer[0], c_zero,c_maxSearchResults * sizeof(uint32_t), sizeof(c_zero) * 2);
-					
-		current = w;        // kernel now processing newest work
-		if (w.exSizeBits >= 0)
-			{
-			// This can support up to 2^c_log2MaxMiners devices.
-			startNonce = w.startNonce | ((uint64_t)index << (64 - LOG2_MAX_MINERS - w.exSizeBits));
-		}
-		else {
-			startNonce = get_start_nonce();
-		}
-
-		if (g_logVerbosity > 5)
-		cllog << "Switch time: "
-			<< std::chrono::duration_cast<std::chrono::milliseconds>
-				(std::chrono::high_resolution_clock::now() - workSwitchStart).count() << " ms.";
-
-		m_searchKernel.setArg(0, m_searchBuffer[0]);  // Supply output buffer to kernel.
-		m_searchKernel.setArg(1, m_header[0]);  // Supply header buffer to kernel.
-		m_searchKernel.setArg(2, m_dag[0]);  // Supply DAG buffer to kernel.
-		m_searchKernel.setArg(3, m_dagItems);
-		m_searchKernel.setArg(5, target);
-		m_searchKernel.setArg(6, 0xffffffff);
-		m_searchKernel.setArg(7, 1);
-					
-		//set result buffer element at [c_maxSearchResults] position to C_INVALID;
-		m_invalidatingQueue.enqueueWriteBuffer(m_searchBuffer[0], 
-			CL_TRUE, c_maxSearchResults * sizeof(uint32_t), sizeof(C_INVALID), &C_INVALID);
-	}
+	});
 }
 
 unsigned CLMiner::getNumDevices()
