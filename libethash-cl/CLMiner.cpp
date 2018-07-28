@@ -418,7 +418,7 @@ void CLMiner::kick_miner() {
 					
 		//set result buffer element at [c_maxSearchResults] position to C_INVALID;
 		m_invalidatingQueue.enqueueWriteBuffer(m_searchBuffer[0], 
-			CL_FALSE, c_maxSearchResults * sizeof(uint32_t), sizeof(C_INVALID), &C_INVALID);
+			CL_TRUE, c_maxSearchResults * sizeof(uint32_t), sizeof(C_INVALID), &C_INVALID);
 	}
 }
 
