@@ -699,7 +699,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		cwarn << "Pool sent an invalid jsonrpc message ...";
 		cwarn << "Do not blame ethminer for this. Ask pool devs to honor http://www.jsonrpc.org/ specifications ";
 		cwarn << "Disconnecting ...";
-        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this));
+        m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
 		return;
 
 	}
@@ -820,7 +820,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
                         // In case of failure we can't manage this connection
                         cwarn << "Unable to find suitable Stratum Mode";
                         m_conn->MarkUnrecoverable();
-                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this));
+                        m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
                         return;
                     }
                     else
@@ -846,7 +846,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				{
 					cnote << "Could not subscribe to stratum server";
 					m_conn->MarkUnrecoverable();
-                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this));
+                    m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
 					return;
 				}
 				else {
@@ -870,7 +870,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				{
 					cnote << "Could not login to ethproxy server:" << _errReason;
 					m_conn->MarkUnrecoverable();
-                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this));
+                    m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
 					return;
 				}
 				else {
@@ -893,7 +893,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 				{
 					cnote << "Could not subscribe to stratum server:" << _errReason;
 					m_conn->MarkUnrecoverable();
-                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this));
+                    m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
 					return;
 				}
 				else {
@@ -957,7 +957,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 			if (!m_authorized)
 			{
 				cnote << "Worker not authorized" << m_conn->User() << _errReason;
-                m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this));
+                m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
 				return;
 			
 			}
@@ -1029,7 +1029,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 					// Subscription pending
 					cnote << "Subscription failed:" << (_errReason.empty() ? "Unspecified error" : _errReason);
-                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this));
+                    m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
 					return;
 
 				}
@@ -1037,7 +1037,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 					// Authorization pending
 					cnote << "Worker not authorized:" << (_errReason.empty() ? "Unspecified error" : _errReason);
-                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this));
+                    m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
 					return;
 
 				}
