@@ -645,7 +645,7 @@ public:
 
 			CLMiner::setNumInstances(m_miningThreads);
 #else
-			cerr << endl << "Selected GPU mining without having compiled with -DETHASHCL=1" << "\n\n";
+			cerr << endl << "Selected GPU mining without having compiled with -DETHASHCL=ON" << "\n\n";
 			exit(1);
 #endif
 		}
