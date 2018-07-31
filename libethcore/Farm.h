@@ -169,10 +169,11 @@ public:
 		b_lastMixed = mixed;
 
 		// Start hashrate collector
-		m_hashrateTimer.expires_from_now(boost::posix_time::milliseconds(1000));
-		m_hashrateTimer.async_wait(m_io_strand.wrap(boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error)));
+        m_hashrateTimer.expires_from_now(boost::posix_time::milliseconds(1000));
+        m_hashrateTimer.async_wait(m_io_strand.wrap(
+            boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error)));
 
-		return true;
+        return true;
 	}
 
 	/**
@@ -217,8 +218,7 @@ public:
             p.minersHashes.push_back(minerHashCount);
         }
 
-        if (p.hashes > 0)
-            m_lastProgresses.push_back(p);
+        m_lastProgresses.push_back(p);
 
         // We smooth the hashrate over the last x seconds
         uint64_t allMs = 0;
@@ -241,9 +241,10 @@ public:
 			collectHashRate();
 
 			// Resubmit timer only if actually mining
-			m_hashrateTimer.expires_from_now(boost::posix_time::milliseconds(1000));
-			m_hashrateTimer.async_wait(m_io_strand.wrap(boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error)));
-		}
+            m_hashrateTimer.expires_from_now(boost::posix_time::milliseconds(1000));
+            m_hashrateTimer.async_wait(m_io_strand.wrap(
+                boost::bind(&Farm::processHashRate, this, boost::asio::placeholders::error)));
+        }
 	}
 	
 	/**
@@ -522,10 +523,10 @@ private:
 	bool b_lastMixed = false;
 
 	std::chrono::steady_clock::time_point m_lastStart;
-	uint64_t m_hashrateSmoothInterval = 10000;
+    uint64_t m_hashrateSmoothInterval = 30000;
 
-	boost::asio::io_service::strand m_io_strand;
-	boost::asio::deadline_timer m_hashrateTimer;
+    boost::asio::io_service::strand m_io_strand;
+    boost::asio::deadline_timer m_hashrateTimer;
 	std::vector<WorkingProgress> m_lastProgresses;
 
 	mutable SolutionStats m_solutionStats;
