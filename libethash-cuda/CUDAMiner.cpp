@@ -334,7 +334,7 @@ bool CUDAMiner::cuda_init(
         m_search_buf = new volatile search_results *[s_numStreams];
         m_streams = new cudaStream_t[s_numStreams];
 
-        const auto& context = ethash::managed::get_epoch_context(epoch);
+        const auto& context = ethash::get_global_epoch_context(epoch);
         const auto lightNumItems = context.light_cache_num_items;
         const auto lightSize = ethash::get_light_cache_size(lightNumItems);
         const auto dagNumItems = context.full_dataset_num_items;
