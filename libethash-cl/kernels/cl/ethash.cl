@@ -244,11 +244,13 @@ struct SearchResults {
         uint pad[7]; // pad to 16 words for easy indexing
     } rslt[MAX_OUTPUTS];
     uint count;
+    uint hashCount;
+    uint abort;
 };
 
 __attribute__((reqd_work_group_size(WORKSIZE, 1, 1)))
 __kernel void search(
-    __global struct SearchResults* restrict g_output,
+    __global volatile struct SearchResults* restrict g_output,
     __constant uint2 const* g_header,
     __global ulong8 const* _g_dag,
     uint dag_size,
@@ -257,11 +259,14 @@ __kernel void search(
     uint isolate
 )
 {
+    if (g_output->abort)
+        return;
+
     __global hash128_t const* g_dag = (__global hash128_t const*) _g_dag;
 
-    const uint gid = get_global_id(0);
     const uint thread_id = get_local_id(0) % 4;
     const uint hash_id = get_local_id(0) / 4;
+    const uint gid = get_global_id(0);
 
     __local compute_hash_share sharebuf[WORKSIZE / 4];
 #ifdef LEGACY
@@ -376,7 +381,11 @@ __kernel void search(
         state[24] = (uint2)(0);
     }
 
+    if (get_local_id(0) == 0)
+        atomic_inc(&g_output->hashCount);
+
     if (as_ulong(as_uchar8(state[0]).s76543210) < target) {
+        atomic_inc(&g_output->abort);
         uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output->count));
         g_output->rslt[slot].gid = gid;
         g_output->rslt[slot].mix[0] = mixhash[0].s0;

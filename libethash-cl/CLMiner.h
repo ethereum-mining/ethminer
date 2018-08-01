@@ -50,10 +50,10 @@ public:
 	/// Default value of the local work size. Also known as workgroup size.
 	static const unsigned c_defaultLocalWorkSize = 192;
 	/// Default value of the global work size as a multiplier of the local work size
-	static const unsigned c_defaultGlobalWorkSizeMultiplier = 16392;
+    static const unsigned c_defaultGlobalWorkSizeMultiplier = 65536;
 
-	CLMiner(FarmFace& _farm, unsigned _index);
-	~CLMiner() override;
+    CLMiner(FarmFace& _farm, unsigned _index);
+    ~CLMiner() override;
 
 	static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 	static unsigned getNumDevices();
@@ -78,11 +78,13 @@ private:
 	bool init(int epoch);
 
 	cl::Context m_context;
-	cl::CommandQueue m_queue;
-	cl::Kernel m_searchKernel;
+    vector<cl::CommandQueue> m_queue;
+    vector<cl::CommandQueue> m_abortqueue;
+    cl::Kernel m_searchKernel;
 	cl::Kernel m_dagKernel;
+    cl::Device m_device;
 
-	vector<cl::Buffer> m_dag;
+    vector<cl::Buffer> m_dag;
 	vector<cl::Buffer> m_light;
 	vector<cl::Buffer> m_header;
 	vector<cl::Buffer> m_searchBuffer;
