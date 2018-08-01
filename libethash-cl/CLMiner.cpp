@@ -641,7 +641,7 @@ bool CLMiner::init(int epoch)
                   << "Adjusted work multiplier: " << m_globalWorkSize / m_workgroupSize;
         }
 
-        const auto& context = ethash::managed::get_epoch_context(epoch);
+        const auto& context = ethash::get_global_epoch_context(epoch);
         const auto lightNumItems = context.light_cache_num_items;
         const auto lightSize = ethash::get_light_cache_size(lightNumItems);
         m_dagItems = context.full_dataset_num_items;
