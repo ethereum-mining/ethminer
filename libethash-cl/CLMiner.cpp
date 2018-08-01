@@ -624,8 +624,9 @@ bool CLMiner::init(int epoch)
             }
         }
 
-        char options[256];
+        char options[256] = {0};
         int computeCapability = 0;
+#ifndef __clang__
         if (platformId == OPENCL_PLATFORM_NVIDIA) {
             cl_uint computeCapabilityMajor =
                 m_device.getInfo<CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV>();
@@ -636,9 +637,7 @@ bool CLMiner::init(int epoch)
             int maxregs = computeCapability >= 35 ? 72 : 63;
             sprintf(options, "-cl-nv-maxrregcount=%d", maxregs);
         }
-        else {
-            sprintf(options, "%s", "");
-        }
+#endif
         // create context
         m_context = cl::Context(vector<cl::Device>(&m_device, &m_device + 1));
         m_queue.clear();
