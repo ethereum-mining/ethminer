@@ -729,59 +729,35 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
                     // In case of success we also need to verify third parameter of "result" array
                     // member is exactly "EthereumStratum/1.0.0". Otherwise try with another mode
-                    if (_isSuccess)
-                    {
-                        if (!jResult.isArray() || !jResult[0].isArray() || jResult[0].size() != 3 ||
-                            jResult[0].get((Json::Value::ArrayIndex)2, "").asString() !=
-                                "EthereumStratum/1.0.0")
-                        {
-                            // This is not a proper ETHEREUMSTRATUM response.
-                            // Proceed with next step of autodetection ETHPROXY compatible
-                            m_conn->SetStratumMode(1);
-                            jReq["id"] = unsigned(1);
-                            jReq["method"] = "eth_submitLogin";
-                            jReq["params"] = Json::Value(Json::arrayValue);
-                            if (m_worker.length())
-                                jReq["worker"] = m_worker;
-                            jReq["params"].append(m_user + m_conn->Path());
-                            if (!m_email.empty())
-                                jReq["params"].append(m_email);
+                    if (_isSuccess &&
+                    	jResult.isArray() && jResult[0].isArray() && jResult[0].size() == 3 &&
+                    	jResult[0].get((Json::Value::ArrayIndex)2, "").asString() == "EthereumStratum/1.0.0")
+					{
+						// ETHEREUMSTRATUM is confirmed
+						cnote << "Stratum mode detected : ETHEREUMSTRATUM (NiceHash)";
+						m_conn->SetStratumMode(2, true);
+					}
+					else
+					{
+						// This is not a proper ETHEREUMSTRATUM response.
+						// Proceed with next step of autodetection ETHPROXY compatible
+						m_conn->SetStratumMode(1);
+						jReq["id"] = unsigned(1);
+						jReq["method"] = "eth_submitLogin";
+						jReq["params"] = Json::Value(Json::arrayValue);
+						if (m_worker.length())
+							jReq["worker"] = m_worker;
+						jReq["params"].append(m_user + m_conn->Path());
+						if (!m_email.empty())
+							jReq["params"].append(m_email);
 
-                            // Set a timeout in case pool does not respond
-                            m_responsetimer.cancel();
-                            m_responsetimer.expires_from_now(boost::posix_time::milliseconds(1000));
-                            m_responsetimer.async_wait(m_io_strand.wrap(boost::bind(&EthStratumClient::response_timeout_handler, this, boost::asio::placeholders::error)));
-                            sendSocketData(jReq);
-                            return;
-                        }
-                        else
-                        {
-                            // ETHEREUMSTRATUM is confirmed
-                            cnote << "Stratum mode detected : ETHEREUMSTRATUM (NiceHash)";
-                            m_conn->SetStratumMode(2, true);
-                        }
-                    }
-                    else
-                    {
-                        // This is not a proper ETHEREUMSTRATUM response.
-                        // Proceed with next step of autodetection ETHPROXY compatible
-                        m_conn->SetStratumMode(1);
-                        jReq["id"] = unsigned(1);
-                        jReq["method"] = "eth_submitLogin";
-                        jReq["params"] = Json::Value(Json::arrayValue);
-                        if (m_worker.length())
-                            jReq["worker"] = m_worker;
-                        jReq["params"].append(m_user + m_conn->Path());
-                        if (!m_email.empty())
-                            jReq["params"].append(m_email);
-
-                        // Set a timeout in case pool does not respond
-                        m_responsetimer.cancel();
-                        m_responsetimer.expires_from_now(boost::posix_time::milliseconds(1000));
-                        m_responsetimer.async_wait(m_io_strand.wrap(boost::bind(&EthStratumClient::response_timeout_handler, this, boost::asio::placeholders::error)));
-                        sendSocketData(jReq);
-                        return;
-                    }
+						// Set a timeout in case pool does not respond
+						m_responsetimer.cancel();
+						m_responsetimer.expires_from_now(boost::posix_time::milliseconds(1000));
+						m_responsetimer.async_wait(m_io_strand.wrap(boost::bind(&EthStratumClient::response_timeout_handler, this, boost::asio::placeholders::error)));
+						sendSocketData(jReq);
+						return;
+					}
 
                     break;
 
