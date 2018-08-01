@@ -479,7 +479,7 @@ public:
 			<< "Environment Variables:" << endl
      		<< "    NO_COLOR - set to any value to disable color output. Unset to re-enable color output." << endl
      		<< "    SYSLOG   - set to any value to strip time and disable color from output, for logging under systemd";
-		app.set_footer(ssHelp.str());
+		app.footer(ssHelp.str());
 
     	try {
         	app.parse(argc, argv);
