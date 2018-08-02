@@ -5,7 +5,9 @@
  */
 
 .kernel search
+
     .config
+
         .dims x
         .cws worksize, 1, 1
         .sgprsnum 52
@@ -30,7 +32,9 @@
         .arg start_nonce, "ulong", ulong
         .arg target, "ulong", ulong
         .arg isolate, "uint", uint
+
     .text
+
         mix0 = %v24
         mix1 = %v25
         mix2 = %v26
@@ -175,7 +179,7 @@
         flat_load_dword temp0, mix_double_temp0
         s_waitcnt       vmcnt(0) & lgkmcnt(0)
         v_cmp_lg_i32    vcc, 0, temp0
-        s_cbranch_vccnz fastexit
+        s_cbranch_vccnz .exit
 
         s_load_dwordx2  header,         args,    arg_header
         s_load_dwordx2  dag,            args,    arg_dag
@@ -188,12 +192,6 @@
         s_load_dwordx8  header_content, header,  0x0
         s_waitcnt       lgkmcnt(0)
 
-        s_nop           0
-        s_nop           0
-        s_nop           0
-        s_nop           0
-        s_nop           0
-        s_nop           0
         v_mov_b32       state7, header_content[7]
         v_mov_b32       state6, header_content[6]
         v_mov_b32       state5, header_content[5]
@@ -252,25 +250,12 @@
         v_mov_b32       state11, 0
         v_mov_b32       state10, 1
 
-
-
         s_movk_i32      pass, 0x0
         s_movk_i32      keccak_round, 0x0
-        s_nop           0
-        s_nop           0
-        s_nop           0
-        s_nop           0
-        s_nop           0
-        s_nop           0
-        s_nop           0
+
 .keccak_loop:
 
-
-
-        /*****************/
-        /* Keccak Rounds */
-        /*****************/
-
+        /* keccack calculations */
         s_mov_b32       scalar_double_temp0[0], keccak_round
         s_ashr_i32      scalar_double_temp0[1], keccak_round, 31
         s_lshl_b64      scalar_double_temp0, scalar_double_temp0, 3
@@ -577,16 +562,11 @@
         s_cmp_lt_i32    pass, 1
         s_cbranch_scc0  .test
 
-
-
-        /*******/
-        /* MIX */ 
-        /*******/
-
+        /* mix calculations */
         s_movk_i32      tid, 0x0
-        s_nop           0
-        s_nop           0
+
 .tid_loop:
+
         v_lshrrev_b32   mix_temp3, 2, local_id
         v_lshlrev_b32   mix_temp3, 6, mix_temp3
         v_and_b32       mix_temp2, 3, local_id
@@ -598,7 +578,6 @@
         ds_write2_b64   mix_temp3, v[12:13], v[14:15] offset0:6 offset1:7
         s_mov_b64       exec, s[46:47]
         s_waitcnt       lgkmcnt(0)
-        s_barrier
         v_and_b32       mix_temp2, 1, local_id
         v_lshlrev_b32   mix_temp2, 5, mix_temp2
         v_add_u32       mix_temp2, vcc, mix_temp3, mix_temp2
@@ -608,9 +587,6 @@
         v_lshlrev_b32   mix_temp3, 6, mix_temp3
         ds_read_b32     mix_init0, mix_temp3
         s_waitcnt       lgkmcnt(0)
-        s_barrier
-
-
 
         v_cvt_f32_u32   mix_temp0, dag_size
         v_rcp_f32       mix_temp0, mix_temp0
@@ -632,10 +608,9 @@
         v_lshlrev_b32   temp3, 5, mix_temp2
 
         s_movk_i32      mix_index, 0x0
-        s_nop           0
-        s_nop           0
-        s_nop           0
+
 .mix_loop:
+
         s_bfe_u32       scalar_temp0, mix_index, 0x20003
         v_and_b32       temp0, 0xfc, local_id
         v_or_b32        temp0, scalar_temp0, temp0
@@ -645,7 +620,6 @@
         s_set_gpr_idx_on scalar_temp0, 1
         v_mov_b32       mix_temp0, mix0
         s_set_gpr_idx_off
-        s_mov_b32       m0, 0x10000
                 
         v_xor_b32       mix_temp4, mix_index, mix_init0
         v_mul_lo_u32    mix_temp4, mix_temp4, fnv_prime
@@ -718,7 +692,6 @@
         v_add_u32       mix_temp3, vcc, mix_temp2, mix_temp3
         ds_write_b64    mix_temp3, mix_double_temp0
         s_waitcnt       lgkmcnt(0)
-        s_barrier
         v_and_b32       mix_temp2, 3, local_id
         v_cmp_eq_i32    vcc, tid, mix_temp2
         s_and_saveexec_b64 s[46:47], vcc
@@ -728,7 +701,6 @@
         ds_read2_b64    v[20:23], mix_temp3 offset0:2 offset1:3
         s_waitcnt       lgkmcnt(0)
         s_mov_b64       exec, s[46:47]
-        s_barrier
         s_add_u32       tid, tid, 1
         s_cmp_ge_u32    tid, 4
         s_cbranch_scc0  .tid_loop
@@ -775,13 +747,9 @@
         
         s_movk_i32      keccak_round, 0x0
         s_branch        .keccak_loop
-        s_nop           0
-        s_nop           0
-        s_nop           0
-
-
         
 .test:
+
         /* increment hash count */
         v_cmp_eq_u32    vcc, 0, local_id
         s_and_saveexec_b64 s[46:47], vcc
@@ -844,6 +812,8 @@
         s_waitcnt       vmcnt(0) & lgkmcnt(0)
 
         s_mov_b64       exec, s[46:47]
-fastexit:
+
+.exit:
+
         s_endpgm
 
