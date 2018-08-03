@@ -300,15 +300,15 @@ void CLMiner::workLoop()
     try {
         while (!shouldStop())
         {
-            // Read results.
-            volatile SearchResults results;
-
             if (is_mining_paused())
             {
                 // cnote << "Mining is paused: Waiting for 3s.";
                 std::this_thread::sleep_for(std::chrono::seconds(3));
                 continue;
             }
+
+            // Read results.
+            volatile SearchResults results;
 
             if (m_queue.size())
             {
@@ -325,6 +325,8 @@ void CLMiner::workLoop()
                 m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
                     offsetof(SearchResults, count), sizeof(zerox3), zerox3);
             }
+            else
+                results.count = 0;
 
             const WorkPackage w = work();
 
@@ -391,34 +393,34 @@ void CLMiner::workLoop()
                 m_searchKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
 
             // Report results while the kernel is running.
-            // if (results.count) cerr << results.count << '\n';
             for (uint32_t i = 0; i < results.count; i++) {
                 uint64_t nonce = current.startNonce + results.rslt[i].gid;
-                if (s_noeval)
+                if (nonce != m_lastNonce)
                 {
-                    //Result r = EthashAux::eval(current.epoch, current.header, nonce);
-                    h256 mix;
-                    memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
-                    farm.submitProof(Solution{nonce, mix, current, current.header != w.header});
-                    //cwarn << mix;
-                    //cwarn << r.mixHash;
-                }
-                else
-                {
-                    Result r = EthashAux::eval(current.epoch, current.header, nonce);
-                    if (r.value <= current.boundary)
-                        farm.submitProof(
-                            Solution{nonce, r.mixHash, current, current.header != w.header});
+                    m_lastNonce = nonce;
+                    if (s_noeval)
+                    {
+                        // Result r = EthashAux::eval(current.epoch, current.header, nonce);
+                        h256 mix;
+                        memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
+                        farm.submitProof(Solution{nonce, mix, current, current.header != w.header});
+                        // cwarn << mix;
+                        // cwarn << r.mixHash;
+                    }
                     else
                     {
-                        farm.failedSolution();
-                        cwarn << "GPU gave incorrect result!";
+                        Result r = EthashAux::eval(current.epoch, current.header, nonce);
+                        if (r.value <= current.boundary)
+                            farm.submitProof(
+                                Solution{nonce, r.mixHash, current, current.header != w.header});
+                        else
+                        {
+                            farm.failedSolution();
+                            cwarn << "GPU gave incorrect result!";
+                        }
                     }
                 }
             }
-
-            // if (results.hashCount != m_globalWorkSize / m_workgroupSize)
-            //    cerr << results.hashCount << '\n';
 
             current = w;        // kernel now processing newest work
             current.startNonce = startNonce;
