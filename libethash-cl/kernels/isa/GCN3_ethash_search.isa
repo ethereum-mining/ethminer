@@ -689,14 +689,16 @@
         v_mov_b32       mix_double_temp0[1], 0
         v_mov_b32       mix_double_temp1[0], dag[0]
         v_mov_b32       mix_double_temp1[1], dag[1]
-        v_add_u32       mix_double_temp1[0], vcc, mix_double_temp1[0], temp3
-        v_addc_u32      mix_double_temp1[1], vcc, mix_double_temp1[1], 0, vcc
         s_waitcnt       lgkmcnt(0)
+
         v_lshlrev_b64   mix_double_temp0, 7, mix_double_temp0
+        v_or_b32        mix_double_temp0[0], mix_double_temp0[0], temp3
+
         v_add_u32       mix_double_temp0[0], vcc, mix_double_temp0[0], mix_double_temp1[0]
         v_addc_u32      mix_double_temp0[1], vcc, mix_double_temp0[1], mix_double_temp1[1], vcc
-        v_add_u32       mix_double_temp1[0], vcc, mix_double_temp0[0], 16
-        v_addc_u32      mix_double_temp1[1], vcc, mix_double_temp0[1], 0, vcc
+        v_or_b32        mix_double_temp1[0], mix_double_temp0[0], 16
+        v_mov_b32       mix_double_temp1[1], mix_double_temp0[1]
+
         flat_load_dwordx4 mix_quad_temp0, mix_double_temp0 glc
         flat_load_dwordx4 mix_quad_temp1, mix_double_temp1 glc
         v_mul_lo_u32    mix0, mix0, fnv_prime
