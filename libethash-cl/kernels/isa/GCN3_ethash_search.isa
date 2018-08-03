@@ -636,7 +636,7 @@
 
         /* Why the hell is this in here? all of this can be factored out of the
          * loop. We can use the extra registers we have allocated to keep this
-         * persisten
+         * persistent.
          */
         v_cvt_f32_u32   mix_temp0, dag_size
         v_rcp_f32       mix_temp0, mix_temp0
@@ -672,12 +672,10 @@
         v_mov_b32       mix_temp0, mix0
         s_set_gpr_idx_off
 
-        /* mix_temp4 = FNV(mix_index ^ mix_id, mix_temp0)*/
         v_xor_b32       mix_temp4, mix_index, mix_init0
         v_mul_lo_u32    mix_temp4, mix_temp4, fnv_prime
         v_xor_b32       mix_temp1, mix_temp4, mix_temp0
 
-        /*mix_temp0 = temp1 / dagsize */
         v_mul_hi_u32    mix_temp0, temp1, mix_temp1
         v_mul_lo_u32    mix_temp0, mix_temp0, dag_size
         v_sub_u32       mix_temp2, vcc, mix_temp1, mix_temp0
@@ -774,11 +772,6 @@
         PARTIAL_MIX 1
         PARTIAL_MIX 2
         PARTIAL_MIX 3
-
-        /* What the hell is this even doing? */
-        /* s_add_u32       pass, pass, 1
-        s_cmp_ge_i32    pass, 2
-        s_cbranch_scc1  .test */
 
         /* stash the mix hash */
         v_mov_b32       mix_save0[0], state16
