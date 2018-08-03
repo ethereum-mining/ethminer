@@ -187,12 +187,7 @@
         s_load_dwordx8  header_content, header,  0x0
         s_waitcnt       lgkmcnt(0)
 
-        s_nop           0
-        s_nop           0
-        s_nop           0
-        s_nop           0
-        s_nop           0
-        s_nop           0
+		.align          32
         v_mov_b32       state7, header_content[7]
         v_mov_b32       state6, header_content[6]
         v_mov_b32       state5, header_content[5]
@@ -255,15 +250,9 @@
 
         s_movk_i32      pass, 0x0
         s_movk_i32      keccak_round, 0x0
-        s_nop           0
-        s_nop           0
-        s_nop           0
-        s_nop           0
-        s_nop           0
-        s_nop           0
-        s_nop           0
-.keccak_loop:
 
+        .align          32
+.keccak_loop:
 
 
         /*****************/
@@ -582,8 +571,6 @@
         /* MIX */
         /*******/
 
-        s_nop           0
-        s_nop           0
 .macro DISTRIBUTE_MIX_FOURWAY h0,h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15, \
                               m0,m1,m2,m3,m4,m5,m6,m7 \
                               bin_and, \
@@ -654,10 +641,8 @@
         v_lshlrev_b32   temp3, 5, mix_temp2
 
         s_movk_i32      mix_index, 0x0
-        s_nop           0
-        s_nop           0
-        s_nop           0
 
+		.align          32
 .mix_loop_\mix_id:
         s_bfe_u32       scalar_temp0, mix_index, 0x20003
         v_and_b32       temp0, 0xfc, local_id
@@ -805,12 +790,8 @@
 
         s_movk_i32      keccak_round, 0x0
         s_branch        .keccak_loop
-        s_nop           0
-        s_nop           0
-        s_nop           0
 
-
-
+		.align          32
 .test:
         /* increment hash count */
         v_cmp_eq_u32    vcc, 0, local_id
@@ -874,5 +855,8 @@
         s_waitcnt       vmcnt(0) & lgkmcnt(0)
 
         s_mov_b64       exec, s[46:47]
+		s_endpgm
+
+		.align          32
 fastexit:
         s_endpgm
