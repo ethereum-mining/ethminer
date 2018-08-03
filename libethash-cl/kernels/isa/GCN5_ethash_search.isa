@@ -670,7 +670,7 @@
         v_cndmask_b32   mix_temp0, mix_temp1, mix_temp0, scalar_double_temp1
 
         /* Distribute the dag address among each group of 4 threads */
-        v_mov_b32       mix_double_temp0[0], mix_temp0 quad_perm:[0,0,0,0]
+        ds_bpermute_b32 mix_double_temp0[0], temp0, mix_temp0
 
         v_mov_b32       mix_double_temp0[1], 0
         v_mov_b32       mix_double_temp1[0], dag[0]
@@ -750,6 +750,11 @@
         PARTIAL_MIX 1
         PARTIAL_MIX 2
         PARTIAL_MIX 3
+
+        /* What the hell is this even doing? */
+        s_add_u32       pass, pass, 1
+        s_cmp_ge_i32    pass, 2
+        s_cbranch_scc1  .test
 
         /* stash the mix hash */
         v_mov_b32       mix_save0[0], state16
