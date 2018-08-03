@@ -680,7 +680,7 @@
         v_addc_co_u32   mix_double_temp1[1], vcc, mix_double_temp1[1], 0, vcc
 
         v_lshlrev_b64   mix_double_temp0, 7, mix_double_temp0
-
+        s_waitcnt       lgkmcnt(0)
         v_add_co_u32    mix_double_temp0[0], vcc, mix_double_temp0[0], mix_double_temp1[0]
         v_addc_co_u32   mix_double_temp0[1], vcc, mix_double_temp0[1], mix_double_temp1[1], vcc
         v_add_co_u32    mix_double_temp1[0], vcc, mix_double_temp0[0], 16
