@@ -115,8 +115,9 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 		std::stringstream ss;
 		ss << std::setw(4) << std::setfill(' ') << ms.count()
 			<< " ms." << " " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
-		cnote << EthLime "**Accepted" EthReset << (stale ? "(stale)" : "") << ss.str();
-		m_farm.acceptedSolution(stale);
+        cnote << EthLime "**Accepted" EthReset << (stale ? EthYellow "(stale)" EthReset : "")
+              << ss.str();
+        m_farm.acceptedSolution(stale);
 	});
 
 	p_client->onSolutionRejected([&](bool const& stale)
@@ -133,8 +134,9 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 		std::stringstream ss;
 		ss << std::setw(4) << std::setfill(' ') << ms.count()
 			<< "ms." << "   " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
-		cwarn << EthRed "**Rejected" EthReset << (stale ? "(stale)" : "") << ss.str();
-		m_farm.rejectedSolution();
+        cwarn << EthRed "**Rejected" EthReset << (stale ? EthYellow "(stale)" EthReset : "")
+              << ss.str();
+        m_farm.rejectedSolution();
 	});
 
 	m_farm.onSolutionFound([&](const Solution& sol)
