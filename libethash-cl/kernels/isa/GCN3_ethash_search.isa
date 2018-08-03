@@ -187,7 +187,6 @@
         s_load_dwordx8  header_content, header,  0x0
         s_waitcnt       lgkmcnt(0)
 
-		.align          32
         v_mov_b32       state7, header_content[7]
         v_mov_b32       state6, header_content[6]
         v_mov_b32       state5, header_content[5]
@@ -642,7 +641,7 @@
 
         s_movk_i32      mix_index, 0x0
 
-		.align          32
+        .align          32
 .mix_loop_\mix_id:
         s_bfe_u32       scalar_temp0, mix_index, 0x20003
         v_and_b32       temp0, 0xfc, local_id
@@ -791,7 +790,7 @@
         s_movk_i32      keccak_round, 0x0
         s_branch        .keccak_loop
 
-		.align          32
+        .align          32
 .test:
         /* increment hash count */
         v_cmp_eq_u32    vcc, 0, local_id
@@ -855,8 +854,8 @@
         s_waitcnt       vmcnt(0) & lgkmcnt(0)
 
         s_mov_b64       exec, s[46:47]
-		s_endpgm
+        s_endpgm
 
-		.align          32
+        .align          32
 fastexit:
         s_endpgm
