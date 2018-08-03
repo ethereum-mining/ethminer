@@ -10,7 +10,7 @@
         .cws worksize, 1, 1
         .sgprsnum 52
         .vgprsnum 72
-        .localsize worksize*20
+        /* .localsize worksize*20 */
         .floatmode 0xc0
         .dx10clamp
         .ieeemode
@@ -85,7 +85,7 @@
         state18 = %v18
         state17 = %v17
         state16 = %v16
-        
+
         state15 = %v15
         state14 = %v14
         state13 = %v13
@@ -103,7 +103,7 @@
         state1 = %v1
         state0 = %v0
 
-        temp0 = %v50 
+        temp0 = %v50
         temp1 = %v51
         temp2 = %v52
         temp3 = %v53
@@ -143,7 +143,7 @@
         start_nonce     = %s[14:15]
         target          = %s[16:17]
         global_size     = %s19
-        
+
         header_content  = %s[24:31]
         scalar_temp0    = %s20
         scalar_temp1    = %s21
@@ -161,9 +161,8 @@
         exec_mask       = %s[46:47]
 
         v_mov_b32       local_id, v0
-        s_mov_b32       m0, 0x10000 
         s_mov_b32       fnv_prime, 0x1000193
-        
+
         s_load_dwordx2  output,         args,    arg_output
         s_waitcnt       lgkmcnt(0)
 
@@ -202,7 +201,7 @@
         v_mov_b32       state2, header_content[2]
         v_mov_b32       state1, header_content[1]
         v_mov_b32       state0, header_content[0]
-        
+
         s_mul_i32       first_work_item_in_group, group_id, worksize
 
         v_add_u32       state8, vcc, first_work_item_in_group, local_id
@@ -279,7 +278,7 @@
         s_add_u32       scalar_double_temp0[0], scalar_temp0, scalar_double_temp0[0]
         s_addc_u32      scalar_double_temp0[1], scalar_temp1, scalar_double_temp0[1]
         s_load_dwordx2  scalar_double_temp0, scalar_double_temp0, 0x0
-        
+
         v_xor_b32       temp0, state0, state10
         v_xor_b32       temp1, state1, state11
         v_xor_b32       temp2, state2, state12
@@ -325,13 +324,13 @@
         v_xor_b32       temp11, temp1, temp11
         v_xor_b32       temp10, temp0, temp10
         v_alignbit_b32  temp12, temp9, temp8, 31
-        v_xor_b32       temp5, temp5, temp12  
+        v_xor_b32       temp5, temp5, temp12
         v_alignbit_b32  temp12, temp8, temp9, 31
         v_xor_b32       temp4, temp4, temp12
         v_alignbit_b32  temp12, temp0, temp1, 31
         v_alignbit_b32  temp0, temp1, temp0, 31
         v_xor_b32       temp0, temp7, temp0
-        v_xor_b32       temp1, temp6, temp12 
+        v_xor_b32       temp1, temp6, temp12
         v_alignbit_b32  temp12, temp7, temp6, 31
         v_alignbit_b32  temp7, temp6, temp7, 31
         v_xor_b32       temp7, temp7, temp12
@@ -364,7 +363,7 @@
         v_xor_b32       state22, temp10, state22
         v_xor_b32       state21, temp11, state23
         v_xor_b32       state32, temp10, state32
-        v_xor_b32       v2, temp11, state33      
+        v_xor_b32       v2, temp11, state33
         v_xor_b32       state42, temp10, state42
         v_xor_b32       state43, temp11, state43
         v_xor_b32       state4, temp12, state4
@@ -384,7 +383,7 @@
         v_xor_b32       state26, temp4, state26
         v_xor_b32       state25, temp5, state27
         v_xor_b32       state36, temp4, state36
-        v_xor_b32       v33, temp5, state37 
+        v_xor_b32       v33, temp5, state37
         v_xor_b32       state46, temp4, state46
         v_xor_b32       state37, temp5, state47
         v_xor_b32       state8, temp1, state8
@@ -396,7 +395,7 @@
         v_xor_b32       state38, temp1, state38
         v_xor_b32       state27, temp0, state39
         v_xor_b32       state48, temp1, state48
-        v_xor_b32       state23, temp0, state49 
+        v_xor_b32       state23, temp0, state49
         v_mov_b32       v7, v2
         v_alignbit_b32  state2, state3, state12, 20
         v_alignbit_b32  state3, state12, state3, 20
@@ -429,7 +428,7 @@
         v_alignbit_b32  state42, state15, state16, 9
         v_alignbit_b32  state43, state16, state15, 9
         v_alignbit_b32  state16, v7, state32, 19
-        v_alignbit_b32  state17, state32, v7, 19      
+        v_alignbit_b32  state17, state32, v7, 19
         v_alignbit_b32  state32, temp2, state10, 28
         v_mov_b32       v7, v33
         v_alignbit_b32  state33, state10, temp2, 28
@@ -573,45 +572,72 @@
         s_add_u32       keccak_round, keccak_round, 1
         s_cmp_eq_i32    keccak_round, 24
         s_cbranch_scc0  .keccak_loop
-        
+
         s_cmp_lt_i32    pass, 1
         s_cbranch_scc0  .test
 
 
 
         /*******/
-        /* MIX */ 
+        /* MIX */
         /*******/
 
         s_movk_i32      tid, 0x0
         s_nop           0
         s_nop           0
-.tid_loop:
-        v_lshrrev_b32   mix_temp3, 2, local_id
-        v_lshlrev_b32   mix_temp3, 6, mix_temp3
-        v_and_b32       mix_temp2, 3, local_id
-        v_cmp_eq_i32    vcc, tid, mix_temp2
-        s_and_saveexec_b64 s[46:47], vcc
-        ds_write2_b64   mix_temp3, v[0:1], v[2:3] offset1:1
-        ds_write2_b64   mix_temp3, v[4:5], v[6:7] offset0:2 offset1:3
-        ds_write2_b64   mix_temp3, v[8:9], v[10:11] offset0:4 offset1:5
-        ds_write2_b64   mix_temp3, v[12:13], v[14:15] offset0:6 offset1:7
-        s_mov_b64       exec, s[46:47]
-        s_waitcnt       lgkmcnt(0)
-        s_barrier
+
+
+.macro DISTRIBUTE_MIX_FOURWAY h0,h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15, \
+                              m0,m1,m2,m3,m4,m5,m6,m7 \
+                              bin_and, \
+                              init0, p
+        v_cmp_eq_u32    vcc, \bin_and, 1
+        v_cndmask_b32   \m0, \h0, \m0, vcc quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m1, \h1, \m1, vcc quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m2, \h2, \m2, vcc quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m3, \h3, \m3, vcc quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m4, \h4, \m4, vcc quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m5, \h5, \m5, vcc quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m6, \h6, \m6, vcc quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m7, \h7, \m7, vcc quad_perm:[\p,\p,\p,\p]
+
+        s_not_b64       vcc, vcc
+        v_mov_b32       \init0, \h0 quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m0, \h8,  \m0, vcc quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m1, \h9,  \m1, vcc quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m2, \h10, \m2, vcc quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m3, \h11, \m3, vcc quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m4, \h12, \m4, vcc quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m5, \h13, \m5, vcc quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m6, \h14, \m6, vcc quad_perm:[\p,\p,\p,\p]
+        v_cndmask_b32   \m7, \h15, \m7, vcc quad_perm:[\p,\p,\p,\p]
+        /** realistically we need two wait states here, but m7 and m6 won't be
+        used for a while, so we can ignore that
+        **/
+        s_mov_b64       exec, -1
+.endm
+
+
+.macro PARTIAL_MIX mix_id
         v_and_b32       mix_temp2, 1, local_id
-        v_lshlrev_b32   mix_temp2, 5, mix_temp2
-        v_add_u32       mix_temp2, vcc, mix_temp3, mix_temp2
-        ds_read2_b64    v[24:27], mix_temp2 offset1:1
-        ds_read2_b64    v[28:31], mix_temp2 offset0:2 offset1:3
-        v_lshrrev_b32   mix_temp3, 2, local_id
-        v_lshlrev_b32   mix_temp3, 6, mix_temp3
-        ds_read_b32     mix_init0, mix_temp3
-        s_waitcnt       lgkmcnt(0)
+        s_barrier
+        DISTRIBUTE_MIX_FOURWAY state0,  state1, state2, state3, state4, state5 \
+                               state6,  state7, state8, state9,state10,state11 \
+                               state12,state13, state14, state15 \
+                               mix0, mix1, mix2, mix3, mix4, mix5, mix6, mix7 \
+                               mix_temp2, mix_init0, \mix_id
+
+       /* We REALLY don't need this here now, but I'm worried that
+        * this barrier is part of what's giving us better performance
+        * by forcing threads in the group to be at the same point
+        * before  we start memory accesses.
+        */
         s_barrier
 
-
-
+        /* Why the hell is this in here? all of this can be factored out of the
+         * loop. We can use the extra registers we have allocated to keep this
+         * persistent.
+         */
         v_cvt_f32_u32   mix_temp0, dag_size
         v_rcp_f32       mix_temp0, mix_temp0
         v_mul_f32       mix_temp0, 0x4f800000, mix_temp0
@@ -627,7 +653,6 @@
         v_cndmask_b32   temp1, mix_temp0, mix_temp3, scalar_double_temp0
 
         v_lshlrev_b32   temp2, 2, local_id
-
         v_and_b32       mix_temp2, 3, local_id
         v_lshlrev_b32   temp3, 5, mix_temp2
 
@@ -635,45 +660,54 @@
         s_nop           0
         s_nop           0
         s_nop           0
-.mix_loop:
+
+.mix_loop_\mix_id:
         s_bfe_u32       scalar_temp0, mix_index, 0x20003
         v_and_b32       temp0, 0xfc, local_id
         v_or_b32        temp0, scalar_temp0, temp0
         v_lshlrev_b32   temp0, 2, temp0
-
         s_and_b32       scalar_temp0, mix_index, 0x7
+
         s_set_gpr_idx_on scalar_temp0, 1
         v_mov_b32       mix_temp0, mix0
         s_set_gpr_idx_off
-        s_mov_b32       m0, 0x10000
-                
+
         v_xor_b32       mix_temp4, mix_index, mix_init0
         v_mul_lo_u32    mix_temp4, mix_temp4, fnv_prime
         v_xor_b32       mix_temp1, mix_temp4, mix_temp0
+
         v_mul_hi_u32    mix_temp0, temp1, mix_temp1
         v_mul_lo_u32    mix_temp0, mix_temp0, dag_size
         v_sub_u32       mix_temp2, vcc, mix_temp1, mix_temp0
         v_cmp_ge_u32    scalar_double_temp1, mix_temp1, mix_temp0
+
         v_cmp_ge_u32    scalar_double_temp0, mix_temp2, dag_size
         v_subrev_u32    mix_temp0, vcc, dag_size, mix_temp2
+
         s_and_b64       vcc, scalar_double_temp1, scalar_double_temp0
         v_cndmask_b32   mix_temp0, mix_temp2, mix_temp0, vcc
         v_add_u32       mix_temp1, vcc, dag_size, mix_temp0
         v_cndmask_b32   mix_temp0, mix_temp1, mix_temp0, scalar_double_temp1
 
-        ds_write_b32    temp2, mix_temp0 offset:worksize*16
-        ds_read_b32     mix_double_temp0[0], temp0 offset:worksize*16
+        /* Distribute the dag address among each group of 4 threads */
+        v_mov_b32       mix_double_temp0[0], mix_temp0 quad_perm:[0,0,0,0]
+
+
         v_mov_b32       mix_double_temp0[1], 0
         v_mov_b32       mix_double_temp1[0], dag[0]
         v_mov_b32       mix_double_temp1[1], dag[1]
+
         v_add_u32       mix_double_temp1[0], vcc, mix_double_temp1[0], temp3
         v_addc_u32      mix_double_temp1[1], vcc, mix_double_temp1[1], 0, vcc
         s_waitcnt       lgkmcnt(0)
+
         v_lshlrev_b64   mix_double_temp0, 7, mix_double_temp0
+
         v_add_u32       mix_double_temp0[0], vcc, mix_double_temp0[0], mix_double_temp1[0]
         v_addc_u32      mix_double_temp0[1], vcc, mix_double_temp0[1], mix_double_temp1[1], vcc
         v_add_u32       mix_double_temp1[0], vcc, mix_double_temp0[0], 16
         v_addc_u32      mix_double_temp1[1], vcc, mix_double_temp0[1], 0, vcc
+
         flat_load_dwordx4 mix_quad_temp0, mix_double_temp0 glc
         flat_load_dwordx4 mix_quad_temp1, mix_double_temp1 glc
         v_mul_lo_u32    mix0, mix0, fnv_prime
@@ -697,8 +731,11 @@
         v_xor_b32       mix4, mix4, mix_quad_temp1[0]
 
         s_cmp_ge_u32    mix_index, 64
-        s_cbranch_scc0  .mix_loop
+        s_cbranch_scc0  .mix_loop_\mix_id
 
+        /**
+         * FNV Reduce after all the accesses
+         */
         v_mul_lo_u32    mix_double_temp0[0], mix0, fnv_prime
         v_xor_b32       mix_double_temp0[0], mix_double_temp0[0], mix1
         v_mul_lo_u32    mix_double_temp0[0], mix_double_temp0[0], fnv_prime
@@ -711,30 +748,30 @@
         v_xor_b32       mix_double_temp0[1], mix_double_temp0[1], mix6
         v_mul_lo_u32    mix_double_temp0[1], mix_double_temp0[1], fnv_prime
         v_xor_b32       mix_double_temp0[1], mix_double_temp0[1], mix7
-        v_lshrrev_b32   mix_temp2, 2, local_id
+
+        s_barrier
+        /* Collect the mix from the group of 4 threads that were working on it*/
         v_and_b32       mix_temp3, 3, local_id
-        v_lshlrev_b32   mix_temp2, 6, mix_temp2
-        v_lshlrev_b32   mix_temp3, 3, mix_temp3
-        v_add_u32       mix_temp3, vcc, mix_temp2, mix_temp3
-        ds_write_b64    mix_temp3, mix_double_temp0
-        s_waitcnt       lgkmcnt(0)
+        v_cmp_lg_u32    vcc, \mix_id, mix_temp3
+        v_cndmask_b32   state16, mix_double_temp0[0], state16, vcc quad_perm:[0,0,0,0]
+        v_cndmask_b32   state17, mix_double_temp0[1], state17, vcc quad_perm:[0,0,0,0]
+        v_cndmask_b32   state18, mix_double_temp0[0], state18, vcc quad_perm:[1,1,1,1]
+        v_cndmask_b32   state19, mix_double_temp0[1], state19, vcc quad_perm:[1,1,1,1]
+        v_cndmask_b32   state20, mix_double_temp0[0], state20, vcc quad_perm:[2,2,2,2]
+        v_cndmask_b32   state21, mix_double_temp0[1], state21, vcc quad_perm:[2,2,2,2]
+        v_cndmask_b32   state22, mix_double_temp0[0], state22, vcc quad_perm:[3,3,3,3]
+        v_cndmask_b32   state23, mix_double_temp0[1], state23, vcc quad_perm:[3,3,3,3]
+
+        /* Again, we don't /need/ this here, but I suspect it's keeping the
+         * waves scheduled better? maybe? */
         s_barrier
-        v_and_b32       mix_temp2, 3, local_id
-        v_cmp_eq_i32    vcc, tid, mix_temp2
-        s_and_saveexec_b64 s[46:47], vcc
-        v_lshrrev_b32   mix_temp3, 2, local_id
-        v_lshlrev_b32   mix_temp3, 6, mix_temp3
-        ds_read2_b64    v[16:19], mix_temp3 offset1:1
-        ds_read2_b64    v[20:23], mix_temp3 offset0:2 offset1:3
-        s_waitcnt       lgkmcnt(0)
-        s_mov_b64       exec, s[46:47]
-        s_barrier
-        s_add_u32       tid, tid, 1
-        s_cmp_ge_u32    tid, 4
-        s_cbranch_scc0  .tid_loop
-        s_add_u32       pass, pass, 1
-        s_cmp_ge_i32    pass, 2
-        s_cbranch_scc1  .test
+.endm
+
+        /* We unroll the mix loop so we can optimize out LDS usage */
+        PARTIAL_MIX 0
+        PARTIAL_MIX 1
+        PARTIAL_MIX 2
+        PARTIAL_MIX 3
 
         /* stash the mix hash */
         v_mov_b32       mix_save0[0], state16
@@ -772,7 +809,7 @@
         v_mov_b32       state26, 0
         v_mov_b32       state25, 0
         v_mov_b32       state24, 1
-        
+
         s_movk_i32      keccak_round, 0x0
         s_branch        .keccak_loop
         s_nop           0
@@ -780,7 +817,7 @@
         s_nop           0
 
 
-        
+
 .test:
         /* increment hash count */
         v_cmp_eq_u32    vcc, 0, local_id
@@ -846,4 +883,3 @@
         s_mov_b64       exec, s[46:47]
 fastexit:
         s_endpgm
-
