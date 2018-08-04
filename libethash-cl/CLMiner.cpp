@@ -312,8 +312,9 @@ void CLMiner::workLoop()
 
             if (m_queue.size())
             {
+                // no need to read the abort flag.
                 m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE,
-                    c_maxSearchResults * sizeof(results.rslt[0]), 3 * sizeof(results.count),
+                    c_maxSearchResults * sizeof(results.rslt[0]), 2 * sizeof(results.count),
                     (void*)&results.count);
 
                 if (results.count)
@@ -322,6 +323,7 @@ void CLMiner::workLoop()
                         results.count * sizeof(results.rslt[0]), (void*)&results);
                     // Reset search buffer if any solution found.
                 }
+                // clean the solution count, hash count, and abort flag
                 m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
                     offsetof(SearchResults, count), sizeof(zerox3), zerox3);
             }
@@ -372,19 +374,19 @@ void CLMiner::workLoop()
                 else
                     startNonce = get_start_nonce();
 
-                if (g_logVerbosity > 5)
-                    cllog << "Switch time: "
-                          << std::chrono::duration_cast<std::chrono::microseconds>(
-                                 std::chrono::high_resolution_clock::now() - workSwitchStart)
-                                 .count()
-                          << " us.";
-
                 m_searchKernel.setArg(0, m_searchBuffer[0]);  // Supply output buffer to kernel.
                 m_searchKernel.setArg(1, m_header[0]);  // Supply header buffer to kernel.
                 m_searchKernel.setArg(2, m_dag[0]);  // Supply DAG buffer to kernel.
                 m_searchKernel.setArg(3, m_dagItems);
                 m_searchKernel.setArg(5, target);
                 m_searchKernel.setArg(6, 0xffffffff);
+
+                if (g_logVerbosity > 5)
+                    cllog << "Switch time: "
+                          << std::chrono::duration_cast<std::chrono::microseconds>(
+                                 std::chrono::high_resolution_clock::now() - workSwitchStart)
+                                 .count()
+                          << " us.";
             }
 
             // Run the kernel.
@@ -400,19 +402,15 @@ void CLMiner::workLoop()
                     m_lastNonce = nonce;
                     if (s_noeval)
                     {
-                        // Result r = EthashAux::eval(current.epoch, current.header, nonce);
                         h256 mix;
                         memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
-                        farm.submitProof(Solution{nonce, mix, current, current.header != w.header});
-                        // cwarn << mix;
-                        // cwarn << r.mixHash;
+                        farm.submitProof(Solution{nonce, mix, current, false});
                     }
                     else
                     {
                         Result r = EthashAux::eval(current.epoch, current.header, nonce);
                         if (r.value <= current.boundary)
-                            farm.submitProof(
-                                Solution{nonce, r.mixHash, current, current.header != w.header});
+                            farm.submitProof(Solution{nonce, r.mixHash, current, false});
                         else
                         {
                             farm.failedSolution();
@@ -716,7 +714,12 @@ bool CLMiner::init(int epoch)
             /* Open kernels/ethash_{devicename}_lws{local_work_size}.bin */
             std::transform(device_name.begin(), device_name.end(), device_name.begin(), ::tolower);
             fname_strm << boost::dll::program_location().parent_path().string()
-                       << "/kernels/ethash_" << device_name << "_lws" << m_workgroupSize << ".bin";
+#if defined(_WIN32)
+                       << "\\kernels\\ethash_"
+#else
+                       << "/kernels/ethash_"
+#endif
+                       << device_name << "_lws" << m_workgroupSize << ".bin";
             cllog << "Loading binary kernel " << fname_strm.str();
             try
             {
