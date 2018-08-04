@@ -125,7 +125,7 @@ void EthStratumClient::connect()
 		}
 		catch (...) {
 			cwarn << "Failed to load ca certificates. Either the file '/etc/ssl/certs/ca-certificates.crt' does not exist";
-			cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or inaccessable file.";
+			cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or inaccessible file.";
 			cwarn << "It is possible that certificate verification can fail.";
 		}
 #endif
