@@ -318,6 +318,8 @@ void EthStratumClient::reset_work_timeout()
 
 void EthStratumClient::start_connect()
 {
+    dev::setThreadName("stratum");
+
 	if (!m_endpoints.empty()) {
 		
         // Pick the first endpoint in list.
@@ -330,7 +332,6 @@ void EthStratumClient::start_connect()
             m_conn->SetStratumMode(999, false);
         }
 
-        dev::setThreadName("stratum");
         cnote << ("Trying " + toString(m_endpoint) + " ...");
 
 		m_conntimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
@@ -345,12 +346,8 @@ void EthStratumClient::start_connect()
 				m_io_strand.wrap(boost::bind(&EthStratumClient::connect_handler, this, _1)));
 		}
 
+	} else {
 
-	}
-	else {
-		
-
-		dev::setThreadName("stratum");
 		m_connecting.store(false, std::memory_order_relaxed);
 		cwarn << "No more IP addresses to try for host: " << m_conn->Host();
 
