@@ -123,19 +123,27 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
 		{
 			// Cached memory access
 			// lanes access random locations
+			std::string src = mix_src();
+			std::string dest = mix_dst();
+			uint32_t r = rnd();
 			ret << "// cache load\n";
-			ret << "offset = " << mix_src() << " % PROGPOW_CACHE_WORDS;\n";
+			ret << "offset = " << src << " % PROGPOW_CACHE_WORDS;\n";
 			ret << "data32 = c_dag[offset];\n";
-			ret << merge(mix_dst(), "data32", rnd());
+			ret << merge(dest, "data32", r);
 		}
 		if (i < PROGPOW_CNT_MATH)
 		{
 			// Random Math
 			// A tree combining random input registers together
 			// reduced to a single result
+			std::string src1 = mix_src();
+			std::string src2 = mix_src();
+			uint32_t r1 = rnd();
+			uint32_t r2 = rnd();
+			std::string dest = mix_dst();
 			ret << "// random math\n";
-			ret << math("data32", mix_src(), mix_src(), rnd());
-			ret << merge(mix_dst(), "data32", rnd());
+			ret << math("data32", src1, src2, r1);
+			ret << merge(dest, "data32", r2);
 		}
 	}
 	// Consume the global load data at the very end of the loop, to allow fully latency hiding
