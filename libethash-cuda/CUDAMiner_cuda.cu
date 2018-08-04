@@ -43,7 +43,7 @@ __device__ __forceinline__ void keccak_f1600_round(uint64_t st[25], const int r)
 		bc[i] = st[i] ^ st[i + 5] ^ st[i + 10] ^ st[i + 15] ^ st[i + 20];
 
 	for (int i = 0; i < 5; i++) {
-		t = bc[(i + 4) % 5] ^ ROTL32(bc[(i + 1) % 5], 1);
+		t = bc[(i + 4) % 5] ^ ROTL64(bc[(i + 1) % 5], 1);
 		for (uint32_t j = 0; j < 25; j += 5)
 			st[j + i] ^= t;
 	}
@@ -53,7 +53,7 @@ __device__ __forceinline__ void keccak_f1600_round(uint64_t st[25], const int r)
 	for (int i = 0; i < 24; i++) {
 		uint32_t j = keccakf_piln[i];
 		bc[0] = st[j];
-		st[j] = ROTL32(t, keccakf_rotc[i]);
+		st[j] = ROTL64(t, keccakf_rotc[i]);
 		t = bc[0];
 	}
 
@@ -82,8 +82,8 @@ __device__ __forceinline__ void keccak_f1600(uint64_t st[25])
 	}
 }
 
-#define FNV_PRIME	0x01000193
-#define fnv(x,y) ((x) * FNV_PRIME ^(y))
+#define FNV_PRIME	0x01000193U
+#define fnv(x,y) ((uint32_t(x) * (FNV_PRIME)) ^uint32_t(y))
 __device__ uint4 fnv4(uint4 a, uint4 b)
 {
 	uint4 c;
@@ -99,8 +99,10 @@ __device__ uint4 fnv4(uint4 a, uint4 b)
 __global__ void
 ethash_calculate_dag_item(uint32_t start, hash64_t *g_dag, uint64_t dag_bytes, hash64_t* g_light, uint32_t light_words)
 {
-	uint64_t const node_index = start + blockIdx.x * blockDim.x + threadIdx.x;
-	if (node_index * sizeof(hash64_t) >= dag_bytes ) return;
+	uint64_t const node_index = start + uint64_t(blockIdx.x) * blockDim.x + threadIdx.x;
+	uint64_t num_nodes = dag_bytes / sizeof(hash64_t);
+	uint64_t num_nodes_rounded = ((num_nodes + 3) / 4) * 4;
+	if (node_index >= num_nodes_rounded) return; // None of the threads from this quad have valid node_index
 
 	hash200_t dag_node;
 	for(int i=0; i<4; i++)
@@ -143,7 +145,8 @@ ethash_calculate_dag_item(uint32_t start, hash64_t *g_dag, uint64_t dag_bytes, h
 							  __shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].z, t, 4),
 							  __shfl_sync(0xFFFFFFFF,dag_node.uint4s[w].w, t, 4));
 		}
-		g_dag[shuffle_index].uint4s[thread_id] = s[thread_id];
+		if(shuffle_index*sizeof(hash64_t) < dag_bytes)
+			g_dag[shuffle_index].uint4s[thread_id] = s[thread_id];
 	}
 }
 
