@@ -277,11 +277,11 @@ void EthStratumClient::disconnect_finalize() {
 }
 
 void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp::resolver::iterator i)
-{	
+{
+    dev::setThreadName("stratum");
+
 	if (!ec)
 	{
-		dev::setThreadName("stratum");
-
 		while (i != tcp::resolver::iterator())
 		{
 			m_endpoints.push(i->endpoint());
@@ -296,7 +296,6 @@ void EthStratumClient::resolve_handler(const boost::system::error_code& ec, tcp:
 	}
 	else
 	{
-		dev::setThreadName("stratum");
 		cwarn << "Could not resolve host " << m_conn->Host() << ", " << ec.message();
 
 		// Release locking flag and set connection status
