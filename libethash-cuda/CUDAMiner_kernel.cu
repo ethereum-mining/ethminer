@@ -96,7 +96,7 @@ __device__ __noinline__ uint64_t keccak_f800(hash32_t header, uint64_t seed, has
     return (uint64_t)st[0] << 32 | st[1];
 }
 
-#define fnv1a(h, d) (h = (h ^ d) * 0x1000193)
+#define fnv1a(h, d) (h = (uint32_t(h) ^ uint32_t(d)) * uint32_t(0x1000193))
 
 typedef struct {
     uint32_t z, w, jsr, jcong;
@@ -141,7 +141,7 @@ progpow_search(
 {
     __shared__ uint32_t c_dag[PROGPOW_CACHE_WORDS];
     uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;
-    uint32_t const nonce = start_nonce + gid;
+    uint64_t const nonce = start_nonce + gid;
 
     const uint32_t lane_id = threadIdx.x & (PROGPOW_LANES - 1);
 
