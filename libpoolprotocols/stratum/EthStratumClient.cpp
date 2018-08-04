@@ -654,7 +654,7 @@ void EthStratumClient::processExtranonce(std::string& enonce)
 	m_extraNonce = h64(enonce);
 }
 
-void EthStratumClient::processReponse(Json::Value& responseObject)
+void EthStratumClient::processResponse(Json::Value &responseObject)
 {
 
 	dev::setThreadName("stratum");
@@ -1231,7 +1231,7 @@ void EthStratumClient::response_timeout_handler(const boost::system::error_code&
                 jRes["result"] = Json::nullValue;
                 jRes["error"] = true;
                 m_io_service.post(
-                    m_io_strand.wrap(boost::bind(&EthStratumClient::processReponse, this, jRes)));
+                    m_io_strand.wrap(boost::bind(&EthStratumClient::processResponse, this, jRes)));
             }
         }
     }
@@ -1359,7 +1359,7 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
                 Json::Reader jRdr;
                 if (jRdr.parse(message, jMsg))
                 {
-                    m_io_service.post(boost::bind(&EthStratumClient::processReponse, this, jMsg));
+                    m_io_service.post(boost::bind(&EthStratumClient::processResponse, this, jMsg));
                 }
                 else
                 {
