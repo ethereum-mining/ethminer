@@ -932,7 +932,8 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 			if (!m_authorized)
 			{
-				cnote << "Worker not authorized" << m_conn->User() << _errReason;
+				cnote << "Worker not authorized " << m_conn->User() << _errReason;
+                m_conn->MarkUnrecoverable();
                 m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
 				return;
 			

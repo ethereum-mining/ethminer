@@ -16,8 +16,8 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 	p_client->onConnected([&]()
 	{
 		m_connectionAttempt = 0;
-		m_activeConnectionHost = m_connections[m_activeConnectionIdx].Host();
-		cnote << "Connected to " << m_connections[m_activeConnectionIdx].Host() << p_client->ActiveEndPoint();
+		m_activeConnectionHost = m_connections.at(m_activeConnectionIdx).Host();
+		cnote << "Connected to " << m_connections.at(m_activeConnectionIdx).Host() << p_client->ActiveEndPoint();
 
 		// Rough implementation to return to primary pool
 		// after specified amount of time
@@ -78,7 +78,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 		if (m_headers.size() > 4)
 				m_headers.pop_front();
 
-		cnote << "Job: " EthWhite "#"<< wp.header.abridged() << EthReset " " << m_connections[m_activeConnectionIdx].Host()
+		cnote << "Job: " EthWhite "#"<< wp.header.abridged() << EthReset " " << m_connections.at(m_activeConnectionIdx).Host()
 			<< p_client->ActiveEndPoint();
 		if (wp.boundary != m_lastBoundary)
 		{
@@ -114,7 +114,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 
 		std::stringstream ss;
 		ss << std::setw(4) << std::setfill(' ') << ms.count()
-			<< " ms." << " " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
+			<< " ms." << " " << m_connections.at(m_activeConnectionIdx).Host() + p_client->ActiveEndPoint();
         cnote << EthLime "**Accepted" EthReset << (stale ? EthYellow "(stale)" EthReset : "")
               << ss.str();
         m_farm.acceptedSolution(stale);
@@ -133,7 +133,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 
 		std::stringstream ss;
 		ss << std::setw(4) << std::setfill(' ') << ms.count()
-			<< "ms." << "   " << m_connections[m_activeConnectionIdx].Host() + p_client->ActiveEndPoint();
+			<< "ms." << "   " << m_connections.at(m_activeConnectionIdx).Host() + p_client->ActiveEndPoint();
         cwarn << EthRed "**Rejected" EthReset << (stale ? EthYellow "(stale)" EthReset : "")
               << ss.str();
         m_farm.rejectedSolution();
@@ -219,15 +219,39 @@ void PoolManager::workLoop()
 			if (!p_client->isConnected()) {
 
 				// If this connection is marked Unrecoverable then discard it
-				if (m_connections[m_activeConnectionIdx].IsUnrecoverable())
+				if (m_connections.at(m_activeConnectionIdx).IsUnrecoverable())
 				{
-					m_connections.erase(m_connections.begin() + m_activeConnectionIdx);
-					m_connectionAttempt = 0;
-					if (m_activeConnectionIdx > 0)
-					{
-						m_activeConnectionIdx--;
-					}
-				}
+                    p_client->unsetConnection();
+
+                    /*
+                    This should be a one line code but it always ends up
+                    with undefined behavior. Only solution found is to make a
+                    copy. Any hint about why erase does not work ... is welcome
+                    */
+                    // m_connections.erase(m_connections.begin() + m_activeConnectionIdx);
+
+                    std::vector<URI> m_connections_copy;
+                    for (int i = 0; i < m_connections.size(); i++)
+                    {
+                        if (!m_connections[i].IsUnrecoverable())
+                        {
+                            m_connections_copy.push_back(m_connections.at(i));
+                        }
+                    }
+                    m_connections.clear();
+                    for (int i = 0; i < m_connections_copy.size(); i++)
+                    {
+                        m_connections.push_back(m_connections_copy.at(i));
+                    }
+
+
+                    m_connectionAttempt = 0;
+                    if (m_activeConnectionIdx > 0)
+                    {
+                        m_activeConnectionIdx--;
+                    }
+
+                }
 
 
 				// Rotate connections if above max attempts threshold
@@ -253,15 +277,15 @@ void PoolManager::workLoop()
 
 				}
 
-				if (m_connections[m_activeConnectionIdx].Host() != "exit" && m_connections.size() > 0) {
+				if (m_connections.at(m_activeConnectionIdx).Host() != "exit" && m_connections.size() > 0) {
 
 					// Count connectionAttempts
 					m_connectionAttempt++;
 
 					// Invoke connections
-					p_client->setConnection(m_connections[m_activeConnectionIdx]);
-					m_farm.set_pool_addresses(m_connections[m_activeConnectionIdx].Host(), m_connections[m_activeConnectionIdx].Port());
-					cnote << "Selected pool " << (m_connections[m_activeConnectionIdx].Host() + ":" + toString(m_connections[m_activeConnectionIdx].Port()));
+					p_client->setConnection(& m_connections.at(m_activeConnectionIdx));
+					m_farm.set_pool_addresses(m_connections.at(m_activeConnectionIdx).Host(), m_connections.at(m_activeConnectionIdx).Port());
+					cnote << "Selected pool " << (m_connections.at(m_activeConnectionIdx).Host() + ":" + toString(m_connections.at(m_activeConnectionIdx).Port()));
 					p_client->connect();
 
 				}
