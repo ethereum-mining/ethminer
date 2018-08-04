@@ -907,7 +907,7 @@ void EthStratumClient::processResponse(Json::Value &responseObject)
 
 		case 2:
 
-			// This is the reponse to mining.extranonce.subscribe
+			// This is the response to mining.extranonce.subscribe
 			// according to this 
 			// https://github.com/nicehash/Specifications/blob/master/NiceHash_extranonce_subscribe_extension.txt
 			// In all cases, client does not perform any logic when receiving back these replies.
@@ -922,7 +922,7 @@ void EthStratumClient::processResponse(Json::Value &responseObject)
 
 			// Response to "mining.authorize" (https://en.bitcoin.it/wiki/Stratum_mining_protocol#mining.authorize)
 			// Result should be boolean, some pools also throw an error, so _isSuccess can be false
-			// Due to this reevaluate _isSucess
+			// Due to this reevaluate _isSuccess
 
 			if (_isSuccess && jResult.isBool()) {
 				_isSuccess = jResult.asBool();
@@ -985,7 +985,7 @@ void EthStratumClient::processResponse(Json::Value &responseObject)
 		case 9:
 
 			// Response to hashrate submit
-			// Shall we do anyting ?
+			// Shall we do anything ?
 			// Hashrate submit is actually out of stratum spec
 			if (!_isSuccess) {
 				cwarn << "Submit hashRate failed:" << (_errReason.empty() ? "Unspecified error" : _errReason);
@@ -1052,7 +1052,7 @@ void EthStratumClient::processResponse(Json::Value &responseObject)
         {
 
             /*
-            Workaraound for Nanopool wrong implementation
+            Workaround for Nanopool wrong implementation
             see issue # 1348
             */
 
