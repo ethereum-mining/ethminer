@@ -87,7 +87,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 			m_lastBoundary = wp.boundary;
 			static const uint256_t dividend("0xffff000000000000000000000000000000000000000000000000000000000000");
 			const uint256_t divisor(string("0x") + m_lastBoundary.hex());
-			stringstream ss;
+			std::stringstream ss;
 			ss << fixed << setprecision(2) << double(dividend / divisor) / 1000000000.0 << "K megahash";
 			cnote << "Pool difficulty: " EthWhite << ss.str() << EthReset;
 		}
