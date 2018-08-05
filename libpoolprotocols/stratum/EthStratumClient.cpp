@@ -263,9 +263,19 @@ void EthStratumClient::disconnect_finalize() {
     if (!m_conn->StratumModeConfirmed() && m_canconnect.load(std::memory_order_relaxed))
     {
 
-        // Repost a new connection attempt
-        m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::connect, this)));
-        return;
+        // Repost a new connection attempt and advance to next stratum test
+        if (m_conn->StratumMode() > 0)
+        {
+            m_conn->SetStratumMode(m_conn->StratumMode() - 1);
+            m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::connect, this)));
+            return;
+        }
+        else
+        {
+            // There are no more stratum modes to test
+            // Mark connection as unrecoverable and trash it
+            m_conn->MarkUnrecoverable();
+        }
 
     }
 
