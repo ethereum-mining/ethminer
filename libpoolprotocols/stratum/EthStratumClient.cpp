@@ -125,7 +125,7 @@ void EthStratumClient::connect()
 		}
 		catch (...) {
 			cwarn << "Failed to load ca certificates. Either the file '/etc/ssl/certs/ca-certificates.crt' does not exist";
-			cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or inaccessable file.";
+			cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or inaccessible file.";
 			cwarn << "It is possible that certificate verification can fail.";
 		}
 #endif
@@ -654,7 +654,7 @@ void EthStratumClient::processExtranonce(std::string& enonce)
 	m_extraNonce = h64(enonce);
 }
 
-void EthStratumClient::processReponse(Json::Value& responseObject)
+void EthStratumClient::processResponse(Json::Value &responseObject)
 {
 
 	dev::setThreadName("stratum");
@@ -907,7 +907,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 		case 2:
 
-			// This is the reponse to mining.extranonce.subscribe
+			// This is the response to mining.extranonce.subscribe
 			// according to this 
 			// https://github.com/nicehash/Specifications/blob/master/NiceHash_extranonce_subscribe_extension.txt
 			// In all cases, client does not perform any logic when receiving back these replies.
@@ -922,7 +922,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 
 			// Response to "mining.authorize" (https://en.bitcoin.it/wiki/Stratum_mining_protocol#mining.authorize)
 			// Result should be boolean, some pools also throw an error, so _isSuccess can be false
-			// Due to this reevaluate _isSucess
+			// Due to this reevaluate _isSuccess
 
 			if (_isSuccess && jResult.isBool()) {
 				_isSuccess = jResult.asBool();
@@ -986,7 +986,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
 		case 9:
 
 			// Response to hashrate submit
-			// Shall we do anyting ?
+			// Shall we do anything ?
 			// Hashrate submit is actually out of stratum spec
 			if (!_isSuccess) {
 				cwarn << "Submit hashRate failed:" << (_errReason.empty() ? "Unspecified error" : _errReason);
@@ -1053,7 +1053,7 @@ void EthStratumClient::processReponse(Json::Value& responseObject)
         {
 
             /*
-            Workaraound for Nanopool wrong implementation
+            Workaround for Nanopool wrong implementation
             see issue # 1348
             */
 
@@ -1232,7 +1232,7 @@ void EthStratumClient::response_timeout_handler(const boost::system::error_code&
                 jRes["result"] = Json::nullValue;
                 jRes["error"] = true;
                 m_io_service.post(
-                    m_io_strand.wrap(boost::bind(&EthStratumClient::processReponse, this, jRes)));
+                    m_io_strand.wrap(boost::bind(&EthStratumClient::processResponse, this, jRes)));
             }
         }
     }
@@ -1360,7 +1360,7 @@ void EthStratumClient::onRecvSocketDataCompleted(const boost::system::error_code
                 Json::Reader jRdr;
                 if (jRdr.parse(message, jMsg))
                 {
-                    m_io_service.post(boost::bind(&EthStratumClient::processReponse, this, jMsg));
+                    m_io_service.post(boost::bind(&EthStratumClient::processResponse, this, jMsg));
                 }
                 else
                 {
