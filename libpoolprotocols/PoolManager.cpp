@@ -231,7 +231,7 @@ void PoolManager::workLoop()
                     // m_connections.erase(m_connections.begin() + m_activeConnectionIdx);
 
                     std::vector<URI> m_connections_copy;
-                    for (int i = 0; i < m_connections.size(); i++)
+                    for (unsigned i = 0; i < m_connections.size(); i++)
                     {
                         if (!m_connections[i].IsUnrecoverable())
                         {
@@ -239,7 +239,7 @@ void PoolManager::workLoop()
                         }
                     }
                     m_connections.clear();
-                    for (int i = 0; i < m_connections_copy.size(); i++)
+                    for (unsigned i = 0; i < m_connections_copy.size(); i++)
                     {
                         m_connections.push_back(m_connections_copy.at(i));
                     }
