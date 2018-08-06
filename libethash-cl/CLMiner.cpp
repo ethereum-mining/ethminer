@@ -353,7 +353,7 @@ void CLMiner::workLoop()
 
                     m_abortqueue.clear();
                     init(w.epoch);
-                    m_abortqueue.push_back(cl::CommandQueue(m_context, m_device));
+                    m_abortqueue.push_back(cl::CommandQueue(m_context[0], m_device));
                 }
 
                 // Upper 64 bits of the boundary.
@@ -639,9 +639,10 @@ bool CLMiner::init(int epoch)
         }
 #endif
         // create context
-        m_context = cl::Context(vector<cl::Device>(&m_device, &m_device + 1));
+        m_context.clear();
+        m_context.push_back(cl::Context(vector<cl::Device>(&m_device, &m_device + 1)));
         m_queue.clear();
-        m_queue.push_back(cl::CommandQueue(m_context, m_device));
+        m_queue.push_back(cl::CommandQueue(m_context[0], m_device));
 
         m_workgroupSize = s_workgroupSize;
         m_globalWorkSize = s_initialGlobalWorkSize;
@@ -688,7 +689,7 @@ bool CLMiner::init(int epoch)
 
         // create miner OpenCL program
         cl::Program::Sources sources{{code.data(), code.size()}};
-        cl::Program program(m_context, sources), binaryProgram;
+        cl::Program program(m_context[0], sources), binaryProgram;
         try
         {
             program.build({m_device}, options);
@@ -735,7 +736,7 @@ bool CLMiner::init(int epoch)
 
                     /* Setup the program */
                     cl::Program::Binaries blobs({bin_data});
-                    cl::Program program(m_context, {m_device}, blobs);
+                    cl::Program program(m_context[0], {m_device}, blobs);
                     try
                     {
                         program.build({m_device}, options);
@@ -782,10 +783,10 @@ bool CLMiner::init(int epoch)
         {
             cllog << "Creating light cache buffer, size: " << lightSize;
             m_light.clear();
-            m_light.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, lightSize));
+            m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, lightSize));
             cllog << "Creating DAG buffer, size: " << dagSize;
             m_dag.clear();
-            m_dag.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, dagSize));
+            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, dagSize));
             cllog << "Loading kernels";
 
             // If we have a binary kernel to use, let's try it
@@ -808,7 +809,7 @@ bool CLMiner::init(int epoch)
         // create buffer for header
         ETHCL_LOG("Creating buffer for header.");
         m_header.clear();
-        m_header.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, 32));
+        m_header.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, 32));
 
         m_searchKernel.setArg(1, m_header[0]);
         m_searchKernel.setArg(2, m_dag[0]);
@@ -818,7 +819,8 @@ bool CLMiner::init(int epoch)
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");
         m_searchBuffer.clear();
-        m_searchBuffer.push_back(cl::Buffer(m_context, CL_MEM_WRITE_ONLY, sizeof(SearchResults)));
+        m_searchBuffer.push_back(
+            cl::Buffer(m_context[0], CL_MEM_WRITE_ONLY, sizeof(SearchResults)));
 
         m_dagKernel.setArg(1, m_light[0]);
         m_dagKernel.setArg(2, m_dag[0]);
