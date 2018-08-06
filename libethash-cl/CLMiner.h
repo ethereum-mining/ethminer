@@ -77,7 +77,7 @@ private:
 
 	bool init(int epoch);
 
-	cl::Context m_context;
+    vector<cl::Context> m_context;
     vector<cl::CommandQueue> m_queue;
     vector<cl::CommandQueue> m_abortqueue;
     cl::Kernel m_searchKernel;
