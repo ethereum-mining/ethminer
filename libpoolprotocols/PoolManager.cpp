@@ -15,9 +15,12 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 	
 	p_client->onConnected([&]()
 	{
-		m_connectionAttempt = 0;
 		m_activeConnectionHost = m_connections.at(m_activeConnectionIdx).Host();
-		cnote << "Connected to " << m_connections.at(m_activeConnectionIdx).Host() << p_client->ActiveEndPoint();
+        cnote << "Established connection with "
+              << (m_connections.at(m_activeConnectionIdx).Host() + ":" +
+                     toString(m_connections.at(m_activeConnectionIdx).Port()))
+              << " at "
+              << p_client->ActiveEndPoint();
 
 		// Rough implementation to return to primary pool
 		// after specified amount of time
@@ -51,7 +54,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 	p_client->onDisconnected([&]()
 	{
 		dev::setThreadName("main");
-		cnote << "Disconnected from " + m_activeConnectionHost << p_client->ActiveEndPoint();
+        cnote << "Disconnected from " << m_connections.at(m_activeConnectionIdx).Host();
 
 		// Clear queue of submission times as we won't get any further response for them (if any left)
 		// We need to consume all elements as no clear mehod is provided.
@@ -239,9 +242,12 @@ void PoolManager::workLoop()
                         }
                     }
                     m_connections.clear();
-                    for (unsigned i = 0; i < m_connections_copy.size(); i++)
+                    if (!m_connections_copy.empty())
                     {
-                        m_connections.push_back(m_connections_copy.at(i));
+                        for (unsigned i = 0; i < m_connections_copy.size(); i++)
+                        {
+                            m_connections.push_back(m_connections_copy.at(i));
+                        }
                     }
 
 
@@ -277,7 +283,8 @@ void PoolManager::workLoop()
 
 				}
 
-				if (m_connections.at(m_activeConnectionIdx).Host() != "exit" && m_connections.size() > 0) {
+				if (!m_connections.empty() && m_connections.at(m_activeConnectionIdx).Host() != "exit")
+                {
 
 					// Count connectionAttempts
 					m_connectionAttempt++;

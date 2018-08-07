@@ -27,8 +27,9 @@ public:
 	EthStratumClient(boost::asio::io_service & io_service, int worktimeout, int responsetimeout, const string& email, bool submitHashrate);
 	~EthStratumClient();
 
-	void connect() override;
-	void disconnect() override;
+    void init_socket();
+    void connect() override;
+    void disconnect() override;
 	
 	// Connected and Connection Statuses
 	bool isConnected() override { return m_connected.load(std::memory_order_relaxed) && !isPendingState(); }
@@ -69,8 +70,9 @@ private:
     string m_user;    // Only user part
     string m_worker;  // eth-proxy only; No ! It's for all !!!
 
-    std::atomic<bool> m_disconnecting = { false };
-	std::atomic<bool> m_connecting = { false };
+    std::atomic<bool> m_disconnecting = {false};
+    std::atomic<bool> m_connecting = {false};
+    std::atomic<bool> m_authpending = {false};
 
 	// seconds to trigger a work_timeout (overwritten in constructor)
 	int m_worktimeout;
