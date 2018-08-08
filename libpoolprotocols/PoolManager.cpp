@@ -239,12 +239,9 @@ void PoolManager::workLoop()
                         }
                     }
                     m_connections.clear();
-                    if (!m_connections_copy.empty())
+                    for (unsigned i = 0; i < m_connections_copy.size(); i++)
                     {
-                        for (unsigned i = 0; i < m_connections_copy.size(); i++)
-                        {
-                            m_connections.push_back(m_connections_copy.at(i));
-                        }
+                        m_connections.push_back(m_connections_copy.at(i));
                     }
 
 
