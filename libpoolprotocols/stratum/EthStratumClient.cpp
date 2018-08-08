@@ -1050,7 +1050,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
     }
 
     /*
-    
+    
+
     Handle unsolicited messages FROM pool AKA notifications
 
     NOTE !

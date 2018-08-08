@@ -54,7 +54,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 	p_client->onDisconnected([&]()
 	{
 		dev::setThreadName("main");
-        cnote << "Disconnected from " << m_connections.at(m_activeConnectionIdx).Host();
+        cnote << "Disconnected from " + m_activeConnectionHost << p_client->ActiveEndPoint();
 
 		// Clear queue of submission times as we won't get any further response for them (if any left)
 		// We need to consume all elements as no clear mehod is provided.
