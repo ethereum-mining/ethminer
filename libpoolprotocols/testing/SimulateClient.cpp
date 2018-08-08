@@ -101,8 +101,8 @@ void SimulateClient::workLoop()
 					current.header = h256::random();
 					current.boundary = genesis.boundary();
 
-					m_onWorkReceived(current, false);
-				}
+                    m_onWorkReceived(current);
+                }
 			}
 			else {
 				this_thread::sleep_for(chrono::milliseconds(100));
