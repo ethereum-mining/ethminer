@@ -488,7 +488,7 @@ public:
 				exit(0);
 			}
 			else if (version) {
-			    auto* bi = ethminer_get_buildinfo();
+			    auto* bi = get_buildinfo();
     			cerr << "\nethminer " << bi->project_version << "\nBuild: " << bi->system_name << "/"
          			<< bi->build_type << "/" << bi->compiler_id << "\n\n";
     				exit(0);
@@ -615,7 +615,7 @@ public:
 			exit(0);
 		}
 
-		auto* build = ethminer_get_buildinfo();
+		auto* build = get_buildinfo();
 		minelog << "ethminer " << build->project_version;
 		minelog << "Build: " << build->system_name << "/" << build->build_type;
 
