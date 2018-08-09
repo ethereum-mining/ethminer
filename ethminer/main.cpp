@@ -15,7 +15,7 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <ethminer/buildinfo.h>
+#include <build/buildinfo.h>
 
 #include <CLI/CLI.hpp>
 
