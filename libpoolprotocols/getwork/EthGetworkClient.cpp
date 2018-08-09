@@ -121,7 +121,7 @@ void EthGetworkClient::workLoop()
 
                     if (m_onWorkReceived)
                     {
-                        m_onWorkReceived(m_prevWorkPackage, true);
+                        m_onWorkReceived(m_prevWorkPackage);
                     }
                 }
             }
