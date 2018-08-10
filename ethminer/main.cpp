@@ -131,7 +131,7 @@ public:
 			{
 				outport=std::stoi(portstr);
 			}
-			catch(const std::out_of_range)
+			catch(const std::out_of_range&)
 			{
 				out_of_int_range=true;
 			}
