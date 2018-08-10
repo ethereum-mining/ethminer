@@ -1,14 +1,22 @@
 #pragma once
 
-#include <string>
 #include <network/uri.hpp>
+#include <string>
 
 // A simple URI parser specifically for mining pool endpoints
 namespace dev
 {
-
-enum class SecureLevel {NONE = 0, TLS12, TLS};
-enum class ProtocolFamily {GETWORK = 0, STRATUM};
+enum class SecureLevel
+{
+    NONE = 0,
+    TLS12,
+    TLS
+};
+enum class ProtocolFamily
+{
+    GETWORK = 0,
+    STRATUM
+};
 
 class URI
 {
@@ -48,4 +56,4 @@ private:
     unsigned m_stratumMode = 999;  // Initial value 999 means not tested yet
     bool m_unrecoverable = false;
 };
-}
+}  // namespace dev
