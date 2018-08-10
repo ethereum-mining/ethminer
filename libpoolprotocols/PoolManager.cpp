@@ -67,19 +67,17 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 
 	});
 
-	p_client->onWorkReceived([&](WorkPackage const& wp, bool check_for_duplicates)
-	{
-		if (check_for_duplicates) {
-			for (auto h : m_headers)
-				if (h == wp.header)
-				{
-					cwarn << EthYellow "Duplicate job #" << wp.header.abridged() << " discarded" EthReset;
-					return;
-				}
-		}
-		m_headers.push_back(wp.header);
+    p_client->onWorkReceived([&](WorkPackage const& wp) {
+        for (auto h : m_headers)
+            if (h == wp.header)
+            {
+                cwarn << EthYellow "Duplicate job #" << wp.header.abridged()
+                      << " discarded" EthReset;
+                return;
+            }
+        m_headers.push_back(wp.header);
 		if (m_headers.size() > 4)
-				m_headers.pop_front();
+            m_headers.pop_front();
 
 		cnote << "Job: " EthWhite "#"<< wp.header.abridged() << EthReset " " << m_connections.at(m_activeConnectionIdx).Host()
 			<< p_client->ActiveEndPoint();
@@ -101,10 +99,9 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 		}
 
 		m_farm.setWork(wp);
-		
-	});
+    });
 
-	p_client->onSolutionAccepted([&](bool const& stale)
+    p_client->onSolutionAccepted([&](bool const& stale)
 	{
 		using namespace std::chrono;
 		milliseconds ms(0);
@@ -242,12 +239,9 @@ void PoolManager::workLoop()
                         }
                     }
                     m_connections.clear();
-                    if (!m_connections_copy.empty())
+                    for (unsigned i = 0; i < m_connections_copy.size(); i++)
                     {
-                        for (unsigned i = 0; i < m_connections_copy.size(); i++)
-                        {
-                            m_connections.push_back(m_connections_copy.at(i));
-                        }
+                        m_connections.push_back(m_connections_copy.at(i));
                     }
 
 
