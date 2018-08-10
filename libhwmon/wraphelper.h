@@ -1,13 +1,13 @@
 /*
-* Wrappers to emulate dlopen() on other systems like Windows
-*/
+ * Wrappers to emulate dlopen() on other systems like Windows
+ */
 
 #pragma once
 
 #if ETH_ETHASHCL
 #pragma GCC diagnostic push
 #if __GNUC__ >= 6
-    #pragma GCC diagnostic ignored "-Wignored-attributes"
+#pragma GCC diagnostic ignored "-Wignored-attributes"
 #endif
 #pragma GCC diagnostic ignored "-Wmissing-braces"
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS true
@@ -27,7 +27,7 @@
 #endif
 
 #ifndef CL_DEVICE_PCI_BUS_ID_NV
-#define CL_DEVICE_PCI_BUS_ID_NV  0x4008
+#define CL_DEVICE_PCI_BUS_ID_NV 0x4008
 #endif
 
 #ifndef CL_DEVICE_PCI_SLOT_ID_NV
@@ -36,21 +36,32 @@
 
 typedef union
 {
-	struct { cl_uint type; cl_uint data[5]; } raw;
-	struct { cl_uint type; cl_char unused[17]; cl_char bus; cl_char device; cl_char function; } pcie;
+    struct
+    {
+        cl_uint type;
+        cl_uint data[5];
+    } raw;
+    struct
+    {
+        cl_uint type;
+        cl_char unused[17];
+        cl_char bus;
+        cl_char device;
+        cl_char function;
+    } pcie;
 } cl_device_topology_amd;
 
 #endif
 
 #if defined(_WIN32)
 #include <windows.h>
-void *wrap_dlopen(const char *filename);
-void *wrap_dlsym(void *h, const char *sym);
-int wrap_dlclose(void *h);
+void* wrap_dlopen(const char* filename);
+void* wrap_dlsym(void* h, const char* sym);
+int wrap_dlclose(void* h);
 #else
 /* assume we can use dlopen itself... */
 #include <dlfcn.h>
-void *wrap_dlopen(const char *filename);
-void *wrap_dlsym(void *h, const char *sym);
-int wrap_dlclose(void *h);
+void* wrap_dlopen(const char* filename);
+void* wrap_dlsym(void* h, const char* sym);
+int wrap_dlclose(void* h);
 #endif

@@ -68,9 +68,8 @@ EthStratumClient::~EthStratumClient()
     // It's global
 }
 
-void EthStratumClient::init_socket() 
+void EthStratumClient::init_socket()
 {
-
     // Prepare Socket
     if (m_conn->SecLevel() != SecureLevel::NONE)
     {
@@ -148,7 +147,6 @@ void EthStratumClient::init_socket()
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 #endif
-
 }
 
 void EthStratumClient::connect()
@@ -156,7 +154,7 @@ void EthStratumClient::connect()
     // Prevent unnecessary and potentially dangerous recursion
     if (m_connecting.load(std::memory_order::memory_order_relaxed))
         return;
-    
+
     m_canconnect.store(false, std::memory_order_relaxed);
     m_connected.store(false, std::memory_order_relaxed);
     m_subscribed.store(false, std::memory_order_relaxed);
@@ -164,7 +162,7 @@ void EthStratumClient::connect()
     m_authpending.store(false, std::memory_order_relaxed);
 
     // Initializes socket and eventually secure stream
-    if(!m_socket)
+    if (!m_socket)
         init_socket();
 
     // Begin resolve all ips associated to hostname
@@ -185,10 +183,11 @@ void EthStratumClient::connect()
 void EthStratumClient::disconnect()
 {
     // Prevent unnecessary recursion
-    if (!m_connected.load(std::memory_order_relaxed) || m_disconnecting.load(std::memory_order_relaxed))
+    if (!m_connected.load(std::memory_order_relaxed) ||
+        m_disconnecting.load(std::memory_order_relaxed))
         return;
     m_disconnecting.store(true, std::memory_order_relaxed);
-        
+
     // Cancel any outstanding async operation
     if (m_socket)
         m_socket->cancel();
@@ -235,7 +234,6 @@ void EthStratumClient::disconnect()
         {
             cwarn << "Error while disconnecting:" << _e.what();
         }
-        
     }
 
     disconnect_finalize();
@@ -283,7 +281,8 @@ void EthStratumClient::disconnect_finalize()
             if (m_conn->StratumMode() > 0)
             {
                 m_conn->SetStratumMode(m_conn->StratumMode() - 1);
-                m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::start_connect, this)));
+                m_io_service.post(
+                    m_io_strand.wrap(boost::bind(&EthStratumClient::start_connect, this)));
                 return;
             }
             else
@@ -362,7 +361,7 @@ void EthStratumClient::start_connect()
 
         dev::setThreadName("stratum");
 
-        if (g_logVerbosity >=6)
+        if (g_logVerbosity >= 6)
             cnote << ("Trying " + toString(m_endpoint) + " ...");
 
         m_connecting.store(true, std::memory_order::memory_order_relaxed);
@@ -452,7 +451,8 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     // Timeout has run before or we got error
     if (ec || !m_socket->is_open())
     {
-        cwarn << ("Error  " + toString(m_endpoint) + " [ " + ( ec ? ec.message() : "Timeout") + " ]");
+        cwarn << ("Error  " + toString(m_endpoint) + " [ " + (ec ? ec.message() : "Timeout") +
+                  " ]");
 
         // We need to close the socket used in the previous connection attempt
         // before starting a new one.
@@ -473,7 +473,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 
     // We got a socket connection established
     m_canconnect.store(true, std::memory_order_relaxed);
-    if (g_logVerbosity >=6 )
+    if (g_logVerbosity >= 6)
         cnote << "Socket connected to " << ActiveEndPoint();
 
     if (m_conn->SecLevel() != SecureLevel::NONE)
@@ -510,10 +510,8 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
             // not ip address. Trying other IPs would end up with the very same error.
             m_canconnect.store(false, std::memory_order_relaxed);
             m_conn->MarkUnrecoverable();
-            m_io_service.post(
-                m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+            m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
             return;
-
         }
     }
     else
@@ -608,8 +606,6 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     m_responsetimer.async_wait(m_io_strand.wrap(boost::bind(
         &EthStratumClient::response_timeout_handler, this, boost::asio::placeholders::error)));
     sendSocketData(jReq);
-
-
 }
 
 std::string EthStratumClient::processError(Json::Value& responseObject)
@@ -677,8 +673,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                                    // _isNotification = false)
     string _errReason = "";        // Content of the error reason
     string _method = "";           // The method of the notification (or request from pool)
-    int _id = 0;                   // This SHOULD be the same id as the request it is responding to (known exception
-                                   // is ethermine.org using 999)
+    int _id = 0;  // This SHOULD be the same id as the request it is responding to (known exception
+                  // is ethermine.org using 999)
 
 
     // Retrieve essential values
@@ -734,14 +730,12 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             // reconnection with next available method.
             if (!m_conn->StratumModeConfirmed())
             {
-
                 if (!_isSuccess)
                 {
                     // Disconnect and Proceed with next step of autodetection
                     m_io_service.post(
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
                     return;
-                
                 }
 
                 switch (m_conn->StratumMode())
@@ -750,8 +744,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
                     // In case of success we also need to verify third parameter of "result" array
                     // member is exactly "EthereumStratum/1.0.0". Otherwise try with another mode
-                    if (jResult.isArray() && jResult[0].isArray() &&
-                        jResult[0].size() == 3 &&
+                    if (jResult.isArray() && jResult[0].isArray() && jResult[0].size() == 3 &&
                         jResult[0].get((Json::Value::ArrayIndex)2, "").asString() ==
                             "EthereumStratum/1.0.0")
                     {
@@ -760,7 +753,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     }
                     else
                     {
-                        // Disconnect and Proceed with next step of autodetection ETHPROXY compatible
+                        // Disconnect and Proceed with next step of autodetection ETHPROXY
+                        // compatible
                         m_io_service.post(
                             m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
                         return;
@@ -782,7 +776,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
                     break;
                 }
-
             }
 
 
@@ -944,7 +937,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     m_onConnected();
                     reset_work_timeout();
                 }
-
             }
 
             break;
@@ -1050,7 +1042,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
     }
 
     /*
-    
+
 
     Handle unsolicited messages FROM pool AKA notifications
 
@@ -1427,7 +1419,6 @@ void EthStratumClient::onRecvSocketDataCompleted(
 
 void EthStratumClient::sendSocketData(Json::Value const& jReq)
 {
-
     if (!isConnected())
         return;
 
