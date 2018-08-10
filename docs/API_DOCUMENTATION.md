@@ -11,7 +11,7 @@
     * [miner_getstat1](#miner_getstat1)
     * [miner_getstathr](#miner_getstathr)
     * [miner_restart](#miner_restart)
-    * miner_reboot
+    * [miner_reboot](#miner_reboot)
     * [miner_shuffle](#miner_shuffle)
     * [miner_getconnections](#miner_getconnections)
     * [miner_setactiveconnection](#miner_setactiveconnection)
@@ -91,7 +91,7 @@ This shows the API interface is live and listening on the configured endpoint.
 | [miner_getstat1](#miner_getstat1) | Request the retrieval of operational data in compatible format | No
 | [miner_getstathr](#miner_getstathr) | Request the retrieval of operational data in Ethminer's format | No
 | [miner_restart](#miner_restart) | Instructs ethminer to stop and restart mining | Yes |
-| miner_reboot | Not yet implemented | Yes
+| [miner_reboot](#miner_reboot) | Try to launch reboot.bat (on Windows) or reboot.sh (on Linux) in the ethminer executable directory | Yes
 | [miner_shuffle](#miner_shuffle) | Initializes a new random scramble nonce | Yes
 | [miner_getconnections](#miner_getconnections) | Returns the list of connections held by ethminer | No
 | [miner_setactiveconnection](#miner_setactiveconnection) | Instruct ethminer to immediately connect to the specified connection | Yes
@@ -307,6 +307,36 @@ and expect back a result like this:
 ```
 
 which confirms the action has been performed.
+
+**Note**: This method is not available if the API interface is in read-only mode (see above).
+
+### miner_reboot
+
+With this method you instruct ethminer to execute reboot.bat (on Windows) or reboot.sh (on Linux) script which must exists and being executable in the ethminer directory.
+As ethminer has no idea what's going on in the script, ethminer continues with it's normal work.
+If you invoke this function `api_miner_reboot` is passed to the script as first parameter.
+
+To invoke the action:
+
+```json
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_reboot"
+}
+```
+
+and expect back a result like this:
+
+```json
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": true
+}
+```
+
+which confirms an executable file was found and ethminer tried to start it.
 
 **Note**: This method is not available if the API interface is in read-only mode (see above).
 

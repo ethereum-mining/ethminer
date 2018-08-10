@@ -27,6 +27,9 @@
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <boost/dll.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/process.hpp>
 
 #include <json/json.h>
 
@@ -38,6 +41,7 @@
 #include <libhwmon/wrapnvml.h>
 #if defined(__linux)
 #include <libhwmon/wrapamdsysfs.h>
+#include <sys/stat.h>
 #endif
 
 namespace dev
@@ -263,6 +267,21 @@ public:
     bool isMining() const { return m_isMining.load(std::memory_order_relaxed); }
 
     /**
+     * @brief Spawn a reboot script (reboot.bat/reboot.sh)
+     * @return false if no matching file was found
+     */
+    bool reboot(const std::vector<std::string>& args)
+    {
+#if defined(_WIN32)
+        const char* filename = "reboot.bat";
+#else
+        const char* filename = "reboot.sh";
+#endif
+
+        return spawn_file_in_bin_dir(filename, args);
+    }
+
+    /**
      * @brief Get information on the progress of mining this work package.
      * @return The progress with mining so far.
      */
@@ -481,6 +500,44 @@ public:
     unsigned get_tstop() override { return m_tstop; }
 
 private:
+    /**
+     * @brief Spawn a file - must be located in the directory of ethminer binary
+     * @return false if file was not found or it is not executeable
+     */
+    bool spawn_file_in_bin_dir(const char* filename, const std::vector<std::string>& args)
+    {
+        std::string fn = boost::dll::program_location().parent_path().string() +
+                         "/" +  // boost::filesystem::path::preferred_separator
+                         filename;
+        try
+        {
+            if (!boost::filesystem::exists(fn))
+                return false;
+
+            /* anything in the file */
+            if (!boost::filesystem::file_size(fn))
+                return false;
+
+#if defined(__linux)
+            struct stat sb;
+            if (stat(fn.c_str(), &sb) != 0)
+                return false;
+            /* just check if any exec flag is set.
+               still execution can fail (not the uid, not in the group, selinux, ....)
+             */
+            if ((sb.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) == 0)
+                return false;
+#endif
+            /* spawn it (no wait,...) - fire and forget! */
+            boost::process::spawn(fn, args);
+            return true;
+        }
+        catch (...)
+        {
+        }
+        return false;
+    }
+
     /**
      * @brief Called from a Miner to note a WorkPackage has a solution.
      * @param _p The solution.
