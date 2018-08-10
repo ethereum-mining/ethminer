@@ -44,9 +44,6 @@ public:
         bool _exit);
     static void setNumInstances(unsigned _instances);
     static void setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount);
-    static bool cuda_configureGPU(size_t numDevices, const vector<int>& _devices,
-        unsigned _blockSize, unsigned _gridSize, unsigned _numStreams, unsigned _scheduleFlag,
-        bool _noeval);
 
     bool cuda_init(size_t numDevices, int epoch, unsigned _deviceId, bool _cpyToHost,
         uint8_t*& hostDAG, unsigned dagCreateDevice);

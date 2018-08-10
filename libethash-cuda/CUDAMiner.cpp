@@ -212,6 +212,10 @@ void CUDAMiner::listDevices()
     }
 }
 
+unsigned const CUDAMiner::c_defaultBlockSize = 128;
+unsigned const CUDAMiner::c_defaultGridSize = 8192;  // * CL_DEFAULT_LOCAL_WORK_SIZE
+unsigned const CUDAMiner::c_defaultNumStreams = 2;
+
 bool CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
     unsigned _scheduleFlag, unsigned _dagLoadMode, unsigned _dagCreateDevice, bool _noeval,
     bool _exit)
@@ -219,50 +223,26 @@ bool CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _
     s_dagLoadMode = _dagLoadMode;
     s_dagCreateDevice = _dagCreateDevice;
     s_exit = _exit;
+    s_blockSize = _blockSize;
+    s_gridSize = _gridSize;
+    s_numStreams = _numStreams;
+    s_scheduleFlag = _scheduleFlag;
+    s_noeval = _noeval;
 
-    if (!cuda_configureGPU(getNumDevices(), s_devices, ((_blockSize + 7) / 8) * 8, _gridSize,
-            _numStreams, _scheduleFlag, _noeval))
-    {
-        cout << "No CUDA device with sufficient memory was found. Can't CUDA mine. Remove the -U "
-                "argument"
-             << endl;
-        return false;
-    }
-    return true;
-}
-
-void CUDAMiner::setParallelHash(unsigned _parallelHash)
-{
-    m_parallelHash = _parallelHash;
-}
-
-unsigned const CUDAMiner::c_defaultBlockSize = 128;
-unsigned const CUDAMiner::c_defaultGridSize = 8192;  // * CL_DEFAULT_LOCAL_WORK_SIZE
-unsigned const CUDAMiner::c_defaultNumStreams = 2;
-
-bool CUDAMiner::cuda_configureGPU(size_t numDevices, const vector<int>& _devices,
-    unsigned _blockSize, unsigned _gridSize, unsigned _numStreams, unsigned _scheduleFlag,
-    bool _noeval)
-{
     try
     {
-        s_blockSize = _blockSize;
-        s_gridSize = _gridSize;
-        s_numStreams = _numStreams;
-        s_scheduleFlag = _scheduleFlag;
-        s_noeval = _noeval;
 
         cudalog << "Using grid size: " << s_gridSize << ", block size: " << s_blockSize;
 
         // by default let's only consider the DAG of the first epoch
         const auto dagSize =
             ethash::get_full_dataset_size(ethash::calculate_full_dataset_num_items(0));
-        int devicesCount = static_cast<int>(numDevices);
+        int devicesCount = static_cast<int>(getNumDevices());
         for (int i = 0; i < devicesCount; i++)
         {
-            if (_devices[i] != -1)
+            if (s_devices[i] != -1)
             {
-                int deviceId = min(devicesCount - 1, _devices[i]);
+                int deviceId = min(devicesCount - 1, s_devices[i]);
                 cudaDeviceProp props;
                 CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, deviceId));
                 if (props.totalGlobalMem >= dagSize)
@@ -288,7 +268,15 @@ bool CUDAMiner::cuda_configureGPU(size_t numDevices, const vector<int>& _devices
             exit(1);
         return false;
     }
+
+    return true;
 }
+
+void CUDAMiner::setParallelHash(unsigned _parallelHash)
+{
+    m_parallelHash = _parallelHash;
+}
+
 
 unsigned CUDAMiner::m_parallelHash = 4;
 unsigned CUDAMiner::s_blockSize = CUDAMiner::c_defaultBlockSize;
