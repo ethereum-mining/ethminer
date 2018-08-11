@@ -17,13 +17,14 @@
  * Philipp Andreas - github@smurfy.de
  */
 
-#include "wrapnvml.h"
-#include "wraphelper.h"
 #include <stdio.h>
 #include <stdlib.h>
 #if ETH_ETHASHCUDA
 #include "cuda_runtime.h"
 #endif
+
+#include "wraphelper.h"
+#include "wrapnvml.h"
 
 #if defined(__cplusplus)
 extern "C" {

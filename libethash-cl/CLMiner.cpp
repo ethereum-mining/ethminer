@@ -3,11 +3,12 @@
 /// @file
 /// @copyright GNU General Public License
 
+#include <boost/dll.hpp>
+
+#include <ethash/ethash.hpp>
+
 #include "CLMiner.h"
 #include "ethash.h"
-
-#include <boost/dll.hpp>
-#include <ethash/ethash.hpp>
 
 using namespace dev;
 using namespace eth;

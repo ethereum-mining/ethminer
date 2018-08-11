@@ -1,11 +1,13 @@
 #pragma once
 
-#include "../PoolClient.h"
+#include <iostream>
+
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Farm.h>
 #include <libethcore/Miner.h>
-#include <iostream>
+
+#include "../PoolClient.h"
 
 using namespace std;
 using namespace dev;

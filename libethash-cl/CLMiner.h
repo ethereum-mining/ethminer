@@ -5,10 +5,11 @@
 
 #pragma once
 
+#include <fstream>
+
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
-#include <fstream>
 
 #pragma GCC diagnostic push
 #if __GNUC__ >= 6

@@ -23,13 +23,14 @@
 
 #pragma once
 
+#include <chrono>
+#include <ctime>
+
 #include "Common.h"
 #include "CommonData.h"
 #include "FixedHash.h"
 #include "Terminal.h"
 #include "vector_ref.h"
-#include <chrono>
-#include <ctime>
 
 /// The logging system's current verbosity.
 extern int g_logVerbosity;

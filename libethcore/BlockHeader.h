@@ -4,10 +4,10 @@
 
 #pragma once
 
-#include "Exceptions.h"
-
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
+
+#include "Exceptions.h"
 
 namespace dev
 {

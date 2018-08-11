@@ -7,6 +7,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#if defined(__linux)
+#include <dirent.h>
+#endif
+
 #include <algorithm>
 #include <climits>
 #include <cstdint>
@@ -16,9 +20,6 @@
 #include <limits>
 #include <regex>
 #include <string>
-#if defined(__linux)
-#include <dirent.h>
-#endif
 
 #include <libdevcore/Log.h>
 

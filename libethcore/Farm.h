@@ -21,18 +21,21 @@
 
 #pragma once
 
+#include <atomic>
+#include <list>
+#include <thread>
+
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+
 #include <json/json.h>
+
 #include <libdevcore/Common.h>
 #include <libdevcore/Worker.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Miner.h>
 #include <libhwmon/wrapadl.h>
 #include <libhwmon/wrapnvml.h>
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <atomic>
-#include <list>
-#include <thread>
 #if defined(__linux)
 #include <libhwmon/wrapamdsysfs.h>
 #endif

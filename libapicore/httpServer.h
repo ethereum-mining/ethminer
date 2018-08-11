@@ -1,7 +1,8 @@
 #pragma once
 
-#include <libethcore/Farm.h>
 #include <thread>
+
+#include <libethcore/Farm.h>
 
 class httpServer
 {

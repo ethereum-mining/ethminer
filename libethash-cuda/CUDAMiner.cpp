@@ -15,9 +15,9 @@ You should have received a copy of the GNU General Public License
 along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "CUDAMiner.h"
-
 #include <ethash/ethash.hpp>
+
+#include "CUDAMiner.h"
 
 using namespace std;
 using namespace dev;

@@ -19,9 +19,10 @@
  * @date 2014
  */
 
+#include <cstdlib>
+
 #include "CommonData.h"
 #include "Exceptions.h"
-#include <cstdlib>
 
 using namespace std;
 using namespace dev;

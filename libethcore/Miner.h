@@ -21,17 +21,18 @@
 
 #pragma once
 
-#include "EthashAux.h"
-#include <libdevcore/Common.h>
-#include <libdevcore/Log.h>
-#include <libdevcore/Worker.h>
-#include <boost/timer.hpp>
 #include <list>
 #include <string>
 #include <thread>
 
-#define MINER_WAIT_STATE_WORK 1
+#include <boost/timer.hpp>
 
+#include "EthashAux.h"
+#include <libdevcore/Common.h>
+#include <libdevcore/Log.h>
+#include <libdevcore/Worker.h>
+
+#define MINER_WAIT_STATE_WORK 1
 
 #define DAG_LOAD_MODE_PARALLEL 0
 #define DAG_LOAD_MODE_SEQUENTIAL 1

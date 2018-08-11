@@ -21,11 +21,12 @@
 
 #pragma once
 
-#include "Guards.h"
 #include <atomic>
 #include <cassert>
 #include <string>
 #include <thread>
+
+#include "Guards.h"
 
 namespace dev
 {

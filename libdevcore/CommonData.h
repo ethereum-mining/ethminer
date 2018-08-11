@@ -23,13 +23,14 @@
 
 #pragma once
 
-#include "Common.h"
 #include <algorithm>
 #include <cstring>
 #include <string>
 #include <type_traits>
 #include <unordered_set>
 #include <vector>
+
+#include "Common.h"
 
 namespace dev
 {
