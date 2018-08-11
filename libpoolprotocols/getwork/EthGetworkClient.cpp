@@ -1,8 +1,8 @@
 #include "EthGetworkClient.h"
 
-#include <ethash/ethash.hpp>
-
 #include <chrono>
+
+#include <ethash/ethash.hpp>
 
 using namespace std;
 using namespace dev;

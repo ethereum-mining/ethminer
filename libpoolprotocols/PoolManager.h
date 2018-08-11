@@ -1,11 +1,14 @@
 #pragma once
 
+#include <iostream>
+
+#include <boost/lockfree/queue.hpp>
+
 #include <json/json.h>
+
 #include <libdevcore/Worker.h>
 #include <libethcore/Farm.h>
 #include <libethcore/Miner.h>
-#include <boost/lockfree/queue.hpp>
-#include <iostream>
 
 #include "PoolClient.h"
 

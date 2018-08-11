@@ -1,9 +1,8 @@
-#include "EthStratumClient.h"
-#include <libdevcore/Log.h>
-
 #include <ethminer/buildinfo.h>
-
+#include <libdevcore/Log.h>
 #include <ethash/ethash.hpp>
+
+#include "EthStratumClient.h"
 
 #ifdef _WIN32
 #include <wincrypt.h>

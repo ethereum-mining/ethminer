@@ -1,18 +1,21 @@
 #pragma once
 
-#include "../PoolClient.h"
+#include <iostream>
+
+#include <boost/array.hpp>
+#include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
+#include <boost/bind.hpp>
+
 #include <json/json.h>
+
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/Log.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Farm.h>
 #include <libethcore/Miner.h>
-#include <boost/array.hpp>
-#include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
-#include <boost/bind.hpp>
-#include <iostream>
 
+#include "../PoolClient.h"
 
 using namespace std;
 using namespace dev;

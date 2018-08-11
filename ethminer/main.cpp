@@ -15,9 +15,12 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <ethminer/buildinfo.h>
-
 #include <CLI/CLI.hpp>
+
+#include <ethminer/buildinfo.h>
+#if ETH_DBUS
+#include <ethminer/DBusInt.h>
+#endif
 
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
@@ -51,10 +54,6 @@ struct MiningChannel : public LogChannel
 };
 
 #define minelog clog(MiningChannel)
-
-#if ETH_DBUS
-#include <ethminer/DBusInt.h>
-#endif
 
 bool g_running = false;
 

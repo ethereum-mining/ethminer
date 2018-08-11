@@ -17,11 +17,10 @@
 
 #pragma once
 
-#include "BlockHeader.h"
-
 #include <libdevcore/Worker.h>
-
 #include <ethash/ethash.hpp>
+
+#include "BlockHeader.h"
 
 namespace dev
 {

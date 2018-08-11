@@ -19,11 +19,12 @@
  * @date 2014
  */
 
-#include "Worker.h"
-
-#include "Log.h"
 #include <chrono>
 #include <thread>
+
+#include "Log.h"
+#include "Worker.h"
+
 using namespace std;
 using namespace dev;
 

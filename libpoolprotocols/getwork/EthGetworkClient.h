@@ -1,10 +1,13 @@
 #pragma once
 
-#include "../PoolClient.h"
+#include <iostream>
+
 #include "jsonrpc_getwork.h"
 #include <jsonrpccpp/client/connectors/httpclient.h>
+
 #include <libdevcore/Worker.h>
-#include <iostream>
+
+#include "../PoolClient.h"
 
 using namespace std;
 using namespace dev;

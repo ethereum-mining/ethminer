@@ -23,15 +23,16 @@
 
 #pragma once
 
-#include "Common.h"
-#include "Exceptions.h"
-#include "FixedHash.h"
-#include "vector_ref.h"
 #include <array>
 #include <exception>
 #include <iomanip>
 #include <iostream>
 #include <vector>
+
+#include "Common.h"
+#include "Exceptions.h"
+#include "FixedHash.h"
+#include "vector_ref.h"
 
 namespace dev
 {

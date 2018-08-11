@@ -20,6 +20,7 @@
  */
 
 #include "RLP.h"
+
 using namespace std;
 using namespace dev;
 

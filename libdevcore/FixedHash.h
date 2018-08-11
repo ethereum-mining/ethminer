@@ -23,11 +23,12 @@
 
 #pragma once
 
-#include "CommonData.h"
 #include <algorithm>
 #include <array>
 #include <cstdint>
 #include <random>
+
+#include "CommonData.h"
 
 namespace dev
 {

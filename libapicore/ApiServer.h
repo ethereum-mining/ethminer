@@ -1,12 +1,14 @@
 #pragma once
 
-#include <json/json.h>
-#include <libethcore/Farm.h>
-#include <libethcore/Miner.h>
-#include <libpoolprotocols/PoolManager.h>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
+
+#include <json/json.h>
+
+#include <libethcore/Farm.h>
+#include <libethcore/Miner.h>
+#include <libpoolprotocols/PoolManager.h>
 
 using namespace dev;
 using namespace dev::eth;

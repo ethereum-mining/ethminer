@@ -1,10 +1,11 @@
-#include <libpoolprotocols/PoolURI.h>
+#include <iostream>
+#include <map>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/optional/optional_io.hpp>
-#include <map>
 #include <network/uri/detail/decode.hpp>
 
-#include <iostream>
+#include <libpoolprotocols/PoolURI.h>
 
 using namespace dev;
 

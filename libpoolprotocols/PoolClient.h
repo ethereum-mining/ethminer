@@ -1,11 +1,12 @@
 #pragma once
 
+#include <queue>
+
 #include <boost/asio/ip/address.hpp>
 
 #include <libethcore/Farm.h>
 #include <libethcore/Miner.h>
 #include <libpoolprotocols/PoolURI.h>
-#include <queue>
 
 using namespace std;
 
