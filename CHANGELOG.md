@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+### Fixed
+
+- Eliminated duplicate solutions with stratum2 on difficulty changes.
+
 ### Added
 
 - Basic API authentication to protect exposure of API port to the internet [#1228](https://github.com/ethereum-mining/ethminer/pull/1228).
@@ -17,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Added support for jawawawa AMD binary kernels
 - AMD auto kernel selection. Try bin first, if not fall back to opencl.
 - API: New method `miner_setverbosity`. [#1382](https://github.com/ethereum-mining/ethminer/pull/1382).
+- Implemented fast job switch algorithm on AMD reducing switch time to 1-2 milliseconds.
+- Added localization support for output number formatting
 
 ## 0.15.0rc1
 
