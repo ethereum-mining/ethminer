@@ -45,9 +45,6 @@ public:
     static void setNumInstances(unsigned _instances);
     static void setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount);
 
-    bool cuda_init(size_t numDevices, int epoch, unsigned _deviceId, bool _cpyToHost,
-        uint8_t*& hostDAG, unsigned dagCreateDevice);
-
     void search(
         uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w);
 
