@@ -455,9 +455,11 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
 
     else if (_method == "miner_reboot")
     {
-        // Not implemented yet
-        jResponse["error"]["code"] = -32601;
-        jResponse["error"]["message"] = "Method not implemented";
+        if (!checkApiWriteAccess(m_readonly, jResponse))
+            return;
+        cnote << "Miner reboot requested";
+
+        jResponse["result"] = m_farm.reboot({{"api_miner_reboot"}});
     }
 
     else if (_method == "miner_getconnections")
