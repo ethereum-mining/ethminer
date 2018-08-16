@@ -565,12 +565,8 @@ public:
         {
             if (url == "exit")  // add fake scheme and port to 'exit' url
                 url = "stratum+tcp://-:x@exit:0";
-            URI uri;
-            try
-            {
-                uri = url;
-            }
-            catch (...)
+            URI uri(url);
+            if (!uri.Valid())
             {
                 cerr << endl << "Bad endpoint address: " << url << "\n\n";
                 exit(-1);

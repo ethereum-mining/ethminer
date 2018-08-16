@@ -481,10 +481,15 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         if (!getRequestValue("uri", sUri, jRequestParams, false, jResponse))
             return;
 
-        dev::URI uri;
         try
         {
-            uri = sUri;
+            URI uri(sUri);
+            if (!uri.Valid())
+            {
+                jResponse["error"]["code"] = -422;
+                jResponse["error"]["message"] = ("Invalid URI " + uri.String());
+                return;
+            }
             if (!uri.KnownScheme())
             {
                 jResponse["error"]["code"] = -422;
