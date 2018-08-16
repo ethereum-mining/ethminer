@@ -378,7 +378,7 @@ Json::Value PoolManager::getConnectionsJson()
         Json::Value JConn;
         JConn["index"] = (int)i;
         JConn["active"] = (i == m_activeConnectionIdx ? true : false);
-        JConn["uri"] = m_connections[i].string();
+        JConn["uri"] = m_connections[i].String();
         jRes.append(JConn);
     }
 

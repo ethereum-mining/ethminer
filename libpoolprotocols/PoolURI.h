@@ -1,8 +1,23 @@
+/*
+    This file is part of cpp-ethereum.
+
+    cpp-ethereum is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    cpp-ethereum is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #pragma once
 
 #include <string>
-
-#include <network/uri.hpp>
 
 // A simple URI parser specifically for mining pool endpoints
 namespace dev
@@ -22,19 +37,20 @@ enum class ProtocolFamily
 class URI
 {
 public:
-    URI(){};
+    URI() = delete;
     URI(const std::string uri);
 
-    std::string Scheme() const;
-    std::string Host() const;
-    std::string Path() const;
-    unsigned short Port() const;
-    std::string User() const;
-    std::string Pass() const;
+    std::string Scheme() const { return m_scheme; }
+    std::string Host() const { return m_host; }
+    std::string Path() const { return m_path; }
+    unsigned short Port() const { return m_port; }
+    std::string User() const { return m_username; }
+    std::string Pass() const { return m_password; }
     SecureLevel SecLevel() const;
     ProtocolFamily Family() const;
     unsigned Version() const;
-    std::string string() { return m_uri.string(); }
+    std::string String() const { return m_uri; }
+    bool Valid() const { return m_valid; }
 
     bool KnownScheme();
 
@@ -52,9 +68,18 @@ public:
     void MarkUnrecoverable() { m_unrecoverable = true; }
 
 private:
-    network::uri m_uri;
     bool m_stratumModeConfirmed = false;
     unsigned m_stratumMode = 999;  // Initial value 999 means not tested yet
     bool m_unrecoverable = false;
+    std::string m_scheme;
+    std::string m_host;
+    unsigned short m_port;
+    std::string m_path;
+    std::string m_query;
+    std::string m_fragment;
+    std::string m_username;
+    std::string m_password;
+    std::string m_uri;
+    bool m_valid;
 };
 }  // namespace dev
