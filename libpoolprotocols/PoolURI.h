@@ -68,18 +68,18 @@ public:
     void MarkUnrecoverable() { m_unrecoverable = true; }
 
 private:
-    bool m_stratumModeConfirmed = false;
-    unsigned m_stratumMode = 999;  // Initial value 999 means not tested yet
-    bool m_unrecoverable = false;
     std::string m_scheme;
     std::string m_host;
-    unsigned short m_port = 0;
     std::string m_path;
     std::string m_query;
     std::string m_fragment;
     std::string m_username;
     std::string m_password;
     std::string m_uri;
+    unsigned short m_stratumMode = 999;  // Initial value 999 means not tested yet
+    unsigned short m_port = 0;
     bool m_valid = false;
+    bool m_stratumModeConfirmed = false;
+    bool m_unrecoverable = false;
 };
 }  // namespace dev
