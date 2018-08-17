@@ -47,9 +47,12 @@ void httpServer::getstat1(stringstream& ss)
     for (unsigned i = 0; i < p.minersHashes.size(); i++)
     {
         double rate = p.minerRate(p.minersHashes[i]) / 1000000.0;
+
         hashSum += rate;
-        ss << "<tr valign=top align=center><td>" << i << "</td><td>" << fixed << setprecision(2)
-           << rate;
+        ss << "<tr valign=top align=center><td";
+        if (i < p.miningIsPaused.size() && p.miningIsPaused[i])
+            ss << " style=color:Red";
+        ss << ">" << i << "</td><td>" << fixed << setprecision(2) << rate;
         if (m_show_hwmonitors && (i < p.minerMonitors.size()))
         {
             HwMonitor& hw(p.minerMonitors[i]);
