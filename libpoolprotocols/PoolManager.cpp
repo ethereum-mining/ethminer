@@ -227,27 +227,7 @@ void PoolManager::workLoop()
                 {
                     p_client->unsetConnection();
 
-                    /*
-                    This should be a one line code but it always ends up
-                    with undefined behavior. Only solution found is to make a
-                    copy. Any hint about why erase does not work ... is welcome
-                    */
-                    // m_connections.erase(m_connections.begin() + m_activeConnectionIdx);
-
-                    std::vector<URI> m_connections_copy;
-                    for (unsigned i = 0; i < m_connections.size(); i++)
-                    {
-                        if (!m_connections[i].IsUnrecoverable())
-                        {
-                            m_connections_copy.push_back(m_connections.at(i));
-                        }
-                    }
-                    m_connections.clear();
-                    for (unsigned i = 0; i < m_connections_copy.size(); i++)
-                    {
-                        m_connections.push_back(m_connections_copy.at(i));
-                    }
-
+                    m_connections.erase(m_connections.begin() + m_activeConnectionIdx);
 
                     m_connectionAttempt = 0;
                     if (m_activeConnectionIdx > 0)
