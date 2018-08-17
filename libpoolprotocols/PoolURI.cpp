@@ -1,18 +1,18 @@
 /*
-    This file is part of cpp-ethereum.
+    This file is part of ethminer.
 
-    cpp-ethereum is free software: you can redistribute it and/or modify
+    ethminer is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    cpp-ethereum is distributed in the hope that it will be useful,
+    ethminer is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+    along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <algorithm>
@@ -48,6 +48,30 @@ static std::map<std::string, SchemeAttributes> s_schemes = {
     {"stratum2+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 2}},
     {"http", {ProtocolFamily::GETWORK, SecureLevel::NONE, 0}}};
 
+static std::string urlDecode(std::string s)
+{
+    std::string ret;
+    unsigned i, ii;
+    for (i = 0; i < s.length(); i++)
+    {
+        if (int(s[i]) == '%')
+        {
+            sscanf(s.substr(i + 1, 2).c_str(), "%x", &ii);
+            ret += char(ii);
+            i = i + 2;
+        }
+        else if (s[i] == '+')
+        {
+            ret += ' ';
+        }
+        else
+        {
+            ret += s[i];
+        }
+    }
+    return ret;
+}
+
 URI::URI(const std::string uri)
 {
     m_uri = uri;
@@ -64,7 +88,7 @@ URI::URI(const std::string uri)
     }
     // Get the scheme length
     size_t len = tmpstr - curstr;
-    // Copy the scheme to the string, all lowecase
+    // Copy the scheme to the string, all lowecase, can't be url encoded
     m_scheme.append(curstr, len);
     std::transform(m_scheme.begin(), m_scheme.end(), m_scheme.begin(), ::tolower);
     if (0 != std::count_if(m_scheme.begin(), m_scheme.end(), [](char c) {
@@ -115,6 +139,7 @@ URI::URI(const std::string uri)
             tmpstr++;
         len = tmpstr - curstr;
         m_username.append(curstr, len);
+        m_username = urlDecode(m_username);
         // Look for password
         curstr = tmpstr;
         if (':' == *curstr)
@@ -127,6 +152,7 @@ URI::URI(const std::string uri)
                 tmpstr++;
             len = tmpstr - curstr;
             m_password.append(curstr, len);
+            m_password = urlDecode(m_password);
             curstr = tmpstr;
         }
         // Skip '@'
@@ -155,6 +181,7 @@ URI::URI(const std::string uri)
     }
     len = tmpstr - curstr;
     m_host.append(curstr, len);
+    m_host = urlDecode(m_host);
     curstr = tmpstr;
 
     // Is port number specified?
@@ -197,6 +224,7 @@ URI::URI(const std::string uri)
         tmpstr++;
     len = tmpstr - curstr;
     m_path.append(curstr, len);
+    m_path = urlDecode(m_path);
     curstr = tmpstr;
 
     // Is query specified?
@@ -210,6 +238,7 @@ URI::URI(const std::string uri)
             tmpstr++;
         len = tmpstr - curstr;
         m_query.append(curstr, len);
+        m_query = urlDecode(m_query);
         curstr = tmpstr;
     }
 
@@ -224,6 +253,7 @@ URI::URI(const std::string uri)
             tmpstr++;
         len = tmpstr - curstr;
         m_fragment.append(curstr, len);
+        m_fragment = urlDecode(m_fragment);
     }
     m_valid = true;
 }
