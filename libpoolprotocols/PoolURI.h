@@ -73,13 +73,13 @@ private:
     bool m_unrecoverable = false;
     std::string m_scheme;
     std::string m_host;
-    unsigned short m_port;
+    unsigned short m_port = 0;
     std::string m_path;
     std::string m_query;
     std::string m_fragment;
     std::string m_username;
     std::string m_password;
     std::string m_uri;
-    bool m_valid;
+    bool m_valid = false;
 };
 }  // namespace dev
