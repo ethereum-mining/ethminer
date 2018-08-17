@@ -63,7 +63,7 @@ URI::URI(const std::string uri)
         return;
     }
     // Get the scheme length
-    unsigned len = tmpstr - curstr;
+    size_t len = tmpstr - curstr;
     // Copy the scheme to the string, all lowecase
     m_scheme.append(curstr, len);
     std::transform(m_scheme.begin(), m_scheme.end(), m_scheme.begin(), ::tolower);
