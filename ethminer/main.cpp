@@ -896,26 +896,36 @@ private:
         // Start PoolManager
         mgr.start();
 
+        unsigned interval = m_displayInterval;
+
         // Run CLI in loop
         while (g_running && mgr.isRunning())
         {
             // Wait at the beginning of the loop to give some time
             // services to start properly. Otherwise we get a "not-connected"
             // message immediately
-            this_thread::sleep_for(chrono::seconds(m_displayInterval));
-
-            if (mgr.isConnected())
+            this_thread::sleep_for(chrono::seconds(2));
+            if (interval > 2)
             {
-                auto mp = f.miningProgress(m_show_hwmonitors, m_show_power);
-                minelog << mp << ' ' << f.getSolutionStats() << ' ' << f.farmLaunchedFormatted();
-
-#if ETH_DBUS
-                dbusint.send(toString(mp).c_str());
-#endif
+                interval -= 2;
             }
             else
             {
-                minelog << "not-connected";
+                if (mgr.isConnected())
+                {
+                    auto mp = f.miningProgress(m_show_hwmonitors, m_show_power);
+                    minelog << mp << ' ' << f.getSolutionStats() << ' '
+                            << f.farmLaunchedFormatted();
+
+#if ETH_DBUS
+                    dbusint.send(toString(mp).c_str());
+#endif
+                }
+                else
+                {
+                    minelog << "not-connected";
+                }
+                interval = m_displayInterval;
             }
         }
 
