@@ -908,25 +908,23 @@ private:
             if (interval > 2)
             {
                 interval -= 2;
+                continue;
+            }
+            if (mgr.isConnected())
+            {
+                auto mp = f.miningProgress(m_show_hwmonitors, m_show_power);
+                minelog << mp << ' ' << f.getSolutionStats() << ' '
+                        << f.farmLaunchedFormatted();
+
+#if ETH_DBUS
+                dbusint.send(toString(mp).c_str());
+#endif
             }
             else
             {
-                if (mgr.isConnected())
-                {
-                    auto mp = f.miningProgress(m_show_hwmonitors, m_show_power);
-                    minelog << mp << ' ' << f.getSolutionStats() << ' '
-                            << f.farmLaunchedFormatted();
-
-#if ETH_DBUS
-                    dbusint.send(toString(mp).c_str());
-#endif
-                }
-                else
-                {
-                    minelog << "not-connected";
-                }
-                interval = m_displayInterval;
+                minelog << "not-connected";
             }
+            interval = m_displayInterval;
         }
 
 #if API_CORE
