@@ -1,18 +1,18 @@
 /*
-    This file is part of cpp-ethereum.
+    This file is part of ethminer.
 
-    cpp-ethereum is free software: you can redistribute it and/or modify
+    ethminer is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    cpp-ethereum is distributed in the hope that it will be useful,
+    ethminer is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+    along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <algorithm>
@@ -48,58 +48,55 @@ static std::map<std::string, SchemeAttributes> s_schemes = {
     {"stratum2+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 2}},
     {"http", {ProtocolFamily::GETWORK, SecureLevel::NONE, 0}}};
 
-// Check whether the character is permitted in scheme string
-static bool is_scheme_char(int c)
+static std::string urlDecode(std::string s)
 {
-    return isalpha(c) || isdigit(c) || ('+' == c) || ('-' == c) || ('.' == c);
+    std::string ret;
+    unsigned i, ii;
+    for (i = 0; i < s.length(); i++)
+    {
+        if (int(s[i]) == '%')
+        {
+            sscanf(s.substr(i + 1, 2).c_str(), "%x", &ii);
+            ret += char(ii);
+            i = i + 2;
+        }
+        else if (s[i] == '+')
+        {
+            ret += ' ';
+        }
+        else
+        {
+            ret += s[i];
+        }
+    }
+    return ret;
 }
 
 URI::URI(const std::string uri)
 {
-    const char* tmpstr;
-    const char* curstr;
-    unsigned len;
-    bool userpass_flag;
-    bool ipv6_flag;
-
-    m_valid = true;
-    m_path.clear();
-    m_query.clear();
-    m_fragment.clear();
-    m_username.clear();
-    m_password.clear();
-    m_port = 0;
-
     m_uri = uri;
-    curstr = m_uri.c_str();
 
-    // <scheme>:<scheme-specific-part>
-    // <scheme> := [a-z\+\-\.]+
-    //             upper case = lower case for resiliency
-    // Read scheme
-    tmpstr = strchr(curstr, ':');
+    const char* curstr = m_uri.c_str();
+
+    // <scheme> := [a-z\0-9\+\-\.]+,  convert to lower case
+    // Read scheme (mandatory)
+    const char* tmpstr = strchr(curstr, ':');
     if (nullptr == tmpstr)
     {
         // Not found
-        m_valid = false;
         return;
     }
     // Get the scheme length
-    len = tmpstr - curstr;
-    // Check character restrictions
-    for (unsigned i = 0; i < len; i++)
-    {
-        if (!is_scheme_char(curstr[i]))
-        {
-            // Invalid
-            m_valid = false;
-            return;
-        }
-    }
-    // Copy the scheme to the string
-    // all lowecase
+    size_t len = tmpstr - curstr;
+    // Copy the scheme to the string, all lowecase, can't be url encoded
     m_scheme.append(curstr, len);
     std::transform(m_scheme.begin(), m_scheme.end(), m_scheme.begin(), ::tolower);
+    if (0 != std::count_if(m_scheme.begin(), m_scheme.end(), [](char c) {
+            return !(isalpha(c) || isdigit(c) || ('+' == c) || ('-' == c) || ('.' == c));
+        }))
+    {
+        return;
+    }
 
     // Skip ':'
     tmpstr++;
@@ -108,18 +105,14 @@ URI::URI(const std::string uri)
     // //<user>:<password>@<host>:<port>/<url-path>
     // Any ":", "@" and "/" must be encoded.
     // Eat "//"
-    for (unsigned i = 0; i < 2; i++)
+    if (('/' != *curstr) || ('/' != *(curstr + 1)))
     {
-        if ('/' != *curstr)
-        {
-            m_valid = false;
             return;
-        }
-        curstr++;
     }
+    curstr += 2;
 
     // Check if the user (and password) are specified.
-    userpass_flag = false;
+    bool userpass_flag = false;
     tmpstr = curstr;
     while ('\0' != *tmpstr)
     {
@@ -132,7 +125,6 @@ URI::URI(const std::string uri)
         else if ('/' == *tmpstr)
         {
             // End of <host>:<port> specification
-            userpass_flag = false;
             break;
         }
         tmpstr++;
@@ -147,7 +139,8 @@ URI::URI(const std::string uri)
             tmpstr++;
         len = tmpstr - curstr;
         m_username.append(curstr, len);
-        // Proceed current pointer
+        m_username = urlDecode(m_username);
+        // Look for password
         curstr = tmpstr;
         if (':' == *curstr)
         {
@@ -159,18 +152,18 @@ URI::URI(const std::string uri)
                 tmpstr++;
             len = tmpstr - curstr;
             m_password.append(curstr, len);
+            m_password = urlDecode(m_password);
             curstr = tmpstr;
         }
         // Skip '@'
         if ('@' != *curstr)
         {
-            m_valid = false;
             return;
         }
         curstr++;
     }
 
-    ipv6_flag = '[' == *curstr;
+    bool ipv6_flag = '[' == *curstr;
     // Proceed on by delimiters with reading host
     tmpstr = curstr;
     while ('\0' != *tmpstr)
@@ -188,6 +181,7 @@ URI::URI(const std::string uri)
     }
     len = tmpstr - curstr;
     m_host.append(curstr, len);
+    m_host = urlDecode(m_host);
     curstr = tmpstr;
 
     // Is port number specified?
@@ -205,7 +199,6 @@ URI::URI(const std::string uri)
         ss >> m_port;
         if (ss.fail())
         {
-            m_valid = false;
             return;
         }
         curstr = tmpstr;
@@ -213,12 +206,14 @@ URI::URI(const std::string uri)
 
     // End of the string
     if ('\0' == *curstr)
+    {
+        m_valid = true;
         return;
+    }
 
     // Skip '/'
     if ('/' != *curstr)
     {
-        m_valid = false;
         return;
     }
     curstr++;
@@ -229,6 +224,7 @@ URI::URI(const std::string uri)
         tmpstr++;
     len = tmpstr - curstr;
     m_path.append(curstr, len);
+    m_path = urlDecode(m_path);
     curstr = tmpstr;
 
     // Is query specified?
@@ -242,6 +238,7 @@ URI::URI(const std::string uri)
             tmpstr++;
         len = tmpstr - curstr;
         m_query.append(curstr, len);
+        m_query = urlDecode(m_query);
         curstr = tmpstr;
     }
 
@@ -256,7 +253,9 @@ URI::URI(const std::string uri)
             tmpstr++;
         len = tmpstr - curstr;
         m_fragment.append(curstr, len);
+        m_fragment = urlDecode(m_fragment);
     }
+    m_valid = true;
 }
 
 bool URI::KnownScheme()

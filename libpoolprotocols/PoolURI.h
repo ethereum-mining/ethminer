@@ -1,18 +1,18 @@
 /*
-    This file is part of cpp-ethereum.
+    This file is part of ethminer.
 
-    cpp-ethereum is free software: you can redistribute it and/or modify
+    ethminer is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    cpp-ethereum is distributed in the hope that it will be useful,
+    ethminer is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+    along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #pragma once
@@ -68,18 +68,18 @@ public:
     void MarkUnrecoverable() { m_unrecoverable = true; }
 
 private:
-    bool m_stratumModeConfirmed = false;
-    unsigned m_stratumMode = 999;  // Initial value 999 means not tested yet
-    bool m_unrecoverable = false;
     std::string m_scheme;
     std::string m_host;
-    unsigned short m_port;
     std::string m_path;
     std::string m_query;
     std::string m_fragment;
     std::string m_username;
     std::string m_password;
     std::string m_uri;
-    bool m_valid;
+    unsigned short m_stratumMode = 999;  // Initial value 999 means not tested yet
+    unsigned short m_port = 0;
+    bool m_valid = false;
+    bool m_stratumModeConfirmed = false;
+    bool m_unrecoverable = false;
 };
 }  // namespace dev
