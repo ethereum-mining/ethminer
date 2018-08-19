@@ -517,7 +517,7 @@ void CUDAMiner::search(
     {
         cudalog << "Switch time: "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(
-                       std::chrono::high_resolution_clock::now() - workSwitchStart)
+                       std::chrono::steady_clock::now() - workSwitchStart)
                        .count()
                 << " ms.";
     }

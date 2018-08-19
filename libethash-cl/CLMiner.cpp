@@ -385,7 +385,7 @@ void CLMiner::workLoop()
                 if (g_logVerbosity > 5)
                     cllog << "Switch time: "
                           << std::chrono::duration_cast<std::chrono::microseconds>(
-                                 std::chrono::high_resolution_clock::now() - workSwitchStart)
+                                 std::chrono::steady_clock::now() - workSwitchStart)
                                  .count()
                           << " us.";
             }

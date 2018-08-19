@@ -251,7 +251,7 @@ public:
         {
             Guard l(x_work);
             m_work = _work;
-            workSwitchStart = std::chrono::high_resolution_clock::now();
+            workSwitchStart = std::chrono::steady_clock::now();
         }
         kick_miner();
     }
@@ -343,7 +343,7 @@ protected:
 
     const size_t index = 0;
     FarmFace& farm;
-    std::chrono::high_resolution_clock::time_point workSwitchStart;
+    std::chrono::steady_clock::time_point workSwitchStart;
     HwMonitorInfo m_hwmoninfo;
 
 private:
