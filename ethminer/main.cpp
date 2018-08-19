@@ -218,9 +218,6 @@ public:
             ->group(CommonGroup)
             ->check(CLI::Range(0, 99999));
 
-        app.add_option("--stratum-email", m_email, "Set email address for eth-proxy")
-            ->group(CommonGroup);
-
         app.add_option("--work-timeout", m_worktimeout,
                "Set disconnect timeout in seconds of working on the same job", true)
             ->group(CommonGroup)
@@ -835,7 +832,7 @@ private:
         if (m_mode == OperationMode::Stratum)
         {
             client = new EthStratumClient(
-                m_io_service, m_worktimeout, m_responsetimeout, m_email, m_report_hashrate);
+                m_io_service, m_worktimeout, m_responsetimeout, m_report_hashrate);
         }
         else if (m_mode == OperationMode::Farm)
         {
@@ -1016,7 +1013,6 @@ private:
 #endif
 
     bool m_report_hashrate = false;
-    string m_email;
 
 #if ETH_DBUS
     DBusInt dbusint;
