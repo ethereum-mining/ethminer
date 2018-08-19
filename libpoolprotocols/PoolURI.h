@@ -42,13 +42,7 @@ public:
 
     std::string Scheme() const { return m_scheme; }
     std::string Host() const { return m_host; }
-    std::string Path() const
-    {
-        if (m_path.size())
-            return "/" + m_path;
-        else
-            return "";
-    }
+    std::string Path() const { return m_path; }
     unsigned short Port() const { return m_port; }
     std::string User() const { return m_username; }
     std::string Pass() const { return m_password; }
