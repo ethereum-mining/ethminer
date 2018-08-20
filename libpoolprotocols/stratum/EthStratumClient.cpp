@@ -1128,7 +1128,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
                     if (sHeaderHash != "" && sSeedHash != "" && sShareTarget != "")
                     {
-                        h256 headerHash = h256(sHeaderHash);
 
                         reset_work_timeout();
 
