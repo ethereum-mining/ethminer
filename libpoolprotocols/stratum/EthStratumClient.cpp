@@ -225,7 +225,6 @@ void EthStratumClient::disconnect()
                     m_io_strand.wrap(boost::bind(&EthStratumClient::onSSLShutdownCompleted, this,
                         boost::asio::placeholders::error)));
 
-                m_conntimer.cancel();
                 m_conntimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
                 m_conntimer.async_wait(boost::bind(&EthStratumClient::check_connect_timeout, this,
                     boost::asio::placeholders::error));
@@ -347,7 +346,6 @@ void EthStratumClient::resolve_handler(
 
 void EthStratumClient::reset_work_timeout()
 {
-    m_worktimer.cancel();
     m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
     m_worktimer.async_wait(m_io_strand.wrap(boost::bind(
         &EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error)));
@@ -375,7 +373,7 @@ void EthStratumClient::start_connect()
             cnote << ("Trying " + toString(m_endpoint) + " ...");
 
         m_connecting.store(true, std::memory_order::memory_order_relaxed);
-        m_conntimer.cancel();
+
         m_conntimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
         m_conntimer.async_wait(m_io_strand.wrap(boost::bind(
             &EthStratumClient::check_connect_timeout, this, boost::asio::placeholders::error)));
@@ -609,7 +607,6 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     if no response within that time consider the tentative login failed
     and switch to next stratum mode test
     */
-    m_responsetimer.cancel();
     m_responsetimer.expires_from_now(boost::posix_time::milliseconds(1000));
     m_responsetimer.async_wait(m_io_strand.wrap(boost::bind(
         &EthStratumClient::response_timeout_handler, this, boost::asio::placeholders::error)));
@@ -1288,7 +1285,6 @@ void EthStratumClient::submitSolution(const Solution& solution)
 {
     string nonceHex = toHex(solution.nonce);
 
-    m_responsetimer.cancel();
     m_responsetimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
     m_responsetimer.async_wait(m_io_strand.wrap(boost::bind(
         &EthStratumClient::response_timeout_handler, this, boost::asio::placeholders::error)));
