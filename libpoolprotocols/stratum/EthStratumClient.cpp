@@ -1104,8 +1104,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                         m_current.startNonce = bswap(*((uint64_t*)m_extraNonce.data()));
                         m_current.exSizeBits = m_extraNonceHexSize * 4;
                         m_current.job_len = job.size();
-                        if (m_conn->StratumMode() == EthStratumClient::ETHEREUMSTRATUM)
-                            job.resize(64, '0');
+                        job.resize(64, '0');
                         m_current.job = h256(job);
 
                         if (m_onWorkReceived)
