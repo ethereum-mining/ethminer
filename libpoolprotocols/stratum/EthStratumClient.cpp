@@ -153,11 +153,23 @@ void EthStratumClient::connect()
     if (m_connecting.load(std::memory_order::memory_order_relaxed))
         return;
 
+    // Reset status flags
     m_canconnect.store(false, std::memory_order_relaxed);
     m_connected.store(false, std::memory_order_relaxed);
     m_subscribed.store(false, std::memory_order_relaxed);
     m_authorized.store(false, std::memory_order_relaxed);
     m_authpending.store(false, std::memory_order_relaxed);
+
+    // Reset data for ETHEREUMSTRATUM (NiceHash) mode (if previously used)
+    // https://github.com/nicehash/Specifications/blob/master/EthereumStratum_NiceHash_v1.0.0.txt
+    /*
+    "Before first job (work) is provided, pool MUST set difficulty by sending mining.set_difficulty
+    If pool does not set difficulty before first job, then miner can assume difficulty 1 was being set."
+    Those above statement imply we MAY NOT receive difficulty thus at each new connection restart from 1
+    */
+    m_nextWorkBoundary = h256("0xffff000000000000000000000000000000000000000000000000000000000000");
+    m_extraNonce = h64();
+    m_extraNonceHexSize = 0;
 
     // Initializes socket and eventually secure stream
     if (!m_socket)
@@ -855,9 +867,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 {
                     cnote << "Subscribed to stratum server";
 
-                    m_nextWorkBoundary =
-                        h256("0xffff000000000000000000000000000000000000000000000000000000000000");
-
                     if (!jResult.empty() && jResult.isArray())
                     {
                         std::string enonce = jResult.get((Json::Value::ArrayIndex)1, "").asString();
@@ -1165,7 +1174,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             if (jPrm.isArray())
             {
                 std::string enonce = jPrm.get((Json::Value::ArrayIndex)0, "").asString();
-                processExtranonce(enonce);
+                if (!enonce.empty()) 
+                    processExtranonce(enonce);
             }
         }
         else if (_method == "client.get_version")

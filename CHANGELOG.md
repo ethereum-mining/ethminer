@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 
 - Eliminated duplicate solutions with stratum2 on difficulty changes.
+- Restored proper behavior of -P argument to identify workernames and emails
 
 ### Added
 
@@ -23,6 +24,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - API: New method `miner_setverbosity`. [#1382](https://github.com/ethereum-mining/ethminer/pull/1382).
 - Implemented fast job switch algorithm on AMD reducing switch time to 1-2 milliseconds.
 - Added localization support for output number formatting
+
+### Removed
+
+- Command line argument --stratum-email : any information needed to authenticate on the pool **MUST BE** set using `-P` argument
 
 ## 0.15.0rc1
 
