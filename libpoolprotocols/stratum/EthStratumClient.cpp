@@ -750,7 +750,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     // In case of success we also need to verify third parameter of "result" array
                     // member is exactly "EthereumStratum/1.0.0". Otherwise try with another mode
                     if (jResult.isArray() && jResult[0].isArray() && jResult[0].size() == 3 &&
-                        jResult[0].get((Json::Value::ArrayIndex)2, "").asString() ==
+                        jResult[0].get(Json::Value::ArrayIndex(2), "").asString() ==
                             "EthereumStratum/1.0.0")
                     {
                         // ETHEREUMSTRATUM is confirmed
@@ -866,7 +866,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
                     if (!jResult.empty() && jResult.isArray())
                     {
-                        std::string enonce = jResult.get((Json::Value::ArrayIndex)1, "").asString();
+                        std::string enonce = jResult.get(Json::Value::ArrayIndex(1), "").asString();
                         processExtranonce(enonce);
                     }
 
@@ -1083,15 +1083,15 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             if (jPrm.isArray() && !jPrm.empty())
             {
-                string job = jPrm.get((Json::Value::ArrayIndex)0, "").asString();
+                string job = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
 
                 if (m_response_pending)
                     m_stale = true;
 
                 if (m_conn->StratumMode() == EthStratumClient::ETHEREUMSTRATUM)
                 {
-                    string sSeedHash = jPrm.get((Json::Value::ArrayIndex)1, "").asString();
-                    string sHeaderHash = jPrm.get((Json::Value::ArrayIndex)2, "").asString();
+                    string sSeedHash = jPrm.get(Json::Value::ArrayIndex(1), "").asString();
+                    string sHeaderHash = jPrm.get(Json::Value::ArrayIndex(2), "").asString();
 
                     if (sHeaderHash != "" && sSeedHash != "")
                     {
@@ -1115,10 +1115,10 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 }
                 else
                 {
-                    string sHeaderHash = jPrm.get((Json::Value::ArrayIndex)prmIdx++, "").asString();
-                    string sSeedHash = jPrm.get((Json::Value::ArrayIndex)prmIdx++, "").asString();
+                    string sHeaderHash = jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
+                    string sSeedHash = jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
                     string sShareTarget =
-                        jPrm.get((Json::Value::ArrayIndex)prmIdx++, "").asString();
+                        jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
 
                     // coinmine.pl fix
                     int l = sShareTarget.length();
@@ -1152,7 +1152,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             jPrm = responseObject.get("params", Json::Value::null);
             if (jPrm.isArray())
             {
-                double nextWorkDifficulty = jPrm.get((Json::Value::ArrayIndex)0, 1).asDouble();
+                double nextWorkDifficulty = jPrm.get(Json::Value::ArrayIndex(0), 1).asDouble();
                 if (nextWorkDifficulty <= 0.0001)
                     nextWorkDifficulty = 0.0001;
                 diffToTarget((uint32_t*)m_nextWorkBoundary.data(), nextWorkDifficulty);
@@ -1166,7 +1166,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             jPrm = responseObject.get("params", Json::Value::null);
             if (jPrm.isArray())
             {
-                std::string enonce = jPrm.get((Json::Value::ArrayIndex)0, "").asString();
+                std::string enonce = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
                 if (!enonce.empty()) 
                     processExtranonce(enonce);
             }
