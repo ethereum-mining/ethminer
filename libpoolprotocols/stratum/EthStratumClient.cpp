@@ -867,9 +867,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 {
                     cnote << "Subscribed to stratum server";
 
-                    m_nextWorkBoundary =
-                        h256("0xffff000000000000000000000000000000000000000000000000000000000000");
-
                     if (!jResult.empty() && jResult.isArray())
                     {
                         std::string enonce = jResult.get((Json::Value::ArrayIndex)1, "").asString();
