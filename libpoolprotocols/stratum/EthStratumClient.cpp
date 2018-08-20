@@ -1130,20 +1130,17 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     {
                         h256 headerHash = h256(sHeaderHash);
 
-                        if (headerHash != m_current.header)
+                        reset_work_timeout();
+
+                        m_current.header = h256(sHeaderHash);
+                        m_current.epoch = ethash::find_epoch_number(
+                            ethash::hash256_from_bytes(h256{sSeedHash}.data()));
+                        m_current.boundary = h256(sShareTarget);
+                        m_current.job = h256(job);
+
+                        if (m_onWorkReceived)
                         {
-                            reset_work_timeout();
-
-                            m_current.header = h256(sHeaderHash);
-                            m_current.epoch = ethash::find_epoch_number(
-                                ethash::hash256_from_bytes(h256{sSeedHash}.data()));
-                            m_current.boundary = h256(sShareTarget);
-                            m_current.job = h256(job);
-
-                            if (m_onWorkReceived)
-                            {
-                                m_onWorkReceived(m_current);
-                            }
+                            m_onWorkReceived(m_current);
                         }
                     }
                 }
