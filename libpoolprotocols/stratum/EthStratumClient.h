@@ -32,7 +32,7 @@ public:
     } StratumProtocol;
 
     EthStratumClient(boost::asio::io_service& io_service, int worktimeout, int responsetimeout,
-        const string& email, bool submitHashrate);
+        bool submitHashrate);
     ~EthStratumClient();
 
     void init_socket();
@@ -122,7 +122,6 @@ private:
     boost::asio::ip::tcp::resolver m_resolver;
     std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>> m_endpoints;
 
-    string m_email;
     string m_rate;
 
     h256 m_nextWorkBoundary =

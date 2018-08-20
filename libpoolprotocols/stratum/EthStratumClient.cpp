@@ -41,8 +41,8 @@ static void diffToTarget(uint32_t* target, double diff)
 }
 
 
-EthStratumClient::EthStratumClient(boost::asio::io_service& io_service, int worktimeout,
-    int responsetimeout, const string& email, bool submitHashrate)
+EthStratumClient::EthStratumClient(
+    boost::asio::io_service& io_service, int worktimeout, int responsetimeout, bool submitHashrate)
   : PoolClient(),
     m_worktimeout(worktimeout),
     m_responsetimeout(responsetimeout),
@@ -54,7 +54,6 @@ EthStratumClient::EthStratumClient(boost::asio::io_service& io_service, int work
     m_responsetimer(io_service),
     m_resolver(io_service),
     m_endpoints(),
-    m_email(email),
     m_submit_hashrate(submitHashrate)
 {
     if (m_submit_hashrate)
@@ -574,8 +573,6 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
         if (m_worker.length())
             jReq["worker"] = m_worker;
         jReq["params"].append(m_user + m_conn->Path());
-        if (!m_email.empty())
-            jReq["params"].append(m_email);
 
         break;
 

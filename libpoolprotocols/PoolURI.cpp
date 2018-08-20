@@ -223,8 +223,12 @@ URI::URI(const std::string uri)
     while (('\0' != *tmpstr) && ('#' != *tmpstr) && ('?' != *tmpstr))
         tmpstr++;
     len = tmpstr - curstr;
-    m_path.append(curstr, len);
-    m_path = urlDecode(m_path);
+    if (len)
+    {
+        m_path = '/';
+        m_path.append(curstr, len);
+        m_path = urlDecode(m_path);
+    }
     curstr = tmpstr;
 
     // Is query specified?
