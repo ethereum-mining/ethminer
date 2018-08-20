@@ -274,6 +274,11 @@ void PoolManager::workLoop()
                     cnote << "Selected pool "
                           << (m_connections.at(m_activeConnectionIdx).Host() + ":" +
                                  toString(m_connections.at(m_activeConnectionIdx).Port()));
+
+                    // Clean any list of jobs inherited from
+                    // previous connection
+                    m_headers.clear();
+
                     p_client->connect();
                 }
                 else

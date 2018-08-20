@@ -225,7 +225,6 @@ void EthStratumClient::disconnect()
                     m_io_strand.wrap(boost::bind(&EthStratumClient::onSSLShutdownCompleted, this,
                         boost::asio::placeholders::error)));
 
-                m_conntimer.cancel();
                 m_conntimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
                 m_conntimer.async_wait(boost::bind(&EthStratumClient::check_connect_timeout, this,
                     boost::asio::placeholders::error));
@@ -347,7 +346,6 @@ void EthStratumClient::resolve_handler(
 
 void EthStratumClient::reset_work_timeout()
 {
-    m_worktimer.cancel();
     m_worktimer.expires_from_now(boost::posix_time::seconds(m_worktimeout));
     m_worktimer.async_wait(m_io_strand.wrap(boost::bind(
         &EthStratumClient::work_timeout_handler, this, boost::asio::placeholders::error)));
@@ -375,7 +373,7 @@ void EthStratumClient::start_connect()
             cnote << ("Trying " + toString(m_endpoint) + " ...");
 
         m_connecting.store(true, std::memory_order::memory_order_relaxed);
-        m_conntimer.cancel();
+
         m_conntimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
         m_conntimer.async_wait(m_io_strand.wrap(boost::bind(
             &EthStratumClient::check_connect_timeout, this, boost::asio::placeholders::error)));
@@ -609,7 +607,6 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     if no response within that time consider the tentative login failed
     and switch to next stratum mode test
     */
-    m_responsetimer.cancel();
     m_responsetimer.expires_from_now(boost::posix_time::milliseconds(1000));
     m_responsetimer.async_wait(m_io_strand.wrap(boost::bind(
         &EthStratumClient::response_timeout_handler, this, boost::asio::placeholders::error)));
@@ -753,7 +750,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     // In case of success we also need to verify third parameter of "result" array
                     // member is exactly "EthereumStratum/1.0.0". Otherwise try with another mode
                     if (jResult.isArray() && jResult[0].isArray() && jResult[0].size() == 3 &&
-                        jResult[0].get((Json::Value::ArrayIndex)2, "").asString() ==
+                        jResult[0].get(Json::Value::ArrayIndex(2), "").asString() ==
                             "EthereumStratum/1.0.0")
                     {
                         // ETHEREUMSTRATUM is confirmed
@@ -869,7 +866,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
                     if (!jResult.empty() && jResult.isArray())
                     {
-                        std::string enonce = jResult.get((Json::Value::ArrayIndex)1, "").asString();
+                        std::string enonce = jResult.get(Json::Value::ArrayIndex(1), "").asString();
                         processExtranonce(enonce);
                     }
 
@@ -1086,15 +1083,15 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             if (jPrm.isArray() && !jPrm.empty())
             {
-                string job = jPrm.get((Json::Value::ArrayIndex)0, "").asString();
+                string job = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
 
                 if (m_response_pending)
                     m_stale = true;
 
                 if (m_conn->StratumMode() == EthStratumClient::ETHEREUMSTRATUM)
                 {
-                    string sSeedHash = jPrm.get(1, "").asString();
-                    string sHeaderHash = jPrm.get(2, "").asString();
+                    string sSeedHash = jPrm.get(Json::Value::ArrayIndex(1), "").asString();
+                    string sHeaderHash = jPrm.get(Json::Value::ArrayIndex(2), "").asString();
 
                     if (sHeaderHash != "" && sSeedHash != "")
                     {
@@ -1107,8 +1104,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                         m_current.startNonce = bswap(*((uint64_t*)m_extraNonce.data()));
                         m_current.exSizeBits = m_extraNonceHexSize * 4;
                         m_current.job_len = job.size();
-                        if (m_conn->StratumMode() == EthStratumClient::ETHEREUMSTRATUM)
-                            job.resize(64, '0');
+                        job.resize(64, '0');
                         m_current.job = h256(job);
 
                         if (m_onWorkReceived)
@@ -1119,10 +1115,10 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 }
                 else
                 {
-                    string sHeaderHash = jPrm.get((Json::Value::ArrayIndex)prmIdx++, "").asString();
-                    string sSeedHash = jPrm.get((Json::Value::ArrayIndex)prmIdx++, "").asString();
+                    string sHeaderHash = jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
+                    string sSeedHash = jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
                     string sShareTarget =
-                        jPrm.get((Json::Value::ArrayIndex)prmIdx++, "").asString();
+                        jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
 
                     // coinmine.pl fix
                     int l = sShareTarget.length();
@@ -1134,20 +1130,17 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     {
                         h256 headerHash = h256(sHeaderHash);
 
-                        if (headerHash != m_current.header)
+                        reset_work_timeout();
+
+                        m_current.epoch = ethash::find_epoch_number(
+                            ethash::hash256_from_bytes(h256{sSeedHash}.data()));
+                        m_current.header = h256(sHeaderHash);
+                        m_current.boundary = h256(sShareTarget);
+                        m_current.job = h256(job);
+
+                        if (m_onWorkReceived)
                         {
-                            reset_work_timeout();
-
-                            m_current.header = h256(sHeaderHash);
-                            m_current.epoch = ethash::find_epoch_number(
-                                ethash::hash256_from_bytes(h256{sSeedHash}.data()));
-                            m_current.boundary = h256(sShareTarget);
-                            m_current.job = h256(job);
-
-                            if (m_onWorkReceived)
-                            {
-                                m_onWorkReceived(m_current);
-                            }
+                            m_onWorkReceived(m_current);
                         }
                     }
                 }
@@ -1159,10 +1152,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             jPrm = responseObject.get("params", Json::Value::null);
             if (jPrm.isArray())
             {
-                double nextWorkDifficulty = jPrm.get((Json::Value::ArrayIndex)0, 1).asDouble();
-                if (nextWorkDifficulty <= 0.0001)
-                    nextWorkDifficulty = 0.0001;
+                double nextWorkDifficulty = max(jPrm.get(Json::Value::ArrayIndex(0), 1).asDouble(),0.0001);
                 diffToTarget((uint32_t*)m_nextWorkBoundary.data(), nextWorkDifficulty);
+                if (g_logVerbosity >= 8)
                 cnote << "Difficulty set to " EthWhite << nextWorkDifficulty
                       << EthReset " (nicehash)";
             }
@@ -1173,7 +1165,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             jPrm = responseObject.get("params", Json::Value::null);
             if (jPrm.isArray())
             {
-                std::string enonce = jPrm.get((Json::Value::ArrayIndex)0, "").asString();
+                std::string enonce = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
                 if (!enonce.empty()) 
                     processExtranonce(enonce);
             }
@@ -1288,7 +1280,6 @@ void EthStratumClient::submitSolution(const Solution& solution)
 {
     string nonceHex = toHex(solution.nonce);
 
-    m_responsetimer.cancel();
     m_responsetimer.expires_from_now(boost::posix_time::seconds(m_responsetimeout));
     m_responsetimer.async_wait(m_io_strand.wrap(boost::bind(
         &EthStratumClient::response_timeout_handler, this, boost::asio::placeholders::error)));
