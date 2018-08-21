@@ -70,22 +70,6 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
     });
 
     p_client->onWorkReceived([&](WorkPackage const& wp) {
-        for (auto w : m_works)
-            /*
-            In ethereumstratum mode (nicehash) we might receive the same
-            job id after a change of extraNonce.
-            In other stratum modes extraNonce is not set so only equality
-            for header would be relevant
-            */
-            if (w.header == wp.header && w.startNonce == wp.startNonce)
-            {
-                cwarn << EthYellow "Duplicate job #" << wp.header.abridged()
-                      << " discarded" EthReset;
-                return;
-            }
-        m_works.push_back(wp);
-        if (m_works.size() > 4)
-            m_works.pop_front();
 
         cnote << "Job: " EthWhite "#" << wp.header.abridged() << EthReset " "
               << m_connections.at(m_activeConnectionIdx).Host() << p_client->ActiveEndPoint();
@@ -283,7 +267,6 @@ void PoolManager::workLoop()
 
                     // Clean any list of jobs inherited from
                     // previous connection
-                    m_works.clear();
 
                     p_client->connect();
                 }

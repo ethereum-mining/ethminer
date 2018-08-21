@@ -53,7 +53,6 @@ private:
     std::thread m_workThread;
 
     h256 m_lastBoundary = h256();
-    std::list<WorkPackage> m_works;
 
     boost::asio::io_service::strand m_io_strand;
     boost::asio::deadline_timer m_failovertimer;
