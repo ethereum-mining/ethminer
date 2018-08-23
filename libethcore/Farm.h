@@ -535,7 +535,6 @@ private:
     std::string m_lastSealer;
     bool b_lastMixed = false;
 
-    std::chrono::steady_clock::time_point m_lastStart;
     uint64_t m_hashrateSmoothInterval = 30000;
 
     boost::asio::io_service::strand m_io_strand;
