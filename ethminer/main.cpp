@@ -469,39 +469,34 @@ public:
             ->check(CLI::Range(30, 100));
 
         stringstream ssHelp;
-        ssHelp << "Pool URL Specification:" << endl
-               << "    URL takes the form: scheme://user[:password]@hostname:port[/emailaddress]."
-               << endl
-               << "    for getwork use one of the following schemes:" << endl
-               << "      " << URI::KnownSchemes(ProtocolFamily::GETWORK) << endl
-               << "    for stratum use one of the following schemes: " << endl
-               << "      " << URI::KnownSchemes(ProtocolFamily::STRATUM) << endl
-               << "    Stratum variants:" << endl
-               << "      stratum:  official stratum spec: ethpool, ethermine, coinotron, mph, "
-                  "nanopool (default)"
-               << endl
-               << "      stratum1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for "
-                  "hashrate reporting to work with nanopool)"
-               << endl
-               << "      stratum2: EthereumStratum/1.0.0: nicehash" << endl
-               << "    Example 1: "
-                  "stratum+ssl://0x012345678901234567890234567890123.miner1@ethermine.org:5555"
-               << endl
-               << "    Example 2: "
-                  "stratum1+tcp://0x012345678901234567890234567890123.miner1@nanopool.org:9999/"
-                  "john.doe@gmail.com"
-               << endl
-               << "    Example 3: "
-                  "stratum1+tcp://0x012345678901234567890234567890123@nanopool.org:9999/miner1/"
-                  "john.doe@gmail.com"
-               << endl
-               << endl
-               << "Environment Variables:" << endl
-               << "    NO_COLOR - set to any value to disable color output. Unset to re-enable "
-                  "color output."
-               << endl
-               << "    SYSLOG   - set to any value to strip time and disable color from output, "
-                  "for logging under systemd";
+        ssHelp
+            << "Pool URL Specification:" << endl
+            << "    URL takes the form: scheme://user[.workername][:password]@hostname:port[/...]."
+            << endl
+            << "    where can be any of : " << endl
+            << "    http     for getWork mode" << endl
+            << "    tcp      for stratum mode" << endl
+            << "    tcps     for secure stratum mode" << endl
+            << "    tcpss    for secure stratum mode with strong TLS12 verification" << endl
+            << endl
+            << "    Example 1: "
+               "    tcps://0x012345678901234567890234567890123.miner1@ethermine.org:5555"
+            << endl
+            << "    Example 2: "
+               "    tcp://0x012345678901234567890234567890123.miner1@nanopool.org:9999/"
+               "john.doe@gmail.com"
+            << endl
+            << "    Example 3: "
+               "    tcp://0x012345678901234567890234567890123@nanopool.org:9999/miner1/"
+               "john.doe@gmail.com"
+            << endl
+            << endl
+            << "Environment Variables:" << endl
+            << "    NO_COLOR - set to any value to disable color output. Unset to re-enable "
+               "color output."
+            << endl
+            << "    SYSLOG   - set to any value to strip time and disable color from output, "
+               "for logging under systemd";
         app.footer(ssHelp.str());
 
         try
@@ -911,8 +906,7 @@ private:
             if (mgr.isConnected())
             {
                 auto mp = f.miningProgress(m_show_hwmonitors, m_show_power);
-                minelog << mp << ' ' << f.getSolutionStats() << ' '
-                        << f.farmLaunchedFormatted();
+                minelog << mp << ' ' << f.getSolutionStats() << ' ' << f.farmLaunchedFormatted();
 
 #if ETH_DBUS
                 dbusint.send(toString(mp).c_str());
