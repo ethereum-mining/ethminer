@@ -109,7 +109,8 @@ POOLS="$POOLS stratum+tcp://ETH_WALLET.WORKERNAME@kr.sparkpool.com:3333"
 POOLS="$POOLS stratum+tcp://ETH_WALLET.WORKERNAME@na-east.sparkpool.com:3333"
 POOLS="$POOLS stratum+tcp://ETH_WALLET.WORKERNAME@na-west.sparkpool.com:3333"
 POOLS="$POOLS stratum+tcp://ETH_WALLET.WORKERNAME@tw.sparkpool.com:3333"
-
+# whalesburg
+POOLS="$POOLS stratum+tcp://ETH_WALLET.WORKERNAME@proxy.pool.whalesburg.com:8082"
 
 # check if any parameter and give a hint to specify -G, -U or -X
 if [[ "x" == "x$1" ]]; then
