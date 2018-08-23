@@ -112,8 +112,6 @@ public:
      */
     void setWork(WorkPackage const& _wp)
     {
-        // Collect hashrate before miner reset their work
-        collectHashRate();
 
         // Set work to each miner
         Guard l(x_minerWork);
