@@ -37,6 +37,7 @@ The servers are listed in alphabetical order. To get best results reorder them f
 | [nanopool.org](#nanopoolorg) | <https://nanopool.org/> | <https://eth.nanopool.org/help> |
 | [nicehash.com](#nicehashcom) | <https://www.nicehash.com/> | <https://www.nicehash.com/help/which-stratum-servers-are-available> |
 | [sparkpool.com](#sparkpoolcom) | <https://sparkpool.com/> | <https://eth.sparkpool.com/> |
+| [whalesburg.com](#whalesburgcom) | <https://whalesburg.com/> | <https://whalesburg.com/start_mining/> |
 
 ### 2miners.com
 
@@ -169,4 +170,10 @@ Without email:
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@na-east.sparkpool.com:3333
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@na-west.sparkpool.com:3333
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@tw.sparkpool.com:3333
+```
+
+### whalesburg.com
+
+```
+-P stratum1+tcp://ETH_WALLET.WORKERNAME@proxy.pool.whalesburg.com:8082
 ```
