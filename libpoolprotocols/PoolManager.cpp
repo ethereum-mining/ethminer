@@ -336,6 +336,14 @@ void PoolManager::setActiveConnection(unsigned int idx)
     // Sets the active connection to the requested index
     if (idx != m_activeConnectionIdx)
     {
+
+        // Stop mining if applicable as we're switching
+        if (m_farm.isMining())
+        {
+            cnote << "Shutting down miners...";
+            m_farm.stop();
+        }
+
         m_activeConnectionIdx = idx;
         m_connectionAttempt = 0;
         p_client->disconnect();
