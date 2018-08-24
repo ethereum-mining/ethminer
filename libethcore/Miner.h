@@ -89,8 +89,7 @@ inline std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
 
 
 /// Pause mining
-typedef enum
-{
+typedef enum {
     MINING_NOT_PAUSED = 0x00000000,
     MINING_PAUSED_WAIT_FOR_T_START = 0x00000001,
     MINING_PAUSED_API = 0x00000002
@@ -251,7 +250,8 @@ public:
         {
             Guard l(x_work);
             m_work = _work;
-            workSwitchStart = std::chrono::steady_clock::now();
+            if (g_logVerbosity >= 6)
+                workSwitchStart = std::chrono::steady_clock::now();
         }
         kick_miner();
     }
