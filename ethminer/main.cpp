@@ -474,10 +474,10 @@ public:
             << "    URL takes the form: scheme://user[.workername][:password]@hostname:port[/...]."
             << endl
             << "    where can be any of : " << endl
-            << "    http     for getWork mode" << endl
-            << "    tcp      for stratum mode" << endl
-            << "    tcps     for secure stratum mode" << endl
-            << "    tcpss    for secure stratum mode with strong TLS12 verification" << endl
+            << "    getwork     for getWork mode" << endl
+            << "    stratum     for stratum mode" << endl
+            << "    stratums    for secure stratum mode" << endl
+            << "    stratumss   for secure stratum mode with strong TLS12 verification" << endl
             << endl
             << "    Example 1: "
                "    tcps://0x012345678901234567890234567890123.miner1@ethermine.org:5555"

@@ -566,8 +566,15 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     jReq["method"] = "mining.subscribe";
     jReq["params"] = Json::Value(Json::arrayValue);
 
-    if (!m_conn->StratumModeConfirmed() && m_conn->StratumMode() == 999)
-        m_conn->SetStratumMode(2, false);
+    if (m_conn->Version() == 999)
+    {
+        if (!m_conn->StratumModeConfirmed() && m_conn->StratumMode() == 999)
+            m_conn->SetStratumMode(2, false);
+    }
+    else
+    {
+        m_conn->SetStratumMode(m_conn->Version(), true);
+    }
 
     switch (m_conn->StratumMode())
     {
