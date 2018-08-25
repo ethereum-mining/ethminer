@@ -477,13 +477,13 @@ void CUDAMiner::search(
                 
                 // Pass the solution(s) for submission
                 uint64_t minerNonce;
-                h256 minerMix;
 
                 for (uint32_t i = 0; i < found_count; i++)
                 {
                     minerNonce = nonce_base + buffer->result[i].gid;
                     if (s_noeval)
                     {
+                        h256 minerMix;
                         memcpy(minerMix.data(), (void*)&buffer->result[i].mix,
                             sizeof(buffer->result[i].mix));
                         farm.submitProof(Solution{minerNonce, minerMix, w, m_new_work});
