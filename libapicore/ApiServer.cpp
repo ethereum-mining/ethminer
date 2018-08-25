@@ -637,7 +637,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         if (!getRequestValue("pause", pause, jRequestParams, false, jResponse))
             return;
 
-        WorkingProgress p = m_farm.miningProgress(false, false);
+        WorkingProgress p = m_farm.miningProgress();
         if (index >= p.miningIsPaused.size())
         {
             jResponse["error"]["code"] = -422;
@@ -773,7 +773,7 @@ Json::Value ApiConnection::getMinerStat1()
         steady_clock::now() - this->m_farm.farmLaunched());
 
     SolutionStats s = m_farm.getSolutionStats();
-    WorkingProgress p = m_farm.miningProgress(true);
+    WorkingProgress p = m_farm.miningProgress();
 
     ostringstream totalMhEth;
     ostringstream totalMhDcr;
@@ -836,7 +836,7 @@ Json::Value ApiConnection::getMinerStatHR()
         steady_clock::now() - this->m_farm.farmLaunched());
 
     SolutionStats s = m_farm.getSolutionStats();
-    WorkingProgress p = m_farm.miningProgress(true, true);
+    WorkingProgress p = m_farm.miningProgress();
 
     ostringstream version;
     ostringstream runtime;

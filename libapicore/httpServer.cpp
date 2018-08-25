@@ -36,7 +36,7 @@ void httpServer::tableHeader(stringstream& ss, unsigned columns)
 void httpServer::getstat1(stringstream& ss)
 {
     using namespace std::chrono;
-    WorkingProgress p = m_farm->miningProgress(m_show_hwmonitors, m_show_power);
+    WorkingProgress p = m_farm->miningProgress();
     SolutionStats s = m_farm->getSolutionStats();
     tableHeader(ss, 5);
     ss << "<tr valign=top align=center style=background-color:Yellow>"

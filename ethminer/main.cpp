@@ -742,7 +742,7 @@ private:
         genesis.setNumber(m_benchmarkBlock);
         genesis.setDifficulty(u256(1) << 64);
 
-        Farm f(m_io_service);
+        Farm f(m_io_service, m_show_hwmonitors, m_show_power);
         map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
         sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances,
@@ -853,7 +853,7 @@ private:
         }
 
         // sealers, m_minerType
-        Farm f(m_io_service);
+        Farm f(m_io_service, m_show_hwmonitors, m_show_power);
         f.setSealers(sealers);
 
         PoolManager mgr(m_io_service, client, f, m_minerType, m_maxFarmRetries, m_failovertimeout);
@@ -905,7 +905,7 @@ private:
             }
             if (mgr.isConnected())
             {
-                auto mp = f.miningProgress(m_show_hwmonitors, m_show_power);
+                auto mp = f.miningProgress();
                 minelog << mp << ' ' << f.getSolutionStats() << ' ' << f.farmLaunchedFormatted();
 
 #if ETH_DBUS
