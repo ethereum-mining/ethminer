@@ -69,12 +69,15 @@ public:
         m_hwmon = hwmon;
         m_pwron = pwron;
 
-        // Init HWMON
-        adlh = wrap_adl_create();
+        // Init HWMON if needed
+        if (m_hwmon)
+        {
+            adlh = wrap_adl_create();
 #if defined(__linux)
-        sysfsh = wrap_amdsysfs_create();
+            sysfsh = wrap_amdsysfs_create();
 #endif
-        nvmlh = wrap_nvml_create();
+            nvmlh = wrap_nvml_create();
+        }
 
         // Initialize nonce_scrambler
         shuffle();
