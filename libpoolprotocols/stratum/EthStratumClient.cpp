@@ -567,7 +567,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 
     if (m_conn->Version() < 999)
     {
-        m_conn->SetStratumMode(m_conn->Version, true);
+        m_conn->SetStratumMode(m_conn->Version(), true);
     }
     else
     {
