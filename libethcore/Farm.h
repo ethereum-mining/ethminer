@@ -496,7 +496,7 @@ private:
             if (stat(fn.c_str(), &sb) != 0)
                 return false;
             /* just check if any exec flag is set.
-               still execution can fail (not the uid, not in the group, selinux, ....)
+               still execution can fail (not the uid, not in the group, selinux, ...)
              */
             if ((sb.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) == 0)
                 return false;

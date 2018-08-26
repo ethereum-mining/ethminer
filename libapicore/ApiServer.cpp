@@ -243,7 +243,7 @@ void ApiServer::start()
     }
     catch (const std::exception&)
     {
-        cwarn << "Could not start API server on port : " +
+        cwarn << "Could not start API server on port: " +
                      to_string(m_acceptor.local_endpoint().port());
         cwarn << "Ensure port is not in use by another service";
         return;
@@ -301,7 +301,7 @@ void ApiServer::handle_accept(std::shared_ptr<ApiConnection> session, boost::sys
         });
         dev::setThreadName("Api");
         m_sessions.push_back(session);
-        cnote << "New api session from " << session->socket().remote_endpoint();
+        cnote << "New API session from " << session->socket().remote_endpoint();
         session->start();
     }
     else

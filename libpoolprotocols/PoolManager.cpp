@@ -152,7 +152,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
         else
         {
             cnote << string(EthRed "Solution 0x") + toHex(sol.nonce)
-                  << " wasted. Waiting for connection ...";
+                  << " wasted. Waiting for connection...";
         }
 
         return false;
@@ -272,7 +272,7 @@ void PoolManager::workLoop()
                 }
                 else
                 {
-                    cnote << "No more connections to try. Exiting ...";
+                    cnote << "No more connections to try. Exiting...";
 
                     // Stop mining if applicable
                     if (m_farm.isMining())
