@@ -19,15 +19,15 @@ where `scheme` can be any of:
 Ethminer supports secure socket communications (where pool implements and offers it) to avoid the risk of a [man-in-the-middle attack](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)
 To enable it simply replace tcp with either:
 
-* `ssl` to enable secure socket communication
-* `tls12` to enable secure socket communication **with strong TLS12** checking
+* `tls` to enable secure socket communication
+* `ssl` or `tls12` to enable secure socket communication **allowing only TLS 1.2** encryption
 
-thus your connection scheme changes to `-P stratum+ssl://[...]` or `-P stratum+tls12://[...]`. Same applies for `stratum1` and `stratum2`
+thus your connection scheme changes to `-P stratum+tls://[...]` or `-P stratum+tls12://[...]`. Same applies for `stratum1` and `stratum2`
 
 ## Only for version 0.16+ (older versions not affected)
 
 Stratum autodetection has been introduced to mitigate user's duty to guess/find which stratum flavour to apply (stratum or stratum1 or stratum2).
-If you want to let ethminer do the tests for you simply enter scheme as `stratum://` (note `+tcp` is missing) or `stratums://` for secure socket or `stratumss://` for secure socket with strong TLS12 checking.
+If you want to let ethminer do the tests for you simply enter scheme as `stratum://` (note `+tcp` is missing) or `stratums://` for secure socket or `stratumss://` for secure socket **allowing only TLS 1.2** encryption.
 
 ## Common samples
 
