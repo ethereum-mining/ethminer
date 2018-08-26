@@ -23,7 +23,13 @@ matrix:
 cache:
     directories:
         - $HOME/.local
-before_install: |
+before_install:
+  - |
+    if [ "$TRAVIS_OS_NAME" = linux ]; then
+      echo "Checking format of sourcecode..."
+      find . -type f -name '*.cpp' -print0 -name '*.h' -print0 | xargs -r0 ./scripts/check_code_format.py --all
+    fi
+  - |
     if [ "$TRAVIS_OS_NAME" = linux ]; then
       sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
       sudo apt-get -q update
