@@ -871,13 +871,3 @@ bool CLMiner::init(int epoch)
     return true;
 }
 
-// Virtual attribute is inherited from parent object
-uint64_t CLMiner::RetrieveAndClearHashCount()
-{
-    auto expected = Miner::RetrieveAndClearHashCount();
-    // apply exponential sliding average
-    // ref: https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
-    const double alpha = 0.45;
-    m_lastHashCount = alpha * expected + (1.0 - alpha) * m_lastHashCount;
-    return m_lastHashCount;
-}

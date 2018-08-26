@@ -75,7 +75,6 @@ public:
 
 protected:
     void kick_miner() override;
-    uint64_t RetrieveAndClearHashCount();
 
 private:
     void workLoop() override;
@@ -97,7 +96,6 @@ private:
     unsigned m_workgroupSize = 0;
     unsigned m_dagItems = 0;
     uint64_t m_lastNonce = 0;
-    uint64_t m_lastHashCount = 0;
 
     static unsigned s_platformId;
     static unsigned s_numInstances;
