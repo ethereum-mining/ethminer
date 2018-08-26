@@ -211,9 +211,9 @@ wrap_nvml_handle* wrap_nvml_create()
                     (unsigned)slotId == nvmlh->nvml_pci_device_id[i])
                 {
 #if 0
-				printf("[DEBUG] - NVML GPU[%d]%d,%d matches OpenCL GPU[%d]%d,%d\n", 
-				i, nvmlh->nvml_pci_bus_id[i], nvmlh->nvml_pci_device_id[i], 
-				j, busId, slotId);
+                printf("[DEBUG] - NVML GPU[%d]%d,%d matches OpenCL GPU[%d]%d,%d\n",
+                i, nvmlh->nvml_pci_bus_id[i], nvmlh->nvml_pci_device_id[i],
+                j, busId, slotId);
 #endif
                     nvmlh->nvml_opencl_device_id[i] = j;
                     nvmlh->opencl_nvml_device_id[j] = i;
