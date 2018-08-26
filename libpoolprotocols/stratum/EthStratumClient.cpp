@@ -718,10 +718,10 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                              responseObject.get("jsonrpc", "") != "2.0")) ||
         (_isNotification && (responseObject["params"].empty() && responseObject["result"].empty())))
     {
-        cwarn << "Pool sent an invalid jsonrpc message ...";
+        cwarn << "Pool sent an invalid jsonrpc message...";
         cwarn << "Do not blame ethminer for this. Ask pool devs to honor http://www.jsonrpc.org/ "
                  "specifications ";
-        cwarn << "Disconnecting ...";
+        cwarn << "Disconnecting...";
         m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
         return;
     }
@@ -805,11 +805,11 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             {
             case EthStratumClient::STRATUM:
 
-                cnote << "Stratum mode detected : STRATUM";
+                cnote << "Stratum mode detected: STRATUM";
                 m_subscribed.store(_isSuccess, std::memory_order_relaxed);
                 if (!m_subscribed)
                 {
-                    cnote << "Could not subscribe : " << _errReason;
+                    cnote << "Could not subscribe: " << _errReason;
                     m_conn->MarkUnrecoverable();
                     m_io_service.post(
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
@@ -817,7 +817,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 }
                 else
                 {
-                    cnote << "Subscribed !";
+                    cnote << "Subscribed!";
                     m_authpending.store(true, std::memory_order_relaxed);
                     jReq["id"] = unsigned(3);
                     jReq["jsonrpc"] = "2.0";
@@ -831,11 +831,11 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             case EthStratumClient::ETHPROXY:
 
-                cnote << "Stratum mode detected : ETHPROXY Compatible";
+                cnote << "Stratum mode detected: ETHPROXY Compatible";
                 m_subscribed.store(_isSuccess, std::memory_order_relaxed);
                 if (!m_subscribed)
                 {
-                    cnote << "Could not login :" << _errReason;
+                    cnote << "Could not login:" << _errReason;
                     m_conn->MarkUnrecoverable();
                     m_io_service.post(
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
@@ -843,7 +843,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 }
                 else
                 {
-                    cnote << "Logged in !";
+                    cnote << "Logged in!";
                     m_authorized.store(true, std::memory_order_relaxed);
 
                     // If we get here we have a valid application connection
@@ -863,11 +863,11 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             case EthStratumClient::ETHEREUMSTRATUM:
 
-                cnote << "Stratum mode detected : ETHEREUMSTRATUM (NiceHash)";
+                cnote << "Stratum mode detected: ETHEREUMSTRATUM (NiceHash)";
                 m_subscribed.store(_isSuccess, std::memory_order_relaxed);
                 if (!m_subscribed)
                 {
-                    cnote << "Could not subscribe : " << _errReason;
+                    cnote << "Could not subscribe: " << _errReason;
                     m_conn->MarkUnrecoverable();
                     m_io_service.post(
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
@@ -1050,7 +1050,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
         default:
 
-            cnote << "Got response for unknown message id [" << _id << "] Discarding ...";
+            cnote << "Got response for unknown message id [" << _id << "] Discarding...";
             return;
             break;
         }
@@ -1200,7 +1200,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
         }
         else
         {
-            cwarn << "Got unknown method [" << _method << "] from pool. Discarding ...";
+            cwarn << "Got unknown method [" << _method << "] from pool. Discarding...";
 
             // Respond back to issuer
             if (_rpcVer == 2)
@@ -1477,6 +1477,6 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
 void EthStratumClient::onSSLShutdownCompleted(const boost::system::error_code& ec)
 {
     (void)ec;
-    // cnote << "onSSLShutdownCompleted Error code is : " << ec.message();
+    // cnote << "onSSLShutdownCompleted Error code is: " << ec.message();
     m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect_finalize, this)));
 }

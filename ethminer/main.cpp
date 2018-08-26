@@ -267,7 +267,7 @@ public:
 
 #if API_CORE
         app.add_option("--api-bind", m_api_bind,
-               "Set the api address:port the miner should listen to. Use negative port number for "
+               "Set the API address:port the miner should listen to. Use negative port number for "
                "readonly mode",
                true)
             ->group(APIGroup)
@@ -283,20 +283,20 @@ public:
                 return string("");
             });
         app.add_option("--api-port", m_api_port,
-               "Set the api port, the miner should listen to. Use 0 to disable. Use negative "
+               "Set the API port, the miner should listen to. Use 0 to disable. Use negative "
                "numbers for readonly mode",
                true)
             ->group(APIGroup)
             ->check(CLI::Range(-65535, 65535));
 
         app.add_option("--api-password", m_api_password,
-               "Set the password to protect interaction with Api server. If not set any connection "
+               "Set the password to protect interaction with API server. If not set, any connection "
                "is granted access. "
-               "Be advised passwords are sent unencrypted over plain tcp !!")
+               "Be advised passwords are sent unencrypted over plain TCP!!")
             ->group(APIGroup);
 
         app.add_option("--http-bind", m_http_bind,
-               "Set the web api address:port the miner should listen to.", true)
+               "Set the web API address:port the miner should listen to.", true)
             ->group(APIGroup)
             ->check([this](const string& bind_arg) -> string {
                 string errormsg;
@@ -308,7 +308,7 @@ public:
                 if (port < 0)
                 {
                     throw CLI::ValidationError("--http-bind",
-                        "the web api does not have read/write modes, specify a positive port "
+                        "the web API does not have read/write modes, specify a positive port "
                         "number between 1-65535");
                 }
                 this->m_http_port = static_cast<uint16_t>(port);
@@ -318,7 +318,7 @@ public:
             });
 
         app.add_option("--http-port", m_http_port,
-               "Set the web api port, the miner should listen to. Use 0 to disable. Data shown "
+               "Set the web API port, the miner should listen to. Use 0 to disable. Data shown "
                "depends on hwmon setting",
                true)
             ->group(APIGroup)
@@ -473,20 +473,20 @@ public:
             << "Pool URL Specification:" << endl
             << "    URL takes the form: scheme://user[.workername][:password]@hostname:port[/...]."
             << endl
-            << "    where can be any of : " << endl
+            << "    where can be any of:" << endl
             << "    getwork     for getWork mode" << endl
             << "    stratum     for stratum mode" << endl
             << "    stratums    for secure stratum mode" << endl
             << "    stratumss   for secure stratum mode with strong TLS12 verification" << endl
             << endl
-            << "    Example 1: "
+            << "    Example 1:"
                "    tcps://0x012345678901234567890234567890123.miner1@ethermine.org:5555"
             << endl
-            << "    Example 2: "
+            << "    Example 2:"
                "    tcp://0x012345678901234567890234567890123.miner1@nanopool.org:9999/"
                "john.doe@gmail.com"
             << endl
-            << "    Example 3: "
+            << "    Example 3:"
                "    tcp://0x012345678901234567890234567890123@nanopool.org:9999/miner1/"
                "john.doe@gmail.com"
             << endl
@@ -929,7 +929,7 @@ private:
         mgr.stop();
         stop_io_service();
 
-        cnote << "Terminated !";
+        cnote << "Terminated!";
         exit(0);
     }
 
