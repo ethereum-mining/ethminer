@@ -1,8 +1,39 @@
 # Pool Examples for ETH
 
-This is a collection of examples how to connect ethminer to your favorite ETH pool (alphabetic order).
+Pool connection definition is issued via `-P` argument which has this syntax
 
-* Stratum connection is preferred than getwork connection due to its better network latency.
+```
+-P scheme://user[.workername][:password]@hostname:port[/...]
+```
+__values in square brackets are optional__
+
+where `scheme` can be any of:
+
+* `http` for getwork mode (geth)
+* `stratum+tcp` for plain stratum mode
+* `stratum1+tcp` for plain stratum eth-proxy compatible mode
+* `stratum2+tcp` for plain stratum NiceHash compatible mode
+
+## Secure socket comunications for stratum only
+
+Ethminer supports secure socket communications (where pool implements and offers it) to avoid the risk of a [man-in-the-middle attack](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)
+To enable it simply replace tcp with either:
+
+* `ssl` to enable secure socket communication
+* `tls12` to enable secure socket communication **with strong TLS12** checking
+
+thus your connection scheme changes to `-P stratum+ssl://[...]` or `-P stratum+tls12://[...]`. Same applies for `stratum1` and `stratum2`
+
+## Only for version 0.16+ (older versions not affected)
+
+Stratum autodetection has been introduced to mitigate user's duty to guess/find which stratum flavour to apply (stratum or stratum1 or stratum2).
+If you want to let ethminer do the tests for you simply enter scheme as `stratum://` (note `+tcp` is missing) or `stratums://` for secure socket or `stratumss://` for secure socket with strong TLS12 checking.
+
+## Common samples
+
+Here you can find a collection of samples to connect to most commonly used ethash pools. (alphabetic order).
+
+* Stratum connection is **always to be preferred** over **getwork** when pool offers it due to its better network latency.
 * If possible the samples use a protocol which supports reporting of hashrate (`--report-hashrate`) if pool supports this.
 
 **Check for updates in the pool connection settings visiting the pools homepage.**
