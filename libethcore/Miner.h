@@ -256,7 +256,7 @@ public:
         kick_miner();
     }
 
-    uint64_t RetrieveAndClearHashCount()
+    virtual uint64_t RetrieveAndClearHashCount()
     {
         auto expected = m_hashCount.load(std::memory_order_relaxed);
         while (!m_hashCount.compare_exchange_weak(expected, 0, std::memory_order_relaxed))
@@ -265,6 +265,7 @@ public:
     }
 
     unsigned Index() { return index; };
+
     HwMonitorInfo hwmonInfo() { return m_hwmoninfo; }
 
     uint64_t get_start_nonce()
