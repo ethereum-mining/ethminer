@@ -51,14 +51,17 @@ static std::map<std::string, SchemeAttributes> s_schemes = {
     {"stratum1+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 1}},
     {"stratum2+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 2}},
     {"http", {ProtocolFamily::GETWORK, SecureLevel::NONE, 0}},
+    {"getwork", {ProtocolFamily::GETWORK, SecureLevel::NONE, 0}},
 
     /*
     Any TCP scheme has, at the moment, only STRATUM protocol thus
     reiterating "stratum" word would be pleonastic
+    Version 9 means auto-detect stratum mode
     */
-    {"tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 0}},
-    {"tcps", {ProtocolFamily::STRATUM, SecureLevel::TLS, 0}},
-    {"tcpss", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 0}}
+
+    {"stratum", {ProtocolFamily::STRATUM, SecureLevel::NONE, 999}},
+    {"stratums", {ProtocolFamily::STRATUM, SecureLevel::TLS, 999}},
+    {"stratumss", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 999}}
 
 };
 

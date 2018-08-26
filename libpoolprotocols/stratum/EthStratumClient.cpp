@@ -553,21 +553,34 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     }
 
     /*
-    If this connection has not gone through an autodetection of stratum mode
-    begin it now.
+
+    If connection has been set-up with a specific scheme then
+    set it's related stratum version as confirmed.
+
+    Otherwise let's go through an autodetection.
+
     Autodetection process passes all known stratum modes.
     - 1st pass EthStratumClient::ETHEREUMSTRATUM  (2)
     - 2nd pass EthStratumClient::ETHPROXY         (1)
     - 3rd pass EthStratumClient::STRATUM          (0)
     */
 
+    if (m_conn->Version() < 999)
+    {
+        m_conn->SetStratumMode(m_conn->Version(), true);
+    }
+    else
+    {
+        if (!m_conn->StratumModeConfirmed() && m_conn->StratumMode() == 999)
+            m_conn->SetStratumMode(2, false);
+    }
+
+
     Json::Value jReq;
     jReq["id"] = unsigned(1);
     jReq["method"] = "mining.subscribe";
     jReq["params"] = Json::Value(Json::arrayValue);
 
-    if (!m_conn->StratumModeConfirmed() && m_conn->StratumMode() == 999)
-        m_conn->SetStratumMode(2, false);
 
     switch (m_conn->StratumMode())
     {
