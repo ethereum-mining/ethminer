@@ -857,7 +857,7 @@ Json::Value ApiConnection::getMinerStatHR()
 
     for (unsigned gpuIndex = 0; gpuIndex < p.minersHashes.size(); gpuIndex++)
     {
-        bool doMonitors = (!p.minerMonitors.empty() && gpuIndex <= (p.minerMonitors.size() - 1));
+        bool doMonitors = (gpuIndex < p.minerMonitors.size());
 
         detailedMhEth[gpuIndex] = p.minersHashes[gpuIndex];
         // detailedMhDcr[gpuIndex] = "off"; //Not supported
