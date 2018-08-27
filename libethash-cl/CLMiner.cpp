@@ -870,3 +870,4 @@ bool CLMiner::init(int epoch)
     }
     return true;
 }
+
