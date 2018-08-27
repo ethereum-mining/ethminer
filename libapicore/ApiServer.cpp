@@ -857,18 +857,25 @@ Json::Value ApiConnection::getMinerStatHR()
 
     for (unsigned gpuIndex = 0; gpuIndex < p.minersHashes.size(); gpuIndex++)
     {
-        auto const& minerhashes = p.minersHashes[gpuIndex];
-        auto const& minermonitors = p.minerMonitors[gpuIndex];
-        auto const& miningispaused = p.miningIsPaused[gpuIndex];
+        bool doMonitors = (!p.minerMonitors.empty() && gpuIndex <= (p.minerMonitors.size() - 1));
 
-        detailedMhEth[gpuIndex] = (p.minerRate(minerhashes));
+        detailedMhEth[gpuIndex] = p.minersHashes[gpuIndex];
         // detailedMhDcr[gpuIndex] = "off"; //Not supported
 
-        temps[gpuIndex] = minermonitors.tempC;    // Fetching Temps
-        fans[gpuIndex] = minermonitors.fanP;      // Fetching Fans
-        powers[gpuIndex] = minermonitors.powerW;  // Fetching Power
+        if (doMonitors)
+        {
+            temps[gpuIndex] = p.minerMonitors[gpuIndex].tempC;
+            fans[gpuIndex] = p.minerMonitors[gpuIndex].fanP;
+            powers[gpuIndex] = p.minerMonitors[gpuIndex].powerW;
+        }
+        else
+        {
+            temps[gpuIndex] = 0;
+            fans[gpuIndex] = 0;
+            powers[gpuIndex] = 0;
+        }
 
-        ispaused[gpuIndex] = (bool)miningispaused;
+        ispaused[gpuIndex] = (bool)p.miningIsPaused[gpuIndex];
     }
 
     Json::Value jRes;
