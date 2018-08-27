@@ -541,14 +541,16 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMult
         if (result >= dagSize)
         {
             cnote << "Found suitable OpenCL device [" << device.getInfo<CL_DEVICE_NAME>()
-                  << "] with " << result << " bytes of GPU memory";
+                  << "] with " << fixed << setprecision(2) << result / 1073741824.0
+                  << " GB of GPU memory";
             foundSuitableDevice = true;
         }
         else
         {
             cnote << "OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
-                  << " has insufficient GPU memory." << result << " bytes of memory found < "
-                  << dagSize << " bytes of memory required";
+                  << " has insufficient GPU memory." << fixed << setprecision(2)
+                  << result / 1073741824.0 << " GB of memory found < " << dagSize / 1073741824.0
+                  << " GB of memory required";
         }
     }
     if (foundSuitableDevice)
@@ -781,18 +783,22 @@ bool CLMiner::init(int epoch)
         m_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
         if (result < dagSize)
         {
-            cnote << "OpenCL device " << device_name << " has insufficient GPU memory." << result
-                  << " bytes of memory found < " << dagSize << " bytes of memory required";
+            cnote << "OpenCL device " << device_name << " has insufficient GPU memory." << fixed
+                  << setprecision(2) << result / 1073741824.0 << " GB of memory found < "
+                  << dagSize / 1073741824.0 << " GB of memory required";
             return false;
         }
 
         // create buffer for dag
         try
         {
-            cllog << "Creating light cache buffer, size: " << lightSize;
+            cllog << "Creating light cache buffer, size: " << fixed << setprecision(2)
+                  << lightSize / 1073741824.0 << " GB";
             m_light.clear();
             m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, lightSize));
-            cllog << "Creating DAG buffer, size: " << dagSize;
+            cllog << "Creating DAG buffer, size: " << fixed << setprecision(2)
+                  << dagSize / 1073741824.0 << " GB"
+                  << ", free: " << (result - lightSize - dagSize) / 1073741824.0 << " GB";
             m_dag.clear();
             m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, dagSize));
             cllog << "Loading kernels";
@@ -858,7 +864,7 @@ bool CLMiner::init(int epoch)
         auto endDAG = std::chrono::steady_clock::now();
 
         auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(endDAG - startDAG);
-        float gb = (float)dagSize / (1024 * 1024 * 1024);
+        float gb = dagSize / 1073741824.0;
         cnote << gb << " GB of DAG data generated in " << dagTime.count() << " ms.";
     }
     catch (cl::Error const& err)
