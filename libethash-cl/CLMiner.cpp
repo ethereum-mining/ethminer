@@ -792,7 +792,8 @@ bool CLMiner::init(int epoch)
             cllog << "Creating light cache buffer, size: " << lightSize;
             m_light.clear();
             m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, lightSize));
-            cllog << "Creating DAG buffer, size: " << dagSize;
+            cllog << "Creating DAG buffer, size: " << dagSize
+                  << ", free: " << result - lightSize - dagSize;
             m_dag.clear();
             m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, dagSize));
             cllog << "Loading kernels";

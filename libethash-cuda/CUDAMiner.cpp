@@ -145,7 +145,8 @@ bool CUDAMiner::init(int epoch)
                 if ((m_device_num == s_dagCreateDevice) || (s_dagLoadMode != DAG_LOAD_MODE_SINGLE))
                 {
                     cudalog << "Generating DAG for GPU #" << m_device_num
-                            << " with dagSize: " << dagSize << " gridSize: " << s_gridSize;
+                            << " with dagSize: " << dagSize << " ("
+                            << device_props.totalGlobalMem - dagSize - lightSize << " bytes left)";
                     auto startDAG = std::chrono::steady_clock::now();
 
                     ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0]);
