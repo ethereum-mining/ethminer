@@ -9,25 +9,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 
 - Eliminated duplicate solutions with stratum2 on difficulty changes.
-- Restored proper behavior of -P argument to identify workernames and emails
+- Restored proper behavior of `-P` argument to identify workernames and emails
 
 ### Added
 
 - Basic API authentication to protect exposure of API port to the internet [#1228](https://github.com/ethereum-mining/ethminer/pull/1228).
 - Add `ispaused` information into response of `miner_getstathr` API query [#1232](https://github.com/ethereum-mining/ethminer/pull/1232).
 - API responses return "ethminer-" as version prefix. [#1300](https://github.com/ethereum-mining/ethminer/pull/1300).
-- Stratum mode autodetection. No need to specify stratum+tcp or stratum1+tcp or stratum2+tcp
+- Stratum mode autodetection. No need to specify `stratum+tcp` or `stratum1+tcp` or `stratum2+tcp`
 - Connection failed due to login errors (wrong address or worker) are marked Unrecoverable and no longer used
-- Replaced opencl kernel with opensource jawawawa opencl kernel
+- Replaced OpenCL kernel with opensource jawawawa OpenCL kernel
 - Added support for jawawawa AMD binary kernels
-- AMD auto kernel selection. Try bin first, if not fall back to opencl.
+- AMD auto kernel selection. Try bin first, if not fall back to OpenCL.
 - API: New method `miner_setverbosity`. [#1382](https://github.com/ethereum-mining/ethminer/pull/1382).
 - Implemented fast job switch algorithm on AMD reducing switch time to 1-2 milliseconds.
 - Added localization support for output number formatting
 
 ### Removed
 
-- Command line argument --stratum-email : any information needed to authenticate on the pool **MUST BE** set using `-P` argument
+- Command line argument `--stratum-email`: any information needed to authenticate on the pool **MUST BE** set using the `-P` argument
 
 ## 0.15.0rc1
 
