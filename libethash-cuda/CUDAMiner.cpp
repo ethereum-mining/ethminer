@@ -117,7 +117,7 @@ bool CUDAMiner::init(int epoch)
         if (!light)
         {
             cudalog << "Allocating light with size: " << fixed << setprecision(2)
-                    << lightSize / 1048576.0;
+                    << lightSize / 1048576.0 << " GB";
             CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), lightSize));
         }
         // copy lightData to device
