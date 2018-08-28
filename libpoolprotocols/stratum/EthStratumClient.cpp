@@ -164,8 +164,9 @@ void EthStratumClient::connect()
     // https://github.com/nicehash/Specifications/blob/master/EthereumStratum_NiceHash_v1.0.0.txt
     /*
     "Before first job (work) is provided, pool MUST set difficulty by sending mining.set_difficulty
-    If pool does not set difficulty before first job, then miner can assume difficulty 1 was being set."
-    Those above statement imply we MAY NOT receive difficulty thus at each new connection restart from 1
+    If pool does not set difficulty before first job, then miner can assume difficulty 1 was being
+    set." Those above statement imply we MAY NOT receive difficulty thus at each new connection
+    restart from 1
     */
     m_nextWorkBoundary = h256("0xffff000000000000000000000000000000000000000000000000000000000000");
     m_extraNonce = h64();
@@ -805,7 +806,17 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             {
             case EthStratumClient::STRATUM:
 
-                cnote << "Stratum mode detected: STRATUM";
+                if (jResult.isArray() && jResult[0].isArray() && jResult[0].size() == 3 &&
+                    jResult[0].get(Json::Value::ArrayIndex(2), "").asString() ==
+                        "EthereumStratum/1.0.0")
+                {
+                    _isSuccess = false;
+                }
+                else
+                {
+                    cnote << "Stratum mode detected: STRATUM";
+                }
+                
                 m_subscribed.store(_isSuccess, std::memory_order_relaxed);
                 if (!m_subscribed)
                 {
@@ -1076,6 +1087,12 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
         if (_method == "mining.notify")
         {
+            // Discard jobs if not properly subscribed
+            if (!m_subscribed.load(std::memory_order_relaxed))
+            {
+                return;
+            }
+
             /*
             Workaround for Nanopool wrong implementation
             see issue # 1348
@@ -1141,7 +1158,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
                     if (sHeaderHash != "" && sSeedHash != "" && sShareTarget != "")
                     {
-
                         reset_work_timeout();
 
                         m_current.epoch = ethash::find_epoch_number(
@@ -1158,18 +1174,32 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 }
             }
         }
-        else if (_method == "mining.set_difficulty" &&
-                 m_conn->StratumMode() == EthStratumClient::ETHEREUMSTRATUM)
+        else if (_method == "mining.set_difficulty")
         {
-            jPrm = responseObject.get("params", Json::Value::null);
-            if (jPrm.isArray())
+            if (m_conn->StratumMode() == EthStratumClient::ETHEREUMSTRATUM)
             {
-                double nextWorkDifficulty = max(jPrm.get(Json::Value::ArrayIndex(0), 1).asDouble(),0.0001);
-                diffToTarget((uint32_t*)m_nextWorkBoundary.data(), nextWorkDifficulty);
-                if (g_logVerbosity >= 8)
-                cnote << "Difficulty set to " EthWhite << nextWorkDifficulty
-                      << EthReset " (nicehash)";
+                jPrm = responseObject.get("params", Json::Value::null);
+                if (jPrm.isArray())
+                {
+                    double nextWorkDifficulty =
+                        max(jPrm.get(Json::Value::ArrayIndex(0), 1).asDouble(), 0.0001);
+                    diffToTarget((uint32_t*)m_nextWorkBoundary.data(), nextWorkDifficulty);
+                    if (g_logVerbosity >= 8)
+                        cnote << "Difficulty set to " EthWhite << nextWorkDifficulty
+                              << EthReset " (nicehash)";
+                }
             }
+            else
+            {
+                cwarn << "Invalid mining.set_difficulty rpc method. Disconnecting ...";
+                if (m_conn->StratumModeConfirmed())
+                {
+                    m_conn->MarkUnrecoverable();
+                }
+                m_io_service.post(
+                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+            }
+            
         }
         else if (_method == "mining.set_extranonce" &&
                  m_conn->StratumMode() == EthStratumClient::ETHEREUMSTRATUM)
@@ -1178,7 +1208,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             if (jPrm.isArray())
             {
                 std::string enonce = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
-                if (!enonce.empty()) 
+                if (!enonce.empty())
                     processExtranonce(enonce);
             }
         }
