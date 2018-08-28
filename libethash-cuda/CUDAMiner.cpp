@@ -95,9 +95,9 @@ bool CUDAMiner::init(int epoch)
             if (device_props.totalGlobalMem < dagSize)
             {
                 cudalog << "CUDA device " << string(device_props.name)
-                        << " has insufficient GPU memory. " << fixed << setprecision(2)
-                        << device_props.totalGlobalMem / 1073741824.0 << " GB of memory found < "
-                        << dagSize / 1073741824.0 << " GB of memory required";
+                        << " has insufficient GPU memory. "
+                        << FormatMemSize(device_props.totalGlobalMem) << " of memory found, "
+                        << FormatMemSize(dagSize) << " of memory required";
                 return false;
             }
             // We need to reset the device and recreate the dag
@@ -116,8 +116,7 @@ bool CUDAMiner::init(int epoch)
 
         if (!light)
         {
-            cudalog << "Allocating light with size: " << fixed << setprecision(2)
-                    << lightSize / 1048576.0 << " GB";
+            cudalog << "Allocating light with size: " << FormatMemSize(lightSize);
             CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), lightSize));
         }
         // copy lightData to device
@@ -147,10 +146,9 @@ bool CUDAMiner::init(int epoch)
                 if ((m_device_num == s_dagCreateDevice) || (s_dagLoadMode != DAG_LOAD_MODE_SINGLE))
                 {
                     cudalog << "Generating DAG for GPU #" << m_device_num
-                            << " with dagSize: " << fixed << setprecision(2)
-                            << dagSize / 1073741824.0 << " GB ("
-                            << (device_props.totalGlobalMem - dagSize - lightSize) / 1073741824.0
-                            << " GB left)";
+                            << " with dagSize: " << FormatMemSize(dagSize) << " ("
+                            << FormatMemSize(device_props.totalGlobalMem - dagSize - lightSize)
+                            << " left)";
                     auto startDAG = std::chrono::steady_clock::now();
 
                     ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0]);
