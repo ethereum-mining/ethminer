@@ -860,8 +860,8 @@ bool CLMiner::init(int epoch)
         auto endDAG = std::chrono::steady_clock::now();
 
         auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(endDAG - startDAG);
-        float gb = dagSize / 1073741824.0;
-        cnote << gb << " GB of DAG data generated in " << dagTime.count() << " ms.";
+        cnote << FormatMemSize(dagSize) << " of DAG data generated in " << dagTime.count()
+              << " ms.";
     }
     catch (cl::Error const& err)
     {
