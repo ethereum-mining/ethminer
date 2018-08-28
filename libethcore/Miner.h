@@ -1,7 +1,7 @@
 /*
  This file is part of cpp-ethereum.
 
- cpp-ethereum is free software: you can redistribute it and/or modify
+ ethminer is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
@@ -12,11 +12,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
- */
-/** @file Miner.h
- * @author Gav Wood <i@gavwood.com>
- * @date 2015
+ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -84,8 +80,7 @@ std::ostream& operator<<(std::ostream& os, HwMonitor _hw);
 class FormattedMemSize
 {
 public:
-    FormattedMemSize() = delete;
-    FormattedMemSize(uint64_t s) { m_size = s; }
+    explicit FormattedMemSize(uint64_t s) noexcept { m_size = s; }
     uint64_t m_size;
 };
 
