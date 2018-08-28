@@ -79,36 +79,17 @@ struct HwMonitor
     double powerW = 0;
 };
 
-inline std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
-{
-    os << _hw.tempC << "C " << _hw.fanP << "%";
-    if (_hw.powerW)
-        os << ' ' << fixed << setprecision(0) << _hw.powerW << "W";
-    return os;
-}
+std::ostream& operator<<(std::ostream& os, HwMonitor _hw);
 
-class FormatMemSize
+class FormattedMemSize
 {
 public:
-    FormatMemSize() = delete;
-    FormatMemSize(uint64_t s) { m_size = s; }
+    FormattedMemSize() = delete;
+    FormattedMemSize(uint64_t s) { m_size = s; }
     uint64_t m_size;
 };
 
-inline std::ostream& operator<<(std::ostream& os, FormatMemSize s)
-{
-    const char* suffixes[] = {"bytes", "KB", "MB", "GB"};
-    double d = s.m_size;
-    unsigned i;
-    for (i = 0; i < 3; i++)
-    {
-        if (d < 1024.0)
-            break;
-        d /= 1024.0;
-    }
-    os << fixed << setprecision(3) << d << ' ' << suffixes[i];
-    return os;
-}
+std::ostream& operator<<(std::ostream& os, FormattedMemSize s);
 
 /// Pause mining
 typedef enum {
@@ -162,33 +143,7 @@ struct WorkingProgress
     }
 };
 
-inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
-{
-    float mh = _p.rate() / 1000000.0f;
-    _out << "Speed " << EthTealBold << std::fixed << std::setprecision(2) << mh << EthReset
-         << " Mh/s";
-
-    for (size_t i = 0; i < _p.minersHashes.size(); ++i)
-    {
-        mh = _p.minerRate(_p.minersHashes[i]) / 1000000.0f;
-
-        if (_p.miningIsPaused.size() == _p.minersHashes.size())
-        {
-            // red color if mining is paused on this gpu
-            if (_p.miningIsPaused[i])
-            {
-                _out << EthRed;
-            }
-        }
-
-        _out << " gpu" << i << " " << EthTeal << std::fixed << std::setprecision(2) << mh
-             << EthReset;
-        if (_p.minerMonitors.size() == _p.minersHashes.size())
-            _out << " " << EthTeal << _p.minerMonitors[i] << EthReset;
-    }
-
-    return _out;
-}
+std::ostream& operator<<(std::ostream& _out, WorkingProgress _p);
 
 class SolutionStats
 {
@@ -214,17 +169,7 @@ private:
     unsigned acceptedStales = 0;
 };
 
-inline std::ostream& operator<<(std::ostream& os, SolutionStats s)
-{
-    os << "[A" << s.getAccepts();
-    if (s.getAcceptedStales())
-        os << "+" << s.getAcceptedStales();
-    if (s.getRejects())
-        os << ":R" << s.getRejects();
-    if (s.getFailures())
-        os << ":F" << s.getFailures();
-    return os << "]";
-}
+std::ostream& operator<<(std::ostream& os, SolutionStats s);
 
 class Miner;
 
@@ -286,7 +231,7 @@ public:
             ;
         // apply exponential sliding average
         // ref: https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
-        m_lastHashCount = s_alpha * expected + (1.0 - s_alpha) * m_lastHashCount;
+        m_lastHashCount = uint64_t(s_alpha * expected + (1.0 - s_alpha) * m_lastHashCount);
         return m_lastHashCount;
     }
 

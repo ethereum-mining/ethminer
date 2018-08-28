@@ -541,14 +541,14 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMult
         if (result >= dagSize)
         {
             cnote << "Found suitable OpenCL device [" << device.getInfo<CL_DEVICE_NAME>()
-                  << "] with " << FormatMemSize(result) << " of GPU memory";
+                  << "] with " << FormattedMemSize(result) << " of GPU memory";
             foundSuitableDevice = true;
         }
         else
         {
             cnote << "OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
-                  << " has insufficient GPU memory." << FormatMemSize(result)
-                  << " GB of memory found < " << FormatMemSize(dagSize) << " of memory required";
+                  << " has insufficient GPU memory." << FormattedMemSize(result)
+                  << " GB of memory found < " << FormattedMemSize(dagSize) << " of memory required";
         }
     }
     if (foundSuitableDevice)
@@ -782,7 +782,7 @@ bool CLMiner::init(int epoch)
         if (result < dagSize)
         {
             cnote << "OpenCL device " << device_name << " has insufficient GPU memory."
-                  << FormatMemSize(result) << " of memory found, " << FormatMemSize(dagSize)
+                  << FormattedMemSize(result) << " of memory found, " << FormattedMemSize(dagSize)
                   << " of memory required";
             return false;
         }
@@ -790,11 +790,11 @@ bool CLMiner::init(int epoch)
         // create buffer for dag
         try
         {
-            cllog << "Creating light cache buffer, size: " << FormatMemSize(lightSize);
+            cllog << "Creating light cache buffer, size: " << FormattedMemSize(lightSize);
             m_light.clear();
             m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, lightSize));
-            cllog << "Creating DAG buffer, size: " << FormatMemSize(dagSize)
-                  << ", free: " << FormatMemSize(result - lightSize - dagSize);
+            cllog << "Creating DAG buffer, size: " << FormattedMemSize(dagSize)
+                  << ", free: " << FormattedMemSize(result - lightSize - dagSize);
             m_dag.clear();
             m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, dagSize));
             cllog << "Loading kernels";
@@ -860,7 +860,7 @@ bool CLMiner::init(int epoch)
         auto endDAG = std::chrono::steady_clock::now();
 
         auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(endDAG - startDAG);
-        cnote << FormatMemSize(dagSize) << " of DAG data generated in " << dagTime.count()
+        cnote << FormattedMemSize(dagSize) << " of DAG data generated in " << dagTime.count()
               << " ms.";
     }
     catch (cl::Error const& err)
