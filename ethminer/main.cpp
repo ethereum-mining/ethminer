@@ -473,21 +473,21 @@ public:
             << "Pool URL Specification:" << endl
             << "    URL takes the form: scheme://user[.workername][:password]@hostname:port[/...]."
             << endl
-            << "    where can be any of:" << endl
+            << "    where scheme can be any of:" << endl
             << "    getwork     for getWork mode" << endl
             << "    stratum     for stratum mode" << endl
             << "    stratums    for secure stratum mode" << endl
             << "    stratumss   for secure stratum mode with strong TLS12 verification" << endl
             << endl
             << "    Example 1:"
-               "    tcps://0x012345678901234567890234567890123.miner1@ethermine.org:5555"
+               "    stratums://0x012345678901234567890234567890123.miner1@ethermine.org:5555"
             << endl
             << "    Example 2:"
-               "    tcp://0x012345678901234567890234567890123.miner1@nanopool.org:9999/"
+               "    stratum://0x012345678901234567890234567890123.miner1@nanopool.org:9999/"
                "john.doe@gmail.com"
             << endl
             << "    Example 3:"
-               "    tcp://0x012345678901234567890234567890123@nanopool.org:9999/miner1/"
+               "    stratum://0x012345678901234567890234567890123@nanopool.org:9999/miner1/"
                "john.doe@gmail.com"
             << endl
             << endl
