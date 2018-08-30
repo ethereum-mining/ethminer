@@ -20,7 +20,9 @@
 #include <list>
 #include <string>
 #include <thread>
+#include <numeric>
 
+#include <boost/circular_buffer.hpp>
 #include <boost/timer.hpp>
 
 #include "EthashAux.h"
@@ -202,7 +204,7 @@ class Miner : public Worker
 {
 public:
     Miner(std::string const& _name, FarmFace& _farm, size_t _index)
-      : Worker(_name + std::to_string(_index)), index(_index), farm(_farm)
+      : Worker(_name + std::to_string(_index)), index(_index), farm(_farm), m_hashCounts(6)
     {
     }
 
@@ -224,13 +226,10 @@ public:
         auto expected = m_hashCount.load(std::memory_order_relaxed);
         while (!m_hashCount.compare_exchange_weak(expected, 0, std::memory_order_relaxed))
             ;
-        // apply exponential sliding average
-        // ref: https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
-        m_lastHashCount = uint64_t(s_alpha * expected + (1.0 - s_alpha) * m_lastHashCount);
-        return m_lastHashCount;
+        // apply sliding average
+        m_hashCounts.push_back(expected);
+        return std::accumulate(m_hashCounts.begin(), m_hashCounts.end(), 0) / m_hashCounts.size();
     }
-
-    static void EnableHashRateAveraging(double alpha) { s_alpha = alpha; }
 
     unsigned Index() { return index; };
 
@@ -309,13 +308,12 @@ protected:
     static uint8_t* s_dagInHostMemory;
     static bool s_exit;
     static bool s_noeval;
-    static double s_alpha;
 
     const size_t index = 0;
     FarmFace& farm;
     std::chrono::steady_clock::time_point workSwitchStart;
     HwMonitorInfo m_hwmoninfo;
-    uint64_t m_lastHashCount = 0;
+    boost::circular_buffer<uint64_t> m_hashCounts;
 
 private:
     std::atomic<uint64_t> m_hashCount = {0};

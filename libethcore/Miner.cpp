@@ -33,8 +33,6 @@ bool Miner::s_exit = false;
 
 bool Miner::s_noeval = false;
 
-double Miner::s_alpha = 1.0;
-
 std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
 {
     os << _hw.tempC << "C " << _hw.fanP << "%";

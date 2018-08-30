@@ -668,8 +668,6 @@ public:
             };
 
             CLMiner::setNumInstances(m_miningThreads);
-            // If not averaging set alpha to 1.0, effectively disabling it
-            Miner::EnableHashRateAveraging(.45);
 #else
             cerr << endl
                  << "Selected GPU mining without having compiled with -DETHASHCL=ON"
@@ -704,8 +702,6 @@ public:
             }
 
             CUDAMiner::setParallelHash(m_cudaParallelHash);
-            // Nvidia is stable and doesn't need averaging
-            Miner::EnableHashRateAveraging(1.0);
 #else
             cerr << endl
                  << "CUDA support disabled. Configure project build with -DETHASHCUDA=ON"
