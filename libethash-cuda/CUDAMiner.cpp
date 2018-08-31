@@ -461,7 +461,12 @@ void CUDAMiner::search(
             // Wait for stream batch to complete and immediately
             // store number of processed hashes
             CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
-            addHashCount(batch_size);
+
+            // stretch cuda passes to miniize the effects of
+            // OS latency variability
+            m_searchPasses++;
+            if ((m_searchPasses & 127) == 0)
+                updateHashRate(batch_size * 128);
 
             if (shouldStop())
             {

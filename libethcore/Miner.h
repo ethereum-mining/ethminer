@@ -127,17 +127,11 @@ struct MiningPause
 /// Describes the progress of a mining operation.
 struct WorkingProgress
 {
-    uint64_t hashes = 0;  ///< Total number of hashes computed.
-    uint64_t ms = 0;      ///< Total number of milliseconds of mining thus far.
-    uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
+    float hashRate = 0.0;
 
-    std::vector<uint64_t> minersHashes;
+    std::vector<float> minersHashRates;
     std::vector<bool> miningIsPaused;
     std::vector<HwMonitor> minerMonitors;
-    uint64_t minerRate(const uint64_t hashCount) const
-    {
-        return ms == 0 ? 0 : hashCount * 1000 / ms;
-    }
 };
 
 std::ostream& operator<<(std::ostream& _out, WorkingProgress _p);
@@ -204,7 +198,7 @@ class Miner : public Worker
 {
 public:
     Miner(std::string const& _name, FarmFace& _farm, size_t _index)
-      : Worker(_name + std::to_string(_index)), index(_index), farm(_farm), m_hashCounts(6)
+      : Worker(_name + std::to_string(_index)), index(_index), farm(_farm)
     {
     }
 
@@ -219,16 +213,6 @@ public:
                 workSwitchStart = std::chrono::steady_clock::now();
         }
         kick_miner();
-    }
-
-    uint64_t RetrieveAndClearHashCount()
-    {
-        auto expected = m_hashCount.load(std::memory_order_relaxed);
-        while (!m_hashCount.compare_exchange_weak(expected, 0, std::memory_order_relaxed))
-            ;
-        // apply sliding average
-        m_hashCounts.push_back(expected);
-        return std::accumulate(m_hashCounts.begin(), m_hashCounts.end(), 0) / m_hashCounts.size();
     }
 
     unsigned Index() { return index; };
@@ -288,6 +272,8 @@ public:
 
     bool is_mining_paused() { return m_mining_paused.is_mining_paused(); }
 
+    float RetrieveHashRate() { return m_hashRate.load(std::memory_order_relaxed); }
+
 protected:
     /**
      * @brief No work left to be done. Pause until told to kickOff().
@@ -300,7 +286,7 @@ protected:
         return m_work;
     }
 
-    void addHashCount(uint64_t _n) { m_hashCount.fetch_add(_n, std::memory_order_relaxed); }
+    void updateHashRate(uint64_t _n);
 
     static unsigned s_dagLoadMode;
     static unsigned s_dagLoadIndex;
@@ -313,13 +299,14 @@ protected:
     FarmFace& farm;
     std::chrono::steady_clock::time_point workSwitchStart;
     HwMonitorInfo m_hwmoninfo;
-    boost::circular_buffer<uint64_t> m_hashCounts;
 
 private:
-    std::atomic<uint64_t> m_hashCount = {0};
     MiningPause m_mining_paused;
     WorkPackage m_work;
     mutable Mutex x_work;
+    std::chrono::steady_clock::time_point m_hashTime = std::chrono::steady_clock::now();
+    uint64_t m_hashCounter = 0;
+    std::atomic<float> m_hashRate = {0.0};
 };
 
 }  // namespace eth

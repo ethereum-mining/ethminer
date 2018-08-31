@@ -783,7 +783,7 @@ Json::Value ApiConnection::getMinerStat1()
     ostringstream poolAddresses;
     ostringstream invalidStats;
 
-    totalMhEth << std::fixed << std::setprecision(0) << (p.rate() / 1000.0f) << ";"
+    totalMhEth << std::fixed << std::setprecision(0) << p.hashRate / 1000.0f << ";"
                << s.getAccepts() << ";" << s.getRejects();
     totalMhDcr << "0;0;0";                    // DualMining not supported
     invalidStats << s.getFailures() << ";0";  // Invalid + Pool switches
@@ -791,10 +791,10 @@ Json::Value ApiConnection::getMinerStat1()
     invalidStats << ";0;0";  // DualMining not supported
 
     int gpuIndex = 0;
-    int numGpus = p.minersHashes.size();
-    for (auto const& i : p.minersHashes)
+    int numGpus = p.minersHashRates.size();
+    for (auto const& i : p.minersHashRates)
     {
-        detailedMhEth << std::fixed << std::setprecision(0) << (p.minerRate(i) / 1000.0f)
+        detailedMhEth << std::fixed << std::setprecision(0) << p.minersHashRates[i] / 1000.0f
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");
         detailedMhDcr << "off"
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");  // DualMining not supported
@@ -855,11 +855,11 @@ Json::Value ApiConnection::getMinerStatHR()
     assert(p.minersHashes.size() == p.minerMonitors.size() || p.minerMonitors.size() == 0);
     assert(p.minersHashes.size() == p.miningIsPaused.size());
 
-    for (unsigned gpuIndex = 0; gpuIndex < p.minersHashes.size(); gpuIndex++)
+    for (unsigned gpuIndex = 0; gpuIndex < p.minersHashRates.size(); gpuIndex++)
     {
         bool doMonitors = (gpuIndex < p.minerMonitors.size());
 
-        detailedMhEth[gpuIndex] = p.minersHashes[gpuIndex];
+        detailedMhEth[gpuIndex] = p.minersHashRates[gpuIndex];
         // detailedMhDcr[gpuIndex] = "off"; //Not supported
 
         if (doMonitors)
@@ -882,7 +882,7 @@ Json::Value ApiConnection::getMinerStatHR()
     jRes["version"] = version.str();  // miner version.
     jRes["runtime"] = runtime.str();  // running time, in minutes.
     // total ETH hashrate in MH/s, number of ETH shares, number of ETH rejected shares.
-    jRes["ethhashrate"] = (p.rate());
+    jRes["ethhashrate"] = p.hashRate;
     jRes["ethhashrates"] = detailedMhEth;
     jRes["ethshares"] = s.getAccepts();
     jRes["ethrejected"] = s.getRejects();

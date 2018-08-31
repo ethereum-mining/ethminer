@@ -33,6 +33,19 @@ bool Miner::s_exit = false;
 
 bool Miner::s_noeval = false;
 
+void Miner::updateHashRate(uint64_t n)
+{
+    m_hashCounter = n;
+    std::chrono::steady_clock::time_point t = std::chrono::steady_clock::now();
+    float us = std::chrono::duration_cast<std::chrono::microseconds>(t - m_hashTime).count();
+    m_hashTime = t;
+
+    float hr = 0;
+    if (us)
+        hr = m_hashCounter / (us / 1000000.0);
+    m_hashRate.store(hr, std::memory_order_relaxed);
+}
+
 std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
 {
     os << _hw.tempC << "C " << _hw.fanP << "%";
@@ -57,15 +70,15 @@ std::ostream& operator<<(std::ostream& os, FormattedMemSize s)
 
 std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 {
-    float mh = _p.rate() / 1000000.0f;
+    float mh = _p.hashRate / 1000000.0f;
     _out << "Speed " << EthTealBold << std::fixed << std::setprecision(2) << mh << EthReset
          << " Mh/s";
 
-    for (size_t i = 0; i < _p.minersHashes.size(); ++i)
+    for (size_t i = 0; i < _p.minersHashRates.size(); ++i)
     {
-        mh = _p.minerRate(_p.minersHashes[i]) / 1000000.0f;
+        mh = _p.minersHashRates[i] / 1000000.0f;
 
-        if (_p.miningIsPaused.size() == _p.minersHashes.size())
+        if (_p.miningIsPaused.size() == _p.minersHashRates.size())
         {
             // red color if mining is paused on this gpu
             if (_p.miningIsPaused[i])
@@ -76,7 +89,7 @@ std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 
         _out << " gpu" << i << " " << EthTeal << std::fixed << std::setprecision(2) << mh
              << EthReset;
-        if (_p.minerMonitors.size() == _p.minersHashes.size())
+        if (_p.minerMonitors.size() == _p.minersHashRates.size())
             _out << " " << EthTeal << _p.minerMonitors[i] << EthReset;
     }
 

@@ -789,7 +789,7 @@ private:
             auto mp = f.miningProgress();
             if (!i)
                 continue;
-            auto rate = mp.rate();
+            auto rate = mp.hashRate;
 
             cout << rate << endl;
             results.push_back(rate);

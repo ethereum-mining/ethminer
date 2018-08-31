@@ -287,7 +287,7 @@ void PoolManager::workLoop()
         if (m_hashrateReportingTimePassed > m_hashrateReportingTime)
         {
             auto mp = m_farm.miningProgress();
-            std::string h = toHex(toCompactBigEndian(mp.rate(), 1));
+            std::string h = toHex(toCompactBigEndian(uint64_t(mp.hashRate), 1));
             std::string res = h[0] != '0' ? h : h.substr(1);
 
             // Should be 32 bytes
