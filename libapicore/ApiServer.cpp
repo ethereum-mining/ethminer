@@ -794,7 +794,7 @@ Json::Value ApiConnection::getMinerStat1()
     int numGpus = p.minersHashRates.size();
     for (auto const& i : p.minersHashRates)
     {
-        detailedMhEth << std::fixed << std::setprecision(0) << p.minersHashRates[i] / 1000.0f
+        detailedMhEth << std::fixed << std::setprecision(0) << i / 1000.0f
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");
         detailedMhDcr << "off"
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");  // DualMining not supported

@@ -37,12 +37,12 @@ void Miner::updateHashRate(uint64_t n)
 {
     m_hashCounter = n;
     std::chrono::steady_clock::time_point t = std::chrono::steady_clock::now();
-    float us = std::chrono::duration_cast<std::chrono::microseconds>(t - m_hashTime).count();
+    float us = float(std::chrono::duration_cast<std::chrono::microseconds>(t - m_hashTime).count());
     m_hashTime = t;
 
     float hr = 0;
     if (us)
-        hr = m_hashCounter / (us / 1000000.0);
+        hr = float(m_hashCounter) / (us / 1000000.0);
     m_hashRate.store(hr, std::memory_order_relaxed);
 }
 
@@ -57,7 +57,7 @@ std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
 std::ostream& operator<<(std::ostream& os, FormattedMemSize s)
 {
     static const char* suffixes[] = {"bytes", "KB", "MB", "GB"};
-    double d = s.m_size;
+    double d = double(s.m_size);
     unsigned i;
     for (i = 0; i < 3; i++)
     {
