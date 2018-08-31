@@ -882,7 +882,7 @@ Json::Value ApiConnection::getMinerStatHR()
     jRes["version"] = version.str();  // miner version.
     jRes["runtime"] = runtime.str();  // running time, in minutes.
     // total ETH hashrate in MH/s, number of ETH shares, number of ETH rejected shares.
-    jRes["ethhashrate"] = p.hashRate;
+    jRes["ethhashrate"] = uint64_t(p.hashRate);
     jRes["ethhashrates"] = detailedMhEth;
     jRes["ethshares"] = s.getAccepts();
     jRes["ethrejected"] = s.getRejects();
