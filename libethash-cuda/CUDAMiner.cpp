@@ -410,10 +410,10 @@ void CUDAMiner::setParallelHash(unsigned _parallelHash)
 }
 
 
-
 void CUDAMiner::search(
     uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w)
 {
+    const uint16_t kReportingInterval = 512;  // Must be a power of 2 passes
     set_header(*reinterpret_cast<hash32_t const*>(header));
     if (m_current_target != target)
     {
@@ -465,8 +465,8 @@ void CUDAMiner::search(
             // stretch cuda passes to miniize the effects of
             // OS latency variability
             m_searchPasses++;
-            if ((m_searchPasses & 127) == 0)
-                updateHashRate(batch_size * 128);
+            if ((m_searchPasses & (kReportingInterval - 1)) == 0)
+                updateHashRate(batch_size * kReportingInterval);
 
             if (shouldStop())
             {
