@@ -789,11 +789,11 @@ private:
             auto mp = f.miningProgress();
             if (!i)
                 continue;
-            auto rate = mp.rate();
+            auto rate = uint64_t(mp.hashRate);
 
             cout << rate << endl;
             results.push_back(rate);
-            mean += rate;
+            mean += uint64_t(rate);
         }
         sort(results.begin(), results.end());
         cout << "min/mean/max: " << results.front() << "/" << (mean / _trials) << "/"

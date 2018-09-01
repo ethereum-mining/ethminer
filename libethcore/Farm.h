@@ -361,22 +361,21 @@ private:
             return;
 
         WorkingProgress progress;
-        progress.ms = m_collectInterval;
 
         // Process miners
         for (auto const& miner : m_miners)
         {
             // Collect and reset hashrates
-            auto minerHashCount = miner->RetrieveAndClearHashCount();
             if (!miner->is_mining_paused())
             {
-                progress.hashes += minerHashCount;
-                progress.minersHashes.push_back(minerHashCount);
+                auto hr = miner->RetrieveHashRate();
+                progress.hashRate += hr;
+                progress.minersHashRates.push_back(hr);
                 progress.miningIsPaused.push_back(false);
             }
             else
             {
-                progress.minersHashes.push_back(0);
+                progress.minersHashRates.push_back(0.0);
                 progress.miningIsPaused.push_back(true);
             }
 

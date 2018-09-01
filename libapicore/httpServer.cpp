@@ -44,9 +44,9 @@ void httpServer::getstat1(stringstream& ss)
           "Percent.</th><th>Power (W)</th></tr>";
     double hashSum = 0.0;
     double powerSum = 0.0;
-    for (unsigned i = 0; i < p.minersHashes.size(); i++)
+    for (unsigned i = 0; i < p.minersHashRates.size(); i++)
     {
-        double rate = p.minerRate(p.minersHashes[i]) / 1000000.0;
+        double rate = p.minersHashRates[i] / 1000000.0;
 
         hashSum += rate;
         ss << "<tr valign=top align=center><td";

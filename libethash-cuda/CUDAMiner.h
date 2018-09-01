@@ -76,6 +76,8 @@ private:
     cudaStream_t* m_streams = nullptr;
     uint64_t m_current_target = 0;
 
+    uint16_t m_searchPasses = 0;
+
     /// The local work size for the search
     static unsigned s_blockSize;
     /// The initial global work size for the searches
