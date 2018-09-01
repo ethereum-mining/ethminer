@@ -245,7 +245,14 @@ public:
         return m_progress;
     }
 
-    std::shared_ptr<Miner> getMiner(unsigned index) { return m_miners[index]; }
+    std::vector<std::shared_ptr<Miner>> getMiners() { return m_miners; }
+
+    std::shared_ptr<Miner> getMiner(unsigned index)
+    {
+        if (index >= m_miners.size())
+            return nullptr;
+        return m_miners[index];
+    }
 
     SolutionStats getSolutionStats() { return m_solutionStats; } // returns a copy
 

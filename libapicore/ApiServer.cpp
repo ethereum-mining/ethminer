@@ -427,6 +427,11 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         jResponse["result"] = getMinerStatHR();
     }
 
+    else if (_method == "miner_getstatdetail")
+    {
+        jResponse["result"] = getMinerStatDetail();
+    }
+
     else if (_method == "miner_shuffle")
     {
         // Gives nonce scrambler a new range
@@ -770,7 +775,7 @@ void ApiConnection::onSendSocketDataCompleted(const boost::system::error_code& e
 Json::Value ApiConnection::getMinerStat1()
 {
     auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
-        steady_clock::now() - this->m_farm.farmLaunched());
+        steady_clock::now() - m_farm.farmLaunched());
 
     SolutionStats s = m_farm.getSolutionStats();
     WorkingProgress p = m_farm.miningProgress();
@@ -833,7 +838,7 @@ Json::Value ApiConnection::getMinerStatHR()
 {
     // TODO:give key-value format
     auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
-        steady_clock::now() - this->m_farm.farmLaunched());
+        steady_clock::now() - m_farm.farmLaunched());
 
     SolutionStats s = m_farm.getSolutionStats();
     WorkingProgress p = m_farm.miningProgress();
@@ -895,6 +900,145 @@ Json::Value ApiConnection::getMinerStatHR()
     jRes["pooladdrs"] =
         poolAddresses.str();  // current mining pool. For dual mode, there will be two pools here.
     jRes["ispaused"] = ispaused;  // Is mining on GPU paused
+
+    return jRes;
+}
+
+
+Json::Value ApiConnection::getMinerStatDetailPerMiner(
+    const WorkingProgress& p, const SolutionStats& s, size_t index)
+{
+    Json::Value jRes;
+    auto const& miner = m_farm.getMiner(index);
+
+    jRes["index"] = (unsigned)index;
+
+    /* Hash & Share infos */
+    if (index < p.minersHashRates.size())
+        jRes["hashrate"] = (uint64_t)p.minersHashRates[index];
+
+    Json::Value jshares;
+    jshares["accepted"] = s.getAccepts(index);
+    jshares["rejected"] = s.getRejects(index);
+    jshares["invalid"] = s.getFailures(index);
+    jshares["acceptedstale"] = s.getAcceptedStales(index);
+    auto solution_lastupdated = std::chrono::duration_cast<std::chrono::minutes>(
+        std::chrono::steady_clock::now() - s.getLastUpdated(index));
+    jshares["lastupdate"] = solution_lastupdated.count();
+    jRes["shares"] = jshares;
+
+
+    /* Hardware */
+    if (index < p.minerMonitors.size())  // TODO: should we export 0 if we've no values ?
+    {
+        jRes["temp"] = p.minerMonitors[index].tempC;
+        jRes["fan"] = p.minerMonitors[index].fanP;
+        jRes["power"] = p.minerMonitors[index].powerW;
+    }
+    // TODO: PCI ID, Name, ... (some more infos - see listDevices())
+
+    /* Pause infos */
+    if (index < p.miningIsPaused.size())
+    {
+        MinigPauseReason pause_reason = miner->get_mining_paused();
+        MiningPause m;
+        jRes["ispaused"] = m.is_mining_paused(pause_reason);
+        jRes["pause_reason"] = m.get_mining_paused_string(pause_reason);
+    }
+
+    /* Nonce infos */
+    auto segment_width = m_farm.get_segment_width();
+    uint64_t gpustartnonce =
+        m_farm.get_nonce_scrambler() + ((uint64_t)pow(2, m_farm.get_segment_width()) * index);
+    jRes["nonce_start"] = gpustartnonce;
+    jRes["nonce_stop"] = uint64_t(gpustartnonce + (uint64_t)(pow(2, segment_width)));
+
+    return jRes;
+}
+
+
+/**
+ * @brief Return a total and per GPU detailed list of current status
+ * As we return here difficulty and share counts (which are not getting resetted if we
+ * switch pool) the results may "lie".
+ * Eg: Calculating runtime, (current) difficulty and submitted shares must not match the hashrate.
+ * Inspired by Andrea Lanfranchi comment on issue 1232:
+ *    https://github.com/ethereum-mining/ethminer/pull/1232#discussion_r193995891
+ * @return The json result
+ */
+Json::Value ApiConnection::getMinerStatDetail()
+{
+/* TODO:
+   Should we always retur all values or just those we got ?
+   For API clients it can be painfull to check each item for existance
+*/
+    auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
+        std::chrono::steady_clock::now() - m_farm.farmLaunched());
+
+    SolutionStats s = m_farm.getSolutionStats();
+    WorkingProgress p = m_farm.miningProgress();
+
+    // ostringstream version;
+    Json::Value gpus;
+    Json::Value jRes;
+
+    jRes["version"] = ethminer_get_buildinfo()->project_name_with_version;  // miner version.
+    jRes["runtime"] = runningTime.count();  // running time, in minutes.
+
+    {
+        // Even the client should know which host was queried
+        char hostName[HOST_NAME_MAX + 1];
+        if (!gethostname(hostName, HOST_NAME_MAX + 1))
+            jRes["hostname"] = hostName;
+    }
+
+#if 0
+    ostringstream poolAddresses;
+    poolAddresses << m_farm.get_pool_addresses();
+    //jRes["pooladdr"] = poolAddresses.str();  // current mining pool.
+#endif
+
+    /* connection info */
+    auto connection = m_mgr.getActiveConnection();
+    Json::Value jconnection;
+    if (connection)
+    {
+        jconnection["hostname"] = connection->Host();
+        // jconnection["endpoint"] = m_mgr.getClient()->ActiveEndPoint();
+        jconnection["port"] = connection->Port();
+        jconnection["user"] = connection->User();  // TODO - only if we've write access ? */
+        jconnection["password"] = connection->Pass(); // TODO - only if we've write access ? */
+    }
+    jconnection["isconnected"] = m_mgr.isConnected();
+    jRes["connection"] = jconnection;
+
+    /* Pool info */
+    jRes["difficulty"] = m_mgr.getCurrentDifficulty();
+
+    /* basic setup */
+    auto tstop = m_farm.get_tstop();
+    if (tstop)
+    {
+        jRes["tstart"] = m_farm.get_tstart();
+        jRes["tstop"] = tstop;
+    }
+
+    /* gpu related info */
+    for (size_t i = 0; i < m_farm.getMiners().size(); i++)
+    {
+        jRes["gpus"].append(getMinerStatDetailPerMiner(p, s, i));
+    }
+
+    // total ETH hashrate
+    jRes["hashrate"] = uint64_t(p.hashRate);
+
+    // share information
+    Json::Value jshares;
+    jshares["accepted"] = s.getAccepts();
+    jshares["rejected"] = s.getRejects();
+    jshares["invalid"] = s.getFailures();
+    jshares["acceptedstale"] = s.getAcceptedStales();
+    jRes["shares"] = jshares;
 
     return jRes;
 }

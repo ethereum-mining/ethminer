@@ -26,6 +26,7 @@ public:
         m_canconnect.store(false, std::memory_order_relaxed);
     }
 
+    const URI* getConnection() { return m_conn; }
     void unsetConnection() { m_conn = nullptr; }
 
     virtual void connect() = 0;

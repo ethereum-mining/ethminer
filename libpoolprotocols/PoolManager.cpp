@@ -319,6 +319,13 @@ void PoolManager::setActiveConnection(unsigned int idx)
     }
 }
 
+const URI *PoolManager::getActiveConnection()
+{
+    if (m_connections.size() > m_activeConnectionIdx)
+        return &m_connections.at(m_activeConnectionIdx);
+    return nullptr;
+}
+
 Json::Value PoolManager::getConnectionsJson()
 {
     // Returns the list of configured connections

@@ -116,10 +116,37 @@ struct MiningPause
         return (MinigPauseReason)m_mining_paused_flag.load(std::memory_order_relaxed);
     }
 
+    bool is_mining_paused(const MinigPauseReason& pause_reason)
+    {
+        return (pause_reason != MinigPauseReason::MINING_NOT_PAUSED);
+    }
+
     bool is_mining_paused()
     {
-        return (m_mining_paused_flag.load(std::memory_order_relaxed) !=
-                MinigPauseReason::MINING_NOT_PAUSED);
+        return is_mining_paused(get_mining_paused());
+    }
+
+    std::string get_mining_paused_string(const MinigPauseReason& pause_reason)
+    {
+        std::string seperator = "";
+        std::string r = "";
+
+        if (pause_reason & MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START)
+        {
+            r += seperator + "temperature";
+            seperator = ",";
+        }
+        if (pause_reason & MinigPauseReason::MINING_PAUSED_API)
+        {
+            r += seperator + "api";
+            seperator = ",";
+        }
+        return r;
+    }
+
+    std::string get_mining_paused_string()
+    {
+        return get_mining_paused_string(get_mining_paused());
     }
 };
 
@@ -353,6 +380,8 @@ public:
     {
         m_mining_paused.clear_mining_paused(pause_reason);
     }
+
+    MinigPauseReason get_mining_paused() { return m_mining_paused.get_mining_paused(); }
 
     bool is_mining_paused() { return m_mining_paused.is_mining_paused(); }
 
