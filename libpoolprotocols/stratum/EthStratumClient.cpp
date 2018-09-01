@@ -790,6 +790,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
         Json::Value jResult = responseObject.get("result", Json::Value::null);
         std::chrono::milliseconds response_delay_ms(0);
 
+        if (_id >= 10 && _id <= 30) /* allow up to max 20 GPUs */
+            goto respond_to_submit_solution;
+
         switch (_id)
         {
         case 1:
@@ -1029,7 +1032,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             break;
 
-        case 4:
+        // case 4:
+        // case 10 till case 30
+respond_to_submit_solution:
 
             response_delay_ms = dequeue_response_plea();
 
@@ -1044,12 +1049,13 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             }
 
             {
+                const unsigned miner_index = _id - 10;
                 dequeue_response_plea();
                 if (_isSuccess)
                 {
                     if (m_onSolutionAccepted)
                     {
-                        m_onSolutionAccepted(m_stale, response_delay_ms);
+                        m_onSolutionAccepted(m_stale, response_delay_ms, miner_index);
                     }
                 }
                 else
@@ -1058,7 +1064,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     {
                         cwarn << "Reject reason :"
                               << (_errReason.empty() ? "Unspecified" : _errReason);
-                        m_onSolutionRejected(m_stale, response_delay_ms);
+                        m_onSolutionRejected(m_stale, response_delay_ms, miner_index);
                     }
                 }
             }
@@ -1332,7 +1338,7 @@ void EthStratumClient::submitHashrate(string const& rate)
     sendSocketData(jReq);
 }
 
-void EthStratumClient::submitSolution(const Solution& solution)
+void EthStratumClient::submitSolution(const Solution& solution, unsigned const& miner_index)
 {
     if (!m_subscribed.load(std::memory_order_relaxed) ||
         !m_authorized.load(std::memory_order_relaxed))
@@ -1345,7 +1351,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
 
     Json::Value jReq;
 
-    jReq["id"] = unsigned(4);
+    jReq["id"] = unsigned(10) + miner_index;
     jReq["method"] = "mining.submit";
     jReq["params"] = Json::Value(Json::arrayValue);
 

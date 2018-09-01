@@ -408,16 +408,16 @@ void CLMiner::workLoop()
                     {
                         h256 mix;
                         memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
-                        farm.submitProof(Solution{nonce, mix, current, false});
+                        farm.submitProof(Solution{nonce, mix, current, false}, index);
                     }
                     else
                     {
                         Result r = EthashAux::eval(current.epoch, current.header, nonce);
                         if (r.value <= current.boundary)
-                            farm.submitProof(Solution{nonce, r.mixHash, current, false});
+                            farm.submitProof(Solution{nonce, r.mixHash, current, false}, index);
                         else
                         {
-                            farm.failedSolution();
+                            farm.failedSolution(index);
                             cwarn << "GPU gave incorrect result!";
                         }
                     }

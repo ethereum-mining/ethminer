@@ -247,25 +247,25 @@ public:
 
     std::shared_ptr<Miner> getMiner(unsigned index) { return m_miners[index]; }
 
-    SolutionStats getSolutionStats() { return m_solutionStats; }
+    SolutionStats getSolutionStats() { return m_solutionStats; } // returns a copy
 
-    void failedSolution() override { m_solutionStats.failed(); }
+    void failedSolution(unsigned _miner_index) override { m_solutionStats.failed(_miner_index); }
 
-    void acceptedSolution(bool _stale)
+    void acceptedSolution(bool _stale, unsigned _miner_index)
     {
         if (!_stale)
         {
-            m_solutionStats.accepted();
+            m_solutionStats.accepted(_miner_index);
         }
         else
         {
-            m_solutionStats.acceptedStale();
+            m_solutionStats.acceptedStale(_miner_index);
         }
     }
 
-    void rejectedSolution() { m_solutionStats.rejected(); }
+    void rejectedSolution(unsigned _miner_index) { m_solutionStats.rejected(_miner_index); }
 
-    using SolutionFound = std::function<void(const Solution&)>;
+    using SolutionFound = std::function<void(const Solution&, unsigned)>;
     using MinerRestart = std::function<void()>;
 
     /**
@@ -510,14 +510,13 @@ private:
 
     /**
      * @brief Called from a Miner to note a WorkPackage has a solution.
-     * @param _p The solution.
-     * @param _wp The WorkPackage that the Solution is for.
-     * @return true iff the solution was good (implying that mining should be .
+     * @param _s The solution.
+     * @param _miner_index Index of the miner
      */
-    void submitProof(Solution const& _s) override
+    void submitProof(Solution const& _s, unsigned _miner_index) override
     {
         assert(m_onSolutionFound);
-        m_onSolutionFound(_s);
+        m_onSolutionFound(_s, _miner_index);
     }
 
     mutable Mutex x_minerWork;

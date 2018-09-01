@@ -753,7 +753,7 @@ private:
             [](FarmFace& _farm, unsigned _index) { return new CUDAMiner(_farm, _index); }};
 #endif
         f.setSealers(sealers);
-        f.onSolutionFound([&](Solution) { return false; });
+        f.onSolutionFound([&](Solution, unsigned const& miner_index) { (void)miner_index; return false; });
 
         f.setTStartTStop(m_tstart, m_tstop);
 
