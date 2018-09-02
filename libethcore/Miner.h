@@ -286,7 +286,18 @@ protected:
         return m_work;
     }
 
-    void updateHashRate(uint64_t _n);
+    inline void updateHashRate(uint64_t _n)
+    {
+        using namespace std::chrono;
+        steady_clock::time_point t = steady_clock::now();
+        auto us = duration_cast<microseconds>(t - m_hashTime).count();
+        m_hashTime = t;
+
+        float hr = 0.0;
+        if (us)
+            hr = (float(_n) * 1.0e6f) / us;
+        m_hashRate.store(hr, std::memory_order_relaxed);
+    }
 
     static unsigned s_dagLoadMode;
     static unsigned s_dagLoadIndex;
@@ -305,7 +316,6 @@ private:
     WorkPackage m_work;
     mutable Mutex x_work;
     std::chrono::steady_clock::time_point m_hashTime = std::chrono::steady_clock::now();
-    uint64_t m_hashCounter = 0;
     std::atomic<float> m_hashRate = {0.0};
 };
 
