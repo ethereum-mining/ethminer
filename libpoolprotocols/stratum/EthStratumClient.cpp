@@ -308,6 +308,7 @@ void EthStratumClient::disconnect_finalize()
     std::chrono::steady_clock::time_point m_response_plea_time;
     clear_response_pleas();
 
+    // Put the actor back to sleep
     m_workloop_timer.expires_at(boost::posix_time::pos_infin);
     m_workloop_timer.async_wait(m_io_strand.wrap(boost::bind(
         &EthStratumClient::workloop_timer_elapsed, this, boost::asio::placeholders::error)));
@@ -432,6 +433,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                     // The socket is closed so that any outstanding
                     // asynchronous connection operations are cancelled.
                     m_socket->close();
+                    return;
                 }
 
                 // This is set for SSL disconnection
@@ -441,6 +443,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                     if (m_securesocket->lowest_layer().is_open())
                     {
                         m_securesocket->lowest_layer().close();
+                        return;
                     }
                 }
             }
@@ -493,6 +496,11 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
             }
         }
     }
+
+    // Resubmit timing operations
+    m_workloop_timer.expires_from_now(boost::posix_time::milliseconds(m_workloop_interval));
+    m_workloop_timer.async_wait(m_io_strand.wrap(boost::bind(
+        &EthStratumClient::workloop_timer_elapsed, this, boost::asio::placeholders::error)));
 }
 
 void EthStratumClient::connect_handler(const boost::system::error_code& ec)
@@ -782,7 +790,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
         Json::Value jResult = responseObject.get("result", Json::Value::null);
         std::chrono::milliseconds response_delay_ms(0);
 
-            switch (_id)
+        switch (_id)
         {
         case 1:
 
