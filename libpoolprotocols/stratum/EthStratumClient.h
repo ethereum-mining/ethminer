@@ -6,6 +6,7 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/bind.hpp>
+#include <boost/lockfree/queue.hpp>
 
 #include <json/json.h>
 
@@ -24,12 +25,7 @@ using namespace dev::eth;
 class EthStratumClient : public PoolClient
 {
 public:
-    typedef enum
-    {
-        STRATUM = 0,
-        ETHPROXY,
-        ETHEREUMSTRATUM
-    } StratumProtocol;
+    typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
 
     EthStratumClient(boost::asio::io_service& io_service, int worktimeout, int responsetimeout,
         bool submitHashrate);
@@ -62,16 +58,15 @@ public:
 
 private:
     void disconnect_finalize();
-
+    void enqueue_response_plea();
+    std::chrono::milliseconds dequeue_response_plea();
+    void clear_response_pleas();
     void resolve_handler(
         const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
     void start_connect();
-    void check_connect_timeout(const boost::system::error_code& ec);
     void connect_handler(const boost::system::error_code& ec);
-    void work_timeout_handler(const boost::system::error_code& ec);
-    void response_timeout_handler(const boost::system::error_code& ec);
+    void workloop_timer_elapsed(const boost::system::error_code& ec);
 
-    void reset_work_timeout();
     void processResponse(Json::Value& responseObject);
     std::string processError(Json::Value& erroresponseObject);
     void processExtranonce(std::string& enonce);
@@ -96,7 +91,11 @@ private:
     // seconds timeout for responses and connection (overwritten in constructor)
     int m_responsetimeout;
 
+    // default interval for workloop timer (milliseconds)
+    int m_workloop_interval = 1000;
+
     WorkPackage m_current;
+    std::chrono::time_point<std::chrono::steady_clock> m_current_timestamp;
 
     bool m_stale = false;
 
@@ -114,10 +113,11 @@ private:
     boost::asio::streambuf m_recvBuffer;
     Json::FastWriter m_jWriter;
 
-    boost::asio::deadline_timer m_conntimer;
-    boost::asio::deadline_timer m_worktimer;
-    boost::asio::deadline_timer m_responsetimer;
-    bool m_response_pending = false;
+    boost::asio::deadline_timer m_workloop_timer;
+
+    std::atomic<int> m_response_pleas_count = {0};
+    std::atomic<std::chrono::steady_clock::duration> m_response_plea_older;
+    boost::lockfree::queue<std::chrono::steady_clock::time_point> m_response_plea_times;
 
     boost::asio::ip::tcp::resolver m_resolver;
     std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>> m_endpoints;

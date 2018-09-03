@@ -71,20 +71,24 @@ void EthGetworkClient::submitSolution(const Solution& solution)
     {
         try
         {
+            std::chrono::steady_clock::time_point submit_start = std::chrono::steady_clock::now();
             bool accepted = p_client->eth_submitWork("0x" + toHex(solution.nonce),
                 "0x" + toString(solution.work.header), "0x" + toString(solution.mixHash));
+            std::chrono::milliseconds response_delay_ms =
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - submit_start);
             if (accepted)
             {
                 if (m_onSolutionAccepted)
                 {
-                    m_onSolutionAccepted(false);
+                    m_onSolutionAccepted(false, response_delay_ms);
                 }
             }
             else
             {
                 if (m_onSolutionRejected)
                 {
-                    m_onSolutionRejected(false);
+                    m_onSolutionRejected(false, response_delay_ms);
                 }
             }
         }

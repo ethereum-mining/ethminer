@@ -11,8 +11,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
   : m_io_strand(io_service),
     m_failovertimer(io_service),
     m_farm(farm),
-    m_minerType(minerType),
-    m_submit_times(50)
+    m_minerType(minerType)
 {
     p_client = client;
     m_maxConnectionAttempts = maxTries;
@@ -57,13 +56,6 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
         dev::setThreadName("main");
         cnote << "Disconnected from " + m_activeConnectionHost << p_client->ActiveEndPoint();
 
-        // Clear queue of submission times as we won't get any further response for them (if any
-        // left) We need to consume all elements as no clear mehod is provided.
-        std::chrono::steady_clock::time_point m_submit_time;
-        while (m_submit_times.pop(m_submit_time))
-        {
-        }
-
         // Do not stop mining here
         // Workloop will determine if we're trying a fast reconnect to same pool
         // or if we're switching to failover(s)
@@ -95,38 +87,22 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
         m_farm.setWork(wp);
     });
 
-    p_client->onSolutionAccepted([&](bool const& stale) {
-        using namespace std::chrono;
-        milliseconds ms(0);
-        steady_clock::time_point m_submit_time;
-
-        // Pick First item of submission times in queue
-        if (m_submit_times.pop(m_submit_time))
-        {
-            ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_time);
-        }
+    p_client->onSolutionAccepted([&](bool const& stale,
+                                     std::chrono::milliseconds const& elapsedMs) {
 
         std::stringstream ss;
-        ss << std::setw(4) << std::setfill(' ') << ms.count() << " ms."
+        ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << " ms."
            << " " << m_connections.at(m_activeConnectionIdx).Host() + p_client->ActiveEndPoint();
         cnote << EthLime "**Accepted" EthReset << (stale ? EthYellow "(stale)" EthReset : "")
               << ss.str();
         m_farm.acceptedSolution(stale);
     });
 
-    p_client->onSolutionRejected([&](bool const& stale) {
-        using namespace std::chrono;
-        milliseconds ms(0);
-        steady_clock::time_point m_submit_time;
-
-        // Pick First item of submission times in queue
-        if (m_submit_times.pop(m_submit_time))
-        {
-            ms = duration_cast<milliseconds>(steady_clock::now() - m_submit_time);
-        }
+    p_client->onSolutionRejected([&](bool const& stale,
+                                     std::chrono::milliseconds const& elapsedMs) {
 
         std::stringstream ss;
-        ss << std::setw(4) << std::setfill(' ') << ms.count() << "ms."
+        ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << "ms."
            << "   " << m_connections.at(m_activeConnectionIdx).Host() + p_client->ActiveEndPoint();
         cwarn << EthRed "**Rejected" EthReset << (stale ? EthYellow "(stale)" EthReset : "")
               << ss.str();
@@ -140,7 +116,6 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 
         if (p_client->isConnected())
         {
-            m_submit_times.push(std::chrono::steady_clock::now());
 
             if (sol.stale)
                 cwarn << "Stale solution: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
