@@ -1,18 +1,18 @@
 /*
-This file is part of cpp-ethereum.
+This file is part of ethminer.
 
-cpp-ethereum is free software: you can redistribute it and/or modify
+ethminer is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-cpp-ethereum is distributed in the hope that it will be useful,
+ethminer is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <ethash/ethash.hpp>
@@ -95,8 +95,9 @@ bool CUDAMiner::init(int epoch)
             if (device_props.totalGlobalMem < dagSize)
             {
                 cudalog << "CUDA device " << string(device_props.name)
-                        << " has insufficient GPU memory. " << device_props.totalGlobalMem
-                        << " bytes of memory found < " << dagSize << " bytes of memory required";
+                        << " has insufficient GPU memory. "
+                        << FormattedMemSize(device_props.totalGlobalMem) << " of memory found, "
+                        << FormattedMemSize(dagSize) << " of memory required";
                 return false;
             }
             // We need to reset the device and recreate the dag
@@ -115,7 +116,7 @@ bool CUDAMiner::init(int epoch)
 
         if (!light)
         {
-            cudalog << "Allocating light with size: " << lightSize;
+            cudalog << "Allocating light with size: " << FormattedMemSize(lightSize);
             CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), lightSize));
         }
         // copy lightData to device
@@ -145,7 +146,9 @@ bool CUDAMiner::init(int epoch)
                 if ((m_device_num == s_dagCreateDevice) || (s_dagLoadMode != DAG_LOAD_MODE_SINGLE))
                 {
                     cudalog << "Generating DAG for GPU #" << m_device_num
-                            << " with dagSize: " << dagSize << " gridSize: " << s_gridSize;
+                            << " with dagSize: " << FormattedMemSize(dagSize) << " ("
+                            << FormattedMemSize(device_props.totalGlobalMem - dagSize - lightSize)
+                            << " left)";
                     auto startDAG = std::chrono::steady_clock::now();
 
                     ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0]);
@@ -407,10 +410,10 @@ void CUDAMiner::setParallelHash(unsigned _parallelHash)
 }
 
 
-
 void CUDAMiner::search(
     uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w)
 {
+    const uint16_t kReportingInterval = 512;  // Must be a power of 2 passes
     set_header(*reinterpret_cast<hash32_t const*>(header));
     if (m_current_target != target)
     {
@@ -454,65 +457,71 @@ void CUDAMiner::search(
         {
             cudaStream_t stream = m_streams[current_index];
             buffer = m_search_buf[current_index];
-            // Wait for stream batch to complete
+
+            // Wait for stream batch to complete and immediately
+            // store number of processed hashes
             CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
+
+            // stretch cuda passes to miniize the effects of
+            // OS latency variability
+            m_searchPasses++;
+            if ((m_searchPasses & (kReportingInterval - 1)) == 0)
+                updateHashRate(batch_size * kReportingInterval);
+
             if (shouldStop())
             {
                 m_new_work.store(false, std::memory_order_relaxed);
                 done = true;
                 stop = true;
             }
+
             // See if we got solutions in this batch
-            uint32_t found_count = buffer->count;
+            uint32_t found_count = std::min((unsigned)buffer->count, SEARCH_RESULTS);
             if (found_count)
             {
+
                 buffer->count = 0;
-                uint64_t nonces[SEARCH_RESULTS];
-                h256 mixes[SEARCH_RESULTS];
-                // handle the highly unlikely possibility that there are more
-                // solutions found than we can handle
-                if (found_count > SEARCH_RESULTS)
-                    found_count = SEARCH_RESULTS;
                 uint64_t nonce_base = current_nonce - streams_batch_size;
-                // stash the solutions, so we can reuse the search buffer
-                for (unsigned int j = 0; j < found_count; j++)
-                {
-                    nonces[j] = nonce_base + buffer->result[j].gid;
-                    if (s_noeval)
-                        memcpy(mixes[j].data(), (void*)&buffer->result[j].mix,
-                            sizeof(buffer->result[j].mix));
-                }
-                // restart the stream on the next batch of nonces
-                if (!done)
-                    run_ethash_search(
-                        s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
-                // Pass the solutions up to the higher level
+
+                // Pass the solution(s) for submission
+                uint64_t minerNonce;
+
                 for (uint32_t i = 0; i < found_count; i++)
+                {
+                    minerNonce = nonce_base + buffer->result[i].gid;
                     if (s_noeval)
-                        farm.submitProof(Solution{nonces[i], mixes[i], w, m_new_work});
+                    {
+                        h256 minerMix;
+                        memcpy(minerMix.data(), (void*)&buffer->result[i].mix,
+                            sizeof(buffer->result[i].mix));
+                        farm.submitProof(Solution{minerNonce, minerMix, w, m_new_work});
+                    }
                     else
                     {
-                        Result r = EthashAux::eval(w.epoch, w.header, nonces[i]);
+                        Result r = EthashAux::eval(w.epoch, w.header, minerNonce);
                         if (r.value <= w.boundary)
-                            farm.submitProof(Solution{nonces[i], r.mixHash, w, m_new_work});
+                        {
+                            farm.submitProof(Solution{minerNonce, r.mixHash, w, m_new_work});
+                        }
                         else
                         {
                             farm.failedSolution();
-                            cwarn << "GPU gave incorrect result!";
+                            cwarn
+                                << "GPU gave incorrect result! Lower OC if this happens frequently";
                         }
                     }
-            }
-            else
-            {
-                // restart the stream on the next batch of nonces
-                if (!done)
-                    run_ethash_search(
-                        s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
+
+                }
             }
 
-            addHashCount(batch_size);
+            // restart the stream on the next batch of nonces
+            if (!done)
+                run_ethash_search(
+                    s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
+
         }
     }
+
     if (!stop && (g_logVerbosity >= 6))
     {
         cudalog << "Switch time: "

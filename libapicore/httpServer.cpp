@@ -36,7 +36,7 @@ void httpServer::tableHeader(stringstream& ss, unsigned columns)
 void httpServer::getstat1(stringstream& ss)
 {
     using namespace std::chrono;
-    WorkingProgress p = m_farm->miningProgress(m_show_hwmonitors, m_show_power);
+    WorkingProgress p = m_farm->miningProgress();
     SolutionStats s = m_farm->getSolutionStats();
     tableHeader(ss, 5);
     ss << "<tr valign=top align=center style=background-color:Yellow>"
@@ -44,9 +44,9 @@ void httpServer::getstat1(stringstream& ss)
           "Percent.</th><th>Power (W)</th></tr>";
     double hashSum = 0.0;
     double powerSum = 0.0;
-    for (unsigned i = 0; i < p.minersHashes.size(); i++)
+    for (unsigned i = 0; i < p.minersHashRates.size(); i++)
     {
-        double rate = p.minerRate(p.minersHashes[i]) / 1000000.0;
+        double rate = p.minersHashRates[i] / 1000000.0;
 
         hashSum += rate;
         ss << "<tr valign=top align=center><td";

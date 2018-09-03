@@ -11,7 +11,7 @@
 // one solution per stream hash calculation
 // Leave room for up to 4 results. A power
 // of 2 here will yield better CUDA optimization
-#define SEARCH_RESULTS 4
+#define SEARCH_RESULTS 4U
 
 typedef struct
 {

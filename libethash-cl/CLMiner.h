@@ -96,6 +96,8 @@ private:
     unsigned m_workgroupSize = 0;
     unsigned m_dagItems = 0;
     uint64_t m_lastNonce = 0;
+    uint64_t m_hashCount = 0;
+    uint8_t m_searchPasses = 0;
 
     static unsigned s_platformId;
     static unsigned s_numInstances;

@@ -243,7 +243,7 @@ void ApiServer::start()
     }
     catch (const std::exception&)
     {
-        cwarn << "Could not start API server on port : " +
+        cwarn << "Could not start API server on port: " +
                      to_string(m_acceptor.local_endpoint().port());
         cwarn << "Ensure port is not in use by another service";
         return;
@@ -301,7 +301,7 @@ void ApiServer::handle_accept(std::shared_ptr<ApiConnection> session, boost::sys
         });
         dev::setThreadName("Api");
         m_sessions.push_back(session);
-        cnote << "New api session from " << session->socket().remote_endpoint();
+        cnote << "New API session from " << session->socket().remote_endpoint();
         session->start();
     }
     else
@@ -637,7 +637,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         if (!getRequestValue("pause", pause, jRequestParams, false, jResponse))
             return;
 
-        WorkingProgress p = m_farm.miningProgress(false, false);
+        WorkingProgress p = m_farm.miningProgress();
         if (index >= p.miningIsPaused.size())
         {
             jResponse["error"]["code"] = -422;
@@ -773,7 +773,7 @@ Json::Value ApiConnection::getMinerStat1()
         steady_clock::now() - this->m_farm.farmLaunched());
 
     SolutionStats s = m_farm.getSolutionStats();
-    WorkingProgress p = m_farm.miningProgress(true);
+    WorkingProgress p = m_farm.miningProgress();
 
     ostringstream totalMhEth;
     ostringstream totalMhDcr;
@@ -783,7 +783,7 @@ Json::Value ApiConnection::getMinerStat1()
     ostringstream poolAddresses;
     ostringstream invalidStats;
 
-    totalMhEth << std::fixed << std::setprecision(0) << (p.rate() / 1000.0f) << ";"
+    totalMhEth << std::fixed << std::setprecision(0) << p.hashRate / 1000.0f << ";"
                << s.getAccepts() << ";" << s.getRejects();
     totalMhDcr << "0;0;0";                    // DualMining not supported
     invalidStats << s.getFailures() << ";0";  // Invalid + Pool switches
@@ -791,10 +791,10 @@ Json::Value ApiConnection::getMinerStat1()
     invalidStats << ";0;0";  // DualMining not supported
 
     int gpuIndex = 0;
-    int numGpus = p.minersHashes.size();
-    for (auto const& i : p.minersHashes)
+    int numGpus = p.minersHashRates.size();
+    for (auto const& i : p.minersHashRates)
     {
-        detailedMhEth << std::fixed << std::setprecision(0) << (p.minerRate(i) / 1000.0f)
+        detailedMhEth << std::fixed << std::setprecision(0) << i / 1000.0f
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");
         detailedMhDcr << "off"
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");  // DualMining not supported
@@ -836,7 +836,7 @@ Json::Value ApiConnection::getMinerStatHR()
         steady_clock::now() - this->m_farm.farmLaunched());
 
     SolutionStats s = m_farm.getSolutionStats();
-    WorkingProgress p = m_farm.miningProgress(true, true);
+    WorkingProgress p = m_farm.miningProgress();
 
     ostringstream version;
     ostringstream runtime;
@@ -852,30 +852,37 @@ Json::Value ApiConnection::getMinerStatHR()
     runtime << toString(runningTime.count());
     poolAddresses << m_farm.get_pool_addresses();
 
-    assert(p.minersHashes.size() == p.minerMonitors.size());
-    assert(p.minersHashes.size() == p.miningIsPaused.size());
+    assert(p.minersHashRates.size() == p.minerMonitors.size() || p.minerMonitors.size() == 0);
+    assert(p.minersHashRates.size() == p.miningIsPaused.size());
 
-    for (unsigned gpuIndex = 0; gpuIndex < p.minersHashes.size(); gpuIndex++)
+    for (unsigned gpuIndex = 0; gpuIndex < p.minersHashRates.size(); gpuIndex++)
     {
-        auto const& minerhashes = p.minersHashes[gpuIndex];
-        auto const& minermonitors = p.minerMonitors[gpuIndex];
-        auto const& miningispaused = p.miningIsPaused[gpuIndex];
+        bool doMonitors = (gpuIndex < p.minerMonitors.size());
 
-        detailedMhEth[gpuIndex] = (p.minerRate(minerhashes));
+        detailedMhEth[gpuIndex] = p.minersHashRates[gpuIndex];
         // detailedMhDcr[gpuIndex] = "off"; //Not supported
 
-        temps[gpuIndex] = minermonitors.tempC;    // Fetching Temps
-        fans[gpuIndex] = minermonitors.fanP;      // Fetching Fans
-        powers[gpuIndex] = minermonitors.powerW;  // Fetching Power
+        if (doMonitors)
+        {
+            temps[gpuIndex] = p.minerMonitors[gpuIndex].tempC;
+            fans[gpuIndex] = p.minerMonitors[gpuIndex].fanP;
+            powers[gpuIndex] = p.minerMonitors[gpuIndex].powerW;
+        }
+        else
+        {
+            temps[gpuIndex] = 0;
+            fans[gpuIndex] = 0;
+            powers[gpuIndex] = 0;
+        }
 
-        ispaused[gpuIndex] = (bool)miningispaused;
+        ispaused[gpuIndex] = (bool)p.miningIsPaused[gpuIndex];
     }
 
     Json::Value jRes;
     jRes["version"] = version.str();  // miner version.
     jRes["runtime"] = runtime.str();  // running time, in minutes.
     // total ETH hashrate in MH/s, number of ETH shares, number of ETH rejected shares.
-    jRes["ethhashrate"] = (p.rate());
+    jRes["ethhashrate"] = uint64_t(p.hashRate);
     jRes["ethhashrates"] = detailedMhEth;
     jRes["ethshares"] = s.getAccepts();
     jRes["ethrejected"] = s.getRejects();

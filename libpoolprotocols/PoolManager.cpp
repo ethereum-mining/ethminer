@@ -152,7 +152,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
         else
         {
             cnote << string(EthRed "Solution 0x") + toHex(sol.nonce)
-                  << " wasted. Waiting for connection ...";
+                  << " wasted. Waiting for connection...";
         }
 
         return false;
@@ -237,17 +237,11 @@ void PoolManager::workLoop()
                         m_activeConnectionIdx = 0;
                     }
 
-                    // Stop mining if applicable as we're switching
+                    // Suspend mining if applicable as we're switching
                     if (m_farm.isMining())
                     {
-                        cnote << "Shutting down miners...";
-                        m_farm.stop();
-
-                        // Give some time to mining threads to shutdown
-                        for (auto i = 4; --i; this_thread::sleep_for(chrono::seconds(1)))
-                        {
-                            cnote << "Retrying in " << i << "... \r";
-                        }
+                        cnote << "Suspend mining due connection change...";
+                        m_farm.setWork({}); /* suspend by setting empty work package */
                     }
                 }
 
@@ -272,7 +266,7 @@ void PoolManager::workLoop()
                 }
                 else
                 {
-                    cnote << "No more connections to try. Exiting ...";
+                    cnote << "No more connections to try. Exiting...";
 
                     // Stop mining if applicable
                     if (m_farm.isMining())
@@ -293,7 +287,7 @@ void PoolManager::workLoop()
         if (m_hashrateReportingTimePassed > m_hashrateReportingTime)
         {
             auto mp = m_farm.miningProgress();
-            std::string h = toHex(toCompactBigEndian(mp.rate(), 1));
+            std::string h = toHex(toCompactBigEndian(uint64_t(mp.hashRate), 1));
             std::string res = h[0] != '0' ? h : h.substr(1);
 
             // Should be 32 bytes
@@ -336,17 +330,16 @@ void PoolManager::setActiveConnection(unsigned int idx)
     // Sets the active connection to the requested index
     if (idx != m_activeConnectionIdx)
     {
-
-        // Stop mining if applicable as we're switching
-        if (m_farm.isMining())
-        {
-            cnote << "Shutting down miners...";
-            m_farm.stop();
-        }
-
         m_activeConnectionIdx = idx;
         m_connectionAttempt = 0;
         p_client->disconnect();
+
+        // Suspend mining if applicable as we're switching
+        if (m_farm.isMining())
+        {
+            cnote << "Suspend mining due connection change...";
+            m_farm.setWork({}); /* suspend by setting empty work package */
+        }
     }
 }
 

@@ -1,18 +1,18 @@
 /*
-This file is part of cpp-ethereum.
+This file is part of ethminer.
 
-cpp-ethereum is free software: you can redistribute it and/or modify
+ethminer is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-cpp-ethereum is distributed in the hope that it will be useful,
+ethminer is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #pragma once
@@ -75,6 +75,8 @@ private:
     volatile search_results** m_search_buf = nullptr;
     cudaStream_t* m_streams = nullptr;
     uint64_t m_current_target = 0;
+
+    uint16_t m_searchPasses = 0;
 
     /// The local work size for the search
     static unsigned s_blockSize;

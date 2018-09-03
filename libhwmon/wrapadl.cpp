@@ -90,7 +90,7 @@ wrap_adl_handle* wrap_adl_create()
         adlh->adl2MainControlDestroy == nullptr || adlh->adl2Overdrive6CurrentPowerGet == nullptr)
     {
 #if 0
-		printf("Failed to obtain all required ADL function pointers\n");
+        printf("Failed to obtain all required ADL function pointers\n");
 #endif
         wrap_dlclose(adlh->adl_dll);
         free(adlh);
@@ -189,12 +189,12 @@ wrap_adl_handle* wrap_adl_create()
                                 (int)topology.pcie.function)
                         {
 #if 0
-							printf("[DEBUG] - ADL GPU[%d]%d,%d,%d matches OpenCL GPU[%d]%d,%d,%d\n", 
-							adlh->phys_logi_device_id[i],
-							adlh->devs[adlh->phys_logi_device_id[i]].iBusNumber, 
-							adlh->devs[adlh->phys_logi_device_id[i]].iDeviceNumber, 
-							adlh->devs[adlh->phys_logi_device_id[i]].iFunctionNumber,
-							j, (int)topology.pcie.bus, (int)topology.pcie.device, (int)topology.pcie.function);
+                            printf("[DEBUG] - ADL GPU[%d]%d,%d,%d matches OpenCL GPU[%d]%d,%d,%d\n",
+                            adlh->phys_logi_device_id[i],
+                            adlh->devs[adlh->phys_logi_device_id[i]].iBusNumber,
+                            adlh->devs[adlh->phys_logi_device_id[i]].iDeviceNumber,
+                            adlh->devs[adlh->phys_logi_device_id[i]].iFunctionNumber,
+                            j, (int)topology.pcie.bus, (int)topology.pcie.device, (int)topology.pcie.function);
 #endif
                             adlh->adl_opencl_device_id[i] = j;
                             adlh->opencl_adl_device_id[j] = i;

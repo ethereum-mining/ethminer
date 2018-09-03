@@ -34,6 +34,10 @@ typedef struct
 } SchemeAttributes;
 
 static std::map<std::string, SchemeAttributes> s_schemes = {
+    /*
+    This schemes are kept for backwards compatibility.
+    Ethminer do perform stratum autodetection
+    */
     {"stratum+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 0}},
     {"stratum1+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 1}},
     {"stratum2+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 2}},
@@ -46,7 +50,20 @@ static std::map<std::string, SchemeAttributes> s_schemes = {
     {"stratum+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 0}},
     {"stratum1+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 1}},
     {"stratum2+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 2}},
-    {"http", {ProtocolFamily::GETWORK, SecureLevel::NONE, 0}}};
+    {"http", {ProtocolFamily::GETWORK, SecureLevel::NONE, 0}},
+    {"getwork", {ProtocolFamily::GETWORK, SecureLevel::NONE, 0}},
+
+    /*
+    Any TCP scheme has, at the moment, only STRATUM protocol thus
+    reiterating "stratum" word would be pleonastic
+    Version 9 means auto-detect stratum mode
+    */
+
+    {"stratum", {ProtocolFamily::STRATUM, SecureLevel::NONE, 999}},
+    {"stratums", {ProtocolFamily::STRATUM, SecureLevel::TLS, 999}},
+    {"stratumss", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 999}}
+
+};
 
 static std::string urlDecode(std::string s)
 {

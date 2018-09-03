@@ -1,18 +1,18 @@
 /*
-    This file is part of cpp-ethereum.
+    This file is part of ethminer.
 
-    cpp-ethereum is free software: you can redistribute it and/or modify
+    ethminer is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    cpp-ethereum is distributed in the hope that it will be useful,
+    ethminer is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+    along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "Log.h"
@@ -63,7 +63,7 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, unsigned _v) : m_verbo
             char buf[24];
             if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
                 buf[0] = '\0';  // empty if case strftime fails
-            m_sstr << _id << " " EthViolet << buf << " " EthNavy << std::left << std::setw(8)
+            m_sstr << _id << " " EthViolet << buf << " " EthBlue << std::left << std::setw(8)
                    << getThreadName() << " " EthReset;
         }
     }

@@ -1,18 +1,18 @@
 /*
-    This file is part of cpp-ethereum.
+    This file is part of ethminer.
 
-    cpp-ethereum is free software: you can redistribute it and/or modify
+    ethminer is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    cpp-ethereum is distributed in the hope that it will be useful,
+    ethminer is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+    along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <CLI/CLI.hpp>
@@ -267,7 +267,7 @@ public:
 
 #if API_CORE
         app.add_option("--api-bind", m_api_bind,
-               "Set the api address:port the miner should listen to. Use negative port number for "
+               "Set the API address:port the miner should listen to. Use negative port number for "
                "readonly mode",
                true)
             ->group(APIGroup)
@@ -283,20 +283,20 @@ public:
                 return string("");
             });
         app.add_option("--api-port", m_api_port,
-               "Set the api port, the miner should listen to. Use 0 to disable. Use negative "
+               "Set the API port, the miner should listen to. Use 0 to disable. Use negative "
                "numbers for readonly mode",
                true)
             ->group(APIGroup)
             ->check(CLI::Range(-65535, 65535));
 
         app.add_option("--api-password", m_api_password,
-               "Set the password to protect interaction with Api server. If not set any connection "
+               "Set the password to protect interaction with API server. If not set, any connection "
                "is granted access. "
-               "Be advised passwords are sent unencrypted over plain tcp !!")
+               "Be advised passwords are sent unencrypted over plain TCP!!")
             ->group(APIGroup);
 
         app.add_option("--http-bind", m_http_bind,
-               "Set the web api address:port the miner should listen to.", true)
+               "Set the web API address:port the miner should listen to.", true)
             ->group(APIGroup)
             ->check([this](const string& bind_arg) -> string {
                 string errormsg;
@@ -308,7 +308,7 @@ public:
                 if (port < 0)
                 {
                     throw CLI::ValidationError("--http-bind",
-                        "the web api does not have read/write modes, specify a positive port "
+                        "the web API does not have read/write modes, specify a positive port "
                         "number between 1-65535");
                 }
                 this->m_http_port = static_cast<uint16_t>(port);
@@ -318,7 +318,7 @@ public:
             });
 
         app.add_option("--http-port", m_http_port,
-               "Set the web api port, the miner should listen to. Use 0 to disable. Data shown "
+               "Set the web API port, the miner should listen to. Use 0 to disable. Data shown "
                "depends on hwmon setting",
                true)
             ->group(APIGroup)
@@ -469,39 +469,34 @@ public:
             ->check(CLI::Range(30, 100));
 
         stringstream ssHelp;
-        ssHelp << "Pool URL Specification:" << endl
-               << "    URL takes the form: scheme://user[:password]@hostname:port[/emailaddress]."
-               << endl
-               << "    for getwork use one of the following schemes:" << endl
-               << "      " << URI::KnownSchemes(ProtocolFamily::GETWORK) << endl
-               << "    for stratum use one of the following schemes: " << endl
-               << "      " << URI::KnownSchemes(ProtocolFamily::STRATUM) << endl
-               << "    Stratum variants:" << endl
-               << "      stratum:  official stratum spec: ethpool, ethermine, coinotron, mph, "
-                  "nanopool (default)"
-               << endl
-               << "      stratum1: eth-proxy compatible: dwarfpool, f2pool, nanopool (required for "
-                  "hashrate reporting to work with nanopool)"
-               << endl
-               << "      stratum2: EthereumStratum/1.0.0: nicehash" << endl
-               << "    Example 1: "
-                  "stratum+ssl://0x012345678901234567890234567890123.miner1@ethermine.org:5555"
-               << endl
-               << "    Example 2: "
-                  "stratum1+tcp://0x012345678901234567890234567890123.miner1@nanopool.org:9999/"
-                  "john.doe@gmail.com"
-               << endl
-               << "    Example 3: "
-                  "stratum1+tcp://0x012345678901234567890234567890123@nanopool.org:9999/miner1/"
-                  "john.doe@gmail.com"
-               << endl
-               << endl
-               << "Environment Variables:" << endl
-               << "    NO_COLOR - set to any value to disable color output. Unset to re-enable "
-                  "color output."
-               << endl
-               << "    SYSLOG   - set to any value to strip time and disable color from output, "
-                  "for logging under systemd";
+        ssHelp
+            << "Pool URL Specification:" << endl
+            << "    URL takes the form: scheme://user[.workername][:password]@hostname:port[/...]."
+            << endl
+            << "    where scheme can be any of:" << endl
+            << "    getwork     for getWork mode" << endl
+            << "    stratum     for stratum mode" << endl
+            << "    stratums    for secure stratum mode" << endl
+            << "    stratumss   for secure stratum mode with strong TLS12 verification" << endl
+            << endl
+            << "    Example 1:"
+               "    stratums://0x012345678901234567890234567890123.miner1@ethermine.org:5555"
+            << endl
+            << "    Example 2:"
+               "    stratum://0x012345678901234567890234567890123.miner1@nanopool.org:9999/"
+               "john.doe@gmail.com"
+            << endl
+            << "    Example 3:"
+               "    stratum://0x012345678901234567890234567890123@nanopool.org:9999/miner1/"
+               "john.doe@gmail.com"
+            << endl
+            << endl
+            << "Environment Variables:" << endl
+            << "    NO_COLOR - set to any value to disable color output. Unset to re-enable "
+               "color output."
+            << endl
+            << "    SYSLOG   - set to any value to strip time and disable color from output, "
+               "for logging under systemd";
         app.footer(ssHelp.str());
 
         try
@@ -747,7 +742,7 @@ private:
         genesis.setNumber(m_benchmarkBlock);
         genesis.setDifficulty(u256(1) << 64);
 
-        Farm f(m_io_service);
+        Farm f(m_io_service, m_show_hwmonitors, m_show_power);
         map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
         sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances,
@@ -794,11 +789,11 @@ private:
             auto mp = f.miningProgress();
             if (!i)
                 continue;
-            auto rate = mp.rate();
+            auto rate = uint64_t(mp.hashRate);
 
             cout << rate << endl;
             results.push_back(rate);
-            mean += rate;
+            mean += uint64_t(rate);
         }
         sort(results.begin(), results.end());
         cout << "min/mean/max: " << results.front() << "/" << (mean / _trials) << "/"
@@ -858,7 +853,7 @@ private:
         }
 
         // sealers, m_minerType
-        Farm f(m_io_service);
+        Farm f(m_io_service, m_show_hwmonitors, m_show_power);
         f.setSealers(sealers);
 
         PoolManager mgr(m_io_service, client, f, m_minerType, m_maxFarmRetries, m_failovertimeout);
@@ -910,9 +905,8 @@ private:
             }
             if (mgr.isConnected())
             {
-                auto mp = f.miningProgress(m_show_hwmonitors, m_show_power);
-                minelog << mp << ' ' << f.getSolutionStats() << ' '
-                        << f.farmLaunchedFormatted();
+                auto mp = f.miningProgress();
+                minelog << mp << ' ' << f.getSolutionStats() << ' ' << f.farmLaunchedFormatted();
 
 #if ETH_DBUS
                 dbusint.send(toString(mp).c_str());
@@ -935,7 +929,7 @@ private:
         mgr.stop();
         stop_io_service();
 
-        cnote << "Terminated !";
+        cnote << "Terminated!";
         exit(0);
     }
 

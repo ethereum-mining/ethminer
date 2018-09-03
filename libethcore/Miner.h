@@ -1,22 +1,18 @@
 /*
- This file is part of cpp-ethereum.
+ This file is part of ethminer.
 
- cpp-ethereum is free software: you can redistribute it and/or modify
+ ethminer is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
 
- cpp-ethereum is distributed in the hope that it will be useful,
+ ethminer is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
- */
-/** @file Miner.h
- * @author Gav Wood <i@gavwood.com>
- * @date 2015
+ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -24,7 +20,9 @@
 #include <list>
 #include <string>
 #include <thread>
+#include <numeric>
 
+#include <boost/circular_buffer.hpp>
 #include <boost/timer.hpp>
 
 #include "EthashAux.h"
@@ -79,18 +77,19 @@ struct HwMonitor
     double powerW = 0;
 };
 
-inline std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
-{
-    os << _hw.tempC << "C " << _hw.fanP << "%";
-    if (_hw.powerW)
-        os << ' ' << fixed << setprecision(0) << _hw.powerW << "W";
-    return os;
-}
+std::ostream& operator<<(std::ostream& os, HwMonitor _hw);
 
+class FormattedMemSize
+{
+public:
+    explicit FormattedMemSize(uint64_t s) noexcept { m_size = s; }
+    uint64_t m_size;
+};
+
+std::ostream& operator<<(std::ostream& os, FormattedMemSize s);
 
 /// Pause mining
-typedef enum
-{
+typedef enum {
     MINING_NOT_PAUSED = 0x00000000,
     MINING_PAUSED_WAIT_FOR_T_START = 0x00000001,
     MINING_PAUSED_API = 0x00000002
@@ -128,46 +127,14 @@ struct MiningPause
 /// Describes the progress of a mining operation.
 struct WorkingProgress
 {
-    uint64_t hashes = 0;  ///< Total number of hashes computed.
-    uint64_t ms = 0;      ///< Total number of milliseconds of mining thus far.
-    uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
+    float hashRate = 0.0;
 
-    std::vector<uint64_t> minersHashes;
+    std::vector<float> minersHashRates;
     std::vector<bool> miningIsPaused;
     std::vector<HwMonitor> minerMonitors;
-    uint64_t minerRate(const uint64_t hashCount) const
-    {
-        return ms == 0 ? 0 : hashCount * 1000 / ms;
-    }
 };
 
-inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
-{
-    float mh = _p.rate() / 1000000.0f;
-    _out << "Speed " << EthTealBold << std::fixed << std::setprecision(2) << mh << EthReset
-         << " Mh/s";
-
-    for (size_t i = 0; i < _p.minersHashes.size(); ++i)
-    {
-        mh = _p.minerRate(_p.minersHashes[i]) / 1000000.0f;
-
-        if (_p.miningIsPaused.size() == _p.minersHashes.size())
-        {
-            // red color if mining is paused on this gpu
-            if (_p.miningIsPaused[i])
-            {
-                _out << EthRed;
-            }
-        }
-
-        _out << " gpu" << i << " " << EthTeal << std::fixed << std::setprecision(2) << mh
-             << EthReset;
-        if (_p.minerMonitors.size() == _p.minersHashes.size())
-            _out << " " << EthTeal << _p.minerMonitors[i] << EthReset;
-    }
-
-    return _out;
-}
+std::ostream& operator<<(std::ostream& _out, WorkingProgress _p);
 
 class SolutionStats
 {
@@ -193,17 +160,7 @@ private:
     unsigned acceptedStales = 0;
 };
 
-inline std::ostream& operator<<(std::ostream& os, SolutionStats s)
-{
-    os << "[A" << s.getAccepts();
-    if (s.getAcceptedStales())
-        os << "+" << s.getAcceptedStales();
-    if (s.getRejects())
-        os << ":R" << s.getRejects();
-    if (s.getFailures())
-        os << ":F" << s.getFailures();
-    return os << "]";
-}
+std::ostream& operator<<(std::ostream& os, SolutionStats s);
 
 class Miner;
 
@@ -242,7 +199,8 @@ class Miner : public Worker
 public:
     Miner(std::string const& _name, FarmFace& _farm, size_t _index)
       : Worker(_name + std::to_string(_index)), index(_index), farm(_farm)
-    {}
+    {
+    }
 
     virtual ~Miner() = default;
 
@@ -251,20 +209,14 @@ public:
         {
             Guard l(x_work);
             m_work = _work;
-            workSwitchStart = std::chrono::steady_clock::now();
+            if (g_logVerbosity >= 6)
+                workSwitchStart = std::chrono::steady_clock::now();
         }
         kick_miner();
     }
 
-    uint64_t RetrieveAndClearHashCount()
-    {
-        auto expected = m_hashCount.load(std::memory_order_relaxed);
-        while (!m_hashCount.compare_exchange_weak(expected, 0, std::memory_order_relaxed))
-            ;
-        return expected;
-    }
-
     unsigned Index() { return index; };
+
     HwMonitorInfo hwmonInfo() { return m_hwmoninfo; }
 
     uint64_t get_start_nonce()
@@ -320,6 +272,8 @@ public:
 
     bool is_mining_paused() { return m_mining_paused.is_mining_paused(); }
 
+    float RetrieveHashRate() { return m_hashRate.load(std::memory_order_relaxed); }
+
 protected:
     /**
      * @brief No work left to be done. Pause until told to kickOff().
@@ -332,7 +286,18 @@ protected:
         return m_work;
     }
 
-    void addHashCount(uint64_t _n) { m_hashCount.fetch_add(_n, std::memory_order_relaxed); }
+    inline void updateHashRate(uint64_t _n)
+    {
+        using namespace std::chrono;
+        steady_clock::time_point t = steady_clock::now();
+        auto us = duration_cast<microseconds>(t - m_hashTime).count();
+        m_hashTime = t;
+
+        float hr = 0.0;
+        if (us)
+            hr = (float(_n) * 1.0e6f) / us;
+        m_hashRate.store(hr, std::memory_order_relaxed);
+    }
 
     static unsigned s_dagLoadMode;
     static unsigned s_dagLoadIndex;
@@ -347,10 +312,11 @@ protected:
     HwMonitorInfo m_hwmoninfo;
 
 private:
-    std::atomic<uint64_t> m_hashCount = {0};
     MiningPause m_mining_paused;
     WorkPackage m_work;
     mutable Mutex x_work;
+    std::chrono::steady_clock::time_point m_hashTime = std::chrono::steady_clock::now();
+    std::atomic<float> m_hashRate = {0.0};
 };
 
 }  // namespace eth

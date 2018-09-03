@@ -292,6 +292,8 @@ void CLMiner::workLoop()
 
     uint64_t startNonce = 0;
 
+    const uint8_t kIntervalPasses = 4;  // must be a power of 2 passes
+
     // The work package currently processed by GPU.
     WorkPackage current;
     current.header = h256{1u};
@@ -428,7 +430,12 @@ void CLMiner::workLoop()
             startNonce += results.hashCount * m_workgroupSize;
 
             // Report hash count
-            addHashCount(results.hashCount * m_workgroupSize);
+            m_hashCount += results.hashCount;
+            if ((++m_searchPasses & (kIntervalPasses - 1)) == 0)
+            {
+                updateHashRate(m_hashCount * m_workgroupSize);
+                m_hashCount = 0;
+            }
         }
         m_queue[0].finish();
     }
@@ -541,14 +548,14 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMult
         if (result >= dagSize)
         {
             cnote << "Found suitable OpenCL device [" << device.getInfo<CL_DEVICE_NAME>()
-                  << "] with " << result << " bytes of GPU memory";
+                  << "] with " << FormattedMemSize(result) << " of GPU memory";
             foundSuitableDevice = true;
         }
         else
         {
             cnote << "OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
-                  << " has insufficient GPU memory." << result << " bytes of memory found < "
-                  << dagSize << " bytes of memory required";
+                  << " has insufficient GPU memory." << FormattedMemSize(result)
+                  << " GB of memory found < " << FormattedMemSize(dagSize) << " of memory required";
         }
     }
     if (foundSuitableDevice)
@@ -781,18 +788,20 @@ bool CLMiner::init(int epoch)
         m_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
         if (result < dagSize)
         {
-            cnote << "OpenCL device " << device_name << " has insufficient GPU memory." << result
-                  << " bytes of memory found < " << dagSize << " bytes of memory required";
+            cnote << "OpenCL device " << device_name << " has insufficient GPU memory."
+                  << FormattedMemSize(result) << " of memory found, " << FormattedMemSize(dagSize)
+                  << " of memory required";
             return false;
         }
 
         // create buffer for dag
         try
         {
-            cllog << "Creating light cache buffer, size: " << lightSize;
+            cllog << "Creating light cache buffer, size: " << FormattedMemSize(lightSize);
             m_light.clear();
             m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, lightSize));
-            cllog << "Creating DAG buffer, size: " << dagSize;
+            cllog << "Creating DAG buffer, size: " << FormattedMemSize(dagSize)
+                  << ", free: " << FormattedMemSize(result - lightSize - dagSize);
             m_dag.clear();
             m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, dagSize));
             cllog << "Loading kernels";
@@ -858,8 +867,8 @@ bool CLMiner::init(int epoch)
         auto endDAG = std::chrono::steady_clock::now();
 
         auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(endDAG - startDAG);
-        float gb = (float)dagSize / (1024 * 1024 * 1024);
-        cnote << gb << " GB of DAG data generated in " << dagTime.count() << " ms.";
+        cnote << FormattedMemSize(dagSize) << " of DAG data generated in " << dagTime.count()
+              << " ms.";
     }
     catch (cl::Error const& err)
     {
@@ -870,3 +879,4 @@ bool CLMiner::init(int epoch)
     }
     return true;
 }
+
