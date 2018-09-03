@@ -852,8 +852,8 @@ Json::Value ApiConnection::getMinerStatHR()
     runtime << toString(runningTime.count());
     poolAddresses << m_farm.get_pool_addresses();
 
-    assert(p.minersHashes.size() == p.minerMonitors.size() || p.minerMonitors.size() == 0);
-    assert(p.minersHashes.size() == p.miningIsPaused.size());
+    assert(p.minersHashRates.size() == p.minerMonitors.size() || p.minerMonitors.size() == 0);
+    assert(p.minersHashRates.size() == p.miningIsPaused.size());
 
     for (unsigned gpuIndex = 0; gpuIndex < p.minersHashRates.size(); gpuIndex++)
     {
