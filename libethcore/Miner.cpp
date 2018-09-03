@@ -33,19 +33,6 @@ bool Miner::s_exit = false;
 
 bool Miner::s_noeval = false;
 
-void Miner::updateHashRate(uint64_t n)
-{
-    m_hashCounter = n;
-    std::chrono::steady_clock::time_point t = std::chrono::steady_clock::now();
-    float us = float(std::chrono::duration_cast<std::chrono::microseconds>(t - m_hashTime).count());
-    m_hashTime = t;
-
-    float hr = 0;
-    if (us)
-        hr = float(m_hashCounter) / (us / 1000000.0);
-    m_hashRate.store(hr, std::memory_order_relaxed);
-}
-
 std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
 {
     os << _hw.tempC << "C " << _hw.fanP << "%";
