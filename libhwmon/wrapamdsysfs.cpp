@@ -232,12 +232,12 @@ wrap_amdsysfs_handle* wrap_amdsysfs_create()
                             iFunction == (int)topology.pcie.function)
                         {
 #if 0
-							printf("[DEBUG] - SYSFS GPU[%d]%d,%d,%d matches OpenCL GPU[%d]%d,%d,%d\n",
-								i,
-								iBus,
-								iDevice,
-								iFunction,
-								j, (int)topology.pcie.bus, (int)topology.pcie.device, (int)topology.pcie.function);
+                            printf("[DEBUG] - SYSFS GPU[%d]%d,%d,%d matches OpenCL GPU[%d]%d,%d,%d\n",
+                                i,
+                                iBus,
+                                iDevice,
+                                iFunction,
+                                j, (int)topology.pcie.bus, (int)topology.pcie.device, (int)topology.pcie.function);
 #endif
                             sysfsh->sysfs_opencl_device_id[i] = j;
                             sysfsh->opencl_sysfs_device_id[j] = i;

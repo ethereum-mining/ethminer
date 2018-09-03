@@ -816,7 +816,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 {
                     cnote << "Stratum mode detected: STRATUM";
                 }
-                
+
                 m_subscribed.store(_isSuccess, std::memory_order_relaxed);
                 if (!m_subscribed)
                 {
@@ -1199,7 +1199,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 m_io_service.post(
                     m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
             }
-            
         }
         else if (_method == "mining.set_extranonce" &&
                  m_conn->StratumMode() == EthStratumClient::ETHEREUMSTRATUM)
