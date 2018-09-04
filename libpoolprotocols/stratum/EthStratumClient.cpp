@@ -418,7 +418,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
     if (m_response_pleas_count.load(std::memory_order_relaxed))
     {
         milliseconds response_delay_ms(0);
-        steady_clock::time_point m_response_plea_time(m_response_plea_older);
+        steady_clock::time_point m_response_plea_time(m_response_plea_older.load(std::memory_order_relaxed));
 
         // Check responses while in connection/disconnection phase
         if (isPendingState())
