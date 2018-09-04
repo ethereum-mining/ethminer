@@ -176,34 +176,42 @@ public:
 
     void accepted(unsigned miner_index)
     {
-        extendArray(m_accepts, 0u, miner_index);
+        if (m_accepts.size() <= miner_index)
+            m_accepts.resize(miner_index + 1);
         m_accepts[miner_index]++;
         auto now = std::chrono::steady_clock::now();
-        extendArray(m_lastUpdated, now, miner_index);
+        if (m_lastUpdated.size() <= miner_index)
+            m_lastUpdated.resize(miner_index + 1, now);
         m_lastUpdated[miner_index] = now;
     }
     void rejected(unsigned miner_index)
     {
-        extendArray(m_rejects, 0u, miner_index);
+        if (m_rejects.size() <= miner_index)
+            m_rejects.resize(miner_index + 1);
         m_rejects[miner_index]++;
         auto now = std::chrono::steady_clock::now();
-        extendArray(m_lastUpdated, now, miner_index);
+        if (m_lastUpdated.size() <= miner_index)
+            m_lastUpdated.resize(miner_index + 1, now);
         m_lastUpdated[miner_index] = now;
     }
     void failed(unsigned miner_index)
     {
-        extendArray(m_failures, 0u, miner_index);
+        if (m_failures.size() <= miner_index)
+            m_failures.resize(miner_index + 1);
         m_failures[miner_index]++;
         auto now = std::chrono::steady_clock::now();
-        extendArray(m_lastUpdated, now, miner_index);
+        if (m_lastUpdated.size() <= miner_index)
+            m_lastUpdated.resize(miner_index + 1, now);
         m_lastUpdated[miner_index] = now;
     }
     void acceptedStale(unsigned miner_index)
     {
-        extendArray(m_acceptedStales, 0u, miner_index);
+        if (m_acceptedStales.size() <= miner_index)
+            m_acceptedStales.resize(miner_index + 1);
         m_acceptedStales[miner_index]++;
         auto now = std::chrono::steady_clock::now();
-        extendArray(m_lastUpdated, now, miner_index);
+        if (m_lastUpdated.size() <= miner_index)
+            m_lastUpdated.resize(miner_index + 1, now);
         m_lastUpdated[miner_index] = now;
     }
 
@@ -250,18 +258,6 @@ private:
         for (size_t i = 0; i < array.size(); i++)
             r += array[i];
         return r;
-    }
-
-    template <typename T>
-    void extendArray(std::vector<T>& array, const T& initial_value, const size_t n) const
-    {
-        if (array.size() <= n)
-        {
-            do
-            {
-                array.push_back(initial_value);
-            } while (array.size() <= n);
-        }
     }
 
     std::vector<unsigned> m_accepts = {};
