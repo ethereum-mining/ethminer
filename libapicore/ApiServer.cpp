@@ -2,6 +2,9 @@
 
 #include <ethminer/buildinfo.h>
 
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX 255
+#endif
 
 /* helper functions getting values from a JSON request */
 static bool getRequestValue(const char* membername, bool& refValue, Json::Value& jRequest,
@@ -932,7 +935,7 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
     jshares["acceptedstale"] = s.getAcceptedStales(index);
     auto solution_lastupdated = std::chrono::duration_cast<std::chrono::minutes>(
         std::chrono::steady_clock::now() - s.getLastUpdated(index));
-    jshares["lastupdate"] = solution_lastupdated.count();
+    jshares["lastupdate"] = uint64_t(solution_lastupdated.count());
     jRes["shares"] = jshares;
 
 
@@ -992,7 +995,7 @@ Json::Value ApiConnection::getMinerStatDetail()
     Json::Value jRes;
 
     jRes["version"] = ethminer_get_buildinfo()->project_name_with_version;  // miner version.
-    jRes["runtime"] = runningTime.count();  // running time, in minutes.
+    jRes["runtime"] = uint64_t(runningTime.count());  // running time, in minutes.
 
     {
         // Even the client should know which host was queried
