@@ -128,19 +128,14 @@ struct MiningPause
 
     std::string get_mining_paused_string(const MinigPauseReason& pause_reason)
     {
-        std::string seperator = "";
-        std::string r = "";
+        std::string r;
 
         if (pause_reason & MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START)
-        {
-            r += seperator + "temperature";
-            seperator = ",";
-        }
+            r = "temperature";
+
         if (pause_reason & MinigPauseReason::MINING_PAUSED_API)
-        {
-            r += seperator + "api";
-            seperator = ",";
-        }
+            r += (string)(r.empty() ? "" : ",") + "api";
+
         return r;
     }
 
