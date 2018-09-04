@@ -246,6 +246,24 @@ public:
         return m_lastUpdated[miner_index];
     }
 
+    std::string getString(unsigned miner_index)
+    {
+        ostringstream r;
+        auto stales = getAcceptedStales(miner_index);
+        auto rejects = getRejects(miner_index);
+        auto failures = getFailures(miner_index);
+
+        r << "[A" << getAccepts(miner_index);
+        if (stales)
+            r << "+" << stales;
+        if (rejects)
+            r << ":R" << rejects;
+        if (failures)
+            r << ":F" << failures;
+        r << "]";
+        return r.str();
+    }
+
 private:
     unsigned sumArray(const std::vector<unsigned>& array) const
     {

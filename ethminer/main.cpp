@@ -906,7 +906,19 @@ private:
             if (mgr.isConnected())
             {
                 auto mp = f.miningProgress();
-                minelog << mp << ' ' << f.getSolutionStats() << ' ' << f.farmLaunchedFormatted();
+                auto solstats = f.getSolutionStats();
+                minelog << mp << ' ' << solstats << ' ' << f.farmLaunchedFormatted();
+
+                if (g_logVerbosity >= 5)
+                {
+                    ostringstream statdetails;
+                    for (size_t i = 0; i < f.getMiners().size(); i++)
+                    {
+                        if (i) statdetails << " ";
+                        statdetails << "gpu" << i << ":" << solstats.getString(i);
+                    }
+                    minelog << statdetails.str();
+                }
 
 #if ETH_DBUS
                 dbusint.send(toString(mp).c_str());
