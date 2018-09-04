@@ -650,16 +650,24 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             return;
         }
 
-        auto miner = m_farm.getMiner(index);
-        if (pause)
+        auto const &miner = m_farm.getMiner(index);
+        if (miner)
         {
-            miner->set_mining_paused(MinigPauseReason::MINING_PAUSED_API);
+            if (pause)
+            {
+                miner->set_mining_paused(MinigPauseReason::MINING_PAUSED_API);
+            }
+            else
+            {
+                miner->clear_mining_paused(MinigPauseReason::MINING_PAUSED_API);
+            }
+            jResponse["result"] = true;
         }
         else
         {
-            miner->clear_mining_paused(MinigPauseReason::MINING_PAUSED_API);
+            jResponse["result"] = false;
         }
-        jResponse["result"] = true;
+
     }
 
     else if (_method == "miner_setverbosity")
@@ -938,13 +946,14 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
     // TODO: PCI ID, Name, ... (some more infos - see listDevices())
 
     /* Pause infos */
-    if (index < p.miningIsPaused.size())
-    {
-        MinigPauseReason pause_reason = miner->get_mining_paused();
-        MiningPause m;
-        jRes["ispaused"] = m.is_mining_paused(pause_reason);
-        jRes["pause_reason"] = m.get_mining_paused_string(pause_reason);
-    }
+    if (miner)
+        if (index < p.miningIsPaused.size())
+        {
+            MinigPauseReason pause_reason = miner->get_mining_paused();
+            MiningPause m;
+            jRes["ispaused"] = m.is_mining_paused(pause_reason);
+            jRes["pause_reason"] = m.get_mining_paused_string(pause_reason);
+        }
 
     /* Nonce infos */
     auto segment_width = m_farm.get_segment_width();
