@@ -1547,7 +1547,7 @@ std::chrono::milliseconds EthStratumClient::dequeue_response_plea()
 {
     using namespace std::chrono;
 
-    steady_clock::time_point response_plea_time(m_response_plea_older);
+    steady_clock::time_point response_plea_time(m_response_plea_older.load(std::memory_order_relaxed));
     milliseconds response_delay_ms =
         duration_cast<milliseconds>(steady_clock::now() - response_plea_time);
 
