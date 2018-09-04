@@ -465,20 +465,23 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                     jRes["id"] = unsigned(1);
                     jRes["result"] = Json::nullValue;
                     jRes["error"] = true;
+                    clear_response_pleas();
                     m_io_service.post(m_io_strand.wrap(
                         boost::bind(&EthStratumClient::processResponse, this, jRes)));
-                    return;
+                }
+                else
+                {
+                    // Waiting for a response to solution submission
+                    dev::setThreadName("stratum");
+                    cwarn << "No response received in " << m_responsetimeout << " seconds.";
+                    m_endpoints.pop();
+                    m_subscribed.store(false, std::memory_order_relaxed);
+                    m_authorized.store(false, std::memory_order_relaxed);
+                    clear_response_pleas();
+                    m_io_service.post(
+                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
                 }
 
-                // Waiting for a response to solution submission
-                dev::setThreadName("stratum");
-                cwarn << "No response received in " << m_responsetimeout << " seconds.";
-                m_endpoints.pop();
-                m_subscribed.store(false, std::memory_order_relaxed);
-                m_authorized.store(false, std::memory_order_relaxed);
-                m_io_service.post(
-                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
-                return;
             }
 
             // Check how old is last job received
@@ -490,9 +493,9 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                 m_endpoints.pop();
                 m_subscribed.store(false, std::memory_order_relaxed);
                 m_authorized.store(false, std::memory_order_relaxed);
+                clear_response_pleas();
                 m_io_service.post(
                     m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
-                return;
             }
         }
     }
