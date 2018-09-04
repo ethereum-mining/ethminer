@@ -52,19 +52,26 @@ void SimulateClient::submitSolution(const Solution& solution)
 {
     m_uppDifficulty = true;
     cnote << "Difficulty:" << m_difficulty;
-    if (EthashAux::eval(solution.work.epoch, solution.work.header, solution.nonce).value <
-        solution.work.boundary)
+    std::chrono::steady_clock::time_point submit_start = std::chrono::steady_clock::now();
+    bool accepted =
+        EthashAux::eval(solution.work.epoch, solution.work.header, solution.nonce).value <
+        solution.work.boundary;
+    std::chrono::milliseconds response_delay_ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - submit_start);
+
+    if (accepted)
     {
         if (m_onSolutionAccepted)
         {
-            m_onSolutionAccepted(false);
+            m_onSolutionAccepted(false, response_delay_ms);
         }
     }
     else
     {
         if (m_onSolutionRejected)
         {
-            m_onSolutionRejected(false);
+            m_onSolutionRejected(false, response_delay_ms);
         }
     }
 }

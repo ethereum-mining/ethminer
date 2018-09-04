@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-#include <boost/lockfree/queue.hpp>
-
 #include <json/json.h>
 
 #include <libdevcore/Worker.h>
@@ -59,7 +57,6 @@ private:
     PoolClient* p_client;
     Farm& m_farm;
     MinerType m_minerType;
-    boost::lockfree::queue<std::chrono::steady_clock::time_point> m_submit_times;
 
     int m_lastEpoch = 0;
 };

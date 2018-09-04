@@ -37,8 +37,8 @@ public:
     virtual bool isPendingState() = 0;
     virtual string ActiveEndPoint() = 0;
 
-    using SolutionAccepted = std::function<void(bool const&)>;
-    using SolutionRejected = std::function<void(bool const&)>;
+    using SolutionAccepted = std::function<void(bool const&, std::chrono::milliseconds const&)>;
+    using SolutionRejected = std::function<void(bool const&, std::chrono::milliseconds const&)>;
     using Disconnected = std::function<void()>;
     using Connected = std::function<void()>;
     using WorkReceived = std::function<void(WorkPackage const&)>;
