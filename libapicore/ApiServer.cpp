@@ -935,7 +935,7 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
     jshares["acceptedstale"] = s.getAcceptedStales(index);
     auto solution_lastupdated = std::chrono::duration_cast<std::chrono::minutes>(
         std::chrono::steady_clock::now() - s.getLastUpdated(index));
-    jshares["lastupdate"] = uint64_t(solution_lastupdated.count());
+    jshares["lastupdate"] = uint64_t(solution_lastupdated.count()); // last update of this gpu stat was x minutes ago
     jRes["shares"] = jshares;
 
 
@@ -981,8 +981,8 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
 Json::Value ApiConnection::getMinerStatDetail()
 {
 /* TODO:
-   Should we always retur all values or just those we got ?
-   For API clients it can be painfull to check each item for existance
+   Should we always return all values or just those we got ?
+   For API clients it's usually painfull to check each item for existence
 */
     auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
         std::chrono::steady_clock::now() - m_farm.farmLaunched());
@@ -1003,12 +1003,6 @@ Json::Value ApiConnection::getMinerStatDetail()
         if (!gethostname(hostName, HOST_NAME_MAX + 1))
             jRes["hostname"] = hostName;
     }
-
-#if 0
-    ostringstream poolAddresses;
-    poolAddresses << m_farm.get_pool_addresses();
-    //jRes["pooladdr"] = poolAddresses.str();  // current mining pool.
-#endif
 
     /* connection info */
     auto connection = m_mgr.getActiveConnection();
