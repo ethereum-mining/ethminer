@@ -132,4 +132,6 @@ private:
 
     bool m_submit_hashrate;
     std::string m_submit_hashrate_id;
+
+    unsigned m_solution_submitted_max_id; // greatest id we sent a solution
 };

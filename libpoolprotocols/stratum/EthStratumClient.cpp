@@ -307,6 +307,7 @@ void EthStratumClient::disconnect_finalize()
     // Clear plea queue and stop timing
     std::chrono::steady_clock::time_point m_response_plea_time;
     clear_response_pleas();
+    m_solution_submitted_max_id = 0;
 
     // Put the actor back to sleep
     m_workloop_timer.expires_at(boost::posix_time::pos_infin);
@@ -378,6 +379,7 @@ void EthStratumClient::start_connect()
         clear_response_pleas();
         m_connecting.store(true, std::memory_order::memory_order_relaxed);
         enqueue_response_plea();
+        m_solution_submitted_max_id = 0;
 
         // Start connecting async
         if (m_conn->SecLevel() != SecureLevel::NONE)
@@ -745,8 +747,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                                    // _isNotification = false)
     string _errReason = "";        // Content of the error reason
     string _method = "";           // The method of the notification (or request from pool)
-    int _id = 0;  // This SHOULD be the same id as the request it is responding to (known exception
-                  // is ethermine.org using 999)
+    unsigned _id = 0;  // This SHOULD be the same id as the request it is responding to (known exception
+                       // is ethermine.org using 999)
 
 
     // Retrieve essential values
@@ -790,13 +792,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
         Json::Value jResult = responseObject.get("result", Json::Value::null);
         std::chrono::milliseconds response_delay_ms(0);
 
-        if (_id >= 10 && _id <= 30) /* allow up to max 20 GPUs */
-            goto respond_to_submit_solution;
-
-        switch (_id)
+        if (_id == 1)
         {
-        case 1:
-
             response_delay_ms = dequeue_response_plea();
 
             /*
@@ -977,10 +974,10 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             }
 
             sendSocketData(jReq);
-            break;
+        }
 
-        case 2:
-
+        else if (_id == 2)
+        {
             // This is the response to mining.extranonce.subscribe
             // according to this
             // https://github.com/nicehash/Specifications/blob/master/NiceHash_extranonce_subscribe_extension.txt
@@ -989,11 +986,10 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             // changes correctly
 
             // Nothing to do here.
+        }
 
-            break;
-
-        case 3:
-
+        else if (_id == 3)
+        {
             response_delay_ms = dequeue_response_plea();
 
             // Response to "mining.authorize"
@@ -1029,13 +1025,10 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     m_onConnected();
                 }
             }
+        }
 
-            break;
-
-        // case 4:
-        // case 10 till case 30
-respond_to_submit_solution:
-
+        else if (_id >= 40 && _id <= m_solution_submitted_max_id)
+        {
             response_delay_ms = dequeue_response_plea();
 
             // Response to solution submission mining.submit
@@ -1049,7 +1042,7 @@ respond_to_submit_solution:
             }
 
             {
-                const unsigned miner_index = _id - 10;
+                const unsigned miner_index = _id - 40;
                 dequeue_response_plea();
                 if (_isSuccess)
                 {
@@ -1068,11 +1061,10 @@ respond_to_submit_solution:
                     }
                 }
             }
-            break;
+        }
 
-
-        case 5:
-
+        else if (_id == 5)
+        {
             // This is the response we get on first get_work request issued
             // in mode EthStratumClient::ETHPROXY
             // thus we change it to a mining.notify notification
@@ -1082,10 +1074,10 @@ respond_to_submit_solution:
                 _method = "mining.notify";
                 _isNotification = true;
             }
-            break;
+        }
 
-        case 9:
-
+        else if (_id == 9)
+        {
             // Response to hashrate submit
             // Shall we do anything ?
             // Hashrate submit is actually out of stratum spec
@@ -1094,10 +1086,10 @@ respond_to_submit_solution:
                 cwarn << "Submit hashRate failed:"
                       << (_errReason.empty() ? "Unspecified error" : _errReason);
             }
-            break;
+        }
 
-        case 999:
-
+        else if (_id == 999)
+        {
             // This unfortunate case should not happen as none of the outgoing requests is marked
             // with id 999 However it has been tested that ethermine.org responds with this id when
             // error replying to either mining.subscribe (1) or mining.authorize requests (3) To
@@ -1126,15 +1118,13 @@ respond_to_submit_solution:
                     return;
                 }
             };
+        }
 
-            break;
-
-
-        default:
+        else
+        {
 
             cnote << "Got response for unknown message id [" << _id << "] Discarding...";
             return;
-            break;
         }
     }
 
@@ -1351,7 +1341,9 @@ void EthStratumClient::submitSolution(const Solution& solution, unsigned const& 
 
     Json::Value jReq;
 
-    jReq["id"] = unsigned(10) + miner_index;
+    unsigned id = 40 + miner_index;
+    jReq["id"] = id;
+    m_solution_submitted_max_id = max(m_solution_submitted_max_id, id);
     jReq["method"] = "mining.submit";
     jReq["params"] = Json::Value(Json::arrayValue);
 
