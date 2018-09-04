@@ -420,7 +420,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
     if (m_response_pleas_count.load(std::memory_order_relaxed))
     {
         milliseconds response_delay_ms(0);
-        steady_clock::time_point m_response_plea_time(m_response_plea_older);
+        steady_clock::time_point m_response_plea_time(m_response_plea_older.load(std::memory_order_relaxed));
 
         // Check responses while in connection/disconnection phase
         if (isPendingState())
@@ -457,7 +457,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
             response_delay_ms =
                 duration_cast<milliseconds>(steady_clock::now() - m_response_plea_time);
 
-            if ((m_responsetimeout * 1000) >= response_delay_ms.count())
+            if (response_delay_ms.count() >= (m_responsetimeout * 1000))
             {
                 if (m_conn->StratumModeConfirmed() == false && m_conn->IsUnrecoverable() == false)
                 {
@@ -467,20 +467,23 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                     jRes["id"] = unsigned(1);
                     jRes["result"] = Json::nullValue;
                     jRes["error"] = true;
+                    clear_response_pleas();
                     m_io_service.post(m_io_strand.wrap(
                         boost::bind(&EthStratumClient::processResponse, this, jRes)));
-                    return;
+                }
+                else
+                {
+                    // Waiting for a response to solution submission
+                    dev::setThreadName("stratum");
+                    cwarn << "No response received in " << m_responsetimeout << " seconds.";
+                    m_endpoints.pop();
+                    m_subscribed.store(false, std::memory_order_relaxed);
+                    m_authorized.store(false, std::memory_order_relaxed);
+                    clear_response_pleas();
+                    m_io_service.post(
+                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
                 }
 
-                // Waiting for a response to solution submission
-                dev::setThreadName("stratum");
-                cwarn << "No response received in " << m_responsetimeout << " seconds.";
-                m_endpoints.pop();
-                m_subscribed.store(false, std::memory_order_relaxed);
-                m_authorized.store(false, std::memory_order_relaxed);
-                m_io_service.post(
-                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
-                return;
             }
 
             // Check how old is last job received
@@ -492,9 +495,9 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                 m_endpoints.pop();
                 m_subscribed.store(false, std::memory_order_relaxed);
                 m_authorized.store(false, std::memory_order_relaxed);
+                clear_response_pleas();
                 m_io_service.post(
                     m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
-                return;
             }
         }
     }
@@ -1542,7 +1545,7 @@ std::chrono::milliseconds EthStratumClient::dequeue_response_plea()
 {
     using namespace std::chrono;
 
-    steady_clock::time_point response_plea_time(m_response_plea_older);
+    steady_clock::time_point response_plea_time(m_response_plea_older.load(std::memory_order_relaxed));
     milliseconds response_delay_ms =
         duration_cast<milliseconds>(steady_clock::now() - response_plea_time);
 
