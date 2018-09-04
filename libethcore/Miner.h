@@ -77,7 +77,7 @@ struct HwMonitor
     double powerW = 0;
 };
 
-std::ostream& operator<<(std::ostream& os, HwMonitor _hw);
+std::ostream& operator<<(std::ostream& os, const HwMonitor& _hw);
 
 class FormattedMemSize
 {
@@ -86,7 +86,7 @@ public:
     uint64_t m_size;
 };
 
-std::ostream& operator<<(std::ostream& os, FormattedMemSize s);
+std::ostream& operator<<(std::ostream& os, const FormattedMemSize& s);
 
 /// Pause mining
 typedef enum {
@@ -134,7 +134,7 @@ struct WorkingProgress
     std::vector<HwMonitor> minerMonitors;
 };
 
-std::ostream& operator<<(std::ostream& _out, WorkingProgress _p);
+std::ostream& operator<<(std::ostream& _out, const WorkingProgress& _p);
 
 class SolutionStats
 {
@@ -147,10 +147,10 @@ public:
 
     void reset() { accepts = rejects = failures = acceptedStales = 0; }
 
-    unsigned getAccepts() { return accepts; }
-    unsigned getRejects() { return rejects; }
-    unsigned getFailures() { return failures; }
-    unsigned getAcceptedStales() { return acceptedStales; }
+    unsigned getAccepts() const { return accepts; }
+    unsigned getRejects() const { return rejects; }
+    unsigned getFailures() const { return failures; }
+    unsigned getAcceptedStales() const { return acceptedStales; }
 
 private:
     unsigned accepts = 0;
@@ -160,7 +160,7 @@ private:
     unsigned acceptedStales = 0;
 };
 
-std::ostream& operator<<(std::ostream& os, SolutionStats s);
+std::ostream& operator<<(std::ostream& os, const SolutionStats& s);
 
 class Miner;
 

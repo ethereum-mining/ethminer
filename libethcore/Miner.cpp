@@ -33,7 +33,7 @@ bool Miner::s_exit = false;
 
 bool Miner::s_noeval = false;
 
-std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
+std::ostream& operator<<(std::ostream& os, const HwMonitor& _hw)
 {
     os << _hw.tempC << "C " << _hw.fanP << "%";
     if (_hw.powerW)
@@ -41,7 +41,7 @@ std::ostream& operator<<(std::ostream& os, HwMonitor _hw)
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, FormattedMemSize s)
+std::ostream& operator<<(std::ostream& os, const FormattedMemSize& s)
 {
     static const char* suffixes[] = {"bytes", "KB", "MB", "GB"};
     double d = double(s.m_size);
@@ -55,7 +55,7 @@ std::ostream& operator<<(std::ostream& os, FormattedMemSize s)
     return os << fixed << setprecision(3) << d << ' ' << suffixes[i];
 }
 
-std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
+std::ostream& operator<<(std::ostream& _out, const WorkingProgress& _p)
 {
     float mh = _p.hashRate / 1000000.0f;
     _out << "Speed " << EthTealBold << std::fixed << std::setprecision(2) << mh << EthReset
@@ -83,7 +83,7 @@ std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
     return _out;
 }
 
-std::ostream& operator<<(std::ostream& os, SolutionStats s)
+std::ostream& operator<<(std::ostream& os, const SolutionStats& s)
 {
     os << "[A" << s.getAccepts();
     if (s.getAcceptedStales())
