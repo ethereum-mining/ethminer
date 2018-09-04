@@ -455,7 +455,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
             response_delay_ms =
                 duration_cast<milliseconds>(steady_clock::now() - m_response_plea_time);
 
-            if ((m_responsetimeout * 1000) >= response_delay_ms.count())
+            if (response_delay_ms.count() >= (m_responsetimeout * 1000))
             {
                 if (m_conn->StratumModeConfirmed() == false && m_conn->IsUnrecoverable() == false)
                 {
