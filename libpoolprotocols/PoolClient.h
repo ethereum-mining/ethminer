@@ -26,19 +26,20 @@ public:
         m_canconnect.store(false, std::memory_order_relaxed);
     }
 
+    const URI* getConnection() { return m_conn; }
     void unsetConnection() { m_conn = nullptr; }
 
     virtual void connect() = 0;
     virtual void disconnect() = 0;
 
     virtual void submitHashrate(string const& rate) = 0;
-    virtual void submitSolution(const Solution& solution) = 0;
+    virtual void submitSolution(const Solution& solution, unsigned const& miner_index) = 0;
     virtual bool isConnected() = 0;
     virtual bool isPendingState() = 0;
     virtual string ActiveEndPoint() = 0;
 
-    using SolutionAccepted = std::function<void(bool const&, std::chrono::milliseconds const&)>;
-    using SolutionRejected = std::function<void(bool const&, std::chrono::milliseconds const&)>;
+    using SolutionAccepted = std::function<void(bool const&, std::chrono::milliseconds const&, unsigned const& miner_index)>;
+    using SolutionRejected = std::function<void(bool const&, std::chrono::milliseconds const&, unsigned const& miner_index)>;
     using Disconnected = std::function<void()>;
     using Connected = std::function<void()>;
     using WorkReceived = std::function<void(WorkPackage const&)>;

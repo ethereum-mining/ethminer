@@ -25,11 +25,13 @@ public:
     void clearConnections();
     Json::Value getConnectionsJson();
     void setActiveConnection(unsigned int idx);
+    const URI *getActiveConnection();
     void removeConnection(unsigned int idx);
     void start();
     void stop();
     bool isConnected() { return p_client->isConnected(); };
     bool isRunning() { return m_running; };
+    double getCurrentDifficulty();
 
 private:
     unsigned m_hashrateReportingTime = 60;
@@ -59,6 +61,7 @@ private:
     MinerType m_minerType;
 
     int m_lastEpoch = 0;
+    double m_lastDifficulty = 0.0;
 };
 }  // namespace eth
 }  // namespace dev

@@ -494,18 +494,18 @@ void CUDAMiner::search(
                         h256 minerMix;
                         memcpy(minerMix.data(), (void*)&buffer->result[i].mix,
                             sizeof(buffer->result[i].mix));
-                        farm.submitProof(Solution{minerNonce, minerMix, w, m_new_work});
+                        farm.submitProof(Solution{minerNonce, minerMix, w, m_new_work}, index);
                     }
                     else
                     {
                         Result r = EthashAux::eval(w.epoch, w.header, minerNonce);
                         if (r.value <= w.boundary)
                         {
-                            farm.submitProof(Solution{minerNonce, r.mixHash, w, m_new_work});
+                            farm.submitProof(Solution{minerNonce, r.mixHash, w, m_new_work}, index);
                         }
                         else
                         {
-                            farm.failedSolution();
+                            farm.failedSolution(index);
                             cwarn
                                 << "GPU gave incorrect result! Lower OC if this happens frequently";
                         }

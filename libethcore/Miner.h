@@ -116,10 +116,32 @@ struct MiningPause
         return (MinigPauseReason)m_mining_paused_flag.load(std::memory_order_relaxed);
     }
 
+    bool is_mining_paused(const MinigPauseReason& pause_reason)
+    {
+        return (pause_reason != MinigPauseReason::MINING_NOT_PAUSED);
+    }
+
     bool is_mining_paused()
     {
-        return (m_mining_paused_flag.load(std::memory_order_relaxed) !=
-                MinigPauseReason::MINING_NOT_PAUSED);
+        return is_mining_paused(get_mining_paused());
+    }
+
+    std::string get_mining_paused_string(const MinigPauseReason& pause_reason)
+    {
+        std::string r;
+
+        if (pause_reason & MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START)
+            r = "temperature";
+
+        if (pause_reason & MinigPauseReason::MINING_PAUSED_API)
+            r += (string)(r.empty() ? "" : ",") + "api";
+
+        return r;
+    }
+
+    std::string get_mining_paused_string()
+    {
+        return get_mining_paused_string(get_mining_paused());
     }
 };
 
@@ -136,28 +158,108 @@ struct WorkingProgress
 
 std::ostream& operator<<(std::ostream& _out, const WorkingProgress& _p);
 
-class SolutionStats
+class SolutionStats  // Only updated by Poolmanager thread!
 {
 public:
-    void accepted() { accepts++; }
-    void rejected() { rejects++; }
-    void failed() { failures++; }
+    void reset()
+    {
+        m_accepts = {};
+        m_rejects = {};
+        m_failures = {};
+        m_acceptedStales = {};
+    }
 
-    void acceptedStale() { acceptedStales++; }
+    void accepted(unsigned miner_index)
+    {
+        if (m_accepts.size() <= miner_index)
+            m_accepts.resize(miner_index + 1);
+        m_accepts[miner_index]++;
+        auto now = std::chrono::steady_clock::now();
+        if (m_lastUpdated.size() <= miner_index)
+            m_lastUpdated.resize(miner_index + 1, now);
+        m_lastUpdated[miner_index] = now;
+    }
+    void rejected(unsigned miner_index)
+    {
+        if (m_rejects.size() <= miner_index)
+            m_rejects.resize(miner_index + 1);
+        m_rejects[miner_index]++;
+        auto now = std::chrono::steady_clock::now();
+        if (m_lastUpdated.size() <= miner_index)
+            m_lastUpdated.resize(miner_index + 1, now);
+        m_lastUpdated[miner_index] = now;
+    }
+    void failed(unsigned miner_index)
+    {
+        if (m_failures.size() <= miner_index)
+            m_failures.resize(miner_index + 1);
+        m_failures[miner_index]++;
+        auto now = std::chrono::steady_clock::now();
+        if (m_lastUpdated.size() <= miner_index)
+            m_lastUpdated.resize(miner_index + 1, now);
+        m_lastUpdated[miner_index] = now;
+    }
+    void acceptedStale(unsigned miner_index)
+    {
+        if (m_acceptedStales.size() <= miner_index)
+            m_acceptedStales.resize(miner_index + 1);
+        m_acceptedStales[miner_index]++;
+        auto now = std::chrono::steady_clock::now();
+        if (m_lastUpdated.size() <= miner_index)
+            m_lastUpdated.resize(miner_index + 1, now);
+        m_lastUpdated[miner_index] = now;
+    }
 
-    void reset() { accepts = rejects = failures = acceptedStales = 0; }
+    unsigned getAccepts() const { return sumArray(m_accepts); }
+    unsigned getRejects() const { return sumArray(m_rejects); }
+    unsigned getFailures() const { return sumArray(m_failures); }
+    unsigned getAcceptedStales() const { return sumArray(m_acceptedStales); }
 
-    unsigned getAccepts() const { return accepts; }
-    unsigned getRejects() const { return rejects; }
-    unsigned getFailures() const { return failures; }
-    unsigned getAcceptedStales() const { return acceptedStales; }
+    unsigned getAccepts(unsigned miner_index) const
+    {
+        if (m_accepts.size() <= miner_index)
+            return 0;
+        return m_accepts[miner_index];
+    }
+    unsigned getRejects(unsigned miner_index) const
+    {
+        if (m_rejects.size() <= miner_index)
+            return 0;
+        return m_rejects[miner_index];
+    }
+    unsigned getFailures(unsigned miner_index) const
+    {
+        if (m_failures.size() <= miner_index)
+            return 0;
+        return m_failures[miner_index];
+    }
+    unsigned getAcceptedStales(unsigned miner_index) const
+    {
+        if (m_acceptedStales.size() <= miner_index)
+            return 0;
+        return m_acceptedStales[miner_index];
+    }
+    std::chrono::steady_clock::time_point getLastUpdated(unsigned miner_index) const
+    {
+        if (m_lastUpdated.size() <= miner_index)
+            return std::chrono::steady_clock::now();
+        return m_lastUpdated[miner_index];
+    }
 
 private:
-    unsigned accepts = 0;
-    unsigned rejects = 0;
-    unsigned failures = 0;
+    unsigned sumArray(const std::vector<unsigned>& array) const
+    {
+        unsigned r = 0;
+        for (size_t i = 0; i < array.size(); i++)
+            r += array[i];
+        return r;
+    }
 
-    unsigned acceptedStales = 0;
+    std::vector<unsigned> m_accepts = {};
+    std::vector<unsigned> m_rejects = {};
+    std::vector<unsigned> m_failures = {};
+    std::vector<unsigned> m_acceptedStales = {};
+    std::vector<std::chrono::steady_clock::time_point> m_lastUpdated = {};
 };
 
 std::ostream& operator<<(std::ostream& os, const SolutionStats& s);
@@ -181,8 +283,8 @@ public:
      * @param _p The solution.
      * @return true iff the solution was good (implying that mining should be .
      */
-    virtual void submitProof(Solution const& _p) = 0;
-    virtual void failedSolution() = 0;
+    virtual void submitProof(Solution const& _p, unsigned _miner_index) = 0;
+    virtual void failedSolution(unsigned _miner_index) = 0;
     virtual uint64_t get_nonce_scrambler() = 0;
     virtual unsigned get_segment_width() = 0;
 };
@@ -269,6 +371,8 @@ public:
     {
         m_mining_paused.clear_mining_paused(pause_reason);
     }
+
+    MinigPauseReason get_mining_paused() { return m_mining_paused.get_mining_paused(); }
 
     bool is_mining_paused() { return m_mining_paused.is_mining_paused(); }
 

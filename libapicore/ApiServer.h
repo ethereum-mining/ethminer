@@ -56,6 +56,10 @@ private:
     void sendSocketData(Json::Value const& jReq);
     void onSendSocketDataCompleted(const boost::system::error_code& ec);
 
+    Json::Value getMinerStatDetail();
+    Json::Value getMinerStatDetailPerMiner(
+        const WorkingProgress& p, const SolutionStats& s, size_t index);
+
     Disconnected m_onDisconnected;
 
     int m_sessionId;

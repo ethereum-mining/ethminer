@@ -51,7 +51,7 @@ public:
     string ActiveEndPoint() override { return " [" + toString(m_endpoint) + "]"; };
 
     void submitHashrate(string const& rate) override;
-    void submitSolution(const Solution& solution) override;
+    void submitSolution(const Solution& solution, unsigned const& miner_index) override;
 
     h256 currentHeaderHash() { return m_current.header; }
     bool current() { return static_cast<bool>(m_current); }
@@ -132,4 +132,6 @@ private:
 
     bool m_submit_hashrate;
     std::string m_submit_hashrate_id;
+
+    unsigned m_solution_submitted_max_id; // greatest id we sent a solution
 };
