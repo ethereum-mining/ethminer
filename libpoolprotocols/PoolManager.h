@@ -30,6 +30,7 @@ public:
     void stop();
     bool isConnected() { return p_client->isConnected(); };
     bool isRunning() { return m_running; };
+    double getCurrentDifficulty();
 
 private:
     unsigned m_hashrateReportingTime = 60;
@@ -59,6 +60,7 @@ private:
     MinerType m_minerType;
 
     int m_lastEpoch = 0;
+    double m_lastDifficulty = 0.0;
 };
 }  // namespace eth
 }  // namespace dev
