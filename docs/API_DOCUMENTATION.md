@@ -578,7 +578,7 @@ This ONLY (re)starts mining if GPU was paused via a previous API call and not if
   "id": 1,
   "jsonrpc": "2.0",
   "method": "miner_pausegpu",
-  "data": {
+  "params": {
     "index": 0,
     "pause": true
   }
@@ -607,7 +607,7 @@ Set the verbosity level of ethminer.
   "id": 1,
   "jsonrpc": "2.0",
   "method": "miner_setverbosity",
-  "data": {
+  "params": {
     "verbosity": 9
   }
 }
