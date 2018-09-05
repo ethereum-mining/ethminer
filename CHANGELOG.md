@@ -24,7 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - API: New method `miner_setverbosity`. [#1382](https://github.com/ethereum-mining/ethminer/pull/1382).
 - Implemented fast job switch algorithm on AMD reducing switch time to 1-2 milliseconds.
 - Added localization support for output number formatting.
-- Changed the --verbosity to allow individual enable/disable of logging features.
+- Changed the --verbosity option to allow individual enable/disable of logging features.
 
 ### Removed
 

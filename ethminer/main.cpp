@@ -910,14 +910,16 @@ private:
             }
             if (mgr.isConnected())
             {
-                auto mp = f.miningProgress();
                 auto solstats = f.getSolutionStats();
-                ostringstream ss;
-                ss << mp << ' ';
-                if (!(g_logOptions & LOG_PER_GPU))
-                    ss << solstats << ' ';
-                ss << f.farmLaunchedFormatted();
-                minelog << ss.str();
+                {
+                    auto mp = f.miningProgress();
+                    ostringstream os;
+                    os << mp << ' ';
+                    if (!(g_logOptions & LOG_PER_GPU))
+                        os << solstats << ' ';
+                    os << f.farmLaunchedFormatted();
+                    minelog << os.str();
+                }
 
                 if (g_logOptions & LOG_PER_GPU)
                 {
