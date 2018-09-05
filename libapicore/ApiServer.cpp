@@ -693,7 +693,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             return;
         }
         cnote << "Setting verbosity level to " << verbosity;
-        g_logVerbosity = verbosity;
+        g_logOptions = verbosity;
         jResponse["result"] = true;
     }
 

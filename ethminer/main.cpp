@@ -205,9 +205,14 @@ public:
         bool version = false;
         app.add_flag("-V,--version", version, "Show program version")->group(CommonGroup);
 
-        app.add_option("-v,--verbosity", g_logVerbosity, "Set log verbosity level", true)
+        stringstream logOptions;
+        logOptions << "Set log display options. Use the summ of: Log switch time = "
+                   << LOG_SWITCH_TIME << ", log json messages = " << LOG_JSON
+                   << ", log per GPU solutions = " << LOG_PER_GPU
+                   << ", log additional debug info = " << LOG_DEBUG;
+        app.add_option("-v,--verbosity", g_logOptions, logOptions.str(), true)
             ->group(CommonGroup)
-            ->check(CLI::Range(9));
+            ->check(CLI::Range(15));
 
         app.add_option("--farm-recheck", m_farmRecheckPeriod,
                "Set check interval in milliseconds for changed work", true)
@@ -909,7 +914,7 @@ private:
                 auto solstats = f.getSolutionStats();
                 minelog << mp << ' ' << solstats << ' ' << f.farmLaunchedFormatted();
 
-                if (g_logVerbosity >= 5)
+                if (g_logOptions & LOG_PER_GPU)
                 {
                     ostringstream statdetails;
                     for (size_t i = 0; i < f.getMiners().size(); i++)

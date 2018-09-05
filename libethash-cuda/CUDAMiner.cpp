@@ -522,7 +522,7 @@ void CUDAMiner::search(
         }
     }
 
-    if (!stop && (g_logVerbosity >= 6))
+    if (!stop && (g_logOptions & LOG_SWITCH_TIME))
     {
         cudalog << "Switch time: "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(

@@ -271,7 +271,7 @@ void EthStratumClient::disconnect_finalize()
     }
 
     // Release locking flag and set connection status
-    if (g_logVerbosity >= 6)
+    if (g_logOptions & LOG_DEBUG)
         cnote << "Socket disconnected from " << ActiveEndPoint();
     m_connected.store(false, std::memory_order_relaxed);
     m_subscribed.store(false, std::memory_order_relaxed);
@@ -373,7 +373,7 @@ void EthStratumClient::start_connect()
 
         dev::setThreadName("stratum");
 
-        if (g_logVerbosity >= 6)
+        if (g_logOptions & LOG_DEBUG)
             cnote << ("Trying " + toString(m_endpoint) + " ...");
 
         clear_response_pleas();
@@ -541,7 +541,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 
     // We got a socket connection established
     m_canconnect.store(true, std::memory_order_relaxed);
-    if (g_logVerbosity >= 6)
+    if (g_logOptions & LOG_DEBUG)
         cnote << "Socket connected to " << ActiveEndPoint();
 
     if (m_conn->SecLevel() != SecureLevel::NONE)
@@ -736,7 +736,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
     dev::setThreadName("stratum");
 
     // Out received message only for debug purpouses
-    if (g_logVerbosity >= 9)
+    if (g_logOptions & LOG_JSON)
     {
         cnote << responseObject;
     }
@@ -1243,7 +1243,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     double nextWorkDifficulty =
                         max(jPrm.get(Json::Value::ArrayIndex(0), 1).asDouble(), 0.0001);
                     diffToTarget((uint32_t*)m_nextWorkBoundary.data(), nextWorkDifficulty);
-                    if (g_logVerbosity >= 8)
+                    if (g_logOptions & LOG_DEBUG)
                         cnote << "Difficulty set to " EthWhite << nextWorkDifficulty
                               << EthReset " (nicehash)";
                 }
@@ -1480,7 +1480,7 @@ void EthStratumClient::sendSocketData(Json::Value const& jReq)
         return;
 
     // Out received message only for debug purpouses
-    if (g_logVerbosity >= 9)
+    if (g_logOptions & LOG_JSON)
     {
         cnote << jReq;
     }
