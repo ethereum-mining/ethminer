@@ -33,7 +33,12 @@
 #include "vector_ref.h"
 
 /// The logging system's current verbosity.
-extern int g_logVerbosity;
+#define LOG_SWITCH_TIME 1
+#define LOG_JSON 2
+#define LOG_PER_GPU 4
+#define LOG_DEBUG 8
+#define LOG_ALL (LOG_SWITCH_TIME | LOG_JSON | LOG_PER_GPU | LOG_DEBUG)
+extern unsigned g_logOptions;
 extern bool g_logNoColor;
 extern bool g_logSyslog;
 
@@ -53,12 +58,10 @@ std::string getThreadName();
 struct LogChannel
 {
     static const char* name();
-    static const int verbosity = 1;
 };
 struct WarnChannel : public LogChannel
 {
     static const char* name();
-    static const int verbosity = 2;
 };
 struct NoteChannel : public LogChannel
 {
@@ -68,7 +71,7 @@ struct NoteChannel : public LogChannel
 class LogOutputStreamBase
 {
 public:
-    LogOutputStreamBase(char const* _id, unsigned _v);
+    LogOutputStreamBase(char const* _id);
 
     template <class T>
     void append(T const& _t)
@@ -77,7 +80,6 @@ public:
     }
 
 protected:
-    unsigned m_verbosity = 0;
     std::stringstream m_sstr;  ///< The accrued log entry.
 };
 
@@ -89,21 +91,16 @@ public:
     /// Construct a new object.
     /// If _term is true the the prefix info is terminated with a ']' character; if not it ends only
     /// with a '|' character.
-    LogOutputStream() : LogOutputStreamBase(Id::name(), Id::verbosity) {}
+    LogOutputStream() : LogOutputStreamBase(Id::name()) {}
 
     /// Destructor. Posts the accrued log entry to the g_logPost function.
-    ~LogOutputStream()
-    {
-        if (Id::verbosity <= g_logVerbosity)
-            simpleDebugOut(m_sstr.str());
-    }
+    ~LogOutputStream() { simpleDebugOut(m_sstr.str()); }
 
     /// Shift arbitrary data to the log. Spaces will be added between items as required.
     template <class T>
     LogOutputStream& operator<<(T const& _t)
     {
-        if (Id::verbosity <= g_logVerbosity)
-            append(_t);
+        append(_t);
         return *this;
     }
 };

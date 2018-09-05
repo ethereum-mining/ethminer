@@ -329,7 +329,7 @@ public:
         {
             Guard l(x_work);
             m_work = _work;
-            if (g_logVerbosity >= 6)
+            if (g_logOptions & LOG_SWITCH_TIME)
                 workSwitchStart = std::chrono::steady_clock::now();
         }
         kick_miner();

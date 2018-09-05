@@ -32,7 +32,7 @@ using namespace dev;
 //⊳⊲◀▶■▣▢□▷◁▧▨▩▲◆◉◈◇◎●◍◌○◼☑☒☎☢☣☰☀♽♥♠✩✭❓✔✓✖✕✘✓✔✅⚒⚡⦸⬌∅⁕«««»»»⚙
 
 // Logging
-int g_logVerbosity = 4;
+unsigned g_logOptions = 0;
 bool g_logNoColor = false;
 bool g_logSyslog = false;
 
@@ -49,11 +49,9 @@ const char* NoteChannel::name()
     return EthBlue " i";
 }
 
-LogOutputStreamBase::LogOutputStreamBase(char const* _id, unsigned _v) : m_verbosity(_v)
+LogOutputStreamBase::LogOutputStreamBase(char const* _id)
 {
     static std::locale logLocl = std::locale("");
-    if ((int)_v <= g_logVerbosity)
-    {
         m_sstr.imbue(logLocl);
         if (g_logSyslog)
             m_sstr << std::left << std::setw(8) << getThreadName() << " " EthReset;
@@ -66,7 +64,6 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, unsigned _v) : m_verbo
             m_sstr << _id << " " EthViolet << buf << " " EthBlue << std::left << std::setw(8)
                    << getThreadName() << " " EthReset;
         }
-    }
 }
 
 /// Associate a name with each thread for nice logging.
