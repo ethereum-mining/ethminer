@@ -18,23 +18,26 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
     m_failoverTimeout = failoverTimeout;
 
     p_client->onConnected([&]() {
-        m_activeConnectionHost = m_connections.at(m_activeConnectionIdx).Host();
-        cnote << "Established connection with "
-              << (m_connections.at(m_activeConnectionIdx).Host() + ":" +
-                     toString(m_connections.at(m_activeConnectionIdx).Port()))
-              << " at " << p_client->ActiveEndPoint();
+        {
+            Guard l(m_activeConnectionMutex);
+            m_lastConnectedHost = m_connections.at(m_activeConnectionIdx).Host();
+            cnote << "Established connection with "
+                  << (m_lastConnectedHost + ":" +
+                         toString(m_connections.at(m_activeConnectionIdx).Port()))
+                  << " at " << p_client->ActiveEndPoint();
 
-        // Rough implementation to return to primary pool
-        // after specified amount of time
-        if (m_activeConnectionIdx != 0 && m_failoverTimeout > 0)
-        {
-            m_failovertimer.expires_from_now(boost::posix_time::minutes(m_failoverTimeout));
-            m_failovertimer.async_wait(m_io_strand.wrap(boost::bind(
-                &PoolManager::check_failover_timeout, this, boost::asio::placeholders::error)));
-        }
-        else
-        {
-            m_failovertimer.cancel();
+            // Rough implementation to return to primary pool
+            // after specified amount of time
+            if (m_activeConnectionIdx != 0 && m_failoverTimeout > 0)
+            {
+                m_failovertimer.expires_from_now(boost::posix_time::minutes(m_failoverTimeout));
+                m_failovertimer.async_wait(m_io_strand.wrap(boost::bind(
+                    &PoolManager::check_failover_timeout, this, boost::asio::placeholders::error)));
+            }
+            else
+            {
+                m_failovertimer.cancel();
+            }
         }
 
         if (!m_farm.isMining())
@@ -54,7 +57,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 
     p_client->onDisconnected([&]() {
         dev::setThreadName("main");
-        cnote << "Disconnected from " + m_activeConnectionHost << p_client->ActiveEndPoint();
+        cnote << "Disconnected from " + m_lastConnectedHost << p_client->ActiveEndPoint();
 
         // Do not stop mining here
         // Workloop will determine if we're trying a fast reconnect to same pool
@@ -64,7 +67,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
     p_client->onWorkReceived([&](WorkPackage const& wp) {
 
         cnote << "Job: " EthWhite "#" << wp.header.abridged() << EthReset " "
-              << m_connections.at(m_activeConnectionIdx).Host() << p_client->ActiveEndPoint();
+              << m_lastConnectedHost << p_client->ActiveEndPoint();
         if (wp.boundary != m_lastBoundary)
         {
             using namespace boost::multiprecision;
@@ -93,7 +96,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 
         std::stringstream ss;
         ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << " ms."
-           << " " << m_connections.at(m_activeConnectionIdx).Host() + p_client->ActiveEndPoint();
+           << " " << m_lastConnectedHost + p_client->ActiveEndPoint();
         cnote << EthLime "**Accepted" EthReset << (stale ? EthYellow "(stale)" EthReset : "")
               << ss.str();
         m_farm.acceptedSolution(stale, miner_index);
@@ -104,7 +107,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 
         std::stringstream ss;
         ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << "ms."
-           << "   " << m_connections.at(m_activeConnectionIdx).Host() + p_client->ActiveEndPoint();
+           << "   " << m_lastConnectedHost + p_client->ActiveEndPoint();
         cwarn << EthRed "**Rejected" EthReset << (stale ? EthYellow "(stale)" EthReset : "")
               << ss.str();
         m_farm.rejectedSolution(miner_index);
@@ -188,6 +191,8 @@ void PoolManager::workLoop()
         {
             if (!p_client->isConnected())
             {
+                UniqueGuard l(m_activeConnectionMutex);
+
                 // If this connection is marked Unrecoverable then discard it
                 if (m_connections.at(m_activeConnectionIdx).IsUnrecoverable())
                 {
@@ -202,7 +207,6 @@ void PoolManager::workLoop()
 
                     m_connectionAttempt = 0;
                 }
-
 
                 // Rotate connections if above max attempts threshold
                 if (m_connectionAttempt >= m_maxConnectionAttempts)
@@ -234,13 +238,16 @@ void PoolManager::workLoop()
                           << (m_connections.at(m_activeConnectionIdx).Host() + ":" +
                                  toString(m_connections.at(m_activeConnectionIdx).Port()));
 
+                    l.unlock();
+
                     // Clean any list of jobs inherited from
                     // previous connection
-
                     p_client->connect();
                 }
                 else
                 {
+                    l.unlock();
+
                     cnote << "No more connections to try. Exiting...";
 
                     // Stop mining if applicable
@@ -280,11 +287,13 @@ void PoolManager::workLoop()
 
 void PoolManager::addConnection(URI& conn)
 {
+    Guard l(m_activeConnectionMutex);
     m_connections.push_back(conn);
 }
 
 void PoolManager::removeConnection(unsigned int idx)
 {
+    Guard l(m_activeConnectionMutex);
     m_connections.erase(m_connections.begin() + idx);
     if (m_activeConnectionIdx > idx)
     {
@@ -294,7 +303,10 @@ void PoolManager::removeConnection(unsigned int idx)
 
 void PoolManager::clearConnections()
 {
-    m_connections.clear();
+    {
+        Guard l(m_activeConnectionMutex);
+        m_connections.clear();
+    }
     if (p_client && p_client->isConnected())
         p_client->disconnect();
 }
@@ -302,10 +314,12 @@ void PoolManager::clearConnections()
 void PoolManager::setActiveConnection(unsigned int idx)
 {
     // Sets the active connection to the requested index
+    UniqueGuard l(m_activeConnectionMutex);
     if (idx != m_activeConnectionIdx)
     {
         m_activeConnectionIdx = idx;
         m_connectionAttempt = 0;
+        l.unlock();
         p_client->disconnect();
 
         // Suspend mining if applicable as we're switching
@@ -317,22 +331,24 @@ void PoolManager::setActiveConnection(unsigned int idx)
     }
 }
 
-const URI* PoolManager::getActiveConnection()
+URI PoolManager::getActiveConnectionCopy()
 {
+    Guard l(m_activeConnectionMutex);
     if (m_connections.size() > m_activeConnectionIdx)
-        return &m_connections.at(m_activeConnectionIdx);
-    return nullptr;
+        return m_connections[m_activeConnectionIdx];
+    return URI(":0");
 }
 
 Json::Value PoolManager::getConnectionsJson()
 {
     // Returns the list of configured connections
-
     Json::Value jRes;
+    Guard l(m_activeConnectionMutex);
+
     for (size_t i = 0; i < m_connections.size(); i++)
     {
         Json::Value JConn;
-        JConn["index"] = (int)i;
+        JConn["index"] = (unsigned)i;
         JConn["active"] = (i == m_activeConnectionIdx ? true : false);
         JConn["uri"] = m_connections[i].String();
         jRes.append(JConn);
@@ -343,6 +359,7 @@ Json::Value PoolManager::getConnectionsJson()
 
 void PoolManager::start()
 {
+    Guard l(m_activeConnectionMutex);
     if (m_connections.size() > 0)
     {
         m_running.store(true, std::memory_order_relaxed);
@@ -360,12 +377,14 @@ void PoolManager::check_failover_timeout(const boost::system::error_code& ec)
     {
         if (m_running.load(std::memory_order_relaxed))
         {
+            UniqueGuard l(m_activeConnectionMutex);
             if (m_activeConnectionIdx != 0)
             {
-                cnote << "Failover timeout reached, retrying connection to primary pool";
-                p_client->disconnect();
                 m_activeConnectionIdx = 0;
                 m_connectionAttempt = 0;
+                l.unlock();
+                cnote << "Failover timeout reached, retrying connection to primary pool";
+                p_client->disconnect();
             }
         }
     }

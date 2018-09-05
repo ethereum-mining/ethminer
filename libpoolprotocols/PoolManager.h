@@ -16,6 +16,7 @@ namespace dev
 {
 namespace eth
 {
+
 class PoolManager
 {
 public:
@@ -25,7 +26,7 @@ public:
     void clearConnections();
     Json::Value getConnectionsJson();
     void setActiveConnection(unsigned int idx);
-    const URI* getActiveConnection();
+    URI getActiveConnectionCopy();
     void removeConnection(unsigned int idx);
     void start();
     void stop();
@@ -46,10 +47,12 @@ private:
 
     unsigned m_connectionAttempt = 0;
     unsigned m_maxConnectionAttempts = 0;
-    unsigned m_activeConnectionIdx = 0;
-    std::string m_activeConnectionHost = "";
+    std::string m_lastConnectedHost = ""; // gets set when a connection has been established
 
     std::vector<URI> m_connections;
+    unsigned m_activeConnectionIdx = 0;
+    mutable Mutex m_activeConnectionMutex;
+
     std::thread m_workThread;
 
     h256 m_lastBoundary = h256();
