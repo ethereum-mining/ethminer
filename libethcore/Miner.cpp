@@ -85,13 +85,17 @@ std::ostream& operator<<(std::ostream& _out, const WorkingProgress& _p)
 
 std::ostream& operator<<(std::ostream& os, const SolutionStats& s)
 {
+    auto stales = s.getAcceptedStales();
+    auto rejects = s.getRejects();
+    auto failures = s.getFailures();
+
     os << "[A" << s.getAccepts();
-    if (s.getAcceptedStales())
-        os << "+" << s.getAcceptedStales();
-    if (s.getRejects())
-        os << ":R" << s.getRejects();
-    if (s.getFailures())
-        os << ":F" << s.getFailures();
+    if (stales)
+        os << "+" << stales;
+    if (rejects)
+        os << ":R" << rejects;
+    if (failures)
+        os << ":F" << failures;
     return os << "]";
 }
 

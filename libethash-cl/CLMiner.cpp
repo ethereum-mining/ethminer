@@ -384,7 +384,7 @@ void CLMiner::workLoop()
                 m_searchKernel.setArg(5, target);
                 m_searchKernel.setArg(6, 0xffffffff);
 
-                if (g_logVerbosity > 5)
+                if (g_logVerbosity >= 6)
                     cllog << "Switch time: "
                           << std::chrono::duration_cast<std::chrono::microseconds>(
                                  std::chrono::steady_clock::now() - workSwitchStart)
