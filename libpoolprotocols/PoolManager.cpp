@@ -230,8 +230,6 @@ void PoolManager::workLoop()
 
                     // Invoke connections
                     p_client->setConnection(&m_connections.at(m_activeConnectionIdx));
-                    m_farm.set_pool_addresses(m_connections.at(m_activeConnectionIdx).Host(),
-                        m_connections.at(m_activeConnectionIdx).Port());
                     cnote << "Selected pool "
                           << (m_connections.at(m_activeConnectionIdx).Host() + ":" +
                                  toString(m_connections.at(m_activeConnectionIdx).Port()));
@@ -297,7 +295,6 @@ void PoolManager::removeConnection(unsigned int idx)
 void PoolManager::clearConnections()
 {
     m_connections.clear();
-    m_farm.set_pool_addresses("", 0);
     if (p_client && p_client->isConnected())
         p_client->disconnect();
 }
@@ -320,7 +317,7 @@ void PoolManager::setActiveConnection(unsigned int idx)
     }
 }
 
-const URI *PoolManager::getActiveConnection()
+const URI* PoolManager::getActiveConnection()
 {
     if (m_connections.size() > m_activeConnectionIdx)
         return &m_connections.at(m_activeConnectionIdx);

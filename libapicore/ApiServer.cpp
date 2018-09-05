@@ -788,7 +788,7 @@ Json::Value ApiConnection::getMinerStat1()
 {
     auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
         steady_clock::now() - m_farm.farmLaunched());
-
+    auto connection = m_mgr.getActiveConnection();
     SolutionStats s = m_farm.getSolutionStats();
     WorkingProgress p = m_farm.miningProgress();
 
@@ -804,7 +804,10 @@ Json::Value ApiConnection::getMinerStat1()
                << s.getAccepts() << ";" << s.getRejects();
     totalMhDcr << "0;0;0";                    // DualMining not supported
     invalidStats << s.getFailures() << ";0";  // Invalid + Pool switches
-    poolAddresses << m_farm.get_pool_addresses();
+    if (connection)
+        poolAddresses << connection->Host() << ':' << connection->Port();
+    else
+        poolAddresses << ":0";
     invalidStats << ";0;0";  // DualMining not supported
 
     int gpuIndex = 0;
@@ -851,7 +854,7 @@ Json::Value ApiConnection::getMinerStatHR()
     // TODO:give key-value format
     auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
         steady_clock::now() - m_farm.farmLaunched());
-
+    auto connection = m_mgr.getActiveConnection();
     SolutionStats s = m_farm.getSolutionStats();
     WorkingProgress p = m_farm.miningProgress();
 
@@ -867,7 +870,10 @@ Json::Value ApiConnection::getMinerStatHR()
 
     version << ethminer_get_buildinfo()->project_name_with_version;
     runtime << toString(runningTime.count());
-    poolAddresses << m_farm.get_pool_addresses();
+    if (connection)
+        poolAddresses << connection->Host() << ':' << connection->Port();
+    else
+        poolAddresses << ":0";
 
     assert(p.minersHashRates.size() == p.minerMonitors.size() || p.minerMonitors.size() == 0);
     assert(p.minersHashRates.size() == p.miningIsPaused.size());

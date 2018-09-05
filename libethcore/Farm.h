@@ -309,15 +309,6 @@ public:
         return stream.str();
     }
 
-    void set_pool_addresses(string host, unsigned port)
-    {
-        stringstream ssPoolAddresses;
-        ssPoolAddresses << host << ':' << port;
-        m_pool_addresses = ssPoolAddresses.str();
-    }
-
-    string get_pool_addresses() { return m_pool_addresses; }
-
     uint64_t get_nonce_scrambler() override { return m_nonce_scrambler; }
 
     unsigned get_segment_width() override { return m_nonce_segment_with; }
