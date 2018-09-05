@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Implemented fast job switch algorithm on AMD reducing switch time to 1-2 milliseconds.
 - Added localization support for output number formatting.
 - Changed the --verbosity option to allow individual enable/disable of logging features.
+- Improved hash rate measurement accuracy.
 
 ### Removed
 
