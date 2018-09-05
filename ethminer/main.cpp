@@ -212,7 +212,7 @@ public:
                    << ", log additional debug info = " << LOG_DEBUG;
         app.add_option("-v,--verbosity", g_logOptions, logOptions.str(), true)
             ->group(CommonGroup)
-            ->check(CLI::Range(15));
+            ->check(CLI::Range(LOG_ALL));
 
         app.add_option("--farm-recheck", m_farmRecheckPeriod,
                "Set check interval in milliseconds for changed work", true)

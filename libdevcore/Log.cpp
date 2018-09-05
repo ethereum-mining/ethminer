@@ -32,7 +32,7 @@ using namespace dev;
 //⊳⊲◀▶■▣▢□▷◁▧▨▩▲◆◉◈◇◎●◍◌○◼☑☒☎☢☣☰☀♽♥♠✩✭❓✔✓✖✕✘✓✔✅⚒⚡⦸⬌∅⁕«««»»»⚙
 
 // Logging
-int g_logOptions = 0;
+unsigned g_logOptions = 0;
 bool g_logNoColor = false;
 bool g_logSyslog = false;
 
