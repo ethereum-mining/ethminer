@@ -912,11 +912,17 @@ private:
             {
                 auto mp = f.miningProgress();
                 auto solstats = f.getSolutionStats();
-                minelog << mp << ' ' << solstats << ' ' << f.farmLaunchedFormatted();
+                ostringstream ss;
+                ss << mp << ' ';
+                if (!(g_logOptions & LOG_PER_GPU))
+                    ss << solstats << ' ';
+                ss << f.farmLaunchedFormatted();
+                minelog << ss.str();
 
                 if (g_logOptions & LOG_PER_GPU)
                 {
                     ostringstream statdetails;
+                    statdetails << "Solutions " << solstats << ' ';
                     for (size_t i = 0; i < f.getMiners().size(); i++)
                     {
                         if (i) statdetails << " ";
