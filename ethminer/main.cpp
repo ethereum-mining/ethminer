@@ -205,7 +205,7 @@ public:
         bool version = false;
         app.add_flag("-V,--version", version, "Show program version")->group(CommonGroup);
 
-        stringstream logOptions;
+        ostringstream logOptions;
         logOptions << "Set log display options. Use the summ of: Log switch time = "
                    << LOG_SWITCH_TIME << ", log json messages = " << LOG_JSON
                    << ", log per GPU solutions = " << LOG_PER_GPU
@@ -473,7 +473,7 @@ public:
             ->group(CommonGroup)
             ->check(CLI::Range(30, 100));
 
-        stringstream ssHelp;
+        ostringstream ssHelp;
         ssHelp
             << "Pool URL Specification:" << endl
             << "    URL takes the form: scheme://user[.workername][:password]@hostname:port[/...]."
@@ -912,9 +912,8 @@ private:
             {
                 auto solstats = f.getSolutionStats();
                 {
-                    auto mp = f.miningProgress();
                     ostringstream os;
-                    os << mp << ' ';
+                    os << f.miningProgress() << ' ';
                     if (!(g_logOptions & LOG_PER_GPU))
                         os << solstats << ' ';
                     os << f.farmLaunchedFormatted();
