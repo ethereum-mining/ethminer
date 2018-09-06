@@ -413,7 +413,6 @@ void CUDAMiner::setParallelHash(unsigned _parallelHash)
 void CUDAMiner::search(
     uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w)
 {
-    const uint16_t kReportingInterval = 512;  // Must be a power of 2 passes
     set_header(*reinterpret_cast<hash32_t const*>(header));
     if (m_current_target != target)
     {
@@ -462,11 +461,14 @@ void CUDAMiner::search(
             // store number of processed hashes
             CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
-            // stretch cuda passes to miniize the effects of
-            // OS latency variability
-            m_searchPasses++;
-            if ((m_searchPasses & (kReportingInterval - 1)) == 0)
-                updateHashRate(batch_size * kReportingInterval);
+            m_hashCount += batch_size;
+
+            bool t = true;
+            if (m_hashRateUpdate.compare_exchange_strong(t, false))
+            {
+                updateHashRate(m_hashCount);
+                m_hashCount = 0;
+            }
 
             if (shouldStop())
             {
@@ -526,7 +528,7 @@ void CUDAMiner::search(
     {
         cudalog << "Switch time: "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(
-                       std::chrono::steady_clock::now() - workSwitchStart)
+                       std::chrono::steady_clock::now() - m_workSwitchStart)
                        .count()
                 << " ms.";
     }

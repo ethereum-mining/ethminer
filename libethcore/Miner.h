@@ -330,7 +330,7 @@ public:
             Guard l(x_work);
             m_work = _work;
             if (g_logOptions & LOG_SWITCH_TIME)
-                workSwitchStart = std::chrono::steady_clock::now();
+                m_workSwitchStart = std::chrono::steady_clock::now();
         }
         kick_miner();
     }
@@ -395,6 +395,7 @@ public:
     bool is_mining_paused() { return m_mining_paused.is_mining_paused(); }
 
     float RetrieveHashRate() { return m_hashRate.load(std::memory_order_relaxed); }
+    void TriggerHashRateUpdate() { m_hashRateUpdate.store(true, std::memory_order_relaxed); }
 
 protected:
     /**
@@ -430,8 +431,10 @@ protected:
 
     const size_t index = 0;
     FarmFace& farm;
-    std::chrono::steady_clock::time_point workSwitchStart;
+    std::chrono::steady_clock::time_point m_workSwitchStart;
     HwMonitorInfo m_hwmoninfo;
+    atomic<bool> m_hashRateUpdate = {false};
+    uint64_t m_hashCount = 0;
 
 private:
     MiningPause m_mining_paused;

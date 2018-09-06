@@ -292,8 +292,6 @@ void CLMiner::workLoop()
 
     uint64_t startNonce = 0;
 
-    const uint8_t kIntervalPasses = 4;  // must be a power of 2 passes
-
     // The work package currently processed by GPU.
     WorkPackage current;
     current.header = h256{1u};
@@ -387,7 +385,7 @@ void CLMiner::workLoop()
                 if (g_logOptions & LOG_SWITCH_TIME)
                     cllog << "Switch time: "
                           << std::chrono::duration_cast<std::chrono::microseconds>(
-                                 std::chrono::steady_clock::now() - workSwitchStart)
+                                 std::chrono::steady_clock::now() - m_workSwitchStart)
                                  .count()
                           << " us.";
             }
@@ -431,7 +429,8 @@ void CLMiner::workLoop()
 
             // Report hash count
             m_hashCount += results.hashCount;
-            if ((++m_searchPasses & (kIntervalPasses - 1)) == 0)
+            bool t = true;
+            if (m_hashRateUpdate.compare_exchange_strong(t, false))
             {
                 updateHashRate(m_hashCount * m_workgroupSize);
                 m_hashCount = 0;
