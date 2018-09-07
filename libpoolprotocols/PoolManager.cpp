@@ -194,12 +194,16 @@ void PoolManager::workLoop()
                     p_client->unsetConnection();
 
                     m_connections.erase(m_connections.begin() + m_activeConnectionIdx);
+                    if (m_connections.empty())
+                    {
+                        m_activeConnectionIdx = 0;
+                    }
+                    else if (m_activeConnectionIdx >= m_connections.size())
+                    {
+                        m_activeConnectionIdx = (m_connections.size() - 1);
+                    }
 
                     m_connectionAttempt = 0;
-                    if (m_activeConnectionIdx > 0)
-                    {
-                        m_activeConnectionIdx--;
-                    }
                 }
 
 
