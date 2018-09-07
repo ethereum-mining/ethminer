@@ -503,13 +503,13 @@ public:
             << "    will try to detect the correct variant automatically. If you know your" << endl
             << "    pool's requirements, the following are supported." << endl
             << "    Schemes: " << URI::KnownSchemes(ProtocolFamily::STRATUM) << endl
-            << "    Where a scheme is made up of two parts, the stratum variant + the trannsport"
+            << "    Where a scheme is made up of two parts, the stratum variant + the transport"
             << endl
             << "    protocol." << endl
             << "    stratum variants:" << endl
             << "      stratum -   Stratum" << endl
             << "      stratum1 -  Eth proxy" << endl
-            << "      stratum2 -  Eth Stratum" << endl
+            << "      stratum2 -  Eth stratum (nicehash)" << endl
             << "    transports:" << endl
             << "      tcp -       Unencrypted connection" << endl
             << "      tls -       Encrypted with tls (includind deprecated tls 1.1)" << endl
