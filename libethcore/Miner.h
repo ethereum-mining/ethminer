@@ -394,8 +394,8 @@ public:
 
     bool is_mining_paused() { return m_mining_paused.is_mining_paused(); }
 
-    float RetrieveHashRate() { return m_hashRate.load(std::memory_order_relaxed); }
-    void TriggerHashRateUpdate() { m_hashRateUpdate.store(true, std::memory_order_relaxed); }
+    inline float RetrieveHashRate() { return m_hashRate.load(std::memory_order_relaxed); }
+    inline void TriggerHashRateUpdate() { m_hashRateUpdate.store(true, std::memory_order_relaxed); }
 
 protected:
     /**
@@ -411,20 +411,18 @@ protected:
 
     inline void updateHashRate(uint32_t _groupSize, uint32_t _increment)
     {
-        m_hashCount += _increment;
+        m_groupCount += _increment;
         bool b = true;
         if (!m_hashRateUpdate.compare_exchange_strong(b, false))
             return;
         using namespace std::chrono;
-        steady_clock::time_point t = steady_clock::now();
+        auto t = steady_clock::now();
         auto us = duration_cast<microseconds>(t - m_hashTime).count();
         m_hashTime = t;
 
-        float hr = 0.0;
-        if (us)
-            hr = (float(m_hashCount * _groupSize) * 1.0e6f) / us;
-        m_hashRate.store(hr, std::memory_order_relaxed);
-        m_hashCount = 0;
+        m_hashRate.store(us ? (float(m_groupCount * _groupSize) * 1.0e6f) / us : 0.0f,
+            std::memory_order_relaxed);
+        m_groupCount = 0;
     }
 
     static unsigned s_dagLoadMode;
@@ -445,7 +443,7 @@ private:
     mutable Mutex x_work;
     std::chrono::steady_clock::time_point m_hashTime = std::chrono::steady_clock::now();
     std::atomic<float> m_hashRate = {0.0};
-    uint64_t m_hashCount = 0;
+    uint64_t m_groupCount = 0;
     atomic<bool> m_hashRateUpdate = {false};
 };
 
