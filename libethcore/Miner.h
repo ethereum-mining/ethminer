@@ -409,8 +409,12 @@ protected:
         return m_work;
     }
 
-    inline void updateHashRate(uint64_t _n)
+    inline void updateHashRate(uint64_t& _groupCount, uint32_t _groupSize, uint32_t _increment)
     {
+        _groupCount += _increment;
+        bool b = true;
+        if (!m_hashRateUpdate.compare_exchange_strong(b, false))
+            return;
         using namespace std::chrono;
         steady_clock::time_point t = steady_clock::now();
         auto us = duration_cast<microseconds>(t - m_hashTime).count();
@@ -418,8 +422,9 @@ protected:
 
         float hr = 0.0;
         if (us)
-            hr = (float(_n) * 1.0e6f) / us;
+            hr = (float(_groupCount * _groupSize) * 1.0e6f) / us;
         m_hashRate.store(hr, std::memory_order_relaxed);
+        _groupCount = 0;
     }
 
     static unsigned s_dagLoadMode;

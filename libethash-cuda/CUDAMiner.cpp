@@ -461,14 +461,7 @@ void CUDAMiner::search(
             // store number of processed hashes
             CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
-            m_hashCount += batch_size;
-
-            bool t = true;
-            if (m_hashRateUpdate.compare_exchange_strong(t, false))
-            {
-                updateHashRate(m_hashCount);
-                m_hashCount = 0;
-            }
+            updateHashRate(m_hashCount, batch_size, 1);
 
             if (shouldStop())
             {
