@@ -428,7 +428,7 @@ void CLMiner::workLoop()
             startNonce += results.hashCount * m_workgroupSize;
 
             // Report hash count
-            updateHashRate(m_hashCount, m_workgroupSize, results.hashCount);
+            updateHashRate(m_workgroupSize, results.hashCount);
         }
         m_queue[0].finish();
     }

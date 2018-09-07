@@ -409,9 +409,9 @@ protected:
         return m_work;
     }
 
-    inline void updateHashRate(uint64_t& _groupCount, uint32_t _groupSize, uint32_t _increment)
+    inline void updateHashRate(uint32_t _groupSize, uint32_t _increment)
     {
-        _groupCount += _increment;
+        m_hashCount += _increment;
         bool b = true;
         if (!m_hashRateUpdate.compare_exchange_strong(b, false))
             return;
@@ -422,9 +422,9 @@ protected:
 
         float hr = 0.0;
         if (us)
-            hr = (float(_groupCount * _groupSize) * 1.0e6f) / us;
+            hr = (float(m_hashCount * _groupSize) * 1.0e6f) / us;
         m_hashRate.store(hr, std::memory_order_relaxed);
-        _groupCount = 0;
+        m_hashCount = 0;
     }
 
     static unsigned s_dagLoadMode;
@@ -438,8 +438,6 @@ protected:
     FarmFace& farm;
     std::chrono::steady_clock::time_point m_workSwitchStart;
     HwMonitorInfo m_hwmoninfo;
-    atomic<bool> m_hashRateUpdate = {false};
-    uint64_t m_hashCount = 0;
 
 private:
     MiningPause m_mining_paused;
@@ -447,6 +445,8 @@ private:
     mutable Mutex x_work;
     std::chrono::steady_clock::time_point m_hashTime = std::chrono::steady_clock::now();
     std::atomic<float> m_hashRate = {0.0};
+    uint64_t m_hashCount = 0;
+    atomic<bool> m_hashRateUpdate = {false};
 };
 
 }  // namespace eth
