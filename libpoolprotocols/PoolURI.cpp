@@ -303,7 +303,7 @@ std::string URI::KnownSchemes(ProtocolFamily family)
 {
     std::string schemes;
     for (const auto& s : s_schemes)
-        if (s.second.family == family)
+        if ((s.second.family == family) && (s.second.version != 999))
             schemes += s.first + " ";
     return schemes;
 }

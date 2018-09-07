@@ -483,6 +483,7 @@ public:
             << "    stratum     for stratum mode" << endl
             << "    stratums    for secure stratum mode" << endl
             << "    stratumss   for secure stratum mode with strong TLS12 verification" << endl
+            << "    for a complete list if available schemes, see below" << endl
             << endl
             << "    Example 1:"
                "    stratums://0x012345678901234567890234567890123.miner1@ethermine.org:5555"
@@ -495,6 +496,13 @@ public:
                "    stratum://0x012345678901234567890234567890123@nanopool.org:9999/miner1/"
                "john.doe@gmail.com"
             << endl
+            << endl
+            << "    There are three main variants of the stratum protocol. If you are not sure"
+            << endl
+            << "    which one your pool needs, try one of the 3 schemes above and ethminer" << endl
+            << "    will try to detect the correct variant automatically. If you know your" << endl
+            << "    pools requirements, the following are supported." << endl
+            << "    Schemes: " << URI::KnownSchemes(ProtocolFamily::STRATUM) << endl
             << endl
             << "Environment Variables:" << endl
             << "    NO_COLOR - set to any value to disable color output. Unset to re-enable "
