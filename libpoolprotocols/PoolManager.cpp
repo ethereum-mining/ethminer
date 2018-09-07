@@ -195,11 +195,12 @@ void PoolManager::workLoop()
 
                     m_connections.erase(m_connections.begin() + m_activeConnectionIdx);
 
-                    m_connectionAttempt = 0;
-                    if (m_activeConnectionIdx > 0)
+                    if (m_activeConnectionIdx >= m_connections.size())
                     {
-                        m_activeConnectionIdx--;
+                        m_activeConnectionIdx = 0;
                     }
+
+                    m_connectionAttempt = 0;
                 }
 
 
