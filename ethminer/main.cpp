@@ -501,7 +501,7 @@ public:
             << endl
             << "    which one your pool needs, try one of the 3 schemes above and ethminer" << endl
             << "    will try to detect the correct variant automatically. If you know your" << endl
-            << "    pools requirements, the following are supported." << endl
+            << "    pool's requirements, the following are supported." << endl
             << "    Schemes: " << URI::KnownSchemes(ProtocolFamily::STRATUM) << endl
             << endl
             << "Environment Variables:" << endl
