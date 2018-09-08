@@ -78,7 +78,6 @@ bool CUDAMiner::init(int epoch)
                 << " (Compute " + to_string(device_props.major) + "." +
                        to_string(device_props.minor) + ")";
 
-        m_search_buf = new volatile search_results*[s_numStreams];
         m_streams = new cudaStream_t[s_numStreams];
 
         const auto& context = ethash::get_global_epoch_context(epoch);
@@ -217,6 +216,8 @@ void CUDAMiner::workLoop()
     WorkPackage current;
     current.header = h256{1u};
 
+    m_search_buf.resize(s_numStreams);
+    m_search_buf_cpy.resize(s_numStreams);
     try
     {
         while (!shouldStop())
@@ -428,6 +429,7 @@ void CUDAMiner::search(
     // Nonces processed in one pass by all streams
     const uint32_t streams_batch_size = batch_size * s_numStreams;
     volatile search_results* buffer;
+    search_results* buffer_cpy;
 
     // prime each stream and clear search result buffers
     uint32_t current_index;
@@ -456,6 +458,8 @@ void CUDAMiner::search(
         {
             cudaStream_t stream = m_streams[current_index];
             buffer = m_search_buf[current_index];
+            buffer_cpy = &m_search_buf_cpy[current_index];
+
 
             // Wait for stream batch to complete and immediately
             // store number of processed hashes
@@ -469,24 +473,46 @@ void CUDAMiner::search(
             }
 
             // See if we got solutions in this batch
-            uint32_t found_count = std::min((unsigned)buffer->count, SEARCH_RESULTS);
+            uint32_t found_count = buffer->count;
+            buffer_cpy->count = 0;
             if (found_count)
             {
-
+                // save the solution(s), We'll submit them after all
+                // the streams have been restarted.
+                if (found_count > SEARCH_RESULTS)
+                    found_count = SEARCH_RESULTS;
+                for (unsigned i = 0; i < found_count; i++)
+                    buffer_cpy->result[i] = ((search_results*)buffer)->result[i];
+                buffer_cpy->count = found_count;
                 buffer->count = 0;
-                uint64_t nonce_base = current_nonce - streams_batch_size;
+            }
+            // restart the stream on the next batch of nonces
+            if (!done)
+                run_ethash_search(
+                    s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
+        }
+        // All streams are running. time for some bookeeping
+        updateHashRate(batch_size, s_numStreams);
+        for (current_index = 0; current_index < s_numStreams; current_index++)
+        {
+            buffer_cpy = &m_search_buf_cpy[current_index];
+            uint32_t found_count = buffer_cpy->count;
+            if (found_count)
+            {
+                uint64_t nonce_base =
+                    current_nonce - (2 * streams_batch_size) + (current_index * batch_size);
 
                 // Pass the solution(s) for submission
                 uint64_t minerNonce;
 
                 for (uint32_t i = 0; i < found_count; i++)
                 {
-                    minerNonce = nonce_base + buffer->result[i].gid;
+                    minerNonce = nonce_base + buffer_cpy->result[i].gid;
                     if (s_noeval)
                     {
                         h256 minerMix;
-                        memcpy(minerMix.data(), (void*)&buffer->result[i].mix,
-                            sizeof(buffer->result[i].mix));
+                        memcpy(minerMix.data(), &buffer_cpy->result[i].mix,
+                            sizeof(buffer_cpy->result[0].mix));
                         farm.submitProof(Solution{minerNonce, minerMix, w, m_new_work}, index);
                     }
                     else
@@ -506,14 +532,7 @@ void CUDAMiner::search(
 
                 }
             }
-
-            // restart the stream on the next batch of nonces
-            if (!done)
-                run_ethash_search(
-                    s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
-
         }
-        updateHashRate(batch_size, s_numStreams);
     }
 
     if (!stop && (g_logOptions & LOG_SWITCH_TIME))

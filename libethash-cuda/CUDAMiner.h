@@ -72,7 +72,8 @@ private:
     int m_dag_size = -1;
     uint32_t m_device_num = 0;
 
-    volatile search_results** m_search_buf = nullptr;
+    vector<volatile search_results*> m_search_buf;
+    vector<search_results> m_search_buf_cpy;
     cudaStream_t* m_streams = nullptr;
     uint64_t m_current_target = 0;
 

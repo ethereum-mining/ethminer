@@ -394,8 +394,8 @@ public:
 
     bool is_mining_paused() { return m_mining_paused.is_mining_paused(); }
 
-    inline float RetrieveHashRate() { return m_hashRate.load(std::memory_order_relaxed); }
-    inline void TriggerHashRateUpdate() { m_hashRateUpdate.store(true, std::memory_order_relaxed); }
+    float RetrieveHashRate() { return m_hashRate.load(std::memory_order_relaxed); }
+    void TriggerHashRateUpdate() { m_hashRateUpdate.store(true, std::memory_order_relaxed); }
 
 protected:
     /**
@@ -409,7 +409,7 @@ protected:
         return m_work;
     }
 
-    inline void updateHashRate(uint32_t _groupSize, uint32_t _increment)
+    void updateHashRate(uint32_t _groupSize, uint32_t _increment)
     {
         m_groupCount += _increment;
         bool b = true;
