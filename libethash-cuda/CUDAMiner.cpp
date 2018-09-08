@@ -461,8 +461,6 @@ void CUDAMiner::search(
             // store number of processed hashes
             CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
-            updateHashRate(batch_size, 1);
-
             if (shouldStop())
             {
                 m_new_work.store(false, std::memory_order_relaxed);
@@ -515,6 +513,7 @@ void CUDAMiner::search(
                     s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
 
         }
+        updateHashRate(batch_size, s_numStreams);
     }
 
     if (!stop && (g_logOptions & LOG_SWITCH_TIME))
