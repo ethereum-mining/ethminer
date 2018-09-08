@@ -35,6 +35,8 @@ public:
     double getCurrentDifficulty();
 
 private:
+    void suspendMining(void);
+
     unsigned m_hashrateReportingTime = 60;
     unsigned m_hashrateReportingTimePassed = 0;
     unsigned m_failoverTimeout =

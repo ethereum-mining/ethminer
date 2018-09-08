@@ -191,6 +191,9 @@ void PoolManager::workLoop()
         {
             if (!p_client->isConnected())
             {
+                // As we're not connected: suspend mining if we're still searching a solution
+                suspendMining();
+
                 UniqueGuard l(m_activeConnectionMutex);
 
                 // If this connection is marked Unrecoverable then discard it
@@ -207,22 +210,14 @@ void PoolManager::workLoop()
 
                     m_connectionAttempt = 0;
                 }
-
-                // Rotate connections if above max attempts threshold
-                if (m_connectionAttempt >= m_maxConnectionAttempts)
+                else if (m_connectionAttempt >= m_maxConnectionAttempts)
                 {
+                    // Rotate connections if above max attempts threshold
                     m_connectionAttempt = 0;
                     m_activeConnectionIdx++;
                     if (m_activeConnectionIdx >= m_connections.size())
                     {
                         m_activeConnectionIdx = 0;
-                    }
-
-                    // Suspend mining if applicable as we're switching
-                    if (m_farm.isMining())
-                    {
-                        cnote << "Suspend mining due connection change...";
-                        m_farm.setWork({}); /* suspend by setting empty work package */
                     }
                 }
 
@@ -315,20 +310,16 @@ void PoolManager::setActiveConnection(unsigned int idx)
 {
     // Sets the active connection to the requested index
     UniqueGuard l(m_activeConnectionMutex);
-    if (idx != m_activeConnectionIdx)
-    {
-        m_activeConnectionIdx = idx;
-        m_connectionAttempt = 0;
-        l.unlock();
-        p_client->disconnect();
+    if (idx == m_activeConnectionIdx)
+        return;
 
-        // Suspend mining if applicable as we're switching
-        if (m_farm.isMining())
-        {
-            cnote << "Suspend mining due connection change...";
-            m_farm.setWork({}); /* suspend by setting empty work package */
-        }
-    }
+    m_activeConnectionIdx = idx;
+    m_connectionAttempt = 0;
+    l.unlock();
+    p_client->disconnect();
+
+    // Suspend mining if applicable as we're switching
+    suspendMining();
 }
 
 URI PoolManager::getActiveConnectionCopy()
@@ -388,6 +379,19 @@ void PoolManager::check_failover_timeout(const boost::system::error_code& ec)
             }
         }
     }
+}
+
+void PoolManager::suspendMining()
+{
+    if (!m_farm.isMining())
+        return;
+
+    WorkPackage wp = m_farm.work();
+    if (!wp)
+        return;
+
+    m_farm.setWork({}); /* suspend by setting empty work package */
+    cnote << "Suspend mining due connection change...";
 }
 
 double PoolManager::getCurrentDifficulty()
