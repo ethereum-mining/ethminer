@@ -78,8 +78,6 @@ bool CUDAMiner::init(int epoch)
                 << " (Compute " + to_string(device_props.major) + "." +
                        to_string(device_props.minor) + ")";
 
-        m_streams = new cudaStream_t[s_numStreams];
-
         const auto& context = ethash::get_global_epoch_context(epoch);
         const auto lightNumItems = context.light_cache_num_items;
         const auto lightSize = ethash::get_light_cache_size(lightNumItems);
@@ -218,6 +216,8 @@ void CUDAMiner::workLoop()
 
     m_search_buf.resize(s_numStreams);
     m_search_buf_cpy.resize(s_numStreams);
+    m_streams.resize(s_numStreams);
+
     try
     {
         while (!shouldStop())
@@ -458,7 +458,6 @@ void CUDAMiner::search(
         {
             cudaStream_t stream = m_streams[current_index];
             buffer = m_search_buf[current_index];
-            buffer_cpy = &m_search_buf_cpy[current_index];
 
 
             // Wait for stream batch to complete and immediately
@@ -474,10 +473,10 @@ void CUDAMiner::search(
 
             // See if we got solutions in this batch
             uint32_t found_count = buffer->count;
-            buffer_cpy->count = 0;
             if (found_count)
             {
                 // save the solution(s), We'll submit them after all
+                buffer_cpy = &m_search_buf_cpy[current_index];
                 // the streams have been restarted.
                 if (found_count > SEARCH_RESULTS)
                     found_count = SEARCH_RESULTS;
@@ -497,6 +496,7 @@ void CUDAMiner::search(
         {
             buffer_cpy = &m_search_buf_cpy[current_index];
             uint32_t found_count = buffer_cpy->count;
+            buffer_cpy->count = 0;
             if (found_count)
             {
                 uint64_t nonce_base =

@@ -15,7 +15,7 @@
 
 typedef struct
 {
-    uint32_t count;
+    uint32_t count = 0;
     struct
     {
         // One word for gid and 8 for mix hash

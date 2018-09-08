@@ -74,7 +74,7 @@ private:
 
     vector<volatile search_results*> m_search_buf;
     vector<search_results> m_search_buf_cpy;
-    cudaStream_t* m_streams = nullptr;
+    vector<cudaStream_t> m_streams;
     uint64_t m_current_target = 0;
 
     /// The local work size for the search
