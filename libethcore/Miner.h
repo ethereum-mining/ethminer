@@ -397,7 +397,11 @@ public:
     float RetrieveHashRate() noexcept { return m_hashRate.load(std::memory_order_relaxed); }
     void TriggerHashRateUpdate() noexcept
     {
-        m_hashRateUpdate.store(true, std::memory_order_relaxed);
+        bool b = false;
+        if (m_hashRateUpdate.compare_exchange_strong(b, true))
+            return;
+        // GPU didn't respond to last trigger, assume it's dead.
+        m_hashRate = 0.0;
     }
 
 protected:
