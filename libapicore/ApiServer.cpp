@@ -788,7 +788,7 @@ Json::Value ApiConnection::getMinerStat1()
 {
     auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
         steady_clock::now() - m_farm.farmLaunched());
-
+    auto connection = m_mgr.getActiveConnectionCopy();
     SolutionStats s = m_farm.getSolutionStats();
     WorkingProgress p = m_farm.miningProgress();
 
@@ -804,7 +804,7 @@ Json::Value ApiConnection::getMinerStat1()
                << s.getAccepts() << ";" << s.getRejects();
     totalMhDcr << "0;0;0";                    // DualMining not supported
     invalidStats << s.getFailures() << ";0";  // Invalid + Pool switches
-    poolAddresses << m_farm.get_pool_addresses();
+    poolAddresses << connection.Host() << ':' << connection.Port();
     invalidStats << ";0;0";  // DualMining not supported
 
     int gpuIndex = 0;
@@ -851,7 +851,7 @@ Json::Value ApiConnection::getMinerStatHR()
     // TODO:give key-value format
     auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
         steady_clock::now() - m_farm.farmLaunched());
-
+    auto connection = m_mgr.getActiveConnectionCopy();
     SolutionStats s = m_farm.getSolutionStats();
     WorkingProgress p = m_farm.miningProgress();
 
@@ -867,7 +867,7 @@ Json::Value ApiConnection::getMinerStatHR()
 
     version << ethminer_get_buildinfo()->project_name_with_version;
     runtime << toString(runningTime.count());
-    poolAddresses << m_farm.get_pool_addresses();
+    poolAddresses << connection.Host() << ':' << connection.Port();
 
     assert(p.minersHashRates.size() == p.minerMonitors.size() || p.minerMonitors.size() == 0);
     assert(p.minersHashRates.size() == p.miningIsPaused.size());
@@ -1006,16 +1006,13 @@ Json::Value ApiConnection::getMinerStatDetail()
     }
 
     /* connection info */
-    auto connection = m_mgr.getActiveConnection();
+    auto connection = m_mgr.getActiveConnectionCopy();
     Json::Value jconnection;
-    if (connection)
-    {
-        jconnection["hostname"] = connection->Host();
-        // jconnection["endpoint"] = m_mgr.getClient()->ActiveEndPoint();
-        jconnection["port"] = connection->Port();
-        jconnection["user"] = connection->User();  // TODO - only if we've write access ? */
-        jconnection["password"] = connection->Pass(); // TODO - only if we've write access ? */
-    }
+    jconnection["hostname"] = connection.Host();
+    // jconnection["endpoint"] = m_mgr.getClient()->ActiveEndPoint();
+    jconnection["port"] = connection.Port();
+    jconnection["user"] = connection.User();  // TODO - only if we've write access ? */
+    jconnection["password"] = connection.Pass(); // TODO - only if we've write access ? */
     jconnection["isconnected"] = m_mgr.isConnected();
     jRes["connection"] = jconnection;
 
