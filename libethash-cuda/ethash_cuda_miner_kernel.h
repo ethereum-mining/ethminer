@@ -13,18 +13,16 @@
 // of 2 here will yield better CUDA optimization
 #define SEARCH_RESULTS 4U
 
-struct search_result
-{
-    // One word for gid and 8 for mix hash
-    uint32_t gid;
-    uint32_t mix[8];
-    uint32_t pad[7];  // pad to size power of 2
-};
-
 struct search_results
 {
-    uint32_t count = 0;
-    search_result result[SEARCH_RESULTS];
+    uint32_t count;
+    struct
+    {
+        // One word for gid and 8 for mix hash
+        uint32_t gid;
+        uint32_t mix[8];
+        uint32_t pad[7];  // pad to size power of 2
+    } result[SEARCH_RESULTS];
 };
 
 #define ACCESSES 64
