@@ -446,6 +446,10 @@ void CUDAMiner::search(
     bool done = false;
     while (!done)
     {
+        // Start of the forever loop. It will only exit when told
+        // stop, or arrival of new work.
+        // It will process ALL cuda streams once per pass
+
         bool t = true;
         if (m_new_work.compare_exchange_strong(t, false))
             done = true;
@@ -453,15 +457,22 @@ void CUDAMiner::search(
         for (current_index = 0; current_index < s_numStreams;
              current_index++, current_nonce += batch_size)
         {
+            // Start of the inner search loop. It will process a
+            // single stream per pass.
+
             cudaStream_t stream = m_streams[current_index];
 
             // Wait for stream batch to complete and immediately
             // store number of processed hashes
             CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
+            // The cuda stream is stopped, get it restarted ASAP!
+
             volatile search_results& buffer(*m_searchResults[current_index]);
 
-            // See if we got solutions in this batch
+            // 1st see if we got solutions in this batch, if so
+            // quickly save them for later and reset the search
+            // result buffer.
             uint32_t found_count = buffer.count;
             if (found_count)
             {
@@ -471,34 +482,50 @@ void CUDAMiner::search(
                 if (found_count > SEARCH_RESULTS)
                     found_count = SEARCH_RESULTS;
                 for (unsigned i = 0; i < found_count; i++)
-                    buffer_cpy.result[i] = const_cast<search_result&>(buffer.result[i]);
+                {
+                    buffer_cpy.result[i].gid = const_cast<search_result&>(buffer.result[i]).gid;
+                    if (s_noeval)
+                        for (unsigned j = 0; j < 8; j++)
+                            buffer_cpy.result[i].mix[j] = buffer.result[i].mix[j];
+                }
                 buffer_cpy.count = found_count;
                 buffer.count = 0;
             }
 
+            // One last thing... see if it's time to exit?
             if (shouldStop())
             {
                 m_new_work.store(false, std::memory_order_relaxed);
                 done = true;
             }
 
+            // If we're stopping finish processing ALL streams but
+            // Don't restart this stream
             if (done)
-                break;
+                continue;
 
             // restart the stream on the next batch of nonces
             run_ethash_search(
                 s_gridSize, s_blockSize, stream, &buffer, current_nonce, m_parallelHash);
+            // The cuda stream is running.
         }
 
-        // All streams are running. time for some bookeeping
+        // All streams are running and continue for a while. time for some bookeeping
+
+        // Update the hash rate metrics
         updateHashRate(batch_size, s_numStreams);
+
+        // Check the saved results for saved solutions. We collected results
+        // from all streams, so check each one by one.
         for (current_index = 0; current_index < s_numStreams; current_index++)
         {
-            search_results& buffer_cpy(m_saveSearchResults[current_index]);
-            uint32_t found_count = buffer_cpy.count;
-            buffer_cpy.count = 0;
+            search_results& buffer(m_saveSearchResults[current_index]);
+            uint32_t found_count = buffer.count;
+            buffer.count = 0;
             if (found_count)
             {
+                // This result is for a search that was started 2 outer loop
+                // passes ago.
                 uint64_t nonce_base =
                     current_nonce - (2 * streams_batch_size) + (current_index * batch_size);
 
@@ -507,12 +534,12 @@ void CUDAMiner::search(
 
                 for (uint32_t i = 0; i < found_count; i++)
                 {
-                    minerNonce = nonce_base + buffer_cpy.result[i].gid;
+                    minerNonce = nonce_base + buffer.result[i].gid;
                     if (s_noeval)
                     {
                         h256 minerMix;
-                        memcpy(minerMix.data(), &buffer_cpy.result[i].mix,
-                            sizeof(buffer_cpy.result[0].mix));
+                        memcpy(
+                            minerMix.data(), &buffer.result[i].mix, sizeof(buffer.result[0].mix));
                         farm.submitProof(Solution{minerNonce, minerMix, w, m_new_work}, index);
                     }
                     else
