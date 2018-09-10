@@ -78,9 +78,6 @@ bool CUDAMiner::init(int epoch)
                 << " (Compute " + to_string(device_props.major) + "." +
                        to_string(device_props.minor) + ")";
 
-        m_search_buf = new volatile search_results*[s_numStreams];
-        m_streams = new cudaStream_t[s_numStreams];
-
         const auto& context = ethash::get_global_epoch_context(epoch);
         const auto lightNumItems = context.light_cache_num_items;
         const auto lightSize = ethash::get_light_cache_size(lightNumItems);
@@ -135,7 +132,7 @@ bool CUDAMiner::init(int epoch)
             cudalog << "Generating mining buffers";
             for (unsigned i = 0; i != s_numStreams; ++i)
             {
-                CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(search_results)));
+                CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(Search_results)));
                 CUDA_SAFE_CALL(cudaStreamCreateWithFlags(&m_streams[i], cudaStreamNonBlocking));
             }
 
@@ -216,6 +213,10 @@ void CUDAMiner::workLoop()
 {
     WorkPackage current;
     current.header = h256{1u};
+
+    m_search_buf.resize(s_numStreams);
+    m_streams.resize(s_numStreams);
+
 
     try
     {
@@ -427,7 +428,6 @@ void CUDAMiner::search(
     const uint32_t batch_size = s_gridSize * s_blockSize;
     // Nonces processed in one pass by all streams
     const uint32_t streams_batch_size = batch_size * s_numStreams;
-    volatile search_results* buffer;
 
     // prime each stream and clear search result buffers
     uint32_t current_index;
@@ -435,16 +435,15 @@ void CUDAMiner::search(
          current_index++, current_nonce += batch_size)
     {
         cudaStream_t stream = m_streams[current_index];
-        buffer = m_search_buf[current_index];
-        buffer->count = 0;
+        volatile Search_results& buffer(*m_search_buf[current_index]);
+        buffer.count = 0;
 
         // Run the batch for this stream
-        run_ethash_search(s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
+        run_ethash_search(s_gridSize, s_blockSize, stream, &buffer, current_nonce, m_parallelHash);
     }
 
     // process stream batches until we get new work.
     bool done = false;
-    bool stop = false;
     while (!done)
     {
         bool t = true;
@@ -455,24 +454,19 @@ void CUDAMiner::search(
              current_index++, current_nonce += batch_size)
         {
             cudaStream_t stream = m_streams[current_index];
-            buffer = m_search_buf[current_index];
+            volatile Search_results& buffer(*m_search_buf[current_index]);
 
             // Wait for stream batch to complete and immediately
             // store number of processed hashes
             CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
-            if (shouldStop())
-            {
-                m_new_work.store(false, std::memory_order_relaxed);
-                done = true;
-                stop = true;
-            }
-
             // See if we got solutions in this batch
-            uint32_t found_count = std::min((unsigned)buffer->count, SEARCH_RESULTS);
+            uint32_t found_count = buffer.count;
             if (found_count)
             {
-                buffer->count = 0;
+                if (found_count > MAX_SEARCH_RESULTS)
+                    found_count = MAX_SEARCH_RESULTS;
+                buffer.count = 0;
                 uint64_t nonce_base = current_nonce - streams_batch_size;
 
                 // Pass the solution(s) for submission
@@ -480,20 +474,20 @@ void CUDAMiner::search(
 
                 for (uint32_t i = 0; i < found_count; i++)
                 {
-                    minerNonce = nonce_base + buffer->result[i].gid;
+                    minerNonce = nonce_base + buffer.result[i].gid;
                     if (s_noeval)
                     {
                         h256 minerMix;
-                        memcpy(minerMix.data(), (void*)&buffer->result[i].mix,
-                            sizeof(buffer->result[i].mix));
-                        farm.submitProof(Solution{minerNonce, minerMix, w, m_new_work}, index);
+                        memcpy(minerMix.data(), (void*)&buffer.result[i].mix,
+                            sizeof(buffer.result[i].mix));
+                        farm.submitProof(Solution{minerNonce, minerMix, w, done}, index);
                     }
                     else
                     {
                         Result r = EthashAux::eval(w.epoch, w.header, minerNonce);
                         if (r.value <= w.boundary)
                         {
-                            farm.submitProof(Solution{minerNonce, r.mixHash, w, m_new_work}, index);
+                            farm.submitProof(Solution{minerNonce, r.mixHash, w, done}, index);
                         }
                         else
                         {
@@ -507,15 +501,24 @@ void CUDAMiner::search(
             }
 
             // restart the stream on the next batch of nonces
-            if (!done)
-                run_ethash_search(
-                    s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
+            if (done)
+                continue;
+
+            run_ethash_search(
+                s_gridSize, s_blockSize, stream, &buffer, current_nonce, m_parallelHash);
         }
 
         updateHashRate(batch_size, s_numStreams);
+
+        if (shouldStop())
+        {
+            m_new_work.store(false, std::memory_order_relaxed);
+            break;
+        }
+
     }
 
-    if (!stop && (g_logOptions & LOG_SWITCH_TIME))
+    if (!shouldStop() && (g_logOptions & LOG_SWITCH_TIME))
     {
         cudalog << "Switch time: "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(

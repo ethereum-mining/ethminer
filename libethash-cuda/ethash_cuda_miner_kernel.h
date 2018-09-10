@@ -11,18 +11,20 @@
 // one solution per stream hash calculation
 // Leave room for up to 4 results. A power
 // of 2 here will yield better CUDA optimization
-#define SEARCH_RESULTS 4U
+#define MAX_SEARCH_RESULTS 4U
 
-struct search_results
+struct Result
+{
+    // One word for gid and 8 for mix hash
+    uint32_t gid;
+    uint32_t mix[8];
+    uint32_t pad[7];  // pad to size power of 2
+};
+
+struct Search_results
 {
     uint32_t count;
-    struct
-    {
-        // One word for gid and 8 for mix hash
-        uint32_t gid;
-        uint32_t mix[8];
-        uint32_t pad[7];  // pad to size power of 2
-    } result[SEARCH_RESULTS];
+    Result result[MAX_SEARCH_RESULTS];
 };
 
 #define ACCESSES 64
@@ -59,7 +61,7 @@ void set_header(hash32_t _header);
 void set_target(uint64_t _target);
 
 void run_ethash_search(uint32_t gridSize, uint32_t blockSize, cudaStream_t stream,
-    volatile search_results* g_output, uint64_t start_nonce, uint32_t parallelHash);
+    volatile Search_results* g_output, uint64_t start_nonce, uint32_t parallelHash);
 
 void ethash_generate_dag(uint64_t dag_size, uint32_t blocks, uint32_t threads, cudaStream_t stream);
 
