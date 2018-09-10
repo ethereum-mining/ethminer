@@ -377,11 +377,11 @@ public:
 
         app.add_option("--cuda-grid-size", m_cudaGridSize, "Set the grid size", true)
             ->group(CUDAGroup)
-            ->check(CLI::Range(1, 999999999));
+            ->check(CLI::Range(1, 131072));
 
-        app.add_option("--cuda-block-size", m_cudaBlockSize, "Set the block size", true)
-            ->group(CUDAGroup)
-            ->check(CLI::Range(1, 999999999));
+        app.add_set(
+               "--cuda-block-size", m_cudaBlockSize, {32, 64, 128, 256}, "Set the block size", true)
+            ->group(CUDAGroup);
 
         app.add_option("--cuda-devices", m_cudaDevices,
                "Select list of devices to mine on (default: use all available)")
@@ -393,18 +393,7 @@ public:
 
         string sched = "sync";
         app.add_set("--cuda-schedule", sched, {"auto", "spin", "yield", "sync"},
-               "Set the scheduler mode."
-               "  auto  - Uses a heuristic based on the number of active CUDA contexts in the "
-               "process C"
-               "          and the number of logical processors in the system P. If C > P then "
-               "yield else spin.\n"
-               "  spin  - Instruct CUDA to actively spin when waiting for results from the device."
-               "  yield - Instruct CUDA to yield its thread when waiting for results from the "
-               "device."
-               "  sync  - Instruct CUDA to block the CPU thread on a synchronization primitive "
-               "when waiting for the results from the device."
-               "  ",
-               true)
+               "Set the scheduler mode.", true)
             ->group(CUDAGroup);
 
         app.add_option("--cuda-streams", m_numStreams, "Set the number of streams", true)
@@ -515,6 +504,23 @@ public:
             << "      tls -       Encrypted with tls (including deprecated tls 1.1)" << endl
             << "      tls12,ssl - Encrypted with tls 1.2 or later" << endl
             << endl
+#if ETH_ETHASHCUDA
+            << "Cuda scheduler modes" << endl
+            << "    auto  - Uses a heuristic based on the number of active CUDA contexts in the "
+            << endl
+            << "            process C and the number of logical processors in the system P." << endl
+            << "            If C > P then yield else spin." << endl
+            << "    spin  - Instruct CUDA to actively spin when waiting for results from the "
+               "device."
+            << endl
+            << "    yield - Instruct CUDA to yield its thread when waiting for results from the "
+            << endl
+            << "            device." << endl
+            << "    sync  - Instruct CUDA to block the CPU thread on a synchronization primitive "
+            << endl
+            << "            when waiting for the results from the device." << endl
+            << endl
+#endif
             << "Environment Variables:" << endl
             << "    NO_COLOR - set to any value to disable color output. Unset to re-enable "
                "color output."
