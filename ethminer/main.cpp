@@ -512,7 +512,7 @@ public:
             << "      stratum2 -  Eth stratum (nicehash)" << endl
             << "    transports:" << endl
             << "      tcp -       Unencrypted connection" << endl
-            << "      tls -       Encrypted with tls (includind deprecated tls 1.1)" << endl
+            << "      tls -       Encrypted with tls (including deprecated tls 1.1)" << endl
             << "      tls12,ssl - Encrypted with tls 1.2 or later" << endl
             << endl
             << "Environment Variables:" << endl
