@@ -72,8 +72,8 @@ private:
     int m_dag_size = -1;
     uint32_t m_device_num = 0;
 
-    volatile search_results** m_search_buf = nullptr;
-    cudaStream_t* m_streams = nullptr;
+    std::vector<volatile Search_results*> m_search_buf;
+    std::vector<cudaStream_t> m_streams;
     uint64_t m_current_target = 0;
 
     /// The local work size for the search
