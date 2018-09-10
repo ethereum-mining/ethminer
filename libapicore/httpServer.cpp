@@ -38,10 +38,14 @@ void httpServer::getstat1(stringstream& ss)
     using namespace std::chrono;
     WorkingProgress p = m_farm->miningProgress();
     SolutionStats s = m_farm->getSolutionStats();
-    tableHeader(ss, 5);
+    tableHeader(ss, 6);
     ss << "<tr valign=top align=center style=background-color:Yellow>"
-          "<th>GPU</th><th>Hash Rate (MH/s)</th><th>Temperature (C)</th><th>Fan "
-          "Percent.</th><th>Power (W)</th></tr>";
+          "<th>GPU</th>"
+	  "<th>Hash Rate (MH/s)</th>"
+	  "<th>Solutions</th>"
+	  "<th>Temperature (C)</th>"
+	  "<th>Fan Percent.</th>"
+	  "<th>Power (W)</th></tr>";
     double hashSum = 0.0;
     double powerSum = 0.0;
     for (unsigned i = 0; i < p.minersHashRates.size(); i++)
@@ -53,6 +57,7 @@ void httpServer::getstat1(stringstream& ss)
         if (i < p.miningIsPaused.size() && p.miningIsPaused[i])
             ss << " style=color:Red";
         ss << ">" << i << "</td><td>" << fixed << setprecision(2) << rate;
+	ss << "</td><td>" << s.getString(i);
         if (m_show_hwmonitors && (i < p.minerMonitors.size()))
         {
             HwMonitor& hw(p.minerMonitors[i]);
@@ -68,7 +73,7 @@ void httpServer::getstat1(stringstream& ss)
             ss << "</td><td>-</td><td>-</td><td>-</td></tr>";
     }
     ss << "<tr valign=top align=center style=\"background-color:yellow\"><th>Total</th><td>"
-       << fixed << setprecision(2) << hashSum << "</td><td colspan=2>Solutions: " << s
+       << fixed << setprecision(2) << hashSum << "</td><td colspan=3>Solutions: " << s
        << "</td><td>";
     if (m_show_power)
         ss << fixed << setprecision(0) << powerSum;
