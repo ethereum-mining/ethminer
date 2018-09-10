@@ -35,7 +35,7 @@ public:
     double getCurrentDifficulty();
 
 private:
-    void suspendMining(void);
+    void suspendMining();
 
     unsigned m_hashrateReportingTime = 60;
     unsigned m_hashrateReportingTimePassed = 0;
