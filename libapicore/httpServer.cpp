@@ -29,7 +29,8 @@ void httpServer::tableHeader(stringstream& ss, unsigned columns)
           "cellpadding=2 cellspacing=0 align=center>"
           "<tr valign=top align=center style=background-color:Gold><th colspan="
        << columns << ">" << ethminer_get_buildinfo()->project_name_with_version << " on "
-       << hostName << " - " << l << "</th></tr>";
+       << hostName << " - " << l << "<br/>Pool: " << m_manager->getActiveConnectionCopy().Host()
+       << "</th></tr>";
 }
 
 
@@ -38,10 +39,14 @@ void httpServer::getstat1(stringstream& ss)
     using namespace std::chrono;
     WorkingProgress p = m_farm->miningProgress();
     SolutionStats s = m_farm->getSolutionStats();
-    tableHeader(ss, 5);
+    tableHeader(ss, 6);
     ss << "<tr valign=top align=center style=background-color:Yellow>"
-          "<th>GPU</th><th>Hash Rate (MH/s)</th><th>Temperature (C)</th><th>Fan "
-          "Percent.</th><th>Power (W)</th></tr>";
+          "<th>GPU</th>"
+          "<th>Hash Rate (MH/s)</th>"
+          "<th>Solutions</th>"
+          "<th>Temperature (C)</th>"
+          "<th>Fan Percent.</th>"
+          "<th>Power (W)</th></tr>";
     double hashSum = 0.0;
     double powerSum = 0.0;
     for (unsigned i = 0; i < p.minersHashRates.size(); i++)
@@ -53,6 +58,7 @@ void httpServer::getstat1(stringstream& ss)
         if (i < p.miningIsPaused.size() && p.miningIsPaused[i])
             ss << " style=color:Red";
         ss << ">" << i << "</td><td>" << fixed << setprecision(2) << rate;
+        ss << "</td><td>" << s.getString(i);
         if (m_show_hwmonitors && (i < p.minerMonitors.size()))
         {
             HwMonitor& hw(p.minerMonitors[i]);
@@ -68,7 +74,7 @@ void httpServer::getstat1(stringstream& ss)
             ss << "</td><td>-</td><td>-</td><td>-</td></tr>";
     }
     ss << "<tr valign=top align=center style=\"background-color:yellow\"><th>Total</th><td>"
-       << fixed << setprecision(2) << hashSum << "</td><td colspan=2>Solutions: " << s
+       << fixed << setprecision(2) << hashSum << "</td><td colspan=3>Solutions: " << s
        << "</td><td>";
     if (m_show_power)
         ss << fixed << setprecision(0) << powerSum;
@@ -94,12 +100,13 @@ static void ev_handler(struct mg_connection* c, int ev, void* p)
     }
 }
 
-void httpServer::run(
-    string address, uint16_t port, dev::eth::Farm* farm, bool show_hwmonitors, bool show_power)
+void httpServer::run(string address, uint16_t port, dev::eth::Farm* farm, PoolManager* manager,
+    bool show_hwmonitors, bool show_power)
 {
     if (port == 0)
         return;
     m_farm = farm;
+    m_manager = manager;
     // admittedly, at this point, it's a bit hacky to call it "m_port" =/
     if (address.empty())
     {
