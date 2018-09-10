@@ -461,15 +461,6 @@ void CUDAMiner::search(
             // store number of processed hashes
             CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
-            m_hashCount += batch_size;
-
-            bool t = true;
-            if (m_hashRateUpdate.compare_exchange_strong(t, false))
-            {
-                updateHashRate(m_hashCount);
-                m_hashCount = 0;
-            }
-
             if (shouldStop())
             {
                 m_new_work.store(false, std::memory_order_relaxed);
@@ -481,7 +472,6 @@ void CUDAMiner::search(
             uint32_t found_count = std::min((unsigned)buffer->count, SEARCH_RESULTS);
             if (found_count)
             {
-
                 buffer->count = 0;
                 uint64_t nonce_base = current_nonce - streams_batch_size;
 
@@ -520,8 +510,9 @@ void CUDAMiner::search(
             if (!done)
                 run_ethash_search(
                     s_gridSize, s_blockSize, stream, buffer, current_nonce, m_parallelHash);
-
         }
+
+        updateHashRate(batch_size, s_numStreams);
     }
 
     if (!stop && (g_logOptions & LOG_SWITCH_TIME))

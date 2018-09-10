@@ -13,7 +13,7 @@
 // of 2 here will yield better CUDA optimization
 #define SEARCH_RESULTS 4U
 
-typedef struct
+struct search_results
 {
     uint32_t count;
     struct
@@ -23,7 +23,7 @@ typedef struct
         uint32_t mix[8];
         uint32_t pad[7];  // pad to size power of 2
     } result[SEARCH_RESULTS];
-} search_results;
+};
 
 #define ACCESSES 64
 #define THREADS_PER_HASH (128 / 16)
