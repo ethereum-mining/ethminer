@@ -94,7 +94,7 @@ static void ev_handler(struct mg_connection* c, int ev, void* p)
         {
             stringstream content;
             http_server.getstat1(content);
-            mg_send_head(c, 200, (int)content.str().length(), "Content-Type: text/html");
+            mg_send_head(c, 200, (int)content.str().length(), "Content-Type: text/html; charset=utf-8");
             mg_printf(c, "%.*s", (int)content.str().length(), content.str().c_str());
         }
     }
