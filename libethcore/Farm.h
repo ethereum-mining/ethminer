@@ -534,7 +534,7 @@ private:
 
     boost::asio::io_service::strand m_io_strand;
     boost::asio::deadline_timer m_collectTimer;
-    int m_collectInterval = 5000;
+    static const int m_collectInterval = 5000;
 
     mutable SolutionStats m_solutionStats;
     std::chrono::steady_clock::time_point m_farm_launched = std::chrono::steady_clock::now();
