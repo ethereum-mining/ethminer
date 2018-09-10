@@ -401,6 +401,8 @@ public:
         if (m_hashRateUpdate.compare_exchange_strong(b, true))
             return;
         // GPU didn't respond to last trigger, assume it's dead.
+        // This can happen on CUDA if:
+        //   runtime of --cuda-grid-size * --cuda-streams exceeds time of m_collectInterval
         m_hashRate = 0.0;
     }
 
