@@ -906,7 +906,7 @@ private:
             m_api_password, f, mgr);
         api.start();
 
-        http_server.run(m_http_address, m_http_port, &f, m_show_hwmonitors, m_show_power);
+        http_server.run(m_http_address, m_http_port, &f, &mgr, m_show_hwmonitors, m_show_power);
 
 #endif
 
