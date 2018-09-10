@@ -480,14 +480,14 @@ void CUDAMiner::search(
                         h256 minerMix;
                         memcpy(minerMix.data(), (void*)&buffer.result[i].mix,
                             sizeof(buffer.result[i].mix));
-                        farm.submitProof(Solution{minerNonce, minerMix, w, m_new_work}, index);
+                        farm.submitProof(Solution{minerNonce, minerMix, w, done}, index);
                     }
                     else
                     {
                         Result r = EthashAux::eval(w.epoch, w.header, minerNonce);
                         if (r.value <= w.boundary)
                         {
-                            farm.submitProof(Solution{minerNonce, r.mixHash, w, m_new_work}, index);
+                            farm.submitProof(Solution{minerNonce, r.mixHash, w, done}, index);
                         }
                         else
                         {
