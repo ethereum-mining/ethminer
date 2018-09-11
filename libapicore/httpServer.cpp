@@ -18,19 +18,34 @@ using namespace eth;
 
 httpServer http_server;
 
-void httpServer::tableHeader(stringstream& ss, unsigned columns)
+void httpServer::tableHeader(stringstream& ss)
 {
     char hostName[HOST_NAME_MAX + 1];
     gethostname(hostName, HOST_NAME_MAX + 1);
     string l = m_farm->farmLaunchedFormatted();
-    ss << "<html><head><title>" << hostName
-       << "</title><style>tr:nth-child(even){background-color:Gainsboro;}</style>"
-          "<meta http-equiv=refresh content=30></head><body><table width=\"50%\" border=1 "
-          "cellpadding=2 cellspacing=0 align=center>"
-          "<tr valign=top align=center style=background-color:Gold><th colspan="
-       << columns << ">" << ethminer_get_buildinfo()->project_name_with_version << " on "
-       << hostName << " - " << l << "<br/>Pool: " << m_manager->getActiveConnectionCopy().Host()
-       << "</th></tr>";
+    ss << "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" "
+          "\"http://www.w3.org/TR/html4/strict.dtd\">"
+          "<html>"
+          "<head>"
+          "<title>"
+       << hostName
+       << "</title>"
+          "<style type=\"text/css\">"
+          "html *{font-family: Arial;}"
+          "tr:nth-child(even){background-color:Gainsboro;}"
+          "table.center{margin-left:auto;margin-right:auto;}"
+          "body{text-align:center;}"
+          "</style>"
+          "<meta http-equiv=refresh content=30>"
+          "</head>"
+          "<body>"
+          "<table class=\"center\" border=1 cellpadding=3 cellspacing=0>"
+          "<tr valign=top align=center style=background-color:Gold>"
+          "<th colspan=6>"
+       << ethminer_get_buildinfo()->project_name_with_version << " on " << hostName << " - " << l
+       << "<br/>Pool: " << m_manager->getActiveConnectionCopy().Host()
+       << "</th>"
+          "</tr>";
 }
 
 
@@ -39,14 +54,14 @@ void httpServer::getstat1(stringstream& ss)
     using namespace std::chrono;
     WorkingProgress p = m_farm->miningProgress();
     SolutionStats s = m_farm->getSolutionStats();
-    tableHeader(ss, 6);
-    ss << "<tr valign=top align=center style=background-color:Yellow>"
+    tableHeader(ss);
+    ss << "<tr style=background-color:Yellow>"
           "<th>GPU</th>"
-          "<th>Hash Rate (MH/s)</th>"
+          "<th>Hash Rate</th>"
           "<th>Solutions</th>"
-          "<th>Temperature (C)</th>"
-          "<th>Fan Percent.</th>"
-          "<th>Power (W)</th></tr>";
+          "<th>Temp.</th>"
+          "<th>Fan %</th>"
+          "<th>Power</th></tr>";
     double hashSum = 0.0;
     double powerSum = 0.0;
     for (unsigned i = 0; i < p.minersHashRates.size(); i++)
@@ -54,7 +69,7 @@ void httpServer::getstat1(stringstream& ss)
         double rate = p.minersHashRates[i] / 1000000.0;
 
         hashSum += rate;
-        ss << "<tr valign=top align=center><td";
+        ss << "<tr><td";
         if (i < p.miningIsPaused.size() && p.miningIsPaused[i])
             ss << " style=color:Red";
         ss << ">" << i << "</td><td>" << fixed << setprecision(2) << rate;
@@ -73,9 +88,8 @@ void httpServer::getstat1(stringstream& ss)
         else
             ss << "</td><td>-</td><td>-</td><td>-</td></tr>";
     }
-    ss << "<tr valign=top align=center style=\"background-color:yellow\"><th>Total</th><td>"
-       << fixed << setprecision(2) << hashSum << "</td><td colspan=3>Solutions: " << s
-       << "</td><td>";
+    ss << "<tr style=\"background-color:yellow\"><th>Total</th><td>" << fixed << setprecision(2)
+       << hashSum << "</td><td colspan=3>Solutions: " << s << "</td><td>";
     if (m_show_power)
         ss << fixed << setprecision(0) << powerSum;
     else

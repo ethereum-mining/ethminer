@@ -18,7 +18,7 @@ public:
     std::string m_port;
 
 private:
-    void tableHeader(stringstream& ss, unsigned columns);
+    void tableHeader(stringstream& ss);
     bool m_show_hwmonitors;
     bool m_show_power;
 };
