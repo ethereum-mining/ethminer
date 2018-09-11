@@ -535,10 +535,10 @@ void CUDAMiner::search(
                     if (s_noeval)
                     {
                         // noeval... use the GPU calculated mix hash.
-                        h256 minerMix;
-                        memcpy(minerMix.data(), (void*)&buffer.result[i].mix,
-                            sizeof(buffer.result[i].mix));
-                        farm.submitProof(Solution{nonce, minerMix, w, done}, index);
+                        h256 mix;
+                        memcpy(mix.data(), (void*)&buffer.result[i].mix,
+                            sizeof(buffer.result[0].mix));
+                        farm.submitProof(Solution{nonce, mix, w, done}, index);
                     }
                     else
                     {
