@@ -73,6 +73,7 @@ private:
     uint32_t m_device_num = 0;
 
     std::vector<volatile Search_results*> m_search_buf;
+    std::vector<Search_results> m_save_buf;
     std::vector<cudaStream_t> m_streams;
     uint64_t m_current_target = 0;
 

@@ -215,6 +215,7 @@ void CUDAMiner::workLoop()
     current.header = h256{1u};
 
     m_search_buf.resize(s_numStreams);
+    m_save_buf.resize(s_numStreams);
     m_streams.resize(s_numStreams);
 
 
@@ -446,48 +447,107 @@ void CUDAMiner::search(
     bool done = false;
     while (!done)
     {
+        // Each pass of this outer loop will handle all cuda streams once
+
+        // Exit next time around if there's new work awaiting
         bool t = true;
         if (m_new_work.compare_exchange_strong(t, false))
             done = true;
 
+        // This inner loop will process each cuda stream individually
         for (current_index = 0; current_index < s_numStreams;
              current_index++, current_nonce += batch_size)
         {
+            // Each pass of this loop will wait for a stream to exit,
+            // save any found solutions, then restart the stream
+            // on the next group of nonces.
             cudaStream_t stream = m_streams[current_index];
-            volatile Search_results& buffer(*m_search_buf[current_index]);
 
-            // Wait for stream batch to complete and immediately
-            // store number of processed hashes
+            // Wait for the stream complete
             CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
-            // See if we got solutions in this batch
+            // refer to the current stream's solution buffer
+            volatile Search_results& buffer(*m_search_buf[current_index]);
+
+            // See if the stream found any solutions
             uint32_t found_count = buffer.count;
             if (found_count)
             {
+                // Found one or more solutions, save them for later.
+                // We are in a hurry to restart the stream, so defer
+                // non-critical activities, such as hash rate calculations
+                // and solution submission.
+
                 if (found_count > MAX_SEARCH_RESULTS)
                     found_count = MAX_SEARCH_RESULTS;
-                buffer.count = 0;
-                uint64_t nonce_base = current_nonce - streams_batch_size;
 
-                // Pass the solution(s) for submission
-                uint64_t minerNonce;
+                // refer to the current stream's save buffer
+                Search_results& save(m_save_buf[current_index]);
 
+                // copy the solution to the save buffer for this stream
+                save.count = found_count;
                 for (uint32_t i = 0; i < found_count; i++)
                 {
-                    minerNonce = nonce_base + buffer.result[i].gid;
+                    save.result[i].gid = buffer.result[i].gid;
+                    if (s_noeval)
+                        for (uint32_t j = 0; j < 8; j++)
+                            save.result[i].mix[j] = buffer.result[i].mix[j];
+                }
+
+                // Ok, solutions are saved. We can now reset the stream's
+                // solution buffer, releasing it for reuse.
+                buffer.count = 0;
+            }
+
+            // restart the stream on the next batch of nonces
+            // unless we are done for this round.
+            if (done)
+                continue;
+
+            run_ethash_search(
+                s_gridSize, s_blockSize, stream, &buffer, current_nonce, m_parallelHash);
+        }
+
+        // All streams have been restarted and should be busy for a while
+        // searching. Now is a good time to burn CPU cycles on bookeeping.
+
+        // Update the hash rate
+        updateHashRate(batch_size, s_numStreams);
+
+        // submit any solutions found by all streams
+        for (current_index = 0; current_index < s_numStreams; current_index++)
+        {
+            // Refer to this stream's save buffer
+            Search_results& buffer(m_save_buf[current_index]);
+
+            // check for solutions from cuuren stream
+            uint32_t found_count = buffer.count;
+            if (found_count)
+            {
+                // We are 2 outer loop iterations behind the current nonce.
+                uint64_t nonce_base =
+                    current_nonce - (2 * streams_batch_size) + (current_index * batch_size);
+
+                // Submit this stream's solutions
+                for (uint32_t i = 0; i < found_count; i++)
+                {
+                    uint64_t nonce = nonce_base + buffer.result[i].gid;
                     if (s_noeval)
                     {
+                        // noeval... use the GPU calculated mix hash.
                         h256 minerMix;
                         memcpy(minerMix.data(), (void*)&buffer.result[i].mix,
                             sizeof(buffer.result[i].mix));
-                        farm.submitProof(Solution{minerNonce, minerMix, w, done}, index);
+                        farm.submitProof(Solution{nonce, minerMix, w, done}, index);
                     }
                     else
                     {
-                        Result r = EthashAux::eval(w.epoch, w.header, minerNonce);
+                        // eval... recalculate the mix hash in software and verify
+                        // the GPU's result
+                        Result r = EthashAux::eval(w.epoch, w.header, nonce);
                         if (r.value <= w.boundary)
                         {
-                            farm.submitProof(Solution{minerNonce, r.mixHash, w, done}, index);
+                            farm.submitProof(Solution{nonce, r.mixHash, w, done}, index);
                         }
                         else
                         {
@@ -498,18 +558,12 @@ void CUDAMiner::search(
                     }
 
                 }
+                // Reset this stream's buffer for the next pass
+                buffer.count = 0;
             }
-
-            // restart the stream on the next batch of nonces
-            if (done)
-                continue;
-
-            run_ethash_search(
-                s_gridSize, s_blockSize, stream, &buffer, current_nonce, m_parallelHash);
         }
 
-        updateHashRate(batch_size, s_numStreams);
-
+        // Bail out if it's shutdown time
         if (shouldStop())
         {
             m_new_work.store(false, std::memory_order_relaxed);
@@ -518,6 +572,7 @@ void CUDAMiner::search(
 
     }
 
+    // Optionally log job switch time
     if (!shouldStop() && (g_logOptions & LOG_SWITCH_TIME))
     {
         cudalog << "Switch time: "
