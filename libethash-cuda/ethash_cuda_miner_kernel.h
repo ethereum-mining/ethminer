@@ -23,8 +23,8 @@ struct Search_Result
 
 struct Search_results
 {
-    uint32_t count = 0;
     Search_Result result[MAX_SEARCH_RESULTS];
+    uint32_t count = 0;
 };
 
 #define ACCESSES 64
