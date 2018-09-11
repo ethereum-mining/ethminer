@@ -23,10 +23,14 @@ void httpServer::tableHeader(stringstream& ss, unsigned columns)
     char hostName[HOST_NAME_MAX + 1];
     gethostname(hostName, HOST_NAME_MAX + 1);
     string l = m_farm->farmLaunchedFormatted();
-    ss << "<html><head><title>" << hostName
-       << "</title><style>tr:nth-child(even){background-color:Gainsboro;}</style>"
-          "<meta http-equiv=refresh content=30></head><body><table width=\"50%\" border=1 "
-          "cellpadding=2 cellspacing=0 align=center>"
+    ss << "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" "
+          "\"http://www.w3.org/TR/html4/strict.dtd\">"
+       << "<html><head><title>" << hostName
+       << "</title><style type=\"text/css\">tr:nth-child(even){background-color:Gainsboro;}"
+          "table.center{margin-left:auto;margin-right:auto;}"
+          "body{text-align:center;}</style>"
+          "<meta http-equiv=refresh content=30></head><body><table class=\"center\" border=1 "
+          "cellpadding=2 cellspacing=0>"
           "<tr valign=top align=center style=background-color:Gold><th colspan="
        << columns << ">" << ethminer_get_buildinfo()->project_name_with_version << " on "
        << hostName << " - " << l << "<br/>Pool: " << m_manager->getActiveConnectionCopy().Host()
