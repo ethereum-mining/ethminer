@@ -85,18 +85,17 @@ std::ostream& operator<<(std::ostream& _out, const WorkingProgress& _p)
 
 std::ostream& operator<<(std::ostream& os, const SolutionStats& s)
 {
+    os << "A" << s.getAccepts();
     auto stales = s.getAcceptedStales();
-    auto rejects = s.getRejects();
-    auto failures = s.getFailures();
-
-    os << "[A" << s.getAccepts();
     if (stales)
         os << "+" << stales;
+    auto rejects = s.getRejects();
     if (rejects)
         os << ":R" << rejects;
+    auto failures = s.getFailures();
     if (failures)
         os << ":F" << failures;
-    return os << "]";
+    return os;
 }
 
 }  // namespace eth
