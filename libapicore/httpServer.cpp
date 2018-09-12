@@ -18,41 +18,54 @@ using namespace eth;
 
 httpServer http_server;
 
+// Define grayscale palette
+#define HDR0_COLOR "#e8e8e8"
+#define HDR1_COLOR "#f0f0f0"
+#define ROW0_COLOR "#f8f8f8"
+#define ROW1_COLOR "#ffffff"
+
 void httpServer::tableHeader(stringstream& ss)
 {
     char hostName[HOST_NAME_MAX + 1];
     gethostname(hostName, HOST_NAME_MAX + 1);
     string l = m_farm->farmLaunchedFormatted();
     ss << "<!doctype html>"
-          "<html lang=\"en\">"
+          "<html lang=en>"
           "<head>"
-          "<meta charset=\"utf-8\">"
+          "<meta charset=utf-8>"
           "<title>"
        << hostName
        << "</title>"
           "<style>"
-          "body { font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; text-align: center; }"
-          "table, td, th { border: 1px inset #000; }"
-          "table { border-spacing: 0; }"
-          "td, th { padding: 3px; }"
-          "tbody tr:nth-child(odd) { background-color: gainsboro; }"
-          ".mx-auto { margin-left: auto; margin-right: auto; }"
-          ".bg-gold { background-color: gold }"
-          ".bg-yellow { background-color: yellow; }"
-          ".text-red { color: red; }"
+          "body{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,"
+          "\"Helvetica Neue\",Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5;"
+          "text-align:center;}"
+          "table,td,th{border:1px inset #000;}"
+          "table{border-spacing:0;}"
+          "td,th{padding:3px;}"
+          "tbody tr:nth-child(even){background-color:" ROW0_COLOR
+          ";}"
+          "tbody tr:nth-child(odd){background-color:" ROW1_COLOR
+          ";}"
+          ".mx-auto{margin-left:auto;margin-right:auto;}"
+          ".bg-header1{background-color:" HDR1_COLOR
+          ";}"
+          ".bg-header0{background-color:" HDR0_COLOR
+          ";}"
+          ".text-red{color:red;}"
           "</style>"
-          "<meta http-equiv=\"refresh\" content=\"30\">"
+          "<meta http-equiv=refresh content=30>"
           "</head>"
           "<body>"
-          "<table class=\"mx-auto\">"
+          "<table class=mx-auto>"
           "<thead>"
-          "<tr class=\"bg-gold\">"
-          "<th colspan=\"6\">"
+          "<tr class=bg-header1>"
+          "<th colspan=6>"
        << ethminer_get_buildinfo()->project_name_with_version << " on " << hostName << " - " << l
        << "<br>Pool: " << m_manager->getActiveConnectionCopy().Host()
        << "</th>"
           "</tr>"
-          "<tr class=\"bg-yellow\">"
+          "<tr class=bg-header0>"
           "<th>GPU</th>"
           "<th>Hash Rate</th>"
           "<th>Solutions</th>"
@@ -80,7 +93,7 @@ void httpServer::getstat1(stringstream& ss)
         hashSum += rate;
         ss << "<tr><td";
         if (i < p.miningIsPaused.size() && p.miningIsPaused[i])
-            ss << " class=\"text-red\"";
+            ss << " class=text-red";
         ss << ">" << i << "</td><td>" << fixed << setprecision(2) << rate;
         ss << "</td><td>" << s.getString(i);
         if (m_show_hwmonitors && (i < p.minerMonitors.size()))
@@ -97,8 +110,8 @@ void httpServer::getstat1(stringstream& ss)
         else
             ss << "</td><td>-</td><td>-</td><td>-</td></tr>";
     }
-    ss << "</tbody><tfoot><tr class=\"bg-yellow\"><th>Total</th><td>" << fixed << setprecision(2)
-       << hashSum << "</td><td colspan=\"3\">Solutions: " << s << "</td><td>";
+    ss << "</tbody><tfoot><tr class=bg-header0><th>Total</th><td>" << fixed << setprecision(2)
+       << hashSum << "</td><td colspan=3>Solutions: " << s << "</td><td>";
     if (m_show_power)
         ss << fixed << setprecision(0) << powerSum;
     else
