@@ -13,7 +13,7 @@
 // of 2 here will yield better CUDA optimization
 #define MAX_SEARCH_RESULTS 4U
 
-struct Result
+struct Search_Result
 {
     // One word for gid and 8 for mix hash
     uint32_t gid;
@@ -23,8 +23,8 @@ struct Result
 
 struct Search_results
 {
-    uint32_t count;
-    Result result[MAX_SEARCH_RESULTS];
+    Search_Result result[MAX_SEARCH_RESULTS];
+    uint32_t count = 0;
 };
 
 #define ACCESSES 64
