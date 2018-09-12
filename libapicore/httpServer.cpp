@@ -97,13 +97,13 @@ void httpServer::getstat1(stringstream& ss)
         else
             ss << "</td><td>-</td><td>-</td><td>-</td></tr>";
     }
-    ss << "<tr class=\"bg-yellow\"><th>Total</th><td>" << fixed << setprecision(2)
+    ss << "</tbody><tfoot><tr class=\"bg-yellow\"><th>Total</th><td>" << fixed << setprecision(2)
        << hashSum << "</td><td colspan=\"3\">Solutions: " << s << "</td><td>";
     if (m_show_power)
         ss << fixed << setprecision(0) << powerSum;
     else
         ss << '-';
-    ss << "</td></tr></tbody></table></body></html>";
+    ss << "</td></tr></tfoot></table></body></html>";
 }
 
 static void ev_handler(struct mg_connection* c, int ev, void* p)
