@@ -210,10 +210,13 @@ public:
         m_lastUpdated[miner_index] = now;
     }
 
-    unsigned getAccepts() const { return sumArray(m_accepts); }
-    unsigned getRejects() const { return sumArray(m_rejects); }
-    unsigned getFailures() const { return sumArray(m_failures); }
-    unsigned getAcceptedStales() const { return sumArray(m_acceptedStales); }
+    unsigned getAccepts() const { return accumulate(m_accepts.begin(), m_accepts.end(), 0); }
+    unsigned getRejects() const { return accumulate(m_rejects.begin(), m_rejects.end(), 0); }
+    unsigned getFailures() const { return accumulate(m_failures.begin(), m_failures.end(), 0); }
+    unsigned getAcceptedStales() const
+    {
+        return accumulate(m_acceptedStales.begin(), m_acceptedStales.end(), 0);
+    }
 
     unsigned getAccepts(unsigned miner_index) const
     {
@@ -249,29 +252,21 @@ public:
     std::string getString(unsigned miner_index)
     {
         ostringstream r;
-        auto stales = getAcceptedStales(miner_index);
-        auto rejects = getRejects(miner_index);
-        auto failures = getFailures(miner_index);
 
-        r << "[A" << getAccepts(miner_index);
+        r << "A" << getAccepts(miner_index);
+        auto stales = getAcceptedStales(miner_index);
         if (stales)
             r << "+" << stales;
+        auto rejects = getRejects(miner_index);
         if (rejects)
             r << ":R" << rejects;
+        auto failures = getFailures(miner_index);
         if (failures)
             r << ":F" << failures;
-        r << "]";
         return r.str();
     }
 
 private:
-    unsigned sumArray(const std::vector<unsigned>& array) const
-    {
-        unsigned r = 0;
-        for (size_t i = 0; i < array.size(); i++)
-            r += array[i];
-        return r;
-    }
 
     std::vector<unsigned> m_accepts = {};
     std::vector<unsigned> m_rejects = {};
