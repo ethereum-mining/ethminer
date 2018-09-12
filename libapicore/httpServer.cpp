@@ -23,29 +23,44 @@ void httpServer::tableHeader(stringstream& ss)
     char hostName[HOST_NAME_MAX + 1];
     gethostname(hostName, HOST_NAME_MAX + 1);
     string l = m_farm->farmLaunchedFormatted();
-    ss << "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" "
-          "\"http://www.w3.org/TR/html4/strict.dtd\">"
-          "<html>"
+    ss << "<!doctype html>"
+          "<html lang=\"en\">"
           "<head>"
+          "<meta charset=\"utf-8\">"
           "<title>"
        << hostName
        << "</title>"
-          "<style type=\"text/css\">"
-          "html *{font-family: Arial;}"
-          "tr:nth-child(even){background-color:Gainsboro;}"
-          "table.center{margin-left:auto;margin-right:auto;}"
-          "body{text-align:center;}"
+          "<style>"
+          "body { font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; text-align: center; }"
+          "table, td, th { border: 1px inset #000; }"
+          "table { border-spacing: 0; }"
+          "td, th { padding: 3px; }"
+          "tbody tr:nth-child(odd) { background-color: gainsboro; }"
+          ".mx-auto { margin-left: auto; margin-right: auto; }"
+          ".bg-gold { background-color: gold }"
+          ".bg-yellow { background-color: yellow; }"
+          ".text-red { color: red; }"
           "</style>"
-          "<meta http-equiv=refresh content=30>"
+          "<meta http-equiv=\"refresh\" content=\"30\">"
           "</head>"
           "<body>"
-          "<table class=\"center\" border=1 cellpadding=3 cellspacing=0>"
-          "<tr valign=top align=center style=background-color:Gold>"
-          "<th colspan=6>"
+          "<table class=\"mx-auto\">"
+          "<thead>"
+          "<tr class=\"bg-gold\">"
+          "<th colspan=\"6\">"
        << ethminer_get_buildinfo()->project_name_with_version << " on " << hostName << " - " << l
-       << "<br/>Pool: " << m_manager->getActiveConnectionCopy().Host()
+       << "<br>Pool: " << m_manager->getActiveConnectionCopy().Host()
        << "</th>"
-          "</tr>";
+          "</tr>"
+          "<tr class=\"bg-yellow\">"
+          "<th>GPU</th>"
+          "<th>Hash Rate</th>"
+          "<th>Solutions</th>"
+          "<th>Temp.</th>"
+          "<th>Fan %</th>"
+          "<th>Power</th>"
+          "</tr>"
+          "</thead>";
 }
 
 
@@ -55,13 +70,7 @@ void httpServer::getstat1(stringstream& ss)
     WorkingProgress p = m_farm->miningProgress();
     SolutionStats s = m_farm->getSolutionStats();
     tableHeader(ss);
-    ss << "<tr style=background-color:Yellow>"
-          "<th>GPU</th>"
-          "<th>Hash Rate</th>"
-          "<th>Solutions</th>"
-          "<th>Temp.</th>"
-          "<th>Fan %</th>"
-          "<th>Power</th></tr>";
+    ss << "<tbody>";
     double hashSum = 0.0;
     double powerSum = 0.0;
     for (unsigned i = 0; i < p.minersHashRates.size(); i++)
@@ -71,7 +80,7 @@ void httpServer::getstat1(stringstream& ss)
         hashSum += rate;
         ss << "<tr><td";
         if (i < p.miningIsPaused.size() && p.miningIsPaused[i])
-            ss << " style=color:Red";
+            ss << " class=\"text-red\"";
         ss << ">" << i << "</td><td>" << fixed << setprecision(2) << rate;
         ss << "</td><td>" << s.getString(i);
         if (m_show_hwmonitors && (i < p.minerMonitors.size()))
@@ -88,13 +97,13 @@ void httpServer::getstat1(stringstream& ss)
         else
             ss << "</td><td>-</td><td>-</td><td>-</td></tr>";
     }
-    ss << "<tr style=\"background-color:yellow\"><th>Total</th><td>" << fixed << setprecision(2)
-       << hashSum << "</td><td colspan=3>Solutions: " << s << "</td><td>";
+    ss << "<tr class=\"bg-yellow\"><th>Total</th><td>" << fixed << setprecision(2)
+       << hashSum << "</td><td colspan=\"3\">Solutions: " << s << "</td><td>";
     if (m_show_power)
         ss << fixed << setprecision(0) << powerSum;
     else
         ss << '-';
-    ss << "</td></tr></table></body></html>";
+    ss << "</td></tr></tbody></table></body></html>";
 }
 
 static void ev_handler(struct mg_connection* c, int ev, void* p)
