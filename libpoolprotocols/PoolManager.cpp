@@ -86,6 +86,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
         {
             cnote << "New epoch " EthWhite << wp.epoch << EthReset;
             m_lastEpoch = wp.epoch;
+            m_epochChanges.fetch_add(1, std::memory_order_relaxed);
         }
 
         m_farm.setWork(wp);
@@ -203,12 +204,12 @@ void PoolManager::workLoop()
 
                     m_connections.erase(m_connections.begin() + m_activeConnectionIdx);
 
+                    m_connectionAttempt = 0;
                     if (m_activeConnectionIdx >= m_connections.size())
                     {
                         m_activeConnectionIdx = 0;
                     }
-
-                    m_connectionAttempt = 0;
+                    m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
                 }
                 else if (m_connectionAttempt >= m_maxConnectionAttempts)
                 {
@@ -219,6 +220,7 @@ void PoolManager::workLoop()
                     {
                         m_activeConnectionIdx = 0;
                     }
+                    m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
                 }
 
                 if (!m_connections.empty() &&
@@ -313,6 +315,7 @@ void PoolManager::setActiveConnection(unsigned int idx)
     if (idx == m_activeConnectionIdx)
         return;
 
+    m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
     m_activeConnectionIdx = idx;
     m_connectionAttempt = 0;
     l.unlock();
@@ -373,6 +376,7 @@ void PoolManager::check_failover_timeout(const boost::system::error_code& ec)
             {
                 m_activeConnectionIdx = 0;
                 m_connectionAttempt = 0;
+                m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
                 l.unlock();
                 cnote << "Failover timeout reached, retrying connection to primary pool";
                 p_client->disconnect();
@@ -401,4 +405,14 @@ double PoolManager::getCurrentDifficulty()
     if (!p_client->isConnected())
         return 0.0;
     return m_lastDifficulty;
+}
+
+unsigned PoolManager::getConnectionSwitches()
+{
+    return m_connectionSwitches.load(std::memory_order_relaxed);
+}
+
+unsigned PoolManager::getEpochChanges()
+{
+    return m_epochChanges.load(std::memory_order_relaxed);
 }

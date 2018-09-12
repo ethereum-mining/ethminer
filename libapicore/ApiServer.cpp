@@ -928,6 +928,8 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
     /* Hash & Share infos */
     if (index < p.minersHashRates.size())
         jRes["hashrate"] = (uint64_t)p.minersHashRates[index];
+    else
+        jRes["hashrate"] = Json::Value::null;
 
     Json::Value jshares;
     jshares["accepted"] = s.getAccepts(index);
@@ -941,23 +943,31 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
 
 
     /* Hardware */
-    if (index < p.minerMonitors.size())  // TODO: should we export 0 if we've no values ?
+    if (index < p.minerMonitors.size())
     {
         jRes["temp"] = p.minerMonitors[index].tempC;
         jRes["fan"] = p.minerMonitors[index].fanP;
         jRes["power"] = p.minerMonitors[index].powerW;
     }
+    else
+    {
+        jRes["temp"] = jRes["fan"] = jRes["power"] = Json::Value::null;
+    }
+
     // TODO: PCI ID, Name, ... (some more infos - see listDevices())
 
     /* Pause infos */
-    if (miner)
-        if (index < p.miningIsPaused.size())
-        {
-            MinigPauseReason pause_reason = miner->get_mining_paused();
-            MiningPause m;
-            jRes["ispaused"] = m.is_mining_paused(pause_reason);
-            jRes["pause_reason"] = m.get_mining_paused_string(pause_reason);
-        }
+    if (miner && index < p.miningIsPaused.size())
+    {
+        MinigPauseReason pause_reason = miner->get_mining_paused();
+        MiningPause m;
+        jRes["ispaused"] = m.is_mining_paused(pause_reason);
+        jRes["pause_reason"] = m.get_mining_paused_string(pause_reason);
+    }
+    else
+    {
+        jRes["ispaused"] = jRes["pause_reason"] = Json::Value::null;
+    }
 
     /* Nonce infos */
     auto segment_width = m_farm.get_segment_width();
@@ -981,15 +991,12 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
  */
 Json::Value ApiConnection::getMinerStatDetail()
 {
-/* TODO:
-   Should we always return all values or just those we got ?
-   For API clients it's usually painfull to check each item for existence
-*/
     auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
         std::chrono::steady_clock::now() - m_farm.farmLaunched());
 
     SolutionStats s = m_farm.getSolutionStats();
     WorkingProgress p = m_farm.miningProgress();
+    WorkPackage w = m_farm.work();
 
     // ostringstream version;
     Json::Value gpus;
@@ -1003,21 +1010,26 @@ Json::Value ApiConnection::getMinerStatDetail()
         char hostName[HOST_NAME_MAX + 1];
         if (!gethostname(hostName, HOST_NAME_MAX + 1))
             jRes["hostname"] = hostName;
+        else
+            jRes["hostname"] = Json::Value::null;
     }
 
     /* connection info */
     auto connection = m_mgr.getActiveConnectionCopy();
     Json::Value jconnection;
-    jconnection["hostname"] = connection.Host();
+    jconnection["uri"] = connection.String();
     // jconnection["endpoint"] = m_mgr.getClient()->ActiveEndPoint();
-    jconnection["port"] = connection.Port();
-    jconnection["user"] = connection.User();  // TODO - only if we've write access ? */
-    jconnection["password"] = connection.Pass(); // TODO - only if we've write access ? */
     jconnection["isconnected"] = m_mgr.isConnected();
+    jconnection["switched"] = m_mgr.getConnectionSwitches();
     jRes["connection"] = jconnection;
 
     /* Pool info */
     jRes["difficulty"] = m_mgr.getCurrentDifficulty();
+    if (w)
+        jRes["epoch"] = w.epoch;
+    else
+        jRes["epoch"] = Json::Value::null;
+    jRes["epoch_changes"] = m_mgr.getEpochChanges();
 
     /* basic setup */
     auto tstop = m_farm.get_tstop();
@@ -1026,11 +1038,22 @@ Json::Value ApiConnection::getMinerStatDetail()
         jRes["tstart"] = m_farm.get_tstart();
         jRes["tstop"] = tstop;
     }
+    else
+    {
+        jRes["tstart"] = jRes["tstop"] = Json::Value::null;
+    }
 
     /* gpu related info */
-    for (size_t i = 0; i < m_farm.getMiners().size(); i++)
+    if (m_farm.getMiners().size())
     {
-        jRes["gpus"].append(getMinerStatDetailPerMiner(p, s, i));
+        for (size_t i = 0; i < m_farm.getMiners().size(); i++)
+        {
+            jRes["gpus"].append(getMinerStatDetailPerMiner(p, s, i));
+        }
+    }
+    else
+    {
+        jRes["gpus"] = Json::Value::null;
     }
 
     // total ETH hashrate
