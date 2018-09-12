@@ -53,9 +53,9 @@ __device__ __forceinline__ bool compute_hash(
 			{
 				for (int p = 0; p < _PARALLEL_HASH; p++)
 				{
-					offset[p] = fnv(init0[p] ^ (a + b), ((uint32_t *)&mix[p])[b]) % d_dag_size;
+					offset[p] = fnv1a(init0[p] ^ (a + b), ((uint32_t *)&mix[p])[b]) % d_dag_size;
 					offset[p] = __shfl_sync(0xFFFFFFFF,offset[p], t, THREADS_PER_HASH);
-					mix[p] = fnv4(mix[p], d_dag[offset[p]].uint4s[thread_id]);
+					mix[p] = fnv1a4(mix[p], d_dag[offset[p]].uint4s[thread_id]);
 				}
 			}
 		}
@@ -63,7 +63,7 @@ __device__ __forceinline__ bool compute_hash(
 		for (int p = 0; p < _PARALLEL_HASH; p++)
 		{
 			uint2 shuffle[4];
-			uint32_t thread_mix = fnv_reduce(mix[p]);
+			uint32_t thread_mix = fnv1a_reduce(mix[p]);
 
 			// update mix across threads
 			shuffle[0].x = __shfl_sync(0xFFFFFFFF,thread_mix, 0, THREADS_PER_HASH);

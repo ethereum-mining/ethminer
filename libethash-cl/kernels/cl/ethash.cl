@@ -38,7 +38,7 @@ uint amd_bitalign(uint src0, uint src1, uint src2)
 #error "WORKSIZE has to be a multiple of 4"
 #endif
 
-#define FNV_PRIME 0x01000193U
+#define FNV1A_PRIME 0x010001A7U
 
 static __constant uint2 const Keccak_f1600_RC[24] = {
     (uint2)(0x00000001, 0x00000000),
@@ -172,8 +172,9 @@ static __constant uint2 const Keccak_f1600_RC[24] = {
 } while(0)
 
 
-#define fnv(x, y)        ((x) * FNV_PRIME ^ (y))
-#define fnv_reduce(v)    fnv(fnv(fnv(v.x, v.y), v.z), v.w)
+#define fnv1a(x, y)        (((x) ^ (y)) * FNV1A_PRIME)
+
+#define fnv1a_reduce(v)    fnv1a(fnv1a(fnv1a(v.x, v.y), v.z), v.w)
 
 typedef union {
     uint uints[128 / sizeof(uint)];
@@ -211,10 +212,10 @@ do { \
         s = select(mix.s5, s, (x) != 5); \
         s = select(mix.s6, s, (x) != 6); \
         s = select(mix.s7, s, (x) != 7); \
-        buffer[hash_id] = fnv(init0 ^ (a + x), s) % dag_size; \
+        buffer[hash_id] = fnv1a(init0 ^ (a + x), s) % dag_size; \
     } \
     barrier(CLK_LOCAL_MEM_FENCE); \
-    mix = fnv(mix, g_dag[buffer[hash_id]].uint8s[thread_id]); \
+    mix = fnv1a(mix, g_dag[buffer[hash_id]].uint8s[thread_id]); \
 } while(0)
 
 #else
@@ -229,8 +230,8 @@ do { \
     s = select(mix.s5, s, (x) != 5); \
     s = select(mix.s6, s, (x) != 6); \
     s = select(mix.s7, s, (x) != 7); \
-    buffer[get_local_id(0)] = fnv(init0 ^ (a + x), s) % dag_size; \
-    mix = fnv(mix, g_dag[buffer[lane_idx]].uint8s[thread_id]); \
+    buffer[get_local_id(0)] = fnv1a(init0 ^ (a + x), s) % dag_size; \
+    mix = fnv1a(mix, g_dag[buffer[lane_idx]].uint8s[thread_id]); \
     mem_fence(CLK_LOCAL_MEM_FENCE); \
 } while(0)
 
@@ -347,7 +348,7 @@ __kernel void search(
 
             barrier(CLK_LOCAL_MEM_FENCE);
 
-            share->uint2s[thread_id] = (uint2)(fnv_reduce(mix.lo), fnv_reduce(mix.hi));
+            share->uint2s[thread_id] = (uint2)(fnv1a_reduce(mix.lo), fnv1a_reduce(mix.hi));
 
             barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -435,14 +436,14 @@ __kernel void GenerateDAG(uint start, __global const uint16 *_Cache, __global ui
     SHA3_512(DAGNode.qwords, isolate);
 
     for (uint i = 0; i < 256; ++i) {
-        uint ParentIdx = fnv(NodeIdx ^ i, DAGNode.dwords[i & 15]) % light_size;
+        uint ParentIdx = fnv1a(NodeIdx ^ i, DAGNode.dwords[i & 15]) % light_size;
         __global const Node *ParentNode = Cache + ParentIdx;
 
 #pragma unroll
         for (uint x = 0; x < 4; ++x) {
             if (isolate) {
-                DAGNode.dqwords[x] *= (uint4)(FNV_PRIME);
                 DAGNode.dqwords[x] ^= ParentNode->dqwords[x];
+                DAGNode.dqwords[x] *= (uint4)(FNV1a_PRIME);
             }
         }
     }

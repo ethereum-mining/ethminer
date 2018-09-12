@@ -7,7 +7,7 @@
 #include "ethash_cuda_miner_kernel_globals.h"
 #include "cuda_helper.h"
 
-#include "fnv.cuh"
+#include "fnv1a.cuh"
 
 #define copy(dst, src, count) for (int i = 0; i != count; ++i) { (dst)[i] = (src)[i]; }
 
@@ -77,7 +77,7 @@ ethash_calculate_dag_item(uint32_t start)
 	const int thread_id = threadIdx.x & 3;
 
 	for (uint32_t i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
-		uint32_t parent_index = fnv(node_index ^ i, dag_node.words[i % NODE_WORDS]) % d_light_size;
+		uint32_t parent_index = fnv1a(node_index ^ i, dag_node.words[i % NODE_WORDS]) % d_light_size;
 		for (uint32_t t = 0; t < 4; t++) {
 
 			uint32_t shuffle_index = __shfl_sync(0xFFFFFFFF,parent_index, t, 4);
@@ -87,7 +87,7 @@ ethash_calculate_dag_item(uint32_t start)
 
 				uint4 s4 = make_uint4(__shfl_sync(0xFFFFFFFF,p4.x, w, 4), __shfl_sync(0xFFFFFFFF,p4.y, w, 4), __shfl_sync(0xFFFFFFFF,p4.z, w, 4), __shfl_sync(0xFFFFFFFF,p4.w, w, 4));
 				if (t == thread_id) {
-					dag_node.uint4s[w] = fnv4(dag_node.uint4s[w], s4);
+					dag_node.uint4s[w] = fnv1a4(dag_node.uint4s[w], s4);
 				}
 			}
 		}
