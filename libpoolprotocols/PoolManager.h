@@ -25,9 +25,9 @@ public:
     void addConnection(URI& conn);
     void clearConnections();
     Json::Value getConnectionsJson();
-    void setActiveConnection(unsigned int idx);
+    int setActiveConnection(unsigned int idx);
     URI getActiveConnectionCopy();
-    void removeConnection(unsigned int idx);
+    int removeConnection(unsigned int idx);
     void start();
     void stop();
     bool isConnected() { return p_client->isConnected(); };

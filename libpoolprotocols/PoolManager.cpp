@@ -286,14 +286,25 @@ void PoolManager::addConnection(URI& conn)
     m_connections.push_back(conn);
 }
 
-void PoolManager::removeConnection(unsigned int idx)
+/*
+ * Remove a connection
+ * Returns:  0 on success
+ *          -1 failure (out of bounds)
+ *          -2 failure (active connection should be deleted)
+ */
+int PoolManager::removeConnection(unsigned int idx)
 {
     Guard l(m_activeConnectionMutex);
+    if (idx >= m_connections.size())
+        return -1;
+    if (idx == m_activeConnectionIdx)
+        return -2;
     m_connections.erase(m_connections.begin() + idx);
     if (m_activeConnectionIdx > idx)
     {
         m_activeConnectionIdx--;
     }
+    return 0;
 }
 
 void PoolManager::clearConnections()
@@ -306,12 +317,18 @@ void PoolManager::clearConnections()
         p_client->disconnect();
 }
 
-void PoolManager::setActiveConnection(unsigned int idx)
+/*
+ * Sets the active connection
+ * Returns: 0 on success, -1 on failure (out of bounds)
+ */
+int PoolManager::setActiveConnection(unsigned int idx)
 {
     // Sets the active connection to the requested index
     UniqueGuard l(m_activeConnectionMutex);
+    if (idx >= m_connections.size())
+        return -1;
     if (idx == m_activeConnectionIdx)
-        return;
+        return 0;
 
     m_activeConnectionIdx = idx;
     m_connectionAttempt = 0;
@@ -320,6 +337,7 @@ void PoolManager::setActiveConnection(unsigned int idx)
 
     // Suspend mining if applicable as we're switching
     suspendMining();
+    return 0;
 }
 
 URI PoolManager::getActiveConnectionCopy()
