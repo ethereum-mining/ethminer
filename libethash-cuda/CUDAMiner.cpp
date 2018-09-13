@@ -55,11 +55,11 @@ bool CUDAMiner::init(int epoch)
     try
     {
         if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
-            while (s_dagLoadIndex < index)
+            while (s_dagLoadIndex < Index())
                 this_thread::sleep_for(chrono::milliseconds(100));
-        unsigned device = s_devices[index] > -1 ? s_devices[index] : index;
+        unsigned device = s_devices[Index()] > -1 ? s_devices[Index()] : Index();
 
-        cnote << "Initialising miner " << index;
+        cnote << "Initialising miner " << Index();
 
         auto numDevices = getNumDevices();
         if (numDevices == 0)
@@ -254,20 +254,9 @@ void CUDAMiner::workLoop()
             current = w;
 
             uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)current.boundary >> 192);
-            uint64_t startN = current.startNonce;
-            if (current.exSizeBits >= 0)
-            {
-                // this can support up to 2^c_log2Max_miners devices
-                startN = current.startNonce |
-                         ((uint64_t)index << (64 - LOG2_MAX_MINERS - current.exSizeBits));
-            }
-            else
-            {
-                startN = get_start_nonce();
-            }
 
             // Eventually start searching
-            search(current.header.data(), upper64OfBoundary, startN, w);
+            search(current.header.data(), upper64OfBoundary, current.startNonce, w);
         }
 
         // Reset miner and stop working
@@ -413,7 +402,7 @@ void CUDAMiner::setParallelHash(unsigned _parallelHash)
 
 
 void CUDAMiner::search(
-    uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w)
+    uint8_t const* header, uint64_t target, uint64_t current_nonce, const dev::eth::WorkPackage& w)
 {
     set_header(*reinterpret_cast<hash32_t const*>(header));
     if (m_current_target != target)
@@ -421,9 +410,6 @@ void CUDAMiner::search(
         set_target(target);
         m_current_target = target;
     }
-
-    // choose the starting nonce
-    uint64_t current_nonce = _startN;
 
     // Nonces processed in one pass by a single stream
     const uint32_t batch_size = s_gridSize * s_blockSize;
@@ -538,7 +524,7 @@ void CUDAMiner::search(
                         h256 mix;
                         memcpy(mix.data(), (void*)&buffer.result[i].mix,
                             sizeof(buffer.result[0].mix));
-                        farm.submitProof(Solution{nonce, mix, w, done}, index);
+                        farm.submitProof(Solution{nonce, mix, w, done}, Index());
                     }
                     else
                     {
@@ -547,11 +533,11 @@ void CUDAMiner::search(
                         Result r = EthashAux::eval(w.epoch, w.header, nonce);
                         if (r.value <= w.boundary)
                         {
-                            farm.submitProof(Solution{nonce, r.mixHash, w, done}, index);
+                            farm.submitProof(Solution{nonce, r.mixHash, w, done}, Index());
                         }
                         else
                         {
-                            farm.failedSolution(index);
+                            farm.failedSolution(Index());
                             cwarn
                                 << "GPU gave incorrect result! Lower OC if this happens frequently";
                         }
