@@ -27,8 +27,7 @@ class EthStratumClient : public PoolClient
 public:
     typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
 
-    EthStratumClient(boost::asio::io_service& io_service, int worktimeout, int responsetimeout,
-        bool submitHashrate);
+    EthStratumClient(int worktimeout, int responsetimeout, bool submitHashrate);
     ~EthStratumClient();
 
     void init_socket();

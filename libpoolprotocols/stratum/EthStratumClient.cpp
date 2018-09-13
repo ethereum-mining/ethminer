@@ -41,17 +41,16 @@ static void diffToTarget(uint32_t* target, double diff)
 }
 
 
-EthStratumClient::EthStratumClient(
-    boost::asio::io_service& io_service, int worktimeout, int responsetimeout, bool submitHashrate)
+EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, bool submitHashrate)
   : PoolClient(),
     m_worktimeout(worktimeout),
     m_responsetimeout(responsetimeout),
-    m_io_service(io_service),
-    m_io_strand(io_service),
+    m_io_service(g_io_service),
+    m_io_strand(g_io_service),
     m_socket(nullptr),
-    m_workloop_timer(io_service),
+    m_workloop_timer(g_io_service),
     m_response_plea_times(64),
-    m_resolver(io_service),
+    m_resolver(g_io_service),
     m_endpoints(),
     m_submit_hashrate(submitHashrate)
 {

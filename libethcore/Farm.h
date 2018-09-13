@@ -44,6 +44,8 @@
 #include <sys/stat.h>
 #endif
 
+extern boost::asio::io_service g_io_service;
+
 namespace dev
 {
 namespace eth
@@ -64,7 +66,7 @@ public:
         std::function<Miner*(FarmFace&, unsigned)> create;
     };
 
-    Farm(boost::asio::io_service& io_service, bool hwmon, bool pwron) : m_io_strand(io_service), m_collectTimer(io_service)
+    Farm(bool hwmon, bool pwron) : m_io_strand(g_io_service), m_collectTimer(g_io_service)
     {
         m_hwmon = hwmon;
         m_pwron = pwron;
@@ -563,3 +565,5 @@ private:
 
 }  // namespace eth
 }  // namespace dev
+
+extern dev::eth::Farm* g_farm;

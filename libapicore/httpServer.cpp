@@ -28,7 +28,7 @@ void httpServer::tableHeader(stringstream& ss)
 {
     char hostName[HOST_NAME_MAX + 1];
     gethostname(hostName, HOST_NAME_MAX + 1);
-    string l = m_farm->farmLaunchedFormatted();
+    string l = g_farm->farmLaunchedFormatted();
     ss << "<!doctype html>"
           "<html lang=en>"
           "<head>"
@@ -62,7 +62,7 @@ void httpServer::tableHeader(stringstream& ss)
           "<tr class=bg-header1>"
           "<th colspan=6>"
        << ethminer_get_buildinfo()->project_name_with_version << " on " << hostName << " - " << l
-       << "<br>Pool: " << m_manager->getActiveConnectionCopy().Host()
+       << "<br>Pool: " << g_mgr->getActiveConnectionCopy().Host()
        << "</th>"
           "</tr>"
           "<tr class=bg-header0>"
@@ -80,8 +80,8 @@ void httpServer::tableHeader(stringstream& ss)
 void httpServer::getstat1(stringstream& ss)
 {
     using namespace std::chrono;
-    WorkingProgress p = m_farm->miningProgress();
-    SolutionStats s = m_farm->getSolutionStats();
+    WorkingProgress p = g_farm->miningProgress();
+    SolutionStats s = g_farm->getSolutionStats();
     tableHeader(ss);
     ss << "<tbody>";
     double hashSum = 0.0;
@@ -136,13 +136,10 @@ static void ev_handler(struct mg_connection* c, int ev, void* p)
     }
 }
 
-void httpServer::run(string address, uint16_t port, dev::eth::Farm* farm, PoolManager* manager,
-    bool show_hwmonitors, bool show_power)
+void httpServer::run(string address, uint16_t port, bool show_hwmonitors, bool show_power)
 {
     if (port == 0)
         return;
-    m_farm = farm;
-    m_manager = manager;
     // admittedly, at this point, it's a bit hacky to call it "m_port" =/
     if (address.empty())
     {
