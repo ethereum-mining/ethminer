@@ -33,6 +33,8 @@ public:
     bool isConnected() { return p_client->isConnected(); };
     bool isRunning() { return m_running; };
     double getCurrentDifficulty();
+    unsigned getConnectionSwitches();
+    unsigned getEpochChanges();
 
 private:
     void suspendMining();
@@ -50,6 +52,7 @@ private:
     unsigned m_connectionAttempt = 0;
     unsigned m_maxConnectionAttempts = 0;
     std::string m_lastConnectedHost = ""; // gets set when a connection has been established
+    std::atomic<unsigned> m_connectionSwitches = {0};
 
     std::vector<URI> m_connections;
     unsigned m_activeConnectionIdx = 0;
@@ -66,6 +69,7 @@ private:
     MinerType m_minerType;
 
     int m_lastEpoch = 0;
+    std::atomic<unsigned> m_epochChanges = {0};
     double m_lastDifficulty = 0.0;
 };
 }  // namespace eth
