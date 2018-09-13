@@ -8,6 +8,7 @@
 * [List of requests](#list-of-requests)
     * [api_authorize](#api_authorize)
     * [miner_ping](#miner_ping)
+    * [miner_getstatdetail](#miner_getstatdetail)
     * [miner_getstat1](#miner_getstat1)
     * [miner_getstathr](#miner_getstathr)
     * [miner_restart](#miner_restart)
@@ -88,6 +89,7 @@ This shows the API interface is live and listening on the configured endpoint.
 | --------- | ------------ | --------------- |
 | [api_authorize](#api_authorize) | Issues the password to authenticate the session | No |
 | [miner_ping](#miner_ping) | Responds back with a "pong" | No |
+| [miner_getstatdetail](#miner_getstatdetail) | Request the retrieval of operational data in most detailed form | No
 | [miner_getstat1](#miner_getstat1) | Request the retrieval of operational data in compatible format | No
 | [miner_getstathr](#miner_getstathr) | Request the retrieval of operational data in Ethminer's format | No
 | [miner_restart](#miner_restart) | Instructs ethminer to stop and restart mining | Yes |
@@ -166,6 +168,88 @@ and expect back a result like this:
 which confirms the action has been performed.
 
 If you get no response or the socket timeouts it's likely your ethminer's instance has become unresponsive (or in worst cases the OS of your mining rig is unresponsive) and needs to be re-started/re-booted.
+
+### miner_getstatdetail
+
+With this method you expect back a detailed collection of statistical data. To issue a request:
+
+```json
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_getstatdetail"
+}
+```
+
+and expect back a response like this:
+
+```json
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result":{
+    "connection": {                               // Current active connection
+      "isconnected":true,
+      "switched":0,
+      "uri":"stratum+tcp://<omitted-ethereum-address>.worker@eu1.ethermine.org:4444"
+    },
+    "difficulty":3999938964.0,
+    "epoch":218,
+    "epoch_changes":1,                            // Ethminer starts with epoch 0. First connection to pool increments this counter
+    "hashrate":46709128,                          // Overall HashRate in H/s
+    "hostname":"<omitted-hostname>",
+    "runtime":4,                                  // Total running time in minutes
+    "shares":{                                    // Summarized info about shares
+      "accepted":5,
+      "acceptedstale":1,
+      "invalid":1,
+      "rejected":0
+    },
+    "tstart":63,
+    "tstop":69,
+    "version":"ethminer-0.16.0.dev3-73+commit.f35c22ab",
+    "gpus":[
+      {"fan":54,                                  // Fan in %
+       "hashrate":23604564,                       // HashRate of GPU in H/s
+       "index":0,
+       "ispaused":false,
+       "nonce_start":6636918940706763208,
+       "nonce_stop":6636920040218390984,
+       "pause_reason":"",                         // Possible values: "", "temperature", "api", or "temperature,api"
+       "power":0.0,                               // Powerdrain in W
+       "shares":{                                 // Detailed info about shares from this GPU
+         "accepted":3,
+         "acceptedstale":0,
+         "invalid":0,
+         "lastupdate":1,                          // Share info from this GPU updated X minutes ago
+         "rejected":0
+       },
+       "temp":53                                  // Temperature in °C
+      },
+      {"fan":53,
+       "hashrate":23104564,
+       "index":1,
+       "ispaused":false,
+       "nonce_start":6636920040218391000,
+       "nonce_stop":6636921139730018000,
+       "pause_reason":"",
+       "power":0.0,
+       "shares":{
+         "accepted":2,
+         "acceptedstale":1,
+         "invalid":1,
+         "lastupdate":2,
+         "rejected":0
+       },
+       "temp":56
+      }
+    ]
+  }
+}
+```
+
+If values not set (eg --tstart) or the underlaying function returns an error expect `null` as returned value!
+
 
 ### miner_getstat1
 
