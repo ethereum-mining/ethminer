@@ -313,7 +313,7 @@ class Miner : public Worker
 {
 public:
     Miner(std::string const& _name, FarmFace& _farm, size_t _index)
-      : Worker(_name + std::to_string(_index)), index(_index), farm(_farm)
+      : Worker(_name + std::to_string(_index)), m_index(_index), farm(_farm)
     {
     }
 
@@ -324,29 +324,37 @@ public:
         {
             Guard l(x_work);
             m_work = _work;
+            if (m_work.exSizeBits >= 0)
+            {
+                // This can support up to 2^c_log2MaxMiners devices.
+                m_work.startNonce =
+                    m_work.startNonce +
+                    ((uint64_t)m_index << (64 - LOG2_MAX_MINERS - m_work.exSizeBits));
+            }
+            else
+            {
+                // Each GPU is given a non-overlapping 2^40 range to search
+                // return farm.get_nonce_scrambler() + ((uint64_t) m_index << 40);
+
+                // Now segment size is adjustable
+                m_work.startNonce =
+                    farm.get_nonce_scrambler() + ((uint64_t)m_index << farm.get_segment_width());
+            }
+
             if (g_logOptions & LOG_SWITCH_TIME)
                 m_workSwitchStart = std::chrono::steady_clock::now();
         }
         kick_miner();
     }
 
-    unsigned Index() { return index; };
+    unsigned Index() { return m_index; };
 
     HwMonitorInfo hwmonInfo() { return m_hwmoninfo; }
-
-    uint64_t get_start_nonce()
-    {
-        // Each GPU is given a non-overlapping 2^40 range to search
-        // return farm.get_nonce_scrambler() + ((uint64_t) index << 40);
-
-        // Now segment size is adjustable
-        return farm.get_nonce_scrambler() + (uint64_t)(pow(2, farm.get_segment_width()) * index);
-    }
 
     void update_temperature(unsigned temperature)
     {
         /*
-         cnote << "Setting temp" << temperature << " for gpu" << index <<
+         cnote << "Setting temp" << temperature << " for gpu" << m_index <<
                   " tstop=" << farm.get_tstop() << " tstart=" << farm.get_tstart();
         */
         bool _wait_for_tstart_temp = (m_mining_paused.get_mining_paused() &
@@ -357,7 +365,7 @@ public:
             unsigned tstop = farm.get_tstop();
             if (tstop && temperature >= tstop)
             {
-                cwarn << "Pause mining on gpu" << index << " : temperature " << temperature
+                cwarn << "Pause mining on gpu" << m_index << " : temperature " << temperature
                       << " is equal/above --tstop " << tstop;
                 m_mining_paused.set_mining_paused(MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START);
             }
@@ -367,7 +375,7 @@ public:
             unsigned tstart = farm.get_tstart();
             if (tstart && temperature <= tstart)
             {
-                cnote << "(Re)starting mining on gpu" << index << " : temperature " << temperature
+                cnote << "(Re)starting mining on gpu" << m_index << " : temperature " << temperature
                       << " is now below/equal --tstart " << tstart;
                 m_mining_paused.clear_mining_paused(
                     MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START);
@@ -436,7 +444,7 @@ protected:
     static bool s_exit;
     static bool s_noeval;
 
-    const size_t index = 0;
+    const size_t m_index = 0;
     FarmFace& farm;
     std::chrono::steady_clock::time_point m_workSwitchStart;
     HwMonitorInfo m_hwmoninfo;
