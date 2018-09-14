@@ -20,8 +20,9 @@ namespace eth
 class PoolManager
 {
 public:
-    PoolManager(boost::asio::io_service& io_service, PoolClient* client, Farm& farm,
-        MinerType const& minerType, unsigned maxTries, unsigned failovertimeout);
+    PoolManager(PoolClient* client, MinerType const& minerType, unsigned maxTries,
+        unsigned failovertimeout);
+    static PoolManager& p() { return *m_this; }
     void addConnection(URI& conn);
     void clearConnections();
     Json::Value getConnectionsJson();
@@ -65,12 +66,15 @@ private:
     boost::asio::io_service::strand m_io_strand;
     boost::asio::deadline_timer m_failovertimer;
     PoolClient* p_client;
-    Farm& m_farm;
     MinerType m_minerType;
 
     int m_lastEpoch = 0;
     std::atomic<unsigned> m_epochChanges = {0};
     double m_lastDifficulty = 0.0;
+
+    static PoolManager* m_this;
 };
+
 }  // namespace eth
 }  // namespace dev
+

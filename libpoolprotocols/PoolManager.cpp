@@ -6,13 +6,13 @@ using namespace std;
 using namespace dev;
 using namespace eth;
 
-PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client, Farm& farm,
-    MinerType const& minerType, unsigned maxTries, unsigned failoverTimeout)
-  : m_io_strand(io_service),
-    m_failovertimer(io_service),
-    m_farm(farm),
-    m_minerType(minerType)
+PoolManager* PoolManager::m_this = nullptr;
+
+PoolManager::PoolManager(
+    PoolClient* client, MinerType const& minerType, unsigned maxTries, unsigned failoverTimeout)
+  : m_io_strand(g_io_service), m_failovertimer(g_io_service), m_minerType(minerType)
 {
+    m_this = this;
     p_client = client;
     m_maxConnectionAttempts = maxTries;
     m_failoverTimeout = failoverTimeout;
@@ -40,17 +40,17 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
             }
         }
 
-        if (!m_farm.isMining())
+        if (!Farm::f().isMining())
         {
             cnote << "Spinning up miners...";
             if (m_minerType == MinerType::CL)
-                m_farm.start("opencl", false);
+                Farm::f().start("opencl", false);
             else if (m_minerType == MinerType::CUDA)
-                m_farm.start("cuda", false);
+                Farm::f().start("cuda", false);
             else if (m_minerType == MinerType::Mixed)
             {
-                m_farm.start("cuda", false);
-                m_farm.start("opencl", true);
+                Farm::f().start("cuda", false);
+                Farm::f().start("opencl", true);
             }
         }
     });
@@ -89,7 +89,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
             m_epochChanges.fetch_add(1, std::memory_order_relaxed);
         }
 
-        m_farm.setWork(wp);
+        Farm::f().setWork(wp);
     });
 
     p_client->onSolutionAccepted([&](bool const& stale,
@@ -100,7 +100,7 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
            << " " << m_lastConnectedHost + p_client->ActiveEndPoint();
         cnote << EthLime "**Accepted" EthReset << (stale ? EthYellow "(stale)" EthReset : "")
               << ss.str();
-        m_farm.acceptedSolution(stale, miner_index);
+        Farm::f().acceptedSolution(stale, miner_index);
     });
 
     p_client->onSolutionRejected([&](bool const& stale,
@@ -111,10 +111,10 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
            << "   " << m_lastConnectedHost + p_client->ActiveEndPoint();
         cwarn << EthRed "**Rejected" EthReset << (stale ? EthYellow "(stale)" EthReset : "")
               << ss.str();
-        m_farm.rejectedSolution(miner_index);
+        Farm::f().rejectedSolution(miner_index);
     });
 
-    m_farm.onSolutionFound([&](const Solution& sol, unsigned const& miner_index) {
+    Farm::f().onSolutionFound([&](const Solution& sol, unsigned const& miner_index) {
         // Solution should passthrough only if client is
         // properly connected. Otherwise we'll have the bad behavior
         // to log nonce submission but receive no response
@@ -137,25 +137,25 @@ PoolManager::PoolManager(boost::asio::io_service& io_service, PoolClient* client
 
         return false;
     });
-    m_farm.onMinerRestart([&]() {
+    Farm::f().onMinerRestart([&]() {
         dev::setThreadName("main");
         cnote << "Restart miners...";
 
-        if (m_farm.isMining())
+        if (Farm::f().isMining())
         {
             cnote << "Shutting down miners...";
-            m_farm.stop();
+            Farm::f().stop();
         }
 
         cnote << "Spinning up miners...";
         if (m_minerType == MinerType::CL)
-            m_farm.start("opencl", false);
+            Farm::f().start("opencl", false);
         else if (m_minerType == MinerType::CUDA)
-            m_farm.start("cuda", false);
+            Farm::f().start("cuda", false);
         else if (m_minerType == MinerType::Mixed)
         {
-            m_farm.start("cuda", false);
-            m_farm.start("opencl", true);
+            Farm::f().start("cuda", false);
+            Farm::f().start("opencl", true);
         }
     });
 }
@@ -172,10 +172,10 @@ void PoolManager::stop()
         if (p_client->isConnected())
             p_client->disconnect();
 
-        if (m_farm.isMining())
+        if (Farm::f().isMining())
         {
             cnote << "Shutting down miners...";
-            m_farm.stop();
+            Farm::f().stop();
         }
     }
 }
@@ -248,10 +248,10 @@ void PoolManager::workLoop()
                     cnote << "No more connections to try. Exiting...";
 
                     // Stop mining if applicable
-                    if (m_farm.isMining())
+                    if (Farm::f().isMining())
                     {
                         cnote << "Shutting down miners...";
-                        m_farm.stop();
+                        Farm::f().stop();
                     }
 
                     m_running.store(false, std::memory_order_relaxed);
@@ -265,7 +265,7 @@ void PoolManager::workLoop()
 
         if (m_hashrateReportingTimePassed > m_hashrateReportingTime)
         {
-            auto mp = m_farm.miningProgress();
+            auto mp = Farm::f().miningProgress();
             std::string h = toHex(toCompactBigEndian(uint64_t(mp.hashRate), 1));
             std::string res = h[0] != '0' ? h : h.substr(1);
 
@@ -405,14 +405,14 @@ void PoolManager::check_failover_timeout(const boost::system::error_code& ec)
 
 void PoolManager::suspendMining()
 {
-    if (!m_farm.isMining())
+    if (!Farm::f().isMining())
         return;
 
-    WorkPackage wp = m_farm.work();
+    WorkPackage wp = Farm::f().work();
     if (!wp)
         return;
 
-    m_farm.setWork({}); /* suspend by setting empty work package */
+    Farm::f().setWork({}); /* suspend by setting empty work package */
     cnote << "Suspend mining due connection change...";
 }
 

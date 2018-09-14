@@ -44,6 +44,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+boost::asio::io_service g_io_service;  // The IO service itself
+Farm* Farm::m_this = nullptr;
+
 struct MiningChannel : public LogChannel
 {
     static const char* name() { return EthGreen " m"; }
@@ -70,7 +73,7 @@ public:
         Stratum
     };
 
-    MinerCLI() : m_io_work(m_io_service), m_io_work_timer(m_io_service), m_io_strand(m_io_service)
+    MinerCLI() : m_io_work_timer(g_io_service), m_io_strand(g_io_service)
     {
         // Post first deadline timer to give io_service
         // initial work
@@ -79,10 +82,10 @@ public:
             boost::bind(&MinerCLI::io_work_timer_handler, this, boost::asio::placeholders::error)));
 
         // Start io_service in it's own thread
-        m_io_thread = std::thread{boost::bind(&boost::asio::io_service::run, &m_io_service)};
+        m_io_thread = std::thread{boost::bind(&boost::asio::io_service::run, &g_io_service)};
 
         // Io service is now live and running
-        // All components using io_service should post to reference of m_io_service
+        // All components using io_service should post to reference of g_io_service
         // and should not start/stop or even join threads (which heavily time consuming)
     }
 
@@ -101,7 +104,7 @@ public:
     void stop_io_service()
     {
         // Here we stop all io_service's related activities
-        m_io_service.stop();
+        g_io_service.stop();
         m_io_thread.join();
     }
 
@@ -772,7 +775,7 @@ private:
         genesis.setNumber(m_benchmarkBlock);
         genesis.setDifficulty(u256(1) << 64);
 
-        Farm f(m_io_service, m_show_hwmonitors, m_show_power);
+        new Farm(m_show_hwmonitors, m_show_power);
         map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
         sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances,
@@ -782,10 +785,13 @@ private:
         sealers["cuda"] = Farm::SealerDescriptor{&CUDAMiner::instances,
             [](FarmFace& _farm, unsigned _index) { return new CUDAMiner(_farm, _index); }};
 #endif
-        f.setSealers(sealers);
-        f.onSolutionFound([&](Solution, unsigned const& miner_index) { (void)miner_index; return false; });
+        Farm::f().setSealers(sealers);
+        Farm::f().onSolutionFound([&](Solution, unsigned const& miner_index) {
+            (void)miner_index;
+            return false;
+        });
 
-        f.setTStartTStop(m_tstart, m_tstop);
+        Farm::f().setTStartTStop(m_tstart, m_tstop);
 
         string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
         cout << "Benchmarking on platform: " << platformInfo << endl;
@@ -794,9 +800,9 @@ private:
         // genesis.prep();
 
         if (_m == MinerType::CL)
-            f.start("opencl", false);
+            Farm::f().start("opencl", false);
         else if (_m == MinerType::CUDA)
-            f.start("cuda", false);
+            Farm::f().start("cuda", false);
 
         WorkPackage current = WorkPackage(genesis);
 
@@ -809,14 +815,14 @@ private:
         {
             current.header = h256::random();
             current.boundary = genesis.boundary();
-            f.setWork(current);
+            Farm::f().setWork(current);
             if (!i)
                 cout << "Warming up..." << endl;
             else
                 cout << "Trial " << i << "... " << flush << endl;
             this_thread::sleep_for(chrono::seconds(i ? _trialDuration : _warmupDuration));
 
-            auto mp = f.miningProgress();
+            auto mp = Farm::f().miningProgress();
             if (!i)
                 continue;
             auto rate = uint64_t(mp.hashRate);
@@ -857,8 +863,7 @@ private:
 
         if (m_mode == OperationMode::Stratum)
         {
-            client = new EthStratumClient(
-                m_io_service, m_worktimeout, m_responsetimeout, m_report_hashrate);
+            client = new EthStratumClient(m_worktimeout, m_responsetimeout, m_report_hashrate);
         }
         else if (m_mode == OperationMode::Farm)
         {
@@ -883,46 +888,45 @@ private:
         }
 
         // sealers, m_minerType
-        Farm f(m_io_service, m_show_hwmonitors, m_show_power);
-        f.setSealers(sealers);
+        new Farm(m_show_hwmonitors, m_show_power);
+        Farm::f().setSealers(sealers);
 
-        PoolManager mgr(m_io_service, client, f, m_minerType, m_maxFarmRetries, m_failovertimeout);
+        new PoolManager(client, m_minerType, m_maxFarmRetries, m_failovertimeout);
 
-        f.setTStartTStop(m_tstart, m_tstop);
+        Farm::f().setTStartTStop(m_tstart, m_tstop);
 
         // If we are in simulation mode we add a fake connection
         if (m_mode == OperationMode::Simulation)
         {
             URI con(URI("http://-:0"));
-            mgr.clearConnections();
-            mgr.addConnection(con);
+            PoolManager::p().clearConnections();
+            PoolManager::p().addConnection(con);
         }
         else
         {
             for (auto conn : m_endpoints)
             {
                 cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
-                mgr.addConnection(conn);
+                PoolManager::p().addConnection(conn);
             }
         }
 
 #if API_CORE
 
-        ApiServer api(m_io_service, m_api_address, abs(m_api_port), (m_api_port < 0) ? true : false,
-            m_api_password, f, mgr);
+        ApiServer api(m_api_address, m_api_port, m_api_password);
         api.start();
 
-        http_server.run(m_http_address, m_http_port, &f, &mgr, m_show_hwmonitors, m_show_power);
+        http_server.run(m_http_address, m_http_port, m_show_hwmonitors, m_show_power);
 
 #endif
 
         // Start PoolManager
-        mgr.start();
+        PoolManager::p().start();
 
         unsigned interval = m_displayInterval;
 
         // Run CLI in loop
-        while (g_running && mgr.isRunning())
+        while (g_running && PoolManager::p().isRunning())
         {
             // Wait at the beginning of the loop to give some time
             // services to start properly. Otherwise we get a "not-connected"
@@ -933,15 +937,15 @@ private:
                 interval -= 2;
                 continue;
             }
-            if (mgr.isConnected())
+            if (PoolManager::p().isConnected())
             {
-                auto solstats = f.getSolutionStats();
+                auto solstats = Farm::f().getSolutionStats();
                 {
                     ostringstream os;
-                    os << f.miningProgress() << ' ';
+                    os << Farm::f().miningProgress() << ' ';
                     if (!(g_logOptions & LOG_PER_GPU))
                         os << solstats << ' ';
-                    os << f.farmLaunchedFormatted();
+                    os << Farm::f().farmLaunchedFormatted();
                     minelog << os.str();
                 }
 
@@ -949,7 +953,7 @@ private:
                 {
                     ostringstream statdetails;
                     statdetails << "Solutions " << solstats << ' ';
-                    for (size_t i = 0; i < f.getMiners().size(); i++)
+                    for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
                     {
                         if (i) statdetails << " ";
                         statdetails << "gpu" << i << ":" << solstats.getString(i);
@@ -975,7 +979,7 @@ private:
 
 #endif
 
-        mgr.stop();
+        PoolManager::p().stop();
         stop_io_service();
 
         cnote << "Terminated!";
@@ -987,9 +991,6 @@ private:
 
     /// Global boost's io_service
     std::thread m_io_thread;                      // The IO service thread
-    boost::asio::io_service m_io_service;         // The IO service itself
-    boost::asio::io_service::work m_io_work;      // The IO work which prevents io_service.run() to
-                                                  // return on no work thus terminating thread
     boost::asio::deadline_timer m_io_work_timer;  // A dummy timer to keep io_service with something
                                                   // to do and prevent io shutdown
     boost::asio::io_service::strand m_io_strand;  // A strand to serialize posts in multithreaded

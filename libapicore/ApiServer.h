@@ -19,15 +19,12 @@ using boost::asio::ip::tcp;
 class ApiConnection
 {
 public:
-    ApiConnection(boost::asio::io_service& io_service, int id, bool readonly, string password,
-        Farm& f, PoolManager& mgr)
+    ApiConnection(int id, bool readonly, string password)
       : m_sessionId(id),
-        m_socket(io_service),
-        m_io_strand(io_service),
+        m_socket(g_io_service),
+        m_io_strand(g_io_service),
         m_readonly(readonly),
-        m_password(std::move(password)),
-        m_farm(f),
-        m_mgr(mgr)
+        m_password(std::move(password))
     {
         if (!m_password.empty())
             m_is_authenticated = false;
@@ -72,8 +69,6 @@ private:
 
     bool m_readonly = false;
     std::string m_password = "";
-    Farm& m_farm;
-    PoolManager& m_mgr;
 
     bool m_is_authenticated = true;
 };
@@ -82,8 +77,7 @@ private:
 class ApiServer
 {
 public:
-    ApiServer(boost::asio::io_service& io_service, string address, int portnum, bool readonly,
-        string password, Farm& f, PoolManager& mgr);
+    ApiServer(string address, int portnum, string password);
     bool isRunning() { return m_running.load(std::memory_order_relaxed); };
     void start();
     void stop();
@@ -99,11 +93,8 @@ private:
     std::string m_password = "";
     std::atomic<bool> m_running = {false};
     string m_address;
-    int m_portnumber;
+    uint16_t m_portnumber;
     tcp::acceptor m_acceptor;
     boost::asio::io_service::strand m_io_strand;
     std::vector<std::shared_ptr<ApiConnection>> m_sessions;
-
-    Farm& m_farm;
-    PoolManager& m_mgr;
 };

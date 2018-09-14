@@ -44,6 +44,8 @@
 #include <sys/stat.h>
 #endif
 
+extern boost::asio::io_service g_io_service;
+
 namespace dev
 {
 namespace eth
@@ -64,8 +66,9 @@ public:
         std::function<Miner*(FarmFace&, unsigned)> create;
     };
 
-    Farm(boost::asio::io_service& io_service, bool hwmon, bool pwron) : m_io_strand(io_service), m_collectTimer(io_service)
+    Farm(bool hwmon, bool pwron) : m_io_strand(g_io_service), m_collectTimer(g_io_service)
     {
+        m_this = this;
         m_hwmon = hwmon;
         m_pwron = pwron;
 
@@ -108,6 +111,8 @@ public:
         // Stop data collector
         m_collectTimer.cancel();
     }
+
+    static Farm& f() { return *m_this; }
 
     /**
      * @brief Randomizes the nonce scrambler
@@ -559,7 +564,10 @@ private:
 #if defined(__linux)
     wrap_amdsysfs_handle* sysfsh = nullptr;
 #endif
+
+    static Farm* m_this;
 };
 
 }  // namespace eth
 }  // namespace dev
+
