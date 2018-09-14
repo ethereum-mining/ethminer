@@ -550,15 +550,13 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         if (!getRequestValue("index", index, jRequestParams, false, jResponse))
             return;
 
-        Json::Value pools = PoolManager::p().getConnectionsJson();
-        if (index >= pools.size())
+        if (PoolManager::p().setActiveConnection(index))
         {
             jResponse["error"]["code"] = -422;
             jResponse["error"]["message"] = "Index out of bounds";
             return;
         }
 
-        PoolManager::p().setActiveConnection(index);
         jResponse["result"] = true;
     }
 
@@ -575,21 +573,21 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         if (!getRequestValue("index", index, jRequestParams, false, jResponse))
             return;
 
-        Json::Value pools = PoolManager::p().getConnectionsJson();
-        if (index >= pools.size())
+        int r;
+        r = PoolManager::p().removeConnection(index);
+        if (r == -1)
         {
             jResponse["error"]["code"] = -422;
             jResponse["error"]["message"] = "Index out of bounds";
             return;
         }
-        if (pools[index]["active"].asBool())
+        if (r == -2)
         {
             jResponse["error"]["code"] = -460;
             jResponse["error"]["message"] = "Can't delete active connection";
             return;
         }
 
-        PoolManager::p().removeConnection(index);
         jResponse["result"] = true;
     }
 

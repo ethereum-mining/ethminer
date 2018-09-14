@@ -107,7 +107,7 @@ This shows the API interface is live and listening on the configured endpoint.
 
 If your API instance is password protected by the usage of `--api-password` any remote trying to interact with the API interface **must** send this method immediately after connection to get authenticated. The message to send is:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -120,7 +120,7 @@ If your API instance is password protected by the usage of `--api-password` any 
 
 where the member `psw` **must** contain the very same password configured with `--api-password` argument. As expected result you will get a JSON-RPC 2.0 response with positive or negative values. For instance if the password matches you will get a response like this:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -130,7 +130,7 @@ where the member `psw` **must** contain the very same password configured with `
 
 or, in case of any error:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -147,7 +147,7 @@ This method is primarily used to check the liveness of the API interface.
 
 To invoke the action:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -157,7 +157,7 @@ To invoke the action:
 
 and expect back a result like this:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -173,7 +173,7 @@ If you get no response or the socket timeouts it's likely your ethminer's instan
 
 With this method you expect back a detailed collection of statistical data. To issue a request:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -183,65 +183,65 @@ With this method you expect back a detailed collection of statistical data. To i
 
 and expect back a response like this:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
-  "result":{
-    "connection": {                               // Current active connection
-      "isconnected":true,
-      "switched":0,
-      "uri":"stratum+tcp://<omitted-ethereum-address>.worker@eu1.ethermine.org:4444"
+  "result": {
+    "connection": {                     // Current active connection
+      "isconnected": true,
+      "switched": 0,
+      "uri": "stratum+tcp://<omitted-ethereum-address>.worker@eu1.ethermine.org:4444"
     },
-    "difficulty":3999938964.0,
-    "epoch":218,
-    "epoch_changes":1,                            // Ethminer starts with epoch 0. First connection to pool increments this counter
-    "hashrate":46709128,                          // Overall HashRate in H/s
-    "hostname":"<omitted-hostname>",
-    "runtime":4,                                  // Total running time in minutes
-    "shares":{                                    // Summarized info about shares
-      "accepted":5,
-      "acceptedstale":1,
-      "invalid":1,
-      "rejected":0
+    "difficulty": 3999938964.0,
+    "epoch": 218,
+    "epoch_changes": 1,                 // Ethminer starts with epoch 0. First connection to pool increments this counter
+    "hashrate": 46709128,               // Overall HashRate in H/s
+    "hostname": "<omitted-hostname>",
+    "runtime": 4,                       // Total running time in minutes
+    "shares": {                         // Summarized info about shares
+      "accepted": 5,
+      "acceptedstale": 1,
+      "invalid": 1,
+      "rejected": 0
     },
-    "tstart":63,
-    "tstop":69,
-    "version":"ethminer-0.16.0.dev3-73+commit.f35c22ab",
-    "gpus":[
-      {"fan":54,                                  // Fan in %
-       "hashrate":23604564,                       // HashRate of GPU in H/s
-       "index":0,
-       "ispaused":false,
-       "nonce_start":6636918940706763208,
-       "nonce_stop":6636920040218390984,
-       "pause_reason":"",                         // Possible values: "", "temperature", "api", or "temperature,api"
-       "power":0.0,                               // Powerdrain in W
-       "shares":{                                 // Detailed info about shares from this GPU
-         "accepted":3,
-         "acceptedstale":0,
-         "invalid":0,
-         "lastupdate":1,                          // Share info from this GPU updated X minutes ago
-         "rejected":0
+    "tstart": 63,
+    "tstop": 69,
+    "version": "ethminer-0.16.0.dev3-73+commit.f35c22ab",
+    "gpus": [
+      {"fan": 54,                       // Fan in %
+       "hashrate": 23604564,            // HashRate of GPU in H/s
+       "index": 0,
+       "ispaused": false,
+       "nonce_start": 6636918940706763208,
+       "nonce_stop": 6636920040218390984,
+       "pause_reason": "",              // Possible values: "", "temperature", "api", or "temperature,api"
+       "power": 0.0,                    // Powerdrain in W
+       "shares": {                      // Detailed info about shares from this GPU
+         "accepted": 3,
+         "acceptedstale": 0,
+         "invalid": 0,
+         "lastupdate": 1,               // Share info from this GPU updated X minutes ago
+         "rejected": 0
        },
-       "temp":53                                  // Temperature in °C
+       "temp": 53                       // Temperature in °C
       },
-      {"fan":53,
-       "hashrate":23104564,
-       "index":1,
-       "ispaused":false,
-       "nonce_start":6636920040218391000,
-       "nonce_stop":6636921139730018000,
-       "pause_reason":"",
-       "power":0.0,
-       "shares":{
-         "accepted":2,
-         "acceptedstale":1,
-         "invalid":1,
-         "lastupdate":2,
-         "rejected":0
+      {"fan": 53,
+       "hashrate": 23104564,
+       "index": 1,
+       "ispaused": false,
+       "nonce_start": 6636920040218391000,
+       "nonce_stop": 6636921139730018000,
+       "pause_reason": "",
+       "power": 0.0,
+       "shares": {
+         "accepted": 2,
+         "acceptedstale": 1,
+         "invalid": 1,
+         "lastupdate": 2,
+         "rejected": 0
        },
-       "temp":56
+       "temp": 56
       }
     ]
   }
@@ -255,7 +255,7 @@ If values not set (eg --tstart) or the underlaying function returns an error exp
 
 With this method you expect back a collection of statistical data. To issue a request:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -289,7 +289,7 @@ Some of the arguments here expressed have been set for compatibility with other 
 
 With this method you expect back a collection of statistical data. To issue a request:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -372,7 +372,7 @@ The invocation of this method **_may_** be useful if you detect one or more GPUs
 
 To invoke the action:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -382,7 +382,7 @@ To invoke the action:
 
 and expect back a result like this:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -402,7 +402,7 @@ If you invoke this function `api_miner_reboot` is passed to the script as first 
 
 To invoke the action:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -412,7 +412,7 @@ To invoke the action:
 
 and expect back a result like this:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -438,7 +438,7 @@ All `miner_shuffle` method does is to re-initialize a new random scramble nonce 
 
 To invoke the action:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -448,7 +448,7 @@ To invoke the action:
 
 and expect back a result like this:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -462,7 +462,7 @@ which confirms the action has been performed.
 
 When you launch ethminer you provide a list of connections specified by the `-P` argument. If you want to remotely check which is the list of connections ethminer is using, you can issue this method:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -472,7 +472,7 @@ When you launch ethminer you provide a list of connections specified by the `-P`
 
 and expect back a result like this:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -502,7 +502,7 @@ The `result` member contains an array of objects, each one with the definition o
 
 Given the example above for the method [miner_getconnections](#miner_getconnections) you see there is only one active connection at a time. If you want to control remotely your mining facility and want to force the switch from one connection to another you can issue this method:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -525,7 +525,7 @@ You have to pass the `params` member as an object which has member `index` value
 
 If you want to remotely add a new connection to the running instance of ethminer you can use this this method by sending a message like this
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -550,7 +550,7 @@ Eventually you may want to issue [miner_getconnections](#miner_getconnections) m
 
 Recall once again the example for the method [miner_getconnections](#miner_getconnections). If you wish to remove the third connection (the Ethereum classic one) from the list of connections (so it won't be used in case of failover) you can send this method:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -577,7 +577,7 @@ This all said it's however impossible for any miner (no matter if CPU or GPU or 
 Ethminer, at start, randomly chooses a scramble_nonce, a random number picked in the 2^64 range to start checking nonces from. In addition ethminer gives each GPU a unique, non overlapping, range of nonces called _segment_. Segments ensure no GPU does the same job of another GPU thus avoiding two GPU find the same result.
 To accomplish this each segment has a range 2^40 nonces by default. If you want to check which is the scramble_nonce and which are the segments assigned to each GPU you can issue this method:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -587,7 +587,7 @@ To accomplish this each segment has a range 2^40 nonces by default. If you want 
 
 and expect a result like this:
 
-```json
+```js
 {
   "id": 0,
   "jsonrpc": "2.0",
@@ -657,7 +657,7 @@ This will adjust nonce scrambler and segment width assigned to each GPU. This me
 Pause or (restart) mining on specific GPU.
 This ONLY (re)starts mining if GPU was paused via a previous API call and not if GPU pauses for other reasons.
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -671,7 +671,7 @@ This ONLY (re)starts mining if GPU was paused via a previous API call and not if
 
 and expect a result like this:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -686,7 +686,7 @@ Again: This ONLY (re)starts mining if GPU was paused via a previous API call and
 
 Set the verbosity level of ethminer.
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -699,7 +699,7 @@ Set the verbosity level of ethminer.
 
 and expect a result like this:
 
-```json
+```js
 {
   "id": 1,
   "jsonrpc": "2.0",
