@@ -45,7 +45,6 @@ using namespace dev;
 using namespace dev::eth;
 
 boost::asio::io_service g_io_service;  // The IO service itself
-Farm* Farm::m_this = nullptr;
 
 struct MiningChannel : public LogChannel
 {
