@@ -59,7 +59,7 @@ public:
     struct SealerDescriptor
     {
         std::function<unsigned()> instances;
-        std::function<Miner*(FarmFace&, unsigned)> create;
+        std::function<Miner*(unsigned)> create;
     };
 
     Farm(bool hwmon, bool pwron);
@@ -194,16 +194,6 @@ public:
 
     unsigned get_tstop() override { return m_tstop; }
 
-private:
-    // Collects data about hashing and hardware status
-    void collectData(const boost::system::error_code& ec);
-
-    /**
-     * @brief Spawn a file - must be located in the directory of ethminer binary
-     * @return false if file was not found or it is not executeable
-     */
-    bool spawn_file_in_bin_dir(const char* filename, const std::vector<std::string>& args);
-
     /**
      * @brief Called from a Miner to note a WorkPackage has a solution.
      * @param _s The solution.
@@ -214,6 +204,16 @@ private:
         assert(m_onSolutionFound);
         m_onSolutionFound(_s, _miner_index);
     }
+
+private:
+    // Collects data about hashing and hardware status
+    void collectData(const boost::system::error_code& ec);
+
+    /**
+     * @brief Spawn a file - must be located in the directory of ethminer binary
+     * @return false if file was not found or it is not executeable
+     */
+    bool spawn_file_in_bin_dir(const char* filename, const std::vector<std::string>& args);
 
     mutable Mutex x_minerWork;
     std::vector<std::shared_ptr<Miner>> m_miners;

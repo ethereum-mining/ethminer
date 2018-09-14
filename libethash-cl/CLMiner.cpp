@@ -5,6 +5,7 @@
 
 #include <boost/dll.hpp>
 
+#include <libethcore/Farm.h>
 #include <ethash/ethash.hpp>
 
 #include "CLMiner.h"
@@ -260,7 +261,7 @@ unsigned CLMiner::s_numInstances = 0;
 vector<int> CLMiner::s_devices(MAX_MINERS, -1);
 bool CLMiner::s_noBinary = false;
 
-CLMiner::CLMiner(FarmFace& _farm, unsigned _index) : Miner("cl-", _farm, _index) {}
+CLMiner::CLMiner(unsigned _index) : Miner("cl-", Farm::f(), _index) {}
 
 CLMiner::~CLMiner()
 {
@@ -400,16 +401,17 @@ void CLMiner::workLoop()
                     {
                         h256 mix;
                         memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
-                        farm.submitProof(Solution{nonce, mix, current, false}, Index());
+                        Farm::f().submitProof(Solution{nonce, mix, current, false}, Index());
                     }
                     else
                     {
                         Result r = EthashAux::eval(current.epoch, current.header, nonce);
                         if (r.value <= current.boundary)
-                            farm.submitProof(Solution{nonce, r.mixHash, current, false}, Index());
+                            Farm::f().submitProof(
+                                Solution{nonce, r.mixHash, current, false}, Index());
                         else
                         {
-                            farm.failedSolution(Index());
+                            Farm::f().failedSolution(Index());
                             cwarn << "GPU gave incorrect result!";
                         }
                     }

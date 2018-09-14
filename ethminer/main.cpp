@@ -777,12 +777,12 @@ private:
         new Farm(m_show_hwmonitors, m_show_power);
         map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-        sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances,
-            [](FarmFace& _farm, unsigned _index) { return new CLMiner(_farm, _index); }};
+        sealers["opencl"] = Farm::SealerDescriptor{
+            &CLMiner::instances, [](unsigned _index) { return new CLMiner(_index); }};
 #endif
 #if ETH_ETHASHCUDA
-        sealers["cuda"] = Farm::SealerDescriptor{&CUDAMiner::instances,
-            [](FarmFace& _farm, unsigned _index) { return new CUDAMiner(_farm, _index); }};
+        sealers["cuda"] = Farm::SealerDescriptor{
+            &CUDAMiner::instances, [](unsigned _index) { return new CUDAMiner(_index); }};
 #endif
         Farm::f().setSealers(sealers);
         Farm::f().onSolutionFound([&](Solution, unsigned const& miner_index) {
@@ -850,12 +850,12 @@ private:
     {
         map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-        sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances,
-            [](FarmFace& _farm, unsigned _index) { return new CLMiner(_farm, _index); }};
+        sealers["opencl"] = Farm::SealerDescriptor{
+            &CLMiner::instances, [](unsigned _index) { return new CLMiner(_index); }};
 #endif
 #if ETH_ETHASHCUDA
-        sealers["cuda"] = Farm::SealerDescriptor{&CUDAMiner::instances,
-            [](FarmFace& _farm, unsigned _index) { return new CUDAMiner(_farm, _index); }};
+        sealers["cuda"] = Farm::SealerDescriptor{
+            &CUDAMiner::instances, [](unsigned _index) { return new CUDAMiner(_index); }};
 #endif
 
         PoolClient* client = nullptr;

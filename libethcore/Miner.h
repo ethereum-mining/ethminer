@@ -313,7 +313,7 @@ class Miner : public Worker
 {
 public:
     Miner(std::string const& _name, FarmFace& _farm, size_t _index)
-      : Worker(_name + std::to_string(_index)), m_index(_index), farm(_farm)
+      : Worker(_name + std::to_string(_index)), m_index(_index), m_farmFace(_farm)
     {
     }
 
@@ -337,8 +337,8 @@ public:
                 // return farm.get_nonce_scrambler() + ((uint64_t) m_index << 40);
 
                 // Now segment size is adjustable
-                m_work.startNonce =
-                    farm.get_nonce_scrambler() + ((uint64_t)m_index << farm.get_segment_width());
+                m_work.startNonce = m_farmFace.get_nonce_scrambler() +
+                                    ((uint64_t)m_index << m_farmFace.get_segment_width());
             }
 
             if (g_logOptions & LOG_SWITCH_TIME)
@@ -355,14 +355,14 @@ public:
     {
         /*
          cnote << "Setting temp" << temperature << " for gpu" << m_index <<
-                  " tstop=" << farm.get_tstop() << " tstart=" << farm.get_tstart();
+                  " tstop=" << m_farmFace.get_tstop() << " tstart=" << m_farmFace.get_tstart();
         */
         bool _wait_for_tstart_temp = (m_mining_paused.get_mining_paused() &
                                          MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START) ==
                                      MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START;
         if (!_wait_for_tstart_temp)
         {
-            unsigned tstop = farm.get_tstop();
+            unsigned tstop = m_farmFace.get_tstop();
             if (tstop && temperature >= tstop)
             {
                 cwarn << "Pause mining on gpu" << m_index << " : temperature " << temperature
@@ -372,7 +372,7 @@ public:
         }
         else
         {
-            unsigned tstart = farm.get_tstart();
+            unsigned tstart = m_farmFace.get_tstart();
             if (tstart && temperature <= tstart)
             {
                 cnote << "(Re)starting mining on gpu" << m_index << " : temperature " << temperature
@@ -445,7 +445,7 @@ protected:
     static bool s_noeval;
 
     const size_t m_index = 0;
-    FarmFace& farm;
+    FarmFace& m_farmFace;
     std::chrono::steady_clock::time_point m_workSwitchStart;
     HwMonitorInfo m_hwmoninfo;
 

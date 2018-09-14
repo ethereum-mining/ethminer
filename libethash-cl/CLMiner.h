@@ -52,7 +52,7 @@ public:
     /// Default value of the global work size as a multiplier of the local work size
     static const unsigned c_defaultGlobalWorkSizeMultiplier = 65536;
 
-    CLMiner(FarmFace& _farm, unsigned _index);
+    CLMiner(unsigned _index);
     ~CLMiner() override;
 
     static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
