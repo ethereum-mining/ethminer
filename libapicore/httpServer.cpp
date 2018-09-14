@@ -28,7 +28,7 @@ void httpServer::tableHeader(stringstream& ss)
 {
     char hostName[HOST_NAME_MAX + 1];
     gethostname(hostName, HOST_NAME_MAX + 1);
-    string l = g_farm->farmLaunchedFormatted();
+    string l = Farm::f().farmLaunchedFormatted();
     ss << "<!doctype html>"
           "<html lang=en>"
           "<head>"
@@ -62,7 +62,7 @@ void httpServer::tableHeader(stringstream& ss)
           "<tr class=bg-header1>"
           "<th colspan=6>"
        << ethminer_get_buildinfo()->project_name_with_version << " on " << hostName << " - " << l
-       << "<br>Pool: " << g_mgr->getActiveConnectionCopy().Host()
+       << "<br>Pool: " << PoolManager::p().getActiveConnectionCopy().Host()
        << "</th>"
           "</tr>"
           "<tr class=bg-header0>"
@@ -80,8 +80,8 @@ void httpServer::tableHeader(stringstream& ss)
 void httpServer::getstat1(stringstream& ss)
 {
     using namespace std::chrono;
-    WorkingProgress p = g_farm->miningProgress();
-    SolutionStats s = g_farm->getSolutionStats();
+    WorkingProgress p = Farm::f().miningProgress();
+    SolutionStats s = Farm::f().getSolutionStats();
     tableHeader(ss);
     ss << "<tbody>";
     double hashSum = 0.0;

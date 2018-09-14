@@ -447,7 +447,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         // Gives nonce scrambler a new range
         cnote << "Miner Shuffle requested";
         jResponse["result"] = true;
-        g_farm->shuffle();
+        Farm::f().shuffle();
     }
 
     else if (_method == "miner_ping")
@@ -465,7 +465,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             return;
         cnote << "Miner Restart requested";
         jResponse["result"] = true;
-        g_farm->restart_async();
+        Farm::f().restart_async();
     }
 
     else if (_method == "miner_reboot")
@@ -474,13 +474,13 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             return;
         cnote << "Miner reboot requested";
 
-        jResponse["result"] = g_farm->reboot({{"api_miner_reboot"}});
+        jResponse["result"] = Farm::f().reboot({{"api_miner_reboot"}});
     }
 
     else if (_method == "miner_getconnections")
     {
         // Returns a list of configured pools
-        jResponse["result"] = g_mgr->getConnectionsJson();
+        jResponse["result"] = PoolManager::p().getConnectionsJson();
     }
 
     else if (_method == "miner_addconnection")
@@ -513,7 +513,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             }
 
             // Check other pools already present share the same scheme family (stratum or getwork)
-            Json::Value pools = g_mgr->getConnectionsJson();
+            Json::Value pools = PoolManager::p().getConnectionsJson();
             for (Json::Value::ArrayIndex i = 0; i != pools.size(); i++)
             {
                 dev::URI poolUri = pools[i]["uri"].asString();
@@ -527,7 +527,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             }
 
             // If everything ok then add this new uri
-            g_mgr->addConnection(uri);
+            PoolManager::p().addConnection(uri);
             jResponse["result"] = true;
         }
         catch (...)
@@ -550,7 +550,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         if (!getRequestValue("index", index, jRequestParams, false, jResponse))
             return;
 
-        Json::Value pools = g_mgr->getConnectionsJson();
+        Json::Value pools = PoolManager::p().getConnectionsJson();
         if (index >= pools.size())
         {
             jResponse["error"]["code"] = -422;
@@ -558,7 +558,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             return;
         }
 
-        g_mgr->setActiveConnection(index);
+        PoolManager::p().setActiveConnection(index);
         jResponse["result"] = true;
     }
 
@@ -575,7 +575,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         if (!getRequestValue("index", index, jRequestParams, false, jResponse))
             return;
 
-        Json::Value pools = g_mgr->getConnectionsJson();
+        Json::Value pools = PoolManager::p().getConnectionsJson();
         if (index >= pools.size())
         {
             jResponse["error"]["code"] = -422;
@@ -589,13 +589,13 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             return;
         }
 
-        g_mgr->removeConnection(index);
+        PoolManager::p().removeConnection(index);
         jResponse["result"] = true;
     }
 
     else if (_method == "miner_getscramblerinfo")
     {
-        jResponse["result"] = g_farm->get_nonce_scrambler_json();
+        jResponse["result"] = Farm::f().get_nonce_scrambler_json();
     }
 
     else if (_method == "miner_setscramblerinfo")
@@ -608,8 +608,8 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             return;
 
         bool any_value_provided = false;
-        uint64_t nonce = g_farm->get_nonce_scrambler();
-        unsigned exp = g_farm->get_segment_width();
+        uint64_t nonce = Farm::f().get_nonce_scrambler();
+        unsigned exp = Farm::f().get_segment_width();
 
         if (!getRequestValue("noncescrambler", nonce, jRequestParams, true, jResponse))
             return;
@@ -630,8 +630,8 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             exp = 10;  // Not below
         if (exp > 50)
             exp = 40;  // Not above
-        g_farm->set_nonce_scrambler(nonce);
-        g_farm->set_nonce_segment_width(exp);
+        Farm::f().set_nonce_scrambler(nonce);
+        Farm::f().set_nonce_segment_width(exp);
         jResponse["result"] = true;
     }
 
@@ -652,7 +652,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         if (!getRequestValue("pause", pause, jRequestParams, false, jResponse))
             return;
 
-        WorkingProgress p = g_farm->miningProgress();
+        WorkingProgress p = Farm::f().miningProgress();
         if (index >= p.miningIsPaused.size())
         {
             jResponse["error"]["code"] = -422;
@@ -660,7 +660,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             return;
         }
 
-        auto const& miner = g_farm->getMiner(index);
+        auto const& miner = Farm::f().getMiner(index);
         if (miner)
         {
             if (pause)
@@ -794,10 +794,10 @@ void ApiConnection::onSendSocketDataCompleted(const boost::system::error_code& e
 Json::Value ApiConnection::getMinerStat1()
 {
     auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
-        steady_clock::now() - g_farm->farmLaunched());
-    auto connection = g_mgr->getActiveConnectionCopy();
-    SolutionStats s = g_farm->getSolutionStats();
-    WorkingProgress p = g_farm->miningProgress();
+        steady_clock::now() - Farm::f().farmLaunched());
+    auto connection = PoolManager::p().getActiveConnectionCopy();
+    SolutionStats s = Farm::f().getSolutionStats();
+    WorkingProgress p = Farm::f().miningProgress();
 
     ostringstream totalMhEth;
     ostringstream totalMhDcr;
@@ -857,10 +857,10 @@ Json::Value ApiConnection::getMinerStatHR()
 {
     // TODO:give key-value format
     auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
-        steady_clock::now() - g_farm->farmLaunched());
-    auto connection = g_mgr->getActiveConnectionCopy();
-    SolutionStats s = g_farm->getSolutionStats();
-    WorkingProgress p = g_farm->miningProgress();
+        steady_clock::now() - Farm::f().farmLaunched());
+    auto connection = PoolManager::p().getActiveConnectionCopy();
+    SolutionStats s = Farm::f().getSolutionStats();
+    WorkingProgress p = Farm::f().miningProgress();
 
     ostringstream version;
     ostringstream runtime;
@@ -928,7 +928,7 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
     const WorkingProgress& p, const SolutionStats& s, size_t index)
 {
     Json::Value jRes;
-    auto const& miner = g_farm->getMiner(index);
+    auto const& miner = Farm::f().getMiner(index);
 
     jRes["index"] = (unsigned)index;
 
@@ -977,8 +977,8 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
     }
 
     /* Nonce infos */
-    auto segment_width = g_farm->get_segment_width();
-    uint64_t gpustartnonce = g_farm->get_nonce_scrambler() + ((uint64_t)index << segment_width);
+    auto segment_width = Farm::f().get_segment_width();
+    uint64_t gpustartnonce = Farm::f().get_nonce_scrambler() + ((uint64_t)index << segment_width);
     jRes["nonce_start"] = gpustartnonce;
     jRes["nonce_stop"] = uint64_t(gpustartnonce + (1LL << segment_width));
 
@@ -998,11 +998,11 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
 Json::Value ApiConnection::getMinerStatDetail()
 {
     auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
-        std::chrono::steady_clock::now() - g_farm->farmLaunched());
+        std::chrono::steady_clock::now() - Farm::f().farmLaunched());
 
-    SolutionStats s = g_farm->getSolutionStats();
-    WorkingProgress p = g_farm->miningProgress();
-    WorkPackage w = g_farm->work();
+    SolutionStats s = Farm::f().getSolutionStats();
+    WorkingProgress p = Farm::f().miningProgress();
+    WorkPackage w = Farm::f().work();
 
     // ostringstream version;
     Json::Value gpus;
@@ -1021,27 +1021,27 @@ Json::Value ApiConnection::getMinerStatDetail()
     }
 
     /* connection info */
-    auto connection = g_mgr->getActiveConnectionCopy();
+    auto connection = PoolManager::p().getActiveConnectionCopy();
     Json::Value jconnection;
     jconnection["uri"] = connection.String();
-    // jconnection["endpoint"] = g_mgr->getClient()->ActiveEndPoint();
-    jconnection["isconnected"] = g_mgr->isConnected();
-    jconnection["switched"] = g_mgr->getConnectionSwitches();
+    // jconnection["endpoint"] = PoolManager::p().getClient()->ActiveEndPoint();
+    jconnection["isconnected"] = PoolManager::p().isConnected();
+    jconnection["switched"] = PoolManager::p().getConnectionSwitches();
     jRes["connection"] = jconnection;
 
     /* Pool info */
-    jRes["difficulty"] = g_mgr->getCurrentDifficulty();
+    jRes["difficulty"] = PoolManager::p().getCurrentDifficulty();
     if (w)
         jRes["epoch"] = w.epoch;
     else
         jRes["epoch"] = Json::Value::null;
-    jRes["epoch_changes"] = g_mgr->getEpochChanges();
+    jRes["epoch_changes"] = PoolManager::p().getEpochChanges();
 
     /* basic setup */
-    auto tstop = g_farm->get_tstop();
+    auto tstop = Farm::f().get_tstop();
     if (tstop)
     {
-        jRes["tstart"] = g_farm->get_tstart();
+        jRes["tstart"] = Farm::f().get_tstart();
         jRes["tstop"] = tstop;
     }
     else
@@ -1050,9 +1050,9 @@ Json::Value ApiConnection::getMinerStatDetail()
     }
 
     /* gpu related info */
-    if (g_farm->getMiners().size())
+    if (Farm::f().getMiners().size())
     {
-        for (size_t i = 0; i < g_farm->getMiners().size(); i++)
+        for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
         {
             jRes["gpus"].append(getMinerStatDetailPerMiner(p, s, i));
         }

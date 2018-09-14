@@ -22,6 +22,7 @@ class PoolManager
 public:
     PoolManager(PoolClient* client, MinerType const& minerType, unsigned maxTries,
         unsigned failovertimeout);
+    static PoolManager& p() { return *m_this; }
     void addConnection(URI& conn);
     void clearConnections();
     Json::Value getConnectionsJson();
@@ -70,9 +71,10 @@ private:
     int m_lastEpoch = 0;
     std::atomic<unsigned> m_epochChanges = {0};
     double m_lastDifficulty = 0.0;
+
+    static PoolManager* m_this;
 };
 
 }  // namespace eth
 }  // namespace dev
 
-extern dev::eth::PoolManager* g_mgr;

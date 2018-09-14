@@ -45,8 +45,7 @@ using namespace dev;
 using namespace dev::eth;
 
 boost::asio::io_service g_io_service;  // The IO service itself
-dev::eth::Farm* g_farm;
-dev::eth::PoolManager* g_mgr;
+Farm* Farm::m_this = nullptr;
 
 struct MiningChannel : public LogChannel
 {
@@ -776,7 +775,7 @@ private:
         genesis.setNumber(m_benchmarkBlock);
         genesis.setDifficulty(u256(1) << 64);
 
-        g_farm = new Farm(m_show_hwmonitors, m_show_power);
+        new Farm(m_show_hwmonitors, m_show_power);
         map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
         sealers["opencl"] = Farm::SealerDescriptor{&CLMiner::instances,
@@ -786,13 +785,13 @@ private:
         sealers["cuda"] = Farm::SealerDescriptor{&CUDAMiner::instances,
             [](FarmFace& _farm, unsigned _index) { return new CUDAMiner(_farm, _index); }};
 #endif
-        g_farm->setSealers(sealers);
-        g_farm->onSolutionFound([&](Solution, unsigned const& miner_index) {
+        Farm::f().setSealers(sealers);
+        Farm::f().onSolutionFound([&](Solution, unsigned const& miner_index) {
             (void)miner_index;
             return false;
         });
 
-        g_farm->setTStartTStop(m_tstart, m_tstop);
+        Farm::f().setTStartTStop(m_tstart, m_tstop);
 
         string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
         cout << "Benchmarking on platform: " << platformInfo << endl;
@@ -801,9 +800,9 @@ private:
         // genesis.prep();
 
         if (_m == MinerType::CL)
-            g_farm->start("opencl", false);
+            Farm::f().start("opencl", false);
         else if (_m == MinerType::CUDA)
-            g_farm->start("cuda", false);
+            Farm::f().start("cuda", false);
 
         WorkPackage current = WorkPackage(genesis);
 
@@ -816,14 +815,14 @@ private:
         {
             current.header = h256::random();
             current.boundary = genesis.boundary();
-            g_farm->setWork(current);
+            Farm::f().setWork(current);
             if (!i)
                 cout << "Warming up..." << endl;
             else
                 cout << "Trial " << i << "... " << flush << endl;
             this_thread::sleep_for(chrono::seconds(i ? _trialDuration : _warmupDuration));
 
-            auto mp = g_farm->miningProgress();
+            auto mp = Farm::f().miningProgress();
             if (!i)
                 continue;
             auto rate = uint64_t(mp.hashRate);
@@ -889,26 +888,26 @@ private:
         }
 
         // sealers, m_minerType
-        g_farm = new Farm(m_show_hwmonitors, m_show_power);
-        g_farm->setSealers(sealers);
+        new Farm(m_show_hwmonitors, m_show_power);
+        Farm::f().setSealers(sealers);
 
-        g_mgr = new PoolManager(client, m_minerType, m_maxFarmRetries, m_failovertimeout);
+        new PoolManager(client, m_minerType, m_maxFarmRetries, m_failovertimeout);
 
-        g_farm->setTStartTStop(m_tstart, m_tstop);
+        Farm::f().setTStartTStop(m_tstart, m_tstop);
 
         // If we are in simulation mode we add a fake connection
         if (m_mode == OperationMode::Simulation)
         {
             URI con(URI("http://-:0"));
-            g_mgr->clearConnections();
-            g_mgr->addConnection(con);
+            PoolManager::p().clearConnections();
+            PoolManager::p().addConnection(con);
         }
         else
         {
             for (auto conn : m_endpoints)
             {
                 cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
-                g_mgr->addConnection(conn);
+                PoolManager::p().addConnection(conn);
             }
         }
 
@@ -922,12 +921,12 @@ private:
 #endif
 
         // Start PoolManager
-        g_mgr->start();
+        PoolManager::p().start();
 
         unsigned interval = m_displayInterval;
 
         // Run CLI in loop
-        while (g_running && g_mgr->isRunning())
+        while (g_running && PoolManager::p().isRunning())
         {
             // Wait at the beginning of the loop to give some time
             // services to start properly. Otherwise we get a "not-connected"
@@ -938,15 +937,15 @@ private:
                 interval -= 2;
                 continue;
             }
-            if (g_mgr->isConnected())
+            if (PoolManager::p().isConnected())
             {
-                auto solstats = g_farm->getSolutionStats();
+                auto solstats = Farm::f().getSolutionStats();
                 {
                     ostringstream os;
-                    os << g_farm->miningProgress() << ' ';
+                    os << Farm::f().miningProgress() << ' ';
                     if (!(g_logOptions & LOG_PER_GPU))
                         os << solstats << ' ';
-                    os << g_farm->farmLaunchedFormatted();
+                    os << Farm::f().farmLaunchedFormatted();
                     minelog << os.str();
                 }
 
@@ -954,7 +953,7 @@ private:
                 {
                     ostringstream statdetails;
                     statdetails << "Solutions " << solstats << ' ';
-                    for (size_t i = 0; i < g_farm->getMiners().size(); i++)
+                    for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
                     {
                         if (i) statdetails << " ";
                         statdetails << "gpu" << i << ":" << solstats.getString(i);
@@ -980,7 +979,7 @@ private:
 
 #endif
 
-        g_mgr->stop();
+        PoolManager::p().stop();
         stop_io_service();
 
         cnote << "Terminated!";
