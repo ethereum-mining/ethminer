@@ -288,6 +288,9 @@ class Miner;
 class FarmFace
 {
 public:
+    FarmFace() { m_this = this; }
+    static FarmFace& f() { return *m_this; };
+
     virtual ~FarmFace() = default;
     virtual unsigned get_tstart() = 0;
     virtual unsigned get_tstop() = 0;
@@ -300,6 +303,9 @@ public:
     virtual void failedSolution(unsigned _miner_index) = 0;
     virtual uint64_t get_nonce_scrambler() = 0;
     virtual unsigned get_segment_width() = 0;
+
+private:
+    static FarmFace* m_this;
 };
 
 /**
@@ -312,8 +318,8 @@ public:
 class Miner : public Worker
 {
 public:
-    Miner(std::string const& _name, FarmFace& _farm, size_t _index)
-      : Worker(_name + std::to_string(_index)), m_index(_index), farm(_farm)
+    Miner(std::string const& _name, size_t _index)
+      : Worker(_name + std::to_string(_index)), m_index(_index)
     {
     }
 
@@ -337,8 +343,8 @@ public:
                 // return farm.get_nonce_scrambler() + ((uint64_t) m_index << 40);
 
                 // Now segment size is adjustable
-                m_work.startNonce =
-                    farm.get_nonce_scrambler() + ((uint64_t)m_index << farm.get_segment_width());
+                m_work.startNonce = FarmFace::f().get_nonce_scrambler() +
+                                    ((uint64_t)m_index << FarmFace::f().get_segment_width());
             }
 
             if (g_logOptions & LOG_SWITCH_TIME)
@@ -355,14 +361,15 @@ public:
     {
         /*
          cnote << "Setting temp" << temperature << " for gpu" << m_index <<
-                  " tstop=" << farm.get_tstop() << " tstart=" << farm.get_tstart();
+                  " tstop=" << FarmFace::f().get_tstop() << " tstart=" <<
+         FarmFace::f().get_tstart();
         */
         bool _wait_for_tstart_temp = (m_mining_paused.get_mining_paused() &
                                          MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START) ==
                                      MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START;
         if (!_wait_for_tstart_temp)
         {
-            unsigned tstop = farm.get_tstop();
+            unsigned tstop = FarmFace::f().get_tstop();
             if (tstop && temperature >= tstop)
             {
                 cwarn << "Pause mining on gpu" << m_index << " : temperature " << temperature
@@ -372,7 +379,7 @@ public:
         }
         else
         {
-            unsigned tstart = farm.get_tstart();
+            unsigned tstart = FarmFace::f().get_tstart();
             if (tstart && temperature <= tstart)
             {
                 cnote << "(Re)starting mining on gpu" << m_index << " : temperature " << temperature
@@ -445,7 +452,6 @@ protected:
     static bool s_noeval;
 
     const size_t m_index = 0;
-    FarmFace& farm;
     std::chrono::steady_clock::time_point m_workSwitchStart;
     HwMonitorInfo m_hwmoninfo;
 

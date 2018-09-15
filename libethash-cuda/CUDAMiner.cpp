@@ -15,6 +15,7 @@ You should have received a copy of the GNU General Public License
 along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <libethcore/Farm.h>
 #include <ethash/ethash.hpp>
 
 #include "CUDAMiner.h"
@@ -34,9 +35,7 @@ struct CUDAChannel : public LogChannel
 };
 #define cudalog clog(CUDAChannel)
 
-CUDAMiner::CUDAMiner(FarmFace& _farm, unsigned _index)
-  : Miner("cuda-", _farm, _index), m_light(getNumDevices())
-{}
+CUDAMiner::CUDAMiner(unsigned _index) : Miner("cuda-", _index), m_light(getNumDevices()) {}
 
 CUDAMiner::~CUDAMiner()
 {
@@ -524,7 +523,7 @@ void CUDAMiner::search(
                         h256 mix;
                         memcpy(mix.data(), (void*)&buffer.result[i].mix,
                             sizeof(buffer.result[0].mix));
-                        farm.submitProof(Solution{nonce, mix, w, done}, Index());
+                        Farm::f().submitProof(Solution{nonce, mix, w, done}, Index());
                     }
                     else
                     {
@@ -533,11 +532,11 @@ void CUDAMiner::search(
                         Result r = EthashAux::eval(w.epoch, w.header, nonce);
                         if (r.value <= w.boundary)
                         {
-                            farm.submitProof(Solution{nonce, r.mixHash, w, done}, Index());
+                            Farm::f().submitProof(Solution{nonce, r.mixHash, w, done}, Index());
                         }
                         else
                         {
-                            farm.failedSolution(Index());
+                            Farm::f().failedSolution(Index());
                             cwarn
                                 << "GPU gave incorrect result! Lower OC if this happens frequently";
                         }

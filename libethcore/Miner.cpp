@@ -29,6 +29,8 @@ unsigned Miner::s_dagCreateDevice = 0;
 
 uint8_t* Miner::s_dagInHostMemory = nullptr;
 
+FarmFace* FarmFace::m_this = nullptr;
+
 bool Miner::s_exit = false;
 
 bool Miner::s_noeval = false;
