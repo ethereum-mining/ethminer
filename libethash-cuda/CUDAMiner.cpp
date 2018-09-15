@@ -35,8 +35,7 @@ struct CUDAChannel : public LogChannel
 };
 #define cudalog clog(CUDAChannel)
 
-CUDAMiner::CUDAMiner(unsigned _index) : Miner("cuda-", Farm::f(), _index), m_light(getNumDevices())
-{}
+CUDAMiner::CUDAMiner(unsigned _index) : Miner("cuda-", _index), m_light(getNumDevices()) {}
 
 CUDAMiner::~CUDAMiner()
 {

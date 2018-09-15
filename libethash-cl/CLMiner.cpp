@@ -261,7 +261,7 @@ unsigned CLMiner::s_numInstances = 0;
 vector<int> CLMiner::s_devices(MAX_MINERS, -1);
 bool CLMiner::s_noBinary = false;
 
-CLMiner::CLMiner(unsigned _index) : Miner("cl-", Farm::f(), _index) {}
+CLMiner::CLMiner(unsigned _index) : Miner("cl-", _index) {}
 
 CLMiner::~CLMiner()
 {
