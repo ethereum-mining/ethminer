@@ -517,7 +517,9 @@ void CUDAMiner::search(
                 for (uint32_t i = 0; i < found_count; i++)
                 {
                     uint64_t nonce = nonce_base + buffer.result[i].gid;
+#ifdef DEV_BUILD
                     auto start = std::chrono::steady_clock::now();
+#endif
                     if (s_noeval)
                     {
                         // noeval... use the GPU calculated mix hash.
@@ -542,14 +544,14 @@ void CUDAMiner::search(
                                 << "GPU gave incorrect result! Lower OC if this happens frequently";
                         }
                     }
+#ifdef DEV_BUILD
                     if (g_logOptions & LOG_SUBMIT)
-                    {
                         cudalog << "Submit time: "
                                 << std::chrono::duration_cast<std::chrono::microseconds>(
                                        std::chrono::steady_clock::now() - start)
                                        .count()
                                 << " us.";
-                    }
+#endif
                 }
                 // Reset this stream's buffer for the next pass
                 buffer.count = 0;
@@ -565,13 +567,13 @@ void CUDAMiner::search(
 
     }
 
+#ifdef DEV_BUILD
     // Optionally log job switch time
-    if (!shouldStop() && (g_logOptions & LOG_SWITCH_TIME))
-    {
+    if (!shouldStop() && (g_logOptions & LOG_SWITCH))
         cudalog << "Switch time: "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(
                        std::chrono::steady_clock::now() - m_workSwitchStart)
                        .count()
                 << " ms.";
-    }
+#endif
 }

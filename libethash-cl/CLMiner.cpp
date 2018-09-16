@@ -377,12 +377,14 @@ void CLMiner::workLoop()
                 m_searchKernel.setArg(5, target);
                 m_searchKernel.setArg(6, 0xffffffff);
 
-                if (g_logOptions & LOG_SWITCH_TIME)
+#ifdef DEV_BUILD
+                if (g_logOptions & LOG_SWITCH)
                     cllog << "Switch time: "
                           << std::chrono::duration_cast<std::chrono::microseconds>(
                                  std::chrono::steady_clock::now() - m_workSwitchStart)
                                  .count()
                           << " us.";
+#endif
             }
 
             // Run the kernel.
@@ -397,7 +399,9 @@ void CLMiner::workLoop()
                 if (nonce != m_lastNonce)
                 {
                     m_lastNonce = nonce;
+#ifdef DEV_BUILD
                     auto start = std::chrono::steady_clock::now();
+#endif
                     if (s_noeval)
                     {
                         h256 mix;
@@ -416,14 +420,14 @@ void CLMiner::workLoop()
                             cwarn << "GPU gave incorrect result!";
                         }
                     }
+#ifdef DEV_BUILD
                     if (g_logOptions & LOG_SUBMIT)
-                    {
                         cllog << "Submit time: "
                               << std::chrono::duration_cast<std::chrono::microseconds>(
                                      std::chrono::steady_clock::now() - start)
                                      .count()
                               << " us.";
-                    }
+#endif
                 }
             }
 

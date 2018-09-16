@@ -29,6 +29,7 @@ option(ETHASHCUDA "Build with CUDA mining" ON)
 option(ETHDBUS "Build with D-Bus support" OFF)
 option(APICORE "Build with API Server support" ON)
 option(BINKERN "Install AMD binary kernels" ON)
+option(DEVBUILD "Log developer metrics" OFF)
 
 # propagates CMake configuration options to the compiler
 function(configureProject)
@@ -46,6 +47,9 @@ function(configureProject)
 	endif()
 	if (BINKERN)
 		add_definitions(-DBIN_KERN)
+	endif()
+	if (DEVBUILD)
+		add_definitions(-DDEV_BUILD)
 	endif()
 endfunction()
 
@@ -72,6 +76,7 @@ message("-- ETHASHCUDA       Build CUDA components                    ${ETHASHCU
 message("-- ETHDBUS          Build D-Bus components                   ${ETHDBUS}")
 message("-- APICORE          Build API Server components              ${APICORE}")
 message("-- BINKERN          Install AMD binary kernels               ${BINKERN}")
+message("-- DEVBUILD         Build with dev logging                   ${DEVBUILD}")
 message("------------------------------------------------------------------------")
 message("")
 

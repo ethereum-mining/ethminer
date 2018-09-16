@@ -347,8 +347,9 @@ public:
                                     ((uint64_t)m_index << FarmFace::f().get_segment_width());
             }
 
-            if (g_logOptions & LOG_SWITCH_TIME)
-                m_workSwitchStart = std::chrono::steady_clock::now();
+#ifdef DEV_BUILD
+            m_workSwitchStart = std::chrono::steady_clock::now();
+#endif
         }
         kick_miner();
     }
@@ -452,7 +453,9 @@ protected:
     static bool s_noeval;
 
     const size_t m_index = 0;
+#ifdef DEV_BUILD
     std::chrono::steady_clock::time_point m_workSwitchStart;
+#endif
     HwMonitorInfo m_hwmoninfo;
 
 private:

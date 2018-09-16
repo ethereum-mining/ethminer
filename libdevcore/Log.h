@@ -33,12 +33,19 @@
 #include "vector_ref.h"
 
 /// The logging system's current verbosity.
-#define LOG_SWITCH_TIME 1
-#define LOG_JSON 2
-#define LOG_PER_GPU 4
-#define LOG_DEBUG 8
-#define LOG_SUBMIT 16
-#define LOG_ALL (LOG_SWITCH_TIME | LOG_JSON | LOG_PER_GPU | LOG_DEBUG | LOG_SUBMIT)
+#define LOG_JSON 1
+#define LOG_PER_GPU 2
+#define LOG_NEXT 4
+
+#ifdef DEV_BUILD
+#define LOG_CONNECT 32
+#define LOG_SWITCH 64
+#define LOG_SUBMIT 128
+#undef LOG_NEXT
+#define LOG_NEXT 256
+#endif
+
+
 extern unsigned g_logOptions;
 extern bool g_logNoColor;
 extern bool g_logSyslog;

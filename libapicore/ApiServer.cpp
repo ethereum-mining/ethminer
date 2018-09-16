@@ -691,11 +691,11 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         if (!getRequestValue("verbosity", verbosity, jRequestParams, false, jResponse))
             return;
 
-        if (verbosity > LOG_ALL)
+        if (verbosity >= LOG_NEXT)
         {
             jResponse["error"]["code"] = -422;
             jResponse["error"]["message"] =
-                "Verbosity out of bounds (0-" + to_string(LOG_ALL) + ")";
+                "Verbosity out of bounds (0-" + to_string(LOG_NEXT - 1) + ")";
             return;
         }
         cnote << "Setting verbosity level to " << verbosity;
