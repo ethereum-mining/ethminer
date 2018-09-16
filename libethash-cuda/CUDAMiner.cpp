@@ -439,6 +439,9 @@ void CUDAMiner::search(
         if (m_new_work.compare_exchange_strong(t, false))
             done = true;
 
+#ifdef DEV_BUILD
+        std::chrono::steady_clock::time_point submitStart;
+#endif
         // This inner loop will process each cuda stream individually
         for (current_index = 0; current_index < s_numStreams;
              current_index++, current_nonce += batch_size)
@@ -453,11 +456,13 @@ void CUDAMiner::search(
 
             // refer to the current stream's solution buffer
             volatile Search_results& buffer(*m_search_buf[current_index]);
-
             // See if the stream found any solutions
             uint32_t found_count = buffer.count;
             if (found_count)
             {
+#ifdef DEV_BUILD
+                submitStart = std::chrono::steady_clock::now();
+#endif
                 // Found one or more solutions, save them for later.
                 // We are in a hurry to restart the stream, so defer
                 // non-critical activities, such as hash rate calculations
@@ -517,9 +522,6 @@ void CUDAMiner::search(
                 for (uint32_t i = 0; i < found_count; i++)
                 {
                     uint64_t nonce = nonce_base + buffer.result[i].gid;
-#ifdef DEV_BUILD
-                    auto start = std::chrono::steady_clock::now();
-#endif
                     if (s_noeval)
                     {
                         // noeval... use the GPU calculated mix hash.
@@ -548,7 +550,7 @@ void CUDAMiner::search(
                     if (g_logOptions & LOG_SUBMIT)
                         cudalog << "Submit time: "
                                 << std::chrono::duration_cast<std::chrono::microseconds>(
-                                       std::chrono::steady_clock::now() - start)
+                                       std::chrono::steady_clock::now() - submitStart)
                                        .count()
                                 << " us.";
 #endif

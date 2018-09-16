@@ -310,6 +310,9 @@ void CLMiner::workLoop()
 
             // Read results.
             volatile SearchResults results;
+#ifdef DEV_BUILD
+            std::chrono::steady_clock::time_point submitStart;
+#endif
 
             if (m_queue.size())
             {
@@ -317,9 +320,11 @@ void CLMiner::workLoop()
                 m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE,
                     c_maxSearchResults * sizeof(results.rslt[0]), 2 * sizeof(results.count),
                     (void*)&results.count);
-
                 if (results.count)
                 {
+#ifdef DEV_BUILD
+                    submitStart = std::chrono::steady_clock::now();
+#endif
                     m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0,
                         results.count * sizeof(results.rslt[0]), (void*)&results);
                     // Reset search buffer if any solution found.
@@ -392,43 +397,44 @@ void CLMiner::workLoop()
             m_queue[0].enqueueNDRangeKernel(
                 m_searchKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
 
-            // Report results while the kernel is running.
-            for (uint32_t i = 0; i < results.count; i++)
+            if (results.count)
             {
-                uint64_t nonce = current.startNonce + results.rslt[i].gid;
-                if (nonce != m_lastNonce)
+                // Report results while the kernel is running.
+                for (uint32_t i = 0; i < results.count; i++)
                 {
-                    m_lastNonce = nonce;
-#ifdef DEV_BUILD
-                    auto start = std::chrono::steady_clock::now();
-#endif
-                    if (s_noeval)
+                    uint64_t nonce = current.startNonce + results.rslt[i].gid;
+                    if (nonce != m_lastNonce)
                     {
-                        h256 mix;
-                        memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
-                        Farm::f().submitProof(Solution{nonce, mix, current, false}, Index());
-                    }
-                    else
-                    {
-                        Result r = EthashAux::eval(current.epoch, current.header, nonce);
-                        if (r.value <= current.boundary)
-                            Farm::f().submitProof(
-                                Solution{nonce, r.mixHash, current, false}, Index());
+                        m_lastNonce = nonce;
+                        if (s_noeval)
+                        {
+                            h256 mix;
+                            memcpy(mix.data(), (char*)results.rslt[i].mix,
+                                sizeof(results.rslt[i].mix));
+                            Farm::f().submitProof(Solution{nonce, mix, current, false}, Index());
+                        }
                         else
                         {
-                            Farm::f().failedSolution(Index());
-                            cwarn << "GPU gave incorrect result!";
+                            Result r = EthashAux::eval(current.epoch, current.header, nonce);
+                            if (r.value <= current.boundary)
+                                Farm::f().submitProof(
+                                    Solution{nonce, r.mixHash, current, false}, Index());
+                            else
+                            {
+                                Farm::f().failedSolution(Index());
+                                cwarn << "GPU gave incorrect result!";
+                            }
                         }
                     }
+                }
 #ifdef DEV_BUILD
                     if (g_logOptions & LOG_SUBMIT)
                         cllog << "Submit time: "
                               << std::chrono::duration_cast<std::chrono::microseconds>(
-                                     std::chrono::steady_clock::now() - start)
+                                     std::chrono::steady_clock::now() - submitStart)
                                      .count()
                               << " us.";
 #endif
-                }
             }
 
             current = w;  // kernel now processing newest work
