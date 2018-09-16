@@ -211,7 +211,8 @@ public:
         logOptions << "Set log display options. Use the summ of: Log switch time = "
                    << LOG_SWITCH_TIME << ", log json messages = " << LOG_JSON
                    << ", log per GPU solutions = " << LOG_PER_GPU
-                   << ", log additional debug info = " << LOG_DEBUG;
+                   << ", log additional debug info = " << LOG_DEBUG
+                   << ", log submission time = " << LOG_SUBMIT;
         app.add_option("-v,--verbosity", g_logOptions, logOptions.str(), true)
             ->group(CommonGroup)
             ->check(CLI::Range(LOG_ALL));

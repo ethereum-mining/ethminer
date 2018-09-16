@@ -517,6 +517,7 @@ void CUDAMiner::search(
                 for (uint32_t i = 0; i < found_count; i++)
                 {
                     uint64_t nonce = nonce_base + buffer.result[i].gid;
+                    auto start = std::chrono::steady_clock::now();
                     if (s_noeval)
                     {
                         // noeval... use the GPU calculated mix hash.
@@ -541,7 +542,14 @@ void CUDAMiner::search(
                                 << "GPU gave incorrect result! Lower OC if this happens frequently";
                         }
                     }
-
+                    if (g_logOptions & LOG_SUBMIT)
+                    {
+                        cudalog << "Submit time: "
+                                << std::chrono::duration_cast<std::chrono::microseconds>(
+                                       std::chrono::steady_clock::now() - start)
+                                       .count()
+                                << " us.";
+                    }
                 }
                 // Reset this stream's buffer for the next pass
                 buffer.count = 0;

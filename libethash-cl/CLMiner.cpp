@@ -397,6 +397,7 @@ void CLMiner::workLoop()
                 if (nonce != m_lastNonce)
                 {
                     m_lastNonce = nonce;
+                    auto start = std::chrono::steady_clock::now();
                     if (s_noeval)
                     {
                         h256 mix;
@@ -414,6 +415,14 @@ void CLMiner::workLoop()
                             Farm::f().failedSolution(Index());
                             cwarn << "GPU gave incorrect result!";
                         }
+                    }
+                    if (g_logOptions & LOG_SUBMIT)
+                    {
+                        cllog << "Submit time: "
+                              << std::chrono::duration_cast<std::chrono::microseconds>(
+                                     std::chrono::steady_clock::now() - start)
+                                     .count()
+                              << " us.";
                     }
                 }
             }

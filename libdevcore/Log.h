@@ -37,7 +37,8 @@
 #define LOG_JSON 2
 #define LOG_PER_GPU 4
 #define LOG_DEBUG 8
-#define LOG_ALL (LOG_SWITCH_TIME | LOG_JSON | LOG_PER_GPU | LOG_DEBUG)
+#define LOG_SUBMIT 16
+#define LOG_ALL (LOG_SWITCH_TIME | LOG_JSON | LOG_PER_GPU | LOG_DEBUG | LOG_SUBMIT)
 extern unsigned g_logOptions;
 extern bool g_logNoColor;
 extern bool g_logSyslog;
