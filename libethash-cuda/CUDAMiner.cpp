@@ -214,7 +214,6 @@ void CUDAMiner::workLoop()
     current.header = h256{1u};
 
     m_search_buf.resize(s_numStreams);
-    m_save_buf.resize(s_numStreams);
     m_streams.resize(s_numStreams);
 
 
@@ -439,6 +438,7 @@ void CUDAMiner::search(
         if (m_new_work.compare_exchange_strong(t, false))
             done = true;
 
+        Search_results save_buf;
 #ifdef DEV_BUILD
         std::chrono::steady_clock::time_point submitStart;
 #endif
@@ -472,16 +472,15 @@ void CUDAMiner::search(
                     found_count = MAX_SEARCH_RESULTS;
 
                 // refer to the current stream's save buffer
-                Search_results& save(m_save_buf[current_index]);
 
                 // copy the solution to the save buffer for this stream
-                save.count = found_count;
+                save_buf.count = found_count;
                 for (uint32_t i = 0; i < found_count; i++)
                 {
-                    save.result[i].gid = buffer.result[i].gid;
+                    save_buf.result[i].gid = buffer.result[i].gid;
                     if (s_noeval)
                         for (uint32_t j = 0; j < 8; j++)
-                            save.result[i].mix[j] = buffer.result[i].mix[j];
+                            save_buf.result[i].mix[j] = buffer.result[i].mix[j];
                 }
 
                 // Ok, solutions are saved. We can now reset the stream's
@@ -496,38 +495,24 @@ void CUDAMiner::search(
 
             run_ethash_search(
                 s_gridSize, s_blockSize, stream, &buffer, current_nonce, m_parallelHash);
-        }
 
-        // All streams have been restarted and should be busy for a while
-        // searching. Now is a good time to burn CPU cycles on bookeeping.
+            found_count = save_buf.count;
 
-        // Update the hash rate
-        updateHashRate(batch_size, s_numStreams);
-
-        // submit any solutions found by all streams
-        for (current_index = 0; current_index < s_numStreams; current_index++)
-        {
-            // Refer to this stream's save buffer
-            Search_results& buffer(m_save_buf[current_index]);
-
-            // check for solutions from cuuren stream
-            uint32_t found_count = buffer.count;
             if (found_count)
             {
                 // We are 2 outer loop iterations behind the current nonce.
-                uint64_t nonce_base =
-                    current_nonce - (2 * streams_batch_size) + (current_index * batch_size);
+                uint64_t nonce_base = current_nonce - streams_batch_size;
 
                 // Submit this stream's solutions
                 for (uint32_t i = 0; i < found_count; i++)
                 {
-                    uint64_t nonce = nonce_base + buffer.result[i].gid;
+                    uint64_t nonce = nonce_base + save_buf.result[i].gid;
                     if (s_noeval)
                     {
                         // noeval... use the GPU calculated mix hash.
                         h256 mix;
-                        memcpy(mix.data(), (void*)&buffer.result[i].mix,
-                            sizeof(buffer.result[0].mix));
+                        memcpy(mix.data(), (void*)&save_buf.result[i].mix,
+                            sizeof(save_buf.result[0].mix));
                         Farm::f().submitProof(Solution{nonce, mix, w, done}, Index());
                     }
                     else
@@ -546,19 +531,25 @@ void CUDAMiner::search(
                                 << "GPU gave incorrect result! Lower OC if this happens frequently";
                         }
                     }
-#ifdef DEV_BUILD
-                    if (g_logOptions & LOG_SUBMIT)
-                        cudalog << "Submit time: "
-                                << std::chrono::duration_cast<std::chrono::microseconds>(
-                                       std::chrono::steady_clock::now() - submitStart)
-                                       .count()
-                                << " us.";
-#endif
                 }
                 // Reset this stream's buffer for the next pass
-                buffer.count = 0;
+                save_buf.count = 0;
+#ifdef DEV_BUILD
+                if (g_logOptions & LOG_SUBMIT)
+                    cudalog << "Submit time: "
+                            << std::chrono::duration_cast<std::chrono::microseconds>(
+                                   std::chrono::steady_clock::now() - submitStart)
+                                   .count()
+                            << " us.";
+#endif
             }
         }
+
+        // All streams have been restarted and should be busy for a while
+        // searching. Now is a good time to burn CPU cycles on bookeeping.
+
+        // Update the hash rate
+        updateHashRate(batch_size, s_numStreams);
 
         // Bail out if it's shutdown time
         if (shouldStop())

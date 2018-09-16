@@ -428,12 +428,12 @@ void CLMiner::workLoop()
                     }
                 }
 #ifdef DEV_BUILD
-                    if (g_logOptions & LOG_SUBMIT)
-                        cllog << "Submit time: "
-                              << std::chrono::duration_cast<std::chrono::microseconds>(
-                                     std::chrono::steady_clock::now() - submitStart)
-                                     .count()
-                              << " us.";
+                if (g_logOptions & LOG_SUBMIT)
+                    cllog << "Submit time: "
+                          << std::chrono::duration_cast<std::chrono::microseconds>(
+                                 std::chrono::steady_clock::now() - submitStart)
+                                 .count()
+                          << " us.";
 #endif
             }
 
