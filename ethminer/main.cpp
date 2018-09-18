@@ -208,13 +208,17 @@ public:
         app.add_flag("-V,--version", version, "Show program version")->group(CommonGroup);
 
         ostringstream logOptions;
-        logOptions << "Set log display options. Use the summ of: Log switch time = "
-                   << LOG_SWITCH_TIME << ", log json messages = " << LOG_JSON
-                   << ", log per GPU solutions = " << LOG_PER_GPU
-                   << ", log additional debug info = " << LOG_DEBUG;
+        logOptions << "Set log display options. Use the summ of:"
+                   << " log json messages = " << LOG_JSON
+                   << ", log per GPU solutions = " << LOG_PER_GPU;
+#ifdef DEV_BUILD
+        logOptions << ", log connection messages = " << LOG_CONNECT
+                   << ", log switch delay = " << LOG_SWITCH
+                   << ", log submit delay = " << LOG_SUBMIT;
+#endif
         app.add_option("-v,--verbosity", g_logOptions, logOptions.str(), true)
             ->group(CommonGroup)
-            ->check(CLI::Range(LOG_ALL));
+            ->check(CLI::Range(LOG_NEXT - 1));
 
         app.add_option("--farm-recheck", m_farmRecheckPeriod,
                "Set check interval in milliseconds for changed work", true)

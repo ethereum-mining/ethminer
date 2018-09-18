@@ -270,8 +270,10 @@ void EthStratumClient::disconnect_finalize()
     }
 
     // Release locking flag and set connection status
-    if (g_logOptions & LOG_DEBUG)
+#ifdef DEV_BUILD
+    if (g_logOptions & LOG_CONNECT)
         cnote << "Socket disconnected from " << ActiveEndPoint();
+#endif
     m_connected.store(false, std::memory_order_relaxed);
     m_subscribed.store(false, std::memory_order_relaxed);
     m_authorized.store(false, std::memory_order_relaxed);
@@ -372,8 +374,10 @@ void EthStratumClient::start_connect()
 
         dev::setThreadName("stratum");
 
-        if (g_logOptions & LOG_DEBUG)
+#ifdef DEV_BUILD
+        if (g_logOptions & LOG_CONNECT)
             cnote << ("Trying " + toString(m_endpoint) + " ...");
+#endif
 
         clear_response_pleas();
         m_connecting.store(true, std::memory_order::memory_order_relaxed);
@@ -540,8 +544,10 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 
     // We got a socket connection established
     m_canconnect.store(true, std::memory_order_relaxed);
-    if (g_logOptions & LOG_DEBUG)
+#ifdef DEV_BUILD
+    if (g_logOptions & LOG_CONNECT)
         cnote << "Socket connected to " << ActiveEndPoint();
+#endif
 
     if (m_conn->SecLevel() != SecureLevel::NONE)
     {
@@ -736,9 +742,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
     // Out received message only for debug purpouses
     if (g_logOptions & LOG_JSON)
-    {
         cnote << responseObject;
-    }
 
     // Store jsonrpc version to test against
     int _rpcVer = responseObject.isMember("jsonrpc") ? 2 : 1;
@@ -1242,9 +1246,11 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     double nextWorkDifficulty =
                         max(jPrm.get(Json::Value::ArrayIndex(0), 1).asDouble(), 0.0001);
                     diffToTarget((uint32_t*)m_nextWorkBoundary.data(), nextWorkDifficulty);
-                    if (g_logOptions & LOG_DEBUG)
+#ifdef DEV_BUILD
+                    if (g_logOptions & LOG_CONNECT)
                         cnote << "Difficulty set to " EthWhite << nextWorkDifficulty
                               << EthReset " (nicehash)";
+#endif
                 }
             }
             else
