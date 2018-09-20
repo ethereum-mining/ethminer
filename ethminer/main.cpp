@@ -110,7 +110,13 @@ public:
     static void signalHandler(int sig)
     {
         (void)sig;
+<<<<<<< HEAD
         g_got_exit_signal = true;
+=======
+        dev::setThreadName("main");
+        cnote << "Signal intercepted ...";
+        g_running = false;
+>>>>>>> 16a01f2... Save one thread
     }
 #if API_CORE
     static bool ParseBind(const std::string& inaddr, std::string& outaddr, int& outport,
@@ -883,6 +889,7 @@ private:
         else
         {
             cwarn << "Invalid OperationMode";
+            stop_io_service();
             exit(1);
         }
 
@@ -911,10 +918,19 @@ private:
         }
         else
         {
-            for (auto conn : m_endpoints)
+            if (!m_endpoints.size())
             {
-                cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
-                PoolManager::p().addConnection(conn);
+                cwarn << "No connections defined";
+                stop_io_service();
+                exit(1);
+            } 
+            else 
+            {
+                for (auto conn : m_endpoints)
+                {
+                    cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
+                    PoolManager::p().addConnection(conn);
+                }
             }
         }
 
