@@ -67,16 +67,31 @@ PoolManager::PoolManager(
     });
 
     p_client->onDisconnected([&]() {
-        dev::setThreadName("main");
+        dev::setThreadName("stratum");
         cnote << "Disconnected from " + m_lastConnectedHost << p_client->ActiveEndPoint();
 
-        // Do not stop mining here
-        // Workloop will determine if we're trying a fast reconnect to same pool
-        // or if we're switching to failover(s)
+        // Clear current connection
+        p_client->unsetConnection();
 
         // Stop timing actors
         m_failovertimer.cancel();
         m_submithrtimer.cancel();
+
+        if (m_stopping.load(std::memory_order_relaxed))
+        {
+            if (Farm::f().isMining)
+            {
+                cnote << "Shutting down miners...";
+                Farm::f().stop();
+            }
+            m_running.store(false, std::memory_order_relaxed);
+        }
+        else
+        {
+            // Suspend mining and submit new connection request
+            suspendMining();
+            g_io_service.post(m_io_strand.wrap(boost::bind(&PoolManager::rotateConnect, this)));
+        }
 
     });
 
@@ -110,7 +125,7 @@ PoolManager::PoolManager(
 
     p_client->onSolutionAccepted([&](bool const& stale,
                                      std::chrono::milliseconds const& elapsedMs, unsigned const& miner_index) {
-
+        dev::setThreadName("stratum");
         std::stringstream ss;
         ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << " ms."
            << " " << m_lastConnectedHost + p_client->ActiveEndPoint();
@@ -121,7 +136,7 @@ PoolManager::PoolManager(
 
     p_client->onSolutionRejected([&](bool const& stale,
                                      std::chrono::milliseconds const& elapsedMs, unsigned const& miner_index) {
-
+        dev::setThreadName("stratum");
         std::stringstream ss;
         ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << "ms."
            << "   " << m_lastConnectedHost + p_client->ActiveEndPoint();
@@ -180,107 +195,24 @@ void PoolManager::stop()
 {
     if (m_running.load(std::memory_order_relaxed))
     {
-        cnote << "Shutting down...";
-
-        m_running.store(false, std::memory_order_relaxed);
-
-        // Stop timing actors
-        m_failovertimer.cancel();
-        m_submithrtimer.cancel();
+        m_stopping.store(false, std::memory_order_relaxed);
 
         if (p_client->isConnected())
+        {
             p_client->disconnect();
-
-        if (Farm::f().isMining())
-        {
-            cnote << "Shutting down miners...";
-            Farm::f().stop();
         }
-    }
-}
-
-void PoolManager::workLoop()
-{
-    dev::setThreadName("main");
-
-    while (m_running.load(std::memory_order_relaxed))
-    {
-        // Take action only if not pending state (connecting/disconnecting)
-        // Otherwise do nothing and wait until connection state is NOT pending
-        if (!p_client->isPendingState())
+        else
         {
-            if (!p_client->isConnected())
+            // Stop timing actors
+            m_failovertimer.cancel();
+            m_submithrtimer.cancel();
+
+            if (Farm::f().isMining())
             {
-                // As we're not connected: suspend mining if we're still searching a solution
-                suspendMining();
-
-                UniqueGuard l(m_activeConnectionMutex);
-
-                // If this connection is marked Unrecoverable then discard it
-                if (m_connections.at(m_activeConnectionIdx).IsUnrecoverable())
-                {
-                    p_client->unsetConnection();
-
-                    m_connections.erase(m_connections.begin() + m_activeConnectionIdx);
-
-                    m_connectionAttempt = 0;
-                    if (m_activeConnectionIdx >= m_connections.size())
-                    {
-                        m_activeConnectionIdx = 0;
-                    }
-                    m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
-                }
-                else if (m_connectionAttempt >= m_maxConnectionAttempts)
-                {
-                    // Rotate connections if above max attempts threshold
-                    m_connectionAttempt = 0;
-                    m_activeConnectionIdx++;
-                    if (m_activeConnectionIdx >= m_connections.size())
-                    {
-                        m_activeConnectionIdx = 0;
-                    }
-                    m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
-                }
-
-                if (!m_connections.empty() &&
-                    m_connections.at(m_activeConnectionIdx).Host() != "exit")
-                {
-                    // Count connectionAttempts
-                    m_connectionAttempt++;
-
-                    // Invoke connections
-                    p_client->setConnection(&m_connections.at(m_activeConnectionIdx));
-                    cnote << "Selected pool "
-                          << (m_connections.at(m_activeConnectionIdx).Host() + ":" +
-                                 toString(m_connections.at(m_activeConnectionIdx).Port()));
-
-                    l.unlock();
-
-                    // Clean any list of jobs inherited from
-                    // previous connection
-                    p_client->connect();
-                }
-                else
-                {
-                    l.unlock();
-
-                    cnote << "No more connections to try. Exiting...";
-
-                    // Stop mining if applicable
-                    if (Farm::f().isMining())
-                    {
-                        cnote << "Shutting down miners...";
-                        Farm::f().stop();
-                    }
-
-                    m_running.store(false, std::memory_order_relaxed);
-                    continue;
-                }
+                cnote << "Shutting down miners...";
+                Farm::f().stop();
             }
         }
-
-        this_thread::sleep_for(chrono::seconds(1));
-
     }
 }
 
@@ -374,14 +306,75 @@ Json::Value PoolManager::getConnectionsJson()
 void PoolManager::start()
 {
     Guard l(m_activeConnectionMutex);
-    if (m_connections.size() > 0)
+    m_running.store(true, std::memory_order_relaxed);
+    g_io_service.post(m_io_strand.wrap(boost::bind(&PoolManager::rotateConnect, this)));
+}
+
+void PoolManager::rotateConnect() 
+{
+    if (p_client->isConnected())
+        return;
+
+    UniqueGuard l(m_activeConnectionMutex);
+
+    // Check we're within bounds
+    if (m_activeConnectionIdx >= m_connections.size())
+        m_activeConnectionIdx = 0;
+
+    // If this connection is marked Unrecoverable then discard it
+    if (m_connections.at(m_activeConnectionIdx).IsUnrecoverable())
     {
-        m_running.store(true, std::memory_order_relaxed);
-        m_workThread = std::thread{boost::bind(&PoolManager::workLoop, this)};
+        m_connections.erase(m_connections.begin() + m_activeConnectionIdx);
+        m_connectionAttempt = 0;
+        if (m_activeConnectionIdx >= m_connections.size())
+            m_activeConnectionIdx = 0;
+        m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
+    }
+    else if (m_connectionAttempt >= m_maxConnectionAttempts)
+    {
+        // Rotate connections if above max attempts threshold
+        m_connectionAttempt = 0;
+        m_activeConnectionIdx++;
+        if (m_activeConnectionIdx >= m_connections.size())
+            m_activeConnectionIdx = 0;
+        m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    if (!m_connections.empty() && m_connections.at(m_activeConnectionIdx).Host() != "exit")
+    {
+        // Count connectionAttempts
+        m_connectionAttempt++;
+
+        // Invoke connections
+        p_client->setConnection(&m_connections.at(m_activeConnectionIdx));
+        cnote << "Selected pool "
+              << (m_connections.at(m_activeConnectionIdx).Host() + ":" +
+                     toString(m_connections.at(m_activeConnectionIdx).Port()));
+
+        l.unlock();
+        p_client->connect();
     }
     else
     {
-        cwarn << "Manager has no connections defined!";
+        l.unlock();
+
+        if (m_connections.empty())
+        {
+            cnote << "No more connections to try. Exiting...";
+        }
+        else
+        {
+            cnote << "'Exit' failover just got hit. Exiting...";
+        }
+
+        // Stop mining if applicable
+        if (Farm::f().isMining())
+        {
+            cnote << "Shutting down miners...";
+            Farm::f().stop();
+        }
+
+        m_running.store(false, std::memory_order_relaxed);
     }
 }
 

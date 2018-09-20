@@ -48,7 +48,7 @@ void SimulateClient::submitHashrate(string const& rate)
     cnote << "On difficulty" << m_difficulty << "for" << sec.count() << "seconds";
 }
 
-void SimulateClient::submitSolution(const Solution& solution, unsigned const& miner_index)
+void SimulateClient::submitSolution(const Solution& solution)
 {
     m_uppDifficulty = true;
     cnote << "Difficulty:" << m_difficulty;
@@ -64,14 +64,14 @@ void SimulateClient::submitSolution(const Solution& solution, unsigned const& mi
     {
         if (m_onSolutionAccepted)
         {
-            m_onSolutionAccepted(false, response_delay_ms, miner_index);
+            m_onSolutionAccepted(false, response_delay_ms, solution.midx);
         }
     }
     else
     {
         if (m_onSolutionRejected)
         {
-            m_onSolutionRejected(false, response_delay_ms, miner_index);
+            m_onSolutionRejected(false, response_delay_ms, solution.midx);
         }
     }
 }

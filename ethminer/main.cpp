@@ -110,6 +110,8 @@ public:
     static void signalHandler(int sig)
     {
         (void)sig;
+        dev::setThreadName("main");
+        cnote << "Signal intercepted ...";
         g_running = false;
     }
 #if API_CORE
@@ -789,8 +791,7 @@ private:
             &CUDAMiner::instances, [](unsigned _index) { return new CUDAMiner(_index); }};
 #endif
         Farm::f().setSealers(sealers);
-        Farm::f().onSolutionFound([&](Solution, unsigned const& miner_index) {
-            (void)miner_index;
+        Farm::f().onSolutionFound([&](Solution) {
             return false;
         });
 
@@ -879,6 +880,7 @@ private:
         else
         {
             cwarn << "Invalid OperationMode";
+            stop_io_service();
             exit(1);
         }
 
@@ -907,10 +909,19 @@ private:
         }
         else
         {
-            for (auto conn : m_endpoints)
+            if (!m_endpoints.size())
             {
-                cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
-                PoolManager::p().addConnection(conn);
+                cwarn << "No connections defined";
+                stop_io_service();
+                exit(1);
+            } 
+            else 
+            {
+                for (auto conn : m_endpoints)
+                {
+                    cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
+                    PoolManager::p().addConnection(conn);
+                }
             }
         }
 
