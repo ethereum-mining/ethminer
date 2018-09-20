@@ -10,7 +10,10 @@ PoolManager* PoolManager::m_this = nullptr;
 
 PoolManager::PoolManager(
     PoolClient* client, MinerType const& minerType, unsigned maxTries, unsigned failoverTimeout)
-  : m_io_strand(g_io_service), m_failovertimer(g_io_service), m_minerType(minerType)
+  : m_io_strand(g_io_service),
+    m_failovertimer(g_io_service),
+    m_submithrtimer(g_io_service),
+    m_minerType(minerType)
 {
     m_this = this;
     p_client = client;
@@ -18,6 +21,7 @@ PoolManager::PoolManager(
     m_failoverTimeout = failoverTimeout;
 
     p_client->onConnected([&]() {
+
         {
             Guard l(m_activeConnectionMutex);
             m_lastConnectedHost = m_connections.at(m_activeConnectionIdx).Host();
@@ -32,12 +36,13 @@ PoolManager::PoolManager(
             {
                 m_failovertimer.expires_from_now(boost::posix_time::minutes(m_failoverTimeout));
                 m_failovertimer.async_wait(m_io_strand.wrap(boost::bind(
-                    &PoolManager::check_failover_timeout, this, boost::asio::placeholders::error)));
+                    &PoolManager::failovertimer_elapsed, this, boost::asio::placeholders::error)));
             }
             else
             {
                 m_failovertimer.cancel();
             }
+
         }
 
         if (!Farm::f().isMining())
@@ -53,6 +58,12 @@ PoolManager::PoolManager(
                 Farm::f().start("opencl", true);
             }
         }
+
+        // Activate timing for HR submission
+        m_submithrtimer.expires_from_now(boost::posix_time::seconds(m_hrReportingInterval));
+        m_submithrtimer.async_wait(m_io_strand.wrap(boost::bind(
+            &PoolManager::submithrtimer_elapsed, this, boost::asio::placeholders::error)));
+
     });
 
     p_client->onDisconnected([&]() {
@@ -62,6 +73,11 @@ PoolManager::PoolManager(
         // Do not stop mining here
         // Workloop will determine if we're trying a fast reconnect to same pool
         // or if we're switching to failover(s)
+
+        // Stop timing actors
+        m_failovertimer.cancel();
+        m_submithrtimer.cancel();
+
     });
 
     p_client->onWorkReceived([&](WorkPackage const& wp) {
@@ -167,7 +183,10 @@ void PoolManager::stop()
         cnote << "Shutting down...";
 
         m_running.store(false, std::memory_order_relaxed);
+
+        // Stop timing actors
         m_failovertimer.cancel();
+        m_submithrtimer.cancel();
 
         if (p_client->isConnected())
             p_client->disconnect();
@@ -260,25 +279,8 @@ void PoolManager::workLoop()
             }
         }
 
-        // Hashrate reporting
-        m_hashrateReportingTimePassed++;
-
-        if (m_hashrateReportingTimePassed > m_hashrateReportingTime)
-        {
-            auto mp = Farm::f().miningProgress();
-            std::string h = toHex(toCompactBigEndian(uint64_t(mp.hashRate), 1));
-            std::string res = h[0] != '0' ? h : h.substr(1);
-
-            // Should be 32 bytes
-            // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_submithashrate
-            std::ostringstream ss;
-            ss << std::setw(64) << std::setfill('0') << res;
-
-            p_client->submitHashrate("0x" + ss.str());
-            m_hashrateReportingTimePassed = 0;
-        }
-
         this_thread::sleep_for(chrono::seconds(1));
+
     }
 }
 
@@ -383,7 +385,7 @@ void PoolManager::start()
     }
 }
 
-void PoolManager::check_failover_timeout(const boost::system::error_code& ec)
+void PoolManager::failovertimer_elapsed(const boost::system::error_code& ec)
 {
     if (!ec)
     {
@@ -402,6 +404,32 @@ void PoolManager::check_failover_timeout(const boost::system::error_code& ec)
         }
     }
 }
+
+void PoolManager::submithrtimer_elapsed(const boost::system::error_code& ec)
+{
+    if (!ec)
+    {
+        if (m_running.load(std::memory_order_relaxed) && p_client->isConnected())
+        {
+            auto mp = Farm::f().miningProgress();
+            std::string h = toHex(toCompactBigEndian(uint64_t(mp.hashRate), 1));
+            std::string res = h[0] != '0' ? h : h.substr(1);
+
+            // Should be 32 bytes
+            // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_submithashrate
+            std::ostringstream ss;
+            ss << std::setw(64) << std::setfill('0') << res;
+            p_client->submitHashrate("0x" + ss.str());
+
+            // Resubmit actor
+            m_submithrtimer.expires_from_now(boost::posix_time::seconds(m_hrReportingInterval));
+            m_submithrtimer.async_wait(m_io_strand.wrap(boost::bind(
+                &PoolManager::submithrtimer_elapsed, this, boost::asio::placeholders::error)));
+
+        }
+    }
+}
+
 
 void PoolManager::suspendMining()
 {
