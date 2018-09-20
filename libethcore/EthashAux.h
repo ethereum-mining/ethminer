@@ -60,10 +60,11 @@ struct WorkPackage
 
 struct Solution
 {
-    uint64_t nonce;
-    h256 mixHash;
-    WorkPackage work;
-    bool stale;
+    uint64_t nonce;   // Solution found
+    h256 mixHash;     // Mix hash
+    WorkPackage work; // WorkPackage this solution refers to
+    bool stale;       // Whether or not solution is stale
+    unsigned midx;    // Originating miner Id
 };
 
 }  // namespace eth

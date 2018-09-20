@@ -299,7 +299,7 @@ public:
      * @param _p The solution.
      * @return true iff the solution was good (implying that mining should be .
      */
-    virtual void submitProof(Solution const& _p, unsigned _miner_index) = 0;
+    virtual void submitProof(Solution const& _p) = 0;
     virtual void failedSolution(unsigned _miner_index) = 0;
     virtual uint64_t get_nonce_scrambler() = 0;
     virtual unsigned get_segment_width() = 0;

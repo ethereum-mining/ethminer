@@ -33,7 +33,7 @@ public:
     virtual void disconnect() = 0;
 
     virtual void submitHashrate(string const& rate) = 0;
-    virtual void submitSolution(const Solution& solution, unsigned const& miner_index) = 0;
+    virtual void submitSolution(const Solution& solution) = 0;
     virtual bool isConnected() = 0;
     virtual bool isPendingState() = 0;
     virtual string ActiveEndPoint() = 0;

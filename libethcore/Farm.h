@@ -152,7 +152,7 @@ public:
 
     void rejectedSolution(unsigned _miner_index) { m_solutionStats.rejected(_miner_index); }
 
-    using SolutionFound = std::function<void(const Solution&, unsigned)>;
+    using SolutionFound = std::function<void(const Solution&)>;
     using MinerRestart = std::function<void()>;
 
     /**
@@ -199,10 +199,10 @@ public:
      * @param _s The solution.
      * @param _miner_index Index of the miner
      */
-    void submitProof(Solution const& _s, unsigned _miner_index) override
+    void submitProof(Solution const& _s) override
     {
         assert(m_onSolutionFound);
-        m_onSolutionFound(_s, _miner_index);
+        m_onSolutionFound(_s);
     }
 
 private:

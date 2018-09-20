@@ -1336,7 +1336,7 @@ void EthStratumClient::submitHashrate(string const& rate)
     sendSocketData(jReq);
 }
 
-void EthStratumClient::submitSolution(const Solution& solution, unsigned const& miner_index)
+void EthStratumClient::submitSolution(const Solution& solution)
 {
     if (!m_subscribed.load(std::memory_order_relaxed) ||
         !m_authorized.load(std::memory_order_relaxed))
@@ -1349,7 +1349,7 @@ void EthStratumClient::submitSolution(const Solution& solution, unsigned const& 
 
     Json::Value jReq;
 
-    unsigned id = 40 + miner_index;
+    unsigned id = 40 + solution.midx;
     jReq["id"] = id;
     m_solution_submitted_max_id = max(m_solution_submitted_max_id, id);
     jReq["method"] = "mining.submit";
