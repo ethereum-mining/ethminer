@@ -60,11 +60,19 @@ struct WorkPackage
 
 struct Solution
 {
+<<<<<<< HEAD
     uint64_t nonce;
     h256 mixHash;
     WorkPackage work;
     bool stale;
     unsigned index; // Index of the miner(GPU) found the solution
+=======
+    uint64_t nonce;   // Solution found
+    h256 mixHash;     // Mix hash
+    WorkPackage work; // WorkPackage this solution refers to
+    bool stale;       // Whether or not solution is stale
+    unsigned midx;    // Originating miner Id
+>>>>>>> 1497942... Embed miner index in solution structure
 };
 
 }  // namespace eth
