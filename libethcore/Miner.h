@@ -452,7 +452,7 @@ protected:
     static bool s_exit;
     static bool s_noeval;
 
-    const size_t m_index = 0;
+    const unsigned m_index = 0;
 #ifdef DEV_BUILD
     std::chrono::steady_clock::time_point m_workSwitchStart;
 #endif
