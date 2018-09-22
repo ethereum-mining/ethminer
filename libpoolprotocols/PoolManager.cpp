@@ -79,7 +79,7 @@ PoolManager::PoolManager(
 
         if (m_stopping.load(std::memory_order_relaxed))
         {
-            if (Farm::f().isMining)
+            if (Farm::f().isMining())
             {
                 cnote << "Shutting down miners...";
                 Farm::f().stop();
@@ -307,6 +307,7 @@ void PoolManager::start()
 {
     Guard l(m_activeConnectionMutex);
     m_running.store(true, std::memory_order_relaxed);
+    m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
     g_io_service.post(m_io_strand.wrap(boost::bind(&PoolManager::rotateConnect, this)));
 }
 

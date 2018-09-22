@@ -525,7 +525,11 @@ void CUDAMiner::search(
                         Result r = EthashAux::eval(w.epoch, w.header, nonce);
                         if (r.value <= w.boundary)
                         {
+<<<<<<< HEAD
                             Farm::f().submitProof(Solution{nonce, r.mixHash, w, done, Index()});
+=======
+                            Farm::f().submitProof(Solution{nonce, r.mixHash, w, done, m_index});
+>>>>>>> c28a31b... Small Fix
                         }
                         else
                         {
