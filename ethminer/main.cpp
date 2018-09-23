@@ -58,7 +58,7 @@ struct MiningChannel : public LogChannel
 #include <ethminer/DBusInt.h>
 #endif
 
-bool g_running = false;
+bool g_got_exit_signal = false;
 
 class MinerCLI
 {
@@ -110,7 +110,7 @@ public:
     static void signalHandler(int sig)
     {
         (void)sig;
-        g_running = false;
+        g_got_exit_signal = true;
     }
 #if API_CORE
     static bool ParseBind(const std::string& inaddr, std::string& outaddr, int& outport,
@@ -753,7 +753,6 @@ public:
 #endif
         }
 
-        g_running = true;
         signal(SIGINT, MinerCLI::signalHandler);
         signal(SIGTERM, MinerCLI::signalHandler);
 
@@ -935,7 +934,7 @@ private:
         unsigned interval = m_displayInterval;
 
         // Run CLI in loop
-        while (g_running && PoolManager::p().isRunning())
+        while (!g_got_exit_signal && PoolManager::p().isRunning())
         {
             // Wait at the beginning of the loop to give some time
             // services to start properly. Otherwise we get a "not-connected"
