@@ -939,12 +939,15 @@ private:
             // Wait at the beginning of the loop to give some time
             // services to start properly. Otherwise we get a "not-connected"
             // message immediately
-            this_thread::sleep_for(chrono::seconds(2));
-            if (interval > 2)
-            {
-                interval -= 2;
+
+            // Split m_displayInterval in 1 second parts to optain a faster exit
+            this_thread::sleep_for(chrono::seconds(1));
+            interval--;
+            if (interval)
                 continue;
-            }
+            interval = m_displayInterval;
+
+            // Display current stats of the farm if it's connected
             if (PoolManager::p().isConnected())
             {
                 auto solstats = Farm::f().getSolutionStats();
@@ -978,7 +981,6 @@ private:
             {
                 minelog << "not-connected";
             }
-            interval = m_displayInterval;
         }
 
 #if API_CORE
