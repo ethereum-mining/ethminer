@@ -301,8 +301,8 @@ public:
             ->check(CLI::Range(-65535, 65535));
 
         app.add_option("--api-password", m_api_password,
-               "Set the password to protect interaction with API server. If not set, any connection "
-               "is granted access. "
+               "Set the password to protect interaction with API server. If not set, any "
+               "connection is granted access. "
                "Be advised passwords are sent unencrypted over plain TCP!!")
             ->group(APIGroup);
 
@@ -964,7 +964,8 @@ private:
                     statdetails << "Solutions " << solstats << ' ';
                     for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
                     {
-                        if (i) statdetails << " ";
+                        if (i)
+                            statdetails << " ";
                         statdetails << "gpu" << i << ":" << solstats.getString(i);
                     }
                     minelog << statdetails.str();
