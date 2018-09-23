@@ -38,6 +38,7 @@
 #if API_CORE
 #include <libapicore/ApiServer.h>
 #include <libapicore/httpServer.h>
+#include <regex>
 #endif
 
 using namespace std;
@@ -119,76 +120,40 @@ public:
 >>>>>>> 16a01f2... Save one thread
     }
 #if API_CORE
-    static bool ParseBind(const std::string& inaddr, std::string& outaddr, int& outport,
-        bool advertise_negative_port, std::string& errstr)
+
+    static void ParseBind(
+        const std::string& inaddr, std::string& outaddr, int& outport, bool advertise_negative_port)
     {
-        std::string addr = inaddr;
+        std::regex pattern("([\\da-fA-F\\.\\:]*)\\:([\\d\\-]*)");
+        std::smatch matches;
+
+        if (std::regex_match(inaddr, matches, pattern))
         {
-            std::string portstr = addr.substr(
-                (addr.find_last_of(":") == std::string::npos) ? 0 : addr.find_last_of(":"));
-            addr.resize(addr.length() - portstr.length());
-            if (!portstr.empty() && portstr[0] == ':')
+            // Validate Ip address
+            boost::system::error_code ec;
+            outaddr = boost::asio::ip::address::from_string(matches[1], ec).to_string();
+            if (ec)
+                throw std::invalid_argument("Invalid Ip Address");
+
+            // Parse port ( Let exception throw )
+            outport = std::stoi(matches[2]);
+            if (advertise_negative_port)
             {
-                portstr = portstr.substr(1);
+                if (outport < -65535 || outport > 65535 || outport == 0)
+                    throw std::invalid_argument(
+                        "Invalid port number. Allowed non zero values in range [-65535 .. 65535]");
             }
-            bool out_of_int_range = false;
-            try
+            else
             {
-                outport = std::stoi(portstr);
-            }
-            catch (const std::out_of_range&)
-            {
-                out_of_int_range = true;
-            }
-            catch (...)
-            {
-                errstr = std::string("unable to extract port from string: \"") + portstr +
-                         std::string("\"");
-                return false;
-            };
-            if (out_of_int_range || abs(outport) < 1 || abs(outport) > 0xFFFF)
-            {
-                errstr =
-                    std::string("port out of range: ") + portstr +
-                    (advertise_negative_port ?
-                            std::string(" (must be a non-zero value between -65535 and 65535)") :
-                            std::string(" (must be between 1-65535)"));
-                return false;
-            }
-            if (portstr.length() != std::to_string(outport).length())
-            {
-                errstr = std::string("invalid characters found after port specification: \"") +
-                         portstr + std::string("\"");
-                return false;
+                if (outport < 1 || outport > 65535)
+                    throw std::invalid_argument(
+                        "Invalid port number. Allowed non zero values in range [1 .. 65535]");
             }
         }
-        if (addr.empty())
+        else
         {
-            addr = "0.0.0.0";
+            throw std::invalid_argument("Invalid syntax");
         }
-        boost::system::error_code ec;
-        boost::asio::ip::address address = boost::asio::ip::address::from_string(addr, ec);
-        if (ec)
-        {
-            errstr = std::string("invalid ip address: \"") + addr +
-                     std::string("\" - parsing error: ") + ec.message();
-            return false;
-        }
-        outaddr = addr;
-        try
-        {
-            boost::asio::io_service io_service;
-            boost::asio::ip::tcp::acceptor a(
-                io_service, boost::asio::ip::tcp::endpoint(address, abs(outport)));
-        }
-        catch (const std::exception& ex)
-        {
-            errstr = std::string("unable to bind to ") + addr + std::string(":") +
-                     std::to_string(abs(outport)) + std::string(" - error message: ") +
-                     std::string(ex.what());
-            return false;
-        }
-        return true;
     }
 #endif
     void ParseCommandLine(int argc, char** argv)
@@ -289,11 +254,13 @@ public:
                true)
             ->group(APIGroup)
             ->check([this](const string& bind_arg) -> string {
-                string errormsg;
-                if (!MinerCLI::ParseBind(
-                        bind_arg, this->m_api_address, this->m_api_port, true, errormsg))
+                try
                 {
-                    throw CLI::ValidationError("--api-bind", errormsg);
+                    MinerCLI::ParseBind(bind_arg, this->m_api_address, this->m_api_port, true);
+                }
+                catch (const std::exception& ex)
+                {
+                    throw CLI::ValidationError("--api-bind", ex.what());
                 }
                 // not sure what to return, and the documentation doesn't say either.
                 // https://github.com/CLIUtils/CLI11/issues/144
@@ -308,7 +275,12 @@ public:
 
         app.add_option("--api-password", m_api_password,
                "Set the password to protect interaction with API server. If not set, any "
+<<<<<<< HEAD
                "connection is granted access. "
+=======
+               "connection "
+               "is granted access. "
+>>>>>>> d3565dd... Simplify ParseBind
                "Be advised passwords are sent unencrypted over plain TCP!!")
             ->group(APIGroup);
 
@@ -316,17 +288,14 @@ public:
                "Set the web API address:port the miner should listen to.", true)
             ->group(APIGroup)
             ->check([this](const string& bind_arg) -> string {
-                string errormsg;
                 int port;
-                if (!MinerCLI::ParseBind(bind_arg, this->m_http_address, port, false, errormsg))
+                try
                 {
-                    throw CLI::ValidationError("--http-bind", errormsg);
+                    MinerCLI::ParseBind(bind_arg, this->m_http_address, port, false);
                 }
-                if (port < 0)
+                catch (const std::exception& ex)
                 {
-                    throw CLI::ValidationError("--http-bind",
-                        "the web API does not have read/write modes, specify a positive port "
-                        "number between 1-65535");
+                    throw CLI::ValidationError("--http-bind", ex.what());
                 }
                 this->m_http_port = static_cast<uint16_t>(port);
                 // not sure what to return, and the documentation doesn't say either.
@@ -800,9 +769,7 @@ private:
             &CUDAMiner::instances, [](unsigned _index) { return new CUDAMiner(_index); }};
 #endif
         Farm::f().setSealers(sealers);
-        Farm::f().onSolutionFound([&](Solution) {
-            return false;
-        });
+        Farm::f().onSolutionFound([&](Solution) { return false; });
 
         Farm::f().setTStartTStop(m_tstart, m_tstop);
 
@@ -923,8 +890,8 @@ private:
                 cwarn << "No connections defined";
                 stop_io_service();
                 exit(1);
-            } 
-            else 
+            }
+            else
             {
                 for (auto conn : m_endpoints)
                 {
