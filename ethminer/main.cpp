@@ -225,14 +225,16 @@ public:
             ->group(CommonGroup)
             ->check(CLI::Range(1, 99999));
 
-        unsigned hwmon;
-        auto hwmon_opt = app.add_option("--HWMON", hwmon,
-            "0 - Displays gpu temp, fan percent. 1 - and power usage."
-            " Note for Linux: The program uses sysfs for power, which requires running with root "
-            "privileges.");
-        hwmon_opt->group(CommonGroup)->check(CLI::Range(1));
+        app.add_option("--HWMON", m_farmHwMonitors,
+               "0 - No monitoring; "
+               "1 - Monitor GPU temp and fan; "
+               "2 - Monitor GPU temp fan and power drain; ",
+               true)
+            ->group(CommonGroup)
+            ->check(CLI::Range(0, 2));
 
-        app.add_flag("--exit", m_farmExitOnErrors, "Stops the miner whenever an error is encountered")
+        app.add_flag(
+               "--exit", m_farmExitOnErrors, "Stops the miner whenever an error is encountered")
             ->group(CommonGroup);
 
         vector<string> pools;
@@ -347,8 +349,8 @@ public:
                "--cl-parallel-hash", openclThreadsPerHash, {1, 2, 4, 8}, "ignored parameter", true)
             ->group(OpenCLGroup);
 
-        app.add_option("--cl-global-work", m_oclGWorkSize,
-               "Set the global work size multipler.", true)
+        app.add_option(
+               "--cl-global-work", m_oclGWorkSize, "Set the global work size multipler.", true)
             ->group(OpenCLGroup);
 
         app.add_set("--cl-local-work", m_oclLWorkSize, {64, 128, 192, 256},
@@ -388,7 +390,8 @@ public:
             ->check(CLI::Range(1, 99));
 
 #endif
-        app.add_flag("--noeval", m_farmNoEval, "Bypass host software re-evaluation of GPU solutions")
+        app.add_flag(
+               "--noeval", m_farmNoEval, "Bypass host software re-evaluation of GPU solutions")
             ->group(CommonGroup);
 
         app.add_option("-L,--dag-load-mode", m_farmDagLoadMode,
@@ -551,13 +554,6 @@ public:
             clog << "--cl-parallel-hash ignored. No longer applies\n";
 #endif
 
-        if (hwmon_opt->count())
-        {
-            m_farmHwMonitors = true;
-            if (hwmon)
-                m_farmPwMonitors = true;
-        }
-
         if (!cl_miner && !cuda_miner && !mixed_miner && !bench_opt->count() && !sim_opt->count())
         {
             cerr << endl
@@ -648,8 +644,8 @@ public:
         if (m_farmTempStop && !m_farmHwMonitors)
         {
             // if we want stop mining at a specific temperature, we have to
-            // monitor the temperature ==> so auto enable HWMON.
-            m_farmHwMonitors = true;
+            // monitor the temperature ==> so auto set HWMON to at least 1.
+            m_farmHwMonitors = 1;
         }
     }
 
@@ -682,8 +678,8 @@ public:
                 m_miningThreads = m_oclDeviceCount;
             }
 
-            if (!CLMiner::configureGPU(m_oclLWorkSize, m_oclGWorkSize,
-                    m_oclPlatform, 0, m_farmDagLoadMode, m_farmDagCreateDevice, m_farmNoEval, m_farmExitOnErrors,
+            if (!CLMiner::configureGPU(m_oclLWorkSize, m_oclGWorkSize, m_oclPlatform, 0,
+                    m_farmDagLoadMode, m_farmDagCreateDevice, m_farmNoEval, m_farmExitOnErrors,
                     m_oclNoBinary))
             {
                 stop_io_service();
@@ -718,7 +714,8 @@ public:
             }
 
             if (!CUDAMiner::configureGPU(m_cudaBlockSize, m_cudaGridSize, m_cudaStreams,
-                    m_cudaSchedule, m_farmDagLoadMode, m_farmDagCreateDevice, m_farmNoEval, m_farmExitOnErrors))
+                    m_cudaSchedule, m_farmDagLoadMode, m_farmDagCreateDevice, m_farmNoEval,
+                    m_farmExitOnErrors))
             {
                 stop_io_service();
                 exit(1);
@@ -764,7 +761,7 @@ private:
         genesis.setNumber(m_benchmarkBlock);
         genesis.setDifficulty(u256(1) << 64);
 
-        new Farm(m_farmHwMonitors, m_farmPwMonitors);
+        new Farm(m_farmHwMonitors);
         map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
         sealers["opencl"] = Farm::SealerDescriptor{
@@ -875,7 +872,7 @@ private:
         }
 
         // sealers, m_minerType
-        new Farm(m_farmHwMonitors, m_farmPwMonitors);
+        new Farm(m_farmHwMonitors);
         Farm::f().setSealers(sealers);
 
         new PoolManager(client, m_minerType, m_poolMaxRetries, m_poolFlvrTimeout);
@@ -912,7 +909,7 @@ private:
         ApiServer api(m_api_address, m_api_port, m_api_password);
         api.start();
 
-        http_server.run(m_http_address, m_http_port, m_farmHwMonitors, m_farmPwMonitors);
+        http_server.run(m_http_address, m_http_port, m_farmHwMonitors);
 
 #endif
 
@@ -989,7 +986,6 @@ private:
         exit(0);
     }
 
-
     // Global boost's io_service
     std::thread m_io_thread;                      // The IO service thread
     boost::asio::deadline_timer m_io_work_timer;  // A dummy timer to keep io_service with something
@@ -1000,7 +996,7 @@ private:
     // Mining options
     MinerType m_minerType = MinerType::Mixed;
     OperationMode m_mode = OperationMode::None;
-    unsigned m_miningThreads = UINT_MAX; // TODO remove ?
+    unsigned m_miningThreads = UINT_MAX;  // TODO remove ?
     bool m_shouldListDevices = false;
 
 #if ETH_ETHASHCL
@@ -1025,43 +1021,51 @@ private:
 #endif
 
     // -- Farm related params
-    unsigned m_farmDagLoadMode = 0;         // DAG load mode : 0=parallel, 1=sequential, 2=single 
-    unsigned m_farmDagCreateDevice = 0;     // Ordinal index of GPU creating DAG (Implies m_farmDagLoadMode == 2
-    bool m_farmExitOnErrors = false;        // Whether or not ethminer should exit on mining threads errors
-    bool m_farmNoEval = false;              // Whether or not ethminer should CPU re-evaluate solutions
-    unsigned m_farmPollInterval = 500;      // In getWork mode this establishes the ms. interval to check for new job
-    bool m_farmHwMonitors = false;          // Whether or not activate hardware monitoring on GPUs (temp and fans)
-    bool m_farmPwMonitors = false;          // Whether or not activate power monitoring on GPUs
-    unsigned m_farmTempStop = 0;            // Halt mining on GPU if temperature ge this threshold (Celsius)
-    unsigned m_farmTempStart = 40;          // Resume mining on GPU if temperature le this threshold (Celsius)
+    unsigned m_farmDagLoadMode = 0;  // DAG load mode : 0=parallel, 1=sequential, 2=single
+    unsigned m_farmDagCreateDevice =
+        0;  // Ordinal index of GPU creating DAG (Implies m_farmDagLoadMode == 2
+    bool m_farmExitOnErrors =
+        false;                  // Whether or not ethminer should exit on mining threads errors
+    bool m_farmNoEval = false;  // Whether or not ethminer should CPU re-evaluate solutions
+    unsigned m_farmPollInterval =
+        500;  // In getWork mode this establishes the ms. interval to check for new job
+    unsigned m_farmHwMonitors =
+        0;  // Farm GPU monitoring level : 0 - No monitor; 1 - Temp and Fan; 2 - Temp Fan Power
+    // bool m_farmHwMonitors = false;          // Whether or not activate hardware monitoring on
+    // GPUs (temp and fans) bool m_farmPwMonitors = false;          // Whether or not activate power
+    // monitoring on GPUs
+    unsigned m_farmTempStop = 0;  // Halt mining on GPU if temperature ge this threshold (Celsius)
+    unsigned m_farmTempStart =
+        40;  // Resume mining on GPU if temperature le this threshold (Celsius)
 
     // -- Pool manager related params
     vector<URI> m_poolConns;
-    unsigned m_poolMaxRetries = 3;          // Max number of connection retries
-    unsigned m_poolWorkTimeout = 180;       // If no new jobs in this number of seconds drop connection
-    unsigned m_poolRespTimeout = 2;         // If no response in this number of seconds drop connection
-    unsigned m_poolFlvrTimeout = 0;         // Return to primary pool after this number of minutes
-    bool m_poolHashRate = false;            // Whether or not ethminer should send HR to pool
-    
+    unsigned m_poolMaxRetries = 3;     // Max number of connection retries
+    unsigned m_poolWorkTimeout = 180;  // If no new jobs in this number of seconds drop connection
+    unsigned m_poolRespTimeout = 2;    // If no response in this number of seconds drop connection
+    unsigned m_poolFlvrTimeout = 0;    // Return to primary pool after this number of minutes
+    bool m_poolHashRate = false;       // Whether or not ethminer should send HR to pool
+
     // -- Benchmarking related params
     unsigned m_benchmarkWarmup = 15;
     unsigned m_benchmarkTrial = 3;
     unsigned m_benchmarkTrials = 5;
     unsigned m_benchmarkBlock = 0;
-    
+
     // -- CLI Interface related params
-    unsigned m_cliDisplayInterval = 5;      // Display stats/info on cli interface every this number of seconds
+    unsigned m_cliDisplayInterval =
+        5;  // Display stats/info on cli interface every this number of seconds
 
 
 #if API_CORE
     // -- API and Http interfaces related params
-    string m_api_bind;                      // API interface binding address in form <address>:<port>
-    string m_api_address = "0.0.0.0";       // API interface binding address (Default any)
-    int m_api_port = 0;                     // API interface binding port
-    string m_api_password;                  // API interface write protection password
-    string m_http_bind;                     // HTTP interface binding address in form <address>:<port>
-    string m_http_address = "0.0.0.0";      // HTTP interface binding address (Default any)
-    uint16_t m_http_port = 0;               // HTTP interface binding port
+    string m_api_bind;                  // API interface binding address in form <address>:<port>
+    string m_api_address = "0.0.0.0";   // API interface binding address (Default any)
+    int m_api_port = 0;                 // API interface binding port
+    string m_api_password;              // API interface write protection password
+    string m_http_bind;                 // HTTP interface binding address in form <address>:<port>
+    string m_http_address = "0.0.0.0";  // HTTP interface binding address (Default any)
+    uint16_t m_http_port = 0;           // HTTP interface binding port
 #endif
 
 #if ETH_DBUS
@@ -1078,9 +1082,9 @@ int main(int argc, char** argv)
         setenv("GPU_MAX_ALLOC_PERCENT", "100");
         setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
 
-        MinerCLI m;
+        MinerCLI cli;
 
-        m.ParseCommandLine(argc, argv);
+        cli.ParseCommandLine(argc, argv);
 
         if (getenv("SYSLOG"))
             g_logSyslog = true;
@@ -1106,7 +1110,7 @@ int main(int argc, char** argv)
         }
 #endif
 
-        m.execute();
+        cli.execute();
     }
     catch (std::exception& ex)
     {
