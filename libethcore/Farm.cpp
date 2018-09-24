@@ -24,14 +24,13 @@ namespace eth
 {
 Farm* Farm::m_this = nullptr;
 
-Farm::Farm(bool hwmon, bool pwron) : m_io_strand(g_io_service), m_collectTimer(g_io_service)
+Farm::Farm(unsigned hwmonlvl) : m_io_strand(g_io_service), m_collectTimer(g_io_service)
 {
     m_this = this;
-    m_hwmon = hwmon;
-    m_pwron = pwron;
+    m_hwmonlvl = hwmonlvl;
 
     // Init HWMON if needed
-    if (m_hwmon)
+    if (m_hwmonlvl)
     {
         adlh = wrap_adl_create();
 #if defined(__linux)
@@ -253,7 +252,7 @@ void Farm::collectData(const boost::system::error_code& ec)
             progress.miningIsPaused.push_back(true);
         }
 
-        if (m_hwmon)
+        if (m_hwmonlvl)
         {
             HwMonitorInfo hwInfo = miner->hwmonInfo();
             HwMonitor hw;
@@ -278,7 +277,7 @@ void Farm::collectData(const boost::system::error_code& ec)
                     }
                     wrap_nvml_get_tempC(nvmlh, typeidx, &tempC);
                     wrap_nvml_get_fanpcnt(nvmlh, typeidx, &fanpcnt);
-                    if (m_pwron)
+                    if (m_hwmonlvl == 2)
                     {
                         wrap_nvml_get_power_usage(nvmlh, typeidx, &powerW);
                     }
@@ -297,7 +296,7 @@ void Farm::collectData(const boost::system::error_code& ec)
                     }
                     wrap_adl_get_tempC(adlh, typeidx, &tempC);
                     wrap_adl_get_fanpcnt(adlh, typeidx, &fanpcnt);
-                    if (m_pwron)
+                    if (m_hwmonlvl == 2)
                     {
                         wrap_adl_get_power_usage(adlh, typeidx, &powerW);
                     }
@@ -318,7 +317,7 @@ void Farm::collectData(const boost::system::error_code& ec)
                     }
                     wrap_amdsysfs_get_tempC(sysfsh, typeidx, &tempC);
                     wrap_amdsysfs_get_fanpcnt(sysfsh, typeidx, &fanpcnt);
-                    if (m_pwron)
+                    if (m_hwmonlvl == 2)
                     {
                         wrap_amdsysfs_get_power_usage(sysfsh, typeidx, &powerW);
                     }

@@ -62,7 +62,7 @@ public:
         std::function<Miner*(unsigned)> create;
     };
 
-    Farm(bool hwmon, bool pwron);
+    Farm(unsigned hwmonlvl);
 
     ~Farm();
 
@@ -244,7 +244,7 @@ private:
     unsigned int m_nonce_segment_with = 40;
 
     // Switches for hw monitoring and power drain monitoring
-    bool m_hwmon, m_pwron;
+    unsigned m_hwmonlvl;
 
     // Hardware monitoring temperatures
     unsigned m_tstart = 0, m_tstop = 0;
