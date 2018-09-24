@@ -402,6 +402,7 @@ void CUDAMiner::setParallelHash(unsigned _parallelHash)
 void CUDAMiner::search(
     uint8_t const* header, uint64_t target, uint64_t current_nonce, const dev::eth::WorkPackage& w)
 {
+    uint64_t stream_nonce;
     set_header(*reinterpret_cast<hash32_t const*>(header));
     if (m_current_target != target)
     {
@@ -414,17 +415,18 @@ void CUDAMiner::search(
     // Nonces processed in one pass by all streams
     const uint32_t streams_batch_size = batch_size * s_numStreams;
 
-    // prime each stream and clear search result buffers
+    // prime each stream, clear search result buffers and start the search
     uint32_t current_index;
-    for (current_index = 0; current_index < s_numStreams;
-         current_index++, current_nonce += batch_size)
+    for (current_index = 0, stream_nonce = current_nonce;
+         current_index < s_numStreams;
+         current_index++, stream_nonce += batch_size)
     {
         cudaStream_t stream = m_streams[current_index];
         volatile Search_results& buffer(*m_search_buf[current_index]);
         buffer.count = 0;
 
         // Run the batch for this stream
-        run_ethash_search(s_gridSize, s_blockSize, stream, &buffer, current_nonce, m_parallelHash);
+        run_ethash_search(s_gridSize, s_blockSize, stream, &buffer, stream_nonce, m_parallelHash);
     }
 
     // process stream batches until we get new work.
@@ -443,8 +445,9 @@ void CUDAMiner::search(
         std::chrono::steady_clock::time_point submitStart;
 #endif
         // This inner loop will process each cuda stream individually
-        for (current_index = 0; current_index < s_numStreams;
-             current_index++, current_nonce += batch_size)
+        for (current_index = 0, stream_nonce = current_nonce;
+             current_index < s_numStreams;
+             current_index++, stream_nonce += batch_size)
         {
             // Each pass of this loop will wait for a stream to exit,
             // save any found solutions, then restart the stream
@@ -490,30 +493,26 @@ void CUDAMiner::search(
 
             // restart the stream on the next batch of nonces
             // unless we are done for this round.
-            if (done)
-                continue;
-
-            run_ethash_search(
-                s_gridSize, s_blockSize, stream, &buffer, current_nonce, m_parallelHash);
+            if (!done)
+            {
+                run_ethash_search(
+                    s_gridSize, s_blockSize, stream, &buffer, stream_nonce + streams_batch_size, m_parallelHash);
+            }
 
             found_count = save_buf.count;
-
             if (found_count)
             {
-                // We are 2 outer loop iterations behind the current nonce.
-                uint64_t nonce_base = current_nonce - streams_batch_size;
-
                 // Submit this stream's solutions
                 for (uint32_t i = 0; i < found_count; i++)
                 {
-                    uint64_t nonce = nonce_base + save_buf.result[i].gid;
+                    uint64_t nonce = stream_nonce + save_buf.result[i].gid;
                     if (s_noeval)
                     {
                         // noeval... use the GPU calculated mix hash.
                         h256 mix;
                         memcpy(mix.data(), (void*)&save_buf.result[i].mix,
                             sizeof(save_buf.result[0].mix));
-                        Farm::f().submitProof(Solution{nonce, mix, w, done}, Index());
+                        Farm::f().submitProof(Solution{nonce, mix, w, done, Index()});
                     }
                     else
                     {
@@ -522,7 +521,7 @@ void CUDAMiner::search(
                         Result r = EthashAux::eval(w.epoch, w.header, nonce);
                         if (r.value <= w.boundary)
                         {
-                            Farm::f().submitProof(Solution{nonce, r.mixHash, w, done}, Index());
+                            Farm::f().submitProof(Solution{nonce, r.mixHash, w, done, Index()});
                         }
                         else
                         {
@@ -558,6 +557,7 @@ void CUDAMiner::search(
             break;
         }
 
+        current_nonce += streams_batch_size;
     }
 
 #ifdef DEV_BUILD
