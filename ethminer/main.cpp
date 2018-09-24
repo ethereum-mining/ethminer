@@ -1037,71 +1037,84 @@ int main(int argc, char** argv)
     // 3 - Other exceptions
     // 4 - Possible corruption
     
-    MinerCLI cli;
-
     try
     {
-        // Set env vars controlling GPU driver behavior.
-        setenv("GPU_MAX_HEAP_SIZE", "100");
-        setenv("GPU_MAX_ALLOC_PERCENT", "100");
-        setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
+        MinerCLI cli;
 
-        // Argument validation either throws exception
-        // or returns false which means do not continue
-        if (!cli.validateArgs(argc, argv))
-            return 0;
+        try
+        {
+            // Set env vars controlling GPU driver behavior.
+            setenv("GPU_MAX_HEAP_SIZE", "100");
+            setenv("GPU_MAX_ALLOC_PERCENT", "100");
+            setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
 
-        if (getenv("SYSLOG"))
-            g_logSyslog = true;
-        if (g_logSyslog || (getenv("NO_COLOR")))
-            g_logNoColor = true;
+            // Argument validation either throws exception
+            // or returns false which means do not continue
+            if (!cli.validateArgs(argc, argv))
+                return 0;
+
+            if (getenv("SYSLOG"))
+                g_logSyslog = true;
+            if (g_logSyslog || (getenv("NO_COLOR")))
+                g_logNoColor = true;
 
 #if defined(_WIN32)
-        if (!g_logNoColor)
-        {
-            g_logNoColor = true;
-            // Set output mode to handle virtual terminal sequences
-            // Only works on Windows 10, but most users should use it anyway
-            HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-            if (hOut != INVALID_HANDLE_VALUE)
+            if (!g_logNoColor)
             {
-                DWORD dwMode = 0;
-                if (GetConsoleMode(hOut, &dwMode))
+                g_logNoColor = true;
+                // Set output mode to handle virtual terminal sequences
+                // Only works on Windows 10, but most users should use it anyway
+                HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+                if (hOut != INVALID_HANDLE_VALUE)
                 {
-                    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-                    if (SetConsoleMode(hOut, dwMode))
-                        g_logNoColor = false;
+                    DWORD dwMode = 0;
+                    if (GetConsoleMode(hOut, &dwMode))
+                    {
+                        dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+                        if (SetConsoleMode(hOut, dwMode))
+                            g_logNoColor = false;
+                    }
                 }
             }
-        }
 #endif
 
-        cli.execute();
-        return 0;
+            cli.execute();
+            return 0;
+        }
+        catch (std::invalid_argument& ex1)
+        {
+            cerr << "\n"
+                 << "Error: " << ex1.what() << "\n\n";
+            return 1;
+        }
+        catch (std::runtime_error& ex2)
+        {
+            cerr << "\n"
+                 << "Error: " << ex2.what() << "\n\n";
+            return 2;
+        }
+        catch (std::exception& ex3)
+        {
+            cerr << "\n"
+                 << "Error: " << ex3.what() << "\n\n";
+            return 3;
+        }
+        catch (...)
+        {
+            cerr << "\n"
+                 << "Error: Unknown failure occurred. Possible memory corruption."
+                 << "\n\n";
+            return 4;
+        }
     }
-    catch (std::invalid_argument& ex1)
+    catch (const std::exception& ex)
     {
         cerr << "\n"
-             << "Error: " << ex1.what() << "\n\n";
-        return 1;
-    }
-    catch (std::runtime_error& ex2)
-    {
-        cerr << "\n"
-             << "Error: " << ex2.what() << "\n\n";
-        return 2;
-    }
-    catch (std::exception& ex3)
-    {
-        cerr << "\n"
-             << "Error: " << ex3.what() << "\n\n";
-        return 3;
-    }
-    catch (...)
-    {
-        cerr << "\n"
-             << "Error: Unknown failure occurred. Possible memory corruption."
+             << "Could not initialize CLI interface " << endl
+             << "Error: " << ex.what()
              << "\n\n";
         return 4;
+
     }
+
 }
