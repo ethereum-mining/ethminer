@@ -794,8 +794,7 @@ private:
             &CUDAMiner::instances, [](unsigned _index) { return new CUDAMiner(_index); }};
 #endif
         Farm::f().setSealers(sealers);
-        Farm::f().onSolutionFound([&](Solution, unsigned const& miner_index) {
-            (void)miner_index;
+        Farm::f().onSolutionFound([&](Solution) {
             return false;
         });
 

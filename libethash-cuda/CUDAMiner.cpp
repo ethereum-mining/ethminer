@@ -513,7 +513,7 @@ void CUDAMiner::search(
                         h256 mix;
                         memcpy(mix.data(), (void*)&save_buf.result[i].mix,
                             sizeof(save_buf.result[0].mix));
-                        Farm::f().submitProof(Solution{nonce, mix, w, done}, Index());
+                        Farm::f().submitProof(Solution{nonce, mix, w, done, Index()});
                     }
                     else
                     {
@@ -522,7 +522,7 @@ void CUDAMiner::search(
                         Result r = EthashAux::eval(w.epoch, w.header, nonce);
                         if (r.value <= w.boundary)
                         {
-                            Farm::f().submitProof(Solution{nonce, r.mixHash, w, done}, Index());
+                            Farm::f().submitProof(Solution{nonce, r.mixHash, w, done, Index()});
                         }
                         else
                         {

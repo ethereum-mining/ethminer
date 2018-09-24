@@ -64,6 +64,7 @@ struct Solution
     h256 mixHash;
     WorkPackage work;
     bool stale;
+    unsigned index; // Index of the miner(GPU) found the solution
 };
 
 }  // namespace eth

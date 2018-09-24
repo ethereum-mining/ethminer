@@ -50,7 +50,7 @@ public:
     string ActiveEndPoint() override { return " [" + toString(m_endpoint) + "]"; };
 
     void submitHashrate(string const& rate) override;
-    void submitSolution(const Solution& solution, unsigned const& miner_index) override;
+    void submitSolution(const Solution& solution) override;
 
     h256 currentHeaderHash() { return m_current.header; }
     bool current() { return static_cast<bool>(m_current); }

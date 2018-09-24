@@ -114,7 +114,7 @@ PoolManager::PoolManager(
         Farm::f().rejectedSolution(miner_index);
     });
 
-    Farm::f().onSolutionFound([&](const Solution& sol, unsigned const& miner_index) {
+    Farm::f().onSolutionFound([&](const Solution& sol) {
         // Solution should passthrough only if client is
         // properly connected. Otherwise we'll have the bad behavior
         // to log nonce submission but receive no response
@@ -127,7 +127,7 @@ PoolManager::PoolManager(
             else
                 cnote << "Solution: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
 
-            p_client->submitSolution(sol, miner_index);
+            p_client->submitSolution(sol);
         }
         else
         {
