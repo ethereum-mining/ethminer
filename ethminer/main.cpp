@@ -95,6 +95,12 @@ public:
         // and should not start/stop or even join threads (which heavily time consuming)
     }
 
+    virtual ~MinerCLI() 
+    { 
+        g_io_service.stop();
+        m_io_thread.join();
+    }
+
     void io_work_timer_handler(const boost::system::error_code& ec)
     {
         if (!ec)
@@ -105,13 +111,6 @@ public:
             m_io_work_timer.async_wait(m_io_strand.wrap(boost::bind(
                 &MinerCLI::io_work_timer_handler, this, boost::asio::placeholders::error)));
         }
-    }
-
-    void stop_io_service()
-    {
-        // Here we stop all io_service's related activities
-        g_io_service.stop();
-        m_io_thread.join();
     }
 
     static void signalHandler(int sig)
@@ -643,7 +642,6 @@ public:
             if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
                 CUDAMiner::listDevices();
 #endif
-            stop_io_service();
             return;
         }
 
@@ -664,13 +662,11 @@ public:
                     m_farmDagLoadMode, m_farmDagCreateDevice, m_farmNoEval, m_farmExitOnErrors,
                     m_oclNoBinary))
             {
-                stop_io_service();
                 throw std::runtime_error("Unable to initialize OpenCL GPU(s)");
             }
 
             CLMiner::setNumInstances(m_miningThreads);
 #else
-            stop_io_service();
             throw std::runtime_error(
                 "Selected OpenCL mining without having compiled with -DETHASHCL=ON");
 #endif
@@ -691,7 +687,6 @@ public:
             {
                 std::string what = "CUDA error : ";
                 what.append(err.what());
-                stop_io_service();
                 throw std::runtime_error(what);
             }
 
@@ -699,13 +694,11 @@ public:
                     m_cudaSchedule, m_farmDagLoadMode, m_farmDagCreateDevice, m_farmNoEval,
                     m_farmExitOnErrors))
             {
-                stop_io_service();
                 throw std::runtime_error("Unable to initialize CUDA GPU(s)");
             }
 
             CUDAMiner::setParallelHash(m_cudaParallelHash);
 #else
-            stop_io_service();
             throw std::runtime_error(
                 "Selected CUDA mining without having compiled with -DETHASHCUDA=ON");
 #endif
@@ -738,7 +731,7 @@ private:
         genesis.setNumber(m_benchmarkBlock);
         genesis.setDifficulty(u256(1) << 64);
 
-        new Farm(m_farmHwMonitors);
+
         map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
         sealers["opencl"] = Farm::SealerDescriptor{
@@ -748,16 +741,14 @@ private:
         sealers["cuda"] = Farm::SealerDescriptor{
             &CUDAMiner::instances, [](unsigned _index) { return new CUDAMiner(_index); }};
 #endif
+        new Farm(m_farmHwMonitors);
         Farm::f().setSealers(sealers);
+        Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
         Farm::f().onSolutionFound([&](Solution) { return false; });
 
-        Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
-
         string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
-        cout << "Benchmarking on platform: " << platformInfo << endl;
-
-        cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
-        // genesis.prep();
+        minelog << "Benchmarking on platform: " << platformInfo << " Preparing DAG for block #"
+                << m_benchmarkBlock;
 
         if (_m == MinerType::CL)
             Farm::f().start("opencl", false);
@@ -777,33 +768,35 @@ private:
             current.boundary = genesis.boundary();
             Farm::f().setWork(current);
             if (!i)
-                cout << "Warming up..." << endl;
+                minelog << "Warming up...";
             else
-                cout << "Trial " << i << "... " << flush << endl;
+                minelog << "Trial " << i << "... ";
+
             this_thread::sleep_for(chrono::seconds(i ? _trialDuration : _warmupDuration));
 
-            auto mp = Farm::f().miningProgress();
             if (!i)
                 continue;
-            auto rate = uint64_t(mp.hashRate);
 
-            cout << rate << endl;
+            auto rate = uint64_t(Farm::f().miningProgress().hashRate);
+            minelog << "Hashes per second " << rate;
             results.push_back(rate);
             mean += uint64_t(rate);
         }
         sort(results.begin(), results.end());
-        cout << "min/mean/max: " << results.front() << "/" << (mean / _trials) << "/"
-             << results.back() << " H/s" << endl;
+        minelog << "min/mean/max: " << results.front() << "/" << (mean / _trials) << "/"
+                << results.back() << " H/s";
         if (results.size() > 2)
         {
             for (auto it = results.begin() + 1; it != results.end() - 1; it++)
                 innerMean += *it;
             innerMean /= (_trials - 2);
-            cout << "inner mean: " << innerMean << " H/s" << endl;
+            minelog << "inner mean: " << innerMean << " H/s";
         }
         else
-            cout << "inner mean: n/a" << endl;
-        stop_io_service();
+        {
+            minelog << "inner mean: n/a";
+        }
+
         return;
     }
 
@@ -836,7 +829,6 @@ private:
         else
         {
             cwarn << "Invalid OperationMode";
-            stop_io_service();
             exit(1);
         }
 
@@ -844,7 +836,6 @@ private:
         if (!client)
         {
             cwarn << "Invalid PoolClient";
-            stop_io_service();
             exit(1);
         }
 
@@ -865,19 +856,10 @@ private:
         }
         else
         {
-            if (!m_poolConns.size())
+            for (auto conn : m_poolConns)
             {
-                cwarn << "No connections defined";
-                stop_io_service();
-                exit(1);
-            }
-            else
-            {
-                for (auto conn : m_poolConns)
-                {
-                    cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
-                    PoolManager::p().addConnection(conn);
-                }
+                cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
+                PoolManager::p().addConnection(conn);
             }
         }
 
@@ -957,10 +939,9 @@ private:
 #endif
 
         PoolManager::p().stop();
-        stop_io_service();
 
         cnote << "Terminated!";
-        exit(0);
+        return;
     }
 
     // Global boost's io_service
@@ -1008,9 +989,6 @@ private:
         500;  // In getWork mode this establishes the ms. interval to check for new job
     unsigned m_farmHwMonitors =
         0;  // Farm GPU monitoring level : 0 - No monitor; 1 - Temp and Fan; 2 - Temp Fan Power
-    // bool m_farmHwMonitors = false;          // Whether or not activate hardware monitoring on
-    // GPUs (temp and fans) bool m_farmPwMonitors = false;          // Whether or not activate power
-    // monitoring on GPUs
     unsigned m_farmTempStop = 0;  // Halt mining on GPU if temperature ge this threshold (Celsius)
     unsigned m_farmTempStart =
         40;  // Resume mining on GPU if temperature le this threshold (Celsius)
@@ -1053,11 +1031,13 @@ private:
 int main(int argc, char** argv)
 {
     // Return values
-    // 0 - Normal exit (signal intercepted or --help -V)
+    // 0 - Normal exit
     // 1 - Invalid/Insufficient command line arguments
     // 2 - Runtime error
     // 3 - Other exceptions
     // 4 - Possible corruption
+    
+    MinerCLI cli;
 
     try
     {
@@ -1066,11 +1046,8 @@ int main(int argc, char** argv)
         setenv("GPU_MAX_ALLOC_PERCENT", "100");
         setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
 
-        MinerCLI cli;
-
         // Argument validation either throws exception
         // or returns false which means do not continue
-        // Reason to not continue are --help or -V
         if (!cli.validateArgs(argc, argv))
             return 0;
 
@@ -1102,26 +1079,29 @@ int main(int argc, char** argv)
         cli.execute();
         return 0;
     }
-    catch (std::invalid_argument& ex)
+    catch (std::invalid_argument& ex1)
     {
-        cerr << "Error: " << ex.what() << "\n\n";
+        cerr << "\n"
+             << "Error: " << ex1.what() << "\n\n";
         return 1;
     }
-    catch (std::runtime_error& ex)
+    catch (std::runtime_error& ex2)
     {
-        cerr << "Error: " << ex.what() << "\n\n";
+        cerr << "\n"
+             << "Error: " << ex2.what() << "\n\n";
         return 2;
     }
-    catch (std::exception& ex)
+    catch (std::exception& ex3)
     {
-        cerr << "Error: " << ex.what() << "\n\n";
+        cerr << "\n"
+             << "Error: " << ex3.what() << "\n\n";
         return 3;
     }
     catch (...)
     {
-        cerr << "Error: Unknown failure occurred. Possible memory corruption."
+        cerr << "\n"
+             << "Error: Unknown failure occurred. Possible memory corruption."
              << "\n\n";
         return 4;
     }
-    
 }
