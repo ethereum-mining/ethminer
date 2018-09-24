@@ -45,6 +45,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+
+// Global vars
+bool g_running = false;
 boost::asio::io_service g_io_service;  // The IO service itself
 
 struct MiningChannel : public LogChannel
@@ -59,8 +62,11 @@ struct MiningChannel : public LogChannel
 #include <ethminer/DBusInt.h>
 #endif
 
+<<<<<<< HEAD
 bool g_got_exit_signal = false;
 
+=======
+>>>>>>> fcdaa0f... main.cpp vars rework
 class MinerCLI
 {
 public:
@@ -191,30 +197,30 @@ public:
             ->group(CommonGroup)
             ->check(CLI::Range(LOG_NEXT - 1));
 
-        app.add_option("--farm-recheck", m_farmRecheckPeriod,
+        app.add_option("--farm-recheck", m_farmPollInterval,
                "Set check interval in milliseconds for changed work", true)
             ->group(CommonGroup)
             ->check(CLI::Range(1, 99999));
 
         app.add_option(
-               "--farm-retries", m_maxFarmRetries, "Set number of reconnection retries", true)
+               "--farm-retries", m_poolMaxRetries, "Set number of reconnection retries", true)
             ->group(CommonGroup)
             ->check(CLI::Range(0, 99999));
 
-        app.add_option("--work-timeout", m_worktimeout,
+        app.add_option("--work-timeout", m_poolWorkTimeout,
                "Set disconnect timeout in seconds of working on the same job", true)
             ->group(CommonGroup)
             ->check(CLI::Range(180, 99999));
 
-        app.add_option("--response-timeout", m_responsetimeout,
+        app.add_option("--response-timeout", m_poolRespTimeout,
                "Set disconnect timeout in seconds for pool responses", true)
             ->group(CommonGroup)
             ->check(CLI::Range(2, 999));
 
-        app.add_flag("-R,--report-hashrate", m_report_hashrate, "Report current hashrate to pool")
+        app.add_flag("-R,--report-hashrate", m_poolHashRate, "Report current hashrate to pool")
             ->group(CommonGroup);
 
-        app.add_option("--display-interval", m_displayInterval,
+        app.add_option("--display-interval", m_cliDisplayInterval,
                "Set mining stats log interval in seconds", true)
             ->group(CommonGroup)
             ->check(CLI::Range(1, 99999));
@@ -226,7 +232,7 @@ public:
             "privileges.");
         hwmon_opt->group(CommonGroup)->check(CLI::Range(1));
 
-        app.add_flag("--exit", m_exit, "Stops the miner whenever an error is encountered")
+        app.add_flag("--exit", m_farmExitOnErrors, "Stops the miner whenever an error is encountered")
             ->group(CommonGroup);
 
         vector<string> pools;
@@ -234,7 +240,7 @@ public:
                "-P,--pool,pool", pools, "Specify one or more pool URLs. See below for URL syntax")
             ->group(CommonGroup);
 
-        app.add_option("--failover-timeout", m_failovertimeout,
+        app.add_option("--failover-timeout", m_poolFlvrTimeout,
                "Set the amount of time in minutes to stay on a failover pool before trying to "
                "reconnect to primary. If = 0 then no switch back.",
                true)
@@ -329,10 +335,10 @@ public:
             ->check(CLI::Range(2));
 
 
-        app.add_option("--opencl-platform", m_openclPlatform, "Use OpenCL platform n", true)
+        app.add_option("--opencl-platform", m_oclPlatform, "Use OpenCL platform n", true)
             ->group(OpenCLGroup);
 
-        app.add_option("--opencl-device,--opencl-devices", m_openclDevices,
+        app.add_option("--opencl-device,--opencl-devices", m_oclDevices,
                "Select list of devices to mine on (default: use all available)")
             ->group(OpenCLGroup);
 
@@ -341,16 +347,16 @@ public:
                "--cl-parallel-hash", openclThreadsPerHash, {1, 2, 4, 8}, "ignored parameter", true)
             ->group(OpenCLGroup);
 
-        app.add_option("--cl-global-work", m_globalWorkSizeMultiplier,
+        app.add_option("--cl-global-work", m_oclGWorkSize,
                "Set the global work size multipler.", true)
             ->group(OpenCLGroup);
 
-        app.add_set("--cl-local-work", m_localWorkSize, {64, 128, 192, 256},
+        app.add_set("--cl-local-work", m_oclLWorkSize, {64, 128, 192, 256},
                "Set the local work size", true)
             ->group(OpenCLGroup);
 
         app.add_flag(
-               "--cl-only", m_noBinary, "Use opencl kernel. Don't attempt to load binary kernel")
+               "--cl-only", m_oclNoBinary, "Use opencl kernel. Don't attempt to load binary kernel")
             ->group(OpenCLGroup);
 #endif
 
@@ -377,15 +383,15 @@ public:
                "Set the scheduler mode.", true)
             ->group(CUDAGroup);
 
-        app.add_option("--cuda-streams", m_numStreams, "Set the number of streams", true)
+        app.add_option("--cuda-streams", m_cudaStreams, "Set the number of streams", true)
             ->group(CUDAGroup)
             ->check(CLI::Range(1, 99));
 
 #endif
-        app.add_flag("--noeval", m_noEval, "Bypass host software re-evaluation of GPU solutions")
+        app.add_flag("--noeval", m_farmNoEval, "Bypass host software re-evaluation of GPU solutions")
             ->group(CommonGroup);
 
-        app.add_option("-L,--dag-load-mode", m_dagLoadMode,
+        app.add_option("-L,--dag-load-mode", m_farmDagLoadMode,
                "Set the DAG load mode. 0=parallel, 1=sequential, 2=single."
                "  parallel    - load DAG on all GPUs at the same time"
                "  sequential  - load DAG on GPUs one after another. Use this when the miner "
@@ -397,7 +403,7 @@ public:
             ->group(CommonGroup)
             ->check(CLI::Range(2));
 
-        app.add_option("--dag-single-dev", m_dagCreateDevice,
+        app.add_option("--dag-single-dev", m_farmDagCreateDevice,
                "Set the DAG creation device in single mode", true)
             ->group(CommonGroup);
 
@@ -432,13 +438,13 @@ public:
             "Mining test. Used to validate kernel optimizations. Specify block number", true);
         sim_opt->group(CommonGroup);
 
-        app.add_option("--tstop", m_tstop,
+        app.add_option("--tstop", m_farmTempStop,
                "Stop mining on a GPU if temperature exceeds value. 0 is disabled, valid: 30..100",
                true)
             ->group(CommonGroup)
             ->check(CLI::Range(30, 100));
 
-        app.add_option("--tstart", m_tstart,
+        app.add_option("--tstart", m_farmTempStart,
                "Restart mining on a GPU if the temperature drops below, valid: 30..100", true)
             ->group(CommonGroup)
             ->check(CLI::Range(30, 100));
@@ -547,9 +553,9 @@ public:
 
         if (hwmon_opt->count())
         {
-            m_show_hwmonitors = true;
+            m_farmHwMonitors = true;
             if (hwmon)
-                m_show_power = true;
+                m_farmPwMonitors = true;
         }
 
         if (!cl_miner && !cuda_miner && !mixed_miner && !bench_opt->count() && !sim_opt->count())
@@ -586,7 +592,7 @@ public:
                 cerr << endl << "Unknown URI scheme " << uri.Scheme() << "\n\n";
                 exit(-1);
             }
-            m_endpoints.push_back(uri);
+            m_poolConns.push_back(uri);
 
             OperationMode mode = OperationMode::None;
             switch (uri.Family())
@@ -617,7 +623,7 @@ public:
         }
 
 #if ETH_ETHASHCL
-        m_openclDeviceCount = m_openclDevices.size();
+        m_oclDeviceCount = m_oclDevices.size();
 #endif
 
 #if ETH_ETHASHCUDA
@@ -632,18 +638,18 @@ public:
             m_cudaSchedule = 4;
 #endif
 
-        if (m_tstop && (m_tstop <= m_tstart))
+        if (m_farmTempStop && (m_farmTempStop <= m_farmTempStart))
         {
             cerr << endl
                  << "tstop must be greater than tstart"
                  << "\n\n";
             exit(-1);
         }
-        if (m_tstop && !m_show_hwmonitors)
+        if (m_farmTempStop && !m_farmHwMonitors)
         {
             // if we want stop mining at a specific temperature, we have to
             // monitor the temperature ==> so auto enable HWMON.
-            m_show_hwmonitors = true;
+            m_farmHwMonitors = true;
         }
     }
 
@@ -670,15 +676,15 @@ public:
         if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
         {
 #if ETH_ETHASHCL
-            if (m_openclDeviceCount > 0)
+            if (m_oclDeviceCount > 0)
             {
-                CLMiner::setDevices(m_openclDevices, m_openclDeviceCount);
-                m_miningThreads = m_openclDeviceCount;
+                CLMiner::setDevices(m_oclDevices, m_oclDeviceCount);
+                m_miningThreads = m_oclDeviceCount;
             }
 
-            if (!CLMiner::configureGPU(m_localWorkSize, m_globalWorkSizeMultiplier,
-                    m_openclPlatform, 0, m_dagLoadMode, m_dagCreateDevice, m_noEval, m_exit,
-                    m_noBinary))
+            if (!CLMiner::configureGPU(m_oclLWorkSize, m_oclGWorkSize,
+                    m_oclPlatform, 0, m_farmDagLoadMode, m_farmDagCreateDevice, m_farmNoEval, m_farmExitOnErrors,
+                    m_oclNoBinary))
             {
                 stop_io_service();
                 exit(1);
@@ -711,8 +717,8 @@ public:
                 exit(1);
             }
 
-            if (!CUDAMiner::configureGPU(m_cudaBlockSize, m_cudaGridSize, m_numStreams,
-                    m_cudaSchedule, m_dagLoadMode, m_dagCreateDevice, m_noEval, m_exit))
+            if (!CUDAMiner::configureGPU(m_cudaBlockSize, m_cudaGridSize, m_cudaStreams,
+                    m_cudaSchedule, m_farmDagLoadMode, m_farmDagCreateDevice, m_farmNoEval, m_farmExitOnErrors))
             {
                 stop_io_service();
                 exit(1);
@@ -758,7 +764,7 @@ private:
         genesis.setNumber(m_benchmarkBlock);
         genesis.setDifficulty(u256(1) << 64);
 
-        new Farm(m_show_hwmonitors, m_show_power);
+        new Farm(m_farmHwMonitors, m_farmPwMonitors);
         map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
         sealers["opencl"] = Farm::SealerDescriptor{
@@ -771,7 +777,7 @@ private:
         Farm::f().setSealers(sealers);
         Farm::f().onSolutionFound([&](Solution) { return false; });
 
-        Farm::f().setTStartTStop(m_tstart, m_tstop);
+        Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
 
         string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
         cout << "Benchmarking on platform: " << platformInfo << endl;
@@ -843,11 +849,11 @@ private:
 
         if (m_mode == OperationMode::Stratum)
         {
-            client = new EthStratumClient(m_worktimeout, m_responsetimeout, m_report_hashrate);
+            client = new EthStratumClient(m_poolWorkTimeout, m_poolRespTimeout, m_poolHashRate);
         }
         else if (m_mode == OperationMode::Farm)
         {
-            client = new EthGetworkClient(m_farmRecheckPeriod, m_report_hashrate);
+            client = new EthGetworkClient(m_farmPollInterval, m_poolHashRate);
         }
         else if (m_mode == OperationMode::Simulation)
         {
@@ -869,12 +875,12 @@ private:
         }
 
         // sealers, m_minerType
-        new Farm(m_show_hwmonitors, m_show_power);
+        new Farm(m_farmHwMonitors, m_farmPwMonitors);
         Farm::f().setSealers(sealers);
 
-        new PoolManager(client, m_minerType, m_maxFarmRetries, m_failovertimeout);
+        new PoolManager(client, m_minerType, m_poolMaxRetries, m_poolFlvrTimeout);
 
-        Farm::f().setTStartTStop(m_tstart, m_tstop);
+        Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
 
         // If we are in simulation mode we add a fake connection
         if (m_mode == OperationMode::Simulation)
@@ -885,7 +891,7 @@ private:
         }
         else
         {
-            if (!m_endpoints.size())
+            if (!m_poolConns.size())
             {
                 cwarn << "No connections defined";
                 stop_io_service();
@@ -893,7 +899,7 @@ private:
             }
             else
             {
-                for (auto conn : m_endpoints)
+                for (auto conn : m_poolConns)
                 {
                     cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
                     PoolManager::p().addConnection(conn);
@@ -906,14 +912,14 @@ private:
         ApiServer api(m_api_address, m_api_port, m_api_password);
         api.start();
 
-        http_server.run(m_http_address, m_http_port, m_show_hwmonitors, m_show_power);
+        http_server.run(m_http_address, m_http_port, m_farmHwMonitors, m_farmPwMonitors);
 
 #endif
 
         // Start PoolManager
         PoolManager::p().start();
 
-        unsigned interval = m_displayInterval;
+        unsigned interval = m_cliDisplayInterval;
 
         // Run CLI in loop
         while (!g_got_exit_signal && PoolManager::p().isRunning())
@@ -963,6 +969,10 @@ private:
             {
                 minelog << "not-connected";
             }
+<<<<<<< HEAD
+=======
+            interval = m_cliDisplayInterval;
+>>>>>>> fcdaa0f... main.cpp vars rework
         }
 
 #if API_CORE
@@ -979,78 +989,80 @@ private:
         exit(0);
     }
 
-    /// Operating mode.
-    OperationMode m_mode = OperationMode::None;
 
-    /// Global boost's io_service
+    // Global boost's io_service
     std::thread m_io_thread;                      // The IO service thread
     boost::asio::deadline_timer m_io_work_timer;  // A dummy timer to keep io_service with something
                                                   // to do and prevent io shutdown
     boost::asio::io_service::strand m_io_strand;  // A strand to serialize posts in multithreaded
                                                   // environment
 
-    /// Mining options
+    // Mining options
     MinerType m_minerType = MinerType::Mixed;
-    unsigned m_openclPlatform = 0;
-    unsigned m_miningThreads = UINT_MAX;
+    OperationMode m_mode = OperationMode::None;
+    unsigned m_miningThreads = UINT_MAX; // TODO remove ?
     bool m_shouldListDevices = false;
+
 #if ETH_ETHASHCL
-    unsigned m_openclDeviceCount = 0;
-    vector<unsigned> m_openclDevices;
-    unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
-    unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
-    bool m_noBinary = false;
+    // -- OpenCL related params
+    unsigned m_oclPlatform = 0;
+    unsigned m_oclDeviceCount = 0;
+    vector<unsigned> m_oclDevices;
+    unsigned m_oclGWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier;
+    unsigned m_oclLWorkSize = CLMiner::c_defaultLocalWorkSize;
+    bool m_oclNoBinary = false;
 #endif
+
 #if ETH_ETHASHCUDA
+    // -- CUDA related params
     unsigned m_cudaDeviceCount = 0;
     vector<unsigned> m_cudaDevices;
-    unsigned m_numStreams = CUDAMiner::c_defaultNumStreams;
+    unsigned m_cudaStreams = CUDAMiner::c_defaultNumStreams;
     unsigned m_cudaSchedule = 4;  // sync
     unsigned m_cudaGridSize = CUDAMiner::c_defaultGridSize;
     unsigned m_cudaBlockSize = CUDAMiner::c_defaultBlockSize;
     unsigned m_cudaParallelHash = 4;
 #endif
-    bool m_noEval = false;
-    unsigned m_dagLoadMode = 0;  // parallel
-    unsigned m_dagCreateDevice = 0;
-    bool m_exit = false;
-    /// Benchmarking params
+
+    // -- Farm related params
+    unsigned m_farmDagLoadMode = 0;         // DAG load mode : 0=parallel, 1=sequential, 2=single 
+    unsigned m_farmDagCreateDevice = 0;     // Ordinal index of GPU creating DAG (Implies m_farmDagLoadMode == 2
+    bool m_farmExitOnErrors = false;        // Whether or not ethminer should exit on mining threads errors
+    bool m_farmNoEval = false;              // Whether or not ethminer should CPU re-evaluate solutions
+    unsigned m_farmPollInterval = 500;      // In getWork mode this establishes the ms. interval to check for new job
+    bool m_farmHwMonitors = false;          // Whether or not activate hardware monitoring on GPUs (temp and fans)
+    bool m_farmPwMonitors = false;          // Whether or not activate power monitoring on GPUs
+    unsigned m_farmTempStop = 0;            // Halt mining on GPU if temperature ge this threshold (Celsius)
+    unsigned m_farmTempStart = 40;          // Resume mining on GPU if temperature le this threshold (Celsius)
+
+    // -- Pool manager related params
+    vector<URI> m_poolConns;
+    unsigned m_poolMaxRetries = 3;          // Max number of connection retries
+    unsigned m_poolWorkTimeout = 180;       // If no new jobs in this number of seconds drop connection
+    unsigned m_poolRespTimeout = 2;         // If no response in this number of seconds drop connection
+    unsigned m_poolFlvrTimeout = 0;         // Return to primary pool after this number of minutes
+    bool m_poolHashRate = false;            // Whether or not ethminer should send HR to pool
+    
+    // -- Benchmarking related params
     unsigned m_benchmarkWarmup = 15;
     unsigned m_benchmarkTrial = 3;
     unsigned m_benchmarkTrials = 5;
     unsigned m_benchmarkBlock = 0;
+    
+    // -- CLI Interface related params
+    unsigned m_cliDisplayInterval = 5;      // Display stats/info on cli interface every this number of seconds
 
-    vector<URI> m_endpoints;
-
-    unsigned m_maxFarmRetries = 3;
-    unsigned m_farmRecheckPeriod = 500;
-    unsigned m_displayInterval = 5;
-
-    // Number of seconds to wait before triggering a no work timeout from pool
-    unsigned m_worktimeout = 180;
-    // Number of seconds to wait before triggering a response timeout from pool
-    unsigned m_responsetimeout = 2;
-    // Number of minutes to wait on a failover pool before trying to go back to primary. In minutes
-    // !!
-    unsigned m_failovertimeout = 0;
-
-    bool m_show_hwmonitors = false;
-    bool m_show_power = false;
-
-    unsigned m_tstop = 0;
-    unsigned m_tstart = 40;
 
 #if API_CORE
-    string m_api_bind;
-    string m_api_address = "0.0.0.0";
-    int m_api_port = 0;
-    string m_api_password;
-    string m_http_bind;
-    string m_http_address = "0.0.0.0";
-    uint16_t m_http_port = 0;
+    // -- API and Http interfaces related params
+    string m_api_bind;                      // API interface binding address in form <address>:<port>
+    string m_api_address = "0.0.0.0";       // API interface binding address (Default any)
+    int m_api_port = 0;                     // API interface binding port
+    string m_api_password;                  // API interface write protection password
+    string m_http_bind;                     // HTTP interface binding address in form <address>:<port>
+    string m_http_address = "0.0.0.0";      // HTTP interface binding address (Default any)
+    uint16_t m_http_port = 0;               // HTTP interface binding port
 #endif
-
-    bool m_report_hashrate = false;
 
 #if ETH_DBUS
     DBusInt dbusint;
