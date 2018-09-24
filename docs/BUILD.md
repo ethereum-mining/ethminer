@@ -49,7 +49,7 @@ sudo apt-get install mesa-common-dev
 
 ### Windows
 
-1. [Visual Studio 2017](https://www.visualstudio.com/downloads/); Community Edition works fine. **Make sure you install MSVC 2015 toolkit (v140)**
+1. [Visual Studio 2017](https://www.visualstudio.com/downloads/); Community Edition works fine. **Make sure you install MSVC 2015 toolkit (v140).**
 
 ## Instructions
 
@@ -135,7 +135,7 @@ Pass these options to CMake configuration command, e.g.
 cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 ```
 
-* `-DETHASHCL=ON` - enable OpenCL mining, `ON` by default,
+* `-DETHASHCL=ON` - enable OpenCL mining, `ON` by default.
 * `-DETHASHCUDA=ON` - enable CUDA mining, `ON` by default.
 * `-DAPICORE=ON` - enable API Server, `ON` by default.
 * `-DETHDBUS=ON` - enable D-Bus support, `OFF` by default.
