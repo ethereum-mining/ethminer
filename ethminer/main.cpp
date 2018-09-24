@@ -95,8 +95,8 @@ public:
         // and should not start/stop or even join threads (which heavily time consuming)
     }
 
-    virtual ~MinerCLI() 
-    { 
+    virtual ~MinerCLI()
+    {
         g_io_service.stop();
         m_io_thread.join();
     }
@@ -556,41 +556,53 @@ public:
             m_minerType = MinerType::CUDA;
         else if (mixed_miner)
             m_minerType = MinerType::Mixed;
+
+        /*
+            Operation mode Benchmark and Simulation do not require pool definitions
+            Operation mode Stratum or GetWork do need at least one
+        */
+
         if (bench_opt->count())
-            m_mode = OperationMode::Benchmark;
-        else if (sim_opt->count())
-            m_mode = OperationMode::Simulation;
-
-        for (auto url : pools)
         {
-            if (url == "exit")  // add fake scheme and port to 'exit' url
-                url = "stratum+tcp://-:x@exit:0";
-            URI uri(url);
+            m_mode = OperationMode::Benchmark;
+            pools.clear();
+        }
+        else if (sim_opt->count())
+        {
+            m_mode = OperationMode::Simulation;
+            pools.clear();
+            pools.push_back("http://-:0");  // Fake connection
+        }
+        else
+        {
+            if (!pools.size())
+                throw std::invalid_argument(
+                    "At least one pool definition required. See -P argument.");
 
-            if (!uri.Valid() || !uri.KnownScheme())
+            for (auto url : pools)
             {
-                std::string what = "Bad URI : " + uri.String();
-                throw std::invalid_argument(what);
-            }
+                if (url == "exit")                      // add fake scheme and port to 'exit' url
+                    url = "stratum+tcp://-:x@exit:0";   // TODO this fake exit scheme breaks mixed mode when getwork selected
 
-            m_poolConns.push_back(uri);
+                URI uri(url);
+                if (!uri.Valid() || !uri.KnownScheme())
+                {
+                    std::string what = "Bad URI : " + uri.String();
+                    throw std::invalid_argument(what);
+                }
 
-            OperationMode mode = OperationMode::None;
-            switch (uri.Family())
-            {
-            case ProtocolFamily::STRATUM:
-                mode = OperationMode::Stratum;
-                break;
-            case ProtocolFamily::GETWORK:
-                mode = OperationMode::Farm;
-                break;
+                m_poolConns.push_back(uri);
+                OperationMode mode =
+                    (uri.Family() == ProtocolFamily::STRATUM ? OperationMode::Stratum :
+                                                               OperationMode::Farm);
+
+                if ((m_mode != OperationMode::None) && (m_mode != mode))
+                {
+                    std::string what = "Mixed stratum and getwork connections not supported.";
+                    throw std::invalid_argument(what);
+                }
+                m_mode = mode;
             }
-            if ((m_mode != OperationMode::None) && (m_mode != mode))
-            {
-                std::string what = "Mixed stratum and getwork endpoints not supported.";
-                throw std::invalid_argument(what);
-            }
-            m_mode = mode;
         }
 
         if ((m_mode == OperationMode::None) && !m_shouldListDevices)
@@ -719,7 +731,7 @@ public:
             break;
         default:
             // Satisfy the compiler, but cannot happen!
-            throw std::runtime_error("Program logic error");
+            throw std::runtime_error("Program logic error. Unexpected m_mode.");
         }
     }
 
@@ -814,38 +826,31 @@ private:
 
         PoolClient* client = nullptr;
 
-        if (m_mode == OperationMode::Stratum)
+        switch (m_mode)
         {
-            client = new EthStratumClient(m_poolWorkTimeout, m_poolRespTimeout, m_poolHashRate);
-        }
-        else if (m_mode == OperationMode::Farm)
-        {
-            client = new EthGetworkClient(m_farmPollInterval, m_poolHashRate);
-        }
-        else if (m_mode == OperationMode::Simulation)
-        {
+        case MinerCLI::OperationMode::None:
+        case MinerCLI::OperationMode::Benchmark:
+            throw std::runtime_error("Program logic error. Unexpected m_mode.");
+            break;
+        case MinerCLI::OperationMode::Simulation:
             client = new SimulateClient(20, m_benchmarkBlock);
-        }
-        else
-        {
-            cwarn << "Invalid OperationMode";
-            exit(1);
-        }
-
-        // Should not happen!
-        if (!client)
-        {
-            cwarn << "Invalid PoolClient";
-            exit(1);
+            break;
+        case MinerCLI::OperationMode::Farm:
+            client = new EthGetworkClient(m_farmPollInterval, m_poolHashRate);
+            break;
+        case MinerCLI::OperationMode::Stratum:
+            client = new EthStratumClient(m_poolWorkTimeout, m_poolRespTimeout, m_poolHashRate);
+            break;
+        default:
+            // Satisfy the compiler, but cannot happen!
+            throw std::runtime_error("Program logic error. Unexpected m_mode.");
         }
 
-        // sealers, m_minerType
         new Farm(m_farmHwMonitors);
         Farm::f().setSealers(sealers);
+        Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
 
         new PoolManager(client, m_minerType, m_poolMaxRetries, m_poolFlvrTimeout);
-
-        Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
 
         // If we are in simulation mode we add a fake connection
         if (m_mode == OperationMode::Simulation)
@@ -1036,7 +1041,7 @@ int main(int argc, char** argv)
     // 2 - Runtime error
     // 3 - Other exceptions
     // 4 - Possible corruption
-    
+
     try
     {
         MinerCLI cli;
@@ -1111,10 +1116,7 @@ int main(int argc, char** argv)
     {
         cerr << "\n"
              << "Could not initialize CLI interface " << endl
-             << "Error: " << ex.what()
-             << "\n\n";
+             << "Error: " << ex.what() << "\n\n";
         return 4;
-
     }
-
 }
