@@ -493,10 +493,11 @@ void CUDAMiner::search(
 
             // restart the stream on the next batch of nonces
             // unless we are done for this round.
-            if (done)
-                continue;
-            run_ethash_search(
-                s_gridSize, s_blockSize, stream, &buffer, stream_nonce + streams_batch_size, m_parallelHash);
+            if (!done)
+            {
+                run_ethash_search(
+                    s_gridSize, s_blockSize, stream, &buffer, stream_nonce + streams_batch_size, m_parallelHash);
+            }
 
             found_count = save_buf.count;
             if (found_count)
