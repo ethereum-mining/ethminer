@@ -579,10 +579,19 @@ public:
                 throw std::invalid_argument(
                     "At least one pool definition required. See -P argument.");
 
-            for (auto url : pools)
+            for (size_t i = 0; i < pools.size(); i++)
             {
-                if (url == "exit")                      // add fake scheme and port to 'exit' url
-                    url = "stratum+tcp://-:x@exit:0";   // TODO this fake exit scheme breaks mixed mode when getwork selected
+                std::string url = pools.at(i);
+                if (url == "exit")
+                {
+                    if (i == 0)
+                        throw std::invalid_argument(
+                            "'exit' failover directive can't be the first in -P arguments list.");
+                    if (m_mode == OperationMode::Stratum)
+                        url = "stratum+tcp://-:x@exit:0";
+                    if (m_mode == OperationMode::Farm)
+                        url = "http://-:x@exit:0";
+                }
 
                 URI uri(url);
                 if (!uri.Valid() || !uri.KnownScheme())
@@ -602,7 +611,9 @@ public:
                     throw std::invalid_argument(what);
                 }
                 m_mode = mode;
+
             }
+
         }
 
         if ((m_mode == OperationMode::None) && !m_shouldListDevices)
