@@ -1,6 +1,6 @@
 # Pool Examples for ETH
 
-Pool connection definition is issued via `-P` argument which has this syntax
+Pool connection definition is issued via `-P` argument which has this syntax:
 
 ```
 -P scheme://user[.workername][:password]@hostname:port[/...]
@@ -22,7 +22,7 @@ To enable it simply replace tcp with either:
 * `tls` to enable secure socket communication
 * `ssl` or `tls12` to enable secure socket communication **allowing only TLS 1.2** encryption
 
-thus your connection scheme changes to `-P stratum+tls://[...]` or `-P stratum+tls12://[...]`. Same applies for `stratum1` and `stratum2`
+thus your connection scheme changes to `-P stratum+tls://[...]` or `-P stratum+tls12://[...]`. Same applies for `stratum1` and `stratum2`.
 
 ## Only for version 0.16+ (older versions not affected)
 
