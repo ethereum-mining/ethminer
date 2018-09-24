@@ -162,7 +162,7 @@ public:
         }
     }
 #endif
-    void ParseCommandLine(int argc, char** argv)
+    bool validateArgs(int argc, char** argv)
     {
         const char* CommonGroup = "Common Options";
 #if API_CORE
@@ -525,27 +525,21 @@ public:
             ;
         app.footer(ssHelp.str());
 
-        try
+        // Exception handling is held at higher level
+        app.parse(argc, argv);
+        if (help)
         {
-            app.parse(argc, argv);
-            if (help)
-            {
-                cerr << endl << app.help() << endl;
-                exit(0);
-            }
-            else if (version)
-            {
-                auto* bi = ethminer_get_buildinfo();
-                cerr << "\nethminer " << bi->project_version << "\nBuild: " << bi->system_name
-                     << "/" << bi->build_type << "/" << bi->compiler_id << "\n\n";
-                exit(0);
-            }
+            cerr << endl << app.help() << endl;
+            return false;
         }
-        catch (const CLI::ParseError& e)
+        else if (version)
         {
-            cerr << endl << e.what() << "\n\n";
-            exit(-1);
+            auto* bi = ethminer_get_buildinfo();
+            cerr << "\nethminer " << bi->project_version << "\nBuild: " << bi->system_name << "/"
+                 << bi->build_type << "/" << bi->compiler_id << "\n\n";
+            return false;
         }
+
 
 #if ETH_ETHASHCL
         if (clKernel >= 0)
@@ -555,12 +549,7 @@ public:
 #endif
 
         if (!cl_miner && !cuda_miner && !mixed_miner && !bench_opt->count() && !sim_opt->count())
-        {
-            cerr << endl
-                 << "One of -G, -U, -X, -M, or -Z must be specified"
-                 << "\n\n";
-            exit(-1);
-        }
+            throw std::invalid_argument("One of - G, -U, -X, -M, or -Z must be specified");
 
         if (cl_miner)
             m_minerType = MinerType::CL;
@@ -578,16 +567,13 @@ public:
             if (url == "exit")  // add fake scheme and port to 'exit' url
                 url = "stratum+tcp://-:x@exit:0";
             URI uri(url);
-            if (!uri.Valid())
+
+            if (!uri.Valid() || !uri.KnownScheme())
             {
-                cerr << endl << "Bad endpoint address: " << url << "\n\n";
-                exit(-1);
+                std::string what = "Bad URI : " + uri.String();
+                throw std::invalid_argument(what);
             }
-            if (!uri.KnownScheme())
-            {
-                cerr << endl << "Unknown URI scheme " << uri.Scheme() << "\n\n";
-                exit(-1);
-            }
+
             m_poolConns.push_back(uri);
 
             OperationMode mode = OperationMode::None;
@@ -602,20 +588,16 @@ public:
             }
             if ((m_mode != OperationMode::None) && (m_mode != mode))
             {
-                cerr << endl
-                     << "Mixed stratum and getwork endpoints not supported."
-                     << "\n\n";
-                exit(-1);
+                std::string what = "Mixed stratum and getwork endpoints not supported.";
+                throw std::invalid_argument(what);
             }
             m_mode = mode;
         }
 
         if ((m_mode == OperationMode::None) && !m_shouldListDevices)
         {
-            cerr << endl
-                 << "At least one pool URL must be specified"
-                 << "\n\n";
-            exit(-1);
+            std::string what = "At least one pool definition must exist. See -P argument";
+            throw std::invalid_argument(what);
         }
 
 #if ETH_ETHASHCL
@@ -636,10 +618,8 @@ public:
 
         if (m_farmTempStop && (m_farmTempStop <= m_farmTempStart))
         {
-            cerr << endl
-                 << "tstop must be greater than tstart"
-                 << "\n\n";
-            exit(-1);
+            std::string what = "-tstop must be greater than -tstart";
+            throw std::invalid_argument(what);
         }
         if (m_farmTempStop && !m_farmHwMonitors)
         {
@@ -647,6 +627,8 @@ public:
             // monitor the temperature ==> so auto set HWMON to at least 1.
             m_farmHwMonitors = 1;
         }
+
+        return true;
     }
 
     void execute()
@@ -1084,12 +1066,17 @@ int main(int argc, char** argv)
 
         MinerCLI cli;
 
-        cli.ParseCommandLine(argc, argv);
+        // Argument validation either throws exception
+        // or returns false which means do not continue
+        // Reason to not continue are --help or -V
+        if(!cli.validateArgs(argc, argv))
+            return 0;
 
         if (getenv("SYSLOG"))
             g_logSyslog = true;
         if (g_logSyslog || (getenv("NO_COLOR")))
             g_logNoColor = true;
+
 #if defined(_WIN32)
         if (!g_logNoColor)
         {
