@@ -833,21 +833,11 @@ private:
         Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
 
         new PoolManager(client, m_minerType, m_poolMaxRetries, m_poolFlvrTimeout);
-
-        // If we are in simulation mode we add a fake connection
-        if (m_mode == OperationMode::Simulation)
+        for (auto conn : m_poolConns)
         {
-            URI con(URI("http://-:0"));
-            PoolManager::p().clearConnections();
-            PoolManager::p().addConnection(con);
-        }
-        else
-        {
-            for (auto conn : m_poolConns)
-            {
+            PoolManager::p().addConnection(conn);
+            if (m_mode != OperationMode::Simulation)
                 cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
-                PoolManager::p().addConnection(conn);
-            }
         }
 
 #if API_CORE
