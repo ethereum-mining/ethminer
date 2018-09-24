@@ -708,8 +708,7 @@ public:
             break;
         default:
             // Satisfy the compiler, but cannot happen!
-            throw std::runtime_error(
-                "Program logic error");
+            throw std::runtime_error("Program logic error");
         }
     }
 
@@ -787,7 +786,7 @@ private:
         else
             cout << "inner mean: n/a" << endl;
         stop_io_service();
-        exit(0);
+        return;
     }
 
     void doMiner()
@@ -1029,6 +1028,13 @@ private:
 
 int main(int argc, char** argv)
 {
+    // Return values
+    // 0 - Normal exit (signal intercepted or --help -V)
+    // 1 - Invalid/Insufficient command line arguments
+    // 2 - Runtime error
+    // 3 - Other exceptions
+    // 4 - Possible corruption
+
     try
     {
         // Set env vars controlling GPU driver behavior.
@@ -1070,12 +1076,28 @@ int main(int argc, char** argv)
 #endif
 
         cli.execute();
+        return 0;
+    }
+    catch (std::invalid_argument& ex)
+    {
+        cerr << "Error: " << ex.what() << "\n\n";
+        return 1;
+    }
+    catch (std::runtime_error& ex)
+    {
+        cerr << "Error: " << ex.what() << "\n\n";
+        return 2;
     }
     catch (std::exception& ex)
     {
         cerr << "Error: " << ex.what() << "\n\n";
-        return -1;
+        return 3;
     }
-
-    return 0;
+    catch (...)
+    {
+        cerr << "Error: Unknown failure occurred. Possible memory corruption."
+             << "\n\n";
+        return 4;
+    }
+    
 }
