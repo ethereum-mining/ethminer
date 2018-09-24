@@ -58,7 +58,7 @@ struct MiningChannel : public LogChannel
 #include <ethminer/DBusInt.h>
 #endif
 
-bool g_running = false;
+bool g_got_exit_signal = false;
 
 class MinerCLI
 {
@@ -110,7 +110,7 @@ public:
     static void signalHandler(int sig)
     {
         (void)sig;
-        g_running = false;
+        g_got_exit_signal = true;
     }
 #if API_CORE
     static bool ParseBind(const std::string& inaddr, std::string& outaddr, int& outport,
@@ -301,8 +301,8 @@ public:
             ->check(CLI::Range(-65535, 65535));
 
         app.add_option("--api-password", m_api_password,
-               "Set the password to protect interaction with API server. If not set, any connection "
-               "is granted access. "
+               "Set the password to protect interaction with API server. If not set, any "
+               "connection is granted access. "
                "Be advised passwords are sent unencrypted over plain TCP!!")
             ->group(APIGroup);
 
@@ -753,7 +753,6 @@ public:
 #endif
         }
 
-        g_running = true;
         signal(SIGINT, MinerCLI::signalHandler);
         signal(SIGTERM, MinerCLI::signalHandler);
 
@@ -935,17 +934,20 @@ private:
         unsigned interval = m_displayInterval;
 
         // Run CLI in loop
-        while (g_running && PoolManager::p().isRunning())
+        while (!g_got_exit_signal && PoolManager::p().isRunning())
         {
             // Wait at the beginning of the loop to give some time
             // services to start properly. Otherwise we get a "not-connected"
             // message immediately
-            this_thread::sleep_for(chrono::seconds(2));
-            if (interval > 2)
-            {
-                interval -= 2;
+
+            // Split m_displayInterval in 1 second parts to optain a faster exit
+            this_thread::sleep_for(chrono::seconds(1));
+            interval--;
+            if (interval)
                 continue;
-            }
+            interval = m_displayInterval;
+
+            // Display current stats of the farm if it's connected
             if (PoolManager::p().isConnected())
             {
                 auto solstats = Farm::f().getSolutionStats();
@@ -964,7 +966,8 @@ private:
                     statdetails << "Solutions " << solstats << ' ';
                     for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
                     {
-                        if (i) statdetails << " ";
+                        if (i)
+                            statdetails << " ";
                         statdetails << "gpu" << i << ":" << solstats.getString(i);
                     }
                     minelog << statdetails.str();
@@ -978,7 +981,6 @@ private:
             {
                 minelog << "not-connected";
             }
-            interval = m_displayInterval;
         }
 
 #if API_CORE
