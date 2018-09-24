@@ -625,7 +625,7 @@ public:
                 CUDAMiner::listDevices();
 #endif
             stop_io_service();
-            exit(0);
+            return;
         }
 
         auto* build = ethminer_get_buildinfo();
@@ -646,15 +646,14 @@ public:
                     m_oclNoBinary))
             {
                 stop_io_service();
-                exit(1);
-            };
+                throw std::runtime_error("Unable to initialize OpenCL GPU(s)");
+            }
 
             CLMiner::setNumInstances(m_miningThreads);
 #else
-            cerr << endl
-                 << "Selected GPU mining without having compiled with -DETHASHCL=ON"
-                 << "\n\n";
-            exit(1);
+            stop_io_service();
+            throw std::runtime_error(
+                "Selected OpenCL mining without having compiled with -DETHASHCL=ON");
 #endif
         }
         if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
@@ -671,9 +670,10 @@ public:
             }
             catch (std::runtime_error const& err)
             {
-                cwarn << "CUDA error: " << err.what();
+                std::string what = "CUDA error : ";
+                what.append(err.what());
                 stop_io_service();
-                exit(1);
+                throw std::runtime_error(what);
             }
 
             if (!CUDAMiner::configureGPU(m_cudaBlockSize, m_cudaGridSize, m_cudaStreams,
@@ -681,16 +681,14 @@ public:
                     m_farmExitOnErrors))
             {
                 stop_io_service();
-                exit(1);
+                throw std::runtime_error("Unable to initialize CUDA GPU(s)");
             }
 
             CUDAMiner::setParallelHash(m_cudaParallelHash);
 #else
-            cerr << endl
-                 << "CUDA support disabled. Configure project build with -DETHASHCUDA=ON"
-                 << "\n\n";
             stop_io_service();
-            exit(1);
+            throw std::runtime_error(
+                "Selected CUDA mining without having compiled with -DETHASHCUDA=ON");
 #endif
         }
 
@@ -710,10 +708,8 @@ public:
             break;
         default:
             // Satisfy the compiler, but cannot happen!
-            cerr << endl
-                 << "Program logic error"
-                 << "\n\n";
-            exit(-1);
+            throw std::runtime_error(
+                "Program logic error");
         }
     }
 
@@ -1045,7 +1041,7 @@ int main(int argc, char** argv)
         // Argument validation either throws exception
         // or returns false which means do not continue
         // Reason to not continue are --help or -V
-        if(!cli.validateArgs(argc, argv))
+        if (!cli.validateArgs(argc, argv))
             return 0;
 
         if (getenv("SYSLOG"))
