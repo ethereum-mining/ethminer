@@ -687,22 +687,38 @@ public:
 
     void execute()
     {
+        auto* bi = ethminer_get_buildinfo();
+
         if (m_shouldListDevices)
         {
-#if ETH_ETHASHCL
+            cout << "\nethminer " << bi->project_version << "\nBuild: " << bi->system_name << "/"
+                 << bi->build_type << "/" << bi->compiler_id << endl;
+
             if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
+            {
+#if ETH_ETHASHCL
+
                 CLMiner::listDevices();
+#else
+                throw std::runtime_error(
+                    "Selected OpenCL device listing without having compiled with -DETHASHCL=ON");
 #endif
-#if ETH_ETHASHCUDA
+            }
             if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
+            {
+#if ETH_ETHASHCUDA
                 CUDAMiner::listDevices();
+#else
+                throw std::runtime_error(
+                    "Selected CUDA device listing without having compiled with -DETHASHCUDA=ON");
 #endif
+            }
+            cout << endl;
             return;
         }
 
-        auto* build = ethminer_get_buildinfo();
-        minelog << "ethminer " << build->project_version;
-        minelog << "Build: " << build->system_name << "/" << build->build_type;
+        minelog << "ethminer " << bi->project_version;
+        minelog << "Build: " << bi->system_name << "/" << bi->build_type;
 
         if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
         {
