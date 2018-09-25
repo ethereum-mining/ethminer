@@ -1030,6 +1030,14 @@ int main(int argc, char** argv)
     // 3 - Other exceptions
     // 4 - Possible corruption
 
+    if (argc < 2)
+    {
+        cerr << "\n"
+             << "No arguments specified. " << endl
+             << "Try 'ethminer --help' to get a list of arguments." << "\n\n";
+        return 0;
+    }
+
     try
     {
         MinerCLI cli;
@@ -1077,7 +1085,10 @@ int main(int argc, char** argv)
         catch (std::invalid_argument& ex1)
         {
             cerr << "\n"
-                 << "Error: " << ex1.what() << "\n\n";
+                 << "Error: " << ex1.what() << "\n"
+                 << "Try ethminer --help to get an explained list of arguments."
+                 << "\n\n";
+            ;
             return 1;
         }
         catch (std::runtime_error& ex2)
