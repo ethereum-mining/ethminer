@@ -310,8 +310,7 @@ public:
 
         app.add_option("--api-password", m_api_password,
                "Set the password to protect interaction with API server. If not set, any "
-               "connection "
-               "is granted access. "
+               "connection is granted access. "
                "Be advised passwords are sent unencrypted over plain TCP!!")
             ->group(APIGroup);
 
@@ -539,7 +538,13 @@ public:
                "color output."
             << endl
             << "    SYSLOG   - set to any value to strip time and disable color from output, "
-               "for logging under systemd";
+               "for logging under systemd"
+#ifndef _WIN32
+            << endl
+            << "    SSL_CERT_FILE - full path to your CA certificates file if elsewhere than "
+               "/etc/ssl/certs/ca-certificates.crt"
+#endif
+            ;
         app.footer(ssHelp.str());
 
         // Exception handling is held at higher level
@@ -742,6 +747,7 @@ public:
                 "Selected CUDA mining without having compiled with -DETHASHCUDA=ON");
 #endif
         }
+
 
         // Enable
         g_running = true;

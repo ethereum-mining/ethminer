@@ -1349,6 +1349,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
 
     Json::Value jReq;
 
+
     unsigned id = 40 + solution.midx;
     jReq["id"] = id;
     m_solution_submitted_max_id = max(m_solution_submitted_max_id, id);
