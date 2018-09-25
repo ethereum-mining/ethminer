@@ -195,7 +195,7 @@ void PoolManager::stop()
 {
     if (m_running.load(std::memory_order_relaxed))
     {
-        m_stopping.store(false, std::memory_order_relaxed);
+        m_stopping.store(true, std::memory_order_relaxed);
 
         if (p_client->isConnected())
         {
