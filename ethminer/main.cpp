@@ -358,7 +358,6 @@ public:
             ->group(OpenCLGroup)
             ->check(CLI::Range(2));
 
-
         app.add_option("--opencl-platform", m_oclPlatform, "Use OpenCL platform n", true)
             ->group(OpenCLGroup);
 
@@ -596,7 +595,7 @@ public:
             pools.clear();
             pools.push_back("http://-:0");  // Fake connection
         }
-        else
+        else if (!m_shouldListDevices)
         {
             if (!pools.size())
                 throw std::invalid_argument(
@@ -637,11 +636,6 @@ public:
             }
         }
 
-        if ((m_mode == OperationMode::None) && !m_shouldListDevices)
-        {
-            std::string what = "At least one pool definition must exist. See -P argument";
-            throw std::invalid_argument(what);
-        }
 
 #if ETH_ETHASHCL
         m_oclDeviceCount = m_oclDevices.size();
@@ -918,7 +912,6 @@ private:
         {
             g_shouldstop.wait(clilock);
         }
-        
 
 
 #if API_CORE
@@ -938,8 +931,8 @@ private:
     std::thread m_io_thread;                        // The IO service thread
     boost::asio::deadline_timer m_cliDisplayTimer;  // A dummy timer to keep io_service with
                                                     // something to do and prevent io shutdown
-    boost::asio::io_service::strand m_io_strand;  // A strand to serialize posts in multithreaded
-                                                  // environment
+    boost::asio::io_service::strand m_io_strand;    // A strand to serialize posts in multithreaded
+                                                    // environment
 
     // Mining options
     MinerType m_minerType = MinerType::Mixed;
@@ -1034,7 +1027,8 @@ int main(int argc, char** argv)
     {
         cerr << "\n"
              << "No arguments specified. " << endl
-             << "Try 'ethminer --help' to get a list of arguments." << "\n\n";
+             << "Try 'ethminer --help' to get a list of arguments."
+             << "\n\n";
         return 0;
     }
 
