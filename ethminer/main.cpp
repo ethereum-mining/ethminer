@@ -18,6 +18,7 @@
 #include <CLI/CLI.hpp>
 
 #include <ethminer/buildinfo.h>
+#include <condition_variable>
 
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
@@ -48,6 +49,7 @@ using namespace dev::eth;
 
 // Global vars
 bool g_running = false;
+condition_variable g_shouldstop;
 boost::asio::io_service g_io_service;  // The IO service itself
 
 struct MiningChannel : public LogChannel
@@ -74,13 +76,12 @@ public:
         Stratum
     };
 
-    MinerCLI() : m_io_work_timer(g_io_service), m_io_strand(g_io_service)
+    MinerCLI() : m_cliDisplayTimer(g_io_service), m_io_strand(g_io_service)
     {
-        // Post first deadline timer to give io_service
-        // initial work
-        m_io_work_timer.expires_from_now(boost::posix_time::seconds(60));
-        m_io_work_timer.async_wait(m_io_strand.wrap(
-            boost::bind(&MinerCLI::io_work_timer_handler, this, boost::asio::placeholders::error)));
+        // Initialize display timer as sleeper
+        m_cliDisplayTimer.expires_from_now(boost::posix_time::pos_infin);
+        m_cliDisplayTimer.async_wait(m_io_strand.wrap(boost::bind(
+            &MinerCLI::cliDisplayInterval_elapsed, this, boost::asio::placeholders::error)));
 
         // Start io_service in it's own thread
         m_io_thread = std::thread{boost::bind(&boost::asio::io_service::run, &g_io_service)};
@@ -92,19 +93,54 @@ public:
 
     virtual ~MinerCLI()
     {
+        m_cliDisplayTimer.cancel();
         g_io_service.stop();
         m_io_thread.join();
     }
 
-    void io_work_timer_handler(const boost::system::error_code& ec)
+    void cliDisplayInterval_elapsed(const boost::system::error_code& ec)
     {
-        if (!ec)
+        if (!ec && g_running)
         {
-            // This does absolutely nothing aside resubmitting timer
-            // ensuring io_service's queue has always something to do
-            m_io_work_timer.expires_from_now(boost::posix_time::seconds(120));
-            m_io_work_timer.async_wait(m_io_strand.wrap(boost::bind(
-                &MinerCLI::io_work_timer_handler, this, boost::asio::placeholders::error)));
+            if (PoolManager::p().isConnected())
+            {
+                auto solstats = Farm::f().getSolutionStats();
+                {
+                    ostringstream os;
+                    os << Farm::f().miningProgress() << ' ';
+                    if (!(g_logOptions & LOG_PER_GPU))
+                        os << solstats << ' ';
+                    os << Farm::f().farmLaunchedFormatted();
+                    minelog << os.str();
+                }
+
+                if (g_logOptions & LOG_PER_GPU)
+                {
+                    ostringstream statdetails;
+                    statdetails << "Solutions " << solstats << ' ';
+                    for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
+                    {
+                        if (i)
+                            statdetails << " ";
+                        statdetails << "gpu" << i << ":" << solstats.getString(i);
+                    }
+                    minelog << statdetails.str();
+                }
+
+#if ETH_DBUS
+                dbusint.send(toString(mp).c_str());
+#endif
+            }
+            else
+            {
+                minelog << "not-connected";
+            }
+
+
+            // Resubmit timer
+            m_cliDisplayTimer.expires_from_now(boost::posix_time::seconds(m_cliDisplayInterval));
+            m_cliDisplayTimer.async_wait(m_io_strand.wrap(boost::bind(
+                &MinerCLI::cliDisplayInterval_elapsed, this, boost::asio::placeholders::error)));
         }
     }
 
@@ -114,6 +150,7 @@ public:
         dev::setThreadName("main");
         cnote << "Signal intercepted ...";
         g_running = false;
+        g_shouldstop.notify_all();
     }
 #if API_CORE
 
@@ -211,9 +248,9 @@ public:
             ->group(CommonGroup);
 
         app.add_option("--display-interval", m_cliDisplayInterval,
-               "Set mining stats log interval in seconds", true)
+               "Set mining stats log interval in seconds.", true)
             ->group(CommonGroup)
-            ->check(CLI::Range(1, 99999));
+            ->check(CLI::Range(1, 1800));
 
         app.add_option("--HWMON", m_farmHwMonitors,
                "0 - No monitoring; "
@@ -592,9 +629,7 @@ public:
                     throw std::invalid_argument(what);
                 }
                 m_mode = mode;
-
             }
-
         }
 
         if ((m_mode == OperationMode::None) && !m_shouldListDevices)
@@ -708,7 +743,10 @@ public:
 #endif
         }
 
+        // Enable
         g_running = true;
+
+        // Signal traps
         signal(SIGINT, MinerCLI::signalHandler);
         signal(SIGTERM, MinerCLI::signalHandler);
 
@@ -863,55 +901,19 @@ private:
         // Start PoolManager
         PoolManager::p().start();
 
-        unsigned interval = m_cliDisplayInterval;
+        // Initialize display timer as sleeper with proper interval
+        m_cliDisplayTimer.expires_from_now(boost::posix_time::seconds(m_cliDisplayInterval));
+        m_cliDisplayTimer.async_wait(m_io_strand.wrap(boost::bind(
+            &MinerCLI::cliDisplayInterval_elapsed, this, boost::asio::placeholders::error)));
 
-        // Run CLI in loop
-        while (g_running && PoolManager::p().isRunning())
+        // Stay in non-busy wait till signals arrive
+        unique_lock<mutex> clilock(m_climtx);
+        while (g_running)
         {
-            // Wait at the beginning of the loop to give some time
-            // services to start properly. Otherwise we get a "not-connected"
-            // message immediately
-            this_thread::sleep_for(chrono::seconds(2));
-            if (interval > 2)
-            {
-                interval -= 2;
-                continue;
-            }
-            if (PoolManager::p().isConnected())
-            {
-                auto solstats = Farm::f().getSolutionStats();
-                {
-                    ostringstream os;
-                    os << Farm::f().miningProgress() << ' ';
-                    if (!(g_logOptions & LOG_PER_GPU))
-                        os << solstats << ' ';
-                    os << Farm::f().farmLaunchedFormatted();
-                    minelog << os.str();
-                }
-
-                if (g_logOptions & LOG_PER_GPU)
-                {
-                    ostringstream statdetails;
-                    statdetails << "Solutions " << solstats << ' ';
-                    for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
-                    {
-                        if (i)
-                            statdetails << " ";
-                        statdetails << "gpu" << i << ":" << solstats.getString(i);
-                    }
-                    minelog << statdetails.str();
-                }
-
-#if ETH_DBUS
-                dbusint.send(toString(mp).c_str());
-#endif
-            }
-            else
-            {
-                minelog << "not-connected";
-            }
-            interval = m_cliDisplayInterval;
+            g_shouldstop.wait(clilock);
         }
+        
+
 
 #if API_CORE
 
@@ -919,17 +921,17 @@ private:
         api.stop();
 
 #endif
-
-        PoolManager::p().stop();
+        if (PoolManager::p().isRunning())
+            PoolManager::p().stop();
 
         cnote << "Terminated!";
         return;
     }
 
     // Global boost's io_service
-    std::thread m_io_thread;                      // The IO service thread
-    boost::asio::deadline_timer m_io_work_timer;  // A dummy timer to keep io_service with something
-                                                  // to do and prevent io shutdown
+    std::thread m_io_thread;                        // The IO service thread
+    boost::asio::deadline_timer m_cliDisplayTimer;  // A dummy timer to keep io_service with
+                                                    // something to do and prevent io shutdown
     boost::asio::io_service::strand m_io_strand;  // A strand to serialize posts in multithreaded
                                                   // environment
 
@@ -992,6 +994,9 @@ private:
     // -- CLI Interface related params
     unsigned m_cliDisplayInterval =
         5;  // Display stats/info on cli interface every this number of seconds
+
+    // -- CLI Flow control
+    mutex m_climtx;
 
 
 #if API_CORE

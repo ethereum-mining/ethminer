@@ -376,6 +376,7 @@ void PoolManager::rotateConnect()
         }
 
         m_running.store(false, std::memory_order_relaxed);
+        raise(SIGTERM);
     }
 }
 
