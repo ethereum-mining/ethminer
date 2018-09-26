@@ -24,10 +24,11 @@ namespace eth
 {
 Farm* Farm::m_this = nullptr;
 
-Farm::Farm(unsigned hwmonlvl) : m_io_strand(g_io_service), m_collectTimer(g_io_service)
+Farm::Farm(unsigned hwmonlvl, bool noeval) : m_io_strand(g_io_service), m_collectTimer(g_io_service)
 {
     m_this = this;
     m_hwmonlvl = hwmonlvl;
+    m_noeval = noeval;
 
     // Init HWMON if needed
     if (m_hwmonlvl)
@@ -226,6 +227,36 @@ void Farm::setTStartTStop(unsigned tstart, unsigned tstop)
     m_tstart = tstart;
     m_tstop = tstop;
 }
+
+void Farm::submitProof(Solution const& _s)
+{
+    assert(m_onSolutionFound);
+
+    if (!m_noeval)
+    {
+        Result r = EthashAux::eval(_s.work.epoch, _s.work.header, _s.nonce);
+        if (r.value > _s.work.boundary)
+        {
+            failedSolution(_s.midx);
+            cwarn << "GPU " << _s.midx
+                  << " gave incorrect result. Lower overclocking values if it happens frequently.";
+            return;
+        }
+    }
+
+    m_onSolutionFound(_s);
+
+#ifdef DEV_BUILD
+    if (g_logOptions & LOG_SUBMIT)
+        cnote << "Submit time: "
+             << std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - _s.tstamp)
+                    .count()
+             << " us.";
+#endif
+    
+}
+
 
 // Collects data about hashing and hardware status
 void Farm::collectData(const boost::system::error_code& ec)
