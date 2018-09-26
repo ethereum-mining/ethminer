@@ -33,7 +33,6 @@ FarmFace* FarmFace::m_this = nullptr;
 
 bool Miner::s_exit = false;
 
-bool Miner::s_noeval = false;
 
 std::ostream& operator<<(std::ostream& os, const HwMonitor& _hw)
 {

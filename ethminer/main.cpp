@@ -730,8 +730,7 @@ public:
             }
 
             if (!CLMiner::configureGPU(m_oclLWorkSize, m_oclGWorkSize, m_oclPlatform, 0,
-                    m_farmDagLoadMode, m_farmDagCreateDevice, m_farmNoEval, m_farmExitOnErrors,
-                    m_oclNoBinary))
+                    m_farmDagLoadMode, m_farmDagCreateDevice, m_farmExitOnErrors, m_oclNoBinary))
             {
                 throw std::runtime_error("Unable to initialize OpenCL GPU(s)");
             }
@@ -762,8 +761,7 @@ public:
             }
 
             if (!CUDAMiner::configureGPU(m_cudaBlockSize, m_cudaGridSize, m_cudaStreams,
-                    m_cudaSchedule, m_farmDagLoadMode, m_farmDagCreateDevice, m_farmNoEval,
-                    m_farmExitOnErrors))
+                    m_cudaSchedule, m_farmDagLoadMode, m_farmDagCreateDevice, m_farmExitOnErrors))
             {
                 throw std::runtime_error("Unable to initialize CUDA GPU(s)");
             }
@@ -819,7 +817,7 @@ private:
         sealers["cuda"] = Farm::SealerDescriptor{
             &CUDAMiner::instances, [](unsigned _index) { return new CUDAMiner(_index); }};
 #endif
-        new Farm(m_farmHwMonitors);
+        new Farm(m_farmHwMonitors, m_farmNoEval);
         Farm::f().setSealers(sealers);
         Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
         Farm::f().onSolutionFound([&](Solution) { return false; });
@@ -912,7 +910,7 @@ private:
             throw std::runtime_error("Program logic error. Unexpected m_mode.");
         }
 
-        new Farm(m_farmHwMonitors);
+        new Farm(m_farmHwMonitors, m_farmNoEval);
         Farm::f().setSealers(sealers);
         Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
 

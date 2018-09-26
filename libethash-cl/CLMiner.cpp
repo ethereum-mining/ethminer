@@ -261,7 +261,7 @@ unsigned CLMiner::s_numInstances = 0;
 vector<int> CLMiner::s_devices(MAX_MINERS, -1);
 bool CLMiner::s_noBinary = false;
 
-CLMiner::CLMiner(unsigned _index) : Miner("cl-", _index) {}
+CLMiner::CLMiner(unsigned _index) : Miner("cl-", _index), m_io_strand(g_io_service) {}
 
 CLMiner::~CLMiner()
 {
@@ -310,9 +310,6 @@ void CLMiner::workLoop()
 
             // Read results.
             volatile SearchResults results;
-#ifdef DEV_BUILD
-            std::chrono::steady_clock::time_point submitStart;
-#endif
 
             if (m_queue.size())
             {
@@ -322,9 +319,6 @@ void CLMiner::workLoop()
                     (void*)&results.count);
                 if (results.count)
                 {
-#ifdef DEV_BUILD
-                    submitStart = std::chrono::steady_clock::now();
-#endif
                     m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0,
                         results.count * sizeof(results.rslt[0]), (void*)&results);
                     // Reset search buffer if any solution found.
@@ -406,6 +400,7 @@ void CLMiner::workLoop()
                     if (nonce != m_lastNonce)
                     {
                         m_lastNonce = nonce;
+<<<<<<< HEAD
                         if (s_noeval)
                         {
                             h256 mix;
@@ -433,16 +428,21 @@ void CLMiner::workLoop()
                                 cwarn << "GPU gave incorrect result!";
                             }
                         }
+=======
+                        h256 mix;
+                        memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
+                        auto sol = Solution{
+                            nonce, mix, current, false, std::chrono::steady_clock::now(), m_index};
+                        if (sol.stale)
+                            cwarn << "Stale solution: " << EthWhite "0x" << toHex(sol.nonce)
+                                  << EthReset;
+                        else
+                            cnote << "Solution: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
+                        g_io_service.post(
+                            m_io_strand.wrap(boost::bind(&Farm::submitProof, &Farm::f(), sol)));
+>>>>>>> 94f1403... Rework of solution submission
                     }
                 }
-#ifdef DEV_BUILD
-                if (g_logOptions & LOG_SUBMIT)
-                    cllog << "Submit time: "
-                          << std::chrono::duration_cast<std::chrono::microseconds>(
-                                 std::chrono::steady_clock::now() - submitStart)
-                                 .count()
-                          << " us.";
-#endif
             }
 
             current = w;  // kernel now processing newest work
@@ -532,10 +532,9 @@ void CLMiner::listDevices()
 }
 
 bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
-    unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice, bool _noeval,
-    bool _exit, bool _nobinary)
+    unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice, bool _exit,
+    bool _nobinary)
 {
-    s_noeval = _noeval;
     s_dagLoadMode = _dagLoadMode;
     s_dagCreateDevice = _dagCreateDevice;
     s_exit = _exit;

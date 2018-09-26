@@ -60,7 +60,7 @@ public:
     static void listDevices();
     static bool configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
         unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice,
-        bool _noeval, bool _exit, bool _nobinary);
+        bool _exit, bool _nobinary);
     static void setNumInstances(unsigned _instances)
     {
         s_numInstances = std::min<unsigned>(_instances, getNumDevices());
@@ -77,6 +77,9 @@ protected:
     void kick_miner() override;
 
 private:
+
+    boost::asio::io_service::strand m_io_strand;
+
     void workLoop() override;
 
     bool init(int epoch);

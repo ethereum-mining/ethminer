@@ -62,7 +62,7 @@ public:
         std::function<Miner*(unsigned)> create;
     };
 
-    Farm(unsigned hwmonlvl);
+    Farm(unsigned hwmonlvl, bool noeval);
 
     ~Farm();
 
@@ -197,13 +197,8 @@ public:
     /**
      * @brief Called from a Miner to note a WorkPackage has a solution.
      * @param _s The solution.
-     * @param _miner_index Index of the miner
      */
-    void submitProof(Solution const& _s) override
-    {
-        assert(m_onSolutionFound);
-        m_onSolutionFound(_s);
-    }
+    void submitProof(Solution const& _s) override;
 
 private:
     // Collects data about hashing and hardware status
@@ -248,6 +243,9 @@ private:
 
     // Hardware monitoring temperatures
     unsigned m_tstart = 0, m_tstop = 0;
+
+    // Whether or not GPU solutions should be CPU re-evaluated
+    bool m_noeval = false;
 
     // Wrappers for hardware monitoring libraries
     wrap_nvml_handle* nvmlh = nullptr;

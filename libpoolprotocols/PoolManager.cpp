@@ -67,7 +67,7 @@ PoolManager::PoolManager(
     });
 
     p_client->onDisconnected([&]() {
-        dev::setThreadName("stratum");
+
         cnote << "Disconnected from " + m_lastConnectedHost << p_client->ActiveEndPoint();
 
         // Clear current connection
@@ -125,7 +125,7 @@ PoolManager::PoolManager(
 
     p_client->onSolutionAccepted([&](bool const& stale,
                                      std::chrono::milliseconds const& elapsedMs, unsigned const& miner_index) {
-        dev::setThreadName("stratum");
+
         std::stringstream ss;
         ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << " ms."
            << " " << m_lastConnectedHost + p_client->ActiveEndPoint();
@@ -136,7 +136,7 @@ PoolManager::PoolManager(
 
     p_client->onSolutionRejected([&](bool const& stale,
                                      std::chrono::milliseconds const& elapsedMs, unsigned const& miner_index) {
-        dev::setThreadName("stratum");
+
         std::stringstream ss;
         ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << "ms."
            << "   " << m_lastConnectedHost + p_client->ActiveEndPoint();
@@ -146,18 +146,13 @@ PoolManager::PoolManager(
     });
 
     Farm::f().onSolutionFound([&](const Solution& sol) {
+
         // Solution should passthrough only if client is
         // properly connected. Otherwise we'll have the bad behavior
         // to log nonce submission but receive no response
 
         if (p_client->isConnected())
         {
-
-            if (sol.stale)
-                cwarn << "Stale solution: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
-            else
-                cnote << "Solution: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
-
             p_client->submitSolution(sol);
         }
         else
@@ -168,6 +163,7 @@ PoolManager::PoolManager(
 
         return false;
     });
+
     Farm::f().onMinerRestart([&]() {
         dev::setThreadName("main");
         cnote << "Restart miners...";
