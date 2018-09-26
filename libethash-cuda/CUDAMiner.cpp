@@ -479,10 +479,10 @@ void CUDAMiner::search(
                         Solution{nonce, mix, w, done, std::chrono::steady_clock::now(), m_index};
 
                     if (sol.stale)
-                        cwarn << "Stale solution: " << EthWhite "0x" << toHex(sol.nonce)
+                        cwarn << "Sol: " << EthWhite "0x" << toHex(sol.nonce) << " STALE"
                               << EthReset;
                     else
-                        cnote << "Solution: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
+                        cnote << "Sol: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
 
                     g_io_service.post(
                         m_io_strand.wrap(boost::bind(&Farm::submitProof, &Farm::f(), sol)));
