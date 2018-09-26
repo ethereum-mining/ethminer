@@ -277,9 +277,6 @@ private:
 
 std::ostream& operator<<(std::ostream& os, const SolutionStats& s);
 
-class Miner;
-
-
 /**
  * @brief Class for hosting one or more Miners.
  * @warning Must be implemented in a threadsafe manner since it will be called from multiple
