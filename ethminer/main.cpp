@@ -927,7 +927,8 @@ private:
 #if API_CORE
 
         ApiServer api(m_api_address, m_api_port, m_api_password);
-        api.start();
+        if (m_api_port)
+            api.start();
 
         http_server.run(m_http_address, m_http_port, m_farmHwMonitors);
 
@@ -1007,7 +1008,8 @@ private:
 #if API_CORE
 
         // Stop Api server
-        api.stop();
+        if (api.isRunning())
+            api.stop();
 
 #endif
         if (PoolManager::p().isRunning())
