@@ -568,6 +568,14 @@ public:
         if (openclThreadsPerHash >= 0)
             clog << "--cl-parallel-hash ignored. No longer applies\n";
 #endif
+#ifndef DEV_BUILD
+        if ((g_logOptions & LOG_CONNECT) || (g_logOptions & LOG_SWITCH) ||
+            (g_logOptions & LOG_SUBMIT))
+        {
+            clog << "Some log options ignored. Compile with -DDEVBUILD=ON\n";
+        }
+#endif
+
 
         if (!cl_miner && !cuda_miner && !mixed_miner && !bench_opt->count() && !sim_opt->count())
             throw std::invalid_argument("One of - G, -U, -X, -M, or -Z must be specified");
