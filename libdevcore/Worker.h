@@ -52,7 +52,10 @@ public:
     /// Starts worker thread; causes startedWorking() to be called.
     void startWorking();
 
-    /// Stop worker thread; causes call to stopWorking().
+    /// Inform worker thread it should stop
+    void requestStopWorking();
+
+    /// Stop worker thread; causes call to stopWorking(). Waits till working is stopped
     void stopWorking();
 
     bool shouldStop() const { return m_state != WorkerState::Started; }
