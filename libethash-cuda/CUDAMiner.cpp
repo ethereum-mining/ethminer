@@ -436,8 +436,11 @@ void CUDAMiner::search(
 
         // Exit next time around if there's new work awaiting
         bool t = true;
-        if (m_new_work.compare_exchange_strong(t, false))
-            done = true;
+        done = m_new_work.compare_exchange_strong(t, false);
+
+        // Check on every batch if we need to suspend mining
+        if (!done)
+            done = is_mining_paused();
 
         // This inner loop will process each cuda stream individually
         for (current_index = 0;
