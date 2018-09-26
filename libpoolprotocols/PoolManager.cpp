@@ -200,6 +200,9 @@ void PoolManager::stop()
         if (p_client->isConnected())
         {
             p_client->disconnect();
+            // Wait for async operations to complete
+            while (m_running.load(std::memory_order_relaxed))
+                this_thread::sleep_for(chrono::milliseconds(500));
         }
         else
         {
