@@ -86,15 +86,6 @@ public:
             m->setWork(m_work);
     }
 
-    /**
-     * @brief Gets the current mining mission.
-     */
-    WorkPackage& getWork()
-    {
-        Guard l(x_minerWork);
-        return m_work;
-    }
-
     void setSealers(std::map<std::string, SealerDescriptor> const& _sealers);
 
     /**
