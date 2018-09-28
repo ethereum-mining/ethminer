@@ -38,9 +38,15 @@
 #define LOG_CONNECT 32
 #define LOG_SWITCH 64
 #define LOG_SUBMIT 128
-#define LOG_NEXT 256
+#define LOG_PROGRAMFLOW 256
+#define LOG_NEXT 512
 
-
+#if DEV_BUILD
+#define DEV_BUILD_LOG_PROGRAMFLOW(_S, _V) \
+    if (g_logOptions & LOG_PROGRAMFLOW) { _S << _V; } ((void)(0))
+#else
+#define DEV_BUILD_LOG_PROGRAMFLOW(_S, _V) ((void)(0))
+#endif
 
 extern unsigned g_logOptions;
 extern bool g_logNoColor;

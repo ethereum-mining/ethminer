@@ -26,6 +26,8 @@ Farm* Farm::m_this = nullptr;
 
 Farm::Farm(unsigned hwmonlvl, bool noeval) : m_io_strand(g_io_service), m_collectTimer(g_io_service)
 {
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::Farm() start");
+
     m_this = this;
     m_hwmonlvl = hwmonlvl;
     m_noeval = noeval;
@@ -49,10 +51,13 @@ Farm::Farm(unsigned hwmonlvl, bool noeval) : m_io_strand(g_io_service), m_collec
     m_collectTimer.expires_from_now(boost::posix_time::milliseconds(m_collectInterval));
     m_collectTimer.async_wait(
         m_io_strand.wrap(boost::bind(&Farm::collectData, this, boost::asio::placeholders::error)));
+
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::Farm() end");
 }
 
 Farm::~Farm()
 {
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::~Farm() start");
     // Deinit HWMON
     if (adlh)
         wrap_adl_destroy(adlh);
@@ -68,6 +73,8 @@ Farm::~Farm()
 
     // Stop data collector
     m_collectTimer.cancel();
+
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::~Farm() end");
 }
 
 /**
@@ -93,6 +100,7 @@ void Farm::setSealers(std::map<std::string, SealerDescriptor> const& _sealers)
  */
 bool Farm::start(std::string const& _sealer, bool mixed)
 {
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() start");
     Guard l(x_minerWork);
     if (!m_miners.empty() && m_lastSealer == _sealer)
         return true;
@@ -127,7 +135,7 @@ bool Farm::start(std::string const& _sealer, bool mixed)
 
     m_isMining.store(true, std::memory_order_relaxed);
     m_lastSealer = _sealer;
-
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() end");
     return true;
 }
 
@@ -136,6 +144,8 @@ bool Farm::start(std::string const& _sealer, bool mixed)
  */
 void Farm::stop()
 {
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::stop() start");
+
     // Avoid re-entering if not actually mining.
     // This, in fact, is also called by destructor
     if (isMining())
@@ -146,6 +156,7 @@ void Farm::stop()
             m_isMining.store(false, std::memory_order_relaxed);
         }
     }
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::stop() end");
 }
 
 /**

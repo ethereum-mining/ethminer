@@ -218,7 +218,8 @@ public:
 #ifdef DEV_BUILD
         logOptions << ", log connection messages = " << LOG_CONNECT
                    << ", log switch delay = " << LOG_SWITCH
-                   << ", log submit delay = " << LOG_SUBMIT;
+                   << ", log submit delay = " << LOG_SUBMIT
+                   << ", log program flow = " << LOG_PROGRAMFLOW;
 #endif
         app.add_option("-v,--verbosity", g_logOptions, logOptions.str(), true)
             ->group(CommonGroup)
@@ -570,7 +571,7 @@ public:
 #endif
 #ifndef DEV_BUILD
         if ((g_logOptions & LOG_CONNECT) || (g_logOptions & LOG_SWITCH) ||
-            (g_logOptions & LOG_SUBMIT))
+            (g_logOptions & LOG_SUBMIT) || (g_logOptions & LOG_PROGRAMFLOW))
         {
             clog << "Some log options ignored. Compile with -DDEVBUILD=ON\n";
         }
