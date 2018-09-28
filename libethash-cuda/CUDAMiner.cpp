@@ -211,7 +211,7 @@ bool CUDAMiner::init(int epoch)
 void CUDAMiner::workLoop()
 {
     WorkPackage current;
-    current.header = h256{1u};
+    current.header = h256();
 
     m_search_buf.resize(s_numStreams);
     m_streams.resize(s_numStreams);
@@ -221,36 +221,28 @@ void CUDAMiner::workLoop()
     {
         while (!shouldStop())
         {
-            if (is_mining_paused())
-            {
-                // cnote << "Mining is paused: Waiting for 3s.";
-                std::this_thread::sleep_for(std::chrono::seconds(3));
-                continue;
-            }
 
-            // take local copy of work since it may end up being overwritten.
+            // Wait for work or 3 seconds (whichever the first)
             const WorkPackage w = work();
-
-            // Take actions in proper order
-
-            // No work ?
-            if (!w || w.header == h256())
+            if (!w)
             {
-                cnote << "No work. Pause for 3 s.";
-                std::this_thread::sleep_for(std::chrono::seconds(3));
+                boost::system_time const timeout =
+                    boost::get_system_time() + boost::posix_time::seconds(3);
+                boost::mutex::scoped_lock l(x_work);
+                m_new_work_signal.timed_wait(l, timeout);
                 continue;
             }
+
             // Epoch change ?
-            else if (current.epoch != w.epoch)
+            if (current.epoch != w.epoch)
             {
                 if (!init(w.epoch))
-                    break;
+                    break;  // TODO this will simply exit the thread
             }
 
-            // Persist most recent job anyway. No need to do another
-            // conditional check if they're different
+            // Persist most recent job.
+            // Job's differences should be handled at higher level
             current = w;
-
             uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)current.boundary >> 192);
 
             // Eventually start searching
@@ -274,6 +266,7 @@ void CUDAMiner::workLoop()
 void CUDAMiner::kick_miner()
 {
     m_new_work.store(true, std::memory_order_relaxed);
+    m_new_work_signal.notify_one();
 }
 
 void CUDAMiner::setNumInstances(unsigned _instances)
