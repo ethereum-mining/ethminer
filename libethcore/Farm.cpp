@@ -356,7 +356,10 @@ void Farm::collectData(const boost::system::error_code& ec)
 #endif
             }
 
-            miner->update_temperature(tempC);
+            // If temperature control has been enabled call
+            // miner threashold checking
+            if (m_tstop)
+                miner->update_temperature(tempC, m_tstop, m_tstart);
 
             hw.tempC = tempC;
             hw.fanP = fanpcnt;

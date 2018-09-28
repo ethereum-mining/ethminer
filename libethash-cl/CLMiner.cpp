@@ -295,18 +295,12 @@ void CLMiner::workLoop()
 
     // The work package currently processed by GPU.
     WorkPackage current;
-    current.header = h256{1u};
+    current.header = h256();
 
     try
     {
         while (!shouldStop())
         {
-            if (is_mining_paused())
-            {
-                // cnote << "Mining is paused: Waiting for 3s.";
-                std::this_thread::sleep_for(std::chrono::seconds(3));
-                continue;
-            }
 
             // Read results.
             volatile SearchResults results;
@@ -330,17 +324,19 @@ void CLMiner::workLoop()
             else
                 results.count = 0;
 
+            // Wait for work or 3 seconds (whichever the first)
             const WorkPackage w = work();
+            if (!w)
+            {
+                boost::system_time const timeout =
+                    boost::get_system_time() + boost::posix_time::seconds(3);
+                boost::mutex::scoped_lock l(x_work);
+                m_new_work_signal.timed_wait(l, timeout);
+                continue;
+            }
 
             if (current.header != w.header)
             {
-                // New work received. Update GPU data.
-                if (!w)
-                {
-                    cllog << "No work. Pause for 3 s.";
-                    std::this_thread::sleep_for(std::chrono::seconds(3));
-                    continue;
-                }
 
                 if (current.epoch != w.epoch)
                 {
@@ -470,6 +466,8 @@ void CLMiner::kick_miner()
     if (m_abortqueue.size())
         m_abortqueue[0].enqueueWriteBuffer(
             m_searchBuffer[0], CL_TRUE, offsetof(SearchResults, abort), sizeof(one), &one);
+
+    m_new_work_signal.notify_one();
 }
 
 unsigned CLMiner::getNumDevices()

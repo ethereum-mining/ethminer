@@ -86,6 +86,15 @@ public:
             m->setWork(m_work);
     }
 
+    /**
+     * @brief Gets the current mining mission.
+     */
+    WorkPackage& getWork()
+    {
+        Guard l(x_minerWork);
+        return m_work;
+    }
+
     void setSealers(std::map<std::string, SealerDescriptor> const& _sealers);
 
     /**
@@ -94,7 +103,8 @@ public:
     bool start(std::string const& _sealer, bool mixed);
 
     /**
-     * @brief Stop all mining activities.
+     * @brief All mining activities to a full stop.
+     *        Implies all mining threads are stopped.
      */
     void stop();
 
@@ -108,6 +118,9 @@ public:
      */
     void restart_async();
 
+    /**
+     * @brief Returns whether or not the farm has been started
+     */
     bool isMining() const { return m_isMining.load(std::memory_order_relaxed); }
 
     /**
@@ -120,10 +133,7 @@ public:
      * @brief Get information on the progress of mining this work package.
      * @return The progress with mining so far.
      */
-    WorkingProgress const& miningProgress() const
-    {
-        return m_progress;
-    }
+    WorkingProgress const& miningProgress() const { return m_progress; }
 
     std::vector<std::shared_ptr<Miner>> getMiners() { return m_miners; }
 
@@ -134,7 +144,7 @@ public:
         return m_miners[index];
     }
 
-    SolutionStats getSolutionStats() { return m_solutionStats; } // returns a copy
+    SolutionStats getSolutionStats() { return m_solutionStats; }  // returns a copy
 
     void failedSolution(unsigned _miner_index) override { m_solutionStats.failed(_miner_index); }
 
@@ -260,4 +270,3 @@ private:
 
 }  // namespace eth
 }  // namespace dev
-
