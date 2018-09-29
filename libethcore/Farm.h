@@ -62,7 +62,7 @@ public:
         std::function<Miner*(unsigned)> create;
     };
 
-    Farm(bool hwmon, bool pwron);
+    Farm(unsigned hwmonlvl, bool noeval);
 
     ~Farm();
 
@@ -94,7 +94,8 @@ public:
     bool start(std::string const& _sealer, bool mixed);
 
     /**
-     * @brief Stop all mining activities.
+     * @brief All mining activities to a full stop.
+     *        Implies all mining threads are stopped.
      */
     void stop();
 
@@ -108,6 +109,9 @@ public:
      */
     void restart_async();
 
+    /**
+     * @brief Returns whether or not the farm has been started
+     */
     bool isMining() const { return m_isMining.load(std::memory_order_relaxed); }
 
     /**
@@ -120,10 +124,7 @@ public:
      * @brief Get information on the progress of mining this work package.
      * @return The progress with mining so far.
      */
-    WorkingProgress const& miningProgress() const
-    {
-        return m_progress;
-    }
+    WorkingProgress const& miningProgress() const { return m_progress; }
 
     std::vector<std::shared_ptr<Miner>> getMiners() { return m_miners; }
 
@@ -134,7 +135,7 @@ public:
         return m_miners[index];
     }
 
-    SolutionStats getSolutionStats() { return m_solutionStats; } // returns a copy
+    SolutionStats getSolutionStats() { return m_solutionStats; }  // returns a copy
 
     void failedSolution(unsigned _miner_index) override { m_solutionStats.failed(_miner_index); }
 
@@ -197,13 +198,8 @@ public:
     /**
      * @brief Called from a Miner to note a WorkPackage has a solution.
      * @param _s The solution.
-     * @param _miner_index Index of the miner
      */
-    void submitProof(Solution const& _s) override
-    {
-        assert(m_onSolutionFound);
-        m_onSolutionFound(_s);
-    }
+    void submitProof(Solution const& _s) override;
 
 private:
     // Collects data about hashing and hardware status
@@ -244,10 +240,13 @@ private:
     unsigned int m_nonce_segment_with = 40;
 
     // Switches for hw monitoring and power drain monitoring
-    bool m_hwmon, m_pwron;
+    unsigned m_hwmonlvl;
 
     // Hardware monitoring temperatures
     unsigned m_tstart = 0, m_tstop = 0;
+
+    // Whether or not GPU solutions should be CPU re-evaluated
+    bool m_noeval = false;
 
     // Wrappers for hardware monitoring libraries
     wrap_nvml_handle* nvmlh = nullptr;
@@ -262,4 +261,3 @@ private:
 
 }  // namespace eth
 }  // namespace dev
-

@@ -81,14 +81,14 @@ void EthGetworkClient::submitSolution(const Solution& solution)
             {
                 if (m_onSolutionAccepted)
                 {
-                    m_onSolutionAccepted(false, response_delay_ms, solution.index);
+                    m_onSolutionAccepted(false, response_delay_ms, solution.midx);
                 }
             }
             else
             {
                 if (m_onSolutionRejected)
                 {
-                    m_onSolutionRejected(false, response_delay_ms, solution.index);
+                    m_onSolutionRejected(false, response_delay_ms, solution.midx);
                 }
             }
         }

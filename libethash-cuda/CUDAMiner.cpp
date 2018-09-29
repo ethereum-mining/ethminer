@@ -35,7 +35,7 @@ struct CUDAChannel : public LogChannel
 };
 #define cudalog clog(CUDAChannel)
 
-CUDAMiner::CUDAMiner(unsigned _index) : Miner("cuda-", _index), m_light(getNumDevices()) {}
+CUDAMiner::CUDAMiner(unsigned _index) : Miner("cuda-", _index), m_io_strand(g_io_service), m_light(getNumDevices()) {}
 
 CUDAMiner::~CUDAMiner()
 {
@@ -211,7 +211,7 @@ bool CUDAMiner::init(int epoch)
 void CUDAMiner::workLoop()
 {
     WorkPackage current;
-    current.header = h256{1u};
+    current.header = h256();
 
     m_search_buf.resize(s_numStreams);
     m_streams.resize(s_numStreams);
@@ -221,36 +221,28 @@ void CUDAMiner::workLoop()
     {
         while (!shouldStop())
         {
-            if (is_mining_paused())
-            {
-                // cnote << "Mining is paused: Waiting for 3s.";
-                std::this_thread::sleep_for(std::chrono::seconds(3));
-                continue;
-            }
 
-            // take local copy of work since it may end up being overwritten.
+            // Wait for work or 3 seconds (whichever the first)
             const WorkPackage w = work();
-
-            // Take actions in proper order
-
-            // No work ?
-            if (!w || w.header == h256())
+            if (!w)
             {
-                cnote << "No work. Pause for 3 s.";
-                std::this_thread::sleep_for(std::chrono::seconds(3));
+                boost::system_time const timeout =
+                    boost::get_system_time() + boost::posix_time::seconds(3);
+                boost::mutex::scoped_lock l(x_work);
+                m_new_work_signal.timed_wait(l, timeout);
                 continue;
             }
+
             // Epoch change ?
-            else if (current.epoch != w.epoch)
+            if (current.epoch != w.epoch)
             {
                 if (!init(w.epoch))
-                    break;
+                    break;  // TODO this will simply exit the thread
             }
 
-            // Persist most recent job anyway. No need to do another
-            // conditional check if they're different
+            // Persist most recent job.
+            // Job's differences should be handled at higher level
             current = w;
-
             uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)current.boundary >> 192);
 
             // Eventually start searching
@@ -274,6 +266,7 @@ void CUDAMiner::workLoop()
 void CUDAMiner::kick_miner()
 {
     m_new_work.store(true, std::memory_order_relaxed);
+    m_new_work_signal.notify_one();
 }
 
 void CUDAMiner::setNumInstances(unsigned _instances)
@@ -338,8 +331,7 @@ unsigned const CUDAMiner::c_defaultGridSize = 8192;  // * CL_DEFAULT_LOCAL_WORK_
 unsigned const CUDAMiner::c_defaultNumStreams = 2;
 
 bool CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
-    unsigned _scheduleFlag, unsigned _dagLoadMode, unsigned _dagCreateDevice, bool _noeval,
-    bool _exit)
+    unsigned _scheduleFlag, unsigned _dagLoadMode, unsigned _dagCreateDevice, bool _exit)
 {
     s_dagLoadMode = _dagLoadMode;
     s_dagCreateDevice = _dagCreateDevice;
@@ -348,7 +340,6 @@ bool CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _
     s_gridSize = _gridSize;
     s_numStreams = _numStreams;
     s_scheduleFlag = _scheduleFlag;
-    s_noeval = _noeval;
 
     try
     {
@@ -400,9 +391,9 @@ void CUDAMiner::setParallelHash(unsigned _parallelHash)
 
 
 void CUDAMiner::search(
-    uint8_t const* header, uint64_t target, uint64_t current_nonce, const dev::eth::WorkPackage& w)
+    uint8_t const* header, uint64_t target, uint64_t start_nonce, const dev::eth::WorkPackage& w)
 {
-    uint64_t stream_nonce;
+    
     set_header(*reinterpret_cast<hash32_t const*>(header));
     if (m_current_target != target)
     {
@@ -417,37 +408,37 @@ void CUDAMiner::search(
 
     // prime each stream, clear search result buffers and start the search
     uint32_t current_index;
-    for (current_index = 0, stream_nonce = current_nonce;
+    for (current_index = 0;
          current_index < s_numStreams;
-         current_index++, stream_nonce += batch_size)
+         current_index++, start_nonce += batch_size)
     {
         cudaStream_t stream = m_streams[current_index];
         volatile Search_results& buffer(*m_search_buf[current_index]);
         buffer.count = 0;
 
         // Run the batch for this stream
-        run_ethash_search(s_gridSize, s_blockSize, stream, &buffer, stream_nonce, m_parallelHash);
+        run_ethash_search(s_gridSize, s_blockSize, stream, &buffer, start_nonce, m_parallelHash);
     }
 
     // process stream batches until we get new work.
     bool done = false;
+
+
     while (!done)
     {
-        // Each pass of this outer loop will handle all cuda streams once
 
         // Exit next time around if there's new work awaiting
         bool t = true;
-        if (m_new_work.compare_exchange_strong(t, false))
-            done = true;
+        done = m_new_work.compare_exchange_strong(t, false);
 
-        Search_results save_buf;
-#ifdef DEV_BUILD
-        std::chrono::steady_clock::time_point submitStart;
-#endif
+        // Check on every batch if we need to suspend mining
+        if (!done)
+            done = is_mining_paused();
+
         // This inner loop will process each cuda stream individually
-        for (current_index = 0, stream_nonce = current_nonce;
+        for (current_index = 0;
              current_index < s_numStreams;
-             current_index++, stream_nonce += batch_size)
+             current_index++, start_nonce += batch_size)
         {
             // Each pass of this loop will wait for a stream to exit,
             // save any found solutions, then restart the stream
@@ -457,95 +448,50 @@ void CUDAMiner::search(
             // Wait for the stream complete
             CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
-            // refer to the current stream's solution buffer
+            if (shouldStop())
+            {
+                m_new_work.store(false, std::memory_order_relaxed);
+                done = true;
+            }
+
+            // Detect solutions in current stream's solution buffer
             volatile Search_results& buffer(*m_search_buf[current_index]);
-            // See if the stream found any solutions
-            uint32_t found_count = buffer.count;
+            uint32_t found_count = std::min((unsigned)buffer.count, MAX_SEARCH_RESULTS);
+
             if (found_count)
             {
-#ifdef DEV_BUILD
-                submitStart = std::chrono::steady_clock::now();
-#endif
-                // Found one or more solutions, save them for later.
-                // We are in a hurry to restart the stream, so defer
-                // non-critical activities, such as hash rate calculations
-                // and solution submission.
+                buffer.count = 0;
+                uint64_t nonce_base = start_nonce - streams_batch_size;
+                
+                // Extract solution and pass to higer level 
+                // using io_service as dispatcher
 
-                if (found_count > MAX_SEARCH_RESULTS)
-                    found_count = MAX_SEARCH_RESULTS;
-
-                // refer to the current stream's save buffer
-
-                // copy the solution to the save buffer for this stream
-                save_buf.count = found_count;
                 for (uint32_t i = 0; i < found_count; i++)
                 {
-                    save_buf.result[i].gid = buffer.result[i].gid;
-                    if (s_noeval)
-                        for (uint32_t j = 0; j < 8; j++)
-                            save_buf.result[i].mix[j] = buffer.result[i].mix[j];
-                }
+                    h256 mix;
+                    uint64_t nonce = nonce_base + buffer.result[i].gid;
+                    memcpy(mix.data(), (void*)&buffer.result[i].mix, sizeof(buffer.result[i].mix));
+                    auto sol =
+                        Solution{nonce, mix, w, done, std::chrono::steady_clock::now(), m_index};
 
-                // Ok, solutions are saved. We can now reset the stream's
-                // solution buffer, releasing it for reuse.
-                buffer.count = 0;
+                    if (sol.stale)
+                        cwarn << "Sol: " << EthWhite "0x" << toHex(sol.nonce) << " STALE"
+                              << EthReset;
+                    else
+                        cnote << "Sol: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
+
+                    g_io_service.post(
+                        m_io_strand.wrap(boost::bind(&Farm::submitProof, &Farm::f(), sol)));
+                }
             }
 
             // restart the stream on the next batch of nonces
             // unless we are done for this round.
             if (!done)
-            {
                 run_ethash_search(
-                    s_gridSize, s_blockSize, stream, &buffer, stream_nonce + streams_batch_size, m_parallelHash);
-            }
+                    s_gridSize, s_blockSize, stream, &buffer, start_nonce, m_parallelHash);
 
-            found_count = save_buf.count;
-            if (found_count)
-            {
-                // Submit this stream's solutions
-                for (uint32_t i = 0; i < found_count; i++)
-                {
-                    uint64_t nonce = stream_nonce + save_buf.result[i].gid;
-                    if (s_noeval)
-                    {
-                        // noeval... use the GPU calculated mix hash.
-                        h256 mix;
-                        memcpy(mix.data(), (void*)&save_buf.result[i].mix,
-                            sizeof(save_buf.result[0].mix));
-                        Farm::f().submitProof(Solution{nonce, mix, w, done, Index()});
-                    }
-                    else
-                    {
-                        // eval... recalculate the mix hash in software and verify
-                        // the GPU's result
-                        Result r = EthashAux::eval(w.epoch, w.header, nonce);
-                        if (r.value <= w.boundary)
-                        {
-                            Farm::f().submitProof(Solution{nonce, r.mixHash, w, done, Index()});
-                        }
-                        else
-                        {
-                            Farm::f().failedSolution(Index());
-                            cwarn
-                                << "GPU gave incorrect result! Lower OC if this happens frequently";
-                        }
-                    }
-                }
-                // Reset this stream's buffer for the next pass
-                save_buf.count = 0;
-#ifdef DEV_BUILD
-                if (g_logOptions & LOG_SUBMIT)
-                    cudalog << "Submit time: "
-                            << std::chrono::duration_cast<std::chrono::microseconds>(
-                                   std::chrono::steady_clock::now() - submitStart)
-                                   .count()
-                            << " us.";
-#endif
-            }
         }
-
-        // All streams have been restarted and should be busy for a while
-        // searching. Now is a good time to burn CPU cycles on bookeeping.
 
         // Update the hash rate
         updateHashRate(batch_size, s_numStreams);
@@ -557,7 +503,6 @@ void CUDAMiner::search(
             break;
         }
 
-        current_nonce += streams_batch_size;
     }
 
 #ifdef DEV_BUILD

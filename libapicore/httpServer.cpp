@@ -96,12 +96,12 @@ void httpServer::getstat1(stringstream& ss)
             ss << " class=text-red";
         ss << ">" << i << "</td><td>" << fixed << setprecision(2) << rate;
         ss << "</td><td>" << s.getString(i);
-        if (m_show_hwmonitors && (i < p.minerMonitors.size()))
+        if (m_hwmonlvl && (i < p.minerMonitors.size()))
         {
             HwMonitor& hw(p.minerMonitors[i]);
             powerSum += hw.powerW;
             ss << "</td><td>" << hw.tempC << "</td><td>" << hw.fanP << "</td><td>";
-            if (m_show_power)
+            if (m_hwmonlvl == 2)
                 ss << fixed << setprecision(0) << hw.powerW;
             else
                 ss << '-';
@@ -112,7 +112,7 @@ void httpServer::getstat1(stringstream& ss)
     }
     ss << "</tbody><tfoot><tr class=bg-header0><th>Total</th><td>" << fixed << setprecision(2)
        << hashSum << "</td><td colspan=3>Solutions: " << s << "</td><td>";
-    if (m_show_power)
+    if (m_hwmonlvl == 2)
         ss << fixed << setprecision(0) << powerSum;
     else
         ss << '-';
@@ -136,7 +136,7 @@ static void ev_handler(struct mg_connection* c, int ev, void* p)
     }
 }
 
-void httpServer::run(string address, uint16_t port, bool show_hwmonitors, bool show_power)
+void httpServer::run(string address, uint16_t port, unsigned hwmonlvl)
 {
     if (port == 0)
         return;
@@ -149,8 +149,7 @@ void httpServer::run(string address, uint16_t port, bool show_hwmonitors, bool s
     {
         m_port = address + string(":") + to_string(port);
     }
-    m_show_hwmonitors = show_hwmonitors;
-    m_show_power = show_power;
+    m_hwmonlvl = hwmonlvl;
     new thread(bind(&httpServer::run_thread, this));
 }
 

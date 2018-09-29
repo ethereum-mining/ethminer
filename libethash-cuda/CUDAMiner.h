@@ -40,8 +40,7 @@ public:
     static void listDevices();
     static void setParallelHash(unsigned _parallelHash);
     static bool configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
-        unsigned _scheduleFlag, unsigned _dagLoadMode, unsigned _dagCreateDevice, bool _noeval,
-        bool _exit);
+        unsigned _scheduleFlag, unsigned _dagLoadMode, unsigned _dagCreateDevice, bool _exit);
     static void setNumInstances(unsigned _instances);
     static void setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount);
 
@@ -61,6 +60,8 @@ protected:
 
 private:
     atomic<bool> m_new_work = {false};
+
+    boost::asio::io_service::strand m_io_strand;
 
     void workLoop() override;
 

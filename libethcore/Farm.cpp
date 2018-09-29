@@ -24,14 +24,14 @@ namespace eth
 {
 Farm* Farm::m_this = nullptr;
 
-Farm::Farm(bool hwmon, bool pwron) : m_io_strand(g_io_service), m_collectTimer(g_io_service)
+Farm::Farm(unsigned hwmonlvl, bool noeval) : m_io_strand(g_io_service), m_collectTimer(g_io_service)
 {
     m_this = this;
-    m_hwmon = hwmon;
-    m_pwron = pwron;
+    m_hwmonlvl = hwmonlvl;
+    m_noeval = noeval;
 
     // Init HWMON if needed
-    if (m_hwmon)
+    if (m_hwmonlvl)
     {
         adlh = wrap_adl_create();
 #if defined(__linux)
@@ -228,6 +228,36 @@ void Farm::setTStartTStop(unsigned tstart, unsigned tstop)
     m_tstop = tstop;
 }
 
+void Farm::submitProof(Solution const& _s)
+{
+    assert(m_onSolutionFound);
+
+    if (!m_noeval)
+    {
+        Result r = EthashAux::eval(_s.work.epoch, _s.work.header, _s.nonce);
+        if (r.value > _s.work.boundary)
+        {
+            failedSolution(_s.midx);
+            cwarn << "GPU " << _s.midx
+                  << " gave incorrect result. Lower overclocking values if it happens frequently.";
+            return;
+        }
+    }
+
+    m_onSolutionFound(_s);
+
+#ifdef DEV_BUILD
+    if (g_logOptions & LOG_SUBMIT)
+        cnote << "Submit time: "
+             << std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - _s.tstamp)
+                    .count()
+             << " us.";
+#endif
+    
+}
+
+
 // Collects data about hashing and hardware status
 void Farm::collectData(const boost::system::error_code& ec)
 {
@@ -253,7 +283,7 @@ void Farm::collectData(const boost::system::error_code& ec)
             progress.miningIsPaused.push_back(true);
         }
 
-        if (m_hwmon)
+        if (m_hwmonlvl)
         {
             HwMonitorInfo hwInfo = miner->hwmonInfo();
             HwMonitor hw;
@@ -278,7 +308,7 @@ void Farm::collectData(const boost::system::error_code& ec)
                     }
                     wrap_nvml_get_tempC(nvmlh, typeidx, &tempC);
                     wrap_nvml_get_fanpcnt(nvmlh, typeidx, &fanpcnt);
-                    if (m_pwron)
+                    if (m_hwmonlvl == 2)
                     {
                         wrap_nvml_get_power_usage(nvmlh, typeidx, &powerW);
                     }
@@ -297,7 +327,7 @@ void Farm::collectData(const boost::system::error_code& ec)
                     }
                     wrap_adl_get_tempC(adlh, typeidx, &tempC);
                     wrap_adl_get_fanpcnt(adlh, typeidx, &fanpcnt);
-                    if (m_pwron)
+                    if (m_hwmonlvl == 2)
                     {
                         wrap_adl_get_power_usage(adlh, typeidx, &powerW);
                     }
@@ -318,7 +348,7 @@ void Farm::collectData(const boost::system::error_code& ec)
                     }
                     wrap_amdsysfs_get_tempC(sysfsh, typeidx, &tempC);
                     wrap_amdsysfs_get_fanpcnt(sysfsh, typeidx, &fanpcnt);
-                    if (m_pwron)
+                    if (m_hwmonlvl == 2)
                     {
                         wrap_amdsysfs_get_power_usage(sysfsh, typeidx, &powerW);
                     }
@@ -326,7 +356,10 @@ void Farm::collectData(const boost::system::error_code& ec)
 #endif
             }
 
-            miner->update_temperature(tempC);
+            // If temperature control has been enabled call
+            // miner threashold checking
+            if (m_tstop)
+                miner->update_temperature(tempC, m_tstop, m_tstart);
 
             hw.tempC = tempC;
             hw.fanP = fanpcnt;

@@ -327,8 +327,6 @@ void EthStratumClient::resolve_handler(
 {
     if (!ec)
     {
-        dev::setThreadName("stratum");
-
         while (i != tcp::resolver::iterator())
         {
             m_endpoints.push(i->endpoint());
@@ -341,7 +339,7 @@ void EthStratumClient::resolve_handler(
     }
     else
     {
-        dev::setThreadName("stratum");
+
         cwarn << "Could not resolve host " << m_conn->Host() << ", " << ec.message();
 
         // Release locking flag and set connection status
@@ -372,8 +370,6 @@ void EthStratumClient::start_connect()
         if (m_socket == nullptr)
             init_socket();
 
-        dev::setThreadName("stratum");
-
 #ifdef DEV_BUILD
         if (g_logOptions & LOG_CONNECT)
             cnote << ("Trying " + toString(m_endpoint) + " ...");
@@ -398,7 +394,7 @@ void EthStratumClient::start_connect()
     }
     else
     {
-        dev::setThreadName("stratum");
+
         m_connecting.store(false, std::memory_order_relaxed);
         cwarn << "No more IP addresses to try for host: " << m_conn->Host();
 
@@ -477,7 +473,6 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                 else
                 {
                     // Waiting for a response to solution submission
-                    dev::setThreadName("stratum");
                     cwarn << "No response received in " << m_responsetimeout << " seconds.";
                     m_endpoints.pop();
                     m_subscribed.store(false, std::memory_order_relaxed);
@@ -493,7 +488,6 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
             if (duration_cast<seconds>(steady_clock::now() - m_current_timestamp).count() >
                 m_worktimeout)
             {
-                dev::setThreadName("stratum");
                 cwarn << "No new work received in " << m_worktimeout << " seconds.";
                 m_endpoints.pop();
                 m_subscribed.store(false, std::memory_order_relaxed);
@@ -513,7 +507,6 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
 
 void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 {
-    dev::setThreadName("stratum");
 
     // Set status completion
     m_connecting.store(false, std::memory_order_relaxed);
@@ -738,7 +731,6 @@ void EthStratumClient::processExtranonce(std::string& enonce)
 
 void EthStratumClient::processResponse(Json::Value& responseObject)
 {
-    dev::setThreadName("stratum");
 
     // Out received message only for debug purpouses
     if (g_logOptions & LOG_JSON)
@@ -1341,7 +1333,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
     if (!m_subscribed.load(std::memory_order_relaxed) ||
         !m_authorized.load(std::memory_order_relaxed))
     {
-        cwarn << "Not authorized";
+        cwarn << "Solution not submitted. Not authorized.";
         return;
     }
 
@@ -1349,7 +1341,8 @@ void EthStratumClient::submitSolution(const Solution& solution)
 
     Json::Value jReq;
 
-    unsigned id = 40 + solution.index;
+
+    unsigned id = 40 + solution.midx;
     jReq["id"] = id;
     m_solution_submitted_max_id = max(m_solution_submitted_max_id, id);
     jReq["method"] = "mining.submit";
@@ -1415,7 +1408,6 @@ void EthStratumClient::recvSocketData()
 void EthStratumClient::onRecvSocketDataCompleted(
     const boost::system::error_code& ec, std::size_t bytes_transferred)
 {
-    dev::setThreadName("stratum");
 
     // Due to the nature of io_service's queue and
     // the implementation of the loop this event may trigger
@@ -1520,7 +1512,6 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
 
         if (isConnected())
         {
-            dev::setThreadName("stratum");
             cwarn << "Socket write failed: " + ec.message();
             m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this));
         }

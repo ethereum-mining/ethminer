@@ -238,8 +238,6 @@ void ApiServer::start()
     if (m_portnumber == 0)
         return;
 
-    m_running.store(true, std::memory_order_relaxed);
-
     tcp::endpoint endpoint(boost::asio::ip::address::from_string(m_address), m_portnumber);
 
     // Try to bind to port number
@@ -263,6 +261,7 @@ void ApiServer::start()
     cnote << "Api server listening on port " + to_string(m_acceptor.local_endpoint().port())
           << (m_password.empty() ? "." : ". Authentication needed.");
     m_workThread = std::thread{boost::bind(&ApiServer::begin_accept, this)};
+    m_running.store(true, std::memory_order_relaxed);
 }
 
 void ApiServer::stop()
@@ -273,6 +272,7 @@ void ApiServer::stop()
 
     m_acceptor.cancel();
     m_acceptor.close();
+    m_workThread.join();
     m_running.store(false, std::memory_order_relaxed);
 
     // Dispose all sessions (if any)

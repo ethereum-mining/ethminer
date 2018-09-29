@@ -18,6 +18,7 @@
 #include <CLI/CLI.hpp>
 
 #include <ethminer/buildinfo.h>
+#include <condition_variable>
 
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
@@ -38,12 +39,17 @@
 #if API_CORE
 #include <libapicore/ApiServer.h>
 #include <libapicore/httpServer.h>
+#include <regex>
 #endif
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+
+// Global vars
+bool g_running = false;
+condition_variable g_shouldstop;
 boost::asio::io_service g_io_service;  // The IO service itself
 
 struct MiningChannel : public LogChannel
@@ -58,8 +64,6 @@ struct MiningChannel : public LogChannel
 #include <ethminer/DBusInt.h>
 #endif
 
-bool g_got_exit_signal = false;
-
 class MinerCLI
 {
 public:
@@ -72,13 +76,12 @@ public:
         Stratum
     };
 
-    MinerCLI() : m_io_work_timer(g_io_service), m_io_strand(g_io_service)
+    MinerCLI() : m_cliDisplayTimer(g_io_service), m_io_strand(g_io_service)
     {
-        // Post first deadline timer to give io_service
-        // initial work
-        m_io_work_timer.expires_from_now(boost::posix_time::seconds(60));
-        m_io_work_timer.async_wait(m_io_strand.wrap(
-            boost::bind(&MinerCLI::io_work_timer_handler, this, boost::asio::placeholders::error)));
+        // Initialize display timer as sleeper
+        m_cliDisplayTimer.expires_from_now(boost::posix_time::pos_infin);
+        m_cliDisplayTimer.async_wait(m_io_strand.wrap(boost::bind(
+            &MinerCLI::cliDisplayInterval_elapsed, this, boost::asio::placeholders::error)));
 
         // Start io_service in it's own thread
         m_io_thread = std::thread{boost::bind(&boost::asio::io_service::run, &g_io_service)};
@@ -88,105 +91,108 @@ public:
         // and should not start/stop or even join threads (which heavily time consuming)
     }
 
-    void io_work_timer_handler(const boost::system::error_code& ec)
+    virtual ~MinerCLI()
     {
-        if (!ec)
-        {
-            // This does absolutely nothing aside resubmitting timer
-            // ensuring io_service's queue has always something to do
-            m_io_work_timer.expires_from_now(boost::posix_time::seconds(120));
-            m_io_work_timer.async_wait(m_io_strand.wrap(boost::bind(
-                &MinerCLI::io_work_timer_handler, this, boost::asio::placeholders::error)));
-        }
-    }
-
-    void stop_io_service()
-    {
-        // Here we stop all io_service's related activities
+        m_cliDisplayTimer.cancel();
         g_io_service.stop();
         m_io_thread.join();
+    }
+
+    void cliDisplayInterval_elapsed(const boost::system::error_code& ec)
+    {
+        if (!ec && g_running)
+        {
+            if (PoolManager::p().isConnected())
+            {
+                auto solstats = Farm::f().getSolutionStats();
+                {
+                    ostringstream os;
+                    os << Farm::f().miningProgress() << ' ';
+                    if (!(g_logOptions & LOG_PER_GPU))
+                        os << solstats << ' ';
+                    os << Farm::f().farmLaunchedFormatted();
+                    minelog << os.str();
+                }
+
+                if (g_logOptions & LOG_PER_GPU)
+                {
+                    ostringstream statdetails;
+                    statdetails << "Solutions " << solstats << ' ';
+                    for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
+                    {
+                        if (i)
+                            statdetails << " ";
+                        statdetails << "gpu" << i << ":" << solstats.getString(i);
+                    }
+                    minelog << statdetails.str();
+                }
+
+#if ETH_DBUS
+                dbusint.send(toString(mp).c_str());
+#endif
+            }
+            else
+            {
+                minelog << "not-connected";
+            }
+
+
+            // Resubmit timer
+            m_cliDisplayTimer.expires_from_now(boost::posix_time::seconds(m_cliDisplayInterval));
+            m_cliDisplayTimer.async_wait(m_io_strand.wrap(boost::bind(
+                &MinerCLI::cliDisplayInterval_elapsed, this, boost::asio::placeholders::error)));
+        }
     }
 
     static void signalHandler(int sig)
     {
         (void)sig;
-        g_got_exit_signal = true;
+        dev::setThreadName("main");
+        cnote << "Signal intercepted ...";
+        g_running = false;
+        g_shouldstop.notify_all();
     }
 #if API_CORE
-    static bool ParseBind(const std::string& inaddr, std::string& outaddr, int& outport,
-        bool advertise_negative_port, std::string& errstr)
+
+    static void ParseBind(
+        const std::string& inaddr, std::string& outaddr, int& outport, bool advertise_negative_port)
     {
-        std::string addr = inaddr;
+        std::regex pattern("([\\da-fA-F\\.\\:]*)\\:([\\d\\-]*)");
+        std::smatch matches;
+
+        if (std::regex_match(inaddr, matches, pattern))
         {
-            std::string portstr = addr.substr(
-                (addr.find_last_of(":") == std::string::npos) ? 0 : addr.find_last_of(":"));
-            addr.resize(addr.length() - portstr.length());
-            if (!portstr.empty() && portstr[0] == ':')
+            // Validate Ip address
+            boost::system::error_code ec;
+            outaddr = boost::asio::ip::address::from_string(matches[1], ec).to_string();
+            if (ec)
+                throw std::invalid_argument("Invalid Ip Address");
+
+            // Parse port ( Let exception throw )
+            outport = std::stoi(matches[2]);
+            if (advertise_negative_port)
             {
-                portstr = portstr.substr(1);
+                if (outport < -65535 || outport > 65535 || outport == 0)
+                    throw std::invalid_argument(
+                        "Invalid port number. Allowed non zero values in range [-65535 .. 65535]");
             }
-            bool out_of_int_range = false;
-            try
+            else
             {
-                outport = std::stoi(portstr);
-            }
-            catch (const std::out_of_range&)
-            {
-                out_of_int_range = true;
-            }
-            catch (...)
-            {
-                errstr = std::string("unable to extract port from string: \"") + portstr +
-                         std::string("\"");
-                return false;
-            };
-            if (out_of_int_range || abs(outport) < 1 || abs(outport) > 0xFFFF)
-            {
-                errstr =
-                    std::string("port out of range: ") + portstr +
-                    (advertise_negative_port ?
-                            std::string(" (must be a non-zero value between -65535 and 65535)") :
-                            std::string(" (must be between 1-65535)"));
-                return false;
-            }
-            if (portstr.length() != std::to_string(outport).length())
-            {
-                errstr = std::string("invalid characters found after port specification: \"") +
-                         portstr + std::string("\"");
-                return false;
+                if (outport < 1 || outport > 65535)
+                    throw std::invalid_argument(
+                        "Invalid port number. Allowed non zero values in range [1 .. 65535]");
             }
         }
-        if (addr.empty())
+        else
         {
-            addr = "0.0.0.0";
+            throw std::invalid_argument("Invalid syntax");
         }
-        boost::system::error_code ec;
-        boost::asio::ip::address address = boost::asio::ip::address::from_string(addr, ec);
-        if (ec)
-        {
-            errstr = std::string("invalid ip address: \"") + addr +
-                     std::string("\" - parsing error: ") + ec.message();
-            return false;
-        }
-        outaddr = addr;
-        try
-        {
-            boost::asio::io_service io_service;
-            boost::asio::ip::tcp::acceptor a(
-                io_service, boost::asio::ip::tcp::endpoint(address, abs(outport)));
-        }
-        catch (const std::exception& ex)
-        {
-            errstr = std::string("unable to bind to ") + addr + std::string(":") +
-                     std::to_string(abs(outport)) + std::string(" - error message: ") +
-                     std::string(ex.what());
-            return false;
-        }
-        return true;
     }
 #endif
-    void ParseCommandLine(int argc, char** argv)
+    bool validateArgs(int argc, char** argv)
     {
+        std::queue<string> warnings;
+
         const char* CommonGroup = "Common Options";
 #if API_CORE
         const char* APIGroup = "API Options";
@@ -220,42 +226,44 @@ public:
             ->group(CommonGroup)
             ->check(CLI::Range(LOG_NEXT - 1));
 
-        app.add_option("--farm-recheck", m_farmRecheckPeriod,
+        app.add_option("--farm-recheck", m_farmPollInterval,
                "Set check interval in milliseconds for changed work", true)
             ->group(CommonGroup)
             ->check(CLI::Range(1, 99999));
 
         app.add_option(
-               "--farm-retries", m_maxFarmRetries, "Set number of reconnection retries", true)
+               "--farm-retries", m_poolMaxRetries, "Set number of reconnection retries", true)
             ->group(CommonGroup)
             ->check(CLI::Range(0, 99999));
 
-        app.add_option("--work-timeout", m_worktimeout,
+        app.add_option("--work-timeout", m_poolWorkTimeout,
                "Set disconnect timeout in seconds of working on the same job", true)
             ->group(CommonGroup)
             ->check(CLI::Range(180, 99999));
 
-        app.add_option("--response-timeout", m_responsetimeout,
+        app.add_option("--response-timeout", m_poolRespTimeout,
                "Set disconnect timeout in seconds for pool responses", true)
             ->group(CommonGroup)
             ->check(CLI::Range(2, 999));
 
-        app.add_flag("-R,--report-hashrate", m_report_hashrate, "Report current hashrate to pool")
+        app.add_flag("-R,--report-hashrate", m_poolHashRate, "Report current hashrate to pool")
             ->group(CommonGroup);
 
-        app.add_option("--display-interval", m_displayInterval,
-               "Set mining stats log interval in seconds", true)
+        app.add_option("--display-interval", m_cliDisplayInterval,
+               "Set mining stats log interval in seconds.", true)
             ->group(CommonGroup)
-            ->check(CLI::Range(1, 99999));
+            ->check(CLI::Range(1, 1800));
 
-        unsigned hwmon;
-        auto hwmon_opt = app.add_option("--HWMON", hwmon,
-            "0 - Displays gpu temp, fan percent. 1 - and power usage."
-            " Note for Linux: The program uses sysfs for power, which requires running with root "
-            "privileges.");
-        hwmon_opt->group(CommonGroup)->check(CLI::Range(1));
+        app.add_option("--HWMON", m_farmHwMonitors,
+               "0 - No monitoring; "
+               "1 - Monitor GPU temp and fan; "
+               "2 - Monitor GPU temp fan and power drain; ",
+               true)
+            ->group(CommonGroup)
+            ->check(CLI::Range(0, 2));
 
-        app.add_flag("--exit", m_exit, "Stops the miner whenever an error is encountered")
+        app.add_flag(
+               "--exit", m_farmExitOnErrors, "Stops the miner whenever an error is encountered")
             ->group(CommonGroup);
 
         vector<string> pools;
@@ -263,7 +271,7 @@ public:
                "-P,--pool,pool", pools, "Specify one or more pool URLs. See below for URL syntax")
             ->group(CommonGroup);
 
-        app.add_option("--failover-timeout", m_failovertimeout,
+        app.add_option("--failover-timeout", m_poolFlvrTimeout,
                "Set the amount of time in minutes to stay on a failover pool before trying to "
                "reconnect to primary. If = 0 then no switch back.",
                true)
@@ -283,11 +291,13 @@ public:
                true)
             ->group(APIGroup)
             ->check([this](const string& bind_arg) -> string {
-                string errormsg;
-                if (!MinerCLI::ParseBind(
-                        bind_arg, this->m_api_address, this->m_api_port, true, errormsg))
+                try
                 {
-                    throw CLI::ValidationError("--api-bind", errormsg);
+                    MinerCLI::ParseBind(bind_arg, this->m_api_address, this->m_api_port, true);
+                }
+                catch (const std::exception& ex)
+                {
+                    throw CLI::ValidationError("--api-bind", ex.what());
                 }
                 // not sure what to return, and the documentation doesn't say either.
                 // https://github.com/CLIUtils/CLI11/issues/144
@@ -310,17 +320,14 @@ public:
                "Set the web API address:port the miner should listen to.", true)
             ->group(APIGroup)
             ->check([this](const string& bind_arg) -> string {
-                string errormsg;
                 int port;
-                if (!MinerCLI::ParseBind(bind_arg, this->m_http_address, port, false, errormsg))
+                try
                 {
-                    throw CLI::ValidationError("--http-bind", errormsg);
+                    MinerCLI::ParseBind(bind_arg, this->m_http_address, port, false);
                 }
-                if (port < 0)
+                catch (const std::exception& ex)
                 {
-                    throw CLI::ValidationError("--http-bind",
-                        "the web API does not have read/write modes, specify a positive port "
-                        "number between 1-65535");
+                    throw CLI::ValidationError("--http-bind", ex.what());
                 }
                 this->m_http_port = static_cast<uint16_t>(port);
                 // not sure what to return, and the documentation doesn't say either.
@@ -353,11 +360,10 @@ public:
             ->group(OpenCLGroup)
             ->check(CLI::Range(2));
 
-
-        app.add_option("--opencl-platform", m_openclPlatform, "Use OpenCL platform n", true)
+        app.add_option("--opencl-platform", m_oclPlatform, "Use OpenCL platform n", true)
             ->group(OpenCLGroup);
 
-        app.add_option("--opencl-device,--opencl-devices", m_openclDevices,
+        app.add_option("--opencl-device,--opencl-devices", m_oclDevices,
                "Select list of devices to mine on (default: use all available)")
             ->group(OpenCLGroup);
 
@@ -366,16 +372,16 @@ public:
                "--cl-parallel-hash", openclThreadsPerHash, {1, 2, 4, 8}, "ignored parameter", true)
             ->group(OpenCLGroup);
 
-        app.add_option("--cl-global-work", m_globalWorkSizeMultiplier,
-               "Set the global work size multipler.", true)
+        app.add_option(
+               "--cl-global-work", m_oclGWorkSize, "Set the global work size multipler.", true)
             ->group(OpenCLGroup);
 
-        app.add_set("--cl-local-work", m_localWorkSize, {64, 128, 192, 256},
+        app.add_set("--cl-local-work", m_oclLWorkSize, {64, 128, 192, 256},
                "Set the local work size", true)
             ->group(OpenCLGroup);
 
         app.add_flag(
-               "--cl-only", m_noBinary, "Use opencl kernel. Don't attempt to load binary kernel")
+               "--cl-only", m_oclNoBinary, "Use opencl kernel. Don't attempt to load binary kernel")
             ->group(OpenCLGroup);
 #endif
 
@@ -402,15 +408,16 @@ public:
                "Set the scheduler mode.", true)
             ->group(CUDAGroup);
 
-        app.add_option("--cuda-streams", m_numStreams, "Set the number of streams", true)
+        app.add_option("--cuda-streams", m_cudaStreams, "Set the number of streams", true)
             ->group(CUDAGroup)
             ->check(CLI::Range(1, 99));
 
 #endif
-        app.add_flag("--noeval", m_noEval, "Bypass host software re-evaluation of GPU solutions")
+        app.add_flag(
+               "--noeval", m_farmNoEval, "Bypass host software re-evaluation of GPU solutions")
             ->group(CommonGroup);
 
-        app.add_option("-L,--dag-load-mode", m_dagLoadMode,
+        app.add_option("-L,--dag-load-mode", m_farmDagLoadMode,
                "Set the DAG load mode. 0=parallel, 1=sequential, 2=single."
                "  parallel    - load DAG on all GPUs at the same time"
                "  sequential  - load DAG on GPUs one after another. Use this when the miner "
@@ -422,7 +429,7 @@ public:
             ->group(CommonGroup)
             ->check(CLI::Range(2));
 
-        app.add_option("--dag-single-dev", m_dagCreateDevice,
+        app.add_option("--dag-single-dev", m_farmDagCreateDevice,
                "Set the DAG creation device in single mode", true)
             ->group(CommonGroup);
 
@@ -457,13 +464,13 @@ public:
             "Mining test. Used to validate kernel optimizations. Specify block number", true);
         sim_opt->group(CommonGroup);
 
-        app.add_option("--tstop", m_tstop,
+        app.add_option("--tstop", m_farmTempStop,
                "Stop mining on a GPU if temperature exceeds value. 0 is disabled, valid: 30..100",
                true)
             ->group(CommonGroup)
             ->check(CLI::Range(30, 100));
 
-        app.add_option("--tstart", m_tstart,
+        app.add_option("--tstart", m_farmTempStart,
                "Restart mining on a GPU if the temperature drops below, valid: 30..100", true)
             ->group(CommonGroup)
             ->check(CLI::Range(30, 100));
@@ -541,49 +548,40 @@ public:
             ;
         app.footer(ssHelp.str());
 
-        try
+        // Exception handling is held at higher level
+        app.parse(argc, argv);
+        if (help)
         {
-            app.parse(argc, argv);
-            if (help)
-            {
-                cerr << endl << app.help() << endl;
-                exit(0);
-            }
-            else if (version)
-            {
-                auto* bi = ethminer_get_buildinfo();
-                cerr << "\nethminer " << bi->project_version << "\nBuild: " << bi->system_name
-                     << "/" << bi->build_type << "/" << bi->compiler_id << "\n\n";
-                exit(0);
-            }
+            cerr << endl << app.help() << endl << endl;
+            return false;
         }
-        catch (const CLI::ParseError& e)
+        else if (version)
         {
-            cerr << endl << e.what() << "\n\n";
-            exit(-1);
+            return false;
         }
+
 
 #if ETH_ETHASHCL
         if (clKernel >= 0)
-            clog << "--cl-kernel ignored. Kernel is auto-selected\n";
+            warnings.push("--cl-kernel ignored. Kernel is auto-selected");
         if (openclThreadsPerHash >= 0)
-            clog << "--cl-parallel-hash ignored. No longer applies\n";
+            warnings.push("--cl-parallel-hash ignored. No longer applies");
+#endif
+#ifndef DEV_BUILD
+
+        if (g_logOptions & LOG_CONNECT)
+            warnings.push("Socket connections won't be logged. Compile with -DDEVBUILD=ON");
+        if (g_logOptions & LOG_SWITCH)
+            warnings.push("Job switch timings won't be logged. Compile with -DDEVBUILD=ON");
+        if (g_logOptions & LOG_SUBMIT)
+            warnings.push(
+                "Solution internal submission timings won't be logged. Compile with -DDEVBUILD=ON");
+
 #endif
 
-        if (hwmon_opt->count())
-        {
-            m_show_hwmonitors = true;
-            if (hwmon)
-                m_show_power = true;
-        }
 
         if (!cl_miner && !cuda_miner && !mixed_miner && !bench_opt->count() && !sim_opt->count())
-        {
-            cerr << endl
-                 << "One of -G, -U, -X, -M, or -Z must be specified"
-                 << "\n\n";
-            exit(-1);
-        }
+            throw std::invalid_argument("One of - G, -U, -X, -M, or -Z must be specified");
 
         if (cl_miner)
             m_minerType = MinerType::CL;
@@ -591,58 +589,67 @@ public:
             m_minerType = MinerType::CUDA;
         else if (mixed_miner)
             m_minerType = MinerType::Mixed;
+
+        /*
+            Operation mode Benchmark and Simulation do not require pool definitions
+            Operation mode Stratum or GetWork do need at least one
+        */
+
         if (bench_opt->count())
+        {
             m_mode = OperationMode::Benchmark;
+            pools.clear();
+        }
         else if (sim_opt->count())
+        {
             m_mode = OperationMode::Simulation;
-
-        for (auto url : pools)
+            pools.clear();
+            pools.push_back("http://-:0");  // Fake connection
+        }
+        else if (!m_shouldListDevices)
         {
-            if (url == "exit")  // add fake scheme and port to 'exit' url
-                url = "stratum+tcp://-:x@exit:0";
-            URI uri(url);
-            if (!uri.Valid())
-            {
-                cerr << endl << "Bad endpoint address: " << url << "\n\n";
-                exit(-1);
-            }
-            if (!uri.KnownScheme())
-            {
-                cerr << endl << "Unknown URI scheme " << uri.Scheme() << "\n\n";
-                exit(-1);
-            }
-            m_endpoints.push_back(uri);
+            if (!pools.size())
+                throw std::invalid_argument(
+                    "At least one pool definition required. See -P argument.");
 
-            OperationMode mode = OperationMode::None;
-            switch (uri.Family())
+            for (size_t i = 0; i < pools.size(); i++)
             {
-            case ProtocolFamily::STRATUM:
-                mode = OperationMode::Stratum;
-                break;
-            case ProtocolFamily::GETWORK:
-                mode = OperationMode::Farm;
-                break;
+                std::string url = pools.at(i);
+                if (url == "exit")
+                {
+                    if (i == 0)
+                        throw std::invalid_argument(
+                            "'exit' failover directive can't be the first in -P arguments list.");
+                    if (m_mode == OperationMode::Stratum)
+                        url = "stratum+tcp://-:x@exit:0";
+                    if (m_mode == OperationMode::Farm)
+                        url = "http://-:x@exit:0";
+                }
+
+                URI uri(url);
+                if (!uri.Valid() || !uri.KnownScheme())
+                {
+                    std::string what = "Bad URI : " + uri.String();
+                    throw std::invalid_argument(what);
+                }
+
+                m_poolConns.push_back(uri);
+                OperationMode mode =
+                    (uri.Family() == ProtocolFamily::STRATUM ? OperationMode::Stratum :
+                                                               OperationMode::Farm);
+
+                if ((m_mode != OperationMode::None) && (m_mode != mode))
+                {
+                    std::string what = "Mixed stratum and getwork connections not supported.";
+                    throw std::invalid_argument(what);
+                }
+                m_mode = mode;
             }
-            if ((m_mode != OperationMode::None) && (m_mode != mode))
-            {
-                cerr << endl
-                     << "Mixed stratum and getwork endpoints not supported."
-                     << "\n\n";
-                exit(-1);
-            }
-            m_mode = mode;
         }
 
-        if ((m_mode == OperationMode::None) && !m_shouldListDevices)
-        {
-            cerr << endl
-                 << "At least one pool URL must be specified"
-                 << "\n\n";
-            exit(-1);
-        }
 
 #if ETH_ETHASHCL
-        m_openclDeviceCount = m_openclDevices.size();
+        m_oclDeviceCount = m_oclDevices.size();
 #endif
 
 #if ETH_ETHASHCUDA
@@ -657,64 +664,79 @@ public:
             m_cudaSchedule = 4;
 #endif
 
-        if (m_tstop && (m_tstop <= m_tstart))
+        if (m_farmTempStop && (m_farmTempStop <= m_farmTempStart))
         {
-            cerr << endl
-                 << "tstop must be greater than tstart"
-                 << "\n\n";
-            exit(-1);
+            std::string what = "-tstop must be greater than -tstart";
+            throw std::invalid_argument(what);
         }
-        if (m_tstop && !m_show_hwmonitors)
+        if (m_farmTempStop && !m_farmHwMonitors)
         {
             // if we want stop mining at a specific temperature, we have to
-            // monitor the temperature ==> so auto enable HWMON.
-            m_show_hwmonitors = true;
+            // monitor the temperature ==> so auto set HWMON to at least 1.
+            m_farmHwMonitors = 1;
         }
+
+        // Output warnings if any
+        if (warnings.size())
+        {
+            while (warnings.size())
+            {
+                cout << warnings.front() << endl;
+                warnings.pop();
+            }
+            cout << endl;
+        }
+        return true;
     }
 
     void execute()
     {
+
         if (m_shouldListDevices)
         {
-#if ETH_ETHASHCL
-            if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
-                CLMiner::listDevices();
-#endif
-#if ETH_ETHASHCUDA
-            if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
-                CUDAMiner::listDevices();
-#endif
-            stop_io_service();
-            exit(0);
-        }
 
-        auto* build = ethminer_get_buildinfo();
-        minelog << "ethminer " << build->project_version;
-        minelog << "Build: " << build->system_name << "/" << build->build_type;
+            if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
+            {
+#if ETH_ETHASHCL
+
+                CLMiner::listDevices();
+#else
+                throw std::runtime_error(
+                    "Selected OpenCL device listing without having compiled with -DETHASHCL=ON");
+#endif
+            }
+            if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
+            {
+#if ETH_ETHASHCUDA
+                CUDAMiner::listDevices();
+#else
+                throw std::runtime_error(
+                    "Selected CUDA device listing without having compiled with -DETHASHCUDA=ON");
+#endif
+            }
+            cout << endl;
+            return;
+        }
 
         if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
         {
 #if ETH_ETHASHCL
-            if (m_openclDeviceCount > 0)
+            if (m_oclDeviceCount > 0)
             {
-                CLMiner::setDevices(m_openclDevices, m_openclDeviceCount);
-                m_miningThreads = m_openclDeviceCount;
+                CLMiner::setDevices(m_oclDevices, m_oclDeviceCount);
+                m_miningThreads = m_oclDeviceCount;
             }
 
-            if (!CLMiner::configureGPU(m_localWorkSize, m_globalWorkSizeMultiplier,
-                    m_openclPlatform, 0, m_dagLoadMode, m_dagCreateDevice, m_noEval, m_exit,
-                    m_noBinary))
+            if (!CLMiner::configureGPU(m_oclLWorkSize, m_oclGWorkSize, m_oclPlatform, 0,
+                    m_farmDagLoadMode, m_farmDagCreateDevice, m_farmExitOnErrors, m_oclNoBinary))
             {
-                stop_io_service();
-                exit(1);
-            };
+                throw std::runtime_error("Unable to initialize OpenCL GPU(s)");
+            }
 
             CLMiner::setNumInstances(m_miningThreads);
 #else
-            cerr << endl
-                 << "Selected GPU mining without having compiled with -DETHASHCL=ON"
-                 << "\n\n";
-            exit(1);
+            throw std::runtime_error(
+                "Selected OpenCL mining without having compiled with -DETHASHCL=ON");
 #endif
         }
         if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
@@ -731,28 +753,29 @@ public:
             }
             catch (std::runtime_error const& err)
             {
-                cwarn << "CUDA error: " << err.what();
-                stop_io_service();
-                exit(1);
+                std::string what = "CUDA error : ";
+                what.append(err.what());
+                throw std::runtime_error(what);
             }
 
-            if (!CUDAMiner::configureGPU(m_cudaBlockSize, m_cudaGridSize, m_numStreams,
-                    m_cudaSchedule, m_dagLoadMode, m_dagCreateDevice, m_noEval, m_exit))
+            if (!CUDAMiner::configureGPU(m_cudaBlockSize, m_cudaGridSize, m_cudaStreams,
+                    m_cudaSchedule, m_farmDagLoadMode, m_farmDagCreateDevice, m_farmExitOnErrors))
             {
-                stop_io_service();
-                exit(1);
+                throw std::runtime_error("Unable to initialize CUDA GPU(s)");
             }
 
             CUDAMiner::setParallelHash(m_cudaParallelHash);
 #else
-            cerr << endl
-                 << "CUDA support disabled. Configure project build with -DETHASHCUDA=ON"
-                 << "\n\n";
-            stop_io_service();
-            exit(1);
+            throw std::runtime_error(
+                "Selected CUDA mining without having compiled with -DETHASHCUDA=ON");
 #endif
         }
 
+
+        // Enable
+        g_running = true;
+
+        // Signal traps
         signal(SIGINT, MinerCLI::signalHandler);
         signal(SIGTERM, MinerCLI::signalHandler);
 
@@ -768,10 +791,7 @@ public:
             break;
         default:
             // Satisfy the compiler, but cannot happen!
-            cerr << endl
-                 << "Program logic error"
-                 << "\n\n";
-            exit(-1);
+            throw std::runtime_error("Program logic error. Unexpected m_mode.");
         }
     }
 
@@ -783,7 +803,7 @@ private:
         genesis.setNumber(m_benchmarkBlock);
         genesis.setDifficulty(u256(1) << 64);
 
-        new Farm(m_show_hwmonitors, m_show_power);
+
         map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
         sealers["opencl"] = Farm::SealerDescriptor{
@@ -793,18 +813,14 @@ private:
         sealers["cuda"] = Farm::SealerDescriptor{
             &CUDAMiner::instances, [](unsigned _index) { return new CUDAMiner(_index); }};
 #endif
+        new Farm(m_farmHwMonitors, m_farmNoEval);
         Farm::f().setSealers(sealers);
-        Farm::f().onSolutionFound([&](Solution) {
-            return false;
-        });
-
-        Farm::f().setTStartTStop(m_tstart, m_tstop);
+        Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
+        Farm::f().onSolutionFound([&](Solution) { return false; });
 
         string platformInfo = _m == MinerType::CL ? "CL" : "CUDA";
-        cout << "Benchmarking on platform: " << platformInfo << endl;
-
-        cout << "Preparing DAG for block #" << m_benchmarkBlock << endl;
-        // genesis.prep();
+        minelog << "Benchmarking on platform: " << platformInfo << " Preparing DAG for block #"
+                << m_benchmarkBlock;
 
         if (_m == MinerType::CL)
             Farm::f().start("opencl", false);
@@ -824,34 +840,36 @@ private:
             current.boundary = genesis.boundary();
             Farm::f().setWork(current);
             if (!i)
-                cout << "Warming up..." << endl;
+                minelog << "Warming up...";
             else
-                cout << "Trial " << i << "... " << flush << endl;
+                minelog << "Trial " << i << "... ";
+
             this_thread::sleep_for(chrono::seconds(i ? _trialDuration : _warmupDuration));
 
-            auto mp = Farm::f().miningProgress();
             if (!i)
                 continue;
-            auto rate = uint64_t(mp.hashRate);
 
-            cout << rate << endl;
+            auto rate = uint64_t(Farm::f().miningProgress().hashRate);
+            minelog << "Hashes per second " << rate;
             results.push_back(rate);
             mean += uint64_t(rate);
         }
         sort(results.begin(), results.end());
-        cout << "min/mean/max: " << results.front() << "/" << (mean / _trials) << "/"
-             << results.back() << " H/s" << endl;
+        minelog << "min/mean/max: " << results.front() << "/" << (mean / _trials) << "/"
+                << results.back() << " H/s";
         if (results.size() > 2)
         {
             for (auto it = results.begin() + 1; it != results.end() - 1; it++)
                 innerMean += *it;
             innerMean /= (_trials - 2);
-            cout << "inner mean: " << innerMean << " H/s" << endl;
+            minelog << "inner mean: " << innerMean << " H/s";
         }
         else
-            cout << "inner mean: n/a" << endl;
-        stop_io_service();
-        exit(0);
+        {
+            minelog << "inner mean: n/a";
+        }
+
+        return;
     }
 
     void doMiner()
@@ -868,206 +886,159 @@ private:
 
         PoolClient* client = nullptr;
 
-        if (m_mode == OperationMode::Stratum)
+        switch (m_mode)
         {
-            client = new EthStratumClient(m_worktimeout, m_responsetimeout, m_report_hashrate);
-        }
-        else if (m_mode == OperationMode::Farm)
-        {
-            client = new EthGetworkClient(m_farmRecheckPeriod, m_report_hashrate);
-        }
-        else if (m_mode == OperationMode::Simulation)
-        {
+        case MinerCLI::OperationMode::None:
+        case MinerCLI::OperationMode::Benchmark:
+            throw std::runtime_error("Program logic error. Unexpected m_mode.");
+            break;
+        case MinerCLI::OperationMode::Simulation:
             client = new SimulateClient(20, m_benchmarkBlock);
-        }
-        else
-        {
-            cwarn << "Invalid OperationMode";
-            exit(1);
-        }
-
-        // Should not happen!
-        if (!client)
-        {
-            cwarn << "Invalid PoolClient";
-            stop_io_service();
-            exit(1);
+            break;
+        case MinerCLI::OperationMode::Farm:
+            client = new EthGetworkClient(m_farmPollInterval, m_poolHashRate);
+            break;
+        case MinerCLI::OperationMode::Stratum:
+            client = new EthStratumClient(m_poolWorkTimeout, m_poolRespTimeout, m_poolHashRate);
+            break;
+        default:
+            // Satisfy the compiler, but cannot happen!
+            throw std::runtime_error("Program logic error. Unexpected m_mode.");
         }
 
-        // sealers, m_minerType
-        new Farm(m_show_hwmonitors, m_show_power);
+        new Farm(m_farmHwMonitors, m_farmNoEval);
         Farm::f().setSealers(sealers);
+        Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
 
-        new PoolManager(client, m_minerType, m_maxFarmRetries, m_failovertimeout);
-
-        Farm::f().setTStartTStop(m_tstart, m_tstop);
-
-        // If we are in simulation mode we add a fake connection
-        if (m_mode == OperationMode::Simulation)
+        new PoolManager(client, m_minerType, m_poolMaxRetries, m_poolFlvrTimeout);
+        for (auto conn : m_poolConns)
         {
-            URI con(URI("http://-:0"));
-            PoolManager::p().clearConnections();
-            PoolManager::p().addConnection(con);
-        }
-        else
-        {
-            for (auto conn : m_endpoints)
-            {
+            PoolManager::p().addConnection(conn);
+            if (m_mode != OperationMode::Simulation)
                 cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
-                PoolManager::p().addConnection(conn);
-            }
         }
 
 #if API_CORE
 
         ApiServer api(m_api_address, m_api_port, m_api_password);
-        api.start();
+        if (m_api_port)
+            api.start();
 
-        http_server.run(m_http_address, m_http_port, m_show_hwmonitors, m_show_power);
+        http_server.run(m_http_address, m_http_port, m_farmHwMonitors);
 
 #endif
 
         // Start PoolManager
         PoolManager::p().start();
 
-        unsigned interval = m_displayInterval;
+        // Initialize display timer as sleeper with proper interval
+        m_cliDisplayTimer.expires_from_now(boost::posix_time::seconds(m_cliDisplayInterval));
+        m_cliDisplayTimer.async_wait(m_io_strand.wrap(boost::bind(
+            &MinerCLI::cliDisplayInterval_elapsed, this, boost::asio::placeholders::error)));
 
-        // Run CLI in loop
-        while (!g_got_exit_signal && PoolManager::p().isRunning())
+        // Stay in non-busy wait till signals arrive
+        unique_lock<mutex> clilock(m_climtx);
+        while (g_running)
         {
-            // Wait at the beginning of the loop to give some time
-            // services to start properly. Otherwise we get a "not-connected"
-            // message immediately
-
-            // Split m_displayInterval in 1 second parts to optain a faster exit
-            this_thread::sleep_for(chrono::seconds(1));
-            interval--;
-            if (interval)
-                continue;
-            interval = m_displayInterval;
-
-            // Display current stats of the farm if it's connected
-            if (PoolManager::p().isConnected())
-            {
-                auto solstats = Farm::f().getSolutionStats();
-                {
-                    ostringstream os;
-                    os << Farm::f().miningProgress() << ' ';
-                    if (!(g_logOptions & LOG_PER_GPU))
-                        os << solstats << ' ';
-                    os << Farm::f().farmLaunchedFormatted();
-                    minelog << os.str();
-                }
-
-                if (g_logOptions & LOG_PER_GPU)
-                {
-                    ostringstream statdetails;
-                    statdetails << "Solutions " << solstats << ' ';
-                    for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
-                    {
-                        if (i)
-                            statdetails << " ";
-                        statdetails << "gpu" << i << ":" << solstats.getString(i);
-                    }
-                    minelog << statdetails.str();
-                }
-
-#if ETH_DBUS
-                dbusint.send(toString(mp).c_str());
-#endif
-            }
-            else
-            {
-                minelog << "not-connected";
-            }
+            g_shouldstop.wait(clilock);
         }
+
 
 #if API_CORE
 
         // Stop Api server
-        api.stop();
+        if (api.isRunning())
+            api.stop();
 
 #endif
-
-        PoolManager::p().stop();
-        stop_io_service();
+        if (PoolManager::p().isRunning())
+            PoolManager::p().stop();
 
         cnote << "Terminated!";
-        exit(0);
+        return;
     }
 
-    /// Operating mode.
-    OperationMode m_mode = OperationMode::None;
+    // Global boost's io_service
+    std::thread m_io_thread;                        // The IO service thread
+    boost::asio::deadline_timer m_cliDisplayTimer;  // A dummy timer to keep io_service with
+                                                    // something to do and prevent io shutdown
+    boost::asio::io_service::strand m_io_strand;    // A strand to serialize posts in multithreaded
+                                                    // environment
 
-    /// Global boost's io_service
-    std::thread m_io_thread;                      // The IO service thread
-    boost::asio::deadline_timer m_io_work_timer;  // A dummy timer to keep io_service with something
-                                                  // to do and prevent io shutdown
-    boost::asio::io_service::strand m_io_strand;  // A strand to serialize posts in multithreaded
-                                                  // environment
-
-    /// Mining options
+    // Mining options
     MinerType m_minerType = MinerType::Mixed;
-    unsigned m_openclPlatform = 0;
-    unsigned m_miningThreads = UINT_MAX;
+    OperationMode m_mode = OperationMode::None;
+    unsigned m_miningThreads = UINT_MAX;  // TODO remove ?
     bool m_shouldListDevices = false;
+
 #if ETH_ETHASHCL
-    unsigned m_openclDeviceCount = 0;
-    vector<unsigned> m_openclDevices;
-    unsigned m_globalWorkSizeMultiplier = CLMiner::c_defaultGlobalWorkSizeMultiplier;
-    unsigned m_localWorkSize = CLMiner::c_defaultLocalWorkSize;
-    bool m_noBinary = false;
+    // -- OpenCL related params
+    unsigned m_oclPlatform = 0;
+    unsigned m_oclDeviceCount = 0;
+    vector<unsigned> m_oclDevices;
+    unsigned m_oclGWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier;
+    unsigned m_oclLWorkSize = CLMiner::c_defaultLocalWorkSize;
+    bool m_oclNoBinary = false;
 #endif
+
 #if ETH_ETHASHCUDA
+    // -- CUDA related params
     unsigned m_cudaDeviceCount = 0;
     vector<unsigned> m_cudaDevices;
-    unsigned m_numStreams = CUDAMiner::c_defaultNumStreams;
+    unsigned m_cudaStreams = CUDAMiner::c_defaultNumStreams;
     unsigned m_cudaSchedule = 4;  // sync
     unsigned m_cudaGridSize = CUDAMiner::c_defaultGridSize;
     unsigned m_cudaBlockSize = CUDAMiner::c_defaultBlockSize;
     unsigned m_cudaParallelHash = 4;
 #endif
-    bool m_noEval = false;
-    unsigned m_dagLoadMode = 0;  // parallel
-    unsigned m_dagCreateDevice = 0;
-    bool m_exit = false;
-    /// Benchmarking params
+
+    // -- Farm related params
+    unsigned m_farmDagLoadMode = 0;  // DAG load mode : 0=parallel, 1=sequential, 2=single
+    unsigned m_farmDagCreateDevice =
+        0;  // Ordinal index of GPU creating DAG (Implies m_farmDagLoadMode == 2
+    bool m_farmExitOnErrors =
+        false;                  // Whether or not ethminer should exit on mining threads errors
+    bool m_farmNoEval = false;  // Whether or not ethminer should CPU re-evaluate solutions
+    unsigned m_farmPollInterval =
+        500;  // In getWork mode this establishes the ms. interval to check for new job
+    unsigned m_farmHwMonitors =
+        0;  // Farm GPU monitoring level : 0 - No monitor; 1 - Temp and Fan; 2 - Temp Fan Power
+    unsigned m_farmTempStop = 0;  // Halt mining on GPU if temperature ge this threshold (Celsius)
+    unsigned m_farmTempStart =
+        40;  // Resume mining on GPU if temperature le this threshold (Celsius)
+
+    // -- Pool manager related params
+    vector<URI> m_poolConns;
+    unsigned m_poolMaxRetries = 3;     // Max number of connection retries
+    unsigned m_poolWorkTimeout = 180;  // If no new jobs in this number of seconds drop connection
+    unsigned m_poolRespTimeout = 2;    // If no response in this number of seconds drop connection
+    unsigned m_poolFlvrTimeout = 0;    // Return to primary pool after this number of minutes
+    bool m_poolHashRate = false;       // Whether or not ethminer should send HR to pool
+
+    // -- Benchmarking related params
     unsigned m_benchmarkWarmup = 15;
     unsigned m_benchmarkTrial = 3;
     unsigned m_benchmarkTrials = 5;
     unsigned m_benchmarkBlock = 0;
 
-    vector<URI> m_endpoints;
+    // -- CLI Interface related params
+    unsigned m_cliDisplayInterval =
+        5;  // Display stats/info on cli interface every this number of seconds
 
-    unsigned m_maxFarmRetries = 3;
-    unsigned m_farmRecheckPeriod = 500;
-    unsigned m_displayInterval = 5;
+    // -- CLI Flow control
+    mutex m_climtx;
 
-    // Number of seconds to wait before triggering a no work timeout from pool
-    unsigned m_worktimeout = 180;
-    // Number of seconds to wait before triggering a response timeout from pool
-    unsigned m_responsetimeout = 2;
-    // Number of minutes to wait on a failover pool before trying to go back to primary. In minutes
-    // !!
-    unsigned m_failovertimeout = 0;
-
-    bool m_show_hwmonitors = false;
-    bool m_show_power = false;
-
-    unsigned m_tstop = 0;
-    unsigned m_tstart = 40;
 
 #if API_CORE
-    string m_api_bind;
-    string m_api_address = "0.0.0.0";
-    int m_api_port = 0;
-    string m_api_password;
-    string m_http_bind;
-    string m_http_address = "0.0.0.0";
-    uint16_t m_http_port = 0;
+    // -- API and Http interfaces related params
+    string m_api_bind;                  // API interface binding address in form <address>:<port>
+    string m_api_address = "0.0.0.0";   // API interface binding address (Default any)
+    int m_api_port = 0;                 // API interface binding port
+    string m_api_password;              // API interface write protection password
+    string m_http_bind;                 // HTTP interface binding address in form <address>:<port>
+    string m_http_address = "0.0.0.0";  // HTTP interface binding address (Default any)
+    uint16_t m_http_port = 0;           // HTTP interface binding port
 #endif
-
-    bool m_report_hashrate = false;
 
 #if ETH_DBUS
     DBusInt dbusint;
@@ -1076,48 +1047,102 @@ private:
 
 int main(int argc, char** argv)
 {
+    // Return values
+    // 0 - Normal exit
+    // 1 - Invalid/Insufficient command line arguments
+    // 2 - Runtime error
+    // 3 - Other exceptions
+    // 4 - Possible corruption
+
+    // Always out release version
+    auto* bi = ethminer_get_buildinfo();
+    cout << endl
+         << endl
+         << "ethminer " << bi->project_version << endl
+         << "Build: " << bi->system_name << "/" << bi->build_type << "/" << bi->compiler_id 
+         << endl
+         << endl;
+
+    if (argc < 2)
+    {
+        cerr << "No arguments specified. " << endl
+             << "Try 'ethminer --help' to get a list of arguments." << endl
+             << endl;
+        return 1;
+    }
+
     try
     {
-        // Set env vars controlling GPU driver behavior.
-        setenv("GPU_MAX_HEAP_SIZE", "100");
-        setenv("GPU_MAX_ALLOC_PERCENT", "100");
-        setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
+        MinerCLI cli;
 
-        MinerCLI m;
-
-        m.ParseCommandLine(argc, argv);
-
-        if (getenv("SYSLOG"))
-            g_logSyslog = true;
-        if (g_logSyslog || (getenv("NO_COLOR")))
-            g_logNoColor = true;
-#if defined(_WIN32)
-        if (!g_logNoColor)
+        try
         {
-            g_logNoColor = true;
-            // Set output mode to handle virtual terminal sequences
-            // Only works on Windows 10, but most users should use it anyway
-            HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-            if (hOut != INVALID_HANDLE_VALUE)
+            // Set env vars controlling GPU driver behavior.
+            setenv("GPU_MAX_HEAP_SIZE", "100");
+            setenv("GPU_MAX_ALLOC_PERCENT", "100");
+            setenv("GPU_SINGLE_ALLOC_PERCENT", "100");
+
+            // Argument validation either throws exception
+            // or returns false which means do not continue
+            if (!cli.validateArgs(argc, argv))
+                return 0;
+
+            if (getenv("SYSLOG"))
+                g_logSyslog = true;
+            if (g_logSyslog || (getenv("NO_COLOR")))
+                g_logNoColor = true;
+
+#if defined(_WIN32)
+            if (!g_logNoColor)
             {
-                DWORD dwMode = 0;
-                if (GetConsoleMode(hOut, &dwMode))
+                g_logNoColor = true;
+                // Set output mode to handle virtual terminal sequences
+                // Only works on Windows 10, but most users should use it anyway
+                HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+                if (hOut != INVALID_HANDLE_VALUE)
                 {
-                    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-                    if (SetConsoleMode(hOut, dwMode))
-                        g_logNoColor = false;
+                    DWORD dwMode = 0;
+                    if (GetConsoleMode(hOut, &dwMode))
+                    {
+                        dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+                        if (SetConsoleMode(hOut, dwMode))
+                            g_logNoColor = false;
+                    }
                 }
             }
-        }
 #endif
 
-        m.execute();
+            cli.execute();
+            cout << endl << endl;
+            return 0;
+        }
+        catch (std::invalid_argument& ex1)
+        {
+            cerr << "Error: " << ex1.what() << endl
+                 << "Try ethminer --help to get an explained list of arguments."
+                 << endl << endl;
+            return 1;
+        }
+        catch (std::runtime_error& ex2)
+        {
+            cerr << "Error: " << ex2.what() << endl << endl;
+            return 2;
+        }
+        catch (std::exception& ex3)
+        {
+            cerr << "Error: " << ex3.what() << endl << endl;
+            return 3;
+        }
+        catch (...)
+        {
+            cerr << "Error: Unknown failure occurred. Possible memory corruption." << endl << endl;
+            return 4;
+        }
     }
-    catch (std::exception& ex)
+    catch (const std::exception& ex)
     {
-        cerr << "Error: " << ex.what() << "\n\n";
-        return -1;
+        cerr << "Could not initialize CLI interface " << endl
+             << "Error: " << ex.what() << endl << endl;
+        return 4;
     }
-
-    return 0;
 }

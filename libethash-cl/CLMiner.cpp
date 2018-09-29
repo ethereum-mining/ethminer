@@ -261,7 +261,7 @@ unsigned CLMiner::s_numInstances = 0;
 vector<int> CLMiner::s_devices(MAX_MINERS, -1);
 bool CLMiner::s_noBinary = false;
 
-CLMiner::CLMiner(unsigned _index) : Miner("cl-", _index) {}
+CLMiner::CLMiner(unsigned _index) : Miner("cl-", _index), m_io_strand(g_io_service) {}
 
 CLMiner::~CLMiner()
 {
@@ -295,24 +295,15 @@ void CLMiner::workLoop()
 
     // The work package currently processed by GPU.
     WorkPackage current;
-    current.header = h256{1u};
+    current.header = h256();
 
     try
     {
         while (!shouldStop())
         {
-            if (is_mining_paused())
-            {
-                // cnote << "Mining is paused: Waiting for 3s.";
-                std::this_thread::sleep_for(std::chrono::seconds(3));
-                continue;
-            }
 
             // Read results.
             volatile SearchResults results;
-#ifdef DEV_BUILD
-            std::chrono::steady_clock::time_point submitStart;
-#endif
 
             if (m_queue.size())
             {
@@ -322,9 +313,6 @@ void CLMiner::workLoop()
                     (void*)&results.count);
                 if (results.count)
                 {
-#ifdef DEV_BUILD
-                    submitStart = std::chrono::steady_clock::now();
-#endif
                     m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0,
                         results.count * sizeof(results.rslt[0]), (void*)&results);
                     // Reset search buffer if any solution found.
@@ -336,17 +324,19 @@ void CLMiner::workLoop()
             else
                 results.count = 0;
 
+            // Wait for work or 3 seconds (whichever the first)
             const WorkPackage w = work();
+            if (!w)
+            {
+                boost::system_time const timeout =
+                    boost::get_system_time() + boost::posix_time::seconds(3);
+                boost::mutex::scoped_lock l(x_work);
+                m_new_work_signal.timed_wait(l, timeout);
+                continue;
+            }
 
             if (current.header != w.header)
             {
-                // New work received. Update GPU data.
-                if (!w)
-                {
-                    cllog << "No work. Pause for 3 s.";
-                    std::this_thread::sleep_for(std::chrono::seconds(3));
-                    continue;
-                }
 
                 if (current.epoch != w.epoch)
                 {
@@ -406,35 +396,19 @@ void CLMiner::workLoop()
                     if (nonce != m_lastNonce)
                     {
                         m_lastNonce = nonce;
-                        if (s_noeval)
-                        {
-                            h256 mix;
-                            memcpy(mix.data(), (char*)results.rslt[i].mix,
-                                sizeof(results.rslt[i].mix));
-                            Farm::f().submitProof(Solution{nonce, mix, current, false, Index()});
-                        }
+                        h256 mix;
+                        memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
+                        auto sol = Solution{
+                            nonce, mix, current, false, std::chrono::steady_clock::now(), m_index};
+                        if (sol.stale)
+                            cwarn << "Sol: " << EthWhite "0x" << toHex(sol.nonce) << " STALE"
+                                  << EthReset;
                         else
-                        {
-                            Result r = EthashAux::eval(current.epoch, current.header, nonce);
-                            if (r.value <= current.boundary)
-                                Farm::f().submitProof(
-                                    Solution{nonce, r.mixHash, current, false, Index()});
-                            else
-                            {
-                                Farm::f().failedSolution(Index());
-                                cwarn << "GPU gave incorrect result!";
-                            }
-                        }
+                            cnote << "Sol: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
+                        g_io_service.post(
+                            m_io_strand.wrap(boost::bind(&Farm::submitProof, &Farm::f(), sol)));
                     }
                 }
-#ifdef DEV_BUILD
-                if (g_logOptions & LOG_SUBMIT)
-                    cllog << "Submit time: "
-                          << std::chrono::duration_cast<std::chrono::microseconds>(
-                                 std::chrono::steady_clock::now() - submitStart)
-                                 .count()
-                          << " us.";
-#endif
             }
 
             current = w;  // kernel now processing newest work
@@ -462,6 +436,8 @@ void CLMiner::kick_miner()
     if (m_abortqueue.size())
         m_abortqueue[0].enqueueWriteBuffer(
             m_searchBuffer[0], CL_TRUE, offsetof(SearchResults, abort), sizeof(one), &one);
+
+    m_new_work_signal.notify_one();
 }
 
 unsigned CLMiner::getNumDevices()
@@ -524,10 +500,9 @@ void CLMiner::listDevices()
 }
 
 bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
-    unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice, bool _noeval,
-    bool _exit, bool _nobinary)
+    unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice, bool _exit,
+    bool _nobinary)
 {
-    s_noeval = _noeval;
     s_dagLoadMode = _dagLoadMode;
     s_dagCreateDevice = _dagCreateDevice;
     s_exit = _exit;
@@ -880,4 +855,3 @@ bool CLMiner::init(int epoch)
     }
     return true;
 }
-

@@ -18,17 +18,15 @@
 #pragma once
 
 #include <list>
-#include <string>
-#include <thread>
 #include <numeric>
-
-#include <boost/circular_buffer.hpp>
-#include <boost/timer.hpp>
+#include <string>
 
 #include "EthashAux.h"
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
+
+#include <boost/thread.hpp>
 
 #define MINER_WAIT_STATE_WORK 1
 
@@ -89,7 +87,8 @@ public:
 std::ostream& operator<<(std::ostream& os, const FormattedMemSize& s);
 
 /// Pause mining
-typedef enum {
+typedef enum
+{
     MINING_NOT_PAUSED = 0x00000000,
     MINING_PAUSED_WAIT_FOR_T_START = 0x00000001,
     MINING_PAUSED_API = 0x00000002
@@ -121,10 +120,7 @@ struct MiningPause
         return (pause_reason != MinigPauseReason::MINING_NOT_PAUSED);
     }
 
-    bool is_mining_paused()
-    {
-        return is_mining_paused(get_mining_paused());
-    }
+    bool is_mining_paused() { return is_mining_paused(get_mining_paused()); }
 
     std::string get_mining_paused_string(const MinigPauseReason& pause_reason)
     {
@@ -139,10 +135,7 @@ struct MiningPause
         return r;
     }
 
-    std::string get_mining_paused_string()
-    {
-        return get_mining_paused_string(get_mining_paused());
-    }
+    std::string get_mining_paused_string() { return get_mining_paused_string(get_mining_paused()); }
 };
 
 
@@ -267,7 +260,6 @@ public:
     }
 
 private:
-
     std::vector<unsigned> m_accepts = {};
     std::vector<unsigned> m_rejects = {};
     std::vector<unsigned> m_failures = {};
@@ -276,9 +268,6 @@ private:
 };
 
 std::ostream& operator<<(std::ostream& os, const SolutionStats& s);
-
-class Miner;
-
 
 /**
  * @brief Class for hosting one or more Miners.
@@ -294,6 +283,7 @@ public:
     virtual ~FarmFace() = default;
     virtual unsigned get_tstart() = 0;
     virtual unsigned get_tstop() = 0;
+
     /**
      * @brief Called from a Miner to note a WorkPackage has a solution.
      * @param _p The solution.
@@ -320,76 +310,23 @@ class Miner : public Worker
 public:
     Miner(std::string const& _name, size_t _index)
       : Worker(_name + std::to_string(_index)), m_index(_index)
-    {
-    }
+    {}
 
     virtual ~Miner() = default;
 
-    void setWork(WorkPackage const& _work)
-    {
-        {
-            Guard l(x_work);
-            m_work = _work;
-            if (m_work.exSizeBits >= 0)
-            {
-                // This can support up to 2^c_log2MaxMiners devices.
-                m_work.startNonce =
-                    m_work.startNonce +
-                    ((uint64_t)m_index << (64 - LOG2_MAX_MINERS - m_work.exSizeBits));
-            }
-            else
-            {
-                // Each GPU is given a non-overlapping 2^40 range to search
-                // return farm.get_nonce_scrambler() + ((uint64_t) m_index << 40);
-
-                // Now segment size is adjustable
-                m_work.startNonce = FarmFace::f().get_nonce_scrambler() +
-                                    ((uint64_t)m_index << FarmFace::f().get_segment_width());
-            }
-
-#ifdef DEV_BUILD
-            m_workSwitchStart = std::chrono::steady_clock::now();
-#endif
-        }
-        kick_miner();
-    }
+    /**
+     * @brief Assigns hashing work to this instance
+     */
+    void setWork(WorkPackage const& _work);
 
     unsigned Index() { return m_index; };
 
     HwMonitorInfo hwmonInfo() { return m_hwmoninfo; }
 
-    void update_temperature(unsigned temperature)
-    {
-        /*
-         cnote << "Setting temp" << temperature << " for gpu" << m_index <<
-                  " tstop=" << FarmFace::f().get_tstop() << " tstart=" <<
-         FarmFace::f().get_tstart();
-        */
-        bool _wait_for_tstart_temp = (m_mining_paused.get_mining_paused() &
-                                         MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START) ==
-                                     MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START;
-        if (!_wait_for_tstart_temp)
-        {
-            unsigned tstop = FarmFace::f().get_tstop();
-            if (tstop && temperature >= tstop)
-            {
-                cwarn << "Pause mining on gpu" << m_index << " : temperature " << temperature
-                      << " is equal/above --tstop " << tstop;
-                m_mining_paused.set_mining_paused(MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START);
-            }
-        }
-        else
-        {
-            unsigned tstart = FarmFace::f().get_tstart();
-            if (tstart && temperature <= tstart)
-            {
-                cnote << "(Re)starting mining on gpu" << m_index << " : temperature " << temperature
-                      << " is now below/equal --tstart " << tstart;
-                m_mining_paused.clear_mining_paused(
-                    MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START);
-            }
-        }
-    }
+    /**
+     * @brief Enables/Disables mining pause due to temp threshold reached
+     */
+    void update_temperature(unsigned t, unsigned tstop, unsigned tstart);
 
     void set_mining_paused(MinigPauseReason pause_reason)
     {
@@ -425,43 +362,32 @@ protected:
 
     WorkPackage work() const
     {
-        Guard l(x_work);
+        boost::mutex::scoped_lock l(x_work);
         return m_work;
     }
 
-    void updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept
-    {
-        m_groupCount += _increment;
-        bool b = true;
-        if (!m_hashRateUpdate.compare_exchange_strong(b, false))
-            return;
-        using namespace std::chrono;
-        auto t = steady_clock::now();
-        auto us = duration_cast<microseconds>(t - m_hashTime).count();
-        m_hashTime = t;
-
-        m_hashRate.store(us ? (float(m_groupCount * _groupSize) * 1.0e6f) / us : 0.0f,
-            std::memory_order_relaxed);
-        m_groupCount = 0;
-    }
+    void updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept;
 
     static unsigned s_dagLoadMode;
     static unsigned s_dagLoadIndex;
     static unsigned s_dagCreateDevice;
     static uint8_t* s_dagInHostMemory;
     static bool s_exit;
-    static bool s_noeval;
+    const unsigned m_index = 0;
 
-    const size_t m_index = 0;
 #ifdef DEV_BUILD
     std::chrono::steady_clock::time_point m_workSwitchStart;
 #endif
+
     HwMonitorInfo m_hwmoninfo;
+    mutable boost::mutex x_work;
+    boost::condition_variable m_new_work_signal;
 
 private:
+
     MiningPause m_mining_paused;
     WorkPackage m_work;
-    mutable Mutex x_work;
+
     std::chrono::steady_clock::time_point m_hashTime = std::chrono::steady_clock::now();
     std::atomic<float> m_hashRate = {0.0};
     uint64_t m_groupCount = 0;

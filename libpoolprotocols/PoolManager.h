@@ -38,17 +38,19 @@ public:
     unsigned getEpochChanges();
 
 private:
-    void suspendMining();
 
-    unsigned m_hashrateReportingTime = 60;
-    unsigned m_hashrateReportingTimePassed = 0;
+    void suspendMining();
+    void rotateConnect();
+
+    unsigned m_hrReportingInterval = 60;
     unsigned m_failoverTimeout =
         0;  // After this amount of time in minutes of mining on a failover pool return to "primary"
 
-    void check_failover_timeout(const boost::system::error_code& ec);
+    void failovertimer_elapsed(const boost::system::error_code& ec);
+    void submithrtimer_elapsed(const boost::system::error_code& ec);
 
     std::atomic<bool> m_running = {false};
-    void workLoop();
+    std::atomic<bool> m_stopping = {false};
 
     unsigned m_connectionAttempt = 0;
     unsigned m_maxConnectionAttempts = 0;
@@ -59,12 +61,12 @@ private:
     unsigned m_activeConnectionIdx = 0;
     mutable Mutex m_activeConnectionMutex;
 
-    std::thread m_workThread;
-
     h256 m_lastBoundary = h256();
 
     boost::asio::io_service::strand m_io_strand;
     boost::asio::deadline_timer m_failovertimer;
+    boost::asio::deadline_timer m_submithrtimer;
+
     PoolClient* p_client;
     MinerType m_minerType;
 
