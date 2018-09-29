@@ -203,6 +203,8 @@ public:
 #endif
     bool validateArgs(int argc, char** argv)
     {
+        std::queue<string> warnings;
+
         const char* CommonGroup = "Common Options";
 #if API_CORE
         const char* APIGroup = "API Options";
@@ -567,30 +569,31 @@ public:
         app.parse(argc, argv);
         if (help)
         {
-            cerr << endl << app.help() << endl;
+            cerr << endl << app.help() << endl << endl;
             return false;
         }
         else if (version)
         {
-            auto* bi = ethminer_get_buildinfo();
-            cerr << "\nethminer " << bi->project_version << "\nBuild: " << bi->system_name << "/"
-                 << bi->build_type << "/" << bi->compiler_id << "\n\n";
             return false;
         }
 
 
 #if ETH_ETHASHCL
         if (clKernel >= 0)
-            clog << "--cl-kernel ignored. Kernel is auto-selected\n";
+            warnings.push("--cl-kernel ignored. Kernel is auto-selected");
         if (openclThreadsPerHash >= 0)
-            clog << "--cl-parallel-hash ignored. No longer applies\n";
+            warnings.push("--cl-parallel-hash ignored. No longer applies");
 #endif
 #ifndef DEV_BUILD
-        if ((g_logOptions & LOG_CONNECT) || (g_logOptions & LOG_SWITCH) ||
-            (g_logOptions & LOG_SUBMIT))
-        {
-            clog << "Some log options ignored. Compile with -DDEVBUILD=ON\n";
-        }
+
+        if (g_logOptions & LOG_CONNECT)
+            warnings.push("Socket connections won't be logged. Compile with -DDEVBUILD=ON");
+        if (g_logOptions & LOG_SWITCH)
+            warnings.push("Job switch timings won't be logged. Compile with -DDEVBUILD=ON");
+        if (g_logOptions & LOG_SUBMIT)
+            warnings.push(
+                "Solution internal submission timings won't be logged. Compile with -DDEVBUILD=ON");
+
 #endif
 
 
@@ -690,17 +693,24 @@ public:
             m_farmHwMonitors = 1;
         }
 
+        // Output warnings if any
+        if (warnings.size())
+        {
+            while (warnings.size())
+            {
+                cout << warnings.front() << endl;
+                warnings.pop();
+            }
+            cout << endl;
+        }
         return true;
     }
 
     void execute()
     {
-        auto* bi = ethminer_get_buildinfo();
 
         if (m_shouldListDevices)
         {
-            cout << "\nethminer " << bi->project_version << "\nBuild: " << bi->system_name << "/"
-                 << bi->build_type << "/" << bi->compiler_id << endl;
 
             if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
             {
@@ -724,9 +734,6 @@ public:
             cout << endl;
             return;
         }
-
-        minelog << "ethminer " << bi->project_version;
-        minelog << "Build: " << bi->system_name << "/" << bi->build_type;
 
         if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
         {
@@ -1121,13 +1128,21 @@ int main(int argc, char** argv)
     // 3 - Other exceptions
     // 4 - Possible corruption
 
+    // Always out release version
+    auto* bi = ethminer_get_buildinfo();
+    cout << endl
+         << endl
+         << "ethminer " << bi->project_version << endl
+         << "Build: " << bi->system_name << "/" << bi->build_type << "/" << bi->compiler_id 
+         << endl
+         << endl;
+
     if (argc < 2)
     {
-        cerr << "\n"
-             << "No arguments specified. " << endl
-             << "Try 'ethminer --help' to get a list of arguments."
-             << "\n\n";
-        return 0;
+        cerr << "No arguments specified. " << endl
+             << "Try 'ethminer --help' to get a list of arguments." << endl
+             << endl;
+        return 1;
     }
 
     try
@@ -1172,42 +1187,36 @@ int main(int argc, char** argv)
 #endif
 
             cli.execute();
+            cout << endl << endl;
             return 0;
         }
         catch (std::invalid_argument& ex1)
         {
-            cerr << "\n"
-                 << "Error: " << ex1.what() << "\n"
+            cerr << "Error: " << ex1.what() << endl
                  << "Try ethminer --help to get an explained list of arguments."
-                 << "\n\n";
-            ;
+                 << endl << endl;
             return 1;
         }
         catch (std::runtime_error& ex2)
         {
-            cerr << "\n"
-                 << "Error: " << ex2.what() << "\n\n";
+            cerr << "Error: " << ex2.what() << endl << endl;
             return 2;
         }
         catch (std::exception& ex3)
         {
-            cerr << "\n"
-                 << "Error: " << ex3.what() << "\n\n";
+            cerr << "Error: " << ex3.what() << endl << endl;
             return 3;
         }
         catch (...)
         {
-            cerr << "\n"
-                 << "Error: Unknown failure occurred. Possible memory corruption."
-                 << "\n\n";
+            cerr << "Error: Unknown failure occurred. Possible memory corruption." << endl << endl;
             return 4;
         }
     }
     catch (const std::exception& ex)
     {
-        cerr << "\n"
-             << "Could not initialize CLI interface " << endl
-             << "Error: " << ex.what() << "\n\n";
+        cerr << "Could not initialize CLI interface " << endl
+             << "Error: " << ex.what() << endl << endl;
         return 4;
     }
 }
