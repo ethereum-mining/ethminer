@@ -82,6 +82,7 @@ void Worker::startWorking()
 
 void Worker::requestStopWorking()
 {
+#error "GENERATE COMPILE ERROR TO PREVENT MERGE (till anl-refactor branch was merged)"
     DEV_GUARDED(x_work)
     if (m_work)
     {
