@@ -1341,11 +1341,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
 
     Json::Value jReq;
 
-<<<<<<< HEAD
-    unsigned id = 40 + solution.index;
-=======
     unsigned id = 40 + solution.midx;
->>>>>>> 1497942... Embed miner index in solution structure
     jReq["id"] = id;
     m_solution_submitted_max_id = max(m_solution_submitted_max_id, id);
     jReq["method"] = "mining.submit";

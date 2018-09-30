@@ -396,35 +396,6 @@ void CLMiner::workLoop()
                     if (nonce != m_lastNonce)
                     {
                         m_lastNonce = nonce;
-<<<<<<< HEAD
-                        if (s_noeval)
-                        {
-                            h256 mix;
-                            memcpy(mix.data(), (char*)results.rslt[i].mix,
-                                sizeof(results.rslt[i].mix));
-<<<<<<< HEAD
-                            Farm::f().submitProof(Solution{nonce, mix, current, false, Index()});
-=======
-                            Farm::f().submitProof(Solution{nonce, mix, current, false, m_index});
->>>>>>> 1497942... Embed miner index in solution structure
-                        }
-                        else
-                        {
-                            Result r = EthashAux::eval(current.epoch, current.header, nonce);
-                            if (r.value <= current.boundary)
-                                Farm::f().submitProof(
-<<<<<<< HEAD
-                                    Solution{nonce, r.mixHash, current, false, Index()});
-=======
-                                    Solution{nonce, r.mixHash, current, false, m_index});
->>>>>>> 1497942... Embed miner index in solution structure
-                            else
-                            {
-                                Farm::f().failedSolution(m_index);
-                                cwarn << "GPU gave incorrect result!";
-                            }
-                        }
-=======
                         h256 mix;
                         memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
                         auto sol = Solution{
@@ -436,7 +407,6 @@ void CLMiner::workLoop()
                             cnote << "Sol: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
                         g_io_service.post(
                             m_io_strand.wrap(boost::bind(&Farm::submitProof, &Farm::f(), sol)));
->>>>>>> 94f1403... Rework of solution submission
                     }
                 }
             }

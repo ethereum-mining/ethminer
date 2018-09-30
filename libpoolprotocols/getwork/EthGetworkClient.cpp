@@ -80,24 +80,12 @@ void EthGetworkClient::submitSolution(const Solution& solution)
             if (accepted)
             {
                 if (m_onSolutionAccepted)
-                {
-<<<<<<< HEAD
-                    m_onSolutionAccepted(false, response_delay_ms, solution.index);
-=======
                     m_onSolutionAccepted(false, response_delay_ms, solution.midx);
->>>>>>> 16a01f2... Save one thread
-                }
             }
             else
             {
                 if (m_onSolutionRejected)
-                {
-<<<<<<< HEAD
-                    m_onSolutionRejected(false, response_delay_ms, solution.index);
-=======
                     m_onSolutionRejected(false, response_delay_ms, solution.midx);
->>>>>>> 16a01f2... Save one thread
-                }
             }
         }
         catch (jsonrpc::JsonRpcException const& _e)

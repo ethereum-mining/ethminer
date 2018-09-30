@@ -64,11 +64,6 @@ struct MiningChannel : public LogChannel
 #include <ethminer/DBusInt.h>
 #endif
 
-<<<<<<< HEAD
-bool g_got_exit_signal = false;
-
-=======
->>>>>>> fcdaa0f... main.cpp vars rework
 class MinerCLI
 {
 public:
@@ -152,17 +147,10 @@ public:
     static void signalHandler(int sig)
     {
         (void)sig;
-<<<<<<< HEAD
-        g_got_exit_signal = true;
-=======
         dev::setThreadName("main");
         cnote << "Signal intercepted ...";
         g_running = false;
-<<<<<<< HEAD
->>>>>>> 16a01f2... Save one thread
-=======
         g_shouldstop.notify_all();
->>>>>>> a9495dc... CLI thread under condition_variable
     }
 #if API_CORE
 
@@ -324,12 +312,7 @@ public:
 
         app.add_option("--api-password", m_api_password,
                "Set the password to protect interaction with API server. If not set, any "
-<<<<<<< HEAD
                "connection is granted access. "
-=======
-               "connection "
-               "is granted access. "
->>>>>>> d3565dd... Simplify ParseBind
                "Be advised passwords are sent unencrypted over plain TCP!!")
             ->group(APIGroup);
 
@@ -788,13 +771,10 @@ public:
 #endif
         }
 
-<<<<<<< HEAD
-=======
         // Enable
         g_running = true;
 
         // Signal traps
->>>>>>> a9495dc... CLI thread under condition_variable
         signal(SIGINT, MinerCLI::signalHandler);
         signal(SIGTERM, MinerCLI::signalHandler);
 
@@ -955,68 +935,10 @@ private:
         m_cliDisplayTimer.async_wait(m_io_strand.wrap(boost::bind(
             &MinerCLI::cliDisplayInterval_elapsed, this, boost::asio::placeholders::error)));
 
-<<<<<<< HEAD
-        // Run CLI in loop
-        while (!g_got_exit_signal && PoolManager::p().isRunning())
-        {
-            // Wait at the beginning of the loop to give some time
-            // services to start properly. Otherwise we get a "not-connected"
-            // message immediately
-
-            // Split m_displayInterval in 1 second parts to optain a faster exit
-            this_thread::sleep_for(chrono::seconds(1));
-            interval--;
-            if (interval)
-                continue;
-            interval = m_displayInterval;
-
-            // Display current stats of the farm if it's connected
-            if (PoolManager::p().isConnected())
-            {
-                auto solstats = Farm::f().getSolutionStats();
-                {
-                    ostringstream os;
-                    os << Farm::f().miningProgress() << ' ';
-                    if (!(g_logOptions & LOG_PER_GPU))
-                        os << solstats << ' ';
-                    os << Farm::f().farmLaunchedFormatted();
-                    minelog << os.str();
-                }
-
-                if (g_logOptions & LOG_PER_GPU)
-                {
-                    ostringstream statdetails;
-                    statdetails << "Solutions " << solstats << ' ';
-                    for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
-                    {
-                        if (i)
-                            statdetails << " ";
-                        statdetails << "gpu" << i << ":" << solstats.getString(i);
-                    }
-                    minelog << statdetails.str();
-                }
-
-#if ETH_DBUS
-                dbusint.send(toString(mp).c_str());
-#endif
-            }
-            else
-            {
-                minelog << "not-connected";
-            }
-<<<<<<< HEAD
-=======
-            interval = m_cliDisplayInterval;
->>>>>>> fcdaa0f... main.cpp vars rework
-=======
         // Stay in non-busy wait till signals arrive
         unique_lock<mutex> clilock(m_climtx);
         while (g_running)
-        {
             g_shouldstop.wait(clilock);
->>>>>>> a9495dc... CLI thread under condition_variable
-        }
-
 
 #if API_CORE
 

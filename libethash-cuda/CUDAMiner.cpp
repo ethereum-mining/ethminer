@@ -491,60 +491,6 @@ void CUDAMiner::search(
                 run_ethash_search(
                     s_gridSize, s_blockSize, stream, &buffer, start_nonce, m_parallelHash);
 
-<<<<<<< HEAD
-            found_count = save_buf.count;
-            if (found_count)
-            {
-                // Submit this stream's solutions
-                for (uint32_t i = 0; i < found_count; i++)
-                {
-                    uint64_t nonce = stream_nonce + save_buf.result[i].gid;
-                    if (s_noeval)
-                    {
-                        // noeval... use the GPU calculated mix hash.
-                        h256 mix;
-                        memcpy(mix.data(), (void*)&save_buf.result[i].mix,
-                            sizeof(save_buf.result[0].mix));
-<<<<<<< HEAD
-                        Farm::f().submitProof(Solution{nonce, mix, w, done, Index()});
-=======
-                        Farm::f().submitProof(Solution{nonce, mix, w, done, m_index});
->>>>>>> 1497942... Embed miner index in solution structure
-                    }
-                    else
-                    {
-                        // eval... recalculate the mix hash in software and verify
-                        // the GPU's result
-                        Result r = EthashAux::eval(w.epoch, w.header, nonce);
-                        if (r.value <= w.boundary)
-                        {
-<<<<<<< HEAD
-                            Farm::f().submitProof(Solution{nonce, r.mixHash, w, done, Index()});
-=======
-                            Farm::f().submitProof(Solution{nonce, r.mixHash, w, done, m_index});
->>>>>>> c28a31b... Small Fix
-                        }
-                        else
-                        {
-                            Farm::f().failedSolution(Index());
-                            cwarn
-                                << "GPU gave incorrect result! Lower OC if this happens frequently";
-                        }
-                    }
-                }
-                // Reset this stream's buffer for the next pass
-                save_buf.count = 0;
-#ifdef DEV_BUILD
-                if (g_logOptions & LOG_SUBMIT)
-                    cudalog << "Submit time: "
-                            << std::chrono::duration_cast<std::chrono::microseconds>(
-                                   std::chrono::steady_clock::now() - submitStart)
-                                   .count()
-                            << " us.";
-#endif
-            }
-=======
->>>>>>> 94f1403... Rework of solution submission
         }
 
         // Update the hash rate
