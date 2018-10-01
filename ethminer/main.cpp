@@ -193,103 +193,68 @@ public:
     {
         std::queue<string> warnings;
 
-        const char* CommonGroup = "Common Options";
-#if API_CORE
-        const char* APIGroup = "API Options";
-#endif
+        CLI::App app("Ethminer - GPU Ethash miner");
+
+        bool bhelp = false;
+        string shelpExt;
+
+        app.set_help_flag();
+        app.add_flag("-h,--help", bhelp, "Show help");
+
+        app.add_set("-H,--help-ext", shelpExt,
+            {
+                "con", "test",
 #if ETH_ETHASHCL
-        const char* OpenCLGroup = "OpenCL Options";
+                    "cl",
 #endif
 #if ETH_ETHASHCUDA
-        const char* CUDAGroup = "CUDA Options";
+                    "cu",
 #endif
-
-        CLI::App app("Ethminer - GPU Ethereum miner");
-
-        bool help = false;
-        app.set_help_flag();
-        app.add_flag("-h,--help", help, "Show help")->group(CommonGroup);
+#if API_CORE
+                    "api",
+#endif
+                    "misc", "env"
+            },
+            "", true);
 
         bool version = false;
-        app.add_flag("-V,--version", version, "Show program version")->group(CommonGroup);
+        app.add_flag("-V,--version", version, "Show program version");
 
-        ostringstream logOptions;
-        logOptions << "Set log display options. Use the summ of:"
-                   << " log json messages = " << LOG_JSON
-                   << ", log per GPU solutions = " << LOG_PER_GPU;
-#ifdef DEV_BUILD
-        logOptions << ", log connection messages = " << LOG_CONNECT
-                   << ", log switch delay = " << LOG_SWITCH
-                   << ", log submit delay = " << LOG_SUBMIT;
-#endif
-        app.add_option("-v,--verbosity", g_logOptions, logOptions.str(), true)
-            ->group(CommonGroup)
-            ->check(CLI::Range(LOG_NEXT - 1));
+        app.add_option("-v,--verbosity", g_logOptions, "", true)->check(CLI::Range(LOG_NEXT - 1));
 
-        app.add_option("--farm-recheck", m_farmPollInterval,
-               "Set check interval in milliseconds for changed work", true)
-            ->group(CommonGroup)
+        app.add_option("--farm-recheck", m_farmPollInterval, "", true)
             ->check(CLI::Range(1, 99999));
 
-        app.add_option(
-               "--farm-retries", m_poolMaxRetries, "Set number of reconnection retries", true)
-            ->group(CommonGroup)
-            ->check(CLI::Range(0, 99999));
+        app.add_option("--farm-retries", m_poolMaxRetries, "", true)->check(CLI::Range(0, 99999));
 
-        app.add_option("--work-timeout", m_poolWorkTimeout,
-               "Set disconnect timeout in seconds of working on the same job", true)
-            ->group(CommonGroup)
+        app.add_option("--work-timeout", m_poolWorkTimeout, "", true)
             ->check(CLI::Range(180, 99999));
 
-        app.add_option("--response-timeout", m_poolRespTimeout,
-               "Set disconnect timeout in seconds for pool responses", true)
-            ->group(CommonGroup)
+        app.add_option("--response-timeout", m_poolRespTimeout, "", true)
             ->check(CLI::Range(2, 999));
 
-        app.add_flag("-R,--report-hashrate", m_poolHashRate, "Report current hashrate to pool")
-            ->group(CommonGroup);
+        app.add_flag("-R,--report-hashrate,--report-hr", m_poolHashRate, "");
 
-        app.add_option("--display-interval", m_cliDisplayInterval,
-               "Set mining stats log interval in seconds.", true)
-            ->group(CommonGroup)
+        app.add_option("--display-interval", m_cliDisplayInterval, "", true)
             ->check(CLI::Range(1, 1800));
 
-        app.add_option("--HWMON", m_farmHwMonitors,
-               "0 - No monitoring; "
-               "1 - Monitor GPU temp and fan; "
-               "2 - Monitor GPU temp fan and power drain; ",
-               true)
-            ->group(CommonGroup)
-            ->check(CLI::Range(0, 2));
+        app.add_option("--HWMON", m_farmHwMonitors, "", true)->check(CLI::Range(0, 2));
 
-        app.add_flag(
-               "--exit", m_farmExitOnErrors, "Stops the miner whenever an error is encountered")
-            ->group(CommonGroup);
+        app.add_flag("--exit", m_farmExitOnErrors, "");
 
         vector<string> pools;
-        app.add_option(
-               "-P,--pool,pool", pools, "Specify one or more pool URLs. See below for URL syntax")
-            ->group(CommonGroup);
+        app.add_option("-P,--pool,pool", pools, "");
 
-        app.add_option("--failover-timeout", m_poolFlvrTimeout,
-               "Set the amount of time in minutes to stay on a failover pool before trying to "
-               "reconnect to primary. If = 0 then no switch back.",
-               true)
-            ->group(CommonGroup)
+        app.add_option("--failover-timeout", m_poolFlvrTimeout, "", true)
             ->check(CLI::Range(0, 999));
 
-        app.add_flag("--nocolor", g_logNoColor, "Display monochrome log")->group(CommonGroup);
+        app.add_flag("--nocolor", g_logNoColor, "");
 
-        app.add_flag("--syslog", g_logSyslog,
-               "Use syslog appropriate log output (drop timestamp and channel prefix)")
-            ->group(CommonGroup);
+        app.add_flag("--syslog", g_logSyslog, "");
 
 #if API_CORE
-        app.add_option("--api-bind", m_api_bind,
-               "Set the API address:port the miner should listen to. Use negative port number for "
-               "readonly mode",
-               true)
-            ->group(APIGroup)
+
+        app.add_option("--api-bind", m_api_bind, "", true)
             ->check([this](const string& bind_arg) -> string {
                 try
                 {
@@ -303,22 +268,12 @@ public:
                 // https://github.com/CLIUtils/CLI11/issues/144
                 return string("");
             });
-        app.add_option("--api-port", m_api_port,
-               "Set the API port, the miner should listen to. Use 0 to disable. Use negative "
-               "numbers for readonly mode",
-               true)
-            ->group(APIGroup)
-            ->check(CLI::Range(-65535, 65535));
 
-        app.add_option("--api-password", m_api_password,
-               "Set the password to protect interaction with API server. If not set, any "
-               "connection is granted access. "
-               "Be advised passwords are sent unencrypted over plain TCP!!")
-            ->group(APIGroup);
+        app.add_option("--api-port", m_api_port, "", true)->check(CLI::Range(-65535, 65535));
 
-        app.add_option("--http-bind", m_http_bind,
-               "Set the web API address:port the miner should listen to.", true)
-            ->group(APIGroup)
+        app.add_option("--api-password", m_api_password, "");
+
+        app.add_option("--http-bind", m_http_bind, "", true)
             ->check([this](const string& bind_arg) -> string {
                 int port;
                 try
@@ -335,224 +290,97 @@ public:
                 return string("");
             });
 
-        app.add_option("--http-port", m_http_port,
-               "Set the web API port, the miner should listen to. Use 0 to disable. Data shown "
-               "depends on hwmon setting",
-               true)
-            ->group(APIGroup)
-            ->check(CLI::Range(65535));
+        app.add_option("--http-port", m_http_port, "", true)->check(CLI::Range(65535));
 
 #endif
 
 #if ETH_ETHASHCL || ETH_ETHASHCUDA
 
-        app.add_flag("--list-devices", m_shouldListDevices,
-               "List the detected OpenCL/CUDA devices and exit. Should be combined with -G, -U, or "
-               "-X flag")
-            ->group(CommonGroup);
+        app.add_flag("--list-devices", m_shouldListDevices, "");
 
 #endif
 
 #if ETH_ETHASHCL
 
         int clKernel = -1;
-        app.add_option("--cl-kernel", clKernel, "Ignored parameter. Kernel is auto-selected.", true)
-            ->group(OpenCLGroup)
-            ->check(CLI::Range(2));
 
-        app.add_option("--opencl-platform", m_oclPlatform, "Use OpenCL platform n", true)
-            ->group(OpenCLGroup);
+        app.add_option("--cl-kernel", clKernel, "", true)->check(CLI::Range(2));
 
-        app.add_option("--opencl-device,--opencl-devices", m_oclDevices,
-               "Select list of devices to mine on (default: use all available)")
-            ->group(OpenCLGroup);
+        app.add_option("--opencl-platform", m_oclPlatform, "", true);
+
+        app.add_option("--opencl-device,--opencl-devices", m_oclDevices, "");
 
         int openclThreadsPerHash = -1;
-        app.add_set(
-               "--cl-parallel-hash", openclThreadsPerHash, {1, 2, 4, 8}, "ignored parameter", true)
-            ->group(OpenCLGroup);
+        app.add_set("--cl-parallel-hash", openclThreadsPerHash, {1, 2, 4, 8}, "", true);
 
-        app.add_option(
-               "--cl-global-work", m_oclGWorkSize, "Set the global work size multipler.", true)
-            ->group(OpenCLGroup);
+        app.add_option("--cl-global-work", m_oclGWorkSize, "", true);
 
-        app.add_set("--cl-local-work", m_oclLWorkSize, {64, 128, 192, 256},
-               "Set the local work size", true)
-            ->group(OpenCLGroup);
+        app.add_set("--cl-local-work", m_oclLWorkSize, {64, 128, 192, 256}, "", true);
 
-        app.add_flag(
-               "--cl-only", m_oclNoBinary, "Use opencl kernel. Don't attempt to load binary kernel")
-            ->group(OpenCLGroup);
+        app.add_flag("--cl-only", m_oclNoBinary, "");
+
 #endif
 
 #if ETH_ETHASHCUDA
 
-        app.add_option("--cuda-grid-size", m_cudaGridSize, "Set the grid size", true)
-            ->group(CUDAGroup)
+        app.add_option("--cuda-grid-size,--cu-grid-size", m_cudaGridSize, "", true)
             ->check(CLI::Range(1, 131072));
 
         app.add_set(
-               "--cuda-block-size", m_cudaBlockSize, {32, 64, 128, 256}, "Set the block size", true)
-            ->group(CUDAGroup);
+            "--cuda-block-size,--cu-block-size", m_cudaBlockSize, {32, 64, 128, 256}, "", true);
 
-        app.add_option("--cuda-devices", m_cudaDevices,
-               "Select list of devices to mine on (default: use all available)")
-            ->group(CUDAGroup);
+        app.add_option("--cuda-devices,--cu-devices", m_cudaDevices, "");
 
-        app.add_set("--cuda-parallel-hash", m_cudaParallelHash, {1, 2, 4, 8},
-               "Set the number of hashes per kernel", true)
-            ->group(CUDAGroup);
+        app.add_set("--cuda-parallel-hash,--cu-parallel-hash", m_cudaParallelHash, {1, 2, 4, 8},
+            "", true);
 
         string sched = "sync";
-        app.add_set("--cuda-schedule", sched, {"auto", "spin", "yield", "sync"},
-               "Set the scheduler mode.", true)
-            ->group(CUDAGroup);
+        app.add_set(
+            "--cuda-schedule,--cu-schedule", sched, {"auto", "spin", "yield", "sync"}, "", true);
 
-        app.add_option("--cuda-streams", m_cudaStreams, "Set the number of streams", true)
-            ->group(CUDAGroup)
+        app.add_option("--cuda-streams,--cu-streams", m_cudaStreams, "", true)
             ->check(CLI::Range(1, 99));
 
 #endif
-        app.add_flag(
-               "--noeval", m_farmNoEval, "Bypass host software re-evaluation of GPU solutions")
-            ->group(CommonGroup);
 
-        app.add_option("-L,--dag-load-mode", m_farmDagLoadMode,
-               "Set the DAG load mode. 0=parallel, 1=sequential, 2=single."
-               "  parallel    - load DAG on all GPUs at the same time"
-               "  sequential  - load DAG on GPUs one after another. Use this when the miner "
-               "crashes during DAG generation"
-               "  single      - generate DAG on device, then copy to other devices. Implies "
-               "--dag-single-dev"
-               "  ",
-               true)
-            ->group(CommonGroup)
-            ->check(CLI::Range(2));
+        app.add_flag("--noeval", m_farmNoEval, "");
 
-        app.add_option("--dag-single-dev", m_farmDagCreateDevice,
-               "Set the DAG creation device in single mode", true)
-            ->group(CommonGroup);
+        app.add_option("-L,--dag-load-mode", m_farmDagLoadMode, "", true)->check(CLI::Range(2));
 
-        app.add_option("--benchmark-warmup", m_benchmarkWarmup,
-               "Set the duration in seconds of warmup for the benchmark tests", true)
-            ->group(CommonGroup);
+        app.add_option("--dag-single-dev", m_farmDagCreateDevice, "", true);
 
-        app.add_option("--benchmark-trial", m_benchmarkTrial,
-               "Set the number of benchmark trials to run", true)
-            ->group(CommonGroup)
+        app.add_option("--benchmark-warmup", m_benchmarkWarmup, "", true);
+
+        app.add_option("--benchmark-trials", m_benchmarkTrial, "", true)
             ->check(CLI::Range(1, 99));
 
         bool cl_miner = false;
-        app.add_flag("-G,--opencl", cl_miner, "When mining use the GPU via OpenCL")
-            ->group(CommonGroup);
+        app.add_flag("-G,--opencl", cl_miner, "");
 
         bool cuda_miner = false;
-        app.add_flag("-U,--cuda", cuda_miner, "When mining use the GPU via CUDA")
-            ->group(CommonGroup);
+        app.add_flag("-U,--cuda", cuda_miner, "");
 
         bool mixed_miner = false;
-        app.add_flag(
-               "-X,--cuda-opencl", mixed_miner, "When mining with mixed AMD(OpenCL) and CUDA GPUs")
-            ->group(CommonGroup);
+        app.add_flag("-X,--cuda-opencl", mixed_miner, "");
 
-        auto bench_opt = app.add_option("-M,--benchmark", m_benchmarkBlock,
-            "Benchmark mining and exit; Specify block number to benchmark against specific DAG",
-            true);
-        bench_opt->group(CommonGroup);
+        auto bench_opt = app.add_option("-M,--benchmark", m_benchmarkBlock, "", true);
+        auto sim_opt = app.add_option("-Z,--simulation", m_benchmarkBlock, "", true);
 
-        auto sim_opt = app.add_option("-Z,--simulation", m_benchmarkBlock,
-            "Mining test. Used to validate kernel optimizations. Specify block number", true);
-        sim_opt->group(CommonGroup);
 
-        app.add_option("--tstop", m_farmTempStop,
-               "Stop mining on a GPU if temperature exceeds value. 0 is disabled, valid: 30..100",
-               true)
-            ->group(CommonGroup)
-            ->check(CLI::Range(30, 100));
+        app.add_option("--tstop", m_farmTempStop, "", true)->check(CLI::Range(30, 100));
+        app.add_option("--tstart", m_farmTempStart, "", true)->check(CLI::Range(30, 100));
 
-        app.add_option("--tstart", m_farmTempStart,
-               "Restart mining on a GPU if the temperature drops below, valid: 30..100", true)
-            ->group(CommonGroup)
-            ->check(CLI::Range(30, 100));
-
-        ostringstream ssHelp;
-        ssHelp
-            << "Pool URL Specification:" << endl
-            << "    URL takes the form: scheme://user[.workername][:password]@hostname:port[/...]."
-            << endl
-            << "    where scheme can be any of:" << endl
-            << "    getwork     for getWork mode" << endl
-            << "    stratum     for stratum mode" << endl
-            << "    stratums    for secure stratum mode" << endl
-            << "    stratumss   for secure stratum mode with strong TLS12 verification" << endl
-            << "    for a complete list if available schemes, see below" << endl
-            << endl
-            << "    Example 1:"
-               "    stratums://0x012345678901234567890234567890123.miner1@ethermine.org:5555"
-            << endl
-            << "    Example 2:"
-               "    stratum://0x012345678901234567890234567890123.miner1@nanopool.org:9999/"
-               "john.doe@gmail.com"
-            << endl
-            << "    Example 3:"
-               "    stratum://0x012345678901234567890234567890123@nanopool.org:9999/miner1/"
-               "john.doe@gmail.com"
-            << endl
-            << endl
-            << "    There are three main variants of the stratum protocol. If you are not sure"
-            << endl
-            << "    which one your pool needs, try one of the 3 schemes above and ethminer" << endl
-            << "    will try to detect the correct variant automatically. If you know your" << endl
-            << "    pool's requirements, the following are supported." << endl
-            << "    Schemes: " << URI::KnownSchemes(ProtocolFamily::STRATUM) << endl
-            << "    Where a scheme is made up of two parts, the stratum variant + the transport"
-            << endl
-            << "    protocol." << endl
-            << "    stratum variants:" << endl
-            << "      stratum -   Stratum" << endl
-            << "      stratum1 -  Eth proxy" << endl
-            << "      stratum2 -  Eth stratum (nicehash)" << endl
-            << "    transports:" << endl
-            << "      tcp -       Unencrypted connection" << endl
-            << "      tls -       Encrypted with tls (including deprecated tls 1.1)" << endl
-            << "      tls12,ssl - Encrypted with tls 1.2 or later" << endl
-            << endl
-#if ETH_ETHASHCUDA
-            << "Cuda scheduler modes" << endl
-            << "    auto  - Uses a heuristic based on the number of active CUDA contexts in the "
-            << endl
-            << "            process C and the number of logical processors in the system P." << endl
-            << "            If C > P then yield else spin." << endl
-            << "    spin  - Instruct CUDA to actively spin when waiting for results from the "
-               "device."
-            << endl
-            << "    yield - Instruct CUDA to yield its thread when waiting for results from the "
-            << endl
-            << "            device." << endl
-            << "    sync  - Instruct CUDA to block the CPU thread on a synchronization primitive "
-            << endl
-            << "            when waiting for the results from the device." << endl
-            << endl
-#endif
-            << "Environment Variables:" << endl
-            << "    NO_COLOR - set to any value to disable color output. Unset to re-enable "
-               "color output."
-            << endl
-            << "    SYSLOG   - set to any value to strip time and disable color from output, "
-               "for logging under systemd"
-#ifndef _WIN32
-            << endl
-            << "    SSL_CERT_FILE - full path to your CA certificates file if elsewhere than "
-               "/etc/ssl/certs/ca-certificates.crt"
-#endif
-            ;
-        app.footer(ssHelp.str());
 
         // Exception handling is held at higher level
         app.parse(argc, argv);
-        if (help)
+        if (bhelp)
         {
-            cerr << endl << app.help() << endl << endl;
+            help();
+            return false;
+        }
+        else if (!shelpExt.empty())
+        {
+            helpExt(shelpExt);
             return false;
         }
         else if (version)
@@ -691,10 +519,8 @@ public:
 
     void execute()
     {
-
         if (m_shouldListDevices)
         {
-
             if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
             {
 #if ETH_ETHASHCL
@@ -791,6 +617,382 @@ public:
         default:
             // Satisfy the compiler, but cannot happen!
             throw std::runtime_error("Program logic error. Unexpected m_mode.");
+        }
+    }
+
+    void help()
+    {
+        cout
+            << "Ethminer - GPU ethash miner" << endl
+            << "minimal usage : ethminer [DEVICES_TYPE] [OPTIONS] -P... [-P...]" << endl 
+            << endl
+            << "Devices type options :" << endl
+            << endl
+#if ETH_ETHASHCL
+            << "    -G,--opencl         When mining/benchmarking use GPU via OpenCL" << endl
+#endif
+#if ETH_ETHASHCUDA
+            << "    -U,--cuda           When mining/benchmarking use GPU via CUDA" << endl
+#endif
+#if ETH_ETHASHCUDA && ETH_ETHASHCL
+            << "    -X,--cuda-opencl    When mining/benchmarking use both" << endl
+#endif
+            << endl
+            << "Connection options :" << endl
+            << endl
+            << "    -P,--pool           Stratum pool or http (getWork) connection as URL" << endl
+            << "                        scheme://[user[.workername][:password]@]hostname:port[/...]"
+            << endl
+            << "                        For an explication and some samples about" << endl
+            << "                        how to fill in this value please use" << endl
+            << "                        ethminer --help-ext con" << endl
+            << endl
+
+            << "Common Options :" << endl
+            << endl
+            << "    -h,--help           Displays this help text and exits" << endl
+            << "    -H,--help-ext       TEXT {'con','test',"
+#if ETH_ETHASHCL
+            << "cl,"
+#endif
+#if ETH_ETHASHCUDA
+            << "cu,"
+#endif
+#if API_CORE
+            << "api,"
+#endif
+            << "'misc','env'}" << endl
+            << "                        Display help text about one of these contexts:" << endl
+            << "                        'con'  Connections and their definitions" << endl
+            << "                        'test' Benchmark and simulation options" << endl
+#if ETH_ETHASHCL
+            << "                        'cl'   Extended OpenCL options" << endl
+#endif
+#if ETH_ETHASHCUDA
+            << "                        'cu'   Extended CUDA options" << endl
+#endif
+#if API_CORE
+            << "                        'api'  API and Http monitoring interface" << endl
+#endif
+            << "                        'misc' Other miscellaneous options" << endl
+            << "                        'env'  Using environment variables" << endl
+            << "    -V,--version        Show program version and exits" << endl
+            << endl;
+    }
+
+    void helpExt(std::string ctx)
+    {
+        // Help text for benchmarking options
+        if (ctx == "test")
+        {
+            cout << "Benchmarking / Simulation options :" << endl
+                 << endl
+                 << "    When playing with benchmark or simulation no connection specification is"
+                 << endl
+                 << "    needed ie. you can omit any -P argument." << endl
+                 << endl
+                 << "    -M,--benchmark      UINT[0 ..] Default not set" << endl
+                 << "                        Benchmark mining agains the given block number" << endl
+                 << "                        and exits." << endl
+                 << "    --benchmark-warmup  UINT Default = 15" << endl
+                 << "                        Set duration in seconds of warmup for benchmark"
+                 << endl
+                 << "                        tests." << endl
+                 << "    --benchmark-trials  INT [1 .. 99] Default = 5" << endl
+                 << "                        Set the number of benchmark trials to run" << endl
+                 << "    -Z,--simulation     UINT [0 ..] Default not set" << endl
+                 << "                        Mining test. Used to validate kernel optimizations."
+                 << endl
+                 << "                        Specify a block number." << endl
+                 << endl;
+        }
+
+        // Help text for API interfaces options
+        if (ctx == "api")
+        {
+            cout
+                << "API Interface Options :" << endl
+                << endl
+                << "    Ethminer can provide two interfaces for monitor and or control" << endl
+                << "    Please note that information delivered by API and Http interface" << endl
+                << "    may depend on value of --HWMON" << endl
+                << endl
+                << "    --api-bind          TEXT Default not set" << endl
+                << "                        Set the API address:port the miner should listen on. "
+                << endl
+                << "                        Use negative port number for readonly mode" << endl
+                << "    --api-port          INT [1 .. 65535] Default not set" << endl
+                << "                        Set the API port, the miner should listen on all bound"
+                << endl
+                << "                        addresses. Use negative numbers for readonly mode"
+                << endl
+                << "    --api-password      TEXT Default not set" << endl
+                << "                        Set the password to protect interaction with API "
+                   "server. "
+                << endl
+                << "                        If not set, any connection is granted access. " << endl
+                << "                        Be advised passwords are sent unencrypted over plain "
+                   "TCP!!"
+                << endl
+                << "    --http-bind         TEXT Default not set" << endl
+                << "                        Set the http monitoring address:port the miner should "
+                << endl
+                << "                        listen on." << endl
+                << "    --api-port          INT [1 .. 65535] Default not set" << endl
+                << "                        Set the http port, the miner should listen on all bound"
+                << endl
+                << "                        addresses." << endl
+                << endl;
+        }
+
+        if (ctx == "cl")
+        {
+            cout << "OpenCL Extended Options :" << endl
+                 << endl
+                 << "    Use this extended OpenCL arguments to fine tune the performance." << endl
+                 << "    Be advised default values are best generic findings by developers" << endl
+                 << endl
+                 << "    --cl-kernel         INT [0 .. 2] Default not set" << endl
+                 << "                        Select OpenCL kernel. Ignored since 0.15" << endl
+                 << "    --cl-platform       UINT Default 0" << endl
+                 << "                        Use OpenCL platform N" << endl
+                 << "    --cl-devices        UINT {} Default not set" << endl
+                 << "                        Comma separated list of device indexes to use" << endl
+                 << "                        eg --cl-devices 0,2,3" << endl
+                 << "                        If not set all available CL devices will be used"
+                 << endl
+                 << "    --cl-parallel-hash  UINT {1,2,4,8}" << endl
+                 << "                        Ignored" << endl
+                 << "    --cl-global-work    UINT Default 65536" << endl
+                 << "                        Set the global work size multiplier" << endl
+                 << "    --cl-local-work     UINT {32,64,128,256} Default = 128" << endl
+                 << "                        Set the local work size multiplier" << endl
+                 << "    --cl-only           FLAG" << endl
+                 << "                        Use openCL kernel. Do not load binary kernel" << endl
+                 << endl;
+        }
+
+        if (ctx == "cu")
+        {
+            cout
+                << "CUDA Extended Options :" << endl
+                << endl
+                << "    Use this extended CUDA arguments to fine tune the performance." << endl
+                << "    Be advised default values are best generic findings by developers	"
+                << endl
+                << endl
+                << "    --cu-grid-size      INT [1 .. 131072] Default = 8192" << endl
+                << "                        Set the grid size" << endl
+                << "    --cu-block-size     UINT {32,64,128,256} Default = 128" << endl
+                << "                        Set the block size" << endl
+                << "    --cu-devices        UINT {} Default not set" << endl
+                << "                        Comma separated list of device indexes to use" << endl
+                << "                        eg --cu-devices 0,2,3" << endl
+                << "                        If not set all available CUDA devices will be used"
+                << endl
+                << "    --cu-parallel-hash  UINT {1,2,4,8} Default = 4" << endl
+                << "                        Set the number of hashes per kernel" << endl
+                << "    --cu-streams        INT [1 .. 99] Default = 2" << endl
+                << "                        Set the number of streams per GPU" << endl
+                << "    --cu-schedule       TEXT Default = 'sync'" << endl
+                << "                        Set the CUDA scheduler mode. Can be one of" << endl
+                << "                        'auto'  Uses a heuristic based on the number of active "
+                << endl
+                << "                                CUDA contexts in the process (C) and the number"
+                << endl
+                << "                                of logical processors in the system (P)" << endl
+                << "                                If C > P then 'yield' else 'spin'" << endl
+                << "                        'spin'  Instructs CUDA to actively spin when waiting"
+                << endl
+                << "                                for results from the device" << endl
+                << "                        'yield' Instructs CUDA to yield its thread when "
+                   "waiting for"
+                << endl
+                << "                                for results from the device" << endl
+                << "                        'sync'  Instructs CUDA to block the CPU thread on a "
+                << endl
+                << "                                synchronize primitive when waiting for results"
+                << endl
+                << "                                from the device" << endl
+                << endl;
+        }
+
+        if (ctx == "misc")
+        {
+            cout << "Miscellaneous Options :" << endl
+                 << endl
+                 << "    This set of options is valid for mining mode independently from" << endl
+                 << "    OpenCL or CUDA or Mixed mining mode." << endl
+                 << endl
+                 << "    --display-interval  INT[1 .. 1800] Default = 5" << endl
+                 << "                        Statistic display interval in seconds" << endl
+                 << "    --farm-recheck      INT[1 .. 99999] Default = 500" << endl
+                 << "                        Set polling interval for new work in getWork mode"
+                 << endl
+                 << "                        Value expressed in milliseconds" << endl
+                 << "                        It has no meaning in stratum mode" << endl
+                 << "    --farm-retries      INT[1 .. 99999] Default = 3" << endl
+                 << "                        Set number of reconnection retries to same pool"
+                 << endl
+                 << "    --failover-timeout  INT[0 .. ] Default not set" << endl
+                 << "                        Sets the number of minutes ethminer can stay" << endl
+                 << "                        connected to a fail-over pool before trying to" << endl
+                 << "                        reconnect to the primary (the first) connection." << endl
+                 << "                        before switching to a fail-over connection" << endl
+                 << "    --work-timeout      INT[180 .. 99999] Default = 180" << endl
+                 << "                        If no new work received from pool after this" << endl
+                 << "                        amount of time the connection is dropped" << endl
+                 << "                        Value expressed in seconds." << endl
+                 << "    --response-timeout  INT[2 .. 999] Default = 2" << endl
+                 << "                        If no response from pool to a stratum message " << endl
+                 << "                        after this amount of time the connection is dropped"
+                 << endl
+                 << "    -R,--report-hr      FLAG Notify pool of effective hashing rate" << endl
+                 << "    --HWMON             INT[0 .. 2] Default = 0" << endl
+                 << "                        GPU hardware monitoring level. Can be one of:" << endl
+                 << "                        0 No monitoring" << endl
+                 << "                        1 Monitor temperature and fan percentage" << endl
+                 << "                        2 As 1 plus monitor power drain" << endl
+                 << "    --exit              FLAG Stop ethminer whenever an error is encountered"
+                 << endl
+                 << "    --nocolor           FLAG Monochrome display log lines" << endl
+                 << "    --syslog            FLAG Use syslog appropriate output (drop timestamp and"
+                 << endl
+                 << "                        channel prefix)" << endl
+                 << "    --noeval            FLAG By-pass host software re-evaluation of GPUs"
+                 << endl
+                 << "                        found nonces. Trims some ms. from submission" << endl
+                 << "                        time but it may increase rejected solution rate."
+                 << endl
+                 << "    --list-devices      FLAG Lists the detected OpenCL/CUDA devices and exits"
+                 << endl
+                 << "                        Must be combined with -G or -U or -X flags" << endl
+                 << "    -L,--dag-load-mode  INT[0 .. 2] Default = 0" << endl
+                 << "                        Set DAG load mode. Can be one of:" << endl
+                 << "                        0 Parallel load mode (each GPU independently)" << endl
+                 << "                        1 Sequential load mode (one GPU after another)" << endl
+                 << "                        2 Single load mode (generate DAG on GPU N and" << endl
+                 << "                          copy to other GPUs). Requires --dag-single-dev"
+                 << endl
+                 << "    --dag-single-dev    UINT Default 0" << endl
+                 << "                        Set DAG creation device when --dag-load-mode 2" << endl
+                 << "    --tstart            UINT[30 .. 100] Default = 0" << endl
+                 << "                        Suspend mining on GPU which temperature is above"
+                 << endl
+                 << "                        this threshold. Implies --HWMON 1" << endl
+                 << "                        If not set or zero no temp control is performed"
+                 << endl
+                 << "    --tstop             UINT[30 .. 100] Default = 40" << endl
+                 << "                        Resume mining on previously overheated GPU when temp"
+                 << endl
+                 << "                        drops below this threshold. Implies --HWMON 1" << endl
+                 << "                        Must be lower than --tstart" << endl
+                 << "    -v,--verbosity      INT[0 .. 255] Default = 0 " << endl
+                 << "                        Set output verbosity level. Use the sum of :" << endl
+                 << "                        1   to log stratum json messages" << endl
+                 << "                        2   to log found solutions per GPU" << endl
+#ifdef DEV_BUILD
+                 << "                        32  to log socket (dis)connections" << endl
+                 << "                        64  to log timing of job switches" << endl
+                 << "                        128 to log time for solution submission" << endl
+#endif
+                 << endl;
+        }
+
+        if (ctx == "env")
+        {
+            cout
+                << "Environment variables :" << endl
+                << endl
+                << "    If you need or do feel more comfortable you can set the following" << endl
+                << "    environment variables. Please respect letter casing." << endl
+                << endl
+                << "    NO_COLOR            Set to any value to disable colored output." << endl
+                << "                        Acts the same as --nocolor command line argument"
+                << endl
+                << "    SYSLOG              Set to any value to strip timestamp, colors and channel"
+                << endl
+                << "                        from output log." << endl
+                << "                        Acts the same as --syslog command line argument" << endl
+                << "    SSL_CERT_FILE       Set to the full path to of your CA certificates file"
+                << endl
+                << "                        if it is not in standard path :" << endl
+                << "                        /etc/ssl/certs/ca-certificates.crt." << endl
+                << endl;
+        }
+
+        if (ctx == "con")
+        {
+            cout << "Connections specifications :" << endl
+                 << endl
+                 << "    Whether you need to connect to a stratum pool or to make use of getWork "
+                    "polling"
+                 << endl
+                 << "    mode (generally used to solo mine) you need to specify the connection "
+                    "making use"
+                 << endl
+                 << "    of -P command line argument filling up the URL. The URL is in the form :"
+                 << endl
+                 << "    " << endl
+                 << "    scheme://[user[.workername][:password]@]hostname:port[/...]." << endl
+                 << "    " << endl
+                 << "    where 'scheme' can be any of :" << endl
+                 << "    " << endl
+                 << "    getwork    for http getWork mode" << endl
+                 << "    stratum    for tcp stratum mode" << endl
+                 << "    stratums   for tcp encrypted stratum mode" << endl
+                 << "    stratumss  for tcp encrypted stratum mode with strong TLS 1.2 validation"
+                 << endl
+                 << endl
+                 << "    Example 1: -P getwork://127.0.0.1:8545" << endl
+                 << "    Example 2: "
+                    "-P stratums://0x012345678901234567890234567890123.miner1@ethermine.org:5555"
+                 << endl
+                 << "    Example 3: "
+                    "-P stratum://0x012345678901234567890234567890123.miner1@nanopool.org:9999/"
+                    "john.doe@gmail.com"
+                 << endl
+                 << "    Example 4: "
+                    "-P stratum://0x012345678901234567890234567890123@nanopool.org:9999/miner1/"
+                    "john.doe@gmail.com"
+                 << endl
+                 << endl
+                 << "    You can add as many -P arguments as you want. Every -P specification" << endl
+                 << "    after the first one behaves as fail-over connection. When also the" << endl
+                 << "    the fail-over disconnects ethminer passes to the next connection" << endl
+                 << "    available and so on till the list is exhausted. At that moment" << endl
+                 << "    ethminer restarts the connection cycle from the first one." << endl
+                 << "    An exception to this behavior is ruled by the --failover-timeout" << endl
+                 << "    command line argument. See 'ethminer -H misc' for details." << endl
+                 << endl
+                 << "    The special notation '-P exit' stops the failover loop." << endl
+                 << "    When ethminer reaches this kind of connection it simply quits." << endl
+                 << endl
+                 << "    When using stratum mode ethminer tries to auto-detect the correct" << endl
+                 << "    flavour provided by the pool. Should be fine in 99% of the cases." << endl
+                 << "    Nevertheless you might want to fine tune the stratum flavour by" << endl
+                 << "    any of of the following valid schemes :" << endl
+                 << endl
+                 << "    " << URI::KnownSchemes(ProtocolFamily::STRATUM) << endl
+                 << endl
+                 << "    where a scheme is made up of two parts, the stratum variant + the tcp "
+                    "transport protocol"
+                 << endl
+                 << endl
+                 << "    Stratum variants :" << endl
+                 << endl
+                 << "        stratum     Stratum" << endl
+                 << "        stratum1    Eth Proxy compatible" << endl
+                 << "        stratum2    EthereumStratum 1.0.0. (nicehash)" << endl
+                 << endl
+                 << "    Transport variants :" << endl
+                 << endl
+                 << "        tcp         Unencrypted tcp connection" << endl
+                 << "        tls         Encrypted tcp connection (including deprecated TLS 1.1)"
+                 << endl
+                 << "        tls12       Encrypted tcp connection with TLS 1.2" << endl
+                 << "        ssl         Encrypted tcp connection with TLS 1.2" << endl
+                 << endl;
         }
     }
 
@@ -964,7 +1166,7 @@ private:
     // Mining options
     MinerType m_minerType = MinerType::Mixed;
     OperationMode m_mode = OperationMode::None;
-    unsigned m_miningThreads = UINT_MAX;  // TODO remove ?
+    unsigned m_miningThreads = UINT_MAX;  // TODO Safe to remove and replace with constant ?
     bool m_shouldListDevices = false;
 
 #if ETH_ETHASHCL
@@ -1055,8 +1257,7 @@ int main(int argc, char** argv)
     cout << endl
          << endl
          << "ethminer " << bi->project_version << endl
-         << "Build: " << bi->system_name << "/" << bi->build_type << "/" << bi->compiler_id 
-         << endl
+         << "Build: " << bi->system_name << "/" << bi->build_type << "/" << bi->compiler_id << endl
          << endl;
 
     if (argc < 2)
@@ -1115,8 +1316,8 @@ int main(int argc, char** argv)
         catch (std::invalid_argument& ex1)
         {
             cerr << "Error: " << ex1.what() << endl
-                 << "Try ethminer --help to get an explained list of arguments."
-                 << endl << endl;
+                 << "Try ethminer --help to get an explained list of arguments." << endl
+                 << endl;
             return 1;
         }
         catch (std::runtime_error& ex2)
@@ -1138,7 +1339,8 @@ int main(int argc, char** argv)
     catch (const std::exception& ex)
     {
         cerr << "Could not initialize CLI interface " << endl
-             << "Error: " << ex.what() << endl << endl;
+             << "Error: " << ex.what() << endl
+             << endl;
         return 4;
     }
 }

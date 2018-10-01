@@ -187,10 +187,12 @@ void Miner::resume(MinerPauseEnum fromwhat)
 {
     boost::mutex::scoped_lock l(x_pause);
     m_pauseFlags.reset(fromwhat);
-    if (!m_pauseFlags.any())
-    {
-        // TODO Retrieve current job from farm and kick miner
-    }
+    //if (!m_pauseFlags.any())
+    //{
+    //    // TODO Push most recent job from farm ?
+    //    // If we do not push a new job the miner will stay idle
+    //    // till a new job arrives
+    //}
 }
 
 WorkPackage Miner::work() const
