@@ -662,13 +662,10 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         if (miner)
         {
             if (pause)
-            {
-                miner->set_mining_paused(MinigPauseReason::MINING_PAUSED_API);
-            }
+                miner->pause(MinerPauseEnum::PauseDueToAPIRequest);
             else
-            {
-                miner->clear_mining_paused(MinigPauseReason::MINING_PAUSED_API);
-            }
+                miner->resume(MinerPauseEnum::PauseDueToAPIRequest);
+
             jResponse["result"] = true;
         }
         else
@@ -964,10 +961,9 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
     /* Pause infos */
     if (miner && index < p.miningIsPaused.size())
     {
-        MinigPauseReason pause_reason = miner->get_mining_paused();
-        MiningPause m;
-        jRes["ispaused"] = m.is_mining_paused(pause_reason);
-        jRes["pause_reason"] = m.get_mining_paused_string(pause_reason);
+        bool paused = miner->paused();
+        jRes["ispaused"] = paused;
+        jRes["pause_reason"] = (paused ? miner->pausedString() : Json::Value::null);
     }
     else
     {

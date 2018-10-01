@@ -433,7 +433,7 @@ void CUDAMiner::search(
 
         // Check on every batch if we need to suspend mining
         if (!done)
-            done = is_mining_paused();
+            done = paused();
 
         // This inner loop will process each cuda stream individually
         for (current_index = 0;

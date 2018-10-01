@@ -83,6 +83,15 @@ void Farm::shuffle()
     m_nonce_scrambler = uniform_int_distribution<uint64_t>()(engine);
 }
 
+void Farm::setWork(WorkPackage const& _wp)
+{
+    // Set work to each miner
+    Guard l(x_minerWork);
+    m_work = _wp;
+    for (auto const& m : m_miners)
+        m->setWork(m_work);
+}
+
 void Farm::setSealers(std::map<std::string, SealerDescriptor> const& _sealers)
 {
     m_sealers = _sealers;
@@ -146,6 +155,30 @@ void Farm::stop()
             m_isMining.store(false, std::memory_order_relaxed);
         }
     }
+}
+
+void Farm::pause() 
+{
+    // Signal each miner to suspend mining
+    Guard l(x_minerWork);
+    m_paused.store(true, std::memory_order_relaxed);
+    for (auto const& m : m_miners)
+        m->pause(MinerPauseEnum::PauseDueToFarmPaused);
+}
+
+bool Farm::paused()
+{
+    return m_paused.load(std::memory_order_relaxed);
+}
+
+void Farm::resume()
+{
+    // Signal each miner to resume mining
+    // Note ! Miners may stay suspended if other reasons
+    Guard l(x_minerWork);
+    m_paused.store(false, std::memory_order_relaxed);
+    for (auto const& m : m_miners)
+        m->resume(MinerPauseEnum::PauseDueToFarmPaused);
 }
 
 /**
@@ -270,7 +303,7 @@ void Farm::collectData(const boost::system::error_code& ec)
     for (auto const& miner : m_miners)
     {
         // Collect and reset hashrates
-        if (!miner->is_mining_paused())
+        if (!miner->paused())
         {
             auto hr = miner->RetrieveHashRate();
             progress.hashRate += hr;
@@ -357,9 +390,15 @@ void Farm::collectData(const boost::system::error_code& ec)
             }
 
             // If temperature control has been enabled call
-            // miner threashold checking
+            // check threshold 
             if (m_tstop)
-                miner->update_temperature(tempC, m_tstop, m_tstart);
+            {
+                bool paused = miner->pauseTest(MinerPauseEnum::PauseDueToOverHeating);
+                if (!paused && (tempC >= m_tstop))
+                    miner->pause(MinerPauseEnum::PauseDueToOverHeating);
+                if (paused && (tempC <= m_tstart))
+                    miner->resume(MinerPauseEnum::PauseDueToOverHeating);
+            }
 
             hw.tempC = tempC;
             hw.fanP = fanpcnt;

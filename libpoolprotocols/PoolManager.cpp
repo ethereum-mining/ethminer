@@ -58,6 +58,11 @@ PoolManager::PoolManager(
                 Farm::f().start("opencl", true);
             }
         }
+        else if (Farm::f().paused())
+        {
+            cnote << "Resume mining ...";
+            Farm::f().resume();
+        }
 
         // Activate timing for HR submission
         m_submithrtimer.expires_from_now(boost::posix_time::seconds(m_hrReportingInterval));
@@ -89,7 +94,8 @@ PoolManager::PoolManager(
         else
         {
             // Suspend mining and submit new connection request
-            suspendMining();
+            cnote << "No connection. Suspend mining ...";
+            Farm::f().pause();
             g_io_service.post(m_io_strand.wrap(boost::bind(&PoolManager::rotateConnect, this)));
         }
 
@@ -272,7 +278,8 @@ int PoolManager::setActiveConnection(unsigned int idx)
     p_client->disconnect();
 
     // Suspend mining if applicable as we're switching
-    suspendMining();
+    cnote << "No connection. Suspend mining ...";
+    Farm::f().pause();
     return 0;
 }
 
@@ -424,19 +431,6 @@ void PoolManager::submithrtimer_elapsed(const boost::system::error_code& ec)
     }
 }
 
-
-void PoolManager::suspendMining()
-{
-    if (!Farm::f().isMining())
-        return;
-
-    WorkPackage wp = Farm::f().work();
-    if (!wp)
-        return;
-
-    Farm::f().setWork({}); /* suspend by setting empty work package */
-    cnote << "Suspend mining due connection change...";
-}
 
 double PoolManager::getCurrentDifficulty()
 {

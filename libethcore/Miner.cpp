@@ -102,10 +102,11 @@ std::ostream& operator<<(std::ostream& os, const SolutionStats& s)
 void Miner::setWork(WorkPackage const& _work)
 {
     {
+
         boost::mutex::scoped_lock l(x_work);
 
         // Void work if this miner is paused
-        if (is_mining_paused())
+        if (paused())
             m_work.header = h256();
         else
         {
@@ -137,38 +138,65 @@ void Miner::setWork(WorkPackage const& _work)
     kick_miner();
 }
 
-void Miner::update_temperature(unsigned t, unsigned tstop, unsigned tstart)
+void Miner::pause(MinerPauseEnum what) 
 {
-    /*
-     cnote << "Setting temp" << temperature << " for gpu" << m_index <<
-              " tstop=" << FarmFace::f().get_tstop() << " tstart=" <<
-     FarmFace::f().get_tstart();
-    */
-    bool _wait_for_tstart_temp =
-        (m_mining_paused.get_mining_paused() & MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START) ==
-        MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START;
+    boost::mutex::scoped_lock l(x_pause);
+    m_pauseFlags.set(what);
+    m_work.header = h256();
+    kick_miner();
+}
 
-    if (!_wait_for_tstart_temp)
+bool Miner::paused()
+{
+    boost::mutex::scoped_lock l(x_pause);
+    return m_pauseFlags.any();
+}
+
+bool Miner::pauseTest(MinerPauseEnum what)
+{
+    boost::mutex::scoped_lock l(x_pause);
+    return m_pauseFlags.test(what);
+}
+
+std::string Miner::pausedString()
+{
+    boost::mutex::scoped_lock l(x_pause);
+    std::string retVar;
+    if (m_pauseFlags.any())
     {
-        if (t >= tstop)
+        for (int i = 0; i < MinerPauseEnum::Pause_MAX; i++)
         {
-            cwarn << "Pause mining on gpu" << m_index << " : temperature " << t
-                  << " is equal/above --tstop " << tstop;
-            m_mining_paused.set_mining_paused(MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START);
-            m_work.header = h256();
-            kick_miner();
+            if (m_pauseFlags[(MinerPauseEnum)i])
+            {
+                if (!retVar.empty())
+                    retVar.append("; ");
+
+                if (i == MinerPauseEnum::PauseDueToOverHeating)
+                    retVar.append("Overheating");
+                else if (i == MinerPauseEnum::PauseDueToAPIRequest)
+                    retVar.append("Api request");
+                else if (i == MinerPauseEnum::PauseDueToFarmPaused)
+                    retVar.append("Farm suspended");
+            }
         }
     }
-    else
+    return retVar;
+}
+
+void Miner::resume(MinerPauseEnum fromwhat) 
+{
+    boost::mutex::scoped_lock l(x_pause);
+    m_pauseFlags.reset(fromwhat);
+    if (!m_pauseFlags.any())
     {
-        if (t <= tstart)
-        {
-            cnote << "(Re)starting mining on gpu" << m_index << " : temperature " << t
-                  << " is now below/equal --tstart " << tstart;
-            m_mining_paused.clear_mining_paused(MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START);
-            kick_miner();
-        }
+        // TODO Retrieve current job from farm and kick miner
     }
+}
+
+WorkPackage Miner::work() const
+{
+    boost::mutex::scoped_lock l(x_work);
+    return m_work;
 }
 
 void Miner::updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept
@@ -186,8 +214,6 @@ void Miner::updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept
         us ? (float(m_groupCount * _groupSize) * 1.0e6f) / us : 0.0f, std::memory_order_relaxed);
     m_groupCount = 0;
 }
-
-
 
 
 }  // namespace eth
