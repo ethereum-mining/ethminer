@@ -55,6 +55,7 @@ public:
     /// Stop worker thread; causes call to stopWorking().
     void stopWorking();
 
+    /// Whether or not this worker should stop
     bool shouldStop() const { return m_state != WorkerState::Started; }
 
 private:

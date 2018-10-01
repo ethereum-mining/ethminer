@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <bitset>
 #include <list>
 #include <numeric>
 #include <string>
@@ -87,55 +88,12 @@ public:
 std::ostream& operator<<(std::ostream& os, const FormattedMemSize& s);
 
 /// Pause mining
-typedef enum
+enum MinerPauseEnum
 {
-    MINING_NOT_PAUSED = 0x00000000,
-    MINING_PAUSED_WAIT_FOR_T_START = 0x00000001,
-    MINING_PAUSED_API = 0x00000002
-    // MINING_PAUSED_USER             = 0x00000004,
-    // MINING_PAUSED_ERROR            = 0x00000008
-} MinigPauseReason;
-
-struct MiningPause
-{
-    std::atomic<uint64_t> m_mining_paused_flag = {MinigPauseReason::MINING_NOT_PAUSED};
-
-    void set_mining_paused(MinigPauseReason pause_reason)
-    {
-        m_mining_paused_flag.fetch_or(pause_reason, std::memory_order_seq_cst);
-    }
-
-    void clear_mining_paused(MinigPauseReason pause_reason)
-    {
-        m_mining_paused_flag.fetch_and(~pause_reason, std::memory_order_seq_cst);
-    }
-
-    MinigPauseReason get_mining_paused()
-    {
-        return (MinigPauseReason)m_mining_paused_flag.load(std::memory_order_relaxed);
-    }
-
-    bool is_mining_paused(const MinigPauseReason& pause_reason)
-    {
-        return (pause_reason != MinigPauseReason::MINING_NOT_PAUSED);
-    }
-
-    bool is_mining_paused() { return is_mining_paused(get_mining_paused()); }
-
-    std::string get_mining_paused_string(const MinigPauseReason& pause_reason)
-    {
-        std::string r;
-
-        if (pause_reason & MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START)
-            r = "temperature";
-
-        if (pause_reason & MinigPauseReason::MINING_PAUSED_API)
-            r += (string)(r.empty() ? "" : ",") + "api";
-
-        return r;
-    }
-
-    std::string get_mining_paused_string() { return get_mining_paused_string(get_mining_paused()); }
+    PauseDueToOverHeating,
+    PauseDueToAPIRequest,
+    PauseDueToFarmPaused,
+    Pause_MAX  // Must always be last as a placeholder of max count
 };
 
 
@@ -324,25 +282,33 @@ public:
     HwMonitorInfo hwmonInfo() { return m_hwmoninfo; }
 
     /**
-     * @brief Enables/Disables mining pause due to temp threshold reached
+     * @brief Pauses mining setting a reason flag
      */
-    void update_temperature(unsigned t, unsigned tstop, unsigned tstart);
+    void pause(MinerPauseEnum what);
 
-    void set_mining_paused(MinigPauseReason pause_reason)
-    {
-        m_mining_paused.set_mining_paused(pause_reason);
-    }
+    /**
+     * @brief Whether or not this miner is paused for any reason
+     */
+    bool paused();
 
-    void clear_mining_paused(MinigPauseReason pause_reason)
-    {
-        m_mining_paused.clear_mining_paused(pause_reason);
-    }
+    /**
+     * @brief Checks if the given reason for pausing is currently active
+    */
+    bool pauseTest(MinerPauseEnum what);
 
-    MinigPauseReason get_mining_paused() { return m_mining_paused.get_mining_paused(); }
+    /**
+     * @brief Returns the human readable reason for this miner being paused
+     */
+    std::string pausedString();
 
-    bool is_mining_paused() { return m_mining_paused.is_mining_paused(); }
+    /**
+     * @brief Cancels a pause flag.
+     * @note Miner can be paused for multiple reasons at a time.
+     */
+    void resume(MinerPauseEnum fromwhat);
 
     float RetrieveHashRate() noexcept { return m_hashRate.load(std::memory_order_relaxed); }
+
     void TriggerHashRateUpdate() noexcept
     {
         bool b = false;
@@ -360,11 +326,10 @@ protected:
      */
     virtual void kick_miner() = 0;
 
-    WorkPackage work() const
-    {
-        boost::mutex::scoped_lock l(x_work);
-        return m_work;
-    }
+    /**
+     * @brief Returns current workpackage this miner is working on
+     */
+    WorkPackage work() const;
 
     void updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept;
 
@@ -381,11 +346,11 @@ protected:
 
     HwMonitorInfo m_hwmoninfo;
     mutable boost::mutex x_work;
+    mutable boost::mutex x_pause;
     boost::condition_variable m_new_work_signal;
 
 private:
-
-    MiningPause m_mining_paused;
+    bitset<MinerPauseEnum::Pause_MAX> m_pauseFlags;
     WorkPackage m_work;
 
     std::chrono::steady_clock::time_point m_hashTime = std::chrono::steady_clock::now();

@@ -77,14 +77,7 @@ public:
      * @brief Sets the current mining mission.
      * @param _wp The work package we wish to be mining.
      */
-    void setWork(WorkPackage const& _wp)
-    {
-        // Set work to each miner
-        Guard l(x_minerWork);
-        m_work = _wp;
-        for (auto const& m : m_miners)
-            m->setWork(m_work);
-    }
+    void setWork(WorkPackage const& _wp);
 
     void setSealers(std::map<std::string, SealerDescriptor> const& _sealers);
 
@@ -95,9 +88,24 @@ public:
 
     /**
      * @brief All mining activities to a full stop.
-     *        Implies all mining threads are stopped.
+     * Implies all mining threads are stopped.
      */
     void stop();
+
+    /**
+     * @brief Signals all miners to suspend mining
+     */
+    void pause();
+
+    /**
+     * @brief Whether or not the whole farm has been paused
+     */
+    bool paused();
+
+    /**
+     * @brief Signals all miners to resume mining
+     */
+    void resume();
 
     /**
      * @brief Stop all mining activities and Starts them again
@@ -202,6 +210,9 @@ public:
     void submitProof(Solution const& _s) override;
 
 private:
+
+    std::atomic<bool> m_paused = {false};
+
     // Collects data about hashing and hardware status
     void collectData(const boost::system::error_code& ec);
 
