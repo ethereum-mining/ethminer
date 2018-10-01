@@ -9,24 +9,31 @@ branches:
 clone_depth: 100
 os: "Visual Studio 2017"
 environment:
+  matrix:
+    - CUDA_VER: "9.0"
+    - CUDA_VER: "10.0"
   HUNTER_CACHE_TOKEN:
     secure: VnpF1MH5MEFvUI5MiMMMFlmbDdst+bfom5ZFVgalYPp/SYDhbejjXJm9Dla/IgpC
 
 # Download CUDA Windows installer (local) and extract /compiler/* to /CUDA/vX.0/ zip archive.
 install: |
   git submodule update --init --recursive
-  appveyor DownloadFile https://github.com/ethereum/cpp-dependencies/releases/download/cache/CUDA-v9.0-WindowsServer2012.zip
-  7z x CUDA-v9.0-WindowsServer2012.zip -oC:\
-  set PATH=C:\Python36-x64;C:\Python36-x64\Scripts;%PATH%;C:\CUDA\v9.0\bin
+  set CUDA_ARCHIVE=CUDA-v%CUDA_VER%-WindowsServer2012.7z
+  appveyor DownloadFile https://github.com/ethereum-mining/ethminer/releases/download/build-deps/%CUDA_ARCHIVE%
+  7z x %CUDA_ARCHIVE% -oC:\
+  set PATH=C:\Python36-x64;C:\Python36-x64\Scripts;%PATH%;C:\CUDA\v%CUDA_VER%\bin
   pip install requests gitpython
   nvcc -V
 
 build_script:
-  - cmake -G "Visual Studio 15 2017 Win64" -H. -Bbuild -T v140 -DETHASHCUDA=ON -DAPICORE=ON -DHUNTER_JOBS_NUMBER=%NUMBER_OF_PROCESSORS% -DHUNTER_CONFIGURATION_TYPES=Release
+  - call "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\Common7\Tools\VsMSBuildCmd.bat"
+  - set CMAKE_ARGS=-G "Visual Studio 15 2017 Win64" -H. -Bbuild -DETHASHCUDA=ON -DAPICORE=ON -DHUNTER_JOBS_NUMBER=%NUMBER_OF_PROCESSORS%
+  - if "%CUDA_VER%" == "9.0" set CMAKE_ARGS=%CMAKE_ARGS% -T v140
+  - cmake %CMAKE_ARGS%
   - cmake --build build --config Release --target package
   - ps: |
       . build/ethminer/buildinfo.ps1
-      mv build/ethminer.zip build/$env:project_name-$env:project_version-$env:system_name-$env:system_processor.zip
+      mv build/ethminer.zip build/$env:project_name-$env:project_version-cuda$env:CUDA_VER-$env:system_name-$env:system_processor.zip
 
 artifacts:
   - path: build/ethminer-*.zip
