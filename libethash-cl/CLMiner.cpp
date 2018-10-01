@@ -265,8 +265,10 @@ CLMiner::CLMiner(unsigned _index) : Miner("cl-", _index) {}
 
 CLMiner::~CLMiner()
 {
+    DEV_BUILD_LOG_PROGRAMFLOW(cllog, "cl-" << m_index << " CLMiner::~CLMiner() begin");
     stopWorking();
     kick_miner();
+    DEV_BUILD_LOG_PROGRAMFLOW(cllog, "cl-" << m_index << " CLMiner::~CLMiner() end");
 }
 
 // NOTE: The following struct must match the one defined in
