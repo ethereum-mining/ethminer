@@ -7,9 +7,7 @@ branches:
     - appveyor
     - hunter
 clone_depth: 100
-os: Visual Studio 2017
-configuration:
-  - Release
+os: "Visual Studio 2017"
 environment:
   HUNTER_CACHE_TOKEN:
     secure: VnpF1MH5MEFvUI5MiMMMFlmbDdst+bfom5ZFVgalYPp/SYDhbejjXJm9Dla/IgpC
@@ -24,8 +22,8 @@ install: |
   nvcc -V
 
 build_script:
-  - cmake -G "Visual Studio 15 2017 Win64" -H. -Bbuild -T v140 -DETHASHCUDA=ON -DAPICORE=ON -DHUNTER_JOBS_NUMBER=%NUMBER_OF_PROCESSORS%
-  - cmake --build build --config %CONFIGURATION% --target package
+  - cmake -G "Visual Studio 15 2017 Win64" -H. -Bbuild -T v140 -DETHASHCUDA=ON -DAPICORE=ON -DHUNTER_JOBS_NUMBER=%NUMBER_OF_PROCESSORS% -DHUNTER_CONFIGURATION_TYPES=Release
+  - cmake --build build --config Release --target package
   - ps: |
       . build/ethminer/buildinfo.ps1
       mv build/ethminer.zip build/$env:project_name-$env:project_version-$env:system_name-$env:system_processor.zip
@@ -38,8 +36,8 @@ deploy:
   # Create GitHub release, also set the release name and description.
   provider: GitHub
   tag: $(appveyor_repo_tag_name)
-  release: $(project_name) $(project_version)
-  description: ''
+  release: "$(project_name) $(project_version)"
+  description: ""
   force_update: true  # Force update in case Travis CI created the release before.
   prerelease: $(project_version_is_prerelease)
   draft: false
