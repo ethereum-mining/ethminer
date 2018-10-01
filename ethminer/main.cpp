@@ -49,6 +49,8 @@ using namespace dev::eth;
 
 // Global vars
 bool g_running = false;
+bool g_exitOnError = false; // Whether or not ethminer should exit on mining threads errors
+
 condition_variable g_shouldstop;
 boost::asio::io_service g_io_service;  // The IO service itself
 
@@ -240,7 +242,7 @@ public:
 
         app.add_option("--HWMON", m_farmHwMonitors, "", true)->check(CLI::Range(0, 2));
 
-        app.add_flag("--exit", m_farmExitOnErrors, "");
+        app.add_flag("--exit", g_exitOnError, "");
 
         vector<string> pools;
         app.add_option("-P,--pool,pool", pools, "");
@@ -554,7 +556,7 @@ public:
             }
 
             if (!CLMiner::configureGPU(m_oclLWorkSize, m_oclGWorkSize, m_oclPlatform, 0,
-                    m_farmDagLoadMode, m_farmDagCreateDevice, m_farmExitOnErrors, m_oclNoBinary))
+                    m_farmDagLoadMode, m_farmDagCreateDevice, m_oclNoBinary))
             {
                 throw std::runtime_error("Unable to initialize OpenCL GPU(s)");
             }
@@ -585,7 +587,7 @@ public:
             }
 
             if (!CUDAMiner::configureGPU(m_cudaBlockSize, m_cudaGridSize, m_cudaStreams,
-                    m_cudaSchedule, m_farmDagLoadMode, m_farmDagCreateDevice, m_farmExitOnErrors))
+                    m_cudaSchedule, m_farmDagLoadMode, m_farmDagCreateDevice))
             {
                 throw std::runtime_error("Unable to initialize CUDA GPU(s)");
             }
@@ -601,6 +603,7 @@ public:
         g_running = true;
 
         // Signal traps
+        signal(SIGBREAK, MinerCLI::signalHandler);
         signal(SIGINT, MinerCLI::signalHandler);
         signal(SIGTERM, MinerCLI::signalHandler);
 
@@ -1194,8 +1197,6 @@ private:
     unsigned m_farmDagLoadMode = 0;  // DAG load mode : 0=parallel, 1=sequential, 2=single
     unsigned m_farmDagCreateDevice =
         0;  // Ordinal index of GPU creating DAG (Implies m_farmDagLoadMode == 2
-    bool m_farmExitOnErrors =
-        false;                  // Whether or not ethminer should exit on mining threads errors
     bool m_farmNoEval = false;  // Whether or not ethminer should CPU re-evaluate solutions
     unsigned m_farmPollInterval =
         500;  // In getWork mode this establishes the ms. interval to check for new job

@@ -39,7 +39,6 @@ public:
 
 private:
 
-    void suspendMining();
     void rotateConnect();
 
     unsigned m_hrReportingInterval = 60;

@@ -200,10 +200,9 @@ bool CUDAMiner::init(int epoch)
     }
     catch (std::runtime_error const& _e)
     {
-        cwarn << "Error CUDA mining: " << _e.what();
-        if (s_exit)
-            exit(1);
-        return false;
+        string _what = "Error CUDA mining: ";
+        _what.append(_e.what());
+        throw std::runtime_error(_what);
     }
     return true;
 }
@@ -254,12 +253,9 @@ void CUDAMiner::workLoop()
     }
     catch (cuda_runtime_error const& _e)
     {
-        cwarn << "GPU error: " << _e.what();
-        if (s_exit)
-        {
-            cwarn << "Terminating.";
-            exit(1);
-        }
+        string _what = "GPU error: ";
+        _what.append(_e.what());
+        throw std::runtime_error(_what);
     }
 }
 
@@ -320,9 +316,9 @@ void CUDAMiner::listDevices()
     }
     catch (std::runtime_error const& err)
     {
-        cwarn << "CUDA error: " << err.what();
-        if (s_exit)
-            exit(1);
+        string _what = "CUDA error: ";
+        _what.append(err.what());
+        throw std::runtime_error(_what);
     }
 }
 
@@ -331,11 +327,10 @@ unsigned const CUDAMiner::c_defaultGridSize = 8192;  // * CL_DEFAULT_LOCAL_WORK_
 unsigned const CUDAMiner::c_defaultNumStreams = 2;
 
 bool CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
-    unsigned _scheduleFlag, unsigned _dagLoadMode, unsigned _dagCreateDevice, bool _exit)
+    unsigned _scheduleFlag, unsigned _dagLoadMode, unsigned _dagCreateDevice)
 {
     s_dagLoadMode = _dagLoadMode;
     s_dagCreateDevice = _dagCreateDevice;
-    s_exit = _exit;
     s_blockSize = _blockSize;
     s_gridSize = _gridSize;
     s_numStreams = _numStreams;
@@ -374,11 +369,11 @@ bool CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _
         }
         return true;
     }
-    catch (runtime_error)
+    catch (cuda_runtime_error const& _e)
     {
-        if (s_exit)
-            exit(1);
-        return false;
+        string _what = "CUDA error: ";
+        _what.append(_e.what());
+        throw std::runtime_error(_what);
     }
 
     return true;

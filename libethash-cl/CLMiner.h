@@ -58,9 +58,11 @@ public:
     static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
     static unsigned getNumDevices();
     static void listDevices();
+
     static bool configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
         unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice,
-        bool _exit, bool _nobinary);
+        bool _nobinary);
+
     static void setNumInstances(unsigned _instances)
     {
         s_numInstances = std::min<unsigned>(_instances, getNumDevices());

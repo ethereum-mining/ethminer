@@ -31,9 +31,6 @@ uint8_t* Miner::s_dagInHostMemory = nullptr;
 
 FarmFace* FarmFace::m_this = nullptr;
 
-bool Miner::s_exit = false;
-
-
 std::ostream& operator<<(std::ostream& os, const HwMonitor& _hw)
 {
     os << _hw.tempC << "C " << _hw.fanP << "%";

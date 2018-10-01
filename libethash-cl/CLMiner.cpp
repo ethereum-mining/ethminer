@@ -423,9 +423,8 @@ void CLMiner::workLoop()
     }
     catch (cl::Error const& _e)
     {
-        cwarn << ethCLErrorHelper("OpenCL Error", _e);
-        if (s_exit)
-            exit(1);
+        string _what = ethCLErrorHelper("OpenCL Error", _e);
+        throw std::runtime_error(_what);
     }
 }
 
@@ -500,12 +499,11 @@ void CLMiner::listDevices()
 }
 
 bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
-    unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice, bool _exit,
+    unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice,
     bool _nobinary)
 {
     s_dagLoadMode = _dagLoadMode;
     s_dagCreateDevice = _dagCreateDevice;
-    s_exit = _exit;
     s_noBinary = _nobinary;
 
     s_platformId = _platformId;
@@ -848,10 +846,8 @@ bool CLMiner::init(int epoch)
     }
     catch (cl::Error const& err)
     {
-        cwarn << ethCLErrorHelper("OpenCL init failed", err);
-        if (s_exit)
-            exit(1);
-        return false;
+        string _what = ethCLErrorHelper("OpenCL init failed", err);
+        throw std::runtime_error(_what);
     }
     return true;
 }

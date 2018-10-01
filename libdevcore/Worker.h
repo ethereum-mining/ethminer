@@ -23,10 +23,13 @@
 
 #include <atomic>
 #include <cassert>
+#include <signal.h>
 #include <string>
 #include <thread>
 
 #include "Guards.h"
+
+extern bool g_exitOnError;
 
 namespace dev
 {

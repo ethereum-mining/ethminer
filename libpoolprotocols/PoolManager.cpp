@@ -371,7 +371,7 @@ void PoolManager::rotateConnect()
         }
         else
         {
-            cnote << "'Exit' failover just got hit. Exiting...";
+            cnote << "'exit' failover just got hit. Exiting...";
         }
 
         // Stop mining if applicable

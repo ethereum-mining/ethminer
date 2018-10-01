@@ -58,6 +58,11 @@ void Worker::startWorking()
                 catch (std::exception const& _e)
                 {
                     clog(WarnChannel) << "Exception thrown in Worker thread: " << _e.what();
+                    if (g_exitOnError)
+                    {
+                        clog(WarnChannel) << "Terminating due to --exit";
+                        raise(SIGTERM);
+                    }
                 }
 
                 //				ex = WorkerState::Stopping;
