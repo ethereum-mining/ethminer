@@ -80,6 +80,16 @@ void Worker::startWorking()
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Worker::startWorking() end");
 }
 
+void Worker::requestStopWorking()
+{
+    DEV_GUARDED(x_work)
+    if (m_work)
+    {
+        WorkerState ex = WorkerState::Started;
+        m_state.compare_exchange_strong(ex, WorkerState::Stopping);
+    }
+}
+
 void Worker::stopWorking()
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Worker::stopWorking() begin");
