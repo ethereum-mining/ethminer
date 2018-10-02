@@ -68,7 +68,7 @@ Check our [samples](docs/POOL_EXAMPLES_ETH.md) to see how to connect to differen
 
 | CI            | OS            | Status  | Development builds |
 | ------------- | ------------- | -----   | -----------------  |
-| [Travis CI]   | Linux, macOS  | [![Travis CI](https://img.shields.io/travis/ethereum-mining/master/ethminer.svg)][Travis CI]    | ✗ No build artifacts, [Amazon S3 is needed] for this |
+| [Travis CI]   | Linux, macOS  | [![Travis CI](https://img.shields.io/travis/ethereum-mining/ethminer/master.svg)][Travis CI]    | ✗ No build artifacts, [Amazon S3 is needed] for this |
 | [AppVeyor]    | Windows       | [![AppVeyor](https://img.shields.io/appveyor/ci/ethereum-mining/ethminer/master.svg)][AppVeyor] | ✓ Build artifacts available for all PRs and branches |
 
 The AppVeyor system automatically builds a Windows .exe for every commit. The latest version is always available [on the landing page](https://ci.appveyor.com/project/ethereum-mining/ethminer) or you can [browse the history](https://ci.appveyor.com/project/ethereum-mining/ethminer/history) to access previous builds.
