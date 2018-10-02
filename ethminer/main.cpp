@@ -49,7 +49,7 @@ using namespace dev::eth;
 
 // Global vars
 bool g_running = false;
-bool g_exitOnError = false; // Whether or not ethminer should exit on mining threads errors
+bool g_exitOnError = false;  // Whether or not ethminer should exit on mining threads errors
 
 condition_variable g_shouldstop;
 boost::asio::io_service g_io_service;  // The IO service itself
@@ -224,8 +224,7 @@ public:
 
         app.add_option("-v,--verbosity", g_logOptions, "", true)->check(CLI::Range(LOG_NEXT - 1));
 
-        app.add_option("--farm-recheck", m_farmPollInterval, "", true)
-            ->check(CLI::Range(1, 99999));
+        app.add_option("--farm-recheck", m_farmPollInterval, "", true)->check(CLI::Range(1, 99999));
 
         app.add_option("--farm-retries", m_poolMaxRetries, "", true)->check(CLI::Range(0, 99999));
 
@@ -333,8 +332,8 @@ public:
 
         app.add_option("--cuda-devices,--cu-devices", m_cudaDevices, "");
 
-        app.add_set("--cuda-parallel-hash,--cu-parallel-hash", m_cudaParallelHash, {1, 2, 4, 8},
-            "", true);
+        app.add_set(
+            "--cuda-parallel-hash,--cu-parallel-hash", m_cudaParallelHash, {1, 2, 4, 8}, "", true);
 
         string sched = "sync";
         app.add_set(
@@ -353,8 +352,7 @@ public:
 
         app.add_option("--benchmark-warmup", m_benchmarkWarmup, "", true);
 
-        app.add_option("--benchmark-trials", m_benchmarkTrial, "", true)
-            ->check(CLI::Range(1, 99));
+        app.add_option("--benchmark-trials", m_benchmarkTrial, "", true)->check(CLI::Range(1, 99));
 
         bool cl_miner = false;
         app.add_flag("-G,--opencl", cl_miner, "");
@@ -475,6 +473,7 @@ public:
                 }
                 m_mode = mode;
             }
+
         }
 
 
@@ -603,7 +602,6 @@ public:
         g_running = true;
 
         // Signal traps
-        signal(SIGBREAK, MinerCLI::signalHandler);
         signal(SIGINT, MinerCLI::signalHandler);
         signal(SIGTERM, MinerCLI::signalHandler);
 
@@ -627,7 +625,7 @@ public:
     {
         cout
             << "Ethminer - GPU ethash miner" << endl
-            << "minimal usage : ethminer [DEVICES_TYPE] [OPTIONS] -P... [-P...]" << endl 
+            << "minimal usage : ethminer [DEVICES_TYPE] [OPTIONS] -P... [-P...]" << endl
             << endl
             << "Devices type options :" << endl
             << endl
@@ -840,7 +838,8 @@ public:
                  << "    --failover-timeout  INT[0 .. ] Default not set" << endl
                  << "                        Sets the number of minutes ethminer can stay" << endl
                  << "                        connected to a fail-over pool before trying to" << endl
-                 << "                        reconnect to the primary (the first) connection." << endl
+                 << "                        reconnect to the primary (the first) connection."
+                 << endl
                  << "                        before switching to a fail-over connection" << endl
                  << "    --work-timeout      INT[180 .. 99999] Default = 180" << endl
                  << "                        If no new work received from pool after this" << endl
@@ -960,7 +959,8 @@ public:
                     "john.doe@gmail.com"
                  << endl
                  << endl
-                 << "    You can add as many -P arguments as you want. Every -P specification" << endl
+                 << "    You can add as many -P arguments as you want. Every -P specification"
+                 << endl
                  << "    after the first one behaves as fail-over connection. When also the" << endl
                  << "    the fail-over disconnects ethminer passes to the next connection" << endl
                  << "    available and so on till the list is exhausted. At that moment" << endl
@@ -1196,7 +1196,7 @@ private:
     // -- Farm related params
     unsigned m_farmDagLoadMode = 0;  // DAG load mode : 0=parallel, 1=sequential, 2=single
     unsigned m_farmDagCreateDevice =
-        0;  // Ordinal index of GPU creating DAG (Implies m_farmDagLoadMode == 2
+        0;                      // Ordinal index of GPU creating DAG (Implies m_farmDagLoadMode == 2
     bool m_farmNoEval = false;  // Whether or not ethminer should CPU re-evaluate solutions
     unsigned m_farmPollInterval =
         500;  // In getWork mode this establishes the ms. interval to check for new job

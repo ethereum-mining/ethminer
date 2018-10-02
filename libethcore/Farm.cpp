@@ -63,10 +63,6 @@ Farm::~Farm()
     if (nvmlh)
         wrap_nvml_destroy(nvmlh);
 
-    if (g_exitOnError)
-    {
-    }
-
     // Stop mining
     stop();
 
