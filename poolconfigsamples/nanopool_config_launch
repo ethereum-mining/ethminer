@@ -1,0 +1,5 @@
+//This is a config file for Nanopool
+//Just replace your address and worker name and if desired email 
+//Give execute permissions
+
+./ethminer -P stratum1+tcp://0x605aa79B263b8f0a9484b3b938494DC9C7E56E21@eth-us-east1.nanopool.org:9999/minecore/damianwhite63@yahoo.com -P stratum1+tcp://0x605aa79B263b8f0a9484b3b938494DC9C7E56E21@eth-us-west1.nanopool.org:9999/minecore/damianwhite63@yahoo.com -P stratum1+tcp://0x605aa79B263b8f0a9484b3b938494DC9C7E56E21@eth-us-eu1.nanopool.org:9999/minecore/damianwhite63@yahoo.com -P stratum1+tcp://0x605aa79B263b8f0a9484b3b938494DC9C7E56E21@eth-us-asia1.nanopool.org:9999/minecore/damianwhite63@yahoo.com --failover-timeout=5 --report-hashrate --cuda
