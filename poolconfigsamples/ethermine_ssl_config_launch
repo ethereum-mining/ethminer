@@ -1,0 +1,4 @@
+//This is a sample launch file for ethermine using a ssl connection
+//Just give this file execute permissions, replace the address and worker name with yours
+
+./ethminer -P  stratum+ssl://0x605aa79B263b8f0a9484b3b938494DC9C7E56E21.minecore@us1.ethermine.org:5555 -P  stratum+ssl://0x605aa79B263b8f0a9484b3b938494DC9C7E56E21.minecore@us2.ethermine.org:5555 -P  stratum+ssl://0x605aa79B263b8f0a9484b3b938494DC9C7E56E21.minecore@eu1.ethermine.org:5555 -P  stratum+ssl://0x605aa79B263b8f0a9484b3b938494DC9C7E56E21.minecore@asia1.ethermine.org:5555  --failover-timeout=5 --cuda --report-hashrate

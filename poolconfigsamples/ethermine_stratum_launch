@@ -1,0 +1,5 @@
+//Normal stratum pool connection
+//Replace address and worker name
+//Give excute permissions
+
+./ethminer -P  stratum+tcp://0x605aa79B263b8f0a9484b3b938494DC9C7E56E21.minecore@us1.ethermine.org:4444 -P  stratum+tcp://0x605aa79B263b8f0a9484b3b938494DC9C7E56E21.minecore@us2.ethermine.org:4444 -P  stratum+tcp://0x605aa79B263b8f0a9484b3b938494DC9C7E56E21.minecore@eu1.ethermine.org:4444 -P  stratum+tcp://0x605aa79B263b8f0a9484b3b938494DC9C7E56E21.minecore@asia1.ethermine.org:4444 --failover-timeout=5 --cuda --report-hashrate
