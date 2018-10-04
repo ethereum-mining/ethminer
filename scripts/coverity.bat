@@ -29,7 +29,7 @@ set "PATH=%PERL_PATH%;%PATH%"
 mkdir ..\build\
 pushd ..\build\
 
-cmake -G "Visual Studio 15 2017 Win64" -H. -Bbuild -DETHASHCL=ON -DETHASHCUDA=ON -DAPICORE=ON ..
+cmake -G "Visual Studio 15 2017 Win64" -H. -Bbuild -T v140,host=x64 -DETHASHCL=ON -DETHASHCUDA=ON -DAPICORE=ON ..
 "%COVDIR%\bin\cov-build.exe" --dir "..\cov-int" cmake --build . --config Release --target package
 popd
 
