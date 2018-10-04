@@ -15,6 +15,8 @@ PoolManager::PoolManager(
     m_submithrtimer(g_io_service),
     m_minerType(minerType)
 {
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::PoolManager() begin");
+
     m_this = this;
     p_client = client;
     m_maxConnectionAttempts = maxTries;
@@ -191,10 +193,13 @@ PoolManager::PoolManager(
             Farm::f().start("opencl", true);
         }
     });
+
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::PoolManager() end");
 }
 
 void PoolManager::stop()
 {
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::stop() begin");
     if (m_running.load(std::memory_order_relaxed))
     {
         m_stopping.store(true, std::memory_order_relaxed);
@@ -219,6 +224,7 @@ void PoolManager::stop()
             }
         }
     }
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::stop() end");
 }
 
 void PoolManager::addConnection(URI& conn)
