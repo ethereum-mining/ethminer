@@ -240,8 +240,8 @@ private:
     boost::asio::deadline_timer m_collectTimer;
     static const int m_collectInterval = 5000;
 
-    mutable SolutionStats m_solutionStats;
     std::chrono::steady_clock::time_point m_farm_launched = std::chrono::steady_clock::now();
+    mutable SolutionStats m_solutionStats;
 
     string m_pool_addresses;
 
