@@ -950,10 +950,11 @@ private:
             // Display current stats of the farm if it's connected
             if (PoolManager::p().isConnected())
             {
+                auto mp = Farm::f().miningProgress();
                 auto solstats = Farm::f().getSolutionStats();
                 {
                     ostringstream os;
-                    os << Farm::f().miningProgress() << ' ';
+                    os << mp << ' ';
                     if (!(g_logOptions & LOG_PER_GPU))
                         os << solstats << ' ';
                     os << Farm::f().farmLaunchedFormatted();
