@@ -198,11 +198,12 @@ and expect back a response like this:
     "epoch_changes": 1,                 // Ethminer starts with epoch 0. First connection to pool increments this counter
     "hashrate": 46709128,               // Overall HashRate in H/s
     "hostname": "<omitted-hostname>",
-    "runtime": 4,                       // Total running time in minutes
+    "runtime": 240,                     // Total running time in seconds
     "shares": {                         // Summarized info about shares
       "accepted": 5,
       "acceptedstale": 1,
       "invalid": 1,
+      "lastupdate": 58,                 // Latest update of any share info of is X seconds ago
       "rejected": 0
     },
     "tstart": 63,
@@ -221,7 +222,7 @@ and expect back a response like this:
          "accepted": 3,
          "acceptedstale": 0,
          "invalid": 0,
-         "lastupdate": 1,               // Share info from this GPU updated X minutes ago
+         "lastupdate": 58,              // Share info from this GPU updated X seconds ago
          "rejected": 0
        },
        "temp": 53                       // Temperature in °C
@@ -238,7 +239,7 @@ and expect back a response like this:
          "accepted": 2,
          "acceptedstale": 1,
          "invalid": 1,
-         "lastupdate": 2,
+         "lastupdate": 134,
          "rejected": 0
        },
        "temp": 56

@@ -672,7 +672,6 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         {
             jResponse["result"] = false;
         }
-
     }
 
     else if (_method == "miner_setverbosity")
@@ -919,8 +918,8 @@ Json::Value ApiConnection::getMinerStatHR()
 }
 
 
-Json::Value ApiConnection::getMinerStatDetailPerMiner(
-    const WorkingProgress& p, const SolutionStats& s, size_t index)
+Json::Value ApiConnection::getMinerStatDetailPerMiner(const WorkingProgress& p,
+    const SolutionStats& s, size_t index, const std::chrono::steady_clock::time_point& now)
 {
     Json::Value jRes;
     auto const& miner = Farm::f().getMiner(index);
@@ -938,9 +937,9 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
     jshares["rejected"] = s.getRejects(index);
     jshares["invalid"] = s.getFailures(index);
     jshares["acceptedstale"] = s.getAcceptedStales(index);
-    auto solution_lastupdated = std::chrono::duration_cast<std::chrono::minutes>(
-        std::chrono::steady_clock::now() - s.getLastUpdated(index));
-    jshares["lastupdate"] = uint64_t(solution_lastupdated.count()); // last update of this gpu stat was x minutes ago
+    auto solution_lastupdated =
+        std::chrono::duration_cast<std::chrono::seconds>(now - s.getLastUpdated(index));
+    jshares["lastupdate"] = uint64_t(solution_lastupdated.count());  // last update of this gpu stat was x seconds ago
     jRes["shares"] = jshares;
 
 
@@ -991,8 +990,9 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
  */
 Json::Value ApiConnection::getMinerStatDetail()
 {
-    auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
-        std::chrono::steady_clock::now() - Farm::f().farmLaunched());
+    const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+    auto runningTime =
+        std::chrono::duration_cast<std::chrono::seconds>(now - Farm::f().farmLaunched());
 
     SolutionStats s = Farm::f().getSolutionStats();
     WorkingProgress p = Farm::f().miningProgress();
@@ -1003,7 +1003,7 @@ Json::Value ApiConnection::getMinerStatDetail()
     Json::Value jRes;
 
     jRes["version"] = ethminer_get_buildinfo()->project_name_with_version;  // miner version.
-    jRes["runtime"] = uint64_t(runningTime.count());  // running time, in minutes.
+    jRes["runtime"] = uint64_t(runningTime.count());  // running time, in seconds.
 
     {
         // Even the client should know which host was queried
@@ -1048,7 +1048,7 @@ Json::Value ApiConnection::getMinerStatDetail()
     {
         for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
         {
-            jRes["gpus"].append(getMinerStatDetailPerMiner(p, s, i));
+            jRes["gpus"].append(getMinerStatDetailPerMiner(p, s, i, now));
         }
     }
     else
@@ -1065,6 +1065,10 @@ Json::Value ApiConnection::getMinerStatDetail()
     jshares["rejected"] = s.getRejects();
     jshares["invalid"] = s.getFailures();
     jshares["acceptedstale"] = s.getAcceptedStales();
+    auto solution_lastupdated =
+        std::chrono::duration_cast<std::chrono::seconds>(now - s.getLastUpdated());
+    jshares["lastupdate"] =
+        uint64_t(solution_lastupdated.count());  // last update of this gpu stat was x seconds ago
     jRes["shares"] = jshares;
 
     return jRes;
