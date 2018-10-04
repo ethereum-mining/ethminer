@@ -151,6 +151,8 @@ void Farm::stop()
     {
         {
             Guard l(x_minerWork);
+            for (auto const& miner : m_miners)
+                miner->triggerStopWorking();
             m_miners.clear();
             m_isMining.store(false, std::memory_order_relaxed);
         }

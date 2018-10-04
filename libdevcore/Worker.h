@@ -55,7 +55,10 @@ public:
     /// Starts worker thread; causes startedWorking() to be called.
     void startWorking();
 
-    /// Stop worker thread; causes call to stopWorking().
+    /// Triggers worker thread it should stop
+    void triggerStopWorking();
+
+    /// Stop worker thread; causes call to stopWorking() and waits till thread has stopped.
     void stopWorking();
 
     /// Whether or not this worker should stop
