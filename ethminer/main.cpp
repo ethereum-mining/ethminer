@@ -42,6 +42,10 @@
 #include <regex>
 #endif
 
+#if defined(__linux__) || defined(__APPLE__)
+#include <execinfo.h>
+#endif
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -148,12 +152,52 @@ public:
 
     static void signalHandler(int sig)
     {
-        (void)sig;
         dev::setThreadName("main");
-        cnote << "Signal intercepted ...";
-        g_running = false;
-        g_shouldstop.notify_all();
+
+        switch (sig)
+        {
+#if defined(__linux__) || defined(__APPLE__)
+#define BACKTRACE_MAX_FRAMES 100
+            case SIGSEGV:
+                static bool in_handler = false;
+                if (!in_handler)
+                {
+                    int j, nptrs;
+                    void *buffer[BACKTRACE_MAX_FRAMES];
+                    char **symbols;
+
+                    in_handler = true;
+
+                    dev::setThreadName("main");
+                    cerr << "SIGSEGV encountered ...\n";
+                    cerr << "stack trace:\n";
+
+                    nptrs = backtrace(buffer, BACKTRACE_MAX_FRAMES);
+                    cerr << "backtrace() returned " << nptrs << " addresses\n";
+
+                    symbols = backtrace_symbols(buffer, nptrs);
+                    if (symbols == NULL)
+                    {
+                       perror("backtrace_symbols()");
+                       exit(EXIT_FAILURE); // Also exit 128 ??
+                    }
+                    for (j = 0; j < nptrs; j++)
+                       cerr << symbols[j] << "\n";
+                    free(symbols);
+
+                    in_handler = false;
+                }
+                exit(128);
+#undef BACKTRACE_MAX_FRAMES
+#endif
+            default:
+                cnote << "Signal intercepted ...";
+                g_running = false;
+                g_shouldstop.notify_all();
+                break;
+        }
     }
+
 #if API_CORE
 
     static void ParseBind(
@@ -602,6 +646,9 @@ public:
         g_running = true;
 
         // Signal traps
+#if defined(__linux__) || defined(__APPLE__)
+        signal(SIGSEGV, MinerCLI::signalHandler);
+#endif
         signal(SIGINT, MinerCLI::signalHandler);
         signal(SIGTERM, MinerCLI::signalHandler);
 
