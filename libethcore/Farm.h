@@ -120,10 +120,7 @@ public:
      * @brief Get information on the progress of mining this work package.
      * @return The progress with mining so far.
      */
-    WorkingProgress const& miningProgress() const
-    {
-        return m_progress;
-    }
+    WorkingProgress const& miningProgress() const { return m_progress; }
 
     std::vector<std::shared_ptr<Miner>> getMiners() { return m_miners; }
 
@@ -134,7 +131,7 @@ public:
         return m_miners[index];
     }
 
-    SolutionStats getSolutionStats() { return m_solutionStats; } // returns a copy
+    SolutionStats getSolutionStats() { return m_solutionStats; }  // returns a copy
 
     void failedSolution(unsigned _miner_index) override { m_solutionStats.failed(_miner_index); }
 
@@ -233,8 +230,8 @@ private:
     boost::asio::deadline_timer m_collectTimer;
     static const int m_collectInterval = 5000;
 
-    mutable SolutionStats m_solutionStats;
     std::chrono::steady_clock::time_point m_farm_launched = std::chrono::steady_clock::now();
+    mutable SolutionStats m_solutionStats;
 
     string m_pool_addresses;
 
@@ -262,4 +259,3 @@ private:
 
 }  // namespace eth
 }  // namespace dev
-

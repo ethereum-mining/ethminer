@@ -18,9 +18,9 @@
 #pragma once
 
 #include <list>
+#include <numeric>
 #include <string>
 #include <thread>
-#include <numeric>
 
 #include <boost/circular_buffer.hpp>
 #include <boost/timer.hpp>
@@ -89,7 +89,8 @@ public:
 std::ostream& operator<<(std::ostream& os, const FormattedMemSize& s);
 
 /// Pause mining
-typedef enum {
+typedef enum
+{
     MINING_NOT_PAUSED = 0x00000000,
     MINING_PAUSED_WAIT_FOR_T_START = 0x00000001,
     MINING_PAUSED_API = 0x00000002
@@ -121,10 +122,7 @@ struct MiningPause
         return (pause_reason != MinigPauseReason::MINING_NOT_PAUSED);
     }
 
-    bool is_mining_paused()
-    {
-        return is_mining_paused(get_mining_paused());
-    }
+    bool is_mining_paused() { return is_mining_paused(get_mining_paused()); }
 
     std::string get_mining_paused_string(const MinigPauseReason& pause_reason)
     {
@@ -139,10 +137,7 @@ struct MiningPause
         return r;
     }
 
-    std::string get_mining_paused_string()
-    {
-        return get_mining_paused_string(get_mining_paused());
-    }
+    std::string get_mining_paused_string() { return get_mining_paused_string(get_mining_paused()); }
 };
 
 
@@ -174,40 +169,36 @@ public:
         if (m_accepts.size() <= miner_index)
             m_accepts.resize(miner_index + 1);
         m_accepts[miner_index]++;
-        auto now = std::chrono::steady_clock::now();
         if (m_lastUpdated.size() <= miner_index)
-            m_lastUpdated.resize(miner_index + 1, now);
-        m_lastUpdated[miner_index] = now;
+            m_lastUpdated.resize(miner_index + 1, m_tpInitalized);
+        m_lastUpdated[miner_index] = std::chrono::steady_clock::now();
     }
     void rejected(unsigned miner_index)
     {
         if (m_rejects.size() <= miner_index)
             m_rejects.resize(miner_index + 1);
         m_rejects[miner_index]++;
-        auto now = std::chrono::steady_clock::now();
         if (m_lastUpdated.size() <= miner_index)
-            m_lastUpdated.resize(miner_index + 1, now);
-        m_lastUpdated[miner_index] = now;
+            m_lastUpdated.resize(miner_index + 1, m_tpInitalized);
+        m_lastUpdated[miner_index] = std::chrono::steady_clock::now();
     }
     void failed(unsigned miner_index)
     {
         if (m_failures.size() <= miner_index)
             m_failures.resize(miner_index + 1);
         m_failures[miner_index]++;
-        auto now = std::chrono::steady_clock::now();
         if (m_lastUpdated.size() <= miner_index)
-            m_lastUpdated.resize(miner_index + 1, now);
-        m_lastUpdated[miner_index] = now;
+            m_lastUpdated.resize(miner_index + 1, m_tpInitalized);
+        m_lastUpdated[miner_index] = std::chrono::steady_clock::now();
     }
     void acceptedStale(unsigned miner_index)
     {
         if (m_acceptedStales.size() <= miner_index)
             m_acceptedStales.resize(miner_index + 1);
         m_acceptedStales[miner_index]++;
-        auto now = std::chrono::steady_clock::now();
         if (m_lastUpdated.size() <= miner_index)
-            m_lastUpdated.resize(miner_index + 1, now);
-        m_lastUpdated[miner_index] = now;
+            m_lastUpdated.resize(miner_index + 1, m_tpInitalized);
+        m_lastUpdated[miner_index] = std::chrono::steady_clock::now();
     }
 
     unsigned getAccepts() const { return accumulate(m_accepts.begin(), m_accepts.end(), 0); }
@@ -245,8 +236,17 @@ public:
     std::chrono::steady_clock::time_point getLastUpdated(unsigned miner_index) const
     {
         if (m_lastUpdated.size() <= miner_index)
-            return std::chrono::steady_clock::now();
+            return m_tpInitalized;
         return m_lastUpdated[miner_index];
+    }
+    std::chrono::steady_clock::time_point getLastUpdated() const
+    {
+        /* return the newest update time of all GPUs */
+        if (!m_lastUpdated.size())
+            return m_tpInitalized;
+
+        auto max_index = std::max_element(m_lastUpdated.begin(), m_lastUpdated.end());
+        return m_lastUpdated[std::distance(m_lastUpdated.begin(), max_index)];
     }
 
     std::string getString(unsigned miner_index)
@@ -267,12 +267,12 @@ public:
     }
 
 private:
-
     std::vector<unsigned> m_accepts = {};
     std::vector<unsigned> m_rejects = {};
     std::vector<unsigned> m_failures = {};
     std::vector<unsigned> m_acceptedStales = {};
     std::vector<std::chrono::steady_clock::time_point> m_lastUpdated = {};
+    const std::chrono::steady_clock::time_point m_tpInitalized = std::chrono::steady_clock::now();
 };
 
 std::ostream& operator<<(std::ostream& os, const SolutionStats& s);
@@ -320,8 +320,7 @@ class Miner : public Worker
 public:
     Miner(std::string const& _name, size_t _index)
       : Worker(_name + std::to_string(_index)), m_index(_index)
-    {
-    }
+    {}
 
     virtual ~Miner() = default;
 
