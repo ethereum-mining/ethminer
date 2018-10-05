@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.16.1rc0
+
+### Fixed
+
+- Display interval correction [#1606](https://github.com/ethereum-mining/ethminer/pull/1606)
+
 ## 0.16.0rc0
 
 ### Fixed
