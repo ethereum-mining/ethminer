@@ -301,19 +301,33 @@ void CUDAMiner::listDevices()
 {
     try
     {
-        cout << "\nListing CUDA devices.\nFORMAT: [deviceID] deviceName\n";
+        cout << "List of CUDA capable devices" << endl
+             << setw(3) << setiosflags(ios::left) << "Id" << setw(11) << "Pci Id" << setw(23)
+             << "Name" << setw(5) << "SM" << resetiosflags(ios::left) << setw(10) << "Mem" << endl;
+
         int numDevices = getNumDevices();
         for (int i = 0; i < numDevices; ++i)
         {
             cudaDeviceProp props;
             CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
 
-            cout << "[" + to_string(i) + "] " + string(props.name) + "\n";
-            cout << "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor) +
-                        "\n";
-            cout << "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) + "\n";
-            cout << "\tPci: " << setw(4) << setfill('0') << hex << props.pciDomainID << ':'
-                 << setw(2) << props.pciBusID << ':' << setw(2) << props.pciDeviceID << '\n';
+            cout << setw(3) << setiosflags(ios::left) << to_string(i) << resetiosflags(ios::left)
+                 << setw(4) << setfill('0') << hex << props.pciDomainID << ":" << setw(2)
+                 << props.pciBusID << ":" << setw(2) << props.pciDeviceID << " " << setw(23)
+                 << setiosflags(ios::left) << setfill(' ') << string(props.name) << setw(5)
+                 << (to_string(props.major) + "." + to_string(props.minor))
+                 << resetiosflags(ios::left) << setw(10) << FormattedMemSize(props.totalGlobalMem)
+                 << endl;
+
+            //
+
+            // cout << "[" + to_string(i) + "] " + string(props.name) + "\n";
+            // cout << "\tCompute version: " + to_string(props.major) + "." + to_string(props.minor)
+            // +
+            //            "\n";
+            // cout << "\tcudaDeviceProp::totalGlobalMem: " + to_string(props.totalGlobalMem) +
+            // "\n"; cout << "\tPci: " << setw(4) << setfill('0') << hex << props.pciDomainID << ':'
+            //     << setw(2) << props.pciBusID << ':' << setw(2) << props.pciDeviceID << '\n';
         }
     }
     catch (std::runtime_error const& err)
