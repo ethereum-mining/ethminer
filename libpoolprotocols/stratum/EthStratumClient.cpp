@@ -346,11 +346,9 @@ void EthStratumClient::resolve_handler(
         m_connected.store(false, std::memory_order_relaxed);
         m_connecting.store(false, std::memory_order_relaxed);
 
-        // Trigger handlers
+        // We "simulate" a disconnect, to ensure a fully shutdown state
         if (m_onDisconnected)
-        {
-            m_onDisconnected();
-        }
+            disconnect_finalize();
     }
 }
 
@@ -398,11 +396,10 @@ void EthStratumClient::start_connect()
         m_connecting.store(false, std::memory_order_relaxed);
         cwarn << "No more IP addresses to try for host: " << m_conn->Host();
 
-        // Trigger handlers
+        // We "simulate" a disconnect, to ensure a fully shutdown state
         if (m_onDisconnected)
-        {
-            m_onDisconnected();
-        }
+            disconnect_finalize();
+
     }
 }
 
