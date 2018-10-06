@@ -39,8 +39,10 @@ CUDAMiner::CUDAMiner(unsigned _index) : Miner("cuda-", _index), m_io_strand(g_io
 
 CUDAMiner::~CUDAMiner()
 {
+    DEV_BUILD_LOG_PROGRAMFLOW(cudalog, "cuda-" << m_index << " CUDAMiner::~CUDAMiner() begin");
     stopWorking();
     kick_miner();
+    DEV_BUILD_LOG_PROGRAMFLOW(cudalog, "cuda-" << m_index << " CUDAMiner::~CUDAMiner() end");
 }
 
 unsigned CUDAMiner::m_parallelHash = 4;

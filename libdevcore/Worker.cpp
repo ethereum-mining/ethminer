@@ -30,6 +30,7 @@ using namespace dev;
 
 void Worker::startWorking()
 {
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Worker::startWorking() begin");
     //	cnote << "startWorking for thread" << m_name;
     Guard l(x_work);
     if (m_work)
@@ -81,6 +82,7 @@ void Worker::startWorking()
     }
     while (m_state == WorkerState::Starting)
         this_thread::sleep_for(chrono::microseconds(20));
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Worker::startWorking() end");
 }
 
 void Worker::triggerStopWorking()
@@ -95,19 +97,24 @@ void Worker::triggerStopWorking()
 
 void Worker::stopWorking()
 {
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Worker::stopWorking() begin");
     DEV_GUARDED(x_work)
     if (m_work)
     {
         WorkerState ex = WorkerState::Started;
         m_state.compare_exchange_strong(ex, WorkerState::Stopping);
 
+        DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Worker::stopWorking() waiting for WorkerState::Stopped begin");
         while (m_state != WorkerState::Stopped)
             this_thread::sleep_for(chrono::microseconds(20));
+        DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Worker::stopWorking() waiting for WorkerState::Stopped end");
     }
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Worker::stopWorking() end");
 }
 
 Worker::~Worker()
 {
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Worker::~Worker() begin");
     DEV_GUARDED(x_work)
     if (m_work)
     {
@@ -115,4 +122,5 @@ Worker::~Worker()
         m_work->join();
         m_work.reset();
     }
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Worker::~Worker() end");
 }

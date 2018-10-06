@@ -153,9 +153,13 @@ void EthStratumClient::init_socket()
 
 void EthStratumClient::connect()
 {
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect() begin");
     // Prevent unnecessary and potentially dangerous recursion
     if (m_connecting.load(std::memory_order::memory_order_relaxed))
+    {
+        DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect() end1");
         return;
+    }
 
     // Start timing operations
     m_workloop_timer.expires_from_now(boost::posix_time::milliseconds(m_workloop_interval));
@@ -199,14 +203,19 @@ void EthStratumClient::connect()
     m_resolver.async_resolve(
         q, m_io_strand.wrap(boost::bind(&EthStratumClient::resolve_handler, this,
                boost::asio::placeholders::error, boost::asio::placeholders::iterator)));
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect() end");
 }
 
 void EthStratumClient::disconnect()
 {
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::disconnect() begin");
     // Prevent unnecessary recursion
     if (!m_connected.load(std::memory_order_relaxed) ||
         m_disconnecting.load(std::memory_order_relaxed))
+    {
+        DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::disconnect() end1");
         return;
+    }
     m_disconnecting.store(true, std::memory_order_relaxed);
 
     // Cancel any outstanding async operation
@@ -246,6 +255,7 @@ void EthStratumClient::disconnect()
     }
 
     disconnect_finalize();
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::disconnect() end");
 }
 
 void EthStratumClient::disconnect_finalize()
@@ -504,6 +514,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
 
 void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 {
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() begin");
 
     // Set status completion
     m_connecting.store(false, std::memory_order_relaxed);
@@ -529,6 +540,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
         m_canconnect.store(false, std::memory_order_relaxed);
         m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::start_connect, this)));
 
+        DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() end1");
         return;
     }
 
@@ -574,6 +586,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
             m_canconnect.store(false, std::memory_order_relaxed);
             m_conn->MarkUnrecoverable();
             m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+            DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() end2");
             return;
         }
     }
@@ -678,6 +691,8 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     */
     enqueue_response_plea();
     sendSocketData(jReq);
+
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() end");
 }
 
 std::string EthStratumClient::processError(Json::Value& responseObject)
