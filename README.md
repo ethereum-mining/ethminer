@@ -172,11 +172,11 @@ This can be done with one of the 2 ways:
 
 ### Insufficient CUDA driver
 
-    ```shell
-    Error: Insufficient CUDA driver: 9010
-    ```
+```text
+Error: Insufficient CUDA driver: 9010
+```
 
-    You have to upgrade your Nvidia drivers. On Linux, install `nvidia-396` package or newer.
+You have to upgrade your Nvidia drivers. On Linux, install `nvidia-396` package or newer.
 
 
 [Amazon S3 is needed]: https://docs.travis-ci.com/user/uploading-artifacts/
