@@ -213,8 +213,7 @@ public:
                    << ", log per GPU solutions = " << LOG_PER_GPU;
 #ifdef DEV_BUILD
         logOptions << ", log connection messages = " << LOG_CONNECT
-                   << ", log switch delay = " << LOG_SWITCH
-                   << ", log submit delay = " << LOG_SUBMIT
+                   << ", log switch delay = " << LOG_SWITCH << ", log submit delay = " << LOG_SUBMIT
                    << ", log program flow = " << LOG_PROGRAMFLOW;
 #endif
         app.add_option("-v,--verbosity", g_logOptions, logOptions.str(), true)
@@ -539,7 +538,16 @@ public:
             << "    SSL_CERT_FILE - full path to your CA certificates file if elsewhere than "
                "/etc/ssl/certs/ca-certificates.crt"
 #endif
-            ;
+            << endl
+            << "    SSL_NOVERIFY - set to any value to to disable the verification chain for"
+            << endl
+            << "                   certificates. WARNING ! Disabling certificate validation"
+            << endl
+            << "                   declines every security implied in connecting to a secured"
+            << endl
+            << "                   SSL/TLS remote endpoint."
+            << endl
+            << "                   USE AT YOU OWN RISK AND ONLY IF YOU KNOW WHAT YOU'RE DOING";
         app.footer(ssHelp.str());
 
         try
@@ -795,9 +803,7 @@ private:
             &CUDAMiner::instances, [](unsigned _index) { return new CUDAMiner(_index); }};
 #endif
         Farm::f().setSealers(sealers);
-        Farm::f().onSolutionFound([&](Solution) {
-            return false;
-        });
+        Farm::f().onSolutionFound([&](Solution) { return false; });
 
         Farm::f().setTStartTStop(m_tstart, m_tstop);
 

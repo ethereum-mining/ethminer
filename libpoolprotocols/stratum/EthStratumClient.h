@@ -56,6 +56,7 @@ public:
     bool current() { return static_cast<bool>(m_current); }
 
 private:
+    bool fake_certificate_validation(bool preverified, boost::asio::ssl::verify_context& ctx);
     void disconnect_finalize();
     void enqueue_response_plea();
     std::chrono::milliseconds dequeue_response_plea();
