@@ -966,10 +966,24 @@ public:
                 << endl
                 << "                        from output log." << endl
                 << "                        Acts the same as --syslog command line argument" << endl
+#ifndef _WIN32
                 << "    SSL_CERT_FILE       Set to the full path to of your CA certificates file"
                 << endl
                 << "                        if it is not in standard path :" << endl
                 << "                        /etc/ssl/certs/ca-certificates.crt." << endl
+#endif
+                << "    SSL_NOVERIFY        set to any value to to disable the verification chain "
+                   "for"
+                << endl
+                << "                        certificates. WARNING ! Disabling certificate "
+                   "validation"
+                << endl
+                << "                        declines every security implied in connecting to a "
+                   "secured"
+                << endl
+                << "                        SSL/TLS remote endpoint." << endl
+                << "                        USE AT YOU OWN RISK AND ONLY IF YOU KNOW WHAT YOU'RE "
+                   "DOING"
                 << endl;
         }
 
@@ -1211,8 +1225,7 @@ private:
 
     // Global boost's io_service
     std::thread m_io_thread;                        // The IO service thread
-    boost::asio::deadline_timer m_cliDisplayTimer;  // A dummy timer to keep io_service with
-                                                    // something to do and prevent io shutdown
+    boost::asio::deadline_timer m_cliDisplayTimer;  // The timer which ticks display lines
     boost::asio::io_service::strand m_io_strand;    // A strand to serialize posts in multithreaded
                                                     // environment
 
