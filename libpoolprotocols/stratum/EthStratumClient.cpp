@@ -224,14 +224,15 @@ void EthStratumClient::connect()
 
 void EthStratumClient::disconnect()
 {
-    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::disconnect() begin");
+
     // Prevent unnecessary recursion
     if (!m_connected.load(std::memory_order_relaxed) ||
         m_disconnecting.load(std::memory_order_relaxed))
     {
-        DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::disconnect() end1");
         return;
     }
+
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::disconnect() begin");
     m_disconnecting.store(true, std::memory_order_relaxed);
 
     // Cancel any outstanding async operation
@@ -256,6 +257,7 @@ void EthStratumClient::disconnect()
 
 
                 // Rest of disconnection is performed asynchronously
+                DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::disconnect() end");
                 return;
             }
             else
