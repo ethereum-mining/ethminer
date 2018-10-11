@@ -620,14 +620,6 @@ public:
                 cerr << endl << "Unknown URI scheme " << uri.Scheme() << "\n\n";
                 exit(-1);
             }
-            if (uri.SecLevel() != dev::SecureLevel::NONE &&
-                uri.HostNameType() != dev::UriHostNameType::Dns && !getenv("SSL_NOVERIFY"))
-            {
-                cerr << endl
-                     << "For SSL/TLS connections you must enter a valid hostname: " << url
-                     << "\n\n";
-                exit(-1);
-            }
             m_endpoints.push_back(uri);
 
             OperationMode mode = OperationMode::None;
