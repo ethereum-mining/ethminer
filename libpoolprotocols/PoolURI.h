@@ -17,7 +17,10 @@
 
 #pragma once
 
+#include <regex>
 #include <string>
+
+#include <boost/asio.hpp>
 
 // A simple URI parser specifically for mining pool endpoints
 namespace dev
@@ -28,10 +31,20 @@ enum class SecureLevel
     TLS12,
     TLS
 };
+
 enum class ProtocolFamily
 {
     GETWORK = 0,
     STRATUM
+};
+
+enum class UriHostNameType
+{
+    Unknown = 0,  // The type of the host name is not supplied
+    Basic = 1,    // The host is set, but the type cannot be determined
+    Dns = 2,      // The host name is a domain name system(DNS) style host name
+    IPV4 = 3,     // The host name is an Internet Protocol(IP) version 4 host address
+    IPV6 = 4      // The host name is an Internet Protocol(IP) version 6 host address.
 };
 
 class URI
@@ -48,6 +61,8 @@ public:
     std::string Pass() const { return m_password; }
     SecureLevel SecLevel() const;
     ProtocolFamily Family() const;
+    UriHostNameType HostNameType() const;
+    bool IsLoopBack() const;
     unsigned Version() const;
     std::string String() const { return m_uri; }
     bool Valid() const { return m_valid; }
@@ -81,5 +96,8 @@ private:
     bool m_valid = false;
     bool m_stratumModeConfirmed = false;
     bool m_unrecoverable = false;
+
+    UriHostNameType m_hostType = UriHostNameType::Unknown;
+    bool m_isLoopBack;
 };
 }  // namespace dev

@@ -158,43 +158,43 @@ public:
         {
 #if defined(__linux__) || defined(__APPLE__)
 #define BACKTRACE_MAX_FRAMES 100
-            case SIGSEGV:
-                static bool in_handler = false;
-                if (!in_handler)
+        case SIGSEGV:
+            static bool in_handler = false;
+            if (!in_handler)
+            {
+                int j, nptrs;
+                void* buffer[BACKTRACE_MAX_FRAMES];
+                char** symbols;
+
+                in_handler = true;
+
+                dev::setThreadName("main");
+                cerr << "SIGSEGV encountered ...\n";
+                cerr << "stack trace:\n";
+
+                nptrs = backtrace(buffer, BACKTRACE_MAX_FRAMES);
+                cerr << "backtrace() returned " << nptrs << " addresses\n";
+
+                symbols = backtrace_symbols(buffer, nptrs);
+                if (symbols == NULL)
                 {
-                    int j, nptrs;
-                    void *buffer[BACKTRACE_MAX_FRAMES];
-                    char **symbols;
-
-                    in_handler = true;
-
-                    dev::setThreadName("main");
-                    cerr << "SIGSEGV encountered ...\n";
-                    cerr << "stack trace:\n";
-
-                    nptrs = backtrace(buffer, BACKTRACE_MAX_FRAMES);
-                    cerr << "backtrace() returned " << nptrs << " addresses\n";
-
-                    symbols = backtrace_symbols(buffer, nptrs);
-                    if (symbols == NULL)
-                    {
-                       perror("backtrace_symbols()");
-                       exit(EXIT_FAILURE); // Also exit 128 ??
-                    }
-                    for (j = 0; j < nptrs; j++)
-                       cerr << symbols[j] << "\n";
-                    free(symbols);
-
-                    in_handler = false;
+                    perror("backtrace_symbols()");
+                    exit(EXIT_FAILURE);  // Also exit 128 ??
                 }
-                exit(128);
+                for (j = 0; j < nptrs; j++)
+                    cerr << symbols[j] << "\n";
+                free(symbols);
+
+                in_handler = false;
+            }
+            exit(128);
 #undef BACKTRACE_MAX_FRAMES
 #endif
-            default:
-                cnote << "Signal intercepted ...";
-                g_running = false;
-                g_shouldstop.notify_all();
-                break;
+        default:
+            cnote << "Signal intercepted ...";
+            g_running = false;
+            g_shouldstop.notify_all();
+            break;
         }
     }
 
@@ -501,10 +501,19 @@ public:
                 }
 
                 URI uri(url);
+
                 if (!uri.Valid() || !uri.KnownScheme())
                 {
                     std::string what = "Bad URI : " + uri.String();
                     throw std::invalid_argument(what);
+                }
+
+                if (uri.SecLevel() != dev::SecureLevel::NONE &&
+                    uri.HostNameType() != dev::UriHostNameType::Dns && !getenv("SSL_NOVERIFY"))
+                {
+                    warnings.push(
+                        "You have specified host " + uri.Host() + " with encryption enabled.");
+                    warnings.push("Certificate validation will likely fail");
                 }
 
                 m_poolConns.push_back(uri);
@@ -519,7 +528,6 @@ public:
                 }
                 m_mode = mode;
             }
-
         }
 
 

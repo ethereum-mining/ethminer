@@ -124,7 +124,7 @@ URI::URI(const std::string uri)
     // Eat "//"
     if (('/' != *curstr) || ('/' != *(curstr + 1)))
     {
-            return;
+        return;
     }
     curstr += 2;
 
@@ -200,6 +200,31 @@ URI::URI(const std::string uri)
     m_host.append(curstr, len);
     m_host = urlDecode(m_host);
     curstr = tmpstr;
+
+    // Determine host type
+    boost::system::error_code ec;
+    boost::asio::ip::address address = boost::asio::ip::address::from_string(m_host, ec);
+    if (!ec)
+    {
+        // This is a valid Ip Address
+        if (address.is_v4())
+            m_hostType = UriHostNameType::IPV4;
+        if (address.is_v6())
+            m_hostType = UriHostNameType::IPV6;
+
+        m_isLoopBack = address.is_loopback();
+    }
+    else
+    {
+        // Check if valid DNS hostname
+        std::regex hostNamePattern(
+            "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-"
+            "Za-z0-9\\-]*[A-Za-z0-9])$");
+        if (std::regex_match(m_host, hostNamePattern))
+            m_hostType = UriHostNameType::Dns;
+        else
+            m_hostType = UriHostNameType::Basic;
+    }
 
     // Is port number specified?
     if (':' == *curstr)
@@ -299,6 +324,16 @@ SecureLevel URI::SecLevel() const
     return s_schemes[m_scheme].secure;
 }
 
+UriHostNameType URI::HostNameType() const
+{
+    return m_hostType;
+}
+
+bool URI::IsLoopBack() const
+{
+    return m_isLoopBack;
+}
+
 std::string URI::KnownSchemes(ProtocolFamily family)
 {
     std::string schemes;
@@ -307,4 +342,3 @@ std::string URI::KnownSchemes(ProtocolFamily family)
             schemes += s.first + " ";
     return schemes;
 }
-

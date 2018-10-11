@@ -86,13 +86,14 @@ void EthStratumClient::init_socket()
 
         if (getenv("SSL_NOVERIFY"))
         {
-            m_securesocket->set_verify_callback(
-                boost::bind(&EthStratumClient::fake_certificate_validation, this, _1, _2));
+            m_securesocket->set_verify_mode(boost::asio::ssl::verify_none);
         }
         else
         {
             m_securesocket->set_verify_mode(boost::asio::ssl::verify_peer);
-
+            m_securesocket->set_verify_callback(
+                make_verbose_verification(boost::asio::ssl::rfc2818_verification(m_conn->Host())));
+        }
 #ifdef _WIN32
             HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
             if (hStore == nullptr)
@@ -132,7 +133,6 @@ void EthStratumClient::init_socket()
                 cwarn << "It is possible that certificate verification can fail.";
             }
 #endif
-        }
     }
     else
     {
@@ -158,24 +158,12 @@ void EthStratumClient::init_socket()
 #endif
 }
 
-bool EthStratumClient::fake_certificate_validation(
-    bool preverified, boost::asio::ssl::verify_context& ctx)
-{
-    (void)preverified;
-    (void)ctx;
-    return true;
-}
-
-
 void EthStratumClient::connect()
 {
-    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect() begin");
     // Prevent unnecessary and potentially dangerous recursion
     if (m_connecting.load(std::memory_order::memory_order_relaxed))
-    {
-        DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect() end1");
         return;
-    }
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect() begin");
 
     // Start timing operations
     m_workloop_timer.expires_from_now(boost::posix_time::milliseconds(m_workloop_interval));
@@ -228,9 +216,7 @@ void EthStratumClient::disconnect()
     // Prevent unnecessary recursion
     if (!m_connected.load(std::memory_order_relaxed) ||
         m_disconnecting.load(std::memory_order_relaxed))
-    {
         return;
-    }
 
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::disconnect() begin");
     m_disconnecting.store(true, std::memory_order_relaxed);
@@ -585,7 +571,10 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
                 cwarn << "This can have multiple reasons:";
                 cwarn << "* Root certs are either not installed or not found";
                 cwarn << "* Pool uses a self-signed certificate";
+                cwarn << "* Pool hostname you're connecting to does not match the CN registered "
+                         "for the certificate.";
                 cwarn << "Possible fixes:";
+#ifndef _WIN32
                 cwarn << "* Make sure the file '/etc/ssl/certs/ca-certificates.crt' exists and "
                          "is accessible";
                 cwarn << "* Export the correct path via 'export "
@@ -594,8 +583,12 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
                 cwarn << "  On most systems you can install the 'ca-certificates' package";
                 cwarn << "  You can also get the latest file here: "
                          "https://curl.haxx.se/docs/caextract.html";
-                cwarn << "* Disable certificate verification all-together via command-line "
-                         "option.";
+#endif
+                cwarn << "* Double check hostname in the -P argument.";
+                cwarn << "* Disable certificate verification all-together via environment "
+                         "variable. See ethminer --help for info about environment variables";
+                cwarn << "If you do the latter please be advised you might expose yourself to the "
+                         "risk of seeing your shares stolen";
             }
 
             // This is a fatal error
