@@ -548,8 +548,10 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
         return;
     }
 
-    // We got a socket connection established
+    // We got a socket connection established 
     m_canconnect.store(true, std::memory_order_relaxed);
+    m_connected.store(true, std::memory_order_relaxed);
+
 #ifdef DEV_BUILD
     if (g_logOptions & LOG_CONNECT)
         cnote << "Socket connected to " << ActiveEndPoint();
@@ -606,9 +608,6 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
         m_nonsecuresocket->set_option(boost::asio::socket_base::keep_alive(true));
         m_nonsecuresocket->set_option(tcp::no_delay(true));
     }
-
-    // Here is where we're properly connected
-    m_connected.store(true, std::memory_order_relaxed);
 
     // Clean buffer from any previous stale data
     m_sendBuffer.consume(4096);
