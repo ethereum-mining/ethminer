@@ -1556,7 +1556,7 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
 void EthStratumClient::onSSLShutdownCompleted(const boost::system::error_code& ec)
 {
     (void)ec;
-    // cnote << "onSSLShutdownCompleted Error code is: " << ec.message();
+    clear_response_pleas();
     m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect_finalize, this)));
 }
 
