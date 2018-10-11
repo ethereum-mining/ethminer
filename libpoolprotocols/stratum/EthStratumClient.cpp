@@ -84,48 +84,55 @@ void EthStratumClient::init_socket()
             m_io_service, ctx);
         m_socket = &m_securesocket->next_layer();
 
-
-        m_securesocket->set_verify_mode(boost::asio::ssl::verify_peer);
+        if (getenv("SSL_NOVERIFY"))
+        {
+            m_securesocket->set_verify_callback(
+                boost::bind(&EthStratumClient::fake_certificate_validation, this, _1, _2));
+        }
+        else
+        {
+            m_securesocket->set_verify_mode(boost::asio::ssl::verify_peer);
 
 #ifdef _WIN32
-        HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
-        if (hStore == nullptr)
-        {
-            return;
-        }
-
-        X509_STORE* store = X509_STORE_new();
-        PCCERT_CONTEXT pContext = nullptr;
-        while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != nullptr)
-        {
-            X509* x509 = d2i_X509(
-                nullptr, (const unsigned char**)&pContext->pbCertEncoded, pContext->cbCertEncoded);
-            if (x509 != nullptr)
+            HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
+            if (hStore == nullptr)
             {
-                X509_STORE_add_cert(store, x509);
-                X509_free(x509);
+                return;
             }
-        }
 
-        CertFreeCertificateContext(pContext);
-        CertCloseStore(hStore, 0);
+            X509_STORE* store = X509_STORE_new();
+            PCCERT_CONTEXT pContext = nullptr;
+            while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != nullptr)
+            {
+                X509* x509 = d2i_X509(nullptr, (const unsigned char**)&pContext->pbCertEncoded,
+                    pContext->cbCertEncoded);
+                if (x509 != nullptr)
+                {
+                    X509_STORE_add_cert(store, x509);
+                    X509_free(x509);
+                }
+            }
 
-        SSL_CTX_set_cert_store(ctx.native_handle(), store);
+            CertFreeCertificateContext(pContext);
+            CertCloseStore(hStore, 0);
+
+            SSL_CTX_set_cert_store(ctx.native_handle(), store);
 #else
-        char* certPath = getenv("SSL_CERT_FILE");
-        try
-        {
-            ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
-        }
-        catch (...)
-        {
-            cwarn << "Failed to load ca certificates. Either the file "
-                     "'/etc/ssl/certs/ca-certificates.crt' does not exist";
-            cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or "
-                     "inaccessible file.";
-            cwarn << "It is possible that certificate verification can fail.";
-        }
+            char* certPath = getenv("SSL_CERT_FILE");
+            try
+            {
+                ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
+            }
+            catch (...)
+            {
+                cwarn << "Failed to load ca certificates. Either the file "
+                         "'/etc/ssl/certs/ca-certificates.crt' does not exist";
+                cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or "
+                         "inaccessible file.";
+                cwarn << "It is possible that certificate verification can fail.";
+            }
 #endif
+        }
     }
     else
     {
@@ -149,6 +156,14 @@ void EthStratumClient::init_socket()
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 #endif
+}
+
+bool EthStratumClient::fake_certificate_validation(
+    bool preverified, boost::asio::ssl::verify_context& ctx)
+{
+    (void)preverified;
+    (void)ctx;
+    return true;
 }
 
 void EthStratumClient::connect()
@@ -417,7 +432,8 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
     if (m_response_pleas_count.load(std::memory_order_relaxed))
     {
         milliseconds response_delay_ms(0);
-        steady_clock::time_point m_response_plea_time(m_response_plea_older.load(std::memory_order_relaxed));
+        steady_clock::time_point m_response_plea_time(
+            m_response_plea_older.load(std::memory_order_relaxed));
 
         // Check responses while in connection/disconnection phase
         if (isPendingState())
@@ -480,7 +496,6 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                     m_io_service.post(
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
                 }
-
             }
 
             // Check how old is last job received
@@ -560,6 +575,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
                 cwarn << "* Root certs are either not installed or not found";
                 cwarn << "* Pool uses a self-signed certificate";
                 cwarn << "Possible fixes:";
+#ifndef _WIN32
                 cwarn << "* Make sure the file '/etc/ssl/certs/ca-certificates.crt' exists and "
                          "is accessible";
                 cwarn << "* Export the correct path via 'export "
@@ -568,6 +584,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
                 cwarn << "  On most systems you can install the 'ca-certificates' package";
                 cwarn << "  You can also get the latest file here: "
                          "https://curl.haxx.se/docs/caextract.html";
+#endif
                 cwarn << "* Disable certificate verification all-together via command-line "
                          "option.";
             }
@@ -747,8 +764,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                                    // _isNotification = false)
     string _errReason = "";        // Content of the error reason
     string _method = "";           // The method of the notification (or request from pool)
-    unsigned _id = 0;  // This SHOULD be the same id as the request it is responding to (known exception
-                       // is ethermine.org using 999)
+    unsigned _id = 0;  // This SHOULD be the same id as the request it is responding to (known
+                       // exception is ethermine.org using 999)
 
 
     // Retrieve essential values
@@ -1122,7 +1139,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
         else
         {
-
             cnote << "Got response for unknown message id [" << _id << "] Discarding...";
             return;
         }
@@ -1544,7 +1560,8 @@ std::chrono::milliseconds EthStratumClient::dequeue_response_plea()
 {
     using namespace std::chrono;
 
-    steady_clock::time_point response_plea_time(m_response_plea_older.load(std::memory_order_relaxed));
+    steady_clock::time_point response_plea_time(
+        m_response_plea_older.load(std::memory_order_relaxed));
     milliseconds response_delay_ms =
         duration_cast<milliseconds>(steady_clock::now() - response_plea_time);
 
