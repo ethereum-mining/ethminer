@@ -194,19 +194,33 @@ void EthStratumClient::connect()
     if (!m_socket)
         init_socket();
 
-    // Begin resolve all ips associated to hostname
-    // empty queue from any previous listed ip
-    // calling the resolver each time is useful as most
-    // load balancer will give Ips in different order
+
+    // Initialize a new queue of end points
     m_endpoints = std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>>();
     m_endpoint = boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>();
-    m_resolver = tcp::resolver(m_io_service);
-    tcp::resolver::query q(m_conn->Host(), toString(m_conn->Port()));
 
-    // Start resolving async
-    m_resolver.async_resolve(
-        q, m_io_strand.wrap(boost::bind(&EthStratumClient::resolve_handler, this,
-               boost::asio::placeholders::error, boost::asio::placeholders::iterator)));
+    if (m_conn->HostNameType() == dev::UriHostNameType::Dns ||
+        m_conn->HostNameType() == dev::UriHostNameType::Basic) 
+    {
+        // Begin resolve all ips associated to hostname
+        // calling the resolver each time is useful as most
+        // load balancer will give Ips in different order
+        m_resolver = tcp::resolver(m_io_service);
+        tcp::resolver::query q(m_conn->Host(), toString(m_conn->Port()));
+
+        // Start resolving async
+        m_resolver.async_resolve(
+            q, m_io_strand.wrap(boost::bind(&EthStratumClient::resolve_handler, this,
+                   boost::asio::placeholders::error, boost::asio::placeholders::iterator)));
+    }
+    else
+    {
+        // No need to use the resolver if host is already an IP address
+        m_endpoints.push(boost::asio::ip::tcp::endpoint(
+            boost::asio::ip::address::from_string(m_conn->Host()), m_conn->Port()));
+        m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::start_connect, this)));
+    }
+
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect() end");
 }
 
