@@ -91,11 +91,15 @@ void Farm::shuffle()
 
 void Farm::setWork(WorkPackage const& _wp)
 {
-    // Set work to each miner
+    // Set work to each miner giving it's own starting nonce
     Guard l(x_minerWork);
     m_work = _wp;
-    for (auto const& m : m_miners)
-        m->setWork(m_work);
+    uint64_t _startNonce = (m_work.exSizeBits > 0 ? m_work.startNonce : m_nonce_scrambler);
+    for (unsigned int i = 0; i < m_miners.size(); i++)
+    {
+        m_work.startNonce = _startNonce + ((uint64_t)i << m_nonce_segment_with);
+        m_miners.at(i)->setWork(m_work);
+    }
 }
 
 void Farm::setSealers(std::map<std::string, SealerDescriptor> const& _sealers)

@@ -106,26 +106,7 @@ void Miner::setWork(WorkPackage const& _work)
         if (paused())
             m_work.header = h256();
         else
-        {
-
             m_work = _work;
-            if (m_work.exSizeBits >= 0)
-            {
-                // This can support up to 2^c_log2MaxMiners devices.
-                m_work.startNonce =
-                    m_work.startNonce +
-                    ((uint64_t)m_index << (64 - LOG2_MAX_MINERS - m_work.exSizeBits));
-            }
-            else
-            {
-                // Each GPU is given a non-overlapping 2^40 range to search
-                // return farm.get_nonce_scrambler() + ((uint64_t) m_index << 40);
-
-                // Now segment size is adjustable
-                m_work.startNonce = FarmFace::f().get_nonce_scrambler() +
-                                    ((uint64_t)m_index << FarmFace::f().get_segment_width());
-            }
-        }
 
 #ifdef DEV_BUILD
         m_workSwitchStart = std::chrono::steady_clock::now();

@@ -23,7 +23,6 @@ PoolManager::PoolManager(
     m_failoverTimeout = failoverTimeout;
 
     p_client->onConnected([&]() {
-
         {
             Guard l(m_activeConnectionMutex);
             m_lastConnectedHost = m_connections.at(m_activeConnectionIdx).Host();
@@ -44,7 +43,6 @@ PoolManager::PoolManager(
             {
                 m_failovertimer.cancel();
             }
-
         }
 
         if (!Farm::f().isMining())
@@ -70,11 +68,9 @@ PoolManager::PoolManager(
         m_submithrtimer.expires_from_now(boost::posix_time::seconds(m_hrReportingInterval));
         m_submithrtimer.async_wait(m_io_strand.wrap(boost::bind(
             &PoolManager::submithrtimer_elapsed, this, boost::asio::placeholders::error)));
-
     });
 
     p_client->onDisconnected([&]() {
-
         cnote << "Disconnected from " + m_lastConnectedHost << p_client->ActiveEndPoint();
 
         // Clear current connection
@@ -100,13 +96,16 @@ PoolManager::PoolManager(
             Farm::f().pause();
             g_io_service.post(m_io_strand.wrap(boost::bind(&PoolManager::rotateConnect, this)));
         }
-
     });
 
     p_client->onWorkReceived([&](WorkPackage const& wp) {
-
-        cnote << "Job: " EthWhite "#" << wp.header.abridged() << EthReset " "
-              << m_lastConnectedHost << p_client->ActiveEndPoint();
+        
+        if (wp.epoch != m_lastEpoch)
+        {
+            cnote << "New epoch " EthWhite << wp.epoch << EthReset;
+            m_lastEpoch = wp.epoch;
+            m_epochChanges.fetch_add(1, std::memory_order_relaxed);
+        }
         if (wp.boundary != m_lastBoundary)
         {
             using namespace boost::multiprecision;
@@ -117,23 +116,18 @@ PoolManager::PoolManager(
             const uint256_t divisor(string("0x") + m_lastBoundary.hex());
             std::stringstream ss;
             m_lastDifficulty = double(dividend / divisor);
-            ss << fixed << setprecision(2) << m_lastDifficulty / 1000000000.0
-               << "K megahash";
+            ss << fixed << setprecision(2) << m_lastDifficulty / 1000000000.0 << "K megahash";
             cnote << "Pool difficulty: " EthWhite << ss.str() << EthReset;
         }
-        if (wp.epoch != m_lastEpoch)
-        {
-            cnote << "New epoch " EthWhite << wp.epoch << EthReset;
-            m_lastEpoch = wp.epoch;
-            m_epochChanges.fetch_add(1, std::memory_order_relaxed);
-        }
+
+        cnote << "Job: " EthWhite "#" << wp.header.abridged() << EthReset " " << m_lastConnectedHost
+              << p_client->ActiveEndPoint();
 
         Farm::f().setWork(wp);
     });
 
-    p_client->onSolutionAccepted([&](bool const& stale,
-                                     std::chrono::milliseconds const& elapsedMs, unsigned const& miner_index) {
-
+    p_client->onSolutionAccepted([&](bool const& stale, std::chrono::milliseconds const& elapsedMs,
+                                     unsigned const& miner_index) {
         std::stringstream ss;
         ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << " ms."
            << " " << m_lastConnectedHost + p_client->ActiveEndPoint();
@@ -142,9 +136,8 @@ PoolManager::PoolManager(
         Farm::f().acceptedSolution(stale, miner_index);
     });
 
-    p_client->onSolutionRejected([&](bool const& stale,
-                                     std::chrono::milliseconds const& elapsedMs, unsigned const& miner_index) {
-
+    p_client->onSolutionRejected([&](bool const& stale, std::chrono::milliseconds const& elapsedMs,
+                                     unsigned const& miner_index) {
         std::stringstream ss;
         ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << "ms."
            << "   " << m_lastConnectedHost + p_client->ActiveEndPoint();
@@ -154,7 +147,6 @@ PoolManager::PoolManager(
     });
 
     Farm::f().onSolutionFound([&](const Solution& sol) {
-
         // Solution should passthrough only if client is
         // properly connected. Otherwise we'll have the bad behavior
         // to log nonce submission but receive no response
@@ -323,7 +315,7 @@ void PoolManager::start()
     g_io_service.post(m_io_strand.wrap(boost::bind(&PoolManager::rotateConnect, this)));
 }
 
-void PoolManager::rotateConnect() 
+void PoolManager::rotateConnect()
 {
     if (p_client->isConnected())
         return;
@@ -432,7 +424,6 @@ void PoolManager::submithrtimer_elapsed(const boost::system::error_code& ec)
             m_submithrtimer.expires_from_now(boost::posix_time::seconds(m_hrReportingInterval));
             m_submithrtimer.async_wait(m_io_strand.wrap(boost::bind(
                 &PoolManager::submithrtimer_elapsed, this, boost::asio::placeholders::error)));
-
         }
     }
 }

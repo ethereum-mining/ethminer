@@ -265,8 +265,7 @@ private:
  * @brief A miner - a member and adoptee of the Farm.
  * @warning Not threadsafe. It is assumed Farm will synchronise calls to/from this class.
  */
-#define LOG2_MAX_MINERS 5u
-#define MAX_MINERS (1u << LOG2_MAX_MINERS)
+#define MAX_MINERS 32U
 
 class Miner : public Worker
 {
