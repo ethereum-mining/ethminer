@@ -53,178 +53,168 @@ unsigned CUDAMiner::s_scheduleFlag = 0;
 
 bool CUDAMiner::init(int epoch)
 {
-    try
+    // When loading of DAG is sequential wait for
+    // this instance to become current
+    if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
     {
-        // When loading of DAG is sequential wait for
-        // this instance to become current
-        if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
+        while (s_dagLoadIndex < m_index)
         {
-            while (s_dagLoadIndex < m_index)
-            {
-                boost::system_time const timeout =
-                    boost::get_system_time() + boost::posix_time::seconds(3);
-                boost::mutex::scoped_lock l(x_work);
-                m_dag_loaded_signal.timed_wait(l, timeout);
-            }
-            if (shouldStop())
-            {
-                cudalog << "Exiting ...";
-                return false;
-            }
-                
+            boost::system_time const timeout =
+                boost::get_system_time() + boost::posix_time::seconds(3);
+            boost::mutex::scoped_lock l(x_work);
+            m_dag_loaded_signal.timed_wait(l, timeout);
         }
-
-
-        unsigned device = s_devices[m_index] > -1 ? s_devices[m_index] : m_index;
-
-        cnote << "Initialising miner " << m_index;
-
-        auto numDevices = getNumDevices();
-        if (numDevices == 0)
+        if (shouldStop())
+        {
+            cudalog << "Exiting ...";
             return false;
-
-        // use selected device
-        m_device_num = device < numDevices - 1 ? device : numDevices - 1;
-        m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
-        m_hwmoninfo.indexSource = HwMonitorIndexSource::CUDA;
-        m_hwmoninfo.deviceIndex = m_device_num;
-
-        cudaDeviceProp device_props;
-        CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, m_device_num));
-
-        cudalog << "Using device: " << device_props.name
-                << " (Compute " + to_string(device_props.major) + "." +
-                       to_string(device_props.minor) + ")";
-
-        const auto& context = ethash::get_global_epoch_context(epoch);
-        const auto lightNumItems = context.light_cache_num_items;
-        const auto lightSize = ethash::get_light_cache_size(lightNumItems);
-        const auto dagNumItems = context.full_dataset_num_items;
-        const auto dagSize = ethash::get_full_dataset_size(dagNumItems);
-
-        CUDA_SAFE_CALL(cudaSetDevice(m_device_num));
-        cudalog << "Set Device to current";
-        if (dagNumItems != m_dag_size || !m_dag)
-        {
-            // Check whether the current device has sufficient memory every time we recreate the dag
-            if (device_props.totalGlobalMem < dagSize)
-            {
-                cudalog << "CUDA device " << string(device_props.name)
-                        << " has insufficient GPU memory. "
-                        << FormattedMemSize(device_props.totalGlobalMem) << " of memory found, "
-                        << FormattedMemSize(dagSize) << " of memory required";
-                return false;
-            }
-            // We need to reset the device and recreate the dag
-            cudalog << "Resetting device";
-            CUDA_SAFE_CALL(cudaDeviceReset());
-            CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
-            CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
-            // We need to reset the light and the Dag for the following code to reallocate
-            // since cudaDeviceReset() frees all previous allocated memory
-            m_light[m_device_num] = nullptr;
-            m_dag = nullptr;
         }
-        // create buffer for cache
-        hash128_t* dag = m_dag;
-        hash64_t* light = m_light[m_device_num];
+    }
 
-        if (!light)
+    unsigned device = s_devices[m_index] > -1 ? s_devices[m_index] : m_index;
+
+    cnote << "Initialising miner " << m_index;
+
+    auto numDevices = getNumDevices();
+    if (numDevices == 0)
+        return false;
+
+    // use selected device
+    m_device_num = device < numDevices - 1 ? device : numDevices - 1;
+    m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
+    m_hwmoninfo.indexSource = HwMonitorIndexSource::CUDA;
+    m_hwmoninfo.deviceIndex = m_device_num;
+
+    cudaDeviceProp device_props;
+    CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, m_device_num));
+
+    cudalog << "Using device: " << device_props.name
+            << " (Compute " + to_string(device_props.major) + "." + to_string(device_props.minor) +
+                   ")";
+
+    const auto& context = ethash::get_global_epoch_context(epoch);
+    const auto lightNumItems = context.light_cache_num_items;
+    const auto lightSize = ethash::get_light_cache_size(lightNumItems);
+    const auto dagNumItems = context.full_dataset_num_items;
+    const auto dagSize = ethash::get_full_dataset_size(dagNumItems);
+
+    CUDA_SAFE_CALL(cudaSetDevice(m_device_num));
+    cudalog << "Set Device to current";
+    if (dagNumItems != m_dag_size || !m_dag)
+    {
+        // Check whether the current device has sufficient memory every time we recreate the dag
+        if (device_props.totalGlobalMem < dagSize)
         {
-            cudalog << "Allocating light with size: " << FormattedMemSize(lightSize);
-            CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), lightSize));
+            cudalog << "CUDA device " << string(device_props.name)
+                    << " has insufficient GPU memory. "
+                    << FormattedMemSize(device_props.totalGlobalMem) << " of memory found, "
+                    << FormattedMemSize(dagSize) << " of memory required";
+            return false;
         }
-        // copy lightData to device
-        CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), context.light_cache, lightSize,
-            cudaMemcpyHostToDevice));
-        m_light[m_device_num] = light;
+        // We need to reset the device and recreate the dag
+        cudalog << "Resetting device";
+        CUDA_SAFE_CALL(cudaDeviceReset());
+        CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
+        CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+        // We need to reset the light and the Dag for the following code to reallocate
+        // since cudaDeviceReset() frees all previous allocated memory
+        m_light[m_device_num] = nullptr;
+        m_dag = nullptr;
+    }
+    // create buffer for cache
+    hash128_t* dag = m_dag;
+    hash64_t* light = m_light[m_device_num];
 
-        if (dagNumItems != m_dag_size || !dag)  // create buffer for dag
-            CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
+    if (!light)
+    {
+        cudalog << "Allocating light with size: " << FormattedMemSize(lightSize);
+        CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), lightSize));
+    }
+    // copy lightData to device
+    CUDA_SAFE_CALL(cudaMemcpy(
+        reinterpret_cast<void*>(light), context.light_cache, lightSize, cudaMemcpyHostToDevice));
+    m_light[m_device_num] = light;
 
-        set_constants(dag, dagNumItems, light, lightNumItems);  // in ethash_cuda_miner_kernel.cu
+    if (dagNumItems != m_dag_size || !dag)  // create buffer for dag
+        CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
 
-        if (dagNumItems != m_dag_size || !dag)
+    set_constants(dag, dagNumItems, light, lightNumItems);  // in ethash_cuda_miner_kernel.cu
+
+    if (dagNumItems != m_dag_size || !dag)
+    {
+        // create mining buffers
+        cudalog << "Generating mining buffers";
+        for (unsigned i = 0; i != s_numStreams; ++i)
         {
-            // create mining buffers
-            cudalog << "Generating mining buffers";
-            for (unsigned i = 0; i != s_numStreams; ++i)
+            CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(Search_results)));
+            CUDA_SAFE_CALL(cudaStreamCreateWithFlags(&m_streams[i], cudaStreamNonBlocking));
+        }
+
+        m_current_target = 0;
+
+        if (!s_dagInHostMemory)
+        {
+            if ((m_device_num == s_dagCreateDevice) || (s_dagLoadMode != DAG_LOAD_MODE_SINGLE))
             {
-                CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(Search_results)));
-                CUDA_SAFE_CALL(cudaStreamCreateWithFlags(&m_streams[i], cudaStreamNonBlocking));
-            }
+                cudalog << "Generating DAG for GPU #" << m_device_num
+                        << " with dagSize: " << FormattedMemSize(dagSize) << " ("
+                        << FormattedMemSize(device_props.totalGlobalMem - dagSize - lightSize)
+                        << " left)";
+                auto startDAG = std::chrono::steady_clock::now();
 
-            m_current_target = 0;
+                ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0]);
 
-            if (!s_dagInHostMemory)
-            {
-                if ((m_device_num == s_dagCreateDevice) || (s_dagLoadMode != DAG_LOAD_MODE_SINGLE))
+                cudalog << "Generated DAG for GPU" << m_device_num << " in: "
+                        << std::chrono::duration_cast<std::chrono::milliseconds>(
+                               std::chrono::steady_clock::now() - startDAG)
+                               .count()
+                        << " ms.";
+
+                if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
                 {
-                    cudalog << "Generating DAG for GPU #" << m_device_num
-                            << " with dagSize: " << FormattedMemSize(dagSize) << " ("
-                            << FormattedMemSize(device_props.totalGlobalMem - dagSize - lightSize)
-                            << " left)";
-                    auto startDAG = std::chrono::steady_clock::now();
+                    uint8_t* memoryDAG = new uint8_t[dagSize];
+                    cudalog << "Copying DAG from GPU #" << m_device_num << " to host";
+                    CUDA_SAFE_CALL(cudaMemcpy(
+                        reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
 
-                    ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0]);
-
-                    cudalog << "Generated DAG for GPU" << m_device_num << " in: "
-                            << std::chrono::duration_cast<std::chrono::milliseconds>(
-                                   std::chrono::steady_clock::now() - startDAG)
-                                   .count()
-                            << " ms.";
-
-                    if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
-                    {
-                        uint8_t* memoryDAG = new uint8_t[dagSize];
-                        cudalog << "Copying DAG from GPU #" << m_device_num << " to host";
-                        CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize,
-                            cudaMemcpyDeviceToHost));
-
-                        s_dagInHostMemory = memoryDAG;
-                    }
-                }
-                else
-                {
-                    while (!s_dagInHostMemory)
-                        this_thread::sleep_for(chrono::milliseconds(100));
-                    goto cpyDag;
+                    s_dagInHostMemory = memoryDAG;
                 }
             }
             else
             {
-            cpyDag:
-                cudalog << "Copying DAG from host to GPU #" << m_device_num;
-                const void* hdag = (const void*)s_dagInHostMemory;
-                CUDA_SAFE_CALL(cudaMemcpy(
-                    reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
+                while (!s_dagInHostMemory)
+                    this_thread::sleep_for(chrono::milliseconds(100));
+                goto cpyDag;
             }
         }
-
-        m_dag = dag;
-        m_dag_size = dagNumItems;
-
-        s_dagLoadIndex++;
-        if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
-            m_dag_loaded_signal.notify_all();
-
-        if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
+        else
         {
-            if (s_dagLoadIndex >= s_numInstances && s_dagInHostMemory)
-            {
-                // all devices have loaded DAG, we can free now
-                delete[] s_dagInHostMemory;
-                s_dagInHostMemory = nullptr;
-                cnote << "Freeing DAG from host";
-            }
+        cpyDag:
+            cudalog << "Copying DAG from host to GPU #" << m_device_num;
+            const void* hdag = (const void*)s_dagInHostMemory;
+            CUDA_SAFE_CALL(
+                cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
         }
     }
-    catch (std::runtime_error const& _e)
+
+    m_dag = dag;
+    m_dag_size = dagNumItems;
+
+    s_dagLoadIndex++;
+    if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
+        m_dag_loaded_signal.notify_all();
+
+    if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
     {
-        string _what = "Error CUDA mining: ";
-        _what.append(_e.what());
-        throw std::runtime_error(_what);
+        if (s_dagLoadIndex >= s_numInstances && s_dagInHostMemory)
+        {
+            // all devices have loaded DAG, we can free now
+            delete[] s_dagInHostMemory;
+            s_dagInHostMemory = nullptr;
+            cnote << "Freeing DAG from host";
+        }
     }
+
     return true;
 }
 
@@ -235,7 +225,6 @@ void CUDAMiner::workLoop()
 
     m_search_buf.resize(s_numStreams);
     m_streams.resize(s_numStreams);
-
 
     try
     {
