@@ -55,12 +55,29 @@ bool CUDAMiner::init(int epoch)
 {
     try
     {
+        // When loading of DAG is sequential wait for
+        // this instance to become current
         if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
-            while (s_dagLoadIndex < Index())
-                this_thread::sleep_for(chrono::milliseconds(100));
-        unsigned device = s_devices[Index()] > -1 ? s_devices[Index()] : Index();
+        {
+            while (s_dagLoadIndex < m_index)
+            {
+                boost::system_time const timeout =
+                    boost::get_system_time() + boost::posix_time::seconds(3);
+                boost::mutex::scoped_lock l(x_work);
+                m_dag_loaded_signal.timed_wait(l, timeout);
+            }
+            if (shouldStop())
+            {
+                cudalog << "Exiting ...";
+                return false;
+            }
+                
+        }
 
-        cnote << "Initialising miner " << Index();
+
+        unsigned device = s_devices[m_index] > -1 ? s_devices[m_index] : m_index;
+
+        cnote << "Initialising miner " << m_index;
 
         auto numDevices = getNumDevices();
         if (numDevices == 0)
@@ -188,6 +205,8 @@ bool CUDAMiner::init(int epoch)
         m_dag_size = dagNumItems;
 
         s_dagLoadIndex++;
+        if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
+            m_dag_loaded_signal.notify_all();
 
         if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
         {

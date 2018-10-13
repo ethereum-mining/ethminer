@@ -351,6 +351,7 @@ protected:
     mutable boost::mutex x_work;
     mutable boost::mutex x_pause;
     boost::condition_variable m_new_work_signal;
+    boost::condition_variable m_dag_loaded_signal;
 
 private:
     bitset<MinerPauseEnum::Pause_MAX> m_pauseFlags;
