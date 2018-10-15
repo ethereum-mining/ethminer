@@ -72,10 +72,16 @@ sudo apt-get install mesa-common-dev
     cmake ..
     ```
 
-    Note: On Windows, it's possible to have issues with VS 2017 default compilers; in that case, use the VS 2017 installer to get the VS 2015 compilers and use:
+    **Note:** On Windows, it's possible to have issues with VS 2017 default compilers, due to CUDA expecting a specific toolset version; in that case, use the VS 2017 installer to get the VS 2015 compilers and use:
 
     ```shell
     cmake .. -G "Visual Studio 15 2017 Win64" -T v140
+    ```
+
+    Otherwise use:
+
+    ```shell
+    cmake .. -G "Visual Studio 15 2017 Win64"
     ```
 
 4. Build the project using [CMake Build Tool Mode]. This is a portable variant of `make`.
@@ -120,7 +126,8 @@ cd "%~dp0\ethminer\"
 
 if not exist "build\" mkdir "build\"
 
-cmake -G "Visual Studio 15 2017 Win64" -H. -Bbuild -T v140 -DETHASHCL=ON -DETHASHCUDA=ON -DAPICORE=ON ..
+rem For CUDA 9.x pass also `-T v140`
+cmake -G "Visual Studio 15 2017 Win64" -H. -Bbuild -DETHASHCL=ON -DETHASHCUDA=ON -DAPICORE=ON ..
 cmake --build . --config Release --target package
 
 endlocal
@@ -138,15 +145,14 @@ cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 * `-DETHASHCL=ON` - enable OpenCL mining, `ON` by default.
 * `-DETHASHCUDA=ON` - enable CUDA mining, `ON` by default.
 * `-DAPICORE=ON` - enable API Server, `ON` by default.
-* `-DETHDBUS=ON` - enable D-Bus support, `OFF` by default.
 * `-DBINKERN=ON` - install AMD binary kernels, `ON` by default.
+* `-DETHDBUS=ON` - enable D-Bus support, `OFF` by default.
 
 ## Disable Hunter
 
-If you want to install dependencies yourself or use system package manager
-you can disable Hunter by adding
+If you want to install dependencies yourself or use system package manager you can disable Hunter by adding
 [`-DHUNTER_ENABLED=OFF`](https://docs.hunter.sh/en/latest/reference/user-variables.html#hunter-enabled)
-to configuration options.
+to the configuration options.
 
 
 [CMake]: https://cmake.org/
