@@ -22,6 +22,26 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+template <typename Verifier>
+class verbose_verification
+{
+public:
+    verbose_verification(Verifier verifier) : verifier_(verifier) {}
+
+    bool operator()(bool preverified, boost::asio::ssl::verify_context& ctx)
+    {
+        char subject_name[256];
+        X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
+        X509_NAME_oneline(X509_get_subject_name(cert), subject_name, 256);
+        bool verified = verifier_(preverified, ctx);
+        cnote << "Certificate: " << subject_name << " " << (verified ? "Ok" : "Failed");
+        return verified;
+    }
+
+private:
+    Verifier verifier_;
+};
+
 class EthStratumClient : public PoolClient
 {
 public:
@@ -56,7 +76,7 @@ public:
     bool current() { return static_cast<bool>(m_current); }
 
 private:
-    bool fake_certificate_validation(bool preverified, boost::asio::ssl::verify_context& ctx);
+
     void disconnect_finalize();
     void enqueue_response_plea();
     std::chrono::milliseconds dequeue_response_plea();
@@ -134,4 +154,11 @@ private:
     std::string m_submit_hashrate_id;
 
     unsigned m_solution_submitted_max_id; // maximum json id we used to send a solution
+
+    ///@brief Auxiliary function to make verbose_verification objects.
+    template <typename Verifier>
+    verbose_verification<Verifier> make_verbose_verification(Verifier verifier)
+    {
+        return verbose_verification<Verifier>(verifier);
+    }
 };

@@ -86,53 +86,53 @@ void EthStratumClient::init_socket()
 
         if (getenv("SSL_NOVERIFY"))
         {
-            m_securesocket->set_verify_callback(
-                boost::bind(&EthStratumClient::fake_certificate_validation, this, _1, _2));
+            m_securesocket->set_verify_mode(boost::asio::ssl::verify_none);
         }
         else
         {
             m_securesocket->set_verify_mode(boost::asio::ssl::verify_peer);
-
-#ifdef _WIN32
-            HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
-            if (hStore == nullptr)
-            {
-                return;
-            }
-
-            X509_STORE* store = X509_STORE_new();
-            PCCERT_CONTEXT pContext = nullptr;
-            while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != nullptr)
-            {
-                X509* x509 = d2i_X509(nullptr, (const unsigned char**)&pContext->pbCertEncoded,
-                    pContext->cbCertEncoded);
-                if (x509 != nullptr)
-                {
-                    X509_STORE_add_cert(store, x509);
-                    X509_free(x509);
-                }
-            }
-
-            CertFreeCertificateContext(pContext);
-            CertCloseStore(hStore, 0);
-
-            SSL_CTX_set_cert_store(ctx.native_handle(), store);
-#else
-            char* certPath = getenv("SSL_CERT_FILE");
-            try
-            {
-                ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
-            }
-            catch (...)
-            {
-                cwarn << "Failed to load ca certificates. Either the file "
-                         "'/etc/ssl/certs/ca-certificates.crt' does not exist";
-                cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or "
-                         "inaccessible file.";
-                cwarn << "It is possible that certificate verification can fail.";
-            }
-#endif
+            m_securesocket->set_verify_callback(
+                make_verbose_verification(boost::asio::ssl::rfc2818_verification(m_conn->Host())));
         }
+#ifdef _WIN32
+        HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
+        if (hStore == nullptr)
+        {
+            return;
+        }
+
+        X509_STORE* store = X509_STORE_new();
+        PCCERT_CONTEXT pContext = nullptr;
+        while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != nullptr)
+        {
+            X509* x509 = d2i_X509(
+                nullptr, (const unsigned char**)&pContext->pbCertEncoded, pContext->cbCertEncoded);
+            if (x509 != nullptr)
+            {
+                X509_STORE_add_cert(store, x509);
+                X509_free(x509);
+            }
+        }
+
+        CertFreeCertificateContext(pContext);
+        CertCloseStore(hStore, 0);
+
+        SSL_CTX_set_cert_store(ctx.native_handle(), store);
+#else
+        char* certPath = getenv("SSL_CERT_FILE");
+        try
+        {
+            ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
+        }
+        catch (...)
+        {
+            cwarn << "Failed to load ca certificates. Either the file "
+                     "'/etc/ssl/certs/ca-certificates.crt' does not exist";
+            cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or "
+                     "inaccessible file.";
+            cwarn << "It is possible that certificate verification can fail.";
+        }
+#endif
     }
     else
     {
@@ -156,14 +156,6 @@ void EthStratumClient::init_socket()
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 #endif
-}
-
-bool EthStratumClient::fake_certificate_validation(
-    bool preverified, boost::asio::ssl::verify_context& ctx)
-{
-    (void)preverified;
-    (void)ctx;
-    return true;
 }
 
 void EthStratumClient::connect()
@@ -574,6 +566,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
                 cwarn << "This can have multiple reasons:";
                 cwarn << "* Root certs are either not installed or not found";
                 cwarn << "* Pool uses a self-signed certificate";
+                cwarn << "* Pool hostname you're connecting to does not match the CN registered for the certificate.";
                 cwarn << "Possible fixes:";
 #ifndef _WIN32
                 cwarn << "* Make sure the file '/etc/ssl/certs/ca-certificates.crt' exists and "
@@ -585,8 +578,12 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
                 cwarn << "  You can also get the latest file here: "
                          "https://curl.haxx.se/docs/caextract.html";
 #endif
-                cwarn << "* Disable certificate verification all-together via command-line "
-                         "option.";
+                cwarn
+                    << "* Double check hostname in the -P argument.";
+                cwarn << "* Disable certificate verification all-together via environment "
+                         "variable. See ethminer --help for info about environment variables";
+                cwarn << "If you do the latter please be advised you might expose yourself to the "
+                         "risk of seeing your shares stolen";
             }
 
             // This is a fatal error
