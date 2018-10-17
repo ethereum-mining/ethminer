@@ -125,7 +125,7 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
 			// lanes access random locations
 			std::string src = mix_src();
 			std::string dest = mix_dst();
-			uint32_t r = rnd();
+			uint32_t    r = rnd();
 			ret << "// cache load\n";
 			ret << "offset = " << src << " % PROGPOW_CACHE_WORDS;\n";
 			ret << "data32 = c_dag[offset];\n";
@@ -138,9 +138,9 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
 			// reduced to a single result
 			std::string src1 = mix_src();
 			std::string src2 = mix_src();
-			uint32_t r1 = rnd();
-			uint32_t r2 = rnd();
-			std::string dest = mix_dst();
+			uint32_t    r1 = rnd();
+            std::string dest = mix_dst();
+			uint32_t    r2 = rnd();
 			ret << "// random math\n";
 			ret << math("data32", src1, src2, r1);
 			ret << merge(dest, "data32", r2);
@@ -148,8 +148,11 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
 	}
 	// Consume the global load data at the very end of the loop, to allow fully latency hiding
 	ret << "// consume global load data\n";
-	ret << merge("mix[0]", "data64", rnd());
-	ret << merge(mix_dst(), "(data64>>32)", rnd());
+    uint32_t    r1 = rnd();
+    std::string dest = mix_dst();
+    uint32_t    r2 = rnd();
+	ret << merge("mix[0]", "data64", r1);
+	ret << merge(dest, "(data64>>32)", r2);
 	ret << "}\n";
 	ret << "\n";
 

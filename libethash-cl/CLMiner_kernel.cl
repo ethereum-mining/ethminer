@@ -77,9 +77,10 @@ void keccak_f800_round(uint32_t st[25], const int r)
     st[0] ^= keccakf_rndc[r];
 }
 
-// Implementation of the Keccak sponge construction (with padding omitted)
-// The width is 800, with a bitrate of 448, and a capacity of 352.
-uint64_t keccak_f800(__constant hash32_t const* g_header, uint64_t seed, uint32_t result[4])
+// Keccak - implemented as a variant of SHAKE
+// The width is 800, with a bitrate of 576, a capacity of 224, and no padding
+// Only need 64 bits of output for mining
+uint64_t keccak_f800(__constant hash32_t const* g_header, uint64_t seed, hash32_t result)
 {
     uint32_t st[25];
 
@@ -89,8 +90,8 @@ uint64_t keccak_f800(__constant hash32_t const* g_header, uint64_t seed, uint32_
         st[i] = g_header->uint32s[i];
     st[8] = seed;
     st[9] = seed >> 32;
-    for (int i = 0; i < 4; i++)
-        st[10+i] = result[i];
+    for (int i = 0; i < 8; i++)
+        st[10+i] = result.uint32s[i];
 
     for (int r = 0; r < 21; r++) {
         keccak_f800_round(st, r);
@@ -98,7 +99,9 @@ uint64_t keccak_f800(__constant hash32_t const* g_header, uint64_t seed, uint32_
     // last round can be simplified due to partial output
     keccak_f800_round(st, 21);
 
-    return (uint64_t)st[1] << 32 | st[0];
+    // Byte swap so byte 0 of hash is MSB of result
+    uint64_t res = (uint64_t)st[1] << 32 | st[0];
+    return as_ulong(as_uchar8(res).s76543210);
 }
 
 #define fnv1a(h, d) (h = (h ^ d) * 0x1000193)
@@ -162,8 +165,7 @@ __kernel void ethash_search(
     const uint32_t lane_id = lid & (PROGPOW_LANES - 1);
     const uint32_t group_id = lid / PROGPOW_LANES;
 
-    // Load random data into the cache
-    // TODO: should be a new blob of data, not existing DAG data
+    // Load the first portion of the DAG into the cache
     for (uint32_t word = lid*2; word < PROGPOW_CACHE_WORDS; word += GROUP_SIZE*2)
     {
         uint64_t data = g_dag[word];
@@ -171,8 +173,9 @@ __kernel void ethash_search(
         c_dag[word + 1] = data >> 32;
     }
 
-    uint32_t result[4];
-    result[0] = result[1] = result[2] = result[3] = 0;
+    hash32_t result;
+    for (int i = 0; i < 8; i++)
+        result.uint32s[i] = 0;
     // keccak(header..nonce)
     uint64_t seed = keccak_f800(g_header, start_nonce + gid, result);
 
@@ -203,22 +206,21 @@ __kernel void ethash_search(
         for (int i = 0; i < PROGPOW_REGS; i++)
             fnv1a(mix_hash, mix[i]);
 
-        // Reduce all lanes to a single 128-bit result
-        uint32_t result_hash[4];
-        for (int i = 0; i < 4; i++)
-            result_hash[i] = 0x811c9dc5;
+        // Reduce all lanes to a single 256-bit result
+        hash32_t result_hash;
+        for (int i = 0; i < 8; i++)
+            result_hash.uint32s[i] = 0x811c9dc5;
         share[group_id].uint32s[lane_id] = mix_hash;
         barrier(CLK_LOCAL_MEM_FENCE);
         #pragma unroll
         for (int i = 0; i < PROGPOW_LANES; i++)
-            fnv1a(result_hash[i%4], share[group_id].uint32s[i]);
+            fnv1a(result_hash.uint32s[i%8], share[group_id].uint32s[i]);
         if (h == lane_id)
-            for (int i = 0; i < 4; i++)
-                result[i] = result_hash[i];
+            result = result_hash;
     }
 
     // keccak(header .. keccak(header..nonce) .. result);
-    if (keccak_f800(g_header, seed, result) <= target)
+    if (keccak_f800(g_header, seed, result) < target)
     {
         uint slot = atomic_inc(&g_output[0]) + 1;
         if(slot < MAX_OUTPUTS)

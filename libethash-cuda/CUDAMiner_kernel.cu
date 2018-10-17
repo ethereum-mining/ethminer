@@ -72,8 +72,14 @@ __device__ __forceinline__ void keccak_f800_round(uint32_t st[25], const int r)
     st[0] ^= keccakf_rndc[r];
 }
 
-// Implementation of the Keccak sponge construction (with padding omitted)
-// The width is 800, with a bitrate of 576, and a capacity of 224.
+__device__ __forceinline__ uint32_t cuda_swab32(const uint32_t x)
+{
+    return __byte_perm(x, x, 0x0123);
+}
+
+// Keccak - implemented as a variant of SHAKE
+// The width is 800, with a bitrate of 576, a capacity of 224, and no padding
+// Only need 64 bits of output for mining
 __device__ __noinline__ uint64_t keccak_f800(hash32_t header, uint64_t seed, hash32_t result)
 {
     uint32_t st[25];
@@ -93,7 +99,8 @@ __device__ __noinline__ uint64_t keccak_f800(hash32_t header, uint64_t seed, has
     // last round can be simplified due to partial output
     keccak_f800_round(st, 21);
 
-    return (uint64_t)st[0] << 32 | st[1];
+    // Byte swap so byte 0 of hash is MSB of result
+    return (uint64_t)cuda_swab32(st[0]) << 32 | cuda_swab32(st[1]);
 }
 
 #define fnv1a(h, d) (h = (uint32_t(h) ^ uint32_t(d)) * uint32_t(0x1000193))
@@ -145,8 +152,7 @@ progpow_search(
 
     const uint32_t lane_id = threadIdx.x & (PROGPOW_LANES - 1);
 
-    // Load random data into the cache
-    // TODO: should be a new blob of data, not existing DAG data
+    // Load the first portion of the DAG into the cache
     for (uint32_t word = threadIdx.x*2; word < PROGPOW_CACHE_WORDS; word += blockDim.x*2)
     {
         uint64_t data = g_dag[word];
@@ -199,7 +205,7 @@ progpow_search(
     }
 
     // keccak(header .. keccak(header..nonce) .. result);
-    if (keccak_f800(header, seed, result) > target)
+    if (keccak_f800(header, seed, result) >= target)
         return;
 
     uint32_t index = atomicInc((uint32_t *)&g_output->count, 0xffffffff);
