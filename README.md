@@ -171,6 +171,7 @@ hash32_t keccak_f800_progpow(hash32_t header, uint64_t seed, hash32_t result)
     hash32_t ret;
     for (int i=0; i<8; i++)
         ret.uint32s[i] = st[i];
+    return ret;
 }
 ```
 
