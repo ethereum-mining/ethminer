@@ -96,7 +96,7 @@ ProgPoW can be tuned using the following parameters.  The proposed settings have
 * `PROGPOW_CNT_CACHE`: The number of cache accesses per loop; default is `8`.
 * `PROGPOW_CNT_MATH`: The number of math operations per loop; default is `8`.
 
-The random program changes every `PROGPOW_PERIOD` (default `50`) blocks to ensure the hardware executing the algorithm is fully programmable.  If the program only changed every DAG epoch (roughly 5 days) a miner could have time to develop a hand-optimized version of the random sequence, giving them an undue advantage.
+The random program changes every `PROGPOW_PERIOD` blocks (default `50`, roughly 12.5 minutes) to ensure the hardware executing the algorithm is fully programmable.  If the program only changed every DAG epoch (roughly 5 days) certain miners could have time to develop hand-optimized versions of the random sequence, giving them an undue advantage.
 
 ProgPoW uses **FNV1a** for merging data. The existing Ethash uses FNV1 for merging, but FNV1a provides better distribution properties.
 
@@ -149,7 +149,7 @@ void fill_mix(
 }
 ```
 
-Like ethash Keccak is used to seed the sequence per-nonce and to produce the final result.  The keccak-f800 variant is used as the 32-bit word size matches the native word size for GPUs.  The implementation is a variant of SHAKE with width=800, bitrate=576, capacity=224, output=256, and no padding.  The result of keccak is treated as a 256-bit big-endian number - that is result byte 0 is the MSB of the value.
+Like ethash Keccak is used to seed the sequence per-nonce and to produce the final result.  The keccak-f800 variant is used as the 32-bit word size matches the native word size of modern GPUs.  The implementation is a variant of SHAKE with width=800, bitrate=576, capacity=224, output=256, and no padding.  The result of keccak is treated as a 256-bit big-endian number - that is result byte 0 is the MSB of the value.
 
 ```cpp
 hash32_t keccak_f800_progpow(hash32_t header, uint64_t seed, hash32_t result)
@@ -175,7 +175,12 @@ hash32_t keccak_f800_progpow(hash32_t header, uint64_t seed, hash32_t result)
 }
 ```
 
-The main search algorithm generates a seed, expands random data from the seed, does a sequence of loads and random math on the mix data, then compresses the result, and then does a final Keccak permutation for target comparison.
+The flow of the overall algorithm is:
+* A keccak hash of the header + nonce to create a seed
+* Use the seed to generate initial mix data
+* Loop multiple times, each time hashing random loads and random math into the mix data
+* Hash all the mix data into a single 256-bit value
+* A final keccak hash that is compared against the target
 
 ```cpp
 bool progpow_search(
@@ -223,10 +228,9 @@ bool progpow_search(
 }
 ```
 
-The inner loop uses FNV and KISS99 to generate a random sequence from the `prog_seed`.  This random sequence determines which mix state is accessed and what random math is performed. Since the `prog_seed` changes relatively infrequently it is expected that `progPowLoop` will be compiled while mining instead of interpreted on the fly.
+The inner loop uses FNV and KISS99 to generate a random sequence from the `prog_seed`.  This random sequence determines which mix state is accessed and what random math is performed. Since the `prog_seed` changes relatively infrequently it is expected that `progPowLoop` will be pre-compiled while mining instead of interpreted on the fly.
 
 ```cpp
-
 kiss99_t progPowInit(uint64_t prog_seed, int mix_seq[PROGPOW_REGS])
 {
     kiss99_t prog_rnd;
