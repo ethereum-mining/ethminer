@@ -84,16 +84,19 @@ Ethash requires external memory due to the large size of the DAG.  However that 
 
 ## ProgPoW Algorithm Walkthrough
 
-The DAG is generated exactly as in ethash.  The only difference is that an additional PROGPOW_SIZE_CACHE worth of data is generated that will live in the L1 cache instead of the framebuffer.
+The DAG is generated exactly as in ethash.
 
 ProgPoW can be tuned using the following parameters.  The proposed settings have been tuned for a range of existing, commodity GPUs:
 
-* `PROGPOW_LANES:` The number of parallel lanes that coordinate to calculate a single hash instance; default is `32.`
-* `PROGPOW_REGS:` The register file usage size; default is `16.` 
-* `PROGPOW_CACHE_BYTES:` The size of the cache; default is `16 x 1024.`
-* `PROGPOW_CNT_MEM:` The number of frame buffer accesses, defined as the outer loop of the algorithm; default is `64` (same as Ethash).
-* `PROGPOW_CNT_CACHE:` The number of cache accesses per loop; default is `8.`
-* `PROGPOW_CNT_MATH:` The number of math operations per loop; default is `8.`
+* `PROGPOW_PERIOD`: Number of blocks before changing the random program; default is `50`.
+* `PROGPOW_LANES`: The number of parallel lanes that coordinate to calculate a single hash instance; default is `32`.
+* `PROGPOW_REGS`: The register file usage size; default is `16`.
+* `PROGPOW_CACHE_BYTES`: The size of the cache; default is `16 x 1024`.
+* `PROGPOW_CNT_MEM`: The number of frame buffer accesses, defined as the outer loop of the algorithm; default is `64` (same as Ethash).
+* `PROGPOW_CNT_CACHE`: The number of cache accesses per loop; default is `8`.
+* `PROGPOW_CNT_MATH`: The number of math operations per loop; default is `8`.
+
+The random program changes every `PROGPOW_PERIOD` (default `50`) blocks to ensure the hardware executing the algorithm is fully programmable.  If the program only changed every DAG epoch (roughly 5 days) a miner could have time to develop a hand-optimized version of the random sequence, giving them an undue advantage.
 
 ProgPoW uses **FNV1a** for merging data. The existing Ethash uses FNV1 for merging, but FNV1a provides better distribution properties.
 
@@ -146,34 +149,59 @@ void fill_mix(
 }
 ```
 
-The main search algorithm uses the Keccak sponge function (a width of 800 bits, with a bitrate of 448, and a capacity of 352) to generate a seed, expands the seed, does a sequence of loads and random math on the mix data, and then compresses the result into a final Keccak permutation (with the same parameters as the first) for target comparison.
+Like ethash Keccak is used to seed the sequence per-nonce and to produce the final result.  The keccak-f800 variant is used as the 32-bit word size matches the native word size for GPUs.  The implementation is a variant of SHAKE with width=800, bitrate=576, capacity=224, output=256, and no padding.  The result of keccak is treated as a 256-bit big-endian number - that is result byte 0 is the MSB of the value.
 
 ```cpp
+hash32_t keccak_f800_progpow(hash32_t header, uint64_t seed, hash32_t result)
+{
+    uint32_t st[25];
 
+    for (int i = 0; i < 25; i++)
+        st[i] = 0;
+    for (int i = 0; i < 8; i++)
+        st[i] = header.uint32s[i];
+    st[8] = seed;
+    st[9] = seed >> 32;
+    for (int i = 0; i < 8; i++)
+        st[10+i] = result.uint32s[i];
+
+    for (int r = 0; r < 22; r++)
+        keccak_f800_round(st, r);
+
+    hash32_t ret;
+    for (int i=0; i<8; i++)
+        ret.uint32s[i] = st[i];
+}
+```
+
+The main search algorithm generates a seed, expands random data from the seed, does a sequence of loads and random math on the mix data, then compresses the result, and then does a final Keccak permutation for target comparison.
+
+```cpp
 bool progpow_search(
-    const uint64_t prog_seed,
+    const uint64_t prog_seed, // value is (block_number/PROGPOW_PERIOD)
     const uint64_t nonce,
     const hash32_t header,
-    const uint64_t target,
-    const uint64_t *g_dag, // gigabyte DAG located in framebuffer
-    const uint64_t *c_dag  // kilobyte DAG located in l1 cache
+    const hash32_t target, // miner can use a uint64_t target, doesn't need the full 256 bit target
+    const uint64_t *dag // gigabyte DAG located in framebuffer - the first portion gets cached
 )
 {
     uint32_t mix[PROGPOW_LANES][PROGPOW_REGS];
-    uint32_t result[8];
+    hash32_t result;
     for (int i = 0; i < 8; i++)
-        result[i] = 0;
+        result.uint32s[i] = 0;
 
     // keccak(header..nonce)
-    uint64_t seed = keccak_f800(header, nonce, result);
+    hash32_t seed_256 = keccak_f800_progpow(header, nonce, result);
+    // endian swap so byte 0 of the hash is the MSB of the value
+    uint64_t seed = bswap(seed_256[0]) << 32 | bswap(seed_256[1]);
 
     // initialize mix for all lanes
     for (int l = 0; l < PROGPOW_LANES; l++)
-        fill_mix(seed, l, mix);
+        fill_mix(seed, l, mix[l]);
 
     // execute the randomly generated inner loop
     for (int i = 0; i < PROGPOW_CNT_MEM; i++)
-        progPowLoop(prog_seed, i, mix, g_dag, c_dag);
+        progPowLoop(prog_seed, i, mix, dag);
 
     // Reduce mix data to a single per-lane result
     uint32_t lane_hash[PROGPOW_LANES];
@@ -183,14 +211,14 @@ bool progpow_search(
         for (int i = 0; i < PROGPOW_REGS; i++)
             fnv1a(lane_hash[l], mix[l][i]);
     }
-    // Reduce all lanes to a single 128-bit result
+    // Reduce all lanes to a single 256-bit result
     for (int i = 0; i < 8; i++)
-        result[i] = 0x811c9dc5;
+        result.uint32s[i] = 0x811c9dc5;
     for (int l = 0; l < PROGPOW_LANES; l++)
-        fnv1a(result[l%8], lane_hash[l])
+        fnv1a(result.uint32s[l%8], lane_hash[l])
 
     // keccak(header .. keccak(header..nonce) .. result);
-    return (keccak_f800(header, seed, result) <= target);
+    return (keccak_f800_progpow(header, seed, result) <= target);
 }
 ```
 
@@ -276,8 +304,7 @@ void progPowLoop(
     const uint64_t prog_seed,
     const uint32_t loop,
     uint32_t mix[PROGPOW_LANES][PROGPOW_REGS],
-    const uint64_t *g_dag,
-    const uint32_t *c_dag)
+    const uint64_t *dag)
 {
     // All lanes share a base address for the global load
     // Global offset uses mix[0] to guarantee it depends on the load result
@@ -286,7 +313,7 @@ void progPowLoop(
     for (int l = 0; l < PROGPOW_LANES; l++)
     {
         // global load to sequential locations
-        uint64_t data64 = g_dag[offset_g + l];
+        uint64_t data64 = dag[offset_g + l];
 
         // initialize the seed and mix destination sequence
         int mix_seq[PROGPOW_REGS];
@@ -300,9 +327,9 @@ void progPowLoop(
             if (i < PROGPOW_CNT_CACHE)
             {
                 // Cached memory access
-                // lanes access random location
+                // lanes access random 32-bit locations within the first portion of the DAG
                 offset = mix[l][mix_src()] % PROGPOW_CACHE_WORDS;
-                data32 = c_dag[offset];
+                data32 = (uint32_t*)dag[offset];
                 merge(mix[l][mix_dst()], data32, rnd());
             }
             if (i < PROGPOW_CNT_MATH)
