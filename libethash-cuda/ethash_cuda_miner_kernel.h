@@ -47,6 +47,14 @@ typedef union {
 	uint4	 uint4s[200 / sizeof(uint4)];
 } hash200_t;
 
+// Declaration of cuda datastructures
+extern __constant__ uint32_t d_dag_size;
+extern __constant__ hash128_t* d_dag;
+extern __constant__ uint32_t d_light_size;
+extern __constant__ hash64_t* d_light;
+extern __constant__ hash32_t d_header;
+extern __constant__ uint64_t d_target;
+
 void set_constants(
 	hash128_t* _dag,
 	uint32_t _dag_size,
@@ -84,7 +92,7 @@ struct cuda_runtime_error : public virtual std::runtime_error
 	cuda_runtime_error( std::string msg ) : std::runtime_error(msg) {}
 };
 
-#define CUDA_SAFE_CALL(call)				\
+#define CUDA_SAFE_CALL(call)	\
 do {							\
 	cudaError_t err = call;				\
 	if (cudaSuccess != err) {			\
@@ -98,4 +106,3 @@ do {							\
 		throw cuda_runtime_error(ss.str());	\
 	}						\
 } while (0)
-
