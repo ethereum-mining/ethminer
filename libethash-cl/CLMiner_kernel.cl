@@ -149,10 +149,10 @@ __attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
 __kernel void ethash_search(
     __global volatile uint* restrict g_output,
     __constant hash32_t const* g_header,
-    __global uint64_t const* g_dag,
+    __global dag_t const* g_dag,
     ulong start_nonce,
     ulong target,
-    uint isolate
+    uint hack_false
 )
 {
     __local shuffle_t share[HASHES_PER_GROUP];
@@ -166,11 +166,11 @@ __kernel void ethash_search(
     const uint32_t group_id = lid / PROGPOW_LANES;
 
     // Load the first portion of the DAG into the cache
-    for (uint32_t word = lid*2; word < PROGPOW_CACHE_WORDS; word += GROUP_SIZE*2)
+    for (uint32_t word = lid*PROGPOW_DAG_LOADS; word < PROGPOW_CACHE_WORDS; word += GROUP_SIZE*PROGPOW_DAG_LOADS)
     {
-        uint64_t data = g_dag[word];
-        c_dag[word + 0] = data;
-        c_dag[word + 1] = data >> 32;
+        dag_t load = g_dag[word];
+        for (int i = 0; i<PROGPOW_DAG_LOADS; i++)
+            c_dag[word + i] = load.s[i];
     }
 
     hash32_t result;
@@ -197,8 +197,8 @@ __kernel void ethash_search(
         fill_mix(hash_seed, lane_id, mix);
 
         #pragma unroll 1
-        for (uint32_t l = 0; l < PROGPOW_CNT_MEM; l++)
-            progPowLoop(l, mix, g_dag, c_dag, share[0].uint64s);
+        for (uint32_t l = 0; l < PROGPOW_CNT_DAG; l++)
+            progPowLoop(l, mix, g_dag, c_dag, share[0].uint64s, hack_false);
 
         // Reduce mix data to a single per-lane result
         uint32_t mix_hash = 0x811c9dc5;

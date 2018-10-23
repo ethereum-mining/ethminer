@@ -86,12 +86,12 @@ bool CUDAMiner::init(int epoch)
         const auto& context = ethash::get_global_epoch_context(epoch);
         const auto lightWords = context.light_cache_num_items;
         const auto lightSize = ethash::get_light_cache_size(lightWords);
-        const auto dagWords = context.full_dataset_num_items;
-        const auto dagBytes = ethash::get_full_dataset_size(dagWords);
+        const auto dagElms = context.full_dataset_num_items;
+        const auto dagBytes = ethash::get_full_dataset_size(dagElms);
 
         CUDA_SAFE_CALL(cudaSetDevice(m_device_num));
         cudalog << "Set Device to current";
-        if (dagWords != m_dag_words || !m_dag)
+        if (dagElms != m_dag_elms || !m_dag)
         {
             // Check whether the current device has sufficient memory every time we recreate the dag
             if (device_props.totalGlobalMem < dagBytes)
@@ -118,7 +118,7 @@ bool CUDAMiner::init(int epoch)
         hash64_t * dag = m_dag;
         hash64_t* light = m_light[m_device_num];
 
-        compileKernel(_light->block_number, dagWords);
+        compileKernel(_light->block_number, dagElms);
 
         if (!light)
         {
@@ -130,10 +130,10 @@ bool CUDAMiner::init(int epoch)
             cudaMemcpyHostToDevice));
         m_light[m_device_num] = light;
 
-        if (dagWords != m_dag_words || !dag)  // create buffer for dag
+        if (dagElms != m_dag_elms || !dag)  // create buffer for dag
             CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagBytes));
 
-        if (dagWords != m_dag_words || !dag)
+        if (dagElms != m_dag_elms || !dag)
         {
             // create mining buffers
             cudalog << "Generating mining buffers";
@@ -191,7 +191,7 @@ bool CUDAMiner::init(int epoch)
         }
 
         m_dag = dag;
-        m_dag_words = dagWords;
+        m_dag_elms = dagElms;
 
         s_dagLoadIndex++;
 
@@ -411,7 +411,6 @@ bool CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _
         return false;
     }
 
-    return true;
 }
 
 void CUDAMiner::setParallelHash(unsigned _parallelHash)
@@ -424,7 +423,7 @@ void CUDAMiner::setParallelHash(unsigned _parallelHash)
 
 void CUDAMiner::compileKernel(
     uint64_t block_number,
-    uint64_t dag_words)
+    uint64_t dag_elms)
 {
     const char* name = "progpow_search";
 
@@ -450,7 +449,7 @@ void CUDAMiner::compileKernel(
     cudaDeviceProp device_props;
     CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, m_device_num));
     std::string op_arch = "--gpu-architecture=compute_" + to_string(device_props.major) + to_string(device_props.minor);
-    std::string op_dag = "-DPROGPOW_DAG_WORDS=" + to_string(dag_words);
+    std::string op_dag = "-DPROGPOW_DAG_ELEMENTS=" + to_string(dag_elms);
 
     const char *opts[] = {
         op_arch.c_str(),
@@ -539,7 +538,8 @@ void CUDAMiner::search(
         buffer.count = 0;
 
         // Run the batch for this stream
-        void *args[] = {&current_nonce, &current_header, &m_current_target, &m_dag, &buffer};
+        bool hack_false = false;
+        void *args[] = {&current_nonce, &current_header, &m_current_target, &m_dag, &buffer, &hack_false};
         CU_SAFE_CALL(cuLaunchKernel(m_kernel,
             s_gridSize, 1, 1,   // grid dim
             s_blockSize, 1, 1,  // block dim
@@ -614,7 +614,8 @@ void CUDAMiner::search(
             // unless we are done for this round.
             if (!done)
             {
-                void *args[] = {&current_nonce, &current_header, &m_current_target, &m_dag, &buffer};
+                bool hack_false = false;
+                void *args[] = {&current_nonce, &current_header, &m_current_target, &m_dag, &buffer, &hack_false};
                 CU_SAFE_CALL(cuLaunchKernel(m_kernel,
                     s_gridSize, 1, 1,   // grid dim
                     s_blockSize, 1, 1,  // block dim

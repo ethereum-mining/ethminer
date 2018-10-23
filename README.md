@@ -89,12 +89,13 @@ The DAG is generated exactly as in ethash.
 ProgPoW can be tuned using the following parameters.  The proposed settings have been tuned for a range of existing, commodity GPUs:
 
 * `PROGPOW_PERIOD`: Number of blocks before changing the random program; default is `50`.
-* `PROGPOW_LANES`: The number of parallel lanes that coordinate to calculate a single hash instance; default is `32`.
-* `PROGPOW_REGS`: The register file usage size; default is `16`.
+* `PROGPOW_LANES`: The number of parallel lanes that coordinate to calculate a single hash instance; default is `16`.
+* `PROGPOW_REGS`: The register file usage size; default is `32`.
+* `PROGPOW_DAG_LOADS`: Number of uint32 loads from the DAG per lane; default is `4`;
 * `PROGPOW_CACHE_BYTES`: The size of the cache; default is `16 x 1024`.
-* `PROGPOW_CNT_MEM`: The number of frame buffer accesses, defined as the outer loop of the algorithm; default is `64` (same as Ethash).
-* `PROGPOW_CNT_CACHE`: The number of cache accesses per loop; default is `8`.
-* `PROGPOW_CNT_MATH`: The number of math operations per loop; default is `8`.
+* `PROGPOW_CNT_DAG`: The number of DAG accesses, defined as the outer loop of the algorithm; default is `64` (same as Ethash).
+* `PROGPOW_CNT_CACHE`: The number of cache accesses per loop; default is `12`.
+* `PROGPOW_CNT_MATH`: The number of math operations per loop; default is `20`.
 
 The random program changes every `PROGPOW_PERIOD` blocks (default `50`, roughly 12.5 minutes) to ensure the hardware executing the algorithm is fully programmable.  If the program only changed every DAG epoch (roughly 5 days) certain miners could have time to develop hand-optimized versions of the random sequence, giving them an undue advantage.
 
@@ -188,7 +189,7 @@ bool progpow_search(
     const uint64_t nonce,
     const hash32_t header,
     const hash32_t target, // miner can use a uint64_t target, doesn't need the full 256 bit target
-    const uint64_t *dag // gigabyte DAG located in framebuffer - the first portion gets cached
+    const uint32_t *dag // gigabyte DAG located in framebuffer - the first portion gets cached
 )
 {
     uint32_t mix[PROGPOW_LANES][PROGPOW_REGS];
@@ -206,7 +207,7 @@ bool progpow_search(
         fill_mix(seed, l, mix[l]);
 
     // execute the randomly generated inner loop
-    for (int i = 0; i < PROGPOW_CNT_MEM; i++)
+    for (int i = 0; i < PROGPOW_CNT_DAG; i++)
         progPowLoop(prog_seed, i, mix, dag);
 
     // Reduce mix data to a single per-lane result
@@ -231,7 +232,7 @@ bool progpow_search(
 The inner loop uses FNV and KISS99 to generate a random sequence from the `prog_seed`.  This random sequence determines which mix state is accessed and what random math is performed. Since the `prog_seed` changes relatively infrequently it is expected that `progPowLoop` will be pre-compiled while mining instead of interpreted on the fly.
 
 ```cpp
-kiss99_t progPowInit(uint64_t prog_seed, int mix_seq[PROGPOW_REGS])
+kiss99_t progPowInit(uint64_t prog_seed, int mix_seq_dst[PROGPOW_REGS], int mix_seq_cache[PROGPOW_REGS])
 {
     kiss99_t prog_rnd;
     uint32_t fnv_hash = 0x811c9dc5;
@@ -239,15 +240,22 @@ kiss99_t progPowInit(uint64_t prog_seed, int mix_seq[PROGPOW_REGS])
     prog_rnd.w = fnv1a(fnv_hash, prog_seed >> 32);
     prog_rnd.jsr = fnv1a(fnv_hash, prog_seed);
     prog_rnd.jcong = fnv1a(fnv_hash, prog_seed >> 32);
-    // Create a random sequence of mix destinations for merge()
-    // guaranteeing every location is touched once
-    // Uses Fisher–Yates shuffle
+    // Create a random sequence of mix destinations for merge() and mix sources for cache reads
+    // guarantees every destination merged once
+    // guarantees no duplicate cache reads, which could be optimized away
+    // Uses Fisher-Yates shuffle
     for (int i = 0; i < PROGPOW_REGS; i++)
-        mix_seq[i] = i;
+    {
+        mix_seq_dst[i] = i;
+        mix_seq_cache[i] = i;
+    }
     for (int i = PROGPOW_REGS - 1; i > 0; i--)
     {
-        int j = kiss99(prog_rnd) % (i + 1);
-        swap(mix_seq[i], mix_seq[j]);
+        int j;
+        j = kiss99(prog_rnd) % (i + 1);
+        swap(mix_seq_dst[i], mix_seq_dst[j]);
+        j = kiss99(prog_rnd) % (i + 1);
+        swap(mix_seq_cache[i], mix_seq_cache[j]);
     }
     return prog_rnd;
 }
@@ -299,33 +307,38 @@ The main loop:
 
 ```cpp
 // Helper to get the next value in the per-program random sequence
-#define rnd()    (kiss99(prog_rnd))
+#define rnd()       (kiss99(prog_rnd))
 // Helper to pick a random mix location
-#define mix_src() (rnd() % PROGPOW_REGS)
+#define mix_src()   (rnd() % PROGPOW_REGS)
 // Helper to access the sequence of mix destinations
-#define mix_dst() (mix_seq[(mix_seq_cnt++)%PROGPOW_REGS])
+#define mix_dst()   (mix_seq_dst[(mix_seq_dst_cnt++)%PROGPOW_REGS])
+// Helper to access the sequence of cache sources
+#define mix_cache() (mix_seq_cache[(mix_seq_cache_cnt++)%PROGPOW_REGS])
 
 void progPowLoop(
     const uint64_t prog_seed,
     const uint32_t loop,
     uint32_t mix[PROGPOW_LANES][PROGPOW_REGS],
-    const uint64_t *dag)
+    const uint32_t *dag)
 {
     // All lanes share a base address for the global load
     // Global offset uses mix[0] to guarantee it depends on the load result
-    uint32_t offset_g = mix[loop%PROGPOW_LANES][0] % DAG_SIZE;
+    uint32_t offset_g = mix[loop%PROGPOW_LANES][0] % (DAG_BYTES / (PROGPOW_LANES*PROGPOW_DAG_LOADS*sizeof(uint32_t)));
     // Lanes can execute in parallel and will be convergent
     for (int l = 0; l < PROGPOW_LANES; l++)
     {
         // global load to sequential locations
-        uint64_t data64 = dag[offset_g + l];
+        uint32_t data_g[PROGPOW_DAG_LOADS];
+        for (int i = 0; i < PROGPOW_DAG_LOADS; i++)
+            data_g[i] = dag[(offset_g*PROGPOW_LANES + l)*PROGPOW_DAG_LOADS + i];
 
         // initialize the seed and mix destination sequence
-        int mix_seq[PROGPOW_REGS];
-        int mix_seq_cnt = 0;
-        kiss99_t prog_rnd = progPowInit(prog_seed, mix_seq);
+        int mix_seq_dst[PROGPOW_REGS];
+        int mix_seq_cache[PROGPOW_REGS];
+        int mix_seq_dst_cnt = 0;
+        int mix_seq_cache_cnt = 0;
+        kiss99_t prog_rnd = progPowInit(prog_seed, mix_seq_dst, mix_seq_cache);
 
-        uint32_t offset, data32;
         int max_i = max(PROGPOW_CNT_CACHE, PROGPOW_CNT_MATH);
         for (int i = 0; i < max_i; i++)
         {
@@ -333,21 +346,22 @@ void progPowLoop(
             {
                 // Cached memory access
                 // lanes access random 32-bit locations within the first portion of the DAG
-                offset = mix[l][mix_src()] % PROGPOW_CACHE_WORDS;
-                data32 = (uint32_t*)dag[offset];
-                merge(mix[l][mix_dst()], data32, rnd());
+                uint32_t offset = mix[l][mix_cache()] % (PROGPOW_CACHE_BYTES/sizeof(uint32_t));
+                uint32_t data = dag[offset];
+                merge(mix[l][mix_dst()], data, rnd());
             }
             if (i < PROGPOW_CNT_MATH)
             {
                 // Random Math
-                data32 = math(mix[l][mix_src()], mix[l][mix_src()], rnd());
-                merge(mix[l][mix_dst()], data32, rnd());
+                uint32_t data = math(mix[l][mix_src()], mix[l][mix_src()], rnd());
+                merge(mix[l][mix_dst()], data, rnd());
             }
         }
-        // Consume the global load data at the very end of the loop
-        // Allows full latency hiding
-        merge(mix[l][0], data64, rnd());
-        merge(mix[l][mix_dst()], data64>>32, rnd());
+        // Consume the global load data at the very end of the loop to allow full latency hiding
+        // Always merge into mix[0] to feed the offset calculation
+        merge(mix[l][0], data_g[0], rnd());
+        for (int i = 1; i < PROGPOW_DAG_LOADS; i++)
+            merge(mix[l][mix_dst()], data_g[i], rnd());
     }
 }
 ```

@@ -2,15 +2,21 @@
 
 #include <stdint.h>
 #include <string>
-#define ETHASH_ACCESSES			64
 
-#define PROGPOW_LANES			32
-#define PROGPOW_REGS			16
-#define PROGPOW_CACHE_BYTES		(16*1024)
-#define PROGPOW_CNT_MEM			ETHASH_ACCESSES
-#define PROGPOW_CNT_CACHE		8
-#define PROGPOW_CNT_MATH		8
-
+// lanes that work together calculating a hash
+#define PROGPOW_LANES           16
+// uint32 registers per lane
+#define PROGPOW_REGS            32
+// uint32 loads from the DAG per lane
+#define PROGPOW_DAG_LOADS       4
+// size of the cached portion of the DAG
+#define PROGPOW_CACHE_BYTES     (16*1024)
+// DAG accesses, also the number of loops executed
+#define PROGPOW_CNT_DAG         64
+// random cache accesses per loop
+#define PROGPOW_CNT_CACHE       12
+// random math instructions per loop
+#define PROGPOW_CNT_MATH        20
 
 class ProgPow
 {
