@@ -70,7 +70,7 @@ private:
     /// Constants on GPU
     hash64_t* m_dag = nullptr;
     std::vector<hash64_t*> m_light;
-    uint32_t m_dag_words = -1;
+    uint32_t m_dag_elms = -1;
     uint32_t m_device_num = 0;
 
     CUmodule m_module;
