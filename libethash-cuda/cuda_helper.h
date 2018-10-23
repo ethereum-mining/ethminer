@@ -1095,3 +1095,16 @@ __device__ __forceinline__ uint32_t bfi(uint32_t x, uint32_t a, uint32_t bit, ui
     asm("bfi.b32 %0, %1, %2, %3,%4;" : "=r"(ret) : "r"(x), "r"(a), "r"(bit), "r"(numBits));
     return ret;
 }
+
+#define CUDA_SAFE_CALL(call)                                                              \
+    do                                                                                    \
+    {                                                                                     \
+        cudaError_t err = call;                                                           \
+        if (cudaSuccess != err)                                                           \
+        {                                                                                 \
+            std::stringstream ss;                                                         \
+            ss << "CUDA error in func " << __FUNCTION__ << " at line " << __LINE__ << ' ' \
+               << cudaGetErrorString(err);                                                \
+            throw cuda_runtime_error(ss.str());                                           \
+        }                                                                                 \
+    } while (0)
