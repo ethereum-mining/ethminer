@@ -3,8 +3,9 @@
 #include <sstream>
 
 #define rnd() (kiss99(rnd_state))
-#define mix_src() ("mix[" + std::to_string(rnd() % PROGPOW_REGS) + "]")
-#define mix_dst() ("mix[" + std::to_string(mix_seq[(mix_seq_cnt++)%PROGPOW_REGS]) + "]")
+#define mix_src()   ("mix[" + std::to_string(rnd() % PROGPOW_REGS) + "]")
+#define mix_dst()   ("mix[" + std::to_string(mix_seq_dst[(mix_seq_dst_cnt++)%PROGPOW_REGS]) + "]")
+#define mix_cache() ("mix[" + std::to_string(mix_seq_cache[(mix_seq_cache_cnt++)%PROGPOW_REGS]) + "]")
 
 void swap(int &a, int &b)
 {
@@ -15,7 +16,7 @@ void swap(int &a, int &b)
 
 std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
 {
-	std::stringstream ret;
+    std::stringstream ret;
 
     uint32_t seed0 = (uint32_t)prog_seed;
     uint32_t seed1 = prog_seed >> 32;
@@ -26,16 +27,25 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
     rnd_state.jsr = fnv1a(fnv_hash, seed0);
     rnd_state.jcong = fnv1a(fnv_hash, seed1);
 
-    // Create a random sequence of mix destinations
+    // Create a random sequence of mix destinations and cache sources
     // Merge is a read-modify-write, guaranteeing every mix element is modified every loop
-    int mix_seq[PROGPOW_REGS];
-    int mix_seq_cnt = 0;
+    // Guarantee no cache load is duplicated and can be optimized away
+    int mix_seq_dst[PROGPOW_REGS];
+    int mix_seq_cache[PROGPOW_REGS];
+    int mix_seq_dst_cnt = 0;
+    int mix_seq_cache_cnt = 0;
     for (int i = 0; i < PROGPOW_REGS; i++)
-        mix_seq[i] = i;
+    {
+        mix_seq_dst[i] = i;
+        mix_seq_cache[i] = i;
+    }
     for (int i = PROGPOW_REGS - 1; i > 0; i--)
     {
-        int j = rnd() % (i + 1);
-        swap(mix_seq[i], mix_seq[j]);
+        int j;
+        j = rnd() % (i + 1);
+        swap(mix_seq_dst[i], mix_seq_dst[j]);
+        j = rnd() % (i + 1);
+        swap(mix_seq_cache[i], mix_seq_cache[j]);
     }
 
 	if (kern == KERNEL_CUDA)
@@ -64,33 +74,40 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
         ret << "\n";
 	}
 
-    ret << "#define PROGPOW_LANES			" << PROGPOW_LANES << "\n";
-	ret << "#define PROGPOW_REGS			" << PROGPOW_REGS << "\n";
-    ret << "#define PROGPOW_CNT_MEM			" << PROGPOW_CNT_MEM << "\n";
-    ret << "#define PROGPOW_CNT_MATH		" << PROGPOW_CNT_MATH << "\n";
-    ret << "#define PROGPOW_CACHE_WORDS  " << PROGPOW_CACHE_BYTES / sizeof(uint32_t) << "\n";
+    ret << "#define PROGPOW_LANES           " << PROGPOW_LANES << "\n";
+    ret << "#define PROGPOW_REGS            " << PROGPOW_REGS << "\n";
+    ret << "#define PROGPOW_DAG_LOADS       " << PROGPOW_DAG_LOADS << "\n";
+    ret << "#define PROGPOW_CACHE_WORDS     " << PROGPOW_CACHE_BYTES / sizeof(uint32_t) << "\n";
+    ret << "#define PROGPOW_CNT_DAG         " << PROGPOW_CNT_DAG << "\n";
+    ret << "#define PROGPOW_CNT_MATH        " << PROGPOW_CNT_MATH << "\n";
     ret << "\n";
+
 
 	if (kern == KERNEL_CUDA)
 	{
-		ret << "__device__ __forceinline__ void progPowLoop(const uint32_t loop,\n";
-		ret << "        uint32_t mix[PROGPOW_REGS],\n";
-		ret << "        const uint64_t *g_dag,\n";
-		ret << "        const uint32_t c_dag[PROGPOW_CACHE_WORDS])\n";
+        ret << "typedef struct __align__(16) {uint32_t s[PROGPOW_DAG_LOADS];} dag_t;\n";
+        ret << "\n";
+        ret << "__device__ __forceinline__ void progPowLoop(const uint32_t loop,\n";
+        ret << "        uint32_t mix[PROGPOW_REGS],\n";
+        ret << "        const dag_t *g_dag,\n";
+        ret << "        const uint32_t c_dag[PROGPOW_CACHE_WORDS],\n";
+        ret << "        const bool hack_false)\n";
 	}
 	else
 	{
-		ret << "void progPowLoop(const uint32_t loop,\n";
-		ret << "        uint32_t mix[PROGPOW_REGS],\n";
-		ret << "        __global const uint64_t *g_dag,\n";
-		ret << "        __local const uint32_t c_dag[PROGPOW_CACHE_WORDS],\n";
-		ret << "        __local uint64_t share[GROUP_SHARE])\n";
+        ret << "typedef struct __attribute__ ((aligned (16))) {uint32_t s[PROGPOW_DAG_LOADS];} dag_t;\n";
+        ret << "\n";
+        ret << "void progPowLoop(const uint32_t loop,\n";
+        ret << "        uint32_t mix[PROGPOW_REGS],\n";
+        ret << "        __global const dag_t *g_dag,\n";
+        ret << "        __local const uint32_t c_dag[PROGPOW_CACHE_WORDS],\n";
+        ret << "        __local uint64_t share[GROUP_SHARE],\n";
+        ret << "        const bool hack_false)\n";
 	}
 	ret << "{\n";
 
-	ret << "uint32_t offset;\n";
-	ret << "uint64_t data64;\n";
-	ret << "uint32_t data32;\n";
+    ret << "dag_t data_dag;\n";
+	ret << "uint32_t offset, data;\n";
 
 	if (kern == KERNEL_CUDA)
 		ret << "const uint32_t lane_id = threadIdx.x & (PROGPOW_LANES-1);\n";
@@ -113,9 +130,14 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
 		ret << "barrier(CLK_LOCAL_MEM_FENCE);\n";
 		ret << "offset = share[group_id];\n";
 	}
-	ret << "offset %= PROGPOW_DAG_WORDS;\n";
+	ret << "offset %= PROGPOW_DAG_ELEMENTS;\n";
 	ret << "offset = offset * PROGPOW_LANES + lane_id;\n";
-	ret << "data64 = g_dag[offset];\n";
+    ret << "data_dag = g_dag[offset];\n";
+    ret << "// hack to prevent compiler from reordering LD and usage\n";
+    if (kern == KERNEL_CUDA)
+        ret << "if( hack_false ) __threadfence_block();\n";
+    else
+        ret << "if( hack_false ) barrier(CLK_LOCAL_MEM_FENCE);\n";
 
 	for (int i = 0; (i < PROGPOW_CNT_CACHE) || (i < PROGPOW_CNT_MATH); i++)
 	{
@@ -123,13 +145,13 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
 		{
 			// Cached memory access
 			// lanes access random locations
-			std::string src = mix_src();
+			std::string src = mix_cache();
 			std::string dest = mix_dst();
 			uint32_t    r = rnd();
-			ret << "// cache load\n";
+			ret << "// cache load " << i << "\n";
 			ret << "offset = " << src << " % PROGPOW_CACHE_WORDS;\n";
-			ret << "data32 = c_dag[offset];\n";
-			ret << merge(dest, "data32", r);
+			ret << "data = c_dag[offset];\n";
+			ret << merge(dest, "data", r);
 		}
 		if (i < PROGPOW_CNT_MATH)
 		{
@@ -141,18 +163,25 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
 			uint32_t    r1 = rnd();
             std::string dest = mix_dst();
 			uint32_t    r2 = rnd();
-			ret << "// random math\n";
-			ret << math("data32", src1, src2, r1);
-			ret << merge(dest, "data32", r2);
+			ret << "// random math " << i << "\n";
+			ret << math("data", src1, src2, r1);
+			ret << merge(dest, "data", r2);
 		}
 	}
 	// Consume the global load data at the very end of the loop, to allow fully latency hiding
 	ret << "// consume global load data\n";
-    uint32_t    r1 = rnd();
-    std::string dest = mix_dst();
-    uint32_t    r2 = rnd();
-	ret << merge("mix[0]", "data64", r1);
-	ret << merge(dest, "(data64>>32)", r2);
+    ret << "// hack to prevent compiler from reordering LD and usage\n";
+    if (kern == KERNEL_CUDA)
+        ret << "if( hack_false ) __threadfence_block();\n";
+    else
+        ret << "if( hack_false ) barrier(CLK_LOCAL_MEM_FENCE);\n";
+    ret << merge("mix[0]", "data_dag.s[0]", rnd());
+    for (int i = 1; i < PROGPOW_DAG_LOADS; i++)
+    {
+        std::string dest = mix_dst();
+        uint32_t    r = rnd();
+        ret << merge(dest, "data_dag.s["+std::to_string(i)+"]", r);
+    }
 	ret << "}\n";
 	ret << "\n";
 

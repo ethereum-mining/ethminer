@@ -142,8 +142,9 @@ progpow_search(
     uint64_t start_nonce,
     const hash32_t header,
     const uint64_t target,
-    const uint64_t *g_dag,
-    volatile search_results* g_output
+    const dag_t *g_dag,
+    volatile search_results* g_output,
+    bool hack_false
     )
 {
     __shared__ uint32_t c_dag[PROGPOW_CACHE_WORDS];
@@ -153,11 +154,11 @@ progpow_search(
     const uint32_t lane_id = threadIdx.x & (PROGPOW_LANES - 1);
 
     // Load the first portion of the DAG into the cache
-    for (uint32_t word = threadIdx.x*2; word < PROGPOW_CACHE_WORDS; word += blockDim.x*2)
+    for (uint32_t word = threadIdx.x*PROGPOW_DAG_LOADS; word < PROGPOW_CACHE_WORDS; word += blockDim.x*PROGPOW_DAG_LOADS)
     {
-        uint64_t data = g_dag[word];
-        c_dag[word + 0] = data;
-        c_dag[word + 1] = data >> 32;
+        dag_t load = g_dag[word];
+        for(int i=0; i<PROGPOW_DAG_LOADS; i++)
+            c_dag[word + i] =  load.s[i];
     }
 
     hash32_t result;
@@ -179,8 +180,8 @@ progpow_search(
         fill_mix(hash_seed, lane_id, mix);
 
         #pragma unroll 1
-        for (uint32_t l = 0; l < PROGPOW_CNT_MEM; l++)
-            progPowLoop(l, mix, g_dag, c_dag);
+        for (uint32_t l = 0; l < PROGPOW_CNT_DAG; l++)
+            progPowLoop(l, mix, g_dag, c_dag, hack_false);
 
 
         // Reduce mix data to a single per-lane result

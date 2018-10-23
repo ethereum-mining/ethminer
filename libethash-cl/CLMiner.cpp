@@ -447,7 +447,7 @@ void CLMiner::kick_miner()
     m_new_work_signal.notify_one();
 }
 
-void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection) 
+void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection)
 {
     // Load available platforms
     vector<cl::Platform> platforms = getPlatforms();
@@ -465,7 +465,7 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection
             platformType = ClPlatformTypeEnum::Clover;
         else if (platformName == "NVIDIA CUDA")
             platformType = ClPlatformTypeEnum::Nvidia;
-        else 
+        else
         {
             std::cerr << "Unrecognized platform " << platformName << std::endl;
             continue;
@@ -875,6 +875,7 @@ bool CLMiner::initEpoch_internal()
         m_searchKernel.setArg(1, m_header[0]);
         m_searchKernel.setArg(2, m_dag[0]);
         m_searchKernel.setArg(3, m_dagItems);
+        m_searchKernel.setArg(5, 0);
 
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");
