@@ -870,6 +870,7 @@ bool CLMiner::initEpoch_internal()
         m_searchKernel.setArg(1, m_header[0]);
         m_searchKernel.setArg(2, m_dag[0]);
         m_searchKernel.setArg(3, m_dagItems);
+        m_searchKernel.setArg(5, 0);
         m_searchKernel.setArg(6, ~0u);
 
         // create mining buffers
