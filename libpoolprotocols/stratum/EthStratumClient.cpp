@@ -1455,31 +1455,35 @@ void EthStratumClient::onRecvSocketDataCompleted(
                 break;
             }
 
+            // If we get here with NO data but also NO EOF
+            // we may end up loosing data. Continue reading
+            // stream.
+            if (message.empty())
+                continue;
+
+            // Process message only if we're connected
             if (isConnected())
             {
-                if (!message.empty() && boost::ends_with(message, "}"))
+                // Test validity of chunk and process
+                Json::Value jMsg;
+                Json::Reader jRdr;
+                if (jRdr.parse(message, jMsg))
                 {
-                    // Test validity of chunk and process
-                    Json::Value jMsg;
-                    Json::Reader jRdr;
-                    if (jRdr.parse(message, jMsg))
-                    {
-                        m_io_service.post(
-                            boost::bind(&EthStratumClient::processResponse, this, jMsg));
-                    }
-                    else
-                    {
-                        string what = jRdr.getFormattedErrorMessages();
-                        boost::replace_all(what, "\n", " ");
-                        cwarn << "Got invalid Json message : " << what;
-                    }
+                    m_io_service.post(
+                        boost::bind(&EthStratumClient::processResponse, this, jMsg));
                 }
-
-                // Eventually keep reading from socket
-                recvSocketData();
+                else
+                {
+                    string what = jRdr.getFormattedErrorMessages();
+                    boost::replace_all(what, "\n", " ");
+                    cwarn << "Got invalid Json message : " << what;
+                }
             }
-
         }
+
+        // Eventually keep reading from socket
+        if (isConnected())
+            recvSocketData();
     }
     else
     {
