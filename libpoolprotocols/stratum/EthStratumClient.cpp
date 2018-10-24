@@ -1431,53 +1431,45 @@ void EthStratumClient::onRecvSocketDataCompleted(
 
     if (!ec && bytes_transferred > 0)
     {
+        
+        // DO NOT DO THIS !!!!!
+        // std::istream is(&m_recvBuffer);
+        // std::string message;
+        // getline(is, message)
+        /*
+        There are three reasons :
+        1 - Previous async_read_until calls this handler (aside from error codes)
+            with the number of bytes in the buffer's get area up to and including
+            the delimiter. So we know where to split the line
+        2 - Boost's documentation clearly states that after a succesfull
+            async_read_until operation the stream buffer MAY contain additional
+            data which HAVE to be left in the buffer for subsequent read operations.
+            If another delimiter exists in the buffer then it will get caught
+            by the next async_read_until()
+        3 - std::istream is(&m_recvBuffer) will CONSUME ALL data in the buffer
+            thus invalidating the previous point 2
+        */
+
         // Extract received message
-        std::istream is(&m_recvBuffer);
-        std::string message;
+        std::string line(boost::asio::buffer_cast<const char*>(m_recvBuffer.data()), bytes_transferred);
+        m_recvBuffer.consume(bytes_transferred);
 
-        while (true)
+        // Process message only if we're connected
+        if (isConnected())
         {
-            getline(is, message);
-
-            if (is.eof())
+            // Test validity of chunk and process
+            Json::Value jMsg;
+            Json::Reader jRdr;
+            if (jRdr.parse(line, jMsg))
             {
-                // In theory EOF after std::getline() should not be the criterion to stop processing
-                // data as there may be cases where data is present between the last delimiter and EOF.
-                // getline() extracts it and sets the eofbit.
-                // Nevertheless this is a reason to raise a "bad delimited" Json message as
-                // in Stratum all messages MUST end with "\n"
-                if (!message.empty())
-                    cwarn << "Got bad delimited Json message: unexpected EOF";
-                break;
+                // Run in sync so no 2 different async reads may overlap
+                processResponse(jMsg);
             }
-            if (is.fail() || is.bad())
+            else
             {
-                break;
-            }
-
-            // If we get here with NO data but also NO EOF
-            // we may end up loosing data. Continue reading
-            // stream.
-            if (message.empty())
-                continue;
-
-            // Process message only if we're connected
-            if (isConnected())
-            {
-                // Test validity of chunk and process
-                Json::Value jMsg;
-                Json::Reader jRdr;
-                if (jRdr.parse(message, jMsg))
-                {
-                    m_io_service.post(m_io_strand.wrap(
-                        boost::bind(&EthStratumClient::processResponse, this, jMsg)));
-                }
-                else
-                {
-                    string what = jRdr.getFormattedErrorMessages();
-                    boost::replace_all(what, "\n", " ");
-                    cwarn << "Got invalid Json message : " << what;
-                }
+                string what = jRdr.getFormattedErrorMessages();
+                boost::replace_all(what, "\n", " ");
+                cwarn << "Got invalid Json message : " << what;
             }
         }
 
