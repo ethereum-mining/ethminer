@@ -744,7 +744,7 @@ void EthStratumClient::processExtranonce(std::string& enonce)
     m_extraNonce = h64(enonce);
 }
 
-void EthStratumClient::processResponse(Json::Value& responseObject)
+void EthStratumClient::processResponse(Json::Value responseObject)
 {
     dev::setThreadName("stratum");
 
@@ -1434,27 +1434,51 @@ void EthStratumClient::onRecvSocketDataCompleted(
         // Extract received message
         std::istream is(&m_recvBuffer);
         std::string message;
-        getline(is, message);
 
-        if (isConnected())
+        while (true)
         {
-            if (!message.empty())
+            getline(is, message);
+
+            if (is.eof())
             {
-                // Test validity of chunk and process
-                Json::Value jMsg;
-                Json::Reader jRdr;
-                if (jRdr.parse(message, jMsg))
-                {
-                    m_io_service.post(boost::bind(&EthStratumClient::processResponse, this, jMsg));
-                }
-                else
-                {
-                    cwarn << "Got invalid Json message :" + jRdr.getFormattedErrorMessages();
-                }
+                // In theory EOF after std::getline() should not be the criterion to stop processing
+                // data as there may be cases where data is present between the last delimiter and EOF.
+                // getline() extracts it and sets the eofbit.
+                // Nevertheless this is a reason to raise a "bad delimited" Json message as
+                // in Stratum all messages MUST end with "\n"
+                if (!message.empty())
+                    cwarn << "Got bad delimited Json message: unexpected EOF";
+                break;
+            }
+            if (is.fail() || is.bad())
+            {
+                break;
             }
 
-            // Eventually keep reading from socket
-            recvSocketData();
+            if (isConnected())
+            {
+                if (!message.empty() && boost::ends_with(message, "}"))
+                {
+                    // Test validity of chunk and process
+                    Json::Value jMsg;
+                    Json::Reader jRdr;
+                    if (jRdr.parse(message, jMsg))
+                    {
+                        m_io_service.post(
+                            boost::bind(&EthStratumClient::processResponse, this, jMsg));
+                    }
+                    else
+                    {
+                        string what = jRdr.getFormattedErrorMessages();
+                        boost::replace_all(what, "\n", " ");
+                        cwarn << "Got invalid Json message : " << what;
+                    }
+                }
+
+                // Eventually keep reading from socket
+                recvSocketData();
+            }
+
         }
     }
     else
