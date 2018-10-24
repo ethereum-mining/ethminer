@@ -744,7 +744,7 @@ void EthStratumClient::processExtranonce(std::string& enonce)
     m_extraNonce = h64(enonce);
 }
 
-void EthStratumClient::processResponse(Json::Value responseObject)
+void EthStratumClient::processResponse(Json::Value& responseObject)
 {
     dev::setThreadName("stratum");
 

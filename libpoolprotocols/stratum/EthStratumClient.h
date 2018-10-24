@@ -92,7 +92,7 @@ private:
     void connect_handler(const boost::system::error_code& ec);
     void workloop_timer_elapsed(const boost::system::error_code& ec);
 
-    void processResponse(Json::Value responseObject);
+    void processResponse(Json::Value& responseObject);
     std::string processError(Json::Value& erroresponseObject);
     void processExtranonce(std::string& enonce);
 
