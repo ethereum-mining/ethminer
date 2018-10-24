@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
