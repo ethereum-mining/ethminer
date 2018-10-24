@@ -1469,8 +1469,8 @@ void EthStratumClient::onRecvSocketDataCompleted(
                 Json::Reader jRdr;
                 if (jRdr.parse(message, jMsg))
                 {
-                    m_io_service.post(
-                        boost::bind(&EthStratumClient::processResponse, this, jMsg));
+                    m_io_service.post(m_io_strand.wrap(
+                        boost::bind(&EthStratumClient::processResponse, this, jMsg)));
                 }
                 else
                 {
