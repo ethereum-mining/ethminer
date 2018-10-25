@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
@@ -45,7 +46,12 @@ private:
 class EthStratumClient : public PoolClient
 {
 public:
-    typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
+    typedef enum
+    {
+        STRATUM = 0,
+        ETHPROXY,
+        ETHEREUMSTRATUM
+    } StratumProtocol;
 
     EthStratumClient(int worktimeout, int responsetimeout, bool submitHashrate);
     ~EthStratumClient();
@@ -76,7 +82,6 @@ public:
     bool current() { return static_cast<bool>(m_current); }
 
 private:
-
     void disconnect_finalize();
     void enqueue_response_plea();
     std::chrono::milliseconds dequeue_response_plea();
@@ -153,7 +158,7 @@ private:
     bool m_submit_hashrate;
     std::string m_submit_hashrate_id;
 
-    unsigned m_solution_submitted_max_id; // maximum json id we used to send a solution
+    unsigned m_solution_submitted_max_id;  // maximum json id we used to send a solution
 
     ///@brief Auxiliary function to make verbose_verification objects.
     template <typename Verifier>
