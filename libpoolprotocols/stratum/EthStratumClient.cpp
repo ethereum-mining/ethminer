@@ -1564,13 +1564,13 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
             (SSL_R_PROTOCOL_IS_SHUTDOWN == ERR_GET_REASON(ec.value())))
         {
             cnote << "SSL Stream error :" << ec.message();
-            m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this));
+            m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
         }
 
         if (isConnected())
         {
             cwarn << "Socket write failed: " + ec.message();
-            m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this));
+            m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
         }
     }
 }
