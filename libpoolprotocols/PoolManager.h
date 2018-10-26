@@ -53,7 +53,7 @@ private:
 
     unsigned m_connectionAttempt = 0;
     unsigned m_maxConnectionAttempts = 0;
-    std::string m_lastConnectedHost = ""; // gets set when a connection has been established
+    std::string m_selectedHost = ""; // Holds host name (and endpoint) of selected connection
     std::atomic<unsigned> m_connectionSwitches = {0};
 
     std::vector<URI> m_connections;

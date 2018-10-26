@@ -96,6 +96,7 @@ private:
     bool m_valid = false;
     bool m_stratumModeConfirmed = false;
     bool m_unrecoverable = false;
+    unsigned m_connectionAttempts;
 
     UriHostNameType m_hostType = UriHostNameType::Unknown;
     bool m_isLoopBack;

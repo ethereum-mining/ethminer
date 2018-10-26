@@ -25,11 +25,8 @@ PoolManager::PoolManager(
     p_client->onConnected([&]() {
         {
             Guard l(m_activeConnectionMutex);
-            m_lastConnectedHost = m_connections.at(m_activeConnectionIdx).Host();
-            cnote << "Established connection with "
-                  << (m_lastConnectedHost + ":" +
-                         toString(m_connections.at(m_activeConnectionIdx).Port()))
-                  << " at " << p_client->ActiveEndPoint();
+            m_selectedHost.append(" [" + p_client->ActiveEndPoint() + "]");
+            cnote << "Established connection to " << m_selectedHost;
 
             // Rough implementation to return to primary pool
             // after specified amount of time
@@ -71,7 +68,7 @@ PoolManager::PoolManager(
     });
 
     p_client->onDisconnected([&]() {
-        cnote << "Disconnected from " + m_lastConnectedHost << p_client->ActiveEndPoint();
+        cnote << "Disconnected from " << m_selectedHost;
 
         // Clear current connection
         p_client->unsetConnection();
@@ -120,8 +117,7 @@ PoolManager::PoolManager(
             cnote << "Pool difficulty: " EthWhite << ss.str() << EthReset;
         }
 
-        cnote << "Job: " EthWhite "#" << wp.header.abridged() << EthReset " " << m_lastConnectedHost
-              << p_client->ActiveEndPoint();
+        cnote << "Job: " EthWhite "#" << wp.header.abridged() << EthReset " " << m_selectedHost;
 
         Farm::f().setWork(wp);
     });
@@ -130,7 +126,7 @@ PoolManager::PoolManager(
                                      unsigned const& miner_index) {
         std::stringstream ss;
         ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << " ms."
-           << " " << m_lastConnectedHost + p_client->ActiveEndPoint();
+           << " " << m_selectedHost;
         cnote << EthLime "**Accepted" EthReset << (stale ? EthYellow "(stale)" EthReset : "")
               << ss.str();
         Farm::f().acceptedSolution(stale, miner_index);
@@ -140,7 +136,7 @@ PoolManager::PoolManager(
                                      unsigned const& miner_index) {
         std::stringstream ss;
         ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << "ms."
-           << "   " << m_lastConnectedHost + p_client->ActiveEndPoint();
+           << "   " << m_selectedHost;
         cwarn << EthRed "**Rejected" EthReset << (stale ? EthYellow "(stale)" EthReset : "")
               << ss.str();
         Farm::f().rejectedSolution(miner_index);
@@ -337,12 +333,21 @@ void PoolManager::rotateConnect()
     }
     else if (m_connectionAttempt >= m_maxConnectionAttempts)
     {
+        // If this is the only connection we can't rotate
+        // forever
+        if (m_connections.size() == 1) 
+        {
+            m_connections.erase(m_connections.begin() + m_activeConnectionIdx);
+        }
         // Rotate connections if above max attempts threshold
-        m_connectionAttempt = 0;
-        m_activeConnectionIdx++;
-        if (m_activeConnectionIdx >= m_connections.size())
-            m_activeConnectionIdx = 0;
-        m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
+        else
+        {
+            m_connectionAttempt = 0;
+            m_activeConnectionIdx++;
+            if (m_activeConnectionIdx >= m_connections.size())
+                m_activeConnectionIdx = 0;
+            m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
+        }
     }
 
     if (!m_connections.empty() && m_connections.at(m_activeConnectionIdx).Host() != "exit")
@@ -351,10 +356,10 @@ void PoolManager::rotateConnect()
         m_connectionAttempt++;
 
         // Invoke connections
+        m_selectedHost = m_connections.at(m_activeConnectionIdx).Host() + ":" +
+                         to_string(m_connections.at(m_activeConnectionIdx).Port());
         p_client->setConnection(&m_connections.at(m_activeConnectionIdx));
-        cnote << "Selected pool "
-              << (m_connections.at(m_activeConnectionIdx).Host() + ":" +
-                     toString(m_connections.at(m_activeConnectionIdx).Port()));
+        cnote << "Selected pool " << m_selectedHost;
 
         l.unlock();
         p_client->connect();
