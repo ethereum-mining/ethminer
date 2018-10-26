@@ -9,7 +9,7 @@ using namespace eth;
 PoolManager* PoolManager::m_this = nullptr;
 
 PoolManager::PoolManager(
-    PoolClient* client, MinerType const& minerType, unsigned maxTries, unsigned failoverTimeout)
+    PoolClient* client, MinerType const& minerType, unsigned maxTries, unsigned failoverTimeout, unsigned ergodicity)
   : m_io_strand(g_io_service),
     m_failovertimer(g_io_service),
     m_submithrtimer(g_io_service),
@@ -19,6 +19,7 @@ PoolManager::PoolManager(
 
     m_this = this;
     p_client = client;
+    m_ergodicity = ergodicity;
     m_maxConnectionAttempts = maxTries;
     m_failoverTimeout = failoverTimeout;
 
@@ -27,6 +28,10 @@ PoolManager::PoolManager(
             Guard l(m_activeConnectionMutex);
             m_selectedHost.append(p_client->ActiveEndPoint());
             cnote << "Established connection to " << m_selectedHost;
+
+            // Shuffle if needed
+            if (m_ergodicity == 1)
+                Farm::f().shuffle();
 
             // Rough implementation to return to primary pool
             // after specified amount of time
@@ -118,6 +123,10 @@ PoolManager::PoolManager(
         }
 
         cnote << "Job: " EthWhite "#" << wp.header.abridged() << EthReset " " << m_selectedHost;
+
+        // Shuffle if needed
+        if (m_ergodicity == 2)
+            Farm::f().shuffle();
 
         Farm::f().setWork(wp);
     });

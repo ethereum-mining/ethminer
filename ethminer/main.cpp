@@ -264,6 +264,9 @@ public:
             "", true);
 
         bool version = false;
+
+        app.add_option("--ergodicity", m_farmErgodicity, "", true)->check(CLI::Range(0, 2));
+
         app.add_flag("-V,--version", version, "Show program version");
 
         app.add_option("-v,--verbosity", g_logOptions, "", true)->check(CLI::Range(LOG_NEXT - 1));
@@ -914,6 +917,13 @@ public:
                  << "                        2 As 1 plus monitor power drain" << endl
                  << "    --exit              FLAG Stop ethminer whenever an error is encountered"
                  << endl
+                 << "    --ergodicity        INT[0 .. 2] Default = 0" << endl
+                 << "                        Sets how ethminer chooses the nonces segments to" <<endl
+                 << "                        search on." << endl
+                 << "                        0 A search segment is picked at startup" << endl
+                 << "                        1 A search segment is picked on every pool connection" << endl
+                 << "                        2 A search segment is picked on every new job" << endl
+                 << endl
                  << "    --nocolor           FLAG Monochrome display log lines" << endl
                  << "    --syslog            FLAG Use syslog appropriate output (drop timestamp and"
                  << endl
@@ -1186,7 +1196,7 @@ private:
         Farm::f().setSealers(sealers);
         Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
 
-        new PoolManager(client, m_minerType, m_poolMaxRetries, m_poolFlvrTimeout);
+        new PoolManager(client, m_minerType, m_poolMaxRetries, m_poolFlvrTimeout, m_farmErgodicity);
         for (auto conn : m_poolConns)
         {
             PoolManager::p().addConnection(conn);
@@ -1276,6 +1286,7 @@ private:
     unsigned m_farmTempStop = 0;  // Halt mining on GPU if temperature ge this threshold (Celsius)
     unsigned m_farmTempStart =
         40;  // Resume mining on GPU if temperature le this threshold (Celsius)
+    unsigned m_farmErgodicity = 0;  // Sets ergodicity : 0=default, 1=per session, 2=per job
 
     // -- Pool manager related params
     vector<URI> m_poolConns;

@@ -21,7 +21,7 @@ class PoolManager
 {
 public:
     PoolManager(PoolClient* client, MinerType const& minerType, unsigned maxTries,
-        unsigned failovertimeout);
+        unsigned failovertimeout, unsigned ergodicity);
     static PoolManager& p() { return *m_this; }
     void addConnection(URI& conn);
     void clearConnections();
@@ -51,6 +51,7 @@ private:
     std::atomic<bool> m_running = {false};
     std::atomic<bool> m_stopping = {false};
 
+    unsigned m_ergodicity = 0;
     unsigned m_connectionAttempt = 0;
     unsigned m_maxConnectionAttempts = 0;
     std::string m_selectedHost = ""; // Holds host name (and endpoint) of selected connection
