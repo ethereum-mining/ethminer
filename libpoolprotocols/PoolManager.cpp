@@ -25,7 +25,7 @@ PoolManager::PoolManager(
     p_client->onConnected([&]() {
         {
             Guard l(m_activeConnectionMutex);
-            m_selectedHost.append(" [" + p_client->ActiveEndPoint() + "]");
+            m_selectedHost.append(p_client->ActiveEndPoint());
             cnote << "Established connection to " << m_selectedHost;
 
             // Rough implementation to return to primary pool
