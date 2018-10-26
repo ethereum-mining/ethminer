@@ -5,6 +5,7 @@
 */
 
 #include "ethash_cuda_miner_kernel.h"
+#include "ethash_cuda_miner_kernel_globals.h"
 #include "cuda_helper.h"
 
 #include "fnv.cuh"
@@ -12,7 +13,7 @@
 #define copy(dst, src, count) for (int i = 0; i != count; ++i) { (dst)[i] = (src)[i]; }
 
 #include "keccak.cuh"
-#include "ethash_kernel.cuh"
+#include "dagger_shuffled.cuh"
 
 template <uint32_t _PARALLEL_HASH>
 __global__ void 

@@ -54,13 +54,6 @@ typedef union
     uint4 uint4s[200 / sizeof(uint4)];
 } hash200_t;
 
-extern __constant__ uint32_t d_dag_size;
-extern __constant__ hash128_t* d_dag;
-extern __constant__ uint32_t d_light_size;
-extern __constant__ hash64_t* d_light;
-extern __constant__ hash32_t d_header;
-extern __constant__ uint64_t d_target;
-
 void set_constants(hash128_t* _dag, uint32_t _dag_size, hash64_t* _light, uint32_t _light_size);
 
 void set_header(hash32_t _header);
