@@ -92,16 +92,16 @@ private:
     void connect_handler(const boost::system::error_code& ec);
     void workloop_timer_elapsed(const boost::system::error_code& ec);
 
-    void processResponse(Json::Value& responseObject);
+    void processResponse(Json::Value & responseObject);
     std::string processError(Json::Value& erroresponseObject);
     void processExtranonce(std::string& enonce);
 
     void recvSocketData();
     void onRecvSocketDataCompleted(
         const boost::system::error_code& ec, std::size_t bytes_transferred);
-    void sendSocketData(Json::Value const& jReq);
-    void onSendSocketDataCompleted(const boost::system::error_code& ec);
+    void sendSocketData(Json::Value const & jReq);
     void onSSLShutdownCompleted(const boost::system::error_code& ec);
+    void processSendQ();
 
     string m_user;    // Only user part
     string m_worker;  // eth-proxy only; No ! It's for all !!!
@@ -166,4 +166,10 @@ private:
     {
         return verbose_verification<Verifier>(verifier);
     }
+
+    // JSON send queue control variables
+    boost::lockfree::queue<Json::Value*> m_sendQ;
+    std::thread* m_sendThread = nullptr;
+    Notified<bool> m_sendQueued = {false};
+    bool m_sendExit = false;
 };

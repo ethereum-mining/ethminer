@@ -57,6 +57,9 @@ EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, bool su
     if (m_submit_hashrate)
         m_submit_hashrate_id = h256::random().hex();
 
+    m_sendQ.reserve(16);  // Handle up to 16 concurrent sends (unlikely)
+    m_sendThread = new std::thread{boost::bind(&EthStratumClient::processSendQ, this)};
+
     // Initialize workloop_timer to infinite wait
     m_workloop_timer.expires_at(boost::posix_time::pos_infin);
     m_workloop_timer.async_wait(m_io_strand.wrap(boost::bind(
@@ -68,6 +71,11 @@ EthStratumClient::~EthStratumClient()
 {
     // Do not stop io service.
     // It's global
+
+    // But terminate the json send thread
+    m_sendExit = true;
+    m_sendQueued = true;
+    m_sendThread->join();
 }
 
 void EthStratumClient::init_socket()
@@ -217,6 +225,9 @@ void EthStratumClient::disconnect()
     m_disconnecting.store(true, std::memory_order_relaxed);
 
     // Cancel any outstanding async operation
+    Json::Value* j;
+    while (m_sendQ.pop(j))
+        delete j;
     if (m_socket)
         m_socket->cancel();
 
@@ -744,7 +755,7 @@ void EthStratumClient::processExtranonce(std::string& enonce)
     m_extraNonce = h64(enonce);
 }
 
-void EthStratumClient::processResponse(Json::Value& responseObject)
+void EthStratumClient::processResponse(Json::Value & responseObject)
 {
     dev::setThreadName("stratum");
 
@@ -1511,45 +1522,56 @@ void EthStratumClient::sendSocketData(Json::Value const& jReq)
     if (!isConnected())
         return;
 
-    // Out received message only for debug purpouses
-    if (g_logOptions & LOG_JSON)
-    {
-        cnote << jReq;
-    }
-
-    std::ostream os(&m_sendBuffer);
-    os << m_jWriter.write(jReq);  // Do not add lf. It's added by writer.
-
-    if (m_conn->SecLevel() != SecureLevel::NONE)
-    {
-        async_write(*m_securesocket, m_sendBuffer,
-            m_io_strand.wrap(boost::bind(&EthStratumClient::onSendSocketDataCompleted, this,
-                boost::asio::placeholders::error)));
-    }
-    else
-    {
-        async_write(*m_nonsecuresocket, m_sendBuffer,
-            m_io_strand.wrap(boost::bind(&EthStratumClient::onSendSocketDataCompleted, this,
-                boost::asio::placeholders::error)));
-    }
+    // Need a copy of the value for the Q, parameter is ephemerous
+    Json::Value *j = new Json::Value(jReq);
+    m_sendQ.push(j);
+    // signal the thread
+    m_sendQueued = true;
 }
 
-void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code& ec)
+void EthStratumClient::processSendQ()
 {
-    if (ec)
+    while (!m_sendExit)
     {
-        if ((ec.category() == boost::asio::error::get_ssl_category()) &&
-            (SSL_R_PROTOCOL_IS_SHUTDOWN == ERR_GET_REASON(ec.value())))
-        {
-            cnote << "SSL Stream error :" << ec.message();
-            m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
-        }
+        m_sendQueued.wait(true);
+        m_sendQueued = false;
 
-        if (isConnected())
+        Json::Value* j;
+        while (m_sendQ.pop(j))
         {
-            dev::setThreadName("stratum");
-            cwarn << "Socket write failed: " + ec.message();
-            m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+            // Out received message only for debug purpouses
+            if (g_logOptions & LOG_JSON)
+            {
+                cnote << *j;
+            }
+
+            std::ostream os(&m_sendBuffer);
+            os << m_jWriter.write(*j);  // Do not add lf. It's added by writer.
+            delete j;
+
+            boost::system::error_code ec;
+            if (m_conn->SecLevel() != SecureLevel::NONE)
+                write(*m_securesocket, m_sendBuffer, ec);
+            else
+                write(*m_nonsecuresocket, m_sendBuffer, ec);
+            if (ec)
+            {
+                if ((ec.category() == boost::asio::error::get_ssl_category()) &&
+                    (SSL_R_PROTOCOL_IS_SHUTDOWN == ERR_GET_REASON(ec.value())))
+                {
+                    cnote << "SSL Stream error :" << ec.message();
+                    m_io_service.post(
+                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                }
+
+                if (isConnected())
+                {
+                    dev::setThreadName("stratum");
+                    cwarn << "Socket write failed: " + ec.message();
+                    m_io_service.post(
+                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                }
+            }
         }
     }
 }
