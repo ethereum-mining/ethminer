@@ -57,6 +57,8 @@ EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, bool su
     if (m_submit_hashrate)
         m_submit_hashrate_id = h256::random().hex();
 
+    m_jSwBuilder.settings_["indentation"] = "";
+
     // Initialize workloop_timer to infinite wait
     m_workloop_timer.expires_at(boost::posix_time::pos_infin);
     m_workloop_timer.async_wait(m_io_strand.wrap(boost::bind(
@@ -95,43 +97,43 @@ void EthStratumClient::init_socket()
                 make_verbose_verification(boost::asio::ssl::rfc2818_verification(m_conn->Host())));
         }
 #ifdef _WIN32
-            HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
-            if (hStore == nullptr)
+        HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
+        if (hStore == nullptr)
+        {
+            return;
+        }
+
+        X509_STORE* store = X509_STORE_new();
+        PCCERT_CONTEXT pContext = nullptr;
+        while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != nullptr)
+        {
+            X509* x509 = d2i_X509(
+                nullptr, (const unsigned char**)&pContext->pbCertEncoded, pContext->cbCertEncoded);
+            if (x509 != nullptr)
             {
-                return;
+                X509_STORE_add_cert(store, x509);
+                X509_free(x509);
             }
+        }
 
-            X509_STORE* store = X509_STORE_new();
-            PCCERT_CONTEXT pContext = nullptr;
-            while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != nullptr)
-            {
-                X509* x509 = d2i_X509(nullptr, (const unsigned char**)&pContext->pbCertEncoded,
-                    pContext->cbCertEncoded);
-                if (x509 != nullptr)
-                {
-                    X509_STORE_add_cert(store, x509);
-                    X509_free(x509);
-                }
-            }
+        CertFreeCertificateContext(pContext);
+        CertCloseStore(hStore, 0);
 
-            CertFreeCertificateContext(pContext);
-            CertCloseStore(hStore, 0);
-
-            SSL_CTX_set_cert_store(ctx.native_handle(), store);
+        SSL_CTX_set_cert_store(ctx.native_handle(), store);
 #else
-            char* certPath = getenv("SSL_CERT_FILE");
-            try
-            {
-                ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
-            }
-            catch (...)
-            {
-                cwarn << "Failed to load ca certificates. Either the file "
-                         "'/etc/ssl/certs/ca-certificates.crt' does not exist";
-                cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or "
-                         "inaccessible file.";
-                cwarn << "It is possible that certificate verification can fail.";
-            }
+        char* certPath = getenv("SSL_CERT_FILE");
+        try
+        {
+            ctx.load_verify_file(certPath ? certPath : "/etc/ssl/certs/ca-certificates.crt");
+        }
+        catch (...)
+        {
+            cwarn << "Failed to load ca certificates. Either the file "
+                     "'/etc/ssl/certs/ca-certificates.crt' does not exist";
+            cwarn << "or the environment variable SSL_CERT_FILE is set to an invalid or "
+                     "inaccessible file.";
+            cwarn << "It is possible that certificate verification can fail.";
+        }
 #endif
     }
     else
@@ -200,7 +202,7 @@ void EthStratumClient::connect()
     m_endpoint = boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>();
 
     if (m_conn->HostNameType() == dev::UriHostNameType::Dns ||
-        m_conn->HostNameType() == dev::UriHostNameType::Basic) 
+        m_conn->HostNameType() == dev::UriHostNameType::Basic)
     {
         // Begin resolve all ips associated to hostname
         // calling the resolver each time is useful as most
@@ -226,7 +228,6 @@ void EthStratumClient::connect()
 
 void EthStratumClient::disconnect()
 {
-
     // Prevent unnecessary recursion
     if (!m_connected.load(std::memory_order_relaxed) ||
         m_disconnecting.load(std::memory_order_relaxed))
@@ -307,6 +308,7 @@ void EthStratumClient::disconnect_finalize()
     m_authorized.store(false, std::memory_order_relaxed);
     m_authpending.store(false, std::memory_order_relaxed);
     m_disconnecting.store(false, std::memory_order_relaxed);
+    m_txPending.store(false, std::memory_order_relaxed);
 
     if (!m_conn->IsUnrecoverable())
     {
@@ -367,7 +369,6 @@ void EthStratumClient::resolve_handler(
     }
     else
     {
-
         cwarn << "Could not resolve host " << m_conn->Host() << ", " << ec.message();
 
         // Release locking flag and set connection status
@@ -420,14 +421,12 @@ void EthStratumClient::start_connect()
     }
     else
     {
-
         m_connecting.store(false, std::memory_order_relaxed);
         cwarn << "No more IP addresses to try for host: " << m_conn->Host();
 
         // We "simulate" a disconnect, to ensure a fully shutdown state
         if (m_onDisconnected)
             disconnect_finalize();
-
     }
 }
 
@@ -444,7 +443,8 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
     if (m_response_pleas_count.load(std::memory_order_relaxed))
     {
         milliseconds response_delay_ms(0);
-        steady_clock::time_point m_response_plea_time(m_response_plea_older.load(std::memory_order_relaxed));
+        steady_clock::time_point m_response_plea_time(
+            m_response_plea_older.load(std::memory_order_relaxed));
 
         // Check responses while in connection/disconnection phase
         if (isPendingState())
@@ -506,7 +506,6 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                     m_io_service.post(
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
                 }
-
             }
 
             // Check how old is last job received
@@ -562,9 +561,14 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
         return;
     }
 
-    // We got a socket connection established 
+    // We got a socket connection established
     m_canconnect.store(true, std::memory_order_relaxed);
     m_connected.store(true, std::memory_order_relaxed);
+    m_current_timestamp = std::chrono::steady_clock::now();
+
+    // Clear txqueue
+    std::queue<std::string> empty;
+    std::swap(m_txQueue, empty);
 
 #ifdef DEV_BUILD
     if (g_logOptions & LOG_CONNECT)
@@ -714,7 +718,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     and switch to next stratum mode test
     */
     enqueue_response_plea();
-    sendSocketData(jReq);
+    send(jReq);
 
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() end");
 }
@@ -768,10 +772,6 @@ void EthStratumClient::processExtranonce(std::string& enonce)
 void EthStratumClient::processResponse(Json::Value& responseObject)
 {
 
-    // Out received message only for debug purpouses
-    if (g_logOptions & LOG_JSON)
-        cnote << responseObject;
-
     // Store jsonrpc version to test against
     int _rpcVer = responseObject.isMember("jsonrpc") ? 2 : 1;
 
@@ -781,8 +781,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                                    // _isNotification = false)
     string _errReason = "";        // Content of the error reason
     string _method = "";           // The method of the notification (or request from pool)
-    unsigned _id = 0;  // This SHOULD be the same id as the request it is responding to (known exception
-                       // is ethermine.org using 999)
+    unsigned _id = 0;  // This SHOULD be the same id as the request it is responding to (known
+                       // exception is ethermine.org using 999)
 
 
     // Retrieve essential values
@@ -992,7 +992,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     jReq["id"] = unsigned(2);
                     jReq["method"] = "mining.extranonce.subscribe";
                     jReq["params"] = Json::Value(Json::arrayValue);
-                    sendSocketData(jReq);
+                    send(jReq);
 
                     // Eventually request authorization
                     m_authpending.store(true, std::memory_order_relaxed);
@@ -1007,7 +1007,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 break;
             }
 
-            sendSocketData(jReq);
+            send(jReq);
         }
 
         else if (_id == 2)
@@ -1117,7 +1117,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             // Hashrate submit is actually out of stratum spec
             if (!_isSuccess)
             {
-                cwarn << "Submit hashRate failed:"
+                cwarn << "Submit hashRate failed: "
                       << (_errReason.empty() ? "Unspecified error" : _errReason);
             }
         }
@@ -1156,7 +1156,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
         else
         {
-
             cnote << "Got response for unknown message id [" << _id << "] Discarding...";
             return;
         }
@@ -1317,7 +1316,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 jReq["jsonrpc"] = "2.0";
             }
 
-            sendSocketData(jReq);
+            send(jReq);
         }
         else
         {
@@ -1331,7 +1330,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             jReq["id"] = toString(_id);
             jReq["error"] = "Method not found";
 
-            sendSocketData(jReq);
+            send(jReq);
         }
     }
 }
@@ -1361,7 +1360,7 @@ void EthStratumClient::submitHashrate(string const& rate)
     jReq["params"].append(m_rate);
     jReq["params"].append("0x" + toString(this->m_submit_hashrate_id));
 
-    sendSocketData(jReq);
+    send(jReq);
 }
 
 void EthStratumClient::submitSolution(const Solution& solution)
@@ -1419,7 +1418,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
     }
 
     enqueue_response_plea();
-    sendSocketData(jReq);
+    send(jReq);
 
     m_stale = solution.stale;
 }
@@ -1443,7 +1442,6 @@ void EthStratumClient::recvSocketData()
 void EthStratumClient::onRecvSocketDataCompleted(
     const boost::system::error_code& ec, std::size_t bytes_transferred)
 {
-
     // Due to the nature of io_service's queue and
     // the implementation of the loop this event may trigger
     // late after clean disconnection. Check status of connection
@@ -1451,7 +1449,6 @@ void EthStratumClient::onRecvSocketDataCompleted(
 
     if (!ec)
     {
-
         // DO NOT DO THIS !!!!!
         // std::istream is(&m_recvBuffer);
         // std::string message;
@@ -1473,7 +1470,12 @@ void EthStratumClient::onRecvSocketDataCompleted(
         // Extract received message
         std::string line(
             boost::asio::buffer_cast<const char*>(m_recvBuffer.data()), bytes_transferred);
+        boost::replace_all(line, "\n", " ");
         m_recvBuffer.consume(bytes_transferred);
+
+        // Out received message only for debug purpouses
+        if (g_logOptions & LOG_JSON)
+            cnote << " << " << line;
 
         // Process message only if we're connected
         if (isConnected())
@@ -1497,7 +1499,6 @@ void EthStratumClient::onRecvSocketDataCompleted(
         // Eventually keep reading from socket
         if (isConnected())
             recvSocketData();
-
     }
     else
     {
@@ -1528,19 +1529,43 @@ void EthStratumClient::onRecvSocketDataCompleted(
     }
 }
 
-void EthStratumClient::sendSocketData(Json::Value const& jReq)
+void EthStratumClient::send(Json::Value const& jReq)
 {
-    if (!isConnected())
-        return;
+
+    std::string line = Json::writeString(m_jSwBuilder, jReq);
 
     // Out received message only for debug purpouses
     if (g_logOptions & LOG_JSON)
-    {
-        cnote << jReq;
-    }
+        cnote << " >> " << line;
 
-    std::ostream os(&m_sendBuffer);
-    os << m_jWriter.write(jReq);  // Do not add lf. It's added by writer.
+    x_tx.lock();
+    m_txQueue.push(line);
+    if (!m_txPending.load(std::memory_order_relaxed))
+    {
+        m_txPending.store(true, std::memory_order_relaxed);
+        std::ostream os(&m_sendBuffer);
+        while (!m_txQueue.empty())
+        {
+            os << m_txQueue.front() << std::endl;
+            m_txQueue.pop();
+        }
+        x_tx.unlock();
+        m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::sendSocketData, this)));
+    }
+    else
+    {
+        x_tx.unlock();
+    }
+    
+}
+
+void EthStratumClient::sendSocketData()
+{
+    if (!isConnected())
+    {
+        m_sendBuffer.consume(65535);
+        return;
+    }
 
     if (m_conn->SecLevel() != SecureLevel::NONE)
     {
@@ -1558,8 +1583,13 @@ void EthStratumClient::sendSocketData(Json::Value const& jReq)
 
 void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code& ec)
 {
+    x_tx.lock();
+
     if (ec)
     {
+        std::queue<std::string> empty;
+        std::swap(m_txQueue, empty);
+
         if ((ec.category() == boost::asio::error::get_ssl_category()) &&
             (SSL_R_PROTOCOL_IS_SHUTDOWN == ERR_GET_REASON(ec.value())))
         {
@@ -1572,7 +1602,28 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
             cwarn << "Socket write failed: " + ec.message();
             m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
         }
+        
     }
+    else
+    {
+        if (m_txQueue.empty())
+        {
+            m_txPending.store(false, std::memory_order_relaxed);
+        }
+        else
+        {
+            std::ostream os(&m_sendBuffer);
+            while (!m_txQueue.empty())
+            {
+                os << m_txQueue.front() << std::endl;
+                m_txQueue.pop();
+            }
+            m_io_service.post(
+                m_io_strand.wrap(boost::bind(&EthStratumClient::sendSocketData, this)));
+        }
+    }
+
+    x_tx.unlock();
 }
 
 void EthStratumClient::onSSLShutdownCompleted(const boost::system::error_code& ec)
@@ -1598,7 +1649,8 @@ std::chrono::milliseconds EthStratumClient::dequeue_response_plea()
 {
     using namespace std::chrono;
 
-    steady_clock::time_point response_plea_time(m_response_plea_older.load(std::memory_order_relaxed));
+    steady_clock::time_point response_plea_time(
+        m_response_plea_older.load(std::memory_order_relaxed));
     milliseconds response_delay_ms =
         duration_cast<milliseconds>(steady_clock::now() - response_plea_time);
 
