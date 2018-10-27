@@ -35,10 +35,13 @@ public:
         X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
         X509_NAME_oneline(X509_get_subject_name(cert), subject_name, 256);
         bool verified = verifier_(preverified, ctx);
-        if (verified)
-            cnote << "Certificate: " << subject_name << " Ok";
-        else
-            cwarn << "Certificate: " << subject_name << " Failed";
+#ifdef DEV_BUILD
+        cnote << "Certificate: " << subject_name << " " << (verified ? "Ok" : "Failed");
+#else
+        if (!verified)
+            cnote << "Certificate: " << subject_name << " "
+                  << "Failed";
+#endif
         return verified;
     }
 
