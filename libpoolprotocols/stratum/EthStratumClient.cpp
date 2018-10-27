@@ -1514,11 +1514,9 @@ void EthStratumClient::send(Json::Value const& jReq)
     std::string* line = new std::string(Json::writeString(m_jSwBuilder, jReq));
     m_txQueue.push(line);
 
-    if (!m_txPending.load(std::memory_order_relaxed))
-    {
-        m_txPending.store(true, std::memory_order_relaxed);
+    bool ex = false;
+    if (m_txPending.compare_exchange_strong(ex, true, std::memory_order_relaxed))
         sendSocketData();
-    }
 }
 
 void EthStratumClient::sendSocketData()
