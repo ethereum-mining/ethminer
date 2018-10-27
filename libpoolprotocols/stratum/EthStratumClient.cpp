@@ -1545,6 +1545,8 @@ void EthStratumClient::sendSocketData()
     if (!isConnected() || m_txQueue.empty())
     {
         m_sendBuffer.consume(m_sendBuffer.capacity());
+        m_txQueue.consume_all([](std::string* l) { (void)l; });
+        m_txPending.store(false, std::memory_order_relaxed);
         return;
     }
 
@@ -1595,16 +1597,10 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
     else
     {
         if (m_txQueue.empty())
-        {
             m_txPending.store(false, std::memory_order_relaxed);
-        }
         else
-        {
-            if (isConnected())
-                sendSocketData();
-        }
+            sendSocketData();
     }
-
 }
 
 void EthStratumClient::onSSLShutdownCompleted(const boost::system::error_code& ec)
