@@ -1526,7 +1526,7 @@ void EthStratumClient::sendSocketData()
     if (!isConnected() || m_txQueue.empty())
     {
         m_sendBuffer.consume(m_sendBuffer.capacity());
-        m_txQueue.consume_all([](std::string* l) { (void)l; });
+        m_txQueue.consume_all([](std::string* l) { delete l; });
         m_txPending.store(false, std::memory_order_relaxed);
         return;
     }
@@ -1539,6 +1539,8 @@ void EthStratumClient::sendSocketData()
         // Out received message only for debug purpouses
         if (g_logOptions & LOG_JSON)
             cnote << " >> " << *line;
+
+        delete line;
     }
 
     if (m_conn->SecLevel() != SecureLevel::NONE)
@@ -1559,7 +1561,7 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
 {
     if (ec)
     {
-        m_txQueue.consume_all([](std::string* l) { (void)l; });
+        m_txQueue.consume_all([](std::string* l) { delete l; });
         m_txPending.store(false, std::memory_order_relaxed);
 
         if ((ec.category() == boost::asio::error::get_ssl_category()) &&
