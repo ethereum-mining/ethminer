@@ -50,6 +50,7 @@ EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, bool su
     m_socket(nullptr),
     m_workloop_timer(g_io_service),
     m_response_plea_times(64),
+    m_txQueue(64),
     m_resolver(g_io_service),
     m_endpoints(),
     m_submit_hashrate(submitHashrate)
@@ -567,8 +568,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     m_current_timestamp = std::chrono::steady_clock::now();
 
     // Clear txqueue
-    std::queue<std::string> empty;
-    std::swap(m_txQueue, empty);
+    m_txQueue.consume_all([](std::string* l) { (void)l; });
 
 #ifdef DEV_BUILD
     if (g_logOptions & LOG_CONNECT)
@@ -771,7 +771,6 @@ void EthStratumClient::processExtranonce(std::string& enonce)
 
 void EthStratumClient::processResponse(Json::Value& responseObject)
 {
-
     // Store jsonrpc version to test against
     int _rpcVer = responseObject.isMember("jsonrpc") ? 2 : 1;
 
@@ -1531,32 +1530,14 @@ void EthStratumClient::onRecvSocketDataCompleted(
 
 void EthStratumClient::send(Json::Value const& jReq)
 {
-
-    std::string line = Json::writeString(m_jSwBuilder, jReq);
-
-    // Out received message only for debug purpouses
-    if (g_logOptions & LOG_JSON)
-        cnote << " >> " << line;
-
-    x_tx.lock();
+    std::string* line = new std::string(Json::writeString(m_jSwBuilder, jReq));
     m_txQueue.push(line);
+
     if (!m_txPending.load(std::memory_order_relaxed))
     {
         m_txPending.store(true, std::memory_order_relaxed);
-        std::ostream os(&m_sendBuffer);
-        while (!m_txQueue.empty())
-        {
-            os << m_txQueue.front() << std::endl;
-            m_txQueue.pop();
-        }
-        x_tx.unlock();
-        m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::sendSocketData, this)));
+        sendSocketData();
     }
-    else
-    {
-        x_tx.unlock();
-    }
-    
 }
 
 void EthStratumClient::sendSocketData()
@@ -1565,6 +1546,16 @@ void EthStratumClient::sendSocketData()
     {
         m_sendBuffer.consume(65535);
         return;
+    }
+
+    std::string* line;
+    std::ostream os(&m_sendBuffer);
+    while (m_txQueue.pop(line))
+    {
+        os << *line << std::endl;
+        // Out received message only for debug purpouses
+        if (g_logOptions & LOG_JSON)
+            cnote << " >> " << *line;
     }
 
     if (m_conn->SecLevel() != SecureLevel::NONE)
@@ -1583,12 +1574,9 @@ void EthStratumClient::sendSocketData()
 
 void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code& ec)
 {
-    x_tx.lock();
-
     if (ec)
     {
-        std::queue<std::string> empty;
-        std::swap(m_txQueue, empty);
+        m_txQueue.consume_all([](std::string* l) { (void)l; });
 
         if ((ec.category() == boost::asio::error::get_ssl_category()) &&
             (SSL_R_PROTOCOL_IS_SHUTDOWN == ERR_GET_REASON(ec.value())))
@@ -1602,7 +1590,6 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
             cwarn << "Socket write failed: " + ec.message();
             m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
         }
-        
     }
     else
     {
@@ -1612,18 +1599,11 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
         }
         else
         {
-            std::ostream os(&m_sendBuffer);
-            while (!m_txQueue.empty())
-            {
-                os << m_txQueue.front() << std::endl;
-                m_txQueue.pop();
-            }
-            m_io_service.post(
-                m_io_strand.wrap(boost::bind(&EthStratumClient::sendSocketData, this)));
+            if (isConnected())
+                sendSocketData();
         }
     }
 
-    x_tx.unlock();
 }
 
 void EthStratumClient::onSSLShutdownCompleted(const boost::system::error_code& ec)

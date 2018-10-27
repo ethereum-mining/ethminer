@@ -148,9 +148,9 @@ private:
     std::atomic<int> m_response_pleas_count = {0};
     std::atomic<std::chrono::steady_clock::duration> m_response_plea_older;
     boost::lockfree::queue<std::chrono::steady_clock::time_point> m_response_plea_times;
+
     std::atomic<bool> m_txPending = {false};
-    std::queue<std::string> m_txQueue;
-    boost::mutex x_tx;
+    boost::lockfree::queue<std::string*> m_txQueue;
 
     boost::asio::ip::tcp::resolver m_resolver;
     std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>> m_endpoints;
