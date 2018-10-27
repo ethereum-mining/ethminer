@@ -99,7 +99,8 @@ private:
     void recvSocketData();
     void onRecvSocketDataCompleted(
         const boost::system::error_code& ec, std::size_t bytes_transferred);
-    void sendSocketData(Json::Value const& jReq);
+    void send(Json::Value const& jReq);
+    void sendSocketData();
     void onSendSocketDataCompleted(const boost::system::error_code& ec);
     void onSSLShutdownCompleted(const boost::system::error_code& ec);
 
@@ -136,13 +137,16 @@ private:
 
     boost::asio::streambuf m_sendBuffer;
     boost::asio::streambuf m_recvBuffer;
-    Json::FastWriter m_jWriter;
+    Json::StreamWriterBuilder m_jSwBuilder;
 
     boost::asio::deadline_timer m_workloop_timer;
 
     std::atomic<int> m_response_pleas_count = {0};
     std::atomic<std::chrono::steady_clock::duration> m_response_plea_older;
     boost::lockfree::queue<std::chrono::steady_clock::time_point> m_response_plea_times;
+
+    std::atomic<bool> m_txPending = {false};
+    boost::lockfree::queue<std::string*> m_txQueue;
 
     boost::asio::ip::tcp::resolver m_resolver;
     std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>> m_endpoints;
