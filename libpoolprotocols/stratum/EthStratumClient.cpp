@@ -1542,9 +1542,9 @@ void EthStratumClient::send(Json::Value const& jReq)
 
 void EthStratumClient::sendSocketData()
 {
-    if (!isConnected())
+    if (!isConnected() || m_txQueue.empty())
     {
-        m_sendBuffer.consume(65535);
+        m_sendBuffer.consume(m_sendBuffer.capacity());
         return;
     }
 
@@ -1577,6 +1577,7 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
     if (ec)
     {
         m_txQueue.consume_all([](std::string* l) { (void)l; });
+        m_txPending.store(false, std::memory_order_relaxed);
 
         if ((ec.category() == boost::asio::error::get_ssl_category()) &&
             (SSL_R_PROTOCOL_IS_SHUTDOWN == ERR_GET_REASON(ec.value())))
