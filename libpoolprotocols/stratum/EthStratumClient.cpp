@@ -751,10 +751,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 {
     dev::setThreadName("stratum");
 
-    // Out received message only for debug purpouses
-    if (g_logOptions & LOG_JSON)
-        cnote << responseObject;
-
     // Store jsonrpc version to test against
     int _rpcVer = responseObject.isMember("jsonrpc") ? 2 : 1;
 
@@ -1454,8 +1450,14 @@ void EthStratumClient::onRecvSocketDataCompleted(
         */
 
         // Extract received message
-        std::string line(boost::asio::buffer_cast<const char*>(m_recvBuffer.data()), bytes_transferred);
+        std::string line(
+            boost::asio::buffer_cast<const char*>(m_recvBuffer.data()), bytes_transferred);
+        boost::replace_all(line, "\n", " ");
         m_recvBuffer.consume(bytes_transferred);
+
+        // Out received message only for debug purpouses
+        if (g_logOptions & LOG_JSON)
+            cnote << " << " << line;
 
         // Process message only if we're connected
         if (isConnected())
