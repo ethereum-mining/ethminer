@@ -51,7 +51,9 @@ struct WorkPackage
     h256 boundary;
     h256 header;  ///< When h256() means "pause until notified a new work package is available".
     h256 job;
+    h256 seed;
     int epoch = -1;
+    int block = -1;
 
     uint64_t startNonce = 0;
     int exSizeBits = -1;

@@ -1215,8 +1215,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
                     if (sHeaderHash != "" && sSeedHash != "")
                     {
-                        m_current.epoch = ethash::find_epoch_number(
-                            ethash::hash256_from_bytes(h256{sSeedHash}.data()));
+                        m_current.seed = h256(sSeedHash);
                         m_current.header = h256(sHeaderHash);
                         m_current.boundary = m_nextWorkBoundary;
                         m_current.startNonce = bswap(*((uint64_t*)m_extraNonce.data()));
@@ -1227,9 +1226,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                         m_current_timestamp = std::chrono::steady_clock::now();
 
                         if (m_onWorkReceived)
-                        {
                             m_onWorkReceived(m_current);
-                        }
                     }
                 }
                 else
@@ -1238,27 +1235,33 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     string sSeedHash = jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
                     string sShareTarget =
                         jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
+                    if (jPrm.size() > 3)
+                    {
+                        try
+                        {
+                            m_current.block = std::stoul(
+                                jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString(), nullptr,
+                                16);
+                        }
+                        catch (const std::exception&)
+                        {
+                            m_current.block = -1;
+                        }
+                    }
 
                     // coinmine.pl fix
                     int l = sShareTarget.length();
                     if (l < 66)
                         sShareTarget = "0x" + string(66 - l, '0') + sShareTarget.substr(2);
+                    
+                    m_current.seed = h256(sSeedHash);
+                    m_current.header = h256(sHeaderHash);
+                    m_current.boundary = h256(sShareTarget);
+                    m_current.job = h256(job);
+                    m_current_timestamp = std::chrono::steady_clock::now();
 
-
-                    if (sHeaderHash != "" && sSeedHash != "" && sShareTarget != "")
-                    {
-                        m_current.epoch = ethash::find_epoch_number(
-                            ethash::hash256_from_bytes(h256{sSeedHash}.data()));
-                        m_current.header = h256(sHeaderHash);
-                        m_current.boundary = h256(sShareTarget);
-                        m_current.job = h256(job);
-                        m_current_timestamp = std::chrono::steady_clock::now();
-
-                        if (m_onWorkReceived)
-                        {
-                            m_onWorkReceived(m_current);
-                        }
-                    }
+                    if (m_onWorkReceived)
+                        m_onWorkReceived(m_current);
                 }
             }
         }

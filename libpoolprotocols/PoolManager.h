@@ -33,6 +33,7 @@ public:
     void stop();
     bool isConnected() { return p_client->isConnected(); };
     bool isRunning() { return m_running; };
+    unsigned int getCurrentEpoch();
     double getCurrentDifficulty();
     unsigned getConnectionSwitches();
     unsigned getEpochChanges();
@@ -40,6 +41,8 @@ public:
 private:
 
     void rotateConnect();
+    void showEpoch();
+    void showDifficulty();
 
     unsigned m_hrReportingInterval = 60;
     unsigned m_failoverTimeout =
@@ -61,7 +64,7 @@ private:
     unsigned m_activeConnectionIdx = 0;
     mutable Mutex m_activeConnectionMutex;
 
-    h256 m_lastBoundary = h256();
+    WorkPackage m_currentWp;
 
     boost::asio::io_service::strand m_io_strand;
     boost::asio::deadline_timer m_failovertimer;
@@ -70,9 +73,7 @@ private:
     PoolClient* p_client;
     MinerType m_minerType;
 
-    int m_lastEpoch = 0;
     std::atomic<unsigned> m_epochChanges = {0};
-    double m_lastDifficulty = 0.0;
 
     static PoolManager* m_this;
 };

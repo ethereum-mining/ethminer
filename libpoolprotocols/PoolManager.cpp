@@ -8,8 +8,8 @@ using namespace eth;
 
 PoolManager* PoolManager::m_this = nullptr;
 
-PoolManager::PoolManager(
-    PoolClient* client, MinerType const& minerType, unsigned maxTries, unsigned failoverTimeout, unsigned ergodicity)
+PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigned maxTries,
+    unsigned failoverTimeout, unsigned ergodicity)
   : m_io_strand(g_io_service),
     m_failovertimer(g_io_service),
     m_submithrtimer(g_io_service),
@@ -22,12 +22,16 @@ PoolManager::PoolManager(
     m_ergodicity = ergodicity;
     m_maxConnectionAttempts = maxTries;
     m_failoverTimeout = failoverTimeout;
+    m_currentWp.header = h256();
 
     p_client->onConnected([&]() {
         {
             Guard l(m_activeConnectionMutex);
             m_selectedHost.append(p_client->ActiveEndPoint());
             cnote << "Established connection to " << m_selectedHost;
+
+            // Reset current WorkPackage
+            m_currentWp.job = h256();
 
             // Shuffle if needed
             if (m_ergodicity == 1)
@@ -77,6 +81,7 @@ PoolManager::PoolManager(
 
         // Clear current connection
         p_client->unsetConnection();
+        m_currentWp.header = h256();
 
         // Stop timing actors
         m_failovertimer.cancel();
@@ -101,34 +106,62 @@ PoolManager::PoolManager(
     });
 
     p_client->onWorkReceived([&](WorkPackage const& wp) {
-        
-        if (wp.epoch != m_lastEpoch)
+
+        // Should not happen !
+        if (!wp)
+            return;
+
+        if (!m_currentWp)
         {
-            cnote << "New epoch " EthWhite << wp.epoch << EthReset;
-            m_lastEpoch = wp.epoch;
             m_epochChanges.fetch_add(1, std::memory_order_relaxed);
+
+            m_currentWp = wp;
+
+            if (wp.block != -1)
+                m_currentWp.epoch = wp.block / 30000;
+            else
+                m_currentWp.epoch =
+                    ethash::find_epoch_number(ethash::hash256_from_bytes(wp.seed.data()));
+
+            showEpoch();
+            showDifficulty();
         }
-        if (wp.boundary != m_lastBoundary)
+        else
         {
-            using namespace boost::multiprecision;
+            bool newEpoch = (wp.seed != m_currentWp.seed);
+            bool newDiff = (wp.boundary != m_currentWp.boundary);
+            m_currentWp.job = wp.job;
+            m_currentWp.header = wp.header;
 
-            m_lastBoundary = wp.boundary;
-            static const uint256_t dividend(
-                "0xffff000000000000000000000000000000000000000000000000000000000000");
-            const uint256_t divisor(string("0x") + m_lastBoundary.hex());
-            std::stringstream ss;
-            m_lastDifficulty = double(dividend / divisor);
-            ss << fixed << setprecision(2) << m_lastDifficulty / 1000000000.0 << "K megahash";
-            cnote << "Pool difficulty: " EthWhite << ss.str() << EthReset;
+            if (newEpoch)
+            {
+                m_epochChanges.fetch_add(1, std::memory_order_relaxed);
+                m_currentWp.seed = wp.seed;
+                m_currentWp.block = wp.block;
+                if (wp.block != -1)
+                    m_currentWp.epoch = wp.block / 30000;
+                else
+                    m_currentWp.epoch =
+                        ethash::find_epoch_number(ethash::hash256_from_bytes(wp.seed.data()));
+                showEpoch();
+            }
+            if (newDiff)
+            {
+                m_currentWp.boundary = wp.boundary;
+                showDifficulty();
+            }
         }
 
-        cnote << "Job: " EthWhite "#" << wp.header.abridged() << EthReset " " << m_selectedHost;
+
+        cnote << "Job: " EthWhite "#" << m_currentWp.header.abridged() << EthReset << " "
+              << m_selectedHost;
 
         // Shuffle if needed
         if (m_ergodicity == 2)
             Farm::f().shuffle();
 
-        Farm::f().setWork(wp);
+        Farm::f().setWork(m_currentWp);
+
     });
 
     p_client->onSolutionAccepted([&](bool const& stale, std::chrono::milliseconds const& elapsedMs,
@@ -344,7 +377,7 @@ void PoolManager::rotateConnect()
     {
         // If this is the only connection we can't rotate
         // forever
-        if (m_connections.size() == 1) 
+        if (m_connections.size() == 1)
         {
             m_connections.erase(m_connections.begin() + m_activeConnectionIdx);
         }
@@ -398,6 +431,19 @@ void PoolManager::rotateConnect()
     }
 }
 
+void PoolManager::showEpoch()
+{
+    if (m_currentWp)
+        cnote << "Epoch : " EthWhite << m_currentWp.epoch << EthReset;
+}
+
+void PoolManager::showDifficulty()
+{
+    std::stringstream ss;
+    ss << fixed << setprecision(2) << getCurrentDifficulty() / 1000000000.0 << "K megahash";
+    cnote << "Difficulty : " EthWhite << ss.str() << EthReset;
+}
+
 void PoolManager::failovertimer_elapsed(const boost::system::error_code& ec)
 {
     if (!ec)
@@ -443,13 +489,24 @@ void PoolManager::submithrtimer_elapsed(const boost::system::error_code& ec)
 }
 
 
+unsigned int dev::eth::PoolManager::getCurrentEpoch()
+{
+    if (!m_currentWp)
+        return 0;
+    return m_currentWp.epoch;
+}
+
 double PoolManager::getCurrentDifficulty()
 {
-    if (!m_running.load(std::memory_order_relaxed))
+    if (!m_currentWp)
         return 0.0;
-    if (!p_client->isConnected())
-        return 0.0;
-    return m_lastDifficulty;
+
+    using namespace boost::multiprecision;
+    static const uint256_t dividend(
+        "0xffff000000000000000000000000000000000000000000000000000000000000");
+    const uint256_t divisor(string("0x") + m_currentWp.boundary.hex());
+    std::stringstream ss;
+    return double(dividend / divisor);
 }
 
 unsigned PoolManager::getConnectionSwitches()
