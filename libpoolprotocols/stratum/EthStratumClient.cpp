@@ -1181,7 +1181,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
         if (_method == "mining.notify")
         {
             // Discard jobs if not properly subscribed
-            if (!m_subscribed.load(std::memory_order_relaxed))
+            // or if a job for this transmission has already
+            // been processed
+            if (!m_subscribed.load(std::memory_order_relaxed) || m_newjobprocessed)
             {
                 return;
             }
@@ -1225,6 +1227,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                         m_current.job = h256(job);
                         m_current_timestamp = std::chrono::steady_clock::now();
 
+                        m_newjobprocessed = true;
                         if (m_onWorkReceived)
                             m_onWorkReceived(m_current);
                     }
@@ -1253,13 +1256,14 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     int l = sShareTarget.length();
                     if (l < 66)
                         sShareTarget = "0x" + string(66 - l, '0') + sShareTarget.substr(2);
-                    
+
                     m_current.seed = h256(sSeedHash);
                     m_current.header = h256(sHeaderHash);
                     m_current.boundary = h256(sShareTarget);
                     m_current.job = h256(job);
                     m_current_timestamp = std::chrono::steady_clock::now();
 
+                    m_newjobprocessed = true;
                     if (m_onWorkReceived)
                         m_onWorkReceived(m_current);
                 }
@@ -1435,9 +1439,13 @@ void EthStratumClient::recvSocketData()
     }
     else
     {
-        async_read_until(*m_nonsecuresocket, m_recvBuffer, "\n",
+        async_read(*m_nonsecuresocket, m_recvBuffer, boost::asio::transfer_all(),
             m_io_strand.wrap(boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
                 boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
+
+        // async_read_until(*m_nonsecuresocket, m_recvBuffer, "\n",
+        //    m_io_strand.wrap(boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
+        //        boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
     }
 }
 
@@ -1469,32 +1477,53 @@ void EthStratumClient::onRecvSocketDataCompleted(
             thus invalidating the previous point 2
         */
 
-        // Extract received message
-        std::string line(
+        // Extract received message and free the buffer
+        std::string rx_message(
             boost::asio::buffer_cast<const char*>(m_recvBuffer.data()), bytes_transferred);
-        boost::replace_all(line, "\n", " ");
         m_recvBuffer.consume(bytes_transferred);
+        m_message.append(rx_message);
 
-        // Out received message only for debug purpouses
-        if (g_logOptions & LOG_JSON)
-            cnote << " << " << line;
-
-        // Process message only if we're connected
-        if (isConnected())
+        // Create a stack of lines to be processed
+        std::stack<std::string> lines;
+        size_t offset = m_message.find("\n");
+        while (offset != string::npos)
         {
-            // Test validity of chunk and process
-            Json::Value jMsg;
-            Json::Reader jRdr;
-            if (jRdr.parse(line, jMsg))
+            lines.push(m_message.substr(0, offset));
+            m_message.erase(0, offset + 1);
+            offset = m_message.find("\n");
+        }
+
+        // Now, being a stack, the lines get processed
+        // in the reverse order they arrived.
+        // Lower signal of already processed job notification
+        // as this is a new transmission
+        m_newjobprocessed = false;
+        while (lines.size())
+        {
+            std::string line = lines.top();
+            lines.pop();
+
+            // Out received message only for debug purpouses
+            if (g_logOptions & LOG_JSON)
+                cnote << " << " << line;
+
+            // Process message only if we're connected
+            if (isConnected())
             {
-                // Run in sync so no 2 different async reads may overlap
-                processResponse(jMsg);
-            }
-            else
-            {
-                string what = jRdr.getFormattedErrorMessages();
-                boost::replace_all(what, "\n", " ");
-                cwarn << "Got invalid Json message : " << what;
+                // Test validity of chunk and process
+                Json::Value jMsg;
+                Json::Reader jRdr;
+                if (jRdr.parse(line, jMsg))
+                {
+                    // Run in sync so no 2 different async reads may overlap
+                    processResponse(jMsg);
+                }
+                else
+                {
+                    string what = jRdr.getFormattedErrorMessages();
+                    boost::replace_all(what, "\n", " ");
+                    cwarn << "Got invalid Json message : " << what;
+                }
             }
         }
 

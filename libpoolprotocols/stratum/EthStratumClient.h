@@ -132,6 +132,8 @@ private:
     boost::asio::io_service& m_io_service;  // The IO service reference passed in the constructor
     boost::asio::io_service::strand m_io_strand;
     boost::asio::ip::tcp::socket* m_socket;
+    std::string m_message; // The internal message string buffer
+    bool m_newjobprocessed = false;
 
     // Use shared ptrs to avoid crashes due to async_writes
     // see
