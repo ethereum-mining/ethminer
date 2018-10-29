@@ -563,9 +563,11 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     }
 
     // We got a socket connection established
+    // Start a new session of data
     m_canconnect.store(true, std::memory_order_relaxed);
     m_connected.store(true, std::memory_order_relaxed);
     m_current_timestamp = std::chrono::steady_clock::now();
+    m_message.clear();
 
     // Clear txqueue
     m_txQueue.consume_all([](std::string* l) { delete l; });
@@ -1433,19 +1435,15 @@ void EthStratumClient::recvSocketData()
 {
     if (m_conn->SecLevel() != SecureLevel::NONE)
     {
-        async_read_until(*m_securesocket, m_recvBuffer, "\n",
+        async_read(*m_securesocket, m_recvBuffer, boost::asio::transfer_at_least(1),
             m_io_strand.wrap(boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
                 boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
     }
     else
     {
-        async_read(*m_nonsecuresocket, m_recvBuffer, boost::asio::transfer_all(),
+        async_read(*m_nonsecuresocket, m_recvBuffer, boost::asio::transfer_at_least(1),
             m_io_strand.wrap(boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
                 boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
-
-        // async_read_until(*m_nonsecuresocket, m_recvBuffer, "\n",
-        //    m_io_strand.wrap(boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
-        //        boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
     }
 }
 

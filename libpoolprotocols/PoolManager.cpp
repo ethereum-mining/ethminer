@@ -153,8 +153,9 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
         }
 
 
-        cnote << "Job: " EthWhite "#" << m_currentWp.header.abridged() << EthReset << " "
-              << m_selectedHost;
+        cnote << "Job: " EthWhite "#" << m_currentWp.header.abridged()
+              << (m_currentWp.block != -1 ? (" block " + to_string(m_currentWp.block)) : "")
+              << EthReset << " " << m_selectedHost;
 
         // Shuffle if needed
         if (m_ergodicity == 2)
