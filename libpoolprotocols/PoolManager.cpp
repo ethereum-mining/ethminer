@@ -1,4 +1,5 @@
 #include <chrono>
+#include <regex>
 
 #include "PoolManager.h"
 
@@ -302,20 +303,36 @@ void PoolManager::addConnection(URI& conn)
  *          -1 failure (out of bounds)
  *          -2 failure (active connection should be deleted)
  */
+
+int PoolManager::removeConnectionCommon(unsigned int idx)
+{
+    if (idx == m_activeConnectionIdx)
+        return -2;
+    m_connections.erase(m_connections.begin() + idx);
+    if (m_activeConnectionIdx > idx)
+        m_activeConnectionIdx--;
+    return 0;
+}
+
 int PoolManager::removeConnection(unsigned int idx)
 {
     Guard l(m_activeConnectionMutex);
     if (idx >= m_connections.size())
         return -1;
-    if (idx == m_activeConnectionIdx)
-        return -2;
-    m_connections.erase(m_connections.begin() + idx);
-    if (m_activeConnectionIdx > idx)
-    {
-        m_activeConnectionIdx--;
-    }
-    return 0;
+    return removeConnectionCommon(idx);
 }
+
+int PoolManager::removeConnection(const string& host)
+{
+    std::regex r(host);
+    size_t idx;
+    Guard l(m_activeConnectionMutex);
+    for (idx = 0; idx < m_connections.size(); idx++)
+        if (std::regex_match(m_connections[idx].str(), r))
+            return removeConnectionCommon(idx);
+    return -3;
+}
+
 
 void PoolManager::clearConnections()
 {
@@ -327,16 +344,8 @@ void PoolManager::clearConnections()
         p_client->disconnect();
 }
 
-/*
- * Sets the active connection
- * Returns: 0 on success, -1 on failure (out of bounds)
- */
-int PoolManager::setActiveConnection(unsigned int idx)
+int PoolManager::setActiveConnectionCommon(unsigned int idx, UniqueGuard& l)
 {
-    // Sets the active connection to the requested index
-    UniqueGuard l(m_activeConnectionMutex);
-    if (idx >= m_connections.size())
-        return -1;
     if (idx == m_activeConnectionIdx)
         return 0;
 
@@ -349,6 +358,29 @@ int PoolManager::setActiveConnection(unsigned int idx)
     // Suspend mining if applicable as we're switching
     suspendMining();
     return 0;
+}
+
+/*
+ * Sets the active connection
+ * Returns: 0 on success, -1 on failure (out of bounds)
+ */
+int PoolManager::setActiveConnection(unsigned int idx)
+{
+    // Sets the active connection to the requested index
+    UniqueGuard l(m_activeConnectionMutex);
+    if (idx >= m_connections.size())
+        return -1;
+    return setActiveConnectionCommon(idx, l);
+}
+
+int PoolManager::setActiveConnection(std::string& host)
+{
+    std::regex r(host);
+    UniqueGuard l(m_activeConnectionMutex);
+    for (size_t idx = 0; idx < m_connections.size(); idx++)
+        if (std::regex_match(m_connections[idx].str(), r))
+            return setActiveConnectionCommon(idx, l);
+    return -1;
 }
 
 URI PoolManager::getActiveConnectionCopy()
@@ -370,7 +402,7 @@ Json::Value PoolManager::getConnectionsJson()
         Json::Value JConn;
         JConn["index"] = (unsigned)i;
         JConn["active"] = (i == m_activeConnectionIdx ? true : false);
-        JConn["uri"] = m_connections[i].String();
+        JConn["uri"] = m_connections[i].str();
         jRes.append(JConn);
     }
 

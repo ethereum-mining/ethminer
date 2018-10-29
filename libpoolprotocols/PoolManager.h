@@ -27,8 +27,10 @@ public:
     void clearConnections();
     Json::Value getConnectionsJson();
     int setActiveConnection(unsigned int idx);
+    int setActiveConnection(std::string& host);
     URI getActiveConnectionCopy();
     int removeConnection(unsigned int idx);
+    int removeConnection(const std::string& host);
     void start();
     void stop();
     bool isConnected() { return p_client->isConnected(); };
@@ -39,6 +41,8 @@ public:
 
 private:
     void suspendMining();
+    int setActiveConnectionCommon(unsigned int idx, UniqueGuard& l);
+    int removeConnectionCommon(unsigned int idx);
 
     unsigned m_hashrateReportingTime = 60;
     unsigned m_hashrateReportingTimePassed = 0;

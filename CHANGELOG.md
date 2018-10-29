@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Added localization support for output number formatting.
 - Changed the --verbosity option to allow individual enable/disable of logging features.
 - Improved hash rate measurement accuracy.
+- Allow API commands to use URI matching string instead of ordinal indexes.
 
 ### Removed
 

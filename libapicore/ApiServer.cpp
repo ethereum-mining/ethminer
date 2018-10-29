@@ -502,7 +502,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             if (!uri.Valid())
             {
                 jResponse["error"]["code"] = -422;
-                jResponse["error"]["message"] = ("Invalid URI " + uri.String());
+                jResponse["error"]["message"] = ("Invalid URI " + uri.str());
                 return;
             }
             if (!uri.KnownScheme())
@@ -545,18 +545,32 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         Json::Value jRequestParams;
         if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
             return;
-
-        unsigned index;
-        if (!getRequestValue("index", index, jRequestParams, false, jResponse))
-            return;
-
-        if (PoolManager::p().setActiveConnection(index))
+        if (jRequestParams.isMember("index"))
         {
-            jResponse["error"]["code"] = -422;
-            jResponse["error"]["message"] = "Index out of bounds";
-            return;
+            unsigned index;
+            if (getRequestValue("index", index, jRequestParams, false, jResponse))
+            {
+                if (PoolManager::p().setActiveConnection(index))
+                {
+                    jResponse["error"]["code"] = -422;
+                    jResponse["error"]["message"] = "Index out of bounds";
+                    return;
+                }
+            }
         }
-
+        else
+        {
+            string uri;
+            if (getRequestValue("URI", uri, jRequestParams, false, jResponse))
+            {
+                if (PoolManager::p().setActiveConnection(uri) == -1)
+                {
+                    jResponse["error"]["code"] = -422;
+                    jResponse["error"]["message"] = "Host match not found";
+                    return;
+                }
+            }
+        }
         jResponse["result"] = true;
     }
 
@@ -566,15 +580,25 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             return;
 
         Json::Value jRequestParams;
+        int r;
         if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
             return;
 
-        unsigned index;
-        if (!getRequestValue("index", index, jRequestParams, false, jResponse))
-            return;
+        if (jRequestParams.isMember("index"))
+        {
+            unsigned index;
+            if (!getRequestValue("index", index, jRequestParams, false, jResponse))
+                return;
+            r = PoolManager::p().removeConnection(index);
+        }
+        else
+        {
+            string uri;
+            if (!getRequestValue("URI", uri, jRequestParams, false, jResponse))
+                return;
+            r = PoolManager::p().removeConnection(uri);
+        }
 
-        int r;
-        r = PoolManager::p().removeConnection(index);
         if (r == -1)
         {
             jResponse["error"]["code"] = -422;
@@ -585,6 +609,12 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         {
             jResponse["error"]["code"] = -460;
             jResponse["error"]["message"] = "Can't delete active connection";
+            return;
+        }
+        if (r == -3)
+        {
+            jResponse["error"]["code"] = -422;
+            jResponse["error"]["message"] = "Host match not found";
             return;
         }
 
@@ -1022,7 +1052,7 @@ Json::Value ApiConnection::getMinerStatDetail()
     /* connection info */
     auto connection = PoolManager::p().getActiveConnectionCopy();
     Json::Value jconnection;
-    jconnection["uri"] = connection.String();
+    jconnection["uri"] = connection.str();
     // jconnection["endpoint"] = PoolManager::p().getClient()->ActiveEndPoint();
     jconnection["isconnected"] = PoolManager::p().isConnected();
     jconnection["switched"] = PoolManager::p().getConnectionSwitches();

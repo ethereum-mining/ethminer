@@ -107,7 +107,7 @@ This shows the API interface is live and listening on the configured endpoint.
 
 If your API instance is password protected by the usage of `--api-password` any remote trying to interact with the API interface **must** send this method immediately after connection to get authenticated. The message to send is:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -120,7 +120,7 @@ If your API instance is password protected by the usage of `--api-password` any 
 
 where the member `psw` **must** contain the very same password configured with `--api-password` argument. As expected result you will get a JSON-RPC 2.0 response with positive or negative values. For instance if the password matches you will get a response like this:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -130,7 +130,7 @@ where the member `psw` **must** contain the very same password configured with `
 
 or, in case of any error:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -147,7 +147,7 @@ This method is primarily used to check the liveness of the API interface.
 
 To invoke the action:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -157,7 +157,7 @@ To invoke the action:
 
 and expect back a result like this:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -173,7 +173,7 @@ If you get no response or the socket timeouts it's likely your ethminer's instan
 
 With this method you expect back a detailed collection of statistical data. To issue a request:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -256,7 +256,7 @@ If values not set (eg --tstart) or the underlaying function returns an error exp
 
 With this method you expect back a collection of statistical data. To issue a request:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -290,7 +290,7 @@ Some of the arguments here expressed have been set for compatibility with other 
 
 With this method you expect back a collection of statistical data. To issue a request:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -373,7 +373,7 @@ The invocation of this method **_may_** be useful if you detect one or more GPUs
 
 To invoke the action:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -383,7 +383,7 @@ To invoke the action:
 
 and expect back a result like this:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -403,7 +403,7 @@ If you invoke this function `api_miner_reboot` is passed to the script as first 
 
 To invoke the action:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -413,7 +413,7 @@ To invoke the action:
 
 and expect back a result like this:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -439,7 +439,7 @@ All `miner_shuffle` method does is to re-initialize a new random scramble nonce 
 
 To invoke the action:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -449,7 +449,7 @@ To invoke the action:
 
 and expect back a result like this:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -463,7 +463,7 @@ which confirms the action has been performed.
 
 When you launch ethminer you provide a list of connections specified by the `-P` argument. If you want to remotely check which is the list of connections ethminer is using, you can issue this method:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -473,7 +473,7 @@ When you launch ethminer you provide a list of connections specified by the `-P`
 
 and expect back a result like this:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -503,7 +503,7 @@ The `result` member contains an array of objects, each one with the definition o
 
 Given the example above for the method [miner_getconnections](#miner_getconnections) you see there is only one active connection at a time. If you want to control remotely your mining facility and want to force the switch from one connection to another you can issue this method:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -513,12 +513,24 @@ Given the example above for the method [miner_getconnections](#miner_getconnecti
   }
 }
 ```
+or
 
-You have to pass the `params` member as an object which has member `index` valued to the ordinal index of the connection you want to activate. As a result you expect one of the following:
+```json
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_setactiveconnection",
+  "params": {
+    "URI": "uri"
+  }
+}
+```
+
+You have to pass the `params` member as an object which has member `index` valued to the ordinal index or the URI match string of the connection you want to activate. A URI matching string is any string which can be found in the connection URI. As a result you expect one of the following:
 
 * Nothing happens if the provided index is already bound to an _active_ connection
 * If the selected index is not of an active connection then ethminer will disconnect from currently active connection and reconnect immediately to the newly selected connection
-* An error result if the index is out of bounds or the request is not properly formatted
+* An error result if the index is out of bounds, the pool id is unknown, or the request is not properly formatted
 
 **Please note** that this method changes the runtime behavior only. If you restart ethminer from a batch file the active connection will become again the first one of the `-P` arguments list.
 
@@ -526,7 +538,7 @@ You have to pass the `params` member as an object which has member `index` value
 
 If you want to remotely add a new connection to the running instance of ethminer you can use this this method by sending a message like this
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -551,7 +563,7 @@ Eventually you may want to issue [miner_getconnections](#miner_getconnections) m
 
 Recall once again the example for the method [miner_getconnections](#miner_getconnections). If you wish to remove the third connection (the Ethereum classic one) from the list of connections (so it won't be used in case of failover) you can send this method:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -562,7 +574,21 @@ Recall once again the example for the method [miner_getconnections](#miner_getco
 }
 ```
 
-You have to pass the `params` member as an object which has member `index` valued to the ordinal index (zero based) of the connection you want to remove. As a result you expect one of the following:
+or
+
+
+```json
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_removeconnection",
+  "params": {
+    "URI": "uri"
+  }
+}
+```
+
+You have to pass the `params` member as an object which has member `index` valued to the ordinal index (zero based), or a URI matching string of the connection you want to remove. As a result you expect one of the following:
 
 * An error if the index is out of bounds **or if the index corresponds to the currently active connection**
 * A success message. In such case you can later reissue [miner_getconnections](#miner_getconnections) method to check the connection has been effectively removed.
@@ -578,7 +604,7 @@ This all said it's however impossible for any miner (no matter if CPU or GPU or 
 Ethminer, at start, randomly chooses a scramble_nonce, a random number picked in the 2^64 range to start checking nonces from. In addition ethminer gives each GPU a unique, non overlapping, range of nonces called _segment_. Segments ensure no GPU does the same job of another GPU thus avoiding two GPU find the same result.
 To accomplish this each segment has a range 2^40 nonces by default. If you want to check which is the scramble_nonce and which are the segments assigned to each GPU you can issue this method:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -588,7 +614,7 @@ To accomplish this each segment has a range 2^40 nonces by default. If you want 
 
 and expect a result like this:
 
-```js
+```json
 {
   "id": 0,
   "jsonrpc": "2.0",
@@ -658,7 +684,7 @@ This will adjust nonce scrambler and segment width assigned to each GPU. This me
 Pause or (restart) mining on specific GPU.
 This ONLY (re)starts mining if GPU was paused via a previous API call and not if GPU pauses for other reasons.
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -672,7 +698,7 @@ This ONLY (re)starts mining if GPU was paused via a previous API call and not if
 
 and expect a result like this:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -687,7 +713,7 @@ Again: This ONLY (re)starts mining if GPU was paused via a previous API call and
 
 Set the verbosity level of ethminer.
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",
@@ -700,7 +726,7 @@ Set the verbosity level of ethminer.
 
 and expect a result like this:
 
-```js
+```json
 {
   "id": 1,
   "jsonrpc": "2.0",

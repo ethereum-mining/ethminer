@@ -230,7 +230,7 @@ URI::URI(const std::string uri)
         curstr++;
         // Read port number
         tmpstr = curstr;
-        while (('\0' != *tmpstr) && ('/' != *tmpstr))
+        while (('\0' != *tmpstr) && ('/' != *tmpstr) && ('#' != *tmpstr))
             tmpstr++;
         len = tmpstr - curstr;
         std::string tempstr;
@@ -252,11 +252,10 @@ URI::URI(const std::string uri)
     }
 
     // Skip '/'
-    if ('/' != *curstr)
+    if (('/' != *curstr) && ('#' != *curstr))
     {
         return;
     }
-    curstr++;
 
     // Parse path
     tmpstr = curstr;
@@ -265,7 +264,6 @@ URI::URI(const std::string uri)
     len = tmpstr - curstr;
     if (len)
     {
-        m_path = '/';
         m_path.append(curstr, len);
         m_path = urlDecode(m_path);
     }

@@ -471,7 +471,8 @@ public:
         ostringstream ssHelp;
         ssHelp
             << "Pool URL Specification:" << endl
-            << "    URL takes the form: scheme://user[.workername][:password]@hostname:port[/...]."
+            << "    URL takes the form: "
+               "scheme://user[.workername][:password]@hostname:port[/...]"
             << endl
             << "    where scheme can be any of:" << endl
             << "    getwork     for getWork mode" << endl
@@ -541,12 +542,10 @@ public:
             << endl
             << "    SSL_NOVERIFY - set to any value to to disable the verification chain for"
             << endl
-            << "                   certificates. WARNING ! Disabling certificate validation"
-            << endl
+            << "                   certificates. WARNING ! Disabling certificate validation" << endl
             << "                   declines every security implied in connecting to a secured"
             << endl
-            << "                   SSL/TLS remote endpoint."
-            << endl
+            << "                   SSL/TLS remote endpoint." << endl
             << "                   USE AT YOU OWN RISK AND ONLY IF YOU KNOW WHAT YOU'RE DOING";
         app.footer(ssHelp.str());
 
@@ -920,8 +919,8 @@ private:
         {
             for (auto conn : m_endpoints)
             {
-                cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
                 PoolManager::p().addConnection(conn);
+                cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
             }
         }
 
