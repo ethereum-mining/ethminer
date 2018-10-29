@@ -132,12 +132,12 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
             bool newDiff = (wp.boundary != m_currentWp.boundary);
             m_currentWp.job = wp.job;
             m_currentWp.header = wp.header;
+            m_currentWp.block = wp.block;
 
             if (newEpoch)
             {
                 m_epochChanges.fetch_add(1, std::memory_order_relaxed);
                 m_currentWp.seed = wp.seed;
-                m_currentWp.block = wp.block;
                 if (wp.block != -1)
                     m_currentWp.epoch = wp.block / 30000;
                 else
