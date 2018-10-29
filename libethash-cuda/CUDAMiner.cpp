@@ -253,6 +253,12 @@ void CUDAMiner::workLoop()
             {
                 if (!init(w.epoch))
                     break;  // TODO this will simply exit the thread
+
+                // As DAG generation takes a while we need to
+                // ensure we're on latest job, not on the one
+                // which triggered the epoch change
+                current = w;
+                continue;
             }
 
             // Persist most recent job.
