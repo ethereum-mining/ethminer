@@ -35,7 +35,13 @@ struct CUDAChannel : public LogChannel
 };
 #define cudalog clog(CUDAChannel)
 
-CUDAMiner::CUDAMiner(unsigned _index) : Miner("cuda-", _index), m_io_strand(g_io_service), m_light(getNumDevices()) {}
+CUDAMiner::CUDAMiner(unsigned _index)
+  : Miner("cuda-", _index),
+    m_io_strand(g_io_service),
+    m_light(getNumDevices()),
+    m_batch_size(s_gridSize * s_blockSize),
+    m_streams_batch_size(s_gridSize * s_blockSize * s_numStreams)
+{}
 
 CUDAMiner::~CUDAMiner()
 {
@@ -420,16 +426,11 @@ void CUDAMiner::search(
         m_current_target = target;
     }
 
-    // Nonces processed in one pass by a single stream
-    const uint32_t batch_size = s_gridSize * s_blockSize;
-    // Nonces processed in one pass by all streams
-    const uint32_t streams_batch_size = batch_size * s_numStreams;
-
     // prime each stream, clear search result buffers and start the search
     uint32_t current_index;
     for (current_index = 0;
          current_index < s_numStreams;
-         current_index++, start_nonce += batch_size)
+         current_index++, start_nonce += m_batch_size)
     {
         cudaStream_t stream = m_streams[current_index];
         volatile Search_results& buffer(*m_search_buf[current_index]);
@@ -457,7 +458,7 @@ void CUDAMiner::search(
         // This inner loop will process each cuda stream individually
         for (current_index = 0;
              current_index < s_numStreams;
-             current_index++, start_nonce += batch_size)
+             current_index++, start_nonce += m_batch_size)
         {
             // Each pass of this loop will wait for a stream to exit,
             // save any found solutions, then restart the stream
@@ -480,7 +481,7 @@ void CUDAMiner::search(
             if (found_count)
             {
                 buffer.count = 0;
-                uint64_t nonce_base = start_nonce - streams_batch_size;
+                uint64_t nonce_base = start_nonce - m_streams_batch_size;
                 
                 // Extract solution and pass to higer level 
                 // using io_service as dispatcher
@@ -513,7 +514,7 @@ void CUDAMiner::search(
         }
 
         // Update the hash rate
-        updateHashRate(batch_size, s_numStreams);
+        updateHashRate(m_batch_size, s_numStreams);
 
         // Bail out if it's shutdown time
         if (shouldStop())

@@ -88,6 +88,9 @@ private:
 
     static unsigned m_parallelHash;
 
+    const uint32_t m_batch_size;
+    const uint32_t m_streams_batch_size;
+
     static unsigned s_numInstances;
     static vector<int> s_devices;
 };
