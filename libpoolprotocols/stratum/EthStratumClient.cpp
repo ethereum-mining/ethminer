@@ -1602,6 +1602,7 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
 {
     if (ec)
     {
+        m_sendBuffer.consume(m_sendBuffer.capacity());
         m_txQueue.consume_all([](std::string* l) { delete l; });
         m_txPending.store(false, std::memory_order_relaxed);
 
