@@ -38,9 +38,9 @@ public:
     static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
     static unsigned getNumDevices();
     static void listDevices();
-    static void setParallelHash(unsigned _parallelHash);
     static bool configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
-        unsigned _scheduleFlag, unsigned _dagLoadMode, unsigned _dagCreateDevice);
+        unsigned _parallelHash, unsigned _scheduleFlag, unsigned _dagLoadMode,
+        unsigned _dagCreateDevice);
     static void setNumInstances(unsigned _instances);
     static void setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount);
 
@@ -85,8 +85,8 @@ private:
     static unsigned s_numStreams;
     /// CUDA schedule flag
     static unsigned s_scheduleFlag;
-
-    static unsigned m_parallelHash;
+    /// CUDA parallel hashes
+    static unsigned s_parallelHash;
 
     const uint32_t m_batch_size;
     const uint32_t m_streams_batch_size;

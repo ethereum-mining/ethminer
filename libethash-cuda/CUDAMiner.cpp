@@ -51,7 +51,7 @@ CUDAMiner::~CUDAMiner()
     DEV_BUILD_LOG_PROGRAMFLOW(cudalog, "cuda-" << m_index << " CUDAMiner::~CUDAMiner() end");
 }
 
-unsigned CUDAMiner::m_parallelHash = 4;
+unsigned CUDAMiner::s_parallelHash = 4;
 unsigned CUDAMiner::s_blockSize = CUDAMiner::c_defaultBlockSize;
 unsigned CUDAMiner::s_gridSize = CUDAMiner::c_defaultGridSize;
 unsigned CUDAMiner::s_numStreams = CUDAMiner::c_defaultNumStreams;
@@ -363,7 +363,8 @@ unsigned const CUDAMiner::c_defaultGridSize = 8192;  // * CL_DEFAULT_LOCAL_WORK_
 unsigned const CUDAMiner::c_defaultNumStreams = 2;
 
 bool CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
-    unsigned _scheduleFlag, unsigned _dagLoadMode, unsigned _dagCreateDevice)
+    unsigned _parallelHash, unsigned _scheduleFlag, unsigned _dagLoadMode,
+    unsigned _dagCreateDevice)
 {
     s_dagLoadMode = _dagLoadMode;
     s_dagCreateDevice = _dagCreateDevice;
@@ -371,55 +372,13 @@ bool CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _
     s_gridSize = _gridSize;
     s_numStreams = _numStreams;
     s_scheduleFlag = _scheduleFlag;
+    s_parallelHash = _parallelHash;
 
-    try
-    {
-
-        cudalog << "Using grid size: " << s_gridSize << ", block size: " << s_blockSize;
-
-        // by default let's only consider the DAG of the first epoch
-        const auto dagSize =
-            ethash::get_full_dataset_size(ethash::calculate_full_dataset_num_items(0));
-        int devicesCount = static_cast<int>(getNumDevices());
-        for (int i = 0; i < devicesCount; i++)
-        {
-            if (s_devices[i] != -1)
-            {
-                int deviceId = min(devicesCount - 1, s_devices[i]);
-                cudaDeviceProp props;
-                CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, deviceId));
-                if (props.totalGlobalMem >= dagSize)
-                {
-                    cudalog << "Found suitable CUDA device [" << string(props.name) << "] with "
-                            << props.totalGlobalMem << " bytes of GPU memory";
-                }
-                else
-                {
-                    cudalog << "CUDA device " << string(props.name)
-                            << " has insufficient GPU memory. " << props.totalGlobalMem
-                            << " bytes of memory found < " << dagSize
-                            << " bytes of memory required";
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-    catch (cuda_runtime_error const& _e)
-    {
-        string _what = "CUDA error: ";
-        _what.append(_e.what());
-        throw std::runtime_error(_what);
-    }
+    cudalog << "Using grid size: " << s_gridSize << ", block size: " << s_blockSize
+            << ", streams: " << s_numStreams << " parallel hashes : " << s_parallelHash;
 
     return true;
 }
-
-void CUDAMiner::setParallelHash(unsigned _parallelHash)
-{
-    m_parallelHash = _parallelHash;
-}
-
 
 void CUDAMiner::search(
     uint8_t const* header, uint64_t target, uint64_t start_nonce, const dev::eth::WorkPackage& w)
@@ -443,7 +402,7 @@ void CUDAMiner::search(
         buffer.count = 0;
 
         // Run the batch for this stream
-        run_ethash_search(s_gridSize, s_blockSize, stream, &buffer, start_nonce, m_parallelHash);
+        run_ethash_search(s_gridSize, s_blockSize, stream, &buffer, start_nonce, s_parallelHash);
     }
 
     // process stream batches until we get new work.
@@ -515,7 +474,7 @@ void CUDAMiner::search(
             // unless we are done for this round.
             if (!done)
                 run_ethash_search(
-                    s_gridSize, s_blockSize, stream, &buffer, start_nonce, m_parallelHash);
+                    s_gridSize, s_blockSize, stream, &buffer, start_nonce, s_parallelHash);
 
         }
 

@@ -642,13 +642,12 @@ public:
                 throw std::runtime_error(what);
             }
 
-            if (!CUDAMiner::configureGPU(m_cudaBlockSize, m_cudaGridSize, m_cudaStreams,
+            if (!CUDAMiner::configureGPU(m_cudaBlockSize, m_cudaGridSize, m_cudaStreams, m_cudaParallelHash,
                     m_cudaSchedule, m_farmDagLoadMode, m_farmDagCreateDevice))
             {
                 throw std::runtime_error("Unable to initialize CUDA GPU(s)");
             }
 
-            CUDAMiner::setParallelHash(m_cudaParallelHash);
 #else
             throw std::runtime_error(
                 "Selected CUDA mining without having compiled with -DETHASHCUDA=ON");
