@@ -1229,9 +1229,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                         m_current.job = h256(job);
                         m_current_timestamp = std::chrono::steady_clock::now();
 
+                        // This will signal to dispatch the job
+                        // at the end of the transmission.
                         m_newjobprocessed = true;
-                        if (m_onWorkReceived)
-                            m_onWorkReceived(m_current);
                     }
                 }
                 else
@@ -1265,9 +1265,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     m_current.job = h256(job);
                     m_current_timestamp = std::chrono::steady_clock::now();
 
+                    // This will signal to dispatch the job
+                    // at the end of the transmission.
                     m_newjobprocessed = true;
-                    if (m_onWorkReceived)
-                        m_onWorkReceived(m_current);
                 }
             }
         }
@@ -1481,49 +1481,43 @@ void EthStratumClient::onRecvSocketDataCompleted(
         m_recvBuffer.consume(bytes_transferred);
         m_message.append(rx_message);
 
-        // Create a stack of lines to be processed
-        std::stack<std::string> lines;
+        // Process each line in the transmission
+        // NOTE : as multiple jobs may come in with
+        // a single transmission only the last will be dispatched
+        m_newjobprocessed = false;
+        std::string line;
         size_t offset = m_message.find("\n");
         while (offset != string::npos)
         {
-            lines.push(m_message.substr(0, offset));
+            line = m_message.substr(0, offset);
             m_message.erase(0, offset + 1);
-            offset = m_message.find("\n");
-        }
-
-        // Now, being a stack, the lines get processed
-        // in the reverse order they arrived.
-        // Lower signal of already processed job notification
-        // as this is a new transmission
-        m_newjobprocessed = false;
-        while (lines.size())
-        {
-            std::string line = lines.top();
-            lines.pop();
 
             // Out received message only for debug purpouses
             if (g_logOptions & LOG_JSON)
                 cnote << " << " << line;
 
-            // Process message only if we're connected
-            if (isConnected())
+            // Test validity of chunk and process
+            Json::Value jMsg;
+            Json::Reader jRdr;
+            if (jRdr.parse(line, jMsg))
             {
-                // Test validity of chunk and process
-                Json::Value jMsg;
-                Json::Reader jRdr;
-                if (jRdr.parse(line, jMsg))
-                {
-                    // Run in sync so no 2 different async reads may overlap
-                    processResponse(jMsg);
-                }
-                else
-                {
-                    string what = jRdr.getFormattedErrorMessages();
-                    boost::replace_all(what, "\n", " ");
-                    cwarn << "Got invalid Json message : " << what;
-                }
+                // Run in sync so no 2 different async reads may overlap
+                processResponse(jMsg);
             }
+            else
+            {
+                string what = jRdr.getFormattedErrorMessages();
+                boost::replace_all(what, "\n", " ");
+                cwarn << "Got invalid Json message : " << what;
+            }
+
+            offset = m_message.find("\n");
         }
+
+        // There is a new job - dispatch it
+        if (m_newjobprocessed)
+            if (m_onWorkReceived)
+                m_onWorkReceived(m_current);
 
         // Eventually keep reading from socket
         if (isConnected())
