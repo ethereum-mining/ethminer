@@ -500,7 +500,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             if (!uri.Valid())
             {
                 jResponse["error"]["code"] = -422;
-                jResponse["error"]["message"] = ("Invalid URI " + uri.String());
+                jResponse["error"]["message"] = ("Invalid URI " + uri.str());
                 return;
             }
             if (!uri.KnownScheme())
@@ -1013,7 +1013,7 @@ Json::Value ApiConnection::getMinerStatDetail()
     /* connection info */
     auto connection = PoolManager::p().getActiveConnectionCopy();
     Json::Value jconnection;
-    jconnection["uri"] = connection.String();
+    jconnection["uri"] = connection.str();
     // jconnection["endpoint"] = PoolManager::p().getClient()->ActiveEndPoint();
     jconnection["isconnected"] = PoolManager::p().isConnected();
     jconnection["switched"] = PoolManager::p().getConnectionSwitches();
