@@ -62,7 +62,7 @@ public:
     ProtocolFamily Family() const;
     UriHostNameType HostNameType() const;
     unsigned Version() const;
-    std::string String() const { return m_uri; }
+    std::string str() const { return m_uri; }
     bool Valid() const { return m_valid; }
 
     bool KnownScheme();
