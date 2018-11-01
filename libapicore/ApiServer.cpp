@@ -284,7 +284,6 @@ void ApiServer::begin_accept()
     if (!isRunning())
         return;
 
-    dev::setThreadName("Api");
     auto session = std::make_shared<ApiConnection>(++lastSessionId, m_readonly, m_password);
     m_acceptor.async_accept(
         session->socket(), m_io_strand.wrap(boost::bind(&ApiServer::handle_accept, this, session,
@@ -309,7 +308,6 @@ void ApiServer::handle_accept(std::shared_ptr<ApiConnection> session, boost::sys
                 m_sessions.erase(m_sessions.begin() + index);
             }
         });
-        dev::setThreadName("Api");
         m_sessions.push_back(session);
         cnote << "New API session from " << session->socket().remote_endpoint();
         session->start();
