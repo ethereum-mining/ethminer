@@ -60,7 +60,7 @@ public:
     static void listDevices();
 
     static bool configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
-        unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice,
+        unsigned _platformId, unsigned _dagLoadMode, unsigned _dagCreateDevice,
         bool _nobinary);
 
     static void setNumInstances(unsigned _instances)

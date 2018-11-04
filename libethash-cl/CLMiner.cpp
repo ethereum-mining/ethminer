@@ -501,52 +501,18 @@ void CLMiner::listDevices()
 }
 
 bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
-    unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice,
+    unsigned _platformId, unsigned _dagLoadMode, unsigned _dagCreateDevice,
     bool _nobinary)
 {
     s_dagLoadMode = _dagLoadMode;
     s_dagCreateDevice = _dagCreateDevice;
     s_noBinary = _nobinary;
-
     s_platformId = _platformId;
-
     _localWorkSize = ((_localWorkSize + 7) / 8) * 8;
     s_workgroupSize = _localWorkSize;
     s_initialGlobalWorkSize = _globalWorkSizeMultiplier * _localWorkSize;
 
-    auto dagSize = ethash::get_full_dataset_size(ethash::calculate_full_dataset_num_items(epoch));
-
-    vector<cl::Platform> platforms = getPlatforms();
-    if (platforms.empty())
-        return false;
-    if (_platformId >= platforms.size())
-        return false;
-
-    vector<cl::Device> devices = getDevices(platforms, _platformId);
-    bool foundSuitableDevice = false;
-    for (auto const& device : devices)
-    {
-        cl_ulong result = 0;
-        device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
-        if (result >= dagSize)
-        {
-            cnote << "Found suitable OpenCL device [" << device.getInfo<CL_DEVICE_NAME>()
-                  << "] with " << FormattedMemSize(result) << " of GPU memory";
-            foundSuitableDevice = true;
-        }
-        else
-        {
-            cnote << "OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
-                  << " has insufficient GPU memory." << FormattedMemSize(result)
-                  << " GB of memory found < " << FormattedMemSize(dagSize) << " of memory required";
-        }
-    }
-    if (foundSuitableDevice)
-    {
-        return true;
-    }
-    cout << "No GPU device with sufficient memory was found" << endl;
-    return false;
+    return true;
 }
 
 bool CLMiner::init(int epoch)

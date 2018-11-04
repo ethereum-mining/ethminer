@@ -611,7 +611,7 @@ public:
                 m_miningThreads = m_oclDeviceCount;
             }
 
-            if (!CLMiner::configureGPU(m_oclLWorkSize, m_oclGWorkSize, m_oclPlatform, 0,
+            if (!CLMiner::configureGPU(m_oclLWorkSize, m_oclGWorkSize, m_oclPlatform,
                     m_farmDagLoadMode, m_farmDagCreateDevice, m_oclNoBinary))
             {
                 throw std::runtime_error("Unable to initialize OpenCL GPU(s)");
