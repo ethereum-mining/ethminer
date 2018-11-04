@@ -10,14 +10,6 @@
 
 using boost::asio::ip::tcp;
 
-static uint64_t bswap(uint64_t val)
-{
-    val = ((val << 8) & 0xFF00FF00FF00FF00ULL) | ((val >> 8) & 0x00FF00FF00FF00FFULL);
-    val = ((val << 16) & 0xFFFF0000FFFF0000ULL) | ((val >> 16) & 0x0000FFFF0000FFFFULL);
-    return (val << 32) | (val >> 32);
-}
-
-
 static void diffToTarget(uint32_t* target, double diff)
 {
     uint32_t target2[8];
@@ -190,8 +182,8 @@ void EthStratumClient::connect()
     restart from 1
     */
     m_nextWorkBoundary = h256("0xffff000000000000000000000000000000000000000000000000000000000000");
-    m_extraNonce = h64();
-    m_extraNonceHexSize = 0;
+    m_extraNonce = 0;
+    m_extraNonceSizeBytes = 0;
 
     // Initializes socket and eventually secure stream
     if (!m_socket)
@@ -764,11 +756,12 @@ std::string EthStratumClient::processError(Json::Value& responseObject)
 
 void EthStratumClient::processExtranonce(std::string& enonce)
 {
-    m_extraNonceHexSize = enonce.length();
+    m_extraNonceSizeBytes = enonce.length();
 
     cnote << "Extranonce set to " EthWhite << enonce << EthReset " (nicehash)";
-    enonce.append(16 - m_extraNonceHexSize, '0');
-    m_extraNonce = h64(enonce);
+    enonce.resize(16, '0');
+    m_extraNonce = std::stoul(enonce, nullptr, 16);
+
 }
 
 void EthStratumClient::processResponse(Json::Value& responseObject)
@@ -1222,8 +1215,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                         m_current.seed = h256(sSeedHash);
                         m_current.header = h256(sHeaderHash);
                         m_current.boundary = m_nextWorkBoundary;
-                        m_current.startNonce = bswap(*((uint64_t*)m_extraNonce.data()));
-                        m_current.exSizeBits = m_extraNonceHexSize * 4;
+                        m_current.startNonce = m_extraNonce;
+                        m_current.exSizeBytes = m_extraNonceSizeBytes;
                         m_current.job_len = job.size();
                         job.resize(64, '0');
                         m_current.job = h256(job);
@@ -1420,9 +1413,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
 
         jReq["params"].append(m_conn->User());
         jReq["params"].append(solution.work.job.hex().substr(0, solution.work.job_len));
-        jReq["params"].append(nonceHex.substr(m_extraNonceHexSize, 16 - m_extraNonceHexSize));
-
-        break;
+        jReq["params"].append(nonceHex.substr(solution.work.exSizeBytes));
     }
 
     enqueue_response_plea();

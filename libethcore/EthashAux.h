@@ -56,8 +56,8 @@ struct WorkPackage
     int block = -1;
 
     uint64_t startNonce = 0;
-    int exSizeBits = -1;
-    int job_len = 8;
+    uint16_t exSizeBytes = 0;
+    uint16_t job_len = 8;
 };
 
 struct Solution

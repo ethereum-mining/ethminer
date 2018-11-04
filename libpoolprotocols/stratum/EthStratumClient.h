@@ -162,8 +162,8 @@ private:
     h256 m_nextWorkBoundary =
         h256("0xffff000000000000000000000000000000000000000000000000000000000000");
 
-    h64 m_extraNonce;
-    int m_extraNonceHexSize = 0;
+    uint64_t m_extraNonce = 0;
+    unsigned int m_extraNonceSizeBytes = 0;
 
     bool m_submit_hashrate;
     std::string m_submit_hashrate_id;
