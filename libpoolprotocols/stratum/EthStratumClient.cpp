@@ -1283,7 +1283,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
         }
         else if (_method == "client.get_version")
         {
-            jReq["id"] = toString(_id);
+            jReq["id"] = _id;
             jReq["result"] = ethminer_get_buildinfo()->project_name_with_version;
 
             if (_rpcVer == 1)
@@ -1306,7 +1306,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             {
                 jReq["jsonrpc"] = "2.0";
             }
-            jReq["id"] = toString(_id);
+            jReq["id"] = _id;
             jReq["error"] = "Method not found";
 
             send(jReq);
