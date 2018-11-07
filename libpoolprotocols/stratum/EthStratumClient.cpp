@@ -761,7 +761,6 @@ void EthStratumClient::processExtranonce(std::string& enonce)
     cnote << "Extranonce set to " EthWhite << enonce << EthReset " (nicehash)";
     enonce.resize(16, '0');
     m_extraNonce = std::stoul(enonce, nullptr, 16);
-
 }
 
 void EthStratumClient::processResponse(Json::Value& responseObject)
@@ -1480,28 +1479,37 @@ void EthStratumClient::onRecvSocketDataCompleted(
         size_t offset = m_message.find("\n");
         while (offset != string::npos)
         {
-            line = m_message.substr(0, offset);
+            if (offset > 0)
+            {
+                line = m_message.substr(0, offset);
+                boost::trim(line);
+
+                if (!line.empty())
+                {
+                    // Out received message only for debug purpouses
+                    if (g_logOptions & LOG_JSON)
+                        cnote << " << " << line;
+
+                    // Test validity of chunk and process
+                    Json::Value jMsg;
+                    Json::Reader jRdr;
+                    if (jRdr.parse(line, jMsg))
+                    {
+                        // Run in sync so no 2 different async reads may overlap
+                        processResponse(jMsg);
+                    }
+                    else
+                    {
+                        string what = jRdr.getFormattedErrorMessages();
+                        boost::replace_all(what, "\n", " ");
+                        cwarn << "Got invalid Json message : " << what;
+                    }
+
+                }
+
+            }
+
             m_message.erase(0, offset + 1);
-
-            // Out received message only for debug purpouses
-            if (g_logOptions & LOG_JSON)
-                cnote << " << " << line;
-
-            // Test validity of chunk and process
-            Json::Value jMsg;
-            Json::Reader jRdr;
-            if (jRdr.parse(line, jMsg))
-            {
-                // Run in sync so no 2 different async reads may overlap
-                processResponse(jMsg);
-            }
-            else
-            {
-                string what = jRdr.getFormattedErrorMessages();
-                boost::replace_all(what, "\n", " ");
-                cwarn << "Got invalid Json message : " << what;
-            }
-
             offset = m_message.find("\n");
         }
 
