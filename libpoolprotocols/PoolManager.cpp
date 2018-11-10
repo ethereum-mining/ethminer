@@ -106,63 +106,36 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
     });
 
     p_client->onWorkReceived([&](WorkPackage const& wp) {
-
         // Should not happen !
         if (!wp)
             return;
 
-        if (!m_currentWp)
+        bool newEpoch = (wp.seed != m_currentWp.seed);
+        bool newDiff = (wp.boundary != m_currentWp.boundary);
+        m_currentWp = wp;
+
+        if (newEpoch)
         {
             m_epochChanges.fetch_add(1, std::memory_order_relaxed);
-
-            m_currentWp = wp;
-
-            if (wp.block != -1)
-                m_currentWp.epoch = wp.block / 30000;
+            if (m_currentWp.block > 0)
+                m_currentWp.epoch = m_currentWp.block / 30000;
             else
                 m_currentWp.epoch =
-                    ethash::find_epoch_number(ethash::hash256_from_bytes(wp.seed.data()));
-
+                    ethash::find_epoch_number(ethash::hash256_from_bytes(m_currentWp.seed.data()));
             showEpoch();
+        }
+        if (newDiff)
             showDifficulty();
-        }
-        else
-        {
-            bool newEpoch = (wp.seed != m_currentWp.seed);
-            bool newDiff = (wp.boundary != m_currentWp.boundary);
-            m_currentWp.job = wp.job;
-            m_currentWp.header = wp.header;
-            m_currentWp.block = wp.block;
-
-            if (newEpoch)
-            {
-                m_epochChanges.fetch_add(1, std::memory_order_relaxed);
-                m_currentWp.seed = wp.seed;
-                if (wp.block != -1)
-                    m_currentWp.epoch = wp.block / 30000;
-                else
-                    m_currentWp.epoch =
-                        ethash::find_epoch_number(ethash::hash256_from_bytes(wp.seed.data()));
-                showEpoch();
-            }
-            if (newDiff)
-            {
-                m_currentWp.boundary = wp.boundary;
-                showDifficulty();
-            }
-        }
-
 
         cnote << "Job: " EthWhite "#" << m_currentWp.header.abridged()
               << (m_currentWp.block != -1 ? (" block " + to_string(m_currentWp.block)) : "")
               << EthReset << " " << m_selectedHost;
 
         // Shuffle if needed
-        if (m_ergodicity == 2)
+        if (m_ergodicity == 2 && m_currentWp.exSizeBytes == 0)
             Farm::f().shuffle();
 
         Farm::f().setWork(m_currentWp);
-
     });
 
     p_client->onSolutionAccepted([&](bool const& stale, std::chrono::milliseconds const& elapsedMs,
