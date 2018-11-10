@@ -110,6 +110,8 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
         if (!wp)
             return;
 
+        auto _currentEpoch = m_currentWp.epoch;
+
         bool newEpoch = (wp.seed != m_currentWp.seed);
         bool newDiff = (wp.boundary != m_currentWp.boundary);
         m_currentWp = wp;
@@ -124,8 +126,13 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
                     ethash::find_epoch_number(ethash::hash256_from_bytes(m_currentWp.seed.data()));
             showEpoch();
         }
+        else
+        {
+            m_currentWp.epoch = _currentEpoch;
+        }
         if (newDiff)
             showDifficulty();
+
 
         cnote << "Job: " EthWhite "#" << m_currentWp.header.abridged()
               << (m_currentWp.block != -1 ? (" block " + to_string(m_currentWp.block)) : "")
