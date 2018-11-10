@@ -189,7 +189,11 @@ public:
 
     void set_nonce_scrambler(uint64_t n) { m_nonce_scrambler = n; }
 
-    void set_nonce_segment_width(unsigned n) { m_nonce_segment_with = n; }
+    void set_nonce_segment_width(unsigned n)
+    {
+        if (!m_work.exSizeBytes)
+            m_nonce_segment_with = n;
+    }
 
     /**
      * @brief Provides the description of segments each miner is working on
@@ -247,8 +251,11 @@ private:
 
     // StartNonce (non-NiceHash Mode) and
     // segment width assigned to each GPU as exponent of 2
+    // considering an average block time of 15 seconds 
+    // a single device GPU should need a speed of 286 Mh/s
+    // before it consumes the whole 2^32 segment
     uint64_t m_nonce_scrambler;
-    unsigned int m_nonce_segment_with = 40;
+    unsigned int m_nonce_segment_with = 32;
 
     // Switches for hw monitoring and power drain monitoring
     unsigned m_hwmonlvl;
