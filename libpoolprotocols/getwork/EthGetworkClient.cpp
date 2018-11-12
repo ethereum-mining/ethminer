@@ -49,12 +49,8 @@ void EthGetworkClient::connect()
 void EthGetworkClient::disconnect()
 {
     m_connected.store(false, std::memory_order_relaxed);
+    stopWorking();
 
-    // Since we do not have a real connected state with getwork, we just fake it.
-    if (m_onDisconnected)
-    {
-        m_onDisconnected();
-    }
 }
 
 void EthGetworkClient::submitHashrate(string const& rate)
@@ -129,6 +125,7 @@ void EthGetworkClient::workLoop()
             {
                 cwarn << "Failed getting work!";
                 disconnect();
+                break;
             }
 
             // Submit current hashrate if needed
