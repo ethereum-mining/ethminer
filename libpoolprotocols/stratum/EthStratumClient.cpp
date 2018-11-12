@@ -1273,11 +1273,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     double nextWorkDifficulty =
                         max(jPrm.get(Json::Value::ArrayIndex(0), 1).asDouble(), 0.0001);
                     diffToTarget((uint32_t*)m_nextWorkBoundary.data(), nextWorkDifficulty);
-#ifdef DEV_BUILD
-                    if (g_logOptions & LOG_CONNECT)
-                        cnote << "Difficulty set to " EthWhite << nextWorkDifficulty
-                              << EthReset " (nicehash)";
-#endif
+                    cnote << "Difficulty set to " EthWhite << nextWorkDifficulty
+                          << EthReset " (nicehash) Target : " << m_nextWorkBoundary.hex();
                 }
             }
             else
