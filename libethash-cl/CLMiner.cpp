@@ -12,6 +12,8 @@
 
 #include "CLMiner.h"
 #include "ethash.h"
+#include <iostream>
+#include <fstream>
 
 using namespace dev;
 using namespace eth;
@@ -744,6 +746,11 @@ bool CLMiner::initEpoch_internal()
 
         if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
             addDefinition(code, "LEGACY", 1);
+
+        ofstream out;
+        out.open("kernel.cl");
+        out << code;
+        out.close();
 
         // create miner OpenCL program
         cl::Program::Sources sources{{code.data(), code.size()}};

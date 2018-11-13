@@ -153,7 +153,7 @@ void fill_mix(
 Like ethash Keccak is used to seed the sequence per-nonce and to produce the final result.  The keccak-f800 variant is used as the 32-bit word size matches the native word size of modern GPUs.  The implementation is a variant of SHAKE with width=800, bitrate=576, capacity=224, output=256, and no padding.  The result of keccak is treated as a 256-bit big-endian number - that is result byte 0 is the MSB of the value.
 
 ```cpp
-hash32_t keccak_f800_progpow(hash32_t header, uint64_t seed, hash32_t result)
+hash32_t keccak_f800_progpow(hash32_t header, uint64_t seed, hash32_t digest)
 {
     uint32_t st[25];
 
@@ -164,7 +164,7 @@ hash32_t keccak_f800_progpow(hash32_t header, uint64_t seed, hash32_t result)
     st[8] = seed;
     st[9] = seed >> 32;
     for (int i = 0; i < 8; i++)
-        st[10+i] = result.uint32s[i];
+        st[10+i] = digest.uint32s[i];
 
     for (int r = 0; r < 22; r++)
         keccak_f800_round(st, r);
@@ -193,12 +193,12 @@ bool progpow_search(
 )
 {
     uint32_t mix[PROGPOW_LANES][PROGPOW_REGS];
-    hash32_t result;
+    hash32_t digest;
     for (int i = 0; i < 8; i++)
-        result.uint32s[i] = 0;
+        digest.uint32s[i] = 0;
 
     // keccak(header..nonce)
-    hash32_t seed_256 = keccak_f800_progpow(header, nonce, result);
+    hash32_t seed_256 = keccak_f800_progpow(header, nonce, digest);
     // endian swap so byte 0 of the hash is the MSB of the value
     uint64_t seed = bswap(seed_256[0]) << 32 | bswap(seed_256[1]);
 
@@ -210,22 +210,22 @@ bool progpow_search(
     for (int i = 0; i < PROGPOW_CNT_DAG; i++)
         progPowLoop(prog_seed, i, mix, dag);
 
-    // Reduce mix data to a single per-lane result
-    uint32_t lane_hash[PROGPOW_LANES];
+    // Reduce mix data to a per-lane 32-bit digest
+    uint32_t digest_lane[PROGPOW_LANES];
     for (int l = 0; l < PROGPOW_LANES; l++)
     {
-        lane_hash[l] = 0x811c9dc5
+        digest_lane[l] = 0x811c9dc5
         for (int i = 0; i < PROGPOW_REGS; i++)
-            fnv1a(lane_hash[l], mix[l][i]);
+            fnv1a(digest_lane[l], mix[l][i]);
     }
-    // Reduce all lanes to a single 256-bit result
+    // Reduce all lanes to a single 256-bit digest
     for (int i = 0; i < 8; i++)
-        result.uint32s[i] = 0x811c9dc5;
+        digest.uint32s[i] = 0x811c9dc5;
     for (int l = 0; l < PROGPOW_LANES; l++)
-        fnv1a(result.uint32s[l%8], lane_hash[l])
+        fnv1a(digest.uint32s[l%8], digest_lane[l])
 
-    // keccak(header .. keccak(header..nonce) .. result);
-    return (keccak_f800_progpow(header, seed, result) <= target);
+    // keccak(header .. keccak(header..nonce) .. digest);
+    return (keccak_f800_progpow(header, seed, digest) <= target);
 }
 ```
 
