@@ -12,6 +12,8 @@
 
 #include "CLMiner.h"
 #include "ethash.h"
+#include <iostream>
+#include <fstream>
 
 using namespace dev;
 using namespace eth;
@@ -753,6 +755,11 @@ bool CLMiner::initEpoch_internal()
 
         if (!m_settings.noExit)
             addDefinition(code, "FAST_EXIT", 1);
+
+        ofstream out;
+        out.open("kernel.cl");
+        out << code;
+        out.close();
 
         // create miner OpenCL program
         cl::Program::Sources sources{{code.data(), code.size()}};
