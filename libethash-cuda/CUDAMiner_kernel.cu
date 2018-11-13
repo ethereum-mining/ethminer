@@ -114,12 +114,14 @@ typedef struct {
 // http://www.cse.yorku.ca/~oz/marsaglia-rng.html
 __device__ __forceinline__ uint32_t kiss99(kiss99_t &st)
 {
-    uint32_t znew = (st.z = 36969 * (st.z & 65535) + (st.z >> 16));
-    uint32_t wnew = (st.w = 18000 * (st.w & 65535) + (st.w >> 16));
-    uint32_t MWC = ((znew << 16) + wnew);
-    uint32_t SHR3 = (st.jsr ^= (st.jsr << 17), st.jsr ^= (st.jsr >> 13), st.jsr ^= (st.jsr << 5));
-    uint32_t CONG = (st.jcong = 69069 * st.jcong + 1234567);
-    return ((MWC^CONG) + SHR3);
+    st.z = 36969 * (st.z & 65535) + (st.z >> 16);
+    st.w = 18000 * (st.w & 65535) + (st.w >> 16);
+    uint32_t MWC = ((st.z << 16) + st.w);
+    st.jsr ^= (st.jsr << 17);
+    st.jsr ^= (st.jsr >> 13);
+    st.jsr ^= (st.jsr << 5);
+    st.jcong = 69069 * st.jcong + 1234567;
+    return ((MWC^st.jcong) + st.jsr);
 }
 
 __device__ __forceinline__ void fill_mix(uint64_t seed, uint32_t lane_id, uint32_t mix[PROGPOW_REGS])
