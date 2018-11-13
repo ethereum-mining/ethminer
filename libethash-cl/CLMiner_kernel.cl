@@ -80,7 +80,7 @@ void keccak_f800_round(uint32_t st[25], const int r)
 // Keccak - implemented as a variant of SHAKE
 // The width is 800, with a bitrate of 576, a capacity of 224, and no padding
 // Only need 64 bits of output for mining
-uint64_t keccak_f800(__constant hash32_t const* g_header, uint64_t seed, hash32_t result)
+uint64_t keccak_f800(__constant hash32_t const* g_header, uint64_t seed, hash32_t digest)
 {
     uint32_t st[25];
 
@@ -91,7 +91,7 @@ uint64_t keccak_f800(__constant hash32_t const* g_header, uint64_t seed, hash32_
     st[8] = seed;
     st[9] = seed >> 32;
     for (int i = 0; i < 8; i++)
-        st[10+i] = result.uint32s[i];
+        st[10+i] = digest.uint32s[i];
 
     for (int r = 0; r < 21; r++) {
         keccak_f800_round(st, r);
@@ -160,7 +160,7 @@ __kernel void ethash_search(
 
     uint32_t const lid = get_local_id(0);
     uint32_t const gid = get_global_id(0);
-    uint32_t const nonce = start_nonce + gid;
+    uint64_t const nonce = start_nonce + gid;
 
     const uint32_t lane_id = lid & (PROGPOW_LANES - 1);
     const uint32_t group_id = lid / PROGPOW_LANES;
@@ -168,16 +168,16 @@ __kernel void ethash_search(
     // Load the first portion of the DAG into the cache
     for (uint32_t word = lid*PROGPOW_DAG_LOADS; word < PROGPOW_CACHE_WORDS; word += GROUP_SIZE*PROGPOW_DAG_LOADS)
     {
-        dag_t load = g_dag[word];
+        dag_t load = g_dag[word/PROGPOW_DAG_LOADS];
         for (int i = 0; i<PROGPOW_DAG_LOADS; i++)
             c_dag[word + i] = load.s[i];
     }
 
-    hash32_t result;
+    hash32_t digest;
     for (int i = 0; i < 8; i++)
-        result.uint32s[i] = 0;
+        digest.uint32s[i] = 0;
     // keccak(header..nonce)
-    uint64_t seed = keccak_f800(g_header, start_nonce + gid, result);
+    uint64_t seed = keccak_f800(g_header, start_nonce + gid, digest);
 
     barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -200,27 +200,27 @@ __kernel void ethash_search(
         for (uint32_t l = 0; l < PROGPOW_CNT_DAG; l++)
             progPowLoop(l, mix, g_dag, c_dag, share[0].uint64s, hack_false);
 
-        // Reduce mix data to a single per-lane result
+        // Reduce mix data to a per-lane 32-bit digest
         uint32_t mix_hash = 0x811c9dc5;
         #pragma unroll
         for (int i = 0; i < PROGPOW_REGS; i++)
             fnv1a(mix_hash, mix[i]);
 
-        // Reduce all lanes to a single 256-bit result
-        hash32_t result_hash;
+        // Reduce all lanes to a single 256-bit digest
+        hash32_t digest_temp;
         for (int i = 0; i < 8; i++)
-            result_hash.uint32s[i] = 0x811c9dc5;
+            digest_temp.uint32s[i] = 0x811c9dc5;
         share[group_id].uint32s[lane_id] = mix_hash;
         barrier(CLK_LOCAL_MEM_FENCE);
         #pragma unroll
         for (int i = 0; i < PROGPOW_LANES; i++)
-            fnv1a(result_hash.uint32s[i%8], share[group_id].uint32s[i]);
+            fnv1a(digest_temp.uint32s[i % 8], share[group_id].uint32s[i]);
         if (h == lane_id)
-            result = result_hash;
+            digest = digest_temp;
     }
 
-    // keccak(header .. keccak(header..nonce) .. result);
-    if (keccak_f800(g_header, seed, result) < target)
+    // keccak(header .. keccak(header..nonce) .. digest);
+    if (keccak_f800(g_header, seed, digest) < target)
     {
         uint slot = atomic_inc(&g_output[0]) + 1;
         if(slot < MAX_OUTPUTS)
