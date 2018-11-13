@@ -80,7 +80,7 @@ __device__ __forceinline__ uint32_t cuda_swab32(const uint32_t x)
 // Keccak - implemented as a variant of SHAKE
 // The width is 800, with a bitrate of 576, a capacity of 224, and no padding
 // Only need 64 bits of output for mining
-__device__ __noinline__ uint64_t keccak_f800(hash32_t header, uint64_t seed, hash32_t result)
+__device__ __noinline__ uint64_t keccak_f800(hash32_t header, uint64_t seed, hash32_t digest)
 {
     uint32_t st[25];
 
@@ -91,7 +91,7 @@ __device__ __noinline__ uint64_t keccak_f800(hash32_t header, uint64_t seed, has
     st[8] = seed;
     st[9] = seed >> 32;
     for (int i = 0; i < 8; i++)
-        st[10+i] = result.uint32s[i];
+        st[10+i] = digest.uint32s[i];
 
     for (int r = 0; r < 21; r++) {
         keccak_f800_round(st, r);
@@ -156,16 +156,16 @@ progpow_search(
     // Load the first portion of the DAG into the cache
     for (uint32_t word = threadIdx.x*PROGPOW_DAG_LOADS; word < PROGPOW_CACHE_WORDS; word += blockDim.x*PROGPOW_DAG_LOADS)
     {
-        dag_t load = g_dag[word];
+        dag_t load = g_dag[word/PROGPOW_DAG_LOADS];
         for(int i=0; i<PROGPOW_DAG_LOADS; i++)
             c_dag[word + i] =  load.s[i];
     }
 
-    hash32_t result;
+    hash32_t digest;
     for (int i = 0; i < 8; i++)
-        result.uint32s[i] = 0;
+        digest.uint32s[i] = 0;
     // keccak(header..nonce)
-    uint64_t seed = keccak_f800(header, nonce, result);
+    uint64_t seed = keccak_f800(header, nonce, digest);
 
     __syncthreads();
 
@@ -184,29 +184,29 @@ progpow_search(
             progPowLoop(l, mix, g_dag, c_dag, hack_false);
 
 
-        // Reduce mix data to a single per-lane result
-        uint32_t result_lane = 0x811c9dc5;
+        // Reduce mix data to a per-lane 32-bit digest
+        uint32_t digest_lane = 0x811c9dc5;
         #pragma unroll
         for (int i = 0; i < PROGPOW_REGS; i++)
-            fnv1a(result_lane, mix[i]);
+            fnv1a(digest_lane, mix[i]);
 
-        // Reduce all lanes to a single 256-bit result
-        hash32_t result_hash;
+        // Reduce all lanes to a single 256-bit digest
+        hash32_t digest_temp;
         #pragma unroll
         for (int i = 0; i < 8; i++)
-            result_hash.uint32s[i] = 0x811c9dc5;
+            digest_temp.uint32s[i] = 0x811c9dc5;
 
         for (int i = 0; i < PROGPOW_LANES; i += 8)
             #pragma unroll
             for (int j = 0; j < 8; j++)
-                fnv1a(result_hash.uint32s[j], __shfl_sync(0xFFFFFFFF, result_lane, i + j, PROGPOW_LANES));
+                fnv1a(digest_temp.uint32s[j], __shfl_sync(0xFFFFFFFF, digest_lane, i + j, PROGPOW_LANES));
 
         if (h == lane_id)
-            result = result_hash;
+            digest = digest_temp;
     }
 
-    // keccak(header .. keccak(header..nonce) .. result);
-    if (keccak_f800(header, seed, result) >= target)
+    // keccak(header .. keccak(header..nonce) .. digest);
+    if (keccak_f800(header, seed, digest) >= target)
         return;
 
     uint32_t index = atomicInc((uint32_t *)&g_output->count, 0xffffffff);
@@ -216,5 +216,5 @@ progpow_search(
     g_output->result[index].gid = gid;
     #pragma unroll
     for (int i = 0; i < 8; i++)
-        g_output->result[index].mix[i] = result.uint32s[i];
+        g_output->result[index].mix[i] = digest.uint32s[i];
 }

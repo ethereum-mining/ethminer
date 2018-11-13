@@ -14,9 +14,11 @@ void swap(int &a, int &b)
     b = t;
 }
 
-std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
+std::string ProgPow::getKern(uint64_t block_number, kernel_t kern)
 {
     std::stringstream ret;
+
+    uint64_t prog_seed = block_number / PROGPOW_PERIOD;
 
     uint32_t seed0 = (uint32_t)prog_seed;
     uint32_t seed1 = prog_seed >> 32;
@@ -82,11 +84,11 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
     ret << "#define PROGPOW_CNT_MATH        " << PROGPOW_CNT_MATH << "\n";
     ret << "\n";
 
-
 	if (kern == KERNEL_CUDA)
 	{
         ret << "typedef struct __align__(16) {uint32_t s[PROGPOW_DAG_LOADS];} dag_t;\n";
         ret << "\n";
+        ret << "// Inner loop for prog_seed " << prog_seed << "\n";
         ret << "__device__ __forceinline__ void progPowLoop(const uint32_t loop,\n";
         ret << "        uint32_t mix[PROGPOW_REGS],\n";
         ret << "        const dag_t *g_dag,\n";
@@ -97,6 +99,7 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
 	{
         ret << "typedef struct __attribute__ ((aligned (16))) {uint32_t s[PROGPOW_DAG_LOADS];} dag_t;\n";
         ret << "\n";
+        ret << "// Inner loop for prog_seed " << prog_seed << "\n";
         ret << "void progPowLoop(const uint32_t loop,\n";
         ret << "        uint32_t mix[PROGPOW_REGS],\n";
         ret << "        __global const dag_t *g_dag,\n";
