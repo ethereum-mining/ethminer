@@ -10,28 +10,64 @@
 
 using boost::asio::ip::tcp;
 
-static void diffToTarget(uint32_t* target, double diff)
+static string diffToTarget(double diff)
 {
-    uint32_t target2[8];
-    uint64_t m;
-    int k;
+    using namespace boost::multiprecision;
+    using BigInteger = boost::multiprecision::cpp_int;
 
-    for (k = 6; k > 0 && diff > 1.0; k--)
-        diff /= 4294967296.0;
-    m = (uint64_t)(4294901760.0 / diff);
-    if (m == 0 && k == 6)
-        memset(target2, 0xff, 32);
-    else
+    static BigInteger base("0x00000000ffff0000000000000000000000000000000000000000000000000000");
+
+    diff = 1 / diff;
+
+    BigInteger idiff(diff);
+    BigInteger product;
+    product = base * idiff;
+
+    std::string sdiff = boost::lexical_cast<std::string>(diff);
+    size_t ldiff = sdiff.length();
+    size_t offset = sdiff.find(".");
+
+    if (offset != std::string::npos)
     {
-        memset(target2, 0, 32);
-        target2[k] = (uint32_t)m;
-        target2[k + 1] = (uint32_t)(m >> 32);
+        // Number of decimal places
+        size_t precision = (ldiff - 1) - offset;
+
+        // Effective sequence of decimal places
+        string decimals = sdiff.substr(offset + 1);
+
+        // Strip leading zeroes. If a string begins with
+        // 0 or 0x boost parser considers it hex
+        decimals = decimals.erase(0, decimals.find_first_not_of('0'));
+
+        // Build up the divisor as string - just in case
+        // parser does some implicit conversion with 10^precision
+        string decimalDivisor = "1";
+        decimalDivisor.resize(precision + 1, '0');
+
+        // This is the multiplier for the decimal part
+        BigInteger multiplier(decimals);
+
+        // This is the divisor for the decimal part
+        BigInteger divisor(decimalDivisor);
+
+        BigInteger decimalproduct;
+        decimalproduct = base * multiplier;
+        decimalproduct /= divisor;
+
+        // Add the computed decimal part
+        // to product
+        product += decimalproduct;
     }
 
-    for (int i = 0; i < 32; i++)
-        ((uint8_t*)target)[31 - i] = ((uint8_t*)target2)[i];
-}
+    // Normalize to 64 chars hex with "0x" prefix
+    stringstream ss;
+    ss << "0x" << setw(64) << setfill('0') << std::hex << product;
 
+    string target = ss.str();
+    boost::algorithm::to_lower(target);
+    return target;
+
+ }
 
 EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, bool submitHashrate)
   : PoolClient(),
@@ -181,7 +217,7 @@ void EthStratumClient::connect()
     set." Those above statement imply we MAY NOT receive difficulty thus at each new connection
     restart from 1
     */
-    m_nextWorkBoundary = h256("0xffff000000000000000000000000000000000000000000000000000000000000");
+    m_nextWorkBoundary = h256("0x00000000ffff0000000000000000000000000000000000000000000000000000");
     m_extraNonce = 0;
     m_extraNonceSizeBytes = 0;
 
@@ -1272,7 +1308,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 {
                     double nextWorkDifficulty =
                         max(jPrm.get(Json::Value::ArrayIndex(0), 1).asDouble(), 0.0001);
-                    diffToTarget((uint32_t*)m_nextWorkBoundary.data(), nextWorkDifficulty);
+                    m_nextWorkBoundary = h256(diffToTarget(nextWorkDifficulty));
                     cnote << "Difficulty set to " EthWhite << nextWorkDifficulty
                           << EthReset " (nicehash) Target : " << m_nextWorkBoundary.hex();
                 }
@@ -1501,9 +1537,7 @@ void EthStratumClient::onRecvSocketDataCompleted(
                         boost::replace_all(what, "\n", " ");
                         cwarn << "Got invalid Json message : " << what;
                     }
-
                 }
-
             }
 
             m_message.erase(0, offset + 1);
