@@ -31,7 +31,8 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
             cnote << "Established connection to " << m_selectedHost;
 
             // Reset current WorkPackage
-            m_currentWp.job = h256();
+            m_currentWp.job.clear();
+            m_currentWp.header = h256();
 
             // Shuffle if needed
             if (m_ergodicity == 1)

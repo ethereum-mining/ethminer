@@ -5,6 +5,7 @@
 #include "EthStratumClient.h"
 
 #ifdef _WIN32
+// Needed for certificates validation on TLS connections
 #include <wincrypt.h>
 #endif
 
@@ -1245,7 +1246,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             if (jPrm.isArray() && !jPrm.empty())
             {
-                string job = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
+                m_current.job = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
 
                 if (m_conn->StratumMode() == EthStratumClient::ETHEREUMSTRATUM)
                 {
@@ -1254,14 +1255,12 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
                     if (sHeaderHash != "" && sSeedHash != "")
                     {
+
                         m_current.seed = h256(sSeedHash);
                         m_current.header = h256(sHeaderHash);
                         m_current.boundary = m_nextWorkBoundary;
                         m_current.startNonce = m_extraNonce;
                         m_current.exSizeBytes = m_extraNonceSizeBytes;
-                        m_current.job_len = job.size();
-                        job.resize(64, '0');
-                        m_current.job = h256(job);
                         m_current_timestamp = std::chrono::steady_clock::now();
 
                         // This will signal to dispatch the job
@@ -1297,7 +1296,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     m_current.seed = h256(sSeedHash);
                     m_current.header = h256(sHeaderHash);
                     m_current.boundary = h256(sShareTarget);
-                    m_current.job = h256(job);
                     m_current_timestamp = std::chrono::steady_clock::now();
 
                     // This will signal to dispatch the job
@@ -1428,7 +1426,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
 
         jReq["jsonrpc"] = "2.0";
         jReq["params"].append(m_conn->User());
-        jReq["params"].append(solution.work.job.hex());
+        jReq["params"].append(solution.work.job);
         jReq["params"].append("0x" + nonceHex);
         jReq["params"].append("0x" + solution.work.header.hex());
         jReq["params"].append("0x" + solution.mixHash.hex());
@@ -1451,7 +1449,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
     case EthStratumClient::ETHEREUMSTRATUM:
 
         jReq["params"].append(m_conn->User());
-        jReq["params"].append(solution.work.job.hex().substr(0, solution.work.job_len));
+        jReq["params"].append(solution.work.job);
         jReq["params"].append(nonceHex.substr(solution.work.exSizeBytes));
     }
 
