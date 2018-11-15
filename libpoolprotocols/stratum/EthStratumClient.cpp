@@ -16,47 +16,55 @@ static string diffToTarget(double diff)
     using BigInteger = boost::multiprecision::cpp_int;
 
     static BigInteger base("0x00000000ffff0000000000000000000000000000000000000000000000000000");
-
-    diff = 1 / diff;
-
-    BigInteger idiff(diff);
     BigInteger product;
-    product = base * idiff;
 
-    std::string sdiff = boost::lexical_cast<std::string>(diff);
-    size_t ldiff = sdiff.length();
-    size_t offset = sdiff.find(".");
-
-    if (offset != std::string::npos)
+    if (diff == 0)
     {
-        // Number of decimal places
-        size_t precision = (ldiff - 1) - offset;
+        product = BigInteger("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+    }
+    else
+    {
+        diff = 1 / diff;
 
-        // Effective sequence of decimal places
-        string decimals = sdiff.substr(offset + 1);
+        BigInteger idiff(diff);
+        product = base * idiff;
 
-        // Strip leading zeroes. If a string begins with
-        // 0 or 0x boost parser considers it hex
-        decimals = decimals.erase(0, decimals.find_first_not_of('0'));
+        std::string sdiff = boost::lexical_cast<std::string>(diff);
+        size_t ldiff = sdiff.length();
+        size_t offset = sdiff.find(".");
 
-        // Build up the divisor as string - just in case
-        // parser does some implicit conversion with 10^precision
-        string decimalDivisor = "1";
-        decimalDivisor.resize(precision + 1, '0');
+        if (offset != std::string::npos)
+        {
+            // Number of decimal places
+            size_t precision = (ldiff - 1) - offset;
 
-        // This is the multiplier for the decimal part
-        BigInteger multiplier(decimals);
+            // Effective sequence of decimal places
+            string decimals = sdiff.substr(offset + 1);
 
-        // This is the divisor for the decimal part
-        BigInteger divisor(decimalDivisor);
+            // Strip leading zeroes. If a string begins with
+            // 0 or 0x boost parser considers it hex
+            decimals = decimals.erase(0, decimals.find_first_not_of('0'));
 
-        BigInteger decimalproduct;
-        decimalproduct = base * multiplier;
-        decimalproduct /= divisor;
+            // Build up the divisor as string - just in case
+            // parser does some implicit conversion with 10^precision
+            string decimalDivisor = "1";
+            decimalDivisor.resize(precision + 1, '0');
 
-        // Add the computed decimal part
-        // to product
-        product += decimalproduct;
+            // This is the multiplier for the decimal part
+            BigInteger multiplier(decimals);
+
+            // This is the divisor for the decimal part
+            BigInteger divisor(decimalDivisor);
+
+            BigInteger decimalproduct;
+            decimalproduct = base * multiplier;
+            decimalproduct /= divisor;
+
+            // Add the computed decimal part
+            // to product
+            product += decimalproduct;
+        }
+
     }
 
     // Normalize to 64 chars hex with "0x" prefix
@@ -66,8 +74,7 @@ static string diffToTarget(double diff)
     string target = ss.str();
     boost::algorithm::to_lower(target);
     return target;
-
- }
+}
 
 EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, bool submitHashrate)
   : PoolClient(),
