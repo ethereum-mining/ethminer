@@ -146,23 +146,21 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
         Farm::f().setWork(m_currentWp);
     });
 
-    p_client->onSolutionAccepted([&](bool const& stale, std::chrono::milliseconds const& elapsedMs,
+    p_client->onSolutionAccepted([&](std::chrono::milliseconds const& elapsedMs,
                                      unsigned const& miner_index) {
         std::stringstream ss;
         ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << " ms."
            << " " << m_selectedHost;
-        cnote << EthLime "**Accepted" EthReset << (stale ? EthYellow "(stale)" EthReset : "")
-              << ss.str();
-        Farm::f().acceptedSolution(stale, miner_index);
+        cnote << EthLime "**Accepted" EthReset << ss.str();
+        Farm::f().acceptedSolution(miner_index);
     });
 
-    p_client->onSolutionRejected([&](bool const& stale, std::chrono::milliseconds const& elapsedMs,
+    p_client->onSolutionRejected([&](std::chrono::milliseconds const& elapsedMs,
                                      unsigned const& miner_index) {
         std::stringstream ss;
         ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << "ms."
            << "   " << m_selectedHost;
-        cwarn << EthRed "**Rejected" EthReset << (stale ? EthYellow "(stale)" EthReset : "")
-              << ss.str();
+        cwarn << EthRed "**Rejected" EthReset << ss.str();
         Farm::f().rejectedSolution(miner_index);
     });
 

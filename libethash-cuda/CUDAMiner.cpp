@@ -457,12 +457,8 @@ void CUDAMiner::search(
                     uint64_t nonce = nonce_base + buffer.result[i].gid;
                     memcpy(mix.data(), (void*)&buffer.result[i].mix, sizeof(buffer.result[i].mix));
                     auto sol =
-                        Solution{nonce, mix, w, done, std::chrono::steady_clock::now(), m_index};
+                        Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index};
 
-                    if (sol.stale)
-                        cwarn << "Sol: " << EthWhite "0x" << toHex(sol.nonce) << " STALE"
-                              << EthReset;
-                    else
                         cnote << "Sol: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
 
                     g_io_service.post(

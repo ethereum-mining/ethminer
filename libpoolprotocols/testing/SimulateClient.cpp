@@ -63,12 +63,12 @@ void SimulateClient::submitSolution(const Solution& solution)
     if (accepted)
     {
         if (m_onSolutionAccepted)
-            m_onSolutionAccepted(false, response_delay_ms, solution.midx);
+            m_onSolutionAccepted(response_delay_ms, solution.midx);
     }
     else
     {
         if (m_onSolutionRejected)
-            m_onSolutionRejected(false, response_delay_ms, solution.midx);
+            m_onSolutionRejected(response_delay_ms, solution.midx);
     }
 }
 

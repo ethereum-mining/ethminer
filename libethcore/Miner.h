@@ -117,7 +117,6 @@ public:
         m_accepts = {};
         m_rejects = {};
         m_failures = {};
-        m_acceptedStales = {};
     }
 
     void accepted(unsigned miner_index)
@@ -147,23 +146,10 @@ public:
             m_lastUpdated.resize(miner_index + 1, m_tpInitalized);
         m_lastUpdated[miner_index] = std::chrono::steady_clock::now();
     }
-    void acceptedStale(unsigned miner_index)
-    {
-        if (m_acceptedStales.size() <= miner_index)
-            m_acceptedStales.resize(miner_index + 1);
-        m_acceptedStales[miner_index]++;
-        if (m_lastUpdated.size() <= miner_index)
-            m_lastUpdated.resize(miner_index + 1, m_tpInitalized);
-        m_lastUpdated[miner_index] = std::chrono::steady_clock::now();
-    }
 
     unsigned getAccepts() const { return accumulate(m_accepts.begin(), m_accepts.end(), 0); }
     unsigned getRejects() const { return accumulate(m_rejects.begin(), m_rejects.end(), 0); }
     unsigned getFailures() const { return accumulate(m_failures.begin(), m_failures.end(), 0); }
-    unsigned getAcceptedStales() const
-    {
-        return accumulate(m_acceptedStales.begin(), m_acceptedStales.end(), 0);
-    }
 
     unsigned getAccepts(unsigned miner_index) const
     {
@@ -182,12 +168,6 @@ public:
         if (m_failures.size() <= miner_index)
             return 0;
         return m_failures[miner_index];
-    }
-    unsigned getAcceptedStales(unsigned miner_index) const
-    {
-        if (m_acceptedStales.size() <= miner_index)
-            return 0;
-        return m_acceptedStales[miner_index];
     }
     std::chrono::steady_clock::time_point getLastUpdated(unsigned miner_index) const
     {
@@ -209,9 +189,6 @@ public:
         ostringstream r;
 
         r << "A" << getAccepts(miner_index);
-        auto stales = getAcceptedStales(miner_index);
-        if (stales)
-            r << "+" << stales;
         auto rejects = getRejects(miner_index);
         if (rejects)
             r << ":R" << rejects;
@@ -225,7 +202,6 @@ private:
     std::vector<unsigned> m_accepts = {};
     std::vector<unsigned> m_rejects = {};
     std::vector<unsigned> m_failures = {};
-    std::vector<unsigned> m_acceptedStales = {};
     std::vector<std::chrono::steady_clock::time_point> m_lastUpdated = {};
     const std::chrono::steady_clock::time_point m_tpInitalized = std::chrono::steady_clock::now();
 };

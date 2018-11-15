@@ -38,8 +38,8 @@ public:
     virtual bool isPendingState() = 0;
     virtual string ActiveEndPoint() = 0;
 
-    using SolutionAccepted = std::function<void(bool const&, std::chrono::milliseconds const&, unsigned const& miner_index)>;
-    using SolutionRejected = std::function<void(bool const&, std::chrono::milliseconds const&, unsigned const& miner_index)>;
+    using SolutionAccepted = std::function<void(std::chrono::milliseconds const&, unsigned const& miner_index)>;
+    using SolutionRejected = std::function<void(std::chrono::milliseconds const&, unsigned const& miner_index)>;
     using Disconnected = std::function<void()>;
     using Connected = std::function<void()>;
     using WorkReceived = std::function<void(WorkPackage const&)>;

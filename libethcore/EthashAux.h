@@ -66,7 +66,6 @@ struct Solution
     uint64_t nonce;                                // Solution found nonce
     h256 mixHash;                                  // Mix hash
     WorkPackage work;                              // WorkPackage this solution refers to
-    bool stale;                                    // Whether or not solution is stale
     std::chrono::steady_clock::time_point tstamp;  // Timestamp of found solution
     unsigned midx;                                 // Originating miner Id
 };

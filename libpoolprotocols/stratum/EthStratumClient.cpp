@@ -1119,7 +1119,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 {
                     if (m_onSolutionAccepted)
                     {
-                        m_onSolutionAccepted(m_stale, response_delay_ms, miner_index);
+                        m_onSolutionAccepted(response_delay_ms, miner_index);
                     }
                 }
                 else
@@ -1128,7 +1128,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     {
                         cwarn << "Reject reason :"
                               << (_errReason.empty() ? "Unspecified" : _errReason);
-                        m_onSolutionRejected(m_stale, response_delay_ms, miner_index);
+                        m_onSolutionRejected(response_delay_ms, miner_index);
                     }
                 }
             }
@@ -1456,7 +1456,6 @@ void EthStratumClient::submitSolution(const Solution& solution)
     enqueue_response_plea();
     send(jReq);
 
-    m_stale = solution.stale;
 }
 
 void EthStratumClient::recvSocketData()

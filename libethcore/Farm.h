@@ -147,19 +147,8 @@ public:
 
     void failedSolution(unsigned _miner_index) override { m_solutionStats.failed(_miner_index); }
 
-    void acceptedSolution(bool _stale, unsigned _miner_index)
-    {
-        if (!_stale)
-        {
-            m_solutionStats.accepted(_miner_index);
-        }
-        else
-        {
-            m_solutionStats.acceptedStale(_miner_index);
-        }
-    }
-
-    void rejectedSolution(unsigned _miner_index) { m_solutionStats.rejected(_miner_index); }
+    void acceptedSolution(unsigned const& miner_index) { m_solutionStats.accepted(miner_index); }
+    void rejectedSolution(unsigned const& miner_index) { m_solutionStats.rejected(miner_index); }
 
     using SolutionFound = std::function<void(const Solution&)>;
     using MinerRestart = std::function<void()>;

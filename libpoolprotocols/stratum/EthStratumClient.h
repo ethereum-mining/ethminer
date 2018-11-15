@@ -127,8 +127,6 @@ private:
     WorkPackage m_current;
     std::chrono::time_point<std::chrono::steady_clock> m_current_timestamp;
 
-    bool m_stale = false;
-
     boost::asio::io_service& m_io_service;  // The IO service reference passed in the constructor
     boost::asio::io_service::strand m_io_strand;
     boost::asio::ip::tcp::socket* m_socket;
