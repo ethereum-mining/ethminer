@@ -134,7 +134,7 @@ std::string ProgPow::getKern(uint64_t block_number, kernel_t kern)
 		ret << "offset = share[group_id];\n";
 	}
 	ret << "offset %= PROGPOW_DAG_ELEMENTS;\n";
-	ret << "offset = offset * PROGPOW_LANES + lane_id;\n";
+	ret << "offset = offset * PROGPOW_LANES + (lane_id ^ loop) % PROGPOW_LANES;\n";
     ret << "data_dag = g_dag[offset];\n";
     ret << "// hack to prevent compiler from reordering LD and usage\n";
     if (kern == KERNEL_CUDA)

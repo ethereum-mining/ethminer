@@ -329,10 +329,12 @@ void progPowLoop(
     // Lanes can execute in parallel and will be convergent
     for (int l = 0; l < PROGPOW_LANES; l++)
     {
-        // global load to sequential locations
+        // global load to the 256 byte DAG entry
+        // every lane can access every part of the entry
         uint32_t data_g[PROGPOW_DAG_LOADS];
+        uint32_t offset_l = offset_g * PROGPOW_LANES + (l ^ loop) % PROGPOW_LANES;
         for (int i = 0; i < PROGPOW_DAG_LOADS; i++)
-            data_g[i] = dag[(offset_g*PROGPOW_LANES + l)*PROGPOW_DAG_LOADS + i];
+            data_g[i] = dag[offset_l * PROGPOW_DAG_LOADS + i];
 
         // initialize the seed and mix destination sequence
         int mix_seq_dst[PROGPOW_REGS];
