@@ -1172,12 +1172,15 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 {
                     string sSeedHash = jPrm.get(Json::Value::ArrayIndex(1), "").asString();
                     string sHeaderHash = jPrm.get(Json::Value::ArrayIndex(2), "").asString();
+                    string sBlockHeight = jPrm.get(Json::Value::ArrayIndex(3), "").asString();
+
 
                     if (sHeaderHash != "" && sSeedHash != "")
                     {
                         m_current.epoch = ethash::find_epoch_number(
                             ethash::hash256_from_bytes(h256{sSeedHash}.data()));
                         m_current.header = h256(sHeaderHash);
+                        m_current.height = strtoul(sBlockHeight.c_str(), nullptr, 0);
                         m_current.boundary = m_nextWorkBoundary;
                         m_current.startNonce = bswap(*((uint64_t*)m_extraNonce.data()));
                         m_current.exSizeBits = m_extraNonceHexSize * 4;
@@ -1198,6 +1201,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     string sSeedHash = jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
                     string sShareTarget =
                         jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
+                    string sBlockHeight = jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
 
                     // coinmine.pl fix
                     int l = sShareTarget.length();
@@ -1210,6 +1214,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                         m_current.epoch = ethash::find_epoch_number(
                             ethash::hash256_from_bytes(h256{sSeedHash}.data()));
                         m_current.header = h256(sHeaderHash);
+                        m_current.height = strtoul(sBlockHeight.c_str(), nullptr, 0);
                         m_current.boundary = h256(sShareTarget);
                         m_current.job = h256(job);
                         m_current_timestamp = std::chrono::steady_clock::now();
