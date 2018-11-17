@@ -115,12 +115,14 @@ void EthGetworkClient::workLoop()
                 newWorkPackage.header = h256(v[0].asString());
                 newWorkPackage.epoch = ethash::find_epoch_number(
                     ethash::hash256_from_bytes(h256{v[1].asString()}.data()));
+                newWorkPackage.height = strtoul(v[3].asString().c_str(), nullptr, 0);
 
                 // Check if header changes so the new workpackage is really new
                 if (newWorkPackage.header != m_prevWorkPackage.header)
                 {
                     m_prevWorkPackage.header = newWorkPackage.header;
                     m_prevWorkPackage.epoch = newWorkPackage.epoch;
+                    m_prevWorkPackage.height = newWorkPackage.height;
                     m_prevWorkPackage.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
 
                     if (m_onWorkReceived)
