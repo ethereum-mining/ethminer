@@ -16,7 +16,7 @@ using namespace eth;
 class EthGetworkClient : public PoolClient, Worker
 {
 public:
-    EthGetworkClient(unsigned farmRecheckPeriod, bool submitHashrate);
+    EthGetworkClient(unsigned farmRecheckPeriod);
     ~EthGetworkClient();
 
     void connect() override;
@@ -27,19 +27,16 @@ public:
 
     string ActiveEndPoint() override { return ""; };
 
-    void submitHashrate(string const& rate) override;
+    void submitHashrate(string const& rate, string const& id) override;
     void submitSolution(const Solution& solution) override;
 
 private:
     void workLoop() override;
     unsigned m_farmRecheckPeriod = 500;
 
-    string m_currentHashrateToSubmit = "";
+    string m_HashrateHex;  // Hashrate value already as hex string
+    string m_HashrateId;   // Hashrate unique identifier
 
-    h256 m_client_id;
     JsonrpcGetwork* p_client = nullptr;
     WorkPackage m_prevWorkPackage;
-
-    // Hashrate submission is optional
-    bool m_submit_hashrate;
 };

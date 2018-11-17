@@ -8,14 +8,12 @@ using namespace std;
 using namespace dev;
 using namespace eth;
 
-EthGetworkClient::EthGetworkClient(unsigned farmRecheckPeriod, bool submitHashrate)
-  : PoolClient(), Worker("getwork"), m_submit_hashrate(submitHashrate)
+EthGetworkClient::EthGetworkClient(unsigned farmRecheckPeriod)
+  : PoolClient(), Worker("getwork")
 {
     m_farmRecheckPeriod = farmRecheckPeriod;
     m_subscribed.store(true, std::memory_order_relaxed);
     m_authorized.store(true, std::memory_order_relaxed);
-    if (m_submit_hashrate)
-        m_client_id = h256::random();
 }
 
 EthGetworkClient::~EthGetworkClient()
@@ -53,11 +51,12 @@ void EthGetworkClient::disconnect()
 
 }
 
-void EthGetworkClient::submitHashrate(string const& rate)
+void EthGetworkClient::submitHashrate(string const& rate, string const& id)
 {
     // Store the rate in temp var. Will be handled in workLoop
     // Hashrate submission does not need to be as quick as possible
-    m_currentHashrateToSubmit = rate;
+    m_HashrateHex = rate;
+    m_HashrateId = id;
 }
 
 void EthGetworkClient::submitSolution(const Solution& solution)
@@ -129,19 +128,18 @@ void EthGetworkClient::workLoop()
             }
 
             // Submit current hashrate if needed
-            if (m_submit_hashrate && !m_currentHashrateToSubmit.empty())
+            if (!m_HashrateHex.empty())
             {
                 try
                 {
-                    p_client->eth_submitHashrate(
-                        m_currentHashrateToSubmit, "0x" + m_client_id.hex());
+                    p_client->eth_submitHashrate(m_HashrateHex, m_HashrateId);
                 }
                 catch (const jsonrpc::JsonRpcException& _e)
                 {
                     cwarn << "Failed to submit hashrate.";
                     cwarn << boost::diagnostic_information(_e);
                 }
-                m_currentHashrateToSubmit.clear();
+                m_HashrateHex.clear();
             }
         }
 

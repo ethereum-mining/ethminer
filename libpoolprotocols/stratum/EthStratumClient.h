@@ -57,7 +57,7 @@ public:
         ETHEREUMSTRATUM
     } StratumProtocol;
 
-    EthStratumClient(int worktimeout, int responsetimeout, bool submitHashrate);
+    EthStratumClient(int worktimeout, int responsetimeout);
     ~EthStratumClient();
 
     void init_socket();
@@ -79,7 +79,7 @@ public:
     bool isAuthorized() { return m_authorized.load(std::memory_order_relaxed); }
     string ActiveEndPoint() override { return " [" + toString(m_endpoint) + "]"; };
 
-    void submitHashrate(string const& rate) override;
+    void submitHashrate(string const& rate, string const& id) override;
     void submitSolution(const Solution& solution) override;
 
     h256 currentHeaderHash() { return m_current.header; }
@@ -161,9 +161,6 @@ private:
 
     uint64_t m_extraNonce = 0;
     unsigned int m_extraNonceSizeBytes = 0;
-
-    bool m_submit_hashrate;
-    std::string m_submit_hashrate_id;
 
     unsigned m_solution_submitted_max_id;  // maximum json id we used to send a solution
 

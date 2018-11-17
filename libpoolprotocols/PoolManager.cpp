@@ -9,8 +9,9 @@ using namespace eth;
 PoolManager* PoolManager::m_this = nullptr;
 
 PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigned maxTries,
-    unsigned failoverTimeout, unsigned ergodicity)
-  : m_io_strand(g_io_service),
+    unsigned failoverTimeout, unsigned ergodicity, bool reportHashrate)
+  : m_hashrate(reportHashrate),
+    m_io_strand(g_io_service),
     m_failovertimer(g_io_service),
     m_submithrtimer(g_io_service),
     m_minerType(minerType)
@@ -23,6 +24,11 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
     m_maxConnectionAttempts = maxTries;
     m_failoverTimeout = failoverTimeout;
     m_currentWp.header = h256();
+
+    // If hashrate submission required compute a random
+    // unique id
+    if (m_hashrate) 
+        m_hashrateId = "0x" + h256::random().hex();
 
     p_client->onConnected([&]() {
         {
@@ -72,9 +78,12 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
         }
 
         // Activate timing for HR submission
-        m_submithrtimer.expires_from_now(boost::posix_time::seconds(m_hrReportingInterval));
-        m_submithrtimer.async_wait(m_io_strand.wrap(boost::bind(
-            &PoolManager::submithrtimer_elapsed, this, boost::asio::placeholders::error)));
+        if (m_hashrate)
+        {
+            m_submithrtimer.expires_from_now(boost::posix_time::seconds(m_hrReportingInterval));
+            m_submithrtimer.async_wait(m_io_strand.wrap(boost::bind(
+                &PoolManager::submithrtimer_elapsed, this, boost::asio::placeholders::error)));
+        }
     });
 
     p_client->onDisconnected([&]() {
@@ -457,8 +466,8 @@ void PoolManager::submithrtimer_elapsed(const boost::system::error_code& ec)
             // Should be 32 bytes
             // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_submithashrate
             std::ostringstream ss;
-            ss << std::setw(64) << std::setfill('0') << res;
-            p_client->submitHashrate("0x" + ss.str());
+            ss << "0x" << std::setw(64) << std::setfill('0') << res;
+            p_client->submitHashrate(ss.str(), m_hashrateId);
 
             // Resubmit actor
             m_submithrtimer.expires_from_now(boost::posix_time::seconds(m_hrReportingInterval));

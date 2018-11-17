@@ -77,7 +77,7 @@ static string diffToTarget(double diff)
     return target;
 }
 
-EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, bool submitHashrate)
+EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout)
   : PoolClient(),
     m_worktimeout(worktimeout),
     m_responsetimeout(responsetimeout),
@@ -88,11 +88,8 @@ EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, bool su
     m_response_plea_times(64),
     m_txQueue(64),
     m_resolver(g_io_service),
-    m_endpoints(),
-    m_submit_hashrate(submitHashrate)
+    m_endpoints()
 {
-    if (m_submit_hashrate)
-        m_submit_hashrate_id = h256::random().hex();
 
     m_jSwBuilder.settings_["indentation"] = "";
 
@@ -1373,14 +1370,11 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
     }
 }
 
-void EthStratumClient::submitHashrate(string const& rate)
+void EthStratumClient::submitHashrate(string const& rate, string const& id)
 {
-    m_rate = rate;
 
-    if (!m_submit_hashrate || !isConnected())
-    {
+    if (!isConnected())
         return;
-    }
 
     // There is no stratum method to submit the hashrate so we use the rpc variant.
     // Note !!
@@ -1395,8 +1389,8 @@ void EthStratumClient::submitHashrate(string const& rate)
         jReq["worker"] = m_worker;
     jReq["method"] = "eth_submitHashrate";
     jReq["params"] = Json::Value(Json::arrayValue);
-    jReq["params"].append(m_rate);
-    jReq["params"].append("0x" + toString(this->m_submit_hashrate_id));
+    jReq["params"].append(rate);  // Already expressed as hex
+    jReq["params"].append(id);    // Already prefixed by 0x
 
     send(jReq);
 }

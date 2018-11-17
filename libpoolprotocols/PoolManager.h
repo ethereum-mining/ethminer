@@ -21,7 +21,7 @@ class PoolManager
 {
 public:
     PoolManager(PoolClient* client, MinerType const& minerType, unsigned maxTries,
-        unsigned failovertimeout, unsigned ergodicity);
+        unsigned failovertimeout, unsigned ergodicity, bool reportHashrate);
     static PoolManager& p() { return *m_this; }
     void addConnection(URI& conn);
     void clearConnections();
@@ -54,10 +54,12 @@ private:
     std::atomic<bool> m_running = {false};
     std::atomic<bool> m_stopping = {false};
 
+    bool m_hashrate;           // Whether or not submit hashrate to work provider (pool)
+    std::string m_hashrateId;  // The unique client Id to use when submitting hashrate
     unsigned m_ergodicity = 0;
     unsigned m_connectionAttempt = 0;
     unsigned m_maxConnectionAttempts = 0;
-    std::string m_selectedHost = ""; // Holds host name (and endpoint) of selected connection
+    std::string m_selectedHost = "";  // Holds host name (and endpoint) of selected connection
     std::atomic<unsigned> m_connectionSwitches = {0};
 
     std::vector<URI> m_connections;

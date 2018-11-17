@@ -1181,10 +1181,10 @@ private:
             client = new SimulateClient(20, m_benchmarkBlock);
             break;
         case MinerCLI::OperationMode::Farm:
-            client = new EthGetworkClient(m_farmPollInterval, m_poolHashRate);
+            client = new EthGetworkClient(m_farmPollInterval);
             break;
         case MinerCLI::OperationMode::Stratum:
-            client = new EthStratumClient(m_poolWorkTimeout, m_poolRespTimeout, m_poolHashRate);
+            client = new EthStratumClient(m_poolWorkTimeout, m_poolRespTimeout);
             break;
         default:
             // Satisfy the compiler, but cannot happen!
@@ -1195,7 +1195,7 @@ private:
         Farm::f().setSealers(sealers);
         Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
 
-        new PoolManager(client, m_minerType, m_poolMaxRetries, m_poolFlvrTimeout, m_farmErgodicity);
+        new PoolManager(client, m_minerType, m_poolMaxRetries, m_poolFlvrTimeout, m_farmErgodicity, m_poolHashRate);
         for (auto conn : m_poolConns)
         {
             PoolManager::p().addConnection(conn);
