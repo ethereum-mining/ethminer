@@ -1181,7 +1181,7 @@ private:
             client = new SimulateClient(20, m_benchmarkBlock);
             break;
         case MinerCLI::OperationMode::Farm:
-            client = new EthGetworkClient(m_farmPollInterval);
+            client = new EthGetworkClient(m_poolWorkTimeout, m_farmPollInterval);
             break;
         case MinerCLI::OperationMode::Stratum:
             client = new EthStratumClient(m_poolWorkTimeout, m_poolRespTimeout);

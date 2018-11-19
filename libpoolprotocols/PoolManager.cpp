@@ -33,7 +33,13 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
     p_client->onConnected([&]() {
         {
             Guard l(m_activeConnectionMutex);
-            m_selectedHost.append(p_client->ActiveEndPoint());
+
+            // If HostName is already an IP address no need to append the
+            // effective ip address.
+            if (p_client->getConnection()->HostNameType() == dev::UriHostNameType::Dns ||
+                p_client->getConnection()->HostNameType() == dev::UriHostNameType::Basic)
+                m_selectedHost.append(p_client->ActiveEndPoint());
+
             cnote << "Established connection to " << m_selectedHost;
 
             // Reset current WorkPackage

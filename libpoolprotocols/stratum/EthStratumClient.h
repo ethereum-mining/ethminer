@@ -130,7 +130,7 @@ private:
     boost::asio::io_service& m_io_service;  // The IO service reference passed in the constructor
     boost::asio::io_service::strand m_io_strand;
     boost::asio::ip::tcp::socket* m_socket;
-    std::string m_message; // The internal message string buffer
+    std::string m_message;  // The internal message string buffer
     bool m_newjobprocessed = false;
 
     // Use shared ptrs to avoid crashes due to async_writes
@@ -154,8 +154,6 @@ private:
 
     boost::asio::ip::tcp::resolver m_resolver;
     std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>> m_endpoints;
-
-    string m_rate;
 
     h256 m_nextWorkBoundary = h256("0x00000000ffff0000000000000000000000000000000000000000000000000000");
 

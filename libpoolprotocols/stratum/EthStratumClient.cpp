@@ -206,7 +206,6 @@ void EthStratumClient::connect()
     m_workloop_timer.async_wait(m_io_strand.wrap(boost::bind(
         &EthStratumClient::workloop_timer_elapsed, this, boost::asio::placeholders::error)));
 
-
     // Reset status flags
     m_canconnect.store(false, std::memory_order_relaxed);
     m_connected.store(false, std::memory_order_relaxed);
@@ -229,7 +228,6 @@ void EthStratumClient::connect()
     // Initializes socket and eventually secure stream
     if (!m_socket)
         init_socket();
-
 
     // Initialize a new queue of end points
     m_endpoints = std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>>();
@@ -381,9 +379,7 @@ void EthStratumClient::disconnect_finalize()
 
     // Trigger handlers
     if (m_onDisconnected)
-    {
         m_onDisconnected();
-    }
 }
 
 void EthStratumClient::resolve_handler(
