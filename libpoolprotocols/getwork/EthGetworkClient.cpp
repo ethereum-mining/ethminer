@@ -185,7 +185,8 @@ void EthGetworkClient::handle_connect(const boost::system::error_code& ec)
         {
             // This endpoint does not respond
             // Pop it and retry
-            cwarn << "Error connecting to " << m_conn->Host() << ":" << m_conn->Port() << " : " << ec;
+            cwarn << "Error connecting to " << m_conn->Host() << ":" << toString(m_conn->Port())
+                  << " : " << ec.message();
             m_endpoints.pop();
             begin_connect();
         }
@@ -206,7 +207,8 @@ void EthGetworkClient::handle_write(const boost::system::error_code& ec)
     {
         if (ec != boost::asio::error::operation_aborted)
         {
-            cwarn << "Error writing to " << m_conn->Host() << ":" << m_conn->Port() << " : " << ec;
+            cwarn << "Error writing to " << m_conn->Host() << ":" << toString(m_conn->Port())
+                  << " : " << ec.message();
             m_endpoints.pop();
             begin_connect();
         }
@@ -230,7 +232,7 @@ void EthGetworkClient::handle_read(
         // Empty response ?
         if (!rx_message.size())
         {
-            cwarn << "Invalid response from " << m_conn->Host() << ":" << m_conn->Port();
+            cwarn << "Invalid response from " << m_conn->Host() << ":" << toString(m_conn->Port());
             disconnect();
             return;
         }
@@ -268,21 +270,24 @@ void EthGetworkClient::handle_read(
             {
                 if (line.substr(0, 7) != "HTTP/1.")
                 {
-                    cwarn << "Invalid response from " << m_conn->Host() << ":" << m_conn->Port();
+                    cwarn << "Invalid response from " << m_conn->Host() << ":"
+                          << toString(m_conn->Port());
                     disconnect();
                     return;
                 }
                 std::size_t spaceoffset = line.find(' ');
                 if (spaceoffset == std::string::npos)
                 {
-                    cwarn << "Invalid response from " << m_conn->Host() << ":" << m_conn->Port();
+                    cwarn << "Invalid response from " << m_conn->Host() << ":"
+                          << toString(m_conn->Port());
                     disconnect();
                     return;
                 }
                 std::string status = line.substr(spaceoffset + 1);
                 if (status.substr(0, 3) != "200")
                 {
-                    cwarn << m_conn->Host() << ":" << m_conn->Port() << " reported status " << status;
+                    cwarn << m_conn->Host() << ":" << toString(m_conn->Port())
+                          << " reported status " << status;
                     disconnect();
                     return;
                 }
@@ -331,7 +336,8 @@ void EthGetworkClient::handle_read(
     {
         if (ec != boost::asio::error::operation_aborted)
         {
-            cwarn << "Error reading from :" << m_conn->Host() << ":" << m_conn->Port() << " : "
+            cwarn << "Error reading from :" << m_conn->Host() << ":" << toString(m_conn->Port())
+                  << " : "
                   << ec.message();
             disconnect();
         }
@@ -369,7 +375,8 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
 
     if (!JRes.isMember("id"))
     {
-        cwarn << "Missing id member in response from " << m_conn->Host() << ":" << m_conn->Port();
+        cwarn << "Missing id member in response from " << m_conn->Host() << ":"
+              << toString(m_conn->Port());
         return;
     }
     // We get the id from pending jrequest
@@ -393,7 +400,8 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
         // with a delay of m_farmRecheckPeriod ms.
         if (!_isSuccess)
         {
-            cwarn << "Got " << _errReason << " from " << m_conn->Host() << ":" << m_conn->Port();
+            cwarn << "Got " << _errReason << " from " << m_conn->Host() << ":"
+                  << toString(m_conn->Port());
             m_getwork_timer.expires_from_now(boost::posix_time::seconds(30));
             m_getwork_timer.async_wait(
                 m_io_strand.wrap(boost::bind(&EthGetworkClient::getwork_timer_elapsed, this,
@@ -404,7 +412,7 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
             if (!JRes.isMember("result"))
             {
                 cwarn << "Missing data for eth_getWork request from " << m_conn->Host() << ":"
-                      << m_conn->Port();
+                      << toString(m_conn->Port());
             }
             else
             {
