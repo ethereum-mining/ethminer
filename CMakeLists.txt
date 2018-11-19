@@ -59,9 +59,6 @@ find_package(Boost CONFIG REQUIRED COMPONENTS system filesystem thread)
 hunter_add_package(jsoncpp)
 find_package(jsoncpp CONFIG REQUIRED)
 
-hunter_add_package(libjson-rpc-cpp)
-find_package(libjson-rpc-cpp CONFIG REQUIRED)
-
 hunter_add_package(ethash)
 find_package(ethash CONFIG REQUIRED)
 
