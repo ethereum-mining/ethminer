@@ -65,7 +65,7 @@ private:
 
     void workLoop() override;
 
-    bool init(int epoch);
+    bool init(int epoch, uint64_t block_number);
 
     /// Constants on GPU
     hash64_t* m_dag = nullptr;
@@ -93,7 +93,7 @@ private:
     static unsigned s_numInstances;
     static vector<int> s_devices;
 
-    void compileKernel(uint64_t block_number, uint64_t dag_words);
+    void compileKernel(uint64_t prog_seed, uint64_t dag_words);
 
 };
 

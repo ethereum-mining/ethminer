@@ -14,11 +14,9 @@ void swap(int &a, int &b)
     b = t;
 }
 
-std::string ProgPow::getKern(uint64_t block_number, kernel_t kern)
+std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
 {
     std::stringstream ret;
-
-    uint64_t prog_seed = block_number / PROGPOW_PERIOD;
 
     uint32_t seed0 = (uint32_t)prog_seed;
     uint32_t seed1 = prog_seed >> 32;
