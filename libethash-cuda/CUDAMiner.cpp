@@ -146,7 +146,8 @@ bool CUDAMiner::initEpoch_internal()
             get_constants(&dag, NULL, &light, NULL);
         }
 
-        compileKernel(m_epochContext.lightCache->block_number, m_epochContext.dagNumItems);
+        uint64_t period_seed = block_number / PROGPOW_PERIOD;
+        compileKernel(period_seed, m_epochContext.dagNumItems);
 
         CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), m_epochContext.lightCache,
             m_epochContext.lightSize, cudaMemcpyHostToDevice));
@@ -189,6 +190,7 @@ void CUDAMiner::workLoop()
 {
     WorkPackage current;
     current.header = h256();
+    uint64_t old_period_seed = -1;
 
     m_search_buf.resize(m_settings.streams);
     m_streams.resize(m_settings.streams);
@@ -202,6 +204,7 @@ void CUDAMiner::workLoop()
         {
             // Wait for work or 3 seconds (whichever the first)
             const WorkPackage w = work();
+            uint64_t period_seed = w.block / PROGPOW_PERIOD;
             if (!w)
             {
                 boost::system_time const timeout =
@@ -221,8 +224,16 @@ void CUDAMiner::workLoop()
                 // ensure we're on latest job, not on the one
                 // which triggered the epoch change
                 current = w;
+                old_period_seed = period_seed;
                 continue;
             }
+            else if (old_period_seed != period_seed)
+            {
+                const auto& context = ethash::get_global_epoch_context(w.epoch);
+                const auto dagNumItems = context.full_dataset_num_items;
+                compileKernel(period_seed, dagNumItems);
+            }
+            old_period_seed = period_seed;
 
             // Persist most recent job.
             // Job's differences should be handled at higher level
@@ -324,12 +335,12 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
 #include <fstream>
 
 void CUDAMiner::compileKernel(
-    uint64_t block_number,
+    uint64_t period_seed,
     uint64_t dag_elms)
 {
     const char* name = "progpow_search";
 
-    std::string text = ProgPow::getKern(block_number, ProgPow::KERNEL_CUDA);
+    std::string text = ProgPow::getKern(period_seed, ProgPow::KERNEL_CUDA);
     text += std::string(CUDAMiner_kernel, sizeof(CUDAMiner_kernel));
 
     ofstream write;

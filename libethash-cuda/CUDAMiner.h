@@ -68,7 +68,7 @@ private:
     uint64_t m_allocated_memory_dag = 0; // dag_size is a uint64_t in EpochContext struct
     size_t m_allocated_memory_light_cache = 0;
 
-    void compileKernel(uint64_t block_number, uint64_t dag_words);
+    void compileKernel(uint64_t prog_seed, uint64_t dag_words);
 
 };
 
