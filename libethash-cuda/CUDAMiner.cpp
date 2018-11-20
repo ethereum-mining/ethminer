@@ -86,8 +86,9 @@ bool CUDAMiner::init(int epoch, uint64_t block_number)
         const auto& context = ethash::get_global_epoch_context(epoch);
         const auto lightWords = context.light_cache_num_items;
         const auto lightSize = ethash::get_light_cache_size(lightWords);
-        const auto dagElms = context.full_dataset_num_items;
-        const auto dagBytes = ethash::get_full_dataset_size(dagElms);
+        const auto dagNumItems = ethash_calculate_full_dataset_num_items(epoch);
+        const auto dagBytes = ethash::get_full_dataset_size(dagNumItems);
+        const auto dagElms = dagNumItems / 2;
 
         CUDA_SAFE_CALL(cudaSetDevice(m_device_num));
         cudalog << "Set Device to current";
@@ -265,8 +266,8 @@ void CUDAMiner::workLoop()
             }
             else if (old_period_seed != period_seed)
             {
-                const auto& context = ethash::get_global_epoch_context(w.epoch);
-                const auto dagElms = context.full_dataset_num_items;
+                const auto dagNumItems = ethash_calculate_full_dataset_num_items(w.epoch);
+                const auto dagElms = dagNumItems / 2;
                 compileKernel(period_seed, dagElms);
             }
             old_period_seed = period_seed;
@@ -549,7 +550,8 @@ void CUDAMiner::search(
 
         // Run the batch for this stream
         bool hack_false = false;
-        void *args[] = {&current_nonce, &current_header, &m_current_target, &m_dag, &buffer, &hack_false};
+        volatile Search_results *Buffer = m_search_buf[current_index];
+        void *args[] = {&stream_nonce, &current_header, &m_current_target, &m_dag, &Buffer, &hack_false};
         CU_SAFE_CALL(cuLaunchKernel(m_kernel,
             s_gridSize, 1, 1,   // grid dim
             s_blockSize, 1, 1,  // block dim
@@ -625,7 +627,9 @@ void CUDAMiner::search(
             if (!done)
             {
                 bool hack_false = false;
-                void *args[] = {&current_nonce, &current_header, &m_current_target, &m_dag, &buffer, &hack_false};
+                volatile Search_results *Buffer = m_search_buf[current_index];
+                uint64_t next_nonce = stream_nonce + streams_batch_size;
+                void *args[] = {&next_nonce, &current_header, &m_current_target, &m_dag, (void *)&Buffer, &hack_false};
                 CU_SAFE_CALL(cuLaunchKernel(m_kernel,
                     s_gridSize, 1, 1,   // grid dim
                     s_blockSize, 1, 1,  // block dim
