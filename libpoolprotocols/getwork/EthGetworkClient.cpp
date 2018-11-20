@@ -149,7 +149,10 @@ void EthGetworkClient::handle_connect(const boost::system::error_code& ec)
                     jRdr.parse(*line, m_pendingJReq);
                     m_pending_tstamp = std::chrono::steady_clock::now();
 
-                    os << "POST " << m_conn->Path() << " HTTP/1.0\r\n";
+                    // Make sure path begins with "/"
+                    string _path = (m_conn->Path().empty() ? "/" : m_conn->Path());
+
+                    os << "POST " << _path << " HTTP/1.0\r\n";
                     os << "Host: " << m_conn->Host() << "\r\n";
                     os << "Content-Type: application/json"
                        << "\r\n";
