@@ -126,8 +126,7 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
         if (!wp)
             return;
 
-        auto _currentEpoch = m_currentWp.epoch;
-
+        int _currentEpoch = m_currentWp.epoch;
         bool newEpoch = (_currentEpoch == -1 || wp.seed != m_currentWp.seed);
         bool newDiff = (wp.boundary != m_currentWp.boundary);
         m_currentWp = wp;
@@ -146,6 +145,7 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
         {
             m_currentWp.epoch = _currentEpoch;
         }
+
         if (newDiff)
             showDifficulty();
 
@@ -434,8 +434,20 @@ void PoolManager::showEpoch()
 
 void PoolManager::showDifficulty()
 {
+
+    static const char* suffixes[] = {"h", "Kh", "Mh", "Gh"};
+    double d = getCurrentDifficulty();
+    unsigned i;
+
+    for (i = 0; i < 3; i++)
+    {
+        if (d < 1000.0)
+            break;
+        d /= 1000.0;
+    }
+
     std::stringstream ss;
-    ss << fixed << setprecision(2) << getCurrentDifficulty() / 1000000000.0 << "K megahash";
+    ss << fixed << setprecision(2) << d << suffixes[i];
     cnote << "Difficulty : " EthWhite << ss.str() << EthReset;
 }
 
