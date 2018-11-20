@@ -128,7 +128,7 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
 
         auto _currentEpoch = m_currentWp.epoch;
 
-        bool newEpoch = (wp.seed != m_currentWp.seed);
+        bool newEpoch = (_currentEpoch == -1 || wp.seed != m_currentWp.seed);
         bool newDiff = (wp.boundary != m_currentWp.boundary);
         m_currentWp = wp;
 
