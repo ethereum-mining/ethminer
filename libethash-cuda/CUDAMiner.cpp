@@ -57,29 +57,12 @@ unsigned CUDAMiner::s_gridSize = CUDAMiner::c_defaultGridSize;
 unsigned CUDAMiner::s_numStreams = CUDAMiner::c_defaultNumStreams;
 unsigned CUDAMiner::s_scheduleFlag = 0;
 
-bool CUDAMiner::init(int epoch)
+bool CUDAMiner::init_internal(const int epoch)
 {
-    // When loading of DAG is sequential wait for
-    // this instance to become current
-    if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
-    {
-        while (s_dagLoadIndex < m_index)
-        {
-            boost::system_time const timeout =
-                boost::get_system_time() + boost::posix_time::seconds(3);
-            boost::mutex::scoped_lock l(x_work);
-            m_dag_loaded_signal.timed_wait(l, timeout);
-        }
-        if (shouldStop())
-        {
-            cudalog << "Exiting ...";
-            return false;
-        }
-    }
 
     unsigned device = s_devices[m_index] > -1 ? s_devices[m_index] : m_index;
 
-    cnote << "Initialising miner " << m_index;
+    cudalog << "Initialising miner " << m_index;
 
     auto numDevices = getNumDevices();
     if (numDevices == 0)
@@ -211,7 +194,7 @@ void CUDAMiner::workLoop()
             if (current.epoch != w.epoch)
             {
                 if (!init(w.epoch))
-                    break;  // TODO this will simply exit the thread
+                    break;  // This will simply exit the thread
 
                 // As DAG generation takes a while we need to
                 // ensure we're on latest job, not on the one

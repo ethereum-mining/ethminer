@@ -342,15 +342,11 @@ void CLMiner::workLoop()
 
                 if (current.epoch != w.epoch)
                 {
-                    if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
-                    {
-                        while (s_dagLoadIndex < Index())
-                            this_thread::sleep_for(chrono::seconds(1));
-                        ++s_dagLoadIndex;
-                    }
-
                     m_abortqueue.clear();
-                    init(w.epoch);
+
+                    if (!init(w.epoch))
+                        break;  // This will simply exit the thread
+
                     m_abortqueue.push_back(cl::CommandQueue(m_context[0], m_device));
                 }
 
@@ -509,7 +505,7 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMult
     return true;
 }
 
-bool CLMiner::init(int epoch)
+bool CLMiner::init_internal(const int epoch)
 {
     // get all platforms
     try
@@ -808,8 +804,8 @@ bool CLMiner::init(int epoch)
     }
     catch (cl::Error const& err)
     {
-        string _what = ethCLErrorHelper("OpenCL init failed", err);
-        throw std::runtime_error(_what);
+        cllog << ethCLErrorHelper("OpenCL init failed", err);
+        return false;
     }
     return true;
 }

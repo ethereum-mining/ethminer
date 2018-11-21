@@ -168,6 +168,46 @@ void Miner::resume(MinerPauseEnum fromwhat)
     //}
 }
 
+float Miner::RetrieveHashRate() noexcept
+{
+    return m_hashRate.load(std::memory_order_relaxed);
+}
+
+void Miner::TriggerHashRateUpdate() noexcept
+{
+    bool b = false;
+    if (m_hashRateUpdate.compare_exchange_strong(b, true))
+        return;
+    // GPU didn't respond to last trigger, assume it's dead.
+    // This can happen on CUDA if:
+    //   runtime of --cuda-grid-size * --cuda-streams exceeds time of m_collectInterval
+    m_hashRate = 0.0;
+}
+
+bool Miner::init(const int epoch)
+{
+    // When loading of DAG is sequential wait for
+    // this instance to become current
+    if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
+    {
+        while (s_dagLoadIndex < m_index)
+        {
+            boost::system_time const timeout =
+                boost::get_system_time() + boost::posix_time::seconds(3);
+            boost::mutex::scoped_lock l(x_work);
+            m_dag_loaded_signal.timed_wait(l, timeout);
+        }
+        if (shouldStop())
+            return false;
+    }
+
+    // Run the internal initialization
+    // specific for miner
+    bool result = init_internal(epoch);
+    return result;
+}
+
+
 WorkPackage Miner::work() const
 {
     boost::mutex::scoped_lock l(x_work);

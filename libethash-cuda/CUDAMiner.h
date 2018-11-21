@@ -55,6 +55,9 @@ public:
     static unsigned const c_defaultNumStreams;
 
 protected:
+
+    bool init_internal(const int epoch) override;
+
     void kick_miner() override;
 
 private:
@@ -63,8 +66,6 @@ private:
     boost::asio::io_service::strand m_io_strand;
 
     void workLoop() override;
-
-    bool init(int epoch);
 
     /// Constants on GPU
     hash128_t* m_dag = nullptr;

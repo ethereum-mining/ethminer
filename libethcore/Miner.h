@@ -286,20 +286,25 @@ public:
      */
     void resume(MinerPauseEnum fromwhat);
 
-    float RetrieveHashRate() noexcept { return m_hashRate.load(std::memory_order_relaxed); }
+    /**
+     * @brief Retrieves currrently collected hashrate
+     */
+    float RetrieveHashRate() noexcept;
 
-    void TriggerHashRateUpdate() noexcept
-    {
-        bool b = false;
-        if (m_hashRateUpdate.compare_exchange_strong(b, true))
-            return;
-        // GPU didn't respond to last trigger, assume it's dead.
-        // This can happen on CUDA if:
-        //   runtime of --cuda-grid-size * --cuda-streams exceeds time of m_collectInterval
-        m_hashRate = 0.0;
-    }
+    void TriggerHashRateUpdate() noexcept;
 
 protected:
+
+    /**
+     * @brief Initializes miner to current (or changed) epoch.
+     */
+    bool init(const int epoch);
+
+    /**
+     * @brief Miner's specific initialization to current (or changed) epoch.
+     */
+    virtual bool init_internal(const int epoch) = 0;
+
     /**
      * @brief No work left to be done. Pause until told to kickOff().
      */

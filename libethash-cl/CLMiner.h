@@ -75,6 +75,9 @@ public:
     }
 
 protected:
+
+    bool init_internal(const int epoch) override;
+
     void kick_miner() override;
 
 private:
@@ -82,8 +85,6 @@ private:
     boost::asio::io_service::strand m_io_strand;
 
     void workLoop() override;
-
-    bool init(int epoch);
 
     vector<cl::Context> m_context;
     vector<cl::CommandQueue> m_queue;
