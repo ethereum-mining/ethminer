@@ -62,8 +62,6 @@ bool CUDAMiner::init_internal()
 
     unsigned device = s_devices[m_index] > -1 ? s_devices[m_index] : m_index;
 
-    cudalog << "Initialising miner " << m_index;
-
     auto numDevices = getNumDevices();
     if (numDevices == 0)
         return false;
@@ -77,12 +75,12 @@ bool CUDAMiner::init_internal()
     cudaDeviceProp device_props;
     CUDA_SAFE_CALL(cudaGetDeviceProperties(&device_props, m_device_num));
 
-    cudalog << "Using device: " << device_props.name
+    cudalog << "Initializing device: " << device_props.name
             << " (Compute " + to_string(device_props.major) + "." + to_string(device_props.minor) +
                    ")";
 
     CUDA_SAFE_CALL(cudaSetDevice(m_device_num));
-    cudalog << "Set Device to current";
+
     if (m_epochContext.dagNumItems != m_dag_size || !m_dag)
     {
         // Check whether the current device has sufficient memory every time we recreate the dag
@@ -95,7 +93,6 @@ bool CUDAMiner::init_internal()
             return false;
         }
         // We need to reset the device and recreate the dag
-        cudalog << "Resetting device";
         CUDA_SAFE_CALL(cudaDeviceReset());
         CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
         CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
@@ -127,7 +124,6 @@ bool CUDAMiner::init_internal()
     if (m_epochContext.dagNumItems != m_dag_size || !dag)
     {
         // create mining buffers
-        cudalog << "Generating mining buffers";
         for (unsigned i = 0; i != s_numStreams; ++i)
         {
             CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(Search_results)));
@@ -141,11 +137,12 @@ bool CUDAMiner::init_internal()
                 << FormattedMemSize(device_props.totalGlobalMem - m_epochContext.dagSize -
                                     m_epochContext.lightSize)
                 << " left)";
+        
         auto startDAG = std::chrono::steady_clock::now();
 
         ethash_generate_dag(m_epochContext.dagSize, s_gridSize, s_blockSize, m_streams[0]);
 
-        cudalog << "Generated DAG for GPU" << m_device_num << " in: "
+        cudalog << "Generated DAG in: "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(
                        std::chrono::steady_clock::now() - startDAG)
                        .count()
