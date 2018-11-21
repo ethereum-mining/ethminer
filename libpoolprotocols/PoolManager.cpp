@@ -495,11 +495,8 @@ void PoolManager::submithrtimer_elapsed(const boost::system::error_code& ec)
     }
 }
 
-
-unsigned int dev::eth::PoolManager::getCurrentEpoch()
+int PoolManager::getCurrentEpoch()
 {
-    if (!m_currentWp)
-        return 0;
     return m_currentWp.epoch;
 }
 

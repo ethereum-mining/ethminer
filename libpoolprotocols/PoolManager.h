@@ -33,7 +33,7 @@ public:
     void stop();
     bool isConnected() { return p_client->isConnected(); };
     bool isRunning() { return m_running; };
-    unsigned int getCurrentEpoch();
+    int getCurrentEpoch();
     double getCurrentDifficulty();
     unsigned getConnectionSwitches();
     unsigned getEpochChanges();

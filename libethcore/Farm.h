@@ -77,7 +77,7 @@ public:
      * @brief Sets the current mining mission.
      * @param _wp The work package we wish to be mining.
      */
-    void setWork(WorkPackage const& _wp);
+    void setWork(WorkPackage const& _newWp);
 
     void setSealers(std::map<std::string, SealerDescriptor> const& _sealers);
 
@@ -160,13 +160,8 @@ public:
      * submitted.
      */
     void onSolutionFound(SolutionFound const& _handler) { m_onSolutionFound = _handler; }
-    void onMinerRestart(MinerRestart const& _handler) { m_onMinerRestart = _handler; }
 
-    WorkPackage work() const
-    {
-        Guard l(x_minerWork);
-        return m_work;
-    }
+    void onMinerRestart(MinerRestart const& _handler) { m_onMinerRestart = _handler; }
 
     std::chrono::steady_clock::time_point farmLaunched() { return m_farm_launched; }
 
@@ -180,7 +175,7 @@ public:
 
     void set_nonce_segment_width(unsigned n)
     {
-        if (!m_work.exSizeBytes)
+        if (!m_currentWp.exSizeBytes)
             m_nonce_segment_with = n;
     }
 
@@ -217,7 +212,9 @@ private:
 
     mutable Mutex x_minerWork;
     std::vector<std::shared_ptr<Miner>> m_miners;
-    WorkPackage m_work;
+
+    WorkPackage m_currentWp;
+    EpochContext m_currentEc;
 
     std::atomic<bool> m_isMining = {false};
 

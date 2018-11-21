@@ -344,7 +344,7 @@ void CLMiner::workLoop()
                 {
                     m_abortqueue.clear();
 
-                    if (!init(w.epoch))
+                    if (!init())
                         break;  // This will simply exit the thread
 
                     m_abortqueue.push_back(cl::CommandQueue(m_context[0], m_device));
@@ -505,7 +505,7 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMult
     return true;
 }
 
-bool CLMiner::init_internal(const int epoch)
+bool CLMiner::init_internal()
 {
     // get all platforms
     try
@@ -608,11 +608,7 @@ bool CLMiner::init_internal(const int epoch)
                   << "Adjusted work multiplier: " << m_globalWorkSize / m_workgroupSize;
         }
 
-        const auto& context = ethash::get_global_epoch_context(epoch);
-        const auto lightNumItems = context.light_cache_num_items;
-        const auto lightSize = ethash::get_light_cache_size(lightNumItems);
-        m_dagItems = context.full_dataset_num_items;
-        const auto dagSize = ethash::get_full_dataset_size(m_dagItems);
+        m_dagItems = m_epochContext.dagNumItems;
 
         // patch source code
         // note: The kernels here are simply compiled version of the respective .cl kernels
@@ -718,10 +714,11 @@ bool CLMiner::init_internal(const int epoch)
         // check whether the current dag fits in memory everytime we recreate the DAG
         cl_ulong result = 0;
         m_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
-        if (result < dagSize)
+        if (result < m_epochContext.dagSize)
         {
             cnote << "OpenCL device " << device_name << " has insufficient GPU memory."
-                  << FormattedMemSize(result) << " of memory found, " << FormattedMemSize(dagSize)
+                  << FormattedMemSize(result) << " of memory found, "
+                  << FormattedMemSize(m_epochContext.dagSize)
                   << " of memory required";
             return false;
         }
@@ -729,13 +726,14 @@ bool CLMiner::init_internal(const int epoch)
         // create buffer for dag
         try
         {
-            cllog << "Creating light cache buffer, size: " << FormattedMemSize(lightSize);
+            cllog << "Creating light cache buffer, size: " << FormattedMemSize(m_epochContext.lightSize);
             m_light.clear();
-            m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, lightSize));
-            cllog << "Creating DAG buffer, size: " << FormattedMemSize(dagSize)
-                  << ", free: " << FormattedMemSize(result - lightSize - dagSize);
+            m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.lightSize));
+            cllog << "Creating DAG buffer, size: " << FormattedMemSize(m_epochContext.dagSize)
+                  << ", free: "
+                  << FormattedMemSize(result - m_epochContext.lightSize - m_epochContext.dagSize);
             m_dag.clear();
-            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, dagSize));
+            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize));
             cllog << "Loading kernels";
 
             // If we have a binary kernel to use, let's try it
@@ -748,7 +746,8 @@ bool CLMiner::init_internal(const int epoch)
             m_dagKernel = cl::Kernel(program, "GenerateDAG");
 
             cllog << "Writing light cache buffer";
-            m_queue[0].enqueueWriteBuffer(m_light[0], CL_TRUE, 0, lightSize, context.light_cache);
+            m_queue[0].enqueueWriteBuffer(
+                m_light[0], CL_TRUE, 0, m_epochContext.lightSize, m_epochContext.lightCache);
         }
         catch (cl::Error const& err)
         {
@@ -773,7 +772,7 @@ bool CLMiner::init_internal(const int epoch)
 
         m_dagKernel.setArg(1, m_light[0]);
         m_dagKernel.setArg(2, m_dag[0]);
-        m_dagKernel.setArg(3, (uint32_t)(lightSize / 64));
+        m_dagKernel.setArg(3, (uint32_t)(m_epochContext.lightSize / 64));
         m_dagKernel.setArg(4, ~0u);
 
         const uint32_t workItems = m_dagItems * 2;  // GPU computes partial 512-bit DAG items.
@@ -796,11 +795,11 @@ bool CLMiner::init_internal(const int epoch)
                 m_dagKernel, cl::NullRange, groupsLeft * m_workgroupSize, m_workgroupSize);
             m_queue[0].finish();
         }
-        auto endDAG = std::chrono::steady_clock::now();
 
+        auto endDAG = std::chrono::steady_clock::now();
         auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(endDAG - startDAG);
-        cnote << FormattedMemSize(dagSize) << " of DAG data generated in " << dagTime.count()
-              << " ms.";
+        cnote << FormattedMemSize(m_epochContext.dagSize) << " of DAG data generated in "
+              << dagTime.count() << " ms.";
     }
     catch (cl::Error const& err)
     {

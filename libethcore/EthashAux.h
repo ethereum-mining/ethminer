@@ -38,6 +38,16 @@ public:
     static Result eval(int epoch, h256 const& _headerHash, uint64_t _nonce) noexcept;
 };
 
+struct EpochContext
+{
+    int epochNumber;
+    int lightNumItems;
+    size_t lightSize;
+    const ethash_hash512* lightCache;
+    int dagNumItems;
+    uint64_t dagSize;
+};
+
 struct WorkPackage
 {
     WorkPackage() = default;

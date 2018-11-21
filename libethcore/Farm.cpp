@@ -89,17 +89,34 @@ void Farm::shuffle()
     m_nonce_scrambler = uniform_int_distribution<uint64_t>()(engine);
 }
 
-void Farm::setWork(WorkPackage const& _wp)
+void Farm::setWork(WorkPackage const& _newWp)
 {
     // Set work to each miner giving it's own starting nonce
     Guard l(x_minerWork);
-    m_work = _wp;
+
+    // Retrieve appropriate EpochContext
+    if (m_currentWp.epoch != _newWp.epoch)
+    {
+        ethash::epoch_context _ec = ethash::get_global_epoch_context(_newWp.epoch);
+        m_currentEc.epochNumber = _newWp.epoch;
+        m_currentEc.lightNumItems = _ec.light_cache_num_items;
+        m_currentEc.lightSize = ethash::get_light_cache_size(_ec.light_cache_num_items);
+        m_currentEc.dagNumItems = _ec.full_dataset_num_items;
+        m_currentEc.dagSize = ethash::get_full_dataset_size(_ec.full_dataset_num_items);
+        m_currentEc.lightCache = _ec.light_cache;
+        for (unsigned int i = 0; i < m_miners.size(); i++)
+        {
+            m_miners.at(i)->setEpoch(m_currentEc);
+        }
+    }
+
+    m_currentWp = _newWp;
     uint64_t _startNonce;
-    if (m_work.exSizeBytes > 0)
+    if (m_currentWp.exSizeBytes > 0)
     {
         // Equally divide the residual segment among miners
-        _startNonce = m_work.startNonce;
-        m_nonce_segment_with = log2(pow(2, 64 - (m_work.exSizeBytes * 4)) / m_miners.size());
+        _startNonce = m_currentWp.startNonce;
+        m_nonce_segment_with = log2(pow(2, 64 - (m_currentWp.exSizeBytes * 4)) / m_miners.size());
     }
     else
     {
@@ -109,8 +126,8 @@ void Farm::setWork(WorkPackage const& _wp)
 
     for (unsigned int i = 0; i < m_miners.size(); i++)
     {
-        m_work.startNonce = _startNonce + ((uint64_t)i << m_nonce_segment_with);
-        m_miners.at(i)->setWork(m_work);
+        m_currentWp.startNonce = _startNonce + ((uint64_t)i << m_nonce_segment_with);
+        m_miners.at(i)->setWork(m_currentWp);
     }
 }
 

@@ -76,7 +76,7 @@ public:
 
 protected:
 
-    bool init_internal(const int epoch) override;
+    bool init_internal() override;
 
     void kick_miner() override;
 

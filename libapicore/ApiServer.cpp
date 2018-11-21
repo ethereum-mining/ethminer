@@ -993,7 +993,6 @@ Json::Value ApiConnection::getMinerStatDetail()
 
     SolutionStats s = Farm::f().getSolutionStats();
     WorkingProgress p = Farm::f().miningProgress();
-    WorkPackage w = Farm::f().work();
 
     // ostringstream version;
     Json::Value gpus;
@@ -1022,10 +1021,7 @@ Json::Value ApiConnection::getMinerStatDetail()
 
     /* Pool info */
     jRes["difficulty"] = PoolManager::p().getCurrentDifficulty();
-    if (w)
-        jRes["epoch"] = w.epoch;
-    else
-        jRes["epoch"] = Json::Value::null;
+    jRes["epoch"] = PoolManager::p().getCurrentEpoch();
     jRes["epoch_changes"] = PoolManager::p().getEpochChanges();
 
     /* basic setup */

@@ -57,7 +57,7 @@ unsigned CUDAMiner::s_gridSize = CUDAMiner::c_defaultGridSize;
 unsigned CUDAMiner::s_numStreams = CUDAMiner::c_defaultNumStreams;
 unsigned CUDAMiner::s_scheduleFlag = 0;
 
-bool CUDAMiner::init_internal(const int epoch)
+bool CUDAMiner::init_internal()
 {
 
     unsigned device = s_devices[m_index] > -1 ? s_devices[m_index] : m_index;
@@ -81,23 +81,17 @@ bool CUDAMiner::init_internal(const int epoch)
             << " (Compute " + to_string(device_props.major) + "." + to_string(device_props.minor) +
                    ")";
 
-    const auto& context = ethash::get_global_epoch_context(epoch);
-    const auto lightNumItems = context.light_cache_num_items;
-    const auto lightSize = ethash::get_light_cache_size(lightNumItems);
-    const auto dagNumItems = context.full_dataset_num_items;
-    const auto dagSize = ethash::get_full_dataset_size(dagNumItems);
-
     CUDA_SAFE_CALL(cudaSetDevice(m_device_num));
     cudalog << "Set Device to current";
-    if (dagNumItems != m_dag_size || !m_dag)
+    if (m_epochContext.dagNumItems != m_dag_size || !m_dag)
     {
         // Check whether the current device has sufficient memory every time we recreate the dag
-        if (device_props.totalGlobalMem < dagSize)
+        if (device_props.totalGlobalMem < m_epochContext.dagSize)
         {
             cudalog << "CUDA device " << string(device_props.name)
                     << " has insufficient GPU memory. "
                     << FormattedMemSize(device_props.totalGlobalMem) << " of memory found, "
-                    << FormattedMemSize(dagSize) << " of memory required";
+                    << FormattedMemSize(m_epochContext.dagSize) << " of memory required";
             return false;
         }
         // We need to reset the device and recreate the dag
@@ -116,20 +110,21 @@ bool CUDAMiner::init_internal(const int epoch)
 
     if (!light)
     {
-        cudalog << "Allocating light with size: " << FormattedMemSize(lightSize);
-        CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), lightSize));
+        cudalog << "Allocating light with size: " << FormattedMemSize(m_epochContext.lightSize);
+        CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), m_epochContext.lightSize));
     }
     // copy lightData to device
-    CUDA_SAFE_CALL(cudaMemcpy(
-        reinterpret_cast<void*>(light), context.light_cache, lightSize, cudaMemcpyHostToDevice));
+    CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), m_epochContext.lightCache,
+        m_epochContext.lightSize, cudaMemcpyHostToDevice));
     m_light[m_device_num] = light;
 
-    if (dagNumItems != m_dag_size || !dag)  // create buffer for dag
-        CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
+    if (m_epochContext.dagNumItems != m_dag_size || !dag)  // create buffer for dag
+        CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), m_epochContext.dagSize));
 
-    set_constants(dag, dagNumItems, light, lightNumItems);  // in ethash_cuda_miner_kernel.cu
+    set_constants(dag, m_epochContext.dagNumItems, light,
+        m_epochContext.lightNumItems);  // in ethash_cuda_miner_kernel.cu
 
-    if (dagNumItems != m_dag_size || !dag)
+    if (m_epochContext.dagNumItems != m_dag_size || !dag)
     {
         // create mining buffers
         cudalog << "Generating mining buffers";
@@ -142,11 +137,13 @@ bool CUDAMiner::init_internal(const int epoch)
         m_current_target = 0;
 
         cudalog << "Generating DAG for GPU #" << m_device_num
-                << " with dagSize: " << FormattedMemSize(dagSize) << " ("
-                << FormattedMemSize(device_props.totalGlobalMem - dagSize - lightSize) << " left)";
+                << " with dagSize: " << FormattedMemSize(m_epochContext.dagSize) << " ("
+                << FormattedMemSize(device_props.totalGlobalMem - m_epochContext.dagSize -
+                                    m_epochContext.lightSize)
+                << " left)";
         auto startDAG = std::chrono::steady_clock::now();
 
-        ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0]);
+        ethash_generate_dag(m_epochContext.dagSize, s_gridSize, s_blockSize, m_streams[0]);
 
         cudalog << "Generated DAG for GPU" << m_device_num << " in: "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -157,7 +154,7 @@ bool CUDAMiner::init_internal(const int epoch)
     }
 
     m_dag = dag;
-    m_dag_size = dagNumItems;
+    m_dag_size = m_epochContext.dagNumItems;
 
     s_dagLoadIndex++;
     if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
@@ -193,7 +190,7 @@ void CUDAMiner::workLoop()
             // Epoch change ?
             if (current.epoch != w.epoch)
             {
-                if (!init(w.epoch))
+                if (!init())
                     break;  // This will simply exit the thread
 
                 // As DAG generation takes a while we need to

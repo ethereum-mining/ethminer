@@ -29,8 +29,6 @@
 
 #include <boost/thread.hpp>
 
-#define MINER_WAIT_STATE_WORK 1
-
 #define DAG_LOAD_MODE_PARALLEL 0
 #define DAG_LOAD_MODE_SEQUENTIAL 1
 
@@ -92,6 +90,7 @@ enum MinerPauseEnum
     PauseDueToOverHeating,
     PauseDueToAPIRequest,
     PauseDueToFarmPaused,
+    PauseDueToInsufficientMemory,
     Pause_MAX  // Must always be last as a placeholder of max count
 };
 
@@ -256,6 +255,8 @@ public:
      */
     void setWork(WorkPackage const& _work);
 
+    void setEpoch(EpochContext const& _ec) { m_epochContext = _ec; }
+
     unsigned Index() { return m_index; };
 
     HwMonitorInfo hwmonInfo() { return m_hwmoninfo; }
@@ -272,7 +273,7 @@ public:
 
     /**
      * @brief Checks if the given reason for pausing is currently active
-    */
+     */
     bool pauseTest(MinerPauseEnum what);
 
     /**
@@ -294,16 +295,15 @@ public:
     void TriggerHashRateUpdate() noexcept;
 
 protected:
-
     /**
      * @brief Initializes miner to current (or changed) epoch.
      */
-    bool init(const int epoch);
+    bool init();
 
     /**
      * @brief Miner's specific initialization to current (or changed) epoch.
      */
-    virtual bool init_internal(const int epoch) = 0;
+    virtual bool init_internal() = 0;
 
     /**
      * @brief No work left to be done. Pause until told to kickOff().
@@ -321,6 +321,8 @@ protected:
     static unsigned s_dagLoadIndex;
     const unsigned m_index = 0;
 
+    EpochContext m_epochContext;
+
 #ifdef DEV_BUILD
     std::chrono::steady_clock::time_point m_workSwitchStart;
 #endif
@@ -333,8 +335,9 @@ protected:
 
 private:
     bitset<MinerPauseEnum::Pause_MAX> m_pauseFlags;
-    WorkPackage m_work;
 
+    WorkPackage m_work;
+    
     std::chrono::steady_clock::time_point m_hashTime = std::chrono::steady_clock::now();
     std::atomic<float> m_hashRate = {0.0};
     uint64_t m_groupCount = 0;

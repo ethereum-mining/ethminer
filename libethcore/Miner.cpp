@@ -150,6 +150,9 @@ std::string Miner::pausedString()
                     retVar.append("Api request");
                 else if (i == MinerPauseEnum::PauseDueToFarmPaused)
                     retVar.append("Farm suspended");
+                else if (i == MinerPauseEnum::PauseDueToInsufficientMemory)
+                    retVar.append("Insufficient GPU memory");
+
             }
         }
     }
@@ -184,7 +187,7 @@ void Miner::TriggerHashRateUpdate() noexcept
     m_hashRate = 0.0;
 }
 
-bool Miner::init(const int epoch)
+bool Miner::init()
 {
     // When loading of DAG is sequential wait for
     // this instance to become current
@@ -203,7 +206,7 @@ bool Miner::init(const int epoch)
 
     // Run the internal initialization
     // specific for miner
-    bool result = init_internal(epoch);
+    bool result = init_internal();
     return result;
 }
 
