@@ -158,49 +158,19 @@ bool CUDAMiner::init(int epoch)
 
         m_current_target = 0;
 
-        if (!s_dagInHostMemory)
-        {
-            if ((m_device_num == s_dagCreateDevice) || (s_dagLoadMode != DAG_LOAD_MODE_SINGLE))
-            {
-                cudalog << "Generating DAG for GPU #" << m_device_num
-                        << " with dagSize: " << FormattedMemSize(dagSize) << " ("
-                        << FormattedMemSize(device_props.totalGlobalMem - dagSize - lightSize)
-                        << " left)";
-                auto startDAG = std::chrono::steady_clock::now();
+        cudalog << "Generating DAG for GPU #" << m_device_num
+                << " with dagSize: " << FormattedMemSize(dagSize) << " ("
+                << FormattedMemSize(device_props.totalGlobalMem - dagSize - lightSize) << " left)";
+        auto startDAG = std::chrono::steady_clock::now();
 
-                ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0]);
+        ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0]);
 
-                cudalog << "Generated DAG for GPU" << m_device_num << " in: "
-                        << std::chrono::duration_cast<std::chrono::milliseconds>(
-                               std::chrono::steady_clock::now() - startDAG)
-                               .count()
-                        << " ms.";
+        cudalog << "Generated DAG for GPU" << m_device_num << " in: "
+                << std::chrono::duration_cast<std::chrono::milliseconds>(
+                       std::chrono::steady_clock::now() - startDAG)
+                       .count()
+                << " ms.";
 
-                if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
-                {
-                    uint8_t* memoryDAG = new uint8_t[dagSize];
-                    cudalog << "Copying DAG from GPU #" << m_device_num << " to host";
-                    CUDA_SAFE_CALL(cudaMemcpy(
-                        reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
-
-                    s_dagInHostMemory = memoryDAG;
-                }
-            }
-            else
-            {
-                while (!s_dagInHostMemory)
-                    this_thread::sleep_for(chrono::milliseconds(100));
-                goto cpyDag;
-            }
-        }
-        else
-        {
-        cpyDag:
-            cudalog << "Copying DAG from host to GPU #" << m_device_num;
-            const void* hdag = (const void*)s_dagInHostMemory;
-            CUDA_SAFE_CALL(
-                cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
-        }
     }
 
     m_dag = dag;
@@ -209,17 +179,6 @@ bool CUDAMiner::init(int epoch)
     s_dagLoadIndex++;
     if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
         m_dag_loaded_signal.notify_all();
-
-    if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
-    {
-        if (s_dagLoadIndex >= s_numInstances && s_dagInHostMemory)
-        {
-            // all devices have loaded DAG, we can free now
-            delete[] s_dagInHostMemory;
-            s_dagInHostMemory = nullptr;
-            cnote << "Freeing DAG from host";
-        }
-    }
 
     return true;
 }
@@ -363,11 +322,9 @@ unsigned const CUDAMiner::c_defaultGridSize = 8192;  // * CL_DEFAULT_LOCAL_WORK_
 unsigned const CUDAMiner::c_defaultNumStreams = 2;
 
 bool CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
-    unsigned _parallelHash, unsigned _scheduleFlag, unsigned _dagLoadMode,
-    unsigned _dagCreateDevice)
+    unsigned _parallelHash, unsigned _scheduleFlag, unsigned _dagLoadMode)
 {
     s_dagLoadMode = _dagLoadMode;
-    s_dagCreateDevice = _dagCreateDevice;
     s_blockSize = _blockSize;
     s_gridSize = _gridSize;
     s_numStreams = _numStreams;

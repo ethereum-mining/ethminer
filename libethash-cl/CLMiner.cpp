@@ -497,11 +497,9 @@ void CLMiner::listDevices()
 }
 
 bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
-    unsigned _platformId, unsigned _dagLoadMode, unsigned _dagCreateDevice,
-    bool _nobinary)
+    unsigned _platformId, unsigned _dagLoadMode, bool _nobinary)
 {
     s_dagLoadMode = _dagLoadMode;
-    s_dagCreateDevice = _dagCreateDevice;
     s_noBinary = _nobinary;
     s_platformId = _platformId;
     _localWorkSize = ((_localWorkSize + 7) / 8) * 8;

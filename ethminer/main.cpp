@@ -393,9 +393,7 @@ public:
 
         app.add_flag("--noeval", m_farmNoEval, "");
 
-        app.add_option("-L,--dag-load-mode", m_farmDagLoadMode, "", true)->check(CLI::Range(2));
-
-        app.add_option("--dag-single-dev", m_farmDagCreateDevice, "", true);
+        app.add_option("-L,--dag-load-mode", m_farmDagLoadMode, "", true)->check(CLI::Range(1));
 
         app.add_option("--benchmark-warmup", m_benchmarkWarmup, "", true);
 
@@ -612,7 +610,7 @@ public:
             }
 
             if (!CLMiner::configureGPU(m_oclLWorkSize, m_oclGWorkSize, m_oclPlatform,
-                    m_farmDagLoadMode, m_farmDagCreateDevice, m_oclNoBinary))
+                    m_farmDagLoadMode, m_oclNoBinary))
             {
                 throw std::runtime_error("Unable to initialize OpenCL GPU(s)");
             }
@@ -643,7 +641,7 @@ public:
             }
 
             if (!CUDAMiner::configureGPU(m_cudaBlockSize, m_cudaGridSize, m_cudaStreams, m_cudaParallelHash,
-                    m_cudaSchedule, m_farmDagLoadMode, m_farmDagCreateDevice))
+                    m_cudaSchedule, m_farmDagLoadMode))
             {
                 throw std::runtime_error("Unable to initialize CUDA GPU(s)");
             }
@@ -939,11 +937,7 @@ public:
                  << "                        Set DAG load mode. Can be one of:" << endl
                  << "                        0 Parallel load mode (each GPU independently)" << endl
                  << "                        1 Sequential load mode (one GPU after another)" << endl
-                 << "                        2 Single load mode (generate DAG on GPU N and" << endl
-                 << "                          copy to other GPUs). Requires --dag-single-dev"
                  << endl
-                 << "    --dag-single-dev    UINT Default 0" << endl
-                 << "                        Set DAG creation device when --dag-load-mode 2" << endl
                  << "    --tstart            UINT[30 .. 100] Default = 0" << endl
                  << "                        Suspend mining on GPU which temperature is above"
                  << endl
@@ -1274,9 +1268,7 @@ private:
 #endif
 
     // -- Farm related params
-    unsigned m_farmDagLoadMode = 0;  // DAG load mode : 0=parallel, 1=sequential, 2=single
-    unsigned m_farmDagCreateDevice =
-        0;                      // Ordinal index of GPU creating DAG (Implies m_farmDagLoadMode == 2
+    unsigned m_farmDagLoadMode = 0;  // DAG load mode : 0=parallel, 1=sequential
     bool m_farmNoEval = false;  // Whether or not ethminer should CPU re-evaluate solutions
     unsigned m_farmPollInterval =
         500;  // In getWork mode this establishes the ms. interval to check for new job

@@ -39,8 +39,7 @@ public:
     static unsigned getNumDevices();
     static void listDevices();
     static bool configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
-        unsigned _parallelHash, unsigned _scheduleFlag, unsigned _dagLoadMode,
-        unsigned _dagCreateDevice);
+        unsigned _parallelHash, unsigned _scheduleFlag, unsigned _dagLoadMode);
     static void setNumInstances(unsigned _instances);
     static void setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount);
 

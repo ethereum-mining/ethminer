@@ -25,10 +25,6 @@ unsigned Miner::s_dagLoadMode = 0;
 
 unsigned Miner::s_dagLoadIndex = 0;
 
-unsigned Miner::s_dagCreateDevice = 0;
-
-uint8_t* Miner::s_dagInHostMemory = nullptr;
-
 FarmFace* FarmFace::m_this = nullptr;
 
 std::ostream& operator<<(std::ostream& os, const HwMonitor& _hw)

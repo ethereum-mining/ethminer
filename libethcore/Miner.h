@@ -33,7 +33,6 @@
 
 #define DAG_LOAD_MODE_PARALLEL 0
 #define DAG_LOAD_MODE_SEQUENTIAL 1
-#define DAG_LOAD_MODE_SINGLE 2
 
 using namespace std;
 
@@ -315,8 +314,6 @@ protected:
 
     static unsigned s_dagLoadMode;
     static unsigned s_dagLoadIndex;
-    static unsigned s_dagCreateDevice;
-    static uint8_t* s_dagInHostMemory;
     const unsigned m_index = 0;
 
 #ifdef DEV_BUILD
