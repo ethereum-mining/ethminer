@@ -1,0 +1,138 @@
+>ethminer.exe -U -M 30000
+  m  23:42:31|main    |  ethminer version 0.15.0.dev0
+  m  23:42:31|main    |  Build: windows / release +git. 575487f
+ cu  23:42:31|main    |  Using grid size 1024 , block size 512
+Benchmarking on platform: CUDA
+Preparing DAG for block #30000
+Warming up...
+  i  23:42:31|cuda-0  |  No work.
+  i  23:42:31|cuda-0  |  Initialising miner 0
+ cu  23:42:32|cuda-0  |  Using device: GeForce GTX 1060 6GB  (Compute 6.1)
+ cu  23:42:32|cuda-0  |  Set Device to current
+ cu  23:42:32|cuda-0  |  Resetting device
+ cu  23:42:32|cuda-0  |  Compile log:
+ cu  23:42:32|cuda-0  |  JIT info:
+ ptxas info    : 202 bytes gmem, 96 bytes cmem[3]
+ptxas info    : Compiling entry function '_Z14progpow_searchy8hash32_tyPK5dag_tPV14search_resultsb' for 'sm_61'
+ptxas info    : Function properties for _Z14progpow_searchy8hash32_tyPK5dag_tPV14search_resultsb
+ptxas         .     32 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 157 registers, 16384 bytes smem, 385 bytes cmem[0], 4 bytes cmem[2]
+ptxas info    : Function properties for _Z11keccak_f8008hash32_tyS_
+ptxas         .     0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ cu  23:42:32|cuda-0  |  JIT err:
+
+ cu  23:42:32|cuda-0  |  Mangled name: _Z14progpow_searchy8hash32_tyPK5dag_tPV14search_resultsb
+ cu  23:42:32|cuda-0  |  done compiling
+ cu  23:42:32|cuda-0  |  Allocating light with size: 16907456
+ cu  23:42:32|cuda-0  |  Generating mining buffers
+ cu  23:42:32|cuda-0  |  Generating DAG for GPU # 0  with dagBytes: 1082130304  gridSize: 1024
+ cu  23:42:36|cuda-0  |  Finished DAG
+header ffeeddccbbaa9988776655443322110000112233445566778899aabbccddeeff
+nonce 123456789abcdef0
+seed ee304846ddd0a47b
+cdag[0]=b3e35467 cdag[1]=ae7402e3 cdag[2]=8522a782 cdag[3]=a2d8353b
+cdag[4]=ff4723bd cdag[5]=bfbc05ee cdag[6]=de6944de cdag[7]=f0d2b5b8
+cdag[8]=c74cbad3 cdag[9]=b100f797 cdag[10]=05bc60be cdag[11]=4f40840b
+cdag[12]=35e47268 cdag[13]=9cd6f993 cdag[14]=6a0e4659 cdag[15]=b838e46e
+cdag[4080]=bde0c650 cdag[4081]=57cba482 cdag[4082]=54877c9d cdag[4083]=f9fdc423
+cdag[4084]=fb65141b cdag[4085]=55074ca4 cdag[4086]=c7dd116e cdag[4087]=bc1737d1
+cdag[4088]=126e8847 cdag[4089]=b16983b2 cdag[4090]=f80c058e cdag[4091]=e0ad53b5
+cdag[4092]=d5f3e840 cdag[4093]=ff1bdd89 cdag[4094]=35660a19 cdag[4095]=73244193
+fill_mix lane 0 mix[0]=10c02f0d ... mix[31]=6d175b7e
+fill_mix lane 1 mix[0]=f301da0a ... mix[31]=be60fc28
+fill_mix lane 2 mix[0]=81f99723 ... mix[31]=5cbc32d1
+fill_mix lane 3 mix[0]=35e2204b ... mix[31]=4951b6e6
+fill_mix lane 4 mix[0]=1e276b09 ... mix[31]=70db3fa7
+fill_mix lane 5 mix[0]=eb343d86 ... mix[31]=0ae9ecfa
+fill_mix lane 6 mix[0]=ff34cf47 ... mix[31]=e2cd3093
+fill_mix lane 7 mix[0]=c7056ce8 ... mix[31]=4c362d17
+fill_mix lane 8 mix[0]=bd42a7b6 ... mix[31]=7da69107
+fill_mix lane 9 mix[0]=95d03571 ... mix[31]=7d22f89e
+fill_mix lane 10 mix[0]=af0e74dc ... mix[31]=12f2d96c
+fill_mix lane 11 mix[0]=1287d683 ... mix[31]=1931a478
+fill_mix lane 12 mix[0]=96f960c2 ... mix[31]=6f5b9f23
+fill_mix lane 13 mix[0]=4e46d05d ... mix[31]=3837dda3
+fill_mix lane 14 mix[0]=1a9b1d40 ... mix[31]=08b4fc39
+fill_mix lane 15 mix[0]=3344ce0f ... mix[31]=20201012
+loop 0 dag entry 2043727 of 4227071 total
+loop 1 dag entry 978957 of 4227071 total
+loop 2 dag entry 2219106 of 4227071 total
+loop 3 dag entry 2200566 of 4227071 total
+loop 4 dag entry 3060295 of 4227071 total
+loop 5 dag entry 1066534 of 4227071 total
+loop 6 dag entry 1860140 of 4227071 total
+loop 7 dag entry 3119727 of 4227071 total
+loop 8 dag entry 1192860 of 4227071 total
+loop 9 dag entry 148078 of 4227071 total
+loop 10 dag entry 4019583 of 4227071 total
+loop 11 dag entry 763952 of 4227071 total
+loop 12 dag entry 938751 of 4227071 total
+loop 13 dag entry 540327 of 4227071 total
+loop 14 dag entry 3142750 of 4227071 total
+loop 15 dag entry 780266 of 4227071 total
+loop 16 dag entry 842914 of 4227071 total
+loop 17 dag entry 302514 of 4227071 total
+loop 18 dag entry 1341289 of 4227071 total
+loop 19 dag entry 1042834 of 4227071 total
+loop 20 dag entry 3313136 of 4227071 total
+loop 21 dag entry 1552169 of 4227071 total
+loop 22 dag entry 4108553 of 4227071 total
+loop 23 dag entry 1435285 of 4227071 total
+loop 24 dag entry 4069636 of 4227071 total
+loop 25 dag entry 2928713 of 4227071 total
+loop 26 dag entry 1770730 of 4227071 total
+loop 27 dag entry 238606 of 4227071 total
+loop 28 dag entry 3263664 of 4227071 total
+loop 29 dag entry 1755218 of 4227071 total
+loop 30 dag entry 3035329 of 4227071 total
+loop 31 dag entry 652802 of 4227071 total
+loop 32 dag entry 3283360 of 4227071 total
+loop 33 dag entry 2327823 of 4227071 total
+loop 34 dag entry 3339662 of 4227071 total
+loop 35 dag entry 1453003 of 4227071 total
+loop 36 dag entry 3602110 of 4227071 total
+loop 37 dag entry 1821760 of 4227071 total
+loop 38 dag entry 754663 of 4227071 total
+loop 39 dag entry 184501 of 4227071 total
+loop 40 dag entry 3600362 of 4227071 total
+loop 41 dag entry 1816934 of 4227071 total
+loop 42 dag entry 1381225 of 4227071 total
+loop 43 dag entry 1304550 of 4227071 total
+loop 44 dag entry 1353179 of 4227071 total
+loop 45 dag entry 10429 of 4227071 total
+loop 46 dag entry 894212 of 4227071 total
+loop 47 dag entry 4224745 of 4227071 total
+loop 48 dag entry 215407 of 4227071 total
+loop 49 dag entry 506509 of 4227071 total
+loop 50 dag entry 1702595 of 4227071 total
+loop 51 dag entry 303727 of 4227071 total
+loop 52 dag entry 41423 of 4227071 total
+loop 53 dag entry 3805288 of 4227071 total
+loop 54 dag entry 4093082 of 4227071 total
+loop 55 dag entry 148616 of 4227071 total
+loop 56 dag entry 3441343 of 4227071 total
+loop 57 dag entry 8257 of 4227071 total
+loop 58 dag entry 276369 of 4227071 total
+loop 59 dag entry 3320925 of 4227071 total
+loop 60 dag entry 1431023 of 4227071 total
+loop 61 dag entry 2778561 of 4227071 total
+loop 62 dag entry 452777 of 4227071 total
+loop 63 dag entry 1275346 of 4227071 total
+digest lane 0: f0768603
+digest lane 1: b64fd1eb
+digest lane 2: 76cb337c
+digest lane 3: 47e14410
+digest lane 4: c91decf1
+digest lane 5: 8b665796
+digest lane 6: 16ee0104
+digest lane 7: 9eb0d380
+digest lane 8: 5cd02f9e
+digest lane 9: bad01c1e
+digest lane 10: edfe0292
+digest lane 11: 3960e1e8
+digest lane 12: def7562f
+digest lane 13: 7bf8fab5
+digest lane 14: 0dce42c8
+digest lane 15: fae46383
+digest: 44fa88669c864aa30ba7da46e557593289c4d1fb143a1c43813d512b14fb4636
+result (top 64 bits): b946ea7d74e3c619
