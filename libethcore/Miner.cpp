@@ -50,7 +50,9 @@ std::ostream& operator<<(std::ostream& os, const FormattedMemSize& s)
             break;
         d /= 1024.0;
     }
-    return os << fixed << setprecision(3) << d << ' ' << suffixes[i];
+    std::ostringstream stream;
+    stream << fixed << setprecision(3) << d << ' ' << suffixes[i];
+    return os << stream.str();
 }
 
 std::ostream& operator<<(std::ostream& _out, const WorkingProgress& _p)
