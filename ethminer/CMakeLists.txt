@@ -2,7 +2,8 @@ cmake_policy(SET CMP0015 NEW)
 
 aux_source_directory(. SRC_LIST)
 
-include_directories(BEFORE ..)
+find_package(CUDA REQUIRED)
+include_directories(BEFORE .. ${CUDA_INCLUDE_DIRS})
 
 set(EXECUTABLE ethminer)
 
