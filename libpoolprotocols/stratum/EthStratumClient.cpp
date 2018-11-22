@@ -662,23 +662,9 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     m_sendBuffer.consume(4096);
     clear_response_pleas();
 
-    // Extract user and worker
-    size_t p;
-    m_worker.clear();
-    p = m_conn->User().find_first_of(".");
-    if (p != string::npos)
-    {
-        m_user = m_conn->User().substr(0, p);
-
-        // There should be at least one char after dot
-        // returned p is zero based
-        if (p < (m_conn->User().length() - 1))
-            m_worker = m_conn->User().substr(++p);
-    }
-    else
-    {
-        m_user = m_conn->User();
-    }
+    // User and worker
+    m_user = m_conn->User();
+    m_worker = m_conn->Workername();
 
     /*
 
