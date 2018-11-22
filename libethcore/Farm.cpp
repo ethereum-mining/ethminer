@@ -24,7 +24,9 @@ namespace eth
 {
 Farm* Farm::m_this = nullptr;
 
-Farm::Farm(unsigned hwmonlvl, bool noeval) : m_io_strand(g_io_service), m_collectTimer(g_io_service)
+Farm::Farm(
+    std::map<std::string, DeviceDescriptorType>& _DevicesCollection, unsigned hwmonlvl, bool noeval)
+  : m_io_strand(g_io_service), m_collectTimer(g_io_service), m_DevicesCollection(_DevicesCollection)
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::Farm() begin");
 
@@ -58,6 +60,10 @@ Farm::Farm(unsigned hwmonlvl, bool noeval) : m_io_strand(g_io_service), m_collec
 Farm::~Farm()
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::~Farm() begin");
+
+    // Stop data collector (before monitors !!!)
+    m_collectTimer.cancel();
+
     // Deinit HWMON
     if (adlh)
         wrap_adl_destroy(adlh);
@@ -68,11 +74,10 @@ Farm::~Farm()
     if (nvmlh)
         wrap_nvml_destroy(nvmlh);
 
-    // Stop mining
-    stop();
+    // Stop mining (if needed)
+    if (m_isMining.load(std::memory_order_relaxed))
+        stop();
 
-    // Stop data collector
-    m_collectTimer.cancel();
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::~Farm() end");
 }
 
@@ -139,49 +144,27 @@ void Farm::setSealers(std::map<std::string, SealerDescriptor> const& _sealers)
 /**
  * @brief Start a number of miners.
  */
-bool Farm::start(std::string const& _sealer, bool mixed)
+bool Farm::start()
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() begin");
     Guard l(x_minerWork);
-    if (!m_miners.empty() && m_lastSealer == _sealer)
-    {
-        DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() end1");
-        return true;
-    }
-    if (!m_sealers.count(_sealer))
-    {
-        DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() end2");
-        return false;
-    }
 
-    if (!mixed)
+    uint16_t instanceId = 0;
+    // Start all subscribed miners
+    for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
     {
-        m_miners.clear();
-    }
-    auto ins = m_sealers[_sealer].instances();
-    unsigned start = 0;
-    if (!mixed)
-    {
-        m_miners.reserve(ins);
-    }
-    else
-    {
-        start = m_miners.size();
-        ins += start;
-        m_miners.reserve(ins);
-    }
-    for (unsigned i = start; i < ins; ++i)
-    {
-        // TODO: Improve miners creation, use unique_ptr.
-        m_miners.push_back(std::shared_ptr<Miner>(m_sealers[_sealer].create(i)));
-
-        // Start miners' threads. They should pause waiting for new work
-        // package.
+        if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::None)
+            continue;
+        if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda)
+            m_miners.push_back(std::shared_ptr<Miner>(m_sealers["cuda"].create(instanceId)));
+        if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
+            m_miners.push_back(std::shared_ptr<Miner>(m_sealers["opencl"].create(instanceId)));
+        m_miners.back()->setDescriptor(it->second);
         m_miners.back()->startWorking();
     }
 
-    m_isMining.store(true, std::memory_order_relaxed);
-    m_lastSealer = _sealer;
+    if (instanceId)
+        m_isMining.store(true, std::memory_order_relaxed);
 
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() end");
     return true;
@@ -208,7 +191,7 @@ void Farm::stop()
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::stop() end");
 }
 
-void Farm::pause() 
+void Farm::pause()
 {
     // Signal each miner to suspend mining
     Guard l(x_minerWork);
@@ -333,12 +316,11 @@ void Farm::submitProof(Solution const& _s)
 #ifdef DEV_BUILD
     if (g_logOptions & LOG_SUBMIT)
         cnote << "Submit time: "
-             << std::chrono::duration_cast<std::chrono::microseconds>(
-                    std::chrono::steady_clock::now() - _s.tstamp)
-                    .count()
-             << " us.";
+              << std::chrono::duration_cast<std::chrono::microseconds>(
+                     std::chrono::steady_clock::now() - _s.tstamp)
+                     .count()
+              << " us.";
 #endif
-    
 }
 
 
@@ -441,7 +423,7 @@ void Farm::collectData(const boost::system::error_code& ec)
             }
 
             // If temperature control has been enabled call
-            // check threshold 
+            // check threshold
             if (m_tstop)
             {
                 bool paused = miner->pauseTest(MinerPauseEnum::PauseDueToOverHeating);

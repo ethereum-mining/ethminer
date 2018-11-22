@@ -35,13 +35,10 @@ public:
     CUDAMiner(unsigned _index);
     ~CUDAMiner() override;
 
-    static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
     static unsigned getNumDevices();
-    static void listDevices();
-    static bool configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
+    static void enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollection);
+    static void configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
         unsigned _parallelHash, unsigned _scheduleFlag, unsigned _dagLoadMode);
-    static void setNumInstances(unsigned _instances);
-    static void setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount);
 
     void search(
         uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w);
@@ -56,7 +53,9 @@ public:
 
 protected:
 
-    bool init_internal() override;
+    bool initDevice() override;
+
+    bool initEpoch_internal() override;
 
     void kick_miner() override;
 
@@ -66,12 +65,6 @@ private:
     boost::asio::io_service::strand m_io_strand;
 
     void workLoop() override;
-
-    /// Constants on GPU
-    hash128_t* m_dag = nullptr;
-    std::vector<hash64_t*> m_light;
-    int m_dag_size = -1;
-    uint32_t m_device_num = 0;
 
     std::vector<volatile Search_results*> m_search_buf;
     std::vector<cudaStream_t> m_streams;
@@ -91,8 +84,6 @@ private:
     const uint32_t m_batch_size;
     const uint32_t m_streams_batch_size;
 
-    static unsigned s_numInstances;
-    static vector<int> s_devices;
 };
 
 

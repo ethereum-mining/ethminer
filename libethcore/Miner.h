@@ -38,6 +38,21 @@ namespace dev
 {
 namespace eth
 {
+enum class DeviceTypeEnum
+{
+    Unknown,
+    Cpu,
+    Gpu,
+    Accelerator
+};
+
+enum class DeviceSubscriptionTypeEnum
+{
+    None,
+    OpenCL,
+    Cuda
+};
+
 enum class MinerType
 {
     Mixed,
@@ -57,6 +72,43 @@ enum class HwMonitorIndexSource
     UNKNOWN,
     OPENCL,
     CUDA
+};
+
+struct DeviceDescriptorType
+{
+    DeviceTypeEnum Type = DeviceTypeEnum::Unknown;
+    DeviceSubscriptionTypeEnum SubscriptionType = DeviceSubscriptionTypeEnum::None;
+
+    string UniqueId;     // For GPUs this is the PCI ID
+    size_t TotalMemory;  // Total memory available by device
+
+    bool clDetected;  // For OpenCL detected devices
+    string clName;
+    unsigned int clPlatformId;
+    string clPlatformName;
+    string clPlatformVersion;
+    unsigned int clPlatformVersionMajor;
+    unsigned int clPlatformVersionMinor;
+    unsigned int clDeviceOrdinal;
+    unsigned int clDeviceIndex;
+    string clDeviceVersion;
+    unsigned int clDeviceVersionMajor;
+    unsigned int clDeviceVersionMinor;
+    string clBoardName;
+    size_t clMaxMemAlloc;
+    size_t clMaxWorkGroup;
+    unsigned int clMaxComputeUnits;
+    string clNvCompute;
+    unsigned int clNvComputeMajor;
+    unsigned int clNvComputeMinor;
+
+    bool cuDetected;  // For CUDA detected devices
+    string cuName;
+    unsigned int cuDeviceOrdinal;
+    unsigned int cuDeviceIndex;
+    string cuCompute;
+    unsigned int cuComputeMajor;
+    unsigned int cuComputeMinor;
 };
 
 struct HwMonitorInfo
@@ -91,6 +143,7 @@ enum MinerPauseEnum
     PauseDueToAPIRequest,
     PauseDueToFarmPaused,
     PauseDueToInsufficientMemory,
+    PauseDueToInitEpochError,
     Pause_MAX  // Must always be last as a placeholder of max count
 };
 
@@ -244,17 +297,26 @@ private:
 class Miner : public Worker
 {
 public:
-    Miner(std::string const& _name, size_t _index)
+
+    Miner(std::string const& _name, unsigned _index)
       : Worker(_name + std::to_string(_index)), m_index(_index)
     {}
 
     virtual ~Miner() = default;
 
     /**
+     * @brief Assigns the device descriptor to this instance
+     */
+    void setDescriptor(DeviceDescriptorType& _descriptor);
+
+    /**
      * @brief Assigns hashing work to this instance
      */
     void setWork(WorkPackage const& _work);
 
+    /**
+     * @brief Assigns Epoch context to this instance
+     */
     void setEpoch(EpochContext const& _ec) { m_epochContext = _ec; }
 
     unsigned Index() { return m_index; };
@@ -295,15 +357,21 @@ public:
     void TriggerHashRateUpdate() noexcept;
 
 protected:
+
+    /**
+     * @brief Initializes miner's device.
+     */
+    virtual bool initDevice() = 0;
+
     /**
      * @brief Initializes miner to current (or changed) epoch.
      */
-    bool init();
+    bool initEpoch();
 
     /**
      * @brief Miner's specific initialization to current (or changed) epoch.
      */
-    virtual bool init_internal() = 0;
+    virtual bool initEpoch_internal() = 0;
 
     /**
      * @brief No work left to be done. Pause until told to kickOff().
@@ -319,7 +387,9 @@ protected:
 
     static unsigned s_dagLoadMode;
     static unsigned s_dagLoadIndex;
-    const unsigned m_index = 0;
+
+    const unsigned m_index = 0; // Ordinal index of the Instance (not the device)
+    DeviceDescriptorType m_deviceDescriptor; // Info about the device
 
     EpochContext m_epochContext;
 
@@ -337,7 +407,7 @@ private:
     bitset<MinerPauseEnum::Pause_MAX> m_pauseFlags;
 
     WorkPackage m_work;
-    
+
     std::chrono::steady_clock::time_point m_hashTime = std::chrono::steady_clock::now();
     std::atomic<float> m_hashRate = {0.0};
     uint64_t m_groupCount = 0;

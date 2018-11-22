@@ -58,11 +58,11 @@ public:
 
     struct SealerDescriptor
     {
-        std::function<unsigned()> instances;
         std::function<Miner*(unsigned)> create;
     };
 
-    Farm(unsigned hwmonlvl, bool noeval);
+    Farm(std::map<std::string, DeviceDescriptorType>& _DevicesCollection, unsigned hwmonlvl,
+        bool noeval);
 
     ~Farm();
 
@@ -84,7 +84,7 @@ public:
     /**
      * @brief Start a number of miners.
      */
-    bool start(std::string const& _sealer, bool mixed);
+    bool start();
 
     /**
      * @brief All mining activities to a full stop.
@@ -261,6 +261,7 @@ private:
 #endif
 
     static Farm* m_this;
+    std::map<std::string, DeviceDescriptorType>& m_DevicesCollection;
 };
 
 }  // namespace eth

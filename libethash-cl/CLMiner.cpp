@@ -224,10 +224,10 @@ std::vector<cl::Platform> getPlatforms()
     {
 #if defined(CL_PLATFORM_NOT_FOUND_KHR)
         if (err.err() == CL_PLATFORM_NOT_FOUND_KHR)
-            cwarn << "No OpenCL platforms found";
+            std::cerr << "No OpenCL platforms found" << std::endl;
         else
 #endif
-            throw err;
+            std::cerr << "OpenCL error : " << err.what();
     }
     return platforms;
 }
@@ -256,9 +256,6 @@ std::vector<cl::Device> getDevices(
 }  // namespace eth
 }  // namespace dev
 
-unsigned CLMiner::s_platformId = 0;
-unsigned CLMiner::s_numInstances = 0;
-vector<int> CLMiner::s_devices(MAX_MINERS, -1);
 bool CLMiner::s_noBinary = false;
 
 CLMiner::CLMiner(unsigned _index) : Miner("cl-", _index), m_io_strand(g_io_service) {}
@@ -298,6 +295,9 @@ void CLMiner::workLoop()
     // The work package currently processed by GPU.
     WorkPackage current;
     current.header = h256();
+
+    if (!initDevice())
+    return;
 
     try
     {
@@ -344,7 +344,7 @@ void CLMiner::workLoop()
                 {
                     m_abortqueue.clear();
 
-                    if (!init())
+                    if (!initEpoch())
                         break;  // This will simply exit the thread
 
                     m_abortqueue.push_back(cl::CommandQueue(m_context[0], m_device));
@@ -398,7 +398,7 @@ void CLMiner::workLoop()
                         memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
                         auto sol = Solution{
                             nonce, mix, current, std::chrono::steady_clock::now(), m_index};
-                            cnote << "Sol: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
+                            cllog << "Sol: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
                         g_io_service.post(
                             m_io_strand.wrap(boost::bind(&Farm::submitProof, &Farm::f(), sol)));
                     }
@@ -433,71 +433,144 @@ void CLMiner::kick_miner()
     m_new_work_signal.notify_one();
 }
 
-unsigned CLMiner::getNumDevices()
+void CLMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollection) 
 {
-    vector<cl::Platform> platforms = getPlatforms();
-    if (platforms.empty())
-        return 0;
-
-    vector<cl::Device> devices = getDevices(platforms, s_platformId);
-    if (devices.empty())
-    {
-        cwarn << "No OpenCL devices found.";
-        return 0;
-    }
-    return devices.size();
-}
-
-void CLMiner::listDevices()
-{
-    string outString = "\nListing OpenCL devices.\nFORMAT: [platformID] [deviceID] deviceName\n";
-    unsigned int i = 0;
-
+    // Load available platforms
     vector<cl::Platform> platforms = getPlatforms();
     if (platforms.empty())
         return;
-    for (unsigned j = 0; j < platforms.size(); ++j)
+
+    unsigned int dIdx = 0;
+    for (unsigned int pIdx = 0; pIdx < platforms.size(); pIdx++)
     {
-        i = 0;
-        vector<cl::Device> devices = getDevices(platforms, j);
+        std::string platformName = platforms.at(pIdx).getInfo<CL_PLATFORM_NAME>();
+        std::string platformVersion = platforms.at(pIdx).getInfo<CL_PLATFORM_VERSION>();
+        unsigned int platformVersionMajor = std::stoi(platformVersion.substr(7, 1));
+        unsigned int platformVersionMinor = std::stoi(platformVersion.substr(9, 1));
+
+        bool isAMD = (pIdx == OPENCL_PLATFORM_AMD);
+        bool isNVIDIA = (pIdx == OPENCL_PLATFORM_NVIDIA);
+        bool isCLOVER = (pIdx == OPENCL_PLATFORM_CLOVER);
+        if (!isAMD && !isNVIDIA && !isCLOVER)
+        {
+            std::cerr << "Unrecognized platform " << platformName << std::endl;
+            continue;
+        }
+
+        dIdx = 0;
+        vector<cl::Device> devices = getDevices(platforms, pIdx);
         for (auto const& device : devices)
         {
-            outString += "[" + to_string(j) + "] [" + to_string(i) + "] " +
-                         device.getInfo<CL_DEVICE_NAME>() + "\n";
-            outString += "\tCL_DEVICE_TYPE: ";
-            switch (device.getInfo<CL_DEVICE_TYPE>())
+            DeviceTypeEnum clDeviceType = DeviceTypeEnum::Unknown;
+            cl_device_type detectedType = device.getInfo<CL_DEVICE_TYPE>();
+            if (detectedType == CL_DEVICE_TYPE_GPU)
+                clDeviceType = DeviceTypeEnum::Gpu;
+            else if (detectedType == CL_DEVICE_TYPE_CPU)
+                clDeviceType = DeviceTypeEnum::Cpu;
+            else if (detectedType == CL_DEVICE_TYPE_ACCELERATOR)
+                clDeviceType = DeviceTypeEnum::Accelerator;
+
+            string uniqueId;
+            DeviceDescriptorType deviceDescriptor;
+
+            if (clDeviceType == DeviceTypeEnum::Gpu && isNVIDIA)
             {
-            case CL_DEVICE_TYPE_CPU:
-                outString += "CPU\n";
-                break;
-            case CL_DEVICE_TYPE_GPU:
-                outString += "GPU\n";
-                break;
-            case CL_DEVICE_TYPE_ACCELERATOR:
-                outString += "ACCELERATOR\n";
-                break;
-            default:
-                outString += "DEFAULT\n";
-                break;
+                cl_int bus_id, slot_id;
+                if (clGetDeviceInfo(device.get(), 0x4008, sizeof(bus_id), &bus_id, NULL) ==
+                        CL_SUCCESS &&
+                    clGetDeviceInfo(device.get(), 0x4009, sizeof(slot_id), &slot_id, NULL) ==
+                        CL_SUCCESS)
+                {
+                    std::ostringstream s;
+                    s << setfill('0') << setw(2) << hex << bus_id << ":" << setw(2)
+                      << (unsigned int)(slot_id >> 3) << "." << (unsigned int)(slot_id & 0x7);
+                    uniqueId = s.str();
+                }
             }
-            outString += "\tCL_DEVICE_GLOBAL_MEM_SIZE: " +
-                         to_string(device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()) + "\n";
-            outString += "\tCL_DEVICE_MAX_MEM_ALLOC_SIZE: " +
-                         to_string(device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>()) + "\n";
-            outString += "\tCL_DEVICE_MAX_WORK_GROUP_SIZE: " +
-                         to_string(device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>()) + "\n";
-            ++i;
+            else if (clDeviceType == DeviceTypeEnum::Gpu && (isAMD || isCLOVER))
+            {
+                cl_char t[24];
+                if (clGetDeviceInfo(device.get(), 0x4037, sizeof(t), &t, NULL) == CL_SUCCESS)
+                {
+                    std::ostringstream s;
+                    s << setfill('0') << setw(2) << hex << (unsigned int)(t[21]) << ":" << setw(2)
+                      << (unsigned int)(t[22]) << "." << (unsigned int)(t[23]);
+                    uniqueId = s.str();
+                }
+            }
+            else if (clDeviceType == DeviceTypeEnum::Cpu)
+            {
+                std::ostringstream s;
+                s << "CPU:" << setfill('0') << setw(2) << hex << (pIdx + dIdx);
+                uniqueId = s.str();
+            }
+            else
+            {
+                // We're not prepared (yet) to handle other platforms or types
+                ++dIdx;
+                continue;
+            }
+
+           if (_DevicesCollection.find(uniqueId) != _DevicesCollection.end())
+                deviceDescriptor = _DevicesCollection[uniqueId];
+            else
+                deviceDescriptor = DeviceDescriptorType();
+
+            // Fill the blanks by OpenCL means
+            deviceDescriptor.Type = clDeviceType;
+            deviceDescriptor.UniqueId = uniqueId;
+            deviceDescriptor.clDetected = true;
+            deviceDescriptor.clPlatformId = pIdx;
+            deviceDescriptor.clPlatformName = platformName;
+            deviceDescriptor.clPlatformVersion = platformVersion;
+            deviceDescriptor.clPlatformVersionMajor = platformVersionMajor;
+            deviceDescriptor.clPlatformVersionMinor = platformVersionMinor;
+            deviceDescriptor.clDeviceOrdinal = dIdx;
+
+            // Save device for future use in the CL scope
+            deviceDescriptor.clDeviceIndex = s_devices.size();
+            s_devices.push_back(device);
+
+            deviceDescriptor.clName = device.getInfo<CL_DEVICE_NAME>();
+            deviceDescriptor.clDeviceVersion = device.getInfo<CL_DEVICE_VERSION>();
+            deviceDescriptor.clDeviceVersionMajor =
+                std::stoi(deviceDescriptor.clDeviceVersion.substr(7, 1));
+            deviceDescriptor.clDeviceVersionMinor =
+                std::stoi(deviceDescriptor.clDeviceVersion.substr(9, 1));
+            deviceDescriptor.TotalMemory = device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
+            deviceDescriptor.clMaxMemAlloc = device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>();
+            deviceDescriptor.clMaxWorkGroup = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+            deviceDescriptor.clMaxComputeUnits = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+
+            // Apparently some 36 CU devices return a bogus 14!!!
+            deviceDescriptor.clMaxComputeUnits =
+                deviceDescriptor.clMaxComputeUnits == 14 ? 36 : deviceDescriptor.clMaxComputeUnits;
+
+            // Is it an NVIDIA card ?
+            if (isNVIDIA)
+            {
+                deviceDescriptor.clNvComputeMajor =
+                    device.getInfo<CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV>();
+                deviceDescriptor.clNvComputeMinor =
+                    device.getInfo<CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV>();
+                deviceDescriptor.clNvCompute = to_string(deviceDescriptor.clNvComputeMajor) + "." +
+                                               to_string(deviceDescriptor.clNvComputeMinor);
+            }
+
+            // Upsert Devices Collection
+            _DevicesCollection[uniqueId] = deviceDescriptor;
+            ++dIdx;
+
         }
     }
-    std::cout << outString;
+
 }
 
 bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
-    unsigned _platformId, unsigned _dagLoadMode, bool _nobinary)
+    unsigned _dagLoadMode, bool _nobinary)
 {
     s_dagLoadMode = _dagLoadMode;
     s_noBinary = _nobinary;
-    s_platformId = _platformId;
     _localWorkSize = ((_localWorkSize + 7) / 8) * 8;
     s_workgroupSize = _localWorkSize;
     s_initialGlobalWorkSize = _globalWorkSizeMultiplier * _localWorkSize;
@@ -505,86 +578,124 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMult
     return true;
 }
 
-bool CLMiner::init_internal()
+bool dev::eth::CLMiner::initDevice()
 {
-    // get all platforms
+
+    m_device = s_devices.at(m_deviceDescriptor.clDeviceIndex);
+
+    m_workgroupSize = s_workgroupSize;
+    m_globalWorkSize = s_initialGlobalWorkSize;
+    m_noBinary = s_noBinary;
+
+
+    // Set Hardware Monitor Info
+    if (m_deviceDescriptor.clPlatformId == OPENCL_PLATFORM_NVIDIA)
+    {
+        m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
+        m_hwmoninfo.indexSource = HwMonitorIndexSource::OPENCL;
+        m_noBinary = true;
+    }
+    else if (m_deviceDescriptor.clPlatformId == OPENCL_PLATFORM_AMD)
+    {
+        m_hwmoninfo.deviceType = HwMonitorInfoType::AMD;
+        m_hwmoninfo.indexSource = HwMonitorIndexSource::OPENCL;
+    }
+    else if (m_deviceDescriptor.clPlatformName == "Clover")
+    {
+        m_deviceDescriptor.clPlatformId = OPENCL_PLATFORM_CLOVER;
+        m_noBinary = true;
+    }
+    else
+    {
+        // Don't know what to do with this
+        cllog << "Unrecognized Platform";
+        return false;
+    }
+
+    if (m_deviceDescriptor.clPlatformVersionMajor == 1 &&
+        (m_deviceDescriptor.clPlatformVersionMinor == 0 ||
+            m_deviceDescriptor.clPlatformVersionMinor == 1))
+    {
+        if (m_deviceDescriptor.clPlatformId == OPENCL_PLATFORM_CLOVER)
+        {
+            cllog
+                << "OpenCL " << m_deviceDescriptor.clPlatformVersion
+                << " not supported, but platform Clover might work nevertheless. USE AT OWN RISK!";
+        }
+        else
+        {
+            cllog << "OpenCL " << m_deviceDescriptor.clPlatformVersion
+                  << " not supported. Minimum required version is 1.2";
+            throw new std::runtime_error("OpenCL 1.2 required");
+        }
+    }
+
+    ostringstream s;
+    s << "Using PciId : " << m_deviceDescriptor.UniqueId << " " << m_deviceDescriptor.clName;
+
+    if (!m_deviceDescriptor.clNvCompute.empty())
+        s << " (Compute " + m_deviceDescriptor.clNvCompute + ")";
+    else
+        s << m_deviceDescriptor.clDeviceVersion;
+
+    s << " Memory : " << FormattedMemSize(m_deviceDescriptor.TotalMemory);
+    cllog << s.str();
+
+    if ((m_deviceDescriptor.clPlatformId == OPENCL_PLATFORM_AMD) &&
+        (m_deviceDescriptor.clMaxComputeUnits != 36))
+    {
+        m_globalWorkSize = (m_globalWorkSize * m_deviceDescriptor.clMaxComputeUnits) / 36;
+        // make sure that global work size is evenly divisible by the local workgroup size
+        if (m_globalWorkSize % m_workgroupSize != 0)
+            m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
+        cnote << "Adjusting CL work multiplier for " << m_deviceDescriptor.clMaxComputeUnits
+              << " CUs."
+              << "Adjusted work multiplier: " << m_globalWorkSize / m_workgroupSize;
+    }
+
+
+    return true;
+
+}
+
+bool CLMiner::initEpoch_internal()
+{
+    auto startInit = std::chrono::steady_clock::now();
+    size_t RequiredMemory = (m_epochContext.dagSize + m_epochContext.lightSize);
+
+    // Release the pause flag if any
+    resume(MinerPauseEnum::PauseDueToInsufficientMemory);
+    resume(MinerPauseEnum::PauseDueToInitEpochError);
+
+    // Check whether the current device has sufficient memory every time we recreate the dag
+    if (m_deviceDescriptor.TotalMemory < RequiredMemory)
+    {
+        cllog << "Epoch " << m_epochContext.epochNumber << " requires "
+                << FormattedMemSize(RequiredMemory) << " memory.";
+        cllog << "This device hasn't available. Mining suspended ...";
+        pause(MinerPauseEnum::PauseDueToInsufficientMemory);
+        return true;  // This will prevent to exit the thread and
+                      // Eventually resume mining when changing coin or epoch (NiceHash)
+    }
+
+    cllog << "Generating DAG + Light : " << FormattedMemSize(RequiredMemory);
+
     try
     {
-        vector<cl::Platform> platforms = getPlatforms();
-        if (platforms.empty())
-            return false;
-
-        // use selected platform
-        unsigned platformIdx = min<unsigned>(s_platformId, platforms.size() - 1);
-
-        string platformName = platforms[platformIdx].getInfo<CL_PLATFORM_NAME>();
-        ETHCL_LOG("Platform: " << platformName);
-
-        int platformId = OPENCL_PLATFORM_UNKNOWN;
-        if (platformName == "NVIDIA CUDA")
-        {
-            platformId = OPENCL_PLATFORM_NVIDIA;
-            m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
-            m_hwmoninfo.indexSource = HwMonitorIndexSource::OPENCL;
-        }
-        else if (platformName == "AMD Accelerated Parallel Processing")
-        {
-            platformId = OPENCL_PLATFORM_AMD;
-            m_hwmoninfo.deviceType = HwMonitorInfoType::AMD;
-            m_hwmoninfo.indexSource = HwMonitorIndexSource::OPENCL;
-        }
-        else if (platformName == "Clover")
-        {
-            platformId = OPENCL_PLATFORM_CLOVER;
-        }
-
-        // get GPU device of the default platform
-        vector<cl::Device> devices = getDevices(platforms, platformIdx);
-        if (devices.empty())
-        {
-            ETHCL_LOG("No OpenCL devices found.");
-            return false;
-        }
-
-        // use selected device
-        int idx = Index() % devices.size();
-        unsigned deviceId = s_devices[idx] > -1 ? s_devices[idx] : Index();
-        m_hwmoninfo.deviceIndex = deviceId % devices.size();
-        m_device = devices[deviceId % devices.size()];
-        string device_version = m_device.getInfo<CL_DEVICE_VERSION>();
-        string device_name = m_device.getInfo<CL_DEVICE_NAME>();
-        ETHCL_LOG("Device:   " << device_name << " / " << device_version);
-
-        string clVer = device_version.substr(7, 3);
-        if (clVer == "1.0" || clVer == "1.1")
-        {
-            if (platformId == OPENCL_PLATFORM_CLOVER)
-            {
-                ETHCL_LOG("OpenCL " << clVer
-                                    << " not supported, but platform Clover might work "
-                                       "nevertheless. USE AT OWN RISK!");
-            }
-            else
-            {
-                ETHCL_LOG("OpenCL " << clVer << " not supported - minimum required version is 1.2");
-                return false;
-            }
-        }
 
         char options[256] = {0};
         int computeCapability = 0;
 #ifndef __clang__
-        if (platformId == OPENCL_PLATFORM_NVIDIA)
-        {
-            cl_uint computeCapabilityMajor =
-                m_device.getInfo<CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV>();
-            cl_uint computeCapabilityMinor =
-                m_device.getInfo<CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV>();
 
-            computeCapability = computeCapabilityMajor * 10 + computeCapabilityMinor;
+        // Nvidia
+        if (!m_deviceDescriptor.clNvCompute.empty())
+        {
+            computeCapability =
+                m_deviceDescriptor.clNvComputeMajor * 10 + m_deviceDescriptor.clNvComputeMinor;
             int maxregs = computeCapability >= 35 ? 72 : 63;
             sprintf(options, "-cl-nv-maxrregcount=%d", maxregs);
         }
+
 #endif
         // create context
         m_context.clear();
@@ -592,21 +703,6 @@ bool CLMiner::init_internal()
         m_queue.clear();
         m_queue.push_back(cl::CommandQueue(m_context[0], m_device));
 
-        m_workgroupSize = s_workgroupSize;
-        m_globalWorkSize = s_initialGlobalWorkSize;
-
-        unsigned int computeUnits = m_device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
-        // Apparently some 36 CU devices return a bogus 14!!!
-        computeUnits = computeUnits == 14 ? 36 : computeUnits;
-        if ((platformId == OPENCL_PLATFORM_AMD) && (computeUnits != 36))
-        {
-            m_globalWorkSize = (m_globalWorkSize * computeUnits) / 36;
-            // make sure that global work size is evenly divisible by the local workgroup size
-            if (m_globalWorkSize % m_workgroupSize != 0)
-                m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
-            cnote << "Adjusting CL work multiplier for " << computeUnits << " CUs."
-                  << "Adjusted work multiplier: " << m_globalWorkSize / m_workgroupSize;
-        }
 
         m_dagItems = m_epochContext.dagNumItems;
 
@@ -623,13 +719,11 @@ bool CLMiner::init_internal()
         addDefinition(code, "WORKSIZE", m_workgroupSize);
         addDefinition(code, "ACCESSES", 64);
         addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
-        addDefinition(code, "PLATFORM", platformId);
+        addDefinition(code, "PLATFORM", m_deviceDescriptor.clPlatformId);
         addDefinition(code, "COMPUTE", computeCapability);
-        if (platformId == OPENCL_PLATFORM_CLOVER)
-        {
+
+        if (m_deviceDescriptor.clPlatformId == OPENCL_PLATFORM_CLOVER)
             addDefinition(code, "LEGACY", 1);
-            s_noBinary = true;
-        }
 
         // create miner OpenCL program
         cl::Program::Sources sources{{code.data(), code.size()}};
@@ -643,15 +737,17 @@ bool CLMiner::init_internal()
             cwarn << "OpenCL kernel build log:\n"
                   << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
             cwarn << "OpenCL kernel build error (" << buildErr.err() << "):\n" << buildErr.what();
-            return false;
+            pause(MinerPauseEnum::PauseDueToInitEpochError);
+            return true;
         }
 
         /* If we have a binary kernel, we load it in tandem with the opencl,
            that way, we can use the dag generate opencl code and fall back on
            the default kernel if loading fails for whatever reason */
         bool loadedBinary = false;
+        std::string device_name = m_deviceDescriptor.clName;
 
-        if (!s_noBinary)
+        if (!m_noBinary)
         {
             std::ifstream kernel_file;
             vector<unsigned char> bin_data;
@@ -711,18 +807,6 @@ bool CLMiner::init_internal()
             }
         }
 
-        // check whether the current dag fits in memory everytime we recreate the DAG
-        cl_ulong result = 0;
-        m_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
-        if (result < m_epochContext.dagSize)
-        {
-            cnote << "OpenCL device " << device_name << " has insufficient GPU memory."
-                  << FormattedMemSize(result) << " of memory found, "
-                  << FormattedMemSize(m_epochContext.dagSize)
-                  << " of memory required";
-            return false;
-        }
-
         // create buffer for dag
         try
         {
@@ -731,7 +815,7 @@ bool CLMiner::init_internal()
             m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.lightSize));
             cllog << "Creating DAG buffer, size: " << FormattedMemSize(m_epochContext.dagSize)
                   << ", free: "
-                  << FormattedMemSize(result - m_epochContext.lightSize - m_epochContext.dagSize);
+                  << FormattedMemSize(m_deviceDescriptor.TotalMemory - RequiredMemory);
             m_dag.clear();
             m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize));
             cllog << "Loading kernels";
@@ -752,7 +836,8 @@ bool CLMiner::init_internal()
         catch (cl::Error const& err)
         {
             cwarn << ethCLErrorHelper("Creating DAG buffer failed", err);
-            return false;
+            pause(MinerPauseEnum::PauseDueToInitEpochError);
+            return true;
         }
         // create buffer for header
         ETHCL_LOG("Creating buffer for header.");
@@ -777,7 +862,6 @@ bool CLMiner::init_internal()
 
         const uint32_t workItems = m_dagItems * 2;  // GPU computes partial 512-bit DAG items.
 
-        auto startDAG = std::chrono::steady_clock::now();
         uint32_t start;
         const uint32_t chunk = 10000 * m_workgroupSize;
         for (start = 0; start <= workItems - chunk; start += chunk)
@@ -796,14 +880,14 @@ bool CLMiner::init_internal()
             m_queue[0].finish();
         }
 
-        auto endDAG = std::chrono::steady_clock::now();
-        auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(endDAG - startDAG);
-        cnote << FormattedMemSize(m_epochContext.dagSize) << " of DAG data generated in "
+        auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startInit);
+        cllog << FormattedMemSize(m_epochContext.dagSize) << " of DAG data generated in "
               << dagTime.count() << " ms.";
     }
     catch (cl::Error const& err)
     {
         cllog << ethCLErrorHelper("OpenCL init failed", err);
+        pause(MinerPauseEnum::PauseDueToInitEpochError);
         return false;
     }
     return true;

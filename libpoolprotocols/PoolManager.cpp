@@ -67,15 +67,7 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
         if (!Farm::f().isMining())
         {
             cnote << "Spinning up miners...";
-            if (m_minerType == MinerType::CL)
-                Farm::f().start("opencl", false);
-            else if (m_minerType == MinerType::CUDA)
-                Farm::f().start("cuda", false);
-            else if (m_minerType == MinerType::Mixed)
-            {
-                Farm::f().start("cuda", false);
-                Farm::f().start("opencl", true);
-            }
+            Farm::f().start();
         }
         else if (Farm::f().paused())
         {
@@ -208,15 +200,8 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
         }
 
         cnote << "Spinning up miners...";
-        if (m_minerType == MinerType::CL)
-            Farm::f().start("opencl", false);
-        else if (m_minerType == MinerType::CUDA)
-            Farm::f().start("cuda", false);
-        else if (m_minerType == MinerType::Mixed)
-        {
-            Farm::f().start("cuda", false);
-            Farm::f().start("opencl", true);
-        }
+        Farm::f().start();
+
     });
 
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::PoolManager() end");
