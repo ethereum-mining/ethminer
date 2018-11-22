@@ -572,6 +572,7 @@ void CUDAMiner::search(
             done = true;
 
         Search_results save_buf;
+        save_buf.count = 0;
 #ifdef DEV_BUILD
         std::chrono::steady_clock::time_point submitStart;
 #endif
