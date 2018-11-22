@@ -59,6 +59,7 @@ public:
     unsigned short Port() const { return m_port; }
     std::string User() const { return m_username; }
     std::string Pass() const { return m_password; }
+    std::string Workername() const { return m_workername; }
     SecureLevel SecLevel() const;
     ProtocolFamily Family() const;
     UriHostNameType HostNameType() const;
@@ -89,6 +90,7 @@ private:
     std::string m_query;
     std::string m_fragment;
     std::string m_username;
+    std::string m_workername;
     std::string m_password;
     std::string m_uri;
     unsigned short m_stratumMode = 999;  // Initial value 999 means not tested yet
