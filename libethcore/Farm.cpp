@@ -37,9 +37,12 @@ Farm::Farm(
     // Init HWMON if needed
     if (m_hwmonlvl)
     {
-        adlh = wrap_adl_create();
 #if defined(__linux)
         sysfsh = wrap_amdsysfs_create();
+        if (!sysfsh)
+            adlh = wrap_adl_create();
+#else
+        adlh = wrap_adl_create();
 #endif
         nvmlh = wrap_nvml_create();
     }
@@ -186,7 +189,6 @@ bool Farm::start()
     {
         return false;
     }
-    
 }
 
 /**
@@ -379,66 +381,64 @@ void Farm::collectData(const boost::system::error_code& ec)
                 {
                     int typeidx = 0;
                     if (hwInfo.indexSource == HwMonitorIndexSource::CUDA)
-                    {
                         typeidx = nvmlh->cuda_nvml_device_id[hwInfo.deviceIndex];
-                    }
                     else if (hwInfo.indexSource == HwMonitorIndexSource::OPENCL)
-                    {
                         typeidx = nvmlh->opencl_nvml_device_id[hwInfo.deviceIndex];
-                    }
                     else
-                    {
-                        // Unknown, don't map
-                        typeidx = hwInfo.deviceIndex;
-                    }
+                        typeidx = hwInfo.deviceIndex;  // Unknown, don't map
+
                     wrap_nvml_get_tempC(nvmlh, typeidx, &tempC);
                     wrap_nvml_get_fanpcnt(nvmlh, typeidx, &fanpcnt);
+
                     if (m_hwmonlvl == 2)
-                    {
                         wrap_nvml_get_power_usage(nvmlh, typeidx, &powerW);
-                    }
                 }
-                else if (hwInfo.deviceType == HwMonitorInfoType::AMD && adlh)
+                else if (hwInfo.deviceType == HwMonitorInfoType::AMD)
                 {
                     int typeidx = 0;
-                    if (hwInfo.indexSource == HwMonitorIndexSource::OPENCL)
-                    {
-                        typeidx = adlh->opencl_adl_device_id[hwInfo.deviceIndex];
-                    }
-                    else
-                    {
-                        // Unknown, don't map
-                        typeidx = hwInfo.deviceIndex;
-                    }
-                    wrap_adl_get_tempC(adlh, typeidx, &tempC);
-                    wrap_adl_get_fanpcnt(adlh, typeidx, &fanpcnt);
-                    if (m_hwmonlvl == 2)
-                    {
-                        wrap_adl_get_power_usage(adlh, typeidx, &powerW);
-                    }
-                }
 #if defined(__linux)
-                // Overwrite with sysfs data if present
-                if (hwInfo.deviceType == HwMonitorInfoType::AMD && sysfsh)
-                {
-                    int typeidx = 0;
-                    if (hwInfo.indexSource == HwMonitorIndexSource::OPENCL)
+                    if (sysfsh)
                     {
-                        typeidx = sysfsh->opencl_sysfs_device_id[hwInfo.deviceIndex];
+                        if (hwInfo.indexSource == HwMonitorIndexSource::OPENCL)
+                            typeidx = sysfsh->opencl_sysfs_device_id[hwInfo.deviceIndex];
+                        else
+                            typeidx = hwInfo.deviceIndex;  // Unknown don't map
+                        
+                        wrap_amdsysfs_get_tempC(sysfsh, typeidx, &tempC);
+                        wrap_amdsysfs_get_fanpcnt(sysfsh, typeidx, &fanpcnt);
+
+                        if (m_hwmonlvl == 2)
+                            wrap_amdsysfs_get_power_usage(sysfsh, typeidx, &powerW);
                     }
-                    else
+                    else if (adlh)
                     {
-                        // Unknown, don't map
-                        typeidx = hwInfo.deviceIndex;
+                        if (hwInfo.indexSource == HwMonitorIndexSource::OPENCL)
+                            typeidx = adlh->opencl_adl_device_id[hwInfo.deviceIndex];
+                        else
+                            typeidx = hwInfo.deviceIndex;  // Unknown don't map
+
+                        wrap_adl_get_tempC(adlh, typeidx, &tempC);
+                        wrap_adl_get_fanpcnt(adlh, typeidx, &fanpcnt);
+
+                        if (m_hwmonlvl == 2)
+                            wrap_adl_get_power_usage(adlh, typeidx, &powerW);
                     }
-                    wrap_amdsysfs_get_tempC(sysfsh, typeidx, &tempC);
-                    wrap_amdsysfs_get_fanpcnt(sysfsh, typeidx, &fanpcnt);
-                    if (m_hwmonlvl == 2)
+#else
+                    if (adlh)
                     {
-                        wrap_amdsysfs_get_power_usage(sysfsh, typeidx, &powerW);
+                        if (hwInfo.indexSource == HwMonitorIndexSource::OPENCL)
+                            typeidx = adlh->opencl_adl_device_id[hwInfo.deviceIndex];
+                        else
+                            typeidx = hwInfo.deviceIndex;  // Unknown don't map
+
+                        wrap_adl_get_tempC(adlh, typeidx, &tempC);
+                        wrap_adl_get_fanpcnt(adlh, typeidx, &fanpcnt);
+
+                        if (m_hwmonlvl == 2)
+                            wrap_adl_get_power_usage(adlh, typeidx, &powerW);
                     }
-                }
 #endif
+                }
             }
 
             // If temperature control has been enabled call
