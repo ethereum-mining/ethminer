@@ -91,7 +91,6 @@ int wrap_nvml_get_gpucount(wrap_nvml_handle* nvmlh, int* gpucount);
  */
 int wrap_cuda_get_gpucount(wrap_nvml_handle* nvmlh, int* gpucount);
 
-
 /*
  * query the name of the GPU model from the CUDA device ID
  *

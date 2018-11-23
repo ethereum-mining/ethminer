@@ -259,7 +259,6 @@ int wrap_nvml_get_gpu_name(wrap_nvml_handle* nvmlh, int gpuindex, char* namebuf,
     return 0;
 }
 
-
 int wrap_nvml_get_tempC(wrap_nvml_handle* nvmlh, int gpuindex, unsigned int* tempC)
 {
     wrap_nvmlReturn_t rc;
@@ -276,7 +275,6 @@ int wrap_nvml_get_tempC(wrap_nvml_handle* nvmlh, int gpuindex, unsigned int* tem
     return 0;
 }
 
-
 int wrap_nvml_get_fanpcnt(wrap_nvml_handle* nvmlh, int gpuindex, unsigned int* fanpcnt)
 {
     wrap_nvmlReturn_t rc;
@@ -292,7 +290,6 @@ int wrap_nvml_get_fanpcnt(wrap_nvml_handle* nvmlh, int gpuindex, unsigned int* f
     return 0;
 }
 
-
 int wrap_nvml_get_power_usage(wrap_nvml_handle* nvmlh, int gpuindex, unsigned int* milliwatts)
 {
     if (gpuindex < 0 || gpuindex >= nvmlh->nvml_gpucount)
@@ -303,7 +300,6 @@ int wrap_nvml_get_power_usage(wrap_nvml_handle* nvmlh, int gpuindex, unsigned in
 
     return 0;
 }
-
 
 #if defined(__cplusplus)
 }
