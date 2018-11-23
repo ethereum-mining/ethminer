@@ -156,7 +156,24 @@ URI::URI(const std::string uri)
             tmpstr++;
         len = tmpstr - curstr;
         m_username.append(curstr, len);
+
+        // Expect we got a uri "username%2e246891.rigname%2e01:x@eu-01.miningrigrentals.com:3344"
+        // which should mean: username = "username.246891"
+        //                    workername = "rigname.01"
+        // we must split username and workername before urlDecode() is called !
+        auto p = m_username.find_first_of(".");
+        if (p != std::string::npos)
+        {
+            // There should be at least one char after dot
+            // returned p is zero based
+            if (p < (m_username.length() - 1))
+                m_workername = m_username.substr(p+1);
+
+            m_username = m_username.substr(0, p);
+        }
         m_username = urlDecode(m_username);
+        m_workername = urlDecode(m_workername);
+
         // Look for password
         curstr = tmpstr;
         if (':' == *curstr)
