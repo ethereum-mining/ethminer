@@ -399,3 +399,9 @@ A full run showing intermediate values can be seen in [result.log](test/result.l
 - 0.9.1 (current) - Shuffle what part of the DAG entry each lane accesses, suggested by [mbevand](https://github.com/ifdefelse/ProgPOW/pull/13)
 - [0.9.0](https://github.com/ifdefelse/ProgPOW/blob/a3f62349a1513f0393524683f9671cfe17cca895/README.md) - Unique cache address sources, re-tune parameters
 - [0.8.0](https://github.com/ifdefelse/ProgPOW/blob/620b4c7aafe60391f863372814d7517e94386379/README.md) - Original spec
+
+## License
+
+The ProgPoW algorithm and this specification are a new work.  Copyright and related rights are waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
+
+The reference ProgPoW mining implementation in this repository is a derivative of ethminer so retains the GPL license.
