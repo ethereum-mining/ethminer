@@ -36,12 +36,6 @@
 #define CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV 0x4001
 #endif
 
-#define OPENCL_PLATFORM_UNKNOWN 0
-#define OPENCL_PLATFORM_NVIDIA 1
-#define OPENCL_PLATFORM_AMD 2
-#define OPENCL_PLATFORM_CLOVER 3
-
-
 namespace dev
 {
 namespace eth
@@ -95,7 +89,7 @@ private:
 
     static bool s_noBinary;
     bool m_noBinary;
-    static vector<cl::Device> s_devices;
+    
 
     /// The local work size for the search
     static unsigned s_workgroupSize;

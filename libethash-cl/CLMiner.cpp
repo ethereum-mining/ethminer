@@ -444,18 +444,23 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollec
     for (unsigned int pIdx = 0; pIdx < platforms.size(); pIdx++)
     {
         std::string platformName = platforms.at(pIdx).getInfo<CL_PLATFORM_NAME>();
-        std::string platformVersion = platforms.at(pIdx).getInfo<CL_PLATFORM_VERSION>();
-        unsigned int platformVersionMajor = std::stoi(platformVersion.substr(7, 1));
-        unsigned int platformVersionMinor = std::stoi(platformVersion.substr(9, 1));
-
-        bool isAMD = (pIdx == OPENCL_PLATFORM_AMD);
-        bool isNVIDIA = (pIdx == OPENCL_PLATFORM_NVIDIA);
-        bool isCLOVER = (pIdx == OPENCL_PLATFORM_CLOVER);
-        if (!isAMD && !isNVIDIA && !isCLOVER)
+        ClPlatformTypeEnum platformType = ClPlatformTypeEnum::Unknown;
+        if (platformName == "AMD Accelerated Parallel Processing")
+            platformType = ClPlatformTypeEnum::Amd;
+        else if (platformName == "Clover")
+            platformType = ClPlatformTypeEnum::Clover;
+        else if (platformName == "NVIDIA CUDA")
+            platformType = ClPlatformTypeEnum::Nvidia;
+        else 
         {
             std::cerr << "Unrecognized platform " << platformName << std::endl;
             continue;
         }
+
+
+        std::string platformVersion = platforms.at(pIdx).getInfo<CL_PLATFORM_VERSION>();
+        unsigned int platformVersionMajor = std::stoi(platformVersion.substr(7, 1));
+        unsigned int platformVersionMinor = std::stoi(platformVersion.substr(9, 1));
 
         dIdx = 0;
         vector<cl::Device> devices = getDevices(platforms, pIdx);
@@ -473,7 +478,7 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollec
             string uniqueId;
             DeviceDescriptorType deviceDescriptor;
 
-            if (clDeviceType == DeviceTypeEnum::Gpu && isNVIDIA)
+            if (clDeviceType == DeviceTypeEnum::Gpu && platformType == ClPlatformTypeEnum::Nvidia)
             {
                 cl_int bus_id, slot_id;
                 if (clGetDeviceInfo(device.get(), 0x4008, sizeof(bus_id), &bus_id, NULL) ==
@@ -487,7 +492,9 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollec
                     uniqueId = s.str();
                 }
             }
-            else if (clDeviceType == DeviceTypeEnum::Gpu && (isAMD || isCLOVER))
+            else if (clDeviceType == DeviceTypeEnum::Gpu &&
+                     (platformType == ClPlatformTypeEnum::Amd ||
+                         platformType == ClPlatformTypeEnum::Clover))
             {
                 cl_char t[24];
                 if (clGetDeviceInfo(device.get(), 0x4037, sizeof(t), &t, NULL) == CL_SUCCESS)
@@ -517,21 +524,19 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollec
                 deviceDescriptor = DeviceDescriptorType();
 
             // Fill the blanks by OpenCL means
+            deviceDescriptor.Name = device.getInfo<CL_DEVICE_NAME>();
             deviceDescriptor.Type = clDeviceType;
             deviceDescriptor.UniqueId = uniqueId;
             deviceDescriptor.clDetected = true;
             deviceDescriptor.clPlatformId = pIdx;
             deviceDescriptor.clPlatformName = platformName;
+            deviceDescriptor.clPlatformType = platformType;
             deviceDescriptor.clPlatformVersion = platformVersion;
             deviceDescriptor.clPlatformVersionMajor = platformVersionMajor;
             deviceDescriptor.clPlatformVersionMinor = platformVersionMinor;
             deviceDescriptor.clDeviceOrdinal = dIdx;
 
-            // Save device for future use in the CL scope
-            deviceDescriptor.clDeviceIndex = s_devices.size();
-            s_devices.push_back(device);
-
-            deviceDescriptor.clName = device.getInfo<CL_DEVICE_NAME>();
+            deviceDescriptor.clName = deviceDescriptor.Name;
             deviceDescriptor.clDeviceVersion = device.getInfo<CL_DEVICE_VERSION>();
             deviceDescriptor.clDeviceVersionMajor =
                 std::stoi(deviceDescriptor.clDeviceVersion.substr(7, 1));
@@ -547,7 +552,7 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollec
                 deviceDescriptor.clMaxComputeUnits == 14 ? 36 : deviceDescriptor.clMaxComputeUnits;
 
             // Is it an NVIDIA card ?
-            if (isNVIDIA)
+            if (platformType == ClPlatformTypeEnum::Nvidia)
             {
                 deviceDescriptor.clNvComputeMajor =
                     device.getInfo<CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV>();
@@ -578,10 +583,23 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMult
     return true;
 }
 
-bool dev::eth::CLMiner::initDevice()
+bool CLMiner::initDevice()
 {
 
-    m_device = s_devices.at(m_deviceDescriptor.clDeviceIndex);
+    // LookUp device
+    // Load available platforms
+    vector<cl::Platform> platforms = getPlatforms();
+    if (platforms.empty())
+        return false;
+
+    vector<cl::Device> devices = getDevices(platforms, m_deviceDescriptor.clPlatformId);
+    if (devices.empty())
+        return false;
+
+    m_device = devices.at(m_deviceDescriptor.clDeviceOrdinal);
+
+    
+    //m_device = s_devices.at(m_deviceDescriptor.clDeviceIndex);
 
     m_workgroupSize = s_workgroupSize;
     m_globalWorkSize = s_initialGlobalWorkSize;
@@ -589,20 +607,19 @@ bool dev::eth::CLMiner::initDevice()
 
 
     // Set Hardware Monitor Info
-    if (m_deviceDescriptor.clPlatformId == OPENCL_PLATFORM_NVIDIA)
+    if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Nvidia)
     {
         m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
         m_hwmoninfo.indexSource = HwMonitorIndexSource::OPENCL;
         m_noBinary = true;
     }
-    else if (m_deviceDescriptor.clPlatformId == OPENCL_PLATFORM_AMD)
+    else if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Amd)
     {
         m_hwmoninfo.deviceType = HwMonitorInfoType::AMD;
         m_hwmoninfo.indexSource = HwMonitorIndexSource::OPENCL;
     }
-    else if (m_deviceDescriptor.clPlatformName == "Clover")
+    else if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
     {
-        m_deviceDescriptor.clPlatformId = OPENCL_PLATFORM_CLOVER;
         m_noBinary = true;
     }
     else
@@ -616,7 +633,7 @@ bool dev::eth::CLMiner::initDevice()
         (m_deviceDescriptor.clPlatformVersionMinor == 0 ||
             m_deviceDescriptor.clPlatformVersionMinor == 1))
     {
-        if (m_deviceDescriptor.clPlatformId == OPENCL_PLATFORM_CLOVER)
+        if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
         {
             cllog
                 << "OpenCL " << m_deviceDescriptor.clPlatformVersion
@@ -636,12 +653,12 @@ bool dev::eth::CLMiner::initDevice()
     if (!m_deviceDescriptor.clNvCompute.empty())
         s << " (Compute " + m_deviceDescriptor.clNvCompute + ")";
     else
-        s << m_deviceDescriptor.clDeviceVersion;
+        s << " " << m_deviceDescriptor.clDeviceVersion;
 
     s << " Memory : " << FormattedMemSize(m_deviceDescriptor.TotalMemory);
     cllog << s.str();
 
-    if ((m_deviceDescriptor.clPlatformId == OPENCL_PLATFORM_AMD) &&
+    if ((m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Amd) &&
         (m_deviceDescriptor.clMaxComputeUnits != 36))
     {
         m_globalWorkSize = (m_globalWorkSize * m_deviceDescriptor.clMaxComputeUnits) / 36;
@@ -671,8 +688,7 @@ bool CLMiner::initEpoch_internal()
     if (m_deviceDescriptor.TotalMemory < RequiredMemory)
     {
         cllog << "Epoch " << m_epochContext.epochNumber << " requires "
-                << FormattedMemSize(RequiredMemory) << " memory.";
-        cllog << "This device hasn't available. Mining suspended ...";
+                << FormattedMemSize(RequiredMemory) << " memory. Only " << FormattedMemSize(m_deviceDescriptor.TotalMemory) << " available on device.";
         pause(MinerPauseEnum::PauseDueToInsufficientMemory);
         return true;  // This will prevent to exit the thread and
                       // Eventually resume mining when changing coin or epoch (NiceHash)
@@ -722,7 +738,7 @@ bool CLMiner::initEpoch_internal()
         addDefinition(code, "PLATFORM", m_deviceDescriptor.clPlatformId);
         addDefinition(code, "COMPUTE", computeCapability);
 
-        if (m_deviceDescriptor.clPlatformId == OPENCL_PLATFORM_CLOVER)
+        if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
             addDefinition(code, "LEGACY", 1);
 
         // create miner OpenCL program

@@ -190,8 +190,13 @@ public:
             exit(128);
 #undef BACKTRACE_MAX_FRAMES
 #endif
+        case (999U):
+            // Compiler complains about the lack of
+            // a case statement in Windows
+            // this makes it happy.
+            break;
         default:
-            cnote << "Signal intercepted ...";
+            cnote << "Got interrupt ...";
             g_running = false;
             g_shouldstop.notify_all();
             break;
@@ -580,7 +585,7 @@ public:
         // If requested list detected devices and exit
         if (m_shouldListDevices)
         {
-            cout << setw(4) << "Idx ";
+            cout << setw(4) << " Id ";
             cout << setiosflags(ios::left) << setw(10) << "Pci Id    ";
             cout << setw(5) << "Type ";
             cout << setw(26) << "Name                      ";
@@ -658,7 +663,7 @@ public:
                 default:
                     break;
                 }
-                cout << setw(26) << (it->second.cuName + " " + it->second.clName).substr(0, 24);
+                cout << setw(26) << (it->second.Name).substr(0, 24);
 #if ETH_ETHASHCUDA
                 if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
                 {
@@ -689,103 +694,97 @@ public:
         }
 
         // Subscribe devices with appropriate Miner Type
-        // Use CUDA first when available then CL
+        // Use CUDA first when available then, as second, OpenCL
 
         // Apply discrete subscriptions (if any)
-#if ETH_ETHASHCUDA
-        if (m_cudaDevices.size() &&
-            (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
+        if (m_cudaDevices.size() || m_oclDevices.size())
         {
-            for (auto index : m_cudaDevices)
+#if ETH_ETHASHCUDA
+            if (m_cudaDevices.size() &&
+                (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
             {
-                if (index < m_DevicesCollection.size())
+                for (auto index : m_cudaDevices)
                 {
-                    auto it = m_DevicesCollection.begin();
-                    std::advance(it, index);
-                    if (!it->second.cuDetected)
-                        throw std::runtime_error("Can't CUDA subscribe a non-CUDA device.");
+                    if (index < m_DevicesCollection.size())
+                    {
+                        auto it = m_DevicesCollection.begin();
+                        std::advance(it, index);
+                        if (!it->second.cuDetected)
+                            throw std::runtime_error("Can't CUDA subscribe a non-CUDA device.");
+                        it->second.SubscriptionType = DeviceSubscriptionTypeEnum::Cuda;
+                    }
+                }
+            }
+#endif
+#if ETH_ETHASHCL
+            if (m_oclDevices.size() &&
+                (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed))
+            {
+                for (auto index : m_oclDevices)
+                {
+                    if (index < m_DevicesCollection.size())
+                    {
+                        auto it = m_DevicesCollection.begin();
+                        std::advance(it, index);
+                        if (!it->second.clDetected)
+                            throw std::runtime_error("Can't OpenCL subscribe a non-OpenCL device.");
+                        if (it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
+                            throw std::runtime_error(
+                                "Can't OpenCL subscribe a CUDA subscribed device.");
+                        it->second.SubscriptionType = DeviceSubscriptionTypeEnum::OpenCL;
+                    }
+                }
+            }
+#endif
+        }
+        else
+        {
+            // Subscribe all detected devices
+#if ETH_ETHASHCUDA
+            if ((m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
+            {
+                for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
+                {
+                    if (!it->second.cuDetected ||
+                        it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
+                        continue;
                     it->second.SubscriptionType = DeviceSubscriptionTypeEnum::Cuda;
                 }
             }
-        }
 #endif
 #if ETH_ETHASHCL
-        if (m_oclDevices.size() &&
-            (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed))
-        {
-            for (auto index : m_oclDevices)
+            if ((m_minerType == MinerType::CL || m_minerType == MinerType::Mixed))
             {
-                if (index < m_DevicesCollection.size())
+                for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
                 {
-                    auto it = m_DevicesCollection.begin();
-                    std::advance(it, index);
-                    if (!it->second.clDetected)
-                        throw std::runtime_error("Can't OpenCL subscribe a non-OpenCL device.");
-                    if (it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
-                        throw std::runtime_error(
-                            "Can't OpenCL subscribe a CUDA subscribed device.");
+                    if (!it->second.clDetected ||
+                        it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
+                        continue;
                     it->second.SubscriptionType = DeviceSubscriptionTypeEnum::OpenCL;
                 }
             }
-        }
 #endif
-
-        // Apply whole subscriptions
-
-#if ETH_ETHASHCUDA
-        if (!m_cudaDevices.size() &&
-            (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
-        {
-            for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
-            {
-                if (!it->second.cuDetected ||
-                    it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
-                    continue;
-                it->second.SubscriptionType = DeviceSubscriptionTypeEnum::Cuda;
-            }
         }
-#endif
-#if ETH_ETHASHCL
-        if (!m_oclDevices.size() &&
-            (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed))
-        {
-            for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
-            {
-                if (!it->second.clDetected ||
-                    it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
-                    continue;
-                it->second.SubscriptionType = DeviceSubscriptionTypeEnum::OpenCL;
-            }
-        }
-#endif
 
-        // Compute of Devices in use
-        m_oclDevices.clear();
-        m_cudaDevices.clear();
+
+        // Count of subscribed devices
+        int subscribedDevices = 0;
         for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
         {
             if (it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
-            {
-                if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda)
-                    m_cudaDevices.push_back(std::distance(m_DevicesCollection.begin(), it));
-                if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
-                    m_oclDevices.push_back(std::distance(m_DevicesCollection.begin(), it));
-            }
+                    subscribedDevices++;
         }
 
         // If no OpenCL and/or CUDA devices subscribed then throw error
-        if (!m_cudaDevices.size() && !m_oclDevices.size())
+        if (!subscribedDevices)
             throw std::runtime_error("No mining device selected. Aborting ...");
 
 #if ETH_ETHASHCL
-        if (m_oclDevices.size() &&
-            (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed))
-            CLMiner::configureGPU(m_oclLWorkSize, m_oclGWorkSize, m_farmDagLoadMode,
-                m_oclNoBinary);
+        if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
+            CLMiner::configureGPU(m_oclLWorkSize, m_oclGWorkSize, m_farmDagLoadMode, m_oclNoBinary);
 #endif
 #if ETH_ETHASHCUDA
-        if (m_cudaDevices.size() &&
-            (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
+        if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
             CUDAMiner::configureGPU(m_cudaBlockSize, m_cudaGridSize, m_cudaStreams, m_cudaSchedule,
                 m_farmDagLoadMode, m_cudaParallelHash);
 #endif
@@ -1255,12 +1254,12 @@ private:
 
         map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-        sealers["opencl"] = Farm::SealerDescriptor{
-            [](unsigned _index) { return new CLMiner(_index); }};
+        sealers["opencl"] =
+            Farm::SealerDescriptor{[](unsigned _index) { return new CLMiner(_index); }};
 #endif
 #if ETH_ETHASHCUDA
-        sealers["cuda"] = Farm::SealerDescriptor{
-            [](unsigned _index) { return new CUDAMiner(_index); }};
+        sealers["cuda"] =
+            Farm::SealerDescriptor{[](unsigned _index) { return new CUDAMiner(_index); }};
 #endif
 
         Farm::f().setSealers(sealers);
@@ -1316,12 +1315,12 @@ private:
     {
         map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
-        sealers["opencl"] = Farm::SealerDescriptor{
-            [](unsigned _index) { return new CLMiner(_index); }};
+        sealers["opencl"] =
+            Farm::SealerDescriptor{[](unsigned _index) { return new CLMiner(_index); }};
 #endif
 #if ETH_ETHASHCUDA
-        sealers["cuda"] = Farm::SealerDescriptor{
-            [](unsigned _index) { return new CUDAMiner(_index); }};
+        sealers["cuda"] =
+            Farm::SealerDescriptor{[](unsigned _index) { return new CUDAMiner(_index); }};
 #endif
 
         PoolClient* client = nullptr;
@@ -1348,8 +1347,8 @@ private:
 
         Farm::f().setSealers(sealers);
 
-        new PoolManager(client, m_minerType, m_poolMaxRetries, m_poolFlvrTimeout, m_farmErgodicity,
-            m_poolHashRate);
+        new PoolManager(
+            client, m_poolMaxRetries, m_poolFlvrTimeout, m_farmErgodicity, m_poolHashRate);
         for (auto conn : m_poolConns)
         {
             PoolManager::p().addConnection(conn);

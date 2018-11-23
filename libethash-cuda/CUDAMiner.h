@@ -38,7 +38,7 @@ public:
     static unsigned getNumDevices();
     static void enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollection);
     static void configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
-        unsigned _parallelHash, unsigned _scheduleFlag, unsigned _dagLoadMode);
+        unsigned _scheduleFlag, unsigned _dagLoadMode, unsigned _parallelHash);
 
     void search(
         uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w);

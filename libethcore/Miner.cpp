@@ -37,7 +37,7 @@ std::ostream& operator<<(std::ostream& os, const HwMonitor& _hw)
 
 std::ostream& operator<<(std::ostream& os, const FormattedMemSize& s)
 {
-    static const char* suffixes[] = {"bytes", "KB", "MB", "GB"};
+    static const char* suffixes[] = {"B", "KB", "MB", "GB"};
     double d = double(s.m_size);
     unsigned i;
     for (i = 0; i < 3; i++)
@@ -47,7 +47,7 @@ std::ostream& operator<<(std::ostream& os, const FormattedMemSize& s)
         d /= 1024.0;
     }
     std::ostringstream stream;
-    stream << fixed << setprecision(3) << d << ' ' << suffixes[i];
+    stream << fixed << setprecision(2) << d << ' ' << suffixes[i];
     return os << stream.str();
 }
 

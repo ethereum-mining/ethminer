@@ -20,7 +20,7 @@ namespace eth
 class PoolManager
 {
 public:
-    PoolManager(PoolClient* client, MinerType const& minerType, unsigned maxTries,
+    PoolManager(PoolClient* client, unsigned maxTries,
         unsigned failovertimeout, unsigned ergodicity, bool reportHashrate);
     static PoolManager& p() { return *m_this; }
     void addConnection(URI& conn);
@@ -73,7 +73,6 @@ private:
     boost::asio::deadline_timer m_submithrtimer;
 
     PoolClient* p_client;
-    MinerType m_minerType;
 
     std::atomic<unsigned> m_epochChanges = {0};
 

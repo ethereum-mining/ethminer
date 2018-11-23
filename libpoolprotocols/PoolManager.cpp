@@ -8,13 +8,12 @@ using namespace eth;
 
 PoolManager* PoolManager::m_this = nullptr;
 
-PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigned maxTries,
+PoolManager::PoolManager(PoolClient* client, unsigned maxTries,
     unsigned failoverTimeout, unsigned ergodicity, bool reportHashrate)
   : m_hashrate(reportHashrate),
     m_io_strand(g_io_service),
     m_failovertimer(g_io_service),
-    m_submithrtimer(g_io_service),
-    m_minerType(minerType)
+    m_submithrtimer(g_io_service)
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::PoolManager() begin");
 

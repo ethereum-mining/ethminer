@@ -149,25 +149,44 @@ bool Farm::start()
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() begin");
     Guard l(x_minerWork);
 
-    uint16_t instanceId = 0;
-    // Start all subscribed miners
-    for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
+    // Start all subscribed miners if none yet
+    if (!m_miners.size())
     {
-        if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::None)
-            continue;
-        if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda)
-            m_miners.push_back(std::shared_ptr<Miner>(m_sealers["cuda"].create(instanceId)));
-        if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
-            m_miners.push_back(std::shared_ptr<Miner>(m_sealers["opencl"].create(instanceId)));
-        m_miners.back()->setDescriptor(it->second);
-        m_miners.back()->startWorking();
+        for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
+        {
+            string sealer;
+            if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda)
+                sealer = "cuda";
+            else if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
+                sealer = "opencl";
+            else
+                continue;
+
+            m_miners.push_back(std::shared_ptr<Miner>(m_sealers[sealer].create(m_miners.size())));
+            m_miners.back()->setDescriptor(it->second);
+            m_miners.back()->startWorking();
+        }
+    }
+    else
+    {
+        for (size_t i = 0; i < m_miners.size(); i++)
+        {
+            m_miners.at(i)->startWorking();
+        }
     }
 
-    if (instanceId)
-        m_isMining.store(true, std::memory_order_relaxed);
-
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() end");
-    return true;
+
+    if (m_miners.size())
+    {
+        m_isMining.store(true, std::memory_order_relaxed);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+    
 }
 
 /**

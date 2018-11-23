@@ -232,12 +232,15 @@ unsigned CUDAMiner::getNumDevices()
         int driverVersion = 0;
         cudaDriverGetVersion(&driverVersion);
         if (driverVersion == 0)
-            std::cerr << "No CUDA driver found" << std::endl;
+            std::cerr << "CUDA Error : No CUDA driver found" << std::endl;
         else
-            std::cerr << "Insufficient CUDA driver: " << std::to_string(driverVersion) << std::endl;
+            std::cerr << "CUDA Error : Insufficient CUDA driver " << std::to_string(driverVersion) << std::endl;
+    }
+    else
+    {
+        std::cerr << "CUDA Error : " << cudaGetErrorString(err) << std::endl;
     }
 
-    std::cerr << cudaGetErrorString(err) << std::endl;
     return 0;
 }
 
@@ -265,6 +268,7 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesColl
                 else
                     deviceDescriptor = DeviceDescriptorType();
 
+                deviceDescriptor.Name = string(props.name);
                 deviceDescriptor.cuDetected = true;
                 deviceDescriptor.UniqueId = uniqueId;
                 deviceDescriptor.Type = DeviceTypeEnum::Gpu;
@@ -292,7 +296,7 @@ unsigned const CUDAMiner::c_defaultGridSize = 8192;  // * CL_DEFAULT_LOCAL_WORK_
 unsigned const CUDAMiner::c_defaultNumStreams = 2;
 
 void CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
-    unsigned _parallelHash, unsigned _scheduleFlag, unsigned _dagLoadMode)
+    unsigned _scheduleFlag, unsigned _dagLoadMode, unsigned _parallelHash)
 {
     s_dagLoadMode = _dagLoadMode;
     s_blockSize = _blockSize;

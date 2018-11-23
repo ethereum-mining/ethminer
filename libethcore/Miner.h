@@ -74,6 +74,14 @@ enum class HwMonitorIndexSource
     CUDA
 };
 
+enum class ClPlatformTypeEnum
+{
+    Unknown,
+    Amd,
+    Clover,
+    Nvidia
+};
+
 struct DeviceDescriptorType
 {
     DeviceTypeEnum Type = DeviceTypeEnum::Unknown;
@@ -81,11 +89,13 @@ struct DeviceDescriptorType
 
     string UniqueId;     // For GPUs this is the PCI ID
     size_t TotalMemory;  // Total memory available by device
+    string Name;         // Device Name
 
     bool clDetected;  // For OpenCL detected devices
     string clName;
     unsigned int clPlatformId;
     string clPlatformName;
+    ClPlatformTypeEnum clPlatformType = ClPlatformTypeEnum::Unknown;
     string clPlatformVersion;
     unsigned int clPlatformVersionMajor;
     unsigned int clPlatformVersionMinor;
