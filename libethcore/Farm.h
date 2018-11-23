@@ -33,11 +33,13 @@
 #include <libdevcore/Worker.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Miner.h>
-#include <libhwmon/wrapadl.h>
+
 #include <libhwmon/wrapnvml.h>
 #if defined(__linux)
 #include <libhwmon/wrapamdsysfs.h>
 #include <sys/stat.h>
+#else
+#include <libhwmon/wrapadl.h>
 #endif
 
 extern boost::asio::io_service g_io_service;
@@ -198,7 +200,6 @@ public:
     void submitProof(Solution const& _s) override;
 
 private:
-
     std::atomic<bool> m_paused = {false};
 
     // Collects data about hashing and hardware status
@@ -237,7 +238,7 @@ private:
 
     // StartNonce (non-NiceHash Mode) and
     // segment width assigned to each GPU as exponent of 2
-    // considering an average block time of 15 seconds 
+    // considering an average block time of 15 seconds
     // a single device GPU should need a speed of 286 Mh/s
     // before it consumes the whole 2^32 segment
     uint64_t m_nonce_scrambler;
@@ -254,10 +255,11 @@ private:
 
     // Wrappers for hardware monitoring libraries
     wrap_nvml_handle* nvmlh = nullptr;
-    wrap_adl_handle* adlh = nullptr;
 
 #if defined(__linux)
     wrap_amdsysfs_handle* sysfsh = nullptr;
+#else
+    wrap_adl_handle* adlh = nullptr;
 #endif
 
     static Farm* m_this;

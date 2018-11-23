@@ -39,8 +39,6 @@ Farm::Farm(
     {
 #if defined(__linux)
         sysfsh = wrap_amdsysfs_create();
-        if (!sysfsh)
-            adlh = wrap_adl_create();
 #else
         adlh = wrap_adl_create();
 #endif
@@ -124,7 +122,7 @@ void Farm::setWork(WorkPackage const& _newWp)
     {
         // Equally divide the residual segment among miners
         _startNonce = m_currentWp.startNonce;
-        m_nonce_segment_with = log2(pow(2, 64 - (m_currentWp.exSizeBytes * 4)) / m_miners.size());
+        m_nonce_segment_with = (unsigned int)log2(pow(2, 64 - (m_currentWp.exSizeBytes * 4)) / m_miners.size());
     }
     else
     {
@@ -410,21 +408,8 @@ void Farm::collectData(const boost::system::error_code& ec)
                         if (m_hwmonlvl == 2)
                             wrap_amdsysfs_get_power_usage(sysfsh, typeidx, &powerW);
                     }
-                    else if (adlh)
-                    {
-                        if (hwInfo.indexSource == HwMonitorIndexSource::OPENCL)
-                            typeidx = adlh->opencl_adl_device_id[hwInfo.deviceIndex];
-                        else
-                            typeidx = hwInfo.deviceIndex;  // Unknown don't map
-
-                        wrap_adl_get_tempC(adlh, typeidx, &tempC);
-                        wrap_adl_get_fanpcnt(adlh, typeidx, &fanpcnt);
-
-                        if (m_hwmonlvl == 2)
-                            wrap_adl_get_power_usage(adlh, typeidx, &powerW);
-                    }
 #else
-                    if (adlh)
+                    if (adlh)  // Windows only for AMD
                     {
                         if (hwInfo.indexSource == HwMonitorIndexSource::OPENCL)
                             typeidx = adlh->opencl_adl_device_id[hwInfo.deviceIndex];
