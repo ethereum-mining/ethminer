@@ -67,13 +67,6 @@ enum class HwMonitorInfoType
     AMD
 };
 
-enum class HwMonitorIndexSource
-{
-    UNKNOWN,
-    OPENCL,
-    CUDA
-};
-
 enum class ClPlatformTypeEnum
 {
     Unknown,
@@ -124,7 +117,7 @@ struct DeviceDescriptorType
 struct HwMonitorInfo
 {
     HwMonitorInfoType deviceType = HwMonitorInfoType::UNKNOWN;
-    HwMonitorIndexSource indexSource = HwMonitorIndexSource::UNKNOWN;
+    string devicePciId;
     int deviceIndex = -1;
 };
 
@@ -332,6 +325,8 @@ public:
     unsigned Index() { return m_index; };
 
     HwMonitorInfo hwmonInfo() { return m_hwmoninfo; }
+
+    void setHwmonDeviceIndex(int i) { m_hwmoninfo.deviceIndex = i; }
 
     /**
      * @brief Pauses mining setting a reason flag

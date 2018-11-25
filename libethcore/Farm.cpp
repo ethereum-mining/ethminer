@@ -39,10 +39,56 @@ Farm::Farm(
     {
 #if defined(__linux)
         sysfsh = wrap_amdsysfs_create();
+        if (sysfsh)
+        {
+            // Build Pci identification mapping as done in miners.
+            for (int i = 0; i < sysfsh->sysfs_gpucount; i++)
+            {
+                std::ostringstream oss;
+                std::string uniqueId;
+                oss << std::setfill('0') << std::setw(2) << std::hex
+                    << (unsigned int)sysfsh->sysfs_pci_bus_id[i] << ":" << std::setw(2)
+                    << (unsigned int)(sysfsh->sysfs_pci_device_id[i]) << ".0";
+                uniqueId = oss.str();
+                map_amdsysfs_handle[uniqueId] = i;
+            }
+        }
+
 #else
         adlh = wrap_adl_create();
+        if (adlh)
+        {
+            // Build Pci identification as done in miners.
+            for (int i = 0; i < adlh->adl_gpucount; i++)
+            {
+                std::ostringstream oss;
+                std::string uniqueId;
+                oss << std::setfill('0') << std::setw(2) << std::hex
+                    << (unsigned int)adlh->devs[adlh->phys_logi_device_id[i]].iBusNumber << ":"
+                    << std::setw(2)
+                    << (unsigned int)(adlh->devs[adlh->phys_logi_device_id[i]].iDeviceNumber)
+                    << ".0";
+                uniqueId = oss.str();
+                map_adl_handle[uniqueId] = i;
+            }
+        }
+
 #endif
         nvmlh = wrap_nvml_create();
+        if (nvmlh)
+        {
+            // Build Pci identification as done in miners.
+            for (int i = 0; i < nvmlh->nvml_gpucount; i++)
+            {
+                std::ostringstream oss;
+                std::string uniqueId;
+                oss << std::setfill('0') << std::setw(2) << std::hex
+                    << (unsigned int)nvmlh->nvml_pci_bus_id[i] << ":" << std::setw(2)
+                    << (unsigned int)(nvmlh->nvml_pci_device_id[i] >> 3) << ".0";
+                uniqueId = oss.str();
+                map_nvml_handle[uniqueId] = i;
+            }
+        }
     }
 
     // Initialize nonce_scrambler
@@ -66,11 +112,12 @@ Farm::~Farm()
     m_collectTimer.cancel();
 
     // Deinit HWMON
-    if (adlh)
-        wrap_adl_destroy(adlh);
 #if defined(__linux)
     if (sysfsh)
         wrap_amdsysfs_destroy(sysfsh);
+#else
+    if (adlh)
+        wrap_adl_destroy(adlh);
 #endif
     if (nvmlh)
         wrap_nvml_destroy(nvmlh);
@@ -122,7 +169,8 @@ void Farm::setWork(WorkPackage const& _newWp)
     {
         // Equally divide the residual segment among miners
         _startNonce = m_currentWp.startNonce;
-        m_nonce_segment_with = (unsigned int)log2(pow(2, 64 - (m_currentWp.exSizeBytes * 4)) / m_miners.size());
+        m_nonce_segment_with =
+            (unsigned int)log2(pow(2, 64 - (m_currentWp.exSizeBytes * 4)) / m_miners.size());
     }
     else
     {
@@ -373,58 +421,94 @@ void Farm::collectData(const boost::system::error_code& ec)
             HwMonitorInfo hwInfo = miner->hwmonInfo();
             HwMonitor hw;
             unsigned int tempC = 0, fanpcnt = 0, powerW = 0;
-            if (hwInfo.deviceIndex >= 0)
-            {
-                if (hwInfo.deviceType == HwMonitorInfoType::NVIDIA && nvmlh)
-                {
-                    int typeidx = 0;
-                    if (hwInfo.indexSource == HwMonitorIndexSource::CUDA)
-                        typeidx = nvmlh->cuda_nvml_device_id[hwInfo.deviceIndex];
-                    else if (hwInfo.indexSource == HwMonitorIndexSource::OPENCL)
-                        typeidx = nvmlh->opencl_nvml_device_id[hwInfo.deviceIndex];
-                    else
-                        typeidx = hwInfo.deviceIndex;  // Unknown, don't map
 
-                    wrap_nvml_get_tempC(nvmlh, typeidx, &tempC);
-                    wrap_nvml_get_fanpcnt(nvmlh, typeidx, &fanpcnt);
+            if (hwInfo.deviceType == HwMonitorInfoType::NVIDIA && nvmlh)
+            {
+                int devIdx = hwInfo.deviceIndex;
+                if (devIdx == -1 && !hwInfo.devicePciId.empty())
+                {
+                    if (map_nvml_handle.find(hwInfo.devicePciId) != map_nvml_handle.end())
+                    {
+                        devIdx = map_nvml_handle[hwInfo.devicePciId];
+                        miner->setHwmonDeviceIndex(devIdx);
+                    }
+                    else
+                    {
+                        // This will prevent further tries to map
+                        miner->setHwmonDeviceIndex(-2);
+                    }
+                }
+
+                if (devIdx >= 0)
+                {
+                    wrap_nvml_get_tempC(nvmlh, devIdx, &tempC);
+                    wrap_nvml_get_fanpcnt(nvmlh, devIdx, &fanpcnt);
 
                     if (m_hwmonlvl == 2)
-                        wrap_nvml_get_power_usage(nvmlh, typeidx, &powerW);
-                }
-                else if (hwInfo.deviceType == HwMonitorInfoType::AMD)
-                {
-                    int typeidx = 0;
-#if defined(__linux)
-                    if (sysfsh)
-                    {
-                        if (hwInfo.indexSource == HwMonitorIndexSource::OPENCL)
-                            typeidx = sysfsh->opencl_sysfs_device_id[hwInfo.deviceIndex];
-                        else
-                            typeidx = hwInfo.deviceIndex;  // Unknown don't map
-                        
-                        wrap_amdsysfs_get_tempC(sysfsh, typeidx, &tempC);
-                        wrap_amdsysfs_get_fanpcnt(sysfsh, typeidx, &fanpcnt);
-
-                        if (m_hwmonlvl == 2)
-                            wrap_amdsysfs_get_power_usage(sysfsh, typeidx, &powerW);
-                    }
-#else
-                    if (adlh)  // Windows only for AMD
-                    {
-                        if (hwInfo.indexSource == HwMonitorIndexSource::OPENCL)
-                            typeidx = adlh->opencl_adl_device_id[hwInfo.deviceIndex];
-                        else
-                            typeidx = hwInfo.deviceIndex;  // Unknown don't map
-
-                        wrap_adl_get_tempC(adlh, typeidx, &tempC);
-                        wrap_adl_get_fanpcnt(adlh, typeidx, &fanpcnt);
-
-                        if (m_hwmonlvl == 2)
-                            wrap_adl_get_power_usage(adlh, typeidx, &powerW);
-                    }
-#endif
+                        wrap_nvml_get_power_usage(nvmlh, devIdx, &powerW);
                 }
             }
+            else if (hwInfo.deviceType == HwMonitorInfoType::AMD)
+            {
+                int devIdx = 0;
+#if defined(__linux)
+                if (sysfsh)
+                {
+                    devIdx = hwInfo.deviceIndex;
+                    if (devIdx == -1 && !hwInfo.devicePciId.empty())
+                    {
+                        if (map_amdsysfs_handle.find(hwInfo.devicePciId) !=
+                            map_amdsysfs_handle.end())
+                        {
+                            devIdx = map_amdsysfs_handle[hwInfo.devicePciId];
+                            miner->setHwmonDeviceIndex(devIdx);
+                        }
+                        else
+                        {
+                            // This will prevent further tries to map
+                            miner->setHwmonDeviceIndex(-2);
+                        }
+                    }
+
+                    if (devIdx >= 0)
+                    {
+                        wrap_amdsysfs_get_tempC(sysfsh, devIdx, &tempC);
+                        wrap_amdsysfs_get_fanpcnt(sysfsh, devIdx, &fanpcnt);
+
+                        if (m_hwmonlvl == 2)
+                            wrap_amdsysfs_get_power_usage(sysfsh, devIdx, &powerW);
+                    }
+                }
+#else
+                if (adlh)  // Windows only for AMD
+                {
+                    int devIdx = hwInfo.deviceIndex;
+                    if (devIdx == -1 && !hwInfo.devicePciId.empty())
+                    {
+                        if (map_adl_handle.find(hwInfo.devicePciId) != map_adl_handle.end())
+                        {
+                            devIdx = map_adl_handle[hwInfo.devicePciId];
+                            miner->setHwmonDeviceIndex(devIdx);
+                        }
+                        else
+                        {
+                            // This will prevent further tries to map
+                            miner->setHwmonDeviceIndex(-2);
+                        }
+                    }
+
+                    if (devIdx >= 0)
+                    {
+                        wrap_adl_get_tempC(adlh, devIdx, &tempC);
+                        wrap_adl_get_fanpcnt(adlh, devIdx, &fanpcnt);
+
+                        if (m_hwmonlvl == 2)
+                            wrap_adl_get_power_usage(adlh, devIdx, &powerW);
+                    }
+                }
+#endif
+            }
+
 
             // If temperature control has been enabled call
             // check threshold

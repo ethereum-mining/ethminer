@@ -55,14 +55,14 @@ unsigned CUDAMiner::s_scheduleFlag = 0;
 bool CUDAMiner::initDevice()
 {
 
-    cudalog << "Using PciId : " << m_deviceDescriptor.UniqueId << " " << m_deviceDescriptor.cuName
+    cudalog << "Using Pci Id : " << m_deviceDescriptor.UniqueId << " " << m_deviceDescriptor.cuName
             << " (Compute " + m_deviceDescriptor.cuCompute + ") Memory : "
             << FormattedMemSize(m_deviceDescriptor.TotalMemory);
 
     // Set Hardware Monitor Info
     m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
-    m_hwmoninfo.indexSource = HwMonitorIndexSource::CUDA;
-    m_hwmoninfo.deviceIndex = m_deviceDescriptor.cuDeviceIndex;
+    m_hwmoninfo.devicePciId = m_deviceDescriptor.UniqueId;
+    m_hwmoninfo.deviceIndex = -1;  // Will be later on mapped by nvml (see Farm() constructor)
 
     try
     {

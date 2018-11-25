@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include "wraphelper.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -56,15 +58,9 @@ typedef struct
 {
     void* nvml_dll;
     int nvml_gpucount;
-    int cuda_gpucount;
-    int opencl_gpucount;
     unsigned int* nvml_pci_domain_id;
     unsigned int* nvml_pci_bus_id;
     unsigned int* nvml_pci_device_id;
-    int* nvml_cuda_device_id;   /* map NVML dev to CUDA dev */
-    int* cuda_nvml_device_id;   /* map CUDA dev to NVML dev */
-    int* nvml_opencl_device_id; /* map NVML dev to OPENCL dev */
-    int* opencl_nvml_device_id; /* map OPENCL dev to NVML dev */
     wrap_nvmlDevice_t* devs;
     wrap_nvmlReturn_t (*nvmlInit)(void);
     wrap_nvmlReturn_t (*nvmlDeviceGetCount)(int*);
@@ -85,11 +81,6 @@ int wrap_nvml_destroy(wrap_nvml_handle* nvmlh);
  * Query the number of GPUs seen by NVML
  */
 int wrap_nvml_get_gpucount(wrap_nvml_handle* nvmlh, int* gpucount);
-
-/*
- * Query the number of GPUs seen by CUDA
- */
-int wrap_cuda_get_gpucount(wrap_nvml_handle* nvmlh, int* gpucount);
 
 /*
  * query the name of the GPU model from the CUDA device ID

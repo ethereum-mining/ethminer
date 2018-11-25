@@ -11,6 +11,9 @@
 #include <dirent.h>
 #endif
 
+#include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
+
 #include <algorithm>
 #include <climits>
 #include <cstdint>
@@ -48,210 +51,133 @@ wrap_amdsysfs_handle* wrap_amdsysfs_create()
 #if defined(__linux)
     sysfsh = (wrap_amdsysfs_handle*)calloc(1, sizeof(wrap_amdsysfs_handle));
 
-    DIR* dirp = opendir("/sys/class/drm");
-    if (dirp == nullptr)
-        return nullptr;
+    namespace fs = boost::filesystem;
+    std::vector<pciInfo> devices;  // Used to collect devices
 
-    unsigned int gpucount = 0;
-    struct dirent* dire;
-    errno = 0;
-    while ((dire = readdir(dirp)) != nullptr)
-    {
-        if (::strncmp(dire->d_name, "card", 4) != 0)
-            continue;  // is not card directory
-        const char* p;
-        for (p = dire->d_name + 4; ::isdigit(*p); p++)
-            ;
-        if (*p != 0)
-            continue;  // is not card directory
-        unsigned int v = ::strtoul(dire->d_name + 4, nullptr, 10);
-        gpucount = std::max(gpucount, v + 1);
-    }
-    if (errno != 0)
-    {
-        closedir(dirp);
-        return nullptr;
-    }
-    closedir(dirp);
-
-    sysfsh->card_sysfs_device_id = (int*)calloc(gpucount, sizeof(int));
-    sysfsh->sysfs_hwmon_id = (int*)calloc(gpucount, sizeof(int));
-
-    // filter AMD GPU cards and create mappings
     char dbuf[120];
-    int cardIndex = 0;
-    for (unsigned int i = 0; i < gpucount; i++)
-    {
-        sysfsh->card_sysfs_device_id[cardIndex] = -1;
-        sysfsh->sysfs_hwmon_id[cardIndex] = -1;
+    // Check directory exist
+    fs::path drm_dir("/sys/class/drm");
+    if (!fs::exists(drm_dir) || !fs::is_directory(drm_dir))
+        return nullptr;
 
-        snprintf(dbuf, 120, "/sys/class/drm/card%u/device/vendor", i);
+    // Regex patterns to identify directory elements
+    std::regex cardPattern("^card[0-9]{1,}$");
+    std::regex hwmonPattern("^hwmon[0-9]{1,}$");
+
+    // Loop directory contents
+    for (fs::directory_iterator dirEnt(drm_dir); dirEnt != fs::directory_iterator(); ++dirEnt)
+    {
+        // Skip non relevant entries
+        if (!fs::is_directory(dirEnt->path()) ||
+            !std::regex_match(dirEnt->path().filename().string(), cardPattern))
+            continue;
+
+        std::string devName = dirEnt->path().filename().string();
+        unsigned int devIndex = std::stoi(devName.substr(4), nullptr, 10);
         unsigned int vendorId = 0;
-        if (!getFileContentValue(dbuf, vendorId))
-            continue;
-        if (vendorId != 4098)  // if not AMD
-            continue;
-
-        sysfsh->card_sysfs_device_id[cardIndex] = i;
-        cardIndex++;
-    }
-
-    // Number of AMD cards found we do not care about non AMD cards
-    sysfsh->sysfs_gpucount = cardIndex;
-
-    // Get hwmon directory index
-    for (int i = 0; i < sysfsh->sysfs_gpucount; i++)
-    {
-        int sysfsIdx = sysfsh->card_sysfs_device_id[i];
-
-        // Should not happen
-        if (sysfsIdx < 0)
-        {
-            free(sysfsh);
-            return nullptr;
-        }
-
-        // search hwmon
-        errno = 0;
-        snprintf(dbuf, 120, "/sys/class/drm/card%d/device/hwmon", sysfsIdx);
-        DIR* dirp = opendir(dbuf);
-        if (dirp == nullptr)
-        {
-            free(sysfsh);
-            return nullptr;
-        }
-        errno = 0;
-        struct dirent* dire;
         unsigned int hwmonIndex = UINT_MAX;
-        while ((dire = readdir(dirp)) != nullptr)
+
+        // Get AMD cards only (vendor 4098)
+        fs::path vendor_file("/sys/class/drm/" + devName + "/device/vendor");
+        snprintf(dbuf, 120, "/sys/class/drm/%s/device/vendor", devName.c_str());
+        if (!fs::exists(vendor_file) || !fs::is_regular_file(vendor_file) ||
+            !getFileContentValue(dbuf, vendorId) || vendorId != 4098)
+            continue;
+
+        // Check it has dependant hwmon directory
+        fs::path hwmon_dir("/sys/class/drm/" + devName + "/device/hwmon");
+        if (!fs::exists(hwmon_dir) || !fs::is_directory(hwmon_dir))
+            continue;
+
+        // Loop subelements in hwmon directory
+        for (fs::directory_iterator hwmonEnt(hwmon_dir); hwmonEnt != fs::directory_iterator();
+             ++hwmonEnt)
         {
-            if (::strncmp(dire->d_name, "hwmon", 5) != 0)
-                continue;  // is not hwmon directory
-            const char* p;
-            for (p = dire->d_name + 5; ::isdigit(*p); p++)
-                ;
-            if (*p != 0)
-                continue;  // is not hwmon directory
-            errno = 0;
-            unsigned int v = ::strtoul(dire->d_name + 5, nullptr, 10);
+            // Skip non relevant entries
+            if (!fs::is_directory(hwmonEnt->path()) ||
+                !std::regex_match(hwmonEnt->path().filename().string(), hwmonPattern))
+                continue;
+
+            unsigned int v = std::stoi(hwmonEnt->path().filename().string().substr(5), nullptr, 10);
             hwmonIndex = std::min(hwmonIndex, v);
         }
-        if (errno != 0)
-        {
-            closedir(dirp);
-            free(sysfsh);
-            return nullptr;
-        }
-        closedir(dirp);
         if (hwmonIndex == UINT_MAX)
-        {
-            free(sysfsh);
-            return nullptr;
-        }
+            continue;
 
-        sysfsh->sysfs_hwmon_id[i] = hwmonIndex;
-    }
+        // Detect Pci Id
+        fs::path uevent_file("/sys/class/drm/" + devName + "/device/hwmon");
+        if (!fs::exists(uevent_file) || !fs::is_regular_file(uevent_file))
+            continue;
 
-    sysfsh->opencl_gpucount = 0;
-    sysfsh->sysfs_opencl_device_id = (int*)calloc(sysfsh->sysfs_gpucount, sizeof(int));
-#if ETH_ETHASHCL
-    if (sysfsh->sysfs_gpucount > 0)
-    {
-        // Get and count OpenCL devices.
-        std::vector<cl::Platform> platforms;
-        cl::Platform::get(&platforms);
-        std::vector<cl::Device> platdevs;
-        for (unsigned p = 0; p < platforms.size(); p++)
+        snprintf(dbuf, 120, "/sys/class/drm/card%d/device/uevent", devIndex);
+        std::ifstream ifs(dbuf, std::ios::binary);
+        std::string line;
+        int PciDomain = -1, PciBus = -1, PciDevice = -1, PciFunction = -1;
+        while (std::getline(ifs, line))
         {
-            std::string platformName = platforms[p].getInfo<CL_PLATFORM_NAME>();
-            if (platformName == "AMD Accelerated Parallel Processing")
+            if (line.length() > 24 && line.substr(0, 13) == "PCI_SLOT_NAME")
             {
-                platforms[p].getDevices(CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR, &platdevs);
-                sysfsh->opencl_gpucount = platdevs.size();
+                std::string pciId = line.substr(14);
+                std::vector<std::string> pciIdParts;
+                boost::split(pciIdParts, pciId, [](char c) { return (c == ':' || c == '.'); });
+
+                try
+                {
+                    PciDomain = std::stoi(pciIdParts.at(0), nullptr, 10);
+                    PciBus = std::stoi(pciIdParts.at(1), nullptr, 10);
+                    PciDevice = std::stoi(pciIdParts.at(2), nullptr, 10);
+                    PciFunction = std::stoi(pciIdParts.at(3), nullptr, 10);
+                }
+                catch (const std::exception&)
+                {
+                    PciDomain = PciBus = PciDevice = PciFunction = -1;
+                }
                 break;
             }
         }
-        sysfsh->opencl_sysfs_device_id = (int*)calloc(sysfsh->opencl_gpucount, sizeof(int));
 
-        // Map SysFs to opencl devices
-        for (int i = 0; i < sysfsh->sysfs_gpucount; i++)
-        {
-            for (unsigned j = 0; j < platdevs.size(); j++)
-            {
-                cl::Device cldev = platdevs[j];
-                cl_device_topology_amd topology;
-                int status = clGetDeviceInfo(cldev(), CL_DEVICE_TOPOLOGY_AMD,
-                    sizeof(cl_device_topology_amd), &topology, nullptr);
-                if (status == CL_SUCCESS)
-                {
-                    if (topology.raw.type == CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD)
-                    {
-                        int gpuindex = sysfsh->card_sysfs_device_id[i];
-                        char dbuf[120];
-                        snprintf(dbuf, 120, "/sys/class/drm/card%d/device/uevent", gpuindex);
-                        std::ifstream ifs(dbuf, std::ios::binary);
-                        std::string line;
-                        int iBus = 0, iDevice = 0, iFunction = 0;
-                        while (std::getline(ifs, line))
-                        {
-                            if (line.length() > 24 && line.substr(0, 13) == "PCI_SLOT_NAME")
-                            {
-                                std::string pciId = line.substr(14, 12);
-                                std::vector<std::string> pciParts;
-                                std::string part;
-                                std::size_t prev = 0, pos;
-                                while ((pos = pciId.find_first_of(":.", prev)) != std::string::npos)
-                                {
-                                    if (pos > prev)
-                                        pciParts.push_back(pciId.substr(prev, pos - prev));
-                                    prev = pos + 1;
-                                }
-                                if (prev < pciId.length())
-                                    pciParts.push_back(pciId.substr(prev, std::string::npos));
+        // If we got an error skip
+        if (PciDomain == -1)
+            continue;
 
-                                // Format -- DDDD:BB:dd.FF
-                                //??? Above comment doesn't match following statements!!!
-                                try
-                                {
-                                    iBus = std::stoul(pciParts[1].c_str());
-                                    iDevice = std::stoul(pciParts[2].c_str());
-                                    iFunction = std::stoul(pciParts[3].c_str());
-                                }
-                                catch (...)
-                                {
-                                    iBus = -1;
-                                    iDevice = -1;
-                                    iFunction = -1;
-                                }
-                                break;
-                            }
-                        }
-
-                        if (iBus == (int)topology.pcie.bus &&
-                            iDevice == (int)topology.pcie.device &&
-                            iFunction == (int)topology.pcie.function)
-                        {
-#if 0
-                            printf("[DEBUG] - SYSFS GPU[%d]%d,%d,%d matches OpenCL GPU[%d]%d,%d,%d\n",
-                                i,
-                                iBus,
-                                iDevice,
-                                iFunction,
-                                j, (int)topology.pcie.bus, (int)topology.pcie.device, (int)topology.pcie.function);
-#endif
-                            sysfsh->sysfs_opencl_device_id[i] = j;
-                            sysfsh->opencl_sysfs_device_id[j] = i;
-                        }
-                    }
-                }
-            }
-        }
+        // We got all information needed
+        // push in the list of collected devices
+        pciInfo pInfo = pciInfo();
+        pInfo.DeviceId = devIndex;
+        pInfo.HwMonId = hwmonIndex;
+        pInfo.PciDomain = PciDomain;
+        pInfo.PciBus = PciBus;
+        pInfo.PciDevice = PciDevice;
+        devices.push_back(pInfo);
     }
-#endif
+
+    // Nothing collected - exit
+    if (!devices.size())
+        return nullptr;
+
+    unsigned int gpucount = devices.size();
+    sysfsh->sysfs_gpucount = gpucount;
+    sysfsh->sysfs_device_id = (unsigned int*)calloc(gpucount, sizeof(unsigned int));
+    sysfsh->sysfs_hwmon_id = (unsigned int*)calloc(gpucount, sizeof(unsigned int));
+    sysfsh->sysfs_pci_domain_id = (unsigned int*)calloc(gpucount, sizeof(unsigned int));
+    sysfsh->sysfs_pci_bus_id = (unsigned int*)calloc(gpucount, sizeof(unsigned int));
+    sysfsh->sysfs_pci_device_id = (unsigned int*)calloc(gpucount, sizeof(unsigned int));
+
+    gpucount = 0;
+    for (auto const& device : devices)
+    {
+        sysfsh->sysfs_device_id[gpucount] = device.DeviceId;
+        sysfsh->sysfs_hwmon_id[gpucount] = device.HwMonId;
+        sysfsh->sysfs_pci_domain_id[gpucount] = device.PciDomain;
+        sysfsh->sysfs_pci_bus_id[gpucount] = device.PciBus;
+        sysfsh->sysfs_pci_device_id[gpucount] = device.PciDevice;
+        gpucount++;
+    }
 
 #endif
     return sysfsh;
 }
+
 int wrap_amdsysfs_destroy(wrap_amdsysfs_handle* sysfsh)
 {
     free(sysfsh);
@@ -264,36 +190,12 @@ int wrap_amdsysfs_get_gpucount(wrap_amdsysfs_handle* sysfsh, int* gpucount)
     return 0;
 }
 
-int wrap_amdsysfs_get_gpu_pci_id(wrap_amdsysfs_handle* sysfsh, int index, char* idbuf, int bufsize)
-{
-    int gpuindex = sysfsh->card_sysfs_device_id[index];
-    if (gpuindex < 0 || index >= sysfsh->sysfs_gpucount)
-        return -1;
-
-    char dbuf[120];
-    snprintf(dbuf, 120, "/sys/class/drm/card%d/device/uevent", gpuindex);
-
-    std::ifstream ifs(dbuf, std::ios::binary);
-    std::string line;
-
-    while (std::getline(ifs, line))
-    {
-        if (line.length() > 24 && line.substr(0, 13) == "PCI_SLOT_NAME")
-        {
-            memcpy(idbuf, line.substr(14, 12).c_str(), bufsize);
-            return 0;
-        }
-    }
-
-    // memcpy(idbuf, "0000:00:00.0", bufsize);//?
-    return -1;
-}
-
 int wrap_amdsysfs_get_tempC(wrap_amdsysfs_handle* sysfsh, int index, unsigned int* tempC)
 {
-    int gpuindex = sysfsh->card_sysfs_device_id[index];
-    if (gpuindex < 0 || index >= sysfsh->sysfs_gpucount)
+    if (index < 0 || index >= sysfsh->sysfs_gpucount)
         return -1;
+
+    int gpuindex = sysfsh->sysfs_device_id[index];
 
     int hwmonindex = sysfsh->sysfs_hwmon_id[index];
     if (hwmonindex < 0)
@@ -314,10 +216,10 @@ int wrap_amdsysfs_get_tempC(wrap_amdsysfs_handle* sysfsh, int index, unsigned in
 
 int wrap_amdsysfs_get_fanpcnt(wrap_amdsysfs_handle* sysfsh, int index, unsigned int* fanpcnt)
 {
-    int gpuindex = sysfsh->card_sysfs_device_id[index];
-    if (gpuindex < 0 || index >= sysfsh->sysfs_gpucount)
+    if (index < 0 || index >= sysfsh->sysfs_gpucount)
         return -1;
 
+    int gpuindex = sysfsh->sysfs_device_id[index];
     int hwmonindex = sysfsh->sysfs_hwmon_id[index];
     if (hwmonindex < 0)
         return -1;
@@ -344,9 +246,10 @@ int wrap_amdsysfs_get_power_usage(wrap_amdsysfs_handle* sysfsh, int index, unsig
 {
     try
     {
-        int gpuindex = sysfsh->card_sysfs_device_id[index];
-        if (gpuindex < 0 || index >= sysfsh->sysfs_gpucount)
+        if (index < 0 || index >= sysfsh->sysfs_gpucount)
             return -1;
+
+        int gpuindex = sysfsh->sysfs_device_id[index];
 
         char dbuf[120];
         snprintf(dbuf, 120, "/sys/kernel/debug/dri/%d/amdgpu_pm_info", gpuindex);

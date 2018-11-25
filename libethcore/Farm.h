@@ -253,13 +253,16 @@ private:
     // Whether or not GPU solutions should be CPU re-evaluated
     bool m_noeval = false;
 
-    // Wrappers for hardware monitoring libraries
+    // Wrappers for hardware monitoring libraries and their mappers
     wrap_nvml_handle* nvmlh = nullptr;
+    std::map<string, int> map_nvml_handle = {};
 
 #if defined(__linux)
     wrap_amdsysfs_handle* sysfsh = nullptr;
+    std::map<string, int> map_amdsysfs_handle = {};
 #else
     wrap_adl_handle* adlh = nullptr;
+    std::map<string, int> map_adl_handle = {};
 #endif
 
     static Farm* m_this;

@@ -610,16 +610,21 @@ bool CLMiner::initDevice()
     if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Nvidia)
     {
         m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
-        m_hwmoninfo.indexSource = HwMonitorIndexSource::OPENCL;
+        m_hwmoninfo.devicePciId = m_deviceDescriptor.UniqueId;
+        m_hwmoninfo.deviceIndex = -1;  // Will be later on mapped by nvml (see Farm() constructor)
         m_noBinary = true;
     }
     else if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Amd)
     {
         m_hwmoninfo.deviceType = HwMonitorInfoType::AMD;
-        m_hwmoninfo.indexSource = HwMonitorIndexSource::OPENCL;
+        m_hwmoninfo.devicePciId = m_deviceDescriptor.UniqueId;
+        m_hwmoninfo.deviceIndex = -1;  // Will be later on mapped by nvml (see Farm() constructor)
     }
     else if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
     {
+        m_hwmoninfo.deviceType = HwMonitorInfoType::UNKNOWN;
+        m_hwmoninfo.devicePciId = m_deviceDescriptor.UniqueId;
+        m_hwmoninfo.deviceIndex = -1;  // Will be later on mapped by nvml (see Farm() constructor)
         m_noBinary = true;
     }
     else
