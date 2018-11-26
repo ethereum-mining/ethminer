@@ -308,7 +308,7 @@ void EthStratumClient::disconnect_finalize()
 {
     if (m_conn->SecLevel() != SecureLevel::NONE)
     {
-        if (m_securesocket->lowest_layer().is_open())
+        if (m_securesocket && m_securesocket->lowest_layer().is_open())
         {
             // Manage error code if layer is already shut down
             boost::system::error_code ec;
@@ -400,8 +400,7 @@ void EthStratumClient::resolve_handler(
         m_connecting.store(false, std::memory_order_relaxed);
 
         // We "simulate" a disconnect, to ensure a fully shutdown state
-        if (m_onDisconnected)
-            disconnect_finalize();
+        disconnect_finalize();
     }
 }
 
@@ -449,8 +448,7 @@ void EthStratumClient::start_connect()
         cwarn << "No more IP addresses to try for host: " << m_conn->Host();
 
         // We "simulate" a disconnect, to ensure a fully shutdown state
-        if (m_onDisconnected)
-            disconnect_finalize();
+        disconnect_finalize();
     }
 }
 
