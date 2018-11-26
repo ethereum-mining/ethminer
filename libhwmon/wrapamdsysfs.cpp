@@ -105,7 +105,7 @@ wrap_amdsysfs_handle* wrap_amdsysfs_create()
             continue;
 
         // Detect Pci Id
-        fs::path uevent_file("/sys/class/drm/" + devName + "/device/hwmon");
+        fs::path uevent_file("/sys/class/drm/" + devName + "/device/uevent");
         if (!fs::exists(uevent_file) || !fs::is_regular_file(uevent_file))
             continue;
 
