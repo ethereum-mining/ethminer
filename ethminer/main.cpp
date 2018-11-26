@@ -504,7 +504,7 @@ public:
 
                 if (!uri.Valid() || !uri.KnownScheme())
                 {
-                    std::string what = "Bad URI : " + uri.String();
+                    std::string what = "Bad URI : " + uri.str();
                     throw std::invalid_argument(what);
                 }
 
