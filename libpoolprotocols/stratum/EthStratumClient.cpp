@@ -368,7 +368,6 @@ void EthStratumClient::disconnect_finalize()
     }
 
     // Clear plea queue and stop timing
-    std::chrono::steady_clock::time_point m_response_plea_time;
     clear_response_pleas();
     m_solution_submitted_max_id = 0;
 
@@ -473,14 +472,14 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
     if (m_response_pleas_count.load(std::memory_order_relaxed))
     {
         milliseconds response_delay_ms(0);
-        steady_clock::time_point m_response_plea_time(
+        steady_clock::time_point response_plea_time(
             m_response_plea_older.load(std::memory_order_relaxed));
 
         // Check responses while in connection/disconnection phase
         if (isPendingState())
         {
             response_delay_ms =
-                duration_cast<milliseconds>(steady_clock::now() - m_response_plea_time);
+                duration_cast<milliseconds>(steady_clock::now() - response_plea_time);
 
             if ((m_responsetimeout * 1000) >= response_delay_ms.count())
             {
@@ -509,7 +508,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
         if (isConnected())
         {
             response_delay_ms =
-                duration_cast<milliseconds>(steady_clock::now() - m_response_plea_time);
+                duration_cast<milliseconds>(steady_clock::now() - response_plea_time);
 
             if (response_delay_ms.count() >= (m_responsetimeout * 1000))
             {
