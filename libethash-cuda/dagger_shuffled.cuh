@@ -5,7 +5,6 @@
 template <uint32_t _PARALLEL_HASH>
 __device__ __forceinline__ bool compute_hash(
 	uint64_t const nonce,
-	uint64_t const target,
 	uint2 *mix_hash
 	)
 {
@@ -80,7 +79,7 @@ __device__ __forceinline__ bool compute_hash(
 	}
 
 	// keccak_256(keccak_512(header..nonce) .. mix);
-	if (cuda_swab64(keccak_f1600_final(state)) > target)
+	if (cuda_swab64(keccak_f1600_final(state)) > d_target)
 		return true;
 
 	mix_hash[0] = state[8];
