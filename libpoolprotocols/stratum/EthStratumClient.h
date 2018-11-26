@@ -58,7 +58,6 @@ public:
     } StratumProtocol;
 
     EthStratumClient(int worktimeout, int responsetimeout);
-    ~EthStratumClient();
 
     void init_socket();
     void connect() override;

@@ -100,11 +100,6 @@ EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout)
     clear_response_pleas();
 }
 
-EthStratumClient::~EthStratumClient()
-{
-    // Do not stop io service.
-    // It's global
-}
 
 void EthStratumClient::init_socket()
 {
