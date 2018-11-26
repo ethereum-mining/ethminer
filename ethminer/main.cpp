@@ -697,75 +697,71 @@ public:
         // Use CUDA first when available then, as second, OpenCL
 
         // Apply discrete subscriptions (if any)
-        if (m_cudaDevices.size() || m_oclDevices.size())
-        {
 #if ETH_ETHASHCUDA
-            if (m_cudaDevices.size() &&
-                (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
-            {
-                for (auto index : m_cudaDevices)
-                {
-                    if (index < m_DevicesCollection.size())
-                    {
-                        auto it = m_DevicesCollection.begin();
-                        std::advance(it, index);
-                        if (!it->second.cuDetected)
-                            throw std::runtime_error("Can't CUDA subscribe a non-CUDA device.");
-                        it->second.SubscriptionType = DeviceSubscriptionTypeEnum::Cuda;
-                    }
-                }
-            }
-#endif
-#if ETH_ETHASHCL
-            if (m_oclDevices.size() &&
-                (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed))
-            {
-                for (auto index : m_oclDevices)
-                {
-                    if (index < m_DevicesCollection.size())
-                    {
-                        auto it = m_DevicesCollection.begin();
-                        std::advance(it, index);
-                        if (!it->second.clDetected)
-                            throw std::runtime_error("Can't OpenCL subscribe a non-OpenCL device.");
-                        if (it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
-                            throw std::runtime_error(
-                                "Can't OpenCL subscribe a CUDA subscribed device.");
-                        it->second.SubscriptionType = DeviceSubscriptionTypeEnum::OpenCL;
-                    }
-                }
-            }
-#endif
-        }
-        else
+        if (m_cudaDevices.size() &&
+            (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
         {
-            // Subscribe all detected devices
-#if ETH_ETHASHCUDA
-            if ((m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
+            for (auto index : m_cudaDevices)
             {
-                for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
+                if (index < m_DevicesCollection.size())
                 {
-                    if (!it->second.cuDetected ||
-                        it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
-                        continue;
+                    auto it = m_DevicesCollection.begin();
+                    std::advance(it, index);
+                    if (!it->second.cuDetected)
+                        throw std::runtime_error("Can't CUDA subscribe a non-CUDA device.");
                     it->second.SubscriptionType = DeviceSubscriptionTypeEnum::Cuda;
                 }
             }
+        }
 #endif
 #if ETH_ETHASHCL
-            if ((m_minerType == MinerType::CL || m_minerType == MinerType::Mixed))
+        if (m_oclDevices.size() &&
+            (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed))
+        {
+            for (auto index : m_oclDevices)
             {
-                for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
+                if (index < m_DevicesCollection.size())
                 {
-                    if (!it->second.clDetected ||
-                        it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
-                        continue;
+                    auto it = m_DevicesCollection.begin();
+                    std::advance(it, index);
+                    if (!it->second.clDetected)
+                        throw std::runtime_error("Can't OpenCL subscribe a non-OpenCL device.");
+                    if (it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
+                        throw std::runtime_error(
+                            "Can't OpenCL subscribe a CUDA subscribed device.");
                     it->second.SubscriptionType = DeviceSubscriptionTypeEnum::OpenCL;
                 }
             }
-#endif
         }
+#endif
 
+        // Subscribe all detected devices
+#if ETH_ETHASHCUDA
+        if (!m_cudaDevices.size() &&
+            (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
+        {
+            for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
+            {
+                if (!it->second.cuDetected ||
+                    it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
+                    continue;
+                it->second.SubscriptionType = DeviceSubscriptionTypeEnum::Cuda;
+            }
+        }
+#endif
+#if ETH_ETHASHCL
+        if (!m_oclDevices.size() &&
+            (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed))
+        {
+            for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
+            {
+                if (!it->second.clDetected ||
+                    it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
+                    continue;
+                it->second.SubscriptionType = DeviceSubscriptionTypeEnum::OpenCL;
+            }
+        }
+#endif
 
         // Count of subscribed devices
         int subscribedDevices = 0;
