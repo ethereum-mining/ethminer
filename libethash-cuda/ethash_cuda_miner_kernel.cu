@@ -15,13 +15,9 @@
 #include "dagger_shuffled.cuh"
 
 template <uint32_t _PARALLEL_HASH>
-__global__ void 
-ethash_search(
-	volatile Search_results* g_output,
-	uint64_t start_nonce
-	)
+__global__ void ethash_search(volatile Search_results* g_output, uint64_t start_nonce)
 {
-	uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;
+    uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;
 	uint2 mix[4];
         if (compute_hash<_PARALLEL_HASH>(start_nonce + gid, mix))
 		return;
