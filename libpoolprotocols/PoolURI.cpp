@@ -161,20 +161,18 @@ URI::URI(const std::string uri)
         // which should mean: username = "username.246891"
         //                    workername = "rigname.01"
         // we must split username and workername before urlDecode() is called !
-
         auto p = m_username.find_first_of(".");
         if (p != std::string::npos)
         {
             // There should be at least one char after dot
             // returned p is zero based
             if (p < (m_username.length() - 1))
-                m_workername = m_username.substr(++p);
+                m_workername = m_username.substr(p+1);
 
-             m_username = m_username.substr(0, p);
+            m_username = m_username.substr(0, p);
         }
         m_username = urlDecode(m_username);
         m_workername = urlDecode(m_workername);
-
 
         // Look for password
         curstr = tmpstr;
