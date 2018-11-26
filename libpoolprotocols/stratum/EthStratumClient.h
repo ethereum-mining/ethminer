@@ -59,7 +59,7 @@ public:
         ETHEREUMSTRATUM
     } StratumProtocol;
 
-    EthStratumClient(int worktimeout, int responsetimeout, bool submitHashrate);
+    EthStratumClient(int worktimeout, int responsetimeout);
 
     void init_socket();
     void connect() override;
@@ -80,7 +80,7 @@ public:
     bool isAuthorized() { return m_authorized.load(std::memory_order_relaxed); }
     string ActiveEndPoint() override { return " [" + toString(m_endpoint) + "]"; };
 
-    void submitHashrate(string const& rate) override;
+    void submitHashrate(string const& rate, string const& id) override;
     void submitSolution(const Solution& solution) override;
 
     h256 currentHeaderHash() { return m_current.header; }
@@ -128,11 +128,11 @@ private:
     WorkPackage m_current;
     std::chrono::time_point<std::chrono::steady_clock> m_current_timestamp;
 
-    bool m_stale = false;
-
     boost::asio::io_service& m_io_service;  // The IO service reference passed in the constructor
     boost::asio::io_service::strand m_io_strand;
     boost::asio::ip::tcp::socket* m_socket;
+    std::string m_message;  // The internal message string buffer
+    bool m_newjobprocessed = false;
 
     // Use shared ptrs to avoid crashes due to async_writes
     // see
@@ -156,16 +156,10 @@ private:
     boost::asio::ip::tcp::resolver m_resolver;
     std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>> m_endpoints;
 
-    string m_rate;
+    h256 m_nextWorkBoundary = h256("0x00000000ffff0000000000000000000000000000000000000000000000000000");
 
-    h256 m_nextWorkBoundary =
-        h256("0xffff000000000000000000000000000000000000000000000000000000000000");
-
-    h64 m_extraNonce;
-    int m_extraNonceHexSize = 0;
-
-    bool m_submit_hashrate;
-    std::string m_submit_hashrate_id;
+    uint64_t m_extraNonce = 0;
+    unsigned int m_extraNonceSizeBytes = 0;
 
     unsigned m_solution_submitted_max_id;  // maximum json id we used to send a solution
 

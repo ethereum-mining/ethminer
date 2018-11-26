@@ -38,6 +38,16 @@ public:
     static Result eval(int epoch, h256 const& _headerHash, uint64_t _nonce) noexcept;
 };
 
+struct EpochContext
+{
+    int epochNumber;
+    int lightNumItems;
+    size_t lightSize;
+    const ethash_hash512* lightCache;
+    int dagNumItems;
+    uint64_t dagSize;
+};
+
 struct WorkPackage
 {
     WorkPackage() = default;
@@ -48,23 +58,26 @@ struct WorkPackage
     {}
     explicit operator bool() const { return header != h256(); }
 
+    std::string job;  // Job identifier can be anything. Not necessarily a hash
+
     h256 boundary;
     h256 header;  ///< When h256() means "pause until notified a new work package is available".
-    h256 job;
+    h256 seed;
+
     int epoch = -1;
+    int block = -1;
 
     uint64_t startNonce = 0;
-    int exSizeBits = -1;
-    int job_len = 8;
+    uint16_t exSizeBytes = 0;
 };
 
 struct Solution
 {
-    uint64_t nonce;
-    h256 mixHash;
-    WorkPackage work;
-    bool stale;
-    unsigned index; // Index of the miner(GPU) found the solution
+    uint64_t nonce;                                // Solution found nonce
+    h256 mixHash;                                  // Mix hash
+    WorkPackage work;                              // WorkPackage this solution refers to
+    std::chrono::steady_clock::time_point tstamp;  // Timestamp of found solution
+    unsigned midx;                                 // Originating miner Id
 };
 
 }  // namespace eth

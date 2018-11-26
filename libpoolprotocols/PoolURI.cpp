@@ -228,6 +228,8 @@ URI::URI(const std::string uri)
             m_hostType = UriHostNameType::IPV4;
         if (address.is_v6())
             m_hostType = UriHostNameType::IPV6;
+
+        m_isLoopBack = address.is_loopback();
     }
     else
     {
@@ -340,6 +342,11 @@ SecureLevel URI::SecLevel() const
 UriHostNameType URI::HostNameType() const
 {
     return m_hostType;
+}
+
+bool URI::IsLoopBack() const
+{
+    return m_isLoopBack;
 }
 
 std::string URI::KnownSchemes(ProtocolFamily family)

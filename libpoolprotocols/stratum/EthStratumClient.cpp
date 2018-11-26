@@ -5,43 +5,79 @@
 #include "EthStratumClient.h"
 
 #ifdef _WIN32
+// Needed for certificates validation on TLS connections
 #include <wincrypt.h>
 #endif
 
 using boost::asio::ip::tcp;
 
-static uint64_t bswap(uint64_t val)
+static string diffToTarget(double diff)
 {
-    val = ((val << 8) & 0xFF00FF00FF00FF00ULL) | ((val >> 8) & 0x00FF00FF00FF00FFULL);
-    val = ((val << 16) & 0xFFFF0000FFFF0000ULL) | ((val >> 16) & 0x0000FFFF0000FFFFULL);
-    return (val << 32) | (val >> 32);
-}
+    using namespace boost::multiprecision;
+    using BigInteger = boost::multiprecision::cpp_int;
 
+    static BigInteger base("0x00000000ffff0000000000000000000000000000000000000000000000000000");
+    BigInteger product;
 
-static void diffToTarget(uint32_t* target, double diff)
-{
-    uint32_t target2[8];
-    uint64_t m;
-    int k;
-
-    for (k = 6; k > 0 && diff > 1.0; k--)
-        diff /= 4294967296.0;
-    m = (uint64_t)(4294901760.0 / diff);
-    if (m == 0 && k == 6)
-        memset(target2, 0xff, 32);
+    if (diff == 0)
+    {
+        product = BigInteger("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+    }
     else
     {
-        memset(target2, 0, 32);
-        target2[k] = (uint32_t)m;
-        target2[k + 1] = (uint32_t)(m >> 32);
+        diff = 1 / diff;
+
+        BigInteger idiff(diff);
+        product = base * idiff;
+
+        std::string sdiff = boost::lexical_cast<std::string>(diff);
+        size_t ldiff = sdiff.length();
+        size_t offset = sdiff.find(".");
+
+        if (offset != std::string::npos)
+        {
+            // Number of decimal places
+            size_t precision = (ldiff - 1) - offset;
+
+            // Effective sequence of decimal places
+            string decimals = sdiff.substr(offset + 1);
+
+            // Strip leading zeroes. If a string begins with
+            // 0 or 0x boost parser considers it hex
+            decimals = decimals.erase(0, decimals.find_first_not_of('0'));
+
+            // Build up the divisor as string - just in case
+            // parser does some implicit conversion with 10^precision
+            string decimalDivisor = "1";
+            decimalDivisor.resize(precision + 1, '0');
+
+            // This is the multiplier for the decimal part
+            BigInteger multiplier(decimals);
+
+            // This is the divisor for the decimal part
+            BigInteger divisor(decimalDivisor);
+
+            BigInteger decimalproduct;
+            decimalproduct = base * multiplier;
+            decimalproduct /= divisor;
+
+            // Add the computed decimal part
+            // to product
+            product += decimalproduct;
+        }
+
     }
 
-    for (int i = 0; i < 32; i++)
-        ((uint8_t*)target)[31 - i] = ((uint8_t*)target2)[i];
+    // Normalize to 64 chars hex with "0x" prefix
+    stringstream ss;
+    ss << "0x" << setw(64) << setfill('0') << std::hex << product;
+
+    string target = ss.str();
+    boost::algorithm::to_lower(target);
+    return target;
 }
 
-
-EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, bool submitHashrate)
+EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout)
   : PoolClient(),
     m_worktimeout(worktimeout),
     m_responsetimeout(responsetimeout),
@@ -52,11 +88,10 @@ EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, bool su
     m_response_plea_times(64),
     m_txQueue(64),
     m_resolver(g_io_service),
-    m_endpoints(),
-    m_submit_hashrate(submitHashrate)
+    m_endpoints()
 {
-    if (m_submit_hashrate)
-        m_submit_hashrate_id = h256::random().hex();
+
+    m_jSwBuilder.settings_["indentation"] = "";
 
     m_jSwBuilder.settings_["indentation"] = "";
 
@@ -159,12 +194,12 @@ void EthStratumClient::connect()
     // Prevent unnecessary and potentially dangerous recursion
     if (m_connecting.load(std::memory_order::memory_order_relaxed))
         return;
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect() begin");
 
     // Start timing operations
     m_workloop_timer.expires_from_now(boost::posix_time::milliseconds(m_workloop_interval));
     m_workloop_timer.async_wait(m_io_strand.wrap(boost::bind(
         &EthStratumClient::workloop_timer_elapsed, this, boost::asio::placeholders::error)));
-
 
     // Reset status flags
     m_canconnect.store(false, std::memory_order_relaxed);
@@ -181,27 +216,41 @@ void EthStratumClient::connect()
     set." Those above statement imply we MAY NOT receive difficulty thus at each new connection
     restart from 1
     */
-    m_nextWorkBoundary = h256("0xffff000000000000000000000000000000000000000000000000000000000000");
-    m_extraNonce = h64();
-    m_extraNonceHexSize = 0;
+    m_nextWorkBoundary = h256("0x00000000ffff0000000000000000000000000000000000000000000000000000");
+    m_extraNonce = 0;
+    m_extraNonceSizeBytes = 0;
 
     // Initializes socket and eventually secure stream
     if (!m_socket)
         init_socket();
 
-    // Begin resolve all ips associated to hostname
-    // empty queue from any previous listed ip
-    // calling the resolver each time is useful as most
-    // load balancer will give Ips in different order
+    // Initialize a new queue of end points
     m_endpoints = std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>>();
     m_endpoint = boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>();
-    m_resolver = tcp::resolver(m_io_service);
-    tcp::resolver::query q(m_conn->Host(), toString(m_conn->Port()));
 
-    // Start resolving async
-    m_resolver.async_resolve(
-        q, m_io_strand.wrap(boost::bind(&EthStratumClient::resolve_handler, this,
-               boost::asio::placeholders::error, boost::asio::placeholders::iterator)));
+    if (m_conn->HostNameType() == dev::UriHostNameType::Dns ||
+        m_conn->HostNameType() == dev::UriHostNameType::Basic)
+    {
+        // Begin resolve all ips associated to hostname
+        // calling the resolver each time is useful as most
+        // load balancer will give Ips in different order
+        m_resolver = tcp::resolver(m_io_service);
+        tcp::resolver::query q(m_conn->Host(), toString(m_conn->Port()));
+
+        // Start resolving async
+        m_resolver.async_resolve(
+            q, m_io_strand.wrap(boost::bind(&EthStratumClient::resolve_handler, this,
+                   boost::asio::placeholders::error, boost::asio::placeholders::iterator)));
+    }
+    else
+    {
+        // No need to use the resolver if host is already an IP address
+        m_endpoints.push(boost::asio::ip::tcp::endpoint(
+            boost::asio::ip::address::from_string(m_conn->Host()), m_conn->Port()));
+        m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::start_connect, this)));
+    }
+
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect() end");
 }
 
 void EthStratumClient::disconnect()
@@ -210,6 +259,8 @@ void EthStratumClient::disconnect()
     if (!m_connected.load(std::memory_order_relaxed) ||
         m_disconnecting.load(std::memory_order_relaxed))
         return;
+
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::disconnect() begin");
     m_disconnecting.store(true, std::memory_order_relaxed);
 
     // Cancel any outstanding async operation
@@ -234,6 +285,7 @@ void EthStratumClient::disconnect()
 
 
                 // Rest of disconnection is performed asynchronously
+                DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::disconnect() end");
                 return;
             }
             else
@@ -249,13 +301,14 @@ void EthStratumClient::disconnect()
     }
 
     disconnect_finalize();
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::disconnect() end");
 }
 
 void EthStratumClient::disconnect_finalize()
 {
     if (m_conn->SecLevel() != SecureLevel::NONE)
     {
-        if (m_securesocket->lowest_layer().is_open())
+        if (m_securesocket && m_securesocket->lowest_layer().is_open())
         {
             // Manage error code if layer is already shut down
             boost::system::error_code ec;
@@ -282,6 +335,7 @@ void EthStratumClient::disconnect_finalize()
     m_authorized.store(false, std::memory_order_relaxed);
     m_authpending.store(false, std::memory_order_relaxed);
     m_disconnecting.store(false, std::memory_order_relaxed);
+    m_txPending.store(false, std::memory_order_relaxed);
 
     if (!m_conn->IsUnrecoverable())
     {
@@ -319,9 +373,7 @@ void EthStratumClient::disconnect_finalize()
 
     // Trigger handlers
     if (m_onDisconnected)
-    {
         m_onDisconnected();
-    }
 }
 
 void EthStratumClient::resolve_handler(
@@ -329,8 +381,6 @@ void EthStratumClient::resolve_handler(
 {
     if (!ec)
     {
-        dev::setThreadName("stratum");
-
         while (i != tcp::resolver::iterator())
         {
             m_endpoints.push(i->endpoint());
@@ -343,7 +393,6 @@ void EthStratumClient::resolve_handler(
     }
     else
     {
-        dev::setThreadName("stratum");
         cwarn << "Could not resolve host " << m_conn->Host() << ", " << ec.message();
 
         // Release locking flag and set connection status
@@ -371,8 +420,6 @@ void EthStratumClient::start_connect()
         if (m_socket == nullptr)
             init_socket();
 
-        dev::setThreadName("stratum");
-
 #ifdef DEV_BUILD
         if (g_logOptions & LOG_CONNECT)
             cnote << ("Trying " + toString(m_endpoint) + " ...");
@@ -397,7 +444,6 @@ void EthStratumClient::start_connect()
     }
     else
     {
-        dev::setThreadName("stratum");
         m_connecting.store(false, std::memory_order_relaxed);
         cwarn << "No more IP addresses to try for host: " << m_conn->Host();
 
@@ -474,7 +520,6 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                 else
                 {
                     // Waiting for a response to solution submission
-                    dev::setThreadName("stratum");
                     cwarn << "No response received in " << m_responsetimeout << " seconds.";
                     m_endpoints.pop();
                     m_subscribed.store(false, std::memory_order_relaxed);
@@ -489,7 +534,6 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
             if (duration_cast<seconds>(steady_clock::now() - m_current_timestamp).count() >
                 m_worktimeout)
             {
-                dev::setThreadName("stratum");
                 cwarn << "No new work received in " << m_worktimeout << " seconds.";
                 m_endpoints.pop();
                 m_subscribed.store(false, std::memory_order_relaxed);
@@ -509,7 +553,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
 
 void EthStratumClient::connect_handler(const boost::system::error_code& ec)
 {
-    dev::setThreadName("stratum");
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() begin");
 
     // Set status completion
     m_connecting.store(false, std::memory_order_relaxed);
@@ -535,11 +579,20 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
         m_canconnect.store(false, std::memory_order_relaxed);
         m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::start_connect, this)));
 
+        DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() end1");
         return;
     }
 
     // We got a socket connection established
+    // Start a new session of data
     m_canconnect.store(true, std::memory_order_relaxed);
+    m_connected.store(true, std::memory_order_relaxed);
+    m_current_timestamp = std::chrono::steady_clock::now();
+    m_message.clear();
+
+    // Clear txqueue
+    m_txQueue.consume_all([](std::string* l) { delete l; });
+
 #ifdef DEV_BUILD
     if (g_logOptions & LOG_CONNECT)
         cnote << "Socket connected to " << ActiveEndPoint();
@@ -561,7 +614,8 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
                 cwarn << "This can have multiple reasons:";
                 cwarn << "* Root certs are either not installed or not found";
                 cwarn << "* Pool uses a self-signed certificate";
-                cwarn << "* Pool hostname you're connecting to does not match the CN registered for the certificate.";
+                cwarn << "* Pool hostname you're connecting to does not match the CN registered "
+                         "for the certificate.";
                 cwarn << "Possible fixes:";
 #ifndef _WIN32
                 cwarn << "* Make sure the file '/etc/ssl/certs/ca-certificates.crt' exists and "
@@ -573,8 +627,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
                 cwarn << "  You can also get the latest file here: "
                          "https://curl.haxx.se/docs/caextract.html";
 #endif
-                cwarn
-                    << "* Double check hostname in the -P argument.";
+                cwarn << "* Double check hostname in the -P argument.";
                 cwarn << "* Disable certificate verification all-together via environment "
                          "variable. See ethminer --help for info about environment variables";
                 cwarn << "If you do the latter please be advised you might expose yourself to the "
@@ -587,6 +640,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
             m_canconnect.store(false, std::memory_order_relaxed);
             m_conn->MarkUnrecoverable();
             m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+            DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() end2");
             return;
         }
     }
@@ -596,14 +650,11 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
         m_nonsecuresocket->set_option(tcp::no_delay(true));
     }
 
-    // Here is where we're properly connected
-    m_connected.store(true, std::memory_order_relaxed);
-
     // Clean buffer from any previous stale data
     m_sendBuffer.consume(4096);
     clear_response_pleas();
 
-    // user and worker
+    // User and worker
     m_user = m_conn->User();
     m_worker = m_conn->Workername();
 
@@ -677,6 +728,8 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     */
     enqueue_response_plea();
     send(jReq);
+
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() end");
 }
 
 std::string EthStratumClient::processError(Json::Value& responseObject)
@@ -718,17 +771,15 @@ std::string EthStratumClient::processError(Json::Value& responseObject)
 
 void EthStratumClient::processExtranonce(std::string& enonce)
 {
-    m_extraNonceHexSize = enonce.length();
+    m_extraNonceSizeBytes = enonce.length();
 
     cnote << "Extranonce set to " EthWhite << enonce << EthReset " (nicehash)";
-    enonce.append(16 - m_extraNonceHexSize, '0');
-    m_extraNonce = h64(enonce);
+    enonce.resize(16, '0');
+    m_extraNonce = std::stoul(enonce, nullptr, 16);
 }
 
 void EthStratumClient::processResponse(Json::Value& responseObject)
 {
-    dev::setThreadName("stratum");
-
     // Store jsonrpc version to test against
     int _rpcVer = responseObject.isMember("jsonrpc") ? 2 : 1;
 
@@ -1039,7 +1090,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 {
                     if (m_onSolutionAccepted)
                     {
-                        m_onSolutionAccepted(m_stale, response_delay_ms, miner_index);
+                        m_onSolutionAccepted(response_delay_ms, miner_index);
                     }
                 }
                 else
@@ -1048,7 +1099,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     {
                         cwarn << "Reject reason :"
                               << (_errReason.empty() ? "Unspecified" : _errReason);
-                        m_onSolutionRejected(m_stale, response_delay_ms, miner_index);
+                        m_onSolutionRejected(response_delay_ms, miner_index);
                     }
                 }
             }
@@ -1074,7 +1125,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             // Hashrate submit is actually out of stratum spec
             if (!_isSuccess)
             {
-                cwarn << "Submit hashRate failed:"
+                cwarn << "Submit hashRate failed: "
                       << (_errReason.empty() ? "Unspecified error" : _errReason);
             }
         }
@@ -1139,7 +1190,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
         if (_method == "mining.notify")
         {
             // Discard jobs if not properly subscribed
-            if (!m_subscribed.load(std::memory_order_relaxed))
+            // or if a job for this transmission has already
+            // been processed
+            if (!m_subscribed.load(std::memory_order_relaxed) || m_newjobprocessed)
             {
                 return;
             }
@@ -1164,7 +1217,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             if (jPrm.isArray() && !jPrm.empty())
             {
-                string job = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
+                m_current.job = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
 
                 if (m_conn->StratumMode() == EthStratumClient::ETHEREUMSTRATUM)
                 {
@@ -1173,21 +1226,17 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
                     if (sHeaderHash != "" && sSeedHash != "")
                     {
-                        m_current.epoch = ethash::find_epoch_number(
-                            ethash::hash256_from_bytes(h256{sSeedHash}.data()));
+
+                        m_current.seed = h256(sSeedHash);
                         m_current.header = h256(sHeaderHash);
                         m_current.boundary = m_nextWorkBoundary;
-                        m_current.startNonce = bswap(*((uint64_t*)m_extraNonce.data()));
-                        m_current.exSizeBits = m_extraNonceHexSize * 4;
-                        m_current.job_len = job.size();
-                        job.resize(64, '0');
-                        m_current.job = h256(job);
+                        m_current.startNonce = m_extraNonce;
+                        m_current.exSizeBytes = m_extraNonceSizeBytes;
                         m_current_timestamp = std::chrono::steady_clock::now();
 
-                        if (m_onWorkReceived)
-                        {
-                            m_onWorkReceived(m_current);
-                        }
+                        // This will signal to dispatch the job
+                        // at the end of the transmission.
+                        m_newjobprocessed = true;
                     }
                 }
                 else
@@ -1196,27 +1245,33 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     string sSeedHash = jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
                     string sShareTarget =
                         jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
+                    if (jPrm.size() > 3)
+                    {
+                        try
+                        {
+                            m_current.block = std::stoul(
+                                jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString(), nullptr,
+                                16);
+                        }
+                        catch (const std::exception&)
+                        {
+                            m_current.block = -1;
+                        }
+                    }
 
                     // coinmine.pl fix
                     int l = sShareTarget.length();
                     if (l < 66)
                         sShareTarget = "0x" + string(66 - l, '0') + sShareTarget.substr(2);
 
+                    m_current.seed = h256(sSeedHash);
+                    m_current.header = h256(sHeaderHash);
+                    m_current.boundary = h256(sShareTarget);
+                    m_current_timestamp = std::chrono::steady_clock::now();
 
-                    if (sHeaderHash != "" && sSeedHash != "" && sShareTarget != "")
-                    {
-                        m_current.epoch = ethash::find_epoch_number(
-                            ethash::hash256_from_bytes(h256{sSeedHash}.data()));
-                        m_current.header = h256(sHeaderHash);
-                        m_current.boundary = h256(sShareTarget);
-                        m_current.job = h256(job);
-                        m_current_timestamp = std::chrono::steady_clock::now();
-
-                        if (m_onWorkReceived)
-                        {
-                            m_onWorkReceived(m_current);
-                        }
-                    }
+                    // This will signal to dispatch the job
+                    // at the end of the transmission.
+                    m_newjobprocessed = true;
                 }
             }
         }
@@ -1229,12 +1284,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 {
                     double nextWorkDifficulty =
                         max(jPrm.get(Json::Value::ArrayIndex(0), 1).asDouble(), 0.0001);
-                    diffToTarget((uint32_t*)m_nextWorkBoundary.data(), nextWorkDifficulty);
-#ifdef DEV_BUILD
-                    if (g_logOptions & LOG_CONNECT)
-                        cnote << "Difficulty set to " EthWhite << nextWorkDifficulty
-                              << EthReset " (nicehash)";
-#endif
+                    m_nextWorkBoundary = h256(diffToTarget(nextWorkDifficulty));
+                    cnote << "Difficulty set to " EthWhite << nextWorkDifficulty
+                          << EthReset " (nicehash) Target : " << m_nextWorkBoundary.hex();
                 }
             }
             else
@@ -1292,14 +1344,11 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
     }
 }
 
-void EthStratumClient::submitHashrate(string const& rate)
+void EthStratumClient::submitHashrate(string const& rate, string const& id)
 {
-    m_rate = rate;
 
-    if (!m_submit_hashrate || !isConnected())
-    {
+    if (!isConnected())
         return;
-    }
 
     // There is no stratum method to submit the hashrate so we use the rpc variant.
     // Note !!
@@ -1314,8 +1363,8 @@ void EthStratumClient::submitHashrate(string const& rate)
         jReq["worker"] = m_worker;
     jReq["method"] = "eth_submitHashrate";
     jReq["params"] = Json::Value(Json::arrayValue);
-    jReq["params"].append(m_rate);
-    jReq["params"].append("0x" + toString(this->m_submit_hashrate_id));
+    jReq["params"].append(rate);  // Already expressed as hex
+    jReq["params"].append(id);    // Already prefixed by 0x
 
     send(jReq);
 }
@@ -1325,7 +1374,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
     if (!m_subscribed.load(std::memory_order_relaxed) ||
         !m_authorized.load(std::memory_order_relaxed))
     {
-        cwarn << "Not authorized";
+        cwarn << "Solution not submitted. Not authorized.";
         return;
     }
 
@@ -1333,7 +1382,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
 
     Json::Value jReq;
 
-    unsigned id = 40 + solution.index;
+    unsigned id = 40 + solution.midx;
     jReq["id"] = id;
     m_solution_submitted_max_id = max(m_solution_submitted_max_id, id);
     jReq["method"] = "mining.submit";
@@ -1345,7 +1394,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
 
         jReq["jsonrpc"] = "2.0";
         jReq["params"].append(m_conn->User());
-        jReq["params"].append(solution.work.job.hex());
+        jReq["params"].append(solution.work.job);
         jReq["params"].append("0x" + nonceHex);
         jReq["params"].append("0x" + solution.work.header.hex());
         jReq["params"].append("0x" + solution.mixHash.hex());
@@ -1368,29 +1417,26 @@ void EthStratumClient::submitSolution(const Solution& solution)
     case EthStratumClient::ETHEREUMSTRATUM:
 
         jReq["params"].append(m_conn->User());
-        jReq["params"].append(solution.work.job.hex().substr(0, solution.work.job_len));
-        jReq["params"].append(nonceHex.substr(m_extraNonceHexSize, 16 - m_extraNonceHexSize));
-
-        break;
+        jReq["params"].append(solution.work.job);
+        jReq["params"].append(nonceHex.substr(solution.work.exSizeBytes));
     }
 
     enqueue_response_plea();
     send(jReq);
 
-    m_stale = solution.stale;
 }
 
 void EthStratumClient::recvSocketData()
 {
     if (m_conn->SecLevel() != SecureLevel::NONE)
     {
-        async_read_until(*m_securesocket, m_recvBuffer, "\n",
+        async_read(*m_securesocket, m_recvBuffer, boost::asio::transfer_at_least(1),
             m_io_strand.wrap(boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
                 boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
     }
     else
     {
-        async_read_until(*m_nonsecuresocket, m_recvBuffer, "\n",
+        async_read(*m_nonsecuresocket, m_recvBuffer, boost::asio::transfer_at_least(1),
             m_io_strand.wrap(boost::bind(&EthStratumClient::onRecvSocketDataCompleted, this,
                 boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
     }
@@ -1399,16 +1445,13 @@ void EthStratumClient::recvSocketData()
 void EthStratumClient::onRecvSocketDataCompleted(
     const boost::system::error_code& ec, std::size_t bytes_transferred)
 {
-    dev::setThreadName("stratum");
-
     // Due to the nature of io_service's queue and
     // the implementation of the loop this event may trigger
     // late after clean disconnection. Check status of connection
     // before triggering all stack of calls
 
-    if (!ec && bytes_transferred > 0)
+    if (!ec)
     {
-
         // DO NOT DO THIS !!!!!
         // std::istream is(&m_recvBuffer);
         // std::string message;
@@ -1427,26 +1470,46 @@ void EthStratumClient::onRecvSocketDataCompleted(
             thus invalidating the previous point 2
         */
 
-        // Extract received message
-        std::string line(
+        // Extract received message and free the buffer
+        std::string rx_message(
             boost::asio::buffer_cast<const char*>(m_recvBuffer.data()), bytes_transferred);
-        boost::replace_all(line, "\n", " ");
         m_recvBuffer.consume(bytes_transferred);
+        m_message.append(rx_message);
 
-        // Out received message only for debug purpouses
-        if (g_logOptions & LOG_JSON)
-            cnote << " << " << line;
-
-        // Process message only if we're connected
-        if (isConnected())
+        // Process each line in the transmission
+        // NOTE : as multiple jobs may come in with
+        // a single transmission only the last will be dispatched
+        m_newjobprocessed = false;
+        std::string line;
+        size_t offset = m_message.find("\n");
+        while (offset != string::npos)
         {
-            // Test validity of chunk and process
-            Json::Value jMsg;
-            Json::Reader jRdr;
-            if (jRdr.parse(line, jMsg))
+            if (offset > 0)
             {
-                // Run in sync so no 2 different async reads may overlap
-                processResponse(jMsg);
+                line = m_message.substr(0, offset);
+                boost::trim(line);
+
+                if (!line.empty())
+                {
+                    // Out received message only for debug purpouses
+                    if (g_logOptions & LOG_JSON)
+                        cnote << " << " << line;
+
+                    // Test validity of chunk and process
+                    Json::Value jMsg;
+                    Json::Reader jRdr;
+                    if (jRdr.parse(line, jMsg))
+                    {
+                        // Run in sync so no 2 different async reads may overlap
+                        processResponse(jMsg);
+                    }
+                    else
+                    {
+                        string what = jRdr.getFormattedErrorMessages();
+                        boost::replace_all(what, "\n", " ");
+                        cwarn << "Got invalid Json message : " << what;
+                    }
+                }
             }
             else
             {
@@ -1455,6 +1518,15 @@ void EthStratumClient::onRecvSocketDataCompleted(
                 cwarn << "Got invalid Json message : " << what;
             }
         }
+
+            m_message.erase(0, offset + 1);
+            offset = m_message.find("\n");
+        }
+
+        // There is a new job - dispatch it
+        if (m_newjobprocessed)
+            if (m_onWorkReceived)
+                m_onWorkReceived(m_current);
 
         // Eventually keep reading from socket
         if (isConnected())
@@ -1539,6 +1611,7 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
 {
     if (ec)
     {
+        m_sendBuffer.consume(m_sendBuffer.capacity());
         m_txQueue.consume_all([](std::string* l) { delete l; });
         m_txPending.store(false, std::memory_order_relaxed);
 
@@ -1551,7 +1624,6 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
 
         if (isConnected())
         {
-            dev::setThreadName("stratum");
             cwarn << "Socket write failed: " + ec.message();
             m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
         }
@@ -1568,7 +1640,7 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
 void EthStratumClient::onSSLShutdownCompleted(const boost::system::error_code& ec)
 {
     (void)ec;
-    // cnote << "onSSLShutdownCompleted Error code is: " << ec.message();
+    clear_response_pleas();
     m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect_finalize, this)));
 }
 

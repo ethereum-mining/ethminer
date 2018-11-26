@@ -11,6 +11,9 @@
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
 
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/lexical_cast.hpp>
+
 #pragma GCC diagnostic push
 #if __GNUC__ >= 6
 #pragma GCC diagnostic ignored "-Wignored-attributes"
@@ -33,12 +36,6 @@
 #define CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV 0x4001
 #endif
 
-#define OPENCL_PLATFORM_UNKNOWN 0
-#define OPENCL_PLATFORM_NVIDIA 1
-#define OPENCL_PLATFORM_AMD 2
-#define OPENCL_PLATFORM_CLOVER 3
-
-
 namespace dev
 {
 namespace eth
@@ -55,31 +52,24 @@ public:
     CLMiner(unsigned _index);
     ~CLMiner() override;
 
-    static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
-    static unsigned getNumDevices();
-    static void listDevices();
+    static void enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollection);
+
     static bool configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
-        unsigned _platformId, int epoch, unsigned _dagLoadMode, unsigned _dagCreateDevice,
-        bool _noeval, bool _exit, bool _nobinary);
-    static void setNumInstances(unsigned _instances)
-    {
-        s_numInstances = std::min<unsigned>(_instances, getNumDevices());
-    }
-    static void setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount)
-    {
-        for (unsigned i = 0; i < _selectedDeviceCount; i++)
-        {
-            s_devices[i] = _devices[i];
-        }
-    }
+        unsigned _dagLoadMode, bool _nobinary);
 
 protected:
+
+    bool initDevice() override;
+
+    bool initEpoch_internal() override;
+
     void kick_miner() override;
 
 private:
-    void workLoop() override;
 
-    bool init(int epoch);
+    boost::asio::io_service::strand m_io_strand;
+
+    void workLoop() override;
 
     vector<cl::Context> m_context;
     vector<cl::CommandQueue> m_queue;
@@ -97,10 +87,9 @@ private:
     unsigned m_dagItems = 0;
     uint64_t m_lastNonce = 0;
 
-    static unsigned s_platformId;
-    static unsigned s_numInstances;
     static bool s_noBinary;
-    static vector<int> s_devices;
+    bool m_noBinary;
+    
 
     /// The local work size for the search
     static unsigned s_workgroupSize;

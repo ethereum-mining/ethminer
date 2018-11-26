@@ -41,9 +41,10 @@ void SimulateClient::disconnect()
     }
 }
 
-void SimulateClient::submitHashrate(string const& rate)
+void SimulateClient::submitHashrate(string const& rate, string const& id)
 {
     (void)rate;
+    (void)id;
     auto sec = duration_cast<seconds>(steady_clock::now() - m_time);
     cnote << "On difficulty" << m_difficulty << "for" << sec.count() << "seconds";
 }
@@ -63,16 +64,12 @@ void SimulateClient::submitSolution(const Solution& solution)
     if (accepted)
     {
         if (m_onSolutionAccepted)
-        {
-            m_onSolutionAccepted(false, response_delay_ms, solution.index);
-        }
+            m_onSolutionAccepted(response_delay_ms, solution.midx);
     }
     else
     {
         if (m_onSolutionRejected)
-        {
-            m_onSolutionRejected(false, response_delay_ms, solution.index);
-        }
+            m_onSolutionRejected(response_delay_ms, solution.midx);
     }
 }
 

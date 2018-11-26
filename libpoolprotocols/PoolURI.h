@@ -17,8 +17,11 @@
 
 #pragma once
 
+#include <regex>
 #include <string>
 #include <regex>
+
+#include <boost/asio.hpp>
 
 #include <boost/asio.hpp>
 
@@ -31,6 +34,7 @@ enum class SecureLevel
     TLS12,
     TLS
 };
+
 enum class ProtocolFamily
 {
     GETWORK = 0,
@@ -39,11 +43,11 @@ enum class ProtocolFamily
 
 enum class UriHostNameType
 {
-    Unknown = 0,
-    Basic = 1,
-    Dns = 2,
-    IPV4 = 3,
-    IPV6 = 4
+    Unknown = 0,  // The type of the host name is not supplied
+    Basic = 1,    // The host is set, but the type cannot be determined
+    Dns = 2,      // The host name is a domain name system(DNS) style host name
+    IPV4 = 3,     // The host name is an Internet Protocol(IP) version 4 host address
+    IPV6 = 4      // The host name is an Internet Protocol(IP) version 6 host address.
 };
 
 class URI
@@ -62,6 +66,7 @@ public:
     SecureLevel SecLevel() const;
     ProtocolFamily Family() const;
     UriHostNameType HostNameType() const;
+    bool IsLoopBack() const;
     unsigned Version() const;
     std::string str() const { return m_uri; }
     bool Valid() const { return m_valid; }
@@ -96,7 +101,9 @@ private:
     bool m_valid = false;
     bool m_stratumModeConfirmed = false;
     bool m_unrecoverable = false;
+    unsigned m_connectionAttempts;
 
     UriHostNameType m_hostType = UriHostNameType::Unknown;
+    bool m_isLoopBack;
 };
 }  // namespace dev

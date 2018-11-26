@@ -33,11 +33,13 @@
 #include <libdevcore/Worker.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Miner.h>
-#include <libhwmon/wrapadl.h>
+
 #include <libhwmon/wrapnvml.h>
 #if defined(__linux)
 #include <libhwmon/wrapamdsysfs.h>
 #include <sys/stat.h>
+#else
+#include <libhwmon/wrapadl.h>
 #endif
 
 extern boost::asio::io_service g_io_service;
@@ -58,11 +60,11 @@ public:
 
     struct SealerDescriptor
     {
-        std::function<unsigned()> instances;
         std::function<Miner*(unsigned)> create;
     };
 
-    Farm(bool hwmon, bool pwron);
+    Farm(std::map<std::string, DeviceDescriptorType>& _DevicesCollection, unsigned hwmonlvl,
+        bool noeval);
 
     ~Farm();
 
@@ -77,26 +79,35 @@ public:
      * @brief Sets the current mining mission.
      * @param _wp The work package we wish to be mining.
      */
-    void setWork(WorkPackage const& _wp)
-    {
-        // Set work to each miner
-        Guard l(x_minerWork);
-        m_work = _wp;
-        for (auto const& m : m_miners)
-            m->setWork(m_work);
-    }
+    void setWork(WorkPackage const& _newWp);
 
     void setSealers(std::map<std::string, SealerDescriptor> const& _sealers);
 
     /**
      * @brief Start a number of miners.
      */
-    bool start(std::string const& _sealer, bool mixed);
+    bool start();
 
     /**
-     * @brief Stop all mining activities.
+     * @brief All mining activities to a full stop.
+     * Implies all mining threads are stopped.
      */
     void stop();
+
+    /**
+     * @brief Signals all miners to suspend mining
+     */
+    void pause();
+
+    /**
+     * @brief Whether or not the whole farm has been paused
+     */
+    bool paused();
+
+    /**
+     * @brief Signals all miners to resume mining
+     */
+    void resume();
 
     /**
      * @brief Stop all mining activities and Starts them again
@@ -108,6 +119,9 @@ public:
      */
     void restart_async();
 
+    /**
+     * @brief Returns whether or not the farm has been started
+     */
     bool isMining() const { return m_isMining.load(std::memory_order_relaxed); }
 
     /**
@@ -135,19 +149,8 @@ public:
 
     void failedSolution(unsigned _miner_index) override { m_solutionStats.failed(_miner_index); }
 
-    void acceptedSolution(bool _stale, unsigned _miner_index)
-    {
-        if (!_stale)
-        {
-            m_solutionStats.accepted(_miner_index);
-        }
-        else
-        {
-            m_solutionStats.acceptedStale(_miner_index);
-        }
-    }
-
-    void rejectedSolution(unsigned _miner_index) { m_solutionStats.rejected(_miner_index); }
+    void acceptedSolution(unsigned const& miner_index) { m_solutionStats.accepted(miner_index); }
+    void rejectedSolution(unsigned const& miner_index) { m_solutionStats.rejected(miner_index); }
 
     using SolutionFound = std::function<void(const Solution&)>;
     using MinerRestart = std::function<void()>;
@@ -159,13 +162,8 @@ public:
      * submitted.
      */
     void onSolutionFound(SolutionFound const& _handler) { m_onSolutionFound = _handler; }
-    void onMinerRestart(MinerRestart const& _handler) { m_onMinerRestart = _handler; }
 
-    WorkPackage work() const
-    {
-        Guard l(x_minerWork);
-        return m_work;
-    }
+    void onMinerRestart(MinerRestart const& _handler) { m_onMinerRestart = _handler; }
 
     std::chrono::steady_clock::time_point farmLaunched() { return m_farm_launched; }
 
@@ -177,7 +175,11 @@ public:
 
     void set_nonce_scrambler(uint64_t n) { m_nonce_scrambler = n; }
 
-    void set_nonce_segment_width(unsigned n) { m_nonce_segment_with = n; }
+    void set_nonce_segment_width(unsigned n)
+    {
+        if (!m_currentWp.exSizeBytes)
+            m_nonce_segment_with = n;
+    }
 
     /**
      * @brief Provides the description of segments each miner is working on
@@ -194,15 +196,12 @@ public:
     /**
      * @brief Called from a Miner to note a WorkPackage has a solution.
      * @param _s The solution.
-     * @param _miner_index Index of the miner
      */
-    void submitProof(Solution const& _s) override
-    {
-        assert(m_onSolutionFound);
-        m_onSolutionFound(_s);
-    }
+    void submitProof(Solution const& _s) override;
 
 private:
+    std::atomic<bool> m_paused = {false};
+
     // Collects data about hashing and hardware status
     void collectData(const boost::system::error_code& ec);
 
@@ -214,7 +213,9 @@ private:
 
     mutable Mutex x_minerWork;
     std::vector<std::shared_ptr<Miner>> m_miners;
-    WorkPackage m_work;
+
+    WorkPackage m_currentWp;
+    EpochContext m_currentEc;
 
     std::atomic<bool> m_isMining = {false};
 
@@ -237,24 +238,35 @@ private:
 
     // StartNonce (non-NiceHash Mode) and
     // segment width assigned to each GPU as exponent of 2
+    // considering an average block time of 15 seconds
+    // a single device GPU should need a speed of 286 Mh/s
+    // before it consumes the whole 2^32 segment
     uint64_t m_nonce_scrambler;
-    unsigned int m_nonce_segment_with = 40;
+    unsigned int m_nonce_segment_with = 32;
 
     // Switches for hw monitoring and power drain monitoring
-    bool m_hwmon, m_pwron;
+    unsigned m_hwmonlvl;
 
     // Hardware monitoring temperatures
     unsigned m_tstart = 0, m_tstop = 0;
 
-    // Wrappers for hardware monitoring libraries
+    // Whether or not GPU solutions should be CPU re-evaluated
+    bool m_noeval = false;
+
+    // Wrappers for hardware monitoring libraries and their mappers
     wrap_nvml_handle* nvmlh = nullptr;
-    wrap_adl_handle* adlh = nullptr;
+    std::map<string, int> map_nvml_handle = {};
 
 #if defined(__linux)
     wrap_amdsysfs_handle* sysfsh = nullptr;
+    std::map<string, int> map_amdsysfs_handle = {};
+#else
+    wrap_adl_handle* adlh = nullptr;
+    std::map<string, int> map_adl_handle = {};
 #endif
 
     static Farm* m_this;
+    std::map<std::string, DeviceDescriptorType>& m_DevicesCollection;
 };
 
 }  // namespace eth
