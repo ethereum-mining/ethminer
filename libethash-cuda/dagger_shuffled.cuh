@@ -3,12 +3,9 @@
 #include "cuda_helper.h"
 
 template <uint32_t _PARALLEL_HASH>
-__device__ __forceinline__ bool compute_hash(
-	uint64_t nonce,
-	uint2 *mix_hash
-	)
+__device__ __forceinline__ bool compute_hash(uint64_t const nonce, uint2* mix_hash)
 {
-	// sha3_512(header .. nonce)
+    // sha3_512(header .. nonce)
 	uint2 state[12];
 	
 	state[4] = vectorize(nonce);
@@ -34,13 +31,7 @@ __device__ __forceinline__ bool compute_hash(
 				shuffle[j].x = __shfl_sync(0xFFFFFFFF,state[j].x, i+p, THREADS_PER_HASH);
 				shuffle[j].y = __shfl_sync(0xFFFFFFFF,state[j].y, i+p, THREADS_PER_HASH);
 			}
-			switch (mix_idx)
-			{
-				case 0: mix[p] = vectorize2(shuffle[0], shuffle[1]); break;
-				case 1: mix[p] = vectorize2(shuffle[2], shuffle[3]); break;
-				case 2: mix[p] = vectorize2(shuffle[4], shuffle[5]); break;
-				case 3: mix[p] = vectorize2(shuffle[6], shuffle[7]); break;
-			}
+			mix[p] = vectorize2(shuffle[mix_idx*2], shuffle[mix_idx*2 + 1]);
 			init0[p] = __shfl_sync(0xFFFFFFFF,shuffle[0].x, 0, THREADS_PER_HASH);
 		}
 
@@ -95,4 +86,3 @@ __device__ __forceinline__ bool compute_hash(
 
 	return false;
 }
-
