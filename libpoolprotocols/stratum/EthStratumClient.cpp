@@ -183,7 +183,8 @@ void EthStratumClient::init_socket()
     setsockopt(
         m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
 #else
-    timeval tv{keepAlive / 1000, keepAlive % 1000};
+    timeval tv{
+        static_cast<suseconds_t>(keepAlive / 1000), static_cast<suseconds_t>(keepAlive % 1000)};
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 #endif
@@ -1511,13 +1512,6 @@ void EthStratumClient::onRecvSocketDataCompleted(
                     }
                 }
             }
-            else
-            {
-                string what = jRdr.getFormattedErrorMessages();
-                boost::replace_all(what, "\n", " ");
-                cwarn << "Got invalid Json message : " << what;
-            }
-        }
 
             m_message.erase(0, offset + 1);
             offset = m_message.find("\n");
