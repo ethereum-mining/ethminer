@@ -36,7 +36,7 @@ wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/c
 sudo dpkg -i cuda-repo-ubuntu1604_${CUDA_VER}_amd64.deb
 sudo apt-get update -qq
 CUDA_APT=$(echo $CUDA_VER | sed 's/\.[0-9]\+\-[0-9]\+$//;s/\./-/')
-sudo apt-get install -qy $CUDA_PACKAGE-$CUDA_APT cuda-cudart-dev-$CUDA_APT
+sudo apt-get install -qy $CUDA_PACKAGE-$CUDA_APT cuda-cudart-dev-$CUDA_APT cuda-nvrtc-dev-$CUDA_APT
 sudo apt-get clean
 CUDA_APT=$(echo $CUDA_APT | sed 's/-/./')
 CUDA_HOME=/usr/local/cuda-$CUDA_APT
