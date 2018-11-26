@@ -11,7 +11,6 @@
 #include <ethash/ethash.hpp>
 
 #include "CLMiner.h"
-#include "ethash.h"
 #include <iostream>
 #include <fstream>
 
@@ -302,6 +301,7 @@ void CLMiner::workLoop()
     // The work package currently processed by GPU.
     WorkPackage current;
     current.header = h256{1u};
+    uint64_t old_period_seed = -1;
 
     try
     {
@@ -343,6 +343,7 @@ void CLMiner::workLoop()
                 results.count = 0;
 
             const WorkPackage w = work();
+            uint64_t period_seed = w.height / PROGPOW_PERIOD;
 
             if (current.header != w.header)
             {
@@ -364,8 +365,12 @@ void CLMiner::workLoop()
                     }
 
                     m_abortqueue.clear();
-                    init(w.epoch);
+                    init(w.epoch, w.height);
                     m_abortqueue.push_back(cl::CommandQueue(m_context[0], m_device));
+                }
+                else if (old_period_seed != period_seed)
+                {
+                    // FIXME
                 }
 
                 // Upper 64 bits of the boundary.
@@ -580,7 +585,7 @@ bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMult
     return false;
 }
 
-bool CLMiner::init(int epoch)
+bool CLMiner::init(int epoch, uint64_t block_number)
 {
     // get all platforms
     try
@@ -684,12 +689,10 @@ bool CLMiner::init(int epoch)
         }
 
         const auto& context = ethash::get_global_epoch_context(epoch);
-        const auto lightNumItems = context.light_cache_num_items;
-        const auto lightSize = ethash::get_light_cache_size(lightNumItems);
-        const auto lightWords = ethash::get_light_cache_num_items(context);
+        const auto lightWords = context.light_cache_num_items;
+        const auto lightSize = ethash::get_light_cache_size(lightWords);
         m_dagItems = context.full_dataset_num_items;
         const auto dagBytes = ethash::get_full_dataset_size(m_dagItems);
-        const auto lightRef = ethash::managed::get_light_cache_data(epoch);
 
         // patch source code
         // note: The kernels here are simply compiled version of the respective .cl kernels
@@ -697,7 +700,7 @@ bool CLMiner::init(int epoch)
         // See libethash-cl/CMakeLists.txt: add_custom_command()
         // TODO: Just use C++ raw string literal.
 
-        std::string code = ProgPow::getKern(light->light->block_number, ProgPow::KERNEL_CL);
+        std::string code = ProgPow::getKern(block_number, ProgPow::KERNEL_CL);
         code += string(CLMiner_kernel, sizeof(CLMiner_kernel));
 
         addDefinition(code, "WORKSIZE", m_workgroupSize);

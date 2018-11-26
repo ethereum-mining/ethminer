@@ -54,7 +54,7 @@ public:
     static const unsigned c_defaultGlobalWorkSizeMultiplier = 2048;
 
     /// Default value of the kernel is the original one
-    static const CLKernelName c_defaultKernelName = CLKernelName::Stable;
+    //static const CLKernelName c_defaultKernelName = CLKernelName::Stable;
 
     CLMiner(unsigned _index);
     ~CLMiner() override;
@@ -83,7 +83,7 @@ protected:
 private:
     void workLoop() override;
 
-    bool init(int epoch);
+    bool init(int epoch, uint64_t block_number);
 
     vector<cl::Context> m_context;
     vector<cl::CommandQueue> m_queue;
