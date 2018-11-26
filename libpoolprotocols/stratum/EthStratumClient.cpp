@@ -459,7 +459,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
 
             if (response_delay_ms.count() >= (m_responsetimeout * 1000))
             {
-                if (m_conn->StratumModeConfirmed() == false && m_conn->IsUnrecoverable() == false)
+                if (!m_conn->StratumModeConfirmed() && !m_conn->IsUnrecoverable())
                 {
                     // Waiting for a response from pool to a login request
                     // Async self send a fake error response
