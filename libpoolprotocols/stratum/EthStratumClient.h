@@ -60,7 +60,6 @@ public:
     } StratumProtocol;
 
     EthStratumClient(int worktimeout, int responsetimeout, bool submitHashrate);
-    ~EthStratumClient();
 
     void init_socket();
     void connect() override;
