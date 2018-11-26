@@ -150,7 +150,6 @@ enum MinerPauseEnum
     Pause_MAX  // Must always be last as a placeholder of max count
 };
 
-
 /// Describes the progress of a mining operation.
 struct WorkingProgress
 {

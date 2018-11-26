@@ -36,7 +36,7 @@
 
 [![Releases](https://img.shields.io/github/downloads/ethereum-mining/ethminer/total.svg)][Releases]
 
-Standalone **executables** for _Linux_, _macOS_ and _Windows_ are provided in
+Standalone **executables** for *Linux*, *macOS* and *Windows* are provided in
 the [Releases] section.
 Download an archive for your operating system and unpack the content to a place
 accessible from command line. The ethminer is ready to go.
@@ -44,7 +44,7 @@ accessible from command line. The ethminer is ready to go.
 | Builds | Release | Date |
 | ------ | ------- | ---- |
 | Last   | [![GitHub release](https://img.shields.io/github/release/ethereum-mining/ethminer/all.svg)](https://github.com/ethereum-mining/ethminer/releases) | [![GitHub Release Date](https://img.shields.io/github/release-date-pre/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) |
-| Stable | [![GitHub release](https://img.shields.io/github/release/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) | [![GitHub Release Date](https://img.shields.io/github/release-date/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases) |
+| Stable | [![GitHub release](https://img.shields.io/github/release/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases/latest) | [![GitHub Release Date](https://img.shields.io/github/release-date/ethereum-mining/ethminer.svg)](https://github.com/ethereum-mining/ethminer/releases/latest) |
 
 
 ## Usage
@@ -68,12 +68,12 @@ Check our [samples](docs/POOL_EXAMPLES_ETH.md) to see how to connect to differen
 
 | CI            | OS            | Status  | Development builds |
 | ------------- | ------------- | -----   | -----------------  |
-| [Travis CI]   | Linux, macOS  | [![Travis CI](https://img.shields.io/travis/ethereum-mining/ethminer.svg)][Travis CI]    | ✗ No build artifacts, [Amazon S3 is needed] for this |
-| [AppVeyor]    | Windows       | [![AppVeyor](https://img.shields.io/appveyor/ci/ethereum-mining/ethminer.svg)][AppVeyor] | ✓ Build artifacts available for all PRs and branches |
+| [Travis CI]   | Linux, macOS  | [![Travis CI](https://img.shields.io/travis/ethereum-mining/ethminer/master.svg)][Travis CI]    | ✗ No build artifacts, [Amazon S3 is needed] for this |
+| [AppVeyor]    | Windows       | [![AppVeyor](https://img.shields.io/appveyor/ci/ethereum-mining/ethminer/master.svg)][AppVeyor] | ✓ Build artifacts available for all PRs and branches |
 
 The AppVeyor system automatically builds a Windows .exe for every commit. The latest version is always available [on the landing page](https://ci.appveyor.com/project/ethereum-mining/ethminer) or you can [browse the history](https://ci.appveyor.com/project/ethereum-mining/ethminer/history) to access previous builds.
 
-To download the .exe on a build under `JOB NAME` select `Configuration: Release`, choose `ARTIFACTS` then download the zip file.
+To download the .exe on a build under `Job name` select the CUDA version you use, choose `Artifacts` then download the zip file.
 
 ### Building from source
 
@@ -170,13 +170,13 @@ This can be done with one of the 2 ways:
     * Adapt your environment using the control panel (just search `setting environment windows control panel` using your favorite search engine)
     * Adapt your start (.bat) file launching ethminer and add a line `set CUDA_DEVICE_ORDER=PCI_BUS_ID` or `setx CUDA_DEVICE_ORDER PCI_BUS_ID`. For more info about `set` see [here](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/set_1), for more info about `setx` see [here](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/setx)
 
-10. Insufficient CUDA driver
+### Insufficient CUDA driver
 
-    ```shell
-    Error: Insufficient CUDA driver: 9010
-    ```
+```text
+Error: Insufficient CUDA driver: 9010
+```
 
-    You have to upgrade your Nvidia drivers. On Linux, install `nvidia-396` package or newer.
+You have to upgrade your Nvidia drivers. On Linux, install `nvidia-396` package or newer.
 
 
 [Amazon S3 is needed]: https://docs.travis-ci.com/user/uploading-artifacts/

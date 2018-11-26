@@ -93,6 +93,8 @@ EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout)
 
     m_jSwBuilder.settings_["indentation"] = "";
 
+    m_jSwBuilder.settings_["indentation"] = "";
+
     // Initialize workloop_timer to infinite wait
     m_workloop_timer.expires_at(boost::posix_time::pos_infin);
     m_workloop_timer.async_wait(m_io_strand.wrap(boost::bind(
@@ -181,9 +183,7 @@ void EthStratumClient::init_socket()
     setsockopt(
         m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
 #else
-    struct timeval tv;
-    tv.tv_sec = keepAlive / 1000;
-    tv.tv_usec = keepAlive % 1000;
+    timeval tv{keepAlive / 1000, keepAlive % 1000};
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 #endif
@@ -1511,6 +1511,13 @@ void EthStratumClient::onRecvSocketDataCompleted(
                     }
                 }
             }
+            else
+            {
+                string what = jRdr.getFormattedErrorMessages();
+                boost::replace_all(what, "\n", " ");
+                cwarn << "Got invalid Json message : " << what;
+            }
+        }
 
             m_message.erase(0, offset + 1);
             offset = m_message.find("\n");

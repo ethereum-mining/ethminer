@@ -49,7 +49,6 @@ private:
     Verifier verifier_;
 };
 
-
 class EthStratumClient : public PoolClient
 {
 public:

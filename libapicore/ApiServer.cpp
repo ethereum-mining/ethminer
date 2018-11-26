@@ -934,6 +934,7 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(const WorkingProgress& p,
     jshares["accepted"] = s.getAccepts(index);
     jshares["rejected"] = s.getRejects(index);
     jshares["invalid"] = s.getFailures(index);
+
     auto solution_lastupdated =
         std::chrono::duration_cast<std::chrono::seconds>(now - s.getLastUpdated(index));
     jshares["lastupdate"] = uint64_t(solution_lastupdated.count());  // last update of this gpu stat was x seconds ago
