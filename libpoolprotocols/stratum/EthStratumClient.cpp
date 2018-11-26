@@ -67,11 +67,6 @@ EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout, bool su
     clear_response_pleas();
 }
 
-EthStratumClient::~EthStratumClient()
-{
-    // Do not stop io service.
-    // It's global
-}
 
 void EthStratumClient::init_socket()
 {
@@ -153,9 +148,7 @@ void EthStratumClient::init_socket()
     setsockopt(
         m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
 #else
-    struct timeval tv;
-    tv.tv_sec = keepAlive / 1000;
-    tv.tv_usec = keepAlive % 1000;
+    timeval tv{keepAlive / 1000, keepAlive % 1000};
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 #endif
@@ -316,7 +309,6 @@ void EthStratumClient::disconnect_finalize()
     }
 
     // Clear plea queue and stop timing
-    std::chrono::steady_clock::time_point m_response_plea_time;
     clear_response_pleas();
     m_solution_submitted_max_id = 0;
 
@@ -427,14 +419,14 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
     if (m_response_pleas_count.load(std::memory_order_relaxed))
     {
         milliseconds response_delay_ms(0);
-        steady_clock::time_point m_response_plea_time(
+        steady_clock::time_point response_plea_time(
             m_response_plea_older.load(std::memory_order_relaxed));
 
         // Check responses while in connection/disconnection phase
         if (isPendingState())
         {
             response_delay_ms =
-                duration_cast<milliseconds>(steady_clock::now() - m_response_plea_time);
+                duration_cast<milliseconds>(steady_clock::now() - response_plea_time);
 
             if ((m_responsetimeout * 1000) >= response_delay_ms.count())
             {
@@ -463,11 +455,11 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
         if (isConnected())
         {
             response_delay_ms =
-                duration_cast<milliseconds>(steady_clock::now() - m_response_plea_time);
+                duration_cast<milliseconds>(steady_clock::now() - response_plea_time);
 
             if (response_delay_ms.count() >= (m_responsetimeout * 1000))
             {
-                if (m_conn->StratumModeConfirmed() == false && m_conn->IsUnrecoverable() == false)
+                if (!m_conn->StratumModeConfirmed() && !m_conn->IsUnrecoverable())
                 {
                     // Waiting for a response from pool to a login request
                     // Async self send a fake error response
