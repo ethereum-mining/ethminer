@@ -33,11 +33,13 @@
 #include <libdevcore/Worker.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Miner.h>
-#include <libhwmon/wrapadl.h>
+
 #include <libhwmon/wrapnvml.h>
 #if defined(__linux)
 #include <libhwmon/wrapamdsysfs.h>
 #include <sys/stat.h>
+#else
+#include <libhwmon/wrapadl.h>
 #endif
 
 extern boost::asio::io_service g_io_service;
@@ -58,11 +60,11 @@ public:
 
     struct SealerDescriptor
     {
-        std::function<unsigned()> instances;
         std::function<Miner*(unsigned)> create;
     };
 
-    Farm(unsigned hwmonlvl, bool noeval);
+    Farm(std::map<std::string, DeviceDescriptorType>& _DevicesCollection, unsigned hwmonlvl,
+        bool noeval);
 
     ~Farm();
 
@@ -84,7 +86,7 @@ public:
     /**
      * @brief Start a number of miners.
      */
-    bool start(std::string const& _sealer, bool mixed);
+    bool start();
 
     /**
      * @brief All mining activities to a full stop.
@@ -198,7 +200,6 @@ public:
     void submitProof(Solution const& _s) override;
 
 private:
-
     std::atomic<bool> m_paused = {false};
 
     // Collects data about hashing and hardware status
@@ -237,7 +238,7 @@ private:
 
     // StartNonce (non-NiceHash Mode) and
     // segment width assigned to each GPU as exponent of 2
-    // considering an average block time of 15 seconds 
+    // considering an average block time of 15 seconds
     // a single device GPU should need a speed of 286 Mh/s
     // before it consumes the whole 2^32 segment
     uint64_t m_nonce_scrambler;
@@ -252,15 +253,20 @@ private:
     // Whether or not GPU solutions should be CPU re-evaluated
     bool m_noeval = false;
 
-    // Wrappers for hardware monitoring libraries
+    // Wrappers for hardware monitoring libraries and their mappers
     wrap_nvml_handle* nvmlh = nullptr;
-    wrap_adl_handle* adlh = nullptr;
+    std::map<string, int> map_nvml_handle = {};
 
 #if defined(__linux)
     wrap_amdsysfs_handle* sysfsh = nullptr;
+    std::map<string, int> map_amdsysfs_handle = {};
+#else
+    wrap_adl_handle* adlh = nullptr;
+    std::map<string, int> map_adl_handle = {};
 #endif
 
     static Farm* m_this;
+    std::map<std::string, DeviceDescriptorType>& m_DevicesCollection;
 };
 
 }  // namespace eth

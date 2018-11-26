@@ -8,13 +8,12 @@ using namespace eth;
 
 PoolManager* PoolManager::m_this = nullptr;
 
-PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigned maxTries,
+PoolManager::PoolManager(PoolClient* client, unsigned maxTries,
     unsigned failoverTimeout, unsigned ergodicity, bool reportHashrate)
   : m_hashrate(reportHashrate),
     m_io_strand(g_io_service),
     m_failovertimer(g_io_service),
-    m_submithrtimer(g_io_service),
-    m_minerType(minerType)
+    m_submithrtimer(g_io_service)
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::PoolManager() begin");
 
@@ -67,15 +66,7 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
         if (!Farm::f().isMining())
         {
             cnote << "Spinning up miners...";
-            if (m_minerType == MinerType::CL)
-                Farm::f().start("opencl", false);
-            else if (m_minerType == MinerType::CUDA)
-                Farm::f().start("cuda", false);
-            else if (m_minerType == MinerType::Mixed)
-            {
-                Farm::f().start("cuda", false);
-                Farm::f().start("opencl", true);
-            }
+            Farm::f().start();
         }
         else if (Farm::f().paused())
         {
@@ -208,15 +199,8 @@ PoolManager::PoolManager(PoolClient* client, MinerType const& minerType, unsigne
         }
 
         cnote << "Spinning up miners...";
-        if (m_minerType == MinerType::CL)
-            Farm::f().start("opencl", false);
-        else if (m_minerType == MinerType::CUDA)
-            Farm::f().start("cuda", false);
-        else if (m_minerType == MinerType::Mixed)
-        {
-            Farm::f().start("cuda", false);
-            Farm::f().start("opencl", true);
-        }
+        Farm::f().start();
+
     });
 
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::PoolManager() end");

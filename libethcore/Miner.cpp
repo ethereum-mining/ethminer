@@ -37,7 +37,7 @@ std::ostream& operator<<(std::ostream& os, const HwMonitor& _hw)
 
 std::ostream& operator<<(std::ostream& os, const FormattedMemSize& s)
 {
-    static const char* suffixes[] = {"bytes", "KB", "MB", "GB"};
+    static const char* suffixes[] = {"B", "KB", "MB", "GB"};
     double d = double(s.m_size);
     unsigned i;
     for (i = 0; i < 3; i++)
@@ -47,7 +47,7 @@ std::ostream& operator<<(std::ostream& os, const FormattedMemSize& s)
         d /= 1024.0;
     }
     std::ostringstream stream;
-    stream << fixed << setprecision(3) << d << ' ' << suffixes[i];
+    stream << fixed << setprecision(2) << d << ' ' << suffixes[i];
     return os << stream.str();
 }
 
@@ -89,6 +89,11 @@ std::ostream& operator<<(std::ostream& os, const SolutionStats& s)
     if (failures)
         os << ":F" << failures;
     return os;
+}
+
+void Miner::setDescriptor(DeviceDescriptorType& _descriptor) 
+{
+    m_deviceDescriptor = _descriptor;
 }
 
 void Miner::setWork(WorkPackage const& _work)
@@ -152,6 +157,8 @@ std::string Miner::pausedString()
                     retVar.append("Farm suspended");
                 else if (i == MinerPauseEnum::PauseDueToInsufficientMemory)
                     retVar.append("Insufficient GPU memory");
+                else if (i == MinerPauseEnum::PauseDueToInitEpochError)
+                    retVar.append("Epoch initialization error");
 
             }
         }
@@ -187,7 +194,7 @@ void Miner::TriggerHashRateUpdate() noexcept
     m_hashRate = 0.0;
 }
 
-bool Miner::init()
+bool Miner::initEpoch()
 {
     // When loading of DAG is sequential wait for
     // this instance to become current
@@ -206,10 +213,17 @@ bool Miner::init()
 
     // Run the internal initialization
     // specific for miner
-    bool result = init_internal();
+    bool result = initEpoch_internal();
+
+    // Advance to next miner
+    if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
+    {
+        s_dagLoadIndex = (m_index + 1);
+        m_dag_loaded_signal.notify_all();
+    }
+
     return result;
 }
-
 
 WorkPackage Miner::work() const
 {

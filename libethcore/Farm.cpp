@@ -24,7 +24,9 @@ namespace eth
 {
 Farm* Farm::m_this = nullptr;
 
-Farm::Farm(unsigned hwmonlvl, bool noeval) : m_io_strand(g_io_service), m_collectTimer(g_io_service)
+Farm::Farm(
+    std::map<std::string, DeviceDescriptorType>& _DevicesCollection, unsigned hwmonlvl, bool noeval)
+  : m_io_strand(g_io_service), m_collectTimer(g_io_service), m_DevicesCollection(_DevicesCollection)
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::Farm() begin");
 
@@ -35,11 +37,58 @@ Farm::Farm(unsigned hwmonlvl, bool noeval) : m_io_strand(g_io_service), m_collec
     // Init HWMON if needed
     if (m_hwmonlvl)
     {
-        adlh = wrap_adl_create();
 #if defined(__linux)
         sysfsh = wrap_amdsysfs_create();
+        if (sysfsh)
+        {
+            // Build Pci identification mapping as done in miners.
+            for (int i = 0; i < sysfsh->sysfs_gpucount; i++)
+            {
+                std::ostringstream oss;
+                std::string uniqueId;
+                oss << std::setfill('0') << std::setw(2) << std::hex
+                    << (unsigned int)sysfsh->sysfs_pci_bus_id[i] << ":" << std::setw(2)
+                    << (unsigned int)(sysfsh->sysfs_pci_device_id[i]) << ".0";
+                uniqueId = oss.str();
+                map_amdsysfs_handle[uniqueId] = i;
+            }
+        }
+
+#else
+        adlh = wrap_adl_create();
+        if (adlh)
+        {
+            // Build Pci identification as done in miners.
+            for (int i = 0; i < adlh->adl_gpucount; i++)
+            {
+                std::ostringstream oss;
+                std::string uniqueId;
+                oss << std::setfill('0') << std::setw(2) << std::hex
+                    << (unsigned int)adlh->devs[adlh->phys_logi_device_id[i]].iBusNumber << ":"
+                    << std::setw(2)
+                    << (unsigned int)(adlh->devs[adlh->phys_logi_device_id[i]].iDeviceNumber)
+                    << ".0";
+                uniqueId = oss.str();
+                map_adl_handle[uniqueId] = i;
+            }
+        }
+
 #endif
         nvmlh = wrap_nvml_create();
+        if (nvmlh)
+        {
+            // Build Pci identification as done in miners.
+            for (int i = 0; i < nvmlh->nvml_gpucount; i++)
+            {
+                std::ostringstream oss;
+                std::string uniqueId;
+                oss << std::setfill('0') << std::setw(2) << std::hex
+                    << (unsigned int)nvmlh->nvml_pci_bus_id[i] << ":" << std::setw(2)
+                    << (unsigned int)(nvmlh->nvml_pci_device_id[i] >> 3) << ".0";
+                uniqueId = oss.str();
+                map_nvml_handle[uniqueId] = i;
+            }
+        }
     }
 
     // Initialize nonce_scrambler
@@ -58,21 +107,25 @@ Farm::Farm(unsigned hwmonlvl, bool noeval) : m_io_strand(g_io_service), m_collec
 Farm::~Farm()
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::~Farm() begin");
+
+    // Stop data collector (before monitors !!!)
+    m_collectTimer.cancel();
+
     // Deinit HWMON
-    if (adlh)
-        wrap_adl_destroy(adlh);
 #if defined(__linux)
     if (sysfsh)
         wrap_amdsysfs_destroy(sysfsh);
+#else
+    if (adlh)
+        wrap_adl_destroy(adlh);
 #endif
     if (nvmlh)
         wrap_nvml_destroy(nvmlh);
 
-    // Stop mining
-    stop();
+    // Stop mining (if needed)
+    if (m_isMining.load(std::memory_order_relaxed))
+        stop();
 
-    // Stop data collector
-    m_collectTimer.cancel();
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::~Farm() end");
 }
 
@@ -116,7 +169,8 @@ void Farm::setWork(WorkPackage const& _newWp)
     {
         // Equally divide the residual segment among miners
         _startNonce = m_currentWp.startNonce;
-        m_nonce_segment_with = log2(pow(2, 64 - (m_currentWp.exSizeBytes * 4)) / m_miners.size());
+        m_nonce_segment_with =
+            (unsigned int)log2(pow(2, 64 - (m_currentWp.exSizeBytes * 4)) / m_miners.size());
     }
     else
     {
@@ -139,52 +193,48 @@ void Farm::setSealers(std::map<std::string, SealerDescriptor> const& _sealers)
 /**
  * @brief Start a number of miners.
  */
-bool Farm::start(std::string const& _sealer, bool mixed)
+bool Farm::start()
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() begin");
     Guard l(x_minerWork);
-    if (!m_miners.empty() && m_lastSealer == _sealer)
-    {
-        DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() end1");
-        return true;
-    }
-    if (!m_sealers.count(_sealer))
-    {
-        DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() end2");
-        return false;
-    }
 
-    if (!mixed)
+    // Start all subscribed miners if none yet
+    if (!m_miners.size())
     {
-        m_miners.clear();
-    }
-    auto ins = m_sealers[_sealer].instances();
-    unsigned start = 0;
-    if (!mixed)
-    {
-        m_miners.reserve(ins);
+        for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
+        {
+            string sealer;
+            if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda)
+                sealer = "cuda";
+            else if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
+                sealer = "opencl";
+            else
+                continue;
+
+            m_miners.push_back(std::shared_ptr<Miner>(m_sealers[sealer].create(m_miners.size())));
+            m_miners.back()->setDescriptor(it->second);
+            m_miners.back()->startWorking();
+        }
     }
     else
     {
-        start = m_miners.size();
-        ins += start;
-        m_miners.reserve(ins);
+        for (size_t i = 0; i < m_miners.size(); i++)
+        {
+            m_miners.at(i)->startWorking();
+        }
     }
-    for (unsigned i = start; i < ins; ++i)
-    {
-        // TODO: Improve miners creation, use unique_ptr.
-        m_miners.push_back(std::shared_ptr<Miner>(m_sealers[_sealer].create(i)));
-
-        // Start miners' threads. They should pause waiting for new work
-        // package.
-        m_miners.back()->startWorking();
-    }
-
-    m_isMining.store(true, std::memory_order_relaxed);
-    m_lastSealer = _sealer;
 
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() end");
-    return true;
+
+    if (m_miners.size())
+    {
+        m_isMining.store(true, std::memory_order_relaxed);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 /**
@@ -208,7 +258,7 @@ void Farm::stop()
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::stop() end");
 }
 
-void Farm::pause() 
+void Farm::pause()
 {
     // Signal each miner to suspend mining
     Guard l(x_minerWork);
@@ -333,12 +383,11 @@ void Farm::submitProof(Solution const& _s)
 #ifdef DEV_BUILD
     if (g_logOptions & LOG_SUBMIT)
         cnote << "Submit time: "
-             << std::chrono::duration_cast<std::chrono::microseconds>(
-                    std::chrono::steady_clock::now() - _s.tstamp)
-                    .count()
-             << " us.";
+              << std::chrono::duration_cast<std::chrono::microseconds>(
+                     std::chrono::steady_clock::now() - _s.tstamp)
+                     .count()
+              << " us.";
 #endif
-    
 }
 
 
@@ -372,76 +421,97 @@ void Farm::collectData(const boost::system::error_code& ec)
             HwMonitorInfo hwInfo = miner->hwmonInfo();
             HwMonitor hw;
             unsigned int tempC = 0, fanpcnt = 0, powerW = 0;
-            if (hwInfo.deviceIndex >= 0)
+
+            if (hwInfo.deviceType == HwMonitorInfoType::NVIDIA && nvmlh)
             {
-                if (hwInfo.deviceType == HwMonitorInfoType::NVIDIA && nvmlh)
+                int devIdx = hwInfo.deviceIndex;
+                if (devIdx == -1 && !hwInfo.devicePciId.empty())
                 {
-                    int typeidx = 0;
-                    if (hwInfo.indexSource == HwMonitorIndexSource::CUDA)
+                    if (map_nvml_handle.find(hwInfo.devicePciId) != map_nvml_handle.end())
                     {
-                        typeidx = nvmlh->cuda_nvml_device_id[hwInfo.deviceIndex];
-                    }
-                    else if (hwInfo.indexSource == HwMonitorIndexSource::OPENCL)
-                    {
-                        typeidx = nvmlh->opencl_nvml_device_id[hwInfo.deviceIndex];
+                        devIdx = map_nvml_handle[hwInfo.devicePciId];
+                        miner->setHwmonDeviceIndex(devIdx);
                     }
                     else
                     {
-                        // Unknown, don't map
-                        typeidx = hwInfo.deviceIndex;
-                    }
-                    wrap_nvml_get_tempC(nvmlh, typeidx, &tempC);
-                    wrap_nvml_get_fanpcnt(nvmlh, typeidx, &fanpcnt);
-                    if (m_hwmonlvl == 2)
-                    {
-                        wrap_nvml_get_power_usage(nvmlh, typeidx, &powerW);
+                        // This will prevent further tries to map
+                        miner->setHwmonDeviceIndex(-2);
                     }
                 }
-                else if (hwInfo.deviceType == HwMonitorInfoType::AMD && adlh)
+
+                if (devIdx >= 0)
                 {
-                    int typeidx = 0;
-                    if (hwInfo.indexSource == HwMonitorIndexSource::OPENCL)
-                    {
-                        typeidx = adlh->opencl_adl_device_id[hwInfo.deviceIndex];
-                    }
-                    else
-                    {
-                        // Unknown, don't map
-                        typeidx = hwInfo.deviceIndex;
-                    }
-                    wrap_adl_get_tempC(adlh, typeidx, &tempC);
-                    wrap_adl_get_fanpcnt(adlh, typeidx, &fanpcnt);
+                    wrap_nvml_get_tempC(nvmlh, devIdx, &tempC);
+                    wrap_nvml_get_fanpcnt(nvmlh, devIdx, &fanpcnt);
+
                     if (m_hwmonlvl == 2)
-                    {
-                        wrap_adl_get_power_usage(adlh, typeidx, &powerW);
-                    }
+                        wrap_nvml_get_power_usage(nvmlh, devIdx, &powerW);
                 }
+            }
+            else if (hwInfo.deviceType == HwMonitorInfoType::AMD)
+            {
+                int devIdx = 0;
 #if defined(__linux)
-                // Overwrite with sysfs data if present
-                if (hwInfo.deviceType == HwMonitorInfoType::AMD && sysfsh)
+                if (sysfsh)
                 {
-                    int typeidx = 0;
-                    if (hwInfo.indexSource == HwMonitorIndexSource::OPENCL)
+                    devIdx = hwInfo.deviceIndex;
+                    if (devIdx == -1 && !hwInfo.devicePciId.empty())
                     {
-                        typeidx = sysfsh->opencl_sysfs_device_id[hwInfo.deviceIndex];
+                        if (map_amdsysfs_handle.find(hwInfo.devicePciId) !=
+                            map_amdsysfs_handle.end())
+                        {
+                            devIdx = map_amdsysfs_handle[hwInfo.devicePciId];
+                            miner->setHwmonDeviceIndex(devIdx);
+                        }
+                        else
+                        {
+                            // This will prevent further tries to map
+                            miner->setHwmonDeviceIndex(-2);
+                        }
                     }
-                    else
+
+                    if (devIdx >= 0)
                     {
-                        // Unknown, don't map
-                        typeidx = hwInfo.deviceIndex;
+                        wrap_amdsysfs_get_tempC(sysfsh, devIdx, &tempC);
+                        wrap_amdsysfs_get_fanpcnt(sysfsh, devIdx, &fanpcnt);
+
+                        if (m_hwmonlvl == 2)
+                            wrap_amdsysfs_get_power_usage(sysfsh, devIdx, &powerW);
                     }
-                    wrap_amdsysfs_get_tempC(sysfsh, typeidx, &tempC);
-                    wrap_amdsysfs_get_fanpcnt(sysfsh, typeidx, &fanpcnt);
-                    if (m_hwmonlvl == 2)
+                }
+#else
+                if (adlh)  // Windows only for AMD
+                {
+                    int devIdx = hwInfo.deviceIndex;
+                    if (devIdx == -1 && !hwInfo.devicePciId.empty())
                     {
-                        wrap_amdsysfs_get_power_usage(sysfsh, typeidx, &powerW);
+                        if (map_adl_handle.find(hwInfo.devicePciId) != map_adl_handle.end())
+                        {
+                            devIdx = map_adl_handle[hwInfo.devicePciId];
+                            miner->setHwmonDeviceIndex(devIdx);
+                        }
+                        else
+                        {
+                            // This will prevent further tries to map
+                            miner->setHwmonDeviceIndex(-2);
+                        }
+                    }
+
+                    if (devIdx >= 0)
+                    {
+                        wrap_adl_get_tempC(adlh, devIdx, &tempC);
+                        wrap_adl_get_fanpcnt(adlh, devIdx, &fanpcnt);
+
+                        if (m_hwmonlvl == 2)
+                            wrap_adl_get_power_usage(adlh, devIdx, &powerW);
                     }
                 }
 #endif
             }
 
+
             // If temperature control has been enabled call
-            // check threshold 
+            // check threshold
             if (m_tstop)
             {
                 bool paused = miner->pauseTest(MinerPauseEnum::PauseDueToOverHeating);
