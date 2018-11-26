@@ -148,9 +148,7 @@ void EthStratumClient::init_socket()
     setsockopt(
         m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
 #else
-    struct timeval tv;
-    tv.tv_sec = keepAlive / 1000;
-    tv.tv_usec = keepAlive % 1000;
+    timeval tv{keepAlive / 1000, keepAlive % 1000};
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 #endif
