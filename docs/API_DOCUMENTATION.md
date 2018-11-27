@@ -513,8 +513,19 @@ Given the example above for the method [miner_getconnections](#miner_getconnecti
   }
 }
 ```
+or
+```js
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_setactiveconnection",
+  "params": {
+    "URI": ".*etc.*"
+  }
+}
+```
 
-You have to pass the `params` member as an object which has member `index` valued to the ordinal index of the connection you want to activate. As a result you expect one of the following:
+You have to pass the `params` member as an object which has member `index` valued to the ordinal index of the connection you want to activate. Alternatively, you can pass a regular expression to be matched against the connection URIs. As a result you expect one of the following:
 
 * Nothing happens if the provided index is already bound to an _active_ connection
 * If the selected index is not of an active connection then ethminer will disconnect from currently active connection and reconnect immediately to the newly selected connection
