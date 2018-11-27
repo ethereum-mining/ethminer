@@ -55,6 +55,7 @@ typedef union
 } hash200_t;
 
 void set_constants(hash128_t* _dag, uint32_t _dag_size, hash64_t* _light, uint32_t _light_size);
+void get_constants(hash128_t** _dag, uint32_t* _dag_size, hash64_t** _light, uint32_t* _light_size);
 
 void set_header(hash32_t _header);
 

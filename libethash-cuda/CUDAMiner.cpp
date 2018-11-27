@@ -54,7 +54,6 @@ unsigned CUDAMiner::s_scheduleFlag = 0;
 
 bool CUDAMiner::initDevice()
 {
-
     cudalog << "Using Pci Id : " << m_deviceDescriptor.UniqueId << " " << m_deviceDescriptor.cuName
             << " (Compute " + m_deviceDescriptor.cuCompute + ") Memory : "
             << FormattedMemSize(m_deviceDescriptor.TotalMemory);
@@ -72,7 +71,7 @@ bool CUDAMiner::initDevice()
     catch (const cuda_runtime_error& ec)
     {
         cudalog << "Could not set CUDA device on Pci Id " << m_deviceDescriptor.UniqueId
-              << " Error : " << ec.what();
+                << " Error : " << ec.what();
         cudalog << "Mining aborted on this device.";
         return false;
     }
@@ -94,43 +93,58 @@ bool CUDAMiner::initEpoch_internal()
 
     try
     {
-        // We need to reset the device and (re)create the dag
-        // cudaDeviceReset() frees all previous allocated memory
-        CUDA_SAFE_CALL(cudaDeviceReset());
-        CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
-        CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+        hash128_t* dag;
+        hash64_t* light;
 
-        // Check whether the current device has sufficient memory every time we recreate the dag
-        if (m_deviceDescriptor.TotalMemory < RequiredMemory)
+        // If we have already enough memory allocated, we just have to
+        // copy light_cache and regenerate the DAG
+        if (m_allocated_memory_dag < m_epochContext.dagSize ||
+            m_allocated_memory_light_cache < m_epochContext.lightSize)
         {
-            cudalog << "Epoch " << m_epochContext.epochNumber << " requires "
-                    << FormattedMemSize(RequiredMemory) << " memory.";
-            cudalog << "This device hasn't available. Mining suspended ...";
-            pause(MinerPauseEnum::PauseDueToInsufficientMemory);
-            return true;  // This will prevent to exit the thread and
-                          // Eventually resume mining when changing coin or epoch (NiceHash)
+            // We need to reset the device and (re)create the dag
+            // cudaDeviceReset() frees all previous allocated memory
+            CUDA_SAFE_CALL(cudaDeviceReset());
+            CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
+            CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+
+            // Check whether the current device has sufficient memory every time we recreate the dag
+            if (m_deviceDescriptor.TotalMemory < RequiredMemory)
+            {
+                cudalog << "Epoch " << m_epochContext.epochNumber << " requires "
+                        << FormattedMemSize(RequiredMemory) << " memory.";
+                cudalog << "This device hasn't available. Mining suspended ...";
+                pause(MinerPauseEnum::PauseDueToInsufficientMemory);
+                return true;  // This will prevent to exit the thread and
+                              // Eventually resume mining when changing coin or epoch (NiceHash)
+            }
+
+            cudalog << "Generating DAG + Light : " << FormattedMemSize(RequiredMemory);
+
+            // create buffer for cache
+            CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), m_epochContext.lightSize));
+            m_allocated_memory_light_cache = m_epochContext.lightSize;
+            CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), m_epochContext.dagSize));
+            m_allocated_memory_dag = m_epochContext.dagSize;
+
+            // create mining buffers
+            for (unsigned i = 0; i != s_numStreams; ++i)
+            {
+                CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(Search_results)));
+                CUDA_SAFE_CALL(cudaStreamCreateWithFlags(&m_streams[i], cudaStreamNonBlocking));
+            }
+        }
+        else
+        {
+            cudalog << "Generating DAG + Light (reusing buffers): "
+                    << FormattedMemSize(RequiredMemory);
+            get_constants(&dag, NULL, &light, NULL);
         }
 
-        cudalog << "Generating DAG + Light : " << FormattedMemSize(RequiredMemory);
-
-        // create buffer for cache
-        hash128_t* dag = nullptr;
-        hash64_t* light = nullptr;
-
-        CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), m_epochContext.lightSize));
         CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), m_epochContext.lightCache,
             m_epochContext.lightSize, cudaMemcpyHostToDevice));
-        CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), m_epochContext.dagSize));
 
         set_constants(dag, m_epochContext.dagNumItems, light,
             m_epochContext.lightNumItems);  // in ethash_cuda_miner_kernel.cu
-
-        // create mining buffers
-        for (unsigned i = 0; i != s_numStreams; ++i)
-        {
-            CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(Search_results)));
-            CUDA_SAFE_CALL(cudaStreamCreateWithFlags(&m_streams[i], cudaStreamNonBlocking));
-        }
 
         ethash_generate_dag(m_epochContext.dagSize, s_gridSize, s_blockSize, m_streams[0]);
 
@@ -146,7 +160,7 @@ bool CUDAMiner::initEpoch_internal()
     catch (const cuda_runtime_error& ec)
     {
         cudalog << "Unexpected error " << ec.what() << " on CUDA device "
-              << m_deviceDescriptor.UniqueId;
+                << m_deviceDescriptor.UniqueId;
         cudalog << "Mining suspended ...";
         pause(MinerPauseEnum::PauseDueToInitEpochError);
         retVar = true;
@@ -234,7 +248,8 @@ unsigned CUDAMiner::getNumDevices()
         if (driverVersion == 0)
             std::cerr << "CUDA Error : No CUDA driver found" << std::endl;
         else
-            std::cerr << "CUDA Error : Insufficient CUDA driver " << std::to_string(driverVersion) << std::endl;
+            std::cerr << "CUDA Error : Insufficient CUDA driver " << std::to_string(driverVersion)
+                      << std::endl;
     }
     else
     {
@@ -304,7 +319,6 @@ void CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _
     s_numStreams = _numStreams;
     s_scheduleFlag = _scheduleFlag;
     s_parallelHash = _parallelHash;
-
 }
 
 void CUDAMiner::search(
