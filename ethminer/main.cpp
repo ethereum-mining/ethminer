@@ -301,6 +301,8 @@ public:
 
         app.add_flag("--syslog", g_logSyslog, "");
 
+        app.add_flag("--stdout", g_logStdout, "");
+
 #if API_CORE
 
         app.add_option("--api-bind", m_api_bind, "", true)
@@ -1065,6 +1067,7 @@ public:
                     "and"
                  << endl
                  << "                        channel prefix)" << endl
+                 << "    --stdout            FLAG Log to stdout instead of stderr" << endl
                  << "    --noeval            FLAG By-pass host software re-evaluation of GPUs"
                  << endl
                  << "                        found nonces. Trims some ms. from submission" << endl
