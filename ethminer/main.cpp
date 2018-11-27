@@ -130,7 +130,7 @@ public:
                 }
 
 #if ETH_DBUS
-                dbusint.send(toString(mp).c_str());
+                dbusint.send(toString(Farm::f().miningProgress()).c_str());
 #endif
             }
             else
