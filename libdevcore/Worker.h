@@ -23,10 +23,13 @@
 
 #include <atomic>
 #include <cassert>
+#include <signal.h>
 #include <string>
 #include <thread>
 
 #include "Guards.h"
+
+extern bool g_exitOnError;
 
 namespace dev
 {
@@ -52,12 +55,13 @@ public:
     /// Starts worker thread; causes startedWorking() to be called.
     void startWorking();
 
-    /// Inform worker thread it should stop
-    void requestStopWorking();
+    /// Triggers worker thread it should stop
+    void triggerStopWorking();
 
-    /// Stop worker thread; causes call to stopWorking(). Waits till working is stopped
+    /// Stop worker thread; causes call to stopWorking() and waits till thread has stopped.
     void stopWorking();
 
+    /// Whether or not this worker should stop
     bool shouldStop() const { return m_state != WorkerState::Started; }
 
 private:

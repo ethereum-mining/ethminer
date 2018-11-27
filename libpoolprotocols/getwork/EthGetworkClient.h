@@ -1,11 +1,13 @@
 #pragma once
 
 #include <iostream>
+#include <string>
 
-#include "jsonrpc_getwork.h"
-#include <jsonrpccpp/client/connectors/httpclient.h>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/lockfree/queue.hpp>
 
-#include <libdevcore/Worker.h>
+#include <json/json.h>
 
 #include "../PoolClient.h"
 
@@ -13,10 +15,10 @@ using namespace std;
 using namespace dev;
 using namespace eth;
 
-class EthGetworkClient : public PoolClient, Worker
+class EthGetworkClient : public PoolClient
 {
 public:
-    EthGetworkClient(unsigned farmRecheckPeriod, bool submitHashrate);
+    EthGetworkClient(int worktimeout, unsigned farmRecheckPeriod);
     ~EthGetworkClient();
 
     void connect() override;
@@ -25,21 +27,51 @@ public:
     bool isConnected() override { return m_connected; }
     bool isPendingState() override { return false; }
 
-    string ActiveEndPoint() override { return ""; };
+    string ActiveEndPoint() override { return " [" + toString(m_endpoint) + "]"; };
 
-    void submitHashrate(string const& rate) override;
+    void submitHashrate(string const& rate, string const& id) override;
     void submitSolution(const Solution& solution) override;
 
 private:
-    void workLoop() override;
-    unsigned m_farmRecheckPeriod = 500;
 
-    string m_currentHashrateToSubmit = "";
+    unsigned m_farmRecheckPeriod = 500; // In milliseconds
 
-    h256 m_client_id;
-    JsonrpcGetwork* p_client = nullptr;
-    WorkPackage m_prevWorkPackage;
+    void begin_connect();
+    void handle_resolve(
+        const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
+    void handle_connect(const boost::system::error_code& ec);
+    void handle_write(const boost::system::error_code& ec);
+    void handle_read(const boost::system::error_code& ec, std::size_t bytes_transferred);
+    std::string processError(Json::Value& JRes);
+    void processResponse(Json::Value& JRes);
+    void send(Json::Value const& jReq);
+    void send(std::string const& sReq);
+    void getwork_timer_elapsed(const boost::system::error_code& ec);
 
-    // Hashrate submission is optional
-    bool m_submit_hashrate;
+    WorkPackage m_current;
+
+    std::atomic<bool> m_connecting = {false}; // Whether or not socket is on first try connect
+    std::atomic<bool> m_txPending = {false}; // Whether or not an async socket operation is pending
+    boost::lockfree::queue<std::string*> m_txQueue;
+
+    boost::asio::io_service::strand m_io_strand;
+
+    boost::asio::ip::tcp::socket m_socket;
+    boost::asio::ip::tcp::resolver m_resolver;
+    std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>> m_endpoints;
+
+    boost::asio::streambuf m_request;
+    boost::asio::streambuf m_response;
+    Json::StreamWriterBuilder m_jSwBuilder;
+    std::string m_jsonGetWork;
+    Json::Value m_pendingJReq;
+    std::chrono::time_point<std::chrono::steady_clock> m_pending_tstamp;
+
+    boost::asio::deadline_timer m_getwork_timer; // The timer which triggers getWork requests
+
+    // seconds to trigger a work_timeout (overwritten in constructor)
+    int m_worktimeout;
+    std::chrono::time_point<std::chrono::steady_clock> m_current_tstamp;
+    
+    unsigned m_solution_submitted_max_id;  // maximum json id we used to send a solution
 };

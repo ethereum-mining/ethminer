@@ -35,16 +35,11 @@
 /// The logging system's current verbosity.
 #define LOG_JSON 1
 #define LOG_PER_GPU 2
-#define LOG_NEXT 4
-
-#ifdef DEV_BUILD
 #define LOG_CONNECT 32
 #define LOG_SWITCH 64
 #define LOG_SUBMIT 128
 #define LOG_PROGRAMFLOW 256
-#undef LOG_NEXT
 #define LOG_NEXT 512
-#endif
 
 #if DEV_BUILD
 #define DEV_BUILD_LOG_PROGRAMFLOW(_S, _V) \

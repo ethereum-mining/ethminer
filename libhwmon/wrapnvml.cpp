@@ -19,11 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#if ETH_ETHASHCUDA
-#include "cuda_runtime.h"
-#endif
 
-#include "wraphelper.h"
 #include "wrapnvml.h"
 
 #if defined(__cplusplus)
@@ -104,26 +100,10 @@ wrap_nvml_handle* wrap_nvml_create()
     nvmlh->nvmlInit();
     nvmlh->nvmlDeviceGetCount(&nvmlh->nvml_gpucount);
 
-#if ETH_ETHASHCUDA
-    /* Query CUDA device count, in case it doesn't agree with NVML, since  */
-    /* CUDA will only report GPUs with compute capability greater than 1.0 */
-    if (cudaGetDeviceCount(&nvmlh->cuda_gpucount) != cudaSuccess)
-    {
-#if 0
-    printf("Failed to query CUDA device count!\n");
-#endif
-        wrap_dlclose(nvmlh->nvml_dll);
-        free(nvmlh);
-        return nullptr;
-    }
-#endif
     nvmlh->devs = (wrap_nvmlDevice_t*)calloc(nvmlh->nvml_gpucount, sizeof(wrap_nvmlDevice_t));
-
     nvmlh->nvml_pci_domain_id = (unsigned int*)calloc(nvmlh->nvml_gpucount, sizeof(unsigned int));
     nvmlh->nvml_pci_bus_id = (unsigned int*)calloc(nvmlh->nvml_gpucount, sizeof(unsigned int));
     nvmlh->nvml_pci_device_id = (unsigned int*)calloc(nvmlh->nvml_gpucount, sizeof(unsigned int));
-    nvmlh->nvml_cuda_device_id = (int*)calloc(nvmlh->nvml_gpucount, sizeof(int));
-    nvmlh->cuda_nvml_device_id = (int*)calloc(nvmlh->cuda_gpucount, sizeof(int));
 
     /* Obtain GPU device handles we're going to need repeatedly... */
     for (int i = 0; i < nvmlh->nvml_gpucount; i++)
@@ -141,87 +121,6 @@ wrap_nvml_handle* wrap_nvml_create()
         nvmlh->nvml_pci_bus_id[i] = pciinfo.bus;
         nvmlh->nvml_pci_device_id[i] = pciinfo.device;
     }
-
-    /* build mapping of NVML device IDs to CUDA IDs */
-    for (int i = 0; i < nvmlh->nvml_gpucount; i++)
-    {
-        nvmlh->nvml_cuda_device_id[i] = -1;
-    }
-#if ETH_ETHASHCUDA
-    for (int i = 0; i < nvmlh->cuda_gpucount; i++)
-    {
-        cudaDeviceProp props;
-        nvmlh->cuda_nvml_device_id[i] = -1;
-
-        if (cudaGetDeviceProperties(&props, i) == cudaSuccess)
-        {
-            int j;
-            for (j = 0; j < nvmlh->nvml_gpucount; j++)
-            {
-                if ((nvmlh->nvml_pci_domain_id[j] == (unsigned int)props.pciDomainID) &&
-                    (nvmlh->nvml_pci_bus_id[j] == (unsigned int)props.pciBusID) &&
-                    (nvmlh->nvml_pci_device_id[j] == (unsigned int)props.pciDeviceID))
-                {
-#if 0
-          printf("CUDA GPU[%d] matches NVML GPU[%d]\n", i, j);
-#endif
-                    nvmlh->nvml_cuda_device_id[j] = i;
-                    nvmlh->cuda_nvml_device_id[i] = j;
-                }
-            }
-        }
-    }
-
-#endif
-
-    nvmlh->opencl_gpucount = 0;
-    nvmlh->nvml_opencl_device_id = (int*)calloc(nvmlh->nvml_gpucount, sizeof(int));
-#if ETH_ETHASHCL
-    // Get and count OpenCL devices.
-    std::vector<cl::Platform> platforms;
-    cl::Platform::get(&platforms);
-    std::vector<cl::Device> platdevs;
-    for (unsigned p = 0; p < platforms.size(); p++)
-    {
-        std::string platformName = platforms[p].getInfo<CL_PLATFORM_NAME>();
-        if (platformName == "NVIDIA CUDA")
-        {
-            platforms[p].getDevices(CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR, &platdevs);
-            nvmlh->opencl_gpucount = platdevs.size();
-            break;
-        }
-    }
-
-    nvmlh->opencl_nvml_device_id = (int*)calloc(nvmlh->opencl_gpucount, sizeof(int));
-
-    // Map NVML to opencl devices
-    for (int i = 0; i < nvmlh->nvml_gpucount; i++)
-    {
-        for (unsigned j = 0; j < platdevs.size(); j++)
-        {
-            cl::Device cldev = platdevs[j];
-            cl_int busId, slotId;
-            int statusB =
-                clGetDeviceInfo(cldev(), CL_DEVICE_PCI_BUS_ID_NV, sizeof(cl_int), &busId, nullptr);
-            int statusS = clGetDeviceInfo(
-                cldev(), CL_DEVICE_PCI_SLOT_ID_NV, sizeof(cl_int), &slotId, nullptr);
-            if (statusB == CL_SUCCESS && statusS == CL_SUCCESS)
-            {
-                if ((unsigned)busId == nvmlh->nvml_pci_bus_id[i] &&
-                    (unsigned)slotId == nvmlh->nvml_pci_device_id[i])
-                {
-#if 0
-                printf("[DEBUG] - NVML GPU[%d]%d,%d matches OpenCL GPU[%d]%d,%d\n",
-                i, nvmlh->nvml_pci_bus_id[i], nvmlh->nvml_pci_device_id[i],
-                j, busId, slotId);
-#endif
-                    nvmlh->nvml_opencl_device_id[i] = j;
-                    nvmlh->opencl_nvml_device_id[j] = i;
-                }
-            }
-        }
-    }
-#endif
 
     return nvmlh;
 }
@@ -242,12 +141,6 @@ int wrap_nvml_get_gpucount(wrap_nvml_handle* nvmlh, int* gpucount)
     return 0;
 }
 
-int wrap_cuda_get_gpucount(wrap_nvml_handle* nvmlh, int* gpucount)
-{
-    *gpucount = nvmlh->cuda_gpucount;
-    return 0;
-}
-
 int wrap_nvml_get_gpu_name(wrap_nvml_handle* nvmlh, int gpuindex, char* namebuf, int bufsize)
 {
     if (gpuindex < 0 || gpuindex >= nvmlh->nvml_gpucount)
@@ -259,39 +152,28 @@ int wrap_nvml_get_gpu_name(wrap_nvml_handle* nvmlh, int gpuindex, char* namebuf,
     return 0;
 }
 
-
 int wrap_nvml_get_tempC(wrap_nvml_handle* nvmlh, int gpuindex, unsigned int* tempC)
 {
-    wrap_nvmlReturn_t rc;
     if (gpuindex < 0 || gpuindex >= nvmlh->nvml_gpucount)
         return -1;
 
-    rc = nvmlh->nvmlDeviceGetTemperature(
-        nvmlh->devs[gpuindex], 0u /* NVML_TEMPERATURE_GPU */, tempC);
-    if (rc != WRAPNVML_SUCCESS)
-    {
+    if (nvmlh->nvmlDeviceGetTemperature(
+            nvmlh->devs[gpuindex], 0u /* NVML_TEMPERATURE_GPU */, tempC) != WRAPNVML_SUCCESS)
         return -1;
-    }
 
     return 0;
 }
-
 
 int wrap_nvml_get_fanpcnt(wrap_nvml_handle* nvmlh, int gpuindex, unsigned int* fanpcnt)
 {
-    wrap_nvmlReturn_t rc;
     if (gpuindex < 0 || gpuindex >= nvmlh->nvml_gpucount)
         return -1;
 
-    rc = nvmlh->nvmlDeviceGetFanSpeed(nvmlh->devs[gpuindex], fanpcnt);
-    if (rc != WRAPNVML_SUCCESS)
-    {
+    if (nvmlh->nvmlDeviceGetFanSpeed(nvmlh->devs[gpuindex], fanpcnt) != WRAPNVML_SUCCESS)
         return -1;
-    }
 
     return 0;
 }
-
 
 int wrap_nvml_get_power_usage(wrap_nvml_handle* nvmlh, int gpuindex, unsigned int* milliwatts)
 {
@@ -303,7 +185,6 @@ int wrap_nvml_get_power_usage(wrap_nvml_handle* nvmlh, int gpuindex, unsigned in
 
     return 0;
 }
-
 
 #if defined(__cplusplus)
 }

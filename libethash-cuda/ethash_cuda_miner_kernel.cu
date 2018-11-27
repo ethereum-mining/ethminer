@@ -16,13 +16,9 @@
 #include "dagger_shuffled.cuh"
 
 template <uint32_t _PARALLEL_HASH>
-__global__ void 
-ethash_search(
-	volatile Search_results* g_output,
-	uint64_t start_nonce
-	)
+__global__ void ethash_search(volatile Search_results* g_output, uint64_t start_nonce)
 {
-	uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;
+    uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;
 	uint2 mix[4];
         if (compute_hash<_PARALLEL_HASH>(start_nonce + gid, mix))
 		return;
@@ -68,7 +64,10 @@ __global__ void
 ethash_calculate_dag_item(uint32_t const start)
 {
 	uint32_t const node_index = start + blockIdx.x * blockDim.x + threadIdx.x;
-	if (((node_index >> 2) << 2) >= d_dag_size * 2) return;
+
+	//if (((node_index/4)*4) >= d_dag_size * 2) return;
+    if (((node_index >> 1) & (~1)) >= d_dag_size)
+        return;
 
 	hash200_t dag_node;
 	copy(dag_node.uint4s, d_light[node_index % d_light_size].uint4s, 4);

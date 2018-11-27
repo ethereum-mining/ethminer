@@ -121,12 +121,9 @@ typedef struct
     void* adl_dll;
     int adl_gpucount;
     int log_gpucount;
-    int opencl_gpucount;
     int* phys_logi_device_id;
     LPAdapterInfo devs;
     ADL_CONTEXT_HANDLE context;
-    int* adl_opencl_device_id; /* map ADL dev to OPENCL dev */
-    int* opencl_adl_device_id; /* map OPENCL dev to ADL dev */
     wrap_adlReturn_t (*adlMainControlCreate)(ADL_MAIN_MALLOC_CALLBACK, int);
     wrap_adlReturn_t (*adlAdapterNumberOfAdapters)(int*);
     wrap_adlReturn_t (*adlAdapterAdapterInfoGet)(LPAdapterInfo, int);

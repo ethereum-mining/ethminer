@@ -17,24 +17,20 @@
 
 #pragma once
 
+#include <bitset>
 #include <list>
 #include <numeric>
 #include <string>
-#include <thread>
-
-#include <boost/circular_buffer.hpp>
-#include <boost/timer.hpp>
 
 #include "EthashAux.h"
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
 
-#define MINER_WAIT_STATE_WORK 1
+#include <boost/thread.hpp>
 
 #define DAG_LOAD_MODE_PARALLEL 0
 #define DAG_LOAD_MODE_SEQUENTIAL 1
-#define DAG_LOAD_MODE_SINGLE 2
 
 using namespace std;
 
@@ -42,6 +38,21 @@ namespace dev
 {
 namespace eth
 {
+enum class DeviceTypeEnum
+{
+    Unknown,
+    Cpu,
+    Gpu,
+    Accelerator
+};
+
+enum class DeviceSubscriptionTypeEnum
+{
+    None,
+    OpenCL,
+    Cuda
+};
+
 enum class MinerType
 {
     Mixed,
@@ -56,17 +67,57 @@ enum class HwMonitorInfoType
     AMD
 };
 
-enum class HwMonitorIndexSource
+enum class ClPlatformTypeEnum
 {
-    UNKNOWN,
-    OPENCL,
-    CUDA
+    Unknown,
+    Amd,
+    Clover,
+    Nvidia
+};
+
+struct DeviceDescriptorType
+{
+    DeviceTypeEnum Type = DeviceTypeEnum::Unknown;
+    DeviceSubscriptionTypeEnum SubscriptionType = DeviceSubscriptionTypeEnum::None;
+
+    string UniqueId;     // For GPUs this is the PCI ID
+    size_t TotalMemory;  // Total memory available by device
+    string Name;         // Device Name
+
+    bool clDetected;  // For OpenCL detected devices
+    string clName;
+    unsigned int clPlatformId;
+    string clPlatformName;
+    ClPlatformTypeEnum clPlatformType = ClPlatformTypeEnum::Unknown;
+    string clPlatformVersion;
+    unsigned int clPlatformVersionMajor;
+    unsigned int clPlatformVersionMinor;
+    unsigned int clDeviceOrdinal;
+    unsigned int clDeviceIndex;
+    string clDeviceVersion;
+    unsigned int clDeviceVersionMajor;
+    unsigned int clDeviceVersionMinor;
+    string clBoardName;
+    size_t clMaxMemAlloc;
+    size_t clMaxWorkGroup;
+    unsigned int clMaxComputeUnits;
+    string clNvCompute;
+    unsigned int clNvComputeMajor;
+    unsigned int clNvComputeMinor;
+
+    bool cuDetected;  // For CUDA detected devices
+    string cuName;
+    unsigned int cuDeviceOrdinal;
+    unsigned int cuDeviceIndex;
+    string cuCompute;
+    unsigned int cuComputeMajor;
+    unsigned int cuComputeMinor;
 };
 
 struct HwMonitorInfo
 {
     HwMonitorInfoType deviceType = HwMonitorInfoType::UNKNOWN;
-    HwMonitorIndexSource indexSource = HwMonitorIndexSource::UNKNOWN;
+    string devicePciId;
     int deviceIndex = -1;
 };
 
@@ -89,57 +140,15 @@ public:
 std::ostream& operator<<(std::ostream& os, const FormattedMemSize& s);
 
 /// Pause mining
-typedef enum
+enum MinerPauseEnum
 {
-    MINING_NOT_PAUSED = 0x00000000,
-    MINING_PAUSED_WAIT_FOR_T_START = 0x00000001,
-    MINING_PAUSED_API = 0x00000002
-    // MINING_PAUSED_USER             = 0x00000004,
-    // MINING_PAUSED_ERROR            = 0x00000008
-} MinigPauseReason;
-
-struct MiningPause
-{
-    std::atomic<uint64_t> m_mining_paused_flag = {MinigPauseReason::MINING_NOT_PAUSED};
-
-    void set_mining_paused(MinigPauseReason pause_reason)
-    {
-        m_mining_paused_flag.fetch_or(pause_reason, std::memory_order_seq_cst);
-    }
-
-    void clear_mining_paused(MinigPauseReason pause_reason)
-    {
-        m_mining_paused_flag.fetch_and(~pause_reason, std::memory_order_seq_cst);
-    }
-
-    MinigPauseReason get_mining_paused()
-    {
-        return (MinigPauseReason)m_mining_paused_flag.load(std::memory_order_relaxed);
-    }
-
-    bool is_mining_paused(const MinigPauseReason& pause_reason)
-    {
-        return (pause_reason != MinigPauseReason::MINING_NOT_PAUSED);
-    }
-
-    bool is_mining_paused() { return is_mining_paused(get_mining_paused()); }
-
-    std::string get_mining_paused_string(const MinigPauseReason& pause_reason)
-    {
-        std::string r;
-
-        if (pause_reason & MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START)
-            r = "temperature";
-
-        if (pause_reason & MinigPauseReason::MINING_PAUSED_API)
-            r += (string)(r.empty() ? "" : ",") + "api";
-
-        return r;
-    }
-
-    std::string get_mining_paused_string() { return get_mining_paused_string(get_mining_paused()); }
+    PauseDueToOverHeating,
+    PauseDueToAPIRequest,
+    PauseDueToFarmPaused,
+    PauseDueToInsufficientMemory,
+    PauseDueToInitEpochError,
+    Pause_MAX  // Must always be last as a placeholder of max count
 };
-
 
 /// Describes the progress of a mining operation.
 struct WorkingProgress
@@ -161,7 +170,6 @@ public:
         m_accepts = {};
         m_rejects = {};
         m_failures = {};
-        m_acceptedStales = {};
     }
 
     void accepted(unsigned miner_index)
@@ -191,23 +199,10 @@ public:
             m_lastUpdated.resize(miner_index + 1, m_tpInitalized);
         m_lastUpdated[miner_index] = std::chrono::steady_clock::now();
     }
-    void acceptedStale(unsigned miner_index)
-    {
-        if (m_acceptedStales.size() <= miner_index)
-            m_acceptedStales.resize(miner_index + 1);
-        m_acceptedStales[miner_index]++;
-        if (m_lastUpdated.size() <= miner_index)
-            m_lastUpdated.resize(miner_index + 1, m_tpInitalized);
-        m_lastUpdated[miner_index] = std::chrono::steady_clock::now();
-    }
 
     unsigned getAccepts() const { return accumulate(m_accepts.begin(), m_accepts.end(), 0); }
     unsigned getRejects() const { return accumulate(m_rejects.begin(), m_rejects.end(), 0); }
     unsigned getFailures() const { return accumulate(m_failures.begin(), m_failures.end(), 0); }
-    unsigned getAcceptedStales() const
-    {
-        return accumulate(m_acceptedStales.begin(), m_acceptedStales.end(), 0);
-    }
 
     unsigned getAccepts(unsigned miner_index) const
     {
@@ -227,12 +222,6 @@ public:
             return 0;
         return m_failures[miner_index];
     }
-    unsigned getAcceptedStales(unsigned miner_index) const
-    {
-        if (m_acceptedStales.size() <= miner_index)
-            return 0;
-        return m_acceptedStales[miner_index];
-    }
     std::chrono::steady_clock::time_point getLastUpdated(unsigned miner_index) const
     {
         if (m_lastUpdated.size() <= miner_index)
@@ -244,7 +233,6 @@ public:
         /* return the newest update time of all GPUs */
         if (!m_lastUpdated.size())
             return m_tpInitalized;
-
         auto max_index = std::max_element(m_lastUpdated.begin(), m_lastUpdated.end());
         return m_lastUpdated[std::distance(m_lastUpdated.begin(), max_index)];
     }
@@ -254,9 +242,6 @@ public:
         ostringstream r;
 
         r << "A" << getAccepts(miner_index);
-        auto stales = getAcceptedStales(miner_index);
-        if (stales)
-            r << "+" << stales;
         auto rejects = getRejects(miner_index);
         if (rejects)
             r << ":R" << rejects;
@@ -270,15 +255,11 @@ private:
     std::vector<unsigned> m_accepts = {};
     std::vector<unsigned> m_rejects = {};
     std::vector<unsigned> m_failures = {};
-    std::vector<unsigned> m_acceptedStales = {};
     std::vector<std::chrono::steady_clock::time_point> m_lastUpdated = {};
     const std::chrono::steady_clock::time_point m_tpInitalized = std::chrono::steady_clock::now();
 };
 
 std::ostream& operator<<(std::ostream& os, const SolutionStats& s);
-
-class Miner;
-
 
 /**
  * @brief Class for hosting one or more Miners.
@@ -294,6 +275,7 @@ public:
     virtual ~FarmFace() = default;
     virtual unsigned get_tstart() = 0;
     virtual unsigned get_tstop() = 0;
+
     /**
      * @brief Called from a Miner to note a WorkPackage has a solution.
      * @param _p The solution.
@@ -312,155 +294,124 @@ private:
  * @brief A miner - a member and adoptee of the Farm.
  * @warning Not threadsafe. It is assumed Farm will synchronise calls to/from this class.
  */
-#define LOG2_MAX_MINERS 5u
-#define MAX_MINERS (1u << LOG2_MAX_MINERS)
+#define MAX_MINERS 32U
 
 class Miner : public Worker
 {
 public:
-    Miner(std::string const& _name, size_t _index)
+
+    Miner(std::string const& _name, unsigned _index)
       : Worker(_name + std::to_string(_index)), m_index(_index)
     {}
 
     virtual ~Miner() = default;
 
-    void setWork(WorkPackage const& _work)
-    {
-        {
-            Guard l(x_work);
-            m_work = _work;
-            if (m_work.exSizeBits >= 0)
-            {
-                // This can support up to 2^c_log2MaxMiners devices.
-                m_work.startNonce =
-                    m_work.startNonce +
-                    ((uint64_t)m_index << (64 - LOG2_MAX_MINERS - m_work.exSizeBits));
-            }
-            else
-            {
-                // Each GPU is given a non-overlapping 2^40 range to search
-                // return farm.get_nonce_scrambler() + ((uint64_t) m_index << 40);
+    /**
+     * @brief Assigns the device descriptor to this instance
+     */
+    void setDescriptor(DeviceDescriptorType& _descriptor);
 
-                // Now segment size is adjustable
-                m_work.startNonce = FarmFace::f().get_nonce_scrambler() +
-                                    ((uint64_t)m_index << FarmFace::f().get_segment_width());
-            }
+    /**
+     * @brief Assigns hashing work to this instance
+     */
+    void setWork(WorkPackage const& _work);
 
-#ifdef DEV_BUILD
-            m_workSwitchStart = std::chrono::steady_clock::now();
-#endif
-        }
-        kick_miner();
-    }
+    /**
+     * @brief Assigns Epoch context to this instance
+     */
+    void setEpoch(EpochContext const& _ec) { m_epochContext = _ec; }
 
     unsigned Index() { return m_index; };
 
     HwMonitorInfo hwmonInfo() { return m_hwmoninfo; }
 
-    void update_temperature(unsigned temperature)
-    {
-        /*
-         cnote << "Setting temp" << temperature << " for gpu" << m_index <<
-                  " tstop=" << FarmFace::f().get_tstop() << " tstart=" <<
-         FarmFace::f().get_tstart();
-        */
-        bool _wait_for_tstart_temp = (m_mining_paused.get_mining_paused() &
-                                         MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START) ==
-                                     MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START;
-        if (!_wait_for_tstart_temp)
-        {
-            unsigned tstop = FarmFace::f().get_tstop();
-            if (tstop && temperature >= tstop)
-            {
-                cwarn << "Pause mining on gpu" << m_index << " : temperature " << temperature
-                      << " is equal/above --tstop " << tstop;
-                m_mining_paused.set_mining_paused(MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START);
-            }
-        }
-        else
-        {
-            unsigned tstart = FarmFace::f().get_tstart();
-            if (tstart && temperature <= tstart)
-            {
-                cnote << "(Re)starting mining on gpu" << m_index << " : temperature " << temperature
-                      << " is now below/equal --tstart " << tstart;
-                m_mining_paused.clear_mining_paused(
-                    MinigPauseReason::MINING_PAUSED_WAIT_FOR_T_START);
-            }
-        }
-    }
+    void setHwmonDeviceIndex(int i) { m_hwmoninfo.deviceIndex = i; }
 
-    void set_mining_paused(MinigPauseReason pause_reason)
-    {
-        m_mining_paused.set_mining_paused(pause_reason);
-    }
+    /**
+     * @brief Pauses mining setting a reason flag
+     */
+    void pause(MinerPauseEnum what);
 
-    void clear_mining_paused(MinigPauseReason pause_reason)
-    {
-        m_mining_paused.clear_mining_paused(pause_reason);
-    }
+    /**
+     * @brief Whether or not this miner is paused for any reason
+     */
+    bool paused();
 
-    MinigPauseReason get_mining_paused() { return m_mining_paused.get_mining_paused(); }
+    /**
+     * @brief Checks if the given reason for pausing is currently active
+     */
+    bool pauseTest(MinerPauseEnum what);
 
-    bool is_mining_paused() { return m_mining_paused.is_mining_paused(); }
+    /**
+     * @brief Returns the human readable reason for this miner being paused
+     */
+    std::string pausedString();
 
-    float RetrieveHashRate() noexcept { return m_hashRate.load(std::memory_order_relaxed); }
-    void TriggerHashRateUpdate() noexcept
-    {
-        bool b = false;
-        if (m_hashRateUpdate.compare_exchange_strong(b, true))
-            return;
-        // GPU didn't respond to last trigger, assume it's dead.
-        // This can happen on CUDA if:
-        //   runtime of --cuda-grid-size * --cuda-streams exceeds time of m_collectInterval
-        m_hashRate = 0.0;
-    }
+    /**
+     * @brief Cancels a pause flag.
+     * @note Miner can be paused for multiple reasons at a time.
+     */
+    void resume(MinerPauseEnum fromwhat);
+
+    /**
+     * @brief Retrieves currrently collected hashrate
+     */
+    float RetrieveHashRate() noexcept;
+
+    void TriggerHashRateUpdate() noexcept;
 
 protected:
+
+    /**
+     * @brief Initializes miner's device.
+     */
+    virtual bool initDevice() = 0;
+
+    /**
+     * @brief Initializes miner to current (or changed) epoch.
+     */
+    bool initEpoch();
+
+    /**
+     * @brief Miner's specific initialization to current (or changed) epoch.
+     */
+    virtual bool initEpoch_internal() = 0;
+
     /**
      * @brief No work left to be done. Pause until told to kickOff().
      */
     virtual void kick_miner() = 0;
 
-    WorkPackage work() const
-    {
-        Guard l(x_work);
-        return m_work;
-    }
+    /**
+     * @brief Returns current workpackage this miner is working on
+     */
+    WorkPackage work() const;
 
-    void updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept
-    {
-        m_groupCount += _increment;
-        bool b = true;
-        if (!m_hashRateUpdate.compare_exchange_strong(b, false))
-            return;
-        using namespace std::chrono;
-        auto t = steady_clock::now();
-        auto us = duration_cast<microseconds>(t - m_hashTime).count();
-        m_hashTime = t;
-
-        m_hashRate.store(us ? (float(m_groupCount * _groupSize) * 1.0e6f) / us : 0.0f,
-            std::memory_order_relaxed);
-        m_groupCount = 0;
-    }
+    void updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept;
 
     static unsigned s_dagLoadMode;
     static unsigned s_dagLoadIndex;
-    static unsigned s_dagCreateDevice;
-    static uint8_t* s_dagInHostMemory;
-    static bool s_exit;
-    static bool s_noeval;
 
-    const size_t m_index = 0;
+    const unsigned m_index = 0; // Ordinal index of the Instance (not the device)
+    DeviceDescriptorType m_deviceDescriptor; // Info about the device
+
+    EpochContext m_epochContext;
+
 #ifdef DEV_BUILD
     std::chrono::steady_clock::time_point m_workSwitchStart;
 #endif
+
     HwMonitorInfo m_hwmoninfo;
+    mutable boost::mutex x_work;
+    mutable boost::mutex x_pause;
+    boost::condition_variable m_new_work_signal;
+    boost::condition_variable m_dag_loaded_signal;
 
 private:
-    MiningPause m_mining_paused;
+    bitset<MinerPauseEnum::Pause_MAX> m_pauseFlags;
+
     WorkPackage m_work;
-    mutable Mutex x_work;
+
     std::chrono::steady_clock::time_point m_hashTime = std::chrono::steady_clock::now();
     std::atomic<float> m_hashRate = {0.0};
     uint64_t m_groupCount = 0;
