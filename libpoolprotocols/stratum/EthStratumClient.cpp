@@ -184,7 +184,7 @@ void EthStratumClient::init_socket()
         m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
 #else
     timeval tv{
-        static_cast<suseconds_t>(keepAlive / 1000), 
+        static_cast<suseconds_t>(keepAlive / 1000),
         static_cast<suseconds_t>(keepAlive % 1000)};
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
@@ -1226,6 +1226,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                         m_current.startNonce = m_extraNonce;
                         m_current.exSizeBytes = m_extraNonceSizeBytes;
                         m_current_timestamp = std::chrono::steady_clock::now();
+                        m_current.block = -1;
 
                         // This will signal to dispatch the job
                         // at the end of the transmission.
@@ -1241,6 +1242,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
                     // Only some eth-proxy compatible implementations carry the block number
                     // namely ethermine.org
+                    m_current.block = -1;
                     if (m_conn->StratumMode() ==
                         EthStratumClient::ETHPROXY && jPrm.size() > prmIdx)
                     {
@@ -1252,7 +1254,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                         }
                         catch (const std::exception&)
                         {
-                            m_current.block = -1;
                         }
                     }
 
