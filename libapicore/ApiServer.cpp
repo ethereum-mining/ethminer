@@ -548,7 +548,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             unsigned index;
             if (getRequestValue("index", index, jRequestParams, false, jResponse))
             {
-                if (PoolManager::p().setActiveConnection(index))
+                if (PoolManager::p().setActiveConnection(index) == -1)
                 {
                     jResponse["error"]["code"] = -422;
                     jResponse["error"]["message"] = "Index out of bounds";
