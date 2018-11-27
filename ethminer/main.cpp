@@ -1402,7 +1402,6 @@ private:
     // Mining options
     MinerType m_minerType = MinerType::Mixed;
     OperationMode m_mode = OperationMode::None;
-    unsigned m_miningThreads = UINT_MAX;  // TODO Safe to remove and replace with constant ?
     bool m_shouldListDevices = false;
 
 #if ETH_ETHASHCL

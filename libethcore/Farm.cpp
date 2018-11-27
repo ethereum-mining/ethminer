@@ -450,11 +450,10 @@ void Farm::collectData(const boost::system::error_code& ec)
             }
             else if (hwInfo.deviceType == HwMonitorInfoType::AMD)
             {
-                int devIdx = 0;
 #if defined(__linux)
                 if (sysfsh)
                 {
-                    devIdx = hwInfo.deviceIndex;
+                    int devIdx = hwInfo.deviceIndex;
                     if (devIdx == -1 && !hwInfo.devicePciId.empty())
                     {
                         if (map_amdsysfs_handle.find(hwInfo.devicePciId) !=

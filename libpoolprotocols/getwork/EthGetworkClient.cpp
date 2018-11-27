@@ -13,7 +13,6 @@ using boost::asio::ip::tcp;
 EthGetworkClient::EthGetworkClient(int worktimeout, unsigned farmRecheckPeriod)
   : PoolClient(),
     m_farmRecheckPeriod(farmRecheckPeriod),
-    m_io_service(g_io_service),
     m_io_strand(g_io_service),
     m_socket(g_io_service),
     m_resolver(g_io_service),
@@ -579,5 +578,4 @@ void EthGetworkClient::getwork_timer_elapsed(const boost::system::error_code& ec
         }
 
     }
-        
 }

@@ -318,14 +318,9 @@ void EthStratumClient::disconnect_finalize()
                 boost::asio::ip::tcp::socket::shutdown_both, ec);
             m_securesocket->lowest_layer().close();
         }
-        m_securesocket = nullptr;
-        m_socket = nullptr;
     }
-    else
-    {
-        m_socket = nullptr;
-        m_nonsecuresocket = nullptr;
-    }
+    m_socket = nullptr;
+    m_nonsecuresocket = nullptr;
 
     // Release locking flag and set connection status
 #ifdef DEV_BUILD

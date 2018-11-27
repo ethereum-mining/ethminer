@@ -54,7 +54,6 @@ private:
     std::atomic<bool> m_txPending = {false}; // Whether or not an async socket operation is pending
     boost::lockfree::queue<std::string*> m_txQueue;
 
-    boost::asio::io_service& m_io_service;  // The IO service reference passed in the constructor
     boost::asio::io_service::strand m_io_strand;
 
     boost::asio::ip::tcp::socket m_socket;
