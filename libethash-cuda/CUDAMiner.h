@@ -52,7 +52,6 @@ public:
     static unsigned const c_defaultNumStreams;
 
 protected:
-
     bool initDevice() override;
 
     bool initEpoch_internal() override;
@@ -83,7 +82,6 @@ private:
 
     const uint32_t m_batch_size;
     const uint32_t m_streams_batch_size;
-
 };
 
 

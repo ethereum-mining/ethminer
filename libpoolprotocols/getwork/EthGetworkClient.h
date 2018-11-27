@@ -33,8 +33,7 @@ public:
     void submitSolution(const Solution& solution) override;
 
 private:
-
-    unsigned m_farmRecheckPeriod = 500; // In milliseconds
+    unsigned m_farmRecheckPeriod = 500;  // In milliseconds
 
     void begin_connect();
     void handle_resolve(
@@ -50,8 +49,8 @@ private:
 
     WorkPackage m_current;
 
-    std::atomic<bool> m_connecting = {false}; // Whether or not socket is on first try connect
-    std::atomic<bool> m_txPending = {false}; // Whether or not an async socket operation is pending
+    std::atomic<bool> m_connecting = {false};  // Whether or not socket is on first try connect
+    std::atomic<bool> m_txPending = {false};  // Whether or not an async socket operation is pending
     boost::lockfree::queue<std::string*> m_txQueue;
 
     boost::asio::io_service::strand m_io_strand;
@@ -67,11 +66,11 @@ private:
     Json::Value m_pendingJReq;
     std::chrono::time_point<std::chrono::steady_clock> m_pending_tstamp;
 
-    boost::asio::deadline_timer m_getwork_timer; // The timer which triggers getWork requests
+    boost::asio::deadline_timer m_getwork_timer;  // The timer which triggers getWork requests
 
     // seconds to trigger a work_timeout (overwritten in constructor)
     int m_worktimeout;
     std::chrono::time_point<std::chrono::steady_clock> m_current_tstamp;
-    
+
     unsigned m_solution_submitted_max_id;  // maximum json id we used to send a solution
 };
