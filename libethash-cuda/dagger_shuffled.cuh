@@ -4,7 +4,7 @@
 
 template <uint32_t _PARALLEL_HASH>
 __device__ __forceinline__ bool compute_hash(
-	uint64_t nonce,
+	uint64_t const nonce,
 	uint2 *mix_hash
 	)
 {

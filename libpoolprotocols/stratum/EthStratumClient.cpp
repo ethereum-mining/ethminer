@@ -184,7 +184,8 @@ void EthStratumClient::init_socket()
         m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
 #else
     timeval tv{
-        static_cast<suseconds_t>(keepAlive / 1000), static_cast<suseconds_t>(keepAlive % 1000)};
+        static_cast<suseconds_t>(keepAlive / 1000), 
+        static_cast<suseconds_t>(keepAlive % 1000)};
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 #endif
@@ -314,6 +315,8 @@ void EthStratumClient::disconnect_finalize()
         m_securesocket->lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
         m_securesocket->lowest_layer().close();
     }
+    m_socket = nullptr;
+    m_nonsecuresocket = nullptr;
 
     m_socket = nullptr;
     m_nonsecuresocket = nullptr;
