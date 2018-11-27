@@ -27,7 +27,7 @@ before_install:
   - |
     if [ "$TRAVIS_OS_NAME" = linux ]; then
       echo "Checking format of sourcecode..."
-      find . -type f \( -name '*.cpp' -o -name '*.h' \) -print0 | xargs -r0 clang-format -i
+      find . -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.cu' -o -name '*.cuh' \) -print0 | xargs -r0 clang-format -i
       git diff --color # --exit-code
     fi
   - |
