@@ -299,7 +299,6 @@ private:
 class Miner : public Worker
 {
 public:
-
     Miner(std::string const& _name, unsigned _index)
       : Worker(_name + std::to_string(_index)), m_index(_index)
     {}
@@ -361,7 +360,6 @@ public:
     void TriggerHashRateUpdate() noexcept;
 
 protected:
-
     /**
      * @brief Initializes miner's device.
      */
@@ -392,8 +390,8 @@ protected:
     static unsigned s_dagLoadMode;
     static unsigned s_dagLoadIndex;
 
-    const unsigned m_index = 0; // Ordinal index of the Instance (not the device)
-    DeviceDescriptorType m_deviceDescriptor; // Info about the device
+    const unsigned m_index = 0;               // Ordinal index of the Instance (not the device)
+    DeviceDescriptorType m_deviceDescriptor;  // Info about the device
 
     EpochContext m_epochContext;
 

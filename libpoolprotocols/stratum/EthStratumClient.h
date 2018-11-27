@@ -52,12 +52,7 @@ private:
 class EthStratumClient : public PoolClient
 {
 public:
-    typedef enum
-    {
-        STRATUM = 0,
-        ETHPROXY,
-        ETHEREUMSTRATUM
-    } StratumProtocol;
+    typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
 
     EthStratumClient(int worktimeout, int responsetimeout);
 
@@ -156,7 +151,8 @@ private:
     boost::asio::ip::tcp::resolver m_resolver;
     std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>> m_endpoints;
 
-    h256 m_nextWorkBoundary = h256("0x00000000ffff0000000000000000000000000000000000000000000000000000");
+    h256 m_nextWorkBoundary =
+        h256("0x00000000ffff0000000000000000000000000000000000000000000000000000");
 
     uint64_t m_extraNonce = 0;
     unsigned int m_extraNonceSizeBytes = 0;

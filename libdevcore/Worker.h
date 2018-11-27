@@ -21,9 +21,9 @@
 
 #pragma once
 
+#include <signal.h>
 #include <atomic>
 #include <cassert>
-#include <signal.h>
 #include <string>
 #include <thread>
 

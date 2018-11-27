@@ -16,12 +16,11 @@ namespace dev
 {
 namespace eth
 {
-
 class PoolManager
 {
 public:
-    PoolManager(PoolClient* client, unsigned maxTries,
-        unsigned failovertimeout, unsigned ergodicity, bool reportHashrate);
+    PoolManager(PoolClient* client, unsigned maxTries, unsigned failovertimeout,
+        unsigned ergodicity, bool reportHashrate);
     static PoolManager& p() { return *m_this; }
     void addConnection(URI& conn);
     void clearConnections();
@@ -39,7 +38,6 @@ public:
     unsigned getEpochChanges();
 
 private:
-
     void rotateConnect();
     void showEpoch();
     void showDifficulty();
@@ -81,4 +79,3 @@ private:
 
 }  // namespace eth
 }  // namespace dev
-

@@ -10,10 +10,7 @@
 extern "C" {
 #endif
 
-typedef enum wrap_adlReturn_enum
-{
-    WRAPADL_OK = 0
-} wrap_adlReturn_t;
+typedef enum wrap_adlReturn_enum { WRAPADL_OK = 0 } wrap_adlReturn_t;
 
 // Some ADL defines and structs from adl sdk
 #if defined(__MSC_VER)
