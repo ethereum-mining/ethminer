@@ -349,6 +349,18 @@ void ApiConnection::disconnect()
     }
 }
 
+ApiConnection::ApiConnection(int id, bool readonly, string password)
+  : m_sessionId(id),
+    m_socket(g_io_service),
+    m_io_strand(g_io_service),
+    m_readonly(readonly),
+    m_password(std::move(password))
+{
+    m_jSwBuilder.settings_["indentation"] = "";
+    if (!m_password.empty())
+        m_is_authenticated = false;
+}
+
 void ApiConnection::start()
 {
     // cnote << "ApiConnection::start";
@@ -921,7 +933,9 @@ void ApiConnection::sendSocketData(Json::Value const& jReq, bool _disconnect)
 {
     if (!m_socket.is_open())
         return;
-    sendSocketData(m_jWriter.write(jReq), _disconnect);  // Do not add lf. It's added by writer.
+    std::stringstream line;
+    line << Json::writeString(m_jSwBuilder, jReq) << std::endl;
+    sendSocketData(line.str(), _disconnect); 
 }
 
 void ApiConnection::sendSocketData(std::string const& _s, bool _disconnect)
@@ -1170,7 +1184,6 @@ std::string ApiConnection::getHttpMinerStatDetail()
     _ret << "</table></body></html>";
     return _ret.str();
 }
-
 
 /**
  * @brief Return a total and per GPU detailed list of current status

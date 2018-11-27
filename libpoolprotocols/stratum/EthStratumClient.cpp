@@ -27,8 +27,6 @@ EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout)
 
     m_jSwBuilder.settings_["indentation"] = "";
 
-    m_jSwBuilder.settings_["indentation"] = "";
-
     // Initialize workloop_timer to infinite wait
     m_workloop_timer.expires_at(boost::posix_time::pos_infin);
     m_workloop_timer.async_wait(m_io_strand.wrap(boost::bind(

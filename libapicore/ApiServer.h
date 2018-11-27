@@ -21,16 +21,8 @@ using boost::asio::ip::tcp;
 class ApiConnection
 {
 public:
-    ApiConnection(int id, bool readonly, string password)
-      : m_sessionId(id),
-        m_socket(g_io_service),
-        m_io_strand(g_io_service),
-        m_readonly(readonly),
-        m_password(std::move(password))
-    {
-        if (!m_password.empty())
-            m_is_authenticated = false;
-    }
+
+    ApiConnection(int id, bool readonly, string password);
 
     ~ApiConnection() = default;
 
@@ -69,7 +61,7 @@ private:
     boost::asio::io_service::strand m_io_strand;
     boost::asio::streambuf m_sendBuffer;
     boost::asio::streambuf m_recvBuffer;
-    Json::FastWriter m_jWriter;
+    Json::StreamWriterBuilder m_jSwBuilder;
 
     std::string m_message;  // The internal message string buffer
 
