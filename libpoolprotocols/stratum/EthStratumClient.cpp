@@ -318,9 +318,6 @@ void EthStratumClient::disconnect_finalize()
     m_socket = nullptr;
     m_nonsecuresocket = nullptr;
 
-    m_socket = nullptr;
-    m_nonsecuresocket = nullptr;
-
     // Release locking flag and set connection status
 #ifdef DEV_BUILD
     if (g_logOptions & LOG_CONNECT)
