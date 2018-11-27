@@ -58,7 +58,6 @@ public:
         unsigned _dagLoadMode, bool _nobinary);
 
 protected:
-
     bool initDevice() override;
 
     bool initEpoch_internal() override;
@@ -66,7 +65,6 @@ protected:
     void kick_miner() override;
 
 private:
-
     boost::asio::io_service::strand m_io_strand;
 
     void workLoop() override;
@@ -89,7 +87,7 @@ private:
 
     static bool s_noBinary;
     bool m_noBinary;
-    
+
 
     /// The local work size for the search
     static unsigned s_workgroupSize;

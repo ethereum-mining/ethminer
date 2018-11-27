@@ -27,10 +27,7 @@ extern "C" {
  * getting included with the CUDA toolkit or a GDK that's got a known
  * install location, etc.
  */
-typedef enum wrap_nvmlReturn_enum
-{
-    WRAPNVML_SUCCESS = 0
-} wrap_nvmlReturn_t;
+typedef enum wrap_nvmlReturn_enum { WRAPNVML_SUCCESS = 0 } wrap_nvmlReturn_t;
 
 typedef void* wrap_nvmlDevice_t;
 
