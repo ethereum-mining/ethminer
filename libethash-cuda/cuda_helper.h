@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cuda.h>
+
 #include <cuda_runtime.h>
+
+#define DEV_INLINE __device__ __forceinline__
 
 #ifdef __INTELLISENSE__
 /* reduce vstudio warnings (__byteperm, blockIdx...) */
@@ -82,7 +85,7 @@ extern cudaError_t MyStreamSynchronize(cudaStream_t stream, int situation, int t
 #define ROTL32(x, n) ((x) << (n)) | ((x) >> (32 - (n)))
 #else
 // Kepler (Compute 3.5, 5.0)
-__device__ __forceinline__ uint32_t ROTL32(const uint32_t x, const uint32_t n)
+DEV_INLINE uint32_t ROTL32(const uint32_t x, const uint32_t n)
 {
     return (__funnelshift_l((x), (x), (n)));
 }
@@ -91,21 +94,21 @@ __device__ __forceinline__ uint32_t ROTL32(const uint32_t x, const uint32_t n)
 // Kepler (Compute 3.0)
 #define ROTR32(x, n) (((x) >> (n)) | ((x) << (32 - (n))))
 #else
-__device__ __forceinline__ uint32_t ROTR32(const uint32_t x, const uint32_t n)
+DEV_INLINE uint32_t ROTR32(const uint32_t x, const uint32_t n)
 {
     return (__funnelshift_r((x), (x), (n)));
 }
 #endif
 
 
-__device__ __forceinline__ uint64_t MAKE_ULONGLONG(uint32_t LO, uint32_t HI)
+DEV_INLINE uint64_t MAKE_ULONGLONG(uint32_t LO, uint32_t HI)
 {
     uint64_t result;
     asm("mov.b64 %0,{%1,%2}; \n\t" : "=l"(result) : "r"(LO), "r"(HI));
     return result;
 }
 
-__device__ __forceinline__ uint64_t REPLACE_HIWORD(const uint64_t x, const uint32_t y)
+DEV_INLINE uint64_t REPLACE_HIWORD(const uint64_t x, const uint32_t y)
 {
     uint64_t result;
     asm("{\n\t"
@@ -117,7 +120,7 @@ __device__ __forceinline__ uint64_t REPLACE_HIWORD(const uint64_t x, const uint3
         : "l"(x), "r"(y));
     return result;
 }
-__device__ __forceinline__ uint64_t REPLACE_LOWORD(const uint64_t x, const uint32_t y)
+DEV_INLINE uint64_t REPLACE_LOWORD(const uint64_t x, const uint32_t y)
 {
     uint64_t result;
     asm("{\n\t"
@@ -132,7 +135,7 @@ __device__ __forceinline__ uint64_t REPLACE_LOWORD(const uint64_t x, const uint3
 
 // Endian Drehung für 32 Bit Typen
 #ifdef __CUDA_ARCH__
-__device__ __forceinline__ uint32_t cuda_swab32(const uint32_t x)
+DEV_INLINE uint32_t cuda_swab32(const uint32_t x)
 {
     /* device */
     return __byte_perm(x, x, 0x0123);
@@ -145,7 +148,7 @@ __device__ __forceinline__ uint32_t cuda_swab32(const uint32_t x)
 #endif
 
 
-static __device__ __forceinline__ uint32_t _HIWORD(const uint64_t x)
+static DEV_INLINE uint32_t _HIWORD(const uint64_t x)
 {
     uint32_t result;
     asm("{\n\t"
@@ -157,7 +160,7 @@ static __device__ __forceinline__ uint32_t _HIWORD(const uint64_t x)
     return result;
 }
 
-static __device__ __forceinline__ uint32_t _LOWORD(const uint64_t x)
+static DEV_INLINE uint32_t _LOWORD(const uint64_t x)
 {
     uint32_t result;
     asm("{\n\t"
@@ -172,7 +175,7 @@ static __device__ __forceinline__ uint32_t _LOWORD(const uint64_t x)
 // Input:       77665544 33221100
 // Output:      00112233 44556677
 #ifdef __CUDA_ARCH__
-__device__ __forceinline__ uint64_t cuda_swab64(const uint64_t x)
+DEV_INLINE uint64_t cuda_swab64(const uint64_t x)
 {
     uint64_t result;
     uint2 t;
@@ -204,7 +207,7 @@ __device__ __forceinline__ uint64_t cuda_swab64(const uint64_t x)
 
 #if USE_XOR_ASM_OPTS
 // device asm for whirpool
-__device__ __forceinline__ uint64_t xor1(const uint64_t a, const uint64_t b)
+DEV_INLINE uint64_t xor1(const uint64_t a, const uint64_t b)
 {
     uint64_t result;
     asm("xor.b64 %0, %1, %2;" : "=l"(result) : "l"(a), "l"(b));
@@ -214,27 +217,27 @@ __device__ __forceinline__ uint64_t xor1(const uint64_t a, const uint64_t b)
 #define xor1(a, b) (a ^ b)
 #endif
 
-    /*
-    #if USE_XOR_ASM_OPTS
-    // device asm for whirpool
-    __device__ __forceinline__
-    uint64_t xor3(const uint64_t a, const uint64_t b, const uint64_t c)
-    {
-        uint64_t result;
-        asm("xor.b64 %0, %2, %3;\n\t"
-            "xor.b64 %0, %0, %1;\n\t"
-            //output : input registers
-            : "=l"(result) : "l"(a), "l"(b), "l"(c));
-        return result;
-    }
-    #else
-    #define xor3(a,b,c) (a ^ b ^ c)
-    #endif
-    */
+/*
+#if USE_XOR_ASM_OPTS
+// device asm for whirpool
+DEV_INLINE
+uint64_t xor3(const uint64_t a, const uint64_t b, const uint64_t c)
+{
+    uint64_t result;
+    asm("xor.b64 %0, %2, %3;\n\t"
+        "xor.b64 %0, %0, %1;\n\t"
+        //output : input registers
+        : "=l"(result) : "l"(a), "l"(b), "l"(c));
+    return result;
+}
+#else
+#define xor3(a,b,c) (a ^ b ^ c)
+#endif
+*/
 
 #if USE_XOR_ASM_OPTS
 // device asm for whirpool
-__device__ __forceinline__ uint64_t xor8(const uint64_t a, const uint64_t b, const uint64_t c,
+DEV_INLINE uint64_t xor8(const uint64_t a, const uint64_t b, const uint64_t c,
     const uint64_t d, const uint64_t e, const uint64_t f, const uint64_t g, const uint64_t h)
 {
     uint64_t result;
@@ -252,7 +255,7 @@ __device__ __forceinline__ uint64_t xor8(const uint64_t a, const uint64_t b, con
 #endif
 
 // device asm for x17
-__device__ __forceinline__ uint64_t xandx(const uint64_t a, const uint64_t b, const uint64_t c)
+DEV_INLINE uint64_t xandx(const uint64_t a, const uint64_t b, const uint64_t c)
 {
     uint64_t result;
     asm("{\n\t"
@@ -267,7 +270,7 @@ __device__ __forceinline__ uint64_t xandx(const uint64_t a, const uint64_t b, co
 }
 
 // device asm for x17
-__device__ __forceinline__ uint64_t andor(uint64_t a, uint64_t b, uint64_t c)
+DEV_INLINE uint64_t andor(uint64_t a, uint64_t b, uint64_t c)
 {
     uint64_t result;
     asm("{\n\t"
@@ -283,7 +286,7 @@ __device__ __forceinline__ uint64_t andor(uint64_t a, uint64_t b, uint64_t c)
 }
 
 // device asm for x17
-__device__ __forceinline__ uint64_t shr_t64(uint64_t x, uint32_t n)
+DEV_INLINE uint64_t shr_t64(uint64_t x, uint32_t n)
 {
     uint64_t result;
     asm("shr.b64 %0,%1,%2;\n\t" : "=l"(result) : "l"(x), "r"(n));
@@ -291,7 +294,7 @@ __device__ __forceinline__ uint64_t shr_t64(uint64_t x, uint32_t n)
 }
 
 // device asm for ?
-__device__ __forceinline__ uint64_t shl_t64(uint64_t x, uint32_t n)
+DEV_INLINE uint64_t shl_t64(uint64_t x, uint32_t n)
 {
     uint64_t result;
     asm("shl.b64 %0,%1,%2;\n\t" : "=l"(result) : "l"(x), "r"(n));
@@ -305,7 +308,7 @@ __device__ __forceinline__ uint64_t shl_t64(uint64_t x, uint32_t n)
 // 64-bit ROTATE RIGHT
 #if __CUDA_ARCH__ >= 320 && USE_ROT_ASM_OPT == 1
 /* complicated sm >= 3.5 one (with Funnel Shifter beschleunigt), to bench */
-__device__ __forceinline__ uint64_t ROTR64(const uint64_t value, const int offset)
+DEV_INLINE uint64_t ROTR64(const uint64_t value, const int offset)
 {
     uint2 result;
     if (offset < 32)
@@ -333,7 +336,7 @@ __device__ __forceinline__ uint64_t ROTR64(const uint64_t value, const int offse
     return __double_as_longlong(__hiloint2double(result.y, result.x));
 }
 #elif __CUDA_ARCH__ >= 120 && USE_ROT_ASM_OPT == 2
-__device__ __forceinline__ uint64_t ROTR64(const uint64_t x, const int offset)
+DEV_INLINE uint64_t ROTR64(const uint64_t x, const int offset)
 {
     uint64_t result;
     asm("{\n\t"
@@ -355,7 +358,7 @@ __device__ __forceinline__ uint64_t ROTR64(const uint64_t x, const int offset)
 
 // 64-bit ROTATE LEFT
 #if __CUDA_ARCH__ >= 320 && USE_ROT_ASM_OPT == 1
-__device__ __forceinline__ uint64_t ROTL64(const uint64_t value, const int offset)
+DEV_INLINE uint64_t ROTL64(const uint64_t value, const int offset)
 {
     uint2 result;
     if (offset >= 32)
@@ -383,7 +386,7 @@ __device__ __forceinline__ uint64_t ROTL64(const uint64_t value, const int offse
     return __double_as_longlong(__hiloint2double(result.y, result.x));
 }
 #elif __CUDA_ARCH__ >= 120 && USE_ROT_ASM_OPT == 2
-__device__ __forceinline__ uint64_t ROTL64(const uint64_t x, const int offset)
+DEV_INLINE uint64_t ROTL64(const uint64_t x, const int offset)
 {
     uint64_t result;
     asm("{\n\t"
@@ -421,7 +424,7 @@ __device__ uint64_t ROTL64(const uint64_t x, const int offset)
 #define ROTL64(x, n) (((x) << (n)) | ((x) >> (64 - (n))))
 #endif
 
-__device__ __forceinline__ uint64_t SWAPDWORDS(uint64_t value)
+DEV_INLINE uint64_t SWAPDWORDS(uint64_t value)
 {
 #if __CUDA_ARCH__ >= 320
     uint2 temp;
@@ -435,12 +438,12 @@ __device__ __forceinline__ uint64_t SWAPDWORDS(uint64_t value)
 
 /* lyra2 - int2 operators */
 
-__device__ __forceinline__ void LOHI(uint32_t& lo, uint32_t& hi, uint64_t x)
+DEV_INLINE void LOHI(uint32_t& lo, uint32_t& hi, uint64_t x)
 {
     asm("mov.b64 {%0,%1},%2; \n\t" : "=r"(lo), "=r"(hi) : "l"(x));
 }
 
-__device__ __forceinline__ uint64_t devectorize(uint2 x)
+DEV_INLINE uint64_t devectorize(uint2 x)
 {
     uint64_t result;
     asm("mov.b64 %0,{%1,%2}; \n\t" : "=l"(result) : "r"(x.x), "r"(x.y));
@@ -448,13 +451,13 @@ __device__ __forceinline__ uint64_t devectorize(uint2 x)
 }
 
 
-__device__ __forceinline__ uint2 vectorize(const uint64_t x)
+DEV_INLINE uint2 vectorize(const uint64_t x)
 {
     uint2 result;
     asm("mov.b64 {%0,%1},%2; \n\t" : "=r"(result.x), "=r"(result.y) : "l"(x));
     return result;
 }
-__device__ __forceinline__ void devectorize2(uint4 inn, uint2& x, uint2& y)
+DEV_INLINE void devectorize2(uint4 inn, uint2& x, uint2& y)
 {
     x.x = inn.x;
     x.y = inn.y;
@@ -463,7 +466,7 @@ __device__ __forceinline__ void devectorize2(uint4 inn, uint2& x, uint2& y)
 }
 
 
-__device__ __forceinline__ uint4 vectorize2(uint2 x, uint2 y)
+DEV_INLINE uint4 vectorize2(uint2 x, uint2 y)
 {
     uint4 result;
     result.x = x.x;
@@ -474,7 +477,7 @@ __device__ __forceinline__ uint4 vectorize2(uint2 x, uint2 y)
     return result;
 }
 
-__device__ __forceinline__ uint4 vectorize2(uint2 x)
+DEV_INLINE uint4 vectorize2(uint2 x)
 {
     uint4 result;
     result.x = x.x;
@@ -485,28 +488,28 @@ __device__ __forceinline__ uint4 vectorize2(uint2 x)
 }
 
 
-__device__ __forceinline__ uint4 vectorize4(uint64_t x, uint64_t y)
+DEV_INLINE uint4 vectorize4(uint64_t x, uint64_t y)
 {
     uint4 result;
     asm("mov.b64 {%0,%1},%2; \n\t" : "=r"(result.x), "=r"(result.y) : "l"(x));
     asm("mov.b64 {%0,%1},%2; \n\t" : "=r"(result.z), "=r"(result.w) : "l"(y));
     return result;
 }
-__device__ __forceinline__ void devectorize4(uint4 inn, uint64_t& x, uint64_t& y)
+DEV_INLINE void devectorize4(uint4 inn, uint64_t& x, uint64_t& y)
 {
     asm("mov.b64 %0,{%1,%2}; \n\t" : "=l"(x) : "r"(inn.x), "r"(inn.y));
     asm("mov.b64 %0,{%1,%2}; \n\t" : "=l"(y) : "r"(inn.z), "r"(inn.w));
 }
 
 
-static __device__ __forceinline__ uint2 vectorizelow(uint32_t v)
+static DEV_INLINE uint2 vectorizelow(uint32_t v)
 {
     uint2 result;
     result.x = v;
     result.y = 0;
     return result;
 }
-static __device__ __forceinline__ uint2 vectorizehigh(uint32_t v)
+static DEV_INLINE uint2 vectorizehigh(uint32_t v)
 {
     uint2 result;
     result.x = 0;
@@ -514,31 +517,31 @@ static __device__ __forceinline__ uint2 vectorizehigh(uint32_t v)
     return result;
 }
 
-static __device__ __forceinline__ uint2 operator^(uint2 a, uint32_t b)
+static DEV_INLINE uint2 operator^(uint2 a, uint32_t b)
 {
     return make_uint2(a.x ^ b, a.y);
 }
-static __device__ __forceinline__ uint2 operator^(uint2 a, uint2 b)
+static DEV_INLINE uint2 operator^(uint2 a, uint2 b)
 {
     return make_uint2(a.x ^ b.x, a.y ^ b.y);
 }
-static __device__ __forceinline__ uint2 operator&(uint2 a, uint2 b)
+static DEV_INLINE uint2 operator&(uint2 a, uint2 b)
 {
     return make_uint2(a.x & b.x, a.y & b.y);
 }
-static __device__ __forceinline__ uint2 operator|(uint2 a, uint2 b)
+static DEV_INLINE uint2 operator|(uint2 a, uint2 b)
 {
     return make_uint2(a.x | b.x, a.y | b.y);
 }
-static __device__ __forceinline__ uint2 operator~(uint2 a)
+static DEV_INLINE uint2 operator~(uint2 a)
 {
     return make_uint2(~a.x, ~a.y);
 }
-static __device__ __forceinline__ void operator^=(uint2& a, uint2 b)
+static DEV_INLINE void operator^=(uint2& a, uint2 b)
 {
     a = a ^ b;
 }
-static __device__ __forceinline__ uint2 operator+(uint2 a, uint2 b)
+static DEV_INLINE uint2 operator+(uint2 a, uint2 b)
 {
     uint2 result;
     asm("{\n\t"
@@ -550,7 +553,7 @@ static __device__ __forceinline__ uint2 operator+(uint2 a, uint2 b)
     return result;
 }
 
-static __device__ __forceinline__ uint2 operator+(uint2 a, uint32_t b)
+static DEV_INLINE uint2 operator+(uint2 a, uint32_t b)
 {
     uint2 result;
     asm("{\n\t"
@@ -563,7 +566,7 @@ static __device__ __forceinline__ uint2 operator+(uint2 a, uint32_t b)
 }
 
 
-static __device__ __forceinline__ uint2 operator-(uint2 a, uint32_t b)
+static DEV_INLINE uint2 operator-(uint2 a, uint32_t b)
 {
     uint2 result;
     asm("{\n\t"
@@ -576,7 +579,7 @@ static __device__ __forceinline__ uint2 operator-(uint2 a, uint32_t b)
 }
 
 
-static __device__ __forceinline__ uint2 operator-(uint2 a, uint2 b)
+static DEV_INLINE uint2 operator-(uint2 a, uint2 b)
 {
     uint2 result;
     asm("{\n\t"
@@ -589,33 +592,33 @@ static __device__ __forceinline__ uint2 operator-(uint2 a, uint2 b)
 }
 
 
-static __device__ __forceinline__ uint4 operator^(uint4 a, uint4 b)
+static DEV_INLINE uint4 operator^(uint4 a, uint4 b)
 {
     return make_uint4(a.x ^ b.x, a.y ^ b.y, a.z ^ b.z, a.w ^ b.w);
 }
-static __device__ __forceinline__ uint4 operator&(uint4 a, uint4 b)
+static DEV_INLINE uint4 operator&(uint4 a, uint4 b)
 {
     return make_uint4(a.x & b.x, a.y & b.y, a.z & b.z, a.w & b.w);
 }
-static __device__ __forceinline__ uint4 operator|(uint4 a, uint4 b)
+static DEV_INLINE uint4 operator|(uint4 a, uint4 b)
 {
     return make_uint4(a.x | b.x, a.y | b.y, a.z | b.z, a.w | b.w);
 }
-static __device__ __forceinline__ uint4 operator~(uint4 a)
+static DEV_INLINE uint4 operator~(uint4 a)
 {
     return make_uint4(~a.x, ~a.y, ~a.z, ~a.w);
 }
-static __device__ __forceinline__ void operator^=(uint4& a, uint4 b)
+static DEV_INLINE void operator^=(uint4& a, uint4 b)
 {
     a = a ^ b;
 }
-static __device__ __forceinline__ uint4 operator^(uint4 a, uint2 b)
+static DEV_INLINE uint4 operator^(uint4 a, uint2 b)
 {
     return make_uint4(a.x ^ b.x, a.y ^ b.y, a.z ^ b.x, a.w ^ b.y);
 }
 
 
-static __device__ __forceinline__ void operator+=(uint2& a, uint2 b)
+static DEV_INLINE void operator+=(uint2& a, uint2 b)
 {
     a = a + b;
 }
@@ -624,7 +627,7 @@ static __device__ __forceinline__ void operator+=(uint2& a, uint2 b)
  * basic multiplication between 64bit no carry outside that range (ie mul.lo.b64(a*b))
  * (what does uint64 "*" operator)
  */
-static __device__ __forceinline__ uint2 operator*(uint2 a, uint2 b)
+static DEV_INLINE uint2 operator*(uint2 a, uint2 b)
 {
     uint2 result;
     asm("{\n\t"
@@ -640,7 +643,7 @@ static __device__ __forceinline__ uint2 operator*(uint2 a, uint2 b)
 
 // uint2 method
 #if __CUDA_ARCH__ >= 350
-__device__ __inline__ uint2 ROR2(const uint2 a, const int offset)
+DEV_INLINE uint2 ROR2(const uint2 a, const int offset)
 {
     uint2 result;
     if (offset < 32)
@@ -656,7 +659,7 @@ __device__ __inline__ uint2 ROR2(const uint2 a, const int offset)
     return result;
 }
 #else
-__device__ __inline__ uint2 ROR2(const uint2 v, const int n)
+DEV_INLINE uint2 ROR2(const uint2 v, const int n)
 {
     uint2 result;
     if (n <= 32)
@@ -674,20 +677,20 @@ __device__ __inline__ uint2 ROR2(const uint2 v, const int n)
 #endif
 
 
-__device__ __inline__ uint32_t ROL8(const uint32_t x)
+DEV_INLINE uint32_t ROL8(const uint32_t x)
 {
     return __byte_perm(x, x, 0x2103);
 }
-__device__ __inline__ uint32_t ROL16(const uint32_t x)
+DEV_INLINE uint32_t ROL16(const uint32_t x)
 {
     return __byte_perm(x, x, 0x1032);
 }
-__device__ __inline__ uint32_t ROL24(const uint32_t x)
+DEV_INLINE uint32_t ROL24(const uint32_t x)
 {
     return __byte_perm(x, x, 0x0321);
 }
 
-__device__ __inline__ uint2 ROR8(const uint2 a)
+DEV_INLINE uint2 ROR8(const uint2 a)
 {
     uint2 result;
     result.x = __byte_perm(a.y, a.x, 0x0765);
@@ -696,7 +699,7 @@ __device__ __inline__ uint2 ROR8(const uint2 a)
     return result;
 }
 
-__device__ __inline__ uint2 ROR16(const uint2 a)
+DEV_INLINE uint2 ROR16(const uint2 a)
 {
     uint2 result;
     result.x = __byte_perm(a.y, a.x, 0x1076);
@@ -705,7 +708,7 @@ __device__ __inline__ uint2 ROR16(const uint2 a)
     return result;
 }
 
-__device__ __inline__ uint2 ROR24(const uint2 a)
+DEV_INLINE uint2 ROR24(const uint2 a)
 {
     uint2 result;
     result.x = __byte_perm(a.y, a.x, 0x2107);
@@ -714,7 +717,7 @@ __device__ __inline__ uint2 ROR24(const uint2 a)
     return result;
 }
 
-__device__ __inline__ uint2 ROL8(const uint2 a)
+DEV_INLINE uint2 ROL8(const uint2 a)
 {
     uint2 result;
     result.x = __byte_perm(a.y, a.x, 0x6543);
@@ -723,7 +726,7 @@ __device__ __inline__ uint2 ROL8(const uint2 a)
     return result;
 }
 
-__device__ __inline__ uint2 ROL16(const uint2 a)
+DEV_INLINE uint2 ROL16(const uint2 a)
 {
     uint2 result;
     result.x = __byte_perm(a.y, a.x, 0x5432);
@@ -732,7 +735,7 @@ __device__ __inline__ uint2 ROL16(const uint2 a)
     return result;
 }
 
-__device__ __inline__ uint2 ROL24(const uint2 a)
+DEV_INLINE uint2 ROL24(const uint2 a)
 {
     uint2 result;
     result.x = __byte_perm(a.y, a.x, 0x4321);
@@ -776,7 +779,7 @@ __inline__ __device__ uint2 ROL2(const uint2 v, const int n)
 }
 #endif
 
-__device__ __forceinline__ uint64_t ROTR16(uint64_t x)
+DEV_INLINE uint64_t ROTR16(uint64_t x)
 {
 #if __CUDA_ARCH__ > 500
     short4 temp;
@@ -791,7 +794,7 @@ __device__ __forceinline__ uint64_t ROTR16(uint64_t x)
     return ROTR64(x, 16);
 #endif
 }
-__device__ __forceinline__ uint64_t ROTL16(uint64_t x)
+DEV_INLINE uint64_t ROTL16(uint64_t x)
 {
 #if __CUDA_ARCH__ > 500
     short4 temp;
@@ -807,11 +810,11 @@ __device__ __forceinline__ uint64_t ROTL16(uint64_t x)
 #endif
 }
 
-__device__ __forceinline__ uint2 SWAPINT2(uint2 x)
+DEV_INLINE uint2 SWAPINT2(uint2 x)
 {
     return (make_uint2(x.y, x.x));
 }
-__device__ __forceinline__ bool cuda_hashisbelowtarget(
+DEV_INLINE bool cuda_hashisbelowtarget(
     const uint32_t* const __restrict__ hash, const uint32_t* const __restrict__ target)
 {
     if (hash[7] > target[7])
@@ -847,11 +850,11 @@ __device__ __forceinline__ bool cuda_hashisbelowtarget(
     return true;
 }
 
-__device__ __forceinline__ uint2 SWAPDWORDS2(uint2 value)
+DEV_INLINE uint2 SWAPDWORDS2(uint2 value)
 {
     return make_uint2(value.y, value.x);
 }
-__device__ __forceinline__ uint4 SWAPDWORDS2(uint4 value)
+DEV_INLINE uint4 SWAPDWORDS2(uint4 value)
 {
     return make_uint4(value.y, value.x, value.w, value.z);
 }
@@ -931,11 +934,11 @@ static __forceinline__ __device__ uint2 SHR2(uint2 a, int offset)
 #endif
 }
 
-static __device__ __forceinline__ uint64_t devectorizeswap(uint2 v)
+static DEV_INLINE uint64_t devectorizeswap(uint2 v)
 {
     return MAKE_ULONGLONG(cuda_swab32(v.y), cuda_swab32(v.x));
 }
-static __device__ __forceinline__ uint2 vectorizeswap(uint64_t v)
+static DEV_INLINE uint2 vectorizeswap(uint64_t v)
 {
     uint2 result;
     LOHI(result.y, result.x, v);
@@ -945,7 +948,7 @@ static __device__ __forceinline__ uint2 vectorizeswap(uint64_t v)
 }
 
 
-__device__ __forceinline__ uint32_t devectorize16(ushort2 x)
+DEV_INLINE uint32_t devectorize16(ushort2 x)
 {
     uint32_t result;
     asm("mov.b32 %0,{%1,%2}; \n\t" : "=r"(result) : "h"(x.x), "h"(x.y));
@@ -953,7 +956,7 @@ __device__ __forceinline__ uint32_t devectorize16(ushort2 x)
 }
 
 
-__device__ __forceinline__ ushort2 vectorize16(uint32_t x)
+DEV_INLINE ushort2 vectorize16(uint32_t x)
 {
     ushort2 result;
     asm("mov.b32 {%0,%1},%2; \n\t" : "=h"(result.x), "=h"(result.y) : "r"(x));
@@ -961,7 +964,7 @@ __device__ __forceinline__ ushort2 vectorize16(uint32_t x)
 }
 
 
-static __device__ __forceinline__ uint4 mul4(uint4 a)
+static DEV_INLINE uint4 mul4(uint4 a)
 {
     uint4 result;
     asm("{\n\t"
@@ -974,7 +977,7 @@ static __device__ __forceinline__ uint4 mul4(uint4 a)
         : "r"(a.x), "r"(a.y), "r"(a.z), "r"(a.w));
     return result;
 }
-static __device__ __forceinline__ uint4 add4(uint4 a, uint4 b)
+static DEV_INLINE uint4 add4(uint4 a, uint4 b)
 {
     uint4 result;
     asm("{\n\t"
@@ -988,7 +991,7 @@ static __device__ __forceinline__ uint4 add4(uint4 a, uint4 b)
     return result;
 }
 
-static __device__ __forceinline__ uint4 madd4(uint4 a, uint4 b)
+static DEV_INLINE uint4 madd4(uint4 a, uint4 b)
 {
     uint4 result;
     asm("{\n\t"
@@ -1002,7 +1005,7 @@ static __device__ __forceinline__ uint4 madd4(uint4 a, uint4 b)
     return result;
 }
 
-static __device__ __forceinline__ ulonglong2 madd4long(ulonglong2 a, ulonglong2 b)
+static DEV_INLINE ulonglong2 madd4long(ulonglong2 a, ulonglong2 b)
 {
     ulonglong2 result;
     asm("{\n\t"
@@ -1022,7 +1025,7 @@ static __device__ __forceinline__ ulonglong2 madd4long(ulonglong2 a, ulonglong2 
         : "l"(a.x), "l"(a.y), "l"(b.x), "l"(b.y));
     return result;
 }
-static __device__ __forceinline__ void madd4long2(ulonglong2& a, ulonglong2 b)
+static DEV_INLINE void madd4long2(ulonglong2& a, ulonglong2 b)
 {
     asm("{\n\t"
         ".reg .u32 a0,a1,a2,a3,b0,b1,b2,b3;\n\t"
@@ -1041,7 +1044,7 @@ static __device__ __forceinline__ void madd4long2(ulonglong2& a, ulonglong2 b)
         : "l"(b.x), "l"(b.y));
 }
 
-__device__ __forceinline__ uint32_t xor3b(uint32_t a, uint32_t b, uint32_t c)
+DEV_INLINE uint32_t xor3b(uint32_t a, uint32_t b, uint32_t c)
 {
     uint32_t result;
     asm("{ .reg .u32 t1;\n\t"
@@ -1053,14 +1056,14 @@ __device__ __forceinline__ uint32_t xor3b(uint32_t a, uint32_t b, uint32_t c)
     return result;
 }
 
-__device__ __forceinline__ uint32_t shr_t32(uint32_t x, uint32_t n)
+DEV_INLINE uint32_t shr_t32(uint32_t x, uint32_t n)
 {
     uint32_t result;
     asm("shr.b32 %0,%1,%2;" : "=r"(result) : "r"(x), "r"(n));
     return result;
 }
 
-__device__ __forceinline__ uint32_t shl_t32(uint32_t x, uint32_t n)
+DEV_INLINE uint32_t shl_t32(uint32_t x, uint32_t n)
 {
     uint32_t result;
     asm("shl.b32 %0,%1,%2;" : "=r"(result) : "r"(x), "r"(n));
@@ -1068,7 +1071,7 @@ __device__ __forceinline__ uint32_t shl_t32(uint32_t x, uint32_t n)
 }
 
 // device asm 32 for pluck
-__device__ __forceinline__ uint32_t andor32(uint32_t a, uint32_t b, uint32_t c)
+DEV_INLINE uint32_t andor32(uint32_t a, uint32_t b, uint32_t c)
 {
     uint32_t result;
     asm("{ .reg .u32 m,n,o;\n\t"
@@ -1082,14 +1085,14 @@ __device__ __forceinline__ uint32_t andor32(uint32_t a, uint32_t b, uint32_t c)
     return result;
 }
 
-__device__ __forceinline__ uint32_t bfe(uint32_t x, uint32_t bit, uint32_t numBits)
+DEV_INLINE uint32_t bfe(uint32_t x, uint32_t bit, uint32_t numBits)
 {
     uint32_t ret;
     asm("bfe.u32 %0, %1, %2, %3;" : "=r"(ret) : "r"(x), "r"(bit), "r"(numBits));
     return ret;
 }
 
-__device__ __forceinline__ uint32_t bfi(uint32_t x, uint32_t a, uint32_t bit, uint32_t numBits)
+DEV_INLINE uint32_t bfi(uint32_t x, uint32_t a, uint32_t bit, uint32_t numBits)
 {
     uint32_t ret;
     asm("bfi.b32 %0, %1, %2, %3,%4;" : "=r"(ret) : "r"(x), "r"(a), "r"(bit), "r"(numBits));
