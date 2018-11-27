@@ -55,6 +55,7 @@
 extern unsigned g_logOptions;
 extern bool g_logNoColor;
 extern bool g_logSyslog;
+extern bool g_logStdout;
 
 namespace dev
 {

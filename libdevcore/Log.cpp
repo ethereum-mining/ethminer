@@ -35,6 +35,7 @@ using namespace dev;
 unsigned g_logOptions = 0;
 bool g_logNoColor = false;
 bool g_logSyslog = false;
+bool g_logStdout = false;
 
 const char* LogChannel::name()
 {
@@ -106,7 +107,8 @@ void dev::simpleDebugOut(std::string const& _s)
     {
         if (!g_logNoColor)
         {
-            std::cerr << _s + '\n';
+            (g_logStdout ? std::cout : std::cerr) << _s + '\n';
+            (g_logStdout ? std::cout : std::cerr).flush();
             return;
         }
         bool skip = false;
@@ -121,7 +123,8 @@ void dev::simpleDebugOut(std::string const& _s)
                 ss << it;
         }
         ss << '\n';
-        std::cerr << ss.str();
+        (g_logStdout ? std::cout : std::cerr) << ss.str();
+        (g_logStdout ? std::cout : std::cerr).flush();
     }
     catch (...)
     {
