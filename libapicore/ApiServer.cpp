@@ -543,18 +543,32 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         Json::Value jRequestParams;
         if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
             return;
-
-        unsigned index;
-        if (!getRequestValue("index", index, jRequestParams, false, jResponse))
-            return;
-
-        if (PoolManager::p().setActiveConnection(index))
+        if (jRequestParams.isMember("index"))
         {
-            jResponse["error"]["code"] = -422;
-            jResponse["error"]["message"] = "Index out of bounds";
-            return;
+            unsigned index;
+            if (getRequestValue("index", index, jRequestParams, false, jResponse))
+            {
+                if (PoolManager::p().setActiveConnection(index) == -1)
+                {
+                    jResponse["error"]["code"] = -422;
+                    jResponse["error"]["message"] = "Index out of bounds";
+                    return;
+                }
+            }
         }
-
+        else
+        {
+            string uri;
+            if (getRequestValue("URI", uri, jRequestParams, false, jResponse))
+            {
+                if (PoolManager::p().setActiveConnection(uri) == -1)
+                {
+                    jResponse["error"]["code"] = -422;
+                    jResponse["error"]["message"] = "Host match not found";
+                    return;
+                }
+            }
+        }
         jResponse["result"] = true;
     }
 

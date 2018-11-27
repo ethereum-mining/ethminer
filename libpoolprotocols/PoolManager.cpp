@@ -283,16 +283,8 @@ void PoolManager::clearConnections()
         p_client->disconnect();
 }
 
-/*
- * Sets the active connection
- * Returns: 0 on success, -1 on failure (out of bounds)
- */
-int PoolManager::setActiveConnection(unsigned int idx)
+int PoolManager::setActiveConnectionCommon(unsigned int idx, UniqueGuard& l)
 {
-    // Sets the active connection to the requested index
-    UniqueGuard l(m_activeConnectionMutex);
-    if (idx >= m_connections.size())
-        return -1;
     if (idx == m_activeConnectionIdx)
         return 0;
 
@@ -306,6 +298,29 @@ int PoolManager::setActiveConnection(unsigned int idx)
     cnote << "No connection. Suspend mining ...";
     Farm::f().pause();
     return 0;
+}
+
+/*
+ * Sets the active connection
+ * Returns: 0 on success, -1 on failure (out of bounds)
+ */
+int PoolManager::setActiveConnection(unsigned int idx)
+{
+    // Sets the active connection to the requested index
+    UniqueGuard l(m_activeConnectionMutex);
+    if (idx >= m_connections.size())
+        return -1;
+    return setActiveConnectionCommon(idx, l);
+}
+
+int PoolManager::setActiveConnection(std::string& host)
+{
+    std::regex r(host);
+    UniqueGuard l(m_activeConnectionMutex);
+    for (size_t idx = 0; idx < m_connections.size(); idx++)
+        if (std::regex_match(m_connections[idx].str(), r))
+            return setActiveConnectionCommon(idx, l);
+    return -1;
 }
 
 URI PoolManager::getActiveConnectionCopy()
