@@ -554,10 +554,13 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollec
             // Is it an NVIDIA card ?
             if (platformType == ClPlatformTypeEnum::Nvidia)
             {
-                deviceDescriptor.clNvComputeMajor =
-                    device.getInfo<CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV>();
-                deviceDescriptor.clNvComputeMinor =
-                    device.getInfo<CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV>();
+                size_t siz;
+                clGetDeviceInfo(device.get(), CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV,
+                    sizeof(deviceDescriptor.clNvComputeMajor), &deviceDescriptor.clNvComputeMajor,
+                    &siz);
+                clGetDeviceInfo(device.get(), CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV,
+                    sizeof(deviceDescriptor.clNvComputeMinor), &deviceDescriptor.clNvComputeMinor,
+                    &siz);
                 deviceDescriptor.clNvCompute = to_string(deviceDescriptor.clNvComputeMajor) + "." +
                                                to_string(deviceDescriptor.clNvComputeMinor);
             }
