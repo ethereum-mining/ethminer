@@ -32,9 +32,6 @@
 #include <libethash-cuda/CUDAMiner.h>
 #endif
 #include <libpoolprotocols/PoolManager.h>
-#include <libpoolprotocols/getwork/EthGetworkClient.h>
-#include <libpoolprotocols/stratum/EthStratumClient.h>
-#include <libpoolprotocols/testing/SimulateClient.h>
 
 #if API_CORE
 #include <libapicore/ApiServer.h>
@@ -78,8 +75,7 @@ public:
         None,
         Benchmark,
         Simulation,
-        Farm,
-        Stratum
+        Mining
     };
 
     MinerCLI() : m_cliDisplayTimer(g_io_service), m_io_strand(g_io_service)
@@ -480,9 +476,14 @@ public:
         {
             m_mode = OperationMode::Simulation;
             pools.clear();
-            pools.push_back("http://-:0");  // Fake connection
+            pools.push_back("simulation://localhost:0");  // Fake connection
         }
-        else if (!m_shouldListDevices)
+        else
+        {
+            m_mode = OperationMode::Mining;
+        }
+
+        if (!m_shouldListDevices && m_mode != OperationMode::Benchmark)
         {
             if (!pools.size())
                 throw std::invalid_argument(
@@ -496,15 +497,13 @@ public:
                     if (i == 0)
                         throw std::invalid_argument(
                             "'exit' failover directive can't be the first in -P arguments list.");
-                    if (m_mode == OperationMode::Stratum)
+                    else
                         url = "stratum+tcp://-:x@exit:0";
-                    if (m_mode == OperationMode::Farm)
-                        url = "http://-:x@exit:0";
                 }
 
                 URI uri(url);
 
-                if (!uri.Valid() || !uri.KnownScheme())
+                if (!uri.Valid() || !uri.KnownScheme() || (m_mode == OperationMode::Mining && uri.Scheme() == "simulation"))
                 {
                     std::string what = "Bad URI : " + uri.str();
                     throw std::invalid_argument(what);
@@ -519,16 +518,6 @@ public:
                 }
 
                 m_poolConns.push_back(uri);
-                OperationMode mode =
-                    (uri.Family() == ProtocolFamily::STRATUM ? OperationMode::Stratum :
-                                                               OperationMode::Farm);
-
-                if ((m_mode != OperationMode::None) && (m_mode != mode))
-                {
-                    std::string what = "Mixed stratum and getwork connections not supported.";
-                    throw std::invalid_argument(what);
-                }
-                m_mode = mode;
             }
         }
 
@@ -770,7 +759,7 @@ public:
         for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
         {
             if (it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
-                    subscribedDevices++;
+                subscribedDevices++;
         }
 
         // If no OpenCL and/or CUDA devices subscribed then throw error
@@ -807,9 +796,8 @@ public:
         case OperationMode::Benchmark:
             doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
             break;
-        case OperationMode::Farm:
-        case OperationMode::Stratum:
         case OperationMode::Simulation:
+        case OperationMode::Mining:
             doMiner();
             break;
         default:
@@ -1322,32 +1310,10 @@ private:
             Farm::SealerDescriptor{[](unsigned _index) { return new CUDAMiner(_index); }};
 #endif
 
-        PoolClient* client = nullptr;
-
-        switch (m_mode)
-        {
-        case MinerCLI::OperationMode::None:
-        case MinerCLI::OperationMode::Benchmark:
-            throw std::runtime_error("Program logic error. Unexpected m_mode.");
-            break;
-        case MinerCLI::OperationMode::Simulation:
-            client = new SimulateClient(20, m_benchmarkBlock);
-            break;
-        case MinerCLI::OperationMode::Farm:
-            client = new EthGetworkClient(m_poolWorkTimeout, m_farmPollInterval);
-            break;
-        case MinerCLI::OperationMode::Stratum:
-            client = new EthStratumClient(m_poolWorkTimeout, m_poolRespTimeout);
-            break;
-        default:
-            // Satisfy the compiler, but cannot happen!
-            throw std::runtime_error("Program logic error. Unexpected m_mode.");
-        }
-
         Farm::f().setSealers(sealers);
 
-        new PoolManager(
-            client, m_poolMaxRetries, m_poolFlvrTimeout, m_farmErgodicity, m_poolHashRate);
+        new PoolManager(m_poolMaxRetries, m_poolFlvrTimeout, m_farmErgodicity, m_poolHashRate,
+            m_poolWorkTimeout, m_poolRespTimeout, m_farmPollInterval, m_benchmarkBlock);
         for (auto conn : m_poolConns)
         {
             PoolManager::p().addConnection(conn);

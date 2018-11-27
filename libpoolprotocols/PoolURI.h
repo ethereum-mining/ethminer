@@ -35,7 +35,8 @@ enum class SecureLevel
 enum class ProtocolFamily
 {
     GETWORK = 0,
-    STRATUM
+    STRATUM,
+    SIMULATION
 };
 
 enum class UriHostNameType
