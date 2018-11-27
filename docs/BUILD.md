@@ -28,11 +28,6 @@ This project uses [CMake] and [Hunter] package manager.
 ### Linux
 
 1. GCC version >= 4.8
-2. DBUS development libs if building with `-DETHDBUS`. E.g. on Ubuntu run:
-
-```shell
-sudo apt install libdbus-1-dev
-```
 
 #### OpenCL support on Linux
 
@@ -142,7 +137,6 @@ cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 * `-DETHASHCUDA=ON` - enable CUDA mining, `ON` by default.
 * `-DAPICORE=ON` - enable API Server, `ON` by default.
 * `-DBINKERN=ON` - install AMD binary kernels, `ON` by default.
-* `-DETHDBUS=ON` - enable D-Bus support, `OFF` by default.
 
 ## Disable Hunter
 

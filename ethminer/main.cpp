@@ -66,10 +66,6 @@ struct MiningChannel : public LogChannel
 
 #define minelog clog(MiningChannel)
 
-#if ETH_DBUS
-#include <ethminer/DBusInt.h>
-#endif
-
 class MinerCLI
 {
 public:
@@ -132,10 +128,6 @@ public:
                     }
                     minelog << statdetails.str();
                 }
-
-#if ETH_DBUS
-                dbusint.send(toString(mp).c_str());
-#endif
             }
             else
             {
@@ -1469,10 +1461,6 @@ private:
     string m_http_bind;                 // HTTP interface binding address in form <address>:<port>
     string m_http_address = "0.0.0.0";  // HTTP interface binding address (Default any)
     uint16_t m_http_port = 0;           // HTTP interface binding port
-#endif
-
-#if ETH_DBUS
-    DBusInt dbusint;
 #endif
 };
 
