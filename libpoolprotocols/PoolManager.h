@@ -26,6 +26,7 @@ public:
     void clearConnections();
     Json::Value getConnectionsJson();
     int setActiveConnection(unsigned int idx);
+    int setActiveConnection(std::string& host);
     URI getActiveConnectionCopy();
     int removeConnection(unsigned int idx);
     void start();
@@ -41,6 +42,7 @@ private:
     void rotateConnect();
     void showEpoch();
     void showDifficulty();
+    int setActiveConnectionCommon(unsigned int idx, UniqueGuard& l);
 
     unsigned m_hrReportingInterval = 60;
     unsigned m_failoverTimeout =
