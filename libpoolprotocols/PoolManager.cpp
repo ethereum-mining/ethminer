@@ -8,8 +8,8 @@ using namespace eth;
 
 PoolManager* PoolManager::m_this = nullptr;
 
-PoolManager::PoolManager(PoolClient* client, unsigned maxTries,
-    unsigned failoverTimeout, unsigned ergodicity, bool reportHashrate)
+PoolManager::PoolManager(unsigned maxTries, unsigned failoverTimeout, unsigned ergodicity,
+    bool reportHashrate, unsigned workTimeout, unsigned responseTimeout, unsigned pollInterval, unsigned benchmarkBlock)
   : m_hashrate(reportHashrate),
     m_io_strand(g_io_service),
     m_failovertimer(g_io_service),
@@ -18,16 +18,58 @@ PoolManager::PoolManager(PoolClient* client, unsigned maxTries,
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::PoolManager() begin");
 
     m_this = this;
-    p_client = client;
     m_ergodicity = ergodicity;
     m_maxConnectionAttempts = maxTries;
     m_failoverTimeout = failoverTimeout;
+    m_workTimeout = workTimeout;
+    m_responseTimeout = responseTimeout;
+    m_pollInterval = pollInterval;
+    m_benchmarkBlock = benchmarkBlock;
+
     m_currentWp.header = h256();
 
     // If hashrate submission required compute a random
     // unique id
-    if (m_hashrate) 
+    if (m_hashrate)
         m_hashrateId = "0x" + h256::random().hex();
+
+    Farm::f().onMinerRestart([&]() {
+        cnote << "Restart miners...";
+
+        if (Farm::f().isMining())
+        {
+            cnote << "Shutting down miners...";
+            Farm::f().stop();
+        }
+
+        cnote << "Spinning up miners...";
+        Farm::f().start();
+    });
+
+    Farm::f().onSolutionFound([&](const Solution& sol) {
+
+        // Solution should passthrough only if client is
+        // properly connected. Otherwise we'll have the bad behavior
+        // to log nonce submission but receive no response
+
+        if (p_client && p_client->isConnected())
+        {
+            p_client->submitSolution(sol);
+        }
+        else
+        {
+            cnote << string(EthRed "Solution 0x") + toHex(sol.nonce)
+                  << " wasted. Waiting for connection...";
+        }
+
+        return false;
+    });
+
+
+    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::PoolManager() end");
+}
+
+void PoolManager::setClientHandlers() {
 
     p_client->onConnected([&]() {
         {
@@ -152,58 +194,24 @@ PoolManager::PoolManager(PoolClient* client, unsigned maxTries,
         Farm::f().setWork(m_currentWp);
     });
 
-    p_client->onSolutionAccepted([&](std::chrono::milliseconds const& elapsedMs,
-                                     unsigned const& miner_index) {
-        std::stringstream ss;
-        ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << " ms."
-           << " " << m_selectedHost;
-        cnote << EthLime "**Accepted" EthReset << ss.str();
-        Farm::f().acceptedSolution(miner_index);
-    });
+    p_client->onSolutionAccepted(
+        [&](std::chrono::milliseconds const& elapsedMs, unsigned const& miner_index) {
+            std::stringstream ss;
+            ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << " ms."
+               << " " << m_selectedHost;
+            cnote << EthLime "**Accepted" EthReset << ss.str();
+            Farm::f().acceptedSolution(miner_index);
+        });
 
-    p_client->onSolutionRejected([&](std::chrono::milliseconds const& elapsedMs,
-                                     unsigned const& miner_index) {
-        std::stringstream ss;
-        ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << "ms."
-           << "   " << m_selectedHost;
-        cwarn << EthRed "**Rejected" EthReset << ss.str();
-        Farm::f().rejectedSolution(miner_index);
-    });
+    p_client->onSolutionRejected(
+        [&](std::chrono::milliseconds const& elapsedMs, unsigned const& miner_index) {
+            std::stringstream ss;
+            ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << "ms."
+               << "   " << m_selectedHost;
+            cwarn << EthRed "**Rejected" EthReset << ss.str();
+            Farm::f().rejectedSolution(miner_index);
+        });
 
-    Farm::f().onSolutionFound([&](const Solution& sol) {
-        // Solution should passthrough only if client is
-        // properly connected. Otherwise we'll have the bad behavior
-        // to log nonce submission but receive no response
-
-        if (p_client->isConnected())
-        {
-            p_client->submitSolution(sol);
-        }
-        else
-        {
-            cnote << string(EthRed "Solution 0x") + toHex(sol.nonce)
-                  << " wasted. Waiting for connection...";
-        }
-
-        return false;
-    });
-
-    Farm::f().onMinerRestart([&]() {
-        dev::setThreadName("main");
-        cnote << "Restart miners...";
-
-        if (Farm::f().isMining())
-        {
-            cnote << "Shutting down miners...";
-            Farm::f().stop();
-        }
-
-        cnote << "Spinning up miners...";
-        Farm::f().start();
-
-    });
-
-    DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::PoolManager() end");
 }
 
 void PoolManager::stop()
@@ -213,12 +221,14 @@ void PoolManager::stop()
     {
         m_stopping.store(true, std::memory_order_relaxed);
 
-        if (p_client->isConnected())
+        if (p_client && p_client->isConnected())
         {
             p_client->disconnect();
             // Wait for async operations to complete
             while (m_running.load(std::memory_order_relaxed))
                 this_thread::sleep_for(chrono::milliseconds(500));
+
+            delete p_client;
         }
         else
         {
@@ -334,7 +344,7 @@ void PoolManager::start()
 
 void PoolManager::rotateConnect()
 {
-    if (p_client->isConnected())
+    if (p_client && p_client->isConnected())
         return;
 
     UniqueGuard l(m_activeConnectionMutex);
@@ -373,6 +383,18 @@ void PoolManager::rotateConnect()
 
     if (!m_connections.empty() && m_connections.at(m_activeConnectionIdx).Host() != "exit")
     {
+        if (p_client) delete p_client;
+
+        if (m_connections.at(m_activeConnectionIdx).Family() == ProtocolFamily::GETWORK)
+            p_client = new EthGetworkClient(m_workTimeout, m_pollInterval);
+        if (m_connections.at(m_activeConnectionIdx).Family() == ProtocolFamily::STRATUM)
+            p_client = new EthStratumClient(m_workTimeout, m_responseTimeout);
+        if (m_connections.at(m_activeConnectionIdx).Family() == ProtocolFamily::SIMULATION)
+            p_client = new SimulateClient(20, m_benchmarkBlock);
+
+        if (p_client)
+            setClientHandlers();
+        
         // Count connectionAttempts
         m_connectionAttempt++;
 
@@ -418,7 +440,6 @@ void PoolManager::showEpoch()
 
 void PoolManager::showDifficulty()
 {
-
     static const char* suffixes[] = {"h", "Kh", "Mh", "Gh"};
     double d = getCurrentDifficulty();
     unsigned i;
@@ -431,7 +452,7 @@ void PoolManager::showDifficulty()
     }
 
     std::stringstream ss;
-    ss << fixed << setprecision(2) << d << suffixes[i];
+    ss << fixed << setprecision(2) << d << " " << suffixes[i];
     cnote << "Difficulty : " EthWhite << ss.str() << EthReset;
 }
 
@@ -459,17 +480,20 @@ void PoolManager::submithrtimer_elapsed(const boost::system::error_code& ec)
 {
     if (!ec)
     {
-        if (m_running.load(std::memory_order_relaxed) && p_client->isConnected())
+        if (m_running.load(std::memory_order_relaxed))
         {
-            auto mp = Farm::f().miningProgress();
-            std::string h = toHex(toCompactBigEndian(uint64_t(mp.hashRate), 1));
-            std::string res = h[0] != '0' ? h : h.substr(1);
+            if (p_client && p_client->isConnected())
+            {
+                auto mp = Farm::f().miningProgress();
+                std::string h = toHex(toCompactBigEndian(uint64_t(mp.hashRate), 1));
+                std::string res = h[0] != '0' ? h : h.substr(1);
 
-            // Should be 32 bytes
-            // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_submithashrate
-            std::ostringstream ss;
-            ss << "0x" << std::setw(64) << std::setfill('0') << res;
-            p_client->submitHashrate(ss.str(), m_hashrateId);
+                // Should be 32 bytes
+                // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_submithashrate
+                std::ostringstream ss;
+                ss << "0x" << std::setw(64) << std::setfill('0') << res;
+                p_client->submitHashrate(ss.str(), m_hashrateId);
+            }
 
             // Resubmit actor
             m_submithrtimer.expires_from_now(boost::posix_time::seconds(m_hrReportingInterval));

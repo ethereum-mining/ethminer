@@ -61,8 +61,14 @@ static std::map<std::string, SchemeAttributes> s_schemes = {
 
     {"stratum", {ProtocolFamily::STRATUM, SecureLevel::NONE, 999}},
     {"stratums", {ProtocolFamily::STRATUM, SecureLevel::TLS, 999}},
-    {"stratumss", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 999}}
+    {"stratumss", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 999}},
 
+    /*
+    The following scheme is only meant for simulation operations
+    It's not meant to be used with -P arguments
+    */
+
+    {"simulation", {ProtocolFamily::SIMULATION, SecureLevel::NONE, 999}}
 };
 
 static std::string urlDecode(std::string s)

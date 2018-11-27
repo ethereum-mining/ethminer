@@ -9,6 +9,9 @@
 #include <libethcore/Miner.h>
 
 #include "PoolClient.h"
+#include "getwork/EthGetworkClient.h"
+#include "stratum/EthStratumClient.h"
+#include "testing/SimulateClient.h"
 
 using namespace std;
 
@@ -19,8 +22,9 @@ namespace eth
 class PoolManager
 {
 public:
-    PoolManager(PoolClient* client, unsigned maxTries, unsigned failovertimeout,
-        unsigned ergodicity, bool reportHashrate);
+    PoolManager(unsigned maxTries, unsigned failovertimeout, unsigned ergodicity,
+        bool reportHashrate, unsigned workTimeout, unsigned responseTimeout, unsigned pollInterval,
+        unsigned benchmarkBlock);
     static PoolManager& p() { return *m_this; }
     void addConnection(URI& conn);
     void clearConnections();
@@ -39,12 +43,27 @@ public:
 
 private:
     void rotateConnect();
+
+    void setClientHandlers();
+    void unsetClientHandlers();
+
     void showEpoch();
     void showDifficulty();
 
     unsigned m_hrReportingInterval = 60;
-    unsigned m_failoverTimeout =
-        0;  // After this amount of time in minutes of mining on a failover pool return to "primary"
+
+    unsigned m_failoverTimeout;  // After this amount of time in minutes of mining on a failover
+                                 // pool return to "primary"
+
+    unsigned m_workTimeout;  // Amount of time, in seconds, with no work which causes a
+                             // disconnection
+
+    unsigned m_responseTimeout;  // Amount of time, in milliseconds, with no response from pool
+                                 // which causes a disconnection
+
+    unsigned m_pollInterval;  // Interval, in milliseconds, among polls to a getwork provider
+
+    unsigned m_benchmarkBlock;  // Block number to test simulation against
 
     void failovertimer_elapsed(const boost::system::error_code& ec);
     void submithrtimer_elapsed(const boost::system::error_code& ec);
@@ -70,7 +89,7 @@ private:
     boost::asio::deadline_timer m_failovertimer;
     boost::asio::deadline_timer m_submithrtimer;
 
-    PoolClient* p_client;
+    PoolClient* p_client = nullptr;
 
     std::atomic<unsigned> m_epochChanges = {0};
 

@@ -8,7 +8,7 @@ using namespace dev;
 using namespace eth;
 
 SimulateClient::SimulateClient(unsigned const& difficulty, unsigned const& block)
-  : PoolClient(), Worker("simulator")
+  : PoolClient(), Worker("sim")
 {
     m_difficulty = difficulty - 1;
     m_block = block;
@@ -19,12 +19,10 @@ SimulateClient::~SimulateClient() {}
 void SimulateClient::connect()
 {
     m_connected.store(true, std::memory_order_relaxed);
-    m_uppDifficulty = true;
+    m_uppDifficulty = false;
 
     if (m_onConnected)
-    {
         m_onConnected();
-    }
 
     // No need to worry about starting again.
     // Worker class prevents that
@@ -34,11 +32,8 @@ void SimulateClient::connect()
 void SimulateClient::disconnect()
 {
     m_connected.store(false, std::memory_order_relaxed);
-
     if (m_onDisconnected)
-    {
         m_onDisconnected();
-    }
 }
 
 void SimulateClient::submitHashrate(string const& rate, string const& id)
@@ -46,13 +41,13 @@ void SimulateClient::submitHashrate(string const& rate, string const& id)
     (void)rate;
     (void)id;
     auto sec = duration_cast<seconds>(steady_clock::now() - m_time);
-    cnote << "On difficulty" << m_difficulty << "for" << sec.count() << "seconds";
+    cnote << "On difficulty " << m_difficulty << " for " << sec.count() << " seconds";
 }
 
 void SimulateClient::submitSolution(const Solution& solution)
 {
     m_uppDifficulty = true;
-    cnote << "Difficulty:" << m_difficulty;
+    cnote << "Difficulty: " << m_difficulty;
     std::chrono::steady_clock::time_point submit_start = std::chrono::steady_clock::now();
     bool accepted =
         EthashAux::eval(solution.work.epoch, solution.work.header, solution.nonce).value <
@@ -76,53 +71,48 @@ void SimulateClient::submitSolution(const Solution& solution)
 // Handles all logic here
 void SimulateClient::workLoop()
 {
-    cout << "Preparing DAG for block #" << m_block << endl;
+
     BlockHeader genesis;
     genesis.setNumber(m_block);
+    genesis.setDifficulty(u256(1) << m_difficulty);
+    genesis.noteDirty();
+    
     WorkPackage current = WorkPackage(genesis);
+    current.header = h256::random();
+    current.block = m_block;
+    current.boundary = genesis.boundary();
+    m_onWorkReceived(current);
+
     m_time = std::chrono::steady_clock::now();
-    while (true)
+    while (m_connected.load(std::memory_order_relaxed))
     {
-        if (m_connected.load(std::memory_order_relaxed))
+        if (m_uppDifficulty)
         {
-            if (m_uppDifficulty)
+            m_uppDifficulty = false;
+
+            auto sec = duration_cast<seconds>(steady_clock::now() - m_time);
+            cnote << "Took " << sec.count() << " seconds at " << m_difficulty
+                    << " difficulty to find solution";
+
+            if (sec.count() < 12)
             {
-                m_uppDifficulty = false;
-
-                auto sec = duration_cast<seconds>(steady_clock::now() - m_time);
-                cnote << "Took" << sec.count() << "seconds at" << m_difficulty
-                      << "difficulty to find solution";
-
-                if (sec.count() < 12)
-                {
-                    m_difficulty++;
-                }
-                if (sec.count() > 18)
-                {
-                    m_difficulty--;
-                }
-
-                cnote << "Now using difficulty " << m_difficulty;
-                m_time = std::chrono::steady_clock::now();
-                if (m_onWorkReceived)
-                {
-                    genesis.setDifficulty(u256(1) << m_difficulty);
-                    genesis.noteDirty();
-
-                    current.header = h256::random();
-                    current.boundary = genesis.boundary();
-
-                    m_onWorkReceived(current);
-                }
+                m_difficulty++;
             }
-            else
+            if (sec.count() > 18)
             {
-                this_thread::sleep_for(chrono::milliseconds(100));
+                m_difficulty--;
             }
+
+            cnote << "Now using difficulty " << m_difficulty;
+            m_time = std::chrono::steady_clock::now();
+            genesis.setDifficulty(u256(1) << m_difficulty);
+            genesis.noteDirty();
+
+            current.header = h256::random();
+            current.boundary = genesis.boundary();
+
+            m_onWorkReceived(current);
         }
-        else
-        {
-            this_thread::sleep_for(chrono::seconds(5));
-        }
+        this_thread::sleep_for(chrono::seconds(3));
     }
 }
