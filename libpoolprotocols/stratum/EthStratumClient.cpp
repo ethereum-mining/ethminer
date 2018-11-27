@@ -1238,12 +1238,16 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     string sSeedHash = jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
                     string sShareTarget =
                         jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
-                    if (jPrm.size() > 3)
+
+                    // Only some eth-proxy compatible implementations carry the block number
+                    // namely ethermine.org
+                    if (m_conn->StratumMode() ==
+                        EthStratumClient::ETHPROXY && jPrm.size() > prmIdx)
                     {
                         try
                         {
                             m_current.block = std::stoul(
-                                jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString(), nullptr,
+                                jPrm.get(Json::Value::ArrayIndex(prmIdx), "").asString(), nullptr,
                                 16);
                         }
                         catch (const std::exception&)
