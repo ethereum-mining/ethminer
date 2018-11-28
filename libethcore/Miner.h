@@ -303,7 +303,7 @@ public:
       : Worker(_name + std::to_string(_index)), m_index(_index)
     {}
 
-    virtual ~Miner() = default;
+    ~Miner() override = default;
 
     /**
      * @brief Assigns the device descriptor to this instance

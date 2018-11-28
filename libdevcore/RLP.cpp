@@ -155,9 +155,9 @@ size_t RLP::length() const
     byte const n = m_data[0];
     if (n < c_rlpDataImmLenStart)
         return 1;
-    else if (n <= c_rlpDataIndLenZero)
+    if (n <= c_rlpDataIndLenZero)
         return n - c_rlpDataImmLenStart;
-    else if (n < c_rlpListStart)
+    if (n < c_rlpListStart)
     {
         if (m_data.size() <= size_t(n - c_rlpDataIndLenZero))
             BOOST_THROW_EXCEPTION(BadRLP());
@@ -210,16 +210,16 @@ size_t RLP::items() const
     {
         bytesConstRef d = payload();
         size_t i = 0;
-        for (; d.size(); ++i)
+        for (; !d.empty(); ++i)
             d = d.cropped(sizeAsEncoded(d));
         return i;
     }
     return 0;
 }
 
-RLPStream& RLPStream::appendRaw(bytesConstRef _s, size_t _itemCount)
+RLPStream& RLPStream::appendRaw(bytesConstRef _rlp, size_t _itemCount)
 {
-    m_out.insert(m_out.end(), _s.begin(), _s.end());
+    m_out.insert(m_out.end(), _rlp.begin(), _rlp.end());
     noteAppended(_itemCount);
     return *this;
 }
@@ -239,32 +239,27 @@ void RLPStream::noteAppended(size_t _itemCount)
         m_listStack.back().first -= _itemCount;
         if (m_listStack.back().first)
             break;
-        else
+
+        auto p = m_listStack.back().second;
+        m_listStack.pop_back();
+        size_t s = m_out.size() - p;  // list size
+        auto brs = bytesRequired(s);
+        unsigned encodeSize = s < c_rlpListImmLenCount ? 1 : (1 + brs);
+        auto os = m_out.size();
+        m_out.resize(os + encodeSize);
+        memmove(m_out.data() + p + encodeSize, m_out.data() + p, os - p);
+        if (s < c_rlpListImmLenCount)
+            m_out[p] = (byte)(c_rlpListStart + s);
+        else if (c_rlpListIndLenZero + brs <= 0xff)
         {
-            auto p = m_listStack.back().second;
-            m_listStack.pop_back();
-            size_t s = m_out.size() - p;  // list size
-            auto brs = bytesRequired(s);
-            unsigned encodeSize = s < c_rlpListImmLenCount ? 1 : (1 + brs);
-            //			cdebug << "s: " << s << ", p: " << p << ", m_out.size(): " << m_out.size()
-            //<<
-            //", encodeSize: " << encodeSize << " (br: " << brs << ")";
-            auto os = m_out.size();
-            m_out.resize(os + encodeSize);
-            memmove(m_out.data() + p + encodeSize, m_out.data() + p, os - p);
-            if (s < c_rlpListImmLenCount)
-                m_out[p] = (byte)(c_rlpListStart + s);
-            else if (c_rlpListIndLenZero + brs <= 0xff)
-            {
-                m_out[p] = (byte)(c_rlpListIndLenZero + brs);
-                byte* b = &(m_out[p + brs]);
-                for (; s; s >>= 8)
-                    *(b--) = (byte)s;
-            }
-            else
-                BOOST_THROW_EXCEPTION(
-                    RLPException() << errinfo_comment("itemCount too large for RLP"));
+            m_out[p] = (byte)(c_rlpListIndLenZero + brs);
+            byte* b = &(m_out[p + brs]);
+            for (; s; s >>= 8)
+                *(b--) = (byte)s;
         }
+        else
+            BOOST_THROW_EXCEPTION(RLPException() << errinfo_comment("itemCount too large for RLP"));
+
         _itemCount = 1;  // for all following iterations, we've effectively appended a single item
                          // only since we completed a list.
     }
@@ -295,9 +290,10 @@ RLPStream& RLPStream::append(bytesConstRef _s, bool _compact)
     size_t s = _s.size();
     byte const* d = _s.data();
     if (_compact)
+    {
         for (size_t i = 0; i < _s.size() && !*d; ++i, --s, ++d)
-        {
-        }
+            ;
+    }
 
     if (s == 1 && *d < c_rlpDataImmLenStart)
         m_out.push_back(*d);

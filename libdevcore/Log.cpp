@@ -105,10 +105,11 @@ void dev::simpleDebugOut(std::string const& _s)
 {
     try
     {
+        std::ostream& os = g_logStdout ? std::cout : std::clog;
         if (!g_logNoColor)
         {
-            (g_logStdout ? std::cout : std::cerr) << _s + '\n';
-            (g_logStdout ? std::cout : std::cerr).flush();
+            os << _s + '\n';
+            os.flush();
             return;
         }
         bool skip = false;
@@ -123,8 +124,8 @@ void dev::simpleDebugOut(std::string const& _s)
                 ss << it;
         }
         ss << '\n';
-        (g_logStdout ? std::cout : std::cerr) << ss.str();
-        (g_logStdout ? std::cout : std::cerr).flush();
+        os << ss.str();
+        os.flush();
     }
     catch (...)
     {

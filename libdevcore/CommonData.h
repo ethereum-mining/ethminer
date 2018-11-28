@@ -123,7 +123,7 @@ inline T fromBigEndian(_In const& _bytes)
 inline bytes toBigEndian(u256 _val)
 {
     bytes ret(32);
-    toBigEndian(_val, ret);
+    toBigEndian(std::move(_val), ret);
     return ret;
 }
 inline bytes toBigEndian(u160 _val)

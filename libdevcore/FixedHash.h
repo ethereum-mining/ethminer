@@ -127,7 +127,10 @@ public:
     }
 
     /// Explicitly construct, copying from a bytes in memory with given pointer.
-    explicit FixedHash(byte const* _bs, ConstructFromPointerType) { memcpy(m_data.data(), _bs, N); }
+    explicit FixedHash(byte const* _bs, ConstructFromPointerType /*unused*/)
+    {
+        memcpy(m_data.data(), _bs, N);
+    }
 
     /// Explicitly construct, copying from a  string.
     explicit FixedHash(std::string const& _s)
@@ -149,10 +152,12 @@ public:
     bool operator<(FixedHash const& _c) const
     {
         for (unsigned i = 0; i < N; ++i)
+        {
             if (m_data[i] < _c.m_data[i])
                 return true;
-            else if (m_data[i] > _c.m_data[i])
+            if (m_data[i] > _c.m_data[i])
                 return false;
+        }
         return false;
     }
     bool operator>=(FixedHash const& _c) const { return !operator<(_c); }

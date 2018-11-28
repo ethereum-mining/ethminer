@@ -94,7 +94,7 @@ public:
     using Strictness = int;
 
     /// Construct a null node.
-    RLP() {}
+    RLP() = default;
 
     /// Construct a node of value given in the bytes.
     explicit RLP(bytesConstRef _d, Strictness _s = VeryStrict);
@@ -118,7 +118,7 @@ public:
     explicit operator bool() const { return !isNull(); }
 
     /// No value.
-    bool isNull() const { return m_data.size() == 0; }
+    bool isNull() const { return m_data.empty(); }
 
     /// String value.
     bool isData() const { return !isNull() && m_data[0] < c_rlpListStart; }
@@ -191,7 +191,7 @@ public:
         bool operator!=(iterator const& _cmp) const { return !operator==(_cmp); }
 
     private:
-        iterator() {}
+        iterator() = default;
         iterator(RLP const& _parent, bool _begin);
 
         size_t m_remaining = 0;
@@ -199,10 +199,10 @@ public:
     };
 
     /// @brief Iterator into beginning of sub-item list (valid only if we are a list).
-    iterator begin() const { return iterator(*this, true); }
+    iterator begin() const { return {*this, true}; }
 
     /// @brief Iterator into end of sub-item list (valid only if we are a list).
-    iterator end() const { return iterator(*this, false); }
+    iterator end() const { return {*this, false}; }
 
     /// Best-effort conversion operators.
     explicit operator std::string() const { return toString(); }
@@ -404,18 +404,18 @@ class RLPStream
 {
 public:
     /// Initializes empty RLPStream.
-    RLPStream() {}
+    RLPStream() = default;
 
     /// Initializes the RLPStream as a list of @a _listItems items.
     explicit RLPStream(size_t _listItems) { appendList(_listItems); }
 
-    ~RLPStream() {}
+    ~RLPStream() = default;
 
     /// Append given datum to the byte stream.
     RLPStream& append(unsigned _s) { return append(bigint(_s)); }
     RLPStream& append(u160 _s) { return append(bigint(_s)); }
     RLPStream& append(u256 _s) { return append(bigint(_s)); }
-    RLPStream& append(bigint _s);
+    RLPStream& append(bigint _i);
     RLPStream& append(bytesConstRef _s, bool _compact = false);
     RLPStream& append(bytes const& _s) { return append(bytesConstRef(&_s)); }
     RLPStream& append(std::string const& _s) { return append(bytesConstRef(_s)); }
@@ -483,7 +483,7 @@ private:
 
     /// Push the node-type byte (using @a _base) along with the item count @a _count.
     /// @arg _count is number of characters for strings, data-bytes for ints, or items for lists.
-    void pushCount(size_t _count, byte _offset);
+    void pushCount(size_t _count, byte _base);
 
     /// Push an integer as a raw big-endian byte-stream.
     template <class _T>

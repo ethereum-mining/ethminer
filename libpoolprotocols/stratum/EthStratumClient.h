@@ -52,7 +52,12 @@ private:
 class EthStratumClient : public PoolClient
 {
 public:
-    typedef enum { STRATUM = 0, ETHPROXY, ETHEREUMSTRATUM } StratumProtocol;
+    enum StratumProtocol
+    {
+        STRATUM = 0,
+        ETHPROXY,
+        ETHEREUMSTRATUM
+    };
 
     EthStratumClient(int worktimeout, int responsetimeout);
 

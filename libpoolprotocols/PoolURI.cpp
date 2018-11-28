@@ -20,18 +20,18 @@
 #include <map>
 #include <sstream>
 
-#include <string.h>
+#include <cstring>
 
 #include <libpoolprotocols/PoolURI.h>
 
 using namespace dev;
 
-typedef struct
+struct SchemeAttributes
 {
     ProtocolFamily family;
     SecureLevel secure;
     unsigned version;
-} SchemeAttributes;
+};
 
 static std::map<std::string, SchemeAttributes> s_schemes = {
     /*
@@ -95,10 +95,8 @@ static std::string urlDecode(std::string s)
     return ret;
 }
 
-URI::URI(const std::string uri)
+URI::URI(std::string uri) : m_uri{std::move(uri)}
 {
-    m_uri = uri;
-
     const char* curstr = m_uri.c_str();
 
     // <scheme> := [a-z\0-9\+\-\.]+,  convert to lower case
@@ -145,7 +143,7 @@ URI::URI(const std::string uri)
             userpass_flag = true;
             break;
         }
-        else if ('/' == *tmpstr)
+        if ('/' == *tmpstr)
         {
             // End of <host>:<port> specification
             break;
@@ -167,7 +165,7 @@ URI::URI(const std::string uri)
         // which should mean: username = "username.246891"
         //                    workername = "rigname.01"
         // we must split username and workername before urlDecode() is called !
-        auto p = m_username.find_first_of(".");
+        auto p = m_username.find_first_of('.');
         if (p != std::string::npos)
         {
             // There should be at least one char after dot
@@ -214,7 +212,7 @@ URI::URI(const std::string uri)
             tmpstr++;
             break;
         }
-        else if (!ipv6_flag && ((':' == *tmpstr) || ('/' == *tmpstr)))
+        if (!ipv6_flag && ((':' == *tmpstr) || ('/' == *tmpstr)))
             // Port number is specified.
             break;
         tmpstr++;
@@ -287,7 +285,7 @@ URI::URI(const std::string uri)
     while (('\0' != *tmpstr) && ('#' != *tmpstr) && ('?' != *tmpstr))
         tmpstr++;
     len = tmpstr - curstr;
-    if (len)
+    if (len > 0)
     {
         m_path.append(curstr, len);
         m_path = urlDecode(m_path);
@@ -359,7 +357,9 @@ std::string URI::KnownSchemes(ProtocolFamily family)
 {
     std::string schemes;
     for (const auto& s : s_schemes)
+    {
         if ((s.second.family == family) && (s.second.version != 999))
             schemes += s.first + " ";
+    }
     return schemes;
 }
