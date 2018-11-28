@@ -691,6 +691,8 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
         if (!m_conn->Workername().empty())
             jReq["worker"] = m_conn->Workername();
         jReq["params"].append(m_conn->User() + m_conn->Path());
+        if (!m_conn->Pass().empty())
+            jReq["params"].append(m_conn->Pass());
 
         break;
 
