@@ -928,7 +928,7 @@ public:
                     "should "
                  << endl
                  << "                        listen on." << endl
-                 << "    --api-port          INT [1 .. 65535] Default not set" << endl
+                 << "    --http-port         INT [1 .. 65535] Default not set" << endl
                  << "                        Set the http port, the miner should listen on all "
                     "bound"
                  << endl
@@ -1077,7 +1077,7 @@ public:
                     "exits"
                  << endl
                  << "                        Must be combined with -G or -U or -X flags" << endl
-                 << "    -L,--dag-load-mode  INT[0 .. 2] Default = 0" << endl
+                 << "    -L,--dag-load-mode  INT[0 .. 1] Default = 0" << endl
                  << "                        Set DAG load mode. Can be one of:" << endl
                  << "                        0 Parallel load mode (each GPU independently)" << endl
                  << "                        1 Sequential load mode (one GPU after another)" << endl
