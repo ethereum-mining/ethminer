@@ -503,12 +503,6 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
                 jResponse["error"]["message"] = ("Invalid URI " + uri.str());
                 return;
             }
-            if (!uri.KnownScheme())
-            {
-                jResponse["error"]["code"] = -422;
-                jResponse["error"]["message"] = ("Unknown URI scheme " + uri.Scheme());
-                return;
-            }
 
             // Check other pools already present share the same scheme family (stratum or getwork)
             Json::Value pools = PoolManager::p().getConnectionsJson();
