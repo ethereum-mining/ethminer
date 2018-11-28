@@ -52,7 +52,7 @@ class URI
 {
 public:
     URI() = delete;
-    URI(const std::string uri);
+    URI(std::string uri);
 
     std::string Scheme() const { return m_scheme; }
     std::string Host() const { return m_host; }

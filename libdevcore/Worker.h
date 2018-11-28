@@ -45,7 +45,7 @@ enum class WorkerState
 class Worker
 {
 public:
-    Worker(std::string const& _name) : m_name(_name) {}
+    Worker(std::string _name) : m_name(std::move(_name)) {}
 
     Worker(Worker const&) = delete;
     Worker& operator=(Worker const&) = delete;

@@ -42,7 +42,7 @@ template <class N>
 class Notified
 {
 public:
-    Notified() {}
+    Notified() = default;
     Notified(N const& _v) : m_value(_v) {}
     Notified(Notified const&) = delete;
     Notified& operator=(N const& _v)

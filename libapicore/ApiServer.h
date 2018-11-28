@@ -30,7 +30,7 @@ public:
             m_is_authenticated = false;
     }
 
-    ~ApiConnection() {}
+    ~ApiConnection() = default;
 
     void start();
 
