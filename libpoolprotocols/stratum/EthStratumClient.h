@@ -104,8 +104,11 @@ private:
     void onSendSocketDataCompleted(const boost::system::error_code& ec);
     void onSSLShutdownCompleted(const boost::system::error_code& ec);
 
-    string m_user;    // Only user part
-    string m_worker;  // eth-proxy only; No ! It's for all !!!
+    string m_user;           // Only user part
+    string m_worker;         // eth-proxy only; No ! It's for all !!!
+    string m_userdotworker;  // concatenated (m_user "." m_worker) or just (m_user) if m_worker is
+                             // empty
+
 
     std::atomic<bool> m_disconnecting = {false};
     std::atomic<bool> m_connecting = {false};

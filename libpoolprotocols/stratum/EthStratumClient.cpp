@@ -648,8 +648,12 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     clear_response_pleas();
 
     // User and worker
-    m_user = m_conn->User();
-    m_worker = m_conn->Workername();
+    m_user = m_conn->User();          // part before first "."
+    m_worker = m_conn->Workername();  // part after first "."
+    if (m_worker.length())
+        m_userdotworker = m_user + "." + m_worker;
+    else
+        m_userdotworker = m_user;
 
     /*
 
@@ -927,7 +931,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     jReq["jsonrpc"] = "2.0";
                     jReq["method"] = "mining.authorize";
                     jReq["params"] = Json::Value(Json::arrayValue);
-                    jReq["params"].append(m_conn->User() + m_conn->Path());
+                    jReq["params"].append(m_userdotworker + m_conn->Path());
                     jReq["params"].append(m_conn->Pass());
                     enqueue_response_plea();
                 }
@@ -999,7 +1003,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     m_authpending.store(true, std::memory_order_relaxed);
                     jReq["id"] = unsigned(3);
                     jReq["method"] = "mining.authorize";
-                    jReq["params"].append(m_conn->User() + m_conn->Path());
+                    jReq["params"].append(m_userdotworker + m_conn->Path());
                     jReq["params"].append(m_conn->Pass());
                     enqueue_response_plea();
                 }
@@ -1042,7 +1046,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             if (!m_authorized)
             {
-                cnote << "Worker not authorized " << m_conn->User() << _errReason;
+                cnote << "Worker not authorized " << m_userdotworker << _errReason;
                 m_conn->MarkUnrecoverable();
                 m_io_service.post(
                     m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
@@ -1050,7 +1054,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             }
             else
             {
-                cnote << "Authorized worker " + m_conn->User();
+                cnote << "Authorized worker " + m_userdotworker;
 
                 // If we get here we have a valid application connection
                 // not only a socket connection
@@ -1390,7 +1394,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
     case EthStratumClient::STRATUM:
 
         jReq["jsonrpc"] = "2.0";
-        jReq["params"].append(m_conn->User());
+        jReq["params"].append(m_userdotworker);
         jReq["params"].append(solution.work.job);
         jReq["params"].append("0x" + nonceHex);
         jReq["params"].append("0x" + solution.work.header.hex());
@@ -1413,7 +1417,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
 
     case EthStratumClient::ETHEREUMSTRATUM:
 
-        jReq["params"].append(m_conn->User());
+        jReq["params"].append(m_userdotworker);
         jReq["params"].append(solution.work.job);
         jReq["params"].append(nonceHex.substr(solution.work.exSizeBytes));
     }
