@@ -73,7 +73,6 @@ public:
     enum class OperationMode
     {
         None,
-        Benchmark,
         Simulation,
         Mining
     };
@@ -396,19 +395,13 @@ public:
 
         app.add_option("-L,--dag-load-mode", m_farmDagLoadMode, "", true)->check(CLI::Range(1));
 
-        app.add_option("--benchmark-warmup", m_benchmarkWarmup, "", true);
-
-        app.add_option("--benchmark-trials", m_benchmarkTrial, "", true)->check(CLI::Range(1, 99));
-
         bool cl_miner = false;
         app.add_flag("-G,--opencl", cl_miner, "");
 
         bool cuda_miner = false;
         app.add_flag("-U,--cuda", cuda_miner, "");
 
-        auto bench_opt = app.add_option("-M,--benchmark", m_benchmarkBlock, "", true);
-        auto sim_opt = app.add_option("-Z,--simulation", m_benchmarkBlock, "", true);
-
+        auto sim_opt = app.add_option("-Z,--simulation,-M,--benchmark", m_benchmarkBlock, "", true);
 
         app.add_option("--tstop", m_farmTempStop, "", true)->check(CLI::Range(30, 100));
         app.add_option("--tstart", m_farmTempStart, "", true)->check(CLI::Range(30, 100));
@@ -461,16 +454,11 @@ public:
             m_minerType = MinerType::Mixed;
 
         /*
-            Operation mode Benchmark and Simulation do not require pool definitions
+            Operation mode Simulation do not require pool definitions
             Operation mode Stratum or GetWork do need at least one
         */
 
-        if (bench_opt->count())
-        {
-            m_mode = OperationMode::Benchmark;
-            pools.clear();
-        }
-        else if (sim_opt->count())
+        if (sim_opt->count())
         {
             m_mode = OperationMode::Simulation;
             pools.clear();
@@ -481,7 +469,7 @@ public:
             m_mode = OperationMode::Mining;
         }
 
-        if (!m_shouldListDevices && m_mode != OperationMode::Benchmark)
+        if (!m_shouldListDevices)
         {
             if (!pools.size())
                 throw std::invalid_argument(
@@ -789,20 +777,8 @@ public:
         new Farm(m_DevicesCollection, m_farmHwMonitors, m_farmNoEval);
         Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
 
-        // Run proper mining mode
-        switch (m_mode)
-        {
-        case OperationMode::Benchmark:
-            doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
-            break;
-        case OperationMode::Simulation:
-        case OperationMode::Mining:
-            doMiner();
-            break;
-        default:
-            // Satisfy the compiler, but cannot happen!
-            throw std::runtime_error("Program logic error. Unexpected Operation Mode.");
-        }
+        // Run Miner
+        doMiner();
     }
 
     void help()
@@ -849,7 +825,7 @@ public:
              << "'misc','env'}" << endl
              << "                        Display help text about one of these contexts:" << endl
              << "                        'con'  Connections and their definitions" << endl
-             << "                        'test' Benchmark and simulation options" << endl
+             << "                        'test' Benchmark/Simulation options" << endl
 #if ETH_ETHASHCL
              << "                        'cl'   Extended OpenCL options" << endl
 #endif
@@ -877,19 +853,14 @@ public:
                  << endl
                  << "    needed ie. you can omit any -P argument." << endl
                  << endl
-                 << "    -M,--benchmark      UINT[0 ..] Default not set" << endl
-                 << "                        Benchmark mining agains the given block number" << endl
-                 << "                        and exits." << endl
-                 << "    --benchmark-warmup  UINT Default = 15" << endl
-                 << "                        Set duration in seconds of warmup for benchmark"
+                 << "    -M,--benchmark      UINT [0 ..] Default not set" << endl
+                 << "                        Mining test. Used to test hashing speed." << endl
+                 << "                        Specify the block number to test on." << endl
                  << endl
-                 << "                        tests." << endl
-                 << "    --benchmark-trials  INT [1 .. 99] Default = 5" << endl
-                 << "                        Set the number of benchmark trials to run" << endl
                  << "    -Z,--simulation     UINT [0 ..] Default not set" << endl
-                 << "                        Mining test. Used to validate kernel optimizations."
+                 << "                        Mining test. Used to test hashing speed."
                  << endl
-                 << "                        Specify a block number." << endl
+                 << "                        Specify the block number to test on." << endl
                  << endl;
         }
 
@@ -1248,76 +1219,6 @@ public:
     }
 
 private:
-    void doBenchmark(MinerType _m, unsigned _warmupDuration = 15, unsigned _trialDuration = 3,
-        unsigned _trials = 5)
-    {
-        BlockHeader genesis;
-        genesis.setNumber(m_benchmarkBlock);
-        genesis.setDifficulty(1);
-
-        string platformInfo =
-            (_m == MinerType::CL ? "CL" : (_m == MinerType::CUDA ? "CUDA" : "MIXED"));
-        minelog << "Benchmarking on platform: " << platformInfo << " Preparing DAG for block #"
-                << m_benchmarkBlock;
-
-        map<string, Farm::SealerDescriptor> sealers;
-#if ETH_ETHASHCL
-        sealers["opencl"] =
-            Farm::SealerDescriptor{[](unsigned _index) { return new CLMiner(_index); }};
-#endif
-#if ETH_ETHASHCUDA
-        sealers["cuda"] =
-            Farm::SealerDescriptor{[](unsigned _index) { return new CUDAMiner(_index); }};
-#endif
-
-        Farm::f().setSealers(sealers);
-        Farm::f().onSolutionFound([&](Solution) { return false; });
-        Farm::f().start();
-
-        WorkPackage current = WorkPackage(genesis);
-
-
-        vector<uint64_t> results;
-        results.reserve(_trials);
-        uint64_t mean = 0;
-        uint64_t innerMean = 0;
-        for (unsigned i = 0; i <= _trials; ++i)
-        {
-            current.header = h256::random();
-            current.boundary = genesis.boundary();
-            Farm::f().setWork(current);
-            if (!i)
-                minelog << "Warming up...";
-            else
-                minelog << "Trial " << i << "... ";
-
-            this_thread::sleep_for(chrono::seconds(i ? _trialDuration : _warmupDuration));
-
-            if (!i)
-                continue;
-
-            auto rate = uint64_t(Farm::f().miningProgress().hashRate);
-            minelog << "Hashes per second " << rate;
-            results.push_back(rate);
-            mean += uint64_t(rate);
-        }
-        sort(results.begin(), results.end());
-        minelog << "min/mean/max: " << results.front() << "/" << (mean / _trials) << "/"
-                << results.back() << " H/s";
-        if (results.size() > 2)
-        {
-            for (auto it = results.begin() + 1; it != results.end() - 1; it++)
-                innerMean += *it;
-            innerMean /= (_trials - 2);
-            minelog << "inner mean: " << innerMean << " H/s";
-        }
-        else
-        {
-            minelog << "inner mean: n/a";
-        }
-
-        return;
-    }
 
     void doMiner()
     {
@@ -1433,9 +1334,6 @@ private:
     bool m_poolHashRate = false;       // Whether or not ethminer should send HR to pool
 
     // -- Benchmarking related params
-    unsigned m_benchmarkWarmup = 15;
-    unsigned m_benchmarkTrial = 3;
-    unsigned m_benchmarkTrials = 5;
     unsigned m_benchmarkBlock = 0;
 
     // -- CLI Interface related params

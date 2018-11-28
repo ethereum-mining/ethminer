@@ -24,16 +24,14 @@ public:
 
     bool isConnected() override { return m_connected; }
     bool isPendingState() override { return false; }
-    string ActiveEndPoint() override { return ""; };
+    string ActiveEndPoint() override { return "Simulation"; };
 
     void submitHashrate(string const& rate, string const& id) override;
     void submitSolution(const Solution& solution) override;
 
 private:
-    void workLoop() override;
 
-    bool m_uppDifficulty = false;
-    double m_difficulty = 1;
+    void workLoop() override;
     unsigned m_block;
-    std::chrono::steady_clock::time_point m_time;
+    std::chrono::steady_clock::time_point m_start_time;
 };

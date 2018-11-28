@@ -155,6 +155,7 @@ void PoolManager::setClientHandlers() {
     });
 
     p_client->onWorkReceived([&](WorkPackage const& wp) {
+
         // Should not happen !
         if (!wp)
             return;
