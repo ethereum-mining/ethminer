@@ -54,8 +54,7 @@ public:
     {
         if (!m_data || m_count == 0)
             return _c.empty();
-        else
-            return _c.size() == m_count && !memcmp(_c.data(), m_data, m_count * sizeof(_T));
+        return _c.size() == m_count && !memcmp(_c.data(), m_data, m_count * sizeof(_T));
     }
     std::vector<mutable_value_type> toVector() const
     {
@@ -90,8 +89,7 @@ public:
     {
         if (!m_data)
             return *this;
-        else
-            return vector_ref<_T>(m_data + m_count, m_count);
+        return vector_ref<_T>(m_data + m_count, m_count);
     }
     /// @returns a new vector_ref which is a shifted and shortened view of the original data.
     /// If this goes out of bounds in any way, returns an empty vector_ref.
@@ -101,8 +99,7 @@ public:
         if (m_data && _begin <= m_count && _count <= m_count && _begin + _count <= m_count)
             return vector_ref<_T>(
                 m_data + _begin, _count == ~size_t(0) ? m_count - _begin : _count);
-        else
-            return vector_ref<_T>();
+        return {};
     }
     /// @returns a new vector_ref which is a shifted view of the original data (not going beyond
     /// it).
@@ -110,8 +107,7 @@ public:
     {
         if (m_data && _begin <= m_count)
             return vector_ref<_T>(m_data + _begin, m_count - _begin);
-        else
-            return vector_ref<_T>();
+        return {};
     }
     void retarget(_T* _d, size_t _s)
     {
@@ -153,7 +149,7 @@ public:
     void cleanse()
     {
         static unsigned char s_cleanseCounter = 0;
-        uint8_t* p = (uint8_t*)begin();
+        auto* p = (uint8_t*)begin();
         size_t const len = (uint8_t*)end() - p;
         size_t loop = len;
         size_t count = s_cleanseCounter;
@@ -192,10 +188,6 @@ public:
         return m_data == _cmp.m_data && m_count == _cmp.m_count;
     }
     bool operator!=(vector_ref<_T> const& _cmp) const { return !operator==(_cmp); }
-
-#if DEV_LDB
-    operator ldb::Slice() const { return ldb::Slice((char const*)m_data, m_count * sizeof(_T)); }
-#endif
 
     void reset()
     {

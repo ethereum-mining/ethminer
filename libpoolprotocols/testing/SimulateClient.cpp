@@ -14,7 +14,7 @@ SimulateClient::SimulateClient(unsigned const& difficulty, unsigned const& block
     m_block = block;
 }
 
-SimulateClient::~SimulateClient() {}
+SimulateClient::~SimulateClient() = default;
 
 void SimulateClient::connect()
 {

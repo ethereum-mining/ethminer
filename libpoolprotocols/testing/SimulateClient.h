@@ -17,7 +17,7 @@ class SimulateClient : public PoolClient, Worker
 {
 public:
     SimulateClient(unsigned const& difficulty, unsigned const& block);
-    ~SimulateClient();
+    ~SimulateClient() override;
 
     void connect() override;
     void disconnect() override;

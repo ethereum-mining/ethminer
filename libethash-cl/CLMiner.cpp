@@ -876,8 +876,7 @@ bool CLMiner::initEpoch_internal()
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");
         m_searchBuffer.clear();
-        m_searchBuffer.push_back(
-            cl::Buffer(m_context[0], CL_MEM_WRITE_ONLY, sizeof(SearchResults)));
+        m_searchBuffer.emplace_back(m_context[0], CL_MEM_WRITE_ONLY, sizeof(SearchResults));
 
         m_dagKernel.setArg(1, m_light[0]);
         m_dagKernel.setArg(2, m_dag[0]);

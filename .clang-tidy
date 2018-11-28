@@ -1,8 +1,8 @@
 ---
-Checks:          'clang-diagnostic-*,clang-analyzer-*,modernize-*,bugprone-*,readability-*,performance-*'
+Checks:          'clang-diagnostic-*,clang-analyzer-*,modernize-*,bugprone-*,readability-*,-readability-implicit-bool-conversion,performance-*'
 WarningsAsErrors: ''
 HeaderFilterRegex: 'ethminer/.*'
 CheckOptions:
   - key:             readability-braces-around-statements.ShortStatementLines
-    value:           '1'
+    value:           '3'
 ...
