@@ -30,8 +30,8 @@ DEV_INLINE bool compute_hash(uint64_t nonce, uint64_t target, uint2* mix_hash)
             uint2 shuffle[8];
             for (int j = 0; j < 8; j++)
             {
-                shuffle[j].x = __shfl_sync(0xFFFFFFFF, state[j].x, i + p, THREADS_PER_HASH);
-                shuffle[j].y = __shfl_sync(0xFFFFFFFF, state[j].y, i + p, THREADS_PER_HASH);
+                shuffle[j].x = __shfls(0xFFFFFFFF, state[j].x, i + p, THREADS_PER_HASH);
+                shuffle[j].y = __shfls(0xFFFFFFFF, state[j].y, i + p, THREADS_PER_HASH);
             }
             switch (mix_idx)
             {
@@ -48,7 +48,7 @@ DEV_INLINE bool compute_hash(uint64_t nonce, uint64_t target, uint2* mix_hash)
                 mix[p] = vectorize2(shuffle[6], shuffle[7]);
                 break;
             }
-            init0[p] = __shfl_sync(0xFFFFFFFF, shuffle[0].x, 0, THREADS_PER_HASH);
+            init0[p] = __shfls(0xFFFFFFFF, shuffle[0].x, 0, THREADS_PER_HASH);
         }
 
         for (uint32_t a = 0; a < ACCESSES; a += 4)
@@ -60,7 +60,7 @@ DEV_INLINE bool compute_hash(uint64_t nonce, uint64_t target, uint2* mix_hash)
                 for (int p = 0; p < _PARALLEL_HASH; p++)
                 {
                     offset[p] = fnv(init0[p] ^ (a + b), ((uint32_t*)&mix[p])[b]) % d_dag_size;
-                    offset[p] = __shfl_sync(0xFFFFFFFF, offset[p], t, THREADS_PER_HASH);
+                    offset[p] = __shfls(0xFFFFFFFF, offset[p], t, THREADS_PER_HASH);
                     mix[p] = fnv4(mix[p], d_dag[offset[p]].uint4s[thread_id]);
                 }
             }
@@ -72,14 +72,14 @@ DEV_INLINE bool compute_hash(uint64_t nonce, uint64_t target, uint2* mix_hash)
             uint32_t thread_mix = fnv_reduce(mix[p]);
 
             // update mix across threads
-            shuffle[0].x = __shfl_sync(0xFFFFFFFF, thread_mix, 0, THREADS_PER_HASH);
-            shuffle[0].y = __shfl_sync(0xFFFFFFFF, thread_mix, 1, THREADS_PER_HASH);
-            shuffle[1].x = __shfl_sync(0xFFFFFFFF, thread_mix, 2, THREADS_PER_HASH);
-            shuffle[1].y = __shfl_sync(0xFFFFFFFF, thread_mix, 3, THREADS_PER_HASH);
-            shuffle[2].x = __shfl_sync(0xFFFFFFFF, thread_mix, 4, THREADS_PER_HASH);
-            shuffle[2].y = __shfl_sync(0xFFFFFFFF, thread_mix, 5, THREADS_PER_HASH);
-            shuffle[3].x = __shfl_sync(0xFFFFFFFF, thread_mix, 6, THREADS_PER_HASH);
-            shuffle[3].y = __shfl_sync(0xFFFFFFFF, thread_mix, 7, THREADS_PER_HASH);
+            shuffle[0].x = __shfls(0xFFFFFFFF, thread_mix, 0, THREADS_PER_HASH);
+            shuffle[0].y = __shfls(0xFFFFFFFF, thread_mix, 1, THREADS_PER_HASH);
+            shuffle[1].x = __shfls(0xFFFFFFFF, thread_mix, 2, THREADS_PER_HASH);
+            shuffle[1].y = __shfls(0xFFFFFFFF, thread_mix, 3, THREADS_PER_HASH);
+            shuffle[2].x = __shfls(0xFFFFFFFF, thread_mix, 4, THREADS_PER_HASH);
+            shuffle[2].y = __shfls(0xFFFFFFFF, thread_mix, 5, THREADS_PER_HASH);
+            shuffle[3].x = __shfls(0xFFFFFFFF, thread_mix, 6, THREADS_PER_HASH);
+            shuffle[3].y = __shfls(0xFFFFFFFF, thread_mix, 7, THREADS_PER_HASH);
 
             if ((i + p) == thread_id)
             {
