@@ -54,7 +54,6 @@ unsigned CUDAMiner::s_scheduleFlag = 0;
 
 bool CUDAMiner::initDevice()
 {
-
     cudalog << "Using Pci Id : " << m_deviceDescriptor.UniqueId << " " << m_deviceDescriptor.cuName
             << " (Compute " + m_deviceDescriptor.cuCompute + ") Memory : "
             << FormattedMemSize(m_deviceDescriptor.TotalMemory);
@@ -72,7 +71,7 @@ bool CUDAMiner::initDevice()
     catch (const cuda_runtime_error& ec)
     {
         cudalog << "Could not set CUDA device on Pci Id " << m_deviceDescriptor.UniqueId
-              << " Error : " << ec.what();
+                << " Error : " << ec.what();
         cudalog << "Mining aborted on this device.";
         return false;
     }
@@ -146,7 +145,7 @@ bool CUDAMiner::initEpoch_internal()
     catch (const cuda_runtime_error& ec)
     {
         cudalog << "Unexpected error " << ec.what() << " on CUDA device "
-              << m_deviceDescriptor.UniqueId;
+                << m_deviceDescriptor.UniqueId;
         cudalog << "Mining suspended ...";
         pause(MinerPauseEnum::PauseDueToInitEpochError);
         retVar = true;
@@ -234,7 +233,8 @@ unsigned CUDAMiner::getNumDevices()
         if (driverVersion == 0)
             std::cerr << "CUDA Error : No CUDA driver found" << std::endl;
         else
-            std::cerr << "CUDA Error : Insufficient CUDA driver " << std::to_string(driverVersion) << std::endl;
+            std::cerr << "CUDA Error : Insufficient CUDA driver " << std::to_string(driverVersion)
+                      << std::endl;
     }
     else
     {
@@ -304,7 +304,6 @@ void CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _
     s_numStreams = _numStreams;
     s_scheduleFlag = _scheduleFlag;
     s_parallelHash = _parallelHash;
-
 }
 
 void CUDAMiner::search(
@@ -381,7 +380,8 @@ void CUDAMiner::search(
                     memcpy(mix.data(), (void*)&buffer.result[i].mix, sizeof(buffer.result[i].mix));
                     auto sol = Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index};
 
-                    cudalog << "Sol: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
+                    cudalog << EthWhite << "Job: " << w.header.abridged() << " Sol: 0x"
+                            << toHex(sol.nonce) << EthReset;
 
                     g_io_service.post(
                         m_io_strand.wrap(boost::bind(&Farm::submitProof, &Farm::f(), sol)));

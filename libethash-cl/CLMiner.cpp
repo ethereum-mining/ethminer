@@ -398,7 +398,10 @@ void CLMiner::workLoop()
                         memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
                         auto sol = Solution{
                             nonce, mix, current, std::chrono::steady_clock::now(), m_index};
-                            cllog << "Sol: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
+                        
+                        cllog << EthWhite << "Job: " << w.header.abridged() << " Sol: 0x"
+                                << toHex(sol.nonce) << EthReset;
+
                         g_io_service.post(
                             m_io_strand.wrap(boost::bind(&Farm::submitProof, &Farm::f(), sol)));
                     }
