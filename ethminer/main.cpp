@@ -357,8 +357,6 @@ public:
 
         app.add_option("--cl-kernel", clKernel, "", true)->check(CLI::Range(2));
 
-        app.add_option("--opencl-platform", m_oclPlatform, "", true);
-
         app.add_option("--opencl-device,--opencl-devices,--cl-devices", m_oclDevices, "");
 
         int openclThreadsPerHash = -1;
@@ -945,8 +943,6 @@ public:
                  << endl
                  << "    --cl-kernel         INT [0 .. 2] Default not set" << endl
                  << "                        Select OpenCL kernel. Ignored since 0.15" << endl
-                 << "    --cl-platform       UINT Default 0" << endl
-                 << "                        Use OpenCL platform N" << endl
                  << "    --cl-devices        UINT {} Default not set" << endl
                  << "                        Comma separated list of device indexes to use" << endl
                  << "                        eg --cl-devices 0,2,3" << endl
@@ -1375,7 +1371,6 @@ private:
 
 #if ETH_ETHASHCL
     // -- OpenCL related params
-    unsigned m_oclPlatform = 0;
     vector<unsigned> m_oclDevices;
     unsigned m_oclGWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier;
     unsigned m_oclLWorkSize = CLMiner::c_defaultLocalWorkSize;
