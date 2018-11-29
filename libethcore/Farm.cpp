@@ -213,6 +213,7 @@ bool Farm::start()
 
             m_miners.push_back(std::shared_ptr<Miner>(m_sealers[sealer].create(m_miners.size())));
             m_miners.back()->setDescriptor(it->second);
+            m_miners.back()->setEpoch(m_currentEc);
             m_miners.back()->startWorking();
         }
     }
