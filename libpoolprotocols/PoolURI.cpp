@@ -71,6 +71,46 @@ static std::map<std::string, SchemeAttributes> s_schemes = {
     {"simulation", {ProtocolFamily::SIMULATION, SecureLevel::NONE, 999}}
 };
 
+
+static bool url_decode(const std::string& in, std::string& out)
+{
+    out.clear();
+    out.reserve(in.size());
+    for (std::size_t i = 0; i < in.size(); ++i)
+    {
+        if (in[i] == '%')
+        {
+            if (i + 3 <= in.size())
+            {
+                int value = 0;
+                std::istringstream is(in.substr(i + 1, 2));
+                if (is >> std::hex >> value)
+                {
+                    out += static_cast<char>(value);
+                    i += 2;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else if (in[i] == '+')
+        {
+            out += ' ';
+        }
+        else
+        {
+            out += in[i];
+        }
+    }
+    return true;
+}
+
 /*
   For a well designed explanation of URI parts
   refer to https://cpp-netlib.org/0.10.1/in_depth/uri.html
@@ -231,6 +271,8 @@ URI::URI(std::string uri) : m_uri{std::move(uri)}
     */
     if (!m_pathinfo.empty())
     {
+        // Url Decode Path
+
         std::vector<std::regex> path_patterns;
         path_patterns.push_back(std::regex("(\\/.*)\\?(.*)\\#(.*)$"));
         path_patterns.push_back(std::regex("(\\/.*)\\#(.*)$"));
@@ -301,6 +343,31 @@ URI::URI(std::string uri) : m_uri{std::move(uri)}
     if (!m_worker.empty())
         boost::replace_all(m_worker, "`", "");
     
+    // Eventually decode every encoded char
+    std::string tmpStr;
+    if (url_decode(m_userinfo, tmpStr))
+        m_userinfo = tmpStr;
+    if (url_decode(m_urlinfo, tmpStr))
+        m_urlinfo = tmpStr;
+    if (url_decode(m_hostinfo, tmpStr))
+        m_hostinfo = tmpStr;
+    if (url_decode(m_pathinfo, tmpStr))
+        m_pathinfo = tmpStr;
+
+    if (url_decode(m_path, tmpStr))
+        m_path = tmpStr;
+    if (url_decode(m_query, tmpStr))
+        m_query = tmpStr;
+    if (url_decode(m_fragment, tmpStr))
+        m_fragment = tmpStr;
+    if (url_decode(m_user, tmpStr))
+        m_user = tmpStr;
+    if (url_decode(m_password, tmpStr))
+        m_password = tmpStr;
+    if (url_decode(m_worker, tmpStr))
+        m_worker = tmpStr;
+
+
     if ((s_schemes.find(m_scheme) != s_schemes.end()) && !m_host.empty() && m_port > 0)
         m_valid = true;
 }

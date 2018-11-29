@@ -14,6 +14,55 @@ where `scheme` can be any of:
 * `stratum1+tcp` for plain stratum eth-proxy compatible mode
 * `stratum2+tcp` for plain stratum NiceHash compatible mode
 
+## A note about this form of notation
+This notation is called URI notation and gives us great flexibility allowing ethminer to specify all needed arguments per single connection (other miners offer single dedicated CLI arguments which are valid for all connections).
+An URI is formed like this
+
+```
+                                   Authority
+            +---------------------------------------------------------------------+
+  stratum://0x123456789012345678901234567890.Worker:password@eu1.ethermine.org:4444
+  +------+  +----------------------------------------------+ +---------------+ +--+
+      |                         |                                  |             |
+      |                         |                                  |             + > Port
+      |                         |                                  + ------------- > Host
+      |                         + ------------------------------------------------ > User Info
+      + -------------------------------------------------------------------------- > Scheme
+      
+```
+
+Optionally you can append to the above notation anything which might be useful in the form of a path.
+Example
+
+```
+stratum://0x123456789012345678901234567890.Worker:password@eu1.ethermine.org:4444/something/else
+                                                                                 +--------------+
+                                                                                         |
+                                                                    Path --------------- +
+```
+
+**Anything you put in the `Path` part must be Url Encoded thus, for example, `@` must be written as `%40`**
+
+As you may have noticed due to compatibility with pools we need to know exactly which are the delimiters for the account, the workername (if any) and the password (if any) which are respectively a dot `.` and a column `:`.
+Should your values contain any of the above mentioned chars or any other char which may impair the proper parsing of the URI you have two options:
+- either enclose the string in backticks (ASCII 96) 
+- or URL encode the impairing chars
+
+Say you need to provide the pool with an account name which contains a dot. At your discretion you may either write
+```
+-P stratum://`account.1234`.Worker:password@eu1.ethermine.org:4444
+```  
+or
+```
+-P stratum://account%2e1234.Worker:password@eu1.ethermine.org:4444
+```  
+The above samples produce the very same result.
+
+**Backticks on *nix**. The backtick enclosure has a special meaning of execution thus you may need to further escape the sequence as
+```
+-P stratum://\`account.1234\`.Worker:password@eu1.ethermine.org:4444
+```  
+
 ## Secure socket comunications for stratum only
 
 Ethminer supports secure socket communications (where pool implements and offers it) to avoid the risk of a [man-in-the-middle attack](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)

@@ -1176,25 +1176,37 @@ public:
                  << endl
                  << "    Example 3: "
                     "-P stratum://0x012345678901234567890234567890123.miner1@nanopool.org:9999/"
-                    "john.doe@gmail.com"
+                    "john.doe%40gmail.com"
                  << endl
                  << "    Example 4: "
                     "-P stratum://0x012345678901234567890234567890123@nanopool.org:9999/miner1/"
-                    "john.doe@gmail.com"
+                    "john.doe%40gmail.com"
                  << endl
                  << endl
                  << "    Please note: if your user or worker or password do contain characters"
                  << endl
                  << "    which may impair the correct parsing (namely any of . : @ # ?) you have to"
                  << endl
-                 << "    enclose those values in backticks( ` ASCII 096)." << endl
+                 << "    enclose those values in backticks( ` ASCII 096) or Url Encode them" << endl
                  << "    Also note that backtick has a special meaning in *nix environments thus"
                  << endl
                  << "    you need to further escape those backticks with backslash." << endl
                  << endl
-                 << "    Example : -P stratums://\`account.121\`.miner1:x@ethermine.org:5555"
+                 << "    Example : -P stratums://\\`account.121\\`.miner1:x@ethermine.org:5555"
                  << endl
-                 << "    (In Windows backslashes are not needed)" << endl << endl
+                 << "    Example : -P stratums://account%2e121.miner1:x@ethermine.org:5555" << endl
+                 << "    (In Windows backslashes are not needed)" << endl
+                 << endl
+                 << endl
+                 << "    Common url encoded chars are " << endl
+                 << "    . (dot)      %2e" << endl
+                 << "    : (column)   %3a" << endl
+                 << "    @ (at sign)  %40" << endl
+                 << "    ? (question) %3f" << endl
+                 << "    # (number)   %23" << endl
+                 << "    / (slash)    %2f" << endl
+                 << "    + (plus)     %2b" << endl
+                 << endl
                  << "    You can add as many -P arguments as you want. Every -P specification"
                  << endl
                  << "    after the first one behaves as fail-over connection. When also the" << endl
