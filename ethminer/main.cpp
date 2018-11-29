@@ -501,7 +501,8 @@ public:
 
                 URI uri(url);
 
-                if (!uri.Valid() || (m_mode == OperationMode::Mining && uri.Scheme() == "simulation"))
+                if (!uri.Valid() ||
+                    (m_mode == OperationMode::Mining && uri.Scheme() == "simulation"))
                 {
                     std::string what = "Bad URI : " + uri.str();
                     throw std::invalid_argument(what);
@@ -1182,6 +1183,18 @@ public:
                     "john.doe@gmail.com"
                  << endl
                  << endl
+                 << "    Please note: if your user or worker or password do contain characters"
+                 << endl
+                 << "    which may impair the correct parsing (namely any of . : @ # ?) you have to"
+                 << endl
+                 << "    enclose those values in backticks( ` ASCII 096)." << endl
+                 << "    Also note that backtick has a special meaning in *nix environments thus"
+                 << endl
+                 << "    you need to further escape those backticks with backslash." << endl
+                 << endl
+                 << "    Example : -P stratums://\`account.121\`.miner1:x@ethermine.org:5555"
+                 << endl
+                 << "    (In Windows backslashes are not needed)" << endl << endl
                  << "    You can add as many -P arguments as you want. Every -P specification"
                  << endl
                  << "    after the first one behaves as fail-over connection. When also the" << endl
