@@ -503,7 +503,7 @@ public:
 
                 URI uri(url);
 
-                if (!uri.Valid() || !uri.KnownScheme() || (m_mode == OperationMode::Mining && uri.Scheme() == "simulation"))
+                if (!uri.Valid() || (m_mode == OperationMode::Mining && uri.Scheme() == "simulation"))
                 {
                     std::string what = "Bad URI : " + uri.str();
                     throw std::invalid_argument(what);

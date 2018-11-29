@@ -71,156 +71,203 @@ static std::map<std::string, SchemeAttributes> s_schemes = {
     {"simulation", {ProtocolFamily::SIMULATION, SecureLevel::NONE, 999}}
 };
 
-static std::string urlDecode(std::string s)
-{
-    std::string ret;
-    unsigned i, ii;
-    for (i = 0; i < s.length(); i++)
-    {
-        if (int(s[i]) == '%')
-        {
-            sscanf(s.substr(i + 1, 2).c_str(), "%x", &ii);
-            ret += char(ii);
-            i = i + 2;
-        }
-        else if (s[i] == '+')
-        {
-            ret += ' ';
-        }
-        else
-        {
-            ret += s[i];
-        }
-    }
-    return ret;
-}
+/*
+  For a well designed explanation of URI parts
+  refer to https://cpp-netlib.org/0.10.1/in_depth/uri.html
+*/
 
 URI::URI(std::string uri) : m_uri{std::move(uri)}
 {
-    const char* curstr = m_uri.c_str();
 
-    // <scheme> := [a-z\0-9\+\-\.]+,  convert to lower case
-    // Read scheme (mandatory)
-    const char* tmpstr = strchr(curstr, ':');
-    if (nullptr == tmpstr)
-    {
-        // Not found
+    std::regex sch_auth("^([a-zA-Z0-9\\+]{1,})\\:\\/\\/(.*)$");
+    std::smatch matches;
+    if (!std::regex_search(m_uri, matches, sch_auth, std::regex_constants::match_default))
         return;
-    }
-    // Get the scheme length
-    size_t len = tmpstr - curstr;
-    // Copy the scheme to the string, all lowecase, can't be url encoded
-    m_scheme.append(curstr, len);
-    std::transform(m_scheme.begin(), m_scheme.end(), m_scheme.begin(), ::tolower);
-    if (0 != std::count_if(m_scheme.begin(), m_scheme.end(), [](char c) {
-            return !(isalpha(c) || isdigit(c) || ('+' == c) || ('-' == c) || ('.' == c));
-        }))
-    {
+
+    // Split scheme and authoority
+    // Authority MUST be valued
+    m_scheme = matches[1].str();
+    boost::algorithm::to_lower(m_scheme);
+    m_authority = matches[2].str();
+    if (m_authority.empty())
         return;
-    }
 
-    // Skip ':'
-    tmpstr++;
-    curstr = tmpstr;
-
-    // //<user>:<password>@<host>:<port>/<url-path>
-    // Any ":", "@" and "/" must be encoded.
-    // Eat "//"
-    if (('/' != *curstr) || ('/' != *(curstr + 1)))
+    
+    // Now let's see if authority part can be split into userinfo and "the rest"
+    std::regex usr_url("^(.*)\\@(.*)$");
+    if (std::regex_search(m_authority, matches, usr_url, std::regex_constants::match_default))
     {
-        return;
+        m_userinfo = matches[1].str();
+        m_urlinfo = matches[2].str();
     }
-    curstr += 2;
-
-    // Check if the user (and password) are specified.
-    bool userpass_flag = false;
-    tmpstr = curstr;
-    while ('\0' != *tmpstr)
+    else
     {
-        if ('@' == *tmpstr)
-        {
-            // Username and password are specified
-            userpass_flag = true;
-            break;
-        }
-        if ('/' == *tmpstr)
-        {
-            // End of <host>:<port> specification
-            break;
-        }
-        tmpstr++;
+        m_urlinfo = m_authority;
     }
 
-    // User and password specification
-    tmpstr = curstr;
-    if (userpass_flag)
+    /*
+      If m_userinfo present and valued it can be composed by either :
+      - user
+      - user.worker
+      - user.worker:password
+      - user:password
+
+      In other words . delimits the beginning of worker and : delimits
+      the beginning of password
+
+    */
+    if (!m_userinfo.empty())
     {
-        // Read username
-        while (('\0' != *tmpstr) && (':' != *tmpstr) && ('@' != *tmpstr))
-            tmpstr++;
-        len = tmpstr - curstr;
-        m_username.append(curstr, len);
 
-        // Expect we got a uri "username%2e246891.rigname%2e01:x@eu-01.miningrigrentals.com:3344"
-        // which should mean: username = "username.246891"
-        //                    workername = "rigname.01"
-        // we must split username and workername before urlDecode() is called !
-        auto p = m_username.find_first_of('.');
-        if (p != std::string::npos)
+        // Save all parts enclosed in backticks into a dictionary
+        // and replace them with tokens in the authority
+        std::regex btick("`((?:[^`])*)`");
+        std::map<std::string, std::string> btick_blocks;
+        auto btick_blocks_begin =
+            std::sregex_iterator(m_authority.begin(), m_authority.end(), btick);
+        auto btick_blocks_end = std::sregex_iterator();
+        int i = 0;
+        for (std::sregex_iterator it = btick_blocks_begin; it != btick_blocks_end; ++it)
         {
-            // There should be at least one char after dot
-            // returned p is zero based
-            if (p < (m_username.length() - 1))
-                m_workername = m_username.substr(p+1);
+            std::smatch match = *it;
+            std::string match_str = match[1].str();
+            btick_blocks["_" + std::to_string(i++)] = match[1].str();
+        }
+        if (btick_blocks.size())
+        {
+            std::map<std::string, std::string>::iterator it;
+            for (it = btick_blocks.begin(); it != btick_blocks.end(); it++)
+                boost::replace_all(m_userinfo, "`" + it->second + "`", "`" + it->first + "`");
+        }
 
-            m_username = m_username.substr(0, p);
+        std::vector<std::regex> usr_patterns;
+        usr_patterns.push_back(std::regex("^(.*)\\.(.*)\\:(.*)$"));
+        usr_patterns.push_back(std::regex("^(.*)\\:(.*)$"));
+        usr_patterns.push_back(std::regex("^(.*)\\.(.*)$"));
+        bool usrMatchFound = false;
+        for (size_t i = 0; i < usr_patterns.size() && !usrMatchFound; i++)
+        {
+            if (std::regex_search(
+                    m_userinfo, matches, usr_patterns.at(i), std::regex_constants::match_default))
+            {
+                usrMatchFound = true;
+                switch (i)
+                {
+                case 0:
+                    m_user = matches[1].str();
+                    m_worker = matches[2].str();
+                    m_password = matches[3].str();
+                    break;
+                case 1:
+                    m_user = matches[1];
+                    m_password = matches[2];
+                    break;
+                case 2:
+                    m_user = matches[1];
+                    m_worker = matches[2];
+                    break;
+                default:
+                    break;
+                }
+            }
         }
-        m_username = urlDecode(m_username);
-        m_workername = urlDecode(m_workername);
+        // If no matches found after this loop it means all the user
+        // part is only user login
+        if (!usrMatchFound)
+            m_user = m_userinfo;
 
-        // Look for password
-        curstr = tmpstr;
-        if (':' == *curstr)
+        // Replace all tokens with their respective values
+        if (btick_blocks.size())
         {
-            // Skip ':'
-            curstr++;
-            // Read password
-            tmpstr = curstr;
-            while (('\0' != *tmpstr) && ('@' != *tmpstr))
-                tmpstr++;
-            len = tmpstr - curstr;
-            m_password.append(curstr, len);
-            m_password = urlDecode(m_password);
-            curstr = tmpstr;
+            std::map<std::string, std::string>::iterator it;
+            for (it = btick_blocks.begin(); it != btick_blocks.end(); it++)
+            {
+                boost::replace_all(m_userinfo, "`" + it->first + "`", it->second);
+                boost::replace_all(m_user, "`" + it->first + "`", it->second);
+                boost::replace_all(m_worker, "`" + it->first + "`", it->second);
+                boost::replace_all(m_password, "`" + it->first + "`", it->second);
+            }
         }
-        // Skip '@'
-        if ('@' != *curstr)
-        {
-            return;
-        }
-        curstr++;
+
     }
 
-    bool ipv6_flag = '[' == *curstr;
-    // Proceed on by delimiters with reading host
-    tmpstr = curstr;
-    while ('\0' != *tmpstr)
+
+
+    /*
+      Let's process the url part which must contain at least a host
+      an optional port and eventually a path (which may include a query
+      and a fragment)
+      Host can be a DNS host or an IP address.
+      Thus we can have
+      - host
+      - host/path
+      - host:port
+      - host:port/path
+    */
+    size_t offset = m_urlinfo.find('/');
+    if (offset != std::string::npos)
     {
-        if (ipv6_flag && ']' == *tmpstr)
-        {
-            // End of IPv6 address.
-            tmpstr++;
-            break;
-        }
-        if (!ipv6_flag && ((':' == *tmpstr) || ('/' == *tmpstr)))
-            // Port number is specified.
-            break;
-        tmpstr++;
+        m_hostinfo = m_urlinfo.substr(0, offset);
+        m_pathinfo = m_urlinfo.substr(offset);
     }
-    len = tmpstr - curstr;
-    m_host.append(curstr, len);
-    m_host = urlDecode(m_host);
-    curstr = tmpstr;
+    else
+    {
+        m_hostinfo = m_urlinfo;
+    }
+
+    std::regex host_pattern("^(.*)\\:([0-9]{1,5})$");
+    if (std::regex_search(m_hostinfo, matches, host_pattern, std::regex_constants::match_default))
+    {
+        m_host = matches[1].str();
+        m_port = boost::lexical_cast<short>(matches[2].str());
+    }
+    else
+    {
+        m_host = m_hostinfo;
+    }
+
+    /*
+      Eventually split path info into path query fragment
+    */
+    if (!m_pathinfo.empty())
+    {
+        std::vector<std::regex> path_patterns;
+        path_patterns.push_back(std::regex("(\\/.*)\\?(.*)\\#(.*)$"));
+        path_patterns.push_back(std::regex("(\\/.*)\\#(.*)$"));
+        path_patterns.push_back(std::regex("(\\/.*)\\?(.*)$"));
+        bool pathMatchFound = false;
+        for (size_t i = 0; i < path_patterns.size() && !pathMatchFound; i++)
+        {
+            if (std::regex_search(
+                    m_pathinfo, matches, path_patterns.at(i), std::regex_constants::match_default))
+            {
+                pathMatchFound = true;
+                switch (i)
+                {
+                case 0:
+                    m_path = matches[1].str();
+                    m_query = matches[2].str();
+                    m_fragment = matches[3].str();
+                    break;
+                case 1:
+                    m_path = matches[1].str();
+                    m_fragment = matches[2].str();
+                    break;
+                case 2:
+                    m_path = matches[1].str();
+                    m_query = matches[2].str();
+                    break;
+                default:
+                    break;
+                }
+            }
+            // If no matches found after this loop it means all the pathinfo
+            // part is only path login
+            if (!pathMatchFound)
+                m_path = m_pathinfo;
+
+        }
+    }
 
     // Determine host type
     boost::system::error_code ec;
@@ -247,85 +294,15 @@ URI::URI(std::string uri) : m_uri{std::move(uri)}
             m_hostType = UriHostNameType::Basic;
     }
 
-    // Is port number specified?
-    if (':' == *curstr)
-    {
-        curstr++;
-        // Read port number
-        tmpstr = curstr;
-        while (('\0' != *tmpstr) && ('/' != *tmpstr) && ('#' != *tmpstr))
-            tmpstr++;
-        len = tmpstr - curstr;
-        std::string tempstr;
-        tempstr.append(curstr, len);
-        std::stringstream ss(tempstr);
-        ss >> m_port;
-        if (ss.fail())
-        {
-            return;
-        }
-        curstr = tmpstr;
-    }
-
-    // End of the string
-    if ('\0' == *curstr)
-    {
+    if (!m_user.empty())
+        boost::replace_all(m_user, "`", "");
+    if (!m_password.empty())
+        boost::replace_all(m_password, "`", "");
+    if (!m_worker.empty())
+        boost::replace_all(m_worker, "`", "");
+    
+    if ((s_schemes.find(m_scheme) != s_schemes.end()) && !m_host.empty() && m_port > 0)
         m_valid = true;
-        return;
-    }
-
-    // Skip '/'
-    if (('/' != *curstr) && ('#' != *curstr))
-    {
-        return;
-    }
-
-    // Parse path
-    tmpstr = curstr;
-    while (('\0' != *tmpstr) && ('#' != *tmpstr) && ('?' != *tmpstr))
-        tmpstr++;
-    len = tmpstr - curstr;
-    if (len > 0)
-    {
-        m_path.append(curstr, len);
-        m_path = urlDecode(m_path);
-    }
-    curstr = tmpstr;
-
-    // Is query specified?
-    if ('?' == *curstr)
-    {
-        // Skip '?'
-        curstr++;
-        // Read query
-        tmpstr = curstr;
-        while (('\0' != *tmpstr) && ('#' != *tmpstr))
-            tmpstr++;
-        len = tmpstr - curstr;
-        m_query.append(curstr, len);
-        m_query = urlDecode(m_query);
-        curstr = tmpstr;
-    }
-
-    // Is fragment specified?
-    if ('#' == *curstr)
-    {
-        // Skip '#'
-        curstr++;
-        // Read fragment
-        tmpstr = curstr;
-        while ('\0' != *tmpstr)
-            tmpstr++;
-        len = tmpstr - curstr;
-        m_fragment.append(curstr, len);
-        m_fragment = urlDecode(m_fragment);
-    }
-    m_valid = true;
-}
-
-bool URI::KnownScheme()
-{
-    return s_schemes.find(m_scheme) != s_schemes.end();
 }
 
 ProtocolFamily URI::Family() const

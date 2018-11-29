@@ -647,10 +647,6 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     m_sendBuffer.consume(4096);
     clear_response_pleas();
 
-    // User and worker
-    m_user = m_conn->User();
-    m_worker = m_conn->Workername();
-
     /*
 
     If connection has been set-up with a specific scheme then
@@ -692,9 +688,11 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     case EthStratumClient::ETHPROXY:
 
         jReq["method"] = "eth_submitLogin";
-        if (m_worker.length())
-            jReq["worker"] = m_worker;
-        jReq["params"].append(m_user + m_conn->Path());
+        if (!m_conn->Workername().empty())
+            jReq["worker"] = m_conn->Workername();
+        jReq["params"].append(m_conn->User() + m_conn->Path());
+        if (!m_conn->Pass().empty())
+            jReq["params"].append(m_conn->Pass());
 
         break;
 
@@ -940,7 +938,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 m_subscribed.store(_isSuccess, std::memory_order_relaxed);
                 if (!m_subscribed)
                 {
-                    cnote << "Could not login:" << _errReason;
+                    cnote << "Could not login: " << _errReason;
                     m_conn->MarkUnrecoverable();
                     m_io_service.post(
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
@@ -1243,25 +1241,29 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     // Only some eth-proxy compatible implementations carry the block number
                     // namely ethermine.org
                     m_current.block = -1;
-                    if (m_conn->StratumMode() ==
-                        EthStratumClient::ETHPROXY && jPrm.size() > prmIdx)
+                    if (m_conn->StratumMode() == EthStratumClient::ETHPROXY &&
+                        jPrm.size() > prmIdx &&
+                        jPrm.get(Json::Value::ArrayIndex(prmIdx), "").asString().substr(0, 2) ==
+                            "0x")
                     {
                         try
                         {
                             m_current.block = std::stoul(
                                 jPrm.get(Json::Value::ArrayIndex(prmIdx), "").asString(), nullptr,
                                 16);
-                            /* check if the block number is in a valid range
-                                A year has ~31536000 seconds
-                                50 years have ~1576800000
-                                assuming a (very fast) blocktime of 10s:
-                                   ==> in 50 years we get 157680000 (=0x9660180) blocks
+                            /*
+                            check if the block number is in a valid range
+                            A year has ~31536000 seconds
+                            50 years have ~1576800000
+                            assuming a (very fast) blocktime of 10s:
+                            ==> in 50 years we get 157680000 (=0x9660180) blocks
                             */
                             if (m_current.block > 0x9660180)
-                                m_current.block = -1;
+                                throw new std::exception();
                         }
                         catch (const std::exception&)
                         {
+                            m_current.block = -1;
                         }
                     }
 
@@ -1365,8 +1367,8 @@ void EthStratumClient::submitHashrate(string const& rate, string const& id)
     Json::Value jReq;
     jReq["id"] = unsigned(9);
     jReq["jsonrpc"] = "2.0";
-    if (m_worker.length())
-        jReq["worker"] = m_worker;
+    if (!m_conn->Workername().empty())
+        jReq["worker"] = m_conn->Workername();
     jReq["method"] = "eth_submitHashrate";
     jReq["params"] = Json::Value(Json::arrayValue);
     jReq["params"].append(rate);  // Already expressed as hex
@@ -1404,8 +1406,8 @@ void EthStratumClient::submitSolution(const Solution& solution)
         jReq["params"].append("0x" + nonceHex);
         jReq["params"].append("0x" + solution.work.header.hex());
         jReq["params"].append("0x" + solution.mixHash.hex());
-        if (m_worker.length())
-            jReq["worker"] = m_worker;
+        if (!m_conn->Workername().empty())
+            jReq["worker"] = m_conn->Workername();
 
         break;
 
@@ -1415,8 +1417,8 @@ void EthStratumClient::submitSolution(const Solution& solution)
         jReq["params"].append("0x" + nonceHex);
         jReq["params"].append("0x" + solution.work.header.hex());
         jReq["params"].append("0x" + solution.mixHash.hex());
-        if (m_worker.length())
-            jReq["worker"] = m_worker;
+        if (!m_conn->Workername().empty())
+            jReq["worker"] = m_conn->Workername();
 
         break;
 

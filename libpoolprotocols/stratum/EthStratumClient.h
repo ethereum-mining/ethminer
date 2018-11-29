@@ -109,9 +109,6 @@ private:
     void onSendSocketDataCompleted(const boost::system::error_code& ec);
     void onSSLShutdownCompleted(const boost::system::error_code& ec);
 
-    string m_user;    // Only user part
-    string m_worker;  // eth-proxy only; No ! It's for all !!!
-
     std::atomic<bool> m_disconnecting = {false};
     std::atomic<bool> m_connecting = {false};
     std::atomic<bool> m_authpending = {false};
