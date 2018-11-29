@@ -900,13 +900,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 if (jResult.isArray() && jResult[0].isArray() && jResult[0].size() == 3 &&
                     jResult[0].get(Json::Value::ArrayIndex(2), "").asString() ==
                         "EthereumStratum/1.0.0")
-                {
                     _isSuccess = false;
-                }
-                else
-                {
-                    cnote << "Stratum mode detected: STRATUM";
-                }
 
                 m_subscribed.store(_isSuccess, std::memory_order_relaxed);
                 if (!m_subscribed)
@@ -919,7 +913,18 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 }
                 else
                 {
+
+                    // If we get here we have a valid application connection
+                    // not only a socket connection
+                    if (m_onConnected && m_conn->StratumModeConfirmed())
+                    {
+                        m_current_timestamp = std::chrono::steady_clock::now();
+                        m_onConnected();
+                    }
+                        
+                    cnote << "Stratum mode : STRATUM";
                     cnote << "Subscribed!";
+
                     m_authpending.store(true, std::memory_order_relaxed);
                     jReq["id"] = unsigned(3);
                     jReq["jsonrpc"] = "2.0";
@@ -934,7 +939,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             case EthStratumClient::ETHPROXY:
 
-                cnote << "Stratum mode detected: ETHPROXY Compatible";
                 m_subscribed.store(_isSuccess, std::memory_order_relaxed);
                 if (!m_subscribed)
                 {
@@ -946,9 +950,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 }
                 else
                 {
-                    cnote << "Logged in!";
-                    m_authorized.store(true, std::memory_order_relaxed);
-
                     // If we get here we have a valid application connection
                     // not only a socket connection
                     if (m_onConnected && m_conn->StratumModeConfirmed())
@@ -956,6 +957,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                         m_current_timestamp = std::chrono::steady_clock::now();
                         m_onConnected();
                     }
+                    cnote << "Stratum mode : ETHPROXY Compatible";
+                    cnote << "Logged in!";
+                    m_authorized.store(true, std::memory_order_relaxed);
 
                     jReq["id"] = unsigned(5);
                     jReq["method"] = "eth_getWork";
@@ -965,8 +969,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 break;
 
             case EthStratumClient::ETHEREUMSTRATUM:
-
-                cnote << "Stratum mode detected: ETHEREUMSTRATUM (NiceHash)";
+                
                 m_subscribed.store(_isSuccess, std::memory_order_relaxed);
                 if (!m_subscribed)
                 {
@@ -978,6 +981,16 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 }
                 else
                 {
+
+                    // If we get here we have a valid application connection
+                    // not only a socket connection
+                    if (m_onConnected && m_conn->StratumModeConfirmed())
+                    {
+                        m_current_timestamp = std::chrono::steady_clock::now();
+                        m_onConnected();
+                    }
+
+                    cnote << "Stratum mode : ETHEREUMSTRATUM (NiceHash)";
                     cnote << "Subscribed to stratum server";
 
                     if (!jResult.empty() && jResult.isArray())
@@ -1049,14 +1062,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             else
             {
                 cnote << "Authorized worker " + m_conn->User();
-
-                // If we get here we have a valid application connection
-                // not only a socket connection
-                if (m_onConnected && m_conn->StratumModeConfirmed())
-                {
-                    m_current_timestamp = std::chrono::steady_clock::now();
-                    m_onConnected();
-                }
             }
         }
 
