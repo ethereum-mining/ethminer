@@ -52,11 +52,16 @@ void SimulateClient::submitSolution(const Solution& solution)
             std::chrono::steady_clock::now() - submit_start);
 
     if (accepted)
+    {
         if (m_onSolutionAccepted)
             m_onSolutionAccepted(response_delay_ms, solution.midx);
+    }
     else
+    {
         if (m_onSolutionRejected)
             m_onSolutionRejected(response_delay_ms, solution.midx);
+    }
+        
 }
 
 // Handles all logic here
