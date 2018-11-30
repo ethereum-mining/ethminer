@@ -1253,7 +1253,7 @@ private:
     {
         BlockHeader genesis;
         genesis.setNumber(m_benchmarkBlock);
-        genesis.setDifficulty(u256(1) << 64);
+        genesis.setDifficulty(1);
 
         string platformInfo =
             (_m == MinerType::CL ? "CL" : (_m == MinerType::CUDA ? "CUDA" : "MIXED"));
