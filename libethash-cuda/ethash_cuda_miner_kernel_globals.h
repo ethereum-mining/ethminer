@@ -8,8 +8,8 @@ __constant__ hash32_t d_header;
 __constant__ uint64_t d_target;
 
 #if (__CUDACC_VER_MAJOR__ > 8)
-#define SHFL(w, x,y,z)               __shfl_sync((w),(x),(y),(z))
+#define SHFL(x, y, z) __shfl_sync(0xFFFFFFFF, (x), (y), (z))
 #else
-#define SHFL(w, x,y,z)               __shfl((x),(y),(z))
+#define SHFL(x, y, z) __shfl((x), (y), (z))
 #endif
 
