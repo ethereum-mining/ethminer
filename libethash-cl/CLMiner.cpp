@@ -399,7 +399,7 @@ void CLMiner::workLoop()
                         auto sol = Solution{
                             nonce, mix, current, std::chrono::steady_clock::now(), m_index};
                         
-                        cllog << EthWhite << "Job: " << w.header.abridged() << " Sol: 0x"
+                        cllog << EthWhite << "Job: #" << w.header.abridged() << " Sol: 0x"
                                 << toHex(sol.nonce) << EthReset;
 
                         g_io_service.post(
