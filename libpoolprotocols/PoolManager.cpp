@@ -173,15 +173,14 @@ void PoolManager::setClientHandlers() {
             else
                 m_currentWp.epoch =
                     ethash::find_epoch_number(ethash::hash256_from_bytes(m_currentWp.seed.data()));
-            showEpoch();
         }
         else
         {
             m_currentWp.epoch = _currentEpoch;
         }
 
-        if (newDiff)
-            showDifficulty();
+        if (newDiff || newEpoch)
+            showMiningAt();
 
 
         cnote << "Job: " EthWhite "#" << m_currentWp.header.abridged()
@@ -448,14 +447,12 @@ void PoolManager::rotateConnect()
     }
 }
 
-void PoolManager::showEpoch()
+void PoolManager::showMiningAt() 
 {
-    if (m_currentWp)
-        cnote << "Epoch : " EthWhite << m_currentWp.epoch << EthReset;
-}
+    // Should not happen
+    if (!m_currentWp)
+        return;
 
-void PoolManager::showDifficulty()
-{
     static const char* suffixes[] = {"h", "Kh", "Mh", "Gh"};
     double d = getCurrentDifficulty();
     unsigned i;
@@ -469,7 +466,8 @@ void PoolManager::showDifficulty()
 
     std::stringstream ss;
     ss << fixed << setprecision(2) << d << " " << suffixes[i];
-    cnote << "Difficulty : " EthWhite << ss.str() << EthReset;
+    cnote << "Epoch : " EthWhite << m_currentWp.epoch << EthReset << " Difficulty : " EthWhite
+          << ss.str() << EthReset;
 }
 
 void PoolManager::failovertimer_elapsed(const boost::system::error_code& ec)
