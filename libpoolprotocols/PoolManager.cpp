@@ -294,9 +294,6 @@ int PoolManager::setActiveConnectionCommon(unsigned int idx, UniqueGuard& l)
     l.unlock();
     p_client->disconnect();
 
-    // Suspend mining if applicable as we're switching
-    cnote << "No connection. Suspend mining ...";
-    Farm::f().pause();
     return 0;
 }
 
