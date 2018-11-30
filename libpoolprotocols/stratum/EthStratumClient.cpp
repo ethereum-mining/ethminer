@@ -987,7 +987,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             if (!m_authorized)
             {
-                cnote << "Worker not authorized " << m_conn->User() << _errReason;
+                cnote << "Worker not authorized " << m_conn->User() << " " << _errReason;
                 m_conn->MarkUnrecoverable();
                 m_io_service.post(
                     m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
@@ -995,7 +995,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             }
             else
             {
-                cnote << "Authorized worker " + m_conn->User();
+                cnote << "Authorized worker " << m_conn->User();
             }
         }
 
@@ -1027,7 +1027,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 {
                     if (m_onSolutionRejected)
                     {
-                        cwarn << "Reject reason :"
+                        cwarn << "Reject reason : "
                               << (_errReason.empty() ? "Unspecified" : _errReason);
                         m_onSolutionRejected(response_delay_ms, miner_index);
                     }
@@ -1055,7 +1055,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             // Hashrate submit is actually out of stratum spec
             if (!_isSuccess)
             {
-                cwarn << "Submit hashRate failed: "
+                cwarn << "Submit hashRate failed : "
                       << (_errReason.empty() ? "Unspecified error" : _errReason);
             }
         }
@@ -1074,7 +1074,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 if (!m_subscribed)
                 {
                     // Subscription pending
-                    cnote << "Subscription failed:"
+                    cnote << "Subscription failed : "
                           << (_errReason.empty() ? "Unspecified error" : _errReason);
                     m_io_service.post(
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
@@ -1083,7 +1083,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 else if (m_subscribed && !m_authorized)
                 {
                     // Authorization pending
-                    cnote << "Worker not authorized:"
+                    cnote << "Worker not authorized : "
                           << (_errReason.empty() ? "Unspecified error" : _errReason);
                     m_io_service.post(
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));

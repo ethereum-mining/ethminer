@@ -416,7 +416,9 @@ void CLMiner::workLoop()
             // Report hash count
             updateHashRate(m_workgroupSize, results.hashCount);
         }
-        m_queue[0].finish();
+
+        if (m_queue.size())
+            m_queue[0].finish();
     }
     catch (cl::Error const& _e)
     {

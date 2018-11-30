@@ -326,6 +326,11 @@ public:
 
     void setHwmonDeviceIndex(int i) { m_hwmoninfo.deviceIndex = i; }
 
+     /**
+     * @brief Kick an asleep miner.
+     */
+    virtual void kick_miner() = 0;
+
     /**
      * @brief Pauses mining setting a reason flag
      */
@@ -374,11 +379,6 @@ protected:
      * @brief Miner's specific initialization to current (or changed) epoch.
      */
     virtual bool initEpoch_internal() = 0;
-
-    /**
-     * @brief No work left to be done. Pause until told to kickOff().
-     */
-    virtual void kick_miner() = 0;
 
     /**
      * @brief Returns current workpackage this miner is working on
