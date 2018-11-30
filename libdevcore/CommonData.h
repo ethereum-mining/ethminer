@@ -30,6 +30,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include <boost/algorithm/string.hpp>
+
 #include "Common.h"
 
 namespace dev
@@ -188,5 +190,8 @@ inline unsigned bytesRequired(T _i)
 ///
 /// Portable wrapper for setenv / _putenv C library functions.
 bool setenv(const char name[], const char value[], bool override = false);
+
+/// Gets a target hash from given difficulty
+std::string getTargetFromDiff(double diff);
 
 }  // namespace dev

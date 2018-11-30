@@ -405,7 +405,7 @@ void PoolManager::rotateConnect()
         if (m_connections.at(m_activeConnectionIdx).Family() == ProtocolFamily::STRATUM)
             p_client = new EthStratumClient(m_workTimeout, m_responseTimeout);
         if (m_connections.at(m_activeConnectionIdx).Family() == ProtocolFamily::SIMULATION)
-            p_client = new SimulateClient(20, m_benchmarkBlock);
+            p_client = new SimulateClient(m_benchmarkBlock);
 
         if (p_client)
             setClientHandlers();

@@ -60,7 +60,7 @@ public:
         noteDirty();
     }
 
-    void setDifficulty(u256 const& _v)
+    void setDifficulty(double const& _v)
     {
         m_difficulty = _v;
         noteDirty();
@@ -91,7 +91,7 @@ private:
     u256 m_timestamp = Invalid256;
     bytes m_extraData;
 
-    u256 m_difficulty;
+    double m_difficulty;
 
     mutable h256 m_hashWithout;  ///< SHA3 hash of the block header! Not serialised.
     mutable h256 m_boundary;     ///< 2^256 / difficulty

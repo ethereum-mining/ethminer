@@ -16,7 +16,7 @@ using namespace eth;
 class SimulateClient : public PoolClient, Worker
 {
 public:
-    SimulateClient(unsigned const& difficulty, unsigned const& block);
+    SimulateClient(unsigned const& block);
     ~SimulateClient() override;
 
     void connect() override;
@@ -33,7 +33,7 @@ private:
     void workLoop() override;
 
     bool m_uppDifficulty = false;
-    unsigned m_difficulty;
+    double m_difficulty = 1;
     unsigned m_block;
     std::chrono::steady_clock::time_point m_time;
 };

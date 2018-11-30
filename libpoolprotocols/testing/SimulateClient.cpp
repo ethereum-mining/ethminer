@@ -7,10 +7,9 @@ using namespace std::chrono;
 using namespace dev;
 using namespace eth;
 
-SimulateClient::SimulateClient(unsigned const& difficulty, unsigned const& block)
+SimulateClient::SimulateClient(unsigned const& block)
   : PoolClient(), Worker("sim")
 {
-    m_difficulty = difficulty - 1;
     m_block = block;
 }
 
@@ -74,7 +73,7 @@ void SimulateClient::workLoop()
 
     BlockHeader genesis;
     genesis.setNumber(m_block);
-    genesis.setDifficulty(u256(1) << m_difficulty);
+    genesis.setDifficulty(m_difficulty);
     genesis.noteDirty();
     
     WorkPackage current = WorkPackage(genesis);
@@ -94,18 +93,18 @@ void SimulateClient::workLoop()
             cnote << "Took " << sec.count() << " seconds at " << m_difficulty
                     << " difficulty to find solution";
 
-            if (sec.count() < 12)
+            if (sec.count() < 10)
             {
-                m_difficulty++;
+                m_difficulty = m_difficulty + (m_difficulty * .1);
             }
-            if (sec.count() > 18)
+            if (sec.count() > 30)
             {
-                m_difficulty--;
+                m_difficulty = m_difficulty + (m_difficulty * .05);
             }
 
-            cnote << "Now using difficulty " << m_difficulty;
+            cnote << "Now using difficulty : " << m_difficulty;
             m_time = std::chrono::steady_clock::now();
-            genesis.setDifficulty(u256(1) << m_difficulty);
+            genesis.setDifficulty(m_difficulty);
             genesis.noteDirty();
 
             current.header = h256::random();

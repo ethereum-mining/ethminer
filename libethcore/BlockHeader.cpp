@@ -16,7 +16,7 @@ namespace eth
 h256 const& BlockHeader::boundary() const
 {
     if (!m_boundary && m_difficulty)
-        m_boundary = (h256)(u256)((bigint(1) << 256) / m_difficulty);
+        m_boundary = h256(dev::getTargetFromDiff(m_difficulty));
     return m_boundary;
 }
 
