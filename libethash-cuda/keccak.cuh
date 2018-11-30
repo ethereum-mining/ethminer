@@ -11,54 +11,17 @@ __device__ __constant__ uint64_t const keccak_round_constants[24] = {0x000000000
 DEV_INLINE uint2 xor5(
     const uint2 a, const uint2 b, const uint2 c, const uint2 d, const uint2 e)
 {
-#if __CUDA_ARCH__ >= 500 && CUDA_VERSION >= 7050
-    uint2 result;
-    asm volatile (
-        "// xor5\n\t"
-        "lop3.b32 %0, %2, %3, %4, 0x96;\n\t"
-        "lop3.b32 %0, %0, %5, %6, 0x96;\n\t"
-        "lop3.b32 %1, %7, %8, %9, 0x96;\n\t"
-        "lop3.b32 %1, %1, %10, %11, 0x96;"
-        : "=r"(result.x), "=r"(result.y)
-        : "r"(a.x), "r"(b.x), "r"(c.x),"r"(d.x),"r"(e.x),
-          "r"(a.y), "r"(b.y), "r"(c.y),"r"(d.y),"r"(e.y));
-    return result;
-#else
     return a ^ b ^ c ^ d ^ e;
-#endif
 }
 
 DEV_INLINE uint2 xor3(const uint2 a, const uint2 b, const uint2 c)
 {
-#if __CUDA_ARCH__ >= 500 && CUDA_VERSION >= 7050
-    uint2 result;
-    asm volatile (
-        "// xor3\n\t"
-        "lop3.b32 %0, %2, %3, %4, 0x96;\n\t"
-        "lop3.b32 %1, %5, %6, %7, 0x96;"
-        : "=r"(result.x), "=r"(result.y)
-        : "r"(a.x), "r"(b.x), "r"(c.x), "r"(a.y), "r"(b.y), "r"(c.y));
-    return result;
-#else
     return a ^ b ^ c;
-#endif
 }
 
 DEV_INLINE uint2 chi(const uint2 a, const uint2 b, const uint2 c)
 {
-#if __CUDA_ARCH__ >= 500 && CUDA_VERSION >= 7050
-    uint2 result;
-    asm volatile (
-        "// chi\n\t"
-        "lop3.b32 %0, %2, %3, %4, 0xD2;\n\t"
-        "lop3.b32 %1, %5, %6, %7, 0xD2;"
-        : "=r"(result.x), "=r"(result.y)
-        : "r"(a.x), "r"(b.x), "r"(c.x),  // 0xD2 = 0xF0 ^ ((~0xCC) & 0xAA)
-          "r"(a.y), "r"(b.y), "r"(c.y)); // 0xD2 = 0xF0 ^ ((~0xCC) & 0xAA)
-    return result;
-#else
     return a ^ (~b) & c;
-#endif
 }
 
 DEV_INLINE void keccak_f1600_init(uint2* state)
@@ -135,8 +98,8 @@ DEV_INLINE void keccak_f1600_init(uint2* state)
     s[20] = ROL2(s[2], 62);
     s[2] = ROL2(s[12], 43);
     s[12] = ROL2(s[13], 25);
-    s[13] = ROL8(s[19]);
-    s[19] = ROR8(s[23]);
+    s[13] = ROL2(s[19], 8);
+    s[19] = ROL2(s[23], 56);
     s[23] = ROL2(s[15], 41);
     s[15] = ROL2(s[4], 27);
     s[4] = ROL2(s[24], 14);
@@ -255,8 +218,8 @@ DEV_INLINE void keccak_f1600_init(uint2* state)
         s[20] = ROL2(s[2], 62);
         s[2] = ROL2(s[12], 43);
         s[12] = ROL2(s[13], 25);
-        s[13] = ROL8(s[19]);
-        s[19] = ROR8(s[23]);
+        s[13] = ROL2(s[19], 8);
+        s[19] = ROL2(s[23], 56);
         s[23] = ROL2(s[15], 41);
         s[15] = ROL2(s[4], 27);
         s[4] = ROL2(s[24], 14);
@@ -454,8 +417,8 @@ DEV_INLINE uint64_t keccak_f1600_final(uint2* state)
     s[20] = ROL2(s[2], 62);
     s[2] = ROL2(s[12], 43);
     s[12] = ROL2(s[13], 25);
-    s[13] = ROL8(s[19]);
-    s[19] = ROR8(s[23]);
+    s[13] = ROL2(s[19], 8);
+    s[19] = ROL2(s[23], 56);
     s[23] = ROL2(s[15], 41);
     s[15] = ROL2(s[4], 27);
     s[4] = ROL2(s[24], 14);
@@ -573,8 +536,8 @@ DEV_INLINE uint64_t keccak_f1600_final(uint2* state)
         s[20] = ROL2(s[2], 62);
         s[2] = ROL2(s[12], 43);
         s[12] = ROL2(s[13], 25);
-        s[13] = ROL8(s[19]);
-        s[19] = ROR8(s[23]);
+        s[13] = ROL2(s[19], 8);
+        s[19] = ROL2(s[23], 56);
         s[23] = ROL2(s[15], 41);
         s[15] = ROL2(s[4], 27);
         s[4] = ROL2(s[24], 14);
