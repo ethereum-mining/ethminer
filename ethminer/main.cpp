@@ -945,8 +945,8 @@ public:
                  << "    --cl-kernel         INT [0 .. 2] Default not set" << endl
                  << "                        Select OpenCL kernel. Ignored since 0.15" << endl
                  << "    --cl-devices        UINT {} Default not set" << endl
-                 << "                        Comma separated list of device indexes to use" << endl
-                 << "                        eg --cl-devices 0,2,3" << endl
+                 << "                        Space separated list of device indexes to use" << endl
+                 << "                        eg --cl-devices 0 2 3" << endl
                  << "                        If not set all available CL devices will be used"
                  << endl
                  << "    --cl-parallel-hash  UINT {1,2,4,8}" << endl
@@ -973,8 +973,8 @@ public:
                  << "    --cu-block-size     UINT {32,64,128,256} Default = 128" << endl
                  << "                        Set the block size" << endl
                  << "    --cu-devices        UINT {} Default not set" << endl
-                 << "                        Comma separated list of device indexes to use" << endl
-                 << "                        eg --cu-devices 0,2,3" << endl
+                 << "                        Space separated list of device indexes to use" << endl
+                 << "                        eg --cu-devices 0 2 3" << endl
                  << "                        If not set all available CUDA devices will be used"
                  << endl
                  << "    --cu-parallel-hash  UINT {1,2,4,8} Default = 4" << endl
