@@ -31,7 +31,7 @@
 
 #include <libdevcore/Common.h>
 #include <libdevcore/Worker.h>
-#include <libethcore/BlockHeader.h>
+
 #include <libethcore/Miner.h>
 
 #include <libhwmon/wrapnvml.h>

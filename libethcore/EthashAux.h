@@ -17,10 +17,11 @@
 
 #pragma once
 
+#include <libdevcore/Common.h>
+#include <libdevcore/Exceptions.h>
 #include <libdevcore/Worker.h>
-#include <ethash/ethash.hpp>
 
-#include "BlockHeader.h"
+#include <ethash/ethash.hpp>
 
 namespace dev
 {
@@ -51,11 +52,7 @@ struct EpochContext
 struct WorkPackage
 {
     WorkPackage() = default;
-    explicit WorkPackage(BlockHeader const& _bh)
-      : boundary(_bh.boundary()),
-        header(_bh.hashWithout()),
-        epoch(ethash::get_epoch_number(static_cast<int>(_bh.number())))
-    {}
+
     explicit operator bool() const { return header != h256(); }
 
     std::string job;  // Job identifier can be anything. Not necessarily a hash
