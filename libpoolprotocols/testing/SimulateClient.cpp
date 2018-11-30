@@ -51,7 +51,7 @@ void SimulateClient::submitSolution(const Solution& solution)
         std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - submit_start);
 
-    if (accepted == true)
+    if (accepted)
         if (m_onSolutionAccepted)
             m_onSolutionAccepted(response_delay_ms, solution.midx);
     else
