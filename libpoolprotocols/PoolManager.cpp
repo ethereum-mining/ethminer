@@ -184,7 +184,9 @@ void PoolManager::setClientHandlers() {
 
 
         cnote << "Job: " EthWhite "#" << m_currentWp.header.abridged()
+#ifdef DEV_BUILD
               << (m_currentWp.block != -1 ? (" block " + to_string(m_currentWp.block)) : "")
+#endif
               << EthReset << " " << m_selectedHost;
 
         // Shuffle if needed
