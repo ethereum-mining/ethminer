@@ -31,7 +31,7 @@ PoolManager::PoolManager(unsigned maxTries, unsigned failoverTimeout, unsigned e
     // If hashrate submission required compute a random
     // unique id
     if (m_hashrate)
-        m_hashrateId = "0x" + h256::random().hex();
+        m_hashrateId = h256::random().hex(HexPrefix::Add);
 
     Farm::f().onMinerRestart([&]() {
         cnote << "Restart miners...";
@@ -527,7 +527,7 @@ double PoolManager::getCurrentDifficulty()
     using namespace boost::multiprecision;
     static const uint256_t dividend(
         "0xffff000000000000000000000000000000000000000000000000000000000000");
-    const uint256_t divisor(string("0x") + m_currentWp.boundary.hex());
+    const uint256_t divisor(m_currentWp.boundary.hex(HexPrefix::Add));
     std::stringstream ss;
     return double(dividend / divisor);
 }

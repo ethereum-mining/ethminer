@@ -158,11 +158,11 @@ inline std::string toHex(u256 val, HexPrefix prefix = HexPrefix::DontAdd)
     return (prefix == HexPrefix::Add) ? "0x" + str : str;
 }
 
-inline std::string toHex(uint64_t _n)
+inline std::string toHex(uint64_t _n, HexPrefix _prefix = HexPrefix::DontAdd)
 {
-    std::ostringstream ss;
-    ss << std::hex << std::setfill('0') << std::setw(sizeof(_n) * 2) << _n;
-    return ss.str();
+    std::ostringstream ret;
+    ret << std::hex << std::setfill('0') << std::setw(sizeof(_n) * 2) << _n;
+    return (_prefix == HexPrefix::Add) ? "0x" + ret.str() : ret.str();
 }
 
 // Algorithms for string and string-like collections.

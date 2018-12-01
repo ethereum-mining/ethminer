@@ -213,7 +213,7 @@ public:
     std::string abridged() const { return toHex(ref().cropped(0, 4)) + k_ellipsis; }
 
     /// @returns the hash as a user-readable hex string.
-    std::string hex() const { return toHex(ref()); }
+    std::string hex(HexPrefix _prefix = HexPrefix::DontAdd) const { return toHex(ref(), _prefix); }
 
     /// @returns a mutable byte vector_ref to the object's data.
     bytesRef ref() { return bytesRef(m_data.data(), N); }

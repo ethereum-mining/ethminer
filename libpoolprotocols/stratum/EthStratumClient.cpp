@@ -1326,8 +1326,6 @@ void EthStratumClient::submitSolution(const Solution& solution)
         return;
     }
 
-    string nonceHex = toHex(solution.nonce);
-
     Json::Value jReq;
 
     unsigned id = 40 + solution.midx;
@@ -1343,9 +1341,9 @@ void EthStratumClient::submitSolution(const Solution& solution)
         jReq["jsonrpc"] = "2.0";
         jReq["params"].append(m_conn->User());
         jReq["params"].append(solution.work.job);
-        jReq["params"].append("0x" + nonceHex);
-        jReq["params"].append("0x" + solution.work.header.hex());
-        jReq["params"].append("0x" + solution.mixHash.hex());
+        jReq["params"].append(toHex(solution.nonce, HexPrefix::Add));
+        jReq["params"].append(solution.work.header.hex(HexPrefix::Add));
+        jReq["params"].append(solution.mixHash.hex(HexPrefix::Add));
         if (!m_conn->Workername().empty())
             jReq["worker"] = m_conn->Workername();
 
@@ -1354,9 +1352,9 @@ void EthStratumClient::submitSolution(const Solution& solution)
     case EthStratumClient::ETHPROXY:
 
         jReq["method"] = "eth_submitWork";
-        jReq["params"].append("0x" + nonceHex);
-        jReq["params"].append("0x" + solution.work.header.hex());
-        jReq["params"].append("0x" + solution.mixHash.hex());
+        jReq["params"].append(toHex(solution.nonce, HexPrefix::Add));
+        jReq["params"].append(solution.work.header.hex(HexPrefix::Add));
+        jReq["params"].append(solution.mixHash.hex(HexPrefix::Add));
         if (!m_conn->Workername().empty())
             jReq["worker"] = m_conn->Workername();
 
@@ -1366,7 +1364,8 @@ void EthStratumClient::submitSolution(const Solution& solution)
 
         jReq["params"].append(m_conn->User());
         jReq["params"].append(solution.work.job);
-        jReq["params"].append(nonceHex.substr(solution.work.exSizeBytes));
+        jReq["params"].append(
+            toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
     }
 
     enqueue_response_plea();
