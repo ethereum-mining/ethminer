@@ -8,7 +8,10 @@ set(EXECUTABLE ethminer)
 
 file(GLOB HEADERS "*.h")
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
+if(MSVC)
+    target_sources(${EXECUTABLE} PRIVATE ethminer.rc)
+endif()
 	set(RESOURCE_FILES "ethminer.rc")
 	add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS} ${RESOURCE_FILES})
 else()
