@@ -10,12 +10,7 @@ file(GLOB HEADERS "*.h")
 
 add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 if(MSVC)
-    target_sources(${EXECUTABLE} PRIVATE ethminer.rc)
-endif()
-	set(RESOURCE_FILES "ethminer.rc")
-	add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS} ${RESOURCE_FILES})
-else()
-	add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
+	target_sources(${EXECUTABLE} PRIVATE ethminer.rc)
 endif()
 
 hunter_add_package(CLI11)
