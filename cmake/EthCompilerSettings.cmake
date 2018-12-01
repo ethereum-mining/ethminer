@@ -9,6 +9,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 
     eth_add_cxx_compiler_flag_if_supported(-ffunction-sections)
     eth_add_cxx_compiler_flag_if_supported(-fdata-sections)
+    eth_add_cxx_compiler_flag_if_supported(-flto)
     eth_add_cxx_linker_flag_if_supported(-Wl,--gc-sections)
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
@@ -17,6 +18,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 
     eth_add_cxx_compiler_flag_if_supported(-ffunction-sections)
     eth_add_cxx_compiler_flag_if_supported(-fdata-sections)
+    eth_add_cxx_compiler_flag_if_supported(-flto)
     eth_add_cxx_linker_flag_if_supported(-Wl,--gc-sections)
 
 	if ("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
