@@ -414,8 +414,7 @@ void PoolManager::rotateConnect()
         m_connectionAttempt++;
 
         // Invoke connections
-        m_selectedHost = m_connections.at(m_activeConnectionIdx).Host() + ":" +
-                         to_string(m_connections.at(m_activeConnectionIdx).Port());
+        m_selectedHost = m_connections.at(m_activeConnectionIdx).Host();
         p_client->setConnection(&m_connections.at(m_activeConnectionIdx));
         cnote << "Selected pool " << m_selectedHost;
 
