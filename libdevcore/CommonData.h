@@ -192,6 +192,9 @@ inline unsigned bytesRequired(T _i)
 bool setenv(const char name[], const char value[], bool override = false);
 
 /// Gets a target hash from given difficulty
-std::string getTargetFromDiff(double diff);
+std::string getTargetFromDiff(double diff, HexPrefix _prefix = HexPrefix::Add);
+
+/// Gets the difficulty expressed in hashes to target
+double getHashesToTarget(std::string _target);
 
 }  // namespace dev

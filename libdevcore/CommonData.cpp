@@ -111,7 +111,7 @@ bool dev::setenv(const char name[], const char value[], bool override)
 #endif
 }
 
-std::string dev::getTargetFromDiff(double diff)
+std::string dev::getTargetFromDiff(double diff, HexPrefix _prefix)
 {
     using namespace boost::multiprecision;
     using BigInteger = boost::multiprecision::cpp_int;
@@ -169,9 +169,20 @@ std::string dev::getTargetFromDiff(double diff)
 
     // Normalize to 64 chars hex with "0x" prefix
     stringstream ss;
-    ss << "0x" << setw(64) << setfill('0') << std::hex << product;
+    ss << (_prefix == HexPrefix::Add ? "0x" : "") << setw(64) << setfill('0') << std::hex << product;
 
     string target = ss.str();
     boost::algorithm::to_lower(target);
     return target;
+}
+
+double dev::getHashesToTarget(string _target)
+{
+    using namespace boost::multiprecision;
+    using BigInteger = boost::multiprecision::cpp_int;
+
+    static BigInteger dividend(
+        "0xffff000000000000000000000000000000000000000000000000000000000000");
+    BigInteger divisor(_target);
+    return double(dividend / divisor);
 }

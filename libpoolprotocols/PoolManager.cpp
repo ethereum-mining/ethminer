@@ -451,7 +451,7 @@ void PoolManager::showMiningAt()
         return;
 
     static const char* suffixes[] = {"h", "Kh", "Mh", "Gh"};
-    double d = getCurrentDifficulty();
+    double d = dev::getHashesToTarget(m_currentWp.boundary.hex(HexPrefix::Add));
     unsigned i;
 
     for (i = 0; i < 3; i++)
@@ -524,12 +524,7 @@ double PoolManager::getCurrentDifficulty()
     if (!m_currentWp)
         return 0.0;
 
-    using namespace boost::multiprecision;
-    static const uint256_t dividend(
-        "0xffff000000000000000000000000000000000000000000000000000000000000");
-    const uint256_t divisor(m_currentWp.boundary.hex(HexPrefix::Add));
-    std::stringstream ss;
-    return double(dividend / divisor);
+    return dev::getHashesToTarget(m_currentWp.boundary.hex(HexPrefix::Add));
 }
 
 unsigned PoolManager::getConnectionSwitches()
