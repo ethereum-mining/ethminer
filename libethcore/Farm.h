@@ -202,6 +202,10 @@ public:
 private:
     std::atomic<bool> m_paused = {false};
 
+    // Async submits solution serializing execution
+    // in Farm's strand
+    void submitProofAsync(Solution const& _s);
+
     // Collects data about hashing and hardware status
     void collectData(const boost::system::error_code& ec);
 

@@ -65,8 +65,7 @@ protected:
     void kick_miner() override;
 
 private:
-    boost::asio::io_service::strand m_io_strand;
-
+    
     void workLoop() override;
 
     vector<cl::Context> m_context;

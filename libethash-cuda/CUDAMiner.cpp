@@ -33,7 +33,6 @@ struct CUDAChannel : public LogChannel
 
 CUDAMiner::CUDAMiner(unsigned _index)
   : Miner("cuda-", _index),
-    m_io_strand(g_io_service),
     m_batch_size(s_gridSize * s_blockSize),
     m_streams_batch_size(s_gridSize * s_blockSize * s_numStreams)
 {}
@@ -398,8 +397,7 @@ void CUDAMiner::search(
                     cudalog << EthWhite << "Job: #" << w.header.abridged() << " Sol: 0x"
                             << toHex(sol.nonce) << EthReset;
 
-                    g_io_service.post(
-                        m_io_strand.wrap(boost::bind(&Farm::submitProof, &Farm::f(), sol)));
+                    Farm::f().submitProof(sol);
                 }
             }
 

@@ -368,8 +368,11 @@ void Farm::setTStartTStop(unsigned tstart, unsigned tstop)
 
 void Farm::submitProof(Solution const& _s)
 {
-    assert(m_onSolutionFound);
+    g_io_service.post(m_io_strand.wrap(boost::bind(&Farm::submitProofAsync, this, _s)));
+}
 
+void Farm::submitProofAsync(Solution const& _s) 
+{
     if (!m_noeval)
     {
         Result r = EthashAux::eval(_s.work.epoch, _s.work.header, _s.nonce);
@@ -393,7 +396,6 @@ void Farm::submitProof(Solution const& _s)
               << " us.";
 #endif
 }
-
 
 // Collects data about hashing and hardware status
 void Farm::collectData(const boost::system::error_code& ec)

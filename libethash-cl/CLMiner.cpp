@@ -258,7 +258,7 @@ std::vector<cl::Device> getDevices(
 
 bool CLMiner::s_noBinary = false;
 
-CLMiner::CLMiner(unsigned _index) : Miner("cl-", _index), m_io_strand(g_io_service) {}
+CLMiner::CLMiner(unsigned _index) : Miner("cl-", _index) {}
 
 CLMiner::~CLMiner()
 {
@@ -398,12 +398,12 @@ void CLMiner::workLoop()
                         memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
                         auto sol = Solution{
                             nonce, mix, current, std::chrono::steady_clock::now(), m_index};
-                        
-                        cllog << EthWhite << "Job: #" << w.header.abridged() << " Sol: 0x"
-                                << toHex(sol.nonce) << EthReset;
 
-                        g_io_service.post(
-                            m_io_strand.wrap(boost::bind(&Farm::submitProof, &Farm::f(), sol)));
+                        cllog << EthWhite << "Job: #" << w.header.abridged() << " Sol: 0x"
+                              << toHex(sol.nonce) << EthReset;
+
+                        Farm::f().submitProof(sol);
+
                     }
                 }
             }
