@@ -394,8 +394,8 @@ void CUDAMiner::search(
                     memcpy(mix.data(), (void*)&buffer.result[i].mix, sizeof(buffer.result[i].mix));
                     auto sol = Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index};
 
-                    cudalog << EthWhite << "Job: #" << w.header.abridged() << " Sol: 0x"
-                            << toHex(sol.nonce) << EthReset;
+                    cudalog << EthWhite << "Job: #" << w.header.abridged() << " Sol: "
+                            << toHex(sol.nonce, HexPrefix::Add) << EthReset;
 
                     Farm::f().submitProof(sol);
                 }
