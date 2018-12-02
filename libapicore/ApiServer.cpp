@@ -924,62 +924,71 @@ Json::Value ApiConnection::getMinerStatHR()
 }
 
 
-Json::Value ApiConnection::getMinerStatDetailPerMiner(const WorkingProgress& p,
-    const SolutionStats& s, size_t index, const std::chrono::steady_clock::time_point& now)
+Json::Value ApiConnection::getMinerStatDetailPerMiner(const WorkingProgress& _p,
+    const SolutionStats& _s, std::shared_ptr<Miner> _miner)
 {
+    unsigned _index = _miner->Index();
+    std::chrono::steady_clock::time_point _now = std::chrono::steady_clock::now();
+
     Json::Value jRes;
-    auto const& miner = Farm::f().getMiner(index);
+    DeviceDescriptorType minerDescriptor = _miner->getDescriptor();
 
-    jRes["index"] = (unsigned)index;
+    jRes["_index"] = _index;
+    jRes["_mode"] =
+        (minerDescriptor.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda ? "CUDA" : "OpenCL");
 
-    /* Hash & Share infos */
-    if (index < p.minersHashRates.size())
-        jRes["hashrate"] = (uint64_t)p.minersHashRates[index];
-    else
-        jRes["hashrate"] = Json::Value::null;
+    /* Hardware Info */
+    Json::Value hwinfo;
+    hwinfo["pci"] = minerDescriptor.UniqueId;
+    hwinfo["type"] = (minerDescriptor.Type == DeviceTypeEnum::Gpu ? "GPU"
+                      : (minerDescriptor.Type == DeviceTypeEnum::Accelerator ? "ACCELERATOR" : "CPU" ));
+    ostringstream ss;
+    ss << (minerDescriptor.clDetected ? minerDescriptor.clName : minerDescriptor.cuName) << " "
+       << FormattedMemSize(minerDescriptor.TotalMemory);
+    hwinfo["name"] = ss.str();
 
-    Json::Value jshares;
-    jshares["accepted"] = s.getAccepts(index);
-    jshares["rejected"] = s.getRejects(index);
-    jshares["invalid"] = s.getFailures(index);
+    /* Hardware Sensors*/
+    Json::Value sensors = Json::Value(Json::arrayValue);
+    if (_index < _p.minerMonitors.size())
+    {
+        sensors.append(_p.minerMonitors[_index].tempC);
+        sensors.append(_p.minerMonitors[_index].fanP);
+        sensors.append(_p.minerMonitors[_index].powerW);
+    }
+    hwinfo["sensors"] = sensors;
 
+    /* Mining Info */
+    Json::Value mininginfo;
+    Json::Value jshares = Json::Value(Json::arrayValue);
+    Json::Value jsegment = Json::Value(Json::arrayValue);
+    jshares.append(_s.getAccepts(_index));
+    jshares.append(_s.getRejects(_index));
+    jshares.append(_s.getFailures(_index));
+    
     auto solution_lastupdated =
-        std::chrono::duration_cast<std::chrono::seconds>(now - s.getLastUpdated(index));
-    jshares["lastupdate"] = uint64_t(solution_lastupdated.count());  // last update of this gpu stat was x seconds ago
-    jRes["shares"] = jshares;
+        std::chrono::duration_cast<std::chrono::seconds>(_now - _s.getLastUpdated(_index));
+    jshares.append(uint64_t(solution_lastupdated.count()));  // interval in seconds from last found
+                                                             // share
 
-
-    /* Hardware */
-    if (index < p.minerMonitors.size())
-    {
-        jRes["temp"] = p.minerMonitors[index].tempC;
-        jRes["fan"] = p.minerMonitors[index].fanP;
-        jRes["power"] = p.minerMonitors[index].powerW;
-    }
-    else
-    {
-        jRes["temp"] = jRes["fan"] = jRes["power"] = Json::Value::null;
-    }
-
-    // TODO: PCI ID, Name, ... (some more infos - see listDevices())
-
-    /* Pause infos */
-    if (miner && index < p.miningIsPaused.size())
-    {
-        bool paused = miner->paused();
-        jRes["ispaused"] = paused;
-        jRes["pause_reason"] = (paused ? miner->pausedString() : Json::Value::null);
-    }
-    else
-    {
-        jRes["ispaused"] = jRes["pause_reason"] = Json::Value::null;
-    }
+    mininginfo["shares"] = jshares;
+    mininginfo["paused"] = _miner->paused();
+    mininginfo["pause_reason"] = _miner->paused() ? _miner->pausedString() : Json::Value::null;
 
     /* Nonce infos */
     auto segment_width = Farm::f().get_segment_width();
-    uint64_t gpustartnonce = Farm::f().get_nonce_scrambler() + ((uint64_t)index << segment_width);
-    jRes["nonce_start"] = gpustartnonce;
-    jRes["nonce_stop"] = uint64_t(gpustartnonce + (1LL << segment_width));
+    uint64_t gpustartnonce = Farm::f().get_nonce_scrambler() + ((uint64_t)_index << segment_width);
+    jsegment.append(toHex(uint64_t(gpustartnonce), HexPrefix::Add));
+    jsegment.append(toHex(uint64_t(gpustartnonce + (1LL << segment_width)), HexPrefix::Add));
+    mininginfo["segment"] = jsegment;
+
+    /* Hash & Share infos */
+    if (_index < _p.minersHashRates.size())
+        mininginfo["hashrate"] = toHex((uint32_t)_p.minersHashRates[_index], HexPrefix::Add);
+    else
+        mininginfo["hashrate"] = Json::Value::null;
+
+    jRes["hardware"] = hwinfo;
+    jRes["mining"] = mininginfo;
 
     return jRes;
 }
@@ -1004,73 +1013,70 @@ Json::Value ApiConnection::getMinerStatDetail()
     WorkingProgress p = Farm::f().miningProgress();
 
     // ostringstream version;
-    Json::Value gpus;
+    Json::Value devices = Json::Value(Json::arrayValue);
     Json::Value jRes;
 
-    jRes["version"] = ethminer_get_buildinfo()->project_name_with_version;  // miner version.
-    jRes["runtime"] = uint64_t(runningTime.count());  // running time, in seconds.
+    /* Host Info */
+    Json::Value hostinfo;
+    hostinfo["version"] = ethminer_get_buildinfo()->project_name_with_version;  // miner version.
+    hostinfo["runtime"] = uint64_t(runningTime.count());  // running time, in seconds.
 
     {
         // Even the client should know which host was queried
         char hostName[HOST_NAME_MAX + 1];
         if (!gethostname(hostName, HOST_NAME_MAX + 1))
-            jRes["hostname"] = hostName;
+            hostinfo["name"] = hostName;
         else
-            jRes["hostname"] = Json::Value::null;
+            hostinfo["name"] = Json::Value::null;
     }
 
-    /* connection info */
+
+    /* Connection info */
+    Json::Value connectioninfo;
     auto connection = PoolManager::p().getActiveConnectionCopy();
-    Json::Value jconnection;
-    jconnection["uri"] = connection.str();
-    // jconnection["endpoint"] = PoolManager::p().getClient()->ActiveEndPoint();
-    jconnection["isconnected"] = PoolManager::p().isConnected();
-    jconnection["switched"] = PoolManager::p().getConnectionSwitches();
-    jRes["connection"] = jconnection;
+    connectioninfo["uri"] = connection.str();
+    connectioninfo["connected"] = PoolManager::p().isConnected();
+    connectioninfo["switches"] = PoolManager::p().getConnectionSwitches();
 
-    /* Pool info */
-    jRes["difficulty"] = PoolManager::p().getCurrentDifficulty();
-    jRes["epoch"] = PoolManager::p().getCurrentEpoch();
-    jRes["epoch_changes"] = PoolManager::p().getEpochChanges();
+    /* Mining Info */
+    Json::Value mininginfo;
+    Json::Value sharesinfo = Json::Value(Json::arrayValue);
 
-    /* basic setup */
+    mininginfo["hashrate"] = toHex(uint32_t(p.hashRate), HexPrefix::Add);
+    mininginfo["epoch"] = PoolManager::p().getCurrentEpoch();
+    mininginfo["epoch_changes"] = PoolManager::p().getEpochChanges();
+    mininginfo["difficulty"] = PoolManager::p().getCurrentDifficulty();
+
+    sharesinfo.append(s.getAccepts());
+    sharesinfo.append(s.getRejects());
+    sharesinfo.append(s.getFailures());
+    auto solution_lastupdated =
+        std::chrono::duration_cast<std::chrono::seconds>(now - s.getLastUpdated());
+    sharesinfo.append(uint64_t(solution_lastupdated.count()));  // interval in seconds from last
+                                                                // found share
+    mininginfo["shares"] = sharesinfo;
+
+    /* Monitors Info */
+    Json::Value monitorinfo;
     auto tstop = Farm::f().get_tstop();
     if (tstop)
     {
-        jRes["tstart"] = Farm::f().get_tstart();
-        jRes["tstop"] = tstop;
-    }
-    else
-    {
-        jRes["tstart"] = jRes["tstop"] = Json::Value::null;
+        Json::Value tempsinfo = Json::Value(Json::arrayValue);
+        tempsinfo.append(Farm::f().get_tstart());
+        tempsinfo.append(tstop);
+        monitorinfo["temperatures"] = tempsinfo;
     }
 
-    /* gpu related info */
-    if (Farm::f().getMiners().size())
-    {
-        for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
-        {
-            jRes["gpus"].append(getMinerStatDetailPerMiner(p, s, i, now));
-        }
-    }
-    else
-    {
-        jRes["gpus"] = Json::Value::null;
-    }
+    /* Devices related info */
+    for (shared_ptr<Miner> miner : Farm::f().getMiners())
+        devices.append(getMinerStatDetailPerMiner(p, s, miner));
 
-    // total ETH hashrate
-    jRes["hashrate"] = uint64_t(p.hashRate);
+    jRes["devices"] = devices;
 
-    // share information
-    Json::Value jshares;
-    jshares["accepted"] = s.getAccepts();
-    jshares["rejected"] = s.getRejects();
-    jshares["invalid"] = s.getFailures();
-    auto solution_lastupdated =
-        std::chrono::duration_cast<std::chrono::seconds>(now - s.getLastUpdated());
-    jshares["lastupdate"] =
-        uint64_t(solution_lastupdated.count());  // last update of this gpu stat was x seconds ago
-    jRes["shares"] = jshares;
+    jRes["monitors"] = monitorinfo;
+    jRes["connection"] = connectioninfo;
+    jRes["host"] = hostinfo;
+    jRes["mining"] = mininginfo;
 
     return jRes;
 }

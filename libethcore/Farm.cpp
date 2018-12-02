@@ -241,12 +241,10 @@ bool Farm::start()
     // Start all subscribed miners if none yet
     if (!m_miners.size())
     {
-        int miner_index = -1;
         string sealer;
 
         for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
         {
-            miner_index++;
             if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda)
                 sealer = "cuda";
             else if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
@@ -254,7 +252,7 @@ bool Farm::start()
             else
                 continue;
 
-            m_miners.push_back(std::shared_ptr<Miner>(m_sealers[sealer].create(miner_index)));
+            m_miners.push_back(std::shared_ptr<Miner>(m_sealers[sealer].create(m_miners.size())));
             m_miners.back()->setDescriptor(it->second);
             m_miners.back()->startWorking();
         }

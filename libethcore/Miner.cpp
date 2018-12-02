@@ -96,6 +96,11 @@ void Miner::setDescriptor(DeviceDescriptorType& _descriptor)
     m_deviceDescriptor = _descriptor;
 }
 
+DeviceDescriptorType Miner::getDescriptor()
+{
+    return m_deviceDescriptor;
+}
+
 void Miner::setWork(WorkPackage const& _work)
 {
     {

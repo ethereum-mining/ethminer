@@ -54,8 +54,8 @@ private:
     void onSendSocketDataCompleted(const boost::system::error_code& ec);
 
     Json::Value getMinerStatDetail();
-    Json::Value getMinerStatDetailPerMiner(const WorkingProgress& p, const SolutionStats& s,
-        size_t index, const std::chrono::steady_clock::time_point& now);
+    Json::Value getMinerStatDetailPerMiner(
+        const WorkingProgress& _p, const SolutionStats& _s, std::shared_ptr<Miner> _miner);
 
     Disconnected m_onDisconnected;
 

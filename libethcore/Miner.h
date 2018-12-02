@@ -311,6 +311,11 @@ public:
     void setDescriptor(DeviceDescriptorType& _descriptor);
 
     /**
+     * @brief Gets the device descriptor assigned to this instance
+     */
+    DeviceDescriptorType getDescriptor();
+
+    /**
      * @brief Assigns hashing work to this instance
      */
     void setWork(WorkPackage const& _work);
@@ -326,7 +331,7 @@ public:
 
     void setHwmonDeviceIndex(int i) { m_hwmoninfo.deviceIndex = i; }
 
-     /**
+    /**
      * @brief Kick an asleep miner.
      */
     virtual void kick_miner() = 0;

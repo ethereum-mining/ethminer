@@ -185,72 +185,73 @@ and expect back a response like this:
 
 ```js
 {
-  "id": 1,
+  "id": 0,
   "jsonrpc": "2.0",
   "result": {
     "connection": {                     // Current active connection
-      "isconnected": true,
-      "switched": 0,
-      "uri": "stratum+tcp://<omitted-ethereum-address>.worker@eu1.ethermine.org:4444"
+      "connected": true,
+      "switches": 1,
+      "uri": "stratum1+tls12://0x4813aEEE0c30C584C559fa8Dc7424481E2e9Fc91.BG01R01@eu1.ethermine.org:5555"
     },
-    "difficulty": 3999938964.0,
-    "epoch": 218,
-    "epoch_changes": 1,                 // Ethminer starts with epoch 0. First connection to pool increments this counter
-    "hashrate": 46709128,               // Overall HashRate in H/s
-    "hostname": "<omitted-hostname>",
-    "runtime": 240,                     // Total running time in seconds
-    "shares": {                         // Summarized info about shares
-      "accepted": 5,
-      "acceptedstale": 1,
-      "invalid": 1,
-      "lastupdate": 58,                 // Latest update of any share info of is X seconds ago
-      "rejected": 0
-    },
-    "tstart": 63,
-    "tstop": 69,
-    "version": "ethminer-0.16.0.dev3-73+commit.f35c22ab",
-    "gpus": [
-      {"fan": 54,                       // Fan in %
-       "hashrate": 23604564,            // HashRate of GPU in H/s
-       "index": 0,
-       "ispaused": false,
-       "nonce_start": 6636918940706763208,
-       "nonce_stop": 6636920040218390984,
-       "pause_reason": "",              // Possible values: "", "temperature", "api", or "temperature,api"
-       "power": 0.0,                    // Powerdrain in W
-       "shares": {                      // Detailed info about shares from this GPU
-         "accepted": 3,
-         "acceptedstale": 0,
-         "invalid": 0,
-         "lastupdate": 58,              // Share info from this GPU updated X seconds ago
-         "rejected": 0
-       },
-       "temp": 53                       // Temperature in °C
+    "devices": [                                        // Array subscribed of devices
+      {
+        "_index": 0,                                    // Miner ordinal 
+        "_mode": "CUDA",                                // Miner mode : "OpenCL" / "CUDA"
+        "hardware": {                                   // Device hardware info
+          "name": "GeForce GTX 1050 Ti 3.95 GB",        // Name
+          "pci": "01:00.0",                             // Pci Id
+          "sensors": [                                  // An array made of ...
+            47,                                         //  + Detected temp
+            70,                                         //  + Fan percent
+            0                                           //  + Power drain in watts
+          ],
+          "type": "GPU"                                 // Device Type : "CPU" / "GPU" / "ACCELERATOR"
+        },
+        "mining": {                                     // Mining info
+          "hashrate": "0x0000000000e3fcbb",             // Current hashrate in hashes per second
+          "pause_reason": null,                         // If the device is paused this contains the reason
+          "paused": false,                              // Wheter or not the device is paused
+          "segment": [                                  // The search segment of the device
+            "0xbcf0a663bfe75dab",                       //  + Lower bound
+            "0xbcf0a664bfe75dab"                        //  + Upper bound
+          ],
+          "shares": [                                   // Shares / Solutions stats
+            1,                                          //  + Found shares
+            0,                                          //  + Rejected (by pool) shares
+            0,                                          //  + Failed shares (always 0 if --no-eval is set)
+            15                                          //  + Time in seconds since last found share
+          ]
+        }
       },
-      {"fan": 53,
-       "hashrate": 23104564,
-       "index": 1,
-       "ispaused": false,
-       "nonce_start": 6636920040218391000,
-       "nonce_stop": 6636921139730018000,
-       "pause_reason": "",
-       "power": 0.0,
-       "shares": {
-         "accepted": 2,
-         "acceptedstale": 1,
-         "invalid": 1,
-         "lastupdate": 134,
-         "rejected": 0
-       },
-       "temp": 56
-      }
-    ]
+      { ... }                                           // Another device
+      { ... }                                           // And another ...
+    ],
+    "host": {
+      "name": "miner01",                                // Host name of the computer running ethminer
+      "runtime": 121,                                   // Duration time (in seconds)
+      "version": "ethminer-0.18.0-alpha.1+commit.70c7cdbe.dirty"
+    },
+    "mining": {                                         // Mining info for the whole instance
+      "difficulty": 3999938964,                         // Actual difficulty in hashes
+      "epoch": 227,                                     // Current epoch
+      "epoch_changes": 1,                               // How many epoch changes occurred during the run
+      "hashrate": "0x00000000054a89c8",                 // Overall hashrate (sum of hashrate of all devices)
+      "shares": [                                       // Shares / Solutions stats
+        2,                                              //  + Found shares
+        0,                                              //  + Rejected (by pool) shares
+        0,                                              //  + Failed shares (always 0 if --no-eval is set)
+        15                                              //  + Time in seconds since last found share
+      ]
+    },
+    "monitors": {                                       // A nullable object which may contain some triggers
+      "temperatures": [                                 // Monitor temperature
+        60,                                             //  + Resume mining if device temp is <= this threshold
+        75                                              //  + Suspend mining if device temp is >= this threshold
+      ]
+    }
   }
 }
 ```
-
-If values not set (eg --tstart) or the underlaying function returns an error expect `null` as returned value!
-
 
 ### miner_getstat1
 
