@@ -188,10 +188,10 @@ and expect back a response like this:
   "id": 0,
   "jsonrpc": "2.0",
   "result": {
-    "connection": {                     // Current active connection
+    "connection": {                                     // Current active connection
       "connected": true,
       "switches": 1,
-      "uri": "stratum1+tls12://0x4813aEEE0c30C584C559fa8Dc7424481E2e9Fc91.BG01R01@eu1.ethermine.org:5555"
+      "uri": "stratum1+tls12://<ethaddress>.wworker@eu1.ethermine.org:5555"
     },
     "devices": [                                        // Array subscribed of devices
       {
