@@ -37,8 +37,40 @@ Farm::Farm(
     // Init HWMON if needed
     if (m_hwmonlvl)
     {
+        bool need_sysfsh = false;
+        bool need_adlh = false;
+        bool need_nvmlh = false;
+
+        // Scan devices collection to identify which hw monitors to initialize
+        for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
+        {
+            if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda)
+            {
+                need_nvmlh = true;
+                continue;
+            }
+            if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
+            {
+                if (it->second.clPlatformType == ClPlatformTypeEnum::Nvidia)
+                {
+                    need_nvmlh = true;
+                    continue;
+                }
+                if (it->second.clPlatformType == ClPlatformTypeEnum::Amd)
+                {
 #if defined(__linux)
-        sysfsh = wrap_amdsysfs_create();
+                    need_sysfsh = true;
+#else
+                    need_adlh = true;
+#endif
+                    continue;
+                }
+            }
+        }
+
+#if defined(__linux)
+        if (need_sysfsh)
+            sysfsh = wrap_amdsysfs_create();
         if (sysfsh)
         {
             // Build Pci identification mapping as done in miners.
@@ -55,7 +87,8 @@ Farm::Farm(
         }
 
 #else
-        adlh = wrap_adl_create();
+        if (need_adlh)
+            adlh = wrap_adl_create();
         if (adlh)
         {
             // Build Pci identification as done in miners.
@@ -74,7 +107,8 @@ Farm::Farm(
         }
 
 #endif
-        nvmlh = wrap_nvml_create();
+        if (need_nvmlh)
+            nvmlh = wrap_nvml_create();
         if (nvmlh)
         {
             // Build Pci identification as done in miners.
@@ -157,10 +191,9 @@ void Farm::setWork(WorkPackage const& _newWp)
         m_currentEc.dagNumItems = _ec.full_dataset_num_items;
         m_currentEc.dagSize = ethash::get_full_dataset_size(_ec.full_dataset_num_items);
         m_currentEc.lightCache = _ec.light_cache;
-        for (unsigned int i = 0; i < m_miners.size(); i++)
-        {
-            m_miners.at(i)->setEpoch(m_currentEc);
-        }
+
+        for (auto const& miner : m_miners)
+            miner->setEpoch(m_currentEc);
     }
 
     m_currentWp = _newWp;
@@ -195,6 +228,10 @@ void Farm::setSealers(std::map<std::string, SealerDescriptor> const& _sealers)
  */
 bool Farm::start()
 {
+    // Prevent recursion
+    if (m_isMining.load(std::memory_order_relaxed))
+        return true;
+
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() begin");
     Guard l(x_minerWork);
 
@@ -218,26 +255,17 @@ bool Farm::start()
             m_miners.back()->setDescriptor(it->second);
             m_miners.back()->startWorking();
         }
+        m_isMining.store(true, std::memory_order_relaxed);
     }
     else
     {
-        for (size_t i = 0; i < m_miners.size(); i++)
-        {
-            m_miners.at(i)->startWorking();
-        }
+        for (auto const& miner : m_miners)
+            miner->startWorking();
+        m_isMining.store(true, std::memory_order_relaxed);
     }
 
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() end");
-
-    if (m_miners.size())
-    {
-        m_isMining.store(true, std::memory_order_relaxed);
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return m_isMining.load(std::memory_order_relaxed);
 }
 
 /**
@@ -295,9 +323,7 @@ void Farm::resume()
 void Farm::restart()
 {
     if (m_onMinerRestart)
-    {
         m_onMinerRestart();
-    }
 }
 
 /**
@@ -374,7 +400,7 @@ void Farm::submitProof(Solution const& _s)
     g_io_service.post(m_io_strand.wrap(boost::bind(&Farm::submitProofAsync, this, _s)));
 }
 
-void Farm::submitProofAsync(Solution const& _s) 
+void Farm::submitProofAsync(Solution const& _s)
 {
     if (!m_noeval)
     {

@@ -140,9 +140,14 @@ public:
 
     std::shared_ptr<Miner> getMiner(unsigned index)
     {
-        if (index >= m_miners.size())
+        try
+        {
+            return m_miners.at(index);
+        }
+        catch (const std::exception&)
+        {
             return nullptr;
-        return m_miners[index];
+        }
     }
 
     SolutionStats getSolutionStats() { return m_solutionStats; }  // returns a copy
