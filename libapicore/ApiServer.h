@@ -35,7 +35,6 @@ public:
     void start();
 
     Json::Value getMinerStat1();
-    Json::Value getMinerStatHR();
 
     using Disconnected = std::function<void(int const&)>;
     void onDisconnected(Disconnected const& _handler) { m_onDisconnected = _handler; }

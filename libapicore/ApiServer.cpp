@@ -413,7 +413,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             // Use error code like http 401 Unauthorized
             jResponse["error"]["code"] = -401;
             jResponse["error"]["message"] = "Invalid password";
-            cerr << "Invalid API password provided.";
+            cerr << "API : Invalid password provided.";
             // Should we close the connection in the outer function after invalid password ?
         }
         /*
@@ -424,15 +424,10 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     }
 
     assert(m_is_authenticated);
-
+    cnote << "API : Method " << _method << " requested";
     if (_method == "miner_getstat1")
     {
         jResponse["result"] = getMinerStat1();
-    }
-
-    else if (_method == "miner_getstathr")
-    {
-        jResponse["result"] = getMinerStatHR();
     }
 
     else if (_method == "miner_getstatdetail")
@@ -443,7 +438,6 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     else if (_method == "miner_shuffle")
     {
         // Gives nonce scrambler a new range
-        cnote << "Miner Shuffle requested";
         jResponse["result"] = true;
         Farm::f().shuffle();
     }
@@ -461,7 +455,6 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         // to prevent locking
         if (!checkApiWriteAccess(m_readonly, jResponse))
             return;
-        cnote << "Miner Restart requested";
         jResponse["result"] = true;
         Farm::f().restart_async();
     }
@@ -470,7 +463,6 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     {
         if (!checkApiWriteAccess(m_readonly, jResponse))
             return;
-        cnote << "Miner reboot requested";
 
         jResponse["result"] = Farm::f().reboot({{"api_miner_reboot"}});
     }
@@ -852,77 +844,6 @@ Json::Value ApiConnection::getMinerStat1()
 
     return jRes;
 }
-
-Json::Value ApiConnection::getMinerStatHR()
-{
-    // TODO:give key-value format
-    auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
-        steady_clock::now() - Farm::f().farmLaunched());
-    auto connection = PoolManager::p().getActiveConnectionCopy();
-    SolutionStats s = Farm::f().getSolutionStats();
-    WorkingProgress p = Farm::f().miningProgress();
-
-    ostringstream version;
-    ostringstream runtime;
-    Json::Value detailedMhEth;
-    Json::Value detailedMhDcr;
-    Json::Value temps;
-    Json::Value fans;
-    Json::Value powers;
-    Json::Value ispaused;
-    ostringstream poolAddresses;
-
-    version << ethminer_get_buildinfo()->project_name_with_version;
-    runtime << toString(runningTime.count());
-    poolAddresses << connection.Host() << ':' << connection.Port();
-
-    assert(p.minersHashRates.size() == p.minerMonitors.size() || p.minerMonitors.size() == 0);
-    assert(p.minersHashRates.size() == p.miningIsPaused.size());
-
-    for (unsigned gpuIndex = 0; gpuIndex < p.minersHashRates.size(); gpuIndex++)
-    {
-        bool doMonitors = (gpuIndex < p.minerMonitors.size());
-
-        detailedMhEth[gpuIndex] = p.minersHashRates[gpuIndex];
-        // detailedMhDcr[gpuIndex] = "off"; //Not supported
-
-        if (doMonitors)
-        {
-            temps[gpuIndex] = p.minerMonitors[gpuIndex].tempC;
-            fans[gpuIndex] = p.minerMonitors[gpuIndex].fanP;
-            powers[gpuIndex] = p.minerMonitors[gpuIndex].powerW;
-        }
-        else
-        {
-            temps[gpuIndex] = 0;
-            fans[gpuIndex] = 0;
-            powers[gpuIndex] = 0;
-        }
-
-        ispaused[gpuIndex] = (bool)p.miningIsPaused[gpuIndex];
-    }
-
-    Json::Value jRes;
-    jRes["version"] = version.str();  // miner version.
-    jRes["runtime"] = runtime.str();  // running time, in minutes.
-    // total ETH hashrate in MH/s, number of ETH shares, number of ETH rejected shares.
-    jRes["ethhashrate"] = uint64_t(p.hashRate);
-    jRes["ethhashrates"] = detailedMhEth;
-    jRes["ethshares"] = s.getAccepts();
-    jRes["ethrejected"] = s.getRejects();
-    jRes["ethinvalid"] = s.getFailures();
-    jRes["ethpoolsw"] = 0;
-    // Hardware Info
-    jRes["temperatures"] = temps;   // Temperatures(C) for all GPUs
-    jRes["fanpercentages"] = fans;  // Fans speed(%) for all GPUs
-    jRes["powerusages"] = powers;   // Power Usages(W) for all GPUs
-    jRes["pooladdrs"] =
-        poolAddresses.str();  // current mining pool. For dual mode, there will be two pools here.
-    jRes["ispaused"] = ispaused;  // Is mining on GPU paused
-
-    return jRes;
-}
-
 
 Json::Value ApiConnection::getMinerStatDetailPerMiner(const WorkingProgress& _p,
     const SolutionStats& _s, std::shared_ptr<Miner> _miner)
