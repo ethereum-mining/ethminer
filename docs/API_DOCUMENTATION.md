@@ -90,7 +90,6 @@ This shows the API interface is live and listening on the configured endpoint.
 | [miner_ping](#miner_ping) | Responds back with a "pong" | No |
 | [miner_getstatdetail](#miner_getstatdetail) | Request the retrieval of operational data in most detailed form | No
 | [miner_getstat1](#miner_getstat1) | Request the retrieval of operational data in compatible format | No
-| [miner_getstathr](#miner_getstathr) | Request the retrieval of operational data in Ethminer's format | No
 | [miner_restart](#miner_restart) | Instructs ethminer to stop and restart mining | Yes |
 | [miner_reboot](#miner_reboot) | Try to launch reboot.bat (on Windows) or reboot.sh (on Linux) in the ethminer executable directory | Yes
 | [miner_shuffle](#miner_shuffle) | Initializes a new random scramble nonce | Yes
