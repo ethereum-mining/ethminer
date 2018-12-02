@@ -10,7 +10,6 @@
     * [miner_ping](#miner_ping)
     * [miner_getstatdetail](#miner_getstatdetail)
     * [miner_getstat1](#miner_getstat1)
-    * [miner_getstathr](#miner_getstathr)
     * [miner_restart](#miner_restart)
     * [miner_reboot](#miner_reboot)
     * [miner_shuffle](#miner_shuffle)
@@ -286,79 +285,6 @@ and expect back a response like this:
 ```
 
 Some of the arguments here expressed have been set for compatibility with other miners so their values are not set. For instance, ethminer **does not** support dual (ETH/DCR) mining.
-
-### miner_getstathr
-
-With this method you expect back a collection of statistical data. To issue a request:
-
-```js
-{
-  "id": 1,
-  "jsonrpc": "2.0",
-  "method": "miner_getstathr"
-}
-```
-
-and expect back a response like this:
-
-```js
-{
-  "id": 1,
-  "jsonrpc": "2.0",
-  "result": {
-    "ethhashrate": 73056881,            // Overall HashRate in H/s
-    "ethhashrates": [                   // Hashrate per GPU in H/S
-      14681287,
-      14506510,
-      14681287,
-      14506510,
-      0,
-      14681287
-    ],
-    "ethinvalid": 0,                    // Total number of invalid shares
-    "ethpoolsw": 0,                     // Total number of pool switches
-    "ethrejected": 0,                   // Total number of rejected shares
-    "ethshares": 64,                    // Total number of found and submitted shares
-    "fanpercentages": [                 // Fan percentages per GPU
-       90,
-       90,
-       90,
-       90,
-       100,
-       90
-    ],
-    "pooladdrs": "eu1.ethermine.org:4444",  // Mining pool currently active
-    "powerusages": [                        // Power draw (in W) per GPU
-       0.0,
-       0.0,
-       0.0,
-       0.0,
-       0.0,
-       0.0
-    ],
-    "runtime": "59",                    // Total runtime in minutes
-    "temperatures": [                   // Temperatures per GPU
-       53,
-       50,
-       56,
-       58,
-       68,
-       60
-    ],
-    "ispaused": [                       // Is mining paused per GPU
-       false,
-       false,
-       false,
-       false,
-       true,
-       false
-    ],
-    "version": "ethminer-0.16.0.dev0+commit.41639944" // Running ethminer's version
-  }
-}
-```
-
-This format does not honor any compliance with other miners' format and does not express values from dual mining, which, we reiterate, is not supported by ethminer.
 
 ### miner_restart
 
