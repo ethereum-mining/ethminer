@@ -37,8 +37,11 @@ Farm::Farm(
     // Init HWMON if needed
     if (m_hwmonlvl)
     {
+#if defined(__linux)
         bool need_sysfsh = false;
+#else
         bool need_adlh = false;
+#endif
         bool need_nvmlh = false;
 
         // Scan devices collection to identify which hw monitors to initialize
