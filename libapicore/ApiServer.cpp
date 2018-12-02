@@ -607,9 +607,29 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         uint64_t nonce = Farm::f().get_nonce_scrambler();
         unsigned exp = Farm::f().get_segment_width();
 
-        if (!getRequestValue("noncescrambler", nonce, jRequestParams, true, jResponse))
-            return;
-        any_value_provided = true;
+        string nonceHex;
+        if (jRequestParams.isMember("noncescrambler"))
+        {
+            nonceHex = jRequestParams["noncescrambler"].asString();
+            if (nonceHex.substr(0, 2) == "0x")
+            {
+                try
+                {
+                    nonce = std::stoul(nonceHex, nullptr, 16);
+                    any_value_provided = true;
+                }
+                catch (const std::exception&)
+                {
+                    return;
+                }
+            }
+            else
+            {
+                if (!getRequestValue("noncescrambler", nonce, jRequestParams, true, jResponse))
+                    return;
+                any_value_provided = true;
+            }
+        }
 
         if (!getRequestValue("segmentwidth", exp, jRequestParams, true, jResponse))
             return;
@@ -845,8 +865,8 @@ Json::Value ApiConnection::getMinerStat1()
     return jRes;
 }
 
-Json::Value ApiConnection::getMinerStatDetailPerMiner(const WorkingProgress& _p,
-    const SolutionStats& _s, std::shared_ptr<Miner> _miner)
+Json::Value ApiConnection::getMinerStatDetailPerMiner(
+    const WorkingProgress& _p, const SolutionStats& _s, std::shared_ptr<Miner> _miner)
 {
     unsigned _index = _miner->Index();
     std::chrono::steady_clock::time_point _now = std::chrono::steady_clock::now();
@@ -861,8 +881,10 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(const WorkingProgress& _p,
     /* Hardware Info */
     Json::Value hwinfo;
     hwinfo["pci"] = minerDescriptor.UniqueId;
-    hwinfo["type"] = (minerDescriptor.Type == DeviceTypeEnum::Gpu ? "GPU"
-                      : (minerDescriptor.Type == DeviceTypeEnum::Accelerator ? "ACCELERATOR" : "CPU" ));
+    hwinfo["type"] =
+        (minerDescriptor.Type == DeviceTypeEnum::Gpu ?
+                "GPU" :
+                (minerDescriptor.Type == DeviceTypeEnum::Accelerator ? "ACCELERATOR" : "CPU"));
     ostringstream ss;
     ss << (minerDescriptor.clDetected ? minerDescriptor.clName : minerDescriptor.cuName) << " "
        << FormattedMemSize(minerDescriptor.TotalMemory);
@@ -885,7 +907,7 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(const WorkingProgress& _p,
     jshares.append(_s.getAccepts(_index));
     jshares.append(_s.getRejects(_index));
     jshares.append(_s.getFailures(_index));
-    
+
     auto solution_lastupdated =
         std::chrono::duration_cast<std::chrono::seconds>(_now - _s.getLastUpdated(_index));
     jshares.append(uint64_t(solution_lastupdated.count()));  // interval in seconds from last found

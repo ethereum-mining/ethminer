@@ -530,45 +530,13 @@ and expect a result like this:
   "id": 0,
   "jsonrpc": "2.0",
   "result": {
-    "noncescrambler": 16704043538687679721,
-    "segments": [
-      {
-        "gpu": 0,
-        "start": 16704043538687679721,
-        "stop": 16704044638199307497
-      },
-      {
-        "gpu": 1,
-        "start": 16704044638199307497,
-        "stop": 16704046837222563049
-      },
-      {
-        "gpu": 2,
-        "start": 16704045737710935273,
-        "stop": 16704049036245818601
-      },
-      {
-        "gpu": 3,
-        "start": 16704046837222563049,
-        "stop": 16704051235269074153
-      },
-      {
-        "gpu": 4,
-        "start": 16704047936734190825,
-        "stop": 16704053434292329705
-      },
-      {
-        "gpu": 5,
-        "start": 16704049036245818601,
-        "stop": 16704055633315585257
-      }
-    ],
-    "segmentwidth": 40
+    "device_count": 6,                          // How many devices are mining
+    "device_width": 32,                         // The width (as exponent of 2) of each device segment
+    "start_nonce": "0xd3719cef9dd02322"         // The start nonce of the segment
   }
 }
 ```
-
-Note that segment width is the exponent in the expression `pow(2, segment)`.
+To compute the effective start_nonce assigned to each device you can use this simple math : `start_nonce + ((2^segment_width) * device_index))`
 The information hereby exposed may be used in large mining operations to check whether or not two (or more) rigs may result having overlapping segments. The possibility is very remote ... but is there.
 
 ### miner_setscramblerinfo
@@ -582,6 +550,18 @@ To approach this method you have to read carefully the method [miner_getscramble
   "method": "miner_setscramblerinfo",
   "params": {
     "noncescrambler": 16704043538687679721,      // At least one of these two members
+    "segmentwidth": 38                           // or both.
+  }
+}
+```
+or, if you prefer the hexadecimal notation,
+```js
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_setscramblerinfo",
+  "params": {
+    "noncescrambler": "0x6f3ab2803cfeea12",      // At least one of these two members
     "segmentwidth": 38                           // or both.
   }
 }
