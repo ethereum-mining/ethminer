@@ -374,18 +374,30 @@ string Farm::farmLaunchedFormatted()
 Json::Value Farm::get_nonce_scrambler_json()
 {
     Json::Value jRes;
-    jRes["noncescrambler"] = m_nonce_scrambler;
-    jRes["segmentwidth"] = m_nonce_segment_with;
+    Json::Value farmSegment = Json::Value(Json::arrayValue);
+    Json::Value devSegments = Json::Value(Json::arrayValue);
+
+    farmSegment.append(m_nonce_segment_with);
+    farmSegment.append(toHex(m_nonce_scrambler, HexPrefix::Add));
 
     for (size_t i = 0; i < m_miners.size(); i++)
     {
-        Json::Value jSegment;
+        Json::Value devSegment = Json::Value(Json::arrayValue);
         uint64_t gpustartnonce = m_nonce_scrambler + ((uint64_t)pow(2, m_nonce_segment_with) * i);
-        jSegment["gpu"] = (int)i;
-        jSegment["start"] = gpustartnonce;
-        jSegment["stop"] = uint64_t(gpustartnonce + (uint64_t)(pow(2, m_nonce_segment_with)));
-        jRes["segments"].append(jSegment);
+        devSegment.append(toHex(gpustartnonce, HexPrefix::Add));
+        devSegment.append(toHex(
+            uint64_t(gpustartnonce + (uint64_t)(pow(2, m_nonce_segment_with))), HexPrefix::Add));
+        devSegments.append(devSegment);
+
+        // This is also the upper bound part of the farm segment
+        if (i == m_miners.size() -1 )
+            farmSegment.append(
+                toHex(uint64_t(gpustartnonce + (uint64_t)(pow(2, m_nonce_segment_with))),
+                    HexPrefix::Add));
     }
+
+    jRes["segment"] = farmSegment;
+    jRes["segments"] = devSegments;
 
     return jRes;
 }
