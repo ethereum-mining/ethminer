@@ -1163,7 +1163,7 @@ std::string ApiConnection::getHttpMinerStatDetail()
     _ret << "</tbody>";
 
     /* Summarize */
-    _ret << "<tfoot><tr class=bg-header0><td colspan=4>Total</td><td>"
+    _ret << "<tfoot><tr class=bg-header0><td colspan=4 style=\"text-align: right;\">Total</td><td style=\"text-align: right;\">"
          << dev::getFormattedHr(total_hashrate) << "</td><td style=\"text-align: right;\">" << total_solutions
          << "</td><td colspan=3 style=\"text-align: right;\">" << total_power << "</td></tfoot>";
 
