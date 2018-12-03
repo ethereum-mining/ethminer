@@ -24,7 +24,6 @@ export USERNAME="aminer"
 export WORKERPWD="x"
 export BTC_WALLET="3C4FURwL4oAaEUuCLYmNPUEKQSPR1FAJ3m"
 
-
 POOLS=""
 #2miners.com
 POOLS="$POOLS stratum1+tcp://ETH_WALLET.WORKERNAME@eth.2miners.com:2020"
@@ -121,6 +120,22 @@ if [[ "x" == "x$1" ]]; then
     exit 2
 fi
 
+# replace explicit stratum version with autodetect version
+if [[ 1 == 0 ]]; then
+    p=""
+    for pool in $POOLS; do
+        v=$pool
+        v=$(echo "${v/stratum2+tcp/stratum}")
+        v=$(echo "${v/stratum1+tcp/stratum}")
+        v=$(echo "${v/stratum+tcp/stratum}")
+        v=$(echo "${v/stratum2+ssl/stratums}")
+        v=$(echo "${v/stratum1+ssl/stratums}")
+        v=$(echo "${v/stratum+ssl/stratums}")
+        p="$p $v"
+    done
+    POOLS=$p
+fi
+
 error_cnt=0
 for pool in $POOLS; do
     rm -f log.txt
@@ -192,4 +207,3 @@ else
 fi
 
 exit 0
-
