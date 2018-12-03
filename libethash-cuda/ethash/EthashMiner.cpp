@@ -18,7 +18,7 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 #include <libethcore/Farm.h>
 #include <ethash/ethash.hpp>
 
-#include "CUDAMiner.h"
+#include "../CUDAMiner.h"
 
 using namespace std;
 using namespace dev;

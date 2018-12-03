@@ -26,8 +26,8 @@ else()
 	endif()
 endif()
 
-file(GLOB sources "ethash/*.cpp" "ethash/*.cu")
-file(GLOB headers "ethash/*.h" "ethash/*.cuh")
+file(GLOB sources "*.cpp" "*.cu")
+file(GLOB headers "*.h" "*.cuh")
 
 cuda_add_library(ethash-cuda STATIC ${sources} ${headers})
 target_link_libraries(ethash-cuda ethcore ethash::ethash  Boost::filesystem)
