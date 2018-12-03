@@ -134,7 +134,8 @@ for pool in $POOLS; do
 
     echo "Testing=$current_test_pattern"
     echo "./ethminer -v 1 --exit -P $pool $@"
-    ./ethminer -v 1 --exit -P $pool $@ > log.txt 2>&1 &
+    echo "./ethminer -v 1 --exit -P $pool $@" > log.txt
+    ./ethminer -v 1 --exit -P $pool $@ >> log.txt 2>&1 &
     pid=$!
     #echo "PID=$pid"
 
