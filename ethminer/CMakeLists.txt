@@ -9,6 +9,9 @@ set(EXECUTABLE ethminer)
 file(GLOB HEADERS "*.h")
 
 add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
+if(MSVC)
+	target_sources(${EXECUTABLE} PRIVATE ethminer.rc)
+endif()
 
 hunter_add_package(CLI11)
 find_package(CLI11 CONFIG REQUIRED)
