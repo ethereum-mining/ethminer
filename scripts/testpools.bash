@@ -99,8 +99,6 @@ POOLS="$POOLS stratum+tcp://BTC_WALLET.WORKERNAME@daggerhashimoto.hk.nicehash.co
 POOLS="$POOLS stratum+tcp://BTC_WALLET.WORKERNAME@daggerhashimoto.in.nicehash.com:3353"
 POOLS="$POOLS stratum+tcp://BTC_WALLET.WORKERNAME@daggerhashimoto.jp.nicehash.com:3353"
 POOLS="$POOLS stratum+tcp://BTC_WALLET.WORKERNAME@daggerhashimoto.usa.nicehash.com:3353"
-#pool.sexy
-POOLS="$POOLS stratum+tcp://ETH_WALLET.WORKERNAME@eth.pool.sexy:10002"
 #sparkpool.com
 POOLS="$POOLS stratum+tcp://ETH_WALLET.WORKERNAME@cn.sparkpool.com:3333"
 POOLS="$POOLS stratum+tcp://ETH_WALLET.WORKERNAME@eu.sparkpool.com:3333"
