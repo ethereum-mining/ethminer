@@ -20,9 +20,7 @@
 #include <regex>
 #include <string>
 
-#include <boost/algorithm/string.hpp>
 #include <boost/asio.hpp>
-#include <boost/lexical_cast.hpp>
 
 // A simple URI parser specifically for mining pool endpoints
 namespace dev
@@ -60,9 +58,9 @@ public:
     std::string Host() const { return m_host; }
     std::string Path() const { return m_path; }
     unsigned short Port() const { return m_port; }
-    std::string User() const { return m_user; }
+    std::string User() const { return m_username; }
     std::string Pass() const { return m_password; }
-    std::string Workername() const { return m_worker; }
+    std::string Workername() const { return m_workername; }
     SecureLevel SecLevel() const;
     ProtocolFamily Family() const;
     UriHostNameType HostNameType() const;
@@ -85,23 +83,15 @@ public:
     void MarkUnrecoverable() { m_unrecoverable = true; }
 
 private:
-
     std::string m_scheme;
-    std::string m_authority; // Contains all text after scheme
-    std::string m_userinfo;  // Contains the userinfo part
-    std::string m_urlinfo;   // Contains the urlinfo part
-    std::string m_hostinfo;  // Contains the hostinfo part
-    std::string m_pathinfo;  // Contains the pathinfo part
-
     std::string m_host;
     std::string m_path;
     std::string m_query;
     std::string m_fragment;
-    std::string m_user;
-    std::string m_password = "X";
-    std::string m_worker;
+    std::string m_username;
+    std::string m_password;
+    std::string m_workername;
     std::string m_uri;
-
     unsigned short m_stratumMode = 999;  // Initial value 999 means not tested yet
     unsigned short m_port = 0;
     bool m_valid = false;
