@@ -16,10 +16,20 @@ matrix:
         - os: linux
           dist: trusty
           sudo: required
-          env: CUDA=ON
+          env:
+              - CUDA=ON
+              - CUDA_VERSION=9
+        - os: linux
+          dist: trusty
+          sudo: required
+          env:
+              - CUDA=ON
+              - CUDA_VERSION=8
         - os: osx
-          osx_image: xcode9.1
-          env: CUDA=OFF
+          osx_image: xcode9.2
+          env:
+              - CUDA=ON
+              - CUDA_VERSION=9
 cache:
     directories:
         - $HOME/.local
@@ -36,12 +46,28 @@ before_install:
       sudo apt-get -q update
       sudo apt-get -qy install g++-6
       scripts/install_cmake.sh
-      . scripts/install-cuda-ubuntu1604.sh
+      . scripts/install-cuda-ubuntu1604.sh $CUDA_VERSION
       pyenv global 3.6
       pip install --user requests gitpython
-      export CC=gcc-6
-      export CXX=g++-6
+      if [ "$CUDA_VERSION" = "8" ]; then
+        sudo apt-get -qy install g++-5
+        export CC=gcc-5
+        export CXX=g++-5
+      else
+        export CC=gcc-6
+        export CXX=g++-6
+      fi
     elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
+      curl -L https://developer.nvidia.com/compute/cuda/9.1/Prod/local_installers/cuda_9.1.128_mac -o $HOME/cuda_9.1.128_mac.dmg
+      hdiutil mount $HOME/cuda_9.1.128_mac.dmg
+      sleep 5
+      ls -ltr /Volumes/CUDAMacOSXInstaller/CUDAMacOSXInstaller.app/Contents/MacOS
+      sudo /Volumes/CUDAMacOSXInstaller/CUDAMacOSXInstaller.app/Contents/MacOS/CUDAMacOSXInstaller --accept-eula --no-window; export BREW_STATUS=$?
+      echo "Brew status $BREW_STATUS"
+      if [ $BREW_STATUS -ne 0 ]; then
+        echo "Brew Failed"
+        exit $BREW_STATUS
+      fi
       HOMEBREW_NO_AUTO_UPDATE=1 brew install -q python3
       pip3 install -q requests gitpython
     fi
@@ -53,7 +79,7 @@ script: |
     if [ "$TRAVIS_OS_NAME" = osx ]; then otool -L build/ethminer/ethminer; fi
     . build/ethminer/buildinfo.sh
     mkdir package
-    mv build/ethminer.tar.gz package/$PROJECT_NAME-$PROJECT_VERSION-$SYSTEM_NAME-$SYSTEM_PROCESSOR.tar.gz
+    mv build/ethminer.tar.gz package/$PROJECT_NAME-$PROJECT_VERSION-cuda-$CUDA_VERSION-$SYSTEM_NAME-$SYSTEM_PROCESSOR.tar.gz
 
 
 deploy:
