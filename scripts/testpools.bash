@@ -150,9 +150,9 @@ for pool in $POOLS; do
     pool=$(echo "${pool/BTC_WALLET/$BTC_WALLET}")
 
     echo "Testing=$current_test_pattern"
-    echo "./ethminer -v 1 --exit -P $pool $@"
-    echo "./ethminer -v 1 --exit -P $pool $@" > log.txt
-    ./ethminer -v 1 --exit -P $pool $@ >> log.txt 2>&1 &
+    echo "./ethminer -v 1 --exit --report-hashrate -P $pool $@"
+    echo "./ethminer -v 1 --exit --report-hashrate -P $pool $@" > log.txt
+    ./ethminer -v 1 --exit --report-hashrate -P $pool $@ >> log.txt 2>&1 &
     pid=$!
     #echo "PID=$pid"
 
