@@ -26,9 +26,9 @@ matrix:
               - CUDA=ON
               - CUDA_VERSION=8
         - os: osx
-          osx_image: xcode9.1
+          osx_image: xcode9.2
           env:
-              - CUDA=OFF
+              - CUDA=ON
               - CUDA_VERSION=9
 cache:
     directories:
@@ -58,6 +58,16 @@ before_install:
         export CXX=g++-6
       fi
     elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
+      curl -L https://developer.nvidia.com/compute/cuda/9.1/Prod/local_installers/cuda_9.1.128_mac -o $HOME/cuda_9.1.128_mac.dmg
+      hdiutil mount $HOME/cuda_9.1.128_mac.dmg
+      sleep 5
+      ls -ltr /Volumes/CUDAMacOSXInstaller/CUDAMacOSXInstaller.app/Contents/MacOS
+      sudo /Volumes/CUDAMacOSXInstaller/CUDAMacOSXInstaller.app/Contents/MacOS/CUDAMacOSXInstaller --accept-eula --no-window; export BREW_STATUS=$?
+      echo "Brew status $BREW_STATUS"
+      if [ $BREW_STATUS -ne 0 ]; then
+        echo "Brew Failed"
+        exit $BREW_STATUS
+      fi
       HOMEBREW_NO_AUTO_UPDATE=1 brew install -q python3
       pip3 install -q requests gitpython
     fi
