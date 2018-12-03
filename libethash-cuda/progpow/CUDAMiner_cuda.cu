@@ -5,7 +5,7 @@
 */
 
 #include "CUDAMiner_cuda.h"
-#include "cuda_helper.h"
+#include "../cuda_helper.h"
 #include "../libethash/ethash.h"
 
 
