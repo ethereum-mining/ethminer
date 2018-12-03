@@ -1447,14 +1447,21 @@ void EthStratumClient::onRecvSocketDataCompleted(
                     Json::Reader jRdr;
                     if (jRdr.parse(line, jMsg))
                     {
-                        // Run in sync so no 2 different async reads may overlap
-                        processResponse(jMsg);
+                        try
+                        {
+                            // Run in sync so no 2 different async reads may overlap
+                            processResponse(jMsg);
+                        }
+                        catch (const std::exception& _ex)
+                        {
+                            cwarn << "Stratum got invalid Json message : " << _ex.what();
+                        }
                     }
                     else
                     {
                         string what = jRdr.getFormattedErrorMessages();
                         boost::replace_all(what, "\n", " ");
-                        cwarn << "Got invalid Json message : " << what;
+                        cwarn << "Stratum got invalid Json message : " << what;
                     }
                 }
             }

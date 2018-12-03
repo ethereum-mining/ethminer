@@ -204,4 +204,7 @@ std::string getTargetFromDiff(double diff, HexPrefix _prefix = HexPrefix::Add);
 /// Gets the difficulty expressed in hashes to target
 double getHashesToTarget(std::string _target);
 
+/// Formats hashrate
+std::string getFormattedHr(double _hr);
+
 }  // namespace dev

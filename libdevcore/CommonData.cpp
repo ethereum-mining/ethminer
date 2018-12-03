@@ -186,3 +186,22 @@ double dev::getHashesToTarget(string _target)
     BigInteger divisor(_target);
     return double(dividend / divisor);
 }
+
+std::string dev::getFormattedHr(double _hr) 
+{
+    static const char* suffixes[] = {"h", "Kh", "Mh", "Gh"};
+
+    unsigned i = 0;
+    while (true)
+    {
+        if (_hr < 1000.0 || i == 3)
+            break;
+        _hr /= 1000.0;
+        i++;
+    }
+
+    std::stringstream _ret;
+    _ret << fixed << setprecision(2) << _hr << " " << suffixes[i];
+    return _ret.str();
+
+}

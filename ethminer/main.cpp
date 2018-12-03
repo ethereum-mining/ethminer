@@ -35,7 +35,6 @@
 
 #if API_CORE
 #include <libapicore/ApiServer.h>
-#include <libapicore/httpServer.h>
 #include <regex>
 #endif
 
@@ -322,25 +321,6 @@ public:
         app.add_option("--api-port", m_api_port, "", true)->check(CLI::Range(-65535, 65535));
 
         app.add_option("--api-password", m_api_password, "");
-
-        app.add_option("--http-bind", m_http_bind, "", true)
-            ->check([this](const string& bind_arg) -> string {
-                int port;
-                try
-                {
-                    MinerCLI::ParseBind(bind_arg, this->m_http_address, port, false);
-                }
-                catch (const std::exception& ex)
-                {
-                    throw CLI::ValidationError("--http-bind", ex.what());
-                }
-                this->m_http_port = static_cast<uint16_t>(port);
-                // not sure what to return, and the documentation doesn't say either.
-                // https://github.com/CLIUtils/CLI11/issues/144
-                return string("");
-            });
-
-        app.add_option("--http-port", m_http_port, "", true)->check(CLI::Range(65535));
 
 #endif
 
@@ -858,8 +838,7 @@ public:
                  << "                        Specify the block number to test on." << endl
                  << endl
                  << "    -Z,--simulation     UINT [0 ..] Default not set" << endl
-                 << "                        Mining test. Used to test hashing speed."
-                 << endl
+                 << "                        Mining test. Used to test hashing speed." << endl
                  << "                        Specify the block number to test on." << endl
                  << endl;
         }
@@ -869,10 +848,11 @@ public:
         {
             cout << "API Interface Options :" << endl
                  << endl
-                 << "    Ethminer can provide two interfaces for monitor and or control" << endl
-                 << "    Please note that information delivered by API and Http interface" << endl
+                 << "    Ethminer provide an interface for monitor and or control" << endl
+                 << "    Please note that information delivered by API interface" << endl
                  << "    may depend on value of --HWMON" << endl
-                 << endl
+                 << "    A single endpoint is used to accept both HTTP or plain tcp" << endl
+                 << "    requests."<< endl << endl
                  << "    --api-bind          TEXT Default not set" << endl
                  << "                        Set the API address:port the miner should listen "
                     "on. "
@@ -892,17 +872,6 @@ public:
                  << "                        Be advised passwords are sent unencrypted over "
                     "plain "
                     "TCP!!"
-                 << endl
-                 << "    --http-bind         TEXT Default not set" << endl
-                 << "                        Set the http monitoring address:port the miner "
-                    "should "
-                 << endl
-                 << "                        listen on." << endl
-                 << "    --http-port         INT [1 .. 65535] Default not set" << endl
-                 << "                        Set the http port, the miner should listen on all "
-                    "bound"
-                 << endl
-                 << "                        addresses." << endl
                  << endl;
         }
 
@@ -1219,7 +1188,6 @@ public:
     }
 
 private:
-
     void doMiner()
     {
         map<string, Farm::SealerDescriptor> sealers;
@@ -1248,8 +1216,6 @@ private:
         ApiServer api(m_api_address, m_api_port, m_api_password);
         if (m_api_port)
             api.start();
-
-        http_server.run(m_http_address, m_http_port, m_farmHwMonitors);
 
 #endif
 

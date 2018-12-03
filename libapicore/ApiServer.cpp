@@ -8,6 +8,14 @@
 #define HOST_NAME_MAX 255
 #endif
 
+// Define grayscale palette
+#define HTTP_HDR0_COLOR "#e8e8e8"
+#define HTTP_HDR1_COLOR "#f0f0f0"
+#define HTTP_ROW0_COLOR "#f8f8f8"
+#define HTTP_ROW1_COLOR "#ffffff"
+#define HTTP_ROWRED_COLOR "#f46542"
+
+
 /* helper functions getting values from a JSON request */
 static bool getRequestValue(const char* membername, bool& refValue, Json::Value& jRequest,
     bool optional, Json::Value& jResponse)
@@ -727,8 +735,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
 
 void ApiConnection::recvSocketData()
 {
-    // cnote << "ApiConnection::recvSocketData";
-    boost::asio::async_read_until(m_socket, m_recvBuffer, "\n",
+    boost::asio::async_read(m_socket, m_recvBuffer, boost::asio::transfer_at_least(1),
         m_io_strand.wrap(boost::bind(&ApiConnection::onRecvSocketDataCompleted, this,
             boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
 }
@@ -736,70 +743,202 @@ void ApiConnection::recvSocketData()
 void ApiConnection::onRecvSocketDataCompleted(
     const boost::system::error_code& ec, std::size_t bytes_transferred)
 {
-    // cnote << "ApiConnection::onRecvSocketDataCompleted";
-    // Due to the nature of io_service's queue and
-    // the implementation of the loop this event may trigger
-    // late after clean disconnection. Check status of connection
-    // before triggering all stack of calls
+    /*
+    Standard http request detection pattern
+    1st group : any UPPERCASE word
+    2nd group : the path
+    3rd group : HTTP version
+    */
+    static std::regex http_pattern("^([A-Z]{1,6}) (\\/[\\S]*) (HTTP\\/1\\.[0-9]{1})");
+    std::smatch http_matches;
 
     if (!ec && bytes_transferred > 0)
     {
-        // Extract received message
-        std::istream is(&m_recvBuffer);
-        std::string message;
-        getline(is, message);
+        // Extract received message and free the buffer
+        std::string rx_message(
+            boost::asio::buffer_cast<const char*>(m_recvBuffer.data()), bytes_transferred);
+        m_recvBuffer.consume(bytes_transferred);
+        m_message.append(rx_message);
 
-        if (m_socket.is_open())
+        std::string line;
+        std::string linedelimiter;
+        std::size_t linedelimiteroffset;
+
+        if (m_message.size() < 4)
+            return;  // Wait for other data to come in
+
+        if (std::regex_search(
+                m_message, http_matches, http_pattern, std::regex_constants::match_default))
         {
-            if (!message.empty())
+            // We got an HTTP request
+            std::string http_method = http_matches[1].str();
+            std::string http_path = http_matches[2].str();
+            std::string http_ver = http_matches[3].str();
+
+            // Do we support method ?
+            if (http_method != "GET")
             {
-                // Test validity of chunk and process
-                Json::Value jMsg;
-                Json::Value jRes;
-                Json::Reader jRdr;
-                if (jRdr.parse(message, jMsg))
+                std::string what = "Method " + http_method + " not allowed";
+                std::stringstream ss;
+                ss << http_ver << " "
+                   << "405 Method not allowed\r\n"
+                   << "Server: " << ethminer_get_buildinfo()->project_name_with_version << "\r\n"
+                   << "Content-Type: text/plain\r\n"
+                   << "Content-Length: " << what.size() << "\r\n\r\n"
+                   << what << "\r\n";
+                sendSocketData(ss.str(), true);
+                m_message.clear();
+                return;
+            }
+
+            // Do we support path ?
+            if (http_path != "/" && http_path != "/getstat1")
+            {
+                std::string what =
+                    "The requested resource " + http_path + " not found on this server";
+                std::stringstream ss;
+                ss << http_ver << " "
+                   << "404 Not Found\r\n"
+                   << "Server: " << ethminer_get_buildinfo()->project_name_with_version << "\r\n"
+                   << "Content-Type: text/plain\r\n"
+                   << "Content-Length: " << what.size() << "\r\n\r\n"
+                   << what << "\r\n";
+                sendSocketData(ss.str(), true);
+                m_message.clear();
+                return;
+            }
+
+            //// Get all the lines - we actually don't care much
+            //// until we support other http methods or paths
+            //// Keep this for future use (if any)
+            //// Remember to #include <boost/algorithm/string.hpp>
+            // std::vector<std::string> lines;
+            // boost::split(lines, m_message, [](char _c) { return _c == '\n'; });
+
+            std::stringstream ss;  // Builder of the response
+
+            if (http_method == "GET" && (http_path == "/" || http_path == "/getstat1"))
+            {
+                try
                 {
-                    processRequest(jMsg, jRes);
+                    std::string body = getHttpMinerStatDetail();
+                    ss.clear();
+                    ss << http_ver << " "
+                       << "200 Ok Error\r\n"
+                       << "Server: " << ethminer_get_buildinfo()->project_name_with_version
+                       << "\r\n"
+                       << "Content-Type: text/html; charset=utf-8\r\n"
+                       << "Content-Length: " << body.size() << "\r\n\r\n"
+                       << body << "\r\n";
                 }
-                else
+                catch (const std::exception& _ex)
                 {
-                    jRes["jsonrpc"] = "2.0";
-                    jRes["id"] = Json::nullValue;
-                    jRes["error"]["code"] = -32700;
-                    jRes["error"]["message"] = "Parse Error";
+                    std::string what = "Internal error : " + std::string(_ex.what());
+                    ss.clear();
+                    ss << http_ver << " "
+                       << "500 Internal Server Error\r\n"
+                       << "Server: " << ethminer_get_buildinfo()->project_name_with_version
+                       << "\r\n"
+                       << "Content-Type: text/plain\r\n"
+                       << "Content-Length: " << what.size() << "\r\n\r\n"
+                       << what << "\r\n";
                 }
-                sendSocketData(jRes);
+            }
+
+            sendSocketData(ss.str(), true);
+            m_message.clear();
+        }
+        else
+        {
+            // We got a Json request
+            // Process each line in the transmission
+            linedelimiter = "\n";
+
+            linedelimiteroffset = m_message.find(linedelimiter);
+            while (linedelimiteroffset != string::npos)
+            {
+                if (linedelimiteroffset > 0)
+                {
+                    line = m_message.substr(0, linedelimiteroffset);
+                    boost::trim(line);
+
+                    if (!line.empty())
+                    {
+                        // Test validity of chunk and process
+                        Json::Value jMsg;
+                        Json::Value jRes;
+                        Json::Reader jRdr;
+                        if (jRdr.parse(line, jMsg))
+                        {
+                            try
+                            {
+                                // Run in sync so no 2 different async reads may overlap
+                                processRequest(jMsg, jRes);
+                            }
+                            catch (const std::exception& _ex)
+                            {
+                                jRes = Json::Value();
+                                jRes["jsonrpc"] = "2.0";
+                                jRes["id"] = Json::Value::null;
+                                jRes["error"]["errorcode"] = "500";
+                                jRes["error"]["message"] = _ex.what();
+                            }
+                        }
+                        else
+                        {
+                            jRes = Json::Value();
+                            jRes["jsonrpc"] = "2.0";
+                            jRes["id"] = Json::Value::null;
+                            jRes["error"]["errorcode"] = "-32700";
+                            string what = jRdr.getFormattedErrorMessages();
+                            boost::replace_all(what, "\n", " ");
+                            cwarn << "API : Got invalid Json message " << what;
+                            jRes["error"]["message"] = "Json parse error : " + what;
+                        }
+
+                        // Send response to client
+                        sendSocketData(jRes);
+                    }
+                }
+
+                // Next line (if any)
+                m_message.erase(0, linedelimiteroffset + 1);
+                linedelimiteroffset = m_message.find(linedelimiter);
             }
 
             // Eventually keep reading from socket
-            recvSocketData();
+            if (m_socket.is_open())
+                recvSocketData();
         }
     }
     else
     {
-        if (m_socket.is_open())
-        {
-            disconnect();
-        }
+        disconnect();
     }
 }
 
-void ApiConnection::sendSocketData(Json::Value const& jReq)
+void ApiConnection::sendSocketData(Json::Value const& jReq, bool _disconnect)
 {
     if (!m_socket.is_open())
         return;
-
-    std::ostream os(&m_sendBuffer);
-    os << m_jWriter.write(jReq);  // Do not add lf. It's added by writer.
-
-    async_write(m_socket, m_sendBuffer,
-        m_io_strand.wrap(boost::bind(
-            &ApiConnection::onSendSocketDataCompleted, this, boost::asio::placeholders::error)));
+    sendSocketData(m_jWriter.write(jReq), _disconnect);  // Do not add lf. It's added by writer.
 }
 
-void ApiConnection::onSendSocketDataCompleted(const boost::system::error_code& ec)
+void ApiConnection::sendSocketData(std::string const& _s, bool _disconnect)
 {
-    if (ec)
+    if (!m_socket.is_open())
+        return;
+    std::ostream os(&m_sendBuffer);
+    os << _s;
+
+    async_write(m_socket, m_sendBuffer,
+        m_io_strand.wrap(boost::bind(&ApiConnection::onSendSocketDataCompleted, this,
+            boost::asio::placeholders::error, _disconnect)));
+}
+
+void ApiConnection::onSendSocketDataCompleted(const boost::system::error_code& ec, bool _disconnect)
+{
+    if (ec || _disconnect)
         disconnect();
 }
 
@@ -934,6 +1073,102 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
     jRes["mining"] = mininginfo;
 
     return jRes;
+}
+
+std::string ApiConnection::getHttpMinerStatDetail()
+{
+    Json::Value jStat = getMinerStatDetail();
+
+    /* Build up header*/
+    std::stringstream _ret;
+    _ret << "<!doctype html>"
+         << "<html lang=en>"
+         << "<head>"
+         << "<meta charset=utf-8>"
+         << "<meta http-equiv=\"refresh\" content=\"30\">"
+         << "<title>" << jStat["host"]["name"].asString() << "</title>"
+         << "<style>"
+         << "body{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,"
+         << "\"Helvetica Neue\",Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5;"
+         << "text-align:center;}"
+         << "table,td,th{border:1px inset #000;}"
+         << "table{border-spacing:0;}"
+         << "td,th{padding:3px;}"
+         << "tbody tr:nth-child(even){background-color:" << HTTP_ROW0_COLOR << ";}"
+         << "tbody tr:nth-child(odd){background-color:" << HTTP_ROW1_COLOR << ";}"
+         << ".mx-auto{margin-left:auto;margin-right:auto;}"
+         << ".bg-header1{background-color:" << HTTP_HDR1_COLOR << ";}"
+         << ".bg-header0{background-color:" << HTTP_HDR0_COLOR << ";}"
+         << ".bg-red{color:" << HTTP_ROWRED_COLOR << ";}"
+         << "</style>"
+         << "<meta http-equiv=refresh content=30>"
+         << "</head>"
+         << "<body>"
+         << "<table class=mx-auto>"
+         << "<thead>"
+         << "<tr class=bg-header1>"
+         << "<th colspan=9>" << jStat["host"]["version"].asString() << " - "
+         << Farm::f().farmLaunchedFormatted()
+         << "<br>Pool: " << jStat["connection"]["uri"].asString() << "</th>"
+         << "</tr>"
+         << "<tr class=bg-header0>"
+         << "<th>PCI</th>"
+         << "<th>Device</th>"
+         << "<th>Mode</th>"
+         << "<th>Paused</th>"
+         << "<th style=\"text-align: right;\">Hash Rate</th>"
+         << "<th style=\"text-align: right;\">Solutions</th>"
+         << "<th style=\"text-align: right;\">Temp.</th>"
+         << "<th style=\"text-align: right;\">Fan %</th>"
+         << "<th style=\"text-align: right;\">Power</th>"
+         << "</tr>"
+         << "</thead><tbody>";
+
+    /* Loop miners */
+    double total_hashrate = 0;
+    double total_power = 0;
+    unsigned int total_solutions = 0;
+
+    for (Json::Value::ArrayIndex i = 0; i != jStat["devices"].size(); i++)
+    {
+        Json::Value device = jStat["devices"][i];
+        double hashrate = std::stoul(device["mining"]["hashrate"].asString(), nullptr, 16);
+        double power = device["hardware"]["sensors"][2].asDouble();
+        unsigned int solutions = device["mining"]["shares"][0].asUInt();
+        total_hashrate += hashrate;
+        total_power += power;
+        total_solutions += solutions;
+
+        _ret << "<tr" << (device["mining"]["paused"].asBool() ? " class=\"bg-red\"" : "")
+             << ">";  // Open row
+
+        _ret << "<td>" << device["hardware"]["pci"].asString() << "</td>";
+        _ret << "<td>" << device["hardware"]["name"].asString() << "</td>";
+        _ret << "<td>" << device["_mode"].asString() << "</td>";
+
+        _ret << "<td>"
+             << (device["mining"]["paused"].asBool() ? device["mining"]["pause_reason"].asString() :
+                                                       "No")
+             << "</td>";
+
+        _ret << "<td style=\"text-align: right;\">" << dev::getFormattedHr(hashrate) << "</td>";
+
+        _ret << "<td style=\"text-align: right;\">" << device["mining"]["shares"][0].asString() << "</td>";
+        _ret << "<td style=\"text-align: right;\">" << device["hardware"]["sensors"][0].asString() << "</td>";
+        _ret << "<td style=\"text-align: right;\">" << device["hardware"]["sensors"][1].asString() << "</td>";
+        _ret << "<td style=\"text-align: right;\">" << device["hardware"]["sensors"][2].asString() << "</td>";
+
+        _ret << "</tr>";  // Close row
+    }
+    _ret << "</tbody>";
+
+    /* Summarize */
+    _ret << "<tfoot><tr class=bg-header0><td colspan=4>Total</td><td>"
+         << dev::getFormattedHr(total_hashrate) << "</td><td style=\"text-align: right;\">" << total_solutions
+         << "</td><td colspan=3 style=\"text-align: right;\">" << total_power << "</td></tfoot>";
+
+    _ret << "</table></body></html>";
+    return _ret.str();
 }
 
 

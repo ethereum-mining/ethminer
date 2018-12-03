@@ -450,21 +450,9 @@ void PoolManager::showMiningAt()
     if (!m_currentWp)
         return;
 
-    static const char* suffixes[] = {"h", "Kh", "Mh", "Gh"};
     double d = dev::getHashesToTarget(m_currentWp.boundary.hex(HexPrefix::Add));
-    unsigned i;
-
-    for (i = 0; i < 3; i++)
-    {
-        if (d < 1000.0)
-            break;
-        d /= 1000.0;
-    }
-
-    std::stringstream ss;
-    ss << fixed << setprecision(2) << d << " " << suffixes[i];
     cnote << "Epoch : " EthWhite << m_currentWp.epoch << EthReset << " Difficulty : " EthWhite
-          << ss.str() << EthReset;
+          << dev::getFormattedHr(d) << EthReset;
 }
 
 void PoolManager::failovertimer_elapsed(const boost::system::error_code& ec)

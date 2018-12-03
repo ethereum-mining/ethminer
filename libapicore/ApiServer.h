@@ -1,5 +1,7 @@
 #pragma once
 
+#include <regex>
+
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
@@ -49,12 +51,15 @@ private:
     void recvSocketData();
     void onRecvSocketDataCompleted(
         const boost::system::error_code& ec, std::size_t bytes_transferred);
-    void sendSocketData(Json::Value const& jReq);
-    void onSendSocketDataCompleted(const boost::system::error_code& ec);
+    void sendSocketData(Json::Value const& jReq, bool _disconnect = false);
+    void sendSocketData(std::string const& _s, bool _disconnect = false);
+    void onSendSocketDataCompleted(const boost::system::error_code& ec, bool _disconnect = false);
 
     Json::Value getMinerStatDetail();
     Json::Value getMinerStatDetailPerMiner(
         const WorkingProgress& _p, const SolutionStats& _s, std::shared_ptr<Miner> _miner);
+
+    std::string getHttpMinerStatDetail();
 
     Disconnected m_onDisconnected;
 
@@ -65,6 +70,8 @@ private:
     boost::asio::streambuf m_sendBuffer;
     boost::asio::streambuf m_recvBuffer;
     Json::FastWriter m_jWriter;
+
+    std::string m_message;  // The internal message string buffer
 
     bool m_readonly = false;
     std::string m_password = "";
