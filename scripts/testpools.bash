@@ -71,13 +71,13 @@ POOLS="$POOLS stratum1+tcp://ETH_WALLET.WORKERNAME@us1.ethpool.org:3333"
 #f2pool.com
 POOLS="$POOLS stratum1+tcp://ETH_WALLET.WORKERNAME@eth.f2pool.com:8008"
 #miningpoolhub.com
-POOLS="$POOLS stratum2+tcp://USERNAME.WORKERNAME:WORKERPWD@asia.ethash-hub.miningpoolhub.com:20535"
-POOLS="$POOLS stratum2+tcp://USERNAME.WORKERNAME:WORKERPWD@europe.ethash-hub.miningpoolhub.com:20535"
-POOLS="$POOLS stratum2+tcp://USERNAME.WORKERNAME:WORKERPWD@us-east.ethash-hub.miningpoolhub.com:20535"
+POOLS="$POOLS stratum2+tcp://USERNAME%2eWORKERNAME:WORKERPWD@asia.ethash-hub.miningpoolhub.com:20535"
+POOLS="$POOLS stratum2+tcp://USERNAME%2eWORKERNAME:WORKERPWD@europe.ethash-hub.miningpoolhub.com:20535"
+POOLS="$POOLS stratum2+tcp://USERNAME%2eWORKERNAME:WORKERPWD@us-east.ethash-hub.miningpoolhub.com:20535"
 #miningpoolhub.com-ssl - see issue 1629 - seems not working
-#POOLS="$POOLS stratum2+ssl://USERNAME.WORKERNAME:WORKERPWD@asia.ethash-hub.miningpoolhub.com:20535"
-#POOLS="$POOLS stratum2+ssl://USERNAME.WORKERNAME:WORKERPWD@europe.ethash-hub.miningpoolhub.com:20535"
-#POOLS="$POOLS stratum2+ssl://USERNAME.WORKERNAME:WORKERPWD@us-east.ethash-hub.miningpoolhub.com:20535"
+#POOLS="$POOLS stratum2+ssl://USERNAME%2eWORKERNAME:WORKERPWD@asia.ethash-hub.miningpoolhub.com:20535"
+#POOLS="$POOLS stratum2+ssl://USERNAME%2eWORKERNAME:WORKERPWD@europe.ethash-hub.miningpoolhub.com:20535"
+#POOLS="$POOLS stratum2+ssl://USERNAME%2eWORKERNAME:WORKERPWD@us-east.ethash-hub.miningpoolhub.com:20535"
 #nanopool.org
 POOLS="$POOLS stratum1+tcp://ETH_WALLET@eth-asia1.nanopool.org:9999/WORKERNAME/EMAIL"
 POOLS="$POOLS stratum1+tcp://ETH_WALLET@eth-eu1.nanopool.org:9999/WORKERNAME/EMAIL"

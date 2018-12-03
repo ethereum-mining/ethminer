@@ -24,6 +24,18 @@ To enable it simply replace tcp with either:
 
 thus your connection scheme changes to `-P stratum+tls://[...]` or `-P stratum+tls12://[...]`. Same applies for `stratum1` and `stratum2`.
 
+## Special characters in variables
+
+You can use the %xx (xx=hexvalue of character) to pass special values.
+Some examples:
+
+| Code | Character |
+| :---: |  :---: |
+|%2e | . |
+|%2f | / |
+|%3a | : |
+|%40 | @ |
+
 ## Only for version 0.16+ (older versions not affected)
 
 Stratum autodetection has been introduced to mitigate user's duty to guess/find which stratum flavour to apply (stratum or stratum1 or stratum2).
@@ -151,12 +163,15 @@ SSL connection:
 ### miningpoolhub.com
 
 ```
--P stratum2+tcp://USERNAME.WORKERNAME:WORKERPWD@asia.ethash-hub.miningpoolhub.com:20535
--P stratum2+tcp://USERNAME.WORKERNAME:WORKERPWD@europe.ethash-hub.miningpoolhub.com:20535
--P stratum2+tcp://USERNAME.WORKERNAME:WORKERPWD@us-east.ethash-hub.miningpoolhub.com:20535
+-P stratum2+tcp://USERNAME%2eWORKERNAME:WORKERPWD@asia.ethash-hub.miningpoolhub.com:20535
+-P stratum2+tcp://USERNAME%2eWORKERNAME:WORKERPWD@europe.ethash-hub.miningpoolhub.com:20535
+-P stratum2+tcp://USERNAME%2eWORKERNAME:WORKERPWD@us-east.ethash-hub.miningpoolhub.com:20535
 ```
 
-HINT: It seems the password is not being verified by the pool so you can use a plain `x` as `WORKERPWD`.
+HINTS:
+
+* miningpoolhub.com needs username.workername in the internal login process. Use "%2e" to join them into one parameter.
+* It seems the password is not being verified by the pool so you can use a plain `x` as `WORKERPWD`.
 
 ### nanopool.org
 
