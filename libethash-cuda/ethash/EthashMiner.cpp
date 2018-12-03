@@ -19,6 +19,9 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 #include <ethash/ethash.hpp>
 
 #include "../CUDAMiner.h"
+#include "ethash_cuda_miner_kernel.h"
+
+#include "../dag_globals.h"
 
 using namespace std;
 using namespace dev;

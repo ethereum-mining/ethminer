@@ -53,8 +53,22 @@ extern const dim3 blockDim;
 extern const uint3 threadIdx;
 #endif
 
+uint32_t __byte_perm(uint32_t x, uint32_t y, uint32_t z);
+
 extern cudaError_t MyStreamSynchronize(cudaStream_t stream, int situation, int thr_id);
 
+#define CUDA_SAFE_CALL(call)                                                              \
+    do                                                                                    \
+    {                                                                                     \
+        cudaError_t err = call;                                                           \
+        if (cudaSuccess != err)                                                           \
+        {                                                                                 \
+            std::stringstream ss;                                                         \
+            ss << "CUDA error in func " << __FUNCTION__ << " at line " << __LINE__ << ' ' \
+               << cudaGetErrorString(err);                                                \
+            throw cuda_runtime_error(ss.str());                                           \
+        }                                                                                 \
+    } while (0)
 
 #ifndef SPH_C32
 #define SPH_C32(x) ((x##U))

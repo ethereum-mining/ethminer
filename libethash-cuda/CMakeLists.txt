@@ -1,25 +1,27 @@
 if (PROGPOW)
+	#message(FATAL_ERROR "tick")
 	add_custom_command(
 		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/progpow/CUDAMiner_kernel.h
 		COMMAND ${CMAKE_COMMAND} ARGS
 		-DBIN2H_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/progpow/CUDAMiner_kernel.cu"
 		-DBIN2H_VARIABLE_NAME=CUDAMiner_kernel
 		-DBIN2H_HEADER_FILE="${CMAKE_CURRENT_BINARY_DIR}/progpow/CUDAMiner_kernel.h"
-		-P "libethash-cl/bin2h.cmake"
+		-P "${CMAKE_CURRENT_SOURCE_DIR}/../libethash-cl/bin2h.cmake"
 		COMMENT "Generating CUDA Kernel Byte Array"
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/progpow/CUDAMiner_kernel.cu
 	)
+	
 	add_custom_target(cuda_kernel DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/progpow/CUDAMiner_kernel.h ${CMAKE_CURRENT_SOURCE_DIR}/progpow/CUDAMiner_kernel.cu)
+	
 endif()
 
 find_package(CUDA REQUIRED)
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};--ptxas-options=-v;-use_fast_math)
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};--ptxas-options=-v;-lineinfo;-use_fast_math)
 
 if (NOT MSVC)
 	list(APPEND CUDA_NVCC_FLAGS "--disable-warnings")
 endif()
-
 list(APPEND CUDA_NVCC_FLAGS_RELEASE -O3)
 list(APPEND CUDA_NVCC_FLAGS_DEBUG -G)
 
@@ -39,6 +41,7 @@ else()
 		list(APPEND CUDA_NVCC_FLAGS "-gencode arch=compute_75,code=sm_75")
 	endif()
 endif()
+
 if(PROGPOW)
 	file(GLOB sources "progpow/*.cpp" "progpow/*.cu")
 	file(GLOB headers "progpow/*.h" "progpow/*.cuh" ${CMAKE_CURRENT_BINARY_DIR}/progpow/CUDAMiner_kernel.h)
@@ -61,5 +64,6 @@ if(PROGPOW)
 else()
 	target_link_libraries(ethash-cuda ethcore ethash::ethash  Boost::filesystem)
 endif()
+
 target_include_directories(ethash-cuda PUBLIC ${CUDA_INCLUDE_DIRS})
 target_include_directories(ethash-cuda PRIVATE .. ${CMAKE_CURRENT_BINARY_DIR})

@@ -3,6 +3,8 @@
 #endif
 
 #include "../cuda_helper.h"
+#include <libprogpow/ProgPow.h>
+#include "ProgPowMiner.h"
 
 typedef struct {
     uint32_t count;

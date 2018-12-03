@@ -19,11 +19,10 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <time.h>
 #include <functional>
-#include <libethash/ethash.h>
+#include <ethash/ethash.hpp>
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
-#include "libethash/internal.h"
 #include <libprogpow/ProgPow.h>
 #include <cuda.h>
 #include "CUDAMiner_cuda.h"
@@ -75,9 +74,7 @@ public:
 
 	bool cuda_init(
 		size_t numDevices,
-		ethash_light_t _light,
-		uint8_t const* _lightData,
-		uint64_t _lightSize,
+		int epoch,
 		unsigned _deviceId,
 		bool _cpyToHost,
 		uint8_t * &hostDAG,

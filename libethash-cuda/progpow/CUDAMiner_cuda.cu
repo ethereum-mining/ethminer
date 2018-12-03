@@ -6,7 +6,8 @@
 
 #include "CUDAMiner_cuda.h"
 #include "../cuda_helper.h"
-#include "../libethash/ethash.h"
+
+#include <ethash/ethash.hpp>
 
 
 // Implementation based on:
@@ -93,7 +94,8 @@ __device__ uint4 fnv4(uint4 a, uint4 b)
 	return c;
 }
 
-#define NODE_WORDS (ETHASH_HASH_BYTES/sizeof(uint32_t))
+#define ETHASH_DATASET_PARENTS 256
+#define NODE_WORDS (64 / 4)
 
 __global__ void
 ethash_calculate_dag_item(uint32_t start, hash64_t *g_dag, uint64_t dag_bytes, hash64_t* g_light, uint32_t light_words)
