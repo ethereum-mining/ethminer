@@ -35,22 +35,6 @@ std::ostream& operator<<(std::ostream& os, const HwMonitor& _hw)
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const FormattedMemSize& s)
-{
-    static const char* suffixes[] = {"B", "KB", "MB", "GB"};
-    double d = double(s.m_size);
-    unsigned i;
-    for (i = 0; i < 3; i++)
-    {
-        if (d < 1024.0)
-            break;
-        d /= 1024.0;
-    }
-    std::ostringstream stream;
-    stream << fixed << setprecision(2) << d << ' ' << suffixes[i];
-    return os << stream.str();
-}
-
 std::ostream& operator<<(std::ostream& _out, const WorkingProgress& _p)
 {
     float mh = _p.hashRate / 1000000.0f;

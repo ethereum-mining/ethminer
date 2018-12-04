@@ -629,14 +629,14 @@ public:
                     cout << setw(5) << (it->second.clDetected ? "Yes" : "");
 #endif
                 cout << resetiosflags(ios::left) << setw(13)
-                     << FormattedMemSize(it->second.TotalMemory) << " ";
+                     << getFormattedMemory((double)it->second.TotalMemory) << " ";
 #if ETH_ETHASHCL
                 if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
                 {
                     cout << resetiosflags(ios::left) << setw(13)
-                         << FormattedMemSize(it->second.clMaxMemAlloc) << " ";
+                         << getFormattedMemory((double)it->second.clMaxMemAlloc) << " ";
                     cout << resetiosflags(ios::left) << setw(13)
-                         << FormattedMemSize(it->second.clMaxWorkGroup) << " ";
+                         << getFormattedMemory((double)it->second.clMaxWorkGroup) << " ";
                 }
 #endif
                 cout << resetiosflags(ios::left) << endl;

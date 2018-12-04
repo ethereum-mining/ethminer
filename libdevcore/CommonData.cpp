@@ -14,10 +14,6 @@
     You should have received a copy of the GNU General Public License
     along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file CommonData.cpp
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- */
 
 #include <cstdlib>
 
@@ -26,34 +22,6 @@
 
 using namespace std;
 using namespace dev;
-
-std::string dev::escaped(std::string const& _s, bool _all)
-{
-    static const map<char, char> prettyEscapes{{'\r', 'r'}, {'\n', 'n'}, {'\t', 't'}, {'\v', 'v'}};
-    std::string ret;
-    ret.reserve(_s.size() + 2);
-    ret.push_back('"');
-    for (auto i : _s)
-        if (i == '"' && !_all)
-            ret += "\\\"";
-        else if (i == '\\' && !_all)
-            ret += "\\\\";
-        else if (prettyEscapes.count(i) && !_all)
-        {
-            ret += '\\';
-            ret += prettyEscapes.find(i)->second;
-        }
-        else if (i < ' ' || _all)
-        {
-            ret += "\\x";
-            ret.push_back("0123456789abcdef"[(uint8_t)i / 16]);
-            ret.push_back("0123456789abcdef"[(uint8_t)i % 16]);
-        }
-        else
-            ret.push_back(i);
-    ret.push_back('"');
-    return ret;
-}
 
 int dev::fromHex(char _i, WhenError _throw)
 {
@@ -187,21 +155,31 @@ double dev::getHashesToTarget(string _target)
     return double(dividend / divisor);
 }
 
-std::string dev::getFormattedHr(double _hr) 
+std::string dev::getFormattedHashes(double _hr) 
 {
-    static const char* suffixes[] = {"h", "Kh", "Mh", "Gh"};
+    static string suffixes[] = {"h", "Kh", "Mh", "Gh"};
+    return getScaledSize(_hr, 1000.0, suffixes);
+}
 
+std::string dev::getFormattedMemory(double _mem)
+{
+    static string suffixes[] = {"B", "KB", "MB", "GB"};
+    return getScaledSize(_mem, 1024.0, suffixes);
+}
+
+std::string dev::getScaledSize(double _value, double _divisor, string _sizes[]) 
+{
+    unsigned s = sizeof(_sizes);
     unsigned i = 0;
     while (true)
     {
-        if (_hr < 1000.0 || i == 3)
+        if (_value < _divisor || i == s - 1)
             break;
-        _hr /= 1000.0;
+        _value /= _divisor;
         i++;
     }
 
     std::stringstream _ret;
-    _ret << fixed << setprecision(2) << _hr << " " << suffixes[i];
+    _ret << fixed << setprecision(2) << _value << " " << _sizes[i];
     return _ret.str();
-
 }

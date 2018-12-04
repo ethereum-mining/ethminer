@@ -1040,7 +1040,7 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
                 (minerDescriptor.Type == DeviceTypeEnum::Accelerator ? "ACCELERATOR" : "CPU"));
     ostringstream ss;
     ss << (minerDescriptor.clDetected ? minerDescriptor.clName : minerDescriptor.cuName) << " "
-       << FormattedMemSize(minerDescriptor.TotalMemory);
+       << dev::getFormattedMemory((double)minerDescriptor.TotalMemory);
     hwinfo["name"] = ss.str();
 
     /* Hardware Sensors*/
@@ -1115,6 +1115,7 @@ std::string ApiConnection::getHttpMinerStatDetail()
          << ".bg-header1{background-color:" << HTTP_HDR1_COLOR << ";}"
          << ".bg-header0{background-color:" << HTTP_HDR0_COLOR << ";}"
          << ".bg-red{color:" << HTTP_ROWRED_COLOR << ";}"
+         << ".right{text-align: right;}"
          << "</style>"
          << "<meta http-equiv=refresh content=30>"
          << "</head>"
@@ -1131,11 +1132,11 @@ std::string ApiConnection::getHttpMinerStatDetail()
          << "<th>Device</th>"
          << "<th>Mode</th>"
          << "<th>Paused</th>"
-         << "<th style=\"text-align: right;\">Hash Rate</th>"
-         << "<th style=\"text-align: right;\">Solutions</th>"
-         << "<th style=\"text-align: right;\">Temp.</th>"
-         << "<th style=\"text-align: right;\">Fan %</th>"
-         << "<th style=\"text-align: right;\">Power</th>"
+         << "<th class=right>Hash Rate</th>"
+         << "<th class=right>Solutions</th>"
+         << "<th class=right>Temp.</th>"
+         << "<th class=right>Fan %</th>"
+         << "<th class=right>Power</th>"
          << "</tr>"
          << "</thead><tbody>";
 
@@ -1166,21 +1167,21 @@ std::string ApiConnection::getHttpMinerStatDetail()
                                                        "No")
              << "</td>";
 
-        _ret << "<td style=\"text-align: right;\">" << dev::getFormattedHr(hashrate) << "</td>";
+        _ret << "<td class=right>" << dev::getFormattedHashes(hashrate) << "</td>";
 
-        _ret << "<td style=\"text-align: right;\">" << device["mining"]["shares"][0].asString() << "</td>";
-        _ret << "<td style=\"text-align: right;\">" << device["hardware"]["sensors"][0].asString() << "</td>";
-        _ret << "<td style=\"text-align: right;\">" << device["hardware"]["sensors"][1].asString() << "</td>";
-        _ret << "<td style=\"text-align: right;\">" << device["hardware"]["sensors"][2].asString() << "</td>";
+        _ret << "<td class=right>" << device["mining"]["shares"][0].asString() << "</td>";
+        _ret << "<td class=right>" << device["hardware"]["sensors"][0].asString() << "</td>";
+        _ret << "<td class=right>" << device["hardware"]["sensors"][1].asString() << "</td>";
+        _ret << "<td class=right>" << device["hardware"]["sensors"][2].asString() << "</td>";
 
         _ret << "</tr>";  // Close row
     }
     _ret << "</tbody>";
 
     /* Summarize */
-    _ret << "<tfoot><tr class=bg-header0><td colspan=4 style=\"text-align: right;\">Total</td><td style=\"text-align: right;\">"
-         << dev::getFormattedHr(total_hashrate) << "</td><td style=\"text-align: right;\">" << total_solutions
-         << "</td><td colspan=3 style=\"text-align: right;\">" << total_power << "</td></tfoot>";
+    _ret << "<tfoot><tr class=bg-header0><td colspan=4 class=right>Total</td><td class=right>"
+         << dev::getFormattedHashes(total_hashrate) << "</td><td class=right>" << total_solutions
+         << "</td><td colspan=3 class=right>" << total_power << "</td></tfoot>";
 
     _ret << "</table></body></html>";
     return _ret.str();

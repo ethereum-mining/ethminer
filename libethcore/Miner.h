@@ -154,15 +154,6 @@ struct HwMonitor
 
 std::ostream& operator<<(std::ostream& os, const HwMonitor& _hw);
 
-class FormattedMemSize
-{
-public:
-    explicit FormattedMemSize(uint64_t s) noexcept { m_size = s; }
-    uint64_t m_size;
-};
-
-std::ostream& operator<<(std::ostream& os, const FormattedMemSize& s);
-
 /// Pause mining
 enum MinerPauseEnum
 {

@@ -205,6 +205,12 @@ std::string getTargetFromDiff(double diff, HexPrefix _prefix = HexPrefix::Add);
 double getHashesToTarget(std::string _target);
 
 /// Formats hashrate
-std::string getFormattedHr(double _hr);
+std::string getFormattedHashes(double _hr);
+
+/// Formats hashrate
+std::string getFormattedMemory(double _mem);
+
+/// Generic function to scale a value
+std::string getScaledSize(double _value, double _divisor, std::string _sizes[]);
 
 }  // namespace dev

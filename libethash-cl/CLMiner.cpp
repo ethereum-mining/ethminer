@@ -668,7 +668,7 @@ bool CLMiner::initDevice()
     else
         s << " " << m_deviceDescriptor.clDeviceVersion;
 
-    s << " Memory : " << FormattedMemSize(m_deviceDescriptor.TotalMemory);
+    s << " Memory : " << dev::getFormattedMemory((double)m_deviceDescriptor.TotalMemory);
     cllog << s.str();
 
     if ((m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Amd) &&
@@ -701,13 +701,15 @@ bool CLMiner::initEpoch_internal()
     if (m_deviceDescriptor.TotalMemory < RequiredMemory)
     {
         cllog << "Epoch " << m_epochContext.epochNumber << " requires "
-                << FormattedMemSize(RequiredMemory) << " memory. Only " << FormattedMemSize(m_deviceDescriptor.TotalMemory) << " available on device.";
+              << dev::getFormattedMemory((double)RequiredMemory) << " memory. Only "
+              << dev::getFormattedMemory((double)m_deviceDescriptor.TotalMemory)
+              << " available on device.";
         pause(MinerPauseEnum::PauseDueToInsufficientMemory);
         return true;  // This will prevent to exit the thread and
                       // Eventually resume mining when changing coin or epoch (NiceHash)
     }
 
-    cllog << "Generating DAG + Light : " << FormattedMemSize(RequiredMemory);
+    cllog << "Generating DAG + Light : " << dev::getFormattedMemory((double)RequiredMemory);
 
     try
     {
@@ -839,12 +841,15 @@ bool CLMiner::initEpoch_internal()
         // create buffer for dag
         try
         {
-            cllog << "Creating light cache buffer, size: " << FormattedMemSize(m_epochContext.lightSize);
+            cllog << "Creating light cache buffer, size: "
+                  << dev::getFormattedMemory((double)m_epochContext.lightSize);
             m_light.clear();
             m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.lightSize));
-            cllog << "Creating DAG buffer, size: " << FormattedMemSize(m_epochContext.dagSize)
+            cllog << "Creating DAG buffer, size: "
+                  << dev::getFormattedMemory((double)m_epochContext.dagSize)
                   << ", free: "
-                  << FormattedMemSize(m_deviceDescriptor.TotalMemory - RequiredMemory);
+                  << dev::getFormattedMemory(
+                         (double)(m_deviceDescriptor.TotalMemory - RequiredMemory));
             m_dag.clear();
             m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize));
             cllog << "Loading kernels";
@@ -909,7 +914,8 @@ bool CLMiner::initEpoch_internal()
         }
 
         auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startInit);
-        cllog << FormattedMemSize(m_epochContext.dagSize) << " of DAG data generated in "
+        cllog << dev::getFormattedMemory((double)m_epochContext.dagSize)
+              << " of DAG data generated in "
               << dagTime.count() << " ms.";
     }
     catch (cl::Error const& err)
