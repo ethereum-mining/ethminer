@@ -4,21 +4,8 @@
 
 #include "../cuda_helper.h"
 #include <libprogpow/ProgPow.h>
+#include "../dag_globals.h"
 #include "ProgPowMiner.h"
-
-typedef struct {
-    uint32_t count;
-    struct {
-        // One word for gid and 8 for mix hash
-        uint32_t gid;
-        uint32_t mix[8];
-    } result[SEARCH_RESULTS];
-} search_results;
-
-typedef struct
-{
-    uint32_t uint32s[32 / sizeof(uint32_t)];
-} hash32_t;
 
 // Implementation based on:
 // https://github.com/mjosaarinen/tiny_sha3/blob/master/sha3.c
@@ -144,7 +131,7 @@ progpow_search(
     const hash32_t header,
     const uint64_t target,
     const dag_t *g_dag,
-    volatile search_results* g_output,
+    volatile Search_results* g_output,
     bool hack_false
     )
 {

@@ -59,7 +59,7 @@ public:
     struct SealerDescriptor
     {
         std::function<unsigned()> instances;
-        std::function<Miner*(unsigned)> create;
+        std::function<Miner*(FarmFace&, unsigned)> create;
     };
 
     Farm(bool hwmon, bool pwron);

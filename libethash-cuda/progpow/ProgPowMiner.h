@@ -24,20 +24,20 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
 #include <libprogpow/ProgPow.h>
+#include "../dag_generation_kernel.h"
 #include <cuda.h>
-#include "CUDAMiner_cuda.h"
 
 namespace dev
 {
 namespace eth
 {
 
-class CUDAMiner: public Miner
+class ProgPowMiner: public Miner
 {
 
 public:
-	CUDAMiner(FarmFace& _farm, unsigned _index);
-	~CUDAMiner() override;
+	ProgPowMiner(FarmFace& _farm, unsigned _index);
+	~ProgPowMiner() override;
 
 	static unsigned instances()
 	{
@@ -119,7 +119,7 @@ private:
 
 	CUmodule m_module;
 	CUfunction m_kernel;
-	volatile search_results** m_search_buf;
+	volatile Search_results** m_search_buf;
 	cudaStream_t  * m_streams;
 
 	/// The local work size for the search

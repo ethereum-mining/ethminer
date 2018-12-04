@@ -20,6 +20,7 @@ struct Search_Result
     uint32_t mix[8];
     uint32_t pad[7];  // pad to size power of 2
 };
+#define SEARCH_RESULTS 4
 
 struct Search_results
 {
@@ -33,6 +34,7 @@ struct Search_results
 typedef struct
 {
     uint4 uint4s[32 / sizeof(uint4)];
+    uint32_t uint32s[32 / sizeof(uint32_t)];
 } hash32_t;
 
 typedef struct

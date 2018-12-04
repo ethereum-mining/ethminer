@@ -17,7 +17,7 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include "dag_generation_kernel.h"
+#include "../dag_generation_kernel.h"
 
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
@@ -94,3 +94,4 @@ private:
 
 }  // namespace eth
 }  // namespace dev
+
