@@ -50,7 +50,12 @@ wrap_adl_handle* wrap_adl_create()
 
     void* adl_dll = wrap_dlopen(tmp);
     if (adl_dll == nullptr)
+    {
+        cwarn << "Failed to obtain all required ADL function pointers";
+        cwarn << "AMD hardware monitoring disabled";
         return nullptr;
+    }
+
 
     adlh = (wrap_adl_handle*)calloc(1, sizeof(wrap_adl_handle));
 
@@ -89,9 +94,9 @@ wrap_adl_handle* wrap_adl_create()
         adlh->adl2MainControlCreate == nullptr || adlh->adl2MainControlRefresh == nullptr ||
         adlh->adl2MainControlDestroy == nullptr || adlh->adl2Overdrive6CurrentPowerGet == nullptr)
     {
-#if 0
-        printf("Failed to obtain all required ADL function pointers\n");
-#endif
+        cwarn << "Failed to obtain all required ADL function pointers";
+        cwarn << "AMD hardware monitoring disabled";
+
         wrap_dlclose(adlh->adl_dll);
         free(adlh);
         return nullptr;
