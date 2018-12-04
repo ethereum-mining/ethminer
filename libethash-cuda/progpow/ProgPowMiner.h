@@ -36,13 +36,11 @@ class ProgPowMiner: public Miner
 {
 
 public:
-	ProgPowMiner(FarmFace& _farm, unsigned _index);
+	ProgPowMiner(unsigned _index);
 	~ProgPowMiner() override;
 
-	static unsigned instances()
-	{
-		return s_numInstances > 0 ? s_numInstances : 1;
-	}
+	static unsigned instances();
+
 	static unsigned getNumDevices();
 	static void listDevices();
 	static void setParallelHash(unsigned _parallelHash);

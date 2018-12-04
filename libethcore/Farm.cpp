@@ -132,7 +132,7 @@ bool Farm::start(std::string const& _sealer, bool mixed)
     for (unsigned i = start; i < ins; ++i)
     {
         // TODO: Improve miners creation, use unique_ptr.
-        m_miners.push_back(std::shared_ptr<Miner>(m_sealers[_sealer].create(*this, i)));
+        m_miners.push_back(std::shared_ptr<Miner>(m_sealers[_sealer].create(i)));
 
         // Start miners' threads. They should pause waiting for new work
         // package.

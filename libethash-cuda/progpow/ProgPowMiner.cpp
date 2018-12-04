@@ -46,7 +46,7 @@ struct CUDASwitchChannel: public LogChannel
 #define cudalog clog(CUDAChannel)
 #define cudaswitchlog clog(CUDASwitchChannel)
 
-ProgPowMiner::ProgPowMiner(FarmFace& _farm, unsigned _index) :
+ProgPowMiner::ProgPowMiner(unsigned _index) :
 	Miner("cuda-", _farm, _index),
 	m_light(getNumDevices()) {}
 
@@ -76,7 +76,7 @@ bool ProgPowMiner::init(int epoch)
     
 		if (s_dagLoadMode == DAG_LOAD_MODE_SINGLE)
 		{
-			if (s_dagLoadIndex >= s_numInstances && s_dagInHostMemory)
+			if (s_dagLoadIndex >= ProgPowMiner::s_numInstances && s_dagInHostMemory)
 			{
 				// all devices have loaded DAG, we can free now
 				delete[] s_dagInHostMemory;
@@ -164,6 +164,11 @@ void ProgPowMiner::kick_miner()
 void ProgPowMiner::setNumInstances(unsigned _instances)
 {
         s_numInstances = std::min<unsigned>(_instances, getNumDevices());
+}
+
+unsigned ProgPowMiner::instances()
+{
+	return s_numInstances > 0 ? s_numInstances : 1;
 }
 
 void ProgPowMiner::setDevices(const vector<unsigned>& _devices, unsigned _selectedDeviceCount)

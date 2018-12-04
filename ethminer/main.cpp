@@ -799,15 +799,15 @@ private:
         map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
         sealers["opencl"] = Farm::SealerDescriptor{
-            &CLMiner::instances, [](FarmFace& _farm, unsigned _index) { return new CLMiner(_index); }};
+            &CLMiner::instances, [](unsigned _index) { return new CLMiner(_index); }};
 #endif
 #if ETH_ETHASHCUDA
         sealers["cuda"] = Farm::SealerDescriptor{
-            &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index) { return new CUDAMiner(_index); }};
+            &CUDAMiner::instances, [](unsigned _index) { return new CUDAMiner(_index); }};
 #endif
 #if PROGPOW
         sealers["cuda"] = Farm::SealerDescriptor{
-			&ProgPowMiner::instances, [](FarmFace& _farm, unsigned _index){ return new ProgPowMiner(_farm, _index); }
+			&ProgPowMiner::instances, [](unsigned _index){ return new ProgPowMiner(_index); }
 		};
 #endif
         Farm::f().setSealers(sealers);
@@ -905,15 +905,15 @@ private:
         map<string, Farm::SealerDescriptor> sealers;
 #if ETH_ETHASHCL
         sealers["opencl"] = Farm::SealerDescriptor{
-            &CLMiner::instances, [](FarmFace& _farm, unsigned _index) { return new CLMiner(_index); }};
+            &CLMiner::instances, [](unsigned _index) { return new CLMiner(_index); }};
 #endif
 #if ETH_ETHASHCUDA
         sealers["cuda"] = Farm::SealerDescriptor{
-            &CUDAMiner::instances, [](FarmFace& _farm, unsigned _index) { return new CUDAMiner(_index); }};
+            &CUDAMiner::instances, [](unsigned _index) { return new CUDAMiner(_index); }};
 #endif
 #if PROGPOW
         sealers["cuda"] = Farm::SealerDescriptor{
-			&ProgPowMiner::instances, [](FarmFace& _farm, unsigned _index){ return new ProgPowMiner(_farm, _index); }
+			&ProgPowMiner::instances, [](unsigned _index){ return new ProgPowMiner(_index); }
 		};
 #endif
         
@@ -1048,7 +1048,7 @@ private:
     unsigned m_numStreams = ProgPowMiner::c_defaultNumStreams;
     unsigned m_cudaGridSize = ProgPowMiner::c_defaultGridSize;
     unsigned m_cudaBlockSize = ProgPowMiner::c_defaultBlockSize;
-#elif
+#else
     unsigned m_numStreams = CUDAMiner::c_defaultNumStreams;
     unsigned m_cudaGridSize = CUDAMiner::c_defaultGridSize;
     unsigned m_cudaBlockSize = CUDAMiner::c_defaultBlockSize;
