@@ -49,7 +49,7 @@ private:
 
     Json::Value getMinerStatDetail();
     Json::Value getMinerStatDetailPerMiner(
-        const WorkingProgress& _p, const SolutionStats& _s, std::shared_ptr<Miner> _miner);
+        const WorkingProgress& _p, std::shared_ptr<Miner> _miner);
 
     std::string getHttpMinerStatDetail();
 

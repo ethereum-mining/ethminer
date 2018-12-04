@@ -33,6 +33,7 @@ Farm::Farm(
     m_this = this;
     m_hwmonlvl = hwmonlvl;
     m_noeval = noeval;
+    m_farm_account = SolutionAccountType();
 
     // Init HWMON if needed
     if (m_hwmonlvl)
@@ -254,6 +255,7 @@ bool Farm::start()
 
             m_miners.push_back(std::shared_ptr<Miner>(m_sealers[sealer].create(m_miners.size())));
             m_miners.back()->setDescriptor(it->second);
+            m_miners_account.push_back(SolutionAccountType());
             m_miners.back()->startWorking();
         }
         m_isMining.store(true, std::memory_order_relaxed);
@@ -294,6 +296,9 @@ void Farm::stop()
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::stop() end");
 }
 
+/**
+ * @brief Pauses the whole collection of miners
+ */
 void Farm::pause()
 {
     // Signal each miner to suspend mining
@@ -303,11 +308,17 @@ void Farm::pause()
         m->pause(MinerPauseEnum::PauseDueToFarmPaused);
 }
 
+/**
+ * @brief Returns whether or not this farm is paused for any reason
+ */
 bool Farm::paused()
 {
     return m_paused.load(std::memory_order_relaxed);
 }
 
+/**
+ * @brief Resumes from a pause condition
+ */
 void Farm::resume()
 {
     // Signal each miner to resume mining
@@ -348,6 +359,55 @@ bool Farm::reboot(const std::vector<std::string>& args)
 #endif
 
     return spawn_file_in_bin_dir(filename, args);
+}
+
+void Farm::accountSolution(unsigned _minerIdx, SolutionAccountingEnum _accounting) 
+{
+    if (_accounting == SolutionAccountingEnum::Accepted) 
+    {
+        m_farm_account.accepted++;
+        m_farm_account.tstamp = std::chrono::steady_clock::now();
+        m_miners_account.at(_minerIdx).accepted++;
+        m_miners_account.at(_minerIdx).tstamp = std::chrono::steady_clock::now();
+    }
+    if (_accounting == SolutionAccountingEnum::Rejected)
+    {
+        m_farm_account.rejected++;
+        m_farm_account.tstamp = std::chrono::steady_clock::now();
+        m_miners_account.at(_minerIdx).rejected++;
+        m_miners_account.at(_minerIdx).tstamp = std::chrono::steady_clock::now();
+    }
+    if (_accounting == SolutionAccountingEnum::Failed)
+    {
+        m_farm_account.failed++;
+        m_farm_account.tstamp = std::chrono::steady_clock::now();
+        m_miners_account.at(_minerIdx).failed++;
+        m_miners_account.at(_minerIdx).tstamp = std::chrono::steady_clock::now();
+    }
+}
+
+ /**
+ * @brief Gets the solutions account for the whole farm
+ */
+
+SolutionAccountType Farm::getSolutions()
+{
+    return m_farm_account;
+}
+
+/**
+ * @brief Gets the solutions account for single miner
+ */
+SolutionAccountType Farm::getSolutions(unsigned _minerIdx)
+{
+    try
+    {
+        return m_miners_account.at(_minerIdx);
+    }
+    catch (const std::exception&)
+    {
+        return SolutionAccountType();
+    }
 }
 
 string Farm::farmLaunchedFormatted()
@@ -399,7 +459,7 @@ void Farm::submitProofAsync(Solution const& _s)
         Result r = EthashAux::eval(_s.work.epoch, _s.work.header, _s.nonce);
         if (r.value > _s.work.boundary)
         {
-            failedSolution(_s.midx);
+            accountSolution(_s.midx, SolutionAccountingEnum::Failed);
             cwarn << "GPU " << _s.midx
                   << " gave incorrect result. Lower overclocking values if it happens frequently.";
             return;

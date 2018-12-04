@@ -79,18 +79,6 @@ std::ostream& operator<<(std::ostream& _out, const WorkingProgress& _p)
     return _out;
 }
 
-std::ostream& operator<<(std::ostream& os, const SolutionStats& s)
-{
-    os << "A" << s.getAccepts();
-    auto rejects = s.getRejects();
-    if (rejects)
-        os << ":R" << rejects;
-    auto failures = s.getFailures();
-    if (failures)
-        os << ":F" << failures;
-    return os;
-}
-
 void Miner::setDescriptor(DeviceDescriptorType& _descriptor) 
 {
     m_deviceDescriptor = _descriptor;

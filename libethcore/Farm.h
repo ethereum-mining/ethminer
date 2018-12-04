@@ -136,8 +136,19 @@ public:
      */
     WorkingProgress const& miningProgress() const { return m_progress; }
 
+    /**
+     * @brief Gets the collection of pointers to miner instances
+     */
     std::vector<std::shared_ptr<Miner>> getMiners() { return m_miners; }
 
+    /**
+     * @brief Gets the number of miner instances
+     */
+    unsigned getMinersCount() { return (unsigned)m_miners.size(); };
+
+    /**
+     * @brief Gets the pointer to a miner instance
+     */
     std::shared_ptr<Miner> getMiner(unsigned index)
     {
         try
@@ -150,12 +161,21 @@ public:
         }
     }
 
-    SolutionStats getSolutionStats() { return m_solutionStats; }  // returns a copy
+    /**
+     * @brief Accounts a solution to a miner and, as a consequence, to
+     *  the whole farm
+     */
+    void accountSolution(unsigned _minerIdx, SolutionAccountingEnum _accounting) override;
 
-    void failedSolution(unsigned _miner_index) override { m_solutionStats.failed(_miner_index); }
+    /**
+     * @brief Gets the solutions account for the whole farm
+     */
+    SolutionAccountType getSolutions();
 
-    void acceptedSolution(unsigned const& miner_index) { m_solutionStats.accepted(miner_index); }
-    void rejectedSolution(unsigned const& miner_index) { m_solutionStats.rejected(miner_index); }
+    /**
+     * @brief Gets the solutions account for single miner
+     */
+    SolutionAccountType getSolutions(unsigned _minerIdx);
 
     using SolutionFound = std::function<void(const Solution&)>;
     using MinerRestart = std::function<void()>;
@@ -174,12 +194,24 @@ public:
 
     string farmLaunchedFormatted();
 
+    /**
+     * @brief Gets the actual start nonce of the segment picked by the farm
+     */
     uint64_t get_nonce_scrambler() override { return m_nonce_scrambler; }
 
+    /**
+     * @brief Gets the actual width of each subsegment assigned to miners
+     */
     unsigned get_segment_width() override { return m_nonce_segment_with; }
 
+    /**
+     * @brief Sets the actual start nonce of the segment picked by the farm
+     */
     void set_nonce_scrambler(uint64_t n) { m_nonce_scrambler = n; }
 
+    /**
+     * @brief Sets the actual width of each subsegment assigned to miners
+     */
     void set_nonce_segment_width(unsigned n)
     {
         if (!m_currentWp.exSizeBytes)
@@ -221,7 +253,9 @@ private:
     bool spawn_file_in_bin_dir(const char* filename, const std::vector<std::string>& args);
 
     mutable Mutex x_minerWork;
-    std::vector<std::shared_ptr<Miner>> m_miners;
+    std::vector<std::shared_ptr<Miner>> m_miners;       // Collection of miners
+    std::vector<SolutionAccountType> m_miners_account;  // Collection of miner's account
+    SolutionAccountType m_farm_account;                 // The solution account for the whole farm
 
     WorkPackage m_currentWp;
     EpochContext m_currentEc;
@@ -241,7 +275,6 @@ private:
     static const int m_collectInterval = 5000;
 
     std::chrono::steady_clock::time_point m_farm_launched = std::chrono::steady_clock::now();
-    mutable SolutionStats m_solutionStats;
 
     string m_pool_addresses;
 

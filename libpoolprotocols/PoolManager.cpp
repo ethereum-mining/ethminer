@@ -182,7 +182,6 @@ void PoolManager::setClientHandlers() {
         if (newDiff || newEpoch)
             showMiningAt();
 
-
         cnote << "Job: " EthWhite "#" << m_currentWp.header.abridged()
               << (m_currentWp.block != -1 ? (" block " + to_string(m_currentWp.block)) : "")
               << EthReset << " " << m_selectedHost;
@@ -195,21 +194,21 @@ void PoolManager::setClientHandlers() {
     });
 
     p_client->onSolutionAccepted(
-        [&](std::chrono::milliseconds const& elapsedMs, unsigned const& miner_index) {
+        [&](std::chrono::milliseconds const& _responseDelay, unsigned const& _minerIdx) {
             std::stringstream ss;
-            ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << " ms."
-               << " " << m_selectedHost;
+            ss << std::setw(4) << std::setfill(' ') << _responseDelay.count() << " ms. "
+               << m_selectedHost;
             cnote << EthLime "**Accepted" EthReset << ss.str();
-            Farm::f().acceptedSolution(miner_index);
+            Farm::f().accountSolution(_minerIdx, SolutionAccountingEnum::Accepted);
         });
 
     p_client->onSolutionRejected(
-        [&](std::chrono::milliseconds const& elapsedMs, unsigned const& miner_index) {
+        [&](std::chrono::milliseconds const& _responseDelay, unsigned const& _minerIdx) {
             std::stringstream ss;
-            ss << std::setw(4) << std::setfill(' ') << elapsedMs.count() << "ms."
-               << "   " << m_selectedHost;
+            ss << std::setw(4) << std::setfill(' ') << _responseDelay.count() << " ms. "
+               << m_selectedHost;
             cwarn << EthRed "**Rejected" EthReset << ss.str();
-            Farm::f().rejectedSolution(miner_index);
+            Farm::f().accountSolution(_minerIdx, SolutionAccountingEnum::Rejected);
         });
 
 }

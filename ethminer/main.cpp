@@ -104,12 +104,11 @@ public:
         {
             if (PoolManager::p().isConnected())
             {
-                auto solstats = Farm::f().getSolutionStats();
                 {
                     ostringstream os;
                     os << Farm::f().miningProgress() << ' ';
                     if (!(g_logOptions & LOG_PER_GPU))
-                        os << solstats << ' ';
+                        os << Farm::f().getSolutions().str() << ' ';
                     os << Farm::f().farmLaunchedFormatted();
                     minelog << os.str();
                 }
@@ -117,13 +116,9 @@ public:
                 if (g_logOptions & LOG_PER_GPU)
                 {
                     ostringstream statdetails;
-                    statdetails << "Solutions " << solstats << ' ';
-                    for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
-                    {
-                        if (i)
-                            statdetails << " ";
-                        statdetails << "gpu" << i << ":" << solstats.getString(i);
-                    }
+                    statdetails << "Solutions " << Farm::f().getSolutions().str() << ' ';
+                    for (unsigned i = 0; i < Farm::f().getMinersCount(); i++)
+                        statdetails << " gpu" << i << " " << Farm::f().getSolutions(i).str();
                     minelog << statdetails.str();
                 }
 

@@ -961,7 +961,7 @@ Json::Value ApiConnection::getMinerStat1()
     auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
         steady_clock::now() - Farm::f().farmLaunched());
     auto connection = PoolManager::p().getActiveConnectionCopy();
-    SolutionStats s = Farm::f().getSolutionStats();
+    SolutionAccountType solutions = Farm::f().getSolutions();
     WorkingProgress p = Farm::f().miningProgress();
 
     ostringstream totalMhEth;
@@ -973,9 +973,9 @@ Json::Value ApiConnection::getMinerStat1()
     ostringstream invalidStats;
 
     totalMhEth << std::fixed << std::setprecision(0) << p.hashRate / 1000.0f << ";"
-               << s.getAccepts() << ";" << s.getRejects();
+               << solutions.accepted << ";" << solutions.rejected;
     totalMhDcr << "0;0;0";                    // DualMining not supported
-    invalidStats << s.getFailures() << ";0";  // Invalid + Pool switches
+    invalidStats << solutions.failed << ";0";  // Invalid + Pool switches
     poolAddresses << connection.Host() << ':' << connection.Port();
     invalidStats << ";0;0";  // DualMining not supported
 
@@ -1019,7 +1019,7 @@ Json::Value ApiConnection::getMinerStat1()
 }
 
 Json::Value ApiConnection::getMinerStatDetailPerMiner(
-    const WorkingProgress& _p, const SolutionStats& _s, std::shared_ptr<Miner> _miner)
+    const WorkingProgress& _p, std::shared_ptr<Miner> _miner)
 {
     unsigned _index = _miner->Index();
     std::chrono::steady_clock::time_point _now = std::chrono::steady_clock::now();
@@ -1057,12 +1057,13 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
     Json::Value mininginfo;
     Json::Value jshares = Json::Value(Json::arrayValue);
     Json::Value jsegment = Json::Value(Json::arrayValue);
-    jshares.append(_s.getAccepts(_index));
-    jshares.append(_s.getRejects(_index));
-    jshares.append(_s.getFailures(_index));
+    SolutionAccountType solutions = Farm::f().getSolutions(_index);
+    jshares.append(solutions.accepted);
+    jshares.append(solutions.rejected);
+    jshares.append(solutions.failed);
 
     auto solution_lastupdated =
-        std::chrono::duration_cast<std::chrono::seconds>(_now - _s.getLastUpdated(_index));
+        std::chrono::duration_cast<std::chrono::seconds>(_now - solutions.tstamp);
     jshares.append(uint64_t(solution_lastupdated.count()));  // interval in seconds from last found
                                                              // share
 
@@ -1200,7 +1201,7 @@ Json::Value ApiConnection::getMinerStatDetail()
     auto runningTime =
         std::chrono::duration_cast<std::chrono::seconds>(now - Farm::f().farmLaunched());
 
-    SolutionStats s = Farm::f().getSolutionStats();
+    SolutionAccountType solutions = Farm::f().getSolutions();
     WorkingProgress p = Farm::f().miningProgress();
 
     // ostringstream version;
@@ -1238,11 +1239,11 @@ Json::Value ApiConnection::getMinerStatDetail()
     mininginfo["epoch_changes"] = PoolManager::p().getEpochChanges();
     mininginfo["difficulty"] = PoolManager::p().getCurrentDifficulty();
 
-    sharesinfo.append(s.getAccepts());
-    sharesinfo.append(s.getRejects());
-    sharesinfo.append(s.getFailures());
+    sharesinfo.append(solutions.accepted);
+    sharesinfo.append(solutions.rejected);
+    sharesinfo.append(solutions.failed);
     auto solution_lastupdated =
-        std::chrono::duration_cast<std::chrono::seconds>(now - s.getLastUpdated());
+        std::chrono::duration_cast<std::chrono::seconds>(now - solutions.tstamp);
     sharesinfo.append(uint64_t(solution_lastupdated.count()));  // interval in seconds from last
                                                                 // found share
     mininginfo["shares"] = sharesinfo;
@@ -1260,7 +1261,7 @@ Json::Value ApiConnection::getMinerStatDetail()
 
     /* Devices related info */
     for (shared_ptr<Miner> miner : Farm::f().getMiners())
-        devices.append(getMinerStatDetailPerMiner(p, s, miner));
+        devices.append(getMinerStatDetailPerMiner(p, miner));
 
     jRes["devices"] = devices;
 

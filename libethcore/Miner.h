@@ -75,6 +75,30 @@ enum class ClPlatformTypeEnum
     Nvidia
 };
 
+enum class SolutionAccountingEnum
+{
+    Accepted,
+    Rejected,
+    Failed
+};
+
+struct SolutionAccountType
+{
+    unsigned accepted = 0;
+    unsigned rejected = 0;
+    unsigned failed = 0;
+    std::chrono::steady_clock::time_point tstamp = std::chrono::steady_clock::now();
+    string str()
+    {
+        string _ret = "A" + to_string(accepted);
+        if (rejected)
+            _ret.append(":R" + to_string(rejected));
+        if (failed)
+            _ret.append(":F" + to_string(failed));
+        return _ret;
+    };
+};
+
 struct DeviceDescriptorType
 {
     DeviceTypeEnum Type = DeviceTypeEnum::Unknown;
@@ -162,105 +186,6 @@ struct WorkingProgress
 
 std::ostream& operator<<(std::ostream& _out, const WorkingProgress& _p);
 
-class SolutionStats  // Only updated by Poolmanager thread!
-{
-public:
-    void reset()
-    {
-        m_accepts = {};
-        m_rejects = {};
-        m_failures = {};
-    }
-
-    void accepted(unsigned miner_index)
-    {
-        if (m_accepts.size() <= miner_index)
-            m_accepts.resize(miner_index + 1);
-        m_accepts[miner_index]++;
-        if (m_lastUpdated.size() <= miner_index)
-            m_lastUpdated.resize(miner_index + 1, m_tpInitalized);
-        m_lastUpdated[miner_index] = std::chrono::steady_clock::now();
-    }
-    void rejected(unsigned miner_index)
-    {
-        if (m_rejects.size() <= miner_index)
-            m_rejects.resize(miner_index + 1);
-        m_rejects[miner_index]++;
-        if (m_lastUpdated.size() <= miner_index)
-            m_lastUpdated.resize(miner_index + 1, m_tpInitalized);
-        m_lastUpdated[miner_index] = std::chrono::steady_clock::now();
-    }
-    void failed(unsigned miner_index)
-    {
-        if (m_failures.size() <= miner_index)
-            m_failures.resize(miner_index + 1);
-        m_failures[miner_index]++;
-        if (m_lastUpdated.size() <= miner_index)
-            m_lastUpdated.resize(miner_index + 1, m_tpInitalized);
-        m_lastUpdated[miner_index] = std::chrono::steady_clock::now();
-    }
-
-    unsigned getAccepts() const { return accumulate(m_accepts.begin(), m_accepts.end(), 0); }
-    unsigned getRejects() const { return accumulate(m_rejects.begin(), m_rejects.end(), 0); }
-    unsigned getFailures() const { return accumulate(m_failures.begin(), m_failures.end(), 0); }
-
-    unsigned getAccepts(unsigned miner_index) const
-    {
-        if (m_accepts.size() <= miner_index)
-            return 0;
-        return m_accepts[miner_index];
-    }
-    unsigned getRejects(unsigned miner_index) const
-    {
-        if (m_rejects.size() <= miner_index)
-            return 0;
-        return m_rejects[miner_index];
-    }
-    unsigned getFailures(unsigned miner_index) const
-    {
-        if (m_failures.size() <= miner_index)
-            return 0;
-        return m_failures[miner_index];
-    }
-    std::chrono::steady_clock::time_point getLastUpdated(unsigned miner_index) const
-    {
-        if (m_lastUpdated.size() <= miner_index)
-            return m_tpInitalized;
-        return m_lastUpdated[miner_index];
-    }
-    std::chrono::steady_clock::time_point getLastUpdated() const
-    {
-        /* return the newest update time of all GPUs */
-        if (!m_lastUpdated.size())
-            return m_tpInitalized;
-        auto max_index = std::max_element(m_lastUpdated.begin(), m_lastUpdated.end());
-        return m_lastUpdated[std::distance(m_lastUpdated.begin(), max_index)];
-    }
-
-    std::string getString(unsigned miner_index)
-    {
-        ostringstream r;
-
-        r << "A" << getAccepts(miner_index);
-        auto rejects = getRejects(miner_index);
-        if (rejects)
-            r << ":R" << rejects;
-        auto failures = getFailures(miner_index);
-        if (failures)
-            r << ":F" << failures;
-        return r.str();
-    }
-
-private:
-    std::vector<unsigned> m_accepts = {};
-    std::vector<unsigned> m_rejects = {};
-    std::vector<unsigned> m_failures = {};
-    std::vector<std::chrono::steady_clock::time_point> m_lastUpdated = {};
-    const std::chrono::steady_clock::time_point m_tpInitalized = std::chrono::steady_clock::now();
-};
-
-std::ostream& operator<<(std::ostream& os, const SolutionStats& s);
-
 /**
  * @brief Class for hosting one or more Miners.
  * @warning Must be implemented in a threadsafe manner since it will be called from multiple
@@ -282,7 +207,7 @@ public:
      * @return true iff the solution was good (implying that mining should be .
      */
     virtual void submitProof(Solution const& _p) = 0;
-    virtual void failedSolution(unsigned _miner_index) = 0;
+    virtual void accountSolution(unsigned _minerIdx, SolutionAccountingEnum _accounting) = 0;
     virtual uint64_t get_nonce_scrambler() = 0;
     virtual unsigned get_segment_width() = 0;
 
