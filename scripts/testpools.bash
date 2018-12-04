@@ -19,7 +19,7 @@
 # export some vars as "./ethminer" could be still a wrapper script
 export ETH_WALLET="0x9E431042fAA3224837e9BEDEcc5F4858cf0390B9"
 export WORKERNAME="pooltester"
-export EMAIL="andrea.lanfranchi@gmail.com"
+export EMAIL="andrea.lanfranchi%40gmail.com"
 export USERNAME="aminer"
 export WORKERPWD="x"
 export BTC_WALLET="3C4FURwL4oAaEUuCLYmNPUEKQSPR1FAJ3m"

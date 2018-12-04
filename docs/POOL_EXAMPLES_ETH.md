@@ -31,9 +31,12 @@ Some examples:
 
 | Code | Character |
 | :---: |  :---: |
+|%25 | % |
+|%26 | & |
 |%2e | . |
 |%2f | / |
 |%3a | : |
+|%3f | ? |
 |%40 | @ |
 
 ## Only for version 0.16+ (older versions not affected)
@@ -56,12 +59,12 @@ We tried to merge the requirements of the variables so they match all pools.
 
 |   Variables  | Description  | Sample |
 | ------------ | ------------ | ------ |
-| `ETH_WALLET` | Replace `ETH_WALLET` with your Ethereum wallet number including the leading `0x`.                                                                          | `0x1234567890ABCDEF1234567890abcdef12345678` |
-| `WORKERNAME` | `WORKERNAME` may only contain letters and numbers. Some pools also only allow up to a maximum of 8 characters!                                             | `pl1rig01` |
-| `EMAIL`      | `EMAIL` may contain letters, numbers, underscores, dashes, dots and the @-sign. It **must** contain a @-sign and a dot!                                    | `joe1.doe_jr-ny@acme.com` |
-| `USERNAME`   | `USERNAME` you got from the pool (like [miningpoolhub.com](#miningpoolhubcom))                                                                             | `my_username` |
-| `WORKERPWD`  | `WORKERPWD` is the password you got from the pool for the worker (like [miningpoolhub.com](#miningpoolhubcom)) - if you have no password set try using 'x' | `my_workerpwd` |
-| `BTC_WALLET` | As some pools honor your work in BTC (eg [nicehash.com](#nicehashcom)) `BTC_WALLET` is your Bitcoin wallet address                                         | `1A2b3C4d5e5F6g7H8I9j0kLmNoPqRstUvW` |
+| `ETH_WALLET` | Replace `ETH_WALLET` with your Ethereum wallet number including the leading `0x`.                                                                                               | `0x1234567890ABCDEF1234567890abcdef12345678` |
+| `WORKERNAME` | `WORKERNAME` may only contain letters and numbers. Some pools also only allow up to a maximum of 8 characters!                                                                  | `pl1rig01` |
+| `EMAIL`      | `EMAIL` may contain letters, numbers, underscores.  Please encode dashes, @-sign and other uncommon charaters using the [Special characters](#special-characters-in-variables)  | `joe1.doe_jr-ny%40acme.com` |
+| `USERNAME`   | `USERNAME` you got from the pool (like [miningpoolhub.com](#miningpoolhubcom))                                                                                                  | `my_username` |
+| `WORKERPWD`  | `WORKERPWD` is the password you got from the pool for the worker (like [miningpoolhub.com](#miningpoolhubcom)) - if you have no password set try using 'x'                      | `my_workerpwd` |
+| `BTC_WALLET` | As some pools honor your work in BTC (eg [nicehash.com](#nicehashcom)) `BTC_WALLET` is your Bitcoin wallet address                                                              | `1A2b3C4d5e5F6g7H8I9j0kLmNoPqRstUvW` |
 
 ## Servers
 
@@ -125,6 +128,10 @@ Without email
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@eth-us.dwarfpool.com:8008
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@eth-us2.dwarfpool.com:8008
 ```
+
+HINTS:
+
+* Use "%40" for the @-sign in your email address
 
 ### ethermine.org
 
@@ -194,6 +201,10 @@ Without email:
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@eth-us-east1.nanopool.org:9999
 -P stratum1+tcp://ETH_WALLET.WORKERNAME@eth-us-west1.nanopool.org:9999
 ```
+
+HINTS:
+
+* Use "%40" for the @-sign in your email address
 
 ### nicehash.com
 
