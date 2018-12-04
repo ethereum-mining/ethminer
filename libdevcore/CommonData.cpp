@@ -155,33 +155,34 @@ double dev::getHashesToTarget(string _target)
     return double(dividend / divisor);
 }
 
+std::string dev::getScaledSize(double _value, double _divisor, short _precision, string _sizes[],
+    int _numsizes, ScaleSuffix _suffix)
+{
+    double _newvalue = _value;
+    unsigned i = 0;
+    while (true)
+    {
+        if (_newvalue < _divisor || i == (_numsizes - 1))
+            break;
+        _newvalue /= _divisor;
+        i++;
+    }
+
+    std::stringstream _ret;
+    _ret << fixed << setprecision(_precision) << _newvalue;
+    if (_suffix == ScaleSuffix::Add)
+        _ret << " " << _sizes[i];
+    return _ret.str();
+}
+
 std::string dev::getFormattedHashes(double _hr, ScaleSuffix _suffix)
 {
     static string suffixes[] = {"h", "Kh", "Mh", "Gh"};
-    return getScaledSize(_hr, 1000.0, suffixes, _suffix);
+    return dev::getScaledSize(_hr, 1000.0, 2, suffixes, 4, _suffix);
 }
 
 std::string dev::getFormattedMemory(double _mem, ScaleSuffix _suffix)
 {
     static string suffixes[] = {"B", "KB", "MB", "GB"};
-    return getScaledSize(_mem, 1024.0, suffixes);
-}
-
-std::string dev::getScaledSize(double _value, double _divisor, string _sizes[], ScaleSuffix _suffix) 
-{
-    unsigned s = sizeof(_sizes);
-    unsigned i = 0;
-    while (true)
-    {
-        if (_value < _divisor || i == s - 1)
-            break;
-        _value /= _divisor;
-        i++;
-    }
-
-    std::stringstream _ret;
-    _ret << fixed << setprecision(2) << _value;
-    if (_suffix == ScaleSuffix::Add)
-        _ret << " " << _sizes[i];
-    return _ret.str();
+    return dev::getScaledSize(_mem, 1024.0, 2, suffixes, 4, _suffix);
 }

@@ -211,15 +211,16 @@ std::string getTargetFromDiff(double diff, HexPrefix _prefix = HexPrefix::Add);
 /// Gets the difficulty expressed in hashes to target
 double getHashesToTarget(std::string _target);
 
+/// Generic function to scale a value
+std::string getScaledSize(double _value, double _divisor, short _precision, std::string _sizes[],
+    int _numsizes, ScaleSuffix _suffix = ScaleSuffix::Add);
+
 /// Formats hashrate
 std::string getFormattedHashes(double _hr, ScaleSuffix _suffix = ScaleSuffix::Add);
 
 /// Formats hashrate
 std::string getFormattedMemory(double _mem, ScaleSuffix _suffix = ScaleSuffix::Add);
 
-/// Generic function to scale a value
-std::string getScaledSize(
-    double _value, double _divisor, std::string _sizes[], ScaleSuffix _suffix = ScaleSuffix::Add);
     
 
 }  // namespace dev
