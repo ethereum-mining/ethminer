@@ -26,18 +26,21 @@ Farm* Farm::m_this = nullptr;
 
 Farm::Farm(
     std::map<std::string, DeviceDescriptorType>& _DevicesCollection, unsigned hwmonlvl, bool noeval)
-  : m_io_strand(g_io_service), m_collectTimer(g_io_service), m_DevicesCollection(_DevicesCollection)
+  : m_io_strand(g_io_service),
+    m_collectTimer(g_io_service),
+    m_DevicesCollection(_DevicesCollection)
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::Farm() begin");
 
     m_this = this;
     m_hwmonlvl = hwmonlvl;
     m_noeval = noeval;
-    m_farm_account = SolutionAccountType();
 
     // Init HWMON if needed
     if (m_hwmonlvl)
     {
+        m_telemetry.hwmon = true;
+
 #if defined(__linux)
         bool need_sysfsh = false;
 #else
@@ -253,11 +256,15 @@ bool Farm::start()
             else
                 continue;
 
+            TelemetryAccountType minerTelemetry;
+            minerTelemetry.prefix = (sealer == "cuda" ? "cu" : "cl");
+            m_telemetry.miners.push_back(minerTelemetry);
+
             m_miners.push_back(std::shared_ptr<Miner>(m_sealers[sealer].create(m_miners.size())));
             m_miners.back()->setDescriptor(it->second);
-            m_miners_account.push_back(SolutionAccountType());
             m_miners.back()->startWorking();
         }
+
         m_isMining.store(true, std::memory_order_relaxed);
     }
     else
@@ -365,24 +372,24 @@ void Farm::accountSolution(unsigned _minerIdx, SolutionAccountingEnum _accountin
 {
     if (_accounting == SolutionAccountingEnum::Accepted) 
     {
-        m_farm_account.accepted++;
-        m_farm_account.tstamp = std::chrono::steady_clock::now();
-        m_miners_account.at(_minerIdx).accepted++;
-        m_miners_account.at(_minerIdx).tstamp = std::chrono::steady_clock::now();
+        m_telemetry.farm.solutions.accepted++;
+        m_telemetry.farm.solutions.tstamp = std::chrono::steady_clock::now();
+        m_telemetry.miners.at(_minerIdx).solutions.accepted++;
+        m_telemetry.miners.at(_minerIdx).solutions.tstamp = std::chrono::steady_clock::now();
     }
     if (_accounting == SolutionAccountingEnum::Rejected)
     {
-        m_farm_account.rejected++;
-        m_farm_account.tstamp = std::chrono::steady_clock::now();
-        m_miners_account.at(_minerIdx).rejected++;
-        m_miners_account.at(_minerIdx).tstamp = std::chrono::steady_clock::now();
+        m_telemetry.farm.solutions.rejected++;
+        m_telemetry.farm.solutions.tstamp = std::chrono::steady_clock::now();
+        m_telemetry.miners.at(_minerIdx).solutions.rejected++;
+        m_telemetry.miners.at(_minerIdx).solutions.tstamp = std::chrono::steady_clock::now();
     }
     if (_accounting == SolutionAccountingEnum::Failed)
     {
-        m_farm_account.failed++;
-        m_farm_account.tstamp = std::chrono::steady_clock::now();
-        m_miners_account.at(_minerIdx).failed++;
-        m_miners_account.at(_minerIdx).tstamp = std::chrono::steady_clock::now();
+        m_telemetry.farm.solutions.failed++;
+        m_telemetry.farm.solutions.tstamp = std::chrono::steady_clock::now();
+        m_telemetry.miners.at(_minerIdx).solutions.failed++;
+        m_telemetry.miners.at(_minerIdx).solutions.tstamp = std::chrono::steady_clock::now();
     }
 }
 
@@ -392,7 +399,7 @@ void Farm::accountSolution(unsigned _minerIdx, SolutionAccountingEnum _accountin
 
 SolutionAccountType Farm::getSolutions()
 {
-    return m_farm_account;
+    return m_telemetry.farm.solutions;
 }
 
 /**
@@ -402,7 +409,7 @@ SolutionAccountType Farm::getSolutions(unsigned _minerIdx)
 {
     try
     {
-        return m_miners_account.at(_minerIdx);
+        return m_telemetry.miners.at(_minerIdx).solutions;
     }
     catch (const std::exception&)
     {
@@ -484,29 +491,23 @@ void Farm::collectData(const boost::system::error_code& ec)
     if (ec)
         return;
 
-    WorkingProgress progress;
+    // Reset hashrate (it will accumulate from miners)
+    m_telemetry.farm.hashrate = 0;
 
     // Process miners
     for (auto const& miner : m_miners)
     {
-        // Collect and reset hashrates
-        if (!miner->paused())
-        {
-            auto hr = miner->RetrieveHashRate();
-            progress.hashRate += hr;
-            progress.minersHashRates.push_back(hr);
-            progress.miningIsPaused.push_back(false);
-        }
-        else
-        {
-            progress.minersHashRates.push_back(0.0);
-            progress.miningIsPaused.push_back(true);
-        }
+        int minerIdx = miner->Index();
+        float hr = (miner->paused() ? 0.0 : miner->RetrieveHashRate());
+        m_telemetry.farm.hashrate += hr;
+        m_telemetry.miners.at(minerIdx).hashrate = hr;
+        m_telemetry.miners.at(minerIdx).paused = miner->paused();
+
 
         if (m_hwmonlvl)
         {
             HwMonitorInfo hwInfo = miner->hwmonInfo();
-            HwMonitor hw;
+
             unsigned int tempC = 0, fanpcnt = 0, powerW = 0;
 
             if (hwInfo.deviceType == HwMonitorInfoType::NVIDIA && nvmlh)
@@ -607,15 +608,13 @@ void Farm::collectData(const boost::system::error_code& ec)
                     miner->resume(MinerPauseEnum::PauseDueToOverHeating);
             }
 
-            hw.tempC = tempC;
-            hw.fanP = fanpcnt;
-            hw.powerW = powerW / ((double)1000.0);
-            progress.minerMonitors.push_back(hw);
+            m_telemetry.miners.at(minerIdx).sensors.tempC = tempC;
+            m_telemetry.miners.at(minerIdx).sensors.fanP = fanpcnt;
+            m_telemetry.miners.at(minerIdx).sensors.powerW = powerW / ((double)1000.0);
+
         }
         miner->TriggerHashRateUpdate();
     }
-
-    m_progress = progress;
 
     // Resubmit timer for another loop
     m_collectTimer.expires_from_now(boost::posix_time::milliseconds(m_collectInterval));

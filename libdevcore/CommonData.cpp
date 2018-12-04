@@ -155,19 +155,19 @@ double dev::getHashesToTarget(string _target)
     return double(dividend / divisor);
 }
 
-std::string dev::getFormattedHashes(double _hr) 
+std::string dev::getFormattedHashes(double _hr, ScaleSuffix _suffix)
 {
     static string suffixes[] = {"h", "Kh", "Mh", "Gh"};
-    return getScaledSize(_hr, 1000.0, suffixes);
+    return getScaledSize(_hr, 1000.0, suffixes, _suffix);
 }
 
-std::string dev::getFormattedMemory(double _mem)
+std::string dev::getFormattedMemory(double _mem, ScaleSuffix _suffix)
 {
     static string suffixes[] = {"B", "KB", "MB", "GB"};
     return getScaledSize(_mem, 1024.0, suffixes);
 }
 
-std::string dev::getScaledSize(double _value, double _divisor, string _sizes[]) 
+std::string dev::getScaledSize(double _value, double _divisor, string _sizes[], ScaleSuffix _suffix) 
 {
     unsigned s = sizeof(_sizes);
     unsigned i = 0;
@@ -180,6 +180,8 @@ std::string dev::getScaledSize(double _value, double _divisor, string _sizes[])
     }
 
     std::stringstream _ret;
-    _ret << fixed << setprecision(2) << _value << " " << _sizes[i];
+    _ret << fixed << setprecision(2) << _value;
+    if (_suffix == ScaleSuffix::Add)
+        _ret << " " << _sizes[i];
     return _ret.str();
 }

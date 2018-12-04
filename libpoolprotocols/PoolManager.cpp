@@ -482,8 +482,7 @@ void PoolManager::submithrtimer_elapsed(const boost::system::error_code& ec)
         {
             if (p_client && p_client->isConnected())
             {
-                auto mp = Farm::f().miningProgress();
-                std::string h = toHex(toCompactBigEndian(uint64_t(mp.hashRate), 1));
+                std::string h = toHex(toCompactBigEndian(uint64_t(Farm::f().HashRate()), 1));
                 std::string res = h[0] != '0' ? h : h.substr(1);
 
                 // Should be 32 bytes

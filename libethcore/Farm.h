@@ -134,7 +134,12 @@ public:
      * @brief Get information on the progress of mining this work package.
      * @return The progress with mining so far.
      */
-    WorkingProgress const& miningProgress() const { return m_progress; }
+    TelemetryType& Telemetry() { return m_telemetry; }
+
+    /**
+     * @brief Gets current hashrate
+     */
+    double HashRate() { return m_telemetry.farm.hashrate; };
 
     /**
      * @brief Gets the collection of pointers to miner instances
@@ -254,21 +259,18 @@ private:
 
     mutable Mutex x_minerWork;
     std::vector<std::shared_ptr<Miner>> m_miners;       // Collection of miners
-    std::vector<SolutionAccountType> m_miners_account;  // Collection of miner's account
-    SolutionAccountType m_farm_account;                 // The solution account for the whole farm
 
     WorkPackage m_currentWp;
     EpochContext m_currentEc;
 
     std::atomic<bool> m_isMining = {false};
 
-    mutable WorkingProgress m_progress;
+    TelemetryType m_telemetry; // Holds progress and status info for farm and miners
 
     SolutionFound m_onSolutionFound;
     MinerRestart m_onMinerRestart;
 
     std::map<std::string, SealerDescriptor> m_sealers;
-    std::string m_lastSealer;
 
     boost::asio::io_service::strand m_io_strand;
     boost::asio::deadline_timer m_collectTimer;

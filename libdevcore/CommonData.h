@@ -49,6 +49,13 @@ enum class HexPrefix
     DontAdd = 0,
     Add = 1,
 };
+
+enum class ScaleSuffix
+{
+    DontAdd = 0,
+    Add = 1
+};
+
 /// Convert a series of bytes to the corresponding string of hex duplets.
 /// @param _w specifies the width of the first of the elements. Defaults to two - enough to
 /// represent a byte.
@@ -205,12 +212,14 @@ std::string getTargetFromDiff(double diff, HexPrefix _prefix = HexPrefix::Add);
 double getHashesToTarget(std::string _target);
 
 /// Formats hashrate
-std::string getFormattedHashes(double _hr);
+std::string getFormattedHashes(double _hr, ScaleSuffix _suffix = ScaleSuffix::Add);
 
 /// Formats hashrate
-std::string getFormattedMemory(double _mem);
+std::string getFormattedMemory(double _mem, ScaleSuffix _suffix = ScaleSuffix::Add);
 
 /// Generic function to scale a value
-std::string getScaledSize(double _value, double _divisor, std::string _sizes[]);
+std::string getScaledSize(
+    double _value, double _divisor, std::string _sizes[], ScaleSuffix _suffix = ScaleSuffix::Add);
+    
 
 }  // namespace dev

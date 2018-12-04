@@ -27,42 +27,6 @@ unsigned Miner::s_dagLoadIndex = 0;
 
 FarmFace* FarmFace::m_this = nullptr;
 
-std::ostream& operator<<(std::ostream& os, const HwMonitor& _hw)
-{
-    os << _hw.tempC << "C " << _hw.fanP << "%";
-    if (_hw.powerW)
-        os << ' ' << fixed << setprecision(0) << _hw.powerW << "W";
-    return os;
-}
-
-std::ostream& operator<<(std::ostream& _out, const WorkingProgress& _p)
-{
-    float mh = _p.hashRate / 1000000.0f;
-    _out << "Speed " << EthTealBold << std::fixed << std::setprecision(2) << mh << EthReset
-         << " Mh/s";
-
-    for (size_t i = 0; i < _p.minersHashRates.size(); ++i)
-    {
-        mh = _p.minersHashRates[i] / 1000000.0f;
-
-        if (_p.miningIsPaused.size() == _p.minersHashRates.size())
-        {
-            // red color if mining is paused on this gpu
-            if (_p.miningIsPaused[i])
-            {
-                _out << EthRed;
-            }
-        }
-
-        _out << " gpu" << i << " " << EthTeal << std::fixed << std::setprecision(2) << mh
-             << EthReset;
-        if (_p.minerMonitors.size() == _p.minersHashRates.size())
-            _out << " " << EthTeal << _p.minerMonitors[i] << EthReset;
-    }
-
-    return _out;
-}
-
 void Miner::setDescriptor(DeviceDescriptorType& _descriptor) 
 {
     m_deviceDescriptor = _descriptor;

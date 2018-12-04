@@ -105,8 +105,9 @@ public:
             if (PoolManager::p().isConnected())
             {
                 {
+
                     ostringstream os;
-                    os << Farm::f().miningProgress() << ' ';
+                    os << Farm::f().Telemetry().str() << ' ';
                     if (!(g_logOptions & LOG_PER_GPU))
                         os << Farm::f().getSolutions().str() << ' ';
                     os << Farm::f().farmLaunchedFormatted();

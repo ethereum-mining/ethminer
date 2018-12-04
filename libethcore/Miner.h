@@ -27,6 +27,7 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
 
+#include <boost/format.hpp>
 #include <boost/thread.hpp>
 
 #define DAG_LOAD_MODE_PARALLEL 0
@@ -99,6 +100,29 @@ struct SolutionAccountType
     };
 };
 
+struct HwSensorsType
+{
+    int tempC = 0;
+    int fanP = 0;
+    double powerW = 0;
+    string str()
+    {
+        string _ret = to_string(tempC) + "C " + to_string(fanP) + "%";
+        if (powerW)
+            _ret.append(boost::str(boost::format("%f") % powerW));
+        return _ret;
+    };
+};
+
+struct TelemetryAccountType
+{
+    string prefix = "";
+    double hashrate = 0;
+    bool paused = false;
+    HwSensorsType sensors;
+    SolutionAccountType solutions;
+};
+
 struct DeviceDescriptorType
 {
     DeviceTypeEnum Type = DeviceTypeEnum::Unknown;
@@ -145,14 +169,6 @@ struct HwMonitorInfo
     int deviceIndex = -1;
 };
 
-struct HwMonitor
-{
-    int tempC = 0;
-    int fanP = 0;
-    double powerW = 0;
-};
-
-std::ostream& operator<<(std::ostream& os, const HwMonitor& _hw);
 
 /// Pause mining
 enum MinerPauseEnum
@@ -165,17 +181,33 @@ enum MinerPauseEnum
     Pause_MAX  // Must always be last as a placeholder of max count
 };
 
-/// Describes the progress of a mining operation.
-struct WorkingProgress
+/// Keeps track of progress for farm and miners
+struct TelemetryType
 {
-    float hashRate = 0.0;
+    bool hwmon = false;
 
-    std::vector<float> minersHashRates;
-    std::vector<bool> miningIsPaused;
-    std::vector<HwMonitor> minerMonitors;
+    TelemetryAccountType farm;
+    std::vector<TelemetryAccountType> miners;
+    std::string str()
+    {
+        std::stringstream _ret;
+        _ret << "Speed " << EthTealBold << std::fixed << std::setprecision(2)
+             << getFormattedHashes(farm.hashrate) << EthReset;
+
+        int i = -1;
+        for (TelemetryAccountType miner : miners)
+        {
+            i++;
+            _ret << " " << (miner.paused ? EthRed : "") << miner.prefix << i << " " << EthTeal << std::fixed << std::setprecision(2)
+                 << getFormattedHashes(miner.hashrate, ScaleSuffix::DontAdd) << EthReset;
+            if (hwmon)
+                _ret << " " << EthTeal << miner.sensors.str() << EthReset;
+
+        }
+        return _ret.str();
+    };
 };
 
-std::ostream& operator<<(std::ostream& _out, const WorkingProgress& _p);
 
 /**
  * @brief Class for hosting one or more Miners.

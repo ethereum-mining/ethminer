@@ -48,8 +48,7 @@ private:
     void onSendSocketDataCompleted(const boost::system::error_code& ec, bool _disconnect = false);
 
     Json::Value getMinerStatDetail();
-    Json::Value getMinerStatDetailPerMiner(
-        const WorkingProgress& _p, std::shared_ptr<Miner> _miner);
+    Json::Value getMinerStatDetailPerMiner(const TelemetryType& _t, std::shared_ptr<Miner> _miner);
 
     std::string getHttpMinerStatDetail();
 

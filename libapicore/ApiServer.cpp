@@ -688,14 +688,6 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         if (!getRequestValue("pause", pause, jRequestParams, false, jResponse))
             return;
 
-        WorkingProgress p = Farm::f().miningProgress();
-        if (index >= p.miningIsPaused.size())
-        {
-            jResponse["error"]["code"] = -422;
-            jResponse["error"]["message"] = "Index out of bounds";
-            return;
-        }
-
         auto const& miner = Farm::f().getMiner(index);
         if (miner)
         {
@@ -708,7 +700,9 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         }
         else
         {
-            jResponse["result"] = false;
+            jResponse["error"]["code"] = -422;
+            jResponse["error"]["message"] = "Index out of bounds";
+            return;
         }
     }
 
@@ -962,7 +956,7 @@ Json::Value ApiConnection::getMinerStat1()
         steady_clock::now() - Farm::f().farmLaunched());
     auto connection = PoolManager::p().getActiveConnectionCopy();
     SolutionAccountType solutions = Farm::f().getSolutions();
-    WorkingProgress p = Farm::f().miningProgress();
+    TelemetryType t = Farm::f().Telemetry();
 
     ostringstream totalMhEth;
     ostringstream totalMhDcr;
@@ -972,7 +966,7 @@ Json::Value ApiConnection::getMinerStat1()
     ostringstream poolAddresses;
     ostringstream invalidStats;
 
-    totalMhEth << std::fixed << std::setprecision(0) << p.hashRate / 1000.0f << ";"
+    totalMhEth << std::fixed << std::setprecision(0) << t.farm.hashrate / 1000.0f << ";"
                << solutions.accepted << ";" << solutions.rejected;
     totalMhDcr << "0;0;0";                    // DualMining not supported
     invalidStats << solutions.failed << ";0";  // Invalid + Pool switches
@@ -980,10 +974,11 @@ Json::Value ApiConnection::getMinerStat1()
     invalidStats << ";0;0";  // DualMining not supported
 
     int gpuIndex = 0;
-    int numGpus = p.minersHashRates.size();
-    for (auto const& i : p.minersHashRates)
+    int numGpus = t.miners.size();
+
+    for (gpuIndex = 0 ; gpuIndex < numGpus; gpuIndex++)
     {
-        detailedMhEth << std::fixed << std::setprecision(0) << i / 1000.0f
+        detailedMhEth << std::fixed << std::setprecision(0) << t.miners.at(gpuIndex).hashrate / 1000.0f
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");
         detailedMhDcr << "off"
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");  // DualMining not supported
@@ -991,10 +986,10 @@ Json::Value ApiConnection::getMinerStat1()
     }
 
     gpuIndex = 0;
-    numGpus = p.minerMonitors.size();
-    for (auto const& i : p.minerMonitors)
+    for (gpuIndex = 0; gpuIndex < numGpus; gpuIndex++)
     {
-        tempAndFans << i.tempC << ";" << i.fanP
+        tempAndFans << t.miners.at(gpuIndex).sensors.tempC << ";"
+                    << t.miners.at(gpuIndex).sensors.fanP
                     << (((numGpus - 1) > gpuIndex) ? ";" : "");  // Fetching Temp and Fans
         gpuIndex++;
     }
@@ -1019,7 +1014,7 @@ Json::Value ApiConnection::getMinerStat1()
 }
 
 Json::Value ApiConnection::getMinerStatDetailPerMiner(
-    const WorkingProgress& _p, std::shared_ptr<Miner> _miner)
+    const TelemetryType& _t, std::shared_ptr<Miner> _miner)
 {
     unsigned _index = _miner->Index();
     std::chrono::steady_clock::time_point _now = std::chrono::steady_clock::now();
@@ -1045,12 +1040,11 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
 
     /* Hardware Sensors*/
     Json::Value sensors = Json::Value(Json::arrayValue);
-    if (_index < _p.minerMonitors.size())
-    {
-        sensors.append(_p.minerMonitors[_index].tempC);
-        sensors.append(_p.minerMonitors[_index].fanP);
-        sensors.append(_p.minerMonitors[_index].powerW);
-    }
+
+    sensors.append(_t.miners.at(_index).sensors.tempC);
+    sensors.append(_t.miners.at(_index).sensors.fanP);
+    sensors.append(_t.miners.at(_index).sensors.powerW);
+
     hwinfo["sensors"] = sensors;
 
     /* Mining Info */
@@ -1079,10 +1073,7 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
     mininginfo["segment"] = jsegment;
 
     /* Hash & Share infos */
-    if (_index < _p.minersHashRates.size())
-        mininginfo["hashrate"] = toHex((uint32_t)_p.minersHashRates[_index], HexPrefix::Add);
-    else
-        mininginfo["hashrate"] = Json::Value::null;
+    mininginfo["hashrate"] = toHex((uint32_t)_t.miners.at(_index).hashrate, HexPrefix::Add);
 
     jRes["hardware"] = hwinfo;
     jRes["mining"] = mininginfo;
@@ -1203,7 +1194,7 @@ Json::Value ApiConnection::getMinerStatDetail()
         std::chrono::duration_cast<std::chrono::seconds>(now - Farm::f().farmLaunched());
 
     SolutionAccountType solutions = Farm::f().getSolutions();
-    WorkingProgress p = Farm::f().miningProgress();
+    TelemetryType t = Farm::f().Telemetry();
 
     // ostringstream version;
     Json::Value devices = Json::Value(Json::arrayValue);
@@ -1235,7 +1226,7 @@ Json::Value ApiConnection::getMinerStatDetail()
     Json::Value mininginfo;
     Json::Value sharesinfo = Json::Value(Json::arrayValue);
 
-    mininginfo["hashrate"] = toHex(uint32_t(p.hashRate), HexPrefix::Add);
+    mininginfo["hashrate"] = toHex(uint32_t(t.farm.hashrate), HexPrefix::Add);
     mininginfo["epoch"] = PoolManager::p().getCurrentEpoch();
     mininginfo["epoch_changes"] = PoolManager::p().getEpochChanges();
     mininginfo["difficulty"] = PoolManager::p().getCurrentDifficulty();
@@ -1262,7 +1253,7 @@ Json::Value ApiConnection::getMinerStatDetail()
 
     /* Devices related info */
     for (shared_ptr<Miner> miner : Farm::f().getMiners())
-        devices.append(getMinerStatDetailPerMiner(p, miner));
+        devices.append(getMinerStatDetailPerMiner(t, miner));
 
     jRes["devices"] = devices;
 
