@@ -238,9 +238,10 @@ struct TelemetryType
         }
 
         _ret << EthTealBold << std::fixed << std::setprecision(2)
-             << hr << " " << suffixes[magnitude] << EthReset << " [";
+             << hr << " " << suffixes[magnitude] << EthReset << " { ";
 
-        int i = -1;
+        int i = -1;                 // Current miner index
+        int m = miners.size() - 1;  // Max miner index
         for (TelemetryAccountType miner : miners)
         {
             i++;
@@ -248,7 +249,7 @@ struct TelemetryType
             if (hr > 0.0f)
                 hr /= pow(1000.0f, magnitude);
 
-            _ret << " " << (miner.paused ? EthRed : "") << miner.prefix << i << " " << EthTeal
+            _ret << (miner.paused ? EthRed : "") << miner.prefix << i << " " << EthTeal
                  << std::fixed << std::setprecision(2) << hr << EthReset;
 
             if (hwmon)
@@ -258,8 +259,12 @@ struct TelemetryType
             if (g_logOptions & LOG_PER_GPU)
                 _ret << " " << EthTeal << miner.solutions.str() << EthReset;
 
+            // Separator if not the last miner index
+            if (i < m)
+                _ret << " | ";
+
         }
-        _ret << " ]";
+        _ret << " }";
 
         return _ret.str();
     };
