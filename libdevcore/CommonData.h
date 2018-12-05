@@ -216,11 +216,11 @@ std::string getScaledSize(double _value, double _divisor, short _precision, std:
     size_t _numsizes, ScaleSuffix _suffix = ScaleSuffix::Add);
 
 /// Formats hashrate
-std::string getFormattedHashes(double _hr, ScaleSuffix _suffix = ScaleSuffix::Add);
+std::string getFormattedHashes(double _hr, ScaleSuffix _suffix = ScaleSuffix::Add, int _precision = 2);
 
 /// Formats hashrate
-std::string getFormattedMemory(double _mem, ScaleSuffix _suffix = ScaleSuffix::Add);
+std::string getFormattedMemory(
+    double _mem, ScaleSuffix _suffix = ScaleSuffix::Add, int _precision = 2);
 
-    
 
 }  // namespace dev

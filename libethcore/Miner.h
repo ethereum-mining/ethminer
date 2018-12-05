@@ -223,7 +223,7 @@ struct TelemetryType
         duration -= hours;
         auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
         _ret << EthGreen << setw(hoursSize) << hours.count() << ":" << setfill('0') << setw(2)
-             << minutes.count() << " " << farm.solutions.str() << EthReset << " ";
+             << minutes.count() << EthReset << EthWhiteBold << " " << farm.solutions.str() << EthReset << " ";
 
         /*
         Github : @AndreaLanfranchi

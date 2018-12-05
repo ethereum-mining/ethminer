@@ -1,3 +1,4 @@
+#include <libdevcore/Log.h>
 #include <chrono>
 
 #include "SimulateClient.h"
@@ -7,8 +8,7 @@ using namespace std::chrono;
 using namespace dev;
 using namespace eth;
 
-SimulateClient::SimulateClient(unsigned const& block)
-  : PoolClient(), Worker("sim")
+SimulateClient::SimulateClient(unsigned const& block) : PoolClient(), Worker("sim")
 {
     m_block = block;
 }
@@ -30,6 +30,9 @@ void SimulateClient::connect()
 void SimulateClient::disconnect()
 {
     m_connected.store(false, std::memory_order_relaxed);
+    cnote << "Simulation results : " << EthWhiteBold << "Max "
+          << dev::getFormattedHashes((double)hr_max, ScaleSuffix::Add, 6) << " Mean "
+          << dev::getFormattedHashes((double)hr_mean, ScaleSuffix::Add, 6) << EthReset;
     if (m_onDisconnected)
         m_onDisconnected();
 }
@@ -61,14 +64,16 @@ void SimulateClient::submitSolution(const Solution& solution)
         if (m_onSolutionRejected)
             m_onSolutionRejected(response_delay_ms, solution.midx);
     }
-        
 }
 
 // Handles all logic here
 void SimulateClient::workLoop()
 {
-
     m_start_time = std::chrono::steady_clock::now();
+
+    // apply exponential sliding average
+    // ref: https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
+
 
     WorkPackage current;
     current.seed = h256::random();  // We don't actually need a real seed as the epoch
@@ -80,10 +85,10 @@ void SimulateClient::workLoop()
 
     while (m_connected.load(std::memory_order_relaxed))
     {
+        float hr = Farm::f().HashRate();
+        hr_max = std::max(hr_max, hr);
+        hr_mean = hr_alpha * hr_mean + (1.0f - hr_alpha) * hr;
 
-        current.header = h256::random();
-        m_onWorkReceived(current);
-
-        this_thread::sleep_for(chrono::seconds(15));  // average block time
+        this_thread::sleep_for(chrono::milliseconds(200));
     }
 }

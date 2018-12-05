@@ -416,14 +416,14 @@ public:
         {
             m_mode = OperationMode::Simulation;
             pools.clear();
-            pools.push_back("simulation://localhost:0");  // Fake connection
+            m_poolConns.push_back(URI("simulation://localhost:0")); // Fake connection
         }
         else
         {
             m_mode = OperationMode::Mining;
         }
 
-        if (!m_shouldListDevices)
+        if (!m_shouldListDevices && m_mode != OperationMode::Simulation)
         {
             if (!pools.size())
                 throw std::invalid_argument(
@@ -443,8 +443,7 @@ public:
 
                 URI uri(url);
 
-                if (!uri.Valid() ||
-                    (m_mode == OperationMode::Mining && uri.Scheme() == "simulation"))
+                if (!uri.Valid())
                 {
                     std::string what = "Bad URI : " + uri.str();
                     throw std::invalid_argument(what);
