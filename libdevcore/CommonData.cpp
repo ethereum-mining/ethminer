@@ -156,10 +156,10 @@ double dev::getHashesToTarget(string _target)
 }
 
 std::string dev::getScaledSize(double _value, double _divisor, short _precision, string _sizes[],
-    int _numsizes, ScaleSuffix _suffix)
+    size_t _numsizes, ScaleSuffix _suffix)
 {
     double _newvalue = _value;
-    unsigned i = 0;
+    size_t i = 0;
     while (true)
     {
         if (_newvalue < _divisor || i == (_numsizes - 1))
