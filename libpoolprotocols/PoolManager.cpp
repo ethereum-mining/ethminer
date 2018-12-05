@@ -9,7 +9,8 @@ using namespace eth;
 PoolManager* PoolManager::m_this = nullptr;
 
 PoolManager::PoolManager(unsigned maxTries, unsigned failoverTimeout, unsigned ergodicity,
-    bool reportHashrate, unsigned workTimeout, unsigned responseTimeout, unsigned pollInterval, unsigned benchmarkBlock)
+    bool reportHashrate, unsigned workTimeout, unsigned responseTimeout, unsigned pollInterval,
+    unsigned benchmarkBlock)
   : m_hashrate(reportHashrate),
     m_io_strand(g_io_service),
     m_failovertimer(g_io_service),
@@ -47,7 +48,6 @@ PoolManager::PoolManager(unsigned maxTries, unsigned failoverTimeout, unsigned e
     });
 
     Farm::f().onSolutionFound([&](const Solution& sol) {
-
         // Solution should passthrough only if client is
         // properly connected. Otherwise we'll have the bad behavior
         // to log nonce submission but receive no response
@@ -69,8 +69,8 @@ PoolManager::PoolManager(unsigned maxTries, unsigned failoverTimeout, unsigned e
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::PoolManager() end");
 }
 
-void PoolManager::setClientHandlers() {
-
+void PoolManager::setClientHandlers()
+{
     p_client->onConnected([&]() {
         {
             Guard l(m_activeConnectionMutex);
@@ -79,7 +79,11 @@ void PoolManager::setClientHandlers() {
             // effective ip address.
             if (p_client->getConnection()->HostNameType() == dev::UriHostNameType::Dns ||
                 p_client->getConnection()->HostNameType() == dev::UriHostNameType::Basic)
-                m_selectedHost.append(p_client->ActiveEndPoint());
+            {
+                string ep = p_client->ActiveEndPoint();
+                if (!ep.empty())
+                    m_selectedHost = p_client->getConnection()->Host() + " " + ep;
+            }
 
             cnote << "Established connection to " << m_selectedHost;
 
@@ -155,7 +159,6 @@ void PoolManager::setClientHandlers() {
     });
 
     p_client->onWorkReceived([&](WorkPackage const& wp) {
-
         // Should not happen !
         if (!wp)
             return;
@@ -210,7 +213,6 @@ void PoolManager::setClientHandlers() {
             cwarn << EthRed "**Rejected" EthReset << ss.str();
             Farm::f().accountSolution(_minerIdx, SolutionAccountingEnum::Rejected);
         });
-
 }
 
 void PoolManager::stop()
@@ -394,7 +396,8 @@ void PoolManager::rotateConnect()
 
     if (!m_connections.empty() && m_connections.at(m_activeConnectionIdx).Host() != "exit")
     {
-        if (p_client) delete p_client;
+        if (p_client)
+            delete p_client;
 
         if (m_connections.at(m_activeConnectionIdx).Family() == ProtocolFamily::GETWORK)
             p_client = new EthGetworkClient(m_workTimeout, m_pollInterval);
@@ -405,7 +408,7 @@ void PoolManager::rotateConnect()
 
         if (p_client)
             setClientHandlers();
-        
+
         // Count connectionAttempts
         m_connectionAttempt++;
 
@@ -443,7 +446,7 @@ void PoolManager::rotateConnect()
     }
 }
 
-void PoolManager::showMiningAt() 
+void PoolManager::showMiningAt()
 {
     // Should not happen
     if (!m_currentWp)
