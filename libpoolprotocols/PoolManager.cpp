@@ -247,10 +247,11 @@ void PoolManager::stop()
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::stop() end");
 }
 
-void PoolManager::addConnection(URI& conn)
+void PoolManager::addConnection(URI& _conn)
 {
-    Guard l(m_activeConnectionMutex);
-    m_connections.push_back(conn);
+    // Guard l(m_activeConnectionMutex);
+    string con = _conn.str();
+    m_connections.push_back(URI(con));
 }
 
 /*
@@ -483,17 +484,10 @@ void PoolManager::submithrtimer_elapsed(const boost::system::error_code& ec)
     {
         if (m_running.load(std::memory_order_relaxed))
         {
-            if (p_client && p_client->isConnected())
-            {
-                std::string h = toHex(toCompactBigEndian(uint64_t(Farm::f().HashRate()), 1));
-                std::string res = h[0] != '0' ? h : h.substr(1);
+            std::string hr_hex = toHex((uint64_t)Farm::f().HashRate(), HexPrefix::Add);
 
-                // Should be 32 bytes
-                // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_submithashrate
-                std::ostringstream ss;
-                ss << "0x" << std::setw(64) << std::setfill('0') << res;
-                p_client->submitHashrate(ss.str(), m_hashrateId);
-            }
+            if (p_client && p_client->isConnected())
+                p_client->submitHashrate(hr_hex, m_hashrateId);
 
             // Resubmit actor
             m_submithrtimer.expires_from_now(boost::posix_time::seconds(m_hrReportingInterval));
