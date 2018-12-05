@@ -784,7 +784,7 @@ DEV_INLINE void SHA3_512(uint2* s)
         s[24] = chi(s[24], u, v);
 
         /* iota: a[0,0] ^= round constant */
-        s[0] ^= keccak_round_constants[i];
+        s[0] ^= LDG(keccak_round_constants[i]);
     }
 
     /* theta: c = a[0,i] ^ a[1,i] ^ .. a[4,i] */
@@ -844,5 +844,5 @@ DEV_INLINE void SHA3_512(uint2* s)
     s[7] = chi(s[7], s[8], s[9]);
 
     /* iota: a[0,0] ^= round constant */
-    s[0] ^= keccak_round_constants[23];
+    s[0] ^= LDG(keccak_round_constants[23]);
 }
