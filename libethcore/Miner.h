@@ -80,6 +80,7 @@ enum class SolutionAccountingEnum
 {
     Accepted,
     Rejected,
+    Wasted,
     Failed
 };
 
@@ -87,11 +88,14 @@ struct SolutionAccountType
 {
     unsigned accepted = 0;
     unsigned rejected = 0;
+    unsigned wasted = 0;
     unsigned failed = 0;
     std::chrono::steady_clock::time_point tstamp = std::chrono::steady_clock::now();
     string str()
     {
         string _ret = "A" + to_string(accepted);
+        if (wasted)
+            _ret.append(":W" + to_string(wasted));
         if (rejected)
             _ret.append(":R" + to_string(rejected));
         if (failed)
@@ -195,16 +199,16 @@ struct TelemetryType
 
         /*
 
-        Output is formatted as 
+        Output is formatted as
 
         Run <h:mm> <Solutions> <Speed> [<miner> ...]
         where
         - Run h:mm    Duration of the batch
         - Solutions   Detailed solutions (A+R+F) per farm
         - Speed       Actual hashing rate
-        
+
         each <miner> reports
-        - speed       Actual speed at the same level of 
+        - speed       Actual speed at the same level of
                       magnitude for farm speed
         - sensors     Values of sensors (temp, fan, power)
         - solutions   Optional (LOG_PER_GPU) Solutions detail per GPU
@@ -237,8 +241,8 @@ struct TelemetryType
             magnitude++;
         }
 
-        _ret << EthTealBold << std::fixed << std::setprecision(2)
-             << hr << " " << suffixes[magnitude] << EthReset << " { ";
+        _ret << EthTealBold << std::fixed << std::setprecision(2) << hr << " "
+             << suffixes[magnitude] << EthReset << " { ";
 
         int i = -1;                 // Current miner index
         int m = miners.size() - 1;  // Max miner index
@@ -262,7 +266,6 @@ struct TelemetryType
             // Separator if not the last miner index
             if (i < m)
                 _ret << " | ";
-
         }
         _ret << " }";
 

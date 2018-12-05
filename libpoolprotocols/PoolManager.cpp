@@ -58,7 +58,7 @@ PoolManager::PoolManager(unsigned maxTries, unsigned failoverTimeout, unsigned e
         }
         else
         {
-            cnote << string(EthRed "Solution 0x") + toHex(sol.nonce)
+            cnote << string(EthOrange "Solution 0x") + toHex(sol.nonce)
                   << " wasted. Waiting for connection...";
         }
 
