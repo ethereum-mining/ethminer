@@ -365,30 +365,6 @@ URI::URI(std::string uri) : m_uri{std::move(uri)}
         m_password = tmpStr;
     if (url_decode(m_worker, tmpStr))
         m_worker = tmpStr;
-    
-    // Eventually decode every encoded char
-    std::string tmpStr;
-    if (url_decode(m_userinfo, tmpStr))
-        m_userinfo = tmpStr;
-    if (url_decode(m_urlinfo, tmpStr))
-        m_urlinfo = tmpStr;
-    if (url_decode(m_hostinfo, tmpStr))
-        m_hostinfo = tmpStr;
-    if (url_decode(m_pathinfo, tmpStr))
-        m_pathinfo = tmpStr;
-
-    if (url_decode(m_path, tmpStr))
-        m_path = tmpStr;
-    if (url_decode(m_query, tmpStr))
-        m_query = tmpStr;
-    if (url_decode(m_fragment, tmpStr))
-        m_fragment = tmpStr;
-    if (url_decode(m_user, tmpStr))
-        m_user = tmpStr;
-    if (url_decode(m_password, tmpStr))
-        m_password = tmpStr;
-    if (url_decode(m_worker, tmpStr))
-        m_worker = tmpStr;
 
 
     if ((s_schemes.find(m_scheme) != s_schemes.end()) && !m_host.empty() && m_port > 0)
