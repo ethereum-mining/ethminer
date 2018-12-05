@@ -982,7 +982,6 @@ Json::Value ApiConnection::getMinerStat1()
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");
         detailedMhDcr << "off"
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");  // DualMining not supported
-        gpuIndex++;
     }
 
     gpuIndex = 0;
@@ -991,7 +990,6 @@ Json::Value ApiConnection::getMinerStat1()
         tempAndFans << t.miners.at(gpuIndex).sensors.tempC << ";"
                     << t.miners.at(gpuIndex).sensors.fanP
                     << (((numGpus - 1) > gpuIndex) ? ";" : "");  // Fetching Temp and Fans
-        gpuIndex++;
     }
 
     Json::Value jRes;
