@@ -218,8 +218,8 @@ struct TelemetryType
         int hoursSize = (hours.count() > 9 ? (hours.count() > 99 ? 3 : 2) : 1);
         duration -= hours;
         auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
-        _ret << "Run " << setw(hoursSize) << hours.count() << ":" << setfill('0') << setw(2)
-             << minutes.count() << " " << farm.solutions.str() << " ";
+        _ret << EthGreen << setw(hoursSize) << hours.count() << ":" << setfill('0') << setw(2)
+             << minutes.count() << " " << farm.solutions.str() << EthReset << " ";
 
         /*
         Github : @AndreaLanfranchi
@@ -259,7 +259,7 @@ struct TelemetryType
                 _ret << " " << EthTeal << miner.solutions.str() << EthReset;
 
         }
-        _ret << "]";
+        _ret << " ]";
 
         return _ret.str();
     };
