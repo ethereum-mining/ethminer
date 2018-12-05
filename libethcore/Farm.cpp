@@ -417,23 +417,6 @@ SolutionAccountType Farm::getSolutions(unsigned _minerIdx)
     }
 }
 
-string Farm::farmLaunchedFormatted()
-{
-    auto d = std::chrono::steady_clock::now() - m_farm_launched;
-    int hsize = 3;
-    auto hhh = std::chrono::duration_cast<std::chrono::hours>(d);
-    if (hhh.count() < 100)
-    {
-        hsize = 2;
-    }
-    d -= hhh;
-    auto mm = std::chrono::duration_cast<std::chrono::minutes>(d);
-    std::ostringstream stream;
-    stream << "Time: " << std::setfill('0') << std::setw(hsize) << hhh.count() << ':'
-           << std::setfill('0') << std::setw(2) << mm.count();
-    return stream.str();
-}
-
 /**
  * @brief Provides the description of segments each miner is working on
  * @return a JsonObject

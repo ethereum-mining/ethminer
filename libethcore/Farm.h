@@ -195,10 +195,6 @@ public:
 
     void onMinerRestart(MinerRestart const& _handler) { m_onMinerRestart = _handler; }
 
-    std::chrono::steady_clock::time_point farmLaunched() { return m_farm_launched; }
-
-    string farmLaunchedFormatted();
-
     /**
      * @brief Gets the actual start nonce of the segment picked by the farm
      */
@@ -275,8 +271,6 @@ private:
     boost::asio::io_service::strand m_io_strand;
     boost::asio::deadline_timer m_collectTimer;
     static const int m_collectInterval = 5000;
-
-    std::chrono::steady_clock::time_point m_farm_launched = std::chrono::steady_clock::now();
 
     string m_pool_addresses;
 

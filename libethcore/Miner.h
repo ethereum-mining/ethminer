@@ -185,11 +185,42 @@ enum MinerPauseEnum
 struct TelemetryType
 {
     bool hwmon = false;
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 
     TelemetryAccountType farm;
     std::vector<TelemetryAccountType> miners;
     std::string str()
     {
+        std::stringstream _ret;
+
+        /*
+
+        Output is formatted as 
+
+        Run <h:mm> <Solutions> <Speed> [<miner> ...]
+        where
+        - Run h:mm    Duration of the batch
+        - Solutions   Detailed solutions (A+R+F) per farm
+        - Speed       Actual hashing rate
+        
+        each <miner> reports
+        - speed       Actual speed at the same level of 
+                      magnitude for farm speed
+        - sensors     Values of sensors (temp, fan, power)
+        - solutions   Optional (LOG_PER_GPU) Solutions detail per GPU
+        */
+
+        /*
+        Calculate duration
+        */
+        auto duration = std::chrono::steady_clock::now() - start;
+        auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
+        int hoursSize = (hours.count() > 9 ? (hours.count() > 99 ? 3 : 2) : 1);
+        duration -= hours;
+        auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
+        _ret << "Run " << setw(hoursSize) << hours.count() << ":" << setfill('0') << setw(2)
+             << minutes.count() << " " << farm.solutions.str() << " ";
+
         /*
         Github : @AndreaLanfranchi
         I whish I could simply make use of getFormattedHashes but in this case
@@ -197,7 +228,6 @@ struct TelemetryType
         of magnitude than the hashrate expressed by single devices.
         Thus I need to set the vary same scaling index on the farm and on devices
         */
-
         static string suffixes[] = {"h", "Kh", "Mh", "Gh"};
         float hr = farm.hashrate;
         int magnitude = 0;
@@ -207,10 +237,8 @@ struct TelemetryType
             magnitude++;
         }
 
-
-        std::stringstream _ret;
-        _ret << "Speed " << EthTealBold << std::fixed << std::setprecision(2)
-             << hr << " " << suffixes[magnitude] << EthReset;
+        _ret << EthTealBold << std::fixed << std::setprecision(2)
+             << hr << " " << suffixes[magnitude] << EthReset << " [";
 
         int i = -1;
         for (TelemetryAccountType miner : miners)
@@ -225,7 +253,14 @@ struct TelemetryType
 
             if (hwmon)
                 _ret << " " << EthTeal << miner.sensors.str() << EthReset;
+
+            // Eventually push also solutions per single GPU
+            if (g_logOptions & LOG_PER_GPU)
+                _ret << " " << EthTeal << miner.solutions.str() << EthReset;
+
         }
+        _ret << "]";
+
         return _ret.str();
     };
 };

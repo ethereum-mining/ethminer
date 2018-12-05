@@ -104,37 +104,13 @@ public:
     {
         if (!ec && g_running)
         {
-            if (PoolManager::p().isConnected())
-            {
-                {
-
-                    ostringstream os;
-                    os << Farm::f().Telemetry().str() << ' ';
-                    if (!(g_logOptions & LOG_PER_GPU))
-                        os << Farm::f().getSolutions().str() << ' ';
-                    os << Farm::f().farmLaunchedFormatted();
-                    minelog << os.str();
-                }
-
-                if (g_logOptions & LOG_PER_GPU)
-                {
-                    ostringstream statdetails;
-                    statdetails << "Solutions " << Farm::f().getSolutions().str() << ' ';
-                    for (unsigned i = 0; i < Farm::f().getMinersCount(); i++)
-                        statdetails << " gpu" << i << " " << Farm::f().getSolutions(i).str();
-                    minelog << statdetails.str();
-                }
+            string logLine =
+                PoolManager::p().isConnected() ? Farm::f().Telemetry().str() : "Not connected";
+            minelog << logLine;
 
 #if ETH_DBUS
-                dbusint.send(toString(Farm::f().miningProgress()).c_str());
+            dbusint.send(Farm::f().Telemetry().str());
 #endif
-            }
-            else
-            {
-                minelog << "not-connected";
-            }
-
-
             // Resubmit timer
             m_cliDisplayTimer.expires_from_now(boost::posix_time::seconds(m_cliDisplayInterval));
             m_cliDisplayTimer.async_wait(m_io_strand.wrap(boost::bind(
@@ -850,7 +826,8 @@ public:
                  << "    Please note that information delivered by API interface" << endl
                  << "    may depend on value of --HWMON" << endl
                  << "    A single endpoint is used to accept both HTTP or plain tcp" << endl
-                 << "    requests."<< endl << endl
+                 << "    requests." << endl
+                 << endl
                  << "    --api-bind          TEXT Default not set" << endl
                  << "                        Set the API address:port the miner should listen "
                     "on. "

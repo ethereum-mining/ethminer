@@ -952,10 +952,11 @@ void ApiConnection::onSendSocketDataCompleted(const boost::system::error_code& e
 
 Json::Value ApiConnection::getMinerStat1()
 {
-    auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
-        steady_clock::now() - Farm::f().farmLaunched());
     auto connection = PoolManager::p().getActiveConnectionCopy();
     TelemetryType t = Farm::f().Telemetry();
+    auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
+        steady_clock::now() - t.start);
+
 
     ostringstream totalMhEth;
     ostringstream totalMhDcr;
@@ -1080,6 +1081,11 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
 std::string ApiConnection::getHttpMinerStatDetail()
 {
     Json::Value jStat = getMinerStatDetail();
+    uint64_t durationSeconds = jStat["host"]["runtime"].asUInt64();
+    int hours = (int)(durationSeconds / 3600);
+    durationSeconds -= (hours * 3600);
+    int minutes = (int)(durationSeconds / 60);
+    int hoursSize = (hours > 9 ? (hours > 99 ? 3 : 2) : 1);
 
     /* Build up header*/
     std::stringstream _ret;
@@ -1110,8 +1116,8 @@ std::string ApiConnection::getHttpMinerStatDetail()
          << "<table class=mx-auto>"
          << "<thead>"
          << "<tr class=bg-header1>"
-         << "<th colspan=9>" << jStat["host"]["version"].asString() << " - "
-         << Farm::f().farmLaunchedFormatted()
+         << "<th colspan=9>" << jStat["host"]["version"].asString() << " - " << setw(hoursSize)
+         << hours << setw(2) << setfill('0') << fixed << minutes
          << "<br>Pool: " << jStat["connection"]["uri"].asString() << "</th>"
          << "</tr>"
          << "<tr class=bg-header0>"
@@ -1186,11 +1192,10 @@ std::string ApiConnection::getHttpMinerStatDetail()
 Json::Value ApiConnection::getMinerStatDetail()
 {
     const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-    auto runningTime =
-        std::chrono::duration_cast<std::chrono::seconds>(now - Farm::f().farmLaunched());
-
-    SolutionAccountType solutions = Farm::f().getSolutions();
     TelemetryType t = Farm::f().Telemetry();
+
+    auto runningTime = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::steady_clock::now() - t.start);
 
     // ostringstream version;
     Json::Value devices = Json::Value(Json::arrayValue);
@@ -1227,11 +1232,11 @@ Json::Value ApiConnection::getMinerStatDetail()
     mininginfo["epoch_changes"] = PoolManager::p().getEpochChanges();
     mininginfo["difficulty"] = PoolManager::p().getCurrentDifficulty();
 
-    sharesinfo.append(solutions.accepted);
-    sharesinfo.append(solutions.rejected);
-    sharesinfo.append(solutions.failed);
+    sharesinfo.append(t.farm.solutions.accepted);
+    sharesinfo.append(t.farm.solutions.rejected);
+    sharesinfo.append(t.farm.solutions.failed);
     auto solution_lastupdated =
-        std::chrono::duration_cast<std::chrono::seconds>(now - solutions.tstamp);
+        std::chrono::duration_cast<std::chrono::seconds>(now - t.farm.solutions.tstamp);
     sharesinfo.append(uint64_t(solution_lastupdated.count()));  // interval in seconds from last
                                                                 // found share
     mininginfo["shares"] = sharesinfo;
