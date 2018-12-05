@@ -437,7 +437,7 @@ Json::Value Farm::get_nonce_scrambler_json()
     Json::Value jRes;
     jRes["start_nonce"] = toHex(m_nonce_scrambler, HexPrefix::Add);
     jRes["device_width"] = m_nonce_segment_with;
-    jRes["device_count"] = m_miners.size();
+    jRes["device_count"] = (uint64_t)m_miners.size();
 
     return jRes;
 }

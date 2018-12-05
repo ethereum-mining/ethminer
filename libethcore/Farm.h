@@ -139,7 +139,7 @@ public:
     /**
      * @brief Gets current hashrate
      */
-    double HashRate() { return m_telemetry.farm.hashrate; };
+    float HashRate() { return m_telemetry.farm.hashrate; };
 
     /**
      * @brief Gets the collection of pointers to miner instances
