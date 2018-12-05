@@ -41,6 +41,8 @@
 
 #if defined(__linux__) || defined(__APPLE__)
 #include <execinfo.h>
+#elif defined(_WIN32)
+#include <Windows.h>
 #endif
 
 using namespace std;
@@ -1450,6 +1452,12 @@ int main(int argc, char** argv)
     // 2 - Runtime error
     // 3 - Other exceptions
     // 4 - Possible corruption
+
+#if defined(_WIN32)
+    // Need to change the code page from the default OEM code page (437) so that
+    // UTF-8 characters are displayed correctly in the console
+    SetConsoleOutputCP(CP_UTF8);
+#endif
 
     // Always out release version
     auto* bi = ethminer_get_buildinfo();
