@@ -213,7 +213,7 @@ double getHashesToTarget(std::string _target);
 
 /// Generic function to scale a value
 std::string getScaledSize(double _value, double _divisor, short _precision, std::string _sizes[],
-    int _numsizes, ScaleSuffix _suffix = ScaleSuffix::Add);
+    size_t _numsizes, ScaleSuffix _suffix = ScaleSuffix::Add);
 
 /// Formats hashrate
 std::string getFormattedHashes(double _hr, ScaleSuffix _suffix = ScaleSuffix::Add);
