@@ -492,13 +492,13 @@ void Farm::collectData(const boost::system::error_code& ec)
         return;
 
     // Reset hashrate (it will accumulate from miners)
-    float farm_hr = 0;
+    float farm_hr = 0.0f;
     
     // Process miners
     for (auto const& miner : m_miners)
     {
         int minerIdx = miner->Index();
-        float hr = (miner->paused() ? 0.0 : miner->RetrieveHashRate());
+        float hr = (miner->paused() ? 0.0f : miner->RetrieveHashRate());
         farm_hr += hr;
         m_telemetry.miners.at(minerIdx).hashrate = hr;
         m_telemetry.miners.at(minerIdx).paused = miner->paused();
