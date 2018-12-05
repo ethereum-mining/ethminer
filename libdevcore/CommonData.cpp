@@ -160,10 +160,8 @@ std::string dev::getScaledSize(double _value, double _divisor, short _precision,
 {
     double _newvalue = _value;
     size_t i = 0;
-    while (true)
+    while (_newvalue > _divisor && i <= (_numsizes - 1))
     {
-        if (_newvalue < _divisor || i == (_numsizes - 1))
-            break;
         _newvalue /= _divisor;
         i++;
     }
