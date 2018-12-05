@@ -955,7 +955,6 @@ Json::Value ApiConnection::getMinerStat1()
     auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
         steady_clock::now() - Farm::f().farmLaunched());
     auto connection = PoolManager::p().getActiveConnectionCopy();
-    SolutionAccountType solutions = Farm::f().getSolutions();
     TelemetryType t = Farm::f().Telemetry();
 
     ostringstream totalMhEth;
@@ -967,9 +966,9 @@ Json::Value ApiConnection::getMinerStat1()
     ostringstream invalidStats;
 
     totalMhEth << std::fixed << std::setprecision(0) << t.farm.hashrate / 1000.0f << ";"
-               << solutions.accepted << ";" << solutions.rejected;
-    totalMhDcr << "0;0;0";                    // DualMining not supported
-    invalidStats << solutions.failed << ";0";  // Invalid + Pool switches
+               << t.farm.solutions.accepted << ";" << t.farm.solutions.rejected;
+    totalMhDcr << "0;0;0";                            // DualMining not supported
+    invalidStats << t.farm.solutions.failed << ";0";  // Invalid + Pool switches
     poolAddresses << connection.Host() << ':' << connection.Port();
     invalidStats << ";0;0";  // DualMining not supported
 
@@ -1049,13 +1048,12 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
     Json::Value mininginfo;
     Json::Value jshares = Json::Value(Json::arrayValue);
     Json::Value jsegment = Json::Value(Json::arrayValue);
-    SolutionAccountType solutions = Farm::f().getSolutions(_index);
-    jshares.append(solutions.accepted);
-    jshares.append(solutions.rejected);
-    jshares.append(solutions.failed);
+    jshares.append(_t.miners.at(_index).solutions.accepted);
+    jshares.append(_t.miners.at(_index).solutions.rejected);
+    jshares.append(_t.miners.at(_index).solutions.failed);
 
-    auto solution_lastupdated =
-        std::chrono::duration_cast<std::chrono::seconds>(_now - solutions.tstamp);
+    auto solution_lastupdated = std::chrono::duration_cast<std::chrono::seconds>(
+        _now - _t.miners.at(_index).solutions.tstamp);
     jshares.append(uint64_t(solution_lastupdated.count()));  // interval in seconds from last found
                                                              // share
 
