@@ -217,7 +217,8 @@ struct TelemetryType
         {
             i++;
             hr = miner.hashrate;
-            hr /= pow(1000.0f, magnitude);
+            if (hr > 0.0f)
+                hr /= pow(1000.0f, magnitude);
 
             _ret << " " << (miner.paused ? EthRed : "") << miner.prefix << i << " " << EthTeal
                  << std::fixed << std::setprecision(2) << hr << EthReset;
