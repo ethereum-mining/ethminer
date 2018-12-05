@@ -509,25 +509,11 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         try
         {
             URI uri(sUri);
-            if (!uri.Valid())
+            if (!uri.Valid() || uri.Scheme() == "simulation")
             {
                 jResponse["error"]["code"] = -422;
                 jResponse["error"]["message"] = ("Invalid URI " + uri.str());
                 return;
-            }
-
-            // Check other pools already present share the same scheme family (stratum or getwork)
-            Json::Value pools = PoolManager::p().getConnectionsJson();
-            for (Json::Value::ArrayIndex i = 0; i != pools.size(); i++)
-            {
-                dev::URI poolUri = pools[i]["uri"].asString();
-                if (uri.Family() != poolUri.Family())
-                {
-                    jResponse["error"]["code"] = -422;
-                    jResponse["error"]["message"] =
-                        "Mixed stratum and getwork endpoints not supported.";
-                    return;
-                }
             }
 
             // If everything ok then add this new uri

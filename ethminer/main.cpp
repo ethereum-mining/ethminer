@@ -264,7 +264,7 @@ public:
         app.add_flag("--exit", g_exitOnError, "");
 
         vector<string> pools;
-        app.add_option("-P,--pool,pool", pools, "");
+        app.add_option("-P,--pool", pools, "");
 
         app.add_option("--failover-timeout", m_poolFlvrTimeout, "", true)
             ->check(CLI::Range(0, 999));
