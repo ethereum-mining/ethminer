@@ -104,7 +104,7 @@ struct HwSensorsType
 {
     int tempC = 0;
     int fanP = 0;
-    double powerW = 0;
+    double powerW = 0.0;
     string str()
     {
         string _ret = to_string(tempC) + "C " + to_string(fanP) + "%";
@@ -117,7 +117,7 @@ struct HwSensorsType
 struct TelemetryAccountType
 {
     string prefix = "";
-    float hashrate = 0;
+    float hashrate = 0.0f;
     bool paused = false;
     HwSensorsType sensors;
     SolutionAccountType solutions;
@@ -190,19 +190,40 @@ struct TelemetryType
     std::vector<TelemetryAccountType> miners;
     std::string str()
     {
+        /*
+        Github : @AndreaLanfranchi
+        I whish I could simply make use of getFormattedHashes but in this case
+        this would be misleading as total hashrate could be of a different order
+        of magnitude than the hashrate expressed by single devices.
+        Thus I need to set the vary same scaling index on the farm and on devices
+        */
+
+        static string suffixes[] = {"h", "Kh", "Mh", "Gh"};
+        float hr = farm.hashrate;
+        int magnitude = 0;
+        while (hr > 1000.0f && magnitude <= 3)
+        {
+            hr /= 1000.0f;
+            magnitude++;
+        }
+
+
         std::stringstream _ret;
         _ret << "Speed " << EthTealBold << std::fixed << std::setprecision(2)
-             << getFormattedHashes(farm.hashrate) << EthReset;
+             << hr << " " << suffixes[magnitude] << EthReset;
 
         int i = -1;
         for (TelemetryAccountType miner : miners)
         {
             i++;
-            _ret << " " << (miner.paused ? EthRed : "") << miner.prefix << i << " " << EthTeal << std::fixed << std::setprecision(2)
-                 << getFormattedHashes(miner.hashrate, ScaleSuffix::DontAdd) << EthReset;
+            hr = miner.hashrate;
+            hr /= pow(1000.0f, magnitude);
+
+            _ret << " " << (miner.paused ? EthRed : "") << miner.prefix << i << " " << EthTeal
+                 << std::fixed << std::setprecision(2) << hr << EthReset;
+
             if (hwmon)
                 _ret << " " << EthTeal << miner.sensors.str() << EthReset;
-
         }
         return _ret.str();
     };
