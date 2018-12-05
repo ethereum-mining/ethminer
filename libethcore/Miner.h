@@ -117,7 +117,7 @@ struct HwSensorsType
 struct TelemetryAccountType
 {
     string prefix = "";
-    double hashrate = 0;
+    float hashrate = 0;
     bool paused = false;
     HwSensorsType sensors;
     SolutionAccountType solutions;
