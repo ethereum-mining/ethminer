@@ -71,7 +71,6 @@ static std::map<std::string, SchemeAttributes> s_schemes = {
     {"simulation", {ProtocolFamily::SIMULATION, SecureLevel::NONE, 999}}
 };
 
-
 static bool url_decode(const std::string& in, std::string& out)
 {
     out.clear();
@@ -342,6 +341,30 @@ URI::URI(std::string uri) : m_uri{std::move(uri)}
         boost::replace_all(m_password, "`", "");
     if (!m_worker.empty())
         boost::replace_all(m_worker, "`", "");
+
+    // Eventually decode every encoded char
+    std::string tmpStr;
+    if (url_decode(m_userinfo, tmpStr))
+        m_userinfo = tmpStr;
+    if (url_decode(m_urlinfo, tmpStr))
+        m_urlinfo = tmpStr;
+    if (url_decode(m_hostinfo, tmpStr))
+        m_hostinfo = tmpStr;
+    if (url_decode(m_pathinfo, tmpStr))
+        m_pathinfo = tmpStr;
+
+    if (url_decode(m_path, tmpStr))
+        m_path = tmpStr;
+    if (url_decode(m_query, tmpStr))
+        m_query = tmpStr;
+    if (url_decode(m_fragment, tmpStr))
+        m_fragment = tmpStr;
+    if (url_decode(m_user, tmpStr))
+        m_user = tmpStr;
+    if (url_decode(m_password, tmpStr))
+        m_password = tmpStr;
+    if (url_decode(m_worker, tmpStr))
+        m_worker = tmpStr;
     
     // Eventually decode every encoded char
     std::string tmpStr;
