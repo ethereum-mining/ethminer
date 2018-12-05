@@ -1117,7 +1117,7 @@ std::string ApiConnection::getHttpMinerStatDetail()
          << "<thead>"
          << "<tr class=bg-header1>"
          << "<th colspan=9>" << jStat["host"]["version"].asString() << " - " << setw(hoursSize)
-         << hours << setw(2) << setfill('0') << fixed << minutes
+         << hours << ":" << setw(2) << setfill('0') << fixed << minutes
          << "<br>Pool: " << jStat["connection"]["uri"].asString() << "</th>"
          << "</tr>"
          << "<tr class=bg-header0>"
@@ -1174,7 +1174,7 @@ std::string ApiConnection::getHttpMinerStatDetail()
     /* Summarize */
     _ret << "<tfoot><tr class=bg-header0><td colspan=4 class=right>Total</td><td class=right>"
          << dev::getFormattedHashes(total_hashrate) << "</td><td class=right>" << total_solutions
-         << "</td><td colspan=3 class=right>" << total_power << "</td></tfoot>";
+         << "</td><td colspan=3 class=right>" << setprecision(2) << total_power << "</td></tfoot>";
 
     _ret << "</table></body></html>";
     return _ret.str();
