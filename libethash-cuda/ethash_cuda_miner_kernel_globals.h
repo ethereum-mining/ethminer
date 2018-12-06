@@ -13,3 +13,8 @@ __constant__ uint64_t d_target;
 #define SHFL(x, y, z) __shfl((x), (y), (z))
 #endif
 
+#if (__CUDA_ARCH__ >= 320)
+#define LDG(x) __ldg(&(x))
+#else
+#define LDG(x) (x)
+#endif
