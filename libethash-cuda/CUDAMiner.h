@@ -61,8 +61,6 @@ protected:
 private:
     atomic<bool> m_new_work = {false};
 
-    boost::asio::io_service::strand m_io_strand;
-
     void workLoop() override;
 
     std::vector<volatile Search_results*> m_search_buf;

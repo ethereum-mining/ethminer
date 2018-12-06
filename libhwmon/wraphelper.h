@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <libdevcore/Log.h>
+
 #if defined(_WIN32)
 #include <windows.h>
 void* wrap_dlopen(const char* filename);

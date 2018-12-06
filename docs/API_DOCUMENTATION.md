@@ -10,7 +10,6 @@
     * [miner_ping](#miner_ping)
     * [miner_getstatdetail](#miner_getstatdetail)
     * [miner_getstat1](#miner_getstat1)
-    * [miner_getstathr](#miner_getstathr)
     * [miner_restart](#miner_restart)
     * [miner_reboot](#miner_reboot)
     * [miner_shuffle](#miner_shuffle)
@@ -91,7 +90,6 @@ This shows the API interface is live and listening on the configured endpoint.
 | [miner_ping](#miner_ping) | Responds back with a "pong" | No |
 | [miner_getstatdetail](#miner_getstatdetail) | Request the retrieval of operational data in most detailed form | No
 | [miner_getstat1](#miner_getstat1) | Request the retrieval of operational data in compatible format | No
-| [miner_getstathr](#miner_getstathr) | Request the retrieval of operational data in Ethminer's format | No
 | [miner_restart](#miner_restart) | Instructs ethminer to stop and restart mining | Yes |
 | [miner_reboot](#miner_reboot) | Try to launch reboot.bat (on Windows) or reboot.sh (on Linux) in the ethminer executable directory | Yes
 | [miner_shuffle](#miner_shuffle) | Initializes a new random scramble nonce | Yes
@@ -185,72 +183,73 @@ and expect back a response like this:
 
 ```js
 {
-  "id": 1,
+  "id": 0,
   "jsonrpc": "2.0",
   "result": {
-    "connection": {                     // Current active connection
-      "isconnected": true,
-      "switched": 0,
-      "uri": "stratum+tcp://<omitted-ethereum-address>.worker@eu1.ethermine.org:4444"
+    "connection": {                                     // Current active connection
+      "connected": true,
+      "switches": 1,
+      "uri": "stratum1+tls12://<ethaddress>.wworker@eu1.ethermine.org:5555"
     },
-    "difficulty": 3999938964.0,
-    "epoch": 218,
-    "epoch_changes": 1,                 // Ethminer starts with epoch 0. First connection to pool increments this counter
-    "hashrate": 46709128,               // Overall HashRate in H/s
-    "hostname": "<omitted-hostname>",
-    "runtime": 240,                     // Total running time in seconds
-    "shares": {                         // Summarized info about shares
-      "accepted": 5,
-      "acceptedstale": 1,
-      "invalid": 1,
-      "lastupdate": 58,                 // Latest update of any share info of is X seconds ago
-      "rejected": 0
-    },
-    "tstart": 63,
-    "tstop": 69,
-    "version": "ethminer-0.16.0.dev3-73+commit.f35c22ab",
-    "gpus": [
-      {"fan": 54,                       // Fan in %
-       "hashrate": 23604564,            // HashRate of GPU in H/s
-       "index": 0,
-       "ispaused": false,
-       "nonce_start": 6636918940706763208,
-       "nonce_stop": 6636920040218390984,
-       "pause_reason": "",              // Possible values: "", "temperature", "api", or "temperature,api"
-       "power": 0.0,                    // Powerdrain in W
-       "shares": {                      // Detailed info about shares from this GPU
-         "accepted": 3,
-         "acceptedstale": 0,
-         "invalid": 0,
-         "lastupdate": 58,              // Share info from this GPU updated X seconds ago
-         "rejected": 0
-       },
-       "temp": 53                       // Temperature in °C
+    "devices": [                                        // Array subscribed of devices
+      {
+        "_index": 0,                                    // Miner ordinal 
+        "_mode": "CUDA",                                // Miner mode : "OpenCL" / "CUDA"
+        "hardware": {                                   // Device hardware info
+          "name": "GeForce GTX 1050 Ti 3.95 GB",        // Name
+          "pci": "01:00.0",                             // Pci Id
+          "sensors": [                                  // An array made of ...
+            47,                                         //  + Detected temp
+            70,                                         //  + Fan percent
+            0                                           //  + Power drain in watts
+          ],
+          "type": "GPU"                                 // Device Type : "CPU" / "GPU" / "ACCELERATOR"
+        },
+        "mining": {                                     // Mining info
+          "hashrate": "0x0000000000e3fcbb",             // Current hashrate in hashes per second
+          "pause_reason": null,                         // If the device is paused this contains the reason
+          "paused": false,                              // Wheter or not the device is paused
+          "segment": [                                  // The search segment of the device
+            "0xbcf0a663bfe75dab",                       //  + Lower bound
+            "0xbcf0a664bfe75dab"                        //  + Upper bound
+          ],
+          "shares": [                                   // Shares / Solutions stats
+            1,                                          //  + Found shares
+            0,                                          //  + Rejected (by pool) shares
+            0,                                          //  + Failed shares (always 0 if --no-eval is set)
+            15                                          //  + Time in seconds since last found share
+          ]
+        }
       },
-      {"fan": 53,
-       "hashrate": 23104564,
-       "index": 1,
-       "ispaused": false,
-       "nonce_start": 6636920040218391000,
-       "nonce_stop": 6636921139730018000,
-       "pause_reason": "",
-       "power": 0.0,
-       "shares": {
-         "accepted": 2,
-         "acceptedstale": 1,
-         "invalid": 1,
-         "lastupdate": 134,
-         "rejected": 0
-       },
-       "temp": 56
-      }
-    ]
+      { ... }                                           // Another device
+      { ... }                                           // And another ...
+    ],
+    "host": {
+      "name": "miner01",                                // Host name of the computer running ethminer
+      "runtime": 121,                                   // Duration time (in seconds)
+      "version": "ethminer-0.18.0-alpha.1+commit.70c7cdbe.dirty"
+    },
+    "mining": {                                         // Mining info for the whole instance
+      "difficulty": 3999938964,                         // Actual difficulty in hashes
+      "epoch": 227,                                     // Current epoch
+      "epoch_changes": 1,                               // How many epoch changes occurred during the run
+      "hashrate": "0x00000000054a89c8",                 // Overall hashrate (sum of hashrate of all devices)
+      "shares": [                                       // Shares / Solutions stats
+        2,                                              //  + Found shares
+        0,                                              //  + Rejected (by pool) shares
+        0,                                              //  + Failed shares (always 0 if --no-eval is set)
+        15                                              //  + Time in seconds since last found share
+      ]
+    },
+    "monitors": {                                       // A nullable object which may contain some triggers
+      "temperatures": [                                 // Monitor temperature
+        60,                                             //  + Resume mining if device temp is <= this threshold
+        75                                              //  + Suspend mining if device temp is >= this threshold
+      ]
+    }
   }
 }
 ```
-
-If values not set (eg --tstart) or the underlaying function returns an error expect `null` as returned value!
-
 
 ### miner_getstat1
 
@@ -285,79 +284,6 @@ and expect back a response like this:
 ```
 
 Some of the arguments here expressed have been set for compatibility with other miners so their values are not set. For instance, ethminer **does not** support dual (ETH/DCR) mining.
-
-### miner_getstathr
-
-With this method you expect back a collection of statistical data. To issue a request:
-
-```js
-{
-  "id": 1,
-  "jsonrpc": "2.0",
-  "method": "miner_getstathr"
-}
-```
-
-and expect back a response like this:
-
-```js
-{
-  "id": 1,
-  "jsonrpc": "2.0",
-  "result": {
-    "ethhashrate": 73056881,            // Overall HashRate in H/s
-    "ethhashrates": [                   // Hashrate per GPU in H/S
-      14681287,
-      14506510,
-      14681287,
-      14506510,
-      0,
-      14681287
-    ],
-    "ethinvalid": 0,                    // Total number of invalid shares
-    "ethpoolsw": 0,                     // Total number of pool switches
-    "ethrejected": 0,                   // Total number of rejected shares
-    "ethshares": 64,                    // Total number of found and submitted shares
-    "fanpercentages": [                 // Fan percentages per GPU
-       90,
-       90,
-       90,
-       90,
-       100,
-       90
-    ],
-    "pooladdrs": "eu1.ethermine.org:4444",  // Mining pool currently active
-    "powerusages": [                        // Power draw (in W) per GPU
-       0.0,
-       0.0,
-       0.0,
-       0.0,
-       0.0,
-       0.0
-    ],
-    "runtime": "59",                    // Total runtime in minutes
-    "temperatures": [                   // Temperatures per GPU
-       53,
-       50,
-       56,
-       58,
-       68,
-       60
-    ],
-    "ispaused": [                       // Is mining paused per GPU
-       false,
-       false,
-       false,
-       false,
-       true,
-       false
-    ],
-    "version": "ethminer-0.16.0.dev0+commit.41639944" // Running ethminer's version
-  }
-}
-```
-
-This format does not honor any compliance with other miners' format and does not express values from dual mining, which, we reiterate, is not supported by ethminer.
 
 ### miner_restart
 
@@ -604,45 +530,13 @@ and expect a result like this:
   "id": 0,
   "jsonrpc": "2.0",
   "result": {
-    "noncescrambler": 16704043538687679721,
-    "segments": [
-      {
-        "gpu": 0,
-        "start": 16704043538687679721,
-        "stop": 16704044638199307497
-      },
-      {
-        "gpu": 1,
-        "start": 16704044638199307497,
-        "stop": 16704046837222563049
-      },
-      {
-        "gpu": 2,
-        "start": 16704045737710935273,
-        "stop": 16704049036245818601
-      },
-      {
-        "gpu": 3,
-        "start": 16704046837222563049,
-        "stop": 16704051235269074153
-      },
-      {
-        "gpu": 4,
-        "start": 16704047936734190825,
-        "stop": 16704053434292329705
-      },
-      {
-        "gpu": 5,
-        "start": 16704049036245818601,
-        "stop": 16704055633315585257
-      }
-    ],
-    "segmentwidth": 40
+    "device_count": 6,                          // How many devices are mining
+    "device_width": 32,                         // The width (as exponent of 2) of each device segment
+    "start_nonce": "0xd3719cef9dd02322"         // The start nonce of the segment
   }
 }
 ```
-
-Note that segment width is the exponent in the expression `pow(2, segment)`.
+To compute the effective start_nonce assigned to each device you can use this simple math : `start_nonce + ((2^segment_width) * device_index))`
 The information hereby exposed may be used in large mining operations to check whether or not two (or more) rigs may result having overlapping segments. The possibility is very remote ... but is there.
 
 ### miner_setscramblerinfo
@@ -656,6 +550,18 @@ To approach this method you have to read carefully the method [miner_getscramble
   "method": "miner_setscramblerinfo",
   "params": {
     "noncescrambler": 16704043538687679721,      // At least one of these two members
+    "segmentwidth": 38                           // or both.
+  }
+}
+```
+or, if you prefer the hexadecimal notation,
+```js
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "miner_setscramblerinfo",
+  "params": {
+    "noncescrambler": "0x6f3ab2803cfeea12",      // At least one of these two members
     "segmentwidth": 38                           // or both.
   }
 }

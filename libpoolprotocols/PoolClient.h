@@ -4,9 +4,10 @@
 
 #include <boost/asio/ip/address.hpp>
 
-#include <libethcore/Farm.h>
 #include <libethcore/Miner.h>
 #include <libpoolprotocols/PoolURI.h>
+
+extern boost::asio::io_service g_io_service;
 
 using namespace std;
 

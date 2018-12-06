@@ -24,8 +24,6 @@
 #include <regex>
 #include <string>
 
-#include <libdevcore/Log.h>
-
 #include "wrapamdsysfs.h"
 #include "wraphelper.h"
 
@@ -153,7 +151,11 @@ wrap_amdsysfs_handle* wrap_amdsysfs_create()
 
     // Nothing collected - exit
     if (!devices.size())
+    {
+        cwarn << "Failed to obtain all required AMD file pointers";
+        cwarn << "AMD hardware monitoring disabled";
         return nullptr;
+    }
 
     unsigned int gpucount = devices.size();
     sysfsh->sysfs_gpucount = gpucount;

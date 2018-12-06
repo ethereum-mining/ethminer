@@ -14,10 +14,6 @@
     You should have received a copy of the GNU General Public License
     along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file CommonData.cpp
- * @author Gav Wood <i@gavwood.com>
- * @date 2014
- */
 
 #include <cstdlib>
 
@@ -26,34 +22,6 @@
 
 using namespace std;
 using namespace dev;
-
-std::string dev::escaped(std::string const& _s, bool _all)
-{
-    static const map<char, char> prettyEscapes{{'\r', 'r'}, {'\n', 'n'}, {'\t', 't'}, {'\v', 'v'}};
-    std::string ret;
-    ret.reserve(_s.size() + 2);
-    ret.push_back('"');
-    for (auto i : _s)
-        if (i == '"' && !_all)
-            ret += "\\\"";
-        else if (i == '\\' && !_all)
-            ret += "\\\\";
-        else if (prettyEscapes.count(i) && !_all)
-        {
-            ret += '\\';
-            ret += prettyEscapes.find(i)->second;
-        }
-        else if (i < ' ' || _all)
-        {
-            ret += "\\x";
-            ret.push_back("0123456789abcdef"[(uint8_t)i / 16]);
-            ret.push_back("0123456789abcdef"[(uint8_t)i % 16]);
-        }
-        else
-            ret.push_back(i);
-    ret.push_back('"');
-    return ret;
-}
 
 int dev::fromHex(char _i, WhenError _throw)
 {
@@ -109,4 +77,110 @@ bool dev::setenv(const char name[], const char value[], bool override)
 #else
     return ::setenv(name, value, override ? 1 : 0) == 0;
 #endif
+}
+
+std::string dev::getTargetFromDiff(double diff, HexPrefix _prefix)
+{
+    using namespace boost::multiprecision;
+    using BigInteger = boost::multiprecision::cpp_int;
+
+    static BigInteger base("0x00000000ffff0000000000000000000000000000000000000000000000000000");
+    BigInteger product;
+
+    if (diff == 0)
+    {
+        product = BigInteger("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+    }
+    else
+    {
+        diff = 1 / diff;
+
+        BigInteger idiff(diff);
+        product = base * idiff;
+
+        std::string sdiff = boost::lexical_cast<std::string>(diff);
+        size_t ldiff = sdiff.length();
+        size_t offset = sdiff.find(".");
+
+        if (offset != std::string::npos)
+        {
+            // Number of decimal places
+            size_t precision = (ldiff - 1) - offset;
+
+            // Effective sequence of decimal places
+            string decimals = sdiff.substr(offset + 1);
+
+            // Strip leading zeroes. If a string begins with
+            // 0 or 0x boost parser considers it hex
+            decimals = decimals.erase(0, decimals.find_first_not_of('0'));
+
+            // Build up the divisor as string - just in case
+            // parser does some implicit conversion with 10^precision
+            string decimalDivisor = "1";
+            decimalDivisor.resize(precision + 1, '0');
+
+            // This is the multiplier for the decimal part
+            BigInteger multiplier(decimals);
+
+            // This is the divisor for the decimal part
+            BigInteger divisor(decimalDivisor);
+
+            BigInteger decimalproduct;
+            decimalproduct = base * multiplier;
+            decimalproduct /= divisor;
+
+            // Add the computed decimal part
+            // to product
+            product += decimalproduct;
+        }
+    }
+
+    // Normalize to 64 chars hex with "0x" prefix
+    stringstream ss;
+    ss << (_prefix == HexPrefix::Add ? "0x" : "") << setw(64) << setfill('0') << std::hex << product;
+
+    string target = ss.str();
+    boost::algorithm::to_lower(target);
+    return target;
+}
+
+double dev::getHashesToTarget(string _target)
+{
+    using namespace boost::multiprecision;
+    using BigInteger = boost::multiprecision::cpp_int;
+
+    static BigInteger dividend(
+        "0xffff000000000000000000000000000000000000000000000000000000000000");
+    BigInteger divisor(_target);
+    return double(dividend / divisor);
+}
+
+std::string dev::getScaledSize(double _value, double _divisor, short _precision, string _sizes[],
+    size_t _numsizes, ScaleSuffix _suffix)
+{
+    double _newvalue = _value;
+    size_t i = 0;
+    while (_newvalue > _divisor && i <= (_numsizes - 1))
+    {
+        _newvalue /= _divisor;
+        i++;
+    }
+
+    std::stringstream _ret;
+    _ret << fixed << setprecision(_precision) << _newvalue;
+    if (_suffix == ScaleSuffix::Add)
+        _ret << " " << _sizes[i];
+    return _ret.str();
+}
+
+std::string dev::getFormattedHashes(double _hr, ScaleSuffix _suffix, int _precision)
+{
+    static string suffixes[] = {"h", "Kh", "Mh", "Gh"};
+    return dev::getScaledSize(_hr, 1000.0, _precision, suffixes, 4, _suffix);
+}
+
+std::string dev::getFormattedMemory(double _mem, ScaleSuffix _suffix, int _precision)
+{
+    static string suffixes[] = {"B", "KB", "MB", "GB"};
+    return dev::getScaledSize(_mem, 1024.0, _precision, suffixes, 4, _suffix);
 }

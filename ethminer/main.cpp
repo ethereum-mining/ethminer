@@ -35,7 +35,6 @@
 
 #if API_CORE
 #include <libapicore/ApiServer.h>
-#include <libapicore/httpServer.h>
 #include <regex>
 #endif
 
@@ -75,7 +74,6 @@ public:
     enum class OperationMode
     {
         None,
-        Benchmark,
         Simulation,
         Mining
     };
@@ -106,41 +104,13 @@ public:
     {
         if (!ec && g_running)
         {
-            if (PoolManager::p().isConnected())
-            {
-                auto solstats = Farm::f().getSolutionStats();
-                {
-                    ostringstream os;
-                    os << Farm::f().miningProgress() << ' ';
-                    if (!(g_logOptions & LOG_PER_GPU))
-                        os << solstats << ' ';
-                    os << Farm::f().farmLaunchedFormatted();
-                    minelog << os.str();
-                }
-
-                if (g_logOptions & LOG_PER_GPU)
-                {
-                    ostringstream statdetails;
-                    statdetails << "Solutions " << solstats << ' ';
-                    for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
-                    {
-                        if (i)
-                            statdetails << " ";
-                        statdetails << "gpu" << i << ":" << solstats.getString(i);
-                    }
-                    minelog << statdetails.str();
-                }
+            string logLine =
+                PoolManager::p().isConnected() ? Farm::f().Telemetry().str() : "Not connected";
+            minelog << logLine;
 
 #if ETH_DBUS
-                dbusint.send(toString(Farm::f().miningProgress()).c_str());
+            dbusint.send(Farm::f().Telemetry().str());
 #endif
-            }
-            else
-            {
-                minelog << "not-connected";
-            }
-
-
             // Resubmit timer
             m_cliDisplayTimer.expires_from_now(boost::posix_time::seconds(m_cliDisplayInterval));
             m_cliDisplayTimer.async_wait(m_io_strand.wrap(boost::bind(
@@ -294,7 +264,7 @@ public:
         app.add_flag("--exit", g_exitOnError, "");
 
         vector<string> pools;
-        app.add_option("-P,--pool,pool", pools, "");
+        app.add_option("-P,--pool", pools, "");
 
         app.add_option("--failover-timeout", m_poolFlvrTimeout, "", true)
             ->check(CLI::Range(0, 999));
@@ -326,25 +296,6 @@ public:
 
         app.add_option("--api-password", m_api_password, "");
 
-        app.add_option("--http-bind", m_http_bind, "", true)
-            ->check([this](const string& bind_arg) -> string {
-                int port;
-                try
-                {
-                    MinerCLI::ParseBind(bind_arg, this->m_http_address, port, false);
-                }
-                catch (const std::exception& ex)
-                {
-                    throw CLI::ValidationError("--http-bind", ex.what());
-                }
-                this->m_http_port = static_cast<uint16_t>(port);
-                // not sure what to return, and the documentation doesn't say either.
-                // https://github.com/CLIUtils/CLI11/issues/144
-                return string("");
-            });
-
-        app.add_option("--http-port", m_http_port, "", true)->check(CLI::Range(65535));
-
 #endif
 
 #if ETH_ETHASHCL || ETH_ETHASHCUDA
@@ -358,8 +309,6 @@ public:
         int clKernel = -1;
 
         app.add_option("--cl-kernel", clKernel, "", true)->check(CLI::Range(2));
-
-        app.add_option("--opencl-platform", m_oclPlatform, "", true);
 
         app.add_option("--opencl-device,--opencl-devices,--cl-devices", m_oclDevices, "");
 
@@ -400,19 +349,13 @@ public:
 
         app.add_option("-L,--dag-load-mode", m_farmDagLoadMode, "", true)->check(CLI::Range(1));
 
-        app.add_option("--benchmark-warmup", m_benchmarkWarmup, "", true);
-
-        app.add_option("--benchmark-trials", m_benchmarkTrial, "", true)->check(CLI::Range(1, 99));
-
         bool cl_miner = false;
         app.add_flag("-G,--opencl", cl_miner, "");
 
         bool cuda_miner = false;
         app.add_flag("-U,--cuda", cuda_miner, "");
 
-        auto bench_opt = app.add_option("-M,--benchmark", m_benchmarkBlock, "", true);
-        auto sim_opt = app.add_option("-Z,--simulation", m_benchmarkBlock, "", true);
-
+        auto sim_opt = app.add_option("-Z,--simulation,-M,--benchmark", m_benchmarkBlock, "", true);
 
         app.add_option("--tstop", m_farmTempStop, "", true)->check(CLI::Range(30, 100));
         app.add_option("--tstart", m_farmTempStart, "", true)->check(CLI::Range(30, 100));
@@ -465,27 +408,22 @@ public:
             m_minerType = MinerType::Mixed;
 
         /*
-            Operation mode Benchmark and Simulation do not require pool definitions
+            Operation mode Simulation do not require pool definitions
             Operation mode Stratum or GetWork do need at least one
         */
 
-        if (bench_opt->count())
-        {
-            m_mode = OperationMode::Benchmark;
-            pools.clear();
-        }
-        else if (sim_opt->count())
+        if (sim_opt->count())
         {
             m_mode = OperationMode::Simulation;
             pools.clear();
-            pools.push_back("simulation://localhost:0");  // Fake connection
+            m_poolConns.push_back(URI("simulation://localhost:0")); // Fake connection
         }
         else
         {
             m_mode = OperationMode::Mining;
         }
 
-        if (!m_shouldListDevices && m_mode != OperationMode::Benchmark)
+        if (!m_shouldListDevices && m_mode != OperationMode::Simulation)
         {
             if (!pools.size())
                 throw std::invalid_argument(
@@ -505,7 +443,7 @@ public:
 
                 URI uri(url);
 
-                if (!uri.Valid() || (m_mode == OperationMode::Mining && uri.Scheme() == "simulation"))
+                if (!uri.Valid())
                 {
                     std::string what = "Bad URI : " + uri.str();
                     throw std::invalid_argument(what);
@@ -669,14 +607,14 @@ public:
                     cout << setw(5) << (it->second.clDetected ? "Yes" : "");
 #endif
                 cout << resetiosflags(ios::left) << setw(13)
-                     << FormattedMemSize(it->second.TotalMemory) << " ";
+                     << getFormattedMemory((double)it->second.TotalMemory) << " ";
 #if ETH_ETHASHCL
                 if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
                 {
                     cout << resetiosflags(ios::left) << setw(13)
-                         << FormattedMemSize(it->second.clMaxMemAlloc) << " ";
+                         << getFormattedMemory((double)it->second.clMaxMemAlloc) << " ";
                     cout << resetiosflags(ios::left) << setw(13)
-                         << FormattedMemSize(it->second.clMaxWorkGroup) << " ";
+                         << getFormattedMemory((double)it->second.clMaxWorkGroup) << " ";
                 }
 #endif
                 cout << resetiosflags(ios::left) << endl;
@@ -792,20 +730,8 @@ public:
         new Farm(m_DevicesCollection, m_farmHwMonitors, m_farmNoEval);
         Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
 
-        // Run proper mining mode
-        switch (m_mode)
-        {
-        case OperationMode::Benchmark:
-            doBenchmark(m_minerType, m_benchmarkWarmup, m_benchmarkTrial, m_benchmarkTrials);
-            break;
-        case OperationMode::Simulation:
-        case OperationMode::Mining:
-            doMiner();
-            break;
-        default:
-            // Satisfy the compiler, but cannot happen!
-            throw std::runtime_error("Program logic error. Unexpected Operation Mode.");
-        }
+        // Run Miner
+        doMiner();
     }
 
     void help()
@@ -852,7 +778,7 @@ public:
              << "'misc','env'}" << endl
              << "                        Display help text about one of these contexts:" << endl
              << "                        'con'  Connections and their definitions" << endl
-             << "                        'test' Benchmark and simulation options" << endl
+             << "                        'test' Benchmark/Simulation options" << endl
 #if ETH_ETHASHCL
              << "                        'cl'   Extended OpenCL options" << endl
 #endif
@@ -880,19 +806,13 @@ public:
                  << endl
                  << "    needed ie. you can omit any -P argument." << endl
                  << endl
-                 << "    -M,--benchmark      UINT[0 ..] Default not set" << endl
-                 << "                        Benchmark mining agains the given block number" << endl
-                 << "                        and exits." << endl
-                 << "    --benchmark-warmup  UINT Default = 15" << endl
-                 << "                        Set duration in seconds of warmup for benchmark"
+                 << "    -M,--benchmark      UINT [0 ..] Default not set" << endl
+                 << "                        Mining test. Used to test hashing speed." << endl
+                 << "                        Specify the block number to test on." << endl
                  << endl
-                 << "                        tests." << endl
-                 << "    --benchmark-trials  INT [1 .. 99] Default = 5" << endl
-                 << "                        Set the number of benchmark trials to run" << endl
                  << "    -Z,--simulation     UINT [0 ..] Default not set" << endl
-                 << "                        Mining test. Used to validate kernel optimizations."
-                 << endl
-                 << "                        Specify a block number." << endl
+                 << "                        Mining test. Used to test hashing speed." << endl
+                 << "                        Specify the block number to test on." << endl
                  << endl;
         }
 
@@ -901,9 +821,11 @@ public:
         {
             cout << "API Interface Options :" << endl
                  << endl
-                 << "    Ethminer can provide two interfaces for monitor and or control" << endl
-                 << "    Please note that information delivered by API and Http interface" << endl
+                 << "    Ethminer provide an interface for monitor and or control" << endl
+                 << "    Please note that information delivered by API interface" << endl
                  << "    may depend on value of --HWMON" << endl
+                 << "    A single endpoint is used to accept both HTTP or plain tcp" << endl
+                 << "    requests." << endl
                  << endl
                  << "    --api-bind          TEXT Default not set" << endl
                  << "                        Set the API address:port the miner should listen "
@@ -924,17 +846,6 @@ public:
                  << "                        Be advised passwords are sent unencrypted over "
                     "plain "
                     "TCP!!"
-                 << endl
-                 << "    --http-bind         TEXT Default not set" << endl
-                 << "                        Set the http monitoring address:port the miner "
-                    "should "
-                 << endl
-                 << "                        listen on." << endl
-                 << "    --http-port         INT [1 .. 65535] Default not set" << endl
-                 << "                        Set the http port, the miner should listen on all "
-                    "bound"
-                 << endl
-                 << "                        addresses." << endl
                  << endl;
         }
 
@@ -947,11 +858,9 @@ public:
                  << endl
                  << "    --cl-kernel         INT [0 .. 2] Default not set" << endl
                  << "                        Select OpenCL kernel. Ignored since 0.15" << endl
-                 << "    --cl-platform       UINT Default 0" << endl
-                 << "                        Use OpenCL platform N" << endl
                  << "    --cl-devices        UINT {} Default not set" << endl
-                 << "                        Comma separated list of device indexes to use" << endl
-                 << "                        eg --cl-devices 0,2,3" << endl
+                 << "                        Space separated list of device indexes to use" << endl
+                 << "                        eg --cl-devices 0 2 3" << endl
                  << "                        If not set all available CL devices will be used"
                  << endl
                  << "    --cl-parallel-hash  UINT {1,2,4,8}" << endl
@@ -978,8 +887,8 @@ public:
                  << "    --cu-block-size     UINT {32,64,128,256} Default = 128" << endl
                  << "                        Set the block size" << endl
                  << "    --cu-devices        UINT {} Default not set" << endl
-                 << "                        Comma separated list of device indexes to use" << endl
-                 << "                        eg --cu-devices 0,2,3" << endl
+                 << "                        Space separated list of device indexes to use" << endl
+                 << "                        eg --cu-devices 0 2 3" << endl
                  << "                        If not set all available CUDA devices will be used"
                  << endl
                  << "    --cu-parallel-hash  UINT {1,2,4,8} Default = 4" << endl
@@ -1181,12 +1090,36 @@ public:
                  << endl
                  << "    Example 3: "
                     "-P stratum://0x012345678901234567890234567890123.miner1@nanopool.org:9999/"
-                    "john.doe@gmail.com"
+                    "john.doe%40gmail.com"
                  << endl
                  << "    Example 4: "
                     "-P stratum://0x012345678901234567890234567890123@nanopool.org:9999/miner1/"
-                    "john.doe@gmail.com"
+                    "john.doe%40gmail.com"
                  << endl
+                 << endl
+                 << "    Please note: if your user or worker or password do contain characters"
+                 << endl
+                 << "    which may impair the correct parsing (namely any of . : @ # ?) you have to"
+                 << endl
+                 << "    enclose those values in backticks( ` ASCII 096) or Url Encode them" << endl
+                 << "    Also note that backtick has a special meaning in *nix environments thus"
+                 << endl
+                 << "    you need to further escape those backticks with backslash." << endl
+                 << endl
+                 << "    Example : -P stratums://\\`account.121\\`.miner1:x@ethermine.org:5555"
+                 << endl
+                 << "    Example : -P stratums://account%2e121.miner1:x@ethermine.org:5555" << endl
+                 << "    (In Windows backslashes are not needed)" << endl
+                 << endl
+                 << endl
+                 << "    Common url encoded chars are " << endl
+                 << "    . (dot)      %2e" << endl
+                 << "    : (column)   %3a" << endl
+                 << "    @ (at sign)  %40" << endl
+                 << "    ? (question) %3f" << endl
+                 << "    # (number)   %23" << endl
+                 << "    / (slash)    %2f" << endl
+                 << "    + (plus)     %2b" << endl
                  << endl
                  << "    You can add as many -P arguments as you want. Every -P specification"
                  << endl
@@ -1229,77 +1162,6 @@ public:
     }
 
 private:
-    void doBenchmark(MinerType _m, unsigned _warmupDuration = 15, unsigned _trialDuration = 3,
-        unsigned _trials = 5)
-    {
-        BlockHeader genesis;
-        genesis.setNumber(m_benchmarkBlock);
-        genesis.setDifficulty(u256(1) << 64);
-
-        string platformInfo =
-            (_m == MinerType::CL ? "CL" : (_m == MinerType::CUDA ? "CUDA" : "MIXED"));
-        minelog << "Benchmarking on platform: " << platformInfo << " Preparing DAG for block #"
-                << m_benchmarkBlock;
-
-        map<string, Farm::SealerDescriptor> sealers;
-#if ETH_ETHASHCL
-        sealers["opencl"] =
-            Farm::SealerDescriptor{[](unsigned _index) { return new CLMiner(_index); }};
-#endif
-#if ETH_ETHASHCUDA
-        sealers["cuda"] =
-            Farm::SealerDescriptor{[](unsigned _index) { return new CUDAMiner(_index); }};
-#endif
-
-        Farm::f().setSealers(sealers);
-        Farm::f().onSolutionFound([&](Solution) { return false; });
-        Farm::f().start();
-
-        WorkPackage current = WorkPackage(genesis);
-
-
-        vector<uint64_t> results;
-        results.reserve(_trials);
-        uint64_t mean = 0;
-        uint64_t innerMean = 0;
-        for (unsigned i = 0; i <= _trials; ++i)
-        {
-            current.header = h256::random();
-            current.boundary = genesis.boundary();
-            Farm::f().setWork(current);
-            if (!i)
-                minelog << "Warming up...";
-            else
-                minelog << "Trial " << i << "... ";
-
-            this_thread::sleep_for(chrono::seconds(i ? _trialDuration : _warmupDuration));
-
-            if (!i)
-                continue;
-
-            auto rate = uint64_t(Farm::f().miningProgress().hashRate);
-            minelog << "Hashes per second " << rate;
-            results.push_back(rate);
-            mean += uint64_t(rate);
-        }
-        sort(results.begin(), results.end());
-        minelog << "min/mean/max: " << results.front() << "/" << (mean / _trials) << "/"
-                << results.back() << " H/s";
-        if (results.size() > 2)
-        {
-            for (auto it = results.begin() + 1; it != results.end() - 1; it++)
-                innerMean += *it;
-            innerMean /= (_trials - 2);
-            minelog << "inner mean: " << innerMean << " H/s";
-        }
-        else
-        {
-            minelog << "inner mean: n/a";
-        }
-
-        return;
-    }
-
     void doMiner()
     {
         map<string, Farm::SealerDescriptor> sealers;
@@ -1328,8 +1190,6 @@ private:
         ApiServer api(m_api_address, m_api_port, m_api_password);
         if (m_api_port)
             api.start();
-
-        http_server.run(m_http_address, m_http_port, m_farmHwMonitors);
 
 #endif
 
@@ -1377,7 +1237,6 @@ private:
 
 #if ETH_ETHASHCL
     // -- OpenCL related params
-    unsigned m_oclPlatform = 0;
     vector<unsigned> m_oclDevices;
     unsigned m_oclGWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier;
     unsigned m_oclLWorkSize = CLMiner::c_defaultLocalWorkSize;
@@ -1415,9 +1274,6 @@ private:
     bool m_poolHashRate = false;       // Whether or not ethminer should send HR to pool
 
     // -- Benchmarking related params
-    unsigned m_benchmarkWarmup = 15;
-    unsigned m_benchmarkTrial = 3;
-    unsigned m_benchmarkTrials = 5;
     unsigned m_benchmarkBlock = 0;
 
     // -- CLI Interface related params

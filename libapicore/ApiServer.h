@@ -1,5 +1,7 @@
 #pragma once
 
+#include <regex>
+
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
@@ -19,23 +21,14 @@ using boost::asio::ip::tcp;
 class ApiConnection
 {
 public:
-    ApiConnection(int id, bool readonly, string password)
-      : m_sessionId(id),
-        m_socket(g_io_service),
-        m_io_strand(g_io_service),
-        m_readonly(readonly),
-        m_password(std::move(password))
-    {
-        if (!m_password.empty())
-            m_is_authenticated = false;
-    }
+
+    ApiConnection(int id, bool readonly, string password);
 
     ~ApiConnection() = default;
 
     void start();
 
     Json::Value getMinerStat1();
-    Json::Value getMinerStatHR();
 
     using Disconnected = std::function<void(int const&)>;
     void onDisconnected(Disconnected const& _handler) { m_onDisconnected = _handler; }
@@ -50,12 +43,14 @@ private:
     void recvSocketData();
     void onRecvSocketDataCompleted(
         const boost::system::error_code& ec, std::size_t bytes_transferred);
-    void sendSocketData(Json::Value const& jReq);
-    void onSendSocketDataCompleted(const boost::system::error_code& ec);
+    void sendSocketData(Json::Value const& jReq, bool _disconnect = false);
+    void sendSocketData(std::string const& _s, bool _disconnect = false);
+    void onSendSocketDataCompleted(const boost::system::error_code& ec, bool _disconnect = false);
 
     Json::Value getMinerStatDetail();
-    Json::Value getMinerStatDetailPerMiner(const WorkingProgress& p, const SolutionStats& s,
-        size_t index, const std::chrono::steady_clock::time_point& now);
+    Json::Value getMinerStatDetailPerMiner(const TelemetryType& _t, std::shared_ptr<Miner> _miner);
+
+    std::string getHttpMinerStatDetail();
 
     Disconnected m_onDisconnected;
 
@@ -65,7 +60,9 @@ private:
     boost::asio::io_service::strand m_io_strand;
     boost::asio::streambuf m_sendBuffer;
     boost::asio::streambuf m_recvBuffer;
-    Json::FastWriter m_jWriter;
+    Json::StreamWriterBuilder m_jSwBuilder;
+
+    std::string m_message;  // The internal message string buffer
 
     bool m_readonly = false;
     std::string m_password = "";

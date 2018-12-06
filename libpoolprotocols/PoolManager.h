@@ -46,10 +46,9 @@ private:
     void rotateConnect();
 
     void setClientHandlers();
-    void unsetClientHandlers();
 
-    void showEpoch();
-    void showDifficulty();
+    void showMiningAt();
+
     int setActiveConnectionCommon(unsigned int idx, UniqueGuard& l);
 
     unsigned m_hrReportingInterval = 60;

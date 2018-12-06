@@ -26,7 +26,9 @@ Farm* Farm::m_this = nullptr;
 
 Farm::Farm(
     std::map<std::string, DeviceDescriptorType>& _DevicesCollection, unsigned hwmonlvl, bool noeval)
-  : m_io_strand(g_io_service), m_collectTimer(g_io_service), m_DevicesCollection(_DevicesCollection)
+  : m_io_strand(g_io_service),
+    m_collectTimer(g_io_service),
+    m_DevicesCollection(_DevicesCollection)
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::Farm() begin");
 
@@ -37,8 +39,45 @@ Farm::Farm(
     // Init HWMON if needed
     if (m_hwmonlvl)
     {
+        m_telemetry.hwmon = true;
+
 #if defined(__linux)
-        sysfsh = wrap_amdsysfs_create();
+        bool need_sysfsh = false;
+#else
+        bool need_adlh = false;
+#endif
+        bool need_nvmlh = false;
+
+        // Scan devices collection to identify which hw monitors to initialize
+        for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
+        {
+            if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda)
+            {
+                need_nvmlh = true;
+                continue;
+            }
+            if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
+            {
+                if (it->second.clPlatformType == ClPlatformTypeEnum::Nvidia)
+                {
+                    need_nvmlh = true;
+                    continue;
+                }
+                if (it->second.clPlatformType == ClPlatformTypeEnum::Amd)
+                {
+#if defined(__linux)
+                    need_sysfsh = true;
+#else
+                    need_adlh = true;
+#endif
+                    continue;
+                }
+            }
+        }
+
+#if defined(__linux)
+        if (need_sysfsh)
+            sysfsh = wrap_amdsysfs_create();
         if (sysfsh)
         {
             // Build Pci identification mapping as done in miners.
@@ -55,7 +94,8 @@ Farm::Farm(
         }
 
 #else
-        adlh = wrap_adl_create();
+        if (need_adlh)
+            adlh = wrap_adl_create();
         if (adlh)
         {
             // Build Pci identification as done in miners.
@@ -74,7 +114,8 @@ Farm::Farm(
         }
 
 #endif
-        nvmlh = wrap_nvml_create();
+        if (need_nvmlh)
+            nvmlh = wrap_nvml_create();
         if (nvmlh)
         {
             // Build Pci identification as done in miners.
@@ -157,10 +198,9 @@ void Farm::setWork(WorkPackage const& _newWp)
         m_currentEc.dagNumItems = _ec.full_dataset_num_items;
         m_currentEc.dagSize = ethash::get_full_dataset_size(_ec.full_dataset_num_items);
         m_currentEc.lightCache = _ec.light_cache;
-        for (unsigned int i = 0; i < m_miners.size(); i++)
-        {
-            m_miners.at(i)->setEpoch(m_currentEc);
-        }
+
+        for (auto const& miner : m_miners)
+            miner->setEpoch(m_currentEc);
     }
 
     m_currentWp = _newWp;
@@ -195,15 +235,20 @@ void Farm::setSealers(std::map<std::string, SealerDescriptor> const& _sealers)
  */
 bool Farm::start()
 {
+    // Prevent recursion
+    if (m_isMining.load(std::memory_order_relaxed))
+        return true;
+
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() begin");
     Guard l(x_minerWork);
 
     // Start all subscribed miners if none yet
     if (!m_miners.size())
     {
+        string sealer;
+
         for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
         {
-            string sealer;
             if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda)
                 sealer = "cuda";
             else if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
@@ -211,30 +256,26 @@ bool Farm::start()
             else
                 continue;
 
+            TelemetryAccountType minerTelemetry;
+            minerTelemetry.prefix = (sealer == "cuda" ? "cu" : "cl");
+            m_telemetry.miners.push_back(minerTelemetry);
+
             m_miners.push_back(std::shared_ptr<Miner>(m_sealers[sealer].create(m_miners.size())));
             m_miners.back()->setDescriptor(it->second);
             m_miners.back()->startWorking();
         }
+
+        m_isMining.store(true, std::memory_order_relaxed);
     }
     else
     {
-        for (size_t i = 0; i < m_miners.size(); i++)
-        {
-            m_miners.at(i)->startWorking();
-        }
+        for (auto const& miner : m_miners)
+            miner->startWorking();
+        m_isMining.store(true, std::memory_order_relaxed);
     }
 
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::start() end");
-
-    if (m_miners.size())
-    {
-        m_isMining.store(true, std::memory_order_relaxed);
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return m_isMining.load(std::memory_order_relaxed);
 }
 
 /**
@@ -250,7 +291,11 @@ void Farm::stop()
         {
             Guard l(x_minerWork);
             for (auto const& miner : m_miners)
+            {
                 miner->triggerStopWorking();
+                miner->kick_miner();
+            }
+
             m_miners.clear();
             m_isMining.store(false, std::memory_order_relaxed);
         }
@@ -258,6 +303,9 @@ void Farm::stop()
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::stop() end");
 }
 
+/**
+ * @brief Pauses the whole collection of miners
+ */
 void Farm::pause()
 {
     // Signal each miner to suspend mining
@@ -267,11 +315,17 @@ void Farm::pause()
         m->pause(MinerPauseEnum::PauseDueToFarmPaused);
 }
 
+/**
+ * @brief Returns whether or not this farm is paused for any reason
+ */
 bool Farm::paused()
 {
     return m_paused.load(std::memory_order_relaxed);
 }
 
+/**
+ * @brief Resumes from a pause condition
+ */
 void Farm::resume()
 {
     // Signal each miner to resume mining
@@ -288,9 +342,7 @@ void Farm::resume()
 void Farm::restart()
 {
     if (m_onMinerRestart)
-    {
         m_onMinerRestart();
-    }
 }
 
 /**
@@ -316,21 +368,64 @@ bool Farm::reboot(const std::vector<std::string>& args)
     return spawn_file_in_bin_dir(filename, args);
 }
 
-string Farm::farmLaunchedFormatted()
+void Farm::accountSolution(unsigned _minerIdx, SolutionAccountingEnum _accounting) 
 {
-    auto d = std::chrono::steady_clock::now() - m_farm_launched;
-    int hsize = 3;
-    auto hhh = std::chrono::duration_cast<std::chrono::hours>(d);
-    if (hhh.count() < 100)
+    if (_accounting == SolutionAccountingEnum::Accepted) 
     {
-        hsize = 2;
+        m_telemetry.farm.solutions.accepted++;
+        m_telemetry.farm.solutions.tstamp = std::chrono::steady_clock::now();
+        m_telemetry.miners.at(_minerIdx).solutions.accepted++;
+        m_telemetry.miners.at(_minerIdx).solutions.tstamp = std::chrono::steady_clock::now();
+        return;
     }
-    d -= hhh;
-    auto mm = std::chrono::duration_cast<std::chrono::minutes>(d);
-    std::ostringstream stream;
-    stream << "Time: " << std::setfill('0') << std::setw(hsize) << hhh.count() << ':'
-           << std::setfill('0') << std::setw(2) << mm.count();
-    return stream.str();
+    if (_accounting == SolutionAccountingEnum::Wasted)
+    {
+        m_telemetry.farm.solutions.wasted++;
+        m_telemetry.farm.solutions.tstamp = std::chrono::steady_clock::now();
+        m_telemetry.miners.at(_minerIdx).solutions.wasted++;
+        m_telemetry.miners.at(_minerIdx).solutions.tstamp = std::chrono::steady_clock::now();
+        return;
+    }
+    if (_accounting == SolutionAccountingEnum::Rejected)
+    {
+        m_telemetry.farm.solutions.rejected++;
+        m_telemetry.farm.solutions.tstamp = std::chrono::steady_clock::now();
+        m_telemetry.miners.at(_minerIdx).solutions.rejected++;
+        m_telemetry.miners.at(_minerIdx).solutions.tstamp = std::chrono::steady_clock::now();
+        return;
+    }
+    if (_accounting == SolutionAccountingEnum::Failed)
+    {
+        m_telemetry.farm.solutions.failed++;
+        m_telemetry.farm.solutions.tstamp = std::chrono::steady_clock::now();
+        m_telemetry.miners.at(_minerIdx).solutions.failed++;
+        m_telemetry.miners.at(_minerIdx).solutions.tstamp = std::chrono::steady_clock::now();
+        return;
+    }
+}
+
+ /**
+ * @brief Gets the solutions account for the whole farm
+ */
+
+SolutionAccountType Farm::getSolutions()
+{
+    return m_telemetry.farm.solutions;
+}
+
+/**
+ * @brief Gets the solutions account for single miner
+ */
+SolutionAccountType Farm::getSolutions(unsigned _minerIdx)
+{
+    try
+    {
+        return m_telemetry.miners.at(_minerIdx).solutions;
+    }
+    catch (const std::exception&)
+    {
+        return SolutionAccountType();
+    }
 }
 
 /**
@@ -340,18 +435,9 @@ string Farm::farmLaunchedFormatted()
 Json::Value Farm::get_nonce_scrambler_json()
 {
     Json::Value jRes;
-    jRes["noncescrambler"] = m_nonce_scrambler;
-    jRes["segmentwidth"] = m_nonce_segment_with;
-
-    for (size_t i = 0; i < m_miners.size(); i++)
-    {
-        Json::Value jSegment;
-        uint64_t gpustartnonce = m_nonce_scrambler + ((uint64_t)pow(2, m_nonce_segment_with) * i);
-        jSegment["gpu"] = (int)i;
-        jSegment["start"] = gpustartnonce;
-        jSegment["stop"] = uint64_t(gpustartnonce + (uint64_t)(pow(2, m_nonce_segment_with)));
-        jRes["segments"].append(jSegment);
-    }
+    jRes["start_nonce"] = toHex(m_nonce_scrambler, HexPrefix::Add);
+    jRes["device_width"] = m_nonce_segment_with;
+    jRes["device_count"] = (uint64_t)m_miners.size();
 
     return jRes;
 }
@@ -364,14 +450,17 @@ void Farm::setTStartTStop(unsigned tstart, unsigned tstop)
 
 void Farm::submitProof(Solution const& _s)
 {
-    assert(m_onSolutionFound);
+    g_io_service.post(m_io_strand.wrap(boost::bind(&Farm::submitProofAsync, this, _s)));
+}
 
+void Farm::submitProofAsync(Solution const& _s)
+{
     if (!m_noeval)
     {
         Result r = EthashAux::eval(_s.work.epoch, _s.work.header, _s.nonce);
         if (r.value > _s.work.boundary)
         {
-            failedSolution(_s.midx);
+            accountSolution(_s.midx, SolutionAccountingEnum::Failed);
             cwarn << "GPU " << _s.midx
                   << " gave incorrect result. Lower overclocking values if it happens frequently.";
             return;
@@ -390,36 +479,29 @@ void Farm::submitProof(Solution const& _s)
 #endif
 }
 
-
 // Collects data about hashing and hardware status
 void Farm::collectData(const boost::system::error_code& ec)
 {
     if (ec)
         return;
 
-    WorkingProgress progress;
-
+    // Reset hashrate (it will accumulate from miners)
+    float farm_hr = 0.0f;
+    
     // Process miners
     for (auto const& miner : m_miners)
     {
-        // Collect and reset hashrates
-        if (!miner->paused())
-        {
-            auto hr = miner->RetrieveHashRate();
-            progress.hashRate += hr;
-            progress.minersHashRates.push_back(hr);
-            progress.miningIsPaused.push_back(false);
-        }
-        else
-        {
-            progress.minersHashRates.push_back(0.0);
-            progress.miningIsPaused.push_back(true);
-        }
+        int minerIdx = miner->Index();
+        float hr = (miner->paused() ? 0.0f : miner->RetrieveHashRate());
+        farm_hr += hr;
+        m_telemetry.miners.at(minerIdx).hashrate = hr;
+        m_telemetry.miners.at(minerIdx).paused = miner->paused();
+
 
         if (m_hwmonlvl)
         {
             HwMonitorInfo hwInfo = miner->hwmonInfo();
-            HwMonitor hw;
+
             unsigned int tempC = 0, fanpcnt = 0, powerW = 0;
 
             if (hwInfo.deviceType == HwMonitorInfoType::NVIDIA && nvmlh)
@@ -520,15 +602,14 @@ void Farm::collectData(const boost::system::error_code& ec)
                     miner->resume(MinerPauseEnum::PauseDueToOverHeating);
             }
 
-            hw.tempC = tempC;
-            hw.fanP = fanpcnt;
-            hw.powerW = powerW / ((double)1000.0);
-            progress.minerMonitors.push_back(hw);
+            m_telemetry.miners.at(minerIdx).sensors.tempC = tempC;
+            m_telemetry.miners.at(minerIdx).sensors.fanP = fanpcnt;
+            m_telemetry.miners.at(minerIdx).sensors.powerW = powerW / ((double)1000.0);
+
         }
+        m_telemetry.farm.hashrate = farm_hr;
         miner->TriggerHashRateUpdate();
     }
-
-    m_progress = progress;
 
     // Resubmit timer for another loop
     m_collectTimer.expires_from_now(boost::posix_time::milliseconds(m_collectInterval));

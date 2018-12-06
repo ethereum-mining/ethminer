@@ -270,6 +270,8 @@ URI::URI(std::string uri) : m_uri{std::move(uri)}
     */
     if (!m_pathinfo.empty())
     {
+        // Url Decode Path
+
         std::vector<std::regex> path_patterns;
         path_patterns.push_back(std::regex("(\\/.*)\\?(.*)\\#(.*)$"));
         path_patterns.push_back(std::regex("(\\/.*)\\#(.*)$"));
@@ -363,7 +365,8 @@ URI::URI(std::string uri) : m_uri{std::move(uri)}
         m_password = tmpStr;
     if (url_decode(m_worker, tmpStr))
         m_worker = tmpStr;
-    
+
+
     if ((s_schemes.find(m_scheme) != s_schemes.end()) && !m_host.empty() && m_port > 0)
         m_valid = true;
 }

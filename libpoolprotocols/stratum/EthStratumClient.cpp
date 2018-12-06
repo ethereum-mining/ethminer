@@ -11,72 +11,6 @@
 
 using boost::asio::ip::tcp;
 
-static string diffToTarget(double diff)
-{
-    using namespace boost::multiprecision;
-    using BigInteger = boost::multiprecision::cpp_int;
-
-    static BigInteger base("0x00000000ffff0000000000000000000000000000000000000000000000000000");
-    BigInteger product;
-
-    if (diff == 0)
-    {
-        product = BigInteger("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-    }
-    else
-    {
-        diff = 1 / diff;
-
-        BigInteger idiff(diff);
-        product = base * idiff;
-
-        std::string sdiff = boost::lexical_cast<std::string>(diff);
-        size_t ldiff = sdiff.length();
-        size_t offset = sdiff.find(".");
-
-        if (offset != std::string::npos)
-        {
-            // Number of decimal places
-            size_t precision = (ldiff - 1) - offset;
-
-            // Effective sequence of decimal places
-            string decimals = sdiff.substr(offset + 1);
-
-            // Strip leading zeroes. If a string begins with
-            // 0 or 0x boost parser considers it hex
-            decimals = decimals.erase(0, decimals.find_first_not_of('0'));
-
-            // Build up the divisor as string - just in case
-            // parser does some implicit conversion with 10^precision
-            string decimalDivisor = "1";
-            decimalDivisor.resize(precision + 1, '0');
-
-            // This is the multiplier for the decimal part
-            BigInteger multiplier(decimals);
-
-            // This is the divisor for the decimal part
-            BigInteger divisor(decimalDivisor);
-
-            BigInteger decimalproduct;
-            decimalproduct = base * multiplier;
-            decimalproduct /= divisor;
-
-            // Add the computed decimal part
-            // to product
-            product += decimalproduct;
-        }
-
-    }
-
-    // Normalize to 64 chars hex with "0x" prefix
-    stringstream ss;
-    ss << "0x" << setw(64) << setfill('0') << std::hex << product;
-
-    string target = ss.str();
-    boost::algorithm::to_lower(target);
-    return target;
-}
-
 EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout)
   : PoolClient(),
     m_worktimeout(worktimeout),
@@ -90,8 +24,6 @@ EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout)
     m_resolver(g_io_service),
     m_endpoints()
 {
-
-    m_jSwBuilder.settings_["indentation"] = "";
 
     m_jSwBuilder.settings_["indentation"] = "";
 
@@ -1053,7 +985,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             if (!m_authorized)
             {
-                cnote << "Worker not authorized " << m_conn->User() << _errReason;
+                cnote << "Worker " << EthWhite << m_conn->User() << EthReset << " not authorized : " << _errReason;
                 m_conn->MarkUnrecoverable();
                 m_io_service.post(
                     m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
@@ -1061,7 +993,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             }
             else
             {
-                cnote << "Authorized worker " + m_conn->User();
+                cnote << "Authorized worker " << m_conn->User();
             }
         }
 
@@ -1093,7 +1025,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 {
                     if (m_onSolutionRejected)
                     {
-                        cwarn << "Reject reason :"
+                        cwarn << "Reject reason : "
                               << (_errReason.empty() ? "Unspecified" : _errReason);
                         m_onSolutionRejected(response_delay_ms, miner_index);
                     }
@@ -1121,7 +1053,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             // Hashrate submit is actually out of stratum spec
             if (!_isSuccess)
             {
-                cwarn << "Submit hashRate failed: "
+                cwarn << "Submit hashRate failed : "
                       << (_errReason.empty() ? "Unspecified error" : _errReason);
             }
         }
@@ -1140,7 +1072,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 if (!m_subscribed)
                 {
                     // Subscription pending
-                    cnote << "Subscription failed:"
+                    cnote << "Subscription failed : "
                           << (_errReason.empty() ? "Unspecified error" : _errReason);
                     m_io_service.post(
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
@@ -1149,7 +1081,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 else if (m_subscribed && !m_authorized)
                 {
                     // Authorization pending
-                    cnote << "Worker not authorized:"
+                    cnote << "Worker not authorized : "
                           << (_errReason.empty() ? "Unspecified error" : _errReason);
                     m_io_service.post(
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
@@ -1297,7 +1229,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 {
                     double nextWorkDifficulty =
                         max(jPrm.get(Json::Value::ArrayIndex(0), 1).asDouble(), 0.0001);
-                    m_nextWorkBoundary = h256(diffToTarget(nextWorkDifficulty));
+
+                    m_nextWorkBoundary = h256(dev::getTargetFromDiff(nextWorkDifficulty));
                     cnote << "Difficulty set to " EthWhite << nextWorkDifficulty
                           << EthReset " (nicehash) Target : " << m_nextWorkBoundary.hex();
                 }
@@ -1391,8 +1324,6 @@ void EthStratumClient::submitSolution(const Solution& solution)
         return;
     }
 
-    string nonceHex = toHex(solution.nonce);
-
     Json::Value jReq;
 
     unsigned id = 40 + solution.midx;
@@ -1408,9 +1339,9 @@ void EthStratumClient::submitSolution(const Solution& solution)
         jReq["jsonrpc"] = "2.0";
         jReq["params"].append(m_conn->User());
         jReq["params"].append(solution.work.job);
-        jReq["params"].append("0x" + nonceHex);
-        jReq["params"].append("0x" + solution.work.header.hex());
-        jReq["params"].append("0x" + solution.mixHash.hex());
+        jReq["params"].append(toHex(solution.nonce, HexPrefix::Add));
+        jReq["params"].append(solution.work.header.hex(HexPrefix::Add));
+        jReq["params"].append(solution.mixHash.hex(HexPrefix::Add));
         if (!m_conn->Workername().empty())
             jReq["worker"] = m_conn->Workername();
 
@@ -1419,9 +1350,9 @@ void EthStratumClient::submitSolution(const Solution& solution)
     case EthStratumClient::ETHPROXY:
 
         jReq["method"] = "eth_submitWork";
-        jReq["params"].append("0x" + nonceHex);
-        jReq["params"].append("0x" + solution.work.header.hex());
-        jReq["params"].append("0x" + solution.mixHash.hex());
+        jReq["params"].append(toHex(solution.nonce, HexPrefix::Add));
+        jReq["params"].append(solution.work.header.hex(HexPrefix::Add));
+        jReq["params"].append(solution.mixHash.hex(HexPrefix::Add));
         if (!m_conn->Workername().empty())
             jReq["worker"] = m_conn->Workername();
 
@@ -1431,7 +1362,8 @@ void EthStratumClient::submitSolution(const Solution& solution)
 
         jReq["params"].append(m_conn->User());
         jReq["params"].append(solution.work.job);
-        jReq["params"].append(nonceHex.substr(solution.work.exSizeBytes));
+        jReq["params"].append(
+            toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
     }
 
     enqueue_response_plea();
@@ -1513,14 +1445,21 @@ void EthStratumClient::onRecvSocketDataCompleted(
                     Json::Reader jRdr;
                     if (jRdr.parse(line, jMsg))
                     {
-                        // Run in sync so no 2 different async reads may overlap
-                        processResponse(jMsg);
+                        try
+                        {
+                            // Run in sync so no 2 different async reads may overlap
+                            processResponse(jMsg);
+                        }
+                        catch (const std::exception& _ex)
+                        {
+                            cwarn << "Stratum got invalid Json message : " << _ex.what();
+                        }
                     }
                     else
                     {
                         string what = jRdr.getFormattedErrorMessages();
                         boost::replace_all(what, "\n", " ");
-                        cwarn << "Got invalid Json message : " << what;
+                        cwarn << "Stratum got invalid Json message : " << what;
                     }
                 }
             }
@@ -1624,13 +1563,13 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
         if ((ec.category() == boost::asio::error::get_ssl_category()) &&
             (SSL_R_PROTOCOL_IS_SHUTDOWN == ERR_GET_REASON(ec.value())))
         {
-            cnote << "SSL Stream error :" << ec.message();
+            cnote << "SSL Stream error : " << ec.message();
             m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
         }
 
         if (isConnected())
         {
-            cwarn << "Socket write failed: " + ec.message();
+            cwarn << "Socket write failed : " << ec.message();
             m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
         }
     }

@@ -33,7 +33,6 @@ struct CUDAChannel : public LogChannel
 
 CUDAMiner::CUDAMiner(unsigned _index)
   : Miner("cuda-", _index),
-    m_io_strand(g_io_service),
     m_batch_size(s_gridSize * s_blockSize),
     m_streams_batch_size(s_gridSize * s_blockSize * s_numStreams)
 {}
@@ -56,7 +55,7 @@ bool CUDAMiner::initDevice()
 {
     cudalog << "Using Pci Id : " << m_deviceDescriptor.UniqueId << " " << m_deviceDescriptor.cuName
             << " (Compute " + m_deviceDescriptor.cuCompute + ") Memory : "
-            << FormattedMemSize(m_deviceDescriptor.TotalMemory);
+            << dev::getFormattedMemory((double)m_deviceDescriptor.TotalMemory);
 
     // Set Hardware Monitor Info
     m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
@@ -111,14 +110,15 @@ bool CUDAMiner::initEpoch_internal()
             if (m_deviceDescriptor.TotalMemory < RequiredMemory)
             {
                 cudalog << "Epoch " << m_epochContext.epochNumber << " requires "
-                        << FormattedMemSize(RequiredMemory) << " memory.";
+                        << dev::getFormattedMemory((double)RequiredMemory) << " memory.";
                 cudalog << "This device hasn't available. Mining suspended ...";
                 pause(MinerPauseEnum::PauseDueToInsufficientMemory);
                 return true;  // This will prevent to exit the thread and
                               // Eventually resume mining when changing coin or epoch (NiceHash)
             }
 
-            cudalog << "Generating DAG + Light : " << FormattedMemSize(RequiredMemory);
+            cudalog << "Generating DAG + Light : "
+                    << dev::getFormattedMemory((double)RequiredMemory);
 
             // create buffer for cache
             CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), m_epochContext.lightSize));
@@ -136,7 +136,7 @@ bool CUDAMiner::initEpoch_internal()
         else
         {
             cudalog << "Generating DAG + Light (reusing buffers): "
-                    << FormattedMemSize(RequiredMemory);
+                    << dev::getFormattedMemory((double)RequiredMemory);
             get_constants(&dag, NULL, &light, NULL);
         }
 
@@ -152,7 +152,8 @@ bool CUDAMiner::initEpoch_internal()
                 << std::chrono::duration_cast<std::chrono::milliseconds>(
                        std::chrono::steady_clock::now() - startInit)
                        .count()
-                << " ms. " << FormattedMemSize(m_deviceDescriptor.TotalMemory - RequiredMemory)
+                << " ms. "
+                << dev::getFormattedMemory((double)(m_deviceDescriptor.TotalMemory - RequiredMemory))
                 << " left.";
 
         retVar = true;
@@ -395,10 +396,10 @@ void CUDAMiner::search(
                     memcpy(mix.data(), (void*)&buffer.result[i].mix, sizeof(buffer.result[i].mix));
                     auto sol = Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index};
 
-                    cudalog << "Sol: " << EthWhite "0x" << toHex(sol.nonce) << EthReset;
+                    cudalog << EthWhite << "Job: " << w.header.abridged() << " Sol: "
+                            << toHex(sol.nonce, HexPrefix::Add) << EthReset;
 
-                    g_io_service.post(
-                        m_io_strand.wrap(boost::bind(&Farm::submitProof, &Farm::f(), sol)));
+                    Farm::f().submitProof(sol);
                 }
             }
 

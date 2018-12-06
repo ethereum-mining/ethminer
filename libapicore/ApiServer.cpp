@@ -8,6 +8,14 @@
 #define HOST_NAME_MAX 255
 #endif
 
+// Define grayscale palette
+#define HTTP_HDR0_COLOR "#e8e8e8"
+#define HTTP_HDR1_COLOR "#f0f0f0"
+#define HTTP_ROW0_COLOR "#f8f8f8"
+#define HTTP_ROW1_COLOR "#ffffff"
+#define HTTP_ROWRED_COLOR "#f46542"
+
+
 /* helper functions getting values from a JSON request */
 static bool getRequestValue(const char* membername, bool& refValue, Json::Value& jRequest,
     bool optional, Json::Value& jResponse)
@@ -341,6 +349,18 @@ void ApiConnection::disconnect()
     }
 }
 
+ApiConnection::ApiConnection(int id, bool readonly, string password)
+  : m_sessionId(id),
+    m_socket(g_io_service),
+    m_io_strand(g_io_service),
+    m_readonly(readonly),
+    m_password(std::move(password))
+{
+    m_jSwBuilder.settings_["indentation"] = "";
+    if (!m_password.empty())
+        m_is_authenticated = false;
+}
+
 void ApiConnection::start()
 {
     // cnote << "ApiConnection::start";
@@ -413,7 +433,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             // Use error code like http 401 Unauthorized
             jResponse["error"]["code"] = -401;
             jResponse["error"]["message"] = "Invalid password";
-            cerr << "Invalid API password provided.";
+            cerr << "API : Invalid password provided.";
             // Should we close the connection in the outer function after invalid password ?
         }
         /*
@@ -424,15 +444,10 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     }
 
     assert(m_is_authenticated);
-
+    cnote << "API : Method " << _method << " requested";
     if (_method == "miner_getstat1")
     {
         jResponse["result"] = getMinerStat1();
-    }
-
-    else if (_method == "miner_getstathr")
-    {
-        jResponse["result"] = getMinerStatHR();
     }
 
     else if (_method == "miner_getstatdetail")
@@ -443,7 +458,6 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     else if (_method == "miner_shuffle")
     {
         // Gives nonce scrambler a new range
-        cnote << "Miner Shuffle requested";
         jResponse["result"] = true;
         Farm::f().shuffle();
     }
@@ -461,7 +475,6 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         // to prevent locking
         if (!checkApiWriteAccess(m_readonly, jResponse))
             return;
-        cnote << "Miner Restart requested";
         jResponse["result"] = true;
         Farm::f().restart_async();
     }
@@ -470,7 +483,6 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     {
         if (!checkApiWriteAccess(m_readonly, jResponse))
             return;
-        cnote << "Miner reboot requested";
 
         jResponse["result"] = Farm::f().reboot({{"api_miner_reboot"}});
     }
@@ -497,25 +509,11 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         try
         {
             URI uri(sUri);
-            if (!uri.Valid())
+            if (!uri.Valid() || uri.Scheme() == "simulation")
             {
                 jResponse["error"]["code"] = -422;
                 jResponse["error"]["message"] = ("Invalid URI " + uri.str());
                 return;
-            }
-
-            // Check other pools already present share the same scheme family (stratum or getwork)
-            Json::Value pools = PoolManager::p().getConnectionsJson();
-            for (Json::Value::ArrayIndex i = 0; i != pools.size(); i++)
-            {
-                dev::URI poolUri = pools[i]["uri"].asString();
-                if (uri.Family() != poolUri.Family())
-                {
-                    jResponse["error"]["code"] = -422;
-                    jResponse["error"]["message"] =
-                        "Mixed stratum and getwork endpoints not supported.";
-                    return;
-                }
             }
 
             // If everything ok then add this new uri
@@ -615,9 +613,29 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         uint64_t nonce = Farm::f().get_nonce_scrambler();
         unsigned exp = Farm::f().get_segment_width();
 
-        if (!getRequestValue("noncescrambler", nonce, jRequestParams, true, jResponse))
-            return;
-        any_value_provided = true;
+        string nonceHex;
+        if (jRequestParams.isMember("noncescrambler"))
+        {
+            nonceHex = jRequestParams["noncescrambler"].asString();
+            if (nonceHex.substr(0, 2) == "0x")
+            {
+                try
+                {
+                    nonce = std::stoul(nonceHex, nullptr, 16);
+                    any_value_provided = true;
+                }
+                catch (const std::exception&)
+                {
+                    return;
+                }
+            }
+            else
+            {
+                if (!getRequestValue("noncescrambler", nonce, jRequestParams, true, jResponse))
+                    return;
+                any_value_provided = true;
+            }
+        }
 
         if (!getRequestValue("segmentwidth", exp, jRequestParams, true, jResponse))
             return;
@@ -656,14 +674,6 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         if (!getRequestValue("pause", pause, jRequestParams, false, jResponse))
             return;
 
-        WorkingProgress p = Farm::f().miningProgress();
-        if (index >= p.miningIsPaused.size())
-        {
-            jResponse["error"]["code"] = -422;
-            jResponse["error"]["message"] = "Index out of bounds";
-            return;
-        }
-
         auto const& miner = Farm::f().getMiner(index);
         if (miner)
         {
@@ -676,7 +686,9 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         }
         else
         {
-            jResponse["result"] = false;
+            jResponse["error"]["code"] = -422;
+            jResponse["error"]["message"] = "Index out of bounds";
+            return;
         }
     }
 
@@ -715,8 +727,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
 
 void ApiConnection::recvSocketData()
 {
-    // cnote << "ApiConnection::recvSocketData";
-    boost::asio::async_read_until(m_socket, m_recvBuffer, "\n",
+    boost::asio::async_read(m_socket, m_recvBuffer, boost::asio::transfer_at_least(1),
         m_io_strand.wrap(boost::bind(&ApiConnection::onRecvSocketDataCompleted, this,
             boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
 }
@@ -724,80 +735,214 @@ void ApiConnection::recvSocketData()
 void ApiConnection::onRecvSocketDataCompleted(
     const boost::system::error_code& ec, std::size_t bytes_transferred)
 {
-    // cnote << "ApiConnection::onRecvSocketDataCompleted";
-    // Due to the nature of io_service's queue and
-    // the implementation of the loop this event may trigger
-    // late after clean disconnection. Check status of connection
-    // before triggering all stack of calls
+    /*
+    Standard http request detection pattern
+    1st group : any UPPERCASE word
+    2nd group : the path
+    3rd group : HTTP version
+    */
+    static std::regex http_pattern("^([A-Z]{1,6}) (\\/[\\S]*) (HTTP\\/1\\.[0-9]{1})");
+    std::smatch http_matches;
 
     if (!ec && bytes_transferred > 0)
     {
-        // Extract received message
-        std::istream is(&m_recvBuffer);
-        std::string message;
-        getline(is, message);
+        // Extract received message and free the buffer
+        std::string rx_message(
+            boost::asio::buffer_cast<const char*>(m_recvBuffer.data()), bytes_transferred);
+        m_recvBuffer.consume(bytes_transferred);
+        m_message.append(rx_message);
 
-        if (m_socket.is_open())
+        std::string line;
+        std::string linedelimiter;
+        std::size_t linedelimiteroffset;
+
+        if (m_message.size() < 4)
+            return;  // Wait for other data to come in
+
+        if (std::regex_search(
+                m_message, http_matches, http_pattern, std::regex_constants::match_default))
         {
-            if (!message.empty())
+            // We got an HTTP request
+            std::string http_method = http_matches[1].str();
+            std::string http_path = http_matches[2].str();
+            std::string http_ver = http_matches[3].str();
+
+            // Do we support method ?
+            if (http_method != "GET")
             {
-                // Test validity of chunk and process
-                Json::Value jMsg;
-                Json::Value jRes;
-                Json::Reader jRdr;
-                if (jRdr.parse(message, jMsg))
+                std::string what = "Method " + http_method + " not allowed";
+                std::stringstream ss;
+                ss << http_ver << " "
+                   << "405 Method not allowed\r\n"
+                   << "Server: " << ethminer_get_buildinfo()->project_name_with_version << "\r\n"
+                   << "Content-Type: text/plain\r\n"
+                   << "Content-Length: " << what.size() << "\r\n\r\n"
+                   << what << "\r\n";
+                sendSocketData(ss.str(), true);
+                m_message.clear();
+                return;
+            }
+
+            // Do we support path ?
+            if (http_path != "/" && http_path != "/getstat1")
+            {
+                std::string what =
+                    "The requested resource " + http_path + " not found on this server";
+                std::stringstream ss;
+                ss << http_ver << " "
+                   << "404 Not Found\r\n"
+                   << "Server: " << ethminer_get_buildinfo()->project_name_with_version << "\r\n"
+                   << "Content-Type: text/plain\r\n"
+                   << "Content-Length: " << what.size() << "\r\n\r\n"
+                   << what << "\r\n";
+                sendSocketData(ss.str(), true);
+                m_message.clear();
+                return;
+            }
+
+            //// Get all the lines - we actually don't care much
+            //// until we support other http methods or paths
+            //// Keep this for future use (if any)
+            //// Remember to #include <boost/algorithm/string.hpp>
+            // std::vector<std::string> lines;
+            // boost::split(lines, m_message, [](char _c) { return _c == '\n'; });
+
+            std::stringstream ss;  // Builder of the response
+
+            if (http_method == "GET" && (http_path == "/" || http_path == "/getstat1"))
+            {
+                try
                 {
-                    processRequest(jMsg, jRes);
+                    std::string body = getHttpMinerStatDetail();
+                    ss.clear();
+                    ss << http_ver << " "
+                       << "200 Ok Error\r\n"
+                       << "Server: " << ethminer_get_buildinfo()->project_name_with_version
+                       << "\r\n"
+                       << "Content-Type: text/html; charset=utf-8\r\n"
+                       << "Content-Length: " << body.size() << "\r\n\r\n"
+                       << body << "\r\n";
                 }
-                else
+                catch (const std::exception& _ex)
                 {
-                    jRes["jsonrpc"] = "2.0";
-                    jRes["id"] = Json::nullValue;
-                    jRes["error"]["code"] = -32700;
-                    jRes["error"]["message"] = "Parse Error";
+                    std::string what = "Internal error : " + std::string(_ex.what());
+                    ss.clear();
+                    ss << http_ver << " "
+                       << "500 Internal Server Error\r\n"
+                       << "Server: " << ethminer_get_buildinfo()->project_name_with_version
+                       << "\r\n"
+                       << "Content-Type: text/plain\r\n"
+                       << "Content-Length: " << what.size() << "\r\n\r\n"
+                       << what << "\r\n";
                 }
-                sendSocketData(jRes);
+            }
+
+            sendSocketData(ss.str(), true);
+            m_message.clear();
+        }
+        else
+        {
+            // We got a Json request
+            // Process each line in the transmission
+            linedelimiter = "\n";
+
+            linedelimiteroffset = m_message.find(linedelimiter);
+            while (linedelimiteroffset != string::npos)
+            {
+                if (linedelimiteroffset > 0)
+                {
+                    line = m_message.substr(0, linedelimiteroffset);
+                    boost::trim(line);
+
+                    if (!line.empty())
+                    {
+                        // Test validity of chunk and process
+                        Json::Value jMsg;
+                        Json::Value jRes;
+                        Json::Reader jRdr;
+                        if (jRdr.parse(line, jMsg))
+                        {
+                            try
+                            {
+                                // Run in sync so no 2 different async reads may overlap
+                                processRequest(jMsg, jRes);
+                            }
+                            catch (const std::exception& _ex)
+                            {
+                                jRes = Json::Value();
+                                jRes["jsonrpc"] = "2.0";
+                                jRes["id"] = Json::Value::null;
+                                jRes["error"]["errorcode"] = "500";
+                                jRes["error"]["message"] = _ex.what();
+                            }
+                        }
+                        else
+                        {
+                            jRes = Json::Value();
+                            jRes["jsonrpc"] = "2.0";
+                            jRes["id"] = Json::Value::null;
+                            jRes["error"]["errorcode"] = "-32700";
+                            string what = jRdr.getFormattedErrorMessages();
+                            boost::replace_all(what, "\n", " ");
+                            cwarn << "API : Got invalid Json message " << what;
+                            jRes["error"]["message"] = "Json parse error : " + what;
+                        }
+
+                        // Send response to client
+                        sendSocketData(jRes);
+                    }
+                }
+
+                // Next line (if any)
+                m_message.erase(0, linedelimiteroffset + 1);
+                linedelimiteroffset = m_message.find(linedelimiter);
             }
 
             // Eventually keep reading from socket
-            recvSocketData();
+            if (m_socket.is_open())
+                recvSocketData();
         }
     }
     else
     {
-        if (m_socket.is_open())
-        {
-            disconnect();
-        }
+        disconnect();
     }
 }
 
-void ApiConnection::sendSocketData(Json::Value const& jReq)
+void ApiConnection::sendSocketData(Json::Value const& jReq, bool _disconnect)
 {
     if (!m_socket.is_open())
         return;
-
-    std::ostream os(&m_sendBuffer);
-    os << m_jWriter.write(jReq);  // Do not add lf. It's added by writer.
-
-    async_write(m_socket, m_sendBuffer,
-        m_io_strand.wrap(boost::bind(
-            &ApiConnection::onSendSocketDataCompleted, this, boost::asio::placeholders::error)));
+    std::stringstream line;
+    line << Json::writeString(m_jSwBuilder, jReq) << std::endl;
+    sendSocketData(line.str(), _disconnect); 
 }
 
-void ApiConnection::onSendSocketDataCompleted(const boost::system::error_code& ec)
+void ApiConnection::sendSocketData(std::string const& _s, bool _disconnect)
 {
-    if (ec)
+    if (!m_socket.is_open())
+        return;
+    std::ostream os(&m_sendBuffer);
+    os << _s;
+
+    async_write(m_socket, m_sendBuffer,
+        m_io_strand.wrap(boost::bind(&ApiConnection::onSendSocketDataCompleted, this,
+            boost::asio::placeholders::error, _disconnect)));
+}
+
+void ApiConnection::onSendSocketDataCompleted(const boost::system::error_code& ec, bool _disconnect)
+{
+    if (ec || _disconnect)
         disconnect();
 }
 
 Json::Value ApiConnection::getMinerStat1()
 {
-    auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
-        steady_clock::now() - Farm::f().farmLaunched());
     auto connection = PoolManager::p().getActiveConnectionCopy();
-    SolutionStats s = Farm::f().getSolutionStats();
-    WorkingProgress p = Farm::f().miningProgress();
+    TelemetryType t = Farm::f().Telemetry();
+    auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
+        steady_clock::now() - t.start);
+
 
     ostringstream totalMhEth;
     ostringstream totalMhDcr;
@@ -807,31 +952,30 @@ Json::Value ApiConnection::getMinerStat1()
     ostringstream poolAddresses;
     ostringstream invalidStats;
 
-    totalMhEth << std::fixed << std::setprecision(0) << p.hashRate / 1000.0f << ";"
-               << s.getAccepts() << ";" << s.getRejects();
-    totalMhDcr << "0;0;0";                    // DualMining not supported
-    invalidStats << s.getFailures() << ";0";  // Invalid + Pool switches
+    totalMhEth << std::fixed << std::setprecision(0) << t.farm.hashrate / 1000.0f << ";"
+               << t.farm.solutions.accepted << ";" << t.farm.solutions.rejected;
+    totalMhDcr << "0;0;0";                            // DualMining not supported
+    invalidStats << t.farm.solutions.failed << ";0";  // Invalid + Pool switches
     poolAddresses << connection.Host() << ':' << connection.Port();
     invalidStats << ";0;0";  // DualMining not supported
 
     int gpuIndex = 0;
-    int numGpus = p.minersHashRates.size();
-    for (auto const& i : p.minersHashRates)
+    int numGpus = t.miners.size();
+
+    for (gpuIndex = 0 ; gpuIndex < numGpus; gpuIndex++)
     {
-        detailedMhEth << std::fixed << std::setprecision(0) << i / 1000.0f
+        detailedMhEth << std::fixed << std::setprecision(0) << t.miners.at(gpuIndex).hashrate / 1000.0f
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");
         detailedMhDcr << "off"
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");  // DualMining not supported
-        gpuIndex++;
     }
 
     gpuIndex = 0;
-    numGpus = p.minerMonitors.size();
-    for (auto const& i : p.minerMonitors)
+    for (gpuIndex = 0; gpuIndex < numGpus; gpuIndex++)
     {
-        tempAndFans << i.tempC << ";" << i.fanP
+        tempAndFans << t.miners.at(gpuIndex).sensors.tempC << ";"
+                    << t.miners.at(gpuIndex).sensors.fanP
                     << (((numGpus - 1) > gpuIndex) ? ";" : "");  // Fetching Temp and Fans
-        gpuIndex++;
     }
 
     Json::Value jRes;
@@ -853,137 +997,174 @@ Json::Value ApiConnection::getMinerStat1()
     return jRes;
 }
 
-Json::Value ApiConnection::getMinerStatHR()
+Json::Value ApiConnection::getMinerStatDetailPerMiner(
+    const TelemetryType& _t, std::shared_ptr<Miner> _miner)
 {
-    // TODO:give key-value format
-    auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
-        steady_clock::now() - Farm::f().farmLaunched());
-    auto connection = PoolManager::p().getActiveConnectionCopy();
-    SolutionStats s = Farm::f().getSolutionStats();
-    WorkingProgress p = Farm::f().miningProgress();
-
-    ostringstream version;
-    ostringstream runtime;
-    Json::Value detailedMhEth;
-    Json::Value detailedMhDcr;
-    Json::Value temps;
-    Json::Value fans;
-    Json::Value powers;
-    Json::Value ispaused;
-    ostringstream poolAddresses;
-
-    version << ethminer_get_buildinfo()->project_name_with_version;
-    runtime << toString(runningTime.count());
-    poolAddresses << connection.Host() << ':' << connection.Port();
-
-    assert(p.minersHashRates.size() == p.minerMonitors.size() || p.minerMonitors.size() == 0);
-    assert(p.minersHashRates.size() == p.miningIsPaused.size());
-
-    for (unsigned gpuIndex = 0; gpuIndex < p.minersHashRates.size(); gpuIndex++)
-    {
-        bool doMonitors = (gpuIndex < p.minerMonitors.size());
-
-        detailedMhEth[gpuIndex] = p.minersHashRates[gpuIndex];
-        // detailedMhDcr[gpuIndex] = "off"; //Not supported
-
-        if (doMonitors)
-        {
-            temps[gpuIndex] = p.minerMonitors[gpuIndex].tempC;
-            fans[gpuIndex] = p.minerMonitors[gpuIndex].fanP;
-            powers[gpuIndex] = p.minerMonitors[gpuIndex].powerW;
-        }
-        else
-        {
-            temps[gpuIndex] = 0;
-            fans[gpuIndex] = 0;
-            powers[gpuIndex] = 0;
-        }
-
-        ispaused[gpuIndex] = (bool)p.miningIsPaused[gpuIndex];
-    }
+    unsigned _index = _miner->Index();
+    std::chrono::steady_clock::time_point _now = std::chrono::steady_clock::now();
 
     Json::Value jRes;
-    jRes["version"] = version.str();  // miner version.
-    jRes["runtime"] = runtime.str();  // running time, in minutes.
-    // total ETH hashrate in MH/s, number of ETH shares, number of ETH rejected shares.
-    jRes["ethhashrate"] = uint64_t(p.hashRate);
-    jRes["ethhashrates"] = detailedMhEth;
-    jRes["ethshares"] = s.getAccepts();
-    jRes["ethrejected"] = s.getRejects();
-    jRes["ethinvalid"] = s.getFailures();
-    jRes["ethpoolsw"] = 0;
-    // Hardware Info
-    jRes["temperatures"] = temps;   // Temperatures(C) for all GPUs
-    jRes["fanpercentages"] = fans;  // Fans speed(%) for all GPUs
-    jRes["powerusages"] = powers;   // Power Usages(W) for all GPUs
-    jRes["pooladdrs"] =
-        poolAddresses.str();  // current mining pool. For dual mode, there will be two pools here.
-    jRes["ispaused"] = ispaused;  // Is mining on GPU paused
+    DeviceDescriptorType minerDescriptor = _miner->getDescriptor();
 
-    return jRes;
-}
+    jRes["_index"] = _index;
+    jRes["_mode"] =
+        (minerDescriptor.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda ? "CUDA" : "OpenCL");
 
+    /* Hardware Info */
+    Json::Value hwinfo;
+    hwinfo["pci"] = minerDescriptor.UniqueId;
+    hwinfo["type"] =
+        (minerDescriptor.Type == DeviceTypeEnum::Gpu ?
+                "GPU" :
+                (minerDescriptor.Type == DeviceTypeEnum::Accelerator ? "ACCELERATOR" : "CPU"));
+    ostringstream ss;
+    ss << (minerDescriptor.clDetected ? minerDescriptor.clName : minerDescriptor.cuName) << " "
+       << dev::getFormattedMemory((double)minerDescriptor.TotalMemory);
+    hwinfo["name"] = ss.str();
 
-Json::Value ApiConnection::getMinerStatDetailPerMiner(const WorkingProgress& p,
-    const SolutionStats& s, size_t index, const std::chrono::steady_clock::time_point& now)
-{
-    Json::Value jRes;
-    auto const& miner = Farm::f().getMiner(index);
+    /* Hardware Sensors*/
+    Json::Value sensors = Json::Value(Json::arrayValue);
 
-    jRes["index"] = (unsigned)index;
+    sensors.append(_t.miners.at(_index).sensors.tempC);
+    sensors.append(_t.miners.at(_index).sensors.fanP);
+    sensors.append(_t.miners.at(_index).sensors.powerW);
 
-    /* Hash & Share infos */
-    if (index < p.minersHashRates.size())
-        jRes["hashrate"] = (uint64_t)p.minersHashRates[index];
-    else
-        jRes["hashrate"] = Json::Value::null;
+    hwinfo["sensors"] = sensors;
 
-    Json::Value jshares;
-    jshares["accepted"] = s.getAccepts(index);
-    jshares["rejected"] = s.getRejects(index);
-    jshares["invalid"] = s.getFailures(index);
+    /* Mining Info */
+    Json::Value mininginfo;
+    Json::Value jshares = Json::Value(Json::arrayValue);
+    Json::Value jsegment = Json::Value(Json::arrayValue);
+    jshares.append(_t.miners.at(_index).solutions.accepted);
+    jshares.append(_t.miners.at(_index).solutions.rejected);
+    jshares.append(_t.miners.at(_index).solutions.failed);
 
-    auto solution_lastupdated =
-        std::chrono::duration_cast<std::chrono::seconds>(now - s.getLastUpdated(index));
-    jshares["lastupdate"] = uint64_t(solution_lastupdated.count());  // last update of this gpu stat was x seconds ago
-    jRes["shares"] = jshares;
+    auto solution_lastupdated = std::chrono::duration_cast<std::chrono::seconds>(
+        _now - _t.miners.at(_index).solutions.tstamp);
+    jshares.append(uint64_t(solution_lastupdated.count()));  // interval in seconds from last found
+                                                             // share
 
-
-    /* Hardware */
-    if (index < p.minerMonitors.size())
-    {
-        jRes["temp"] = p.minerMonitors[index].tempC;
-        jRes["fan"] = p.minerMonitors[index].fanP;
-        jRes["power"] = p.minerMonitors[index].powerW;
-    }
-    else
-    {
-        jRes["temp"] = jRes["fan"] = jRes["power"] = Json::Value::null;
-    }
-
-    // TODO: PCI ID, Name, ... (some more infos - see listDevices())
-
-    /* Pause infos */
-    if (miner && index < p.miningIsPaused.size())
-    {
-        bool paused = miner->paused();
-        jRes["ispaused"] = paused;
-        jRes["pause_reason"] = (paused ? miner->pausedString() : Json::Value::null);
-    }
-    else
-    {
-        jRes["ispaused"] = jRes["pause_reason"] = Json::Value::null;
-    }
+    mininginfo["shares"] = jshares;
+    mininginfo["paused"] = _miner->paused();
+    mininginfo["pause_reason"] = _miner->paused() ? _miner->pausedString() : Json::Value::null;
 
     /* Nonce infos */
     auto segment_width = Farm::f().get_segment_width();
-    uint64_t gpustartnonce = Farm::f().get_nonce_scrambler() + ((uint64_t)index << segment_width);
-    jRes["nonce_start"] = gpustartnonce;
-    jRes["nonce_stop"] = uint64_t(gpustartnonce + (1LL << segment_width));
+    uint64_t gpustartnonce = Farm::f().get_nonce_scrambler() + ((uint64_t)_index << segment_width);
+    jsegment.append(toHex(uint64_t(gpustartnonce), HexPrefix::Add));
+    jsegment.append(toHex(uint64_t(gpustartnonce + (1LL << segment_width)), HexPrefix::Add));
+    mininginfo["segment"] = jsegment;
+
+    /* Hash & Share infos */
+    mininginfo["hashrate"] = toHex((uint32_t)_t.miners.at(_index).hashrate, HexPrefix::Add);
+
+    jRes["hardware"] = hwinfo;
+    jRes["mining"] = mininginfo;
 
     return jRes;
 }
 
+std::string ApiConnection::getHttpMinerStatDetail()
+{
+    Json::Value jStat = getMinerStatDetail();
+    uint64_t durationSeconds = jStat["host"]["runtime"].asUInt64();
+    int hours = (int)(durationSeconds / 3600);
+    durationSeconds -= (hours * 3600);
+    int minutes = (int)(durationSeconds / 60);
+    int hoursSize = (hours > 9 ? (hours > 99 ? 3 : 2) : 1);
+
+    /* Build up header*/
+    std::stringstream _ret;
+    _ret << "<!doctype html>"
+         << "<html lang=en>"
+         << "<head>"
+         << "<meta charset=utf-8>"
+         << "<meta http-equiv=\"refresh\" content=\"30\">"
+         << "<title>" << jStat["host"]["name"].asString() << "</title>"
+         << "<style>"
+         << "body{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,"
+         << "\"Helvetica Neue\",Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5;"
+         << "text-align:center;}"
+         << "table,td,th{border:1px inset #000;}"
+         << "table{border-spacing:0;}"
+         << "td,th{padding:3px;}"
+         << "tbody tr:nth-child(even){background-color:" << HTTP_ROW0_COLOR << ";}"
+         << "tbody tr:nth-child(odd){background-color:" << HTTP_ROW1_COLOR << ";}"
+         << ".mx-auto{margin-left:auto;margin-right:auto;}"
+         << ".bg-header1{background-color:" << HTTP_HDR1_COLOR << ";}"
+         << ".bg-header0{background-color:" << HTTP_HDR0_COLOR << ";}"
+         << ".bg-red{color:" << HTTP_ROWRED_COLOR << ";}"
+         << ".right{text-align: right;}"
+         << "</style>"
+         << "<meta http-equiv=refresh content=30>"
+         << "</head>"
+         << "<body>"
+         << "<table class=mx-auto>"
+         << "<thead>"
+         << "<tr class=bg-header1>"
+         << "<th colspan=9>" << jStat["host"]["version"].asString() << " - " << setw(hoursSize)
+         << hours << ":" << setw(2) << setfill('0') << fixed << minutes
+         << "<br>Pool: " << jStat["connection"]["uri"].asString() << "</th>"
+         << "</tr>"
+         << "<tr class=bg-header0>"
+         << "<th>PCI</th>"
+         << "<th>Device</th>"
+         << "<th>Mode</th>"
+         << "<th>Paused</th>"
+         << "<th class=right>Hash Rate</th>"
+         << "<th class=right>Solutions</th>"
+         << "<th class=right>Temp.</th>"
+         << "<th class=right>Fan %</th>"
+         << "<th class=right>Power</th>"
+         << "</tr>"
+         << "</thead><tbody>";
+
+    /* Loop miners */
+    double total_hashrate = 0;
+    double total_power = 0;
+    unsigned int total_solutions = 0;
+
+    for (Json::Value::ArrayIndex i = 0; i != jStat["devices"].size(); i++)
+    {
+        Json::Value device = jStat["devices"][i];
+        double hashrate = std::stoul(device["mining"]["hashrate"].asString(), nullptr, 16);
+        double power = device["hardware"]["sensors"][2].asDouble();
+        unsigned int solutions = device["mining"]["shares"][0].asUInt();
+        total_hashrate += hashrate;
+        total_power += power;
+        total_solutions += solutions;
+
+        _ret << "<tr" << (device["mining"]["paused"].asBool() ? " class=\"bg-red\"" : "")
+             << ">";  // Open row
+
+        _ret << "<td>" << device["hardware"]["pci"].asString() << "</td>";
+        _ret << "<td>" << device["hardware"]["name"].asString() << "</td>";
+        _ret << "<td>" << device["_mode"].asString() << "</td>";
+
+        _ret << "<td>"
+             << (device["mining"]["paused"].asBool() ? device["mining"]["pause_reason"].asString() :
+                                                       "No")
+             << "</td>";
+
+        _ret << "<td class=right>" << dev::getFormattedHashes(hashrate) << "</td>";
+
+        _ret << "<td class=right>" << device["mining"]["shares"][0].asString() << "</td>";
+        _ret << "<td class=right>" << device["hardware"]["sensors"][0].asString() << "</td>";
+        _ret << "<td class=right>" << device["hardware"]["sensors"][1].asString() << "</td>";
+        _ret << "<td class=right>" << device["hardware"]["sensors"][2].asString() << "</td>";
+
+        _ret << "</tr>";  // Close row
+    }
+    _ret << "</tbody>";
+
+    /* Summarize */
+    _ret << "<tfoot><tr class=bg-header0><td colspan=4 class=right>Total</td><td class=right>"
+         << dev::getFormattedHashes(total_hashrate) << "</td><td class=right>" << total_solutions
+         << "</td><td colspan=3 class=right>" << setprecision(2) << total_power << "</td></tfoot>";
+
+    _ret << "</table></body></html>";
+    return _ret.str();
+}
 
 /**
  * @brief Return a total and per GPU detailed list of current status
@@ -997,80 +1178,76 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(const WorkingProgress& p,
 Json::Value ApiConnection::getMinerStatDetail()
 {
     const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-    auto runningTime =
-        std::chrono::duration_cast<std::chrono::seconds>(now - Farm::f().farmLaunched());
+    TelemetryType t = Farm::f().Telemetry();
 
-    SolutionStats s = Farm::f().getSolutionStats();
-    WorkingProgress p = Farm::f().miningProgress();
+    auto runningTime = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::steady_clock::now() - t.start);
 
     // ostringstream version;
-    Json::Value gpus;
+    Json::Value devices = Json::Value(Json::arrayValue);
     Json::Value jRes;
 
-    jRes["version"] = ethminer_get_buildinfo()->project_name_with_version;  // miner version.
-    jRes["runtime"] = uint64_t(runningTime.count());  // running time, in seconds.
+    /* Host Info */
+    Json::Value hostinfo;
+    hostinfo["version"] = ethminer_get_buildinfo()->project_name_with_version;  // miner version.
+    hostinfo["runtime"] = uint64_t(runningTime.count());  // running time, in seconds.
 
     {
         // Even the client should know which host was queried
         char hostName[HOST_NAME_MAX + 1];
         if (!gethostname(hostName, HOST_NAME_MAX + 1))
-            jRes["hostname"] = hostName;
+            hostinfo["name"] = hostName;
         else
-            jRes["hostname"] = Json::Value::null;
+            hostinfo["name"] = Json::Value::null;
     }
 
-    /* connection info */
+
+    /* Connection info */
+    Json::Value connectioninfo;
     auto connection = PoolManager::p().getActiveConnectionCopy();
-    Json::Value jconnection;
-    jconnection["uri"] = connection.str();
-    // jconnection["endpoint"] = PoolManager::p().getClient()->ActiveEndPoint();
-    jconnection["isconnected"] = PoolManager::p().isConnected();
-    jconnection["switched"] = PoolManager::p().getConnectionSwitches();
-    jRes["connection"] = jconnection;
+    connectioninfo["uri"] = connection.str();
+    connectioninfo["connected"] = PoolManager::p().isConnected();
+    connectioninfo["switches"] = PoolManager::p().getConnectionSwitches();
 
-    /* Pool info */
-    jRes["difficulty"] = PoolManager::p().getCurrentDifficulty();
-    jRes["epoch"] = PoolManager::p().getCurrentEpoch();
-    jRes["epoch_changes"] = PoolManager::p().getEpochChanges();
+    /* Mining Info */
+    Json::Value mininginfo;
+    Json::Value sharesinfo = Json::Value(Json::arrayValue);
 
-    /* basic setup */
+    mininginfo["hashrate"] = toHex(uint32_t(t.farm.hashrate), HexPrefix::Add);
+    mininginfo["epoch"] = PoolManager::p().getCurrentEpoch();
+    mininginfo["epoch_changes"] = PoolManager::p().getEpochChanges();
+    mininginfo["difficulty"] = PoolManager::p().getCurrentDifficulty();
+
+    sharesinfo.append(t.farm.solutions.accepted);
+    sharesinfo.append(t.farm.solutions.rejected);
+    sharesinfo.append(t.farm.solutions.failed);
+    auto solution_lastupdated =
+        std::chrono::duration_cast<std::chrono::seconds>(now - t.farm.solutions.tstamp);
+    sharesinfo.append(uint64_t(solution_lastupdated.count()));  // interval in seconds from last
+                                                                // found share
+    mininginfo["shares"] = sharesinfo;
+
+    /* Monitors Info */
+    Json::Value monitorinfo;
     auto tstop = Farm::f().get_tstop();
     if (tstop)
     {
-        jRes["tstart"] = Farm::f().get_tstart();
-        jRes["tstop"] = tstop;
-    }
-    else
-    {
-        jRes["tstart"] = jRes["tstop"] = Json::Value::null;
+        Json::Value tempsinfo = Json::Value(Json::arrayValue);
+        tempsinfo.append(Farm::f().get_tstart());
+        tempsinfo.append(tstop);
+        monitorinfo["temperatures"] = tempsinfo;
     }
 
-    /* gpu related info */
-    if (Farm::f().getMiners().size())
-    {
-        for (size_t i = 0; i < Farm::f().getMiners().size(); i++)
-        {
-            jRes["gpus"].append(getMinerStatDetailPerMiner(p, s, i, now));
-        }
-    }
-    else
-    {
-        jRes["gpus"] = Json::Value::null;
-    }
+    /* Devices related info */
+    for (shared_ptr<Miner> miner : Farm::f().getMiners())
+        devices.append(getMinerStatDetailPerMiner(t, miner));
 
-    // total ETH hashrate
-    jRes["hashrate"] = uint64_t(p.hashRate);
+    jRes["devices"] = devices;
 
-    // share information
-    Json::Value jshares;
-    jshares["accepted"] = s.getAccepts();
-    jshares["rejected"] = s.getRejects();
-    jshares["invalid"] = s.getFailures();
-    auto solution_lastupdated =
-        std::chrono::duration_cast<std::chrono::seconds>(now - s.getLastUpdated());
-    jshares["lastupdate"] =
-        uint64_t(solution_lastupdated.count());  // last update of this gpu stat was x seconds ago
-    jRes["shares"] = jshares;
+    jRes["monitors"] = monitorinfo;
+    jRes["connection"] = connectioninfo;
+    jRes["host"] = hostinfo;
+    jRes["mining"] = mininginfo;
 
     return jRes;
 }

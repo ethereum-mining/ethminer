@@ -30,6 +30,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include <boost/algorithm/string.hpp>
+
 #include "Common.h"
 
 namespace dev
@@ -47,6 +49,13 @@ enum class HexPrefix
     DontAdd = 0,
     Add = 1,
 };
+
+enum class ScaleSuffix
+{
+    DontAdd = 0,
+    Add = 1
+};
+
 /// Convert a series of bytes to the corresponding string of hex duplets.
 /// @param _w specifies the width of the first of the elements. Defaults to two - enough to
 /// represent a byte.
@@ -156,11 +165,18 @@ inline std::string toHex(u256 val, HexPrefix prefix = HexPrefix::DontAdd)
     return (prefix == HexPrefix::Add) ? "0x" + str : str;
 }
 
-inline std::string toHex(uint64_t _n)
+inline std::string toHex(uint64_t _n, HexPrefix _prefix = HexPrefix::DontAdd)
 {
-    std::ostringstream ss;
-    ss << std::hex << std::setfill('0') << std::setw(sizeof(_n) * 2) << _n;
-    return ss.str();
+    std::ostringstream ret;
+    ret << std::hex << std::setfill('0') << std::setw(sizeof(_n) * 2) << _n;
+    return (_prefix == HexPrefix::Add) ? "0x" + ret.str() : ret.str();
+}
+
+inline std::string toHex(uint32_t _n, HexPrefix _prefix = HexPrefix::DontAdd)
+{
+    std::ostringstream ret;
+    ret << std::hex << std::setfill('0') << std::setw(sizeof(_n) * 2) << _n;
+    return (_prefix == HexPrefix::Add) ? "0x" + ret.str() : ret.str();
 }
 
 // Algorithms for string and string-like collections.
@@ -188,5 +204,23 @@ inline unsigned bytesRequired(T _i)
 ///
 /// Portable wrapper for setenv / _putenv C library functions.
 bool setenv(const char name[], const char value[], bool override = false);
+
+/// Gets a target hash from given difficulty
+std::string getTargetFromDiff(double diff, HexPrefix _prefix = HexPrefix::Add);
+
+/// Gets the difficulty expressed in hashes to target
+double getHashesToTarget(std::string _target);
+
+/// Generic function to scale a value
+std::string getScaledSize(double _value, double _divisor, short _precision, std::string _sizes[],
+    size_t _numsizes, ScaleSuffix _suffix = ScaleSuffix::Add);
+
+/// Formats hashrate
+std::string getFormattedHashes(double _hr, ScaleSuffix _suffix = ScaleSuffix::Add, int _precision = 2);
+
+/// Formats hashrate
+std::string getFormattedMemory(
+    double _mem, ScaleSuffix _suffix = ScaleSuffix::Add, int _precision = 2);
+
 
 }  // namespace dev

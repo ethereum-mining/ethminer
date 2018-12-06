@@ -27,6 +27,7 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
 
+#include <boost/format.hpp>
 #include <boost/thread.hpp>
 
 #define DAG_LOAD_MODE_PARALLEL 0
@@ -75,6 +76,57 @@ enum class ClPlatformTypeEnum
     Nvidia
 };
 
+enum class SolutionAccountingEnum
+{
+    Accepted,
+    Rejected,
+    Wasted,
+    Failed
+};
+
+struct SolutionAccountType
+{
+    unsigned accepted = 0;
+    unsigned rejected = 0;
+    unsigned wasted = 0;
+    unsigned failed = 0;
+    std::chrono::steady_clock::time_point tstamp = std::chrono::steady_clock::now();
+    string str()
+    {
+        string _ret = "A" + to_string(accepted);
+        if (wasted)
+            _ret.append(":W" + to_string(wasted));
+        if (rejected)
+            _ret.append(":R" + to_string(rejected));
+        if (failed)
+            _ret.append(":F" + to_string(failed));
+        return _ret;
+    };
+};
+
+struct HwSensorsType
+{
+    int tempC = 0;
+    int fanP = 0;
+    double powerW = 0.0;
+    string str()
+    {
+        string _ret = to_string(tempC) + "C " + to_string(fanP) + "%";
+        if (powerW)
+            _ret.append(boost::str(boost::format("%f") % powerW));
+        return _ret;
+    };
+};
+
+struct TelemetryAccountType
+{
+    string prefix = "";
+    float hashrate = 0.0f;
+    bool paused = false;
+    HwSensorsType sensors;
+    SolutionAccountType solutions;
+};
+
 struct DeviceDescriptorType
 {
     DeviceTypeEnum Type = DeviceTypeEnum::Unknown;
@@ -121,23 +173,6 @@ struct HwMonitorInfo
     int deviceIndex = -1;
 };
 
-struct HwMonitor
-{
-    int tempC = 0;
-    int fanP = 0;
-    double powerW = 0;
-};
-
-std::ostream& operator<<(std::ostream& os, const HwMonitor& _hw);
-
-class FormattedMemSize
-{
-public:
-    explicit FormattedMemSize(uint64_t s) noexcept { m_size = s; }
-    uint64_t m_size;
-};
-
-std::ostream& operator<<(std::ostream& os, const FormattedMemSize& s);
 
 /// Pause mining
 enum MinerPauseEnum
@@ -150,116 +185,94 @@ enum MinerPauseEnum
     Pause_MAX  // Must always be last as a placeholder of max count
 };
 
-/// Describes the progress of a mining operation.
-struct WorkingProgress
+/// Keeps track of progress for farm and miners
+struct TelemetryType
 {
-    float hashRate = 0.0;
+    bool hwmon = false;
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 
-    std::vector<float> minersHashRates;
-    std::vector<bool> miningIsPaused;
-    std::vector<HwMonitor> minerMonitors;
+    TelemetryAccountType farm;
+    std::vector<TelemetryAccountType> miners;
+    std::string str()
+    {
+        std::stringstream _ret;
+
+        /*
+
+        Output is formatted as
+
+        Run <h:mm> <Solutions> <Speed> [<miner> ...]
+        where
+        - Run h:mm    Duration of the batch
+        - Solutions   Detailed solutions (A+R+F) per farm
+        - Speed       Actual hashing rate
+
+        each <miner> reports
+        - speed       Actual speed at the same level of
+                      magnitude for farm speed
+        - sensors     Values of sensors (temp, fan, power)
+        - solutions   Optional (LOG_PER_GPU) Solutions detail per GPU
+        */
+
+        /*
+        Calculate duration
+        */
+        auto duration = std::chrono::steady_clock::now() - start;
+        auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
+        int hoursSize = (hours.count() > 9 ? (hours.count() > 99 ? 3 : 2) : 1);
+        duration -= hours;
+        auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
+        _ret << EthGreen << setw(hoursSize) << hours.count() << ":" << setfill('0') << setw(2)
+             << minutes.count() << EthReset << EthWhiteBold << " " << farm.solutions.str() << EthReset << " ";
+
+        /*
+        Github : @AndreaLanfranchi
+        I whish I could simply make use of getFormattedHashes but in this case
+        this would be misleading as total hashrate could be of a different order
+        of magnitude than the hashrate expressed by single devices.
+        Thus I need to set the vary same scaling index on the farm and on devices
+        */
+        static string suffixes[] = {"h", "Kh", "Mh", "Gh"};
+        float hr = farm.hashrate;
+        int magnitude = 0;
+        while (hr > 1000.0f && magnitude <= 3)
+        {
+            hr /= 1000.0f;
+            magnitude++;
+        }
+
+        _ret << EthTealBold << std::fixed << std::setprecision(2) << hr << " "
+             << suffixes[magnitude] << EthReset << " { ";
+
+        int i = -1;                 // Current miner index
+        int m = miners.size() - 1;  // Max miner index
+        for (TelemetryAccountType miner : miners)
+        {
+            i++;
+            hr = miner.hashrate;
+            if (hr > 0.0f)
+                hr /= pow(1000.0f, magnitude);
+
+            _ret << (miner.paused ? EthRed : "") << miner.prefix << i << " " << EthTeal
+                 << std::fixed << std::setprecision(2) << hr << EthReset;
+
+            if (hwmon)
+                _ret << " " << EthTeal << miner.sensors.str() << EthReset;
+
+            // Eventually push also solutions per single GPU
+            if (g_logOptions & LOG_PER_GPU)
+                _ret << " " << EthTeal << miner.solutions.str() << EthReset;
+
+            // Separator if not the last miner index
+            if (i < m)
+                _ret << " | ";
+        }
+        _ret << " }";
+
+        return _ret.str();
+    };
 };
 
-std::ostream& operator<<(std::ostream& _out, const WorkingProgress& _p);
-
-class SolutionStats  // Only updated by Poolmanager thread!
-{
-public:
-    void reset()
-    {
-        m_accepts = {};
-        m_rejects = {};
-        m_failures = {};
-    }
-
-    void accepted(unsigned miner_index)
-    {
-        if (m_accepts.size() <= miner_index)
-            m_accepts.resize(miner_index + 1);
-        m_accepts[miner_index]++;
-        if (m_lastUpdated.size() <= miner_index)
-            m_lastUpdated.resize(miner_index + 1, m_tpInitalized);
-        m_lastUpdated[miner_index] = std::chrono::steady_clock::now();
-    }
-    void rejected(unsigned miner_index)
-    {
-        if (m_rejects.size() <= miner_index)
-            m_rejects.resize(miner_index + 1);
-        m_rejects[miner_index]++;
-        if (m_lastUpdated.size() <= miner_index)
-            m_lastUpdated.resize(miner_index + 1, m_tpInitalized);
-        m_lastUpdated[miner_index] = std::chrono::steady_clock::now();
-    }
-    void failed(unsigned miner_index)
-    {
-        if (m_failures.size() <= miner_index)
-            m_failures.resize(miner_index + 1);
-        m_failures[miner_index]++;
-        if (m_lastUpdated.size() <= miner_index)
-            m_lastUpdated.resize(miner_index + 1, m_tpInitalized);
-        m_lastUpdated[miner_index] = std::chrono::steady_clock::now();
-    }
-
-    unsigned getAccepts() const { return accumulate(m_accepts.begin(), m_accepts.end(), 0); }
-    unsigned getRejects() const { return accumulate(m_rejects.begin(), m_rejects.end(), 0); }
-    unsigned getFailures() const { return accumulate(m_failures.begin(), m_failures.end(), 0); }
-
-    unsigned getAccepts(unsigned miner_index) const
-    {
-        if (m_accepts.size() <= miner_index)
-            return 0;
-        return m_accepts[miner_index];
-    }
-    unsigned getRejects(unsigned miner_index) const
-    {
-        if (m_rejects.size() <= miner_index)
-            return 0;
-        return m_rejects[miner_index];
-    }
-    unsigned getFailures(unsigned miner_index) const
-    {
-        if (m_failures.size() <= miner_index)
-            return 0;
-        return m_failures[miner_index];
-    }
-    std::chrono::steady_clock::time_point getLastUpdated(unsigned miner_index) const
-    {
-        if (m_lastUpdated.size() <= miner_index)
-            return m_tpInitalized;
-        return m_lastUpdated[miner_index];
-    }
-    std::chrono::steady_clock::time_point getLastUpdated() const
-    {
-        /* return the newest update time of all GPUs */
-        if (!m_lastUpdated.size())
-            return m_tpInitalized;
-        auto max_index = std::max_element(m_lastUpdated.begin(), m_lastUpdated.end());
-        return m_lastUpdated[std::distance(m_lastUpdated.begin(), max_index)];
-    }
-
-    std::string getString(unsigned miner_index)
-    {
-        ostringstream r;
-
-        r << "A" << getAccepts(miner_index);
-        auto rejects = getRejects(miner_index);
-        if (rejects)
-            r << ":R" << rejects;
-        auto failures = getFailures(miner_index);
-        if (failures)
-            r << ":F" << failures;
-        return r.str();
-    }
-
-private:
-    std::vector<unsigned> m_accepts = {};
-    std::vector<unsigned> m_rejects = {};
-    std::vector<unsigned> m_failures = {};
-    std::vector<std::chrono::steady_clock::time_point> m_lastUpdated = {};
-    const std::chrono::steady_clock::time_point m_tpInitalized = std::chrono::steady_clock::now();
-};
-
-std::ostream& operator<<(std::ostream& os, const SolutionStats& s);
 
 /**
  * @brief Class for hosting one or more Miners.
@@ -282,7 +295,7 @@ public:
      * @return true iff the solution was good (implying that mining should be .
      */
     virtual void submitProof(Solution const& _p) = 0;
-    virtual void failedSolution(unsigned _miner_index) = 0;
+    virtual void accountSolution(unsigned _minerIdx, SolutionAccountingEnum _accounting) = 0;
     virtual uint64_t get_nonce_scrambler() = 0;
     virtual unsigned get_segment_width() = 0;
 
@@ -311,6 +324,11 @@ public:
     void setDescriptor(DeviceDescriptorType& _descriptor);
 
     /**
+     * @brief Gets the device descriptor assigned to this instance
+     */
+    DeviceDescriptorType getDescriptor();
+
+    /**
      * @brief Assigns hashing work to this instance
      */
     void setWork(WorkPackage const& _work);
@@ -325,6 +343,11 @@ public:
     HwMonitorInfo hwmonInfo() { return m_hwmoninfo; }
 
     void setHwmonDeviceIndex(int i) { m_hwmoninfo.deviceIndex = i; }
+
+    /**
+     * @brief Kick an asleep miner.
+     */
+    virtual void kick_miner() = 0;
 
     /**
      * @brief Pauses mining setting a reason flag
@@ -374,11 +397,6 @@ protected:
      * @brief Miner's specific initialization to current (or changed) epoch.
      */
     virtual bool initEpoch_internal() = 0;
-
-    /**
-     * @brief No work left to be done. Pause until told to kickOff().
-     */
-    virtual void kick_miner() = 0;
 
     /**
      * @brief Returns current workpackage this miner is working on
