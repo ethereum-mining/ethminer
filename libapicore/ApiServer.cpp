@@ -509,22 +509,14 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
 
         try
         {
-            URI uri(sUri);
-            if (!uri.Valid() || uri.Scheme() == "simulation")
-            {
-                jResponse["error"]["code"] = -422;
-                jResponse["error"]["message"] = ("Invalid URI " + uri.str());
-                return;
-            }
-
             // If everything ok then add this new uri
-            PoolManager::p().addConnection(uri);
+            PoolManager::p().addConnection(sUri);
             jResponse["result"] = true;
         }
         catch (...)
         {
             jResponse["error"]["code"] = -422;
-            jResponse["error"]["message"] = "Bad URI";
+            jResponse["error"]["message"] = "Bad URI : " + sUri;
         }
     }
 
@@ -541,12 +533,23 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             unsigned index;
             if (getRequestValue("index", index, jRequestParams, false, jResponse))
             {
-                if (PoolManager::p().setActiveConnection(index) == -1)
+                try
                 {
+                    PoolManager::p().setActiveConnection(index);
+                }
+                catch (const std::exception& _ex)
+                {
+                    std::string what = _ex.what();
                     jResponse["error"]["code"] = -422;
-                    jResponse["error"]["message"] = "Index out of bounds";
+                    jResponse["error"]["message"] = what;
                     return;
                 }
+            }
+            else
+            {
+                jResponse["error"]["code"] = -422;
+                jResponse["error"]["message"] = "Invalid index";
+                return;
             }
         }
         else
@@ -554,12 +557,23 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             string uri;
             if (getRequestValue("URI", uri, jRequestParams, false, jResponse))
             {
-                if (PoolManager::p().setActiveConnection(uri) == -1)
+                try
                 {
+                    PoolManager::p().setActiveConnection(uri);
+                }
+                catch (const std::exception& _ex)
+                {
+                    std::string what = _ex.what();
                     jResponse["error"]["code"] = -422;
-                    jResponse["error"]["message"] = "Host match not found";
+                    jResponse["error"]["message"] = what;
                     return;
                 }
+            }
+            else
+            {
+                jResponse["error"]["code"] = -422;
+                jResponse["error"]["message"] = "Invalid index";
+                return;
             }
         }
         jResponse["result"] = true;
@@ -578,22 +592,19 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         if (!getRequestValue("index", index, jRequestParams, false, jResponse))
             return;
 
-        int r;
-        r = PoolManager::p().removeConnection(index);
-        if (r == -1)
+        try
         {
-            jResponse["error"]["code"] = -422;
-            jResponse["error"]["message"] = "Index out of bounds";
-            return;
+            PoolManager::p().removeConnection(index);
+            jResponse["result"] = true;
         }
-        if (r == -2)
+        catch (const std::exception& _ex)
         {
-            jResponse["error"]["code"] = -460;
-            jResponse["error"]["message"] = "Can't delete active connection";
+            std::string what = _ex.what();
+            jResponse["error"]["code"] = -422;
+            jResponse["error"]["message"] = what;
             return;
         }
 
-        jResponse["result"] = true;
     }
 
     else if (_method == "miner_getscramblerinfo")
@@ -627,6 +638,8 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
                 }
                 catch (const std::exception&)
                 {
+                    jResponse["error"]["code"] = -422;
+                    jResponse["error"]["message"] = "Invalid nonce";
                     return;
                 }
             }
@@ -939,7 +952,7 @@ void ApiConnection::onSendSocketDataCompleted(const boost::system::error_code& e
 
 Json::Value ApiConnection::getMinerStat1()
 {
-    auto connection = PoolManager::p().getActiveConnectionCopy();
+    auto connection = PoolManager::p().getActiveConnection();
     TelemetryType t = Farm::f().Telemetry();
     auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
         steady_clock::now() - t.start);
@@ -957,7 +970,7 @@ Json::Value ApiConnection::getMinerStat1()
                << t.farm.solutions.accepted << ";" << t.farm.solutions.rejected;
     totalMhDcr << "0;0;0";                            // DualMining not supported
     invalidStats << t.farm.solutions.failed << ";0";  // Invalid + Pool switches
-    poolAddresses << connection.Host() << ':' << connection.Port();
+    poolAddresses << connection->Host() << ':' << connection->Port();
     invalidStats << ";0;0";  // DualMining not supported
 
     int gpuIndex = 0;
@@ -1205,8 +1218,8 @@ Json::Value ApiConnection::getMinerStatDetail()
 
     /* Connection info */
     Json::Value connectioninfo;
-    auto connection = PoolManager::p().getActiveConnectionCopy();
-    connectioninfo["uri"] = connection.str();
+    auto connection = PoolManager::p().getActiveConnection();
+    connectioninfo["uri"] = connection->str();
     connectioninfo["connected"] = PoolManager::p().isConnected();
     connectioninfo["switches"] = PoolManager::p().getConnectionSwitches();
 

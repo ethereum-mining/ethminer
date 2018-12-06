@@ -26,13 +26,13 @@ public:
         bool reportHashrate, unsigned workTimeout, unsigned responseTimeout, unsigned pollInterval,
         unsigned benchmarkBlock);
     static PoolManager& p() { return *m_this; }
-    void addConnection(URI& conn);
-    void clearConnections();
+    void addConnection(std::string _connstring);
+    void addConnection(std::shared_ptr<URI> _uri);
     Json::Value getConnectionsJson();
-    int setActiveConnection(unsigned int idx);
-    int setActiveConnection(std::string& host);
-    URI getActiveConnectionCopy();
-    int removeConnection(unsigned int idx);
+    void setActiveConnection(unsigned int idx);
+    void setActiveConnection(std::string& _connstring);
+    std::shared_ptr<URI> getActiveConnection();
+    void removeConnection(unsigned int idx);
     void start();
     void stop();
     bool isConnected() { return p_client->isConnected(); };
@@ -49,7 +49,7 @@ private:
 
     void showMiningAt();
 
-    int setActiveConnectionCommon(unsigned int idx, UniqueGuard& l);
+    void setActiveConnectionCommon(unsigned int idx);
 
     unsigned m_hrReportingInterval = 60;
 
@@ -71,6 +71,7 @@ private:
 
     std::atomic<bool> m_running = {false};
     std::atomic<bool> m_stopping = {false};
+    std::atomic<bool> m_async_pending = {false};
 
     bool m_hashrate;           // Whether or not submit hashrate to work provider (pool)
     std::string m_hashrateId;  // The unique client Id to use when submitting hashrate
@@ -80,7 +81,7 @@ private:
     std::string m_selectedHost = "";  // Holds host name (and endpoint) of selected connection
     std::atomic<unsigned> m_connectionSwitches = {0};
 
-    std::vector<URI> m_connections;
+    std::vector<std::shared_ptr<URI>> m_connections;
     unsigned m_activeConnectionIdx = 0;
     mutable Mutex m_activeConnectionMutex;
 
@@ -90,7 +91,7 @@ private:
     boost::asio::deadline_timer m_failovertimer;
     boost::asio::deadline_timer m_submithrtimer;
 
-    PoolClient* p_client = nullptr;
+    std::unique_ptr<PoolClient> p_client = nullptr;
 
     std::atomic<unsigned> m_epochChanges = {0};
 

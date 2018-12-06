@@ -115,7 +115,7 @@ static bool url_decode(const std::string& in, std::string& out)
   refer to https://cpp-netlib.org/0.10.1/in_depth/uri.html
 */
 
-URI::URI(std::string uri) : m_uri{std::move(uri)}
+URI::URI(std::string uri, bool _sim) : m_uri{std::move(uri)}
 {
 
     std::regex sch_auth("^([a-zA-Z0-9\\+]{1,})\\:\\/\\/(.*)$");
@@ -128,8 +128,18 @@ URI::URI(std::string uri) : m_uri{std::move(uri)}
     m_scheme = matches[1].str();
     boost::algorithm::to_lower(m_scheme);
     m_authority = matches[2].str();
+
+    // Missing authority is not possible
     if (m_authority.empty())
-        return;
+        throw std::runtime_error("Invalid authority");
+
+    // Simulation scheme is only allowed if specifically set
+    if (!_sim && m_scheme == "simulation")
+        throw std::runtime_error("Invalid scheme");
+
+    // Check scheme is allowed
+    if ((s_schemes.find(m_scheme) == s_schemes.end()))
+        throw std::runtime_error("Invalid scheme");
 
     
     // Now let's see if authority part can be split into userinfo and "the rest"
@@ -230,8 +240,6 @@ URI::URI(std::string uri) : m_uri{std::move(uri)}
 
     }
 
-
-
     /*
       Let's process the url part which must contain at least a host
       an optional port and eventually a path (which may include a query
@@ -253,7 +261,7 @@ URI::URI(std::string uri) : m_uri{std::move(uri)}
     {
         m_hostinfo = m_urlinfo;
     }
-
+    boost::algorithm::to_lower(m_hostinfo);  // needed to ensure we properly hit "exit" as host
     std::regex host_pattern("^(.*)\\:([0-9]{1,5})$");
     if (std::regex_search(m_hostinfo, matches, host_pattern, std::regex_constants::match_default))
     {
@@ -264,6 +272,10 @@ URI::URI(std::string uri) : m_uri{std::move(uri)}
     {
         m_host = m_hostinfo;
     }
+
+    // Host info must be present and valued
+    if (m_host.empty())
+        throw std::runtime_error("Missing host");
 
     /*
       Eventually split path info into path query fragment
@@ -365,10 +377,6 @@ URI::URI(std::string uri) : m_uri{std::move(uri)}
         m_password = tmpStr;
     if (url_decode(m_worker, tmpStr))
         m_worker = tmpStr;
-
-
-    if ((s_schemes.find(m_scheme) != s_schemes.end()) && !m_host.empty() && m_port > 0)
-        m_valid = true;
 }
 
 ProtocolFamily URI::Family() const

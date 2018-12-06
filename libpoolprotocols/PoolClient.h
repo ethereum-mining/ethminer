@@ -21,13 +21,13 @@ public:
     virtual ~PoolClient() noexcept = default;
 
 
-    void setConnection(URI* conn)
+    void setConnection(std::shared_ptr<URI> _conn)
     {
-        m_conn = conn;
+        m_conn = _conn;
         m_canconnect.store(false, std::memory_order_relaxed);
     }
 
-    const URI* getConnection() { return m_conn; }
+    std::shared_ptr<URI> getConnection() { return m_conn; }
     void unsetConnection() { m_conn = nullptr; }
 
     virtual void connect() = 0;
@@ -61,7 +61,7 @@ protected:
 
     boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> m_endpoint;
 
-    URI* m_conn = nullptr;
+    std::shared_ptr<URI> m_conn = nullptr;
 
     SolutionAccepted m_onSolutionAccepted;
     SolutionRejected m_onSolutionRejected;

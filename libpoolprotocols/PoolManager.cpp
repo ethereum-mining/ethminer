@@ -73,7 +73,6 @@ void PoolManager::setClientHandlers()
 {
     p_client->onConnected([&]() {
         {
-            Guard l(m_activeConnectionMutex);
 
             // If HostName is already an IP address no need to append the
             // effective ip address.
@@ -127,6 +126,10 @@ void PoolManager::setClientHandlers()
             m_submithrtimer.async_wait(m_io_strand.wrap(boost::bind(
                 &PoolManager::submithrtimer_elapsed, this, boost::asio::placeholders::error)));
         }
+
+        // Signal async operations have completed
+        m_async_pending.store(false, std::memory_order_relaxed);
+
     });
 
     p_client->onDisconnected([&]() {
@@ -159,6 +162,7 @@ void PoolManager::setClientHandlers()
     });
 
     p_client->onWorkReceived([&](WorkPackage const& wp) {
+
         // Should not happen !
         if (!wp)
             return;
@@ -229,7 +233,7 @@ void PoolManager::stop()
             while (m_running.load(std::memory_order_relaxed))
                 this_thread::sleep_for(chrono::milliseconds(500));
 
-            delete p_client;
+            p_client = nullptr;
         }
         else
         {
@@ -247,11 +251,14 @@ void PoolManager::stop()
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::stop() end");
 }
 
-void PoolManager::addConnection(URI& _conn)
+void PoolManager::addConnection(std::string _connstring)
 {
-    // Guard l(m_activeConnectionMutex);
-    string con = _conn.str();
-    m_connections.push_back(URI(con));
+    m_connections.push_back(std::shared_ptr<URI>(new URI(_connstring)));
+}
+
+void PoolManager::addConnection(std::shared_ptr<URI> _uri)
+{
+    m_connections.push_back(_uri);
 }
 
 /*
@@ -260,98 +267,108 @@ void PoolManager::addConnection(URI& _conn)
  *          -1 failure (out of bounds)
  *          -2 failure (active connection should be deleted)
  */
-int PoolManager::removeConnection(unsigned int idx)
+void PoolManager::removeConnection(unsigned int idx)
 {
-    Guard l(m_activeConnectionMutex);
+    // Are there any outstanding operations ?
+    bool ex = false;
+    if (!m_async_pending.compare_exchange_strong(ex, true))
+        throw std::runtime_error("Outstanding operations. Retry ...");
+
+    // Check bounds
     if (idx >= m_connections.size())
-        return -1;
+        throw std::runtime_error("Index out-of bounds.");
+
+    // Can't delete active connection
     if (idx == m_activeConnectionIdx)
-        return -2;
+        throw std::runtime_error("Can't remove active connection");
+
+    // Remove the selected connection
     m_connections.erase(m_connections.begin() + idx);
     if (m_activeConnectionIdx > idx)
-    {
         m_activeConnectionIdx--;
-    }
-    return 0;
+
 }
 
-void PoolManager::clearConnections()
+void PoolManager::setActiveConnectionCommon(unsigned int idx)
 {
+
+    // Are there any outstanding operations ?
+    bool ex = false;
+    if (!m_async_pending.compare_exchange_strong(ex, true))
+        throw std::runtime_error("Outstanding operations. Retry ...");
+
+    if (idx != m_activeConnectionIdx)
     {
-        Guard l(m_activeConnectionMutex);
-        m_connections.clear();
-    }
-    if (p_client && p_client->isConnected())
+        m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
+        m_activeConnectionIdx = idx;
+        m_connectionAttempt = 0;
         p_client->disconnect();
-}
+    }
+    else
+    {
+        // Release the flag immediately
+        m_async_pending.store(false, std::memory_order_relaxed);
+    }
 
-int PoolManager::setActiveConnectionCommon(unsigned int idx, UniqueGuard& l)
-{
-    if (idx == m_activeConnectionIdx)
-        return 0;
-
-    m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
-    m_activeConnectionIdx = idx;
-    m_connectionAttempt = 0;
-    l.unlock();
-    p_client->disconnect();
-
-    return 0;
 }
 
 /*
  * Sets the active connection
  * Returns: 0 on success, -1 on failure (out of bounds)
  */
-int PoolManager::setActiveConnection(unsigned int idx)
+void PoolManager::setActiveConnection(unsigned int idx)
 {
     // Sets the active connection to the requested index
-    UniqueGuard l(m_activeConnectionMutex);
     if (idx >= m_connections.size())
-        return -1;
-    return setActiveConnectionCommon(idx, l);
+        throw std::runtime_error("Index out-of bounds.");
+
+    setActiveConnectionCommon(idx);
 }
 
-int PoolManager::setActiveConnection(std::string& host)
+void PoolManager::setActiveConnection(std::string& _connstring)
 {
-    std::regex r(host);
-    UniqueGuard l(m_activeConnectionMutex);
+    bool found = false;
     for (size_t idx = 0; idx < m_connections.size(); idx++)
-        if (std::regex_match(m_connections[idx].str(), r))
-            return setActiveConnectionCommon(idx, l);
-    return -1;
+        if (boost::iequals(m_connections[idx]->str(), _connstring))
+        {
+            setActiveConnectionCommon(idx);
+            break;
+        }
+    if (!found)
+        throw std::runtime_error("Not found.");
 }
 
-URI PoolManager::getActiveConnectionCopy()
+std::shared_ptr<URI> PoolManager::getActiveConnection()
 {
-    Guard l(m_activeConnectionMutex);
-    if (m_connections.size() > m_activeConnectionIdx)
-        return m_connections[m_activeConnectionIdx];
-    return URI(":0");
+    try
+    {
+        return m_connections.at(m_activeConnectionIdx);
+    }
+    catch (const std::exception&)
+    {
+        return nullptr;
+    }
 }
 
 Json::Value PoolManager::getConnectionsJson()
 {
     // Returns the list of configured connections
     Json::Value jRes;
-    Guard l(m_activeConnectionMutex);
-
     for (size_t i = 0; i < m_connections.size(); i++)
     {
         Json::Value JConn;
         JConn["index"] = (unsigned)i;
         JConn["active"] = (i == m_activeConnectionIdx ? true : false);
-        JConn["uri"] = m_connections[i].str();
+        JConn["uri"] = m_connections[i]->str();
         jRes.append(JConn);
     }
-
     return jRes;
 }
 
 void PoolManager::start()
 {
-    Guard l(m_activeConnectionMutex);
     m_running.store(true, std::memory_order_relaxed);
+    m_async_pending.store(true, std::memory_order_relaxed);
     m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
     g_io_service.post(m_io_strand.wrap(boost::bind(&PoolManager::rotateConnect, this)));
 }
@@ -361,14 +378,12 @@ void PoolManager::rotateConnect()
     if (p_client && p_client->isConnected())
         return;
 
-    UniqueGuard l(m_activeConnectionMutex);
-
     // Check we're within bounds
     if (m_activeConnectionIdx >= m_connections.size())
         m_activeConnectionIdx = 0;
 
     // If this connection is marked Unrecoverable then discard it
-    if (m_connections.at(m_activeConnectionIdx).IsUnrecoverable())
+    if (m_connections.at(m_activeConnectionIdx)->IsUnrecoverable())
     {
         m_connections.erase(m_connections.begin() + m_activeConnectionIdx);
         m_connectionAttempt = 0;
@@ -395,17 +410,19 @@ void PoolManager::rotateConnect()
         }
     }
 
-    if (!m_connections.empty() && m_connections.at(m_activeConnectionIdx).Host() != "exit")
+    if (!m_connections.empty() && m_connections.at(m_activeConnectionIdx)->Host() != "exit")
     {
         if (p_client)
-            delete p_client;
+            p_client = nullptr;
 
-        if (m_connections.at(m_activeConnectionIdx).Family() == ProtocolFamily::GETWORK)
-            p_client = new EthGetworkClient(m_workTimeout, m_pollInterval);
-        if (m_connections.at(m_activeConnectionIdx).Family() == ProtocolFamily::STRATUM)
-            p_client = new EthStratumClient(m_workTimeout, m_responseTimeout);
-        if (m_connections.at(m_activeConnectionIdx).Family() == ProtocolFamily::SIMULATION)
-            p_client = new SimulateClient(m_benchmarkBlock);
+        if (m_connections.at(m_activeConnectionIdx)->Family() == ProtocolFamily::GETWORK)
+            p_client =
+                std::unique_ptr<PoolClient>(new EthGetworkClient(m_workTimeout, m_pollInterval));
+        if (m_connections.at(m_activeConnectionIdx)->Family() == ProtocolFamily::STRATUM)
+            p_client =
+                std::unique_ptr<PoolClient>(new EthStratumClient(m_workTimeout, m_responseTimeout));
+        if (m_connections.at(m_activeConnectionIdx)->Family() == ProtocolFamily::SIMULATION)
+            p_client = std::unique_ptr<PoolClient>(new SimulateClient(m_benchmarkBlock));
 
         if (p_client)
             setClientHandlers();
@@ -414,26 +431,20 @@ void PoolManager::rotateConnect()
         m_connectionAttempt++;
 
         // Invoke connections
-        m_selectedHost = m_connections.at(m_activeConnectionIdx).Host() + ":" +
-                         to_string(m_connections.at(m_activeConnectionIdx).Port());
-        p_client->setConnection(&m_connections.at(m_activeConnectionIdx));
+        m_selectedHost = m_connections.at(m_activeConnectionIdx)->Host() + ":" +
+                         to_string(m_connections.at(m_activeConnectionIdx)->Port());
+        p_client->setConnection(m_connections.at(m_activeConnectionIdx));
         cnote << "Selected pool " << m_selectedHost;
 
-        l.unlock();
         p_client->connect();
     }
     else
     {
-        l.unlock();
 
         if (m_connections.empty())
-        {
             cnote << "No more connections to try. Exiting...";
-        }
         else
-        {
             cnote << "'exit' failover just got hit. Exiting...";
-        }
 
         // Stop mining if applicable
         if (Farm::f().isMining())
@@ -464,13 +475,11 @@ void PoolManager::failovertimer_elapsed(const boost::system::error_code& ec)
     {
         if (m_running.load(std::memory_order_relaxed))
         {
-            UniqueGuard l(m_activeConnectionMutex);
             if (m_activeConnectionIdx != 0)
             {
                 m_activeConnectionIdx = 0;
                 m_connectionAttempt = 0;
                 m_connectionSwitches.fetch_add(1, std::memory_order_relaxed);
-                l.unlock();
                 cnote << "Failover timeout reached, retrying connection to primary pool";
                 p_client->disconnect();
             }

@@ -416,7 +416,7 @@ public:
         {
             m_mode = OperationMode::Simulation;
             pools.clear();
-            m_poolConns.push_back(URI("simulation://localhost:0")); // Fake connection
+            m_poolConns.push_back(std::shared_ptr<URI>(new URI("simulation://localhost:0", true)));
         }
         else
         {
@@ -441,23 +441,26 @@ public:
                         url = "stratum+tcp://-:x@exit:0";
                 }
 
-                URI uri(url);
-
-                if (!uri.Valid())
+                try
                 {
-                    std::string what = "Bad URI : " + uri.str();
-                    throw std::invalid_argument(what);
+                    std::shared_ptr<URI> uri = std::shared_ptr<URI>(new URI(url));
+                    if (uri->SecLevel() != dev::SecureLevel::NONE &&
+                        uri->HostNameType() != dev::UriHostNameType::Dns && !getenv("SSL_NOVERIFY"))
+                    {
+                        warnings.push(
+                            "You have specified host " + uri->Host() + " with encryption enabled.");
+                        warnings.push("Certificate validation will likely fail");
+                    }
+                    m_poolConns.push_back(uri);
+
+                }
+                catch (const std::exception& _ex)
+                {
+                    string what = _ex.what();
+                    throw std::runtime_error("Bad URI : " + what);
                 }
 
-                if (uri.SecLevel() != dev::SecureLevel::NONE &&
-                    uri.HostNameType() != dev::UriHostNameType::Dns && !getenv("SSL_NOVERIFY"))
-                {
-                    warnings.push(
-                        "You have specified host " + uri.Host() + " with encryption enabled.");
-                    warnings.push("Certificate validation will likely fail");
-                }
-
-                m_poolConns.push_back(uri);
+                
             }
         }
 
@@ -1182,8 +1185,9 @@ private:
         {
             PoolManager::p().addConnection(conn);
             if (m_mode != OperationMode::Simulation)
-                cnote << "Configured pool " << conn.Host() + ":" + to_string(conn.Port());
+                cnote << "Configured pool " << conn->Host() + ":" + to_string(conn->Port());
         }
+        m_poolConns.clear();
 
 #if API_CORE
 
@@ -1266,7 +1270,7 @@ private:
     unsigned m_farmErgodicity = 0;  // Sets ergodicity : 0=default, 1=per session, 2=per job
 
     // -- Pool manager related params
-    vector<URI> m_poolConns;
+    std::vector<std::shared_ptr<URI>> m_poolConns;
     unsigned m_poolMaxRetries = 3;     // Max number of connection retries
     unsigned m_poolWorkTimeout = 180;  // If no new jobs in this number of seconds drop connection
     unsigned m_poolRespTimeout = 2;    // If no response in this number of seconds drop connection
