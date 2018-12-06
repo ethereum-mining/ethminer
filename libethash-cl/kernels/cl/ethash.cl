@@ -250,7 +250,7 @@ struct SearchResults {
 
 __attribute__((reqd_work_group_size(WORKSIZE, 1, 1)))
 __kernel void search(
-    __global volatile struct SearchResults* restrict g_output,
+    __global struct SearchResults* restrict g_output,
     __constant uint2 const* g_header,
     __global ulong8 const* _g_dag,
     uint dag_size,
@@ -277,7 +277,7 @@ __kernel void search(
     __local compute_hash_share * const share = sharebuf + hash_id;
 
     // sha3_512(header .. nonce)
-    volatile uint2 state[25];
+    uint2 state[25];
     state[0] = g_header[0];
     state[1] = g_header[1];
     state[2] = g_header[2];
@@ -306,7 +306,7 @@ __kernel void search(
 
     uint2 mixhash[4];
 
-    for (volatile int pass = 0; pass < 2; ++pass) {
+    for (int pass = 0; pass < 2; ++pass) {
         KECCAK_PROCESS(state, select(5, 12, pass != 0), select(8, 1, pass != 0), isolate);
         if (pass > 0)
             break;
@@ -315,7 +315,7 @@ __kernel void search(
         uint8 mix;
 
 #pragma unroll 1
-        for (volatile uint tid = 0; tid < 4; tid++) {
+        for (uint tid = 0; tid < 4; tid++) {
             if (tid == thread_id) {
                 share->uint2s[0] = state[0];
                 share->uint2s[1] = state[1];
@@ -338,10 +338,10 @@ __kernel void search(
             for (uint a = 0; a < (ACCESSES & isolate); a += 8) {
 #else
 #pragma unroll 1
-            for (volatile uint a = 0; a < ACCESSES; a += 8) {
+            for (uint a = 0; a < ACCESSES; a += 8) {
 #endif
                 const uint lane_idx = 4 * hash_id + a / 8 % 4;
-                for (volatile uint x = 0; x < 8; ++x)
+                for (uint x = 0; x < 8; ++x)
                     MIX(x);
             }
 
