@@ -292,7 +292,7 @@ void ApiServer::begin_accept()
     if (!isRunning())
         return;
 
-    auto session = std::make_shared<ApiConnection>(++lastSessionId, m_readonly, m_password);
+    auto session = std::make_shared<ApiConnection>(m_io_strand, ++lastSessionId, m_readonly, m_password);
     m_acceptor.async_accept(
         session->socket(), m_io_strand.wrap(boost::bind(&ApiServer::handle_accept, this, session,
                                boost::asio::placeholders::error)));
@@ -349,10 +349,11 @@ void ApiConnection::disconnect()
     }
 }
 
-ApiConnection::ApiConnection(int id, bool readonly, string password)
+ApiConnection::ApiConnection(
+    boost::asio::io_service::strand& _strand, int id, bool readonly, string password)
   : m_sessionId(id),
     m_socket(g_io_service),
-    m_io_strand(g_io_service),
+    m_io_strand(_strand),
     m_readonly(readonly),
     m_password(std::move(password))
 {
