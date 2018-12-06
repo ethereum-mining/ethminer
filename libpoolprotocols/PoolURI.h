@@ -54,7 +54,7 @@ class URI
 {
 public:
     URI() = delete;
-    URI(std::string uri);
+    URI(std::string uri, bool _sim = false);
 
     std::string Scheme() const { return m_scheme; }
     std::string Host() const { return m_host; }
@@ -69,7 +69,6 @@ public:
     bool IsLoopBack() const;
     unsigned Version() const;
     std::string str() const { return m_uri; }
-    bool Valid() const { return m_valid; }
 
     static std::string KnownSchemes(ProtocolFamily family);
 
@@ -104,7 +103,6 @@ private:
 
     unsigned short m_stratumMode = 999;  // Initial value 999 means not tested yet
     unsigned short m_port = 0;
-    bool m_valid = false;
     bool m_stratumModeConfirmed = false;
     bool m_unrecoverable = false;
 
