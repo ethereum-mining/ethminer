@@ -197,7 +197,7 @@ public:
 #if ETH_ETHASHCL
         const char* OpenCLGroup = "OpenCL Options";
 #endif
-#if ETH_ETHASHCUDA
+#if ETH_ETHASHCUDA || PROGPOW
         const char* CUDAGroup = "CUDA Options";
 #endif
 
@@ -696,6 +696,10 @@ public:
             if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
                 CUDAMiner::listDevices();
 #endif
+#if PROGPOW
+            if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
+                ProgPowMiner::listDevices();
+#endif
             stop_io_service();
             exit(0);
         }
@@ -756,6 +760,31 @@ public:
             }
 
             CUDAMiner::setParallelHash(m_cudaParallelHash);
+#elif PROGPOW
+            try
+            {
+                if (m_cudaDeviceCount > 0)
+                {
+                    ProgPowMiner::setDevices(m_cudaDevices, m_cudaDeviceCount);
+                    m_miningThreads = m_cudaDeviceCount;
+                }
+                ProgPowMiner::setNumInstances(m_miningThreads);
+            }
+            catch (std::runtime_error const& err)
+            {
+                cwarn << "CUDA error: " << err.what();
+                stop_io_service();
+                exit(1);
+            }
+            uint64_t m_currentBlock = 0;
+            if (!ProgPowMiner::configureGPU(m_cudaBlockSize, m_cudaGridSize, m_numStreams,
+                    m_cudaSchedule, m_currentBlock, m_dagLoadMode, m_dagCreateDevice, m_noEval, m_exit))
+            {
+                stop_io_service();
+                exit(1);
+            }
+
+            ProgPowMiner::setParallelHash(m_cudaParallelHash);
 #else
             cerr << endl
                  << "CUDA support disabled. Configure project build with -DETHASHCUDA=ON"
@@ -1044,16 +1073,22 @@ private:
     unsigned m_cudaDeviceCount = 0;
     vector<unsigned> m_cudaDevices;
     unsigned m_cudaSchedule = 4;  // sync
-#if PROGPOW
-    unsigned m_numStreams = ProgPowMiner::c_defaultNumStreams;
-    unsigned m_cudaGridSize = ProgPowMiner::c_defaultGridSize;
-    unsigned m_cudaBlockSize = ProgPowMiner::c_defaultBlockSize;
-#else
+    unsigned m_cudaParallelHash = 4;
     unsigned m_numStreams = CUDAMiner::c_defaultNumStreams;
     unsigned m_cudaGridSize = CUDAMiner::c_defaultGridSize;
     unsigned m_cudaBlockSize = CUDAMiner::c_defaultBlockSize;
 #endif
+
+#if PROGPOW
+    unsigned m_cudaDeviceCount = 0;
+    vector<unsigned> m_cudaDevices;
+    unsigned m_cudaSchedule = 4;  // sync
     unsigned m_cudaParallelHash = 4;
+    unsigned m_numStreams = ProgPowMiner::c_defaultNumStreams;
+    unsigned m_cudaGridSize = ProgPowMiner::c_defaultGridSize;
+    unsigned m_cudaBlockSize = ProgPowMiner::c_defaultBlockSize;
+#else
+    
 #endif
     bool m_noEval = false;
     unsigned m_dagLoadMode = 0;  // parallel

@@ -1,5 +1,4 @@
 if (PROGPOW)
-	#message(FATAL_ERROR "tick")
 	add_custom_command(
 		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/progpow/CUDAMiner_kernel.h
 		COMMAND ${CMAKE_COMMAND} ARGS
@@ -42,13 +41,10 @@ else()
 	endif()
 endif()
 
-file(GLOB sources "*.cpp" "*.cu")
-file(GLOB headers "*.h" "*.cuh")
 if(PROGPOW)
-	#file(GLOB sources "progpow/*.cpp" "progpow/*.cu")
-	#file(GLOB headers "progpow/*.h" "progpow/*.cuh" ${CMAKE_CURRENT_BINARY_DIR}/progpow/CUDAMiner_kernel.h)
-	file(GLOB sources ProgPowMiner.cpp)
-	file(GLOB headers CUDAMiner.h ProgPowMiner.h ${CMAKE_CURRENT_BINARY_DIR}/progpow/CUDAMiner_kernel.h)	
+	file(GLOB sources progpow/ProgPowMiner.cpp "*.cpp")
+	file(GLOB headers progpow/ProgPowMiner.h "*.h")
+	#file(GLOB headers progpow/ProgPowMiner.h "*.h" ${CMAKE_CURRENT_BINARY_DIR}/progpow/CUDAMiner_kernel.h)
 else()
 	file(GLOB sources "ethash/*.cpp" "ethash/*.cu")
 	file(GLOB headers "ethash/*.h" "ethash/*.cuh")
@@ -64,8 +60,8 @@ if(PROGPOW)
 	target_link_libraries(ethash-cuda ethcore ethash::ethash progpow Boost::filesystem)
 	target_link_libraries(ethash-cuda ${CUDA_nvrtc_LIBRARY} ${CUDA_cuda_LIBRARY})
 else()
-	target_link_libraries(ethash-cuda ethcore ethash::ethash  Boost::filesystem)
+	target_link_libraries(ethash-cuda ethcore ethash::ethash  Boost::filesystem Boost::thread)
+	target_include_directories(ethash-cuda PUBLIC ${CUDA_INCLUDE_DIRS})
 endif()
 
-target_include_directories(ethash-cuda PUBLIC ${CUDA_INCLUDE_DIRS})
 target_include_directories(ethash-cuda PRIVATE .. ${CMAKE_CURRENT_BINARY_DIR})

@@ -111,6 +111,7 @@ if (APICORE)
 	add_subdirectory(libapicore)
 endif()
 if (PROGPOW)
+	add_subdirectory(libethash-cuda)
 	add_subdirectory(libprogpow)
 endif()
 

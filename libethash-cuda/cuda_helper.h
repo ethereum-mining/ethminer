@@ -57,6 +57,11 @@ uint32_t __byte_perm(uint32_t x, uint32_t y, uint32_t z);
 
 extern cudaError_t MyStreamSynchronize(cudaStream_t stream, int situation, int thr_id);
 
+struct cuda_runtime_error : public virtual std::runtime_error
+{
+	cuda_runtime_error( std::string msg ) : std::runtime_error(msg) {}
+};
+
 #define CUDA_SAFE_CALL(call)                                                              \
     do                                                                                    \
     {                                                                                     \
@@ -70,6 +75,37 @@ extern cudaError_t MyStreamSynchronize(cudaStream_t stream, int situation, int t
         }                                                                                 \
     } while (0)
 
+#define CU_SAFE_CALL(call)								\
+do {													\
+	CUresult result = call;								\
+	if (result != CUDA_SUCCESS) {						\
+		std::stringstream ss;							\
+		const char *msg;								\
+		cuGetErrorName(result, &msg);                   \
+		ss << "CUDA error in func " 					\
+			<< __FUNCTION__ 							\
+			<< " at line "								\
+			<< __LINE__									\
+			<< " calling " #call " failed with error "  \
+			<< msg;										\
+		throw cuda_runtime_error(ss.str());				\
+	}													\
+} while (0)
+
+#define NVRTC_SAFE_CALL(call)							\
+do {                                                    \
+    nvrtcResult result = call;                          \
+    if (result != NVRTC_SUCCESS) {                      \
+		std::stringstream ss;							\
+		ss << "CUDA NVRTC error in func " 				\
+			<< __FUNCTION__ 							\
+			<< " at line "								\
+			<< __LINE__									\
+			<< " calling " #call " failed with error "  \
+            << nvrtcGetErrorString(result) << '\n';     \
+		throw cuda_runtime_error(ss.str());				\
+    }                                                   \
+} while(0)
 #ifndef SPH_C32
 #define SPH_C32(x) ((x##U))
 // #define SPH_C32(x) ((uint32_t)(x ## U))
@@ -144,7 +180,7 @@ __device__ __forceinline__ uint64_t REPLACE_LOWORD(const uint64_t x, const uint3
     return result;
 }
 
-// Endian Drehung für 32 Bit Typen
+// Endian Drehung fï¿½r 32 Bit Typen
 #ifdef __CUDA_ARCH__
 __device__ __forceinline__ uint32_t cuda_swab32(const uint32_t x)
 {

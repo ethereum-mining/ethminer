@@ -25,6 +25,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <libethcore/Miner.h>
 #include <libprogpow/ProgPow.h>
 #include "../dag_generation_kernel.h"
+#include "../dag_globals.h"
+#include "../cuda_helper.h"
 #include <cuda.h>
 
 namespace dev
@@ -137,6 +139,12 @@ private:
 	static bool s_noeval;
 
 	void compileKernel(uint64_t block_number, uint64_t dag_words);
+
+	void set_constants(
+		hash64_t* _dag, 
+		uint32_t _dag_size,
+		hash64_t * _light,
+		uint32_t _light_size);
 
 };
 
