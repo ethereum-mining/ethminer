@@ -73,7 +73,6 @@ void PoolManager::setClientHandlers()
 {
     p_client->onConnected([&]() {
         {
-
             // If HostName is already an IP address no need to append the
             // effective ip address.
             if (p_client->getConnection()->HostNameType() == dev::UriHostNameType::Dns ||
@@ -286,7 +285,6 @@ void PoolManager::removeConnection(unsigned int idx)
 
 void PoolManager::setActiveConnectionCommon(unsigned int idx)
 {
-
     // Are there any outstanding operations ?
     bool ex = false;
     if (!m_async_pending.compare_exchange_strong(ex, true))
@@ -304,7 +302,6 @@ void PoolManager::setActiveConnectionCommon(unsigned int idx)
         // Release the flag immediately
         m_async_pending.store(false, std::memory_order_relaxed);
     }
-
 }
 
 /*
@@ -434,7 +431,6 @@ void PoolManager::rotateConnect()
     }
     else
     {
-
         if (m_connections.empty())
             cnote << "No more connections to try. Exiting...";
         else
