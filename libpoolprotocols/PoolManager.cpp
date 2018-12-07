@@ -263,9 +263,6 @@ void PoolManager::addConnection(std::shared_ptr<URI> _uri)
 
 /*
  * Remove a connection
- * Returns:  0 on success
- *          -1 failure (out of bounds)
- *          -2 failure (active connection should be deleted)
  */
 void PoolManager::removeConnection(unsigned int idx)
 {
@@ -312,7 +309,6 @@ void PoolManager::setActiveConnectionCommon(unsigned int idx)
 
 /*
  * Sets the active connection
- * Returns: 0 on success, -1 on failure (out of bounds)
  */
 void PoolManager::setActiveConnection(unsigned int idx)
 {
