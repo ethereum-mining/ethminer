@@ -628,13 +628,13 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         string nonceHex;
         if (jRequestParams.isMember("noncescrambler"))
         {
+            any_value_provided = true;
             nonceHex = jRequestParams["noncescrambler"].asString();
             if (nonceHex.substr(0, 2) == "0x")
             {
                 try
                 {
                     nonce = std::stoul(nonceHex, nullptr, 16);
-                    any_value_provided = true;
                 }
                 catch (const std::exception&)
                 {
@@ -645,15 +645,15 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             }
             else
             {
-                if (!getRequestValue("noncescrambler", nonce, jRequestParams, true, jResponse))
+                // as we already know there is a "noncescrambler" element we can use optional=false
+                if (!getRequestValue("noncescrambler", nonce, jRequestParams, false, jResponse))
                     return;
-                any_value_provided = true;
             }
         }
 
-        if (!getRequestValue("segmentwidth", exp, jRequestParams, true, jResponse))
-            return;
-        any_value_provided = true;
+        Json::Value tmp_response;
+        if (getRequestValue("segmentwidth", exp, jRequestParams, any_value_provided, tmp_response))            
+            any_value_provided = true;
 
         if (!any_value_provided)
         {
