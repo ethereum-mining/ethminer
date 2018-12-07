@@ -154,6 +154,9 @@ void PoolManager::setClientHandlers()
         }
         else
         {
+            // Signal we will reconnect async
+            m_async_pending.store(true, std::memory_order_relaxed);
+
             // Suspend mining and submit new connection request
             cnote << "No connection. Suspend mining ...";
             Farm::f().pause();
@@ -224,6 +227,7 @@ void PoolManager::stop()
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "PoolManager::stop() begin");
     if (m_running.load(std::memory_order_relaxed))
     {
+        m_async_pending.store(true, std::memory_order_relaxed);
         m_stopping.store(true, std::memory_order_relaxed);
 
         if (p_client && p_client->isConnected())
@@ -270,8 +274,7 @@ void PoolManager::addConnection(std::shared_ptr<URI> _uri)
 void PoolManager::removeConnection(unsigned int idx)
 {
     // Are there any outstanding operations ?
-    bool ex = false;
-    if (!m_async_pending.compare_exchange_strong(ex, true))
+    if (m_async_pending.load(std::memory_order_relaxed))
         throw std::runtime_error("Outstanding operations. Retry ...");
 
     // Check bounds
