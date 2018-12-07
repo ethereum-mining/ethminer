@@ -292,7 +292,8 @@ void ApiServer::begin_accept()
     if (!isRunning())
         return;
 
-    auto session = std::make_shared<ApiConnection>(m_io_strand, ++lastSessionId, m_readonly, m_password);
+    auto session =
+        std::make_shared<ApiConnection>(m_io_strand, ++lastSessionId, m_readonly, m_password);
     m_acceptor.async_accept(
         session->socket(), m_io_strand.wrap(boost::bind(&ApiServer::handle_accept, this, session,
                                boost::asio::placeholders::error)));
@@ -604,7 +605,6 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             jResponse["error"]["message"] = what;
             return;
         }
-
     }
 
     else if (_method == "miner_getscramblerinfo")
@@ -628,13 +628,13 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         string nonceHex;
         if (jRequestParams.isMember("noncescrambler"))
         {
+            any_value_provided = true;
             nonceHex = jRequestParams["noncescrambler"].asString();
             if (nonceHex.substr(0, 2) == "0x")
             {
                 try
                 {
                     nonce = std::stoul(nonceHex, nullptr, 16);
-                    any_value_provided = true;
                 }
                 catch (const std::exception&)
                 {
@@ -645,15 +645,15 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             }
             else
             {
-                if (!getRequestValue("noncescrambler", nonce, jRequestParams, true, jResponse))
+                // as we already know there is a "noncescrambler" element we can use optional=false
+                if (!getRequestValue("noncescrambler", nonce, jRequestParams, false, jResponse))
                     return;
-                any_value_provided = true;
             }
         }
 
-        if (!getRequestValue("segmentwidth", exp, jRequestParams, true, jResponse))
-            return;
-        any_value_provided = true;
+        Json::Value tmp_response;
+        if (getRequestValue("segmentwidth", exp, jRequestParams, any_value_provided, tmp_response))
+            any_value_provided = true;
 
         if (!any_value_provided)
         {
@@ -929,7 +929,7 @@ void ApiConnection::sendSocketData(Json::Value const& jReq, bool _disconnect)
         return;
     std::stringstream line;
     line << Json::writeString(m_jSwBuilder, jReq) << std::endl;
-    sendSocketData(line.str(), _disconnect); 
+    sendSocketData(line.str(), _disconnect);
 }
 
 void ApiConnection::sendSocketData(std::string const& _s, bool _disconnect)
@@ -954,8 +954,8 @@ Json::Value ApiConnection::getMinerStat1()
 {
     auto connection = PoolManager::p().getActiveConnection();
     TelemetryType t = Farm::f().Telemetry();
-    auto runningTime = std::chrono::duration_cast<std::chrono::minutes>(
-        steady_clock::now() - t.start);
+    auto runningTime =
+        std::chrono::duration_cast<std::chrono::minutes>(steady_clock::now() - t.start);
 
 
     ostringstream totalMhEth;
@@ -976,9 +976,10 @@ Json::Value ApiConnection::getMinerStat1()
     int gpuIndex = 0;
     int numGpus = t.miners.size();
 
-    for (gpuIndex = 0 ; gpuIndex < numGpus; gpuIndex++)
+    for (gpuIndex = 0; gpuIndex < numGpus; gpuIndex++)
     {
-        detailedMhEth << std::fixed << std::setprecision(0) << t.miners.at(gpuIndex).hashrate / 1000.0f
+        detailedMhEth << std::fixed << std::setprecision(0)
+                      << t.miners.at(gpuIndex).hashrate / 1000.0f
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");
         detailedMhDcr << "off"
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");  // DualMining not supported
