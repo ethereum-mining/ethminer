@@ -51,21 +51,25 @@ enum class DeviceSubscriptionTypeEnum
 {
     None,
     OpenCL,
-    Cuda
+    Cuda,
+    Cpu
+
 };
 
 enum class MinerType
 {
     Mixed,
     CL,
-    CUDA
+    CUDA,
+    CPU
 };
 
 enum class HwMonitorInfoType
 {
     UNKNOWN,
     NVIDIA,
-    AMD
+    AMD,
+    CPU
 };
 
 enum class ClPlatformTypeEnum
@@ -103,6 +107,12 @@ struct CLSettings
     unsigned globalWorkSize = 0;
     unsigned globalWorkSizeMultiplier = 65536;
     unsigned localWorkSize = 128;
+};
+
+// Holds settings for CPU Miner
+struct CPSettings
+{
+    vector<unsigned> devices;
 };
 
 struct SolutionAccountType
@@ -185,6 +195,8 @@ struct DeviceDescriptor
     string cuCompute;
     unsigned int cuComputeMajor;
     unsigned int cuComputeMinor;
+
+    int cpCpuNumer;   // For CPU
 };
 
 struct HwMonitorInfo

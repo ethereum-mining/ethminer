@@ -26,6 +26,10 @@
 #include <libethash-cuda/CUDAMiner.h>
 #endif
 
+#if ETH_ETHASHCPU
+#include <libethash-cpu/CPUMiner.h>
+#endif
+
 namespace dev
 {
 namespace eth
@@ -33,10 +37,11 @@ namespace eth
 Farm* Farm::m_this = nullptr;
 
 Farm::Farm(std::map<std::string, DeviceDescriptor>& _DevicesCollection,
-    FarmSettings _settings, CUSettings _CUSettings, CLSettings _CLSettings)
+    FarmSettings _settings, CUSettings _CUSettings, CLSettings _CLSettings, CPSettings _CPSettings)
   : m_Settings(std::move(_settings)),
     m_CUSettings(std::move(_CUSettings)),
     m_CLSettings(std::move(_CLSettings)),
+    m_CPSettings(std::move(_CPSettings)),
     m_io_strand(g_io_service),
     m_collectTimer(g_io_service),
     m_DevicesCollection(_DevicesCollection)
@@ -272,6 +277,15 @@ bool Farm::start()
                 minerTelemetry.prefix = "cl";
                 m_miners.push_back(std::shared_ptr<Miner>(
                     new CLMiner(m_miners.size(), m_CLSettings, it->second)));
+            }
+#endif
+#if ETH_ETHASHCPU
+
+            if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::Cpu)
+            {
+                minerTelemetry.prefix = "cp";
+                m_miners.push_back(std::shared_ptr<Miner>(
+                    new CPUMiner(m_miners.size(), m_CPSettings, it->second)));
             }
 #endif
             if (minerTelemetry.prefix.empty())
