@@ -19,7 +19,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #undef max
 
 #include "ProgPowMiner.h"
-//#include "CUDAMiner_kernel.h"
+#include "CUDAMiner_kernel.h"
 #include "../dag_generation_kernel.h"
 #include "../dag_globals.h"
 #include <nvrtc.h>
@@ -134,7 +134,7 @@ bool ProgPowMiner::init(int epoch)
         if (dagNumItems != m_dag_elms || !dag)  // create buffer for dag
             CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
 
-        set_constants(dag, dagNumItems, light, lightNumItems);  // in ethash_cuda_miner_kernel.cu
+        set_constants(dag, dagNumItems, light, lightNumItems);
 
         if (dagNumItems != m_dag_elms || !dag)
         {
@@ -246,8 +246,10 @@ void ProgPowMiner::workLoop()
 						break;
 				if (old_period_seed != period_seed)
 				{
-					uint64_t dagBytes = ethash_get_datasize(w.height);
-					uint32_t dagElms   = (unsigned)(dagBytes / ETHASH_MIX_BYTES);
+					//uint64_t dagBytes = ethash_get_datasize(w.height);
+					//uint32_t dagElms   = (unsigned)(dagBytes / ETHASH_MIX_BYTES);
+					uint64_t dagBytes = ethash::get_full_dataset_size(w.height);
+					uint32_t dagElms   = (unsigned)(dagBytes / 256);
 					compileKernel(w.height, dagElms);
 				}
 				old_period_seed = period_seed;
@@ -258,7 +260,7 @@ void ProgPowMiner::workLoop()
 			if (current.exSizeBits >= 0)
 			{
 				// this can support up to 2^c_log2Max_miners devices
-				startN = current.startNonce | ((uint64_t)index << (64 - LOG2_MAX_MINERS - current.exSizeBits));
+				startN = current.startNonce | ((uint64_t)m_index << (64 - LOG2_MAX_MINERS - current.exSizeBits));
 			}
 			search(current.header.data(), upper64OfBoundary, (current.exSizeBits >= 0), startN, w);
 		}
@@ -409,8 +411,7 @@ bool ProgPowMiner::cuda_configureGPU(
 
 		cudalog << "Using grid size " << s_gridSize << ", block size " << s_blockSize;
 
-		// by default let's only consider the DAG of the first epoch
-		uint64_t dagSize = ethash_get_datasize(_currentBlock);
+		uint64_t dagSize = ethash::get_full_dataset_size(_currentBlock);
 		int devicesCount = static_cast<int>(numDevices);
 		for (int i = 0; i < devicesCount; i++)
 		{
@@ -478,25 +479,24 @@ bool ProgPowMiner::cuda_init(
 
 		cudalog << "Using device: " << device_props.name << " (Compute " + to_string(device_props.major) + "." + to_string(device_props.minor) + ")";
 
-		m_search_buf = new volatile search_results *[s_numStreams];
+		m_search_buf = new volatile Search_results *[s_numStreams];
 		m_streams = new cudaStream_t[s_numStreams];
 
-		const auto& context = ethash::managed::get_epoch_context(epoch);
-        	const auto lightNumItems = context.light_cache_num_items;
-        	const auto lightSize = ethash::get_light_cache_size(lightNumItems);
-        	const auto dagNumItems = context.full_dataset_num_items;
-        	const auto dagSize = ethash::get_full_dataset_size(dagNumItems);
-		uint32_t dagElms   = (unsigned)(dagNumItems / ETHASH_MIX_BYTES);
-		uint32_t lightWords = (unsigned)(lightSize / sizeof(node));
+		const auto& context = ethash::get_global_epoch_context(epoch);
+        const auto lightNumItems = context.light_cache_num_items;
+        const auto lightSize = ethash::get_light_cache_size(lightNumItems);
+        const auto dagNumItems = context.full_dataset_num_items;
+        const auto dagSize = ethash::get_full_dataset_size(dagNumItems);
+		uint32_t dagElms   = (unsigned)(dagNumItems / 256);
 
 		CUDA_SAFE_CALL(cudaSetDevice(m_device_num));
 		cudalog << "Set Device to current";
 		if(dagElms != m_dag_elms || !m_dag)
 		{
 			//Check whether the current device has sufficient memory every time we recreate the dag
-			if (device_props.totalGlobalMem < dagBytes)
+			if (device_props.totalGlobalMem < dagSize)
 			{
-				cudalog <<  "CUDA device " << string(device_props.name) << " has insufficient GPU memory." << device_props.totalGlobalMem << " bytes of memory found < " << dagBytes << " bytes of memory required";
+				cudalog <<  "CUDA device " << string(device_props.name) << " has insufficient GPU memory." << device_props.totalGlobalMem << " bytes of memory found < " << dagSize << " bytes of memory required";
 				return false;
 			}
 			//We need to reset the device and recreate the dag  
@@ -516,15 +516,15 @@ bool ProgPowMiner::cuda_init(
 		hash64_t * light = m_light[m_device_num];
 
 		if(!light){ 
-			cudalog << "Allocating light with size: " << _lightBytes;
-			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), _lightBytes));
+			cudalog << "Allocating light with size: " << lightSize;
+			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), lightSize));
 		}
 		// copy lightData to device
-		CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), _lightData, _lightBytes, cudaMemcpyHostToDevice));
+		CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), context.light_cache, lightSize, cudaMemcpyHostToDevice));
 		m_light[m_device_num] = light;
 		
 		if(dagElms != m_dag_elms || !dag) // create buffer for dag
-			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagBytes));
+			CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), dagSize));
 		
 		if(dagElms != m_dag_elms || !dag)
 		{
@@ -532,7 +532,7 @@ bool ProgPowMiner::cuda_init(
 			cudalog << "Generating mining buffers";
 			for (unsigned i = 0; i != s_numStreams; ++i)
 			{
-				CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(search_results)));
+				CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(Search_results)));
 				CUDA_SAFE_CALL(cudaStreamCreate(&m_streams[i]));
 			}
 			
@@ -545,15 +545,15 @@ bool ProgPowMiner::cuda_init(
 			{
 				if((m_device_num == dagCreateDevice) || !_cpyToHost){ //if !cpyToHost -> All devices shall generate their DAG
 					cudalog << "Generating DAG for GPU #" << m_device_num <<
-							   " with dagBytes: " << dagBytes <<" gridSize: " << s_gridSize;
-					ethash_generate_dag(dag, dagBytes, light, lightWords, s_gridSize, s_blockSize, m_streams[0], m_device_num);
+							   " with dagBytes: " << dagSize <<" gridSize: " << s_gridSize;
+					ethash_generate_dag(dagSize, s_gridSize, s_blockSize, m_streams[0]);
 					cudalog << "Finished DAG";
 
 					if (_cpyToHost)
 					{
-						uint8_t* memoryDAG = new uint8_t[dagBytes];
+						uint8_t* memoryDAG = new uint8_t[dagSize];
 						cudalog << "Copying DAG from GPU #" << m_device_num << " to host";
-						CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagBytes, cudaMemcpyDeviceToHost));
+						CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(memoryDAG), dag, dagSize, cudaMemcpyDeviceToHost));
 
 						hostDAG = memoryDAG;
 					}
@@ -568,7 +568,7 @@ bool ProgPowMiner::cuda_init(
 cpyDag:
 				cudalog << "Copying DAG from host to GPU #" << m_device_num;
 				const void* hdag = (const void*)hostDAG;
-				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagBytes, cudaMemcpyHostToDevice));
+				CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(dag), hdag, dagSize, cudaMemcpyHostToDevice));
 			}
 		}
     
@@ -602,7 +602,7 @@ void ProgPowMiner::compileKernel(
 	const char* name = "progpow_search";
 
 	std::string text = ProgPow::getKern(block_number, ProgPow::KERNEL_CUDA);
-	text += std::string(ProgPowMiner_kernel, sizeof(ProgPowMiner_kernel));
+	text += std::string(CUDAMiner_kernel, sizeof(CUDAMiner_kernel));
 
 	ofstream write;
 	write.open("kernel.cu");

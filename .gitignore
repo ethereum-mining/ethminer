@@ -1,3 +1,5 @@
+/libethash-cuda/progpow/CUDAMiner_kernel.h
+
 # Compiled Object files
 *.slo
 *.lo

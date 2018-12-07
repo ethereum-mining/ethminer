@@ -4,7 +4,7 @@ if (PROGPOW)
 		COMMAND ${CMAKE_COMMAND} ARGS
 		-DBIN2H_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/progpow/CUDAMiner_kernel.cu"
 		-DBIN2H_VARIABLE_NAME=CUDAMiner_kernel
-		-DBIN2H_HEADER_FILE="${CMAKE_CURRENT_BINARY_DIR}/progpow/CUDAMiner_kernel.h"
+		-DBIN2H_HEADER_FILE="${CMAKE_CURRENT_SOURCE_DIR}/progpow/CUDAMiner_kernel.h"
 		-P "${CMAKE_CURRENT_SOURCE_DIR}/../libethash-cl/bin2h.cmake"
 		COMMENT "Generating CUDA Kernel Byte Array"
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/progpow/CUDAMiner_kernel.cu
