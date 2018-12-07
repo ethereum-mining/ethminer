@@ -973,7 +973,7 @@ Json::Value ApiConnection::getMinerStat1()
     poolAddresses << connection->Host() << ':' << connection->Port();
     invalidStats << ";0;0";  // DualMining not supported
 
-    int gpuIndex = 0;
+    int gpuIndex;
     int numGpus = t.miners.size();
 
     for (gpuIndex = 0; gpuIndex < numGpus; gpuIndex++)
@@ -985,7 +985,6 @@ Json::Value ApiConnection::getMinerStat1()
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");  // DualMining not supported
     }
 
-    gpuIndex = 0;
     for (gpuIndex = 0; gpuIndex < numGpus; gpuIndex++)
     {
         tempAndFans << t.miners.at(gpuIndex).sensors.tempC << ";"
