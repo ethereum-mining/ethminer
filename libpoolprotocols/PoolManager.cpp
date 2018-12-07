@@ -270,8 +270,7 @@ void PoolManager::addConnection(std::shared_ptr<URI> _uri)
 void PoolManager::removeConnection(unsigned int idx)
 {
     // Are there any outstanding operations ?
-    bool ex = false;
-    if (!m_async_pending.compare_exchange_strong(ex, true))
+    if (m_async_pending.load(std::memory_order_relaxed))
         throw std::runtime_error("Outstanding operations. Retry ...");
 
     // Check bounds
@@ -286,7 +285,6 @@ void PoolManager::removeConnection(unsigned int idx)
     m_connections.erase(m_connections.begin() + idx);
     if (m_activeConnectionIdx > idx)
         m_activeConnectionIdx--;
-
 }
 
 void PoolManager::setActiveConnectionCommon(unsigned int idx)
