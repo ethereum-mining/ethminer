@@ -69,7 +69,8 @@ public:
     unsigned tstart = 0, tstop = 0;
 
     Farm(std::map<std::string, DeviceDescriptor>& _DevicesCollection,
-        FarmSettings _settings, CUSettings _CUSettings, CLSettings _CLSettings);
+        FarmSettings _settings, CUSettings _CUSettings, CLSettings _CLSettings,
+        CPSettings _CPSettings);
 
     ~Farm();
 
@@ -274,6 +275,7 @@ private:
     FarmSettings m_Settings;  // Own Farm Settings
     CUSettings m_CUSettings;  // Cuda settings passed to CUDA Miner instantiator
     CLSettings m_CLSettings;  // OpenCL settings passed to CL Miner instantiator
+    CPSettings m_CPSettings;  // CPU settings passed to CPU Miner instantiator
 
     boost::asio::io_service::strand m_io_strand;
     boost::asio::deadline_timer m_collectTimer;
