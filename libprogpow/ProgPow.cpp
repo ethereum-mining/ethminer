@@ -136,9 +136,9 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
     ret << "data_dag = g_dag[offset];\n";
     ret << "// hack to prevent compiler from reordering LD and usage\n";
     if (kern == KERNEL_CUDA)
-        ret << "if( hack_false ) __threadfence_block();\n";
+        ret << "if (hack_false) __threadfence_block();\n";
     else
-        ret << "if( hack_false ) barrier(CLK_LOCAL_MEM_FENCE);\n";
+        ret << "if (hack_false) barrier(CLK_LOCAL_MEM_FENCE);\n";
 
 	for (int i = 0; (i < PROGPOW_CNT_CACHE) || (i < PROGPOW_CNT_MATH); i++)
 	{
@@ -157,15 +157,18 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
 		if (i < PROGPOW_CNT_MATH)
 		{
 			// Random Math
-			// A tree combining random input registers together
-			// reduced to a single result
-			std::string src1 = mix_src();
-			std::string src2 = mix_src();
+            // Generate 2 unique sources 
+            int src_rnd = rnd() % ((PROGPOW_REGS - 1) * PROGPOW_REGS);
+            int src1 = src_rnd % PROGPOW_REGS; // 0 <= src1 < PROGPOW_REGS
+            int src2 = src_rnd / PROGPOW_REGS; // 0 <= src2 < PROGPOW_REGS - 1
+            if (src2 >= src1) ++src2; // src2 is now any reg other than src1
+            std::string src1_str = "mix[" + std::to_string(src1) + "]";
+            std::string src2_str = "mix[" + std::to_string(src2) + "]";
 			uint32_t    r1 = rnd();
             std::string dest = mix_dst();
 			uint32_t    r2 = rnd();
 			ret << "// random math " << i << "\n";
-			ret << math("data", src1, src2, r1);
+			ret << math("data", src1_str, src2_str, r1);
 			ret << merge(dest, "data", r2);
 		}
 	}
@@ -173,9 +176,9 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
 	ret << "// consume global load data\n";
     ret << "// hack to prevent compiler from reordering LD and usage\n";
     if (kern == KERNEL_CUDA)
-        ret << "if( hack_false ) __threadfence_block();\n";
+        ret << "if (hack_false) __threadfence_block();\n";
     else
-        ret << "if( hack_false ) barrier(CLK_LOCAL_MEM_FENCE);\n";
+        ret << "if (hack_false) barrier(CLK_LOCAL_MEM_FENCE);\n";
     ret << merge("mix[0]", "data_dag.s[0]", rnd());
     for (int i = 1; i < PROGPOW_DAG_LOADS; i++)
     {
@@ -198,8 +201,8 @@ std::string ProgPow::merge(std::string a, std::string b, uint32_t r)
 	{
 	case 0: return a + " = (" + a + " * 33) + " + b + ";\n";
 	case 1: return a + " = (" + a + " ^ " + b + ") * 33;\n";
-	case 2: return a + " = ROTL32(" + a + ", " + std::to_string((r >> 16) % 32) + ") ^ " + b + ";\n";
-	case 3: return a + " = ROTR32(" + a + ", " + std::to_string((r >> 16) % 32) + ") ^ " + b + ";\n";
+	case 2: return a + " = ROTL32(" + a + ", " + std::to_string(((r >> 16) % 31) + 1) + ") ^ " + b + ";\n";
+	case 3: return a + " = ROTR32(" + a + ", " + std::to_string(((r >> 16) % 31) + 1) + ") ^ " + b + ";\n";
 	}
     return "#error\n";
 }
