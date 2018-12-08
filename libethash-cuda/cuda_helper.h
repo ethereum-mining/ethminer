@@ -57,10 +57,12 @@ uint32_t __byte_perm(uint32_t x, uint32_t y, uint32_t z);
 
 extern cudaError_t MyStreamSynchronize(cudaStream_t stream, int situation, int thr_id);
 
+#ifdef PROGPOW
 struct cuda_runtime_error : public virtual std::runtime_error
 {
 	cuda_runtime_error( std::string msg ) : std::runtime_error(msg) {}
 };
+#endif
 
 #define CUDA_SAFE_CALL(call)                                                              \
     do                                                                                    \

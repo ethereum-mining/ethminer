@@ -60,7 +60,7 @@ if(PROGPOW)
 	target_link_libraries(ethash-cuda ethcore ethash::ethash progpow Boost::filesystem)
 	target_link_libraries(ethash-cuda ${CUDA_nvrtc_LIBRARY} ${CUDA_cuda_LIBRARY})
 else()
-	target_link_libraries(ethash-cuda ethcore ethash::ethash  Boost::filesystem Boost::thread)
+	target_link_libraries(ethash-cuda ethcore ethash::ethash  Boost::filesystem)
 	target_include_directories(ethash-cuda PUBLIC ${CUDA_INCLUDE_DIRS})
 endif()
 
