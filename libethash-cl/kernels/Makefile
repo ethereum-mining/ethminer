@@ -5,8 +5,8 @@ ASFLAGS=-I$(SDIR)
 AS=clrxasm
 
 .PHONY: all
-all: ellesmere tonga baffin gfx901
-	@echo "Built ethash kernel for all architectures."
+all: ellesmere tonga baffin gfx900 gfx901
+	@echo "Built ethash kernel for these architectures."
 
 .PHONY: clean
 clean:
@@ -18,17 +18,21 @@ clean:
 	$(AS) $(SDIR)/GCN_ethash.isa -g $(ARCH) -Dworksize=$(LWS) $(ASFLAGS) -o $(BUILD)/ethash_$(ARCH)_lws$(LWS).bin
 
 .PHONY: ellesmere
-ellesmere: ellesmere_lws64.bin ellesmere_lws128.bin ellesmere_lws192.bin ellesmere_lws256.bin
+ellesmere: ellesmere_lws64.bin ellesmere_lws128.bin ellesmere_lws256.bin
 		@echo "Built Ellesmere kernels..."
 
 .PHONY: tonga
-tonga: tonga_lws64.bin tonga_lws128.bin tonga_lws192.bin tonga_lws256.bin
+tonga: tonga_lws64.bin tonga_lws128.bin tonga_lws256.bin
 		@echo "Built Tonga kernels..."
 
 .PHONY: baffin
-baffin: baffin_lws64.bin baffin_lws128.bin baffin_lws192.bin baffin_lws256.bin
+baffin: baffin_lws64.bin baffin_lws128.bin baffin_lws256.bin
 		@echo "Built Baffin kernels..."
 
+.PHONY: gfx900
+gfx901: gfx900_lws64.bin gfx900_lws128.bin gfx900_lws256.bin
+                @echo "Built gfx900 kernels..."
+
 .PHONY: gfx901
-gfx901: gfx901_lws64.bin gfx901_lws128.bin gfx901_lws192.bin gfx901_lws256.bin
+gfx901: gfx901_lws64.bin gfx901_lws128.bin gfx901_lws256.bin
 		@echo "Built gfx901 kernels..."
