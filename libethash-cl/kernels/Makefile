@@ -6,7 +6,7 @@ AS=clrxasm
 
 .PHONY: all
 all: ellesmere tonga baffin gfx900 gfx901
-	@echo "Built ethash kernel for these architectures."
+	@echo "Built ethash kernel for Ellesmere, Tonga, Baffin, Gfx900 and Gfx901 architectures."
 
 .PHONY: clean
 clean:
@@ -30,8 +30,8 @@ baffin: baffin_lws64.bin baffin_lws128.bin baffin_lws256.bin
 		@echo "Built Baffin kernels..."
 
 .PHONY: gfx900
-gfx901: gfx900_lws64.bin gfx900_lws128.bin gfx900_lws256.bin
-                @echo "Built gfx900 kernels..."
+gfx900: gfx900_lws64.bin gfx900_lws128.bin gfx900_lws256.bin
+		@echo "Built gfx900 kernels..."
 
 .PHONY: gfx901
 gfx901: gfx901_lws64.bin gfx901_lws128.bin gfx901_lws256.bin
