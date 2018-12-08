@@ -276,8 +276,9 @@ void merge(uint32_t &a, uint32_t b, uint32_t r)
     {
     case 0: a = (a * 33) + b; break;
     case 1: a = (a ^ b) * 33; break;
-    case 2: a = ROTL32(a, ((r >> 16) % 32)) ^ b; break;
-    case 3: a = ROTR32(a, ((r >> 16) % 32)) ^ b; break;
+    // prevent rotate by 0 which is a NOP
+    case 2: a = ROTL32(a, ((r >> 16) % 31) + 1) ^ b; break;
+    case 3: a = ROTR32(a, ((r >> 16) % 31) + 1) ^ b; break;
     }
 }
 ```
@@ -354,8 +355,11 @@ void progPowLoop(
         if (i < PROGPOW_CNT_MATH)
         {
             // Random Math
-            int src1 = kiss99(prog_rnd) % PROGPOW_REGS;
-            int src2 = kiss99(prog_rnd) % PROGPOW_REGS;
+            // Generate 2 unique sources 
+            int src_rnd = kiss99(prog_rnd) % (PROGPOW_REGS * (PROGPOW_REGS-1));
+            int src1 = src_rnd % PROGPOW_REGS; // 0 <= src1 < PROGPOW_REGS
+            int src2 = src_rnd / PROGPOW_REGS; // 0 <= src2 < PROGPOW_REGS - 1
+            if (src2 >= src1) ++src2; // src2 is now any reg other than src1
             int sel1 = kiss99(prog_rnd);
             int dst  = mix_seq_dst[(mix_seq_dst_cnt++)%PROGPOW_REGS];
             int sel2 = kiss99(prog_rnd);
@@ -396,7 +400,8 @@ A full run showing intermediate values can be seen in [result.log](test/result.l
 
 ## Change History
 
-- 0.9.1 (current) - Shuffle what part of the DAG entry each lane accesses, suggested by [mbevand](https://github.com/ifdefelse/ProgPOW/pull/13)
+- 0.9.2 (current) - Unique sources for math() and prevent rotation by 0 in merge().  Suggested by [SChernykh](https://github.com/ifdefelse/ProgPOW/issues/19)
+- [0.9.1](https://github.com/ifdefelse/ProgPOW/blob/60bba1c3fdad6a54539fc3e9f05727547de9c58c/README.md) - Shuffle what part of the DAG entry each lane accesses. Suggested by [mbevand](https://github.com/ifdefelse/ProgPOW/pull/13)
 - [0.9.0](https://github.com/ifdefelse/ProgPOW/blob/a3f62349a1513f0393524683f9671cfe17cca895/README.md) - Unique cache address sources, re-tune parameters
 - [0.8.0](https://github.com/ifdefelse/ProgPOW/blob/620b4c7aafe60391f863372814d7517e94386379/README.md) - Original spec
 

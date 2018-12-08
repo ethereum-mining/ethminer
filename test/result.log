@@ -1,32 +1,32 @@
 >ethminer.exe -U -M 30000
-  m  23:42:31|main    |  ethminer version 0.15.0.dev0
-  m  23:42:31|main    |  Build: windows / release +git. 575487f
- cu  23:42:31|main    |  Using grid size 1024 , block size 512
+  m  00:37:26|main    |  ethminer version 0.15.0.dev0
+  m  00:37:26|main    |  Build: windows / release +git. 2c02a51
+ cu  00:37:26|main    |  Using grid size 1024 , block size 512
 Benchmarking on platform: CUDA
 Preparing DAG for block #30000
-Warming up...
-  i  23:42:31|cuda-0  |  No work.
-  i  23:42:31|cuda-0  |  Initialising miner 0
- cu  23:42:32|cuda-0  |  Using device: GeForce GTX 1060 6GB  (Compute 6.1)
- cu  23:42:32|cuda-0  |  Set Device to current
- cu  23:42:32|cuda-0  |  Resetting device
- cu  23:42:32|cuda-0  |  Compile log:
- cu  23:42:32|cuda-0  |  JIT info:
+  i  Warming up...00:37:26|cuda-0  |  No work.
+
+  i  00:37:26|cuda-0  |  Initialising miner 0
+ cu  00:37:26|cuda-0  |  Using device: GeForce GTX 1060 6GB  (Compute 6.1)
+ cu  00:37:26|cuda-0  |  Set Device to current
+ cu  00:37:26|cuda-0  |  Resetting device
+ cu  00:37:27|cuda-0  |  Allocating light with size: 16907456
+ cu  00:37:27|cuda-0  |  Generating mining buffers
+ cu  00:37:27|cuda-0  |  Generating DAG for GPU # 0  with dagBytes: 1082130304  gridSize: 1024
+ cu  00:37:30|cuda-0  |  Finished DAG
+ cu  00:37:31|cuda-0  |  Compile log:
+ cu  00:37:31|cuda-0  |  JIT info:
  ptxas info    : 202 bytes gmem, 96 bytes cmem[3]
 ptxas info    : Compiling entry function '_Z14progpow_searchy8hash32_tyPK5dag_tPV14search_resultsb' for 'sm_61'
 ptxas info    : Function properties for _Z14progpow_searchy8hash32_tyPK5dag_tPV14search_resultsb
 ptxas         .     32 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
-ptxas info    : Used 157 registers, 16384 bytes smem, 385 bytes cmem[0], 4 bytes cmem[2]
+ptxas info    : Used 158 registers, 16384 bytes smem, 385 bytes cmem[0], 4 bytes cmem[2]
 ptxas info    : Function properties for _Z11keccak_f8008hash32_tyS_
 ptxas         .     0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
- cu  23:42:32|cuda-0  |  JIT err:
+ cu  00:37:31|cuda-0  |  JIT err:
 
- cu  23:42:32|cuda-0  |  Mangled name: _Z14progpow_searchy8hash32_tyPK5dag_tPV14search_resultsb
- cu  23:42:32|cuda-0  |  done compiling
- cu  23:42:32|cuda-0  |  Allocating light with size: 16907456
- cu  23:42:32|cuda-0  |  Generating mining buffers
- cu  23:42:32|cuda-0  |  Generating DAG for GPU # 0  with dagBytes: 1082130304  gridSize: 1024
- cu  23:42:36|cuda-0  |  Finished DAG
+ cu  00:37:31|cuda-0  |  Mangled name: _Z14progpow_searchy8hash32_tyPK5dag_tPV14search_resultsb
+ cu  00:37:31|cuda-0  |  done compiling
 header ffeeddccbbaa9988776655443322110000112233445566778899aabbccddeeff
 nonce 123456789abcdef0
 seed ee304846ddd0a47b
@@ -55,84 +55,84 @@ fill_mix lane 13 mix[0]=4e46d05d ... mix[31]=3837dda3
 fill_mix lane 14 mix[0]=1a9b1d40 ... mix[31]=08b4fc39
 fill_mix lane 15 mix[0]=3344ce0f ... mix[31]=20201012
 loop 0 dag entry 2043727 of 4227071 total
-loop 1 dag entry 978957 of 4227071 total
-loop 2 dag entry 2219106 of 4227071 total
-loop 3 dag entry 2200566 of 4227071 total
-loop 4 dag entry 3060295 of 4227071 total
-loop 5 dag entry 1066534 of 4227071 total
-loop 6 dag entry 1860140 of 4227071 total
-loop 7 dag entry 3119727 of 4227071 total
-loop 8 dag entry 1192860 of 4227071 total
-loop 9 dag entry 148078 of 4227071 total
-loop 10 dag entry 4019583 of 4227071 total
-loop 11 dag entry 763952 of 4227071 total
-loop 12 dag entry 938751 of 4227071 total
-loop 13 dag entry 540327 of 4227071 total
-loop 14 dag entry 3142750 of 4227071 total
-loop 15 dag entry 780266 of 4227071 total
-loop 16 dag entry 842914 of 4227071 total
-loop 17 dag entry 302514 of 4227071 total
-loop 18 dag entry 1341289 of 4227071 total
-loop 19 dag entry 1042834 of 4227071 total
-loop 20 dag entry 3313136 of 4227071 total
-loop 21 dag entry 1552169 of 4227071 total
-loop 22 dag entry 4108553 of 4227071 total
-loop 23 dag entry 1435285 of 4227071 total
-loop 24 dag entry 4069636 of 4227071 total
-loop 25 dag entry 2928713 of 4227071 total
-loop 26 dag entry 1770730 of 4227071 total
-loop 27 dag entry 238606 of 4227071 total
-loop 28 dag entry 3263664 of 4227071 total
-loop 29 dag entry 1755218 of 4227071 total
-loop 30 dag entry 3035329 of 4227071 total
-loop 31 dag entry 652802 of 4227071 total
-loop 32 dag entry 3283360 of 4227071 total
-loop 33 dag entry 2327823 of 4227071 total
-loop 34 dag entry 3339662 of 4227071 total
-loop 35 dag entry 1453003 of 4227071 total
-loop 36 dag entry 3602110 of 4227071 total
-loop 37 dag entry 1821760 of 4227071 total
-loop 38 dag entry 754663 of 4227071 total
-loop 39 dag entry 184501 of 4227071 total
-loop 40 dag entry 3600362 of 4227071 total
-loop 41 dag entry 1816934 of 4227071 total
-loop 42 dag entry 1381225 of 4227071 total
-loop 43 dag entry 1304550 of 4227071 total
-loop 44 dag entry 1353179 of 4227071 total
-loop 45 dag entry 10429 of 4227071 total
-loop 46 dag entry 894212 of 4227071 total
-loop 47 dag entry 4224745 of 4227071 total
-loop 48 dag entry 215407 of 4227071 total
-loop 49 dag entry 506509 of 4227071 total
-loop 50 dag entry 1702595 of 4227071 total
-loop 51 dag entry 303727 of 4227071 total
-loop 52 dag entry 41423 of 4227071 total
-loop 53 dag entry 3805288 of 4227071 total
-loop 54 dag entry 4093082 of 4227071 total
-loop 55 dag entry 148616 of 4227071 total
-loop 56 dag entry 3441343 of 4227071 total
-loop 57 dag entry 8257 of 4227071 total
-loop 58 dag entry 276369 of 4227071 total
-loop 59 dag entry 3320925 of 4227071 total
-loop 60 dag entry 1431023 of 4227071 total
-loop 61 dag entry 2778561 of 4227071 total
-loop 62 dag entry 452777 of 4227071 total
-loop 63 dag entry 1275346 of 4227071 total
-digest lane 0: f0768603
-digest lane 1: b64fd1eb
-digest lane 2: 76cb337c
-digest lane 3: 47e14410
-digest lane 4: c91decf1
-digest lane 5: 8b665796
-digest lane 6: 16ee0104
-digest lane 7: 9eb0d380
-digest lane 8: 5cd02f9e
-digest lane 9: bad01c1e
-digest lane 10: edfe0292
-digest lane 11: 3960e1e8
-digest lane 12: def7562f
-digest lane 13: 7bf8fab5
-digest lane 14: 0dce42c8
-digest lane 15: fae46383
-digest: 44fa88669c864aa30ba7da46e557593289c4d1fb143a1c43813d512b14fb4636
-result (top 64 bits): b946ea7d74e3c619
+loop 1 dag entry 1878577 of 4227071 total
+loop 2 dag entry 1972818 of 4227071 total
+loop 3 dag entry 4192557 of 4227071 total
+loop 4 dag entry 2908963 of 4227071 total
+loop 5 dag entry 650106 of 4227071 total
+loop 6 dag entry 3360110 of 4227071 total
+loop 7 dag entry 2666972 of 4227071 total
+loop 8 dag entry 3262571 of 4227071 total
+loop 9 dag entry 1876031 of 4227071 total
+loop 10 dag entry 1099946 of 4227071 total
+loop 11 dag entry 1058639 of 4227071 total
+loop 12 dag entry 4091582 of 4227071 total
+loop 13 dag entry 2295331 of 4227071 total
+loop 14 dag entry 2587683 of 4227071 total
+loop 15 dag entry 950942 of 4227071 total
+loop 16 dag entry 2427766 of 4227071 total
+loop 17 dag entry 677253 of 4227071 total
+loop 18 dag entry 3564299 of 4227071 total
+loop 19 dag entry 2373221 of 4227071 total
+loop 20 dag entry 2065878 of 4227071 total
+loop 21 dag entry 2684534 of 4227071 total
+loop 22 dag entry 3563556 of 4227071 total
+loop 23 dag entry 909053 of 4227071 total
+loop 24 dag entry 3867986 of 4227071 total
+loop 25 dag entry 959685 of 4227071 total
+loop 26 dag entry 2837635 of 4227071 total
+loop 27 dag entry 3312470 of 4227071 total
+loop 28 dag entry 3048893 of 4227071 total
+loop 29 dag entry 3601694 of 4227071 total
+loop 30 dag entry 3536836 of 4227071 total
+loop 31 dag entry 533409 of 4227071 total
+loop 32 dag entry 3736438 of 4227071 total
+loop 33 dag entry 864961 of 4227071 total
+loop 34 dag entry 188397 of 4227071 total
+loop 35 dag entry 3814381 of 4227071 total
+loop 36 dag entry 4108296 of 4227071 total
+loop 37 dag entry 3950694 of 4227071 total
+loop 38 dag entry 2069968 of 4227071 total
+loop 39 dag entry 2745630 of 4227071 total
+loop 40 dag entry 1008990 of 4227071 total
+loop 41 dag entry 2675149 of 4227071 total
+loop 42 dag entry 3352224 of 4227071 total
+loop 43 dag entry 472995 of 4227071 total
+loop 44 dag entry 3348733 of 4227071 total
+loop 45 dag entry 2693084 of 4227071 total
+loop 46 dag entry 3406906 of 4227071 total
+loop 47 dag entry 2629222 of 4227071 total
+loop 48 dag entry 911095 of 4227071 total
+loop 49 dag entry 1358231 of 4227071 total
+loop 50 dag entry 3574453 of 4227071 total
+loop 51 dag entry 4109829 of 4227071 total
+loop 52 dag entry 3503254 of 4227071 total
+loop 53 dag entry 3897141 of 4227071 total
+loop 54 dag entry 4030761 of 4227071 total
+loop 55 dag entry 2855865 of 4227071 total
+loop 56 dag entry 452603 of 4227071 total
+loop 57 dag entry 1258735 of 4227071 total
+loop 58 dag entry 2380407 of 4227071 total
+loop 59 dag entry 3320172 of 4227071 total
+loop 60 dag entry 3180940 of 4227071 total
+loop 61 dag entry 1407113 of 4227071 total
+loop 62 dag entry 1057525 of 4227071 total
+loop 63 dag entry 574671 of 4227071 total
+digest lane 0: 5883883e
+digest lane 1: 2fb0fd2e
+digest lane 2: eadb7563
+digest lane 3: 4a171075
+digest lane 4: ac2758f5
+digest lane 5: aa5b06cf
+digest lane 6: 52156e93
+digest lane 7: 4f7a7fff
+digest lane 8: fe91e36a
+digest lane 9: 9964c8b6
+digest lane 10: 6a3d93e2
+digest lane 11: 3c6d641f
+digest lane 12: e90da618
+digest lane 13: 80cd8ab9
+digest lane 14: ce72386f
+digest lane 15: 95517d28
+digest: 11f19805c58ab46610ff9c719dcf0a5f18fa2f1605798eef770c47219274767d
+result (top 64 bits): 5b7ccd472dbefdd9
