@@ -1,5 +1,5 @@
-#ifndef SEARCH_RESULTS
-#define SEARCH_RESULTS 4
+#ifndef MAX_SEARCH_RESULTS
+#define MAX_SEARCH_RESULTS 4U
 #endif
 
 typedef struct {
@@ -8,8 +8,8 @@ typedef struct {
         // One word for gid and 8 for mix hash
         uint32_t gid;
         uint32_t mix[8];
-    } result[SEARCH_RESULTS];
-} search_results;
+    } result[MAX_SEARCH_RESULTS];
+} Search_results;
 
 typedef struct
 {
@@ -145,7 +145,7 @@ progpow_search(
     const hash32_t header,
     const uint64_t target,
     const dag_t *g_dag,
-    volatile search_results* g_output,
+    volatile Search_results* g_output,
     bool hack_false
     )
 {
@@ -212,7 +212,7 @@ progpow_search(
         return;
 
     uint32_t index = atomicInc((uint32_t *)&g_output->count, 0xffffffff);
-    if (index >= SEARCH_RESULTS)
+    if (index >= MAX_SEARCH_RESULTS)
         return;
 
     g_output->result[index].gid = gid;

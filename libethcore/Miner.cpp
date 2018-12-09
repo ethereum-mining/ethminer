@@ -131,7 +131,7 @@ void Miner::TriggerHashRateUpdate() noexcept
     m_hashRate = 0.0;
 }
 
-bool Miner::initEpoch()
+bool Miner::initEpoch(uint64_t block_number)
 {
     // When loading of DAG is sequential wait for
     // this instance to become current
@@ -150,7 +150,7 @@ bool Miner::initEpoch()
 
     // Run the internal initialization
     // specific for miner
-    bool result = initEpoch_internal();
+    bool result = initEpoch_internal(block_number);
 
     // Advance to next miner or reset to zero for 
     // next run if all have processed

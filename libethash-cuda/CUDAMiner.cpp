@@ -78,7 +78,7 @@ bool CUDAMiner::initDevice()
     return true;
 }
 
-bool CUDAMiner::initEpoch_internal()
+bool CUDAMiner::initEpoch_internal(uint64_t block_number)
 {
     // If we get here it means epoch has changed so it's not necessary
     // to check again dag sizes. They're changed for sure
@@ -147,7 +147,7 @@ bool CUDAMiner::initEpoch_internal()
         }
 
         uint64_t period_seed = block_number / PROGPOW_PERIOD;
-        compileKernel(period_seed, m_epochContext.dagNumItems);
+        compileKernel(period_seed, m_epochContext.dagNumItems / 2);
 
         CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), m_epochContext.lightCache,
             m_epochContext.lightSize, cudaMemcpyHostToDevice));
@@ -217,7 +217,7 @@ void CUDAMiner::workLoop()
             // Epoch change ?
             if (current.epoch != w.epoch)
             {
-                if (!initEpoch())
+                if (!initEpoch(w.block))
                     break;  // This will simply exit the thread
 
                 // As DAG generation takes a while we need to
@@ -231,7 +231,7 @@ void CUDAMiner::workLoop()
             {
                 const auto& context = ethash::get_global_epoch_context(w.epoch);
                 const auto dagNumItems = context.full_dataset_num_items;
-                compileKernel(period_seed, dagNumItems);
+                compileKernel(period_seed, dagNumItems / 2);
             }
             old_period_seed = period_seed;
 
@@ -427,13 +427,16 @@ void CUDAMiner::compileKernel(
 void CUDAMiner::search(
     uint8_t const* header, uint64_t target, uint64_t start_nonce, const dev::eth::WorkPackage& w)
 {
-    uint64_t stream_nonce;
+    set_header(*reinterpret_cast<hash32_t const*>(header));
     if (m_current_target != target)
     {
+        set_target(target);
         m_current_target = target;
     }
 
     hash32_t current_header = *reinterpret_cast<hash32_t const *>(header);
+    hash64_t* dag;
+    get_constants(&dag, NULL, NULL, NULL);
 
     // prime each stream, clear search result buffers and start the search
     uint32_t current_index;
@@ -445,8 +448,9 @@ void CUDAMiner::search(
         buffer.count = 0;
 
         // Run the batch for this stream
+        volatile Search_results *Buffer = &buffer;
         bool hack_false = false;
-        void *args[] = {&start_nonce, &current_header, &m_current_target, &m_dag, &buffer, &hack_false};
+        void *args[] = {&start_nonce, &current_header, &m_current_target, &dag, &Buffer, &hack_false};
         CU_SAFE_CALL(cuLaunchKernel(m_kernel,
             m_settings.gridSize, 1, 1,   // grid dim
             m_settings.blockSize, 1, 1,  // block dim
@@ -517,8 +521,9 @@ void CUDAMiner::search(
             // unless we are done for this round.
             if (!done)
             {
+                volatile Search_results *Buffer = &buffer;
                 bool hack_false = false;
-                void *args[] = {&start_nonce, &current_header, &m_current_target, &m_dag, &buffer, &hack_false};
+                void *args[] = {&start_nonce, &current_header, &m_current_target, &dag, &Buffer, &hack_false};
                 CU_SAFE_CALL(cuLaunchKernel(m_kernel,
                     m_settings.gridSize, 1, 1,   // grid dim
                     m_settings.blockSize, 1, 1,  // block dim
