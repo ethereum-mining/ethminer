@@ -145,11 +145,23 @@ typedef struct {
     uint64_t uint64s[PROGPOW_LANES / 2];
 } shuffle_t;
 
+// NOTE: This struct must match the one defined in CLMiner.cpp
+struct SearchResults {
+    struct {
+        uint gid;
+        uint mix[8];
+        uint pad[7]; // pad to 16 words for easy indexing
+    } rslt[MAX_OUTPUTS];
+    uint count;
+    uint hashCount;
+    uint abort;
+};
+
 #if PLATFORM != OPENCL_PLATFORM_NVIDIA // use maxrregs on nv
 __attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
 #endif
 __kernel void ethash_search(
-    __global volatile uint* restrict g_output,
+    __global struct SearchResults* restrict g_output,
     __constant hash32_t const* g_header,
     __global dag_t const* g_dag,
     ulong start_nonce,
@@ -157,6 +169,9 @@ __kernel void ethash_search(
     uint hack_false
 )
 {
+    if (g_output->abort)
+        return;
+
     __local shuffle_t share[HASHES_PER_GROUP];
     __local uint32_t c_dag[PROGPOW_CACHE_WORDS];
 
@@ -221,12 +236,17 @@ __kernel void ethash_search(
             digest = digest_temp;
     }
 
+    if (get_local_id(0) == 0)
+        atomic_inc(&g_output->hashCount);
+
     // keccak(header .. keccak(header..nonce) .. digest);
     if (keccak_f800(g_header, seed, digest) < target)
     {
-        uint slot = atomic_inc(&g_output[0]) + 1;
-        if(slot < MAX_OUTPUTS)
-            g_output[slot] = gid;
+        atomic_inc(&g_output->abort);
+        uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output->count));
+        g_output->rslt[slot].gid = gid;
+        for (int i = 0; i < 8; i++)
+            g_output->rslt[slot].mix[i] = digest.uint32s[i];
     }
 }
 
