@@ -6,6 +6,18 @@
 #include <stdint.h>
 #include <cuda_runtime.h>
 
+#if (__CUDACC_VER_MAJOR__ > 8)
+#define SHFL(x, y, z) __shfl_sync(0xFFFFFFFF, (x), (y), (z))
+#else
+#define SHFL(x, y, z) __shfl((x), (y), (z))
+#endif
+
+#if (__CUDA_ARCH__ >= 320)
+#define LDG(x) __ldg(&(x))
+#else
+#define LDG(x) (x)
+#endif
+
 // It is virtually impossible to get more than
 // one solution per stream hash calculation
 // Leave room for up to 4 results. A power
