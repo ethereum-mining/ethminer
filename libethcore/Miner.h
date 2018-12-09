@@ -84,6 +84,27 @@ enum class SolutionAccountingEnum
     Failed
 };
 
+// Holds settings for CUDA Miner
+struct CUSettingsType
+{
+    vector<unsigned> Devices;
+    unsigned Streams = 2;
+    unsigned Schedule = 4;
+    unsigned GridSize = 8192;
+    unsigned BlockSize = 128;
+    unsigned ParallelHash = 4;
+};
+
+// Holds settings for OpenCL Miner
+struct CLSettingsType
+{
+    vector<unsigned> Devices;
+    bool NoBinary = false;
+    unsigned GlobalWorkSize = 0;
+    unsigned GlobalWorkSizeMultiplier = 65536;
+    unsigned LocalWorkSize = 128;
+};
+
 struct SolutionAccountType
 {
     unsigned accepted = 0;
@@ -173,7 +194,6 @@ struct HwMonitorInfo
     int deviceIndex = -1;
 };
 
-
 /// Pause mining
 enum MinerPauseEnum
 {
@@ -223,7 +243,8 @@ struct TelemetryType
         duration -= hours;
         auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
         _ret << EthGreen << setw(hoursSize) << hours.count() << ":" << setfill('0') << setw(2)
-             << minutes.count() << EthReset << EthWhiteBold << " " << farm.solutions.str() << EthReset << " ";
+             << minutes.count() << EthReset << EthWhiteBold << " " << farm.solutions.str()
+             << EthReset << " ";
 
         /*
         Github : @AndreaLanfranchi
@@ -288,6 +309,7 @@ public:
     virtual ~FarmFace() = default;
     virtual unsigned get_tstart() = 0;
     virtual unsigned get_tstop() = 0;
+    virtual unsigned get_ergodicity() = 0;
 
     /**
      * @brief Called from a Miner to note a WorkPackage has a solution.
@@ -318,10 +340,13 @@ public:
 
     ~Miner() override = default;
 
-    /**
-     * @brief Assigns the device descriptor to this instance
-     */
-    void setDescriptor(DeviceDescriptorType& _descriptor);
+    // Sets basic info for eventual serialization of DAG load
+    static void setDagLoadInfo(unsigned _mode, unsigned _devicecount)
+    {
+        s_dagLoadMode = _mode;
+        s_dagLoadIndex = 0;
+        s_minersCount = _devicecount;
+    };
 
     /**
      * @brief Gets the device descriptor assigned to this instance
@@ -405,8 +430,10 @@ protected:
 
     void updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept;
 
-    static unsigned s_dagLoadMode;
-    static unsigned s_dagLoadIndex;
+    static unsigned s_minersCount;   // Total Number of Miners
+    static unsigned s_dagLoadMode;   // Way dag should be loaded
+    static unsigned s_dagLoadIndex;  // In case of serialized load of dag this is the index of miner
+                                     // which should load next
 
     const unsigned m_index = 0;               // Ordinal index of the Instance (not the device)
     DeviceDescriptorType m_deviceDescriptor;  // Info about the device

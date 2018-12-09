@@ -18,9 +18,6 @@ namespace dev
 {
 namespace eth
 {
-unsigned CLMiner::s_workgroupSize = CLMiner::c_defaultLocalWorkSize;
-unsigned CLMiner::s_initialGlobalWorkSize =
-    CLMiner::c_defaultGlobalWorkSizeMultiplier * CLMiner::c_defaultLocalWorkSize;
 
 // WARNING: Do not change the value of the following constant
 // unless you are prepared to make the neccessary adjustments
@@ -256,9 +253,13 @@ std::vector<cl::Device> getDevices(
 }  // namespace eth
 }  // namespace dev
 
-bool CLMiner::s_noBinary = false;
-
-CLMiner::CLMiner(unsigned _index) : Miner("cl-", _index) {}
+CLMiner::CLMiner(unsigned _index, CLSettingsType _settings, DeviceDescriptorType& _device)
+  : Miner("cl-", _index), m_settings(_settings)
+{
+    m_deviceDescriptor = _device;
+    m_settings.LocalWorkSize = ((m_settings.LocalWorkSize + 7) / 8) * 8;
+    m_settings.GlobalWorkSize = m_settings.LocalWorkSize * m_settings.GlobalWorkSizeMultiplier;
+}
 
 CLMiner::~CLMiner()
 {
@@ -383,7 +384,7 @@ void CLMiner::workLoop()
             // Run the kernel.
             m_searchKernel.setArg(4, startNonce);
             m_queue[0].enqueueNDRangeKernel(
-                m_searchKernel, cl::NullRange, m_globalWorkSize, m_workgroupSize);
+                m_searchKernel, cl::NullRange, m_settings.GlobalWorkSize, m_settings.LocalWorkSize);
 
             if (results.count)
             {
@@ -411,10 +412,10 @@ void CLMiner::workLoop()
             current = w;  // kernel now processing newest work
             current.startNonce = startNonce;
             // Increase start nonce for following kernel execution.
-            startNonce += results.hashCount * m_workgroupSize;
+            startNonce += results.hashCount * m_settings.LocalWorkSize;
 
             // Report hash count
-            updateHashRate(m_workgroupSize, results.hashCount);
+            updateHashRate(m_settings.LocalWorkSize, results.hashCount);
         }
 
         if (m_queue.size())
@@ -579,18 +580,6 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollec
 
 }
 
-bool CLMiner::configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
-    unsigned _dagLoadMode, bool _nobinary)
-{
-    s_dagLoadMode = _dagLoadMode;
-    s_noBinary = _nobinary;
-    _localWorkSize = ((_localWorkSize + 7) / 8) * 8;
-    s_workgroupSize = _localWorkSize;
-    s_initialGlobalWorkSize = _globalWorkSizeMultiplier * _localWorkSize;
-
-    return true;
-}
-
 bool CLMiner::initDevice()
 {
 
@@ -606,21 +595,13 @@ bool CLMiner::initDevice()
 
     m_device = devices.at(m_deviceDescriptor.clDeviceOrdinal);
 
-    
-    //m_device = s_devices.at(m_deviceDescriptor.clDeviceIndex);
-
-    m_workgroupSize = s_workgroupSize;
-    m_globalWorkSize = s_initialGlobalWorkSize;
-    m_noBinary = s_noBinary;
-
-
     // Set Hardware Monitor Info
     if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Nvidia)
     {
         m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
         m_hwmoninfo.devicePciId = m_deviceDescriptor.UniqueId;
         m_hwmoninfo.deviceIndex = -1;  // Will be later on mapped by nvml (see Farm() constructor)
-        m_noBinary = true;
+        m_settings.NoBinary = true;
     }
     else if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Amd)
     {
@@ -633,7 +614,7 @@ bool CLMiner::initDevice()
         m_hwmoninfo.deviceType = HwMonitorInfoType::UNKNOWN;
         m_hwmoninfo.devicePciId = m_deviceDescriptor.UniqueId;
         m_hwmoninfo.deviceIndex = -1;  // Will be later on mapped by nvml (see Farm() constructor)
-        m_noBinary = true;
+        m_settings.NoBinary = true;
     }
     else
     {
@@ -674,13 +655,16 @@ bool CLMiner::initDevice()
     if ((m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Amd) &&
         (m_deviceDescriptor.clMaxComputeUnits != 36))
     {
-        m_globalWorkSize = (m_globalWorkSize * m_deviceDescriptor.clMaxComputeUnits) / 36;
+        m_settings.GlobalWorkSize =
+            (m_settings.GlobalWorkSize * m_deviceDescriptor.clMaxComputeUnits) / 36;
         // make sure that global work size is evenly divisible by the local workgroup size
-        if (m_globalWorkSize % m_workgroupSize != 0)
-            m_globalWorkSize = ((m_globalWorkSize / m_workgroupSize) + 1) * m_workgroupSize;
+        if (m_settings.GlobalWorkSize % m_settings.LocalWorkSize != 0)
+            m_settings.GlobalWorkSize =
+                ((m_settings.GlobalWorkSize / m_settings.LocalWorkSize) + 1) *
+                m_settings.LocalWorkSize;
         cnote << "Adjusting CL work multiplier for " << m_deviceDescriptor.clMaxComputeUnits
-              << " CUs."
-              << "Adjusted work multiplier: " << m_globalWorkSize / m_workgroupSize;
+              << " CUs. Adjusted work multiplier: "
+              << m_settings.GlobalWorkSize / m_settings.LocalWorkSize;
     }
 
 
@@ -747,7 +731,7 @@ bool CLMiner::initEpoch_internal()
         cllog << "OpenCL kernel";
         code = string(ethash_cl, ethash_cl + sizeof(ethash_cl));
 
-        addDefinition(code, "WORKSIZE", m_workgroupSize);
+        addDefinition(code, "WORKSIZE", m_settings.LocalWorkSize);
         addDefinition(code, "ACCESSES", 64);
         addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
         addDefinition(code, "PLATFORM", m_deviceDescriptor.clPlatformId);
@@ -778,7 +762,7 @@ bool CLMiner::initEpoch_internal()
         bool loadedBinary = false;
         std::string device_name = m_deviceDescriptor.clName;
 
-        if (!m_noBinary)
+        if (!m_settings.NoBinary)
         {
             std::ifstream kernel_file;
             vector<unsigned char> bin_data;
@@ -792,7 +776,7 @@ bool CLMiner::initEpoch_internal()
 #else
                        << "/kernels/ethash_"
 #endif
-                       << device_name << "_lws" << m_workgroupSize << ".bin";
+                       << device_name << "_lws" << m_settings.LocalWorkSize << ".bin";
             cllog << "Loading binary kernel " << fname_strm.str();
             try
             {
@@ -896,20 +880,21 @@ bool CLMiner::initEpoch_internal()
         const uint32_t workItems = m_dagItems * 2;  // GPU computes partial 512-bit DAG items.
 
         uint32_t start;
-        const uint32_t chunk = 10000 * m_workgroupSize;
+        const uint32_t chunk = 10000 * m_settings.LocalWorkSize;
         for (start = 0; start <= workItems - chunk; start += chunk)
         {
             m_dagKernel.setArg(0, start);
-            m_queue[0].enqueueNDRangeKernel(m_dagKernel, cl::NullRange, chunk, m_workgroupSize);
+            m_queue[0].enqueueNDRangeKernel(
+                m_dagKernel, cl::NullRange, chunk, m_settings.LocalWorkSize);
             m_queue[0].finish();
         }
         if (start < workItems)
         {
             uint32_t groupsLeft = workItems - start;
-            groupsLeft = (groupsLeft + m_workgroupSize - 1) / m_workgroupSize;
+            groupsLeft = (groupsLeft + m_settings.LocalWorkSize - 1) / m_settings.LocalWorkSize;
             m_dagKernel.setArg(0, start);
-            m_queue[0].enqueueNDRangeKernel(
-                m_dagKernel, cl::NullRange, groupsLeft * m_workgroupSize, m_workgroupSize);
+            m_queue[0].enqueueNDRangeKernel(m_dagKernel, cl::NullRange,
+                groupsLeft * m_settings.LocalWorkSize, m_settings.LocalWorkSize);
             m_queue[0].finish();
         }
 

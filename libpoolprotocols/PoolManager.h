@@ -19,12 +19,25 @@ namespace dev
 {
 namespace eth
 {
+struct PoolSettingsType
+{
+    std::vector<std::shared_ptr<URI>> Connections;  // List of connection definitions
+    unsigned GetWorkPollInterval = 500;             // Interval (ms) between getwork requests
+    unsigned NoWorkTimeout = 180;       // If no new jobs in this number of seconds drop connection
+    unsigned NoResponseTimeout = 2;     // If no response in this number of seconds drop connection
+    unsigned PoolFailoverTimeout = 0;   // Return to primary pool after this number of minutes
+    bool ReportHashrate = false;        // Whether or not to report hashrate to pool
+    unsigned HashRateInterval = 60;     // Interval in seconds among hashrate submissions
+    std::string HashRateId =
+        h256::random().hex(HexPrefix::Add);  // Unique identifier for HashRate submission
+    unsigned ConnectionMaxRetries = 3;  // Max number of connection retries
+    unsigned BenchmarkBlock = 0;        // Block number used by SimulateClient to test performances
+};
+
 class PoolManager
 {
 public:
-    PoolManager(unsigned maxTries, unsigned failovertimeout, unsigned ergodicity,
-        bool reportHashrate, unsigned workTimeout, unsigned responseTimeout, unsigned pollInterval,
-        unsigned benchmarkBlock);
+    PoolManager(PoolSettingsType _settings);
     static PoolManager& p() { return *m_this; }
     void addConnection(std::string _connstring);
     void addConnection(std::shared_ptr<URI> _uri);
@@ -51,20 +64,7 @@ private:
 
     void setActiveConnectionCommon(unsigned int idx);
 
-    unsigned m_hrReportingInterval = 60;
-
-    unsigned m_failoverTimeout;  // After this amount of time in minutes of mining on a failover
-                                 // pool return to "primary"
-
-    unsigned m_workTimeout;  // Amount of time, in seconds, with no work which causes a
-                             // disconnection
-
-    unsigned m_responseTimeout;  // Amount of time, in milliseconds, with no response from pool
-                                 // which causes a disconnection
-
-    unsigned m_pollInterval;  // Interval, in milliseconds, among polls to a getwork provider
-
-    unsigned m_benchmarkBlock;  // Block number to test simulation against
+    PoolSettingsType m_Settings;
 
     void failovertimer_elapsed(const boost::system::error_code& ec);
     void submithrtimer_elapsed(const boost::system::error_code& ec);
@@ -73,17 +73,12 @@ private:
     std::atomic<bool> m_stopping = {false};
     std::atomic<bool> m_async_pending = {false};
 
-    bool m_hashrate;           // Whether or not submit hashrate to work provider (pool)
-    std::string m_hashrateId;  // The unique client Id to use when submitting hashrate
-    unsigned m_ergodicity = 0;
     unsigned m_connectionAttempt = 0;
-    unsigned m_maxConnectionAttempts = 0;
+
     std::string m_selectedHost = "";  // Holds host name (and endpoint) of selected connection
     std::atomic<unsigned> m_connectionSwitches = {0};
 
-    std::vector<std::shared_ptr<URI>> m_connections;
     unsigned m_activeConnectionIdx = 0;
-    mutable Mutex m_activeConnectionMutex;
 
     WorkPackage m_currentWp;
 

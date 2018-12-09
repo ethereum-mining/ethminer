@@ -31,11 +31,14 @@ struct CUDAChannel : public LogChannel
 };
 #define cudalog clog(CUDAChannel)
 
-CUDAMiner::CUDAMiner(unsigned _index)
+CUDAMiner::CUDAMiner(unsigned _index, CUSettingsType _settings, DeviceDescriptorType& _device)
   : Miner("cuda-", _index),
-    m_batch_size(s_gridSize * s_blockSize),
-    m_streams_batch_size(s_gridSize * s_blockSize * s_numStreams)
-{}
+    m_settings(_settings),
+    m_batch_size(_settings.GridSize * _settings.BlockSize),
+    m_streams_batch_size(_settings.GridSize * _settings.BlockSize * _settings.Streams)
+{
+    m_deviceDescriptor = _device;
+}
 
 CUDAMiner::~CUDAMiner()
 {
@@ -44,12 +47,6 @@ CUDAMiner::~CUDAMiner()
     kick_miner();
     DEV_BUILD_LOG_PROGRAMFLOW(cudalog, "cuda-" << m_index << " CUDAMiner::~CUDAMiner() end");
 }
-
-unsigned CUDAMiner::s_parallelHash = 4;
-unsigned CUDAMiner::s_blockSize = CUDAMiner::c_defaultBlockSize;
-unsigned CUDAMiner::s_gridSize = CUDAMiner::c_defaultGridSize;
-unsigned CUDAMiner::s_numStreams = CUDAMiner::c_defaultNumStreams;
-unsigned CUDAMiner::s_scheduleFlag = 0;
 
 bool CUDAMiner::initDevice()
 {
@@ -103,7 +100,7 @@ bool CUDAMiner::initEpoch_internal()
             // We need to reset the device and (re)create the dag
             // cudaDeviceReset() frees all previous allocated memory
             CUDA_SAFE_CALL(cudaDeviceReset());
-            CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
+            CUDA_SAFE_CALL(cudaSetDeviceFlags(m_settings.Schedule));
             CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
             // Check whether the current device has sufficient memory every time we recreate the dag
@@ -127,7 +124,7 @@ bool CUDAMiner::initEpoch_internal()
             m_allocated_memory_dag = m_epochContext.dagSize;
 
             // create mining buffers
-            for (unsigned i = 0; i != s_numStreams; ++i)
+            for (unsigned i = 0; i != m_settings.Streams; ++i)
             {
                 CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(Search_results)));
                 CUDA_SAFE_CALL(cudaStreamCreateWithFlags(&m_streams[i], cudaStreamNonBlocking));
@@ -146,7 +143,8 @@ bool CUDAMiner::initEpoch_internal()
         set_constants(dag, m_epochContext.dagNumItems, light,
             m_epochContext.lightNumItems);  // in ethash_cuda_miner_kernel.cu
 
-        ethash_generate_dag(m_epochContext.dagSize, s_gridSize, s_blockSize, m_streams[0]);
+        ethash_generate_dag(
+            m_epochContext.dagSize, m_settings.GridSize, m_settings.BlockSize, m_streams[0]);
 
         cudalog << "Generated DAG + Light in "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -175,8 +173,8 @@ void CUDAMiner::workLoop()
     WorkPackage current;
     current.header = h256();
 
-    m_search_buf.resize(s_numStreams);
-    m_streams.resize(s_numStreams);
+    m_search_buf.resize(m_settings.Streams);
+    m_streams.resize(m_settings.Streams);
 
     if (!initDevice())
         return;
@@ -307,21 +305,6 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesColl
     }
 }
 
-unsigned const CUDAMiner::c_defaultBlockSize = 128;
-unsigned const CUDAMiner::c_defaultGridSize = 8192;  // * CL_DEFAULT_LOCAL_WORK_SIZE
-unsigned const CUDAMiner::c_defaultNumStreams = 2;
-
-void CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
-    unsigned _scheduleFlag, unsigned _dagLoadMode, unsigned _parallelHash)
-{
-    s_dagLoadMode = _dagLoadMode;
-    s_blockSize = _blockSize;
-    s_gridSize = _gridSize;
-    s_numStreams = _numStreams;
-    s_scheduleFlag = _scheduleFlag;
-    s_parallelHash = _parallelHash;
-}
-
 void CUDAMiner::search(
     uint8_t const* header, uint64_t target, uint64_t start_nonce, const dev::eth::WorkPackage& w)
 {
@@ -334,7 +317,7 @@ void CUDAMiner::search(
 
     // prime each stream, clear search result buffers and start the search
     uint32_t current_index;
-    for (current_index = 0; current_index < s_numStreams;
+    for (current_index = 0; current_index < m_settings.Streams;
          current_index++, start_nonce += m_batch_size)
     {
         cudaStream_t stream = m_streams[current_index];
@@ -342,7 +325,7 @@ void CUDAMiner::search(
         buffer.count = 0;
 
         // Run the batch for this stream
-        run_ethash_search(s_gridSize, s_blockSize, stream, &buffer, start_nonce, s_parallelHash);
+        run_ethash_search(m_settings.GridSize, m_settings.BlockSize, stream, &buffer, start_nonce, m_settings.ParallelHash);
     }
 
     // process stream batches until we get new work.
@@ -360,7 +343,7 @@ void CUDAMiner::search(
             done = paused();
 
         // This inner loop will process each cuda stream individually
-        for (current_index = 0; current_index < s_numStreams;
+        for (current_index = 0; current_index < m_settings.Streams;
              current_index++, start_nonce += m_batch_size)
         {
             // Each pass of this loop will wait for a stream to exit,
@@ -407,11 +390,11 @@ void CUDAMiner::search(
             // unless we are done for this round.
             if (!done)
                 run_ethash_search(
-                    s_gridSize, s_blockSize, stream, &buffer, start_nonce, s_parallelHash);
+                    m_settings.GridSize, m_settings.BlockSize, stream, &buffer, start_nonce, m_settings.ParallelHash);
         }
 
         // Update the hash rate
-        updateHashRate(m_batch_size, s_numStreams);
+        updateHashRate(m_batch_size, m_settings.Streams);
 
         // Bail out if it's shutdown time
         if (shouldStop())
