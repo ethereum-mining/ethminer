@@ -11,7 +11,6 @@
 #include <ethash/ethash.hpp>
 
 #include "CLMiner.h"
-#include "ethash.h"
 #include <iostream>
 #include <fstream>
 
@@ -353,7 +352,7 @@ void CLMiner::workLoop()
                 {
                     m_abortqueue.clear();
 
-                    if (!initEpoch())
+                    if (!initEpoch(w.block))
                         break;  // This will simply exit the thread
 
                     m_abortqueue.push_back(cl::CommandQueue(m_context[0], m_device));
@@ -376,8 +375,7 @@ void CLMiner::workLoop()
                 m_searchKernel.setArg(0, m_searchBuffer[0]);  // Supply output buffer to kernel.
                 m_searchKernel.setArg(1, m_header[0]);        // Supply header buffer to kernel.
                 m_searchKernel.setArg(2, m_dag[0]);           // Supply DAG buffer to kernel.
-                m_searchKernel.setArg(3, m_dagItems);
-                m_searchKernel.setArg(5, target);
+                m_searchKernel.setArg(4, target);
 
 #ifdef DEV_BUILD
                 if (g_logOptions & LOG_SWITCH)
@@ -390,7 +388,7 @@ void CLMiner::workLoop()
             }
 
             // Run the kernel.
-            m_searchKernel.setArg(4, startNonce);
+            m_searchKernel.setArg(3, startNonce);
             m_queue[0].enqueueNDRangeKernel(
                 m_searchKernel, cl::NullRange, m_settings.globalWorkSize, m_settings.localWorkSize);
 
@@ -682,7 +680,7 @@ bool CLMiner::initDevice()
 
 }
 
-bool CLMiner::initEpoch_internal()
+bool CLMiner::initEpoch_internal(uint64_t block_number)
 {
     auto startInit = std::chrono::steady_clock::now();
     size_t RequiredMemory = (m_epochContext.dagSize + m_epochContext.lightSize);
@@ -737,14 +735,15 @@ bool CLMiner::initEpoch_internal()
         // See libethash-cl/CMakeLists.txt: add_custom_command()
         // TODO: Just use C++ raw string literal.
 
-        std::string code = ProgPow::getKern(light->light->block_number, ProgPow::KERNEL_CL);
+        uint64_t period_seed = block_number / PROGPOW_PERIOD;
+        std::string code = ProgPow::getKern(period_seed, ProgPow::KERNEL_CL);
         code += string(CLMiner_kernel, sizeof(CLMiner_kernel));
 
-        addDefinition(code, "WORKSIZE", m_settings.localWorkSize);
+        addDefinition(code, "GROUP_SIZE", m_settings.localWorkSize);
         addDefinition(code, "ACCESSES", 64);
         addDefinition(code, "LIGHT_WORDS", m_epochContext.lightNumItems);
         addDefinition(code, "PROGPOW_DAG_BYTES", m_epochContext.dagSize);
-        addDefinition(code, "PROGPOW_DAG_ELEMENTS", m_dagItems);
+        addDefinition(code, "PROGPOW_DAG_ELEMENTS", m_dagItems / 2);
 
         addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
         addDefinition(code, "PLATFORM", m_deviceDescriptor.clPlatformId);
@@ -857,12 +856,10 @@ bool CLMiner::initEpoch_internal()
 
             // If we have a binary kernel to use, let's try it
             // otherwise just do a normal opencl load
-            if (loadedBinary)
-                m_searchKernel = cl::Kernel(binaryProgram, "search");
-            else
-                m_searchKernel = cl::Kernel(program, "search");
+            m_searchKernel = cl::Kernel(program, "ethash_search");
 
-            m_dagKernel = cl::Kernel(program, "GenerateDAG");
+            //m_dagKernel = cl::Kernel(program, "GenerateDAG");
+            m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
 
             cllog << "Writing light cache buffer";
             m_queue[0].enqueueWriteBuffer(
@@ -881,7 +878,6 @@ bool CLMiner::initEpoch_internal()
 
         m_searchKernel.setArg(1, m_header[0]);
         m_searchKernel.setArg(2, m_dag[0]);
-        m_searchKernel.setArg(3, m_dagItems);
         m_searchKernel.setArg(5, 0);
 
         // create mining buffers
@@ -891,7 +887,7 @@ bool CLMiner::initEpoch_internal()
 
         m_dagKernel.setArg(1, m_light[0]);
         m_dagKernel.setArg(2, m_dag[0]);
-        m_dagKernel.setArg(3, (uint32_t)(m_epochContext.lightSize / 64));
+        m_dagKernel.setArg(3, ~0u);
 
         const uint32_t workItems = m_dagItems * 2;  // GPU computes partial 512-bit DAG items.
 
