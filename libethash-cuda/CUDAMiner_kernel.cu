@@ -177,7 +177,7 @@ progpow_search(
         uint32_t mix[PROGPOW_REGS];
 
         // share the hash's seed across all lanes
-        uint64_t hash_seed = __shfl_sync(0xFFFFFFFF, seed, h, PROGPOW_LANES);
+        uint64_t hash_seed = SHFL(seed, h, PROGPOW_LANES);
         // initialize mix for all lanes
         fill_mix(hash_seed, lane_id, mix);
 
@@ -201,7 +201,7 @@ progpow_search(
         for (int i = 0; i < PROGPOW_LANES; i += 8)
             #pragma unroll
             for (int j = 0; j < 8; j++)
-                fnv1a(digest_temp.uint32s[j], __shfl_sync(0xFFFFFFFF, digest_lane, i + j, PROGPOW_LANES));
+                fnv1a(digest_temp.uint32s[j], SHFL(digest_lane, i + j, PROGPOW_LANES));
 
         if (h == lane_id)
             digest = digest_temp;

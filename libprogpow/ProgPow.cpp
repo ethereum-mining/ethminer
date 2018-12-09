@@ -57,7 +57,15 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
         ret << "#define min(a,b) ((a<b) ? a : b)\n";
         ret << "#define mul_hi(a, b) __umulhi(a, b)\n";
         ret << "#define clz(a) __clz(a)\n";
-        ret << "#define popcount(a) __popc(a)\n";
+        ret << "#define popcount(a) __popc(a)\n\n";
+
+        ret << "#define DEV_INLINE __device__ __forceinline__\n";
+        ret << "#if (__CUDACC_VER_MAJOR__ > 8)\n";
+        ret << "#define SHFL(x, y, z) __shfl_sync(0xFFFFFFFF, (x), (y), (z))\n";
+        ret << "#else\n";
+        ret << "#define SHFL(x, y, z) __shfl((x), (y), (z))\n";
+        ret << "#endif\n\n";
+
         ret << "\n";
     }
     else
@@ -123,7 +131,7 @@ std::string ProgPow::getKern(uint64_t prog_seed, kernel_t kern)
 	// Hard code mix[0] to guarantee the address for the global load depends on the result of the load
 	ret << "// global load\n";
 	if (kern == KERNEL_CUDA)
-		ret << "offset = __shfl_sync(0xFFFFFFFF, mix[0], loop%PROGPOW_LANES, PROGPOW_LANES);\n";
+		ret << "offset = SHFL(mix[0], loop%PROGPOW_LANES, PROGPOW_LANES);\n";
 	else
 	{
 		ret << "if(lane_id == (loop % PROGPOW_LANES))\n";
