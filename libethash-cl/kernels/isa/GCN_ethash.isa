@@ -7,7 +7,7 @@
 .64bit
 
 .ifgpu ellesmere
-    .driver_version 200406
+    .driver_version 257000
     .include "GCN_ethash_globaldata.isa"
     .include "GCN3_ethash_search.isa"
     .ifdef DAGGEN
@@ -21,7 +21,14 @@
         .include "GCN3_ethash_GenerateDAG.isa"
     .endif
 .elseifgpu baffin
-    .driver_version 200406
+    .driver_version 257000
+    .include "GCN_ethash_globaldata.isa"
+    .include "GCN3_ethash_search.isa"
+    .ifdef DAGGEN
+        .include "GCN3_ethash_GenerateDAG.isa"
+    .endif
+.elseifgpu gfx804
+    .driver_version 257000
     .include "GCN_ethash_globaldata.isa"
     .include "GCN3_ethash_search.isa"
     .ifdef DAGGEN
