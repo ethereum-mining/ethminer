@@ -427,12 +427,12 @@ protected:
     /**
      * @brief Initializes miner to current (or changed) epoch.
      */
-    bool initEpoch();
+    bool initEpoch(uint64_t);
 
     /**
      * @brief Miner's specific initialization to current (or changed) epoch.
      */
-    virtual bool initEpoch_internal() = 0;
+    virtual bool initEpoch_internal(uint64_t) = 0;
 
     /**
      * @brief Returns current workpackage this miner is working on

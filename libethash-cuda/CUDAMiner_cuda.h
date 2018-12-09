@@ -10,7 +10,7 @@
 // one solution per stream hash calculation
 // Leave room for up to 4 results. A power
 // of 2 here will yield better CUDA optimization
-#define SEARCH_RESULTS 4
+#define MAX_SEARCH_RESULTS 4U
 
 typedef struct {
 	uint32_t count;
@@ -18,8 +18,8 @@ typedef struct {
 		// One word for gid and 8 for mix hash
 		uint32_t gid;
 		uint32_t mix[8];
-	} result[SEARCH_RESULTS];
-} search_results;
+	} result[MAX_SEARCH_RESULTS];
+} Search_results;
 
 typedef struct
 {
@@ -43,6 +43,13 @@ typedef union {
 	uint2	 uint2s[200 / sizeof(uint2)];
 	uint4	 uint4s[200 / sizeof(uint4)];
 } hash200_t;
+
+void set_constants(hash64_t* _dag, uint32_t _dag_size, hash64_t* _light, uint32_t _light_size);
+void get_constants(hash64_t** _dag, uint32_t* _dag_size, hash64_t** _light, uint32_t* _light_size);
+
+void set_header(hash32_t _header);
+
+void set_target(uint64_t _target);
 
 void ethash_generate_dag(
 	hash64_t* dag,
