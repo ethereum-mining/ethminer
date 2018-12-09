@@ -10,6 +10,7 @@ branches:
         - travis
         - hunter
         - coverity
+        - /^travis-.*$/
         - /^release.*$/
 matrix:
     include:

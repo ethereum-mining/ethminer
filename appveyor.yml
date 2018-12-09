@@ -4,6 +4,7 @@ branches:
     - master
     - /v\d+\..+/
     - /release.*/
+    - /travis-.*/
     - appveyor
     - hunter
 clone_depth: 100
