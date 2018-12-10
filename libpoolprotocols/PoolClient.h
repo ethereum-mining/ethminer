@@ -15,19 +15,29 @@ namespace dev
 {
 namespace eth
 {
+struct Session
+{
+    chrono::steady_clock::time_point start = chrono::steady_clock::now();
+    atomic<bool> subscribed = {false};
+    atomic<bool> authorized = {false};
+};
+
 class PoolClient
 {
 public:
     virtual ~PoolClient() noexcept = default;
 
-
+    // Sets the connection definition to be used by the client
     void setConnection(std::shared_ptr<URI> _conn)
     {
         m_conn = _conn;
-        m_canconnect.store(false, std::memory_order_relaxed);
+        m_conn->Responds(false);
     }
 
+    // Gets a pointer to the currently active connection definition
     std::shared_ptr<URI> getConnection() { return m_conn; }
+
+    // Releases the pointer to the connection definition
     void unsetConnection() { m_conn = nullptr; }
 
     virtual void connect() = 0;
@@ -35,17 +45,25 @@ public:
 
     virtual void submitHashrate(string const& rate, string const& id) = 0;
     virtual void submitSolution(const Solution& solution) = 0;
-    virtual bool isConnected() = 0;
-    virtual bool isPendingState() = 0;
-    virtual string ActiveEndPoint() = 0;
+    virtual bool isConnected() { return (m_session ? true : false); }
+    virtual bool isPendingState() { return false; }
 
-    using SolutionAccepted =
-        std::function<void(std::chrono::milliseconds const&, unsigned const& miner_index)>;
-    using SolutionRejected =
-        std::function<void(std::chrono::milliseconds const&, unsigned const& miner_index)>;
-    using Disconnected = std::function<void()>;
-    using Connected = std::function<void()>;
-    using WorkReceived = std::function<void(WorkPackage const&)>;
+    virtual bool isSubscribed()
+    {
+        return (m_session ? m_session->subscribed.load(memory_order_relaxed) : false);
+    }
+    virtual bool isAuthorized()
+    {
+        return (m_session ? m_session->authorized.load(memory_order_relaxed) : false);
+    }
+
+    virtual string ActiveEndPoint() { return (m_session ? " [" + toString(m_endpoint) + "]" : ""); }
+
+    using SolutionAccepted = function<void(chrono::milliseconds const&, unsigned const&)>;
+    using SolutionRejected = function<void(chrono::milliseconds const&, unsigned const&)>;
+    using Disconnected = function<void()>;
+    using Connected = function<void()>;
+    using WorkReceived = function<void(WorkPackage const&)>;
 
     void onSolutionAccepted(SolutionAccepted const& _handler) { m_onSolutionAccepted = _handler; }
     void onSolutionRejected(SolutionRejected const& _handler) { m_onSolutionRejected = _handler; }
@@ -54,10 +72,8 @@ public:
     void onWorkReceived(WorkReceived const& _handler) { m_onWorkReceived = _handler; }
 
 protected:
-    std::atomic<bool> m_subscribed = {false};
-    std::atomic<bool> m_authorized = {false};
-    std::atomic<bool> m_connected = {false};
-    std::atomic<bool> m_canconnect = {false};
+
+    unique_ptr<Session> m_session = nullptr;
 
     boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> m_endpoint;
 
@@ -68,6 +84,6 @@ protected:
     Disconnected m_onDisconnected;
     Connected m_onConnected;
     WorkReceived m_onWorkReceived;
-};
+    };
 }  // namespace eth
-}  // namespace dev
+}  // namespace eth

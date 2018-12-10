@@ -136,10 +136,6 @@ void EthStratumClient::connect()
         &EthStratumClient::workloop_timer_elapsed, this, boost::asio::placeholders::error)));
 
     // Reset status flags
-    m_canconnect.store(false, std::memory_order_relaxed);
-    m_connected.store(false, std::memory_order_relaxed);
-    m_subscribed.store(false, std::memory_order_relaxed);
-    m_authorized.store(false, std::memory_order_relaxed);
     m_authpending.store(false, std::memory_order_relaxed);
 
     // Reset data for ETHEREUMSTRATUM (NiceHash) mode (if previously used)
@@ -190,12 +186,11 @@ void EthStratumClient::connect()
 void EthStratumClient::disconnect()
 {
     // Prevent unnecessary recursion
-    if (!m_connected.load(std::memory_order_relaxed) ||
-        m_disconnecting.load(std::memory_order_relaxed))
+    bool ex = false;
+    if (!m_disconnecting.compare_exchange_strong(ex, true))
         return;
 
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::disconnect() begin");
-    m_disconnecting.store(true, std::memory_order_relaxed);
 
     // Cancel any outstanding async operation
     if (m_socket)
@@ -255,9 +250,7 @@ void EthStratumClient::disconnect_finalize()
     if (g_logOptions & LOG_CONNECT)
         cnote << "Socket disconnected from " << ActiveEndPoint();
 #endif
-    m_connected.store(false, std::memory_order_relaxed);
-    m_subscribed.store(false, std::memory_order_relaxed);
-    m_authorized.store(false, std::memory_order_relaxed);
+    m_session = nullptr;
     m_authpending.store(false, std::memory_order_relaxed);
     m_disconnecting.store(false, std::memory_order_relaxed);
     m_txPending.store(false, std::memory_order_relaxed);
@@ -268,7 +261,7 @@ void EthStratumClient::disconnect_finalize()
         // reissue a connect lowering stratum mode checks
         // m_canconnect flag is used to prevent never-ending loop when
         // remote endpoint rejects connections attempts persistently since the first
-        if (!m_conn->StratumModeConfirmed() && m_canconnect.load(std::memory_order_relaxed))
+        if (!m_conn->StratumModeConfirmed() && m_conn->Responds())
         {
             // Repost a new connection attempt and advance to next stratum test
             if (m_conn->StratumMode() > 0)
@@ -321,7 +314,6 @@ void EthStratumClient::resolve_handler(
         cwarn << "Could not resolve host " << m_conn->Host() << ", " << ec.message();
 
         // Release locking flag and set connection status
-        m_connected.store(false, std::memory_order_relaxed);
         m_connecting.store(false, std::memory_order_relaxed);
 
         // We "simulate" a disconnect, to ensure a fully shutdown state
@@ -447,8 +439,6 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                     // Waiting for a response to solution submission
                     cwarn << "No response received in " << m_responsetimeout << " seconds.";
                     m_endpoints.pop();
-                    m_subscribed.store(false, std::memory_order_relaxed);
-                    m_authorized.store(false, std::memory_order_relaxed);
                     clear_response_pleas();
                     m_io_service.post(
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
@@ -461,8 +451,6 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
             {
                 cwarn << "No new work received in " << m_worktimeout << " seconds.";
                 m_endpoints.pop();
-                m_subscribed.store(false, std::memory_order_relaxed);
-                m_authorized.store(false, std::memory_order_relaxed);
                 clear_response_pleas();
                 m_io_service.post(
                     m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
@@ -501,7 +489,6 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
         // Eventually is start_connect which will check for an
         // empty list.
         m_endpoints.pop();
-        m_canconnect.store(false, std::memory_order_relaxed);
         m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::start_connect, this)));
 
         DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() end1");
@@ -509,9 +496,9 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     }
 
     // We got a socket connection established
+    m_conn->Responds(true);
     // Start a new session of data
-    m_canconnect.store(true, std::memory_order_relaxed);
-    m_connected.store(true, std::memory_order_relaxed);
+    m_session = unique_ptr<Session>(new Session());
     m_current_timestamp = std::chrono::steady_clock::now();
     m_message.clear();
 
@@ -562,7 +549,6 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
             // This is a fatal error
             // No need to try other IPs as the certificate is based on host-name
             // not ip address. Trying other IPs would end up with the very same error.
-            m_canconnect.store(false, std::memory_order_relaxed);
             m_conn->MarkUnrecoverable();
             m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
             DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() end2");
@@ -743,8 +729,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
         cwarn << "Do not blame ethminer for this. Ask pool devs to honor http://www.jsonrpc.org/ "
                  "specifications ";
         cwarn << "Disconnecting...";
-        m_subscribed.store(false, std::memory_order_relaxed);
-        m_authorized.store(false, std::memory_order_relaxed);
         m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
         return;
     }
@@ -834,8 +818,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                         "EthereumStratum/1.0.0")
                     _isSuccess = false;
 
-                m_subscribed.store(_isSuccess, std::memory_order_relaxed);
-                if (!m_subscribed)
+                m_session->subscribed.store(_isSuccess, std::memory_order_relaxed);
+                if (!isSubscribed())
                 {
                     cnote << "Could not subscribe: " << _errReason;
                     m_conn->MarkUnrecoverable();
@@ -871,8 +855,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             case EthStratumClient::ETHPROXY:
 
-                m_subscribed.store(_isSuccess, std::memory_order_relaxed);
-                if (!m_subscribed)
+                m_session->subscribed.store(_isSuccess, std::memory_order_relaxed);
+                if (!isSubscribed())
                 {
                     cnote << "Could not login: " << _errReason;
                     m_conn->MarkUnrecoverable();
@@ -891,7 +875,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     }
                     cnote << "Stratum mode : ETHPROXY Compatible";
                     cnote << "Logged in!";
-                    m_authorized.store(true, std::memory_order_relaxed);
+                    m_session->authorized.store(true, std::memory_order_relaxed);
 
                     jReq["id"] = unsigned(5);
                     jReq["method"] = "eth_getWork";
@@ -902,8 +886,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             case EthStratumClient::ETHEREUMSTRATUM:
                 
-                m_subscribed.store(_isSuccess, std::memory_order_relaxed);
-                if (!m_subscribed)
+                m_session->subscribed.store(_isSuccess, std::memory_order_relaxed);
+                if (!isSubscribed())
                 {
                     cnote << "Could not subscribe: " << _errReason;
                     m_conn->MarkUnrecoverable();
@@ -981,9 +965,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             }
 
             m_authpending.store(false, std::memory_order_relaxed);
-            m_authorized.store(_isSuccess, std::memory_order_relaxed);
+            m_session->authorized.store(_isSuccess, std::memory_order_relaxed);
 
-            if (!m_authorized)
+            if (!isAuthorized())
             {
                 cnote << "Worker " << EthWhite << m_conn->User() << EthReset << " not authorized : " << _errReason;
                 m_conn->MarkUnrecoverable();
@@ -1069,7 +1053,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             if (!_isSuccess)
             {
-                if (!m_subscribed)
+                if (!isSubscribed())
                 {
                     // Subscription pending
                     cnote << "Subscription failed : "
@@ -1078,7 +1062,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
                     return;
                 }
-                else if (m_subscribed && !m_authorized)
+                else if (isSubscribed() && !isAuthorized())
                 {
                     // Authorization pending
                     cnote << "Worker not authorized : "
@@ -1120,10 +1104,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             // Discard jobs if not properly subscribed
             // or if a job for this transmission has already
             // been processed
-            if (!m_subscribed.load(std::memory_order_relaxed) || m_newjobprocessed)
-            {
+            if (!isSubscribed() || m_newjobprocessed)
                 return;
-            }
 
             /*
             Workaround for Nanopool wrong implementation
@@ -1317,8 +1299,7 @@ void EthStratumClient::submitHashrate(string const& rate, string const& id)
 
 void EthStratumClient::submitSolution(const Solution& solution)
 {
-    if (!m_subscribed.load(std::memory_order_relaxed) ||
-        !m_authorized.load(std::memory_order_relaxed))
+    if (!isAuthorized())
     {
         cwarn << "Solution not submitted. Not authorized.";
         return;

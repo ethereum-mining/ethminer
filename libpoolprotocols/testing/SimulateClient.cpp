@@ -17,7 +17,10 @@ SimulateClient::~SimulateClient() = default;
 
 void SimulateClient::connect()
 {
-    m_connected.store(true, std::memory_order_relaxed);
+    // Initialize new session
+    m_session = unique_ptr<Session>(new Session);
+    m_session->subscribed.store(true, memory_order_relaxed);
+    m_session->authorized.store(true, memory_order_relaxed);
 
     if (m_onConnected)
         m_onConnected();
@@ -29,10 +32,12 @@ void SimulateClient::connect()
 
 void SimulateClient::disconnect()
 {
-    m_connected.store(false, std::memory_order_relaxed);
     cnote << "Simulation results : " << EthWhiteBold << "Max "
           << dev::getFormattedHashes((double)hr_max, ScaleSuffix::Add, 6) << " Mean "
           << dev::getFormattedHashes((double)hr_mean, ScaleSuffix::Add, 6) << EthReset;
+    
+    m_session = nullptr;
+
     if (m_onDisconnected)
         m_onDisconnected();
 }
@@ -83,7 +88,7 @@ void SimulateClient::workLoop()
     current.boundary = h256(dev::getTargetFromDiff(1));
     m_onWorkReceived(current);  // submit new fake job
 
-    while (m_connected.load(std::memory_order_relaxed))
+    while (m_session)
     {
         float hr = Farm::f().HashRate();
         hr_max = std::max(hr_max, hr);

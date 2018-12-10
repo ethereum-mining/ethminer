@@ -82,15 +82,16 @@ public:
     bool StratumModeConfirmed() { return m_stratumModeConfirmed; }
     bool IsUnrecoverable() { return m_unrecoverable; }
     void MarkUnrecoverable() { m_unrecoverable = true; }
+    bool Responds() { return m_responds; }
+    void Responds(bool _value) { m_responds = _value; }
 
 private:
-
     std::string m_scheme;
-    std::string m_authority; // Contains all text after scheme
-    std::string m_userinfo;  // Contains the userinfo part
-    std::string m_urlinfo;   // Contains the urlinfo part
-    std::string m_hostinfo;  // Contains the hostinfo part
-    std::string m_pathinfo;  // Contains the pathinfo part
+    std::string m_authority;  // Contains all text after scheme
+    std::string m_userinfo;   // Contains the userinfo part
+    std::string m_urlinfo;    // Contains the urlinfo part
+    std::string m_hostinfo;   // Contains the hostinfo part
+    std::string m_pathinfo;   // Contains the pathinfo part
 
     std::string m_host;
     std::string m_path;
@@ -105,6 +106,7 @@ private:
     unsigned short m_port = 0;
     bool m_stratumModeConfirmed = false;
     bool m_unrecoverable = false;
+    bool m_responds = false;
 
     UriHostNameType m_hostType = UriHostNameType::Unknown;
     bool m_isLoopBack;

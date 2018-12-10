@@ -67,17 +67,14 @@ public:
     // Connected and Connection Statuses
     bool isConnected() override
     {
-        return m_connected.load(std::memory_order_relaxed) && !isPendingState();
+        bool _ret = PoolClient::isConnected();
+        return _ret && !isPendingState();
     }
     bool isPendingState() override
     {
         return (m_connecting.load(std::memory_order_relaxed) ||
                 m_disconnecting.load(std::memory_order_relaxed));
     }
-
-    bool isSubscribed() { return m_subscribed.load(std::memory_order_relaxed); }
-    bool isAuthorized() { return m_authorized.load(std::memory_order_relaxed); }
-    string ActiveEndPoint() override { return " [" + toString(m_endpoint) + "]"; };
 
     void submitHashrate(string const& rate, string const& id) override;
     void submitSolution(const Solution& solution) override;

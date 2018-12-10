@@ -22,7 +22,6 @@ public:
     void connect() override;
     void disconnect() override;
 
-    bool isConnected() override { return m_connected; }
     bool isPendingState() override { return false; }
     string ActiveEndPoint() override { return ""; };
 
