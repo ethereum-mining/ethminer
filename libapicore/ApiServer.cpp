@@ -1018,7 +1018,7 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
     std::chrono::steady_clock::time_point _now = std::chrono::steady_clock::now();
 
     Json::Value jRes;
-    DeviceDescriptorType minerDescriptor = _miner->getDescriptor();
+    DeviceDescriptor minerDescriptor = _miner->getDescriptor();
 
     jRes["_index"] = _index;
     jRes["_mode"] =

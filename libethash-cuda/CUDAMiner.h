@@ -32,11 +32,11 @@ namespace eth
 class CUDAMiner : public Miner
 {
 public:
-    CUDAMiner(unsigned _index, CUSettingsType _settings, DeviceDescriptorType& _device);
+    CUDAMiner(unsigned _index, CUSettings _settings, DeviceDescriptor& _device);
     ~CUDAMiner() override;
 
     static unsigned getNumDevices();
-    static void enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollection);
+    static void enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection);
 
     void search(
         uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w);
@@ -57,7 +57,7 @@ private:
     std::vector<cudaStream_t> m_streams;
     uint64_t m_current_target = 0;
 
-    CUSettingsType m_settings;
+    CUSettings m_settings;
 
     const uint32_t m_batch_size;
     const uint32_t m_streams_batch_size;

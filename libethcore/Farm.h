@@ -48,7 +48,7 @@ namespace dev
 {
 namespace eth
 {
-struct FarmSettingsType
+struct FarmSettings
 {
     unsigned dagLoadMode = 0;  // 0 = Parallel; 1 = Serialized
     bool noEval = false;       // Whether or not to re-evaluate solutions
@@ -68,8 +68,8 @@ class Farm : public FarmFace
 public:
     unsigned tstart = 0, tstop = 0;
 
-    Farm(std::map<std::string, DeviceDescriptorType>& _DevicesCollection,
-        FarmSettingsType _settings, CUSettingsType _CUSettings, CLSettingsType _CLSettings);
+    Farm(std::map<std::string, DeviceDescriptor>& _DevicesCollection,
+        FarmSettings _settings, CUSettings _CUSettings, CLSettings _CLSettings);
 
     ~Farm();
 
@@ -271,9 +271,9 @@ private:
     SolutionFound m_onSolutionFound;
     MinerRestart m_onMinerRestart;
 
-    FarmSettingsType m_Settings;  // Own Farm Settings
-    CUSettingsType m_CUSettings;  // Cuda settings passed to CUDA Miner instantiator
-    CLSettingsType m_CLSettings;  // OpenCL settings passed to CL Miner instantiator
+    FarmSettings m_Settings;  // Own Farm Settings
+    CUSettings m_CUSettings;  // Cuda settings passed to CUDA Miner instantiator
+    CLSettings m_CLSettings;  // OpenCL settings passed to CL Miner instantiator
 
     boost::asio::io_service::strand m_io_strand;
     boost::asio::deadline_timer m_collectTimer;
@@ -302,7 +302,7 @@ private:
 #endif
 
     static Farm* m_this;
-    std::map<std::string, DeviceDescriptorType>& m_DevicesCollection;
+    std::map<std::string, DeviceDescriptor>& m_DevicesCollection;
 };
 
 }  // namespace eth

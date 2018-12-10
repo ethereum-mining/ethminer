@@ -28,7 +28,7 @@ unsigned Miner::s_minersCount = 0;
 
 FarmFace* FarmFace::m_this = nullptr;
 
-DeviceDescriptorType Miner::getDescriptor()
+DeviceDescriptor Miner::getDescriptor()
 {
     return m_deviceDescriptor;
 }

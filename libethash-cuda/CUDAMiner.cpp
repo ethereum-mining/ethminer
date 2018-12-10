@@ -31,7 +31,7 @@ struct CUDAChannel : public LogChannel
 };
 #define cudalog clog(CUDAChannel)
 
-CUDAMiner::CUDAMiner(unsigned _index, CUSettingsType _settings, DeviceDescriptorType& _device)
+CUDAMiner::CUDAMiner(unsigned _index, CUSettings _settings, DeviceDescriptor& _device)
   : Miner("cuda-", _index),
     m_settings(_settings),
     m_batch_size(_settings.gridSize * _settings.blockSize),
@@ -258,7 +258,7 @@ unsigned CUDAMiner::getNumDevices()
     return 0;
 }
 
-void CUDAMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollection)
+void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection)
 {
     int numDevices = getNumDevices();
     if (numDevices)
@@ -267,7 +267,7 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesColl
         {
             string uniqueId;
             ostringstream s;
-            DeviceDescriptorType deviceDescriptor;
+            DeviceDescriptor deviceDescriptor;
             cudaDeviceProp props;
 
             try
@@ -280,7 +280,7 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesColl
                 if (_DevicesCollection.find(uniqueId) != _DevicesCollection.end())
                     deviceDescriptor = _DevicesCollection[uniqueId];
                 else
-                    deviceDescriptor = DeviceDescriptorType();
+                    deviceDescriptor = DeviceDescriptor();
 
                 deviceDescriptor.name = string(props.name);
                 deviceDescriptor.cuDetected = true;

@@ -253,7 +253,7 @@ std::vector<cl::Device> getDevices(
 }  // namespace eth
 }  // namespace dev
 
-CLMiner::CLMiner(unsigned _index, CLSettingsType _settings, DeviceDescriptorType& _device)
+CLMiner::CLMiner(unsigned _index, CLSettings _settings, DeviceDescriptor& _device)
   : Miner("cl-", _index), m_settings(_settings)
 {
     m_deviceDescriptor = _device;
@@ -439,7 +439,7 @@ void CLMiner::kick_miner()
     m_new_work_signal.notify_one();
 }
 
-void CLMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollection) 
+void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection) 
 {
     // Load available platforms
     vector<cl::Platform> platforms = getPlatforms();
@@ -482,7 +482,7 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollec
                 clDeviceType = DeviceTypeEnum::Accelerator;
 
             string uniqueId;
-            DeviceDescriptorType deviceDescriptor;
+            DeviceDescriptor deviceDescriptor;
 
             if (clDeviceType == DeviceTypeEnum::Gpu && platformType == ClPlatformTypeEnum::Nvidia)
             {
@@ -527,7 +527,7 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollec
            if (_DevicesCollection.find(uniqueId) != _DevicesCollection.end())
                 deviceDescriptor = _DevicesCollection[uniqueId];
             else
-                deviceDescriptor = DeviceDescriptorType();
+                deviceDescriptor = DeviceDescriptor();
 
             // Fill the blanks by OpenCL means
             deviceDescriptor.name = device.getInfo<CL_DEVICE_NAME>();

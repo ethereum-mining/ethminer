@@ -85,7 +85,7 @@ enum class SolutionAccountingEnum
 };
 
 // Holds settings for CUDA Miner
-struct CUSettingsType
+struct CUSettings
 {
     vector<unsigned> devices;
     unsigned streams = 2;
@@ -96,7 +96,7 @@ struct CUSettingsType
 };
 
 // Holds settings for OpenCL Miner
-struct CLSettingsType
+struct CLSettings
 {
     vector<unsigned> devices;
     bool noBinary = false;
@@ -148,7 +148,7 @@ struct TelemetryAccountType
     SolutionAccountType solutions;
 };
 
-struct DeviceDescriptorType
+struct DeviceDescriptor
 {
     DeviceTypeEnum type = DeviceTypeEnum::Unknown;
     DeviceSubscriptionTypeEnum subscriptionType = DeviceSubscriptionTypeEnum::None;
@@ -351,7 +351,7 @@ public:
     /**
      * @brief Gets the device descriptor assigned to this instance
      */
-    DeviceDescriptorType getDescriptor();
+    DeviceDescriptor getDescriptor();
 
     /**
      * @brief Assigns hashing work to this instance
@@ -435,8 +435,8 @@ protected:
     static unsigned s_dagLoadIndex;  // In case of serialized load of dag this is the index of miner
                                      // which should load next
 
-    const unsigned m_index = 0;               // Ordinal index of the Instance (not the device)
-    DeviceDescriptorType m_deviceDescriptor;  // Info about the device
+    const unsigned m_index = 0;           // Ordinal index of the Instance (not the device)
+    DeviceDescriptor m_deviceDescriptor;  // Info about the device
 
     EpochContext m_epochContext;
 

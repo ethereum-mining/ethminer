@@ -32,8 +32,8 @@ namespace eth
 {
 Farm* Farm::m_this = nullptr;
 
-Farm::Farm(std::map<std::string, DeviceDescriptorType>& _DevicesCollection,
-    FarmSettingsType _settings, CUSettingsType _CUSettings, CLSettingsType _CLSettings)
+Farm::Farm(std::map<std::string, DeviceDescriptor>& _DevicesCollection,
+    FarmSettings _settings, CUSettings _CUSettings, CLSettings _CLSettings)
   : m_Settings(std::move(_settings)),
     m_CUSettings(std::move(_CUSettings)),
     m_CLSettings(std::move(_CLSettings)),

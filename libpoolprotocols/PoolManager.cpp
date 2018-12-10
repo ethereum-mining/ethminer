@@ -8,7 +8,7 @@ using namespace eth;
 
 PoolManager* PoolManager::m_this = nullptr;
 
-PoolManager::PoolManager(PoolSettingsType _settings)
+PoolManager::PoolManager(PoolSettings _settings)
   : m_Settings(std::move(_settings)),
     m_io_strand(g_io_service),
     m_failovertimer(g_io_service),

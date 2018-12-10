@@ -19,7 +19,7 @@ namespace dev
 {
 namespace eth
 {
-struct PoolSettingsType
+struct PoolSettings
 {
     std::vector<std::shared_ptr<URI>> connections;  // List of connection definitions
     unsigned getWorkPollInterval = 500;             // Interval (ms) between getwork requests
@@ -37,7 +37,7 @@ struct PoolSettingsType
 class PoolManager
 {
 public:
-    PoolManager(PoolSettingsType _settings);
+    PoolManager(PoolSettings _settings);
     static PoolManager& p() { return *m_this; }
     void addConnection(std::string _connstring);
     void addConnection(std::shared_ptr<URI> _uri);
@@ -64,7 +64,7 @@ private:
 
     void setActiveConnectionCommon(unsigned int idx);
 
-    PoolSettingsType m_Settings;
+    PoolSettings m_Settings;
 
     void failovertimer_elapsed(const boost::system::error_code& ec);
     void submithrtimer_elapsed(const boost::system::error_code& ec);
