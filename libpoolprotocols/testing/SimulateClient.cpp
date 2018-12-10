@@ -36,6 +36,7 @@ void SimulateClient::disconnect()
           << dev::getFormattedHashes((double)hr_max, ScaleSuffix::Add, 6) << " Mean "
           << dev::getFormattedHashes((double)hr_mean, ScaleSuffix::Add, 6) << EthReset;
     
+    m_conn->addDuration(m_session->duration());
     m_session = nullptr;
 
     if (m_onDisconnected)

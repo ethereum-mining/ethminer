@@ -20,6 +20,11 @@ struct Session
     chrono::steady_clock::time_point start = chrono::steady_clock::now();
     atomic<bool> subscribed = {false};
     atomic<bool> authorized = {false};
+    unsigned long duration()
+    {
+        return (chrono::duration_cast<chrono::minutes>(chrono::steady_clock::now() - start))
+            .count();
+    }
 };
 
 class PoolClient
@@ -72,7 +77,6 @@ public:
     void onWorkReceived(WorkReceived const& _handler) { m_onWorkReceived = _handler; }
 
 protected:
-
     unique_ptr<Session> m_session = nullptr;
 
     boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> m_endpoint;
@@ -84,6 +88,6 @@ protected:
     Disconnected m_onDisconnected;
     Connected m_onConnected;
     WorkReceived m_onWorkReceived;
-    };
+};
 }  // namespace eth
-}  // namespace eth
+}  // namespace dev

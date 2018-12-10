@@ -82,8 +82,12 @@ public:
     bool StratumModeConfirmed() { return m_stratumModeConfirmed; }
     bool IsUnrecoverable() { return m_unrecoverable; }
     void MarkUnrecoverable() { m_unrecoverable = true; }
+
     bool Responds() { return m_responds; }
     void Responds(bool _value) { m_responds = _value; }
+
+    void addDuration(unsigned long _minutes) { m_totalDuration += _minutes; }
+    unsigned long getDuration() { return m_totalDuration; }
 
 private:
     std::string m_scheme;
@@ -110,5 +114,8 @@ private:
 
     UriHostNameType m_hostType = UriHostNameType::Unknown;
     bool m_isLoopBack;
+
+    unsigned long m_totalDuration; // Total duration on this connection in minutes
+
 };
 }  // namespace dev

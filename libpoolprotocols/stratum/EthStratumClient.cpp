@@ -250,7 +250,11 @@ void EthStratumClient::disconnect_finalize()
     if (g_logOptions & LOG_CONNECT)
         cnote << "Socket disconnected from " << ActiveEndPoint();
 #endif
+
+    // Release session
+    m_conn->addDuration(m_session->duration());
     m_session = nullptr;
+
     m_authpending.store(false, std::memory_order_relaxed);
     m_disconnecting.store(false, std::memory_order_relaxed);
     m_txPending.store(false, std::memory_order_relaxed);
