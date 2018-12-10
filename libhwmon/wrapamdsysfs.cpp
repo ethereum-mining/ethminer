@@ -47,8 +47,6 @@ wrap_amdsysfs_handle* wrap_amdsysfs_create()
     wrap_amdsysfs_handle* sysfsh = nullptr;
 
 #if defined(__linux)
-    sysfsh = (wrap_amdsysfs_handle*)calloc(1, sizeof(wrap_amdsysfs_handle));
-
     namespace fs = boost::filesystem;
     std::vector<pciInfo> devices;  // Used to collect devices
 
@@ -158,6 +156,13 @@ wrap_amdsysfs_handle* wrap_amdsysfs_create()
     }
 
     unsigned int gpucount = devices.size();
+    sysfsh = (wrap_amdsysfs_handle*)calloc(1, sizeof(wrap_amdsysfs_handle));
+    if (sysfsh == nullptr)
+    {
+        cwarn << "Failed allocate memory";
+        cwarn << "AMD hardware monitoring disabled";
+        return sysfsh;
+    }
     sysfsh->sysfs_gpucount = gpucount;
     sysfsh->sysfs_device_id = (unsigned int*)calloc(gpucount, sizeof(unsigned int));
     sysfsh->sysfs_hwmon_id = (unsigned int*)calloc(gpucount, sizeof(unsigned int));

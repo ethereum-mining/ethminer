@@ -973,7 +973,7 @@ Json::Value ApiConnection::getMinerStat1()
     poolAddresses << connection->Host() << ':' << connection->Port();
     invalidStats << ";0;0";  // DualMining not supported
 
-    int gpuIndex = 0;
+    int gpuIndex;
     int numGpus = t.miners.size();
 
     for (gpuIndex = 0; gpuIndex < numGpus; gpuIndex++)
@@ -985,7 +985,6 @@ Json::Value ApiConnection::getMinerStat1()
                       << (((numGpus - 1) > gpuIndex) ? ";" : "");  // DualMining not supported
     }
 
-    gpuIndex = 0;
     for (gpuIndex = 0; gpuIndex < numGpus; gpuIndex++)
     {
         tempAndFans << t.miners.at(gpuIndex).sensors.tempC << ";"
@@ -1019,22 +1018,22 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
     std::chrono::steady_clock::time_point _now = std::chrono::steady_clock::now();
 
     Json::Value jRes;
-    DeviceDescriptorType minerDescriptor = _miner->getDescriptor();
+    DeviceDescriptor minerDescriptor = _miner->getDescriptor();
 
     jRes["_index"] = _index;
     jRes["_mode"] =
-        (minerDescriptor.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda ? "CUDA" : "OpenCL");
+        (minerDescriptor.subscriptionType == DeviceSubscriptionTypeEnum::Cuda ? "CUDA" : "OpenCL");
 
     /* Hardware Info */
     Json::Value hwinfo;
-    hwinfo["pci"] = minerDescriptor.UniqueId;
+    hwinfo["pci"] = minerDescriptor.uniqueId;
     hwinfo["type"] =
-        (minerDescriptor.Type == DeviceTypeEnum::Gpu ?
+        (minerDescriptor.type == DeviceTypeEnum::Gpu ?
                 "GPU" :
-                (minerDescriptor.Type == DeviceTypeEnum::Accelerator ? "ACCELERATOR" : "CPU"));
+                (minerDescriptor.type == DeviceTypeEnum::Accelerator ? "ACCELERATOR" : "CPU"));
     ostringstream ss;
     ss << (minerDescriptor.clDetected ? minerDescriptor.clName : minerDescriptor.cuName) << " "
-       << dev::getFormattedMemory((double)minerDescriptor.TotalMemory);
+       << dev::getFormattedMemory((double)minerDescriptor.totalMemory);
     hwinfo["name"] = ss.str();
 
     /* Hardware Sensors*/

@@ -126,6 +126,15 @@ wrap_adl_handle* wrap_adl_create()
         adlh->devs->iSize = sizeof(adlh->devs);
 
         int res = adlh->adlAdapterAdapterInfoGet(adlh->devs, sizeof(AdapterInfo) * logicalGpuCount);
+        if (res != WRAPADL_OK)
+        {
+            cwarn << "Failed to obtain using adlAdapterAdapterInfoGet().";
+            cwarn << "AMD hardware monitoring disabled";
+
+            wrap_dlclose(adlh->adl_dll);
+            free(adlh);
+            return nullptr;
+        }
 
         for (int i = 0; i < logicalGpuCount; i++)
         {

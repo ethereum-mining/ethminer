@@ -48,6 +48,16 @@ namespace dev
 {
 namespace eth
 {
+struct FarmSettings
+{
+    unsigned dagLoadMode = 0;  // 0 = Parallel; 1 = Serialized
+    bool noEval = false;       // Whether or not to re-evaluate solutions
+    unsigned hwMon = 0;        // 0 - No monitor; 1 - Temp and Fan; 2 - Temp Fan Power
+    unsigned ergodicity = 0;   // 0=default, 1=per session, 2=per job
+    unsigned tempStart = 40;   // Temperature threshold to restart mining (if paused)
+    unsigned tempStop = 0;     // Temperature threshold to pause mining (overheating)
+};
+
 /**
  * @brief A collective of Miners.
  * Miners ask for work, then submit proofs
@@ -58,13 +68,8 @@ class Farm : public FarmFace
 public:
     unsigned tstart = 0, tstop = 0;
 
-    struct SealerDescriptor
-    {
-        std::function<Miner*(unsigned)> create;
-    };
-
-    Farm(std::map<std::string, DeviceDescriptorType>& _DevicesCollection, unsigned hwmonlvl,
-        bool noeval);
+    Farm(std::map<std::string, DeviceDescriptor>& _DevicesCollection,
+        FarmSettings _settings, CUSettings _CUSettings, CLSettings _CLSettings);
 
     ~Farm();
 
@@ -80,8 +85,6 @@ public:
      * @param _wp The work package we wish to be mining.
      */
     void setWork(WorkPackage const& _newWp);
-
-    void setSealers(std::map<std::string, SealerDescriptor> const& _sealers);
 
     /**
      * @brief Start a number of miners.
@@ -227,9 +230,11 @@ public:
 
     void setTStartTStop(unsigned tstart, unsigned tstop);
 
-    unsigned get_tstart() override { return m_tstart; }
+    unsigned get_tstart() override { return m_Settings.tempStart; }
 
-    unsigned get_tstop() override { return m_tstop; }
+    unsigned get_tstop() override { return m_Settings.tempStop; }
+
+    unsigned get_ergodicity() override { return m_Settings.ergodicity; }
 
     /**
      * @brief Called from a Miner to note a WorkPackage has a solution.
@@ -254,19 +259,21 @@ private:
     bool spawn_file_in_bin_dir(const char* filename, const std::vector<std::string>& args);
 
     mutable Mutex x_minerWork;
-    std::vector<std::shared_ptr<Miner>> m_miners;       // Collection of miners
+    std::vector<std::shared_ptr<Miner>> m_miners;  // Collection of miners
 
     WorkPackage m_currentWp;
     EpochContext m_currentEc;
 
     std::atomic<bool> m_isMining = {false};
 
-    TelemetryType m_telemetry; // Holds progress and status info for farm and miners
+    TelemetryType m_telemetry;  // Holds progress and status info for farm and miners
 
     SolutionFound m_onSolutionFound;
     MinerRestart m_onMinerRestart;
 
-    std::map<std::string, SealerDescriptor> m_sealers;
+    FarmSettings m_Settings;  // Own Farm Settings
+    CUSettings m_CUSettings;  // Cuda settings passed to CUDA Miner instantiator
+    CLSettings m_CLSettings;  // OpenCL settings passed to CL Miner instantiator
 
     boost::asio::io_service::strand m_io_strand;
     boost::asio::deadline_timer m_collectTimer;
@@ -282,15 +289,6 @@ private:
     uint64_t m_nonce_scrambler;
     unsigned int m_nonce_segment_with = 32;
 
-    // Switches for hw monitoring and power drain monitoring
-    unsigned m_hwmonlvl;
-
-    // Hardware monitoring temperatures
-    unsigned m_tstart = 0, m_tstop = 0;
-
-    // Whether or not GPU solutions should be CPU re-evaluated
-    bool m_noeval = false;
-
     // Wrappers for hardware monitoring libraries and their mappers
     wrap_nvml_handle* nvmlh = nullptr;
     std::map<string, int> map_nvml_handle = {};
@@ -304,7 +302,7 @@ private:
 #endif
 
     static Farm* m_this;
-    std::map<std::string, DeviceDescriptorType>& m_DevicesCollection;
+    std::map<std::string, DeviceDescriptor>& m_DevicesCollection;
 };
 
 }  // namespace eth

@@ -1146,7 +1146,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             if (jPrm.isArray() && !jPrm.empty())
             {
                 m_current.job = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
-
+                
                 if (m_conn->StratumMode() == EthStratumClient::ETHEREUMSTRATUM)
                 {
                     string sSeedHash = jPrm.get(Json::Value::ArrayIndex(1), "").asString();

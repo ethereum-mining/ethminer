@@ -43,19 +43,11 @@ namespace eth
 class CLMiner : public Miner
 {
 public:
-    /* -- default values -- */
-    /// Default value of the local work size. Also known as workgroup size.
-    static const unsigned c_defaultLocalWorkSize = 128;
-    /// Default value of the global work size as a multiplier of the local work size
-    static const unsigned c_defaultGlobalWorkSizeMultiplier = 65536;
 
-    CLMiner(unsigned _index);
+    CLMiner(unsigned _index, CLSettings _settings, DeviceDescriptor& _device);
     ~CLMiner() override;
 
-    static void enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollection);
-
-    static bool configureGPU(unsigned _localWorkSize, unsigned _globalWorkSizeMultiplier,
-        unsigned _dagLoadMode, bool _nobinary);
+    static void enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection);
 
 protected:
     bool initDevice() override;
@@ -79,19 +71,12 @@ private:
     vector<cl::Buffer> m_light;
     vector<cl::Buffer> m_header;
     vector<cl::Buffer> m_searchBuffer;
-    unsigned m_globalWorkSize = 0;
-    unsigned m_workgroupSize = 0;
+
+    CLSettings m_settings;
+
     unsigned m_dagItems = 0;
     uint64_t m_lastNonce = 0;
 
-    static bool s_noBinary;
-    bool m_noBinary;
-
-
-    /// The local work size for the search
-    static unsigned s_workgroupSize;
-    /// The initial global work size for the searches
-    static unsigned s_initialGlobalWorkSize;
 };
 
 }  // namespace eth

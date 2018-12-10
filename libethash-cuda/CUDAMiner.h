@@ -32,24 +32,14 @@ namespace eth
 class CUDAMiner : public Miner
 {
 public:
-    CUDAMiner(unsigned _index);
+    CUDAMiner(unsigned _index, CUSettings _settings, DeviceDescriptor& _device);
     ~CUDAMiner() override;
 
     static unsigned getNumDevices();
-    static void enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollection);
-    static void configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
-        unsigned _scheduleFlag, unsigned _dagLoadMode, unsigned _parallelHash);
+    static void enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection);
 
     void search(
         uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w);
-
-    /* -- default values -- */
-    /// Default value of the block size. Also known as workgroup size.
-    static unsigned const c_defaultBlockSize;
-    /// Default value of the grid size
-    static unsigned const c_defaultGridSize;
-    // default number of CUDA streams
-    static unsigned const c_defaultNumStreams;
 
 protected:
     bool initDevice() override;
@@ -67,16 +57,7 @@ private:
     std::vector<cudaStream_t> m_streams;
     uint64_t m_current_target = 0;
 
-    /// The local work size for the search
-    static unsigned s_blockSize;
-    /// The initial global work size for the searches
-    static unsigned s_gridSize;
-    /// The number of CUDA streams
-    static unsigned s_numStreams;
-    /// CUDA schedule flag
-    static unsigned s_scheduleFlag;
-    /// CUDA parallel hashes
-    static unsigned s_parallelHash;
+    CUSettings m_settings;
 
     const uint32_t m_batch_size;
     const uint32_t m_streams_batch_size;

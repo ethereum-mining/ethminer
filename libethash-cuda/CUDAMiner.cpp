@@ -31,11 +31,14 @@ struct CUDAChannel : public LogChannel
 };
 #define cudalog clog(CUDAChannel)
 
-CUDAMiner::CUDAMiner(unsigned _index)
+CUDAMiner::CUDAMiner(unsigned _index, CUSettings _settings, DeviceDescriptor& _device)
   : Miner("cuda-", _index),
-    m_batch_size(s_gridSize * s_blockSize),
-    m_streams_batch_size(s_gridSize * s_blockSize * s_numStreams)
-{}
+    m_settings(_settings),
+    m_batch_size(_settings.gridSize * _settings.blockSize),
+    m_streams_batch_size(_settings.gridSize * _settings.blockSize * _settings.streams)
+{
+    m_deviceDescriptor = _device;
+}
 
 CUDAMiner::~CUDAMiner()
 {
@@ -45,21 +48,15 @@ CUDAMiner::~CUDAMiner()
     DEV_BUILD_LOG_PROGRAMFLOW(cudalog, "cuda-" << m_index << " CUDAMiner::~CUDAMiner() end");
 }
 
-unsigned CUDAMiner::s_parallelHash = 4;
-unsigned CUDAMiner::s_blockSize = CUDAMiner::c_defaultBlockSize;
-unsigned CUDAMiner::s_gridSize = CUDAMiner::c_defaultGridSize;
-unsigned CUDAMiner::s_numStreams = CUDAMiner::c_defaultNumStreams;
-unsigned CUDAMiner::s_scheduleFlag = 0;
-
 bool CUDAMiner::initDevice()
 {
-    cudalog << "Using Pci Id : " << m_deviceDescriptor.UniqueId << " " << m_deviceDescriptor.cuName
+    cudalog << "Using Pci Id : " << m_deviceDescriptor.uniqueId << " " << m_deviceDescriptor.cuName
             << " (Compute " + m_deviceDescriptor.cuCompute + ") Memory : "
-            << dev::getFormattedMemory((double)m_deviceDescriptor.TotalMemory);
+            << dev::getFormattedMemory((double)m_deviceDescriptor.totalMemory);
 
     // Set Hardware Monitor Info
     m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
-    m_hwmoninfo.devicePciId = m_deviceDescriptor.UniqueId;
+    m_hwmoninfo.devicePciId = m_deviceDescriptor.uniqueId;
     m_hwmoninfo.deviceIndex = -1;  // Will be later on mapped by nvml (see Farm() constructor)
 
     try
@@ -69,7 +66,7 @@ bool CUDAMiner::initDevice()
     }
     catch (const cuda_runtime_error& ec)
     {
-        cudalog << "Could not set CUDA device on Pci Id " << m_deviceDescriptor.UniqueId
+        cudalog << "Could not set CUDA device on Pci Id " << m_deviceDescriptor.uniqueId
                 << " Error : " << ec.what();
         cudalog << "Mining aborted on this device.";
         return false;
@@ -103,11 +100,11 @@ bool CUDAMiner::initEpoch_internal()
             // We need to reset the device and (re)create the dag
             // cudaDeviceReset() frees all previous allocated memory
             CUDA_SAFE_CALL(cudaDeviceReset());
-            CUDA_SAFE_CALL(cudaSetDeviceFlags(s_scheduleFlag));
+            CUDA_SAFE_CALL(cudaSetDeviceFlags(m_settings.schedule));
             CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
             // Check whether the current device has sufficient memory every time we recreate the dag
-            if (m_deviceDescriptor.TotalMemory < RequiredMemory)
+            if (m_deviceDescriptor.totalMemory < RequiredMemory)
             {
                 cudalog << "Epoch " << m_epochContext.epochNumber << " requires "
                         << dev::getFormattedMemory((double)RequiredMemory) << " memory.";
@@ -127,7 +124,7 @@ bool CUDAMiner::initEpoch_internal()
             m_allocated_memory_dag = m_epochContext.dagSize;
 
             // create mining buffers
-            for (unsigned i = 0; i != s_numStreams; ++i)
+            for (unsigned i = 0; i != m_settings.streams; ++i)
             {
                 CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(Search_results)));
                 CUDA_SAFE_CALL(cudaStreamCreateWithFlags(&m_streams[i], cudaStreamNonBlocking));
@@ -146,14 +143,15 @@ bool CUDAMiner::initEpoch_internal()
         set_constants(dag, m_epochContext.dagNumItems, light,
             m_epochContext.lightNumItems);  // in ethash_cuda_miner_kernel.cu
 
-        ethash_generate_dag(m_epochContext.dagSize, s_gridSize, s_blockSize, m_streams[0]);
+        ethash_generate_dag(
+            m_epochContext.dagSize, m_settings.gridSize, m_settings.blockSize, m_streams[0]);
 
         cudalog << "Generated DAG + Light in "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(
                        std::chrono::steady_clock::now() - startInit)
                        .count()
                 << " ms. "
-                << dev::getFormattedMemory((double)(m_deviceDescriptor.TotalMemory - RequiredMemory))
+                << dev::getFormattedMemory((double)(m_deviceDescriptor.totalMemory - RequiredMemory))
                 << " left.";
 
         retVar = true;
@@ -161,7 +159,7 @@ bool CUDAMiner::initEpoch_internal()
     catch (const cuda_runtime_error& ec)
     {
         cudalog << "Unexpected error " << ec.what() << " on CUDA device "
-                << m_deviceDescriptor.UniqueId;
+                << m_deviceDescriptor.uniqueId;
         cudalog << "Mining suspended ...";
         pause(MinerPauseEnum::PauseDueToInitEpochError);
         retVar = true;
@@ -175,8 +173,8 @@ void CUDAMiner::workLoop()
     WorkPackage current;
     current.header = h256();
 
-    m_search_buf.resize(s_numStreams);
-    m_streams.resize(s_numStreams);
+    m_search_buf.resize(m_settings.streams);
+    m_streams.resize(m_settings.streams);
 
     if (!initDevice())
         return;
@@ -260,7 +258,7 @@ unsigned CUDAMiner::getNumDevices()
     return 0;
 }
 
-void CUDAMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesCollection)
+void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection)
 {
     int numDevices = getNumDevices();
     if (numDevices)
@@ -269,7 +267,7 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesColl
         {
             string uniqueId;
             ostringstream s;
-            DeviceDescriptorType deviceDescriptor;
+            DeviceDescriptor deviceDescriptor;
             cudaDeviceProp props;
 
             try
@@ -282,16 +280,16 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesColl
                 if (_DevicesCollection.find(uniqueId) != _DevicesCollection.end())
                     deviceDescriptor = _DevicesCollection[uniqueId];
                 else
-                    deviceDescriptor = DeviceDescriptorType();
+                    deviceDescriptor = DeviceDescriptor();
 
-                deviceDescriptor.Name = string(props.name);
+                deviceDescriptor.name = string(props.name);
                 deviceDescriptor.cuDetected = true;
-                deviceDescriptor.UniqueId = uniqueId;
-                deviceDescriptor.Type = DeviceTypeEnum::Gpu;
+                deviceDescriptor.uniqueId = uniqueId;
+                deviceDescriptor.type = DeviceTypeEnum::Gpu;
                 deviceDescriptor.cuDeviceIndex = i;
                 deviceDescriptor.cuDeviceOrdinal = i;
                 deviceDescriptor.cuName = string(props.name);
-                deviceDescriptor.TotalMemory = props.totalGlobalMem;
+                deviceDescriptor.totalMemory = props.totalGlobalMem;
                 deviceDescriptor.cuCompute =
                     (to_string(props.major) + "." + to_string(props.minor));
                 deviceDescriptor.cuComputeMajor = props.major;
@@ -307,21 +305,6 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptorType>& _DevicesColl
     }
 }
 
-unsigned const CUDAMiner::c_defaultBlockSize = 128;
-unsigned const CUDAMiner::c_defaultGridSize = 8192;  // * CL_DEFAULT_LOCAL_WORK_SIZE
-unsigned const CUDAMiner::c_defaultNumStreams = 2;
-
-void CUDAMiner::configureGPU(unsigned _blockSize, unsigned _gridSize, unsigned _numStreams,
-    unsigned _scheduleFlag, unsigned _dagLoadMode, unsigned _parallelHash)
-{
-    s_dagLoadMode = _dagLoadMode;
-    s_blockSize = _blockSize;
-    s_gridSize = _gridSize;
-    s_numStreams = _numStreams;
-    s_scheduleFlag = _scheduleFlag;
-    s_parallelHash = _parallelHash;
-}
-
 void CUDAMiner::search(
     uint8_t const* header, uint64_t target, uint64_t start_nonce, const dev::eth::WorkPackage& w)
 {
@@ -334,7 +317,7 @@ void CUDAMiner::search(
 
     // prime each stream, clear search result buffers and start the search
     uint32_t current_index;
-    for (current_index = 0; current_index < s_numStreams;
+    for (current_index = 0; current_index < m_settings.streams;
          current_index++, start_nonce += m_batch_size)
     {
         cudaStream_t stream = m_streams[current_index];
@@ -342,7 +325,7 @@ void CUDAMiner::search(
         buffer.count = 0;
 
         // Run the batch for this stream
-        run_ethash_search(s_gridSize, s_blockSize, stream, &buffer, start_nonce, s_parallelHash);
+        run_ethash_search(m_settings.gridSize, m_settings.blockSize, stream, &buffer, start_nonce, m_settings.parallelHash);
     }
 
     // process stream batches until we get new work.
@@ -360,7 +343,7 @@ void CUDAMiner::search(
             done = paused();
 
         // This inner loop will process each cuda stream individually
-        for (current_index = 0; current_index < s_numStreams;
+        for (current_index = 0; current_index < m_settings.streams;
              current_index++, start_nonce += m_batch_size)
         {
             // Each pass of this loop will wait for a stream to exit,
@@ -407,11 +390,11 @@ void CUDAMiner::search(
             // unless we are done for this round.
             if (!done)
                 run_ethash_search(
-                    s_gridSize, s_blockSize, stream, &buffer, start_nonce, s_parallelHash);
+                    m_settings.gridSize, m_settings.blockSize, stream, &buffer, start_nonce, m_settings.parallelHash);
         }
 
         // Update the hash rate
-        updateHashRate(m_batch_size, s_numStreams);
+        updateHashRate(m_batch_size, m_settings.streams);
 
         // Bail out if it's shutdown time
         if (shouldStop())

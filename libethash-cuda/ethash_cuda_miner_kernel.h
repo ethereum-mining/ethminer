@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <string>
 
-#include <cuda_runtime.h>
+#include "cuda_runtime.h"
 
 // It is virtually impossible to get more than
 // one solution per stream hash calculation

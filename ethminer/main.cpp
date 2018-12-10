@@ -238,35 +238,35 @@ public:
 
         bool version = false;
 
-        app.add_option("--ergodicity", m_farmErgodicity, "", true)->check(CLI::Range(0, 2));
+        app.add_option("--ergodicity", m_FarmSettings.ergodicity, "", true)->check(CLI::Range(0, 2));
 
         app.add_flag("-V,--version", version, "Show program version");
 
         app.add_option("-v,--verbosity", g_logOptions, "", true)->check(CLI::Range(LOG_NEXT - 1));
 
-        app.add_option("--farm-recheck", m_farmPollInterval, "", true)->check(CLI::Range(1, 99999));
+        app.add_option("--farm-recheck", m_PoolSettings.getWorkPollInterval, "", true)->check(CLI::Range(1, 99999));
 
-        app.add_option("--farm-retries", m_poolMaxRetries, "", true)->check(CLI::Range(0, 99999));
+        app.add_option("--farm-retries", m_PoolSettings.connectionMaxRetries, "", true)->check(CLI::Range(0, 99999));
 
-        app.add_option("--work-timeout", m_poolWorkTimeout, "", true)
+        app.add_option("--work-timeout", m_PoolSettings.noWorkTimeout, "", true)
             ->check(CLI::Range(180, 99999));
 
-        app.add_option("--response-timeout", m_poolRespTimeout, "", true)
+        app.add_option("--response-timeout", m_PoolSettings.noResponseTimeout, "", true)
             ->check(CLI::Range(2, 999));
 
-        app.add_flag("-R,--report-hashrate,--report-hr", m_poolHashRate, "");
+        app.add_flag("-R,--report-hashrate,--report-hr", m_PoolSettings.reportHashrate, "");
 
         app.add_option("--display-interval", m_cliDisplayInterval, "", true)
             ->check(CLI::Range(1, 1800));
 
-        app.add_option("--HWMON", m_farmHwMonitors, "", true)->check(CLI::Range(0, 2));
+        app.add_option("--HWMON", m_FarmSettings.hwMon, "", true)->check(CLI::Range(0, 2));
 
         app.add_flag("--exit", g_exitOnError, "");
 
         vector<string> pools;
         app.add_option("-P,--pool", pools, "");
 
-        app.add_option("--failover-timeout", m_poolFlvrTimeout, "", true)
+        app.add_option("--failover-timeout", m_PoolSettings.poolFailoverTimeout, "", true)
             ->check(CLI::Range(0, 999));
 
         app.add_flag("--nocolor", g_logNoColor, "");
@@ -306,48 +306,41 @@ public:
 
 #if ETH_ETHASHCL
 
-        int clKernel = -1;
+        app.add_option("--opencl-device,--opencl-devices,--cl-devices", m_CLSettings.devices, "");
 
-        app.add_option("--cl-kernel", clKernel, "", true)->check(CLI::Range(2));
+        app.add_option("--cl-global-work", m_CLSettings.globalWorkSize, "", true);
 
-        app.add_option("--opencl-device,--opencl-devices,--cl-devices", m_oclDevices, "");
+        app.add_set("--cl-local-work", m_CLSettings.localWorkSize, {64, 128, 256}, "", true);
 
-        int openclThreadsPerHash = -1;
-        app.add_set("--cl-parallel-hash", openclThreadsPerHash, {1, 2, 4, 8}, "", true);
-
-        app.add_option("--cl-global-work", m_oclGWorkSize, "", true);
-
-        app.add_set("--cl-local-work", m_oclLWorkSize, {64, 128, 192, 256}, "", true);
-
-        app.add_flag("--cl-nobin", m_oclNoBinary, "");
+        app.add_flag("--cl-nobin", m_CLSettings.noBinary, "");
 
 #endif
 
 #if ETH_ETHASHCUDA
 
-        app.add_option("--cuda-grid-size,--cu-grid-size", m_cudaGridSize, "", true)
+        app.add_option("--cuda-devices,--cu-devices", m_CUSettings.devices, "");
+
+        app.add_option("--cuda-grid-size,--cu-grid-size", m_CUSettings.gridSize, "", true)
             ->check(CLI::Range(1, 131072));
 
         app.add_set(
-            "--cuda-block-size,--cu-block-size", m_cudaBlockSize, {32, 64, 128, 256}, "", true);
-
-        app.add_option("--cuda-devices,--cu-devices", m_cudaDevices, "");
+            "--cuda-block-size,--cu-block-size", m_CUSettings.blockSize, {32, 64, 128, 256}, "", true);
 
         app.add_set(
-            "--cuda-parallel-hash,--cu-parallel-hash", m_cudaParallelHash, {1, 2, 4, 8}, "", true);
+            "--cuda-parallel-hash,--cu-parallel-hash", m_CUSettings.parallelHash, {1, 2, 4, 8}, "", true);
 
         string sched = "sync";
         app.add_set(
             "--cuda-schedule,--cu-schedule", sched, {"auto", "spin", "yield", "sync"}, "", true);
 
-        app.add_option("--cuda-streams,--cu-streams", m_cudaStreams, "", true)
+        app.add_option("--cuda-streams,--cu-streams", m_CUSettings.streams, "", true)
             ->check(CLI::Range(1, 99));
 
 #endif
 
-        app.add_flag("--noeval", m_farmNoEval, "");
+        app.add_flag("--noeval", m_FarmSettings.noEval, "");
 
-        app.add_option("-L,--dag-load-mode", m_farmDagLoadMode, "", true)->check(CLI::Range(1));
+        app.add_option("-L,--dag-load-mode", m_FarmSettings.dagLoadMode, "", true)->check(CLI::Range(1));
 
         bool cl_miner = false;
         app.add_flag("-G,--opencl", cl_miner, "");
@@ -355,10 +348,10 @@ public:
         bool cuda_miner = false;
         app.add_flag("-U,--cuda", cuda_miner, "");
 
-        auto sim_opt = app.add_option("-Z,--simulation,-M,--benchmark", m_benchmarkBlock, "", true);
+        auto sim_opt = app.add_option("-Z,--simulation,-M,--benchmark", m_PoolSettings.benchmarkBlock, "", true);
 
-        app.add_option("--tstop", m_farmTempStop, "", true)->check(CLI::Range(30, 100));
-        app.add_option("--tstart", m_farmTempStart, "", true)->check(CLI::Range(30, 100));
+        app.add_option("--tstop", m_FarmSettings.tempStop, "", true)->check(CLI::Range(30, 100));
+        app.add_option("--tstart", m_FarmSettings.tempStart, "", true)->check(CLI::Range(30, 100));
 
 
         // Exception handling is held at higher level
@@ -379,12 +372,6 @@ public:
         }
 
 
-#if ETH_ETHASHCL
-        if (clKernel >= 0)
-            warnings.push("--cl-kernel ignored. Kernel is auto-selected");
-        if (openclThreadsPerHash >= 0)
-            warnings.push("--cl-parallel-hash ignored. No longer applies");
-#endif
 #ifndef DEV_BUILD
 
         if (g_logOptions & LOG_CONNECT)
@@ -416,7 +403,8 @@ public:
         {
             m_mode = OperationMode::Simulation;
             pools.clear();
-            m_poolConns.push_back(std::shared_ptr<URI>(new URI("simulation://localhost:0", true)));
+            m_PoolSettings.connections.push_back(
+                std::shared_ptr<URI>(new URI("simulation://localhost:0", true)));
         }
         else
         {
@@ -451,41 +439,37 @@ public:
                             "You have specified host " + uri->Host() + " with encryption enabled.");
                         warnings.push("Certificate validation will likely fail");
                     }
-                    m_poolConns.push_back(uri);
-
+                    m_PoolSettings.connections.push_back(uri);
                 }
                 catch (const std::exception& _ex)
                 {
                     string what = _ex.what();
                     throw std::runtime_error("Bad URI : " + what);
                 }
-
-                
             }
         }
 
 
 #if ETH_ETHASHCUDA
         if (sched == "auto")
-            m_cudaSchedule = 0;
+            m_CUSettings.schedule = 0;
         else if (sched == "spin")
-            m_cudaSchedule = 1;
+            m_CUSettings.schedule = 1;
         else if (sched == "yield")
-            m_cudaSchedule = 2;
+            m_CUSettings.schedule = 2;
         else if (sched == "sync")
-            m_cudaSchedule = 4;
+            m_CUSettings.schedule = 4;
 #endif
 
-        if (m_farmTempStop && (m_farmTempStop <= m_farmTempStart))
+        if (m_FarmSettings.tempStop)
         {
-            std::string what = "-tstop must be greater than -tstart";
-            throw std::invalid_argument(what);
-        }
-        if (m_farmTempStop && !m_farmHwMonitors)
-        {
-            // if we want stop mining at a specific temperature, we have to
-            // monitor the temperature ==> so auto set HWMON to at least 1.
-            m_farmHwMonitors = 1;
+            // If temp threshold set HWMON at least to 1
+            m_FarmSettings.hwMon = std::max((unsigned int)m_FarmSettings.hwMon, 1U);
+            if (m_FarmSettings.tempStop <= m_FarmSettings.tempStart)
+            {
+                std::string what = "-tstop must be greater than -tstart";
+                throw std::invalid_argument(what);
+            }
         }
 
         // Output warnings if any
@@ -576,14 +560,14 @@ public:
             }
 #endif
             cout << resetiosflags(ios::left) << endl;
-            std::map<string, DeviceDescriptorType>::iterator it = m_DevicesCollection.begin();
+            std::map<string, DeviceDescriptor>::iterator it = m_DevicesCollection.begin();
             while (it != m_DevicesCollection.end())
             {
                 auto i = std::distance(m_DevicesCollection.begin(), it);
                 cout << setw(3) << i << " ";
                 cout << setiosflags(ios::left) << setw(10) << it->first;
                 cout << setw(5);
-                switch (it->second.Type)
+                switch (it->second.type)
                 {
                 case DeviceTypeEnum::Cpu:
                     cout << "Cpu";
@@ -597,7 +581,7 @@ public:
                 default:
                     break;
                 }
-                cout << setw(26) << (it->second.Name).substr(0, 24);
+                cout << setw(26) << (it->second.name).substr(0, 24);
 #if ETH_ETHASHCUDA
                 if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
                 {
@@ -610,7 +594,7 @@ public:
                     cout << setw(5) << (it->second.clDetected ? "Yes" : "");
 #endif
                 cout << resetiosflags(ios::left) << setw(13)
-                     << getFormattedMemory((double)it->second.TotalMemory) << " ";
+                     << getFormattedMemory((double)it->second.totalMemory) << " ";
 #if ETH_ETHASHCL
                 if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
                 {
@@ -632,10 +616,10 @@ public:
 
         // Apply discrete subscriptions (if any)
 #if ETH_ETHASHCUDA
-        if (m_cudaDevices.size() &&
+        if (m_CUSettings.devices.size() &&
             (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
         {
-            for (auto index : m_cudaDevices)
+            for (auto index : m_CUSettings.devices)
             {
                 if (index < m_DevicesCollection.size())
                 {
@@ -643,16 +627,16 @@ public:
                     std::advance(it, index);
                     if (!it->second.cuDetected)
                         throw std::runtime_error("Can't CUDA subscribe a non-CUDA device.");
-                    it->second.SubscriptionType = DeviceSubscriptionTypeEnum::Cuda;
+                    it->second.subscriptionType = DeviceSubscriptionTypeEnum::Cuda;
                 }
             }
         }
 #endif
 #if ETH_ETHASHCL
-        if (m_oclDevices.size() &&
+        if (m_CLSettings.devices.size() &&
             (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed))
         {
-            for (auto index : m_oclDevices)
+            for (auto index : m_CLSettings.devices)
             {
                 if (index < m_DevicesCollection.size())
                 {
@@ -660,10 +644,10 @@ public:
                     std::advance(it, index);
                     if (!it->second.clDetected)
                         throw std::runtime_error("Can't OpenCL subscribe a non-OpenCL device.");
-                    if (it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
+                    if (it->second.subscriptionType != DeviceSubscriptionTypeEnum::None)
                         throw std::runtime_error(
                             "Can't OpenCL subscribe a CUDA subscribed device.");
-                    it->second.SubscriptionType = DeviceSubscriptionTypeEnum::OpenCL;
+                    it->second.subscriptionType = DeviceSubscriptionTypeEnum::OpenCL;
                 }
             }
         }
@@ -671,28 +655,28 @@ public:
 
         // Subscribe all detected devices
 #if ETH_ETHASHCUDA
-        if (!m_cudaDevices.size() &&
+        if (!m_CUSettings.devices.size() &&
             (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
         {
             for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
             {
                 if (!it->second.cuDetected ||
-                    it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
+                    it->second.subscriptionType != DeviceSubscriptionTypeEnum::None)
                     continue;
-                it->second.SubscriptionType = DeviceSubscriptionTypeEnum::Cuda;
+                it->second.subscriptionType = DeviceSubscriptionTypeEnum::Cuda;
             }
         }
 #endif
 #if ETH_ETHASHCL
-        if (!m_oclDevices.size() &&
+        if (!m_CLSettings.devices.size() &&
             (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed))
         {
             for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
             {
                 if (!it->second.clDetected ||
-                    it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
+                    it->second.subscriptionType != DeviceSubscriptionTypeEnum::None)
                     continue;
-                it->second.SubscriptionType = DeviceSubscriptionTypeEnum::OpenCL;
+                it->second.subscriptionType = DeviceSubscriptionTypeEnum::OpenCL;
             }
         }
 #endif
@@ -701,23 +685,13 @@ public:
         int subscribedDevices = 0;
         for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
         {
-            if (it->second.SubscriptionType != DeviceSubscriptionTypeEnum::None)
+            if (it->second.subscriptionType != DeviceSubscriptionTypeEnum::None)
                 subscribedDevices++;
         }
 
         // If no OpenCL and/or CUDA devices subscribed then throw error
         if (!subscribedDevices)
             throw std::runtime_error("No mining device selected. Aborting ...");
-
-#if ETH_ETHASHCL
-        if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
-            CLMiner::configureGPU(m_oclLWorkSize, m_oclGWorkSize, m_farmDagLoadMode, m_oclNoBinary);
-#endif
-#if ETH_ETHASHCUDA
-        if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
-            CUDAMiner::configureGPU(m_cudaBlockSize, m_cudaGridSize, m_cudaStreams, m_cudaSchedule,
-                m_farmDagLoadMode, m_cudaParallelHash);
-#endif
 
         // Enable
         g_running = true;
@@ -730,9 +704,8 @@ public:
         signal(SIGTERM, MinerCLI::signalHandler);
 
         // Initialize Farm
-        new Farm(m_DevicesCollection, m_farmHwMonitors, m_farmNoEval);
-        Farm::f().setTStartTStop(m_farmTempStart, m_farmTempStop);
-
+        new Farm(m_DevicesCollection, m_FarmSettings, m_CUSettings, m_CLSettings);
+        
         // Run Miner
         doMiner();
     }
@@ -859,18 +832,15 @@ public:
                  << "    Use this extended OpenCL arguments to fine tune the performance." << endl
                  << "    Be advised default values are best generic findings by developers" << endl
                  << endl
-                 << "    --cl-kernel         INT [0 .. 2] Default not set" << endl
-                 << "                        Select OpenCL kernel. Ignored since 0.15" << endl
                  << "    --cl-devices        UINT {} Default not set" << endl
                  << "                        Space separated list of device indexes to use" << endl
                  << "                        eg --cl-devices 0 2 3" << endl
                  << "                        If not set all available CL devices will be used"
                  << endl
-                 << "    --cl-parallel-hash  UINT {1,2,4,8}" << endl
-                 << "                        Ignored" << endl
                  << "    --cl-global-work    UINT Default 65536" << endl
                  << "                        Set the global work size multiplier" << endl
-                 << "    --cl-local-work     UINT {32,64,128,256} Default = 128" << endl
+                 << "                        Value will be adjusted to nearest power of 2" << endl
+                 << "    --cl-local-work     UINT {64,128,256} Default = 128" << endl
                  << "                        Set the local work size multiplier" << endl
                  << "    --cl-nobin          FLAG" << endl
                  << "                        Use openCL kernel. Do not load binary kernel" << endl
@@ -1167,27 +1137,11 @@ public:
 private:
     void doMiner()
     {
-        map<string, Farm::SealerDescriptor> sealers;
-#if ETH_ETHASHCL
-        sealers["opencl"] =
-            Farm::SealerDescriptor{[](unsigned _index) { return new CLMiner(_index); }};
-#endif
-#if ETH_ETHASHCUDA
-        sealers["cuda"] =
-            Farm::SealerDescriptor{[](unsigned _index) { return new CUDAMiner(_index); }};
-#endif
 
-        Farm::f().setSealers(sealers);
-
-        new PoolManager(m_poolMaxRetries, m_poolFlvrTimeout, m_farmErgodicity, m_poolHashRate,
-            m_poolWorkTimeout, m_poolRespTimeout, m_farmPollInterval, m_benchmarkBlock);
-        for (auto conn : m_poolConns)
-        {
-            PoolManager::p().addConnection(conn);
-            if (m_mode != OperationMode::Simulation)
+        new PoolManager(m_PoolSettings);
+        if (m_mode != OperationMode::Simulation)
+            for (auto conn : m_PoolSettings.connections)
                 cnote << "Configured pool " << conn->Host() + ":" + to_string(conn->Port());
-        }
-        m_poolConns.clear();
 
 #if API_CORE
 
@@ -1230,55 +1184,22 @@ private:
     boost::asio::io_service::strand m_io_strand;    // A strand to serialize posts in
                                                     // multithreaded environment
 
-
     // Physical Mining Devices descriptor
-    std::map<std::string, DeviceDescriptorType> m_DevicesCollection = {};
+    std::map<std::string, DeviceDescriptor> m_DevicesCollection = {};
 
     // Mining options
     MinerType m_minerType = MinerType::Mixed;
     OperationMode m_mode = OperationMode::None;
     bool m_shouldListDevices = false;
 
-#if ETH_ETHASHCL
-    // -- OpenCL related params
-    vector<unsigned> m_oclDevices;
-    unsigned m_oclGWorkSize = CLMiner::c_defaultGlobalWorkSizeMultiplier;
-    unsigned m_oclLWorkSize = CLMiner::c_defaultLocalWorkSize;
-    bool m_oclNoBinary = false;
-#endif
+    FarmSettings m_FarmSettings;  // Operating settings for Farm
+    PoolSettings m_PoolSettings;  // Operating settings for PoolManager
+    CLSettings m_CLSettings;          // Operating settings for CL Miners
+    CUSettings m_CUSettings;          // Operating settings for CUDA Miners
 
-#if ETH_ETHASHCUDA
-    // -- CUDA related params
-    vector<unsigned> m_cudaDevices;
-    unsigned m_cudaStreams = CUDAMiner::c_defaultNumStreams;
-    unsigned m_cudaSchedule = 4;  // sync
-    unsigned m_cudaGridSize = CUDAMiner::c_defaultGridSize;
-    unsigned m_cudaBlockSize = CUDAMiner::c_defaultBlockSize;
-    unsigned m_cudaParallelHash = 4;
-#endif
-
-    // -- Farm related params
-    unsigned m_farmDagLoadMode = 0;  // DAG load mode : 0=parallel, 1=sequential
-    bool m_farmNoEval = false;       // Whether or not ethminer should CPU re-evaluate solutions
-    unsigned m_farmPollInterval =
-        500;  // In getWork mode this establishes the ms. interval to check for new job
-    unsigned m_farmHwMonitors =
-        0;  // Farm GPU monitoring level : 0 - No monitor; 1 - Temp and Fan; 2 - Temp Fan Power
-    unsigned m_farmTempStop = 0;  // Halt mining on GPU if temperature ge this threshold (Celsius)
-    unsigned m_farmTempStart =
-        40;  // Resume mining on GPU if temperature le this threshold (Celsius)
-    unsigned m_farmErgodicity = 0;  // Sets ergodicity : 0=default, 1=per session, 2=per job
-
-    // -- Pool manager related params
-    std::vector<std::shared_ptr<URI>> m_poolConns;
-    unsigned m_poolMaxRetries = 3;     // Max number of connection retries
-    unsigned m_poolWorkTimeout = 180;  // If no new jobs in this number of seconds drop connection
-    unsigned m_poolRespTimeout = 2;    // If no response in this number of seconds drop connection
-    unsigned m_poolFlvrTimeout = 0;    // Return to primary pool after this number of minutes
-    bool m_poolHashRate = false;       // Whether or not ethminer should send HR to pool
-
-    // -- Benchmarking related params
-    unsigned m_benchmarkBlock = 0;
+    //// -- Pool manager related params
+    //std::vector<std::shared_ptr<URI>> m_poolConns;
+    
 
     // -- CLI Interface related params
     unsigned m_cliDisplayInterval =
@@ -1287,16 +1208,12 @@ private:
     // -- CLI Flow control
     mutex m_climtx;
 
-
 #if API_CORE
     // -- API and Http interfaces related params
     string m_api_bind;                  // API interface binding address in form <address>:<port>
     string m_api_address = "0.0.0.0";   // API interface binding address (Default any)
     int m_api_port = 0;                 // API interface binding port
     string m_api_password;              // API interface write protection password
-    string m_http_bind;                 // HTTP interface binding address in form <address>:<port>
-    string m_http_address = "0.0.0.0";  // HTTP interface binding address (Default any)
-    uint16_t m_http_port = 0;           // HTTP interface binding port
 #endif
 
 #if ETH_DBUS

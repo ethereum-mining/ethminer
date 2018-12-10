@@ -21,18 +21,14 @@ namespace dev
 {
 namespace eth
 {
-unsigned Miner::s_dagLoadMode = 0;
 
+unsigned Miner::s_dagLoadMode = 0;
 unsigned Miner::s_dagLoadIndex = 0;
+unsigned Miner::s_minersCount = 0;
 
 FarmFace* FarmFace::m_this = nullptr;
 
-void Miner::setDescriptor(DeviceDescriptorType& _descriptor) 
-{
-    m_deviceDescriptor = _descriptor;
-}
-
-DeviceDescriptorType Miner::getDescriptor()
+DeviceDescriptor Miner::getDescriptor()
 {
     return m_deviceDescriptor;
 }
@@ -156,11 +152,15 @@ bool Miner::initEpoch()
     // specific for miner
     bool result = initEpoch_internal();
 
-    // Advance to next miner
+    // Advance to next miner or reset to zero for 
+    // next run if all have processed
     if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
     {
         s_dagLoadIndex = (m_index + 1);
-        m_dag_loaded_signal.notify_all();
+        if (s_minersCount == s_dagLoadIndex)
+            s_dagLoadIndex = 0;
+        else
+            m_dag_loaded_signal.notify_all();
     }
 
     return result;
