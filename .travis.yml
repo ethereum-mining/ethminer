@@ -51,12 +51,9 @@ before_install:
       pip install --user requests gitpython
       if [ "$CUDA_VERSION" = "8" ]; then
         sudo apt-get -qy install g++-5
-        export CC=gcc-5
-        export CXX=g++-5
-      else
-        export CC=gcc-6
-        export CXX=g++-6
       fi
+      export CC=gcc-6
+      export CXX=g++-6
     elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
       curl -L https://developer.nvidia.com/compute/cuda/9.1/Prod/local_installers/cuda_9.1.128_mac -o $HOME/cuda_9.1.128_mac.dmg
       hdiutil mount $HOME/cuda_9.1.128_mac.dmg
@@ -72,7 +69,11 @@ before_install:
       pip3 install -q requests gitpython
     fi
 script: |
-    cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -DAPICORE=ON -H. -Bbuild
+    if [ "$CUDA_VERSION" = "8" ]; then
+      cmake -DCUDA_HOST_COMPILER=/usr/bin/gcc-5 -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -DAPICORE=ON -H. -Bbuild
+    else
+      cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -DAPICORE=ON -H. -Bbuild
+    fi
     cmake --build build --target package -- -j4
     build/ethminer/ethminer --help
     if [ "$TRAVIS_OS_NAME" = linux ]; then ldd -v build/ethminer/ethminer; fi
