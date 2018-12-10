@@ -50,12 +50,12 @@ namespace eth
 {
 struct FarmSettingsType
 {
-    unsigned DagLoadMode = 0;  // 0 = Parallel; 1 = Serialized
-    bool Noeval = false;       // Whether or not to re-evaluate solutions
-    unsigned HwMon = 0;        // 0 - No monitor; 1 - Temp and Fan; 2 - Temp Fan Power
-    unsigned Ergodicity = 0;   // 0=default, 1=per session, 2=per job
-    unsigned TempStart = 40;   // Temperature threshold to restart mining (if paused)
-    unsigned TempStop = 0;     // Temperature threshold to pause mining (overheating)
+    unsigned dagLoadMode = 0;  // 0 = Parallel; 1 = Serialized
+    bool noEval = false;       // Whether or not to re-evaluate solutions
+    unsigned hwMon = 0;        // 0 - No monitor; 1 - Temp and Fan; 2 - Temp Fan Power
+    unsigned ergodicity = 0;   // 0=default, 1=per session, 2=per job
+    unsigned tempStart = 40;   // Temperature threshold to restart mining (if paused)
+    unsigned tempStop = 0;     // Temperature threshold to pause mining (overheating)
 };
 
 /**
@@ -230,11 +230,11 @@ public:
 
     void setTStartTStop(unsigned tstart, unsigned tstop);
 
-    unsigned get_tstart() override { return m_Settings.TempStart; }
+    unsigned get_tstart() override { return m_Settings.tempStart; }
 
-    unsigned get_tstop() override { return m_Settings.TempStop; }
+    unsigned get_tstop() override { return m_Settings.tempStop; }
 
-    unsigned get_ergodicity() override { return m_Settings.Ergodicity; }
+    unsigned get_ergodicity() override { return m_Settings.ergodicity; }
 
     /**
      * @brief Called from a Miner to note a WorkPackage has a solution.

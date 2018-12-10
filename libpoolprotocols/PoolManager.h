@@ -21,17 +21,17 @@ namespace eth
 {
 struct PoolSettingsType
 {
-    std::vector<std::shared_ptr<URI>> Connections;  // List of connection definitions
-    unsigned GetWorkPollInterval = 500;             // Interval (ms) between getwork requests
-    unsigned NoWorkTimeout = 180;       // If no new jobs in this number of seconds drop connection
-    unsigned NoResponseTimeout = 2;     // If no response in this number of seconds drop connection
-    unsigned PoolFailoverTimeout = 0;   // Return to primary pool after this number of minutes
-    bool ReportHashrate = false;        // Whether or not to report hashrate to pool
-    unsigned HashRateInterval = 60;     // Interval in seconds among hashrate submissions
-    std::string HashRateId =
+    std::vector<std::shared_ptr<URI>> connections;  // List of connection definitions
+    unsigned getWorkPollInterval = 500;             // Interval (ms) between getwork requests
+    unsigned noWorkTimeout = 180;       // If no new jobs in this number of seconds drop connection
+    unsigned noResponseTimeout = 2;     // If no response in this number of seconds drop connection
+    unsigned poolFailoverTimeout = 0;   // Return to primary pool after this number of minutes
+    bool reportHashrate = false;        // Whether or not to report hashrate to pool
+    unsigned hashRateInterval = 60;     // Interval in seconds among hashrate submissions
+    std::string hashRateId =
         h256::random().hex(HexPrefix::Add);  // Unique identifier for HashRate submission
-    unsigned ConnectionMaxRetries = 3;  // Max number of connection retries
-    unsigned BenchmarkBlock = 0;        // Block number used by SimulateClient to test performances
+    unsigned connectionMaxRetries = 3;  // Max number of connection retries
+    unsigned benchmarkBlock = 0;        // Block number used by SimulateClient to test performances
 };
 
 class PoolManager

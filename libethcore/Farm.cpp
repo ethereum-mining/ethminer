@@ -46,7 +46,7 @@ Farm::Farm(std::map<std::string, DeviceDescriptorType>& _DevicesCollection,
     m_this = this;
 
     // Init HWMON if needed
-    if (m_Settings.HwMon)
+    if (m_Settings.hwMon)
     {
         m_telemetry.hwmon = true;
 
@@ -60,12 +60,12 @@ Farm::Farm(std::map<std::string, DeviceDescriptorType>& _DevicesCollection,
         // Scan devices collection to identify which hw monitors to initialize
         for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
         {
-            if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda)
+            if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::Cuda)
             {
                 need_nvmlh = true;
                 continue;
             }
-            if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
+            if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
             {
                 if (it->second.clPlatformType == ClPlatformTypeEnum::Nvidia)
                 {
@@ -215,7 +215,7 @@ void Farm::setWork(WorkPackage const& _newWp)
     m_currentWp = _newWp;
 
     // Check if we need to shuffle per work (ergodicity == 2)
-    if (m_Settings.Ergodicity == 2 && m_currentWp.exSizeBytes == 0)
+    if (m_Settings.ergodicity == 2 && m_currentWp.exSizeBytes == 0)
         shuffle();
 
     uint64_t _startNonce;
@@ -258,7 +258,7 @@ bool Farm::start()
         {
             TelemetryAccountType minerTelemetry;
 #if ETH_ETHASHCUDA
-            if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda)
+            if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::Cuda)
             {
                 minerTelemetry.prefix = "cu";
                 m_miners.push_back(std::shared_ptr<Miner>(
@@ -267,7 +267,7 @@ bool Farm::start()
 #endif
 #if ETH_ETHASHCL
 
-            if (it->second.SubscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
+            if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
             {
                 minerTelemetry.prefix = "cl";
                 m_miners.push_back(std::shared_ptr<Miner>(
@@ -281,7 +281,7 @@ bool Farm::start()
         }
 
         // Initialize DAG Load mode
-        Miner::setDagLoadInfo(m_Settings.DagLoadMode, (unsigned int)m_miners.size());
+        Miner::setDagLoadInfo(m_Settings.dagLoadMode, (unsigned int)m_miners.size());
 
         m_isMining.store(true, std::memory_order_relaxed);
     }
@@ -465,8 +465,8 @@ Json::Value Farm::get_nonce_scrambler_json()
 
 void Farm::setTStartTStop(unsigned tstart, unsigned tstop)
 {
-    m_Settings.TempStart = tstart;
-    m_Settings.TempStop = tstop;
+    m_Settings.tempStart = tstart;
+    m_Settings.tempStop = tstop;
 }
 
 void Farm::submitProof(Solution const& _s)
@@ -476,7 +476,7 @@ void Farm::submitProof(Solution const& _s)
 
 void Farm::submitProofAsync(Solution const& _s)
 {
-    if (!m_Settings.Noeval)
+    if (!m_Settings.noEval)
     {
         Result r = EthashAux::eval(_s.work.epoch, _s.work.header, _s.nonce);
         if (r.value > _s.work.boundary)
@@ -519,7 +519,7 @@ void Farm::collectData(const boost::system::error_code& ec)
         m_telemetry.miners.at(minerIdx).paused = miner->paused();
 
 
-        if (m_Settings.HwMon)
+        if (m_Settings.hwMon)
         {
             HwMonitorInfo hwInfo = miner->hwmonInfo();
 
@@ -547,7 +547,7 @@ void Farm::collectData(const boost::system::error_code& ec)
                     wrap_nvml_get_tempC(nvmlh, devIdx, &tempC);
                     wrap_nvml_get_fanpcnt(nvmlh, devIdx, &fanpcnt);
 
-                    if (m_Settings.HwMon == 2)
+                    if (m_Settings.hwMon == 2)
                         wrap_nvml_get_power_usage(nvmlh, devIdx, &powerW);
                 }
             }
@@ -577,7 +577,7 @@ void Farm::collectData(const boost::system::error_code& ec)
                         wrap_amdsysfs_get_tempC(sysfsh, devIdx, &tempC);
                         wrap_amdsysfs_get_fanpcnt(sysfsh, devIdx, &fanpcnt);
 
-                        if (m_Settings.HwMon == 2)
+                        if (m_Settings.hwMon == 2)
                             wrap_amdsysfs_get_power_usage(sysfsh, devIdx, &powerW);
                     }
                 }
@@ -604,7 +604,7 @@ void Farm::collectData(const boost::system::error_code& ec)
                         wrap_adl_get_tempC(adlh, devIdx, &tempC);
                         wrap_adl_get_fanpcnt(adlh, devIdx, &fanpcnt);
 
-                        if (m_Settings.HwMon == 2)
+                        if (m_Settings.hwMon == 2)
                             wrap_adl_get_power_usage(adlh, devIdx, &powerW);
                     }
                 }
@@ -614,12 +614,12 @@ void Farm::collectData(const boost::system::error_code& ec)
 
             // If temperature control has been enabled call
             // check threshold
-            if (m_Settings.TempStop)
+            if (m_Settings.tempStop)
             {
                 bool paused = miner->pauseTest(MinerPauseEnum::PauseDueToOverHeating);
-                if (!paused && (tempC >= m_Settings.TempStop))
+                if (!paused && (tempC >= m_Settings.tempStop))
                     miner->pause(MinerPauseEnum::PauseDueToOverHeating);
-                if (paused && (tempC <= m_Settings.TempStart))
+                if (paused && (tempC <= m_Settings.tempStart))
                     miner->resume(MinerPauseEnum::PauseDueToOverHeating);
             }
 

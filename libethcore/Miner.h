@@ -87,22 +87,22 @@ enum class SolutionAccountingEnum
 // Holds settings for CUDA Miner
 struct CUSettingsType
 {
-    vector<unsigned> Devices;
-    unsigned Streams = 2;
-    unsigned Schedule = 4;
-    unsigned GridSize = 8192;
-    unsigned BlockSize = 128;
-    unsigned ParallelHash = 4;
+    vector<unsigned> devices;
+    unsigned streams = 2;
+    unsigned schedule = 4;
+    unsigned gridSize = 8192;
+    unsigned blockSize = 128;
+    unsigned parallelHash = 4;
 };
 
 // Holds settings for OpenCL Miner
 struct CLSettingsType
 {
-    vector<unsigned> Devices;
-    bool NoBinary = false;
-    unsigned GlobalWorkSize = 0;
-    unsigned GlobalWorkSizeMultiplier = 65536;
-    unsigned LocalWorkSize = 128;
+    vector<unsigned> devices;
+    bool noBinary = false;
+    unsigned globalWorkSize = 0;
+    unsigned globalWorkSizeMultiplier = 65536;
+    unsigned localWorkSize = 128;
 };
 
 struct SolutionAccountType
@@ -150,12 +150,12 @@ struct TelemetryAccountType
 
 struct DeviceDescriptorType
 {
-    DeviceTypeEnum Type = DeviceTypeEnum::Unknown;
-    DeviceSubscriptionTypeEnum SubscriptionType = DeviceSubscriptionTypeEnum::None;
+    DeviceTypeEnum type = DeviceTypeEnum::Unknown;
+    DeviceSubscriptionTypeEnum subscriptionType = DeviceSubscriptionTypeEnum::None;
 
-    string UniqueId;     // For GPUs this is the PCI ID
-    size_t TotalMemory;  // Total memory available by device
-    string Name;         // Device Name
+    string uniqueId;     // For GPUs this is the PCI ID
+    size_t totalMemory;  // Total memory available by device
+    string name;         // Device Name
 
     bool clDetected;  // For OpenCL detected devices
     string clName;

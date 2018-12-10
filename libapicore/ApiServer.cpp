@@ -1022,18 +1022,18 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
 
     jRes["_index"] = _index;
     jRes["_mode"] =
-        (minerDescriptor.SubscriptionType == DeviceSubscriptionTypeEnum::Cuda ? "CUDA" : "OpenCL");
+        (minerDescriptor.subscriptionType == DeviceSubscriptionTypeEnum::Cuda ? "CUDA" : "OpenCL");
 
     /* Hardware Info */
     Json::Value hwinfo;
-    hwinfo["pci"] = minerDescriptor.UniqueId;
+    hwinfo["pci"] = minerDescriptor.uniqueId;
     hwinfo["type"] =
-        (minerDescriptor.Type == DeviceTypeEnum::Gpu ?
+        (minerDescriptor.type == DeviceTypeEnum::Gpu ?
                 "GPU" :
-                (minerDescriptor.Type == DeviceTypeEnum::Accelerator ? "ACCELERATOR" : "CPU"));
+                (minerDescriptor.type == DeviceTypeEnum::Accelerator ? "ACCELERATOR" : "CPU"));
     ostringstream ss;
     ss << (minerDescriptor.clDetected ? minerDescriptor.clName : minerDescriptor.cuName) << " "
-       << dev::getFormattedMemory((double)minerDescriptor.TotalMemory);
+       << dev::getFormattedMemory((double)minerDescriptor.totalMemory);
     hwinfo["name"] = ss.str();
 
     /* Hardware Sensors*/
