@@ -83,7 +83,6 @@ public:
 	void search(
 		uint8_t const* header,
 		uint64_t target,
-		bool _ethStratum,
 		uint64_t _startN,
 		const dev::eth::WorkPackage& w);
 
@@ -139,12 +138,6 @@ private:
 	static bool s_noeval;
 
 	void compileKernel(uint64_t block_number, uint64_t dag_words);
-
-	void set_constants(
-		hash64_t* _dag, 
-		uint32_t _dag_size,
-		hash64_t * _light,
-		uint32_t _light_size);
 
 };
 

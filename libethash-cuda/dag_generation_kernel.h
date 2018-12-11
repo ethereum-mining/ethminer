@@ -57,3 +57,8 @@ typedef union
 } hash200_t;
 
 void ethash_generate_dag(uint64_t dag_size, uint32_t blocks, uint32_t threads, cudaStream_t stream);
+
+void set_constants(hash64_t* _dag, uint32_t _dag_size, hash64_t* _light, uint32_t _light_size);
+void get_constants(hash64_t** _dag, uint32_t* _dag_size, hash64_t** _light, uint32_t* _light_size);
+void set_header(hash32_t _header);
+void set_target(uint64_t _target);

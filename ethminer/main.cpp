@@ -340,7 +340,7 @@ public:
 
 #endif
 
-#if ETH_ETHASHCL || ETH_ETHASHCUDA
+#if ETH_ETHASHCL || ETH_ETHASHCUDA || PROGPOW
 
         app.add_flag("--list-devices", m_shouldListDevices,
                "List the detected OpenCL/CUDA devices and exit. Should be combined with -G, -U, or "
@@ -382,7 +382,7 @@ public:
             ->group(OpenCLGroup);
 #endif
 
-#if ETH_ETHASHCUDA
+#if ETH_ETHASHCUDA || PROGPOW
 
         app.add_option("--cuda-grid-size", m_cudaGridSize, "Set the grid size", true)
             ->group(CUDAGroup)
@@ -657,7 +657,7 @@ public:
         m_openclDeviceCount = m_openclDevices.size();
 #endif
 
-#if ETH_ETHASHCUDA
+#if ETH_ETHASHCUDA || PROGPOW
         m_cudaDeviceCount = m_cudaDevices.size();
         if (sched == "auto")
             m_cudaSchedule = 0;

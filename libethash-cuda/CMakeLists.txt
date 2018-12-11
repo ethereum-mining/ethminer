@@ -43,7 +43,7 @@ endif()
 
 if(PROGPOW)
 	file(GLOB sources progpow/ProgPowMiner.cpp "*.cpp")
-	file(GLOB headers progpow/ProgPowMiner.h "*.h")
+	file(GLOB headers progpow/ProgPowMiner.h "*.h" ${CMAKE_CURRENT_BINARY_DIR}/progpow/CUDAMiner_kernel.h)
 	#file(GLOB headers progpow/ProgPowMiner.h "*.h" ${CMAKE_CURRENT_BINARY_DIR}/progpow/CUDAMiner_kernel.h)
 else()
 	file(GLOB sources "ethash/*.cpp" "ethash/*.cu")

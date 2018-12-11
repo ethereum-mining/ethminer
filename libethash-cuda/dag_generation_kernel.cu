@@ -114,3 +114,35 @@ void set_target(
 {
 	CUDA_SAFE_CALL(cudaMemcpyToSymbol(d_target, &_target, sizeof(uint64_t)));
 }
+
+void get_constants(hash64_t** _dag, uint32_t* _dag_size, hash64_t** _light, uint32_t* _light_size)
+{
+    /*
+       Using the direct address of the targets did not work.
+       So I've to read first into local variables when using cudaMemcpyFromSymbol()
+    */
+    if (_dag)
+    {
+        hash64_t* _d;
+        CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&_d, d_dag, sizeof(hash64_t*)));
+        *_dag = _d;
+    }
+    if (_dag_size)
+    {
+        uint32_t _ds;
+        CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&_ds, d_dag_size, sizeof(uint32_t)));
+        *_dag_size = _ds;
+    }
+    if (_light)
+    {
+        hash64_t* _l;
+        CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&_l, d_light, sizeof(hash64_t*)));
+        *_light = _l;
+    }
+    if (_light_size)
+    {
+        uint32_t _ls;
+        CUDA_SAFE_CALL(cudaMemcpyFromSymbol(&_ls, d_light_size, sizeof(uint32_t)));
+        *_light_size = _ls;
+    }
+}
