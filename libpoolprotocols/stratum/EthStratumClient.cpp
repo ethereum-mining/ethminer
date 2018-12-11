@@ -138,18 +138,6 @@ void EthStratumClient::connect()
     // Reset status flags
     m_authpending.store(false, std::memory_order_relaxed);
 
-    // Reset data for ETHEREUMSTRATUM (NiceHash) mode (if previously used)
-    // https://github.com/nicehash/Specifications/blob/master/EthereumStratum_NiceHash_v1.0.0.txt
-    /*
-    "Before first job (work) is provided, pool MUST set difficulty by sending mining.set_difficulty
-    If pool does not set difficulty before first job, then miner can assume difficulty 1 was being
-    set." Those above statement imply we MAY NOT receive difficulty thus at each new connection
-    restart from 1
-    */
-    m_nextWorkBoundary = h256("0x00000000ffff0000000000000000000000000000000000000000000000000000");
-    m_extraNonce = 0;
-    m_extraNonceSizeBytes = 0;
-
     // Initializes socket and eventually secure stream
     if (!m_socket)
         init_socket();
@@ -577,9 +565,10 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     Otherwise let's go through an autodetection.
 
     Autodetection process passes all known stratum modes.
-    - 1st pass EthStratumClient::ETHEREUMSTRATUM  (2)
-    - 2nd pass EthStratumClient::ETHPROXY         (1)
-    - 3rd pass EthStratumClient::STRATUM          (0)
+    - 1st pass EthStratumClient::ETHEREUMSTRATUM2 (3)
+    - 2nd pass EthStratumClient::ETHEREUMSTRATUM  (2)
+    - 3rd pass EthStratumClient::ETHPROXY         (1)
+    - 4th pass EthStratumClient::STRATUM          (0)
     */
 
     if (m_conn->Version() < 999)
@@ -589,7 +578,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     else
     {
         if (!m_conn->StratumModeConfirmed() && m_conn->StratumMode() == 999)
-            m_conn->SetStratumMode(2, false);
+            m_conn->SetStratumMode(3, false);
     }
 
 
@@ -624,6 +613,19 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
         jReq["params"].append("EthereumStratum/1.0.0");
 
         break;
+
+    case EthStratumClient::ETHEREUMSTRATUM2:
+        
+        jReq["method"] = "mining.hello";
+        Json::Value jPrm;
+        jPrm["agent"] = ethminer_get_buildinfo()->project_name_with_version;
+        jPrm["host"] = m_conn->Host();
+        jPrm["port"] = m_conn->Port(); // TODO Compact Hex
+        jPrm["proto"] = "EthereumStratum/2.0.0";
+        jReq["params"] = jPrm;
+
+        break;
+
     }
 
     // Begin receive data
@@ -684,11 +686,10 @@ std::string EthStratumClient::processError(Json::Value& responseObject)
 
 void EthStratumClient::processExtranonce(std::string& enonce)
 {
-    m_extraNonceSizeBytes = enonce.length();
-
+    m_session->extraNonceSizeBytes = enonce.length();
     cnote << "Extranonce set to " EthWhite << enonce << EthReset " (nicehash)";
     enonce.resize(16, '0');
-    m_extraNonce = std::stoul(enonce, nullptr, 16);
+    m_session->extraNonce = std::stoul(enonce, nullptr, 16);
 }
 
 void EthStratumClient::processResponse(Json::Value& responseObject)
@@ -770,6 +771,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
                 switch (m_conn->StratumMode())
                 {
+
                 case EthStratumClient::ETHEREUMSTRATUM:
 
                     // In case of success we also need to verify third parameter of "result" array
@@ -823,6 +825,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     _isSuccess = false;
 
                 m_session->subscribed.store(_isSuccess, std::memory_order_relaxed);
+
                 if (!isSubscribed())
                 {
                     cnote << "Could not subscribe: " << _errReason;
@@ -1143,9 +1146,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
                         m_current.seed = h256(sSeedHash);
                         m_current.header = h256(sHeaderHash);
-                        m_current.boundary = m_nextWorkBoundary;
-                        m_current.startNonce = m_extraNonce;
-                        m_current.exSizeBytes = m_extraNonceSizeBytes;
+                        m_current.boundary = m_session->nextWorkBoundary;
+                        m_current.startNonce = m_session->extraNonce;
+                        m_current.exSizeBytes = m_session->extraNonceSizeBytes;
                         m_current_timestamp = std::chrono::steady_clock::now();
                         m_current.block = -1;
 
@@ -1216,9 +1219,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     double nextWorkDifficulty =
                         max(jPrm.get(Json::Value::ArrayIndex(0), 1).asDouble(), 0.0001);
 
-                    m_nextWorkBoundary = h256(dev::getTargetFromDiff(nextWorkDifficulty));
-                    cnote << "Difficulty set to " EthWhite << nextWorkDifficulty
-                          << EthReset " (nicehash) Target : " << m_nextWorkBoundary.hex();
+                    m_session->nextWorkBoundary = h256(dev::getTargetFromDiff(nextWorkDifficulty));
                 }
             }
             else

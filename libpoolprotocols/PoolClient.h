@@ -17,14 +17,25 @@ namespace eth
 {
 struct Session
 {
+    // Tstamp of sessio start
     chrono::steady_clock::time_point start = chrono::steady_clock::now();
+    // Whether or not worker is subscribed
     atomic<bool> subscribed = {false};
+    // Whether or not worker is authorized
     atomic<bool> authorized = {false};
+    // Total duration of session in minutes
     unsigned long duration()
     {
         return (chrono::duration_cast<chrono::minutes>(chrono::steady_clock::now() - start))
             .count();
     }
+    // Extranonce currently active
+    uint64_t extraNonce = 0;
+    // Length of extranonce in bytes
+    unsigned int extraNonceSizeBytes = 0;
+    // Next work target
+    h256 nextWorkBoundary =
+        h256("0x00000000ffff0000000000000000000000000000000000000000000000000000");
 };
 
 class PoolClient
