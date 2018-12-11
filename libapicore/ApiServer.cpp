@@ -625,10 +625,12 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         uint64_t nonce = Farm::f().get_nonce_scrambler();
         unsigned exp = Farm::f().get_segment_width();
 
-        string nonceHex;
         if (jRequestParams.isMember("noncescrambler"))
         {
+            string nonceHex;
+
             any_value_provided = true;
+
             nonceHex = jRequestParams["noncescrambler"].asString();
             if (nonceHex.substr(0, 2) == "0x")
             {
@@ -651,9 +653,12 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
             }
         }
 
-        Json::Value tmp_response;
-        if (getRequestValue("segmentwidth", exp, jRequestParams, any_value_provided, tmp_response))
+        if (jRequestParams.isMember("segmentwidth"))
+        {
             any_value_provided = true;
+            if (!getRequestValue("segmentwidth", exp, jRequestParams, false, jResponse))
+                return;
+        }
 
         if (!any_value_provided)
         {
