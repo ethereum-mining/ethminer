@@ -438,9 +438,10 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                 }
             }
 
-            // Check how old is last job received
-            if (duration_cast<seconds>(steady_clock::now() - m_current_timestamp).count() >
-                m_worktimeout)
+            // Check how old is last job received (only if session started)
+            if (m_session &&
+                (duration_cast<seconds>(steady_clock::now() - m_current_timestamp).count() >
+                    m_worktimeout))
             {
                 cwarn << "No new work received in " << m_worktimeout << " seconds.";
                 m_endpoints.pop();
