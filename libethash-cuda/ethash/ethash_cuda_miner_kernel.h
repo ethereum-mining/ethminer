@@ -19,7 +19,3 @@ void set_target(uint64_t _target);
 void run_ethash_search(uint32_t gridSize, uint32_t blockSize, cudaStream_t stream,
     volatile Search_results* g_output, uint64_t start_nonce, uint32_t parallelHash);
 
-struct cuda_runtime_error : public virtual std::runtime_error
-{
-    cuda_runtime_error(const std::string& msg) : std::runtime_error(msg) {}
-};
