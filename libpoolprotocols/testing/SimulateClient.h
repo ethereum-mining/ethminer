@@ -25,7 +25,7 @@ public:
     bool isPendingState() override { return false; }
     string ActiveEndPoint() override { return ""; };
 
-    void submitHashrate(string const& rate, string const& id) override;
+    void submitHashrate(uint64_t const& rate, string const& id) override;
     void submitSolution(const Solution& solution) override;
 
 private:

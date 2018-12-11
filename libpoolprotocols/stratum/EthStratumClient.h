@@ -77,13 +77,14 @@ public:
                 m_disconnecting.load(std::memory_order_relaxed));
     }
 
-    void submitHashrate(string const& rate, string const& id) override;
+    void submitHashrate(uint64_t const& rate, string const& id) override;
     void submitSolution(const Solution& solution) override;
 
     h256 currentHeaderHash() { return m_current.header; }
     bool current() { return static_cast<bool>(m_current); }
 
 private:
+    void startSession();
     void disconnect_finalize();
     void enqueue_response_plea();
     std::chrono::milliseconds dequeue_response_plea();

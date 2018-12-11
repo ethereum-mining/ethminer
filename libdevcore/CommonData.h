@@ -165,19 +165,41 @@ inline std::string toHex(u256 val, HexPrefix prefix = HexPrefix::DontAdd)
     return (prefix == HexPrefix::Add) ? "0x" + str : str;
 }
 
-inline std::string toHex(uint64_t _n, HexPrefix _prefix = HexPrefix::DontAdd)
+inline std::string toHex(uint64_t _n, HexPrefix _prefix = HexPrefix::DontAdd, short _bytes = 8)
 {
+    // sizeof returns the number of bytes (not the number of bits)
+    // thus if CHAR_BIT != 8 sizeof(uint64_t) will return != 8
+    // Use fixed constant multiplier of 16
     std::ostringstream ret;
-    ret << std::hex << std::setfill('0') << std::setw(sizeof(_n) * 2) << _n;
+    ret << std::hex << std::setfill('0') << std::setw(_bytes) << _n;
     return (_prefix == HexPrefix::Add) ? "0x" + ret.str() : ret.str();
 }
 
-inline std::string toHex(uint32_t _n, HexPrefix _prefix = HexPrefix::DontAdd)
+inline std::string toHex(uint32_t _n, HexPrefix _prefix = HexPrefix::DontAdd, short _bytes = 4)
 {
+    // sizeof returns the number of bytes (not the number of bits)
+    // thus if CHAR_BIT != 8 sizeof(uint64_t) will return != 4
+    // Use fixed constant multiplier of 8
     std::ostringstream ret;
-    ret << std::hex << std::setfill('0') << std::setw(sizeof(_n) * 2) << _n;
+    ret << std::hex << std::setfill('0') << std::setw(_bytes) << _n;
     return (_prefix == HexPrefix::Add) ? "0x" + ret.str() : ret.str();
 }
+
+inline std::string toCompactHex(uint64_t _n, HexPrefix _prefix = HexPrefix::DontAdd)
+{
+    std::ostringstream ret;
+    ret << std::hex << _n;
+    return (_prefix == HexPrefix::Add) ? "0x" + ret.str() : ret.str();
+}
+
+inline std::string toCompactHex(uint32_t _n, HexPrefix _prefix = HexPrefix::DontAdd)
+{
+    std::ostringstream ret;
+    ret << std::hex << _n;
+    return (_prefix == HexPrefix::Add) ? "0x" + ret.str() : ret.str();
+}
+
+
 
 // Algorithms for string and string-like collections.
 
