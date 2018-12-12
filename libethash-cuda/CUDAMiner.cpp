@@ -243,7 +243,7 @@ void CUDAMiner::kick_miner()
     m_new_work_signal.notify_one();
 }
 
-unsigned CUDAMiner::getNumDevices()
+int CUDAMiner::getNumDevices()
 {
     int deviceCount;
     cudaError_t err = cudaGetDeviceCount(&deviceCount);
@@ -271,46 +271,44 @@ unsigned CUDAMiner::getNumDevices()
 void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection)
 {
     int numDevices = getNumDevices();
-    if (numDevices)
+
+    for (int i = 0; i < numDevices; i++)
     {
-        for (int i = 0; i < numDevices; i++)
+        string uniqueId;
+        ostringstream s;
+        DeviceDescriptor deviceDescriptor;
+        cudaDeviceProp props;
+
+        try
         {
-            string uniqueId;
-            ostringstream s;
-            DeviceDescriptor deviceDescriptor;
-            cudaDeviceProp props;
+            CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
+            s << setw(2) << setfill('0') << hex << props.pciBusID << ":" << setw(2)
+              << props.pciDeviceID << ".0";
+            uniqueId = s.str();
 
-            try
-            {
-                CUDA_SAFE_CALL(cudaGetDeviceProperties(&props, i));
-                s << setw(2) << setfill('0') << hex << props.pciBusID << ":" << setw(2)
-                  << props.pciDeviceID << ".0";
-                uniqueId = s.str();
+            if (_DevicesCollection.find(uniqueId) != _DevicesCollection.end())
+                deviceDescriptor = _DevicesCollection[uniqueId];
+            else
+                deviceDescriptor = DeviceDescriptor();
 
-                if (_DevicesCollection.find(uniqueId) != _DevicesCollection.end())
-                    deviceDescriptor = _DevicesCollection[uniqueId];
-                else
-                    deviceDescriptor = DeviceDescriptor();
+            deviceDescriptor.name = string(props.name);
+            deviceDescriptor.cuDetected = true;
+            deviceDescriptor.uniqueId = uniqueId;
+            deviceDescriptor.type = DeviceTypeEnum::Gpu;
+            deviceDescriptor.cuDeviceIndex = i;
+            deviceDescriptor.cuDeviceOrdinal = i;
+            deviceDescriptor.cuName = string(props.name);
+            deviceDescriptor.totalMemory = props.totalGlobalMem;
+            deviceDescriptor.cuCompute =
+                (to_string(props.major) + "." + to_string(props.minor));
+            deviceDescriptor.cuComputeMajor = props.major;
+            deviceDescriptor.cuComputeMinor = props.minor;
 
-                deviceDescriptor.name = string(props.name);
-                deviceDescriptor.cuDetected = true;
-                deviceDescriptor.uniqueId = uniqueId;
-                deviceDescriptor.type = DeviceTypeEnum::Gpu;
-                deviceDescriptor.cuDeviceIndex = i;
-                deviceDescriptor.cuDeviceOrdinal = i;
-                deviceDescriptor.cuName = string(props.name);
-                deviceDescriptor.totalMemory = props.totalGlobalMem;
-                deviceDescriptor.cuCompute =
-                    (to_string(props.major) + "." + to_string(props.minor));
-                deviceDescriptor.cuComputeMajor = props.major;
-                deviceDescriptor.cuComputeMinor = props.minor;
-
-                _DevicesCollection[uniqueId] = deviceDescriptor;
-            }
-            catch (const cuda_runtime_error& _e)
-            {
-                std::cerr << _e.what() << std::endl;
-            }
+            _DevicesCollection[uniqueId] = deviceDescriptor;
+        }
+        catch (const cuda_runtime_error& _e)
+        {
+            std::cerr << _e.what() << std::endl;
         }
     }
 }
