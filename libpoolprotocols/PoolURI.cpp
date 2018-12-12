@@ -393,6 +393,14 @@ unsigned URI::Version() const
     return s_schemes[m_scheme].version;
 }
 
+std::string URI::UserDotWorker() const
+{
+    std::string _ret = m_user;
+    if (!m_worker.empty())
+        _ret.append("." + m_worker);
+    return _ret;
+}
+
 SecureLevel URI::SecLevel() const
 {
     return s_schemes[m_scheme].secure;

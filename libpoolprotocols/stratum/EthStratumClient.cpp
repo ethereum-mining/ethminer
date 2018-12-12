@@ -878,7 +878,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     m_authpending.store(true, std::memory_order_relaxed);
                     jReq["id"] = unsigned(3);
                     jReq["method"] = "mining.authorize";
-                    jReq["params"].append(m_conn->User() + m_conn->Path());
+                    jReq["params"].append(m_conn->UserDotWorker() + m_conn->Path());
                     jReq["params"].append(m_conn->Pass());
                     enqueue_response_plea();
                 }
@@ -962,7 +962,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     jReq["jsonrpc"] = "2.0";
                     jReq["method"] = "mining.authorize";
                     jReq["params"] = Json::Value(Json::arrayValue);
-                    jReq["params"].append(m_conn->User() + m_conn->Path());
+                    jReq["params"].append(m_conn->UserDotWorker() + m_conn->Path());
                     jReq["params"].append(m_conn->Pass());
                     enqueue_response_plea();
                 }
@@ -1033,7 +1033,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 jReq["id"] = unsigned(3);
                 jReq["method"] = "mining.authorize";
                 jReq["params"] = Json::Value(Json::arrayValue);
-                jReq["params"].append(m_conn->User() + m_conn->Path());
+                jReq["params"].append(m_conn->UserDotWorker() + m_conn->Path());
                 jReq["params"].append(m_conn->Pass());
                 enqueue_response_plea();
                 send(jReq);
@@ -1057,7 +1057,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             if (!isAuthorized())
             {
-                cnote << "Worker " << EthWhite << m_conn->User() << EthReset
+                cnote << "Worker " << EthWhite << m_conn->UserDotWorker() << EthReset
                       << " not authorized : " << _errReason;
                 m_conn->MarkUnrecoverable();
                 m_io_service.post(
@@ -1066,7 +1066,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             }
             else
             {
-                cnote << "Authorized worker " << m_conn->User();
+                cnote << "Authorized worker " << m_conn->UserDotWorker();
             }
         }
 
@@ -1075,7 +1075,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             if (!_isSuccess || (!jResult.isString() || !jResult.asString().size()))
             {
                 // Got invalid session id which is mandatory
-                cnote << "Worker " << EthWhite << m_conn->User() << EthReset
+                cnote << "Worker " << EthWhite << m_conn->UserDotWorker() << EthReset
                       << " not authorized : " << _errReason;
                 m_conn->MarkUnrecoverable();
                 m_io_service.post(
@@ -1084,7 +1084,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             }
             m_authpending.store(false, memory_order_relaxed);
             m_session->authorized.store(true, memory_order_relaxed);
-            cnote << "Authorized worker " << m_conn->User();
+            cnote << "Authorized worker " << m_conn->UserDotWorker();
 
             // Nothing else to here. Wait for notifications from pool
         }
@@ -1444,7 +1444,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 string enonce = jPrm["extranonce"].asString();
                 processExtranonce(enonce);
             }
-                
         }
         else if (_method == "mining.bye" && m_conn->StratumMode() == ETHEREUMSTRATUM2)
         {
@@ -1571,7 +1570,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
 
     case EthStratumClient::ETHEREUMSTRATUM:
 
-        jReq["params"].append(m_conn->User());
+        jReq["params"].append(m_conn->UserDotWorker());
         jReq["params"].append(solution.work.job);
         jReq["params"].append(
             toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
@@ -1582,7 +1581,6 @@ void EthStratumClient::submitSolution(const Solution& solution)
         jReq["params"].append(
             toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
         jReq["params"].append(m_session->workerId);
-
     }
 
     enqueue_response_plea();

@@ -63,6 +63,7 @@ public:
     std::string User() const { return m_user; }
     std::string Pass() const { return m_password; }
     std::string Workername() const { return m_worker; }
+    std::string UserDotWorker() const;
     SecureLevel SecLevel() const;
     ProtocolFamily Family() const;
     UriHostNameType HostNameType() const;
