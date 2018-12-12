@@ -1109,7 +1109,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             // Nothing else to here. Wait for notifications from pool
         }
 
-        else if (_id >= 40 && _id <= m_solution_submitted_max_id)
+        else if ((_id >= 40 && _id <= m_solution_submitted_max_id) &&
+                 m_conn->StratumMode() != ETHEREUMSTRATUM2)
         {
             response_delay_ms = dequeue_response_plea();
 
@@ -1119,28 +1120,56 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             // reevaluate _isSucess
 
             if (_isSuccess && jResult.isBool())
-            {
                 _isSuccess = jResult.asBool();
+
+            const unsigned miner_index = _id - 40;
+            if (_isSuccess)
+            {
+                if (m_onSolutionAccepted)
+                    m_onSolutionAccepted(response_delay_ms, miner_index, false);
+            }
+            else
+            {
+                if (m_onSolutionRejected)
+                {
+                    cwarn << "Reject reason : "
+                          << (_errReason.empty() ? "Unspecified" : _errReason);
+                    m_onSolutionRejected(response_delay_ms, miner_index);
+                }
+            }
+        }
+
+        else if ((_id >= 40 && _id <= m_solution_submitted_max_id) &&
+                 m_conn->StratumMode() == ETHEREUMSTRATUM2)
+        {
+            response_delay_ms = dequeue_response_plea();
+
+            // In EthereumStratum/2.0.0 we can evaluate the severity of the
+            // error. An 2xx error means the solution have been accepted but is
+            // likely stale
+            bool isStale = false;
+            if (!_isSuccess)
+            {
+                string errCode = responseObject["error"].get("code","").asString();
+                if (errCode.substr(0, 1) == "2")
+                    _isSuccess = isStale = true;
             }
 
+
+            const unsigned miner_index = _id - 40;
+            if (_isSuccess)
             {
-                const unsigned miner_index = _id - 40;
-                dequeue_response_plea();
-                if (_isSuccess)
+                if (m_onSolutionAccepted)
+                    m_onSolutionAccepted(response_delay_ms, miner_index, isStale);
+            }
+            else
+            {
+                
+                if (m_onSolutionRejected)
                 {
-                    if (m_onSolutionAccepted)
-                    {
-                        m_onSolutionAccepted(response_delay_ms, miner_index);
-                    }
-                }
-                else
-                {
-                    if (m_onSolutionRejected)
-                    {
-                        cwarn << "Reject reason : "
-                              << (_errReason.empty() ? "Unspecified" : _errReason);
-                        m_onSolutionRejected(response_delay_ms, miner_index);
-                    }
+                    cwarn << "Reject reason : "
+                          << (_errReason.empty() ? "Unspecified" : _errReason);
+                    m_onSolutionRejected(response_delay_ms, miner_index);
                 }
             }
         }

@@ -90,7 +90,7 @@ public:
         return (m_connected.load(memory_order_relaxed) ? " [" + toString(m_endpoint) + "]" : "");
     }
 
-    using SolutionAccepted = function<void(chrono::milliseconds const&, unsigned const&)>;
+    using SolutionAccepted = function<void(chrono::milliseconds const&, unsigned const&, bool)>;
     using SolutionRejected = function<void(chrono::milliseconds const&, unsigned const&)>;
     using Disconnected = function<void()>;
     using Connected = function<void()>;
