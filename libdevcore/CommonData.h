@@ -244,6 +244,10 @@ std::string getFormattedHashes(double _hr, ScaleSuffix _suffix = ScaleSuffix::Ad
 std::string getFormattedMemory(
     double _mem, ScaleSuffix _suffix = ScaleSuffix::Add, int _precision = 2);
 
+/// Adjust string to a fixed length filling chars to the Left
 std::string padLeft(std::string const _value, size_t const _length, char const _fillChar);
+
+/// Adjust string to a fixed length filling chars to the Right
+std::string padRight(std::string const _value, size_t const _length, char const _fillChar);
 
 }  // namespace dev

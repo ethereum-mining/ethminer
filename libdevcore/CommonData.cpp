@@ -193,3 +193,11 @@ std::string dev::padLeft(std::string const _value, size_t const _length, char co
         _ret.insert(0, (_length - _value.size()), _fillChar);
     return _ret;
 }
+
+std::string dev::padRight(std::string const _value, size_t const _length, char const _fillChar)
+{
+    std::string _ret = _value;
+    if (_length > _value.size())
+        _ret.resize(_length, _fillChar);
+    return _ret;
+}

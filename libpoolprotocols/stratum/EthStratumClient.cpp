@@ -413,6 +413,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
             response_delay_ms =
                 duration_cast<milliseconds>(steady_clock::now() - response_plea_time);
 
+            // Delay timeout to a request
             if (response_delay_ms.count() >= (m_responsetimeout * 1000))
             {
                 if (!m_conn->StratumModeConfirmed() && !m_conn->IsUnrecoverable())
@@ -437,17 +438,19 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
                 }
             }
-
-            // Check how old is last job received (only if session started)
-            if (m_session &&
-                (duration_cast<seconds>(steady_clock::now() - m_current_timestamp).count() >
-                    m_worktimeout))
+            else
             {
-                cwarn << "No new work received in " << m_worktimeout << " seconds.";
-                m_endpoints.pop();
-                clear_response_pleas();
-                m_io_service.post(
-                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                // Check how old is last job received (only if session started)
+                if (m_session &&
+                    (duration_cast<seconds>(steady_clock::now() - m_current_timestamp).count() >
+                        m_worktimeout))
+                {
+                    cwarn << "No new work received in " << m_worktimeout << " seconds.";
+                    m_endpoints.pop();
+                    clear_response_pleas();
+                    m_io_service.post(
+                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                }
             }
         }
     }
