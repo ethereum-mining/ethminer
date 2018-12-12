@@ -1468,7 +1468,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             if (!target.empty())
             {
                 target = "0x" + dev::padLeft(target, 64, '0');
-                cwarn << target;
                 m_session->nextWorkBoundary = h256(target);
             }
 
