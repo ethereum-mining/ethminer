@@ -20,8 +20,6 @@ EthGetworkClient::EthGetworkClient(int worktimeout, unsigned farmRecheckPeriod)
     m_getwork_timer(g_io_service),
     m_worktimeout(worktimeout)
 {
-    m_subscribed.store(true, std::memory_order_relaxed);
-    m_authorized.store(true, std::memory_order_relaxed);
     m_jSwBuilder.settings_["indentation"] = "";
 
     Json::Value jGetWork;
@@ -47,11 +45,7 @@ void EthGetworkClient::connect()
 
     // Reset status flags
     m_getwork_timer.cancel();
-    m_canconnect.store(false, std::memory_order_relaxed);
-    m_connected.store(false, std::memory_order_relaxed);
-    m_subscribed.store(false, std::memory_order_relaxed);
-    m_authorized.store(false, std::memory_order_relaxed);
-
+    
     // Initialize a new queue of end points
     m_endpoints = std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>>();
     m_endpoint = boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>();
@@ -81,12 +75,13 @@ void EthGetworkClient::connect()
 
 void EthGetworkClient::disconnect()
 {
-    
+    // Release session
+    m_connected.store(false, memory_order_relaxed);
+    m_conn->addDuration(m_session->duration());
+    m_session = nullptr;
+
     m_connecting.store(false, std::memory_order_relaxed);
-    m_connected.store(false, std::memory_order_relaxed);
     m_txPending.store(false, std::memory_order_relaxed);
-    m_subscribed.store(false, std::memory_order_relaxed);
-    m_authorized.store(false, std::memory_order_relaxed);
     m_getwork_timer.cancel();
 
     m_txQueue.consume_all([](std::string* l) { delete l; });
@@ -122,10 +117,13 @@ void EthGetworkClient::handle_connect(const boost::system::error_code& ec)
         // If in "connecting" phase raise the proper event
         if (m_connecting.load(std::memory_order_relaxed))
         {
+            // Initialize new session
+            m_connected.store(true, memory_order_relaxed);
+            m_session = unique_ptr<Session>(new Session);
+            m_session->subscribed.store(true, memory_order_relaxed);
+            m_session->authorized.store(true, memory_order_relaxed);
+            
             m_connecting.store(false, std::memory_order_relaxed);
-            m_connected.store(true, std::memory_order_relaxed);
-            m_subscribed.store(true, std::memory_order_relaxed);
-            m_authorized.store(true, std::memory_order_relaxed);
 
             if (m_onConnected)
                 m_onConnected();
@@ -458,7 +456,7 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
         if (_isSuccess)
         {
             if (m_onSolutionAccepted)
-                m_onSolutionAccepted(_delay, miner_index);
+                m_onSolutionAccepted(_delay, miner_index, false);
         }
         else
         {
@@ -520,18 +518,18 @@ void EthGetworkClient::send(std::string const& sReq)
         begin_connect();
 }
 
-void EthGetworkClient::submitHashrate(string const& rate, string const& id)
+void EthGetworkClient::submitHashrate(uint64_t const& rate, string const& id)
 {
-
-    if (m_connected.load(std::memory_order_relaxed))
+    // No need to check for authorization
+    if (m_session)
     {
         Json::Value jReq;
         jReq["id"] = unsigned(9);
         jReq["jsonrpc"] = "2.0";
         jReq["method"] = "eth_submitHashrate";
         jReq["params"] = Json::Value(Json::arrayValue);
-        jReq["params"].append(rate);  // Already expressed as hex
-        jReq["params"].append(id);    // Already prefixed by 0x
+        jReq["params"].append(toHex(rate, HexPrefix::Add));  // Already expressed as hex
+        jReq["params"].append(id);                           // Already prefixed by 0x
         send(jReq);
     }
 
@@ -540,7 +538,7 @@ void EthGetworkClient::submitHashrate(string const& rate, string const& id)
 void EthGetworkClient::submitSolution(const Solution& solution)
 {
 
-    if (m_connected.load(std::memory_order_relaxed))
+    if (m_session)
     {
         Json::Value jReq;
         string nonceHex = toHex(solution.nonce);

@@ -24,7 +24,6 @@ EthStratumClient::EthStratumClient(int worktimeout, int responsetimeout)
     m_resolver(g_io_service),
     m_endpoints()
 {
-
     m_jSwBuilder.settings_["indentation"] = "";
 
     // Initialize workloop_timer to infinite wait
@@ -116,8 +115,7 @@ void EthStratumClient::init_socket()
         m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
 #else
     timeval tv{
-        static_cast<suseconds_t>(keepAlive / 1000),
-        static_cast<suseconds_t>(keepAlive % 1000)};
+        static_cast<suseconds_t>(keepAlive / 1000), static_cast<suseconds_t>(keepAlive % 1000)};
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(m_socket->native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 #endif
@@ -136,23 +134,7 @@ void EthStratumClient::connect()
         &EthStratumClient::workloop_timer_elapsed, this, boost::asio::placeholders::error)));
 
     // Reset status flags
-    m_canconnect.store(false, std::memory_order_relaxed);
-    m_connected.store(false, std::memory_order_relaxed);
-    m_subscribed.store(false, std::memory_order_relaxed);
-    m_authorized.store(false, std::memory_order_relaxed);
     m_authpending.store(false, std::memory_order_relaxed);
-
-    // Reset data for ETHEREUMSTRATUM (NiceHash) mode (if previously used)
-    // https://github.com/nicehash/Specifications/blob/master/EthereumStratum_NiceHash_v1.0.0.txt
-    /*
-    "Before first job (work) is provided, pool MUST set difficulty by sending mining.set_difficulty
-    If pool does not set difficulty before first job, then miner can assume difficulty 1 was being
-    set." Those above statement imply we MAY NOT receive difficulty thus at each new connection
-    restart from 1
-    */
-    m_nextWorkBoundary = h256("0x00000000ffff0000000000000000000000000000000000000000000000000000");
-    m_extraNonce = 0;
-    m_extraNonceSizeBytes = 0;
 
     // Initializes socket and eventually secure stream
     if (!m_socket)
@@ -190,12 +172,13 @@ void EthStratumClient::connect()
 void EthStratumClient::disconnect()
 {
     // Prevent unnecessary recursion
-    if (!m_connected.load(std::memory_order_relaxed) ||
-        m_disconnecting.load(std::memory_order_relaxed))
+    bool ex = false;
+    if (!m_disconnecting.compare_exchange_strong(ex, true))
         return;
 
+    m_connected.store(false, memory_order_relaxed);
+
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::disconnect() begin");
-    m_disconnecting.store(true, std::memory_order_relaxed);
 
     // Cancel any outstanding async operation
     if (m_socket)
@@ -255,9 +238,12 @@ void EthStratumClient::disconnect_finalize()
     if (g_logOptions & LOG_CONNECT)
         cnote << "Socket disconnected from " << ActiveEndPoint();
 #endif
-    m_connected.store(false, std::memory_order_relaxed);
-    m_subscribed.store(false, std::memory_order_relaxed);
-    m_authorized.store(false, std::memory_order_relaxed);
+
+    // Release session if exits
+    if (m_session)
+        m_conn->addDuration(m_session->duration());
+    m_session = nullptr;
+
     m_authpending.store(false, std::memory_order_relaxed);
     m_disconnecting.store(false, std::memory_order_relaxed);
     m_txPending.store(false, std::memory_order_relaxed);
@@ -268,7 +254,7 @@ void EthStratumClient::disconnect_finalize()
         // reissue a connect lowering stratum mode checks
         // m_canconnect flag is used to prevent never-ending loop when
         // remote endpoint rejects connections attempts persistently since the first
-        if (!m_conn->StratumModeConfirmed() && m_canconnect.load(std::memory_order_relaxed))
+        if (!m_conn->StratumModeConfirmed() && m_conn->Responds())
         {
             // Repost a new connection attempt and advance to next stratum test
             if (m_conn->StratumMode() > 0)
@@ -321,7 +307,6 @@ void EthStratumClient::resolve_handler(
         cwarn << "Could not resolve host " << m_conn->Host() << ", " << ec.message();
 
         // Release locking flag and set connection status
-        m_connected.store(false, std::memory_order_relaxed);
         m_connecting.store(false, std::memory_order_relaxed);
 
         // We "simulate" a disconnect, to ensure a fully shutdown state
@@ -387,6 +372,21 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
         return;
     }
 
+    // No msg from client (EthereumStratum/2.0.0)
+    if (m_conn->StratumMode() == 3 && m_session)
+    {
+        auto s = duration_cast<seconds>(steady_clock::now() - m_session->lastTxStamp).count();
+        if (s > ((int)m_session->timeout - 5))
+        {
+            // Send a message 5 seconds before expiration
+            Json::Value jReq;
+            jReq["id"] = unsigned(7);
+            jReq["method"] = "mining.noop";
+            send(jReq);
+        }
+    }
+
+
     if (m_response_pleas_count.load(std::memory_order_relaxed))
     {
         milliseconds response_delay_ms(0);
@@ -428,6 +428,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
             response_delay_ms =
                 duration_cast<milliseconds>(steady_clock::now() - response_plea_time);
 
+            // Delay timeout to a request
             if (response_delay_ms.count() >= (m_responsetimeout * 1000))
             {
                 if (!m_conn->StratumModeConfirmed() && !m_conn->IsUnrecoverable())
@@ -447,22 +448,18 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                     // Waiting for a response to solution submission
                     cwarn << "No response received in " << m_responsetimeout << " seconds.";
                     m_endpoints.pop();
-                    m_subscribed.store(false, std::memory_order_relaxed);
-                    m_authorized.store(false, std::memory_order_relaxed);
                     clear_response_pleas();
                     m_io_service.post(
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
                 }
             }
-
-            // Check how old is last job received
-            if (duration_cast<seconds>(steady_clock::now() - m_current_timestamp).count() >
-                m_worktimeout)
+            // No work timeout
+            else if (m_session &&
+                     (duration_cast<seconds>(steady_clock::now() - m_current_timestamp).count() >
+                         m_worktimeout))
             {
                 cwarn << "No new work received in " << m_worktimeout << " seconds.";
                 m_endpoints.pop();
-                m_subscribed.store(false, std::memory_order_relaxed);
-                m_authorized.store(false, std::memory_order_relaxed);
                 clear_response_pleas();
                 m_io_service.post(
                     m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
@@ -501,7 +498,6 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
         // Eventually is start_connect which will check for an
         // empty list.
         m_endpoints.pop();
-        m_canconnect.store(false, std::memory_order_relaxed);
         m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::start_connect, this)));
 
         DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() end1");
@@ -509,10 +505,9 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     }
 
     // We got a socket connection established
-    // Start a new session of data
-    m_canconnect.store(true, std::memory_order_relaxed);
-    m_connected.store(true, std::memory_order_relaxed);
-    m_current_timestamp = std::chrono::steady_clock::now();
+    m_conn->Responds(true);
+    m_connected.store(true, memory_order_relaxed);
+
     m_message.clear();
 
     // Clear txqueue
@@ -562,7 +557,6 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
             // This is a fatal error
             // No need to try other IPs as the certificate is based on host-name
             // not ip address. Trying other IPs would end up with the very same error.
-            m_canconnect.store(false, std::memory_order_relaxed);
             m_conn->MarkUnrecoverable();
             m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
             DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() end2");
@@ -587,9 +581,10 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     Otherwise let's go through an autodetection.
 
     Autodetection process passes all known stratum modes.
-    - 1st pass EthStratumClient::ETHEREUMSTRATUM  (2)
-    - 2nd pass EthStratumClient::ETHPROXY         (1)
-    - 3rd pass EthStratumClient::STRATUM          (0)
+    - 1st pass EthStratumClient::ETHEREUMSTRATUM2 (3)
+    - 2nd pass EthStratumClient::ETHEREUMSTRATUM  (2)
+    - 3rd pass EthStratumClient::ETHPROXY         (1)
+    - 4th pass EthStratumClient::STRATUM          (0)
     */
 
     if (m_conn->Version() < 999)
@@ -599,7 +594,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     else
     {
         if (!m_conn->StratumModeConfirmed() && m_conn->StratumMode() == 999)
-            m_conn->SetStratumMode(2, false);
+            m_conn->SetStratumMode(3, false);
     }
 
 
@@ -634,6 +629,18 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
         jReq["params"].append("EthereumStratum/1.0.0");
 
         break;
+
+    case EthStratumClient::ETHEREUMSTRATUM2:
+
+        jReq["method"] = "mining.hello";
+        Json::Value jPrm;
+        jPrm["agent"] = ethminer_get_buildinfo()->project_name_with_version;
+        jPrm["host"] = m_conn->Host();
+        jPrm["port"] = toCompactHex((uint32_t)m_conn->Port(), HexPrefix::DontAdd);
+        jPrm["proto"] = "EthereumStratum/2.0.0";
+        jReq["params"] = jPrm;
+
+        break;
     }
 
     // Begin receive data
@@ -653,6 +660,17 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     send(jReq);
 
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() end");
+}
+
+void EthStratumClient::startSession()
+{
+    // Start a new session of data
+    m_session = unique_ptr<Session>(new Session());
+    m_current_timestamp = std::chrono::steady_clock::now();
+
+    // Invoke higher level handlers
+    if (m_onConnected)
+        m_onConnected();
 }
 
 std::string EthStratumClient::processError(Json::Value& responseObject)
@@ -694,11 +712,10 @@ std::string EthStratumClient::processError(Json::Value& responseObject)
 
 void EthStratumClient::processExtranonce(std::string& enonce)
 {
-    m_extraNonceSizeBytes = enonce.length();
-
-    cnote << "Extranonce set to " EthWhite << enonce << EthReset " (nicehash)";
+    m_session->extraNonceSizeBytes = enonce.length();
+    cnote << "Extranonce set to " EthWhite << enonce << EthReset;
     enonce.resize(16, '0');
-    m_extraNonce = std::stoul(enonce, nullptr, 16);
+    m_session->extraNonce = std::stoul(enonce, nullptr, 16);
 }
 
 void EthStratumClient::processResponse(Json::Value& responseObject)
@@ -743,8 +760,6 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
         cwarn << "Do not blame ethminer for this. Ask pool devs to honor http://www.jsonrpc.org/ "
                  "specifications ";
         cwarn << "Disconnecting...";
-        m_subscribed.store(false, std::memory_order_relaxed);
-        m_authorized.store(false, std::memory_order_relaxed);
         m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
         return;
     }
@@ -763,173 +778,109 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             /*
             This is the response to very first message after connection.
+            Message request vary upon stratum flavour
             I wish I could manage to have different Ids but apparently ethermine.org always replies
             to first message with id=1 regardless the id originally sent.
             */
 
-            // If still in detection phase every failure to
-            // to our issued method must lead to a disconnection and
-            // reconnection with next available method.
-            if (!m_conn->StratumModeConfirmed())
-            {
-                if (!_isSuccess)
-                {
-                    // Disconnect and Proceed with next step of autodetection
-                    m_io_service.post(
-                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
-                    return;
-                }
+            /*
+            If we're in autodetection phase an error message (of any kind) means
+            the selected stratum flavour does not comply with the one implemented by the
+            work provider (the pool) : thus exit, disconnect and try another one
+            */
 
+            if (!_isSuccess && !m_conn->StratumModeConfirmed())
+            {
+                // Disconnect and Proceed with next step of autodetection
                 switch (m_conn->StratumMode())
                 {
-                case EthStratumClient::ETHEREUMSTRATUM:
+                case ETHEREUMSTRATUM2:
+                    cnote << "Negotiation of EthereumStratum/2.0.0 failed. Trying another ...";
+                    break;
+                case ETHEREUMSTRATUM:
+                    cnote << "Negotiation of EthereumStratum/1.0.0 failed. Trying another ...";
+                    break;
+                case ETHPROXY:
+                    cnote << "Negotiation of Eth-Proxy compatible failed. Trying another ...";
+                    break;
+                case STRATUM:
+                    cnote << "Negotiation of Stratum failed.";
+                    break;
+                default:
+                    // Should not happen
+                    break;
+                }
 
-                    // In case of success we also need to verify third parameter of "result" array
-                    // member is exactly "EthereumStratum/1.0.0". Otherwise try with another mode
-                    if (jResult.isArray() && jResult[0].isArray() && jResult[0].size() == 3 &&
-                        jResult[0].get(Json::Value::ArrayIndex(2), "").asString() ==
-                            "EthereumStratum/1.0.0")
+                m_io_service.post(
+                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                return;
+            }
+
+            /*
+            Process response for each stratum flavour :
+            ETHEREUMSTRATUM2 response to mining.hello
+            ETHEREUMSTRATUM  response to mining.subscribe
+            ETHPROXY         response to eth_submitLogin
+            STRATUM          response to mining.subscribe
+            */
+
+            switch (m_conn->StratumMode())
+            {
+            case EthStratumClient::ETHEREUMSTRATUM2:
+
+                _isSuccess = (jResult.isConvertibleTo(Json::ValueType::objectValue) &&
+                              jResult.isMember("proto") &&
+                              jResult["proto"].asString() == "EthereumStratum/2.0.0" &&
+                              jResult.isMember("encoding") && jResult.isMember("resume") &&
+                              jResult.isMember("timeout") && jResult.isMember("maxerrors") &&
+                              jResult.isMember("node"));
+
+                if (_isSuccess)
+                {
+                    // Selected flavour is confirmed
+                    m_conn->SetStratumMode(3, true);
+                    cnote << "Stratum mode : EthereumStratum/2.0.0";
+                    startSession();
+
+                    // Send request for subscription
+                    jReq["id"] = unsigned(2);
+                    jReq["method"] = "mining.subscribe";
+                    enqueue_response_plea();
+                }
+                else
+                {
+                    // If no autodetection the connection is not usable
+                    // with this stratum flavor
+                    if (m_conn->StratumModeConfirmed())
                     {
-                        // ETHEREUMSTRATUM is confirmed
-                        m_conn->SetStratumMode(2, true);
+                        m_conn->MarkUnrecoverable();
+                        cnote << "Negotiation of EthereumStratum/2.0.0 failed. Change your "
+                                 "connection parameters";
                     }
                     else
                     {
-                        // Disconnect and Proceed with next step of autodetection ETHPROXY
-                        // compatible
-                        m_io_service.post(
-                            m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
-                        return;
+                        cnote << "Negotiation of EthereumStratum/2.0.0 failed. Trying another ...";
                     }
-
-                    break;
-
-                case EthStratumClient::ETHPROXY:
-
-                    // ETHPROXY is confirmed
-                    m_conn->SetStratumMode(1, true);
-
-                    break;
-
-                case EthStratumClient::STRATUM:
-
-                    // STRATUM is confirmed
-                    m_conn->SetStratumMode(0, true);
-
-                    break;
-                }
-            }
-
-
-            // Response to "mining.subscribe"
-            // (https://en.bitcoin.it/wiki/Stratum_mining_protocol#mining.subscribe) Result should
-            // be an array with multiple dimensions, we only care about the data if
-            // EthStratumClient::ETHEREUMSTRATUM
-            switch (m_conn->StratumMode())
-            {
-            case EthStratumClient::STRATUM:
-
-                if (jResult.isArray() && jResult[0].isArray() && jResult[0].size() == 3 &&
-                    jResult[0].get(Json::Value::ArrayIndex(2), "").asString() ==
-                        "EthereumStratum/1.0.0")
-                    _isSuccess = false;
-
-                m_subscribed.store(_isSuccess, std::memory_order_relaxed);
-                if (!m_subscribed)
-                {
-                    cnote << "Could not subscribe: " << _errReason;
-                    m_conn->MarkUnrecoverable();
+                    // Disconnect
                     m_io_service.post(
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
                     return;
-                }
-                else
-                {
-
-                    // If we get here we have a valid application connection
-                    // not only a socket connection
-                    if (m_onConnected && m_conn->StratumModeConfirmed())
-                    {
-                        m_current_timestamp = std::chrono::steady_clock::now();
-                        m_onConnected();
-                    }
-                        
-                    cnote << "Stratum mode : STRATUM";
-                    cnote << "Subscribed!";
-
-                    m_authpending.store(true, std::memory_order_relaxed);
-                    jReq["id"] = unsigned(3);
-                    jReq["jsonrpc"] = "2.0";
-                    jReq["method"] = "mining.authorize";
-                    jReq["params"] = Json::Value(Json::arrayValue);
-                    jReq["params"].append(m_conn->User() + m_conn->Path());
-                    jReq["params"].append(m_conn->Pass());
-                    enqueue_response_plea();
-                }
-
-                break;
-
-            case EthStratumClient::ETHPROXY:
-
-                m_subscribed.store(_isSuccess, std::memory_order_relaxed);
-                if (!m_subscribed)
-                {
-                    cnote << "Could not login: " << _errReason;
-                    m_conn->MarkUnrecoverable();
-                    m_io_service.post(
-                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
-                    return;
-                }
-                else
-                {
-                    // If we get here we have a valid application connection
-                    // not only a socket connection
-                    if (m_onConnected && m_conn->StratumModeConfirmed())
-                    {
-                        m_current_timestamp = std::chrono::steady_clock::now();
-                        m_onConnected();
-                    }
-                    cnote << "Stratum mode : ETHPROXY Compatible";
-                    cnote << "Logged in!";
-                    m_authorized.store(true, std::memory_order_relaxed);
-
-                    jReq["id"] = unsigned(5);
-                    jReq["method"] = "eth_getWork";
-                    jReq["params"] = Json::Value(Json::arrayValue);
                 }
 
                 break;
 
             case EthStratumClient::ETHEREUMSTRATUM:
-                
-                m_subscribed.store(_isSuccess, std::memory_order_relaxed);
-                if (!m_subscribed)
+
+                _isSuccess = (jResult.isArray() && jResult[0].isArray() && jResult[0].size() == 3 &&
+                              jResult[0].get(Json::Value::ArrayIndex(2), "").asString() ==
+                                  "EthereumStratum/1.0.0");
+                if (_isSuccess)
                 {
-                    cnote << "Could not subscribe: " << _errReason;
-                    m_conn->MarkUnrecoverable();
-                    m_io_service.post(
-                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
-                    return;
-                }
-                else
-                {
-
-                    // If we get here we have a valid application connection
-                    // not only a socket connection
-                    if (m_onConnected && m_conn->StratumModeConfirmed())
-                    {
-                        m_current_timestamp = std::chrono::steady_clock::now();
-                        m_onConnected();
-                    }
-
-                    cnote << "Stratum mode : ETHEREUMSTRATUM (NiceHash)";
-                    cnote << "Subscribed to stratum server";
-
-                    if (!jResult.empty() && jResult.isArray())
-                    {
-                        std::string enonce = jResult.get(Json::Value::ArrayIndex(1), "").asString();
-                        processExtranonce(enonce);
-                    }
+                    // Selected flavour is confirmed
+                    m_conn->SetStratumMode(2, true);
+                    cnote << "Stratum mode : EthereumStratum/1.0.0 (NiceHash)";
+                    startSession();
+                    m_session->subscribed.store(true, memory_order_relaxed);
 
                     // Notify we're ready for extra nonce subscribtion on the fly
                     // reply to this message should not perform any logic
@@ -942,31 +893,171 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     m_authpending.store(true, std::memory_order_relaxed);
                     jReq["id"] = unsigned(3);
                     jReq["method"] = "mining.authorize";
-                    jReq["params"].append(m_conn->User() + m_conn->Path());
+                    jReq["params"].append(m_conn->UserDotWorker() + m_conn->Path());
                     jReq["params"].append(m_conn->Pass());
                     enqueue_response_plea();
                 }
-
+                else
+                {
+                    // If no autodetection the connection is not usable
+                    // with this stratum flavor
+                    if (m_conn->StratumModeConfirmed())
+                    {
+                        m_conn->MarkUnrecoverable();
+                        cnote << "Negotiation of EthereumStratum/1.0.0 (NiceHash) failed. Change "
+                                 "your "
+                                 "connection parameters";
+                    }
+                    else
+                    {
+                        cnote << "Negotiation of EthereumStratum/1.0.0 (NiceHash) failed. Trying "
+                                 "another ...";
+                    }
+                    // Disconnect
+                    m_io_service.post(
+                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                    return;
+                }
 
                 break;
+
+            case EthStratumClient::ETHPROXY:
+
+                if (_isSuccess)
+                {
+                    // Selected flavour is confirmed
+                    m_conn->SetStratumMode(1, true);
+                    cnote << "Stratum mode : Eth-Proxy compatible";
+                    startSession();
+
+                    m_session->subscribed.store(true, std::memory_order_relaxed);
+                    m_session->authorized.store(true, std::memory_order_relaxed);
+
+                    // Request initial work
+                    jReq["id"] = unsigned(5);
+                    jReq["method"] = "eth_getWork";
+                    jReq["params"] = Json::Value(Json::arrayValue);
+                }
+                else
+                {
+                    // If no autodetection the connection is not usable
+                    // with this stratum flavor
+                    if (m_conn->StratumModeConfirmed())
+                    {
+                        m_conn->MarkUnrecoverable();
+                        cnote << "Negotiation of Eth-Proxy compatible failed. Change your "
+                                 "connection parameters";
+                    }
+                    else
+                    {
+                        cnote << "Negotiation of Eth-Proxy compatible failed. Trying "
+                                 "another ...";
+                    }
+                    // Disconnect
+                    m_io_service.post(
+                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                    return;
+                }
+
+                break;
+
+            case EthStratumClient::STRATUM:
+
+                if (_isSuccess)
+                {
+                    // Selected flavour is confirmed
+                    m_conn->SetStratumMode(0, true);
+                    cnote << "Stratum mode : Stratum";
+                    startSession();
+                    m_session->subscribed.store(true, memory_order_relaxed);
+
+                    // Request authorization
+                    m_authpending.store(true, std::memory_order_relaxed);
+                    jReq["id"] = unsigned(3);
+                    jReq["jsonrpc"] = "2.0";
+                    jReq["method"] = "mining.authorize";
+                    jReq["params"] = Json::Value(Json::arrayValue);
+                    jReq["params"].append(m_conn->UserDotWorker() + m_conn->Path());
+                    jReq["params"].append(m_conn->Pass());
+                    enqueue_response_plea();
+                }
+                else
+                {
+                    // If no autodetection the connection is not usable
+                    // with this stratum flavor
+                    if (m_conn->StratumModeConfirmed())
+                    {
+                        m_conn->MarkUnrecoverable();
+                        cnote << "Negotiation of Eth-Proxy compatible failed. Change your "
+                                 "connection parameters";
+                    }
+                    else
+                    {
+                        cnote << "Negotiation of Eth-Proxy compatible failed. Trying "
+                                 "another ...";
+                    }
+                    // Disconnect
+                    m_io_service.post(
+                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                    return;
+                }
+
+                break;
+
+            default:
+
+                // Should not happen
+                break;
             }
+
 
             send(jReq);
         }
 
         else if (_id == 2)
         {
+            // For EthereumStratum/1.0.0
             // This is the response to mining.extranonce.subscribe
             // according to this
             // https://github.com/nicehash/Specifications/blob/master/NiceHash_extranonce_subscribe_extension.txt
             // In all cases, client does not perform any logic when receiving back these replies.
             // With mining.extranonce.subscribe subscription, client should handle extranonce1
             // changes correctly
-
             // Nothing to do here.
+
+            // For EthereumStratum/2.0.0
+            // This is the response to mining.subscribe
+            // https://github.com/AndreaLanfranchi/EthereumStratum-2.0.0#session-handling---response-to-subscription
+            if (m_conn->StratumMode() == 3)
+            {
+                response_delay_ms = dequeue_response_plea();
+
+                if (!jResult.isString() || !jResult.asString().size())
+                {
+                    // Got invalid session id which is mandatory
+                    cwarn << "Got invalid or missing session id. Disconnecting ... ";
+                    m_conn->MarkUnrecoverable();
+                    m_io_service.post(
+                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                    return;
+                }
+
+                m_session->sessionId = jResult.asString();
+                m_session->subscribed.store(true, memory_order_relaxed);
+
+                // Request authorization
+                m_authpending.store(true, std::memory_order_relaxed);
+                jReq["id"] = unsigned(3);
+                jReq["method"] = "mining.authorize";
+                jReq["params"] = Json::Value(Json::arrayValue);
+                jReq["params"].append(m_conn->UserDotWorker() + m_conn->Path());
+                jReq["params"].append(m_conn->Pass());
+                enqueue_response_plea();
+                send(jReq);
+            }
         }
 
-        else if (_id == 3)
+        else if (_id == 3 && m_conn->StratumMode() != ETHEREUMSTRATUM2)
         {
             response_delay_ms = dequeue_response_plea();
 
@@ -976,16 +1067,15 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             // reevaluate _isSuccess
 
             if (_isSuccess && jResult.isBool())
-            {
                 _isSuccess = jResult.asBool();
-            }
 
             m_authpending.store(false, std::memory_order_relaxed);
-            m_authorized.store(_isSuccess, std::memory_order_relaxed);
+            m_session->authorized.store(_isSuccess, std::memory_order_relaxed);
 
-            if (!m_authorized)
+            if (!isAuthorized())
             {
-                cnote << "Worker " << EthWhite << m_conn->User() << EthReset << " not authorized : " << _errReason;
+                cnote << "Worker " << EthWhite << m_conn->UserDotWorker() << EthReset
+                      << " not authorized : " << _errReason;
                 m_conn->MarkUnrecoverable();
                 m_io_service.post(
                     m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
@@ -993,11 +1083,34 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             }
             else
             {
-                cnote << "Authorized worker " << m_conn->User();
+                cnote << "Authorized worker " << m_conn->UserDotWorker();
             }
         }
 
-        else if (_id >= 40 && _id <= m_solution_submitted_max_id)
+        else if (_id == 3 && m_conn->StratumMode() == ETHEREUMSTRATUM2)
+        {
+            response_delay_ms = dequeue_response_plea();
+
+            if (!_isSuccess || (!jResult.isString() || !jResult.asString().size()))
+            {
+                // Got invalid session id which is mandatory
+                cnote << "Worker " << EthWhite << m_conn->UserDotWorker() << EthReset
+                      << " not authorized : " << _errReason;
+                m_conn->MarkUnrecoverable();
+                m_io_service.post(
+                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                return;
+            }
+            m_authpending.store(false, memory_order_relaxed);
+            m_session->authorized.store(true, memory_order_relaxed);
+            m_session->workerId = jResult.asString();
+            cnote << "Authorized worker " << m_conn->UserDotWorker();
+
+            // Nothing else to here. Wait for notifications from pool
+        }
+
+        else if ((_id >= 40 && _id <= m_solution_submitted_max_id) &&
+                 m_conn->StratumMode() != ETHEREUMSTRATUM2)
         {
             response_delay_ms = dequeue_response_plea();
 
@@ -1007,28 +1120,56 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             // reevaluate _isSucess
 
             if (_isSuccess && jResult.isBool())
-            {
                 _isSuccess = jResult.asBool();
+
+            const unsigned miner_index = _id - 40;
+            if (_isSuccess)
+            {
+                if (m_onSolutionAccepted)
+                    m_onSolutionAccepted(response_delay_ms, miner_index, false);
+            }
+            else
+            {
+                if (m_onSolutionRejected)
+                {
+                    cwarn << "Reject reason : "
+                          << (_errReason.empty() ? "Unspecified" : _errReason);
+                    m_onSolutionRejected(response_delay_ms, miner_index);
+                }
+            }
+        }
+
+        else if ((_id >= 40 && _id <= m_solution_submitted_max_id) &&
+                 m_conn->StratumMode() == ETHEREUMSTRATUM2)
+        {
+            response_delay_ms = dequeue_response_plea();
+
+            // In EthereumStratum/2.0.0 we can evaluate the severity of the
+            // error. An 2xx error means the solution have been accepted but is
+            // likely stale
+            bool isStale = false;
+            if (!_isSuccess)
+            {
+                string errCode = responseObject["error"].get("code","").asString();
+                if (errCode.substr(0, 1) == "2")
+                    _isSuccess = isStale = true;
             }
 
+
+            const unsigned miner_index = _id - 40;
+            if (_isSuccess)
             {
-                const unsigned miner_index = _id - 40;
-                dequeue_response_plea();
-                if (_isSuccess)
+                if (m_onSolutionAccepted)
+                    m_onSolutionAccepted(response_delay_ms, miner_index, isStale);
+            }
+            else
+            {
+                
+                if (m_onSolutionRejected)
                 {
-                    if (m_onSolutionAccepted)
-                    {
-                        m_onSolutionAccepted(response_delay_ms, miner_index);
-                    }
-                }
-                else
-                {
-                    if (m_onSolutionRejected)
-                    {
-                        cwarn << "Reject reason : "
-                              << (_errReason.empty() ? "Unspecified" : _errReason);
-                        m_onSolutionRejected(response_delay_ms, miner_index);
-                    }
+                    cwarn << "Reject reason : "
+                          << (_errReason.empty() ? "Unspecified" : _errReason);
+                    m_onSolutionRejected(response_delay_ms, miner_index);
                 }
             }
         }
@@ -1065,11 +1206,36 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             // error replying to either mining.subscribe (1) or mining.authorize requests (3) To
             // properly handle this situation we need to rely on Subscribed/Authorized states
 
-            response_delay_ms = dequeue_response_plea();
+            if (!_isSuccess && !m_conn->StratumModeConfirmed())
+            {
+                // Disconnect and Proceed with next step of autodetection
+                switch (m_conn->StratumMode())
+                {
+                case ETHEREUMSTRATUM2:
+                    cnote << "Negotiation of EthereumStratum/2.0.0 failed. Trying another ...";
+                    break;
+                case ETHEREUMSTRATUM:
+                    cnote << "Negotiation of EthereumStratum/1.0.0 failed. Trying another ...";
+                    break;
+                case ETHPROXY:
+                    cnote << "Negotiation of Eth-Proxy compatible failed. Trying another ...";
+                    break;
+                case STRATUM:
+                    cnote << "Negotiation of Stratum failed.";
+                    break;
+                default:
+                    // Should not happen
+                    break;
+                }
+
+                m_io_service.post(
+                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                return;
+            }
 
             if (!_isSuccess)
             {
-                if (!m_subscribed)
+                if (!isSubscribed())
                 {
                     // Subscription pending
                     cnote << "Subscription failed : "
@@ -1078,7 +1244,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
                     return;
                 }
-                else if (m_subscribed && !m_authorized)
+                else if (isSubscribed() && !isAuthorized())
                 {
                     // Authorization pending
                     cnote << "Worker not authorized : "
@@ -1115,15 +1281,13 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
         unsigned prmIdx;
 
-        if (_method == "mining.notify")
+        if (_method == "mining.notify" && m_conn->StratumMode() != ETHEREUMSTRATUM2)
         {
             // Discard jobs if not properly subscribed
             // or if a job for this transmission has already
             // been processed
-            if (!m_subscribed.load(std::memory_order_relaxed) || m_newjobprocessed)
-            {
+            if (!isSubscribed() || m_newjobprocessed)
                 return;
-            }
 
             /*
             Workaround for Nanopool wrong implementation
@@ -1146,7 +1310,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             if (jPrm.isArray() && !jPrm.empty())
             {
                 m_current.job = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
-                
+
                 if (m_conn->StratumMode() == EthStratumClient::ETHEREUMSTRATUM)
                 {
                     string sSeedHash = jPrm.get(Json::Value::ArrayIndex(1), "").asString();
@@ -1154,12 +1318,11 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
                     if (sHeaderHash != "" && sSeedHash != "")
                     {
-
                         m_current.seed = h256(sSeedHash);
                         m_current.header = h256(sHeaderHash);
-                        m_current.boundary = m_nextWorkBoundary;
-                        m_current.startNonce = m_extraNonce;
-                        m_current.exSizeBytes = m_extraNonceSizeBytes;
+                        m_current.boundary = m_session->nextWorkBoundary;
+                        m_current.startNonce = m_session->extraNonce;
+                        m_current.exSizeBytes = m_session->extraNonceSizeBytes;
                         m_current_timestamp = std::chrono::steady_clock::now();
                         m_current.block = -1;
 
@@ -1185,9 +1348,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     {
                         try
                         {
-                            m_current.block = std::stoul(
-                                jPrm.get(Json::Value::ArrayIndex(prmIdx), "").asString(), nullptr,
-                                16);
+                            m_current.block =
+                                std::stoul(jPrm.get(Json::Value::ArrayIndex(prmIdx), "").asString(),
+                                    nullptr, 16);
                             /*
                             check if the block number is in a valid range
                             A year has ~31536000 seconds
@@ -1220,7 +1383,53 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 }
             }
         }
-        else if (_method == "mining.set_difficulty")
+        else if (_method == "mining.notify" && m_conn->StratumMode() == ETHEREUMSTRATUM2)
+        {
+            /*
+            {
+              "method": "mining.notify",
+              "params": [
+                  "bf0488aa",
+                  "6526d5"
+                  "645cf20198c2f3861e947d4f67e3ab63b7b2e24dcc9095bd9123e7b33371f6cc",
+                  "0"
+              ]
+            }
+            */
+            if (!m_session || !m_session->firstMiningSet)
+            {
+                cwarn << "Got mining.notify before mining.set message. Discarding ...";
+                return;
+            }
+
+            if (!responseObject.isMember("params") || !responseObject["params"].isArray() ||
+                responseObject["params"].empty() || responseObject["params"].size() != 4)
+            {
+                cwarn << "Got invalid mining.notify message. Discarding ...";
+                return;
+            }
+
+            jPrm = responseObject["params"];
+            m_current.job = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
+            m_current.block =
+                stoul(jPrm.get(Json::Value::ArrayIndex(1), "").asString(), nullptr, 16);
+
+            string header =
+                "0x" + dev::padLeft(jPrm.get(Json::Value::ArrayIndex(2), "").asString(), 64, '0');
+
+            m_current.header = h256(header);
+            m_current.boundary = h256(m_session->nextWorkBoundary.hex(HexPrefix::Add));
+            m_current.epoch = m_session->epoch;
+            m_current.algo = m_session->algo;
+            m_current.startNonce = m_session->extraNonce;
+            m_current.exSizeBytes = m_session->extraNonceSizeBytes;
+            m_current_timestamp = std::chrono::steady_clock::now();
+
+            // This will signal to dispatch the job
+            // at the end of the transmission.
+            m_newjobprocessed = true;
+        }
+        else if (_method == "mining.set_difficulty" && m_conn->StratumMode() == ETHEREUMSTRATUM)
         {
             if (m_conn->StratumMode() == EthStratumClient::ETHEREUMSTRATUM)
             {
@@ -1230,9 +1439,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     double nextWorkDifficulty =
                         max(jPrm.get(Json::Value::ArrayIndex(0), 1).asDouble(), 0.0001);
 
-                    m_nextWorkBoundary = h256(dev::getTargetFromDiff(nextWorkDifficulty));
-                    cnote << "Difficulty set to " EthWhite << nextWorkDifficulty
-                          << EthReset " (nicehash) Target : " << m_nextWorkBoundary.hex();
+                    m_session->nextWorkBoundary = h256(dev::getTargetFromDiff(nextWorkDifficulty));
                 }
             }
             else
@@ -1246,8 +1453,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
             }
         }
-        else if (_method == "mining.set_extranonce" &&
-                 m_conn->StratumMode() == EthStratumClient::ETHEREUMSTRATUM)
+        else if (_method == "mining.set_extranonce" && m_conn->StratumMode() == ETHEREUMSTRATUM)
         {
             jPrm = responseObject.get("params", Json::Value::null);
             if (jPrm.isArray())
@@ -1256,6 +1462,53 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 if (!enonce.empty())
                     processExtranonce(enonce);
             }
+        }
+        else if (_method == "mining.set" && m_conn->StratumMode() == ETHEREUMSTRATUM2)
+        {
+            /*
+            {
+              "method": "mining.set",
+              "params": {
+                  "epoch" : "dc",
+                  "target" : "0112e0be826d694b2e62d01511f12a6061fbaec8bc02357593e70e52ba",
+                  "algo" : "ethash",
+                  "extranonce" : "af4c"
+              }
+            }
+            */
+            if (!responseObject.isMember("params") || !responseObject["params"].isObject() ||
+                responseObject["params"].empty())
+            {
+                cwarn << "Got invalid mining.set message. Discarding ...";
+                return;
+            }
+            m_session->firstMiningSet = true;
+            jPrm = responseObject["params"];
+            string timeout = jPrm.get("timeout", "").asString();
+            string epoch = jPrm.get("epoch", "").asString();
+            string target = jPrm.get("target", "").asString();
+
+            if (!timeout.empty())
+                m_session->timeout = stoi(timeout, nullptr, 16);
+
+            if (!epoch.empty())
+                m_session->epoch = stoul(epoch, nullptr, 16);
+
+            if (!target.empty())
+            {
+                target = "0x" + dev::padLeft(target, 64, '0');
+                m_session->nextWorkBoundary = h256(target);
+            }
+
+            m_session->algo = jPrm.get("algo", "ethash").asString();
+            string enonce = jPrm.get("extranonce", "").asString();
+            if (!enonce.empty())
+                processExtranonce(enonce);
+        }
+        else if (_method == "mining.bye" && m_conn->StratumMode() == ETHEREUMSTRATUM2)
+        {
+            cnote << m_conn->Host() << " requested connection close. Disconnecting ...";
+            m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
         }
         else if (_method == "client.get_version")
         {
@@ -1279,9 +1532,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
             // Respond back to issuer
             if (_rpcVer == 2)
-            {
                 jReq["jsonrpc"] = "2.0";
-            }
+
             jReq["id"] = _id;
             jReq["error"] = "Method not found";
 
@@ -1290,35 +1542,53 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
     }
 }
 
-void EthStratumClient::submitHashrate(string const& rate, string const& id)
+void EthStratumClient::submitHashrate(uint64_t const& rate, string const& id)
 {
-
     if (!isConnected())
         return;
 
-    // There is no stratum method to submit the hashrate so we use the rpc variant.
-    // Note !!
-    // id = 6 is also the id used by ethermine.org and nanopool to push new jobs
-    // thus we will be in trouble if we want to check the result of hashrate submission
-    // actually change the id from 6 to 9
-
     Json::Value jReq;
     jReq["id"] = unsigned(9);
-    jReq["jsonrpc"] = "2.0";
-    if (!m_conn->Workername().empty())
-        jReq["worker"] = m_conn->Workername();
-    jReq["method"] = "eth_submitHashrate";
     jReq["params"] = Json::Value(Json::arrayValue);
-    jReq["params"].append(rate);  // Already expressed as hex
-    jReq["params"].append(id);    // Already prefixed by 0x
+
+    if (m_conn->StratumMode() != 3)
+    {
+        // There is no stratum method to submit the hashrate so we use the rpc variant.
+        // Note !!
+        // id = 6 is also the id used by ethermine.org and nanopool to push new jobs
+        // thus we will be in trouble if we want to check the result of hashrate submission
+        // actually change the id from 6 to 9
+        jReq["jsonrpc"] = "2.0";
+        if (!m_conn->Workername().empty())
+            jReq["worker"] = m_conn->Workername();
+        jReq["method"] = "eth_submitHashrate";
+        jReq["params"].append(toHex(rate, HexPrefix::Add, 32));  // Already expressed as hex
+        jReq["params"].append(id);                               // Already prefixed by 0x
+    }
+    else
+    {
+        /*
+        {
+          "id" : 9,
+          "method": "mining.hashrate",
+          "params": [
+              "500000",
+              "w-123"
+              ]
+        }
+        */
+
+        jReq["method"] = "mining.hashrate";
+        jReq["params"].append(toCompactHex(rate, HexPrefix::DontAdd));
+        jReq["params"].append(m_session->workerId);
+    }
 
     send(jReq);
 }
 
 void EthStratumClient::submitSolution(const Solution& solution)
 {
-    if (!m_subscribed.load(std::memory_order_relaxed) ||
-        !m_authorized.load(std::memory_order_relaxed))
+    if (!isAuthorized())
     {
         cwarn << "Solution not submitted. Not authorized.";
         return;
@@ -1360,15 +1630,21 @@ void EthStratumClient::submitSolution(const Solution& solution)
 
     case EthStratumClient::ETHEREUMSTRATUM:
 
-        jReq["params"].append(m_conn->User());
+        jReq["params"].append(m_conn->UserDotWorker());
         jReq["params"].append(solution.work.job);
         jReq["params"].append(
             toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
+
+    case EthStratumClient::ETHEREUMSTRATUM2:
+
+        jReq["params"].append(solution.work.job);
+        jReq["params"].append(
+            toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
+        jReq["params"].append(m_session->workerId);
     }
 
     enqueue_response_plea();
     send(jReq);
-
 }
 
 void EthStratumClient::recvSocketData()
@@ -1575,6 +1851,11 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
     }
     else
     {
+        // Register last transmission tstamp to prevent timeout
+        // in EthereumStratum/2.0.0
+        if (m_session && m_conn->StratumMode() == 3)
+            m_session->lastTxStamp = chrono::steady_clock::now();
+
         if (m_txQueue.empty())
             m_txPending.store(false, std::memory_order_relaxed);
         else

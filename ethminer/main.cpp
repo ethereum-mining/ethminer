@@ -1121,7 +1121,8 @@ public:
                  << endl
                  << "        stratum     Stratum" << endl
                  << "        stratum1    Eth Proxy compatible" << endl
-                 << "        stratum2    EthereumStratum 1.0.0. (nicehash)" << endl
+                 << "        stratum2    EthereumStratum 1.0.0 (nicehash)" << endl
+                 << "        stratum3    EthereumStratum 2.0.0" << endl
                  << endl
                  << "    Transport variants :" << endl
                  << endl

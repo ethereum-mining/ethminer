@@ -137,7 +137,8 @@ std::string dev::getTargetFromDiff(double diff, HexPrefix _prefix)
 
     // Normalize to 64 chars hex with "0x" prefix
     stringstream ss;
-    ss << (_prefix == HexPrefix::Add ? "0x" : "") << setw(64) << setfill('0') << std::hex << product;
+    ss << (_prefix == HexPrefix::Add ? "0x" : "") << setw(64) << setfill('0') << std::hex
+       << product;
 
     string target = ss.str();
     boost::algorithm::to_lower(target);
@@ -183,4 +184,20 @@ std::string dev::getFormattedMemory(double _mem, ScaleSuffix _suffix, int _preci
 {
     static string suffixes[] = {"B", "KB", "MB", "GB"};
     return dev::getScaledSize(_mem, 1024.0, _precision, suffixes, 4, _suffix);
+}
+
+std::string dev::padLeft(std::string const _value, size_t const _length, char const _fillChar) 
+{
+    std::string _ret = _value;
+    if (_length > _value.size())
+        _ret.insert(0, (_length - _value.size()), _fillChar);
+    return _ret;
+}
+
+std::string dev::padRight(std::string const _value, size_t const _length, char const _fillChar)
+{
+    std::string _ret = _value;
+    if (_length > _value.size())
+        _ret.resize(_length, _fillChar);
+    return _ret;
 }
