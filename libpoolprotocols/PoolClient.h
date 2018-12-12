@@ -41,6 +41,7 @@ struct Session
         h256("0x00000000ffff0000000000000000000000000000000000000000000000000000");
 
     // EthereumStratum (2 only)
+    bool firstMiningSet = false;
     string sessionId = "";
     string workerId = "";
     string algo = "ethash";

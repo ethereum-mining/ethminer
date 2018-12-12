@@ -698,7 +698,7 @@ std::string EthStratumClient::processError(Json::Value& responseObject)
 void EthStratumClient::processExtranonce(std::string& enonce)
 {
     m_session->extraNonceSizeBytes = enonce.length();
-    cnote << "Extranonce set to " EthWhite << enonce << EthReset " (nicehash)";
+    cnote << "Extranonce set to " EthWhite << enonce << EthReset;
     enonce.resize(16, '0');
     m_session->extraNonce = std::stoul(enonce, nullptr, 16);
 }
@@ -1015,6 +1015,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             // https://github.com/AndreaLanfranchi/EthereumStratum-2.0.0#session-handling---response-to-subscription
             if (m_conn->StratumMode() == 3)
             {
+                response_delay_ms = dequeue_response_plea();
+
                 if (!jResult.isString() || !jResult.asString().size())
                 {
                     // Got invalid session id which is mandatory
@@ -1072,6 +1074,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
 
         else if (_id == 3 && m_conn->StratumMode() == ETHEREUMSTRATUM2)
         {
+            response_delay_ms = dequeue_response_plea();
+
             if (!_isSuccess || (!jResult.isString() || !jResult.asString().size()))
             {
                 // Got invalid session id which is mandatory
@@ -1084,6 +1088,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             }
             m_authpending.store(false, memory_order_relaxed);
             m_session->authorized.store(true, memory_order_relaxed);
+            m_session->workerId = jResult.asString();
             cnote << "Authorized worker " << m_conn->UserDotWorker();
 
             // Nothing else to here. Wait for notifications from pool
@@ -1347,6 +1352,11 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
               ]
             }
             */
+            if (!m_session || !m_session->firstMiningSet)
+            {
+                cwarn << "Got mining.notify before mining.set message. Discarding ...";
+                return;
+            }
 
             if (!responseObject.isMember("params") || !responseObject["params"].isArray() ||
                 responseObject["params"].empty() || responseObject["params"].size() != 4)
@@ -1359,9 +1369,10 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             m_current.job = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
             m_current.block =
                 stoul(jPrm.get(Json::Value::ArrayIndex(1), "").asString(), nullptr, 16);
-            string header = string('0', 64);
-            header.append(jPrm.get(Json::Value::ArrayIndex(2), "").asString());
-            header = "0x" + header.substr(header.size() - 64);
+
+            string header =
+                "0x" + dev::padLeft(jPrm.get(Json::Value::ArrayIndex(2), "").asString(), 64, '0');
+
             m_current.header = h256(header);
             m_current.boundary = h256(m_session->nextWorkBoundary.hex(HexPrefix::Add));
             m_current.epoch = m_session->epoch;
@@ -1427,23 +1438,25 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 cwarn << "Got invalid mining.set message. Discarding ...";
                 return;
             }
+            m_session->firstMiningSet = true;
             jPrm = responseObject["params"];
-            if (jPrm.isMember("epoch"))
-                m_session->epoch = stoul(jPrm["epoch"].asString(), nullptr, 16);
-            if (jPrm.isMember("target"))
+            string epoch = jPrm.get("epoch", "").asString();
+            string target = jPrm.get("target", "").asString();
+
+            if (!epoch.empty())
+                m_session->epoch = stoul(epoch, nullptr, 16);
+
+            if (!target.empty())
             {
-                string target = string('0', 64);
-                target.append(jPrm["target"].asString());
-                target = target.substr(target.length() - 64);
-                m_session->nextWorkBoundary = h256("0x" + target);
+                target = "0x" + dev::padLeft(target, 64, '0');
+                cwarn << target;
+                m_session->nextWorkBoundary = h256(target);
             }
-            if (jPrm.isMember("algo"))
-                m_session->algo = jPrm["algo"].asString();
-            if (jPrm.isMember("extranonce"))
-            {
-                string enonce = jPrm["extranonce"].asString();
+
+            m_session->algo = jPrm.get("algo", "ethash").asString();
+            string enonce = jPrm.get("extranonce", "").asString();
+            if (!enonce.empty())
                 processExtranonce(enonce);
-            }
         }
         else if (_method == "mining.bye" && m_conn->StratumMode() == ETHEREUMSTRATUM2)
         {
