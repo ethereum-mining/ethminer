@@ -233,7 +233,7 @@ void CUDAMiner::kick_miner()
     m_new_work_signal.notify_one();
 }
 
-unsigned CUDAMiner::getNumDevices()
+int CUDAMiner::getNumDevices()
 {
     int deviceCount;
     cudaError_t err = cudaGetDeviceCount(&deviceCount);
