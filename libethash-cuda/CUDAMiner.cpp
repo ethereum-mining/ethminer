@@ -194,26 +194,36 @@ void CUDAMiner::workLoop()
                 continue;
             }
 
-            // Epoch change ?
-            if (current.epoch != w.epoch)
+            if (w.algo == "ethash")
             {
-                if (!initEpoch())
-                    break;  // This will simply exit the thread
 
-                // As DAG generation takes a while we need to
-                // ensure we're on latest job, not on the one
-                // which triggered the epoch change
+                // Epoch change ?
+                if (current.epoch != w.epoch)
+                {
+                    if (!initEpoch())
+                        break;  // This will simply exit the thread
+
+                    // As DAG generation takes a while we need to
+                    // ensure we're on latest job, not on the one
+                    // which triggered the epoch change
+                    current = w;
+                    continue;
+                }
+
+                // Persist most recent job.
+                // Job's differences should be handled at higher level
                 current = w;
-                continue;
+                uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)current.boundary >> 192);
+
+                // Eventually start searching
+                search(current.header.data(), upper64OfBoundary, current.startNonce, w);
+
+            }
+            else
+            {
+                throw std::runtime_error("Algo : " + w.algo + " not yet implemented");
             }
 
-            // Persist most recent job.
-            // Job's differences should be handled at higher level
-            current = w;
-            uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)current.boundary >> 192);
-
-            // Eventually start searching
-            search(current.header.data(), upper64OfBoundary, current.startNonce, w);
         }
 
         // Reset miner and stop working
