@@ -1015,7 +1015,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             // https://github.com/AndreaLanfranchi/EthereumStratum-2.0.0#session-handling---response-to-subscription
             if (m_conn->StratumMode() == 3)
             {
-                if (!jResult.isString() || jResult.asString().size())
+                if (!jResult.isString() || !jResult.asString().size())
                 {
                     // Got invalid session id which is mandatory
                     cwarn << "Got invalid or missing session id. Disconnecting ... ";
