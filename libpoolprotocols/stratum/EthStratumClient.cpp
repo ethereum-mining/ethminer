@@ -372,6 +372,21 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
         return;
     }
 
+    // No msg from client (EthereumStratum/2.0.0)
+    if (m_conn->StratumMode() == 3 && m_session)
+    {
+        auto s = duration_cast<seconds>(steady_clock::now() - m_session->lastTxStamp).count();
+        if (s > ((int)m_session->timeout - 5))
+        {
+            // Send a message 5 seconds before expiration
+            Json::Value jReq;
+            jReq["id"] = unsigned(7);
+            jReq["method"] = "mining.noop";
+            send(jReq);
+        }
+    }
+
+
     if (m_response_pleas_count.load(std::memory_order_relaxed))
     {
         milliseconds response_delay_ms(0);
@@ -438,19 +453,16 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                         m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
                 }
             }
-            else
+            // No work timeout
+            else if (m_session &&
+                     (duration_cast<seconds>(steady_clock::now() - m_current_timestamp).count() >
+                         m_worktimeout))
             {
-                // Check how old is last job received (only if session started)
-                if (m_session &&
-                    (duration_cast<seconds>(steady_clock::now() - m_current_timestamp).count() >
-                        m_worktimeout))
-                {
-                    cwarn << "No new work received in " << m_worktimeout << " seconds.";
-                    m_endpoints.pop();
-                    clear_response_pleas();
-                    m_io_service.post(
-                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
-                }
+                cwarn << "No new work received in " << m_worktimeout << " seconds.";
+                m_endpoints.pop();
+                clear_response_pleas();
+                m_io_service.post(
+                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
             }
         }
     }
@@ -1443,8 +1455,12 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             }
             m_session->firstMiningSet = true;
             jPrm = responseObject["params"];
+            string timeout = jPrm.get("timeout", "").asString();
             string epoch = jPrm.get("epoch", "").asString();
             string target = jPrm.get("target", "").asString();
+
+            if (!timeout.empty())
+                m_session->timeout = stoi(timeout, nullptr, 16);
 
             if (!epoch.empty())
                 m_session->epoch = stoul(epoch, nullptr, 16);
@@ -1807,6 +1823,11 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
     }
     else
     {
+        // Register last transmission tstamp to prevent timeout
+        // in EthereumStratum/2.0.0
+        if (m_session && m_conn->StratumMode() == 3)
+            m_session->lastTxStamp = chrono::steady_clock::now();
+
         if (m_txQueue.empty())
             m_txPending.store(false, std::memory_order_relaxed);
         else

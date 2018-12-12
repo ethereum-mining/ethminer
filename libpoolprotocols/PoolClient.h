@@ -42,10 +42,12 @@ struct Session
 
     // EthereumStratum (2 only)
     bool firstMiningSet = false;
+    unsigned int timeout = 30;  // Default to 30 seconds
     string sessionId = "";
     string workerId = "";
     string algo = "ethash";
     unsigned int epoch = 0;
+    chrono::steady_clock::time_point lastTxStamp = chrono::steady_clock::now();
 
 };
 
