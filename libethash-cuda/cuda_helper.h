@@ -100,36 +100,10 @@ DEV_INLINE uint32_t ROTR32(const uint32_t x, const uint32_t n)
 }
 #endif
 
-
 DEV_INLINE uint64_t MAKE_ULONGLONG(uint32_t LO, uint32_t HI)
 {
     uint64_t result;
     asm("mov.b64 %0,{%1,%2}; \n\t" : "=l"(result) : "r"(LO), "r"(HI));
-    return result;
-}
-
-DEV_INLINE uint64_t REPLACE_HIWORD(const uint64_t x, const uint32_t y)
-{
-    uint64_t result;
-    asm("{\n\t"
-        ".reg .u32 t,t2; \n\t"
-        "mov.b64 {t2,t},%1; \n\t"
-        "mov.b64 %0,{t2,%2}; \n\t"
-        "}"
-        : "=l"(result)
-        : "l"(x), "r"(y));
-    return result;
-}
-DEV_INLINE uint64_t REPLACE_LOWORD(const uint64_t x, const uint32_t y)
-{
-    uint64_t result;
-    asm("{\n\t"
-        ".reg .u32 t,t2; \n\t"
-        "mov.b64 {t2,t},%1; \n\t"
-        "mov.b64 %0,{%2,t}; \n\t"
-        "}"
-        : "=l"(result)
-        : "l"(x), "r"(y));
     return result;
 }
 
@@ -147,33 +121,6 @@ DEV_INLINE uint32_t cuda_swab32(const uint32_t x)
         (((x) >> 24) & 0x000000ffu))
 #endif
 
-
-static DEV_INLINE uint32_t _HIWORD(const uint64_t x)
-{
-    uint32_t result;
-    asm("{\n\t"
-        ".reg .u32 xl; \n\t"
-        "mov.b64 {xl,%0},%1; \n\t"
-        "}"
-        : "=r"(result)
-        : "l"(x));
-    return result;
-}
-
-static DEV_INLINE uint32_t _LOWORD(const uint64_t x)
-{
-    uint32_t result;
-    asm("{\n\t"
-        ".reg .u32 xh; \n\t"
-        "mov.b64 {%0,xh},%1; \n\t"
-        "}"
-        : "=r"(result)
-        : "l"(x));
-    return result;
-}
-
-// Input:       77665544 33221100
-// Output:      00112233 44556677
 #ifdef __CUDA_ARCH__
 DEV_INLINE uint64_t cuda_swab64(const uint64_t x)
 {
@@ -808,55 +755,6 @@ DEV_INLINE uint64_t ROTL16(uint64_t x)
 #else
     return ROTL64(x, 16);
 #endif
-}
-
-DEV_INLINE uint2 SWAPINT2(uint2 x)
-{
-    return (make_uint2(x.y, x.x));
-}
-DEV_INLINE bool cuda_hashisbelowtarget(
-    const uint32_t* const __restrict__ hash, const uint32_t* const __restrict__ target)
-{
-    if (hash[7] > target[7])
-        return false;
-    if (hash[7] < target[7])
-        return true;
-    if (hash[6] > target[6])
-        return false;
-    if (hash[6] < target[6])
-        return true;
-    if (hash[5] > target[5])
-        return false;
-    if (hash[5] < target[5])
-        return true;
-    if (hash[4] > target[4])
-        return false;
-    if (hash[4] < target[4])
-        return true;
-    if (hash[3] > target[3])
-        return false;
-    if (hash[3] < target[3])
-        return true;
-    if (hash[2] > target[2])
-        return false;
-    if (hash[2] < target[2])
-        return true;
-    if (hash[1] > target[1])
-        return false;
-    if (hash[1] < target[1])
-        return true;
-    if (hash[0] > target[0])
-        return false;
-    return true;
-}
-
-DEV_INLINE uint2 SWAPDWORDS2(uint2 value)
-{
-    return make_uint2(value.y, value.x);
-}
-DEV_INLINE uint4 SWAPDWORDS2(uint4 value)
-{
-    return make_uint4(value.y, value.x, value.w, value.z);
 }
 
 static __forceinline__ __device__ uint2 SHL2(uint2 a, int offset)

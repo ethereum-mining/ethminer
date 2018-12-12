@@ -21,7 +21,7 @@ __global__ void ethash_search(volatile Search_results* g_output, uint64_t start_
 {
     uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;
     uint2 mix[4];
-    if (compute_hash<_PARALLEL_HASH>(start_nonce + gid, d_target, mix))
+    if (compute_hash<_PARALLEL_HASH>(start_nonce + gid, mix))
         return;
     uint32_t index = atomicInc((uint32_t*)&g_output->count, 0xffffffff);
     if (index >= MAX_SEARCH_RESULTS)
