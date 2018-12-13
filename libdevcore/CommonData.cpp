@@ -186,7 +186,7 @@ std::string dev::getFormattedMemory(double _mem, ScaleSuffix _suffix, int _preci
     return dev::getScaledSize(_mem, 1024.0, _precision, suffixes, 4, _suffix);
 }
 
-std::string dev::padLeft(std::string const _value, size_t const _length, char const _fillChar) 
+std::string dev::padLeft(std::string _value, size_t _length, char _fillChar) 
 {
     std::string _ret = _value;
     if (_length > _value.size())
