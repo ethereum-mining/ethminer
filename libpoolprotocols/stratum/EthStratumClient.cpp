@@ -1315,6 +1315,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                 {
                     string sSeedHash = jPrm.get(Json::Value::ArrayIndex(1), "").asString();
                     string sHeaderHash = jPrm.get(Json::Value::ArrayIndex(2), "").asString();
+                    string sBlockHeight = jPrm.get(Json::Value::ArrayIndex(3), "").asString();
 
                     if (sHeaderHash != "" && sSeedHash != "")
                     {
@@ -1324,7 +1325,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                         m_current.startNonce = m_session->extraNonce;
                         m_current.exSizeBytes = m_session->extraNonceSizeBytes;
                         m_current_timestamp = std::chrono::steady_clock::now();
-                        m_current.block = -1;
+                        m_current.block = strtoul(sBlockHeight.c_str(), nullptr, 0);
 
                         // This will signal to dispatch the job
                         // at the end of the transmission.
@@ -1338,11 +1339,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
                     string sShareTarget =
                         jPrm.get(Json::Value::ArrayIndex(prmIdx++), "").asString();
 
-                    // Only some eth-proxy compatible implementations carry the block number
-                    // namely ethermine.org
+                    // check block number info
                     m_current.block = -1;
-                    if (m_conn->StratumMode() == EthStratumClient::ETHPROXY &&
-                        jPrm.size() > prmIdx &&
+                    if (jPrm.size() > prmIdx &&
                         jPrm.get(Json::Value::ArrayIndex(prmIdx), "").asString().substr(0, 2) ==
                             "0x")
                     {
