@@ -165,7 +165,7 @@ inline std::string toHex(u256 val, HexPrefix prefix = HexPrefix::DontAdd)
     return (prefix == HexPrefix::Add) ? "0x" + str : str;
 }
 
-inline std::string toHex(uint64_t _n, HexPrefix _prefix = HexPrefix::DontAdd, short _bytes = 16)
+inline std::string toHex(uint64_t _n, HexPrefix _prefix = HexPrefix::DontAdd, int _bytes = 16)
 {
     // sizeof returns the number of bytes (not the number of bits)
     // thus if CHAR_BIT != 8 sizeof(uint64_t) will return != 8
