@@ -188,7 +188,6 @@ std::string dev::getFormattedMemory(double _mem, ScaleSuffix _suffix, int _preci
 
 std::string dev::padLeft(std::string _value, size_t _length, char _fillChar) 
 {
-    std::string _ret = _value;
     if (_length > _value.size())
         _ret.insert(0, (_length - _value.size()), _fillChar);
     return _ret;
