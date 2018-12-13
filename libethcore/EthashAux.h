@@ -37,6 +37,7 @@ class EthashAux
 {
 public:
     static Result eval(int epoch, h256 const& _headerHash, uint64_t _nonce) noexcept;
+    static Result eval(int epoch, int _block_number, h256 const& _headerHash, uint64_t _nonce) noexcept;
 };
 
 struct EpochContext

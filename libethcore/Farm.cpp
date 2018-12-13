@@ -492,7 +492,7 @@ void Farm::submitProofAsync(Solution const& _s)
 {
     if (!m_Settings.noEval)
     {
-        Result r = EthashAux::eval(_s.work.epoch, _s.work.header, _s.nonce);
+        Result r = EthashAux::eval(_s.work.epoch, _s.work.block, _s.work.header, _s.nonce);
         if (r.value > _s.work.boundary)
         {
             accountSolution(_s.midx, SolutionAccountingEnum::Failed);
