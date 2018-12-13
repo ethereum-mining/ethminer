@@ -528,7 +528,7 @@ public:
             cout << setw(4) << " Id ";
             cout << setiosflags(ios::left) << setw(10) << "Pci Id    ";
             cout << setw(5) << "Type ";
-            cout << setw(26) << "Name                      ";
+            cout << setw(30) << "Name                          ";
 
 #if ETH_ETHASHCUDA
             if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
@@ -557,7 +557,7 @@ public:
             cout << setw(4) << "--- ";
             cout << setiosflags(ios::left) << setw(10) << "--------- ";
             cout << setw(5) << "---- ";
-            cout << setw(26) << "------------------------- ";
+            cout << setw(30) << "----------------------------- ";
 
 #if ETH_ETHASHCUDA
             if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
@@ -603,7 +603,7 @@ public:
                 default:
                     break;
                 }
-                cout << setw(26) << (it->second.name).substr(0, 24);
+                cout << setw(30) << (it->second.name).substr(0, 28);
 #if ETH_ETHASHCUDA
                 if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
                 {
