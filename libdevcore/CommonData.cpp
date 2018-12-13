@@ -189,14 +189,13 @@ std::string dev::getFormattedMemory(double _mem, ScaleSuffix _suffix, int _preci
 std::string dev::padLeft(std::string _value, size_t _length, char _fillChar) 
 {
     if (_length > _value.size())
-        _ret.insert(0, (_length - _value.size()), _fillChar);
-    return _ret;
+        _value.insert(0, (_length - _value.size()), _fillChar);
+    return _value;
 }
 
-std::string dev::padRight(std::string const _value, size_t const _length, char const _fillChar)
+std::string dev::padRight(std::string _value, size_t _length, char _fillChar)
 {
-    std::string _ret = _value;
     if (_length > _value.size())
-        _ret.resize(_length, _fillChar);
-    return _ret;
+        _value.resize(_length, _fillChar);
+    return _value;
 }
