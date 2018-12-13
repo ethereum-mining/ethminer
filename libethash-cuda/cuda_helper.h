@@ -49,8 +49,6 @@ extern const dim3 blockDim;
 extern const uint3 threadIdx;
 #endif
 
-extern cudaError_t MyStreamSynchronize(cudaStream_t stream, int situation, int thr_id);
-
 
 #ifndef SPH_C32
 #define SPH_C32(x) ((x##U))
