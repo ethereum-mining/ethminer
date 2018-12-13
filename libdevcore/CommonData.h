@@ -234,7 +234,7 @@ std::string getTargetFromDiff(double diff, HexPrefix _prefix = HexPrefix::Add);
 double getHashesToTarget(std::string _target);
 
 /// Generic function to scale a value
-std::string getScaledSize(double _value, double _divisor, short _precision, std::string _sizes[],
+std::string getScaledSize(double _value, double _divisor, int _precision, std::string _sizes[],
     size_t _numsizes, ScaleSuffix _suffix = ScaleSuffix::Add);
 
 /// Formats hashrate
@@ -245,9 +245,9 @@ std::string getFormattedMemory(
     double _mem, ScaleSuffix _suffix = ScaleSuffix::Add, int _precision = 2);
 
 /// Adjust string to a fixed length filling chars to the Left
-std::string padLeft(std::string const _value, size_t const _length, char const _fillChar);
+std::string padLeft(std::string _value, size_t _length, char _fillChar);
 
 /// Adjust string to a fixed length filling chars to the Right
-std::string padRight(std::string const _value, size_t const _length, char const _fillChar);
+std::string padRight(std::string _value, size_t _length, char _fillChar);
 
 }  // namespace dev

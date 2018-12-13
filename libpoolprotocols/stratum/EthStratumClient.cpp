@@ -173,7 +173,7 @@ void EthStratumClient::disconnect()
 {
     // Prevent unnecessary recursion
     bool ex = false;
-    if (!m_disconnecting.compare_exchange_strong(ex, true))
+    if (!m_disconnecting.compare_exchange_strong(ex, true, memory_order_relaxed))
         return;
 
     m_connected.store(false, memory_order_relaxed);

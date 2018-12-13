@@ -156,7 +156,7 @@ double dev::getHashesToTarget(string _target)
     return double(dividend / divisor);
 }
 
-std::string dev::getScaledSize(double _value, double _divisor, short _precision, string _sizes[],
+std::string dev::getScaledSize(double _value, double _divisor, int _precision, string _sizes[],
     size_t _numsizes, ScaleSuffix _suffix)
 {
     double _newvalue = _value;
@@ -186,18 +186,16 @@ std::string dev::getFormattedMemory(double _mem, ScaleSuffix _suffix, int _preci
     return dev::getScaledSize(_mem, 1024.0, _precision, suffixes, 4, _suffix);
 }
 
-std::string dev::padLeft(std::string const _value, size_t const _length, char const _fillChar) 
+std::string dev::padLeft(std::string _value, size_t _length, char _fillChar) 
 {
-    std::string _ret = _value;
     if (_length > _value.size())
-        _ret.insert(0, (_length - _value.size()), _fillChar);
-    return _ret;
+        _value.insert(0, (_length - _value.size()), _fillChar);
+    return _value;
 }
 
-std::string dev::padRight(std::string const _value, size_t const _length, char const _fillChar)
+std::string dev::padRight(std::string _value, size_t _length, char _fillChar)
 {
-    std::string _ret = _value;
     if (_length > _value.size())
-        _ret.resize(_length, _fillChar);
-    return _ret;
+        _value.resize(_length, _fillChar);
+    return _value;
 }
