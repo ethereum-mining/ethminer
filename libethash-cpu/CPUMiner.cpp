@@ -47,7 +47,7 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 /* MACOSX */
 #elif defined(__linux__)
 /* linux */
-#elif defined(__WINDOWS__)
+#elif defined(_WIN32)
 /* windows */
 #else
 #error "Invalid OS configuration"
