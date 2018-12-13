@@ -191,9 +191,9 @@ bool CPUMiner::initDevice()
     }
 #else
     // WINDOWS CHECK
-    DWORD dwThreadAffinityMask = 1 << m_deviceDescriptor.cpCpuNumer;
+    DWORD_PTR dwThreadAffinityMask = 1i64 << m_deviceDescriptor.cpCpuNumer;
     DWORD_PTR previous_mask;
-    previous_mask = SetThreadAffinityMask(GetCurrentThread(), &dwThreadAffinityMask);
+    previous_mask = SetThreadAffinityMask(GetCurrentThread(), dwThreadAffinityMask);
     if (previous_mask == NULL)
     {
         cwarn << "cp-" << m_index << "could not bind thread to cpu" << m_deviceDescriptor.cpCpuNumer
