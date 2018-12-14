@@ -545,6 +545,7 @@ void EthGetworkClient::submitSolution(const Solution& solution)
 
         unsigned id = 40 + solution.midx;
         jReq["id"] = id;
+        jReq["jsonrpc"] = "2.0";
         m_solution_submitted_max_id = max(m_solution_submitted_max_id, id);
         jReq["method"] = "eth_submitWork";
         jReq["params"] = Json::Value(Json::arrayValue);
