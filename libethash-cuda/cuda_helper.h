@@ -21,13 +21,6 @@ uint32_t atomicAdd(uint32_t* x, uint32_t y);
 void __syncthreads(void);
 void __threadfence(void);
 void __threadfence_block(void);
-
-uint32_t __byte_perm(uint32_t x, uint32_t y, uint32_t z);
-uint32_t __shfl(uint32_t x, uint32_t y, uint32_t z);
-uint32_t atomicExch(uint32_t* x, uint32_t y);
-uint32_t atomicAdd(uint32_t* x, uint32_t y);
-void __syncthreads(void);
-void __threadfence(void);
 #endif
 
 #include <stdint.h>
@@ -55,8 +48,6 @@ extern void cudaReportHardwareFailure(int thr_id, cudaError_t error, const char*
 extern const dim3 blockDim;
 extern const uint3 threadIdx;
 #endif
-
-extern cudaError_t MyStreamSynchronize(cudaStream_t stream, int situation, int thr_id);
 
 
 #ifndef SPH_C32

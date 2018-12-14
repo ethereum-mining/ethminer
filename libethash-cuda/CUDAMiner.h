@@ -35,7 +35,7 @@ public:
     CUDAMiner(unsigned _index, CUSettings _settings, DeviceDescriptor& _device);
     ~CUDAMiner() override;
 
-    static unsigned getNumDevices();
+    static int getNumDevices();
     static void enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection);
 
     void search(

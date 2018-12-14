@@ -156,7 +156,7 @@ double dev::getHashesToTarget(string _target)
     return double(dividend / divisor);
 }
 
-std::string dev::getScaledSize(double _value, double _divisor, short _precision, string _sizes[],
+std::string dev::getScaledSize(double _value, double _divisor, int _precision, string _sizes[],
     size_t _numsizes, ScaleSuffix _suffix)
 {
     double _newvalue = _value;
