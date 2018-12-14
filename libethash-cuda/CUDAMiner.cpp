@@ -230,7 +230,7 @@ void CUDAMiner::workLoop()
             else if (old_period_seed != period_seed)
             {
                 const auto& context = ethash::get_global_epoch_context(w.epoch);
-                const auto dagNumItems = context.full_dataset_num_items;
+                const auto dagNumItems = ethash::calculate_full_dataset_num_items(w.epoch);
                 compileKernel(period_seed, dagNumItems / 2);
             }
             old_period_seed = period_seed;

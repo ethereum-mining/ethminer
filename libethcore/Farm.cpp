@@ -209,8 +209,8 @@ void Farm::setWork(WorkPackage const& _newWp)
         m_currentEc.epochNumber = _newWp.epoch;
         m_currentEc.lightNumItems = _ec.light_cache_num_items;
         m_currentEc.lightSize = ethash::get_light_cache_size(_ec.light_cache_num_items);
-        m_currentEc.dagNumItems = _ec.full_dataset_num_items;
-        m_currentEc.dagSize = ethash::get_full_dataset_size(_ec.full_dataset_num_items);
+        m_currentEc.dagNumItems = ethash::calculate_full_dataset_num_items(_newWp.epoch);
+        m_currentEc.dagSize = ethash::get_full_dataset_size(m_currentEc.dagNumItems);
         m_currentEc.lightCache = _ec.light_cache;
 
         for (auto const& miner : m_miners)
