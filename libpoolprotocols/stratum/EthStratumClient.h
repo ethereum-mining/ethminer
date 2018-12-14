@@ -55,7 +55,8 @@ public:
     {
         STRATUM = 0,
         ETHPROXY,
-        ETHEREUMSTRATUM
+        ETHEREUMSTRATUM,
+        ETHEREUMSTRATUM2
     };
 
     EthStratumClient(int worktimeout, int responsetimeout);
@@ -67,7 +68,8 @@ public:
     // Connected and Connection Statuses
     bool isConnected() override
     {
-        return m_connected.load(std::memory_order_relaxed) && !isPendingState();
+        bool _ret = PoolClient::isConnected();
+        return _ret && !isPendingState();
     }
     bool isPendingState() override
     {
@@ -75,17 +77,14 @@ public:
                 m_disconnecting.load(std::memory_order_relaxed));
     }
 
-    bool isSubscribed() { return m_subscribed.load(std::memory_order_relaxed); }
-    bool isAuthorized() { return m_authorized.load(std::memory_order_relaxed); }
-    string ActiveEndPoint() override { return " [" + toString(m_endpoint) + "]"; };
-
-    void submitHashrate(string const& rate, string const& id) override;
+    void submitHashrate(uint64_t const& rate, string const& id) override;
     void submitSolution(const Solution& solution) override;
 
     h256 currentHeaderHash() { return m_current.header; }
     bool current() { return static_cast<bool>(m_current); }
 
 private:
+    void startSession();
     void disconnect_finalize();
     void enqueue_response_plea();
     std::chrono::milliseconds dequeue_response_plea();
@@ -151,12 +150,6 @@ private:
 
     boost::asio::ip::tcp::resolver m_resolver;
     std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>> m_endpoints;
-
-    h256 m_nextWorkBoundary =
-        h256("0x00000000ffff0000000000000000000000000000000000000000000000000000");
-
-    uint64_t m_extraNonce = 0;
-    unsigned int m_extraNonceSizeBytes = 0;
 
     unsigned m_solution_submitted_max_id;  // maximum json id we used to send a solution
 

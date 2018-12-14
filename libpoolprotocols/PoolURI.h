@@ -63,6 +63,7 @@ public:
     std::string User() const { return m_user; }
     std::string Pass() const { return m_password; }
     std::string Workername() const { return m_worker; }
+    std::string UserDotWorker() const;
     SecureLevel SecLevel() const;
     ProtocolFamily Family() const;
     UriHostNameType HostNameType() const;
@@ -83,14 +84,19 @@ public:
     bool IsUnrecoverable() { return m_unrecoverable; }
     void MarkUnrecoverable() { m_unrecoverable = true; }
 
-private:
+    bool Responds() { return m_responds; }
+    void Responds(bool _value) { m_responds = _value; }
 
+    void addDuration(unsigned long _minutes) { m_totalDuration += _minutes; }
+    unsigned long getDuration() { return m_totalDuration; }
+
+private:
     std::string m_scheme;
-    std::string m_authority; // Contains all text after scheme
-    std::string m_userinfo;  // Contains the userinfo part
-    std::string m_urlinfo;   // Contains the urlinfo part
-    std::string m_hostinfo;  // Contains the hostinfo part
-    std::string m_pathinfo;  // Contains the pathinfo part
+    std::string m_authority;  // Contains all text after scheme
+    std::string m_userinfo;   // Contains the userinfo part
+    std::string m_urlinfo;    // Contains the urlinfo part
+    std::string m_hostinfo;   // Contains the hostinfo part
+    std::string m_pathinfo;   // Contains the pathinfo part
 
     std::string m_host;
     std::string m_path;
@@ -105,8 +111,12 @@ private:
     unsigned short m_port = 0;
     bool m_stratumModeConfirmed = false;
     bool m_unrecoverable = false;
+    bool m_responds = false;
 
     UriHostNameType m_hostType = UriHostNameType::Unknown;
     bool m_isLoopBack;
+
+    unsigned long m_totalDuration; // Total duration on this connection in minutes
+
 };
 }  // namespace dev

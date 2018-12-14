@@ -41,15 +41,19 @@ static std::map<std::string, SchemeAttributes> s_schemes = {
     {"stratum+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 0}},
     {"stratum1+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 1}},
     {"stratum2+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 2}},
+    {"stratum3+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 3}},
     {"stratum+tls", {ProtocolFamily::STRATUM, SecureLevel::TLS, 0}},
     {"stratum1+tls", {ProtocolFamily::STRATUM, SecureLevel::TLS, 1}},
     {"stratum2+tls", {ProtocolFamily::STRATUM, SecureLevel::TLS, 2}},
+    {"stratum3+tls", {ProtocolFamily::STRATUM, SecureLevel::TLS, 3}},
     {"stratum+tls12", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 0}},
     {"stratum1+tls12", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 1}},
     {"stratum2+tls12", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 2}},
+    {"stratum3+tls12", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 3}},
     {"stratum+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 0}},
     {"stratum1+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 1}},
     {"stratum2+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 2}},
+    {"stratum3+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS12, 3}},
     {"http", {ProtocolFamily::GETWORK, SecureLevel::NONE, 0}},
     {"getwork", {ProtocolFamily::GETWORK, SecureLevel::NONE, 0}},
 
@@ -387,6 +391,14 @@ ProtocolFamily URI::Family() const
 unsigned URI::Version() const
 {
     return s_schemes[m_scheme].version;
+}
+
+std::string URI::UserDotWorker() const
+{
+    std::string _ret = m_user;
+    if (!m_worker.empty())
+        _ret.append("." + m_worker);
+    return _ret;
 }
 
 SecureLevel URI::SecLevel() const

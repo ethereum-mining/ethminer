@@ -25,12 +25,7 @@ public:
     void connect() override;
     void disconnect() override;
 
-    bool isConnected() override { return m_connected; }
-    bool isPendingState() override { return false; }
-
-    string ActiveEndPoint() override { return " [" + toString(m_endpoint) + "]"; };
-
-    void submitHashrate(string const& rate, string const& id) override;
+    void submitHashrate(uint64_t const& rate, string const& id) override;
     void submitSolution(const Solution& solution) override;
 
 private:
