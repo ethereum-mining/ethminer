@@ -87,7 +87,6 @@ static size_t getTotalPhysAvailableMemory()
 
     return (size_t)pages * (size_t)page_size;
 #else
-    // WINDOWS CHECK
     MEMORYSTATUSEX memInfo;
     memInfo.dwLength = sizeof(MEMORYSTATUSEX);
     if (GlobalMemoryStatusEx(&memInfo) == 0)
@@ -128,7 +127,6 @@ unsigned CPUMiner::getNumDevices()
     }
     return cpus_available;
 #else
-    // WINDOWS CHECK
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
     return sysinfo.dwNumberOfProcessors;
@@ -190,7 +188,6 @@ bool CPUMiner::initDevice()
               << "\n";
     }
 #else
-    // WINDOWS CHECK
     DWORD_PTR dwThreadAffinityMask = 1i64 << m_deviceDescriptor.cpCpuNumer;
     DWORD_PTR previous_mask;
     previous_mask = SetThreadAffinityMask(GetCurrentThread(), dwThreadAffinityMask);
@@ -329,33 +326,31 @@ void CPUMiner::workLoop()
 void CPUMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection)
 {
     unsigned numDevices = getNumDevices();
-    if (numDevices)
+
+    for (unsigned i = 0; i < numDevices; i++)
     {
-        for (unsigned i = 0; i < numDevices; i++)
-        {
-            string uniqueId;
-            ostringstream s;
-            DeviceDescriptor deviceDescriptor;
+        string uniqueId;
+        ostringstream s;
+        DeviceDescriptor deviceDescriptor;
 
-            s << "cpu-" << i;
-            uniqueId = s.str();
-            if (_DevicesCollection.find(uniqueId) != _DevicesCollection.end())
-                deviceDescriptor = _DevicesCollection[uniqueId];
-            else
-                deviceDescriptor = DeviceDescriptor();
+        s << "cpu-" << i;
+        uniqueId = s.str();
+        if (_DevicesCollection.find(uniqueId) != _DevicesCollection.end())
+            deviceDescriptor = _DevicesCollection[uniqueId];
+        else
+            deviceDescriptor = DeviceDescriptor();
 
-            s.str("");
-            s.clear();
-            s << "ethash::eval()/boost " << (BOOST_VERSION / 100000) << "."
-              << (BOOST_VERSION / 100 % 1000) << "." << (BOOST_VERSION % 100);
-            deviceDescriptor.name = s.str();
-            deviceDescriptor.uniqueId = uniqueId;
-            deviceDescriptor.type = DeviceTypeEnum::Cpu;
-            deviceDescriptor.totalMemory = getTotalPhysAvailableMemory();
+        s.str("");
+        s.clear();
+        s << "ethash::eval()/boost " << (BOOST_VERSION / 100000) << "."
+          << (BOOST_VERSION / 100 % 1000) << "." << (BOOST_VERSION % 100);
+        deviceDescriptor.name = s.str();
+        deviceDescriptor.uniqueId = uniqueId;
+        deviceDescriptor.type = DeviceTypeEnum::Cpu;
+        deviceDescriptor.totalMemory = getTotalPhysAvailableMemory();
 
-            deviceDescriptor.cpCpuNumer = i;
+        deviceDescriptor.cpCpuNumer = i;
 
-            _DevicesCollection[uniqueId] = deviceDescriptor;
-        }
+        _DevicesCollection[uniqueId] = deviceDescriptor;
     }
 }
