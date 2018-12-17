@@ -746,7 +746,21 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
         addDefinition(code, "PROGPOW_DAG_ELEMENTS", m_dagItems / 2);
 
         addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
-        addDefinition(code, "PLATFORM", m_deviceDescriptor.clPlatformId);
+        int platform = 0;
+        switch (m_deviceDescriptor.clPlatformType) {
+            case ClPlatformTypeEnum::Nvidia:
+                platform = 1;
+                break;
+            case ClPlatformTypeEnum::Amd:
+                platform = 2;
+                break;
+            case ClPlatformTypeEnum::Clover:
+                platform = 3;
+                break;
+            default:
+                break;
+        }
+        addDefinition(code, "PLATFORM", platform);
         addDefinition(code, "COMPUTE", computeCapability);
 
         if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
