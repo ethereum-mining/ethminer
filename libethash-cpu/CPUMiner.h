@@ -35,10 +35,8 @@ public:
 
     static unsigned getNumDevices();
     static void enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection);
-    static void configureCPU();
 
     void search(const dev::eth::WorkPackage& w);
-
 
 protected:
     bool initDevice() override;
@@ -48,7 +46,6 @@ protected:
 private:
     atomic<bool> m_new_work = {false};
     void workLoop() override;
-    uint64_t m_current_target = 0;
     CPSettings m_settings;
 };
 
