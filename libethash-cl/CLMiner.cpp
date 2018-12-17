@@ -743,7 +743,7 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
         bool loadedBinary = false;
         std::string device_name = m_deviceDescriptor.clName;
 
-        if (!m_settings.noBinary)
+        if (false && !m_settings.noBinary)
         {
             std::ifstream kernel_file;
             vector<unsigned char> bin_data;
