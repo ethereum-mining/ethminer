@@ -234,6 +234,11 @@ void CPUMiner::search(const dev::eth::WorkPackage& w)
 {
     constexpr size_t blocksize = 30;
 
+    const auto& context = ethash::get_global_epoch_context_full(w.epoch);
+    const auto header = ethash::hash256_from_bytes(w.header.data());
+    const auto boundary = ethash::hash256_from_bytes(w.boundary.data());
+    auto nonce = w.startNonce;
+
     while (true)
     {
         if (m_new_work.load(std::memory_order_relaxed))  // new work arrived ?
@@ -245,10 +250,8 @@ void CPUMiner::search(const dev::eth::WorkPackage& w)
         if (shouldStop())
             break;
 
-        const auto& context = ethash::get_global_epoch_context_full(w.epoch);
-        auto header = ethash::hash256_from_bytes(w.header.data());
-        auto boundary = ethash::hash256_from_bytes(w.boundary.data());
-        auto r = ethash::search(context, header, boundary, w.startNonce, blocksize);
+
+        auto r = ethash::search(context, header, boundary, nonce, blocksize);
         if (r.solution_found)
         {
             h256 mix{reinterpret_cast<byte*>(r.mix_hash.bytes), h256::ConstructFromPointer};
@@ -257,6 +260,7 @@ void CPUMiner::search(const dev::eth::WorkPackage& w)
             cpulog << EthWhite << "Job: " << w.header.abridged()
                    << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
         }
+        nonce += blocksize;
 
         // Update the hash rate
         updateHashRate(blocksize, 1);
