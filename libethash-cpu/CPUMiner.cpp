@@ -259,6 +259,7 @@ void CPUMiner::search(const dev::eth::WorkPackage& w)
 
             cpulog << EthWhite << "Job: " << w.header.abridged()
                    << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
+            Farm::f().submitProof(sol);
         }
         nonce += blocksize;
 
