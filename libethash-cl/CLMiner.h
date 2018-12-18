@@ -78,6 +78,10 @@ private:
     unsigned m_dagItems = 0;
     uint64_t m_lastNonce = 0;
 
+    cl::Program m_program;
+    char m_options[256] = {0};
+    int m_computeCapability = 0;
+    bool compileKernel(uint64_t prog_seed);
 };
 
 }  // namespace eth
