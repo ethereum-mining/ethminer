@@ -299,6 +299,7 @@ void CLMiner::workLoop()
     // The work package currently processed by GPU.
     WorkPackage current;
     current.header = h256();
+    uint64_t old_period_seed = -1;
 
     if (!initDevice())
     return;
@@ -332,6 +333,7 @@ void CLMiner::workLoop()
 
             // Wait for work or 3 seconds (whichever the first)
             const WorkPackage w = work();
+            uint64_t period_seed = w.block / PROGPOW_PERIOD;
             if (!w)
             {
                 boost::system_time const timeout =
@@ -353,6 +355,11 @@ void CLMiner::workLoop()
 
                     m_abortqueue.push_back(cl::CommandQueue(m_context[0], m_device));
                 }
+                else if (old_period_seed != period_seed)
+                {
+                    compileKernel(period_seed);
+                }
+                old_period_seed = period_seed;
 
                 // Upper 64 bits of the boundary.
                 const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
@@ -698,18 +705,15 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
 
     try
     {
-
-        char options[256] = {0};
-        int computeCapability = 0;
 #ifndef __clang__
 
         // Nvidia
         if (!m_deviceDescriptor.clNvCompute.empty())
         {
-            computeCapability =
+            m_computeCapability =
                 m_deviceDescriptor.clNvComputeMajor * 10 + m_deviceDescriptor.clNvComputeMinor;
-            int maxregs = computeCapability >= 35 ? 72 : 63;
-            sprintf(options, "-cl-nv-maxrregcount=%d", maxregs);
+            int maxregs = m_computeCapability >= 35 ? 72 : 63;
+            sprintf(m_options, "-cl-nv-maxrregcount=%d", maxregs);
         }
 
 #endif
@@ -722,63 +726,9 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
 
         m_dagItems = m_epochContext.dagNumItems;
 
-        // patch source code
-        // note: The kernels here are simply compiled version of the respective .cl kernels
-        // into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
-        // See libethash-cl/CMakeLists.txt: add_custom_command()
-        // TODO: Just use C++ raw string literal.
-
+        cl::Program binaryProgram;
         uint64_t period_seed = block_number / PROGPOW_PERIOD;
-        std::string code = ProgPow::getKern(period_seed, ProgPow::KERNEL_CL);
-        code += string(CLMiner_kernel, sizeof(CLMiner_kernel));
-
-        addDefinition(code, "GROUP_SIZE", m_settings.localWorkSize);
-        addDefinition(code, "ACCESSES", 64);
-        addDefinition(code, "LIGHT_WORDS", m_epochContext.lightNumItems);
-        addDefinition(code, "PROGPOW_DAG_BYTES", m_epochContext.dagSize);
-        addDefinition(code, "PROGPOW_DAG_ELEMENTS", m_dagItems / 2);
-
-        addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
-        int platform = 0;
-        switch (m_deviceDescriptor.clPlatformType) {
-            case ClPlatformTypeEnum::Nvidia:
-                platform = 1;
-                break;
-            case ClPlatformTypeEnum::Amd:
-                platform = 2;
-                break;
-            case ClPlatformTypeEnum::Clover:
-                platform = 3;
-                break;
-            default:
-                break;
-        }
-        addDefinition(code, "PLATFORM", platform);
-        addDefinition(code, "COMPUTE", computeCapability);
-
-        if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
-            addDefinition(code, "LEGACY", 1);
-
-        ofstream out;
-        out.open("kernel.cl");
-        out << code;
-        out.close();
-
-        // create miner OpenCL program
-        cl::Program::Sources sources{{code.data(), code.size()}};
-        cl::Program program(m_context[0], sources), binaryProgram;
-        try
-        {
-            program.build({m_device}, options);
-        }
-        catch (cl::BuildError const& buildErr)
-        {
-            cwarn << "OpenCL kernel build log:\n"
-                  << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
-            cwarn << "OpenCL kernel build error (" << buildErr.err() << "):\n" << buildErr.what();
-            pause(MinerPauseEnum::PauseDueToInitEpochError);
-            return true;
-        }
+        compileKernel(period_seed);
 
         /* If we have a binary kernel, we load it in tandem with the opencl,
            that way, we can use the dag generate opencl code and fall back on
@@ -819,7 +769,7 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
                     cl::Program program(m_context[0], {m_device}, blobs);
                     try
                     {
-                        program.build({m_device}, options);
+                        program.build({m_device}, m_options);
                         cllog << "Build info success:"
                               << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
                         binaryProgram = program;
@@ -862,12 +812,8 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
             m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize));
             cllog << "Loading kernels";
 
-            // If we have a binary kernel to use, let's try it
-            // otherwise just do a normal opencl load
-            m_searchKernel = cl::Kernel(program, "ethash_search");
-
             //m_dagKernel = cl::Kernel(program, "GenerateDAG");
-            m_dagKernel = cl::Kernel(program, "ethash_calculate_dag_item");
+            m_dagKernel = cl::Kernel(m_program, "ethash_calculate_dag_item");
 
             cllog << "Writing light cache buffer";
             m_queue[0].enqueueWriteBuffer(
@@ -879,15 +825,6 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
             pause(MinerPauseEnum::PauseDueToInitEpochError);
             return true;
         }
-        // create buffer for header
-        ETHCL_LOG("Creating buffer for header.");
-        m_header.clear();
-        m_header.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, 32));
-
-        m_searchKernel.setArg(1, m_header[0]);
-        m_searchKernel.setArg(2, m_dag[0]);
-        m_searchKernel.setArg(5, 0);
-
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");
         m_searchBuffer.clear();
@@ -930,4 +867,81 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
         return false;
     }
     return true;
+}
+
+bool CLMiner::compileKernel(
+    uint64_t period_seed)
+{
+    // patch source code
+    // note: The kernels here are simply compiled version of the respective .cl kernels
+    // into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
+    // See libethash-cl/CMakeLists.txt: add_custom_command()
+    // TODO: Just use C++ raw string literal.
+
+    std::string code = ProgPow::getKern(period_seed, ProgPow::KERNEL_CL);
+    code += string(CLMiner_kernel, sizeof(CLMiner_kernel));
+
+    addDefinition(code, "GROUP_SIZE", m_settings.localWorkSize);
+    addDefinition(code, "ACCESSES", 64);
+    addDefinition(code, "LIGHT_WORDS", m_epochContext.lightNumItems);
+    addDefinition(code, "PROGPOW_DAG_BYTES", m_epochContext.dagSize);
+    addDefinition(code, "PROGPOW_DAG_ELEMENTS", m_dagItems / 2);
+
+    addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
+    int platform = 0;
+    switch (m_deviceDescriptor.clPlatformType) {
+        case ClPlatformTypeEnum::Nvidia:
+            platform = 1;
+            break;
+        case ClPlatformTypeEnum::Amd:
+            platform = 2;
+            break;
+        case ClPlatformTypeEnum::Clover:
+            platform = 3;
+            break;
+        default:
+            break;
+    }
+    addDefinition(code, "PLATFORM", platform);
+    addDefinition(code, "COMPUTE", m_computeCapability);
+
+    if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
+        addDefinition(code, "LEGACY", 1);
+
+    ofstream out;
+    out.open("kernel.cl");
+    out << code;
+    out.close();
+
+    // create miner OpenCL program
+    cl::Program::Sources sources{{code.data(), code.size()}};
+    cl::Program program(m_context[0], sources);//, binaryProgram;
+    try
+    {
+        program.build({m_device}, m_options);
+    }
+    catch (cl::BuildError const& buildErr)
+    {
+        cwarn << "OpenCL kernel build log:\n"
+              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
+        cwarn << "OpenCL kernel build error (" << buildErr.err() << "):\n" << buildErr.what();
+        pause(MinerPauseEnum::PauseDueToInitEpochError);
+        return true;
+    }
+    m_program = program;
+
+    // If we have a binary kernel to use, let's try it
+    // otherwise just do a normal opencl load
+    m_searchKernel = cl::Kernel(m_program, "ethash_search");
+
+    // create buffer for header
+    ETHCL_LOG("Creating buffer for header.");
+    m_header.clear();
+    m_header.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, 32));
+
+    m_searchKernel.setArg(1, m_header[0]);
+    m_searchKernel.setArg(2, m_dag[0]);
+    m_searchKernel.setArg(5, 0);
+
+    return false;
 }
