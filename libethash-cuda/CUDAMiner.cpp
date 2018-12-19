@@ -104,8 +104,6 @@ bool CUDAMiner::initEpoch_internal(uint64_t block_number)
             // We need to reset the device and (re)create the dag
             // cudaDeviceReset() frees all previous allocated memory
             CUDA_SAFE_CALL(cudaDeviceReset());
-            CUDA_SAFE_CALL(cudaSetDeviceFlags(m_settings.schedule));
-            CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
             CUdevice device;
             CUcontext context;
