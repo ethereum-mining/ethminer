@@ -825,6 +825,9 @@ bool CLMiner::initEpoch_internal(uint64_t block_number)
             pause(MinerPauseEnum::PauseDueToInitEpochError);
             return true;
         }
+        // GPU DAG buffer to kernel
+        m_searchKernel.setArg(2, m_dag[0]);
+
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");
         m_searchBuffer.clear();
@@ -940,7 +943,6 @@ bool CLMiner::compileKernel(
     m_header.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, 32));
 
     m_searchKernel.setArg(1, m_header[0]);
-    m_searchKernel.setArg(2, m_dag[0]);
     m_searchKernel.setArg(5, 0);
 
     return false;
