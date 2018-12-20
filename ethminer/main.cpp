@@ -31,7 +31,7 @@
 #if _CUDA
 #include <libethash-cuda/CUDAMiner.h>
 #endif
-#if ETH_ETHASHCPU
+#if _CPU
 #include <libethash-cpu/CPUMiner.h>
 #endif
 #include <libpoolprotocols/PoolManager.h>
@@ -232,7 +232,7 @@ public:
 #if _CUDA
                     "cu",
 #endif
-#if ETH_ETHASHCPU
+#if _CPU
                     "cp",
 #endif
 #if _API
@@ -352,7 +352,7 @@ public:
 
 #endif
 
-#if ETH_ETHASHCPU
+#if _CPU
 
         app.add_option("--cpu-devices,--cp-devices", m_CPSettings.devices, "");
 
@@ -369,6 +369,11 @@ public:
         bool cuda_miner = false;
         app.add_flag("-U,--cuda", cuda_miner, "");
 
+                bool cpu_miner = false;
+#if _CPU
+        app.add_flag("--cpu", cpu_miner, "");
+#endif
+
 
         auto sim_opt = app.add_option(
             "-Z,--simulation,-M,--benchmark", m_PoolSettings.benchmarkBlock, "", true);
@@ -376,10 +381,6 @@ public:
             ->check(CLI::Range(0.001, 10.0));
         app.add_flag("--vardiff", m_PoolSettings.benchmarkVarDiff);
 
-        bool cpu_miner = false;
-#if ETH_ETHASHCPU
-        app.add_flag("--cpu", cpu_miner, "");
-#endif
 
         app.add_option("--tstop", m_FarmSettings.tempStop, "", true)->check(CLI::Range(30, 100));
         app.add_option("--tstart", m_FarmSettings.tempStart, "", true)->check(CLI::Range(30, 100));
@@ -535,7 +536,7 @@ public:
         if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
             CUDAMiner::enumDevices(m_DevicesCollection);
 #endif
-#if ETH_ETHASHCPU
+#if _CPU
         if (m_minerType == MinerType::CPU)
             CPUMiner::enumDevices(m_DevicesCollection);
 #endif
@@ -627,8 +628,7 @@ public:
                 }
 
                 cout << setw(26) << (it->second.name).substr(0, 28);
-                cout << setw(26) << (it->second.name).substr(0, 28);
-              
+#if _CUDA
                 if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
                 {
                     cout << setw(5) << (it->second.cuDetected ? "Yes" : "");
@@ -698,7 +698,7 @@ public:
             }
         }
 #endif
-#if ETH_ETHASHCPU
+#if _CPU
         if (m_CPSettings.devices.size() && (m_minerType == MinerType::CPU))
         {
             for (auto index : m_CPSettings.devices)
@@ -741,9 +741,8 @@ public:
             }
         }
 #endif
-#if ETH_ETHASHCPU
-        if (!m_CPSettings.devices.size() &&
-            (m_minerType == MinerType::CPU))
+#if _CPU
+        if (!m_CPSettings.devices.size() && (m_minerType == MinerType::CPU))
         {
             for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
             {
@@ -796,7 +795,7 @@ public:
 #if _CUDA
              << "    -U,--cuda           Mine/Benchmark using CUDA only" << endl
 #endif
-#if ETH_ETHASHCPU
+#if _CPU
              << "    --cpu               Development ONLY ! (NO MINING)" << endl
 #endif
              << endl
@@ -821,7 +820,7 @@ public:
 #if _CUDA
              << "cu,"
 #endif
-#if ETH_ETHASHCPU
+#if _CPU
              << "cp,"
 #endif
 #if _API
@@ -837,7 +836,7 @@ public:
 #if _CUDA
              << "                        'cu'   Extended CUDA options" << endl
 #endif
-#if ETH_ETHASHCPU
+#if _CPU
              << "                        'cp'   Extended CPU options" << endl
 #endif
 #if _API
@@ -994,8 +993,7 @@ public:
         {
             cout << "CPU Extended Options :" << endl
                  << endl
-                 << "    Use this extended CPU arguments"
-                 << endl
+                 << "    Use this extended CPU arguments" << endl
                  << endl
                  << "    --cp-devices        UINT {} Default not set" << endl
                  << "                        Space separated list of device indexes to use" << endl
@@ -1314,7 +1312,7 @@ private:
     PoolSettings m_PoolSettings = PoolSettings();  // Operating settings for PoolManager
     CLSettings m_CLSettings = CLSettings();        // Operating settings for CL Miners
     CUSettings m_CUSettings = CUSettings();        // Operating settings for CUDA Miners
-    CPSettings m_CPSettings = CPSettings();        // Operating settings for CPU Miners  
+    CPSettings m_CPSettings = CPSettings();        // Operating settings for CPU Miners
 
     //// -- Pool manager related params
 
