@@ -15,7 +15,7 @@ endif ()
 target_link_libraries(hwmon ${HWMON_LINK_LIBRARIES})
 target_include_directories(hwmon PRIVATE ..)
 
-if (ETHASHCUDA)
+if (CUDA)
 	find_package(CUDA REQUIRED)
 	target_include_directories(hwmon PUBLIC ${CUDA_INCLUDE_DIRS})
 endif()

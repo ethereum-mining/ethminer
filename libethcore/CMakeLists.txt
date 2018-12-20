@@ -7,12 +7,12 @@ set(SOURCES
 include_directories(BEFORE ..)
 
 add_library(ethcore ${SOURCES})
-target_link_libraries(ethcore PUBLIC devcore ethash::ethash PRIVATE hwmon)
+target_link_libraries(ethcore PUBLIC devcore ethash::ethash Boost::filesystem Boost::thread PRIVATE hwmon)
 
-if(ETHASHCL)
+if(OPENCL)
 	target_link_libraries(ethcore PRIVATE ethash-cl)
 endif()
-if(ETHASHCUDA)
+if(CUDA)
 	target_link_libraries(ethcore PUBLIC ethash-cuda)
 endif()
 if(ETHASHCPU)

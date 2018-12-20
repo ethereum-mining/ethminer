@@ -105,7 +105,7 @@ struct CLSettings
     vector<unsigned> devices;
     bool noBinary = false;
     unsigned globalWorkSize = 0;
-    unsigned globalWorkSizeMultiplier = 65536;
+    unsigned globalWorkSizeMultiplier = 8192;
     unsigned localWorkSize = 128;
 };
 
@@ -451,7 +451,7 @@ protected:
 
     EpochContext m_epochContext;
 
-#ifdef DEV_BUILD
+#ifdef _DEVELOPER
     std::chrono::steady_clock::time_point m_workSwitchStart;
 #endif
 

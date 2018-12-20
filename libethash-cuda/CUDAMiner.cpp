@@ -19,6 +19,8 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 #include <ethash/ethash.hpp>
 
 #include "CUDAMiner.h"
+#include "nvrtc.h"
+
 
 using namespace std;
 using namespace dev;
@@ -52,7 +54,8 @@ bool CUDAMiner::initDevice()
 {
     cudalog << "Using Pci Id : " << m_deviceDescriptor.uniqueId << " " << m_deviceDescriptor.cuName
             << " (Compute " + m_deviceDescriptor.cuCompute + ") Memory : "
-            << dev::getFormattedMemory((double)m_deviceDescriptor.totalMemory);
+            << dev::getFormattedMemory((double)m_deviceDescriptor.totalMemory)
+            << " Grid size : " << m_settings.gridSize << " Block size : " << m_settings.blockSize;
 
     // Set Hardware Monitor Info
     m_hwmoninfo.deviceType = HwMonitorInfoType::NVIDIA;
@@ -89,9 +92,6 @@ bool CUDAMiner::initEpoch_internal()
 
     try
     {
-        hash128_t* dag;
-        hash64_t* light;
-
         // If we have already enough memory allocated, we just have to
         // copy light_cache and regenerate the DAG
         if (m_allocated_memory_dag < m_epochContext.dagSize ||
@@ -101,7 +101,7 @@ bool CUDAMiner::initEpoch_internal()
             // cudaDeviceReset() frees all previous allocated memory
             CUDA_SAFE_CALL(cudaDeviceReset());
             CUDA_SAFE_CALL(cudaSetDeviceFlags(m_settings.schedule));
-            CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+            // CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
             // Check whether the current device has sufficient memory every time we recreate the dag
             if (m_deviceDescriptor.totalMemory < RequiredMemory)
@@ -118,15 +118,16 @@ bool CUDAMiner::initEpoch_internal()
                     << dev::getFormattedMemory((double)RequiredMemory);
 
             // create buffer for cache
-            CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&light), m_epochContext.lightSize));
+            CUDA_SAFE_CALL(
+                cudaMalloc(reinterpret_cast<void**>(&m_light), m_epochContext.lightSize));
             m_allocated_memory_light_cache = m_epochContext.lightSize;
-            CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&dag), m_epochContext.dagSize));
+            CUDA_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&m_dag), m_epochContext.dagSize));
             m_allocated_memory_dag = m_epochContext.dagSize;
 
             // create mining buffers
             for (unsigned i = 0; i != m_settings.streams; ++i)
             {
-                CUDA_SAFE_CALL(cudaMallocHost(&m_search_buf[i], sizeof(Search_results)));
+                CUDA_SAFE_CALL(cudaMallocHost(&m_search_results[i], sizeof(search_results)));
                 CUDA_SAFE_CALL(cudaStreamCreateWithFlags(&m_streams[i], cudaStreamNonBlocking));
             }
         }
@@ -134,13 +135,13 @@ bool CUDAMiner::initEpoch_internal()
         {
             cudalog << "Generating DAG + Light (reusing buffers): "
                     << dev::getFormattedMemory((double)RequiredMemory);
-            get_constants(&dag, NULL, &light, NULL);
+            get_constants(&m_dag, NULL, &m_light, NULL);
         }
 
-        CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(light), m_epochContext.lightCache,
+        CUDA_SAFE_CALL(cudaMemcpy(reinterpret_cast<void*>(m_light), m_epochContext.lightCache,
             m_epochContext.lightSize, cudaMemcpyHostToDevice));
 
-        set_constants(dag, m_epochContext.dagNumItems, light,
+        set_constants(m_dag, m_epochContext.dagNumItems, m_light,
             m_epochContext.lightNumItems);  // in ethash_cuda_miner_kernel.cu
 
         ethash_generate_dag(
@@ -151,9 +152,12 @@ bool CUDAMiner::initEpoch_internal()
                        std::chrono::steady_clock::now() - startInit)
                        .count()
                 << " ms. "
-                << dev::getFormattedMemory((double)(m_deviceDescriptor.totalMemory - RequiredMemory))
+                << dev::getFormattedMemory(
+                       (double)(m_deviceDescriptor.totalMemory - RequiredMemory))
                 << " left.";
 
+
+        m_dag_progpow = reinterpret_cast<hash64_t*>(m_dag);
         retVar = true;
     }
     catch (const cuda_runtime_error& ec)
@@ -173,7 +177,7 @@ void CUDAMiner::workLoop()
     WorkPackage current;
     current.header = h256();
 
-    m_search_buf.resize(m_settings.streams);
+    m_search_results.resize(m_settings.streams);
     m_streams.resize(m_settings.streams);
 
     if (!initDevice())
@@ -194,36 +198,46 @@ void CUDAMiner::workLoop()
                 continue;
             }
 
+            // Epoch change ?
+            if (current.epoch != w.epoch)
+            {
+                if (!initEpoch())
+                    break;  // This will simply exit the thread
+
+                // As DAG generation takes a while we need to
+                // ensure we're on latest job, not on the one
+                // which triggered the epoch change
+                current = w;
+                continue;
+            }
+
             if (w.algo == "ethash")
             {
+                // Persist most recent job and start searching
+                current = w;
+                ethash_search(current);
+            }
+            else if (w.algo == "progpow")
+            {
+                if (w.block == -1)
+                    throw std::runtime_error("Can't process ProgPoW without a block number");
 
-                // Epoch change ?
-                if (current.epoch != w.epoch)
+                int period = w.block / PROGPOW_PERIOD;
+                if (period != current.period)
                 {
-                    if (!initEpoch())
-                        break;  // This will simply exit the thread
-
-                    // As DAG generation takes a while we need to
-                    // ensure we're on latest job, not on the one
-                    // which triggered the epoch change
-                    current = w;
-                    continue;
+                    uint32_t dagelms = (unsigned)(m_epochContext.dagSize / ETHASH_MIX_BYTES);
+                    compileProgPoWKernel(w.block, dagelms);
                 }
 
-                // Persist most recent job.
-                // Job's differences should be handled at higher level
+                // Persist most recent job and start searching
                 current = w;
-                uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)current.boundary >> 192);
-
-                // Eventually start searching
-                search(current.header.data(), upper64OfBoundary, current.startNonce, w);
-
+                current.period = period;
+                progpow_search(current);
             }
             else
             {
                 throw std::runtime_error("Algo : " + w.algo + " not yet implemented");
             }
-
         }
 
         // Reset miner and stop working
@@ -235,6 +249,108 @@ void CUDAMiner::workLoop()
         _what.append(_e.what());
         throw std::runtime_error(_what);
     }
+}
+
+void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
+{
+    auto startCompile = std::chrono::steady_clock::now();
+    cudalog << "Compiling ProgPoW kernel for period : " << (_block / PROGPOW_PERIOD);
+
+    const char* name = "progpow_search";
+    std::string text = ProgPow::getKern(_block, ProgPow::KERNEL_CUDA);
+    text += std::string(cu_progpow_miner_kernel, sizeof(cu_progpow_miner_kernel));
+
+    ofstream write;
+    write.open("kernel.cu");
+    write << text;
+    write.close();
+
+    nvrtcProgram prog;
+    NVRTC_SAFE_CALL(nvrtcCreateProgram(&prog,  // prog
+        text.c_str(),                          // buffer
+        "kernel.cu",                           // name
+        0,                                     // numHeaders
+        NULL,                                  // headers
+        NULL));                                // includeNames
+
+    NVRTC_SAFE_CALL(nvrtcAddNameExpression(prog, name));
+    std::string op_arch = "--gpu-architecture=compute_" +
+                          to_string(m_deviceDescriptor.cuComputeMajor) +
+                          to_string(m_deviceDescriptor.cuComputeMinor);
+    std::string op_dag = "-DPROGPOW_DAG_ELEMENTS=" + to_string(_dagelms);
+
+    const char* opts[] = {op_arch.c_str(), op_dag.c_str(), "-lineinfo"};
+    nvrtcResult compileResult = nvrtcCompileProgram(prog,  // prog
+        3,                                                 // numOptions
+        opts);                                             // options
+
+#ifdef _DEVELOPER
+
+    if (g_logOptions & LOG_COMPILE)
+    {
+        // Obtain compilation log from the program.
+        size_t logSize;
+        NVRTC_SAFE_CALL(nvrtcGetProgramLogSize(prog, &logSize));
+        char* log = new char[logSize];
+        NVRTC_SAFE_CALL(nvrtcGetProgramLog(prog, log));
+        cudalog << "Compile log: " << log;
+        delete[] log;
+    }
+
+#endif
+
+    NVRTC_SAFE_CALL(compileResult);
+
+    // Obtain PTX from the program.
+    size_t ptxSize;
+    NVRTC_SAFE_CALL(nvrtcGetPTXSize(prog, &ptxSize));
+    char* ptx = new char[ptxSize];
+    NVRTC_SAFE_CALL(nvrtcGetPTX(prog, ptx));
+    write.open("kernel.ptx");
+    write << ptx;
+    write.close();
+
+    // Load the generated PTX and get a handle to the kernel.
+    char* jitInfo = new char[32 * 1024];
+    char* jitErr = new char[32 * 1024];
+    CUjit_option jitOpt[] = {CU_JIT_INFO_LOG_BUFFER, CU_JIT_ERROR_LOG_BUFFER,
+        CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, CU_JIT_LOG_VERBOSE,
+        CU_JIT_GENERATE_LINE_INFO};
+
+    void* jitOptVal[] = {
+        jitInfo, jitErr, (void*)(32 * 1024), (void*)(32 * 1024), (void*)(1), (void*)(1)};
+
+    CU_SAFE_CALL(cuModuleLoadDataEx(&m_module, ptx, 6, jitOpt, jitOptVal));
+
+#ifdef _DEVELOPER
+    if (g_logOptions & LOG_COMPILE)
+    {
+        cudalog << "JIT info: \n" << jitInfo;
+        cudalog << "JIT err: \n" << jitErr;
+    }
+#endif
+
+    delete[] ptx;
+    delete[] jitInfo;
+    delete[] jitErr;
+
+    // Find the mangled name
+    const char* mangledName;
+    NVRTC_SAFE_CALL(nvrtcGetLoweredName(prog, name, &mangledName));
+#ifdef _DEVELOPER
+    if (g_logOptions & LOG_COMPILE)
+        cudalog << "Mangled name: " << mangledName;
+#endif
+    CU_SAFE_CALL(cuModuleGetFunction(&m_kernel, m_module, mangledName));
+
+    // Destroy the program.
+    NVRTC_SAFE_CALL(nvrtcDestroyProgram(&prog));
+
+    cudalog << "Done compiling in "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::steady_clock::now() - startCompile)
+                   .count()
+            << " ms. ";
 }
 
 void CUDAMiner::kick_miner()
@@ -299,8 +415,7 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
             deviceDescriptor.cuDeviceOrdinal = i;
             deviceDescriptor.cuName = string(props.name);
             deviceDescriptor.totalMemory = props.totalGlobalMem;
-            deviceDescriptor.cuCompute =
-                (to_string(props.major) + "." + to_string(props.minor));
+            deviceDescriptor.cuCompute = (to_string(props.major) + "." + to_string(props.minor));
             deviceDescriptor.cuComputeMajor = props.major;
             deviceDescriptor.cuComputeMinor = props.minor;
 
@@ -313,10 +428,13 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
     }
 }
 
-void CUDAMiner::search(
-    uint8_t const* header, uint64_t target, uint64_t start_nonce, const dev::eth::WorkPackage& w)
+void CUDAMiner::ethash_search(const dev::eth::WorkPackage& w)
 {
-    set_header(*reinterpret_cast<hash32_t const*>(header));
+    uint64_t startNonce, target;
+    startNonce = w.startNonce;
+    target = (uint64_t)(u64)((u256)w.boundary >> 192);
+
+    set_header(*reinterpret_cast<hash32_t const*>(w.header.data()));
     if (m_current_target != target)
     {
         set_target(target);
@@ -326,14 +444,15 @@ void CUDAMiner::search(
     // prime each stream, clear search result buffers and start the search
     uint32_t current_index;
     for (current_index = 0; current_index < m_settings.streams;
-         current_index++, start_nonce += m_batch_size)
+         current_index++, startNonce += m_batch_size)
     {
         cudaStream_t stream = m_streams[current_index];
-        volatile Search_results& buffer(*m_search_buf[current_index]);
+        volatile search_results& buffer(*m_search_results[current_index]);
         buffer.count = 0;
 
         // Run the batch for this stream
-        run_ethash_search(m_settings.gridSize, m_settings.blockSize, stream, &buffer, start_nonce, m_settings.parallelHash);
+        run_ethash_search(m_settings.gridSize, m_settings.blockSize, stream, &buffer, startNonce,
+            m_settings.parallelHash);
     }
 
     // process stream batches until we get new work.
@@ -352,7 +471,7 @@ void CUDAMiner::search(
 
         // This inner loop will process each cuda stream individually
         for (current_index = 0; current_index < m_settings.streams;
-             current_index++, start_nonce += m_batch_size)
+             current_index++, startNonce += m_batch_size)
         {
             // Each pass of this loop will wait for a stream to exit,
             // save any found solutions, then restart the stream
@@ -369,13 +488,13 @@ void CUDAMiner::search(
             }
 
             // Detect solutions in current stream's solution buffer
-            volatile Search_results& buffer(*m_search_buf[current_index]);
+            volatile search_results& buffer(*m_search_results[current_index]);
             uint32_t found_count = std::min((unsigned)buffer.count, MAX_SEARCH_RESULTS);
 
             if (found_count)
             {
                 buffer.count = 0;
-                uint64_t nonce_base = start_nonce - m_streams_batch_size;
+                uint64_t nonce_base = startNonce - m_streams_batch_size;
 
                 // Extract solution and pass to higer level
                 // using io_service as dispatcher
@@ -387,8 +506,8 @@ void CUDAMiner::search(
                     memcpy(mix.data(), (void*)&buffer.result[i].mix, sizeof(buffer.result[i].mix));
                     auto sol = Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index};
 
-                    cudalog << EthWhite << "Job: " << w.header.abridged() << " Sol: "
-                            << toHex(sol.nonce, HexPrefix::Add) << EthReset;
+                    cudalog << EthWhite << "Job: " << w.header.abridged()
+                            << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
 
                     Farm::f().submitProof(sol);
                 }
@@ -397,8 +516,8 @@ void CUDAMiner::search(
             // restart the stream on the next batch of nonces
             // unless we are done for this round.
             if (!done)
-                run_ethash_search(
-                    m_settings.gridSize, m_settings.blockSize, stream, &buffer, start_nonce, m_settings.parallelHash);
+                run_ethash_search(m_settings.gridSize, m_settings.blockSize, stream, &buffer,
+                    startNonce, m_settings.parallelHash);
         }
 
         // Update the hash rate
@@ -412,7 +531,131 @@ void CUDAMiner::search(
         }
     }
 
-#ifdef DEV_BUILD
+#ifdef _DEVELOPER
+    // Optionally log job switch time
+    if (!shouldStop() && (g_logOptions & LOG_SWITCH))
+        cudalog << "Switch time: "
+                << std::chrono::duration_cast<std::chrono::milliseconds>(
+                       std::chrono::steady_clock::now() - m_workSwitchStart)
+                       .count()
+                << " ms.";
+#endif
+}
+
+void CUDAMiner::progpow_search(const dev::eth::WorkPackage& w)
+{
+    uint64_t startNonce, target;
+    startNonce = w.startNonce;
+    target = (uint64_t)(u64)((u256)w.boundary >> 192);
+
+    hash32_t header = *reinterpret_cast<hash32_t const*>(w.header.data());
+
+    // prime each stream, clear search result buffers and start the search
+    uint32_t current_index;
+    for (current_index = 0; current_index < m_settings.streams;
+         current_index++, startNonce += m_batch_size)
+    {
+        cudaStream_t stream = m_streams[current_index];
+        volatile search_results* buffer = m_search_results[current_index];
+        buffer->count = 0;
+
+        // Run the batch for this stream
+        bool hack_false = false;
+        uint64_t batchNonce = startNonce;
+        void* args[] = {&batchNonce, &header, &target, &m_dag_progpow, &buffer, &hack_false};
+        CU_SAFE_CALL(cuLaunchKernel(m_kernel, m_settings.gridSize, 1, 1,  // grid dim
+            m_settings.blockSize, 1, 1,                                   // block dim
+            0,                                                            // shared mem
+            stream,                                                       // stream
+            args, 0));                                                    // arguments
+    }
+
+    // process stream batches until we get new work.
+    bool done = (paused());
+    while (!done)
+    {
+        // Exit next time around if there's new work awaiting
+        bool t = true;
+        done = m_new_work.compare_exchange_strong(t, false);
+
+        // Check on every batch if we need to suspend mining
+        if (!done)
+            done = paused();
+
+        // This inner loop will process each cuda stream individually
+        for (current_index = 0; current_index < m_settings.streams;
+             current_index++, startNonce += m_batch_size)
+        {
+            // Each pass of this loop will wait for a stream to exit,
+            // save any found solutions, then restart the stream
+            // on the next group of nonces.
+            cudaStream_t stream = m_streams[current_index];
+
+            // Wait for the stream complete
+            CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
+
+            if (shouldStop())
+            {
+                m_new_work.store(false, std::memory_order_relaxed);
+                done = true;
+            }
+
+            // Detect solutions in current stream's solution buffer
+            volatile search_results* buffer = m_search_results[current_index];
+            uint32_t found_count = std::min((unsigned)buffer->count, MAX_SEARCH_RESULTS);
+
+            if (found_count)
+            {
+                buffer->count = 0;
+                uint64_t nonce_base = startNonce - m_streams_batch_size;
+
+                // Extract solution and pass to higer level
+                // using io_service as dispatcher
+
+                for (uint32_t i = 0; i < found_count; i++)
+                {
+                    h256 mix;
+                    uint64_t nonce = nonce_base + buffer->result[i].gid;
+                    memcpy(
+                        mix.data(), (void*)&buffer->result[i].mix, sizeof(buffer->result[i].mix));
+                    auto sol = Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index};
+
+                    cudalog << EthWhite << "Job: " << w.header.abridged()
+                            << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
+
+                    Farm::f().submitProof(sol);
+                }
+            }
+
+            // restart the stream on the next batch of nonces
+            // unless we are done for this round.
+            if (!done)
+            {
+                // Run the batch for this stream
+                bool hack_false = false;
+                uint64_t batchNonce = startNonce;
+                void* args[] = {
+                    &batchNonce, &header, &target, &m_dag_progpow, &buffer, &hack_false};
+                CU_SAFE_CALL(cuLaunchKernel(m_kernel, m_settings.gridSize, 1, 1,  // grid dim
+                    m_settings.blockSize, 1, 1,                                   // block dim
+                    0,                                                            // shared mem
+                    stream,                                                       // stream
+                    args, 0));                                                    // arguments
+            }
+        }
+
+        // Update the hash rate
+        updateHashRate(m_batch_size, m_settings.streams);
+
+        // Bail out if it's shutdown time
+        if (shouldStop())
+        {
+            m_new_work.store(false, std::memory_order_relaxed);
+            break;
+        }
+    }
+
+#ifdef _DEVELOPER
     // Optionally log job switch time
     if (!shouldStop() && (g_logOptions & LOG_SWITCH))
         cudalog << "Switch time: "

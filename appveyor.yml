@@ -41,7 +41,7 @@ install: |
 
 build_script:
   - call "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\Common7\Tools\VsMSBuildCmd.bat"
-  - set CMAKE_ARGS=-G "Visual Studio 15 2017 Win64" -H. -Bbuild -DETHASHCUDA=ON -DAPICORE=ON -DHUNTER_JOBS_NUMBER=%NUMBER_OF_PROCESSORS%
+  - set CMAKE_ARGS=-G "Visual Studio 15 2017 Win64" -H. -Bbuild -DCUDA=ON -DAPI=ON -DHUNTER_JOBS_NUMBER=%NUMBER_OF_PROCESSORS%
   - if "%CUDA_VER%" NEQ "10.0" set CMAKE_ARGS=%CMAKE_ARGS% -T v140
   - cmake %CMAKE_ARGS%
   - cmake --build build --config Release --target package

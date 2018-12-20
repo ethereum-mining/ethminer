@@ -72,8 +72,7 @@ static std::map<std::string, SchemeAttributes> s_schemes = {
     It's not meant to be used with -P arguments
     */
 
-    {"simulation", {ProtocolFamily::SIMULATION, SecureLevel::NONE, 999}}
-};
+    {"simulation", {ProtocolFamily::SIMULATION, SecureLevel::NONE, 999}}};
 
 static bool url_decode(const std::string& in, std::string& out)
 {
@@ -121,7 +120,6 @@ static bool url_decode(const std::string& in, std::string& out)
 
 URI::URI(std::string uri, bool _sim) : m_uri{std::move(uri)}
 {
-
     std::regex sch_auth("^([a-zA-Z0-9\\+]{1,})\\:\\/\\/(.*)$");
     std::smatch matches;
     if (!std::regex_search(m_uri, matches, sch_auth, std::regex_constants::match_default))
@@ -145,7 +143,7 @@ URI::URI(std::string uri, bool _sim) : m_uri{std::move(uri)}
     if ((s_schemes.find(m_scheme) == s_schemes.end()))
         throw std::runtime_error("Invalid scheme");
 
-    
+
     // Now let's see if authority part can be split into userinfo and "the rest"
     std::regex usr_url("^(.*)\\@(.*)$");
     if (std::regex_search(m_authority, matches, usr_url, std::regex_constants::match_default))
@@ -171,7 +169,6 @@ URI::URI(std::string uri, bool _sim) : m_uri{std::move(uri)}
     */
     if (!m_userinfo.empty())
     {
-
         // Save all parts enclosed in backticks into a dictionary
         // and replace them with tokens in the authority
         std::regex btick("`((?:[^`])*)`");
@@ -241,7 +238,6 @@ URI::URI(std::string uri, bool _sim) : m_uri{std::move(uri)}
                 boost::replace_all(m_password, "`" + it->first + "`", it->second);
             }
         }
-
     }
 
     /*
@@ -255,7 +251,7 @@ URI::URI(std::string uri, bool _sim) : m_uri{std::move(uri)}
       - host:port
       - host:port/path
     */
-    size_t offset = m_urlinfo.find('/');
+    size_t offset = m_urlinfo.find_first_of("/?#");
     if (offset != std::string::npos)
     {
         m_hostinfo = m_urlinfo.substr(0, offset);
@@ -289,9 +285,9 @@ URI::URI(std::string uri, bool _sim) : m_uri{std::move(uri)}
         // Url Decode Path
 
         std::vector<std::regex> path_patterns;
-        path_patterns.push_back(std::regex("(\\/.*)\\?(.*)\\#(.*)$"));
-        path_patterns.push_back(std::regex("(\\/.*)\\#(.*)$"));
-        path_patterns.push_back(std::regex("(\\/.*)\\?(.*)$"));
+        path_patterns.push_back(std::regex("(\\/.*)?\\?(.*)\\#(.*)$"));
+        path_patterns.push_back(std::regex("(\\/.*)?\\#(.*)$"));
+        path_patterns.push_back(std::regex("(\\/.*)?\\?(.*)$"));
         bool pathMatchFound = false;
         for (size_t i = 0; i < path_patterns.size() && !pathMatchFound; i++)
         {
@@ -322,7 +318,23 @@ URI::URI(std::string uri, bool _sim) : m_uri{std::move(uri)}
             // part is only path login
             if (!pathMatchFound)
                 m_path = m_pathinfo;
+        }
+    }
 
+    // Process query in search of any extra parameters
+    if (!m_query.empty())
+    {
+        std::vector<std::string> querychunks;
+        boost::split(querychunks, m_query, boost::is_any_of("&"));
+        for (size_t i = 0; i < querychunks.size(); i++)
+        {
+            std::vector<std::string> tuplet;
+            boost::split(tuplet, querychunks.at(i), boost::is_any_of("="));
+            if (tuplet.size() == 2 && !tuplet.at(1).empty())
+            {
+                if (tuplet.at(0) == "algo")
+                    url_decode(tuplet.at(1), m_algo);
+            }
         }
     }
 

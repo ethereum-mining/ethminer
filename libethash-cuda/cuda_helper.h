@@ -1,7 +1,23 @@
+ï»¿/*
+This file is part of ethminer.
+
+ethminer is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+ethminer is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #pragma once
 
 #include <cuda.h>
-
 #include <cuda_runtime.h>
 
 #define DEV_INLINE __device__ __forceinline__
@@ -13,6 +29,9 @@
 #define __launch_bounds__(max_tpb, min_blocks)
 #define asm("a" : "=l"(result) : "l"(a))
 #define __CUDA_ARCH__ 520  // highlight shuffle code by default.
+#define __funnelshift_r(x, y)
+#define __funnelshift_l(x, y)
+#define __ldg(x)
 
 uint32_t __byte_perm(uint32_t x, uint32_t y, uint32_t z);
 uint32_t __shfl(uint32_t x, uint32_t y, uint32_t z);
@@ -32,16 +51,6 @@ void __threadfence_block(void);
 extern "C" int device_map[MAX_GPUS];
 extern "C" long device_sm[MAX_GPUS];
 extern cudaStream_t gpustream[MAX_GPUS];
-
-// common functions
-extern void cuda_check_cpu_init(int thr_id, uint32_t threads);
-extern void cuda_check_cpu_setTarget(const void* ptarget);
-extern void cuda_check_cpu_setTarget_mod(const void* ptarget, const void* ptarget2);
-extern uint32_t cuda_check_hash(
-    int thr_id, uint32_t threads, uint32_t startNounce, uint32_t* d_inputHash);
-extern uint32_t cuda_check_hash_suppl(
-    int thr_id, uint32_t threads, uint32_t startNounce, uint32_t* d_inputHash, uint32_t foundnonce);
-extern void cudaReportHardwareFailure(int thr_id, cudaError_t error, const char* func);
 
 #ifndef __CUDA_ARCH__
 // define blockDim and threadIdx for host
@@ -98,7 +107,7 @@ DEV_INLINE uint64_t MAKE_ULONGLONG(uint32_t LO, uint32_t HI)
     return result;
 }
 
-// Endian Drehung für 32 Bit Typen
+// Endian Drehung fï¿½r 32 Bit Typen
 #ifdef __CUDA_ARCH__
 DEV_INLINE uint32_t cuda_swab32(const uint32_t x)
 {
@@ -175,8 +184,8 @@ uint64_t xor3(const uint64_t a, const uint64_t b, const uint64_t c)
 
 #if USE_XOR_ASM_OPTS
 // device asm for whirpool
-DEV_INLINE uint64_t xor8(const uint64_t a, const uint64_t b, const uint64_t c,
-    const uint64_t d, const uint64_t e, const uint64_t f, const uint64_t g, const uint64_t h)
+DEV_INLINE uint64_t xor8(const uint64_t a, const uint64_t b, const uint64_t c, const uint64_t d,
+    const uint64_t e, const uint64_t f, const uint64_t g, const uint64_t h)
 {
     uint64_t result;
     asm("xor.b64 %0, %1, %2;" : "=l"(result) : "l"(g), "l"(h));

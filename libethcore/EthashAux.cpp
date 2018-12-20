@@ -17,17 +17,25 @@
 
 #include "EthashAux.h"
 
-#include <ethash/ethash.hpp>
-
 using namespace dev;
 using namespace eth;
 
-Result EthashAux::eval(int epoch, h256 const& _headerHash, uint64_t _nonce) noexcept
+bool EthashAux::verify(int epoch, h256 const& _headerHash, h256 const& _mixHash, uint64_t _nonce,
+    h256 const& _target) noexcept
 {
-    auto headerHash = ethash::hash256_from_bytes(_headerHash.data());
     auto& context = ethash::get_global_epoch_context(epoch);
-    auto result = ethash::hash(context, headerHash, _nonce);
-    h256 mix{reinterpret_cast<byte*>(result.mix_hash.bytes), h256::ConstructFromPointer};
-    h256 final{reinterpret_cast<byte*>(result.final_hash.bytes), h256::ConstructFromPointer};
-    return {final, mix};
+    auto header = ethash::hash256_from_bytes(_headerHash.data());
+    auto mix = ethash::hash256_from_bytes(_mixHash.data());
+    auto target = ethash::hash256_from_bytes(_target.data());
+    return ethash::verify(context, header, mix, _nonce, target);
+}
+
+bool ProgPoWAux::verify(int epoch, int block, h256 const& _headerHash, h256 const& _mixHash,
+    uint64_t _nonce, h256 const& _target) noexcept
+{
+    auto& context = progpow::get_global_epoch_context(epoch);
+    auto header = progpow::hash256_from_bytes(_headerHash.data());
+    auto mix = progpow::hash256_from_bytes(_mixHash.data());
+    auto target = progpow::hash256_from_bytes(_target.data());
+    return progpow::verify(context, block, header, mix, _nonce, target);
 }

@@ -17,13 +17,17 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include "ethash_cuda_miner_kernel.h"
+#include "ethash_miner_kernel.h"
+#include "progpow_miner_kernel.h"
 
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
-
+#include <libprogpow/ProgPow.h>
+#include <cuda.h>
 #include <functional>
+
+
 
 namespace dev
 {
@@ -38,8 +42,6 @@ public:
     static int getNumDevices();
     static void enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection);
 
-    void search(
-        uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w);
 
 protected:
     bool initDevice() override;
@@ -53,7 +55,22 @@ private:
 
     void workLoop() override;
 
-    std::vector<volatile Search_results*> m_search_buf;
+    void ethash_search(const dev::eth::WorkPackage& w);
+
+    void progpow_search(const dev::eth::WorkPackage& w);
+    
+    void compileProgPoWKernel(int _block, int _dagelms);
+
+    CUdevice m_device;
+    CUmodule m_module;
+    CUfunction m_kernel;
+
+    std::vector<volatile search_results *> m_search_results;
+
+    hash128_t* m_dag;
+    hash64_t* m_dag_progpow;
+    hash64_t* m_light;
+
     std::vector<cudaStream_t> m_streams;
     uint64_t m_current_target = 0;
 

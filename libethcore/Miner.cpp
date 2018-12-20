@@ -45,7 +45,7 @@ void Miner::setWork(WorkPackage const& _work)
         else
             m_work = _work;
 
-#ifdef DEV_BUILD
+#ifdef _DEVELOPER
         m_workSwitchStart = std::chrono::steady_clock::now();
 #endif
     }

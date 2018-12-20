@@ -72,7 +72,7 @@ before_install:
       pip3 install -q requests gitpython
     fi
 script: |
-    cmake -DHUNTER_JOBS_NUMBER=4 -DETHASHCUDA=$CUDA -DETHASHCL=ON -DAPICORE=ON -H. -Bbuild
+    cmake -DHUNTER_JOBS_NUMBER=4 -DCUDA=$CUDA -DOPENCL=ON -DAPI=ON -H. -Bbuild
     cmake --build build --target package -- -j4
     build/ethminer/ethminer --help
     if [ "$TRAVIS_OS_NAME" = linux ]; then ldd -v build/ethminer/ethminer; fi

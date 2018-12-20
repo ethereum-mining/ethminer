@@ -25,10 +25,10 @@
 #endif
 
 #include <libethcore/Farm.h>
-#if ETH_ETHASHCL
+#if _OPENCL
 #include <libethash-cl/CLMiner.h>
 #endif
-#if ETH_ETHASHCUDA
+#if _CUDA
 #include <libethash-cuda/CUDAMiner.h>
 #endif
 #if ETH_ETHASHCPU
@@ -36,7 +36,7 @@
 #endif
 #include <libpoolprotocols/PoolManager.h>
 
-#if API_CORE
+#if _API
 #include <libapicore/ApiServer.h>
 #include <regex>
 #endif
@@ -67,7 +67,7 @@ struct MiningChannel : public LogChannel
 
 #define minelog clog(MiningChannel)
 
-#if ETH_DBUS
+#if _DBUS
 #include <ethminer/DBusInt.h>
 #endif
 
@@ -111,7 +111,7 @@ public:
                 PoolManager::p().isConnected() ? Farm::f().Telemetry().str() : "Not connected";
             minelog << logLine;
 
-#if ETH_DBUS
+#if _DBUS
             dbusint.send(Farm::f().Telemetry().str());
 #endif
             // Resubmit timer
@@ -174,7 +174,7 @@ public:
         }
     }
 
-#if API_CORE
+#if _API
 
     static void ParseBind(
         const std::string& inaddr, std::string& outaddr, int& outport, bool advertise_negative_port)
@@ -226,33 +226,39 @@ public:
         app.add_set("-H,--help-ext", shelpExt,
             {
                 "con", "test",
-#if ETH_ETHASHCL
+#if _OPENCL
                     "cl",
 #endif
-#if ETH_ETHASHCUDA
+#if _CUDA
                     "cu",
 #endif
 #if ETH_ETHASHCPU
                     "cp",
 #endif
-#if API_CORE
+#if _API
                     "api",
 #endif
                     "misc", "env"
             },
             "", true);
 
-        bool version = false;
 
-        app.add_option("--ergodicity", m_FarmSettings.ergodicity, "", true)->check(CLI::Range(0, 2));
+        app.add_set("-A,--algo", m_PoolSettings.algo, {"ethash", "progpow"}, "", true);
+
+        app.add_option("--ergodicity", m_FarmSettings.ergodicity, "", true)
+            ->check(CLI::Range(0, 2));
+
+        bool version = false;
 
         app.add_flag("-V,--version", version, "Show program version");
 
         app.add_option("-v,--verbosity", g_logOptions, "", true)->check(CLI::Range(LOG_NEXT - 1));
 
-        app.add_option("--farm-recheck", m_PoolSettings.getWorkPollInterval, "", true)->check(CLI::Range(1, 99999));
+        app.add_option("--farm-recheck", m_PoolSettings.getWorkPollInterval, "", true)
+            ->check(CLI::Range(1, 99999));
 
-        app.add_option("--farm-retries", m_PoolSettings.connectionMaxRetries, "", true)->check(CLI::Range(0, 99999));
+        app.add_option("--farm-retries", m_PoolSettings.connectionMaxRetries, "", true)
+            ->check(CLI::Range(0, 99999));
 
         app.add_option("--work-timeout", m_PoolSettings.noWorkTimeout, "", true)
             ->check(CLI::Range(180, 99999));
@@ -281,7 +287,7 @@ public:
 
         app.add_flag("--stdout", g_logStdout, "");
 
-#if API_CORE
+#if _API
 
         app.add_option("--api-bind", m_api_bind, "", true)
             ->check([this](const string& bind_arg) -> string {
@@ -304,17 +310,19 @@ public:
 
 #endif
 
-#if ETH_ETHASHCL || ETH_ETHASHCUDA || ETH_ETHASH_CPU
+
+#if _OPENCL || _CUDA || ETH_ETHASH_CPU
 
         app.add_flag("--list-devices", m_shouldListDevices, "");
 
 #endif
 
-#if ETH_ETHASHCL
+#if _OPENCL
 
         app.add_option("--opencl-device,--opencl-devices,--cl-devices", m_CLSettings.devices, "");
 
-        app.add_option("--cl-global-work", m_CLSettings.globalWorkSize, "", true);
+        app.add_option("--cl-global-work", m_CLSettings.globalWorkSizeMultiplier, "", true)
+            ->check(CLI::Range(32, 65536));
 
         app.add_set("--cl-local-work", m_CLSettings.localWorkSize, {64, 128, 256}, "", true);
 
@@ -322,18 +330,18 @@ public:
 
 #endif
 
-#if ETH_ETHASHCUDA
+#if _CUDA
 
         app.add_option("--cuda-devices,--cu-devices", m_CUSettings.devices, "");
 
         app.add_option("--cuda-grid-size,--cu-grid-size", m_CUSettings.gridSize, "", true)
-            ->check(CLI::Range(1, 131072));
+            ->check(CLI::Range(32, 131072));
 
-        app.add_set(
-            "--cuda-block-size,--cu-block-size", m_CUSettings.blockSize, {32, 64, 128, 256}, "", true);
+        app.add_set("--cuda-block-size,--cu-block-size", m_CUSettings.blockSize,
+            {32, 64, 128, 256, 512}, "", true);
 
-        app.add_set(
-            "--cuda-parallel-hash,--cu-parallel-hash", m_CUSettings.parallelHash, {1, 2, 4, 8}, "", true);
+        app.add_set("--cuda-parallel-hash,--cu-parallel-hash", m_CUSettings.parallelHash,
+            {1, 2, 4, 8}, "", true);
 
         string sched = "sync";
         app.add_set(
@@ -352,7 +360,8 @@ public:
 
         app.add_flag("--noeval", m_FarmSettings.noEval, "");
 
-        app.add_option("-L,--dag-load-mode", m_FarmSettings.dagLoadMode, "", true)->check(CLI::Range(1));
+        app.add_option("-L,--dag-load-mode", m_FarmSettings.dagLoadMode, "", true)
+            ->check(CLI::Range(1));
 
         bool cl_miner = false;
         app.add_flag("-G,--opencl", cl_miner, "");
@@ -360,11 +369,17 @@ public:
         bool cuda_miner = false;
         app.add_flag("-U,--cuda", cuda_miner, "");
 
+
+        auto sim_opt = app.add_option(
+            "-Z,--simulation,-M,--benchmark", m_PoolSettings.benchmarkBlock, "", true);
+        app.add_option("--diff", m_PoolSettings.benchmarkDiff, "", true)
+            ->check(CLI::Range(0.001, 10.0));
+        app.add_flag("--vardiff", m_PoolSettings.benchmarkVarDiff);
+
         bool cpu_miner = false;
 #if ETH_ETHASHCPU
         app.add_flag("--cpu", cpu_miner, "");
 #endif
-        auto sim_opt = app.add_option("-Z,--simulation,-M,--benchmark", m_PoolSettings.benchmarkBlock, "", true);
 
         app.add_option("--tstop", m_FarmSettings.tempStop, "", true)->check(CLI::Range(30, 100));
         app.add_option("--tstart", m_FarmSettings.tempStart, "", true)->check(CLI::Range(30, 100));
@@ -388,7 +403,7 @@ public:
         }
 
 
-#ifndef DEV_BUILD
+#ifndef _DEVELOPER
 
         if (g_logOptions & LOG_CONNECT)
             warnings.push("Socket connections won't be logged. Compile with -DDEVBUILD=ON");
@@ -399,9 +414,16 @@ public:
                 "Solution internal submission timings won't be logged. Compile with -DDEVBUILD=ON");
         if (g_logOptions & LOG_PROGRAMFLOW)
             warnings.push("Program flow won't be logged. Compile with -DDEVBUILD=ON");
+        if (g_logOptions & LOG_COMPILE)
+            warnings.push("Kernel compilation won't be logged. Compile with -DDEVBUILD=ON");
 
 #endif
 
+        // Adjust values to powers of 2
+        dev::toNearestPowerOf2(m_CUSettings.gridSize);
+        dev::toNearestPowerOf2(m_CUSettings.blockSize);
+        dev::toNearestPowerOf2(m_CLSettings.globalWorkSizeMultiplier);
+        dev::toNearestPowerOf2(m_CLSettings.localWorkSize);
 
         if (cl_miner)
             m_minerType = MinerType::CL;
@@ -468,7 +490,7 @@ public:
         }
 
 
-#if ETH_ETHASHCUDA
+#if _CUDA
         if (sched == "auto")
             m_CUSettings.schedule = 0;
         else if (sched == "spin")
@@ -505,11 +527,11 @@ public:
 
     void execute()
     {
-#if ETH_ETHASHCL
+#if _OPENCL
         if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
             CLMiner::enumDevices(m_DevicesCollection);
 #endif
-#if ETH_ETHASHCUDA
+#if _CUDA
         if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
             CUDAMiner::enumDevices(m_DevicesCollection);
 #endif
@@ -530,20 +552,20 @@ public:
             cout << setw(5) << "Type ";
             cout << setw(30) << "Name                          ";
 
-#if ETH_ETHASHCUDA
+#if _CUDA
             if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
             {
                 cout << setw(5) << "CUDA ";
                 cout << setw(4) << "SM  ";
             }
 #endif
-#if ETH_ETHASHCL
+#if _OPENCL
             if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
                 cout << setw(5) << "CL   ";
 #endif
             cout << resetiosflags(ios::left) << setw(13) << "Total Memory"
                  << " ";
-#if ETH_ETHASHCL
+#if _OPENCL
             if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
             {
                 cout << resetiosflags(ios::left) << setw(13) << "Cl Max Alloc"
@@ -559,20 +581,20 @@ public:
             cout << setw(5) << "---- ";
             cout << setw(30) << "----------------------------- ";
 
-#if ETH_ETHASHCUDA
+#if _CUDA
             if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
             {
                 cout << setw(5) << "---- ";
                 cout << setw(4) << "--- ";
             }
 #endif
-#if ETH_ETHASHCL
+#if _OPENCL
             if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
                 cout << setw(5) << "---- ";
 #endif
             cout << resetiosflags(ios::left) << setw(13) << "------------"
                  << " ";
-#if ETH_ETHASHCL
+#if _OPENCL
             if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
             {
                 cout << resetiosflags(ios::left) << setw(13) << "------------"
@@ -603,21 +625,23 @@ public:
                 default:
                     break;
                 }
-                cout << setw(30) << (it->second.name).substr(0, 28);
-#if ETH_ETHASHCUDA
+
+                cout << setw(26) << (it->second.name).substr(0, 28);
+                cout << setw(26) << (it->second.name).substr(0, 28);
+              
                 if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
                 {
                     cout << setw(5) << (it->second.cuDetected ? "Yes" : "");
                     cout << setw(4) << it->second.cuCompute;
                 }
 #endif
-#if ETH_ETHASHCL
+#if _OPENCL
                 if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
                     cout << setw(5) << (it->second.clDetected ? "Yes" : "");
 #endif
                 cout << resetiosflags(ios::left) << setw(13)
                      << getFormattedMemory((double)it->second.totalMemory) << " ";
-#if ETH_ETHASHCL
+#if _OPENCL
                 if (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed)
                 {
                     cout << resetiosflags(ios::left) << setw(13)
@@ -637,7 +661,7 @@ public:
         // Use CUDA first when available then, as second, OpenCL
 
         // Apply discrete subscriptions (if any)
-#if ETH_ETHASHCUDA
+#if _CUDA
         if (m_CUSettings.devices.size() &&
             (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
         {
@@ -654,7 +678,7 @@ public:
             }
         }
 #endif
-#if ETH_ETHASHCL
+#if _OPENCL
         if (m_CLSettings.devices.size() &&
             (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed))
         {
@@ -691,7 +715,7 @@ public:
 
 
         // Subscribe all detected devices
-#if ETH_ETHASHCUDA
+#if _CUDA
         if (!m_CUSettings.devices.size() &&
             (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
         {
@@ -704,7 +728,7 @@ public:
             }
         }
 #endif
-#if ETH_ETHASHCL
+#if _OPENCL
         if (!m_CLSettings.devices.size() &&
             (m_minerType == MinerType::CL || m_minerType == MinerType::Mixed))
         {
@@ -766,10 +790,10 @@ public:
              << "    By default ethminer will try to use all devices types" << endl
              << "    it can detect. Optionally you can limit this behavior" << endl
              << "    setting either of the following options" << endl
-#if ETH_ETHASHCL
+#if _OPENCL
              << "    -G,--opencl         Mine/Benchmark using OpenCL only" << endl
 #endif
-#if ETH_ETHASHCUDA
+#if _CUDA
              << "    -U,--cuda           Mine/Benchmark using CUDA only" << endl
 #endif
 #if ETH_ETHASHCPU
@@ -791,32 +815,32 @@ public:
              << endl
              << "    -h,--help           Displays this help text and exits" << endl
              << "    -H,--help-ext       TEXT {'con','test',"
-#if ETH_ETHASHCL
+#if _OPENCL
              << "cl,"
 #endif
-#if ETH_ETHASHCUDA
+#if _CUDA
              << "cu,"
 #endif
 #if ETH_ETHASHCPU
              << "cp,"
 #endif
-#if API_CORE
+#if _API
              << "api,"
 #endif
              << "'misc','env'}" << endl
              << "                        Display help text about one of these contexts:" << endl
              << "                        'con'  Connections and their definitions" << endl
              << "                        'test' Benchmark/Simulation options" << endl
-#if ETH_ETHASHCL
+#if _OPENCL
              << "                        'cl'   Extended OpenCL options" << endl
 #endif
-#if ETH_ETHASHCUDA
+#if _CUDA
              << "                        'cu'   Extended CUDA options" << endl
 #endif
 #if ETH_ETHASHCPU
              << "                        'cp'   Extended CPU options" << endl
 #endif
-#if API_CORE
+#if _API
              << "                        'api'  API and Http monitoring interface" << endl
 #endif
              << "                        'misc' Other miscellaneous options" << endl
@@ -844,6 +868,16 @@ public:
                  << "    -Z,--simulation     UINT [0 ..] Default not set" << endl
                  << "                        Mining test. Used to test hashing speed." << endl
                  << "                        Specify the block number to test on." << endl
+                 << endl
+                 << "    --diff              DOUBLE [0.001 .. 10] Default 1.0" << endl
+                 << "                        Difficulty index to apply on tests." << endl
+                 << "                        The default value of 1.0 corresponds to" << endl
+                 << "                        a hashing difficulty of 4.29 Mh/s" << endl
+                 << endl
+                 << "    --vardiff           FLAG" << endl
+                 << "                        Set this flag if you whish the simulation" << endl
+                 << "                        to increase block numbers (thus changing DAG)" << endl
+                 << "                        and randomize difficulty." << endl
                  << endl;
         }
 
@@ -892,11 +926,11 @@ public:
                  << "                        eg --cl-devices 0 2 3" << endl
                  << "                        If not set all available CL devices will be used"
                  << endl
-                 << "    --cl-global-work    UINT Default 65536" << endl
+                 << "    --cl-global-work    UINT [32 .. 65536] Default 8192" << endl
                  << "                        Set the global work size multiplier" << endl
                  << "                        Value will be adjusted to nearest power of 2" << endl
                  << "    --cl-local-work     UINT {64,128,256} Default = 128" << endl
-                 << "                        Set the local work size multiplier" << endl
+                 << "                        Set the local work size" << endl
                  << "    --cl-nobin          FLAG" << endl
                  << "                        Use openCL kernel. Do not load binary kernel" << endl
                  << endl;
@@ -909,10 +943,13 @@ public:
                  << "    Use this extended CUDA arguments to fine tune the performance." << endl
                  << "    Be advised default values are best generic findings by developers" << endl
                  << endl
-                 << "    --cu-grid-size      INT [1 .. 131072] Default = 8192" << endl
+                 << "    --cu-grid-size      INT [32 .. 131072] Default = 8192" << endl
                  << "                        Set the grid size" << endl
-                 << "    --cu-block-size     UINT {32,64,128,256} Default = 128" << endl
+                 << "                        Value will be adjusted to nearest power of 2" << endl
+                 << endl
+                 << "    --cu-block-size     UINT {32,64,128,256,512} Default = 128" << endl
                  << "                        Set the block size" << endl
+                 << endl
                  << "    --cu-devices        UINT {} Default not set" << endl
                  << "                        Space separated list of device indexes to use" << endl
                  << "                        eg --cu-devices 0 2 3" << endl
@@ -920,8 +957,10 @@ public:
                  << endl
                  << "    --cu-parallel-hash  UINT {1,2,4,8} Default = 4" << endl
                  << "                        Set the number of hashes per kernel" << endl
+                 << endl
                  << "    --cu-streams        INT [1 .. 99] Default = 2" << endl
                  << "                        Set the number of streams per GPU" << endl
+                 << endl
                  << "    --cu-schedule       TEXT Default = 'sync'" << endl
                  << "                        Set the CUDA scheduler mode. Can be one of" << endl
                  << "                        'auto'  Uses a heuristic based on the number of "
@@ -972,13 +1011,19 @@ public:
                  << "    This set of options is valid for mining mode independently from" << endl
                  << "    OpenCL or CUDA or Mixed mining mode." << endl
                  << endl
+                 << "    -A, --algo          TEXT{\"ethash\", \"progpow\"}" << endl
+                 << "                        Sets the algorithm for hashing on" << endl
+                 << "                        *all* defined connections" << endl
+                 << endl
                  << "    --display-interval  INT[1 .. 1800] Default = 5" << endl
                  << "                        Statistic display interval in seconds" << endl
+                 << endl
                  << "    --farm-recheck      INT[1 .. 99999] Default = 500" << endl
                  << "                        Set polling interval for new work in getWork mode"
                  << endl
                  << "                        Value expressed in milliseconds" << endl
                  << "                        It has no meaning in stratum mode" << endl
+                 << endl
                  << "    --farm-retries      INT[1 .. 99999] Default = 3" << endl
                  << "                        Set number of reconnection retries to same pool"
                  << endl
@@ -992,16 +1037,20 @@ public:
                  << "                        If no new work received from pool after this" << endl
                  << "                        amount of time the connection is dropped" << endl
                  << "                        Value expressed in seconds." << endl
+                 << endl
                  << "    --response-timeout  INT[2 .. 999] Default = 2" << endl
                  << "                        If no response from pool to a stratum message " << endl
                  << "                        after this amount of time the connection is dropped"
                  << endl
+                 << endl
                  << "    -R,--report-hr      FLAG Notify pool of effective hashing rate" << endl
+                 << endl
                  << "    --HWMON             INT[0 .. 2] Default = 0" << endl
                  << "                        GPU hardware monitoring level. Can be one of:" << endl
                  << "                        0 No monitoring" << endl
                  << "                        1 Monitor temperature and fan percentage" << endl
                  << "                        2 As 1 plus monitor power drain" << endl
+                 << endl
                  << "    --exit              FLAG Stop ethminer whenever an error is encountered"
                  << endl
                  << "    --ergodicity        INT[0 .. 2] Default = 0" << endl
@@ -1050,11 +1099,12 @@ public:
                  << "                        Set output verbosity level. Use the sum of :" << endl
                  << "                        1   to log stratum json messages" << endl
                  << "                        2   to log found solutions per GPU" << endl
-#ifdef DEV_BUILD
+#ifdef _DEVELOPER
                  << "                        32  to log socket (dis)connections" << endl
                  << "                        64  to log timing of job switches" << endl
                  << "                        128 to log time for solution submission" << endl
                  << "                        256 to log program flow" << endl
+                 << "                        512 to log kernel compile" << endl
 #endif
                  << endl;
         }
@@ -1206,13 +1256,12 @@ public:
 private:
     void doMiner()
     {
-
         new PoolManager(m_PoolSettings);
         if (m_mode != OperationMode::Simulation)
             for (auto conn : m_PoolSettings.connections)
                 cnote << "Configured pool " << conn->Host() + ":" + to_string(conn->Port());
 
-#if API_CORE
+#if _API
 
         ApiServer api(m_api_address, m_api_port, m_api_password);
         if (m_api_port)
@@ -1233,7 +1282,7 @@ private:
         while (g_running)
             g_shouldstop.wait(clilock);
 
-#if API_CORE
+#if _API
 
         // Stop Api server
         if (api.isRunning())
@@ -1261,15 +1310,13 @@ private:
     OperationMode m_mode = OperationMode::None;
     bool m_shouldListDevices = false;
 
-    FarmSettings m_FarmSettings;  // Operating settings for Farm
-    PoolSettings m_PoolSettings;  // Operating settings for PoolManager
-    CLSettings m_CLSettings;          // Operating settings for CL Miners
-    CUSettings m_CUSettings;          // Operating settings for CUDA Miners
-    CPSettings m_CPSettings;          // Operating settings for CPU Miners
+    FarmSettings m_FarmSettings = FarmSettings();  // Operating settings for Farm
+    PoolSettings m_PoolSettings = PoolSettings();  // Operating settings for PoolManager
+    CLSettings m_CLSettings = CLSettings();        // Operating settings for CL Miners
+    CUSettings m_CUSettings = CUSettings();        // Operating settings for CUDA Miners
+    CPSettings m_CPSettings = CPSettings();        // Operating settings for CPU Miners  
 
     //// -- Pool manager related params
-    //std::vector<std::shared_ptr<URI>> m_poolConns;
-
 
     // -- CLI Interface related params
     unsigned m_cliDisplayInterval =
@@ -1278,15 +1325,15 @@ private:
     // -- CLI Flow control
     mutex m_climtx;
 
-#if API_CORE
+#if _API
     // -- API and Http interfaces related params
-    string m_api_bind;                  // API interface binding address in form <address>:<port>
-    string m_api_address = "0.0.0.0";   // API interface binding address (Default any)
-    int m_api_port = 0;                 // API interface binding port
-    string m_api_password;              // API interface write protection password
+    string m_api_bind;                 // API interface binding address in form <address>:<port>
+    string m_api_address = "0.0.0.0";  // API interface binding address (Default any)
+    int m_api_port = 0;                // API interface binding port
+    string m_api_password;             // API interface write protection password
 #endif
 
-#if ETH_DBUS
+#if _DBUS
     DBusInt dbusint;
 #endif
 };

@@ -56,6 +56,7 @@ public:
     URI() = delete;
     URI(std::string uri, bool _sim = false);
 
+    std::string Algo() const { return m_algo; }
     std::string Scheme() const { return m_scheme; }
     std::string Host() const { return m_host; }
     std::string Path() const { return m_path; }
@@ -106,6 +107,7 @@ private:
     std::string m_password = "X";
     std::string m_worker;
     std::string m_uri;
+    std::string m_algo;  // Algorithm to be used by connection (defaults to ethash)
 
     unsigned short m_stratumMode = 999;  // Initial value 999 means not tested yet
     unsigned short m_port = 0;
@@ -116,7 +118,6 @@ private:
     UriHostNameType m_hostType = UriHostNameType::Unknown;
     bool m_isLoopBack;
 
-    unsigned long m_totalDuration; // Total duration on this connection in minutes
-
+    unsigned long m_totalDuration;  // Total duration on this connection in minutes
 };
 }  // namespace dev
