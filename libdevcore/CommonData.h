@@ -200,7 +200,6 @@ inline std::string toCompactHex(uint32_t _n, HexPrefix _prefix = HexPrefix::Dont
 }
 
 
-
 // Algorithms for string and string-like collections.
 
 /// Escapes a string into the C-string representation.
@@ -238,7 +237,8 @@ std::string getScaledSize(double _value, double _divisor, int _precision, std::s
     size_t _numsizes, ScaleSuffix _suffix = ScaleSuffix::Add);
 
 /// Formats hashrate
-std::string getFormattedHashes(double _hr, ScaleSuffix _suffix = ScaleSuffix::Add, int _precision = 2);
+std::string getFormattedHashes(
+    double _hr, ScaleSuffix _suffix = ScaleSuffix::Add, int _precision = 2);
 
 /// Formats hashrate
 std::string getFormattedMemory(
@@ -249,5 +249,8 @@ std::string padLeft(std::string _value, size_t _length, char _fillChar);
 
 /// Adjust string to a fixed length filling chars to the Right
 std::string padRight(std::string _value, size_t _length, char _fillChar);
+
+/// Adjust an integer to the next power of 2
+void toNearestPowerOf2(unsigned int& _value);
 
 }  // namespace dev

@@ -1,5 +1,22 @@
 find_package(CUDA REQUIRED)
 
+#compile the progpow header
+add_custom_command(
+		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/progpow_miner_kernel.h
+		COMMAND ${CMAKE_COMMAND} ARGS
+		-DBIN2H_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/progpow_miner_kernel.cu"
+		-DBIN2H_VARIABLE_NAME=cu_progpow_miner_kernel
+		-DBIN2H_HEADER_FILE="${CMAKE_CURRENT_SOURCE_DIR}/progpow_miner_kernel.h"
+		-P "${CMAKE_CURRENT_SOURCE_DIR}/../libethash-cl/bin2h.cmake"
+		COMMENT "Generating CUDA ProgPoW Kernel Byte Array"
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/progpow_miner_kernel.cu
+	)
+	
+add_custom_target(cu_search_kernels DEPENDS 
+	${CMAKE_CURRENT_BINARY_DIR}/progpow_miner_kernel.h 
+	${CMAKE_CURRENT_SOURCE_DIR}/progpow_miner_kernel.cu
+)
+
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};--ptxas-options=-v;-use_fast_math)
 
 if (NOT MSVC)
@@ -28,10 +45,26 @@ else()
 	endif()
 endif()
 
-file(GLOB sources "*.cpp" "*.cu")
-file(GLOB headers "*.h" "*.cuh")
+set (headers
+	cuda_helper.h
+	ethash_miner_kernel.h
+	${CMAKE_CURRENT_BINARY_DIR}/progpow_miner_kernel.h
+	CUDAMiner.h
+)
 
-cuda_add_library(ethash-cuda STATIC ${sources} ${headers})
-target_link_libraries(ethash-cuda ethcore ethash::ethash Boost::thread)
+set (sources
+	CUDAMiner.cpp
+	ethash_miner_kernel.cu
+)
+
+cuda_add_library(ethash-cuda STATIC ${headers} ${sources})
+add_dependencies(ethash-cuda cu_search_kernels)
+#find cuda and nvrtc
+find_library(CUDA_nvrtc_LIBRARY NAMES nvrtc PATHS ${CUDA_TOOLKIT_ROOT_DIR} PATH_SUFFIXES lib64 lib/x64 lib64/stubs lib/x64/stubs NO_DEFAULT_PATH)
+find_library(CUDA_cuda_LIBRARY NAMES cuda PATHS ${CUDA_TOOLKIT_ROOT_DIR} PATH_SUFFIXES lib64 lib/x64 lib64/stubs lib/x64/stubs NO_DEFAULT_PATH)
+#link libraries
+target_link_libraries(ethash-cuda ethcore ethash::ethash progpow Boost::filesystem)
+target_link_libraries(ethash-cuda ${CUDA_nvrtc_LIBRARY} ${CUDA_cuda_LIBRARY})
+
 target_include_directories(ethash-cuda PUBLIC ${CUDA_INCLUDE_DIRS})
 target_include_directories(ethash-cuda PRIVATE .. ${CMAKE_CURRENT_BINARY_DIR})

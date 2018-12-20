@@ -16,7 +16,7 @@ using namespace eth;
 class SimulateClient : public PoolClient, Worker
 {
 public:
-    SimulateClient(unsigned const& block);
+    SimulateClient(unsigned _block, double _diff, bool _varDiff);
     ~SimulateClient() override;
 
     void connect() override;
@@ -31,7 +31,11 @@ public:
 private:
 
     void workLoop() override;
+    
     unsigned m_block;
+    double m_diff;
+    bool m_varDiff;
+
     std::chrono::steady_clock::time_point m_start_time;
 
     float hr_alpha = 0.45f;

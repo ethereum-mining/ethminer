@@ -59,7 +59,6 @@ void PoolManager::setClientHandlers()
 {
     p_client->onConnected([&]() {
         {
-
             // If HostName is already an IP address no need to append the
             // effective ip address.
             if (p_client->getConnection()->HostNameType() == dev::UriHostNameType::Dns ||
@@ -109,14 +108,14 @@ void PoolManager::setClientHandlers()
         // Activate timing for HR submission
         if (m_Settings.reportHashrate)
         {
-            m_submithrtimer.expires_from_now(boost::posix_time::seconds(m_Settings.hashRateInterval));
+            m_submithrtimer.expires_from_now(
+                boost::posix_time::seconds(m_Settings.hashRateInterval));
             m_submithrtimer.async_wait(m_io_strand.wrap(boost::bind(
                 &PoolManager::submithrtimer_elapsed, this, boost::asio::placeholders::error)));
         }
 
         // Signal async operations have completed
         m_async_pending.store(false, std::memory_order_relaxed);
-
     });
 
     p_client->onDisconnected([&]() {
@@ -152,24 +151,32 @@ void PoolManager::setClientHandlers()
     });
 
     p_client->onWorkReceived([&](WorkPackage const& wp) {
-
         // Should not happen !
         if (!wp)
             return;
 
         int _currentEpoch = m_currentWp.epoch;
+
         bool newEpoch = (_currentEpoch == -1);
+        bool newBlock = (wp.block != -1 && wp.block != m_currentWp.block);
+        bool newDiff = (wp.boundary != m_currentWp.boundary);
+
 
         // In EthereumStratum/2.0.0 epoch number is set in session
         if (!newEpoch)
         {
             if (p_client->getConnection()->StratumMode() == 3)
+            {
                 newEpoch = (wp.epoch != m_currentWp.epoch);
+            }
             else
-                newEpoch = (wp.seed != m_currentWp.seed);
+            {
+                if (wp.block != -1)
+                    newEpoch = ((wp.block / 30000) != m_currentWp.epoch);
+                else
+                    newEpoch = (wp.seed != m_currentWp.seed);
+            }
         }
-
-        bool newDiff = (wp.boundary != m_currentWp.boundary);
 
         m_currentWp = wp;
 
@@ -192,24 +199,40 @@ void PoolManager::setClientHandlers()
             m_currentWp.epoch = _currentEpoch;
         }
 
-        if (newDiff || newEpoch)
-            showMiningAt();
+        showMiningAt(newEpoch, newBlock, newDiff);
+
+        // Set the algo if defined as override in PoolManager
+        // or on each single connection.
+        // **Only in case we're not in EthereumStratum/2.0.0** which
+        // already carries algo specification
+        if (p_client->getConnection()->StratumMode() != 3)
+        {
+            if (p_client->getConnection()->Algo().size() &&
+                p_client->getConnection()->Algo() != "ethash")
+            {
+                m_currentWp.algo = p_client->getConnection()->Algo();
+            }
+            else
+            {
+                if (m_Settings.algo.size() && m_Settings.algo != "ethash")
+                    m_currentWp.algo = m_Settings.algo;
+            }
+        }
 
         cnote << "Job: " EthWhite << m_currentWp.header.abridged()
-              << (m_currentWp.block != -1 ? (" block " + to_string(m_currentWp.block)) : "")
               << EthReset << " " << m_selectedHost;
 
         Farm::f().setWork(m_currentWp);
     });
 
-    p_client->onSolutionAccepted(
-        [&](std::chrono::milliseconds const& _responseDelay, unsigned const& _minerIdx, bool _asStale) {
-            std::stringstream ss;
-            ss << std::setw(4) << std::setfill(' ') << _responseDelay.count() << " ms. "
-               << m_selectedHost;
-            cnote << EthLime "**Accepted" << (_asStale ? " stale": "") << EthReset << ss.str();
-            Farm::f().accountSolution(_minerIdx, SolutionAccountingEnum::Accepted);
-        });
+    p_client->onSolutionAccepted([&](std::chrono::milliseconds const& _responseDelay,
+                                     unsigned const& _minerIdx, bool _asStale) {
+        std::stringstream ss;
+        ss << std::setw(4) << std::setfill(' ') << _responseDelay.count() << " ms. "
+           << m_selectedHost;
+        cnote << EthLime "**Accepted" << (_asStale ? " stale" : "") << EthReset << ss.str();
+        Farm::f().accountSolution(_minerIdx, SolutionAccountingEnum::Accepted);
+    });
 
     p_client->onSolutionRejected(
         [&](std::chrono::milliseconds const& _responseDelay, unsigned const& _minerIdx) {
@@ -288,12 +311,10 @@ void PoolManager::removeConnection(unsigned int idx)
     m_Settings.connections.erase(m_Settings.connections.begin() + idx);
     if (m_activeConnectionIdx > idx)
         m_activeConnectionIdx--;
-
 }
 
 void PoolManager::setActiveConnectionCommon(unsigned int idx)
 {
-
     // Are there any outstanding operations ?
     bool ex = false;
     if (!m_async_pending.compare_exchange_strong(ex, true))
@@ -311,7 +332,6 @@ void PoolManager::setActiveConnectionCommon(unsigned int idx)
         // Release the flag immediately
         m_async_pending.store(false, std::memory_order_relaxed);
     }
-
 }
 
 /*
@@ -412,19 +432,22 @@ void PoolManager::rotateConnect()
         }
     }
 
-    if (!m_Settings.connections.empty() && m_Settings.connections.at(m_activeConnectionIdx)->Host() != "exit")
+    if (!m_Settings.connections.empty() &&
+        m_Settings.connections.at(m_activeConnectionIdx)->Host() != "exit")
     {
         if (p_client)
             p_client = nullptr;
 
         if (m_Settings.connections.at(m_activeConnectionIdx)->Family() == ProtocolFamily::GETWORK)
-            p_client =
-                std::unique_ptr<PoolClient>(new EthGetworkClient(m_Settings.noWorkTimeout, m_Settings.getWorkPollInterval));
+            p_client = std::unique_ptr<PoolClient>(
+                new EthGetworkClient(m_Settings.noWorkTimeout, m_Settings.getWorkPollInterval));
         if (m_Settings.connections.at(m_activeConnectionIdx)->Family() == ProtocolFamily::STRATUM)
             p_client = std::unique_ptr<PoolClient>(
                 new EthStratumClient(m_Settings.noWorkTimeout, m_Settings.noResponseTimeout));
-        if (m_Settings.connections.at(m_activeConnectionIdx)->Family() == ProtocolFamily::SIMULATION)
-            p_client = std::unique_ptr<PoolClient>(new SimulateClient(m_Settings.benchmarkBlock));
+        if (m_Settings.connections.at(m_activeConnectionIdx)->Family() ==
+            ProtocolFamily::SIMULATION)
+            p_client = std::unique_ptr<PoolClient>(new SimulateClient(
+                m_Settings.benchmarkBlock, m_Settings.benchmarkDiff, m_Settings.benchmarkVarDiff));
 
         if (p_client)
             setClientHandlers();
@@ -442,7 +465,6 @@ void PoolManager::rotateConnect()
     }
     else
     {
-
         if (m_Settings.connections.empty())
             cnote << "No more connections to try. Exiting...";
         else
@@ -460,15 +482,24 @@ void PoolManager::rotateConnect()
     }
 }
 
-void PoolManager::showMiningAt()
+void PoolManager::showMiningAt(bool _showEpoch, bool _showBlock, bool _showDiff)
 {
-    // Should not happen
-    if (!m_currentWp)
+    
+    if (!m_currentWp || (!_showEpoch && !_showBlock && !_showDiff))
         return;
 
-    double d = dev::getHashesToTarget(m_currentWp.boundary.hex(HexPrefix::Add));
-    cnote << "Epoch : " EthWhite << m_currentWp.epoch << EthReset << " Difficulty : " EthWhite
-          << dev::getFormattedHashes(d) << EthReset;
+    ostringstream ss;
+    if (_showEpoch)
+        ss << "Epoch : " EthWhiteBold << m_currentWp.epoch << EthReset << " ";
+    if (_showBlock && m_currentWp.block != -1)
+        ss << "Block : " EthWhiteBold << m_currentWp.block << EthReset << " ";
+    if (_showDiff)
+    {
+        double d = dev::getHashesToTarget(m_currentWp.boundary.hex(HexPrefix::Add));
+        ss << "Difficulty : " EthWhiteBold << dev::getFormattedHashes(d) << EthReset;
+    }
+    
+    cnote << ss.str();
 }
 
 void PoolManager::failovertimer_elapsed(const boost::system::error_code& ec)
@@ -495,12 +526,12 @@ void PoolManager::submithrtimer_elapsed(const boost::system::error_code& ec)
     {
         if (m_running.load(std::memory_order_relaxed))
         {
-
             if (p_client && p_client->isConnected())
                 p_client->submitHashrate((uint32_t)Farm::f().HashRate(), m_Settings.hashRateId);
 
             // Resubmit actor
-            m_submithrtimer.expires_from_now(boost::posix_time::seconds(m_Settings.hashRateInterval));
+            m_submithrtimer.expires_from_now(
+                boost::posix_time::seconds(m_Settings.hashRateInterval));
             m_submithrtimer.async_wait(m_io_strand.wrap(boost::bind(
                 &PoolManager::submithrtimer_elapsed, this, boost::asio::placeholders::error)));
         }

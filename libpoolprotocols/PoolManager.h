@@ -22,16 +22,23 @@ namespace eth
 struct PoolSettings
 {
     std::vector<std::shared_ptr<URI>> connections;  // List of connection definitions
-    unsigned getWorkPollInterval = 500;             // Interval (ms) between getwork requests
-    unsigned noWorkTimeout = 180;       // If no new jobs in this number of seconds drop connection
-    unsigned noResponseTimeout = 2;     // If no response in this number of seconds drop connection
-    unsigned poolFailoverTimeout = 0;   // Return to primary pool after this number of minutes
-    bool reportHashrate = false;        // Whether or not to report hashrate to pool
-    unsigned hashRateInterval = 60;     // Interval in seconds among hashrate submissions
+
+    std::string algo;  // Algorithm (if specified here overrides per pool definitions except for
+                       // stratum3)
+
+    unsigned getWorkPollInterval = 500;  // Interval (ms) between getwork requests
+    unsigned noWorkTimeout = 180;        // If no new jobs in this number of seconds drop connection
+    unsigned noResponseTimeout = 2;      // If no response in this number of seconds drop connection
+    unsigned poolFailoverTimeout = 0;    // Return to primary pool after this number of minutes
+    bool reportHashrate = false;         // Whether or not to report hashrate to pool
+    unsigned hashRateInterval = 60;      // Interval in seconds among hashrate submissions
     std::string hashRateId =
         h256::random().hex(HexPrefix::Add);  // Unique identifier for HashRate submission
-    unsigned connectionMaxRetries = 3;  // Max number of connection retries
-    unsigned benchmarkBlock = 0;        // Block number used by SimulateClient to test performances
+    unsigned connectionMaxRetries = 3;       // Max number of connection retries
+    unsigned benchmarkBlock = 0;    // Block number used by SimulateClient to test performances
+    double benchmarkDiff = 1.0;     // Difficulty used by SimulateClient to test performances
+    bool benchmarkVarDiff = false;  // Optional to specify if Simulate client should randomize
+                                    // block generation and adjust difficulty
 };
 
 class PoolManager
@@ -60,7 +67,7 @@ private:
 
     void setClientHandlers();
 
-    void showMiningAt();
+    void showMiningAt(bool _showEpoch, bool _showBlock, bool _showDiff);
 
     void setActiveConnectionCommon(unsigned int idx);
 

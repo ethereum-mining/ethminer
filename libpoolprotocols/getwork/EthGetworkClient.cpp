@@ -423,6 +423,29 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
                 newWp.seed = h256(JPrm.get(Json::Value::ArrayIndex(1), "").asString());
                 newWp.boundary = h256(JPrm.get(Json::Value::ArrayIndex(2), "").asString());
                 newWp.job = newWp.header.hex();
+                if (JPrm.size() > 3 &&
+                    JPrm.get(Json::Value::ArrayIndex(3), "").asString().substr(0, 2) == "0x")
+                {
+                    try
+                    {
+                        newWp.block = std::stoul(
+                            JPrm.get(Json::Value::ArrayIndex(3), "").asString(), nullptr, 16);
+                        /*
+                        check if the block number is in a valid range
+                        A year has ~31536000 seconds
+                        50 years have ~1576800000
+                        assuming a (very fast) blocktime of 10s:
+                        ==> in 50 years we get 157680000 (=0x9660180) blocks
+                        */
+                        if (newWp.block > 0x9660180)
+                            throw new std::exception();
+                    }
+                    catch (const std::exception&)
+                    {
+                        newWp.block = -1;
+                    }
+                }
+
                 if (m_current.header != newWp.header)
                 {
                     m_current = newWp;

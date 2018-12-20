@@ -237,20 +237,21 @@ do { \
 #endif
 
 // NOTE: This struct must match the one defined in CLMiner.cpp
-struct SearchResults {
-    struct {
+typedef struct
+{
+    uint count;
+    struct
+    {
+        // One word for gid and 8 for mix hash
         uint gid;
         uint mix[8];
-        uint pad[7]; // pad to 16 words for easy indexing
-    } rslt[MAX_OUTPUTS];
-    uint count;
-    uint hashCount;
-    uint abort;
-};
+        uint pad[7];  // pad to size power of 2 (keep this so the struct is same for ethash
+    } result[MAX_SEARCH_RESULTS];
+} search_results;
 
 __attribute__((reqd_work_group_size(WORKSIZE, 1, 1)))
-__kernel void search(
-    __global struct SearchResults* restrict g_output,
+__kernel void ethash_search(
+    __global search_results* restrict g_output,
     __constant uint2 const* g_header,
     __global ulong8 const* _g_dag,
     uint dag_size,
@@ -259,8 +260,6 @@ __kernel void search(
     uint isolate
 )
 {
-    if (g_output->abort)
-        return;
 
     __global hash128_t const* g_dag = (__global hash128_t const*) _g_dag;
 
@@ -381,21 +380,22 @@ __kernel void search(
         state[24] = (uint2)(0);
     }
 
-    if (get_local_id(0) == 0)
-        atomic_inc(&g_output->hashCount);
 
     if (as_ulong(as_uchar8(state[0]).s76543210) < target) {
-        atomic_inc(&g_output->abort);
-        uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output->count));
-        g_output->rslt[slot].gid = gid;
-        g_output->rslt[slot].mix[0] = mixhash[0].s0;
-        g_output->rslt[slot].mix[1] = mixhash[0].s1;
-        g_output->rslt[slot].mix[2] = mixhash[1].s0;
-        g_output->rslt[slot].mix[3] = mixhash[1].s1;
-        g_output->rslt[slot].mix[4] = mixhash[2].s0;
-        g_output->rslt[slot].mix[5] = mixhash[2].s1;
-        g_output->rslt[slot].mix[6] = mixhash[3].s0;
-        g_output->rslt[slot].mix[7] = mixhash[3].s1;
+
+        uint slot = atomic_inc(&g_output->count);
+        if (slot < MAX_SEARCH_RESULTS) 
+        {
+            g_output->result[slot].gid = gid;
+            g_output->result[slot].mix[0] = mixhash[0].s0;
+            g_output->result[slot].mix[1] = mixhash[0].s1;
+            g_output->result[slot].mix[2] = mixhash[1].s0;
+            g_output->result[slot].mix[3] = mixhash[1].s1;
+            g_output->result[slot].mix[4] = mixhash[2].s0;
+            g_output->result[slot].mix[5] = mixhash[2].s1;
+            g_output->result[slot].mix[6] = mixhash[3].s0;
+            g_output->result[slot].mix[7] = mixhash[3].s1;
+        }
     }
 }
 
@@ -423,7 +423,8 @@ static void SHA3_512(uint2 *s, uint isolate)
         s[i] = st[i];
 }
 
-__kernel void GenerateDAG(uint start, __global const uint16 *_Cache, __global uint16 *_DAG, uint light_size, /* uint DAG_SIZE, */ uint isolate)
+__kernel void ethash_calculate_dag_item(uint start, __global const uint16* _Cache,
+    __global uint16* _DAG, uint light_size, uint isolate)
 {
     __global const Node *Cache = (__global const Node *) _Cache;
     __global Node *DAG = (__global Node *) _DAG;

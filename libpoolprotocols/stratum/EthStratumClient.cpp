@@ -234,7 +234,7 @@ void EthStratumClient::disconnect_finalize()
     m_nonsecuresocket = nullptr;
 
     // Release locking flag and set connection status
-#ifdef DEV_BUILD
+#ifdef _DEVELOPER
     if (g_logOptions & LOG_CONNECT)
         cnote << "Socket disconnected from " << ActiveEndPoint();
 #endif
@@ -330,7 +330,7 @@ void EthStratumClient::start_connect()
         if (m_socket == nullptr)
             init_socket();
 
-#ifdef DEV_BUILD
+#ifdef _DEVELOPER
         if (g_logOptions & LOG_CONNECT)
             cnote << ("Trying " + toString(m_endpoint) + " ...");
 #endif
@@ -513,7 +513,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     // Clear txqueue
     m_txQueue.consume_all([](std::string* l) { delete l; });
 
-#ifdef DEV_BUILD
+#ifdef _DEVELOPER
     if (g_logOptions & LOG_CONNECT)
         cnote << "Socket connected to " << ActiveEndPoint();
 #endif

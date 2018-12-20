@@ -8,9 +8,11 @@ using namespace std::chrono;
 using namespace dev;
 using namespace eth;
 
-SimulateClient::SimulateClient(unsigned const& block) : PoolClient(), Worker("sim")
+SimulateClient::SimulateClient(unsigned _block, double _diff, bool _varDiff) : PoolClient(), Worker("sim")
 {
-    m_block = block;
+    m_block = _block;
+    m_diff = _diff;
+    m_varDiff = _varDiff;
 }
 
 SimulateClient::~SimulateClient() = default;
@@ -36,7 +38,7 @@ void SimulateClient::disconnect()
     cnote << "Simulation results : " << EthWhiteBold << "Max "
           << dev::getFormattedHashes((double)hr_max, ScaleSuffix::Add, 6) << " Mean "
           << dev::getFormattedHashes((double)hr_mean, ScaleSuffix::Add, 6) << EthReset;
-    
+
     m_conn->addDuration(m_session->duration());
     m_session = nullptr;
     m_connected.store(false, memory_order_relaxed);
@@ -51,13 +53,23 @@ void SimulateClient::submitHashrate(uint64_t const& rate, string const& id)
     (void)id;
 }
 
-void SimulateClient::submitSolution(const Solution& solution)
+void SimulateClient::submitSolution(const Solution& _s)
 {
     // This is a fake submission only evaluated locally
     std::chrono::steady_clock::time_point submit_start = std::chrono::steady_clock::now();
-    bool accepted =
-        EthashAux::eval(solution.work.epoch, solution.work.header, solution.nonce).value <=
-        solution.work.boundary;
+    bool accepted = true;
+
+    if (_s.work.algo == "ethash")
+    {
+        accepted = EthashAux::verify(
+            _s.work.epoch, _s.work.header, _s.mixHash, _s.nonce, _s.work.boundary);
+    }
+    if (_s.work.algo == "progpow")
+    {
+        accepted = ProgPoWAux::verify(
+            _s.work.epoch, _s.work.block, _s.work.header, _s.mixHash, _s.nonce, _s.work.boundary);
+    }
+
     std::chrono::milliseconds response_delay_ms =
         std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - submit_start);
@@ -65,12 +77,12 @@ void SimulateClient::submitSolution(const Solution& solution)
     if (accepted)
     {
         if (m_onSolutionAccepted)
-            m_onSolutionAccepted(response_delay_ms, solution.midx, false);
+            m_onSolutionAccepted(response_delay_ms, _s.midx, false);
     }
     else
     {
         if (m_onSolutionRejected)
-            m_onSolutionRejected(response_delay_ms, solution.midx);
+            m_onSolutionRejected(response_delay_ms, _s.midx);
     }
 }
 
@@ -87,16 +99,53 @@ void SimulateClient::workLoop()
     current.seed = h256::random();  // We don't actually need a real seed as the epoch
                                     // is calculated upon block number (see poolmanager)
     current.header = h256::random();
+    current.seed = h256::random();
     current.block = m_block;
-    current.boundary = h256(dev::getTargetFromDiff(1));
+    current.epoch = m_block / 30000U;
+    current.boundary = h256(dev::getTargetFromDiff(m_diff));
     m_onWorkReceived(current);  // submit new fake job
 
     while (m_session)
     {
+        if (m_varDiff)
+        {
+            bool newJob = false;
+            auto seconds = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::steady_clock::now() - m_session->start)
+                               .count();
+
+            // Change job every 10 seconds
+            if (seconds % 10 == 0)
+            {
+                current.header = h256::random();
+                newJob = true;
+            }
+
+            // Increase block every 30 seconds
+            if (seconds % 30 == 0)
+            {
+                current.header = h256::random();
+                current.seed = h256::random();
+                current.block += 10000;
+                current.epoch = current.block / 30000U;
+                newJob = true;
+            }
+
+            // Dispatch new job applying a random diff change
+            if (newJob)
+            {
+                // Randomize among -5% and +5%
+                double randDiff = double(rand() % 11 + (-5)) / 100.0;
+                m_diff += (m_diff * randDiff);
+                current.boundary = h256(dev::getTargetFromDiff(m_diff));
+                m_onWorkReceived(current);
+            }
+        }
+
         float hr = Farm::f().HashRate();
         hr_max = std::max(hr_max, hr);
         hr_mean = hr_alpha * hr_mean + (1.0f - hr_alpha) * hr;
 
-        this_thread::sleep_for(chrono::milliseconds(200));
+        this_thread::sleep_for(chrono::milliseconds(1000));
     }
 }

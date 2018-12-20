@@ -9,7 +9,6 @@
 #include <ethash/ethash.hpp>
 
 #include "CLMiner.h"
-#include "ethash.h"
 
 using namespace dev;
 using namespace eth;
@@ -18,12 +17,6 @@ namespace dev
 {
 namespace eth
 {
-
-// WARNING: Do not change the value of the following constant
-// unless you are prepared to make the neccessary adjustments
-// to the assembly code for the binary kernels.
-const size_t c_maxSearchResults = 15;
-
 struct CLChannel : public LogChannel
 {
     static const char* name() { return EthOrange "cl"; }
@@ -257,8 +250,6 @@ CLMiner::CLMiner(unsigned _index, CLSettings _settings, DeviceDescriptor& _devic
   : Miner("cl-", _index), m_settings(_settings)
 {
     m_deviceDescriptor = _device;
-    m_settings.localWorkSize = ((m_settings.localWorkSize + 7) / 8) * 8;
-    m_settings.globalWorkSize = m_settings.localWorkSize * m_settings.globalWorkSizeMultiplier;
 }
 
 CLMiner::~CLMiner()
@@ -269,64 +260,20 @@ CLMiner::~CLMiner()
     DEV_BUILD_LOG_PROGRAMFLOW(cllog, "cl-" << m_index << " CLMiner::~CLMiner() end");
 }
 
-// NOTE: The following struct must match the one defined in
-// ethash.cl
-struct SearchResults
-{
-    struct
-    {
-        uint32_t gid;
-        // Can't use h256 data type here since h256 contains
-        // more than raw data. Kernel returns raw mix hash.
-        uint32_t mix[8];
-        uint32_t pad[7];  // pad to 16 words for easy indexing
-    } rslt[c_maxSearchResults];
-    uint32_t count;
-    uint32_t hashCount;
-    uint32_t abort;
-};
-
 void CLMiner::workLoop()
 {
-    // Memory for zero-ing buffers. Cannot be static or const because crashes on macOS.
-    uint32_t zerox3[3] = {0, 0, 0};
-
-    uint64_t startNonce = 0;
 
     // The work package currently processed by GPU.
     WorkPackage current;
     current.header = h256();
 
     if (!initDevice())
-    return;
+        return;
 
     try
     {
         while (!shouldStop())
         {
-
-            // Read results.
-            volatile SearchResults results;
-
-            if (m_queue.size())
-            {
-                // no need to read the abort flag.
-                m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE,
-                    c_maxSearchResults * sizeof(results.rslt[0]), 2 * sizeof(results.count),
-                    (void*)&results.count);
-                if (results.count)
-                {
-                    m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0,
-                        results.count * sizeof(results.rslt[0]), (void*)&results);
-                    // Reset search buffer if any solution found.
-                }
-                // clean the solution count, hash count, and abort flag
-                m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
-                    offsetof(SearchResults, count), sizeof(zerox3), zerox3);
-            }
-            else
-                results.count = 0;
-
             // Wait for work or 3 seconds (whichever the first)
             const WorkPackage w = work();
             if (!w)
@@ -338,88 +285,49 @@ void CLMiner::workLoop()
                 continue;
             }
 
-            if (current.header != w.header)
+            // Epoch change ?
+            if (current.epoch != w.epoch)
             {
+                if (!initEpoch())
+                    break;  // This will simply exit the thread
 
-                if (current.epoch != w.epoch)
-                {
-                    m_abortqueue.clear();
-
-                    if (!initEpoch())
-                        break;  // This will simply exit the thread
-
-                    m_abortqueue.push_back(cl::CommandQueue(m_context[0], m_device));
-                }
-
-                // Upper 64 bits of the boundary.
-                const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
-                assert(target > 0);
-
-                startNonce = w.startNonce;
-
-                // Update header constant buffer.
-                m_queue[0].enqueueWriteBuffer(
-                    m_header[0], CL_FALSE, 0, w.header.size, w.header.data());
-                // zero the result count
-                m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
-                    offsetof(SearchResults, count), sizeof(zerox3), zerox3);
-
-                m_searchKernel.setArg(0, m_searchBuffer[0]);  // Supply output buffer to kernel.
-                m_searchKernel.setArg(1, m_header[0]);        // Supply header buffer to kernel.
-                m_searchKernel.setArg(2, m_dag[0]);           // Supply DAG buffer to kernel.
-                m_searchKernel.setArg(3, m_dagItems);
-                m_searchKernel.setArg(5, target);
-                m_searchKernel.setArg(6, 0xffffffff);
-
-#ifdef DEV_BUILD
-                if (g_logOptions & LOG_SWITCH)
-                    cllog << "Switch time: "
-                          << std::chrono::duration_cast<std::chrono::microseconds>(
-                                 std::chrono::steady_clock::now() - m_workSwitchStart)
-                                 .count()
-                          << " us.";
-#endif
+                // As DAG generation takes a while we need to
+                // ensure we're on latest job, not on the one
+                // which triggered the epoch change
+                current = w;
+                continue;
             }
 
-            // Run the kernel.
-            m_searchKernel.setArg(4, startNonce);
-            m_queue[0].enqueueNDRangeKernel(
-                m_searchKernel, cl::NullRange, m_settings.globalWorkSize, m_settings.localWorkSize);
-
-            if (results.count)
+            if (w.algo == "ethash")
             {
-                // Report results while the kernel is running.
-                for (uint32_t i = 0; i < results.count; i++)
-                {
-                    uint64_t nonce = current.startNonce + results.rslt[i].gid;
-                    if (nonce != m_lastNonce)
-                    {
-                        m_lastNonce = nonce;
-                        h256 mix;
-                        memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
-                        auto sol = Solution{
-                            nonce, mix, current, std::chrono::steady_clock::now(), m_index};
-
-                        cllog << EthWhite << "Job: " << w.header.abridged() << " Sol: "
-                              << toHex(sol.nonce, HexPrefix::Add) << EthReset;
-
-                        Farm::f().submitProof(sol);
-
-                    }
-                }
+                // Persist most recent job and start searching
+                current = w;
+                ethash_search(current);
             }
+            else if (w.algo == "progpow")
+            {
+                if (w.block == -1)
+                    throw std::runtime_error("Can't process ProgPoW without a block number");
 
-            current = w;  // kernel now processing newest work
-            current.startNonce = startNonce;
-            // Increase start nonce for following kernel execution.
-            startNonce += results.hashCount * m_settings.localWorkSize;
+                int period = w.block / PROGPOW_PERIOD;
+                if (period != current.period)
+                {
+                    uint32_t dagelms = (unsigned)(m_epochContext.dagSize / ETHASH_MIX_BYTES);
+                    compileProgPoWKernel(w.block, dagelms);
+                }
 
-            // Report hash count
-            updateHashRate(m_settings.localWorkSize, results.hashCount);
+                // Persist most recent job and start searching
+                current = w;
+                current.period = period;
+                progpow_search(current);
+            }
+            else
+            {
+                throw std::runtime_error("Algo : " + w.algo + " not yet implemented");
+            }
         }
 
-        if (m_queue.size())
-            m_queue[0].finish();
+        m_queue.finish();
     }
     catch (cl::Error const& _e)
     {
@@ -428,18 +336,88 @@ void CLMiner::workLoop()
     }
 }
 
+void CLMiner::compileProgPoWKernel(int _block, int _dagelms)
+{
+    auto startCompile = std::chrono::steady_clock::now();
+    cllog << "Compiling ProgPoW kernel for period : " << (_block / PROGPOW_PERIOD);
+
+    std::string progpow_code = ProgPow::getKern(_block, ProgPow::KERNEL_CL);
+    progpow_code += std::string(cl_progpow_miner_kernel, sizeof(cl_progpow_miner_kernel));
+
+    char options[256];
+    int computeCapability = 0;
+    int maxRegs = 0;
+
+    addDefinition(progpow_code, "GROUP_SIZE", m_settings.localWorkSize);
+    addDefinition(progpow_code, "PROGPOW_DAG_BYTES", (unsigned int)m_epochContext.dagSize);
+    addDefinition(progpow_code, "PROGPOW_DAG_ELEMENTS", _dagelms);
+    addDefinition(progpow_code, "LIGHT_WORDS", m_epochContext.lightNumItems);
+    addDefinition(progpow_code, "MAX_SEARCH_RESULTS", MAX_SEARCH_RESULTS);
+    switch (m_deviceDescriptor.clPlatformType)
+    {
+    case ClPlatformTypeEnum::Nvidia:
+        addDefinition(progpow_code, "PLATFORM", 1);
+        computeCapability =
+            (m_deviceDescriptor.clNvComputeMajor * 10) + m_deviceDescriptor.clNvComputeMinor;
+        maxRegs = computeCapability > 35 ? 72 : 63;
+        sprintf(options, "-cl-nv-maxrregcount=%d", maxRegs);
+        break;
+    case ClPlatformTypeEnum::Amd:
+        addDefinition(progpow_code, "PLATFORM", 2);
+        sprintf(options, "%s", "");
+        break;
+    case ClPlatformTypeEnum::Clover:
+        addDefinition(progpow_code, "PLATFORM", 3);
+        sprintf(options, "%s", "");
+        break;
+    default:
+        addDefinition(progpow_code, "PLATFORM", 0);
+        sprintf(options, "%s", "");
+        break;
+    }
+
+    cl::Program::Sources progpow_sources{{progpow_code.data(), progpow_code.size()}};
+    cl::Program progpow_program(m_context, progpow_sources);
+    try
+    {
+        progpow_program.build({m_device}, options);
+        m_progpow_search_kernel = cl::Kernel(progpow_program, "progpow_search");
+        m_progpow_search_kernel.setArg(0, m_searchBuffer);
+        m_progpow_search_kernel.setArg(2, m_dag);
+        m_progpow_search_kernel.setArg(5, 0);
+
+    }
+    catch (cl::BuildError const& buildErr)
+    {
+#if _DEVELOPER
+        if (g_logOptions & LOG_COMPILE)
+        {
+            std::string buildlog = progpow_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
+            cllog << "OpenCL ProgPoW kernel build error : " << buildErr.err() << " "
+                  << buildErr.what() << "\r\n"
+                  << buildlog;
+        }
+#else
+        (void)buildErr;
+#endif
+        throw std::runtime_error("Unable to build ProgPoW Kernel");
+    }
+
+    cllog << "Done compiling in "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::steady_clock::now() - startCompile)
+                   .count()
+            << " ms. ";
+
+}
+
 void CLMiner::kick_miner()
 {
-    // Memory for abort Cannot be static because crashes on macOS.
-    const uint32_t one = 1;
-    if (m_abortqueue.size())
-        m_abortqueue[0].enqueueWriteBuffer(
-            m_searchBuffer[0], CL_TRUE, offsetof(SearchResults, abort), sizeof(one), &one);
-
+    m_new_work.store(true, std::memory_order_relaxed);
     m_new_work_signal.notify_one();
 }
 
-void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection) 
+void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection)
 {
     // Load available platforms
     vector<cl::Platform> platforms = getPlatforms();
@@ -457,7 +435,7 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection
             platformType = ClPlatformTypeEnum::Clover;
         else if (platformName == "NVIDIA CUDA")
             platformType = ClPlatformTypeEnum::Nvidia;
-        else 
+        else
         {
             std::cerr << "Unrecognized platform " << platformName << std::endl;
             continue;
@@ -524,7 +502,7 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection
                 continue;
             }
 
-           if (_DevicesCollection.find(uniqueId) != _DevicesCollection.end())
+            if (_DevicesCollection.find(uniqueId) != _DevicesCollection.end())
                 deviceDescriptor = _DevicesCollection[uniqueId];
             else
                 deviceDescriptor = DeviceDescriptor();
@@ -574,15 +552,12 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection
             // Upsert Devices Collection
             _DevicesCollection[uniqueId] = deviceDescriptor;
             ++dIdx;
-
         }
     }
-
 }
 
 bool CLMiner::initDevice()
 {
-
     // LookUp device
     // Load available platforms
     vector<cl::Platform> platforms = getPlatforms();
@@ -593,7 +568,14 @@ bool CLMiner::initDevice()
     if (devices.empty())
         return false;
 
+    // Set global work size
+    m_settings.globalWorkSize = m_settings.localWorkSize * m_settings.globalWorkSizeMultiplier;
+
+    // Set device and context
     m_device = devices.at(m_deviceDescriptor.clDeviceOrdinal);
+    m_context = cl::Context(vector<cl::Device>(&m_device, &m_device + 1));
+    m_queue = cl::CommandQueue(m_context, m_device);
+
 
     // Set Hardware Monitor Info
     if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Nvidia)
@@ -643,33 +625,75 @@ bool CLMiner::initDevice()
 
     ostringstream s;
     s << "Using PciId : " << m_deviceDescriptor.uniqueId << " " << m_deviceDescriptor.clName;
-
     if (!m_deviceDescriptor.clNvCompute.empty())
         s << " (Compute " + m_deviceDescriptor.clNvCompute + ")";
     else
         s << " " << m_deviceDescriptor.clDeviceVersion;
 
-    s << " Memory : " << dev::getFormattedMemory((double)m_deviceDescriptor.totalMemory);
+    s << " Memory : " << dev::getFormattedMemory((double)m_deviceDescriptor.totalMemory)
+      << " Group size : " << m_settings.globalWorkSizeMultiplier
+      << " Work size : " << m_settings.localWorkSize;
+
     cllog << s.str();
 
-    if ((m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Amd) &&
-        (m_deviceDescriptor.clMaxComputeUnits != 36))
+    // Get Programs
+    char options[256] = {0};
+    int computeCapability = 0;
+#ifndef __clang__
+
+    // Nvidia
+    if (!m_deviceDescriptor.clNvCompute.empty())
     {
-        m_settings.globalWorkSize =
-            (m_settings.globalWorkSize * m_deviceDescriptor.clMaxComputeUnits) / 36;
-        // make sure that global work size is evenly divisible by the local workgroup size
-        if (m_settings.globalWorkSize % m_settings.localWorkSize != 0)
-            m_settings.globalWorkSize =
-                ((m_settings.globalWorkSize / m_settings.localWorkSize) + 1) *
-                m_settings.localWorkSize;
-        cnote << "Adjusting CL work multiplier for " << m_deviceDescriptor.clMaxComputeUnits
-              << " CUs. Adjusted work multiplier: "
-              << m_settings.globalWorkSize / m_settings.localWorkSize;
+        computeCapability =
+            m_deviceDescriptor.clNvComputeMajor * 10 + m_deviceDescriptor.clNvComputeMinor;
+        int maxregs = computeCapability >= 35 ? 72 : 63;
+        sprintf(options, "-cl-nv-maxrregcount=%d", maxregs);
+    }
+
+#endif
+
+    string ethash_code =
+        string(cl_ethash_miner_kernel, cl_ethash_miner_kernel + sizeof(cl_ethash_miner_kernel));
+    addDefinition(ethash_code, "WORKSIZE", m_settings.localWorkSize);
+    addDefinition(ethash_code, "ACCESSES", ETHASH_ACCESSES);
+    addDefinition(ethash_code, "MAX_SEARCH_RESULTS", MAX_SEARCH_RESULTS);
+    addDefinition(ethash_code, "PLATFORM", m_deviceDescriptor.clPlatformId);
+    addDefinition(ethash_code, "COMPUTE", computeCapability);
+
+    if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
+        addDefinition(ethash_code, "LEGACY", 1);
+
+    cl::Program::Sources ethash_sources{{ethash_code.data(), ethash_code.size()}};
+    cl::Program ethash_program(m_context, ethash_sources);
+    try
+    {
+        ethash_program.build({m_device}, options);
+        m_ethash_search_kernel = cl::Kernel(ethash_program, "ethash_search");
+        m_ethash_dag_kernel = cl::Kernel(ethash_program, "ethash_calculate_dag_item");
+
+        // create mem buffers
+        m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
+        m_searchBuffer = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, sizeof(search_results));
+        m_ethash_search_kernel.setArg(0, m_searchBuffer);
+    }
+    catch (cl::BuildError const& buildErr)
+    {
+#if _DEVELOPER
+        if (g_logOptions & LOG_COMPILE)
+        {
+            std::string buildlog = ethash_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
+            cllog << "OpenCL Ethash kernel build error : " << buildErr.err() << " "
+                  << buildErr.what() << "\r\n"
+                  << buildlog;
+        }
+#else
+        (void)buildErr;
+#endif
+        throw std::runtime_error("Unable to build Ethash Kernel");
     }
 
 
     return true;
-
 }
 
 bool CLMiner::initEpoch_internal()
@@ -697,159 +721,13 @@ bool CLMiner::initEpoch_internal()
 
     try
     {
-
-        char options[256] = {0};
-        int computeCapability = 0;
-#ifndef __clang__
-
-        // Nvidia
-        if (!m_deviceDescriptor.clNvCompute.empty())
-        {
-            computeCapability =
-                m_deviceDescriptor.clNvComputeMajor * 10 + m_deviceDescriptor.clNvComputeMinor;
-            int maxregs = computeCapability >= 35 ? 72 : 63;
-            sprintf(options, "-cl-nv-maxrregcount=%d", maxregs);
-        }
-
-#endif
-        // create context
-        m_context.clear();
-        m_context.push_back(cl::Context(vector<cl::Device>(&m_device, &m_device + 1)));
-        m_queue.clear();
-        m_queue.push_back(cl::CommandQueue(m_context[0], m_device));
-
-
-        m_dagItems = m_epochContext.dagNumItems;
-
-        // patch source code
-        // note: The kernels here are simply compiled version of the respective .cl kernels
-        // into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
-        // See libethash-cl/CMakeLists.txt: add_custom_command()
-        // TODO: Just use C++ raw string literal.
-        string code;
-
-        cllog << "OpenCL kernel";
-        code = string(ethash_cl, ethash_cl + sizeof(ethash_cl));
-
-        addDefinition(code, "WORKSIZE", m_settings.localWorkSize);
-        addDefinition(code, "ACCESSES", 64);
-        addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
-        addDefinition(code, "PLATFORM", m_deviceDescriptor.clPlatformId);
-        addDefinition(code, "COMPUTE", computeCapability);
-
-        if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
-            addDefinition(code, "LEGACY", 1);
-
-        // create miner OpenCL program
-        cl::Program::Sources sources{{code.data(), code.size()}};
-        cl::Program program(m_context[0], sources), binaryProgram;
-        try
-        {
-            program.build({m_device}, options);
-        }
-        catch (cl::BuildError const& buildErr)
-        {
-            cwarn << "OpenCL kernel build log:\n"
-                  << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
-            cwarn << "OpenCL kernel build error (" << buildErr.err() << "):\n" << buildErr.what();
-            pause(MinerPauseEnum::PauseDueToInitEpochError);
-            return true;
-        }
-
-        /* If we have a binary kernel, we load it in tandem with the opencl,
-           that way, we can use the dag generate opencl code and fall back on
-           the default kernel if loading fails for whatever reason */
-        bool loadedBinary = false;
-        std::string device_name = m_deviceDescriptor.clName;
-
-        if (!m_settings.noBinary)
-        {
-            std::ifstream kernel_file;
-            vector<unsigned char> bin_data;
-            std::stringstream fname_strm;
-
-            /* Open kernels/ethash_{devicename}_lws{local_work_size}.bin */
-            std::transform(device_name.begin(), device_name.end(), device_name.begin(), ::tolower);
-            fname_strm << boost::dll::program_location().parent_path().string()
-#if defined(_WIN32)
-                       << "\\kernels\\ethash_"
-#else
-                       << "/kernels/ethash_"
-#endif
-                       << device_name << "_lws" << m_settings.localWorkSize << ".bin";
-            cllog << "Loading binary kernel " << fname_strm.str();
-            try
-            {
-                kernel_file.open(fname_strm.str(), ios::in | ios::binary);
-
-                if (kernel_file.good())
-                {
-                    /* Load the data vector with file data */
-                    kernel_file.unsetf(std::ios::skipws);
-                    bin_data.insert(bin_data.begin(),
-                        std::istream_iterator<unsigned char>(kernel_file),
-                        std::istream_iterator<unsigned char>());
-
-                    /* Setup the program */
-                    cl::Program::Binaries blobs({bin_data});
-                    cl::Program program(m_context[0], {m_device}, blobs);
-                    try
-                    {
-                        program.build({m_device}, options);
-                        cllog << "Build info success:"
-                              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
-                        binaryProgram = program;
-                        loadedBinary = true;
-                    }
-                    catch (cl::Error const&)
-                    {
-                        cwarn << "Build failed! Info:"
-                              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
-                        cwarn << fname_strm.str();
-                        cwarn << "Falling back to OpenCL kernel...";
-                    }
-                }
-                else
-                {
-                    cwarn << "Failed to load binary kernel: " << fname_strm.str();
-                    cwarn << "Falling back to OpenCL kernel...";
-                }
-            }
-            catch (...)
-            {
-                cwarn << "Failed to load binary kernel: " << fname_strm.str();
-                cwarn << "Falling back to OpenCL kernel...";
-            }
-        }
-
         // create buffer for dag
         try
         {
-            cllog << "Creating light cache buffer, size: "
-                  << dev::getFormattedMemory((double)m_epochContext.lightSize);
-            m_light.clear();
-            m_light.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.lightSize));
-            cllog << "Creating DAG buffer, size: "
-                  << dev::getFormattedMemory((double)m_epochContext.dagSize)
-                  << ", free: "
-                  << dev::getFormattedMemory(
-                         (double)(m_deviceDescriptor.totalMemory - RequiredMemory));
-            m_dag.clear();
-            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize));
-            cllog << "Loading kernels";
-
-            // If we have a binary kernel to use, let's try it
-            // otherwise just do a normal opencl load
-            if (loadedBinary)
-                m_searchKernel = cl::Kernel(binaryProgram, "search");
-            else
-                m_searchKernel = cl::Kernel(program, "search");
-
-            m_dagKernel = cl::Kernel(program, "GenerateDAG");
-
-            cllog << "Writing light cache buffer";
-            m_queue[0].enqueueWriteBuffer(
-                m_light[0], CL_TRUE, 0, m_epochContext.lightSize, m_epochContext.lightCache);
+            m_light = cl::Buffer(m_context, CL_MEM_READ_ONLY, m_epochContext.lightSize);
+            m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, m_epochContext.dagSize);
+            m_queue.enqueueWriteBuffer(
+                m_light, CL_TRUE, 0, m_epochContext.lightSize, m_epochContext.lightCache);
         }
         catch (cl::Error const& err)
         {
@@ -857,57 +735,284 @@ bool CLMiner::initEpoch_internal()
             pause(MinerPauseEnum::PauseDueToInitEpochError);
             return true;
         }
-        // create buffer for header
-        ETHCL_LOG("Creating buffer for header.");
-        m_header.clear();
-        m_header.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, 32));
 
-        m_searchKernel.setArg(1, m_header[0]);
-        m_searchKernel.setArg(2, m_dag[0]);
-        m_searchKernel.setArg(3, m_dagItems);
-        m_searchKernel.setArg(6, ~0u);
 
-        // create mining buffers
-        ETHCL_LOG("Creating mining buffer");
-        m_searchBuffer.clear();
-        m_searchBuffer.emplace_back(m_context[0], CL_MEM_WRITE_ONLY, sizeof(SearchResults));
+        m_ethash_dag_kernel.setArg(1, m_light);
+        m_ethash_dag_kernel.setArg(2, m_dag);
+        m_ethash_dag_kernel.setArg(3, (uint32_t)(m_epochContext.lightSize / 64));
+        m_ethash_dag_kernel.setArg(4, ~0u);
 
-        m_dagKernel.setArg(1, m_light[0]);
-        m_dagKernel.setArg(2, m_dag[0]);
-        m_dagKernel.setArg(3, (uint32_t)(m_epochContext.lightSize / 64));
-        m_dagKernel.setArg(4, ~0u);
-
-        const uint32_t workItems = m_dagItems * 2;  // GPU computes partial 512-bit DAG items.
-
+        const uint32_t workItems =
+            m_epochContext.dagNumItems * 2;  // GPU computes partial 512-bit DAG items.
         uint32_t start;
-        const uint32_t chunk = 10000 * m_settings.localWorkSize;
+        const uint32_t chunk = 10240 * m_settings.localWorkSize;
         for (start = 0; start <= workItems - chunk; start += chunk)
         {
-            m_dagKernel.setArg(0, start);
-            m_queue[0].enqueueNDRangeKernel(
-                m_dagKernel, cl::NullRange, chunk, m_settings.localWorkSize);
-            m_queue[0].finish();
+            m_ethash_dag_kernel.setArg(0, start);
+            m_queue.enqueueNDRangeKernel(
+                m_ethash_dag_kernel, cl::NullRange, chunk, m_settings.localWorkSize);
+            m_queue.finish();
         }
         if (start < workItems)
         {
             uint32_t groupsLeft = workItems - start;
             groupsLeft = (groupsLeft + m_settings.localWorkSize - 1) / m_settings.localWorkSize;
-            m_dagKernel.setArg(0, start);
-            m_queue[0].enqueueNDRangeKernel(m_dagKernel, cl::NullRange,
+            m_ethash_dag_kernel.setArg(0, start);
+            m_queue.enqueueNDRangeKernel(m_ethash_dag_kernel, cl::NullRange,
                 groupsLeft * m_settings.localWorkSize, m_settings.localWorkSize);
-            m_queue[0].finish();
+            m_queue.finish();
         }
 
-        auto dagTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startInit);
-        cllog << dev::getFormattedMemory((double)m_epochContext.dagSize)
-              << " of DAG data generated in "
-              << dagTime.count() << " ms.";
+        // Set args for future runs of the search kernel
+        m_ethash_search_kernel.setArg(2, m_dag);
+        m_ethash_search_kernel.setArg(3, m_epochContext.dagNumItems);
+        m_ethash_search_kernel.setArg(6, 0xffffffff);
+
+        cllog << "Generated DAG + Light in "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(
+                     std::chrono::steady_clock::now() - startInit)
+                     .count()
+              << " ms. "
+              << dev::getFormattedMemory((double)(m_deviceDescriptor.totalMemory - RequiredMemory))
+              << " left.";
     }
     catch (cl::Error const& err)
     {
-        cllog << ethCLErrorHelper("OpenCL init failed", err);
+        cllog << ethCLErrorHelper("OpenCL init epoch failed", err);
         pause(MinerPauseEnum::PauseDueToInitEpochError);
         return false;
     }
     return true;
+}
+
+void CLMiner::ethash_search(const dev::eth::WorkPackage& w)
+{
+    using clock = std::chrono::steady_clock;
+
+    m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, w.header.size, w.header.data());
+    m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(m_zero), &m_zero);
+
+    uint64_t startNonce, baseNonce, target;
+    startNonce = baseNonce = w.startNonce;
+    target = (uint64_t)(u64)((u256)w.boundary >> 192);
+
+    // TODO Target may be passed as pinned memory pointer
+    // instead of parameter on each kernel launch
+    // if (target != m_current_target)
+    //{
+    //    m_current_target = target;
+    //    m_target = cl::Buffer(m_context, CL_MEM_READ_ONLY, target);
+    //    m_queue.enqueueWriteBuffer(m_target, CL_FALSE, 0, 32, &m_current_target);
+    //}
+
+    volatile search_results results;
+
+    m_ethash_search_kernel.setArg(1, m_header);
+    m_ethash_search_kernel.setArg(4, startNonce);
+    m_ethash_search_kernel.setArg(5, target);
+
+    // run the kernel
+    clock::time_point start = clock::now();
+    m_queue.enqueueNDRangeKernel(
+        m_ethash_search_kernel, cl::NullRange, m_settings.globalWorkSize, m_settings.localWorkSize);
+
+    // process batches until we get new work.
+    bool done = false;
+
+    while (!done)
+    {
+        // Exit next time around if there's new work awaiting
+        bool t = true;
+        done = (m_new_work.compare_exchange_strong(t, false) || paused() || shouldStop());
+
+        if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Nvidia)
+        {
+            // Most OpenCL implementations of clEnqueueReadBuffer in blocking mode are
+            // good, except Nvidia implementing it as a wasteful busywait, so let's
+            // work around it by trying to sleep just a bit less than the expected
+            // amount of time.
+            // https://github.com/mbevand/silentarmy/commit/a6c3517fc189a934edfa89549664f95b51b965d8
+
+            m_queue.enqueueReadBuffer(
+                m_searchBuffer, CL_FALSE, 0, sizeof(search_results), (void*)&results);
+
+            // We actually measure the amount of time needed for the previous kernel to
+            // complete up to moment it gave results back. On first loop after initialization
+            // of the miner we take a sample and then we continue to keep an EMA of the time
+
+            if (m_ethash_search_kernel_time)
+            {
+                long duration = long(m_ethash_search_kernel_time * SLEEP_RATIO);
+                this_thread::sleep_for(std::chrono::microseconds(duration));
+            }
+            m_queue.finish();
+            long elapsed =
+                (long)std::chrono::duration_cast<std::chrono::microseconds>(clock::now() - start)
+                    .count();
+            m_ethash_search_kernel_time = long(m_ethash_search_kernel_time * KERNEL_EMA_ALPHA +
+                                               (1.0 - KERNEL_EMA_ALPHA) * elapsed);
+        }
+        else
+        {
+            m_queue.enqueueReadBuffer(
+                m_searchBuffer, CL_TRUE, 0, sizeof(search_results), (void*)&results);
+        }
+
+
+        if (results.count)
+        {
+            // Zero the results count (in device)
+            m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, offsetof(search_results, count),
+                sizeof(m_zero), (void*)&m_zero);
+        }
+
+        if (!done)
+        {
+            startNonce += (m_settings.globalWorkSize);
+            m_ethash_search_kernel.setArg(4, startNonce);
+
+            // run the kernel
+            start = clock::now();
+            m_queue.enqueueNDRangeKernel(m_ethash_search_kernel, cl::NullRange,
+                m_settings.globalWorkSize, m_settings.localWorkSize);
+        }
+
+        // Submit solutions while kernel is running (if any)
+        if (results.count)
+        {
+            uint32_t found_count = std::min((unsigned)results.count, MAX_SEARCH_RESULTS);
+            for (uint32_t i = 0; i < found_count; i++)
+            {
+                h256 mix;
+                uint64_t nonce = baseNonce + results.result[i].gid;
+                memcpy(mix.data(), (void*)results.result[i].mix, sizeof(results.result[i].mix));
+                auto sol = Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index};
+                cllog << EthWhite << "Job: " << w.header.abridged()
+                      << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
+                Farm::f().submitProof(sol);
+            }
+        }
+        baseNonce = startNonce;
+
+        // Update the hash rate
+        updateHashRate(m_settings.globalWorkSize, 1);
+    }
+
+    m_queue.finish();
+}
+
+void CLMiner::progpow_search(const dev::eth::WorkPackage& w)
+{
+    using clock = std::chrono::steady_clock;
+
+    m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, w.header.size, w.header.data());
+    m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(m_zero), &m_zero);
+    
+    uint64_t startNonce, baseNonce, target;
+    startNonce = baseNonce = w.startNonce;
+    target = (uint64_t)(u64)((u256)w.boundary >> 192);
+
+    // TODO Target may be passed as pinned memory pointer
+    // instead of parameter on each kernel launch
+    // if (target != m_current_target)
+    //{
+    //    m_current_target = target;
+    //    m_target = cl::Buffer(m_context, CL_MEM_READ_ONLY, target);
+    //    m_queue.enqueueWriteBuffer(m_target, CL_FALSE, 0, 32, &m_current_target);
+    //}
+
+    volatile search_results results;
+
+    m_progpow_search_kernel.setArg(1, m_header);
+    m_progpow_search_kernel.setArg(3, startNonce);
+    m_progpow_search_kernel.setArg(4, target);
+
+    // run the kernel
+    clock::time_point start = clock::now();
+    m_queue.enqueueNDRangeKernel(
+        m_progpow_search_kernel, cl::NullRange, m_settings.globalWorkSize, m_settings.localWorkSize);
+
+    // process batches until we get new work.
+    bool done = false;
+
+    while (!done)
+    {
+        // Exit next time around if there's new work awaiting
+        bool t = true;
+        done = (m_new_work.compare_exchange_strong(t, false) || paused() || shouldStop());
+
+        if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Nvidia)
+        {
+            // Most OpenCL implementations of clEnqueueReadBuffer in blocking mode are
+            // good, except Nvidia implementing it as a wasteful busywait, so let's
+            // work around it by trying to sleep just a bit less than the expected
+            // amount of time.
+            // https://github.com/mbevand/silentarmy/commit/a6c3517fc189a934edfa89549664f95b51b965d8
+
+            m_queue.enqueueReadBuffer(
+                m_searchBuffer, CL_FALSE, 0, sizeof(search_results), (void*)&results);
+
+            // We actually measure the amount of time needed for the previous kernel to
+            // complete up to moment it gave results back. On first loop after initialization
+            // of the miner we take a sample and then we continue to keep an EMA of the time
+
+            if (m_progpow_search_kernel_time)
+            {
+                long duration = long(m_progpow_search_kernel_time * SLEEP_RATIO);
+                this_thread::sleep_for(std::chrono::microseconds(duration));
+            }
+            m_queue.finish();
+            long elapsed =
+                (long)std::chrono::duration_cast<std::chrono::microseconds>(clock::now() - start)
+                    .count();
+            m_progpow_search_kernel_time = long(m_progpow_search_kernel_time * KERNEL_EMA_ALPHA +
+                                               (1.0 - KERNEL_EMA_ALPHA) * elapsed);
+        }
+        else
+        {
+            m_queue.enqueueReadBuffer(
+                m_searchBuffer, CL_TRUE, 0, sizeof(search_results), (void*)&results);
+        }
+
+
+        if (results.count)
+        {
+            // Zero the results count (in device)
+            m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, offsetof(search_results, count),
+                sizeof(m_zero), (void*)&m_zero);
+        }
+
+        if (!done)
+        {
+            startNonce += (m_settings.globalWorkSize);
+            m_progpow_search_kernel.setArg(3, startNonce);
+
+            // run the kernel
+            start = clock::now();
+            m_queue.enqueueNDRangeKernel(m_progpow_search_kernel, cl::NullRange,
+                m_settings.globalWorkSize, m_settings.localWorkSize);
+        }
+
+        // Submit solutions while kernel is running (if any)
+        if (results.count)
+        {
+            uint32_t found_count = std::min((unsigned)results.count, MAX_SEARCH_RESULTS);
+            for (uint32_t i = 0; i < found_count; i++)
+            {
+                h256 mix;
+                uint64_t nonce = baseNonce + results.result[i].gid;
+                memcpy(mix.data(), (void*)results.result[i].mix, sizeof(results.result[i].mix));
+                auto sol = Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index};
+                cllog << EthWhite << "Job: " << w.header.abridged()
+                      << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
+                Farm::f().submitProof(sol);
+            }
+        }
+        baseNonce = startNonce;
+
+        // Update the hash rate
+        updateHashRate(m_settings.globalWorkSize, 1);
+    }
+
+    m_queue.finish();
 }

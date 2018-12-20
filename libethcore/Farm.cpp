@@ -18,11 +18,11 @@
 
 #include <libethcore/Farm.h>
 
-#if ETH_ETHASHCL
+#if _OPENCL
 #include <libethash-cl/CLMiner.h>
 #endif
 
-#if ETH_ETHASHCUDA
+#if _CUDA
 #include <libethash-cuda/CUDAMiner.h>
 #endif
 
@@ -36,8 +36,8 @@ namespace eth
 {
 Farm* Farm::m_this = nullptr;
 
-Farm::Farm(std::map<std::string, DeviceDescriptor>& _DevicesCollection,
-    FarmSettings _settings, CUSettings _CUSettings, CLSettings _CLSettings, CPSettings _CPSettings)
+Farm::Farm(std::map<std::string, DeviceDescriptor>& _DevicesCollection, FarmSettings _settings,
+    CUSettings _CUSettings, CLSettings _CLSettings, CPSettings _CPSettings)
   : m_Settings(std::move(_settings)),
     m_CUSettings(std::move(_CUSettings)),
     m_CLSettings(std::move(_CLSettings)),
@@ -262,7 +262,7 @@ bool Farm::start()
         for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++)
         {
             TelemetryAccountType minerTelemetry;
-#if ETH_ETHASHCUDA
+#if _CUDA
             if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::Cuda)
             {
                 minerTelemetry.prefix = "cu";
@@ -270,13 +270,13 @@ bool Farm::start()
                     new CUDAMiner(m_miners.size(), m_CUSettings, it->second)));
             }
 #endif
-#if ETH_ETHASHCL
+#if _OPENCL
 
             if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
             {
                 minerTelemetry.prefix = "cl";
-                m_miners.push_back(std::shared_ptr<Miner>(
-                    new CLMiner(m_miners.size(), m_CLSettings, it->second)));
+                m_miners.push_back(
+                    std::shared_ptr<Miner>(new CLMiner(m_miners.size(), m_CLSettings, it->second)));
             }
 #endif
 #if ETH_ETHASHCPU
@@ -492,19 +492,36 @@ void Farm::submitProofAsync(Solution const& _s)
 {
     if (!m_Settings.noEval)
     {
-        Result r = EthashAux::eval(_s.work.epoch, _s.work.header, _s.nonce);
-        if (r.value > _s.work.boundary)
+        bool valid = false;
+
+        if (_s.work.algo == "ethash")
+        {
+            valid = EthashAux::verify(
+                _s.work.epoch, _s.work.header, _s.mixHash, _s.nonce, _s.work.boundary);
+        }
+        else if (_s.work.algo == "progpow")
+        {
+            valid = ProgPoWAux::verify(_s.work.epoch, _s.work.block, _s.work.header, _s.mixHash,
+                _s.nonce, _s.work.boundary);
+        }
+        else
+        {
+            // Assume other algos are valid
+            valid = true;
+        }
+        if (!valid)
         {
             accountSolution(_s.midx, SolutionAccountingEnum::Failed);
             cwarn << "GPU " << _s.midx
-                  << " gave incorrect result. Lower overclocking values if it happens frequently.";
+                  << " gave incorrect result. Lower overclocking values if it happens "
+                     "frequently.";
             return;
         }
     }
 
     m_onSolutionFound(_s);
 
-#ifdef DEV_BUILD
+#ifdef _DEVELOPER
     if (g_logOptions & LOG_SUBMIT)
         cnote << "Submit time: "
               << std::chrono::duration_cast<std::chrono::microseconds>(

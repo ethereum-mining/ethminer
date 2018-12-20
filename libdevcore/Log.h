@@ -39,9 +39,10 @@
 #define LOG_SWITCH 64
 #define LOG_SUBMIT 128
 #define LOG_PROGRAMFLOW 256
-#define LOG_NEXT 512
+#define LOG_COMPILE 512
+#define LOG_NEXT 1024
 
-#if DEV_BUILD
+#if _DEVELOPER
 #define DEV_BUILD_LOG_PROGRAMFLOW(_S, _V) \
     if (g_logOptions & LOG_PROGRAMFLOW)   \
     {                                     \

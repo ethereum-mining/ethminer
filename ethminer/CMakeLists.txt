@@ -18,7 +18,7 @@ find_package(CLI11 CONFIG REQUIRED)
 
 target_link_libraries(ethminer PRIVATE ethcore poolprotocols devcore ethminer-buildinfo CLI11::CLI11 Boost::system)
 
-if(ETHDBUS)
+if(DBUS)
 	find_package(PkgConfig)
 	set( ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/lib/x86_64-linux-gnu/pkgconfig" )
 	pkg_check_modules(DBUS dbus-1)
@@ -27,7 +27,7 @@ if(ETHDBUS)
 	target_link_libraries(ethminer PRIVATE ${DBUS_LIBRARIES})
 endif()
 
-if(APICORE)
+if(API)
 	target_link_libraries(ethminer PRIVATE apicore)
 endif()
 
