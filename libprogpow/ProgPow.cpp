@@ -229,8 +229,8 @@ std::string ProgPow::math(std::string d, std::string a, std::string b, uint32_t 
 	case 1: return d + " = " + a + " * " + b + ";\n";
 	case 2: return d + " = mul_hi(" + a + ", " + b + ");\n";
 	case 3: return d + " = min(" + a + ", " + b + ");\n";
-	case 4: return d + " = ROTL32(" + a + ", " + b + ");\n";
-	case 5: return d + " = ROTR32(" + a + ", " + b + ");\n";
+	case 4: return d + " = ROTL32(" + a + ", " + b + " % 32);\n";
+	case 5: return d + " = ROTR32(" + a + ", " + b + " % 32);\n";
 	case 6: return d + " = " + a + " & " + b + ";\n";
 	case 7: return d + " = " + a + " | " + b + ";\n";
 	case 8: return d + " = " + a + " ^ " + b + ";\n";
