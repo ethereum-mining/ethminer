@@ -256,7 +256,7 @@ __kernel void ethash_search(
     __global ulong8 const* _g_dag,
     uint dag_size,
     ulong start_nonce,
-    ulong target,
+    __global ulong const* restrict target,
     uint isolate
 )
 {
@@ -381,7 +381,7 @@ __kernel void ethash_search(
     }
 
 
-    if (as_ulong(as_uchar8(state[0]).s76543210) < target) {
+    if (as_ulong(as_uchar8(state[0]).s76543210) < *target) {
 
         uint slot = atomic_inc(&g_output->count);
         if (slot < MAX_SEARCH_RESULTS) 
