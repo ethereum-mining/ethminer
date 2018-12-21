@@ -670,6 +670,7 @@ bool CLMiner::initDevice()
 
         // create mem buffers
         m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
+        m_target = cl::Buffer(m_context, CL_MEM_READ_ONLY, sizeof(m_current_target));
         m_searchBuffer = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, sizeof(search_results));
         m_ethash_search_kernel.setArg(0, m_searchBuffer);
     }
@@ -795,18 +796,18 @@ void CLMiner::ethash_search(const dev::eth::WorkPackage& w)
 
     // TODO Target may be passed as pinned memory pointer
     // instead of parameter on each kernel launch
-    // if (target != m_current_target)
-    //{
-    //    m_current_target = target;
-    //    m_target = cl::Buffer(m_context, CL_MEM_READ_ONLY, target);
-    //    m_queue.enqueueWriteBuffer(m_target, CL_FALSE, 0, 32, &m_current_target);
-    //}
+    if (target != m_current_target)
+    {
+        m_current_target = target;
+        m_queue.enqueueWriteBuffer(m_target, CL_FALSE, 0, sizeof(m_current_target), &m_current_target);
+        m_ethash_search_kernel.setArg(5, m_target);
+    }
 
     volatile search_results results;
 
     m_ethash_search_kernel.setArg(1, m_header);
     m_ethash_search_kernel.setArg(4, startNonce);
-    m_ethash_search_kernel.setArg(5, target);
+    //m_ethash_search_kernel.setArg(5, target);
 
     // run the kernel
     clock::time_point start = clock::now();

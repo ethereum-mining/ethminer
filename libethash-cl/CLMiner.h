@@ -121,6 +121,7 @@ private:
     cl::Buffer m_dag;
     cl::Buffer m_light;
     cl::Buffer m_header;
+    cl::Buffer m_target;
     cl::Buffer m_searchBuffer;
 
     CLSettings m_settings;
