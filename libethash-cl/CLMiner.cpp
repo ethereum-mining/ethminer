@@ -262,7 +262,6 @@ CLMiner::~CLMiner()
 
 void CLMiner::workLoop()
 {
-
     // The work package currently processed by GPU.
     WorkPackage current;
     current.header = h256();
@@ -385,7 +384,6 @@ void CLMiner::compileProgPoWKernel(int _block, int _dagelms)
         m_progpow_search_kernel.setArg(0, m_searchBuffer);
         m_progpow_search_kernel.setArg(2, m_dag);
         m_progpow_search_kernel.setArg(5, 0);
-
     }
     catch (cl::BuildError const& buildErr)
     {
@@ -404,11 +402,10 @@ void CLMiner::compileProgPoWKernel(int _block, int _dagelms)
     }
 
     cllog << "Done compiling in "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(
-                   std::chrono::steady_clock::now() - startCompile)
-                   .count()
-            << " ms. ";
-
+          << std::chrono::duration_cast<std::chrono::milliseconds>(
+                 std::chrono::steady_clock::now() - startCompile)
+                 .count()
+          << " ms. ";
 }
 
 void CLMiner::kick_miner()
@@ -849,6 +846,12 @@ void CLMiner::ethash_search(const dev::eth::WorkPackage& w)
             long elapsed =
                 (long)std::chrono::duration_cast<std::chrono::microseconds>(clock::now() - start)
                     .count();
+#if _DEVELOPER
+            if (g_logOptions & LOG_KERNEL_TIMES)
+            {
+                cllog << "Kernel search time : " << elapsed << " us.";
+            }
+#endif
             m_ethash_search_kernel_time = long(m_ethash_search_kernel_time * KERNEL_EMA_ALPHA +
                                                (1.0 - KERNEL_EMA_ALPHA) * elapsed);
         }
@@ -856,6 +859,15 @@ void CLMiner::ethash_search(const dev::eth::WorkPackage& w)
         {
             m_queue.enqueueReadBuffer(
                 m_searchBuffer, CL_TRUE, 0, sizeof(search_results), (void*)&results);
+#if _DEVELOPER
+            if (g_logOptions & LOG_KERNEL_TIMES)
+            {
+                long elapsed = (long)std::chrono::duration_cast<std::chrono::microseconds>(
+                    clock::now() - start)
+                                   .count();
+                cllog << "Kernel search time : " << elapsed << " us.";
+            }
+#endif
         }
 
 
@@ -907,7 +919,7 @@ void CLMiner::progpow_search(const dev::eth::WorkPackage& w)
 
     m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, w.header.size, w.header.data());
     m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(m_zero), &m_zero);
-    
+
     uint64_t startNonce, baseNonce, target;
     startNonce = baseNonce = w.startNonce;
     target = (uint64_t)(u64)((u256)w.boundary >> 192);
@@ -929,8 +941,8 @@ void CLMiner::progpow_search(const dev::eth::WorkPackage& w)
 
     // run the kernel
     clock::time_point start = clock::now();
-    m_queue.enqueueNDRangeKernel(
-        m_progpow_search_kernel, cl::NullRange, m_settings.globalWorkSize, m_settings.localWorkSize);
+    m_queue.enqueueNDRangeKernel(m_progpow_search_kernel, cl::NullRange, m_settings.globalWorkSize,
+        m_settings.localWorkSize);
 
     // process batches until we get new work.
     bool done = false;
@@ -966,12 +978,27 @@ void CLMiner::progpow_search(const dev::eth::WorkPackage& w)
                 (long)std::chrono::duration_cast<std::chrono::microseconds>(clock::now() - start)
                     .count();
             m_progpow_search_kernel_time = long(m_progpow_search_kernel_time * KERNEL_EMA_ALPHA +
-                                               (1.0 - KERNEL_EMA_ALPHA) * elapsed);
+                                                (1.0 - KERNEL_EMA_ALPHA) * elapsed);
+#if _DEVELOPER
+            if (g_logOptions & LOG_KERNEL_TIMES)
+            {
+                cllog << "Kernel search time : " << elapsed << " us.";
+            }
+#endif
         }
         else
         {
             m_queue.enqueueReadBuffer(
                 m_searchBuffer, CL_TRUE, 0, sizeof(search_results), (void*)&results);
+#if _DEVELOPER
+            if (g_logOptions & LOG_KERNEL_TIMES)
+            {
+                long elapsed = (long)std::chrono::duration_cast<std::chrono::microseconds>(
+                    clock::now() - start)
+                                   .count();
+                cllog << "Kernel search time : " << elapsed << " us.";
+            }
+#endif
         }
 
 
