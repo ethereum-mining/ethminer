@@ -166,7 +166,7 @@ __kernel void progpow_search(
     __constant hash32_t const* g_header,
     __global ulong8 const* _g_dag,
     ulong start_nonce,
-    ulong target,
+    __global ulong const* restrict target,
     uint hack_false
 )
 {
@@ -238,7 +238,7 @@ __kernel void progpow_search(
     }
 
     // keccak(header .. keccak(header..nonce) .. digest);
-    if (keccak_f800(g_header, seed, digest) > target)
+    if (keccak_f800(g_header, seed, digest) > *target)
         return;
 
     uint slot = atomic_inc(&g_output->count);
