@@ -369,7 +369,7 @@ public:
         bool cuda_miner = false;
         app.add_flag("-U,--cuda", cuda_miner, "");
 
-                bool cpu_miner = false;
+        bool cpu_miner = false;
 #if _CPU
         app.add_flag("--cpu", cpu_miner, "");
 #endif
@@ -1098,11 +1098,12 @@ public:
                  << "                        1   to log stratum json messages" << endl
                  << "                        2   to log found solutions per GPU" << endl
 #ifdef _DEVELOPER
-                 << "                        32  to log socket (dis)connections" << endl
-                 << "                        64  to log timing of job switches" << endl
-                 << "                        128 to log time for solution submission" << endl
-                 << "                        256 to log program flow" << endl
-                 << "                        512 to log kernel compile" << endl
+                 << "                          32 to log socket (dis)connections" << endl
+                 << "                          64 to log timing of job switches" << endl
+                 << "                         128 to log time for solution submission" << endl
+                 << "                         256 to log program flow" << endl
+                 << "                         512 to log kernel compile" << endl
+                 << "                        1024 to log kernel search times" << endl
 #endif
                  << endl;
         }
