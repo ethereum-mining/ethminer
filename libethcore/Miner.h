@@ -196,7 +196,7 @@ struct DeviceDescriptor
     unsigned int cuComputeMajor;
     unsigned int cuComputeMinor;
 
-    int cpCpuNumer;   // For CPU
+    int cpCpuNumber;   // For CPU
 };
 
 struct HwMonitorInfo
