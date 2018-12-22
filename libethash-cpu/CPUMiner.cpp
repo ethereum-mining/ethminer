@@ -167,7 +167,7 @@ bool CPUMiner::initDevice()
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cpulog, "cp-" << m_index << " CPUMiner::initDevice begin");
 
-    cpulog << "Using CPU: " << m_deviceDescriptor.cpCpuNumer << " " << m_deviceDescriptor.cuName
+    cpulog << "Using CPU: " << m_deviceDescriptor.cpCpuNumber << " " << m_deviceDescriptor.cuName
            << " Memory : " << dev::getFormattedMemory((double)m_deviceDescriptor.totalMemory);
 
 #if defined(__APPLE__) || defined(__MACOSX)
@@ -188,30 +188,17 @@ bool CPUMiner::initDevice()
               << "\n";
     }
 #else
-    DWORD_PTR dwThreadAffinityMask = 1i64 << m_deviceDescriptor.cpCpuNumer;
+    DWORD_PTR dwThreadAffinityMask = 1i64 << m_deviceDescriptor.cpCpuNumber;
     DWORD_PTR previous_mask;
     previous_mask = SetThreadAffinityMask(GetCurrentThread(), dwThreadAffinityMask);
     if (previous_mask == NULL)
     {
-        cwarn << "cp-" << m_index << "could not bind thread to cpu" << m_deviceDescriptor.cpCpuNumer
+        cwarn << "cp-" << m_index << "could not bind thread to cpu" << m_deviceDescriptor.cpCpuNumber
               << "\n";
         // Handle Errorcode (GetLastError) ??
     }
 #endif
     DEV_BUILD_LOG_PROGRAMFLOW(cpulog, "cp-" << m_index << " CPUMiner::initDevice end");
-    return true;
-}
-
-
-/*
- * A new epoch was receifed with last work package (called from Miner::initEpoch())
- *
- * If we get here it means epoch has changed so it's not necessary
- * to check again dag sizes. They're changed for sure
- * We've all related infos in m_epochContext (.dagSize, .dagNumItems, .lightSize, .lightNumItems)
- */
-bool CPUMiner::initEpoch_internal()
-{
     return true;
 }
 
@@ -286,7 +273,7 @@ void CPUMiner::workLoop()
     {
         // Wait for work or 3 seconds (whichever the first)
         const WorkPackage w = work();
-        if (!w)
+        if (!w || w.header == current.header)
         {
             boost::system_time const timeout =
                 boost::get_system_time() + boost::posix_time::seconds(3);
@@ -353,7 +340,7 @@ void CPUMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollectio
         deviceDescriptor.type = DeviceTypeEnum::Cpu;
         deviceDescriptor.totalMemory = getTotalPhysAvailableMemory();
 
-        deviceDescriptor.cpCpuNumer = i;
+        deviceDescriptor.cpCpuNumber = i;
 
         _DevicesCollection[uniqueId] = deviceDescriptor;
     }

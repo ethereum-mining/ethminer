@@ -311,7 +311,7 @@ public:
 #endif
 
 
-#if _OPENCL || _CUDA || ETH_ETHASH_CPU
+#if _OPENCL || _CUDA || _CPU
 
         app.add_flag("--list-devices", m_shouldListDevices, "");
 
