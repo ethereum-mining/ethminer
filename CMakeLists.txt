@@ -33,14 +33,12 @@ option(CPU "Build with CPU mining (only for development)" OFF)
 option(BINKERN "Install AMD binary kernels" ON)
 option(DEVBUILD "Log developer metrics" OFF)
 
-
-
 # propagates CMake configuration options to the compiler
 function(configureProject)
 	if (OPENCL)
 		add_definitions(-D_OPENCL)
-	else
-	    set(BINKERN OFF)
+	else()
+		set(BINKERN OFF CACHE BOOL "" FORCE)
 	endif()
 	if (CUDA)
 		add_definitions(-D_CUDA)
