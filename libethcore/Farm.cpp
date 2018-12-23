@@ -26,7 +26,7 @@
 #include <libethash-cuda/CUDAMiner.h>
 #endif
 
-#if ETH_ETHASHCPU
+#if _CPU
 #include <libethash-cpu/CPUMiner.h>
 #endif
 
@@ -275,11 +275,11 @@ bool Farm::start()
             if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
             {
                 minerTelemetry.prefix = "cl";
-                m_miners.push_back(
-                    std::shared_ptr<Miner>(new CLMiner(m_miners.size(), m_CLSettings, it->second)));
+                m_miners.push_back(std::shared_ptr<Miner>(
+                    new CLMiner(m_miners.size(), m_CLSettings, it->second)));
             }
 #endif
-#if ETH_ETHASHCPU
+#if _CPU
 
             if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::Cpu)
             {

@@ -262,70 +262,15 @@ CLMiner::~CLMiner()
 
 void CLMiner::workLoop()
 {
-    // The work package currently processed by GPU.
-    WorkPackage current;
-    current.header = h256();
+
+    DEV_BUILD_LOG_PROGRAMFLOW(cllog, "cl-" << m_index << " CLMiner::workLoop() begin");
 
     if (!initDevice())
         return;
 
     try
     {
-        while (!shouldStop())
-        {
-            // Wait for work or 3 seconds (whichever the first)
-            const WorkPackage w = work();
-            if (!w)
-            {
-                boost::system_time const timeout =
-                    boost::get_system_time() + boost::posix_time::seconds(3);
-                boost::mutex::scoped_lock l(x_work);
-                m_new_work_signal.timed_wait(l, timeout);
-                continue;
-            }
-
-            // Epoch change ?
-            if (current.epoch != w.epoch)
-            {
-                if (!initEpoch())
-                    break;  // This will simply exit the thread
-
-                // As DAG generation takes a while we need to
-                // ensure we're on latest job, not on the one
-                // which triggered the epoch change
-                current = w;
-                continue;
-            }
-
-            if (w.algo == "ethash")
-            {
-                // Persist most recent job and start searching
-                current = w;
-                ethash_search(current);
-            }
-            else if (w.algo == "progpow")
-            {
-                if (w.block == -1)
-                    throw std::runtime_error("Can't process ProgPoW without a block number");
-
-                int period = w.block / PROGPOW_PERIOD;
-                if (period != current.period)
-                {
-                    uint32_t dagelms = (unsigned)(m_epochContext.dagSize / ETHASH_MIX_BYTES);
-                    compileProgPoWKernel(w.block, dagelms);
-                }
-
-                // Persist most recent job and start searching
-                current = w;
-                current.period = period;
-                progpow_search(current);
-            }
-            else
-            {
-                throw std::runtime_error("Algo : " + w.algo + " not yet implemented");
-            }
-        }
-
+        minerLoop();
         m_queue.finish();
     }
     catch (cl::Error const& _e)
@@ -333,6 +278,9 @@ void CLMiner::workLoop()
         string _what = ethCLErrorHelper("OpenCL Error", _e);
         throw std::runtime_error(_what);
     }
+
+    DEV_BUILD_LOG_PROGRAMFLOW(cllog, "cl-" << m_index << " CLMiner::workLoop() end");
+
 }
 
 void CLMiner::compileProgPoWKernel(int _block, int _dagelms)
@@ -406,12 +354,6 @@ void CLMiner::compileProgPoWKernel(int _block, int _dagelms)
                  std::chrono::steady_clock::now() - startCompile)
                  .count()
           << " ms. ";
-}
-
-void CLMiner::kick_miner()
-{
-    m_new_work.store(true, std::memory_order_relaxed);
-    m_new_work_signal.notify_one();
 }
 
 void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection)
@@ -783,23 +725,24 @@ bool CLMiner::initEpoch_internal()
     return true;
 }
 
-void CLMiner::ethash_search(const dev::eth::WorkPackage& w)
+void CLMiner::ethash_search(WorkPackage & _w)
 {
     using clock = std::chrono::steady_clock;
 
-    m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, w.header.size, w.header.data());
+    m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, _w.header.size, _w.header.data());
     m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(m_zero), &m_zero);
 
     uint64_t startNonce, baseNonce, target;
-    startNonce = baseNonce = w.startNonce;
-    target = (uint64_t)(u64)((u256)w.boundary >> 192);
+    startNonce = baseNonce = _w.startNonce;
+    target = (uint64_t)(u64)((u256)_w.boundary >> 192);
 
     // Target may be passed as pinned memory pointer
     // instead of parameter on each kernel launch
     if (target != m_current_target)
     {
         m_current_target = target;
-        m_queue.enqueueWriteBuffer(m_target, CL_FALSE, 0, sizeof(m_current_target), &m_current_target);
+        m_queue.enqueueWriteBuffer(
+            m_target, CL_FALSE, 0, sizeof(m_current_target), &m_current_target);
         m_ethash_search_kernel.setArg(5, m_target);
     }
 
@@ -807,7 +750,7 @@ void CLMiner::ethash_search(const dev::eth::WorkPackage& w)
 
     m_ethash_search_kernel.setArg(1, m_header);
     m_ethash_search_kernel.setArg(4, startNonce);
-    //m_ethash_search_kernel.setArg(5, target);
+    // m_ethash_search_kernel.setArg(5, target);
 
     // run the kernel
     clock::time_point start = clock::now();
@@ -899,8 +842,8 @@ void CLMiner::ethash_search(const dev::eth::WorkPackage& w)
                 h256 mix;
                 uint64_t nonce = baseNonce + results.result[i].gid;
                 memcpy(mix.data(), (void*)results.result[i].mix, sizeof(results.result[i].mix));
-                auto sol = Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index};
-                cllog << EthWhite << "Job: " << w.header.abridged()
+                auto sol = Solution{nonce, mix, _w, std::chrono::steady_clock::now(), m_index};
+                cllog << EthWhite << "Job: " << _w.header.abridged()
                       << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
                 Farm::f().submitProof(sol);
             }
@@ -914,16 +857,16 @@ void CLMiner::ethash_search(const dev::eth::WorkPackage& w)
     m_queue.finish();
 }
 
-void CLMiner::progpow_search(const dev::eth::WorkPackage& w)
+void CLMiner::progpow_search(WorkPackage & _w)
 {
     using clock = std::chrono::steady_clock;
 
-    m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, w.header.size, w.header.data());
+    m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, _w.header.size, _w.header.data());
     m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(m_zero), &m_zero);
 
     uint64_t startNonce, baseNonce, target;
-    startNonce = baseNonce = w.startNonce;
-    target = (uint64_t)(u64)((u256)w.boundary >> 192);
+    startNonce = baseNonce = _w.startNonce;
+    target = (uint64_t)(u64)((u256)_w.boundary >> 192);
 
     // Target may be passed as pinned memory pointer
     // instead of parameter on each kernel launch
@@ -1031,8 +974,8 @@ void CLMiner::progpow_search(const dev::eth::WorkPackage& w)
                 h256 mix;
                 uint64_t nonce = baseNonce + results.result[i].gid;
                 memcpy(mix.data(), (void*)results.result[i].mix, sizeof(results.result[i].mix));
-                auto sol = Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index};
-                cllog << EthWhite << "Job: " << w.header.abridged()
+                auto sol = Solution{nonce, mix, _w, std::chrono::steady_clock::now(), m_index};
+                cllog << EthWhite << "Job: " << _w.header.abridged()
                       << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
                 Farm::f().submitProof(sol);
             }

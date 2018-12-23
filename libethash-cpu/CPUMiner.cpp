@@ -47,7 +47,7 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 /* MACOSX */
 #elif defined(__linux__)
 /* linux */
-#elif defined(_WIN32)
+#elif defined(_WINDOWS) || defined(_WIN32)
 /* windows */
 #else
 #error "Invalid OS configuration"
@@ -177,14 +177,14 @@ bool CPUMiner::initDevice()
     int err;
 
     CPU_ZERO(&cpuset);
-    CPU_SET(m_deviceDescriptor.cpCpuNumer, &cpuset);
+    CPU_SET(m_deviceDescriptor.cpCpuNumber, &cpuset);
 
     err = sched_setaffinity(0, sizeof(cpuset), &cpuset);
     if (err != 0)
     {
         cwarn << "Error in func " << __FUNCTION__ << " at sched_setaffinity() \"" << strerror(errno)
               << "\"\n";
-        cwarn << "cp-" << m_index << "could not bind thread to cpu" << m_deviceDescriptor.cpCpuNumer
+        cwarn << "cp-" << m_index << "could not bind thread to cpu" << m_deviceDescriptor.cpCpuNumber
               << "\n";
     }
 #else
@@ -203,51 +203,73 @@ bool CPUMiner::initDevice()
 }
 
 
-/*
-   Miner should stop working on the current block
-   This happens if a
-     * new work arrived                       or
-     * miner should stop (eg exit ethminer)   or
-     * miner should pause
-*/
-void CPUMiner::kick_miner()
+void CPUMiner::ethash_search(WorkPackage& _w)
 {
-    m_new_work.store(true, std::memory_order_relaxed);
-    m_new_work_signal.notify_one();
-}
-
-
-void CPUMiner::search(const dev::eth::WorkPackage& w)
-{
-    constexpr size_t blocksize = 30;
+    const auto& context = ethash::get_global_epoch_context_full(_w.epoch);
+    auto header = ethash::hash256_from_bytes(_w.header.data());
+    auto boundary = ethash::hash256_from_bytes(_w.boundary.data());
 
     while (true)
     {
-        if (m_new_work.load(std::memory_order_relaxed))  // new work arrived ?
-        {
-            m_new_work.store(false, std::memory_order_relaxed);
-            break;
-        }
 
-        if (shouldStop())
+        // Exit next time around if there's new work awaiting
+        bool t = true;
+        if (m_new_work.compare_exchange_strong(t, false) || paused() || shouldStop())
             break;
 
-        const auto& context = ethash::get_global_epoch_context_full(w.epoch);
-        auto header = ethash::hash256_from_bytes(w.header.data());
-        auto boundary = ethash::hash256_from_bytes(w.boundary.data());
-        auto r = ethash::search(context, header, boundary, w.startNonce, blocksize);
+        auto r = ethash::search(context, header, boundary, _w.startNonce, m_settings.batchSize);
         if (r.solution_found)
         {
             h256 mix{reinterpret_cast<byte*>(r.mix_hash.bytes), h256::ConstructFromPointer};
-            auto sol = Solution{r.nonce, mix, w, std::chrono::steady_clock::now(), m_index};
+            auto sol = Solution{r.nonce, mix, _w, std::chrono::steady_clock::now(), m_index};
 
-            cpulog << EthWhite << "Job: " << w.header.abridged()
+            cpulog << EthWhite << "Job: " << _w.header.abridged()
                    << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
+
+            Farm::f().submitProof(sol);
         }
 
         // Update the hash rate
-        updateHashRate(blocksize, 1);
+        updateHashRate(m_settings.batchSize, 1);
     }
+}
+
+void dev::eth::CPUMiner::progpow_search(WorkPackage& _w) 
+{
+    const auto& context = progpow::get_global_epoch_context_full(_w.epoch);
+    auto header = progpow::hash256_from_bytes(_w.header.data());
+    auto boundary = progpow::hash256_from_bytes(_w.boundary.data());
+
+    while (true)
+    {
+        // Exit next time around if there's new work awaiting
+        bool t = true;
+        if (m_new_work.compare_exchange_strong(t, false) || paused() || shouldStop())
+            break;
+
+        auto r = progpow::search(context, _w.block, header, boundary, _w.startNonce, m_settings.batchSize);
+        if (r.solution_found)
+        {
+            h256 mix{reinterpret_cast<byte*>(r.mix_hash.bytes), h256::ConstructFromPointer};
+            auto sol = Solution{r.nonce, mix, _w, std::chrono::steady_clock::now(), m_index};
+
+            cpulog << EthWhite << "Job: " << _w.header.abridged()
+                   << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
+
+            Farm::f().submitProof(sol);
+        }
+
+        // Update the hash rate
+        updateHashRate(m_settings.batchSize, 1);
+    }
+}
+
+void dev::eth::CPUMiner::compileProgPoWKernel(int _block, int _dagelms) 
+{
+    // CPU miner does not have any kernel to compile
+    // Nevertheless the class must override base class
+    (void)_block;
+    (void)_dagelms;
 }
 
 
@@ -258,52 +280,10 @@ void CPUMiner::workLoop()
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cpulog, "cp-" << m_index << " CPUMiner::workLoop() begin");
 
-    WorkPackage current;
-    current.header = h256();
-
     if (!initDevice())
         return;
 
-    while (!shouldStop())
-    {
-        // Wait for work or 3 seconds (whichever the first)
-        const WorkPackage w = work();
-        if (!w || w.header == current.header)
-        {
-            boost::system_time const timeout =
-                boost::get_system_time() + boost::posix_time::seconds(3);
-            boost::mutex::scoped_lock l(x_work);
-            m_new_work_signal.timed_wait(l, timeout);
-            continue;
-        }
-
-        if (w.algo == "ethash")
-        {
-            // Epoch change ?
-            if (current.epoch != w.epoch)
-            {
-                if (!initEpoch())
-                    break;  // This will simply exit the thread
-
-                // As DAG generation takes a while we need to
-                // ensure we're on latest job, not on the one
-                // which triggered the epoch change
-                current = w;
-                continue;
-            }
-
-            // Persist most recent job.
-            // Job's differences should be handled at higher level
-            current = w;
-
-            // Start searching
-            search(w);
-        }
-        else
-        {
-            throw std::runtime_error("Algo : " + w.algo + " not yet implemented");
-        }
-    }
+    minerLoop();
 
     DEV_BUILD_LOG_PROGRAMFLOW(cpulog, "cp-" << m_index << " CPUMiner::workLoop() end");
 }

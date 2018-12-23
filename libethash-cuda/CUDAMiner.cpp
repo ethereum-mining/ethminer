@@ -174,8 +174,7 @@ bool CUDAMiner::initEpoch_internal()
 
 void CUDAMiner::workLoop()
 {
-    WorkPackage current;
-    current.header = h256();
+    DEV_BUILD_LOG_PROGRAMFLOW(cudalog, "cu-" << m_index << " CUDAMiner::workLoop() begin");
 
     m_search_results.resize(m_settings.streams);
     m_streams.resize(m_settings.streams);
@@ -185,60 +184,7 @@ void CUDAMiner::workLoop()
 
     try
     {
-        while (!shouldStop())
-        {
-            // Wait for work or 3 seconds (whichever the first)
-            const WorkPackage w = work();
-            if (!w)
-            {
-                boost::system_time const timeout =
-                    boost::get_system_time() + boost::posix_time::seconds(3);
-                boost::mutex::scoped_lock l(x_work);
-                m_new_work_signal.timed_wait(l, timeout);
-                continue;
-            }
-
-            // Epoch change ?
-            if (current.epoch != w.epoch)
-            {
-                if (!initEpoch())
-                    break;  // This will simply exit the thread
-
-                // As DAG generation takes a while we need to
-                // ensure we're on latest job, not on the one
-                // which triggered the epoch change
-                current = w;
-                continue;
-            }
-
-            if (w.algo == "ethash")
-            {
-                // Persist most recent job and start searching
-                current = w;
-                ethash_search(current);
-            }
-            else if (w.algo == "progpow")
-            {
-                if (w.block == -1)
-                    throw std::runtime_error("Can't process ProgPoW without a block number");
-
-                int period = w.block / PROGPOW_PERIOD;
-                if (period != current.period)
-                {
-                    uint32_t dagelms = (unsigned)(m_epochContext.dagSize / ETHASH_MIX_BYTES);
-                    compileProgPoWKernel(w.block, dagelms);
-                }
-
-                // Persist most recent job and start searching
-                current = w;
-                current.period = period;
-                progpow_search(current);
-            }
-            else
-            {
-                throw std::runtime_error("Algo : " + w.algo + " not yet implemented");
-            }
-        }
+        minerLoop(); // In base class Miner
 
         // Reset miner and stop working
         CUDA_SAFE_CALL(cudaDeviceReset());
@@ -249,6 +195,8 @@ void CUDAMiner::workLoop()
         _what.append(_e.what());
         throw std::runtime_error(_what);
     }
+
+    DEV_BUILD_LOG_PROGRAMFLOW(cudalog, "cu-" << m_index << " CUDAMiner::workLoop() end");
 }
 
 void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
@@ -353,12 +301,6 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
             << " ms. ";
 }
 
-void CUDAMiner::kick_miner()
-{
-    m_new_work.store(true, std::memory_order_relaxed);
-    m_new_work_signal.notify_one();
-}
-
 int CUDAMiner::getNumDevices()
 {
     int deviceCount;
@@ -428,13 +370,13 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
     }
 }
 
-void CUDAMiner::ethash_search(const dev::eth::WorkPackage& w)
+void CUDAMiner::ethash_search(WorkPackage & _w)
 {
     uint64_t startNonce, target;
-    startNonce = w.startNonce;
-    target = (uint64_t)(u64)((u256)w.boundary >> 192);
+    startNonce = _w.startNonce;
+    target = (uint64_t)(u64)((u256)_w.boundary >> 192);
 
-    set_header(*reinterpret_cast<hash32_t const*>(w.header.data()));
+    set_header(*reinterpret_cast<hash32_t const*>(_w.header.data()));
     if (m_current_target != target)
     {
         set_target(target);
@@ -504,9 +446,9 @@ void CUDAMiner::ethash_search(const dev::eth::WorkPackage& w)
                     h256 mix;
                     uint64_t nonce = nonce_base + buffer.result[i].gid;
                     memcpy(mix.data(), (void*)&buffer.result[i].mix, sizeof(buffer.result[i].mix));
-                    auto sol = Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index};
+                    auto sol = Solution{nonce, mix, _w, std::chrono::steady_clock::now(), m_index};
 
-                    cudalog << EthWhite << "Job: " << w.header.abridged()
+                    cudalog << EthWhite << "Job: " << _w.header.abridged()
                             << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
 
                     Farm::f().submitProof(sol);
@@ -542,13 +484,13 @@ void CUDAMiner::ethash_search(const dev::eth::WorkPackage& w)
 #endif
 }
 
-void CUDAMiner::progpow_search(const dev::eth::WorkPackage& w)
+void CUDAMiner::progpow_search(WorkPackage & _w)
 {
     uint64_t startNonce, target;
-    startNonce = w.startNonce;
-    target = (uint64_t)(u64)((u256)w.boundary >> 192);
+    startNonce = _w.startNonce;
+    target = (uint64_t)(u64)((u256)_w.boundary >> 192);
 
-    hash32_t header = *reinterpret_cast<hash32_t const*>(w.header.data());
+    hash32_t header = *reinterpret_cast<hash32_t const*>(_w.header.data());
 
     // prime each stream, clear search result buffers and start the search
     uint32_t current_index;
@@ -618,9 +560,9 @@ void CUDAMiner::progpow_search(const dev::eth::WorkPackage& w)
                     uint64_t nonce = nonce_base + buffer->result[i].gid;
                     memcpy(
                         mix.data(), (void*)&buffer->result[i].mix, sizeof(buffer->result[i].mix));
-                    auto sol = Solution{nonce, mix, w, std::chrono::steady_clock::now(), m_index};
+                    auto sol = Solution{nonce, mix, _w, std::chrono::steady_clock::now(), m_index};
 
-                    cudalog << EthWhite << "Job: " << w.header.abridged()
+                    cudalog << EthWhite << "Job: " << _w.header.abridged()
                             << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
 
                     Farm::f().submitProof(sol);

@@ -378,7 +378,7 @@ public:
         auto sim_opt = app.add_option(
             "-Z,--simulation,-M,--benchmark", m_PoolSettings.benchmarkBlock, "", true);
         app.add_option("--diff", m_PoolSettings.benchmarkDiff, "", true)
-            ->check(CLI::Range(0.001, 10.0));
+            ->check(CLI::Range(0.00001, 100.0));
         app.add_flag("--vardiff", m_PoolSettings.benchmarkVarDiff);
 
 
@@ -627,7 +627,7 @@ public:
                     break;
                 }
 
-                cout << setw(26) << (it->second.name).substr(0, 28);
+                cout << setw(30) << (it->second.name).substr(0, 28);
 #if _CUDA
                 if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
                 {
@@ -868,7 +868,7 @@ public:
                  << "                        Mining test. Used to test hashing speed." << endl
                  << "                        Specify the block number to test on." << endl
                  << endl
-                 << "    --diff              DOUBLE [0.001 .. 10] Default 1.0" << endl
+                 << "    --diff              DOUBLE [0.00001 .. 100] Default 1.0" << endl
                  << "                        Difficulty index to apply on tests." << endl
                  << "                        The default value of 1.0 corresponds to" << endl
                  << "                        a hashing difficulty of 4.29 Mh/s" << endl

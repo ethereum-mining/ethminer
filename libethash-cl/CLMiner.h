@@ -89,21 +89,17 @@ public:
     static void enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection);
 
 protected:
+
     bool initDevice() override;
 
     bool initEpoch_internal() override;
 
-    void kick_miner() override;
-
 private:
 
-    void ethash_search(const dev::eth::WorkPackage& w);
+    void ethash_search(WorkPackage & _w) override;
+    void progpow_search(WorkPackage & _w) override;
+    void compileProgPoWKernel(int _block, int _dagelms) override;
 
-    void progpow_search(const dev::eth::WorkPackage& w);
-
-    void compileProgPoWKernel(int _block, int _dagelms);
-
-    atomic<bool> m_new_work = {false};
     void workLoop() override;
 
     cl::Kernel m_ethash_search_kernel;
