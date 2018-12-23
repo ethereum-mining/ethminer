@@ -723,7 +723,7 @@ bool CLMiner::initEpoch_internal()
     return true;
 }
 
-void CLMiner::ethash_search(WorkPackage& _w)
+void CLMiner::ethash_search(WorkPackage & _w)
 {
     using clock = std::chrono::steady_clock;
     clock::time_point start;
@@ -858,7 +858,7 @@ void CLMiner::ethash_search(WorkPackage& _w)
     m_queue.finish();
 }
 
-void CLMiner::progpow_search(WorkPackage& _w)
+void CLMiner::progpow_search(WorkPackage & _w)
 {
     using clock = std::chrono::steady_clock;
     clock::time_point start;

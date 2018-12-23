@@ -184,7 +184,7 @@ void CUDAMiner::workLoop()
 
     try
     {
-        minerLoop();  // In base class Miner
+        minerLoop(); // In base class Miner
 
         // Reset miner and stop working
         CUDA_SAFE_CALL(cudaDeviceReset());
@@ -370,7 +370,7 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
     }
 }
 
-void CUDAMiner::ethash_search(WorkPackage& _w)
+void CUDAMiner::ethash_search(WorkPackage & _w)
 {
     uint64_t startNonce, target;
     startNonce = _w.startNonce;
@@ -469,7 +469,7 @@ void CUDAMiner::ethash_search(WorkPackage& _w)
 #endif
 }
 
-void CUDAMiner::progpow_search(WorkPackage& _w)
+void CUDAMiner::progpow_search(WorkPackage & _w)
 {
     uint64_t startNonce, target;
     startNonce = _w.startNonce;

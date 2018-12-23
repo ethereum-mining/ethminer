@@ -37,6 +37,7 @@ public:
     static void enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection);
 
 protected:
+
     bool initDevice() override;
 
 private:
