@@ -27,8 +27,6 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 #include <cuda.h>
 #include <functional>
 
-
-
 namespace dev
 {
 namespace eth
@@ -44,22 +42,18 @@ public:
 
 
 protected:
+
     bool initDevice() override;
 
     bool initEpoch_internal() override;
 
-    void kick_miner() override;
-
 private:
-    atomic<bool> m_new_work = {false};
-
+    
     void workLoop() override;
 
-    void ethash_search(const dev::eth::WorkPackage& w);
-
-    void progpow_search(const dev::eth::WorkPackage& w);
-    
-    void compileProgPoWKernel(int _block, int _dagelms);
+    void ethash_search(WorkPackage & _w) override;
+    void progpow_search(WorkPackage & _w) override;
+    void compileProgPoWKernel(int _block, int _dagelms) override;
 
     CUdevice m_device;
     CUmodule m_module;

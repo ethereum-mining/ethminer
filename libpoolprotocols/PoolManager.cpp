@@ -227,19 +227,15 @@ void PoolManager::setClientHandlers()
 
     p_client->onSolutionAccepted([&](std::chrono::milliseconds const& _responseDelay,
                                      unsigned const& _minerIdx, bool _asStale) {
-        std::stringstream ss;
-        ss << std::setw(4) << std::setfill(' ') << _responseDelay.count() << " ms. "
-           << m_selectedHost;
-        cnote << EthLime "**Accepted" << (_asStale ? " stale" : "") << EthReset << ss.str();
+        cnote << EthLime "**Accepted " << (_asStale ? "stale " : "") << EthReset
+              << _responseDelay.count() << " ms. " << m_selectedHost;
         Farm::f().accountSolution(_minerIdx, SolutionAccountingEnum::Accepted);
     });
 
     p_client->onSolutionRejected(
         [&](std::chrono::milliseconds const& _responseDelay, unsigned const& _minerIdx) {
-            std::stringstream ss;
-            ss << std::setw(4) << std::setfill(' ') << _responseDelay.count() << " ms. "
-               << m_selectedHost;
-            cwarn << EthRed "**Rejected" EthReset << ss.str();
+            cwarn << EthRed "**Rejected " EthReset << _responseDelay.count() << " ms. "
+                  << m_selectedHost;
             Farm::f().accountSolution(_minerIdx, SolutionAccountingEnum::Rejected);
         });
 }

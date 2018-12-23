@@ -30,8 +30,21 @@
 #include <boost/format.hpp>
 #include <boost/thread.hpp>
 
+#include <libprogpow/ProgPow.h>
+
 #define DAG_LOAD_MODE_PARALLEL 0
 #define DAG_LOAD_MODE_SEQUENTIAL 1
+
+#define ETHASH_REVISION 23
+#define ETHASH_DATASET_BYTES_INIT 1073741824U  // 2**30
+#define ETHASH_DATASET_BYTES_GROWTH 8388608U   // 2**23
+#define ETHASH_CACHE_BYTES_INIT 1073741824U    // 2**24
+#define ETHASH_CACHE_BYTES_GROWTH 131072U      // 2**17
+#define ETHASH_MIX_BYTES 256
+#define ETHASH_HASH_BYTES 64
+#define ETHASH_DATASET_PARENTS 256
+#define ETHASH_CACHE_ROUNDS 3
+#define ETHASH_ACCESSES 64
 
 using namespace std;
 
@@ -113,6 +126,7 @@ struct CLSettings
 struct CPSettings
 {
     vector<unsigned> devices;
+    unsigned batchSize = 30U;
 };
 
 struct SolutionAccountType
@@ -196,7 +210,7 @@ struct DeviceDescriptor
     unsigned int cuComputeMajor;
     unsigned int cuComputeMinor;
 
-    int cpCpuNumber;   // For CPU
+    int cpCpuNumber;  // For CPU
 };
 
 struct HwMonitorInfo
@@ -383,7 +397,7 @@ public:
     /**
      * @brief Kick an asleep miner.
      */
-    virtual void kick_miner() = 0;
+    virtual void kick_miner();
 
     /**
      * @brief Pauses mining setting a reason flag
@@ -432,12 +446,15 @@ protected:
     /**
      * @brief Miner's specific initialization to current (or changed) epoch.
      */
-    virtual bool initEpoch_internal() = 0;
+    virtual bool initEpoch_internal();
 
     /**
      * @brief Returns current workpackage this miner is working on
      */
     WorkPackage work() const;
+
+    // This is the effective miner Loop
+    void minerLoop();
 
     void updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept;
 
@@ -458,13 +475,19 @@ protected:
     HwMonitorInfo m_hwmoninfo;
     mutable boost::mutex x_work;
     mutable boost::mutex x_pause;
+
+    atomic<bool> m_new_work = {false};
     boost::condition_variable m_new_work_signal;
     boost::condition_variable m_dag_loaded_signal;
 
 private:
     bitset<MinerPauseEnum::Pause_MAX> m_pauseFlags;
 
+
     WorkPackage m_work;
+    virtual void ethash_search(WorkPackage& _w) = 0;
+    virtual void progpow_search(WorkPackage& _w) = 0;
+    virtual void compileProgPoWKernel(int _block, int _dagelms) = 0;
 
     std::chrono::steady_clock::time_point m_hashTime = std::chrono::steady_clock::now();
     std::atomic<float> m_hashRate = {0.0};

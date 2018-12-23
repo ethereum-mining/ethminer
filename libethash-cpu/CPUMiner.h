@@ -36,15 +36,18 @@ public:
     static unsigned getNumDevices();
     static void enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection);
 
-    void search(const dev::eth::WorkPackage& w);
-
 protected:
+
     bool initDevice() override;
-    void kick_miner() override;
 
 private:
-    atomic<bool> m_new_work = {false};
+    
+    void ethash_search(WorkPackage& _w) override;
+    void progpow_search(WorkPackage& _w) override;
+    void compileProgPoWKernel(int _block, int _dagelms) override;
+
     void workLoop() override;
+
     CPSettings m_settings;
 };
 

@@ -17,7 +17,7 @@ add_custom_target(cu_search_kernels DEPENDS
 	${CMAKE_CURRENT_SOURCE_DIR}/progpow_miner_kernel.cu
 )
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};--ptxas-options=-v;-use_fast_math)
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};--ptxas-options=-v;-use_fast_math;--default-stream per-thread)
 
 if (NOT MSVC)
 	list(APPEND CUDA_NVCC_FLAGS "--disable-warnings")

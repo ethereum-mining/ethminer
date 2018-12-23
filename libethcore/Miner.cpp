@@ -53,7 +53,13 @@ void Miner::setWork(WorkPackage const& _work)
     kick_miner();
 }
 
-void Miner::pause(MinerPauseEnum what) 
+void Miner::kick_miner() 
+{
+    m_new_work.store(true, std::memory_order_relaxed);
+    m_new_work_signal.notify_one();
+}
+
+void Miner::pause(MinerPauseEnum what)
 {
     boost::mutex::scoped_lock l(x_pause);
     m_pauseFlags.set(what);
@@ -166,10 +172,81 @@ bool Miner::initEpoch()
     return result;
 }
 
+bool Miner::initEpoch_internal()
+{
+    // If not overridden in derived class
+    this_thread::sleep_for(std::chrono::seconds(5));
+    return true;
+}
+
 WorkPackage Miner::work() const
 {
     boost::mutex::scoped_lock l(x_work);
     return m_work;
+}
+
+void Miner::minerLoop() 
+{
+    WorkPackage current;
+    current.header = h256();
+
+    // Don't catch exceptions here !!
+    // They will be handled in workLoop implemented in derived class
+
+    while (!shouldStop())
+    {
+        // Wait for work or 3 seconds (whichever the first)
+        const WorkPackage latest = work();
+        if (!latest || latest.header == current.header)
+        {
+            boost::system_time const timeout =
+                boost::get_system_time() + boost::posix_time::seconds(3);
+            boost::mutex::scoped_lock l(x_work);
+            m_new_work_signal.timed_wait(l, timeout);
+            continue;
+        }
+
+        // Epoch change ?
+        if (current.epoch != latest.epoch)
+        {
+            if (!initEpoch())
+                break;  // This will simply exit the thread
+
+            // As DAG generation takes a while we need to
+            // ensure we're on latest job, not on the one
+            // which triggered the epoch change
+            current = latest;
+            continue;
+        }
+
+        if (latest.algo == "ethash")
+        {
+            // Persist most recent job and start searching
+            current = latest;
+            ethash_search(current);
+        }
+        else if (latest.algo == "progpow")
+        {
+            if (latest.block == -1)
+                throw std::runtime_error("Can't process ProgPoW without a block number");
+
+            int period = latest.block / PROGPOW_PERIOD;
+            if (period != current.period)
+            {
+                uint32_t dagelms = (unsigned)(m_epochContext.dagSize / ETHASH_MIX_BYTES);
+                compileProgPoWKernel(latest.block, dagelms);
+            }
+
+            // Persist most recent job and start searching
+            current = latest;
+            current.period = period;
+            progpow_search(current);
+        }
+        else
+        {
+            throw std::runtime_error("Algo : " + latest.algo + " not yet implemented");
+        }
+    }
 }
 
 void Miner::updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept
@@ -187,7 +264,6 @@ void Miner::updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept
         us ? (float(m_groupCount * _groupSize) * 1.0e6f) / us : 0.0f, std::memory_order_relaxed);
     m_groupCount = 0;
 }
-
 
 }  // namespace eth
 }  // namespace dev
