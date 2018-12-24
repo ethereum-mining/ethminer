@@ -183,9 +183,9 @@ bool CPUMiner::initDevice()
     if (err != 0)
     {
         cwarn << "Error in func " << __FUNCTION__ << " at sched_setaffinity() \"" << strerror(errno)
-              << "\"\n";
-        cwarn << "cp-" << m_index << "could not bind thread to cpu"
-              << m_deviceDescriptor.cpCpuNumber << "\n";
+              << "\"";
+        cwarn << "cp-" << m_index << " could not bind thread to cpu "
+              << m_deviceDescriptor.cpCpuNumber;
     }
 #else
     DWORD_PTR dwThreadAffinityMask = 1i64 << m_deviceDescriptor.cpCpuNumber;
@@ -193,8 +193,8 @@ bool CPUMiner::initDevice()
     previous_mask = SetThreadAffinityMask(GetCurrentThread(), dwThreadAffinityMask);
     if (previous_mask == NULL)
     {
-        cwarn << "cp-" << m_index << "could not bind thread to cpu"
-              << m_deviceDescriptor.cpCpuNumber << "\n";
+        cwarn << "cp-" << m_index << " could not bind thread to cpu "
+              << m_deviceDescriptor.cpCpuNumber;
         // Handle Errorcode (GetLastError) ??
     }
 #endif
