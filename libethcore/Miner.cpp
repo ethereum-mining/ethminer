@@ -212,6 +212,8 @@ void Miner::minerLoop()
         {
             if (!initEpoch())
                 break;  // This will simply exit the thread
+            else
+                current.epoch = latest.epoch;
 
             // As DAG generation takes a while we need to
             // ensure we're on latest job, not on the one
