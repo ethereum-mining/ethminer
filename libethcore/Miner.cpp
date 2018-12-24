@@ -21,7 +21,6 @@ namespace dev
 {
 namespace eth
 {
-
 unsigned Miner::s_dagLoadMode = 0;
 unsigned Miner::s_dagLoadIndex = 0;
 unsigned Miner::s_minersCount = 0;
@@ -36,7 +35,6 @@ DeviceDescriptor Miner::getDescriptor()
 void Miner::setWork(WorkPackage const& _work)
 {
     {
-
         boost::mutex::scoped_lock l(x_work);
 
         // Void work if this miner is paused
@@ -53,7 +51,7 @@ void Miner::setWork(WorkPackage const& _work)
     kick_miner();
 }
 
-void Miner::kick_miner() 
+void Miner::kick_miner()
 {
     m_new_work.store(true, std::memory_order_relaxed);
     m_new_work_signal.notify_one();
@@ -102,18 +100,17 @@ std::string Miner::pausedString()
                     retVar.append("Insufficient GPU memory");
                 else if (i == MinerPauseEnum::PauseDueToInitEpochError)
                     retVar.append("Epoch initialization error");
-
             }
         }
     }
     return retVar;
 }
 
-void Miner::resume(MinerPauseEnum fromwhat) 
+void Miner::resume(MinerPauseEnum fromwhat)
 {
     boost::mutex::scoped_lock l(x_pause);
     m_pauseFlags.reset(fromwhat);
-    //if (!m_pauseFlags.any())
+    // if (!m_pauseFlags.any())
     //{
     //    // TODO Push most recent job from farm ?
     //    // If we do not push a new job the miner will stay idle
@@ -158,7 +155,7 @@ bool Miner::initEpoch()
     // specific for miner
     bool result = initEpoch_internal();
 
-    // Advance to next miner or reset to zero for 
+    // Advance to next miner or reset to zero for
     // next run if all have processed
     if (s_dagLoadMode == DAG_LOAD_MODE_SEQUENTIAL)
     {
@@ -185,7 +182,7 @@ WorkPackage Miner::work() const
     return m_work;
 }
 
-void Miner::minerLoop() 
+void Miner::minerLoop()
 {
     WorkPackage current;
     current.header = h256();
