@@ -192,6 +192,9 @@ void Miner::minerLoop()
 
     while (!shouldStop())
     {
+        // Mark work as consumed
+        m_new_work.store(false, std::memory_order_relaxed);
+
         // Wait for work or 3 seconds (whichever the first)
         const WorkPackage latest = work();
         if (!latest || latest.header == current.header)
@@ -213,6 +216,7 @@ void Miner::minerLoop()
             // ensure we're on latest job, not on the one
             // which triggered the epoch change
             current = latest;
+            current.header = h256();
             continue;
         }
 
