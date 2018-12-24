@@ -184,7 +184,7 @@ void CUDAMiner::workLoop()
 
     try
     {
-        minerLoop(); // In base class Miner
+        minerLoop();  // In base class Miner
 
         // Reset miner and stop working
         CUDA_SAFE_CALL(cudaDeviceReset());
@@ -370,7 +370,7 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
     }
 }
 
-void CUDAMiner::ethash_search(WorkPackage & _w)
+void CUDAMiner::ethash_search(WorkPackage& _w)
 {
     uint64_t startNonce, target;
     startNonce = _w.startNonce;
@@ -383,34 +383,28 @@ void CUDAMiner::ethash_search(WorkPackage & _w)
         m_current_target = target;
     }
 
+    // process batches until we get new work.
+    bool done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
+
     // prime each stream, clear search result buffers and start the search
     uint32_t current_index;
-    for (current_index = 0; current_index < m_settings.streams;
-         current_index++, startNonce += m_batch_size)
+    if (!done)
     {
-        cudaStream_t stream = m_streams[current_index];
-        volatile search_results& buffer(*m_search_results[current_index]);
-        buffer.count = 0;
+        for (current_index = 0; current_index < m_settings.streams;
+             current_index++, startNonce += m_batch_size)
+        {
+            cudaStream_t stream = m_streams[current_index];
+            volatile search_results& buffer(*m_search_results[current_index]);
+            buffer.count = 0;
 
-        // Run the batch for this stream
-        run_ethash_search(m_settings.gridSize, m_settings.blockSize, stream, &buffer, startNonce,
-            m_settings.parallelHash);
+            // Run the batch for this stream
+            run_ethash_search(m_settings.gridSize, m_settings.blockSize, stream, &buffer,
+                startNonce, m_settings.parallelHash);
+        }
     }
-
-    // process stream batches until we get new work.
-    bool done = false;
-
 
     while (!done)
     {
-        // Exit next time around if there's new work awaiting
-        bool t = true;
-        done = m_new_work.compare_exchange_strong(t, false);
-
-        // Check on every batch if we need to suspend mining
-        if (!done)
-            done = paused();
-
         // This inner loop will process each cuda stream individually
         for (current_index = 0; current_index < m_settings.streams;
              current_index++, startNonce += m_batch_size)
@@ -423,11 +417,9 @@ void CUDAMiner::ethash_search(WorkPackage & _w)
             // Wait for the stream complete
             CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
-            if (shouldStop())
-            {
-                m_new_work.store(false, std::memory_order_relaxed);
-                done = true;
-            }
+            // Check on every stream if we need to stop
+            if (!done)
+                done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
 
             // Detect solutions in current stream's solution buffer
             volatile search_results& buffer(*m_search_results[current_index]);
@@ -464,13 +456,6 @@ void CUDAMiner::ethash_search(WorkPackage & _w)
 
         // Update the hash rate
         updateHashRate(m_batch_size, m_settings.streams);
-
-        // Bail out if it's shutdown time
-        if (shouldStop())
-        {
-            m_new_work.store(false, std::memory_order_relaxed);
-            break;
-        }
     }
 
 #ifdef _DEVELOPER
@@ -484,7 +469,7 @@ void CUDAMiner::ethash_search(WorkPackage & _w)
 #endif
 }
 
-void CUDAMiner::progpow_search(WorkPackage & _w)
+void CUDAMiner::progpow_search(WorkPackage& _w)
 {
     uint64_t startNonce, target;
     startNonce = _w.startNonce;
@@ -492,37 +477,34 @@ void CUDAMiner::progpow_search(WorkPackage & _w)
 
     hash32_t header = *reinterpret_cast<hash32_t const*>(_w.header.data());
 
+    // process batches until we get new work.
+    bool done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
+
     // prime each stream, clear search result buffers and start the search
     uint32_t current_index;
-    for (current_index = 0; current_index < m_settings.streams;
-         current_index++, startNonce += m_batch_size)
+    if (!done)
     {
-        cudaStream_t stream = m_streams[current_index];
-        volatile search_results* buffer = m_search_results[current_index];
-        buffer->count = 0;
+        for (current_index = 0; current_index < m_settings.streams;
+             current_index++, startNonce += m_batch_size)
+        {
+            cudaStream_t stream = m_streams[current_index];
+            volatile search_results* buffer = m_search_results[current_index];
+            buffer->count = 0;
 
-        // Run the batch for this stream
-        bool hack_false = false;
-        uint64_t batchNonce = startNonce;
-        void* args[] = {&batchNonce, &header, &target, &m_dag_progpow, &buffer, &hack_false};
-        CU_SAFE_CALL(cuLaunchKernel(m_kernel, m_settings.gridSize, 1, 1,  // grid dim
-            m_settings.blockSize, 1, 1,                                   // block dim
-            0,                                                            // shared mem
-            stream,                                                       // stream
-            args, 0));                                                    // arguments
+            // Run the batch for this stream
+            bool hack_false = false;
+            uint64_t batchNonce = startNonce;
+            void* args[] = {&batchNonce, &header, &target, &m_dag_progpow, &buffer, &hack_false};
+            CU_SAFE_CALL(cuLaunchKernel(m_kernel, m_settings.gridSize, 1, 1,  // grid dim
+                m_settings.blockSize, 1, 1,                                   // block dim
+                0,                                                            // shared mem
+                stream,                                                       // stream
+                args, 0));                                                    // arguments
+        }
     }
 
-    // process stream batches until we get new work.
-    bool done = (paused());
     while (!done)
     {
-        // Exit next time around if there's new work awaiting
-        bool t = true;
-        done = m_new_work.compare_exchange_strong(t, false);
-
-        // Check on every batch if we need to suspend mining
-        if (!done)
-            done = paused();
 
         // This inner loop will process each cuda stream individually
         for (current_index = 0; current_index < m_settings.streams;
@@ -536,11 +518,9 @@ void CUDAMiner::progpow_search(WorkPackage & _w)
             // Wait for the stream complete
             CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
-            if (shouldStop())
-            {
-                m_new_work.store(false, std::memory_order_relaxed);
-                done = true;
-            }
+            // Check on every stream if we need to stop
+            if (!done)
+                done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
 
             // Detect solutions in current stream's solution buffer
             volatile search_results* buffer = m_search_results[current_index];
@@ -589,12 +569,6 @@ void CUDAMiner::progpow_search(WorkPackage & _w)
         // Update the hash rate
         updateHashRate(m_batch_size, m_settings.streams);
 
-        // Bail out if it's shutdown time
-        if (shouldStop())
-        {
-            m_new_work.store(false, std::memory_order_relaxed);
-            break;
-        }
     }
 
 #ifdef _DEVELOPER
