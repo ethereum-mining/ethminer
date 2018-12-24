@@ -262,7 +262,6 @@ CLMiner::~CLMiner()
 
 void CLMiner::workLoop()
 {
-
     DEV_BUILD_LOG_PROGRAMFLOW(cllog, "cl-" << m_index << " CLMiner::workLoop() begin");
 
     if (!initDevice())
@@ -280,7 +279,6 @@ void CLMiner::workLoop()
     }
 
     DEV_BUILD_LOG_PROGRAMFLOW(cllog, "cl-" << m_index << " CLMiner::workLoop() end");
-
 }
 
 void CLMiner::compileProgPoWKernel(int _block, int _dagelms)
@@ -725,9 +723,10 @@ bool CLMiner::initEpoch_internal()
     return true;
 }
 
-void CLMiner::ethash_search(WorkPackage & _w)
+void CLMiner::ethash_search(WorkPackage& _w)
 {
     using clock = std::chrono::steady_clock;
+    clock::time_point start;
 
     m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, _w.header.size, _w.header.data());
     m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(m_zero), &m_zero);
@@ -752,19 +751,21 @@ void CLMiner::ethash_search(WorkPackage & _w)
     m_ethash_search_kernel.setArg(4, startNonce);
     // m_ethash_search_kernel.setArg(5, target);
 
-    // run the kernel
-    clock::time_point start = clock::now();
-    m_queue.enqueueNDRangeKernel(
-        m_ethash_search_kernel, cl::NullRange, m_settings.globalWorkSize, m_settings.localWorkSize);
-
     // process batches until we get new work.
-    bool done = false;
+    bool done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
+
+    if (!done)
+    {
+        // run the kernel
+        start = clock::now();
+        m_queue.enqueueNDRangeKernel(m_ethash_search_kernel, cl::NullRange,
+            m_settings.globalWorkSize, m_settings.localWorkSize);
+    }
 
     while (!done)
     {
         // Exit next time around if there's new work awaiting
-        bool t = true;
-        done = (m_new_work.compare_exchange_strong(t, false) || paused() || shouldStop());
+        done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
 
         if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Nvidia)
         {
@@ -857,9 +858,10 @@ void CLMiner::ethash_search(WorkPackage & _w)
     m_queue.finish();
 }
 
-void CLMiner::progpow_search(WorkPackage & _w)
+void CLMiner::progpow_search(WorkPackage& _w)
 {
     using clock = std::chrono::steady_clock;
+    clock::time_point start;
 
     m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, _w.header.size, _w.header.data());
     m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(m_zero), &m_zero);
@@ -884,19 +886,21 @@ void CLMiner::progpow_search(WorkPackage & _w)
     m_progpow_search_kernel.setArg(3, startNonce);
     // m_progpow_search_kernel.setArg(4, target);
 
-    // run the kernel
-    clock::time_point start = clock::now();
-    m_queue.enqueueNDRangeKernel(m_progpow_search_kernel, cl::NullRange, m_settings.globalWorkSize,
-        m_settings.localWorkSize);
-
     // process batches until we get new work.
-    bool done = false;
+    bool done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
+
+    if (!done)
+    {
+        // run the kernel
+        start = clock::now();
+        m_queue.enqueueNDRangeKernel(m_progpow_search_kernel, cl::NullRange,
+            m_settings.globalWorkSize, m_settings.localWorkSize);
+    }
 
     while (!done)
     {
         // Exit next time around if there's new work awaiting
-        bool t = true;
-        done = (m_new_work.compare_exchange_strong(t, false) || paused() || shouldStop());
+        done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
 
         if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Nvidia)
         {
