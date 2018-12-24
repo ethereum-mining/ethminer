@@ -184,8 +184,8 @@ bool CPUMiner::initDevice()
     {
         cwarn << "Error in func " << __FUNCTION__ << " at sched_setaffinity() \"" << strerror(errno)
               << "\"\n";
-        cwarn << "cp-" << m_index << "could not bind thread to cpu" << m_deviceDescriptor.cpCpuNumber
-              << "\n";
+        cwarn << "cp-" << m_index << "could not bind thread to cpu"
+              << m_deviceDescriptor.cpCpuNumber << "\n";
     }
 #else
     DWORD_PTR dwThreadAffinityMask = 1i64 << m_deviceDescriptor.cpCpuNumber;
@@ -193,8 +193,8 @@ bool CPUMiner::initDevice()
     previous_mask = SetThreadAffinityMask(GetCurrentThread(), dwThreadAffinityMask);
     if (previous_mask == NULL)
     {
-        cwarn << "cp-" << m_index << "could not bind thread to cpu" << m_deviceDescriptor.cpCpuNumber
-              << "\n";
+        cwarn << "cp-" << m_index << "could not bind thread to cpu"
+              << m_deviceDescriptor.cpCpuNumber << "\n";
         // Handle Errorcode (GetLastError) ??
     }
 #endif
@@ -211,7 +211,6 @@ void CPUMiner::ethash_search(WorkPackage& _w)
 
     while (true)
     {
-
         // Exit next time around if there's new work awaiting
         bool t = true;
         if (m_new_work.compare_exchange_strong(t, false) || paused() || shouldStop())
@@ -223,18 +222,25 @@ void CPUMiner::ethash_search(WorkPackage& _w)
             h256 mix{reinterpret_cast<byte*>(r.mix_hash.bytes), h256::ConstructFromPointer};
             auto sol = Solution{r.nonce, mix, _w, std::chrono::steady_clock::now(), m_index};
 
+            Farm::f().submitProof(sol);
+
             cpulog << EthWhite << "Job: " << _w.header.abridged()
                    << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
 
-            Farm::f().submitProof(sol);
+            // Following statement could compute wrong values if we're at the end
+            // of nonce type (uint64) and it overruns from 0x..fff to 0x..000
+            updateHashRate(r.nonce - _w.startNonce + 1, 1);
+            _w.startNonce = r.nonce + 1;
         }
-
-        // Update the hash rate
-        updateHashRate(m_settings.batchSize, 1);
+        else
+        {
+            updateHashRate(m_settings.batchSize, 1);
+            _w.startNonce += m_settings.batchSize;
+        }
     }
 }
 
-void dev::eth::CPUMiner::progpow_search(WorkPackage& _w) 
+void dev::eth::CPUMiner::progpow_search(WorkPackage& _w)
 {
     const auto& context = progpow::get_global_epoch_context_full(_w.epoch);
     auto header = progpow::hash256_from_bytes(_w.header.data());
@@ -247,24 +253,30 @@ void dev::eth::CPUMiner::progpow_search(WorkPackage& _w)
         if (m_new_work.compare_exchange_strong(t, false) || paused() || shouldStop())
             break;
 
-        auto r = progpow::search(context, _w.block, header, boundary, _w.startNonce, m_settings.batchSize);
+        auto r = progpow::search(
+            context, _w.block, header, boundary, _w.startNonce, m_settings.batchSize);
         if (r.solution_found)
         {
             h256 mix{reinterpret_cast<byte*>(r.mix_hash.bytes), h256::ConstructFromPointer};
             auto sol = Solution{r.nonce, mix, _w, std::chrono::steady_clock::now(), m_index};
 
+            Farm::f().submitProof(sol);
+
             cpulog << EthWhite << "Job: " << _w.header.abridged()
                    << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
 
-            Farm::f().submitProof(sol);
+            updateHashRate(r.nonce - _w.startNonce + 1, 1);
+            _w.startNonce = r.nonce + 1;
         }
-
-        // Update the hash rate
-        updateHashRate(m_settings.batchSize, 1);
+        else
+        {
+            updateHashRate(m_settings.batchSize, 1);
+            _w.startNonce += m_settings.batchSize;
+        }
     }
 }
 
-void dev::eth::CPUMiner::compileProgPoWKernel(int _block, int _dagelms) 
+void dev::eth::CPUMiner::compileProgPoWKernel(int _block, int _dagelms)
 {
     // CPU miner does not have any kernel to compile
     // Nevertheless the class must override base class
