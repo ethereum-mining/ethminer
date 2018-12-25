@@ -37,11 +37,7 @@ void Miner::setWork(WorkPackage const& _work)
     {
         boost::mutex::scoped_lock l(x_work);
 
-        // Void work if this miner is paused
-        if (paused())
-            m_work.header = h256();
-        else
-            m_work = _work;
+        m_work = _work;
 
 #ifdef _DEVELOPER
         m_workSwitchStart = std::chrono::steady_clock::now();
@@ -61,7 +57,6 @@ void Miner::pause(MinerPauseEnum what)
 {
     boost::mutex::scoped_lock l(x_pause);
     m_pauseFlags.set(what);
-    m_work.header = h256();
     kick_miner();
 }
 
@@ -110,12 +105,8 @@ void Miner::resume(MinerPauseEnum fromwhat)
 {
     boost::mutex::scoped_lock l(x_pause);
     m_pauseFlags.reset(fromwhat);
-    // if (!m_pauseFlags.any())
-    //{
-    //    // TODO Push most recent job from farm ?
-    //    // If we do not push a new job the miner will stay idle
-    //    // till a new job arrives
-    //}
+    if (!m_pauseFlags.any())
+        kick_miner();
 }
 
 float Miner::RetrieveHashRate() noexcept
@@ -194,7 +185,7 @@ void Miner::minerLoop()
     {
 
         // Wait for work or 3 seconds (whichever the first)
-        if (!m_new_work.load(memory_order_relaxed))
+        if (!m_new_work.load(memory_order_relaxed) || paused())
         {
             boost::system_time const timeout =
                 boost::get_system_time() + boost::posix_time::seconds(3);
@@ -218,7 +209,7 @@ void Miner::minerLoop()
             // As DAG generation takes a while we need to
             // ensure we're on latest job, not on the one
             // which triggered the epoch change
-            if (m_new_work.load(memory_order_relaxed))
+            if (m_new_work.load(memory_order_relaxed) || paused())
                 continue;
         }
 
