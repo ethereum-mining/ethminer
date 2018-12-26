@@ -27,6 +27,12 @@ unsigned Miner::s_minersCount = 0;
 
 FarmFace* FarmFace::m_this = nullptr;
 
+Miner::Miner(std::string const& _name, unsigned _index)
+  : Worker(_name + std::to_string(_index)), m_index(_index)
+{
+    m_work_latest.header = h256();
+}
+
 DeviceDescriptor Miner::getDescriptor()
 {
     return m_deviceDescriptor;
@@ -36,14 +42,24 @@ void Miner::setWork(WorkPackage const& _work)
 {
     {
         boost::mutex::scoped_lock l(x_work);
-
-        m_work = _work;
-
+        m_work_latest = _work;
 #ifdef _DEVELOPER
         m_workSwitchStart = std::chrono::steady_clock::now();
 #endif
     }
 
+    kick_miner();
+}
+
+void Miner::triggerStopWorking() 
+{
+    Worker::triggerStopWorking();
+    kick_miner();
+}
+
+void Miner::stopWorking() 
+{
+    Worker::stopWorking();
     kick_miner();
 }
 
@@ -167,25 +183,17 @@ bool Miner::initEpoch_internal()
     return true;
 }
 
-WorkPackage Miner::work() const
-{
-    boost::mutex::scoped_lock l(x_work);
-    return m_work;
-}
-
 void Miner::minerLoop()
 {
-    WorkPackage current, latest;
-    current.header = h256();
+
+    bool newEpoch, newProgPoWPeriod;
 
     // Don't catch exceptions here !!
     // They will be handled in workLoop implemented in derived class
-
     while (!shouldStop())
     {
-
         // Wait for work or 3 seconds (whichever the first)
-        if (!m_new_work.load(memory_order_relaxed) || paused())
+        if (!m_new_work.load(memory_order_relaxed))
         {
             boost::system_time const timeout =
                 boost::get_system_time() + boost::posix_time::seconds(3);
@@ -196,49 +204,57 @@ void Miner::minerLoop()
 
         // Got new work
         m_new_work.store(false, memory_order_relaxed);
-        latest = work();
+
+        if (shouldStop())  // Exit ! Request to terminate
+            break;
+        if (paused() || !m_work_latest)  // Wait ! Gpu is not ready or there is no work
+            continue;
+
+        // Copy latest work into active slot
+        {
+            boost::mutex::scoped_lock l(x_work);
+            newEpoch = (m_work_latest.epoch != m_work_active.epoch);
+            newProgPoWPeriod = (m_work_latest.block / PROGPOW_PERIOD != m_work_active.period);
+            m_work_active = m_work_latest;
+            l.unlock();
+        }
 
         // Epoch change ?
-        if (current.epoch != latest.epoch)
+        if (newEpoch)
         {
             if (!initEpoch())
                 break;  // This will simply exit the thread
-            else
-                current.epoch = latest.epoch;
 
             // As DAG generation takes a while we need to
             // ensure we're on latest job, not on the one
             // which triggered the epoch change
-            if (m_new_work.load(memory_order_relaxed) || paused())
+            if (m_new_work.load(memory_order_relaxed))
                 continue;
         }
 
-        if (latest.algo == "ethash")
+        if (m_work_active.algo == "ethash")
         {
             // Persist most recent job and start searching
-            current = latest;
-            ethash_search(current);
+            ethash_search();
         }
-        else if (latest.algo == "progpow")
+        else if (m_work_active.algo == "progpow")
         {
-            if (latest.block == -1)
+            if (m_work_active.block == -1)
                 throw std::runtime_error("Can't process ProgPoW without a block number");
 
-            int period = latest.block / PROGPOW_PERIOD;
-            if (period != current.period)
+            m_work_active.period = m_work_active.block / PROGPOW_PERIOD;
+            if (newProgPoWPeriod)
             {
                 uint32_t dagelms = (unsigned)(m_epochContext.dagSize / ETHASH_MIX_BYTES);
-                compileProgPoWKernel(latest.block, dagelms);
+                compileProgPoWKernel(m_work_active.block, dagelms);
             }
 
             // Persist most recent job and start searching
-            current = latest;
-            current.period = period;
-            progpow_search(current);
+            progpow_search();
         }
         else
         {
-            throw std::runtime_error("Algo : " + latest.algo + " not yet implemented");
+            throw std::runtime_error("Algo : " + m_work_active.algo + " not yet implemented");
         }
     }
 }

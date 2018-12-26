@@ -56,10 +56,10 @@ public:
     void startWorking();
 
     /// Triggers worker thread it should stop
-    void triggerStopWorking();
+    virtual void triggerStopWorking();
 
     /// Stop worker thread; causes call to stopWorking() and waits till thread has stopped.
-    void stopWorking();
+    virtual void stopWorking();
 
     /// Whether or not this worker should stop
     bool shouldStop() const { return m_state != WorkerState::Started; }
