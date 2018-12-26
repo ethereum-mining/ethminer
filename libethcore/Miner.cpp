@@ -247,6 +247,10 @@ void Miner::minerLoop()
             {
                 uint32_t dagelms = (unsigned)(m_epochContext.dagSize / ETHASH_MIX_BYTES);
                 compileProgPoWKernel(m_work_active.block, dagelms);
+
+                // During compilation a new job might have reached
+                if (m_new_work.load(memory_order_relaxed))
+                    continue;
             }
 
             // Persist most recent job and start searching
