@@ -512,7 +512,7 @@ void Farm::submitProofAsync(Solution const& _s)
         if (!valid)
         {
             accountSolution(_s.midx, SolutionAccountingEnum::Failed);
-            cwarn << "GPU " << _s.midx
+            cwarn << EthRedBold "**Failed " << EthReset << EthWhiteBold << "GPU " << _s.midx << EthReset
                   << " gave incorrect result. Lower overclocking values if it happens "
                      "frequently.";
             return;
