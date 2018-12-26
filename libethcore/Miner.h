@@ -359,9 +359,7 @@ private:
 class Miner : public Worker
 {
 public:
-    Miner(std::string const& _name, unsigned _index)
-      : Worker(_name + std::to_string(_index)), m_index(_index)
-    {}
+    Miner(std::string const& _name, unsigned _index);
 
     ~Miner() override = default;
 
@@ -393,6 +391,12 @@ public:
     HwMonitorInfo hwmonInfo() { return m_hwmoninfo; }
 
     void setHwmonDeviceIndex(int i) { m_hwmoninfo.deviceIndex = i; }
+
+    /// Triggers worker thread it should stop
+    virtual void triggerStopWorking() override;
+
+    /// Stop worker thread; causes call to stopWorking() and waits till thread has stopped.
+    virtual void stopWorking() override;
 
     /**
      * @brief Kick an asleep miner.
@@ -448,11 +452,6 @@ protected:
      */
     virtual bool initEpoch_internal();
 
-    /**
-     * @brief Returns current workpackage this miner is working on
-     */
-    WorkPackage work() const;
-
     // This is the effective miner Loop
     void minerLoop();
 
@@ -480,13 +479,14 @@ protected:
     boost::condition_variable m_new_work_signal;
     boost::condition_variable m_dag_loaded_signal;
 
+    WorkPackage m_work_latest, m_work_active;
+
 private:
     bitset<MinerPauseEnum::Pause_MAX> m_pauseFlags;
 
-
-    WorkPackage m_work;
-    virtual void ethash_search(WorkPackage& _w) = 0;
-    virtual void progpow_search(WorkPackage& _w) = 0;
+    
+    virtual void ethash_search() = 0;
+    virtual void progpow_search() = 0;
     virtual void compileProgPoWKernel(int _block, int _dagelms) = 0;
 
     std::chrono::steady_clock::time_point m_hashTime = std::chrono::steady_clock::now();

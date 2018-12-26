@@ -96,8 +96,8 @@ protected:
 
 private:
 
-    void ethash_search(WorkPackage & _w) override;
-    void progpow_search(WorkPackage & _w) override;
+    void ethash_search() override;
+    void progpow_search() override;
     void compileProgPoWKernel(int _block, int _dagelms) override;
 
     void workLoop() override;

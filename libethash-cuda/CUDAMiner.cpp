@@ -370,13 +370,13 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
     }
 }
 
-void CUDAMiner::ethash_search(WorkPackage & _w)
+void CUDAMiner::ethash_search()
 {
     uint64_t startNonce, target;
-    startNonce = _w.startNonce;
-    target = (uint64_t)(u64)((u256)_w.boundary >> 192);
+    startNonce = m_work_active.startNonce;
+    target = (uint64_t)(u64)((u256)m_work_active.boundary >> 192);
 
-    set_header(*reinterpret_cast<hash32_t const*>(_w.header.data()));
+    set_header(*reinterpret_cast<hash32_t const*>(m_work_active.header.data()));
     if (m_current_target != target)
     {
         set_target(target);
@@ -384,7 +384,7 @@ void CUDAMiner::ethash_search(WorkPackage & _w)
     }
 
     // process batches until we get new work.
-    bool done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
+    bool done = m_new_work.load(memory_order_relaxed);
 
     // prime each stream, clear search result buffers and start the search
     uint32_t current_index;
@@ -419,7 +419,7 @@ void CUDAMiner::ethash_search(WorkPackage & _w)
 
             // Check on every stream if we need to stop
             if (!done)
-                done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
+                done = m_new_work.load(memory_order_relaxed);
 
             // Detect solutions in current stream's solution buffer
             volatile search_results& buffer(*m_search_results[current_index]);
@@ -438,9 +438,10 @@ void CUDAMiner::ethash_search(WorkPackage & _w)
                     h256 mix;
                     uint64_t nonce = nonce_base + buffer.result[i].gid;
                     memcpy(mix.data(), (void*)&buffer.result[i].mix, sizeof(buffer.result[i].mix));
-                    auto sol = Solution{nonce, mix, _w, std::chrono::steady_clock::now(), m_index};
+                    auto sol = Solution{
+                        nonce, mix, m_work_active, std::chrono::steady_clock::now(), m_index};
 
-                    cudalog << EthWhite << "Job: " << _w.header.abridged()
+                    cudalog << EthWhite << "Job: " << m_work_active.header.abridged()
                             << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
 
                     Farm::f().submitProof(sol);
@@ -469,16 +470,16 @@ void CUDAMiner::ethash_search(WorkPackage & _w)
 #endif
 }
 
-void CUDAMiner::progpow_search(WorkPackage & _w)
+void CUDAMiner::progpow_search()
 {
     uint64_t startNonce, target;
-    startNonce = _w.startNonce;
-    target = (uint64_t)(u64)((u256)_w.boundary >> 192);
+    startNonce = m_work_active.startNonce;
+    target = (uint64_t)(u64)((u256)m_work_active.boundary >> 192);
 
-    hash32_t header = *reinterpret_cast<hash32_t const*>(_w.header.data());
+    hash32_t header = *reinterpret_cast<hash32_t const*>(m_work_active.header.data());
 
     // process batches until we get new work.
-    bool done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
+    bool done = m_new_work.load(memory_order_relaxed);
 
     // prime each stream, clear search result buffers and start the search
     uint32_t current_index;
@@ -520,7 +521,7 @@ void CUDAMiner::progpow_search(WorkPackage & _w)
 
             // Check on every stream if we need to stop
             if (!done)
-                done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
+                done = m_new_work.load(memory_order_relaxed);
 
             // Detect solutions in current stream's solution buffer
             volatile search_results* buffer = m_search_results[current_index];
@@ -540,9 +541,10 @@ void CUDAMiner::progpow_search(WorkPackage & _w)
                     uint64_t nonce = nonce_base + buffer->result[i].gid;
                     memcpy(
                         mix.data(), (void*)&buffer->result[i].mix, sizeof(buffer->result[i].mix));
-                    auto sol = Solution{nonce, mix, _w, std::chrono::steady_clock::now(), m_index};
+                    auto sol = Solution{
+                        nonce, mix, m_work_active, std::chrono::steady_clock::now(), m_index};
 
-                    cudalog << EthWhite << "Job: " << _w.header.abridged()
+                    cudalog << EthWhite << "Job: " << m_work_active.header.abridged()
                             << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
 
                     Farm::f().submitProof(sol);

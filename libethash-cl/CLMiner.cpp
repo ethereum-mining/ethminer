@@ -723,17 +723,18 @@ bool CLMiner::initEpoch_internal()
     return true;
 }
 
-void CLMiner::ethash_search(WorkPackage & _w)
+void CLMiner::ethash_search()
 {
     using clock = std::chrono::steady_clock;
     clock::time_point start;
 
-    m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, _w.header.size, _w.header.data());
+    m_queue.enqueueWriteBuffer(
+        m_header, CL_FALSE, 0, m_work_active.header.size, m_work_active.header.data());
     m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(m_zero), &m_zero);
 
     uint64_t startNonce, baseNonce, target;
-    startNonce = baseNonce = _w.startNonce;
-    target = (uint64_t)(u64)((u256)_w.boundary >> 192);
+    startNonce = baseNonce = m_work_active.startNonce;
+    target = (uint64_t)(u64)((u256)m_work_active.boundary >> 192);
 
     // Target may be passed as pinned memory pointer
     // instead of parameter on each kernel launch
@@ -752,7 +753,7 @@ void CLMiner::ethash_search(WorkPackage & _w)
     // m_ethash_search_kernel.setArg(5, target);
 
     // process batches until we get new work.
-    bool done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
+    bool done = m_new_work.load(memory_order_relaxed);
 
     if (!done)
     {
@@ -765,7 +766,8 @@ void CLMiner::ethash_search(WorkPackage & _w)
     while (!done)
     {
         // Exit next time around if there's new work awaiting
-        done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
+        if (!done)
+            done = m_new_work.load(memory_order_relaxed);
 
         if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Nvidia)
         {
@@ -843,8 +845,9 @@ void CLMiner::ethash_search(WorkPackage & _w)
                 h256 mix;
                 uint64_t nonce = baseNonce + results.result[i].gid;
                 memcpy(mix.data(), (void*)results.result[i].mix, sizeof(results.result[i].mix));
-                auto sol = Solution{nonce, mix, _w, std::chrono::steady_clock::now(), m_index};
-                cllog << EthWhite << "Job: " << _w.header.abridged()
+                auto sol =
+                    Solution{nonce, mix, m_work_active, std::chrono::steady_clock::now(), m_index};
+                cllog << EthWhite << "Job: " << m_work_active.header.abridged()
                       << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
                 Farm::f().submitProof(sol);
             }
@@ -858,17 +861,18 @@ void CLMiner::ethash_search(WorkPackage & _w)
     m_queue.finish();
 }
 
-void CLMiner::progpow_search(WorkPackage & _w)
+void CLMiner::progpow_search()
 {
     using clock = std::chrono::steady_clock;
     clock::time_point start;
 
-    m_queue.enqueueWriteBuffer(m_header, CL_FALSE, 0, _w.header.size, _w.header.data());
+    m_queue.enqueueWriteBuffer(
+        m_header, CL_FALSE, 0, m_work_active.header.size, m_work_active.header.data());
     m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(m_zero), &m_zero);
 
     uint64_t startNonce, baseNonce, target;
-    startNonce = baseNonce = _w.startNonce;
-    target = (uint64_t)(u64)((u256)_w.boundary >> 192);
+    startNonce = baseNonce = m_work_active.startNonce;
+    target = (uint64_t)(u64)((u256)m_work_active.boundary >> 192);
 
     // Target may be passed as pinned memory pointer
     // instead of parameter on each kernel launch
@@ -887,7 +891,7 @@ void CLMiner::progpow_search(WorkPackage & _w)
     // m_progpow_search_kernel.setArg(4, target);
 
     // process batches until we get new work.
-    bool done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
+    bool done = m_new_work.load(memory_order_relaxed);
 
     if (!done)
     {
@@ -900,7 +904,8 @@ void CLMiner::progpow_search(WorkPackage & _w)
     while (!done)
     {
         // Exit next time around if there's new work awaiting
-        done = (m_new_work.load(memory_order_relaxed) || paused() || shouldStop());
+        if (!done)
+            done = m_new_work.load(memory_order_relaxed);
 
         if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Nvidia)
         {
@@ -978,8 +983,9 @@ void CLMiner::progpow_search(WorkPackage & _w)
                 h256 mix;
                 uint64_t nonce = baseNonce + results.result[i].gid;
                 memcpy(mix.data(), (void*)results.result[i].mix, sizeof(results.result[i].mix));
-                auto sol = Solution{nonce, mix, _w, std::chrono::steady_clock::now(), m_index};
-                cllog << EthWhite << "Job: " << _w.header.abridged()
+                auto sol =
+                    Solution{nonce, mix, m_work_active, std::chrono::steady_clock::now(), m_index};
+                cllog << EthWhite << "Job: " << m_work_active.header.abridged()
                       << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
                 Farm::f().submitProof(sol);
             }

@@ -203,11 +203,11 @@ bool CPUMiner::initDevice()
 }
 
 
-void CPUMiner::ethash_search(WorkPackage& _w)
+void CPUMiner::ethash_search()
 {
-    const auto& context = ethash::get_global_epoch_context_full(_w.epoch);
-    auto header = ethash::hash256_from_bytes(_w.header.data());
-    auto boundary = ethash::hash256_from_bytes(_w.boundary.data());
+    const auto& context = ethash::get_global_epoch_context_full(m_work_active.epoch);
+    auto header = ethash::hash256_from_bytes(m_work_active.header.data());
+    auto boundary = ethash::hash256_from_bytes(m_work_active.boundary.data());
 
     while (true)
     {
@@ -216,61 +216,64 @@ void CPUMiner::ethash_search(WorkPackage& _w)
         if (m_new_work.load(memory_order_relaxed) || paused() || shouldStop())
             break;
 
-        auto r = ethash::search(context, header, boundary, _w.startNonce, m_settings.batchSize);
+        auto r = ethash::search(
+            context, header, boundary, m_work_active.startNonce, m_settings.batchSize);
         if (r.solution_found)
         {
             h256 mix{reinterpret_cast<byte*>(r.mix_hash.bytes), h256::ConstructFromPointer};
-            auto sol = Solution{r.nonce, mix, _w, std::chrono::steady_clock::now(), m_index};
+            auto sol =
+                Solution{r.nonce, mix, m_work_active, std::chrono::steady_clock::now(), m_index};
 
             Farm::f().submitProof(sol);
 
-            cpulog << EthWhite << "Job: " << _w.header.abridged()
+            cpulog << EthWhite << "Job: " << m_work_active.header.abridged()
                    << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
 
             // Following statement could compute wrong values if we're at the end
             // of nonce type (uint64) and it overruns from 0x..fff to 0x..000
-            updateHashRate(r.nonce - _w.startNonce + 1, 1);
-            _w.startNonce = r.nonce + 1;
+            updateHashRate(r.nonce - m_work_active.startNonce + 1, 1);
+            m_work_active.startNonce = r.nonce + 1;
         }
         else
         {
             updateHashRate(m_settings.batchSize, 1);
-            _w.startNonce += m_settings.batchSize;
+            m_work_active.startNonce += m_settings.batchSize;
         }
     }
 }
 
-void dev::eth::CPUMiner::progpow_search(WorkPackage& _w)
+void dev::eth::CPUMiner::progpow_search()
 {
-    const auto& context = progpow::get_global_epoch_context_full(_w.epoch);
-    auto header = progpow::hash256_from_bytes(_w.header.data());
-    auto boundary = progpow::hash256_from_bytes(_w.boundary.data());
+    const auto& context = progpow::get_global_epoch_context_full(m_work_active.epoch);
+    auto header = progpow::hash256_from_bytes(m_work_active.header.data());
+    auto boundary = progpow::hash256_from_bytes(m_work_active.boundary.data());
 
     while (true)
     {
         // Exit next time around if there's new work awaiting
-        if (m_new_work.load(memory_order_relaxed) || paused() || shouldStop())
+        if (m_new_work.load(memory_order_relaxed))
             break;
 
-        auto r = progpow::search(
-            context, _w.block, header, boundary, _w.startNonce, m_settings.batchSize);
+        auto r = progpow::search(context, m_work_active.block, header, boundary,
+            m_work_active.startNonce, m_settings.batchSize);
         if (r.solution_found)
         {
             h256 mix{reinterpret_cast<byte*>(r.mix_hash.bytes), h256::ConstructFromPointer};
-            auto sol = Solution{r.nonce, mix, _w, std::chrono::steady_clock::now(), m_index};
+            auto sol =
+                Solution{r.nonce, mix, m_work_active, std::chrono::steady_clock::now(), m_index};
 
             Farm::f().submitProof(sol);
 
-            cpulog << EthWhite << "Job: " << _w.header.abridged()
+            cpulog << EthWhite << "Job: " << m_work_active.header.abridged()
                    << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
 
-            updateHashRate(r.nonce - _w.startNonce + 1, 1);
-            _w.startNonce = r.nonce + 1;
+            updateHashRate(r.nonce - m_work_active.startNonce + 1, 1);
+            m_work_active.startNonce = r.nonce + 1;
         }
         else
         {
             updateHashRate(m_settings.batchSize, 1);
-            _w.startNonce += m_settings.batchSize;
+            m_work_active.startNonce += m_settings.batchSize;
         }
     }
 }
