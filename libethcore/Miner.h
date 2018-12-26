@@ -393,10 +393,10 @@ public:
     void setHwmonDeviceIndex(int i) { m_hwmoninfo.deviceIndex = i; }
 
     /// Triggers worker thread it should stop
-    virtual void triggerStopWorking() override;
+    void triggerStopWorking() override;
 
     /// Stop worker thread; causes call to stopWorking() and waits till thread has stopped.
-    virtual void stopWorking() override;
+    void stopWorking() override;
 
     /**
      * @brief Kick an asleep miner.
