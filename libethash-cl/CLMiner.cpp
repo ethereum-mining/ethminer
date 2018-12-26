@@ -330,6 +330,11 @@ void CLMiner::compileProgPoWKernel(int _block, int _dagelms)
         m_progpow_search_kernel.setArg(0, m_searchBuffer);
         m_progpow_search_kernel.setArg(2, m_dag);
         m_progpow_search_kernel.setArg(5, 0);
+
+        // Lower current target so the arg is properly passed to the
+        // new kernel
+        m_current_target = 0;
+
     }
     catch (cl::BuildError const& buildErr)
     {
