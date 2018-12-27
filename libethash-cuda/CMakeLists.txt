@@ -57,7 +57,7 @@ find_library(CUDA_nvrtc_LIBRARY NAMES nvrtc PATHS ${CUDA_TOOLKIT_ROOT_DIR} PATH_
 find_library(CUDA_cuda_LIBRARY NAMES cuda PATHS ${CUDA_TOOLKIT_ROOT_DIR} PATH_SUFFIXES lib64 lib/x64 lib64/stubs lib/x64/stubs NO_DEFAULT_PATH)
 
 #link libraries
-target_link_libraries(ethash-cuda ethcore ethash::ethash progpow Boost::filesystem)
+target_link_libraries(ethash-cuda ethcore ethash::ethash progpow)
 target_link_libraries(ethash-cuda ${CUDA_nvrtc_LIBRARY} ${CUDA_cuda_LIBRARY})
 
 target_include_directories(ethash-cuda PUBLIC ${CUDA_INCLUDE_DIRS})
