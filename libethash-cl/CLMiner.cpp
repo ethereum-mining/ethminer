@@ -287,7 +287,7 @@ void CLMiner::compileProgPoWKernel(int _block, int _dagelms)
     cllog << "Compiling ProgPoW kernel for period : " << (_block / PROGPOW_PERIOD);
 
     std::string progpow_code = ProgPow::getKern(_block, ProgPow::KERNEL_CL);
-    progpow_code += std::string(cl_progpow_miner_kernel, sizeof(cl_progpow_miner_kernel));
+    progpow_code += std::string(cl_progpow_miner_kernel(), sizeof_cl_progpow_miner_kernel());
 
     char options[256];
     int computeCapability = 0;
@@ -590,7 +590,7 @@ bool CLMiner::initDevice()
 #endif
 
     string ethash_code =
-        string(cl_ethash_miner_kernel, sizeof(cl_ethash_miner_kernel));
+        string(cl_ethash_miner_kernel(), sizeof_cl_ethash_miner_kernel());
     addDefinition(ethash_code, "WORKSIZE", m_settings.localWorkSize);
     addDefinition(ethash_code, "ACCESSES", ETHASH_ACCESSES);
     addDefinition(ethash_code, "MAX_SEARCH_RESULTS", MAX_SEARCH_RESULTS);
