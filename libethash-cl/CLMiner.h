@@ -55,11 +55,11 @@
 #define MAX_SEARCH_RESULTS 4U
 
 // Nvidia GPUs do not play well with blocking queue requests
-// and boost host cpu to 100%. These two are used to 
+// and boost host cpu to 100%. These two are used to
 // - keep an EMA (Exponential Moving Average) of the search kernel run time
 // - keep a ratio to sleep over kernel time.
 constexpr double KERNEL_EMA_ALPHA = 0.25;
-constexpr double SLEEP_RATIO = 0.95; // The lower the value the higher CPU usage on Nvidia
+constexpr double SLEEP_RATIO = 0.95;  // The lower the value the higher CPU usage on Nvidia
 
 namespace dev
 {
@@ -70,6 +70,8 @@ namespace eth
 typedef struct
 {
     unsigned int count;
+    unsigned int abort;
+    unsigned int rounds;
     struct
     {
         // One word for gid and 8 for mix hash
@@ -88,6 +90,8 @@ public:
 
     static void enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection);
 
+    void kick_miner() override;
+
 protected:
 
     bool initDevice() override;
@@ -95,7 +99,6 @@ protected:
     bool initEpoch_internal() override;
 
 private:
-
     void ethash_search() override;
     void progpow_search() override;
     void compileProgPoWKernel(int _block, int _dagelms) override;
@@ -105,6 +108,8 @@ private:
     cl::Kernel m_ethash_search_kernel;
     cl::Kernel m_ethash_dag_kernel;
     cl::Kernel m_progpow_search_kernel;
+
+    bool m_initialized;
 
     cl::Device m_device;
     cl::Context m_context;
@@ -123,6 +128,8 @@ private:
     CLSettings m_settings;
 
     uint32_t m_zero = 0;
+    uint32_t m_one = 1;
+    uint32_t m_zerox3[3] = {0, 0, 0};
     uint64_t m_current_target = 0ULL;
 };
 
