@@ -218,6 +218,7 @@ void Farm::setWork(WorkPackage const& _newWp)
     }
 
     m_currentWp = _newWp;
+    m_telemetry.farm.totalJobs++;
 
     // Check if we need to shuffle per work (ergodicity == 2)
     if (m_Settings.ergodicity == 2 && m_currentWp.exSizeBytes == 0)

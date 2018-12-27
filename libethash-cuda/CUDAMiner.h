@@ -24,6 +24,7 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
 #include <libprogpow/ProgPow.h>
+
 #include <cuda.h>
 #include <functional>
 
