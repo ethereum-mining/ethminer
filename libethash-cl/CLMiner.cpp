@@ -590,7 +590,7 @@ bool CLMiner::initDevice()
 #endif
 
     string ethash_code =
-        string(cl_ethash_miner_kernel, cl_ethash_miner_kernel + sizeof(cl_ethash_miner_kernel));
+        string(cl_ethash_miner_kernel, sizeof(cl_ethash_miner_kernel));
     addDefinition(ethash_code, "WORKSIZE", m_settings.localWorkSize);
     addDefinition(ethash_code, "ACCESSES", ETHASH_ACCESSES);
     addDefinition(ethash_code, "MAX_SEARCH_RESULTS", MAX_SEARCH_RESULTS);
