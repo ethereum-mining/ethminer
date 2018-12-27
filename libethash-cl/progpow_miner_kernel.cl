@@ -149,6 +149,8 @@ typedef struct {
 typedef struct
 {
     uint count;
+    uint abort;
+    uint rounds;
     struct
     {
         // One word for gid and 8 for mix hash
@@ -170,6 +172,11 @@ __kernel void progpow_search(
     uint hack_false
 )
 {
+
+    if (g_output->abort)
+        return;
+    else if (get_local_id(0) == 0)
+        atomic_inc(&g_output->rounds);
 
     __global dag_t const* g_dag = (__global dag_t const*)_g_dag;
 
@@ -240,6 +247,8 @@ __kernel void progpow_search(
     // keccak(header .. keccak(header..nonce) .. digest);
     if (keccak_f800(g_header, seed, digest) > *target)
         return;
+
+    atomic_inc(&g_output->abort);
 
     uint slot = atomic_inc(&g_output->count);
     if (slot >= MAX_SEARCH_RESULTS) 

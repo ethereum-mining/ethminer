@@ -330,6 +330,11 @@ void CLMiner::compileProgPoWKernel(int _block, int _dagelms)
         m_progpow_search_kernel.setArg(0, m_searchBuffer);
         m_progpow_search_kernel.setArg(2, m_dag);
         m_progpow_search_kernel.setArg(5, 0);
+
+        // Lower current target so the arg is properly passed to the
+        // new kernel
+        m_current_target = 0;
+
     }
     catch (cl::BuildError const& buildErr)
     {
@@ -493,6 +498,14 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection
     }
 }
 
+void CLMiner::kick_miner() 
+{
+    Miner::kick_miner();
+    if (m_initialized)
+        m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, offsetof(search_results, abort), sizeof(m_one), &m_one);
+
+}
+
 bool CLMiner::initDevice()
 {
     // LookUp device
@@ -630,8 +643,8 @@ bool CLMiner::initDevice()
         throw std::runtime_error("Unable to build Ethash Kernel");
     }
 
-
-    return true;
+    m_initialized = true;
+    return m_initialized;
 }
 
 bool CLMiner::initEpoch_internal()
@@ -730,7 +743,7 @@ void CLMiner::ethash_search()
 
     m_queue.enqueueWriteBuffer(
         m_header, CL_FALSE, 0, m_work_active.header.size, m_work_active.header.data());
-    m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(m_zero), &m_zero);
+    m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(m_zerox3), &m_zerox3);
 
     uint64_t startNonce, baseNonce, target;
     startNonce = baseNonce = m_work_active.startNonce;
@@ -817,16 +830,12 @@ void CLMiner::ethash_search()
 #endif
         }
 
-
-        if (results.count)
+        if (!done)
         {
             // Zero the results count (in device)
             m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, offsetof(search_results, count),
-                sizeof(m_zero), (void*)&m_zero);
-        }
+                sizeof(m_zerox3), (void*)&m_zerox3);
 
-        if (!done)
-        {
             startNonce += (m_settings.globalWorkSize);
             m_ethash_search_kernel.setArg(4, startNonce);
 
@@ -855,7 +864,7 @@ void CLMiner::ethash_search()
         baseNonce = startNonce;
 
         // Update the hash rate
-        updateHashRate(m_settings.globalWorkSize, 1);
+        updateHashRate(m_settings.localWorkSize, results.rounds);
     }
 
     m_queue.finish();
@@ -868,7 +877,7 @@ void CLMiner::progpow_search()
 
     m_queue.enqueueWriteBuffer(
         m_header, CL_FALSE, 0, m_work_active.header.size, m_work_active.header.data());
-    m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(m_zero), &m_zero);
+    m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, 0, sizeof(m_zerox3), &m_zerox3);
 
     uint64_t startNonce, baseNonce, target;
     startNonce = baseNonce = m_work_active.startNonce;
@@ -955,16 +964,12 @@ void CLMiner::progpow_search()
 #endif
         }
 
-
-        if (results.count)
+        if (!done)
         {
             // Zero the results count (in device)
             m_queue.enqueueWriteBuffer(m_searchBuffer, CL_FALSE, offsetof(search_results, count),
-                sizeof(m_zero), (void*)&m_zero);
-        }
+                sizeof(m_zerox3), (void*)&m_zerox3);
 
-        if (!done)
-        {
             startNonce += (m_settings.globalWorkSize);
             m_progpow_search_kernel.setArg(3, startNonce);
 

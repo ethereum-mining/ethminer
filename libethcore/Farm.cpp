@@ -217,7 +217,12 @@ void Farm::setWork(WorkPackage const& _newWp)
             miner->setEpoch(m_currentEc);
     }
 
+    // Inform About Mining Algo
+    if (_newWp.algo != m_currentWp.algo || m_telemetry.farm.totalJobs == 0)
+        cnote << "Mining algo " << EthWhiteBold << _newWp.algo << EthReset;
+
     m_currentWp = _newWp;
+    m_telemetry.farm.totalJobs++;
 
     // Check if we need to shuffle per work (ergodicity == 2)
     if (m_Settings.ergodicity == 2 && m_currentWp.exSizeBytes == 0)

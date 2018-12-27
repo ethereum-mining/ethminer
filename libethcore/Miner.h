@@ -170,6 +170,7 @@ struct TelemetryAccountType
     bool paused = false;
     HwSensorsType sensors;
     SolutionAccountType solutions;
+    unsigned long totalJobs;  // Total number of jobs received from WorkProvider(s)
 };
 
 struct DeviceDescriptor
@@ -484,7 +485,7 @@ protected:
 private:
     bitset<MinerPauseEnum::Pause_MAX> m_pauseFlags;
 
-    
+
     virtual void ethash_search() = 0;
     virtual void progpow_search() = 0;
     virtual void compileProgPoWKernel(int _block, int _dagelms) = 0;

@@ -240,6 +240,8 @@ do { \
 typedef struct
 {
     uint count;
+    uint abort;
+    uint rounds;
     struct
     {
         // One word for gid and 8 for mix hash
@@ -260,6 +262,11 @@ __kernel void ethash_search(
     uint isolate
 )
 {
+
+    if (g_output->abort)
+        return;
+    else if (get_local_id(0) == 0)
+        atomic_inc(&g_output->rounds);
 
     __global hash128_t const* g_dag = (__global hash128_t const*) _g_dag;
 
@@ -382,6 +389,8 @@ __kernel void ethash_search(
 
 
     if (as_ulong(as_uchar8(state[0]).s76543210) < *target) {
+        
+        atomic_inc(&g_output->abort);
 
         uint slot = atomic_inc(&g_output->count);
         if (slot < MAX_SEARCH_RESULTS) 

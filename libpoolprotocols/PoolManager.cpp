@@ -160,8 +160,7 @@ void PoolManager::setClientHandlers()
         bool newEpoch = (_currentEpoch == -1);
         bool newBlock = (wp.block != -1 && wp.block != m_currentWp.block);
         bool newDiff = (wp.boundary != m_currentWp.boundary);
-
-
+        
         // In EthereumStratum/2.0.0 epoch number is set in session
         if (!newEpoch)
         {
