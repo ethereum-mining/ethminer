@@ -230,7 +230,7 @@ void CPUMiner::ethash_search()
 
             // Following statement could compute wrong values if we're at the end
             // of nonce type (uint64) and it overruns from 0x..fff to 0x..000
-            updateHashRate(r.nonce - m_work_active.startNonce + 1, 1);
+            updateHashRate(uint32_t(r.nonce - m_work_active.startNonce) + 1, 1);
             m_work_active.startNonce = r.nonce + 1;
         }
         else
@@ -266,7 +266,7 @@ void dev::eth::CPUMiner::progpow_search()
             cpulog << EthWhite << "Job: " << m_work_active.header.abridged()
                    << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
 
-            updateHashRate(r.nonce - m_work_active.startNonce + 1, 1);
+            updateHashRate(uint32_t(r.nonce - m_work_active.startNonce) + 1, 1);
             m_work_active.startNonce = r.nonce + 1;
         }
         else
