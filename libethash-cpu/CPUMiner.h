@@ -31,7 +31,7 @@ class CPUMiner : public Miner
 {
 public:
     CPUMiner(unsigned _index, CPSettings _settings, DeviceDescriptor& _device);
-    ~CPUMiner() override;
+    ~CPUMiner() override = default;
 
     static unsigned getNumDevices();
     static void enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection);

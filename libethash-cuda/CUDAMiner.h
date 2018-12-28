@@ -36,7 +36,7 @@ class CUDAMiner : public Miner
 {
 public:
     CUDAMiner(unsigned _index, CUSettings _settings, DeviceDescriptor& _device);
-    ~CUDAMiner() override;
+    ~CUDAMiner() override = default;
 
     static int getNumDevices();
     static void enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection);

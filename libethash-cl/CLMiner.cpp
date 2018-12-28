@@ -252,14 +252,6 @@ CLMiner::CLMiner(unsigned _index, CLSettings _settings, DeviceDescriptor& _devic
     m_deviceDescriptor = _device;
 }
 
-CLMiner::~CLMiner()
-{
-    DEV_BUILD_LOG_PROGRAMFLOW(cllog, "cl-" << m_index << " CLMiner::~CLMiner() begin");
-    stopWorking();
-    kick_miner();
-    DEV_BUILD_LOG_PROGRAMFLOW(cllog, "cl-" << m_index << " CLMiner::~CLMiner() end");
-}
-
 void CLMiner::workLoop()
 {
     DEV_BUILD_LOG_PROGRAMFLOW(cllog, "cl-" << m_index << " CLMiner::workLoop() begin");

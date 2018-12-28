@@ -86,7 +86,7 @@ class CLMiner : public Miner
 {
 public:
     CLMiner(unsigned _index, CLSettings _settings, DeviceDescriptor& _device);
-    ~CLMiner() override;
+    ~CLMiner() override = default;
 
     static void enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection);
 

@@ -42,14 +42,6 @@ CUDAMiner::CUDAMiner(unsigned _index, CUSettings _settings, DeviceDescriptor& _d
     m_deviceDescriptor = _device;
 }
 
-CUDAMiner::~CUDAMiner()
-{
-    DEV_BUILD_LOG_PROGRAMFLOW(cudalog, "cuda-" << m_index << " CUDAMiner::~CUDAMiner() begin");
-    stopWorking();
-    kick_miner();
-    DEV_BUILD_LOG_PROGRAMFLOW(cudalog, "cuda-" << m_index << " CUDAMiner::~CUDAMiner() end");
-}
-
 bool CUDAMiner::initDevice()
 {
     cudalog << "Using Pci Id : " << m_deviceDescriptor.uniqueId << " " << m_deviceDescriptor.cuName
