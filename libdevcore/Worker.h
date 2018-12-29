@@ -38,8 +38,7 @@ enum class WorkerState
     Starting,
     Started,
     Stopping,
-    Stopped,
-    Killing
+    Stopped
 };
 
 class Worker
@@ -52,26 +51,26 @@ public:
 
     virtual ~Worker();
 
-    /// Starts worker thread; causes startedWorking() to be called.
+    // Starts worker thread; causes startedWorking() to be called.
     void startWorking();
 
-    /// Triggers worker thread it should stop
-    virtual void triggerStopWorking();
+    // Returns the state of the worker
+    WorkerState state() { return m_state.load(std::memory_order_relaxed); }
 
-    /// Stop worker thread; causes call to stopWorking() and waits till thread has stopped.
+    // Stop worker thread; causes call to stopWorking() and waits till thread has stopped.
     virtual void stopWorking();
 
-    /// Whether or not this worker should stop
-    bool shouldStop() const { return m_state != WorkerState::Started; }
+    // Whether or not this worker should stop
+    bool shouldStop() const { return m_state == WorkerState::Stopping; }
 
 private:
     virtual void workLoop() = 0;
 
-    std::string m_name;
+    std::string m_name;   // Thread's name
 
-    mutable Mutex x_work;                 ///< Lock for the network existence.
-    std::unique_ptr<std::thread> m_work;  ///< The network thread.
-    std::atomic<WorkerState> m_state = {WorkerState::Starting};
+    mutable Mutex x_work;                 // Lock 
+    std::unique_ptr<std::thread> m_work;  // The thread running the work of derived class
+    std::atomic<WorkerState> m_state = {WorkerState::Stopped};
 };
 
 }  // namespace dev

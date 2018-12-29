@@ -581,6 +581,7 @@ bool CLMiner::initDevice()
     // Get Programs
     char options[256] = {0};
     int computeCapability = 0;
+
 #ifndef __clang__
 
     // Nvidia

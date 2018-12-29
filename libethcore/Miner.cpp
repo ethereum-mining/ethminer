@@ -51,12 +51,6 @@ void Miner::setWork(WorkPackage const& _work)
     kick_miner();
 }
 
-void Miner::triggerStopWorking() 
-{
-    Worker::triggerStopWorking();
-    kick_miner();
-}
-
 void Miner::stopWorking() 
 {
     Worker::stopWorking();

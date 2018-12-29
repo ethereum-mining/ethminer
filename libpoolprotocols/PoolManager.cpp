@@ -44,8 +44,8 @@ PoolManager::PoolManager(PoolSettings _settings)
         }
         else
         {
-            cnote << string(EthOrange "Solution 0x") + toHex(sol.nonce)
-                  << " wasted. Waiting for connection...";
+            cnote << EthOrange "Solution " << toHex(sol.nonce, HexPrefix::Add)
+                  << " wasted. Waiting for connection..." << EthReset;
         }
 
         return false;

@@ -177,9 +177,7 @@ Farm::~Farm()
     if (nvmlh)
         wrap_nvml_destroy(nvmlh);
 
-    // Stop mining (if needed)
-    if (m_isMining.load(std::memory_order_relaxed))
-        stop();
+    m_miners.clear();
 
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::~Farm() end");
 }
@@ -280,8 +278,8 @@ bool Farm::start()
             if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::OpenCL)
             {
                 minerTelemetry.prefix = "cl";
-                m_miners.push_back(std::shared_ptr<Miner>(
-                    new CLMiner(m_miners.size(), m_CLSettings, it->second)));
+                m_miners.push_back(
+                    std::shared_ptr<Miner>(new CLMiner(m_miners.size(), m_CLSettings, it->second)));
             }
 #endif
 #if _CPU
@@ -328,14 +326,20 @@ void Farm::stop()
         {
             Guard l(x_minerWork);
             for (auto const& miner : m_miners)
-            {
-                miner->triggerStopWorking();
-                miner->kick_miner();
-            }
-
-            m_miners.clear();
+                miner->stopWorking();
             m_isMining.store(false, std::memory_order_relaxed);
         }
+
+        // Wait for all miners to finish their job
+        for (auto const& miner : m_miners)
+        {
+            while (miner->state() != WorkerState::Stopped)
+            {
+                this_thread::sleep_for(std::chrono::microseconds(100));
+            }
+        }
+        
+        m_miners.clear();
     }
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::stop() end");
 }
@@ -517,7 +521,8 @@ void Farm::submitProofAsync(Solution const& _s)
         if (!valid)
         {
             accountSolution(_s.midx, SolutionAccountingEnum::Failed);
-            cwarn << EthRedBold "**Failed " << EthReset << EthWhiteBold << "GPU " << _s.midx << EthReset
+            cwarn << EthRedBold "**Failed " << EthReset << EthWhiteBold << "GPU " << _s.midx
+                  << EthReset
                   << " gave incorrect result. Lower overclocking values if it happens "
                      "frequently.";
             return;
