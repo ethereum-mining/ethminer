@@ -234,6 +234,7 @@ and expect back a response like this:
       "epoch": 227,                                     // Current epoch
       "epoch_changes": 1,                               // How many epoch changes occurred during the run
       "hashrate": "0x00000000054a89c8",                 // Overall hashrate (sum of hashrate of all devices)
+      "jobs": 128,                                      // Overall number of jobs processed
       "shares": [                                       // Shares / Solutions stats
         2,                                              //  + Found shares
         0,                                              //  + Rejected (by pool) shares

@@ -1236,6 +1236,7 @@ Json::Value ApiConnection::getMinerStatDetail()
     mininginfo["epoch"] = PoolManager::p().getCurrentEpoch();
     mininginfo["epoch_changes"] = PoolManager::p().getEpochChanges();
     mininginfo["difficulty"] = PoolManager::p().getCurrentDifficulty();
+    mininginfo["jobs"] = uint64_t(t.farm.totalJobs);
 
     sharesinfo.append(t.farm.solutions.accepted);
     sharesinfo.append(t.farm.solutions.rejected);
