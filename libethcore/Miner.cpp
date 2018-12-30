@@ -228,13 +228,11 @@ void Miner::minerLoop()
 
         if (m_work_active.algo == "ethash")
         {
-            // Persist most recent job and start searching
+            // Start ethash searching
             ethash_search();
         }
         else if (m_work_active.algo == "progpow")
         {
-            if (m_work_active.block == -1)
-                throw std::runtime_error("Can't process ProgPoW without a block number");
 
             m_work_active.period = m_work_active.block / PROGPOW_PERIOD;
             if (newProgPoWPeriod)
@@ -247,7 +245,7 @@ void Miner::minerLoop()
                     continue;
             }
 
-            // Persist most recent job and start searching
+            // Start progpow searching
             progpow_search();
         }
         else

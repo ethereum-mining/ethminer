@@ -219,6 +219,13 @@ void Farm::setWork(WorkPackage const& _newWp)
     if (_newWp.algo != m_currentWp.algo || m_telemetry.farm.totalJobs == 0)
         cnote << "Mining algo " << EthWhiteBold << _newWp.algo << EthReset;
 
+    // Prevent dispatch of a ProgPoW workpackage which has block number missing
+    if (_newWp.algo == "progpow" && _newWp.block < 0) 
+    {
+        cwarn << EthRed "Got ProgPoW job with missing block number. Discarding ..." EthReset;
+        return;
+    }
+
     m_currentWp = _newWp;
     m_telemetry.farm.totalJobs++;
 
