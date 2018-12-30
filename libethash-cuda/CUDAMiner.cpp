@@ -198,7 +198,7 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
 
     const char* name = "progpow_search";
     std::string text = ProgPow::getKern(_block, ProgPow::KERNEL_CUDA);
-    text += std::string(cu_progpow_miner_kernel, sizeof(cu_progpow_miner_kernel));
+    text += std::string(cu_progpow_miner_kernel(), sizeof_cu_progpow_miner_kernel());
 
     ofstream write;
     write.open("kernel.cu");

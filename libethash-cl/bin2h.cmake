@@ -49,6 +49,35 @@ set(oneValueArgs SOURCE_FILE VARIABLE_NAME HEADER_FILE)
 # reads source file contents as hex string
 file(READ ${BIN2H_SOURCE_FILE} hexString HEX)
 
+
+# Minimize code (remove leading whitespace, and empty lines)
+if (${BIN2H_REMOVE_LEADING_WHITESPACE})
+# remove leading whitespaces
+string(REGEX REPLACE "0d0a(09|20)+" "0d0a" hexString ${hexString})
+string(REGEX REPLACE "0a0d(09|20)+" "0a0d" hexString ${hexString}) # MACOSX?
+string(REGEX REPLACE "0a(09|20)+" "0a" hexString ${hexString})
+endif()
+
+if (${BIN2H_REMOVE_TRAILING_WHITESPACE})
+# remove leading whitespaces
+string(REGEX REPLACE "(09|20)+0d0a" "0d0a" hexString ${hexString})
+string(REGEX REPLACE "(09|20)+0a0d" "0a0d" hexString ${hexString}) # MACOSX?
+string(REGEX REPLACE "(09|20)+0a" "0a" hexString ${hexString})
+endif()
+
+if (${BIN2H_REMOVE_EMPTY_LINES})
+# remove_empty_lines
+string(REGEX REPLACE "(0d0a)(0d0a)+" "0d0a" hexString ${hexString})
+string(REGEX REPLACE "(0a0d)(0a0d)+" "0a0d" hexString ${hexString}) # MACOSX?
+string(REGEX REPLACE "0a(0a)+" "0a" hexString ${hexString})
+endif()
+
+if (${BIN2H_CONDENSE_WHITESPACE})
+# condense all whitespace
+string(REGEX REPLACE "(09|20)(09|20)+" "20" hexString ${hexString})
+endif()
+
+
 # wraps the hex string into multiple lines at column 32(i.e. 16 bytes per line)
 wrap_string(VARIABLE hexString AT_COLUMN 32)
 
@@ -58,5 +87,16 @@ string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1, " arrayValues ${hexString})
 string(REGEX REPLACE ", $" "" arrayValues ${arrayValues})
 
 # declares byte array and the length variables
-set(arrayDefinition "static const char ${BIN2H_VARIABLE_NAME}[] = {${arrayValues}\n};\n")
-file(WRITE ${BIN2H_HEADER_FILE} "${arrayDefinition}")
+set(arrayDefinition_internal "static const char ${BIN2H_VARIABLE_NAME}_internal[] = {${arrayValues}\n};\n")
+
+#file(WRITE ${BIN2H_HEADER_FILE} "${arrayDefinition}")
+
+# add a pointer for extern use
+set(arrayDefinitionExtern "const char* ${BIN2H_VARIABLE_NAME}(void){return &${BIN2H_VARIABLE_NAME}_internal[0];}\n")
+
+# add a pointer for extern use
+set(arraySizeofDefinitionExtern "size_t sizeof_${BIN2H_VARIABLE_NAME}(void){return sizeof(${BIN2H_VARIABLE_NAME}_internal);}\n")
+
+set(file_content "/* Generated from ${BIN2H_SOURCE_FILE} */\n#include <stddef.h>\n${arrayDefinition_internal}${arrayDefinitionExtern}${arraySizeofDefinitionExtern}")
+
+file(WRITE ${BIN2H_HEADER_FILE} "${file_content}")

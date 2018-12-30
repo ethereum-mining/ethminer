@@ -8,7 +8,7 @@ typedef struct {
         // One word for gid and 8 for mix hash
         uint32_t gid;
         uint32_t mix[8];
-		uint32_t pad[7];  // pad to size power of 2 (keep this so the struct is same for ethash
+        uint32_t pad[7];  // pad to size power of 2 (keep this so the struct is same for ethash
     } result[SEARCH_RESULTS];
 } search_results;
 
@@ -140,7 +140,7 @@ __device__ __forceinline__ void fill_mix(uint64_t seed, uint32_t lane_id, uint32
         mix[i] = kiss99(st);
 }
 
-__global__ void 
+__global__ void
 progpow_search(
     uint64_t start_nonce,
     const hash32_t header,
@@ -209,10 +209,10 @@ progpow_search(
     }
 
     // keccak(header .. keccak(header..nonce) .. digest);
-	
-	// @AndreaLanfranchi
-	// hash == target is permissible due to the roundings
-	// in upper64OfBoundary and difficulty
+
+    // @AndreaLanfranchi
+    // hash == target is permissible due to the roundings
+    // in upper64OfBoundary and difficulty
     if (keccak_f800(header, seed, digest) > target)
         return;
 
