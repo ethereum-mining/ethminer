@@ -8,7 +8,6 @@ typedef struct {
         // One word for gid and 8 for mix hash
         uint32_t gid;
         uint32_t mix[8];
-        uint32_t pad[7];  // pad to size power of 2 (keep this so the struct is same for ethash
     } result[SEARCH_RESULTS];
 } search_results;
 
