@@ -13,6 +13,7 @@
 *.a
 
 # VS stuff
+.vs
 build
 ipch
 *.sdf
