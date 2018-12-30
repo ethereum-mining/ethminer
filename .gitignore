@@ -22,6 +22,7 @@ ipch
 *.vcxproj
 *.vcxproj.filters
 *.sln
+CMakeSettings.json
 
 # VIM stuff
 *.swp
@@ -75,3 +76,4 @@ node_modules/
 
 # vscode
 .vscode/
+
