@@ -202,6 +202,6 @@ std::string dev::padRight(std::string _value, size_t _length, char _fillChar)
 
 void dev::toNearestPowerOf2(unsigned int& _value) 
 {
-    unsigned int _log2 = log2(_value);
-    _value = pow(2, _log2);
+    unsigned int _log2 = (unsigned int)log2(_value);
+    _value = (unsigned int)pow(2, _log2);
 }
