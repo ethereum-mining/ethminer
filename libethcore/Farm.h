@@ -176,16 +176,6 @@ public:
      */
     void accountSolution(unsigned _minerIdx, SolutionAccountingEnum _accounting) override;
 
-    /**
-     * @brief Gets the solutions account for the whole farm
-     */
-    SolutionAccountType getSolutions();
-
-    /**
-     * @brief Gets the solutions account for single miner
-     */
-    SolutionAccountType getSolutions(unsigned _minerIdx);
-
     using SolutionFound = std::function<void(const Solution&)>;
     using MinerRestart = std::function<void()>;
 

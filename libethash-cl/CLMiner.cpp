@@ -5,11 +5,14 @@
 
 #include <boost/dll.hpp>
 
+#include <libdevcore/TarExtract.h>
+
 #include <libethcore/Farm.h>
 #include <ethash/ethash.hpp>
 
 #include "CLMiner.h"
-#include "ethash.h"
+
+#include "kernels/cl/ethash.cl"
 
 using namespace dev;
 using namespace eth;
@@ -312,17 +315,21 @@ void CLMiner::workLoop()
             {
                 // no need to read the abort flag.
                 m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE,
-                    c_maxSearchResults * sizeof(results.rslt[0]), 2 * sizeof(results.count),
-                    (void*)&results.count);
+                    offsetof(SearchResults, count),
+                    (m_settings.noExit ? 1 : 2) * sizeof(results.count), (void*)&results.count);
                 if (results.count)
                 {
                     m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0,
                         results.count * sizeof(results.rslt[0]), (void*)&results);
                     // Reset search buffer if any solution found.
+                    if (m_settings.noExit)
+                        m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
+                            offsetof(SearchResults, count), sizeof(results.count), zerox3);
                 }
                 // clean the solution count, hash count, and abort flag
-                m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
-                    offsetof(SearchResults, count), sizeof(zerox3), zerox3);
+                if (!m_settings.noExit)
+                    m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
+                        offsetof(SearchResults, count), sizeof(zerox3), zerox3);
             }
             else
                 results.count = 0;
@@ -362,7 +369,8 @@ void CLMiner::workLoop()
                     m_header[0], CL_FALSE, 0, w.header.size, w.header.data());
                 // zero the result count
                 m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
-                    offsetof(SearchResults, count), sizeof(zerox3), zerox3);
+                    offsetof(SearchResults, count),
+                    m_settings.noExit ? sizeof(zerox3[0]) : sizeof(zerox3), zerox3);
 
                 m_searchKernel.setArg(0, m_searchBuffer[0]);  // Supply output buffer to kernel.
                 m_searchKernel.setArg(1, m_header[0]);        // Supply header buffer to kernel.
@@ -412,10 +420,12 @@ void CLMiner::workLoop()
             current = w;  // kernel now processing newest work
             current.startNonce = startNonce;
             // Increase start nonce for following kernel execution.
-            startNonce += results.hashCount * m_settings.localWorkSize;
-
+            startNonce += m_settings.globalWorkSize;
             // Report hash count
-            updateHashRate(m_settings.localWorkSize, results.hashCount);
+            if (m_settings.noExit)
+                updateHashRate(m_settings.globalWorkSize, 1);
+            else
+                updateHashRate(m_settings.localWorkSize, results.hashCount);
         }
 
         if (m_queue.size())
@@ -432,7 +442,7 @@ void CLMiner::kick_miner()
 {
     // Memory for abort Cannot be static because crashes on macOS.
     const uint32_t one = 1;
-    if (m_abortqueue.size())
+    if (m_abortqueue.size() && !m_settings.noExit)
         m_abortqueue[0].enqueueWriteBuffer(
             m_searchBuffer[0], CL_TRUE, offsetof(SearchResults, abort), sizeof(one), &one);
 
@@ -729,7 +739,7 @@ bool CLMiner::initEpoch_internal()
         string code;
 
         cllog << "OpenCL kernel";
-        code = string(ethash_cl, ethash_cl + sizeof(ethash_cl));
+        code = string(ethash_opencl_kernel);
 
         addDefinition(code, "WORKSIZE", m_settings.localWorkSize);
         addDefinition(code, "ACCESSES", 64);
@@ -739,6 +749,9 @@ bool CLMiner::initEpoch_internal()
 
         if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
             addDefinition(code, "LEGACY", 1);
+
+        if (m_settings.noExit)
+            addDefinition(code, "NO_FAST_EXIT", 1);
 
         // create miner OpenCL program
         cl::Program::Sources sources{{code.data(), code.size()}};
@@ -761,63 +774,48 @@ bool CLMiner::initEpoch_internal()
            the default kernel if loading fails for whatever reason */
         bool loadedBinary = false;
         std::string device_name = m_deviceDescriptor.clName;
+        std::stringstream member_strm, fname_strm;
 
         if (!m_settings.noBinary)
         {
-            std::ifstream kernel_file;
             vector<unsigned char> bin_data;
-            std::stringstream fname_strm;
 
+            fname_strm << boost::dll::program_location().parent_path().string()
+                       << "/kernels/kernels.tgz";
             /* Open kernels/ethash_{devicename}_lws{local_work_size}.bin */
             std::transform(device_name.begin(), device_name.end(), device_name.begin(), ::tolower);
-            fname_strm << boost::dll::program_location().parent_path().string()
-#if defined(_WIN32)
-                       << "\\kernels\\ethash_"
-#else
-                       << "/kernels/ethash_"
-#endif
-                       << device_name << "_lws" << m_settings.localWorkSize << ".bin";
-            cllog << "Loading binary kernel " << fname_strm.str();
+            member_strm << "ethash_" << device_name << "_lws" << m_settings.localWorkSize
+                        << (m_settings.noExit ? "_noexit.bin" : ".bin");
+            cllog << "Loading binary kernel " << member_strm.str() << " from  " << fname_strm.str();
             try
             {
-                kernel_file.open(fname_strm.str(), ios::in | ios::binary);
-
-                if (kernel_file.good())
-                {
                     /* Load the data vector with file data */
-                    kernel_file.unsetf(std::ios::skipws);
-                    bin_data.insert(bin_data.begin(),
-                        std::istream_iterator<unsigned char>(kernel_file),
-                        std::istream_iterator<unsigned char>());
-
-                    /* Setup the program */
-                    cl::Program::Binaries blobs({bin_data});
-                    cl::Program program(m_context[0], {m_device}, blobs);
-                    try
+                    if (ExtractFromTar(fname_strm.str(), member_strm.str(), bin_data))
                     {
-                        program.build({m_device}, options);
-                        cllog << "Build info success:"
-                              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
-                        binaryProgram = program;
-                        loadedBinary = true;
+                        /* Setup the program */
+                        cl::Program::Binaries blobs({bin_data});
+                        cl::Program program(m_context[0], {m_device}, blobs);
+                        try
+                        {
+                            program.build({m_device}, options);
+                            binaryProgram = program;
+                            loadedBinary = true;
+                        }
+                        catch (cl::Error const&)
+                        {
+                            cwarn << "Build failed! Info:"
+                                  << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
+                            cwarn << fname_strm.str();
+                        }
                     }
-                    catch (cl::Error const&)
-                    {
-                        cwarn << "Build failed! Info:"
-                              << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device);
-                        cwarn << fname_strm.str();
-                        cwarn << "Falling back to OpenCL kernel...";
-                    }
-                }
-                else
-                {
-                    cwarn << "Failed to load binary kernel: " << fname_strm.str();
-                    cwarn << "Falling back to OpenCL kernel...";
-                }
             }
             catch (...)
             {
-                cwarn << "Failed to load binary kernel: " << fname_strm.str();
+            }
+            if (!loadedBinary)
+            {
+                cwarn << "Failed to load binary kernel " << member_strm.str() << " from "
+                      << fname_strm.str();
                 cwarn << "Falling back to OpenCL kernel...";
             }
         }

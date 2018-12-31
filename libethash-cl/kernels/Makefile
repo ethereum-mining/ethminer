@@ -6,6 +6,7 @@ AS=clrxasm
 
 .PHONY: all
 all: ellesmere tonga baffin gfx900 gfx901
+	cd bin; tar --create --file=kernels.tgz --gzip *.bin; rm *.bin
 	@echo "Built ethash kernel for Ellesmere, Tonga, Baffin, Gfx900 and Gfx901 architectures."
 
 .PHONY: clean
@@ -16,6 +17,7 @@ clean:
 	$(eval ARCH:=$(shell echo "$*" | sed -n 's/\(^[A-Za-z0-9]*\).*/\1/p'))
 	$(eval LWS:=$(shell echo "$*" | sed -n 's/.*lws\([0-9]\+\)/\1/p'))
 	$(AS) $(SDIR)/GCN_ethash.isa -g $(ARCH) -Dworksize=$(LWS) $(ASFLAGS) -o $(BUILD)/ethash_$(ARCH)_lws$(LWS).bin
+	$(AS) $(SDIR)/GCN_ethash.isa -g $(ARCH) -DNO_FAST_EXIT -Dworksize=$(LWS) $(ASFLAGS) -o $(BUILD)/ethash_$(ARCH)_lws$(LWS)_noexit.bin
 
 .PHONY: ellesmere
 ellesmere: ellesmere_lws64.bin ellesmere_lws128.bin ellesmere_lws256.bin
