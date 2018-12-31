@@ -139,7 +139,9 @@ DEV_INLINE void keccak_f1600_init(uint2* state)
     s[6] = u2zero;
     s[7] = u2zero;
     s[8] = make_uint2(0, 0x80000000);
-    for (uint32_t i = 9; i < 25; i++)
+
+    #pragma unroll
+    for (int i = 9; i < 25; i++)
         s[i] = u2zero;
 
     /* theta: c = a[0,i] ^ a[1,i] ^ .. a[4,i] */
@@ -442,6 +444,7 @@ DEV_INLINE void keccak_f1600_init(uint2* state)
     /* iota: a[0,0] ^= round constant */
     s[0] ^= keccak_round_constants[23];
 
+    #pragma unroll
     for (int i = 0; i < 12; ++i)
         state[i] = s[i];
 }
@@ -452,6 +455,7 @@ DEV_INLINE uint64_t keccak_f1600_final(uint2* state)
     uint2 t[5], u, v;
     const uint2 u2zero = make_uint2(0, 0);
 
+    #pragma unroll
     for (int i = 0; i < 12; ++i)
         s[i] = state[i];
 
@@ -723,13 +727,15 @@ DEV_INLINE uint64_t keccak_f1600_final(uint2* state)
 DEV_INLINE void SHA3_512(uint2* s)
 {
     uint2 t[5], u, v;
+    const uint2 u2zero = make_uint2(0, 0);
 
-    for (uint32_t i = 8; i < 25; i++)
+    s[8] = make_uint2(1, 0x80000000);
+
+    #pragma unroll
+    for (int i = 9; i < 25; i++)
     {
-        s[i] = make_uint2(0, 0);
+        s[i] = u2zero;
     }
-    s[8].x = 1;
-    s[8].y = 0x80000000;
 
     for (int i = 0; i < 23; i++)
     {
@@ -936,10 +942,13 @@ DEV_INLINE bool compute_hash(uint64_t nonce, uint2* mix_hash)
         for (int p = 0; p < _PARALLEL_HASH; p++)
         {
             uint2 shuffle[8];
+            int ip = i + p;
+
+            #pragma unroll
             for (int j = 0; j < 8; j++)
             {
-                shuffle[j].x = SHFL(state[j].x, i + p, THREADS_PER_HASH);
-                shuffle[j].y = SHFL(state[j].y, i + p, THREADS_PER_HASH);
+                shuffle[j].x = SHFL(state[j].x, ip, THREADS_PER_HASH);
+                shuffle[j].y = SHFL(state[j].y, ip, THREADS_PER_HASH);
             }
             switch (mix_idx)
             {
@@ -1095,7 +1104,9 @@ __global__ void ethash_calculate_dag_item(uint32_t start)
     {
         uint32_t shuffle_index = SHFL(node_index, t, 4);
         uint4 s[4];
-        for (uint32_t w = 0; w < 4; w++)
+
+        #pragma unroll
+        for (int w = 0; w < 4; w++)
         {
             s[w] = make_uint4(SHFL(dag_node.uint4s[w].x, t, 4), SHFL(dag_node.uint4s[w].y, t, 4),
                               SHFL(dag_node.uint4s[w].z, t, 4), SHFL(dag_node.uint4s[w].w, t, 4));
