@@ -346,7 +346,6 @@ void Farm::stop()
             }
         }
         
-        m_miners.clear();
     }
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "Farm::stop() end");
 }
