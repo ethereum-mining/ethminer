@@ -200,10 +200,12 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
     std::string text = ProgPow::getKern(_block, ProgPow::KERNEL_CUDA);
     text += std::string(cu_progpow_miner_kernel(), sizeof_cu_progpow_miner_kernel());
 
-    ofstream write;
-    write.open("kernel.cu");
-    write << text;
-    write.close();
+    // Keep only for reference in case it's needed to examine
+    // the generated cu file. Runtime does not need this
+    //ofstream write;
+    //write.open("kernel.cu");
+    //write << text;
+    //write.close();
 
     nvrtcProgram prog;
     NVRTC_SAFE_CALL(nvrtcCreateProgram(&prog,  // prog
@@ -246,9 +248,12 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
     NVRTC_SAFE_CALL(nvrtcGetPTXSize(prog, &ptxSize));
     char* ptx = new char[ptxSize];
     NVRTC_SAFE_CALL(nvrtcGetPTX(prog, ptx));
-    write.open("kernel.ptx");
-    write << ptx;
-    write.close();
+
+    // Keep only for reference in case it's needed to examine
+    // the generated ptx file. Runtime does not need this
+    //write.open("kernel.ptx");
+    //write << ptx;
+    //write.close();
 
     // Load the generated PTX and get a handle to the kernel.
     char* jitInfo = new char[32 * 1024];
