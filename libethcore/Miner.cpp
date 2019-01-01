@@ -237,7 +237,6 @@ void Miner::minerLoop()
             m_work_active.period = m_work_active.block / PROGPOW_PERIOD;
             if (newProgPoWPeriod)
             {
-                unloadProgPoWKernel();
 
                 uint32_t dagelms = (unsigned)(m_epochContext.dagSize / ETHASH_MIX_BYTES);
                 compileProgPoWKernel(m_work_active.block, dagelms);
