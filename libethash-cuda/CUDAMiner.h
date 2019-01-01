@@ -49,14 +49,16 @@ protected:
     bool initEpoch_internal() override;
 
 private:
-    
+
     void workLoop() override;
 
     void ethash_search() override;
     void progpow_search() override;
-    void compileProgPoWKernel(int _block, int _dagelms) override;
 
-    CUdevice m_device;
+    void compileProgPoWKernel(int _block, int _dagelms) override;
+    void unloadProgPoWKernel();
+
+    bool m_progpow_kernel_loaded = false;
     CUmodule m_module;
     CUfunction m_kernel;
 

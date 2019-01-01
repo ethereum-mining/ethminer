@@ -194,16 +194,21 @@ void CUDAMiner::workLoop()
 void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
 {
     auto startCompile = std::chrono::steady_clock::now();
+
+    unloadProgPoWKernel();
+
     cudalog << "Compiling ProgPoW kernel for period : " << (_block / PROGPOW_PERIOD);
 
     const char* name = "progpow_search";
     std::string text = ProgPow::getKern(_block, ProgPow::KERNEL_CUDA);
     text += std::string(cu_progpow_miner_kernel(), sizeof_cu_progpow_miner_kernel());
 
-    ofstream write;
-    write.open("kernel.cu");
-    write << text;
-    write.close();
+    // Keep only for reference in case it's needed to examine
+    // the generated cu file. Runtime does not need this
+    // ofstream write;
+    // write.open("kernel.cu");
+    // write << text;
+    // write.close();
 
     nvrtcProgram prog;
     NVRTC_SAFE_CALL(nvrtcCreateProgram(&prog,  // prog
@@ -214,12 +219,18 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
         NULL));                                // includeNames
 
     NVRTC_SAFE_CALL(nvrtcAddNameExpression(prog, name));
-    std::string op_arch = "--gpu-architecture=compute_" +
+    std::string op_arch = "-arch=compute_" +
                           to_string(m_deviceDescriptor.cuComputeMajor) +
                           to_string(m_deviceDescriptor.cuComputeMinor);
     std::string op_dag = "-DPROGPOW_DAG_ELEMENTS=" + to_string(_dagelms);
 
-    const char* opts[] = {op_arch.c_str(), op_dag.c_str(), "-lineinfo"};
+    const char* opts[] = {
+        op_arch.c_str(), 
+        op_dag.c_str(), 
+        // "-lineinfo",      // For debug only
+        "-use_fast_math", 
+        "-default-device"
+    };
     nvrtcResult compileResult = nvrtcCompileProgram(prog,  // prog
         3,                                                 // numOptions
         opts);                                             // options
@@ -246,9 +257,12 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
     NVRTC_SAFE_CALL(nvrtcGetPTXSize(prog, &ptxSize));
     char* ptx = new char[ptxSize];
     NVRTC_SAFE_CALL(nvrtcGetPTX(prog, ptx));
-    write.open("kernel.ptx");
-    write << ptx;
-    write.close();
+
+    // Keep only for reference in case it's needed to examine
+    // the generated ptx file. Runtime does not need this
+    // write.open("kernel.ptx");
+    // write << ptx;
+    // write.close();
 
     // Load the generated PTX and get a handle to the kernel.
     char* jitInfo = new char[32 * 1024];
@@ -258,9 +272,10 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
         CU_JIT_GENERATE_LINE_INFO};
 
     void* jitOptVal[] = {
-        jitInfo, jitErr, (void*)(32 * 1024), (void*)(32 * 1024), (void*)(1), (void*)(1)};
+        jitInfo, jitErr, (void*)(32 * 1024), (void*)(32 * 1024), (void*)(1), (void*)(0)};
 
     CU_SAFE_CALL(cuModuleLoadDataEx(&m_module, ptx, 6, jitOpt, jitOptVal));
+    m_progpow_kernel_loaded = true;
 
 #ifdef _DEVELOPER
     if (g_logOptions & LOG_COMPILE)
@@ -291,6 +306,18 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
                    std::chrono::steady_clock::now() - startCompile)
                    .count()
             << " ms. ";
+}
+
+void CUDAMiner::unloadProgPoWKernel()
+{
+    if (!m_progpow_kernel_loaded)
+        return;
+#if _DEVELOPER
+    if (g_logOptions && LOG_COMPILE)
+        cudalog << "Unloading ProgPoW kernel";
+#endif
+    CU_SAFE_CALL(cuModuleUnload(m_module));
+    m_progpow_kernel_loaded = false;
 }
 
 int CUDAMiner::getNumDevices()
@@ -498,7 +525,6 @@ void CUDAMiner::progpow_search()
 
     while (!done)
     {
-
         // This inner loop will process each cuda stream individually
         for (current_index = 0; current_index < m_settings.streams;
              current_index++, startNonce += m_batch_size)
@@ -562,7 +588,6 @@ void CUDAMiner::progpow_search()
 
         // Update the hash rate
         updateHashRate(m_batch_size, m_settings.streams);
-
     }
 
 #ifdef _DEVELOPER
