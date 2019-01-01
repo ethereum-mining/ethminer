@@ -51,7 +51,7 @@ void Miner::setWork(WorkPackage const& _work)
     kick_miner();
 }
 
-void Miner::stopWorking() 
+void Miner::stopWorking()
 {
     Worker::stopWorking();
     kick_miner();
@@ -237,6 +237,8 @@ void Miner::minerLoop()
             m_work_active.period = m_work_active.block / PROGPOW_PERIOD;
             if (newProgPoWPeriod)
             {
+                unloadProgPoWKernel();
+
                 uint32_t dagelms = (unsigned)(m_epochContext.dagSize / ETHASH_MIX_BYTES);
                 compileProgPoWKernel(m_work_active.block, dagelms);
 
@@ -253,6 +255,8 @@ void Miner::minerLoop()
             throw std::runtime_error("Algo : " + m_work_active.algo + " not yet implemented");
         }
     }
+
+    unloadProgPoWKernel();
 }
 
 void Miner::updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept

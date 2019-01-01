@@ -261,6 +261,7 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
         jitInfo, jitErr, (void*)(32 * 1024), (void*)(32 * 1024), (void*)(1), (void*)(1)};
 
     CU_SAFE_CALL(cuModuleLoadDataEx(&m_module, ptx, 6, jitOpt, jitOptVal));
+    m_progpow_kernel_loaded = true;
 
 #ifdef _DEVELOPER
     if (g_logOptions & LOG_COMPILE)
@@ -291,6 +292,15 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
                    std::chrono::steady_clock::now() - startCompile)
                    .count()
             << " ms. ";
+}
+
+void CUDAMiner::unloadProgPoWKernel()
+{
+    if (!m_progpow_kernel_loaded)
+        return;
+    cudalog << "UNLOADING";
+    CU_SAFE_CALL(cuModuleUnload(m_module));
+    m_progpow_kernel_loaded = false;
 }
 
 int CUDAMiner::getNumDevices()

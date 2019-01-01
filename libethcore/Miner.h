@@ -486,6 +486,7 @@ private:
     virtual void ethash_search() = 0;
     virtual void progpow_search() = 0;
     virtual void compileProgPoWKernel(int _block, int _dagelms) = 0;
+    virtual void unloadProgPoWKernel() {};
 
     std::chrono::steady_clock::time_point m_hashTime = std::chrono::steady_clock::now();
     std::atomic<float> m_hashRate = {0.0};
