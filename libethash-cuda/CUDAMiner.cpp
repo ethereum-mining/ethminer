@@ -272,7 +272,7 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
         CU_JIT_GENERATE_LINE_INFO};
 
     void* jitOptVal[] = {
-        jitInfo, jitErr, (void*)(32 * 1024), (void*)(32 * 1024), (void*)(1), (void*)(1)};
+        jitInfo, jitErr, (void*)(32 * 1024), (void*)(32 * 1024), (void*)(1), (void*)(0)};
 
     CU_SAFE_CALL(cuModuleLoadDataEx(&m_module, ptx, 6, jitOpt, jitOptVal));
     m_progpow_kernel_loaded = true;
