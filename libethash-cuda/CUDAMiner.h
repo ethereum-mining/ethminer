@@ -56,7 +56,6 @@ private:
     void progpow_search() override;
     void compileProgPoWKernel(int _block, int _dagelms) override;
 
-    CUdevice m_device;
     CUmodule m_module;
     CUfunction m_kernel;
 
