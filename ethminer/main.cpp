@@ -1011,7 +1011,8 @@ public:
                  << endl
                  << "    -A, --algo          TEXT{\"ethash\", \"progpow\"}" << endl
                  << "                        Sets the algorithm for hashing on" << endl
-                 << "                        *all* defined connections" << endl
+                 << "                        *all* defined connections unless they" << endl
+                 << "                        make use of EthereumStratum/2.0.0" << endl
                  << endl
                  << "    --display-interval  INT[1 .. 1800] Default = 5" << endl
                  << "                        Statistic display interval in seconds" << endl
@@ -1095,8 +1096,8 @@ public:
                  << "                        Must be lower than --tstart" << endl
                  << "    -v,--verbosity      INT[0 .. 255] Default = 0 " << endl
                  << "                        Set output verbosity level. Use the sum of :" << endl
-                 << "                        1   to log stratum json messages" << endl
-                 << "                        2   to log found solutions per GPU" << endl
+                 << "                           1 to log stratum json messages" << endl
+                 << "                           2 to log found solutions per GPU" << endl
 #ifdef _DEVELOPER
                  << "                          32 to log socket (dis)connections" << endl
                  << "                          64 to log timing of job switches" << endl
