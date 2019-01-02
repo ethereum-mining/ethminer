@@ -278,7 +278,7 @@ void CLMiner::compileProgPoWKernel(int _block, int _dagelms)
     auto startCompile = std::chrono::steady_clock::now();
     cllog << "Compiling ProgPoW kernel for period : " << (_block / PROGPOW_PERIOD);
 
-    std::string progpow_code = ProgPow::getKern(_block, ProgPow::KERNEL_CL);
+    std::string progpow_code = ProgPow::getKern(_block, _dagelms, ProgPow::KERNEL_CL);
     progpow_code += std::string(cl_progpow_miner_kernel(), sizeof_cl_progpow_miner_kernel());
 
     char options[256];
@@ -287,7 +287,7 @@ void CLMiner::compileProgPoWKernel(int _block, int _dagelms)
 
     addDefinition(progpow_code, "GROUP_SIZE", m_settings.localWorkSize);
     addDefinition(progpow_code, "PROGPOW_DAG_BYTES", (unsigned int)m_epochContext.dagSize);
-    addDefinition(progpow_code, "PROGPOW_DAG_ELEMENTS", _dagelms);
+    // addDefinition(progpow_code, "PROGPOW_DAG_ELEMENTS", _dagelms);
     addDefinition(progpow_code, "LIGHT_WORDS", m_epochContext.lightNumItems);
     addDefinition(progpow_code, "MAX_SEARCH_RESULTS", MAX_SEARCH_RESULTS);
     switch (m_deviceDescriptor.clPlatformType)

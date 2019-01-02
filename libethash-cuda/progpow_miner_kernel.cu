@@ -84,20 +84,28 @@ __device__ __noinline__ uint64_t keccak_f800(hash32_t header, uint64_t seed, has
 {
     uint32_t st[25];
 
+    #pragma unroll
     for (int i = 0; i < 25; i++)
         st[i] = 0;
+
+    #pragma unroll
     for (int i = 0; i < 8; i++)
         st[i] = header.uint32s[i];
+
     st[8] = seed;
     st[9] = seed >> 32;
+
+    #pragma unroll
     for (int i = 0; i < 8; i++)
         st[10+i] = digest.uint32s[i];
 
-    for (int r = 0; r < 21; r++) {
+    for (int r = 0; r < 22; r++) {
         keccak_f800_round(st, r);
     }
-    // last round can be simplified due to partial output
-    keccak_f800_round(st, 21);
+
+    //// last round can be simplified due to partial output
+    // TODO elaborate this
+    //keccak_f800_round(st, 21);
 
     // Byte swap so byte 0 of hash is MSB of result
     return (uint64_t)cuda_swab32(st[0]) << 32 | cuda_swab32(st[1]);

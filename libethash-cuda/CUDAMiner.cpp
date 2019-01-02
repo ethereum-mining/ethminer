@@ -200,7 +200,7 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
     cudalog << "Compiling ProgPoW kernel for period : " << (_block / PROGPOW_PERIOD);
 
     const char* name = "progpow_search";
-    std::string text = ProgPow::getKern(_block, ProgPow::KERNEL_CUDA);
+    std::string text = ProgPow::getKern(_block, _dagelms, ProgPow::KERNEL_CUDA);
     text += std::string(cu_progpow_miner_kernel(), sizeof_cu_progpow_miner_kernel());
 
     // Keep only for reference in case it's needed to examine
@@ -222,11 +222,11 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
     std::string op_arch = "-arch=compute_" +
                           to_string(m_deviceDescriptor.cuComputeMajor) +
                           to_string(m_deviceDescriptor.cuComputeMinor);
-    std::string op_dag = "-DPROGPOW_DAG_ELEMENTS=" + to_string(_dagelms);
+    //std::string op_dag = "-DPROGPOW_DAG_ELEMENTS=" + to_string(_dagelms);
 
     const char* opts[] = {
         op_arch.c_str(), 
-        op_dag.c_str(), 
+        //op_dag.c_str(), 
         // "-lineinfo",      // For debug only
         "-use_fast_math", 
         "-default-device"

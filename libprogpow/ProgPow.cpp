@@ -15,7 +15,7 @@ void swap(int& a, int& b)
     b = t;
 }
 
-std::string ProgPow::getKern(uint64_t block_number, kernel_t kern)
+std::string ProgPow::getKern(uint64_t block_number, int dagelms, kernel_t kern)
 {
     std::stringstream ret;
 
@@ -51,6 +51,14 @@ std::string ProgPow::getKern(uint64_t block_number, kernel_t kern)
         swap(mix_seq_cache[i], mix_seq_cache[j]);
     }
 
+    ret << "#define PROGPOW_LANES           " << PROGPOW_LANES << "\n";
+    ret << "#define PROGPOW_REGS            " << PROGPOW_REGS << "\n";
+    ret << "#define PROGPOW_DAG_LOADS       " << PROGPOW_DAG_LOADS << "\n";
+    ret << "#define PROGPOW_CACHE_WORDS     " << PROGPOW_CACHE_BYTES / sizeof(uint32_t) << "\n";
+    ret << "#define PROGPOW_CNT_DAG         " << PROGPOW_CNT_DAG << "\n";
+    ret << "#define PROGPOW_CNT_MATH        " << PROGPOW_CNT_MATH << "\n";
+    ret << "\n";
+
     if (kern == KERNEL_CUDA)
     {
         ret << "#if (__CUDACC_VER_MAJOR__ > 8)\n";
@@ -75,7 +83,7 @@ std::string ProgPow::getKern(uint64_t block_number, kernel_t kern)
         ret << "#ifndef GROUP_SIZE\n";
         ret << "#define GROUP_SIZE 128\n";
         ret << "#endif\n";
-        ret << "#define GROUP_SHARE (GROUP_SIZE / " << PROGPOW_LANES << ")\n";
+        ret << "#define GROUP_SHARE (GROUP_SIZE / PROGPOW_LANES)\n";
         ret << "\n";
         ret << "typedef unsigned int       uint32_t;\n";
         ret << "typedef unsigned long      uint64_t;\n";
@@ -84,19 +92,12 @@ std::string ProgPow::getKern(uint64_t block_number, kernel_t kern)
         ret << "\n";
     }
 
-    ret << "#define PROGPOW_LANES           " << PROGPOW_LANES << "\n";
-    ret << "#define PROGPOW_REGS            " << PROGPOW_REGS << "\n";
-    ret << "#define PROGPOW_DAG_LOADS       " << PROGPOW_DAG_LOADS << "\n";
-    ret << "#define PROGPOW_CACHE_WORDS     " << PROGPOW_CACHE_BYTES / sizeof(uint32_t) << "\n";
-    ret << "#define PROGPOW_CNT_DAG         " << PROGPOW_CNT_DAG << "\n";
-    ret << "#define PROGPOW_CNT_MATH        " << PROGPOW_CNT_MATH << "\n";
-    ret << "\n";
 
     if (kern == KERNEL_CUDA)
     {
         ret << "typedef struct __align__(16) {uint32_t s[PROGPOW_DAG_LOADS];} dag_t;\n";
         ret << "\n";
-        ret << "// Inner loop for prog_seed " << prog_seed << "\n";
+        //ret << "// Inner loop for prog_seed " << prog_seed << "\n";
         ret << "__device__ __forceinline__ void progPowLoop(const uint32_t loop,\n";
         ret << "        uint32_t mix[PROGPOW_REGS],\n";
         ret << "        const dag_t *g_dag,\n";
@@ -108,7 +109,7 @@ std::string ProgPow::getKern(uint64_t block_number, kernel_t kern)
         ret << "typedef struct __attribute__ ((aligned (16))) {uint32_t s[PROGPOW_DAG_LOADS];} "
                "dag_t;\n";
         ret << "\n";
-        ret << "// Inner loop for prog_seed " << prog_seed << "\n";
+        //ret << "// Inner loop for prog_seed " << prog_seed << "\n";
         ret << "void progPowLoop(const uint32_t loop,\n";
         ret << "        uint32_t mix[PROGPOW_REGS],\n";
         ret << "        __global const dag_t *g_dag,\n";
@@ -133,9 +134,9 @@ std::string ProgPow::getKern(uint64_t block_number, kernel_t kern)
     // lanes access sequential locations
     // Hard code mix[0] to guarantee the address for the global load depends on the result of the
     // load
-    ret << "// global load\n";
+    //ret << "// global load\n";
     if (kern == KERNEL_CUDA)
-        ret << "offset = SHFL(mix[0], loop%PROGPOW_LANES, PROGPOW_LANES);\n";
+        ret << "offset = SHFL(mix[0], loop % PROGPOW_LANES, PROGPOW_LANES);\n";
     else
     {
         ret << "if(lane_id == (loop % PROGPOW_LANES))\n";
@@ -143,10 +144,10 @@ std::string ProgPow::getKern(uint64_t block_number, kernel_t kern)
         ret << "barrier(CLK_LOCAL_MEM_FENCE);\n";
         ret << "offset = share[group_id];\n";
     }
-    ret << "offset %= PROGPOW_DAG_ELEMENTS;\n";
+    ret << "offset %= " << dagelms <<";\n";
     ret << "offset = offset * PROGPOW_LANES + (lane_id ^ loop) % PROGPOW_LANES;\n";
     ret << "data_dag = g_dag[offset];\n";
-    ret << "// hack to prevent compiler from reordering LD and usage\n";
+    //ret << "// hack to prevent compiler from reordering LD and usage\n";
     if (kern == KERNEL_CUDA)
         ret << "if (hack_false) __threadfence_block();\n";
     else
@@ -161,7 +162,7 @@ std::string ProgPow::getKern(uint64_t block_number, kernel_t kern)
             std::string src = mix_cache();
             std::string dest = mix_dst();
             uint32_t r = rnd();
-            ret << "// cache load " << i << "\n";
+            //ret << "// cache load " << i << "\n";
             ret << "offset = " << src << " % PROGPOW_CACHE_WORDS;\n";
             ret << "data = c_dag[offset];\n";
             ret << merge(dest, "data", r);
@@ -180,14 +181,14 @@ std::string ProgPow::getKern(uint64_t block_number, kernel_t kern)
             uint32_t r1 = rnd();
             std::string dest = mix_dst();
             uint32_t r2 = rnd();
-            ret << "// random math " << i << "\n";
+            //ret << "// random math " << i << "\n";
             ret << math("data", src1_str, src2_str, r1);
             ret << merge(dest, "data", r2);
         }
     }
     // Consume the global load data at the very end of the loop, to allow fully latency hiding
-    ret << "// consume global load data\n";
-    ret << "// hack to prevent compiler from reordering LD and usage\n";
+    //ret << "// consume global load data\n";
+    //ret << "// hack to prevent compiler from reordering LD and usage\n";
     if (kern == KERNEL_CUDA)
         ret << "if (hack_false) __threadfence_block();\n";
     else
