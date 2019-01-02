@@ -440,30 +440,6 @@ void Farm::accountSolution(unsigned _minerIdx, SolutionAccountingEnum _accountin
 }
 
 /**
- * @brief Gets the solutions account for the whole farm
- */
-
-SolutionAccountType Farm::getSolutions()
-{
-    return m_telemetry.farm.solutions;
-}
-
-/**
- * @brief Gets the solutions account for single miner
- */
-SolutionAccountType Farm::getSolutions(unsigned _minerIdx)
-{
-    try
-    {
-        return m_telemetry.miners.at(_minerIdx).solutions;
-    }
-    catch (const std::exception&)
-    {
-        return SolutionAccountType();
-    }
-}
-
-/**
  * @brief Provides the description of segments each miner is working on
  * @return a JsonObject
  */

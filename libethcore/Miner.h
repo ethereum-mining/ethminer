@@ -104,6 +104,7 @@ struct CLSettings
 {
     vector<unsigned> devices;
     bool noBinary = false;
+    bool noExit = false;
     unsigned globalWorkSize = 0;
     unsigned globalWorkSizeMultiplier = 65536;
     unsigned localWorkSize = 128;
@@ -144,7 +145,7 @@ struct HwSensorsType
     {
         string _ret = to_string(tempC) + "C " + to_string(fanP) + "%";
         if (powerW)
-            _ret.append(boost::str(boost::format("%f") % powerW));
+            _ret.append(boost::str(boost::format(" %.1fW") % powerW));
         return _ret;
     };
 };
@@ -275,7 +276,7 @@ struct TelemetryType
         }
 
         _ret << EthTealBold << std::fixed << std::setprecision(2) << hr << " "
-             << suffixes[magnitude] << EthReset << " { ";
+             << suffixes[magnitude] << EthReset << " - ";
 
         int i = -1;                 // Current miner index
         int m = miners.size() - 1;  // Max miner index
@@ -298,9 +299,8 @@ struct TelemetryType
 
             // Separator if not the last miner index
             if (i < m)
-                _ret << " | ";
+                _ret << ", ";
         }
-        _ret << " }";
 
         return _ret.str();
     };
