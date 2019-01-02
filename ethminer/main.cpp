@@ -381,6 +381,8 @@ public:
             ->check(CLI::Range(0.00001, 100.0));
         app.add_flag("--vardiff", m_PoolSettings.benchmarkVarDiff);
 
+        app.add_option("--min-diff", m_PoolSettings.minDiff, "", true)
+            ->check(CLI::Range(0.00001, 100.0));
 
         app.add_option("--tstop", m_FarmSettings.tempStop, "", true)->check(CLI::Range(30, 100));
         app.add_option("--tstart", m_FarmSettings.tempStart, "", true)->check(CLI::Range(30, 100));
@@ -1013,6 +1015,11 @@ public:
                  << "                        Sets the algorithm for hashing on" << endl
                  << "                        *all* defined connections unless they" << endl
                  << "                        make use of EthereumStratum/2.0.0" << endl
+                 << endl
+                 << "    --min-diff          DOUBLE [0.00001 .. 100] Default 0" << endl
+                 << "                        Sets minimum difficulty for jobs" << endl
+                 << "                        May be useful for vardiff pools " << endl
+                 << "                        when initial diff is too low" <<endl
                  << endl
                  << "    --display-interval  INT[1 .. 1800] Default = 5" << endl
                  << "                        Statistic display interval in seconds" << endl

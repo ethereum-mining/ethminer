@@ -39,6 +39,7 @@ struct PoolSettings
     double benchmarkDiff = 1.0;     // Difficulty used by SimulateClient to test performances
     bool benchmarkVarDiff = false;  // Optional to specify if Simulate client should randomize
                                     // block generation and adjust difficulty
+    double minDiff = 0.0;           // Minimum difficulty for mining
 };
 
 class PoolManager

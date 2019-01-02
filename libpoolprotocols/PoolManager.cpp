@@ -198,6 +198,14 @@ void PoolManager::setClientHandlers()
             m_currentWp.epoch = _currentEpoch;
         }
 
+        if (newDiff && m_Settings.minDiff)
+        {
+            double d = dev::getDiffFromTarget(m_currentWp.boundary.hex(HexPrefix::Add));
+            if (d < m_Settings.minDiff)
+                m_currentWp.boundary =
+                    h256(dev::getTargetFromDiff(m_Settings.minDiff, HexPrefix::Add));
+        }
+
         showMiningAt(newEpoch, newBlock, newDiff);
 
         // Set the algo if defined as override in PoolManager
@@ -490,8 +498,10 @@ void PoolManager::showMiningAt(bool _showEpoch, bool _showBlock, bool _showDiff)
         ss << "Block : " EthWhiteBold << m_currentWp.block << EthReset << " ";
     if (_showDiff)
     {
-        double d = dev::getHashesToTarget(m_currentWp.boundary.hex(HexPrefix::Add));
-        ss << "Difficulty : " EthWhiteBold << dev::getFormattedHashes(d) << EthReset;
+        string t = m_currentWp.boundary.hex(HexPrefix::Add);
+        double h = dev::getHashesToTarget(t);
+        double i = dev::getDiffFromTarget(t);
+        ss << "Difficulty : " EthWhiteBold << fixed << setprecision(5) << i << " = " << dev::getFormattedHashes(h) << EthReset;
     }
     
     cnote << ss.str();

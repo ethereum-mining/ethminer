@@ -145,6 +145,31 @@ std::string dev::getTargetFromDiff(double diff, HexPrefix _prefix)
     return target;
 }
 
+double dev::getDiffFromTarget(std::string _target)
+{
+    using namespace boost::multiprecision;
+    using BigInteger = boost::multiprecision::cpp_int;
+
+    BigInteger dividend(
+        "0x00000000ffff0000000000000000000000000000000000000000000000000000");
+    BigInteger divisor(_target);
+    string quotient = boost::lexical_cast<std::string>(dividend / divisor);
+    BigInteger remainder = dividend % divisor;
+    if (!remainder.is_zero())
+    {
+        int precision = 0;
+        quotient.append(".");
+        while (precision < 6 && !remainder.is_zero())
+        {
+            precision++;
+            dividend *= 10;
+            quotient.append(boost::lexical_cast<std::string>(dividend / divisor));
+            remainder = dividend % divisor;
+        }
+    }
+    return std::stod(quotient);
+}
+
 double dev::getHashesToTarget(string _target)
 {
     using namespace boost::multiprecision;
@@ -186,7 +211,7 @@ std::string dev::getFormattedMemory(double _mem, ScaleSuffix _suffix, int _preci
     return dev::getScaledSize(_mem, 1024.0, _precision, suffixes, 4, _suffix);
 }
 
-std::string dev::padLeft(std::string _value, size_t _length, char _fillChar) 
+std::string dev::padLeft(std::string _value, size_t _length, char _fillChar)
 {
     if (_length > _value.size())
         _value.insert(0, (_length - _value.size()), _fillChar);
@@ -200,7 +225,7 @@ std::string dev::padRight(std::string _value, size_t _length, char _fillChar)
     return _value;
 }
 
-void dev::toNearestPowerOf2(unsigned int& _value) 
+void dev::toNearestPowerOf2(unsigned int& _value)
 {
     unsigned int _log2 = (unsigned int)log2(_value);
     _value = (unsigned int)pow(2, _log2);

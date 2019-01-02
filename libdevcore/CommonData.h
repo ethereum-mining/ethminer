@@ -31,6 +31,7 @@
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
 
 #include "Common.h"
 
@@ -221,36 +222,38 @@ inline unsigned bytesRequired(T _i)
     return i;
 }
 
-/// Sets environment variable.
-///
-/// Portable wrapper for setenv / _putenv C library functions.
+// Sets environment variable.
+// Portable wrapper for setenv / _putenv C library functions.
 bool setenv(const char name[], const char value[], bool override = false);
 
-/// Gets a target hash from given difficulty
+// Gets a target hash from given difficulty
 std::string getTargetFromDiff(double diff, HexPrefix _prefix = HexPrefix::Add);
 
-/// Gets the difficulty expressed in hashes to target
+// Gets difficulty index from given target
+double getDiffFromTarget(std::string _target);
+
+// Gets the difficulty expressed in hashes to target
 double getHashesToTarget(std::string _target);
 
-/// Generic function to scale a value
+// Generic function to scale a value
 std::string getScaledSize(double _value, double _divisor, int _precision, std::string _sizes[],
     size_t _numsizes, ScaleSuffix _suffix = ScaleSuffix::Add);
 
-/// Formats hashrate
+// Formats hashrate
 std::string getFormattedHashes(
     double _hr, ScaleSuffix _suffix = ScaleSuffix::Add, int _precision = 2);
 
-/// Formats hashrate
+// Formats memory units
 std::string getFormattedMemory(
     double _mem, ScaleSuffix _suffix = ScaleSuffix::Add, int _precision = 2);
 
-/// Adjust string to a fixed length filling chars to the Left
+// Adjust string to a fixed length filling chars to the Left
 std::string padLeft(std::string _value, size_t _length, char _fillChar);
 
-/// Adjust string to a fixed length filling chars to the Right
+// Adjust string to a fixed length filling chars to the Right
 std::string padRight(std::string _value, size_t _length, char _fillChar);
 
-/// Adjust an integer to the next power of 2
+// Adjust an integer to the next power of 2
 void toNearestPowerOf2(unsigned int& _value);
 
 }  // namespace dev
