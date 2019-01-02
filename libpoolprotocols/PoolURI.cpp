@@ -277,6 +277,11 @@ URI::URI(std::string uri, bool _sim) : m_uri{std::move(uri)}
     if (m_host.empty())
         throw std::runtime_error("Missing host");
 
+    // As we don't have standard scheme ports to endorse
+    // make port != 0 mandatory
+    if (m_port == 0)
+        throw std::runtime_error("Missing port number");
+
     /*
       Eventually split path info into path query fragment
     */
