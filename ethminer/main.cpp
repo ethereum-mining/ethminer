@@ -901,7 +901,7 @@ public:
                  << "                        Set the local work size multiplier" << endl
                  << "    --cl-nobin          FLAG" << endl
                  << "                        Use openCL kernel. Do not load binary kernel" << endl
-                 << "    --cl-noexit`        FLAG" << endl
+                 << "    --cl-noexit         FLAG" << endl
                  << "                        Don't use fast exit algorithm" << endl;
         }
 
