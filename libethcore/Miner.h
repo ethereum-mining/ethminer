@@ -56,6 +56,12 @@ enum class DeviceSubscriptionTypeEnum
 
 };
 
+enum class DeviceProgTypeEnum
+{
+    JIT,
+    Binary
+};
+
 enum class MinerType
 {
     Mixed,
@@ -63,6 +69,7 @@ enum class MinerType
     CUDA,
     CPU
 };
+
 
 enum class HwMonitorInfoType
 {
@@ -163,6 +170,7 @@ struct DeviceDescriptor
 {
     DeviceTypeEnum type = DeviceTypeEnum::Unknown;
     DeviceSubscriptionTypeEnum subscriptionType = DeviceSubscriptionTypeEnum::None;
+    DeviceProgTypeEnum progType = DeviceProgTypeEnum::JIT;
 
     string uniqueId;     // For GPUs this is the PCI ID
     size_t totalMemory;  // Total memory available by device

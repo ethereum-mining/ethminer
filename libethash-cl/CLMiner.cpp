@@ -818,6 +818,8 @@ bool CLMiner::initEpoch_internal()
                       << fname_strm.str();
                 cwarn << "Falling back to OpenCL kernel...";
             }
+            else
+                m_deviceDescriptor.progType = DeviceProgTypeEnum::Binary;
         }
 
         // create buffer for dag

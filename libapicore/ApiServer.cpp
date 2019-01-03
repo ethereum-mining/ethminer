@@ -1027,7 +1027,9 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(
 
     jRes["_index"] = _index;
     jRes["_mode"] =
-        (minerDescriptor.subscriptionType == DeviceSubscriptionTypeEnum::Cuda ? "CUDA" : "OpenCL");
+        (minerDescriptor.subscriptionType == DeviceSubscriptionTypeEnum::Cuda ?
+                "CUDA" :
+                (minerDescriptor.progType == DeviceProgTypeEnum::JIT ? "OpenCL" : "AMD Binary"));
 
     /* Hardware Info */
     Json::Value hwinfo;
