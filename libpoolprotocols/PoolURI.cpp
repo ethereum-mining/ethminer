@@ -279,7 +279,7 @@ URI::URI(std::string uri, bool _sim) : m_uri{std::move(uri)}
 
     // As we don't have standard scheme ports to endorse
     // make port != 0 mandatory
-    if (m_port == 0)
+    if (m_port == 0 && m_scheme != "simulation")
         throw std::runtime_error("Missing port number");
 
     /*
