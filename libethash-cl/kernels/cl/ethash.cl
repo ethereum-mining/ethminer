@@ -259,8 +259,10 @@ __kernel void search(
     uint isolate
 )
 {
+#ifndef NO_FAST_EXIT
     if (g_output->abort)
         return;
+#endif
 
     __global hash128_t const* g_dag = (__global hash128_t const*) _g_dag;
 
@@ -381,11 +383,15 @@ __kernel void search(
         state[24] = (uint2)(0);
     }
 
+#ifndef NO_FAST_EXIT
     if (get_local_id(0) == 0)
         atomic_inc(&g_output->hashCount);
+#endif
 
     if (as_ulong(as_uchar8(state[0]).s76543210) < target) {
+#ifndef NO_FAST_EXIT
         atomic_inc(&g_output->abort);
+#endif
         uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output->count));
         g_output->rslt[slot].gid = gid;
         g_output->rslt[slot].mix[0] = mixhash[0].s0;

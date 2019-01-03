@@ -104,6 +104,7 @@ struct CLSettings
 {
     vector<unsigned> devices;
     bool noBinary = false;
+    bool noExit = false;
     unsigned globalWorkSize = 0;
     unsigned globalWorkSizeMultiplier = 65536;
     unsigned localWorkSize = 128;

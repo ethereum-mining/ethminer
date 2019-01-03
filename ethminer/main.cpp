@@ -320,6 +320,8 @@ public:
 
         app.add_flag("--cl-nobin", m_CLSettings.noBinary, "");
 
+        app.add_flag("--cl-noexit", m_CLSettings.noExit, "");
+
 #endif
 
 #if ETH_ETHASHCUDA
@@ -899,7 +901,8 @@ public:
                  << "                        Set the local work size multiplier" << endl
                  << "    --cl-nobin          FLAG" << endl
                  << "                        Use openCL kernel. Do not load binary kernel" << endl
-                 << endl;
+                 << "    --cl-noexit`        FLAG" << endl
+                 << "                        Don't use fast exit algorithm" << endl;
         }
 
         if (ctx == "cu")
