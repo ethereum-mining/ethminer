@@ -436,6 +436,9 @@ void CUDAMiner::ethash_search()
             // Wait for the stream complete
             CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
+            // Update the hash rate
+            updateHashRate(m_batch_size, 1);
+
             // Check on every stream if we need to stop
             if (!done)
                 done = m_new_work.load(memory_order_relaxed);
@@ -474,8 +477,6 @@ void CUDAMiner::ethash_search()
                     startNonce, m_settings.parallelHash);
         }
 
-        // Update the hash rate
-        updateHashRate(m_batch_size, m_settings.streams);
     }
 
 #ifdef _DEVELOPER
@@ -537,6 +538,9 @@ void CUDAMiner::progpow_search()
             // Wait for the stream complete
             CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
+            // Update the hash rate
+            updateHashRate(m_batch_size, 1);
+
             // Check on every stream if we need to stop
             if (!done)
                 done = m_new_work.load(memory_order_relaxed);
@@ -586,8 +590,6 @@ void CUDAMiner::progpow_search()
             }
         }
 
-        // Update the hash rate
-        updateHashRate(m_batch_size, m_settings.streams);
     }
 
 #ifdef _DEVELOPER
