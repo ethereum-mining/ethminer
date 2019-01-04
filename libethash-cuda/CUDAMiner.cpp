@@ -117,10 +117,10 @@ bool CUDAMiner::initEpoch_internal()
             m_allocated_memory_dag = m_epochContext.dagSize;
 
             // create mining buffers
-            for (unsigned i = 0; i != m_settings.streams; ++i)
+            for (unsigned i = 0; i < m_settings.streams; ++i)
             {
-                CUDA_SAFE_CALL(cudaMallocHost(&m_search_results[i], sizeof(search_results)));
-                CUDA_SAFE_CALL(cudaStreamCreateWithFlags(&m_streams[i], cudaStreamNonBlocking));
+                CUDA_SAFE_CALL(cudaMallocHost(&m_search_results.at(i), sizeof(search_results)));
+                CUDA_SAFE_CALL(cudaStreamCreateWithFlags(&m_streams.at(i), cudaStreamNonBlocking));
             }
         }
         else
