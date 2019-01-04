@@ -240,7 +240,6 @@ progpow_search(
         return;
 
     g_output->result[index].gid = gid;
-    g_output->result[index].target = ft;
     #pragma unroll
     for (int i = 0; i < 8; i++)
         g_output->result[index].mix[i] = digest.uint32s[i];
