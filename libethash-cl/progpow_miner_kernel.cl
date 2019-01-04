@@ -82,22 +82,41 @@ void keccak_f800_round(uint32_t st[25], const int r)
 // Only need 64 bits of output for mining
 uint64_t keccak_f800(__constant hash32_t const* g_header, uint64_t seed, hash32_t digest)
 {
-    uint32_t st[25];
+    uint32_t st[25] = {
+        header.uint32s[0],
+        header.uint32s[1],
+        header.uint32s[2],
+        header.uint32s[3],
+        header.uint32s[4],
+        header.uint32s[5],
+        header.uint32s[6],
+        header.uint32s[7],
+        seed,
+        seed >> 32,
+        digest.uint32s[0],
+        digest.uint32s[1],
+        digest.uint32s[2],
+        digest.uint32s[3],
+        digest.uint32s[4],
+        digest.uint32s[5],
+        digest.uint32s[6],
+        digest.uint32s[7],
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+    };
 
-    for (int i = 0; i < 25; i++)
-        st[i] = 0;
-    for (int i = 0; i < 8; i++)
-        st[i] = g_header->uint32s[i];
-    st[8] = seed;
-    st[9] = seed >> 32;
-    for (int i = 0; i < 8; i++)
-        st[10+i] = digest.uint32s[i];
-
-    for (int r = 0; r < 21; r++) {
+    for (int r = 0; r < 22; r++) {
         keccak_f800_round(st, r);
     }
+
+    // TODO elaborate this
     // last round can be simplified due to partial output
-    keccak_f800_round(st, 21);
+    // keccak_f800_round(st, 21);
 
     // Byte swap so byte 0 of hash is MSB of result
     uint64_t res = (uint64_t)st[1] << 32 | st[0];

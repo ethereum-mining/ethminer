@@ -82,29 +82,40 @@ __device__ __forceinline__ uint32_t cuda_swab32(const uint32_t x)
 // Only need 64 bits of output for mining
 __device__ __noinline__ uint64_t keccak_f800(hash32_t header, uint64_t seed, hash32_t digest)
 {
-    uint32_t st[25];
-
-    #pragma unroll
-    for (int i = 0; i < 25; i++)
-        st[i] = 0;
-
-    #pragma unroll
-    for (int i = 0; i < 8; i++)
-        st[i] = header.uint32s[i];
-
-    st[8] = seed;
-    st[9] = seed >> 32;
-
-    #pragma unroll
-    for (int i = 0; i < 8; i++)
-        st[10+i] = digest.uint32s[i];
+    uint32_t st[25] = {
+        header.uint32s[0],
+        header.uint32s[1],
+        header.uint32s[2],
+        header.uint32s[3],
+        header.uint32s[4],
+        header.uint32s[5],
+        header.uint32s[6],
+        header.uint32s[7],
+        seed,
+        seed >> 32,
+        digest.uint32s[0],
+        digest.uint32s[1],
+        digest.uint32s[2],
+        digest.uint32s[3],
+        digest.uint32s[4],
+        digest.uint32s[5],
+        digest.uint32s[6],
+        digest.uint32s[7],
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+    };
 
     for (int r = 0; r < 22; r++) {
         keccak_f800_round(st, r);
     }
 
-    //// last round can be simplified due to partial output
     // TODO elaborate this
+    // last round can be simplified due to partial output
     //keccak_f800_round(st, 21);
 
     // Byte swap so byte 0 of hash is MSB of result
@@ -220,7 +231,8 @@ progpow_search(
     // @AndreaLanfranchi
     // hash == target is permissible due to the roundings
     // in upper64OfBoundary and difficulty
-    if (keccak_f800(header, seed, digest) > target)
+    uint64_t ft = keccak_f800(header, seed, digest);
+    if (ft > target)
         return;
 
     uint32_t index = atomicInc((uint32_t *)&g_output->count, 0xffffffff);
@@ -228,6 +240,7 @@ progpow_search(
         return;
 
     g_output->result[index].gid = gid;
+    g_output->result[index].target = ft;
     #pragma unroll
     for (int i = 0; i < 8; i++)
         g_output->result[index].mix[i] = digest.uint32s[i];
