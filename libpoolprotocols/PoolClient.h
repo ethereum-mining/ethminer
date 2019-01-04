@@ -7,6 +7,8 @@
 #include <libethcore/Miner.h>
 #include <libpoolprotocols/PoolURI.h>
 
+#define POOLCLIENT_MAX_MESSAGE_LENGTH (32*1024) // 32 kB maximum of one response from pool
+
 extern boost::asio::io_service g_io_service;
 
 using namespace std;
