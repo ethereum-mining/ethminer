@@ -41,6 +41,8 @@ class ProgPoWAux
 public:
     static bool verify(int epoch, int block, h256 const& _headerHash, h256 const& _mixHash, uint64_t _nonce,
         h256 const& _target) noexcept;
+
+    static h256 hash(int epoch, int block, h256 const& _headerHash, uint64_t _nonce);
 };
 
 struct EpochContext

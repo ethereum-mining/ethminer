@@ -39,3 +39,14 @@ bool ProgPoWAux::verify(int epoch, int block, h256 const& _headerHash, h256 cons
     auto target = progpow::hash256_from_bytes(_target.data());
     return progpow::verify(context, block, header, mix, _nonce, target);
 }
+
+h256 dev::eth::ProgPoWAux::hash(int epoch, int block, h256 const& _headerHash, uint64_t _nonce)
+{
+    auto& context = progpow::get_global_epoch_context(epoch);
+    auto header = progpow::hash256_from_bytes(_headerHash.data());
+
+    auto r = progpow::hash(context, block, header, _nonce);
+    h256 res{reinterpret_cast<byte*>(r.final_hash.bytes), h256::ConstructFromPointer};
+    return res;
+
+}
