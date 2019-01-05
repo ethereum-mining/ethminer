@@ -83,14 +83,14 @@ void keccak_f800_round(uint32_t st[25], const int r)
 uint64_t keccak_f800(__constant hash32_t const* g_header, uint64_t seed, hash32_t digest)
 {
     uint32_t st[25] = {
-        header.uint32s[0],
-        header.uint32s[1],
-        header.uint32s[2],
-        header.uint32s[3],
-        header.uint32s[4],
-        header.uint32s[5],
-        header.uint32s[6],
-        header.uint32s[7],
+        g_header.uint32s[0],
+        g_header.uint32s[1],
+        g_header.uint32s[2],
+        g_header.uint32s[3],
+        g_header.uint32s[4],
+        g_header.uint32s[5],
+        g_header.uint32s[6],
+        g_header.uint32s[7],
         seed,
         seed >> 32,
         digest.uint32s[0],
