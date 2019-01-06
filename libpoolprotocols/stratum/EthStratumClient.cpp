@@ -1164,7 +1164,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject)
             }
             else
             {
-                
+
                 if (m_onSolutionRejected)
                 {
                     cwarn << "Reject reason : "
@@ -1634,7 +1634,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
         jReq["params"].append(solution.work.job);
         jReq["params"].append(
             toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
-        break;        
+        break;
 
     case EthStratumClient::ETHEREUMSTRATUM2:
 
@@ -1642,7 +1642,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
         jReq["params"].append(
             toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
         jReq["params"].append(m_session->workerId);
-        break;        
+        break;
     }
 
     enqueue_response_plea();
@@ -1750,6 +1750,14 @@ void EthStratumClient::onRecvSocketDataCompleted(
         if (m_newjobprocessed)
             if (m_onWorkReceived)
                 m_onWorkReceived(m_current);
+
+        if (m_message.size() > POOLCLIENT_MAX_MESSAGE_LENGTH)
+        {
+            m_message.clear();
+            cerr << "Disconnecting due invalid data from pool";
+            m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+            return;
+        }
 
         // Eventually keep reading from socket
         if (isConnected())

@@ -45,7 +45,7 @@ void EthGetworkClient::connect()
 
     // Reset status flags
     m_getwork_timer.cancel();
-    
+
     // Initialize a new queue of end points
     m_endpoints = std::queue<boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>>();
     m_endpoint = boost::asio::ip::basic_endpoint<boost::asio::ip::tcp>();
@@ -122,7 +122,7 @@ void EthGetworkClient::handle_connect(const boost::system::error_code& ec)
             m_session = unique_ptr<Session>(new Session);
             m_session->subscribed.store(true, memory_order_relaxed);
             m_session->authorized.store(true, memory_order_relaxed);
-            
+
             m_connecting.store(false, std::memory_order_relaxed);
 
             if (m_onConnected)
@@ -131,7 +131,7 @@ void EthGetworkClient::handle_connect(const boost::system::error_code& ec)
         }
 
         // Retrieve 1st line waiting in the queue and submit
-        // if other lines waiting they will be processed 
+        // if other lines waiting they will be processed
         // at the end of the processed request
         Json::Reader jRdr;
         std::string* line;
@@ -198,7 +198,7 @@ void EthGetworkClient::handle_write(const boost::system::error_code& ec)
     if (!ec)
     {
         // Transmission succesfully sent.
-        // Read the response async. 
+        // Read the response async.
         async_read(m_socket, m_response, boost::asio::transfer_at_least(1),
             m_io_strand.wrap(boost::bind(&EthGetworkClient::handle_read, this,
                 boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
@@ -221,6 +221,7 @@ void EthGetworkClient::handle_read(
     if (!ec)
     {
         // Close socket
+        // No more data can be read so no need to check any max message size
         if (m_socket.is_open())
             m_socket.close();
 
@@ -253,7 +254,7 @@ void EthGetworkClient::handle_read(
             linenum++;
             line = rx_message.substr(0, delimiteroffset);
             rx_message.erase(0, delimiteroffset + 2);
-            
+
             // This identifies the beginning of body
             if (line.empty())
             {
@@ -341,7 +342,7 @@ void EthGetworkClient::handle_read(
                   << ec.message();
             disconnect();
         }
-       
+
     }
 }
 
@@ -367,9 +368,9 @@ void EthGetworkClient::handle_resolve(
     }
 }
 
-void EthGetworkClient::processResponse(Json::Value& JRes) 
+void EthGetworkClient::processResponse(Json::Value& JRes)
 {
-    unsigned _id = 0;  // This SHOULD be the same id as the request it is responding to 
+    unsigned _id = 0;  // This SHOULD be the same id as the request it is responding to
     bool _isSuccess = false;  // Whether or not this is a succesful or failed response
     string _errReason = "";   // Content of the error reason
 
@@ -418,7 +419,7 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
             {
                 Json::Value JPrm = JRes.get("result", Json::Value::null);
                 WorkPackage newWp;
-                
+
                 newWp.header = h256(JPrm.get(Json::Value::ArrayIndex(0), "").asString());
                 newWp.seed = h256(JPrm.get(Json::Value::ArrayIndex(1), "").asString());
                 newWp.boundary = h256(JPrm.get(Json::Value::ArrayIndex(2), "").asString());
@@ -531,7 +532,7 @@ void EthGetworkClient::send(Json::Value const& jReq)
     send(std::string(Json::writeString(m_jSwBuilder, jReq)));
 }
 
-void EthGetworkClient::send(std::string const& sReq) 
+void EthGetworkClient::send(std::string const& sReq)
 {
     std::string* line = new std::string(sReq);
     m_txQueue.push(line);
@@ -579,7 +580,7 @@ void EthGetworkClient::submitSolution(const Solution& solution)
 
 }
 
-void EthGetworkClient::getwork_timer_elapsed(const boost::system::error_code& ec) 
+void EthGetworkClient::getwork_timer_elapsed(const boost::system::error_code& ec)
 {
     // Triggers the resubmission of a getWork request
     if (!ec)

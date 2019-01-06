@@ -760,6 +760,7 @@ void ApiConnection::onRecvSocketDataCompleted(
     2nd group : the path
     3rd group : HTTP version
     */
+    constexpr size_t max_message_length = 32*1024; // 32 kB maximum of one request
     static std::regex http_pattern("^([A-Z]{1,6}) (\\/[\\S]*) (HTTP\\/1\\.[0-9]{1})");
     std::smatch http_matches;
 
@@ -777,6 +778,13 @@ void ApiConnection::onRecvSocketDataCompleted(
 
         if (m_message.size() < 4)
             return;  // Wait for other data to come in
+        if (m_message.size() > max_message_length)
+        {
+            m_message.clear(); // Discard message and disconnect if request exceeds max_message_length
+            cerr << "API : Disconnecting due invalid data";
+            disconnect();
+            return;
+        }
 
         if (std::regex_search(
                 m_message, http_matches, http_pattern, std::regex_constants::match_default))
