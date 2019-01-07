@@ -659,10 +659,10 @@ public:
             return;
         }
 
-        // Subscribe devices with appropriate Miner Type
-        // Use CUDA first when available then, as second, OpenCL
+            // Subscribe devices with appropriate Miner Type
+            // Use CUDA first when available then, as second, OpenCL
 
-        // Apply discrete subscriptions (if any)
+            // Apply discrete subscriptions (if any)
 #if _CUDA
         if (m_CUSettings.devices.size() &&
             (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
@@ -716,7 +716,7 @@ public:
 #endif
 
 
-        // Subscribe all detected devices
+            // Subscribe all detected devices
 #if _CUDA
         if (!m_CUSettings.devices.size() &&
             (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed))
@@ -847,7 +847,7 @@ public:
              << "                        'env'  Using environment variables" << endl
              << "    -V,--version        Show program version and exits" << endl
              << endl;
-             // clang-format on
+        // clang-format on
     }
 
     void helpExt(std::string ctx)
@@ -1272,12 +1272,12 @@ private:
 
 int main(int argc, char** argv)
 {
-    // Return values
-    // 0 - Normal exit
-    // 1 - Invalid/Insufficient command line arguments
-    // 2 - Runtime error
-    // 3 - Other exceptions
-    // 4 - Possible corruption
+// Return values
+// 0 - Normal exit
+// 1 - Invalid/Insufficient command line arguments
+// 2 - Runtime error
+// 3 - Other exceptions
+// 4 - Possible corruption
 
 #if defined(_WIN32)
     // Need to change the code page from the default OEM code page (437) so that
