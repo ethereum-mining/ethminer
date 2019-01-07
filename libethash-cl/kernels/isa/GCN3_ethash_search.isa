@@ -166,7 +166,7 @@
         s_load_dwordx2  output,         args,    arg_output
         s_waitcnt       lgkmcnt(0)
 
-.ifndef NO_FAST_EXIT
+.ifdef FAST_EXIT
         /* take early exit of abort flag is on */
         s_add_u32       scalar_double_temp0[0], output[0], 0x3c8
         s_addc_u32      scalar_double_temp0[1], output[1], 0
@@ -794,7 +794,7 @@
 
         .align          32
 .test:
-.ifndef NO_FAST_EXIT
+.ifdef FAST_EXIT
         /* increment hash count */
         v_cmp_eq_u32    vcc, 0, local_id
         s_and_saveexec_b64 s[46:47], vcc
@@ -825,21 +825,19 @@
 
         /* got solution, set the abort flag */
         s_waitcnt       lgkmcnt(0)
-.ifdef NO_FAST_EXIT
-        s_add_u32       scalar_double_temp0[0], output[0], 0x3c0
-.else
+.ifdef FAST_EXIT
         s_add_u32       scalar_double_temp0[0], output[0], 0x3c8
+.else
+        s_add_u32       scalar_double_temp0[0], output[0], 0x3c0
 .endif
         s_addc_u32      scalar_double_temp0[1], output[1], 0
         v_mov_b32       temp0, 1
         v_mov_b32       mix_double_temp0[0], scalar_double_temp0[0]
         v_mov_b32       mix_double_temp0[1], scalar_double_temp0[1]
-.ifndef NO_FAST_EXIT
+.ifdef FAST_EXIT
         flat_atomic_add temp0, mix_double_temp0, temp0 glc
-.endif
 
         /* increment the solution count */
-.ifndef NO_FAST_EXIT
         v_sub_u32       mix_double_temp0[0], vcc, mix_double_temp0[0], 8
         v_subb_u32      mix_double_temp0[1], vcc, mix_double_temp0[1], 0, vcc
 .endif
@@ -866,11 +864,5 @@
         s_waitcnt       vmcnt(0) & lgkmcnt(0)
 
         s_mov_b64       exec, s[46:47]
-        s_endpgm
-
-.ifndef NO_FAST_EXIT
-        .align          32
 fastexit:
         s_endpgm
-.endif
-

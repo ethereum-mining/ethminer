@@ -747,8 +747,8 @@ bool CLMiner::initEpoch_internal()
         if (m_deviceDescriptor.clPlatformType == ClPlatformTypeEnum::Clover)
             addDefinition(code, "LEGACY", 1);
 
-        if (m_settings.noExit)
-            addDefinition(code, "NO_FAST_EXIT", 1);
+        if (!m_settings.noExit)
+            addDefinition(code, "FAST_EXIT", 1);
 
         // create miner OpenCL program
         cl::Program::Sources sources{{code.data(), code.size()}};
@@ -782,7 +782,7 @@ bool CLMiner::initEpoch_internal()
             std::transform(device_name.begin(), device_name.end(), device_name.begin(), ::tolower);
             fname_strm << boost::dll::program_location().parent_path().string()
                        << "/kernels/ethash_" << device_name << "_lws" << m_settings.localWorkSize
-                       << (m_settings.noExit ? "_noexit.bin" : ".bin");
+                       << (m_settings.noExit ? ".bin" : "_exit.bin");
             cllog << "Loading binary kernel " << fname_strm.str();
             try
             {
