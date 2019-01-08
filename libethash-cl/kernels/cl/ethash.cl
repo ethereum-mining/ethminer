@@ -1,3 +1,5 @@
+static const char *ethash_opencl_kernel = R"foo(
+
 // Copyright 2017 Yurio Miyazawa (a.k.a zawawa) <me@yurio.net>
 //
 // This file is part of Gateless Gate Sharp.
@@ -456,3 +458,5 @@ __kernel void GenerateDAG(uint start, __global const uint16 *_Cache, __global ui
     //if (NodeIdx < DAG_SIZE)
     DAG[NodeIdx] = DAGNode;
 }
+
+)foo";

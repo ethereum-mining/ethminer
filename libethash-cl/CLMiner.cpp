@@ -9,7 +9,8 @@
 #include <ethash/ethash.hpp>
 
 #include "CLMiner.h"
-#include "ethash.h"
+
+#include "ethash.cl"
 
 using namespace dev;
 using namespace eth;
@@ -735,7 +736,7 @@ bool CLMiner::initEpoch_internal()
         string code;
 
         cllog << "OpenCL kernel";
-        code = string(ethash_cl, ethash_cl + sizeof(ethash_cl));
+        code = string(ethash_opencl_kernel);
 
         addDefinition(code, "WORKSIZE", m_settings.localWorkSize);
         addDefinition(code, "ACCESSES", 64);
