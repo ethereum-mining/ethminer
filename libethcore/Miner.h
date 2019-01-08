@@ -88,10 +88,14 @@ enum class SolutionAccountingEnum
     Failed
 };
 
-// Holds settings for CUDA Miner
-struct CUSettings
+struct MinerSettings
 {
     vector<unsigned> devices;
+};
+
+// Holds settings for CUDA Miner
+struct CUSettings : public MinerSettings
+{
     unsigned streams = 2;
     unsigned schedule = 4;
     unsigned gridSize = 8192;
@@ -100,19 +104,18 @@ struct CUSettings
 };
 
 // Holds settings for OpenCL Miner
-struct CLSettings
+struct CLSettings : public MinerSettings
 {
-    vector<unsigned> devices;
     bool noBinary = false;
+    bool noExit = false;
     unsigned globalWorkSize = 0;
     unsigned globalWorkSizeMultiplier = 65536;
     unsigned localWorkSize = 128;
 };
 
 // Holds settings for CPU Miner
-struct CPSettings
+struct CPSettings : public MinerSettings
 {
-    vector<unsigned> devices;
 };
 
 struct SolutionAccountType

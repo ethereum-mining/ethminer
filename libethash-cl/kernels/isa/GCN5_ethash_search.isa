@@ -28,8 +28,11 @@
         .arg dag_size, "uint", uint
         .arg start_nonce, "ulong", ulong
         .arg target, "ulong", ulong
-        .arg isolate, "uint", uint
     .text
+
+        MAX_SEARCH_RESULTS = 15
+        result_count_offset = (MAX_SEARCH_RESULTS * 64)
+
         mix0 = %v24
         mix1 = %v25
         mix2 = %v26
@@ -165,8 +168,9 @@
         s_load_dwordx2  output,         args,    arg_output
         s_waitcnt       lgkmcnt(0)
 
+.ifdef FAST_EXIT
         /* take early exit of abort flag is on */
-        s_add_u32       scalar_double_temp0[0], output[0], 0x3c8
+        s_add_u32       scalar_double_temp0[0], output[0], result_count_offset + 8
         s_addc_u32      scalar_double_temp0[1], output[1], 0
         v_mov_b32       mix_double_temp0[0], scalar_double_temp0[0]
         v_mov_b32       mix_double_temp0[1], scalar_double_temp0[1]
@@ -174,6 +178,7 @@
         s_waitcnt       vmcnt(0) & lgkmcnt(0)
         v_cmp_lg_i32    vcc, 0, temp0
         s_cbranch_vccnz fastexit
+.endif
 
         s_load_dwordx2  header,         args,    arg_header
         s_load_dwordx2  dag,            args,    arg_dag
@@ -797,16 +802,18 @@
         s_branch        .keccak_loop
 
 .test:
+.ifdef FAST_EXIT
         /* increment hash count */
         v_cmp_eq_u32    vcc, 0, local_id
         s_and_saveexec_b64 s[46:47], vcc
-        s_add_u32       scalar_double_temp0[0], output[0], 0x3c4
+        s_add_u32       scalar_double_temp0[0], output[0], result_count_offset + 4
         s_addc_u32      scalar_double_temp0[1], output[1], 0
         v_mov_b32       temp0, 1
         v_mov_b32       mix_double_temp0[0], scalar_double_temp0[0]
         v_mov_b32       mix_double_temp0[1], scalar_double_temp0[1]
         flat_atomic_add temp0, mix_double_temp0, temp0 glc
         s_mov_b64       exec, s[46:47]
+.endif
 
         /* gid - Upper 32bits are ignored. */
         v_add_co_u32    temp1, vcc, first_work_item_in_group, local_id
@@ -826,21 +833,27 @@
 
         /* got solution, set the abort flag */
         s_waitcnt       lgkmcnt(0)
-        s_add_u32       scalar_double_temp0[0], output[0], 0x3c8
+.ifdef FAST_EXIT
+        s_add_u32       scalar_double_temp0[0], output[0], result_count_offset + 8
+.else
+        s_add_u32       scalar_double_temp0[0], output[0], result_count_offset
+.endif
         s_addc_u32      scalar_double_temp0[1], output[1], 0
         v_mov_b32       temp0, 1
         v_mov_b32       mix_double_temp0[0], scalar_double_temp0[0]
         v_mov_b32       mix_double_temp0[1], scalar_double_temp0[1]
+.ifdef FAST_EXIT
         flat_atomic_add temp0, mix_double_temp0, temp0 glc
 
         /* increment the solution count */
         v_sub_co_u32    mix_double_temp0[0], vcc, mix_double_temp0[0], 8
         v_subb_co_u32   mix_double_temp0[1], vcc, mix_double_temp0[1], 0, vcc
+.endif
         flat_atomic_add temp0, mix_double_temp0, temp0 glc
         s_waitcnt       vmcnt(0) & lgkmcnt(0)
 
         /* store the solution */
-        v_min_u32       mix_double_temp0[0], 0xe, temp0
+        v_min_u32       mix_double_temp0[0], MAX_SEARCH_RESULTS - 1, temp0
         v_mov_b32       mix_double_temp0[1], 0
         v_lshlrev_b64   mix_double_temp0, 6, mix_double_temp0
         v_add_co_u32    mix_double_temp1[0], vcc, output[0], mix_double_temp0[0]
