@@ -1178,7 +1178,7 @@ std::string ApiConnection::getHttpMinerStatDetail()
         _ret << "<td class=right>" << device["mining"]["shares"][0].asString() << "</td>";
         _ret << "<td class=right>" << device["hardware"]["sensors"][0].asString() << "</td>";
         _ret << "<td class=right>" << device["hardware"]["sensors"][1].asString() << "</td>";
-        _ret << "<td class=right>" << device["hardware"]["sensors"][2].asString() << "</td>";
+        _ret << "<td class=right>" << setprecision(2) << power << "</td>";
 
         _ret << "</tr>";  // Close row
     }
