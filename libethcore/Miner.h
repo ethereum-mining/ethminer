@@ -158,7 +158,7 @@ struct HwSensorsType
     {
         string _ret = to_string(tempC) + "C " + to_string(fanP) + "%";
         if (powerW)
-            _ret.append(boost::str(boost::format(" %3.1f") % powerW));
+            _ret.append(boost::str(boost::format("%6.1f") % powerW));
         return _ret;
     };
 };
