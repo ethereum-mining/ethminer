@@ -28,7 +28,6 @@
         .arg dag_size, "uint", uint
         .arg start_nonce, "ulong", ulong
         .arg target, "ulong", ulong
-        .arg isolate, "uint", uint
     .text
 
         MAX_SEARCH_RESULTS = 15
