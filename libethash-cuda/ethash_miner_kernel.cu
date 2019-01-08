@@ -1025,13 +1025,14 @@ template <uint32_t _PARALLEL_HASH>
 __global__ void ethash_search(volatile search_results* g_output, uint64_t start_nonce)
 {
     uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;
+    uint64_t nonce = start_nonce + gid;
     uint2 mix[4];
-    if (compute_hash<_PARALLEL_HASH>(start_nonce + gid, mix))
+    if (compute_hash<_PARALLEL_HASH>(nonce, mix))
         return;
     uint32_t index = atomicInc((uint32_t*)&g_output->count, 0xffffffff);
     if (index >= MAX_SEARCH_RESULTS)
         return;
-    g_output->result[index].gid = gid;
+    g_output->result[index].nonce = (nonce);
     g_output->result[index].mix[0] = mix[0].x;
     g_output->result[index].mix[1] = mix[0].y;
     g_output->result[index].mix[2] = mix[1].x;

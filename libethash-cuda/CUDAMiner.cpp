@@ -95,6 +95,9 @@ bool CUDAMiner::initEpoch_internal()
             CUDA_SAFE_CALL(cudaSetDeviceFlags(m_settings.schedule));
             CUDA_SAFE_CALL(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
+            // Device reset has unloaded all
+            m_progpow_kernel_loaded = false;
+
             // Check whether the current device has sufficient memory every time we recreate the dag
             if (m_deviceDescriptor.totalMemory < RequiredMemory)
             {
@@ -122,6 +125,7 @@ bool CUDAMiner::initEpoch_internal()
                 CUDA_SAFE_CALL(cudaMallocHost(&m_search_results.at(i), sizeof(search_results)));
                 CUDA_SAFE_CALL(cudaStreamCreateWithFlags(&m_streams.at(i), cudaStreamNonBlocking));
             }
+
         }
         else
         {
@@ -147,7 +151,6 @@ bool CUDAMiner::initEpoch_internal()
                 << dev::getFormattedMemory(
                        (double)(m_deviceDescriptor.totalMemory - RequiredMemory))
                 << " left.";
-
 
         m_dag_progpow = reinterpret_cast<hash64_t*>(m_dag);
         retVar = true;
@@ -219,20 +222,16 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
         NULL));                                // includeNames
 
     NVRTC_SAFE_CALL(nvrtcAddNameExpression(prog, name));
-    std::string op_arch = "-arch=compute_" +
-                          to_string(m_deviceDescriptor.cuComputeMajor) +
+    std::string op_arch = "-arch=compute_" + to_string(m_deviceDescriptor.cuComputeMajor) +
                           to_string(m_deviceDescriptor.cuComputeMinor);
-    //std::string op_dag = "-DPROGPOW_DAG_ELEMENTS=" + to_string(_dagelms);
+    // std::string op_dag = "-DPROGPOW_DAG_ELEMENTS=" + to_string(_dagelms);
 
-    const char* opts[] = {
-        op_arch.c_str(), 
-        //op_dag.c_str(), 
+    const char* opts[] = {op_arch.c_str(),
+        // op_dag.c_str(),
         // "-lineinfo",      // For debug only
-        "-use_fast_math", 
-        "-default-device"
-    };
+        "-use_fast_math"/*, "-default-device"*/};
     nvrtcResult compileResult = nvrtcCompileProgram(prog,  // prog
-        3,                                                 // numOptions
+        2,                                                 // numOptions
         opts);                                             // options
 
 #ifdef _DEVELOPER
@@ -306,6 +305,10 @@ void CUDAMiner::compileProgPoWKernel(int _block, int _dagelms)
                    std::chrono::steady_clock::now() - startCompile)
                    .count()
             << " ms. ";
+
+    // Allocate space for header and target constants
+    CUDA_SAFE_CALL(cudaMalloc((void**)&d_pheader, sizeof(hash32_t)));
+    CUDA_SAFE_CALL(cudaMalloc((void**)&d_ptarget, sizeof(uint64_t)));
 }
 
 void CUDAMiner::unloadProgPoWKernel()
@@ -316,6 +319,13 @@ void CUDAMiner::unloadProgPoWKernel()
     if (g_logOptions && LOG_COMPILE)
         cudalog << "Unloading ProgPoW kernel";
 #endif
+
+    CUDA_SAFE_CALL(cudaFree(d_pheader));
+    CUDA_SAFE_CALL(cudaFree(d_ptarget));
+
+    // Ensure next ProgPoW target is set
+    m_current_target = 0;
+
     CU_SAFE_CALL(cuModuleUnload(m_module));
     m_progpow_kernel_loaded = false;
 }
@@ -380,6 +390,7 @@ void CUDAMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollecti
             deviceDescriptor.cuComputeMajor = props.major;
             deviceDescriptor.cuComputeMinor = props.minor;
 
+
             _DevicesCollection[uniqueId] = deviceDescriptor;
         }
         catch (const cuda_runtime_error& _e)
@@ -393,91 +404,75 @@ void CUDAMiner::ethash_search()
 {
     uint64_t startNonce, target;
     startNonce = m_work_active.startNonce;
-    target = (uint64_t)(u64)((u256)m_work_active.boundary >> 192);
+    flags activeStreams(m_settings.streams);
 
     set_header(*reinterpret_cast<hash32_t const*>(m_work_active.header.data()));
+
+    target = (uint64_t)(u64)((u256)m_work_active.boundary >> 192);
     if (m_current_target != target)
     {
-        set_target(target);
         m_current_target = target;
+        set_target(m_current_target);
     }
 
-    // process batches until we get new work.
-    bool done = m_new_work.load(memory_order_relaxed);
 
-    // prime each stream, clear search result buffers and start the search
-    uint32_t current_index;
-    if (!done)
+    unsigned int launchIndex, streamIndex;
+    launchIndex = 0;
+    uint32_t found_count = 0;
+
+    while (true)
     {
-        for (current_index = 0; current_index < m_settings.streams;
-             current_index++, startNonce += m_batch_size)
+        launchIndex++;
+        streamIndex = launchIndex % m_settings.streams;
+        cudaStream_t stream = m_streams.at(streamIndex);
+        volatile search_results& buffer(*m_search_results.at(streamIndex));
+        
+        if (launchIndex >= m_settings.streams || !m_new_work.load(memory_order_relaxed))
         {
-            cudaStream_t stream = m_streams[current_index];
-            volatile search_results& buffer(*m_search_results[current_index]);
-            buffer.count = 0;
+            if (activeStreams.test(streamIndex))
+            {
+                CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
+                found_count = std::min((unsigned)buffer.count, MAX_SEARCH_RESULTS);
+                buffer.count = 0;
+                activeStreams.reset(streamIndex);
 
-            // Run the batch for this stream
+                // Update the hash rate
+                updateHashRate(m_batch_size, 1);
+            }
+        }
+
+        if (!m_new_work.load(memory_order_relaxed))
+        {
             run_ethash_search(m_settings.gridSize, m_settings.blockSize, stream, &buffer,
                 startNonce, m_settings.parallelHash);
+            activeStreams.set(streamIndex);
+            startNonce += m_batch_size;
         }
-    }
 
-    while (!done)
-    {
-        // This inner loop will process each cuda stream individually
-        for (current_index = 0; current_index < m_settings.streams;
-             current_index++, startNonce += m_batch_size)
+        if (found_count)
         {
-            // Each pass of this loop will wait for a stream to exit,
-            // save any found solutions, then restart the stream
-            // on the next group of nonces.
-            cudaStream_t stream = m_streams[current_index];
-
-            // Wait for the stream complete
-            CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
-
-            // Update the hash rate
-            updateHashRate(m_batch_size, 1);
-
-            // Check on every stream if we need to stop
-            if (!done)
-                done = m_new_work.load(memory_order_relaxed);
-
-            // Detect solutions in current stream's solution buffer
-            volatile search_results& buffer(*m_search_results[current_index]);
-            uint32_t found_count = std::min((unsigned)buffer.count, MAX_SEARCH_RESULTS);
-
-            if (found_count)
+            // Extract solution and pass to higer level
+            // using io_service as dispatcher
+            for (uint32_t i = 0; i < found_count; i++)
             {
-                buffer.count = 0;
-                uint64_t nonce_base = startNonce - m_streams_batch_size;
+                h256 mix;
+                uint64_t nonce = buffer.result[i].nonce;
+                memcpy(mix.data(), (void*)&buffer.result[i].mix, sizeof(buffer.result[i].mix));
+                auto sol =
+                    Solution{nonce, mix, m_work_active, std::chrono::steady_clock::now(), m_index};
 
-                // Extract solution and pass to higer level
-                // using io_service as dispatcher
+                cudalog << EthWhite << "Job: " << m_work_active.header.abridged()
+                        << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
 
-                for (uint32_t i = 0; i < found_count; i++)
-                {
-                    h256 mix;
-                    uint64_t nonce = nonce_base + buffer.result[i].gid;
-                    memcpy(mix.data(), (void*)&buffer.result[i].mix, sizeof(buffer.result[i].mix));
-                    auto sol = Solution{
-                        nonce, mix, m_work_active, std::chrono::steady_clock::now(), m_index};
-
-                    cudalog << EthWhite << "Job: " << m_work_active.header.abridged()
-                            << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
-
-                    Farm::f().submitProof(sol);
-                }
+                Farm::f().submitProof(sol);
             }
-
-            // restart the stream on the next batch of nonces
-            // unless we are done for this round.
-            if (!done)
-                run_ethash_search(m_settings.gridSize, m_settings.blockSize, stream, &buffer,
-                    startNonce, m_settings.parallelHash);
         }
 
+        if (!activeStreams.any())
+            break;
+
     }
+
 
 #ifdef _DEVELOPER
     // Optionally log job switch time
@@ -492,103 +487,87 @@ void CUDAMiner::ethash_search()
 
 void CUDAMiner::progpow_search()
 {
+    bool hack_false = false;
+
     uint64_t startNonce, target;
     startNonce = m_work_active.startNonce;
-    target = (uint64_t)(u64)((u256)m_work_active.boundary >> 192);
+    
+    flags activeStreams(m_settings.streams);
 
     hash32_t header = *reinterpret_cast<hash32_t const*>(m_work_active.header.data());
+    CUDA_SAFE_CALL(cudaMemcpy(d_pheader, &header, sizeof(hash32_t), cudaMemcpyHostToDevice));
 
-    // process batches until we get new work.
-    bool done = m_new_work.load(memory_order_relaxed);
-
-    // prime each stream, clear search result buffers and start the search
-    uint32_t current_index;
-    if (!done)
+    target = (uint64_t)(u64)((u256)m_work_active.boundary >> 192);
+    if (m_current_target != target)
     {
-        for (current_index = 0; current_index < m_settings.streams;
-             current_index++, startNonce += m_batch_size)
-        {
-            cudaStream_t stream = m_streams[current_index];
-            volatile search_results* buffer = m_search_results[current_index];
-            buffer->count = 0;
+        m_current_target = target;
+        CUDA_SAFE_CALL(cudaMemcpy(d_ptarget, &target, sizeof(uint64_t), cudaMemcpyHostToDevice));
+    }
 
+    unsigned int launchIndex, streamIndex;
+    launchIndex = 0;
+    uint32_t found_count = 0;
+
+    while (true)
+    {
+        launchIndex++;
+        streamIndex = launchIndex % m_settings.streams;
+        cudaStream_t stream = m_streams.at(streamIndex);
+        volatile search_results* buffer = m_search_results.at(streamIndex);
+
+        if (launchIndex >= m_settings.streams || !m_new_work.load(memory_order_relaxed))
+        {
+            if (activeStreams.test(streamIndex))
+            {
+                CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
+                found_count = std::min((unsigned)buffer->count, MAX_SEARCH_RESULTS);
+                buffer->count = 0;
+                activeStreams.reset(streamIndex);
+
+                // Update the hash rate
+                updateHashRate(m_batch_size, 1);
+            }
+        }
+
+        if (!m_new_work.load(memory_order_relaxed))
+        {
             // Run the batch for this stream
-            bool hack_false = false;
             uint64_t batchNonce = startNonce;
-            void* args[] = {&batchNonce, &header, &target, &m_dag_progpow, &buffer, &hack_false};
+            void* args[] = {
+                &batchNonce, &d_pheader, &d_ptarget, &m_dag_progpow, &buffer, &hack_false};
             CU_SAFE_CALL(cuLaunchKernel(m_kernel, m_settings.gridSize, 1, 1,  // grid dim
                 m_settings.blockSize, 1, 1,                                   // block dim
                 0,                                                            // shared mem
                 stream,                                                       // stream
                 args, 0));                                                    // arguments
+            activeStreams.set(streamIndex);
+            startNonce += m_batch_size;
         }
-    }
 
-    while (!done)
-    {
-        // This inner loop will process each cuda stream individually
-        for (current_index = 0; current_index < m_settings.streams;
-             current_index++, startNonce += m_batch_size)
+        // Submit solution while kernel running
+        if (found_count)
         {
-            // Each pass of this loop will wait for a stream to exit,
-            // save any found solutions, then restart the stream
-            // on the next group of nonces.
-            cudaStream_t stream = m_streams[current_index];
-
-            // Wait for the stream complete
-            CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
-
-            // Update the hash rate
-            updateHashRate(m_batch_size, 1);
-
-            // Check on every stream if we need to stop
-            if (!done)
-                done = m_new_work.load(memory_order_relaxed);
-
-            // Detect solutions in current stream's solution buffer
-            volatile search_results* buffer = m_search_results[current_index];
-            uint32_t found_count = std::min((unsigned)buffer->count, MAX_SEARCH_RESULTS);
-
-            if (found_count)
+            // Extract solution and pass to higer level
+            // using io_service as dispatcher
+            for (uint32_t i = 0; i < found_count; i++)
             {
-                buffer->count = 0;
-                uint64_t nonce_base = startNonce - m_streams_batch_size;
+                h256 mix;
+                uint64_t nonce = buffer->result[i].nonce;
+                memcpy(mix.data(), (void*)&buffer->result[i].mix, sizeof(buffer->result[i].mix));
+                auto sol =
+                    Solution{nonce, mix, m_work_active, std::chrono::steady_clock::now(), m_index};
 
-                // Extract solution and pass to higer level
-                // using io_service as dispatcher
+                cudalog << EthWhite << "Job: " << m_work_active.header.abridged()
+                        << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
 
-                for (uint32_t i = 0; i < found_count; i++)
-                {
-                    h256 mix;
-                    uint64_t nonce = nonce_base + buffer->result[i].gid;
-                    memcpy(
-                        mix.data(), (void*)&buffer->result[i].mix, sizeof(buffer->result[i].mix));
-                    auto sol = Solution{
-                        nonce, mix, m_work_active, std::chrono::steady_clock::now(), m_index};
-
-                    cudalog << EthWhite << "Job: " << m_work_active.header.abridged()
-                            << " Sol: " << toHex(sol.nonce, HexPrefix::Add) << EthReset;
-
-                    Farm::f().submitProof(sol);
-                }
+                Farm::f().submitProof(sol);
             }
 
-            // restart the stream on the next batch of nonces
-            // unless we are done for this round.
-            if (!done)
-            {
-                // Run the batch for this stream
-                bool hack_false = false;
-                uint64_t batchNonce = startNonce;
-                void* args[] = {
-                    &batchNonce, &header, &target, &m_dag_progpow, &buffer, &hack_false};
-                CU_SAFE_CALL(cuLaunchKernel(m_kernel, m_settings.gridSize, 1, 1,  // grid dim
-                    m_settings.blockSize, 1, 1,                                   // block dim
-                    0,                                                            // shared mem
-                    stream,                                                       // stream
-                    args, 0));                                                    // arguments
-            }
+            found_count = 0;
         }
+
+        if (!activeStreams.any())
+            break;
 
     }
 

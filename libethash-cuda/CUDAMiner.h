@@ -43,13 +43,11 @@ public:
 
 
 protected:
-
     bool initDevice() override;
 
     bool initEpoch_internal() override;
 
 private:
-
     void workLoop() override;
 
     void ethash_search() override;
@@ -62,21 +60,25 @@ private:
     CUmodule m_module;
     CUfunction m_kernel;
 
-    std::vector<volatile search_results *> m_search_results;
+    std::vector<volatile search_results*> m_search_results;
 
     hash128_t* m_dag;
     hash64_t* m_dag_progpow;
     hash64_t* m_light;
+    hash32_t* d_pheader = NULL;
+    uint64_t* d_ptarget = NULL;
 
     std::vector<cudaStream_t> m_streams;
-    uint64_t m_current_target = 0;
 
+    static const size_t size = sizeof(unsigned long) * CHAR_BIT;
+    typedef std::bitset<size> flags;
+    
     CUSettings m_settings;
 
     const uint32_t m_batch_size;
     const uint32_t m_streams_batch_size;
 
-    uint64_t m_allocated_memory_dag = 0; // dag_size is a uint64_t in EpochContext struct
+    uint64_t m_allocated_memory_dag = 0;  // dag_size is a uint64_t in EpochContext struct
     size_t m_allocated_memory_light_cache = 0;
 };
 

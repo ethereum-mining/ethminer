@@ -478,6 +478,7 @@ protected:
     boost::condition_variable m_dag_loaded_signal;
 
     WorkPackage m_work_latest, m_work_active;
+    uint64_t m_current_target = 0;
 
 private:
     bitset<MinerPauseEnum::Pause_MAX> m_pauseFlags;

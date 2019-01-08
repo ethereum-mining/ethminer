@@ -179,7 +179,6 @@ bool Miner::initEpoch_internal()
 
 void Miner::minerLoop()
 {
-
     bool newEpoch, newProgPoWPeriod;
 
     // Don't catch exceptions here !!
@@ -209,6 +208,13 @@ void Miner::minerLoop()
             boost::mutex::scoped_lock l(x_work);
             newEpoch = (m_work_latest.epoch != m_work_active.epoch);
             newProgPoWPeriod = (m_work_latest.block / PROGPOW_PERIOD != m_work_active.period);
+
+            // Lower current target so we can be sure it will be set as
+            // constant into device
+
+            if (m_work_active.algo != m_work_latest.algo)
+                m_current_target = 0;
+
             m_work_active = m_work_latest;
             l.unlock();
         }
@@ -233,11 +239,9 @@ void Miner::minerLoop()
         }
         else if (m_work_active.algo == "progpow")
         {
-
             m_work_active.period = m_work_active.block / PROGPOW_PERIOD;
             if (newProgPoWPeriod)
             {
-
                 uint32_t dagelms = (unsigned)(m_epochContext.dagSize / ETHASH_MIX_BYTES);
                 compileProgPoWKernel(m_work_active.block, dagelms);
 

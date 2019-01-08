@@ -6,7 +6,7 @@ typedef struct {
     uint32_t count;
     struct {
         // One word for gid and 8 for mix hash
-        uint32_t gid;
+        uint64_t nonce;
         uint32_t mix[8];
     } result[SEARCH_RESULTS];
 } search_results;
@@ -15,6 +15,7 @@ typedef struct
 {
     uint32_t uint32s[8];
 } hash32_t;
+
 
 // Implementation based on:
 // https://github.com/mjosaarinen/tiny_sha3/blob/master/sha3.c
@@ -80,17 +81,17 @@ __device__ __forceinline__ uint32_t cuda_swab32(const uint32_t x)
 // Keccak - implemented as a variant of SHAKE
 // The width is 800, with a bitrate of 576, a capacity of 224, and no padding
 // Only need 64 bits of output for mining
-__device__ __noinline__ uint64_t keccak_f800(hash32_t header, uint64_t seed, hash32_t digest)
+__device__ __noinline__ uint64_t keccak_f800(const hash32_t* header, uint64_t seed, hash32_t digest)
 {
     uint32_t st[25] = {
-        header.uint32s[0],
-        header.uint32s[1],
-        header.uint32s[2],
-        header.uint32s[3],
-        header.uint32s[4],
-        header.uint32s[5],
-        header.uint32s[6],
-        header.uint32s[7],
+        header->uint32s[0],
+        header->uint32s[1],
+        header->uint32s[2],
+        header->uint32s[3],
+        header->uint32s[4],
+        header->uint32s[5],
+        header->uint32s[6],
+        header->uint32s[7],
         seed,
         seed >> 32,
         digest.uint32s[0],
@@ -161,8 +162,8 @@ __device__ __forceinline__ void fill_mix(uint64_t seed, uint32_t lane_id, uint32
 __global__ void
 progpow_search(
     uint64_t start_nonce,
-    const hash32_t header,
-    const uint64_t target,
+    const hash32_t *header,
+    const uint64_t *target,
     const dag_t *g_dag,
     volatile search_results* g_output,
     bool hack_false
@@ -231,15 +232,14 @@ progpow_search(
     // @AndreaLanfranchi
     // hash == target is permissible due to the roundings
     // in upper64OfBoundary and difficulty
-    uint64_t ft = keccak_f800(header, seed, digest);
-    if (ft > target)
+    if (keccak_f800(header, seed, digest) > *target)
         return;
 
     uint32_t index = atomicInc((uint32_t *)&g_output->count, 0xffffffff);
     if (index >= SEARCH_RESULTS)
         return;
 
-    g_output->result[index].gid = gid;
+    g_output->result[index].nonce = nonce;
     #pragma unroll
     for (int i = 0; i < 8; i++)
         g_output->result[index].mix[i] = digest.uint32s[i];

@@ -39,7 +39,7 @@ typedef struct
     struct
     {
         // One word for gid and 8 for mix hash
-        uint32_t gid;
+        uint64_t nonce;
         uint32_t mix[8];
     } result[MAX_SEARCH_RESULTS];
 } search_results;
