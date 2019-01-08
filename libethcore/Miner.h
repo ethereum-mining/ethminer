@@ -275,7 +275,7 @@ struct TelemetryType
         }
 
         _ret << EthTealBold << std::fixed << std::setprecision(2) << hr << " "
-             << suffixes[magnitude] << EthReset << " { ";
+             << suffixes[magnitude] << EthReset << " - ";
 
         int i = -1;                 // Current miner index
         int m = miners.size() - 1;  // Max miner index
@@ -298,9 +298,8 @@ struct TelemetryType
 
             // Separator if not the last miner index
             if (i < m)
-                _ret << " | ";
+                _ret << ", ";
         }
-        _ret << " }";
 
         return _ret.str();
     };
