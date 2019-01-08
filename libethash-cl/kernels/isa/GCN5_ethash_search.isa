@@ -853,7 +853,7 @@
         s_waitcnt       vmcnt(0) & lgkmcnt(0)
 
         /* store the solution */
-        v_min_u32       mix_double_temp0[0], MAX_SEARCH_RESULTS, temp0
+        v_min_u32       mix_double_temp0[0], MAX_SEARCH_RESULTS - 1, temp0
         v_mov_b32       mix_double_temp0[1], 0
         v_lshlrev_b64   mix_double_temp0, 6, mix_double_temp0
         v_add_co_u32    mix_double_temp1[0], vcc, output[0], mix_double_temp0[0]
