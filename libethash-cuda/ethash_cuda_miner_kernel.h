@@ -62,7 +62,7 @@ void set_header(hash32_t _header);
 void set_target(uint64_t _target);
 
 void run_ethash_search(uint32_t gridSize, uint32_t blockSize, cudaStream_t stream,
-    volatile Search_results* g_output, uint64_t start_nonce, uint32_t parallelHash);
+    volatile Search_results* g_output, uint64_t start_nonce);
 
 void ethash_generate_dag(uint64_t dag_size, uint32_t blocks, uint32_t threads, cudaStream_t stream);
 

@@ -96,7 +96,6 @@ struct CUSettings
     unsigned schedule = 4;
     unsigned gridSize = 8192;
     unsigned blockSize = 128;
-    unsigned parallelHash = 4;
 };
 
 // Holds settings for OpenCL Miner

@@ -397,14 +397,11 @@ void CLMiner::workLoop()
                         m_lastNonce = nonce;
                         h256 mix;
                         memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
-                        auto sol = Solution{
-                            nonce, mix, current, std::chrono::steady_clock::now(), m_index};
 
-                        cllog << EthWhite << "Job: " << w.header.abridged() << " Sol: "
-                              << toHex(sol.nonce, HexPrefix::Add) << EthReset;
-
-                        Farm::f().submitProof(sol);
-
+                        Farm::f().submitProof(Solution{
+                            nonce, mix, current, std::chrono::steady_clock::now(), m_index});
+                        cllog << EthWhite << "Job: " << current.header.abridged() << " Sol: 0x"
+                              << toHex(nonce) << EthReset;
                     }
                 }
             }
