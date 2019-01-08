@@ -439,7 +439,7 @@ void CLMiner::kick_miner()
 {
     // Memory for abort Cannot be static because crashes on macOS.
     const uint32_t one = 1;
-    if (m_abortqueue.size() && !m_settings.noExit)
+    if (!m_settings.noExit && !m_abortqueue.empty())
         m_abortqueue[0].enqueueWriteBuffer(
             m_searchBuffer[0], CL_TRUE, offsetof(SearchResults, abort), sizeof(one), &one);
 

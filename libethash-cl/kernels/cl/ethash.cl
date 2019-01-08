@@ -418,11 +418,11 @@ static void SHA3_512(uint2 *s, uint isolate)
     for (uint i = 0; i < 8; ++i)
         st[i] = s[i];
 
-    for (uint i = 8; i != 25; ++i)
+    st[8] = (uint2)(0x00000001, 0x80000000);
+
+    for (uint i = 9; i != 25; ++i)
         st[i] = (uint2)(0);
 
-    st[8].x = 0x00000001;
-    st[8].y = 0x80000000;
     KECCAK_PROCESS(st, 8, 8, isolate);
 
     for (uint i = 0; i < 8; ++i)
